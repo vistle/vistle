@@ -13,16 +13,15 @@
 namespace vistle {
 class VistleConnection;
 class StateTracker;
-}
+} // namespace vistle
 
 namespace gui {
 
 class Module;
 class Connection;
 
-class DataFlowNetwork: public QGraphicsScene
-{
-   Q_OBJECT
+class DataFlowNetwork: public QGraphicsScene {
+    Q_OBJECT
 
 public:
     DataFlowNetwork(vistle::VistleConnection *conn, QObject *parent = 0);
@@ -31,8 +30,8 @@ public:
     void addModule(int hub, QString modName, Qt::Key direction);
     void addModule(int hub, QString modName, QPointF dropPos);
 
-    void addConnection(Port *portFrom, Port *portTo, bool sendToController=false);
-    void removeConnection(Port *portFrom, Port *portTo, bool sendToController=false);
+    void addConnection(Port *portFrom, Port *portTo, bool sendToController = false);
+    void removeConnection(Port *portFrom, Port *portTo, bool sendToController = false);
 
     Module *findModule(int id) const;
     Module *findModule(const boost::uuids::uuid &spawnUuid) const;
@@ -50,48 +49,45 @@ public slots:
     void moduleStatus(int id, QString status, int prio);
 
 protected:
-    void mousePressEvent(QGraphicsSceneMouseEvent *event);      //< re-implemented
-    void mouseMoveEvent(QGraphicsSceneMouseEvent *event);       //< re-implemented
-    void mouseReleaseEvent(QGraphicsSceneMouseEvent *event);    //< re-implemented
+    void mousePressEvent(QGraphicsSceneMouseEvent *event); //< re-implemented
+    void mouseMoveEvent(QGraphicsSceneMouseEvent *event); //< re-implemented
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent *event); //< re-implemented
 
 private:
-    QList<Module *> m_moduleList;                                 //< list of modules
-    QGraphicsLineItem *m_Line;                        //< the intermediate line drawn between modules
-    QColor m_LineColor;                                         //< color of the line
-    QPointF vLastPoint;                                         //< intermediate previous point for connection drawing
-    bool m_mousePressed;                                           //< boolean for keeping track of if a click is made
-    Port *startPort;                                  //< starting port for module connection
-    Module *startModule;                              //< starting module for making connection
-    Module *endModule;                                //< ending module for making connection
+    QList<Module *> m_moduleList; //< list of modules
+    QGraphicsLineItem *m_Line; //< the intermediate line drawn between modules
+    QColor m_LineColor; //< color of the line
+    QPointF vLastPoint; //< intermediate previous point for connection drawing
+    bool m_mousePressed; //< boolean for keeping track of if a click is made
+    Port *startPort; //< starting port for module connection
+    Module *startModule; //< starting module for making connection
+    Module *endModule; //< ending module for making connection
     QPointF lastDropPos;
     ///\todo push this functionality to vHandler
     vistle::VistleConnection *m_vistleConnection;
     vistle::StateTracker &m_state;
 
     struct ConnectionKey {
-       ConnectionKey(Port *p1, Port *p2)
-       : port1(p1), port2(p2)
-       {
-          if (*port2 < *port1)
-             std::swap(port1, port2);
-       }
+        ConnectionKey(Port *p1, Port *p2): port1(p1), port2(p2)
+        {
+            if (*port2 < *port1)
+                std::swap(port1, port2);
+        }
 
-       bool valid() const {
-           return port1->valid() && port2->valid();
-       }
+        bool valid() const { return port1->valid() && port2->valid(); }
 
-       Port *port1, *port2;
+        Port *port1, *port2;
 
-       bool operator<(const ConnectionKey &c) const {
+        bool operator<(const ConnectionKey &c) const
+        {
+            assert(valid());
+            assert(c.valid());
 
-          assert(valid());
-          assert(c.valid());
+            if (*port1 == *c.port1)
+                return *port2 < *c.port2;
 
-          if (*port1 == *c.port1)
-              return *port2 < *c.port2;
-
-          return *port1 < *c.port1;
-       }
+            return *port1 < *c.port1;
+        }
     };
 
     typedef std::map<ConnectionKey, Connection *> ConnectionMap;

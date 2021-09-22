@@ -41,65 +41,68 @@ MODULE_MAIN(ReadCovise)
 namespace {
 const std::string extension(".covise");
 const std::string NONE("(none)");
-}
+} // namespace
 
 using namespace vistle;
 
-ReadCovise::ReadCovise(const std::string &name, int moduleID, mpi::communicator comm)
-   : Reader(name, moduleID, comm)
+ReadCovise::ReadCovise(const std::string &name, int moduleID, mpi::communicator comm): Reader(name, moduleID, comm)
 {
 #ifdef READ_DIRECTORY
-   m_directory = addStringParameter("directory", "directory to scan for .covise files", "", Parameter::ExistingDirectory);
-   m_fieldFile[0] = addStringParameter("grid", "filename for grid", NONE, Parameter::Choice);
+    m_directory =
+        addStringParameter("directory", "directory to scan for .covise files", "", Parameter::ExistingDirectory);
+    m_fieldFile[0] = addStringParameter("grid", "filename for grid", NONE, Parameter::Choice);
 #else
-   m_gridFile = addStringParameter("filename", "name of COVISE file", "", Parameter::ExistingFilename);
-   setParameterFilters(m_gridFile, "COVISE Files (*.covise)/All Files (*)");
-   m_fieldFile[0] = m_gridFile;
+    m_gridFile = addStringParameter("filename", "name of COVISE file", "", Parameter::ExistingFilename);
+    setParameterFilters(m_gridFile, "COVISE Files (*.covise)/All Files (*)");
+    m_fieldFile[0] = m_gridFile;
 #endif
-   m_out[0] = createOutputPort("grid_out");
+    m_out[0] = createOutputPort("grid_out");
 
 #ifdef READ_DIRECTORY
-   m_fieldFile[1] = addStringParameter("normals", "name of COVISE file for normals", NONE, Parameter::Choice);
+    m_fieldFile[1] = addStringParameter("normals", "name of COVISE file for normals", NONE, Parameter::Choice);
 #else
-   m_fieldFile[1] = addStringParameter("normals", "name of COVISE file for normals", "", Parameter::ExistingFilename);
-   setParameterFilters(m_fieldFile[1], "COVISE Files (*.covise)/All Files (*)");
+    m_fieldFile[1] = addStringParameter("normals", "name of COVISE file for normals", "", Parameter::ExistingFilename);
+    setParameterFilters(m_fieldFile[1], "COVISE Files (*.covise)/All Files (*)");
 #endif
-   m_out[1] = nullptr;
-   for (unsigned i=2; i<NumPorts; ++i) {
+    m_out[1] = nullptr;
+    for (unsigned i = 2; i < NumPorts; ++i) {
 #ifdef READ_DIRECTORY
-       m_fieldFile[i] = addStringParameter("field"+std::to_string(i-2), "name of COVISE file for field "+std::to_string(i), NONE, Parameter::Choice);
+        m_fieldFile[i] =
+            addStringParameter("field" + std::to_string(i - 2), "name of COVISE file for field " + std::to_string(i),
+                               NONE, Parameter::Choice);
 #else
-       m_fieldFile[i] = addStringParameter("field"+std::to_string(i-2), "name of COVISE file for field "+std::to_string(i), "", Parameter::ExistingFilename);
-       setParameterFilters(m_fieldFile[i], "COVISE Files (*.covise)/All Files (*)");
+        m_fieldFile[i] =
+            addStringParameter("field" + std::to_string(i - 2), "name of COVISE file for field " + std::to_string(i),
+                               "", Parameter::ExistingFilename);
+        setParameterFilters(m_fieldFile[i], "COVISE Files (*.covise)/All Files (*)");
 #endif
-       m_out[i] = createOutputPort("field"+std::to_string(i-2)+"_out");
-   }
+        m_out[i] = createOutputPort("field" + std::to_string(i - 2) + "_out");
+    }
 
 #ifdef READ_DIRECTORY
-   for (unsigned i=0; i<NumPorts; ++i) {
-       setParameterChoices(m_fieldFile[i], std::vector<std::string>({NONE}));
-   }
+    for (unsigned i = 0; i < NumPorts; ++i) {
+        setParameterChoices(m_fieldFile[i], std::vector<std::string>({NONE}));
+    }
 #endif
 
-   for (unsigned i=0; i<NumPorts; ++i) {
-       m_fd[i] = 0;
-       m_numObj[i] = 0;
-       m_numTime[i] = -1;
-   }
+    for (unsigned i = 0; i < NumPorts; ++i) {
+        m_fd[i] = 0;
+        m_numObj[i] = 0;
+        m_numTime[i] = -1;
+    }
 
-   setParallelizationMode(ParallelizeTimesteps);
+    setParallelizationMode(ParallelizeTimesteps);
 
 #ifdef READ_DIRECTORY
-   observeParameter(m_directory);
+    observeParameter(m_directory);
 #endif
-   for (unsigned port=0; port<NumPorts; ++port) {
-       observeParameter(m_fieldFile[port]);
-   }
+    for (unsigned port = 0; port < NumPorts; ++port) {
+        observeParameter(m_fieldFile[port]);
+    }
 }
 
-ReadCovise::~ReadCovise() {
-
-}
+ReadCovise::~ReadCovise()
+{}
 
 bool ReadCovise::examine(const Parameter *param)
 {
@@ -118,9 +121,7 @@ bool ReadCovise::examine(const Parameter *param)
             return false;
         }
 
-        for (filesystem::directory_iterator it(dir);
-             it != filesystem::directory_iterator(); ++it) {
-
+        for (filesystem::directory_iterator it(dir); it != filesystem::directory_iterator(); ++it) {
             filesystem::path ent(*it);
             if (ent.extension().string() != extension) {
                 continue;
@@ -141,12 +142,12 @@ bool ReadCovise::examine(const Parameter *param)
             choices.push_back(stem);
         }
 
-        for (unsigned port=0; port<NumPorts; ++port) {
+        for (unsigned port = 0; port < NumPorts; ++port) {
             setParameterChoices(m_fieldFile[port], choices);
         }
     }
 #else
-    for (unsigned i=1; i<NumPorts; ++i) {
+    for (unsigned i = 1; i < NumPorts; ++i) {
         if (param == m_fieldFile[i]) {
             std::string file = m_fieldFile[i]->getValue();
             int fd = covOpenInFile(file.c_str());
@@ -167,8 +168,7 @@ bool ReadCovise::prepareRead()
 #ifdef READ_DIRECTORY
     auto dir = filesystem::path(m_directory->getValue());
 #endif
-    for (unsigned port=0; port<NumPorts; ++port) {
-
+    for (unsigned port = 0; port < NumPorts; ++port) {
         m_numTime[port] = -1;
 
         m_objects[port].clear();
@@ -180,20 +180,20 @@ bool ReadCovise::prepareRead()
         m_species[port] = m_fieldFile[port]->getValue();
         if (m_fieldFile[port]->getValue() != NONE) {
             filesystem::path path(dir);
-			path += path.preferred_separator;
-			path += m_fieldFile[port]->getValue();
-			path += extension;
+            path += path.preferred_separator;
+            path += m_fieldFile[port]->getValue();
+            path += extension;
             name = path.string();
         }
 #else
         const std::string name = m_fieldFile[port]->getValue();
         std::string species = name;
         if (boost::algorithm::ends_with(species, ".covise")) {
-            species = species.substr(0, species.length()-std::string(".covise").length());
+            species = species.substr(0, species.length() - std::string(".covise").length());
         }
         auto last_slash = species.find_last_of('/');
         if (last_slash != std::string::npos) {
-            species = species.substr(last_slash+1);
+            species = species.substr(last_slash + 1);
         }
         m_species[port] = species;
 #endif
@@ -208,13 +208,13 @@ bool ReadCovise::prepareRead()
         }
     }
 
-    for (unsigned port=0; port<NumPorts; ++port) {
+    for (unsigned port = 0; port < NumPorts; ++port) {
         if (m_fd[port] == 0)
             continue;
 
         try {
             readSkeleton(port, &m_rootElement[port]);
-        } catch(vistle::exception &e) {
+        } catch (vistle::exception &e) {
             finishRead();
             throw(e);
             return false;
@@ -222,16 +222,15 @@ bool ReadCovise::prepareRead()
 
         if (port > 0) {
             if (m_numTime[port] != m_numTime[0]) {
-                sendError("number of timesteps in %s (%d) and %s (%d) do not match",
-                          m_filename[0].c_str(), m_numTime[0],
-                          m_filename[port].c_str(), m_numTime[port]);
+                sendError("number of timesteps in %s (%d) and %s (%d) do not match", m_filename[0].c_str(),
+                          m_numTime[0], m_filename[port].c_str(), m_numTime[port]);
                 finishRead();
                 return false;
             }
         }
     }
 
-    for (unsigned port=0; port<NumPorts; ++port) {
+    for (unsigned port = 0; port < NumPorts; ++port) {
         if (m_fd[port] != 0) {
             covCloseInFile(m_fd[port]);
             m_fd[port] = 0;
@@ -250,7 +249,7 @@ bool ReadCovise::read(Reader::Token &token, int timestep, int block)
     std::cerr << "reading t=" << timestep << ", block=" << block << std::endl;
     Element *elem[NumPorts];
     int fd[NumPorts];
-    for (unsigned port=0; port<NumPorts; ++port) {
+    for (unsigned port = 0; port < NumPorts; ++port) {
         elem[port] = &m_rootElement[port];
         if (m_filename->empty()) {
             fd[port] = 0;
@@ -263,7 +262,7 @@ bool ReadCovise::read(Reader::Token &token, int timestep, int block)
         }
     }
     bool ret = readRecursive(token, fd, elem, -1, timestep);
-    for (unsigned port=0; port<NumPorts; ++port) {
+    for (unsigned port = 0; port < NumPorts; ++port) {
         if (fd[port])
             covCloseInFile(fd[port]);
     }
@@ -272,7 +271,7 @@ bool ReadCovise::read(Reader::Token &token, int timestep, int block)
 
 bool ReadCovise::finishRead()
 {
-    for (unsigned port=0; port<NumPorts; ++port) {
+    for (unsigned port = 0; port < NumPorts; ++port) {
         if (m_fd[port]) {
             covCloseInFile(m_fd[port]);
             m_fd[port] = 0;
@@ -284,531 +283,512 @@ bool ReadCovise::finishRead()
     return true;
 }
 
-static off_t mytell(const int fd) {
-
-   return lseek(abs(fd), 0, SEEK_CUR);
+static off_t mytell(const int fd)
+{
+    return lseek(abs(fd), 0, SEEK_CUR);
 }
 
-static off_t seek(const int fd, off_t off) {
-
-   return lseek(abs(fd), off, SEEK_SET);
+static off_t seek(const int fd, off_t off)
+{
+    return lseek(abs(fd), off, SEEK_SET);
 }
 
-static int findBlockNum(const Element &elem) {
-   bool isTimestep = false;
-   for (size_t i=0; i<elem.attribs.size(); ++i) {
-      const std::pair<std::string, std::string> &att = elem.attribs[i];
-      if (att.first == "TIMESTEP")
-         isTimestep = true;
-   }
-   int block = elem.index;
-   if (elem.parent && (isTimestep || block<0)) {
-       block = findBlockNum(*elem.parent);
-   }
-   return block;
+static int findBlockNum(const Element &elem)
+{
+    bool isTimestep = false;
+    for (size_t i = 0; i < elem.attribs.size(); ++i) {
+        const std::pair<std::string, std::string> &att = elem.attribs[i];
+        if (att.first == "TIMESTEP")
+            isTimestep = true;
+    }
+    int block = elem.index;
+    if (elem.parent && (isTimestep || block < 0)) {
+        block = findBlockNum(*elem.parent);
+    }
+    return block;
 }
 
-void ReadCovise::applyAttributes(Token &token, Object::ptr obj, const Element &elem, int index) {
+void ReadCovise::applyAttributes(Token &token, Object::ptr obj, const Element &elem, int index)
+{
+    if (elem.parent) {
+        applyAttributes(token, obj, *elem.parent, elem.index);
+    }
 
-   if (elem.parent) {
-      applyAttributes(token, obj, *elem.parent, elem.index);
-   }
+    bool isTimestep = false;
+    for (size_t i = 0; i < elem.attribs.size(); ++i) {
+        const std::pair<std::string, std::string> &att = elem.attribs[i];
+        if (att.first == "TIMESTEP") {
+            isTimestep = true;
+        } else if (att.first == "COLOR") {
+            obj->addAttribute("_color", att.second);
+        } else {
+            obj->addAttribute(att.first, att.second);
+        }
+    }
 
-   bool isTimestep = false;
-   for (size_t i=0; i<elem.attribs.size(); ++i) {
-      const std::pair<std::string, std::string> &att = elem.attribs[i];
-      if (att.first == "TIMESTEP") {
-         isTimestep = true;
-      } else if (att.first == "COLOR") {
-          obj->addAttribute("_color", att.second);
-      } else {
-          obj->addAttribute(att.first, att.second);
-      }
-   }
-
-   if (index != -1) {
-      if (isTimestep) {
-         if (obj->getTimestep() != -1) {
-            std::cerr << "ReadCovise: multiple TIMESTEP attributes in object hierarchy" << std::endl;
-         }
+    if (index != -1) {
+        if (isTimestep) {
+            if (obj->getTimestep() != -1) {
+                std::cerr << "ReadCovise: multiple TIMESTEP attributes in object hierarchy" << std::endl;
+            }
 #if 1
-         if (elem.parent)
-            obj->setNumTimesteps(elem.parent->subelems.size());
+            if (elem.parent)
+                obj->setNumTimesteps(elem.parent->subelems.size());
 #endif
-      } else if (obj->getBlock() == -1) {
-         obj->setBlock(index);
+        } else if (obj->getBlock() == -1) {
+            obj->setBlock(index);
 #if 0
          if (elem.parent)
             obj->setNumBlocks(elem.parent->subelems.size());
 #endif
-      }
-      token.applyMeta(obj);
+        }
+        token.applyMeta(obj);
 
-      if (!isTimestep) {
-         std::string set = obj->getAttribute("_part_of");
-         if (!set.empty())
-            set = set + "_";
-         std::stringstream idx;
-         idx << index;
-         set = set + idx.str();
-         obj->addAttribute("_part_of", set);
-      }
-   }
+        if (!isTimestep) {
+            std::string set = obj->getAttribute("_part_of");
+            if (!set.empty())
+                set = set + "_";
+            std::stringstream idx;
+            idx << index;
+            set = set + idx.str();
+            obj->addAttribute("_part_of", set);
+        }
+    }
 }
 
-static void parseAttributes(Element *elem) {
-   for (size_t i=0; i<elem->attribs.size(); ++i) {
-      const std::pair<std::string, std::string> &att = elem->attribs[i];
-      if (att.first == "TIMESTEP") {
-          std::cerr << "timesteps " << att.second << " on type " << elem->type << std::endl;
-          elem->is_timeset = true;
-          break;
-      }
-   }
+static void parseAttributes(Element *elem)
+{
+    for (size_t i = 0; i < elem->attribs.size(); ++i) {
+        const std::pair<std::string, std::string> &att = elem->attribs[i];
+        if (att.first == "TIMESTEP") {
+            std::cerr << "timesteps " << att.second << " on type " << elem->type << std::endl;
+            elem->is_timeset = true;
+            break;
+        }
+    }
 }
 
 
-AttributeList ReadCovise::readAttributes(const int fd) {
+AttributeList ReadCovise::readAttributes(const int fd)
+{
+    std::vector<std::pair<std::string, std::string>> attributes;
+    int num, size;
+    covReadNumAttributes(fd, &num, &size);
+    assert(num >= 0);
+    if (num > 0) {
+        assert(size >= 0);
+    }
 
-   std::vector<std::pair<std::string, std::string> > attributes;
-   int num, size;
-   covReadNumAttributes(fd, &num, &size);
-   assert(num >= 0);
-   if (num > 0) {
-      assert(size >= 0);
-   }
+    if (num > 0 && size > 0) {
+        std::vector<char *> key(num), value(num);
+        std::vector<char> buf(size);
+        key[0] = &buf[0];
+        covReadAttributes(fd, &key[0], &value[0], num, size);
 
-   if (num > 0 && size > 0) {
-      std::vector<char *> key(num), value(num);
-      std::vector<char> buf(size);
-      key[0] = &buf[0];
-      covReadAttributes(fd, &key[0], &value[0], num, size);
+        for (int i = 0; i < num; ++i) {
+            attributes.push_back(std::pair<std::string, std::string>(key[i], value[i]));
+        }
+    }
 
-      for (int i=0; i<num; ++i) {
-         attributes.push_back(std::pair<std::string, std::string>(key[i], value[i]));
-      }
-   }
-
-   return attributes;
+    return attributes;
 }
 
-bool ReadCovise::readSETELE(Token &token, const int port, int fd, Element *parent) {
+bool ReadCovise::readSETELE(Token &token, const int port, int fd, Element *parent)
+{
+    int num = -1;
+    covReadSetBegin(fd, &num);
+    assert(num >= 0);
 
-   int num=-1;
-   covReadSetBegin(fd, &num);
-   assert(num >= 0);
+    for (int index = 0; index < num; index++) {
+        Element *elem = new Element();
+        elem->parent = parent;
+        elem->index = index;
+        readSkeleton(port, elem);
+        parent->subelems.push_back(elem);
+    }
 
-   for (int index = 0; index < num; index ++) {
-
-      Element *elem = new Element();
-      elem->parent = parent;
-      elem->index = index;
-      readSkeleton(port, elem);
-      parent->subelems.push_back(elem);
-   }
-
-   return true;
+    return true;
 }
 
-Object::ptr ReadCovise::readUNIGRD(Token &token, const int port, int fd, const bool skeleton) {
+Object::ptr ReadCovise::readUNIGRD(Token &token, const int port, int fd, const bool skeleton)
+{
+    int dim[3];
+    float min[3], max[3];
 
-   int dim[3];
-   float min[3], max[3];
+    covReadUNIGRD(fd, &dim[0], &dim[1], &dim[2], &min[0], &max[0], &min[1], &max[1], &min[2], &max[2]);
+    if (!skeleton) {
+        UniformGrid::ptr uni(new UniformGrid(dim[0], dim[1], dim[2]));
+        for (int i = 0; i < 3; ++i) {
+            uni->min()[i] = min[i];
+            uni->max()[i] = max[i];
+        }
 
-   covReadUNIGRD(fd, &dim[0], &dim[1], &dim[2],
-           &min[0], &max[0], &min[1], &max[1], &min[2], &max[2]);
-   if (!skeleton) {
+        return uni;
+    }
 
-      UniformGrid::ptr uni(new UniformGrid(dim[0], dim[1], dim[2]));
-      for (int i=0; i<3; ++i) {
-          uni->min()[i] = min[i];
-          uni->max()[i] = max[i];
-      }
-
-      return uni;
-   }
-
-   return Object::ptr();
+    return Object::ptr();
 }
 
-Object::ptr ReadCovise::readRCTGRD(Token &token, const int port, int fd, const bool skeleton) {
+Object::ptr ReadCovise::readRCTGRD(Token &token, const int port, int fd, const bool skeleton)
+{
+    int dim[3];
 
-   int dim[3];
+    covReadSizeRCTGRD(fd, &dim[0], &dim[1], &dim[2]);
 
-   covReadSizeRCTGRD(fd, &dim[0], &dim[1], &dim[2]);
+    if (skeleton) {
+        covSkipRCTGRD(fd, dim[0], dim[1], dim[2]);
+    } else {
+        std::vector<float> coord[3];
+        for (int i = 0; i < 3; ++i)
+            coord[i].resize(dim[i]);
+        covReadRCTGRD(fd, dim[0], dim[1], dim[2], coord[0].data(), coord[1].data(), coord[2].data());
 
-   if (skeleton) {
-      covSkipRCTGRD(fd, dim[0], dim[1], dim[2]);
-   } else {
-      std::vector<float> coord[3];
-      for (int i=0; i<3; ++i)
-          coord[i].resize(dim[i]);
-      covReadRCTGRD(fd, dim[0], dim[1], dim[2], coord[0].data(), coord[1].data(), coord[2].data());
+        RectilinearGrid::ptr rect(new RectilinearGrid(dim[0], dim[1], dim[2]));
+        for (int i = 0; i < 3; ++i) {
+            for (int k = 0; k < dim[i] + 1; ++k) {
+                rect->coords(i)[k] = coord[i][k];
+            }
+        }
 
-      RectilinearGrid::ptr rect(new RectilinearGrid(dim[0], dim[1], dim[2]));
-      for (int i=0; i<3; ++i) {
-          for (int k=0; k<dim[i]+1; ++k) {
-              rect->coords(i)[k] = coord[i][k];
-          }
-      }
+        return rect;
+    }
 
-      return rect;
-   }
-
-   return Object::ptr();
+    return Object::ptr();
 }
 
-Object::ptr ReadCovise::readSTRGRD(Token &token, const int port, int fd, const bool skeleton) {
+Object::ptr ReadCovise::readSTRGRD(Token &token, const int port, int fd, const bool skeleton)
+{
+    int dim[3];
+    covReadSizeSTRGRD(fd, &dim[0], &dim[1], &dim[2]);
 
-   int dim[3];
-   covReadSizeSTRGRD(fd, &dim[0], &dim[1], &dim[2]);
-
-   if (skeleton) {
-      covSkipSTRGRD(fd, dim[0], dim[1], dim[2]);
-   } else {
-       size_t numVertices = dim[0]*dim[1]*dim[2];
-       std::vector<float> v_x(numVertices), v_y(numVertices), v_z(numVertices);
-       float *_x = v_x.data(), *_y = v_y.data(), *_z = v_z.data();
-       covReadSTRGRD(fd, dim[0], dim[1], dim[2], _x, _y, _z);
-       StructuredGrid::ptr str(new StructuredGrid(dim[0], dim[1], dim[2]));
-       Scalar *x=str->x().data(), *y=str->y().data(), *z=str->z().data();
-       for (Index i=0; i<numVertices; ++i) {
-           x[i] = _x[i];
-           y[i] = _y[i];
-           z[i] = _z[i];
-       }
-       return str;
-   }
-   return Object::ptr();
+    if (skeleton) {
+        covSkipSTRGRD(fd, dim[0], dim[1], dim[2]);
+    } else {
+        size_t numVertices = dim[0] * dim[1] * dim[2];
+        std::vector<float> v_x(numVertices), v_y(numVertices), v_z(numVertices);
+        float *_x = v_x.data(), *_y = v_y.data(), *_z = v_z.data();
+        covReadSTRGRD(fd, dim[0], dim[1], dim[2], _x, _y, _z);
+        StructuredGrid::ptr str(new StructuredGrid(dim[0], dim[1], dim[2]));
+        Scalar *x = str->x().data(), *y = str->y().data(), *z = str->z().data();
+        for (Index i = 0; i < numVertices; ++i) {
+            x[i] = _x[i];
+            y[i] = _y[i];
+            z[i] = _z[i];
+        }
+        return str;
+    }
+    return Object::ptr();
 }
 
-Object::ptr ReadCovise::readUNSGRD(Token &token, const int port, int fd, const bool skeleton) {
+Object::ptr ReadCovise::readUNSGRD(Token &token, const int port, int fd, const bool skeleton)
+{
+    int numElements = -1;
+    int numCorners = -1;
+    int numVertices = -1;
 
-   int numElements=-1;
-   int numCorners=-1;
-   int numVertices=-1;
+    covReadSizeUNSGRD(fd, &numElements, &numCorners, &numVertices);
+    assert(numElements >= 0);
+    assert(numCorners >= 0);
+    assert(numVertices >= 0);
 
-   covReadSizeUNSGRD(fd, &numElements, &numCorners, &numVertices);
-   assert(numElements>=0);
-   assert(numCorners>=0);
-   assert(numVertices>=0);
+    if (skeleton) {
+        covSkipUNSGRD(fd, numElements, numCorners, numVertices);
+    } else {
+        UnstructuredGrid::ptr usg(new UnstructuredGrid(numElements, numCorners, numVertices));
 
-   if (skeleton) {
+        std::vector<int> v_tl(numElements);
+        std::vector<int> v_el(numElements);
+        std::vector<int> v_cl(numCorners);
+        auto _tl = v_tl.data();
+        auto _el = v_el.data();
+        auto _cl = v_cl.data();
 
-      covSkipUNSGRD(fd, numElements, numCorners, numVertices);
-   } else {
+        std::vector<float> v_x(numVertices), v_y(numVertices), v_z(numVertices);
+        float *_x = v_x.data(), *_y = v_y.data(), *_z = v_z.data();
+        covReadUNSGRD(fd, numElements, numCorners, numVertices, _el, _cl, _tl, _x, _y, _z);
 
-      UnstructuredGrid::ptr usg(new UnstructuredGrid(numElements, numCorners, numVertices));
+        Index *el = usg->el().data();
+        Byte *tl = &usg->tl()[0];
+        for (int index = 0; index < numElements; index++) {
+            el[index] = _el[index];
+            tl[index] = (UnstructuredGrid::Type)_tl[index];
+        }
+        el[numElements] = numCorners;
 
-      std::vector<int> v_tl(numElements);
-      std::vector<int> v_el(numElements);
-      std::vector<int> v_cl(numCorners);
-      auto _tl = v_tl.data();
-      auto _el = v_el.data();
-      auto _cl = v_cl.data();
+        Index *cl = usg->cl().data();
+        for (int index = 0; index < numCorners; index++)
+            cl[index] = _cl[index];
 
-      std::vector<float> v_x(numVertices), v_y(numVertices), v_z(numVertices);
-      float *_x = v_x.data(), *_y = v_y.data(), *_z = v_z.data();
-      covReadUNSGRD(fd, numElements, numCorners, numVertices,
-            _el, _cl, _tl,
-            _x, _y, _z);
+        if (UnstructuredGrid::POLYHEDRON == UnstructuredGrid::VPOLYHEDRON) {
+            // convert to VTK face stream
+            for (int index = 0; index < numElements; index++) {
+                tl[index] = UnstructuredGrid::VPOLYHEDRON;
+                Index begin = el[index], end = el[index + 1];
+                Index faceTerm = InvalidIndex;
+                Index faceVert = 0;
+                Index faceStart = 0;
+                for (Index i = begin; i < end; ++i) {
+                    Index v = cl[i];
+                    if (faceTerm == InvalidIndex) {
+                        faceTerm = v;
+                        faceVert = 0;
+                        faceStart = i;
+                    } else if (faceTerm == v) {
+                        cl[faceStart] = faceVert;
+                        faceTerm = InvalidIndex;
+                        faceVert = 0;
+                        faceStart = InvalidIndex;
+                    }
+                    ++faceVert;
+                }
+            }
+        }
 
-      Index *el = usg->el().data();
-      Byte *tl = &usg->tl()[0];
-      for (int index = 0; index < numElements; index ++) {
-         el[index] = _el[index];
-         tl[index] = (UnstructuredGrid::Type) _tl[index];
-      }
-      el[numElements] = numCorners;
+        auto x = usg->x().data(), y = usg->y().data(), z = usg->z().data();
+        for (int index = 0; index < numVertices; ++index) {
+            x[index] = _x[index];
+            y[index] = _y[index];
+            z[index] = _z[index];
+        }
 
-      Index *cl = usg->cl().data();
-      for (int index = 0; index < numCorners; index ++)
-         cl[index] = _cl[index];
+        if (checkConvexity())
+            usg->checkConvexity();
+        return usg;
+    }
 
-      if (UnstructuredGrid::POLYHEDRON == UnstructuredGrid::VPOLYHEDRON) {
-          // convert to VTK face stream
-          for (int index = 0; index < numElements; index ++) {
-              tl[index] = UnstructuredGrid::VPOLYHEDRON;
-              Index begin=el[index], end=el[index+1];
-              Index faceTerm = InvalidIndex;
-              Index faceVert = 0;
-              Index faceStart = 0;
-              for (Index i=begin; i<end; ++i) {
-                  Index v = cl[i];
-                  if (faceTerm == InvalidIndex) {
-                      faceTerm = v;
-                      faceVert = 0;
-                      faceStart = i;
-                  } else if (faceTerm == v) {
-                      cl[faceStart] = faceVert;
-                      faceTerm = InvalidIndex;
-                      faceVert = 0;
-                      faceStart = InvalidIndex;
-                  }
-                  ++faceVert;
-              }
-          }
-      }
-
-      auto x=usg->x().data(), y=usg->y().data(), z=usg->z().data();
-      for (int index = 0; index < numVertices; ++index) {
-         x[index] = _x[index];
-         y[index] = _y[index];
-         z[index] = _z[index];
-      }
-
-      if (checkConvexity())
-          usg->checkConvexity();
-      return usg;
-   }
-
-   return Object::ptr();
+    return Object::ptr();
 }
 
-Object::ptr ReadCovise::readUSTSDT(Token &token, const int port, int fd, const bool skeleton) {
+Object::ptr ReadCovise::readUSTSDT(Token &token, const int port, int fd, const bool skeleton)
+{
+    int numElements = -1;
+    covReadSizeUSTSDT(fd, &numElements);
+    assert(numElements >= 0);
 
-   int numElements=-1;
-   covReadSizeUSTSDT(fd, &numElements);
-   assert(numElements>=0);
+    if (skeleton) {
+        covSkipUSTSDT(fd, numElements);
+    } else {
+        Vec<Scalar>::ptr array(new Vec<Scalar>(numElements));
+        std::vector<float> _x(numElements);
+        covReadUSTSDT(fd, numElements, &_x[0]);
+        auto x = array->x().data();
+        for (int i = 0; i < numElements; ++i)
+            x[i] = _x[i];
 
-   if (skeleton) {
+        return array;
+    }
 
-      covSkipUSTSDT(fd, numElements);
-   } else {
-
-      Vec<Scalar>::ptr array(new Vec<Scalar>(numElements));
-      std::vector<float> _x(numElements);
-      covReadUSTSDT(fd, numElements, &_x[0]);
-      auto x = array->x().data();
-      for (int i=0; i<numElements; ++i)
-         x[i] = _x[i];
-
-      return array;
-   }
-
-   return Object::ptr();
+    return Object::ptr();
 }
 
-Object::ptr ReadCovise::readUSTVDT(Token &token, const int port, int fd, const bool skeleton) {
+Object::ptr ReadCovise::readUSTVDT(Token &token, const int port, int fd, const bool skeleton)
+{
+    int numElements = -1;
+    covReadSizeUSTVDT(fd, &numElements);
+    assert(numElements >= 0);
 
-   int numElements=-1;
-   covReadSizeUSTVDT(fd, &numElements);
-   assert(numElements>=0);
+    if (skeleton) {
+        covSkipUSTVDT(fd, numElements);
+    } else {
+        Vec<Scalar, 3>::ptr array(new Vec<Scalar, 3>(numElements));
+        std::vector<float> _x(numElements), _y(numElements), _z(numElements);
+        covReadUSTVDT(fd, numElements, &_x[0], &_y[0], &_z[0]);
+        Scalar *x = array->x().data();
+        Scalar *y = array->y().data();
+        Scalar *z = array->z().data();
+        for (int i = 0; i < numElements; ++i) {
+            x[i] = _x[i];
+            y[i] = _y[i];
+            z[i] = _z[i];
+        }
 
-   if (skeleton) {
+        return array;
+    }
 
-      covSkipUSTVDT(fd, numElements);
-   } else {
-
-      Vec<Scalar,3>::ptr array(new Vec<Scalar,3>(numElements));
-      std::vector<float> _x(numElements), _y(numElements), _z(numElements);
-      covReadUSTVDT(fd, numElements, &_x[0], &_y[0], &_z[0]);
-      Scalar *x = array->x().data();
-      Scalar *y = array->y().data();
-      Scalar *z = array->z().data();
-      for (int i=0; i<numElements; ++i) {
-         x[i] = _x[i];
-         y[i] = _y[i];
-         z[i] = _z[i];
-      }
-
-      return array;
-   }
-
-   return Object::ptr();
+    return Object::ptr();
 }
 
-Object::ptr ReadCovise::readSTRSDT(Token &token, const int port, int fd, const bool skeleton) {
+Object::ptr ReadCovise::readSTRSDT(Token &token, const int port, int fd, const bool skeleton)
+{
+    int numElements = -1;
+    int sx = -1, sy = -1, sz = -1;
+    covReadSizeSTRSDT(fd, &numElements, &sx, &sy, &sz);
+    assert(sx >= 0);
+    assert(sy >= 0);
+    assert(sz >= 0);
+    size_t n = sx * sy * sz;
 
-   int numElements=-1;
-   int sx=-1, sy=-1, sz=-1;
-   covReadSizeSTRSDT(fd, &numElements, &sx, &sy, &sz);
-   assert(sx >= 0);
-   assert(sy >= 0);
-   assert(sz >= 0);
-   size_t n = sx*sy*sz;
+    if (skeleton) {
+        covSkipSTRSDT(fd, numElements, sx, sy, sz);
+    } else {
+        Vec<Scalar>::ptr array(new Vec<Scalar>(n));
+        std::vector<float> _x(n);
+        covReadSTRSDT(fd, n, &_x[0], sx, sy, sz);
+        auto x = array->x().data();
+        for (size_t i = 0; i < n; ++i)
+            x[i] = _x[i];
 
-   if (skeleton) {
+        return array;
+    }
 
-      covSkipSTRSDT(fd, numElements, sx, sy, sz);
-   } else {
-
-      Vec<Scalar>::ptr array(new Vec<Scalar>(n));
-      std::vector<float> _x(n);
-      covReadSTRSDT(fd, n, &_x[0], sx, sy, sz);
-      auto x = array->x().data();
-      for (size_t i=0; i<n; ++i)
-         x[i] = _x[i];
-
-      return array;
-   }
-
-   return Object::ptr();
+    return Object::ptr();
 }
 
-Object::ptr ReadCovise::readSTRVDT(Token &token, const int port, int fd, const bool skeleton) {
+Object::ptr ReadCovise::readSTRVDT(Token &token, const int port, int fd, const bool skeleton)
+{
+    int numElements = -1;
+    int sx = -1, sy = -1, sz = -1;
+    covReadSizeSTRVDT(fd, &numElements, &sx, &sy, &sz);
+    assert(sx >= 0);
+    assert(sy >= 0);
+    assert(sz >= 0);
+    size_t n = sx * sy * sz;
 
-   int numElements=-1;
-   int sx=-1, sy=-1, sz=-1;
-   covReadSizeSTRVDT(fd, &numElements, &sx, &sy, &sz);
-   assert(sx >= 0);
-   assert(sy >= 0);
-   assert(sz >= 0);
-   size_t n = sx*sy*sz;
+    if (skeleton) {
+        covSkipSTRVDT(fd, numElements, sx, sy, sz);
+    } else {
+        Vec<Scalar, 3>::ptr array(new Vec<Scalar, 3>(n));
+        std::vector<float> _x(n), _y(n), _z(n);
+        covReadSTRVDT(fd, n, &_x[0], &_y[0], &_z[0], sx, sy, sz);
+        auto x = array->x().data();
+        auto y = array->y().data();
+        auto z = array->z().data();
+        for (size_t i = 0; i < n; ++i) {
+            x[i] = _x[i];
+            y[i] = _y[i];
+            z[i] = _z[i];
+        }
 
-   if (skeleton) {
+        return array;
+    }
 
-      covSkipSTRVDT(fd, numElements, sx, sy, sz);
-   } else {
-
-      Vec<Scalar,3>::ptr array(new Vec<Scalar,3>(n));
-      std::vector<float> _x(n), _y(n), _z(n);
-      covReadSTRVDT(fd, n, &_x[0], &_y[0], &_z[0], sx, sy, sz);
-      auto x = array->x().data();
-      auto y = array->y().data();
-      auto z = array->z().data();
-      for (size_t i=0; i<n; ++i) {
-         x[i] = _x[i];
-         y[i] = _y[i];
-         z[i] = _z[i];
-      }
-
-      return array;
-   }
-
-   return Object::ptr();
+    return Object::ptr();
 }
 
-Object::ptr ReadCovise::readPOINTS(Token &token, const int port, int fd, const bool skeleton) {
+Object::ptr ReadCovise::readPOINTS(Token &token, const int port, int fd, const bool skeleton)
+{
+    int numCoords = -1;
+    covReadSizePOINTS(fd, &numCoords);
+    assert(numCoords >= 0);
 
-   int numCoords=-1;
-   covReadSizePOINTS(fd, &numCoords);
-   assert(numCoords>=0);
+    if (skeleton) {
+        covSkipPOINTS(fd, numCoords);
+    } else {
+        Points::ptr points(new Points(numCoords));
 
-   if (skeleton) {
+        std::vector<float> _x(numCoords), _y(numCoords), _z(numCoords);
 
-      covSkipPOINTS(fd, numCoords);
-   } else {
+        covReadPOINTS(fd, numCoords, &_x[0], &_y[0], &_z[0]);
 
-      Points::ptr points(new Points(numCoords));
+        auto *x = points->x().data();
+        auto *y = points->y().data();
+        auto *z = points->z().data();
+        for (int index = 0; index < numCoords; index++) {
+            x[index] = _x[index];
+            y[index] = _y[index];
+            z[index] = _z[index];
+        }
 
-      std::vector<float> _x(numCoords), _y(numCoords), _z(numCoords);
+        return points;
+    }
 
-      covReadPOINTS(fd, numCoords, &_x[0], &_y[0], &_z[0]);
-
-      auto *x = points->x().data();
-      auto *y = points->y().data();
-      auto *z = points->z().data();
-      for (int index = 0; index < numCoords; index ++) {
-         x[index] = _x[index];
-         y[index] = _y[index];
-         z[index] = _z[index];
-      }
-
-      return points;
-   }
-
-   return Object::ptr();
+    return Object::ptr();
 }
 
-Object::ptr ReadCovise::readLINES(Token &token, const int port, int fd, const bool skeleton) {
+Object::ptr ReadCovise::readLINES(Token &token, const int port, int fd, const bool skeleton)
+{
+    int numElements = -1, numCorners = -1, numVertices = -1;
+    covReadSizeLINES(fd, &numElements, &numCorners, &numVertices);
+    assert(numElements >= 0);
+    assert(numCorners >= 0);
+    assert(numVertices >= 0);
 
-   int numElements=-1, numCorners=-1, numVertices=-1;
-   covReadSizeLINES(fd, &numElements, &numCorners, &numVertices);
-   assert(numElements>=0);
-   assert(numCorners>=0);
-   assert(numVertices>=0);
+    if (skeleton) {
+        covSkipLINES(fd, numElements, numCorners, numVertices);
+    } else {
+        Lines::ptr lines(new Lines(numElements, numCorners, numVertices));
 
-   if (skeleton) {
+        std::vector<int> _el(numElements);
+        std::vector<int> _cl(numCorners);
+        std::vector<float> _x(numVertices), _y(numVertices), _z(numVertices);
 
-      covSkipLINES(fd, numElements, numCorners, numVertices);
-   } else {
+        covReadLINES(fd, numElements, &_el[0], numCorners, &_cl[0], numVertices, &_x[0], &_y[0], &_z[0]);
 
-      Lines::ptr lines(new Lines(numElements, numCorners, numVertices));
+        auto el = lines->el().data();
+        for (int index = 0; index < numElements; index++)
+            el[index] = _el[index];
+        el[numElements] = numCorners;
 
-      std::vector<int> _el(numElements);
-      std::vector<int> _cl(numCorners);
-      std::vector<float> _x(numVertices), _y(numVertices), _z(numVertices);
+        auto cl = lines->cl().data();
+        for (int index = 0; index < numCorners; index++)
+            cl[index] = _cl[index];
 
-      covReadLINES(fd, numElements, &_el[0], numCorners, &_cl[0], numVertices, &_x[0], &_y[0], &_z[0]);
+        auto x = lines->x().data(), y = lines->y().data(), z = lines->z().data();
+        for (int index = 0; index < numVertices; index++) {
+            x[index] = _x[index];
+            y[index] = _y[index];
+            z[index] = _z[index];
+        }
 
-      auto el = lines->el().data();
-      for (int index = 0; index < numElements; index ++)
-         el[index] = _el[index];
-      el[numElements] = numCorners;
+        return lines;
+    }
 
-      auto cl = lines->cl().data();
-      for (int index = 0; index < numCorners; index ++)
-         cl[index] = _cl[index];
-
-      auto x = lines->x().data(), y = lines->y().data(), z = lines->z().data();
-      for (int index = 0; index < numVertices; index ++) {
-         x[index] = _x[index];
-         y[index] = _y[index];
-         z[index] = _z[index];
-      }
-
-      return lines;
-   }
-
-   return Object::ptr();
+    return Object::ptr();
 }
 
-Object::ptr ReadCovise::readPOLYGN(Token &token, const int port, int fd, const bool skeleton) {
+Object::ptr ReadCovise::readPOLYGN(Token &token, const int port, int fd, const bool skeleton)
+{
+    int numElements = -1, numCorners = -1, numVertices = -1;
+    covReadSizePOLYGN(fd, &numElements, &numCorners, &numVertices);
+    assert(numElements >= 0);
+    assert(numCorners >= 0);
+    assert(numVertices >= 0);
 
-   int numElements=-1, numCorners=-1, numVertices=-1;
-   covReadSizePOLYGN(fd, &numElements, &numCorners, &numVertices);
-   assert(numElements>=0);
-   assert(numCorners>=0);
-   assert(numVertices>=0);
+    if (skeleton) {
+        covSkipPOLYGN(fd, numElements, numCorners, numVertices);
+    } else {
+        Polygons::ptr polygons(new Polygons(numElements, numCorners, numVertices));
 
-   if (skeleton) {
+        std::vector<int> _el(numElements);
+        std::vector<int> _cl(numCorners);
+        std::vector<float> _x(numVertices), _y(numVertices), _z(numVertices);
 
-      covSkipPOLYGN(fd, numElements, numCorners, numVertices);
-   } else {
+        covReadPOLYGN(fd, numElements, &_el[0], numCorners, &_cl[0], numVertices, &_x[0], &_y[0], &_z[0]);
 
-      Polygons::ptr polygons(new Polygons(numElements, numCorners, numVertices));
+        auto el = polygons->el().data();
+        for (int index = 0; index < numElements; index++)
+            el[index] = _el[index];
+        el[numElements] = numCorners;
 
-      std::vector<int> _el(numElements);
-      std::vector<int> _cl(numCorners);
-      std::vector<float> _x(numVertices), _y(numVertices), _z(numVertices);
+        auto cl = polygons->cl().data();
+        for (int index = 0; index < numCorners; index++)
+            cl[index] = _cl[index];
 
-      covReadPOLYGN(fd, numElements, &_el[0], numCorners, &_cl[0], numVertices, &_x[0], &_y[0], &_z[0]);
+        auto x = polygons->x().data(), y = polygons->y().data(), z = polygons->z().data();
+        for (int index = 0; index < numVertices; index++) {
+            x[index] = _x[index];
+            y[index] = _y[index];
+            z[index] = _z[index];
+        }
 
-      auto el = polygons->el().data();
-      for (int index = 0; index < numElements; index ++)
-         el[index] = _el[index];
-      el[numElements] = numCorners;
+        return polygons;
+    }
 
-      auto cl = polygons->cl().data();
-      for (int index = 0; index < numCorners; index ++)
-         cl[index] = _cl[index];
-
-      auto x = polygons->x().data(), y = polygons->y().data(), z = polygons->z().data();
-      for (int index = 0; index < numVertices; index ++) {
-         x[index] = _x[index];
-         y[index] = _y[index];
-         z[index] = _z[index];
-      }
-
-      return polygons;
-   }
-
-   return Object::ptr();
+    return Object::ptr();
 }
 
-bool ReadCovise::readGEOTEX(Token &token, const int port, int fd, Element *elem) {
-
+bool ReadCovise::readGEOTEX(Token &token, const int port, int fd, Element *elem)
+{
     assert(elem);
     assert(port == 0);
 
     const size_t ncomp = 4;
-    int contains[ncomp] = { 0, 0, 0, 0 };
+    int contains[ncomp] = {0, 0, 0, 0};
     covReadGeometryBegin(fd, &contains[0], &contains[1], &contains[2], &contains[3]);
     elem->is_geometry = true;
 
     bool ok = true;
-    for (size_t i=0; i<ncomp; ++i) {
+    for (size_t i = 0; i < ncomp; ++i) {
         Element *e = new Element();
         e->offset = mytell(fd);
         if (contains[i])
@@ -819,18 +799,18 @@ bool ReadCovise::readGEOTEX(Token &token, const int port, int fd, Element *elem)
     return ok;
 }
 
-bool ReadCovise::readGEOMET(Token &token, const int port, int fd, Element *elem) {
-
+bool ReadCovise::readGEOMET(Token &token, const int port, int fd, Element *elem)
+{
     assert(elem);
     assert(port == 0);
 
     const size_t ncomp = 3;
-    int contains[ncomp] = { 0, 0, 0 };
+    int contains[ncomp] = {0, 0, 0};
     covReadOldGeometryBegin(fd, &contains[0], &contains[1], &contains[2]);
     elem->is_geometry = true;
 
     bool ok = true;
-    for (size_t i=0; i<ncomp; ++i) {
+    for (size_t i = 0; i < ncomp; ++i) {
         Element *e = new Element();
         e->offset = mytell(fd);
         if (contains[i])
@@ -841,10 +821,9 @@ bool ReadCovise::readGEOMET(Token &token, const int port, int fd, Element *elem)
     return ok;
 }
 
-vistle::Object::ptr ReadCovise::readOBJREF(Token &token, const int port, int fd, bool skeleton, Element *elem) {
-
+vistle::Object::ptr ReadCovise::readOBJREF(Token &token, const int port, int fd, bool skeleton, Element *elem)
+{
     if (skeleton) {
-
         int objNum = -1;
         if (covReadOBJREF(fd, &objNum) == -1) {
             std::cerr << "ReadCovise: failed to read OBJREF" << std::endl;
@@ -867,13 +846,14 @@ vistle::Object::ptr ReadCovise::readOBJREF(Token &token, const int port, int fd,
     return elem->referenced->obj;
 }
 
-Object::ptr ReadCovise::readObjectIntern(Token &token, const int port, int fd, const bool skeleton, Element *elem, int timestep) {
+Object::ptr ReadCovise::readObjectIntern(Token &token, const int port, int fd, const bool skeleton, Element *elem,
+                                         int timestep)
+{
+    Object::ptr object;
 
-   Object::ptr object;
-
-   if (!skeleton) {
-      if (elem->objnum < 0)
-         return object;
+    if (!skeleton) {
+        if (elem->objnum < 0)
+            return object;
 
 #if 0
       int block = findBlockNum(*elem);
@@ -881,123 +861,125 @@ Object::ptr ReadCovise::readObjectIntern(Token &token, const int port, int fd, c
          return object;
 #endif
 
-      if (elem->obj) {
-          if (elem->obj->getTimestep() == token.meta().timeStep())
-              return elem->obj;
-          object = elem->obj->clone();
-          token.applyMeta(object);
-          return object;
-      }
-   }
+        if (elem->obj) {
+            if (elem->obj->getTimestep() == token.meta().timeStep())
+                return elem->obj;
+            object = elem->obj->clone();
+            token.applyMeta(object);
+            return object;
+        }
+    }
 
-   if (skeleton) {
-      elem->offset = mytell(fd);
-   } else {
-      seek(fd, elem->offset);
-   }
+    if (skeleton) {
+        elem->offset = mytell(fd);
+    } else {
+        seek(fd, elem->offset);
+    }
 
-   char buf[7];
-   if(covReadDescription(fd, buf) == -1) {
-      std::cerr << "ReadCovise: not a COVISE file?" << std::endl;
-      return object;
-   }
-   buf[6] = '\0';
-   std::string type(buf);
-   //std::cerr << "ReadCovise::readObject " << type << " @ " << mytell(fd) << std::endl;
+    char buf[7];
+    if (covReadDescription(fd, buf) == -1) {
+        std::cerr << "ReadCovise: not a COVISE file?" << std::endl;
+        return object;
+    }
+    buf[6] = '\0';
+    std::string type(buf);
+    //std::cerr << "ReadCovise::readObject " << type << " @ " << mytell(fd) << std::endl;
 
-   if (skeleton)
-       elem->type = type;
-   if (type == "OBJREF") {
-       object = readOBJREF(token, port, fd, skeleton, elem);
-       elem->objnum = -1;
-       return object;
-   } else if (skeleton) {
-       m_objects[port].push_back(elem);
-   }
+    if (skeleton)
+        elem->type = type;
+    if (type == "OBJREF") {
+        object = readOBJREF(token, port, fd, skeleton, elem);
+        elem->objnum = -1;
+        return object;
+    } else if (skeleton) {
+        m_objects[port].push_back(elem);
+    }
 
-   bool handled = false;
+    bool handled = false;
 #define HANDLE(t) \
-   if (!handled && type == "" #t) { \
-      handled = true; \
-      object = read##t(token, port, fd, skeleton); \
-   }
-   HANDLE(UNIGRD);
-   HANDLE(RCTGRD);
-   HANDLE(STRGRD);
-   HANDLE(UNSGRD);
-   HANDLE(USTSDT);
-   HANDLE(USTVDT);
-   HANDLE(STRSDT);
-   HANDLE(STRVDT);
-   HANDLE(POLYGN);
-   HANDLE(LINES);
-   HANDLE(POINTS);
+    if (!handled && type == "" #t) { \
+        handled = true; \
+        object = read##t(token, port, fd, skeleton); \
+    }
+    HANDLE(UNIGRD);
+    HANDLE(RCTGRD);
+    HANDLE(STRGRD);
+    HANDLE(UNSGRD);
+    HANDLE(USTSDT);
+    HANDLE(USTVDT);
+    HANDLE(STRSDT);
+    HANDLE(STRVDT);
+    HANDLE(POLYGN);
+    HANDLE(LINES);
+    HANDLE(POINTS);
 #undef HANDLE
 
-   if (handled) {
-       if (skeleton) {
-           elem->objnum = m_numObj[port];
-           ++m_numObj[port];
-       }
-   } else {
-      if (type == "GEOTEX") {
-          if (skeleton) {
-              readGEOTEX(token, port, fd, elem);
-          }
-      } else if (type == "GEOMET") {
-          if (skeleton) {
-              readGEOMET(token, port, fd, elem);
-          }
-      } else if (type == "SETELE") {
-          if (skeleton) {
-              readSETELE(token, port, fd, elem);
-          }
-      } else {
-          std::stringstream str;
-          str << "Object type not supported: " << buf;
-          std::cerr << "ReadCovise: " << str.str() << std::endl;
-          throw vistle::exception(str.str());
-      }
-   }
+    if (handled) {
+        if (skeleton) {
+            elem->objnum = m_numObj[port];
+            ++m_numObj[port];
+        }
+    } else {
+        if (type == "GEOTEX") {
+            if (skeleton) {
+                readGEOTEX(token, port, fd, elem);
+            }
+        } else if (type == "GEOMET") {
+            if (skeleton) {
+                readGEOMET(token, port, fd, elem);
+            }
+        } else if (type == "SETELE") {
+            if (skeleton) {
+                readSETELE(token, port, fd, elem);
+            }
+        } else {
+            std::stringstream str;
+            str << "Object type not supported: " << buf;
+            std::cerr << "ReadCovise: " << str.str() << std::endl;
+            throw vistle::exception(str.str());
+        }
+    }
 
-   if (skeleton) {
-      elem->attribs = readAttributes(fd);
-      parseAttributes(elem);
-      if (elem->is_timeset && m_numTime[port]<int(elem->subelems.size())) {
-          m_numTime[port] = elem->subelems.size();
-          std::cerr << "ReadCovise: skeleton: " << type  << ", #time=" << elem->subelems.size() << std::endl;
-      } else {
-          std::cerr << "ReadCovise: skeleton: " << type  << ", #sub=" << elem->subelems.size() << std::endl;
-      }
-   } else {
-      if (object) {
-         object->updateInternals();
-         applyAttributes(token, object, *elem);
-         token.applyMeta(object);
-         elem->obj = object;
-         std::cerr << "ReadCovise: " << type << " [ b# " << object->getBlock() << ", t# " << object->getTimestep() << " ]" << std::endl;
-      }
-   }
+    if (skeleton) {
+        elem->attribs = readAttributes(fd);
+        parseAttributes(elem);
+        if (elem->is_timeset && m_numTime[port] < int(elem->subelems.size())) {
+            m_numTime[port] = elem->subelems.size();
+            std::cerr << "ReadCovise: skeleton: " << type << ", #time=" << elem->subelems.size() << std::endl;
+        } else {
+            std::cerr << "ReadCovise: skeleton: " << type << ", #sub=" << elem->subelems.size() << std::endl;
+        }
+    } else {
+        if (object) {
+            object->updateInternals();
+            applyAttributes(token, object, *elem);
+            token.applyMeta(object);
+            elem->obj = object;
+            std::cerr << "ReadCovise: " << type << " [ b# " << object->getBlock() << ", t# " << object->getTimestep()
+                      << " ]" << std::endl;
+        }
+    }
 
-   return object;
+    return object;
 }
 
-Object::ptr ReadCovise::readObject(Token &token, const int port, int fd, Element *elem, int timestep) {
-
-   return readObjectIntern(token, port, fd, false, elem, timestep);
+Object::ptr ReadCovise::readObject(Token &token, const int port, int fd, Element *elem, int timestep)
+{
+    return readObjectIntern(token, port, fd, false, elem, timestep);
 }
 
-bool ReadCovise::readSkeleton(const int port, Element *elem) {
-
-   Token invalid(this, std::shared_ptr<Token>());
-   readObjectIntern(invalid, port, m_fd[port], true, elem, -1);
-   return true;
+bool ReadCovise::readSkeleton(const int port, Element *elem)
+{
+    Token invalid(this, std::shared_ptr<Token>());
+    readObjectIntern(invalid, port, m_fd[port], true, elem, -1);
+    return true;
 }
 
-bool ReadCovise::readRecursive(Token &token, int fd[], Element *elem[], int timestep, int targetTimestep) {
-
+bool ReadCovise::readRecursive(Token &token, int fd[], Element *elem[], int timestep, int targetTimestep)
+{
     if (!elem[0]->is_geometry && timestep != -1 && timestep != targetTimestep) {
-        std::cerr << "ReadCovise: skipping read: timstep " << timestep << " != targetTimestep " << targetTimestep << std::endl;
+        std::cerr << "ReadCovise: skipping read: timstep " << timestep << " != targetTimestep " << targetTimestep
+                  << std::endl;
         return true;
     }
 
@@ -1008,17 +990,17 @@ bool ReadCovise::readRecursive(Token &token, int fd[], Element *elem[], int time
         if (!fd[0])
             return false;
         int subfd[NumPorts];
-        for (unsigned port=0; port<NumPorts; ++port) {
+        for (unsigned port = 0; port < NumPorts; ++port) {
             if (port >= elem[0]->subelems.size() || !elem[0]->subelems[port]) {
                 subfd[port] = 0;
-            } else if (port==0) {
+            } else if (port == 0) {
                 subfd[0] = fd[0];
             } else if (fd[0]) {
                 subfd[port] = covOpenInFile(m_filename[0].c_str());
             }
         }
         bool ok = readRecursive(token, subfd, elem[0]->subelems.data(), timestep, targetTimestep);
-        for (unsigned port=1; port<NumPorts; ++port) {
+        for (unsigned port = 1; port < NumPorts; ++port) {
             if (subfd[port]) {
                 covCloseInFile(subfd[port]);
             }
@@ -1027,29 +1009,26 @@ bool ReadCovise::readRecursive(Token &token, int fd[], Element *elem[], int time
     }
 
     if (timestep == targetTimestep) {
-
         // obj is regular
         // do not recurse as subelems are abused for Geometry components
 
         bool gridOnPort0 = false;
-        for (unsigned port=0; port<NumPorts; ++port) {
+        for (unsigned port = 0; port < NumPorts; ++port) {
             if (fd[port]) {
                 assert(elem[port]);
                 fut[port] = std::async(std::launch::async, [this, &token, port, fd, elem, timestep]() -> Object::ptr {
                     auto obj = readObject(token, port, fd[port], elem[port], timestep);
-                    if (obj)
-                    {
-                        std::cerr << "read obj " << obj->getName() << " for timestep " << timestep <<  " on port " << port << std::endl;
-                    }
-                    else
-                    {
+                    if (obj) {
+                        std::cerr << "read obj " << obj->getName() << " for timestep " << timestep << " on port "
+                                  << port << std::endl;
+                    } else {
                         std::cerr << "no data for timestep " << timestep << " on port " << port << std::endl;
                     }
                     return obj;
                 });
             }
         }
-        for (unsigned port=0; port<NumPorts; ++port) {
+        for (unsigned port = 0; port < NumPorts; ++port) {
             if (fd[port]) {
                 obj[port] = fut[port].get();
             }
@@ -1075,7 +1054,7 @@ bool ReadCovise::readRecursive(Token &token, int fd[], Element *elem[], int time
             }
         }
         token.wait();
-        for (unsigned port=0; port<NumPorts; ++port) {
+        for (unsigned port = 0; port < NumPorts; ++port) {
             if (m_out[port] && obj[port]) {
                 if (port > 1 || !gridOnPort0)
                     obj[port]->addAttribute("_species", m_species[port]);
@@ -1089,9 +1068,9 @@ bool ReadCovise::readRecursive(Token &token, int fd[], Element *elem[], int time
         //std::cerr << "processing SET w/ " << elem->subelems.size() << " elements, timeset=" << inTimeset << std::endl;
         // obj corresponds to a Set, recurse
         bool ok = true;
-        for (size_t i=0; i<elem[0]->subelems.size(); ++i) {
+        for (size_t i = 0; i < elem[0]->subelems.size(); ++i) {
             Element *subelems[NumPorts];
-            for (unsigned port=0; port<NumPorts; ++port) {
+            for (unsigned port = 0; port < NumPorts; ++port) {
                 if (!fd[port])
                     continue;
 
@@ -1101,7 +1080,8 @@ bool ReadCovise::readRecursive(Token &token, int fd[], Element *elem[], int time
                 }
 
                 if (elem[port]->subelems.size() != elem[0]->subelems.size()) {
-                    sendError("mismatch in object structure (size): %d != %d", (int)elem[port]->subelems.size(), (int)elem[0]->subelems.size());
+                    sendError("mismatch in object structure (size): %d != %d", (int)elem[port]->subelems.size(),
+                              (int)elem[0]->subelems.size());
                     return false;
                 }
                 if (inTimeset != elem[port]->is_timeset) {
@@ -1123,11 +1103,11 @@ bool ReadCovise::readRecursive(Token &token, int fd[], Element *elem[], int time
     return true;
 }
 
-void ReadCovise::deleteRecursive(Element &elem) {
-
-   for (size_t i=0; i<elem.subelems.size(); ++i) {
-      deleteRecursive(*elem.subelems[i]);
-      delete elem.subelems[i];
-   }
-   elem = Element();
+void ReadCovise::deleteRecursive(Element &elem)
+{
+    for (size_t i = 0; i < elem.subelems.size(); ++i) {
+        deleteRecursive(*elem.subelems[i]);
+        delete elem.subelems[i];
+    }
+    elem = Element();
 }

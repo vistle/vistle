@@ -6,13 +6,12 @@
 using namespace vistle;
 
 class CreateVertexOwnerList: public vistle::Module {
+public:
+    CreateVertexOwnerList(const std::string &name, int moduleID, mpi::communicator comm);
+    ~CreateVertexOwnerList();
 
- public:
-   CreateVertexOwnerList(const std::string &name, int moduleID, mpi::communicator comm);
-   ~CreateVertexOwnerList();
-
- private:
-   virtual bool compute();
+private:
+    virtual bool compute();
 };
 
 using namespace vistle;
@@ -20,25 +19,24 @@ using namespace vistle;
 CreateVertexOwnerList::CreateVertexOwnerList(const std::string &name, int moduleID, mpi::communicator comm)
 : Module(name, moduleID, comm)
 {
-
-   Port *din = createInputPort("grid_in", "input grid", Port::MULTI);
-   Port *dout = createOutputPort("grid_out", "output grid", Port::MULTI);
-   din->link(dout);
+    Port *din = createInputPort("grid_in", "input grid", Port::MULTI);
+    Port *dout = createOutputPort("grid_out", "output grid", Port::MULTI);
+    din->link(dout);
 }
 
-CreateVertexOwnerList::~CreateVertexOwnerList() {
+CreateVertexOwnerList::~CreateVertexOwnerList()
+{}
 
-}
+bool CreateVertexOwnerList::compute()
+{
+    UnstructuredGrid::const_ptr unstr = expect<UnstructuredGrid>("grid_in");
+    if (!unstr)
+        return false;
 
-bool CreateVertexOwnerList::compute() {
-   UnstructuredGrid::const_ptr unstr = expect<UnstructuredGrid>("grid_in");
-   if (!unstr)
-      return false;
-
-   unstr->getVertexOwnerList();
-   auto nunstr = unstr->clone();
-   addObject("grid_out", nunstr);
-   return true;
+    unstr->getVertexOwnerList();
+    auto nunstr = unstr->clone();
+    addObject("grid_out", nunstr);
+    return true;
 }
 
 MODULE_MAIN(CreateVertexOwnerList)

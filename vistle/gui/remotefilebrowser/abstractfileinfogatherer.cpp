@@ -41,11 +41,11 @@
 #include <qdebug.h>
 #include <qdiriterator.h>
 #ifndef Q_OS_WIN
-#  include <unistd.h>
-#  include <sys/types.h>
+#include <unistd.h>
+#include <sys/types.h>
 #endif
 #if defined(Q_OS_VXWORKS)
-#  include "qplatformdefs.h"
+#include "qplatformdefs.h"
 #endif
 
 QT_BEGIN_NAMESPACE
@@ -67,13 +67,14 @@ Q_AUTOTEST_EXPORT bool qt_test_isFetchedRoot()
     Creates thread
 */
 AbstractFileInfoGatherer::AbstractFileInfoGatherer(QObject *parent)
-    : QThread(parent),
+: QThread(parent)
+,
 #ifdef Q_OS_WIN
-      m_resolveSymlinks(true),
+m_resolveSymlinks(true)
+,
 #endif
-      m_iconProvider(&defaultProvider)
-{
-}
+m_iconProvider(&defaultProvider)
+{}
 
 /*!
     Destroys thread

@@ -16,8 +16,8 @@
 
 using namespace vistle;
 
-int main(int argc, char ** argv) {
-
+int main(int argc, char **argv)
+{
     vistle::registerTypes();
 
     MPI_Init(&argc, &argv);
@@ -57,11 +57,10 @@ int main(int argc, char ** argv) {
     }
 
 #ifndef SHMDEBUG
-   std::cerr << "recompile with -DSHMDEBUG" << std::endl;
+    std::cerr << "recompile with -DSHMDEBUG" << std::endl;
 #endif
 
-    for (int r=0; r<size; ++r) {
-
+    for (int r = 0; r < size; ++r) {
         if (forceRank == -1) {
             MPI_Barrier(MPI_COMM_WORLD);
             if (r != rank)
@@ -80,54 +79,56 @@ int main(int argc, char ** argv) {
         }
 
 #ifdef SHMDEBUG
-       for (size_t i=0; i<Shm::s_shmdebug->size(); ++i) {
-           const ShmDebugInfo &info = (*Shm::s_shmdebug)[i];
-           std::cout << (info.type ? info.type : '0') << " " << (info.deleted ? (info.deleted>1?"DEL"+std::to_string(info.deleted):"del") : "ref") << " " << info.name;
-           if (info.deleted) {
-               std::cout << std::endl;
-           } else {
-               switch(info.type) {
-               case 'O':
-                   if (info.handle) {
-                       Object::Data *od = Shm::the().getObjectDataFromHandle(info.handle);
-                       if (od) {
-                           std::cout << " type " << od->type;
-                           std::cout << " ref " << od->refcount() << std::endl;
-                       } else {
-                           std::cout << " ERR" << std::endl;
-                       }
-                   } else {
-                       std::cout << " no handle" << std::endl;
-                   }
-                   break;
-               case 'V':
-                   if (info.handle) {
+        for (size_t i = 0; i < Shm::s_shmdebug->size(); ++i) {
+            const ShmDebugInfo &info = (*Shm::s_shmdebug)[i];
+            std::cout << (info.type ? info.type : '0') << " "
+                      << (info.deleted ? (info.deleted > 1 ? "DEL" + std::to_string(info.deleted) : "del") : "ref")
+                      << " " << info.name;
+            if (info.deleted) {
+                std::cout << std::endl;
+            } else {
+                switch (info.type) {
+                case 'O':
+                    if (info.handle) {
+                        Object::Data *od = Shm::the().getObjectDataFromHandle(info.handle);
+                        if (od) {
+                            std::cout << " type " << od->type;
+                            std::cout << " ref " << od->refcount() << std::endl;
+                        } else {
+                            std::cout << " ERR" << std::endl;
+                        }
+                    } else {
+                        std::cout << " no handle" << std::endl;
+                    }
+                    break;
+                case 'V':
+                    if (info.handle) {
 #ifdef NO_SHMEM
-                       const void *p = info.handle;
+                        const void *p = info.handle;
 #else
-                       const void *p = Shm::the().shm().get_address_from_handle(info.handle);
+                        const void *p = Shm::the().shm().get_address_from_handle(info.handle);
 #endif
-                       const ShmData *d = static_cast<const ShmData *>(p);
-                       std::cout << " ref " << d->refcount() << std::endl;
-                   } else {
-                       std::cout << " no handle" << std::endl;
-                   }
-                   break;
-               case '\0':
-                   std::cout << std::endl;
-                   break;
-               default:
-                   std::cout << " unknown type" << std::endl;
-                   break;
-               }
-           }
-       }
+                        const ShmData *d = static_cast<const ShmData *>(p);
+                        std::cout << " ref " << d->refcount() << std::endl;
+                    } else {
+                        std::cout << " no handle" << std::endl;
+                    }
+                    break;
+                case '\0':
+                    std::cout << std::endl;
+                    break;
+                default:
+                    std::cout << " unknown type" << std::endl;
+                    break;
+                }
+            }
+        }
 #endif
 
-       Shm::the().detach();
-   }
+        Shm::the().detach();
+    }
 
-   MPI_Finalize();
+    MPI_Finalize();
 
-   return 0;
+    return 0;
 }

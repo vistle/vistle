@@ -18,101 +18,104 @@ typedef ip::address_v6 address_v6;
 
 #define CERR std::cerr << "TunnelManager: "
 
-static const size_t BufferSize = 256*1024;
+static const size_t BufferSize = 256 * 1024;
 
 namespace vistle {
 
 using message::RequestTunnel;
 
 TunnelManager::TunnelManager()
-{
-}
+{}
 
 TunnelManager::~TunnelManager()
 {
-   m_io.stop();
+    m_io.stop();
 }
 
-void TunnelManager::cleanUp() {
+void TunnelManager::cleanUp()
+{
+    for (auto &tun: m_tunnels)
+        tun.second->cleanUp();
 
-   for (auto &tun: m_tunnels)
-      tun.second->cleanUp();
-
-   if (io().stopped()) {
-      for (auto &t: m_threads)
-         t.join();
-      m_threads.clear();
-      io().reset();
-   }
+    if (io().stopped()) {
+        for (auto &t: m_threads)
+            t.join();
+        m_threads.clear();
+        io().reset();
+    }
 }
 
-void TunnelManager::startThread() {
-   auto &io = m_io;
-   m_threads.emplace_back([&io](){ io.run(); });
-   CERR << "now " << m_threads.size() << " threads in pool" << std::endl;
+void TunnelManager::startThread()
+{
+    auto &io = m_io;
+    m_threads.emplace_back([&io]() { io.run(); });
+    CERR << "now " << m_threads.size() << " threads in pool" << std::endl;
 }
 
-TunnelManager::io_service &TunnelManager::io() {
-   return m_io;
+TunnelManager::io_service &TunnelManager::io()
+{
+    return m_io;
 }
 
-bool TunnelManager::processRequest(const message::RequestTunnel &msg) {
-
-   cleanUp();
-   bool ret = false;
-   if (msg.remove()) {
-      ret = removeTunnel(msg);
-   } else {
-      ret = addTunnel(msg);
-   }
-   cleanUp();
-   return ret;
+bool TunnelManager::processRequest(const message::RequestTunnel &msg)
+{
+    cleanUp();
+    bool ret = false;
+    if (msg.remove()) {
+        ret = removeTunnel(msg);
+    } else {
+        ret = addTunnel(msg);
+    }
+    cleanUp();
+    return ret;
 }
 
-bool TunnelManager::addTunnel(const message::RequestTunnel &msg) {
-   assert(!msg.remove());
-   assert(msg.destType() != RequestTunnel::Unspecified);
-   unsigned short listenPort = msg.srcPort();
-   unsigned short destPort = msg.destPort();
-   asio::ip::address destAddr;
-   if (msg.destIsAddress()) {
-      destAddr = msg.destAddr();
-   } else {
-      const std::string destHost = msg.destHost();
-      if (destHost.empty()) {
-         CERR << "no destination address for tunnel listening on " << listenPort << std::endl;
-         return false;
-      }
-      asio::ip::tcp::resolver resolver(io());
-      auto endpoints = resolver.resolve({destHost, boost::lexical_cast<std::string>(destPort)});
-      destAddr = (*endpoints).endpoint().address();
-      std::cerr << destHost << " resolved to " << destAddr << std::endl;
-   }
-   auto it = m_tunnels.find(listenPort);
-   if (it != m_tunnels.end()) {
-      CERR << "tunnel listening on port " << listenPort << " already exists" << std::endl;
-      return false;
-   }
-   try {
-      auto tun = std::make_shared<Tunnel>(*this, listenPort, destAddr, destPort);
-      m_tunnels[listenPort] = tun;
-      tun->startAccept(tun);
-      if (m_threads.size() < std::thread::hardware_concurrency())
-         startThread();
-   } catch(std::exception &ex) {
-      CERR << "error during tunnel creation: " << ex.what() << std::endl;
-   }
-   return true;
+bool TunnelManager::addTunnel(const message::RequestTunnel &msg)
+{
+    assert(!msg.remove());
+    assert(msg.destType() != RequestTunnel::Unspecified);
+    unsigned short listenPort = msg.srcPort();
+    unsigned short destPort = msg.destPort();
+    asio::ip::address destAddr;
+    if (msg.destIsAddress()) {
+        destAddr = msg.destAddr();
+    } else {
+        const std::string destHost = msg.destHost();
+        if (destHost.empty()) {
+            CERR << "no destination address for tunnel listening on " << listenPort << std::endl;
+            return false;
+        }
+        asio::ip::tcp::resolver resolver(io());
+        auto endpoints = resolver.resolve({destHost, boost::lexical_cast<std::string>(destPort)});
+        destAddr = (*endpoints).endpoint().address();
+        std::cerr << destHost << " resolved to " << destAddr << std::endl;
+    }
+    auto it = m_tunnels.find(listenPort);
+    if (it != m_tunnels.end()) {
+        CERR << "tunnel listening on port " << listenPort << " already exists" << std::endl;
+        return false;
+    }
+    try {
+        auto tun = std::make_shared<Tunnel>(*this, listenPort, destAddr, destPort);
+        m_tunnels[listenPort] = tun;
+        tun->startAccept(tun);
+        if (m_threads.size() < std::thread::hardware_concurrency())
+            startThread();
+    } catch (std::exception &ex) {
+        CERR << "error during tunnel creation: " << ex.what() << std::endl;
+    }
+    return true;
 }
 
-bool TunnelManager::removeTunnel(const message::RequestTunnel &msg) {
-   assert(msg.remove());
-   unsigned short listenPort = msg.srcPort();
-   auto it = m_tunnels.find(listenPort);
-   if (it == m_tunnels.end()) {
-      CERR << "did not find tunnel listening on port " << listenPort << std::endl;
-      return false;
-   }
+bool TunnelManager::removeTunnel(const message::RequestTunnel &msg)
+{
+    assert(msg.remove());
+    unsigned short listenPort = msg.srcPort();
+    auto it = m_tunnels.find(listenPort);
+    if (it == m_tunnels.end()) {
+        CERR << "did not find tunnel listening on port " << listenPort << std::endl;
+        return false;
+    }
 #if 0
    if (it->second->destPort() != msg.destPort()) {
       CERR << "destination port mismatch for tunnel on port " << listenPort << std::endl;
@@ -124,20 +127,16 @@ bool TunnelManager::removeTunnel(const message::RequestTunnel &msg) {
    }
 #endif
 
-   it->second->shutdown();
-   m_tunnels.erase(it);
-   return true;
+    it->second->shutdown();
+    m_tunnels.erase(it);
+    return true;
 }
 
 #undef CERR
 #define CERR std::cerr << "Tunnel: "
 
 Tunnel::Tunnel(TunnelManager &manager, unsigned short listenPort, Tunnel::address destAddr, unsigned short destPort)
-: m_manager(manager)
-, m_destAddr(destAddr)
-, m_destPort(destPort)
-, m_acceptorv4(manager.io())
-, m_acceptorv6(manager.io())
+: m_manager(manager), m_destAddr(destAddr), m_destPort(destPort), m_acceptorv4(manager.io()), m_acceptorv6(manager.io())
 {
     boost::system::error_code ec;
     if (!start_listen(listenPort, m_acceptorv4, m_acceptorv6, ec)) {
@@ -145,15 +144,16 @@ Tunnel::Tunnel(TunnelManager &manager, unsigned short listenPort, Tunnel::addres
         boost::system::system_error err(ec);
         throw(err);
     }
-   CERR << "forwarding connections on port " << listenPort  << " to " << m_destAddr << ":" << m_destPort << std::endl;
+    CERR << "forwarding connections on port " << listenPort << " to " << m_destAddr << ":" << m_destPort << std::endl;
 }
 
-Tunnel::~Tunnel() {
+Tunnel::~Tunnel()
+{
     shutdown();
 }
 
-void Tunnel::shutdown() {
-
+void Tunnel::shutdown()
+{
     for (auto &s: m_listeningSocket) {
         auto &sock = s.second;
         if (sock) {
@@ -169,121 +169,128 @@ void Tunnel::shutdown() {
     }
     m_listeningSocket.clear();
 
-   m_acceptorv4.cancel();
-   m_acceptorv6.cancel();
+    m_acceptorv4.cancel();
+    m_acceptorv6.cancel();
 
-   for (auto &s: m_streams) {
-      if (std::shared_ptr<TunnelStream> p = s.lock())
-         p->destroy();
-   }
+    for (auto &s: m_streams) {
+        if (std::shared_ptr<TunnelStream> p = s.lock())
+            p->destroy();
+    }
 
-   cleanUp();
+    cleanUp();
 }
 
-void Tunnel::cleanUp() {
-
-   auto end = m_streams.end();
-   for (auto it = m_streams.begin(); it != end; ++it) {
-      if (!it->lock()) {
-         --end;
-         if (it == end) {
-            break;
-         }
-         std::swap(*it, *end);
-      }
-   }
-   m_streams.erase(end, m_streams.end());
+void Tunnel::cleanUp()
+{
+    auto end = m_streams.end();
+    for (auto it = m_streams.begin(); it != end; ++it) {
+        if (!it->lock()) {
+            --end;
+            if (it == end) {
+                break;
+            }
+            std::swap(*it, *end);
+        }
+    }
+    m_streams.erase(end, m_streams.end());
 }
 
-const Tunnel::address &Tunnel::destAddr() const {
-   return m_destAddr;
+const Tunnel::address &Tunnel::destAddr() const
+{
+    return m_destAddr;
 }
 
-unsigned short Tunnel::destPort() const {
-   return m_destPort;
+unsigned short Tunnel::destPort() const
+{
+    return m_destPort;
 }
 
-void Tunnel::startAccept(std::shared_ptr<Tunnel> self) {
-
+void Tunnel::startAccept(std::shared_ptr<Tunnel> self)
+{
     if (m_acceptorv4.is_open())
         startAccept(m_acceptorv4, self);
     if (m_acceptorv6.is_open())
         startAccept(m_acceptorv6, self);
 }
 
-void Tunnel::startAccept(acceptor &a, std::shared_ptr<Tunnel> self) {
-
-   if (!a.is_open())
-       return;
-   m_listeningSocket[&a].reset(new tcp_socket(m_manager.io()));
-   a.async_accept(*m_listeningSocket[&a], [this, &a, self](boost::system::error_code ec){handleAccept(a, self, ec);});
+void Tunnel::startAccept(acceptor &a, std::shared_ptr<Tunnel> self)
+{
+    if (!a.is_open())
+        return;
+    m_listeningSocket[&a].reset(new tcp_socket(m_manager.io()));
+    a.async_accept(*m_listeningSocket[&a],
+                   [this, &a, self](boost::system::error_code ec) { handleAccept(a, self, ec); });
 }
 
-void Tunnel::handleAccept(acceptor &a, std::shared_ptr<Tunnel> self, const boost::system::error_code &error) {
+void Tunnel::handleAccept(acceptor &a, std::shared_ptr<Tunnel> self, const boost::system::error_code &error)
+{
+    if (error) {
+        CERR << "error in accept: " << error.message() << std::endl;
+        return;
+    }
 
-   if (error) {
-      CERR << "error in accept: " << error.message() << std::endl;
-      return;
-   }
+    std::shared_ptr<tcp_socket> sock0 = m_listeningSocket[&a];
+    std::shared_ptr<tcp_socket> sock1(new tcp_socket(m_manager.io()));
+    boost::asio::ip::tcp::endpoint dest(m_destAddr, m_destPort);
+    CERR << "incoming connection from " << sock0->remote_endpoint() << ", forwarding to " << dest << std::endl;
+    sock1->async_connect(
+        dest, [this, self, sock0, sock1](boost::system::error_code ec) { handleConnect(self, sock0, sock1, ec); });
 
-   std::shared_ptr<tcp_socket> sock0 = m_listeningSocket[&a];
-   std::shared_ptr<tcp_socket> sock1(new tcp_socket(m_manager.io()));
-   boost::asio::ip::tcp::endpoint dest(m_destAddr, m_destPort);
-   CERR << "incoming connection from " << sock0->remote_endpoint() << ", forwarding to " << dest << std::endl;
-   sock1->async_connect(dest,
-         [this, self, sock0, sock1](boost::system::error_code ec){ handleConnect(self, sock0, sock1, ec); });
-
-   startAccept(a, self);
+    startAccept(a, self);
 }
 
-void Tunnel::handleConnect(std::shared_ptr<Tunnel> self, std::shared_ptr<ip::tcp::socket> sock0, std::shared_ptr<ip::tcp::socket> sock1, const boost::system::error_code &error) {
-
-   if (error) {
-      CERR << "error in connect: " << error.message() << std::endl;
-      sock0->close();
-      sock1->close();
-      return;
-   }
-   CERR << "connected stream..." << std::endl;
-   auto stream = std::make_shared<TunnelStream>(sock0, sock1);
-   m_streams.emplace_back(stream);
-   stream->start(stream);
+void Tunnel::handleConnect(std::shared_ptr<Tunnel> self, std::shared_ptr<ip::tcp::socket> sock0,
+                           std::shared_ptr<ip::tcp::socket> sock1, const boost::system::error_code &error)
+{
+    if (error) {
+        CERR << "error in connect: " << error.message() << std::endl;
+        sock0->close();
+        sock1->close();
+        return;
+    }
+    CERR << "connected stream..." << std::endl;
+    auto stream = std::make_shared<TunnelStream>(sock0, sock1);
+    m_streams.emplace_back(stream);
+    stream->start(stream);
 }
 
 #undef CERR
 #define CERR std::cerr << "TunnelStream: "
 
-TunnelStream::TunnelStream(std::shared_ptr<boost::asio::ip::tcp::socket> sock0, std::shared_ptr<boost::asio::ip::tcp::socket> sock1)
+TunnelStream::TunnelStream(std::shared_ptr<boost::asio::ip::tcp::socket> sock0,
+                           std::shared_ptr<boost::asio::ip::tcp::socket> sock1)
 {
-   m_sock.push_back(sock0);
-   m_sock.push_back(sock1);
+    m_sock.push_back(sock0);
+    m_sock.push_back(sock1);
 
-   for (size_t i=0; i<m_sock.size(); ++i) {
-      m_buf.emplace_back(BufferSize);
-   }
+    for (size_t i = 0; i < m_sock.size(); ++i) {
+        m_buf.emplace_back(BufferSize);
+    }
 
-   for (size_t i=0; i<m_sock.size(); ++i) {
-       auto &sock = m_sock[i];
-       if (!sock->is_open())
-           CERR << "TunnelStream: PROBLEM: socket " << i << " not open" << std::endl;
-   }
-}
-
-TunnelStream::~TunnelStream() {
-   //CERR << "dtor" << std::endl;
-   close();
-}
-
-void TunnelStream::start(std::shared_ptr<TunnelStream> self) {
-    for (size_t i=0; i<m_sock.size(); ++i) {
-        m_sock[i]->async_read_some(asio::buffer(m_buf[i].data(), m_buf[i].size()),
-                                   [this, self, i](boost::system::error_code ec, size_t length) {
-            handleRead(self, i, ec, length);
-        });
+    for (size_t i = 0; i < m_sock.size(); ++i) {
+        auto &sock = m_sock[i];
+        if (!sock->is_open())
+            CERR << "TunnelStream: PROBLEM: socket " << i << " not open" << std::endl;
     }
 }
 
-void TunnelStream::close() {
+TunnelStream::~TunnelStream()
+{
+    //CERR << "dtor" << std::endl;
+    close();
+}
+
+void TunnelStream::start(std::shared_ptr<TunnelStream> self)
+{
+    for (size_t i = 0; i < m_sock.size(); ++i) {
+        m_sock[i]->async_read_some(
+            asio::buffer(m_buf[i].data(), m_buf[i].size()),
+            [this, self, i](boost::system::error_code ec, size_t length) { handleRead(self, i, ec, length); });
+    }
+}
+
+void TunnelStream::close()
+{
     for (auto &sock: m_sock) {
         try {
             if (sock->is_open())
@@ -293,48 +300,49 @@ void TunnelStream::close() {
             if (ec) {
                 CERR << "error during socket shutdown: " << ec.message() << std::endl;
             }
-        } catch(const std::exception &ex) {
+        } catch (const std::exception &ex) {
             CERR << "caught exception while closing socket: " << ex.what() << std::endl;
         }
     }
 }
 
-void TunnelStream::destroy() {
-
-   //CERR << "self destruction" << std::endl;
-   close();
+void TunnelStream::destroy()
+{
+    //CERR << "self destruction" << std::endl;
+    close();
 }
 
-void TunnelStream::handleRead(std::shared_ptr<TunnelStream> self, size_t sockIdx, boost::system::error_code ec, size_t length) {
-
-   //CERR << "handleRead:  sockIdx=" << sockIdx << ", len=" << length << std::endl;
-   int other = (sockIdx+1)%2;
-   if (ec) {
-      CERR << "read error on socket " << sockIdx << ": " << ec.message() << ", closing stream" << std::endl;
-      destroy();
-      return;
-   }
-   //std::cerr << "R" << sockIdx << "(" << length << ")" << std::flush;
-   async_write(*m_sock[other], asio::buffer(m_buf[sockIdx].data(), length),
-         [this, self, sockIdx](boost::system::error_code error, size_t length) {
-            //int other = (sockIdx+1)%2;
-            //std::cerr << "W" << other << "(" << length << ")" << std::flush;
-            handleWrite(self, sockIdx, error);
-         });
+void TunnelStream::handleRead(std::shared_ptr<TunnelStream> self, size_t sockIdx, boost::system::error_code ec,
+                              size_t length)
+{
+    //CERR << "handleRead:  sockIdx=" << sockIdx << ", len=" << length << std::endl;
+    int other = (sockIdx + 1) % 2;
+    if (ec) {
+        CERR << "read error on socket " << sockIdx << ": " << ec.message() << ", closing stream" << std::endl;
+        destroy();
+        return;
+    }
+    //std::cerr << "R" << sockIdx << "(" << length << ")" << std::flush;
+    async_write(*m_sock[other], asio::buffer(m_buf[sockIdx].data(), length),
+                [this, self, sockIdx](boost::system::error_code error, size_t length) {
+                    //int other = (sockIdx+1)%2;
+                    //std::cerr << "W" << other << "(" << length << ")" << std::flush;
+                    handleWrite(self, sockIdx, error);
+                });
 }
 
-void TunnelStream::handleWrite(std::shared_ptr<TunnelStream> self, size_t sockIdx, boost::system::error_code ec) {
-
-   //CERR << "handleWrite: sockIdx=" << sockIdx << std::endl;
-   if (ec) {
-      CERR << "write error on socket " << sockIdx << ": " << ec.message() << ", closing stream" << std::endl;
-      destroy();
-      return;
-   }
-   m_sock[sockIdx]->async_read_some(asio::buffer(m_buf[sockIdx].data(), m_buf[sockIdx].size()),
-         [this, self, sockIdx](boost::system::error_code error, size_t length) {
-            handleRead(self, sockIdx, error, length);
-         });
+void TunnelStream::handleWrite(std::shared_ptr<TunnelStream> self, size_t sockIdx, boost::system::error_code ec)
+{
+    //CERR << "handleWrite: sockIdx=" << sockIdx << std::endl;
+    if (ec) {
+        CERR << "write error on socket " << sockIdx << ": " << ec.message() << ", closing stream" << std::endl;
+        destroy();
+        return;
+    }
+    m_sock[sockIdx]->async_read_some(asio::buffer(m_buf[sockIdx].data(), m_buf[sockIdx].size()),
+                                     [this, self, sockIdx](boost::system::error_code error, size_t length) {
+                                         handleRead(self, sockIdx, error, length);
+                                     });
 }
 
-}
+} // namespace vistle

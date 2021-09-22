@@ -12,12 +12,21 @@
 
 // trim() from http://stackoverflow.com/a/217605/44738
 static inline std::string &ltrim(std::string &s)
-{ s.erase(s.begin(), std::find_if(s.begin(), s.end(), std::not1(std::ptr_fun<int, int>(std::isspace)))); return s; }
+{
+    s.erase(s.begin(), std::find_if(s.begin(), s.end(), std::not1(std::ptr_fun<int, int>(std::isspace))));
+    return s;
+}
 
 static inline std::string &rtrim(std::string &s)
-{ s.erase(std::find_if(s.rbegin(), s.rend(), std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end()); return s; }
+{
+    s.erase(std::find_if(s.rbegin(), s.rend(), std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end());
+    return s;
+}
 
-static inline std::string &trim(std::string &s)  { return ltrim(rtrim(s)); }
+static inline std::string &trim(std::string &s)
+{
+    return ltrim(rtrim(s));
+}
 
 std::vector<Oscillator> read_oscillators(const std::string &fn)
 {
@@ -27,10 +36,10 @@ std::vector<Oscillator> read_oscillators(const std::string &fn)
     if (!in)
         throw std::runtime_error("Unable to open " + fn);
     std::string line;
-    while(std::getline(in, line))
-    {
+    while (std::getline(in, line)) {
         line = trim(line);
-        if (line.empty() || line[0] == '#') continue;
+        if (line.empty() || line[0] == '#')
+            continue;
         std::istringstream iss(line);
 
         std::string stype;
@@ -42,15 +51,15 @@ std::vector<Oscillator> read_oscillators(const std::string &fn)
         else if (stype == "decaying")
             type = Oscillator::decaying;
 
-        float x,y,z;
+        float x, y, z;
         iss >> x >> y >> z;
 
-        float r, omega0, zeta=0.0f;
+        float r, omega0, zeta = 0.0f;
         iss >> r >> omega0;
 
         if (type == Oscillator::damped)
             iss >> zeta;
-        res.emplace_back(Oscillator { {x,y,z}, r, omega0, zeta, type });
+        res.emplace_back(Oscillator{{x, y, z}, r, omega0, zeta, type});
     }
     return res;
 }

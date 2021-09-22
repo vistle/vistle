@@ -4,13 +4,12 @@
 #include <vistle/module/module.h>
 
 class GendatChecker: public vistle::Module {
+public:
+    GendatChecker(const std::string &name, int moduleID, mpi::communicator comm);
+    ~GendatChecker();
 
- public:
-   GendatChecker(const std::string &name, int moduleID, mpi::communicator comm);
-   ~GendatChecker();
-
- private:
-   virtual bool compute();
+private:
+    virtual bool compute();
 };
 
 #endif

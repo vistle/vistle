@@ -1,4 +1,4 @@
- /*
+/*
   vistleconsole.h
 
   QConsole specialization for Vistle,
@@ -35,7 +35,7 @@
 namespace vistle {
 class PythonModule;
 class PythonInterface;
-}
+} // namespace vistle
 
 namespace pybind11 {
 class object;
@@ -47,9 +47,8 @@ namespace gui {
  *@author Mondrian Nuessle
  */
 
-class VistleConsole : public QConsole
-{
-   Q_OBJECT
+class VistleConsole: public QConsole {
+    Q_OBJECT
 
 public:
     //! destructor
@@ -66,14 +65,15 @@ public:
     void printHistory();
 
 public slots:
-    void appendHtml(const QString &html, int type=-1);
-    void appendInfo(const QString &text, int type=-1);
+    void appendHtml(const QString &html, int type = -1);
+    void appendInfo(const QString &text, int type = -1);
     void appendDebug(const QString &text);
 
     void setNormalPrompt(bool display);
+
 protected:
     //! give suggestions to complete a command (not working...)
-    QStringList suggestCommand(const QString &cmd, QString& prefix) override;
+    QStringList suggestCommand(const QString &cmd, QString &prefix) override;
 
     //! execute a validated command
     QString interpretCommand(const QString &command, int *res) override;
@@ -81,7 +81,6 @@ protected:
     void setMultilinePrompt(bool display) { setPrompt("... ", display); }
 
 private:
-
     //! the instance
     static VistleConsole *s_instance;
 

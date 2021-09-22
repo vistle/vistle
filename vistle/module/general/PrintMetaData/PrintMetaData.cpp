@@ -50,36 +50,39 @@ MODULE_MAIN(PrintMetaData)
 // CONSTRUCTOR
 //-------------------------------------------------------------------------
 PrintMetaData::PrintMetaData(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module(name, moduleID, comm) {
+: Module(name, moduleID, comm)
+{
+    // create ports
+    createInputPort("data_in");
 
-   // create ports
-   createInputPort("data_in");
+    // add module parameters
+    m_param_doPrintTotals = addIntParameter(
+        "Print Totals", "Print the Totals of incoming metadata (i.e. number of: blocks, cells, vertices, etc..)", 1,
+        Parameter::Boolean);
+    m_param_doPrintMinMax =
+        addIntParameter("Print Min/Max", "Print max/min rank wise values of incoming data", 1, Parameter::Boolean);
+    m_param_doPrintMPIInfo = addIntParameter("Print MPI Info", "Print each node MPI rank", 0, Parameter::Boolean);
+    m_param_doPrintVerbose =
+        addIntParameter("Print Verbose", "Prints all data elements on each node", 0, Parameter::Boolean);
 
-   // add module parameters
-   m_param_doPrintTotals = addIntParameter("Print Totals", "Print the Totals of incoming metadata (i.e. number of: blocks, cells, vertices, etc..)", 1, Parameter::Boolean);
-   m_param_doPrintMinMax = addIntParameter("Print Min/Max", "Print max/min rank wise values of incoming data", 1, Parameter::Boolean);
-   m_param_doPrintMPIInfo = addIntParameter("Print MPI Info", "Print each node MPI rank", 0, Parameter::Boolean);
-   m_param_doPrintVerbose = addIntParameter("Print Verbose", "Prints all data elements on each node", 0, Parameter::Boolean);
 
+    // policies
+    setReducePolicy(message::ReducePolicy::OverAll);
 
-   // policies
-   setReducePolicy(message::ReducePolicy::OverAll);
-
-   // additional operations
-   m_isRootNode = rank() == M_ROOT_NODE;
-   util_printMPIInfo("ctor:");
-
+    // additional operations
+    m_isRootNode = rank() == M_ROOT_NODE;
+    util_printMPIInfo("ctor:");
 }
 
 // DESTRUCTOR
 //-------------------------------------------------------------------------
-PrintMetaData::~PrintMetaData() {
-
-}
+PrintMetaData::~PrintMetaData()
+{}
 
 // PREPARE FUNCTION
 //-------------------------------------------------------------------------
-bool PrintMetaData::prepare() {
+bool PrintMetaData::prepare()
+{
     m_currentProfile = ObjectProfile();
     m_TotalsProfile = ObjectProfile();
     m_minProfile = ObjectProfile();
@@ -93,8 +96,8 @@ bool PrintMetaData::prepare() {
 
 // REDUCE FUNCTION
 //-------------------------------------------------------------------------
-bool PrintMetaData::reduce(int timestep) {
-
+bool PrintMetaData::reduce(int timestep)
+{
     // reduce necessary data across all node instances of the module
     if (m_isRootNode) {
         boost::mpi::reduce(comm(), m_currentProfile, m_minProfile, ProfileMinimum<ObjectProfile>(), M_ROOT_NODE);
@@ -108,13 +111,15 @@ bool PrintMetaData::reduce(int timestep) {
 
     // reduce type information
     unsigned maxTypeVectorSize;
-    boost::mpi::all_reduce(comm(), (unsigned) m_currentProfile.types.size(), maxTypeVectorSize, boost::mpi::maximum<unsigned>());
+    boost::mpi::all_reduce(comm(), (unsigned)m_currentProfile.types.size(), maxTypeVectorSize,
+                           boost::mpi::maximum<unsigned>());
 
     m_TotalsProfile.types = std::vector<unsigned>(maxTypeVectorSize, 0);
     m_currentProfile.types.resize(maxTypeVectorSize, 0);
     for (unsigned i = 0; i < maxTypeVectorSize; i++) {
         if (m_isRootNode) {
-            boost::mpi::reduce(comm(), m_currentProfile.types[i], m_TotalsProfile.types[i], std::plus<unsigned>(), M_ROOT_NODE);
+            boost::mpi::reduce(comm(), m_currentProfile.types[i], m_TotalsProfile.types[i], std::plus<unsigned>(),
+                               M_ROOT_NODE);
         } else {
             boost::mpi::reduce(comm(), m_currentProfile.types[i], std::plus<unsigned>(), M_ROOT_NODE);
         }
@@ -135,7 +140,8 @@ bool PrintMetaData::reduce(int timestep) {
 
 // COMPUTE HELPER FUNCTION - ACQUIRE GENERIC DATA
 //-------------------------------------------------------------------------
-void PrintMetaData::compute_acquireGenericData(vistle::Object::const_ptr data) {
+void PrintMetaData::compute_acquireGenericData(vistle::Object::const_ptr data)
+{
     m_dataType = Object::toString(data->getType());
 
     m_creator = data->meta().creator();
@@ -143,7 +149,8 @@ void PrintMetaData::compute_acquireGenericData(vistle::Object::const_ptr data) {
     m_iterationCounter = data->meta().iteration();
     m_numAnimationSteps = data->meta().numAnimationSteps();
     m_numBlocks = data->meta().numBlocks();
-    m_numParsedTimesteps = (data->getTimestep() + 1 > m_numParsedTimesteps) ? data->getTimestep() + 1 : m_numParsedTimesteps;
+    m_numParsedTimesteps =
+        (data->getTimestep() + 1 > m_numParsedTimesteps) ? data->getTimestep() + 1 : m_numParsedTimesteps;
     m_numTotalTimesteps = data->meta().numTimesteps();
     m_realTime = data->meta().realTime();
     m_transform = data->meta().transform();
@@ -154,15 +161,15 @@ void PrintMetaData::compute_acquireGenericData(vistle::Object::const_ptr data) {
 // COMPUTE HELPER FUNCTION - ACQUIRE GRID DATA
 // * the if statements in this functions are organized based on which object profile variables they modify
 //-------------------------------------------------------------------------
-void PrintMetaData::compute_acquireGridData(vistle::Object::const_ptr data) {
-
+void PrintMetaData::compute_acquireGridData(vistle::Object::const_ptr data)
+{
     // obtain object profile information from objects with elements/vertices/types
     if (auto indexed = Indexed::as(data)) {
         m_currentProfile.vertices += indexed->getNumCorners();
         m_currentProfile.elements += indexed->getNumElements();
 
         // harvest cell type data
-        const Index * elPtr = indexed->el() + 1;
+        const Index *elPtr = indexed->el() + 1;
         for (unsigned int i = 0; i < indexed->getNumElements(); i++) {
             unsigned numCellVertices = *elPtr - *(elPtr - 1);
 
@@ -180,7 +187,6 @@ void PrintMetaData::compute_acquireGridData(vistle::Object::const_ptr data) {
 
             m_currentProfile.types[numCellVertices]++;
             elPtr++;
-
         }
     } else if (auto triangles = Triangles::as(data)) {
         m_currentProfile.vertices += triangles->getNumCorners();
@@ -200,9 +206,8 @@ void PrintMetaData::compute_acquireGridData(vistle::Object::const_ptr data) {
             m_currentProfile.structuredGridSize[i] += totalDims[i];
 
             // obtain non-ghost cells by dimension
-            nonGhostDims[i] = totalDims[i]
-                    - structured->getNumGhostLayers(i, StructuredGridBase::Top)
-                    - structured->getNumGhostLayers(i, StructuredGridBase::Bottom);
+            nonGhostDims[i] = totalDims[i] - structured->getNumGhostLayers(i, StructuredGridBase::Top) -
+                              structured->getNumGhostLayers(i, StructuredGridBase::Bottom);
         }
 
         // calculate total ghost cell number
@@ -216,12 +221,13 @@ void PrintMetaData::compute_acquireGridData(vistle::Object::const_ptr data) {
         if (auto uniform = UniformGrid::as(data)) {
             //iterate and copy min/max coordinates
             for (unsigned i = 0; i < ObjectProfile::NUM_STRUCTURED; i++) {
-                m_currentProfile.unifMin[i] = (uniform->min()[i] < m_currentProfile.unifMin[i]) ? uniform->min()[i] : m_currentProfile.unifMin[i];
-                m_currentProfile.unifMax[i] = (uniform->max()[i] > m_currentProfile.unifMax[i]) ? uniform->max()[i] : m_currentProfile.unifMax[i];
+                m_currentProfile.unifMin[i] =
+                    (uniform->min()[i] < m_currentProfile.unifMin[i]) ? uniform->min()[i] : m_currentProfile.unifMin[i];
+                m_currentProfile.unifMax[i] =
+                    (uniform->max()[i] > m_currentProfile.unifMax[i]) ? uniform->max()[i] : m_currentProfile.unifMax[i];
             }
         }
     }
-
 
 
     // obtain coords object profile information
@@ -237,7 +243,6 @@ void PrintMetaData::compute_acquireGridData(vistle::Object::const_ptr data) {
 
     } else if (auto vec = Vec<Scalar, 3>::as(data)) {
         m_currentProfile.vecs[3] += vec->getSize();
-
     }
 
     //obtain database object profile information
@@ -252,12 +257,12 @@ void PrintMetaData::compute_acquireGridData(vistle::Object::const_ptr data) {
 
 // COMPUTE HELPER FUNCTION - PRINT VERBOSE DATA
 //-------------------------------------------------------------------------
-void PrintMetaData::compute_printVerbose(vistle::Object::const_ptr data) {
+void PrintMetaData::compute_printVerbose(vistle::Object::const_ptr data)
+{
     std::string message;
 
     // verbose print for indexed data types
     if (auto indexed = Indexed::as(data)) {
-
         message += "\nel: ";
         for (unsigned i = 0; i < indexed->getNumElements(); i++) {
             message += std::to_string(indexed->el()[i]) + ", ";
@@ -271,9 +276,7 @@ void PrintMetaData::compute_printVerbose(vistle::Object::const_ptr data) {
         }
         sendInfo(message);
         message.clear();
-
     }
-
 
 
     // verbose print for vec data types
@@ -290,7 +293,6 @@ void PrintMetaData::compute_printVerbose(vistle::Object::const_ptr data) {
             message += std::to_string(vec->y()[i]) + ",";
             message += std::to_string(vec->z()[i]) + "), ";
         }
-
     }
 
     sendInfo(message);
@@ -298,7 +300,8 @@ void PrintMetaData::compute_printVerbose(vistle::Object::const_ptr data) {
 
 // REDUCE HELPER FUNCTION - PRINT DATA
 //-------------------------------------------------------------------------
-void PrintMetaData::reduce_printData() {
+void PrintMetaData::reduce_printData()
+{
     std::string message;
 
     if (!m_param_doPrintMinMax->getValue() && !m_param_doPrintTotals->getValue()) {
@@ -307,129 +310,132 @@ void PrintMetaData::reduce_printData() {
     }
 
     if (m_param_doPrintTotals->getValue()) {
-         message = M_HORIZONTAL_RULER + "\nOBJECT METADATA:" + M_HORIZONTAL_RULER;
+        message = M_HORIZONTAL_RULER + "\nOBJECT METADATA:" + M_HORIZONTAL_RULER;
 
-         // print generic data
-         message += "\n\nType: " + m_dataType;
+        // print generic data
+        message += "\n\nType: " + m_dataType;
 
-         message += "\n\nObjectData:";
-         message += "\n   Creator: " + std::to_string(m_creator);
-         message += "\n   Execution Counter: " + std::to_string(m_executionCounter);
-         message += "\n   Iteration: " + std::to_string(m_iterationCounter);
-         message += "\n   Number of Animation Steps: " + std::to_string(m_numAnimationSteps);
-         message += "\n   Number of Blocks: " + std::to_string(m_numBlocks);
-         message += "\n   Number of Parsed Time Steps: " + std::to_string(m_numParsedTimesteps);
-         message += "\n   Number of Total Time Steps: " + std::to_string(m_numTotalTimesteps);
-         message += "\n   Real Time: " + std::to_string(m_realTime);
-         if (m_transform == Matrix4::Identity()) {
-             message += "\n   Transform: identity";
-         } else {
-             std::stringstream str;
-             str << m_transform;
-             message += "\n   Transform: " + str.str();
-         }
+        message += "\n\nObjectData:";
+        message += "\n   Creator: " + std::to_string(m_creator);
+        message += "\n   Execution Counter: " + std::to_string(m_executionCounter);
+        message += "\n   Iteration: " + std::to_string(m_iterationCounter);
+        message += "\n   Number of Animation Steps: " + std::to_string(m_numAnimationSteps);
+        message += "\n   Number of Blocks: " + std::to_string(m_numBlocks);
+        message += "\n   Number of Parsed Time Steps: " + std::to_string(m_numParsedTimesteps);
+        message += "\n   Number of Total Time Steps: " + std::to_string(m_numTotalTimesteps);
+        message += "\n   Real Time: " + std::to_string(m_realTime);
+        if (m_transform == Matrix4::Identity()) {
+            message += "\n   Transform: identity";
+        } else {
+            std::stringstream str;
+            str << m_transform;
+            message += "\n   Transform: " + str.str();
+        }
 
-         message += "\n\nAttributes: ";
-         for (unsigned i = 0; i < m_attributesVector.size(); i++) {
-             message += "\n   " + std::to_string(i) + ": " + m_attributesVector[i];
-         }
+        message += "\n\nAttributes: ";
+        for (unsigned i = 0; i < m_attributesVector.size(); i++) {
+            message += "\n   " + std::to_string(i) + ": " + m_attributesVector[i];
+        }
 
-         // print data so not to overfill print buffer
-         sendInfo("%s", message.c_str());
-         message.clear();
+        // print data so not to overfill print buffer
+        sendInfo("%s", message.c_str());
+        message.clear();
     }
 
 
-     // print object profile header
-     message += "\n\nObject Profile: ";
+    // print object profile header
+    message += "\n\nObject Profile: ";
 
-     if (m_param_doPrintTotals->getValue()) {
-         message += "Total";
-     }
+    if (m_param_doPrintTotals->getValue()) {
+        message += "Total";
+    }
 
-     // formatting
-     if (m_param_doPrintMinMax->getValue() && m_param_doPrintTotals->getValue()) {
-         message += ", ";
-     }
+    // formatting
+    if (m_param_doPrintMinMax->getValue() && m_param_doPrintTotals->getValue()) {
+        message += ", ";
+    }
 
-     if (m_param_doPrintMinMax->getValue()) {
-         message += "(Min/Max) ";
-     }
-
-
-     //print object profile
-     message += reduce_conditionalProfileEntryPrint("\n   Number of Vertices: ", m_TotalsProfile.vertices, m_minProfile.vertices, m_maxProfile.vertices);
-     message += reduce_conditionalProfileEntryPrint("\n   Number of Elements: ", m_TotalsProfile.elements, m_minProfile.elements, m_maxProfile.elements);
-     message += reduce_conditionalProfileEntryPrint("\n   Number of Ghost Cells: ", m_TotalsProfile.ghostCells, m_minProfile.ghostCells, m_maxProfile.ghostCells);
-     message += reduce_conditionalProfileEntryPrint("\n   Number of Blocks: ", m_TotalsProfile.blocks, m_minProfile.blocks, m_maxProfile.blocks);
-     message += reduce_conditionalProfileEntryPrint("\n   Number of Grids: ", m_TotalsProfile.grids, m_minProfile.grids, m_maxProfile.grids);
-     message += reduce_conditionalProfileEntryPrint("\n   Number of Normals: ", m_TotalsProfile.normals, m_minProfile.normals, m_maxProfile.normals);
-     message += reduce_conditionalProfileEntryPrint("\n   Number of Vec 1: ", m_TotalsProfile.vecs[1], m_minProfile.vecs[1], m_maxProfile.vecs[1]);
-     message += reduce_conditionalProfileEntryPrint("\n   Number of Vec 3: ", m_TotalsProfile.vecs[3], m_minProfile.vecs[3], m_maxProfile.vecs[3]);
-
-     // print message that has been built
-     sendInfo("%s", message.c_str());
-     message.clear();
-
-     // print structured grid information
-     message += "\n   Structured Grid Size:";
-     if (m_param_doPrintTotals->getValue()) {
-         message += " ("
-             + std::to_string(m_TotalsProfile.structuredGridSize[0]) + ", "
-             + std::to_string(m_TotalsProfile.structuredGridSize[1]) + ", "
-             + std::to_string(m_TotalsProfile.structuredGridSize[2]) + ")";
-         }
-
-     // formatting
-     if (m_param_doPrintMinMax->getValue() && m_param_doPrintTotals->getValue()) {
-         message += ",  ";
-     }
-
-     if (m_param_doPrintMinMax->getValue()) {
-         message += "{("
-             + std::to_string(m_minProfile.structuredGridSize[0]) + ", "
-             + std::to_string(m_minProfile.structuredGridSize[1]) + ", "
-             + std::to_string(m_minProfile.structuredGridSize[2]) + ")/("
-             + std::to_string(m_maxProfile.structuredGridSize[0]) + ", "
-             + std::to_string(m_maxProfile.structuredGridSize[1]) + ", "
-             + std::to_string(m_maxProfile.structuredGridSize[2]) + ")} ";
-     }
+    if (m_param_doPrintMinMax->getValue()) {
+        message += "(Min/Max) ";
+    }
 
 
-     // print uniform grid data
-     if (m_minProfile.unifMin[0] != std::numeric_limits<double>::max()
-             && m_param_doPrintMinMax->getValue()) {
-         message += "\n   Uniform Grid Min/Max: ("
-                 + std::to_string(m_minProfile.unifMin[0]) + ", "
-                 + std::to_string(m_minProfile.unifMin[1]) + ", "
-                 + std::to_string(m_minProfile.unifMin[2]) + "), ("
-                 + std::to_string(m_maxProfile.unifMax[0]) + ", "
-                 + std::to_string(m_maxProfile.unifMax[1]) + ", "
-                 + std::to_string(m_maxProfile.unifMax[2]) + ") ";
-     }
+    //print object profile
+    message += reduce_conditionalProfileEntryPrint("\n   Number of Vertices: ", m_TotalsProfile.vertices,
+                                                   m_minProfile.vertices, m_maxProfile.vertices);
+    message += reduce_conditionalProfileEntryPrint("\n   Number of Elements: ", m_TotalsProfile.elements,
+                                                   m_minProfile.elements, m_maxProfile.elements);
+    message += reduce_conditionalProfileEntryPrint("\n   Number of Ghost Cells: ", m_TotalsProfile.ghostCells,
+                                                   m_minProfile.ghostCells, m_maxProfile.ghostCells);
+    message += reduce_conditionalProfileEntryPrint("\n   Number of Blocks: ", m_TotalsProfile.blocks,
+                                                   m_minProfile.blocks, m_maxProfile.blocks);
+    message += reduce_conditionalProfileEntryPrint("\n   Number of Grids: ", m_TotalsProfile.grids, m_minProfile.grids,
+                                                   m_maxProfile.grids);
+    message += reduce_conditionalProfileEntryPrint("\n   Number of Normals: ", m_TotalsProfile.normals,
+                                                   m_minProfile.normals, m_maxProfile.normals);
+    message += reduce_conditionalProfileEntryPrint("\n   Number of Vec 1: ", m_TotalsProfile.vecs[1],
+                                                   m_minProfile.vecs[1], m_maxProfile.vecs[1]);
+    message += reduce_conditionalProfileEntryPrint("\n   Number of Vec 3: ", m_TotalsProfile.vecs[3],
+                                                   m_minProfile.vecs[3], m_maxProfile.vecs[3]);
+
+    // print message that has been built
+    sendInfo("%s", message.c_str());
+    message.clear();
+
+    // print structured grid information
+    message += "\n   Structured Grid Size:";
+    if (m_param_doPrintTotals->getValue()) {
+        message += " (" + std::to_string(m_TotalsProfile.structuredGridSize[0]) + ", " +
+                   std::to_string(m_TotalsProfile.structuredGridSize[1]) + ", " +
+                   std::to_string(m_TotalsProfile.structuredGridSize[2]) + ")";
+    }
+
+    // formatting
+    if (m_param_doPrintMinMax->getValue() && m_param_doPrintTotals->getValue()) {
+        message += ",  ";
+    }
+
+    if (m_param_doPrintMinMax->getValue()) {
+        message += "{(" + std::to_string(m_minProfile.structuredGridSize[0]) + ", " +
+                   std::to_string(m_minProfile.structuredGridSize[1]) + ", " +
+                   std::to_string(m_minProfile.structuredGridSize[2]) + ")/(" +
+                   std::to_string(m_maxProfile.structuredGridSize[0]) + ", " +
+                   std::to_string(m_maxProfile.structuredGridSize[1]) + ", " +
+                   std::to_string(m_maxProfile.structuredGridSize[2]) + ")} ";
+    }
 
 
-     message += "\n   Cell Types: ";
-     for (unsigned i = 0; i < m_TotalsProfile.types.size(); i++) {
-         if (m_TotalsProfile.types[i] != 0) {
-             message += "\n      " + std::to_string(i) + " Vertices: " + std::to_string(m_TotalsProfile.types[i]);
-         }
-     }
+    // print uniform grid data
+    if (m_minProfile.unifMin[0] != std::numeric_limits<double>::max() && m_param_doPrintMinMax->getValue()) {
+        message += "\n   Uniform Grid Min/Max: (" + std::to_string(m_minProfile.unifMin[0]) + ", " +
+                   std::to_string(m_minProfile.unifMin[1]) + ", " + std::to_string(m_minProfile.unifMin[2]) + "), (" +
+                   std::to_string(m_maxProfile.unifMax[0]) + ", " + std::to_string(m_maxProfile.unifMax[1]) + ", " +
+                   std::to_string(m_maxProfile.unifMax[2]) + ") ";
+    }
 
 
-     // add end string formatting
-     message += M_HORIZONTAL_RULER;
+    message += "\n   Cell Types: ";
+    for (unsigned i = 0; i < m_TotalsProfile.types.size(); i++) {
+        if (m_TotalsProfile.types[i] != 0) {
+            message += "\n      " + std::to_string(i) + " Vertices: " + std::to_string(m_TotalsProfile.types[i]);
+        }
+    }
 
-     // print message that has been built
-     sendInfo("%s", message.c_str());
 
-     return;
+    // add end string formatting
+    message += M_HORIZONTAL_RULER;
+
+    // print message that has been built
+    sendInfo("%s", message.c_str());
+
+    return;
 }
 
 // REDUCE HELPER FUNCTION - PRINT DATA
 //-------------------------------------------------------------------------
-std::string PrintMetaData::reduce_conditionalProfileEntryPrint(std::string message, vistle::Index total, vistle::Index min, vistle::Index max) {
-
+std::string PrintMetaData::reduce_conditionalProfileEntryPrint(std::string message, vistle::Index total,
+                                                               vistle::Index min, vistle::Index max)
+{
     // initialize return message
     if (m_param_doPrintTotals->getValue()) {
         message += std::to_string(total);
@@ -450,18 +456,17 @@ std::string PrintMetaData::reduce_conditionalProfileEntryPrint(std::string messa
 }
 
 
-
 // COMPUTE FUNCTION
 //-------------------------------------------------------------------------
-bool PrintMetaData::compute() {
-
+bool PrintMetaData::compute()
+{
     // acquire input data object
     Object::const_ptr data = expect<Object>("data_in");
 
     // assert existence of useable data
     if (!data) {
-       sendInfo("Error: Unknown Input Data");
-       return true;
+        sendInfo("Error: Unknown Input Data");
+        return true;
     }
 
     // obtain generic data on first compute call of module
@@ -478,13 +483,14 @@ bool PrintMetaData::compute() {
         compute_printVerbose(data);
     }
 
-   return true;
+    return true;
 }
 
 // UTILITY FUNCTION - PRINTS MPI INFORMATION
 // * must be called collectively - mpi barrier used to ensure proper message ordering
 //-------------------------------------------------------------------------
-void PrintMetaData::util_printMPIInfo(std::string printTag) {
+void PrintMetaData::util_printMPIInfo(std::string printTag)
+{
     std::string message;
 
     // print header for MPI info
@@ -509,7 +515,8 @@ void PrintMetaData::util_printMPIInfo(std::string printTag) {
     usleep(10);
 
     // print mpi rank and size
-    message = printTag + "rank " + std::to_string(rank()) + "/" + std::to_string(size()) + " on host " + hostname() + "\n";
+    message =
+        printTag + "rank " + std::to_string(rank()) + "/" + std::to_string(size()) + " on host " + hostname() + "\n";
 
     sendInfo(message);
 }

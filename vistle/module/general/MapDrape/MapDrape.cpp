@@ -5,39 +5,33 @@
 
 using namespace vistle;
 
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(PermutationOption,
-   (XYZ)
-   (XZY)
-   (YXZ)
-   (YZX)
-   (ZXY)
-   (ZYX)
-)
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(PermutationOption, (XYZ)(XZY)(YXZ)(YZX)(ZXY)(ZYX))
 MODULE_MAIN(MapDrape)
 
-MapDrape::MapDrape(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module(name, moduleID, comm) {
-
-    for (unsigned i=0; i<NumPorts; ++i) {
+MapDrape::MapDrape(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
+{
+    for (unsigned i = 0; i < NumPorts; ++i) {
         data_in[i] = createInputPort("data_in" + std::to_string(i));
         data_out[i] = createOutputPort("data_out" + std::to_string(i));
     }
 
-   p_mapping_from_ = addStringParameter("from","PROJ6 order of coordinates for EPSG geo coordinate ref system: 1. Latitude, 2. Longitude","+proj=latlong +datum=WGS84");
-   p_mapping_to_ = addStringParameter("to","","+proj=tmerc +lat_0=0 +lon_0=9 +k=1.000000 +x_0=3500000 +y_0=0");
+    p_mapping_from_ = addStringParameter(
+        "from", "PROJ6 order of coordinates for EPSG geo coordinate ref system: 1. Latitude, 2. Longitude",
+        "+proj=latlong +datum=WGS84");
+    p_mapping_to_ = addStringParameter("to", "", "+proj=tmerc +lat_0=0 +lon_0=9 +k=1.000000 +x_0=3500000 +y_0=0");
 
-   p_offset = addVectorParameter("offset","",ParamVector(0,0,0));
+    p_offset = addVectorParameter("offset", "", ParamVector(0, 0, 0));
 
-   p_permutation = addIntParameter("Axis Permutation","permutation of the axis", XYZ, Parameter::Choice);
-   V_ENUM_SET_CHOICES(p_permutation, PermutationOption);
-
+    p_permutation = addIntParameter("Axis Permutation", "permutation of the axis", XYZ, Parameter::Choice);
+    V_ENUM_SET_CHOICES(p_permutation, PermutationOption);
 }
 
-MapDrape::~MapDrape() {
-}
+MapDrape::~MapDrape()
+{}
 
-bool MapDrape::compute() {
-    for (unsigned port=0; port<NumPorts; ++port) {
+bool MapDrape::compute()
+{
+    for (unsigned port = 0; port < NumPorts; ++port) {
         Coords::ptr outGeo;
 
         if (!isConnected(*data_in[port]))
@@ -68,7 +62,6 @@ bool MapDrape::compute() {
 
         auto it = m_alreadyMapped.find(inGeo->getName());
         if (it == m_alreadyMapped.end()) {
-
             const Scalar *xc, *yc, *zc;
             switch (p_permutation->getValue()) {
             case XYZ: {
@@ -134,15 +127,15 @@ bool MapDrape::compute() {
             offset[1] = p_offset->getValue()[1];
             offset[2] = p_offset->getValue()[2];
 
-            Index numCoords =  inGeo->getSize();
+            Index numCoords = inGeo->getSize();
             assert(outGeo->getSize() == inGeo->getSize());
 
             for (Index i = 0; i < numCoords; ++i) {
                 double x = xc[i] * DEG_TO_RAD;
                 double y = yc[i] * DEG_TO_RAD;
-                double z = zc[i] ;
+                double z = zc[i];
 
-                pj_transform(pj_from, pj_to,1,1,&x,&y,&z);
+                pj_transform(pj_from, pj_to, 1, 1, &x, &y, &z);
 
                 xout[i] = x + offset[0];
                 yout[i] = y + offset[1];
@@ -166,18 +159,15 @@ bool MapDrape::compute() {
     return true;
 }
 
-bool MapDrape::prepare() {
-
+bool MapDrape::prepare()
+{
     m_alreadyMapped.clear();
     return true;
 }
 
-bool MapDrape::reduce(int timestep) {
-
+bool MapDrape::reduce(int timestep)
+{
     if (timestep == -1)
         m_alreadyMapped.clear();
     return true;
 }
-
-
-

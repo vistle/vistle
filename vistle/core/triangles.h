@@ -9,5 +9,5 @@ extern template class V_COREEXPORT Ngons<3>;
 typedef Ngons<3> Triangles;
 V_OBJECT_DECL(Ngons<3>)
 
-}
+} // namespace vistle
 #endif

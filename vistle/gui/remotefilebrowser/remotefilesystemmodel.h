@@ -60,8 +60,7 @@ class RemoteFileIconProvider;
 
 #include "abstractfilesystemmodel.h"
 
-class RemoteFileSystemModel : public AbstractFileSystemModel
-{
+class RemoteFileSystemModel: public AbstractFileSystemModel {
     Q_OBJECT
     Q_PROPERTY(bool resolveSymlinks READ resolveSymlinks WRITE setResolveSymlinks)
     Q_PROPERTY(bool readOnly READ isReadOnly WRITE setReadOnly)
@@ -74,7 +73,6 @@ Q_SIGNALS:
     void directoryLoaded(const QString &path);
 
 public:
-
     RemoteFileSystemModel(AbstractFileInfoGatherer *fileinfogatherer, QObject *parent = nullptr);
     ~RemoteFileSystemModel() override;
 
@@ -160,16 +158,20 @@ private:
     Q_PRIVATE_SLOT(d_func(), void _q_modelInitialized())
     Q_PRIVATE_SLOT(d_func(), void _q_directoryChanged(const QString &directory, const QStringList &list))
     Q_PRIVATE_SLOT(d_func(), void _q_performDelayedSort())
-    Q_PRIVATE_SLOT(d_func(), void _q_fileSystemChanged(const QString &path, const QVector<QPair<QString, FileInfo> > &))
+    Q_PRIVATE_SLOT(d_func(), void _q_fileSystemChanged(const QString &path, const QVector<QPair<QString, FileInfo>> &))
     Q_PRIVATE_SLOT(d_func(), void _q_resolvedName(const QString &fileName, const QString &resolvedName))
 
     QScopedPointer<RemoteFileSystemModelPrivate> vd_ptr;
 };
 
 inline QString RemoteFileSystemModel::fileName(const QModelIndex &aindex) const
-{ return aindex.data(Qt::DisplayRole).toString(); }
+{
+    return aindex.data(Qt::DisplayRole).toString();
+}
 inline QIcon RemoteFileSystemModel::fileIcon(const QModelIndex &aindex) const
-{ return qvariant_cast<QIcon>(aindex.data(Qt::DecorationRole)); }
+{
+    return qvariant_cast<QIcon>(aindex.data(Qt::DecorationRole));
+}
 
 QT_END_NAMESPACE
 

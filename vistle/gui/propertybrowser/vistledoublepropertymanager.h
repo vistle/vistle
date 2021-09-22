@@ -5,8 +5,7 @@
 
 class VistleDoublePropertyManagerPrivate;
 
-class QT_QTPROPERTYBROWSER_EXPORT VistleDoublePropertyManager : public QtDoublePropertyManager
-{
+class QT_QTPROPERTYBROWSER_EXPORT VistleDoublePropertyManager: public QtDoublePropertyManager {
     Q_OBJECT
 public:
     VistleDoublePropertyManager(QObject *parent = 0);

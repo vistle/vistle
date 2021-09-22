@@ -16,27 +16,24 @@ struct ShmData {
         ARRAY,
     };
 
-    explicit ShmData(ShmType t, const std::string &name=std::string())
-        : name(name)
-        , m_refcount(0)
-        , shmtype(t)
-    {}
+    explicit ShmData(ShmType t, const std::string &name = std::string()): name(name), m_refcount(0), shmtype(t) {}
 
-    ~ShmData() {
-        assert(m_refcount == 0);
-    }
+    ~ShmData() { assert(m_refcount == 0); }
 
-    int ref() const {
+    int ref() const
+    {
         assert(m_refcount >= 0);
         return ++m_refcount;
     }
 
-    int unref() const {
+    int unref() const
+    {
         assert(m_refcount > 0);
         return --m_refcount;
     }
 
-    int refcount() const {
+    int refcount() const
+    {
         assert(m_refcount >= 0);
         return m_refcount;
     }
@@ -46,5 +43,5 @@ struct ShmData {
     const ShmType shmtype = INVALID;
 };
 
-}
+} // namespace vistle
 #endif

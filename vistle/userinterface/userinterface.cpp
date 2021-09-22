@@ -29,35 +29,35 @@ UserInterface::UserInterface(const std::string &host, const unsigned short port,
 , m_socket(m_ioService)
 , m_locked(true)
 {
-   crypto::initialize();
+    crypto::initialize();
 
-   message::DefaultSender::init(message::Id::UI, 0);
+    message::DefaultSender::init(message::Id::UI, 0);
 
-   if (observer)
-      m_stateTracker.registerObserver(observer);
+    if (observer)
+        m_stateTracker.registerObserver(observer);
 
-   //m_stateTracker.handle(message::Trace(message::Id::Broadcast, message::ANY, true));
+    //m_stateTracker.handle(message::Trace(message::Id::Broadcast, message::ANY, true));
 
-   m_hostname = hostname();
+    m_hostname = hostname();
 
-   CERR << "started as " << hostname() << ":" << get_process_handle() << std::endl;
+    CERR << "started as " << hostname() << ":" << get_process_handle() << std::endl;
 
-   tryConnect();
+    tryConnect();
 }
 
-void UserInterface::stop() {
+void UserInterface::stop()
+{
+    if (isConnected()) {
+        vistle::message::ModuleExit m;
+        m.setDestId(vistle::message::Id::LocalHub);
+        sendMessage(m);
+    }
 
-   if (isConnected()) {
-      vistle::message::ModuleExit m;
-      m.setDestId(vistle::message::Id::LocalHub);
-      sendMessage(m);
-   }
-
-   cancel();
+    cancel();
 }
 
-void UserInterface::cancel() {
-
+void UserInterface::cancel()
+{
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         m_initialized = false;
@@ -73,218 +73,216 @@ void UserInterface::cancel() {
     m_ioService.stop();
 }
 
-int UserInterface::id() const {
-
-   return m_id;
+int UserInterface::id() const
+{
+    return m_id;
 }
 
-const std::string &UserInterface::host() const {
-
-   return m_hostname;
+const std::string &UserInterface::host() const
+{
+    return m_hostname;
 }
 
-boost::asio::ip::tcp::socket &UserInterface::socket() {
-
-   return m_socket;
+boost::asio::ip::tcp::socket &UserInterface::socket()
+{
+    return m_socket;
 }
 
-const boost::asio::ip::tcp::socket &UserInterface::socket() const {
-
-   return m_socket;
+const boost::asio::ip::tcp::socket &UserInterface::socket() const
+{
+    return m_socket;
 }
 
-bool UserInterface::tryConnect() {
+bool UserInterface::tryConnect()
+{
+    assert(!isConnected());
+    std::string host = m_remoteHost;
+    if (host == m_hostname)
+        host = "localhost";
 
-   assert(!isConnected());
-   std::string host = m_remoteHost;
-   if (host == m_hostname)
-       host = "localhost";
-
-   asio::ip::tcp::resolver resolver(m_ioService);
-   asio::ip::tcp::resolver::query query(host, boost::lexical_cast<std::string>(m_remotePort));
-   asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
-   boost::system::error_code ec;
-   asio::connect(socket(), endpoint_iterator, ec);
-   if (ec) {
-      CERR << "could not establish connection to " << host << ":" << m_remotePort << std::endl;
-      m_isConnected = false;
-      return false;
-   }
-   m_isConnected = true;
-   return true;
+    asio::ip::tcp::resolver resolver(m_ioService);
+    asio::ip::tcp::resolver::query query(host, boost::lexical_cast<std::string>(m_remotePort));
+    asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
+    boost::system::error_code ec;
+    asio::connect(socket(), endpoint_iterator, ec);
+    if (ec) {
+        CERR << "could not establish connection to " << host << ":" << m_remotePort << std::endl;
+        m_isConnected = false;
+        return false;
+    }
+    m_isConnected = true;
+    return true;
 }
 
-bool UserInterface::isConnected() const {
-
-   return m_isConnected && socket().is_open();
+bool UserInterface::isConnected() const
+{
+    return m_isConnected && socket().is_open();
 }
 
-StateTracker &UserInterface::state() {
-
-   return m_stateTracker;
+StateTracker &UserInterface::state()
+{
+    return m_stateTracker;
 }
 
-bool UserInterface::dispatch() {
+bool UserInterface::dispatch()
+{
+    bool work = false;
+    while (isConnected()) {
+        work = true;
 
-   bool work = false;
-   while (isConnected()) {
+        message::Buffer buf;
+        buffer payload;
+        message::error_code ec;
+        if (!message::recv(socket(), buf, ec, true /* blocking */, &payload)) {
+            CERR << "receiving failed: " << ec.message() << std::endl;
+            return false;
+        }
 
-      work = true;
+        if (!handleMessage(&buf, payload))
+            return false;
+    }
 
-      message::Buffer buf;
-      buffer payload;
-      message::error_code ec;
-      if (!message::recv(socket(), buf, ec, true /* blocking */, &payload)) {
-          CERR << "receiving failed: " << ec.message() << std::endl;
-          return false;
-      }
-      
-      if (!handleMessage(&buf, payload))
-         return false;
+    vistle::adaptive_wait(work, this);
 
-   }
-
-   vistle::adaptive_wait(work, this);
-
-   return true;
-}
-
-
-bool UserInterface::sendMessage(const message::Message &message, const buffer *payload) {
-
-   if (m_locked && message.type() != message::IDENTIFY) {
-      m_sendQueue.emplace_back(message, payload);
-      return true;
-   }
-
-   return message::send(socket(), message, payload);
+    return true;
 }
 
 
-bool UserInterface::handleMessage(const vistle::message::Message *message, const buffer &payload) {
+bool UserInterface::sendMessage(const message::Message &message, const buffer *payload)
+{
+    if (m_locked && message.type() != message::IDENTIFY) {
+        m_sendQueue.emplace_back(message, payload);
+        return true;
+    }
 
-   bool ret = m_stateTracker.handle(*message, payload.data(), payload.size());
+    return message::send(socket(), message, payload);
+}
 
-   {
-      std::lock_guard<std::mutex> lock(m_messageMutex);
-      MessageMap::iterator it = m_messageMap.find(const_cast<message::uuid_t &>(message->uuid()));
-      if (it != m_messageMap.end()) {
-         it->second->buf.resize(message->size());
-         memcpy(it->second->buf.data(), message, message->size());
-         it->second->received = true;
-         it->second->cond.notify_all();
-      }
-   }
 
-   switch (message->type()) {
-      case message::IDENTIFY: {
-         const message::Identify *id = static_cast<const message::Identify *>(message);
-         if (id->identity() == message::Identify::REQUEST) {
+bool UserInterface::handleMessage(const vistle::message::Message *message, const buffer &payload)
+{
+    bool ret = m_stateTracker.handle(*message, payload.data(), payload.size());
+
+    {
+        std::lock_guard<std::mutex> lock(m_messageMutex);
+        MessageMap::iterator it = m_messageMap.find(const_cast<message::uuid_t &>(message->uuid()));
+        if (it != m_messageMap.end()) {
+            it->second->buf.resize(message->size());
+            memcpy(it->second->buf.data(), message, message->size());
+            it->second->received = true;
+            it->second->cond.notify_all();
+        }
+    }
+
+    switch (message->type()) {
+    case message::IDENTIFY: {
+        const message::Identify *id = static_cast<const message::Identify *>(message);
+        if (id->identity() == message::Identify::REQUEST) {
             message::Identify reply(*id, message::Identify::UI);
             reply.computeMac();
             sendMessage(reply);
-         }
-         return true;
-         break;
-      }
+        }
+        return true;
+        break;
+    }
 
-      case message::SETID: {
-         const message::SetId *id = static_cast<const message::SetId *>(message);
-         m_id = id->getId();
-         assert(m_id > 0);
-         message::DefaultSender::init(id->senderId(), -m_id);
-         std::lock_guard<std::mutex> lock(m_mutex);
-         m_initialized = true;
-         //CERR << "received new UI id: " << m_id << std::endl;
-         break;
-      }
+    case message::SETID: {
+        const message::SetId *id = static_cast<const message::SetId *>(message);
+        m_id = id->getId();
+        assert(m_id > 0);
+        message::DefaultSender::init(id->senderId(), -m_id);
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_initialized = true;
+        //CERR << "received new UI id: " << m_id << std::endl;
+        break;
+    }
 
-      case message::LOCKUI: {
-         auto lock = static_cast<const message::LockUi *>(message);
-         m_locked = lock->locked();
-         if (!m_locked) {
+    case message::LOCKUI: {
+        auto lock = static_cast<const message::LockUi *>(message);
+        m_locked = lock->locked();
+        if (!m_locked) {
             for (auto &m: m_sendQueue) {
-               sendMessage(m.buf, m.payload.get());
+                sendMessage(m.buf, m.payload.get());
             }
             m_sendQueue.clear();
-         }
-         break;
-      }
+        }
+        break;
+    }
 
-      case message::QUIT: {
-         const message::Quit *quit = static_cast<const message::Quit *>(message);
-         (void)quit;
-         return false;
-         break;
-      }
+    case message::QUIT: {
+        const message::Quit *quit = static_cast<const message::Quit *>(message);
+        (void)quit;
+        return false;
+        break;
+    }
 
-      case message::FILEQUERYRESULT: {
-          auto &fq = message->as<message::FileQueryResult>();
-          bool found = false;
-          for (auto b: m_fileBrowser) {
-              if (b->id() == fq.filebrowserId()) {
-                  b->handleMessage(fq, payload);
-                  found = true;
-                  break;
-              }
-          }
-          if (!found) {
-              CERR << "did not find filebrowser with id " << fq.filebrowserId() << std::endl;
-          }
-          break;
-      }
+    case message::FILEQUERYRESULT: {
+        auto &fq = message->as<message::FileQueryResult>();
+        bool found = false;
+        for (auto b: m_fileBrowser) {
+            if (b->id() == fq.filebrowserId()) {
+                b->handleMessage(fq, payload);
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            CERR << "did not find filebrowser with id " << fq.filebrowserId() << std::endl;
+        }
+        break;
+    }
 
-      default:
-         break;
-   }
+    default:
+        break;
+    }
 
-   return ret;
+    return ret;
 }
 
-bool UserInterface::getLockForMessage(const message::uuid_t &uuid) {
-
-   std::lock_guard<std::mutex> lock(m_messageMutex);
-   MessageMap::iterator it = m_messageMap.find(uuid);
-   if (it == m_messageMap.end()) {
-      it = m_messageMap.insert(std::make_pair(uuid, std::shared_ptr<RequestedMessage>(new RequestedMessage()))).first;
-   }
-   it->second->mutex.lock();
-   //m_messageMap[const_cast<message::uuid_t &>(uuid)]->mutex.lock();
-   return true;
+bool UserInterface::getLockForMessage(const message::uuid_t &uuid)
+{
+    std::lock_guard<std::mutex> lock(m_messageMutex);
+    MessageMap::iterator it = m_messageMap.find(uuid);
+    if (it == m_messageMap.end()) {
+        it = m_messageMap.insert(std::make_pair(uuid, std::shared_ptr<RequestedMessage>(new RequestedMessage()))).first;
+    }
+    it->second->mutex.lock();
+    //m_messageMap[const_cast<message::uuid_t &>(uuid)]->mutex.lock();
+    return true;
 }
 
-bool UserInterface::getMessage(const message::uuid_t &uuid, message::Message &msg) {
+bool UserInterface::getMessage(const message::uuid_t &uuid, message::Message &msg)
+{
+    m_messageMutex.lock();
+    MessageMap::iterator it = m_messageMap.find(uuid);
+    if (it == m_messageMap.end()) {
+        m_messageMutex.unlock();
+        return false;
+    }
 
-   m_messageMutex.lock();
-   MessageMap::iterator it = m_messageMap.find(uuid);
-   if (it == m_messageMap.end()) {
-      m_messageMutex.unlock();
-      return false;
-   }
+    if (!it->second->received) {
+        std::mutex &mutex = it->second->mutex;
+        std::condition_variable &cond = it->second->cond;
+        std::unique_lock<std::mutex> lock(mutex, std::adopt_lock_t());
 
-   if (!it->second->received) {
-      std::mutex &mutex = it->second->mutex;
-      std::condition_variable &cond = it->second->cond;
-      std::unique_lock<std::mutex> lock(mutex, std::adopt_lock_t());
+        m_messageMutex.unlock();
+        cond.wait(lock);
+        m_messageMutex.lock();
+    }
 
-      m_messageMutex.unlock();
-      cond.wait(lock);
-      m_messageMutex.lock();
-   }
+    if (!it->second->received) {
+        m_messageMutex.unlock();
+        return false;
+    }
 
-   if (!it->second->received) {
-      m_messageMutex.unlock();
-      return false;
-   }
-
-   memcpy(&msg, &*it->second->buf.data(), it->second->buf.size());
-   m_messageMap.erase(it);
-   m_messageMutex.unlock();
-   return true;
+    memcpy(&msg, &*it->second->buf.data(), it->second->buf.size());
+    m_messageMap.erase(it);
+    m_messageMutex.unlock();
+    return true;
 }
 
-void UserInterface::registerObserver(StateObserver *observer) {
-
+void UserInterface::registerObserver(StateObserver *observer)
+{
     m_stateTracker.registerObserver(observer);
 }
 
@@ -309,8 +307,8 @@ void UserInterface::removeFileBrowser(FileBrowser *browser)
     }
 }
 
-UserInterface::~UserInterface() {
-
+UserInterface::~UserInterface()
+{
     std::cerr << "  userinterface [" << host() << "] [" << id() << "] quit" << std::endl;
 }
 
@@ -320,18 +318,21 @@ bool UserInterface::isInitialized() const
     return m_initialized;
 }
 
-const std::string &UserInterface::remoteHost() const {
+const std::string &UserInterface::remoteHost() const
+{
     return m_remoteHost;
 }
 
-unsigned short UserInterface::remotePort() const {
+unsigned short UserInterface::remotePort() const
+{
     return m_remotePort;
 }
 
-FileBrowser::~FileBrowser() {
-}
+FileBrowser::~FileBrowser()
+{}
 
-int FileBrowser::id() const {
+int FileBrowser::id() const
+{
     return m_id;
 }
 

@@ -12,7 +12,6 @@
 namespace vistle {
 
 class V_UTILEXPORT NetpbmImage {
-
 public:
     enum Format {
         PBM, // bitmap: black&white
@@ -23,7 +22,7 @@ public:
         Color = PPM,
     };
     NetpbmImage(const std::string &name);
-    NetpbmImage(const std::string &name, unsigned width, unsigned height, Format = PPM, unsigned highest=0);
+    NetpbmImage(const std::string &name, unsigned width, unsigned height, Format = PPM, unsigned highest = 0);
     virtual ~NetpbmImage();
     bool close();
 
@@ -58,5 +57,5 @@ protected:
 
 V_UTILEXPORT std::ostream &operator<<(std::ostream &s, const NetpbmImage &img);
 
-}
+} // namespace vistle
 #endif

@@ -5,17 +5,17 @@
 
 class VistleDoubleSpinBoxFactoryPrivate;
 
-class QT_QTPROPERTYBROWSER_EXPORT VistleDoubleSpinBoxFactory : public QtAbstractEditorFactory<QtDoublePropertyManager>
-{
+class QT_QTPROPERTYBROWSER_EXPORT VistleDoubleSpinBoxFactory: public QtAbstractEditorFactory<QtDoublePropertyManager> {
     Q_OBJECT
 public:
     VistleDoubleSpinBoxFactory(QObject *parent = 0);
     ~VistleDoubleSpinBoxFactory();
+
 protected:
     void connectPropertyManager(QtDoublePropertyManager *manager);
-    QWidget *createEditor(QtDoublePropertyManager *manager, QtProperty *property,
-                QWidget *parent);
+    QWidget *createEditor(QtDoublePropertyManager *manager, QtProperty *property, QWidget *parent);
     void disconnectPropertyManager(QtDoublePropertyManager *manager);
+
 private:
     VistleDoubleSpinBoxFactoryPrivate *d_ptr;
     Q_DECLARE_PRIVATE(VistleDoubleSpinBoxFactory)

@@ -15,15 +15,14 @@ namespace nek5000 {
 typedef std::array<int, 2> Edge;
 typedef std::array<int, 4> Plane;
 
-//this class reads and stores general data that is independent of timesteps and partitions 
-class ReaderBase
-{
+//this class reads and stores general data that is independent of timesteps and partitions
+class ReaderBase {
 public:
     ReaderBase(std::string file, int numPartitions, int blocksToRead);
     virtual ~ReaderBase();
     //reads metadata file, a datafile header and mapfile. Returns false on failure
     bool init();
-//getter
+    //getter
     size_t getNumTimesteps() const;
     size_t getNumScalarFields() const;
     int getDim() const;
@@ -42,15 +41,15 @@ protected:
     unsigned numBlocksToRead = 0; //blocks to read given by user input
     int firstTimestep = 1;
     int numTimesteps = 1;
-    unsigned blockDimensions[3] = { 1,1,1 };
+    unsigned blockDimensions[3] = {1, 1, 1};
     unsigned blockSize = 0;
     int dim = 1;
     int numCorners = 0;
     int hexesPerBlock = 0;
     int totalNumBlocks = 0; //total number of blocks per timestep
     int iNumberOfRanks = 1;
-    bool isBinary = false;         //binary or ascii
-    int numOutputDirs = 1;  //number of parallel files per timestep
+    bool isBinary = false; //binary or ascii
+    int numOutputDirs = 1; //number of parallel files per timestep
     bool isParallelFormat = false;
 
     int numberOfTimePeriods = 1;
@@ -61,8 +60,6 @@ protected:
     std::map<int, std::vector<int>> blockIndexToConnectivityIndex;
     std::set<Edge> allEdgesInCornerIndices;
     std::set<Plane> allPlanesInCornerIndices;
-
-
 
 
     // This info is embedded in, or derived from, the file header
@@ -84,18 +81,19 @@ protected:
     //header of map file containing: numBlocks, numUniqeEdges, depth, maxNumPartitions(2^dept), ?, ?
     std::array<int, 7> m_mapFileHeader;
     //contains the data from the .map file
-    std::vector < std::array<int, 9>> m_mapFileData; //toDo: sort out blocks that do not belong to this partition
+    std::vector<std::array<int, 9>> m_mapFileData; //toDo: sort out blocks that do not belong to this partition
     //methods
 
     template<class T>
-    void ByteSwapArray(T* val, int size) {
+    void ByteSwapArray(T *val, int size)
+    {
         for (int i = 0; i < size; i++) {
             val[i] = vistle::byte_swap<vistle::endianness::little_endian, vistle::endianness::big_endian>(val[i]);
         }
     }
     //Create a filename from the template and other info.
     std::string GetFileName(int rawTimestep, int pardir);
-    void sendError(const std::string& msg);
+    void sendError(const std::string &msg);
 
 
 private:
@@ -104,7 +102,7 @@ private:
     void setAllEdgesInCornerIndices();
     //creates a list of all possible planes in edge indices
     void setAllPlanesInCornerIndices();
-    //creates a map that contains all 
+    //creates a map that contains all
     void setBlockIndexToConnectivityIndex();
 
 
@@ -129,10 +127,10 @@ private:
     //  P indicates pressure
     //  T indicates temperature
     //  1 2 3 or S03  indicate 3 other scalar fields
-    void ParseFieldTags(std::ifstream& f);
+    void ParseFieldTags(std::ifstream &f);
 
-    void makeBaseConnList(); 
+    void makeBaseConnList();
 };
-}//nek5000
+} // namespace nek5000
 
 #endif //NEK_READER_BASE_H

@@ -14,9 +14,7 @@ RemoteFileIconProvider::RemoteFileIconProvider()
 }
 
 RemoteFileIconProvider::~RemoteFileIconProvider()
-{
-
-}
+{}
 
 QIcon RemoteFileIconProvider::icon(RemoteFileIconProvider::IconType type) const
 {

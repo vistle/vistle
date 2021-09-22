@@ -1,5 +1,3 @@
 #include "vector.h"
 
-namespace vistle {
-
-} // namespace vistle
+namespace vistle {} // namespace vistle

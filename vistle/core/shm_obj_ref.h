@@ -13,11 +13,10 @@ namespace vistle {
 
 template<class T>
 class shm_obj_ref {
-
     typedef T ObjType;
     typedef typename ObjType::Data ObjData;
 
- public:
+public:
     shm_obj_ref();
     shm_obj_ref(const std::string &name, ObjType *p);
     shm_obj_ref(const shm_obj_ref &other);
@@ -25,38 +24,38 @@ class shm_obj_ref {
     ~shm_obj_ref();
 
     template<typename... Args>
-    static shm_obj_ref create(const Args&... args);
+    static shm_obj_ref create(const Args &...args);
 
     bool find();
 
     template<typename... Args>
-    void construct(const Args&... args);
+    void construct(const Args &...args);
 
     const shm_obj_ref &operator=(const shm_obj_ref &rhs);
     const shm_obj_ref &operator=(typename ObjType::const_ptr rhs);
     const shm_obj_ref &operator=(typename ObjType::ptr rhs);
-   bool valid() const;
-   typename ObjType::const_ptr getObject() const;
-   const typename ObjType::Data *getData() const;
-   operator bool() const;
-   const shm_name_t &name() const;
+    bool valid() const;
+    typename ObjType::const_ptr getObject() const;
+    const typename ObjType::Data *getData() const;
+    operator bool() const;
+    const shm_name_t &name() const;
 
- private:
-   shm_name_t m_name;
+private:
+    shm_name_t m_name;
 #ifdef NO_SHMEM
-   const ObjData *m_d;
+    const ObjData *m_d;
 #else
-   boost::interprocess::offset_ptr<const ObjData> m_d;
+    boost::interprocess::offset_ptr<const ObjData> m_d;
 #endif
 
-   void ref();
-   void unref();
+    void ref();
+    void unref();
 
-   ARCHIVE_ACCESS_SPLIT
-   template<class Archive>
-   void save(Archive &ar) const;
-   template<class Archive>
-   void load(Archive &ar);
+    ARCHIVE_ACCESS_SPLIT
+    template<class Archive>
+    void save(Archive &ar) const;
+    template<class Archive>
+    void load(Archive &ar);
 };
 } // namespace vistle
 #endif

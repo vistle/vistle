@@ -1,13 +1,10 @@
 #include "vistlefilesystemmodel.h"
 
-VistleFileSystemModel::VistleFileSystemModel(QObject *parent)
-: QFileSystemModel (parent)
-{
-}
+VistleFileSystemModel::VistleFileSystemModel(QObject *parent): QFileSystemModel(parent)
+{}
 
 VistleFileSystemModel::~VistleFileSystemModel()
-{
-}
+{}
 
 void VistleFileSystemModel::setHub(int hubId)
 {
@@ -56,12 +53,12 @@ void VistleFileSystemModel::fetchMore(const QModelIndex &parent)
 
 int VistleFileSystemModel::rowCount(const QModelIndex &parent) const
 {
-    return  QFileSystemModel::rowCount(parent);
+    return QFileSystemModel::rowCount(parent);
 }
 
 int VistleFileSystemModel::columnCount(const QModelIndex &parent) const
 {
-    return  QFileSystemModel::columnCount(parent);
+    return QFileSystemModel::columnCount(parent);
 }
 
 QVariant VistleFileSystemModel::myComputer(int role) const
@@ -104,7 +101,8 @@ QMimeData *VistleFileSystemModel::mimeData(const QModelIndexList &indexes) const
     return QFileSystemModel::mimeData(indexes);
 }
 
-bool VistleFileSystemModel::dropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column, const QModelIndex &parent)
+bool VistleFileSystemModel::dropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column,
+                                         const QModelIndex &parent)
 {
     return QFileSystemModel::dropMimeData(data, action, row, column, parent);
 }

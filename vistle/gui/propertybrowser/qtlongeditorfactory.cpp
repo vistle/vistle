@@ -51,7 +51,7 @@
 #include "propertyeditorfactory_p.h"
 
 #if defined(Q_CC_MSVC)
-#    pragma warning(disable: 4786) /* MS VS 6: truncating debug info after 255 characters */
+#pragma warning(disable : 4786) /* MS VS 6: truncating debug info after 255 characters */
 #endif
 
 #if QT_VERSION >= 0x040400
@@ -61,12 +61,10 @@ QT_BEGIN_NAMESPACE
 
 // ------------ QtLongSpinBoxFactory
 
-class QtLongSpinBoxFactoryPrivate : public EditorFactoryPrivate<QLongSpinBox>
-{
+class QtLongSpinBoxFactoryPrivate: public EditorFactoryPrivate<QLongSpinBox> {
     QtLongSpinBoxFactory *q_ptr;
     Q_DECLARE_PUBLIC(QtLongSpinBoxFactory)
 public:
-
     void slotPropertyChanged(QtProperty *property, vistle::Integer value);
     void slotRangeChanged(QtProperty *property, vistle::Integer min, vistle::Integer max);
     void slotSingleStepChanged(QtProperty *property, vistle::Integer step);
@@ -121,7 +119,7 @@ void QtLongSpinBoxFactoryPrivate::slotSingleStepChanged(QtProperty *property, vi
     }
 }
 
-void QtLongSpinBoxFactoryPrivate::slotReadOnlyChanged( QtProperty *property, bool readOnly)
+void QtLongSpinBoxFactoryPrivate::slotReadOnlyChanged(QtProperty *property, bool readOnly)
 {
     if (!m_createdEditors.contains(property))
         return;
@@ -142,8 +140,9 @@ void QtLongSpinBoxFactoryPrivate::slotReadOnlyChanged( QtProperty *property, boo
 void QtLongSpinBoxFactoryPrivate::slotSetValue(vistle::Integer value)
 {
     QObject *object = q_ptr->sender();
-    const QMap<QLongSpinBox *, QtProperty *>::ConstIterator  ecend = m_editorToProperty.constEnd();
-    for (QMap<QLongSpinBox *, QtProperty *>::ConstIterator itEditor = m_editorToProperty.constBegin(); itEditor !=  ecend; ++itEditor) {
+    const QMap<QLongSpinBox *, QtProperty *>::ConstIterator ecend = m_editorToProperty.constEnd();
+    for (QMap<QLongSpinBox *, QtProperty *>::ConstIterator itEditor = m_editorToProperty.constBegin();
+         itEditor != ecend; ++itEditor) {
         if (itEditor.key() == object) {
             QtProperty *property = itEditor.value();
             QtLongPropertyManager *manager = q_ptr->propertyManager(property);
@@ -167,12 +166,10 @@ void QtLongSpinBoxFactoryPrivate::slotSetValue(vistle::Integer value)
 /*!
     Creates a factory with the given \a parent.
 */
-QtLongSpinBoxFactory::QtLongSpinBoxFactory(QObject *parent)
-    : QtAbstractEditorFactory<QtLongPropertyManager>(parent)
+QtLongSpinBoxFactory::QtLongSpinBoxFactory(QObject *parent): QtAbstractEditorFactory<QtLongPropertyManager>(parent)
 {
     d_ptr = new QtLongSpinBoxFactoryPrivate();
     d_ptr->q_ptr = this;
-
 }
 
 /*!
@@ -191,14 +188,13 @@ QtLongSpinBoxFactory::~QtLongSpinBoxFactory()
 */
 void QtLongSpinBoxFactory::connectPropertyManager(QtLongPropertyManager *manager)
 {
-    connect(manager, SIGNAL(valueChanged(QtProperty *, vistle::Integer)),
-                this, SLOT(slotPropertyChanged(QtProperty *, vistle::Integer)));
-    connect(manager, SIGNAL(rangeChanged(QtProperty *, vistle::Integer, vistle::Integer)),
-                this, SLOT(slotRangeChanged(QtProperty *, vistle::Integer, vistle::Integer)));
-    connect(manager, SIGNAL(singleStepChanged(QtProperty *, vistle::Integer)),
-                this, SLOT(slotSingleStepChanged(QtProperty *, vistle::Integer)));
-    connect(manager, SIGNAL(readOnlyChanged(QtProperty *, bool)),
-                this, SLOT(slotReadOnlyChanged(QtProperty *, bool)));
+    connect(manager, SIGNAL(valueChanged(QtProperty *, vistle::Integer)), this,
+            SLOT(slotPropertyChanged(QtProperty *, vistle::Integer)));
+    connect(manager, SIGNAL(rangeChanged(QtProperty *, vistle::Integer, vistle::Integer)), this,
+            SLOT(slotRangeChanged(QtProperty *, vistle::Integer, vistle::Integer)));
+    connect(manager, SIGNAL(singleStepChanged(QtProperty *, vistle::Integer)), this,
+            SLOT(slotSingleStepChanged(QtProperty *, vistle::Integer)));
+    connect(manager, SIGNAL(readOnlyChanged(QtProperty *, bool)), this, SLOT(slotReadOnlyChanged(QtProperty *, bool)));
 }
 
 /*!
@@ -206,8 +202,7 @@ void QtLongSpinBoxFactory::connectPropertyManager(QtLongPropertyManager *manager
 
     Reimplemented from the QtAbstractEditorFactory class.
 */
-QWidget *QtLongSpinBoxFactory::createEditor(QtLongPropertyManager *manager, QtProperty *property,
-        QWidget *parent)
+QWidget *QtLongSpinBoxFactory::createEditor(QtLongPropertyManager *manager, QtProperty *property, QWidget *parent)
 {
     QLongSpinBox *editor = d_ptr->createEditor(property, parent);
     editor->setSingleStep(manager->singleStep(property));
@@ -217,8 +212,7 @@ QWidget *QtLongSpinBoxFactory::createEditor(QtLongPropertyManager *manager, QtPr
     editor->setReadOnly(manager->isReadOnly(property));
 
     connect(editor, SIGNAL(valueChanged(vistle::Integer)), this, SLOT(slotSetValue(vistle::Integer)));
-    connect(editor, SIGNAL(destroyed(QObject *)),
-                this, SLOT(slotEditorDestroyed(QObject *)));
+    connect(editor, SIGNAL(destroyed(QObject *)), this, SLOT(slotEditorDestroyed(QObject *)));
     return editor;
 }
 
@@ -229,20 +223,19 @@ QWidget *QtLongSpinBoxFactory::createEditor(QtLongPropertyManager *manager, QtPr
 */
 void QtLongSpinBoxFactory::disconnectPropertyManager(QtLongPropertyManager *manager)
 {
-    disconnect(manager, SIGNAL(valueChanged(QtProperty *, vistle::Integer)),
-                this, SLOT(slotPropertyChanged(QtProperty *, vistle::Integer)));
-    disconnect(manager, SIGNAL(rangeChanged(QtProperty *, vistle::Integer, vistle::Integer)),
-                this, SLOT(slotRangeChanged(QtProperty *, vistle::Integer, vistle::Integer)));
-    disconnect(manager, SIGNAL(singleStepChanged(QtProperty *, vistle::Integer)),
-                this, SLOT(slotSingleStepChanged(QtProperty *, vistle::Integer)));
-    disconnect(manager, SIGNAL(readOnlyChanged(QtProperty *, bool)),
-                this, SLOT(slotReadOnlyChanged(QtProperty *, bool)));
+    disconnect(manager, SIGNAL(valueChanged(QtProperty *, vistle::Integer)), this,
+               SLOT(slotPropertyChanged(QtProperty *, vistle::Integer)));
+    disconnect(manager, SIGNAL(rangeChanged(QtProperty *, vistle::Integer, vistle::Integer)), this,
+               SLOT(slotRangeChanged(QtProperty *, vistle::Integer, vistle::Integer)));
+    disconnect(manager, SIGNAL(singleStepChanged(QtProperty *, vistle::Integer)), this,
+               SLOT(slotSingleStepChanged(QtProperty *, vistle::Integer)));
+    disconnect(manager, SIGNAL(readOnlyChanged(QtProperty *, bool)), this,
+               SLOT(slotReadOnlyChanged(QtProperty *, bool)));
 }
 
 // QtLongSliderFactory
 
-class QtLongSliderFactoryPrivate : public EditorFactoryPrivate<QSlider>
-{
+class QtLongSliderFactoryPrivate: public EditorFactoryPrivate<QSlider> {
     QtLongSliderFactory *q_ptr;
     Q_DECLARE_PUBLIC(QtLongSliderFactory)
 public:
@@ -301,7 +294,8 @@ void QtLongSliderFactoryPrivate::slotSetValue(vistle::Integer value)
 {
     QObject *object = q_ptr->sender();
     const QMap<QSlider *, QtProperty *>::ConstIterator ecend = m_editorToProperty.constEnd();
-    for (QMap<QSlider *, QtProperty *>::ConstIterator itEditor = m_editorToProperty.constBegin(); itEditor != ecend; ++itEditor ) {
+    for (QMap<QSlider *, QtProperty *>::ConstIterator itEditor = m_editorToProperty.constBegin(); itEditor != ecend;
+         ++itEditor) {
         if (itEditor.key() == object) {
             QtProperty *property = itEditor.value();
             QtLongPropertyManager *manager = q_ptr->propertyManager(property);
@@ -325,12 +319,10 @@ void QtLongSliderFactoryPrivate::slotSetValue(vistle::Integer value)
 /*!
     Creates a factory with the given \a parent.
 */
-QtLongSliderFactory::QtLongSliderFactory(QObject *parent)
-    : QtAbstractEditorFactory<QtLongPropertyManager>(parent)
+QtLongSliderFactory::QtLongSliderFactory(QObject *parent): QtAbstractEditorFactory<QtLongPropertyManager>(parent)
 {
     d_ptr = new QtLongSliderFactoryPrivate();
     d_ptr->q_ptr = this;
-
 }
 
 /*!
@@ -349,12 +341,12 @@ QtLongSliderFactory::~QtLongSliderFactory()
 */
 void QtLongSliderFactory::connectPropertyManager(QtLongPropertyManager *manager)
 {
-    connect(manager, SIGNAL(valueChanged(QtProperty *, vistle::Integer)),
-                this, SLOT(slotPropertyChanged(QtProperty *, vistle::Integer)));
-    connect(manager, SIGNAL(rangeChanged(QtProperty *, vistle::Integer, vistle::Integer)),
-                this, SLOT(slotRangeChanged(QtProperty *, vistle::Integer, vistle::Integer)));
-    connect(manager, SIGNAL(singleStepChanged(QtProperty *, vistle::Integer)),
-                this, SLOT(slotSingleStepChanged(QtProperty *, vistle::Integer)));
+    connect(manager, SIGNAL(valueChanged(QtProperty *, vistle::Integer)), this,
+            SLOT(slotPropertyChanged(QtProperty *, vistle::Integer)));
+    connect(manager, SIGNAL(rangeChanged(QtProperty *, vistle::Integer, vistle::Integer)), this,
+            SLOT(slotRangeChanged(QtProperty *, vistle::Integer, vistle::Integer)));
+    connect(manager, SIGNAL(singleStepChanged(QtProperty *, vistle::Integer)), this,
+            SLOT(slotSingleStepChanged(QtProperty *, vistle::Integer)));
 }
 
 /*!
@@ -362,8 +354,7 @@ void QtLongSliderFactory::connectPropertyManager(QtLongPropertyManager *manager)
 
     Reimplemented from the QtAbstractEditorFactory class.
 */
-QWidget *QtLongSliderFactory::createEditor(QtLongPropertyManager *manager, QtProperty *property,
-        QWidget *parent)
+QWidget *QtLongSliderFactory::createEditor(QtLongPropertyManager *manager, QtProperty *property, QWidget *parent)
 {
     QSlider *editor = new QSlider(Qt::Horizontal, parent);
     d_ptr->initializeEditor(property, editor);
@@ -372,8 +363,7 @@ QWidget *QtLongSliderFactory::createEditor(QtLongPropertyManager *manager, QtPro
     editor->setValue(manager->value(property));
 
     connect(editor, SIGNAL(valueChanged(vistle::Integer)), this, SLOT(slotSetValue(vistle::Integer)));
-    connect(editor, SIGNAL(destroyed(QObject *)),
-                this, SLOT(slotEditorDestroyed(QObject *)));
+    connect(editor, SIGNAL(destroyed(QObject *)), this, SLOT(slotEditorDestroyed(QObject *)));
     return editor;
 }
 
@@ -384,18 +374,17 @@ QWidget *QtLongSliderFactory::createEditor(QtLongPropertyManager *manager, QtPro
 */
 void QtLongSliderFactory::disconnectPropertyManager(QtLongPropertyManager *manager)
 {
-    disconnect(manager, SIGNAL(valueChanged(QtProperty *, vistle::Integer)),
-                this, SLOT(slotPropertyChanged(QtProperty *, vistle::Integer)));
-    disconnect(manager, SIGNAL(rangeChanged(QtProperty *, vistle::Integer, vistle::Integer)),
-                this, SLOT(slotRangeChanged(QtProperty *, vistle::Integer, vistle::Integer)));
-    disconnect(manager, SIGNAL(singleStepChanged(QtProperty *, vistle::Integer)),
-                this, SLOT(slotSingleStepChanged(QtProperty *, vistle::Integer)));
+    disconnect(manager, SIGNAL(valueChanged(QtProperty *, vistle::Integer)), this,
+               SLOT(slotPropertyChanged(QtProperty *, vistle::Integer)));
+    disconnect(manager, SIGNAL(rangeChanged(QtProperty *, vistle::Integer, vistle::Integer)), this,
+               SLOT(slotRangeChanged(QtProperty *, vistle::Integer, vistle::Integer)));
+    disconnect(manager, SIGNAL(singleStepChanged(QtProperty *, vistle::Integer)), this,
+               SLOT(slotSingleStepChanged(QtProperty *, vistle::Integer)));
 }
 
 // QtLongSliderFactory
 
-class QtLongScrollBarFactoryPrivate : public  EditorFactoryPrivate<QScrollBar>
-{
+class QtLongScrollBarFactoryPrivate: public EditorFactoryPrivate<QScrollBar> {
     QtLongScrollBarFactory *q_ptr;
     Q_DECLARE_PUBLIC(QtLongScrollBarFactory)
 public:
@@ -410,7 +399,7 @@ void QtLongScrollBarFactoryPrivate::slotPropertyChanged(QtProperty *property, vi
     if (!m_createdEditors.contains(property))
         return;
 
-    QListIterator<QScrollBar *> itEditor( m_createdEditors[property]);
+    QListIterator<QScrollBar *> itEditor(m_createdEditors[property]);
     while (itEditor.hasNext()) {
         QScrollBar *editor = itEditor.next();
         editor->blockSignals(true);
@@ -428,7 +417,7 @@ void QtLongScrollBarFactoryPrivate::slotRangeChanged(QtProperty *property, vistl
     if (!manager)
         return;
 
-    QListIterator<QScrollBar *> itEditor( m_createdEditors[property]);
+    QListIterator<QScrollBar *> itEditor(m_createdEditors[property]);
     while (itEditor.hasNext()) {
         QScrollBar *editor = itEditor.next();
         editor->blockSignals(true);
@@ -455,7 +444,8 @@ void QtLongScrollBarFactoryPrivate::slotSetValue(vistle::Integer value)
 {
     QObject *object = q_ptr->sender();
     const QMap<QScrollBar *, QtProperty *>::ConstIterator ecend = m_editorToProperty.constEnd();
-    for (QMap<QScrollBar *, QtProperty *>::ConstIterator itEditor = m_editorToProperty.constBegin(); itEditor != ecend; ++itEditor)
+    for (QMap<QScrollBar *, QtProperty *>::ConstIterator itEditor = m_editorToProperty.constBegin(); itEditor != ecend;
+         ++itEditor)
         if (itEditor.key() == object) {
             QtProperty *property = itEditor.value();
             QtLongPropertyManager *manager = q_ptr->propertyManager(property);
@@ -478,12 +468,10 @@ void QtLongScrollBarFactoryPrivate::slotSetValue(vistle::Integer value)
 /*!
     Creates a factory with the given \a parent.
 */
-QtLongScrollBarFactory::QtLongScrollBarFactory(QObject *parent)
-    : QtAbstractEditorFactory<QtLongPropertyManager>(parent)
+QtLongScrollBarFactory::QtLongScrollBarFactory(QObject *parent): QtAbstractEditorFactory<QtLongPropertyManager>(parent)
 {
     d_ptr = new QtLongScrollBarFactoryPrivate();
     d_ptr->q_ptr = this;
-
 }
 
 /*!
@@ -502,12 +490,12 @@ QtLongScrollBarFactory::~QtLongScrollBarFactory()
 */
 void QtLongScrollBarFactory::connectPropertyManager(QtLongPropertyManager *manager)
 {
-    connect(manager, SIGNAL(valueChanged(QtProperty *, vistle::Integer)),
-                this, SLOT(slotPropertyChanged(QtProperty *, vistle::Integer)));
-    connect(manager, SIGNAL(rangeChanged(QtProperty *, vistle::Integer, vistle::Integer)),
-                this, SLOT(slotRangeChanged(QtProperty *, vistle::Integer, vistle::Integer)));
-    connect(manager, SIGNAL(singleStepChanged(QtProperty *, vistle::Integer)),
-                this, SLOT(slotSingleStepChanged(QtProperty *, vistle::Integer)));
+    connect(manager, SIGNAL(valueChanged(QtProperty *, vistle::Integer)), this,
+            SLOT(slotPropertyChanged(QtProperty *, vistle::Integer)));
+    connect(manager, SIGNAL(rangeChanged(QtProperty *, vistle::Integer, vistle::Integer)), this,
+            SLOT(slotRangeChanged(QtProperty *, vistle::Integer, vistle::Integer)));
+    connect(manager, SIGNAL(singleStepChanged(QtProperty *, vistle::Integer)), this,
+            SLOT(slotSingleStepChanged(QtProperty *, vistle::Integer)));
 }
 
 /*!
@@ -515,8 +503,7 @@ void QtLongScrollBarFactory::connectPropertyManager(QtLongPropertyManager *manag
 
     Reimplemented from the QtAbstractEditorFactory class.
 */
-QWidget *QtLongScrollBarFactory::createEditor(QtLongPropertyManager *manager, QtProperty *property,
-        QWidget *parent)
+QWidget *QtLongScrollBarFactory::createEditor(QtLongPropertyManager *manager, QtProperty *property, QWidget *parent)
 {
     QScrollBar *editor = new QScrollBar(Qt::Horizontal, parent);
     d_ptr->initializeEditor(property, editor);
@@ -524,8 +511,7 @@ QWidget *QtLongScrollBarFactory::createEditor(QtLongPropertyManager *manager, Qt
     editor->setRange(manager->minimum(property), manager->maximum(property));
     editor->setValue(manager->value(property));
     connect(editor, SIGNAL(valueChanged(vistle::Integer)), this, SLOT(slotSetValue(vistle::Integer)));
-    connect(editor, SIGNAL(destroyed(QObject *)),
-                this, SLOT(slotEditorDestroyed(QObject *)));
+    connect(editor, SIGNAL(destroyed(QObject *)), this, SLOT(slotEditorDestroyed(QObject *)));
     return editor;
 }
 
@@ -536,12 +522,12 @@ QWidget *QtLongScrollBarFactory::createEditor(QtLongPropertyManager *manager, Qt
 */
 void QtLongScrollBarFactory::disconnectPropertyManager(QtLongPropertyManager *manager)
 {
-    disconnect(manager, SIGNAL(valueChanged(QtProperty *, vistle::Integer)),
-                this, SLOT(slotPropertyChanged(QtProperty *, vistle::Integer)));
-    disconnect(manager, SIGNAL(rangeChanged(QtProperty *, vistle::Integer, vistle::Integer)),
-                this, SLOT(slotRangeChanged(QtProperty *, vistle::Integer, vistle::Integer)));
-    disconnect(manager, SIGNAL(singleStepChanged(QtProperty *, vistle::Integer)),
-                this, SLOT(slotSingleStepChanged(QtProperty *, vistle::Integer)));
+    disconnect(manager, SIGNAL(valueChanged(QtProperty *, vistle::Integer)), this,
+               SLOT(slotPropertyChanged(QtProperty *, vistle::Integer)));
+    disconnect(manager, SIGNAL(rangeChanged(QtProperty *, vistle::Integer, vistle::Integer)), this,
+               SLOT(slotRangeChanged(QtProperty *, vistle::Integer, vistle::Integer)));
+    disconnect(manager, SIGNAL(singleStepChanged(QtProperty *, vistle::Integer)), this,
+               SLOT(slotSingleStepChanged(QtProperty *, vistle::Integer)));
 }
 
 #if QT_VERSION >= 0x040400

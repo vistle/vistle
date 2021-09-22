@@ -73,18 +73,23 @@ class RemoteFileSystemModelPrivate;
 class RemoteFileIconProvider;
 
 #if defined(Q_OS_WIN)
-class RemoteFileSystemModelNodePathKey : public QString
-{
+class RemoteFileSystemModelNodePathKey: public QString {
 public:
     RemoteFileSystemModelNodePathKey() {}
-    RemoteFileSystemModelNodePathKey(const QString &other) : QString(other) {}
-    RemoteFileSystemModelNodePathKey(const RemoteFileSystemModelNodePathKey &other) : QString(other) {}
-    bool operator==(const RemoteFileSystemModelNodePathKey &other) const { return !compare(other, Qt::CaseInsensitive); }
+    RemoteFileSystemModelNodePathKey(const QString &other): QString(other) {}
+    RemoteFileSystemModelNodePathKey(const RemoteFileSystemModelNodePathKey &other): QString(other) {}
+    bool operator==(const RemoteFileSystemModelNodePathKey &other) const
+    {
+        return !compare(other, Qt::CaseInsensitive);
+    }
 };
 
 Q_DECLARE_TYPEINFO(RemoteFileSystemModelNodePathKey, Q_MOVABLE_TYPE);
 
-inline uint qHash(const RemoteFileSystemModelNodePathKey &key) { return qHash(key.toCaseFolded()); }
+inline uint qHash(const RemoteFileSystemModelNodePathKey &key)
+{
+    return qHash(key.toCaseFolded());
+}
 #else // Q_OS_WIN
 typedef QString RemoteFileSystemModelNodePathKey;
 #endif
@@ -97,12 +102,20 @@ class Q_AUTOTEST_EXPORT RemoteFileSystemModelPrivate // : public QAbstractItemMo
 public:
     enum { NumColumns = 4 };
 
-    class RemoteFileSystemNode
-    {
+    class RemoteFileSystemNode {
     public:
-        explicit RemoteFileSystemNode(RemoteFileSystemModel *model, const QString &filename = QString(), RemoteFileSystemNode *p = 0)
-            : fileName(filename), populatedChildren(false), m_isVisible(false), dirtyChildrenIndex(-1), parent(p), info(0), model(model) {}
-        ~RemoteFileSystemNode() {
+        explicit RemoteFileSystemNode(RemoteFileSystemModel *model, const QString &filename = QString(),
+                                      RemoteFileSystemNode *p = 0)
+        : fileName(filename)
+        , populatedChildren(false)
+        , m_isVisible(false)
+        , dirtyChildrenIndex(-1)
+        , parent(p)
+        , info(0)
+        , model(model)
+        {}
+        ~RemoteFileSystemNode()
+        {
             qDeleteAll(children);
             delete info;
             info = 0;
@@ -112,61 +125,121 @@ public:
         QString fileName;
         QString volumeName;
 
-        inline qint64 size() const { if (info && !info->isDir()) return info->size(); return 0; }
-        inline QString type() const { if (info) return info->displayType; return QLatin1String(""); }
-        inline QDateTime lastModified() const { if (info) return info->lastModified(); return QDateTime(); }
-        inline QFile::Permissions permissions() const { if (info) return info->permissions(); return QFile::Permissions(); }
+        inline qint64 size() const
+        {
+            if (info && !info->isDir())
+                return info->size();
+            return 0;
+        }
+        inline QString type() const
+        {
+            if (info)
+                return info->displayType;
+            return QLatin1String("");
+        }
+        inline QDateTime lastModified() const
+        {
+            if (info)
+                return info->lastModified();
+            return QDateTime();
+        }
+        inline QFile::Permissions permissions() const
+        {
+            if (info)
+                return info->permissions();
+            return QFile::Permissions();
+        }
         inline bool isReadable() const { return ((permissions() & QFile::ReadUser) != 0); }
         inline bool isWritable() const { return ((permissions() & QFile::WriteUser) != 0); }
         inline bool isExecutable() const { return ((permissions() & QFile::ExeUser) != 0); }
-        inline bool isDir() const {
+        inline bool isDir() const
+        {
             if (info)
                 return info->isDir();
             if (children.count() > 0)
                 return true;
             return false;
         }
-        inline FileInfo fileInfo() const { if (info) return *info; return FileInfo(); }
-        inline bool isFile() const { if (info) return info->isFile(); return true; }
-        inline bool isSystem() const { if (info) return info->isSystem(); return true; }
-        inline bool isHidden() const { if (info) return info->isHidden(); return false; }
-        inline bool isSymLink(bool ignoreNtfsSymLinks = false) const { return info && info->isSymLink(ignoreNtfsSymLinks); }
-        inline bool caseSensitive() const { if (info) return info->isCaseSensitive(); return false; }
-        inline QIcon icon() const { if (info) return info->icon; return QIcon(); }
-        QString linkTarget() const { if (info) return info->m_linkTarget; return QString(); }
+        inline FileInfo fileInfo() const
+        {
+            if (info)
+                return *info;
+            return FileInfo();
+        }
+        inline bool isFile() const
+        {
+            if (info)
+                return info->isFile();
+            return true;
+        }
+        inline bool isSystem() const
+        {
+            if (info)
+                return info->isSystem();
+            return true;
+        }
+        inline bool isHidden() const
+        {
+            if (info)
+                return info->isHidden();
+            return false;
+        }
+        inline bool isSymLink(bool ignoreNtfsSymLinks = false) const
+        {
+            return info && info->isSymLink(ignoreNtfsSymLinks);
+        }
+        inline bool caseSensitive() const
+        {
+            if (info)
+                return info->isCaseSensitive();
+            return false;
+        }
+        inline QIcon icon() const
+        {
+            if (info)
+                return info->icon;
+            return QIcon();
+        }
+        QString linkTarget() const
+        {
+            if (info)
+                return info->m_linkTarget;
+            return QString();
+        }
 
-        inline bool operator <(const RemoteFileSystemNode &node) const {
+        inline bool operator<(const RemoteFileSystemNode &node) const
+        {
             if (caseSensitive() || node.caseSensitive())
                 return fileName < node.fileName;
             return QString::compare(fileName, node.fileName, Qt::CaseInsensitive) < 0;
         }
-        inline bool operator >(const QString &name) const {
+        inline bool operator>(const QString &name) const
+        {
             if (caseSensitive())
                 return fileName > name;
             return QString::compare(fileName, name, Qt::CaseInsensitive) > 0;
         }
-        inline bool operator <(const QString &name) const {
+        inline bool operator<(const QString &name) const
+        {
             if (caseSensitive())
                 return fileName < name;
             return QString::compare(fileName, name, Qt::CaseInsensitive) < 0;
         }
-        inline bool operator !=(const FileInfo &fileInfo) const {
-            return !operator==(fileInfo);
-        }
-        bool operator ==(const QString &name) const {
+        inline bool operator!=(const FileInfo &fileInfo) const { return !operator==(fileInfo); }
+        bool operator==(const QString &name) const
+        {
             if (caseSensitive())
                 return fileName == name;
             return QString::compare(fileName, name, Qt::CaseInsensitive) == 0;
         }
-        bool operator ==(const FileInfo &fileInfo) const {
-            return info && (*info == fileInfo);
-        }
+        bool operator==(const FileInfo &fileInfo) const { return info && (*info == fileInfo); }
 
         inline bool hasInformation() const { return info != 0 && info->m_valid; }
 
         inline bool isVisible() const { return m_isVisible; /* return hasInformation() && m_isVisible && exists; */ }
 
-        void populate(const FileInfo &fileInfo) {
+        void populate(const FileInfo &fileInfo)
+        {
             if (!info)
                 info = new FileInfo(fileInfo);
             (*info) = fileInfo;
@@ -174,11 +247,10 @@ public:
         }
 
         // children shouldn't normally be accessed directly, use node()
-        inline int visibleLocation(const QString &childName) {
-            return visibleChildren.indexOf(childName);
-        }
+        inline int visibleLocation(const QString &childName) { return visibleChildren.indexOf(childName); }
 
-        void updateIcon(RemoteFileIconProvider *iconProvider, const QString &path) {
+        void updateIcon(RemoteFileIconProvider *iconProvider, const QString &path)
+        {
             if (info) {
                 if (info->type() == FileInfo::Dir) {
                     info->icon = iconProvider->icon(RemoteFileIconProvider::Folder);
@@ -194,7 +266,7 @@ public:
                     info->icon = iconProvider->icon(RemoteFileIconProvider::Network);
                 }
             }
-            for (RemoteFileSystemNode *child : qAsConst(children)) {
+            for (RemoteFileSystemNode *child: qAsConst(children)) {
                 //On windows the root (My computer) has no path so we don't want to add a / for nothing (e.g. /C:/)
                 if (!path.isEmpty()) {
                     if (path.endsWith(QLatin1Char('/')))
@@ -206,11 +278,12 @@ public:
             }
         }
 
-        void retranslateStrings(RemoteFileIconProvider *iconProvider, const QString &path) {
+        void retranslateStrings(RemoteFileIconProvider *iconProvider, const QString &path)
+        {
             if (info) {
                 info->updateType();
             }
-            for (RemoteFileSystemNode *child : qAsConst(children)) {
+            for (RemoteFileSystemNode *child: qAsConst(children)) {
                 //On windows the root (My computer) has no path so we don't want to add a / for nothing (e.g. /C:/)
                 if (!path.isEmpty()) {
                     if (path.endsWith(QLatin1Char('/')))
@@ -233,21 +306,21 @@ public:
 
         FileInfo *info = nullptr;
         RemoteFileSystemModel *model = nullptr;
-
     };
 
-    RemoteFileSystemModelPrivate(RemoteFileSystemModel *q, AbstractFileInfoGatherer *fileinfogatherer) :
-            q_ptr(q),
-            fileInfoGatherer(fileinfogatherer),
-            forceSort(true),
-            sortColumn(0),
-            sortOrder(Qt::AscendingOrder),
-            readOnly(true),
-            setRootPath(false),
-            filters(QDir::AllEntries | QDir::NoDotAndDotDot | QDir::AllDirs),
-            nameFilterDisables(true), // false on windows, true on mac and unix
-            disableRecursiveSort(false),
-            root(q)
+    RemoteFileSystemModelPrivate(RemoteFileSystemModel *q, AbstractFileInfoGatherer *fileinfogatherer)
+    : q_ptr(q)
+    , fileInfoGatherer(fileinfogatherer)
+    , forceSort(true)
+    , sortColumn(0)
+    , sortOrder(Qt::AscendingOrder)
+    , readOnly(true)
+    , setRootPath(false)
+    , filters(QDir::AllEntries | QDir::NoDotAndDotDot | QDir::AllDirs)
+    , nameFilterDisables(true)
+    , // false on windows, true on mac and unix
+    disableRecursiveSort(false)
+    , root(q)
     {
         delayedSortTimer.setSingleShot(true);
     }
@@ -260,7 +333,7 @@ public:
     */
     inline bool isHiddenByFilter(RemoteFileSystemNode *indexNode, const QModelIndex &index) const
     {
-       return (indexNode != &root && !index.isValid());
+        return (indexNode != &root && !index.isValid());
     }
     RemoteFileSystemNode *node(const QModelIndex &index) const;
     RemoteFileSystemNode *node(const QString &path, bool fetch = true) const;
@@ -269,12 +342,13 @@ public:
     bool filtersAcceptsNode(const RemoteFileSystemNode *node) const;
     bool passNameFilters(const RemoteFileSystemNode *node) const;
     void removeNode(RemoteFileSystemNode *parentNode, const QString &name);
-    RemoteFileSystemNode* addNode(RemoteFileSystemNode *parentNode, const QString &fileName, const FileInfo &info);
+    RemoteFileSystemNode *addNode(RemoteFileSystemNode *parentNode, const QString &fileName, const FileInfo &info);
     void addVisibleFiles(RemoteFileSystemNode *parentNode, const QStringList &newFiles);
     void removeVisibleFile(RemoteFileSystemNode *parentNode, int visibleLocation);
     void sortChildren(int column, const QModelIndex &parent);
 
-    inline int translateVisibleLocation(RemoteFileSystemNode *parent, int row) const {
+    inline int translateVisibleLocation(RemoteFileSystemNode *parent, int row) const
+    {
         if (sortOrder != Qt::AscendingOrder) {
             if (parent->dirtyChildrenIndex == -1)
                 return parent->visibleChildren.count() - row - 1;
@@ -286,7 +360,8 @@ public:
         return row;
     }
 
-    inline static QString myComputer() {
+    inline static QString myComputer()
+    {
         // ### TODO We should query the system to find out what the string should be
         // XP == "My Computer",
         // Vista == "Computer",
@@ -298,7 +373,8 @@ public:
 #endif
     }
 
-    inline void delayedSort() {
+    inline void delayedSort()
+    {
         if (!delayedSortTimer.isActive())
             delayedSortTimer.start(0);
     }
@@ -315,7 +391,7 @@ public:
     void _q_modelInitialized();
     void _q_directoryChanged(const QString &directory, const QStringList &list);
     void _q_performDelayedSort();
-    void _q_fileSystemChanged(const QString &path, const QVector<QPair<QString, FileInfo> > &);
+    void _q_fileSystemChanged(const QString &path, const QVector<QPair<QString, FileInfo>> &);
     void _q_resolvedName(const QString &fileName, const QString &resolvedName);
 
     static int naturalCompare(const QString &s1, const QString &s2, Qt::CaseSensitivity cs);
@@ -323,10 +399,10 @@ public:
     //QDir rootDir;
     QString rootPath;
 #if QT_CONFIG(filesystemwatcher)
-#  ifdef Q_OS_WIN
+#ifdef Q_OS_WIN
     //QStringList unwatchPathsAt(const QModelIndex &);
     //void watchPaths(const QStringList &paths) { fileInfoGatherer->watchPaths(paths); }
-#  endif // Q_OS_WIN
+#endif // Q_OS_WIN
     AbstractFileInfoGatherer *fileInfoGatherer;
 #endif // filesystemwatcher
     QTimer delayedSortTimer;
@@ -336,7 +412,7 @@ public:
     bool readOnly;
     bool setRootPath;
     QDir::Filters filters;
-    QHash<const RemoteFileSystemNode*, bool> bypassFilters;
+    QHash<const RemoteFileSystemNode *, bool> bypassFilters;
     bool nameFilterDisables;
     //This flag is an optimization for the RemoteFileDialog
     //It enable a sort which is not recursive, it means
@@ -358,7 +434,6 @@ public:
     };
     QVector<Fetching> toFetch;
     bool fileinfoGathererInitialized = false;
-
 };
 Q_DECLARE_TYPEINFO(RemoteFileSystemModelPrivate::Fetching, Q_MOVABLE_TYPE);
 

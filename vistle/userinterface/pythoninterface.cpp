@@ -11,27 +11,26 @@ namespace vistle {
 
 PythonInterface *PythonInterface::s_singleton = NULL;
 
-PythonInterface::PythonInterface(const std::string &name)
-: m_name(name)
+PythonInterface::PythonInterface(const std::string &name): m_name(name)
 {
-   assert(s_singleton == nullptr);
-   s_singleton = this;
+    assert(s_singleton == nullptr);
+    s_singleton = this;
 }
 
 
-PythonInterface::~PythonInterface() {
+PythonInterface::~PythonInterface()
+{
+    assert(s_singleton == this);
+    s_singleton = nullptr;
 
-   assert(s_singleton == this);
-   s_singleton = nullptr;
-
-   m_namespace.reset();
-   py::finalize_interpreter();
+    m_namespace.reset();
+    py::finalize_interpreter();
 }
 
-PythonInterface &PythonInterface::the() {
-
-   assert(s_singleton);
-   return *s_singleton;
+PythonInterface &PythonInterface::the()
+{
+    assert(s_singleton);
+    return *s_singleton;
 }
 
 py::object &PythonInterface::nameSpace()
@@ -41,29 +40,29 @@ py::object &PythonInterface::nameSpace()
     return *m_namespace;
 }
 
-bool PythonInterface::init() {
-
-   py::initialize_interpreter();
-   py::object mainmod = py::module::import("__main__");
-   m_namespace.reset(new py::object);
-   *m_namespace = mainmod.attr("__dict__");
+bool PythonInterface::init()
+{
+    py::initialize_interpreter();
+    py::object mainmod = py::module::import("__main__");
+    m_namespace.reset(new py::object);
+    *m_namespace = mainmod.attr("__dict__");
 
 #ifdef PY_MAJOR_VERSION
-#if PY_MAJOR_VERSION>2
-   static std::wstring wideName = std::wstring(m_name.begin(), m_name.end());
-   Py_SetProgramName(const_cast<wchar_t*>(wideName.c_str()));
+#if PY_MAJOR_VERSION > 2
+    static std::wstring wideName = std::wstring(m_name.begin(), m_name.end());
+    Py_SetProgramName(const_cast<wchar_t *>(wideName.c_str()));
 #else
-   Py_SetProgramName(const_cast<char *>(m_name.c_str()));
+    Py_SetProgramName(const_cast<char *>(m_name.c_str()));
 #endif
 #endif
 
-   return true;
+    return true;
 }
 
 // cf. http://stackoverflow.com/questions/1418015/how-to-get-python-exception-text
 // decode a Python exception into a string
-std::string PythonInterface::errorString() {
-
+std::string PythonInterface::errorString()
+{
 #if 0
     PyObject *exc,*val,*tb;
     PyErr_Fetch(&exc,&val,&tb);
@@ -85,56 +84,56 @@ std::string PythonInterface::errorString() {
     return "Python ERROR";
 }
 
-bool PythonInterface::exec(const std::string &python) {
-
-   bool ok = false;
-   try {
-      py::object r = py::eval<py::eval_statements>(python.c_str(), py::globals(), nameSpace());
-      if (r.ptr() && !r.is_none()) {
-         py::print(r, '\n');
-      }
-      ok = true;
-   } catch (py::error_already_set &ex) {
-      std::cerr << "PythonInterface::exec: Error: " << ex.what() << std::endl;
-      //std::cerr << "Python exec error" << std::endl;
-      PyErr_Print();
-      PyErr_Clear();
-      ok = false;
-   } catch (std::exception &ex) {
-      std::cerr << "PythonInterface::exec: Unknown error: " << ex.what() << std::endl;
-      ok = false;
-   } catch (...) {
-      std::cerr << "PythonInterface::exec: Unknown error" << std::endl;
-      ok = false;
-   }
-   return ok;
+bool PythonInterface::exec(const std::string &python)
+{
+    bool ok = false;
+    try {
+        py::object r = py::eval<py::eval_statements>(python.c_str(), py::globals(), nameSpace());
+        if (r.ptr() && !r.is_none()) {
+            py::print(r, '\n');
+        }
+        ok = true;
+    } catch (py::error_already_set &ex) {
+        std::cerr << "PythonInterface::exec: Error: " << ex.what() << std::endl;
+        //std::cerr << "Python exec error" << std::endl;
+        PyErr_Print();
+        PyErr_Clear();
+        ok = false;
+    } catch (std::exception &ex) {
+        std::cerr << "PythonInterface::exec: Unknown error: " << ex.what() << std::endl;
+        ok = false;
+    } catch (...) {
+        std::cerr << "PythonInterface::exec: Unknown error" << std::endl;
+        ok = false;
+    }
+    return ok;
 }
 
-bool PythonInterface::exec_file(const std::string &filename) {
+bool PythonInterface::exec_file(const std::string &filename)
+{
+    bool ok = false;
+    try {
+        py::object r = py::eval_file<py::eval_statements>(filename.c_str(), py::globals(), nameSpace());
+        if (r.ptr()) {
+            py::print(r);
+            py::print("\n");
+        }
+        ok = true;
+    } catch (py::error_already_set &ex) {
+        std::cerr << "PythonInterface::exec_file: Error: " << ex.what() << std::endl;
+        //std::cerr << "Python exec error" << std::endl;
+        PyErr_Print();
+        PyErr_Clear();
+        ok = false;
+    } catch (std::exception &ex) {
+        std::cerr << "PythonInterface::exec_file: Unknown error: " << ex.what() << std::endl;
+        ok = false;
+    } catch (...) {
+        std::cerr << "PythonInterface::exec_file: Unknown error" << std::endl;
+        ok = false;
+    }
 
-   bool ok = false;
-   try {
-      py::object r = py::eval_file<py::eval_statements>(filename.c_str(), py::globals(), nameSpace());
-      if (r.ptr()) {
-          py::print(r);
-          py::print("\n");
-      }
-      ok = true;
-   } catch (py::error_already_set &ex) {
-      std::cerr << "PythonInterface::exec_file: Error: " << ex.what() << std::endl;
-      //std::cerr << "Python exec error" << std::endl;
-      PyErr_Print();
-      PyErr_Clear();
-      ok = false;
-   } catch (std::exception &ex) {
-      std::cerr << "PythonInterface::exec_file: Unknown error: " << ex.what() << std::endl;
-      ok = false;
-   } catch (...) {
-      std::cerr << "PythonInterface::exec_file: Unknown error" << std::endl;
-      ok = false;
-   }
-
-   return ok;
+    return ok;
 }
 
 } // namespace vistle

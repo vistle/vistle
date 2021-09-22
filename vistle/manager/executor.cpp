@@ -34,87 +34,81 @@ namespace vistle {
 using namespace message;
 
 Executor::Executor(int argc, char *argv[], boost::mpi::communicator comm)
-   : m_name("vistle")
-     , m_rank(-1)
-     , m_size(-1)
-     , m_comm(NULL)
-     , m_argc(argc)
-     , m_argv(argv)
+: m_name("vistle"), m_rank(-1), m_size(-1), m_comm(NULL), m_argc(argc), m_argv(argv)
 {
-   m_size = comm.size();
-   m_rank = comm.rank();
+    m_size = comm.size();
+    m_rank = comm.rank();
 
-   if (argc < 4) {
-      std::cerr << "usage: " << argv[0] << " [hostname] [port] [dataPort]" << std::endl;
-      std::cerr << "  hostname and port where Vistle hub can be reached have to be specified" << std::endl;
-      exit(1);
-   }
+    if (argc < 4) {
+        std::cerr << "usage: " << argv[0] << " [hostname] [port] [dataPort]" << std::endl;
+        std::cerr << "  hostname and port where Vistle hub can be reached have to be specified" << std::endl;
+        exit(1);
+    }
 
-   unsigned short port = boost::lexical_cast<unsigned short>(argv[2]);
-   m_name = Shm::instanceName(argv[1], port);
-   unsigned short dataPort = boost::lexical_cast<unsigned short>(argv[3]);
+    unsigned short port = boost::lexical_cast<unsigned short>(argv[2]);
+    m_name = Shm::instanceName(argv[1], port);
+    unsigned short dataPort = boost::lexical_cast<unsigned short>(argv[3]);
 
-   // broadcast name of vistle session
-   mpi::broadcast(comm, m_name, 0);
+    // broadcast name of vistle session
+    mpi::broadcast(comm, m_name, 0);
 
-   bool shmPerRank = vistle::shmPerRank();
+    bool shmPerRank = vistle::shmPerRank();
 
-   std::string hostname = vistle::hostname();
-   std::vector<std::string> hostnames;
-   mpi::all_gather(comm, hostname, hostnames);
+    std::string hostname = vistle::hostname();
+    std::vector<std::string> hostnames;
+    mpi::all_gather(comm, hostname, hostnames);
 
-   // determine first rank on each host
-   bool first = true;
-   if (!shmPerRank) {
-       for (int index = 0; index < m_rank; index++) {
-           if (hostnames[index] == hostname) {
-               first = false;
-           }
-       }
-   }
+    // determine first rank on each host
+    bool first = true;
+    if (!shmPerRank) {
+        for (int index = 0; index < m_rank; index++) {
+            if (hostnames[index] == hostname) {
+                first = false;
+            }
+        }
+    }
 
-   if (first) {
-      vistle::Shm::remove(m_name, 0, m_rank, shmPerRank);
-      vistle::Shm::create(m_name, 0, m_rank, shmPerRank);
-   }
-   comm.barrier();
-   if (!first)
-      vistle::Shm::attach(m_name, 0, m_rank, shmPerRank);
-   comm.barrier();
+    if (first) {
+        vistle::Shm::remove(m_name, 0, m_rank, shmPerRank);
+        vistle::Shm::create(m_name, 0, m_rank, shmPerRank);
+    }
+    comm.barrier();
+    if (!first)
+        vistle::Shm::attach(m_name, 0, m_rank, shmPerRank);
+    comm.barrier();
 
-   m_comm = new vistle::Communicator(m_rank, hostnames, comm);
-   if (!m_comm->connectHub(argv[1], port, dataPort)) {
-      std::stringstream err;
-      err << "failed to connect to Vistle hub on " << argv[1] << ":" << port;
-      throw vistle::exception(err.str());
-   }
+    m_comm = new vistle::Communicator(m_rank, hostnames, comm);
+    if (!m_comm->connectHub(argv[1], port, dataPort)) {
+        std::stringstream err;
+        err << "failed to connect to Vistle hub on " << argv[1] << ":" << port;
+        throw vistle::exception(err.str());
+    }
 }
 
 Executor::~Executor()
 {
-   delete m_comm;
+    delete m_comm;
 
-   Shm::the().detach();
+    Shm::the().detach();
 }
 
-void Executor::setVistleRoot(const std::string &dir) {
-
-
+void Executor::setVistleRoot(const std::string &dir)
+{
     return m_comm->setVistleRoot(dir);
 }
 
 
-bool Executor::config(int argc, char *argv[]) {
-
-   return true;
+bool Executor::config(int argc, char *argv[])
+{
+    return true;
 }
 
-void Executor::run() {
+void Executor::run()
+{
+    if (!config(m_argc, m_argv))
+        return;
 
-   if (!config(m_argc, m_argv))
-      return;
-
-   m_comm->run();
+    m_comm->run();
 }
 
 } // namespace vistle

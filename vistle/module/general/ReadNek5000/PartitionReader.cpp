@@ -37,8 +37,7 @@ bool PartitionReader::fillVelocity(int timestep, std::array<vistle::Scalar *, 3>
                 return false;
             }
             for (int i = 0; i < numCon; ++i) {
-                for (size_t dim = 0; dim < data.size(); dim++)
-                {
+                for (size_t dim = 0; dim < data.size(); dim++) {
                     data[dim][connectivityList[i + b * numCon]] = velocity[dim][connectivityList[i]];
                 }
             }
@@ -338,10 +337,10 @@ bool PartitionReader::ReadVar(const string &varname, int timestep, int block, fl
                           (long)block * blockSize * dim * m_precision + //start of block
                           (long)(varname[0] - 'x') * blockSize * m_precision; //position within block
             } else
-                filepos =
-                    (long)iRealHeaderSize +
-                    (long)vBlocksPerFile[fileID] * dp.varOffsetBinary * m_precision + //the header, grid, vel if present,
-                    (long)block * blockSize * m_precision;
+                filepos = (long)iRealHeaderSize +
+                          (long)vBlocksPerFile[fileID] * dp.varOffsetBinary *
+                              m_precision + //the header, grid, vel if present,
+                          (long)block * blockSize * m_precision;
         }
         if (m_precision == 4) {
             fseek(curOpenVarFile->file(), filepos, SEEK_SET);
@@ -623,8 +622,7 @@ bool PartitionReader::constructUnstructuredGrid(int timestep)
     for (size_t currBlock = 0; currBlock < myBlocksToRead.size(); currBlock++) {
         //preRead the grid to verify overlapping corners. The is necessary beacause the mapfile also contains not physically (logically) linked blocks
         array<vector<float>, 3> grid{vector<float>(blockSize), vector<float>(blockSize), vector<float>(blockSize)};
-        if (!ReadGrid(timestep, myBlocksToRead[currBlock], grid[0].data(), grid[1].data(),
-                      grid[2].data())) {
+        if (!ReadGrid(timestep, myBlocksToRead[currBlock], grid[0].data(), grid[1].data(), grid[2].data())) {
             return false;
         }
         //contains the points, that are already written(in local block indices) and where to find them in the coordinate list and a set of new edges that have to be reversed

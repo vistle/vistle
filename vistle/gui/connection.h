@@ -13,19 +13,18 @@ namespace gui {
 class Module;
 class DataFlowNetwork;
 
-class Connection : public QGraphicsLineItem
-{
-   Q_INTERFACES(QGraphicsItem)
-   typedef QGraphicsLineItem Base;
+class Connection: public QGraphicsLineItem {
+    Q_INTERFACES(QGraphicsItem)
+    typedef QGraphicsLineItem Base;
 
 public:
-   enum State {
-      ToEstablish,
-      Established,
-      ToRemove,
-   };
+    enum State {
+        ToEstablish,
+        Established,
+        ToRemove,
+    };
 
-   Connection(Port *startPort, Port *endPort, State state, QGraphicsItem *parent=nullptr);
+    Connection(Port *startPort, Port *endPort, State state, QGraphicsItem *parent = nullptr);
 
     Port *source() const;
     Port *destination() const;
@@ -37,7 +36,7 @@ public:
     void setHighlight(bool highlight);
 
     void setColor(const QColor &color);
-    void updatePosition();                          // re-implemented
+    void updatePosition(); // re-implemented
     int connectionType() { return m_connectionType; }
 
     DataFlowNetwork *scene() const;
@@ -48,12 +47,12 @@ protected:
     void mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event);
 
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
-               QWidget *widget);                    // re-implemented
+               QWidget *widget); // re-implemented
 
 private:
     bool m_highlight;
     State m_state;
-    QColor m_color;                                 // color of the connection
+    QColor m_color; // color of the connection
     Port *m_source;
     Port *m_destination;
     int m_connectionType;
@@ -61,4 +60,3 @@ private:
 
 } //namespace gui
 #endif // VARROW_H
-

@@ -17,16 +17,17 @@
 
 
 using namespace vistle;
-constexpr std::array<char, 3> axisNames{ 'X', 'Y', 'Z' };
+constexpr std::array<char, 3> axisNames{'X', 'Y', 'Z'};
 
 TransformGrid::TransformGrid(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module(name, moduleID, comm)
+: Module(name, moduleID, comm)
 {
     data_in = createInputPort("data_in", "input data");
     data_out = createOutputPort("data_out", "output data");
 
     for (size_t i = 0; i < 3; i++) {
-        m_reverse[i] = addIntParameter(std::string("reverse ") + axisNames[i] + "-axix", "", false, Parameter::Presentation::Boolean);
+        m_reverse[i] = addIntParameter(std::string("reverse ") + axisNames[i] + "-axix", "", false,
+                                       Parameter::Presentation::Boolean);
     }
 
     m_order = addIntParameter("orderOfGridAxes", "", XYZ, Parameter::Presentation::Choice);
@@ -34,8 +35,8 @@ TransformGrid::TransformGrid(const std::string &name, int moduleID, mpi::communi
 }
 
 
-bool TransformGrid::compute() {
-
+bool TransformGrid::compute()
+{
     Object::const_ptr obj = expect<Object>(data_in);
     if (!obj)
         return true;
@@ -52,8 +53,8 @@ bool TransformGrid::compute() {
     if (!rgrid) {
         return true;
     }
-    std::array<Index, 3>  dims;
-    std::array<const Scalar*, 3>  axes;
+    std::array<Index, 3> dims;
+    std::array<const Scalar *, 3> axes;
     std::array<bool, 3> reverse;
     for (size_t i = 0; i < 3; i++) {
         dims[i] = rgrid->getNumDivisions(i);
@@ -70,57 +71,53 @@ bool TransformGrid::compute() {
     RectilinearGrid::ptr gridOut(new RectilinearGrid(dims[0], dims[1], dims[2]));
 
     for (size_t i = 0; i < 3; i++) {
-        if(reverse[i] ) {
+        if (reverse[i]) {
             for (size_t j = 0; j < dims[i]; j++) {
                 gridOut->coords(i).data()[j] = axes[i][dims[i] - j - 1];
             }
-        }
-        else {
+        } else {
             std::copy(axes[i], axes[i] + dims[i], gridOut->coords(i).data());
         }
     }
     DataBase::ptr objOut = data->clone();
     objOut->setGrid(gridOut);
     addObject(data_out, objOut);
-   return true;
+    return true;
 }
 
-bool TransformGrid::prepare() {
-
-  
-
-   return true;
+bool TransformGrid::prepare()
+{
+    return true;
 }
 
-bool TransformGrid::reduce(int timestep) {
-
-
-
-   return Module::reduce(timestep);
+bool TransformGrid::reduce(int timestep)
+{
+    return Module::reduce(timestep);
 }
 
 MODULE_MAIN(TransformGrid)
 
-constexpr std::array<int, 3> dimensionOrder(DimensionOrder order) {
+constexpr std::array<int, 3> dimensionOrder(DimensionOrder order)
+{
     std::array<int, 3> o{};
     switch (order) {
     case XYZ:
-        o = { 0, 1, 2 };
+        o = {0, 1, 2};
         break;
     case XZY:
-        o = { 0, 2, 1 };
+        o = {0, 2, 1};
         break;
     case YXZ:
-        o = { 1, 0, 2 };
+        o = {1, 0, 2};
         break;
     case YZX:
-        o = { 1, 2, 0 };
+        o = {1, 2, 0};
         break;
     case ZXY:
-        o = { 2, 0, 1 };
+        o = {2, 0, 1};
         break;
     case ZYX:
-        o = { 2, 1, 0 };
+        o = {2, 1, 0};
         break;
     default:
         break;

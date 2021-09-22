@@ -6,8 +6,7 @@
 #include <vistle/core/messagequeue.h>
 
 namespace vistle {
-namespace message {
-}
+namespace message {}
 namespace insitu {
 namespace message {
 // Queue to send addObject messages to LibSImController module

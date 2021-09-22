@@ -19,138 +19,138 @@ namespace vistle {
 template<size_t IndexSize, int NumDimensions>
 struct CelltreeNode;
 
-typedef CelltreeNode<sizeof(Index),1> CelltreeNode1;
-typedef CelltreeNode<sizeof(Index),2> CelltreeNode2;
-typedef CelltreeNode<sizeof(Index),3> CelltreeNode3;
+typedef CelltreeNode<sizeof(Index), 1> CelltreeNode1;
+typedef CelltreeNode<sizeof(Index), 2> CelltreeNode2;
+typedef CelltreeNode<sizeof(Index), 3> CelltreeNode3;
 
 V_DECLARE_SHMREF(CelltreeNode1)
 V_DECLARE_SHMREF(CelltreeNode2)
 V_DECLARE_SHMREF(CelltreeNode3)
 
-template<typename Scalar, typename Index, int NumDimensions=3>
+template<typename Scalar, typename Index, int NumDimensions = 3>
 class V_COREEXPORT Celltree: public Object {
-   V_OBJECT(Celltree);
+    V_OBJECT(Celltree);
 
- public:
-   typedef Object Base;
+public:
+    typedef Object Base;
 
-   typedef typename VistleScalarVector<NumDimensions>::type Vector;
-   typedef CelltreeNode<sizeof(Index), NumDimensions> Node;
+    typedef typename VistleScalarVector<NumDimensions>::type Vector;
+    typedef CelltreeNode<sizeof(Index), NumDimensions> Node;
 
-   class VisitFunctor {
-
+    class VisitFunctor {
     public:
-      enum Order {
-         None = 0, //< none of the subnodes have to be visited
-         RightFirst = 1, //< right subnode has to be visited, should be visited first
-         RightSecond = 2, //< right subnode has to be visited, should be visited last
-         Left = 4, //< left subnode has to be visited
-         Right = RightFirst, //< right subnode has to be visited
-         LeftRight = Left|RightSecond, //< both subnodes have to be visited, preferably left first
-         RightLeft = Left|RightFirst, //< both subnodes have to be visited, preferably right first
-      };
+        enum Order {
+            None = 0, //< none of the subnodes have to be visited
+            RightFirst = 1, //< right subnode has to be visited, should be visited first
+            RightSecond = 2, //< right subnode has to be visited, should be visited last
+            Left = 4, //< left subnode has to be visited
+            Right = RightFirst, //< right subnode has to be visited
+            LeftRight = Left | RightSecond, //< both subnodes have to be visited, preferably left first
+            RightLeft = Left | RightFirst, //< both subnodes have to be visited, preferably right first
+        };
 
-      //! check whether the celltree is within bounds min and max, otherwise no traversal
-      bool checkBounds(const Scalar *min, const Scalar *max) {
+        //! check whether the celltree is within bounds min and max, otherwise no traversal
+        bool checkBounds(const Scalar *min, const Scalar *max)
+        {
+            (void)min;
+            (void)max;
+            return true; // continue traversal
+        }
 
-         (void)min;
-         (void)max;
-         return true; // continue traversal
-      }
+        //! return whether and in which order to visit children of a node
+        Order operator()(const Node &node)
+        {
+            (void)node;
+            return LeftRight;
+        }
+    };
 
-      //! return whether and in which order to visit children of a node
-      Order operator()(const Node &node) {
-
-         (void)node;
-         return LeftRight;
-      }
-   };
-
-   //! return whether further cells have to be visited
-   class LeafFunctor {
+    //! return whether further cells have to be visited
+    class LeafFunctor {
     public:
-      bool operator()(Index elem) {
-         return true; // continue traversal
-      }
-   };
+        bool operator()(Index elem)
+        {
+            return true; // continue traversal
+        }
+    };
 
-   //! compute bounding box of a cell
-   class CellBoundsFunctor {
+    //! compute bounding box of a cell
+    class CellBoundsFunctor {
     public:
-      bool operator()(Index elem, Vector *min, Vector *max) {
-         return false; // couldn't compute bounds
-      }
-   };
+        bool operator()(Index elem, Vector *min, Vector *max)
+        {
+            return false; // couldn't compute bounds
+        }
+    };
 
-   Celltree(const Index numCells,
-         const Meta &meta=Meta());
+    Celltree(const Index numCells, const Meta &meta = Meta());
 
-   void init(const Vector *min, const Vector *max, const Vector &gmin, const Vector &gmax);
-   void refine(const Vector *min, const Vector *max, Index nodeIdx, const Vector &gmin, const Vector &gmax);
-   template<class BoundsFunctor>
-   bool validateTree(BoundsFunctor &func) const;
+    void init(const Vector *min, const Vector *max, const Vector &gmin, const Vector &gmax);
+    void refine(const Vector *min, const Vector *max, Index nodeIdx, const Vector &gmin, const Vector &gmax);
+    template<class BoundsFunctor>
+    bool validateTree(BoundsFunctor &func) const;
 
-   Scalar *min() { return &(d()->m_bounds)[0]; }
-   const Scalar *min() const { return &(d()->m_bounds)[0]; }
-   Scalar *max() { return &(d()->m_bounds)[NumDimensions]; }
-   const Scalar *max() const { return &(d()->m_bounds)[NumDimensions]; }
-   typename shm<Node>::array &nodes() { return *d()->m_nodes; }
-   const typename shm<Node>::array &nodes() const { return *d()->m_nodes; }
-   typename shm<Index>::array &cells() { return *d()->m_cells; }
-   const typename shm<Index>::array &cells() const { return *d()->m_cells; }
+    Scalar *min() { return &(d()->m_bounds)[0]; }
+    const Scalar *min() const { return &(d()->m_bounds)[0]; }
+    Scalar *max() { return &(d()->m_bounds)[NumDimensions]; }
+    const Scalar *max() const { return &(d()->m_bounds)[NumDimensions]; }
+    typename shm<Node>::array &nodes() { return *d()->m_nodes; }
+    const typename shm<Node>::array &nodes() const { return *d()->m_nodes; }
+    typename shm<Index>::array &cells() { return *d()->m_cells; }
+    const typename shm<Index>::array &cells() const { return *d()->m_cells; }
 
-   template<class InnerNodeFunctor, class ElementFunctor>
-   void traverse(InnerNodeFunctor &visitNode, ElementFunctor &visitElement) const {
-      if (!visitNode.checkBounds(min(), max()))
-         return;
-      traverseNode(0, nodes().data(), cells().data(), visitNode, visitElement);
-   }
+    template<class InnerNodeFunctor, class ElementFunctor>
+    void traverse(InnerNodeFunctor &visitNode, ElementFunctor &visitElement) const
+    {
+        if (!visitNode.checkBounds(min(), max()))
+            return;
+        traverseNode(0, nodes().data(), cells().data(), visitNode, visitElement);
+    }
 
- private:
-   template<class BoundsFunctor>
-   bool validateNode(BoundsFunctor &func, Index nodenum, const Vector &min, const Vector &max) const;
-   template<class InnerNodeFunctor, class ElementFunctor>
-   bool traverseNode(Index curNode, const Node *nodes, const Index *cells, InnerNodeFunctor &visitNode, ElementFunctor &visitElement) const {
+private:
+    template<class BoundsFunctor>
+    bool validateNode(BoundsFunctor &func, Index nodenum, const Vector &min, const Vector &max) const;
+    template<class InnerNodeFunctor, class ElementFunctor>
+    bool traverseNode(Index curNode, const Node *nodes, const Index *cells, InnerNodeFunctor &visitNode,
+                      ElementFunctor &visitElement) const
+    {
+        const Node &node = nodes[curNode];
+        if (node.isLeaf()) {
+            for (Index i = node.start; i < node.start + node.size; ++i) {
+                const Index cell = cells[i];
+                if (!visitElement(cell))
+                    return false;
+            }
+            return true;
+        }
 
-      const Node &node = nodes[curNode];
-      if (node.isLeaf()) {
-         for (Index i = node.start; i < node.start+node.size; ++i) {
-            const Index cell = cells[i];
-            if (!visitElement(cell))
-               return false;
-         }
-         return true;
-      }
+        const typename VisitFunctor::Order order = visitNode(node);
+        assert(!((order & VisitFunctor::RightFirst) && (order & VisitFunctor::RightSecond)));
+        bool continueTraversal = true;
+        if (continueTraversal && (order & VisitFunctor::RightFirst)) {
+            continueTraversal = traverseNode(node.child + 1, nodes, cells, visitNode, visitElement);
+        }
+        if (continueTraversal && (order & VisitFunctor::Left)) {
+            continueTraversal = traverseNode(node.child, nodes, cells, visitNode, visitElement);
+        }
+        if (continueTraversal && (order & VisitFunctor::RightSecond)) {
+            continueTraversal = traverseNode(node.child + 1, nodes, cells, visitNode, visitElement);
+        }
 
-      const typename VisitFunctor::Order order = visitNode(node);
-      assert(!((order&VisitFunctor::RightFirst) && (order&VisitFunctor::RightSecond)));
-      bool continueTraversal = true;
-      if (continueTraversal && (order & VisitFunctor::RightFirst)) {
-         continueTraversal = traverseNode(node.child+1, nodes, cells, visitNode, visitElement);
-      }
-      if (continueTraversal && (order & VisitFunctor::Left)) {
-         continueTraversal = traverseNode(node.child, nodes, cells, visitNode, visitElement);
-      }
-      if (continueTraversal && (order & VisitFunctor::RightSecond)) {
-         continueTraversal = traverseNode(node.child+1, nodes, cells, visitNode, visitElement);
-      }
+        return continueTraversal;
+    }
 
-      return continueTraversal;
-   }
+    template<class Functor>
+    bool traverseNode(Index curNode, Functor &func) const;
 
-   template<class Functor>
-   bool traverseNode(Index curNode, Functor &func) const;
+    V_DATA_BEGIN(Celltree);
+    Scalar m_bounds[NumDimensions * 2];
+    ShmVector<Index> m_cells;
+    ShmVector<Node> m_nodes;
 
-   V_DATA_BEGIN(Celltree);
-      Scalar m_bounds[NumDimensions*2];
-      ShmVector<Index> m_cells;
-      ShmVector<Node> m_nodes;
-
-      static Data *create(const std::string &name="", const Index numCells = 0,
-            const Meta &m=Meta());
-      Data(const std::string &name = "", const Index numCells = 0,
-            const Meta &m=Meta());
-   V_DATA_END(Celltree);
+    static Data *create(const std::string &name = "", const Index numCells = 0, const Meta &m = Meta());
+    Data(const std::string &name = "", const Index numCells = 0, const Meta &m = Meta());
+    V_DATA_END(Celltree);
 };
 
 typedef Celltree<Scalar, Index, 1> Celltree1;
@@ -170,12 +170,11 @@ namespace vistle {
 
 template<int Dim>
 class V_COREEXPORT CelltreeInterface: virtual public ElementInterface {
-
- public:
-   typedef vistle::Celltree<Scalar, Index, Dim> Celltree;
-   virtual bool hasCelltree() const = 0;
-   virtual typename Celltree::const_ptr getCelltree() const = 0;
-   virtual bool validateCelltree() const = 0;
+public:
+    typedef vistle::Celltree<Scalar, Index, Dim> Celltree;
+    virtual bool hasCelltree() const = 0;
+    virtual typename Celltree::const_ptr getCelltree() const = 0;
+    virtual bool validateCelltree() const = 0;
 };
 
 } // namespace vistle

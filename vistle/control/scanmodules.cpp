@@ -8,7 +8,8 @@
 
 namespace vistle {
 
-std::map<std::string, std::string> readModuleDescriptions(std::istream &str) {
+std::map<std::string, std::string> readModuleDescriptions(std::istream &str)
+{
     std::map<std::string, std::string> moduleDescriptions;
 
     std::string line;
@@ -107,7 +108,8 @@ bool scanModules(const std::string &prefix, int hub, AvailableMap &available)
         name = stem;
 #endif
         auto descit = moduleDescriptions.find(name);
-        AvailableModule mod{hub, name, bf::path(*it).string(), descit != moduleDescriptions.end() ? descit->second : ""};
+        AvailableModule mod{hub, name, bf::path(*it).string(),
+                            descit != moduleDescriptions.end() ? descit->second : ""};
 
         AvailableModule::Key key(hub, name);
         auto prev = available.find(key);
@@ -121,4 +123,4 @@ bool scanModules(const std::string &prefix, int hub, AvailableMap &available)
     return true;
 }
 
-}
+} // namespace vistle

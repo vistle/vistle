@@ -24,36 +24,34 @@
 #include "export.h"
 #include "ssize_t.h"
 
-namespace vistle
-{
+namespace vistle {
 
-class V_UTILEXPORT coRestraint
-{
-   private:
-      bool all;
-      mutable std::vector<ssize_t> values, min, max;
-      mutable bool changed, stringCurrent;
-      mutable std::string restraintString;
+class V_UTILEXPORT coRestraint {
+private:
+    bool all;
+    mutable std::vector<ssize_t> values, min, max;
+    mutable bool changed, stringCurrent;
+    mutable std::string restraintString;
 
-   public:
-      coRestraint();
-      ~coRestraint();
+public:
+    coRestraint();
+    ~coRestraint();
 
-      void add(ssize_t mi, ssize_t ma);
-      void add(ssize_t val);
-      void add(const std::string &selection);
-      bool get(ssize_t val, ssize_t &group) const;
-      size_t getNumGroups() const {return min.size();};
-      void clear();
-      const std::vector<ssize_t> &getValues() const;
-      ssize_t lower() const;
-      ssize_t upper() const;
-      const std::string &getRestraintString() const;
-      const std::string getRestraintString(std::vector<ssize_t>) const;
+    void add(ssize_t mi, ssize_t ma);
+    void add(ssize_t val);
+    void add(const std::string &selection);
+    bool get(ssize_t val, ssize_t &group) const;
+    size_t getNumGroups() const { return min.size(); };
+    void clear();
+    const std::vector<ssize_t> &getValues() const;
+    ssize_t lower() const;
+    ssize_t upper() const;
+    const std::string &getRestraintString() const;
+    const std::string getRestraintString(std::vector<ssize_t>) const;
 
-      // operators
-      bool operator ()(ssize_t val) const;
+    // operators
+    bool operator()(ssize_t val) const;
 };
 
-}
-#endif                                            // COVISE_RESTRAINT_H
+} // namespace vistle
+#endif // COVISE_RESTRAINT_H

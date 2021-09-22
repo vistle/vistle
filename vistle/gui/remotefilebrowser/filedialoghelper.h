@@ -5,8 +5,7 @@
 
 class RemoteFileDialogOptionsPrivate;
 
-class RemoteFileDialogOptions
-{
+class RemoteFileDialogOptions {
     Q_GADGET
     Q_DISABLE_COPY(RemoteFileDialogOptions)
 protected:
@@ -26,15 +25,14 @@ public:
     enum DialogLabel { LookIn, FileName, FileType, Accept, Reject, DialogLabelCount };
     Q_ENUM(DialogLabel)
 
-    enum FileDialogOption
-    {
-        ShowDirsOnly                = 0x00000001,
-        DontResolveSymlinks         = 0x00000002,
-        DontConfirmOverwrite        = 0x00000004,
-        DontUseSheet                = 0x00000008,
-        DontUseNativeDialog         = 0x00000010,
-        ReadOnly                    = 0x00000020,
-        HideNameFilterDetails       = 0x00000040,
+    enum FileDialogOption {
+        ShowDirsOnly = 0x00000001,
+        DontResolveSymlinks = 0x00000002,
+        DontConfirmOverwrite = 0x00000004,
+        DontUseSheet = 0x00000008,
+        DontUseNativeDialog = 0x00000010,
+        ReadOnly = 0x00000020,
+        HideNameFilterDetails = 0x00000040,
         DontUseCustomDirectoryIcons = 0x00000080
     };
     Q_DECLARE_FLAGS(FileDialogOptions, FileDialogOption)

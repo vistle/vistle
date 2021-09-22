@@ -10,19 +10,18 @@ namespace gui {
 class DataFlowNetwork;
 class Module;
 
-class DataFlowView : public QGraphicsView
-{
-   Q_OBJECT
+class DataFlowView: public QGraphicsView {
+    Q_OBJECT
 
 public:
-   explicit DataFlowView(QWidget *parent = 0);
-   ~DataFlowView();
-   static DataFlowView *the();
+    explicit DataFlowView(QWidget *parent = 0);
+    ~DataFlowView();
+    static DataFlowView *the();
 
-   DataFlowNetwork *scene() const;
-   void contextMenuEvent(QContextMenuEvent *event);
-   QList<Module *> selectedModules();
-   void setScene(QGraphicsScene *scene);
+    DataFlowNetwork *scene() const;
+    void contextMenuEvent(QContextMenuEvent *event);
+    QList<Module *> selectedModules();
+    void setScene(QGraphicsScene *scene);
 
 signals:
     void executeDataFlow();
@@ -36,19 +35,19 @@ public slots:
     void selectAllModules();
 
 protected:
-   void dragEnterEvent(QDragEnterEvent *e);
-   void dragMoveEvent(QDragMoveEvent *event);
-   void dropEvent(QDropEvent *event);
+    void dragEnterEvent(QDragEnterEvent *e);
+    void dragMoveEvent(QDragMoveEvent *event);
+    void dropEvent(QDropEvent *event);
 
-   void createActions();
-   void createMenu();
+    void createActions();
+    void createMenu();
 
-   QMenu *m_contextMenu;
-   QAction *m_deleteAct;
-   QAction *m_execAct;
+    QMenu *m_contextMenu;
+    QAction *m_deleteAct;
+    QAction *m_execAct;
 
 private:
-   static DataFlowView *s_instance;
+    static DataFlowView *s_instance;
 };
 
 } // namespace gui

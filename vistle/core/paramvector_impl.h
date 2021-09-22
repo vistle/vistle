@@ -10,134 +10,121 @@ namespace vistle {
 
 static_assert(MaxDimension >= 4, "ParameterVector does not support more than 4 arrays");
 
-#define VINIT(d) \
-  dim(d) \
-, v(MaxDimension) \
-, x(v[0]) \
-, y(v[1]) \
-, z(v[2]) \
-, w(v[3])
+#define VINIT(d) dim(d), v(MaxDimension), x(v[0]), y(v[1]), z(v[2]), w(v[3])
 
 template<typename S>
-ParameterVector<S>::ParameterVector(const int dim, const S values[])
-: VINIT(dim)
+ParameterVector<S>::ParameterVector(const int dim, const S values[]): VINIT(dim)
 {
-   assert(dim <= MaxDimension);
-   for (int i=0; i<dim; ++i)
-      v[i] = values[i];
-   for (int i=dim; i<MaxDimension; ++i)
-      v[i] = S();
+    assert(dim <= MaxDimension);
+    for (int i = 0; i < dim; ++i)
+        v[i] = values[i];
+    for (int i = dim; i < MaxDimension; ++i)
+        v[i] = S();
 }
 
 template<typename S>
-ParameterVector<S>::ParameterVector(const S _x, const S _y, const S _z, const S _w)
-: VINIT(4)
+ParameterVector<S>::ParameterVector(const S _x, const S _y, const S _z, const S _w): VINIT(4)
 {
-   v[0] = _x;
-   v[1] = _y;
-   v[2] = _z;
-   v[3] = _w;
-   for (int i=4; i<MaxDimension; ++i)
-      v[i] = S();
+    v[0] = _x;
+    v[1] = _y;
+    v[2] = _z;
+    v[3] = _w;
+    for (int i = 4; i < MaxDimension; ++i)
+        v[i] = S();
 }
 
 template<typename S>
 template<int Dim>
-ParameterVector<S>::ParameterVector(const ScalarVector<Dim> &_v)
-: VINIT(Dim)
+ParameterVector<S>::ParameterVector(const ScalarVector<Dim> &_v): VINIT(Dim)
 {
-   static_assert(MaxDimension >= Dim, "Dim too large for ParameterVector");
+    static_assert(MaxDimension >= Dim, "Dim too large for ParameterVector");
 
-   for (int i=0; i<Dim; ++i)
-       v[i] = _v[i];
-   for (int i=Dim; i<MaxDimension; ++i)
-      v[i] = S();
+    for (int i = 0; i < Dim; ++i)
+        v[i] = _v[i];
+    for (int i = Dim; i < MaxDimension; ++i)
+        v[i] = S();
 }
 
 template<typename S>
-ParameterVector<S>::ParameterVector(const S _x, const S _y, const S _z)
-: VINIT(3)
+ParameterVector<S>::ParameterVector(const S _x, const S _y, const S _z): VINIT(3)
 {
-   v[0] = _x;
-   v[1] = _y;
-   v[2] = _z;
-   for (int i=3; i<MaxDimension; ++i)
-      v[i] = S();
+    v[0] = _x;
+    v[1] = _y;
+    v[2] = _z;
+    for (int i = 3; i < MaxDimension; ++i)
+        v[i] = S();
 }
 
 template<typename S>
-ParameterVector<S>::ParameterVector(const S _x, const S _y)
-: VINIT(2)
+ParameterVector<S>::ParameterVector(const S _x, const S _y): VINIT(2)
 {
-   v[0] = _x;
-   v[1] = _y;
-   for (int i=2; i<MaxDimension; ++i)
-      v[i] = S();
+    v[0] = _x;
+    v[1] = _y;
+    for (int i = 2; i < MaxDimension; ++i)
+        v[i] = S();
 }
 
 template<typename S>
-ParameterVector<S>::ParameterVector(const S _x)
-: VINIT(1)
+ParameterVector<S>::ParameterVector(const S _x): VINIT(1)
 {
-   v[0] = _x;
-   for (int i=1; i<MaxDimension; ++i)
-      v[i] = S();
+    v[0] = _x;
+    for (int i = 1; i < MaxDimension; ++i)
+        v[i] = S();
 }
 
 template<typename S>
-ParameterVector<S>::ParameterVector()
-: VINIT(0)
+ParameterVector<S>::ParameterVector(): VINIT(0)
 {
-   for (int i=0; i<MaxDimension; ++i)
-      v[i] = S();
+    for (int i = 0; i < MaxDimension; ++i)
+        v[i] = S();
 }
 
 template<typename S>
-ParameterVector<S>::ParameterVector(const ParameterVector<S> &o)
-: VINIT(o.dim)
+ParameterVector<S>::ParameterVector(const ParameterVector<S> &o): VINIT(o.dim)
 {
-   memcpy(&v[0], &o.v[0], sizeof(v[0])*MaxDimension);
+    memcpy(&v[0], &o.v[0], sizeof(v[0]) * MaxDimension);
 }
 
 template<typename S>
-ParameterVector<S> &ParameterVector<S>::operator=(const ParameterVector<S> &rhs) {
+ParameterVector<S> &ParameterVector<S>::operator=(const ParameterVector<S> &rhs)
+{
+    if (this != &rhs) {
+        dim = rhs.dim;
+        memcpy(&v[0], &rhs.v[0], sizeof(v[0]) * MaxDimension);
+    }
 
-   if (this != &rhs) {
-      dim = rhs.dim;
-      memcpy(&v[0], &rhs.v[0], sizeof(v[0])*MaxDimension);
-   }
-
-   return *this;
+    return *this;
 }
 
 template<typename S>
-ParameterVector<S>::ParameterVector(typename ParameterVector<S>::iterator from, typename ParameterVector<S>::iterator to)
+ParameterVector<S>::ParameterVector(typename ParameterVector<S>::iterator from,
+                                    typename ParameterVector<S>::iterator to)
 : VINIT(MaxDimension)
 {
-   dim = 0;
-   for (iterator it=from; it!=to; ++it) {
-      v[dim] = *it;
-      ++dim;
-   }
+    dim = 0;
+    for (iterator it = from; it != to; ++it) {
+        v[dim] = *it;
+        ++dim;
+    }
 }
 #undef VINIT
 
 template<typename S>
-ParameterVector<S> ParameterVector<S>::min(int dim) {
-
-   S v[MaxDimension];
-   for (int i = 0; i < MaxDimension; ++i)
-       v[i] = std::numeric_limits<S>::lowest();
-   return ParameterVector<S>(dim, v);
+ParameterVector<S> ParameterVector<S>::min(int dim)
+{
+    S v[MaxDimension];
+    for (int i = 0; i < MaxDimension; ++i)
+        v[i] = std::numeric_limits<S>::lowest();
+    return ParameterVector<S>(dim, v);
 }
 
 template<typename S>
-ParameterVector<S> ParameterVector<S>::max(int dim) {
-
-   S v[MaxDimension];
-   for (int i=0; i<MaxDimension; ++i)
-      v[i] = std::numeric_limits<S>::max();
-   return ParameterVector<S>(dim, v);
+ParameterVector<S> ParameterVector<S>::max(int dim)
+{
+    S v[MaxDimension];
+    for (int i = 0; i < MaxDimension; ++i)
+        v[i] = std::numeric_limits<S>::max();
+    return ParameterVector<S>(dim, v);
 }
 #if 0
 template<typename S>
@@ -229,64 +216,67 @@ ParameterVector<S> ParameterVector<S>::maximum() const {
 #endif
 
 template<typename S>
-std::string ParameterVector<S>::str() const {
-
-   return boost::lexical_cast<std::string>(*this);
+std::string ParameterVector<S>::str() const
+{
+    return boost::lexical_cast<std::string>(*this);
 }
 
 template<typename S>
-bool operator==(const ParameterVector<S> &v1, const ParameterVector<S> &v2) {
-   if (v1.dim != v2.dim)
-      return false;
-   for (int i=0; i<v1.dim; ++i)
-      if (v1[i] != v2[i])
-         return false;
+bool operator==(const ParameterVector<S> &v1, const ParameterVector<S> &v2)
+{
+    if (v1.dim != v2.dim)
+        return false;
+    for (int i = 0; i < v1.dim; ++i)
+        if (v1[i] != v2[i])
+            return false;
 
-   return true;
+    return true;
 }
 
 template<typename S>
-bool operator!=(const ParameterVector<S> &v1, const ParameterVector<S> &v2) {
-   return !(v1 == v2);
+bool operator!=(const ParameterVector<S> &v1, const ParameterVector<S> &v2)
+{
+    return !(v1 == v2);
 }
 
 template<typename S>
-bool operator<(const ParameterVector<S> &v1, const ParameterVector<S> &v2) {
-   for (int i=0; i<v1.dim && i<v2.dim; ++i) {
-      if (v1[i] > v2[i])
-         return false;
-      if (v1[i] < v2[i])
-         return true;
-   }
+bool operator<(const ParameterVector<S> &v1, const ParameterVector<S> &v2)
+{
+    for (int i = 0; i < v1.dim && i < v2.dim; ++i) {
+        if (v1[i] > v2[i])
+            return false;
+        if (v1[i] < v2[i])
+            return true;
+    }
 
-   return v1.dim < v2.dim;
+    return v1.dim < v2.dim;
 }
 
 template<typename S>
-bool operator>(const ParameterVector<S> &v1, const ParameterVector<S> &v2) {
-   for (int i=0; i<v1.dim && i<v2.dim; ++i) {
-      if (v1[i] < v2[i])
-         return false;
-      if (v1[i] > v2[i])
-         return true;
-   }
+bool operator>(const ParameterVector<S> &v1, const ParameterVector<S> &v2)
+{
+    for (int i = 0; i < v1.dim && i < v2.dim; ++i) {
+        if (v1[i] < v2[i])
+            return false;
+        if (v1[i] > v2[i])
+            return true;
+    }
 
-   return v1.dim > v2.dim;
+    return v1.dim > v2.dim;
 }
 
 template<typename S>
-std::ostream &operator<<(std::ostream &out, const ParameterVector<S> &v) {
-
-   out << "(";
-   for (int i=0; i<v.dim; ++i) {
-      if (i > 0)
-         out << " ";
-      out << v[i];
-   }
-   out << ")";
-   return out;
+std::ostream &operator<<(std::ostream &out, const ParameterVector<S> &v)
+{
+    out << "(";
+    for (int i = 0; i < v.dim; ++i) {
+        if (i > 0)
+            out << " ";
+        out << v[i];
+    }
+    out << ")";
+    return out;
 }
 
 } // namespace vistle
 #endif
-

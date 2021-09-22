@@ -39,5 +39,3 @@ std::vector<std::string> vistle::scanStartupScripts()
     }
     return scripts;
 }
-
-

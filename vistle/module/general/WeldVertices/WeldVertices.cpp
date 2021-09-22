@@ -8,41 +8,41 @@
 #include <vistle/core/unstr.h>
 
 class WeldVertices: public vistle::Module {
-  static const int NumPorts = 3;
+    static const int NumPorts = 3;
 
- public:
-   WeldVertices(const std::string &name, int moduleID, mpi::communicator comm);
-   ~WeldVertices();
+public:
+    WeldVertices(const std::string &name, int moduleID, mpi::communicator comm);
+    ~WeldVertices();
 
- private:
-   bool compute(std::shared_ptr<vistle::PortTask> task) const override;
-   vistle::Port *m_in[NumPorts], *m_out[NumPorts];
+private:
+    bool compute(std::shared_ptr<vistle::PortTask> task) const override;
+    vistle::Port *m_in[NumPorts], *m_out[NumPorts];
 };
 
 using namespace vistle;
 
 WeldVertices::WeldVertices(const std::string &name, int moduleID, mpi::communicator comm)
-    : vistle::Module(name, moduleID, comm)
+: vistle::Module(name, moduleID, comm)
 {
-    for (int i=0; i<NumPorts; ++i) {
-        m_in[i] = createInputPort("data_in"+std::to_string(i));
-        m_out[i] = createOutputPort("data_out"+std::to_string(i));
+    for (int i = 0; i < NumPorts; ++i) {
+        m_in[i] = createInputPort("data_in" + std::to_string(i));
+        m_out[i] = createOutputPort("data_out" + std::to_string(i));
     }
 }
 
 WeldVertices::~WeldVertices()
-{
-}
+{}
 
 struct Point {
     Point(Scalar x, Scalar y, Scalar z, Index v, const std::vector<const Scalar *> &floats)
-        : floats(floats), x(x), y(y), z(z), v(v)
+    : floats(floats), x(x), y(y), z(z), v(v)
     {}
     const std::vector<const Scalar *> &floats;
     Scalar x, y, z;
     Index v;
 
-    bool operator<(const Point &o) const {
+    bool operator<(const Point &o) const
+    {
         if (x < o.x)
             return true;
         if (x > o.x)
@@ -70,15 +70,15 @@ struct Point {
 };
 
 
-bool WeldVertices::compute(std::shared_ptr<PortTask> task) const {
-
+bool WeldVertices::compute(std::shared_ptr<PortTask> task) const
+{
     Object::const_ptr oin[NumPorts];
     DataBase::const_ptr din[NumPorts];
     Object::const_ptr grid;
     Normals::const_ptr normals;
     std::vector<const Scalar *> floats;
 
-    for (int i=0; i<NumPorts; ++i) {
+    for (int i = 0; i < NumPorts; ++i) {
         if (m_in[i]->isConnected()) {
             oin[i] = task->expect<Object>(m_in[i]);
             din[i] = DataBase::as(oin[i]);
@@ -89,9 +89,9 @@ bool WeldVertices::compute(std::shared_ptr<PortTask> task) const {
                     din[i].reset();
                 } else {
                     if (din[i]->mapping() == DataBase::Vertex) {
-                        if (auto s = Vec<Scalar,1>::as(din[i])) {
+                        if (auto s = Vec<Scalar, 1>::as(din[i])) {
                             floats.push_back(s->x());
-                        } else if (auto v = Vec<Scalar,3>::as(din[i])) {
+                        } else if (auto v = Vec<Scalar, 3>::as(din[i])) {
                             floats.push_back(s->x());
                             floats.push_back(s->y());
                             floats.push_back(s->z());
@@ -133,13 +133,12 @@ bool WeldVertices::compute(std::shared_ptr<PortTask> task) const {
     std::vector<Index> remap;
     std::map<Point, Index> indexMap;
     if (auto tri = Triangles::as(grid)) {
-
         Index num = tri->getNumCorners();
-        const Index *cl = num>0 ? tri->cl() : nullptr;
+        const Index *cl = num > 0 ? tri->cl() : nullptr;
         if (!cl)
             num = tri->getNumCoords();
         remap.reserve(num);
-        const Scalar *x=tri->x(), *y=tri->y(), *z=tri->z();
+        const Scalar *x = tri->x(), *y = tri->y(), *z = tri->z();
 
         Triangles::ptr ntri(new Triangles(num, 0));
         Index *ncl = ntri->cl().data();
@@ -147,7 +146,7 @@ bool WeldVertices::compute(std::shared_ptr<PortTask> task) const {
         if (cl) {
             Index count = 0;
             Index num = tri->getNumCorners();
-            for (Index i=0; i<num; ++i) {
+            for (Index i = 0; i < num; ++i) {
                 Index v = cl[i];
                 Point p(x[v], y[v], z[v], v, floats);
                 auto &idx = indexMap[p];
@@ -155,33 +154,32 @@ bool WeldVertices::compute(std::shared_ptr<PortTask> task) const {
                     remap.push_back(v);
                     idx = ++count;
                 }
-                ncl[i] = idx-1;
+                ncl[i] = idx - 1;
             }
             //sendInfo("found %d unique vertices among %d", count-1, num);
         } else {
             Index count = 0;
             Index num = tri->getNumCoords();
-            for (Index v=0; v<num; ++v) {
+            for (Index v = 0; v < num; ++v) {
                 Point p(x[v], y[v], z[v], v, floats);
                 auto &idx = indexMap[p];
                 if (idx == 0) {
                     remap.push_back(v);
                     idx = ++count;
                 }
-                ncl[v] = idx-1;
+                ncl[v] = idx - 1;
             }
             //sendInfo("found %d unique vertices among %d", count-1, num);
         }
 
         ogrid = ntri;
     } else if (auto quad = Quads::as(grid)) {
-
         Index num = quad->getNumCorners();
-        const Index *cl = num>0 ? quad->cl() : nullptr;
+        const Index *cl = num > 0 ? quad->cl() : nullptr;
         if (!cl)
             num = quad->getNumCoords();
         remap.reserve(num);
-        const Scalar *x=quad->x(), *y=quad->y(), *z=quad->z();
+        const Scalar *x = quad->x(), *y = quad->y(), *z = quad->z();
 
         Quads::ptr nquad(new Quads(num, 0));
         Index *ncl = nquad->cl().data();
@@ -189,7 +187,7 @@ bool WeldVertices::compute(std::shared_ptr<PortTask> task) const {
         if (cl) {
             Index count = 0;
             Index num = quad->getNumCorners();
-            for (Index i=0; i<num; ++i) {
+            for (Index i = 0; i < num; ++i) {
                 Index v = cl[i];
                 Point p(x[v], y[v], z[v], v, floats);
                 auto &idx = indexMap[p];
@@ -197,20 +195,20 @@ bool WeldVertices::compute(std::shared_ptr<PortTask> task) const {
                     remap.push_back(v);
                     idx = ++count;
                 }
-                ncl[i] = idx-1;
+                ncl[i] = idx - 1;
             }
             //sendInfo("found %d unique vertices among %d", count-1, num);
         } else {
             Index count = 0;
             Index num = quad->getNumCoords();
-            for (Index v=0; v<num; ++v) {
+            for (Index v = 0; v < num; ++v) {
                 Point p(x[v], y[v], z[v], v, floats);
                 auto &idx = indexMap[p];
                 if (idx == 0) {
                     remap.push_back(v);
                     idx = ++count;
                 }
-                ncl[v] = idx-1;
+                ncl[v] = idx - 1;
             }
             //sendInfo("found %d unique vertices among %d", count-1, num);
         }
@@ -218,10 +216,10 @@ bool WeldVertices::compute(std::shared_ptr<PortTask> task) const {
         ogrid = nquad;
     } else if (auto idx = Indexed::as(grid)) {
         Index num = idx->getNumCorners();
-        const Index *cl = num>0 ? idx->cl() : nullptr;
+        const Index *cl = num > 0 ? idx->cl() : nullptr;
         if (!cl)
             num = idx->getNumCoords();
-        const Scalar *x=idx->x(), *y=idx->y(), *z=idx->z();
+        const Scalar *x = idx->x(), *y = idx->y(), *z = idx->z();
         remap.reserve(num);
 
         Indexed::ptr nidx = idx->clone();
@@ -234,7 +232,7 @@ bool WeldVertices::compute(std::shared_ptr<PortTask> task) const {
         if (cl) {
             Index count = 0;
             Index num = idx->getNumCorners();
-            for (Index i=0; i<num; ++i) {
+            for (Index i = 0; i < num; ++i) {
                 Index v = cl[i];
                 Point p(x[v], y[v], z[v], v, floats);
                 auto &idx = indexMap[p];
@@ -242,20 +240,20 @@ bool WeldVertices::compute(std::shared_ptr<PortTask> task) const {
                     remap.push_back(v);
                     idx = ++count;
                 }
-                ncl[i] = idx-1;
+                ncl[i] = idx - 1;
             }
             //sendInfo("found %d unique vertices among %d", count-1, num);
         } else {
             Index count = 0;
             Index num = idx->getNumCoords();
-            for (Index v=0; v<num; ++v) {
+            for (Index v = 0; v < num; ++v) {
                 Point p(x[v], y[v], z[v], v, floats);
                 auto &idx = indexMap[p];
                 if (idx == 0) {
                     remap.push_back(v);
                     idx = ++count;
                 }
-                ncl[v] = idx-1;
+                ncl[v] = idx - 1;
             }
             //sendInfo("found %d unique vertices among %d", count-1, num);
         }
@@ -279,7 +277,7 @@ bool WeldVertices::compute(std::shared_ptr<PortTask> task) const {
     auto nx = &ncoord->x()[0];
     auto ny = &ncoord->y()[0];
     auto nz = &ncoord->z()[0];
-    for (Index i=0; i<remap.size(); ++i) {
+    for (Index i = 0; i < remap.size(); ++i) {
         nx[i] = ix[remap[i]];
         ny[i] = iy[remap[i]];
         nz[i] = iz[remap[i]];
@@ -293,9 +291,9 @@ bool WeldVertices::compute(std::shared_ptr<PortTask> task) const {
             auto nout = normals->clone();
             nout->resetArrays();
             nout->setSize(remap.size());
-            const Scalar *x=normals->x(), *y=normals->y(), *z=normals->z();
-            Scalar *ox=nout->x().data(), *oy=nout->y().data(), *oz=nout->z().data();
-            for (Index i=0; i<remap.size(); ++i) {
+            const Scalar *x = normals->x(), *y = normals->y(), *z = normals->z();
+            Scalar *ox = nout->x().data(), *oy = nout->y().data(), *oz = nout->z().data();
+            for (Index i = 0; i < remap.size(); ++i) {
                 ox[i] = x[remap[i]];
                 oy[i] = y[remap[i]];
                 oz[i] = z[remap[i]];
@@ -304,7 +302,7 @@ bool WeldVertices::compute(std::shared_ptr<PortTask> task) const {
         }
     }
 
-    for (int i=0; i<NumPorts; ++i) {
+    for (int i = 0; i < NumPorts; ++i) {
         if (din[i]) {
             if (din[i]->mapping() == DataBase::Element) {
                 auto dout = din[i]->clone();
@@ -319,15 +317,15 @@ bool WeldVertices::compute(std::shared_ptr<PortTask> task) const {
                     assert(so);
                     const Scalar *x = si->x();
                     Scalar *ox = so->x().data();
-                    for (Index i=0; i<remap.size(); ++i) {
+                    for (Index i = 0; i < remap.size(); ++i) {
                         ox[i] = x[remap[i]];
                     }
-                } else if (auto vi = Vec<Scalar,3>::as(Object::const_ptr(din[i]))) {
-                    auto vo = Vec<Scalar,3>::as(Object::ptr(dout));
+                } else if (auto vi = Vec<Scalar, 3>::as(Object::const_ptr(din[i]))) {
+                    auto vo = Vec<Scalar, 3>::as(Object::ptr(dout));
                     assert(vo);
-                    const Scalar *x=vi->x(), *y=vi->y(), *z=vi->z();
-                    Scalar *ox=vo->x().data(), *oy=vo->y().data(), *oz=vo->z().data();
-                    for (Index i=0; i<remap.size(); ++i) {
+                    const Scalar *x = vi->x(), *y = vi->y(), *z = vi->z();
+                    Scalar *ox = vo->x().data(), *oy = vo->y().data(), *oz = vo->z().data();
+                    for (Index i = 0; i < remap.size(); ++i) {
                         ox[i] = x[remap[i]];
                         oy[i] = y[remap[i]];
                         oz[i] = z[remap[i]];

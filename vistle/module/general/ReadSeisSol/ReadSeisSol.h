@@ -94,11 +94,11 @@ private:
     bool readXdmfUnstrParallel(XdmfArray *arrayGeo, const XdmfHeavyDataController *defaultController, const int block);
     bool readXdmfHDF5Data(Token &token, int timestep, int block);
     void readXdmfHDF5TopologyParallel(XdmfArray *xArrTopo,
-                                     const boost::shared_ptr<XdmfHeavyDataController> &defaultControllerTopo,
-                                     const int block);
+                                      const boost::shared_ptr<XdmfHeavyDataController> &defaultControllerTopo,
+                                      const int block);
     void readXdmfHDF5AttributeParallel(XdmfArray *xArrAtt, unsigned &attDim,
-                                      const boost::shared_ptr<XdmfHeavyDataController> &defaultController,
-                                      const int block, const int timestep);
+                                       const boost::shared_ptr<XdmfHeavyDataController> &defaultController,
+                                       const int block, const int timestep);
 
     void setArrayType(boost::shared_ptr<const XdmfArrayType> type);
     void setGridCenter(const boost::shared_ptr<const XdmfAttributeCenter> &type);

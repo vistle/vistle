@@ -74,11 +74,7 @@ public:
     enum Type { Unknown, Dir, File, System };
 
     FileInfo(const QString &path = QString())
-        : m_exists(false)
-        , m_isSymlink(false)
-        , m_type(Unknown)
-        , m_hidden(false)
-        , m_size(-1)
+    : m_exists(false), m_isSymlink(false), m_type(Unknown), m_hidden(false), m_size(-1)
     {}
 
     inline bool exists() { return m_exists; }
@@ -86,29 +82,20 @@ public:
     inline bool isFile() { return type() == File; }
     inline bool isSystem() { return type() == System; }
 
-    bool operator ==(const FileInfo &fi) const {
-        return fi.m_valid && m_valid
-                && fi.m_permissions == m_permissions
-                && fi.m_isSymlink == m_isSymlink
-                && fi.m_type == m_type
-                && fi.m_hidden == m_hidden
-                && fi.m_size == m_size
-                && fi.m_lastModified == m_lastModified;
+    bool operator==(const FileInfo &fi) const
+    {
+        return fi.m_valid && m_valid && fi.m_permissions == m_permissions && fi.m_isSymlink == m_isSymlink &&
+               fi.m_type == m_type && fi.m_hidden == m_hidden && fi.m_size == m_size &&
+               fi.m_lastModified == m_lastModified;
     }
 
 #ifndef QT_NO_FSFILEENGINE
-    bool isCaseSensitive() const {
-        return m_caseSensitive;
-    }
+    bool isCaseSensitive() const { return m_caseSensitive; }
 #endif
 
-    QFile::Permissions permissions() const {
-        return m_permissions;
-    }
+    QFile::Permissions permissions() const { return m_permissions; }
 
-    Type type() const {
-        return m_type;
-    }
+    Type type() const { return m_type; }
 
     bool isSymLink(bool ignoreNtfsSymLinks = false) const
     {
@@ -120,25 +107,19 @@ public:
         return m_isSymlink;
     }
 
-    bool isHidden() const {
-        return m_hidden;
-    }
+    bool isHidden() const { return m_hidden; }
 
 
-    QDateTime lastModified() const {
-        return m_lastModified;
-    }
+    QDateTime lastModified() const { return m_lastModified; }
 
-    qint64 size() const {
-        return m_size;
-    }
+    qint64 size() const { return m_size; }
 
     void updateType();
 
     QString displayType = QString("Unknown");
     QIcon icon;
 
-public :
+public:
     bool m_valid = false;
     bool m_exists = false;
     QFile::Permissions m_permissions = QFile::Permissions();
@@ -155,13 +136,12 @@ Q_DECLARE_METATYPE(FileInfo)
 
 class RemoteFileIconProvider;
 
-class Q_AUTOTEST_EXPORT AbstractFileInfoGatherer : public QThread
-{
-Q_OBJECT
+class Q_AUTOTEST_EXPORT AbstractFileInfoGatherer: public QThread {
+    Q_OBJECT
 
 Q_SIGNALS:
     void initialized() const;
-    void updates(const QString &directory, const QVector<QPair<QString, FileInfo> > &updates);
+    void updates(const QString &directory, const QVector<QPair<QString, FileInfo>> &updates);
     void newListOfFiles(const QString &directory, const QStringList &listOfFiles) const;
     void nameResolved(const QString &fileName, const QString &resolvedName) const;
     void directoryLoaded(const QString &path);
@@ -192,7 +172,6 @@ public Q_SLOTS:
     virtual void setIconProvider(RemoteFileIconProvider *provider);
 
 protected:
-
 #ifdef Q_OS_WIN
     bool m_resolveSymlinks; // not accessed by run()
 #endif

@@ -120,7 +120,8 @@ bool GhostCellGenerator::compute(std::shared_ptr<PortTask> task) const
         const auto n_num_corners = surface_neighbor->getNumCorners();
         const auto n_num_vertices = surface_neighbor->getNumVertices();
 
-        Polygons::ptr poly_build{new Polygons(num_elem + n_num_elem, num_corners + n_num_corners, num_vertices + n_num_vertices)};
+        Polygons::ptr poly_build{
+            new Polygons(num_elem + n_num_elem, num_corners + n_num_corners, num_vertices + n_num_vertices)};
 
         /* const Index *el = &surface->el()[0]; */
         /* const Index *cl = &surface->cl()[0]; */

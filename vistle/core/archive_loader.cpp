@@ -6,15 +6,16 @@
 
 namespace vistle {
 
-DeepArchiveFetcher::DeepArchiveFetcher(const std::map<std::string, buffer> &objects, const std::map<std::string, buffer> &arrays,
-                       const std::map<std::string, message::CompressionMode> &compressions, const std::map<std::string,size_t> &sizes)
-: m_objects(objects)
-, m_arrays(arrays)
-, m_compression(compressions)
-, m_rawSize(sizes)
+DeepArchiveFetcher::DeepArchiveFetcher(const std::map<std::string, buffer> &objects,
+                                       const std::map<std::string, buffer> &arrays,
+                                       const std::map<std::string, message::CompressionMode> &compressions,
+                                       const std::map<std::string, size_t> &sizes)
+: m_objects(objects), m_arrays(arrays), m_compression(compressions), m_rawSize(sizes)
 {}
 
-void DeepArchiveFetcher::requestArray(const std::string &arname, int type, const ArrayCompletionHandler& completeCallback) {
+void DeepArchiveFetcher::requestArray(const std::string &arname, int type,
+                                      const ArrayCompletionHandler &completeCallback)
+{
     //std::cerr << "DeepArchiveFetcher: trying array " << arname << std::endl;
     auto it = m_arrays.find(arname);
     if (it == m_arrays.end()) {
@@ -40,7 +41,7 @@ void DeepArchiveFetcher::requestArray(const std::string &arname, int type, const
             return;
         }
     }
-    vecistreambuf<buffer> vb(comp==message::CompressionNone ? it->second : raw);
+    vecistreambuf<buffer> vb(comp == message::CompressionNone ? it->second : raw);
     iarchive ar(vb);
     ar.setFetcher(shared_from_this());
     ArrayLoader loader(arname, type, ar);
@@ -53,7 +54,8 @@ void DeepArchiveFetcher::requestArray(const std::string &arname, int type, const
     }
 }
 
-void DeepArchiveFetcher::requestObject(const std::string &arname, const ObjectCompletionHandler &completeCallback) {
+void DeepArchiveFetcher::requestObject(const std::string &arname, const ObjectCompletionHandler &completeCallback)
+{
     //std::cerr << "DeepArchiveFetcher: trying object " << arname << std::endl;
     auto it = m_objects.find(arname);
     if (it == m_objects.end()) {
@@ -79,7 +81,7 @@ void DeepArchiveFetcher::requestObject(const std::string &arname, const ObjectCo
             return;
         }
     }
-    vecistreambuf<buffer> vb(comp==message::CompressionNone ? it->second : raw);
+    vecistreambuf<buffer> vb(comp == message::CompressionNone ? it->second : raw);
     iarchive ar(vb);
     ar.setFetcher(shared_from_this());
     Object::ptr obj(Object::loadObject(ar));
@@ -91,11 +93,13 @@ void DeepArchiveFetcher::requestObject(const std::string &arname, const ObjectCo
     }
 }
 
-bool DeepArchiveFetcher::renameObjects() const {
+bool DeepArchiveFetcher::renameObjects() const
+{
     return m_rename;
 }
 
-std::string DeepArchiveFetcher::translateObjectName(const std::string &name) const {
+std::string DeepArchiveFetcher::translateObjectName(const std::string &name) const
+{
     if (!m_rename)
         return name;
 
@@ -106,7 +110,8 @@ std::string DeepArchiveFetcher::translateObjectName(const std::string &name) con
     return it->second;
 }
 
-std::string DeepArchiveFetcher::translateArrayName(const std::string &name) const {
+std::string DeepArchiveFetcher::translateArrayName(const std::string &name) const
+{
     if (!m_rename)
         return name;
 
@@ -117,7 +122,8 @@ std::string DeepArchiveFetcher::translateArrayName(const std::string &name) cons
     return it->second;
 }
 
-void DeepArchiveFetcher::registerObjectNameTranslation(const std::string &arname, const std::string &name) {
+void DeepArchiveFetcher::registerObjectNameTranslation(const std::string &arname, const std::string &name)
+{
     if (!m_rename)
         return;
     auto p = m_transObject.emplace(arname, name);
@@ -127,7 +133,8 @@ void DeepArchiveFetcher::registerObjectNameTranslation(const std::string &arname
     }
 }
 
-void DeepArchiveFetcher::registerArrayNameTranslation(const std::string &arname, const std::string &name) {
+void DeepArchiveFetcher::registerArrayNameTranslation(const std::string &arname, const std::string &name)
+{
     if (!m_rename)
         return;
 
@@ -137,37 +144,45 @@ void DeepArchiveFetcher::registerArrayNameTranslation(const std::string &arname,
     }
 }
 
-void DeepArchiveFetcher::setRenameObjects(bool rename) {
+void DeepArchiveFetcher::setRenameObjects(bool rename)
+{
     m_rename = rename;
 }
 
-std::map<std::string, std::string> DeepArchiveFetcher::objectTranslations() const {
+std::map<std::string, std::string> DeepArchiveFetcher::objectTranslations() const
+{
     return m_transObject;
 }
 
-std::map<std::string, std::string> DeepArchiveFetcher::arrayTranslations() const {
+std::map<std::string, std::string> DeepArchiveFetcher::arrayTranslations() const
+{
     return m_transArray;
 }
 
-void DeepArchiveFetcher::setObjectTranslations(const std::map<std::string, std::string> &objs) {
+void DeepArchiveFetcher::setObjectTranslations(const std::map<std::string, std::string> &objs)
+{
     m_transObject = objs;
 }
 
-void DeepArchiveFetcher::setArrayTranslations(const std::map<std::string, std::string> &arrs) {
+void DeepArchiveFetcher::setArrayTranslations(const std::map<std::string, std::string> &arrs)
+{
     m_transArray = arrs;
 }
 
-void DeepArchiveFetcher::releaseArrays() {
-
+void DeepArchiveFetcher::releaseArrays()
+{
     m_ownedArrays.clear();
 }
 
-ArrayLoader::ArrayLoader(const std::string &name, int type, const iarchive &ar): m_ok(false), m_arname(name), m_type(type), m_ar(ar) {
+ArrayLoader::ArrayLoader(const std::string &name, int type, const iarchive &ar)
+: m_ok(false), m_arname(name), m_type(type), m_ar(ar)
+{
     m_name = m_ar.translateArrayName(m_arname);
     //std::cerr << "ArrayLoader: loading array " << m_arname << ", translates to " << m_name << std::endl;
 }
 
-bool ArrayLoader::load() {
+bool ArrayLoader::load()
+{
     try {
         boost::mpl::for_each<VectorTypes>(boost::reference_wrapper<ArrayLoader>(*this));
         if (!m_ok) {
@@ -175,17 +190,20 @@ bool ArrayLoader::load() {
         }
     } catch (std::exception &ex) {
         m_ok = false;
-            std::cerr << "ArrayLoader: failed to restore array " << m_name << " from archive - exception: " << ex.what() << std::endl;
+        std::cerr << "ArrayLoader: failed to restore array " << m_name << " from archive - exception: " << ex.what()
+                  << std::endl;
     }
     return m_ok;
 }
 
-const std::string &ArrayLoader::name() const {
+const std::string &ArrayLoader::name() const
+{
     return m_name;
 }
 
-std::shared_ptr<ArrayLoader::ArrayOwner> ArrayLoader::owner() const {
+std::shared_ptr<ArrayLoader::ArrayOwner> ArrayLoader::owner() const
+{
     return m_unreffer;
 }
 
-}
+} // namespace vistle

@@ -34,18 +34,13 @@ signals:
     void mouseClickEvent();
 
 public:
-    enum Status { SPAWNING,
-                  INITIALIZED,
-                  KILLED,
-                  BUSY,
-                  ERROR_STATUS };
+    enum Status { SPAWNING, INITIALIZED, KILLED, BUSY, ERROR_STATUS };
 
     Module(QGraphicsItem *parent = nullptr, QString name = QString());
     virtual ~Module();
-    QRectF boundingRect() const;                        // re-implemented
-    void paint(QPainter *painter,
-               const QStyleOptionGraphicsItem *option,
-               QWidget *widget);                        // re-implemented
+    QRectF boundingRect() const; // re-implemented
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
+               QWidget *widget); // re-implemented
     ///\todo this functionality is unnecessary, push functionality to port
     QPointF portPos(const Port *port) const;
     void setStatus(Module::Status status);
@@ -131,16 +126,17 @@ private:
     QColor m_borderColor;
 };
 
-template <class T>
-void Module::setParameter(QString name, const T &value) const {
-
-   vistle::VistleConnection::the().setParameter(id(), name.toStdString(), value);
+template<class T>
+void Module::setParameter(QString name, const T &value) const
+{
+    vistle::VistleConnection::the().setParameter(id(), name.toStdString(), value);
 }
 
-template <class T>
-std::shared_ptr<vistle::ParameterBase<T>> Module::getParameter(QString name) const {
-
-   return std::dynamic_pointer_cast<vistle::ParameterBase<T>>(vistle::VistleConnection::the().getParameter(id(), name.toStdString()));
+template<class T>
+std::shared_ptr<vistle::ParameterBase<T>> Module::getParameter(QString name) const
+{
+    return std::dynamic_pointer_cast<vistle::ParameterBase<T>>(
+        vistle::VistleConnection::the().getParameter(id(), name.toStdString()));
 }
 
 } //namespace gui

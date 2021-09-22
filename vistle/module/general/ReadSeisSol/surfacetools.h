@@ -49,4 +49,3 @@ Polygons::ptr extractSurface(ContainerIt beginElemList, ContainerIt beginConnect
 }
 } // namespace vistle
 #endif
-

@@ -10,18 +10,18 @@ namespace vistle {
 class UserInterface;
 }
 
-class QT_QTPROPERTYBROWSER_EXPORT VistleBrowserFactory : public QtAbstractEditorFactory<VistleBrowserPropertyManager>
-{
+class QT_QTPROPERTYBROWSER_EXPORT VistleBrowserFactory: public QtAbstractEditorFactory<VistleBrowserPropertyManager> {
     Q_OBJECT
 public:
     VistleBrowserFactory(QObject *parent = 0);
     ~VistleBrowserFactory();
     void setUi(vistle::UserInterface *ui);
+
 protected:
     void connectPropertyManager(VistleBrowserPropertyManager *manager);
-    QWidget *createEditor(VistleBrowserPropertyManager *manager, QtProperty *property,
-                QWidget *parent);
+    QWidget *createEditor(VistleBrowserPropertyManager *manager, QtProperty *property, QWidget *parent);
     void disconnectPropertyManager(VistleBrowserPropertyManager *manager);
+
 private:
     VistleBrowserFactoryPrivate *d_ptr;
     Q_DECLARE_PRIVATE(VistleBrowserFactory)

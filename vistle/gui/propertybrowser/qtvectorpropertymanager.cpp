@@ -7,17 +7,14 @@ using vistle::ParamVector;
 
 // QtVectorPropertyManager
 
-class QtVectorPropertyManagerPrivate
-{
+class QtVectorPropertyManagerPrivate {
     QtVectorPropertyManager *q_ptr;
     Q_DECLARE_PUBLIC(QtVectorPropertyManager)
 public:
-
-    struct Data
-    {
-       Data() : decimals(2), dimension(0) {}
-       void setMinimumValue(const ParamVector &val) { minVal = val; }
-       void setMaximumValue(const ParamVector &val) { maxVal = val; }
+    struct Data {
+        Data(): decimals(2), dimension(0) {}
+        void setMinimumValue(const ParamVector &val) { minVal = val; }
+        void setMaximumValue(const ParamVector &val) { maxVal = val; }
         ParamVector val;
         ParamVector minVal;
         ParamVector maxVal;
@@ -39,26 +36,26 @@ public:
 
 void QtVectorPropertyManagerPrivate::slotDoubleChanged(QtProperty *property, double value)
 {
-   for (int i=0; i<vistle::MaxDimension; ++i) {
-      if (QtProperty *prop = m_fromSub[i].value(property, nullptr)) {
-         ParamVector &p = m_values[prop].val;
-         p[i] = value;
-         q_ptr->propertyChangedSignal(prop);
-         q_ptr->valueChangedSignal(prop, p);
-         break;
-      }
-   }
+    for (int i = 0; i < vistle::MaxDimension; ++i) {
+        if (QtProperty *prop = m_fromSub[i].value(property, nullptr)) {
+            ParamVector &p = m_values[prop].val;
+            p[i] = value;
+            q_ptr->propertyChangedSignal(prop);
+            q_ptr->valueChangedSignal(prop, p);
+            break;
+        }
+    }
 }
 
 void QtVectorPropertyManagerPrivate::slotPropertyDestroyed(QtProperty *property)
 {
-   for (int i=0; i<vistle::MaxDimension; ++i) {
-      if (QtProperty *prop = m_fromSub[i].value(property, nullptr)) {
-         m_toSub[i][prop] = nullptr;
-         m_fromSub[i].remove(property);
-         break;
-      }
-   }
+    for (int i = 0; i < vistle::MaxDimension; ++i) {
+        if (QtProperty *prop = m_fromSub[i].value(property, nullptr)) {
+            m_toSub[i][prop] = nullptr;
+            m_fromSub[i].remove(property);
+            break;
+        }
+    }
 }
 
 /*! \class QtVectorPropertyManager
@@ -104,17 +101,16 @@ void QtVectorPropertyManagerPrivate::slotPropertyDestroyed(QtProperty *property)
 /*!
     Creates a manager with the given \a parent.
 */
-QtVectorPropertyManager::QtVectorPropertyManager(QObject *parent)
-    : QtAbstractPropertyManager(parent)
+QtVectorPropertyManager::QtVectorPropertyManager(QObject *parent): QtAbstractPropertyManager(parent)
 {
     d_ptr = new QtVectorPropertyManagerPrivate;
     d_ptr->q_ptr = this;
 
     d_ptr->m_doublePropertyManager = new VistleDoublePropertyManager(this);
-    connect(d_ptr->m_doublePropertyManager, SIGNAL(valueChanged(QtProperty *, double)),
-                this, SLOT(slotDoubleChanged(QtProperty *, double)));
-    connect(d_ptr->m_doublePropertyManager, SIGNAL(propertyDestroyed(QtProperty *)),
-                this, SLOT(slotPropertyDestroyed(QtProperty *)));
+    connect(d_ptr->m_doublePropertyManager, SIGNAL(valueChanged(QtProperty *, double)), this,
+            SLOT(slotDoubleChanged(QtProperty *, double)));
+    connect(d_ptr->m_doublePropertyManager, SIGNAL(propertyDestroyed(QtProperty *)), this,
+            SLOT(slotPropertyDestroyed(QtProperty *)));
 }
 
 /*!
@@ -176,13 +172,13 @@ QString QtVectorPropertyManager::valueText(const QtProperty *property) const
     //const int dec =  it.value().decimals;
 
     if (v.dim == 0)
-       return "()";
+        return "()";
 
     QString res;
-    for (int i=0; i<v.dim; ++i) {
-       if (i>0)
-          res += ", ";
-       res += QString::number(v[i], 'g', 2 /*dec*/);
+    for (int i = 0; i < v.dim; ++i) {
+        if (i > 0)
+            res += ", ";
+        res += QString::number(v[i], 'g', 2 /*dec*/);
     }
     res = "(" + res + ")";
     return res;
@@ -206,12 +202,12 @@ void QtVectorPropertyManager::setValue(QtProperty *property, const ParamVector &
         return;
 
     if (it.value().dimension != val.dim) {
-       setDimension(property, val.dim);
+        setDimension(property, val.dim);
     }
 
     it.value().val = val;
-    for (int i=0; i<val.dim; ++i) {
-       d_ptr->m_doublePropertyManager->setValue(d_ptr->m_toSub[i][property], val[i]);
+    for (int i = 0; i < val.dim; ++i) {
+        d_ptr->m_doublePropertyManager->setValue(d_ptr->m_toSub[i][property], val[i]);
     }
 
     emit propertyChanged(property);
@@ -244,8 +240,8 @@ void QtVectorPropertyManager::setDecimals(QtProperty *property, int prec)
         return;
 
     data.decimals = prec;
-    for (int i=0; i<vistle::MaxDimension; ++i) {
-       d_ptr->m_doublePropertyManager->setDecimals(d_ptr->m_toSub[i][property], prec);
+    for (int i = 0; i < vistle::MaxDimension; ++i) {
+        d_ptr->m_doublePropertyManager->setDecimals(d_ptr->m_toSub[i][property], prec);
     }
 
     it.value() = data;
@@ -262,14 +258,14 @@ void QtVectorPropertyManager::setDimension(QtProperty *property, int dim)
     QtVectorPropertyManagerPrivate::Data data = it.value();
 
     if (dim > vistle::MaxDimension)
-       dim = vistle::MaxDimension;
+        dim = vistle::MaxDimension;
 
     if (data.dimension == dim)
-       return;
+        return;
 
     data.dimension = dim;
-    for (int i=0; i<dim; ++i) {
-       property->addSubProperty(d_ptr->m_toSub[i][property]);
+    for (int i = 0; i < dim; ++i) {
+        property->addSubProperty(d_ptr->m_toSub[i][property]);
     }
 
     emit dimensionChanged(property, data.dimension);
@@ -277,13 +273,11 @@ void QtVectorPropertyManager::setDimension(QtProperty *property, int dim)
 
 void QtVectorPropertyManager::setRange(QtProperty *property, const ParamVector &minVal, const ParamVector &maxVal)
 {
-   void (QtVectorPropertyManagerPrivate::*setSubPropertyRange)(QtProperty *, ParamVector, ParamVector, ParamVector) = 0;
-   setBorderValues<ParamVector, QtVectorPropertyManagerPrivate, QtVectorPropertyManager, ParamVector>(this, d_ptr,
-                &QtVectorPropertyManager::propertyChanged,
-                &QtVectorPropertyManager::valueChanged,
-                &QtVectorPropertyManager::rangeChanged,
-                property, minVal, maxVal, setSubPropertyRange);
-
+    void (QtVectorPropertyManagerPrivate::*setSubPropertyRange)(QtProperty *, ParamVector, ParamVector, ParamVector) =
+        0;
+    setBorderValues<ParamVector, QtVectorPropertyManagerPrivate, QtVectorPropertyManager, ParamVector>(
+        this, d_ptr, &QtVectorPropertyManager::propertyChanged, &QtVectorPropertyManager::valueChanged,
+        &QtVectorPropertyManager::rangeChanged, property, minVal, maxVal, setSubPropertyRange);
 }
 
 /*!
@@ -293,25 +287,34 @@ void QtVectorPropertyManager::initializeProperty(QtProperty *property)
 {
     d_ptr->m_values[property] = QtVectorPropertyManagerPrivate::Data();
 
-    for (int i=0; i<vistle::MaxDimension; ++i) {
-       QtProperty *sub = d_ptr->m_doublePropertyManager->addProperty();
+    for (int i = 0; i < vistle::MaxDimension; ++i) {
+        QtProperty *sub = d_ptr->m_doublePropertyManager->addProperty();
 
-       QString n = QString::number(i);
-       switch (i) {
-       case 0: n="x"; break;
-       case 1: n="y"; break;
-       case 2: n="z"; break;
-       case 3: n="w"; break;
-       default: break;
-       }
-       sub->setPropertyName(n);
+        QString n = QString::number(i);
+        switch (i) {
+        case 0:
+            n = "x";
+            break;
+        case 1:
+            n = "y";
+            break;
+        case 2:
+            n = "z";
+            break;
+        case 3:
+            n = "w";
+            break;
+        default:
+            break;
+        }
+        sub->setPropertyName(n);
 
-       d_ptr->m_doublePropertyManager->setDecimals(sub, decimals(property));
-       d_ptr->m_doublePropertyManager->setValue(sub, 0.);
-       d_ptr->m_toSub[i][property] = sub;
-       d_ptr->m_fromSub[i][sub] = property;
+        d_ptr->m_doublePropertyManager->setDecimals(sub, decimals(property));
+        d_ptr->m_doublePropertyManager->setValue(sub, 0.);
+        d_ptr->m_toSub[i][property] = sub;
+        d_ptr->m_fromSub[i][sub] = property;
 
-       //property->addSubProperty(sub);
+        //property->addSubProperty(sub);
     }
 }
 
@@ -320,25 +323,24 @@ void QtVectorPropertyManager::initializeProperty(QtProperty *property)
 */
 void QtVectorPropertyManager::uninitializeProperty(QtProperty *property)
 {
-    for (int i=0; i<vistle::MaxDimension; ++i) {
-       QtProperty *sub = d_ptr->m_toSub[i][property];
-       if (sub) {
-          d_ptr->m_fromSub[i].remove(sub);
-          delete sub;
-       }
-       d_ptr->m_toSub[i].remove(property);
+    for (int i = 0; i < vistle::MaxDimension; ++i) {
+        QtProperty *sub = d_ptr->m_toSub[i][property];
+        if (sub) {
+            d_ptr->m_fromSub[i].remove(sub);
+            delete sub;
+        }
+        d_ptr->m_toSub[i].remove(property);
     }
 }
 
-void QtVectorPropertyManager::valueChangedSignal(QtProperty *property, const vistle::ParamVector &val) {
-
-   emit valueChanged(property, val);
+void QtVectorPropertyManager::valueChangedSignal(QtProperty *property, const vistle::ParamVector &val)
+{
+    emit valueChanged(property, val);
 }
 
-void QtVectorPropertyManager::propertyChangedSignal(QtProperty *property) {
-
-   emit propertyChanged(property);
+void QtVectorPropertyManager::propertyChangedSignal(QtProperty *property)
+{
+    emit propertyChanged(property);
 }
 
 #include "moc_qtvectorpropertymanager.cpp"
-

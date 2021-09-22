@@ -2,7 +2,7 @@
 #define TRACERTIMES_H
 #include <chrono>
 
-namespace times{
+namespace times {
 extern std::chrono::high_resolution_clock::time_point celloc_start;
 extern std::chrono::high_resolution_clock::time_point integr_start;
 extern std::chrono::high_resolution_clock::time_point interp_start;
@@ -18,5 +18,5 @@ extern unsigned int no_interp;
 double stop(std::chrono::high_resolution_clock::time_point start);
 std::chrono::high_resolution_clock::time_point start();
 void output();
-}
+} // namespace times
 #endif

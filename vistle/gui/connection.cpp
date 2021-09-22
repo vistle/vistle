@@ -21,80 +21,75 @@
 namespace gui {
 
 Connection::Connection(Port *startPort, Port *endPort, State state, QGraphicsItem *parent)
-: Base(parent)
-, m_highlight(false)
-, m_state(state)
-, m_color(Qt::black)
-, m_source(startPort)
-, m_destination(endPort)
+: Base(parent), m_highlight(false), m_state(state), m_color(Qt::black), m_source(startPort), m_destination(endPort)
 {
+    if (startPort->portType() == Port::Parameter && endPort->portType() == Port::Parameter)
+        m_connectionType = Port::Parameter;
+    else
+        m_connectionType = Port::Output;
 
-   if (startPort->portType()==Port::Parameter && endPort->portType()==Port::Parameter)
-      m_connectionType = Port::Parameter;
-   else
-      m_connectionType = Port::Output;
+    setPen(QPen(m_color, 2, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+    setFlag(QGraphicsItem::ItemIsSelectable, true);
+    setCursor(Qt::CrossCursor);
+    setState(m_state);
 
-   setPen(QPen(m_color, 2, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
-   setFlag(QGraphicsItem::ItemIsSelectable, true);
-   setCursor(Qt::CrossCursor);
-   setState(m_state);
+    setAcceptHoverEvents(true);
 
-   setAcceptHoverEvents(true);
-
-   updatePosition();
+    updatePosition();
 }
 
-Port *Connection::source() const {
-
-   return m_source;
+Port *Connection::source() const
+{
+    return m_source;
 }
 
-Port *Connection::destination() const {
-
-   return m_destination;
+Port *Connection::destination() const
+{
+    return m_destination;
 }
 
-Connection::State Connection::state() const {
-   return m_state;
+Connection::State Connection::state() const
+{
+    return m_state;
 }
 
-void Connection::setState(Connection::State state) {
+void Connection::setState(Connection::State state)
+{
+    m_state = state;
 
-   m_state = state;
-
-   if (!isHighlighted()) {
-      switch(m_state) {
-         case ToEstablish:
+    if (!isHighlighted()) {
+        switch (m_state) {
+        case ToEstablish:
             setColor(QColor(140, 140, 140));
             break;
-         case Established:
+        case Established:
             setColor(QColor(0, 0, 0));
             break;
-         case ToRemove:
+        case ToRemove:
             setColor(QColor(200, 50, 50));
             break;
-      }
-   }
+        }
+    }
 }
 
-bool Connection::isHighlighted() const {
-
-   return m_highlight;
+bool Connection::isHighlighted() const
+{
+    return m_highlight;
 }
 
-void Connection::setHighlight(bool highlight) {
-
-   m_highlight = highlight;
-   if (isHighlighted())
-      setColor(scene()->highlightColor());
-   else
-      setState(m_state);
+void Connection::setHighlight(bool highlight)
+{
+    m_highlight = highlight;
+    if (isHighlighted())
+        setColor(scene()->highlightColor());
+    else
+        setState(m_state);
 }
 
-void Connection::setColor(const QColor &color) {
-
-   m_color = color;
-   update();
+void Connection::setColor(const QColor &color)
+{
+    m_color = color;
+    update();
 }
 
 /*!
@@ -104,27 +99,27 @@ void Connection::setColor(const QColor &color) {
  */
 void Connection::updatePosition()
 {
-   QLineF line(mapFromScene(m_source->scenePos()), mapFromScene(m_destination->scenePos()));
-   setLine(line);
+    QLineF line(mapFromScene(m_source->scenePos()), mapFromScene(m_destination->scenePos()));
+    setLine(line);
 }
 
-DataFlowNetwork *Connection::scene() const {
-
-   return static_cast<DataFlowNetwork *>(Base::scene());
+DataFlowNetwork *Connection::scene() const
+{
+    return static_cast<DataFlowNetwork *>(Base::scene());
 }
 
-void Connection::hoverEnterEvent(QGraphicsSceneHoverEvent *event) {
-
-   setHighlight(true);
+void Connection::hoverEnterEvent(QGraphicsSceneHoverEvent *event)
+{
+    setHighlight(true);
 }
 
-void Connection::hoverLeaveEvent(QGraphicsSceneHoverEvent *event) {
-
+void Connection::hoverLeaveEvent(QGraphicsSceneHoverEvent *event)
+{
     setHighlight(false);
 }
 
-void Connection::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event) {
-
+void Connection::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event)
+{
     scene()->removeConnection(source(), destination(), true);
 }
 
@@ -135,8 +130,7 @@ void Connection::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event) {
  * \param option
  * \param widget
  */
-void Connection::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
-                   QWidget *widget)
+void Connection::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
     // Set the pen and the brush
     QPen m_Pen = pen();
@@ -155,8 +149,11 @@ void Connection::paint(QPainter *painter, const QStyleOptionGraphicsItem *option
 
     // change the angle depending on the orientation of the two objects
     double angle = ::acos(line().dx() / line().length());
-    if (line().dy() >= 0) { angle = (M_PI * 2) - angle;
-    } else                { angle = (M_PI * 2) + angle; }
+    if (line().dy() >= 0) {
+        angle = (M_PI * 2) - angle;
+    } else {
+        angle = (M_PI * 2) + angle;
+    }
 
     painter->drawLine(line());
 
@@ -172,7 +169,6 @@ void Connection::paint(QPainter *painter, const QStyleOptionGraphicsItem *option
     m_Line.translate(0, -8.0);
     painter->drawLine(m_Line);
     */
-
 }
 
 } //namespace gui

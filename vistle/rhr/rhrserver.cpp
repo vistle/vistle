@@ -32,15 +32,16 @@
 
 namespace vistle {
 
-bool RhrServer::send(const RemoteRenderMessage &msg, const buffer *payload) {
+bool RhrServer::send(const RemoteRenderMessage &msg, const buffer *payload)
+{
     message::Buffer buf(msg);
     auto &rem = buf.as<RemoteRenderMessage>();
     rem.rhr().modificationCount = m_modificationCount;
     return send(buf, payload);
 }
 
-bool RhrServer::send(message::Buffer msg, const buffer *payload) {
-
+bool RhrServer::send(message::Buffer msg, const buffer *payload)
+{
     if (m_clientModuleId != message::Id::Invalid) {
         msg.setDestId(m_clientModuleId);
         return m_module->sendMessage(msg, payload);
@@ -70,21 +71,15 @@ bool RhrServer::send(message::Buffer msg, const buffer *payload) {
 
 //! called when plugin is loaded
 RhrServer::RhrServer(vistle::Module *module)
-: m_module(module)
-, m_acceptorv4(m_io)
-, m_acceptorv6(m_io)
-, m_listen(true)
-, m_port(0)
-, m_destPort(0)
+: m_module(module), m_acceptorv4(m_io), m_acceptorv6(m_io), m_listen(true), m_port(0), m_destPort(0)
 {
-   init();
+    init();
 }
 
 // this is called if the plugin is removed at runtime
 RhrServer::~RhrServer()
 {
     while (m_queuedTiles > 0) {
-
         RhrServer::EncodeResult result;
         if (m_resultQueue.try_pop(result)) {
             --m_queuedTiles;
@@ -99,154 +94,157 @@ RhrServer::~RhrServer()
     //fprintf(stderr,"RhrServer::~RhrServer\n");
 }
 
-int RhrServer::numClients() const {
-
+int RhrServer::numClients() const
+{
     if (m_clientSocket)
         return 1;
 
     return 0;
 }
 
-bool RhrServer::isConnecting() const {
-
+bool RhrServer::isConnecting() const
+{
     return !m_listen;
 }
 
-bool RhrServer::isConnected() const {
+bool RhrServer::isConnected() const
+{
     if (m_clientModuleId != message::Id::Invalid)
         return true;
 
     return m_clientSocket.get();
 }
 
-void RhrServer::setColorCodec(CompressionParameters::ColorCodec value) {
-
+void RhrServer::setColorCodec(CompressionParameters::ColorCodec value)
+{
     m_imageParam.rgbaParam.rgbaCodec = value;
 }
 
-void RhrServer::setDepthCodec(CompressionParameters::DepthCodec value) {
-
+void RhrServer::setDepthCodec(CompressionParameters::DepthCodec value)
+{
     m_imageParam.depthParam.depthCodec = value;
 }
 
-void RhrServer::setColorCompression(message::CompressionMode mode) {
-
+void RhrServer::setColorCompression(message::CompressionMode mode)
+{
     m_imageParam.rgbaParam.rgbaCompress = mode;
 }
 
-void RhrServer::setDepthCompression(message::CompressionMode mode) {
-
+void RhrServer::setDepthCompression(message::CompressionMode mode)
+{
     m_imageParam.depthParam.depthCompress = mode;
 }
 
-void RhrServer::setDepthPrecision(int bits) {
-
+void RhrServer::setDepthPrecision(int bits)
+{
     m_imageParam.depthParam.depthPrecision = bits;
 }
 
-void RhrServer::setZfpMode(CompressionParameters::ZfpMode mode) {
-
+void RhrServer::setZfpMode(CompressionParameters::ZfpMode mode)
+{
     m_imageParam.depthParam.depthZfpMode = mode;
 }
 
-void RhrServer::setDumpImages(bool enable) {
-
+void RhrServer::setDumpImages(bool enable)
+{
     m_dumpImages = enable;
 }
 
-void RhrServer::setClientModuleId(int moduleId) {
-
+void RhrServer::setClientModuleId(int moduleId)
+{
     m_clientModuleId = moduleId;
 }
 
-unsigned short RhrServer::port() const {
-
+unsigned short RhrServer::port() const
+{
     return m_port;
 }
 
-unsigned short RhrServer::destinationPort() const {
-
+unsigned short RhrServer::destinationPort() const
+{
     return m_destPort;
 }
 
-const std::string &RhrServer::destinationHost() const {
-
+const std::string &RhrServer::destinationHost() const
+{
     return m_destHost;
 }
 
 
-size_t RhrServer::numViews() const {
-
+size_t RhrServer::numViews() const
+{
     return m_viewData.size();
 }
 
-unsigned char *RhrServer::rgba(size_t i) {
-
+unsigned char *RhrServer::rgba(size_t i)
+{
     if (i > numViews())
         return nullptr;
     return m_viewData[i].rgba.data();
 }
 
-const unsigned char *RhrServer::rgba(size_t i) const {
-
+const unsigned char *RhrServer::rgba(size_t i) const
+{
     if (i > numViews())
         return nullptr;
     return m_viewData[i].rgba.data();
 }
 
-float *RhrServer::depth(size_t i) {
-
+float *RhrServer::depth(size_t i)
+{
     if (i > numViews())
         return nullptr;
     return m_viewData[i].depth.data();
 }
 
-const float *RhrServer::depth(size_t i) const {
-
+const float *RhrServer::depth(size_t i) const
+{
     if (i > numViews())
         return nullptr;
     return m_viewData[i].depth.data();
 }
 
-int RhrServer::width(size_t i) const {
-
-   if (i > numViews())
-       return 0;
-   return m_viewData[i].param.width;
+int RhrServer::width(size_t i) const
+{
+    if (i > numViews())
+        return 0;
+    return m_viewData[i].param.width;
 }
 
-int RhrServer::height(size_t i) const {
-
-   if (i > numViews())
-       return 0;
-   return m_viewData[i].param.height;
+int RhrServer::height(size_t i) const
+{
+    if (i > numViews())
+        return 0;
+    return m_viewData[i].param.height;
 }
 
-const vistle::Matrix4 &RhrServer::viewMat(size_t i) const {
-
-   return m_viewData[i].param.view;
+const vistle::Matrix4 &RhrServer::viewMat(size_t i) const
+{
+    return m_viewData[i].param.view;
 }
 
-const vistle::Matrix4 &RhrServer::projMat(size_t i) const {
-
-   return m_viewData[i].param.proj;
+const vistle::Matrix4 &RhrServer::projMat(size_t i) const
+{
+    return m_viewData[i].param.proj;
 }
 
-const vistle::Matrix4 &RhrServer::modelMat(size_t i) const {
-
-   return m_viewData[i].param.model;
+const vistle::Matrix4 &RhrServer::modelMat(size_t i) const
+{
+    return m_viewData[i].param.model;
 }
 
-void RhrServer::setBoundingSphere(const vistle::Vector3 &center, const vistle::Scalar &radius) {
+void RhrServer::setBoundingSphere(const vistle::Vector3 &center, const vistle::Scalar &radius)
+{
+    //std::cerr << "RhrServer: new bounding sphere: center=" << center << ", r=" << radius << std::endl;
 
-   //std::cerr << "RhrServer: new bounding sphere: center=" << center << ", r=" << radius << std::endl;
-
-   m_boundCenter = center;
-   m_boundRadius = radius;
+    m_boundCenter = center;
+    m_boundRadius = radius;
 }
 
-void RhrServer::updateVariants(const std::vector<std::pair<std::string, vistle::RenderObject::InitialVariantVisibility>> &added, const std::vector<std::string> &removed) {
-
+void RhrServer::updateVariants(
+    const std::vector<std::pair<std::string, vistle::RenderObject::InitialVariantVisibility>> &added,
+    const std::vector<std::string> &removed)
+{
     for (const auto &var: removed) {
         auto it = m_localVariants.find(var);
         if (it != m_localVariants.end())
@@ -269,7 +267,7 @@ void RhrServer::updateVariants(const std::vector<std::pair<std::string, vistle::
             strncpy(msg.name, var.first.c_str(), sizeof(msg.name));
             if (var.second != vistle::RenderObject::DontChange) {
                 msg.configureVisibility = 1;
-                msg.visible = var.second==vistle::RenderObject::Visible ? 1 : 0;
+                msg.visible = var.second == vistle::RenderObject::Visible ? 1 : 0;
             }
             send(msg);
         }
@@ -277,23 +275,22 @@ void RhrServer::updateVariants(const std::vector<std::pair<std::string, vistle::
 }
 
 //! called after plug-in is loaded and scenegraph is initialized
-void RhrServer::init() {
-
-   if (!crypto::initialize(sizeof(message::Identify::session_data_t))) {
-
+void RhrServer::init()
+{
+    if (!crypto::initialize(sizeof(message::Identify::session_data_t))) {
         CERR << "failed to initialize cryptographic support" << std::endl;
         throw except::exception("failed to initialize cryptographic support");
-   }
+    }
 
-   lightsUpdateCount = 0;
+    lightsUpdateCount = 0;
 
-   m_tileWidth = 256;
-   m_tileHeight = 256;
+    m_tileWidth = 256;
+    m_tileHeight = 256;
 
-   m_numTimesteps = 0;
+    m_numTimesteps = 0;
 
-   m_boundCenter = vistle::Vector3(0., 0., 0.);
-   m_boundRadius = 1.;
+    m_boundCenter = vistle::Vector3(0., 0., 0.);
+    m_boundRadius = 1.;
 
 #if 0
    m_benchmark = false;
@@ -301,22 +298,23 @@ void RhrServer::init() {
    m_compressionrate = false;
 #endif
 
-   m_imageParam.rgbaParam.rgbaCompress = message::CompressionNone;
-   m_imageParam.depthParam.depthPrecision = 32;
-   m_imageParam.depthParam.depthCodec = CompressionParameters::DepthRaw;;
-   m_imageParam.depthParam.depthCompress = message::CompressionLz4;
-   m_imageParam.depthParam.depthFloat = true;
-   m_imageParam.depthParam.depthZfpMode = CompressionParameters::ZfpFixedRate;
+    m_imageParam.rgbaParam.rgbaCompress = message::CompressionNone;
+    m_imageParam.depthParam.depthPrecision = 32;
+    m_imageParam.depthParam.depthCodec = CompressionParameters::DepthRaw;
+    ;
+    m_imageParam.depthParam.depthCompress = message::CompressionLz4;
+    m_imageParam.depthParam.depthFloat = true;
+    m_imageParam.depthParam.depthZfpMode = CompressionParameters::ZfpFixedRate;
 
-   m_resizeBlocked = false;
-   m_queuedTiles = 0;
-   m_firstTile = false;
+    m_resizeBlocked = false;
+    m_queuedTiles = 0;
+    m_firstTile = false;
 
-   resetClient();
+    resetClient();
 }
 
-void RhrServer::resetClient() {
-
+void RhrServer::resetClient()
+{
     finishTiles(RhrServer::ViewParameters(), true /* finish */, false /* send */);
 
     ++m_updateCount;
@@ -330,8 +328,8 @@ void RhrServer::resetClient() {
     m_clientModuleId = message::Id::Invalid;
 }
 
-bool RhrServer::startServer(unsigned short port) {
-
+bool RhrServer::startServer(unsigned short port)
+{
     m_listen = true;
 
     boost::system::error_code ec;
@@ -355,42 +353,43 @@ bool RhrServer::startServer(unsigned short port) {
     return ret;
 }
 
-bool RhrServer::startAccept(asio::ip::tcp::acceptor &a) {
+bool RhrServer::startAccept(asio::ip::tcp::acceptor &a)
+{
+    auto sock = std::make_shared<asio::ip::tcp::socket>(m_io);
 
-   auto sock = std::make_shared<asio::ip::tcp::socket>(m_io);
-
-   a.async_accept(*sock, [this, &a, sock](boost::system::error_code ec){handleAccept(a, sock, ec);});
-   return true;
+    a.async_accept(*sock, [this, &a, sock](boost::system::error_code ec) { handleAccept(a, sock, ec); });
+    return true;
 }
 
-void RhrServer::handleAccept(asio::ip::tcp::acceptor &a, std::shared_ptr<asio::ip::tcp::socket> sock, const boost::system::error_code &error) {
+void RhrServer::handleAccept(asio::ip::tcp::acceptor &a, std::shared_ptr<asio::ip::tcp::socket> sock,
+                             const boost::system::error_code &error)
+{
+    if (error) {
+        CERR << "error in accept: " << error.message() << std::endl;
+        return;
+    }
 
-   if (error) {
-      CERR << "error in accept: " << error.message() << std::endl;
-      return;
-   }
-
-   if (m_clientSocket) {
+    if (m_clientSocket) {
 #if 0
        CERR << "incoming connection, rejecting as already servicing a client" << std::endl;
        startAccept();
        return;
 #else
-       CERR << "incoming connection, disconnecting from current client" << std::endl;
-       resetClient();
+        CERR << "incoming connection, disconnecting from current client" << std::endl;
+        resetClient();
 #endif
-   }
+    }
 
-   CERR << "incoming connection, accepting new client" << std::endl;
-   m_clientSocket = sock;
+    CERR << "incoming connection, accepting new client" << std::endl;
+    m_clientSocket = sock;
 
-   send(message::Identify());
+    send(message::Identify());
 
-   startAccept(a);
+    startAccept(a);
 }
 
-bool RhrServer::makeConnection(const std::string &host, unsigned short port, int secondsToTry) {
-
+bool RhrServer::makeConnection(const std::string &host, unsigned short port, int secondsToTry)
+{
     m_listen = false;
 
     CERR << "connecting to " << host << ":" << port << "..." << std::endl;
@@ -405,16 +404,16 @@ bool RhrServer::makeConnection(const std::string &host, unsigned short port, int
     }
 
     std::shared_ptr<asio::ip::tcp::socket> sock(new asio::ip::tcp::socket(m_io));
-    int i=0;
-    while (secondsToTry <= 0 || i < secondsToTry*10) {
+    int i = 0;
+    while (secondsToTry <= 0 || i < secondsToTry * 10) {
         asio::connect(*sock, endpoint_iterator, ec);
         if (secondsToTry == 0)
             break;
         if (ec != boost::system::errc::connection_refused) {
             break;
         }
-        if (i%10 == 0 && i>0) {
-            CERR << "still trying to connect after " << i/10 << " seconds" << std::endl;
+        if (i % 10 == 0 && i > 0) {
+            CERR << "still trying to connect after " << i / 10 << " seconds" << std::endl;
         }
         usleep(100000);
         ++i;
@@ -438,8 +437,8 @@ bool RhrServer::makeConnection(const std::string &host, unsigned short port, int
 }
 
 
-void RhrServer::resize(size_t viewNum, int w, int h) {
-
+void RhrServer::resize(size_t viewNum, int w, int h)
+{
 #if 0
     if (w!=-1 && h!=-1) {
         std::cout << "resize: view=" << viewNum << ", w=" << w << ", h=" << h << std::endl;
@@ -449,188 +448,185 @@ void RhrServer::resize(size_t viewNum, int w, int h) {
         m_viewData.emplace_back();
     }
 
-   ViewData &vd = m_viewData[viewNum];
-   if (m_resizeBlocked) {
+    ViewData &vd = m_viewData[viewNum];
+    if (m_resizeBlocked) {
+        if (w != -1 && h != -1) {
+            vd.newWidth = w;
+            vd.newHeight = h;
+        }
+        return;
+    }
 
-       if (w != -1 && h != -1) {
-           vd.newWidth = w;
-           vd.newHeight = h;
-       }
-       return;
-   }
+    if (w == -1 && h == -1) {
+        w = vd.newWidth;
+        h = vd.newHeight;
+    }
 
-   if (w==-1 && h==-1) {
+    if (w == -1 || h == -1) {
+        //CERR << "rejecting resize for view " << viewNum << " to " << w << "x" << h << std::endl;
+        return;
+    }
 
-       w = vd.newWidth;
-       h = vd.newHeight;
-   }
+    if (vd.nparam.width != w || vd.nparam.height != h) {
+        vd.nparam.width = w;
+        vd.nparam.height = h;
 
-   if (w == -1 || h == -1) {
-      //CERR << "rejecting resize for view " << viewNum << " to " << w << "x" << h << std::endl;
-      return;
-   }
+        CERR << "resizing view " << viewNum << " to " << w << "x" << h << std::endl;
 
-   if (vd.nparam.width != w || vd.nparam.height != h) {
-      vd.nparam.width = w;
-      vd.nparam.height = h;
+        w = std::max(1, w);
+        h = std::max(1, h);
 
-      CERR << "resizing view " << viewNum << " to " << w << "x" << h << std::endl;
-
-      w = std::max(1,w);
-      h = std::max(1,h);
-
-      vd.rgba.resize(w*h*4);
-      vd.depth.resize(w*h);
-   }
+        vd.rgba.resize(w * h * 4);
+        vd.depth.resize(w * h);
+    }
 }
 
-void RhrServer::deferredResize() {
-
+void RhrServer::deferredResize()
+{
     assert(!m_resizeBlocked);
-    for (size_t i=0; i<numViews(); ++i) {
+    for (size_t i = 0; i < numViews(); ++i) {
         resize(i, -1, -1);
     }
 }
 
 //! handle matrix update message
-bool RhrServer::handleMatrices(std::shared_ptr<socket> sock, const matricesMsg &mat) {
+bool RhrServer::handleMatrices(std::shared_ptr<socket> sock, const matricesMsg &mat)
+{
+    size_t viewNum = mat.viewNum >= 0 ? mat.viewNum : 0;
+    if (viewNum >= m_viewData.size()) {
+        m_viewData.resize(viewNum + 1);
+    }
 
-   size_t viewNum = mat.viewNum >= 0 ? mat.viewNum : 0;
-   if (viewNum >= m_viewData.size()) {
-       m_viewData.resize(viewNum+1);
-   }
-   
-   resize(viewNum, mat.width, mat.height);
+    resize(viewNum, mat.width, mat.height);
 
-   ViewData &vd = m_viewData[viewNum];
+    ViewData &vd = m_viewData[viewNum];
 
-   vd.nparam.timestep = timestep();
-   vd.nparam.matrixTime = mat.time;
-   vd.nparam.requestNumber = mat.requestNumber;
-   vd.nparam.eye = mat.eye;
+    vd.nparam.timestep = timestep();
+    vd.nparam.matrixTime = mat.time;
+    vd.nparam.requestNumber = mat.requestNumber;
+    vd.nparam.eye = mat.eye;
 
-   for (int i=0; i<16; ++i) {
-      vd.nparam.head.data()[i] = mat.head[i];
-      vd.nparam.proj.data()[i] = mat.proj[i];
-      vd.nparam.view.data()[i] = mat.view[i];
-      vd.nparam.model.data()[i] = mat.model[i];
-   }
+    for (int i = 0; i < 16; ++i) {
+        vd.nparam.head.data()[i] = mat.head[i];
+        vd.nparam.proj.data()[i] = mat.proj[i];
+        vd.nparam.view.data()[i] = mat.view[i];
+        vd.nparam.model.data()[i] = mat.model[i];
+    }
 
-   //std::cerr << "handleMatrices: view " << mat.viewNum << ", proj: " << vd.nparam.proj << std::endl;
+    //std::cerr << "handleMatrices: view " << mat.viewNum << ", proj: " << vd.nparam.proj << std::endl;
 
-   if (mat.last) {
-       m_viewData.resize(viewNum+1);
-       for (size_t i=0; i<numViews(); ++i) {
-           m_viewData[i].param = m_viewData[i].nparam;
-       }
-   }
+    if (mat.last) {
+        m_viewData.resize(viewNum + 1);
+        for (size_t i = 0; i < numViews(); ++i) {
+            m_viewData[i].param = m_viewData[i].nparam;
+        }
+    }
 
-   return true;
+    return true;
 }
 
 //! handle light update message
-bool RhrServer::handleLights(std::shared_ptr<socket> sock, const lightsMsg &light) {
-
+bool RhrServer::handleLights(std::shared_ptr<socket> sock, const lightsMsg &light)
+{
 #define SET_VEC(d, dst, src) \
-      do { \
-         for (int k=0; k<d; ++k) { \
+    do { \
+        for (int k = 0; k < d; ++k) { \
             (dst)[k] = (src)[k]; \
-         } \
-      } while(false)
+        } \
+    } while (false)
 
-   std::vector<Light> newLights;
-   for (int i=0; i<lightsMsg::NumLights; ++i) {
+    std::vector<Light> newLights;
+    for (int i = 0; i < lightsMsg::NumLights; ++i) {
+        const auto &cl = light.lights[i];
+        newLights.emplace_back();
+        auto &l = newLights.back();
 
-      const auto &cl = light.lights[i];
-      newLights.emplace_back();
-      auto &l = newLights.back();
+        SET_VEC(4, l.position, cl.position);
+        SET_VEC(4, l.ambient, cl.ambient);
+        SET_VEC(4, l.diffuse, cl.diffuse);
+        SET_VEC(4, l.specular, cl.specular);
+        SET_VEC(3, l.attenuation, cl.attenuation);
+        SET_VEC(3, l.direction, cl.spot_direction);
+        l.spotCutoff = cl.spot_cutoff;
+        l.spotExponent = cl.spot_exponent;
+        l.enabled = cl.enabled;
+        //std::cerr << "Light " << i << ": ambient: " << l.ambient << std::endl;
+        //std::cerr << "Light " << i << ": diffuse: " << l.diffuse << std::endl;
+    }
 
-      SET_VEC(4, l.position, cl.position);
-      SET_VEC(4, l.ambient, cl.ambient);
-      SET_VEC(4, l.diffuse, cl.diffuse);
-      SET_VEC(4, l.specular, cl.specular);
-      SET_VEC(3, l.attenuation, cl.attenuation);
-      SET_VEC(3, l.direction, cl.spot_direction);
-      l.spotCutoff = cl.spot_cutoff;
-      l.spotExponent = cl.spot_exponent;
-      l.enabled = cl.enabled;
-      //std::cerr << "Light " << i << ": ambient: " << l.ambient << std::endl;
-      //std::cerr << "Light " << i << ": diffuse: " << l.diffuse << std::endl;
-   }
+    std::swap(lights, newLights);
+    if (lights != newLights) {
+        ++lightsUpdateCount;
+        std::cerr << "handleLightsMessage: lights changed" << std::endl;
+    }
 
-   std::swap(lights, newLights);
-   if (lights != newLights) {
-       ++lightsUpdateCount;
-       std::cerr << "handleLightsMessage: lights changed" << std::endl;
-   }
+    //std::cerr << "handleLightsMessage: " << lights.size() << " lights received" << std::endl;
 
-   //std::cerr << "handleLightsMessage: " << lights.size() << " lights received" << std::endl;
-
-   return true;
+    return true;
 }
 
-int RhrServer::timestep() const {
-
-   return m_imageParam.timestep;
+int RhrServer::timestep() const
+{
+    return m_imageParam.timestep;
 }
 
-void RhrServer::setNumTimesteps(unsigned num) {
+void RhrServer::setNumTimesteps(unsigned num)
+{
+    if (num != m_numTimesteps) {
+        m_numTimesteps = num;
 
-   if (num != m_numTimesteps) {
-      m_numTimesteps = num;
-
-      if (isConnected()) {
-          animationMsg anim;
-          anim.current = m_imageParam.timestep;
-          anim.total = num;
-          send(anim);
-      }
-   }
+        if (isConnected()) {
+            animationMsg anim;
+            anim.current = m_imageParam.timestep;
+            anim.total = num;
+            send(anim);
+        }
+    }
 }
 
-size_t RhrServer::updateCount() const {
-
+size_t RhrServer::updateCount() const
+{
     return m_updateCount;
 }
 
-const RhrServer::VariantVisibilityMap &RhrServer::getVariants() const {
-
+const RhrServer::VariantVisibilityMap &RhrServer::getVariants() const
+{
     return m_clientVariants;
 }
 
 //! send bounding sphere of scene to a client
-void RhrServer::sendBoundsMessage(std::shared_ptr<socket> sock) {
-
+void RhrServer::sendBoundsMessage(std::shared_ptr<socket> sock)
+{
 #if 0
    std::cerr << "sending bounds: "
              << "c: " << m_boundCenter
              << "r: " << m_boundRadius << std::endl;
 #endif
 
-   boundsMsg msg;
-   msg.type = rfbBounds;
-   msg.center[0] = m_boundCenter[0];
-   msg.center[1] = m_boundCenter[1];
-   msg.center[2] = m_boundCenter[2];
-   msg.radius = m_boundRadius;
+    boundsMsg msg;
+    msg.type = rfbBounds;
+    msg.center[0] = m_boundCenter[0];
+    msg.center[1] = m_boundCenter[1];
+    msg.center[2] = m_boundCenter[2];
+    msg.radius = m_boundRadius;
 
-   send(msg);
+    send(msg);
 }
 
 
 //! handle request for a bounding sphere update
-bool RhrServer::handleBounds(std::shared_ptr<socket> sock, const boundsMsg &bound) {
+bool RhrServer::handleBounds(std::shared_ptr<socket> sock, const boundsMsg &bound)
+{
+    if (bound.sendreply) {
+        //std::cout << "SENDING BOUNDS" << std::endl;
+        sendBoundsMessage(sock);
+    }
 
-   if (bound.sendreply) {
-      //std::cout << "SENDING BOUNDS" << std::endl;
-      sendBoundsMessage(sock);
-   }
-
-   return true;
+    return true;
 }
 
-bool RhrServer::handleAnimation(std::shared_ptr<RhrServer::socket> sock, const animationMsg &anim) {
-
+bool RhrServer::handleAnimation(std::shared_ptr<RhrServer::socket> sock, const animationMsg &anim)
+{
     //CERR << "app timestep: " << anim.current << std::endl;
     m_imageParam.timestep = anim.current;
     m_imageParam.timestepRequestTime = anim.time;
@@ -638,7 +634,8 @@ bool RhrServer::handleAnimation(std::shared_ptr<RhrServer::socket> sock, const a
     return true;
 }
 
-bool RhrServer::handleVariant(std::shared_ptr<RhrServer::socket> sock, const variantMsg &variant) {
+bool RhrServer::handleVariant(std::shared_ptr<RhrServer::socket> sock, const variantMsg &variant)
+{
     CERR << "app variant: " << variant.name << ", visible: " << variant.visible << std::endl;
     std::string name(variant.name);
     bool visible = variant.visible;
@@ -648,9 +645,8 @@ bool RhrServer::handleVariant(std::shared_ptr<RhrServer::socket> sock, const var
 }
 
 //! this is called before every frame, used for polling for RFB messages
-void
-RhrServer::preFrame() {
-
+void RhrServer::preFrame()
+{
     if (m_clientModuleId != vistle::message::Id::Invalid)
         return;
 
@@ -691,7 +687,7 @@ RhrServer::preFrame() {
             break;
         }
 
-        switch(msg.type()) {
+        switch (msg.type()) {
         case message::IDENTIFY: {
             auto &m = msg.as<message::Identify>();
             using message::Identify;
@@ -736,57 +732,58 @@ RhrServer::preFrame() {
     } while (received);
 }
 
-void RhrServer::invalidate(int viewNum, int x, int y, int w, int h, const RhrServer::ViewParameters &param, bool lastView) {
-
-   if (isConnected())
-       encodeAndSend(viewNum, x, y, w, h, param, lastView);
+void RhrServer::invalidate(int viewNum, int x, int y, int w, int h, const RhrServer::ViewParameters &param,
+                           bool lastView)
+{
+    if (isConnected())
+        encodeAndSend(viewNum, x, y, w, h, param, lastView);
 }
 
-void RhrServer::updateModificationCount() {
-
+void RhrServer::updateModificationCount()
+{
     ++m_modificationCount;
 }
 
 namespace {
 
-tileMsg *newTileMsg(const RhrServer::ImageParameters &param, const RhrServer::ViewParameters &vp, int viewNum, int x, int y, int w, int h) {
+tileMsg *newTileMsg(const RhrServer::ImageParameters &param, const RhrServer::ViewParameters &vp, int viewNum, int x,
+                    int y, int w, int h)
+{
+    assert(x + w <= std::max(0, vp.width));
+    assert(y + h <= std::max(0, vp.height));
 
-   assert(x+w <= std::max(0,vp.width));
-   assert(y+h <= std::max(0,vp.height));
+    tileMsg *message = new tileMsg;
 
-   tileMsg *message = new tileMsg;
+    message->viewNum = viewNum;
+    message->eye = vp.eye;
+    message->width = w;
+    message->height = h;
+    message->x = x;
+    message->y = y;
+    message->totalwidth = vp.width;
+    message->totalheight = vp.height;
+    message->size = 0;
+    message->compression = rfbTileRaw;
+    message->unzippedsize = 0;
 
-   message->viewNum = viewNum;
-   message->eye = vp.eye;
-   message->width = w;
-   message->height = h;
-   message->x = x;
-   message->y = y;
-   message->totalwidth = vp.width;
-   message->totalheight = vp.height;
-   message->size = 0;
-   message->compression = rfbTileRaw;
-   message->unzippedsize = 0;
+    message->frameNumber = vp.frameNumber;
+    message->requestNumber = vp.requestNumber;
+    message->requestTime = vp.matrixTime > param.timestepRequestTime ? vp.matrixTime : param.timestepRequestTime;
+    message->timestep = vp.timestep;
+    //std::cerr << "new tile msg: timestep=" << vp.timestep << std::endl;
+    for (int i = 0; i < 16; ++i) {
+        message->head[i] = vp.head.data()[i];
+        message->model[i] = vp.model.data()[i];
+        message->view[i] = vp.view.data()[i];
+        message->proj[i] = vp.proj.data()[i];
+    }
 
-   message->frameNumber = vp.frameNumber;
-   message->requestNumber = vp.requestNumber;
-   message->requestTime = vp.matrixTime > param.timestepRequestTime ? vp.matrixTime : param.timestepRequestTime;
-   message->timestep = vp.timestep;
-   //std::cerr << "new tile msg: timestep=" << vp.timestep << std::endl;
-   for (int i=0; i<16; ++i) {
-      message->head[i] = vp.head.data()[i];
-      message->model[i] = vp.model.data()[i];
-      message->view[i] = vp.view.data()[i];
-      message->proj[i] = vp.proj.data()[i];
-   }
-
-   return message;
+    return message;
 }
 
-}
+} // namespace
 
 struct EncodeTask: public tbb::task {
-
     tbb::concurrent_queue<RhrServer::EncodeResult> &resultQueue;
     float *depth;
     unsigned char *rgba;
@@ -798,7 +795,7 @@ struct EncodeTask: public tbb::task {
     bool subsamp;
 
     EncodeTask(tbb::concurrent_queue<RhrServer::EncodeResult> &resultQueue, int viewNum, int x, int y, int w, int h,
-          float *depth, const RhrServer::ImageParameters &param, const RhrServer::ViewParameters &vp)
+               float *depth, const RhrServer::ImageParameters &param, const RhrServer::ViewParameters &vp)
     : resultQueue(resultQueue)
     , depth(depth)
     , rgba(nullptr)
@@ -821,23 +818,23 @@ struct EncodeTask: public tbb::task {
             message->format = rfbDepthFloat;
             bpp = 4;
         } else {
-            switch(param.depthParam.depthPrecision) {
-                case 8:
-                    message->format = rfbDepth8Bit;
-                    bpp = 1;
-                    break;
-                case 16:
-                    message->format = rfbDepth16Bit;
-                    bpp = 2;
-                    break;
-                case 24:
-                    message->format = rfbDepth24Bit;
-                    bpp = 4;
-                    break;
-                case 32:
-                    message->format = rfbDepth32Bit;
-                    bpp = 4;
-                    break;
+            switch (param.depthParam.depthPrecision) {
+            case 8:
+                message->format = rfbDepth8Bit;
+                bpp = 1;
+                break;
+            case 16:
+                message->format = rfbDepth16Bit;
+                bpp = 2;
+                break;
+            case 24:
+                message->format = rfbDepth24Bit;
+                bpp = 4;
+                break;
+            case 32:
+                message->format = rfbDepth32Bit;
+                bpp = 4;
+                break;
             }
         }
 
@@ -849,11 +846,11 @@ struct EncodeTask: public tbb::task {
             message->compression |= rfbTileDepthZfp;
         } else
 #endif
-        if (param.depthParam.depthCodec == CompressionParameters::DepthQuant) {
-            message->format = param.depthParam.depthPrecision<=16 ? rfbDepth16Bit : rfbDepth24Bit;
+            if (param.depthParam.depthCodec == CompressionParameters::DepthQuant) {
+            message->format = param.depthParam.depthPrecision <= 16 ? rfbDepth16Bit : rfbDepth24Bit;
             message->compression |= rfbTileDepthQuantize;
         } else if (param.depthParam.depthCodec == CompressionParameters::DepthQuantPlanar) {
-            message->format = param.depthParam.depthPrecision<=16 ? rfbDepth16Bit : rfbDepth24Bit;
+            message->format = param.depthParam.depthPrecision <= 16 ? rfbDepth16Bit : rfbDepth24Bit;
             message->compression |= rfbTileDepthQuantizePlanar;
         } else if (param.depthParam.depthCodec == CompressionParameters::DepthPredict) {
             message->compression |= rfbTileDepthPredict;
@@ -863,7 +860,7 @@ struct EncodeTask: public tbb::task {
     }
 
     EncodeTask(tbb::concurrent_queue<RhrServer::EncodeResult> &resultQueue, int viewNum, int x, int y, int w, int h,
-          unsigned char *rgba, const RhrServer::ImageParameters &param, const RhrServer::ViewParameters &vp)
+               unsigned char *rgba, const RhrServer::ImageParameters &param, const RhrServer::ViewParameters &vp)
     : resultQueue(resultQueue)
     , depth(nullptr)
     , rgba(rgba)
@@ -878,12 +875,13 @@ struct EncodeTask: public tbb::task {
     , bpp(4)
     , subsamp(param.rgbaParam.rgbaCodec == vistle::CompressionParameters::Jpeg_YUV411)
     {
-       assert(rgba);
-       message = newTileMsg(param, vp, viewNum, x, y, w, h);
-       message->size = message->width * message->height * bpp;
-       message->format = rfbColorRGBA;
+        assert(rgba);
+        message = newTileMsg(param, vp, viewNum, x, y, w, h);
+        message->size = message->width * message->height * bpp;
+        message->format = rfbColorRGBA;
 
-        if (param.rgbaParam.rgbaCodec == vistle::CompressionParameters::Jpeg_YUV411 || param.rgbaParam.rgbaCodec == vistle::CompressionParameters::Jpeg_YUV444) {
+        if (param.rgbaParam.rgbaCodec == vistle::CompressionParameters::Jpeg_YUV411 ||
+            param.rgbaParam.rgbaCodec == vistle::CompressionParameters::Jpeg_YUV444) {
             message->compression |= rfbTileJpeg;
         } else if (param.rgbaParam.rgbaCodec == vistle::CompressionParameters::PredictRGB) {
             message->compression |= rfbTilePredictRGB;
@@ -892,8 +890,8 @@ struct EncodeTask: public tbb::task {
         }
     }
 
-    tbb::task* execute() override {
-
+    tbb::task *execute() override
+    {
         auto &msg = *message;
         RhrServer::EncodeResult result(message);
         message::CompressionMode compress = message::CompressionNone;
@@ -917,14 +915,15 @@ struct EncodeTask: public tbb::task {
     }
 };
 
-void RhrServer::setTileSize(int w, int h) {
-
-   m_tileWidth = w;
-   m_tileHeight = h;
+void RhrServer::setTileSize(int w, int h)
+{
+    m_tileWidth = w;
+    m_tileHeight = h;
 }
 
-void RhrServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const RhrServer::ViewParameters &param, bool lastView) {
-
+void RhrServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const RhrServer::ViewParameters &param,
+                              bool lastView)
+{
     //std::cerr << "encodeAndSend: view=" << viewNum << ", c=" << (void *)rgba(viewNum) << ", d=" << depth(viewNum) << std::endl;
     if (!m_resizeBlocked) {
         m_firstTile = true;
@@ -937,15 +936,15 @@ void RhrServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const R
         dn << "depth_frame" << m_framecount << "_view" << viewNum << ".pgm";
         dnfull << "depth_frame" << m_framecount << "_view" << viewNum << "_full.pgm";
         auto &vp = m_viewData[viewNum].param;
-        NetpbmImage dfull(dnfull.str(), vp.width, vp.height, NetpbmImage::PGM, (1U<<24)-1);
+        NetpbmImage dfull(dnfull.str(), vp.width, vp.height, NetpbmImage::PGM, (1U << 24) - 1);
         NetpbmImage d(dn.str(), vp.width, vp.height, NetpbmImage::PGM);
         NetpbmImage c(cn.str(), vp.width, vp.height, NetpbmImage::PPM);
 
-        float dmin = std::numeric_limits<float>::max(), dmax= std::numeric_limits<float>::lowest();
+        float dmin = std::numeric_limits<float>::max(), dmax = std::numeric_limits<float>::lowest();
         size_t numpix = vp.width * vp.height;
-        for (size_t i=0; i<numpix; ++i) {
-            auto *col = &rgba(viewNum)[i*4];
-            c.append(col[0]/255.f, col[1]/255.f, col[2]/255.f);
+        for (size_t i = 0; i < numpix; ++i) {
+            auto *col = &rgba(viewNum)[i * 4];
+            c.append(col[0] / 255.f, col[1] / 255.f, col[2] / 255.f);
 
             auto dval = depth(viewNum)[i];
             dmin = std::min(dmin, dval);
@@ -955,44 +954,38 @@ void RhrServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const R
             dfull.append(dval);
         }
 
-        std::cerr << "Dumped depth to " << dn.str() << ", min=" << dmin << ", max=" << dmax << ": " << dfull << std::endl;
+        std::cerr << "Dumped depth to " << dn.str() << ", min=" << dmin << ", max=" << dmax << ": " << dfull
+                  << std::endl;
     }
 
     //vistle::StopWatch timer("encodeAndSend");
     const int tileWidth = m_tileWidth, tileHeight = m_tileHeight;
 
     if (viewNum >= 0) {
-       for (int y=y0; y<y0+h; y+=tileHeight) {
-          for (int x=x0; x<x0+w; x+=tileWidth) {
+        for (int y = y0; y < y0 + h; y += tileHeight) {
+            for (int x = x0; x < x0 + w; x += tileWidth) {
+                // depth
+                auto *dt = new (tbb::task::allocate_root())
+                    EncodeTask(m_resultQueue, viewNum, x, y, std::min(tileWidth, x0 + w - x),
+                               std::min(tileHeight, y0 + h - y), depth(viewNum), m_imageParam, param);
+                tbb::task::enqueue(*dt);
+                ++m_queuedTiles;
 
-             // depth
-             auto *dt = new(tbb::task::allocate_root()) EncodeTask(m_resultQueue,
-                   viewNum,
-                   x, y,
-                   std::min(tileWidth, x0+w-x),
-                   std::min(tileHeight, y0+h-y),
-                   depth(viewNum), m_imageParam, param);
-             tbb::task::enqueue(*dt);
-             ++m_queuedTiles;
-
-             // color
-             auto *ct = new(tbb::task::allocate_root()) EncodeTask(m_resultQueue,
-                   viewNum,
-                   x, y,
-                   std::min(tileWidth, x0+w-x),
-                   std::min(tileHeight, y0+h-y),
-                   rgba(viewNum), m_imageParam, param);
-             tbb::task::enqueue(*ct);
-             ++m_queuedTiles;
-          }
-       }
+                // color
+                auto *ct = new (tbb::task::allocate_root())
+                    EncodeTask(m_resultQueue, viewNum, x, y, std::min(tileWidth, x0 + w - x),
+                               std::min(tileHeight, y0 + h - y), rgba(viewNum), m_imageParam, param);
+                tbb::task::enqueue(*ct);
+                ++m_queuedTiles;
+            }
+        }
     }
 
     finishTiles(param, lastView);
 }
 
-bool RhrServer::finishTiles(const RhrServer::ViewParameters &param, bool finish, bool sendTiles) {
-
+bool RhrServer::finishTiles(const RhrServer::ViewParameters &param, bool finish, bool sendTiles)
+{
     ++m_framecount;
 
     bool tileReady = false;
@@ -1001,28 +994,28 @@ bool RhrServer::finishTiles(const RhrServer::ViewParameters &param, bool finish,
         tileReady = false;
         RemoteRenderMessage *msg = nullptr;
         if (m_queuedTiles == 0 && finish) {
-           auto *tm = newTileMsg(m_imageParam, param, -1, 0, 0, 0, 0);
-           msg = new RemoteRenderMessage(*tm);
+            auto *tm = newTileMsg(m_imageParam, param, -1, 0, 0, 0, 0);
+            msg = new RemoteRenderMessage(*tm);
         } else if (m_resultQueue.try_pop(result)) {
             --m_queuedTiles;
             tileReady = true;
             msg = result.rhrMessage;
         }
         if (msg) {
-           tileMsg &tm = static_cast<tileMsg &>(msg->rhr());
-           tm.timestep = param.timestep;
-           if (m_firstTile) {
-              tm.flags |= rfbTileFirst;
-              //std::cerr << "first tile: req=" << msg.requestNumber << std::endl;
-           }
-           m_firstTile = false;
-           if (m_queuedTiles == 0 && finish) {
-              tm.flags |= rfbTileLast;
-              //std::cerr << "last tile: req=" << msg.requestNumber << std::endl;
-           }
-           tm.frameNumber = m_framecount;
-           if (sendTiles)
-               send(*msg, &result.payload);
+            tileMsg &tm = static_cast<tileMsg &>(msg->rhr());
+            tm.timestep = param.timestep;
+            if (m_firstTile) {
+                tm.flags |= rfbTileFirst;
+                //std::cerr << "first tile: req=" << msg.requestNumber << std::endl;
+            }
+            m_firstTile = false;
+            if (m_queuedTiles == 0 && finish) {
+                tm.flags |= rfbTileLast;
+                //std::cerr << "last tile: req=" << msg.requestNumber << std::endl;
+            }
+            tm.frameNumber = m_framecount;
+            if (sendTiles)
+                send(*msg, &result.payload);
         }
         delete msg;
         result.payload.clear();
@@ -1034,16 +1027,16 @@ bool RhrServer::finishTiles(const RhrServer::ViewParameters &param, bool finish,
         deferredResize();
     }
 
-    return  m_queuedTiles==0;
+    return m_queuedTiles == 0;
 }
 
-RhrServer::ViewParameters RhrServer::getViewParameters(int viewNum) const {
-
+RhrServer::ViewParameters RhrServer::getViewParameters(int viewNum) const
+{
     return m_viewData[viewNum].param;
 }
 
-bool RhrServer::handleMessage(const message::Message *message, const MessagePayload &payload) {
-
+bool RhrServer::handleMessage(const message::Message *message, const MessagePayload &payload)
+{
     if (message->type() != message::REMOTERENDERING)
         return false;
 
@@ -1052,8 +1045,8 @@ bool RhrServer::handleMessage(const message::Message *message, const MessagePayl
     return handleRemoteRenderMessage(nullptr, rr);
 }
 
-bool RhrServer::handleRemoteRenderMessage(std::shared_ptr<socket> sock, const vistle::message::RemoteRenderMessage &rr) {
-
+bool RhrServer::handleRemoteRenderMessage(std::shared_ptr<socket> sock, const vistle::message::RemoteRenderMessage &rr)
+{
     const auto &rhr = rr.rhr();
     switch (rhr.type) {
     case rfbMatrices: {

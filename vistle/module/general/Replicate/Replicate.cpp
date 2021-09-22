@@ -14,48 +14,46 @@ using namespace vistle;
 
 MODULE_MAIN(Replicate)
 
-Replicate::Replicate(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module(name, moduleID, comm) {
+Replicate::Replicate(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
+{
+    createInputPort("grid_in");
+    createInputPort("data_in");
 
-   createInputPort("grid_in");
-   createInputPort("data_in");
-
-   createOutputPort("grid_out");
+    createOutputPort("grid_out");
 }
 
-Replicate::~Replicate() {
-}
+Replicate::~Replicate()
+{}
 
-bool Replicate::compute() {
+bool Replicate::compute()
+{
+    if (hasObject("grid_in")) {
+        Object::const_ptr obj = takeFirstObject("grid_in");
+        auto nobj = obj->clone();
+        updateMeta(nobj);
+        m_objs[obj->getBlock()] = nobj;
 
-   if (hasObject("grid_in")) {
-      Object::const_ptr obj = takeFirstObject("grid_in");
-      auto nobj = obj->clone();
-      updateMeta(nobj);
-      m_objs[obj->getBlock()] = nobj;
+        //std::cerr << "Replicate: grid " << obj->getName() << std::endl;
+    }
 
-      //std::cerr << "Replicate: grid " << obj->getName() << std::endl;
-   }
-
-   if (!m_objs.empty()) {
-      while (hasObject("data_in")) {
-
-         Object::const_ptr data = takeFirstObject("data_in");
+    if (!m_objs.empty()) {
+        while (hasObject("data_in")) {
+            Object::const_ptr data = takeFirstObject("data_in");
 #if 0
          std::cerr << "Replicate: data " << data->getName()
             << ", time: " << data->getTimestep() << "/" << data->getNumTimesteps()
             << ", block: " << data->getBlock() << "/" << data->getNumBlocks()
             << std::endl;
 #endif
-         auto it = m_objs.find(data->getBlock());
-         if (it == m_objs.end()) {
-            std::cerr << "did not find grid for block " << data->getBlock() << std::endl;
-         } else {
-            Object::const_ptr grid = m_objs[data->getBlock()];
-            passThroughObject("grid_out", grid);
-         }
-      }
-   }
+            auto it = m_objs.find(data->getBlock());
+            if (it == m_objs.end()) {
+                std::cerr << "did not find grid for block " << data->getBlock() << std::endl;
+            } else {
+                Object::const_ptr grid = m_objs[data->getBlock()];
+                passThroughObject("grid_out", grid);
+            }
+        }
+    }
 
-   return true;
+    return true;
 }

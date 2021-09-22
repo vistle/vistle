@@ -7,22 +7,19 @@
 #include <vistle/module/module.h>
 
 class WriteVistle: public vistle::Module {
+public:
+    WriteVistle(const std::string &shmname, const std::string &name, int moduleID);
+    ~WriteVistle();
 
- public:
-   WriteVistle(const std::string &shmname, const std::string &name, int moduleID);
-   ~WriteVistle();
+private:
+    virtual bool compute();
 
- private:
-   virtual bool compute();
+    void close();
 
-   void close();
-
-   std::ofstream *m_ofs;
-   boost::archive::binary_oarchive *m_binAr;
-   boost::archive::text_oarchive *m_textAr;
-   boost::archive::xml_oarchive *m_xmlAr;
-
-
+    std::ofstream *m_ofs;
+    boost::archive::binary_oarchive *m_binAr;
+    boost::archive::text_oarchive *m_textAr;
+    boost::archive::xml_oarchive *m_xmlAr;
 };
 
 #endif

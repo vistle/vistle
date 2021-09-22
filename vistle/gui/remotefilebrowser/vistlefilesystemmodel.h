@@ -3,8 +3,7 @@
 
 #include <QFileSystemModel>
 
-class VistleFileSystemModel: public QFileSystemModel
-{
+class VistleFileSystemModel: public QFileSystemModel {
     Q_OBJECT
 
 public:
@@ -40,8 +39,8 @@ public:
 
     QStringList mimeTypes() const override;
     QMimeData *mimeData(const QModelIndexList &indexes) const override;
-    bool dropMimeData(const QMimeData *data, Qt::DropAction action,
-                      int row, int column, const QModelIndex &parent) override;
+    bool dropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column,
+                      const QModelIndex &parent) override;
     Qt::DropActions supportedDropActions() const override;
 
 private:

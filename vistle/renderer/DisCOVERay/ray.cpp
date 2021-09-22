@@ -35,81 +35,93 @@ using namespace vistle;
 const float Epsilon = 1e-9f;
 
 class DisCOVERay: public vistle::Renderer {
+public:
+    static void rtcErrorCallback(void *userPtr, RTCError code, const char *desc)
+    {
+        std::string err = "Error: Unknown RTC error.";
 
- public:
-   static void rtcErrorCallback(void *userPtr, RTCError code, const char *desc) {
+        switch (code) {
+        case RTC_ERROR_NONE:
+            err = "No error occurred.";
+            break;
+        case RTC_ERROR_UNKNOWN:
+            err = "An unknown error has occurred.";
+            break;
+        case RTC_ERROR_INVALID_ARGUMENT:
+            err = "An invalid argument was specified.";
+            break;
+        case RTC_ERROR_INVALID_OPERATION:
+            err = "The operation is not allowed for the specified object.";
+            break;
+        case RTC_ERROR_OUT_OF_MEMORY:
+            err = "There is not enough memory left to complete the operation.";
+            break;
+        case RTC_ERROR_UNSUPPORTED_CPU:
+            err = "The CPU is not supported as it does not support SSE2.";
+            break;
+        case RTC_ERROR_CANCELLED:
+            err = "The operation got cancelled by an Memory Monitor Callback or Progress Monitor Callback function.";
+            break;
+        }
 
-      std::string err = "Error: Unknown RTC error.";
+        CERR << "RTC error: " << desc << " - " << err << std::endl;
+    }
 
-      switch (code) {
-         case RTC_ERROR_NONE: err = "No error occurred."; break;
-         case RTC_ERROR_UNKNOWN: err = "An unknown error has occurred."; break;
-         case RTC_ERROR_INVALID_ARGUMENT: err = "An invalid argument was specified."; break;
-         case RTC_ERROR_INVALID_OPERATION: err = "The operation is not allowed for the specified object."; break;
-         case RTC_ERROR_OUT_OF_MEMORY: err = "There is not enough memory left to complete the operation."; break;
-         case RTC_ERROR_UNSUPPORTED_CPU: err = "The CPU is not supported as it does not support SSE2."; break;
-         case RTC_ERROR_CANCELLED: err = "The operation got cancelled by an Memory Monitor Callback or Progress Monitor Callback function."; break;
-      }
+    struct RGBA {
+        unsigned char r, g, b, a;
+    };
 
-      CERR << "RTC error: " << desc << " - " << err << std::endl;
-   }
+    DisCOVERay(const std::string &name, int moduleId, mpi::communicator comm);
+    ~DisCOVERay() override;
+    void prepareQuit() override;
 
-   struct RGBA {
-      unsigned char r, g, b, a;
-   };
+    bool render() override;
 
-   DisCOVERay(const std::string &name, int moduleId, mpi::communicator comm);
-   ~DisCOVERay() override;
-   void prepareQuit() override;
+    bool handleMessage(const vistle::message::Message *message, const vistle::MessagePayload &payload) override;
 
-   bool render() override;
+    bool changeParameter(const Parameter *p) override;
+    void connectionAdded(const Port *from, const Port *to) override;
+    void connectionRemoved(const Port *from, const Port *to) override;
 
-   bool handleMessage(const vistle::message::Message *message, const vistle::MessagePayload &payload) override;
+    ParallelRemoteRenderManager m_renderManager;
 
-   bool changeParameter(const Parameter *p) override;
-   void connectionAdded(const Port *from, const Port *to) override;
-   void connectionRemoved(const Port *from, const Port *to) override;
+    // parameters
+    IntParameter *m_useRayStreamsParam;
+    bool m_useRayStreams = true;
+    IntParameter *m_renderTileSizeParam;
+    int m_tilesize;
+    IntParameter *m_shading;
+    bool m_doShade = true;
+    IntParameter *m_uvVisParam;
+    bool m_uvVis = false;
+    FloatParameter *m_pointSizeParam;
 
-   ParallelRemoteRenderManager m_renderManager;
+    // colormaps
+    bool addColorMap(const std::string &species, vistle::Texture1D::const_ptr texture) override;
+    bool removeColorMap(const std::string &species) override;
 
-   // parameters
-   IntParameter *m_useRayStreamsParam;
-   bool m_useRayStreams = true;
-   IntParameter *m_renderTileSizeParam;
-   int m_tilesize;
-   IntParameter *m_shading;
-   bool m_doShade = true;
-   IntParameter *m_uvVisParam;
-   bool m_uvVis = false;
-   FloatParameter *m_pointSizeParam;
+    // object lifetime management
+    std::shared_ptr<RenderObject> addObject(int sender, const std::string &senderPort,
+                                            vistle::Object::const_ptr container, vistle::Object::const_ptr geometry,
+                                            vistle::Object::const_ptr normals,
+                                            vistle::Object::const_ptr texture) override;
 
-   // colormaps
-   bool addColorMap(const std::string &species, vistle::Texture1D::const_ptr texture) override;
-   bool removeColorMap(const std::string &species) override;
+    void removeObject(std::shared_ptr<RenderObject> ro) override;
 
-   // object lifetime management
-   std::shared_ptr<RenderObject> addObject(int sender, const std::string &senderPort,
-         vistle::Object::const_ptr container,
-         vistle::Object::const_ptr geometry,
-         vistle::Object::const_ptr normals,
-         vistle::Object::const_ptr texture) override;
+    std::vector<ispc::RenderObjectData *> instances;
 
-   void removeObject(std::shared_ptr<RenderObject> ro) override;
+    std::vector<std::shared_ptr<RayRenderObject>> static_geometry;
+    std::vector<std::vector<std::shared_ptr<RayRenderObject>>> anim_geometry;
+    std::map<std::string, RayColorMap> m_colormaps;
 
-   std::vector<ispc::RenderObjectData *> instances;
+    RTCDevice m_device;
+    RTCScene m_scene;
 
-   std::vector<std::shared_ptr<RayRenderObject>> static_geometry;
-   std::vector<std::vector<std::shared_ptr<RayRenderObject>>> anim_geometry;
-   std::map<std::string, RayColorMap> m_colormaps;
+    int m_timestep;
 
-   RTCDevice m_device;
-   RTCScene m_scene;
-
-   int m_timestep;
-
-   int m_currentView; //!< holds no. of view currently being rendered - not a problem as IceT is not reentrant anyway
-   void renderRect(const vistle::Matrix4 &proj, const vistle::Matrix4 &mv, const int *viewport,
-                   int width, int height, unsigned char *rgba, float *depth);
+    int m_currentView; //!< holds no. of view currently being rendered - not a problem as IceT is not reentrant anyway
+    void renderRect(const vistle::Matrix4 &proj, const vistle::Matrix4 &mv, const int *viewport, int width, int height,
+                    unsigned char *rgba, float *depth);
 };
 
 
@@ -127,62 +139,64 @@ DisCOVERay::DisCOVERay(const std::string &name, int moduleId, mpi::communicator 
     sleep(10);
 #endif
 
-   /* from embree examples: for best performance set FTZ and DAZ flags in MXCSR control and status * register */
-   _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
-   _MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
+    /* from embree examples: for best performance set FTZ and DAZ flags in MXCSR control and status * register */
+    _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
+    _MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
 
-   m_useRayStreamsParam = addIntParameter("ray_streams", "use ray streams API", (Integer)m_useRayStreams, Parameter::Boolean);
-   m_shading = addIntParameter("shading", "shade and light objects", (Integer)m_doShade, Parameter::Boolean);
-   m_uvVisParam = addIntParameter("uv_visualization", "show u/v coordinates", (Integer)m_uvVis, Parameter::Boolean);
-   m_renderTileSizeParam = addIntParameter("render_tile_size", "edge length of square tiles used during rendering", m_tilesize);
-   setParameterRange(m_renderTileSizeParam, (Integer)1, (Integer)TileSize);
-   m_pointSizeParam = addFloatParameter("point_size", "size of points", RayRenderObject::pointSize);
-   setParameterRange(m_pointSizeParam, (Float)0, (Float)1e6);
+    m_useRayStreamsParam =
+        addIntParameter("ray_streams", "use ray streams API", (Integer)m_useRayStreams, Parameter::Boolean);
+    m_shading = addIntParameter("shading", "shade and light objects", (Integer)m_doShade, Parameter::Boolean);
+    m_uvVisParam = addIntParameter("uv_visualization", "show u/v coordinates", (Integer)m_uvVis, Parameter::Boolean);
+    m_renderTileSizeParam =
+        addIntParameter("render_tile_size", "edge length of square tiles used during rendering", m_tilesize);
+    setParameterRange(m_renderTileSizeParam, (Integer)1, (Integer)TileSize);
+    m_pointSizeParam = addFloatParameter("point_size", "size of points", RayRenderObject::pointSize);
+    setParameterRange(m_pointSizeParam, (Float)0, (Float)1e6);
 
-   m_device = rtcNewDevice("verbose=0");
-   if (!m_device) {
-       CERR << "failed to create device" << std::endl;
-       throw(vistle::exception("failed to create Embree device"));
-   }
-   rtcSetDeviceErrorFunction(m_device,rtcErrorCallback,nullptr);
-   m_scene = rtcNewScene(m_device);
-   rtcSetSceneFlags(m_scene, RTC_SCENE_FLAG_DYNAMIC);
-   rtcSetSceneBuildQuality(m_scene,RTC_BUILD_QUALITY_MEDIUM);
-   rtcCommitScene(m_scene);
+    m_device = rtcNewDevice("verbose=0");
+    if (!m_device) {
+        CERR << "failed to create device" << std::endl;
+        throw(vistle::exception("failed to create Embree device"));
+    }
+    rtcSetDeviceErrorFunction(m_device, rtcErrorCallback, nullptr);
+    m_scene = rtcNewScene(m_device);
+    rtcSetSceneFlags(m_scene, RTC_SCENE_FLAG_DYNAMIC);
+    rtcSetSceneBuildQuality(m_scene, RTC_BUILD_QUALITY_MEDIUM);
+    rtcCommitScene(m_scene);
 }
 
 
-DisCOVERay::~DisCOVERay() {
-
-   rtcReleaseScene(m_scene);
-   rtcReleaseDevice (m_device);
+DisCOVERay::~DisCOVERay()
+{
+    rtcReleaseScene(m_scene);
+    rtcReleaseDevice(m_device);
 }
 
-void DisCOVERay::prepareQuit() {
+void DisCOVERay::prepareQuit()
+{
+    removeAllObjects();
 
-   removeAllObjects();
-
-   Renderer::prepareQuit();
+    Renderer::prepareQuit();
 }
 
-void DisCOVERay::connectionAdded(const Port *from, const Port *to) {
-
+void DisCOVERay::connectionAdded(const Port *from, const Port *to)
+{
     Renderer::connectionAdded(from, to);
     if (from == m_renderManager.outputPort()) {
         m_renderManager.connectionAdded(to);
     }
 }
 
-void DisCOVERay::connectionRemoved(const Port *from, const Port *to) {
-
+void DisCOVERay::connectionRemoved(const Port *from, const Port *to)
+{
     if (from == m_renderManager.outputPort()) {
         m_renderManager.connectionRemoved(to);
     }
     Renderer::connectionRemoved(from, to);
 }
 
-bool DisCOVERay::addColorMap(const std::string &species, Texture1D::const_ptr texture) {
-
+bool DisCOVERay::addColorMap(const std::string &species, Texture1D::const_ptr texture)
+{
     auto &cmap = m_colormaps[species];
     cmap.tex = texture;
     if (!cmap.cmap)
@@ -198,8 +212,8 @@ bool DisCOVERay::addColorMap(const std::string &species, Texture1D::const_ptr te
     return true;
 }
 
-bool DisCOVERay::removeColorMap(const std::string &species) {
-
+bool DisCOVERay::removeColorMap(const std::string &species)
+{
     std::cerr << "removing colormap " << species << std::endl;
     auto it = m_colormaps.find(species);
     if (it == m_colormaps.end())
@@ -213,79 +227,69 @@ bool DisCOVERay::removeColorMap(const std::string &species) {
     return true;
 }
 
-bool DisCOVERay::changeParameter(const Parameter *p) {
-
+bool DisCOVERay::changeParameter(const Parameter *p)
+{
     m_renderManager.handleParam(p);
 
     if (p == m_shading) {
-
-       m_doShade = m_shading->getValue();
-       m_renderManager.setModified();
+        m_doShade = m_shading->getValue();
+        m_renderManager.setModified();
     } else if (p == m_uvVisParam) {
-
         m_uvVis = m_uvVisParam->getValue();
         m_renderManager.setModified();
     } else if (p == m_pointSizeParam) {
-
-       RayRenderObject::pointSize = m_pointSizeParam->getValue();
+        RayRenderObject::pointSize = m_pointSizeParam->getValue();
     } else if (p == m_renderTileSizeParam) {
-
         m_tilesize = m_renderTileSizeParam->getValue();
     } else if (p == m_useRayStreamsParam) {
-
         m_useRayStreams = m_useRayStreamsParam->getValue();
     }
 
-   return Renderer::changeParameter(p);
+    return Renderer::changeParameter(p);
 }
 
 struct TileTask {
-   TileTask(const DisCOVERay &rc, const ParallelRemoteRenderManager::PerViewState &vd, int tile=-1)
-   : rc(rc)
-   , vd(vd)
-   , tile(tile)
-   , tilesize(rc.m_tilesize)
-   {
-   }
+    TileTask(const DisCOVERay &rc, const ParallelRemoteRenderManager::PerViewState &vd, int tile = -1)
+    : rc(rc), vd(vd), tile(tile), tilesize(rc.m_tilesize)
+    {}
 
-   void render(int tile) const;
+    void render(int tile) const;
 
-   void operator()(int tile) const {
-      render(tile);
-   }
+    void operator()(int tile) const { render(tile); }
 
-   void operator()() const {
-      assert(tile >= 0);
-      render(tile);
-   }
+    void operator()() const
+    {
+        assert(tile >= 0);
+        render(tile);
+    }
 
-   const DisCOVERay &rc;
-   const ParallelRemoteRenderManager::PerViewState &vd;
-   const int tile;
-   const int tilesize;
-   int imgWidth, imgHeight;
-   int xlim, ylim;
-   int ntx;
-   Vector4 depthTransform2, depthTransform3;
-   Vector3 lowerBottom, dx, dy;
-   Vector3 origin;
-   Matrix4 modelView;
-   float tNear, tFar;
-   int xoff, yoff;
-   float *depth;
-   unsigned char *rgba;
+    const DisCOVERay &rc;
+    const ParallelRemoteRenderManager::PerViewState &vd;
+    const int tile;
+    const int tilesize;
+    int imgWidth, imgHeight;
+    int xlim, ylim;
+    int ntx;
+    Vector4 depthTransform2, depthTransform3;
+    Vector3 lowerBottom, dx, dy;
+    Vector3 origin;
+    Matrix4 modelView;
+    float tNear, tFar;
+    int xoff, yoff;
+    float *depth;
+    unsigned char *rgba;
 };
 
 
-void TileTask::render(int tile) const {
-
-    const int tx = tile%ntx;
-    const int ty = tile/ntx;
+void TileTask::render(int tile) const
+{
+    const int tx = tile % ntx;
+    const int ty = tile / ntx;
 
     ispc::SceneData sceneData;
     sceneData.scene = rc.m_scene;
-    for (int i=0; i<4; ++i) {
-        auto row = modelView.block<1,4>(i,0);
+    for (int i = 0; i < 4; ++i) {
+        auto row = modelView.block<1, 4>(i, 0);
         sceneData.modelView[i].x = row[0];
         sceneData.modelView[i].y = row[1];
         sceneData.modelView[i].z = row[2];
@@ -305,7 +309,7 @@ void TileTask::render(int tile) const {
         l.transformedPosition.x = light.transformedPosition[0];
         l.transformedPosition.y = light.transformedPosition[1];
         l.transformedPosition.z = light.transformedPosition[2];
-        for (int c=0; c<3; ++c) {
+        for (int c = 0; c < 3; ++c) {
             l.attenuation[c] = light.attenuation[c];
         }
         l.isDirectional = light.isDirectional;
@@ -335,10 +339,10 @@ void TileTask::render(int tile) const {
     data.depth = depth;
     data.imgWidth = imgWidth;
 
-    data.x0=xoff+tx*tilesize;
-    data.x1=std::min(data.x0+tilesize, xlim);
-    data.y0=yoff+ty*tilesize;
-    data.y1=std::min(data.y0+tilesize, ylim);
+    data.x0 = xoff + tx * tilesize;
+    data.x1 = std::min(data.x0 + tilesize, xlim);
+    data.y0 = yoff + ty * tilesize;
+    data.y1 = std::min(data.y0 + tilesize, ylim);
 
     data.origin.x = origin[0];
     data.origin.y = origin[1];
@@ -378,8 +382,8 @@ void TileTask::render(int tile) const {
 }
 
 
-bool DisCOVERay::render() {
-
+bool DisCOVERay::render()
+{
     // ensure that previous frame is completed
     bool immed_resched = m_renderManager.finishFrame(m_timestep);
 
@@ -387,80 +391,81 @@ bool DisCOVERay::render() {
 
     const size_t numTimesteps = anim_geometry.size();
     if (!m_renderManager.prepareFrame(numTimesteps)) {
-       return immed_resched;
+        return immed_resched;
     }
 
     // switch time steps in embree scene
     if (m_timestep != m_renderManager.timestep() || m_renderManager.sceneChanged()) {
-        if (m_timestep>=0 && anim_geometry.size() > unsigned(m_timestep) && m_timestep != m_renderManager.timestep()) {
-          for (auto &ro: anim_geometry[m_timestep])
-             if (ro->data->scene)
-                rtcDisableGeometry(rtcGetGeometry(m_scene,ro->data->instID));
-       }
-       m_timestep = m_renderManager.timestep();
-       if (m_timestep>=0 && anim_geometry.size() > unsigned(m_timestep)) {
-           for (auto &ro: anim_geometry[m_timestep])
-               if (ro->data->scene) {
-                   if (m_renderManager.isVariantVisible(ro->variant)) {
-                       rtcEnableGeometry(rtcGetGeometry(m_scene,ro->data->instID));
-                   } else {
-                       rtcDisableGeometry(rtcGetGeometry(m_scene,ro->data->instID));
-                   }
-               }
-       }
-       if (m_renderManager.sceneChanged()) {
-           for (auto &ro: static_geometry) {
-               if (ro->data->scene) {
-                   if (m_renderManager.isVariantVisible(ro->variant)) {
-                       rtcEnableGeometry(rtcGetGeometry(m_scene,ro->data->instID));
-                   } else {
-                       rtcDisableGeometry(rtcGetGeometry(m_scene,ro->data->instID));
-                   }
-               }
-           }
-       }
-       rtcCommitScene(m_scene);
+        if (m_timestep >= 0 && anim_geometry.size() > unsigned(m_timestep) &&
+            m_timestep != m_renderManager.timestep()) {
+            for (auto &ro: anim_geometry[m_timestep])
+                if (ro->data->scene)
+                    rtcDisableGeometry(rtcGetGeometry(m_scene, ro->data->instID));
+        }
+        m_timestep = m_renderManager.timestep();
+        if (m_timestep >= 0 && anim_geometry.size() > unsigned(m_timestep)) {
+            for (auto &ro: anim_geometry[m_timestep])
+                if (ro->data->scene) {
+                    if (m_renderManager.isVariantVisible(ro->variant)) {
+                        rtcEnableGeometry(rtcGetGeometry(m_scene, ro->data->instID));
+                    } else {
+                        rtcDisableGeometry(rtcGetGeometry(m_scene, ro->data->instID));
+                    }
+                }
+        }
+        if (m_renderManager.sceneChanged()) {
+            for (auto &ro: static_geometry) {
+                if (ro->data->scene) {
+                    if (m_renderManager.isVariantVisible(ro->variant)) {
+                        rtcEnableGeometry(rtcGetGeometry(m_scene, ro->data->instID));
+                    } else {
+                        rtcDisableGeometry(rtcGetGeometry(m_scene, ro->data->instID));
+                    }
+                }
+            }
+        }
+        rtcCommitScene(m_scene);
     }
 
-    for (size_t i=0; i<m_renderManager.numViews(); ++i) {
-       m_renderManager.setCurrentView(i);
-       m_currentView = i;
+    for (size_t i = 0; i < m_renderManager.numViews(); ++i) {
+        m_renderManager.setCurrentView(i);
+        m_currentView = i;
 
-       auto &vd = m_renderManager.viewData(i);
-       //CERR << "rendering view " << i << ", proj=" << vd.proj << std::endl;
-       const vistle::Matrix4 lightTransform = vd.model.inverse();
-       for (auto &light: vd.lights) {
-          light.transformedPosition = lightTransform * light.position;
-          if (fabs(light.transformedPosition[3]) > Epsilon) {
-             light.isDirectional = false;
-             light.transformedPosition /= light.transformedPosition[3];
-          } else {
-             light.isDirectional = true;
-          }
+        auto &vd = m_renderManager.viewData(i);
+        //CERR << "rendering view " << i << ", proj=" << vd.proj << std::endl;
+        const vistle::Matrix4 lightTransform = vd.model.inverse();
+        for (auto &light: vd.lights) {
+            light.transformedPosition = lightTransform * light.position;
+            if (fabs(light.transformedPosition[3]) > Epsilon) {
+                light.isDirectional = false;
+                light.transformedPosition /= light.transformedPosition[3];
+            } else {
+                light.isDirectional = true;
+            }
 #if 0
           if (light.enabled)
              CERR << "light pos " << light.position.transpose() << " -> " << light.transformedPosition.transpose() << std::endl;
 #endif
-       }
-       auto mv = m_renderManager.getModelViewMat(i);
-       auto proj = m_renderManager.getProjMat(i);
+        }
+        auto mv = m_renderManager.getModelViewMat(i);
+        auto proj = m_renderManager.getProjMat(i);
 
-       int viewport[4] = {0, 0, vd.width, vd.height};
-       unsigned char *rgba = m_renderManager.rgba(i);
-       float *depth = m_renderManager.depth(i);
-       renderRect(proj, mv, viewport, vd.width, vd.height, rgba, depth);
+        int viewport[4] = {0, 0, vd.width, vd.height};
+        unsigned char *rgba = m_renderManager.rgba(i);
+        float *depth = m_renderManager.depth(i);
+        renderRect(proj, mv, viewport, vd.width, vd.height, rgba, depth);
 
-       m_renderManager.compositeCurrentView(rgba, depth, viewport, m_timestep, false);
+        m_renderManager.compositeCurrentView(rgba, depth, viewport, m_timestep, false);
     }
     m_currentView = -1;
 
     return true;
 }
 
-void DisCOVERay::renderRect(const vistle::Matrix4 &P, const vistle::Matrix4 &MV, const int *viewport,
-                           int width, int height, unsigned char *rgba, float *depth) {
-
-   //StopWatch timer("DisCOVERay::render()");
+void DisCOVERay::renderRect(const vistle::Matrix4 &P, const vistle::Matrix4 &MV, const int *viewport, int width,
+                            int height, unsigned char *rgba, float *depth)
+{
+    //StopWatch timer("DisCOVERay::render()");
 
 #if 0
    CERR << "renderRect: vp=" << viewport[0] << ", " << viewport[1] << ", " << viewport[2] << ", " <<  viewport[3]
@@ -468,67 +473,67 @@ void DisCOVERay::renderRect(const vistle::Matrix4 &P, const vistle::Matrix4 &MV,
              << std::endl;
 #endif
 
-   const int w = viewport[2];
-   const int h = viewport[3];
-   const int ts = m_tilesize;
-   const int wt = ((w+ts-1)/ts)*ts;
-   const int ht = ((h+ts-1)/ts)*ts;
-   const int ntx = wt/ts;
-   const int nty = ht/ts;
+    const int w = viewport[2];
+    const int h = viewport[3];
+    const int ts = m_tilesize;
+    const int wt = ((w + ts - 1) / ts) * ts;
+    const int ht = ((h + ts - 1) / ts) * ts;
+    const int ntx = wt / ts;
+    const int nty = ht / ts;
 
-   //CERR << "PROJ:" << P << std::endl << std::endl;
+    //CERR << "PROJ:" << P << std::endl << std::endl;
 
-   const vistle::Matrix4 MVP = P * MV;
-   const auto inv = MVP.inverse();
+    const vistle::Matrix4 MVP = P * MV;
+    const auto inv = MVP.inverse();
 
-   const Vector4 ro4 = MV.inverse().col(3);
-   const Vector ro = ro4.block<3,1>(0,0)/ro4[3];
+    const Vector4 ro4 = MV.inverse().col(3);
+    const Vector ro = ro4.block<3, 1>(0, 0) / ro4[3];
 
-   const Vector4 lbn4 = inv * Vector4(-1, -1, -1, 1);
-   Vector lbn(lbn4[0], lbn4[1], lbn4[2]);
-   lbn /= lbn4[3];
+    const Vector4 lbn4 = inv * Vector4(-1, -1, -1, 1);
+    Vector lbn(lbn4[0], lbn4[1], lbn4[2]);
+    lbn /= lbn4[3];
 
-   const Vector4 lbf4 = inv * Vector4(-1, -1, 1, 1);
-   Vector lbf(lbf4[0], lbf4[1], lbf4[2]);
-   lbf /= lbf4[3];
+    const Vector4 lbf4 = inv * Vector4(-1, -1, 1, 1);
+    Vector lbf(lbf4[0], lbf4[1], lbf4[2]);
+    lbf /= lbf4[3];
 
-   const Vector4 rbn4 = inv * Vector4(1, -1, -1, 1);
-   Vector rbn(rbn4[0], rbn4[1], rbn4[2]);
-   rbn /= rbn4[3];
+    const Vector4 rbn4 = inv * Vector4(1, -1, -1, 1);
+    Vector rbn(rbn4[0], rbn4[1], rbn4[2]);
+    rbn /= rbn4[3];
 
-   const Vector4 ltn4 = inv * Vector4(-1, 1, -1, 1);
-   Vector ltn(ltn4[0], ltn4[1], ltn4[2]);
-   ltn /= ltn4[3];
+    const Vector4 ltn4 = inv * Vector4(-1, 1, -1, 1);
+    Vector ltn(ltn4[0], ltn4[1], ltn4[2]);
+    ltn /= ltn4[3];
 
-   const Scalar tFar = (lbf-ro).norm()/(lbn-ro).norm();
-   const Matrix4 depthTransform = MVP;
+    const Scalar tFar = (lbf - ro).norm() / (lbn - ro).norm();
+    const Matrix4 depthTransform = MVP;
 
-   TileTask renderTile(*this, m_renderManager.viewData(m_currentView));
-   renderTile.rgba = rgba;
-   renderTile.depth = depth;
-   renderTile.depthTransform2 = depthTransform.row(2);
-   renderTile.depthTransform3 = depthTransform.row(3);
-   renderTile.ntx = ntx;
-   renderTile.xoff = viewport[0];
-   renderTile.yoff = viewport[1];
-   renderTile.xlim = viewport[0] + viewport[2];
-   renderTile.ylim = viewport[1] + viewport[3];
-   renderTile.imgWidth = width;
-   renderTile.imgHeight = height;
-   renderTile.dx = (rbn-lbn)/renderTile.imgWidth;
-   renderTile.dy = (ltn-lbn)/renderTile.imgHeight;
-   renderTile.lowerBottom = lbn + 0.5*renderTile.dx + 0.5*renderTile.dy;
-   renderTile.origin = ro;
-   renderTile.tNear = 1.;
-   renderTile.tFar = tFar;
-   renderTile.modelView = MV;
+    TileTask renderTile(*this, m_renderManager.viewData(m_currentView));
+    renderTile.rgba = rgba;
+    renderTile.depth = depth;
+    renderTile.depthTransform2 = depthTransform.row(2);
+    renderTile.depthTransform3 = depthTransform.row(3);
+    renderTile.ntx = ntx;
+    renderTile.xoff = viewport[0];
+    renderTile.yoff = viewport[1];
+    renderTile.xlim = viewport[0] + viewport[2];
+    renderTile.ylim = viewport[1] + viewport[3];
+    renderTile.imgWidth = width;
+    renderTile.imgHeight = height;
+    renderTile.dx = (rbn - lbn) / renderTile.imgWidth;
+    renderTile.dy = (ltn - lbn) / renderTile.imgHeight;
+    renderTile.lowerBottom = lbn + 0.5 * renderTile.dx + 0.5 * renderTile.dy;
+    renderTile.origin = ro;
+    renderTile.tNear = 1.;
+    renderTile.tFar = tFar;
+    renderTile.modelView = MV;
 #ifdef USE_TBB
-   tbb::parallel_for(0, ntx*nty, 1, renderTile);
+    tbb::parallel_for(0, ntx * nty, 1, renderTile);
 #else
 #pragma omp parallel for schedule(dynamic)
-   for (int t=0; t<ntx*nty; ++t) {
-      renderTile(t);
-   }
+    for (int t = 0; t < ntx * nty; ++t) {
+        renderTile(t);
+    }
 #endif
 
 #if 0
@@ -557,116 +562,118 @@ void DisCOVERay::renderRect(const vistle::Matrix4 &P, const vistle::Matrix4 &MV,
    }
 #endif
 
-   int err = rtcGetDeviceError (m_device);
-   if (err != 0) {
-      CERR << "RTC error: " << err << std::endl;
-   }
+    int err = rtcGetDeviceError(m_device);
+    if (err != 0) {
+        CERR << "RTC error: " << err << std::endl;
+    }
 }
 
 
-void DisCOVERay::removeObject(std::shared_ptr<RenderObject> vro) {
+void DisCOVERay::removeObject(std::shared_ptr<RenderObject> vro)
+{
+    auto ro = std::static_pointer_cast<RayRenderObject>(vro);
+    auto rod = ro->data.get();
 
-   auto ro = std::static_pointer_cast<RayRenderObject>(vro);
-   auto rod = ro->data.get();
+    if (rod->scene) {
+        rtcDisableGeometry(rtcGetGeometry(m_scene, rod->instID));
+        rtcDetachGeometry(m_scene, rod->instID);
+        rtcCommitScene(m_scene);
 
-   if (rod->scene) {
-      rtcDisableGeometry(rtcGetGeometry(m_scene,rod->instID));
-      rtcDetachGeometry(m_scene, rod->instID);
-      rtcCommitScene(m_scene);
+        instances[rod->instID] = nullptr;
+    }
 
-      instances[rod->instID] = nullptr;
-   }
+    const int t = ro->timestep;
+    auto &objlist = t >= 0 ? anim_geometry[t] : static_geometry;
 
-   const int t = ro->timestep;
-   auto &objlist = t>=0 ? anim_geometry[t] : static_geometry;
+    auto it = std::find(objlist.begin(), objlist.end(), ro);
+    if (it != objlist.end()) {
+        std::swap(*it, objlist.back());
+        objlist.pop_back();
+    }
 
-   auto it = std::find(objlist.begin(), objlist.end(), ro);
-   if (it != objlist.end()) {
-      std::swap(*it, objlist.back());
-      objlist.pop_back();
-   }
+    while (!anim_geometry.empty() && anim_geometry.back().empty())
+        anim_geometry.pop_back();
 
-   while (!anim_geometry.empty() && anim_geometry.back().empty())
-      anim_geometry.pop_back();
+    if (t == -1 || t == m_timestep) {
+        m_renderManager.setModified();
+    }
 
-   if (t == -1 || t == m_timestep) {
-      m_renderManager.setModified();
-   }
+    CERR << "removeObject(" << ro->senderId << "/" << ro->variant << ", t=" << t << "@" << m_timestep << "/"
+         << numTimesteps() << ")" << std::endl;
 
-   CERR << "removeObject(" << ro->senderId << "/" << ro->variant << ", t=" << t << "@" << m_timestep << "/" << numTimesteps() << ")" << std::endl;
-
-   m_renderManager.removeObject(ro);
+    m_renderManager.removeObject(ro);
 }
 
 
 std::shared_ptr<RenderObject> DisCOVERay::addObject(int sender, const std::string &senderPort,
-                                 vistle::Object::const_ptr container,
-                                 vistle::Object::const_ptr geometry,
-                                 vistle::Object::const_ptr normals,
-                                 vistle::Object::const_ptr texture) {
+                                                    vistle::Object::const_ptr container,
+                                                    vistle::Object::const_ptr geometry,
+                                                    vistle::Object::const_ptr normals,
+                                                    vistle::Object::const_ptr texture)
+{
+    std::shared_ptr<RayRenderObject> ro(
+        new RayRenderObject(m_device, sender, senderPort, container, geometry, normals, texture));
 
-   std::shared_ptr<RayRenderObject> ro(new RayRenderObject(m_device, sender, senderPort, container, geometry, normals, texture));
+    std::string species = container->getAttribute("_species");
+    if (!species.empty() && !ro->data->cmap) {
+        std::cerr << "applying colormap for " << species << std::endl;
+        auto &cmap = m_colormaps[species];
+        if (!cmap.cmap) {
+            cmap.cmap.reset(new ispc::ColorMapData);
+        }
+        ro->data->cmap = cmap.cmap.get();
+    }
 
-   std::string species = container->getAttribute("_species");
-   if (!species.empty() && !ro->data->cmap) {
-       std::cerr << "applying colormap for " << species << std::endl;
-       auto &cmap = m_colormaps[species];
-       if (!cmap.cmap) {
-           cmap.cmap.reset(new ispc::ColorMapData);
-       }
-       ro->data->cmap = cmap.cmap.get();
-   }
+    const int t = ro->timestep;
+    if (t == -1) {
+        static_geometry.push_back(ro);
+    } else {
+        if (anim_geometry.size() <= size_t(t))
+            anim_geometry.resize(t + 1);
+        anim_geometry[t].push_back(ro);
+    }
 
-   const int t = ro->timestep;
-   if (t == -1) {
-      static_geometry.push_back(ro);
-   } else {
-      if (anim_geometry.size() <= size_t(t))
-         anim_geometry.resize(t+1);
-      anim_geometry[t].push_back(ro);
-   }
+    auto rod = ro->data.get();
+    if (rod->scene) {
+        RTCGeometry geom_0 = rtcNewGeometry(m_device, RTC_GEOMETRY_TYPE_INSTANCE);
+        rtcSetGeometryInstancedScene(geom_0, rod->scene);
+        rtcSetGeometryTimeStepCount(geom_0, 1);
+        rod->instID = rtcAttachGeometry(m_scene, geom_0);
+        rtcReleaseGeometry(geom_0);
+        if (instances.size() <= rod->instID)
+            instances.resize(rod->instID + 1);
+        assert(!instances[rod->instID]);
+        instances[rod->instID] = rod;
 
-   auto rod = ro->data.get();
-   if (rod->scene) {
-      RTCGeometry geom_0 = rtcNewGeometry (m_device, RTC_GEOMETRY_TYPE_INSTANCE);
-      rtcSetGeometryInstancedScene(geom_0,rod->scene);
-      rtcSetGeometryTimeStepCount(geom_0,1);
-      rod->instID = rtcAttachGeometry(m_scene,geom_0);
-      rtcReleaseGeometry(geom_0);
-      if (instances.size() <= rod->instID)
-         instances.resize(rod->instID+1);
-      assert(!instances[rod->instID]);
-      instances[rod->instID] = rod;
+        float transform[16];
+        auto geoTransform = geometry->getTransform();
+        for (int i = 0; i < 16; ++i) {
+            transform[i] = geoTransform(i % 4, i / 4);
+        }
+        auto inv = geoTransform.inverse().transpose();
+        for (int c = 0; c < 3; ++c) {
+            rod->normalTransform[c].x = inv(c, 0);
+            rod->normalTransform[c].y = inv(c, 1);
+            rod->normalTransform[c].z = inv(c, 2);
+        }
+        rtcSetGeometryTransform(geom_0, 0, RTC_FORMAT_FLOAT4X4_COLUMN_MAJOR, transform);
+        rtcCommitGeometry(geom_0);
+        if (t == -1 || t == m_timestep) {
+            rtcEnableGeometry(geom_0);
+            m_renderManager.setModified();
+        } else {
+            rtcDisableGeometry(geom_0);
+        }
+        rtcCommitScene(m_scene);
+    }
 
-      float transform[16];
-      auto geoTransform = geometry->getTransform();
-      for (int i=0; i<16; ++i) {
-          transform[i] = geoTransform(i%4, i/4);
-      }
-      auto inv = geoTransform.inverse().transpose();
-      for (int c=0; c<3; ++c) {
-          rod->normalTransform[c].x = inv(c,0);
-          rod->normalTransform[c].y = inv(c,1);
-          rod->normalTransform[c].z = inv(c,2);
-      }
-      rtcSetGeometryTransform(geom_0,0,RTC_FORMAT_FLOAT4X4_COLUMN_MAJOR,transform);
-      rtcCommitGeometry(geom_0);
-      if (t == -1 || t == m_timestep) {
-         rtcEnableGeometry(geom_0);
-         m_renderManager.setModified();
-      } else {
-         rtcDisableGeometry(geom_0);
-      }
-      rtcCommitScene(m_scene);
-   }
+    m_renderManager.addObject(ro);
 
-   m_renderManager.addObject(ro);
-
-   return ro;
+    return ro;
 }
 
-bool DisCOVERay::handleMessage(const vistle::message::Message *message, const vistle::MessagePayload &payload) {
-
+bool DisCOVERay::handleMessage(const vistle::message::Message *message, const vistle::MessagePayload &payload)
+{
     if (m_renderManager.handleMessage(message, payload)) {
         return true;
     }

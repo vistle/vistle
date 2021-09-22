@@ -16,31 +16,29 @@ class Message;
 }
 
 class Executor {
+public:
+    Executor(int argc, char *argv[], boost::mpi::communicator comm);
+    virtual ~Executor();
 
-   public:
+    virtual bool config(int argc, char *argv[]);
 
-      Executor(int argc, char *argv[], boost::mpi::communicator comm);
-      virtual ~Executor();
+    void run();
 
-      virtual bool config(int argc, char *argv[]);
+    void setVistleRoot(const std::string &directory);
 
-      void run();
+    int getRank() const { return m_rank; }
+    int getSize() const { return m_size; }
 
-      void setVistleRoot(const std::string &directory);
+private:
+    std::string m_name;
+    int m_rank, m_size;
 
-      int getRank() const { return m_rank; }
-      int getSize() const { return m_size; }
+    Communicator *m_comm;
 
-   private:
-      std::string m_name;
-      int m_rank, m_size;
+    int m_argc;
+    char **m_argv;
 
-      Communicator *m_comm;
-
-      int m_argc;
-      char **m_argv;
-
-      Executor(const Executor &other); // not implemented
+    Executor(const Executor &other); // not implemented
 };
 
 } // namespace vistle

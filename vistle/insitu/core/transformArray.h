@@ -82,7 +82,7 @@ struct VtkArray2VistleConverter {
             }
             if ((size_t)dim[0] * (size_t)dim[1] * (size_t)dim[2] != n) {
                 std::cerr << "vtkArray2Vistle: non-matching grid size: [" << dim[0] << "*" << dim[1] << "*" << dim[2]
-                        << "] != " << n << std::endl;
+                          << "] != " << n << std::endl;
                 return nullptr;
             }
         }

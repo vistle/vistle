@@ -63,24 +63,18 @@ QT_BEGIN_NAMESPACE
 
 class AbstractFileSystemModel;
 
-class RFBSideBarDelegate : public QStyledItemDelegate
-{
- public:
-     RFBSideBarDelegate(QWidget *parent = 0) : QStyledItemDelegate(parent) {}
-     void initStyleOption(QStyleOptionViewItem *option,
-                          const QModelIndex &index) const override;
+class RFBSideBarDelegate: public QStyledItemDelegate {
+public:
+    RFBSideBarDelegate(QWidget *parent = 0): QStyledItemDelegate(parent) {}
+    void initStyleOption(QStyleOptionViewItem *option, const QModelIndex &index) const override;
 };
 
-class Q_AUTOTEST_EXPORT RemoteUrlModel : public QStandardItemModel
-{
+class Q_AUTOTEST_EXPORT RemoteUrlModel: public QStandardItemModel {
     Q_OBJECT
     friend class RFBSidebar;
 
 public:
-    enum Roles {
-        UrlRole = Qt::UserRole + 1,
-        EnabledRole = Qt::UserRole + 2
-    };
+    enum Roles { UrlRole = Qt::UserRole + 1, EnabledRole = Qt::UserRole + 2 };
 
     RemoteUrlModel(QObject *parent = 0);
 
@@ -88,10 +82,11 @@ public:
     QMimeData *mimeData(const QModelIndexList &indexes) const override;
 #ifndef QT_NO_DRAGANDDROP
     bool canDrop(QDragEnterEvent *event);
-    bool dropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column, const QModelIndex &parent) override;
+    bool dropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column,
+                      const QModelIndex &parent) override;
 #endif
     Qt::ItemFlags flags(const QModelIndex &index) const override;
-    bool setData(const QModelIndex &index, const QVariant &value, int role=Qt::EditRole) override;
+    bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole) override;
 
     void setUrls(const QList<QUrl> &list);
     void addUrls(const QList<QUrl> &urls, int row = -1, bool move = true);
@@ -122,8 +117,7 @@ private:
 };
 Q_DECLARE_TYPEINFO(RemoteUrlModel::WatchItem, Q_MOVABLE_TYPE);
 
-class Q_AUTOTEST_EXPORT RFBSidebar : public QListView
-{
+class Q_AUTOTEST_EXPORT RFBSidebar: public QListView {
     Q_OBJECT
 
 Q_SIGNALS:
@@ -143,7 +137,7 @@ public:
     void selectUrl(const QUrl &url);
 
 protected:
-    bool event(QEvent * e) override;
+    bool event(QEvent *e) override;
     void focusInEvent(QFocusEvent *event) override;
 #ifndef QT_NO_DRAGANDDROP
     void dragEnterEvent(QDragEnterEvent *event) override;
@@ -163,4 +157,3 @@ private:
 QT_END_NAMESPACE
 
 #endif // QSIDEBAR_H
-

@@ -86,7 +86,8 @@ inline Array<HandleType::Coords> getVariableData(const visit_handle &handle)
 template<typename T, HandleType HT>
 void transformArray(const Array<HT> &source, T *dest)
 {
-    vistle::insitu::detail::callFunctionWithVoidToTypeCast<void, vistle::insitu::detail::ArrayTransformer>(source.data, dataTypeToVistle(source.type), source.size, dest);
+    vistle::insitu::detail::callFunctionWithVoidToTypeCast<void, vistle::insitu::detail::ArrayTransformer>(
+        source.data, dataTypeToVistle(source.type), source.size, dest);
 }
 
 } // namespace libsim

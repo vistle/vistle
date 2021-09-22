@@ -4,13 +4,12 @@
 #include <vistle/module/module.h>
 
 class ToPoints: public vistle::Module {
+public:
+    ToPoints(const std::string &name, int moduleID, mpi::communicator comm);
+    ~ToPoints();
 
- public:
-   ToPoints(const std::string &name, int moduleID, mpi::communicator comm);
-   ~ToPoints();
-
- private:
-   virtual bool compute();
+private:
+    virtual bool compute();
 };
 
 #endif

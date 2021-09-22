@@ -8,52 +8,47 @@
 namespace vistle {
 
 template<class T>
-shm_obj_ref<T>::shm_obj_ref()
-    : m_name()
-    , m_d(nullptr)
+shm_obj_ref<T>::shm_obj_ref(): m_name(), m_d(nullptr)
 {
     ref();
 }
 
 template<class T>
-shm_obj_ref<T>::shm_obj_ref(const std::string &name, shm_obj_ref<T>::ObjType *p)
-    : m_name(name)
-    , m_d(p->d())
+shm_obj_ref<T>::shm_obj_ref(const std::string &name, shm_obj_ref<T>::ObjType *p): m_name(name), m_d(p->d())
 {
     ref();
 }
 
 template<class T>
-shm_obj_ref<T>::shm_obj_ref(const shm_obj_ref<T> &other)
-    : m_name(other.m_name)
-    , m_d(other.m_d)
+shm_obj_ref<T>::shm_obj_ref(const shm_obj_ref<T> &other): m_name(other.m_name), m_d(other.m_d)
 {
     ref();
 }
 
 template<class T>
-shm_obj_ref<T>::shm_obj_ref(const shm_name_t name)
-    : m_name(name)
-    , m_d(shm<T>::find(name))
+shm_obj_ref<T>::shm_obj_ref(const shm_name_t name): m_name(name), m_d(shm<T>::find(name))
 {
     ref();
 }
 
 template<class T>
-shm_obj_ref<T>::~shm_obj_ref() {
+shm_obj_ref<T>::~shm_obj_ref()
+{
     unref();
 }
 
 template<class T>
 template<typename... Args>
-shm_obj_ref<T> shm_obj_ref<T>::create(const Args&... args) {
+shm_obj_ref<T> shm_obj_ref<T>::create(const Args &...args)
+{
     shm_obj_ref<T> result;
     result.construct(args...);
     return result;
 }
 
 template<class T>
-bool shm_obj_ref<T>::find() {
+bool shm_obj_ref<T>::find()
+{
     auto mem = vistle::shm<ObjData>::find(m_name);
     m_d = mem;
     ref();
@@ -63,7 +58,7 @@ bool shm_obj_ref<T>::find() {
 
 template<class T>
 template<typename... Args>
-void shm_obj_ref<T>::construct(const Args&... args)
+void shm_obj_ref<T>::construct(const Args &...args)
 {
     unref();
     if (m_name.empty())
@@ -73,7 +68,8 @@ void shm_obj_ref<T>::construct(const Args&... args)
 }
 
 template<class T>
-const shm_obj_ref<T> &shm_obj_ref<T>::operator=(const shm_obj_ref<T> &rhs) {
+const shm_obj_ref<T> &shm_obj_ref<T>::operator=(const shm_obj_ref<T> &rhs)
+{
     unref();
     m_name = rhs.m_name;
     m_d = rhs.m_d;
@@ -82,7 +78,8 @@ const shm_obj_ref<T> &shm_obj_ref<T>::operator=(const shm_obj_ref<T> &rhs) {
 }
 
 template<class T>
-const shm_obj_ref<T> &shm_obj_ref<T>::operator=(typename shm_obj_ref<T>::ObjType::const_ptr rhs) {
+const shm_obj_ref<T> &shm_obj_ref<T>::operator=(typename shm_obj_ref<T>::ObjType::const_ptr rhs)
+{
     unref();
     if (rhs) {
         m_name = rhs->getName();
@@ -96,39 +93,46 @@ const shm_obj_ref<T> &shm_obj_ref<T>::operator=(typename shm_obj_ref<T>::ObjType
 }
 
 template<class T>
-const shm_obj_ref<T> &shm_obj_ref<T>::operator=(typename shm_obj_ref<T>::ObjType::ptr rhs) {
+const shm_obj_ref<T> &shm_obj_ref<T>::operator=(typename shm_obj_ref<T>::ObjType::ptr rhs)
+{
     // reuse operator fo ObjType::const_ptr
     *this = std::const_pointer_cast<const ObjType>(rhs);
     return *this;
 }
 
 template<class T>
-bool shm_obj_ref<T>::valid() const {
+bool shm_obj_ref<T>::valid() const
+{
     return m_name.empty() || m_d;
 }
 
 template<class T>
-typename shm_obj_ref<T>::ObjType::const_ptr shm_obj_ref<T>::getObject() const {
+typename shm_obj_ref<T>::ObjType::const_ptr shm_obj_ref<T>::getObject() const
+{
     if (!valid())
         return nullptr;
     typedef typename shm_obj_ref<T>::ObjType ObjType;
-    return typename ObjType::const_ptr(dynamic_cast<ObjType *>(Object::create(const_cast<typename ObjType::Data *>(&*m_d))));
+    return typename ObjType::const_ptr(
+        dynamic_cast<ObjType *>(Object::create(const_cast<typename ObjType::Data *>(&*m_d))));
 }
 
 template<class T>
-const typename shm_obj_ref<T>::ObjType::Data *shm_obj_ref<T>::getData() const {
+const typename shm_obj_ref<T>::ObjType::Data *shm_obj_ref<T>::getData() const
+{
     if (!valid())
         return nullptr;
     return &*m_d;
 }
 
 template<class T>
-const shm_name_t &shm_obj_ref<T>::name() const {
+const shm_name_t &shm_obj_ref<T>::name() const
+{
     return m_name;
 }
 
 template<class T>
-void shm_obj_ref<T>::ref() {
+void shm_obj_ref<T>::ref()
+{
     if (m_d) {
         assert(m_name == m_d->name);
         assert(m_d->refcount() >= 0);
@@ -137,7 +141,8 @@ void shm_obj_ref<T>::ref() {
 }
 
 template<class T>
-void shm_obj_ref<T>::unref() {
+void shm_obj_ref<T>::unref()
+{
     if (m_d) {
         assert(m_d->refcount() > 0);
         m_d->unref();
@@ -146,14 +151,16 @@ void shm_obj_ref<T>::unref() {
 }
 
 template<class T>
-vistle::shm_obj_ref<T>::operator bool() const {
+vistle::shm_obj_ref<T>::operator bool() const
+{
     return valid();
 }
 
 template<class T>
 template<class Archive>
-void shm_obj_ref<T>::save(Archive &ar) const {
-    ar & V_NAME(ar, "obj_name", m_name);
+void shm_obj_ref<T>::save(Archive &ar) const
+{
+    ar &V_NAME(ar, "obj_name", m_name);
     assert(valid());
     if (m_d)
         ar.saveObject(*this);
@@ -161,9 +168,10 @@ void shm_obj_ref<T>::save(Archive &ar) const {
 
 template<class T>
 template<class Archive>
-void shm_obj_ref<T>::load(Archive &ar) {
+void shm_obj_ref<T>::load(Archive &ar)
+{
     shm_name_t shmname;
-    ar & V_NAME(ar, "obj_name", shmname);
+    ar &V_NAME(ar, "obj_name", shmname);
     std::string arname = shmname;
 
     std::string name = ar.translateObjectName(arname);
@@ -221,5 +229,5 @@ void shm_obj_ref<T>::load(Archive &ar) {
     }
 }
 
-}
+} // namespace vistle
 #endif

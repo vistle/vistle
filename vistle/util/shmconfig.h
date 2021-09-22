@@ -5,7 +5,8 @@
 
 namespace vistle {
 
-bool V_UTILMPIEXPORT shmPerRank(); // do MPI communication in order to agree whether shmem should be used by all ranks on a node
+bool V_UTILMPIEXPORT
+shmPerRank(); // do MPI communication in order to agree whether shmem should be used by all ranks on a node
 
 }
 #endif

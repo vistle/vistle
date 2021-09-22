@@ -447,8 +447,8 @@ void ReadTsunami::computeActualLastTimestep(const ptrdiff_t &incrementTimestep, 
  * @param blockPartitionIterFirst Start iterator for storage partion indices.
  */
 template<class Iter>
-void ReadTsunami::computeBlockPartion(const int blockNum, vistle::Index &nLatBlocks,
-                                      vistle::Index &nLonBlocks, Iter blockPartitionIterFirst)
+void ReadTsunami::computeBlockPartion(const int blockNum, vistle::Index &nLatBlocks, vistle::Index &nLonBlocks,
+                                      Iter blockPartitionIterFirst)
 {
     std::array<Index, NUM_BLOCKS> blocks;
     for (int i = 0; i < NUM_BLOCKS; i++)

@@ -6,8 +6,7 @@
 
 class QtLongPropertyManagerPrivate;
 
-class QT_QTPROPERTYBROWSER_EXPORT QtLongPropertyManager : public QtAbstractPropertyManager
-{
+class QT_QTPROPERTYBROWSER_EXPORT QtLongPropertyManager: public QtAbstractPropertyManager {
     Q_OBJECT
 public:
     QtLongPropertyManager(QObject *parent = 0);
@@ -31,10 +30,12 @@ Q_SIGNALS:
     void rangeChanged(QtProperty *property, vistle::Integer minVal, vistle::Integer maxVal);
     void singleStepChanged(QtProperty *property, vistle::Integer step);
     void readOnlyChanged(QtProperty *property, bool readOnly);
+
 protected:
     QString valueText(const QtProperty *property) const;
     virtual void initializeProperty(QtProperty *property);
     virtual void uninitializeProperty(QtProperty *property);
+
 private:
     QtLongPropertyManagerPrivate *d_ptr;
     Q_DECLARE_PRIVATE(QtLongPropertyManager)

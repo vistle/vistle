@@ -5,8 +5,8 @@
 
 namespace vistle {
 
-void DeepArchiveSaver::saveArray(const std::string & name, int type, const void * array) {
-
+void DeepArchiveSaver::saveArray(const std::string &name, int type, const void *array)
+{
     if (isArraySaved(name))
         return;
 
@@ -20,8 +20,8 @@ void DeepArchiveSaver::saveArray(const std::string & name, int type, const void 
     }
 }
 
-void vistle::DeepArchiveSaver::saveObject(const std::string & name, Object::const_ptr obj) {
-
+void vistle::DeepArchiveSaver::saveObject(const std::string &name, Object::const_ptr obj)
+{
     if (isObjectSaved(name))
         return;
 
@@ -33,30 +33,32 @@ void vistle::DeepArchiveSaver::saveObject(const std::string & name, Object::cons
     m_objects.emplace(name, std::move(vb.get_vector()));
 }
 
-SubArchiveDirectory DeepArchiveSaver::getDirectory() {
+SubArchiveDirectory DeepArchiveSaver::getDirectory()
+{
     SubArchiveDirectory dir;
-    for (auto &obj : m_objects) {
+    for (auto &obj: m_objects) {
         dir.emplace_back(obj.first, false, obj.second.size(), obj.second.data());
     }
-    for (auto &arr : m_arrays) {
+    for (auto &arr: m_arrays) {
         dir.emplace_back(arr.first, true, arr.second.size(), arr.second.data());
     }
     return dir;
 }
 
-void DeepArchiveSaver::flushDirectory() {
-    for (const auto &obj : m_objects) {
+void DeepArchiveSaver::flushDirectory()
+{
+    for (const auto &obj: m_objects) {
         m_archivedObjects.emplace(obj.first);
     }
     m_objects.clear();
-    for (const auto &arr : m_arrays) {
+    for (const auto &arr: m_arrays) {
         m_archivedArrays.emplace(arr.first);
     }
     m_arrays.clear();
 }
 
-bool DeepArchiveSaver::isObjectSaved(const std::string &name) const {
-
+bool DeepArchiveSaver::isObjectSaved(const std::string &name) const
+{
     if (m_objects.find(name) != m_objects.end())
         return true;
     if (m_archivedObjects.find(name) != m_archivedObjects.end())
@@ -65,8 +67,8 @@ bool DeepArchiveSaver::isObjectSaved(const std::string &name) const {
     return false;
 }
 
-bool DeepArchiveSaver::isArraySaved(const std::string &name) const {
-
+bool DeepArchiveSaver::isArraySaved(const std::string &name) const
+{
     if (m_arrays.find(name) != m_arrays.end())
         return true;
     if (m_archivedArrays.find(name) != m_archivedArrays.end())
@@ -75,35 +77,35 @@ bool DeepArchiveSaver::isArraySaved(const std::string &name) const {
     return false;
 }
 
-std::set<std::string> DeepArchiveSaver::savedObjects() const {
-
+std::set<std::string> DeepArchiveSaver::savedObjects() const
+{
     auto objs = m_archivedObjects;
     for (const auto &o: m_objects)
         objs.emplace(o.first);
     return objs;
 }
 
-std::set<std::string> DeepArchiveSaver::savedArrays() const {
-
+std::set<std::string> DeepArchiveSaver::savedArrays() const
+{
     auto arrs = m_archivedArrays;
     for (const auto &a: m_arrays)
         arrs.emplace(a.first);
     return arrs;
 }
 
-void DeepArchiveSaver::setSavedObjects(const std::set<std::string> &objs) {
-
+void DeepArchiveSaver::setSavedObjects(const std::set<std::string> &objs)
+{
     m_archivedObjects = objs;
 }
 
-void DeepArchiveSaver::setSavedArrays(const std::set<std::string> &arrs) {
-
+void DeepArchiveSaver::setSavedArrays(const std::set<std::string> &arrs)
+{
     m_archivedArrays = arrs;
 }
 
-void DeepArchiveSaver::setCompressionSettings(const CompressionSettings &settings) {
-
+void DeepArchiveSaver::setCompressionSettings(const CompressionSettings &settings)
+{
     m_compressionSettings = settings;
 }
 
-}
+} // namespace vistle

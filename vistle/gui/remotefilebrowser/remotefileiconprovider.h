@@ -7,7 +7,6 @@ class FileInfo;
 
 class RemoteFileIconProvider {
 public:
-
     RemoteFileIconProvider();
     virtual ~RemoteFileIconProvider();
     enum IconType {
@@ -24,6 +23,7 @@ public:
     virtual QIcon icon(IconType type) const;
     virtual QIcon icon(const FileInfo &info) const;
     virtual QString type(const FileInfo &info) const;
+
 private:
     static QScopedPointer<QFileIconProvider> s_qIconProvider;
 };

@@ -3,18 +3,16 @@
 #include <vistle/core/unstr.h>
 
 using namespace vistle;
-ShowGridIndex::ShowGridIndex(const std::string& name, int moduleID, boost::mpi::communicator comm)
-    :Module(name, moduleID, comm)
+ShowGridIndex::ShowGridIndex(const std::string &name, int moduleID, boost::mpi::communicator comm)
+: Module(name, moduleID, comm)
 {
-
     m_gridIn = createInputPort("gridIn", "grid input");
     m_grid_out = createOutputPort("gridOut", "pass grid from grid in");
     m_indexOut = createOutputPort("indexOut", "the indeces of the vertices of the grid");
-
 }
 
-bool ShowGridIndex::compute() {
-
+bool ShowGridIndex::compute()
+{
     Object::const_ptr input = accept<Object>(m_gridIn);
     auto unstr = UnstructuredGrid::as(input);
     if (!unstr) {

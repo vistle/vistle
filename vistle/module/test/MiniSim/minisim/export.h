@@ -3,7 +3,7 @@
 
 #include <vistle/util/export.h>
 
-#if defined (miniSim_EXPORTS)
+#if defined(miniSim_EXPORTS)
 #define MINI_SIM_EXPORT V_EXPORT
 #else
 #define MINI_SIM_EXPORT V_IMPORT

@@ -123,6 +123,7 @@ public:
     using AvailableModuleBase::AvailableModuleBase;
     bool send(const sendMessageFunction &func) const;
     bool send(const sendShmMessageFunction &func) const;
+
 private:
     AvailableModule(ModuleCompound &&other);
 };

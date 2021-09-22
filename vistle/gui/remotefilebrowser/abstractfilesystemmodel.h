@@ -5,8 +5,7 @@
 
 #include "abstractfileinfogatherer.h"
 
-class AbstractFileSystemModel: public QAbstractItemModel
-{
+class AbstractFileSystemModel: public QAbstractItemModel {
     Q_OBJECT
     Q_PROPERTY(bool resolveSymlinks READ resolveSymlinks WRITE setResolveSymlinks)
     Q_PROPERTY(bool readOnly READ isReadOnly WRITE setReadOnly)

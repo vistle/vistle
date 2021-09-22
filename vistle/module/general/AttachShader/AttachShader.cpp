@@ -6,9 +6,8 @@ MODULE_MAIN(AttachShader)
 
 using namespace vistle;
 
-AttachShader::AttachShader(const std::string &name, int moduleID, mpi::communicator comm)
-    : Module(name, moduleID, comm) {
-
+AttachShader::AttachShader(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
+{
     setDefaultCacheMode(ObjectCache::CacheDeleteLate);
 
     createInputPort("data_in");
@@ -16,25 +15,25 @@ AttachShader::AttachShader(const std::string &name, int moduleID, mpi::communica
     createOutputPort("data_out");
 
     m_shader = addStringParameter("shader", "name of shader to apply to geometry", "");
-    m_shaderParams = addStringParameter("shader_params", "shader parameters (as \"key=value\" \"key=value1 value2\"", "");
+    m_shaderParams =
+        addStringParameter("shader_params", "shader parameters (as \"key=value\" \"key=value1 value2\"", "");
 }
 
-AttachShader::~AttachShader() {
+AttachShader::~AttachShader()
+{}
 
-}
+bool AttachShader::compute()
+{
+    Object::const_ptr obj = expect<Object>("data_in");
+    if (!obj)
+        return true;
 
-bool AttachShader::compute() {
+    Object::ptr nobj = obj->clone();
+    nobj->addAttribute("shader", m_shader->getValue());
+    if (!m_shaderParams->getValue().empty()) {
+        nobj->addAttribute("shader_params", m_shaderParams->getValue());
+    }
+    addObject("data_out", nobj);
 
-   Object::const_ptr obj = expect<Object>("data_in");
-   if (!obj)
-      return true;
-
-   Object::ptr nobj = obj->clone();
-   nobj->addAttribute("shader", m_shader->getValue());
-   if (!m_shaderParams->getValue().empty()) {
-       nobj->addAttribute("shader_params", m_shaderParams->getValue());
-   }
-   addObject("data_out", nobj);
-
-   return true;
+    return true;
 }

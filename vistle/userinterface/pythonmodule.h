@@ -14,14 +14,14 @@ class VistleConnection;
 class ModuleCompound;
 class V_UIEXPORT PythonModule {
 public:
-   explicit PythonModule(VistleConnection *vc = nullptr);
-   ~PythonModule();
+    explicit PythonModule(VistleConnection *vc = nullptr);
+    ~PythonModule();
 
-   VistleConnection &vistleConnection() const;
-   bool import(pybind11::object *m_namespace, const std::string &path);
+    VistleConnection &vistleConnection() const;
+    bool import(pybind11::object *m_namespace, const std::string &path);
 
 private:
-   VistleConnection *m_vistleConnection;
+    VistleConnection *m_vistleConnection;
 };
 void V_UIEXPORT moduleCompoundToFile(const ModuleCompound &comp);
 

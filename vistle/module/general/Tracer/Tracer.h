@@ -15,12 +15,8 @@
 #include "Integrator.h"
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(TraceType,
-      // this order is expected by COVER's TracerInteraction
-      (Streamlines)
-      (MovingPoints)
-      (Pathlines)
-      (Streaklines)
-)
+                                    // this order is expected by COVER's TracerInteraction
+                                    (Streamlines)(MovingPoints)(Pathlines)(Streaklines))
 
 class BlockData;
 
@@ -30,7 +26,6 @@ class GlobalData {
     friend class Integrator;
 
 public:
-
 private:
     std::vector<std::vector<std::shared_ptr<BlockData>>> blocks;
 
@@ -71,14 +66,13 @@ private:
 };
 
 class Tracer: public vistle::Module {
-
 public:
     Tracer(const std::string &name, int moduleID, mpi::communicator comm);
     ~Tracer();
 
     typedef std::map<std::string, std::string> AttributeMap;
 
- private:
+private:
     bool compute() override;
     bool prepare() override;
     bool reduce(int timestep) override;
@@ -86,7 +80,7 @@ public:
 
     std::vector<std::vector<vistle::Object::const_ptr>> grid_in;
     std::vector<std::vector<std::future<vistle::Celltree3::const_ptr>>> celltree;
-    std::vector<std::vector<vistle::Vec<vistle::Scalar,3>::const_ptr>> data_in0;
+    std::vector<std::vector<vistle::Vec<vistle::Scalar, 3>::const_ptr>> data_in0;
     std::vector<std::vector<vistle::Vec<vistle::Scalar>::const_ptr>> data_in1;
 
     std::vector<AttributeMap> m_gridAttr, m_data0Attr, m_data1Attr;
@@ -101,6 +95,5 @@ public:
     bool m_haveTimeSteps = false;
 
     bool m_numStartpointsPrinted = false;
-
 };
 #endif

@@ -17,12 +17,11 @@ public:
 
 
 class VistleUrl {
-
 public:
     static bool parse(std::string url, ConnectionData &data);
     static std::string create(std::string host, unsigned short port, std::string key);
     static std::string create(const ConnectionData &data);
 };
 
-}
+} // namespace vistle
 #endif //VISTLE_URL_H

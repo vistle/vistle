@@ -66,7 +66,7 @@
 #include <QMap>
 
 #if defined(Q_CC_MSVC)
-#    pragma warning(disable: 4786) /* MS VS 6: truncating debug info after 255 characters */
+#pragma warning(disable : 4786) /* MS VS 6: truncating debug info after 255 characters */
 #endif
 
 #if QT_VERSION >= 0x040400
@@ -76,11 +76,9 @@ QT_BEGIN_NAMESPACE
 // ---------- EditorFactoryPrivate :
 // Base class for editor factory private classes. Manages mapping of properties to editors and vice versa.
 
-template <class Editor>
-class EditorFactoryPrivate
-{
+template<class Editor>
+class EditorFactoryPrivate {
 public:
-
     typedef QList<Editor *> EditorList;
     typedef QMap<QtProperty *, EditorList> PropertyToEditorListMap;
     typedef QMap<Editor *, QtProperty *> EditorToPropertyMap;
@@ -89,11 +87,11 @@ public:
     void initializeEditor(QtProperty *property, Editor *e);
     void slotEditorDestroyed(QObject *object);
 
-    PropertyToEditorListMap  m_createdEditors;
+    PropertyToEditorListMap m_createdEditors;
     EditorToPropertyMap m_editorToProperty;
 };
 
-template <class Editor>
+template<class Editor>
 Editor *EditorFactoryPrivate<Editor>::createEditor(QtProperty *property, QWidget *parent)
 {
     Editor *editor = new Editor(parent);
@@ -101,7 +99,7 @@ Editor *EditorFactoryPrivate<Editor>::createEditor(QtProperty *property, QWidget
     return editor;
 }
 
-template <class Editor>
+template<class Editor>
 void EditorFactoryPrivate<Editor>::initializeEditor(QtProperty *property, Editor *editor)
 {
     typename PropertyToEditorListMap::iterator it = m_createdEditors.find(property);
@@ -111,11 +109,11 @@ void EditorFactoryPrivate<Editor>::initializeEditor(QtProperty *property, Editor
     m_editorToProperty.insert(editor, property);
 }
 
-template <class Editor>
+template<class Editor>
 void EditorFactoryPrivate<Editor>::slotEditorDestroyed(QObject *object)
 {
     const typename EditorToPropertyMap::iterator ecend = m_editorToProperty.end();
-    for (typename EditorToPropertyMap::iterator itEditor = m_editorToProperty.begin(); itEditor !=  ecend; ++itEditor) {
+    for (typename EditorToPropertyMap::iterator itEditor = m_editorToProperty.begin(); itEditor != ecend; ++itEditor) {
         if (itEditor.key() == object) {
             Editor *editor = itEditor.key();
             QtProperty *property = itEditor.value();

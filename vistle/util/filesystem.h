@@ -15,5 +15,5 @@ namespace vistle {
 namespace filesystem = boost::filesystem;
 //#endif
 
-}
+} // namespace vistle
 #endif

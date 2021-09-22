@@ -15,23 +15,18 @@ using namespace std;
 namespace nek5000 {
 
 ReaderBase::ReaderBase(std::string file, int numPartitions, int blocksToRead)
-    :file(file)
-    ,numPartitions(numPartitions )
-    ,numBlocksToRead(blocksToRead)
-{
-}
+: file(file), numPartitions(numPartitions), numBlocksToRead(blocksToRead)
+{}
 
 ReaderBase::~ReaderBase()
-{
-
-}
+{}
 
 bool ReaderBase::init()
 {
     if (!parseMetaDataFile() || !ParseNekFileHeader() || !ParseGridMap()) {
         return false;
     }
-    if(numBlocksToRead < 1 || numBlocksToRead > unsigned(totalNumBlocks))
+    if (numBlocksToRead < 1 || numBlocksToRead > unsigned(totalNumBlocks))
         numBlocksToRead = totalNumBlocks;
     UpdateCyclesAndTimes(0);
     //create basic structures to later create connectivity lists
@@ -74,12 +69,12 @@ bool ReaderBase::hasTemperature() const
 }
 
 //protected methods
-std::string ReaderBase::GetFileName(int rawTimestep, int pardir) {
+std::string ReaderBase::GetFileName(int rawTimestep, int pardir)
+{
     int timestep = rawTimestep + firstTimestep;
     int nPrintfTokens = 0;
 
     for (size_t ii = 0; ii < fileTemplate.size() - 1; ii++) {
-
         if (fileTemplate[ii] == '%' && fileTemplate[ii + 1] != '%')
             nPrintfTokens++;
     }
@@ -97,8 +92,7 @@ std::string ReaderBase::GetFileName(int rawTimestep, int pardir) {
     int bufSize = fileTemplate.size();
     int len;
     string s;
-    do
-    {
+    do {
         bufSize += 64;
         char *outFileName = new char[bufSize];
         if (!isParallelFormat)
@@ -108,7 +102,7 @@ std::string ReaderBase::GetFileName(int rawTimestep, int pardir) {
         else
             len = snprintf(outFileName, bufSize, fileTemplate.c_str(), pardir, pardir, timestep);
         s = string(outFileName, len);
-        delete[]outFileName;
+        delete[] outFileName;
     } while (len >= bufSize);
     return s;
 }
@@ -118,7 +112,8 @@ void ReaderBase::sendError(const std::string &msg)
     cerr << msg << endl;
 }
 
-void ReaderBase::UpdateCyclesAndTimes(int timestep) {
+void ReaderBase::UpdateCyclesAndTimes(int timestep)
+{
     if (m_times.size() != (size_t)numTimesteps) {
         m_times.resize(numTimesteps);
         m_cycles.resize(numTimesteps);
@@ -129,7 +124,7 @@ void ReaderBase::UpdateCyclesAndTimes(int timestep) {
     ifstream f;
     char dummy[64];
     double t;
-    int    c;
+    int c;
     string v;
     t = 0.0;
     c = 0;
@@ -139,7 +134,7 @@ void ReaderBase::UpdateCyclesAndTimes(int timestep) {
 
     if (!isParallelFormat) {
         string tString, cString;
-        f >> dummy >> dummy >> dummy >> dummy >> tString >> cString >> v;  //skip #blocks and block size
+        f >> dummy >> dummy >> dummy >> dummy >> tString >> cString >> v; //skip #blocks and block size
         t = atof(tString.c_str());
         c = atoi(cString.c_str());
     } else {
@@ -172,8 +167,7 @@ void ReaderBase::UpdateCyclesAndTimes(int timestep) {
 
     // If this file contains a grid, the first variable codes after the
     // cycle number will be X Y
-    if (v.find("X") != string::npos)
-    {
+    if (v.find("X") != string::npos) {
         m_timestepsWithGrid[timestep] = true;
     }
 
@@ -192,36 +186,37 @@ bool ReaderBase::hasGrid(int timestep) const
 
 
 //private methods
-void ReaderBase::setAllEdgesInCornerIndices() {
-    allEdgesInCornerIndices.insert({ 1,2 });
-    allEdgesInCornerIndices.insert({ 1,3 });
-    allEdgesInCornerIndices.insert({ 2,4 });
-    allEdgesInCornerIndices.insert({ 3,4 });
+void ReaderBase::setAllEdgesInCornerIndices()
+{
+    allEdgesInCornerIndices.insert({1, 2});
+    allEdgesInCornerIndices.insert({1, 3});
+    allEdgesInCornerIndices.insert({2, 4});
+    allEdgesInCornerIndices.insert({3, 4});
     if (dim == 3) {
-        allEdgesInCornerIndices.insert({ 1,5 });
-        allEdgesInCornerIndices.insert({ 2,6 });
-        allEdgesInCornerIndices.insert({ 3,7 });
-        allEdgesInCornerIndices.insert({ 4,8 });
-        allEdgesInCornerIndices.insert({ 5,6 });
-        allEdgesInCornerIndices.insert({ 5,7 });
-        allEdgesInCornerIndices.insert({ 6,8 });
-        allEdgesInCornerIndices.insert({ 7,8 });
+        allEdgesInCornerIndices.insert({1, 5});
+        allEdgesInCornerIndices.insert({2, 6});
+        allEdgesInCornerIndices.insert({3, 7});
+        allEdgesInCornerIndices.insert({4, 8});
+        allEdgesInCornerIndices.insert({5, 6});
+        allEdgesInCornerIndices.insert({5, 7});
+        allEdgesInCornerIndices.insert({6, 8});
+        allEdgesInCornerIndices.insert({7, 8});
     }
 }
 
-void ReaderBase::setAllPlanesInCornerIndices() {
-    vector < Plane> planes;
-    allPlanesInCornerIndices.insert({ 1, 2, 3, 4 });
-    allPlanesInCornerIndices.insert({ 1, 2, 5, 6 });
-    allPlanesInCornerIndices.insert({ 1, 3, 5, 7 });
-    allPlanesInCornerIndices.insert({ 2, 4, 6, 8 });
-    allPlanesInCornerIndices.insert({ 3, 4, 7, 8 });
-    allPlanesInCornerIndices.insert({ 5, 6, 7, 8 });
-
-
+void ReaderBase::setAllPlanesInCornerIndices()
+{
+    vector<Plane> planes;
+    allPlanesInCornerIndices.insert({1, 2, 3, 4});
+    allPlanesInCornerIndices.insert({1, 2, 5, 6});
+    allPlanesInCornerIndices.insert({1, 3, 5, 7});
+    allPlanesInCornerIndices.insert({2, 4, 6, 8});
+    allPlanesInCornerIndices.insert({3, 4, 7, 8});
+    allPlanesInCornerIndices.insert({5, 6, 7, 8});
 }
 
-void ReaderBase::setBlockIndexToConnectivityIndex() {
+void ReaderBase::setBlockIndexToConnectivityIndex()
+{
     blockIndexToConnectivityIndex.clear();
     for (size_t j = 0; j < blockSize; j++) {
         vector<int> connectivityIndices;
@@ -239,11 +234,11 @@ void ReaderBase::setBlockIndexToConnectivityIndex() {
 }
 
 
-
-bool ReaderBase::parseMetaDataFile() {
+bool ReaderBase::parseMetaDataFile()
+{
     string tag;
     char buf[2048];
-    ifstream  f(file);
+    ifstream f(file);
     int ii;
 
     // Process a tag at a time until all lines have been read
@@ -262,7 +257,7 @@ bool ReaderBase::parseMetaDataFile() {
         if (tag == "endian:") {
             //This tag is deprecated.  There's a float written into each binary file
             //from which endianness can be determined.
-            string  dummy_endianness;
+            string dummy_endianness;
             f >> dummy_endianness;
         } else if (tag == "filetemplate:") {
             f >> fileTemplate;
@@ -358,7 +353,8 @@ bool ReaderBase::parseMetaDataFile() {
 #ifdef _WIN32
             _getcwd(buf, 512);
 #else
-            char* res = getcwd(buf, 512); (void)res;
+            char *res = getcwd(buf, 512);
+            (void)res;
 #endif
             strcat(buf, "/");
             fileTemplate.insert(0, buf, strlen(buf));
@@ -376,14 +372,14 @@ bool ReaderBase::parseMetaDataFile() {
     return true;
 }
 
-bool ReaderBase::ParseGridMap() {
+bool ReaderBase::ParseGridMap()
+{
     string base_filename = file;
     size_t ext = base_filename.find_last_of('.') + 1;
     base_filename.erase(ext);
     string map_filename = base_filename + "map";
-    ifstream  mptr(map_filename);
+    ifstream mptr(map_filename);
     if (mptr.is_open()) {
-
         for (size_t i = 0; i < 7; i++) {
             mptr >> m_mapFileHeader[i];
         }
@@ -400,28 +396,26 @@ bool ReaderBase::ParseGridMap() {
         return true;
     }
     string ma2_filename = base_filename + "ma2";
-    ifstream  ma2ptr(ma2_filename, ifstream::binary);
-    if (ma2ptr.is_open())
-    {
+    ifstream ma2ptr(ma2_filename, ifstream::binary);
+    if (ma2ptr.is_open()) {
         string version;
         ma2ptr >> version;
-        if (version != "#v001")
-        {
+        if (version != "#v001") {
             sendError("ma2 file of version " + version + " is not supported");
             return false;
         }
         for (size_t i = 0; i < 7; i++) {
             ma2ptr >> m_mapFileHeader[i];
         }
-        ma2ptr.seekg(132/4 * sizeof(float), ios::beg);
+        ma2ptr.seekg(132 / 4 * sizeof(float), ios::beg);
         char test;
         ma2ptr >> test; //to do: use this to perform byteswap if neccessary
-        ma2ptr.seekg((132 / 4  + 1) * sizeof(float), ios::beg);
+        ma2ptr.seekg((132 / 4 + 1) * sizeof(float), ios::beg);
         m_mapFileData.reserve(m_mapFileHeader[0]);
         int columns = dim == 2 ? 5 : 9;
 
-        int* map = new int[columns * m_mapFileHeader[0]];
-        ma2ptr.read((char*)map, columns * m_mapFileHeader[0] * sizeof(float));
+        int *map = new int[columns * m_mapFileHeader[0]];
+        ma2ptr.read((char *)map, columns * m_mapFileHeader[0] * sizeof(float));
 
         for (int i = 0; i < m_mapFileHeader[0]; ++i) {
             array<int, 9> line;
@@ -429,29 +423,27 @@ bool ReaderBase::ParseGridMap() {
                 line[j] = map[i * columns + j];
             }
             m_mapFileData.emplace_back(line);
-        } 
+        }
         delete[] map;
         ma2ptr.close();
         return true;
-
-
-
-
     }
 
-    sendError("ReadNek: can neither open map file " + map_filename + " nor ma2 file " + ma2_filename );
+    sendError("ReadNek: can neither open map file " + map_filename + " nor ma2 file " + ma2_filename);
     return false;
 }
 
-bool ReaderBase::ParseNekFileHeader() {
+bool ReaderBase::ParseNekFileHeader()
+{
     string buf2, tag;
 
     //Now read the header of one of the files to get block and variable info
     string blockfilename = GetFileName(0, 0);
-    ifstream  f(blockfilename, ifstream::binary);
+    ifstream f(blockfilename, ifstream::binary);
 
     if (!f.is_open()) {
-        sendError("Could not open file " + file + ", which should exist according to header file " + blockfilename + ".");
+        sendError("Could not open file " + file + ", which should exist according to header file " + blockfilename +
+                  ".");
         return false;
     }
 
@@ -462,7 +454,7 @@ bool ReaderBase::ParseNekFileHeader() {
         float test;
         f.seekg(80, ios::beg);
 
-        f.read((char*)(&test), 4);
+        f.read((char *)(&test), 4);
         if (test > 6.5 && test < 6.6)
             isBinary = true;
         else {
@@ -489,8 +481,8 @@ bool ReaderBase::ParseNekFileHeader() {
         f >> blockDimensions[1];
         f >> blockDimensions[2];
 
-        f >> buf2;   //skip
-        f >> buf2;   //skip
+        f >> buf2; //skip
+        f >> buf2; //skip
 
         ParseFieldTags(f);
     } else {
@@ -520,16 +512,16 @@ bool ReaderBase::ParseNekFileHeader() {
         f >> blockDimensions[0];
         f >> blockDimensions[1];
         f >> blockDimensions[2];
-        f >> buf2;  //blocks per file
+        f >> buf2; //blocks per file
         f >> totalNumBlocks;
 
         //This bypasses some tricky and unnecessary parsing of data
         //I already have.
         //6.13.08  No longer works...
         //f.seekg(77, std::ios_base::beg);
-        f >> buf2;  //time
-        f >> buf2;  //cycle
-        f >> buf2;  //directory num of this file
+        f >> buf2; //time
+        f >> buf2; //cycle
+        f >> buf2; //directory num of this file
 
         //I do this to skip the num directories token, because it may abut
         //the field tags without a whitespace separator.
@@ -544,7 +536,6 @@ bool ReaderBase::ParseNekFileHeader() {
         }
 
         ParseFieldTags(f);
-
     }
     if (totalNumBlocks < 0) {
         sendError("negative total block count");
@@ -564,10 +555,10 @@ bool ReaderBase::ParseNekFileHeader() {
         float test;
         if (!isParallelFormat) {
             f.seekg(80, std::ios_base::beg);
-            f.read((char*)(&test), 4);
+            f.read((char *)(&test), 4);
         } else {
             f.seekg(132, std::ios_base::beg);
-            f.read((char*)(&test), 4);
+            f.read((char *)(&test), 4);
         }
         if (test > 6.5 && test < 6.6)
             m_swapEndian = false;
@@ -587,7 +578,8 @@ bool ReaderBase::ParseNekFileHeader() {
     return true;
 }
 
-void ReaderBase::ParseFieldTags(ifstream& f) {
+void ReaderBase::ParseFieldTags(ifstream &f)
+{
     m_numScalarFields = 1;
     int numSpacesInARow = 0;
     bool foundCoordinates = false;
@@ -622,8 +614,7 @@ void ReaderBase::ParseFieldTags(ifstream& f) {
                 f.get();
             char digit2 = f.get();
 
-            if (digit1 >= '0' && digit1 <= '9' &&
-                digit2 >= '0' && digit2 <= '9')
+            if (digit1 >= '0' && digit1 <= '9' && digit2 >= '0' && digit2 <= '9')
                 m_numScalarFields = (digit1 - '0') * 10 + (digit2 - '0');
             else
                 m_numScalarFields = 1;
@@ -632,14 +623,14 @@ void ReaderBase::ParseFieldTags(ifstream& f) {
     }
     if (!foundCoordinates) {
         sendError("Nek: The first time step in a Nek file must contain a grid");
-
     }
 }
 
-void ReaderBase::makeBaseConnList() {
+void ReaderBase::makeBaseConnList()
+{
     using vistle::Index;
     baseConnList.resize(numCorners * hexesPerBlock);
-    Index* nl = baseConnList.data();
+    Index *nl = baseConnList.data();
     for (Index ii = 0; ii < blockDimensions[0] - 1; ii++) {
         for (Index jj = 0; jj < blockDimensions[1] - 1; jj++) {
             if (dim == 2) {
@@ -655,11 +646,13 @@ void ReaderBase::makeBaseConnList() {
                     *nl++ = kk * (blockDimensions[1]) * (blockDimensions[0]) + (jj + 1) * (blockDimensions[0]) + ii;
                     *nl++ = (kk + 1) * (blockDimensions[1]) * (blockDimensions[0]) + jj * (blockDimensions[0]) + ii;
                     *nl++ = (kk + 1) * (blockDimensions[1]) * (blockDimensions[0]) + jj * (blockDimensions[0]) + ii + 1;
-                    *nl++ = (kk + 1) * (blockDimensions[1]) * (blockDimensions[0]) + (jj + 1) * (blockDimensions[0]) + ii + 1;
-                    *nl++ = (kk + 1) * (blockDimensions[1]) * (blockDimensions[0]) + (jj + 1) * (blockDimensions[0]) + ii;
+                    *nl++ = (kk + 1) * (blockDimensions[1]) * (blockDimensions[0]) + (jj + 1) * (blockDimensions[0]) +
+                            ii + 1;
+                    *nl++ =
+                        (kk + 1) * (blockDimensions[1]) * (blockDimensions[0]) + (jj + 1) * (blockDimensions[0]) + ii;
                 }
             }
         }
     }
 }
-}
+} // namespace nek5000

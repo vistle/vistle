@@ -1,4 +1,4 @@
- /*
+/*
   QPyConsole.cpp
 
   Controls the GEMBIRD Silver Shield PM USB outlet device
@@ -55,40 +55,35 @@ static QString resultString;
 
 #ifdef HAVE_PYTHON
 class Redirector {
-   bool m_stderr;
+    bool m_stderr;
 
 public:
-   Redirector(bool error = false)
-      : m_stderr(error)
-   {}
+    Redirector(bool error = false): m_stderr(error) {}
 
-   void write(const std::string &output)
-   {
-       if (VistleConsole::the())
-       {
-           QString outputString = QString::fromStdString(output);
-           if (m_stderr)
-               VistleConsole::the()->setTextColor(VistleConsole::the()->errColor());
-           else
-               VistleConsole::the()->setTextColor(VistleConsole::the()->outColor());
-           VistleConsole::the()->insertPlainText(outputString);
-           VistleConsole::the()->setTextColor(VistleConsole::the()->cmdColor());
-           VistleConsole::the()->ensureCursorVisible();
-           QApplication::processEvents();
-       }
-       else
-       {
-           std::cerr << (m_stderr?"ERR: ":"OUT: ") << output << std::flush;
-       }
-   }
+    void write(const std::string &output)
+    {
+        if (VistleConsole::the()) {
+            QString outputString = QString::fromStdString(output);
+            if (m_stderr)
+                VistleConsole::the()->setTextColor(VistleConsole::the()->errColor());
+            else
+                VistleConsole::the()->setTextColor(VistleConsole::the()->outColor());
+            VistleConsole::the()->insertPlainText(outputString);
+            VistleConsole::the()->setTextColor(VistleConsole::the()->cmdColor());
+            VistleConsole::the()->ensureCursorVisible();
+            QApplication::processEvents();
+        } else {
+            std::cerr << (m_stderr ? "ERR: " : "OUT: ") << output << std::flush;
+        }
+    }
 };
 
 PYBIND11_EMBEDDED_MODULE(_redirector, m)
 {
     py::class_<Redirector>(m, "redirector")
-            .def(py::init<>())
-            .def(py::init<bool>())
-            .def("write", &Redirector::write, "implement the write method to redirect stdout/err");
+        .def(py::init<>())
+        .def(py::init<bool>())
+        .def("write", &Redirector::write, "implement the write method to redirect stdout/err");
 }
 #endif
 
@@ -119,122 +114,120 @@ static void history()
 
 static void quit()
 {
-    resultString="Use reset() to restart the interpreter; otherwise exit your application\n";
+    resultString = "Use reset() to restart the interpreter; otherwise exit your application\n";
 }
 
 static std::string raw_input(const std::string &prompt)
 {
-   VistleConsole::the()->setTextColor(VistleConsole::the()->outColor());
-   VistleConsole::the()->append(resultString);
-   resultString = "";
-   VistleConsole::the()->setPrompt(QString::fromStdString(prompt));
-   QCoreApplication::processEvents();
-   QCoreApplication::sendPostedEvents();
-   std::string ret = VistleConsole::the()->getRawInput().toStdString();
-   VistleConsole::the()->setTextColor(VistleConsole::the()->cmdColor());
-   VistleConsole::the()->setNormalPrompt(false);
-   return ret;
+    VistleConsole::the()->setTextColor(VistleConsole::the()->outColor());
+    VistleConsole::the()->append(resultString);
+    resultString = "";
+    VistleConsole::the()->setPrompt(QString::fromStdString(prompt));
+    QCoreApplication::processEvents();
+    QCoreApplication::sendPostedEvents();
+    std::string ret = VistleConsole::the()->getRawInput().toStdString();
+    VistleConsole::the()->setTextColor(VistleConsole::the()->cmdColor());
+    VistleConsole::the()->setNormalPrompt(false);
+    return ret;
 }
 
 #ifdef HAVE_PYTHON
 PYBIND11_EMBEDDED_MODULE(_console, m)
 {
-   m.def("clear", clear, "clear the console");
-   m.def("reset", pyreset, "reset the interpreter and clear the console");
-   m.def("save", save, "save commands up to now in given file");
-   m.def("load", load, "load commands from given file");
-   m.def("history", history, "shows the history");
-   m.def("quit", quit, "print information about quitting");
-   m.def("raw_input", raw_input, "handle raw input");
+    m.def("clear", clear, "clear the console");
+    m.def("reset", pyreset, "reset the interpreter and clear the console");
+    m.def("save", save, "save commands up to now in given file");
+    m.def("load", load, "load commands from given file");
+    m.def("history", history, "shows the history");
+    m.def("quit", quit, "print information about quitting");
+    m.def("raw_input", raw_input, "handle raw input");
 }
 #endif
 
 void VistleConsole::printHistory()
 {
     uint index = 1;
-    for ( QStringList::Iterator it = history.begin(); it != history.end(); ++it )
-    {
+    for (QStringList::Iterator it = history.begin(); it != history.end(); ++it) {
         resultString.append(QString("%1\t%2\n").arg(index).arg(*it));
-        index ++;
+        index++;
     }
 }
 
- void VistleConsole::appendHtml(const QString &text, int type)
- {
-     using namespace vistle::message;
+void VistleConsole::appendHtml(const QString &text, int type)
+{
+    using namespace vistle::message;
 
-     // save the current command
-     QTextCursor cursor = textCursor();
-     cursor.movePosition(QTextCursor::End);
-     cursor.movePosition(QTextCursor::StartOfLine);
-     cursor.movePosition(QTextCursor::EndOfLine, QTextCursor::KeepAnchor);
-     QString saved = cursor.selectedText();
-     cursor.removeSelectedText();
+    // save the current command
+    QTextCursor cursor = textCursor();
+    cursor.movePosition(QTextCursor::End);
+    cursor.movePosition(QTextCursor::StartOfLine);
+    cursor.movePosition(QTextCursor::EndOfLine, QTextCursor::KeepAnchor);
+    QString saved = cursor.selectedText();
+    cursor.removeSelectedText();
 
-     // remove last line
-     cursor.movePosition(QTextCursor::End);
-     cursor.movePosition(QTextCursor::Up, QTextCursor::KeepAnchor);
-     cursor.movePosition(QTextCursor::EndOfLine, QTextCursor::KeepAnchor);
-     cursor.removeSelectedText();
+    // remove last line
+    cursor.movePosition(QTextCursor::End);
+    cursor.movePosition(QTextCursor::Up, QTextCursor::KeepAnchor);
+    cursor.movePosition(QTextCursor::EndOfLine, QTextCursor::KeepAnchor);
+    cursor.removeSelectedText();
 
-     cursor.movePosition(QTextCursor::End);
+    cursor.movePosition(QTextCursor::End);
 
-     if (type == SendText::Info) {
-         setTextColor(infoColor());
-     } else if (type == SendText::Cerr) {
-         setTextColor(errColor());
-     }
-     insertHtml(text);
+    if (type == SendText::Info) {
+        setTextColor(infoColor());
+    } else if (type == SendText::Cerr) {
+        setTextColor(errColor());
+    }
+    insertHtml(text);
 
-     // reinsert it
-     cursor.movePosition(QTextCursor::End);
-     setTextColor(cmdColor());
-     append(saved);
-     cursor.movePosition(QTextCursor::End);
-     setTextCursor(cursor);
-     ensureCursorVisible();
+    // reinsert it
+    cursor.movePosition(QTextCursor::End);
+    setTextColor(cmdColor());
+    append(saved);
+    cursor.movePosition(QTextCursor::End);
+    setTextCursor(cursor);
+    ensureCursorVisible();
 }
 
 void VistleConsole::appendInfo(const QString &text, int type)
 {
-   using namespace vistle::message;
+    using namespace vistle::message;
 
-   // save the current command
-   QTextCursor cursor = textCursor();
-   cursor.movePosition(QTextCursor::End);
-   cursor.movePosition(QTextCursor::StartOfLine);
-   cursor.movePosition(QTextCursor::EndOfLine, QTextCursor::KeepAnchor);
-   QString saved = cursor.selectedText();
-   cursor.removeSelectedText();
+    // save the current command
+    QTextCursor cursor = textCursor();
+    cursor.movePosition(QTextCursor::End);
+    cursor.movePosition(QTextCursor::StartOfLine);
+    cursor.movePosition(QTextCursor::EndOfLine, QTextCursor::KeepAnchor);
+    QString saved = cursor.selectedText();
+    cursor.removeSelectedText();
 
-   // remove last line
-   cursor.movePosition(QTextCursor::End);
-   cursor.movePosition(QTextCursor::Up, QTextCursor::KeepAnchor);
-   cursor.movePosition(QTextCursor::EndOfLine, QTextCursor::KeepAnchor);
-   cursor.removeSelectedText();
+    // remove last line
+    cursor.movePosition(QTextCursor::End);
+    cursor.movePosition(QTextCursor::Up, QTextCursor::KeepAnchor);
+    cursor.movePosition(QTextCursor::EndOfLine, QTextCursor::KeepAnchor);
+    cursor.removeSelectedText();
 
-   cursor.movePosition(QTextCursor::End);
+    cursor.movePosition(QTextCursor::End);
 
-   if (type == SendText::Info) {
-      setTextColor(infoColor());
-   } else if (type == SendText::Cerr) {
-      setTextColor(errColor());
-   }
-   append(text);
+    if (type == SendText::Info) {
+        setTextColor(infoColor());
+    } else if (type == SendText::Cerr) {
+        setTextColor(errColor());
+    }
+    append(text);
 
-   // reinsert it
-   cursor.movePosition(QTextCursor::End);
-   setTextColor(cmdColor());
-   append(saved);
-   cursor.movePosition(QTextCursor::End);
-   setTextCursor(cursor);
-   ensureCursorVisible();
+    // reinsert it
+    cursor.movePosition(QTextCursor::End);
+    setTextColor(cmdColor());
+    append(saved);
+    cursor.movePosition(QTextCursor::End);
+    setTextCursor(cursor);
+    ensureCursorVisible();
 }
 
 void VistleConsole::appendDebug(const QString &text)
 {
-
-   appendInfo(text, -1);
+    appendInfo(text, -1);
 }
 
 void VistleConsole::setNormalPrompt(bool display)
@@ -246,24 +239,23 @@ VistleConsole *VistleConsole::s_instance = NULL;
 
 VistleConsole *VistleConsole::the()
 {
-   assert(s_instance);
-   return s_instance;
+    assert(s_instance);
+    return s_instance;
 }
 
 //QTcl console constructor (init the QTextEdit & the attributes)
 VistleConsole::VistleConsole(QWidget *parent)
-   : QConsole(parent, "Type \"help(vistle)\" for help, \"help()\" for general help ")
-   , lines(0)
+: QConsole(parent, "Type \"help(vistle)\" for help, \"help()\" for general help "), lines(0)
 {
-   assert(!s_instance);
-   s_instance = this;
+    assert(!s_instance);
+    s_instance = this;
 
-   //set the Python Prompt
-   setNormalPrompt(true);
+    //set the Python Prompt
+    setNormalPrompt(true);
 }
 
-void VistleConsole::init() {
-
+void VistleConsole::init()
+{
 #ifdef HAVE_PYTHON
 
 #if 0
@@ -283,51 +275,51 @@ void VistleConsole::init() {
              can get more natural python console.
     */
     try {
-       py::module::import("rlcompleter");
+        py::module::import("rlcompleter");
     } catch (...) {
-       std::cerr << "error importing rlcompleter" << std::endl;
+        std::cerr << "error importing rlcompleter" << std::endl;
     }
 
     try {
-       PyRun_SimpleString("import sys\n"
+        PyRun_SimpleString("import sys\n"
 
-                       "import _redirector\n"
-                       "sys.stdout = _redirector.redirector()\n"
-                       "sys.stderr = _redirector.redirector(True)\n"
+                           "import _redirector\n"
+                           "sys.stdout = _redirector.redirector()\n"
+                           "sys.stderr = _redirector.redirector(True)\n"
 
-                       "sys.path.insert(0, \".\")\n" // add current path
+                           "sys.path.insert(0, \".\")\n" // add current path
 
-                       "import _console\n"
-                       "import rlcompleter\n"
+                           "import _console\n"
+                           "import rlcompleter\n"
 
-                       "if sys.version_info >= (3,0):\n"
-                       "    import builtins\n"
-                       "    builtins.clear=_console.clear\n"
-                       "    builtins.reset=_console.reset\n"
-                       "    builtins.save=_console.save\n"
-                       "    builtins.load=_console.load\n"
-                       "    builtins.history=_console.history\n"
-                       //"    builtins.quit=_console.quit\n"
-                       //"    builtins.exit=_console.quit\n"
-                       "    builtins.input=_console.raw_input\n"
+                           "if sys.version_info >= (3,0):\n"
+                           "    import builtins\n"
+                           "    builtins.clear=_console.clear\n"
+                           "    builtins.reset=_console.reset\n"
+                           "    builtins.save=_console.save\n"
+                           "    builtins.load=_console.load\n"
+                           "    builtins.history=_console.history\n"
+                           //"    builtins.quit=_console.quit\n"
+                           //"    builtins.exit=_console.quit\n"
+                           "    builtins.input=_console.raw_input\n"
 
-                       "    builtins.completer=rlcompleter.Completer()\n"
-                       "else:\n"
-                       "    import __builtin__\n"
-                       "    __builtin__.clear=_console.clear\n"
-                       "    __builtin__.reset=_console.reset\n"
-                       "    __builtin__.save=_console.save\n"
-                       "    __builtin__.load=_console.load\n"
-                       "    __builtin__.history=_console.history\n"
-                       //"    __builtin__.quit=_console.quit\n"
-                       //"    __builtin__.exit=_console.quit\n"
-                       "    __builtin__.raw_input=_console.raw_input\n"
+                           "    builtins.completer=rlcompleter.Completer()\n"
+                           "else:\n"
+                           "    import __builtin__\n"
+                           "    __builtin__.clear=_console.clear\n"
+                           "    __builtin__.reset=_console.reset\n"
+                           "    __builtin__.save=_console.save\n"
+                           "    __builtin__.load=_console.load\n"
+                           "    __builtin__.history=_console.history\n"
+                           //"    __builtin__.quit=_console.quit\n"
+                           //"    __builtin__.exit=_console.quit\n"
+                           "    __builtin__.raw_input=_console.raw_input\n"
 
-                       "    __builtin__.completer=rlcompleter.Completer()\n"
+                           "    __builtin__.completer=rlcompleter.Completer()\n"
 
         );
     } catch (...) {
-       std::cerr << "error running Python initialisation" << std::endl;
+        std::cerr << "error running Python initialisation" << std::endl;
     }
 #endif
 }
@@ -342,42 +334,42 @@ void VistleConsole::finish()
 #ifdef HAVE_PYTHON
 namespace {
 
-std::string python2String(PyObject *obj, bool *ok=nullptr) {
-   std::string result;
-   if (ok)
-      *ok = false;
-   PyObject *str = PyObject_Str(obj);
-   if (!str) {
-      //result = "NULL object";
-   } else if (PyUnicode_Check(str)) {
-      PyObject *bytes = PyUnicode_AsEncodedString(str, "ASCII", "strict"); // Owned reference
-      if (bytes) {
-         if (ok)
+std::string python2String(PyObject *obj, bool *ok = nullptr)
+{
+    std::string result;
+    if (ok)
+        *ok = false;
+    PyObject *str = PyObject_Str(obj);
+    if (!str) {
+        //result = "NULL object";
+    } else if (PyUnicode_Check(str)) {
+        PyObject *bytes = PyUnicode_AsEncodedString(str, "ASCII", "strict"); // Owned reference
+        if (bytes) {
+            if (ok)
+                *ok = true;
+            // does not work for python3 result = PyBytes_AS_STRING(bytes); // Borrowed pointer
+            result = PyBytes_AsString(bytes);
+            Py_DECREF(bytes);
+        } else {
+            result = "<cannot interpret unicode>";
+        }
+    } else if (PyBytes_Check(str)) {
+        if (ok)
             *ok = true;
-		 // does not work for python3 result = PyBytes_AS_STRING(bytes); // Borrowed pointer
-		 result = PyBytes_AsString(bytes); 
-         Py_DECREF(bytes);
-      } else {
-         result = "<cannot interpret unicode>";
-      }
-   } else if (PyBytes_Check(str)) {
-      if (ok)
-         *ok = true;
-      result = PyBytes_AsString(str);
-   } else {
-      //return "object neither Byte nor Unicode";
-      return "";
-   }
+        result = PyBytes_AsString(str);
+    } else {
+        //return "object neither Byte nor Unicode";
+        return "";
+    }
 
-   if (str)
-      Py_XDECREF(str);
-   return result;
+    if (str)
+        Py_XDECREF(str);
+    return result;
 }
 
 } // anonymous namespace
 
-bool
-VistleConsole::py_check_for_unexpected_eof()
+bool VistleConsole::py_check_for_unexpected_eof()
 {
     PyObject *errobj, *errdata, *errtraceback;
 
@@ -385,23 +377,23 @@ VistleConsole::py_check_for_unexpected_eof()
     PyErr_Fetch(&errobj, &errdata, &errtraceback);
     std::string save_error_type = python2String(errobj);
     if (save_error_type.empty()) {
-       save_error_type = "<unknown exception type>";
+        save_error_type = "<unknown exception type>";
     }
     std::string save_error_info = python2String(errdata);
     if (save_error_info.empty()) {
-       save_error_info = "<unknown exception data>";
+        save_error_info = "<unknown exception data>";
     }
-    if (save_error_type.find("exceptions.SyntaxError") != std::string::npos
-       && save_error_info.find("('unexpected EOF while parsing',") == 0) {
-       return true;
+    if (save_error_type.find("exceptions.SyntaxError") != std::string::npos &&
+        save_error_info.find("('unexpected EOF while parsing',") == 0) {
+        return true;
     }
-    PyErr_Print ();
+    PyErr_Print();
     PyErr_Clear();
-    resultString="Error: ";
+    resultString = "Error: ";
     resultString.append(save_error_info.c_str());
     Py_XDECREF(errobj);
-    Py_XDECREF(errdata);         /* caller owns all 3 */
-    Py_XDECREF(errtraceback);    /* already NULL'd out */
+    Py_XDECREF(errdata); /* caller owns all 3 */
+    Py_XDECREF(errtraceback); /* already NULL'd out */
     return false;
 }
 #endif
@@ -417,77 +409,69 @@ VistleConsole::~VistleConsole()
 QString VistleConsole::interpretCommand(const QString &command, int *res)
 {
 #ifdef HAVE_PYTHON
-    PyObject* py_result = nullptr;
-    bool multiline=false;
+    PyObject *py_result = nullptr;
+    bool multiline = false;
     *res = 0;
-    if (command.startsWith('#') || (command.isEmpty() && lines==0))
+    if (command.startsWith('#') || (command.isEmpty() && lines == 0))
         return "";
 
     this->command.append(command);
-    py_result=Py_CompileString(this->command.toLocal8Bit().data(),"<stdin>",Py_single_input);
-    if (!py_result)
-    {
-        multiline=py_check_for_unexpected_eof();
+    py_result = Py_CompileString(this->command.toLocal8Bit().data(), "<stdin>", Py_single_input);
+    if (!py_result) {
+        multiline = py_check_for_unexpected_eof();
         if (!multiline) {
             if (command.endsWith(':'))
                 multiline = true;
         }
 
-        if (multiline)
-        {
+        if (multiline) {
             setMultilinePrompt(false);
             this->command.append("\n");
             lines++;
-            resultString="";
+            resultString = "";
             QConsole::interpretCommand(command, res);
             return "";
-        }
-        else
-        {
-            *res=-1;
-            QString result=resultString;
-            resultString="";
+        } else {
+            *res = -1;
+            QString result = resultString;
+            resultString = "";
             QConsole::interpretCommand(command, res);
             setNormalPrompt(false);
-            this->command="";
-            this->lines=0;
+            this->command = "";
+            this->lines = 0;
             return result;
         }
     }
 
-    if ( (lines!=0 && command=="") || (this->command!="" && lines==0))
-    {
+    if ((lines != 0 && command == "") || (this->command != "" && lines == 0)) {
         setNormalPrompt(false);
-        this->command="";
-        this->lines=0;
+        this->command = "";
+        this->lines = 0;
 
 #if PY_VERSION_HEX >= 0x03000000
-        PyObject *dum = PyEval_EvalCode (py_result, py::globals().ptr(), locals().ptr());
+        PyObject *dum = PyEval_EvalCode(py_result, py::globals().ptr(), locals().ptr());
 #else
         PyObject *dum = nullptr;
-        if (PyCode_Check(py_result))
-        {
-            dum = PyEval_EvalCode ((PyCodeObject *)py_result, py::globals().ptr(), locals().ptr());
+        if (PyCode_Check(py_result)) {
+            dum = PyEval_EvalCode((PyCodeObject *)py_result, py::globals().ptr(), locals().ptr());
         }
 #endif
-        Py_XDECREF (dum);
-        Py_XDECREF (py_result);
-        if (PyErr_Occurred ())
-        {
-            *res=-1;
+        Py_XDECREF(dum);
+        Py_XDECREF(py_result);
+        if (PyErr_Occurred()) {
+            *res = -1;
             PyErr_Print();
             PyErr_Clear();
         }
-        QString result=resultString;
-        resultString="";
-        if (command!="")
+        QString result = resultString;
+        resultString = "";
+        if (command != "")
             QConsole::interpretCommand(command, res);
         return result;
-    }
-    else if (lines!=0 && command!="") //following multiliner line
+    } else if (lines != 0 && command != "") //following multiliner line
     {
         this->command.append("\n");
-        *res=0;
+        *res = 0;
         QConsole::interpretCommand(command, res);
         return "";
     }
@@ -499,8 +483,7 @@ QString VistleConsole::interpretCommand(const QString &command, int *res)
 #ifdef HAVE_PYTHON
 pybind11::object &VistleConsole::locals()
 {
-    if (!m_locals)
-    {
+    if (!m_locals) {
         m_locals.reset(new py::object());
     }
     if (!m_locals->ptr()) {
@@ -515,51 +498,49 @@ pybind11::object &VistleConsole::locals()
 }
 #endif
 
-QStringList VistleConsole::suggestCommand(const QString &cmd, QString& prefix)
+QStringList VistleConsole::suggestCommand(const QString &cmd, QString &prefix)
 {
-   prefix = "";
+    prefix = "";
 
-   QStringList completions;
+    QStringList completions;
 #ifdef HAVE_PYTHON
-   if (!cmd.isEmpty()) {
-      for (int n=0; ; ++n) {
-         std::stringstream str;
-         str << "completer.complete(\"" << cmd.toStdString() << "\"," << n << ")" << std::endl;
-         try {
-            py::object ret = py::eval<py::eval_expr>(str.str(), py::globals(), locals());
-            if (!ret.ptr())
-            {
-                std::cerr << "VistleConsole::suggestCommand: no valid Python object" << std::endl;
+    if (!cmd.isEmpty()) {
+        for (int n = 0;; ++n) {
+            std::stringstream str;
+            str << "completer.complete(\"" << cmd.toStdString() << "\"," << n << ")" << std::endl;
+            try {
+                py::object ret = py::eval<py::eval_expr>(str.str(), py::globals(), locals());
+                if (!ret.ptr()) {
+                    std::cerr << "VistleConsole::suggestCommand: no valid Python object" << std::endl;
+                    break;
+                }
+                if (ret.is_none()) {
+                    break;
+                }
+                std::string result = py::str(ret);
+                QString completed = QString::fromStdString(result).trimmed();
+                if (!completed.isEmpty())
+                    completions.append(completed);
+            } catch (py::error_already_set const &ex) {
+                std::cerr << "VistleConsole::suggestCommand: Python error: " << ex.what() << std::endl;
+                PyErr_Print();
+                PyErr_Clear();
+                break;
+            } catch (py::cast_error const &ex) {
+                std::cerr << "VistleConsole::suggestCommand: Python cast error: " << ex.what() << std::endl;
+                break;
+            } catch (std::exception const &ex) {
+                std::cerr << "VistleConsole::suggestCommand: Unknown error: " << ex.what() << std::endl;
+                break;
+            } catch (...) {
+                std::cerr << "VistleConsole::suggestCommand: Unknown error" << std::endl;
                 break;
             }
-            if (ret.is_none())
-            {
-                break;
-            }
-            std::string result = py::str(ret);
-            QString completed = QString::fromStdString(result).trimmed();
-            if (!completed.isEmpty())
-                completions.append(completed);
-         } catch(py::error_already_set const &ex) {
-            std::cerr << "VistleConsole::suggestCommand: Python error: " << ex.what() << std::endl;
-            PyErr_Print();
-            PyErr_Clear();
-            break;
-         } catch(py::cast_error const &ex) {
-            std::cerr << "VistleConsole::suggestCommand: Python cast error: " << ex.what() << std::endl;
-            break;
-         } catch (std::exception const &ex) {
-             std::cerr << "VistleConsole::suggestCommand: Unknown error: " << ex.what() << std::endl;
-             break;
-         } catch (...) {
-             std::cerr << "VistleConsole::suggestCommand: Unknown error" << std::endl;
-             break;
-         }
-      }
-   }
-   completions.removeDuplicates();
+        }
+    }
+    completions.removeDuplicates();
 #endif
-   return completions;
+    return completions;
 }
 
 } // namespace gui

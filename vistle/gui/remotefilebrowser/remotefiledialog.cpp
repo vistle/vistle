@@ -76,7 +76,7 @@
 #include <pwd.h>
 #include <unistd.h> // for pathconf() on OS X
 #elif defined(Q_OS_WIN)
-#  include <QtCore/qt_windows.h>
+#include <QtCore/qt_windows.h>
 #endif
 
 #include "remotefileiconprovider.h"
@@ -88,8 +88,7 @@ QT_BEGIN_NAMESPACE
 Q_GLOBAL_STATIC(QUrl, lastVisitedDir)
 
 namespace {
-static const char *remoteFilterRegExp =
-"^(.*)\\(([a-zA-Z0-9_.,*? +;#\\-\\[\\]@\\{\\}/!<>\\$%&=^~:\\|]*)\\)$";
+static const char *remoteFilterRegExp = "^(.*)\\(([a-zA-Z0-9_.,*? +;#\\-\\[\\]@\\{\\}/!<>\\$%&=^~:\\|]*)\\)$";
 
 // Makes a list of filters from a normal filter string "Image Files (*.png *.jpg)"
 QStringList cleanFilterList(const QString &filter)
@@ -103,7 +102,7 @@ QStringList cleanFilterList(const QString &filter)
     return f.split(QLatin1Char(' '), QString::SkipEmptyParts);
 }
 
-}
+} // namespace
 
 /*!
   \class RemoteFileDialog
@@ -371,11 +370,8 @@ QT_END_INCLUDE_NAMESPACE
     Constructs a file dialog with the given \a parent and widget \a flags.
 */
 RemoteFileDialog::RemoteFileDialog(AbstractFileSystemModel *model, QWidget *parent, Qt::WindowFlags f)
-    : QDialog(parent, f)
-    , vd_ptr(new RemoteFileDialogPrivate(this))
-    , m_model(model)
+: QDialog(parent, f), vd_ptr(new RemoteFileDialogPrivate(this)), m_model(model)
 {
-
     Q_D(RemoteFileDialog);
     d->init();
 }
@@ -387,13 +383,9 @@ RemoteFileDialog::RemoteFileDialog(AbstractFileSystemModel *model, QWidget *pare
     dialog, using a semicolon-separated list of filters specified by
     \a filter.
 */
-RemoteFileDialog::RemoteFileDialog(AbstractFileSystemModel *model, QWidget *parent,
-                     const QString &caption,
-                     const QString &directory,
-                     const QString &filter)
-    : QDialog(parent, 0)
-    , vd_ptr(new RemoteFileDialogPrivate(this))
-    , m_model(model)
+RemoteFileDialog::RemoteFileDialog(AbstractFileSystemModel *model, QWidget *parent, const QString &caption,
+                                   const QString &directory, const QString &filter)
+: QDialog(parent, 0), vd_ptr(new RemoteFileDialogPrivate(this)), m_model(model)
 {
     Q_D(RemoteFileDialog);
     d->init(QUrl::fromLocalFile(directory), filter, caption);
@@ -403,8 +395,7 @@ RemoteFileDialog::RemoteFileDialog(AbstractFileSystemModel *model, QWidget *pare
     \internal
 */
 RemoteFileDialog::RemoteFileDialog(const RemoteFileDialogArgs &args)
-    : QDialog(args.parent, 0)
-    , vd_ptr(new RemoteFileDialogPrivate(this))
+: QDialog(args.parent, 0), vd_ptr(new RemoteFileDialogPrivate(this))
 {
     Q_D(RemoteFileDialog);
     d->init(args.directory, args.filter, args.caption);
@@ -471,22 +462,22 @@ void RemoteFileDialog::changeEvent(QEvent *e)
 }
 
 RemoteFileDialogPrivate::RemoteFileDialogPrivate(RemoteFileDialog *qq)
-    : q_ptr(qq),
+: q_ptr(qq)
+,
 #ifndef QT_NO_PROXYMODEL
-        proxyModel(0),
+proxyModel(0)
+,
 #endif
-        model(0),
-        currentHistoryLocation(-1),
-        showHiddenAction(0),
-        useDefaultCaption(true),
-        qFileDialogUi(0),
-        options(RemoteFileDialogOptions::create())
-{
-}
+model(0)
+, currentHistoryLocation(-1)
+, showHiddenAction(0)
+, useDefaultCaption(true)
+, qFileDialogUi(0)
+, options(RemoteFileDialogOptions::create())
+{}
 
 RemoteFileDialogPrivate::~RemoteFileDialogPrivate()
-{
-}
+{}
 
 void RemoteFileDialogPrivate::updateCursor(bool waiting)
 {
@@ -494,9 +485,7 @@ void RemoteFileDialogPrivate::updateCursor(bool waiting)
     if (waiting) {
         qFileDialogUi->listView->setCursor(Qt::WaitCursor);
         qFileDialogUi->treeView->setCursor(Qt::WaitCursor);
-    }
-    else
-    {
+    } else {
         qFileDialogUi->listView->unsetCursor();
         qFileDialogUi->treeView->unsetCursor();
     }
@@ -569,10 +558,9 @@ void RemoteFileDialogPrivate::updateOkButtonText(bool saveAsOnFolder)
             setLabelTextControl(RemoteFileDialog::Accept, RemoteFileDialog::tr("&Choose"));
             break;
         default:
-            setLabelTextControl(RemoteFileDialog::Accept,
-                                q->acceptMode() == RemoteFileDialog::AcceptOpen ?
-                                    RemoteFileDialog::tr("&Open")  :
-                                    RemoteFileDialog::tr("&Save"));
+            setLabelTextControl(RemoteFileDialog::Accept, q->acceptMode() == RemoteFileDialog::AcceptOpen
+                                                              ? RemoteFileDialog::tr("&Open")
+                                                              : RemoteFileDialog::tr("&Save"));
             break;
         }
     }
@@ -591,7 +579,7 @@ void RemoteFileDialogPrivate::retranslateStrings()
     if (options->useDefaultNameFilters())
         q->setNameFilter(RemoteFileDialogOptions::defaultNameFilterString());
 
-    QList<QAction*> actions = qFileDialogUi->treeView->header()->actions();
+    QList<QAction *> actions = qFileDialogUi->treeView->header()->actions();
     QAbstractItemModel *abstractModel = model;
 #ifndef QT_NO_PROXYMODEL
     if (proxyModel)
@@ -599,7 +587,8 @@ void RemoteFileDialogPrivate::retranslateStrings()
 #endif
     int total = qMin(abstractModel->columnCount(QModelIndex()), actions.count() + 1);
     for (int i = 1; i < total; ++i) {
-        actions.at(i - 1)->setText(RemoteFileDialog::tr("Show ") + abstractModel->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString());
+        actions.at(i - 1)->setText(RemoteFileDialog::tr("Show ") +
+                                   abstractModel->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString());
     }
 
     /* MENU ACTIONS */
@@ -714,8 +703,8 @@ RemoteFileDialog::Options RemoteFileDialog::options() const
 void RemoteFileDialog::open(QObject *receiver, const char *member)
 {
     Q_D(RemoteFileDialog);
-    const char *signal = (fileMode() == ExistingFiles) ? SIGNAL(filesSelected(QStringList))
-                                                       : SIGNAL(fileSelected(QString));
+    const char *signal =
+        (fileMode() == ExistingFiles) ? SIGNAL(filesSelected(QStringList)) : SIGNAL(fileSelected(QString));
     connect(this, signal, receiver, member);
     d->signalToDisconnectOnClose = signal;
     d->receiverToDisconnectOnClose = receiver;
@@ -734,7 +723,7 @@ void RemoteFileDialog::setVisible(bool visible)
     if (isVisible() && !visible)
         d->saveSettings();
 
-    if (visible){
+    if (visible) {
         if (testAttribute(Qt::WA_WState_ExplicitShowHide) && !testAttribute(Qt::WA_WState_Hidden))
             return;
     } else if (testAttribute(Qt::WA_WState_ExplicitShowHide) && testAttribute(Qt::WA_WState_Hidden))
@@ -898,11 +887,11 @@ static inline QString fileFromPath(const QString &rootPath, QString path)
 
     if (path.at(0) == QDir::separator()
 #ifdef Q_OS_WIN
-            //On Windows both cases can happen
-            || path.at(0) == QLatin1Char('/')
+        //On Windows both cases can happen
+        || path.at(0) == QLatin1Char('/')
 #endif
-            ) {
-            path.remove(0, 1);
+    ) {
+        path.remove(0, 1);
     }
     return path;
 }
@@ -990,7 +979,7 @@ QStringList RemoteFileDialogPrivate::typedFiles() const
         // " is used to separate files like so: "file1" "file2" "file3" ...
         // ### need escape character for filenames with quotes (")
         QStringList tokens = editText.split(QLatin1Char('\"'));
-        for (int i=0; i<tokens.size(); ++i) {
+        for (int i = 0; i < tokens.size(); ++i) {
             if ((i % 2) == 0)
                 continue; // Every even token is a separator
             if (model->isWindows()) {
@@ -1019,13 +1008,13 @@ QList<QUrl> RemoteFileDialogPrivate::userSelectedFiles() const
 
     const QModelIndexList selectedRows = qFileDialogUi->listView->selectionModel()->selectedRows();
     files.reserve(selectedRows.size());
-    for (const QModelIndex &index : selectedRows)
+    for (const QModelIndex &index: selectedRows)
         files.append(QUrl::fromLocalFile(index.data(AbstractFileSystemModel::FilePathRole).toString()));
 
     if (files.isEmpty() && !lineEdit()->text().isEmpty()) {
         const QStringList typedFilesList = typedFiles();
         files.reserve(typedFilesList.size());
-        for (const QString &path : typedFilesList)
+        for (const QString &path: typedFilesList)
             files.append(QUrl::fromLocalFile(path));
     }
 
@@ -1035,7 +1024,7 @@ QList<QUrl> RemoteFileDialogPrivate::userSelectedFiles() const
 QStringList RemoteFileDialogPrivate::addDefaultSuffixToFiles(const QStringList &filesToFix) const
 {
     QStringList files;
-    for (int i=0; i<filesToFix.size(); ++i) {
+    for (int i = 0; i < filesToFix.size(); ++i) {
         QString name = toInternal(filesToFix.at(i));
         QFileInfo info(name);
         // if the filename has no suffix, add the default suffix
@@ -1067,7 +1056,8 @@ QList<QUrl> RemoteFileDialogPrivate::addDefaultSuffixToUrls(const QList<QUrl> &u
         QUrl url = urlsToFix.at(i);
         // if the filename has no suffix, add the default suffix
         const QString defaultSuffix = options->defaultSuffix();
-        if (!defaultSuffix.isEmpty() && !url.path().endsWith(QLatin1Char('/')) && url.path().lastIndexOf(QLatin1Char('.')) == -1)
+        if (!defaultSuffix.isEmpty() && !url.path().endsWith(QLatin1Char('/')) &&
+            url.path().lastIndexOf(QLatin1Char('.')) == -1)
             url.setPath(url.path() + QLatin1Char('.') + defaultSuffix);
         urls.append(url);
     }
@@ -1089,7 +1079,7 @@ QStringList RemoteFileDialog::selectedFiles() const
     QStringList files;
     const QList<QUrl> userSelectedFiles = d->userSelectedFiles();
     files.reserve(userSelectedFiles.size());
-    for (const QUrl &file : userSelectedFiles)
+    for (const QUrl &file: userSelectedFiles)
         files.append(file.toLocalFile());
     if (files.isEmpty() && d->usingWidgets()) {
         const FileMode fm = fileMode();
@@ -1113,7 +1103,7 @@ QList<QUrl> RemoteFileDialog::selectedUrls() const
     QList<QUrl> urls;
     const QStringList selectedFileList = selectedFiles();
     urls.reserve(selectedFileList.size());
-    for (const QString &file : selectedFileList)
+    for (const QString &file: selectedFileList)
         urls.append(QUrl::fromLocalFile(file));
     return urls;
 }
@@ -1377,7 +1367,7 @@ void RemoteFileDialog::setMimeTypeFilters(const QStringList &filters)
 {
     Q_D(RemoteFileDialog);
     QStringList nameFilters;
-    for (const QString &mimeType : filters) {
+    for (const QString &mimeType: filters) {
         const QString text = nameFilterForMime(mimeType);
         if (!text.isEmpty())
             nameFilters.append(text);
@@ -1437,7 +1427,9 @@ void RemoteFileDialog::setViewMode(RemoteFileDialog::ViewMode mode)
 RemoteFileDialog::ViewMode RemoteFileDialog::viewMode() const
 {
     Q_D(const RemoteFileDialog);
-    return (d->qFileDialogUi->stackedWidget->currentWidget() == d->qFileDialogUi->listView->parent() ? RemoteFileDialog::List : RemoteFileDialog::Detail);
+    return (d->qFileDialogUi->stackedWidget->currentWidget() == d->qFileDialogUi->listView->parent()
+                ? RemoteFileDialog::List
+                : RemoteFileDialog::Detail);
 }
 
 /*!
@@ -1547,11 +1539,13 @@ QStringList RemoteFileDialog::supportedSchemes() const
     Returns the file system model index that is the root index in the
     views
 */
-QModelIndex RemoteFileDialogPrivate::rootIndex() const {
+QModelIndex RemoteFileDialogPrivate::rootIndex() const
+{
     return mapToSource(qFileDialogUi->listView->rootIndex());
 }
 
-QAbstractItemView *RemoteFileDialogPrivate::currentView() const {
+QAbstractItemView *RemoteFileDialogPrivate::currentView() const
+{
     if (!qFileDialogUi->stackedWidget)
         return 0;
     if (qFileDialogUi->stackedWidget->currentWidget() == qFileDialogUi->listView->parent())
@@ -1559,8 +1553,9 @@ QAbstractItemView *RemoteFileDialogPrivate::currentView() const {
     return qFileDialogUi->treeView;
 }
 
-QLineEdit *RemoteFileDialogPrivate::lineEdit() const {
-    return (QLineEdit*)qFileDialogUi->fileNameEdit;
+QLineEdit *RemoteFileDialogPrivate::lineEdit() const
+{
+    return (QLineEdit *)qFileDialogUi->fileNameEdit;
 }
 
 int RemoteFileDialogPrivate::maxNameLength(const QString &path)
@@ -1573,7 +1568,8 @@ int RemoteFileDialogPrivate::maxNameLength(const QString &path)
 #elif defined(Q_OS_WIN)
     DWORD maxLength;
     const QString drive = path.left(3);
-    if (::GetVolumeInformation(/*reinterpret_cast<const wchar_t *>*/(drive.toLatin1()), NULL, 0, NULL, &maxLength, NULL, NULL, 0) == false)
+    if (::GetVolumeInformation(/*reinterpret_cast<const wchar_t *>*/ (drive.toLatin1()), NULL, 0, NULL, &maxLength,
+                               NULL, NULL, 0) == false)
         return -1;
     return maxLength;
 #else
@@ -1585,7 +1581,8 @@ int RemoteFileDialogPrivate::maxNameLength(const QString &path)
 /*
     Sets the view root index to be the file system model index
 */
-void RemoteFileDialogPrivate::setRootIndex(const QModelIndex &index) const {
+void RemoteFileDialogPrivate::setRootIndex(const QModelIndex &index) const
+{
     Q_ASSERT(index.isValid() ? index.model() == model : true);
     QModelIndex idx = mapFromSource(index);
     qFileDialogUi->treeView->setRootIndex(idx);
@@ -1595,13 +1592,13 @@ void RemoteFileDialogPrivate::setRootIndex(const QModelIndex &index) const {
     Select a file system model index
     returns the index that was selected (or not depending upon sortfilterproxymodel)
 */
-QModelIndex RemoteFileDialogPrivate::select(const QModelIndex &index) const {
+QModelIndex RemoteFileDialogPrivate::select(const QModelIndex &index) const
+{
     Q_ASSERT(index.isValid() ? index.model() == model : true);
 
     QModelIndex idx = mapFromSource(index);
     if (idx.isValid() && !qFileDialogUi->listView->selectionModel()->isSelected(idx))
-        qFileDialogUi->listView->selectionModel()->select(idx,
-            QItemSelectionModel::Select | QItemSelectionModel::Rows);
+        qFileDialogUi->listView->selectionModel()->select(idx, QItemSelectionModel::Select | QItemSelectionModel::Rows);
     return idx;
 }
 
@@ -1725,7 +1722,7 @@ void RemoteFileDialogComboBox::setHistory(const QStringList &paths)
     // add "my computer"
     list.append(QUrl(QLatin1String("file:")));
     urlModel->addUrls(list, 0);
-    idx = model()->index(model()->rowCount()-1, 0);
+    idx = model()->index(model()->rowCount() - 1, 0);
 
     // append history
     QList<QUrl> urls;
@@ -1736,10 +1733,10 @@ void RemoteFileDialogComboBox::setHistory(const QStringList &paths)
     }
     if (urls.count() > 0) {
         model()->insertRow(model()->rowCount());
-        idx = model()->index(model()->rowCount()-1, 0);
+        idx = model()->index(model()->rowCount() - 1, 0);
         // ### TODO maybe add a horizontal line before this
         model()->setData(idx, RemoteFileDialog::tr("Recent Places"));
-        QStandardItemModel *m = qobject_cast<QStandardItemModel*>(model());
+        QStandardItemModel *m = qobject_cast<QStandardItemModel *>(model());
         if (m) {
             Qt::ItemFlags flags = m->flags(idx);
             flags &= ~Qt::ItemIsEnabled;
@@ -1769,7 +1766,8 @@ QStringList RemoteFileDialog::history() const
     Q_D(const RemoteFileDialog);
     QStringList currentHistory = d->qFileDialogUi->lookInCombo->history();
     //On windows the popup display the "C:\", convert to nativeSeparators
-    QString newHistory = QDir::toNativeSeparators(d->rootIndex().data(AbstractFileSystemModel::FilePathRole).toString());
+    QString newHistory =
+        QDir::toNativeSeparators(d->rootIndex().data(AbstractFileSystemModel::FilePathRole).toString());
     if (!currentHistory.contains(newHistory))
         currentHistory << newHistory;
     return currentHistory;
@@ -2411,8 +2409,7 @@ void RemoteFileDialog::done(int result)
     QDialog::done(result);
 
     if (d->receiverToDisconnectOnClose) {
-        disconnect(this, d->signalToDisconnectOnClose,
-                   d->receiverToDisconnectOnClose, d->memberToDisconnectOnClose);
+        disconnect(this, d->signalToDisconnectOnClose, d->receiverToDisconnectOnClose, d->memberToDisconnectOnClose);
         d->receiverToDisconnectOnClose = 0;
     }
     d->memberToDisconnectOnClose.clear();
@@ -2494,7 +2491,7 @@ void RemoteFileDialog::accept()
 
     case ExistingFile:
     case ExistingFiles:
-        for (const auto &file : files) {
+        for (const auto &file: files) {
             QString fn = file;
             QModelIndex idx = m_model->index(fn);
             if (!idx.isValid()) {
@@ -2530,12 +2527,12 @@ void RemoteFileDialogPrivate::saveSettings()
     settings.setValue(QLatin1String("viewMode"), QLatin1String(viewModeMeta.key(q->viewMode())));
     settings.setValue(QLatin1String("qtVersion"), QLatin1String(QT_VERSION_STR));
 
-    settings.beginGroup(QLatin1String("remote_")+model->identifier());
+    settings.beginGroup(QLatin1String("remote_") + model->identifier());
     settings.setValue(QLatin1String("shortcuts"), QUrl::toStringList(qFileDialogUi->sidebar->urls()));
     QStringList historyUrls;
     const QStringList history = q->history();
     historyUrls.reserve(history.size());
-    for (const QString &path : history)
+    for (const QString &path: history)
         historyUrls << QUrl::fromLocalFile(path).toString();
     settings.setValue(QLatin1String("history"), historyUrls);
     settings.setValue(QLatin1String("lastVisited"), lastVisitedDir()->toString());
@@ -2559,13 +2556,14 @@ bool RemoteFileDialogPrivate::restoreFromSettings()
     headerData = settings.value(QLatin1String("treeViewHeader")).toByteArray();
     int sidebarWidth = settings.value(QLatin1String("sidebarWidth"), -1).toInt();
 
-    settings.beginGroup(QLatin1String("remote_")+model->identifier());
-    q->setDirectoryUrl(lastVisitedDir()->isEmpty() ? settings.value(QLatin1String("lastVisited")).toUrl() : *lastVisitedDir());
+    settings.beginGroup(QLatin1String("remote_") + model->identifier());
+    q->setDirectoryUrl(lastVisitedDir()->isEmpty() ? settings.value(QLatin1String("lastVisited")).toUrl()
+                                                   : *lastVisitedDir());
     sidebarUrls = QUrl::fromStringList(settings.value(QLatin1String("shortcuts")).toStringList());
 
     QStringList history;
     const auto urlStrings = settings.value(QLatin1String("history")).toStringList();
-    for (const QString &urlStr : urlStrings) {
+    for (const QString &urlStr: urlStrings) {
         QUrl url(urlStr);
         if (url.isLocalFile())
             history << url.toLocalFile();
@@ -2605,7 +2603,7 @@ bool RemoteFileDialogPrivate::restoreWidgetState(QStringList &history, int split
     if (!headerView->restoreState(headerData))
         return false;
 
-    QList<QAction*> actions = headerView->actions();
+    QList<QAction *> actions = headerView->actions();
     QAbstractItemModel *abstractModel = model;
 #ifndef QT_NO_PROXYMODEL
     if (proxyModel)
@@ -2623,8 +2621,7 @@ bool RemoteFileDialogPrivate::restoreWidgetState(QStringList &history, int split
 
     Create widgets, layout and set default values
 */
-void RemoteFileDialogPrivate::init(const QUrl &directory, const QString &nameFilter,
-                              const QString &caption)
+void RemoteFileDialogPrivate::init(const QUrl &directory, const QString &nameFilter, const QString &caption)
 {
     Q_Q(RemoteFileDialog);
     if (!caption.isEmpty()) {
@@ -2659,7 +2656,7 @@ void RemoteFileDialogPrivate::init(const QUrl &directory, const QString &nameFil
 
     const QSize sizeHint = q->sizeHint();
     if (sizeHint.isValid())
-       q->resize(sizeHint);
+        q->resize(sizeHint);
 }
 
 /*!
@@ -2698,20 +2695,18 @@ void RemoteFileDialogPrivate::createWidgets()
     model->setNameFilterDisables(false);
 #endif
 #endif
-    RemoteFileDialog::connect(model, SIGNAL(fileRenamed(QString,QString,QString)), q, SLOT(_q_fileRenamed(QString,QString,QString)));
-    RemoteFileDialog::connect(model, SIGNAL(rootPathChanged(QString)),
-            q, SLOT(_q_pathChanged(QString)));
-    RemoteFileDialog::connect(model, SIGNAL(rowsInserted(QModelIndex,int,int)),
-            q, SLOT(_q_rowsInserted(QModelIndex)));
-    RemoteFileDialog::connect(model, SIGNAL(directoryLoaded(QString)),
-            q, SLOT(_q_directoryLoaded(QString)));
+    RemoteFileDialog::connect(model, SIGNAL(fileRenamed(QString, QString, QString)), q,
+                              SLOT(_q_fileRenamed(QString, QString, QString)));
+    RemoteFileDialog::connect(model, SIGNAL(rootPathChanged(QString)), q, SLOT(_q_pathChanged(QString)));
+    RemoteFileDialog::connect(model, SIGNAL(rowsInserted(QModelIndex, int, int)), q,
+                              SLOT(_q_rowsInserted(QModelIndex)));
+    RemoteFileDialog::connect(model, SIGNAL(directoryLoaded(QString)), q, SLOT(_q_directoryLoaded(QString)));
     model->setReadOnly(false);
 
     QList<QUrl> initialBookmarks;
     qFileDialogUi->sidebar->setModelAndUrls(model, initialBookmarks);
     q->setSidebarUrls(initialBookmarks);
-    RemoteFileDialog::connect(qFileDialogUi->sidebar, SIGNAL(goToUrl(QUrl)),
-                         q, SLOT(_q_goToUrl(QUrl)));
+    RemoteFileDialog::connect(qFileDialogUi->sidebar, SIGNAL(goToUrl(QUrl)), q, SLOT(_q_goToUrl(QUrl)));
 
     QObject::connect(qFileDialogUi->buttonBox, SIGNAL(accepted()), q, SLOT(accept()));
     QObject::connect(qFileDialogUi->buttonBox, SIGNAL(rejected()), q, SLOT(reject()));
@@ -2732,10 +2727,9 @@ void RemoteFileDialogPrivate::createWidgets()
 
     qFileDialogUi->fileNameEdit->setInputMethodHints(Qt::ImhNoPredictiveText);
 
-    QObject::connect(qFileDialogUi->fileNameEdit, SIGNAL(textChanged(QString)),
-            q, SLOT(_q_autoCompleteFileName(QString)));
-    QObject::connect(qFileDialogUi->fileNameEdit, SIGNAL(textChanged(QString)),
-                     q, SLOT(_q_updateOkButton()));
+    QObject::connect(qFileDialogUi->fileNameEdit, SIGNAL(textChanged(QString)), q,
+                     SLOT(_q_autoCompleteFileName(QString)));
+    QObject::connect(qFileDialogUi->fileNameEdit, SIGNAL(textChanged(QString)), q, SLOT(_q_updateOkButton()));
 
     QObject::connect(qFileDialogUi->fileNameEdit, SIGNAL(returnPressed()), q, SLOT(accept()));
 
@@ -2743,17 +2737,14 @@ void RemoteFileDialogPrivate::createWidgets()
     qFileDialogUi->fileTypeCombo->setDuplicatesEnabled(false);
     qFileDialogUi->fileTypeCombo->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLength);
     qFileDialogUi->fileTypeCombo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    QObject::connect(qFileDialogUi->fileTypeCombo, SIGNAL(activated(int)),
-                     q, SLOT(_q_useNameFilter(int)));
-    QObject::connect(qFileDialogUi->fileTypeCombo, SIGNAL(activated(QString)),
-                     q, SIGNAL(filterSelected(QString)));
+    QObject::connect(qFileDialogUi->fileTypeCombo, SIGNAL(activated(int)), q, SLOT(_q_useNameFilter(int)));
+    QObject::connect(qFileDialogUi->fileTypeCombo, SIGNAL(activated(QString)), q, SIGNAL(filterSelected(QString)));
 
     qFileDialogUi->listView->setFileDialogPrivate(this);
     qFileDialogUi->listView->setModel(model);
-    QObject::connect(qFileDialogUi->listView, SIGNAL(activated(QModelIndex)),
-                     q, SLOT(_q_enterDirectory(QModelIndex)));
-    QObject::connect(qFileDialogUi->listView, SIGNAL(customContextMenuRequested(QPoint)),
-                    q, SLOT(_q_showContextMenu(QPoint)));
+    QObject::connect(qFileDialogUi->listView, SIGNAL(activated(QModelIndex)), q, SLOT(_q_enterDirectory(QModelIndex)));
+    QObject::connect(qFileDialogUi->listView, SIGNAL(customContextMenuRequested(QPoint)), q,
+                     SLOT(_q_showContextMenu(QPoint)));
     qFileDialogUi->treeView->setFileDialogPrivate(this);
     qFileDialogUi->treeView->setModel(model);
     QHeaderView *treeHeader = qFileDialogUi->treeView->header();
@@ -2766,8 +2757,8 @@ void RemoteFileDialogPrivate::createWidgets()
 
     QActionGroup *showActionGroup = new QActionGroup(q);
     showActionGroup->setExclusive(false);
-    QObject::connect(showActionGroup, SIGNAL(triggered(QAction*)),
-                     q, SLOT(_q_showHeader(QAction*)));;
+    QObject::connect(showActionGroup, SIGNAL(triggered(QAction *)), q, SLOT(_q_showHeader(QAction *)));
+    ;
 
     QAbstractItemModel *abstractModel = model;
 #ifndef QT_NO_PROXYMODEL
@@ -2784,18 +2775,18 @@ void RemoteFileDialogPrivate::createWidgets()
     QScopedPointer<QItemSelectionModel> selModel(qFileDialogUi->treeView->selectionModel());
     qFileDialogUi->treeView->setSelectionModel(qFileDialogUi->listView->selectionModel());
 
-    QObject::connect(qFileDialogUi->treeView, SIGNAL(activated(QModelIndex)),
-                     q, SLOT(_q_enterDirectory(QModelIndex)));
-    QObject::connect(qFileDialogUi->treeView, SIGNAL(customContextMenuRequested(QPoint)),
-                     q, SLOT(_q_showContextMenu(QPoint)));
+    QObject::connect(qFileDialogUi->treeView, SIGNAL(activated(QModelIndex)), q, SLOT(_q_enterDirectory(QModelIndex)));
+    QObject::connect(qFileDialogUi->treeView, SIGNAL(customContextMenuRequested(QPoint)), q,
+                     SLOT(_q_showContextMenu(QPoint)));
 
     // Selections
     QItemSelectionModel *selections = qFileDialogUi->listView->selectionModel();
-    QObject::connect(selections, SIGNAL(selectionChanged(QItemSelection,QItemSelection)),
-                     q, SLOT(_q_selectionChanged()));
-    QObject::connect(selections, SIGNAL(currentChanged(QModelIndex,QModelIndex)),
-                     q, SLOT(_q_currentChanged(QModelIndex)));
-    qFileDialogUi->splitter->setStretchFactor(qFileDialogUi->splitter->indexOf(qFileDialogUi->splitter->widget(1)), QSizePolicy::Expanding);
+    QObject::connect(selections, SIGNAL(selectionChanged(QItemSelection, QItemSelection)), q,
+                     SLOT(_q_selectionChanged()));
+    QObject::connect(selections, SIGNAL(currentChanged(QModelIndex, QModelIndex)), q,
+                     SLOT(_q_currentChanged(QModelIndex)));
+    qFileDialogUi->splitter->setStretchFactor(qFileDialogUi->splitter->indexOf(qFileDialogUi->splitter->widget(1)),
+                                              QSizePolicy::Expanding);
 
     createToolButtons();
     createMenuActions();
@@ -2818,7 +2809,7 @@ void RemoteFileDialogPrivate::createWidgets()
         q->setMimeTypeFilters(options->mimeTypeFilters());
     else
 #endif
-    if (!options->nameFilters().isEmpty())
+        if (!options->nameFilters().isEmpty())
         q->setNameFilters(options->nameFilters());
     q->selectNameFilter(options->initiallySelectedNameFilter());
     q->setDefaultSuffix(options->defaultSuffix());
@@ -2826,7 +2817,7 @@ void RemoteFileDialogPrivate::createWidgets()
     const auto initiallySelectedFiles = options->initiallySelectedFiles();
     if (initiallySelectedFiles.size() == 1)
         q->selectFile(initiallySelectedFiles.first().fileName());
-    for (const QUrl &url : initiallySelectedFiles)
+    for (const QUrl &url: initiallySelectedFiles)
         q->selectUrl(url);
     lineEdit()->selectAll();
     _q_updateOkButton();
@@ -2838,8 +2829,9 @@ void RemoteFileDialogPrivate::createWidgets()
 void RemoteFileDialogPrivate::_q_showHeader(QAction *action)
 {
     Q_Q(RemoteFileDialog);
-    QActionGroup *actionGroup = qobject_cast<QActionGroup*>(q->sender());
-    qFileDialogUi->treeView->header()->setSectionHidden(actionGroup->actions().indexOf(action) + 1, !action->isChecked());
+    QActionGroup *actionGroup = qobject_cast<QActionGroup *>(q->sender());
+    qFileDialogUi->treeView->header()->setSectionHidden(actionGroup->actions().indexOf(action) + 1,
+                                                        !action->isChecked());
 }
 
 #ifndef QT_NO_PROXYMODEL
@@ -2858,17 +2850,15 @@ void RemoteFileDialogPrivate::_q_showHeader(QAction *action)
 void RemoteFileDialog::setProxyModel(QAbstractProxyModel *proxyModel)
 {
     Q_D(RemoteFileDialog);
-    if ((!proxyModel && !d->proxyModel)
-        || (proxyModel == d->proxyModel))
+    if ((!proxyModel && !d->proxyModel) || (proxyModel == d->proxyModel))
         return;
 
     QModelIndex idx = d->rootIndex();
     if (d->proxyModel) {
-        disconnect(d->proxyModel, SIGNAL(rowsInserted(QModelIndex,int,int)),
-            this, SLOT(_q_rowsInserted(QModelIndex)));
+        disconnect(d->proxyModel, SIGNAL(rowsInserted(QModelIndex, int, int)), this,
+                   SLOT(_q_rowsInserted(QModelIndex)));
     } else {
-        disconnect(d->model, SIGNAL(rowsInserted(QModelIndex,int,int)),
-            this, SLOT(_q_rowsInserted(QModelIndex)));
+        disconnect(d->model, SIGNAL(rowsInserted(QModelIndex, int, int)), this, SLOT(_q_rowsInserted(QModelIndex)));
     }
 
     if (proxyModel != 0) {
@@ -2879,8 +2869,7 @@ void RemoteFileDialog::setProxyModel(QAbstractProxyModel *proxyModel)
         d->qFileDialogUi->treeView->setModel(d->proxyModel);
         d->completer->setModel(d->proxyModel);
         d->completer->proxyModel = d->proxyModel;
-        connect(d->proxyModel, SIGNAL(rowsInserted(QModelIndex,int,int)),
-            this, SLOT(_q_rowsInserted(QModelIndex)));
+        connect(d->proxyModel, SIGNAL(rowsInserted(QModelIndex, int, int)), this, SLOT(_q_rowsInserted(QModelIndex)));
     } else {
         d->proxyModel = 0;
         d->qFileDialogUi->listView->setModel(d->model);
@@ -2888,8 +2877,7 @@ void RemoteFileDialog::setProxyModel(QAbstractProxyModel *proxyModel)
         d->completer->setModel(d->model);
         d->completer->sourceModel = d->model;
         d->completer->proxyModel = 0;
-        connect(d->model, SIGNAL(rowsInserted(QModelIndex,int,int)),
-            this, SLOT(_q_rowsInserted(QModelIndex)));
+        connect(d->model, SIGNAL(rowsInserted(QModelIndex, int, int)), this, SLOT(_q_rowsInserted(QModelIndex)));
     }
     QScopedPointer<QItemSelectionModel> selModel(d->qFileDialogUi->treeView->selectionModel());
     d->qFileDialogUi->treeView->setSelectionModel(d->qFileDialogUi->listView->selectionModel());
@@ -2898,10 +2886,10 @@ void RemoteFileDialog::setProxyModel(QAbstractProxyModel *proxyModel)
 
     // reconnect selection
     QItemSelectionModel *selections = d->qFileDialogUi->listView->selectionModel();
-    QObject::connect(selections, SIGNAL(selectionChanged(QItemSelection,QItemSelection)),
-                     this, SLOT(_q_selectionChanged()));
-    QObject::connect(selections, SIGNAL(currentChanged(QModelIndex,QModelIndex)),
-                     this, SLOT(_q_currentChanged(QModelIndex)));
+    QObject::connect(selections, SIGNAL(selectionChanged(QItemSelection, QItemSelection)), this,
+                     SLOT(_q_selectionChanged()));
+    QObject::connect(selections, SIGNAL(currentChanged(QModelIndex, QModelIndex)), this,
+                     SLOT(_q_currentChanged(QModelIndex)));
 }
 
 /*!
@@ -2971,7 +2959,7 @@ void RemoteFileDialogPrivate::createMenuActions()
 {
     Q_Q(RemoteFileDialog);
 
-    QAction *goHomeAction =  new QAction(q);
+    QAction *goHomeAction = new QAction(q);
 #ifndef QT_NO_SHORTCUT
     goHomeAction->setShortcut(Qt::CTRL + Qt::Key_H + Qt::SHIFT);
 #endif
@@ -2980,7 +2968,7 @@ void RemoteFileDialogPrivate::createMenuActions()
 
     // ### TODO add Desktop & Computer actions
 
-    QAction *goToParent =  new QAction(q);
+    QAction *goToParent = new QAction(q);
     goToParent->setObjectName(QLatin1String("qt_goto_parent_action"));
 #ifndef QT_NO_SHORTCUT
     goToParent->setShortcut(Qt::CTRL + Qt::UpArrow);
@@ -3019,7 +3007,8 @@ void RemoteFileDialogPrivate::_q_pathChanged(const QString &newPath)
     qFileDialogUi->sidebar->selectUrl(url);
     q->setHistory(qFileDialogUi->lookInCombo->history());
 
-    if (currentHistoryLocation < 0 || currentHistory.value(currentHistoryLocation) != QDir::toNativeSeparators(newPath)) {
+    if (currentHistoryLocation < 0 ||
+        currentHistory.value(currentHistoryLocation) != QDir::toNativeSeparators(newPath)) {
         while (currentHistoryLocation >= 0 && currentHistoryLocation + 1 < currentHistory.count()) {
             currentHistory.removeLast();
         }
@@ -3079,7 +3068,7 @@ void RemoteFileDialogPrivate::_q_navigateToParent()
         newDirectory = QString();
     } else {
         newDirectory = model->rootPath();
-        while (newDirectory.endsWith('/') && newDirectory.count('/')>1)
+        while (newDirectory.endsWith('/') && newDirectory.count('/') > 1)
             newDirectory = newDirectory.left(-1);
         newDirectory = newDirectory.section('/', 0, -2);
         if (!newDirectory.contains('/'))
@@ -3108,7 +3097,6 @@ void RemoteFileDialogPrivate::_q_createDirectory()
         QString full = QDir::cleanPath(prefix + folderName);
         QModelIndex idx = model->index(full);
         while (idx.isValid()) {
-
             folderName = newFolderString + QString::number(suffix++);
             QString full = QDir::cleanPath(prefix + folderName);
             idx = model->index(full);
@@ -3187,7 +3175,7 @@ void RemoteFileDialogPrivate::_q_autoCompleteFileName(const QString &text)
     if (multipleFiles.count() > 0) {
         QModelIndexList oldFiles = qFileDialogUi->listView->selectionModel()->selectedRows();
         QVector<QModelIndex> newFiles;
-        for (const auto &file : multipleFiles) {
+        for (const auto &file: multipleFiles) {
             QModelIndex idx = model->index(file);
             if (oldFiles.removeAll(idx) == 0)
                 newFiles.append(idx);
@@ -3196,8 +3184,8 @@ void RemoteFileDialogPrivate::_q_autoCompleteFileName(const QString &text)
             select(newFiles.at(i));
         if (lineEdit()->hasFocus())
             for (int i = 0; i < oldFiles.count(); ++i)
-                qFileDialogUi->listView->selectionModel()->select(oldFiles.at(i),
-                    QItemSelectionModel::Toggle | QItemSelectionModel::Rows);
+                qFileDialogUi->listView->selectionModel()->select(oldFiles.at(i), QItemSelectionModel::Toggle |
+                                                                                      QItemSelectionModel::Rows);
     }
 }
 
@@ -3207,8 +3195,8 @@ void RemoteFileDialogPrivate::_q_autoCompleteFileName(const QString &text)
 void RemoteFileDialogPrivate::_q_updateOkButton()
 {
     Q_Q(RemoteFileDialog);
-    QPushButton *button =  qFileDialogUi->buttonBox->button((q->acceptMode() == RemoteFileDialog::AcceptOpen)
-                    ? QDialogButtonBox::Open : QDialogButtonBox::Save);
+    QPushButton *button = qFileDialogUi->buttonBox->button(
+        (q->acceptMode() == RemoteFileDialog::AcceptOpen) ? QDialogButtonBox::Open : QDialogButtonBox::Save);
     if (!button)
         return;
     const RemoteFileDialog::FileMode fileMode = q->fileMode();
@@ -3225,7 +3213,7 @@ void RemoteFileDialogPrivate::_q_updateOkButton()
         return;
     }
 
-    if (files.isEmpty() && fileMode!=RemoteFileDialog::Directory && fileMode!=RemoteFileDialog::DirectoryOnly) {
+    if (files.isEmpty() && fileMode != RemoteFileDialog::Directory && fileMode != RemoteFileDialog::DirectoryOnly) {
         enableButton = false;
     } else if (lineEditText == QLatin1String("..")) {
         isOpenDirectory = true;
@@ -3277,7 +3265,7 @@ void RemoteFileDialogPrivate::_q_updateOkButton()
         }
         case RemoteFileDialog::ExistingFile:
         case RemoteFileDialog::ExistingFiles:
-            for (const auto &file : files) {
+            for (const auto &file: files) {
                 QModelIndex idx = model->index(file);
                 if (!idx.isValid()) {
                     enableButton = false;
@@ -3326,16 +3314,15 @@ void RemoteFileDialogPrivate::_q_enterDirectory(const QModelIndex &index)
         const RemoteFileDialog::FileMode fileMode = q->fileMode();
         q->setDirectory(path);
         emit q->directoryEntered(path);
-        if (fileMode == RemoteFileDialog::Directory
-                || fileMode == RemoteFileDialog::DirectoryOnly) {
+        if (fileMode == RemoteFileDialog::Directory || fileMode == RemoteFileDialog::DirectoryOnly) {
             // ### find out why you have to do both of these.
             lineEdit()->setText(QString());
             lineEdit()->clear();
         }
     } else {
         // Do not accept when shift-clicking to multi-select a file in environments with single-click-activation (KDE)
-        if (!q->style()->styleHint(QStyle::SH_ItemView_ActivateItemOnSingleClick, nullptr, qFileDialogUi->treeView)
-            || q->fileMode() != RemoteFileDialog::ExistingFiles || !(QGuiApplication::keyboardModifiers() & Qt::CTRL)) {
+        if (!q->style()->styleHint(QStyle::SH_ItemView_ActivateItemOnSingleClick, nullptr, qFileDialogUi->treeView) ||
+            q->fileMode() != RemoteFileDialog::ExistingFiles || !(QGuiApplication::keyboardModifiers() & Qt::CTRL)) {
             q->accept();
         }
     }
@@ -3349,17 +3336,17 @@ void RemoteFileDialogPrivate::_q_enterDirectory(const QModelIndex &index)
 */
 void RemoteFileDialogPrivate::_q_goToDirectory(const QString &path)
 {
- #if QT_CONFIG(messagebox)
+#if QT_CONFIG(messagebox)
     Q_Q(RemoteFileDialog);
 #endif
     QModelIndex index = qFileDialogUi->lookInCombo->model()->index(qFileDialogUi->lookInCombo->currentIndex(),
-                                                    qFileDialogUi->lookInCombo->modelColumn(),
-                                                    qFileDialogUi->lookInCombo->rootModelIndex());
+                                                                   qFileDialogUi->lookInCombo->modelColumn(),
+                                                                   qFileDialogUi->lookInCombo->rootModelIndex());
 
     if (!index.isValid()) {
 #if QT_CONFIG(messagebox)
         QString message = RemoteFileDialog::tr("%1\nDirectory not found.\nPlease verify the "
-                                          "correct directory name was given.");
+                                               "correct directory name was given.");
         QMessageBox::warning(q, q->windowTitle(), message.arg(path));
 #endif // QT_CONFIG(messagebox)
         return;
@@ -3397,8 +3384,8 @@ void RemoteFileDialogPrivate::_q_useNameFilter(int index)
         const QString fileNameExtension = QFileInfo(fileName).suffix();
         if (!fileNameExtension.isEmpty() && !newNameFilterExtension.isEmpty()) {
             const int fileNameExtensionLength = fileNameExtension.count();
-            fileName.replace(fileName.count() - fileNameExtensionLength,
-                             fileNameExtensionLength, newNameFilterExtension);
+            fileName.replace(fileName.count() - fileNameExtensionLength, fileNameExtensionLength,
+                             newNameFilterExtension);
             qFileDialogUi->listView->clearSelection();
             lineEdit()->setText(fileName);
         }
@@ -3422,7 +3409,7 @@ void RemoteFileDialogPrivate::_q_selectionChanged()
     bool haveDirectory = false;
 
     QStringList allFiles;
-    for (const auto &index : indexes) {
+    for (const auto &index: indexes) {
         if (stripDirs && model->isDir(mapToSource(index))) {
             haveDirectory = true;
             continue;
@@ -3432,10 +3419,11 @@ void RemoteFileDialogPrivate::_q_selectionChanged()
     if (allFiles.count() > 1)
         for (int i = 0; i < allFiles.count(); ++i) {
             allFiles.replace(i, QString(QLatin1Char('"') + allFiles.at(i) + QLatin1Char('"')));
-    }
+        }
 
     QString finalFiles = allFiles.join(QLatin1Char(' '));
-    if ((!finalFiles.isEmpty() || (haveDirectory && clearOnDirectory)) && !lineEdit()->hasFocus() && lineEdit()->isVisible()) {
+    if ((!finalFiles.isEmpty() || (haveDirectory && clearOnDirectory)) && !lineEdit()->hasFocus() &&
+        lineEdit()->isVisible()) {
         lineEdit()->setText(finalFiles);
     } else {
         _q_updateOkButton();
@@ -3463,11 +3451,9 @@ void RemoteFileDialogPrivate::_q_showHidden()
 */
 void RemoteFileDialogPrivate::_q_rowsInserted(const QModelIndex &parent)
 {
-    if (!qFileDialogUi->treeView
-        || parent != qFileDialogUi->treeView->rootIndex()
-        || !qFileDialogUi->treeView->selectionModel()
-        || qFileDialogUi->treeView->selectionModel()->hasSelection()
-        || qFileDialogUi->treeView->model()->rowCount(parent) == 0)
+    if (!qFileDialogUi->treeView || parent != qFileDialogUi->treeView->rootIndex() ||
+        !qFileDialogUi->treeView->selectionModel() || qFileDialogUi->treeView->selectionModel()->hasSelection() ||
+        qFileDialogUi->treeView->model()->rowCount(parent) == 0)
         return;
 }
 
@@ -3484,19 +3470,17 @@ void RemoteFileDialogPrivate::_q_directoryLoaded(const QString &path)
 {
     Q_Q(RemoteFileDialog);
 
-    if (currentHistoryLocation < 0)
-    {
+    if (currentHistoryLocation < 0) {
         qInfo() << "DIRECTORY loaded: no history<0, path = " << path;
         return;
     }
-    if (currentHistoryLocation >= currentHistory.size())
-    {
+    if (currentHistoryLocation >= currentHistory.size()) {
         qInfo() << "DIRECTORY loaded: no history>>, path = " << path;
         return;
     }
-    if (currentHistory[currentHistoryLocation] != path)
-    {
-        qInfo() << "DIRECTORY loaded: invalid history, path = " << path << "!=" << currentHistory[currentHistoryLocation];
+    if (currentHistory[currentHistoryLocation] != path) {
+        qInfo() << "DIRECTORY loaded: invalid history, path = " << path
+                << "!=" << currentHistory[currentHistoryLocation];
         return;
     }
 
@@ -3530,10 +3514,11 @@ void RemoteFileDialogPrivate::_q_emitUrlsSelected(const QList<QUrl> &files)
     Q_Q(RemoteFileDialog);
     emit q->urlsSelected(files);
     QStringList localFiles;
-    for (const QUrl &file : files) {
+    for (const QUrl &file: files) {
         if (file.scheme() == QLatin1String("home")) {
             localFiles.append(model->homePath().toString());
-        } if (file.isLocalFile()) {
+        }
+        if (file.isLocalFile()) {
             localFiles.append(file.toLocalFile());
         }
     }
@@ -3548,8 +3533,8 @@ void RemoteFileDialogPrivate::_q_emitUrlsSelected(const QList<QUrl> &files)
 
     returns \c true if handled
 */
-bool RemoteFileDialogPrivate::itemViewKeyboardEvent(QKeyEvent *event) {
-
+bool RemoteFileDialogPrivate::itemViewKeyboardEvent(QKeyEvent *event)
+{
 #if QT_CONFIG(shortcut)
     Q_Q(RemoteFileDialog);
     if (event->matches(QKeySequence::Cancel)) {
@@ -3578,7 +3563,8 @@ bool RemoteFileDialogPrivate::itemViewKeyboardEvent(QKeyEvent *event) {
     return false;
 }
 
-void RemoteFileDialogComboBox::setFileDialogPrivate(RemoteFileDialogPrivate *d_pointer) {
+void RemoteFileDialogComboBox::setFileDialogPrivate(RemoteFileDialogPrivate *d_pointer)
+{
     d_ptr = d_pointer;
     urlModel = new RemoteUrlModel(this);
     urlModel->showFullPath = true;
@@ -3616,10 +3602,10 @@ void RemoteFileDialogComboBox::showPopup()
     }
     if (urls.count() > 0) {
         model()->insertRow(model()->rowCount());
-        idx = model()->index(model()->rowCount()-1, 0);
+        idx = model()->index(model()->rowCount() - 1, 0);
         // ### TODO maybe add a horizontal line before this
         model()->setData(idx, RemoteFileDialog::tr("Recent Places"));
-        QStandardItemModel *m = qobject_cast<QStandardItemModel*>(model());
+        QStandardItemModel *m = qobject_cast<QStandardItemModel *>(model());
         if (m) {
             Qt::ItemFlags flags = m->flags(idx);
             flags &= ~Qt::ItemIsEnabled;
@@ -3642,8 +3628,7 @@ void RemoteFileDialogComboBox::paintEvent(QPaintEvent *)
     QStyleOptionComboBox opt;
     initStyleOption(&opt);
 
-    QRect editRect = style()->subControlRect(QStyle::CC_ComboBox, &opt,
-                                                QStyle::SC_ComboBoxEditField, this);
+    QRect editRect = style()->subControlRect(QStyle::CC_ComboBox, &opt, QStyle::SC_ComboBoxEditField, this);
     int size = editRect.width() - opt.iconSize.width() - 4;
     opt.currentText = opt.fontMetrics.elidedText(opt.currentText, Qt::ElideMiddle, size);
     painter.drawComplexControl(QStyle::CC_ComboBox, opt);
@@ -3652,9 +3637,8 @@ void RemoteFileDialogComboBox::paintEvent(QPaintEvent *)
     painter.drawControl(QStyle::CE_ComboBoxLabel, opt);
 }
 
-RemoteFileDialogListView::RemoteFileDialogListView(QWidget *parent) : QListView(parent)
-{
-}
+RemoteFileDialogListView::RemoteFileDialogListView(QWidget *parent): QListView(parent)
+{}
 
 void RemoteFileDialogListView::setFileDialogPrivate(RemoteFileDialogPrivate *d_pointer)
 {
@@ -3689,9 +3673,8 @@ void RemoteFileDialogListView::keyPressEvent(QKeyEvent *e)
     e->accept();
 }
 
-RemoteFileDialogTreeView::RemoteFileDialogTreeView(QWidget *parent) : QTreeView(parent)
-{
-}
+RemoteFileDialogTreeView::RemoteFileDialogTreeView(QWidget *parent): QTreeView(parent)
+{}
 
 void RemoteFileDialogTreeView::setFileDialogPrivate(RemoteFileDialogPrivate *d_pointer)
 {
@@ -3749,7 +3732,8 @@ void RemoteFileDialogLineEdit::keyPressEvent(QKeyEvent *e)
 #endif
     QKeyEvent *syn = nullptr;
 #if QT_CONFIG(completer)
-    if (e->modifiers() == Qt::ControlModifier && completer() && completer()->popup() && completer()->popup()->isVisible()) {
+    if (e->modifiers() == Qt::ControlModifier && completer() && completer()->popup() &&
+        completer()->popup()->isVisible()) {
         if (e->key() == Qt::Key_N) {
             syn = new QKeyEvent(QEvent::KeyPress, Qt::Key_Down, Qt::ControlModifier);
         }
@@ -3786,7 +3770,7 @@ QString RemoteFSCompleter::pathFromIndex(const QModelIndex &index) const
         if (currentLocation.endsWith(QLatin1Char('/')))
             return path.mid(currentLocation.length());
         else
-            return path.mid(currentLocation.length()+1);
+            return path.mid(currentLocation.length() + 1);
     }
     return index.data(AbstractFileSystemModel::FilePathRole).toString();
 }
@@ -3846,9 +3830,7 @@ QStringList RemoteFSCompleter::splitPath(const QString &path) const
         }
         if (currentLocation.contains(sep) && path != currentLocation) {
             QStringList currentLocationList = splitPath(currentLocation);
-            while (!currentLocationList.isEmpty()
-                   && parts.count() > 0
-                   && parts.at(0) == QLatin1String("..")) {
+            while (!currentLocationList.isEmpty() && parts.count() > 0 && parts.at(0) == QLatin1String("..")) {
                 parts.removeFirst();
                 currentLocationList.removeLast();
             }

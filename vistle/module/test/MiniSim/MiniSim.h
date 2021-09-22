@@ -8,7 +8,6 @@
 struct Particle;
 class MiniSimModule: public vistle::insitu::InSituReader {
 public:
-
     MiniSimModule(const std::string &name, int moduleID, mpi::communicator comm);
     ~MiniSimModule();
     void initialize(size_t nblocks, size_t n_local_blocks, float *origin, float *spacing, int domain_shape_x,
@@ -45,7 +44,6 @@ private:
     vistle::IntParameter *m_numThreads, *m_numGhost, *m_numParticles, *m_numBlocks;
     vistle::IntParameter *m_verbose, *m_sync;
     vistle::FloatParameter *m_velocityScale, *m_tEnd, *m_dt;
-
 };
 
 #endif // !VISTLE_MINI_SIM_H

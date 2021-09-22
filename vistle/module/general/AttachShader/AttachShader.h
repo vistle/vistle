@@ -4,15 +4,14 @@
 #include <vistle/module/module.h>
 
 class AttachShader: public vistle::Module {
+public:
+    AttachShader(const std::string &name, int moduleID, mpi::communicator comm);
+    ~AttachShader();
 
- public:
-   AttachShader(const std::string &name, int moduleID, mpi::communicator comm);
-   ~AttachShader();
+private:
+    virtual bool compute();
 
- private:
-   virtual bool compute();
-
-   vistle::StringParameter *m_shader, *m_shaderParams;
+    vistle::StringParameter *m_shader, *m_shaderParams;
 };
 
 #endif

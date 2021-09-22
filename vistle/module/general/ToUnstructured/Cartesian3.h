@@ -10,18 +10,24 @@ struct Cartesian3 {
     T x, y, z;
 
     // constructor
-    Cartesian3(T _x, T _y, T _z) : x(_x), y(_y), z(_z) {}
+    Cartesian3(T _x, T _y, T _z): x(_x), y(_y), z(_z) {}
 
     // index into Cartesian3
-    T operator[](unsigned index) {
-        switch(index) {
-        case 0: return x; break;
-        case 1: return y; break;
-        case 2: return z; break;
+    T operator[](unsigned index)
+    {
+        switch (index) {
+        case 0:
+            return x;
+            break;
+        case 1:
+            return y;
+            break;
+        case 2:
+            return z;
+            break;
         default:
             assert("should never be called");
             return x;
         }
     }
 };
-

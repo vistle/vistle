@@ -9,25 +9,25 @@ namespace vistle {
 namespace cell {
 
 enum CellType {
-    GHOST_BIT   = 0x80,
-    CONVEX_BIT  = 0x40, //<! cell was checked to be convex
-    TYPE_MASK   = 0x3f,
+    GHOST_BIT = 0x80,
+    CONVEX_BIT = 0x40, //<! cell was checked to be convex
+    TYPE_MASK = 0x3f,
 
-   // make sure that these types match those from COVISE: src/kernel/do/coDoUnstructuredGrid.h
-    NONE        =  0,
-    BAR         =  1,
-    TRIANGLE    =  2,
-    QUAD        =  3,
-    TETRAHEDRON =  4,
-    PYRAMID     =  5,
-    PRISM       =  6,
-    HEXAHEDRON  =  7,
-    VPOLYHEDRON =  8, // not in COVISE: polyhedron with facestream as in VTK
-    POLYGON     =  9, // not in COVISE
-    POINT       = 10,
+    // make sure that these types match those from COVISE: src/kernel/do/coDoUnstructuredGrid.h
+    NONE = 0,
+    BAR = 1,
+    TRIANGLE = 2,
+    QUAD = 3,
+    TETRAHEDRON = 4,
+    PYRAMID = 5,
+    PRISM = 6,
+    HEXAHEDRON = 7,
+    VPOLYHEDRON = 8, // not in COVISE: polyhedron with facestream as in VTK
+    POLYGON = 9, // not in COVISE
+    POINT = 10,
     CPOLYHEDRON = 11, // in COVISE, but has to be translated to VPOLYHEDRON
-    POLYHEDRON  = CPOLYHEDRON,
-    NUM_TYPES   = 12, // keep last
+    POLYHEDRON = CPOLYHEDRON,
+    NUM_TYPES = 12, // keep last
 };
 
 template<int type>
@@ -97,7 +97,6 @@ struct TypeData<PRISM> {
     const int NumVertices = 6;
     const int NumEdges = 9;
     const int NumFaces = 5;
-
 };
 
 template<>
@@ -128,6 +127,6 @@ struct TypeData<VPOLYHEDRON> {
     const int Dimension = 3;
 };
 
-}
-}
+} // namespace cell
+} // namespace vistle
 #endif

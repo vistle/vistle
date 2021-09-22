@@ -37,17 +37,16 @@ class RhrClient;
 struct DecodeTask;
 
 class RemoteConnection {
-    public:
-
-   enum GeometryMode {
-       Screen,
-       FirstScreen,
-       OnlyFront,
-       CubeMap,
-       CubeMapFront,
-       CubeMapCoarseSides,
-       Invalid,
-   };
+public:
+    enum GeometryMode {
+        Screen,
+        FirstScreen,
+        OnlyFront,
+        CubeMap,
+        CubeMapFront,
+        CubeMapCoarseSides,
+        Invalid,
+    };
 
     using ViewSelection = opencover::MultiChannelDrawer::ViewSelection;
 
@@ -83,7 +82,7 @@ class RemoteConnection {
     std::set<std::string> m_variantsToRemove;
     std::map<std::string, std::shared_ptr<VariantRenderObject>> m_variants;
     std::map<std::string, bool> m_variantVisibility;
-    int m_requestedTimestep=-1, m_remoteTimestep=-1, m_visibleTimestep=-1, m_numRemoteTimesteps=-1;
+    int m_requestedTimestep = -1, m_remoteTimestep = -1, m_visibleTimestep = -1, m_numRemoteTimesteps = -1;
 
     int m_channelBase = 0;
     int m_numViews = 0, m_numLocalViews = 0;
@@ -95,7 +94,7 @@ class RemoteConnection {
     opencover::MultiChannelDrawer::ViewSelection m_visibleViews = opencover::MultiChannelDrawer::Same;
 
     RemoteConnection() = delete;
-    RemoteConnection(const RemoteConnection& other) = delete;
+    RemoteConnection(const RemoteConnection &other) = delete;
     RemoteConnection &operator=(RemoteConnection &other) = delete;
     //! connect via Vistle message to module with moduleId
     RemoteConnection(RhrClient *plugin, int moduleId, bool isMaster);
@@ -113,13 +112,14 @@ class RemoteConnection {
     void operator()();
     void connectionEstablished();
     void connectionClosed();
-    bool requestTimestep(int t, int numTime=-1);
+    bool requestTimestep(int t, int numTime = -1);
     bool setLights(const vistle::lightsMsg &msg);
     vistle::lightsMsg m_lights;
-    bool setMatrices(const std::vector<vistle::matricesMsg> &msgs, bool force=false);
+    bool setMatrices(const std::vector<vistle::matricesMsg> &msgs, bool force = false);
     std::vector<vistle::matricesMsg> m_matrices, m_savedMatrices;
     int m_numMatrixRequests = 0;
-    bool handleRemoteRenderMessage(vistle::message::RemoteRenderMessage &msg, const std::shared_ptr<vistle::buffer> &payload = std::shared_ptr<vistle::buffer>());
+    bool handleRemoteRenderMessage(vistle::message::RemoteRenderMessage &msg,
+                                   const std::shared_ptr<vistle::buffer> &payload = std::shared_ptr<vistle::buffer>());
     bool handleAnimation(const vistle::message::RemoteRenderMessage &msg, const vistle::animationMsg &anim);
     bool handleVariant(const vistle::message::RemoteRenderMessage &msg, const vistle::variantMsg &variant);
     bool update();
@@ -130,7 +130,8 @@ class RemoteConnection {
 
     //! handle RFB bounds message
     bool handleBounds(const vistle::message::RemoteRenderMessage &msg, const vistle::boundsMsg &bound);
-    bool handleTile(const vistle::message::RemoteRenderMessage &msg, const vistle::tileMsg &tile, std::shared_ptr<vistle::buffer> payload);
+    bool handleTile(const vistle::message::RemoteRenderMessage &msg, const vistle::tileMsg &tile,
+                    std::shared_ptr<vistle::buffer> payload);
     int moduleId() const;
     bool isRunning() const;
     bool isListener() const;
@@ -138,10 +139,11 @@ class RemoteConnection {
     bool isConnecting() const;
     bool isConnected() const;
     bool boundsUpdated();
-    bool sendMessage(const vistle::message::Message &msg, const vistle::buffer *payload=nullptr);
+    bool sendMessage(const vistle::message::Message &msg, const vistle::buffer *payload = nullptr);
 
     template<class Message>
-    bool send(const Message &msg, const vistle::buffer *payload=nullptr) {
+    bool send(const Message &msg, const vistle::buffer *payload = nullptr)
+    {
         vistle::message::RemoteRenderMessage r(msg, payload ? payload->size() : 0);
         return sendMessage(r, payload);
     }
@@ -165,62 +167,64 @@ class RemoteConnection {
     void finishFrame(const vistle::message::RemoteRenderMessage &msg);
 
     // statistics and timings
-   bool m_benchmark = false;
-   double m_lastFrameTime = -1.;
-   double m_lastMatricesTime = -1.;
-   double m_minDelay = 0., m_maxDelay = 0., m_accumDelay = 0., m_avgDelay = 0.;
-   double m_lastStat = -1.;
-   size_t m_remoteFrames=0;
-   size_t m_depthBytes=0, m_rgbBytes=0, m_depthBpp=0, m_numPixels=0;
-   size_t m_depthBytesS=0, m_rgbBytesS=0, m_depthBppS=0, m_numPixelsS=0;
-   int m_remoteSkipped = 0, m_remoteSkippedPerFrame = 0;
-   std::string m_name;
-   std::string m_status; // user-readable status of this connection
+    bool m_benchmark = false;
+    double m_lastFrameTime = -1.;
+    double m_lastMatricesTime = -1.;
+    double m_minDelay = 0., m_maxDelay = 0., m_accumDelay = 0., m_avgDelay = 0.;
+    double m_lastStat = -1.;
+    size_t m_remoteFrames = 0;
+    size_t m_depthBytes = 0, m_rgbBytes = 0, m_depthBpp = 0, m_numPixels = 0;
+    size_t m_depthBytesS = 0, m_rgbBytesS = 0, m_depthBppS = 0, m_numPixelsS = 0;
+    int m_remoteSkipped = 0, m_remoteSkippedPerFrame = 0;
+    std::string m_name;
+    std::string m_status; // user-readable status of this connection
 
-   bool canEnqueue() const;
-   void enqueueTask(std::shared_ptr<DecodeTask> task);
-   int m_deferredFrames = 0;
-   bool updateTileQueue();
-   bool handleTileMessage(std::shared_ptr<const vistle::message::RemoteRenderMessage> msg, std::shared_ptr<vistle::buffer> payload);
-   int m_queuedTiles = 0;
+    bool canEnqueue() const;
+    void enqueueTask(std::shared_ptr<DecodeTask> task);
+    int m_deferredFrames = 0;
+    bool updateTileQueue();
+    bool handleTileMessage(std::shared_ptr<const vistle::message::RemoteRenderMessage> msg,
+                           std::shared_ptr<vistle::buffer> payload);
+    int m_queuedTiles = 0;
 
-   bool m_frameReady = false;
-   bool m_waitForFrame = false;
-   bool m_frameDrawn = true;
-   typedef std::deque<std::shared_ptr<DecodeTask>> TaskQueue;
-   TaskQueue m_queuedTasks, m_finishedTasks;
-   std::set<std::shared_ptr<DecodeTask>> m_runningTasks;
+    bool m_frameReady = false;
+    bool m_waitForFrame = false;
+    bool m_frameDrawn = true;
+    typedef std::deque<std::shared_ptr<DecodeTask>> TaskQueue;
+    TaskQueue m_queuedTasks, m_finishedTasks;
+    std::set<std::shared_ptr<DecodeTask>> m_runningTasks;
 
-   bool checkSwapFrame();
-   void swapFrame();
-   void processMessages();
-   void setVisibleTimestep(int t);
+    bool checkSwapFrame();
+    void swapFrame();
+    void processMessages();
+    void setVisibleTimestep(int t);
 
-   int numTimesteps() const;
-   int currentTimestep() const;
+    int numTimesteps() const;
+    int currentTimestep() const;
 
-   osg::Group *scene();
-   osg::ref_ptr<osg::Group> m_scene;
-   void updateStats(bool print, int localFrames);
+    osg::Group *scene();
+    osg::ref_ptr<osg::Group> m_scene;
+    void updateStats(bool print, int localFrames);
 
-   unsigned m_maxTilesPerFrame = 100;
-   bool m_handleTilesAsync = true;
+    unsigned m_maxTilesPerFrame = 100;
+    bool m_handleTilesAsync = true;
 
-   std::unique_ptr<boost::mpi::communicator> m_comm;
-   std::unique_ptr<boost::mpi::communicator> m_commAny, m_commMiddle, m_commLeft, m_commRight;
-   bool m_needUpdate = false;
-   osg::Matrix m_head, m_newHead, m_receivingHead;
-   const osg::Matrix &getHeadMat() const;
-   bool distributeAndHandleTileMpi(std::shared_ptr<vistle::message::RemoteRenderMessage> msg, std::shared_ptr<vistle::buffer> payload);
-   void setMaxTilesPerFrame(unsigned ntiles);
-   bool canHandleTile(std::shared_ptr<const vistle::message::RemoteRenderMessage> msg) const;
-   void skipFrames();
+    std::unique_ptr<boost::mpi::communicator> m_comm;
+    std::unique_ptr<boost::mpi::communicator> m_commAny, m_commMiddle, m_commLeft, m_commRight;
+    bool m_needUpdate = false;
+    osg::Matrix m_head, m_newHead, m_receivingHead;
+    const osg::Matrix &getHeadMat() const;
+    bool distributeAndHandleTileMpi(std::shared_ptr<vistle::message::RemoteRenderMessage> msg,
+                                    std::shared_ptr<vistle::buffer> payload);
+    void setMaxTilesPerFrame(unsigned ntiles);
+    bool canHandleTile(std::shared_ptr<const vistle::message::RemoteRenderMessage> msg) const;
+    void skipFrames();
 
-   std::string status() const;
+    std::string status() const;
 
-   private:
-   int m_moduleId = vistle::message::Id::Invalid;
-   void init();
+private:
+    int m_moduleId = vistle::message::Id::Invalid;
+    void init();
 };
 
 #endif

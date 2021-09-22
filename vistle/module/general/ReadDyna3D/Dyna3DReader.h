@@ -67,23 +67,11 @@
 
 #include <vistle/util/enum.h>
 
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(NodalDataType,
-                                    (No_Node_Data)
-                                    (Displacements)
-                                    (Velocities)
-                                    (Accelerations)
-                                    )
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(NodalDataType, (No_Node_Data)(Displacements)(Velocities)(Accelerations))
 
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(ElementDataType,
-                                    (No_Element_Data)
-                                    (Stress_Tensor)
-                                    (Plastic_Strain)
-                                    (Thickness)
-                                    )
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(ElementDataType, (No_Element_Data)(Stress_Tensor)(Plastic_Strain)(Thickness))
 
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(Component,
-                                    (Sx)(Sy)(Sz)(Txy)(Tyz)(Txz)(Pressure)(Von_Mises)
-                                    )
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(Component, (Sx)(Sy)(Sz)(Txy)(Tyz)(Txz)(Pressure)(Von_Mises))
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(Format, (CADFEM)(Original)(Guess))
 // format of cadfem
@@ -111,7 +99,6 @@ struct WordTraits<8> {
 
 class Dyna3DReaderBase {
 public:
-
     using NodalDataType = ::NodalDataType;
     using ElementDataType = ::ElementDataType;
     using Format = ::Format;
@@ -178,11 +165,9 @@ protected:
     std::unique_ptr<vistle::coRestraint> selection;
 };
 
-template<int wordsize,
-         class INTEGER=typename WordTraits<wordsize>::INTEGER,
-         class REAL=typename WordTraits<wordsize>::REAL>
-class Dyna3DReader: public Dyna3DReaderBase
-{
+template<int wordsize, class INTEGER = typename WordTraits<wordsize>::INTEGER,
+         class REAL = typename WordTraits<wordsize>::REAL>
+class Dyna3DReader: public Dyna3DReaderBase {
 public:
     typedef typename WordTraits<wordsize>::WORD WORD;
 
@@ -192,8 +177,7 @@ public:
     };
 
 private:
-    struct tauio_
-    {
+    struct tauio_ {
         REAL tau[512];
         INTEGER itrecin, nrin, nrzin, ifilin, itrecout, nrout, nrzout, ifilout, adaptation;
         const INTEGER irl = 512;
@@ -355,7 +339,7 @@ private:
     void createGeometry(vistle::Reader::Token &token, int blockToRead = -1) const;
     INTEGER createNodeLUT(int id, int *lut);
 
-    void createStateObjects(vistle::Reader::Token &token, int timestep, int block=-1) const;
+    void createStateObjects(vistle::Reader::Token &token, int timestep, int block = -1) const;
     void deleteStateData();
 
     /* Subroutines */
@@ -402,7 +386,7 @@ public:
     /* Constructor */
     Dyna3DReader(vistle::Reader *module);
 
-     ~Dyna3DReader() override;
+    ~Dyna3DReader() override;
 };
 
 extern template class Dyna3DReader<4>;

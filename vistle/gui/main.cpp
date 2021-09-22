@@ -20,7 +20,8 @@ Q_DECLARE_METATYPE(boost::uuids::uuid)
 
 using namespace gui;
 
-void debugMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &message) {
+void debugMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &message)
+{
     std::cerr << message.toStdString() << std::endl;
 }
 
@@ -30,40 +31,40 @@ int main(int argc, char *argv[])
     macos_disable_tabs();
 #endif
 
-   qRegisterMetaType<Module::Status>("Module::Status");
-   qRegisterMetaType<Port::Type>("Port::Type");
-   qRegisterMetaType<boost::uuids::uuid>();
+    qRegisterMetaType<Module::Status>("Module::Status");
+    qRegisterMetaType<Port::Type>("Port::Type");
+    qRegisterMetaType<boost::uuids::uuid>();
 
-   try {
-      QApplication a(argc, argv);
+    try {
+        QApplication a(argc, argv);
 
-      QCoreApplication::setOrganizationName("HLRS");
-      QCoreApplication::setOrganizationDomain("hlrs.de");
-      QCoreApplication::setApplicationName("Vistle");
+        QCoreApplication::setOrganizationName("HLRS");
+        QCoreApplication::setOrganizationDomain("hlrs.de");
+        QCoreApplication::setApplicationName("Vistle");
 
-	  // we want decimal points rather than commas
-	  QLocale::setDefault(QLocale::c());
+        // we want decimal points rather than commas
+        QLocale::setDefault(QLocale::c());
 
-      a.setAttribute(Qt::AA_MacDontSwapCtrlAndMeta);
-	  //DebugBreak();
+        a.setAttribute(Qt::AA_MacDontSwapCtrlAndMeta);
+        //DebugBreak();
 
-      //std::cerr << "installing debug msg handler" << std::endl;
-      qInstallMessageHandler(debugMessageHandler);
-      QIcon icon(":/icons/vistle.png");
-      a.setWindowIcon(icon);
-      UiController control(argc, argv, &a);
-      control.init();
-      int val = a.exec();
-      control.finish();
-      return val;
-   } catch (vistle::except::exception &ex) {
-      std::cerr << "GUI: fatal exception: " << ex.what() << std::endl << ex.where() << std::endl;
-      return 1;
-   } catch(std::exception &ex) {
-      std::cerr << "GUI: fatal exception: " << ex.what() << std::endl;
-      return 1;
-   } catch (...) {
-      std::cerr << "GUI: fatal exception: unknown" << std::endl;
-      return 1;
-   }
+        //std::cerr << "installing debug msg handler" << std::endl;
+        qInstallMessageHandler(debugMessageHandler);
+        QIcon icon(":/icons/vistle.png");
+        a.setWindowIcon(icon);
+        UiController control(argc, argv, &a);
+        control.init();
+        int val = a.exec();
+        control.finish();
+        return val;
+    } catch (vistle::except::exception &ex) {
+        std::cerr << "GUI: fatal exception: " << ex.what() << std::endl << ex.where() << std::endl;
+        return 1;
+    } catch (std::exception &ex) {
+        std::cerr << "GUI: fatal exception: " << ex.what() << std::endl;
+        return 1;
+    } catch (...) {
+        std::cerr << "GUI: fatal exception: unknown" << std::endl;
+        return 1;
+    }
 }

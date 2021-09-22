@@ -54,12 +54,11 @@
 QT_BEGIN_NAMESPACE
 
 const QLatin1String HomeScheme("home");
-const QUrl HomeUrl(HomeScheme+QLatin1String(":"));
+const QUrl HomeUrl(HomeScheme + QLatin1String(":"));
 
-void RFBSideBarDelegate::initStyleOption(QStyleOptionViewItem *option,
-                                         const QModelIndex &index) const
+void RFBSideBarDelegate::initStyleOption(QStyleOptionViewItem *option, const QModelIndex &index) const
 {
-    QStyledItemDelegate::initStyleOption(option,index);
+    QStyledItemDelegate::initStyleOption(option, index);
     QVariant value = index.data(RemoteUrlModel::EnabledRole);
     if (value.isValid()) {
         //If the bookmark/entry is not enabled then we paint it in gray
@@ -76,9 +75,8 @@ void RFBSideBarDelegate::initStyleOption(QStyleOptionViewItem *option,
 
     Example usage: File dialog sidebar and combo box
  */
-RemoteUrlModel::RemoteUrlModel(QObject *parent) : QStandardItemModel(parent), showFullPath(false), fileSystemModel(0)
-{
-}
+RemoteUrlModel::RemoteUrlModel(QObject *parent): QStandardItemModel(parent), showFullPath(false), fileSystemModel(0)
+{}
 
 /*!
     \reimp
@@ -112,9 +110,9 @@ Qt::ItemFlags RemoteUrlModel::flags(const QModelIndex &index) const
 QMimeData *RemoteUrlModel::mimeData(const QModelIndexList &indexes) const
 {
     QList<QUrl> list;
-    for (const auto &index : indexes) {
+    for (const auto &index: indexes) {
         if (index.column() == 0)
-           list.append(index.data(UrlRole).toUrl());
+            list.append(index.data(UrlRole).toUrl());
     }
     QMimeData *data = new QMimeData();
     data->setUrls(list);
@@ -134,7 +132,7 @@ bool RemoteUrlModel::canDrop(QDragEnterEvent *event)
         return false;
 
     const QList<QUrl> list = event->mimeData()->urls();
-    for (const auto &url : list) {
+    for (const auto &url: list) {
         const QModelIndex idx = fileSystemModel->index(url.toLocalFile());
         if (!fileSystemModel->isDir(idx))
             return false;
@@ -145,8 +143,8 @@ bool RemoteUrlModel::canDrop(QDragEnterEvent *event)
 /*!
     \reimp
 */
-bool RemoteUrlModel::dropMimeData(const QMimeData *data, Qt::DropAction action,
-                                 int row, int column, const QModelIndex &parent)
+bool RemoteUrlModel::dropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column,
+                                  const QModelIndex &parent)
 {
     if (!data->formats().contains(mimeTypes().constFirst()))
         return false;
@@ -169,32 +167,39 @@ bool RemoteUrlModel::setData(const QModelIndex &index, const QVariant &value, in
     if (value.type() == QVariant::Url) {
         QUrl url = value.toUrl();
         QString path;
-        if (url.scheme() == HomeScheme)
-        {
+        if (url.scheme() == HomeScheme) {
             path = fileSystemModel->homePath().toString();
             QModelIndex dirIndex = fileSystemModel->index(path);
             if (showFullPath) {
-                QStandardItemModel::setData(index, QDir::toNativeSeparators(fileSystemModel->homePath(AbstractFileSystemModel::FilePathRole).toString()));
+                QStandardItemModel::setData(
+                    index, QDir::toNativeSeparators(
+                               fileSystemModel->homePath(AbstractFileSystemModel::FilePathRole).toString()));
             } else {
-                QStandardItemModel::setData(index, QDir::toNativeSeparators(fileSystemModel->homePath(AbstractFileSystemModel::FilePathRole).toString()), Qt::ToolTipRole);
+                QStandardItemModel::setData(
+                    index,
+                    QDir::toNativeSeparators(
+                        fileSystemModel->homePath(AbstractFileSystemModel::FilePathRole).toString()),
+                    Qt::ToolTipRole);
                 QStandardItemModel::setData(index, fileSystemModel->homePath().toString());
             }
-            QStandardItemModel::setData(index, fileSystemModel->homePath(Qt::DecorationRole),
-                                               Qt::DecorationRole);
-        }
-        else
-        {
+            QStandardItemModel::setData(index, fileSystemModel->homePath(Qt::DecorationRole), Qt::DecorationRole);
+        } else {
             path = url.toLocalFile();
             QModelIndex dirIndex = fileSystemModel->index(path);
             //On windows the popup display the "C:\", convert to nativeSeparators
             if (showFullPath) {
-                QStandardItemModel::setData(index, QDir::toNativeSeparators(fileSystemModel->data(dirIndex, AbstractFileSystemModel::FilePathRole).toString()));
+                QStandardItemModel::setData(
+                    index, QDir::toNativeSeparators(
+                               fileSystemModel->data(dirIndex, AbstractFileSystemModel::FilePathRole).toString()));
             } else {
-                QStandardItemModel::setData(index, QDir::toNativeSeparators(fileSystemModel->data(dirIndex, AbstractFileSystemModel::FilePathRole).toString()), Qt::ToolTipRole);
+                QStandardItemModel::setData(
+                    index,
+                    QDir::toNativeSeparators(
+                        fileSystemModel->data(dirIndex, AbstractFileSystemModel::FilePathRole).toString()),
+                    Qt::ToolTipRole);
                 QStandardItemModel::setData(index, fileSystemModel->data(dirIndex).toString());
             }
-            QStandardItemModel::setData(index, fileSystemModel->data(dirIndex, Qt::DecorationRole),
-                                               Qt::DecorationRole);
+            QStandardItemModel::setData(index, fileSystemModel->data(dirIndex, Qt::DecorationRole), Qt::DecorationRole);
         }
         QStandardItemModel::setData(index, url, UrlRole);
         return true;
@@ -209,7 +214,8 @@ void RemoteUrlModel::setUrl(const QModelIndex &index, const QUrl &url, const QMo
         QString newName;
         if (showFullPath) {
             //On windows the popup display the "C:\", convert to nativeSeparators
-            newName = QDir::toNativeSeparators(fileSystemModel->homePath(AbstractFileSystemModel::FilePathRole).toString());
+            newName =
+                QDir::toNativeSeparators(fileSystemModel->homePath(AbstractFileSystemModel::FilePathRole).toString());
         } else {
             newName = fileSystemModel->homePath().toString();
         }
@@ -250,7 +256,7 @@ void RemoteUrlModel::setUrl(const QModelIndex &index, const QUrl &url, const QMo
         setData(index, true, EnabledRole);
 
         // Make sure that we have at least 32x32 images
-        const QSize size = newIcon.actualSize(QSize(32,32));
+        const QSize size = newIcon.actualSize(QSize(32, 32));
         if (size.width() < 32) {
             QPixmap smallPixmap = newIcon.pixmap(QSize(32, 32));
             newIcon.addPixmap(smallPixmap.scaledToWidth(32, Qt::SmoothTransformation));
@@ -321,9 +327,8 @@ void RemoteUrlModel::addUrls(const QList<QUrl> &list, int row, bool move)
             if (localUrl.scheme() == HomeScheme) {
                 local = home;
             }
-            if (home.isEmpty()
-                    && localUrl.scheme()!=url.scheme()
-                    && (localUrl.scheme()==HomeScheme || url.scheme()==HomeScheme)) {
+            if (home.isEmpty() && localUrl.scheme() != url.scheme() &&
+                (localUrl.scheme() == HomeScheme || url.scheme() == HomeScheme)) {
                 continue;
             }
             if (!cleanUrl.compare(local, cs)) {
@@ -361,25 +366,19 @@ void RemoteUrlModel::setFileSystemModel(AbstractFileSystemModel *model)
     if (model == fileSystemModel)
         return;
     if (fileSystemModel != 0) {
-        disconnect(model, SIGNAL(dataChanged(QModelIndex,QModelIndex)),
-            this, SLOT(dataChanged(QModelIndex,QModelIndex)));
-        disconnect(model, SIGNAL(layoutChanged()),
-            this, SLOT(layoutChanged()));
-        disconnect(model, SIGNAL(rowsRemoved(QModelIndex,int,int)),
-            this, SLOT(layoutChanged()));
-        disconnect(model, SIGNAL(initialized()),
-            this, SLOT(updateHomePath()));
+        disconnect(model, SIGNAL(dataChanged(QModelIndex, QModelIndex)), this,
+                   SLOT(dataChanged(QModelIndex, QModelIndex)));
+        disconnect(model, SIGNAL(layoutChanged()), this, SLOT(layoutChanged()));
+        disconnect(model, SIGNAL(rowsRemoved(QModelIndex, int, int)), this, SLOT(layoutChanged()));
+        disconnect(model, SIGNAL(initialized()), this, SLOT(updateHomePath()));
     }
     fileSystemModel = model;
     if (fileSystemModel != 0) {
-        connect(model, SIGNAL(dataChanged(QModelIndex,QModelIndex)),
-            this, SLOT(dataChanged(QModelIndex,QModelIndex)));
-        connect(model, SIGNAL(layoutChanged()),
-            this, SLOT(layoutChanged()));
-        connect(model, SIGNAL(rowsRemoved(QModelIndex,int,int)),
-            this, SLOT(layoutChanged()));
-        connect(model, SIGNAL(initialized()),
-            this, SLOT(updateHomePath()));
+        connect(model, SIGNAL(dataChanged(QModelIndex, QModelIndex)), this,
+                SLOT(dataChanged(QModelIndex, QModelIndex)));
+        connect(model, SIGNAL(layoutChanged()), this, SLOT(layoutChanged()));
+        connect(model, SIGNAL(rowsRemoved(QModelIndex, int, int)), this, SLOT(layoutChanged()));
+        connect(model, SIGNAL(initialized()), this, SLOT(updateHomePath()));
     }
     clear();
     insertColumns(0, 1);
@@ -409,12 +408,9 @@ void RemoteUrlModel::dataChanged(const QModelIndex &topLeft, const QModelIndex &
         if (index.model() && topLeft.model()) {
             Q_ASSERT(index.model() == topLeft.model());
         }
-        if (   index.row() >= topLeft.row()
-            && index.row() <= bottomRight.row()
-            && index.column() >= topLeft.column()
-            && index.column() <= bottomRight.column()
-            && index.parent() == parent) {
-                changed(watching.at(i).path);
+        if (index.row() >= topLeft.row() && index.row() <= bottomRight.row() && index.column() >= topLeft.column() &&
+            index.column() <= bottomRight.column() && index.parent() == parent) {
+            changed(watching.at(i).path);
         }
     }
 }
@@ -436,7 +432,7 @@ void RemoteUrlModel::layoutChanged()
         watching.append({newIndex, path});
         if (newIndex.isValid())
             changed(path);
-     }
+    }
 }
 
 /*!
@@ -455,35 +451,31 @@ void RemoteUrlModel::changed(const QString &path)
     }
 }
 
-RFBSidebar::RFBSidebar(QWidget *parent) : QListView(parent)
-{
-}
+RFBSidebar::RFBSidebar(QWidget *parent): QListView(parent)
+{}
 
 void RFBSidebar::setModelAndUrls(AbstractFileSystemModel *model, const QList<QUrl> &newUrls)
 {
     // ### TODO make icon size dynamic
-    setIconSize(QSize(24,24));
+    setIconSize(QSize(24, 24));
     setUniformItemSizes(true);
     urlModel = new RemoteUrlModel(this);
     urlModel->setFileSystemModel(model);
     setModel(urlModel);
     setItemDelegate(new RFBSideBarDelegate(this));
 
-    connect(selectionModel(), SIGNAL(currentChanged(QModelIndex,QModelIndex)),
-            this, SLOT(clicked(QModelIndex)));
+    connect(selectionModel(), SIGNAL(currentChanged(QModelIndex, QModelIndex)), this, SLOT(clicked(QModelIndex)));
 #ifndef QT_NO_DRAGANDDROP
     setDragDropMode(QAbstractItemView::DragDrop);
 #endif
     setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(this, SIGNAL(customContextMenuRequested(QPoint)),
-            this, SLOT(showContextMenu(QPoint)));
+    connect(this, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(showContextMenu(QPoint)));
     urlModel->setUrls(newUrls);
-    setCurrentIndex(this->model()->index(0,0));
+    setCurrentIndex(this->model()->index(0, 0));
 }
 
 RFBSidebar::~RFBSidebar()
-{
-}
+{}
 
 #ifndef QT_NO_DRAGANDDROP
 void RFBSidebar::dragEnterEvent(QDragEnterEvent *event)
@@ -502,22 +494,20 @@ QSize RFBSidebar::sizeHint() const
 
 void RFBSidebar::selectUrl(const QUrl &url)
 {
-    disconnect(selectionModel(), SIGNAL(currentChanged(QModelIndex,QModelIndex)),
-               this, SLOT(clicked(QModelIndex)));
+    disconnect(selectionModel(), SIGNAL(currentChanged(QModelIndex, QModelIndex)), this, SLOT(clicked(QModelIndex)));
 
     const QString home = urlModel->fileSystemModel->homePath().toString();
 
     selectionModel()->clear();
     for (int i = 0; i < model()->rowCount(); ++i) {
         QUrl l = model()->index(i, 0).data(RemoteUrlModel::UrlRole).toUrl();
-        if (l == url || (l.scheme()==HomeScheme && url.toLocalFile()==home)) {
+        if (l == url || (l.scheme() == HomeScheme && url.toLocalFile() == home)) {
             selectionModel()->select(model()->index(i, 0), QItemSelectionModel::Select);
             break;
         }
     }
 
-    connect(selectionModel(), SIGNAL(currentChanged(QModelIndex,QModelIndex)),
-            this, SLOT(clicked(QModelIndex)));
+    connect(selectionModel(), SIGNAL(currentChanged(QModelIndex, QModelIndex)), this, SLOT(clicked(QModelIndex)));
 }
 
 #if QT_CONFIG(menu)
@@ -586,10 +576,10 @@ void RFBSidebar::focusInEvent(QFocusEvent *event)
 /*!
     \reimp
  */
-bool RFBSidebar::event(QEvent * event)
+bool RFBSidebar::event(QEvent *event)
 {
     if (event->type() == QEvent::KeyRelease) {
-        QKeyEvent* ke = (QKeyEvent*) event;
+        QKeyEvent *ke = (QKeyEvent *)event;
         if (ke->key() == Qt::Key_Delete) {
             removeEntry();
             return true;

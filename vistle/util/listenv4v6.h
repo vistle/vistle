@@ -7,7 +7,8 @@
 
 namespace vistle {
 
-bool V_UTILEXPORT start_listen(unsigned short port, boost::asio::ip::tcp::acceptor &acceptor_v4, boost::asio::ip::tcp::acceptor &acceptor_v6, boost::system::error_code &ec);
+bool V_UTILEXPORT start_listen(unsigned short port, boost::asio::ip::tcp::acceptor &acceptor_v4,
+                               boost::asio::ip::tcp::acceptor &acceptor_v6, boost::system::error_code &ec);
 
 }
 #endif

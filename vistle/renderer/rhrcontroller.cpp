@@ -10,7 +10,8 @@
 
 namespace vistle {
 
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(ConnectionMethod, (ViaVistle)(AutomaticHostname)(UserHostname)(ViaHub)(AutomaticReverse)(UserReverse))
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(ConnectionMethod,
+                                    (ViaVistle)(AutomaticHostname)(UserHostname)(ViaHub)(AutomaticReverse)(UserReverse))
 
 RhrController::RhrController(vistle::Module *module, int displayRank)
 : m_module(module)
@@ -33,49 +34,61 @@ RhrController::RhrController(vistle::Module *module, int displayRank)
 , m_sendTileSizeParam(nullptr)
 , m_sendTileSize((vistle::Integer)256, (vistle::Integer)256)
 {
-   m_imageOutPort = m_module->createOutputPort("image_out", "connect to COVER");
+    m_imageOutPort = m_module->createOutputPort("image_out", "connect to COVER");
 
-   m_rhrConnectionMethod = module->addIntParameter("rhr_connection_method", "how local/remote endpoint should be determined", AutomaticHostname, Parameter::Choice);
-   module->V_ENUM_SET_CHOICES(m_rhrConnectionMethod, ConnectionMethod);
-   m_rhrBasePort = module->addIntParameter("rhr_base_port", "listen port for RHR server", 31590);
-   module->setParameterRange(m_rhrBasePort, (Integer)1, (Integer)((1<<16)-1));
-   m_rhrLocalEndpoint = module->addStringParameter("rhr_local_address", "address where clients should connect to", "localhost");
-   m_rhrRemotePort = module->addIntParameter("rhr_remote_port", "port where renderer should connect to", 31589);
-   module->setParameterRange(m_rhrRemotePort, (Integer)1, (Integer)((1<<16)-1));
-   m_rhrRemoteEndpoint = module->addStringParameter("rhr_remote_host", "address where renderer should connect to", "localhost");
-   m_rhrAutoRemotePort = module->addIntParameter("_rhr_auto_remote_port", "port where renderer should connect to", 0);
-   module->setParameterRange(m_rhrAutoRemotePort, (Integer)0, (Integer)((1<<16)-1));
-   m_rhrAutoRemoteEndpoint = module->addStringParameter("_rhr_auto_remote_host", "address where renderer should connect to", "localhost");
+    m_rhrConnectionMethod =
+        module->addIntParameter("rhr_connection_method", "how local/remote endpoint should be determined",
+                                AutomaticHostname, Parameter::Choice);
+    module->V_ENUM_SET_CHOICES(m_rhrConnectionMethod, ConnectionMethod);
+    m_rhrBasePort = module->addIntParameter("rhr_base_port", "listen port for RHR server", 31590);
+    module->setParameterRange(m_rhrBasePort, (Integer)1, (Integer)((1 << 16) - 1));
+    m_rhrLocalEndpoint =
+        module->addStringParameter("rhr_local_address", "address where clients should connect to", "localhost");
+    m_rhrRemotePort = module->addIntParameter("rhr_remote_port", "port where renderer should connect to", 31589);
+    module->setParameterRange(m_rhrRemotePort, (Integer)1, (Integer)((1 << 16) - 1));
+    m_rhrRemoteEndpoint =
+        module->addStringParameter("rhr_remote_host", "address where renderer should connect to", "localhost");
+    m_rhrAutoRemotePort = module->addIntParameter("_rhr_auto_remote_port", "port where renderer should connect to", 0);
+    module->setParameterRange(m_rhrAutoRemotePort, (Integer)0, (Integer)((1 << 16) - 1));
+    m_rhrAutoRemoteEndpoint =
+        module->addStringParameter("_rhr_auto_remote_host", "address where renderer should connect to", "localhost");
 
-   m_sendTileSizeParam = module->addIntVectorParameter("send_tile_size", "edge lengths of tiles used during sending", m_sendTileSize);
-   module->setParameterRange(m_sendTileSizeParam, IntParamVector(1,1), IntParamVector(16384, 16384));
+    m_sendTileSizeParam =
+        module->addIntVectorParameter("send_tile_size", "edge lengths of tiles used during sending", m_sendTileSize);
+    module->setParameterRange(m_sendTileSizeParam, IntParamVector(1, 1), IntParamVector(16384, 16384));
 
-   std::vector<std::string> choices;
-   m_rgbaEncoding = module->addIntParameter("color_codec", "codec for image data", m_rgbaCodec, Parameter::Choice);
-   module->V_ENUM_SET_CHOICES_SCOPE(m_rgbaEncoding, CompressionParameters::ColorCodec, CompressionParameters);
-   m_rgbaCompressMode = module->addIntParameter("color_compress", "compression for RGBA messages", m_rgbaCompress, Parameter::Choice);
-   module->V_ENUM_SET_CHOICES(m_rgbaCompressMode, message::CompressionMode);
+    std::vector<std::string> choices;
+    m_rgbaEncoding = module->addIntParameter("color_codec", "codec for image data", m_rgbaCodec, Parameter::Choice);
+    module->V_ENUM_SET_CHOICES_SCOPE(m_rgbaEncoding, CompressionParameters::ColorCodec, CompressionParameters);
+    m_rgbaCompressMode =
+        module->addIntParameter("color_compress", "compression for RGBA messages", m_rgbaCompress, Parameter::Choice);
+    module->V_ENUM_SET_CHOICES(m_rgbaCompressMode, message::CompressionMode);
 
-   m_depthCodecParam = module->addIntParameter("depth_codec", "Depth codec", CompressionParameters::DepthRaw, Parameter::Choice);
-   module->V_ENUM_SET_CHOICES_SCOPE(m_depthCodecParam, CompressionParameters::DepthCodec, CompressionParameters);
-   m_depthZfpMode = module->addIntParameter("zfp_mode", "Accuracy:, Precision:, Rate: ", (Integer)m_zfpMode, Parameter::Choice);
-   module->V_ENUM_SET_CHOICES_SCOPE(m_depthZfpMode, CompressionParameters::ZfpMode, CompressionParameters);
-   m_depthCompressMode = module->addIntParameter("depth_compress", "entropy compression for depth data", (Integer)m_depthCompress, Parameter::Choice);
-   module->V_ENUM_SET_CHOICES(m_depthCompressMode, message::CompressionMode);
+    m_depthCodecParam =
+        module->addIntParameter("depth_codec", "Depth codec", CompressionParameters::DepthRaw, Parameter::Choice);
+    module->V_ENUM_SET_CHOICES_SCOPE(m_depthCodecParam, CompressionParameters::DepthCodec, CompressionParameters);
+    m_depthZfpMode =
+        module->addIntParameter("zfp_mode", "Accuracy:, Precision:, Rate: ", (Integer)m_zfpMode, Parameter::Choice);
+    module->V_ENUM_SET_CHOICES_SCOPE(m_depthZfpMode, CompressionParameters::ZfpMode, CompressionParameters);
+    m_depthCompressMode = module->addIntParameter("depth_compress", "entropy compression for depth data",
+                                                  (Integer)m_depthCompress, Parameter::Choice);
+    module->V_ENUM_SET_CHOICES(m_depthCompressMode, message::CompressionMode);
 
-   m_depthPrec = module->addIntParameter("depth_prec", "quantized depth precision", (Integer)(m_prec==24), Parameter::Choice);
-   choices.clear();
-   choices.emplace_back("16 bit + 4 bits/pixel");
-   choices.emplace_back("24 bit + 3 bits/pixel");
-   module->setParameterChoices(m_depthPrec, choices);
+    m_depthPrec =
+        module->addIntParameter("depth_prec", "quantized depth precision", (Integer)(m_prec == 24), Parameter::Choice);
+    choices.clear();
+    choices.emplace_back("16 bit + 4 bits/pixel");
+    choices.emplace_back("24 bit + 3 bits/pixel");
+    module->setParameterChoices(m_depthPrec, choices);
 
-   m_dumpImagesParam = module->addIntParameter("rhr_dump_images", "dump image data to disk", (Integer)m_dumpImages, Parameter::Boolean);
+    m_dumpImagesParam = module->addIntParameter("rhr_dump_images", "dump image data to disk", (Integer)m_dumpImages,
+                                                Parameter::Boolean);
 
-   initializeServer();
+    initializeServer();
 }
 
-bool RhrController::initializeServer() {
-
+bool RhrController::initializeServer()
+{
     if (m_currentClient) {
         m_clientModuleId = m_currentClient->getModuleID();
     } else {
@@ -85,173 +98,169 @@ bool RhrController::initializeServer() {
     }
 
     if (m_module->rank() != rootRank()) {
-       m_rhr.reset();
-       return true;
-   }
+        m_rhr.reset();
+        return true;
+    }
 
-   bool requireServer = true;
-   switch (m_rhrConnectionMethod->getValue()) {
-   case ViaVistle:
-       requireServer = false;
-       break;
-   case UserReverse:
-   case AutomaticReverse:
-       requireServer = false;
-       break;
-   }
+    bool requireServer = true;
+    switch (m_rhrConnectionMethod->getValue()) {
+    case ViaVistle:
+        requireServer = false;
+        break;
+    case UserReverse:
+    case AutomaticReverse:
+        requireServer = false;
+        break;
+    }
 
-   if (m_rhr) {
-       // make sure that dtor runs before ctor of new RhrServer
-       if (requireServer) {
-           if (m_rhr->isConnecting() || m_rhr->port() != m_rhrBasePort->getValue())
-               m_rhr.reset();
-       } else {
-           if (!m_rhr->isConnecting()
-                   || (m_rhrConnectionMethod->getValue() == UserReverse && (m_rhrRemoteEndpoint->getValue() != m_rhr->destinationHost() || m_rhrRemotePort ->getValue() != m_rhr->destinationPort()))
-                   || (m_rhrConnectionMethod->getValue() == AutomaticReverse && (m_rhrAutoRemoteEndpoint->getValue() != m_rhr->destinationHost() || m_rhrAutoRemotePort ->getValue() != m_rhr->destinationPort())))
-               m_rhr.reset();
-       }
-   }
+    if (m_rhr) {
+        // make sure that dtor runs before ctor of new RhrServer
+        if (requireServer) {
+            if (m_rhr->isConnecting() || m_rhr->port() != m_rhrBasePort->getValue())
+                m_rhr.reset();
+        } else {
+            if (!m_rhr->isConnecting() ||
+                (m_rhrConnectionMethod->getValue() == UserReverse &&
+                 (m_rhrRemoteEndpoint->getValue() != m_rhr->destinationHost() ||
+                  m_rhrRemotePort->getValue() != m_rhr->destinationPort())) ||
+                (m_rhrConnectionMethod->getValue() == AutomaticReverse &&
+                 (m_rhrAutoRemoteEndpoint->getValue() != m_rhr->destinationHost() ||
+                  m_rhrAutoRemotePort->getValue() != m_rhr->destinationPort())))
+                m_rhr.reset();
+        }
+    }
 
-   if (!m_rhr) {
-       m_rhr.reset(new RhrServer(m_module));
-       if (requireServer) {
-           m_rhr->startServer(m_rhrBasePort->getValue());
-       }
-   }
+    if (!m_rhr) {
+        m_rhr.reset(new RhrServer(m_module));
+        if (requireServer) {
+            m_rhr->startServer(m_rhrBasePort->getValue());
+        }
+    }
 
-   m_rhr->setDepthPrecision(m_prec);
-   m_rhr->setDepthCompression(m_depthCompress);
-   m_rhr->setDepthCodec(m_depthCodec);
-   m_rhr->setZfpMode(m_zfpMode);
-   m_rhr->setColorCodec(m_rgbaCodec);
-   m_rhr->setTileSize(m_sendTileSize[0], m_sendTileSize[1]);
-   m_rhr->setColorCompression(m_rgbaCompress);
+    m_rhr->setDepthPrecision(m_prec);
+    m_rhr->setDepthCompression(m_depthCompress);
+    m_rhr->setDepthCodec(m_depthCodec);
+    m_rhr->setZfpMode(m_zfpMode);
+    m_rhr->setColorCodec(m_rgbaCodec);
+    m_rhr->setTileSize(m_sendTileSize[0], m_sendTileSize[1]);
+    m_rhr->setColorCompression(m_rgbaCompress);
 
-   return true;
+    return true;
 }
 
-bool RhrController::handleParam(const vistle::Parameter *p) {
+bool RhrController::handleParam(const vistle::Parameter *p)
+{
+    if (p == m_rhrBasePort || p == m_rhrRemoteEndpoint || p == m_rhrRemotePort) {
+        bool ret = initializeServer();
+        sendConfigObject();
+        return ret;
+    } else if (p == m_rhrConnectionMethod) {
+        if ((m_rhrConnectionMethod->getValue() != ViaHub && m_forwardPort != 0) ||
+            m_forwardPort != m_rhrBasePort->getValue()) {
+            if (m_module->rank() == 0) {
+                if (m_forwardPort)
+                    m_module->removePortMapping(m_forwardPort);
+            }
+            m_forwardPort = 0;
+        }
+        switch (m_rhrConnectionMethod->getValue()) {
+        case ViaVistle: {
+            break;
+        }
+        case AutomaticHostname: {
+            break;
+        }
+        case UserHostname: {
+            break;
+        }
+        case ViaHub: {
+            if (m_forwardPort != m_rhrBasePort->getValue()) {
+                m_forwardPort = m_rhrBasePort->getValue();
+                if (m_module->rank() == 0)
+                    m_module->requestPortMapping(m_forwardPort, m_rhrBasePort->getValue());
+            }
+            break;
+        }
+        case AutomaticReverse: {
+            break;
+        }
+        case UserReverse: {
+            break;
+        }
+        }
+        bool ret = initializeServer();
+        sendConfigObject();
+        return ret;
+    } else if (p == m_depthPrec) {
+        if (m_depthPrec->getValue() == 0)
+            m_prec = 16;
+        else
+            m_prec = 24;
+        if (m_rhr)
+            m_rhr->setDepthPrecision(m_prec);
+        return true;
+    } else if (p == m_depthCodecParam) {
+        m_depthCodec = (CompressionParameters::DepthCodec)m_depthCodecParam->getValue();
+        if (m_rhr)
+            m_rhr->setDepthCodec(m_depthCodec);
+        return true;
+    } else if (p == m_depthZfpMode) {
+        m_zfpMode = (CompressionParameters::ZfpMode)m_depthZfpMode->getValue();
+        if (m_rhr)
+            m_rhr->setZfpMode(m_zfpMode);
+        return true;
+    } else if (p == m_depthCompressMode) {
+        m_depthCompress = (message::CompressionMode)m_depthCompressMode->getValue();
+        if (m_rhr)
+            m_rhr->setDepthCompression(m_depthCompress);
+    } else if (p == m_rgbaEncoding) {
+        m_rgbaCodec = (CompressionParameters::ColorCodec)m_rgbaEncoding->getValue();
+        if (m_rhr)
+            m_rhr->setColorCodec(m_rgbaCodec);
+        return true;
+    } else if (p == m_rgbaCompressMode) {
+        m_rgbaCompress = (message::CompressionMode)m_rgbaCompressMode->getValue();
+        if (m_rhr)
+            m_rhr->setColorCompression(m_rgbaCompress);
+    } else if (p == m_sendTileSizeParam) {
+        m_sendTileSize = m_sendTileSizeParam->getValue();
+        if (m_rhr)
+            m_rhr->setTileSize(m_sendTileSize[0], m_sendTileSize[1]);
+        return true;
+    } else if (p == m_dumpImagesParam) {
+        m_dumpImages = m_dumpImagesParam->getValue() != 0;
+        if (m_rhr)
+            m_rhr->setDumpImages(m_dumpImages);
+    }
 
-   if (p == m_rhrBasePort || p == m_rhrRemoteEndpoint || p == m_rhrRemotePort) {
-
-      bool ret = initializeServer();
-      sendConfigObject();
-      return ret;
-   } else if (p == m_rhrConnectionMethod) {
-
-      if ((m_rhrConnectionMethod->getValue() != ViaHub && m_forwardPort != 0) || m_forwardPort != m_rhrBasePort->getValue()) {
-          if (m_module->rank() == 0) {
-            if (m_forwardPort)
-               m_module->removePortMapping(m_forwardPort);
-         }
-         m_forwardPort = 0;
-      }
-      switch (m_rhrConnectionMethod->getValue()) {
-      case ViaVistle: {
-          break;
-      }
-      case AutomaticHostname: {
-          break;
-      }
-      case UserHostname: {
-          break;
-      }
-      case ViaHub: {
-          if (m_forwardPort != m_rhrBasePort->getValue()) {
-              m_forwardPort = m_rhrBasePort->getValue();
-              if (m_module->rank() == 0)
-                  m_module->requestPortMapping(m_forwardPort, m_rhrBasePort->getValue());
-          }
-          break;
-      }
-      case AutomaticReverse: {
-          break;
-      }
-      case UserReverse: {
-          break;
-      }
-      }
-      bool ret = initializeServer();
-      sendConfigObject();
-      return ret;
-   } else if (p == m_depthPrec) {
-
-      if (m_depthPrec->getValue() == 0)
-         m_prec = 16;
-      else
-         m_prec = 24;
-      if (m_rhr)
-         m_rhr->setDepthPrecision(m_prec);
-      return true;
-   } else if (p == m_depthCodecParam) {
-
-      m_depthCodec = (CompressionParameters::DepthCodec)m_depthCodecParam->getValue();
-      if (m_rhr)
-         m_rhr->setDepthCodec(m_depthCodec);
-      return true;
-   } else if (p == m_depthZfpMode) {
-
-       m_zfpMode = (CompressionParameters::ZfpMode)m_depthZfpMode->getValue();
-       if (m_rhr)
-           m_rhr->setZfpMode(m_zfpMode);
-      return true;
-   } else if (p == m_depthCompressMode) {
-
-       m_depthCompress = (message::CompressionMode)m_depthCompressMode->getValue();
-       if (m_rhr)
-           m_rhr->setDepthCompression(m_depthCompress);
-   } else if (p == m_rgbaEncoding) {
-
-      m_rgbaCodec = (CompressionParameters::ColorCodec)m_rgbaEncoding->getValue();
-      if (m_rhr)
-         m_rhr->setColorCodec(m_rgbaCodec);
-      return true;
-   } else if (p == m_rgbaCompressMode) {
-
-       m_rgbaCompress = (message::CompressionMode)m_rgbaCompressMode->getValue();
-       if (m_rhr)
-           m_rhr->setColorCompression(m_rgbaCompress);
-   } else if (p == m_sendTileSizeParam) {
-
-      m_sendTileSize = m_sendTileSizeParam->getValue();
-      if (m_rhr)
-         m_rhr->setTileSize(m_sendTileSize[0], m_sendTileSize[1]);
-      return true;
-   } else if (p == m_dumpImagesParam) {
-
-       m_dumpImages = m_dumpImagesParam->getValue() != 0;
-       if (m_rhr)
-           m_rhr->setDumpImages(m_dumpImages);
-   }
-
-   return false;
+    return false;
 }
 
-Port *RhrController::outputPort() const {
-
+Port *RhrController::outputPort() const
+{
     return m_imageOutPort;
 }
 
-std::shared_ptr<RhrServer> RhrController::server() const {
-   return m_rhr;
+std::shared_ptr<RhrServer> RhrController::server() const
+{
+    return m_rhr;
 }
 
-int RhrController::rootRank() const {
-
-    return m_displayRank==-1 ? 0 : m_displayRank;
+int RhrController::rootRank() const
+{
+    return m_displayRank == -1 ? 0 : m_displayRank;
 }
 
-bool RhrController::hasConnection() const {
-
+bool RhrController::hasConnection() const
+{
     if (!m_rhr)
         return false;
 
     return m_rhr->numClients() > 0;
 }
 
-void RhrController::tryConnect(double wait) {
-
+void RhrController::tryConnect(double wait)
+{
     if (!m_rhr)
         return;
 
@@ -260,7 +269,7 @@ void RhrController::tryConnect(double wait) {
         return;
     }
 
-    switch(m_rhrConnectionMethod->getValue()) {
+    switch (m_rhrConnectionMethod->getValue()) {
     case AutomaticReverse:
     case UserReverse: {
         m_rhr->setClientModuleId(message::Id::Invalid);
@@ -291,8 +300,8 @@ void RhrController::tryConnect(double wait) {
     }
 }
 
-Object::ptr RhrController::getConfigObject() const {
-
+Object::ptr RhrController::getConfigObject() const
+{
     bool valid = true;
 
     std::stringstream config;
@@ -311,7 +320,10 @@ Object::ptr RhrController::getConfigObject() const {
             config << "listen " << host << " " << port;
         } else {
             int id = m_module->id();
-            config << "listen " << "_" << " " << ":" << id;
+            config << "listen "
+                   << "_"
+                   << " "
+                   << ":" << id;
         }
     } else if (connectionMethod() == RhrController::None) {
         int id = m_module->id();
@@ -329,16 +341,14 @@ Object::ptr RhrController::getConfigObject() const {
 
     Points::ptr points(new Points(Index(0)));
     points->addAttribute("_rhr_config", conf);
-    std::string sender =  std::to_string(m_module->id())
-                          + ":"
-                          + m_imageOutPort->getName();
+    std::string sender = std::to_string(m_module->id()) + ":" + m_imageOutPort->getName();
     points->addAttribute("_sender", sender);
     points->addAttribute("_plugin", "RhrClient");
     return points;
 }
 
-bool RhrController::sendConfigObject() const {
-
+bool RhrController::sendConfigObject() const
+{
     if (m_module->rank() == 0) {
         auto obj = getConfigObject();
         if (obj) {
@@ -351,8 +361,8 @@ bool RhrController::sendConfigObject() const {
     return true;
 }
 
-void RhrController::addClient(const Port *client) {
-
+void RhrController::addClient(const Port *client)
+{
     if (m_clients.empty()) {
         m_currentClient = client;
 
@@ -360,19 +370,19 @@ void RhrController::addClient(const Port *client) {
         sendConfigObject();
         tryConnect();
     } else {
-        CERR << "addClient: already have " << m_clients.size() << " connections, not servicing client port " << *client << std::endl;
+        CERR << "addClient: already have " << m_clients.size() << " connections, not servicing client port " << *client
+             << std::endl;
     }
 
     m_clients.insert(client);
-
 }
 
-void RhrController::removeClient(const Port *client) {
-
+void RhrController::removeClient(const Port *client)
+{
     auto it = m_clients.find(client);
     if (it == m_clients.end()) {
-        CERR << "removeClient: did not find disconnected destination port " << *client
-             << " among " << m_clients.size() << " clients" << std::endl;
+        CERR << "removeClient: did not find disconnected destination port " << *client << " among " << m_clients.size()
+             << " clients" << std::endl;
         return;
     }
 
@@ -392,9 +402,9 @@ void RhrController::removeClient(const Port *client) {
     }
 }
 
-RhrController::ConnectionDirection RhrController::connectionMethod() const {
-
-    switch(m_rhrConnectionMethod->getValue()) {
+RhrController::ConnectionDirection RhrController::connectionMethod() const
+{
+    switch (m_rhrConnectionMethod->getValue()) {
     case ViaVistle:
         return None;
     case AutomaticReverse:
@@ -406,17 +416,17 @@ RhrController::ConnectionDirection RhrController::connectionMethod() const {
     return Connect;
 }
 
-unsigned short RhrController::listenPort() const {
-
+unsigned short RhrController::listenPort() const
+{
     if (m_rhr)
         return m_rhr->port();
 
     return 0;
 }
 
-std::string RhrController::listenHost() const {
-
-    switch(m_rhrConnectionMethod->getValue()) {
+std::string RhrController::listenHost() const
+{
+    switch (m_rhrConnectionMethod->getValue()) {
     case AutomaticHostname: {
         return hostname();
     }
@@ -431,15 +441,14 @@ std::string RhrController::listenHost() const {
         return "";
     }
     default: {
-
         break;
     }
     }
     return "localhost";
 }
 
-unsigned short RhrController::connectPort() const {
-
+unsigned short RhrController::connectPort() const
+{
     switch (m_rhrConnectionMethod->getValue()) {
     case UserReverse:
         return m_rhrRemotePort->getValue();
@@ -450,8 +459,8 @@ unsigned short RhrController::connectPort() const {
     return 0;
 }
 
-std::string RhrController::connectHost() const {
-
+std::string RhrController::connectHost() const
+{
     switch (m_rhrConnectionMethod->getValue()) {
     case UserReverse:
         return m_rhrRemoteEndpoint->getValue();
@@ -465,4 +474,4 @@ std::string RhrController::connectHost() const {
     return "localhost";
 }
 
-}
+} // namespace vistle

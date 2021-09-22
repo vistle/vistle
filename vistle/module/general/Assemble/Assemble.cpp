@@ -10,35 +10,36 @@
 #include <vistle/core/coordswradius.h>
 
 class Assemble: public vistle::Module {
-  static const int NumPorts = 1;
+    static const int NumPorts = 1;
 
- public:
-   Assemble(const std::string &name, int moduleID, mpi::communicator comm);
-   ~Assemble();
+public:
+    Assemble(const std::string &name, int moduleID, mpi::communicator comm);
+    ~Assemble();
 
-   typedef std::array<const std::vector<vistle::Object::const_ptr> *, NumPorts> AssembleData;
+    typedef std::array<const std::vector<vistle::Object::const_ptr> *, NumPorts> AssembleData;
 
- private:
-   bool prepare() override;
-   bool compute() override;
-   bool reduce(int t) override;
-   bool assemble(const AssembleData &d);
-   vistle::Port *m_in[NumPorts], *m_out[NumPorts];
-   vistle::StringParameter *p_attribute = nullptr;
-   std::string m_attribute;
+private:
+    bool prepare() override;
+    bool compute() override;
+    bool reduce(int t) override;
+    bool assemble(const AssembleData &d);
+    vistle::Port *m_in[NumPorts], *m_out[NumPorts];
+    vistle::StringParameter *p_attribute = nullptr;
+    std::string m_attribute;
 
-   std::vector<std::vector<vistle::Object::const_ptr>> m_toCombine[NumPorts]; // a vector per timestep containing all objects to combine
-   std::vector<std::map<std::string, std::vector<vistle::Object::const_ptr>>> m_toCombineAttribute[NumPorts]; // a vector per timestep containing a map of attribute values to all objects to combine
+    std::vector<std::vector<vistle::Object::const_ptr>>
+        m_toCombine[NumPorts]; // a vector per timestep containing all objects to combine
+    std::vector<std::map<std::string, std::vector<vistle::Object::const_ptr>>> m_toCombineAttribute
+        [NumPorts]; // a vector per timestep containing a map of attribute values to all objects to combine
 };
 
 using namespace vistle;
 
-Assemble::Assemble(const std::string &name, int moduleID, mpi::communicator comm)
-    : vistle::Module(name, moduleID, comm)
+Assemble::Assemble(const std::string &name, int moduleID, mpi::communicator comm): vistle::Module(name, moduleID, comm)
 {
-    for (int i=0; i<NumPorts; ++i) {
-        m_in[i] = createInputPort("data_in"+std::to_string(i));
-        m_out[i] = createOutputPort("data_out"+std::to_string(i));
+    for (int i = 0; i < NumPorts; ++i) {
+        m_in[i] = createInputPort("data_in" + std::to_string(i));
+        m_out[i] = createOutputPort("data_out" + std::to_string(i));
     }
 
     p_attribute = addStringParameter("attribute", "attribute to match", "");
@@ -47,12 +48,11 @@ Assemble::Assemble(const std::string &name, int moduleID, mpi::communicator comm
 }
 
 Assemble::~Assemble()
-{
-}
+{}
 
 bool Assemble::prepare()
 {
-    for (int i=0; i<NumPorts; ++i) {
+    for (int i = 0; i < NumPorts; ++i) {
         m_toCombine[i].clear();
         m_toCombineAttribute[i].clear();
     }
@@ -62,8 +62,8 @@ bool Assemble::prepare()
 }
 
 
-bool Assemble::compute() {
-
+bool Assemble::compute()
+{
     Object::const_ptr oin[NumPorts];
     DataBase::const_ptr din[NumPorts];
     Object::const_ptr grid;
@@ -74,7 +74,7 @@ bool Assemble::compute() {
     bool haveAttr = m_attribute.empty();
     std::string attr;
 
-    for (int i=0; i<NumPorts; ++i) {
+    for (int i = 0; i < NumPorts; ++i) {
         if (!m_in[i]->isConnected())
             continue;
 
@@ -127,17 +127,17 @@ bool Assemble::compute() {
     }
 
     assert(tt >= -1);
-    unsigned t = tt+1;
+    unsigned t = tt + 1;
 
-    for (int i=0; i<NumPorts; ++i) {
+    for (int i = 0; i < NumPorts; ++i) {
         if (!m_in[i]->isConnected())
             continue;
 
         if (m_toCombine[i].size() <= t) {
-            m_toCombine[i].resize(t+1);
+            m_toCombine[i].resize(t + 1);
         }
         if (m_toCombineAttribute[i].size() <= t) {
-            m_toCombineAttribute[i].resize(t+1);
+            m_toCombineAttribute[i].resize(t + 1);
         }
 
         if (attr.empty()) {
@@ -150,16 +150,16 @@ bool Assemble::compute() {
     return true;
 }
 
-bool Assemble::reduce(int tt) {
-
+bool Assemble::reduce(int tt)
+{
     std::cerr << "reduce(t=" << tt << ")" << std::endl;
 
     assert(tt >= -1);
-    unsigned t = tt+1;
+    unsigned t = tt + 1;
 
     AssembleData comb;
     bool haveData = false;
-    for (int i=0; i<NumPorts; ++i) {
+    for (int i = 0; i < NumPorts; ++i) {
         if (m_toCombine[i].size() > t) {
             comb[i] = &m_toCombine[i][t];
             haveData = true;
@@ -176,8 +176,8 @@ bool Assemble::reduce(int tt) {
     }
 
     const std::map<std::string, std::vector<Object::const_ptr>> *nonempty = nullptr;
-    for (int i=0; i<NumPorts; ++i) {
-        if (m_toCombineAttribute[i].size()>t && !m_toCombineAttribute[i][t].empty()) {
+    for (int i = 0; i < NumPorts; ++i) {
+        if (m_toCombineAttribute[i].size() > t && !m_toCombineAttribute[i][t].empty()) {
             nonempty = &m_toCombineAttribute[i][t];
             break;
         }
@@ -191,7 +191,7 @@ bool Assemble::reduce(int tt) {
 
     for (const auto &av: *nonempty) {
         const auto &attr = av.first;
-        for (int i=0; i<NumPorts; ++i) {
+        for (int i = 0; i < NumPorts; ++i) {
             if (m_toCombineAttribute[i].size() > t)
                 comb[i] = &m_toCombineAttribute[i][t][attr];
             else
@@ -203,7 +203,7 @@ bool Assemble::reduce(int tt) {
         }
     }
 
-    for (int i=0; i<NumPorts; ++i) {
+    for (int i = 0; i < NumPorts; ++i) {
         m_toCombine[i][t].clear();
         m_toCombineAttribute[i][t].clear();
     }
@@ -211,10 +211,10 @@ bool Assemble::reduce(int tt) {
     return true;
 }
 
-bool Assemble::assemble(const Assemble::AssembleData &d) {
-
+bool Assemble::assemble(const Assemble::AssembleData &d)
+{
     size_t numobj = 0;
-    for (int i=0; i<NumPorts; ++i) {
+    for (int i = 0; i < NumPorts; ++i) {
         if (!d[i])
             continue;
 
@@ -239,21 +239,20 @@ bool Assemble::assemble(const Assemble::AssembleData &d) {
     Normals::ptr nnormals;
     DataBase::ptr dout[NumPorts];
 
-    std::vector<Index> elOff(numobj+1), clOff(numobj+1), coordOff(numobj+1), normOff(numobj+1);
+    std::vector<Index> elOff(numobj + 1), clOff(numobj + 1), coordOff(numobj + 1), normOff(numobj + 1);
     std::vector<Index> dataOff[NumPorts];
-    for (int i=0; i<NumPorts; ++i) {
-        dataOff[i].resize(numobj+1);
+    for (int i = 0; i < NumPorts; ++i) {
+        dataOff[i].resize(numobj + 1);
     }
 
     bool flatGeometry = false;
-    for (size_t n=0; n<numobj; ++n) {
+    for (size_t n = 0; n < numobj; ++n) {
         Object::const_ptr oin[NumPorts];
         DataBase::const_ptr din[NumPorts];
         Object::const_ptr grid;
         Normals::const_ptr normals;
         std::vector<const Scalar *> floats;
-        for (int i=0; i<NumPorts; ++i) {
-
+        for (int i = 0; i < NumPorts; ++i) {
             oin[i] = d[i]->at(n);
             din[i] = DataBase::as(oin[i]);
             Object::const_ptr g;
@@ -282,8 +281,7 @@ bool Assemble::assemble(const Assemble::AssembleData &d) {
         }
 
         if (auto tri = Triangles::as(grid)) {
-
-            const Index *cl = tri->getNumCorners()>0 ? tri->cl() : nullptr;
+            const Index *cl = tri->getNumCorners() > 0 ? tri->cl() : nullptr;
             if (!cl) {
                 if (tri->getNumCoords() > 0)
                     flatGeometry = true;
@@ -293,7 +291,7 @@ bool Assemble::assemble(const Assemble::AssembleData &d) {
                     return true;
                 }
             }
-            clOff[n+1] = clOff[n] + tri->getNumCorners();
+            clOff[n + 1] = clOff[n] + tri->getNumCorners();
 
             if (!ntri) {
                 ntri.reset(new Triangles(0, 0));
@@ -303,8 +301,7 @@ bool Assemble::assemble(const Assemble::AssembleData &d) {
                 assert(ogrid == ntri);
             }
         } else if (auto quad = Quads::as(grid)) {
-
-            const Index *cl = quad->getNumCorners()>0 ? quad->cl() : nullptr;
+            const Index *cl = quad->getNumCorners() > 0 ? quad->cl() : nullptr;
             if (!cl) {
                 if (quad->getNumCoords() > 0)
                     flatGeometry = true;
@@ -314,7 +311,7 @@ bool Assemble::assemble(const Assemble::AssembleData &d) {
                     return true;
                 }
             }
-            clOff[n+1] = clOff[n] + quad->getNumCorners();
+            clOff[n + 1] = clOff[n] + quad->getNumCorners();
 
             if (!nquad) {
                 nquad.reset(new Quads(0, 0));
@@ -325,7 +322,7 @@ bool Assemble::assemble(const Assemble::AssembleData &d) {
             }
         } else if (auto idx = Indexed::as(grid)) {
             auto unstr = UnstructuredGrid::as(idx);
-            const Index *cl = idx->getNumCorners()>0 ? idx->cl() : nullptr;
+            const Index *cl = idx->getNumCorners() > 0 ? idx->cl() : nullptr;
             if (!cl) {
                 if (idx->getNumCoords() > 0)
                     flatGeometry = true;
@@ -335,8 +332,8 @@ bool Assemble::assemble(const Assemble::AssembleData &d) {
                     return true;
                 }
             }
-            elOff[n+1] = elOff[n] + idx->getNumElements();
-            clOff[n+1] = clOff[n] + idx->getNumCorners();
+            elOff[n + 1] = elOff[n] + idx->getNumElements();
+            clOff[n + 1] = clOff[n] + idx->getNumCorners();
 
             if (!nidx) {
                 nidx = idx->clone();
@@ -351,8 +348,7 @@ bool Assemble::assemble(const Assemble::AssembleData &d) {
         }
 
         if (auto coords = Coords::as(grid)) {
-
-            coordOff[n+1] = coordOff[n] + coords->getNumCoords();
+            coordOff[n + 1] = coordOff[n] + coords->getNumCoords();
             if (!ncoords) {
                 assert(!ogrid);
                 ncoords = coords->clone();
@@ -365,15 +361,15 @@ bool Assemble::assemble(const Assemble::AssembleData &d) {
 
         if (normals) {
             Index num = normals->getSize();
-            normOff[n+1] = normOff[n] + num;
+            normOff[n + 1] = normOff[n] + num;
             if (!nnormals) {
                 nnormals = normals->clone();
                 nnormals->resetArrays();
             }
         }
-        for (int i=0; i<NumPorts; ++i) {
+        for (int i = 0; i < NumPorts; ++i) {
             if (din[i]) {
-                dataOff[i][n+1] = dataOff[i][n] + din[i]->getSize();
+                dataOff[i][n + 1] = dataOff[i][n] + din[i]->getSize();
                 if (!dout[i]) {
                     dout[i] = din[i]->clone();
                     dout[i]->resetArrays();
@@ -393,7 +389,7 @@ bool Assemble::assemble(const Assemble::AssembleData &d) {
         nidx->x().resize(coordOff[numobj]);
         nidx->y().resize(coordOff[numobj]);
         nidx->z().resize(coordOff[numobj]);
-        nidx->el().resize(elOff[numobj]+1);
+        nidx->el().resize(elOff[numobj] + 1);
         auto nunstr = UnstructuredGrid::as(ogrid);
         if (nunstr) {
             nunstr->tl().resize(elOff[numobj]);
@@ -417,19 +413,18 @@ bool Assemble::assemble(const Assemble::AssembleData &d) {
         if (nidx)
             nidx->setNormals(nnormals);
     }
-    for (int i=0; i<NumPorts; ++i) {
+    for (int i = 0; i < NumPorts; ++i) {
         if (dout[i])
             dout[i]->setSize(dataOff[i][numobj]);
     }
 
-    for (size_t n=0; n<numobj; ++n) {
+    for (size_t n = 0; n < numobj; ++n) {
         Object::const_ptr oin[NumPorts];
         DataBase::const_ptr din[NumPorts];
         Object::const_ptr grid;
         Normals::const_ptr normals;
         std::vector<const Scalar *> floats;
-        for (int i=0; i<NumPorts; ++i) {
-
+        for (int i = 0; i < NumPorts; ++i) {
             oin[i] = d[i]->at(n);
             din[i] = DataBase::as(oin[i]);
             Object::const_ptr g;
@@ -458,8 +453,7 @@ bool Assemble::assemble(const Assemble::AssembleData &d) {
         }
 
         if (auto tri = Triangles::as(grid)) {
-
-            const Index *cl = tri->getNumCorners()>0 ? tri->cl() : nullptr;
+            const Index *cl = tri->getNumCorners() > 0 ? tri->cl() : nullptr;
             if (!cl) {
                 if (tri->getNumCoords() > 0)
                     flatGeometry = true;
@@ -475,13 +469,12 @@ bool Assemble::assemble(const Assemble::AssembleData &d) {
                 Index num = tri->getNumCorners();
                 Index off = clOff[n];
                 Index coff = coordOff[n];
-                for (Index i=0; i<num; ++i) {
-                    ncl[off+i] = cl[i]+coff;
+                for (Index i = 0; i < num; ++i) {
+                    ncl[off + i] = cl[i] + coff;
                 }
             }
         } else if (auto quad = Quads::as(grid)) {
-
-            const Index *cl = quad->getNumCorners()>0 ? quad->cl() : nullptr;
+            const Index *cl = quad->getNumCorners() > 0 ? quad->cl() : nullptr;
             if (!cl) {
                 if (quad->getNumCoords() > 0)
                     flatGeometry = true;
@@ -497,13 +490,13 @@ bool Assemble::assemble(const Assemble::AssembleData &d) {
                 Index num = quad->getNumCorners();
                 Index off = clOff[n];
                 Index coff = coordOff[n];
-                for (Index i=0; i<num; ++i) {
-                    ncl[off+i] = cl[i]+coff;
+                for (Index i = 0; i < num; ++i) {
+                    ncl[off + i] = cl[i] + coff;
                 }
             }
         } else if (auto idx = Indexed::as(grid)) {
             auto unstr = UnstructuredGrid::as(idx);
-            const Index *cl = idx->getNumCorners()>0 ? idx->cl() : nullptr;
+            const Index *cl = idx->getNumCorners() > 0 ? idx->cl() : nullptr;
             if (!cl) {
                 if (idx->getNumCoords() > 0)
                     flatGeometry = true;
@@ -521,8 +514,8 @@ bool Assemble::assemble(const Assemble::AssembleData &d) {
                 Index num = idx->getNumCorners();
                 Index off = clOff[n];
                 Index coff = coordOff[n];
-                for (Index i=0; i<num; ++i) {
-                    ncl[off+i] = cl[i]+coff;
+                for (Index i = 0; i < num; ++i) {
+                    ncl[off + i] = cl[i] + coff;
                 }
             }
 
@@ -530,7 +523,7 @@ bool Assemble::assemble(const Assemble::AssembleData &d) {
             if (nunstr) {
                 auto tl = &unstr->tl()[0];
                 auto ntl = nunstr->tl().data();
-                memcpy(ntl+elOff[n], tl, unstr->getNumElements()*sizeof(*tl));
+                memcpy(ntl + elOff[n], tl, unstr->getNumElements() * sizeof(*tl));
             }
 
             {
@@ -538,48 +531,47 @@ bool Assemble::assemble(const Assemble::AssembleData &d) {
                 Index off = elOff[n];
                 Index coff = clOff[n];
                 Index num = idx->getNumElements();
-                for (Index e=0; e<num; ++e) {
-                    nel[off+e] = el[e]+coff;
+                for (Index e = 0; e < num; ++e) {
+                    nel[off + e] = el[e] + coff;
                 }
-                nel[off+num] = el[num]+coff;
+                nel[off + num] = el[num] + coff;
             }
-
         }
 
         if (auto coords = Coords::as(grid)) {
             Index off = coordOff[n];
             Index num = coords->getNumCoords();
-            const Scalar *x=coords->x(), *y=coords->y(), *z=coords->z();
-            auto &nx=ncoords->x(), &ny=ncoords->y(), &nz=ncoords->z();
+            const Scalar *x = coords->x(), *y = coords->y(), *z = coords->z();
+            auto &nx = ncoords->x(), &ny = ncoords->y(), &nz = ncoords->z();
 
-            memcpy(&nx[off], x, num*sizeof(*x));
-            memcpy(&ny[off], y, num*sizeof(*y));
-            memcpy(&nz[off], z, num*sizeof(*z));
+            memcpy(&nx[off], x, num * sizeof(*x));
+            memcpy(&ny[off], y, num * sizeof(*y));
+            memcpy(&nz[off], z, num * sizeof(*z));
             auto nrad = CoordsWithRadius::as(ogrid);
             auto rad = CoordsWithRadius::as(grid);
             if (rad && nrad) {
-                const Scalar *r=rad->r();
-                auto &nr=nrad->r();
-                memcpy(&nr[off], r, num*sizeof(*r));
+                const Scalar *r = rad->r();
+                auto &nr = nrad->r();
+                memcpy(&nr[off], r, num * sizeof(*r));
             }
         }
 
-        if (ogrid && n==0) {
+        if (ogrid && n == 0) {
             ogrid->copyAttributes(grid);
         }
 
         if (normals) {
             Index num = normals->getSize();
 
-            const Scalar *x=normals->x(), *y=normals->y(), *z=normals->z();
-            auto &nx=nnormals->x(), &ny=nnormals->y(), &nz=nnormals->z();
+            const Scalar *x = normals->x(), *y = normals->y(), *z = normals->z();
+            auto &nx = nnormals->x(), &ny = nnormals->y(), &nz = nnormals->z();
             Index off = normOff[n];
-            memcpy(&nx[off], x, num*sizeof(*x));
-            memcpy(&ny[off], y, num*sizeof(*y));
-            memcpy(&nz[off], z, num*sizeof(*z));
+            memcpy(&nx[off], x, num * sizeof(*x));
+            memcpy(&ny[off], y, num * sizeof(*y));
+            memcpy(&nz[off], z, num * sizeof(*z));
         }
 
-        for (int i=0; i<NumPorts; ++i) {
+        for (int i = 0; i < NumPorts; ++i) {
             if (din[i]) {
                 Index num = din[i]->getSize();
                 Index off = dataOff[i][n];
@@ -588,21 +580,21 @@ bool Assemble::assemble(const Assemble::AssembleData &d) {
                     assert(so);
                     const Scalar *x = si->x();
                     Scalar *ox = so->x().data();
-                    memcpy(ox+off, x, num*sizeof(*x));
-                } else if (auto vi = Vec<Scalar,3>::as(Object::const_ptr(din[i]))) {
-                    auto vo = Vec<Scalar,3>::as(Object::ptr(dout[i]));
+                    memcpy(ox + off, x, num * sizeof(*x));
+                } else if (auto vi = Vec<Scalar, 3>::as(Object::const_ptr(din[i]))) {
+                    auto vo = Vec<Scalar, 3>::as(Object::ptr(dout[i]));
                     assert(vo);
-                    const Scalar *x=vi->x(), *y=vi->y(), *z=vi->z();
-                    Scalar *ox=vo->x().data(), *oy=vo->y().data(), *oz=vo->z().data();
-                    memcpy(ox+off, x, num*sizeof(*x));
-                    memcpy(oy+off, y, num*sizeof(*y));
-                    memcpy(oz+off, z, num*sizeof(*z));
+                    const Scalar *x = vi->x(), *y = vi->y(), *z = vi->z();
+                    Scalar *ox = vo->x().data(), *oy = vo->y().data(), *oz = vo->z().data();
+                    memcpy(ox + off, x, num * sizeof(*x));
+                    memcpy(oy + off, y, num * sizeof(*y));
+                    memcpy(oz + off, z, num * sizeof(*z));
                 }
             }
         }
     }
 
-    for (int i=0; i<NumPorts; ++i) {
+    for (int i = 0; i < NumPorts; ++i) {
         if (dout[i]) {
             dout[i]->setGrid(ogrid);
             addObject(m_out[i], dout[i]);

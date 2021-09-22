@@ -4,67 +4,60 @@
 
 namespace vistle {
 
-Spheres::Spheres(const Index numSpheres,
-         const Meta &meta)
-   : Spheres::Base(Spheres::Data::create(numSpheres, meta))
+Spheres::Spheres(const Index numSpheres, const Meta &meta): Spheres::Base(Spheres::Data::create(numSpheres, meta))
 {
     refreshImpl();
 }
 
-void Spheres::refreshImpl() const {
-}
+void Spheres::refreshImpl() const
+{}
 
-bool Spheres::isEmpty() {
-
-   return Base::isEmpty();
-}
-
-bool Spheres::isEmpty() const {
-
-   return Base::isEmpty();
-}
-
-bool Spheres::checkImpl() const {
-
-   return true;
-}
-
-Index Spheres::getNumSpheres() const {
-
-   return getNumCoords();
-}
-
-void Spheres::Data::initData() {
-}
-
-Spheres::Data::Data(const Index numSpheres,
-             const std::string & name,
-             const Meta &meta)
-   : Spheres::Base::Data(numSpheres,
-         Object::SPHERES, name, meta)
+bool Spheres::isEmpty()
 {
-   initData();
+    return Base::isEmpty();
 }
 
-Spheres::Data::Data(const Spheres::Data &o, const std::string &n)
-: Spheres::Base::Data(o, n)
+bool Spheres::isEmpty() const
 {
-   initData();
+    return Base::isEmpty();
 }
 
-Spheres::Data::Data(const Vec<Scalar, 3>::Data &o, const std::string &n)
-: Spheres::Base::Data(o, n, Object::SPHERES)
+bool Spheres::checkImpl() const
 {
-   initData();
+    return true;
 }
 
-Spheres::Data *Spheres::Data::create(const Index numSpheres, const Meta &meta) {
+Index Spheres::getNumSpheres() const
+{
+    return getNumCoords();
+}
 
-   const std::string name = Shm::the().createObjectId();
-   Data *p = shm<Data>::construct(name)(numSpheres, name, meta);
-   publish(p);
+void Spheres::Data::initData()
+{}
 
-   return p;
+Spheres::Data::Data(const Index numSpheres, const std::string &name, const Meta &meta)
+: Spheres::Base::Data(numSpheres, Object::SPHERES, name, meta)
+{
+    initData();
+}
+
+Spheres::Data::Data(const Spheres::Data &o, const std::string &n): Spheres::Base::Data(o, n)
+{
+    initData();
+}
+
+Spheres::Data::Data(const Vec<Scalar, 3>::Data &o, const std::string &n): Spheres::Base::Data(o, n, Object::SPHERES)
+{
+    initData();
+}
+
+Spheres::Data *Spheres::Data::create(const Index numSpheres, const Meta &meta)
+{
+    const std::string name = Shm::the().createObjectId();
+    Data *p = shm<Data>::construct(name)(numSpheres, name, meta);
+    publish(p);
+
+    return p;
 }
 
 V_OBJECT_TYPE(Spheres, Object::SPHERES)

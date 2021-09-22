@@ -19,7 +19,8 @@
 namespace vistle {
 namespace insitu {
 namespace libsim {
-vistle::Object::ptr get(const visit_smart_handle<HandleType::UnstructuredMesh> &meshHandle, message::SyncShmIDs &creator)
+vistle::Object::ptr get(const visit_smart_handle<HandleType::UnstructuredMesh> &meshHandle,
+                        message::SyncShmIDs &creator)
 {
     return UnstructuredMesh::get(meshHandle, creator);
 }
@@ -84,10 +85,12 @@ public:
     GhostData(visit_handle meshHandle)
     {
         visit_smart_handle<HandleType::Coords> ghostHandle;
-        if (simv2_UnstructuredMesh_getGhostNodes(meshHandle, &ghostHandle) != VISIT_ERROR && ghostHandle != VISIT_INVALID_HANDLE) {
+        if (simv2_UnstructuredMesh_getGhostNodes(meshHandle, &ghostHandle) != VISIT_ERROR &&
+            ghostHandle != VISIT_INVALID_HANDLE) {
             m_mapping = Vertex;
             m_array = getVariableData(ghostHandle);
-        } else if (simv2_UnstructuredMesh_getGhostCells(meshHandle, &ghostHandle) != VISIT_ERROR && ghostHandle != VISIT_INVALID_HANDLE) {
+        } else if (simv2_UnstructuredMesh_getGhostCells(meshHandle, &ghostHandle) != VISIT_ERROR &&
+                   ghostHandle != VISIT_INVALID_HANDLE) {
             if (m_mapping != None)
                 std::cerr
                     << "A mesh should not set ghost elements and ghost vertices. Using elements and ignoring vertices"
@@ -97,10 +100,10 @@ public:
             m_array = getVariableData(ghostHandle);
         }
         //check the assumption
-        assert(!m_array.data ||
-               *std::max_element(m_array.getIter<char>().begin(), m_array.getIter<char>().end()) <= 1);
+        assert(!m_array.data || *std::max_element(m_array.getIter<char>().begin(), m_array.getIter<char>().end()) <= 1);
     }
-    bool operator[](size_t idx) {
+    bool operator[](size_t idx)
+    {
         assert(!m_array.data || idx < m_array.size);
         return m_array.data ? m_array.as<char>()[idx] : false;
     }
@@ -146,10 +149,9 @@ void fillTypeConnAndElemLists(const visit_handle &meshHandle, vistle::Unstructur
         for (size_t j = 0; j < libsim::getNumVertices(elemType); j++) {
             mesh->cl().push_back(static_cast<int *>(connListData.data.data)[idx]);
             ++idx;
-            if (ghost.mapping() == GhostData::Vertex && 
-                ghost[static_cast<int *>(connListData.data.data)[idx]] &&
+            if (ghost.mapping() == GhostData::Vertex && ghost[static_cast<int *>(connListData.data.data)[idx]] &&
                 !(elemTypeWithGhost & vistle::UnstructuredGrid::Type::GHOST_BIT)) {
-                    elemTypeWithGhost |= vistle::UnstructuredGrid::Type::GHOST_BIT;
+                elemTypeWithGhost |= vistle::UnstructuredGrid::Type::GHOST_BIT;
             }
         }
 

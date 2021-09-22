@@ -9,8 +9,7 @@ typedef VistleBrowserEdit::FileMode FileMode;
 
 class VistleBrowserPropertyManagerPrivate;
 
-class QT_QTPROPERTYBROWSER_EXPORT VistleBrowserPropertyManager : public QtAbstractPropertyManager
-{
+class QT_QTPROPERTYBROWSER_EXPORT VistleBrowserPropertyManager: public QtAbstractPropertyManager {
     Q_OBJECT
 public:
     VistleBrowserPropertyManager(QObject *parent = 0);
@@ -51,6 +50,7 @@ protected:
     QString displayText(const QtProperty *property) const;
     virtual void initializeProperty(QtProperty *property);
     virtual void uninitializeProperty(QtProperty *property);
+
 private:
     VistleBrowserPropertyManagerPrivate *d_ptr;
     Q_DECLARE_PRIVATE(VistleBrowserPropertyManager)

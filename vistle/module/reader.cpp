@@ -2,8 +2,7 @@
 
 namespace vistle {
 
-Reader::Reader(const std::string &name, const int moduleID, mpi::communicator comm)
-: Module(name, moduleID, comm)
+Reader::Reader(const std::string &name, const int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
     setCurrentParameterGroup("Reader");
 
@@ -16,35 +15,37 @@ Reader::Reader(const std::string &name, const int moduleID, mpi::communicator co
     m_increment = addIntParameter("step_increment", "number of steps to increment", 1);
 
     m_firstRank = addIntParameter("first_rank", "rank for first partition of first timestep", 0);
-    setParameterRange(m_firstRank, Integer(0), Integer(comm.size()-1));
+    setParameterRange(m_firstRank, Integer(0), Integer(comm.size() - 1));
 
-    m_checkConvexity = addIntParameter("check_convexity", "whether to check convexity of grid cells", 0, Parameter::Boolean);
+    m_checkConvexity =
+        addIntParameter("check_convexity", "whether to check convexity of grid cells", 0, Parameter::Boolean);
 
     setCurrentParameterGroup();
 
     assert(m_concurrency);
-    setParameterRange(m_concurrency, Integer(-1), Integer(hardware_concurrency()*5));
+    setParameterRange(m_concurrency, Integer(-1), Integer(hardware_concurrency() * 5));
 }
 
-Reader::~Reader() {
-}
+Reader::~Reader()
+{}
 
-void Reader::prepareQuit() {
+void Reader::prepareQuit()
+{
     m_observedParameters.clear();
     Module::prepareQuit();
 }
 
-bool Reader::checkConvexity() const {
-
+bool Reader::checkConvexity() const
+{
     return m_checkConvexity->getValue();
 }
 
-int Reader::rankForTimestepAndPartition(int t, int p) const {
-
+int Reader::rankForTimestepAndPartition(int t, int p) const
+{
     bool distTime = m_distributeTime && m_distributeTime->getValue();
     int baseRank = (int)m_firstRank->getValue();
 
-    if (p < 0 ) {
+    if (p < 0) {
         if (m_numPartitions > 0)
             // don't read unpartitioned data if there are partitions
             return -1;
@@ -65,16 +66,16 @@ int Reader::rankForTimestepAndPartition(int t, int p) const {
         ++np;
     }
 
-    return (t*np+p+baseRank) % comm().size();
+    return (t * np + p + baseRank) % comm().size();
 }
 
-int Reader::numPartitions() const {
-
+int Reader::numPartitions() const
+{
     return m_numPartitions;
 }
 
-size_t Reader::waitForReaders(size_t maxRunning, bool &result) {
-
+size_t Reader::waitForReaders(size_t maxRunning, bool &result)
+{
     while (m_tokens.size() > maxRunning) {
         auto token = m_tokens.front();
         if (!token->result()) {
@@ -102,7 +103,7 @@ bool Reader::prepare()
     auto first = m_first->getValue();
     auto last = m_last->getValue();
     if (last < 0)
-        last = m_numTimesteps-1;
+        last = m_numTimesteps - 1;
     auto inc = m_increment->getValue();
 
     int numpart = m_numPartitions;
@@ -116,16 +117,16 @@ bool Reader::prepare()
     int numtime = -1;
     if (inc > 0) {
         if (last >= first)
-            numtime = (last - first)/inc+1;
+            numtime = (last - first) / inc + 1;
     } else if (inc < 0) {
         if (last <= first)
-            numtime = (last - first)/inc+1;
+            numtime = (last - first) / inc + 1;
     }
     meta.setNumTimesteps(numtime);
 
     int concurrency = m_concurrency->getValue();
     if (concurrency <= 0)
-        concurrency = std::thread::hardware_concurrency()/2;
+        concurrency = std::thread::hardware_concurrency() / 2;
     if (concurrency <= 0)
         concurrency = 1;
 
@@ -140,19 +141,19 @@ bool Reader::prepare()
     std::shared_ptr<Token> prev;
     // read constant parts
     meta.setTimeStep(-1);
-    for (int p=-1; p<numpart; ++p) {
+    for (int p = -1; p < numpart; ++p) {
         if (!m_handlePartitions || comm().rank() == rankForTimestepAndPartition(-1, p)) {
             meta.setBlock(p);
             auto token = std::make_shared<Token>(this, prev);
             ++m_tokenCount;
             token->m_id = m_tokenCount;
             token->m_meta = meta;
-            if (waitForReaders(concurrency-1, result) == 0) {
+            if (waitForReaders(concurrency - 1, result) == 0) {
                 prev.reset();
             }
             m_tokens.emplace_back(token);
             prev = token;
-            token->m_future = std::async(std::launch::async, [this, token, p](){
+            token->m_future = std::async(std::launch::async, [this, token, p]() {
                 if (!read(*token, -1, p)) {
                     sendInfo("error reading constant data on partition %d", p);
                     return false;
@@ -176,21 +177,21 @@ bool Reader::prepare()
     // read timesteps
     if (result && inc != 0) {
         int step = 0;
-        for (int t=first; inc<0 ? t>=last : t<=last; t+=inc) {
+        for (int t = first; inc < 0 ? t >= last : t <= last; t += inc) {
             meta.setTimeStep(step);
-            for (int p=-1; p<numpart; ++p) {
+            for (int p = -1; p < numpart; ++p) {
                 if (!m_handlePartitions || comm().rank() == rankForTimestepAndPartition(step, p)) {
                     meta.setBlock(p);
                     auto token = std::make_shared<Token>(this, prev);
                     ++m_tokenCount;
                     token->m_id = m_tokenCount;
                     token->m_meta = meta;
-                    if (waitForReaders(concurrency-1, result) == 0) {
+                    if (waitForReaders(concurrency - 1, result) == 0) {
                         prev.reset();
                     }
                     m_tokens.emplace_back(token);
                     prev = token;
-                    token->m_future = std::async(std::launch::async, [this, token, t, p](){
+                    token->m_future = std::async(std::launch::async, [this, token, t, p]() {
                         if (!read(*token, t, p)) {
                             sendInfo("error reading time data %d on partition %d", t, p);
                             return false;
@@ -259,8 +260,8 @@ int Reader::timeIncrement() const
  *
  * @param mode enum.
  */
-void Reader::setParallelizationMode(Reader::ParallelizationMode mode) {
-
+void Reader::setParallelizationMode(Reader::ParallelizationMode mode)
+{
     m_parallel = mode;
 
     if (m_parallel == ParallelizeTimesteps) {
@@ -284,7 +285,8 @@ void Reader::setAllowTimestepDistribution(bool allow)
     if (m_allowTimestepDistribution) {
         if (!m_distributeTime) {
             setCurrentParameterGroup("Reader");
-            m_distributeTime = addIntParameter("distribute_time", "distribute timesteps across MPI ranks", m_parallel==ParallelizeTimesteps, Parameter::Boolean);
+            m_distributeTime = addIntParameter("distribute_time", "distribute timesteps across MPI ranks",
+                                               m_parallel == ParallelizeTimesteps, Parameter::Boolean);
             setCurrentParameterGroup();
         }
     } else {
@@ -294,14 +296,14 @@ void Reader::setAllowTimestepDistribution(bool allow)
     }
 }
 
-void Reader::observeParameter(const Parameter *param) {
-
+void Reader::observeParameter(const Parameter *param)
+{
     m_observedParameters.insert(param);
     m_readyForRead = false;
 }
 
-void Reader::setTimesteps(int number) {
-
+void Reader::setTimesteps(int number)
+{
     Integer max(std::numeric_limits<Integer>::max());
     if (number < 0) {
         number = 0;
@@ -365,8 +367,8 @@ bool Reader::changeParameter(const Parameter *param)
     return ret;
 }
 
-const Meta &Reader::Token::meta() const {
-
+const Meta &Reader::Token::meta() const
+{
     return m_meta;
 }
 
@@ -382,14 +384,16 @@ bool Reader::Token::wait(const std::string &port)
     return true;
 }
 
-bool Reader::Token::addObject(Port *port, Object::ptr obj) {
+bool Reader::Token::addObject(Port *port, Object::ptr obj)
+{
     if (!port)
         return false;
     std::string name = port->getName();
     return addObject(name, obj);
 }
 
-bool Reader::Token::addObject(const std::string &port, Object::ptr obj) {
+bool Reader::Token::addObject(const std::string &port, Object::ptr obj)
+{
     if (!obj)
         return false;
 
@@ -423,9 +427,9 @@ bool Reader::Token::result()
 
 bool Reader::Token::waitDone()
 {
-//#ifdef DEBUG
+    //#ifdef DEBUG
     std::cerr << "Reader::Token: finishing " << id() << ", meta: " << m_meta << "..." << std::endl;
-//#endif
+    //#endif
     {
         std::lock_guard<std::mutex> locker(m_mutex);
         if (m_finished)
@@ -519,8 +523,8 @@ bool Reader::Token::waitPortReady(const std::string &port)
     return p->ready;
 }
 
-void Reader::Token::setPortReady(const std::string &port, bool ready) {
-
+void Reader::Token::setPortReady(const std::string &port, bool ready)
+{
 #ifdef DEBUG
     std::cerr << "setting port ready: " << port << "=" << ready << std::endl;
 #endif
@@ -539,8 +543,8 @@ void Reader::Token::setPortReady(const std::string &port, bool ready) {
     p->promise.set_value(ready);
 }
 
-void Reader::Token::applyMeta(Object::ptr obj) const {
-
+void Reader::Token::applyMeta(Object::ptr obj) const
+{
     if (!obj)
         return;
 
@@ -550,13 +554,13 @@ void Reader::Token::applyMeta(Object::ptr obj) const {
     obj->setNumBlocks(m_meta.numBlocks());
 }
 
-unsigned long Reader::Token::id() const {
-
+unsigned long Reader::Token::id() const
+{
     return m_id;
 }
 
-std::ostream &operator<<(std::ostream &os, const Reader::Token &tok) {
-
+std::ostream &operator<<(std::ostream &os, const Reader::Token &tok)
+{
     os << "id: " << tok.id() << ", ports:";
     for (const auto &p: tok.m_ports) {
         os << " " << p.first;
@@ -564,15 +568,12 @@ std::ostream &operator<<(std::ostream &os, const Reader::Token &tok) {
     return os;
 }
 
-Reader::Token::Token(Reader *reader, std::shared_ptr<Token> previous)
-: m_reader(reader)
-, m_previous(previous)
+Reader::Token::Token(Reader *reader, std::shared_ptr<Token> previous): m_reader(reader), m_previous(previous)
+{}
+
+Reader *Reader::Token::reader() const
 {
-}
-
-Reader *Reader::Token::reader() const {
-
     return m_reader;
 }
 
-}
+} // namespace vistle

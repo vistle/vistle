@@ -46,7 +46,8 @@ struct Internals {
 } // namespace insitu
 } // namespace vistle
 
-SenseiAdapter::SenseiAdapter(bool paused, MPI_Comm Comm, MetaData &&meta, ObjectRetriever cbs, const std::string &options)
+SenseiAdapter::SenseiAdapter(bool paused, MPI_Comm Comm, MetaData &&meta, ObjectRetriever cbs,
+                             const std::string &options)
 : m_callbacks(cbs), m_metaData(std::move(meta)), m_internals(new detail::Internals{})
 {
     MPI_Comm_rank(Comm, &m_rank);
@@ -91,8 +92,7 @@ bool SenseiAdapter::startVistle(const MPI_Comm &comm, const std::string &options
 {
     int prov = MPI_THREAD_SINGLE;
     MPI_Query_thread(&prov);
-    if (prov != MPI_THREAD_MULTIPLE)
-    {
+    if (prov != MPI_THREAD_MULTIPLE) {
         CERR << "startVistle: MPI_THREAD_MULTIPLE not provided" << std::endl;
         return false;
     }
@@ -108,12 +108,11 @@ bool SenseiAdapter::startVistle(const MPI_Comm &comm, const std::string &options
         std::vector<std::string> optionsVec;
         boost::split(optionsVec, options, boost::is_any_of(" "));
         args.push_back(const_cast<char *>(cmd.c_str()));
-        for(auto& opt : optionsVec)
-        {
+        for (auto &opt: optionsVec) {
             args.push_back(const_cast<char *>(opt.c_str()));
         }
         std::cerr << "sensei args are:" << std::endl;
-        for(const auto c : args)
+        for (const auto c: args)
             std::cerr << c << std::endl;
         vistle::VistleManager manager;
         manager.run(static_cast<int>(args.size()), args.data());
@@ -168,8 +167,7 @@ bool SenseiAdapter::haveToProcessTimestep(size_t timestep)
 void SenseiAdapter::processData()
 {
     static bool first = true;
-    if (first)
-    {
+    if (first) {
         first = false;
         m_stopWatch = std::make_unique<StopWatch>("simulation took");
     }

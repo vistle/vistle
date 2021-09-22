@@ -3,7 +3,7 @@
 
 #include <vistle/util/export.h>
 
-#if defined (vistle_cover_EXPORTS)
+#if defined(vistle_cover_EXPORTS)
 #define V_COVEREXPORT V_EXPORT
 #else
 #define V_COVEREXPORT V_IMPORT

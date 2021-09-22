@@ -3,7 +3,7 @@
 
 #include <vistle/util/export.h>
 
-#if defined (vistle_renderer_EXPORTS)
+#if defined(vistle_renderer_EXPORTS)
 #define V_RENDEREREXPORT V_EXPORT
 #else
 #define V_RENDEREREXPORT V_IMPORT

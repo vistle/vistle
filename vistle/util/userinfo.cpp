@@ -11,7 +11,8 @@
 
 namespace vistle {
 
-std::string getLoginName() {
+std::string getLoginName()
+{
 #ifdef _WIN32
 #else
     if (const char *logname = getenv("LOGNAME")) {
@@ -24,7 +25,8 @@ std::string getLoginName() {
     return "";
 }
 
-std::string getRealName() {
+std::string getRealName()
+{
 #ifdef _WIN32
 #else
     setpwent();
@@ -41,7 +43,8 @@ std::string getRealName() {
     return "";
 }
 
-unsigned long getUserId() {
+unsigned long getUserId()
+{
 #ifdef _WIN32
 #else
     return getuid();
@@ -49,4 +52,4 @@ unsigned long getUserId() {
     return 0;
 }
 
-}
+} // namespace vistle

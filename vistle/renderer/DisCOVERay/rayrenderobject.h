@@ -24,19 +24,16 @@ struct RayColorMap {
 };
 
 struct RayRenderObject: public vistle::RenderObject {
+    static float pointSize;
 
-   static float pointSize;
+    RayRenderObject(RTCDevice device, int senderId, const std::string &senderPort, vistle::Object::const_ptr container,
+                    vistle::Object::const_ptr geometry, vistle::Object::const_ptr normals,
+                    vistle::Object::const_ptr texture);
 
-   RayRenderObject(RTCDevice device, int senderId, const std::string &senderPort,
-         vistle::Object::const_ptr container,
-         vistle::Object::const_ptr geometry,
-         vistle::Object::const_ptr normals,
-         vistle::Object::const_ptr texture);
+    ~RayRenderObject();
 
-   ~RayRenderObject();
-
-   std::unique_ptr<ispc::RenderObjectData> data;
-   std::unique_ptr<ispc::ColorMapData> cmap;
-   std::vector<vistle::Scalar> tcoord;
+    std::unique_ptr<ispc::RenderObjectData> data;
+    std::unique_ptr<ispc::ColorMapData> cmap;
+    std::vector<vistle::Scalar> tcoord;
 };
 #endif

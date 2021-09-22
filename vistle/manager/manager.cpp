@@ -25,13 +25,13 @@
 #include <condition_variable>
 #include <mutex>
 
-static  std::mutex main_thread_mutex;
-static  std::condition_variable main_thread_cv;
-static  std::deque<std::function<void()>> main_func;
-static  bool main_done = false;
+static std::mutex main_thread_mutex;
+static std::condition_variable main_thread_cv;
+static std::deque<std::function<void()>> main_func;
+static bool main_done = false;
 
-void run_on_main_thread(std::function<void()>& func) {
-
+void run_on_main_thread(std::function<void()> &func)
+{
     {
         std::unique_lock<std::mutex> lock(main_thread_mutex);
         main_func.emplace_back(func);
@@ -54,25 +54,24 @@ void run_on_main_thread(std::function<void()>& func) {
 #include <X11/ICE/ICElib.h>
 
 namespace {
-void iceIOErrorHandler(IceConn conn) {
+void iceIOErrorHandler(IceConn conn)
+{
     (void)conn;
     std::cerr << "Vistle: ignoring ICE IO error" << std::endl;
 }
-}
+} // namespace
 #endif
 #endif
-
-
-
 
 
 using namespace vistle;
 namespace dir = vistle::directory;
 
-class Vistle : public Executor {
+class Vistle: public Executor {
 public:
-    Vistle(int argc, char* argv[], boost::mpi::communicator comm) : Executor(argc, argv, comm) {}
-    bool config(int argc, char* argv[]) override{
+    Vistle(int argc, char *argv[], boost::mpi::communicator comm): Executor(argc, argv, comm) {}
+    bool config(int argc, char *argv[]) override
+    {
         if (const char *VISTLE_ROOT = getenv("VISTLE_ROOT")) {
             setVistleRoot(VISTLE_ROOT);
             return true;
@@ -81,7 +80,8 @@ public:
     }
 };
 
-bool VistleManager::run(int argc, char* argv[]) {
+bool VistleManager::run(int argc, char *argv[])
+{
     int rank = -1;
     int flag = 0;
     MPI_Initialized(&flag);
@@ -89,8 +89,7 @@ bool VistleManager::run(int argc, char* argv[]) {
 #ifdef MODULE_THREAD
         int prov = MPI_THREAD_SINGLE;
         MPI_Query_thread(&prov);
-        if (prov != MPI_THREAD_MULTIPLE)
-        {
+        if (prov != MPI_THREAD_MULTIPLE) {
             std::cerr << "VistleManager: MPI_THREAD_MULTIPLE not provided" << std::endl;
             rank = 0;
             return false;
@@ -98,8 +97,7 @@ bool VistleManager::run(int argc, char* argv[]) {
 #endif
         m_comm = boost::mpi::communicator(MPI_COMM_WORLD, boost::mpi::comm_duplicate);
         MPI_Comm_rank(m_comm, &rank);
-    }
-    else {
+    } else {
         //initialize mpi with single rank on local host?
         std::cerr << "VistleManager: MPI not initialized" << std::endl;
         rank = 0;
@@ -139,8 +137,7 @@ bool VistleManager::run(int argc, char* argv[]) {
             hub->run();
             std::cerr << "Hub exited..." << std::endl;
             delete hub;
-            }));
-
+        }));
     }
 
     if (!fromVistle) {
@@ -164,7 +161,7 @@ bool VistleManager::run(int argc, char* argv[]) {
     if (!qApp) {
         std::cerr << "early creation of QApplication object" << std::endl;
 #if defined(Q_OS_UNIX) && !defined(Q_OS_MAC)
-        if (xcb_connection_t* xconn = xcb_connect(nullptr, nullptr)) {
+        if (xcb_connection_t *xconn = xcb_connect(nullptr, nullptr)) {
             if (!xcb_connection_has_error(xconn)) {
                 std::cerr << "X11 connection!" << std::endl;
 #ifdef HAVE_X11_ICE
@@ -186,22 +183,19 @@ bool VistleManager::run(int argc, char* argv[]) {
 #endif
     auto t = std::thread([args, this]() {
 #endif
-
         try {
             vistle::registerTypes();
-            std::vector<char*> argv;
-            for (auto& a : args) {
-                argv.push_back(const_cast<char*>(a.data()));
+            std::vector<char *> argv;
+            for (auto &a: args) {
+                argv.push_back(const_cast<char *>(a.data()));
                 std::cerr << "arg: " << a << std::endl;
             }
             executer = new Vistle(argv.size(), argv.data(), m_comm);
             executer->run();
-        } catch (vistle::exception & e) {
-
+        } catch (vistle::exception &e) {
             std::cerr << "fatal exception: " << e.what() << std::endl << e.where() << std::endl;
             exit(1);
-        } catch (std::exception & e) {
-
+        } catch (std::exception &e) {
             std::cerr << "fatal exception: " << e.what() << std::endl;
             exit(1);
         }
@@ -210,7 +204,7 @@ bool VistleManager::run(int argc, char* argv[]) {
         std::unique_lock<std::mutex> lock(main_thread_mutex);
         main_done = true;
         main_thread_cv.notify_all();
-        });
+    });
     for (;;) {
         std::unique_lock<std::mutex> lock(main_thread_mutex);
         main_thread_cv.wait(lock, [] { return main_done || !main_func.empty(); });
@@ -236,11 +230,7 @@ bool VistleManager::run(int argc, char* argv[]) {
     return true;
 }
 
-vistle::VistleManager::~VistleManager() {
+vistle::VistleManager::~VistleManager()
+{
     delete executer;
 }
-
-
-
-
-

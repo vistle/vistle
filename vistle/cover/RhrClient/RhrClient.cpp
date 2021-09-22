@@ -60,11 +60,11 @@ using message::RemoteRenderMessage;
 
 typedef std::lock_guard<std::recursive_mutex> lock_guard;
 
-static const unsigned short PortRange[] = { 31000, 32000 };
+static const unsigned short PortRange[] = {31000, 32000};
 static const std::string config("COVER.Plugin.RhrClient");
 
-std::pair<int,int> imageSizeForChannel(int channel) {
-
+std::pair<int, int> imageSizeForChannel(int channel)
+{
     auto wh = std::make_pair(1024, 1024);
     auto &w = wh.first, &h = wh.second;
 
@@ -91,148 +91,148 @@ std::pair<int,int> imageSizeForChannel(int channel) {
     return wh;
 }
 
-void RhrClient::fillMatricesMessage(matricesMsg &msg, int channel, int viewNum, bool second) {
+void RhrClient::fillMatricesMessage(matricesMsg &msg, int channel, int viewNum, bool second)
+{
+    msg.type = rfbMatrices;
+    msg.viewNum = viewNum;
+    if (channel >= 0)
+        msg.viewNum += m_channelBase;
+    msg.time = cover->frameTime();
+    const osg::Matrix &t = cover->getXformMat();
+    const osg::Matrix &s = cover->getObjectsScale()->getMatrix();
+    osg::Matrix model = s * t;
+    if (m_noModelUpdate)
+        model = m_oldModelMatrix;
+    else
+        m_oldModelMatrix = model;
 
-   msg.type = rfbMatrices;
-   msg.viewNum = viewNum;
-   if (channel >= 0)
-       msg.viewNum += m_channelBase;
-   msg.time = cover->frameTime();
-   const osg::Matrix &t = cover->getXformMat();
-   const osg::Matrix &s = cover->getObjectsScale()->getMatrix();
-   osg::Matrix model = s * t;
-   if (m_noModelUpdate)
-       model = m_oldModelMatrix;
-   else
-       m_oldModelMatrix = model;
+    auto &conf = *coVRConfig::instance();
 
-   auto &conf = *coVRConfig::instance();
+    osg::Matrix headMat = cover->getViewerMat();
+    if (Input::instance()->hasHead() && Input::instance()->isHeadValid()) {
+        headMat = Input::instance()->getHeadMat();
+    }
 
-   osg::Matrix headMat = cover->getViewerMat();
-   if (Input::instance()->hasHead() && Input::instance()->isHeadValid()) {
-       headMat = Input::instance()->getHeadMat();
-   }
+    msg.eye = rfbEyeMiddle;
+    osg::Matrix view, proj;
+    if (channel >= 0 || (m_geoMode == RemoteConnection::FirstScreen && !conf.channels.empty())) {
+        VRViewer::Eye eye = VRViewer::EyeMiddle;
+        int ch = channel >= 0 ? channel : 0;
+        const channelStruct &chan = conf.channels[ch];
+        auto wh = imageSizeForChannel(ch);
+        msg.width = wh.first;
+        msg.height = wh.second;
 
-   msg.eye = rfbEyeMiddle;
-   osg::Matrix view, proj;
-   if (channel >= 0 || (m_geoMode == RemoteConnection::FirstScreen && !conf.channels.empty())) {
-       VRViewer::Eye eye = VRViewer::EyeMiddle;
-       int ch = channel>=0 ? channel : 0;
-       const channelStruct &chan = conf.channels[ch];
-       auto wh = imageSizeForChannel(ch);
-       msg.width = wh.first;
-       msg.height = wh.second;
+        bool left = chan.stereoMode != osg::DisplaySettings::RIGHT_EYE;
+        if (second)
+            left = false;
+        if (chan.stereo) {
+            msg.eye = left ? rfbEyeLeft : rfbEyeRight;
+            eye = left ? VRViewer::EyeLeft : VRViewer::EyeRight;
+        }
 
-       bool left = chan.stereoMode != osg::DisplaySettings::RIGHT_EYE;
-       if (second)
-           left = false;
-       if (chan.stereo) {
-           msg.eye = left ? rfbEyeLeft : rfbEyeRight;
-           eye = left ? VRViewer::EyeLeft : VRViewer::EyeRight;
-       }
-
-       if (channel>=0 && cover->isViewerGrabbed()) {
-           osg::Vec3 off = VRViewer::instance()->eyeOffset(eye);
-           auto &xyz = conf.screens[channel].xyz;
-           auto &hpr = conf.screens[channel].hpr;
-           float dx = conf.screens[channel].hsize;
-           float dz = conf.screens[channel].vsize;
-           auto viewProj = opencover::computeViewProjFixedScreen(headMat, off, xyz, hpr, osg::Vec2(dx,dz),
-                                                                 conf.nearClip(), conf.farClip(), conf.orthographic());
-           view = viewProj.first;
-           proj = viewProj.second;
-       } else {
-           view = left ? chan.leftView : chan.rightView;
-           proj = left ? chan.leftProj : chan.rightProj;
-       }
+        if (channel >= 0 && cover->isViewerGrabbed()) {
+            osg::Vec3 off = VRViewer::instance()->eyeOffset(eye);
+            auto &xyz = conf.screens[channel].xyz;
+            auto &hpr = conf.screens[channel].hpr;
+            float dx = conf.screens[channel].hsize;
+            float dz = conf.screens[channel].vsize;
+            auto viewProj = opencover::computeViewProjFixedScreen(headMat, off, xyz, hpr, osg::Vec2(dx, dz),
+                                                                  conf.nearClip(), conf.farClip(), conf.orthographic());
+            view = viewProj.first;
+            proj = viewProj.second;
+        } else {
+            view = left ? chan.leftView : chan.rightView;
+            proj = left ? chan.leftProj : chan.rightProj;
+        }
 #if 0
        CERR << "retrieving matrices for channel: " << ch << ", view: " << viewNum << ", " << msg.width << "x" << msg.height << ", second: " << second << ", left: " << left << ", eye=" << int(msg.eye) << std::endl;
        std::cerr << "  view mat: " << view << std::endl;
        std::cerr << "  proj mat: " << proj << std::endl;
 #endif
-   } else {
-       auto wh = imageSizeForChannel(0);
-       msg.width = msg.height = m_imageQuality * std::max(wh.first, wh.second);
-       if (viewNum > 0 && m_geoMode==RemoteConnection::CubeMapCoarseSides) {
-           msg.width *= 0.5;
-           msg.height *= 0.5;
-       }
-       msg.eye = rfbEyeMiddle;
+    } else {
+        auto wh = imageSizeForChannel(0);
+        msg.width = msg.height = m_imageQuality * std::max(wh.first, wh.second);
+        if (viewNum > 0 && m_geoMode == RemoteConnection::CubeMapCoarseSides) {
+            msg.width *= 0.5;
+            msg.height *= 0.5;
+        }
+        msg.eye = rfbEyeMiddle;
 
-       view.makeIdentity();
-       proj.makeIdentity();
+        view.makeIdentity();
+        proj.makeIdentity();
 
-       float dx = 0;
-       for (int c=0; c<3; ++c) {
-           dx = std::max(m_localConfig.screenMax[c]-m_localConfig.screenMin[c], dx);
-       }
-       float dz = dx;
+        float dx = 0;
+        for (int c = 0; c < 3; ++c) {
+            dx = std::max(m_localConfig.screenMax[c] - m_localConfig.screenMin[c], dx);
+        }
+        float dz = dx;
 
-       osg::Vec3 xyz(0,0,0);
-       osg::Vec3 hpr(0,0,0);
-       switch (viewNum) {
-       case 0: { // front
-           xyz = osg::Vec3(0, 0.5*dx, 0);
-           break;
-       }
-       case 1: { // top
-           hpr[1] = 90;
-           xyz = osg::Vec3(0, 0, 0.5*dx);
-           break;
-       }
-       case 2: { // left
-           hpr[0] = 90;
-           xyz = osg::Vec3(-0.5*dx, 0, 0);
-           break;
-       }
-       case 3: { // bottom
-           hpr[1] = -90;
-           xyz = osg::Vec3(0, 0, -0.5*dx);
-           break;
-       }
-       case 4: { // right
-           hpr[0] = -90;
-           xyz = osg::Vec3(0.5*dx, 0, 0);
-           break;
-       }
-       case 5: { // back
-           hpr[0] = 180;
-           xyz = osg::Vec3(0, -0.5*dx, 0);
-           break;
-       }
-       default:
-           break;
-       }
+        osg::Vec3 xyz(0, 0, 0);
+        osg::Vec3 hpr(0, 0, 0);
+        switch (viewNum) {
+        case 0: { // front
+            xyz = osg::Vec3(0, 0.5 * dx, 0);
+            break;
+        }
+        case 1: { // top
+            hpr[1] = 90;
+            xyz = osg::Vec3(0, 0, 0.5 * dx);
+            break;
+        }
+        case 2: { // left
+            hpr[0] = 90;
+            xyz = osg::Vec3(-0.5 * dx, 0, 0);
+            break;
+        }
+        case 3: { // bottom
+            hpr[1] = -90;
+            xyz = osg::Vec3(0, 0, -0.5 * dx);
+            break;
+        }
+        case 4: { // right
+            hpr[0] = -90;
+            xyz = osg::Vec3(0.5 * dx, 0, 0);
+            break;
+        }
+        case 5: { // back
+            hpr[0] = 180;
+            xyz = osg::Vec3(0, -0.5 * dx, 0);
+            break;
+        }
+        default:
+            break;
+        }
 
-       // increase size of images so that centers of border pixels on neighboring images coincide
-       dx += dx*1./msg.width;
-       dz += dz*1./msg.height;
-       auto viewProj = opencover::computeViewProjFixedScreen(cover->getViewerMat(), osg::Vec3(0,0,0), xyz, hpr,
-                                                             osg::Vec2(dx,dz), conf.nearClip(), conf.farClip(), conf.orthographic());
-       view = viewProj.first;
-       proj = viewProj.second;
-   }
+        // increase size of images so that centers of border pixels on neighboring images coincide
+        dx += dx * 1. / msg.width;
+        dz += dz * 1. / msg.height;
+        auto viewProj = opencover::computeViewProjFixedScreen(cover->getViewerMat(), osg::Vec3(0, 0, 0), xyz, hpr,
+                                                              osg::Vec2(dx, dz), conf.nearClip(), conf.farClip(),
+                                                              conf.orthographic());
+        view = viewProj.first;
+        proj = viewProj.second;
+    }
 
-   for (int i=0; i<16; ++i) {
-       //TODO: swap to big-endian
-       msg.model[i] = model.ptr()[i];
-       msg.view[i] = view.ptr()[i];
-       msg.proj[i] = proj.ptr()[i];
-       msg.head[i] = headMat.ptr()[i];
-   }
+    for (int i = 0; i < 16; ++i) {
+        //TODO: swap to big-endian
+        msg.model[i] = model.ptr()[i];
+        msg.view[i] = view.ptr()[i];
+        msg.proj[i] = proj.ptr()[i];
+        msg.head[i] = headMat.ptr()[i];
+    }
 
-   //CERR << "M: " << model.getTrans() << ", V: " << view.getTrans() << ", P: " << proj.getTrans() << std::endl;
+    //CERR << "M: " << model.getTrans() << ", V: " << view.getTrans() << ", P: " << proj.getTrans() << std::endl;
 }
 
-std::vector<matricesMsg> RhrClient::gatherAllMatrices() {
-
+std::vector<matricesMsg> RhrClient::gatherAllMatrices()
+{
     std::vector<matricesMsg> matrices;
     if (m_geoMode == RemoteConnection::Screen) {
         matrices.resize(m_numLocalViews);
         const int numChannels = coVRConfig::instance()->numChannels();
-        int view=0;
-        for (int i=0; i<numChannels; ++i) {
-
+        int view = 0;
+        for (int i = 0; i < numChannels; ++i) {
             fillMatricesMessage(matrices[view], i, view, false);
             ++view;
             auto stm = coVRConfig::instance()->channels[i].stereoMode;
@@ -247,9 +247,9 @@ std::vector<matricesMsg> RhrClient::gatherAllMatrices() {
         if (coVRMSController::instance()->isMaster()) {
             coVRMSController::SlaveData sNumScreens(sizeof(m_numLocalViews));
             coVRMSController::instance()->readSlaves(&sNumScreens);
-            for (int i=0; i<coVRMSController::instance()->getNumSlaves(); ++i) {
+            for (int i = 0; i < coVRMSController::instance()->getNumSlaves(); ++i) {
                 int n = *static_cast<int *>(sNumScreens.data[i]);
-                for (int s=0; s<n; ++s) {
+                for (int s = 0; s < n; ++s) {
                     matricesMsg msg;
                     coVRMSController::instance()->readSlave(i, &msg, sizeof(msg));
                     matrices.push_back(msg);
@@ -257,13 +257,13 @@ std::vector<matricesMsg> RhrClient::gatherAllMatrices() {
             }
         } else {
             coVRMSController::instance()->sendMaster(&m_numLocalViews, sizeof(m_numLocalViews));
-            for (int s=0; s<m_numLocalViews; ++s) {
+            for (int s = 0; s < m_numLocalViews; ++s) {
                 coVRMSController::instance()->sendMaster(&matrices[s], sizeof(matrices[s]));
             }
         }
     } else {
         int nv = RemoteConnection::numViewsForMode(m_geoMode);
-        for (int v=0; v<nv; ++v) {
+        for (int v = 0; v < nv; ++v) {
             matrices.emplace_back();
             fillMatricesMessage(matrices[v], -1 /* cubemap */, v, false);
         }
@@ -272,8 +272,8 @@ std::vector<matricesMsg> RhrClient::gatherAllMatrices() {
     return matrices;
 }
 
-bool RhrClient::swapFrames() {
-
+bool RhrClient::swapFrames()
+{
     bool swapped = false;
     for (auto &r: m_remotes) {
         auto ct = r.second->currentTimestep();
@@ -331,16 +331,15 @@ bool RhrClient::checkAdvanceFrame()
 }
 
 //! send lighting parameters to server
-lightsMsg RhrClient::buildLightsMessage() {
+lightsMsg RhrClient::buildLightsMessage()
+{
+    //CERR << "sending lights" << std::endl;
+    lightsMsg msg;
+    msg.type = rfbLights;
 
-   //CERR << "sending lights" << std::endl;
-   lightsMsg msg;
-   msg.type = rfbLights;
-
-   for (size_t i=0; i<lightsMsg::NumLights; ++i) {
-
-      const osg::Light *light = NULL;
-      const auto &lightList = coVRLighting::instance()->lightList;
+    for (size_t i = 0; i < lightsMsg::NumLights; ++i) {
+        const osg::Light *light = NULL;
+        const auto &lightList = coVRLighting::instance()->lightList;
 #if 0
       if (i == 0 && coVRLighting::instance()->headlight) {
          light = coVRLighting::instance()->headlight->getLight();
@@ -352,72 +351,64 @@ lightsMsg RhrClient::buildLightsMessage() {
          light = coVRLighting::instance()->light2->getLight();
       }
 #else
-      if (i < lightList.size())
-          light = lightList[i].source->getLight();
+        if (i < lightList.size())
+            light = lightList[i].source->getLight();
 #endif
 
 #define COPY_VEC(d, dst, src) \
-      for (int k=0; k<d; ++k) { \
-         (dst)[k] = (src)[k]; \
-      }
+    for (int k = 0; k < d; ++k) { \
+        (dst)[k] = (src)[k]; \
+    }
 
-      if (light) {
-
-         msg.lights[i].enabled = lightList[i].on;
-         if (i == 0) {
-             // headlight is always enabled for menu sub-graph
-             msg.lights[i].enabled = coVRLighting::instance()->headlightState;
-         }
-         COPY_VEC(4, msg.lights[i].position, light->getPosition());
-         COPY_VEC(4, msg.lights[i].ambient, light->getAmbient());
-         COPY_VEC(4, msg.lights[i].diffuse, light->getDiffuse());
-         COPY_VEC(4, msg.lights[i].specular, light->getSpecular());
-         COPY_VEC(3, msg.lights[i].spot_direction, light->getDirection());
-         msg.lights[i].spot_exponent = light->getSpotExponent();
-         msg.lights[i].spot_cutoff = light->getSpotCutoff();
-         msg.lights[i].attenuation[0] = light->getConstantAttenuation();
-         msg.lights[i].attenuation[1] = light->getLinearAttenuation();
-         msg.lights[i].attenuation[2] = light->getQuadraticAttenuation();
-      }
-      else
-      {
-          msg.lights[i].enabled = false;
-      }
+        if (light) {
+            msg.lights[i].enabled = lightList[i].on;
+            if (i == 0) {
+                // headlight is always enabled for menu sub-graph
+                msg.lights[i].enabled = coVRLighting::instance()->headlightState;
+            }
+            COPY_VEC(4, msg.lights[i].position, light->getPosition());
+            COPY_VEC(4, msg.lights[i].ambient, light->getAmbient());
+            COPY_VEC(4, msg.lights[i].diffuse, light->getDiffuse());
+            COPY_VEC(4, msg.lights[i].specular, light->getSpecular());
+            COPY_VEC(3, msg.lights[i].spot_direction, light->getDirection());
+            msg.lights[i].spot_exponent = light->getSpotExponent();
+            msg.lights[i].spot_cutoff = light->getSpotCutoff();
+            msg.lights[i].attenuation[0] = light->getConstantAttenuation();
+            msg.lights[i].attenuation[1] = light->getLinearAttenuation();
+            msg.lights[i].attenuation[2] = light->getQuadraticAttenuation();
+        } else {
+            msg.lights[i].enabled = false;
+        }
 
 #undef COPY_VEC
-   }
+    }
 
-   return msg;
+    return msg;
 }
 
 //! called when plugin is loaded
 RhrClient::RhrClient()
-: ui::Owner("RhrClient", cover->ui)
-, m_requestedTimestep(-1)
-, m_visibleTimestep(-1)
-, m_numRemoteTimesteps(-1)
+: ui::Owner("RhrClient", cover->ui), m_requestedTimestep(-1), m_visibleTimestep(-1), m_numRemoteTimesteps(-1)
 {
-   //fprintf(stderr, "new RhrClient plugin\n");
-
+    //fprintf(stderr, "new RhrClient plugin\n");
 }
 
 //! called after plug-in is loaded and scenegraph is initialized
 bool RhrClient::init()
 {
-   try {
+    try {
         if (!crypto::initialize(sizeof(message::Identify::session_data_t))) {
-
             CERR << "failed to initialize cryptographic support" << std::endl;
             return false;
         }
-   } catch (const except::exception &e) {
-       CERR << "failed to initialize cryptographic support:" << std::endl;
-       std::cerr << "     " << e.what() << std::endl << e.where() << std::endl;
-       return false;
-   }
+    } catch (const except::exception &e) {
+        CERR << "failed to initialize cryptographic support:" << std::endl;
+        std::cerr << "     " << e.what() << std::endl << e.where() << std::endl;
+        return false;
+    }
 
-   m_noModelUpdate = false;
-   m_oldModelMatrix = osg::Matrix::identity();
+    m_noModelUpdate = false;
+    m_oldModelMatrix = osg::Matrix::identity();
 
 #if 0
    std::cout << "COVER waiting for debugger: pid=" << get_process_handle() << std::endl;
@@ -425,217 +416,216 @@ bool RhrClient::init()
    std::cout << "COVER continuing..." << std::endl;
 #endif
 
-   m_maxTilesPerFrame = covise::coCoviseConfig::getInt("maxTilesPerFrame", config, m_maxTilesPerFrame);
+    m_maxTilesPerFrame = covise::coCoviseConfig::getInt("maxTilesPerFrame", config, m_maxTilesPerFrame);
 
-   m_benchmark = covise::coCoviseConfig::isOn("benchmark", config, true);
-   m_lastStat = cover->currentTime();
-   m_localFrames = 0;
+    m_benchmark = covise::coCoviseConfig::isOn("benchmark", config, true);
+    m_lastStat = cover->currentTime();
+    m_localFrames = 0;
 
-   m_channelBase = 0;
+    m_channelBase = 0;
 
-   auto &conf = *coVRConfig::instance();
+    auto &conf = *coVRConfig::instance();
 
-   auto &screenMin = m_localConfig.screenMin;
-   auto &screenMax = m_localConfig.screenMax;
-   for (int i=0; i<3; ++i) {
-       screenMin[i] = std::numeric_limits<float>::max();
-       screenMax[i] = std::numeric_limits<float>::lowest();
-   }
+    auto &screenMin = m_localConfig.screenMin;
+    auto &screenMax = m_localConfig.screenMax;
+    for (int i = 0; i < 3; ++i) {
+        screenMin[i] = std::numeric_limits<float>::max();
+        screenMax[i] = std::numeric_limits<float>::lowest();
+    }
 
-   bool haveMiddle = false, haveLeft = false, haveRight = false;
-   const int numChannels = conf.numChannels();
-   int numViews = numChannels;
-   for (int i=0; i<numChannels; ++i) {
-       auto &xyz = conf.screens[i].xyz;
-       auto &hpr = conf.screens[i].hpr;
-       auto &hsize = conf.screens[i].hsize;
-       auto &vsize = conf.screens[i].vsize;
-       osg::Matrix mat;
-       MAKE_EULER_MAT_VEC(mat, hpr);
-       osg::Vec3 size(hsize, 0, vsize);
-       size = size * mat;
-       size *= 0.5;
-       for (int c=0; c<3; ++c) {
-           size[c] = std::abs(size[c]);
-           screenMin[c] = std::min(screenMin[c], xyz[c]-size[c]);
-           screenMax[c] = std::max(screenMax[c], xyz[c]+size[c]);
-       }
+    bool haveMiddle = false, haveLeft = false, haveRight = false;
+    const int numChannels = conf.numChannels();
+    int numViews = numChannels;
+    for (int i = 0; i < numChannels; ++i) {
+        auto &xyz = conf.screens[i].xyz;
+        auto &hpr = conf.screens[i].hpr;
+        auto &hsize = conf.screens[i].hsize;
+        auto &vsize = conf.screens[i].vsize;
+        osg::Matrix mat;
+        MAKE_EULER_MAT_VEC(mat, hpr);
+        osg::Vec3 size(hsize, 0, vsize);
+        size = size * mat;
+        size *= 0.5;
+        for (int c = 0; c < 3; ++c) {
+            size[c] = std::abs(size[c]);
+            screenMin[c] = std::min(screenMin[c], xyz[c] - size[c]);
+            screenMax[c] = std::max(screenMax[c], xyz[c] + size[c]);
+        }
 
-       if (!conf.channels[i].stereo) {
-           haveMiddle = true;
-           continue;
-       }
+        if (!conf.channels[i].stereo) {
+            haveMiddle = true;
+            continue;
+        }
 
-       auto stm = conf.channels[i].stereoMode;
-       if (coVRConfig::requiresTwoViewpoints(stm)) {
-          ++numViews;
-          haveLeft = true;
-          haveRight = true;
-       } else if (stm == osg::DisplaySettings::LEFT_EYE) {
-           haveLeft = true;
-       } else if (stm == osg::DisplaySettings::RIGHT_EYE) {
-           haveRight = true;
-       }
-   }
+        auto stm = conf.channels[i].stereoMode;
+        if (coVRConfig::requiresTwoViewpoints(stm)) {
+            ++numViews;
+            haveLeft = true;
+            haveRight = true;
+        } else if (stm == osg::DisplaySettings::LEFT_EYE) {
+            haveLeft = true;
+        } else if (stm == osg::DisplaySettings::RIGHT_EYE) {
+            haveRight = true;
+        }
+    }
 
-   m_localConfig.numChannels = numChannels;
-   m_localConfig.numViews = numViews;
-   m_localConfig.haveMiddle = haveMiddle;
-   m_localConfig.haveLeft = haveLeft;
-   m_localConfig.haveRight = haveRight;
-   m_localConfig.viewIndexOffset = 0;
+    m_localConfig.numChannels = numChannels;
+    m_localConfig.numViews = numViews;
+    m_localConfig.haveMiddle = haveMiddle;
+    m_localConfig.haveLeft = haveLeft;
+    m_localConfig.haveRight = haveRight;
+    m_localConfig.viewIndexOffset = 0;
 
-   m_numLocalViews = numViews;
-   if (coVRMSController::instance()->isMaster()) {
-      m_nodeConfig.push_back(m_localConfig);
+    m_numLocalViews = numViews;
+    if (coVRMSController::instance()->isMaster()) {
+        m_nodeConfig.push_back(m_localConfig);
 
-      coVRMSController::SlaveData sd(sizeof(NodeConfig));
-      coVRMSController::instance()->readSlaves(&sd);
-      int channelBase = numViews;
-      for (int i=0; i<coVRMSController::instance()->getNumSlaves(); ++i) {
-         auto *nc = static_cast<NodeConfig *>(sd.data[i]);
-         nc->viewIndexOffset = channelBase;
-         m_nodeConfig.push_back(*nc);
-         channelBase += nc->numViews;
-      }
-      coVRMSController::instance()->sendSlaves(sd);
-      m_numClusterViews = channelBase;
-   } else {
-      coVRMSController::instance()->sendMaster(&m_localConfig, sizeof(NodeConfig));
-      coVRMSController::instance()->readMaster(&m_channelBase, sizeof(m_channelBase));
-      m_nodeConfig.resize(coVRMSController::instance()->getNumSlaves()+1);
-   }
-   coVRMSController::instance()->syncData(&m_numClusterViews, sizeof(m_numClusterViews));
-   coVRMSController::instance()->syncData(&m_nodeConfig[0], sizeof(m_nodeConfig[0])*m_nodeConfig.size());
-   m_localConfig.viewIndexOffset = m_nodeConfig[coVRMSController::instance()->getID()].viewIndexOffset;
-   for (auto &n: m_nodeConfig) {
-       for (int c=0; c<3; ++c) {
-           m_localConfig.screenMin[c] = std::min(m_localConfig.screenMin[c], n.screenMin[c]);
-           m_localConfig.screenMax[c] = std::max(m_localConfig.screenMax[c], n.screenMax[c]);
-       }
-   }
+        coVRMSController::SlaveData sd(sizeof(NodeConfig));
+        coVRMSController::instance()->readSlaves(&sd);
+        int channelBase = numViews;
+        for (int i = 0; i < coVRMSController::instance()->getNumSlaves(); ++i) {
+            auto *nc = static_cast<NodeConfig *>(sd.data[i]);
+            nc->viewIndexOffset = channelBase;
+            m_nodeConfig.push_back(*nc);
+            channelBase += nc->numViews;
+        }
+        coVRMSController::instance()->sendSlaves(sd);
+        m_numClusterViews = channelBase;
+    } else {
+        coVRMSController::instance()->sendMaster(&m_localConfig, sizeof(NodeConfig));
+        coVRMSController::instance()->readMaster(&m_channelBase, sizeof(m_channelBase));
+        m_nodeConfig.resize(coVRMSController::instance()->getNumSlaves() + 1);
+    }
+    coVRMSController::instance()->syncData(&m_numClusterViews, sizeof(m_numClusterViews));
+    coVRMSController::instance()->syncData(&m_nodeConfig[0], sizeof(m_nodeConfig[0]) * m_nodeConfig.size());
+    m_localConfig.viewIndexOffset = m_nodeConfig[coVRMSController::instance()->getID()].viewIndexOffset;
+    for (auto &n: m_nodeConfig) {
+        for (int c = 0; c < 3; ++c) {
+            m_localConfig.screenMin[c] = std::min(m_localConfig.screenMin[c], n.screenMin[c]);
+            m_localConfig.screenMax[c] = std::max(m_localConfig.screenMax[c], n.screenMax[c]);
+        }
+    }
 
-   if (coVRMSController::instance()->isMaster()) {
-       int i=0;
-       for (auto &n: m_nodeConfig) {
-           CERR << "Node " << i << ": " << n << std::endl;
-           ++i;
-       }
-   }
+    if (coVRMSController::instance()->isMaster()) {
+        int i = 0;
+        for (auto &n: m_nodeConfig) {
+            CERR << "Node " << i << ": " << n << std::endl;
+            ++i;
+        }
+    }
 
-   m_menu = new ui::Menu("RHR", this);
-   m_menu->setText("Hybrid rendering");
+    m_menu = new ui::Menu("RHR", this);
+    m_menu->setText("Hybrid rendering");
 
-   std::string confMode = covise::coCoviseConfig::getEntry("reprojectionMode", config);
-   if (!confMode.empty()) {
-       std::transform(confMode.begin(), confMode.end(), confMode.begin(), ::tolower);
-       if (confMode == "disable" || confMode == "asis")
-           m_configuredMode = MultiChannelDrawer::AsIs;
-       else if (confMode == "points")
-           m_configuredMode = MultiChannelDrawer::Reproject;
-       else if (confMode == "adaptive")
-           m_configuredMode = MultiChannelDrawer::ReprojectAdaptive;
-       else if (confMode == "adaptivewithneighbors" || confMode == "withneighbors")
-           m_configuredMode = MultiChannelDrawer::ReprojectAdaptive;
-       else if (confMode == "mesh")
-           m_configuredMode = MultiChannelDrawer::ReprojectMesh;
-       else if (confMode == "meshwithholes" || confMode == "withholes")
-           m_configuredMode = MultiChannelDrawer::ReprojectMeshWithHoles;
-       else
-           m_configuredMode = MultiChannelDrawer::Mode(atoi(confMode.c_str()));
-       CERR << "Reprojection mode configured: " << m_configuredMode << std::endl;
-   }
+    std::string confMode = covise::coCoviseConfig::getEntry("reprojectionMode", config);
+    if (!confMode.empty()) {
+        std::transform(confMode.begin(), confMode.end(), confMode.begin(), ::tolower);
+        if (confMode == "disable" || confMode == "asis")
+            m_configuredMode = MultiChannelDrawer::AsIs;
+        else if (confMode == "points")
+            m_configuredMode = MultiChannelDrawer::Reproject;
+        else if (confMode == "adaptive")
+            m_configuredMode = MultiChannelDrawer::ReprojectAdaptive;
+        else if (confMode == "adaptivewithneighbors" || confMode == "withneighbors")
+            m_configuredMode = MultiChannelDrawer::ReprojectAdaptive;
+        else if (confMode == "mesh")
+            m_configuredMode = MultiChannelDrawer::ReprojectMesh;
+        else if (confMode == "meshwithholes" || confMode == "withholes")
+            m_configuredMode = MultiChannelDrawer::ReprojectMeshWithHoles;
+        else
+            m_configuredMode = MultiChannelDrawer::Mode(atoi(confMode.c_str()));
+        CERR << "Reprojection mode configured: " << m_configuredMode << std::endl;
+    }
 
-   auto reprojMode = new ui::SelectionList(m_menu, "ReprojectionMode");
-   reprojMode->setText("Reprojection");
-   reprojMode->append("Disable");
-   reprojMode->append("Points");
-   reprojMode->append("Points (adaptive)");
-   reprojMode->append("Points (adaptive with neighbors)");
-   reprojMode->append("Mesh");
-   reprojMode->append("Mesh with holes");
-   reprojMode->append("Disable & adapt viewer");
-   reprojMode->setCallback([this](int choice){
-       if (choice > MultiChannelDrawer::ReprojectMeshWithHoles) {
-           choice = MultiChannelDrawer::AsIs;
-           cover->grabViewer(this);
-       } else {
-           cover->releaseViewer(this);
-       }
-       if (choice >= MultiChannelDrawer::AsIs && choice <= MultiChannelDrawer::ReprojectMeshWithHoles) {
-           m_configuredMode = MultiChannelDrawer::Mode(choice);
-       }
-       setReprojectionMode(m_configuredMode);
-   });
+    auto reprojMode = new ui::SelectionList(m_menu, "ReprojectionMode");
+    reprojMode->setText("Reprojection");
+    reprojMode->append("Disable");
+    reprojMode->append("Points");
+    reprojMode->append("Points (adaptive)");
+    reprojMode->append("Points (adaptive with neighbors)");
+    reprojMode->append("Mesh");
+    reprojMode->append("Mesh with holes");
+    reprojMode->append("Disable & adapt viewer");
+    reprojMode->setCallback([this](int choice) {
+        if (choice > MultiChannelDrawer::ReprojectMeshWithHoles) {
+            choice = MultiChannelDrawer::AsIs;
+            cover->grabViewer(this);
+        } else {
+            cover->releaseViewer(this);
+        }
+        if (choice >= MultiChannelDrawer::AsIs && choice <= MultiChannelDrawer::ReprojectMeshWithHoles) {
+            m_configuredMode = MultiChannelDrawer::Mode(choice);
+        }
+        setReprojectionMode(m_configuredMode);
+    });
 
-   auto geoMode = new ui::SelectionList(m_menu, "GeometryMode");
-   geoMode->setText("Proxy geometry");
-   geoMode->append("Screen");
-   geoMode->append("First screen");
-   geoMode->append("Only front");
-   geoMode->append("Cubemap");
-   geoMode->append("Cubemap (no back)");
-   geoMode->append("Cubemap (coarse sides)");
-   geoMode->setCallback([this](int choice){
-       if (choice >= RemoteConnection::Screen && choice <= RemoteConnection::CubeMapCoarseSides) {
-             m_configuredGeoMode = GeometryMode(choice);
-         }
-         setGeometryMode(m_configuredGeoMode);
-   });
-   geoMode->select(m_configuredGeoMode);
-   reprojMode->select(m_configuredMode);
+    auto geoMode = new ui::SelectionList(m_menu, "GeometryMode");
+    geoMode->setText("Proxy geometry");
+    geoMode->append("Screen");
+    geoMode->append("First screen");
+    geoMode->append("Only front");
+    geoMode->append("Cubemap");
+    geoMode->append("Cubemap (no back)");
+    geoMode->append("Cubemap (coarse sides)");
+    geoMode->setCallback([this](int choice) {
+        if (choice >= RemoteConnection::Screen && choice <= RemoteConnection::CubeMapCoarseSides) {
+            m_configuredGeoMode = GeometryMode(choice);
+        }
+        setGeometryMode(m_configuredGeoMode);
+    });
+    geoMode->select(m_configuredGeoMode);
+    reprojMode->select(m_configuredMode);
 
-   auto allViews = new ui::SelectionList(m_menu, "VisibleViews");
-   allViews->setText("Views to render");
-   allViews->append("Same");
-   allViews->append("Matching eye");
-   allViews->append("All");
-   allViews->setCallback([this](int choice){
-       if (choice < MultiChannelDrawer::Same || choice > MultiChannelDrawer::All)
-           return;
-       m_configuredVisibleViews = MultiChannelDrawer::ViewSelection(choice);
-       setVisibleViews(m_configuredVisibleViews);
-   });
-   allViews->select(m_configuredVisibleViews);
-   setVisibleViews(m_configuredVisibleViews);
-   setGeometryMode(m_configuredGeoMode);
-   setReprojectionMode(m_configuredMode);
+    auto allViews = new ui::SelectionList(m_menu, "VisibleViews");
+    allViews->setText("Views to render");
+    allViews->append("Same");
+    allViews->append("Matching eye");
+    allViews->append("All");
+    allViews->setCallback([this](int choice) {
+        if (choice < MultiChannelDrawer::Same || choice > MultiChannelDrawer::All)
+            return;
+        m_configuredVisibleViews = MultiChannelDrawer::ViewSelection(choice);
+        setVisibleViews(m_configuredVisibleViews);
+    });
+    allViews->select(m_configuredVisibleViews);
+    setVisibleViews(m_configuredVisibleViews);
+    setGeometryMode(m_configuredGeoMode);
+    setReprojectionMode(m_configuredMode);
 
-   auto matrixUpdate = new ui::Button(m_menu, "MatrixUpdate");
-   matrixUpdate->setText("Update model matrix");
-   matrixUpdate->setState(!m_noModelUpdate);
-   matrixUpdate->setCallback([this](bool state){
-         m_noModelUpdate = !state;
-   });
+    auto matrixUpdate = new ui::Button(m_menu, "MatrixUpdate");
+    matrixUpdate->setText("Update model matrix");
+    matrixUpdate->setState(!m_noModelUpdate);
+    matrixUpdate->setCallback([this](bool state) { m_noModelUpdate = !state; });
 
-   auto quality = new ui::Slider(m_menu, "CubemapQuality");
-   quality->setText("Cubemap quality");
-   quality->setValue(m_imageQuality);
-   quality->setBounds(0.01, 10.);
-   quality->setPresentation(ui::Slider::AsDial);
-   quality->setCallback([this](double value, bool moving){
-       m_imageQuality = value;
-       m_printViewSizes = true;
-   });
+    auto quality = new ui::Slider(m_menu, "CubemapQuality");
+    quality->setText("Cubemap quality");
+    quality->setValue(m_imageQuality);
+    quality->setBounds(0.01, 10.);
+    quality->setPresentation(ui::Slider::AsDial);
+    quality->setCallback([this](double value, bool moving) {
+        m_imageQuality = value;
+        m_printViewSizes = true;
+    });
 
-   auto tilesPerFrame = new ui::Slider(m_menu, "TilesPerFrame");
-   tilesPerFrame->setText("Tiles/frame");
-   tilesPerFrame->setValue(m_maxTilesPerFrame);
-   tilesPerFrame->setBounds(1, 1000);
-   tilesPerFrame->setCallback([this](double value, bool moving){
-       m_maxTilesPerFrame = value;
-       for (auto &r: m_remotes)
-           r.second->setMaxTilesPerFrame(m_maxTilesPerFrame);
-   });
+    auto tilesPerFrame = new ui::Slider(m_menu, "TilesPerFrame");
+    tilesPerFrame->setText("Tiles/frame");
+    tilesPerFrame->setValue(m_maxTilesPerFrame);
+    tilesPerFrame->setBounds(1, 1000);
+    tilesPerFrame->setCallback([this](double value, bool moving) {
+        m_maxTilesPerFrame = value;
+        for (auto &r: m_remotes)
+            r.second->setMaxTilesPerFrame(m_maxTilesPerFrame);
+    });
 
-   m_remoteGroup = new ui::Group(m_menu, "Remotes");
+    m_remoteGroup = new ui::Group(m_menu, "Remotes");
 
-   return true;
+    return true;
 }
 
-void RhrClient::addObject(const opencover::RenderObject *baseObj, osg::Group *parent, const opencover::RenderObject *geometry, const opencover::RenderObject *normals, const opencover::RenderObject *colors, const opencover::RenderObject *texture)
+void RhrClient::addObject(const opencover::RenderObject *baseObj, osg::Group *parent,
+                          const opencover::RenderObject *geometry, const opencover::RenderObject *normals,
+                          const opencover::RenderObject *colors, const opencover::RenderObject *texture)
 {
-
     if (!baseObj)
         return;
     auto attr = baseObj->getAttribute("_rhr_config");
@@ -665,16 +655,19 @@ void RhrClient::addObject(const opencover::RenderObject *baseObj, osg::Group *pa
         serverKey = std::to_string(senderId) + ":" + senderOutput;
     }
     std::string connectionName = baseObj->getName();
-    CERR << "connection " << connectionName << " from " << senderId << ":" << senderOutput << ", config: method=" << method << ", address=" << address << ", port=" << port << std::endl;
+    CERR << "connection " << connectionName << " from " << senderId << ":" << senderOutput
+         << ", config: method=" << method << ", address=" << address << ", port=" << port << std::endl;
 
     std::shared_ptr<RemoteConnection> remote;
     if (method == "vistle") {
         remote = startClient(serverKey, connectionName, moduleId);
     } else if (method == "connect") {
         if (address.empty()) {
-            cover->notify(Notify::Error) << "RhrClient: no connection attempt for " << connectionName << ": invalid dest address: " << address << std::endl;
+            cover->notify(Notify::Error) << "RhrClient: no connection attempt for " << connectionName
+                                         << ": invalid dest address: " << address << std::endl;
         } else if (port == 0) {
-            cover->notify(Notify::Error) << "RhrClient: no connection attempt for " << connectionName << ": invalid dest port: " << port << std::endl;
+            cover->notify(Notify::Error) << "RhrClient: no connection attempt for " << connectionName
+                                         << ": invalid dest port: " << port << std::endl;
         } else {
             remote = connectClient(serverKey, connectionName, address, port);
         }
@@ -684,12 +677,14 @@ void RhrClient::addObject(const opencover::RenderObject *baseObj, osg::Group *pa
         } else if (port > 0) {
             remote = startListen(serverKey, connectionName, moduleId, port);
         } else {
-            cover->notify(Notify::Error) << "RhrClient: no attempt to start server for " << connectionName << ": invalid port: " << port << std::endl;
+            cover->notify(Notify::Error) << "RhrClient: no attempt to start server for " << connectionName
+                                         << ": invalid port: " << port << std::endl;
         }
     }
 }
 
-void RhrClient::removeObject(const char *objName, bool replaceFlag) {
+void RhrClient::removeObject(const char *objName, bool replaceFlag)
+{
     if (!objName)
         return;
     const std::string name(objName);
@@ -711,8 +706,8 @@ void RhrClient::removeObject(const char *objName, bool replaceFlag) {
     CERR << "removeObject: did not find client " << name << std::endl;
 }
 
-void RhrClient::newInteractor(const opencover::RenderObject *container, coInteractor *it) {
-
+void RhrClient::newInteractor(const opencover::RenderObject *container, coInteractor *it)
+{
     auto *vit = dynamic_cast<VistleInteractor *>(it);
     if (!vit)
         return;
@@ -731,20 +726,21 @@ void RhrClient::newInteractor(const opencover::RenderObject *container, coIntera
 //! this is called if the plugin is removed at runtime
 RhrClient::~RhrClient()
 {
-   for (auto &r: m_remotes) {
-       cover->getObjectsRoot()->removeChild(r.second->scene());
-   }
+    for (auto &r: m_remotes) {
+        cover->getObjectsRoot()->removeChild(r.second->scene());
+    }
 
-   coVRAnimationManager::instance()->removeTimestepProvider(this);
-   if (m_requestedTimestep != -1)
-       commitTimestep(m_requestedTimestep);
+    coVRAnimationManager::instance()->removeTimestepProvider(this);
+    if (m_requestedTimestep != -1)
+        commitTimestep(m_requestedTimestep);
 
-   while (!m_remotes.empty()) {
-       removeRemoteConnection(m_remotes.begin());
-   }
+    while (!m_remotes.empty()) {
+        removeRemoteConnection(m_remotes.begin());
+    }
 }
 
-void RhrClient::setServerParameters(int module, const std::string &host, unsigned short port) const {
+void RhrClient::setServerParameters(int module, const std::string &host, unsigned short port) const
+{
     auto it = m_interactors.find(module);
     if (it == m_interactors.end()) {
         CERR << "error setting server parameters, did not find interactor for module " << module << std::endl;
@@ -758,169 +754,168 @@ void RhrClient::setServerParameters(int module, const std::string &host, unsigne
     CERR << "setting parameters, server should connect to " << host << ":" << port << std::endl;
 }
 
-bool RhrClient::updateRemotes() {
-
-   bool needUpdate = false;
-   for (auto &r: m_remotes) {
-
-       if (r.second->update())
-           needUpdate = true;
-   }
-   return needUpdate;
+bool RhrClient::updateRemotes()
+{
+    bool needUpdate = false;
+    for (auto &r: m_remotes) {
+        if (r.second->update())
+            needUpdate = true;
+    }
+    return needUpdate;
 }
 
-bool RhrClient::syncRemotesAnim() {
+bool RhrClient::syncRemotesAnim()
+{
+    int nt = -1;
+    for (auto &r: m_remotes) {
+        nt = std::max(nt, r.second->numTimesteps());
+    }
 
-   int nt = -1;
-   for (auto &r: m_remotes) {
-       nt = std::max(nt, r.second->numTimesteps());
-   }
+    if (nt != m_numRemoteTimesteps) {
+        m_numRemoteTimesteps = nt;
+        return true;
+    }
 
-   if (nt != m_numRemoteTimesteps) {
-       m_numRemoteTimesteps = nt;
-       return true;
-   }
-
-   return false;
+    return false;
 }
 
 //! this is called before every frame, used for polling for RFB messages
 bool RhrClient::update()
 {
-   m_io.poll();
+    m_io.poll();
 
-   //CERR << "drawer: #views=" << m_drawer->numViews() << std::endl;
+    //CERR << "drawer: #views=" << m_drawer->numViews() << std::endl;
 
-   int numConnected = 0;
-   //CERR << "have " << m_remotes.size() << " remotes" << std::endl;
-   for (auto it = m_remotes.begin(); it != m_remotes.end(); ) {
-       bool running = coVRMSController::instance()->syncBool(it->second->isRunning());
-       //CERR << "check " << it->first << ", running=" << running << std::endl;
-       if (!running) {
-           //CERR << "RhrClient: removing because not running" << std::endl;
-           it = removeRemoteConnection(it);
-           continue;
-       }
-       //CERR << "check " << it->first << ", connected=" << it->second->isConnected() << std::endl;
-       if (it->second->isConnected())
-           ++numConnected;
-       ++it;
-   }
-   //CERR << "RhrClient: #connected=" << numConnected << std::endl;
-   coVRMSController::instance()->syncData(&numConnected, sizeof(numConnected));
+    int numConnected = 0;
+    //CERR << "have " << m_remotes.size() << " remotes" << std::endl;
+    for (auto it = m_remotes.begin(); it != m_remotes.end();) {
+        bool running = coVRMSController::instance()->syncBool(it->second->isRunning());
+        //CERR << "check " << it->first << ", running=" << running << std::endl;
+        if (!running) {
+            //CERR << "RhrClient: removing because not running" << std::endl;
+            it = removeRemoteConnection(it);
+            continue;
+        }
+        //CERR << "check " << it->first << ", connected=" << it->second->isConnected() << std::endl;
+        if (it->second->isConnected())
+            ++numConnected;
+        ++it;
+    }
+    //CERR << "RhrClient: #connected=" << numConnected << std::endl;
+    coVRMSController::instance()->syncData(&numConnected, sizeof(numConnected));
 
-   if (auto *sd = VRViewer::instance()->statsDisplay)
-   {
-       sd->enableRhrStats(numConnected > 0);
-   }
+    if (auto *sd = VRViewer::instance()->statsDisplay) {
+        sd->enableRhrStats(numConnected > 0);
+    }
 
-   bool needUpdate = coVRMSController::instance()->syncBool(m_clientsChanged);
-   m_clientsChanged = false;
-   if (numConnected == 0) {
-      if (needUpdate) {
-          coVRAnimationManager::instance()->setNumTimesteps(-1, this);
-      }
-      return needUpdate;
-   }
+    bool needUpdate = coVRMSController::instance()->syncBool(m_clientsChanged);
+    m_clientsChanged = false;
+    if (numConnected == 0) {
+        if (needUpdate) {
+            coVRAnimationManager::instance()->setNumTimesteps(-1, this);
+        }
+        return needUpdate;
+    }
 
-   bool render = false;
+    bool render = false;
 
-   lightsMsg lm = buildLightsMessage();
-   auto matrices = gatherAllMatrices();
+    lightsMsg lm = buildLightsMessage();
+    auto matrices = gatherAllMatrices();
 
-   if (coVRMSController::instance()->isMaster()) {
-       for (auto &r: m_remotes) {
-           r.second->setLights(lm);
-           r.second->setMatrices(matrices);
-       }
-   }
+    if (coVRMSController::instance()->isMaster()) {
+        for (auto &r: m_remotes) {
+            r.second->setLights(lm);
+            r.second->setMatrices(matrices);
+        }
+    }
 
-   if (m_printViewSizes) {
-       if (coVRMSController::instance()->isMaster()) {
-           int numpix = 0;
-           for (auto &m: matrices) {
-               CERR << "view " << m.viewNum << ": " << m.width << "x" << m.height << std::endl;
-               numpix += m.width*m.height;
-           }
-           CERR << "#pixels " << numpix << " in " << matrices.size() << " views" << std::endl;
-       }
-       m_printViewSizes = false;
-   }
+    if (m_printViewSizes) {
+        if (coVRMSController::instance()->isMaster()) {
+            int numpix = 0;
+            for (auto &m: matrices) {
+                CERR << "view " << m.viewNum << ": " << m.width << "x" << m.height << std::endl;
+                numpix += m.width * m.height;
+            }
+            CERR << "#pixels " << numpix << " in " << matrices.size() << " views" << std::endl;
+        }
+        m_printViewSizes = false;
+    }
 
-   if (updateRemotes())
-       render = true;
+    if (updateRemotes())
+        render = true;
 
-   if (syncRemotesAnim()) {
-       coVRAnimationManager::instance()->setNumTimesteps(m_numRemoteTimesteps, this);
-       render = true;
-   }
+    if (syncRemotesAnim()) {
+        coVRAnimationManager::instance()->setNumTimesteps(m_numRemoteTimesteps, this);
+        render = true;
+    }
 
-   {
-       std::lock_guard<std::mutex> locker(m_sendMutex);
-       while (!m_sendQueue.empty()) {
-           coVRPluginList::instance()->message(0, PluginMessageTypes::VistleMessageOut,
-                                               sizeof(m_sendQueue.emplace_front()), &m_sendQueue.front());
-           m_sendQueue.pop_front();
-       }
-   }
+    {
+        std::lock_guard<std::mutex> locker(m_sendMutex);
+        while (!m_sendQueue.empty()) {
+            coVRPluginList::instance()->message(0, PluginMessageTypes::VistleMessageOut,
+                                                sizeof(m_sendQueue.emplace_front()), &m_sendQueue.front());
+            m_sendQueue.pop_front();
+        }
+    }
 
-   if (swapFrames())
-       render = true;
-   if (checkAdvanceFrame()) {
-       render = true;
-       commitTimestep(m_requestedTimestep);
-       m_requestedTimestep = -1;
-   }
+    if (swapFrames())
+        render = true;
+    if (checkAdvanceFrame()) {
+        render = true;
+        commitTimestep(m_requestedTimestep);
+        m_requestedTimestep = -1;
+    }
 
-   return render;
+    return render;
 }
 
-void RhrClient::preFrame() {
-   ++m_localFrames;
-   double diff = cover->frameTime() - m_lastStat;
-   if (diff > 3.) {
-       m_lastStat = cover->frameTime();
-       for (auto &r: m_remotes)
-           r.second->updateStats(m_benchmark, m_localFrames);
-       m_localFrames = 0;
-   }
+void RhrClient::preFrame()
+{
+    ++m_localFrames;
+    double diff = cover->frameTime() - m_lastStat;
+    if (diff > 3.) {
+        m_lastStat = cover->frameTime();
+        for (auto &r: m_remotes)
+            r.second->updateStats(m_benchmark, m_localFrames);
+        m_localFrames = 0;
+    }
 
-   if (cover->isHighQuality()) {
-       setVisibleViews(MultiChannelDrawer::Same);
-       setGeometryMode(RemoteConnection::Screen);
-       setReprojectionMode(MultiChannelDrawer::AsIs);
-   } else {
-       setVisibleViews(m_configuredVisibleViews);
-       setGeometryMode(m_configuredGeoMode);
-       setReprojectionMode(m_configuredMode);
-   }
+    if (cover->isHighQuality()) {
+        setVisibleViews(MultiChannelDrawer::Same);
+        setGeometryMode(RemoteConnection::Screen);
+        setReprojectionMode(MultiChannelDrawer::AsIs);
+    } else {
+        setVisibleViews(m_configuredVisibleViews);
+        setGeometryMode(m_configuredGeoMode);
+        setReprojectionMode(m_configuredMode);
+    }
 
-   for (auto it = m_remoteStatus.begin(), next = it; it != m_remoteStatus.end(); it = next) {
-      auto it2 = m_remotes.find(it->first);
-      if (it2 == m_remotes.end()) {
-          next = m_remoteStatus.erase(it);
-      } else {
-          next = it;
-          ++next;
-      }
-   }
+    for (auto it = m_remoteStatus.begin(), next = it; it != m_remoteStatus.end(); it = next) {
+        auto it2 = m_remotes.find(it->first);
+        if (it2 == m_remotes.end()) {
+            next = m_remoteStatus.erase(it);
+        } else {
+            next = it;
+            ++next;
+        }
+    }
 
-    for (const auto& r: m_remotes) {
+    for (const auto &r: m_remotes) {
         updateStatus(r.first);
         r.second->preFrame();
-   }
+    }
 }
 
-void RhrClient::clusterSyncDraw() {
-
+void RhrClient::clusterSyncDraw()
+{
     for (auto &r: m_remotes) {
         r.second->drawFinished();
     }
 }
 
 //! called when scene bounding sphere is required
-void RhrClient::expandBoundingSphere(osg::BoundingSphere &bs) {
-
+void RhrClient::expandBoundingSphere(osg::BoundingSphere &bs)
+{
     std::set<std::shared_ptr<RemoteConnection>> remotes;
     for (auto &r: m_remotes) {
         auto &remote = r.second;
@@ -938,7 +933,7 @@ void RhrClient::expandBoundingSphere(osg::BoundingSphere &bs) {
     auto start = cover->currentTime();
 
     while (!remotes.empty()) {
-        for (auto it = remotes.begin(); it != remotes.end(); ) {
+        for (auto it = remotes.begin(); it != remotes.end();) {
             auto &remote = *it;
             bool dead = !remote->isRunning() || !remote->isConnected();
             if (dead) {
@@ -969,9 +964,9 @@ void RhrClient::expandBoundingSphere(osg::BoundingSphere &bs) {
     }
 }
 
-void RhrClient::setTimestep(int t) {
-
-   //CERR << "setTimestep(" << t << ")" << std::endl;
+void RhrClient::setTimestep(int t)
+{
+    //CERR << "setTimestep(" << t << ")" << std::endl;
     if (m_requestedTimestep == t) {
         m_requestedTimestep = -1;
     }
@@ -979,16 +974,16 @@ void RhrClient::setTimestep(int t) {
         CERR << "setTimestep(" << t << "), but requested was " << m_requestedTimestep << std::endl;
         m_requestedTimestep = -1;
     }
-   m_visibleTimestep = t;
+    m_visibleTimestep = t;
 
-   for (auto &r: m_remotes)
-       r.second->setVisibleTimestep(m_visibleTimestep);
+    for (auto &r: m_remotes)
+        r.second->setVisibleTimestep(m_visibleTimestep);
 
-   swapFrames();
+    swapFrames();
 }
 
-void RhrClient::requestTimestep(int t) {
-
+void RhrClient::requestTimestep(int t)
+{
     updateRemotes();
     syncRemotesAnim();
 
@@ -1015,8 +1010,8 @@ void RhrClient::requestTimestep(int t) {
     }
 }
 
-void RhrClient::message(int toWhom, int type, int len, const void *msg) {
-
+void RhrClient::message(int toWhom, int type, int len, const void *msg)
+{
     switch (type) {
     case PluginMessageTypes::VistleMessageIn: {
         const auto *wrap = static_cast<const VistleMessage *>(msg);
@@ -1043,13 +1038,13 @@ void RhrClient::message(int toWhom, int type, int len, const void *msg) {
         covise::TokenBuffer tb((char *)msg, len);
         std::string variantName;
         tb >> variantName;
-        bool visible = type==PluginMessageTypes::VariantShow;
+        bool visible = type == PluginMessageTypes::VariantShow;
         m_coverVariants[variantName] = visible;
         if (coVRMSController::instance()->isMaster()) {
             variantMsg msg;
             msg.visible = visible;
-            strncpy(msg.name, variantName.c_str(), sizeof(msg.name)-1);
-            msg.name[sizeof(msg.name)-1] = '\0';
+            strncpy(msg.name, variantName.c_str(), sizeof(msg.name) - 1);
+            msg.name[sizeof(msg.name) - 1] = '\0';
             for (auto &r: m_remotes) {
                 if (r.second->isConnected())
                     r.second->send(msg);
@@ -1064,7 +1059,8 @@ void RhrClient::message(int toWhom, int type, int len, const void *msg) {
     }
 }
 
-bool RhrClient::updateViewer() {
+bool RhrClient::updateViewer()
+{
     CERR << "updating viewer matrix" << std::endl;
     auto it = m_remotes.begin();
     if (it != m_remotes.end()) {
@@ -1077,8 +1073,9 @@ bool RhrClient::updateViewer() {
     return false;
 }
 
-std::shared_ptr<RemoteConnection> RhrClient::startClient(const std::string &serverKey, const string &connectionName, int moduleId) {
-
+std::shared_ptr<RemoteConnection> RhrClient::startClient(const std::string &serverKey, const string &connectionName,
+                                                         int moduleId)
+{
     removeRemoteConnection(serverKey);
 
     cover->notify(Notify::Info) << "starting new RemoteConnection to module " << moduleId << std::endl;
@@ -1088,126 +1085,136 @@ std::shared_ptr<RemoteConnection> RhrClient::startClient(const std::string &serv
     return r;
 }
 
-std::shared_ptr<RemoteConnection> RhrClient::connectClient(const std::string &serverKey, const std::string &connectionName, const std::string &address, unsigned short port) {
+std::shared_ptr<RemoteConnection> RhrClient::connectClient(const std::string &serverKey,
+                                                           const std::string &connectionName,
+                                                           const std::string &address, unsigned short port)
+{
+    removeRemoteConnection(serverKey);
 
-   removeRemoteConnection(serverKey);
+    cover->notify(Notify::Info) << "initiating new RemoteConnection to " << address << ":" << port << std::endl;
+    std::shared_ptr<RemoteConnection> r(
+        new RemoteConnection(this, address, port, coVRMSController::instance()->isMaster()));
 
-   cover->notify(Notify::Info) << "initiating new RemoteConnection to " << address << ":" << port << std::endl;
-   std::shared_ptr<RemoteConnection> r(new RemoteConnection(this, address, port, coVRMSController::instance()->isMaster()));
+    addRemoteConnection(serverKey, connectionName, r);
 
-   addRemoteConnection(serverKey, connectionName, r);
-
-   return r;
+    return r;
 }
 
-std::shared_ptr<RemoteConnection> RhrClient::startListen(const std::string &serverKey, const std::string &connectionName, int moduleId,  unsigned short port, unsigned short portLast) {
+std::shared_ptr<RemoteConnection> RhrClient::startListen(const std::string &serverKey,
+                                                         const std::string &connectionName, int moduleId,
+                                                         unsigned short port, unsigned short portLast)
+{
+    removeRemoteConnection(serverKey);
 
-   removeRemoteConnection(serverKey);
+    cover->notify(Notify::Info) << "accepting RemoteConnection " << connectionName << " in port range: " << port << "-"
+                                << portLast << std::endl;
+    std::shared_ptr<RemoteConnection> r(
+        new RemoteConnection(this, port, portLast, coVRMSController::instance()->isMaster()));
 
-   cover->notify(Notify::Info) << "accepting RemoteConnection " << connectionName << " in port range: " << port << "-" << portLast << std::endl;
-   std::shared_ptr<RemoteConnection> r(new RemoteConnection(this, port, portLast, coVRMSController::instance()->isMaster()));
+    addRemoteConnection(serverKey, connectionName, r, moduleId);
 
-   addRemoteConnection(serverKey, connectionName, r, moduleId);
-
-   return r;
+    return r;
 }
 
-void RhrClient::addRemoteConnection(const std::string &serverKey, const std::string &name, std::shared_ptr<RemoteConnection> remote, int moduleId) {
-   CERR << "addRemoteConnection: have " << m_remotes.size() << " connections, adding client " << name << std::endl;
+void RhrClient::addRemoteConnection(const std::string &serverKey, const std::string &name,
+                                    std::shared_ptr<RemoteConnection> remote, int moduleId)
+{
+    CERR << "addRemoteConnection: have " << m_remotes.size() << " connections, adding client " << name << std::endl;
 
-   m_remoteNames.insert(name);
+    m_remoteNames.insert(name);
 
-   m_remotes[serverKey] = remote;
-   remote->setName(name);
-   m_clientsChanged = true;
+    m_remotes[serverKey] = remote;
+    remote->setName(name);
+    m_clientsChanged = true;
 
-   remote->setMaxTilesPerFrame(m_maxTilesPerFrame);
-   remote->setNodeConfigs(m_nodeConfig);
-   remote->setNumLocalViews(m_numLocalViews);
-   remote->setNumClusterViews(m_numClusterViews);
-   remote->setFirstView(m_channelBase);
-   remote->setVisibleTimestep(m_visibleTimestep);
-   if (m_requestedTimestep != -1) {
-       remote->requestTimestep(m_requestedTimestep);
-   }
-   lightsMsg lm = buildLightsMessage();
-   remote->setLights(lm);
+    remote->setMaxTilesPerFrame(m_maxTilesPerFrame);
+    remote->setNodeConfigs(m_nodeConfig);
+    remote->setNumLocalViews(m_numLocalViews);
+    remote->setNumClusterViews(m_numClusterViews);
+    remote->setFirstView(m_channelBase);
+    remote->setVisibleTimestep(m_visibleTimestep);
+    if (m_requestedTimestep != -1) {
+        remote->requestTimestep(m_requestedTimestep);
+    }
+    lightsMsg lm = buildLightsMessage();
+    remote->setLights(lm);
 
-   auto matrices = gatherAllMatrices();
-   remote->setMatrices(matrices);
+    auto matrices = gatherAllMatrices();
+    remote->setMatrices(matrices);
 
-   remote->setReprojectionMode(m_mode);
-   remote->setViewsToRender(m_visibleViews);
-   remote->setGeometryMode(m_geoMode);
+    remote->setReprojectionMode(m_mode);
+    remote->setViewsToRender(m_visibleViews);
+    remote->setGeometryMode(m_geoMode);
 
-   for (auto &var: m_coverVariants) {
-       remote->setVariantVisibility(var.first, var.second);
-   }
-   cover->getObjectsRoot()->addChild(remote->scene());
+    for (auto &var: m_coverVariants) {
+        remote->setVariantVisibility(var.first, var.second);
+    }
+    cover->getObjectsRoot()->addChild(remote->scene());
 
-   bool running = coVRMSController::instance()->syncBool(remote->isRunning());
-   if (!running) {
-       if (vistle::message::Id::isModule(moduleId)) {
-           setServerParameters(moduleId, "", 0);
-       }
-       //removeRemoteConnection(remote);
-       //remote.reset();
-   }
+    bool running = coVRMSController::instance()->syncBool(remote->isRunning());
+    if (!running) {
+        if (vistle::message::Id::isModule(moduleId)) {
+            setServerParameters(moduleId, "", 0);
+        }
+        //removeRemoteConnection(remote);
+        //remote.reset();
+    }
 
-   remote->startThread();
+    remote->startThread();
 
-   unsigned short port = 0;
-   if (remote->isListener() && remote->m_setServerParameters && moduleId != vistle::message::Id::Invalid) {
-       while (!remote->isListening() && !remote->isConnected()) {
-           usleep(1000);
-       }
+    unsigned short port = 0;
+    if (remote->isListener() && remote->m_setServerParameters && moduleId != vistle::message::Id::Invalid) {
+        while (!remote->isListening() && !remote->isConnected()) {
+            usleep(1000);
+        }
 
-       port = remote->m_port;
-   }
+        port = remote->m_port;
+    }
 
-   coVRMSController::instance()->syncData(&port, sizeof(port));
-   if (port > 0) {
-       auto hostname = coVRMSController::instance()->syncString(vistle::hostname());
-       setServerParameters(moduleId, hostname, port);
-       remote->m_setServerParameters = false;
-   }
+    coVRMSController::instance()->syncData(&port, sizeof(port));
+    if (port > 0) {
+        auto hostname = coVRMSController::instance()->syncString(vistle::hostname());
+        setServerParameters(moduleId, hostname, port);
+        remote->m_setServerParameters = false;
+    }
 
     m_remoteStatus[serverKey] = new ui::Label(m_remoteGroup, name);
     updateStatus(serverKey);
 }
 
-RhrClient::RemotesMap::iterator RhrClient::removeRemoteConnection(const std::string &name) {
-
+RhrClient::RemotesMap::iterator RhrClient::removeRemoteConnection(const std::string &name)
+{
     return removeRemoteConnection(m_remotes.find(name));
 }
 
 //! clean up when connection to server is lost
-RhrClient::RemotesMap::iterator RhrClient::removeRemoteConnection(RhrClient::RemotesMap::iterator it) {
+RhrClient::RemotesMap::iterator RhrClient::removeRemoteConnection(RhrClient::RemotesMap::iterator it)
+{
+    if (it == m_remotes.end())
+        return it;
 
-   if (it == m_remotes.end())
-       return it;
+    CERR << "removeRemoteConnection: have " << m_remotes.size() << " connections, removing client " << it->first
+         << std::endl;
 
-   CERR << "removeRemoteConnection: have " << m_remotes.size() << " connections, removing client " << it->first << std::endl;
+    const auto &name = it->first;
+    auto &remote = it->second;
 
-   const auto &name = it->first;
-   auto &remote = it->second;
+    delete m_remoteStatus[name];
+    m_remoteStatus.erase(name);
 
-   delete m_remoteStatus[name];
-   m_remoteStatus.erase(name);
+    cover->getObjectsRoot()->removeChild(remote->scene());
+    m_clientsChanged = true;
 
-   cover->getObjectsRoot()->removeChild(remote->scene());
-   m_clientsChanged = true;
-
-   auto iter = m_remotes.erase(it);
-   if (m_remotes.empty() && m_requestedTimestep != -1) {
-       commitTimestep(m_requestedTimestep);
-       m_requestedTimestep = -1;
-   }
-   return iter;
+    auto iter = m_remotes.erase(it);
+    if (m_remotes.empty() && m_requestedTimestep != -1) {
+        commitTimestep(m_requestedTimestep);
+        m_requestedTimestep = -1;
+    }
+    return iter;
 }
 
-void RhrClient::setGeometryMode(GeometryMode mode) {
-
+void RhrClient::setGeometryMode(GeometryMode mode)
+{
     if (m_geoMode != mode)
         m_printViewSizes = true;
 
@@ -1217,16 +1224,16 @@ void RhrClient::setGeometryMode(GeometryMode mode) {
     m_geoMode = mode;
 }
 
-void RhrClient::setVisibleViews(RhrClient::ViewSelection selection) {
-
+void RhrClient::setVisibleViews(RhrClient::ViewSelection selection)
+{
     m_visibleViews = selection;
 
     for (auto &r: m_remotes)
         r.second->setViewsToRender(m_visibleViews);
 }
 
-void RhrClient::setReprojectionMode(MultiChannelDrawer::Mode reproject) {
-
+void RhrClient::setReprojectionMode(MultiChannelDrawer::Mode reproject)
+{
     if (m_mode == reproject)
         return;
 
@@ -1236,8 +1243,8 @@ void RhrClient::setReprojectionMode(MultiChannelDrawer::Mode reproject) {
     }
 }
 
-bool RhrClient::sendMessage(const vistle::message::Buffer &msg, const vistle::buffer *payload) {
-
+bool RhrClient::sendMessage(const vistle::message::Buffer &msg, const vistle::buffer *payload)
+{
     if (payload) {
         MessagePayload shm(*payload);
         std::lock_guard<std::mutex> locker(m_sendMutex);
@@ -1250,8 +1257,8 @@ bool RhrClient::sendMessage(const vistle::message::Buffer &msg, const vistle::bu
     return true;
 }
 
-void RhrClient::updateStatus(const string &serverKey) {
-
+void RhrClient::updateStatus(const string &serverKey)
+{
     auto it = m_remotes.find(serverKey);
     auto name = it->second->name();
     auto text = it->second->status();

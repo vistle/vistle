@@ -5,13 +5,12 @@
 using namespace vistle;
 
 class CreateCelltree: public vistle::Module {
+public:
+    CreateCelltree(const std::string &name, int moduleID, mpi::communicator comm);
+    ~CreateCelltree();
 
- public:
-   CreateCelltree(const std::string &name, int moduleID, mpi::communicator comm);
-   ~CreateCelltree();
-
- private:
-   virtual bool compute();
+private:
+    virtual bool compute();
 };
 
 using namespace vistle;
@@ -19,35 +18,32 @@ using namespace vistle;
 CreateCelltree::CreateCelltree(const std::string &name, int moduleID, mpi::communicator comm)
 : Module(name, moduleID, comm)
 {
-
-   Port *din = createInputPort("grid_in", "input grid", Port::MULTI);
-   Port *dout = createOutputPort("grid_out", "output grid", Port::MULTI);
-   din->link(dout);
+    Port *din = createInputPort("grid_in", "input grid", Port::MULTI);
+    Port *dout = createOutputPort("grid_out", "output grid", Port::MULTI);
+    din->link(dout);
 }
 
-CreateCelltree::~CreateCelltree() {
+CreateCelltree::~CreateCelltree()
+{}
 
-}
+bool CreateCelltree::compute()
+{
+    Object::const_ptr obj = expect<Object>("grid_in");
+    if (!obj)
+        return true;
+    auto cti = obj->getInterface<CelltreeInterface<3>>();
+    if (!cti) {
+        sendError("CelltreeInterface is required on grid_in");
+        return true;
+    }
 
-bool CreateCelltree::compute() {
+    cti->getCelltree();
 
-   Object::const_ptr obj = expect<Object>("grid_in");
-   if (!obj)
-      return true;
-   auto cti = obj->getInterface<CelltreeInterface<3>>();
-   if (!cti) {
-       sendError("CelltreeInterface is required on grid_in");
-       return true;
-   }
+    auto nobj = obj->clone();
 
-   cti->getCelltree();
+    addObject("grid_out", nobj);
 
-   auto nobj = obj->clone();
-
-   addObject("grid_out", nobj);
-
-   return true;
+    return true;
 }
 
 MODULE_MAIN(CreateCelltree)
-

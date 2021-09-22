@@ -19,13 +19,11 @@ using vistle::message::RemoteRenderMessage;
 
 
 DecodeTask::DecodeTask(std::shared_ptr<const RemoteRenderMessage> msg, std::shared_ptr<buffer> payload)
-: msg(msg)
-, payload(payload)
-, rgba(NULL)
-, depth(NULL)
+: msg(msg), payload(payload), rgba(NULL), depth(NULL)
 {}
 
-bool DecodeTask::work() {
+bool DecodeTask::work()
+{
     //CERR << "DecodeTask::execute" << std::endl;
     assert(msg->rhr().type == rfbTile);
 
@@ -87,9 +85,11 @@ bool DecodeTask::work() {
     try {
         auto decompbuf = message::decompressPayload(*msg, *payload);
         if (ssize_t(decompbuf.size()) != tile.unzippedsize) {
-            CERR << "DecodeTask: invalid data: unzipped size wrong: " << decompbuf.size() << " != " << tile.unzippedsize << std::endl;
+            CERR << "DecodeTask: invalid data: unzipped size wrong: " << decompbuf.size() << " != " << tile.unzippedsize
+                 << std::endl;
         }
-        return decompressTile(param.isDepth ? depth : rgba, decompbuf, param, tile.x, tile.y, tile.width, tile.height, tile.totalwidth);
+        return decompressTile(param.isDepth ? depth : rgba, decompbuf, param, tile.x, tile.y, tile.width, tile.height,
+                              tile.totalwidth);
     } catch (vistle::message::codec_error &ex) {
         CERR << "DecodeTask: codec error: " << ex.what() << ", info: " << ex.info() << std::endl;
         return false;

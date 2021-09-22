@@ -19,19 +19,19 @@ UiManager::UiManager(Hub &hub, StateTracker &stateTracker)
 , m_locked(false)
 , m_requestQuit(false)
 , m_uiCount(vistle::message::Id::ModuleBase)
+{}
+
+UiManager::~UiManager()
 {
+    disconnect();
 }
 
-UiManager::~UiManager() {
+bool UiManager::handleMessage(std::shared_ptr<boost::asio::ip::tcp::socket> sock, const message::Message &msg,
+                              const buffer &payload)
+{
+    using namespace vistle::message;
 
-   disconnect();
-}
-
-bool UiManager::handleMessage(std::shared_ptr<boost::asio::ip::tcp::socket> sock, const message::Message &msg, const buffer &payload) {
-
-   using namespace vistle::message;
-
-   std::shared_ptr<UiClient> sender;
+    std::shared_ptr<UiClient> sender;
     auto it = m_clients.find(sock);
     if (it == m_clients.end()) {
         std::cerr << "UiManager: message from unknown UI" << std::endl;
@@ -39,150 +39,148 @@ bool UiManager::handleMessage(std::shared_ptr<boost::asio::ip::tcp::socket> sock
         sender = it->second;
     }
 
-   switch(msg.type()) {
-   case MODULEEXIT: {
-       if (!sender) {
-         auto &exit = msg.as<ModuleExit>();
-           std::cerr << "UiManager: unknown UI on hub " << exit.senderId() << " quit" << std::endl;
-       } else {
-           sender->cancel();
-           removeClient(sender);
-       }
-       return true;
-   }
-   case QUIT: {
-       auto quit = msg.as<Quit>();
-       if (quit.id() == Id::Broadcast) {
-           if (!sender) {
-               std::cerr << "UiManager: unknown UI quit" << std::endl;
-           } else {
-               sender->cancel();
-               removeClient(sender);
-           }
-       }
-       break;
-   }
-   default:
-       break;
-   }
+    switch (msg.type()) {
+    case MODULEEXIT: {
+        if (!sender) {
+            auto &exit = msg.as<ModuleExit>();
+            std::cerr << "UiManager: unknown UI on hub " << exit.senderId() << " quit" << std::endl;
+        } else {
+            sender->cancel();
+            removeClient(sender);
+        }
+        return true;
+    }
+    case QUIT: {
+        auto quit = msg.as<Quit>();
+        if (quit.id() == Id::Broadcast) {
+            if (!sender) {
+                std::cerr << "UiManager: unknown UI quit" << std::endl;
+            } else {
+                sender->cancel();
+                removeClient(sender);
+            }
+        }
+        break;
+    }
+    default:
+        break;
+    }
 
-   if (isLocked()) {
+    if (isLocked()) {
+        m_queue.emplace_back(msg);
+        return true;
+    }
 
-      m_queue.emplace_back(msg);
-      return true;
-   }
-
-   return m_hub.handleMessage(msg, sock, &payload);
+    return m_hub.handleMessage(msg, sock, &payload);
 }
 
-void UiManager::sendMessage(const message::Message &msg, int id, const buffer *payload) const {
+void UiManager::sendMessage(const message::Message &msg, int id, const buffer *payload) const
+{
+    std::vector<std::shared_ptr<UiClient>> toRemove;
 
-   std::vector<std::shared_ptr<UiClient>> toRemove;
+    for (auto ent: m_clients) {
+        if (id == message::Id::Broadcast || ent.second->id() == id) {
+            if (!sendMessage(ent.second, msg, payload)) {
+                toRemove.push_back(ent.second);
+            }
+        }
+    }
 
-   for(auto ent: m_clients) {
-       if (id==message::Id::Broadcast || ent.second->id()==id) {
-           if (!sendMessage(ent.second, msg, payload)) {
-               toRemove.push_back(ent.second);
-           }
-       }
-   }
-
-   for (auto ent: toRemove) {
-      removeClient(ent);
-   }
+    for (auto ent: toRemove) {
+        removeClient(ent);
+    }
 }
 
-bool UiManager::sendMessage(std::shared_ptr<UiClient> c, const message::Message &msg, const buffer *payload) const {
-
+bool UiManager::sendMessage(std::shared_ptr<UiClient> c, const message::Message &msg, const buffer *payload) const
+{
 #if BOOST_VERSION < 107000
-   //FIXME is message reliably sent, e.g. also during shutdown, without polling?
-   auto &ioService = c->socket()->get_io_service();
+    //FIXME is message reliably sent, e.g. also during shutdown, without polling?
+    auto &ioService = c->socket()->get_io_service();
 #endif
-   bool ret = message::send(*c->socket(), msg, payload);
+    bool ret = message::send(*c->socket(), msg, payload);
 #if BOOST_VERSION < 107000
-   ioService.poll();
+    ioService.poll();
 #endif
-   return ret;
+    return ret;
 }
 
-void UiManager::requestQuit() {
-
-   m_requestQuit = true;
-   sendMessage(message::Quit());
+void UiManager::requestQuit()
+{
+    m_requestQuit = true;
+    sendMessage(message::Quit());
 }
 
-void UiManager::disconnect() {
+void UiManager::disconnect()
+{
+    sendMessage(message::Quit());
 
-   sendMessage(message::Quit());
+    for (const auto &c: m_clients) {
+        c.second->cancel();
+    }
 
-   for(const auto &c: m_clients) {
-      c.second->cancel();
-   }
-
-   m_clients.clear();
+    m_clients.clear();
 }
 
-void UiManager::addClient(std::shared_ptr<boost::asio::ip::tcp::socket> sock) {
+void UiManager::addClient(std::shared_ptr<boost::asio::ip::tcp::socket> sock)
+{
+    std::shared_ptr<UiClient> c(new UiClient(*this, m_uiCount, sock));
 
-   std::shared_ptr<UiClient> c(new UiClient(*this, m_uiCount, sock));
+    m_clients.insert(std::make_pair(sock, c));
 
-   m_clients.insert(std::make_pair(sock, c));
+    std::cerr << "UiManager: new UI " << m_uiCount << " connected, now have " << m_clients.size() << " connections"
+              << std::endl;
+    ++m_uiCount;
 
-   std::cerr << "UiManager: new UI " << m_uiCount << " connected, now have " << m_clients.size() << " connections" << std::endl;
-   ++m_uiCount;
+    if (m_requestQuit) {
+        sendMessage(c, message::Quit());
+    } else {
+        sendMessage(c, message::SetId(c->id()));
 
-   if (m_requestQuit) {
+        sendMessage(c, message::LockUi(m_locked));
 
-      sendMessage(c, message::Quit());
-   } else {
-
-      sendMessage(c, message::SetId(c->id()));
-
-      sendMessage(c, message::LockUi(m_locked));
-
-      auto state = m_stateTracker.getState();
-      for (auto &m: state) {
-          sendMessage(c, m.message, m.payload.get());
-      }
-   }
+        auto state = m_stateTracker.getState();
+        for (auto &m: state) {
+            sendMessage(c, m.message, m.payload.get());
+        }
+    }
 }
 
-bool UiManager::removeClient(std::shared_ptr<UiClient> c) const {
+bool UiManager::removeClient(std::shared_ptr<UiClient> c) const
+{
+    std::cerr << "UiManager: removing client " << c->id() << std::endl;
 
-   std::cerr << "UiManager: removing client " << c->id() << std::endl;
+    for (auto &ent: m_clients) {
+        if (ent.second == c) {
+            if (!c->done()) {
+                sendMessage(c, message::Quit());
+                c->cancel();
+            }
+            m_clients.erase(ent.first);
+            return true;
+        }
+    }
 
-   for (auto &ent: m_clients) {
-      if (ent.second == c) {
-         if (!c->done()) {
-             sendMessage(c, message::Quit());
-             c->cancel();
-         }
-         m_clients.erase(ent.first);
-         return true;
-      }
-   }
-
-   return false;
+    return false;
 }
 
-void UiManager::lockUi(bool locked) {
+void UiManager::lockUi(bool locked)
+{
+    if (m_locked != locked) {
+        sendMessage(message::LockUi(locked));
+        m_locked = locked;
+    }
 
-   if (m_locked != locked) {
-      sendMessage(message::LockUi(locked));
-      m_locked = locked;
-   }
-
-   if (!m_locked) {
-      for (auto &m: m_queue) {
-         m_hub.handleMessage(m);
-      }
-      m_queue.clear();
-   }
+    if (!m_locked) {
+        for (auto &m: m_queue) {
+            m_hub.handleMessage(m);
+        }
+        m_queue.clear();
+    }
 }
 
-bool UiManager::isLocked() const {
-
-   return m_locked;
+bool UiManager::isLocked() const
+{
+    return m_locked;
 }
 
 } // namespace vistle

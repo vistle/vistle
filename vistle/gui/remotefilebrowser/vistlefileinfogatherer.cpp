@@ -46,11 +46,11 @@
 #include <qapplication.h>
 #include <qglobal.h>
 #ifndef Q_OS_WIN
-#  include <unistd.h>
-#  include <sys/types.h>
+#include <unistd.h>
+#include <sys/types.h>
 #endif
 #if defined(Q_OS_VXWORKS)
-#  include "qplatformdefs.h"
+#include "qplatformdefs.h"
 #endif
 
 QT_BEGIN_NAMESPACE
@@ -74,9 +74,7 @@ Q_AUTOTEST_EXPORT bool qt_test_isFetchedRoot()
     Creates thread
 */
 VistleFileInfoGatherer::VistleFileInfoGatherer(vistle::UserInterface *ui, int id, QObject *parent)
-    : AbstractFileInfoGatherer(parent)
-    , m_ui(ui)
-    , m_moduleId(id)
+: AbstractFileInfoGatherer(parent), m_ui(ui), m_moduleId(id)
 {
     m_ui->registerFileBrowser(this);
     //start(LowPriority);
@@ -185,7 +183,7 @@ bool VistleFileInfoGatherer::handleMessage(const vistle::message::Message &msg, 
 
         QStringList allFiles;
         for (auto &f: fivec) {
-            FileInfo fi(QDir::cleanPath(QString::fromStdString(path+f.name)));
+            FileInfo fi(QDir::cleanPath(QString::fromStdString(path + f.name)));
             fi.m_valid = f.status;
             if (!f.status) {
                 CERR << "invalid status for file " << f.name << std::endl;
@@ -205,22 +203,31 @@ bool VistleFileInfoGatherer::handleMessage(const vistle::message::Message &msg, 
             fi.m_lastModified = QDateTime::fromTime_t(f.lastmod);
 
             fi.m_permissions = QFile::Permissions();
-            if (f.permissions & 0400) fi.m_permissions |= QFile::Permission::ReadOwner;
-            if (f.permissions & 0200) fi.m_permissions |= QFile::Permission::WriteOwner;
-            if (f.permissions & 0100) fi.m_permissions |= QFile::Permission::ExeOwner;
-            if (f.permissions & 040) fi.m_permissions |= QFile::Permission::ReadGroup;
-            if (f.permissions & 020) fi.m_permissions |= QFile::Permission::WriteGroup;
-            if (f.permissions & 010) fi.m_permissions |= QFile::Permission::ExeGroup;
-            if (f.permissions & 04) fi.m_permissions |= QFile::Permission::ReadOther;
-            if (f.permissions & 02) fi.m_permissions |= QFile::Permission::WriteOther;
-            if (f.permissions & 01) fi.m_permissions |= QFile::Permission::ExeOther;
+            if (f.permissions & 0400)
+                fi.m_permissions |= QFile::Permission::ReadOwner;
+            if (f.permissions & 0200)
+                fi.m_permissions |= QFile::Permission::WriteOwner;
+            if (f.permissions & 0100)
+                fi.m_permissions |= QFile::Permission::ExeOwner;
+            if (f.permissions & 040)
+                fi.m_permissions |= QFile::Permission::ReadGroup;
+            if (f.permissions & 020)
+                fi.m_permissions |= QFile::Permission::WriteGroup;
+            if (f.permissions & 010)
+                fi.m_permissions |= QFile::Permission::ExeGroup;
+            if (f.permissions & 04)
+                fi.m_permissions |= QFile::Permission::ReadOther;
+            if (f.permissions & 02)
+                fi.m_permissions |= QFile::Permission::WriteOther;
+            if (f.permissions & 01)
+                fi.m_permissions |= QFile::Permission::ExeOther;
 
             fi.updateType();
             fi.icon = iconProvider()->icon(fi);
             fi.displayType = iconProvider()->type(fi);
 
             QString name = QString::fromStdString(f.name);
-            results.append(QPair<QString,FileInfo>(name, fi));
+            results.append(QPair<QString, FileInfo>(name, fi));
 
             std::string file = path + f.name;
             auto it = qfiles.find(QString::fromStdString(f.name));
@@ -249,7 +256,6 @@ bool VistleFileInfoGatherer::handleMessage(const vistle::message::Message &msg, 
             CERR << "making directory " << mm.path() << " failed" << std::endl;
         break;
     }
-
     }
 
     return true;
@@ -299,7 +305,7 @@ void VistleFileInfoGatherer::fetchExtendedInformation(const QString &path, const
             p += "/";
         std::vector<std::string> filelist;
         for (auto f: files) {
-            while (f.length()>1 && f.startsWith('/'))
+            while (f.length() > 1 && f.startsWith('/'))
                 f = f.mid(1);
             if (f.isEmpty())
                 f += "/";
@@ -312,7 +318,8 @@ void VistleFileInfoGatherer::fetchExtendedInformation(const QString &path, const
         if (!filelist.empty()) {
             qInfo() << "file metadata query for" << cleanPath << ":" << filelist.size() << "files";
             auto payload = vistle::packFileList(filelist);
-            vistle::message::FileQuery query(m_moduleId, cleanPath.toStdString(), FileQuery::LookUpFiles, payload.size());
+            vistle::message::FileQuery query(m_moduleId, cleanPath.toStdString(), FileQuery::LookUpFiles,
+                                             payload.size());
             sendMessage(query, &payload);
         }
     }
@@ -338,8 +345,7 @@ void VistleFileInfoGatherer::updateFile(const QString &filePath)
     \sa listed()
 */
 void VistleFileInfoGatherer::removePath(const QString &path)
-{
-}
+{}
 
 FileInfo VistleFileInfoGatherer::getInfo(const QString &path)
 {

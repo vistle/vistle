@@ -5,17 +5,17 @@
 
 class VistleLineEditFactoryPrivate;
 
-class QT_QTPROPERTYBROWSER_EXPORT VistleLineEditFactory : public QtAbstractEditorFactory<QtStringPropertyManager>
-{
+class QT_QTPROPERTYBROWSER_EXPORT VistleLineEditFactory: public QtAbstractEditorFactory<QtStringPropertyManager> {
     Q_OBJECT
 public:
     VistleLineEditFactory(QObject *parent = 0);
     ~VistleLineEditFactory();
+
 protected:
     void connectPropertyManager(QtStringPropertyManager *manager);
-    QWidget *createEditor(QtStringPropertyManager *manager, QtProperty *property,
-                QWidget *parent);
+    QWidget *createEditor(QtStringPropertyManager *manager, QtProperty *property, QWidget *parent);
     void disconnectPropertyManager(QtStringPropertyManager *manager);
+
 private:
     VistleLineEditFactoryPrivate *d_ptr;
     Q_DECLARE_PRIVATE(VistleLineEditFactory)

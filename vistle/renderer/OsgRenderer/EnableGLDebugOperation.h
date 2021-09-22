@@ -33,18 +33,17 @@
 
 #include <osgViewer/ViewerEventHandlers>
 
-class EnableGLDebugOperation: public osg::GraphicsOperation
-{
+class EnableGLDebugOperation: public osg::GraphicsOperation {
 public:
     EnableGLDebugOperation();
-    virtual void operator ()(osg::GraphicsContext* gc);
+    virtual void operator()(osg::GraphicsContext *gc);
 
 private:
     OpenThreads::Mutex m_mutex;
-    static void  debugCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
-                    GLsizei length, const GLchar *message, void *userData);
-    static void  debugCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
-                    GLsizei length, const GLchar *message, const void *userData);
+    static void debugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length,
+                              const GLchar *message, void *userData);
+    static void debugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length,
+                              const GLchar *message, const void *userData);
 };
 
 #endif

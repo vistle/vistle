@@ -348,8 +348,8 @@ void LibSimModule::recvAndhandleMessage()
     case InSituMessageType::SetCommands:
     case InSituMessageType::SetCustomCommands: {
         auto commands = msg.type() == InSituMessageType::SetCommands
-                      ? msg.unpackOrCast<vistle::insitu::message::SetCommands>().value
-                      : msg.unpackOrCast<vistle::insitu::message::SetCustomCommands>().value;
+                            ? msg.unpackOrCast<vistle::insitu::message::SetCommands>().value
+                            : msg.unpackOrCast<vistle::insitu::message::SetCustomCommands>().value;
         auto &params = msg.type() == InSituMessageType::SetCommands ? m_commandParameter : m_customCommandParameter;
 
         for (auto i = params.begin(); i != params.end(); ++i) {

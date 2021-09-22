@@ -29,80 +29,79 @@
 //-------------------------------------------------------------------------
 // WRITE HDF5 CLASS DECLARATION
 //-------------------------------------------------------------------------
-class ReadHDF5 : public vistle::Module {
- public:
+class ReadHDF5: public vistle::Module {
+public:
     friend class boost::serialization::access;
     friend struct ShmVectorReader;
 
-   ReadHDF5(const std::string &name, int moduleID, mpi::communicator comm);
-   ~ReadHDF5();
+    ReadHDF5(const std::string &name, int moduleID, mpi::communicator comm);
+    ~ReadHDF5();
 
- private:
-   // typedefs
-   typedef vistle::FindObjectReferenceOArchive::ReferenceType ReferenceType;
+private:
+    // typedefs
+    typedef vistle::FindObjectReferenceOArchive::ReferenceType ReferenceType;
 
-   // structs/functors
-   struct LinkIterData;
+    // structs/functors
+    struct LinkIterData;
 
-   struct MemberCounter;
-   class ArrayToMetaArchive;
+    struct MemberCounter;
+    class ArrayToMetaArchive;
 
-   struct ShmVectorReader;
-
-
-
-   // overriden functions
-   virtual bool changeParameter(const vistle::Parameter *param) override;
-   virtual bool prepare() override;
-   virtual bool compute() override;
-   virtual bool reduce(int timestep) override;
-
-   // private helper functions
-   void prepare_organized(hid_t fileId);
-   void prepare_performant(hid_t fileId);
-
-   template<class T>
-   void prepare_performant_readHDF5(hid_t fileId, const boost::mpi::communicator &comm, const char *readName,
-                                    unsigned rank, hsize_t * nodeDims, hsize_t * nodeOffset, T *data);
-   std::vector<hsize_t> prepare_performant_getArrayDims(hid_t fileId, char readName[]);
-
-   static herr_t prepare_iterateMeta(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData);
-
-   static herr_t prepare_iterateTimestep(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData);
-   static herr_t prepare_iterateBlock(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData);
-   static herr_t prepare_iterateOrigin(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData);
-   static herr_t prepare_iterateVariant(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData);
-
-   static herr_t prepare_processObject(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData);
-   static herr_t prepare_processArrayContainer(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData);
-   static herr_t prepare_processArrayLink(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData);
-
-   static long double util_readSyncStandby(const boost::mpi::communicator & comm, hid_t fileId);
-   static long double util_syncAndGetReadSize(long double readSize, const boost::mpi::communicator & comm);
-   void util_checkStatus(herr_t status);
-   bool util_checkFile();
-
-   inline static bool util_doesExist(htri_t exist) {
-       return exist > 0;
-   }
+    struct ShmVectorReader;
 
 
+    // overriden functions
+    virtual bool changeParameter(const vistle::Parameter *param) override;
+    virtual bool prepare() override;
+    virtual bool compute() override;
+    virtual bool reduce(int timestep) override;
 
-   // private member variables
-   vistle::StringParameter *m_fileName;
-   unsigned m_numPorts;
-   int m_writeMode;
+    // private helper functions
+    void prepare_organized(hid_t fileId);
+    void prepare_performant(hid_t fileId);
 
-   bool m_isRootNode;
-   bool m_unresolvedReferencesExist;
-   std::unordered_map<std::string, unsigned> m_metaNvpMap;                  //< meta nvp tag -> index in boost::serialization order
-   std::unordered_map<std::string, std::string> m_arrayMap;                 //< array name in file -> array name in memory
-   std::unordered_map<std::string, std::string> m_objectMap;                //< object name in file -> object name in memory
-   std::vector<vistle::Object::ptr> m_objectPersistenceVector;              //< stores pointers to objects so that they are not cleared from memory
-   hid_t m_dummyDatasetId;
+    template<class T>
+    void prepare_performant_readHDF5(hid_t fileId, const boost::mpi::communicator &comm, const char *readName,
+                                     unsigned rank, hsize_t *nodeDims, hsize_t *nodeOffset, T *data);
+    std::vector<hsize_t> prepare_performant_getArrayDims(hid_t fileId, char readName[]);
+
+    static herr_t prepare_iterateMeta(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData);
+
+    static herr_t prepare_iterateTimestep(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData);
+    static herr_t prepare_iterateBlock(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData);
+    static herr_t prepare_iterateOrigin(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData);
+    static herr_t prepare_iterateVariant(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData);
+
+    static herr_t prepare_processObject(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData);
+    static herr_t prepare_processArrayContainer(hid_t callingGroupId, const char *name, const H5L_info_t *info,
+                                                void *opData);
+    static herr_t prepare_processArrayLink(hid_t callingGroupId, const char *name, const H5L_info_t *info,
+                                           void *opData);
+
+    static long double util_readSyncStandby(const boost::mpi::communicator &comm, hid_t fileId);
+    static long double util_syncAndGetReadSize(long double readSize, const boost::mpi::communicator &comm);
+    void util_checkStatus(herr_t status);
+    bool util_checkFile();
+
+    inline static bool util_doesExist(htri_t exist) { return exist > 0; }
+
+
+    // private member variables
+    vistle::StringParameter *m_fileName;
+    unsigned m_numPorts;
+    int m_writeMode;
+
+    bool m_isRootNode;
+    bool m_unresolvedReferencesExist;
+    std::unordered_map<std::string, unsigned> m_metaNvpMap; //< meta nvp tag -> index in boost::serialization order
+    std::unordered_map<std::string, std::string> m_arrayMap; //< array name in file -> array name in memory
+    std::unordered_map<std::string, std::string> m_objectMap; //< object name in file -> object name in memory
+    std::vector<vistle::Object::ptr>
+        m_objectPersistenceVector; //< stores pointers to objects so that they are not cleared from memory
+    hid_t m_dummyDatasetId;
 
 public:
-   static unsigned s_numMetaMembers;
+    static unsigned s_numMetaMembers;
 };
 
 //-------------------------------------------------------------------------
@@ -114,19 +113,20 @@ public:
 //-------------------------------------------------------------------------
 struct ReadHDF5::LinkIterData {
     std::string nvpName;
-    vistle::FindObjectReferenceOArchive * archive;
-    ReadHDF5 * callingModule;
+    vistle::FindObjectReferenceOArchive *archive;
+    ReadHDF5 *callingModule;
     hid_t fileId;
     std::string groupPath;
     unsigned origin;
     int block;
     int timestep;
 
-    LinkIterData(LinkIterData * other)
-        : callingModule(other->callingModule), fileId(other->fileId), block(other->block), timestep(other->timestep) {}
-    LinkIterData(ReadHDF5 * _callingModule, hid_t _fileId)
-        : archive(nullptr), callingModule(_callingModule), fileId(_fileId) {}
-
+    LinkIterData(LinkIterData *other)
+    : callingModule(other->callingModule), fileId(other->fileId), block(other->block), timestep(other->timestep)
+    {}
+    LinkIterData(ReadHDF5 *_callingModule, hid_t _fileId)
+    : archive(nullptr), callingModule(_callingModule), fileId(_fileId)
+    {}
 };
 
 // META TO ARRAY ARCHIVE
@@ -135,37 +135,36 @@ struct ReadHDF5::LinkIterData {
 class ReadHDF5::ArrayToMetaArchive {
 private:
     std::vector<double> m_array;
-    std::unordered_map<std::string, unsigned> * m_nvpMapPtr;
+    std::unordered_map<std::string, unsigned> *m_nvpMapPtr;
 
 public:
-
     // Implement requirements for archive concept
     typedef boost::mpl::bool_<false> is_loading;
     typedef boost::mpl::bool_<true> is_saving;
 
     template<class T>
-    void register_type(const T * = NULL) {}
+    void register_type(const T * = NULL)
+    {}
 
     unsigned int get_library_version() { return 0; }
     void save_binary(const void *address, std::size_t count) {}
 
-    ArrayToMetaArchive(double * _array, std::unordered_map<std::string, unsigned> * _nvpMapPtr)
-        : m_nvpMapPtr(_nvpMapPtr) {
+    ArrayToMetaArchive(double *_array, std::unordered_map<std::string, unsigned> *_nvpMapPtr): m_nvpMapPtr(_nvpMapPtr)
+    {
         m_array.assign(_array, _array + (ReadHDF5::s_numMetaMembers));
     }
 
     // << operators
     template<class T>
-    ArrayToMetaArchive & operator<<(T const & t);
+    ArrayToMetaArchive &operator<<(T const &t);
     template<class T>
-    ArrayToMetaArchive & operator<<(const boost::serialization::nvp<T> & t);
+    ArrayToMetaArchive &operator<<(const boost::serialization::nvp<T> &t);
     template<class U>
-    ArrayToMetaArchive & operator<<(const boost::serialization::nvp<const boost::serialization::array_wrapper<U>> & t);
+    ArrayToMetaArchive &operator<<(const boost::serialization::nvp<const boost::serialization::array_wrapper<U>> &t);
 
     // the & operator
     template<class T>
-    ArrayToMetaArchive & operator&(const T & t);
-
+    ArrayToMetaArchive &operator&(const T &t);
 };
 
 // SHM VECTOR READER FUNCTOR
@@ -176,32 +175,26 @@ struct ReadHDF5::ShmVectorReader {
     typedef std::unordered_map<std::string, std::string> NameMap;
 
     // members
-    vistle::FindObjectReferenceOArchive * archive;
+    vistle::FindObjectReferenceOArchive *archive;
     std::string arrayNameInFile;
     std::string nvpName;
-    NameMap & arrayMap;
+    NameMap &arrayMap;
     hid_t fileId;
     hid_t dummyDatasetId;
-    const boost::mpi::communicator & comm;
+    const boost::mpi::communicator &comm;
 
     long double maxReadSizeGb;
 
-    ShmVectorReader(vistle::FindObjectReferenceOArchive * _archive,
-            std::string _arrayNameInFile,
-            std::string _nvpName,
-            NameMap & _arrayMap,
-            hid_t _fileId,
-            hid_t _dummyDatasetId,
-            const boost::mpi::communicator & _comm
-            ) :
-        archive(_archive),
-        arrayNameInFile(_arrayNameInFile),
-        nvpName(_nvpName),
-        arrayMap(_arrayMap),
-        fileId(_fileId),
-        dummyDatasetId(_dummyDatasetId),
-        comm(_comm) {
-
+    ShmVectorReader(vistle::FindObjectReferenceOArchive *_archive, std::string _arrayNameInFile, std::string _nvpName,
+                    NameMap &_arrayMap, hid_t _fileId, hid_t _dummyDatasetId, const boost::mpi::communicator &_comm)
+    : archive(_archive)
+    , arrayNameInFile(_arrayNameInFile)
+    , nvpName(_nvpName)
+    , arrayMap(_arrayMap)
+    , fileId(_fileId)
+    , dummyDatasetId(_dummyDatasetId)
+    , comm(_comm)
+    {
         // specify read limit while accounting for the max amount of space taken up by metadata reads, which are not split up when reads are too large
         unsigned totalMetaMembers = ReadHDF5::s_numMetaMembers + HDF5Const::additionalMetaArrayMembers;
         maxReadSizeGb = HDF5Const::mpiReadWriteLimitGb - totalMetaMembers * sizeof(double) / HDF5Const::numBytesInGb;
@@ -211,8 +204,8 @@ struct ReadHDF5::ShmVectorReader {
     void operator()(T);
 
     template<typename T>
-    void readRecursive(const vistle::ShmVector<T> & vec, long double totalReadSize, unsigned readSize, unsigned readIndex);
-
+    void readRecursive(const vistle::ShmVector<T> &vec, long double totalReadSize, unsigned readSize,
+                       unsigned readIndex);
 };
 
 
@@ -224,108 +217,108 @@ struct ReadHDF5::ShmVectorReader {
 //-------------------------------------------------------------------------
 template<class T>
 void ReadHDF5::prepare_performant_readHDF5(hid_t fileId, const boost::mpi::communicator &comm, const char *readName,
-                                            unsigned rank, hsize_t * nodeDims, hsize_t * nodeOffset, T *data) {
+                                           unsigned rank, hsize_t *nodeDims, hsize_t *nodeOffset, T *data)
+{
+    std::vector<hsize_t> dims;
+    std::vector<hsize_t> offset;
+    std::vector<hsize_t> totalDims(rank);
+    herr_t status;
+    hid_t dataSetId;
+    hid_t fileSpaceId;
+    hid_t memSpaceId;
+    hid_t readId;
+    hid_t dataType;
 
-       std::vector<hsize_t> dims;
-       std::vector<hsize_t> offset;
-       std::vector<hsize_t> totalDims(rank);
-       herr_t status;
-       hid_t dataSetId;
-       hid_t fileSpaceId;
-       hid_t memSpaceId;
-       hid_t readId;
-       hid_t dataType;
+    dims.assign(nodeDims, nodeDims + rank);
+    offset.assign(nodeOffset, nodeOffset + rank);
 
-       dims.assign(nodeDims, nodeDims + rank);
-       offset.assign(nodeOffset, nodeOffset + rank);
+    // obtain total size of the array
+    boost::mpi::all_reduce(comm, dims[0], totalDims[0], std::plus<hsize_t>());
+    for (unsigned i = 1; i < totalDims.size(); i++) {
+        totalDims[i] = dims[i];
+    }
 
-       // obtain total size of the array
-       boost::mpi::all_reduce(comm, dims[0], totalDims[0], std::plus<hsize_t>());
-       for (unsigned i = 1; i < totalDims.size(); i++) {
-           totalDims[i] = dims[i];
-       }
+    // abort write if dataset is empty
+    if (totalDims[0] == 0) {
+        return;
+    }
 
-       // abort write if dataset is empty
-       if (totalDims[0] == 0) {
-           return;
-       }
+    // open dataspace
+    dataSetId = H5Dopen2(fileId, readName, H5P_DEFAULT);
+    dataType = H5Dget_type(dataSetId);
 
-       // open dataspace
-       dataSetId = H5Dopen2(fileId, readName, H5P_DEFAULT);
-       dataType = H5Dget_type(dataSetId);
+    // set up parallel read
+    readId = H5Pcreate(H5P_DATASET_XFER);
+    H5Pset_dxpl_mpio(readId, H5FD_MPIO_COLLECTIVE);
 
-       // set up parallel read
-       readId = H5Pcreate(H5P_DATASET_XFER);
-       H5Pset_dxpl_mpio(readId, H5FD_MPIO_COLLECTIVE);
+    long double totalWriteSize = 1;
+    for (unsigned i = 0; i < rank; i++) {
+        totalWriteSize *= totalDims[i];
+    }
 
-       long double totalWriteSize = 1;
-       for (unsigned i = 0; i < rank; i++) {
-           totalWriteSize *= totalDims[i];
-       }
+    // obtain divisions and perform a set of neccessary reads in order to keep under the 2gb MPIO limit
+    // limit lies in number of elements collectively within a write, not total write size based off my tests (i.e. 2e8 elements, not 2e8 bytes)
+    const long double writeLimit = HDF5Const::mpiReadWriteLimitGb * HDF5Const::numBytesInGb;
+    unsigned numWriteDivisions = std::ceil(totalWriteSize / writeLimit);
+    unsigned nodeCutoffWriteIndex = std::ceil((double)nodeDims[0] / numWriteDivisions);
+    for (unsigned i = 0; i < numWriteDivisions; i++) {
+        // handle size zero nodeCutoffWriteIndex to avoid floating point exception with % operator
+        if (nodeDims[0] != 0) {
+            dims[0] = (i == numWriteDivisions - 1) ? nodeDims[0] % nodeCutoffWriteIndex : nodeCutoffWriteIndex;
+            offset[0] = nodeOffset[0] + i * nodeCutoffWriteIndex;
 
-       // obtain divisions and perform a set of neccessary reads in order to keep under the 2gb MPIO limit
-       // limit lies in number of elements collectively within a write, not total write size based off my tests (i.e. 2e8 elements, not 2e8 bytes)
-       const long double writeLimit = HDF5Const::mpiReadWriteLimitGb * HDF5Const::numBytesInGb;
-       unsigned numWriteDivisions = std::ceil(totalWriteSize / writeLimit);
-       unsigned nodeCutoffWriteIndex = std::ceil((double) nodeDims[0] / numWriteDivisions);
-       for (unsigned i = 0; i < numWriteDivisions; i++) {
+            // handle case where % would evaluate to 0
+            if (nodeDims[0] % nodeCutoffWriteIndex == 0) {
+                dims[0] = nodeCutoffWriteIndex;
+            }
 
-           // handle size zero nodeCutoffWriteIndex to avoid floating point exception with % operator
-           if (nodeDims[0] != 0) {
-               dims[0] = (i == numWriteDivisions - 1) ? nodeDims[0] % nodeCutoffWriteIndex : nodeCutoffWriteIndex;
-               offset[0] = nodeOffset[0] + i * nodeCutoffWriteIndex;
+        } else {
+            dims[0] = 0;
+            offset[0] = 0;
+        }
 
-               // handle case where % would evaluate to 0
-               if (nodeDims[0] % nodeCutoffWriteIndex == 0) {
-                   dims[0] = nodeCutoffWriteIndex;
-               }
+        // allocate data spaces
+        memSpaceId = H5Screate_simple(rank, dims.data(), NULL);
+        fileSpaceId = H5Dget_space(dataSetId);
+        H5Sselect_hyperslab(fileSpaceId, H5S_SELECT_SET, offset.data(), NULL, dims.data(), NULL);
 
-           } else {
-               dims[0] = 0;
-               offset[0] = 0;
-           }
+        if (dims[0] == 0 || data == nullptr) {
+            H5Sselect_none(fileSpaceId);
+            H5Sselect_none(memSpaceId);
+        }
 
-           // allocate data spaces
-           memSpaceId = H5Screate_simple(rank, dims.data(), NULL);
-           fileSpaceId = H5Dget_space(dataSetId);
-           H5Sselect_hyperslab(fileSpaceId, H5S_SELECT_SET, offset.data(), NULL, dims.data(), NULL);
+        unsigned dataOffset = i * nodeCutoffWriteIndex;
+        for (unsigned j = 1; j < rank; j++) {
+            dataOffset *= nodeDims[j];
+        }
 
-           if (dims[0] == 0 || data == nullptr) {
-               H5Sselect_none(fileSpaceId);
-               H5Sselect_none(memSpaceId);
-           }
+        // write
+        status = H5Dread(dataSetId, dataType, memSpaceId, fileSpaceId, readId, data + dataOffset);
+        util_checkStatus(status);
 
-           unsigned dataOffset = i * nodeCutoffWriteIndex;
-           for (unsigned j = 1; j < rank; j++) {
-               dataOffset *= nodeDims[j];
-           }
+        // release resources
+        H5Sclose(fileSpaceId);
+        H5Sclose(memSpaceId);
+    }
 
-           // write
-           status = H5Dread(dataSetId, dataType, memSpaceId, fileSpaceId, readId, data + dataOffset);
-           util_checkStatus(status);
-
-           // release resources
-           H5Sclose(fileSpaceId);
-           H5Sclose(memSpaceId);
-
-       }
-
-       H5Dclose(dataSetId);
-       H5Pclose(readId);
+    H5Dclose(dataSetId);
+    H5Pclose(readId);
 }
 
 // SHM VECTOR READER - () OPERATOR
 // * facilitates reading of shmVector data to the HDF5 file when GetArrayFromName types match
 //-------------------------------------------------------------------------
 template<typename T>
-void ReadHDF5::ShmVectorReader::operator()(T) {
-    const vistle::ShmVector<T> foundArray = vistle::Shm::the().getArrayFromName<T>(archive->getVectorEntryByNvpName(nvpName)->referenceName);
+void ReadHDF5::ShmVectorReader::operator()(T)
+{
+    const vistle::ShmVector<T> foundArray =
+        vistle::Shm::the().getArrayFromName<T>(archive->getVectorEntryByNvpName(nvpName)->referenceName);
 
     if (foundArray) {
         auto arrayMapIter = arrayMap.find(arrayNameInFile);
         if (arrayMapIter == arrayMap.end()) {
             // this is a new array
-            vistle::ShmVector<T> &newArray = *((vistle::ShmVector<T> *) archive->getVectorEntryByNvpName(nvpName)->ref);
+            vistle::ShmVector<T> &newArray = *((vistle::ShmVector<T> *)archive->getVectorEntryByNvpName(nvpName)->ref);
             std::string readName = "/array/" + arrayNameInFile;
             long double commWideReadSize;
             long double nodeCurrentReadSizeBytes;
@@ -383,7 +376,8 @@ void ReadHDF5::ShmVectorReader::operator()(T) {
                     hid_t memSpaceId;
 
 
-                    nodeCurrentReadSizeBytes = (nodeCurrentReadSizeBytes / commWideReadSize) * maxReadSizeGb * HDF5Const::numBytesInGb;
+                    nodeCurrentReadSizeBytes =
+                        (nodeCurrentReadSizeBytes / commWideReadSize) * maxReadSizeGb * HDF5Const::numBytesInGb;
                     nodeCurrentReadSizeElements = std::floor(nodeCurrentReadSizeBytes / sizeof(T));
                     dims[0] = nodeCurrentReadSizeElements;
 
@@ -391,7 +385,8 @@ void ReadHDF5::ShmVectorReader::operator()(T) {
                     memSpaceId = H5Screate_simple(1, dims, NULL);
                     H5Sselect_hyperslab(fileSpaceId, H5S_SELECT_SET, offset, NULL, dims, NULL);
 
-                    status = H5Dread(dataSetId, dataType, memSpaceId, fileSpaceId, readId, newArray->data() + readIndex);
+                    status =
+                        H5Dread(dataSetId, dataType, memSpaceId, fileSpaceId, readId, newArray->data() + readIndex);
 
                     // release resources
                     H5Sclose(fileSpaceId);
@@ -416,7 +411,6 @@ void ReadHDF5::ShmVectorReader::operator()(T) {
                 H5Pclose(readId);
                 H5Sclose(dataSpaceId);
                 H5Dclose(dataSetId);
-
             }
 
         } else {
@@ -429,7 +423,7 @@ void ReadHDF5::ShmVectorReader::operator()(T) {
             }
 
             // replace current object array with existing array
-            *((vistle::ShmVector<T> *) archive->getVectorEntryByNvpName(nvpName)->ref) = existingArray;
+            *((vistle::ShmVector<T> *)archive->getVectorEntryByNvpName(nvpName)->ref) = existingArray;
         }
     }
 }
@@ -437,8 +431,8 @@ void ReadHDF5::ShmVectorReader::operator()(T) {
 // ARRAY TO META - << OPERATOR: UNSPECIALIZED
 //-------------------------------------------------------------------------
 template<class T>
-ReadHDF5::ArrayToMetaArchive & ReadHDF5::ArrayToMetaArchive::operator<<(T const & t) {
-
+ReadHDF5::ArrayToMetaArchive &ReadHDF5::ArrayToMetaArchive::operator<<(T const &t)
+{
     // do nothing - this archive assumes all members that need to be saved are stored as name-value pairs
 
     return *this;
@@ -448,12 +442,12 @@ ReadHDF5::ArrayToMetaArchive & ReadHDF5::ArrayToMetaArchive::operator<<(T const 
 // * saves Meta member value into appropriate variable
 //-------------------------------------------------------------------------
 template<class T>
-ReadHDF5::ArrayToMetaArchive & ReadHDF5::ArrayToMetaArchive::operator<<(const boost::serialization::nvp<T> & t) {
+ReadHDF5::ArrayToMetaArchive &ReadHDF5::ArrayToMetaArchive::operator<<(const boost::serialization::nvp<T> &t)
+{
     std::string memberName(t.name());
     auto nvpMapIter = m_nvpMapPtr->find(memberName);
 
-    if (nvpMapIter != m_nvpMapPtr->end()
-            && nvpMapIter->second < m_array.size()) {
+    if (nvpMapIter != m_nvpMapPtr->end() && nvpMapIter->second < m_array.size()) {
         t.value() = m_array[nvpMapIter->second];
     }
 
@@ -461,12 +455,13 @@ ReadHDF5::ArrayToMetaArchive & ReadHDF5::ArrayToMetaArchive::operator<<(const bo
 }
 
 template<class U>
-ReadHDF5::ArrayToMetaArchive & ReadHDF5::ArrayToMetaArchive::operator<<(const boost::serialization::nvp<const boost::serialization::array_wrapper<U>> & t) {
+ReadHDF5::ArrayToMetaArchive &ReadHDF5::ArrayToMetaArchive::operator<<(
+    const boost::serialization::nvp<const boost::serialization::array_wrapper<U>> &t)
+{
     std::string memberName(t.name());
     auto nvpMapIter = m_nvpMapPtr->find(memberName);
 
-    if (nvpMapIter != m_nvpMapPtr->end()
-            && nvpMapIter->second < m_array.size()) {
+    if (nvpMapIter != m_nvpMapPtr->end() && nvpMapIter->second < m_array.size()) {
 #if 0
         t.value() = m_array[nvpMapIter->second];
 #else
@@ -480,10 +475,9 @@ ReadHDF5::ArrayToMetaArchive & ReadHDF5::ArrayToMetaArchive::operator<<(const bo
 // ARRAY TO META - & OPERATOR: UNSPECIALIZED
 //-------------------------------------------------------------------------
 template<class T>
-ReadHDF5::ArrayToMetaArchive & ReadHDF5::ArrayToMetaArchive::operator&(T const & t) {
-
+ReadHDF5::ArrayToMetaArchive &ReadHDF5::ArrayToMetaArchive::operator&(T const &t)
+{
     return *this << t;
-
 }
 
 #endif /* READHDF5_H */

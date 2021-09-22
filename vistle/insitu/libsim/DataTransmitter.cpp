@@ -261,7 +261,8 @@ vistle::Object::ptr DataTransmitter::makeCombinedVariable(const VariableInfo &va
     variable = VariableData::allocVarForCombinedMesh(varInfo, varInfo.meshInfo.grids[0], m_creator);
     size_t combinedVecPos = 0;
     for (const auto dom: varInfo.meshInfo.domains.getIter<int>()) {
-        visit_smart_handle<HandleType::VariableData> varHandle = v2check(simv2_invoke_GetVariable, dom, varInfo.name.c_str());
+        visit_smart_handle<HandleType::VariableData> varHandle =
+            v2check(simv2_invoke_GetVariable, dom, varInfo.name.c_str());
         auto varArray = getVariableData(varHandle);
 
         assert(combinedVecPos + varArray.size >= variable->x().size());

@@ -670,8 +670,8 @@ void ReadSeisSol::readXdmfHeavyController(XdmfArray *xArr, const boost::shared_p
  * @param timestep current timestep.
  */
 void ReadSeisSol::readXdmfHDF5AttributeParallel(XdmfArray *xArrAtt, unsigned &attDim,
-                                               const boost::shared_ptr<XdmfHeavyDataController> &defaultController,
-                                               const int block, const int timestep)
+                                                const boost::shared_ptr<XdmfHeavyDataController> &defaultController,
+                                                const int block, const int timestep)
 {
     const auto controller = shared_dynamic_cast<XdmfHDF5Controller>(defaultController);
     if (!controller)
@@ -711,8 +711,8 @@ void ReadSeisSol::readXdmfHDF5AttributeParallel(XdmfArray *xArrAtt, unsigned &at
  * @param block current block.
  */
 void ReadSeisSol::readXdmfHDF5TopologyParallel(XdmfArray *xArr,
-                                              const boost::shared_ptr<XdmfHeavyDataController> &defaultController,
-                                              const int block)
+                                               const boost::shared_ptr<XdmfHeavyDataController> &defaultController,
+                                               const int block)
 {
     /*************** read topology parallel **************/
     auto controller = shared_dynamic_cast<XdmfHDF5Controller>(defaultController);
@@ -731,8 +731,8 @@ void ReadSeisSol::readXdmfHDF5TopologyParallel(XdmfArray *xArr,
     const std::vector<unsigned> readStart{countTopo * block, 0};
     const std::vector<unsigned> readDataSpace{countTopo, *numCorner};
 
-    auto hdfController = XdmfHDF5Controller::New(h5Path, setPath, arrayType, readStart, readStride,
-                                                 readCount, readDataSpace);
+    auto hdfController =
+        XdmfHDF5Controller::New(h5Path, setPath, arrayType, readStart, readStride, readCount, readDataSpace);
 
     xArr->setHeavyDataController(hdfController);
     xArr->read();
@@ -772,7 +772,7 @@ vistle::Vec<Scalar>::ptr ReadSeisSol::generateScalarFromXdmfAttribute(XdmfAttrib
     if (mode == BLOCKS) {
         if (XdmfAttributeCenter::Cell() == xattribute->getCenter())
             readXdmfHDF5AttributeParallel(xArrAtt.get(), attDim, controller, block, timestep);
-        else  {
+        else {
             sendInfo("Other options than centering attributes according to cells in block mode are not implemented");
             return nullptr;
         }

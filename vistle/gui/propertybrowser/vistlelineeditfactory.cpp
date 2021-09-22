@@ -12,12 +12,10 @@ QT_BEGIN_NAMESPACE
 
 // VistleLineEditFactory
 
-class VistleLineEditFactoryPrivate : public EditorFactoryPrivate<QLineEdit>
-{
+class VistleLineEditFactoryPrivate: public EditorFactoryPrivate<QLineEdit> {
     VistleLineEditFactory *q_ptr;
     Q_DECLARE_PUBLIC(VistleLineEditFactory)
 public:
-
     void slotPropertyChanged(QtProperty *property, const QString &value);
     void slotRegExpChanged(QtProperty *property, const QRegExp &regExp);
     void slotSetValue(const QString &value);
@@ -25,13 +23,12 @@ public:
     void slotReadOnlyChanged(QtProperty *, bool);
 };
 
-void VistleLineEditFactoryPrivate::slotPropertyChanged(QtProperty *property,
-                const QString &value)
+void VistleLineEditFactoryPrivate::slotPropertyChanged(QtProperty *property, const QString &value)
 {
     if (!m_createdEditors.contains(property))
         return;
 
-    QListIterator<QLineEdit *> itEditor( m_createdEditors[property]);
+    QListIterator<QLineEdit *> itEditor(m_createdEditors[property]);
     while (itEditor.hasNext()) {
         QLineEdit *editor = itEditor.next();
         if (editor->text() != value) {
@@ -42,8 +39,7 @@ void VistleLineEditFactoryPrivate::slotPropertyChanged(QtProperty *property,
     }
 }
 
-void VistleLineEditFactoryPrivate::slotRegExpChanged(QtProperty *property,
-            const QRegExp &regExp)
+void VistleLineEditFactoryPrivate::slotRegExpChanged(QtProperty *property, const QRegExp &regExp)
 {
     if (!m_createdEditors.contains(property))
         return;
@@ -86,7 +82,7 @@ void VistleLineEditFactoryPrivate::slotEchoModeChanged(QtProperty *property, int
     }
 }
 
-void VistleLineEditFactoryPrivate::slotReadOnlyChanged( QtProperty *property, bool readOnly)
+void VistleLineEditFactoryPrivate::slotReadOnlyChanged(QtProperty *property, bool readOnly)
 {
     if (!m_createdEditors.contains(property))
         return;
@@ -108,7 +104,8 @@ void VistleLineEditFactoryPrivate::slotSetValue(const QString &value)
 {
     QObject *object = q_ptr->sender();
     const QMap<QLineEdit *, QtProperty *>::ConstIterator ecend = m_editorToProperty.constEnd();
-    for (QMap<QLineEdit *, QtProperty *>::ConstIterator itEditor = m_editorToProperty.constBegin(); itEditor != ecend; ++itEditor)
+    for (QMap<QLineEdit *, QtProperty *>::ConstIterator itEditor = m_editorToProperty.constBegin(); itEditor != ecend;
+         ++itEditor)
         if (itEditor.key() == object) {
             QtProperty *property = itEditor.value();
             QtStringPropertyManager *manager = q_ptr->propertyManager(property);
@@ -118,7 +115,6 @@ void VistleLineEditFactoryPrivate::slotSetValue(const QString &value)
             return;
         }
 }
-
 
 
 /*!
@@ -133,12 +129,10 @@ void VistleLineEditFactoryPrivate::slotSetValue(const QString &value)
 /*!
     Creates a factory with the given \a parent.
 */
-VistleLineEditFactory::VistleLineEditFactory(QObject *parent)
-    : QtAbstractEditorFactory<QtStringPropertyManager>(parent)
+VistleLineEditFactory::VistleLineEditFactory(QObject *parent): QtAbstractEditorFactory<QtStringPropertyManager>(parent)
 {
     d_ptr = new VistleLineEditFactoryPrivate();
     d_ptr->q_ptr = this;
-
 }
 
 /*!
@@ -157,14 +151,12 @@ VistleLineEditFactory::~VistleLineEditFactory()
 */
 void VistleLineEditFactory::connectPropertyManager(QtStringPropertyManager *manager)
 {
-    connect(manager, SIGNAL(valueChanged(QtProperty *, const QString &)),
-            this, SLOT(slotPropertyChanged(QtProperty *, const QString &)));
-    connect(manager, SIGNAL(regExpChanged(QtProperty *, const QRegExp &)),
-            this, SLOT(slotRegExpChanged(QtProperty *, const QRegExp &)));
-    connect(manager, SIGNAL(echoModeChanged(QtProperty*, int)),
-            this, SLOT(slotEchoModeChanged(QtProperty *, int)));
-    connect(manager, SIGNAL(readOnlyChanged(QtProperty*, bool)),
-        this, SLOT(slotReadOnlyChanged(QtProperty *, bool)));
+    connect(manager, SIGNAL(valueChanged(QtProperty *, const QString &)), this,
+            SLOT(slotPropertyChanged(QtProperty *, const QString &)));
+    connect(manager, SIGNAL(regExpChanged(QtProperty *, const QRegExp &)), this,
+            SLOT(slotRegExpChanged(QtProperty *, const QRegExp &)));
+    connect(manager, SIGNAL(echoModeChanged(QtProperty *, int)), this, SLOT(slotEchoModeChanged(QtProperty *, int)));
+    connect(manager, SIGNAL(readOnlyChanged(QtProperty *, bool)), this, SLOT(slotReadOnlyChanged(QtProperty *, bool)));
 }
 
 /*!
@@ -172,10 +164,8 @@ void VistleLineEditFactory::connectPropertyManager(QtStringPropertyManager *mana
 
     Reimplemented from the QtAbstractEditorFactory class.
 */
-QWidget *VistleLineEditFactory::createEditor(QtStringPropertyManager *manager,
-        QtProperty *property, QWidget *parent)
+QWidget *VistleLineEditFactory::createEditor(QtStringPropertyManager *manager, QtProperty *property, QWidget *parent)
 {
-
     QLineEdit *editor = d_ptr->createEditor(property, parent);
     editor->setEchoMode((EchoMode)manager->echoMode(property));
     editor->setReadOnly(manager->isReadOnly(property));
@@ -190,12 +180,10 @@ QWidget *VistleLineEditFactory::createEditor(QtStringPropertyManager *manager,
     connect(editor, SIGNAL(textChanged(const QString &)),
                 this, SLOT(slotSetValue(const QString &)));
 #else
-    connect(editor, &QLineEdit::editingFinished, [manager, property, editor](){
-        manager->setValue(property, editor->text());
-    });
+    connect(editor, &QLineEdit::editingFinished,
+            [manager, property, editor]() { manager->setValue(property, editor->text()); });
 #endif
-    connect(editor, SIGNAL(destroyed(QObject *)),
-                this, SLOT(slotEditorDestroyed(QObject *)));
+    connect(editor, SIGNAL(destroyed(QObject *)), this, SLOT(slotEditorDestroyed(QObject *)));
     return editor;
 }
 
@@ -206,15 +194,13 @@ QWidget *VistleLineEditFactory::createEditor(QtStringPropertyManager *manager,
 */
 void VistleLineEditFactory::disconnectPropertyManager(QtStringPropertyManager *manager)
 {
-    disconnect(manager, SIGNAL(valueChanged(QtProperty *, const QString &)),
-                this, SLOT(slotPropertyChanged(QtProperty *, const QString &)));
-    disconnect(manager, SIGNAL(regExpChanged(QtProperty *, const QRegExp &)),
-                this, SLOT(slotRegExpChanged(QtProperty *, const QRegExp &)));
-    disconnect(manager, SIGNAL(echoModeChanged(QtProperty*,int)),
-                this, SLOT(slotEchoModeChanged(QtProperty *, int)));
-    disconnect(manager, SIGNAL(readOnlyChanged(QtProperty*, bool)),
-        this, SLOT(slotReadOnlyChanged(QtProperty *, bool)));
-
+    disconnect(manager, SIGNAL(valueChanged(QtProperty *, const QString &)), this,
+               SLOT(slotPropertyChanged(QtProperty *, const QString &)));
+    disconnect(manager, SIGNAL(regExpChanged(QtProperty *, const QRegExp &)), this,
+               SLOT(slotRegExpChanged(QtProperty *, const QRegExp &)));
+    disconnect(manager, SIGNAL(echoModeChanged(QtProperty *, int)), this, SLOT(slotEchoModeChanged(QtProperty *, int)));
+    disconnect(manager, SIGNAL(readOnlyChanged(QtProperty *, bool)), this,
+               SLOT(slotReadOnlyChanged(QtProperty *, bool)));
 }
 
 #if QT_VERSION >= 0x040400

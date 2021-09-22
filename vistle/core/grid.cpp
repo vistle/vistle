@@ -5,8 +5,8 @@
 
 namespace vistle {
 
-bool GridInterface::Interpolator::check() const {
-
+bool GridInterface::Interpolator::check() const
+{
 #ifndef NDEBUG
     bool ok = true;
     for (const auto w: weights) {
@@ -44,4 +44,4 @@ bool GridInterface::Interpolator::check() const {
     return true;
 }
 
-}
+} // namespace vistle

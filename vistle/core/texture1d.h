@@ -10,38 +10,33 @@
 namespace vistle {
 
 class V_COREEXPORT Texture1D: public Vec<Scalar> {
-   V_OBJECT(Texture1D);
+    V_OBJECT(Texture1D);
 
- public:
-   typedef Vec<Scalar> Base;
+public:
+    typedef Vec<Scalar> Base;
 
-   Texture1D(const Index width,
-         const Scalar min, const Scalar max,
-         const Meta &meta=Meta());
+    Texture1D(const Index width, const Scalar min, const Scalar max, const Meta &meta = Meta());
 
-   Index getWidth() const;
-   Scalar getMin() const;
-   Scalar getMax() const;
-   Index getNumCoords() { return getSize(); }
-   Index getNumCoords() const { return getSize(); }
-   shm<unsigned char>::array &pixels() { return *d()->pixels; }
-   const shm<unsigned char>::array &pixels() const { return *d()->pixels; }
-   shm<Scalar>::array &coords() { return x(); }
-   const Scalar *coords() const  { return x(); }
+    Index getWidth() const;
+    Scalar getMin() const;
+    Scalar getMax() const;
+    Index getNumCoords() { return getSize(); }
+    Index getNumCoords() const { return getSize(); }
+    shm<unsigned char>::array &pixels() { return *d()->pixels; }
+    const shm<unsigned char>::array &pixels() const { return *d()->pixels; }
+    shm<Scalar>::array &coords() { return x(); }
+    const Scalar *coords() const { return x(); }
 
-   V_DATA_BEGIN(Texture1D);
-      Scalar range[2];
+    V_DATA_BEGIN(Texture1D);
+    Scalar range[2];
 
-      ShmVector<unsigned char> pixels;
+    ShmVector<unsigned char> pixels;
 
-      static Data *create(const Index width = 0,
-            const Scalar min = 0, const Scalar max = 0,
-            const Meta &m=Meta());
-      Data(const std::string &name = "", const Index size = 0,
-            const Scalar min = 0, const Scalar max = 0,
-            const Meta &m=Meta());
+    static Data *create(const Index width = 0, const Scalar min = 0, const Scalar max = 0, const Meta &m = Meta());
+    Data(const std::string &name = "", const Index size = 0, const Scalar min = 0, const Scalar max = 0,
+         const Meta &m = Meta());
 
-   V_DATA_END(Texture1D);
+    V_DATA_END(Texture1D);
 };
 
 } // namespace vistle

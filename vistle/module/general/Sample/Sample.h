@@ -24,9 +24,10 @@ private:
     bool objectAdded(int sender, const std::string &senderPort, const vistle::Port *port) override;
     bool changeParameter(const vistle::Parameter *p) override;
 
-    int SampleToGrid(const vistle::GeometryInterface *target, vistle::DataBase::const_ptr inData, vistle::DataBase::ptr &sampled );
+    int SampleToGrid(const vistle::GeometryInterface *target, vistle::DataBase::const_ptr inData,
+                     vistle::DataBase::ptr &sampled);
 
-    vistle::IntParameter *m_mode, *m_valOutside, *m_hits ;
+    vistle::IntParameter *m_mode, *m_valOutside, *m_hits;
     vistle::GridInterface::InterpolationMode mode;
     vistle::Port *m_out = nullptr;
     vistle::IntParameter *m_createCelltree;

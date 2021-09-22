@@ -8,40 +8,35 @@ namespace asio = boost::asio;
 namespace vistle {
 
 UiClient::UiClient(UiManager &manager, int id, std::shared_ptr<asio::ip::tcp::socket> socket)
-: m_id(id)
-, m_done(false)
-, m_socket(socket)
-, m_manager(manager)
+: m_id(id), m_done(false), m_socket(socket), m_manager(manager)
+{}
+
+UiClient::~UiClient()
+{}
+
+int UiClient::id() const
 {
+    return m_id;
 }
 
-UiClient::~UiClient() {
-
+UiManager &UiClient::manager() const
+{
+    return m_manager;
 }
 
-int UiClient::id() const {
-
-   return m_id;
+bool UiClient::done() const
+{
+    return m_done;
 }
 
-UiManager &UiClient::manager() const {
-
-   return m_manager;
+void UiClient::cancel()
+{
+    m_done = true;
 }
 
-bool UiClient::done() const {
-
-   return m_done;
-}
-
-void UiClient::cancel() {
-
-   m_done = true;
-}
-
-std::shared_ptr<asio::ip::tcp::socket> UiClient::socket() {
-
-   return m_socket;
+std::shared_ptr<asio::ip::tcp::socket> UiClient::socket()
+{
+    return m_socket;
 }
 
 } // namespace vistle

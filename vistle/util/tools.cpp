@@ -19,46 +19,45 @@ namespace vistle {
 
 std::string backtrace()
 {
-   std::stringstream str;
+    std::stringstream str;
 
 #ifdef HAVE_EXECINFO
-   const int MaxFrames = 32;
+    const int MaxFrames = 32;
 
-   void* buffer[MaxFrames] = { 0 };
-   const int count = ::backtrace(buffer, MaxFrames);
+    void *buffer[MaxFrames] = {0};
+    const int count = ::backtrace(buffer, MaxFrames);
 
-   char** symbols = ::backtrace_symbols(buffer, count);
+    char **symbols = ::backtrace_symbols(buffer, count);
 
-   if (symbols) {
+    if (symbols) {
+        for (int n = 0; n < count; ++n) {
+            str << "   " << symbols[n] << std::endl;
+        }
 
-      for (int n=0; n<count; ++n) {
-
-         str << "   " << symbols[n] << std::endl;
-      }
-
-      free(symbols);
-   }
+        free(symbols);
+    }
 #endif
 
-   return str.str();
+    return str.str();
 }
 
-bool attach_debugger() {
-
+bool attach_debugger()
+{
 #ifdef _WIN32
-   DebugBreak();
-   return true;
+    DebugBreak();
+    return true;
 #else
-   //sleep(60);
-   abort();
-   return true;
+    //sleep(60);
+    abort();
+    return true;
 
-   pid_t pid = fork();
-   if (pid == -1) {
-      std::cerr << "failed to fork for attaching debugger" << std::endl;
-      return false;
-   } else if (pid == 0) {
-      execlp("attach_debugger_vistle.sh", "attach_debugger_vistle.sh", boost::lexical_cast<std::string>(getppid()).c_str(), nullptr);
+    pid_t pid = fork();
+    if (pid == -1) {
+        std::cerr << "failed to fork for attaching debugger" << std::endl;
+        return false;
+    } else if (pid == 0) {
+        execlp("attach_debugger_vistle.sh", "attach_debugger_vistle.sh",
+               boost::lexical_cast<std::string>(getppid()).c_str(), nullptr);
 #if 0
       std::stringstream cmd;
       cmd << "attach_debugger_vistle.sh";
@@ -73,13 +72,13 @@ bool attach_debugger() {
       }
       return false;
 #else
-      std::cerr << "failed to execute debugger: " << strerror(errno) << std::endl;
-      exit(1);
+        std::cerr << "failed to execute debugger: " << strerror(errno) << std::endl;
+        exit(1);
 #endif
-   } else {
+    } else {
 #ifndef __EMSCRIPTEN__
-      kill(getpid(), SIGSTOP);
-      sleep(1);
+        kill(getpid(), SIGSTOP);
+        sleep(1);
 #endif
 #if 0
       const int wait = 30;
@@ -90,21 +89,21 @@ bool attach_debugger() {
       }
       sleep(3);
 #endif
-      return true;
-   }
+        return true;
+    }
 #endif
 }
 
-bool parentProcessDied() {
-
+bool parentProcessDied()
+{
 #if defined(_WIN32) || defined(__EMSCRIPTEN__)
     // no implementation
     return false;
-#elif defined (__linux__)
+#elif defined(__linux__)
     // not necessary as processes die automatically with their parent
     return false;
 #else
-   return kill(getppid(), 0) == -1;
+    return kill(getppid(), 0) == -1;
 #endif
 }
 

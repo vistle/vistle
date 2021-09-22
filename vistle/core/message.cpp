@@ -28,16 +28,18 @@
 namespace vistle {
 namespace message {
 
-bool Id::isHub(int id) {
+bool Id::isHub(int id)
+{
     return id <= Id::LocalHub;
 }
 
-bool Id::isModule(int id) {
+bool Id::isModule(int id)
+{
     return id >= Id::ModuleBase;
 }
 
-std::string Id::toString(Reserved id) {
-
+std::string Id::toString(Reserved id)
+{
     switch (id) {
     case Invalid:
         return "Invalid";
@@ -64,8 +66,8 @@ std::string Id::toString(Reserved id) {
     return "ERROR";
 }
 
-std::string Id::toString(int id) {
-
+std::string Id::toString(int id)
+{
     if (isModule(id)) {
         return "Module " + std::to_string(id);
     }
@@ -76,8 +78,7 @@ std::string Id::toString(int id) {
     return toString(static_cast<Reserved>(id));
 }
 
-codec_error::codec_error(const std::string &what)
-: vistle::exception(what)
+codec_error::codec_error(const std::string &what): vistle::exception(what)
 {
     std::string codecs;
 #ifdef HAVE_SNAPPY
@@ -104,32 +105,30 @@ codec_error::codec_error(const std::string &what)
 
 DefaultSender DefaultSender::s_instance;
 
-DefaultSender::DefaultSender()
-: m_id(Id::Invalid)
-, m_rank(-1)
+DefaultSender::DefaultSender(): m_id(Id::Invalid), m_rank(-1)
 {
-   Router::the();
+    Router::the();
 }
 
-int DefaultSender::id() {
-
-   return s_instance.m_id;
+int DefaultSender::id()
+{
+    return s_instance.m_id;
 }
 
-int DefaultSender::rank() {
-
-   return s_instance.m_rank;
+int DefaultSender::rank()
+{
+    return s_instance.m_rank;
 }
 
-void DefaultSender::init(int id, int rank) {
-
-   s_instance.m_id = id;
-   s_instance.m_rank = rank;
+void DefaultSender::init(int id, int rank)
+{
+    s_instance.m_id = id;
+    s_instance.m_rank = rank;
 }
 
-const DefaultSender &DefaultSender::instance() {
-
-   return s_instance;
+const DefaultSender &DefaultSender::instance()
+{
+    return s_instance;
 }
 
 static boost::uuids::random_generator s_uuidGenerator;
@@ -151,88 +150,91 @@ Message::Message(const Type t, const unsigned int s)
 , m_notification(false)
 , m_pad{0}
 {
-
-   assert(m_size <= MESSAGE_SIZE);
-   assert(m_type > INVALID);
-   assert(m_type < NumMessageTypes);
+    assert(m_size <= MESSAGE_SIZE);
+    assert(m_type > INVALID);
+    assert(m_type < NumMessageTypes);
 }
 
-unsigned long Message::typeFlags() const {
+unsigned long Message::typeFlags() const
+{
+    assert(type() > ANY && type() > INVALID && type() < NumMessageTypes);
+    if (type() <= ANY || type() <= INVALID) {
+        return 0;
+    }
+    if (type() >= NumMessageTypes) {
+        return 0;
+    }
 
-   assert(type() > ANY && type() > INVALID && type() < NumMessageTypes);
-   if (type() <= ANY || type() <= INVALID) {
-      return 0;
-   }
-   if (type() >= NumMessageTypes) {
-      return 0;
-   }
-
-   return Router::rt[type()];
+    return Router::rt[type()];
 }
 
-const uuid_t &Message::uuid() const {
-
-   return m_uuid;
+const uuid_t &Message::uuid() const
+{
+    return m_uuid;
 }
 
-void Message::setUuid(const uuid_t &uuid) {
-
-   m_uuid = uuid;
+void Message::setUuid(const uuid_t &uuid)
+{
+    m_uuid = uuid;
 }
 
-const uuid_t &Message::referrer() const {
-
-   return m_referrer;
+const uuid_t &Message::referrer() const
+{
+    return m_referrer;
 }
 
-void Message::setReferrer(const uuid_t &uuid) {
-
-   m_referrer = uuid;
+void Message::setReferrer(const uuid_t &uuid)
+{
+    m_referrer = uuid;
 }
 
-int Message::senderId() const {
-
-   return m_senderId;
+int Message::senderId() const
+{
+    return m_senderId;
 }
 
-void Message::setSenderId(int id) {
-
-   m_senderId = id;
+void Message::setSenderId(int id)
+{
+    m_senderId = id;
 }
 
-int Message::destId() const {
-
-   return m_destId;
+int Message::destId() const
+{
+    return m_destId;
 }
 
-void Message::setDestId(int id) {
-
-   m_destId = id;
+void Message::setDestId(int id)
+{
+    m_destId = id;
 }
 
-int Message::destRank() const {
-   return m_destRank;
+int Message::destRank() const
+{
+    return m_destRank;
 }
 
-void Message::setDestRank(int r) {
+void Message::setDestRank(int r)
+{
     m_destRank = r;
 }
 
-int Message::destUiId() const {
+int Message::destUiId() const
+{
     return -m_destRank;
 }
 
-void Message::setDestUiId(int id) {
+void Message::setDestUiId(int id)
+{
     m_destRank = -id;
 }
 
-int Message::rank() const {
-
-   return m_rank;
+int Message::rank() const
+{
+    return m_rank;
 }
 
-void Message::setRank(int rank) {
-   
+void Message::setRank(int rank)
+{
     m_rank = rank;
 }
 
@@ -241,82 +243,93 @@ int Message::uiId() const
     return -m_rank;
 }
 
-Type Message::type() const {
-
-   return m_type;
+Type Message::type() const
+{
+    return m_type;
 }
 
-size_t Message::size() const {
-
-   return m_size;
+size_t Message::size() const
+{
+    return m_size;
 }
 
-size_t Message::payloadSize() const {
-   return m_payloadSize;
+size_t Message::payloadSize() const
+{
+    return m_payloadSize;
 }
 
-void Message::setPayloadSize(size_t size) {
+void Message::setPayloadSize(size_t size)
+{
     m_payloadSize = size;
 }
 
-std::string Message::payloadName() const {
+std::string Message::payloadName() const
+{
     return m_payloadName;
 }
 
-void Message::setPayloadName(const shm_name_t &name) {
+void Message::setPayloadName(const shm_name_t &name)
+{
     m_payloadName = name;
 }
 
-CompressionMode Message::payloadCompression() const {
-   return CompressionMode(m_payloadCompression);
+CompressionMode Message::payloadCompression() const
+{
+    return CompressionMode(m_payloadCompression);
 }
 
-void Message::setPayloadCompression(CompressionMode mode) {
-   m_payloadCompression = mode;
+void Message::setPayloadCompression(CompressionMode mode)
+{
+    m_payloadCompression = mode;
 }
 
-size_t Message::payloadRawSize() const {
+size_t Message::payloadRawSize() const
+{
     return m_payloadRawSize;
 }
 
-void Message::setPayloadRawSize(size_t size) {
+void Message::setPayloadRawSize(size_t size)
+{
     m_payloadRawSize = size;
 }
 
-bool Message::isForBroadcast() const {
-
+bool Message::isForBroadcast() const
+{
     return m_forBroadcast;
 }
 
-void Message::setForBroadcast(bool enable) {
+void Message::setForBroadcast(bool enable)
+{
     m_forBroadcast = enable;
 }
 
-bool Message::wasBroadcast() const {
-
+bool Message::wasBroadcast() const
+{
     return m_wasBroadcast;
 }
 
-void Message::setWasBroadcast(bool enable) {
+void Message::setWasBroadcast(bool enable)
+{
     m_wasBroadcast = enable;
 }
 
-bool Message::isNotification() const {
-
+bool Message::isNotification() const
+{
     return m_notification;
 }
 
-void Message::setNotify(bool enable) {
-
+void Message::setNotify(bool enable)
+{
     m_notification = enable;
 }
 
-buffer compressPayload(CompressionMode &mode, const buffer &raw, int speed) {
+buffer compressPayload(CompressionMode &mode, const buffer &raw, int speed)
+{
     return compressPayload(mode, raw.data(), raw.size(), speed);
 }
 
-buffer compressPayload(CompressionMode &mode, const char *raw, size_t size, int speed) {
-
+buffer compressPayload(CompressionMode &mode, const char *raw, size_t size, int speed)
+{
     auto m = mode;
     mode = message::CompressionNone;
     buffer compressed;
@@ -327,7 +340,7 @@ buffer compressPayload(CompressionMode &mode, const char *raw, size_t size, int 
         compressed.resize(maxsize);
         size_t compressedSize = 0;
         snappy::RawCompress(raw, size, compressed.data(), &compressedSize);
-        if (compressedSize<size) {
+        if (compressedSize < size) {
             compressed.resize(compressedSize);
             mode = CompressionSnappy;
         }
@@ -355,7 +368,7 @@ buffer compressPayload(CompressionMode &mode, const char *raw, size_t size, int 
         size_t maxsize = LZ4_compressBound(size);
         compressed.resize(maxsize);
         size_t compressedSize = LZ4_compress_fast(raw, compressed.data(), size, compressed.size(), speed);
-        if (compressedSize > 0 && compressedSize<size) {
+        if (compressedSize > 0 && compressedSize < size) {
             compressed.resize(compressedSize);
             mode = CompressionLz4;
         }
@@ -375,8 +388,8 @@ buffer compressPayload(CompressionMode &mode, const char *raw, size_t size, int 
     return compressed;
 }
 
-buffer compressPayload(CompressionMode mode, Message &msg, buffer &raw, int speed) {
-
+buffer compressPayload(CompressionMode mode, Message &msg, buffer &raw, int speed)
+{
     CompressionMode m = mode;
     msg.setPayloadRawSize(raw.size());
     msg.setPayloadCompression(CompressionNone);
@@ -393,8 +406,8 @@ buffer compressPayload(CompressionMode mode, Message &msg, buffer &raw, int spee
     return compressed;
 }
 
-buffer decompressPayload(CompressionMode mode, size_t size, size_t rawsize, buffer &compressed) {
-
+buffer decompressPayload(CompressionMode mode, size_t size, size_t rawsize, buffer &compressed)
+{
     if (mode == CompressionNone)
         return std::move(compressed);
 
@@ -402,7 +415,8 @@ buffer decompressPayload(CompressionMode mode, size_t size, size_t rawsize, buff
     return decompressPayload(mode, size, rawsize, compressed.data());
 }
 
-buffer decompressPayload(CompressionMode mode, size_t size, size_t rawsize, const char *compressed) {
+buffer decompressPayload(CompressionMode mode, size_t size, size_t rawsize, const char *compressed)
+{
     buffer decompressed(rawsize);
 
     switch (mode) {
@@ -418,7 +432,8 @@ buffer decompressPayload(CompressionMode mode, size_t size, size_t rawsize, cons
 #ifdef HAVE_ZSTD
         size_t n = ZSTD_decompress(decompressed.data(), decompressed.size(), compressed, size);
         if (n != rawsize) {
-            std::cerr << "Zstd decompression WARNING: decompressed size " << n << " does not match raw size " << rawsize << std::endl;
+            std::cerr << "Zstd decompression WARNING: decompressed size " << n << " does not match raw size " << rawsize
+                      << std::endl;
         }
         if (ZSTD_isError(n)) {
             std::string err;
@@ -426,7 +441,7 @@ buffer decompressPayload(CompressionMode mode, size_t size, size_t rawsize, cons
                 err = e;
             }
             std::cerr << "Zstd decompression ERROR: " << err << std::endl;
-            throw codec_error("Zstd decompression failed: "+err);
+            throw codec_error("Zstd decompression failed: " + err);
         }
         //assert(n == msg.payloadRawSize());
 #else
@@ -438,7 +453,8 @@ buffer decompressPayload(CompressionMode mode, size_t size, size_t rawsize, cons
 #ifdef HAVE_LZ4
         int n = LZ4_decompress_safe(compressed, decompressed.data(), size, decompressed.size());
         if (size_t(n) != rawsize) {
-            std::cerr << "LZ4 decompression WARNING: decompressed size " << n << " does not match raw size " << rawsize << std::endl;
+            std::cerr << "LZ4 decompression WARNING: decompressed size " << n << " does not match raw size " << rawsize
+                      << std::endl;
         }
         if (n < 0) {
             throw codec_error("LZ4 decompression failed");
@@ -457,32 +473,33 @@ buffer decompressPayload(CompressionMode mode, size_t size, size_t rawsize, cons
     return decompressed;
 }
 
-buffer decompressPayload(const Message &msg, buffer &compressed) {
-
+buffer decompressPayload(const Message &msg, buffer &compressed)
+{
     assert(compressed.size() >= msg.payloadSize());
 
     return decompressPayload(msg.payloadCompression(), msg.payloadSize(), msg.payloadRawSize(), compressed);
 }
 
-MessageFactory::MessageFactory(int id, int rank)
-: m_id(id)
-, m_rank(rank)
-{
-}
+MessageFactory::MessageFactory(int id, int rank): m_id(id), m_rank(rank)
+{}
 
-int MessageFactory::id() const {
+int MessageFactory::id() const
+{
     return m_id;
 }
 
-void MessageFactory::setId(int id) {
+void MessageFactory::setId(int id)
+{
     m_id = id;
 }
 
-void MessageFactory::setRank(int rank) {
+void MessageFactory::setRank(int rank)
+{
     m_rank = rank;
 }
 
-int MessageFactory::rank() const {
+int MessageFactory::rank() const
+{
     return m_rank;
 }
 

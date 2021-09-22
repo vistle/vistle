@@ -51,17 +51,17 @@ QT_BEGIN_NAMESPACE
 
 class QtLongSpinBoxFactoryPrivate;
 
-class QT_QTPROPERTYBROWSER_EXPORT QtLongSpinBoxFactory : public QtAbstractEditorFactory<QtLongPropertyManager>
-{
+class QT_QTPROPERTYBROWSER_EXPORT QtLongSpinBoxFactory: public QtAbstractEditorFactory<QtLongPropertyManager> {
     Q_OBJECT
 public:
     QtLongSpinBoxFactory(QObject *parent = 0);
     ~QtLongSpinBoxFactory();
+
 protected:
     void connectPropertyManager(QtLongPropertyManager *manager);
-    QWidget *createEditor(QtLongPropertyManager *manager, QtProperty *property,
-                QWidget *parent);
+    QWidget *createEditor(QtLongPropertyManager *manager, QtProperty *property, QWidget *parent);
     void disconnectPropertyManager(QtLongPropertyManager *manager);
+
 private:
     QtLongSpinBoxFactoryPrivate *d_ptr;
     Q_DECLARE_PRIVATE(QtLongSpinBoxFactory)
@@ -76,17 +76,17 @@ private:
 
 class QtLongSliderFactoryPrivate;
 
-class QT_QTPROPERTYBROWSER_EXPORT QtLongSliderFactory : public QtAbstractEditorFactory<QtLongPropertyManager>
-{
+class QT_QTPROPERTYBROWSER_EXPORT QtLongSliderFactory: public QtAbstractEditorFactory<QtLongPropertyManager> {
     Q_OBJECT
 public:
     QtLongSliderFactory(QObject *parent = 0);
     ~QtLongSliderFactory();
+
 protected:
     void connectPropertyManager(QtLongPropertyManager *manager);
-    QWidget *createEditor(QtLongPropertyManager *manager, QtProperty *property,
-                QWidget *parent);
+    QWidget *createEditor(QtLongPropertyManager *manager, QtProperty *property, QWidget *parent);
     void disconnectPropertyManager(QtLongPropertyManager *manager);
+
 private:
     QtLongSliderFactoryPrivate *d_ptr;
     Q_DECLARE_PRIVATE(QtLongSliderFactory)
@@ -100,17 +100,17 @@ private:
 
 class QtLongScrollBarFactoryPrivate;
 
-class QT_QTPROPERTYBROWSER_EXPORT QtLongScrollBarFactory : public QtAbstractEditorFactory<QtLongPropertyManager>
-{
+class QT_QTPROPERTYBROWSER_EXPORT QtLongScrollBarFactory: public QtAbstractEditorFactory<QtLongPropertyManager> {
     Q_OBJECT
 public:
     QtLongScrollBarFactory(QObject *parent = 0);
     ~QtLongScrollBarFactory();
+
 protected:
     void connectPropertyManager(QtLongPropertyManager *manager);
-    QWidget *createEditor(QtLongPropertyManager *manager, QtProperty *property,
-                QWidget *parent);
+    QWidget *createEditor(QtLongPropertyManager *manager, QtProperty *property, QWidget *parent);
     void disconnectPropertyManager(QtLongPropertyManager *manager);
+
 private:
     QtLongScrollBarFactoryPrivate *d_ptr;
     Q_DECLARE_PRIVATE(QtLongScrollBarFactory)

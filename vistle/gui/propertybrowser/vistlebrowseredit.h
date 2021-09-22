@@ -21,12 +21,7 @@ class UserInterface;
 class VistleBrowserEdit: public QWidget {
     Q_OBJECT
 public:
-    enum FileMode {
-        File,
-        ExistingFile,
-        Directory,
-        ExistingDirectory
-    };
+    enum FileMode { File, ExistingFile, Directory, ExistingDirectory };
 
     VistleBrowserEdit(QWidget *parent = nullptr);
     ~VistleBrowserEdit() override;

@@ -20,6 +20,6 @@ V_UTILEXPORT std::string configHome(); //config directory of the user
 
 } // namespace directory
 
-}
+} // namespace vistle
 
 #endif

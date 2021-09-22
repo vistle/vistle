@@ -668,7 +668,7 @@ bool ReadWRFChem::read(Token &token, int timestep, int block)
         }
 
         size_t nx = edges[numdims - 3].getSize() /*Bottom_Top*/, ny = edges[numdims - 2].getSize() /*South_North*/,
-            nz = edges[numdims - 1].getSize() /*East_West*/; //, nTime = edges[0] /*TIME*/ ;
+               nz = edges[numdims - 1].getSize() /*East_West*/; //, nTime = edges[0] /*TIME*/ ;
         long blockSizeVer = (nx) / numBlocksVer, blockSizeLat = (ny) / numBlocksLat;
         if (numdims <= 3) {
             nx = 1;

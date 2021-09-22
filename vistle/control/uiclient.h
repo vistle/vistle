@@ -11,23 +11,23 @@ namespace vistle {
 class UiManager;
 
 class UiClient {
-   public:
-      UiClient(UiManager &manager, int id, std::shared_ptr<boost::asio::ip::tcp::socket> socket);
-      ~UiClient();
+public:
+    UiClient(UiManager &manager, int id, std::shared_ptr<boost::asio::ip::tcp::socket> socket);
+    ~UiClient();
 
-      int id() const;
-      void cancel();
-      bool done() const;
-      UiManager &manager() const;
-      std::shared_ptr<boost::asio::ip::tcp::socket> socket();
+    int id() const;
+    void cancel();
+    bool done() const;
+    UiManager &manager() const;
+    std::shared_ptr<boost::asio::ip::tcp::socket> socket();
 
-   private:
-      UiClient(const UiClient &o);
+private:
+    UiClient(const UiClient &o);
 
-      int m_id;
-      bool m_done;
-      std::shared_ptr<boost::asio::ip::tcp::socket> m_socket;
-      UiManager &m_manager;
+    int m_id;
+    bool m_done;
+    std::shared_ptr<boost::asio::ip::tcp::socket> m_socket;
+    UiManager &m_manager;
 };
 
 } // namespace vistle

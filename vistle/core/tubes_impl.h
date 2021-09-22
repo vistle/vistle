@@ -4,8 +4,9 @@
 namespace vistle {
 
 template<class Archive>
-void Tubes::Data::serialize(Archive &ar) {
-   ar & V_NAME(ar, "base_coords_with_radius", serialize_base<Base::Data>(ar, *this));
+void Tubes::Data::serialize(Archive &ar)
+{
+    ar &V_NAME(ar, "base_coords_with_radius", serialize_base<Base::Data>(ar, *this));
 }
 
 } // namespace vistle

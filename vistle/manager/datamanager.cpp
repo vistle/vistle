@@ -32,14 +32,14 @@ namespace vistle {
 
 namespace {
 
-bool isLocal(int id) {
-
-   auto &comm = Communicator::the();
-   auto &state = comm.clusterManager().state();
-   return (state.getHub(id) == comm.hubId());
+bool isLocal(int id)
+{
+    auto &comm = Communicator::the();
+    auto &state = comm.clusterManager().state();
+    return (state.getHub(id) == comm.hubId());
 }
 
-}
+} // namespace
 
 DataManager::DataManager(mpi::communicator &comm)
 : m_comm(comm, mpi::comm_duplicate)
@@ -51,16 +51,16 @@ DataManager::DataManager(mpi::communicator &comm)
 #else
 , m_workGuard(new asio::io_service::work(m_ioService))
 #endif
-, m_ioThread([this](){ sendLoop(); })
-, m_recvThread([this](){ recvLoop(); })
-, m_cleanThread([this](){ cleanLoop(); })
+, m_ioThread([this]() { sendLoop(); })
+, m_recvThread([this]() { recvLoop(); })
+, m_cleanThread([this]() { cleanLoop(); })
 {
     if (m_size > 1)
         m_req = m_comm.irecv(boost::mpi::any_source, Communicator::TagData, &m_msgSize, 1);
 }
 
-DataManager::~DataManager() {
-
+DataManager::~DataManager()
+{
     {
         std::lock_guard<std::mutex> guard(m_recvMutex);
         m_quit = true;
@@ -79,28 +79,29 @@ DataManager::~DataManager() {
     m_ioThread.join();
 }
 
-bool DataManager::connect(asio::ip::tcp::resolver::iterator &hub) {
-   bool ret = true;
-   boost::system::error_code ec;
+bool DataManager::connect(asio::ip::tcp::resolver::iterator &hub)
+{
+    bool ret = true;
+    boost::system::error_code ec;
 
-   CERR << "connecting to local hub..." << std::endl;
+    CERR << "connecting to local hub..." << std::endl;
 
-   asio::connect(m_dataSocket, hub, ec);
-   if (ec) {
-      std::cerr << std::endl;
-      CERR << "could not establish bulk data connection on rank " << m_rank << std::endl;
-      ret = false;
-   } else {
-      CERR << "connected to local hub" << std::endl;
-   }
+    asio::connect(m_dataSocket, hub, ec);
+    if (ec) {
+        std::cerr << std::endl;
+        CERR << "could not establish bulk data connection on rank " << m_rank << std::endl;
+        ret = false;
+    } else {
+        CERR << "connected to local hub" << std::endl;
+    }
 
-   return ret;
+    return ret;
 }
 
-bool DataManager::dispatch() {
-
+bool DataManager::dispatch()
+{
     bool work = false;
-    for (bool gotMsg=true; m_dataSocket.is_open() && gotMsg; ) {
+    for (bool gotMsg = true; m_dataSocket.is_open() && gotMsg;) {
         gotMsg = false;
         message::Buffer buf;
         buffer payload;
@@ -144,38 +145,41 @@ bool DataManager::dispatch() {
     return work;
 }
 
-void DataManager::trace(message::Type type) {
+void DataManager::trace(message::Type type)
+{
     m_traceMessages = type;
 }
 
-bool DataManager::send(const message::Message &message, std::shared_ptr<buffer> payload) {
-
-   if (isLocal(message.destId())) {
-       std::unique_lock<Communicator> guard(Communicator::the());
-       const int sz = message.size();
-       m_comm.send(message.destRank(), Communicator::TagData, sz);
-       m_comm.send(message.destRank(), Communicator::TagData, (const char *)&message, sz);
-       if (payload && payload->size() > 0) {
-           m_comm.send(message.destRank(), Communicator::TagData, payload->data(), payload->size());
-       }
-       return true;
-   } else {
+bool DataManager::send(const message::Message &message, std::shared_ptr<buffer> payload)
+{
+    if (isLocal(message.destId())) {
+        std::unique_lock<Communicator> guard(Communicator::the());
+        const int sz = message.size();
+        m_comm.send(message.destRank(), Communicator::TagData, sz);
+        m_comm.send(message.destRank(), Communicator::TagData, (const char *)&message, sz);
+        if (payload && payload->size() > 0) {
+            m_comm.send(message.destRank(), Communicator::TagData, payload->data(), payload->size());
+        }
+        return true;
+    } else {
 #ifdef ASYNC_SEND
-       //CERR << "async send: " << message << std::endl;
-       message::async_send(m_dataSocket, message, payload, [this](boost::system::error_code ec){
-           if (ec) {
-               CERR << "ERROR: async send to " << m_dataSocket.remote_endpoint() << " failed: " << ec.message() << std::endl;
-           }
-       });
-       return true;
+        //CERR << "async send: " << message << std::endl;
+        message::async_send(m_dataSocket, message, payload, [this](boost::system::error_code ec) {
+            if (ec) {
+                CERR << "ERROR: async send to " << m_dataSocket.remote_endpoint() << " failed: " << ec.message()
+                     << std::endl;
+            }
+        });
+        return true;
 #else
-       return message::send(m_dataSocket, message, payload.get());
+        return message::send(m_dataSocket, message, payload.get());
 #endif
-   }
+    }
 }
 
-bool DataManager::requestArray(const std::string &referrer, const std::string &arrayId, int type, int hub, int rank, const ArrayCompletionHandler &handler) {
-
+bool DataManager::requestArray(const std::string &referrer, const std::string &arrayId, int type, int hub, int rank,
+                               const ArrayCompletionHandler &handler)
+{
     //CERR << "requesting array: " << arrayId << " for " << referrer << std::endl;
     {
         std::lock_guard<std::mutex> lock(m_requestMutex);
@@ -198,74 +202,81 @@ bool DataManager::requestArray(const std::string &referrer, const std::string &a
     return true;
 }
 
-bool DataManager::requestObject(const message::AddObject &add, const std::string &objId, const ObjectCompletionHandler &handler) {
-
-   Object::const_ptr obj = Shm::the().getObjectFromName(objId);
-   if (obj) {
+bool DataManager::requestObject(const message::AddObject &add, const std::string &objId,
+                                const ObjectCompletionHandler &handler)
+{
+    Object::const_ptr obj = Shm::the().getObjectFromName(objId);
+    if (obj) {
 #ifdef DEBUG
-      CERR << m_outstandingAdds[objId].size() << " outstanding adds for " << objId << ", already have!" << std::endl;
+        CERR << m_outstandingAdds[objId].size() << " outstanding adds for " << objId << ", already have!" << std::endl;
 #endif
-      handler(obj);
-      return false;
-   }
+        handler(obj);
+        return false;
+    }
 
-   {
-       std::lock_guard<std::mutex> lock(m_requestMutex);
-       m_outstandingAdds[objId].insert(add);
+    {
+        std::lock_guard<std::mutex> lock(m_requestMutex);
+        m_outstandingAdds[objId].insert(add);
 
-       auto it = m_requestedObjects.find(objId);
-       if (it != m_requestedObjects.end()) {
-           it->second.completionHandlers.push_back(handler);
+        auto it = m_requestedObjects.find(objId);
+        if (it != m_requestedObjects.end()) {
+            it->second.completionHandlers.push_back(handler);
 #ifdef DEBUG
-           CERR << m_outstandingAdds[objId].size() << " outstanding adds for " << objId << ", piggybacking..." << std::endl;
+            CERR << m_outstandingAdds[objId].size() << " outstanding adds for " << objId << ", piggybacking..."
+                 << std::endl;
 #endif
-           return true;
-       }
-       m_requestedObjects[objId].completionHandlers.push_back(handler);
+            return true;
+        }
+        m_requestedObjects[objId].completionHandlers.push_back(handler);
 #ifdef DEBUG
-       CERR << m_outstandingAdds[objId].size() << " outstanding adds for " << objId << ", requesting..." << std::endl;
+        CERR << m_outstandingAdds[objId].size() << " outstanding adds for " << objId << ", requesting..." << std::endl;
 #endif
-   }
+    }
 
-   message::RequestObject req(add, objId);
-   send(req);
-   return true;
+    message::RequestObject req(add, objId);
+    send(req);
+    return true;
 }
 
-bool DataManager::requestObject(const std::string &referrer, const std::string &objId, int hub, int rank, const ObjectCompletionHandler &handler) {
-
-   Object::const_ptr obj = Shm::the().getObjectFromName(objId);
-   if (obj) {
+bool DataManager::requestObject(const std::string &referrer, const std::string &objId, int hub, int rank,
+                                const ObjectCompletionHandler &handler)
+{
+    Object::const_ptr obj = Shm::the().getObjectFromName(objId);
+    if (obj) {
 #ifdef DEBUG
-      CERR << m_outstandingAdds[objId].size() << " outstanding adds for subobj " << objId << ", already have!" << std::endl;
+        CERR << m_outstandingAdds[objId].size() << " outstanding adds for subobj " << objId << ", already have!"
+             << std::endl;
 #endif
-      handler(obj);
-      return false;
-   }
+        handler(obj);
+        return false;
+    }
 
-   {
-       std::lock_guard<std::mutex> lock(m_requestMutex);
-       auto it = m_requestedObjects.find(objId);
-       if (it != m_requestedObjects.end()) {
-           it->second.completionHandlers.push_back(handler);
+    {
+        std::lock_guard<std::mutex> lock(m_requestMutex);
+        auto it = m_requestedObjects.find(objId);
+        if (it != m_requestedObjects.end()) {
+            it->second.completionHandlers.push_back(handler);
 #ifdef DEBUG
-           CERR << m_outstandingAdds[objId].size() << " outstanding adds for subobj " << objId << ", piggybacking..." << std::endl;
+            CERR << m_outstandingAdds[objId].size() << " outstanding adds for subobj " << objId << ", piggybacking..."
+                 << std::endl;
 #endif
-           return true;
-       }
+            return true;
+        }
 
-       m_requestedObjects[objId].completionHandlers.push_back(handler);
+        m_requestedObjects[objId].completionHandlers.push_back(handler);
 #ifdef DEBUG
-       CERR << m_outstandingAdds[objId].size() << " outstanding adds for subobj " << objId << ", requesting..." << std::endl;
+        CERR << m_outstandingAdds[objId].size() << " outstanding adds for subobj " << objId << ", requesting..."
+             << std::endl;
 #endif
-   }
+    }
 
-   message::RequestObject req(hub, rank, objId, referrer);
-   send(req);
-   return true;
+    message::RequestObject req(hub, rank, objId, referrer);
+    send(req);
+    return true;
 }
 
-bool DataManager::prepareTransfer(const message::AddObject &add) {
+bool DataManager::prepareTransfer(const message::AddObject &add)
+{
 #ifdef DEBUG
     CERR << "prepareTransfer: retaining " << add.objectName() << std::endl;
 #endif
@@ -279,25 +290,26 @@ bool DataManager::prepareTransfer(const message::AddObject &add) {
     return true;
 }
 
-bool DataManager::completeTransfer(const message::AddObjectCompleted &complete) {
+bool DataManager::completeTransfer(const message::AddObjectCompleted &complete)
+{
+    message::AddObject key(complete);
+    auto it = m_inTransitObjects.find(key);
+    if (it == m_inTransitObjects.end()) {
+        CERR << "AddObject message for completion notification not found: " << complete << ", still "
+             << m_inTransitObjects.size() << " objects in transit" << std::endl;
+        return true;
+    }
+    it->takeObject();
+    //CERR << "AddObjectCompleted: found request " << *it << " for " << complete << ", still " << m_inTransitObjects.size()-1 << " outstanding" << std::endl;
+    m_inTransitObjects.erase(it);
 
-   message::AddObject key(complete);
-   auto it = m_inTransitObjects.find(key);
-   if (it == m_inTransitObjects.end()) {
-      CERR << "AddObject message for completion notification not found: " << complete << ", still " << m_inTransitObjects.size() << " objects in transit" << std::endl;
-      return true;
-   }
-   it->takeObject();
-   //CERR << "AddObjectCompleted: found request " << *it << " for " << complete << ", still " << m_inTransitObjects.size()-1 << " outstanding" << std::endl;
-   m_inTransitObjects.erase(it);
+    updateStatus();
 
-   updateStatus();
-
-   return true;
+    return true;
 }
 
-void DataManager::updateStatus() {
-
+void DataManager::updateStatus()
+{
     std::unique_lock<Communicator> guard(Communicator::the());
 
     if (m_rank == 0)
@@ -306,8 +318,8 @@ void DataManager::updateStatus() {
         Communicator::the().forwardToMaster(message::DataTransferState(m_inTransitObjects.size()));
 }
 
-bool DataManager::notifyTransferComplete(const message::AddObject &addObj) {
-
+bool DataManager::notifyTransferComplete(const message::AddObject &addObj)
+{
     std::unique_lock<Communicator> guard(Communicator::the());
 
     //CERR << "sending completion notification for " << objName << std::endl;
@@ -351,28 +363,24 @@ bool DataManager::handle(const message::Message &msg, buffer *payload)
 class RemoteFetcher: public Fetcher {
 public:
     RemoteFetcher(DataManager *dmgr, const message::AddObject &add)
-        : m_dmgr(dmgr)
-        , m_add(&add)
-        , m_hub(Communicator::the().clusterManager().state().getHub(add.senderId()))
-        , m_rank(add.rank())
-    {
-    }
+    : m_dmgr(dmgr)
+    , m_add(&add)
+    , m_hub(Communicator::the().clusterManager().state().getHub(add.senderId()))
+    , m_rank(add.rank())
+    {}
 
     RemoteFetcher(DataManager *dmgr, const std::string &referrer, int hub, int rank)
-        : m_dmgr(dmgr)
-        , m_add(nullptr)
-        , m_referrer(referrer)
-        , m_hub(hub)
-        , m_rank(rank)
-    {
-    }
+    : m_dmgr(dmgr), m_add(nullptr), m_referrer(referrer), m_hub(hub), m_rank(rank)
+    {}
 
-    void requestArray(const std::string &name, int type, const ArrayCompletionHandler &completeCallback) override {
+    void requestArray(const std::string &name, int type, const ArrayCompletionHandler &completeCallback) override
+    {
         assert(!m_add);
         m_dmgr->requestArray(m_referrer, name, type, m_hub, m_rank, completeCallback);
     }
 
-    void requestObject(const std::string &name, const ObjectCompletionHandler &completeCallback) override {
+    void requestObject(const std::string &name, const ObjectCompletionHandler &completeCallback) override
+    {
         m_dmgr->requestObject(m_referrer, name, m_hub, m_rank, completeCallback);
     }
 
@@ -382,8 +390,8 @@ public:
     int m_hub, m_rank;
 };
 
-bool DataManager::handlePriv(const message::RequestObject &req) {
-
+bool DataManager::handlePriv(const message::RequestObject &req)
+{
 #ifdef DEBUG
     if (req.isArray()) {
         CERR << "request for array " << req.objectId() << std::endl;
@@ -392,7 +400,7 @@ bool DataManager::handlePriv(const message::RequestObject &req) {
     }
 #endif
 
-    auto fut = std::async(std::launch::async, [this, req](){
+    auto fut = std::async(std::launch::async, [this, req]() {
         std::shared_ptr<message::SendObject> snd;
         vecostreambuf<buffer> buf;
         buffer &mem = buf.get_vector();
@@ -421,7 +429,8 @@ bool DataManager::handlePriv(const message::RequestObject &req) {
         }
 
         auto compressed = std::make_shared<buffer>();
-        *compressed = message::compressPayload(Communicator::the().clusterManager().archiveCompressionMode(), *snd, mem, Communicator::the().clusterManager().archiveCompressionSpeed());
+        *compressed = message::compressPayload(Communicator::the().clusterManager().archiveCompressionMode(), *snd, mem,
+                                               Communicator::the().clusterManager().archiveCompressionSpeed());
 
         snd->setDestId(req.senderId());
         snd->setDestRank(req.rank());
@@ -437,19 +446,20 @@ bool DataManager::handlePriv(const message::RequestObject &req) {
     return true;
 }
 
-bool DataManager::handlePriv(const message::SendObject &snd, buffer *payload) {
-
+bool DataManager::handlePriv(const message::SendObject &snd, buffer *payload)
+{
 #ifdef DEBUG
     if (snd.isArray()) {
-        CERR << "received array " << snd.objectId() << " for " << snd.referrer() << ", size=" << snd.payloadSize() << std::endl;
+        CERR << "received array " << snd.objectId() << " for " << snd.referrer() << ", size=" << snd.payloadSize()
+             << std::endl;
     } else {
-        CERR << "received object " << snd.objectId() << " for " << snd.referrer() << ", size=" << snd.payloadSize() << std::endl;
+        CERR << "received object " << snd.objectId() << " for " << snd.referrer() << ", size=" << snd.payloadSize()
+             << std::endl;
     }
 #endif
 
     auto payload2 = std::make_shared<buffer>(std::move(*payload));
-    auto fut = std::async(std::launch::async, [this, snd, payload2](){
-
+    auto fut = std::async(std::launch::async, [this, snd, payload2]() {
         buffer uncompressed = decompressPayload(snd, *payload2.get());
         vecistreambuf<buffer> membuf(uncompressed);
 
@@ -466,13 +476,15 @@ bool DataManager::handlePriv(const message::SendObject &snd, buffer *payload) {
             //CERR << "restored array " << snd.objectId() << ", dangling in memory" << std::endl;
             auto it = m_requestedArrays.find(snd.objectId());
             if (it == m_requestedArrays.end()) {
-                CERR << "restored array " << snd.objectId() << " for " << snd.referrer() << ", but did not find request" << std::endl;
+                CERR << "restored array " << snd.objectId() << " for " << snd.referrer() << ", but did not find request"
+                     << std::endl;
             }
             assert(it != m_requestedArrays.end());
             if (it != m_requestedArrays.end()) {
                 auto handlers = std::move(it->second);
 #ifdef DEBUG
-                CERR << "restored array " << snd.objectId() << ", " << handlers.size() << " completion handler" << std::endl;
+                CERR << "restored array " << snd.objectId() << ", " << handlers.size() << " completion handler"
+                     << std::endl;
 #endif
                 m_requestedArrays.erase(it);
                 lock.unlock();
@@ -495,8 +507,7 @@ bool DataManager::handlePriv(const message::SendObject &snd, buffer *payload) {
             }
         }
 
-        auto completionHandler = [this, objName] () mutable -> void {
-
+        auto completionHandler = [this, objName]() mutable -> void {
             std::unique_lock<std::mutex> lock(m_requestMutex);
             auto addIt = m_outstandingAdds.find(objName);
             if (addIt == m_outstandingAdds.end()) {
@@ -561,14 +572,14 @@ bool DataManager::handlePriv(const message::SendObject &snd, buffer *payload) {
     return true;
 }
 
-bool DataManager::handlePriv(const message::AddObjectCompleted &complete) {
+bool DataManager::handlePriv(const message::AddObjectCompleted &complete)
+{
     return completeTransfer(complete);
 }
 
 void DataManager::recvLoop()
 {
-    for (;;)
-    {
+    for (;;) {
         bool gotMsg = false;
         if (m_dataSocket.is_open()) {
             message::Buffer buf;
@@ -603,7 +614,8 @@ void DataManager::sendLoop()
 
 void DataManager::cleanLoop()
 {
-    auto waitForTasks = [this](std::mutex &mutex, std::deque<std::future<bool>> &tasks, bool workDone, const std::string &kind) -> bool {
+    auto waitForTasks = [this](std::mutex &mutex, std::deque<std::future<bool>> &tasks, bool workDone,
+                               const std::string &kind) -> bool {
         std::unique_lock<std::mutex> lock(mutex);
         while (tasks.size() > 100 || (!workDone && !tasks.empty())) {
             auto front = std::move(tasks.front());
@@ -642,10 +654,7 @@ void DataManager::cleanLoop()
     }
 }
 
-DataManager::Msg::Msg(message::Buffer &&buf, buffer &&payload)
-: buf(std::move(buf))
-, payload(std::move(payload))
-{
-}
+DataManager::Msg::Msg(message::Buffer &&buf, buffer &&payload): buf(std::move(buf)), payload(std::move(payload))
+{}
 
 } // namespace vistle

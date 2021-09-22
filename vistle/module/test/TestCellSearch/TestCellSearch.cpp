@@ -10,8 +10,8 @@ MODULE_MAIN(TestCellSearch)
 using namespace vistle;
 
 TestCellSearch::TestCellSearch(const std::string &name, int moduleID, mpi::communicator comm)
-    : Module(name, moduleID, comm) {
-
+: Module(name, moduleID, comm)
+{
     setDefaultCacheMode(ObjectCache::CacheDeleteLate);
 
     createInputPort("data_in");
@@ -22,44 +22,44 @@ TestCellSearch::TestCellSearch(const std::string &name, int moduleID, mpi::commu
     m_createCelltree = addIntParameter("create_celltree", "create celltree", 0, Parameter::Boolean);
 }
 
-TestCellSearch::~TestCellSearch() {
+TestCellSearch::~TestCellSearch()
+{}
 
-}
+bool TestCellSearch::compute()
+{
+    const Vector point = m_point->getValue();
 
-bool TestCellSearch::compute() {
+    auto gridObj = expect<Object>("data_in");
+    if (!gridObj) {
+        sendInfo("Did not receive valid object");
+        return true;
+    }
+    auto grid = gridObj->getInterface<GridInterface>();
+    if (!grid) {
+        sendInfo("Unstructured or structured grid required");
+        return true;
+    }
+    if (m_createCelltree->getValue()) {
+        if (auto celltree = gridObj->getInterface<CelltreeInterface<3>>()) {
+            if (!celltree->hasCelltree()) {
+                celltree->getCelltree();
+                if (!celltree->validateCelltree()) {
+                    sendInfo("celltree validation failed for block %d", (int)gridObj->getBlock());
+                }
+            }
+        }
+    }
+    Index idx = grid->findCell(point);
+    if (idx != InvalidIndex) {
+        setParameter(m_block, (Integer)gridObj->getBlock());
+        setParameter(m_cell, (Integer)idx);
 
-   const Vector point = m_point->getValue();
+        const auto bounds = grid->cellBounds(idx);
+        const auto &min = bounds.first, &max = bounds.second;
 
-   auto gridObj = expect<Object>("data_in");
-   if (!gridObj) {
-       sendInfo("Did not receive valid object");
-       return true;
-   }
-   auto grid = gridObj->getInterface<GridInterface>();
-   if (!grid) {
-       sendInfo("Unstructured or structured grid required");
-       return true;
-   }
-   if (m_createCelltree->getValue()) {
-       if (auto celltree = gridObj->getInterface<CelltreeInterface<3>>()) {
-           if (!celltree->hasCelltree()) {
-               celltree->getCelltree();
-               if (!celltree->validateCelltree()) {
-                   sendInfo("celltree validation failed for block %d", (int)gridObj->getBlock());
-               }
-           }
-       }
-   }
-   Index idx = grid->findCell(point);
-   if (idx != InvalidIndex) {
-       setParameter(m_block, (Integer)gridObj->getBlock());
-       setParameter(m_cell, (Integer)idx);
+        std::cerr << "found cell " << idx << " (block " << gridObj->getBlock() << "): bounds: min " << min.transpose()
+                  << ", max " << max.transpose() << std::endl;
+    }
 
-       const auto bounds = grid->cellBounds(idx);
-       const auto &min = bounds.first, &max = bounds.second;
-
-       std::cerr << "found cell " << idx << " (block " << gridObj->getBlock() << "): bounds: min " << min.transpose() << ", max " << max.transpose() << std::endl;
-   }
-
-   return true;
+    return true;
 }

@@ -36,7 +36,7 @@ using Time = std::chrono::high_resolution_clock;
 using ms = std::chrono::milliseconds;
 
 void MiniSim::run(MiniSimModule &mod, size_t numTimesteps, const std::string &inputFile,
-                 const boost::mpi::communicator &comm, const Parameter &param)
+                  const boost::mpi::communicator &comm, const Parameter &param)
 {
     m_terminate = false;
     Vertex shape = {64, 64, 64};
@@ -90,14 +90,16 @@ void MiniSim::run(MiniSimModule &mod, size_t numTimesteps, const std::string &in
 
     diy::RegularDecomposer<diy::DiscreteBounds>::BoolVector share_face;
     diy::RegularDecomposer<diy::DiscreteBounds>::BoolVector wrap(3, true);
-    diy::RegularDecomposer<diy::DiscreteBounds>::CoordinateVector ghosts = {param.ghostCells, param.ghostCells, param.ghostCells};
+    diy::RegularDecomposer<diy::DiscreteBounds>::CoordinateVector ghosts = {param.ghostCells, param.ghostCells,
+                                                                            param.ghostCells};
 
     // decompose the domain
     diy::decompose(
         3, world.rank(), domain, assigner,
         [&](int gid, const diy::DiscreteBounds &, const diy::DiscreteBounds &bounds, const diy::DiscreteBounds &domain,
             const Link &link) {
-            Block *b = new Block(gid, bounds, domain, origin, spacing, param.ghostCells, oscillators, param.velocity_scale);
+            Block *b =
+                new Block(gid, bounds, domain, origin, spacing, param.ghostCells, oscillators, param.velocity_scale);
 
             // generate particles
             int start = particlesPerBlock * gid;

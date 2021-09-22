@@ -15,7 +15,8 @@ class SyncShmIDs;
 }
 namespace libsim {
 struct MeshInfo;
-vistle::Object::ptr get(const visit_smart_handle<HandleType::CurvilinearMesh> &meshHandle, message::SyncShmIDs &creator);
+vistle::Object::ptr get(const visit_smart_handle<HandleType::CurvilinearMesh> &meshHandle,
+                        message::SyncShmIDs &creator);
 
 namespace StructuredMesh {
 vistle::Object::ptr get(const visit_handle &meshHandle, message::SyncShmIDs &creator);

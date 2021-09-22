@@ -22,25 +22,26 @@ typedef std::vector<MeshPts *> MeshPtsVec;
 
 class TecplotFile {
 public:
-	TecplotFile(std::string const & iFile);
-	~TecplotFile();
+    TecplotFile(std::string const &iFile);
+    ~TecplotFile();
     const std::vector<std::string> &Variables() const;
     size_t NumZones() const;
-    MeshBaseVec Read(std::string const & iZoneRindList="");
-    MeshBase *ReadZone(size_t idx, std::string const &iZoneRindList="");
+    MeshBaseVec Read(std::string const &iZoneRindList = "");
+    MeshBase *ReadZone(size_t idx, std::string const &iZoneRindList = "");
     void SkipZone(size_t idx);
-        MeshPtsVec ReadInnerPts();
+    MeshPtsVec ReadInnerPts();
+
 private:
     bool checkDataSetType();
-	struct Impl;
-	struct Zone;
-	std::string mTitle;
-	int mNumVar;
-	std::vector<std::string> mVarNames;
-	std::vector<Zone> mZones;
-	std::unique_ptr<Impl> pimpl;
+    struct Impl;
+    struct Zone;
+    std::string mTitle;
+    int mNumVar;
+    std::vector<std::string> mVarNames;
+    std::vector<Zone> mZones;
+    std::unique_ptr<Impl> pimpl;
 };
 
-MeshBaseVec Read(std::string const & iFile, std::string const & iZoneRindList);
+MeshBaseVec Read(std::string const &iFile, std::string const &iZoneRindList);
 
 #endif

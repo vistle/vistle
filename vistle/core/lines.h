@@ -9,23 +9,19 @@
 namespace vistle {
 
 class V_COREEXPORT Lines: public Indexed {
-   V_OBJECT(Lines);
+    V_OBJECT(Lines);
 
- public:
-   typedef Indexed Base;
+public:
+    typedef Indexed Base;
 
-   Lines(const Index numElements, const Index numCorners,
-         const Index numVertices,
-         const Meta &meta=Meta());
+    Lines(const Index numElements, const Index numCorners, const Index numVertices, const Meta &meta = Meta());
 
-   V_DATA_BEGIN(Lines);
-      Data(const Index numElements = 0, const Index numCorners = 0,
-         const Index numVertices = 0, const std::string & name = "",
-         const Meta &meta=Meta());
-      static Data *create(const std::string &name="", const Index numElements = 0, const Index numCorners = 0,
-         const Index numVertices = 0,
-         const Meta &meta=Meta());
-   V_DATA_END(Lines);
+    V_DATA_BEGIN(Lines);
+    Data(const Index numElements = 0, const Index numCorners = 0, const Index numVertices = 0,
+         const std::string &name = "", const Meta &meta = Meta());
+    static Data *create(const std::string &name = "", const Index numElements = 0, const Index numCorners = 0,
+                        const Index numVertices = 0, const Meta &meta = Meta());
+    V_DATA_END(Lines);
 };
 
 } // namespace vistle

@@ -18,12 +18,14 @@
 
 // predicate to select which point is closer to a reference point given in the constructor
 struct NearPred {
-	NearPred(Position const & iDest) : mDest(iDest) {}
-	bool operator()(Position const & lhs, Position const & rhs) const {
-		return (lhs-mDest).length()<(rhs-mDest).length();
-	}
+    NearPred(Position const &iDest): mDest(iDest) {}
+    bool operator()(Position const &lhs, Position const &rhs) const
+    {
+        return (lhs - mDest).length() < (rhs - mDest).length();
+    }
+
 private:
-	Position mDest;
+    Position mDest;
 };
 
 // ----------------------------------------
@@ -31,118 +33,142 @@ private:
 // ----------------------------------------
 
 MeshBase::MeshBase(int iNumberOfCells, int iNumberOfPoints)
-	: mNumCells(iNumberOfCells), mNumPoints(iNumberOfPoints), mRho0(1), mP0(1), mC(1) {}
+: mNumCells(iNumberOfCells), mNumPoints(iNumberOfPoints), mRho0(1), mP0(1), mC(1)
+{}
 
-MeshBase::~MeshBase() {}
+MeshBase::~MeshBase()
+{}
 
-void MeshBase::setReferenceState(double iRho0, double iP0, double iC, Vector const & iFreestream, Vector const & iFlightspeed) {
-	mRho0=iRho0;
-	mP0=iP0;
-	mC=iC;
-	mFreestream=iFreestream;
-	mFlightspeed=iFlightspeed;
+void MeshBase::setReferenceState(double iRho0, double iP0, double iC, Vector const &iFreestream,
+                                 Vector const &iFlightspeed)
+{
+    mRho0 = iRho0;
+    mP0 = iP0;
+    mC = iC;
+    mFreestream = iFreestream;
+    mFlightspeed = iFlightspeed;
 }
 
-void MeshBase::ReverseNormals() {
-	assert(0=="Pointless MeshBase::ReverseNormals");
-	throw "Pointless MeshBase::ReverseNormals";
+void MeshBase::ReverseNormals()
+{
+    assert(0 == "Pointless MeshBase::ReverseNormals");
+    throw "Pointless MeshBase::ReverseNormals";
 }
 
-AcousticLineSources MeshBase::getLineSource(int /*iCell*/, Position const & /*iObserver*/, double /*iTime*/) {
-	assert(0=="Pointless MeshBase::getLineSource");
-	throw "Pointless MeshBase::getLineSource";
+AcousticLineSources MeshBase::getLineSource(int /*iCell*/, Position const & /*iObserver*/, double /*iTime*/)
+{
+    assert(0 == "Pointless MeshBase::getLineSource");
+    throw "Pointless MeshBase::getLineSource";
 }
 
-AcousticSurfaceSources MeshBase::getSurfaceSource(int /*iCell*/, Position const & /*iObserver*/, double /*iTime*/) {
-	assert(0=="Pointless MeshBase::getSurfaceSources");
-	throw "Pointless MeshBase::getSurfaceSources";
+AcousticSurfaceSources MeshBase::getSurfaceSource(int /*iCell*/, Position const & /*iObserver*/, double /*iTime*/)
+{
+    assert(0 == "Pointless MeshBase::getSurfaceSources");
+    throw "Pointless MeshBase::getSurfaceSources";
 }
 
-AcousticVolumeSources MeshBase::getVolumeSource(int /*iCell*/, Position const & /*iObserver*/, double /*iTime*/) {
-	assert(0=="Pointless MeshBase::getVolumeSource");
-	throw "Pointless MeshBase::getVolumeSource";
+AcousticVolumeSources MeshBase::getVolumeSource(int /*iCell*/, Position const & /*iObserver*/, double /*iTime*/)
+{
+    assert(0 == "Pointless MeshBase::getVolumeSource");
+    throw "Pointless MeshBase::getVolumeSource";
 }
 
-void MeshBase::dump(std::ostream & /*out*/) {
-	assert(0=="Pointless MeshBase::dump");
-	throw "Pointless MeshBase::dump";
+void MeshBase::dump(std::ostream & /*out*/)
+{
+    assert(0 == "Pointless MeshBase::dump");
+    throw "Pointless MeshBase::dump";
 }
 
 
-void MeshBase::addMechanics(Vector * oForce, Vector * oMoment, double * oPower) {
-	Vector position(0), force(0), moment(0), velocity(0);
-	double space=0, power=0;
-	for (int i=0; i<mNumCells; i++) {
-		Vector x(0), f(0), v(0);
-		double s(0);
-		getMechanics(i, &s, &x, &f, &v);
-		space+=s;
-		position+=x*s;
-		force+=f; // force on body
-		moment+=x^f; // moment on body
-		power-=f*v; // power FROM body
-		velocity += v*s;
-	}
-	position/=space;
-	velocity/=space;
-//SHOW_VAR7(mName, position, space, force, moment, power, velocity);
-	*oForce+=force;
-	*oMoment+=moment;
-	*oPower+=power;
+void MeshBase::addMechanics(Vector *oForce, Vector *oMoment, double *oPower)
+{
+    Vector position(0), force(0), moment(0), velocity(0);
+    double space = 0, power = 0;
+    for (int i = 0; i < mNumCells; i++) {
+        Vector x(0), f(0), v(0);
+        double s(0);
+        getMechanics(i, &s, &x, &f, &v);
+        space += s;
+        position += x * s;
+        force += f; // force on body
+        moment += x ^ f; // moment on body
+        power -= f * v; // power FROM body
+        velocity += v * s;
+    }
+    position /= space;
+    velocity /= space;
+    //SHOW_VAR7(mName, position, space, force, moment, power, velocity);
+    *oForce += force;
+    *oMoment += moment;
+    *oPower += power;
 }
 
-void MeshBase::SetupLine() {
-	assert(0=="Pointless MeshBase::SetupLine");
-	throw "Pointless MeshBase::SetupLine";
+void MeshBase::SetupLine()
+{
+    assert(0 == "Pointless MeshBase::SetupLine");
+    throw "Pointless MeshBase::SetupLine";
 }
 
-void MeshBase::SetupVolume() {
-	assert(0=="Pointless MeshBase::SetupVolume");
-	throw "Pointless MeshBase::SetupVolume";
+void MeshBase::SetupVolume()
+{
+    assert(0 == "Pointless MeshBase::SetupVolume");
+    throw "Pointless MeshBase::SetupVolume";
 }
 
-void MeshBase::SetupSurface(std::vector<Position> const & /*iInnerPoint*/, NormalCheck /*iCheck*/) {
-	assert(0=="Pointless MeshBase::SetupSurface");
-	throw "Pointless MeshBase::SetupSurface";
+void MeshBase::SetupSurface(std::vector<Position> const & /*iInnerPoint*/, NormalCheck /*iCheck*/)
+{
+    assert(0 == "Pointless MeshBase::SetupSurface");
+    throw "Pointless MeshBase::SetupSurface";
 }
 
 // ----------------------------------------
 // ------------- Mesh --------------------
 // ----------------------------------------
 
-template <class TOPO>
-Mesh<TOPO>::Mesh() : mCells(0), mPoints(0) {}
+template<class TOPO>
+Mesh<TOPO>::Mesh(): mCells(0), mPoints(0)
+{}
 
-template <class TOPO>
-Mesh<TOPO>::Mesh(int iNumberOfCells, int iNumberOfPoints, TOPO * iCells, PointState * iPoints)
-	: MeshBase(iNumberOfCells, iNumberOfPoints), mCells(iCells), mPoints(iPoints) {}
+template<class TOPO>
+Mesh<TOPO>::Mesh(int iNumberOfCells, int iNumberOfPoints, TOPO *iCells, PointState *iPoints)
+: MeshBase(iNumberOfCells, iNumberOfPoints), mCells(iCells), mPoints(iPoints)
+{}
 
-template <class TOPO>
-Mesh<TOPO>::~Mesh() {
-	delete[] mCells;
-	delete[] mPoints;
+template<class TOPO>
+Mesh<TOPO>::~Mesh()
+{
+    delete[] mCells;
+    delete[] mPoints;
 }
 
-template <class TOPO>
-TopoState & Mesh<TOPO>::getState(int n) { return mCells[n]; }
-
-template <class TOPO>
-PointState & Mesh<TOPO>::getPointState(int n) { return mPoints[n]; }
-
-template <class TOPO>
-void Mesh<TOPO>::cpToP(double iMachRef) {
-	// p=(1+k/2 MaRef^2 cp) p_inf
-	static double const KAPPA=1.4;
-	double scale=KAPPA/2*iMachRef*iMachRef*mP0;
-	for (int i=0; i<mNumPoints; ++i)
-		mPoints[i].mP=mPoints[i].mP*scale+mP0;
+template<class TOPO>
+TopoState &Mesh<TOPO>::getState(int n)
+{
+    return mCells[n];
 }
 
-template <class TOPO>
-void Mesh<TOPO>::Rotate(Position const & iCenter, double iTime, 
-		Position const & iAngularVelocity, Position const & iLinearVelocity) {
-	assert(false);
-/*	IAG::Matrix<double,3> rotation(IAG::rotation(iAngularVelocity, iTime*iAngularVelocity.length()));
+template<class TOPO>
+PointState &Mesh<TOPO>::getPointState(int n)
+{
+    return mPoints[n];
+}
+
+template<class TOPO>
+void Mesh<TOPO>::cpToP(double iMachRef)
+{
+    // p=(1+k/2 MaRef^2 cp) p_inf
+    static double const KAPPA = 1.4;
+    double scale = KAPPA / 2 * iMachRef * iMachRef * mP0;
+    for (int i = 0; i < mNumPoints; ++i)
+        mPoints[i].mP = mPoints[i].mP * scale + mP0;
+}
+
+template<class TOPO>
+void Mesh<TOPO>::Rotate(Position const &iCenter, double iTime, Position const &iAngularVelocity,
+                        Position const &iLinearVelocity)
+{
+    assert(false);
+    /*	IAG::Matrix<double,3> rotation(IAG::rotation(iAngularVelocity, iTime*iAngularVelocity.length()));
 	Position linear(iLinearVelocity);
 	linear*=iTime;
 	for (int i=0; i<mNumPoints; ++i) {
@@ -152,52 +178,60 @@ void Mesh<TOPO>::Rotate(Position const & iCenter, double iTime,
 	}*/
 }
 
-template <class TOPO>
-LineMesh<TOPO>::LineMesh(int iNumberOfCells, int iNumberOfPoints, TOPO * iCells, PointState * iPoints)
-	: Mesh<TOPO>(iNumberOfCells, iNumberOfPoints, iCells, iPoints) {}
-
-template <class TOPO>
-LineMesh<TOPO>::~LineMesh() {}
-
-template <class TOPO>
-SurfaceMesh<TOPO>::SurfaceMesh(int iNumberOfCells, int iNumberOfPoints, TOPO * iCells, PointState * iPoints)
-	: Mesh<TOPO>(iNumberOfCells, iNumberOfPoints, iCells, iPoints) {}
-
-template <class TOPO>
-SurfaceMesh<TOPO>::~SurfaceMesh() {}
-
-template <class TOPO>
-VolumeMesh<TOPO>::VolumeMesh(int iNumberOfCells, int iNumberOfPoints, TOPO * iCells, PointState * iPoints)
-	: Mesh<TOPO>(iNumberOfCells, iNumberOfPoints, iCells, iPoints) {}
-
-template <class TOPO>
-VolumeMesh<TOPO>::~VolumeMesh() {}
+template<class TOPO>
+LineMesh<TOPO>::LineMesh(int iNumberOfCells, int iNumberOfPoints, TOPO *iCells, PointState *iPoints)
+: Mesh<TOPO>(iNumberOfCells, iNumberOfPoints, iCells, iPoints)
+{}
 
 template<class TOPO>
-void LineMesh<TOPO>::dump(std::ostream & out) {
-	for (int i=0; i<mNumCells; i++) {
-		topology_t const & c=mCells[i];
-		out << c.mCenter.X() << ' ' << c.mCenter.Y() << ' ' << c.mCenter.Z() << ' '
-			<< c.mForce.X() << ' ' << c.mForce.Y() << ' ' << c.mForce.Z() << ' '
-			<< mPoints[i].mU.X() << ' ' << mPoints[i].mU.Y() << ' ' << mPoints[i].mU.Z() << ' '
-			<< mPoints[i].mV.X() << ' ' << mPoints[i].mV.Y() << ' ' << mPoints[i].mV.Z() << ' '
-			<< c.mSpace << std::endl;
-	}
+LineMesh<TOPO>::~LineMesh()
+{}
+
+template<class TOPO>
+SurfaceMesh<TOPO>::SurfaceMesh(int iNumberOfCells, int iNumberOfPoints, TOPO *iCells, PointState *iPoints)
+: Mesh<TOPO>(iNumberOfCells, iNumberOfPoints, iCells, iPoints)
+{}
+
+template<class TOPO>
+SurfaceMesh<TOPO>::~SurfaceMesh()
+{}
+
+template<class TOPO>
+VolumeMesh<TOPO>::VolumeMesh(int iNumberOfCells, int iNumberOfPoints, TOPO *iCells, PointState *iPoints)
+: Mesh<TOPO>(iNumberOfCells, iNumberOfPoints, iCells, iPoints)
+{}
+
+template<class TOPO>
+VolumeMesh<TOPO>::~VolumeMesh()
+{}
+
+template<class TOPO>
+void LineMesh<TOPO>::dump(std::ostream &out)
+{
+    for (int i = 0; i < mNumCells; i++) {
+        topology_t const &c = mCells[i];
+        out << c.mCenter.X() << ' ' << c.mCenter.Y() << ' ' << c.mCenter.Z() << ' ' << c.mForce.X() << ' '
+            << c.mForce.Y() << ' ' << c.mForce.Z() << ' ' << mPoints[i].mU.X() << ' ' << mPoints[i].mU.Y() << ' '
+            << mPoints[i].mU.Z() << ' ' << mPoints[i].mV.X() << ' ' << mPoints[i].mV.Y() << ' ' << mPoints[i].mV.Z()
+            << ' ' << c.mSpace << std::endl;
+    }
 }
 
 template<class TOPO>
-void SurfaceMesh<TOPO>::dump(std::ostream & out) {
-	for (int i=0; i<mNumCells; i++) {
-		topology_t const & c=mCells[i];
-		out << c.mCenter.X() << ' ' << c.mCenter.Y() << ' ' << c.mCenter.Z() << ' '
-			<< c.mNormal.X() << ' ' << c.mNormal.Y() << ' ' << c.mNormal.Z() << std::endl;
-	}
+void SurfaceMesh<TOPO>::dump(std::ostream &out)
+{
+    for (int i = 0; i < mNumCells; i++) {
+        topology_t const &c = mCells[i];
+        out << c.mCenter.X() << ' ' << c.mCenter.Y() << ' ' << c.mCenter.Z() << ' ' << c.mNormal.X() << ' '
+            << c.mNormal.Y() << ' ' << c.mNormal.Z() << std::endl;
+    }
 }
 
 template<class TOPO>
-void SurfaceMesh<TOPO>::SetupSurface(std::vector<Position> const & iInnerPoint, NormalCheck iCheck) {
-	assert(false);
-	/*
+void SurfaceMesh<TOPO>::SetupSurface(std::vector<Position> const &iInnerPoint, NormalCheck iCheck)
+{
+    assert(false);
+    /*
 	double minScalar=1, sumScalar=0, sumArea=0;
 	bool normalRead=true;
 	int numInverted=0;
@@ -286,40 +320,44 @@ void SurfaceMesh<TOPO>::SetupSurface(std::vector<Position> const & iInnerPoint, 
 }
 
 template<class TOPO>
-void SurfaceMesh<TOPO>::ReverseNormals() {
-	for (int i=0; i<mNumCells; i++)
-		mCells[i].invert();
+void SurfaceMesh<TOPO>::ReverseNormals()
+{
+    for (int i = 0; i < mNumCells; i++)
+        mCells[i].invert();
 }
 
 template<class TOPO>
-void LineMesh<TOPO>::SetupLine() {
-	for (int i=0; i<mNumCells; i++) {
-		assert(mCells[i].isCell());
-		mCells[i].mCenter=mPoints[i];
-		mCells[i].mU=0;
-		mCells[i].mV=0;
-		mCells[i].mR=mRho0;
-		mCells[i].mForce=mPoints[i].mU+mPoints[i].mV; // T+D
-		mCells[i].mP=mP0;
-		mCells[i].mSpace=mPoints[i].mR*mPoints[i].mP; // dR*clen
-	}
+void LineMesh<TOPO>::SetupLine()
+{
+    for (int i = 0; i < mNumCells; i++) {
+        assert(mCells[i].isCell());
+        mCells[i].mCenter = mPoints[i];
+        mCells[i].mU = 0;
+        mCells[i].mV = 0;
+        mCells[i].mR = mRho0;
+        mCells[i].mForce = mPoints[i].mU + mPoints[i].mV; // T+D
+        mCells[i].mP = mP0;
+        mCells[i].mSpace = mPoints[i].mR * mPoints[i].mP; // dR*clen
+    }
 }
 
 template<typename TOPO>
-void VolumeMesh<TOPO>::SetupVolume() {
-	for (int i=0; i<mNumCells; i++) {
-		mCells[i].computeGeometry(mPoints);
-		mCells[i].computeAverage(mPoints, &PointState::mR, mCells[i].mR);
-		mCells[i].computeAverage(mPoints, &PointState::mU, mCells[i].mU);
-		mCells[i].computeAverage(mPoints, &PointState::mP, mCells[i].mP);
-		mCells[i].computeAverage(mPoints, &PointState::mV, mCells[i].mV);
-	}
+void VolumeMesh<TOPO>::SetupVolume()
+{
+    for (int i = 0; i < mNumCells; i++) {
+        mCells[i].computeGeometry(mPoints);
+        mCells[i].computeAverage(mPoints, &PointState::mR, mCells[i].mR);
+        mCells[i].computeAverage(mPoints, &PointState::mU, mCells[i].mU);
+        mCells[i].computeAverage(mPoints, &PointState::mP, mCells[i].mP);
+        mCells[i].computeAverage(mPoints, &PointState::mV, mCells[i].mV);
+    }
 }
 
 template<typename SOURCE>
-void MeshBase::transport(SOURCE const & iSource, Position const & iObserver, double iTime, Transport & oTransport) {
-	assert(false);
-	/*
+void MeshBase::transport(SOURCE const &iSource, Position const &iObserver, double iTime, Transport &oTransport)
+{
+    assert(false);
+    /*
 	Vector r_0=iObserver-iSource.mCenter-mFlightspeed*iTime;
 	if (r_0.norm2()==0) {
 		if (Parallel::isMaster) std::cerr << "Attention: observer concides with source point\n";
@@ -348,47 +386,48 @@ if (std::abs(oTransport.mRAbs-(oTransport.mT-iTime)*mC)>1e-8) { // consistency c
 //SHOW_VAR6(iTime, oTransport.mT, oTransport.mRAbs, oTransport.mR0, oTransport.mDoppler, oTransport.mMr);
 // std::cout << iTime << " " << oTransport.mT << " " << oTransport.mRAbs << " " << oTransport.mMr << std::endl;*/
 }
-#define sqr(x) (x*x)
+#define sqr(x) (x * x)
 
-template <class TOPO>
-AcousticLineSources LineMesh<TOPO>::observe(topology_t const & iCell,
-		Position const & iObserver, double iTime) {
-	MeshBase::Transport trans;
-	this->transport(iCell, iObserver, iTime, trans);
-	AcousticLineSources source;
-	source.mArea = iCell.mSpace;
-	double force=-(iCell.mForce*trans.mR0)/source.mArea;
-	source.mF=force/(sqr(trans.mRAbs)*sqr(1-trans.mMr));
-	source.mFd=force/(trans.mRAbs*sqr(1-trans.mMr));
-	source.mTime=trans.mT;
-	source.mDoppler=trans.mDoppler;
-	source.mMr=trans.mMr;
-// SHOW_VAR4(source, force, source.mFd, source.mF);
-	return source;
+template<class TOPO>
+AcousticLineSources LineMesh<TOPO>::observe(topology_t const &iCell, Position const &iObserver, double iTime)
+{
+    MeshBase::Transport trans;
+    this->transport(iCell, iObserver, iTime, trans);
+    AcousticLineSources source;
+    source.mArea = iCell.mSpace;
+    double force = -(iCell.mForce * trans.mR0) / source.mArea;
+    source.mF = force / (sqr(trans.mRAbs) * sqr(1 - trans.mMr));
+    source.mFd = force / (trans.mRAbs * sqr(1 - trans.mMr));
+    source.mTime = trans.mT;
+    source.mDoppler = trans.mDoppler;
+    source.mMr = trans.mMr;
+    // SHOW_VAR4(source, force, source.mFd, source.mF);
+    return source;
 }
 
-template <class TOPO>
-AcousticLineSources LineMesh<TOPO>::getLineSource(int iCell,
-		Position const & iObserver, double iTime) {
-	return observe(mCells[iCell], iObserver, iTime);
+template<class TOPO>
+AcousticLineSources LineMesh<TOPO>::getLineSource(int iCell, Position const &iObserver, double iTime)
+{
+    return observe(mCells[iCell], iObserver, iTime);
 }
 
-template <class TOPO>
-void LineMesh<TOPO>::getMechanics(int iCell, double * oSpace, Vector * oX, Vector * oF, Vector * oV) const {
-	topology_t const & cell(mCells[iCell]);
-	*oSpace=cell.mSpace;
-	*oX=cell.mCenter;
-	*oF=cell.mForce;
-	*oV=cell.mV;
-// SHOW_VAR5(iCell, *oSpace, *oX, *oF, *oV);
+template<class TOPO>
+void LineMesh<TOPO>::getMechanics(int iCell, double *oSpace, Vector *oX, Vector *oF, Vector *oV) const
+{
+    topology_t const &cell(mCells[iCell]);
+    *oSpace = cell.mSpace;
+    *oX = cell.mCenter;
+    *oF = cell.mForce;
+    *oV = cell.mV;
+    // SHOW_VAR5(iCell, *oSpace, *oX, *oF, *oV);
 }
 
-template <class TOPO>
-AcousticSurfaceSources SurfaceMesh<TOPO>::observe(topology_t const & iCell,
-		Position const & iObserver, double iTime) {
-	assert(false);
-	AcousticSurfaceSources source;
-	/*
+template<class TOPO>
+AcousticSurfaceSources SurfaceMesh<TOPO>::observe(topology_t const &iCell, Position const &iObserver, double iTime)
+{
+    assert(false);
+    AcousticSurfaceSources source;
+    /*
 	MeshBase::Transport trans;
 	this->transport(iCell, iObserver, iTime, trans);
 	double v_n = (iCell.mV+mFlightspeed-mFreestream)*(iCell.mNormal);	// surface normal velocity
@@ -422,30 +461,31 @@ AcousticSurfaceSources SurfaceMesh<TOPO>::observe(topology_t const & iCell,
 	source.mDoppler = trans.mDoppler;
 	source.mMr=trans.mMr;
 //SHOW_VAR9(iTime, monopole, dipole, source.mMd, source.mDd, source.mTime, source.mDoppler, trans.mRAbs, trans.mMr);*/
-	return source;
+    return source;
 }
 
-template <class TOPO>
-AcousticSurfaceSources SurfaceMesh<TOPO>::getSurfaceSource(int iCell,
-		Position const & iObserver, double iTime) {
-	return observe(mCells[iCell], iObserver, iTime);
+template<class TOPO>
+AcousticSurfaceSources SurfaceMesh<TOPO>::getSurfaceSource(int iCell, Position const &iObserver, double iTime)
+{
+    return observe(mCells[iCell], iObserver, iTime);
 }
 
-template <class TOPO>
-void SurfaceMesh<TOPO>::getMechanics(int iCell, double * oSpace, Vector * oX, Vector * oF, Vector * oV) const {
-	topology_t const & cell(mCells[iCell]);
-	*oSpace=cell.mSpace;
-	*oX=cell.mCenter;
-	*oF= cell.mNormal * cell.mSpace*(mP0-cell.mP);
-	*oV=cell.mV;
+template<class TOPO>
+void SurfaceMesh<TOPO>::getMechanics(int iCell, double *oSpace, Vector *oX, Vector *oF, Vector *oV) const
+{
+    topology_t const &cell(mCells[iCell]);
+    *oSpace = cell.mSpace;
+    *oX = cell.mCenter;
+    *oF = cell.mNormal * cell.mSpace * (mP0 - cell.mP);
+    *oV = cell.mV;
 }
 
-template <class TOPO>
-AcousticVolumeSources VolumeMesh<TOPO>::observe(topology_t const & iCell,
-		Position const & iObserver, double iTime) {
-	assert(false);
-	AcousticVolumeSources source;
-	/*
+template<class TOPO>
+AcousticVolumeSources VolumeMesh<TOPO>::observe(topology_t const &iCell, Position const &iObserver, double iTime)
+{
+    assert(false);
+    AcousticVolumeSources source;
+    /*
 	MeshBase::Transport trans;
 	this->transport(iCell, iObserver, iTime, trans);
 	IAG::Matrix<double,3> T(0); // Lighthill's tensor
@@ -464,44 +504,41 @@ AcousticVolumeSources VolumeMesh<TOPO>::observe(topology_t const & iCell,
 	source.mQd/=1-trans.mMr;
 	source.mTime = trans.mT;
 	source.mDoppler = trans.mDoppler;*/
-	return source;
+    return source;
 }
 
-template <class TOPO>
-void VolumeMesh<TOPO>::getMechanics(int iCell, double * oSpace, Vector * oX, Vector * oF, Vector * oV) const {
-	topology_t const & cell(mCells[iCell]);
-	*oSpace=cell.mSpace;
-	*oX=cell.mCenter;
-	*oF=0;
-	*oV=cell.mV;
+template<class TOPO>
+void VolumeMesh<TOPO>::getMechanics(int iCell, double *oSpace, Vector *oX, Vector *oF, Vector *oV) const
+{
+    topology_t const &cell(mCells[iCell]);
+    *oSpace = cell.mSpace;
+    *oX = cell.mCenter;
+    *oF = 0;
+    *oV = cell.mV;
 }
 
-template <class TOPO>
-AcousticVolumeSources VolumeMesh<TOPO>::getVolumeSource(int iCell,
-		Position const & iObserver, double iTime) {
-	return observe(mCells[iCell], iObserver, iTime);
+template<class TOPO>
+AcousticVolumeSources VolumeMesh<TOPO>::getVolumeSource(int iCell, Position const &iObserver, double iTime)
+{
+    return observe(mCells[iCell], iObserver, iTime);
 }
 
 // explicit instantiations to keep the member definitions out of headers
-template
-class LineMesh<LineTopo>;
-template
-class SurfaceMesh<TriangleTopo>;
-template
-class SurfaceMesh<QuadrangleTopo>;
-template
-class VolumeMesh<TetraederTopo>;
-template
-class VolumeMesh<HexaederTopo>;
+template class LineMesh<LineTopo>;
+template class SurfaceMesh<TriangleTopo>;
+template class SurfaceMesh<QuadrangleTopo>;
+template class VolumeMesh<TetraederTopo>;
+template class VolumeMesh<HexaederTopo>;
 
 
 #undef sqr
 // ----------------------------------------
 // ------------- MeshPts------------------
 // ----------------------------------------
-MeshPts::MeshPts(int iNumberOfPoints, Position const * iPoints)
-	: mNumPoints(iNumberOfPoints), mPoints(iPoints) {}
+MeshPts::MeshPts(int iNumberOfPoints, Position const *iPoints): mNumPoints(iNumberOfPoints), mPoints(iPoints)
+{}
 
-MeshPts::~MeshPts() {
-	delete[] mPoints;
+MeshPts::~MeshPts()
+{
+    delete[] mPoints;
 }

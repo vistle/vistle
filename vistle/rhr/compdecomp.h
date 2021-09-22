@@ -10,16 +10,10 @@
 namespace vistle {
 
 struct CompressionParameters {
+    DEFINE_ENUM_WITH_STRING_CONVERSIONS(ColorCodec, (Raw)(PredictRGB)(PredictRGBA)(Jpeg_YUV411)(Jpeg_YUV444))
 
-    DEFINE_ENUM_WITH_STRING_CONVERSIONS(ColorCodec,
-                                        (Raw)
-                                        (PredictRGB)
-                                        (PredictRGBA)
-                                        (Jpeg_YUV411)
-                                        (Jpeg_YUV444)
-                                        )
-
-    DEFINE_ENUM_WITH_STRING_CONVERSIONS(DepthCodec, (DepthRaw)(DepthPredict)(DepthPredictPlanar)(DepthQuant)(DepthQuantPlanar)(DepthZfp))
+    DEFINE_ENUM_WITH_STRING_CONVERSIONS(
+        DepthCodec, (DepthRaw)(DepthPredict)(DepthPredictPlanar)(DepthQuant)(DepthQuantPlanar)(DepthZfp))
 
     DEFINE_ENUM_WITH_STRING_CONVERSIONS(ZfpMode, (ZfpFixedRate)(ZfpPrecision)(ZfpAccuracy))
 
@@ -32,7 +26,6 @@ struct CompressionParameters {
     };
 
     struct RgbaCompressionParameters {
-
         ColorCodec rgbaCodec = Raw;
         message::CompressionMode rgbaCompress = message::CompressionNone;
     };
@@ -41,32 +34,23 @@ struct CompressionParameters {
     DepthCompressionParameters depth;
     RgbaCompressionParameters rgba;
 
-    CompressionParameters(const RgbaCompressionParameters &rgba)
-        : isDepth(false)
-        , rgba(rgba)
-    {}
+    CompressionParameters(const RgbaCompressionParameters &rgba): isDepth(false), rgba(rgba) {}
 
-    CompressionParameters(const DepthCompressionParameters &depth)
-        : isDepth(true)
-        , depth(depth)
-    {}
+    CompressionParameters(const DepthCompressionParameters &depth): isDepth(true), depth(depth) {}
 
     CompressionParameters() = default;
 };
 
 using RgbaCompressionParameters = CompressionParameters::RgbaCompressionParameters;
-buffer V_RHREXPORT compressRgba(const unsigned char *rgba,
-                                int x, int y, int w, int h, int stride,
+buffer V_RHREXPORT compressRgba(const unsigned char *rgba, int x, int y, int w, int h, int stride,
                                 RgbaCompressionParameters &param);
 
 using DepthCompressionParameters = CompressionParameters::DepthCompressionParameters;
-buffer V_RHREXPORT compressDepth(const float *depth,
-                                int x, int y, int w, int h, int stride,
-                                DepthCompressionParameters &param);
+buffer V_RHREXPORT compressDepth(const float *depth, int x, int y, int w, int h, int stride,
+                                 DepthCompressionParameters &param);
 
-bool V_RHREXPORT decompressTile(char *dest, const buffer &input,
-                    CompressionParameters param,
-                    int x, int y, int w, int h, int stride);
+bool V_RHREXPORT decompressTile(char *dest, const buffer &input, CompressionParameters param, int x, int y, int w,
+                                int h, int stride);
 
-}
+} // namespace vistle
 #endif

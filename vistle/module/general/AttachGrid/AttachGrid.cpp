@@ -8,69 +8,67 @@ using namespace vistle;
 
 MODULE_MAIN(AttachGrid)
 
-AttachGrid::AttachGrid(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module(name, moduleID, comm) {
+AttachGrid::AttachGrid(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
+{
+    m_gridIn = createInputPort("grid_in");
 
-   m_gridIn = createInputPort("grid_in");
-
-   for (int i=0; i<5; ++i) {
-      std::string number = boost::lexical_cast<std::string>(i);
-      m_dataIn.push_back(createInputPort("data_in"+number));
-      m_dataOut.push_back(createOutputPort("data_out"+number));
-   }
+    for (int i = 0; i < 5; ++i) {
+        std::string number = boost::lexical_cast<std::string>(i);
+        m_dataIn.push_back(createInputPort("data_in" + number));
+        m_dataOut.push_back(createOutputPort("data_out" + number));
+    }
 }
 
-AttachGrid::~AttachGrid() {
-}
+AttachGrid::~AttachGrid()
+{}
 
-bool AttachGrid::compute() {
+bool AttachGrid::compute()
+{
+    bool ok = true;
+    auto grid = expect<Object>(m_gridIn);
+    Index numVert = 0;
+    if (!grid) {
+        ok = false;
+    } else if (auto gi = grid->getInterface<GeometryInterface>()) {
+        numVert = gi->getNumVertices();
+    }
 
-   bool ok = true;
-   auto grid = expect<Object>(m_gridIn);
-   Index numVert = 0;
-   if (!grid) {
-       ok = false;
-   } else if (auto gi = grid->getInterface<GeometryInterface>()) {
-       numVert = gi->getNumVertices();
-   }
+    std::vector<DataBase::const_ptr> data;
+    for (size_t i = 0; i < m_dataIn.size(); ++i) {
+        auto &pin = m_dataIn[i];
+        if (isConnected(*pin)) {
+            auto d = expect<DataBase>(pin);
+            if (!d) {
+                ok = false;
+            }
+            data.push_back(d);
+        } else {
+            data.push_back(DataBase::const_ptr());
+        }
+    }
 
-   std::vector<DataBase::const_ptr> data;
-   for (size_t i=0; i<m_dataIn.size(); ++i) {
+    if (!ok) {
+        std::cerr << "did not receive objects at all connected input ports" << std::endl;
+        return true;
+    }
 
-       auto &pin = m_dataIn[i];
-       if (isConnected(*pin)) {
-          auto d = expect<DataBase>(pin);
-          if (!d) {
-              ok = false;
-          }
-          data.push_back(d);
-       } else {
-          data.push_back(DataBase::const_ptr());
-       }
-   }
+    for (size_t i = 0; i < m_dataIn.size(); ++i) {
+        auto &pin = m_dataIn[i];
+        auto &pout = m_dataOut[i];
+        if (isConnected(*pin)) {
+            assert(data[i]);
+            auto out = data[i]->clone();
+            out->copyAttributes(data[i]);
+            out->setGrid(grid);
+            if (out->getSize() == numVert) {
+                out->setMapping(DataBase::Vertex);
+            } else {
+                std::cerr << "cannot determine whether data is cell or vertex based: #vert grid=" << numVert
+                          << ", #vert data=" << out->getSize() << std::endl;
+            }
+            addObject(pout, out);
+        }
+    }
 
-   if (!ok) {
-       std::cerr << "did not receive objects at all connected input ports" << std::endl;
-       return true;
-   }
-
-   for (size_t i=0; i<m_dataIn.size(); ++i) {
-
-       auto &pin = m_dataIn[i];
-       auto &pout = m_dataOut[i];
-       if (isConnected(*pin)) {
-           assert(data[i]);
-           auto out = data[i]->clone();
-           out->copyAttributes(data[i]);
-           out->setGrid(grid);
-           if (out->getSize() == numVert) {
-               out->setMapping(DataBase::Vertex);
-           } else {
-               std::cerr << "cannot determine whether data is cell or vertex based: #vert grid=" << numVert << ", #vert data="  << out->getSize() << std::endl;
-           }
-           addObject(pout, out);
-       }
-   }
-
-   return true;
+    return true;
 }

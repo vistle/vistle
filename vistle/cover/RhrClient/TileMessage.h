@@ -12,7 +12,7 @@ struct tileMsg;
 namespace message {
 class RemoteRenderMessage;
 }
-}
+} // namespace vistle
 
 struct TileMessage {
     TileMessage(std::shared_ptr<vistle::message::RemoteRenderMessage> msg, std::shared_ptr<vistle::buffer> payload);

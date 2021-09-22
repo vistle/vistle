@@ -11,7 +11,7 @@
 namespace vistle {
 namespace crypto {
 
-V_UTILEXPORT bool initialize(size_t secret_size=64);
+V_UTILEXPORT bool initialize(size_t secret_size = 64);
 V_UTILEXPORT bool set_session_key(const std::string &hex_key);
 V_UTILEXPORT std::string get_session_key();
 
@@ -20,8 +20,9 @@ V_UTILEXPORT const std::vector<uint8_t> &session_key();
 
 V_UTILEXPORT std::vector<uint8_t> random_data(size_t length);
 V_UTILEXPORT std::vector<uint8_t> compute_mac(const void *data, size_t length, const std::vector<uint8_t> &key);
-V_UTILEXPORT bool verify_mac(const void *data, size_t length, const std::vector<uint8_t> &key, const std::vector<uint8_t> &mac);
+V_UTILEXPORT bool verify_mac(const void *data, size_t length, const std::vector<uint8_t> &key,
+                             const std::vector<uint8_t> &mac);
 
-}
-}
+} // namespace crypto
+} // namespace vistle
 #endif

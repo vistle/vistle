@@ -7,18 +7,19 @@
 
 // VistleBrowserPropertyManager
 
-class VistleBrowserPropertyManagerPrivate
-{
+class VistleBrowserPropertyManagerPrivate {
     VistleBrowserPropertyManager *q_ptr;
     Q_DECLARE_PUBLIC(VistleBrowserPropertyManager)
 public:
-
-    struct Data
-    {
-        Data() : moduleId(vistle::message::Id::Invalid), filters(QString(QLatin1Char('*'))), regExp(QString(QLatin1Char('*')),  Qt::CaseSensitive, QRegExp::Wildcard),
-            echoMode(QLineEdit::Normal), fileMode(RemoteFileDialog::AnyFile), readOnly(false)
-        {
-        }
+    struct Data {
+        Data()
+        : moduleId(vistle::message::Id::Invalid)
+        , filters(QString(QLatin1Char('*')))
+        , regExp(QString(QLatin1Char('*')), Qt::CaseSensitive, QRegExp::Wildcard)
+        , echoMode(QLineEdit::Normal)
+        , fileMode(RemoteFileDialog::AnyFile)
+        , readOnly(false)
+        {}
         QString val;
         int moduleId;
         QString filters;
@@ -76,8 +77,7 @@ public:
 /*!
     Creates a manager with the given \a parent.
 */
-VistleBrowserPropertyManager::VistleBrowserPropertyManager(QObject *parent)
-    : QtAbstractPropertyManager(parent)
+VistleBrowserPropertyManager::VistleBrowserPropertyManager(QObject *parent): QtAbstractPropertyManager(parent)
 {
     d_ptr = new VistleBrowserPropertyManagerPrivate;
     d_ptr->q_ptr = this;
@@ -112,12 +112,14 @@ QString VistleBrowserPropertyManager::title(const QtProperty *property) const
 
 int VistleBrowserPropertyManager::moduleId(const QtProperty *property) const
 {
-    return getData<int>(d_ptr->m_values, &VistleBrowserPropertyManagerPrivate::Data::moduleId, property, int(vistle::message::Id::Invalid));
+    return getData<int>(d_ptr->m_values, &VistleBrowserPropertyManagerPrivate::Data::moduleId, property,
+                        int(vistle::message::Id::Invalid));
 }
 
 QString VistleBrowserPropertyManager::filters(const QtProperty *property) const
 {
-    return getData<QString>(d_ptr->m_values, &VistleBrowserPropertyManagerPrivate::Data::filters, property, QString(QLatin1Char('*')));
+    return getData<QString>(d_ptr->m_values, &VistleBrowserPropertyManagerPrivate::Data::filters, property,
+                            QString(QLatin1Char('*')));
 }
 
 /*!
@@ -163,7 +165,8 @@ FileMode VistleBrowserPropertyManager::fileMode(const QtProperty *property) cons
 */
 QString VistleBrowserPropertyManager::valueText(const QtProperty *property) const
 {
-    const VistleBrowserPropertyManagerPrivate::PropertyValueMap::const_iterator it = d_ptr->m_values.constFind(property);
+    const VistleBrowserPropertyManagerPrivate::PropertyValueMap::const_iterator it =
+        d_ptr->m_values.constFind(property);
     if (it == d_ptr->m_values.constEnd())
         return QString();
 
@@ -175,7 +178,8 @@ QString VistleBrowserPropertyManager::valueText(const QtProperty *property) cons
 */
 QString VistleBrowserPropertyManager::displayText(const QtProperty *property) const
 {
-    const VistleBrowserPropertyManagerPrivate::PropertyValueMap::const_iterator it = d_ptr->m_values.constFind(property);
+    const VistleBrowserPropertyManagerPrivate::PropertyValueMap::const_iterator it =
+        d_ptr->m_values.constFind(property);
     if (it == d_ptr->m_values.constEnd())
         return QString();
 
@@ -242,7 +246,7 @@ void VistleBrowserPropertyManager::setModuleId(QtProperty *property, const int i
     if (it == d_ptr->m_values.end())
         return;
 
-    VistleBrowserPropertyManagerPrivate::Data data = it.value() ;
+    VistleBrowserPropertyManagerPrivate::Data data = it.value();
 
     if (data.moduleId == id)
         return;
@@ -260,7 +264,7 @@ void VistleBrowserPropertyManager::setFilters(QtProperty *property, const QStrin
     if (it == d_ptr->m_values.end())
         return;
 
-    VistleBrowserPropertyManagerPrivate::Data data = it.value() ;
+    VistleBrowserPropertyManagerPrivate::Data data = it.value();
 
     if (data.filters == filters)
         return;
@@ -283,7 +287,7 @@ void VistleBrowserPropertyManager::setRegExp(QtProperty *property, const QRegExp
     if (it == d_ptr->m_values.end())
         return;
 
-    VistleBrowserPropertyManagerPrivate::Data data = it.value() ;
+    VistleBrowserPropertyManagerPrivate::Data data = it.value();
 
     if (data.regExp == regExp)
         return;
@@ -370,4 +374,3 @@ void VistleBrowserPropertyManager::uninitializeProperty(QtProperty *property)
 {
     d_ptr->m_values.remove(property);
 }
-

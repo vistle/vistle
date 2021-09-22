@@ -11,48 +11,43 @@ namespace vistle {
 namespace except {
 
 class V_UTILEXPORT exception: public std::exception {
+public:
+    exception(const std::string &what = "vistle error");
+    virtual ~exception() throw();
 
-   public:
-   exception(const std::string &what = "vistle error");
-   virtual ~exception() throw();
+    virtual const char *what() const throw();
+    virtual const char *info() const throw();
+    virtual const char *where() const throw();
 
-   virtual const char* what() const throw();
-   virtual const char* info() const throw();
-   virtual const char* where() const throw();
+protected:
+    std::string m_info;
 
-   protected:
-   std::string m_info;
-
-   private:
-   std::string m_what;
-   std::string m_where;
+private:
+    std::string m_what;
+    std::string m_where;
 };
 
 class V_UTILEXPORT not_implemented: public exception {
-
-   public:
-   not_implemented(const std::string &what = "not implemented");
+public:
+    not_implemented(const std::string &what = "not implemented");
 };
 
 class V_UTILEXPORT assertion_failure: public exception {
-
- public:
-   assertion_failure(const std::string &what = "assertion failure");
+public:
+    assertion_failure(const std::string &what = "assertion failure");
 };
 
 class V_UTILEXPORT consistency_error: public exception {
-
- public:
-   consistency_error(const std::string &what = "consistency check failure");
+public:
+    consistency_error(const std::string &what = "consistency check failure");
 };
 
 class V_UTILEXPORT parent_died: public exception {
-
 public:
-   parent_died(const std::string &what = "parent process died");
+    parent_died(const std::string &what = "parent process died");
 };
 
-} // namespace exception
+} // namespace except
 
 using except::exception;
 

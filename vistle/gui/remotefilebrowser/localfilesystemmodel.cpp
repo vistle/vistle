@@ -13,20 +13,18 @@ class FSModel: public QFileSystemModel {
 };
 
 LocalFileSystemModel::LocalFileSystemModel(QObject *parent)
-: AbstractFileSystemModel(parent)
-, m_model(new FSModel(this))
-, m_fileIconProvider(new RemoteFileIconProvider)
+: AbstractFileSystemModel(parent), m_model(new FSModel(this)), m_fileIconProvider(new RemoteFileIconProvider)
 {
-    connect(&*m_model, &FSModel::dataChanged, [this](const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles) {
-        emit dataChanged(mapFromSource(topLeft), mapFromSource(bottomRight), roles);
-    });
-    connect(&*m_model, &FSModel::rootPathChanged, [this](const QString &path){
-        emit rootPathChanged(path);
-    });
-    connect(&*m_model, &FSModel::fileRenamed, [this](const QString &path, const QString &oldName, const QString &newName){
-        emit fileRenamed(path, oldName, newName);
-    });
-    connect(&*m_model, &FSModel::directoryLoaded, [this](const QString &path){
+    connect(&*m_model, &FSModel::dataChanged,
+            [this](const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles) {
+                emit dataChanged(mapFromSource(topLeft), mapFromSource(bottomRight), roles);
+            });
+    connect(&*m_model, &FSModel::rootPathChanged, [this](const QString &path) { emit rootPathChanged(path); });
+    connect(&*m_model, &FSModel::fileRenamed,
+            [this](const QString &path, const QString &oldName, const QString &newName) {
+                emit fileRenamed(path, oldName, newName);
+            });
+    connect(&*m_model, &FSModel::directoryLoaded, [this](const QString &path) {
         qInfo() << "LocalFileSystemModel: directory loaded:" << path;
         emit directoryLoaded(path);
     });
@@ -35,58 +33,61 @@ LocalFileSystemModel::LocalFileSystemModel(QObject *parent)
         emit headerDataChanged(orientation, first, last);
     });
 
-    connect(&*m_model, &FSModel::layoutAboutToBeChanged, [this](const QList<QPersistentModelIndex> &sourceParents, QAbstractItemModel::LayoutChangeHint hint){
-        QList<QPersistentModelIndex> parents;
-        parents.reserve(sourceParents.size());
-        for (const QPersistentModelIndex &parent : sourceParents) {
-            if (!parent.isValid()) {
-                parents << QPersistentModelIndex();
-                continue;
-            }
-            const QModelIndex mappedParent = mapFromSource(parent);
-            Q_ASSERT(mappedParent.isValid());
-            parents << mappedParent;
-        }
+    connect(&*m_model, &FSModel::layoutAboutToBeChanged,
+            [this](const QList<QPersistentModelIndex> &sourceParents, QAbstractItemModel::LayoutChangeHint hint) {
+                QList<QPersistentModelIndex> parents;
+                parents.reserve(sourceParents.size());
+                for (const QPersistentModelIndex &parent: sourceParents) {
+                    if (!parent.isValid()) {
+                        parents << QPersistentModelIndex();
+                        continue;
+                    }
+                    const QModelIndex mappedParent = mapFromSource(parent);
+                    Q_ASSERT(mappedParent.isValid());
+                    parents << mappedParent;
+                }
 
-        emit layoutAboutToBeChanged(parents, hint);
+                emit layoutAboutToBeChanged(parents, hint);
 
-        const auto proxyPersistentIndexes = persistentIndexList();
-        for (const QPersistentModelIndex &proxyPersistentIndex : proxyPersistentIndexes) {
-            proxyIndexes << proxyPersistentIndex;
-            Q_ASSERT(proxyPersistentIndex.isValid());
-            const QPersistentModelIndex srcPersistentIndex = mapToSource(proxyPersistentIndex);
-            Q_ASSERT(srcPersistentIndex.isValid());
-            layoutChangePersistentIndexes << srcPersistentIndex;
-        }
-    });
+                const auto proxyPersistentIndexes = persistentIndexList();
+                for (const QPersistentModelIndex &proxyPersistentIndex: proxyPersistentIndexes) {
+                    proxyIndexes << proxyPersistentIndex;
+                    Q_ASSERT(proxyPersistentIndex.isValid());
+                    const QPersistentModelIndex srcPersistentIndex = mapToSource(proxyPersistentIndex);
+                    Q_ASSERT(srcPersistentIndex.isValid());
+                    layoutChangePersistentIndexes << srcPersistentIndex;
+                }
+            });
 
-    connect(&*m_model, &FSModel::layoutChanged, [this](const QList<QPersistentModelIndex> &sourceParents, QAbstractItemModel::LayoutChangeHint hint){
-        for (int i = 0; i < proxyIndexes.size(); ++i) {
-            changePersistentIndex(proxyIndexes.at(i), mapFromSource(layoutChangePersistentIndexes.at(i)));
-        }
-        layoutChangePersistentIndexes.clear();
-        proxyIndexes.clear();
+    connect(&*m_model, &FSModel::layoutChanged,
+            [this](const QList<QPersistentModelIndex> &sourceParents, QAbstractItemModel::LayoutChangeHint hint) {
+                for (int i = 0; i < proxyIndexes.size(); ++i) {
+                    changePersistentIndex(proxyIndexes.at(i), mapFromSource(layoutChangePersistentIndexes.at(i)));
+                }
+                layoutChangePersistentIndexes.clear();
+                proxyIndexes.clear();
 
-        QList<QPersistentModelIndex> parents;
-        parents.reserve(sourceParents.size());
-        for (const QPersistentModelIndex &parent : sourceParents) {
-            if (!parent.isValid()) {
-                parents << QPersistentModelIndex();
-                continue;
-            }
-            const QModelIndex mappedParent = mapFromSource(parent);
-            Q_ASSERT(mappedParent.isValid());
-            parents << mappedParent;
-        }
-        emit layoutChanged(parents, hint);
-    });
-    void layoutChanged(const QList<QPersistentModelIndex> &parents = QList<QPersistentModelIndex>(), QAbstractItemModel::LayoutChangeHint hint = QAbstractItemModel::NoLayoutChangeHint);
-    void layoutAboutToBeChanged(const QList<QPersistentModelIndex> &parents = QList<QPersistentModelIndex>(), QAbstractItemModel::LayoutChangeHint hint = QAbstractItemModel::NoLayoutChangeHint);
+                QList<QPersistentModelIndex> parents;
+                parents.reserve(sourceParents.size());
+                for (const QPersistentModelIndex &parent: sourceParents) {
+                    if (!parent.isValid()) {
+                        parents << QPersistentModelIndex();
+                        continue;
+                    }
+                    const QModelIndex mappedParent = mapFromSource(parent);
+                    Q_ASSERT(mappedParent.isValid());
+                    parents << mappedParent;
+                }
+                emit layoutChanged(parents, hint);
+            });
+    void layoutChanged(const QList<QPersistentModelIndex> &parents = QList<QPersistentModelIndex>(),
+                       QAbstractItemModel::LayoutChangeHint hint = QAbstractItemModel::NoLayoutChangeHint);
+    void layoutAboutToBeChanged(const QList<QPersistentModelIndex> &parents = QList<QPersistentModelIndex>(),
+                                QAbstractItemModel::LayoutChangeHint hint = QAbstractItemModel::NoLayoutChangeHint);
 }
 
 LocalFileSystemModel::~LocalFileSystemModel()
-{
-}
+{}
 
 QModelIndex LocalFileSystemModel::buddy(const QModelIndex &idx) const
 {
@@ -130,12 +131,12 @@ void LocalFileSystemModel::fetchMore(const QModelIndex &parent)
 
 int LocalFileSystemModel::rowCount(const QModelIndex &parent) const
 {
-    return  m_model->rowCount(mapToSource(parent));
+    return m_model->rowCount(mapToSource(parent));
 }
 
 int LocalFileSystemModel::columnCount(const QModelIndex &parent) const
 {
-    return  m_model->columnCount(mapToSource(parent));
+    return m_model->columnCount(mapToSource(parent));
 }
 
 QString LocalFileSystemModel::workingDirectory() const
@@ -150,8 +151,7 @@ QVariant LocalFileSystemModel::myComputer(int role) const
 
 QVariant LocalFileSystemModel::homePath(int role) const
 {
-    switch(role)
-    {
+    switch (role) {
     case Qt::DisplayRole:
         return QDir::homePath();
     case Qt::DecorationRole:
@@ -200,7 +200,8 @@ QMimeData *LocalFileSystemModel::mimeData(const QModelIndexList &indexes) const
     return m_model->mimeData(mapped);
 }
 
-bool LocalFileSystemModel::dropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column, const QModelIndex &parent)
+bool LocalFileSystemModel::dropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column,
+                                        const QModelIndex &parent)
 {
     return m_model->dropMimeData(data, action, row, column, mapToSource(parent));
 }
@@ -232,8 +233,7 @@ QDir LocalFileSystemModel::rootDirectory() const
 }
 
 void LocalFileSystemModel::setIconProvider(RemoteFileIconProvider *provider)
-{
-}
+{}
 
 RemoteFileIconProvider *LocalFileSystemModel::iconProvider() const
 {
@@ -361,7 +361,7 @@ bool LocalFileSystemModel::remove(const QModelIndex &index)
     return m_model->remove(mapToSource(index));
 }
 
-QModelIndex LocalFileSystemModel::mapFromSource(const QModelIndex& sourceIndex) const
+QModelIndex LocalFileSystemModel::mapFromSource(const QModelIndex &sourceIndex) const
 {
     if (!m_model || !sourceIndex.isValid())
         return QModelIndex();
@@ -370,7 +370,7 @@ QModelIndex LocalFileSystemModel::mapFromSource(const QModelIndex& sourceIndex) 
     return createIndex(sourceIndex.row(), sourceIndex.column(), sourceIndex.internalPointer());
 }
 
-QModelIndex LocalFileSystemModel::mapToSource(const QModelIndex& proxyIndex) const
+QModelIndex LocalFileSystemModel::mapToSource(const QModelIndex &proxyIndex) const
 {
     if (!m_model || !proxyIndex.isValid())
         return QModelIndex();

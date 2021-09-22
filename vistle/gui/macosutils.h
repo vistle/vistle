@@ -4,6 +4,7 @@
 #ifdef __cplusplus
 extern "C"
 #endif
-void macos_disable_tabs();
+    void
+    macos_disable_tabs();
 
 #endif

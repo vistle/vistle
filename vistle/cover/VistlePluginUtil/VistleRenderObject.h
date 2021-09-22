@@ -18,112 +18,107 @@ class coInteractor;
 }
 
 class V_PLUGINUTILEXPORT BaseRenderObject: public opencover::RenderObject {
+public:
+    BaseRenderObject();
+    ~BaseRenderObject();
 
-   public:
-   BaseRenderObject();
-   ~BaseRenderObject();
+    //XXX: hacks for Volume plugin and Tracer
+    bool isSet() const override { return false; }
+    size_t getNumElements() const override { return 0; }
+    RenderObject *getElement(size_t idx) const override { return NULL; }
+    RenderObject *getColorMap(int idx) const override { return NULL; }
 
-   //XXX: hacks for Volume plugin and Tracer
-   bool isSet() const override { return false; }
-   size_t getNumElements() const override { return 0; }
-   RenderObject *getElement(size_t idx) const override { return NULL; }
-   RenderObject *getColorMap(int idx) const override { return NULL; }
+    bool isUniformGrid() const override { return false; }
+    void getSize(int &nx, int &ny, int &nz) const override { nx = ny = nz = 0; }
+    void getMinMax(float &xmin, float &xmax, float &ymin, float &ymax, float &zmin, float &zmax) const override
+    {
+        xmin = xmax = ymin = ymax = zmin = zmax = 0.;
+    }
+    float getMin(int channel) const override { return 0.; }
+    float getMax(int channel) const override { return 0.; }
 
-   bool isUniformGrid() const override { return false; }
-   void getSize(int &nx, int &ny, int &nz) const override { nx = ny = nz = 0; }
-   void getMinMax(float &xmin, float &xmax,
-         float &ymin, float &ymax,
-         float &zmin, float &zmax) const override { xmin=xmax=ymin=ymax=zmin=zmax=0.; }
-   float getMin(int channel) const override { return 0.; }
-   float getMax(int channel) const override { return 0.; }
+    bool isVectors() const override { return false; }
+    const unsigned char *getByte(opencover::Field::Id idx) const override { return NULL; }
+    const int *getInt(opencover::Field::Id idx) const override { return NULL; }
+    const float *getFloat(opencover::Field::Id idx) const override { return NULL; }
 
-   bool isVectors() const override { return false; }
-   const unsigned char *getByte(opencover::Field::Id idx) const override { return NULL; }
-   const int *getInt(opencover::Field::Id idx) const override { return NULL; }
-   const float *getFloat(opencover::Field::Id idx) const override { return NULL; }
-
-   bool isUnstructuredGrid() const override { return false; }
-
+    bool isUnstructuredGrid() const override { return false; }
 };
 
 
 class V_PLUGINUTILEXPORT VistleRenderObject: public BaseRenderObject {
+public:
+    VistleRenderObject(std::shared_ptr<const vistle::RenderObject> ro);
+    VistleRenderObject(vistle::Object::const_ptr obj);
+    ~VistleRenderObject() override;
 
-   public:
-   VistleRenderObject(std::shared_ptr<const vistle::RenderObject> ro);
-   VistleRenderObject(vistle::Object::const_ptr obj);
-   ~VistleRenderObject() override;
+    void setNode(osg::Node *node);
+    osg::Node *node() const;
+    std::shared_ptr<const vistle::RenderObject> renderObject() const;
+    int getCreator() const;
 
-   void setNode(osg::Node *node);
-   osg::Node *node() const;
-   std::shared_ptr<const vistle::RenderObject> renderObject() const;
-   int getCreator() const;
+    const char *getName() const override;
+    bool isPlaceHolder() const;
+    bool isUniformGrid() const override;
+    bool isGeometry() const override;
+    RenderObject *getGeometry() const override;
+    RenderObject *getColors() const override;
+    RenderObject *getNormals() const override;
+    RenderObject *getTexture() const override;
+    RenderObject *getVertexAttribute() const override;
 
-   const char *getName() const override;
-   bool isPlaceHolder() const;
-   bool isUniformGrid() const override;
-   bool isGeometry() const override;
-   RenderObject *getGeometry() const override;
-   RenderObject *getColors() const override;
-   RenderObject *getNormals() const override;
-   RenderObject *getTexture() const override;
-   RenderObject *getVertexAttribute() const override;
+    void getSize(int &nx, int &ny, int &nz) const override;
+    void getMinMax(float &xmin, float &xmax, float &ymin, float &ymax, float &zmin, float &zmax) const override;
+    float getMin(int channel) const override;
+    float getMax(int channel) const override;
+    const float *getFloat(opencover::Field::Id idx) const override;
 
-   void getSize(int &nx, int &ny, int &nz) const override;
-   void getMinMax(float &xmin, float &xmax,
-         float &ymin, float &ymax,
-         float &zmin, float &zmax) const override;
-   float getMin(int channel) const override;
-   float getMax(int channel) const override;
-   const float *getFloat(opencover::Field::Id idx) const override;
+    const char *getAttribute(const char *) const override;
 
-   const char *getAttribute(const char *) const override;
+protected:
+    std::weak_ptr<const vistle::RenderObject> m_vistleRo;
+    vistle::Object::const_ptr m_obj;
+    osg::ref_ptr<osg::Node> m_node;
 
-   protected:
-
-   std::weak_ptr<const vistle::RenderObject> m_vistleRo;
-   vistle::Object::const_ptr m_obj;
-   osg::ref_ptr<osg::Node> m_node;
-
-   mutable std::string m_name;
-   mutable opencover::RenderObject *m_roGeo;
-   mutable opencover::RenderObject *m_roCol;
-   mutable opencover::RenderObject *m_roNorm;
-   mutable opencover::RenderObject *m_roTex;
+    mutable std::string m_name;
+    mutable opencover::RenderObject *m_roGeo;
+    mutable opencover::RenderObject *m_roCol;
+    mutable opencover::RenderObject *m_roNorm;
+    mutable opencover::RenderObject *m_roTex;
 };
 
 // pseudo RenderObject for handling module parameters
 class V_PLUGINUTILEXPORT ModuleRenderObject: public BaseRenderObject {
+public:
+    ModuleRenderObject(const std::string &moduleName, int moduleId);
+    ~ModuleRenderObject();
 
- public:
-   ModuleRenderObject(const std::string &moduleName, int moduleId);
-   ~ModuleRenderObject();
+    const char *getName() const;
 
-   const char *getName() const;
+    bool isGeometry() const;
+    RenderObject *getGeometry() const;
+    RenderObject *getColors() const;
+    RenderObject *getNormals() const;
+    RenderObject *getTexture() const;
+    RenderObject *getVertexAttribute() const;
 
-   bool isGeometry() const;
-   RenderObject *getGeometry() const;
-   RenderObject *getColors() const;
-   RenderObject *getNormals() const;
-   RenderObject *getTexture() const;
-   RenderObject *getVertexAttribute() const;
+    const char *getAttribute(const char *) const;
 
-   const char *getAttribute(const char *) const;
+    void addAttribute(const std::string &key, const std::string &value);
+    void removeAttribute(const std::string &key);
 
-   void addAttribute(const std::string &key, const std::string &value);
-   void removeAttribute(const std::string &key);
+private:
+    std::string m_moduleName;
+    int m_moduleId;
+    std::string m_name;
 
- private:
-   std::string m_moduleName;
-   int m_moduleId;
-   std::string m_name;
-
-   std::map<std::string, std::string> m_attributes;
+    std::map<std::string, std::string> m_attributes;
 };
 
 class V_PLUGINUTILEXPORT VariantRenderObject: public BaseRenderObject {
 public:
-    VariantRenderObject(const std::string &variantName, vistle::RenderObject::InitialVariantVisibility visible = vistle::RenderObject::DontChange);
+    VariantRenderObject(const std::string &variantName,
+                        vistle::RenderObject::InitialVariantVisibility visible = vistle::RenderObject::DontChange);
 
     const char *getName() const override { return ""; }
     bool isGeometry() const override { return false; }
@@ -133,9 +128,9 @@ public:
     RenderObject *getTexture() const override { return nullptr; }
     RenderObject *getVertexAttribute() const override { return nullptr; }
 
-   const char *getAttribute(const char *key) const override;
+    const char *getAttribute(const char *key) const override;
 
-   osg::ref_ptr<osg::Node> node() const;
+    osg::ref_ptr<osg::Node> node() const;
 
 private:
     std::string variant;

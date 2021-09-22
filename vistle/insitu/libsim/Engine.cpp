@@ -273,8 +273,8 @@ Engine::Engine()
     m_intOptions[IntOptions::KeepTimesteps] = IntOption{IntOptions::KeepTimesteps, 1};
     m_intOptions[IntOptions::NthTimestep] = IntOption{IntOptions::NthTimestep, 1};
     m_intOptions[IntOptions::VtkFormat] = IntOption{IntOptions::VtkFormat, false, [this]() {
-                                      resetDataTransmitter();
-                                  }};
+                                                        resetDataTransmitter();
+                                                    }};
 
     auto comm = MPI_COMM_WORLD;
     setMpiComm(static_cast<void *>(&comm));

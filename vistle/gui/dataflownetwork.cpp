@@ -21,8 +21,6 @@
 #include <vistle/core/statetracker.h>
 
 
-
-
 #include <QGraphicsView>
 #include <QGraphicsSceneMouseEvent>
 #include <QDebug>
@@ -70,30 +68,29 @@ void DataFlowNetwork::addModule(int hub, QString modName, Qt::Key direction)
     case Qt::Key_Down:
         offset = QPointF{0, 80};
         break;
-   case Qt::Key_Up:
+    case Qt::Key_Up:
         offset = QPointF{0, -80};
         break;
-   case Qt::Key_Left:
+    case Qt::Key_Left:
         offset = QPointF{-160, 0};
         break;
-   case Qt::Key_Right:
+    case Qt::Key_Right:
         offset = QPointF{160, 0};
         break;
 
     default:
-       break;
+        break;
     }
-   QPointF newPos = lastDropPos + offset;
-   constexpr float threashhold = 30;
-   for (int i = 0; i < m_moduleList.size(); i++)
-   {
-       if (abs(m_moduleList[i]->pos() - newPos) < threashhold) {
-           newPos += offset;
-           i = -1;
-       }
-   }
+    QPointF newPos = lastDropPos + offset;
+    constexpr float threashhold = 30;
+    for (int i = 0; i < m_moduleList.size(); i++) {
+        if (abs(m_moduleList[i]->pos() - newPos) < threashhold) {
+            newPos += offset;
+            i = -1;
+        }
+    }
 
-   addModule(hub, modName, newPos);
+    addModule(hub, modName, newPos);
 }
 
 
@@ -125,211 +122,206 @@ void DataFlowNetwork::addModule(int hub, QString modName, QPointF dropPos)
 
 void DataFlowNetwork::addModule(int moduleId, const boost::uuids::uuid &spawnUuid, QString name)
 {
-   if (!vistle::message::Id::isModule(moduleId))
-       return;
+    if (!vistle::message::Id::isModule(moduleId))
+        return;
 
-   //std::cerr << "addModule: name=" << name.toStdString() << ", id=" << moduleId << std::endl;
-   Module *mod = findModule(spawnUuid);
-   if (mod) {
-      mod->sendPosition();
-   } else {
-      mod = findModule(moduleId);
-   }
-   if (!mod) {
-      mod = new Module(nullptr, name);
-      connect(mod, &Module::createModuleCompound, this, &DataFlowNetwork::createModuleCompound);
-      addItem(mod);
-      mod->setStatus(Module::SPAWNING);
-      m_moduleList.append(mod);
-   }
+    //std::cerr << "addModule: name=" << name.toStdString() << ", id=" << moduleId << std::endl;
+    Module *mod = findModule(spawnUuid);
+    if (mod) {
+        mod->sendPosition();
+    } else {
+        mod = findModule(moduleId);
+    }
+    if (!mod) {
+        mod = new Module(nullptr, name);
+        connect(mod, &Module::createModuleCompound, this, &DataFlowNetwork::createModuleCompound);
+        addItem(mod);
+        mod->setStatus(Module::SPAWNING);
+        m_moduleList.append(mod);
+    }
 
-   mod->setId(moduleId);
-   mod->setHub(m_state.getHub(moduleId));
-   mod->setName(name);
+    mod->setId(moduleId);
+    mod->setHub(m_state.getHub(moduleId));
+    mod->setName(name);
 }
 
 void DataFlowNetwork::deleteModule(int moduleId)
 {
-   Module *m = findModule(moduleId);
-   if (m) {
+    Module *m = findModule(moduleId);
+    if (m) {
+        std::vector<Port *> p1, p2;
+        for (auto &c: m_connections) {
+            const auto &key = c.first;
+            if (key.port1->module()->id() == moduleId || key.port2->module()->id() == moduleId) {
+                p1.push_back(key.port1);
+                p2.push_back(key.port2);
+            }
+        }
+        for (size_t i = 0; i < p1.size(); ++i) {
+            removeConnection(p1[i], p2[i]);
+        }
 
-      std::vector<Port *> p1, p2;
-      for (auto &c: m_connections) {
-          const auto &key = c.first;
-          if (key.port1->module()->id() == moduleId || key.port2->module()->id() == moduleId) {
-              p1.push_back(key.port1);
-              p2.push_back(key.port2);
-          }
-      }
-      for (size_t i=0; i<p1.size(); ++i) {
-          removeConnection(p1[i], p2[i]);
-      }
-
-      removeItem(m);
-      m_moduleList.removeAll(m);
-   }
+        removeItem(m);
+        m_moduleList.removeAll(m);
+    }
 }
 
 void DataFlowNetwork::moduleStateChanged(int moduleId, int stateBits)
 {
-   if (Module *m = findModule(moduleId)) {
-      if (stateBits & vistle::StateObserver::Killed)
-         m->setStatus(Module::KILLED);
-      else if (stateBits & vistle::StateObserver::Busy)
-         m->setStatus(Module::BUSY);
-      else if (stateBits & vistle::StateObserver::Initialized)
-         m->setStatus(Module::INITIALIZED);
-      else
-         m->setStatus(Module::SPAWNING);
-   }
+    if (Module *m = findModule(moduleId)) {
+        if (stateBits & vistle::StateObserver::Killed)
+            m->setStatus(Module::KILLED);
+        else if (stateBits & vistle::StateObserver::Busy)
+            m->setStatus(Module::BUSY);
+        else if (stateBits & vistle::StateObserver::Initialized)
+            m->setStatus(Module::INITIALIZED);
+        else
+            m->setStatus(Module::SPAWNING);
+    }
 }
 
 void DataFlowNetwork::newPort(int moduleId, QString portName)
 {
-   if (Module *m = findModule(moduleId)) {
-      const vistle::Port *port = m_state.portTracker()->getPort(moduleId, portName.toStdString());
-      if (port) {
-         m->addPort(*port);
-      }
-   }
+    if (Module *m = findModule(moduleId)) {
+        const vistle::Port *port = m_state.portTracker()->getPort(moduleId, portName.toStdString());
+        if (port) {
+            m->addPort(*port);
+        }
+    }
 }
 
-void DataFlowNetwork::deletePort(int moduleId, QString portName) {
-
+void DataFlowNetwork::deletePort(int moduleId, QString portName)
+{
 #if 0
    QString text = "Delete port: " + QString::number(moduleId) + ":" + portName;
    VistleConsole::the()->appendDebug(text);
    std::cerr << text.toStdString() << std::endl;
 #endif
-   if (Module *m = findModule(moduleId)) {
-      m->removePort(vistle::Port(moduleId, portName.toStdString(), vistle::Port::ANY));
-   }
+    if (Module *m = findModule(moduleId)) {
+        m->removePort(vistle::Port(moduleId, portName.toStdString(), vistle::Port::ANY));
+    }
 }
 
-void DataFlowNetwork::newConnection(int fromId, QString fromName,
-                                   int toId, QString toName) {
-
+void DataFlowNetwork::newConnection(int fromId, QString fromName, int toId, QString toName)
+{
 #if 0
    QString text = "New Connection: " + QString::number(fromId) + ":" + fromName + " -> " + QString::number(toId) + ":" + toName;
    m_console->appendDebug(text);
 #endif
 
-   const vistle::Port *portFrom = m_state.portTracker()->findPort(fromId, fromName.toStdString());
-   const vistle::Port *portTo = m_state.portTracker()->findPort(toId, toName.toStdString());
+    const vistle::Port *portFrom = m_state.portTracker()->findPort(fromId, fromName.toStdString());
+    const vistle::Port *portTo = m_state.portTracker()->findPort(toId, toName.toStdString());
 
-   Module *mFrom = findModule(fromId);
-   Module *mTo = findModule(toId);
+    Module *mFrom = findModule(fromId);
+    Module *mTo = findModule(toId);
 
-   if (mFrom && portFrom && mTo && portTo) {
-      addConnection(mFrom->getGuiPort(portFrom), mTo->getGuiPort(portTo));
-   }
+    if (mFrom && portFrom && mTo && portTo) {
+        addConnection(mFrom->getGuiPort(portFrom), mTo->getGuiPort(portTo));
+    }
 }
 
-void DataFlowNetwork::deleteConnection(int fromId, QString fromName,
-                                      int toId, QString toName)
+void DataFlowNetwork::deleteConnection(int fromId, QString fromName, int toId, QString toName)
 {
 #if 0
    QString text = "Connection removed: " + QString::number(fromId) + ":" + fromName + " -> " + QString::number(toId) + ":" + toName;
    m_console->appendDebug(text);
 #endif
 
-   const vistle::Port *portFrom = m_state.portTracker()->findPort(fromId, fromName.toStdString());
-   const vistle::Port *portTo = m_state.portTracker()->findPort(toId, toName.toStdString());
+    const vistle::Port *portFrom = m_state.portTracker()->findPort(fromId, fromName.toStdString());
+    const vistle::Port *portTo = m_state.portTracker()->findPort(toId, toName.toStdString());
 
-   Module *mFrom = findModule(fromId);
-   Module *mTo = findModule(toId);
+    Module *mFrom = findModule(fromId);
+    Module *mTo = findModule(toId);
 
-   if (mFrom && portFrom && mTo && portTo) {
-      removeConnection(mFrom->getGuiPort(portFrom), mTo->getGuiPort(portTo));
-   }
+    if (mFrom && portFrom && mTo && portTo) {
+        removeConnection(mFrom->getGuiPort(portFrom), mTo->getGuiPort(portTo));
+    }
 }
 
-void DataFlowNetwork::moduleStatus(int id, QString status, int prio) {
-
-   if (Module *m = findModule(id)) {
-       m->setStatusText(status, prio);
-   }
+void DataFlowNetwork::moduleStatus(int id, QString status, int prio)
+{
+    if (Module *m = findModule(id)) {
+        m->setStatusText(status, prio);
+    }
 }
 
 
+void DataFlowNetwork::addConnection(Port *portFrom, Port *portTo, bool sendToController)
+{
+    assert(portFrom);
+    assert(portTo);
 
-void DataFlowNetwork::addConnection(Port *portFrom, Port *portTo, bool sendToController) {
+    ConnectionKey key(portFrom, portTo);
+    auto it = m_connections.end();
+    if (key.valid())
+        it = m_connections.find(key);
+    Connection *c = nullptr;
+    if (it != m_connections.end()) {
+        //qDebug() << "already have connection";
+        c = it->second;
+    } else {
+        //qDebug() << "new connection";
+        c = new Connection(portFrom, portTo, sendToController ? Connection::ToEstablish : Connection::Established);
+        m_connections[key] = c;
+        addItem(c);
+    }
 
-   assert(portFrom);
-   assert(portTo);
-
-   ConnectionKey key(portFrom, portTo);
-   auto it = m_connections.end();
-   if (key.valid())
-       it = m_connections.find(key);
-   Connection *c = nullptr;
-   if (it != m_connections.end()) {
-      //qDebug() << "already have connection";
-      c = it->second;
-   } else {
-      //qDebug() << "new connection";
-      c = new Connection(portFrom, portTo, sendToController ? Connection::ToEstablish : Connection::Established);
-      m_connections[key] = c;
-      addItem(c);
-   }
-
-   if (sendToController) {
-
-      const vistle::Port *vFrom = portFrom->module()->getVistlePort(portFrom);
-      const vistle::Port *vTo = portTo->module()->getVistlePort(portTo);
-      m_vistleConnection->connect(vFrom, vTo);
-   } else {
-      c->setState(Connection::Established);
-   }
+    if (sendToController) {
+        const vistle::Port *vFrom = portFrom->module()->getVistlePort(portFrom);
+        const vistle::Port *vTo = portTo->module()->getVistlePort(portTo);
+        m_vistleConnection->connect(vFrom, vTo);
+    } else {
+        c->setState(Connection::Established);
+    }
 }
 
 void DataFlowNetwork::removeConnection(Port *portFrom, Port *portTo, bool sendToController)
 {
-   ConnectionKey key(portFrom, portTo);
-   assert(key.valid());
-   auto it = m_connections.find(key);
-   if (it == m_connections.end()) {
-      std::cerr << "connection to be removed not found" << std::endl;
-      return;
-   }
-   Connection *c = it->second;
+    ConnectionKey key(portFrom, portTo);
+    assert(key.valid());
+    auto it = m_connections.find(key);
+    if (it == m_connections.end()) {
+        std::cerr << "connection to be removed not found" << std::endl;
+        return;
+    }
+    Connection *c = it->second;
 
-   if (sendToController) {
-      c->setState(Connection::ToRemove);
-      const vistle::Port *vFrom = portFrom->module()->getVistlePort(portFrom);
-      const vistle::Port *vTo = portTo->module()->getVistlePort(portTo);
-      m_vistleConnection->disconnect(vFrom, vTo);
-   } else {
-      m_connections.erase(it);
-      removeItem(c);
-   }
+    if (sendToController) {
+        c->setState(Connection::ToRemove);
+        const vistle::Port *vFrom = portFrom->module()->getVistlePort(portFrom);
+        const vistle::Port *vTo = portTo->module()->getVistlePort(portTo);
+        m_vistleConnection->disconnect(vFrom, vTo);
+    } else {
+        m_connections.erase(it);
+        removeItem(c);
+    }
 }
 
 Module *DataFlowNetwork::findModule(int id) const
 {
-   for (Module *mod: m_moduleList) {
-      if (mod->id() == id) {
-         return mod;
-      }
-   }
+    for (Module *mod: m_moduleList) {
+        if (mod->id() == id) {
+            return mod;
+        }
+    }
 
-   return nullptr;
+    return nullptr;
 }
 
 Module *DataFlowNetwork::findModule(const boost::uuids::uuid &spawnUuid) const
 {
-   for (Module *mod: m_moduleList) {
-      if (mod->spawnUuid() == spawnUuid) {
-         return mod;
-      }
-   }
+    for (Module *mod: m_moduleList) {
+        if (mod->spawnUuid() == spawnUuid) {
+            return mod;
+        }
+    }
 
-   return nullptr;
+    return nullptr;
 }
 
-QColor DataFlowNetwork::highlightColor() const {
-
-   return m_highlightColor;
+QColor DataFlowNetwork::highlightColor() const
+{
+    return m_highlightColor;
 }
 
 ///\todo an exception is very occasionally thrown upon a simple click inside a module's port.
@@ -363,18 +355,17 @@ void DataFlowNetwork::mousePressEvent(QGraphicsSceneMouseEvent *event)
         m_mousePressed = true;
         event->accept();
 
-       // Test for port type
-       switch (startPort->portType()) {
-          case Port::Input:
-          case Port::Output:
-          case Port::Parameter:
-             m_Line = new QGraphicsLineItem(QLineF(event->scenePos(),
-                      event->scenePos()));
-             m_Line->setPen(QPen(m_LineColor, 2));
-             addItem(m_Line);
-             startModule = dynamic_cast<Module *>(startPort->parentItem());
-             break;
-       } //end switch
+        // Test for port type
+        switch (startPort->portType()) {
+        case Port::Input:
+        case Port::Output:
+        case Port::Parameter:
+            m_Line = new QGraphicsLineItem(QLineF(event->scenePos(), event->scenePos()));
+            m_Line->setPen(QPen(m_LineColor, 2));
+            addItem(m_Line);
+            startModule = dynamic_cast<Module *>(startPort->parentItem());
+            break;
+        } //end switch
     } else {
         QGraphicsScene::mousePressEvent(event);
     }
@@ -450,9 +441,9 @@ void DataFlowNetwork::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
  */
 void DataFlowNetwork::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 {
-    if (!startPort  || !m_Line) {
-       QGraphicsScene::mouseMoveEvent(event);
-       return;
+    if (!startPort || !m_Line) {
+        QGraphicsScene::mouseMoveEvent(event);
+        return;
     }
 
     event->accept();
@@ -464,78 +455,75 @@ void DataFlowNetwork::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 
 void DataFlowNetwork::createModuleCompound()
 {
-   std::cerr << "saving preset" << std::endl;
-        QString filter = "Vistle Compound Files (*";
-        filter += vistle::moduleCompoundSuffix.c_str();
-        filter +=    +")";
-        QString text =
-            QFileDialog::getSaveFileName(nullptr, tr("Save Compound"), vistle::directory::configHome().c_str(),
-                                         filter, &filter);
-        if (text.size() - text.lastIndexOf("/") > vistle::ModuleNameLength) {
+    std::cerr << "saving preset" << std::endl;
+    QString filter = "Vistle Compound Files (*";
+    filter += vistle::moduleCompoundSuffix.c_str();
+    filter += +")";
+    QString text = QFileDialog::getSaveFileName(nullptr, tr("Save Compound"), vistle::directory::configHome().c_str(),
+                                                filter, &filter);
+    if (text.size() - text.lastIndexOf("/") > vistle::ModuleNameLength) {
 #ifdef HAVE_PYTHON
-            vistle::PythonInterface::the().exec("print(\"Module preset must not exeed " +
-                                                std::to_string(vistle::ModuleNameLength) + "!\"");
+        vistle::PythonInterface::the().exec("print(\"Module preset must not exeed " +
+                                            std::to_string(vistle::ModuleNameLength) + "!\"");
 #endif
+        return;
+    }
+
+    auto path = text.toStdString();
+    auto name = path.substr(path.find_last_of("/") + 1);
+    vistle::ModuleCompound comp{0, name, path, ""};
+    auto selectedModules = DataFlowView::the()->selectedModules();
+    std::sort(selectedModules.begin(), selectedModules.end(),
+              [](const gui::Module *m1, const gui::Module *m2) { return m1->id() < m2->id(); });
+
+    int i = 0;
+    for (const auto &m: selectedModules) {
+        if (m->hub() != selectedModules[0]->hub()) {
+#ifdef HAVE_PYTHON
+            vistle::PythonInterface::the().exec("print(\"Modules in a module preset must be on a single host!\"");
             return;
-            }
-            
-        auto path = text.toStdString();
-        auto name = path.substr(path.find_last_of("/") + 1);
-        vistle::ModuleCompound comp{0, name, path, ""};
-        auto selectedModules = DataFlowView::the()->selectedModules();
-        std::sort(selectedModules.begin(), selectedModules.end(),
-                  [](const gui::Module *m1, const gui::Module *m2) { return m1->id() < m2->id(); });
-
-        int i = 0;
-        for (const auto &m: selectedModules) {
-            if (m->hub() != selectedModules[0]->hub()) {
-#ifdef HAVE_PYTHON
-               vistle::PythonInterface::the().exec("print(\"Modules in a module preset must be on a single host!\"");
-               return;
 #endif
-            }
-            comp.addSubmodule(vistle::ModuleCompound::SubModule{
-               m->name().toStdString(),
-               static_cast<float>(m->pos().x() - selectedModules[0]->pos().x()),
-               static_cast<float>(m->pos().y() - selectedModules[0]->pos().y())
-            });
-            
-            for (const auto &fromPort : m_state.portTracker()->getConnectedOutputPorts(m->id())) {
-                    for(const auto &toPort : fromPort->connections())
-                    {
-                        vistle::ModuleCompound::Connection c;
-                        c.fromId = i;
-                        auto toMod = std::find_if(selectedModules.begin(), selectedModules.end(),
-                                                   [&toPort](const Module *mod) { return toPort->getModuleID() == mod->id(); });
+        }
+        comp.addSubmodule(vistle::ModuleCompound::SubModule{
+            m->name().toStdString(), static_cast<float>(m->pos().x() - selectedModules[0]->pos().x()),
+            static_cast<float>(m->pos().y() - selectedModules[0]->pos().y())});
 
-                        c.toId = toMod == selectedModules.end() ? -1 : toMod - selectedModules.begin(); //-1 for an exposed output port for the compound
-                        c.fromPort = fromPort->getName();
-                        c.toPort = toPort->getName();
-                        comp.addConnection(c);
+        for (const auto &fromPort: m_state.portTracker()->getConnectedOutputPorts(m->id())) {
+            for (const auto &toPort: fromPort->connections()) {
+                vistle::ModuleCompound::Connection c;
+                c.fromId = i;
+                auto toMod = std::find_if(selectedModules.begin(), selectedModules.end(),
+                                          [&toPort](const Module *mod) { return toPort->getModuleID() == mod->id(); });
 
-                    }
+                c.toId = toMod == selectedModules.end()
+                             ? -1
+                             : toMod - selectedModules.begin(); //-1 for an exposed output port for the compound
+                c.fromPort = fromPort->getName();
+                c.toPort = toPort->getName();
+                comp.addConnection(c);
             }
-            //get exposed input ports
-            
-            for (const auto &toPort : m_state.portTracker()->getConnectedInputPorts(m->id())) {
-                for (const auto &fromPort : toPort->connections()) {
-                    auto mod = std::find_if(selectedModules.begin(), selectedModules.end(),
-                                            [&fromPort](const Module *mod) { return mod->id() == fromPort->getModuleID(); });
-                    if (mod == selectedModules.end())
-                    {
-                        vistle::ModuleCompound::Connection c;
-                        c.fromId = -1;
-                        c.toId = i;
-                        c.fromPort = fromPort->getName();
-                        c.toPort = toPort->getName();
-                        comp.addConnection(c);
-                    }
+        }
+        //get exposed input ports
+
+        for (const auto &toPort: m_state.portTracker()->getConnectedInputPorts(m->id())) {
+            for (const auto &fromPort: toPort->connections()) {
+                auto mod = std::find_if(selectedModules.begin(), selectedModules.end(), [&fromPort](const Module *mod) {
+                    return mod->id() == fromPort->getModuleID();
+                });
+                if (mod == selectedModules.end()) {
+                    vistle::ModuleCompound::Connection c;
+                    c.fromId = -1;
+                    c.toId = i;
+                    c.fromPort = fromPort->getName();
+                    c.toPort = toPort->getName();
+                    comp.addConnection(c);
                 }
             }
-            ++i;
         }
-        comp.send(std::bind(&vistle::VistleConnection::sendMessage, m_vistleConnection, std::placeholders::_1,
-                            std::placeholders::_2));
+        ++i;
+    }
+    comp.send(std::bind(&vistle::VistleConnection::sendMessage, m_vistleConnection, std::placeholders::_1,
+                        std::placeholders::_2));
 }
 
 

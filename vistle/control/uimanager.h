@@ -15,33 +15,34 @@ class StateTracker;
 class Hub;
 
 class UiManager {
+public:
+    UiManager(Hub &hub, StateTracker &stateTracker);
+    ~UiManager();
 
- public:
-   UiManager(Hub &hub, StateTracker &stateTracker);
-   ~UiManager();
+    void requestQuit();
+    bool handleMessage(std::shared_ptr<boost::asio::ip::tcp::socket> sock, const message::Message &msg,
+                       const buffer &payload);
+    void sendMessage(const message::Message &msg, int id = message::Id::Broadcast,
+                     const buffer *payload = nullptr) const;
+    void addClient(std::shared_ptr<boost::asio::ip::tcp::socket> sock);
+    void lockUi(bool lock);
+    bool isLocked() const;
 
-   void requestQuit();
-   bool handleMessage(std::shared_ptr<boost::asio::ip::tcp::socket> sock, const message::Message &msg, const buffer &payload);
-   void sendMessage(const message::Message &msg, int id = message::Id::Broadcast, const buffer *payload=nullptr) const;
-   void addClient(std::shared_ptr<boost::asio::ip::tcp::socket> sock);
-   void lockUi(bool lock);
-   bool isLocked() const;
+private:
+    bool sendMessage(std::shared_ptr<UiClient> c, const message::Message &msg, const buffer *payload = nullptr) const;
 
- private:
-   bool sendMessage(std::shared_ptr<UiClient> c, const message::Message &msg, const buffer *payload=nullptr) const;
+    void disconnect();
+    bool removeClient(std::shared_ptr<UiClient> c) const;
 
-   void disconnect();
-   bool removeClient(std::shared_ptr<UiClient> c) const;
+    Hub &m_hub;
+    StateTracker &m_stateTracker;
 
-   Hub &m_hub;
-   StateTracker &m_stateTracker;
+    bool m_locked;
+    bool m_requestQuit;
 
-   bool m_locked;
-   bool m_requestQuit;
-
-   int m_uiCount = 0;
-   mutable std::map<std::shared_ptr<boost::asio::ip::tcp::socket>, std::shared_ptr<UiClient>> m_clients;
-   std::vector<message::Buffer> m_queue;
+    int m_uiCount = 0;
+    mutable std::map<std::shared_ptr<boost::asio::ip::tcp::socket>, std::shared_ptr<UiClient>> m_clients;
+    std::vector<message::Buffer> m_queue;
 };
 
 } // namespace vistle

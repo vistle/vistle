@@ -28,33 +28,32 @@ MODULE_MAIN(ToUnstructured)
 // CONSTRUCTOR
 //-------------------------------------------------------------------------
 ToUnstructured::ToUnstructured(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module(name, moduleID, comm) {
+: Module(name, moduleID, comm)
+{
+    // create ports
+    createInputPort("data_in");
+    createOutputPort("data_out");
 
-   // create ports
-   createInputPort("data_in");
-   createOutputPort("data_out");
-
-   // add module parameters
-   //none
+    // add module parameters
+    //none
 
 
-   // policies
-   // none
+    // policies
+    // none
 
-   // additional operations
-   // none
+    // additional operations
+    // none
 }
 
 // DESTRUCTOR
 //-------------------------------------------------------------------------
-ToUnstructured::~ToUnstructured() {
-
-}
+ToUnstructured::~ToUnstructured()
+{}
 
 // COMPUTE FUNCTION
 //-------------------------------------------------------------------------
-bool ToUnstructured::compute() {
-
+bool ToUnstructured::compute()
+{
     // acquire input data object
     Object::const_ptr input = accept<Object>("data_in");
     Object::const_ptr gridObj = input;
@@ -73,8 +72,8 @@ bool ToUnstructured::compute() {
     StructuredGridBase::const_ptr grid = StructuredGridBase::as(gridObj);
     // assert existence of useable data
     if (!grid) {
-       sendInfo("Error: Unusable Input Data");
-       return true;
+        sendInfo("Error: Unusable Input Data");
+        return true;
     }
 
 
@@ -82,10 +81,10 @@ bool ToUnstructured::compute() {
     // * all Structured grids share the same algorithms for generating their tl, cl and el.
     // * x, y, z members are unique, however
 
-    const Index dim[3] = { grid->getNumDivisions(0), grid->getNumDivisions(1), grid->getNumDivisions(2) };
-    const Index nx = dim[0]-1;
-    const Index ny = dim[1]-1;
-    const Index nz = dim[2]-1;
+    const Index dim[3] = {grid->getNumDivisions(0), grid->getNumDivisions(1), grid->getNumDivisions(2)};
+    const Index nx = dim[0] - 1;
+    const Index ny = dim[1] - 1;
+    const Index nz = dim[2] - 1;
 
     Byte CellType = UnstructuredGrid::POINT;
     if (nz > 0) {
@@ -102,14 +101,12 @@ bool ToUnstructured::compute() {
     const Index numElements = grid->getNumElements();
     const Index numCorners = grid->getNumElements() * NumCellCorners;
     const Index numVerticesTotal = grid->getNumDivisions(0) * grid->getNumDivisions(1) * grid->getNumDivisions(2);
-    const Cartesian3<Index> numVertices = Cartesian3<Index>(
-                grid->getNumDivisions(0),
-                grid->getNumDivisions(1),
-                grid->getNumDivisions(2)
-                );
+    const Cartesian3<Index> numVertices =
+        Cartesian3<Index>(grid->getNumDivisions(0), grid->getNumDivisions(1), grid->getNumDivisions(2));
 
     auto structuredGrid = StructuredGrid::as(gridObj);
-    UnstructuredGrid::ptr unstrGridOut(new UnstructuredGrid(numElements, numCorners, structuredGrid ? 0 : numVerticesTotal));
+    UnstructuredGrid::ptr unstrGridOut(
+        new UnstructuredGrid(numElements, numCorners, structuredGrid ? 0 : numVerticesTotal));
 
     // construct type list and element list
     for (Index i = 0; i < numElements; i++) {
@@ -124,18 +121,26 @@ bool ToUnstructured::compute() {
     if (nz > 0) {
         // 3-dim
         Index el = 0;
-        for (Index ix=0; ix<nx; ++ix) {
-            for (Index iy=0; iy<ny; ++iy) {
-                for (Index iz=0; iz<nz; ++iz) {
+        for (Index ix = 0; ix < nx; ++ix) {
+            for (Index iy = 0; iy < ny; ++iy) {
+                for (Index iz = 0; iz < nz; ++iz) {
                     const Index baseInsertionIndex = el * M_NUM_CORNERS_HEXAHEDRON;
-                    unstrGridOut->cl()[baseInsertionIndex]   = UniformGrid::vertexIndex(ix,   iy,   iz,   dim);       // 0       7 -------- 6
-                    unstrGridOut->cl()[baseInsertionIndex+1] = UniformGrid::vertexIndex(ix+1, iy,   iz,   dim);       // 1      /|         /|
-                    unstrGridOut->cl()[baseInsertionIndex+2] = UniformGrid::vertexIndex(ix+1, iy+1, iz,   dim);       // 2     / |        / |
-                    unstrGridOut->cl()[baseInsertionIndex+3] = UniformGrid::vertexIndex(ix,   iy+1, iz,   dim);       // 3    4 -------- 5  |
-                    unstrGridOut->cl()[baseInsertionIndex+4] = UniformGrid::vertexIndex(ix,   iy,   iz+1, dim);       // 4    |  3-------|--2
-                    unstrGridOut->cl()[baseInsertionIndex+5] = UniformGrid::vertexIndex(ix+1, iy,   iz+1, dim);       // 5    | /        | /
-                    unstrGridOut->cl()[baseInsertionIndex+6] = UniformGrid::vertexIndex(ix+1, iy+1, iz+1, dim);       // 6    |/         |/
-                    unstrGridOut->cl()[baseInsertionIndex+7] = UniformGrid::vertexIndex(ix,   iy+1, iz+1, dim);       // 7    0----------1
+                    unstrGridOut->cl()[baseInsertionIndex] =
+                        UniformGrid::vertexIndex(ix, iy, iz, dim); // 0       7 -------- 6
+                    unstrGridOut->cl()[baseInsertionIndex + 1] =
+                        UniformGrid::vertexIndex(ix + 1, iy, iz, dim); // 1      /|         /|
+                    unstrGridOut->cl()[baseInsertionIndex + 2] =
+                        UniformGrid::vertexIndex(ix + 1, iy + 1, iz, dim); // 2     / |        / |
+                    unstrGridOut->cl()[baseInsertionIndex + 3] =
+                        UniformGrid::vertexIndex(ix, iy + 1, iz, dim); // 3    4 -------- 5  |
+                    unstrGridOut->cl()[baseInsertionIndex + 4] =
+                        UniformGrid::vertexIndex(ix, iy, iz + 1, dim); // 4    |  3-------|--2
+                    unstrGridOut->cl()[baseInsertionIndex + 5] =
+                        UniformGrid::vertexIndex(ix + 1, iy, iz + 1, dim); // 5    | /        | /
+                    unstrGridOut->cl()[baseInsertionIndex + 6] =
+                        UniformGrid::vertexIndex(ix + 1, iy + 1, iz + 1, dim); // 6    |/         |/
+                    unstrGridOut->cl()[baseInsertionIndex + 7] =
+                        UniformGrid::vertexIndex(ix, iy + 1, iz + 1, dim); // 7    0----------1
 
                     ++el;
                 }
@@ -144,13 +149,13 @@ bool ToUnstructured::compute() {
     } else if (ny > 0) {
         // 2-dim
         Index el = 0;
-        for (Index ix=0; ix<nx; ++ix) {
-            for (Index iy=0; iy<ny; ++iy) {
+        for (Index ix = 0; ix < nx; ++ix) {
+            for (Index iy = 0; iy < ny; ++iy) {
                 const Index baseInsertionIndex = el * M_NUM_CORNERS_QUAD;
-                unstrGridOut->cl()[baseInsertionIndex]   = UniformGrid::vertexIndex(ix,   iy,   0, dim);
-                unstrGridOut->cl()[baseInsertionIndex+1] = UniformGrid::vertexIndex(ix+1, iy,   0, dim);
-                unstrGridOut->cl()[baseInsertionIndex+2] = UniformGrid::vertexIndex(ix+1, iy+1, 0, dim);
-                unstrGridOut->cl()[baseInsertionIndex+3] = UniformGrid::vertexIndex(ix,   iy+1, 0, dim);
+                unstrGridOut->cl()[baseInsertionIndex] = UniformGrid::vertexIndex(ix, iy, 0, dim);
+                unstrGridOut->cl()[baseInsertionIndex + 1] = UniformGrid::vertexIndex(ix + 1, iy, 0, dim);
+                unstrGridOut->cl()[baseInsertionIndex + 2] = UniformGrid::vertexIndex(ix + 1, iy + 1, 0, dim);
+                unstrGridOut->cl()[baseInsertionIndex + 3] = UniformGrid::vertexIndex(ix, iy + 1, 0, dim);
 
                 ++el;
             }
@@ -158,17 +163,16 @@ bool ToUnstructured::compute() {
     } else if (nx > 0) {
         // 1-dim
         Index el = 0;
-        for (Index ix=0; ix<nx; ++ix) {
+        for (Index ix = 0; ix < nx; ++ix) {
             const Index baseInsertionIndex = el * M_NUM_CORNERS_BAR;
-            unstrGridOut->cl()[baseInsertionIndex]   = UniformGrid::vertexIndex(ix,   0, 0, dim);
-            unstrGridOut->cl()[baseInsertionIndex+1] = UniformGrid::vertexIndex(ix+1, 0, 0, dim);
+            unstrGridOut->cl()[baseInsertionIndex] = UniformGrid::vertexIndex(ix, 0, 0, dim);
+            unstrGridOut->cl()[baseInsertionIndex + 1] = UniformGrid::vertexIndex(ix + 1, 0, 0, dim);
 
             ++el;
         }
     } else {
         // 0-dim
         unstrGridOut->cl()[0] = 0;
-
     }
 
     // pass on conversion of x, y, z vectors to specific helper functions based on grid type
@@ -177,7 +181,7 @@ bool ToUnstructured::compute() {
     } else if (auto rectilinearGrid = RectilinearGrid::as(gridObj)) {
         compute_rectilinearVecs(rectilinearGrid, unstrGridOut, numVertices);
     } else if (auto structuredGrid = StructuredGrid::as(gridObj)) {
-        for (int c=0; c<3; ++c) {
+        for (int c = 0; c < 3; ++c) {
             unstrGridOut->d()->x[c] = structuredGrid->d()->x[c];
         }
     } else {
@@ -196,36 +200,29 @@ bool ToUnstructured::compute() {
         addObject("data_out", unstrGridOut);
     }
 
-   return true;
+    return true;
 }
 
 // COMPUTE HELPER FUNCTION - PROCESS UNIFORM GRID OBJECT
 //-------------------------------------------------------------------------
 void ToUnstructured::compute_uniformVecs(UniformGrid::const_ptr obj, UnstructuredGrid::ptr unstrGridOut,
-                                                   const Cartesian3<Index> numVertices) {
-    const Cartesian3<Scalar> min = Cartesian3<Scalar>(
-                obj->min()[0],
-                obj->min()[1],
-                obj->min()[2]
-                );
-    const Cartesian3<Scalar> max = Cartesian3<Scalar>(
-                obj->max()[0],
-                obj->max()[1],
-                obj->max()[2]
-                );
+                                         const Cartesian3<Index> numVertices)
+{
+    const Cartesian3<Scalar> min = Cartesian3<Scalar>(obj->min()[0], obj->min()[1], obj->min()[2]);
+    const Cartesian3<Scalar> max = Cartesian3<Scalar>(obj->max()[0], obj->max()[1], obj->max()[2]);
     Cartesian3<Index> div = numVertices;
-    if (div.x <= 2) div.x = 2;
-    if (div.y <= 2) div.y = 2;
-    if (div.z <= 2) div.z = 2;
+    if (div.x <= 2)
+        div.x = 2;
+    if (div.y <= 2)
+        div.y = 2;
+    if (div.z <= 2)
+        div.z = 2;
     const Cartesian3<Scalar> delta = Cartesian3<Scalar>(
-                ((max.x - min.x) / (div.x-1)),
-                ((max.y - min.y) / (div.y-1)),
-                ((max.z - min.z) / (div.z-1))
-                );
+        ((max.x - min.x) / (div.x - 1)), ((max.y - min.y) / (div.y - 1)), ((max.z - min.z) / (div.z - 1)));
 
 
     // construct vertices
-    const Index dim[3] = { numVertices.x, numVertices.y, numVertices.z };
+    const Index dim[3] = {numVertices.x, numVertices.y, numVertices.z};
     for (Index i = 0; i < numVertices.x; i++) {
         for (Index j = 0; j < numVertices.y; j++) {
             for (Index k = 0; k < numVertices.z; k++) {
@@ -244,9 +241,9 @@ void ToUnstructured::compute_uniformVecs(UniformGrid::const_ptr obj, Unstructure
 // COMPUTE HELPER FUNCTION - PROCESS RECTILINEAR GRID OBJECT
 //-------------------------------------------------------------------------
 void ToUnstructured::compute_rectilinearVecs(RectilinearGrid::const_ptr obj, UnstructuredGrid::ptr unstrGridOut,
-                                                       const Cartesian3<Index> numVertices) {
-
-    const Index dim[3] = { numVertices.x, numVertices.y, numVertices.z };
+                                             const Cartesian3<Index> numVertices)
+{
+    const Index dim[3] = {numVertices.x, numVertices.y, numVertices.z};
     for (Index i = 0; i < numVertices.x; i++) {
         for (Index j = 0; j < numVertices.y; j++) {
             for (Index k = 0; k < numVertices.z; k++) {

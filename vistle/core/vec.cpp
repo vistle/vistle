@@ -10,13 +10,13 @@ namespace vistle {
 #define COMMA ,
 
 #define V_VEC_TEMPLATE_INST(ValueType) \
-    template class Vec<ValueType,1>; \
+    template class Vec<ValueType, 1>; \
     V_OBJECT_INST(Vec<ValueType COMMA 1>) \
-    template class Vec<ValueType,2>; \
+    template class Vec<ValueType, 2>; \
     V_OBJECT_INST(Vec<ValueType COMMA 2>) \
-    template class Vec<ValueType,3>; \
-    V_OBJECT_INST(Vec<ValueType COMMA 3>) 
-    /* template class Vec<ValueType,4>; \
+    template class Vec<ValueType, 3>; \
+    V_OBJECT_INST(Vec<ValueType COMMA 3>)
+/* template class Vec<ValueType,4>; \
     V_OBJECT_INST(Vec<ValueType COMMA 4>) \
     */
 

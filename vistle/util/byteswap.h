@@ -43,26 +43,24 @@ namespace vistle {
 // Mac OS on PowerPC and 680x0
 // Solaris on SPARC
 
-enum endianness
-{
+enum endianness {
     little_endian,
     big_endian,
     network_endian = big_endian,
-    
-    #if defined(BOOST_ENDIAN_LITTLE_BYTE)
-        host_endian = little_endian
-    #elif defined(BOOST_ENDIAN_BIG_BYTE)
-        host_endian = big_endian
-    #else
-        #error "unable to determine system endianness"
-    #endif
+
+#if defined(BOOST_ENDIAN_LITTLE_BYTE)
+    host_endian = little_endian
+#elif defined(BOOST_ENDIAN_BIG_BYTE)
+    host_endian = big_endian
+#else
+#error "unable to determine system endianness"
+#endif
 };
 
 namespace detail {
 
 template<typename T, size_t sz>
-struct swap_bytes
-{
+struct swap_bytes {
     inline T operator()(T val)
     {
         (void)val;
@@ -71,21 +69,14 @@ struct swap_bytes
 };
 
 template<typename T>
-struct swap_bytes<T, 1>
-{
-    inline T operator()(T val)
-    {
-        return val;
-    }
+struct swap_bytes<T, 1> {
+    inline T operator()(T val) { return val; }
 };
 
 template<typename T>
 struct swap_bytes<T, 2> // for 16 bit
 {
-    inline T operator()(T val)
-    {
-        return ((((val) >> 8) & 0xff) | (((val) & 0xff) << 8));
-    }
+    inline T operator()(T val) { return ((((val) >> 8) & 0xff) | (((val)&0xff) << 8)); }
 };
 
 template<typename T>
@@ -93,24 +84,21 @@ struct swap_bytes<T, 4> // for 32 bit
 {
     inline T operator()(T val)
     {
-        #if defined(_USE_BUILTIN_BSWAPS) && defined(__GNUC__) && ((__GNUC__ == 4 && __GNUC_MINOR__ >= 3) || __GNUC__ > 4)
-            return __builtin_bswap32(val);
-        #else
-            return ((((val) & 0xff000000) >> 24) |
-                    (((val) & 0x00ff0000) >>  8) |
-                    (((val) & 0x0000ff00) <<  8) |
-                    (((val) & 0x000000ff) << 24));
-        #endif
+#if defined(_USE_BUILTIN_BSWAPS) && defined(__GNUC__) && ((__GNUC__ == 4 && __GNUC_MINOR__ >= 3) || __GNUC__ > 4)
+        return __builtin_bswap32(val);
+#else
+        return ((((val)&0xff000000) >> 24) | (((val)&0x00ff0000) >> 8) | (((val)&0x0000ff00) << 8) |
+                (((val)&0x000000ff) << 24));
+#endif
     }
 };
 
 template<>
-struct swap_bytes<float, 4>
-{
+struct swap_bytes<float, 4> {
     inline float operator()(float val)
     {
-        uint32_t mem = swap_bytes<uint32_t, sizeof(uint32_t)>()(*(uint32_t*)&val);
-        return *(float*)&mem;
+        uint32_t mem = swap_bytes<uint32_t, sizeof(uint32_t)>()(*(uint32_t *)&val);
+        return *(float *)&mem;
     }
 };
 
@@ -119,42 +107,39 @@ struct swap_bytes<T, 8> // for 64 bit
 {
     inline T operator()(T val)
     {
-        #if defined(_USE_BUILTIN_BSWAPS) && defined(__GNUC__) && ((__GNUC__ == 4 && __GNUC_MINOR__ >= 3) || __GNUC__ > 4)
-            return __builtin_bswap64(val);
-        #else
-            return ((((val) & 0xff00000000000000ull) >> 56) |
-                    (((val) & 0x00ff000000000000ull) >> 40) |
-                    (((val) & 0x0000ff0000000000ull) >> 24) |
-                    (((val) & 0x000000ff00000000ull) >> 8 ) |
-                    (((val) & 0x00000000ff000000ull) << 8 ) |
-                    (((val) & 0x0000000000ff0000ull) << 24) |
-                    (((val) & 0x000000000000ff00ull) << 40) |
-                    (((val) & 0x00000000000000ffull) << 56));
-        #endif
+#if defined(_USE_BUILTIN_BSWAPS) && defined(__GNUC__) && ((__GNUC__ == 4 && __GNUC_MINOR__ >= 3) || __GNUC__ > 4)
+        return __builtin_bswap64(val);
+#else
+        return ((((val)&0xff00000000000000ull) >> 56) | (((val)&0x00ff000000000000ull) >> 40) |
+                (((val)&0x0000ff0000000000ull) >> 24) | (((val)&0x000000ff00000000ull) >> 8) |
+                (((val)&0x00000000ff000000ull) << 8) | (((val)&0x0000000000ff0000ull) << 24) |
+                (((val)&0x000000000000ff00ull) << 40) | (((val)&0x00000000000000ffull) << 56));
+#endif
     }
 };
 
 template<>
-struct swap_bytes<double, 8>
-{
+struct swap_bytes<double, 8> {
     inline double operator()(double val)
     {
-        uint64_t mem = swap_bytes<uint64_t, sizeof(uint64_t)>()(*(uint64_t*)&val);
-        return *(double*)&mem;
+        uint64_t mem = swap_bytes<uint64_t, sizeof(uint64_t)>()(*(uint64_t *)&val);
+        return *(double *)&mem;
     }
 };
 
 template<endianness from, endianness to, class T>
-struct do_byte_swap
-{
-    inline T operator()(T value)
-    {
-        return swap_bytes<T, sizeof(T)>()(value);
-    }
+struct do_byte_swap {
+    inline T operator()(T value) { return swap_bytes<T, sizeof(T)>()(value); }
 };
 // specialisations when attempting to swap to the same endianess
-template<class T> struct do_byte_swap<little_endian, little_endian, T> { inline T operator()(T value) { return value; } };
-template<class T> struct do_byte_swap<big_endian,    big_endian,    T> { inline T operator()(T value) { return value; } };
+template<class T>
+struct do_byte_swap<little_endian, little_endian, T> {
+    inline T operator()(T value) { return value; }
+};
+template<class T>
+struct do_byte_swap<big_endian, big_endian, T> {
+    inline T operator()(T value) { return value; }
+};
 
 } // namespace detail
 
@@ -169,5 +154,5 @@ inline T byte_swap(T value)
     return detail::do_byte_swap<from, to, T>()(value);
 }
 
-}
+} // namespace vistle
 #endif

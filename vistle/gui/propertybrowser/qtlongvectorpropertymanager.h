@@ -13,8 +13,7 @@ QT_BEGIN_NAMESPACE
 
 class QtLongVectorPropertyManagerPrivate;
 
-class QT_QTPROPERTYBROWSER_EXPORT QtLongVectorPropertyManager : public QtAbstractPropertyManager
-{
+class QT_QTPROPERTYBROWSER_EXPORT QtLongVectorPropertyManager: public QtAbstractPropertyManager {
     Q_OBJECT
 public:
     typedef vistle::IntParamVector IntParamVector;
@@ -34,10 +33,12 @@ Q_SIGNALS:
     void valueChanged(QtProperty *property, IntParamVector val);
     void rangeChanged(QtProperty *property, IntParamVector min, IntParamVector max);
     void dimensionChanged(QtProperty *property, int dim);
+
 protected:
     QString valueText(const QtProperty *property) const;
     virtual void initializeProperty(QtProperty *property);
     virtual void uninitializeProperty(QtProperty *property);
+
 private:
     QtLongVectorPropertyManagerPrivate *d_ptr;
     Q_DECLARE_PRIVATE(QtLongVectorPropertyManager)

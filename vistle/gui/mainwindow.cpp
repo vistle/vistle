@@ -27,11 +27,7 @@ namespace gui {
  *       UI if an action has been completed. Current idea is a debug window
  */
 MainWindow::MainWindow(QWidget *parent)
-   : QMainWindow(parent)
-   , ui(new Ui::MainWindow)
-   , m_console(nullptr)
-   , m_parameters(nullptr)
-   , m_moduleBrowser(nullptr)
+: QMainWindow(parent), ui(new Ui::MainWindow), m_console(nullptr), m_parameters(nullptr), m_moduleBrowser(nullptr)
 {
     // declare list of names of modules, pass to the scene
     ui->setupUi(this);
@@ -85,7 +81,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->actionDelete->setShortcuts(deleteKeys);
     connect(ui->actionDelete, SIGNAL(triggered()), SIGNAL(deleteSelectedModules()));
 
-    connect(ui->actionNative_Menubar, &QAction::toggled, [this](bool native){
+    connect(ui->actionNative_Menubar, &QAction::toggled, [this](bool native) {
         if (menuBar())
             menuBar()->setNativeMenuBar(native);
     });
@@ -123,98 +119,99 @@ QMenu *MainWindow::createPopupMenu()
 
 void MainWindow::setQuitOnExit(bool qoe)
 {
-   if (ui->actionQuit) {
-      ui->actionQuit->setMenuRole(QAction::QuitRole);
-      if (qoe) {
-         ui->actionQuit->setText("Quit");
-         ui->actionQuit->setToolTip("Quit Vistle session");
-      } else {
-         ui->actionQuit->setText("Leave");
-         ui->actionQuit->setToolTip("Quit Vistle GUI");
-      }
-   }
+    if (ui->actionQuit) {
+        ui->actionQuit->setMenuRole(QAction::QuitRole);
+        if (qoe) {
+            ui->actionQuit->setText("Quit");
+            ui->actionQuit->setToolTip("Quit Vistle session");
+        } else {
+            ui->actionQuit->setText("Leave");
+            ui->actionQuit->setToolTip("Quit Vistle GUI");
+        }
+    }
 }
 
 void MainWindow::setModified(bool state)
 {
-   setWindowModified(state);
+    setWindowModified(state);
 }
 
-void MainWindow::newHub(int hub, const QString &hubName, int nranks, const QString &address, const QString &logname, const QString &realname) {
-
+void MainWindow::newHub(int hub, const QString &hubName, int nranks, const QString &address, const QString &logname,
+                        const QString &realname)
+{
     m_moduleBrowser->addHub(hub, hubName, nranks, address, logname, realname);
 }
 
-void MainWindow::deleteHub(int hub) {
-
+void MainWindow::deleteHub(int hub)
+{
     m_moduleBrowser->removeHub(hub);
 }
 
-void MainWindow::moduleAvailable(int hub, const QString &mod, const QString &path, const QString &description) {
-
+void MainWindow::moduleAvailable(int hub, const QString &mod, const QString &path, const QString &description)
+{
     m_moduleBrowser->addModule(hub, mod, path, description);
 }
 
-void MainWindow::enableConnectButton(bool state) {
-
+void MainWindow::enableConnectButton(bool state)
+{
     ui->actionConnect->setEnabled(state);
 }
 
 void MainWindow::setFilename(const QString &filename)
 {
-   setWindowFilePath(filename);
-   if (filename.isEmpty()) {
-      setWindowTitle("Vistle [*]");
-   } else {
-      setWindowTitle(QString("Vistle - %1 [*]").arg(filename));
-   }
+    setWindowFilePath(filename);
+    if (filename.isEmpty()) {
+        setWindowTitle("Vistle [*]");
+    } else {
+        setWindowTitle(QString("Vistle - %1 [*]").arg(filename));
+    }
 }
 
 QDockWidget *MainWindow::consoleDock() const
 {
-   return ui->consoleDock;
+    return ui->consoleDock;
 }
 
 QDockWidget *MainWindow::parameterDock() const
 {
-   return ui->parameterDock;
+    return ui->parameterDock;
 }
 
 QDockWidget *MainWindow::modulesDock() const
 {
-   return ui->modulesDock;
+    return ui->modulesDock;
 }
 
 Parameters *MainWindow::parameters() const
 {
-   return m_parameters;
+    return m_parameters;
 }
 
 DataFlowView *MainWindow::dataFlowView() const
 {
-   return ui->drawArea;
+    return ui->drawArea;
 }
 
 VistleConsole *MainWindow::console() const
 {
-   return m_console;
+    return m_console;
 }
 
-void MainWindow::closeEvent(QCloseEvent *e) {
+void MainWindow::closeEvent(QCloseEvent *e)
+{
+    writeSettings();
 
-   writeSettings();
+    bool allowed = true;
+    emit quitRequested(allowed);
+    if (!allowed) {
+        e->ignore();
+        return;
+    }
 
-   bool allowed = true;
-   emit quitRequested(allowed);
-   if (!allowed) {
-      e->ignore();
-      return;
-   }
-
-   QWidgetList allToplevelWidgets = QApplication::topLevelWidgets();
-   for (auto w: allToplevelWidgets) {
-       w->close();
-   }
+    QWidgetList allToplevelWidgets = QApplication::topLevelWidgets();
+    for (auto w: allToplevelWidgets) {
+        w->close();
+    }
 }
 
 void MainWindow::readSettings()

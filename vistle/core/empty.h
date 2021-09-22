@@ -10,17 +10,16 @@
 namespace vistle {
 
 class V_COREEXPORT Empty: public Object {
-   V_OBJECT(Empty);
+    V_OBJECT(Empty);
 
- public:
-   typedef Object Base;
+public:
+    typedef Object Base;
 
-   V_DATA_BEGIN(Empty);
-      Data(const std::string &name, const Meta &m=Meta());
-      ~Data();
-      static Data *create(const std::string &name="");
-   V_DATA_END(Empty);
-
+    V_DATA_BEGIN(Empty);
+    Data(const std::string &name, const Meta &m = Meta());
+    ~Data();
+    static Data *create(const std::string &name = "");
+    V_DATA_END(Empty);
 };
 
 } // namespace vistle

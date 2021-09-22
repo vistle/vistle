@@ -34,14 +34,14 @@ using namespace netCDF;
 
 using namespace vistle;
 
-class ReadWRFChem: public vistle::Reader
-{
+class ReadWRFChem: public vistle::Reader {
 public:
     ReadWRFChem(const std::string &name, int moduleID, mpi::communicator comm);
     ~ReadWRFChem() override;
+
 private:
     bool prepareRead() override;
-    bool read(Token &token, int timestep=-1, int block=-1) override;
+    bool read(Token &token, int timestep = -1, int block = -1) override;
     bool examine(const vistle::Parameter *param) override;
     bool finishRead() override;
 
@@ -49,13 +49,14 @@ private:
     bool emptyValue(vistle::StringParameter *ch) const;
 
     struct Block {
-        int part=0;
-        size_t begin=0, end=0;
-        int ghost[2]={0,0};
+        int part = 0;
+        size_t begin = 0, end = 0;
+        int ghost[2] = {0, 0};
     };
 
     bool inspectDir();
-    bool addDataToPort(Reader::Token &token, NcFile *ncDataFile, int vi,  Object::ptr outGrid, Block *b, int block, int t) const;
+    bool addDataToPort(Reader::Token &token, NcFile *ncDataFile, int vi, Object::ptr outGrid, Block *b, int block,
+                       int t) const;
     Object::ptr generateGrid(Block *b) const;
     Block computeBlock(int part, int nBlocks, long blockBegin, long cellsPerBlock, long numCellTot) const;
 
@@ -63,7 +64,7 @@ private:
 
     std::vector<std::string> fileList;
     std::vector<vistle::Float> dataOut;
-    std::vector<std::string> varDimList = {"2D","3D","other"};
+    std::vector<std::string> varDimList = {"2D", "3D", "other"};
 
     int numFiles = 0;
     int numBlocks = 1;

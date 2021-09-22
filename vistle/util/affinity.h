@@ -10,5 +10,5 @@ namespace vistle {
 V_UTILEXPORT std::string sched_affinity_map();
 V_UTILEXPORT std::string thread_affinity_map();
 
-}
+} // namespace vistle
 #endif

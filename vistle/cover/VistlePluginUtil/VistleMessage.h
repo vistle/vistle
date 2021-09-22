@@ -6,13 +6,10 @@
 
 struct VistleMessage {
     VistleMessage(const vistle::message::Message &msg, const vistle::MessagePayload &payload)
-    : buf(msg)
-    , payload(payload)
+    : buf(msg), payload(payload)
     {}
 
-    explicit VistleMessage(const vistle::message::Message &msg)
-        : buf(msg)
-    {}
+    explicit VistleMessage(const vistle::message::Message &msg): buf(msg) {}
 
     vistle::message::Buffer buf;
     vistle::MessagePayload payload;

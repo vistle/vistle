@@ -5,16 +5,15 @@
 using namespace vistle;
 
 class EnableTransparency: public vistle::Module {
+public:
+    EnableTransparency(const std::string &name, int moduleID, mpi::communicator comm);
+    ~EnableTransparency();
 
- public:
-   EnableTransparency(const std::string &name, int moduleID, mpi::communicator comm);
-   ~EnableTransparency();
+private:
+    virtual bool compute();
 
- private:
-   virtual bool compute();
-
-   IntParameter *p_transparency = nullptr;
-   IntParameter *p_numPrimitives = nullptr;
+    IntParameter *p_transparency = nullptr;
+    IntParameter *p_numPrimitives = nullptr;
 };
 
 using namespace vistle;
@@ -22,41 +21,38 @@ using namespace vistle;
 EnableTransparency::EnableTransparency(const std::string &name, int moduleID, mpi::communicator comm)
 : Module(name, moduleID, comm)
 {
+    Port *din = createInputPort("data_in", "input data", Port::MULTI);
+    Port *dout = createOutputPort("data_out", "output data", Port::MULTI);
 
-   Port *din = createInputPort("data_in", "input data", Port::MULTI);
-   Port *dout = createOutputPort("data_out", "output data", Port::MULTI);
+    din->link(dout);
 
-   din->link(dout);
-
-   p_transparency = addIntParameter("transparency", "put objects into TRANSPARENT_BIN", 1, Parameter::Boolean);
-   p_numPrimitives = addIntParameter("num_primitives", "number of primitives to put into one block", 0);
-   setParameterMinimum<Integer>(p_numPrimitives, -1);
+    p_transparency = addIntParameter("transparency", "put objects into TRANSPARENT_BIN", 1, Parameter::Boolean);
+    p_numPrimitives = addIntParameter("num_primitives", "number of primitives to put into one block", 0);
+    setParameterMinimum<Integer>(p_numPrimitives, -1);
 }
 
-EnableTransparency::~EnableTransparency() {
+EnableTransparency::~EnableTransparency()
+{}
 
-}
+bool EnableTransparency::compute()
+{
+    Object::const_ptr obj = expect<Object>("data_in");
+    if (!obj)
+        return true;
 
-bool EnableTransparency::compute() {
+    Object::ptr out = obj->clone();
 
-   Object::const_ptr obj = expect<Object>("data_in");
-   if (!obj)
-      return true;
+    if (p_transparency->getValue()) {
+        out->addAttribute("_transparent", "true");
+    }
 
-   Object::ptr out = obj->clone();
+    if (p_numPrimitives->getValue() != 0) {
+        out->addAttribute("_bin_num_primitives", std::to_string(p_numPrimitives->getValue()));
+    }
 
-   if (p_transparency->getValue()) {
-       out->addAttribute("_transparent", "true");
-   }
+    addObject("data_out", out);
 
-   if (p_numPrimitives->getValue() != 0) {
-       out->addAttribute("_bin_num_primitives", std::to_string(p_numPrimitives->getValue()));
-   }
-
-   addObject("data_out", out);
-
-   return true;
+    return true;
 }
 
 MODULE_MAIN(EnableTransparency)
-

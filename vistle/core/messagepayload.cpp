@@ -1,5 +1,3 @@
 #include "messagepayload.h"
 
-namespace vistle {
-
-}
+namespace vistle {}

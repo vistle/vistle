@@ -12,9 +12,8 @@
 #include <boost/asio.hpp>
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/ip/tcp.hpp>
-class LibSimModule : public vistle::insitu::InSituReader
-{
-  public:
+class LibSimModule: public vistle::insitu::InSituReader {
+public:
     typedef boost::asio::ip::tcp::socket socket;
     typedef boost::asio::ip::tcp::acceptor acceptor;
 
@@ -23,7 +22,7 @@ class LibSimModule : public vistle::insitu::InSituReader
     LibSimModule(const std::string &name, int moduleID, mpi::communicator comm);
     ~LibSimModule();
 
-  private:
+private:
     virtual bool beginExecute() override;
     virtual bool endExecute() override;
     virtual bool changeParameter(const vistle::Parameter *param);
@@ -47,17 +46,17 @@ class LibSimModule : public vistle::insitu::InSituReader
     vistle::StringParameter *m_simName = nullptr;
 #endif
     bool m_terminateSocketThread =
-        false;                  // set to true when when the module in closed to get out of loops in different threads
+        false; // set to true when when the module in closed to get out of loops in different threads
     bool m_simInitSent = false; // to prevent caling attemptLibSImConnection twice
     bool m_connectedToEngine = false; // wether the socket connection to the engine is running
     bool m_firstConnectionAttempt = true;
     std::map<std::string, vistle::Port *> m_outputPorts; // output ports for the data the simulation offers
-    std::set<vistle::Parameter *> m_commandParameter;    // buttons to trigger simulation commands
-    std::set<vistle::Parameter *> m_customCommandParameter;    // string inputs to trigger simulation commands
+    std::set<vistle::Parameter *> m_commandParameter; // buttons to trigger simulation commands
+    std::set<vistle::Parameter *> m_customCommandParameter; // string inputs to trigger simulation commands
 
-    std::thread m_socketThread;                          // thread to sync tcp communcation with slaves
-    boost::mpi::communicator m_socketComm;               // communicator to sync tcp communcation with slaves
-    std::mutex m_socketMutex;                            // mutex to sync main and socket thread
+    std::thread m_socketThread; // thread to sync tcp communcation with slaves
+    boost::mpi::communicator m_socketComm; // communicator to sync tcp communcation with slaves
+    std::mutex m_socketMutex; // mutex to sync main and socket thread
 #ifndef MODULE_THREAD
     //.........................................................................
     // stuff to handle socket communication with Engine
@@ -76,7 +75,7 @@ class LibSimModule : public vistle::insitu::InSituReader
 
     std::mutex m_asioMutex; // to let the rank 0 socket thread wait for connection (the slaves use mpi barrier);
     std::condition_variable
-        m_connectedCondition;        // to let the rank 0 socket thread wait for connection in the asio thread
+        m_connectedCondition; // to let the rank 0 socket thread wait for connection in the asio thread
     bool m_waitingForAccept = false; // condition
 #endif
 

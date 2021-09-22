@@ -49,36 +49,35 @@ unsigned ReadHDF5::s_numMetaMembers = 0;
 
 // CONSTRUCTOR
 //-------------------------------------------------------------------------
-ReadHDF5::ReadHDF5(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module(name, moduleID, comm) {
+ReadHDF5::ReadHDF5(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
+{
+    // add module parameters
+    m_fileName = addStringParameter("File Name", "Name of File that will read from", "", Parameter::ExistingFilename);
 
-   // add module parameters
-   m_fileName = addStringParameter("File Name", "Name of File that will read from", "", Parameter::ExistingFilename);
+    // policies
+    setReducePolicy(message::ReducePolicy::OverAll);
 
-   // policies
-   setReducePolicy(message::ReducePolicy::OverAll);
+    // variable setup
+    m_isRootNode = (this->comm().rank() == 0);
+    m_numPorts = 0;
 
-   // variable setup
-   m_isRootNode = (this->comm().rank() == 0);
-   m_numPorts = 0;
-
-   // obtain meta member count
-   PlaceHolder::ptr tempObject(new PlaceHolder("", Meta(), Object::Type::UNKNOWN));
-   MemberCounterArchive memberCounter;
-   boost::serialization::serialize_adl(memberCounter, const_cast<Meta &>(tempObject->meta()), ::boost::serialization::version< Meta >::value);
-   s_numMetaMembers = memberCounter.getCount();
-
+    // obtain meta member count
+    PlaceHolder::ptr tempObject(new PlaceHolder("", Meta(), Object::Type::UNKNOWN));
+    MemberCounterArchive memberCounter;
+    boost::serialization::serialize_adl(memberCounter, const_cast<Meta &>(tempObject->meta()),
+                                        ::boost::serialization::version<Meta>::value);
+    s_numMetaMembers = memberCounter.getCount();
 }
 
 // DESTRUCTOR
 //-------------------------------------------------------------------------
-ReadHDF5::~ReadHDF5() {
-
-}
+ReadHDF5::~ReadHDF5()
+{}
 
 // PARAMETER CHANGED FUNCTION
 //-------------------------------------------------------------------------
-bool ReadHDF5::changeParameter(const vistle::Parameter *param) {
+bool ReadHDF5::changeParameter(const vistle::Parameter *param)
+{
     util_checkFile();
 
     return true;
@@ -88,7 +87,8 @@ bool ReadHDF5::changeParameter(const vistle::Parameter *param) {
 // * executes commands common to both write modes
 // * delegates processing of file to appropriate prepare method based on writeMode
 //-------------------------------------------------------------------------
-bool ReadHDF5::prepare() {
+bool ReadHDF5::prepare()
+{
     bool unresolvedReferencesExistInComm;
     MPI_Info mpiInfo;
     hid_t fileId;
@@ -158,7 +158,8 @@ bool ReadHDF5::prepare() {
 
     // check and send warning message for unresolved references
     if (m_isRootNode) {
-        boost::mpi::reduce(comm(), m_unresolvedReferencesExist, unresolvedReferencesExistInComm, boost::mpi::maximum<bool>(), 0);
+        boost::mpi::reduce(comm(), m_unresolvedReferencesExist, unresolvedReferencesExistInComm,
+                           boost::mpi::maximum<bool>(), 0);
 
         if (unresolvedReferencesExistInComm) {
             sendInfo("Warning: some object references are unresolved.");
@@ -183,7 +184,8 @@ bool ReadHDF5::prepare() {
 // * - reading in of indices and object type information
 // * - iteratest through index and constructs output object
 //-------------------------------------------------------------------------
-void ReadHDF5::prepare_performant(hid_t fileId) {
+void ReadHDF5::prepare_performant(hid_t fileId)
+{
     ContiguousMemoryMatrix<unsigned> blockArray;
     std::vector<unsigned> timestepArray;
     ContiguousMemoryMatrix<unsigned> portArray;
@@ -250,7 +252,8 @@ void ReadHDF5::prepare_performant(hid_t fileId) {
 
     dims[0] = portObjectListArray.size();
     offset[0] = 0;
-    prepare_performant_readHDF5(fileId, comm(), "index/port_object_list", 1, dims.data(), offset.data(), portObjectListArray.data());
+    prepare_performant_readHDF5(fileId, comm(), "index/port_object_list", 1, dims.data(), offset.data(),
+                                portObjectListArray.data());
 
     dims[0] = objectArray.size();
     offset[0] = 0;
@@ -260,18 +263,19 @@ void ReadHDF5::prepare_performant(hid_t fileId) {
     dims[1] = 3;
     offset[0] = 0;
     offset[1] = 0;
-    prepare_performant_readHDF5(fileId, comm(), "object/type_to_object_element_info", 2, dims.data(), offset.data(), typeToObjectDataElementInfoArray.data());
+    prepare_performant_readHDF5(fileId, comm(), "object/type_to_object_element_info", 2, dims.data(), offset.data(),
+                                typeToObjectDataElementInfoArray.data());
 
     dims[0] = objectDataElementInfoArray.size();
     dims[1] = 2;
     offset[0] = 0;
     offset[1] = 0;
-    prepare_performant_readHDF5(fileId, comm(), "object/object_element_info", 2, dims.data(), offset.data(), objectDataElementInfoArray.data());
+    prepare_performant_readHDF5(fileId, comm(), "object/object_element_info", 2, dims.data(), offset.data(),
+                                objectDataElementInfoArray.data());
 
     dims[0] = nvpTagsArray.size();
     offset[0] = 0;
     prepare_performant_readHDF5(fileId, comm(), "object/nvp_tags", 1, dims.data(), offset.data(), nvpTagsArray.data());
-
 
 
     // parse index
@@ -284,7 +288,6 @@ void ReadHDF5::prepare_performant(hid_t fileId) {
         for (unsigned it = blockArray(ib, 1); it < blockArray(ib, 2); it++) {
             for (unsigned ip = timestepArray[it]; ip < m_numPorts; ip++) {
                 for (unsigned ipol = portArray(ip, 0); ipol < portArray(ip, 1); ipol++) {
-
                     // XXX this is where I left off:
                     // parse object: objectArray[portObjectListArray[ipol]]
                     //
@@ -324,7 +327,8 @@ void ReadHDF5::prepare_performant(hid_t fileId) {
 
 // PREPARE UTILITY FUNCTION - OBTAIN ARRAY DIMENSIONS
 //-------------------------------------------------------------------------
-std::vector<hsize_t> ReadHDF5::prepare_performant_getArrayDims(hid_t fileId, char readName[]) {
+std::vector<hsize_t> ReadHDF5::prepare_performant_getArrayDims(hid_t fileId, char readName[])
+{
     hid_t dataSetId;
     hid_t dataSpaceId;
     std::vector<hsize_t> dims(2);
@@ -345,7 +349,8 @@ std::vector<hsize_t> ReadHDF5::prepare_performant_getArrayDims(hid_t fileId, cha
 // * - constructing the nvp map
 // * - iterating over index and loading objects from the HDF5 file
 //-------------------------------------------------------------------------
-void ReadHDF5::prepare_organized(hid_t fileId) {
+void ReadHDF5::prepare_organized(hid_t fileId)
+{
     herr_t status;
 
 
@@ -356,16 +361,19 @@ void ReadHDF5::prepare_organized(hid_t fileId) {
     LinkIterData linkIterData(this, fileId);
 
     // construct nvp map
-    status = H5Literate_by_name(fileId, "/file/meta_tags", H5_INDEX_NAME, H5_ITER_NATIVE, NULL, prepare_iterateMeta, &linkIterData, H5P_DEFAULT);
+    status = H5Literate_by_name(fileId, "/file/meta_tags", H5_INDEX_NAME, H5_ITER_NATIVE, NULL, prepare_iterateMeta,
+                                &linkIterData, H5P_DEFAULT);
     util_checkStatus(status);
 
     // parse index to find objects
-    status = H5Literate_by_name(fileId, "/index", H5_INDEX_NAME, H5_ITER_NATIVE, NULL, prepare_iterateTimestep, &linkIterData, H5P_DEFAULT);
+    status = H5Literate_by_name(fileId, "/index", H5_INDEX_NAME, H5_ITER_NATIVE, NULL, prepare_iterateTimestep,
+                                &linkIterData, H5P_DEFAULT);
     util_checkStatus(status);
 
 
     // sync nodes for collective reads
-    while (util_readSyncStandby(comm(), fileId) != 0.0) { /*wait for all nodes to finish reading*/ }
+    while (util_readSyncStandby(comm(), fileId) != 0.0) { /*wait for all nodes to finish reading*/
+    }
 
     // close all open h5 entities
     H5Dclose(m_dummyDatasetId);
@@ -378,14 +386,15 @@ void ReadHDF5::prepare_organized(hid_t fileId) {
 // * constructs the metadata index to nvp map
 // * function falls under the template  H5L_iterate_t as it is a callback from the HDF5 iterate API call
 //-------------------------------------------------------------------------
-herr_t ReadHDF5::prepare_iterateMeta(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData) {
+herr_t ReadHDF5::prepare_iterateMeta(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData)
+{
     hid_t dataSetId;
     hid_t dataSpaceId;
     hid_t readId;
     hsize_t dims[1];
     hsize_t maxDims[1];
 
-    LinkIterData * linkIterData = (LinkIterData *) opData;
+    LinkIterData *linkIterData = (LinkIterData *)opData;
 
     std::string groupPath = "/file/meta_tags/" + std::string(name);
     std::vector<char> nvpTag;
@@ -409,7 +418,8 @@ herr_t ReadHDF5::prepare_iterateMeta(hid_t callingGroupId, const char *name, con
 
 
     // add to map
-    auto insertionPair = std::make_pair<std::string, unsigned>(std::string(nvpTag.data()), std::stoul(std::string(name)));
+    auto insertionPair =
+        std::make_pair<std::string, unsigned>(std::string(nvpTag.data()), std::stoul(std::string(name)));
     linkIterData->callingModule->m_metaNvpMap.insert(insertionPair);
 
     return 0;
@@ -418,12 +428,14 @@ herr_t ReadHDF5::prepare_iterateMeta(hid_t callingGroupId, const char *name, con
 // PREPARE UTILITY FUNCTION - ITERATE CALLBACK FOR TIMESTEP
 // * function falls under the template  H5L_iterate_t as it is a callback from the HDF5 iterate API call
 //-------------------------------------------------------------------------
-herr_t ReadHDF5::prepare_iterateTimestep(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData) {
-    LinkIterData * linkIterData = (LinkIterData *) opData;
+herr_t ReadHDF5::prepare_iterateTimestep(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData)
+{
+    LinkIterData *linkIterData = (LinkIterData *)opData;
 
-    linkIterData->timestep = std::stoi(std::string(name+1));
+    linkIterData->timestep = std::stoi(std::string(name + 1));
 
-    H5Literate_by_name(callingGroupId, name, H5_INDEX_NAME, H5_ITER_NATIVE, NULL, prepare_iterateBlock, linkIterData, H5P_DEFAULT);
+    H5Literate_by_name(callingGroupId, name, H5_INDEX_NAME, H5_ITER_NATIVE, NULL, prepare_iterateBlock, linkIterData,
+                       H5P_DEFAULT);
 
     return 0;
 }
@@ -431,17 +443,18 @@ herr_t ReadHDF5::prepare_iterateTimestep(hid_t callingGroupId, const char *name,
 // PREPARE UTILITY FUNCTION - ITERATE CALLBACK FOR BLOCK
 // * function falls under the template  H5L_iterate_t as it is a callback from the HDF5 iterate API call
 //-------------------------------------------------------------------------
-herr_t ReadHDF5::prepare_iterateBlock(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData) {
-    LinkIterData * linkIterData = (LinkIterData *) opData;
-    int blockNum = std::stoi(std::string(name+1));
+herr_t ReadHDF5::prepare_iterateBlock(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData)
+{
+    LinkIterData *linkIterData = (LinkIterData *)opData;
+    int blockNum = std::stoi(std::string(name + 1));
 
     // only continue for correct blocks on each node
-    if (blockNum % linkIterData->callingModule->size() == linkIterData->callingModule->rank()
-            || (linkIterData->callingModule->m_isRootNode && blockNum == -1)) {
-
+    if (blockNum % linkIterData->callingModule->size() == linkIterData->callingModule->rank() ||
+        (linkIterData->callingModule->m_isRootNode && blockNum == -1)) {
         linkIterData->block = blockNum;
 
-        H5Literate_by_name(callingGroupId, name, H5_INDEX_NAME, H5_ITER_INC, NULL, prepare_iterateOrigin, linkIterData, H5P_DEFAULT);
+        H5Literate_by_name(callingGroupId, name, H5_INDEX_NAME, H5_ITER_INC, NULL, prepare_iterateOrigin, linkIterData,
+                           H5P_DEFAULT);
     }
 
     return 0;
@@ -450,16 +463,18 @@ herr_t ReadHDF5::prepare_iterateBlock(hid_t callingGroupId, const char *name, co
 // PREPARE UTILITY FUNCTION - ITERATE CALLBACK FOR ORIGIN
 // * function falls under the template  H5L_iterate_t as it is a callback from the HDF5 iterate API call
 //-------------------------------------------------------------------------
-herr_t ReadHDF5::prepare_iterateOrigin(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData) {
-    LinkIterData * linkIterData = (LinkIterData *) opData;
-    std::string originPortName = "data" + std::string(name+1) + "_out";
+herr_t ReadHDF5::prepare_iterateOrigin(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData)
+{
+    LinkIterData *linkIterData = (LinkIterData *)opData;
+    std::string originPortName = "data" + std::string(name + 1) + "_out";
 
-    linkIterData->origin = std::stoul(std::string(name+1));
+    linkIterData->origin = std::stoul(std::string(name + 1));
 
     // only iterate over connected ports
     // references will be handled when needed
     if (linkIterData->callingModule->isConnected(originPortName)) {
-        H5Literate_by_name(callingGroupId, name, H5_INDEX_NAME, H5_ITER_NATIVE, NULL, prepare_iterateVariant, linkIterData, H5P_DEFAULT);
+        H5Literate_by_name(callingGroupId, name, H5_INDEX_NAME, H5_ITER_NATIVE, NULL, prepare_iterateVariant,
+                           linkIterData, H5P_DEFAULT);
     }
 
     return 0;
@@ -468,9 +483,10 @@ herr_t ReadHDF5::prepare_iterateOrigin(hid_t callingGroupId, const char *name, c
 // PREPARE UTILITY FUNCTION - ITERATE CALLBACK FOR VARIANT
 // * function falls under the template  H5L_iterate_t as it is a callback from the HDF5 iterate API call
 //-------------------------------------------------------------------------
-herr_t ReadHDF5::prepare_iterateVariant(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData) {
-
-    H5Literate_by_name(callingGroupId, name, H5_INDEX_NAME, H5_ITER_NATIVE, NULL, prepare_processObject, opData, H5P_DEFAULT);
+herr_t ReadHDF5::prepare_iterateVariant(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData)
+{
+    H5Literate_by_name(callingGroupId, name, H5_INDEX_NAME, H5_ITER_NATIVE, NULL, prepare_processObject, opData,
+                       H5P_DEFAULT);
 
     return 0;
 }
@@ -480,8 +496,9 @@ herr_t ReadHDF5::prepare_iterateVariant(hid_t callingGroupId, const char *name, 
 // * object creation and attatchment to port happens here
 // * object metadata reading also occurs here
 //-------------------------------------------------------------------------
-herr_t ReadHDF5::prepare_processObject(hid_t callingGroupId, const char * name, const H5L_info_t * info, void * opData) {
-    LinkIterData * linkIterData = (LinkIterData *) opData;
+herr_t ReadHDF5::prepare_processObject(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData)
+{
+    LinkIterData *linkIterData = (LinkIterData *)opData;
     std::string objectGroup = "/object/" + std::string(name);
     std::string typeGroup = objectGroup + "/type";
     std::string metaGroup = objectGroup + "/meta";
@@ -495,7 +512,8 @@ herr_t ReadHDF5::prepare_processObject(hid_t callingGroupId, const char * name, 
     FindObjectReferenceOArchive archive;
 
     // return if object has already been constructed
-    if (linkIterData->callingModule->m_objectMap.find(std::string(name)) != linkIterData->callingModule->m_objectMap.end()) {
+    if (linkIterData->callingModule->m_objectMap.find(std::string(name)) !=
+        linkIterData->callingModule->m_objectMap.end()) {
         return 0;
     }
 
@@ -521,7 +539,8 @@ herr_t ReadHDF5::prepare_processObject(hid_t callingGroupId, const char * name, 
 
     // construct meta
     ArrayToMetaArchive arrayToMetaArchive(objectMeta.data(), &linkIterData->callingModule->m_metaNvpMap);
-    boost::serialization::serialize_adl(arrayToMetaArchive, const_cast<Meta &>(returnObject->meta()), ::boost::serialization::version< Meta >::value);
+    boost::serialization::serialize_adl(arrayToMetaArchive, const_cast<Meta &>(returnObject->meta()),
+                                        ::boost::serialization::version<Meta>::value);
 
     // serialize object and prepare for array iteration
     returnObject->save(archive);
@@ -529,7 +548,8 @@ herr_t ReadHDF5::prepare_processObject(hid_t callingGroupId, const char * name, 
 
 
     // iterate through array links
-    status = H5Literate_by_name(linkIterData->fileId, objectGroup.c_str(), H5_INDEX_NAME, H5_ITER_NATIVE, NULL, prepare_processArrayContainer, linkIterData, H5P_DEFAULT);
+    status = H5Literate_by_name(linkIterData->fileId, objectGroup.c_str(), H5_INDEX_NAME, H5_ITER_NATIVE, NULL,
+                                prepare_processArrayContainer, linkIterData, H5P_DEFAULT);
     linkIterData->callingModule->util_checkStatus(status);
 
     // close all open h5 entities
@@ -538,7 +558,8 @@ herr_t ReadHDF5::prepare_processObject(hid_t callingGroupId, const char * name, 
     // output object as long as it is not a pure reference
     linkIterData->callingModule->m_objectPersistenceVector.push_back(returnObject);
     if (linkIterData->origin != std::numeric_limits<unsigned>::max()) {
-        linkIterData->callingModule->addObject(std::string("data" + std::to_string(linkIterData->origin) + "_out"), returnObject);
+        linkIterData->callingModule->addObject(std::string("data" + std::to_string(linkIterData->origin) + "_out"),
+                                               returnObject);
     }
     return 0;
 }
@@ -547,8 +568,10 @@ herr_t ReadHDF5::prepare_processObject(hid_t callingGroupId, const char * name, 
 // * function falls under the template  H5L_iterate_t as it is a callback from the HDF5 iterate API call
 // * function processes the group within the object which contains either a ShmVector or an object reference
 //-------------------------------------------------------------------------
-herr_t ReadHDF5::prepare_processArrayContainer(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData) {
-    LinkIterData * linkIterData = (LinkIterData *) opData;
+herr_t ReadHDF5::prepare_processArrayContainer(hid_t callingGroupId, const char *name, const H5L_info_t *info,
+                                               void *opData)
+{
+    LinkIterData *linkIterData = (LinkIterData *)opData;
     H5O_info_t objectInfo;
     herr_t status;
 
@@ -566,7 +589,8 @@ herr_t ReadHDF5::prepare_processArrayContainer(hid_t callingGroupId, const char 
     linkIterData->nvpName = name;
 
     // use Literate to access ShmVector/object reference being linked
-    status = H5Literate_by_name(callingGroupId, name, H5_INDEX_NAME, H5_ITER_NATIVE, NULL, prepare_processArrayLink, linkIterData, H5P_DEFAULT);
+    status = H5Literate_by_name(callingGroupId, name, H5_INDEX_NAME, H5_ITER_NATIVE, NULL, prepare_processArrayLink,
+                                linkIterData, H5P_DEFAULT);
     linkIterData->callingModule->util_checkStatus(status);
 
     return 0;
@@ -579,12 +603,14 @@ herr_t ReadHDF5::prepare_processArrayContainer(hid_t callingGroupId, const char 
 // *   then resolves reference
 // * - if ShmVector, loads and attatches the target array. If the array is already present in memory, the load step is skipped
 //-------------------------------------------------------------------------
-herr_t ReadHDF5::prepare_processArrayLink(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData) {
-    LinkIterData * linkIterData = (LinkIterData *) opData;
+herr_t ReadHDF5::prepare_processArrayLink(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData)
+{
+    LinkIterData *linkIterData = (LinkIterData *)opData;
 
-    if (linkIterData->archive->getVectorEntryByNvpName(linkIterData->nvpName)->referenceType == ReferenceType::ObjectReference) {
-        void * objectReference = linkIterData->archive->getVectorEntryByNvpName(linkIterData->nvpName)->ref;
-        shm_obj_ref<Object> * objectReferencePtr = (shm_obj_ref<Object> *) objectReference;
+    if (linkIterData->archive->getVectorEntryByNvpName(linkIterData->nvpName)->referenceType ==
+        ReferenceType::ObjectReference) {
+        void *objectReference = linkIterData->archive->getVectorEntryByNvpName(linkIterData->nvpName)->ref;
+        shm_obj_ref<Object> *objectReferencePtr = (shm_obj_ref<Object> *)objectReference;
         auto objectMapIter = linkIterData->callingModule->m_objectMap.find(std::string(name));
 
         // check if reference object has been constructed, if not, construct it
@@ -602,9 +628,8 @@ herr_t ReadHDF5::prepare_processArrayLink(hid_t callingGroupId, const char *name
                 bool objectFound = false;
 
                 for (unsigned i = 0; i < linkIterData->callingModule->m_numPorts && !objectFound; i++) {
-                    originObjectName = "/index/t" + std::to_string(linkIterData->timestep)
-                            + "/b" + std::to_string(linkIterData->block)
-                            + "/p" + std::to_string(i);
+                    originObjectName = "/index/t" + std::to_string(linkIterData->timestep) + "/b" +
+                                       std::to_string(linkIterData->block) + "/p" + std::to_string(i);
 
                     originObjectExists = H5Lexists(linkIterData->fileId, originObjectName.c_str(), H5P_DEFAULT);
                     if (!util_doesExist(originObjectExists)) {
@@ -613,7 +638,8 @@ herr_t ReadHDF5::prepare_processArrayLink(hid_t callingGroupId, const char *name
 
                     for (unsigned j = 0; /* exit conditions handled within */; j++) {
                         std::string variantGroupName = originObjectName + "/v" + std::to_string(j);
-                        htri_t variantGroupExists = H5Lexists(linkIterData->fileId, variantGroupName.c_str(), H5P_DEFAULT);
+                        htri_t variantGroupExists =
+                            H5Lexists(linkIterData->fileId, variantGroupName.c_str(), H5P_DEFAULT);
 
                         // exit condition
                         if (!util_doesExist(variantGroupExists)) {
@@ -636,12 +662,14 @@ herr_t ReadHDF5::prepare_processArrayLink(hid_t callingGroupId, const char *name
                 prepare_processObject(0, name, nullptr, &referenceOpData);
 
                 // error message
-                if (linkIterData->callingModule->m_objectMap.find(std::string(name)) == linkIterData->callingModule->m_objectMap.end()) {
+                if (linkIterData->callingModule->m_objectMap.find(std::string(name)) ==
+                    linkIterData->callingModule->m_objectMap.end()) {
                     linkIterData->callingModule->sendInfo("Error: reference object out of order creation failed");
                 }
 
                 // resolve reference
-                *objectReferencePtr = vistle::Shm::the().getObjectFromName(linkIterData->callingModule->m_objectMap[std::string(name)]);
+                *objectReferencePtr =
+                    vistle::Shm::the().getObjectFromName(linkIterData->callingModule->m_objectMap[std::string(name)]);
             } else {
                 // mark for unresolved references
                 linkIterData->callingModule->m_unresolvedReferencesExist = true;
@@ -652,16 +680,11 @@ herr_t ReadHDF5::prepare_processArrayLink(hid_t callingGroupId, const char *name
             *objectReferencePtr = vistle::Shm::the().getObjectFromName(objectMapIter->second);
         }
 
-    } else if (linkIterData->archive->getVectorEntryByNvpName(linkIterData->nvpName)->referenceType == ReferenceType::ShmVector) {
-        ShmVectorReader reader(
-                    linkIterData->archive,
-                    std::string(name),
-                    linkIterData->nvpName,
-                    linkIterData->callingModule->m_arrayMap,
-                    linkIterData->fileId,
-                    linkIterData->callingModule->m_dummyDatasetId,
-                    linkIterData->callingModule->comm()
-                    );
+    } else if (linkIterData->archive->getVectorEntryByNvpName(linkIterData->nvpName)->referenceType ==
+               ReferenceType::ShmVector) {
+        ShmVectorReader reader(linkIterData->archive, std::string(name), linkIterData->nvpName,
+                               linkIterData->callingModule->m_arrayMap, linkIterData->fileId,
+                               linkIterData->callingModule->m_dummyDatasetId, linkIterData->callingModule->comm());
 
         boost::mpl::for_each<VectorTypes>(boost::reference_wrapper<ShmVectorReader>(reader));
     }
@@ -671,7 +694,8 @@ herr_t ReadHDF5::prepare_processArrayLink(hid_t callingGroupId, const char *name
 
 // COMPUTE FUNCTION
 //-------------------------------------------------------------------------
-bool ReadHDF5::compute() {
+bool ReadHDF5::compute()
+{
     // do nothing
     return true;
 }
@@ -679,15 +703,16 @@ bool ReadHDF5::compute() {
 
 // REDUCE FUNCTION
 //-------------------------------------------------------------------------
-bool ReadHDF5::reduce(int timestep) {
-
+bool ReadHDF5::reduce(int timestep)
+{
     return Module::reduce(timestep);
 }
 
 // GENERIC UTILITY HELPER FUNCTION - CHECK THE VALIDITY OF THE FILENAME PARAMETER
 // * also updates m_numPorts and handles port creation/deletion
 //-------------------------------------------------------------------------
-bool ReadHDF5::util_checkFile() {
+bool ReadHDF5::util_checkFile()
+{
     herr_t status;
     hid_t fileId;
     hid_t filePropertyListId;
@@ -828,7 +853,8 @@ bool ReadHDF5::util_checkFile() {
 // GENERIC UTILITY HELPER FUNCTION - SYNCHRONISE COLLECTIVE READS NULL READ VERSION
 // * returns the total read size across the comm in bytes
 //-------------------------------------------------------------------------
-long double ReadHDF5::util_readSyncStandby(const boost::mpi::communicator & comm, hid_t fileId) {
+long double ReadHDF5::util_readSyncStandby(const boost::mpi::communicator &comm, hid_t fileId)
+{
     hid_t dataSetId;
     hid_t readId;
     int readDummy;
@@ -858,7 +884,8 @@ long double ReadHDF5::util_readSyncStandby(const boost::mpi::communicator & comm
 // GENERIC UTILITY HELPER FUNCTION - SYNCHRONISE COLLECTIVE READS
 // * returns wether or not all nodes are done
 //-------------------------------------------------------------------------
-long double ReadHDF5::util_syncAndGetReadSize(long double readSize, const boost::mpi::communicator & comm) {
+long double ReadHDF5::util_syncAndGetReadSize(long double readSize, const boost::mpi::communicator &comm)
+{
     long double totalReadSize;
 
     boost::mpi::all_reduce(comm, readSize, totalReadSize, std::plus<long double>());
@@ -868,8 +895,8 @@ long double ReadHDF5::util_syncAndGetReadSize(long double readSize, const boost:
 
 // GENERIC UTILITY HELPER FUNCTION - VERIFY HERR_T STATUS
 //-------------------------------------------------------------------------
-void ReadHDF5::util_checkStatus(herr_t status) {
-
+void ReadHDF5::util_checkStatus(herr_t status)
+{
     if (status != 0) {
         sendInfo("Error: status: %i", status);
     }

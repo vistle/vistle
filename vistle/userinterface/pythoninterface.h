@@ -13,23 +13,22 @@
 namespace vistle {
 
 class V_UIEXPORT PythonInterface {
-   public:
+public:
+    PythonInterface(const std::string &name);
+    ~PythonInterface();
+    static PythonInterface &the();
+    pybind11::object &nameSpace();
+    bool init();
 
-      PythonInterface(const std::string &name);
-      ~PythonInterface();
-      static PythonInterface &the();
-      pybind11::object &nameSpace();
-      bool init();
+    bool exec(const std::string &python);
+    bool exec_file(const std::string &filename);
 
-      bool exec(const std::string &python);
-      bool exec_file(const std::string &filename);
+    static std::string errorString();
 
-      static std::string errorString();
-
-   private:
-      std::string m_name;
-      std::unique_ptr<pybind11::object> m_namespace;
-      static PythonInterface *s_singleton;
+private:
+    std::string m_name;
+    std::unique_ptr<pybind11::object> m_namespace;
+    static PythonInterface *s_singleton;
 };
 
 } // namespace vistle

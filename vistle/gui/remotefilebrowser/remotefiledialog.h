@@ -62,8 +62,7 @@ class QAbstractProxyModel;
 class AbstractFileInfoGatherer;
 class AbstractFileSystemModel;
 
-class RemoteFileDialog : public QDialog
-{
+class RemoteFileDialog: public QDialog {
     Q_OBJECT
     Q_PROPERTY(ViewMode viewMode READ viewMode WRITE setViewMode)
     Q_PROPERTY(FileMode fileMode READ fileMode WRITE setFileMode)
@@ -72,8 +71,8 @@ class RemoteFileDialog : public QDialog
     Q_PROPERTY(bool resolveSymlinks READ resolveSymlinks WRITE setResolveSymlinks DESIGNABLE false)
     Q_PROPERTY(bool confirmOverwrite READ confirmOverwrite WRITE setConfirmOverwrite DESIGNABLE false)
     Q_PROPERTY(QString defaultSuffix READ defaultSuffix WRITE setDefaultSuffix)
-    Q_PROPERTY(bool nameFilterDetailsVisible READ isNameFilterDetailsVisible
-               WRITE setNameFilterDetailsVisible DESIGNABLE false)
+    Q_PROPERTY(bool nameFilterDetailsVisible READ isNameFilterDetailsVisible WRITE setNameFilterDetailsVisible
+                   DESIGNABLE false)
     Q_PROPERTY(Options options READ options WRITE setOptions)
     Q_PROPERTY(QStringList supportedSchemes READ supportedSchemes WRITE setSupportedSchemes)
 
@@ -86,26 +85,23 @@ public:
     Q_ENUM(AcceptMode)
     enum DialogLabel { LookIn, FileName, FileType, Accept, Reject };
 
-    enum Option
-    {
-        ShowDirsOnly                = 0x00000001,
-        DontResolveSymlinks         = 0x00000002,
-        DontConfirmOverwrite        = 0x00000004,
-        DontUseSheet                = 0x00000008,
-        DontUseNativeDialog         = 0x00000010, // default, not changeable
-        ReadOnly                    = 0x00000020,
-        HideNameFilterDetails       = 0x00000040,
-        DontUseCustomDirectoryIcons = 0x00000080  // default, not changeable
+    enum Option {
+        ShowDirsOnly = 0x00000001,
+        DontResolveSymlinks = 0x00000002,
+        DontConfirmOverwrite = 0x00000004,
+        DontUseSheet = 0x00000008,
+        DontUseNativeDialog = 0x00000010, // default, not changeable
+        ReadOnly = 0x00000020,
+        HideNameFilterDetails = 0x00000040,
+        DontUseCustomDirectoryIcons = 0x00000080 // default, not changeable
     };
     Q_ENUM(Option)
     Q_DECLARE_FLAGS(Options, Option)
     Q_FLAG(Options)
 
     RemoteFileDialog(AbstractFileSystemModel *model, QWidget *parent, Qt::WindowFlags f);
-    RemoteFileDialog(AbstractFileSystemModel *model, QWidget *parent = nullptr,
-                         const QString &caption = QString(),
-                         const QString &directory = QString(),
-                         const QString &filter = QString());
+    RemoteFileDialog(AbstractFileSystemModel *model, QWidget *parent = nullptr, const QString &caption = QString(),
+                     const QString &directory = QString(), const QString &filter = QString());
     ~RemoteFileDialog();
 
     void setDirectory(const QString &directory);
@@ -206,7 +202,6 @@ Q_SIGNALS:
     void filterSelected(const QString &filter);
 
 public:
-
 protected:
     RemoteFileDialog(const RemoteFileDialogArgs &args);
     void done(int result) override;
@@ -240,10 +235,8 @@ private:
     Q_PRIVATE_SLOT(d_func(), void _q_goHome())
     Q_PRIVATE_SLOT(d_func(), void _q_showHeader(QAction *))
     Q_PRIVATE_SLOT(d_func(), void _q_autoCompleteFileName(const QString &text))
-    Q_PRIVATE_SLOT(d_func(), void _q_rowsInserted(const QModelIndex & parent))
-    Q_PRIVATE_SLOT(d_func(), void _q_fileRenamed(const QString &path,
-                                                 const QString &oldName,
-                                                 const QString &newName))
+    Q_PRIVATE_SLOT(d_func(), void _q_rowsInserted(const QModelIndex &parent))
+    Q_PRIVATE_SLOT(d_func(), void _q_fileRenamed(const QString &path, const QString &oldName, const QString &newName))
     friend class QPlatformDialogHelper;
     QScopedPointer<RemoteFileDialogPrivate> vd_ptr;
     AbstractFileSystemModel *m_model = nullptr;

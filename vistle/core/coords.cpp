@@ -5,108 +5,104 @@
 
 namespace vistle {
 
-Coords::Coords(const Index numVertices,
-             const Meta &meta)
-   : Coords::Base(static_cast<Data *>(NULL))
+Coords::Coords(const Index numVertices, const Meta &meta): Coords::Base(static_cast<Data *>(NULL))
 {
     refreshImpl();
 }
 
-void Coords::resetCoords() {
+void Coords::resetCoords()
+{
     resetArrays();
 }
 
-void Coords::refreshImpl() const {
+void Coords::refreshImpl() const
+{}
+
+bool Coords::isEmpty()
+{
+    return Base::isEmpty();
 }
 
-bool Coords::isEmpty() {
-
-   return Base::isEmpty();
+bool Coords::isEmpty() const
+{
+    return Base::isEmpty();
 }
 
-bool Coords::isEmpty() const {
-
-   return Base::isEmpty();
+bool Coords::checkImpl() const
+{
+    V_CHECK(!normals() || normals()->getNumNormals() == getSize());
+    if (normals()) {
+        V_CHECK(normals()->check());
+    }
+    return true;
 }
 
-bool Coords::checkImpl() const {
-
-   V_CHECK(!normals() || normals()->getNumNormals() == getSize());
-   if (normals()) {
-       V_CHECK(normals()->check());
-   }
-   return true;
-}
-
-std::pair<Vector, Vector> Coords::getBounds() const {
-
+std::pair<Vector, Vector> Coords::getBounds() const
+{
     return getMinMax();
 }
 
-void Coords::Data::initData() {
-}
+void Coords::Data::initData()
+{}
 
-Coords::Data::Data(const Index numVertices,
-      Type id, const std::string &name,
-      const Meta &meta)
-   : Coords::Base::Data(numVertices,
-         id, name,
-         meta)
+Coords::Data::Data(const Index numVertices, Type id, const std::string &name, const Meta &meta)
+: Coords::Base::Data(numVertices, id, name, meta)
 {
-   initData();
+    initData();
 }
 
-Coords::Data::Data(const Coords::Data &o, const std::string &n)
-: Coords::Base::Data(o, n)
-, normals(o.normals)
+Coords::Data::Data(const Coords::Data &o, const std::string &n): Coords::Base::Data(o, n), normals(o.normals)
 {
-   initData();
+    initData();
 }
 
-Coords::Data::Data(const Vec<Scalar, 3>::Data &o, const std::string &n, Type id)
-: Coords::Base::Data(o, n, id)
+Coords::Data::Data(const Vec<Scalar, 3>::Data &o, const std::string &n, Type id): Coords::Base::Data(o, n, id)
 {
-   initData();
+    initData();
 }
 
-Coords::Data *Coords::Data::create(const std::string &objId, Type id, const Index numVertices,
-            const Meta &meta) {
+Coords::Data *Coords::Data::create(const std::string &objId, Type id, const Index numVertices, const Meta &meta)
+{
+    assert("should never be called" == NULL);
 
-   assert("should never be called" == NULL);
-
-   return NULL;
+    return NULL;
 }
 
-Coords::Data::~Data() {
-}
+Coords::Data::~Data()
+{}
 
-Index Coords::getNumVertices() const {
-
-   return getSize();
-}
-
-Index Coords::getNumVertices() {
+Index Coords::getNumVertices() const
+{
     return getSize();
 }
 
-Index Coords::getNumCoords() {
+Index Coords::getNumVertices()
+{
     return getSize();
 }
 
-Index Coords::getNumCoords() const {
+Index Coords::getNumCoords()
+{
     return getSize();
 }
 
-Normals::const_ptr Coords::normals() const {
-   return Normals::as(d()->normals.getObject());
+Index Coords::getNumCoords() const
+{
+    return getSize();
 }
 
-void Coords::setNormals(Normals::const_ptr normals) {
+Normals::const_ptr Coords::normals() const
+{
+    return Normals::as(d()->normals.getObject());
+}
 
+void Coords::setNormals(Normals::const_ptr normals)
+{
     d()->normals = normals;
 }
 
-Vector3 Coords::getVertex(Index v) const {
+Vector3 Coords::getVertex(Index v) const
+{
     assert(v < getSize());
     return Vector3(x()[v], y()[v], z()[v]);
 }

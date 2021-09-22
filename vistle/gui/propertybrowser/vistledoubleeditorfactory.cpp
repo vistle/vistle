@@ -14,29 +14,19 @@ QT_BEGIN_NAMESPACE
 
 class VistleDoubleSpinBox: public QDoubleSpinBox {
 public:
-    VistleDoubleSpinBox(QWidget *parent = nullptr)
-    : QDoubleSpinBox(parent)
-    {
-        setDecimals(DBL_MAX_10_EXP + DBL_DIG);
-    }
+    VistleDoubleSpinBox(QWidget *parent = nullptr): QDoubleSpinBox(parent) { setDecimals(DBL_MAX_10_EXP + DBL_DIG); }
 
-    QString textFromValue(double value) const {
-        return QString::number(value, 'g', 15);
-    }
+    QString textFromValue(double value) const { return QString::number(value, 'g', 15); }
 
-    QValidator::State validate(QString &text, int &pos) const {
-        return QValidator::Acceptable;
-    }
+    QValidator::State validate(QString &text, int &pos) const { return QValidator::Acceptable; }
 };
 
 // VistleDoubleSpinBoxFactory
 
-class VistleDoubleSpinBoxFactoryPrivate : public EditorFactoryPrivate<VistleDoubleSpinBox>
-{
+class VistleDoubleSpinBoxFactoryPrivate: public EditorFactoryPrivate<VistleDoubleSpinBox> {
     VistleDoubleSpinBoxFactory *q_ptr;
     Q_DECLARE_PUBLIC(VistleDoubleSpinBoxFactory)
 public:
-
     void slotPropertyChanged(QtProperty *property, double value);
     void slotRangeChanged(QtProperty *property, double min, double max);
     void slotSingleStepChanged(QtProperty *property, double step);
@@ -59,8 +49,7 @@ void VistleDoubleSpinBoxFactoryPrivate::slotPropertyChanged(QtProperty *property
     }
 }
 
-void VistleDoubleSpinBoxFactoryPrivate::slotRangeChanged(QtProperty *property,
-            double min, double max)
+void VistleDoubleSpinBoxFactoryPrivate::slotRangeChanged(QtProperty *property, double min, double max)
 {
     if (!m_createdEditors.contains(property))
         return;
@@ -99,7 +88,7 @@ void VistleDoubleSpinBoxFactoryPrivate::slotSingleStepChanged(QtProperty *proper
     }
 }
 
-void VistleDoubleSpinBoxFactoryPrivate::slotReadOnlyChanged( QtProperty *property, bool readOnly)
+void VistleDoubleSpinBoxFactoryPrivate::slotReadOnlyChanged(QtProperty *property, bool readOnly)
 {
     if (!m_createdEditors.contains(property))
         return;
@@ -141,7 +130,8 @@ void VistleDoubleSpinBoxFactoryPrivate::slotSetValue(double value)
 {
     QObject *object = q_ptr->sender();
     const QMap<VistleDoubleSpinBox *, QtProperty *>::ConstIterator itcend = m_editorToProperty.constEnd();
-    for (QMap<VistleDoubleSpinBox *, QtProperty *>::ConstIterator itEditor = m_editorToProperty.constBegin(); itEditor != itcend; ++itEditor) {
+    for (QMap<VistleDoubleSpinBox *, QtProperty *>::ConstIterator itEditor = m_editorToProperty.constBegin();
+         itEditor != itcend; ++itEditor) {
         if (itEditor.key() == object) {
             QtProperty *property = itEditor.value();
             QtDoublePropertyManager *manager = q_ptr->propertyManager(property);
@@ -165,11 +155,10 @@ void VistleDoubleSpinBoxFactoryPrivate::slotSetValue(double value)
     Creates a factory with the given \a parent.
 */
 VistleDoubleSpinBoxFactory::VistleDoubleSpinBoxFactory(QObject *parent)
-    : QtAbstractEditorFactory<QtDoublePropertyManager>(parent)
+: QtAbstractEditorFactory<QtDoublePropertyManager>(parent)
 {
     d_ptr = new VistleDoubleSpinBoxFactoryPrivate();
     d_ptr->q_ptr = this;
-
 }
 
 /*!
@@ -188,16 +177,13 @@ VistleDoubleSpinBoxFactory::~VistleDoubleSpinBoxFactory()
 */
 void VistleDoubleSpinBoxFactory::connectPropertyManager(QtDoublePropertyManager *manager)
 {
-    connect(manager, SIGNAL(valueChanged(QtProperty *, double)),
-                this, SLOT(slotPropertyChanged(QtProperty *, double)));
-    connect(manager, SIGNAL(rangeChanged(QtProperty *, double, double)),
-                this, SLOT(slotRangeChanged(QtProperty *, double, double)));
-    connect(manager, SIGNAL(singleStepChanged(QtProperty *, double)),
-                this, SLOT(slotSingleStepChanged(QtProperty *, double)));
-    connect(manager, SIGNAL(decimalsChanged(QtProperty *, int)),
-                this, SLOT(slotDecimalsChanged(QtProperty *, int)));
-    connect(manager, SIGNAL(readOnlyChanged(QtProperty *, bool)),
-                this, SLOT(slotReadOnlyChanged(QtProperty *, bool)));
+    connect(manager, SIGNAL(valueChanged(QtProperty *, double)), this, SLOT(slotPropertyChanged(QtProperty *, double)));
+    connect(manager, SIGNAL(rangeChanged(QtProperty *, double, double)), this,
+            SLOT(slotRangeChanged(QtProperty *, double, double)));
+    connect(manager, SIGNAL(singleStepChanged(QtProperty *, double)), this,
+            SLOT(slotSingleStepChanged(QtProperty *, double)));
+    connect(manager, SIGNAL(decimalsChanged(QtProperty *, int)), this, SLOT(slotDecimalsChanged(QtProperty *, int)));
+    connect(manager, SIGNAL(readOnlyChanged(QtProperty *, bool)), this, SLOT(slotReadOnlyChanged(QtProperty *, bool)));
 }
 
 /*!
@@ -205,8 +191,8 @@ void VistleDoubleSpinBoxFactory::connectPropertyManager(QtDoublePropertyManager 
 
     Reimplemented from the QtAbstractEditorFactory class.
 */
-QWidget *VistleDoubleSpinBoxFactory::createEditor(QtDoublePropertyManager *manager,
-        QtProperty *property, QWidget *parent)
+QWidget *VistleDoubleSpinBoxFactory::createEditor(QtDoublePropertyManager *manager, QtProperty *property,
+                                                  QWidget *parent)
 {
     VistleDoubleSpinBox *editor = d_ptr->createEditor(property, parent);
     editor->setSingleStep(manager->singleStep(property));
@@ -217,8 +203,7 @@ QWidget *VistleDoubleSpinBoxFactory::createEditor(QtDoublePropertyManager *manag
     editor->setReadOnly(manager->isReadOnly(property));
 
     connect(editor, SIGNAL(valueChanged(double)), this, SLOT(slotSetValue(double)));
-    connect(editor, SIGNAL(destroyed(QObject *)),
-                this, SLOT(slotEditorDestroyed(QObject *)));
+    connect(editor, SIGNAL(destroyed(QObject *)), this, SLOT(slotEditorDestroyed(QObject *)));
     return editor;
 }
 
@@ -229,18 +214,16 @@ QWidget *VistleDoubleSpinBoxFactory::createEditor(QtDoublePropertyManager *manag
 */
 void VistleDoubleSpinBoxFactory::disconnectPropertyManager(QtDoublePropertyManager *manager)
 {
-    disconnect(manager, SIGNAL(valueChanged(QtProperty *, double)),
-                this, SLOT(slotPropertyChanged(QtProperty *, double)));
-    disconnect(manager, SIGNAL(rangeChanged(QtProperty *, double, double)),
-                this, SLOT(slotRangeChanged(QtProperty *, double, double)));
-    disconnect(manager, SIGNAL(singleStepChanged(QtProperty *, double)),
-                this, SLOT(slotSingleStepChanged(QtProperty *, double)));
-    disconnect(manager, SIGNAL(decimalsChanged(QtProperty *, int)),
-                this, SLOT(slotDecimalsChanged(QtProperty *, int)));
-    disconnect(manager, SIGNAL(readOnlyChanged(QtProperty *, bool)),
-                this, SLOT(slotReadOnlyChanged(QtProperty *, bool)));
+    disconnect(manager, SIGNAL(valueChanged(QtProperty *, double)), this,
+               SLOT(slotPropertyChanged(QtProperty *, double)));
+    disconnect(manager, SIGNAL(rangeChanged(QtProperty *, double, double)), this,
+               SLOT(slotRangeChanged(QtProperty *, double, double)));
+    disconnect(manager, SIGNAL(singleStepChanged(QtProperty *, double)), this,
+               SLOT(slotSingleStepChanged(QtProperty *, double)));
+    disconnect(manager, SIGNAL(decimalsChanged(QtProperty *, int)), this, SLOT(slotDecimalsChanged(QtProperty *, int)));
+    disconnect(manager, SIGNAL(readOnlyChanged(QtProperty *, bool)), this,
+               SLOT(slotReadOnlyChanged(QtProperty *, bool)));
 }
-
 
 
 #if QT_VERSION >= 0x040400

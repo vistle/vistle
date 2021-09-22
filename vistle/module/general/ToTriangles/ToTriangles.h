@@ -4,15 +4,14 @@
 #include <vistle/module/module.h>
 
 class ToTriangles: public vistle::Module {
+public:
+    ToTriangles(const std::string &name, int moduleID, mpi::communicator comm);
+    ~ToTriangles();
 
- public:
-   ToTriangles(const std::string &name, int moduleID, mpi::communicator comm);
-   ~ToTriangles();
+private:
+    virtual bool compute();
 
- private:
-   virtual bool compute();
-
-   vistle::IntParameter *p_transformSpheres = nullptr;
+    vistle::IntParameter *p_transformSpheres = nullptr;
 };
 
 #endif

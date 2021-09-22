@@ -20,22 +20,15 @@ class BlockData;
 class GlobalData;
 
 class Particle {
-
     friend class Integrator;
     friend class boost::serialization::access;
 
 public:
-    DEFINE_ENUM_WITH_STRING_CONVERSIONS(StopReason,
-                                        (StillActive)
-                                        (InitiallyOutOfDomain)
-                                        (OutOfDomain)
-                                        (NotMoving)
-                                        (StepLimitReached)
-                                        (DistanceLimitReached)
-                                        (TimeLimitReached)
-                                        (NumStopReasons)
-    )
-    Particle(vistle::Index id, int rank, vistle::Index startId, const vistle::Vector3 &pos, bool forward, GlobalData &global, vistle::Index timestep);
+    DEFINE_ENUM_WITH_STRING_CONVERSIONS(
+        StopReason,
+        (StillActive)(InitiallyOutOfDomain)(OutOfDomain)(NotMoving)(StepLimitReached)(DistanceLimitReached)(TimeLimitReached)(NumStopReasons))
+    Particle(vistle::Index id, int rank, vistle::Index startId, const vistle::Vector3 &pos, bool forward,
+             GlobalData &global, vistle::Index timestep);
     ~Particle();
     vistle::Index id() const;
     int rank();
@@ -78,31 +71,30 @@ public:
         std::vector<vistle::Scalar> m_dists; //!< previous times
         std::vector<vistle::Index> m_cellIndex; //!< previous cell/element indices
 
-        Segment(int num=0)
-            : m_rank(-1)
-            , m_num(num)
-            , m_blockIndex(vistle::InvalidIndex)
-            , m_startStep(vistle::InvalidIndex)
+        Segment(int num = 0)
+        : m_rank(-1), m_num(num), m_blockIndex(vistle::InvalidIndex), m_startStep(vistle::InvalidIndex)
         {}
 
         // just for Boost.MPI
         template<class Archive>
-        void serialize(Archive &ar, const unsigned int version) {
-            ar & m_id;
-            ar & m_rank;
-            ar & m_num;
-            ar & m_blockIndex;
-            ar & m_xhist;
-            ar & m_vhist;
-            ar & m_stepWidth;
-            ar & m_pressures;
-            ar & m_steps;
-            ar & m_times;
-            ar & m_dists;
-            ar & m_cellIndex;
+        void serialize(Archive &ar, const unsigned int version)
+        {
+            ar &m_id;
+            ar &m_rank;
+            ar &m_num;
+            ar &m_blockIndex;
+            ar &m_xhist;
+            ar &m_vhist;
+            ar &m_stepWidth;
+            ar &m_pressures;
+            ar &m_steps;
+            ar &m_times;
+            ar &m_dists;
+            ar &m_cellIndex;
         }
 
-        void clear() {
+        void clear()
+        {
             m_id = vistle::InvalidIndex;
             m_rank = -1;
             m_num = 0;
@@ -118,6 +110,7 @@ public:
     };
 
     typedef std::map<int, std::shared_ptr<Segment>> SegmentMap;
+
 private:
     bool findCell(double time);
 
@@ -152,18 +145,19 @@ private:
 
     // just for Boost.MPI
     template<class Archive>
-    void serialize(Archive &ar, const unsigned int version) {
-        ar & m_x;
-        ar & m_xold;
-        ar & m_v;
-        ar & m_stp;
-        ar & m_time;
-        ar & m_dist;
-        ar & m_p;
-        ar & m_ingrid;
-        ar & m_integrator.m_h;
-        ar & m_stopReason;
-        ar & m_segment;
+    void serialize(Archive &ar, const unsigned int version)
+    {
+        ar &m_x;
+        ar &m_xold;
+        ar &m_v;
+        ar &m_stp;
+        ar &m_time;
+        ar &m_dist;
+        ar &m_p;
+        ar &m_ingrid;
+        ar &m_integrator.m_h;
+        ar &m_stopReason;
+        ar &m_segment;
     }
 
     std::vector<boost::mpi::request> m_requests;

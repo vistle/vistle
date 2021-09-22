@@ -23,7 +23,8 @@ const std::string FindObjectReferenceOArchive::nullObjectReferenceName = "--NULL
 // GET VECTOR ENTRY BY NAME
 // * often multiple consecutive searches for the same enrty will occur, therefore the hint aids performance
 //-------------------------------------------------------------------------
-FindObjectReferenceOArchive::ReferenceData * FindObjectReferenceOArchive::getVectorEntryByNvpName(std::string name) {
+FindObjectReferenceOArchive::ReferenceData *FindObjectReferenceOArchive::getVectorEntryByNvpName(std::string name)
+{
     if (m_referenceDataVector[m_indexHint].nvpName == name) {
         return &m_referenceDataVector[m_indexHint];
     } else {

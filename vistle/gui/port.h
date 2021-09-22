@@ -12,20 +12,19 @@ namespace gui {
 
 class Module;
 
-class Port: public QObject, public QGraphicsRectItem
-{
-   Q_OBJECT
-   Q_INTERFACES(QGraphicsItem)
-   typedef QGraphicsRectItem Base;
+class Port: public QObject, public QGraphicsRectItem {
+    Q_OBJECT
+    Q_INTERFACES(QGraphicsItem)
+    typedef QGraphicsRectItem Base;
 
 public:
-   static const double portSize;
+    static const double portSize;
 
-   enum Type {
-      Parameter,
-      Input,
-      Output,
-      };
+    enum Type {
+        Parameter,
+        Input,
+        Output,
+    };
 
     Port(const vistle::Port *port, Module *parent);
     Port(Type type, Module *parent);
@@ -54,7 +53,7 @@ private:
     void createTooltip();
     void createGeometry();
 
-    Type m_portType;						//< type of port
+    Type m_portType; //< type of port
     std::shared_ptr<vistle::Port> m_port;
     QColor m_color;
     Module *m_module;

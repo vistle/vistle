@@ -9,8 +9,7 @@
 #include <vistle/core/object.h>
 
 
-class BlockData{
-
+class BlockData {
     friend class Particle;
 
 private:
@@ -24,9 +23,7 @@ private:
     vistle::Matrix3 m_velocityTransform;
 
 public:
-    BlockData(vistle::Index i,
-              vistle::Object::const_ptr grid,
-              vistle::Vec<vistle::Scalar, 3>::const_ptr vdata,
+    BlockData(vistle::Index i, vistle::Object::const_ptr grid, vistle::Vec<vistle::Scalar, 3>::const_ptr vdata,
               vistle::Vec<vistle::Scalar>::const_ptr pdata = nullptr);
     ~BlockData();
 

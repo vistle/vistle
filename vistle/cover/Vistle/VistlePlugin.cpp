@@ -26,26 +26,23 @@ using namespace opencover;
 using namespace vistle;
 
 class VistlePlugin: public opencover::coVRPlugin, public ui::Owner {
+public:
+    VistlePlugin();
+    ~VistlePlugin() override;
+    bool init() override;
+    bool destroy() override;
+    void notify(NotificationLevel level, const char *text) override;
+    bool update() override;
+    void requestQuit(bool killSession) override;
+    bool executeAll() override;
+    void message(int toWhom, int type, int length, const void *data) override;
+    bool sendVisMessage(const covise::Message *msg) override;
 
- public:
-   VistlePlugin();
-   ~VistlePlugin() override;
-   bool init() override;
-   bool destroy() override;
-   void notify(NotificationLevel level, const char *text) override;
-   bool update() override;
-   void requestQuit(bool killSession) override;
-   bool executeAll() override;
-   void message(int toWhom, int type, int length, const void *data) override;
-   bool sendVisMessage(const covise::Message *msg) override;
-
- private:
-   COVER *m_module = nullptr;
+private:
+    COVER *m_module = nullptr;
 };
 
-VistlePlugin::VistlePlugin()
-: ui::Owner("Vistle", cover->ui)
-, m_module(nullptr)
+VistlePlugin::VistlePlugin(): ui::Owner("Vistle", cover->ui), m_module(nullptr)
 {
 #if 0
     using opencover::coCommandLine;
@@ -77,63 +74,61 @@ VistlePlugin::VistlePlugin()
 #endif
 }
 
-VistlePlugin::~VistlePlugin() {
-
-   if (m_module) {
-      m_module->comm().barrier();
-      m_module->prepareQuit();
+VistlePlugin::~VistlePlugin()
+{
+    if (m_module) {
+        m_module->comm().barrier();
+        m_module->prepareQuit();
 #if 0
       delete m_module;
 #endif
-      m_module = nullptr;
-   }
+        m_module = nullptr;
+    }
 }
 
-bool VistlePlugin::init() {
+bool VistlePlugin::init()
+{
+    assert(!cover->visMenu);
 
-   assert(!cover->visMenu);
+    m_module = COVER::the();
+    if (m_module) {
+        m_module->setPlugin(this);
 
-   m_module = COVER::the();
-   if (m_module) {
-       m_module->setPlugin(this);
+        cover->visMenu = new ui::Menu("Vistle", this);
 
-       cover->visMenu = new ui::Menu("Vistle", this);
+        auto executeButton = new ui::Action("Execute", cover->visMenu);
+        cover->visMenu->add(executeButton, ui::Container::KeepFirst);
+        executeButton->setShortcut("e");
+        executeButton->setCallback([this]() { executeAll(); });
+        executeButton->setIcon("view-refresh");
+        executeButton->setPriority(ui::Element::Toolbar);
 
-       auto executeButton = new ui::Action("Execute", cover->visMenu);
-       cover->visMenu->add(executeButton, ui::Container::KeepFirst);
-       executeButton->setShortcut("e");
-       executeButton->setCallback([this](){
-           executeAll();
-       });
-       executeButton->setIcon("view-refresh");
-       executeButton->setPriority(ui::Element::Toolbar);
+        return true;
+    }
 
-       return true;
-   }
-
-   return false;
+    return false;
 }
 
-bool VistlePlugin::destroy() {
-
-   if (m_module) {
-      m_module->comm().barrier();
-      m_module->prepareQuit();
+bool VistlePlugin::destroy()
+{
+    if (m_module) {
+        m_module->comm().barrier();
+        m_module->prepareQuit();
 #if 0
       delete m_module;
 #endif
-      m_module = nullptr;
-   }
+        m_module = nullptr;
+    }
 
-   return true;
+    return true;
 }
 
-void VistlePlugin::notify(coVRPlugin::NotificationLevel level, const char *message) {
-
-    std::vector<char> text(strlen(message)+1);
+void VistlePlugin::notify(coVRPlugin::NotificationLevel level, const char *message)
+{
+    std::vector<char> text(strlen(message) + 1);
     memcpy(&text[0], message, text.size());
-    if (text.size()>1 && text[text.size()-2]=='\n')
-       text[text.size()-2] = '\0';
+    if (text.size() > 1 && text[text.size() - 2] == '\n')
+        text[text.size() - 2] = '\0';
     if (text[0] == '\0')
         return;
     std::cerr << &text[0] << std::endl;
@@ -153,34 +148,34 @@ void VistlePlugin::notify(coVRPlugin::NotificationLevel level, const char *messa
     }
 }
 
-bool VistlePlugin::update() {
-
+bool VistlePlugin::update()
+{
 #ifndef NDEBUG
-   if (m_module) {
-       m_module->comm().barrier();
-   }
+    if (m_module) {
+        m_module->comm().barrier();
+    }
 #endif
-   bool messageReceived = false;
-   try {
-       if (m_module && !m_module->dispatch(false, &messageReceived)) {
-           std::cerr << "Vistle requested COVER to quit" << std::endl;
-           OpenCOVER::instance()->requestQuit();
-       }
-   } catch (boost::interprocess::interprocess_exception &e) {
-       std::cerr << "Module::dispatch: interprocess_exception: " << e.what() << std::endl;
-       std::cerr << "   error: code: " << e.get_error_code() << ", native: " << e.get_native_error() << std::endl;
-       throw(e);
-   } catch (std::exception &e) {
-       std::cerr << "Module::dispatch: std::exception: " << e.what() << std::endl;
-       throw(e);
-   }
+    bool messageReceived = false;
+    try {
+        if (m_module && !m_module->dispatch(false, &messageReceived)) {
+            std::cerr << "Vistle requested COVER to quit" << std::endl;
+            OpenCOVER::instance()->requestQuit();
+        }
+    } catch (boost::interprocess::interprocess_exception &e) {
+        std::cerr << "Module::dispatch: interprocess_exception: " << e.what() << std::endl;
+        std::cerr << "   error: code: " << e.get_error_code() << ", native: " << e.get_native_error() << std::endl;
+        throw(e);
+    } catch (std::exception &e) {
+        std::cerr << "Module::dispatch: std::exception: " << e.what() << std::endl;
+        throw(e);
+    }
 
-   bool updateRequested = false;
-   if (m_module) {
-       updateRequested = m_module->updateRequired();
-       m_module->clearUpdate();
-   }
-   return messageReceived || updateRequested;
+    bool updateRequested = false;
+    if (m_module) {
+        updateRequested = m_module->updateRequired();
+        m_module->clearUpdate();
+    }
+    return messageReceived || updateRequested;
 }
 
 void VistlePlugin::requestQuit(bool killSession)
@@ -195,16 +190,16 @@ void VistlePlugin::requestQuit(bool killSession)
     }
 }
 
-bool VistlePlugin::executeAll() {
-
+bool VistlePlugin::executeAll()
+{
     if (m_module) {
         return m_module->executeAll();
     }
     return false;
 }
 
-void VistlePlugin::message(int toWhom, int type, int length, const void *data) {
-
+void VistlePlugin::message(int toWhom, int type, int length, const void *data)
+{
     if (type == opencover::PluginMessageTypes::VistleMessageOut) {
         const auto *wrap = static_cast<const VistleMessage *>(data);
         if (m_module) {
@@ -213,8 +208,8 @@ void VistlePlugin::message(int toWhom, int type, int length, const void *data) {
     }
 }
 
-bool VistlePlugin::sendVisMessage(const covise::Message *msg) {
-
+bool VistlePlugin::sendVisMessage(const covise::Message *msg)
+{
     if (!m_module) {
         return false;
     }

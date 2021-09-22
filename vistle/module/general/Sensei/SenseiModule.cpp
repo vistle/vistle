@@ -18,9 +18,8 @@ using namespace vistle::insitu::message;
 #define CERR cerr << "SenseiModule[" << rank() << "/" << size() << "] "
 #define DEBUG_CERR vistle::DoNotPrintInstance
 
-SenseiModule::SenseiModule(const string &name, int moduleID, mpi::communicator comm)
-    : InSituReader(name, moduleID, comm) {
-
+SenseiModule::SenseiModule(const string &name, int moduleID, mpi::communicator comm): InSituReader(name, moduleID, comm)
+{
     m_filePath = addStringParameter("path", "path to a .vistle file", "", vistle::Parameter::ExistingFilename);
     setParameterFilters(m_filePath, "simulation Files (*.vistle)");
 
@@ -36,20 +35,21 @@ SenseiModule::SenseiModule(const string &name, int moduleID, mpi::communicator c
                                  vistle::Parameter::Boolean)] = sensei::IntOptions::KeepTimesteps;
 }
 
-SenseiModule::~SenseiModule() {
+SenseiModule::~SenseiModule()
+{
     if (m_connectedToSim) {
         m_messageHandler.send(ConnectionClosed{true});
     }
 }
 
-bool SenseiModule::beginExecute() {
-
+bool SenseiModule::beginExecute()
+{
     if (!m_connectedToSim) {
         return true;
     }
     SetPorts::value_type connectedPorts;
     std::vector<string> p;
-    for (const auto &port : m_outputPorts) {
+    for (const auto &port: m_outputPorts) {
         if (port.second->isConnected()) {
             p.push_back(port.first);
         }
@@ -60,8 +60,8 @@ bool SenseiModule::beginExecute() {
     return true;
 }
 
-bool SenseiModule::endExecute() {
-
+bool SenseiModule::endExecute()
+{
     if (!m_connectedToSim) {
         return true;
     }
@@ -71,7 +71,7 @@ bool SenseiModule::endExecute() {
     }
     m_messageHandler.send(Ready{false});
     while (m_connectedToSim) // wait until we receive the confirmation that the sim stopped making vistle objects or
-                             // timeout
+    // timeout
     {
         auto msg = m_messageHandler.timedRecv(m_timeout->getValue());
         if (msg.type() == InSituMessageType::Invalid) {
@@ -88,7 +88,8 @@ bool SenseiModule::endExecute() {
     return true;
 }
 
-bool SenseiModule::changeParameter(const vistle::Parameter *param) {
+bool SenseiModule::changeParameter(const vistle::Parameter *param)
+{
     Module::changeParameter(param);
     if (!param) {
         return true;
@@ -110,7 +111,8 @@ bool SenseiModule::changeParameter(const vistle::Parameter *param) {
     return InSituReader::changeParameter(param);
 }
 
-bool vistle::insitu::sensei::SenseiModule::operate() {
+bool vistle::insitu::sensei::SenseiModule::operate()
+{
     bool didWork = false;
     while (recvAndhandleMessage()) {
         didWork = true;
@@ -118,8 +120,8 @@ bool vistle::insitu::sensei::SenseiModule::operate() {
     return didWork;
 }
 
-void SenseiModule::connectToSim() {
-
+void SenseiModule::connectToSim()
+{
     reconnect();
     CERR << "trying to connect to sim with file " << m_filePath->getValue() << endl;
     std::ifstream infile(m_filePath->getValue());
@@ -143,18 +145,19 @@ void SenseiModule::connectToSim() {
     m_messageHandler.initialize(key, m_rank);
     m_messageHandler.send(ShmInfo{gatherModuleInfo()});
     m_connectedToSim = true;
-    for (const auto &option : m_intOptions) {
+    for (const auto &option: m_intOptions) {
         m_messageHandler.send(SenseiIntOption{{option.second, option.first->getValue()}});
     }
 }
 
-void SenseiModule::disconnectSim() {
+void SenseiModule::disconnectSim()
+{
     m_connectedToSim = false;
     m_messageHandler.reset();
 }
 
-bool SenseiModule::recvAndhandleMessage() {
-
+bool SenseiModule::recvAndhandleMessage()
+{
     auto msg = m_messageHandler.tryRecv();
     if (msg.type() != message::InSituMessageType::Invalid) {
         std::cerr << "received message of type " << static_cast<int>(msg.type()) << std::endl;
@@ -162,8 +165,8 @@ bool SenseiModule::recvAndhandleMessage() {
     return handleMessage(msg);
 }
 
-bool SenseiModule::handleMessage(Message &msg) {
-
+bool SenseiModule::handleMessage(Message &msg)
+{
     DEBUG_CERR << "handleMessage " << (int)msg.type() << endl;
     switch (msg.type()) {
     case InSituMessageType::Invalid:
@@ -179,7 +182,7 @@ bool SenseiModule::handleMessage(Message &msg) {
                 i = m_outputPorts.erase(i);
             }
         }
-        for (auto portList : em.value) {
+        for (auto portList: em.value) {
             for (size_t i = 0; i < portList.size() - 1; i++) {
                 auto lb = m_outputPorts.lower_bound(portList[i]);
                 if (!(lb != m_outputPorts.end() && !(m_outputPorts.key_comp()(portList[i], lb->first)))) {
@@ -190,8 +193,7 @@ bool SenseiModule::handleMessage(Message &msg) {
         }
 
     } break;
-    case InSituMessageType::SetCommands:
-    {
+    case InSituMessageType::SetCommands: {
         auto em = msg.unpackOrCast<SetCommands>();
         for (auto i = m_commandParameter.begin(); i != m_commandParameter.end(); ++i) {
             if (std::find(em.value.begin(), em.value.end(), (*i)->getName()) == em.value.end()) {
@@ -199,7 +201,7 @@ bool SenseiModule::handleMessage(Message &msg) {
                 i = m_commandParameter.erase(i);
             }
         }
-        for (auto portName : em.value) {
+        for (auto portName: em.value) {
             auto lb = std::find_if(m_commandParameter.begin(), m_commandParameter.end(),
                                    [portName](const auto &val) { return val->getName() == portName; });
             if (lb == m_commandParameter.end()) {
@@ -208,12 +210,10 @@ bool SenseiModule::handleMessage(Message &msg) {
             }
         }
     } break;
-    case InSituMessageType::GoOn:
-    {
+    case InSituMessageType::GoOn: {
         m_messageHandler.send(GoOn{});
     } break;
-    case InSituMessageType::ConnectionClosed:
-    {
+    case InSituMessageType::ConnectionClosed: {
         auto state = msg.unpackOrCast<ConnectionClosed>();
         if (state.value) {
             CERR << "the simulation disconnected properly" << endl;

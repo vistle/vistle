@@ -49,7 +49,6 @@
 namespace vistle {
 
 struct CompressionSettings {
-
     FieldCompressionMode m_compress = Uncompressed;
     double m_zfpRate = 8.;
     int m_zfpPrecision = 8;
@@ -58,21 +57,15 @@ struct CompressionSettings {
 
 template<class T>
 class shm_obj_ref;
-}
+} // namespace vistle
 
 #ifdef USE_BOOST_ARCHIVE
 namespace boost {
 namespace archive {
-extern template class basic_binary_oprimitive<
-    vistle::boost_oarchive,
-    std::ostream::char_type, 
-    std::ostream::traits_type
->;
-extern template class basic_binary_iprimitive<
-    vistle::boost_iarchive,
-    std::istream::char_type, 
-    std::istream::traits_type
->;
+extern template class basic_binary_oprimitive<vistle::boost_oarchive, std::ostream::char_type,
+                                              std::ostream::traits_type>;
+extern template class basic_binary_iprimitive<vistle::boost_iarchive, std::istream::char_type,
+                                              std::istream::traits_type>;
 extern template class detail::common_oarchive<vistle::boost_oarchive>;
 } // namespace archive
 } // namespace boost
@@ -104,14 +97,16 @@ struct SubArchiveDirectoryEntry {
 
     SubArchiveDirectoryEntry(): is_array(false), size(0), data(nullptr) {}
     SubArchiveDirectoryEntry(const std::string &name, bool is_array, size_t size, char *data)
-        : name(name), is_array(is_array), size(size), data(data) {}
+    : name(name), is_array(is_array), size(size), data(data)
+    {}
 
     ARCHIVE_ACCESS
     template<class Archive>
-    void serialize(Archive &ar) {
-        ar & name;
-        ar & is_array;
-        ar & size;
+    void serialize(Archive &ar)
+    {
+        ar &name;
+        ar &is_array;
+        ar &size;
     }
 #if 0
     template<class Archive>
@@ -131,11 +126,13 @@ public:
 
 
 #ifdef USE_BOOST_ARCHIVE
-class V_COREEXPORT boost_oarchive: public boost::archive::binary_oarchive_impl<boost_oarchive, std::ostream::char_type, std::ostream::traits_type> {
+class V_COREEXPORT boost_oarchive
+: public boost::archive::binary_oarchive_impl<boost_oarchive, std::ostream::char_type, std::ostream::traits_type> {
+    typedef boost::archive::binary_oarchive_impl<boost_oarchive, std::ostream::char_type, std::ostream::traits_type>
+        Base;
 
-    typedef boost::archive::binary_oarchive_impl<boost_oarchive, std::ostream::char_type, std::ostream::traits_type> Base;
 public:
-    boost_oarchive(std::streambuf &bsb, unsigned int flags=0);
+    boost_oarchive(std::streambuf &bsb, unsigned int flags = 0);
     ~boost_oarchive();
 
     void setCompressionMode(vistle::FieldCompressionMode mode);
@@ -144,13 +141,15 @@ public:
     void setSaver(std::shared_ptr<Saver> saver);
 
     template<class T>
-    void saveArray(const vistle::ShmVector<T> &t) {
+    void saveArray(const vistle::ShmVector<T> &t)
+    {
         if (m_saver)
             m_saver->saveArray(t.name(), t->type(), &t);
     }
 
     template<class T>
-    void saveObject(const vistle::shm_obj_ref<T> &t) {
+    void saveObject(const vistle::shm_obj_ref<T> &t)
+    {
         if (m_saver)
             m_saver->saveObject(t.name(), t.getObject());
     }
@@ -162,47 +161,40 @@ public:
 
 #ifdef USE_YAS
 template<class Archive, typename OS, std::size_t F = detail::yas_flags>
-struct yas_binary_oarchive
-    :yas::detail::binary_ostream<OS, F>
-    ,yas::detail::oarchive_header<F>
-{
+struct yas_binary_oarchive: yas::detail::binary_ostream<OS, F>, yas::detail::oarchive_header<F> {
     YAS_NONCOPYABLE(yas_binary_oarchive)
     YAS_MOVABLE(yas_binary_oarchive)
 
     using stream_type = OS;
     using this_type = Archive;
 
-    yas_binary_oarchive(OS &os)
-        :yas::detail::binary_ostream<OS, F>(os)
-        ,yas::detail::oarchive_header<F>(os)
-    {}
+    yas_binary_oarchive(OS &os): yas::detail::binary_ostream<OS, F>(os), yas::detail::oarchive_header<F>(os) {}
 
     template<typename T>
-    this_type& operator& (const T &v) {
+    this_type &operator&(const T &v)
+    {
         using namespace yas::detail;
-        return serializer<
-             type_properties<T>::value
-            ,serialization_method<T, this_type>::value
-            ,F
-            ,T
-        >::save(*static_cast<this_type *>(this), v);
+        return serializer<type_properties<T>::value, serialization_method<T, this_type>::value, F, T>::save(
+            *static_cast<this_type *>(this), v);
     }
 
-    this_type& serialize() { return *static_cast<this_type *>(this); }
+    this_type &serialize() { return *static_cast<this_type *>(this); }
 
     template<typename Head, typename... Tail>
-    this_type& serialize(const Head &head, const Tail&... tail) {
-        return operator& (head).serialize(tail...);
+    this_type &serialize(const Head &head, const Tail &...tail)
+    {
+        return operator&(head).serialize(tail...);
     }
 
     template<typename... Args>
-    this_type& operator()(const Args&... args) {
+    this_type &operator()(const Args &...args)
+    {
         return serialize(args...);
     }
 };
 
-class V_COREEXPORT yas_oarchive: public yas_binary_oarchive<yas_oarchive, vecostreambuf<vistle::buffer>>, public CompressionSettings {
-
+class V_COREEXPORT yas_oarchive: public yas_binary_oarchive<yas_oarchive, vecostreambuf<vistle::buffer>>,
+                                 public CompressionSettings {
     typedef vecostreambuf<vistle::buffer> Stream;
     typedef yas_binary_oarchive<yas_oarchive, Stream> Base;
     FieldCompressionMode m_compress = Uncompressed;
@@ -225,21 +217,23 @@ public:
 
     void setCompressionSettings(const CompressionSettings &other);
 
-    yas_oarchive(Stream &mo, unsigned int flags=0);
+    yas_oarchive(Stream &mo, unsigned int flags = 0);
 
     void setSaver(std::shared_ptr<Saver> saver);
 
     template<class T>
-    void saveArray(const vistle::ShmVector<T> &t) {
+    void saveArray(const vistle::ShmVector<T> &t)
+    {
         if (m_saver) {
             std::size_t sz = m_os.get_vector().capacity();
-            m_os.get_vector().reserve(sz + sizeof(T)*t->size() + 10000);
+            m_os.get_vector().reserve(sz + sizeof(T) * t->size() + 10000);
             m_saver->saveArray(t.name(), t->type(), &t);
         }
     }
 
     template<class T>
-    void saveObject(const vistle::shm_obj_ref<T> &t) {
+    void saveObject(const vistle::shm_obj_ref<T> &t)
+    {
         if (m_saver)
             m_saver->saveObject(t.name(), t.getObject());
     }
@@ -262,11 +256,13 @@ public:
 
 
 #ifdef USE_BOOST_ARCHIVE
-class V_COREEXPORT boost_iarchive: public boost::archive::binary_iarchive_impl<boost_iarchive, std::istream::char_type, std::istream::traits_type> {
+class V_COREEXPORT boost_iarchive
+: public boost::archive::binary_iarchive_impl<boost_iarchive, std::istream::char_type, std::istream::traits_type> {
+    typedef boost::archive::binary_iarchive_impl<boost_iarchive, std::istream::char_type, std::istream::traits_type>
+        Base;
 
-    typedef boost::archive::binary_iarchive_impl<boost_iarchive, std::istream::char_type, std::istream::traits_type> Base;
 public:
-    boost_iarchive(std::streambuf &bsb, unsigned int flags=0);
+    boost_iarchive(std::streambuf &bsb, unsigned int flags = 0);
     ~boost_iarchive();
 
     std::string translateObjectName(const std::string &name) const;
@@ -280,7 +276,8 @@ public:
     std::shared_ptr<Fetcher> fetcher() const;
 
     template<typename T>
-    void fetchArray(const std::string &arname, const ArrayCompletionHandler &completeCallback) const {
+    void fetchArray(const std::string &arname, const ArrayCompletionHandler &completeCallback) const
+    {
         std::string name = translateArrayName(arname);
         if (!name.empty()) {
             if (auto arr = Shm::the().getArrayFromName<T>(name)) {
@@ -293,7 +290,8 @@ public:
         m_fetcher->requestArray(arname, shm<T>::array::typeId(), completeCallback);
     }
 
-    obj_const_ptr getObject(const std::string &name, const std::function<void(Object::const_ptr)> &completeCallback) const;
+    obj_const_ptr getObject(const std::string &name,
+                            const std::function<void(Object::const_ptr)> &completeCallback) const;
     void setObjectCompletionHandler(const std::function<void()> &completer);
     const std::function<void()> &objectCompletionHandler() const;
 
@@ -308,54 +306,45 @@ private:
 
 #ifdef USE_YAS
 template<class Archive, typename IS, std::size_t F = detail::yas_flags>
-struct yas_binary_iarchive
-    :yas::detail::binary_istream<IS, F>
-    ,yas::detail::iarchive_header<F>
-{
+struct yas_binary_iarchive: yas::detail::binary_istream<IS, F>, yas::detail::iarchive_header<F> {
     YAS_NONCOPYABLE(yas_binary_iarchive)
     YAS_MOVABLE(yas_binary_iarchive)
 
     using stream_type = IS;
     using this_type = Archive;
 
-    yas_binary_iarchive(IS &is)
-        :yas::detail::binary_istream<IS, F>(is)
-        ,yas::detail::iarchive_header<F>(is)
-    {}
+    yas_binary_iarchive(IS &is): yas::detail::binary_istream<IS, F>(is), yas::detail::iarchive_header<F>(is) {}
 
     template<typename T>
-    this_type& operator& (T &&v) {
+    this_type &operator&(T &&v)
+    {
         using namespace yas::detail;
-        using real_type = typename std::remove_reference<
-            typename std::remove_const<T>::type
-        >::type;
-        return serializer<
-             type_properties<real_type>::value
-            ,serialization_method<real_type, this_type>::value
-            ,F
-            ,real_type
-        >::load(*static_cast<this_type *>(this), v);
+        using real_type = typename std::remove_reference<typename std::remove_const<T>::type>::type;
+        return serializer<type_properties<real_type>::value, serialization_method<real_type, this_type>::value, F,
+                          real_type>::load(*static_cast<this_type *>(this), v);
     }
 
-    this_type& serialize() { return *static_cast<this_type *>(this); }
+    this_type &serialize() { return *static_cast<this_type *>(this); }
 
     template<typename Head, typename... Tail>
-    this_type& serialize(Head &&head, Tail&&... tail) {
-        return operator& (std::forward<Head>(head)).serialize(std::forward<Tail>(tail)...);
+    this_type &serialize(Head &&head, Tail &&...tail)
+    {
+        return operator&(std::forward<Head>(head)).serialize(std::forward<Tail>(tail)...);
     }
 
     template<typename... Args>
-    this_type& operator()(Args &&... args) {
+    this_type &operator()(Args &&...args)
+    {
         return serialize(std::forward<Args>(args)...);
     }
 };
 
 class V_COREEXPORT yas_iarchive: public yas_binary_iarchive<yas_iarchive, vecistreambuf<vistle::buffer>> {
-
     typedef vecistreambuf<vistle::buffer> Stream;
     typedef yas_binary_iarchive<yas_iarchive, Stream> Base;
+
 public:
-    yas_iarchive(Stream &mi, unsigned int flags=0);
+    yas_iarchive(Stream &mi, unsigned int flags = 0);
     ~yas_iarchive();
 
     std::string translateObjectName(const std::string &name) const;
@@ -369,7 +358,8 @@ public:
     std::shared_ptr<Fetcher> fetcher() const;
 
     template<typename T>
-    void fetchArray(const std::string &arname, const ArrayCompletionHandler &completeCallback) const {
+    void fetchArray(const std::string &arname, const ArrayCompletionHandler &completeCallback) const
+    {
         std::string name = translateArrayName(arname);
         if (!name.empty()) {
             if (auto arr = Shm::the().getArrayFromName<T>(name)) {
@@ -396,29 +386,33 @@ private:
 
 typedef boost::mpl::vector<
 #ifdef USE_BOOST_ARCHIVE
-   boost_iarchive
+    boost_iarchive
 #ifdef USE_YAS
-   , yas_iarchive
+    ,
+    yas_iarchive
 #endif
 #else
 #ifdef USE_YAS
-   yas_iarchive
+    yas_iarchive
 #endif
 #endif
-      > InputArchives;
+    >
+    InputArchives;
 
 typedef boost::mpl::vector<
 #ifdef USE_BOOST_ARCHIVE
-   boost_oarchive
+    boost_oarchive
 #ifdef USE_YAS
-   , yas_oarchive
+    ,
+    yas_oarchive
 #endif
 #else
 #ifdef USE_YAS
-   yas_oarchive
+    yas_oarchive
 #endif
 #endif
-      > OutputArchives;
+    >
+    OutputArchives;
 
 } // namespace vistle
 

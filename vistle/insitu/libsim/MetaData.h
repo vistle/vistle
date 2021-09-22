@@ -48,7 +48,6 @@ private:
     double m_currentTime = 0;
     visit_smart_handle<HandleType::SimulationMetaData> m_handle = VISIT_INVALID_HANDLE;
     std::vector<std::string> getRegisteredCommands(SimulationObjectType type) const;
-
 };
 } // namespace libsim
 } // namespace insitu

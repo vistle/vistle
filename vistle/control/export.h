@@ -3,11 +3,10 @@
 
 #include <vistle/util/export.h>
 
-#if defined (vistle_control_EXPORTS)
+#if defined(vistle_control_EXPORTS)
 #define V_HUBEXPORT V_EXPORT
 #else
 #define V_HUBEXPORT V_IMPORT
 #endif
 
 #endif
-

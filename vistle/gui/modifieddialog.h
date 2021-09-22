@@ -8,20 +8,19 @@ namespace Ui {
 class ModifiedDialog;
 }
 
-class ModifiedDialog : public QMessageBox
-{
-   Q_OBJECT
+class ModifiedDialog: public QMessageBox {
+    Q_OBJECT
 
 public:
-   explicit ModifiedDialog(const QString &reason, QWidget *parent = 0);
+    explicit ModifiedDialog(const QString &reason, QWidget *parent = 0);
 
 signals:
 
 public slots:
-   virtual int exec();
+    virtual int exec();
 
 private:
-   QPushButton *m_discardButton;
+    QPushButton *m_discardButton;
 };
 
 } // namespace gui

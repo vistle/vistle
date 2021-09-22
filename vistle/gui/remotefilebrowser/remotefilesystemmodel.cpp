@@ -58,8 +58,8 @@ QString RemoteFileSystemModel::workingDirectory() const
 #include <algorithm>
 
 #ifdef Q_OS_WIN
-#  include <QtCore/QVarLengthArray>
-#  include <qt_windows.h>
+#include <QtCore/QVarLengthArray>
+#include <qt_windows.h>
 #endif
 
 QT_BEGIN_NAMESPACE
@@ -167,7 +167,8 @@ QT_BEGIN_NAMESPACE
     Returns the FileInfo for the item stored in the model under the given
     \a index.
 */
-FileInfo RemoteFileSystemModel::fileInfo(const QModelIndex& index) const {
+FileInfo RemoteFileSystemModel::fileInfo(const QModelIndex &index) const
+{
     Q_D(const RemoteFileSystemModel);
     return d->node(index)->fileInfo();
 }
@@ -197,9 +198,9 @@ FileInfo RemoteFileSystemModel::fileInfo(const QModelIndex& index) const {
 /*!
   Constructs a file system model with the given \a parent.
 */
-RemoteFileSystemModel::RemoteFileSystemModel(AbstractFileInfoGatherer* fileinfogatherer, QObject* parent)
-    : AbstractFileSystemModel(parent)
-    , vd_ptr(new RemoteFileSystemModelPrivate(this, fileinfogatherer)) {
+RemoteFileSystemModel::RemoteFileSystemModel(AbstractFileInfoGatherer *fileinfogatherer, QObject *parent)
+: AbstractFileSystemModel(parent), vd_ptr(new RemoteFileSystemModelPrivate(this, fileinfogatherer))
+{
     Q_D(RemoteFileSystemModel);
     d->init();
 }
@@ -218,37 +219,40 @@ RemoteFileSystemModel::RemoteFileSystemModel(RemoteFileSystemModelPrivate & dd, 
 /*!
   Destroys this file system model.
 */
-RemoteFileSystemModel::~RemoteFileSystemModel() {
-}
+RemoteFileSystemModel::~RemoteFileSystemModel()
+{}
 
 /*!
     \reimp
 */
-QModelIndex RemoteFileSystemModel::index(int row, int column, const QModelIndex& parent) const {
+QModelIndex RemoteFileSystemModel::index(int row, int column, const QModelIndex &parent) const
+{
     Q_D(const RemoteFileSystemModel);
     if (row < 0 || column < 0 || row >= rowCount(parent) || column >= columnCount(parent))
         return QModelIndex();
 
     // get the parent node
-    RemoteFileSystemModelPrivate::RemoteFileSystemNode* parentNode = (indexValid(parent) ? d->node(parent) :
-        const_cast<RemoteFileSystemModelPrivate::RemoteFileSystemNode*>(&d->root));
+    RemoteFileSystemModelPrivate::RemoteFileSystemNode *parentNode =
+        (indexValid(parent) ? d->node(parent)
+                            : const_cast<RemoteFileSystemModelPrivate::RemoteFileSystemNode *>(&d->root));
     Q_ASSERT(parentNode);
 
     // now get the internal pointer for the index
     const int i = d->translateVisibleLocation(parentNode, row);
     if (i >= parentNode->visibleChildren.size())
         return QModelIndex();
-    const QString& childName = parentNode->visibleChildren.at(i);
-    const RemoteFileSystemModelPrivate::RemoteFileSystemNode* indexNode = parentNode->children.value(childName);
+    const QString &childName = parentNode->visibleChildren.at(i);
+    const RemoteFileSystemModelPrivate::RemoteFileSystemNode *indexNode = parentNode->children.value(childName);
     Q_ASSERT(indexNode);
 
-    return createIndex(row, column, const_cast<RemoteFileSystemModelPrivate::RemoteFileSystemNode*>(indexNode));
+    return createIndex(row, column, const_cast<RemoteFileSystemModelPrivate::RemoteFileSystemNode *>(indexNode));
 }
 
 /*!
     \reimp
 */
-QModelIndex RemoteFileSystemModel::sibling(int row, int column, const QModelIndex& idx) const {
+QModelIndex RemoteFileSystemModel::sibling(int row, int column, const QModelIndex &idx) const
+{
     if (row == idx.row() && column < RemoteFileSystemModelPrivate::NumColumns) {
         // cheap sibling operation: just adjust the column:
         return createIndex(row, column, idx.internalPointer());
@@ -264,9 +268,10 @@ QModelIndex RemoteFileSystemModel::sibling(int row, int column, const QModelInde
 
     Returns the model item index for the given \a path and \a column.
 */
-QModelIndex RemoteFileSystemModel::index(const QString& path, int column) const {
+QModelIndex RemoteFileSystemModel::index(const QString &path, int column) const
+{
     Q_D(const RemoteFileSystemModel);
-    RemoteFileSystemModelPrivate::RemoteFileSystemNode* node = d->node(path, false);
+    RemoteFileSystemModelPrivate::RemoteFileSystemNode *node = d->node(path, false);
     return d->index(node, column);
 }
 
@@ -275,10 +280,12 @@ QModelIndex RemoteFileSystemModel::index(const QString& path, int column) const 
 
     Return the RemoteFileSystemNode that goes to index.
   */
-RemoteFileSystemModelPrivate::RemoteFileSystemNode* RemoteFileSystemModelPrivate::node(const QModelIndex& index) const {
+RemoteFileSystemModelPrivate::RemoteFileSystemNode *RemoteFileSystemModelPrivate::node(const QModelIndex &index) const
+{
     if (!index.isValid())
-        return const_cast<RemoteFileSystemNode*>(&root);
-    RemoteFileSystemModelPrivate::RemoteFileSystemNode* indexNode = static_cast<RemoteFileSystemModelPrivate::RemoteFileSystemNode*>(index.internalPointer());
+        return const_cast<RemoteFileSystemNode *>(&root);
+    RemoteFileSystemModelPrivate::RemoteFileSystemNode *indexNode =
+        static_cast<RemoteFileSystemModelPrivate::RemoteFileSystemNode *>(index.internalPointer());
     Q_ASSERT(indexNode);
     return indexNode;
 }
@@ -322,12 +329,14 @@ static QString qt_GetLongPathName(const QString & strShortPath) {
 
     Given a path return the matching RemoteFileSystemNode or &root if invalid
 */
-RemoteFileSystemModelPrivate::RemoteFileSystemNode* RemoteFileSystemModelPrivate::node(const QString& path, bool fetch) const {
+RemoteFileSystemModelPrivate::RemoteFileSystemNode *RemoteFileSystemModelPrivate::node(const QString &path,
+                                                                                       bool fetch) const
+{
     Q_Q(const RemoteFileSystemModel);
     if (path.isEmpty() || path == myComputer() || path.startsWith(QLatin1Char(':')))
-        return const_cast<RemoteFileSystemModelPrivate::RemoteFileSystemNode*>(&root);
+        return const_cast<RemoteFileSystemModelPrivate::RemoteFileSystemNode *>(&root);
 
-    // Construct the nodes up to the new root path if they need to be built
+        // Construct the nodes up to the new root path if they need to be built
 #if 0
 #ifdef Q_OS_WIN32
     QString longPath = qt_GetLongPathName(path);
@@ -344,9 +353,8 @@ RemoteFileSystemModelPrivate::RemoteFileSystemNode* RemoteFileSystemModelPrivate
 
     // ### TODO can we use bool QAbstractFileEngine::caseSensitive() const?
     QStringList pathElements = absolutePath.split(QLatin1Char('/'), QString::SkipEmptyParts);
-    if (pathElements.isEmpty()
-        && QDir::fromNativeSeparators(longPath) != QLatin1String("/"))
-        return const_cast<RemoteFileSystemModelPrivate::RemoteFileSystemNode*>(&root);
+    if (pathElements.isEmpty() && QDir::fromNativeSeparators(longPath) != QLatin1String("/"))
+        return const_cast<RemoteFileSystemModelPrivate::RemoteFileSystemNode *>(&root);
     QModelIndex index = QModelIndex(); // start with "My Computer"
     QString elementPath;
     QChar separator = QLatin1Char('/');
@@ -361,7 +369,8 @@ RemoteFileSystemModelPrivate::RemoteFileSystemNode* RemoteFileSystemModelPrivate
             if (absolutePath.endsWith(QLatin1Char('/')))
                 trailingSeparator = QLatin1String("\\");
             int r = 0;
-            RemoteFileSystemModelPrivate::RemoteFileSystemNode* rootNode = const_cast<RemoteFileSystemModelPrivate::RemoteFileSystemNode*>(&root);
+            RemoteFileSystemModelPrivate::RemoteFileSystemNode *rootNode =
+                const_cast<RemoteFileSystemModelPrivate::RemoteFileSystemNode *>(&root);
             if (!root.children.contains(host.toLower())) {
                 if (pathElements.count() == 1 && !absolutePath.endsWith(QLatin1Char('/')))
                     return rootNode;
@@ -369,7 +378,7 @@ RemoteFileSystemModelPrivate::RemoteFileSystemNode* RemoteFileSystemModelPrivate
                 QModelIndex idx = q->index(host);
                 if (!idx.isValid())
                     return rootNode;
-                RemoteFileSystemModelPrivate* p = const_cast<RemoteFileSystemModelPrivate*>(this);
+                RemoteFileSystemModelPrivate *p = const_cast<RemoteFileSystemModelPrivate *>(this);
                 p->addNode(rootNode, host, info);
                 p->addVisibleFiles(rootNode, QStringList(host));
             }
@@ -383,7 +392,7 @@ RemoteFileSystemModelPrivate::RemoteFileSystemNode* RemoteFileSystemModelPrivate
         } else {
             if (pathElements.isEmpty()) {
                 qDebug() << "invalid remote path received";
-                return const_cast<RemoteFileSystemModelPrivate::RemoteFileSystemNode*>(&root);
+                return const_cast<RemoteFileSystemModelPrivate::RemoteFileSystemNode *>(&root);
             }
             if (!pathElements.at(0).contains(QLatin1Char(':'))) {
                 QString rootPath = QDir(longPath).rootPath();
@@ -398,7 +407,7 @@ RemoteFileSystemModelPrivate::RemoteFileSystemNode* RemoteFileSystemModelPrivate
             pathElements.prepend(QLatin1String("/"));
     }
 
-    RemoteFileSystemModelPrivate::RemoteFileSystemNode* parent = node(index);
+    RemoteFileSystemModelPrivate::RemoteFileSystemNode *parent = node(index);
 
     for (int i = 0; i < pathElements.count(); ++i) {
         QString element = pathElements.at(i);
@@ -426,15 +435,13 @@ RemoteFileSystemModelPrivate::RemoteFileSystemNode* RemoteFileSystemModelPrivate
         // we couldn't find the path element, we create a new node since we
         // _know_ that the path is valid
         if (alreadyExisted) {
-            if ((parent->children.count() == 0)
-                || (parent->caseSensitive()
-                    && parent->children.value(element)->fileName != element)
-                || (!parent->caseSensitive()
-                    && parent->children.value(element)->fileName.toLower() != element.toLower()))
+            if ((parent->children.count() == 0) ||
+                (parent->caseSensitive() && parent->children.value(element)->fileName != element) ||
+                (!parent->caseSensitive() && parent->children.value(element)->fileName.toLower() != element.toLower()))
                 alreadyExisted = false;
         }
 
-        RemoteFileSystemModelPrivate::RemoteFileSystemNode* node = nullptr;
+        RemoteFileSystemModelPrivate::RemoteFileSystemNode *node = nullptr;
         if (!alreadyExisted) {
 #if 0
             // FIXME
@@ -444,7 +451,7 @@ RemoteFileSystemModelPrivate::RemoteFileSystemNode* RemoteFileSystemModelPrivate
             if (!info.exists())
                 return const_cast<RemoteFileSystemModelPrivate::RemoteFileSystemNode*>(&root);
 #endif
-            RemoteFileSystemModelPrivate* p = const_cast<RemoteFileSystemModelPrivate*>(this);
+            RemoteFileSystemModelPrivate *p = const_cast<RemoteFileSystemModelPrivate *>(this);
 #ifndef QT_NO_FILESYSTEMWATCHER
             FileInfo fi = fileInfoGatherer->getInfo(elementPath);
 #else
@@ -459,9 +466,9 @@ RemoteFileSystemModelPrivate::RemoteFileSystemNode* RemoteFileSystemModelPrivate
         if (!node->isVisible()) {
             // It has been filtered out
             if (alreadyExisted && node->hasInformation() && !fetch)
-                return const_cast<RemoteFileSystemModelPrivate::RemoteFileSystemNode*>(&root);
+                return const_cast<RemoteFileSystemModelPrivate::RemoteFileSystemNode *>(&root);
 
-            RemoteFileSystemModelPrivate* p = const_cast<RemoteFileSystemModelPrivate*>(this);
+            RemoteFileSystemModelPrivate *p = const_cast<RemoteFileSystemModelPrivate *>(this);
             if (node->exists) {
                 p->addVisibleFiles(parent, QStringList(element));
                 if (!p->bypassFilters.contains(node))
@@ -469,9 +476,9 @@ RemoteFileSystemModelPrivate::RemoteFileSystemNode* RemoteFileSystemModelPrivate
             }
             QString dir = q->filePath(this->index(parent));
             if (!node->hasInformation() && fetch) {
-                Fetching f = { std::move(dir), std::move(element), this->index(node) };
+                Fetching f = {std::move(dir), std::move(element), this->index(node)};
                 p->toFetch.append(std::move(f));
-                p->fetchingTimer.start(0, const_cast<RemoteFileSystemModel*>(q));
+                p->fetchingTimer.start(0, const_cast<RemoteFileSystemModel *>(q));
             }
         }
         parent = node;
@@ -483,16 +490,16 @@ RemoteFileSystemModelPrivate::RemoteFileSystemNode* RemoteFileSystemModelPrivate
 /*!
     \reimp
 */
-void RemoteFileSystemModel::timerEvent(QTimerEvent* event) {
+void RemoteFileSystemModel::timerEvent(QTimerEvent *event)
+{
     Q_D(RemoteFileSystemModel);
     if (event->timerId() == d->fetchingTimer.timerId()) {
         d->fetchingTimer.stop();
 #ifndef QT_NO_FILESYSTEMWATCHER
         for (int i = 0; i < d->toFetch.count(); ++i) {
-            const RemoteFileSystemModelPrivate::RemoteFileSystemNode* node = d->node(d->toFetch.at(i).nodeIndex);
+            const RemoteFileSystemModelPrivate::RemoteFileSystemNode *node = d->node(d->toFetch.at(i).nodeIndex);
             if (!node->hasInformation()) {
-                d->fileInfoGatherer->fetchExtendedInformation(d->toFetch.at(i).dir,
-                    QStringList(d->toFetch.at(i).file));
+                d->fileInfoGatherer->fetchExtendedInformation(d->toFetch.at(i).dir, QStringList(d->toFetch.at(i).file));
             } else {
                 // qDebug("yah!, you saved a little gerbil soul");
             }
@@ -506,12 +513,13 @@ void RemoteFileSystemModel::timerEvent(QTimerEvent* event) {
     Returns \c true if the model item \a index represents a directory;
     otherwise returns \c false.
 */
-bool RemoteFileSystemModel::isDir(const QModelIndex& index) const {
+bool RemoteFileSystemModel::isDir(const QModelIndex &index) const
+{
     // This function is for public usage only because it could create a file info
     Q_D(const RemoteFileSystemModel);
     if (!index.isValid())
         return true;
-    RemoteFileSystemModelPrivate::RemoteFileSystemNode* n = d->node(index);
+    RemoteFileSystemModelPrivate::RemoteFileSystemNode *n = d->node(index);
     if (n->hasInformation())
         return n->isDir();
     return fileInfo(index).isDir();
@@ -520,7 +528,8 @@ bool RemoteFileSystemModel::isDir(const QModelIndex& index) const {
 /*!
     Returns the size in bytes of \a index. If the file does not exist, 0 is returned.
   */
-qint64 RemoteFileSystemModel::size(const QModelIndex& index) const {
+qint64 RemoteFileSystemModel::size(const QModelIndex &index) const
+{
     Q_D(const RemoteFileSystemModel);
     if (!index.isValid())
         return 0;
@@ -530,7 +539,8 @@ qint64 RemoteFileSystemModel::size(const QModelIndex& index) const {
 /*!
     Returns the type of file \a index such as "Directory" or "JPEG file".
   */
-QString RemoteFileSystemModel::type(const QModelIndex& index) const {
+QString RemoteFileSystemModel::type(const QModelIndex &index) const
+{
     Q_D(const RemoteFileSystemModel);
     if (!index.isValid())
         return QString();
@@ -540,7 +550,8 @@ QString RemoteFileSystemModel::type(const QModelIndex& index) const {
 /*!
     Returns the date and time when \a index was last modified.
  */
-QDateTime RemoteFileSystemModel::lastModified(const QModelIndex& index) const {
+QDateTime RemoteFileSystemModel::lastModified(const QModelIndex &index) const
+{
     Q_D(const RemoteFileSystemModel);
     if (!index.isValid())
         return QDateTime();
@@ -550,21 +561,24 @@ QDateTime RemoteFileSystemModel::lastModified(const QModelIndex& index) const {
 /*!
     \reimp
 */
-QModelIndex RemoteFileSystemModel::parent(const QModelIndex& index) const {
+QModelIndex RemoteFileSystemModel::parent(const QModelIndex &index) const
+{
     Q_D(const RemoteFileSystemModel);
     if (!indexValid(index))
         return QModelIndex();
 
-    RemoteFileSystemModelPrivate::RemoteFileSystemNode* indexNode = d->node(index);
+    RemoteFileSystemModelPrivate::RemoteFileSystemNode *indexNode = d->node(index);
     Q_ASSERT(indexNode != 0);
-    RemoteFileSystemModelPrivate::RemoteFileSystemNode* parentNode = indexNode->parent;
+    RemoteFileSystemModelPrivate::RemoteFileSystemNode *parentNode = indexNode->parent;
     if (parentNode == 0 || parentNode == &d->root)
         return QModelIndex();
 
     // get the parent's row
-    RemoteFileSystemModelPrivate::RemoteFileSystemNode* grandParentNode = parentNode->parent;
+    RemoteFileSystemModelPrivate::RemoteFileSystemNode *grandParentNode = parentNode->parent;
     Q_ASSERT(grandParentNode->children.contains(parentNode->fileName));
-    int visualRow = d->translateVisibleLocation(grandParentNode, grandParentNode->visibleLocation(grandParentNode->children.value(parentNode->fileName)->fileName));
+    int visualRow = d->translateVisibleLocation(
+        grandParentNode,
+        grandParentNode->visibleLocation(grandParentNode->children.value(parentNode->fileName)->fileName));
     if (visualRow == -1)
         return QModelIndex();
     return createIndex(visualRow, 0, parentNode);
@@ -575,9 +589,11 @@ QModelIndex RemoteFileSystemModel::parent(const QModelIndex& index) const {
 
     return the index for node
 */
-QModelIndex RemoteFileSystemModelPrivate::index(const RemoteFileSystemModelPrivate::RemoteFileSystemNode* node, int column) const {
+QModelIndex RemoteFileSystemModelPrivate::index(const RemoteFileSystemModelPrivate::RemoteFileSystemNode *node,
+                                                int column) const
+{
     Q_Q(const RemoteFileSystemModel);
-    RemoteFileSystemModelPrivate::RemoteFileSystemNode* parentNode = (node ? node->parent : 0);
+    RemoteFileSystemModelPrivate::RemoteFileSystemNode *parentNode = (node ? node->parent : 0);
     if (node == &root || !parentNode)
         return QModelIndex();
 
@@ -587,13 +603,14 @@ QModelIndex RemoteFileSystemModelPrivate::index(const RemoteFileSystemModelPriva
         return QModelIndex();
 
     int visualRow = translateVisibleLocation(parentNode, parentNode->visibleLocation(node->fileName));
-    return q->createIndex(visualRow, column, const_cast<RemoteFileSystemNode*>(node));
+    return q->createIndex(visualRow, column, const_cast<RemoteFileSystemNode *>(node));
 }
 
 /*!
     \reimp
 */
-bool RemoteFileSystemModel::hasChildren(const QModelIndex& parent) const {
+bool RemoteFileSystemModel::hasChildren(const QModelIndex &parent) const
+{
     Q_D(const RemoteFileSystemModel);
     if (parent.column() > 0)
         return false;
@@ -601,7 +618,7 @@ bool RemoteFileSystemModel::hasChildren(const QModelIndex& parent) const {
     if (!parent.isValid()) // drives
         return true;
 
-    const RemoteFileSystemModelPrivate::RemoteFileSystemNode* indexNode = d->node(parent);
+    const RemoteFileSystemModelPrivate::RemoteFileSystemNode *indexNode = d->node(parent);
     Q_ASSERT(indexNode);
     return (indexNode->isDir());
 }
@@ -609,20 +626,22 @@ bool RemoteFileSystemModel::hasChildren(const QModelIndex& parent) const {
 /*!
     \reimp
  */
-bool RemoteFileSystemModel::canFetchMore(const QModelIndex& parent) const {
+bool RemoteFileSystemModel::canFetchMore(const QModelIndex &parent) const
+{
     Q_D(const RemoteFileSystemModel);
-    const RemoteFileSystemModelPrivate::RemoteFileSystemNode* indexNode = d->node(parent);
+    const RemoteFileSystemModelPrivate::RemoteFileSystemNode *indexNode = d->node(parent);
     return (!indexNode->populatedChildren);
 }
 
 /*!
     \reimp
  */
-void RemoteFileSystemModel::fetchMore(const QModelIndex& parent) {
+void RemoteFileSystemModel::fetchMore(const QModelIndex &parent)
+{
     Q_D(RemoteFileSystemModel);
     if (!d->setRootPath)
         return;
-    RemoteFileSystemModelPrivate::RemoteFileSystemNode* indexNode = d->node(parent);
+    RemoteFileSystemModelPrivate::RemoteFileSystemNode *indexNode = d->node(parent);
     if (indexNode->populatedChildren)
         return;
     indexNode->populatedChildren = true;
@@ -634,7 +653,8 @@ void RemoteFileSystemModel::fetchMore(const QModelIndex& parent) {
 /*!
     \reimp
 */
-int RemoteFileSystemModel::rowCount(const QModelIndex& parent) const {
+int RemoteFileSystemModel::rowCount(const QModelIndex &parent) const
+{
     Q_D(const RemoteFileSystemModel);
     if (parent.column() > 0)
         return 0;
@@ -642,18 +662,20 @@ int RemoteFileSystemModel::rowCount(const QModelIndex& parent) const {
     if (!parent.isValid())
         return d->root.visibleChildren.count();
 
-    const RemoteFileSystemModelPrivate::RemoteFileSystemNode* parentNode = d->node(parent);
+    const RemoteFileSystemModelPrivate::RemoteFileSystemNode *parentNode = d->node(parent);
     return parentNode->visibleChildren.count();
 }
 
 /*!
     \reimp
 */
-int RemoteFileSystemModel::columnCount(const QModelIndex& parent) const {
+int RemoteFileSystemModel::columnCount(const QModelIndex &parent) const
+{
     return (parent.column() > 0) ? 0 : RemoteFileSystemModelPrivate::NumColumns;
 }
 
-QString RemoteFileSystemModel::identifier() const {
+QString RemoteFileSystemModel::identifier() const
+{
     Q_D(const RemoteFileSystemModel);
     return d->fileInfoGatherer->identifier();
 }
@@ -663,7 +685,8 @@ QString RemoteFileSystemModel::identifier() const {
 
     \sa Qt::ItemDataRole
  */
-QVariant RemoteFileSystemModel::myComputer(int role) const {
+QVariant RemoteFileSystemModel::myComputer(int role) const
+{
 #ifndef QT_NO_FILESYSTEMWATCHER
     Q_D(const RemoteFileSystemModel);
 #endif
@@ -678,7 +701,8 @@ QVariant RemoteFileSystemModel::myComputer(int role) const {
     return QVariant();
 }
 
-QVariant RemoteFileSystemModel::homePath(int role) const {
+QVariant RemoteFileSystemModel::homePath(int role) const
+{
     Q_D(const RemoteFileSystemModel);
     switch (role) {
     case Qt::DisplayRole:
@@ -701,7 +725,8 @@ QVariant RemoteFileSystemModel::homePath(int role) const {
 /*!
     \reimp
 */
-QVariant RemoteFileSystemModel::data(const QModelIndex& index, int role) const {
+QVariant RemoteFileSystemModel::data(const QModelIndex &index, int role) const
+{
     Q_D(const RemoteFileSystemModel);
     if (!index.isValid() || index.model() != this)
         return QVariant();
@@ -710,10 +735,14 @@ QVariant RemoteFileSystemModel::data(const QModelIndex& index, int role) const {
     case Qt::EditRole:
     case Qt::DisplayRole:
         switch (index.column()) {
-        case 0: return d->displayName(index);
-        case 1: return d->size(index);
-        case 2: return d->type(index);
-        case 3: return d->time(index);
+        case 0:
+            return d->displayName(index);
+        case 1:
+            return d->size(index);
+        case 2:
+            return d->type(index);
+        case 3:
+            return d->time(index);
         default:
             qWarning("data: invalid display value column %d", index.column());
             break;
@@ -752,10 +781,11 @@ QVariant RemoteFileSystemModel::data(const QModelIndex& index, int role) const {
 /*!
     \internal
 */
-QString RemoteFileSystemModelPrivate::size(const QModelIndex& index) const {
+QString RemoteFileSystemModelPrivate::size(const QModelIndex &index) const
+{
     if (!index.isValid())
         return QString();
-    const RemoteFileSystemNode* n = node(index);
+    const RemoteFileSystemNode *n = node(index);
     if (n->isDir()) {
 #ifdef Q_OS_MAC
         return QLatin1String("--");
@@ -770,7 +800,8 @@ QString RemoteFileSystemModelPrivate::size(const QModelIndex& index) const {
     return size(n->size());
 }
 
-QString RemoteFileSystemModelPrivate::size(qint64 bytes) {
+QString RemoteFileSystemModelPrivate::size(qint64 bytes)
+{
 #if QT_VERSION >= 0x050A00
     return QLocale::system().formattedDataSize(bytes);
 #else
@@ -781,7 +812,8 @@ QString RemoteFileSystemModelPrivate::size(qint64 bytes) {
 /*!
     \internal
 */
-QString RemoteFileSystemModelPrivate::time(const QModelIndex& index) const {
+QString RemoteFileSystemModelPrivate::time(const QModelIndex &index) const
+{
     if (!index.isValid())
         return QString();
 #ifndef QT_NO_DATESTRING
@@ -792,7 +824,8 @@ QString RemoteFileSystemModelPrivate::time(const QModelIndex& index) const {
 #endif
 }
 
-void RemoteFileSystemModelPrivate::_q_modelInitialized() {
+void RemoteFileSystemModelPrivate::_q_modelInitialized()
+{
     Q_Q(RemoteFileSystemModel);
     fileinfoGathererInitialized = true;
     emit q->initialized();
@@ -801,7 +834,8 @@ void RemoteFileSystemModelPrivate::_q_modelInitialized() {
 /*
     \internal
 */
-QString RemoteFileSystemModelPrivate::type(const QModelIndex& index) const {
+QString RemoteFileSystemModelPrivate::type(const QModelIndex &index) const
+{
     if (!index.isValid())
         return QString();
     return node(index)->type();
@@ -810,10 +844,11 @@ QString RemoteFileSystemModelPrivate::type(const QModelIndex& index) const {
 /*!
     \internal
 */
-QString RemoteFileSystemModelPrivate::name(const QModelIndex& index) const {
+QString RemoteFileSystemModelPrivate::name(const QModelIndex &index) const
+{
     if (!index.isValid())
         return QString();
-    RemoteFileSystemNode* dirNode = node(index);
+    RemoteFileSystemNode *dirNode = node(index);
     if (
 #ifndef QT_NO_FILESYSTEMWATCHER
         fileInfoGatherer->resolveSymlinks() &&
@@ -828,10 +863,11 @@ QString RemoteFileSystemModelPrivate::name(const QModelIndex& index) const {
 /*!
     \internal
 */
-QString RemoteFileSystemModelPrivate::displayName(const QModelIndex& index) const {
+QString RemoteFileSystemModelPrivate::displayName(const QModelIndex &index) const
+{
     Q_Q(const RemoteFileSystemModel);
     if (q->isWindows()) {
-        RemoteFileSystemNode* dirNode = node(index);
+        RemoteFileSystemNode *dirNode = node(index);
         if (!dirNode->volumeName.isNull())
             return dirNode->volumeName + QLatin1String(" (") + name(index) + QLatin1Char(')');
     }
@@ -841,7 +877,8 @@ QString RemoteFileSystemModelPrivate::displayName(const QModelIndex& index) cons
 /*!
     \internal
 */
-QIcon RemoteFileSystemModelPrivate::icon(const QModelIndex& index) const {
+QIcon RemoteFileSystemModelPrivate::icon(const QModelIndex &index) const
+{
     if (!index.isValid())
         return QIcon();
     return node(index)->icon();
@@ -851,7 +888,8 @@ QIcon RemoteFileSystemModelPrivate::icon(const QModelIndex& index) const {
 /*!
     \reimp
 */
-QVariant RemoteFileSystemModel::headerData(int section, Qt::Orientation orientation, int role) const {
+QVariant RemoteFileSystemModel::headerData(int section, Qt::Orientation orientation, int role) const
+{
     switch (role) {
     case Qt::DecorationRole:
         if (section == 0) {
@@ -872,24 +910,29 @@ QVariant RemoteFileSystemModel::headerData(int section, Qt::Orientation orientat
 
     QString returnValue;
     switch (section) {
-    case 0: returnValue = tr("Name");
+    case 0:
+        returnValue = tr("Name");
         break;
-    case 1: returnValue = tr("Size");
+    case 1:
+        returnValue = tr("Size");
         break;
-    case 2: returnValue =
+    case 2:
+        returnValue =
 #ifdef Q_OS_MAC
-        tr("Kind", "Match OS X Finder");
+            tr("Kind", "Match OS X Finder");
 #else
-        tr("Type", "All other platforms");
+            tr("Type", "All other platforms");
 #endif
         break;
         // Windows   - Type
         // OS X      - Kind
         // Konqueror - File Type
         // Nautilus  - Type
-    case 3: returnValue = tr("Date Modified");
+    case 3:
+        returnValue = tr("Date Modified");
         break;
-    default: return QVariant();
+    default:
+        return QVariant();
     }
     return returnValue;
 }
@@ -897,13 +940,14 @@ QVariant RemoteFileSystemModel::headerData(int section, Qt::Orientation orientat
 /*!
     \reimp
 */
-Qt::ItemFlags RemoteFileSystemModel::flags(const QModelIndex& index) const {
+Qt::ItemFlags RemoteFileSystemModel::flags(const QModelIndex &index) const
+{
     Q_D(const RemoteFileSystemModel);
     Qt::ItemFlags flags = QAbstractItemModel::flags(index);
     if (!index.isValid())
         return flags;
 
-    RemoteFileSystemModelPrivate::RemoteFileSystemNode* indexNode = d->node(index);
+    RemoteFileSystemModelPrivate::RemoteFileSystemNode *indexNode = d->node(index);
     if (d->nameFilterDisables && !d->passNameFilters(indexNode)) {
         flags &= ~Qt::ItemIsEnabled;
         // ### TODO you shouldn't be able to set this as the current item, task 119433
@@ -927,7 +971,8 @@ Qt::ItemFlags RemoteFileSystemModel::flags(const QModelIndex& index) const {
 /*!
     \internal
 */
-void RemoteFileSystemModelPrivate::_q_performDelayedSort() {
+void RemoteFileSystemModelPrivate::_q_performDelayedSort()
+{
     Q_Q(RemoteFileSystemModel);
     q->sort(sortColumn, sortOrder);
 }
@@ -939,13 +984,15 @@ void RemoteFileSystemModelPrivate::_q_performDelayedSort() {
 */
 class QFileSystemModelSorter {
 public:
-    inline QFileSystemModelSorter(int column) : sortColumn(column) {
+    inline QFileSystemModelSorter(int column): sortColumn(column)
+    {
         naturalCompare.setNumericMode(true);
         naturalCompare.setCaseSensitivity(Qt::CaseInsensitive);
     }
 
-    bool compareNodes(const RemoteFileSystemModelPrivate::RemoteFileSystemNode* l,
-        const RemoteFileSystemModelPrivate::RemoteFileSystemNode* r) const {
+    bool compareNodes(const RemoteFileSystemModelPrivate::RemoteFileSystemNode *l,
+                      const RemoteFileSystemModelPrivate::RemoteFileSystemNode *r) const
+    {
         switch (sortColumn) {
         case 0: {
 #ifndef Q_OS_MAC
@@ -957,8 +1004,7 @@ public:
 #endif
             return naturalCompare.compare(l->fileName, r->fileName) < 0;
         }
-        case 1:
-        {
+        case 1: {
             // Directories go first
             bool left = l->isDir();
             bool right = r->isDir();
@@ -971,16 +1017,14 @@ public:
 
             return sizeDifference < 0;
         }
-        case 2:
-        {
+        case 2: {
             int compare = naturalCompare.compare(l->type(), r->type());
             if (compare == 0)
                 return naturalCompare.compare(l->fileName, r->fileName) < 0;
 
             return compare < 0;
         }
-        case 3:
-        {
+        case 3: {
             if (l->lastModified() == r->lastModified())
                 return naturalCompare.compare(l->fileName, r->fileName) < 0;
 
@@ -991,8 +1035,9 @@ public:
         return false;
     }
 
-    bool operator()(const RemoteFileSystemModelPrivate::RemoteFileSystemNode* l,
-        const RemoteFileSystemModelPrivate::RemoteFileSystemNode* r) const {
+    bool operator()(const RemoteFileSystemModelPrivate::RemoteFileSystemNode *l,
+                    const RemoteFileSystemModelPrivate::RemoteFileSystemNode *r) const
+    {
         return compareNodes(l, r);
     }
 
@@ -1007,15 +1052,17 @@ private:
 
     Sort all of the children of parent
 */
-void RemoteFileSystemModelPrivate::sortChildren(int column, const QModelIndex& parent) {
+void RemoteFileSystemModelPrivate::sortChildren(int column, const QModelIndex &parent)
+{
     Q_Q(RemoteFileSystemModel);
-    RemoteFileSystemModelPrivate::RemoteFileSystemNode* indexNode = node(parent);
+    RemoteFileSystemModelPrivate::RemoteFileSystemNode *indexNode = node(parent);
     if (indexNode->children.count() == 0)
         return;
 
-    QVector<RemoteFileSystemModelPrivate::RemoteFileSystemNode*> values;
+    QVector<RemoteFileSystemModelPrivate::RemoteFileSystemNode *> values;
 
-    for (auto iterator = indexNode->children.constBegin(), cend = indexNode->children.constEnd(); iterator != cend; ++iterator) {
+    for (auto iterator = indexNode->children.constBegin(), cend = indexNode->children.constEnd(); iterator != cend;
+         ++iterator) {
         if (filtersAcceptsNode(iterator.value())) {
             values.append(iterator.value());
         } else {
@@ -1038,7 +1085,7 @@ void RemoteFileSystemModelPrivate::sortChildren(int column, const QModelIndex& p
     if (!disableRecursiveSort) {
         for (int i = 0; i < q->rowCount(parent); ++i) {
             const QModelIndex childIndex = q->index(i, 0, parent);
-            RemoteFileSystemModelPrivate::RemoteFileSystemNode* indexNode = node(childIndex);
+            RemoteFileSystemModelPrivate::RemoteFileSystemNode *indexNode = node(childIndex);
             //Only do a recursive sort on visible nodes
             if (indexNode->isVisible())
                 sortChildren(column, childIndex);
@@ -1049,19 +1096,20 @@ void RemoteFileSystemModelPrivate::sortChildren(int column, const QModelIndex& p
 /*!
     \reimp
 */
-void RemoteFileSystemModel::sort(int column, Qt::SortOrder order) {
+void RemoteFileSystemModel::sort(int column, Qt::SortOrder order)
+{
     Q_D(RemoteFileSystemModel);
     if (d->sortOrder == order && d->sortColumn == column && !d->forceSort)
         return;
 
     emit layoutAboutToBeChanged();
     QModelIndexList oldList = persistentIndexList();
-    QVector<QPair<RemoteFileSystemModelPrivate::RemoteFileSystemNode*, int> > oldNodes;
+    QVector<QPair<RemoteFileSystemModelPrivate::RemoteFileSystemNode *, int>> oldNodes;
     const int nodeCount = oldList.count();
     oldNodes.reserve(nodeCount);
     for (int i = 0; i < nodeCount; ++i) {
-        const QModelIndex& oldNode = oldList.at(i);
-        QPair<RemoteFileSystemModelPrivate::RemoteFileSystemNode*, int> pair(d->node(oldNode), oldNode.column());
+        const QModelIndex &oldNode = oldList.at(i);
+        QPair<RemoteFileSystemModelPrivate::RemoteFileSystemNode *, int> pair(d->node(oldNode), oldNode.column());
         oldNodes.append(pair);
     }
 
@@ -1077,7 +1125,7 @@ void RemoteFileSystemModel::sort(int column, Qt::SortOrder order) {
     const int numOldNodes = oldNodes.size();
     newList.reserve(numOldNodes);
     for (int i = 0; i < numOldNodes; ++i) {
-        const QPair<RemoteFileSystemModelPrivate::RemoteFileSystemNode*, int>& oldNode = oldNodes.at(i);
+        const QPair<RemoteFileSystemModelPrivate::RemoteFileSystemNode *, int> &oldNode = oldNodes.at(i);
         newList.append(d->index(oldNode.first, oldNode.second));
     }
     changePersistentIndexList(oldList, newList);
@@ -1088,7 +1136,8 @@ void RemoteFileSystemModel::sort(int column, Qt::SortOrder order) {
     Returns a list of MIME types that can be used to describe a list of items
     in the model.
 */
-QStringList RemoteFileSystemModel::mimeTypes() const {
+QStringList RemoteFileSystemModel::mimeTypes() const
+{
     return QStringList(QLatin1String("text/uri-list"));
 }
 
@@ -1100,13 +1149,14 @@ QStringList RemoteFileSystemModel::mimeTypes() const {
     If the list of indexes is empty, 0 is returned rather than a serialized
     empty list.
 */
-QMimeData* RemoteFileSystemModel::mimeData(const QModelIndexList& indexes) const {
+QMimeData *RemoteFileSystemModel::mimeData(const QModelIndexList &indexes) const
+{
     QList<QUrl> urls;
     QList<QModelIndex>::const_iterator it = indexes.begin();
     for (; it != indexes.end(); ++it)
         if ((*it).column() == 0)
             urls << QUrl::fromLocalFile(filePath(*it));
-    QMimeData* data = new QMimeData();
+    QMimeData *data = new QMimeData();
     data->setUrls(urls);
     return data;
 }
@@ -1115,26 +1165,31 @@ QMimeData* RemoteFileSystemModel::mimeData(const QModelIndexList& indexes) const
 /*!
     \reimp
 */
-Qt::DropActions RemoteFileSystemModel::supportedDropActions() const {
+Qt::DropActions RemoteFileSystemModel::supportedDropActions() const
+{
     return Qt::CopyAction | Qt::MoveAction | Qt::LinkAction;
 }
 
-bool RemoteFileSystemModel::isRootDir(const QString& path) const {
+bool RemoteFileSystemModel::isRootDir(const QString &path) const
+{
     Q_D(const RemoteFileSystemModel);
     return d->fileInfoGatherer->isRootDir(path);
 }
 
-QString RemoteFileSystemModel::workingDirectory() const {
+QString RemoteFileSystemModel::workingDirectory() const
+{
     Q_D(const RemoteFileSystemModel);
     return d->fileInfoGatherer->workingDirectory();
 }
 
-bool RemoteFileSystemModel::isWindows() const {
+bool RemoteFileSystemModel::isWindows() const
+{
     Q_D(const RemoteFileSystemModel);
     return d->fileInfoGatherer->isWindows();
 }
 
-QString RemoteFileSystemModel::userName() const {
+QString RemoteFileSystemModel::userName() const
+{
     Q_D(const RemoteFileSystemModel);
     return d->fileInfoGatherer->userName();
 }
@@ -1143,22 +1198,23 @@ QString RemoteFileSystemModel::userName() const {
     Returns the path of the item stored in the model under the
     \a index given.
 */
-QString RemoteFileSystemModel::filePath(const QModelIndex& index) const {
+QString RemoteFileSystemModel::filePath(const QModelIndex &index) const
+{
     Q_D(const RemoteFileSystemModel);
     QString fullPath = d->filePath(index);
-    RemoteFileSystemModelPrivate::RemoteFileSystemNode* dirNode = d->node(index);
+    RemoteFileSystemModelPrivate::RemoteFileSystemNode *dirNode = d->node(index);
     if (dirNode->isSymLink()
 #ifndef QT_NO_FILESYSTEMWATCHER
         && d->fileInfoGatherer->resolveSymlinks()
 #endif
-        && d->resolvedSymLinks.contains(fullPath)
-        && dirNode->isDir()) {
+        && d->resolvedSymLinks.contains(fullPath) && dirNode->isDir()) {
         return dirNode->linkTarget();
     }
     return fullPath;
 }
 
-QString RemoteFileSystemModelPrivate::filePath(const QModelIndex& index) const {
+QString RemoteFileSystemModelPrivate::filePath(const QModelIndex &index) const
+{
     Q_Q(const RemoteFileSystemModel);
     if (!index.isValid())
         return QString();
@@ -1167,7 +1223,7 @@ QString RemoteFileSystemModelPrivate::filePath(const QModelIndex& index) const {
     QStringList path;
     QModelIndex idx = index;
     while (idx.isValid()) {
-        RemoteFileSystemModelPrivate::RemoteFileSystemNode* dirNode = node(idx);
+        RemoteFileSystemModelPrivate::RemoteFileSystemNode *dirNode = node(idx);
         if (dirNode)
             path.prepend(dirNode->fileName);
         idx = idx.parent();
@@ -1188,16 +1244,17 @@ QString RemoteFileSystemModelPrivate::filePath(const QModelIndex& index) const {
 /*!
     Create a directory with the \a name in the \a parent model index.
 */
-QModelIndex RemoteFileSystemModel::mkdir(const QModelIndex& parent, const QString& name) {
+QModelIndex RemoteFileSystemModel::mkdir(const QModelIndex &parent, const QString &name)
+{
     Q_D(RemoteFileSystemModel);
     if (!parent.isValid())
         return parent;
 
     QString dir(filePath(parent));
-    RemoteFileSystemModelPrivate::RemoteFileSystemNode* parentNode = d->node(parent);
+    RemoteFileSystemModelPrivate::RemoteFileSystemNode *parentNode = d->node(parent);
     d->addNode(parentNode, name, FileInfo(dir));
     Q_ASSERT(parentNode->children.contains(name));
-    RemoteFileSystemModelPrivate::RemoteFileSystemNode* node = parentNode->children[name];
+    RemoteFileSystemModelPrivate::RemoteFileSystemNode *node = parentNode->children[name];
 #ifndef QT_NO_FILESYSTEMWATCHER
     QString newDir = QDir::cleanPath(dir + "/" + name);
     d->fileInfoGatherer->mkdir(newDir);
@@ -1210,7 +1267,8 @@ QModelIndex RemoteFileSystemModel::mkdir(const QModelIndex& parent, const QStrin
 /*!
     Returns the complete OR-ed together combination of QFile::Permission for the \a index.
  */
-QFile::Permissions RemoteFileSystemModel::permissions(const QModelIndex& index) const {
+QFile::Permissions RemoteFileSystemModel::permissions(const QModelIndex &index) const
+{
     Q_D(const RemoteFileSystemModel);
     return d->node(index)->permissions();
 }
@@ -1228,11 +1286,11 @@ QFile::Permissions RemoteFileSystemModel::permissions(const QModelIndex& index) 
     the model is \e not changed to include only files and directories
     within the directory specified by \a newPath in the file system.
   */
-QModelIndex RemoteFileSystemModel::setRootPath(const QString& newPath) {
+QModelIndex RemoteFileSystemModel::setRootPath(const QString &newPath)
+{
     Q_D(RemoteFileSystemModel);
     QString longNewPath = newPath;
     if (isWindows()) {
-
         longNewPath = QDir::fromNativeSeparators(newPath);
     }
     //QDir newPathDir(longNewPath);
@@ -1290,14 +1348,15 @@ QModelIndex RemoteFileSystemModel::setRootPath(const QString& newPath) {
     d->forceSort = true;
     d->delayedSort();
     return newRootIndex;
-    }
+}
 
 /*!
     The currently set root path
 
     \sa rootDirectory()
 */
-QString RemoteFileSystemModel::rootPath() const {
+QString RemoteFileSystemModel::rootPath() const
+{
     Q_D(const RemoteFileSystemModel);
     return d->rootPath;
 }
@@ -1320,7 +1379,8 @@ QDir RemoteFileSystemModel::rootDirectory() const {
 /*!
     Sets the \a provider of file icons for the directory model.
 */
-void RemoteFileSystemModel::setIconProvider(RemoteFileIconProvider* provider) {
+void RemoteFileSystemModel::setIconProvider(RemoteFileIconProvider *provider)
+{
     Q_D(RemoteFileSystemModel);
 #ifndef QT_NO_FILESYSTEMWATCHER
     d->fileInfoGatherer->setIconProvider(provider);
@@ -1331,7 +1391,8 @@ void RemoteFileSystemModel::setIconProvider(RemoteFileIconProvider* provider) {
 /*!
     Returns the file icon provider for this directory model.
 */
-RemoteFileIconProvider* RemoteFileSystemModel::iconProvider() const {
+RemoteFileIconProvider *RemoteFileSystemModel::iconProvider() const
+{
 #ifndef QT_NO_FILESYSTEMWATCHER
     Q_D(const RemoteFileSystemModel);
     return d->fileInfoGatherer->iconProvider();
@@ -1340,12 +1401,14 @@ RemoteFileIconProvider* RemoteFileSystemModel::iconProvider() const {
 #endif
 }
 
-void RemoteFileSystemModel::setDisableRecursiveSort(bool enable) {
+void RemoteFileSystemModel::setDisableRecursiveSort(bool enable)
+{
     Q_D(RemoteFileSystemModel);
     d->disableRecursiveSort = enable;
 }
 
-bool RemoteFileSystemModel::disableRecursiveSort() const {
+bool RemoteFileSystemModel::disableRecursiveSort() const
+{
     Q_D(const RemoteFileSystemModel);
     return d->disableRecursiveSort;
 }
@@ -1358,7 +1421,8 @@ bool RemoteFileSystemModel::disableRecursiveSort() const {
 
     \sa QDir::Filters
 */
-void RemoteFileSystemModel::setFilter(QDir::Filters filters) {
+void RemoteFileSystemModel::setFilter(QDir::Filters filters)
+{
     Q_D(RemoteFileSystemModel);
     if (d->filters == filters)
         return;
@@ -1377,7 +1441,8 @@ void RemoteFileSystemModel::setFilter(QDir::Filters filters) {
 
     \sa QDir::Filters
 */
-QDir::Filters RemoteFileSystemModel::filter() const {
+QDir::Filters RemoteFileSystemModel::filter() const
+{
     Q_D(const RemoteFileSystemModel);
     return d->filters;
 }
@@ -1390,7 +1455,8 @@ QDir::Filters RemoteFileSystemModel::filter() const {
 
     By default, this property is \c true.
 */
-void RemoteFileSystemModel::setResolveSymlinks(bool enable) {
+void RemoteFileSystemModel::setResolveSymlinks(bool enable)
+{
 #ifndef QT_NO_FILESYSTEMWATCHER
     Q_D(RemoteFileSystemModel);
     d->fileInfoGatherer->setResolveSymlinks(enable);
@@ -1399,7 +1465,8 @@ void RemoteFileSystemModel::setResolveSymlinks(bool enable) {
 #endif
 }
 
-bool RemoteFileSystemModel::resolveSymlinks() const {
+bool RemoteFileSystemModel::resolveSymlinks() const
+{
 #ifndef QT_NO_FILESYSTEMWATCHER
     Q_D(const RemoteFileSystemModel);
     return d->fileInfoGatherer->resolveSymlinks();
@@ -1417,12 +1484,14 @@ bool RemoteFileSystemModel::resolveSymlinks() const {
 
     This property is \c true by default
 */
-void RemoteFileSystemModel::setReadOnly(bool enable) {
+void RemoteFileSystemModel::setReadOnly(bool enable)
+{
     Q_D(RemoteFileSystemModel);
     d->readOnly = enable;
 }
 
-bool RemoteFileSystemModel::isReadOnly() const {
+bool RemoteFileSystemModel::isReadOnly() const
+{
     Q_D(const RemoteFileSystemModel);
     return d->readOnly;
 }
@@ -1433,7 +1502,8 @@ bool RemoteFileSystemModel::isReadOnly() const {
 
     This property is \c true by default
 */
-void RemoteFileSystemModel::setNameFilterDisables(bool enable) {
+void RemoteFileSystemModel::setNameFilterDisables(bool enable)
+{
     Q_D(RemoteFileSystemModel);
     if (d->nameFilterDisables == enable)
         return;
@@ -1442,7 +1512,8 @@ void RemoteFileSystemModel::setNameFilterDisables(bool enable) {
     d->delayedSort();
 }
 
-bool RemoteFileSystemModel::nameFilterDisables() const {
+bool RemoteFileSystemModel::nameFilterDisables() const
+{
     Q_D(const RemoteFileSystemModel);
     return d->nameFilterDisables;
 }
@@ -1450,7 +1521,8 @@ bool RemoteFileSystemModel::nameFilterDisables() const {
 /*!
     Sets the name \a filters to apply against the existing files.
 */
-void RemoteFileSystemModel::setNameFilters(const QStringList& filters) {
+void RemoteFileSystemModel::setNameFilters(const QStringList &filters)
+{
     // Prep the regexp's ahead of time
 #ifndef QT_NO_REGEXP
     Q_D(RemoteFileSystemModel);
@@ -1461,8 +1533,8 @@ void RemoteFileSystemModel::setNameFilters(const QStringList& filters) {
         // We guarantee that rootPath will stick around
         QPersistentModelIndex root(index(rootPath()));
         const QModelIndexList persistentList = persistentIndexList();
-        for (const auto& persistentIndex : persistentList) {
-            RemoteFileSystemModelPrivate::RemoteFileSystemNode* node = d->node(persistentIndex);
+        for (const auto &persistentIndex: persistentList) {
+            RemoteFileSystemModelPrivate::RemoteFileSystemNode *node = d->node(persistentIndex);
             while (node) {
                 if (d->bypassFilters.contains(node))
                     break;
@@ -1476,7 +1548,7 @@ void RemoteFileSystemModel::setNameFilters(const QStringList& filters) {
     d->nameFilters.clear();
     const Qt::CaseSensitivity caseSensitive =
         (filter() & QDir::CaseSensitive) ? Qt::CaseSensitive : Qt::CaseInsensitive;
-    for (const auto& filter : filters)
+    for (const auto &filter: filters)
         d->nameFilters << QRegExp(filter, caseSensitive, QRegExp::Wildcard);
     d->forceSort = true;
     d->delayedSort();
@@ -1486,7 +1558,8 @@ void RemoteFileSystemModel::setNameFilters(const QStringList& filters) {
 /*!
     Returns a list of filters applied to the names in the model.
 */
-QStringList RemoteFileSystemModel::nameFilters() const {
+QStringList RemoteFileSystemModel::nameFilters() const
+{
     Q_D(const RemoteFileSystemModel);
     QStringList filters;
 #ifndef QT_NO_REGEXP
@@ -1502,7 +1575,8 @@ QStringList RemoteFileSystemModel::nameFilters() const {
 /*!
     \reimp
 */
-bool RemoteFileSystemModel::event(QEvent* event) {
+bool RemoteFileSystemModel::event(QEvent *event)
+{
 #ifndef QT_NO_FILESYSTEMWATCHER
     Q_D(RemoteFileSystemModel);
     if (event->type() == QEvent::LanguageChange) {
@@ -1513,7 +1587,8 @@ bool RemoteFileSystemModel::event(QEvent* event) {
     return QAbstractItemModel::event(event);
 }
 
-bool RemoteFileSystemModel::indexValid(const QModelIndex& index) const {
+bool RemoteFileSystemModel::indexValid(const QModelIndex &index) const
+{
     return index.row() >= 0 && index.column() >= 0 && index.model() == this;
 }
 
@@ -1524,10 +1599,11 @@ bool RemoteFileSystemModel::indexValid(const QModelIndex& index) const {
     Performed quick listing and see if any files have been added or removed,
     then fetch more information on visible files.
  */
-void RemoteFileSystemModelPrivate::_q_directoryChanged(const QString& directory, const QStringList& files) {
+void RemoteFileSystemModelPrivate::_q_directoryChanged(const QString &directory, const QStringList &files)
+{
     Q_Q(RemoteFileSystemModel);
 
-    RemoteFileSystemModelPrivate::RemoteFileSystemNode* parentNode = node(directory, true);
+    RemoteFileSystemModelPrivate::RemoteFileSystemNode *parentNode = node(directory, true);
     if (!parentNode->children.isEmpty()) {
         QStringList toRemove;
         QStringList newFiles = files;
@@ -1564,16 +1640,19 @@ void RemoteFileSystemModelPrivate::_q_directoryChanged(const QString& directory,
 
     *WARNING* this will change the count of children
 */
-RemoteFileSystemModelPrivate::RemoteFileSystemNode* RemoteFileSystemModelPrivate::addNode(RemoteFileSystemNode* parentNode, const QString& fileName, const FileInfo& info) {
+RemoteFileSystemModelPrivate::RemoteFileSystemNode *
+RemoteFileSystemModelPrivate::addNode(RemoteFileSystemNode *parentNode, const QString &fileName, const FileInfo &info)
+{
     Q_Q(RemoteFileSystemModel);
     // In the common case, itemLocation == count() so check there first
-    RemoteFileSystemModelPrivate::RemoteFileSystemNode* node = new RemoteFileSystemModelPrivate::RemoteFileSystemNode(q, fileName, parentNode);
+    RemoteFileSystemModelPrivate::RemoteFileSystemNode *node =
+        new RemoteFileSystemModelPrivate::RemoteFileSystemNode(q, fileName, parentNode);
 #ifndef QT_NO_FILESYSTEMWATCHER
     node->populate(info);
 #else
     Q_UNUSED(info)
 #endif
-        Q_ASSERT(!parentNode->children.contains(fileName));
+    Q_ASSERT(!parentNode->children.contains(fileName));
     parentNode->children.insert(fileName, node);
     return node;
 }
@@ -1586,7 +1665,9 @@ RemoteFileSystemModelPrivate::RemoteFileSystemNode* RemoteFileSystemModelPrivate
 
     *WARNING* this will change the count of children and could change visibleChildren
  */
-void RemoteFileSystemModelPrivate::removeNode(RemoteFileSystemModelPrivate::RemoteFileSystemNode* parentNode, const QString& name) {
+void RemoteFileSystemModelPrivate::removeNode(RemoteFileSystemModelPrivate::RemoteFileSystemNode *parentNode,
+                                              const QString &name)
+{
     Q_Q(RemoteFileSystemModel);
     QModelIndex parent = index(parentNode);
     bool indexHidden = isHiddenByFilter(parentNode, parent);
@@ -1594,8 +1675,8 @@ void RemoteFileSystemModelPrivate::removeNode(RemoteFileSystemModelPrivate::Remo
     int vLocation = parentNode->visibleLocation(name);
     if (vLocation >= 0 && !indexHidden)
         q->beginRemoveRows(parent, translateVisibleLocation(parentNode, vLocation),
-            translateVisibleLocation(parentNode, vLocation));
-    RemoteFileSystemNode* node = parentNode->children.take(name);
+                           translateVisibleLocation(parentNode, vLocation));
+    RemoteFileSystemNode *node = parentNode->children.take(name);
     delete node;
     // cleanup sort files after removing rather then re-sorting which is O(n)
     if (vLocation >= 0)
@@ -1612,18 +1693,20 @@ void RemoteFileSystemModelPrivate::removeNode(RemoteFileSystemModelPrivate::Remo
 
     *WARNING* this will change the visible count
  */
-void RemoteFileSystemModelPrivate::addVisibleFiles(RemoteFileSystemNode* parentNode, const QStringList& newFiles) {
+void RemoteFileSystemModelPrivate::addVisibleFiles(RemoteFileSystemNode *parentNode, const QStringList &newFiles)
+{
     Q_Q(RemoteFileSystemModel);
     QModelIndex parent = index(parentNode);
     bool indexHidden = isHiddenByFilter(parentNode, parent);
     if (!indexHidden) {
-        q->beginInsertRows(parent, parentNode->visibleChildren.count(), parentNode->visibleChildren.count() + newFiles.count() - 1);
+        q->beginInsertRows(parent, parentNode->visibleChildren.count(),
+                           parentNode->visibleChildren.count() + newFiles.count() - 1);
     }
 
     if (parentNode->dirtyChildrenIndex == -1)
         parentNode->dirtyChildrenIndex = parentNode->visibleChildren.count();
 
-    for (const auto& newFile : newFiles) {
+    for (const auto &newFile: newFiles) {
         parentNode->visibleChildren.append(newFile);
         parentNode->children.value(newFile)->m_isVisible = true;
     }
@@ -1638,7 +1721,8 @@ void RemoteFileSystemModelPrivate::addVisibleFiles(RemoteFileSystemNode* parentN
 
     *WARNING* this will change the visible count
  */
-void RemoteFileSystemModelPrivate::removeVisibleFile(RemoteFileSystemNode* parentNode, int vLocation) {
+void RemoteFileSystemModelPrivate::removeVisibleFile(RemoteFileSystemNode *parentNode, int vLocation)
+{
     Q_Q(RemoteFileSystemModel);
     if (vLocation == -1)
         return;
@@ -1646,7 +1730,7 @@ void RemoteFileSystemModelPrivate::removeVisibleFile(RemoteFileSystemNode* paren
     bool indexHidden = isHiddenByFilter(parentNode, parent);
     if (!indexHidden)
         q->beginRemoveRows(parent, translateVisibleLocation(parentNode, vLocation),
-            translateVisibleLocation(parentNode, vLocation));
+                           translateVisibleLocation(parentNode, vLocation));
     parentNode->children.value(parentNode->visibleChildren.at(vLocation))->m_isVisible = false;
     parentNode->visibleChildren.removeAt(vLocation);
     if (!indexHidden)
@@ -1659,14 +1743,16 @@ void RemoteFileSystemModelPrivate::removeVisibleFile(RemoteFileSystemNode* paren
     The thread has received new information about files,
     update and emit dataChanged if it has actually changed.
  */
-void RemoteFileSystemModelPrivate::_q_fileSystemChanged(const QString& path, const QVector<QPair<QString, FileInfo> >& updates) {
+void RemoteFileSystemModelPrivate::_q_fileSystemChanged(const QString &path,
+                                                        const QVector<QPair<QString, FileInfo>> &updates)
+{
 #ifndef QT_NO_FILESYSTEMWATCHER
     Q_Q(RemoteFileSystemModel);
     QVector<QString> rowsToUpdate;
     QStringList newFiles;
-    RemoteFileSystemModelPrivate::RemoteFileSystemNode* parentNode = node(path, false);
+    RemoteFileSystemModelPrivate::RemoteFileSystemNode *parentNode = node(path, false);
     QModelIndex parentIndex = index(parentNode);
-    for (const auto& update : updates) {
+    for (const auto &update: updates) {
         QString fileName = update.first;
         Q_ASSERT(!fileName.isEmpty());
         FileInfo info = update.second;
@@ -1674,7 +1760,7 @@ void RemoteFileSystemModelPrivate::_q_fileSystemChanged(const QString& path, con
         if (!previouslyHere) {
             addNode(parentNode, fileName, info);
         }
-        RemoteFileSystemModelPrivate::RemoteFileSystemNode* node = parentNode->children.value(fileName);
+        RemoteFileSystemModelPrivate::RemoteFileSystemNode *node = parentNode->children.value(fileName);
         bool isCaseSensitive = parentNode->caseSensitive();
         if (isCaseSensitive) {
             if (node->fileName != fileName)
@@ -1733,10 +1819,8 @@ void RemoteFileSystemModelPrivate::_q_fileSystemChanged(const QString& path, con
         min = value;
         int visibleMin = parentNode->visibleLocation(min);
         int visibleMax = parentNode->visibleLocation(max);
-        if (visibleMin >= 0
-            && visibleMin < parentNode->visibleChildren.count()
-            && parentNode->visibleChildren.at(visibleMin) == min
-            && visibleMax >= 0) {
+        if (visibleMin >= 0 && visibleMin < parentNode->visibleChildren.count() &&
+            parentNode->visibleChildren.at(visibleMin) == min && visibleMax >= 0) {
             QModelIndex bottom = q->index(translateVisibleLocation(parentNode, visibleMin), 0, parentIndex);
             QModelIndex top = q->index(translateVisibleLocation(parentNode, visibleMax), 3, parentIndex);
             emit q->dataChanged(bottom, top);
@@ -1753,17 +1837,18 @@ void RemoteFileSystemModelPrivate::_q_fileSystemChanged(const QString& path, con
     if (newFiles.count() > 0 || (sortColumn != 0 && rowsToUpdate.count() > 0)) {
         forceSort = true;
         delayedSort();
-}
+    }
 #else
     Q_UNUSED(path)
-        Q_UNUSED(updates)
+    Q_UNUSED(updates)
 #endif // !QT_NO_FILESYSTEMWATCHER
 }
 
 /*!
     \internal
 */
-void RemoteFileSystemModelPrivate::_q_resolvedName(const QString& fileName, const QString& resolvedName) {
+void RemoteFileSystemModelPrivate::_q_resolvedName(const QString &fileName, const QString &resolvedName)
+{
     resolvedSymLinks[fileName] = resolvedName;
 }
 /*
@@ -1810,20 +1895,18 @@ QStringList RemoteFileSystemModelPrivate::unwatchPathsAt(const QModelIndex &inde
 /*!
     \internal
 */
-void RemoteFileSystemModelPrivate::init() {
+void RemoteFileSystemModelPrivate::init()
+{
     Q_Q(RemoteFileSystemModel);
-    qRegisterMetaType<QVector<QPair<QString, FileInfo> > >();
-    q->connect(fileInfoGatherer, SIGNAL(initialized()),
-        q, SLOT(_q_modelInitialized()));
+    qRegisterMetaType<QVector<QPair<QString, FileInfo>>>();
+    q->connect(fileInfoGatherer, SIGNAL(initialized()), q, SLOT(_q_modelInitialized()));
 #ifndef QT_NO_FILESYSTEMWATCHER
-    q->connect(fileInfoGatherer, SIGNAL(newListOfFiles(QString, QStringList)),
-        q, SLOT(_q_directoryChanged(QString, QStringList)));
-    q->connect(fileInfoGatherer, SIGNAL(updates(QString, QVector<QPair<QString, FileInfo> >)),
-        q, SLOT(_q_fileSystemChanged(QString, QVector<QPair<QString, FileInfo> >)));
-    q->connect(fileInfoGatherer, SIGNAL(nameResolved(QString, QString)),
-        q, SLOT(_q_resolvedName(QString, QString)));
-    q->connect(fileInfoGatherer, SIGNAL(directoryLoaded(QString)),
-        q, SIGNAL(directoryLoaded(QString)));
+    q->connect(fileInfoGatherer, SIGNAL(newListOfFiles(QString, QStringList)), q,
+               SLOT(_q_directoryChanged(QString, QStringList)));
+    q->connect(fileInfoGatherer, SIGNAL(updates(QString, QVector<QPair<QString, FileInfo>>)), q,
+               SLOT(_q_fileSystemChanged(QString, QVector<QPair<QString, FileInfo>>)));
+    q->connect(fileInfoGatherer, SIGNAL(nameResolved(QString, QString)), q, SLOT(_q_resolvedName(QString, QString)));
+    q->connect(fileInfoGatherer, SIGNAL(directoryLoaded(QString)), q, SIGNAL(directoryLoaded(QString)));
 #endif // !QT_NO_FILESYSTEMWATCHER
     q->connect(&delayedSortTimer, SIGNAL(timeout()), q, SLOT(_q_performDelayedSort()), Qt::QueuedConnection);
 }
@@ -1836,7 +1919,8 @@ void RemoteFileSystemModelPrivate::init() {
     QDir::Modified is not supported
     QDir::Drives is not supported
 */
-bool RemoteFileSystemModelPrivate::filtersAcceptsNode(const RemoteFileSystemNode* node) const {
+bool RemoteFileSystemModelPrivate::filtersAcceptsNode(const RemoteFileSystemNode *node) const
+{
     Q_Q(const RemoteFileSystemModel);
 
     if (bypassFilters.contains(node)) {
@@ -1872,8 +1956,8 @@ bool RemoteFileSystemModelPrivate::filtersAcceptsNode(const RemoteFileSystemNode
         return false;
     }
 
-    const bool filterPermissions = ((filters & QDir::PermissionMask)
-        && (filters & QDir::PermissionMask) != QDir::PermissionMask);
+    const bool filterPermissions =
+        ((filters & QDir::PermissionMask) && (filters & QDir::PermissionMask) != QDir::PermissionMask);
     const bool hideDirs = !(filters & (QDir::Dirs | QDir::AllDirs));
     const bool hideFiles = !(filters & QDir::Files);
     const bool hideReadable = !(!filterPermissions || (filters & QDir::Readable));
@@ -1886,34 +1970,29 @@ bool RemoteFileSystemModelPrivate::filtersAcceptsNode(const RemoteFileSystemNode
     const bool hideDotDot = (filters & QDir::NoDotDot);
 
     // Note that we match the behavior of entryList and not QFileInfo on this.
-    if ((hideHidden && !(isDot || isDotDot) && node->isHidden())
-        || (hideSystem && node->isSystem())
-        || (hideDirs && node->isDir())
-        || (hideFiles && node->isFile())
-        || (hideSymlinks && node->isSymLink())
-        || (hideReadable && node->isReadable())
-        || (hideWritable && node->isWritable())
-        || (hideExecutable && node->isExecutable())
-        || (hideDot && isDot)
-        || (hideDotDot && isDotDot))
+    if ((hideHidden && !(isDot || isDotDot) && node->isHidden()) || (hideSystem && node->isSystem()) ||
+        (hideDirs && node->isDir()) || (hideFiles && node->isFile()) || (hideSymlinks && node->isSymLink()) ||
+        (hideReadable && node->isReadable()) || (hideWritable && node->isWritable()) ||
+        (hideExecutable && node->isExecutable()) || (hideDot && isDot) || (hideDotDot && isDotDot))
         return false;
 
     return nameFilterDisables || passNameFilters(node);
-    }
+}
 
 /*
     \internal
 
     Returns \c true if node passes the name filters and should be visible.
  */
-bool RemoteFileSystemModelPrivate::passNameFilters(const RemoteFileSystemNode* node) const {
+bool RemoteFileSystemModelPrivate::passNameFilters(const RemoteFileSystemNode *node) const
+{
 #ifndef QT_NO_REGEXP
     if (nameFilters.isEmpty())
         return true;
 
     // Check the name regularexpression filters
     if (!(node->isDir() && (filters & QDir::AllDirs))) {
-        for (const auto& nameFilter : nameFilters) {
+        for (const auto &nameFilter: nameFilters) {
             QRegExp copy = nameFilter;
             if (copy.exactMatch(node->fileName))
                 return true;

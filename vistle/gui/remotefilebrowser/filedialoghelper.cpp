@@ -5,15 +5,15 @@
 
 // File dialog
 
-class RemoteFileDialogOptionsPrivate : public QSharedData
-{
+class RemoteFileDialogOptionsPrivate: public QSharedData {
 public:
-    RemoteFileDialogOptionsPrivate() : options(0),
-        viewMode(RemoteFileDialogOptions::Detail),
-        fileMode(RemoteFileDialogOptions::AnyFile),
-        acceptMode(RemoteFileDialogOptions::AcceptOpen),
-        filters(QDir::AllEntries | QDir::NoDotAndDotDot | QDir::AllDirs),
-        useDefaultNameFilters(true)
+    RemoteFileDialogOptionsPrivate()
+    : options(0)
+    , viewMode(RemoteFileDialogOptions::Detail)
+    , fileMode(RemoteFileDialogOptions::AnyFile)
+    , acceptMode(RemoteFileDialogOptions::AcceptOpen)
+    , filters(QDir::AllEntries | QDir::NoDotAndDotDot | QDir::AllDirs)
+    , useDefaultNameFilters(true)
     {}
 
     RemoteFileDialogOptions::FileDialogOptions options;
@@ -37,22 +37,20 @@ public:
     QStringList supportedSchemes;
 };
 
-RemoteFileDialogOptions::RemoteFileDialogOptions(RemoteFileDialogOptionsPrivate *dd)
-    : d(dd)
-{
-}
+RemoteFileDialogOptions::RemoteFileDialogOptions(RemoteFileDialogOptionsPrivate *dd): d(dd)
+{}
 
 RemoteFileDialogOptions::~RemoteFileDialogOptions()
-{
-}
+{}
 
 namespace {
-    struct FileDialogCombined : RemoteFileDialogOptionsPrivate, RemoteFileDialogOptions
-    {
-        FileDialogCombined() : RemoteFileDialogOptionsPrivate(), RemoteFileDialogOptions(this) {}
-        FileDialogCombined(const FileDialogCombined &other) : RemoteFileDialogOptionsPrivate(other), RemoteFileDialogOptions(this) {}
-    };
-}
+struct FileDialogCombined: RemoteFileDialogOptionsPrivate, RemoteFileDialogOptions {
+    FileDialogCombined(): RemoteFileDialogOptionsPrivate(), RemoteFileDialogOptions(this) {}
+    FileDialogCombined(const FileDialogCombined &other)
+    : RemoteFileDialogOptionsPrivate(other), RemoteFileDialogOptions(this)
+    {}
+};
+} // namespace
 
 // static
 QSharedPointer<RemoteFileDialogOptions> RemoteFileDialogOptions::create()
@@ -62,7 +60,7 @@ QSharedPointer<RemoteFileDialogOptions> RemoteFileDialogOptions::create()
 
 QSharedPointer<RemoteFileDialogOptions> RemoteFileDialogOptions::clone() const
 {
-    return QSharedPointer<FileDialogCombined>::create(*static_cast<const FileDialogCombined*>(this));
+    return QSharedPointer<FileDialogCombined>::create(*static_cast<const FileDialogCombined *>(this));
 }
 
 QString RemoteFileDialogOptions::windowTitle() const
@@ -104,7 +102,7 @@ QDir::Filters RemoteFileDialogOptions::filter() const
 
 void RemoteFileDialogOptions::setFilter(QDir::Filters filters)
 {
-    d->filters  = filters;
+    d->filters = filters;
 }
 
 void RemoteFileDialogOptions::setViewMode(RemoteFileDialogOptions::ViewMode mode)
@@ -168,15 +166,14 @@ void RemoteFileDialogOptions::setUseDefaultNameFilters(bool dnf)
 
 void RemoteFileDialogOptions::setNameFilters(const QStringList &filters)
 {
-    d->useDefaultNameFilters = filters.size() == 1
-        && filters.first() == RemoteFileDialogOptions::defaultNameFilterString();
+    d->useDefaultNameFilters =
+        filters.size() == 1 && filters.first() == RemoteFileDialogOptions::defaultNameFilterString();
     d->nameFilters = filters;
 }
 
 QStringList RemoteFileDialogOptions::nameFilters() const
 {
-    return d->useDefaultNameFilters ?
-        QStringList(RemoteFileDialogOptions::defaultNameFilterString()) : d->nameFilters;
+    return d->useDefaultNameFilters ? QStringList(RemoteFileDialogOptions::defaultNameFilterString()) : d->nameFilters;
 }
 
 /*!

@@ -25,7 +25,7 @@ struct Parameter {
 class MiniSim {
 public:
     void run(MiniSimModule &mod, size_t numTimesteps, const std::string &inputFile,
-            const boost::mpi::communicator &comm, const Parameter&param = Parameter{});
+             const boost::mpi::communicator &comm, const Parameter &param = Parameter{});
     void terminate();
 
 private:

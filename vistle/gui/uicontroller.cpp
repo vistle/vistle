@@ -39,300 +39,287 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
 , m_scene(nullptr)
 , m_mainWindow(nullptr)
 {
-   std::string host = "localhost";
-   unsigned short port = 31093;
+    std::string host = "localhost";
+    unsigned short port = 31093;
 
-   bool quitOnExit = false;
-   if (argc > 1 && argv[1] == std::string("-from-vistle")) {
-      quitOnExit = true;
-      argv[1] = argv[0];
-      --argc;
-      ++argv;
-   }
+    bool quitOnExit = false;
+    if (argc > 1 && argv[1] == std::string("-from-vistle")) {
+        quitOnExit = true;
+        argv[1] = argv[0];
+        --argc;
+        ++argv;
+    }
 
-   if (argc > 2) {
-      host = argv[1];
-      port = atoi(argv[2]);
-   } else if (argc > 1) {
-      auto url = QUrl::fromUserInput(QString::fromLocal8Bit(argv[1]));
-      host = url.host().toStdString();
-      port = url.port(port);
-   }
+    if (argc > 2) {
+        host = argv[1];
+        port = atoi(argv[2]);
+    } else if (argc > 1) {
+        auto url = QUrl::fromUserInput(QString::fromLocal8Bit(argv[1]));
+        host = url.host().toStdString();
+        port = url.port(port);
+    }
 
-   m_mainWindow = new MainWindow();
-   m_mainWindow->parameters()->setVistleObserver(&m_observer);
-   m_mainWindow->setQuitOnExit(quitOnExit);
+    m_mainWindow = new MainWindow();
+    m_mainWindow->parameters()->setVistleObserver(&m_observer);
+    m_mainWindow->setQuitOnExit(quitOnExit);
 
-   m_ui = new vistle::UserInterface(host, port, &m_observer);
+    m_ui = new vistle::UserInterface(host, port, &m_observer);
 #ifdef HAVE_PYTHON
-   m_python = new vistle::PythonInterface("Vistle GUI");
+    m_python = new vistle::PythonInterface("Vistle GUI");
 #endif
-   m_ui->registerObserver(&m_observer);
-   m_vistleConnection = new vistle::VistleConnection(*m_ui);
-   m_vistleConnection->setQuitOnExit(quitOnExit);
+    m_ui->registerObserver(&m_observer);
+    m_vistleConnection = new vistle::VistleConnection(*m_ui);
+    m_vistleConnection->setQuitOnExit(quitOnExit);
 #ifdef HAVE_PYTHON
-   m_pythonMod = new vistle::PythonModule(m_vistleConnection);
-   m_pythonDir = dir::share(dir::prefix(argc, argv));
+    m_pythonMod = new vistle::PythonModule(m_vistleConnection);
+    m_pythonDir = dir::share(dir::prefix(argc, argv));
 #endif
-   m_thread = new std::thread(std::ref(*m_vistleConnection));
+    m_thread = new std::thread(std::ref(*m_vistleConnection));
 
-   m_mainWindow->parameters()->setVistleConnection(m_vistleConnection);
-   if (!m_ui->isConnected()) {
-      std::cerr << "UI: not yet connected to " << host << ":" << port << std::endl;
-   } else {
-       m_mainWindow->enableConnectButton(false);
-   }
+    m_mainWindow->parameters()->setVistleConnection(m_vistleConnection);
+    if (!m_ui->isConnected()) {
+        std::cerr << "UI: not yet connected to " << host << ":" << port << std::endl;
+    } else {
+        m_mainWindow->enableConnectButton(false);
+    }
 
-   setCurrentFile(QString::fromStdString(m_ui->state().loadedWorkflowFile()));
+    setCurrentFile(QString::fromStdString(m_ui->state().loadedWorkflowFile()));
 
     ///\todo declare the scene pointer in the header, then de-allocate in the destructor.
-   m_scene = new DataFlowNetwork(m_vistleConnection, m_mainWindow->dataFlowView());
-   m_mainWindow->dataFlowView()->setScene(m_scene);
-   connect(m_mainWindow->dataFlowView(), SIGNAL(executeDataFlow()), SLOT(executeDataFlowNetwork()));
+    m_scene = new DataFlowNetwork(m_vistleConnection, m_mainWindow->dataFlowView());
+    m_mainWindow->dataFlowView()->setScene(m_scene);
+    connect(m_mainWindow->dataFlowView(), SIGNAL(executeDataFlow()), SLOT(executeDataFlowNetwork()));
 
-   connect(m_mainWindow, SIGNAL(quitRequested(bool &)), SLOT(quitRequested(bool &)));
-   connect(m_mainWindow, SIGNAL(newDataFlow()), SLOT(clearDataFlowNetwork()));
-   connect(m_mainWindow, SIGNAL(loadDataFlow()), SLOT(loadDataFlowNetwork()));
-   connect(m_mainWindow, SIGNAL(saveDataFlow()), SLOT(saveDataFlowNetwork()));
-   connect(m_mainWindow, SIGNAL(saveDataFlowAs()), SLOT(saveDataFlowNetworkAs()));
-   connect(m_mainWindow, SIGNAL(executeDataFlow()), SLOT(executeDataFlowNetwork()));
-   connect(m_mainWindow, SIGNAL(connectVistle()), SLOT(connectVistle()));
-   connect(m_mainWindow, SIGNAL(showSessionUrl()), SLOT(showConnectionInfo()));
-   connect(m_mainWindow, SIGNAL(copySessionUrl()), SLOT(copyConnectionInfo()));
-   connect(m_mainWindow, SIGNAL(selectAllModules()), m_mainWindow->dataFlowView(), SLOT(selectAllModules()));
-   connect(m_mainWindow, SIGNAL(deleteSelectedModules()), m_mainWindow->dataFlowView(), SLOT(deleteModules()));
-   connect(m_mainWindow, SIGNAL(aboutQt()), SLOT(aboutQt()));
-   connect(m_mainWindow, SIGNAL(aboutVistle()), SLOT(aboutVistle()));
+    connect(m_mainWindow, SIGNAL(quitRequested(bool &)), SLOT(quitRequested(bool &)));
+    connect(m_mainWindow, SIGNAL(newDataFlow()), SLOT(clearDataFlowNetwork()));
+    connect(m_mainWindow, SIGNAL(loadDataFlow()), SLOT(loadDataFlowNetwork()));
+    connect(m_mainWindow, SIGNAL(saveDataFlow()), SLOT(saveDataFlowNetwork()));
+    connect(m_mainWindow, SIGNAL(saveDataFlowAs()), SLOT(saveDataFlowNetworkAs()));
+    connect(m_mainWindow, SIGNAL(executeDataFlow()), SLOT(executeDataFlowNetwork()));
+    connect(m_mainWindow, SIGNAL(connectVistle()), SLOT(connectVistle()));
+    connect(m_mainWindow, SIGNAL(showSessionUrl()), SLOT(showConnectionInfo()));
+    connect(m_mainWindow, SIGNAL(copySessionUrl()), SLOT(copyConnectionInfo()));
+    connect(m_mainWindow, SIGNAL(selectAllModules()), m_mainWindow->dataFlowView(), SLOT(selectAllModules()));
+    connect(m_mainWindow, SIGNAL(deleteSelectedModules()), m_mainWindow->dataFlowView(), SLOT(deleteModules()));
+    connect(m_mainWindow, SIGNAL(aboutQt()), SLOT(aboutQt()));
+    connect(m_mainWindow, SIGNAL(aboutVistle()), SLOT(aboutVistle()));
 
-   connect(m_scene, SIGNAL(selectionChanged()), SLOT(moduleSelectionChanged()));
+    connect(m_scene, SIGNAL(selectionChanged()), SLOT(moduleSelectionChanged()));
 
-   connect(&m_observer, SIGNAL(quit_s()), qApp, SLOT(quit()));
-   connect(&m_observer, SIGNAL(loadedWorkflowChanged_s(QString)), SLOT(setCurrentFile(QString)));
-   connect(&m_observer, SIGNAL(sessionUrlChanged_s(QString)), SLOT(setSessionUrl(QString)));
-   connect(&m_observer, SIGNAL(info_s(QString, int)),
-      m_mainWindow->console(), SLOT(appendInfo(QString, int)));
-   connect(&m_observer, SIGNAL(modified(bool)),
-      m_mainWindow, SLOT(setModified(bool)));
-   connect(&m_observer, SIGNAL(modified(bool)),
-      this, SLOT(setModified(bool)));
-   connect(&m_observer, SIGNAL(newModule_s(int, boost::uuids::uuid, QString)),
-      m_scene, SLOT(addModule(int,boost::uuids::uuid,QString)));
-   connect(&m_observer, SIGNAL(deleteModule_s(int)),
-      m_scene, SLOT(deleteModule(int)));
-   connect(&m_observer, SIGNAL(moduleStateChanged_s(int, int)),
-      m_scene, SLOT(moduleStateChanged(int, int)));
-   connect(&m_observer, SIGNAL(newPort_s(int, QString)),
-      m_scene, SLOT(newPort(int, QString)));
-   connect(&m_observer, SIGNAL(deletePort_s(int, QString)),
-      m_scene, SLOT(deletePort(int, QString)));
-   connect(&m_observer, SIGNAL(newConnection_s(int, QString, int, QString)),
-      m_scene, SLOT(newConnection(int, QString, int, QString)));
-   connect(&m_observer, SIGNAL(deleteConnection_s(int, QString, int, QString)),
-      m_scene, SLOT(deleteConnection(int, QString, int, QString)));
+    connect(&m_observer, SIGNAL(quit_s()), qApp, SLOT(quit()));
+    connect(&m_observer, SIGNAL(loadedWorkflowChanged_s(QString)), SLOT(setCurrentFile(QString)));
+    connect(&m_observer, SIGNAL(sessionUrlChanged_s(QString)), SLOT(setSessionUrl(QString)));
+    connect(&m_observer, SIGNAL(info_s(QString, int)), m_mainWindow->console(), SLOT(appendInfo(QString, int)));
+    connect(&m_observer, SIGNAL(modified(bool)), m_mainWindow, SLOT(setModified(bool)));
+    connect(&m_observer, SIGNAL(modified(bool)), this, SLOT(setModified(bool)));
+    connect(&m_observer, SIGNAL(newModule_s(int, boost::uuids::uuid, QString)), m_scene,
+            SLOT(addModule(int, boost::uuids::uuid, QString)));
+    connect(&m_observer, SIGNAL(deleteModule_s(int)), m_scene, SLOT(deleteModule(int)));
+    connect(&m_observer, SIGNAL(moduleStateChanged_s(int, int)), m_scene, SLOT(moduleStateChanged(int, int)));
+    connect(&m_observer, SIGNAL(newPort_s(int, QString)), m_scene, SLOT(newPort(int, QString)));
+    connect(&m_observer, SIGNAL(deletePort_s(int, QString)), m_scene, SLOT(deletePort(int, QString)));
+    connect(&m_observer, SIGNAL(newConnection_s(int, QString, int, QString)), m_scene,
+            SLOT(newConnection(int, QString, int, QString)));
+    connect(&m_observer, SIGNAL(deleteConnection_s(int, QString, int, QString)), m_scene,
+            SLOT(deleteConnection(int, QString, int, QString)));
 
-   connect(&m_observer, SIGNAL(newParameter_s(int, QString)),
-           SLOT(newParameter(int, QString)));
-   connect(&m_observer, SIGNAL(parameterValueChanged_s(int, QString)),
-           SLOT(parameterValueChanged(int, QString)));
+    connect(&m_observer, SIGNAL(newParameter_s(int, QString)), SLOT(newParameter(int, QString)));
+    connect(&m_observer, SIGNAL(parameterValueChanged_s(int, QString)), SLOT(parameterValueChanged(int, QString)));
 
-   connect(&m_observer, SIGNAL(newHub_s(int, QString, int, QString, QString, QString)),
-           m_mainWindow, SLOT(newHub(int, QString, int, QString, QString, QString)));
-    connect(&m_observer, SIGNAL(deleteHub_s(int)),
-            m_mainWindow, SLOT(deleteHub(int)));
-   connect(&m_observer, SIGNAL(moduleAvailable_s(int, QString, QString, QString)),
-           m_mainWindow, SLOT(moduleAvailable(int, QString, QString, QString)));
+    connect(&m_observer, SIGNAL(newHub_s(int, QString, int, QString, QString, QString)), m_mainWindow,
+            SLOT(newHub(int, QString, int, QString, QString, QString)));
+    connect(&m_observer, SIGNAL(deleteHub_s(int)), m_mainWindow, SLOT(deleteHub(int)));
+    connect(&m_observer, SIGNAL(moduleAvailable_s(int, QString, QString, QString)), m_mainWindow,
+            SLOT(moduleAvailable(int, QString, QString, QString)));
 
-   connect(&m_observer, SIGNAL(status_s(int, QString, int)),
-           SLOT(statusUpdated(int, QString, int)));
-   connect(&m_observer, SIGNAL(moduleStatus_s(int, QString, int)),
-           m_scene, SLOT(moduleStatus(int, QString, int)));
+    connect(&m_observer, SIGNAL(status_s(int, QString, int)), SLOT(statusUpdated(int, QString, int)));
+    connect(&m_observer, SIGNAL(moduleStatus_s(int, QString, int)), m_scene, SLOT(moduleStatus(int, QString, int)));
 
-   QObject::connect(m_mainWindow->m_moduleBrowser, &ModuleBrowser::startModule, this,
-           [this](int hubId, const QString &moduleName, Qt::Key direction) { m_scene->addModule(hubId, moduleName, direction); });
+    QObject::connect(m_mainWindow->m_moduleBrowser, &ModuleBrowser::startModule, this,
+                     [this](int hubId, const QString &moduleName, Qt::Key direction) {
+                         m_scene->addModule(hubId, moduleName, direction);
+                     });
 
-   connect(m_mainWindow->m_moduleBrowser, &ModuleBrowser::requestRemoveHub, [this](int id){
-           vistle::message::Quit quit(id);
-           m_vistleConnection->sendMessage(quit);
-   });
+    connect(m_mainWindow->m_moduleBrowser, &ModuleBrowser::requestRemoveHub, [this](int id) {
+        vistle::message::Quit quit(id);
+        m_vistleConnection->sendMessage(quit);
+    });
 
-   m_mainWindow->show();
+    m_mainWindow->show();
 }
 
-void UiController::init() {
+void UiController::init()
+{
 #ifdef HAVE_PYTHON
-   m_python->init();
+    m_python->init();
 #endif
-   m_mainWindow->m_console->init();
+    m_mainWindow->m_console->init();
 #ifdef HAVE_PYTHON
-   m_pythonMod->import(&vistle::PythonInterface::the().nameSpace(), m_pythonDir);
+    m_pythonMod->import(&vistle::PythonInterface::the().nameSpace(), m_pythonDir);
 #endif
 
-   moduleSelectionChanged();
+    moduleSelectionChanged();
 }
 
 UiController::~UiController()
+{}
+
+void UiController::finish()
 {
-}
+    m_mainWindow->dataFlowView()->setScene(nullptr);
 
-void UiController::finish() {
+    delete m_scene;
+    m_scene = nullptr;
 
-   m_mainWindow->dataFlowView()->setScene(nullptr);
+    m_vistleConnection->cancel();
+    m_thread->join();
+    delete m_thread;
+    m_thread = nullptr;
 
-   delete m_scene;
-   m_scene = nullptr;
-
-   m_vistleConnection->cancel();
-   m_thread->join();
-   delete m_thread;
-   m_thread = nullptr;
-
-   m_mainWindow->m_console->finish();
+    m_mainWindow->m_console->finish();
 
 #ifdef HAVE_PYTHON
-   delete m_pythonMod;
-   m_pythonMod = nullptr;
+    delete m_pythonMod;
+    m_pythonMod = nullptr;
 
-   delete m_python;
-   m_python = nullptr;
+    delete m_python;
+    m_python = nullptr;
 #endif
 
-   delete m_mainWindow;
-   m_mainWindow = nullptr;
+    delete m_mainWindow;
+    m_mainWindow = nullptr;
 
-   delete m_ui;
-   m_ui = nullptr;
+    delete m_ui;
+    m_ui = nullptr;
 
-   delete m_vistleConnection;
-   m_vistleConnection = nullptr;
+    delete m_vistleConnection;
+    m_vistleConnection = nullptr;
 }
 
-void UiController::quitRequested(bool &allowed) {
-
-   allowed = checkModified("Quit");
+void UiController::quitRequested(bool &allowed)
+{
+    allowed = checkModified("Quit");
 }
 
 bool UiController::checkModified(const QString &reason)
 {
-   //std::cerr << "modification count: " << m_observer->modificationCount() << std::endl;
-   if (m_observer.modificationCount() == 0 && !m_modified)
-      return true;
+    //std::cerr << "modification count: " << m_observer->modificationCount() << std::endl;
+    if (m_observer.modificationCount() == 0 && !m_modified)
+        return true;
 
-   ModifiedDialog d(reason, m_mainWindow);
+    ModifiedDialog d(reason, m_mainWindow);
 
-   int res = d.exec();
-   //std::cerr << "res: " << res << std::endl;
-   if (res == QMessageBox::Save) {
-      saveDataFlowNetwork();
-      return true;
-   }
-   return res == QMessageBox::Discard;
+    int res = d.exec();
+    //std::cerr << "res: " << res << std::endl;
+    if (res == QMessageBox::Save) {
+        saveDataFlowNetwork();
+        return true;
+    }
+    return res == QMessageBox::Discard;
 }
 
 void UiController::clearDataFlowNetwork()
 {
-   if (!checkModified("New"))
-      return;
+    if (!checkModified("New"))
+        return;
 
-   m_vistleConnection->resetDataFlowNetwork();
-   m_observer.resetModificationCount();
-   setCurrentFile(QString());
+    m_vistleConnection->resetDataFlowNetwork();
+    m_observer.resetModificationCount();
+    setCurrentFile(QString());
 }
 
 void UiController::loadDataFlowNetwork()
 {
-   if (!checkModified("Open"))
-      return;
+    if (!checkModified("Open"))
+        return;
 
-   QString dir = m_currentFile.isEmpty() ? QDir::currentPath() : m_currentFile;
-   QString filename = QFileDialog::getOpenFileName(m_mainWindow,
-      tr("Open Data Flow Network"),
-      dir,
-      tr("Vistle files (*.vsl);;Python files (*.py);;All files (*)"));
+    QString dir = m_currentFile.isEmpty() ? QDir::currentPath() : m_currentFile;
+    QString filename = QFileDialog::getOpenFileName(m_mainWindow, tr("Open Data Flow Network"), dir,
+                                                    tr("Vistle files (*.vsl);;Python files (*.py);;All files (*)"));
 
-   if (filename.isEmpty())
-      return;
+    if (filename.isEmpty())
+        return;
 
-   m_observer.resetModificationCount();
-   clearDataFlowNetwork();
+    m_observer.resetModificationCount();
+    clearDataFlowNetwork();
 
 #ifdef HAVE_PYTHON
-   vistle::PythonInterface::the().exec_file(filename.toStdString());
+    vistle::PythonInterface::the().exec_file(filename.toStdString());
 #endif
 
-   setCurrentFile(filename);
-   m_observer.resetModificationCount();
+    setCurrentFile(filename);
+    m_observer.resetModificationCount();
 }
 
 void UiController::saveDataFlowNetwork(const QString &filename)
 {
-   if(filename.isEmpty()) {
-      if (!m_currentFile.isEmpty())
-         saveDataFlowNetwork(m_currentFile);
-      else
-         saveDataFlowNetworkAs();
-   } else {
-      std::cerr << "writing to " << filename.toStdString() << std::endl;
-      setCurrentFile(filename);
-      std::string cmd = "save(\"";
-      cmd += filename.toStdString();
-      cmd += "\")";
+    if (filename.isEmpty()) {
+        if (!m_currentFile.isEmpty())
+            saveDataFlowNetwork(m_currentFile);
+        else
+            saveDataFlowNetworkAs();
+    } else {
+        std::cerr << "writing to " << filename.toStdString() << std::endl;
+        setCurrentFile(filename);
+        std::string cmd = "save(\"";
+        cmd += filename.toStdString();
+        cmd += "\")";
 #ifdef HAVE_PYTHON
-      vistle::PythonInterface::the().exec(cmd);
+        vistle::PythonInterface::the().exec(cmd);
 #endif
-      m_observer.resetModificationCount();
-   }
+        m_observer.resetModificationCount();
+    }
 }
 
 void UiController::saveDataFlowNetworkAs(const QString &filename)
 {
-   QString newFile = QFileDialog::getSaveFileName(m_mainWindow,
-      tr("Save Data Flow Network"),
-      filename.isEmpty() ? QDir::currentPath() : filename,
-      tr("Vistle files (*.vsl);;Python files (*.py);;All files (*)"));
+    QString newFile = QFileDialog::getSaveFileName(m_mainWindow, tr("Save Data Flow Network"),
+                                                   filename.isEmpty() ? QDir::currentPath() : filename,
+                                                   tr("Vistle files (*.vsl);;Python files (*.py);;All files (*)"));
 
-   if (!newFile.isEmpty()) {
-      saveDataFlowNetwork(newFile);
-   }
+    if (!newFile.isEmpty()) {
+        saveDataFlowNetwork(newFile);
+    }
 }
 
 void UiController::executeDataFlowNetwork()
 {
-   m_vistleConnection->executeSources();
+    m_vistleConnection->executeSources();
 }
 
 void UiController::connectVistle()
 {
-   if (!m_vistleConnection->ui().isConnected())
-      m_vistleConnection->ui().tryConnect();
+    if (!m_vistleConnection->ui().isConnected())
+        m_vistleConnection->ui().tryConnect();
 }
 
 void UiController::moduleSelectionChanged()
 {
-   auto selected = m_scene->selectedItems();
-   QList<Module *> selectedModules;
-   for (auto &item: selected) {
-      if (Module *m = dynamic_cast<Module *>(item)) {
-         selectedModules.push_back(m);
-      }
-   }
+    auto selected = m_scene->selectedItems();
+    QList<Module *> selectedModules;
+    for (auto &item: selected) {
+        if (Module *m = dynamic_cast<Module *>(item)) {
+            selectedModules.push_back(m);
+        }
+    }
 
-   QString title = "Module Parameters";
-   if (selectedModules.size() == 1) {
-      const Module *m = selectedModules[0];
-      m_mainWindow->parameters()->setModule(m->id());
-      title = QString("Parameters: %1").arg(m->name());
-      m_mainWindow->parameters()->adjustSize();
-      m_mainWindow->parameters()->show();
-      m_mainWindow->parameterDock()->show();
-      m_mainWindow->parameterDock()->raise();
-   } else {
-      m_mainWindow->parameters()->setModule(vistle::message::Id::Vistle);
-      title = QString("Session Parameters");
-      m_mainWindow->parameters()->adjustSize();
-      m_mainWindow->modulesDock()->show();
-      m_mainWindow->modulesDock()->raise();
-   }
-   m_mainWindow->parameterDock()->setWindowTitle(title);
+    QString title = "Module Parameters";
+    if (selectedModules.size() == 1) {
+        const Module *m = selectedModules[0];
+        m_mainWindow->parameters()->setModule(m->id());
+        title = QString("Parameters: %1").arg(m->name());
+        m_mainWindow->parameters()->adjustSize();
+        m_mainWindow->parameters()->show();
+        m_mainWindow->parameterDock()->show();
+        m_mainWindow->parameterDock()->raise();
+    } else {
+        m_mainWindow->parameters()->setModule(vistle::message::Id::Vistle);
+        title = QString("Session Parameters");
+        m_mainWindow->parameters()->adjustSize();
+        m_mainWindow->modulesDock()->show();
+        m_mainWindow->modulesDock()->raise();
+    }
+    m_mainWindow->parameterDock()->setWindowTitle(title);
 }
 
 void UiController::newParameter(int moduleId, QString parameterName)
@@ -343,13 +330,13 @@ void UiController::newParameter(int moduleId, QString parameterName)
 #endif
 #if 1
     if (parameterName == "_position") {
-       if (Module *m = m_scene->findModule(moduleId)) {
-          auto p = vistle::VistleConnection::the().getParameter(moduleId, "_position");
-          auto vp = std::dynamic_pointer_cast<vistle::VectorParameter>(p);
-          if (vp && vp->isDefault() && m->isPositionValid()) {
-             m->sendPosition();
-          }
-       }
+        if (Module *m = m_scene->findModule(moduleId)) {
+            auto p = vistle::VistleConnection::the().getParameter(moduleId, "_position");
+            auto vp = std::dynamic_pointer_cast<vistle::VectorParameter>(p);
+            if (vp && vp->isDefault() && m->isPositionValid()) {
+                m->sendPosition();
+            }
+        }
     }
 #endif
 }
@@ -360,21 +347,21 @@ void UiController::parameterValueChanged(int moduleId, QString parameterName)
    QString text = "Parameter value changed on ID: " + QString::number(moduleId) + ":" + parameterName;
    m_console->appendDebug(text);
 #endif
-   if (parameterName == "_position") {
-      if (Module *m = m_scene->findModule(moduleId)) {
-         auto p = vistle::VistleConnection::the().getParameter(moduleId, "_position");
-         auto vp = std::dynamic_pointer_cast<vistle::VectorParameter>(p);
-         if (vp && !vp->isDefault()) {
-            vistle::ParamVector pos = vp->getValue();
-            m->setPos(pos[0], pos[1]);
-            m->setPositionValid();
-         }
-      }
-   }
+    if (parameterName == "_position") {
+        if (Module *m = m_scene->findModule(moduleId)) {
+            auto p = vistle::VistleConnection::the().getParameter(moduleId, "_position");
+            auto vp = std::dynamic_pointer_cast<vistle::VectorParameter>(p);
+            if (vp && !vp->isDefault()) {
+                vistle::ParamVector pos = vp->getValue();
+                m->setPos(pos[0], pos[1]);
+                m->setPositionValid();
+            }
+        }
+    }
 }
 
-void UiController::statusUpdated(int id, QString text, int prio) {
-
+void UiController::statusUpdated(int id, QString text, int prio)
+{
     if (m_mainWindow) {
         if (text.isEmpty())
             m_mainWindow->statusBar()->clearMessage();
@@ -383,17 +370,20 @@ void UiController::statusUpdated(int id, QString text, int prio) {
     }
 }
 
-void UiController::setCurrentFile(QString file) {
+void UiController::setCurrentFile(QString file)
+{
     m_currentFile = file;
     m_mainWindow->setFilename(m_currentFile);
 }
 
-void UiController::setSessionUrl(QString url) {
+void UiController::setSessionUrl(QString url)
+{
     m_sessionUrl = url;
     showConnectionInfo();
 }
 
-void UiController::setModified(bool modified) {
+void UiController::setModified(bool modified)
+{
     m_modified = modified;
 }
 
@@ -412,8 +402,7 @@ void UiController::aboutVistle()
     }
 #else
     QFile file(":/aboutData/lgpl-2.1.txt");
-    if (file.open(QIODevice::ReadOnly))
-    {
+    if (file.open(QIODevice::ReadOnly)) {
         QString data(file.readAll());
         ui->textEdit->setPlainText(data);
     }
@@ -441,9 +430,7 @@ void UiController::showConnectionInfo()
             .arg(m_sessionUrl),
             vistle::message::SendText::Info);
 #else
-    m_mainWindow->m_console->appendInfo(QString("Share this: %1")
-                                            .arg(m_sessionUrl),
-                                        vistle::message::SendText::Info);
+    m_mainWindow->m_console->appendInfo(QString("Share this: %1").arg(m_sessionUrl), vistle::message::SendText::Info);
 #endif
 }
 

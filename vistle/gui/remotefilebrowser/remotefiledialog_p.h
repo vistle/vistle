@@ -81,7 +81,7 @@
 
 #include "vistlefilesystemmodel.h"
 
-#if defined (Q_OS_UNIX)
+#if defined(Q_OS_UNIX)
 #include <unistd.h>
 #endif
 
@@ -97,9 +97,8 @@ class QCompleter;
 class QHBoxLayout;
 class Ui_RemoteFileDialog;
 
-struct RemoteFileDialogArgs
-{
-    RemoteFileDialogArgs() : parent(0), mode(RemoteFileDialog::AnyFile) {}
+struct RemoteFileDialogArgs {
+    RemoteFileDialogArgs(): parent(0), mode(RemoteFileDialog::AnyFile) {}
 
     QWidget *parent;
     QString caption;
@@ -220,7 +219,7 @@ public:
     void _q_selectionChanged();
     void _q_goToUrl(const QUrl &url);
     void _q_autoCompleteFileName(const QString &);
-    void _q_rowsInserted(const QModelIndex & parent);
+    void _q_rowsInserted(const QModelIndex &parent);
     void _q_fileRenamed(const QString &path, const QString &oldName, const QString &newName);
     void _q_directoryLoaded(const QString &path);
 
@@ -272,21 +271,20 @@ public:
     Q_DISABLE_COPY(RemoteFileDialogPrivate)
 };
 
-class RemoteFileDialogLineEdit : public QLineEdit
-{
+class RemoteFileDialogLineEdit: public QLineEdit {
 public:
-    RemoteFileDialogLineEdit(QWidget *parent = 0) : QLineEdit(parent), d_ptr(0){}
-    void setFileDialogPrivate(RemoteFileDialogPrivate *d_pointer) {d_ptr = d_pointer; }
+    RemoteFileDialogLineEdit(QWidget *parent = 0): QLineEdit(parent), d_ptr(0) {}
+    void setFileDialogPrivate(RemoteFileDialogPrivate *d_pointer) { d_ptr = d_pointer; }
     void keyPressEvent(QKeyEvent *e) override;
     bool hideOnEsc;
+
 private:
     RemoteFileDialogPrivate *d_ptr;
 };
 
-class RemoteFileDialogComboBox : public QComboBox
-{
+class RemoteFileDialogComboBox: public QComboBox {
 public:
-    RemoteFileDialogComboBox(QWidget *parent = 0) : QComboBox(parent), urlModel(0) {}
+    RemoteFileDialogComboBox(QWidget *parent = 0): QComboBox(parent), urlModel(0) {}
     void setFileDialogPrivate(RemoteFileDialogPrivate *d_pointer);
     void showPopup() override;
     void setHistory(const QStringList &paths);
@@ -299,20 +297,20 @@ private:
     QStringList m_history;
 };
 
-class RemoteFileDialogListView : public QListView
-{
+class RemoteFileDialogListView: public QListView {
 public:
     RemoteFileDialogListView(QWidget *parent = 0);
     void setFileDialogPrivate(RemoteFileDialogPrivate *d_pointer);
     QSize sizeHint() const override;
+
 protected:
     void keyPressEvent(QKeyEvent *e) override;
+
 private:
     RemoteFileDialogPrivate *d_ptr;
 };
 
-class RemoteFileDialogTreeView : public QTreeView
-{
+class RemoteFileDialogTreeView: public QTreeView {
 public:
     RemoteFileDialogTreeView(QWidget *parent);
     void setFileDialogPrivate(RemoteFileDialogPrivate *d_pointer);
@@ -320,18 +318,21 @@ public:
 
 protected:
     void keyPressEvent(QKeyEvent *e) override;
+
 private:
     RemoteFileDialogPrivate *d_ptr;
 };
 
-QModelIndex RemoteFileDialogPrivate::mapToSource(const QModelIndex &index) const {
+QModelIndex RemoteFileDialogPrivate::mapToSource(const QModelIndex &index) const
+{
 #ifdef QT_NO_PROXYMODEL
     return index;
 #else
     return proxyModel ? proxyModel->mapToSource(index) : index;
 #endif
 }
-QModelIndex RemoteFileDialogPrivate::mapFromSource(const QModelIndex &index) const {
+QModelIndex RemoteFileDialogPrivate::mapFromSource(const QModelIndex &index) const
+{
 #ifdef QT_NO_PROXYMODEL
     return index;
 #else

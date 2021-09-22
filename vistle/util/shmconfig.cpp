@@ -5,8 +5,8 @@
 
 namespace vistle {
 
-bool shmPerRank() {
-
+bool shmPerRank()
+{
 #ifndef NO_SHMEM
     const char *env = getenv("VISTLE_SHM_PER_RANK");
     bool perRank = env ? true : false;
@@ -17,4 +17,4 @@ bool shmPerRank() {
 #endif
 }
 
-}
+} // namespace vistle

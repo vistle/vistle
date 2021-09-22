@@ -14,23 +14,20 @@ class Executor;
 class Module;
 #ifdef MODULE_THREAD
 class V_MANAGEREXPORT VistleManager {
-
-#else 
+#else
 class VistleManager {
 #endif
 
 public:
     //if not called from vistle, this assumes MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided); is set
-    bool run(int argc, char* argv[]);
+    bool run(int argc, char *argv[]);
     ~VistleManager();
 
 private:
     boost::mpi::communicator m_comm;
-    Executor* executer = nullptr;
-
+    Executor *executer = nullptr;
 };
-}
-
+} // namespace vistle
 
 
 #endif // !VISTLE_MANAGER_LIB_H

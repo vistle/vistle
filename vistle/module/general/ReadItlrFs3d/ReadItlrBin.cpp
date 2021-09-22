@@ -32,11 +32,10 @@
 MODULE_MAIN(ReadItlrBin)
 
 struct File {
-    File(const std::string &name)
-    : name(name)
-    {}
+    File(const std::string &name): name(name) {}
 
-    ~File() {
+    ~File()
+    {
         if (fp)
             fclose(fp);
         fp = nullptr;
@@ -52,11 +51,10 @@ struct File {
 #endif
     }
 
-    bool isHdf5() {
-        return boost::algorithm::ends_with(name, ".hdf");
-    }
+    bool isHdf5() { return boost::algorithm::ends_with(name, ".hdf"); }
 
-    std::string format() {
+    std::string format()
+    {
         if (fp)
             return "plain";
 #ifdef HAVE_HDF5
@@ -68,17 +66,18 @@ struct File {
         return "plain";
     }
 
-    bool open() {
+    bool open()
+    {
         if (isHdf5()) {
 #ifdef HAVE_HDF5
-        file = H5Fopen(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
-        if (file >= 0)
-            return true;
-        std::cerr << "failed to open HDF5 file " << name << std::endl;
-        return false;
+            file = H5Fopen(name.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+            if (file >= 0)
+                return true;
+            std::cerr << "failed to open HDF5 file " << name << std::endl;
+            return false;
 #else
-        std::cerr << "failed to open HDF5 file " << name << ": no HDF5 support" << std::endl;
-        return false;
+            std::cerr << "failed to open HDF5 file " << name << ": no HDF5 support" << std::endl;
+            return false;
 #endif
         } else {
 #ifdef _WIN32
@@ -92,7 +91,8 @@ struct File {
         return false;
     }
 
-    bool openDataset(const std::string &dataset) {
+    bool openDataset(const std::string &dataset)
+    {
 #ifdef HAVE_HDF5
         if (isHdf5()) {
             std::cerr << "opening dataset " << dataset << std::endl;
@@ -110,7 +110,7 @@ struct File {
             this->datatype = H5Dget_type(this->dataset);
             this->dataclass = H5Tget_class(this->datatype);
             this->typesize = H5Tget_size(this->datatype);
-            this->byteorder= H5Tget_order(this->datatype);
+            this->byteorder = H5Tget_order(this->datatype);
             this->dataspace = H5Dget_space(this->dataset);
             this->numdims = H5Sget_simple_extent_ndims(this->dataspace);
             dims.resize(numdims);
@@ -145,64 +145,57 @@ struct File {
 
 using namespace vistle;
 
-namespace
-{
+namespace {
 
 const endianness disk_endian = little_endian;
 
-template <typename T>
+template<typename T>
 struct on_disk;
 
 template<>
-struct on_disk<float>
-{
+struct on_disk<float> {
     typedef double type;
 };
 
 template<>
-struct on_disk<double>
-{
+struct on_disk<double> {
     typedef double type;
 };
 
 template<>
-struct on_disk<int>
-{
+struct on_disk<int> {
     typedef int32_t type;
 };
 
 template<>
-struct on_disk<unsigned>
-{
+struct on_disk<unsigned> {
     typedef uint32_t type;
 };
 
 template<>
-struct on_disk<long>
-{
+struct on_disk<long> {
     typedef int32_t type;
 };
 
 template<>
-struct on_disk<unsigned long>
-{
+struct on_disk<unsigned long> {
     typedef uint32_t type;
 };
 
-}
+} // namespace
 
-template <typename D>
-bool readArrayChunk(FILE *fp, D *buf, const size_t num) {
-
+template<typename D>
+bool readArrayChunk(FILE *fp, D *buf, const size_t num)
+{
     size_t n = fread(reinterpret_cast<char *>(buf), sizeof(buf[0]), num, fp);
     if (n != num) {
         std::cerr << "readArrayChunk failed: read " << n << " items instead of " << num << std::endl;
         return false;
     }
     if (disk_endian != host_endian) {
-       for (size_t i=0; i<num; ++i) {
-          buf[i] = byte_swap<disk_endian, host_endian, D>(buf[i]);
-       }
+        for (size_t i = 0; i < num; ++i) {
+            buf[i] = byte_swap<disk_endian, host_endian, D>(buf[i]);
+        }
     }
     return true;
 }
@@ -214,28 +207,33 @@ template<typename T>
 hid_t maptype();
 
 template<>
-hid_t maptype<float>() {
+hid_t maptype<float>()
+{
     return H5T_NATIVE_FLOAT;
 }
 
 template<>
-hid_t maptype<double>() {
+hid_t maptype<double>()
+{
     return H5T_NATIVE_DOUBLE;
 }
 
 template<>
-hid_t maptype<unsigned int>() {
+hid_t maptype<unsigned int>()
+{
     return H5T_NATIVE_UINT;
 }
 
 template<>
-hid_t maptype<unsigned long>() {
+hid_t maptype<unsigned long>()
+{
     return H5T_NATIVE_ULONG;
 }
 #endif
 
-template <typename T>
-bool readArray(File &file, const std::string &name, T *p, const size_t num) {
+template<typename T>
+bool readArray(File &file, const std::string &name, T *p, const size_t num)
+{
     if (!file.openDataset(name)) {
         std::cerr << "failed to open dataset " << name << std::endl;
         return false;
@@ -246,12 +244,12 @@ bool readArray(File &file, const std::string &name, T *p, const size_t num) {
             return readArrayChunk<T>(file.fp, p, num);
         } else {
             std::vector<D> buf(bufsiz);
-            for (size_t i=0; i<num; i+=bufsiz) {
-                const size_t nread = i+bufsiz <= num ? bufsiz : num-i;
+            for (size_t i = 0; i < num; i += bufsiz) {
+                const size_t nread = i + bufsiz <= num ? bufsiz : num - i;
                 if (!readArrayChunk(file.fp, &buf[0], nread))
                     return false;
-                for (size_t j=0; j<nread; ++j) {
-                    p[i+j] = buf[j];
+                for (size_t j = 0; j < nread; ++j) {
+                    p[i + j] = buf[j];
                 }
             }
         }
@@ -263,16 +261,16 @@ bool readArray(File &file, const std::string &name, T *p, const size_t num) {
         size_t begin = file.offset;
         std::vector<size_t> sizes(file.numdims);
         std::copy(file.dims.begin(), file.dims.end(), sizes.begin());
-        for (int d=file.numdims-1; d>0; --d) {
-            sizes[d-1] *= sizes[d];
+        for (int d = file.numdims - 1; d > 0; --d) {
+            sizes[d - 1] *= sizes[d];
         }
         offset[0] = begin;
         count[0] = num;
-        for (int d=1; d<file.numdims; ++d) {
-            offset[d] = offset[d-1]/file.dims[d-1];
-            count[d] = count[d-1]/file.dims[d-1];
+        for (int d = 1; d < file.numdims; ++d) {
+            offset[d] = offset[d - 1] / file.dims[d - 1];
+            count[d] = count[d - 1] / file.dims[d - 1];
         }
-        for (int d=0; d<file.numdims-1; ++d) {
+        for (int d = 0; d < file.numdims - 1; ++d) {
             offset[d] %= file.dims[d];
             count[d] = file.dims[d];
         }
@@ -283,21 +281,23 @@ bool readArray(File &file, const std::string &name, T *p, const size_t num) {
         for (const auto &d: count)
             std::cerr << " " << d;
         std::cerr << std::endl;
-        size_t sz = count[file.numdims-1];
-        for (int d=0; d<file.numdims-1; ++d) {
+        size_t sz = count[file.numdims - 1];
+        for (int d = 0; d < file.numdims - 1; ++d) {
             sz *= count[d];
             assert(offset[d] == 0);
             assert(count[d] == file.dims[d]);
         }
         assert(sz == num);
-        if (H5Sselect_hyperslab(file.dataspace, H5S_SELECT_SET,  offset.data(), nullptr, count.data(), nullptr) < 0) {
-            std::cerr << "H5Sselect_hyperslab from file failed for " << file.name << ":" << file.datasetName << std::endl;
+        if (H5Sselect_hyperslab(file.dataspace, H5S_SELECT_SET, offset.data(), nullptr, count.data(), nullptr) < 0) {
+            std::cerr << "H5Sselect_hyperslab from file failed for " << file.name << ":" << file.datasetName
+                      << std::endl;
             return false;
         }
         hid_t memspace = H5Screate_simple(file.numdims, count.data(), nullptr);
         std::vector<hsize_t> origin(file.numdims);
         if (H5Sselect_hyperslab(memspace, H5S_SELECT_SET, origin.data(), nullptr, count.data(), nullptr) < 0) {
-            std::cerr << "H5Sselect_hyperslab in memory failed for " << file.name << ":" << file.datasetName << std::endl;
+            std::cerr << "H5Sselect_hyperslab in memory failed for " << file.name << ":" << file.datasetName
+                      << std::endl;
             return false;
         }
         if (H5Dread(file.dataset, maptype<T>(), memspace, file.dataspace, H5P_DEFAULT, p) < 0) {
@@ -311,15 +311,16 @@ bool readArray(File &file, const std::string &name, T *p, const size_t num) {
     return false;
 }
 
-template <typename T>
-bool skipArray(File &file, const std::string &name, const size_t num) {
+template<typename T>
+bool skipArray(File &file, const std::string &name, const size_t num)
+{
     if (!file.openDataset(name)) {
         std::cerr << "failed to open dataset " << name << std::endl;
         return false;
     }
     typedef typename on_disk<T>::type D;
     if (file.fp) {
-        return !fseek(file.fp, sizeof(D)*num, SEEK_CUR);
+        return !fseek(file.fp, sizeof(D) * num, SEEK_CUR);
 #ifdef HAVE_HDF5
     } else if (file.file) {
         file.offset += num;
@@ -329,7 +330,8 @@ bool skipArray(File &file, const std::string &name, const size_t num) {
     return false;
 }
 
-bool readFloatArray(File &file, const std::string &name, Scalar *p, const size_t num) {
+bool readFloatArray(File &file, const std::string &name, Scalar *p, const size_t num)
+{
     if (file.fp) {
         if (ferror(file.fp)) {
             std::cerr << "readFloatArray: file error" << std::endl;
@@ -343,7 +345,8 @@ bool readFloatArray(File &file, const std::string &name, Scalar *p, const size_t
     return readArray<Scalar>(file, name, p, num);
 }
 
-bool skipFloatArray(File &file, const std::string &name, const size_t num) {
+bool skipFloatArray(File &file, const std::string &name, const size_t num)
+{
     if (file.fp) {
         if (ferror(file.fp)) {
             std::cerr << "skipFloatArray: file error" << std::endl;
@@ -358,38 +361,39 @@ bool skipFloatArray(File &file, const std::string &name, const size_t num) {
 }
 
 ReadItlrBin::ReadItlrBin(const std::string &name, int moduleID, mpi::communicator comm)
-    : Reader(name, moduleID, comm)
-    , m_nparts(size())
-    , m_dims{0,0,0} {
+: Reader(name, moduleID, comm), m_nparts(size()), m_dims{0, 0, 0}
+{
+    m_incrementFilename =
+        addIntParameter("increment_filename", "replace digits in filename with timestep", false, Parameter::Boolean);
 
-    m_incrementFilename = addIntParameter("increment_filename", "replace digits in filename with timestep", false, Parameter::Boolean);
-
-    m_gridFilename = addStringParameter("grid_filename", ".bin file for grid", "/data/itlr/itlmer-Case11114_VISUS/netz_xyz.bin", Parameter::ExistingFilename);
+    m_gridFilename = addStringParameter("grid_filename", ".bin file for grid",
+                                        "/data/itlr/itlmer-Case11114_VISUS/netz_xyz.bin", Parameter::ExistingFilename);
     setParameterFilters(m_gridFilename, "FS3D Binary Files (*.bin)/FS3D HDF5 Files (*.hdf)/All Files (*)");
-    for (int i=0; i<NumPorts; ++i) {
+    for (int i = 0; i < NumPorts; ++i) {
         if (i == 0)
-            m_filename[i] = addStringParameter("filename"+std::to_string(i), ".lst or .bin file for data", "/data/itlr/itlmer-Case11114_VISUS/funs.lst", Parameter::ExistingFilename);
+            m_filename[i] =
+                addStringParameter("filename" + std::to_string(i), ".lst or .bin file for data",
+                                   "/data/itlr/itlmer-Case11114_VISUS/funs.lst", Parameter::ExistingFilename);
         else
-            m_filename[i] = addStringParameter("filename"+std::to_string(i), ".lst or .bin file for data", "", Parameter::ExistingFilename);
+            m_filename[i] = addStringParameter("filename" + std::to_string(i), ".lst or .bin file for data", "",
+                                               Parameter::ExistingFilename);
         setParameterFilters(m_filename[i], "List Files (*.lst)/Binary Files (*.bin)/HDF5 Files (*.hdf)/All Files (*)");
     }
 
     m_numPartitions = addIntParameter("num_partitions", "number of partitions (-1: MPI ranks)", -1);
     setParameterRange(m_numPartitions, (Integer)-1, std::numeric_limits<Integer>::max());
 
-    for (int i=0; i<NumPorts; ++i) {
-        m_dataOut[i] = createOutputPort("data"+std::to_string(i), "data output");
+    for (int i = 0; i < NumPorts; ++i) {
+        m_dataOut[i] = createOutputPort("data" + std::to_string(i), "data output");
     }
 
-   setParallelizationMode(ParallelizeBlocks);
-   setAllowTimestepDistribution(true);
-   observeParameter(m_numPartitions);
+    setParallelizationMode(ParallelizeBlocks);
+    setAllowTimestepDistribution(true);
+    observeParameter(m_numPartitions);
 }
 
-ReadItlrBin::~ReadItlrBin() {
-
-
-}
+ReadItlrBin::~ReadItlrBin()
+{}
 
 bool ReadItlrBin::examine(const Parameter *param)
 {
@@ -409,7 +413,7 @@ bool ReadItlrBin::prepareRead()
     int numFiles = -1;
     m_haveListFile = false;
     m_haveFileList = false;
-    for (int port=0; port<NumPorts; ++port) {
+    for (int port = 0; port < NumPorts; ++port) {
         m_scalarFile[port] = m_filename[port]->getValue();
         if (m_scalarFile[port].empty())
             continue;
@@ -448,32 +452,31 @@ bool ReadItlrBin::prepareRead()
 
     if (!m_haveListFile && m_incrementFilename->getValue()) {
         int last = m_last->getValue();
-        for (int port=0; port<NumPorts; ++port) {
+        for (int port = 0; port < NumPorts; ++port) {
             m_fileList[port].clear();
             auto file = m_scalarFile[port];
             if (file.empty())
                 continue;
             auto len = file.length();
-            std::string::size_type digitbegin=std::string::npos;
-            std::string::size_type digitend=std::string::npos;
-            for (size_t i=len; i>0; --i) {
-                auto &c = file[i-1];
+            std::string::size_type digitbegin = std::string::npos;
+            std::string::size_type digitend = std::string::npos;
+            for (size_t i = len; i > 0; --i) {
+                auto &c = file[i - 1];
                 if (std::isdigit(c)) {
                     if (digitend == std::string::npos)
                         digitend = i;
-                    digitbegin = i-1;
-                }
-                else if (digitend != std::string::npos) {
+                    digitbegin = i - 1;
+                } else if (digitend != std::string::npos) {
                     break;
                 }
             }
             if (digitbegin != std::string::npos) {
                 auto numdigits = digitend - digitbegin;
-                for (int i=0; i<=last; i+=1) {
+                for (int i = 0; i <= last; i += 1) {
                     std::stringstream str;
                     str << std::setfill('0') << std::setw(numdigits) << i;
-                    for (std::string::size_type i=0; i<numdigits; ++i) {
-                        file[digitbegin+i] = str.str()[i];
+                    for (std::string::size_type i = 0; i < numdigits; ++i) {
+                        file[digitbegin + i] = str.str()[i];
                     }
                     std::cerr << "file: " << file << std::endl;
                     m_fileList[port].emplace_back(file);
@@ -509,10 +512,10 @@ bool ReadItlrBin::read(Reader::Token &token, int timestep, int block)
         timestep = 0;
     }
 
-    if (block<0)
+    if (block < 0)
         block = 0;
 
-    for (int port=0; port<NumPorts; ++port) {
+    for (int port = 0; port < NumPorts; ++port) {
         if (m_scalarFile[port].empty())
             continue;
         if (ssize_t(m_fileList[port].size()) <= timestep)
@@ -542,29 +545,29 @@ bool ReadItlrBin::read(Reader::Token &token, int timestep, int block)
 
 bool ReadItlrBin::finishRead()
 {
-    for (int port=0; port<NumPorts; ++port)
+    for (int port = 0; port < NumPorts; ++port)
         m_fileList[port].clear();
     m_grids.clear();
 
     return true;
 }
 
-ReadItlrBin::Block ReadItlrBin::computeBlock(int part) const {
-
+ReadItlrBin::Block ReadItlrBin::computeBlock(int part) const
+{
     int nslices = m_dims[SplitDim];
-    int perpart = (nslices+m_nparts-1)/m_nparts;
+    int perpart = (nslices + m_nparts - 1) / m_nparts;
 
     int begin = 0, end = nslices;
     int beginghost = 0, endghost = 0;
 
-    if (part >= 0)  {
-        begin = part*perpart;
-        end = begin+perpart+1;
+    if (part >= 0) {
+        begin = part * perpart;
+        end = begin + perpart + 1;
         if (part > 0) {
             --begin;
             ++beginghost;
         }
-        if (part < m_nparts-1) {
+        if (part < m_nparts - 1) {
             ++end;
             ++endghost;
         } else {
@@ -582,7 +585,8 @@ ReadItlrBin::Block ReadItlrBin::computeBlock(int part) const {
     return block;
 }
 
-bool readHdf5GridSize(File &file, uint32_t dims[3]) {
+bool readHdf5GridSize(File &file, uint32_t dims[3])
+{
 #ifdef HAVE_HDF5
     hid_t attr = H5Aopen(file.file, "gridsize", H5P_DEFAULT);
     if (attr < 0) {
@@ -602,8 +606,8 @@ bool readHdf5GridSize(File &file, uint32_t dims[3]) {
 #endif
 }
 
-bool readGridSizeFromGrid(File &file, uint32_t dims[3]) {
-
+bool readGridSizeFromGrid(File &file, uint32_t dims[3])
+{
     if (file.fp) {
         char header[80];
         size_t n = fread(header, 80, 1, file.fp);
@@ -617,8 +621,8 @@ bool readGridSizeFromGrid(File &file, uint32_t dims[3]) {
     return readHdf5GridSize(file, dims);
 }
 
-bool readGridSizeFromField(File &file, uint32_t dims[3]) {
-
+bool readGridSizeFromField(File &file, uint32_t dims[3])
+{
     if (file.fp) {
         char header[80];
         size_t n = fread(header, 80, 1, file.fp);
@@ -632,16 +636,16 @@ bool readGridSizeFromField(File &file, uint32_t dims[3]) {
         if (!readArray<uint32_t>(file, "dims", d.data(), 7)) {
             return false;
         }
-        for (int i=0; i<3; ++i)
-            dims[i] = d[i+3];
+        for (int i = 0; i < 3; ++i)
+            dims[i] = d[i + 3];
         return true;
     }
 
     return readHdf5GridSize(file, dims);
 }
 
-std::vector<RectilinearGrid::ptr> ReadItlrBin::readGridBlocks(const std::string &filename, int nparts) {
-
+std::vector<RectilinearGrid::ptr> ReadItlrBin::readGridBlocks(const std::string &filename, int nparts)
+{
     std::vector<RectilinearGrid::ptr> result;
 
     File file(filename);
@@ -650,7 +654,7 @@ std::vector<RectilinearGrid::ptr> ReadItlrBin::readGridBlocks(const std::string 
         return result;
     }
 
-    uint32_t dims[3]{0,0,0};
+    uint32_t dims[3]{0, 0, 0};
     if (!readGridSizeFromGrid(file, dims)) {
         sendError("failed to read grid dimensions from %s", filename.c_str());
         return result;
@@ -666,9 +670,9 @@ std::vector<RectilinearGrid::ptr> ReadItlrBin::readGridBlocks(const std::string 
 
     // read coordinates and prepare for transformation avoiding transposition
     std::vector<Scalar> coords[3];
-    for (int i=0; i<3; ++i) {
+    for (int i = 0; i < 3; ++i) {
         if (file.isHdf5())
-            coords[i].resize(dims[i]+1);
+            coords[i].resize(dims[i] + 1);
         else
             coords[i].resize(dims[i]);
         if (!readFloatArray(file, axis[i], coords[i].data(), coords[i].size())) {
@@ -677,39 +681,39 @@ std::vector<RectilinearGrid::ptr> ReadItlrBin::readGridBlocks(const std::string 
         }
         if (file.isHdf5()) {
             // per-cell data was read, map to dual grid
-            for (size_t j=0; j<coords[i].size()-1; ++j) {
-                coords[i][j] += coords[i][j+1];
+            for (size_t j = 0; j < coords[i].size() - 1; ++j) {
+                coords[i][j] += coords[i][j + 1];
                 coords[i][j] *= 0.5;
             }
             coords[i].resize(dims[i]);
-        } else if (i==2) {
-            std::transform(coords[i].begin(), coords[i].end(), coords[i].begin(), [](Scalar z){return -z;});
+        } else if (i == 2) {
+            std::transform(coords[i].begin(), coords[i].end(), coords[i].begin(), [](Scalar z) { return -z; });
             std::reverse(coords[i].begin(), coords[i].end());
         }
     }
     if (!file.isHdf5()) {
         std::swap(coords[0], coords[2]);
     }
-    for (int i=0; i<3; ++i) {
+    for (int i = 0; i < 3; ++i) {
         m_dims[i] = coords[i].size();
     }
     if (rank() == 0)
-       sendInfo("grid dimensions: %d %d %d", (int)m_dims[0], (int)m_dims[1], (int)m_dims[2]);
+        sendInfo("grid dimensions: %d %d %d", (int)m_dims[0], (int)m_dims[1], (int)m_dims[2]);
 
-    for (int part=0; part<nparts; ++part) {
+    for (int part = 0; part < nparts; ++part) {
         auto b = computeBlock(part);
         std::cerr << "reading block " << part << ", slices " << b.begin << " to " << b.end << std::endl;
 
         //RectilinearGrid::ptr grid(new RectilinearGrid(b.end-b.begin, coords[1].size(), coords[2].size()));
-        RectilinearGrid::ptr grid(new RectilinearGrid(SplitDim==0 ? b.end-b.begin : coords[0].size(),
-                                                      SplitDim==1 ? b.end-b.begin : coords[1].size(),
-                                                      SplitDim==2 ? b.end-b.begin : coords[2].size()));
+        RectilinearGrid::ptr grid(new RectilinearGrid(SplitDim == 0 ? b.end - b.begin : coords[0].size(),
+                                                      SplitDim == 1 ? b.end - b.begin : coords[1].size(),
+                                                      SplitDim == 2 ? b.end - b.begin : coords[2].size()));
         grid->setNumGhostLayers(SplitDim, RectilinearGrid::Bottom, b.ghost[0]);
         grid->setNumGhostLayers(SplitDim, RectilinearGrid::Top, b.ghost[1]);
         grid->setGlobalIndexOffset(SplitDim, b.begin);
-        for (int i=0; i<3; ++i) {
-            if (i==SplitDim) {
-                std::copy(coords[i].begin()+b.begin, coords[i].begin()+b.end, &grid->coords(i)[0]);
+        for (int i = 0; i < 3; ++i) {
+            if (i == SplitDim) {
+                std::copy(coords[i].begin() + b.begin, coords[i].begin() + b.end, &grid->coords(i)[0]);
             } else {
                 std::copy(coords[i].begin(), coords[i].end(), &grid->coords(i)[0]);
             }
@@ -717,7 +721,7 @@ std::vector<RectilinearGrid::ptr> ReadItlrBin::readGridBlocks(const std::string 
 
         if (!file.isHdf5()) {
             Matrix4 t;
-            t << Vector4(0,0,-1,0), Vector4(0,1,0,0), Vector4(1,0,0,0), Vector4(0,0,0,1);
+            t << Vector4(0, 0, -1, 0), Vector4(0, 1, 0, 0), Vector4(1, 0, 0, 0), Vector4(0, 0, 0, 1);
             grid->setTransform(t);
         }
 
@@ -728,15 +732,15 @@ std::vector<RectilinearGrid::ptr> ReadItlrBin::readGridBlocks(const std::string 
     return result;
 }
 
-DataBase::ptr ReadItlrBin::readFieldBlock(const std::string &filename, int part) const {
-
+DataBase::ptr ReadItlrBin::readFieldBlock(const std::string &filename, int part) const
+{
     File file(filename);
     if (!file.open()) {
         sendError("failed to open file %s in format %s", filename.c_str(), file.format().c_str());
         return DataBase::ptr();
     }
 
-    uint32_t dims[3]{0,0,0};
+    uint32_t dims[3]{0, 0, 0};
     if (!readGridSizeFromField(file, dims)) {
         sendError("failed to read grid dimensions from %s", filename.c_str());
         return DataBase::ptr();
@@ -749,9 +753,9 @@ DataBase::ptr ReadItlrBin::readFieldBlock(const std::string &filename, int part)
 
     auto b = computeBlock(part);
     Index size = 1, offset = 1;
-    for (int c=0; c<3; ++c) {
+    for (int c = 0; c < 3; ++c) {
         if (c == SplitDim) {
-            size *= Index(b.end-b.begin);
+            size *= Index(b.end - b.begin);
             offset *= b.begin;
         } else {
             size *= m_dims[c];
@@ -766,7 +770,7 @@ DataBase::ptr ReadItlrBin::readFieldBlock(const std::string &filename, int part)
     if (filename.find("velv") == 0 || filename.find("/velv") != std::string::npos) {
         numComp = 3;
     }
-    switch(numComp) {
+    switch (numComp) {
     case 1: {
         if (!skipFloatArray(file, arrayname1, offset)) {
             sendError("failed to skip data from %s", filename.c_str());
@@ -781,8 +785,8 @@ DataBase::ptr ReadItlrBin::readFieldBlock(const std::string &filename, int part)
         break;
     }
     case 3: {
-        Vec<Scalar,3>::ptr vec3(new Vec<Scalar,3>(size));
-        for (int c=0; c<3; ++c) {
+        Vec<Scalar, 3>::ptr vec3(new Vec<Scalar, 3>(size));
+        for (int c = 0; c < 3; ++c) {
             if (!skipFloatArray(file, arraynames3[c], offset)) {
                 sendError("failed to skip data from %s", filename.c_str());
                 return DataBase::ptr();
@@ -802,8 +806,8 @@ DataBase::ptr ReadItlrBin::readFieldBlock(const std::string &filename, int part)
     return DataBase::ptr();
 }
 
-std::vector<std::string> ReadItlrBin::readListFile(const std::string &filename) const {
-
+std::vector<std::string> ReadItlrBin::readListFile(const std::string &filename) const
+{
     std::ifstream file(filename);
 
     std::vector<std::string> files;

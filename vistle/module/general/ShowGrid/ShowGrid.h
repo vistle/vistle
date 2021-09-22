@@ -4,16 +4,15 @@
 #include <vistle/module/module.h>
 
 class ShowGrid: public vistle::Module {
+public:
+    ShowGrid(const std::string &name, int moduleID, mpi::communicator comm);
+    ~ShowGrid();
 
- public:
-   ShowGrid(const std::string &name, int moduleID, mpi::communicator comm);
-   ~ShowGrid();
+private:
+    virtual bool compute();
 
- private:
-   virtual bool compute();
-
-   vistle::IntParameter *m_CellNrMin;
-   vistle::IntParameter *m_CellNrMax;
+    vistle::IntParameter *m_CellNrMin;
+    vistle::IntParameter *m_CellNrMax;
 };
 
 #endif

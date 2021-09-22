@@ -66,12 +66,11 @@
 #include "Element.h"
 #include "Dyna3DReader.h"
 
-class ReadDyna3D: public vistle::Reader
-{
+class ReadDyna3D: public vistle::Reader {
 public:
 private:
     bool prepareRead() override;
-    bool read(Token &token, int timestep=-1, int block=-1) override;
+    bool read(Token &token, int timestep = -1, int block = -1) override;
     bool examine(const vistle::Parameter *param) override;
     bool finishRead() override;
 

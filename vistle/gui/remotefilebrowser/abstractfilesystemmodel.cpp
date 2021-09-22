@@ -1,13 +1,10 @@
 #include "abstractfilesystemmodel.h"
 
-AbstractFileSystemModel::AbstractFileSystemModel(QObject *parent)
-: QAbstractItemModel(parent)
-{
-}
+AbstractFileSystemModel::AbstractFileSystemModel(QObject *parent): QAbstractItemModel(parent)
+{}
 
 AbstractFileSystemModel::~AbstractFileSystemModel()
-{
-}
+{}
 
 QHash<int, QByteArray> AbstractFileSystemModel::roleNames() const
 {

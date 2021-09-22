@@ -22,104 +22,80 @@ MODULE_MAIN(Gendat)
 
 using namespace vistle;
 
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(GeoMode,
-                                    (Triangle_Geometry)
-                                    (Polygon_Geometry)
-                                    (Uniform_Grid)
-                                    (Rectilinear_Grid)
-                                    (Structured_Grid)
-                                    (Unstructured_Grid)
-                                    (Point_Geometry)
-                                    (Sphere_Geometry))
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(
+    GeoMode,
+    (Triangle_Geometry)(Polygon_Geometry)(Uniform_Grid)(Rectilinear_Grid)(Structured_Grid)(Unstructured_Grid)(Point_Geometry)(Sphere_Geometry))
 
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(DataMode,
-                                    (One)
-                                    (Dist_Origin)
-                                    (Identity_X)
-                                    (Identity_Y)
-                                    (Identity_Z)
-                                    (Sine_X)
-                                    (Sine_Y)
-                                    (Sine_Z)
-                                    (Cosine_X)
-                                    (Cosine_Y)
-                                    (Cosine_Z)
-                                    (Random))
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(
+    DataMode,
+    (One)(Dist_Origin)(Identity_X)(Identity_Y)(Identity_Z)(Sine_X)(Sine_Y)(Sine_Z)(Cosine_X)(Cosine_Y)(Cosine_Z)(Random))
 
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(AnimDataMode,
-                                    (Constant)
-                                    (Add_Scale)
-                                    (Divide_Scale)
-                                    (Add_X)
-                                    (Add_Y)
-                                    (Add_Z))
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(AnimDataMode, (Constant)(Add_Scale)(Divide_Scale)(Add_X)(Add_Y)(Add_Z))
 
-Gendat::Gendat(const std::string &name, int moduleID, mpi::communicator comm)
-   : Reader(name, moduleID, comm) {
+Gendat::Gendat(const std::string &name, int moduleID, mpi::communicator comm): Reader(name, moduleID, comm)
+{
+    createOutputPort("grid_out", "only grid");
+    createOutputPort("data_out0", "scalar data");
+    createOutputPort("data_out1", "vector data");
 
-   createOutputPort("grid_out", "only grid");
-   createOutputPort("data_out0", "scalar data");
-   createOutputPort("data_out1", "vector data");
+    std::vector<std::string> choices;
+    m_geoMode = addIntParameter("geo_mode", "geometry generation mode", Unstructured_Grid, Parameter::Choice);
+    V_ENUM_SET_CHOICES(m_geoMode, GeoMode);
 
-   std::vector<std::string> choices;
-   m_geoMode = addIntParameter("geo_mode", "geometry generation mode", Unstructured_Grid, Parameter::Choice);
-   V_ENUM_SET_CHOICES(m_geoMode, GeoMode);
+    m_dataModeScalar = addIntParameter("data_mode_scalar", "data generation mode", Dist_Origin, Parameter::Choice);
+    V_ENUM_SET_CHOICES(m_dataModeScalar, DataMode);
+    m_dataScaleScalar = addFloatParameter("data_scale_scalar", "data scale factor (scalar)", 1.);
 
-   m_dataModeScalar = addIntParameter("data_mode_scalar", "data generation mode", Dist_Origin, Parameter::Choice);
-   V_ENUM_SET_CHOICES(m_dataModeScalar, DataMode);
-   m_dataScaleScalar = addFloatParameter("data_scale_scalar", "data scale factor (scalar)", 1.);
+    m_dataMode[0] = addIntParameter("data_mode_vec_x", "data generation mode", Identity_X, Parameter::Choice);
+    V_ENUM_SET_CHOICES(m_dataMode[0], DataMode);
+    m_dataScale[0] = addFloatParameter("data_scale_vec_x", "data scale factor", 1.);
 
-   m_dataMode[0] = addIntParameter("data_mode_vec_x", "data generation mode", Identity_X, Parameter::Choice);
-   V_ENUM_SET_CHOICES(m_dataMode[0], DataMode);
-   m_dataScale[0] = addFloatParameter("data_scale_vec_x", "data scale factor", 1.);
+    m_dataMode[1] = addIntParameter("data_mode_vec_y", "data generation mode", Identity_Y, Parameter::Choice);
+    V_ENUM_SET_CHOICES(m_dataMode[1], DataMode);
+    m_dataScale[1] = addFloatParameter("data_scale_vec_y", "data scale factor", 1.);
 
-   m_dataMode[1] = addIntParameter("data_mode_vec_y", "data generation mode", Identity_Y, Parameter::Choice);
-   V_ENUM_SET_CHOICES(m_dataMode[1], DataMode);
-   m_dataScale[1] = addFloatParameter("data_scale_vec_y", "data scale factor", 1.);
+    m_dataMode[2] = addIntParameter("data_mode_vec_z", "data generation mode", Identity_Z, Parameter::Choice);
+    V_ENUM_SET_CHOICES(m_dataMode[2], DataMode);
+    m_dataScale[2] = addFloatParameter("data_scale_vec_z", "data scale factor", 1.);
 
-   m_dataMode[2] = addIntParameter("data_mode_vec_z", "data generation mode", Identity_Z, Parameter::Choice);
-   V_ENUM_SET_CHOICES(m_dataMode[2], DataMode);
-   m_dataScale[2] = addFloatParameter("data_scale_vec_z", "data scale factor", 1.);
+    m_size[0] = addIntParameter("size_x", "number of cells per block in x-direction", 10);
+    m_size[1] = addIntParameter("size_y", "number of cells per block in y-direction", 10);
+    m_size[2] = addIntParameter("size_z", "number of cells per block in z-direction", 10);
 
-   m_size[0] = addIntParameter("size_x", "number of cells per block in x-direction", 10);
-   m_size[1] = addIntParameter("size_y", "number of cells per block in y-direction", 10);
-   m_size[2] = addIntParameter("size_z", "number of cells per block in z-direction", 10);
+    m_blocks[0] = addIntParameter("blocks_x", "number of blocks in x-direction", 3);
+    m_blocks[1] = addIntParameter("blocks_y", "number of blocks in y-direction", 3);
+    m_blocks[2] = addIntParameter("blocks_z", "number of blocks in z-direction", 3);
 
-   m_blocks[0] = addIntParameter("blocks_x", "number of blocks in x-direction", 3);
-   m_blocks[1] = addIntParameter("blocks_y", "number of blocks in y-direction", 3);
-   m_blocks[2] = addIntParameter("blocks_z", "number of blocks in z-direction", 3);
+    m_ghostLayerWidth = addIntParameter("ghost_layers", "number of ghost layers on all sides of a grid", 0);
 
-   m_ghostLayerWidth = addIntParameter("ghost_layers", "number of ghost layers on all sides of a grid", 0);
+    m_min = addVectorParameter("min", "minimum coordinates", ParamVector(-1., -1, -1.));
+    m_max = addVectorParameter("max", "maximum coordinates", ParamVector(1., 1., 1.));
 
-   m_min = addVectorParameter("min", "minimum coordinates", ParamVector(-1., -1, -1.));
-   m_max = addVectorParameter("max", "maximum coordinates", ParamVector(1., 1., 1.));
+    m_steps = addIntParameter("timesteps", "number of timesteps", 0);
+    setParameterRange(m_steps, Integer(0), Integer(999999));
 
-   m_steps = addIntParameter("timesteps", "number of timesteps", 0);
-   setParameterRange(m_steps, Integer(0), Integer(999999));
+    m_elementData = addIntParameter("element_data", "generate data per element/cell", false, Parameter::Boolean);
 
-   m_elementData = addIntParameter("element_data", "generate data per element/cell", false, Parameter::Boolean);
+    m_animData = addIntParameter("anim_data", "data animation", Constant, Parameter::Choice);
+    V_ENUM_SET_CHOICES(m_animData, AnimDataMode);
 
-   m_animData = addIntParameter("anim_data", "data animation", Constant, Parameter::Choice);
-   V_ENUM_SET_CHOICES(m_animData, AnimDataMode);
+    m_delay = addFloatParameter("delay", "wait after creating an object (s)", 0.);
+    setParameterRange(m_delay, 0., 3.);
 
-   m_delay = addFloatParameter("delay", "wait after creating an object (s)", 0.);
-   setParameterRange(m_delay, 0., 3.);
+    observeParameter(m_blocks[0]);
+    observeParameter(m_blocks[1]);
+    observeParameter(m_blocks[2]);
+    observeParameter(m_steps);
 
-   observeParameter(m_blocks[0]);
-   observeParameter(m_blocks[1]);
-   observeParameter(m_blocks[2]);
-   observeParameter(m_steps);
-
-   setParallelizationMode(ParallelizeBlocks);
+    setParallelizationMode(ParallelizeBlocks);
 }
 
-Gendat::~Gendat() {
-
-}
+Gendat::~Gendat()
+{}
 
 bool Gendat::examine(const Parameter *)
 {
-    size_t nblocks = m_blocks[0]->getValue()*m_blocks[1]->getValue()*m_blocks[2]->getValue();
+    size_t nblocks = m_blocks[0]->getValue() * m_blocks[1]->getValue() * m_blocks[2]->getValue();
     setPartitions(nblocks);
     setTimesteps(m_steps->getValue());
     return nblocks > 0;
@@ -134,7 +110,7 @@ bool Gendat::read(Reader::Token &token, int timestep, int blockNum)
     }
 
     Index blocks[3];
-    for (int i=0; i<3; ++i) {
+    for (int i = 0; i < 3; ++i) {
         blocks[i] = m_blocks[i]->getValue();
     }
 
@@ -150,66 +126,93 @@ bool Gendat::read(Reader::Token &token, int timestep, int blockNum)
     return true;
 }
 
-inline Scalar computeData(Scalar x, Scalar y, Scalar z, DataMode mode, Scalar scale, AnimDataMode anim, Index time) {
-
-    switch(anim) {
-    case Constant: break;
-    case Add_Scale: scale += Scalar(time); break;
-    case Divide_Scale: scale /= Scalar(time+1); break;
-    case Add_X: x += Scalar(time); break;
-    case Add_Y: y += Scalar(time); break;
-    case Add_Z: z += Scalar(time); break;
+inline Scalar computeData(Scalar x, Scalar y, Scalar z, DataMode mode, Scalar scale, AnimDataMode anim, Index time)
+{
+    switch (anim) {
+    case Constant:
+        break;
+    case Add_Scale:
+        scale += Scalar(time);
+        break;
+    case Divide_Scale:
+        scale /= Scalar(time + 1);
+        break;
+    case Add_X:
+        x += Scalar(time);
+        break;
+    case Add_Y:
+        y += Scalar(time);
+        break;
+    case Add_Z:
+        z += Scalar(time);
+        break;
     }
 
-    switch(mode) {
-    case One: return scale;
-    case Dist_Origin: return sqrt(x*x+y*y+z*z)*scale;
-    case Identity_X: return x*scale;
-    case Identity_Y: return y*scale;
-    case Identity_Z: return z*scale;
-    case Sine_X: return sin(x*M_PI)*scale;
-    case Sine_Y: return sin(y*M_PI)*scale;
-    case Sine_Z: return sin(z*M_PI)*scale;
-    case Cosine_X: return cos(x*M_PI)*scale;
-    case Cosine_Y: return cos(y*M_PI)*scale;
-    case Cosine_Z: return cos(z*M_PI)*scale;
-    case Random: return rand()*scale;
+    switch (mode) {
+    case One:
+        return scale;
+    case Dist_Origin:
+        return sqrt(x * x + y * y + z * z) * scale;
+    case Identity_X:
+        return x * scale;
+    case Identity_Y:
+        return y * scale;
+    case Identity_Z:
+        return z * scale;
+    case Sine_X:
+        return sin(x * M_PI) * scale;
+    case Sine_Y:
+        return sin(y * M_PI) * scale;
+    case Sine_Z:
+        return sin(z * M_PI) * scale;
+    case Cosine_X:
+        return cos(x * M_PI) * scale;
+    case Cosine_Y:
+        return cos(y * M_PI) * scale;
+    case Cosine_Z:
+        return cos(z * M_PI) * scale;
+    case Random:
+        return rand() * scale;
     }
 
     return 0.;
 }
 
-void setDataCells(Scalar *d, const GridInterface *grid, DataMode mode, Scalar scale, AnimDataMode anim, Index time) {
-
+void setDataCells(Scalar *d, const GridInterface *grid, DataMode mode, Scalar scale, AnimDataMode anim, Index time)
+{
     Index numElem = grid->getNumElements();
-    for (Index idx=0; idx<numElem; ++idx) {
+    for (Index idx = 0; idx < numElem; ++idx) {
         auto c = grid->cellCenter(idx);
         d[idx] = computeData(c[0], c[1], c[2], mode, scale, anim, time);
     }
 }
 
-void setDataCoords(Scalar *d, Index numVert, const Scalar *xx, const Scalar *yy, const Scalar *zz, DataMode mode, Scalar scale, AnimDataMode anim, Index time) {
-    for (Index idx=0; idx<numVert; ++idx) {
-        Scalar x = xx[idx], y=yy[idx], z=zz[idx];
+void setDataCoords(Scalar *d, Index numVert, const Scalar *xx, const Scalar *yy, const Scalar *zz, DataMode mode,
+                   Scalar scale, AnimDataMode anim, Index time)
+{
+    for (Index idx = 0; idx < numVert; ++idx) {
+        Scalar x = xx[idx], y = yy[idx], z = zz[idx];
         d[idx] = computeData(x, y, z, mode, scale, anim, time);
     }
 }
 
-void setDataUniform(Scalar *d, Index dim[3], Vector min, Vector max, DataMode mode, Scalar scale, AnimDataMode anim, Index time) {
-    Vector dist=max-min;
-    for (int c=0; c<3; ++c) {
+void setDataUniform(Scalar *d, Index dim[3], Vector min, Vector max, DataMode mode, Scalar scale, AnimDataMode anim,
+                    Index time)
+{
+    Vector dist = max - min;
+    for (int c = 0; c < 3; ++c) {
         if (dim[c] > 1)
-            dist[c] /= dim[c]-1;
+            dist[c] /= dim[c] - 1;
         else
             dist[c] = 0.;
     }
-    for (Index i=0; i<dim[0]; ++i) {
-        for (Index j=0; j<dim[1]; ++j) {
-            for (Index k=0; k<dim[2]; ++k) {
+    for (Index i = 0; i < dim[0]; ++i) {
+        for (Index j = 0; j < dim[1]; ++j) {
+            for (Index k = 0; k < dim[2]; ++k) {
                 Index idx = StructuredGrid::vertexIndex(i, j, k, dim);
-                Scalar x = min[0]+i*dist[0];
-                Scalar y = min[1]+j*dist[1];
-                Scalar z = min[2]+k*dist[2];
+                Scalar x = min[0] + i * dist[0];
+                Scalar y = min[1] + j * dist[1];
+                Scalar z = min[2] + k * dist[2];
 
                 d[idx] = computeData(x, y, z, mode, scale, anim, time);
             }
@@ -217,21 +220,23 @@ void setDataUniform(Scalar *d, Index dim[3], Vector min, Vector max, DataMode mo
     }
 }
 
-void setStructuredGridGhostLayers(StructuredGridBase::ptr ptr, Index ghostWidth[3][2]) {
-    for (Index i=0; i<3; ++i) {
-            ptr->setNumGhostLayers(i, StructuredGridBase::Bottom, ghostWidth[i][0]);
-            ptr->setNumGhostLayers(i, StructuredGridBase::Top, ghostWidth[i][1]);
+void setStructuredGridGhostLayers(StructuredGridBase::ptr ptr, Index ghostWidth[3][2])
+{
+    for (Index i = 0; i < 3; ++i) {
+        ptr->setNumGhostLayers(i, StructuredGridBase::Bottom, ghostWidth[i][0]);
+        ptr->setNumGhostLayers(i, StructuredGridBase::Top, ghostWidth[i][1]);
     }
 }
 
-void setStructuredGridGlobalOffsets(StructuredGridBase::ptr ptr, Index offset[3]) {
-    for (Index i=0; i<3; ++i) {
-            ptr->setGlobalIndexOffset(i, offset[i]);
+void setStructuredGridGlobalOffsets(StructuredGridBase::ptr ptr, Index offset[3])
+{
+    for (Index i = 0; i < 3; ++i) {
+        ptr->setGlobalIndexOffset(i, offset[i]);
     }
 }
 
-void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::Index block, vistle::Index time) const {
-
+void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::Index block, vistle::Index time) const
+{
     Index dim[3];
     Vector dist, bdist;
     Index maxBlocks[3];
@@ -239,36 +244,35 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
     Vector gmin = m_min->getValue(), gmax = m_max->getValue();
     Vector bmin;
 
-    for (int i=0; i<3; ++i) {
-        dim[i] = m_size[i]->getValue()+1;
+    for (int i = 0; i < 3; ++i) {
+        dim[i] = m_size[i]->getValue() + 1;
         maxBlocks[i] = m_blocks[i]->getValue();
-        bdist[i] = (gmax[i]-gmin[i])/maxBlocks[i];
-        bmin[i] = gmin[i]+currBlock[i]*bdist[i];
+        bdist[i] = (gmax[i] - gmin[i]) / maxBlocks[i];
+        bmin[i] = gmin[i] + currBlock[i] * bdist[i];
         if (m_size[i]->getValue() > 0) {
-            dist[i] = bdist[i]/m_size[i]->getValue();
+            dist[i] = bdist[i] / m_size[i]->getValue();
         } else {
             bdist[i] = 0.;
             dist[i] = 0.;
         }
     }
     GeoMode geoMode = (GeoMode)m_geoMode->getValue();
-    Index numVert = dim[0]*dim[1]*dim[2];
-    Index numCells = (dim[0]-1)*(dim[1]-1)*(dim[2]-1);
+    Index numVert = dim[0] * dim[1] * dim[2];
+    Index numCells = (dim[0] - 1) * (dim[1] - 1) * (dim[2] - 1);
     bool elementData = m_elementData->getValue();
 
     Object::ptr geoOut;
 
     Vector min, max;
-    for (int c=0; c<3; ++c) {
+    for (int c = 0; c < 3; ++c) {
         min[c] = bmin[c];
-        max[c] = bmin[c]+bdist[c];
+        max[c] = bmin[c] + bdist[c];
     }
 
     // output data: first if statement seperates coord-derived objects
     if (geoMode == Triangle_Geometry || geoMode == Polygon_Geometry) {
         Coords::ptr geo;
         if (geoMode == Triangle_Geometry) {
-
             Triangles::ptr t(new Triangles(6, 4));
             geo = t;
 
@@ -280,7 +284,6 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
             t->cl()[4] = 3;
             t->cl()[5] = 2;
         } else if (geoMode == Polygon_Geometry) {
-
             Polygons::ptr p(new Polygons(1, 4, 4));
             geo = p;
 
@@ -297,7 +300,7 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
         geo->x()[0] = min[0];
         geo->y()[0] = min[1];
         geo->z()[0] = min[2];
-;
+        ;
         geo->x()[1] = max[0];
         geo->y()[1] = min[1];
         geo->z()[1] = min[2];
@@ -318,29 +321,28 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
         for (unsigned i = 0; i < 3; i++) {
             offsets[i] = 0;
             if (currBlock[i] > 0)
-                offsets[i] = currBlock[i]*(dim[i]-1) - m_ghostLayerWidth->getValue();
+                offsets[i] = currBlock[i] * (dim[i] - 1) - m_ghostLayerWidth->getValue();
 
             ghostWidth[i][0] = (currBlock[i] == 0) ? 0 : m_ghostLayerWidth->getValue();
             ghostWidth[i][1] = (currBlock[i] == maxBlocks[i] - 1) ? 0 : m_ghostLayerWidth->getValue();
 
             dim[i] += ghostWidth[i][0] + ghostWidth[i][1];
-
         }
-        numVert = dim[0]*dim[1]*dim[2];
-        numCells = (dim[0]-1)*(dim[1]-1)*(dim[2]-1);
+        numVert = dim[0] * dim[1] * dim[2];
+        numCells = (dim[0] - 1) * (dim[1] - 1) * (dim[2] - 1);
 
         Index numCellVert = 1;
-        if (dim[2]>1) {
+        if (dim[2] > 1) {
             numCellVert = 8;
-        } else if (dim[1]>1) {
+        } else if (dim[1] > 1) {
             numCellVert = 4;
-        } else if (dim[0]>1) {
+        } else if (dim[0] > 1) {
             numCellVert = 2;
         }
 
-        for (int c=0; c<3; ++c) {
-            min[c] -= ghostWidth[c][0]*dist[c];
-            max[c] += ghostWidth[c][1]*dist[c];
+        for (int c = 0; c < 3; ++c) {
+            min[c] -= ghostWidth[c][0] * dist[c];
+            max[c] += ghostWidth[c][1] * dist[c];
         }
 
         if (geoMode == Uniform_Grid) {
@@ -360,9 +362,9 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
             RectilinearGrid::ptr r(new RectilinearGrid(dim[0], dim[1], dim[2]));
 
             // generate test data
-            for (int c=0; c<3; ++c) {
+            for (int c = 0; c < 3; ++c) {
                 for (Index i = 0; i < dim[c]; ++i) {
-                    r->coords(c)[i] = min[c]+i*dist[c];
+                    r->coords(c)[i] = min[c] + i * dist[c];
                 }
             }
             setStructuredGridGhostLayers(r, ghostWidth);
@@ -371,19 +373,17 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
             geoOut = r;
 
         } else if (geoMode == Structured_Grid) {
-
             StructuredGrid::ptr s(new StructuredGrid(dim[0], dim[1], dim[2]));
             setStructuredGridGhostLayers(s, ghostWidth);
             setStructuredGridGlobalOffsets(s, offsets);
             geoOut = s;
 
         } else if (geoMode == Unstructured_Grid) {
-
-            const Index nx = std::max(dim[0]-1, Index(1));
-            const Index ny = std::max(dim[1]-1, Index(1));
-            const Index nz = std::max(dim[2]-1, Index(1));
+            const Index nx = std::max(dim[0] - 1, Index(1));
+            const Index ny = std::max(dim[1] - 1, Index(1));
+            const Index nz = std::max(dim[2] - 1, Index(1));
             Index numElem = nx * ny * nz;
-            UnstructuredGrid::ptr u(new UnstructuredGrid(numElem, numElem*numCellVert, numVert));
+            UnstructuredGrid::ptr u(new UnstructuredGrid(numElem, numElem * numCellVert, numVert));
             Index elem = 0;
             Index idx = 0;
             Index *cl = u->cl().data();
@@ -399,28 +399,28 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
                 type = UnstructuredGrid::BAR;
             }
 
-            for (Index ix=0; ix<nx; ++ix) {
-                for (Index iy=0; iy<ny; ++iy) {
-                    for (Index iz=0; iz<nz; ++iz) {
-                        cl[idx++] = UniformGrid::vertexIndex(ix,   iy,   iz,   dim);
+            for (Index ix = 0; ix < nx; ++ix) {
+                for (Index iy = 0; iy < ny; ++iy) {
+                    for (Index iz = 0; iz < nz; ++iz) {
+                        cl[idx++] = UniformGrid::vertexIndex(ix, iy, iz, dim);
                         if (dim[0] > 1) {
-                            cl[idx++] = UniformGrid::vertexIndex(ix+1, iy,   iz,   dim);
+                            cl[idx++] = UniformGrid::vertexIndex(ix + 1, iy, iz, dim);
                             if (dim[1] > 1) {
-                                cl[idx++] = UniformGrid::vertexIndex(ix+1, iy+1, iz,   dim);
-                                cl[idx++] = UniformGrid::vertexIndex(ix,   iy+1, iz,   dim);
+                                cl[idx++] = UniformGrid::vertexIndex(ix + 1, iy + 1, iz, dim);
+                                cl[idx++] = UniformGrid::vertexIndex(ix, iy + 1, iz, dim);
                                 if (dim[2] > 1) {
-                                    cl[idx++] = UniformGrid::vertexIndex(ix,   iy,   iz+1, dim);
-                                    cl[idx++] = UniformGrid::vertexIndex(ix+1, iy,   iz+1, dim);
-                                    cl[idx++] = UniformGrid::vertexIndex(ix+1, iy+1, iz+1, dim);
-                                    cl[idx++] = UniformGrid::vertexIndex(ix,   iy+1, iz+1, dim);
+                                    cl[idx++] = UniformGrid::vertexIndex(ix, iy, iz + 1, dim);
+                                    cl[idx++] = UniformGrid::vertexIndex(ix + 1, iy, iz + 1, dim);
+                                    cl[idx++] = UniformGrid::vertexIndex(ix + 1, iy + 1, iz + 1, dim);
+                                    cl[idx++] = UniformGrid::vertexIndex(ix, iy + 1, iz + 1, dim);
                                 }
                             }
                         }
 
                         tl[elem] = type;
-                        if ((ix < ghostWidth[0][0] || ix+ghostWidth[0][1] >= nx)
-                                || (iy < ghostWidth[1][0] || iy+ghostWidth[1][1] >= ny)
-                                || (iz < ghostWidth[2][0] || iz+ghostWidth[2][1] >= nz)) {
+                        if ((ix < ghostWidth[0][0] || ix + ghostWidth[0][1] >= nx) ||
+                            (iy < ghostWidth[1][0] || iy + ghostWidth[1][1] >= ny) ||
+                            (iz < ghostWidth[2][0] || iz + ghostWidth[2][1] >= nz)) {
                             tl[elem] |= UnstructuredGrid::GHOST_BIT;
                         }
 
@@ -446,13 +446,13 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
             Scalar *x = coords->x().data();
             Scalar *y = coords->y().data();
             Scalar *z = coords->z().data();
-            for (Index i=0; i<dim[0]; ++i) {
-                for (Index j=0; j<dim[1]; ++j) {
-                    for (Index k=0; k<dim[2]; ++k) {
+            for (Index i = 0; i < dim[0]; ++i) {
+                for (Index j = 0; j < dim[1]; ++j) {
+                    for (Index k = 0; k < dim[2]; ++k) {
                         Index idx = StructuredGrid::vertexIndex(i, j, k, dim);
-                        x[idx] = min[0]+i*dist[0];
-                        y[idx] = min[1]+j*dist[1];
-                        z[idx] = min[2]+k*dist[2];
+                        x[idx] = min[0] + i * dist[0];
+                        y[idx] = min[1] + j * dist[1];
+                        z[idx] = min[2] + k * dist[2];
                     }
                 }
             }
@@ -460,9 +460,9 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
 
         if (auto rad = CoordsWithRadius::as(geoOut)) {
             Scalar *r = rad->r().data();
-            for (Index i=0; i<dim[0]; ++i) {
-                for (Index j=0; j<dim[1]; ++j) {
-                    for (Index k=0; k<dim[2]; ++k) {
+            for (Index i = 0; i < dim[0]; ++i) {
+                for (Index j = 0; j < dim[1]; ++j) {
+                    for (Index k = 0; k < dim[2]; ++k) {
                         Index idx = StructuredGrid::vertexIndex(i, j, k, dim);
                         r[idx] = dist[0] * 0.2;
                     }
@@ -473,32 +473,35 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
 
     Index numData = elementData ? numCells : numVert;
 
-    Vec<Scalar,1>::ptr scalar;
+    Vec<Scalar, 1>::ptr scalar;
     if (isConnected("data_out0")) {
-        scalar.reset(new Vec<Scalar,1>(numData));
+        scalar.reset(new Vec<Scalar, 1>(numData));
         scalar->setBlock(block);
         if (time >= 0)
             scalar->setTimestep(time);
     }
-    Vec<Scalar,3>::ptr vector;
+    Vec<Scalar, 3>::ptr vector;
     if (isConnected("data_out1")) {
-        vector.reset(new Vec<Scalar,3>(numData));
+        vector.reset(new Vec<Scalar, 3>(numData));
         vector->setBlock(block);
         if (time >= 0)
             vector->setTimestep(time);
     }
 
-    const int dtime = time<0 ? 0 : time;
+    const int dtime = time < 0 ? 0 : time;
     if (elementData) {
-
         const GridInterface *grid = geoOut->getInterface<GridInterface>();
         if (scalar) {
-            setDataCells(scalar->x().data(), grid, (DataMode)m_dataModeScalar->getValue(), m_dataScaleScalar->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
+            setDataCells(scalar->x().data(), grid, (DataMode)m_dataModeScalar->getValue(),
+                         m_dataScaleScalar->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
         }
         if (vector) {
-            setDataCells(vector->x().data(), grid, (DataMode)m_dataMode[0]->getValue(), m_dataScale[0]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
-            setDataCells(vector->y().data(), grid, (DataMode)m_dataMode[1]->getValue(), m_dataScale[1]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
-            setDataCells(vector->z().data(), grid, (DataMode)m_dataMode[2]->getValue(), m_dataScale[2]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
+            setDataCells(vector->x().data(), grid, (DataMode)m_dataMode[0]->getValue(), m_dataScale[0]->getValue(),
+                         (AnimDataMode)m_animData->getValue(), dtime);
+            setDataCells(vector->y().data(), grid, (DataMode)m_dataMode[1]->getValue(), m_dataScale[1]->getValue(),
+                         (AnimDataMode)m_animData->getValue(), dtime);
+            setDataCells(vector->z().data(), grid, (DataMode)m_dataMode[2]->getValue(), m_dataScale[2]->getValue(),
+                         (AnimDataMode)m_animData->getValue(), dtime);
         }
     } else if (auto coord = Coords::as(geoOut)) {
         const Scalar *xx = coord->x().data();
@@ -506,21 +509,29 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
         const Scalar *zz = coord->z().data();
 
         if (scalar) {
-            setDataCoords(scalar->x().data(), numVert, xx, yy, zz, (DataMode)m_dataModeScalar->getValue(), m_dataScaleScalar->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
+            setDataCoords(scalar->x().data(), numVert, xx, yy, zz, (DataMode)m_dataModeScalar->getValue(),
+                          m_dataScaleScalar->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
         }
         if (vector) {
-            setDataCoords(vector->x().data(), numVert, xx, yy, zz, (DataMode)m_dataMode[0]->getValue(), m_dataScale[0]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
-            setDataCoords(vector->y().data(), numVert, xx, yy, zz, (DataMode)m_dataMode[1]->getValue(), m_dataScale[1]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
-            setDataCoords(vector->z().data(), numVert, xx, yy, zz, (DataMode)m_dataMode[2]->getValue(), m_dataScale[2]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
+            setDataCoords(vector->x().data(), numVert, xx, yy, zz, (DataMode)m_dataMode[0]->getValue(),
+                          m_dataScale[0]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
+            setDataCoords(vector->y().data(), numVert, xx, yy, zz, (DataMode)m_dataMode[1]->getValue(),
+                          m_dataScale[1]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
+            setDataCoords(vector->z().data(), numVert, xx, yy, zz, (DataMode)m_dataMode[2]->getValue(),
+                          m_dataScale[2]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
         }
     } else {
         if (scalar) {
-            setDataUniform(scalar->x().data(), dim, min, max, (DataMode)m_dataModeScalar->getValue(), m_dataScaleScalar->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
+            setDataUniform(scalar->x().data(), dim, min, max, (DataMode)m_dataModeScalar->getValue(),
+                           m_dataScaleScalar->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
         }
         if (vector) {
-            setDataUniform(vector->x().data(), dim, min, max, (DataMode)m_dataMode[0]->getValue(), m_dataScale[0]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
-            setDataUniform(vector->y().data(), dim, min, max, (DataMode)m_dataMode[1]->getValue(), m_dataScale[1]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
-            setDataUniform(vector->z().data(), dim, min, max, (DataMode)m_dataMode[2]->getValue(), m_dataScale[2]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
+            setDataUniform(vector->x().data(), dim, min, max, (DataMode)m_dataMode[0]->getValue(),
+                           m_dataScale[0]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
+            setDataUniform(vector->y().data(), dim, min, max, (DataMode)m_dataMode[1]->getValue(),
+                           m_dataScale[1]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
+            setDataUniform(vector->z().data(), dim, min, max, (DataMode)m_dataMode[2]->getValue(),
+                           m_dataScale[2]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
         }
     }
 
@@ -551,6 +562,6 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
 
     auto delay = m_delay->getValue();
     if (delay > 0.) {
-        usleep(int32_t(delay*1e6));
+        usleep(int32_t(delay * 1e6));
     }
 }

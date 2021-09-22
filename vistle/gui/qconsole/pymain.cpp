@@ -6,7 +6,7 @@
     email                : houssem@localhost
  ***************************************************************************/
 
- /*
+/*
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -40,28 +40,28 @@ __const __int32_t *__ctype_toupper;
 
 void ctSetup()
 {
-  __ctype_b = *(__ctype_b_loc());
-  __ctype_toupper = *(__ctype_toupper_loc());
-  __ctype_tolower = *(__ctype_tolower_loc());
+    __ctype_b = *(__ctype_b_loc());
+    __ctype_toupper = *(__ctype_toupper_loc());
+    __ctype_tolower = *(__ctype_tolower_loc());
 }
 #endif
 
 //The main entry
-int main( int argc, char ** argv )
+int main(int argc, char **argv)
 {
 #ifdef FIX__CTYPE_
     ctSetup();
 #endif
-    QApplication a( argc, argv );
+    QApplication a(argc, argv);
 
     //Create and show the main window
     QMainWindow mw;
     mw.setMinimumSize(640, 480);
     //Instantiate and set the focus to the QPyConsole
     QPyConsole *console = QPyConsole::getInstance(&mw);
-    mw.setFocusProxy((QWidget*)console);
-    mw.setCentralWidget((QWidget*)console);
+    mw.setFocusProxy((QWidget *)console);
+    mw.setCentralWidget((QWidget *)console);
     mw.show();
-                    
+
     return a.exec();
 }

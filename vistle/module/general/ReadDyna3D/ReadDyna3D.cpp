@@ -42,17 +42,19 @@ using namespace vistle;
 ReadDyna3D::ReadDyna3D(const std::string &name, int moduleID, mpi::communicator comm)
 : vistle::Reader(name, moduleID, comm)
 {
-
     // Output ports
     p_grid = createOutputPort("grid_out", "grid");
     p_data_1 = createOutputPort("data1_out", "vector data");
     p_data_2 = createOutputPort("data2_out", "scalar data");
 
     // Parameters
-    p_data_path = addStringParameter("filename", "Geometry file path", "/data/general/examples/Dyna3d/aplot", Parameter::Filename);
-    p_nodalDataType = addIntParameter("nodalDataType", "Nodal results data to be read", No_Node_Data, Parameter::Choice);
+    p_data_path = addStringParameter("filename", "Geometry file path", "/data/general/examples/Dyna3d/aplot",
+                                     Parameter::Filename);
+    p_nodalDataType =
+        addIntParameter("nodalDataType", "Nodal results data to be read", No_Node_Data, Parameter::Choice);
     V_ENUM_SET_CHOICES(p_nodalDataType, NodalDataType);
-    p_elementDataType = addIntParameter("elementDataType", "Element results data to be read", No_Element_Data, Parameter::Choice);
+    p_elementDataType =
+        addIntParameter("elementDataType", "Element results data to be read", No_Element_Data, Parameter::Choice);
     V_ENUM_SET_CHOICES(p_elementDataType, ElementDataType);
     p_component = addIntParameter("component", "stress tensor component", Von_Mises, Parameter::Choice);
     V_ENUM_SET_CHOICES(p_component, Component);
@@ -86,12 +88,12 @@ ReadDyna3D::ReadDyna3D(const std::string &name, int moduleID, mpi::communicator 
     observeParameter(p_Selection);
 }
 
-ReadDyna3D::~ReadDyna3D() {
-}
+ReadDyna3D::~ReadDyna3D()
+{}
 
 
-bool ReadDyna3D::prepareRead() {
-
+bool ReadDyna3D::prepareRead()
+{
     if (!dyna3dReader) {
         dyna3dReader.reset(newReader());
     }
@@ -103,8 +105,8 @@ bool ReadDyna3D::prepareRead() {
     return dyna3dReader->readStart() == 0;
 }
 
-bool ReadDyna3D::read(Reader::Token &token, int timestep, int block) {
-
+bool ReadDyna3D::read(Reader::Token &token, int timestep, int block)
+{
     auto &reader = dyna3dReader;
     //std::cerr << "reading: token: " << token << ", time=" << timestep << ", block=" << block << std::endl;
 
@@ -113,14 +115,14 @@ bool ReadDyna3D::read(Reader::Token &token, int timestep, int block) {
     } else {
         if (timestep == -1)
             return true;
-        return reader->readState(token, timestep+1, block) == 0;
+        return reader->readState(token, timestep + 1, block) == 0;
     }
 
     return true;
 }
 
-bool ReadDyna3D::examine(const Parameter *param) {
-
+bool ReadDyna3D::examine(const Parameter *param)
+{
     //std::cerr << "ReadDyna3D::examine(param=" << (param ? param->getName() : "(null)") << ")" << std::endl;
 
     bool rescan = false;
@@ -165,8 +167,8 @@ bool ReadDyna3D::finishRead()
     return dyna3dReader->readFinish() == 0;
 }
 
-Dyna3DReaderBase *ReadDyna3D::newReader() {
-
+Dyna3DReaderBase *ReadDyna3D::newReader()
+{
     auto reader = new Dyna3DReader<4>(this);
 
     reader->setFilename(p_data_path->getValue());

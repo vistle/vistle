@@ -10,18 +10,17 @@
 MODULE_MAIN(GendatChecker)
 
 GendatChecker::GendatChecker(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module("GendatChecker", name, moduleID, comm) {
-
-   createOutputPort("grid_in");
-   createOutputPort("data_in");
+: Module("GendatChecker", name, moduleID, comm)
+{
+    createOutputPort("grid_in");
+    createOutputPort("data_in");
 }
 
-GendatChecker::~GendatChecker() {
+GendatChecker::~GendatChecker()
+{}
 
-}
-
-bool GendatChecker::compute() {
-
+bool GendatChecker::compute()
+{
 #if 0
    vistle::Vec<vistle::Scalar> *a = vistle::Vec<vistle::Scalar>::create();
    for (unsigned int index = 0; index < 1024 * 1024 * 4; index ++)
@@ -37,33 +36,33 @@ bool GendatChecker::compute() {
    */
 #endif
 
-   vistle::Object::const_ptr grid = takeFirstObject("grid_in");
-   vistle::Object::const_ptr data = takeFirstObject("data_in");
+    vistle::Object::const_ptr grid = takeFirstObject("grid_in");
+    vistle::Object::const_ptr data = takeFirstObject("data_in");
 
-   vistle::Triangles::const_ptr t = expect<vistle::Triangles>("grid_in");
-   assert(t.get() && "expected Triangles");
-   //assert(t->cl().size() == 6);
-   assert(t->cl()[0] == 0);
-   assert(t->cl()[1] == 1);
-   assert(t->cl()[2] == 2);
-   assert(t->cl()[3] == 0);
-   assert(t->cl()[4] == 2);
-   assert(t->cl()[5] == 3);
-   //assert(t->x().size() == 4);
-   //assert(t->y().size() == 4);
-   //assert(t->z().size() == 4);
-   for(size_t i=0; i<4; ++i) {
-      assert(t->x()[i] == 1. + rank());
-      assert(t->y()[i] == 0.);
-      assert(t->z()[i] == 0.);
-   }
+    vistle::Triangles::const_ptr t = expect<vistle::Triangles>("grid_in");
+    assert(t.get() && "expected Triangles");
+    //assert(t->cl().size() == 6);
+    assert(t->cl()[0] == 0);
+    assert(t->cl()[1] == 1);
+    assert(t->cl()[2] == 2);
+    assert(t->cl()[3] == 0);
+    assert(t->cl()[4] == 2);
+    assert(t->cl()[5] == 3);
+    //assert(t->x().size() == 4);
+    //assert(t->y().size() == 4);
+    //assert(t->z().size() == 4);
+    for (size_t i = 0; i < 4; ++i) {
+        assert(t->x()[i] == 1. + rank());
+        assert(t->y()[i] == 0.);
+        assert(t->z()[i] == 0.);
+    }
 
-   vistle::Vec<vistle::Scalar>::const_ptr v = expect<vistle::Vec<vistle::Scalar>>("data_in");
-   assert(v.get() && "expected Vec<Scalar>");
-   //assert(v->x().size() == 4);
-   for (size_t i=0; i<4; ++i) {
-      assert(v->x()[i] == vistle::Scalar(i));
-   }
+    vistle::Vec<vistle::Scalar>::const_ptr v = expect<vistle::Vec<vistle::Scalar>>("data_in");
+    assert(v.get() && "expected Vec<Scalar>");
+    //assert(v->x().size() == 4);
+    for (size_t i = 0; i < 4; ++i) {
+        assert(v->x()[i] == vistle::Scalar(i));
+    }
 
 #if 0
    vistle::Triangles *t = new vistle::Triangles(6, 4);
@@ -102,5 +101,5 @@ bool GendatChecker::compute() {
    addObject("data_out", v);
 #endif
 
-   return true;
+    return true;
 }

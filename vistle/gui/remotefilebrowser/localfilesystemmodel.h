@@ -11,7 +11,6 @@ class LocalFileSystemModel: public AbstractFileSystemModel //, public QAbstractP
     Q_OBJECT
 
 public:
-
     LocalFileSystemModel(QObject *parent = nullptr);
     ~LocalFileSystemModel() override;
 
@@ -44,8 +43,8 @@ public:
 
     QStringList mimeTypes() const override;
     QMimeData *mimeData(const QModelIndexList &indexes) const override;
-    bool dropMimeData(const QMimeData *data, Qt::DropAction action,
-                      int row, int column, const QModelIndex &parent) override;
+    bool dropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column,
+                      const QModelIndex &parent) override;
     Qt::DropActions supportedDropActions() const override;
 #endif
 
@@ -92,8 +91,8 @@ public:
     bool rmdir(const QModelIndex &index);
     bool remove(const QModelIndex &index);
 
-    QModelIndex mapFromSource(const QModelIndex& sourceIndex) const;
-    QModelIndex mapToSource(const QModelIndex& proxyIndex) const;
+    QModelIndex mapFromSource(const QModelIndex &sourceIndex) const;
+    QModelIndex mapToSource(const QModelIndex &proxyIndex) const;
 
 
 protected:

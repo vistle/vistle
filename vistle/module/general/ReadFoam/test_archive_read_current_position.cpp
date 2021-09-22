@@ -2,7 +2,8 @@
 #include <archive_entry.h>
 #include <stdint.h>
 
-int main() {
+int main()
+{
     struct archive *a = archive_read_new();
     archive_read_support_filter_all(a);
     archive_read_support_format_all(a);
@@ -12,7 +13,7 @@ int main() {
 
     struct archive_entry *entry;
     while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
-        printf("%s\\n",archive_entry_pathname(entry));
+        printf("%s\\n", archive_entry_pathname(entry));
         int64_t offset = archive_read_current_position(a);
         archive_read_data_skip(a);
     }
@@ -23,4 +24,3 @@ int main() {
 
     return 0;
 }
-

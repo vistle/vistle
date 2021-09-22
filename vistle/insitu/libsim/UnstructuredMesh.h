@@ -19,7 +19,8 @@ class SyncShmIDs;
 }
 
 namespace libsim {
-vistle::Object::ptr get(const visit_smart_handle<HandleType::UnstructuredMesh> &meshHandle, message::SyncShmIDs &creator);
+vistle::Object::ptr get(const visit_smart_handle<HandleType::UnstructuredMesh> &meshHandle,
+                        message::SyncShmIDs &creator);
 namespace UnstructuredMesh {
 
 vistle::Object::ptr get(const visit_handle &meshHandle, message::SyncShmIDs &creator);

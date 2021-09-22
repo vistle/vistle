@@ -148,7 +148,8 @@ bool ReadNek::examine(const vistle::Parameter *param)
         return false;
     }
     vistle::Integer numPartitions = m_numPartitionsParam->getValue() == 0 ? size() : m_numPartitionsParam->getValue();
-    m_staticData.reset(new nek5000::ReaderBase(m_filePathParam->getValue(), numPartitions, m_numBlocksParam->getValue()));
+    m_staticData.reset(
+        new nek5000::ReaderBase(m_filePathParam->getValue(), numPartitions, m_numBlocksParam->getValue()));
     if (!m_staticData->init())
         return false;
     size_t oldNumSFields = m_miscPorts.size();
@@ -224,8 +225,7 @@ int ReadNek::numberOfUniqePoints(vistle::UnstructuredGrid::ptr grid)
     return uniquePts.size();
 }
 
-ReadNek::ReadNek(const std::string &name, int moduleID, mpi::communicator comm)
-: vistle::Reader(name, moduleID, comm)
+ReadNek::ReadNek(const std::string &name, int moduleID, mpi::communicator comm): vistle::Reader(name, moduleID, comm)
 {
     // Output ports
     m_gridPort = createOutputPort("grid_out", "grid");

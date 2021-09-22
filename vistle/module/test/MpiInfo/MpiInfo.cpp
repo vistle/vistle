@@ -19,30 +19,27 @@
 using namespace vistle;
 
 class MpiInfo: public vistle::Module {
+public:
+    MpiInfo(const std::string &name, int moduleID, mpi::communicator comm);
+    ~MpiInfo() override;
 
- public:
-   MpiInfo(const std::string &name, int moduleID, mpi::communicator comm);
-   ~MpiInfo() override;
-
- private:
-
-   bool prepare() override;
+private:
+    bool prepare() override;
 };
 
 using namespace vistle;
 
-MpiInfo::MpiInfo(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module(name, moduleID, comm)
+MpiInfo::MpiInfo(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
-   std::stringstream str;
-   str << "ctor: rank " << rank() << "/" << size() << " on host " << hostname() << std::endl;
-   sendInfo(str.str());
+    std::stringstream str;
+    str << "ctor: rank " << rank() << "/" << size() << " on host " << hostname() << std::endl;
+    sendInfo(str.str());
 }
 
 MpiInfo::~MpiInfo() = default;
 
-bool MpiInfo::prepare() {
-
+bool MpiInfo::prepare()
+{
     std::stringstream str;
     str << "prepare(): rank " << rank() << "/" << size() << " on host " << hostname() << std::endl;
     str << "Process affinity: " << sched_affinity_map() << std::endl;
@@ -53,7 +50,8 @@ bool MpiInfo::prepare() {
     if (Shm::perRank())
         str << "Shared memory:    no sharing between ranks on same node" << std::endl;
     else
-        str << "Shared memory:    common for " << commShmGroup().size() << " ranks on same node, lead by " << shmLeader() << std::endl;
+        str << "Shared memory:    common for " << commShmGroup().size() << " ranks on same node, lead by "
+            << shmLeader() << std::endl;
 #endif
     sendInfo(str.str());
 
@@ -70,4 +68,3 @@ bool MpiInfo::prepare() {
 }
 
 MODULE_MAIN(MpiInfo)
-

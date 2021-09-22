@@ -11,95 +11,96 @@ CMRC_DECLARE(moduledescriptions);
 
 namespace vistle {
 
-ModuleRegistry::RegisterClass::RegisterClass(const std::string &name, NewModuleFunc factory) {
-
-   ModuleRegistry::the().addModule(name, factory);
+ModuleRegistry::RegisterClass::RegisterClass(const std::string &name, NewModuleFunc factory)
+{
+    ModuleRegistry::the().addModule(name, factory);
 }
 
 ModuleRegistry::ModuleClass::ModuleClass(const std::string &name, NewModuleFunc factory)
-: name(name), newInstance(factory) {}
+: name(name), newInstance(factory)
+{}
 
-ModuleRegistry &ModuleRegistry::the() {
-
-   static ModuleRegistry s_instance;
-   return s_instance;
+ModuleRegistry &ModuleRegistry::the()
+{
+    static ModuleRegistry s_instance;
+    return s_instance;
 }
 
-void ModuleRegistry::addModule(const std::string &name, NewModuleFunc factory) {
-   auto added = m_modules.emplace(name, ModuleClass(name,factory)).second;
-   if (!added) {
-      std::cerr << "ModuleRegistry::addModule: duplicate module " << name << std::endl;
-   }
-   assert(added);
+void ModuleRegistry::addModule(const std::string &name, NewModuleFunc factory)
+{
+    auto added = m_modules.emplace(name, ModuleClass(name, factory)).second;
+    if (!added) {
+        std::cerr << "ModuleRegistry::addModule: duplicate module " << name << std::endl;
+    }
+    assert(added);
 }
 
-boost::function<ModuleRegistry::NewModuleFunc> ModuleRegistry::moduleFactory(const std::string &name) {
+boost::function<ModuleRegistry::NewModuleFunc> ModuleRegistry::moduleFactory(const std::string &name)
+{
+    boost::function<NewModuleFunc> f;
 
-   boost::function<NewModuleFunc> f;
+    auto it = m_modules.find(name);
+    if (it == m_modules.end())
+        return f;
 
-   auto it = m_modules.find(name);
-   if (it == m_modules.end())
-      return f;
+    f = it->second.newInstance;
 
-   f = it->second.newInstance;
-
-   return f;
+    return f;
 }
 
-std::shared_ptr<Module> ModuleRegistry::newInstance(const std::string &name, int id, mpi::communicator &comm) {
+std::shared_ptr<Module> ModuleRegistry::newInstance(const std::string &name, int id, mpi::communicator &comm)
+{
+    auto it = m_modules.find(name);
+    if (it == m_modules.end())
+        return nullptr;
 
-   auto it = m_modules.find(name);
-   if (it == m_modules.end())
-      return nullptr;
-
-   return it->second.newInstance(name, id, comm);
+    return it->second.newInstance(name, id, comm);
 }
 
-bool ModuleRegistry::availableModules(AvailableMap &available) {
+bool ModuleRegistry::availableModules(AvailableMap &available)
+{
+    const int hub = 0;
 
-   const int hub = 0;
+    std::map<std::string, std::string> moduleDescriptions;
+    try {
+        auto fs = cmrc::moduledescriptions::get_filesystem();
+        auto data = fs.open("moduledescriptions.txt");
 
-   std::map<std::string, std::string> moduleDescriptions;
-   try {
-       auto fs = cmrc::moduledescriptions::get_filesystem();
-       auto data = fs.open("moduledescriptions.txt");
+        struct membuf: std::streambuf {
+            membuf(const char *cbegin, const char *cend)
+            {
+                char *begin(const_cast<char *>(cbegin));
+                char *end(const_cast<char *>(cend));
+                this->setg(begin, begin, end);
+            }
+        };
 
-       struct membuf: std::streambuf {
-           membuf(const char *cbegin, const char *cend) {
-               char* begin(const_cast<char*>(cbegin));
-               char* end(const_cast<char*>(cend));
-               this->setg(begin, begin, end);
-           }
-       };
+        struct imemstream: virtual membuf, std::istream {
+            imemstream(const char *begin, const char *end)
+            : membuf(begin, end), std::istream(static_cast<std::streambuf *>(this))
+            {}
+        };
 
-       struct imemstream: virtual membuf, std::istream {
-           imemstream(const char *begin, const char *end)
-               : membuf(begin, end)
-               , std::istream(static_cast<std::streambuf*>(this)) {
-               }
-       };
+        imemstream str(data.begin(), data.end());
+        moduleDescriptions = readModuleDescriptions(str);
+    } catch (std::exception &ex) {
+        std::cerr << "ModuleRegistry::availableModules: exception: " << ex.what() << std::endl;
+    }
 
-       imemstream str(data.begin(), data.end());
-       moduleDescriptions = readModuleDescriptions(str);
-   } catch (std::exception &ex) {
-       std::cerr << "ModuleRegistry::availableModules: exception: " << ex.what() << std::endl;
-   }
+    for (const auto &m: m_modules) {
+        AvailableModule mod;
+        mod.hub = hub;
+        mod.name = m.first;
+        auto it = moduleDescriptions.find(mod.name);
+        if (it != moduleDescriptions.end()) {
+            mod.description = it->second;
+        }
 
-   for (const auto &m: m_modules) {
+        AvailableModule::Key key(hub, mod.name);
+        available[key] = mod;
+    }
 
-      AvailableModule mod;
-      mod.hub = hub;
-      mod.name = m.first;
-      auto it = moduleDescriptions.find(mod.name);
-      if (it != moduleDescriptions.end()) {
-          mod.description = it->second;
-      }
-
-      AvailableModule::Key key(hub, mod.name);
-      available[key] = mod;
-   }
-
-   return true;
+    return true;
 }
 
-}
+} // namespace vistle

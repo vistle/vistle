@@ -20,17 +20,16 @@ using message::FileQuery;
 using message::FileQueryResult;
 
 namespace {
-FileQueryResult::Status readEntry(const fs::path &path, FileInfo &info) {
-
+FileQueryResult::Status readEntry(const fs::path &path, FileInfo &info)
+{
     try {
-
         info.name = path.filename().string();
 
 #ifdef WIN32
         info.casesensitive = false;
         info.hidden = false;
 #else
-        info.hidden = info.name.length()>=1 && info.name[0] == '.';
+        info.hidden = info.name.length() >= 1 && info.name[0] == '.';
         info.casesensitive = true;
 #endif
 
@@ -63,8 +62,8 @@ FileQueryResult::Status readEntry(const fs::path &path, FileInfo &info) {
 
         info.size = -1;
         switch (stat.type()) {
-        {
-        case fs::regular_file:
+            {
+            case fs::regular_file:
                 info.type = FileInfo::File;
                 info.size = fs::file_size(path);
                 break;
@@ -78,8 +77,7 @@ FileQueryResult::Status readEntry(const fs::path &path, FileInfo &info) {
             default:
                 info.type = FileInfo::System;
                 break;
-        }
-
+            }
         }
 
         info.lastmod = fs::last_write_time(path);
@@ -103,7 +101,7 @@ std::vector<std::string> readDirectory(const std::string &path, message::FileQue
 #ifdef WIN32
         char physical[65536];
         QueryDosDevice(NULL, physical, sizeof(physical));
-        for (char *pos = physical; *pos; pos+=strlen(pos)+1) {
+        for (char *pos = physical; *pos; pos += strlen(pos) + 1) {
             char logical[65536];
             QueryDosDevice(pos, logical, sizeof(logical));
             results.emplace_back(logical);
@@ -127,7 +125,7 @@ std::vector<std::string> readDirectory(const std::string &path, message::FileQue
             return results;
         }
 
-        for ( ; it != fs::directory_iterator(); ++it) {
+        for (; it != fs::directory_iterator(); ++it) {
             results.push_back(it->path().filename().string());
         }
     }
@@ -135,12 +133,10 @@ std::vector<std::string> readDirectory(const std::string &path, message::FileQue
     return results;
 }
 
-}
+} // namespace
 
-FileInfoCrawler::FileInfoCrawler(Hub &hub)
-: m_hub(hub)
-{
-}
+FileInfoCrawler::FileInfoCrawler(Hub &hub): m_hub(hub)
+{}
 
 bool FileInfoCrawler::handle(const message::FileQuery &query, const buffer &payload)
 {
@@ -177,16 +173,17 @@ bool FileInfoCrawler::handle(const message::FileQuery &query, const buffer &payl
             std::vector<std::future<FileQueryResult::Status>> queryFutures;
             for (const auto &f: files) {
                 auto fn = path + f;
-                queryFutures.emplace_back(std::async(std::launch::async, [fn, &mtx, &results]() mutable -> FileQueryResult::Status {
-                    FileInfo fi;
-                    auto s = readEntry(fs::path(fn), fi);
-                    if (s != FileQueryResult::Ok) {
-                        CERR << "status not ok (" << s << ") for " << fn << std::endl;
-                    }
-                    std::lock_guard<std::mutex> guard(mtx);
-                    results.push_back(fi);
-                    return s;
-                }));
+                queryFutures.emplace_back(
+                    std::async(std::launch::async, [fn, &mtx, &results]() mutable -> FileQueryResult::Status {
+                        FileInfo fi;
+                        auto s = readEntry(fs::path(fn), fi);
+                        if (s != FileQueryResult::Ok) {
+                            CERR << "status not ok (" << s << ") for " << fn << std::endl;
+                        }
+                        std::lock_guard<std::mutex> guard(mtx);
+                        results.push_back(fi);
+                        return s;
+                    }));
             }
             for (auto &f: queryFutures) {
                 f.get();
@@ -213,7 +210,8 @@ bool FileInfoCrawler::handle(const message::FileQuery &query, const buffer &payl
     return false;
 }
 
-bool FileInfoCrawler::sendResponse(const message::FileQuery &query, message::FileQueryResult::Status s, const buffer &payload)
+bool FileInfoCrawler::sendResponse(const message::FileQuery &query, message::FileQueryResult::Status s,
+                                   const buffer &payload)
 {
     message::FileQueryResult response(query, s, payload.size());
     if (m_hub.id() == query.senderId()) {
@@ -224,4 +222,4 @@ bool FileInfoCrawler::sendResponse(const message::FileQuery &query, message::Fil
     return m_hub.sendHub(query.senderId(), response, &payload);
 }
 
-}
+} // namespace vistle

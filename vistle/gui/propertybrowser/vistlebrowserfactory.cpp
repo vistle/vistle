@@ -16,8 +16,7 @@ QT_BEGIN_NAMESPACE
 
 // VistleBrowserFactory
 
-class VistleBrowserFactoryPrivate : public EditorFactoryPrivate<VistleBrowserEdit>
-{
+class VistleBrowserFactoryPrivate: public EditorFactoryPrivate<VistleBrowserEdit> {
     VistleBrowserFactory *q_ptr;
     Q_DECLARE_PUBLIC(VistleBrowserFactory)
 public:
@@ -36,17 +35,14 @@ public:
 };
 
 VistleBrowserFactoryPrivate::VistleBrowserFactoryPrivate()
-{
+{}
 
-}
-
-void VistleBrowserFactoryPrivate::slotPropertyChanged(QtProperty *property,
-                const QString &value)
+void VistleBrowserFactoryPrivate::slotPropertyChanged(QtProperty *property, const QString &value)
 {
     if (!m_createdEditors.contains(property))
         return;
 
-    QListIterator<VistleBrowserEdit *> itEditor( m_createdEditors[property]);
+    QListIterator<VistleBrowserEdit *> itEditor(m_createdEditors[property]);
     while (itEditor.hasNext()) {
         VistleBrowserEdit *editor = itEditor.next();
         if (editor->text() != value) {
@@ -57,8 +53,7 @@ void VistleBrowserFactoryPrivate::slotPropertyChanged(QtProperty *property,
     }
 }
 
-void VistleBrowserFactoryPrivate::slotFiltersChanged(QtProperty *property,
-            const QString &filters)
+void VistleBrowserFactoryPrivate::slotFiltersChanged(QtProperty *property, const QString &filters)
 {
     if (!m_createdEditors.contains(property))
         return;
@@ -76,8 +71,7 @@ void VistleBrowserFactoryPrivate::slotFiltersChanged(QtProperty *property,
     }
 }
 
-void VistleBrowserFactoryPrivate::slotRegExpChanged(QtProperty *property,
-            const QRegExp &regExp)
+void VistleBrowserFactoryPrivate::slotRegExpChanged(QtProperty *property, const QRegExp &regExp)
 {
     if (!m_createdEditors.contains(property))
         return;
@@ -142,7 +136,7 @@ void VistleBrowserFactoryPrivate::slotEchoModeChanged(QtProperty *property, int 
     }
 }
 
-void VistleBrowserFactoryPrivate::slotReadOnlyChanged( QtProperty *property, bool readOnly)
+void VistleBrowserFactoryPrivate::slotReadOnlyChanged(QtProperty *property, bool readOnly)
 {
     if (!m_createdEditors.contains(property))
         return;
@@ -178,7 +172,7 @@ void VistleBrowserFactoryPrivate::slotFileModeChanged(QtProperty *property, int 
     }
 }
 
-void VistleBrowserFactoryPrivate::slotTitleChanged( QtProperty *property, const QString &title)
+void VistleBrowserFactoryPrivate::slotTitleChanged(QtProperty *property, const QString &title)
 {
     if (!m_createdEditors.contains(property))
         return;
@@ -200,7 +194,8 @@ void VistleBrowserFactoryPrivate::slotSetValue(const QString &value)
 {
     QObject *object = q_ptr->sender();
     const QMap<VistleBrowserEdit *, QtProperty *>::ConstIterator ecend = m_editorToProperty.constEnd();
-    for (QMap<VistleBrowserEdit *, QtProperty *>::ConstIterator itEditor = m_editorToProperty.constBegin(); itEditor != ecend; ++itEditor)
+    for (QMap<VistleBrowserEdit *, QtProperty *>::ConstIterator itEditor = m_editorToProperty.constBegin();
+         itEditor != ecend; ++itEditor)
         if (itEditor.key() == object) {
             QtProperty *property = itEditor.value();
             VistleBrowserPropertyManager *manager = q_ptr->propertyManager(property);
@@ -210,7 +205,6 @@ void VistleBrowserFactoryPrivate::slotSetValue(const QString &value)
             return;
         }
 }
-
 
 
 /*!
@@ -226,11 +220,10 @@ void VistleBrowserFactoryPrivate::slotSetValue(const QString &value)
     Creates a factory with the given \a parent.
 */
 VistleBrowserFactory::VistleBrowserFactory(QObject *parent)
-    : QtAbstractEditorFactory<VistleBrowserPropertyManager>(parent)
+: QtAbstractEditorFactory<VistleBrowserPropertyManager>(parent)
 {
     d_ptr = new VistleBrowserFactoryPrivate();
     d_ptr->q_ptr = this;
-
 }
 
 /*!
@@ -254,22 +247,18 @@ void VistleBrowserFactory::setUi(vistle::UserInterface *ui)
 */
 void VistleBrowserFactory::connectPropertyManager(VistleBrowserPropertyManager *manager)
 {
-    connect(manager, SIGNAL(valueChanged(QtProperty *, const QString &)),
-            this, SLOT(slotPropertyChanged(QtProperty *, const QString &)));
-    connect(manager, SIGNAL(moduleIdChanged(QtProperty*, int)),
-            this, SLOT(slotModuleIdChanged(QtProperty *, int)));
-    connect(manager, SIGNAL(filtersChanged(QtProperty *, const QString &)),
-            this, SLOT(slotFiltersChanged(QtProperty *, const QString &)));
-    connect(manager, SIGNAL(regExpChanged(QtProperty *, const QRegExp &)),
-            this, SLOT(slotRegExpChanged(QtProperty *, const QRegExp &)));
-    connect(manager, SIGNAL(echoModeChanged(QtProperty*, int)),
-            this, SLOT(slotEchoModeChanged(QtProperty *, int)));
-    connect(manager, SIGNAL(readOnlyChanged(QtProperty*, bool)),
-        this, SLOT(slotReadOnlyChanged(QtProperty *, bool)));
-    connect(manager, SIGNAL(fileModeChanged(QtProperty*, int)),
-            this, SLOT(slotFileModeChanged(QtProperty *, int)));
-    connect(manager, SIGNAL(titleChanged(QtProperty*, const QString &)),
-            this, SLOT(slotTitleChanged(QtProperty *, const QString &)));
+    connect(manager, SIGNAL(valueChanged(QtProperty *, const QString &)), this,
+            SLOT(slotPropertyChanged(QtProperty *, const QString &)));
+    connect(manager, SIGNAL(moduleIdChanged(QtProperty *, int)), this, SLOT(slotModuleIdChanged(QtProperty *, int)));
+    connect(manager, SIGNAL(filtersChanged(QtProperty *, const QString &)), this,
+            SLOT(slotFiltersChanged(QtProperty *, const QString &)));
+    connect(manager, SIGNAL(regExpChanged(QtProperty *, const QRegExp &)), this,
+            SLOT(slotRegExpChanged(QtProperty *, const QRegExp &)));
+    connect(manager, SIGNAL(echoModeChanged(QtProperty *, int)), this, SLOT(slotEchoModeChanged(QtProperty *, int)));
+    connect(manager, SIGNAL(readOnlyChanged(QtProperty *, bool)), this, SLOT(slotReadOnlyChanged(QtProperty *, bool)));
+    connect(manager, SIGNAL(fileModeChanged(QtProperty *, int)), this, SLOT(slotFileModeChanged(QtProperty *, int)));
+    connect(manager, SIGNAL(titleChanged(QtProperty *, const QString &)), this,
+            SLOT(slotTitleChanged(QtProperty *, const QString &)));
 }
 
 /*!
@@ -277,8 +266,8 @@ void VistleBrowserFactory::connectPropertyManager(VistleBrowserPropertyManager *
 
     Reimplemented from the QtAbstractEditorFactory class.
 */
-QWidget *VistleBrowserFactory::createEditor(VistleBrowserPropertyManager *manager,
-        QtProperty *property, QWidget *parent)
+QWidget *VistleBrowserFactory::createEditor(VistleBrowserPropertyManager *manager, QtProperty *property,
+                                            QWidget *parent)
 {
     VistleBrowserEdit *editor = d_ptr->createEditor(property, parent);
     editor->setUi(d_ptr->m_ui);
@@ -299,12 +288,10 @@ QWidget *VistleBrowserFactory::createEditor(VistleBrowserPropertyManager *manage
     connect(editor, SIGNAL(textChanged(const QString &)),
                 this, SLOT(slotSetValue(const QString &)));
 #else
-    connect(editor, &VistleBrowserEdit::editingFinished, [manager, property, editor](){
-        manager->setValue(property, editor->text());
-    });
+    connect(editor, &VistleBrowserEdit::editingFinished,
+            [manager, property, editor]() { manager->setValue(property, editor->text()); });
 #endif
-    connect(editor, SIGNAL(destroyed(QObject *)),
-                this, SLOT(slotEditorDestroyed(QObject *)));
+    connect(editor, SIGNAL(destroyed(QObject *)), this, SLOT(slotEditorDestroyed(QObject *)));
     return editor;
 }
 
@@ -315,23 +302,19 @@ QWidget *VistleBrowserFactory::createEditor(VistleBrowserPropertyManager *manage
 */
 void VistleBrowserFactory::disconnectPropertyManager(VistleBrowserPropertyManager *manager)
 {
-    disconnect(manager, SIGNAL(valueChanged(QtProperty *, const QString &)),
-                this, SLOT(slotPropertyChanged(QtProperty *, const QString &)));
-    disconnect(manager, SIGNAL(moduleIdChanged(QtProperty*,int)),
-                this, SLOT(slotModuleIdChanged(QtProperty *, int)));
-    disconnect(manager, SIGNAL(filtersChanged(QtProperty *, const QString &)),
-                this, SLOT(slotFiltersChanged(QtProperty *, const QString &)));
-    disconnect(manager, SIGNAL(regExpChanged(QtProperty *, const QRegExp &)),
-                this, SLOT(slotRegExpChanged(QtProperty *, const QRegExp &)));
-    disconnect(manager, SIGNAL(echoModeChanged(QtProperty*,int)),
-                this, SLOT(slotEchoModeChanged(QtProperty *, int)));
-    disconnect(manager, SIGNAL(readOnlyChanged(QtProperty*, bool)),
-        this, SLOT(slotReadOnlyChanged(QtProperty *, bool)));
-    disconnect(manager, SIGNAL(fileModeChanged(QtProperty*,int)),
-                this, SLOT(slotFileModeChanged(QtProperty *, int)));
-    disconnect(manager, SIGNAL(titleChanged(QtProperty*, const QString &)),
-                this, SLOT(slotTitleChanged(QtProperty *,  const QString &)));
-
+    disconnect(manager, SIGNAL(valueChanged(QtProperty *, const QString &)), this,
+               SLOT(slotPropertyChanged(QtProperty *, const QString &)));
+    disconnect(manager, SIGNAL(moduleIdChanged(QtProperty *, int)), this, SLOT(slotModuleIdChanged(QtProperty *, int)));
+    disconnect(manager, SIGNAL(filtersChanged(QtProperty *, const QString &)), this,
+               SLOT(slotFiltersChanged(QtProperty *, const QString &)));
+    disconnect(manager, SIGNAL(regExpChanged(QtProperty *, const QRegExp &)), this,
+               SLOT(slotRegExpChanged(QtProperty *, const QRegExp &)));
+    disconnect(manager, SIGNAL(echoModeChanged(QtProperty *, int)), this, SLOT(slotEchoModeChanged(QtProperty *, int)));
+    disconnect(manager, SIGNAL(readOnlyChanged(QtProperty *, bool)), this,
+               SLOT(slotReadOnlyChanged(QtProperty *, bool)));
+    disconnect(manager, SIGNAL(fileModeChanged(QtProperty *, int)), this, SLOT(slotFileModeChanged(QtProperty *, int)));
+    disconnect(manager, SIGNAL(titleChanged(QtProperty *, const QString &)), this,
+               SLOT(slotTitleChanged(QtProperty *, const QString &)));
 }
 
 #if QT_VERSION >= 0x040400

@@ -17,7 +17,7 @@
 #endif
 
 namespace osg {
-   class MatrixTransform;
+class MatrixTransform;
 }
 
 struct OsgColorMap {
@@ -38,33 +38,31 @@ struct OsgColorMap {
 typedef std::map<std::string, OsgColorMap> OsgColorMapMap;
 
 class VistleGeometryGenerator {
-   public:
-      VistleGeometryGenerator(std::shared_ptr<vistle::RenderObject> ro,
-            vistle::Object::const_ptr geo,
-            vistle::Object::const_ptr normal,
-            vistle::Object::const_ptr mapped);
+public:
+    VistleGeometryGenerator(std::shared_ptr<vistle::RenderObject> ro, vistle::Object::const_ptr geo,
+                            vistle::Object::const_ptr normal, vistle::Object::const_ptr mapped);
 
-      const std::string &species() const;
-      void setColorMaps(const OsgColorMapMap *colormaps);
+    const std::string &species() const;
+    void setColorMaps(const OsgColorMapMap *colormaps);
 
-      osg::MatrixTransform *operator()(osg::ref_ptr<osg::StateSet> state = NULL);
+    osg::MatrixTransform *operator()(osg::ref_ptr<osg::StateSet> state = NULL);
 
-      static bool isSupported(vistle::Object::Type t);
+    static bool isSupported(vistle::Object::Type t);
 
-      static void lock();
-      static void unlock();
+    static void lock();
+    static void unlock();
 
-   private:
-      std::shared_ptr<vistle::RenderObject> m_ro;
-      vistle::Object::const_ptr m_geo;
-      vistle::Object::const_ptr m_normal;
-      vistle::Object::const_ptr m_mapped;
+private:
+    std::shared_ptr<vistle::RenderObject> m_ro;
+    vistle::Object::const_ptr m_geo;
+    vistle::Object::const_ptr m_normal;
+    vistle::Object::const_ptr m_mapped;
 
-      std::string m_species;
+    std::string m_species;
 
-      const OsgColorMapMap *m_colormaps = nullptr;
+    const OsgColorMapMap *m_colormaps = nullptr;
 
-      static std::mutex s_coverMutex;
+    static std::mutex s_coverMutex;
 };
 
 #endif

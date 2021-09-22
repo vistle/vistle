@@ -11,7 +11,6 @@ namespace vistle {
 
 class FileInfoCrawler {
 public:
-
     FileInfoCrawler(Hub &hub);
     bool handle(const message::FileQuery &query, const buffer &payload);
 
@@ -21,5 +20,5 @@ private:
     Hub &m_hub;
 };
 
-}
+} // namespace vistle
 #endif

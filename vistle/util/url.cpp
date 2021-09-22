@@ -9,37 +9,25 @@ static std::string url_decode(const std::string &str, bool in_path)
 {
     std::string decoded;
     decoded.reserve(str.size());
-    for (std::size_t i = 0; i < str.size(); ++i)
-    {
-        if (str[i] == '%')
-        {
-            if (i + 3 <= str.size())
-            {
+    for (std::size_t i = 0; i < str.size(); ++i) {
+        if (str[i] == '%') {
+            if (i + 3 <= str.size()) {
                 int value = 0;
                 std::istringstream is(str.substr(i + 1, 2));
-                if (is >> std::hex >> value)
-                {
+                if (is >> std::hex >> value) {
                     decoded += static_cast<char>(value);
                     i += 2;
-                }
-                else
-                {
+                } else {
                     decoded.clear();
                     break;
                 }
-            }
-            else
-            {
+            } else {
                 decoded.clear();
                 break;
             }
-        }
-        else if (in_path && str[i] == '+')
-        {
+        } else if (in_path && str[i] == '+') {
             decoded += ' ';
-        }
-        else
-        {
+        } else {
             decoded += str[i];
         }
     }
@@ -57,8 +45,7 @@ Url::Url(const std::string &url)
     if (!isalpha(*it))
         return;
 
-    for ( ; it != url.end(); ++it)
-    {
+    for (; it != url.end(); ++it) {
         if (std::isalnum(*it))
             continue;
         if (*it == '+')
@@ -86,16 +73,14 @@ Url::Url(const std::string &url)
 
     int numSlash = 0;
     auto authorityBegin = it;
-    for ( ; it != url.end(); ++it)
-    {
+    for (; it != url.end(); ++it) {
         if (numSlash >= 2)
             break;
         if (*it != '/')
             break;
         ++numSlash;
     }
-    if (numSlash >= 2)
-    {
+    if (numSlash >= 2) {
         m_haveAuthority = true;
         auto slash = std::find(it, url.end(), '/');
         auto question = std::find(it, url.end(), '?');
@@ -110,32 +95,27 @@ Url::Url(const std::string &url)
         auto host = authority.begin();
         if (at != authority.end()) {
             m_userinfo = decode(std::string(authority.begin(), at));
-            host = at+1;
+            host = at + 1;
         }
         auto colon = std::find(host, authority.end(), ':');
         if (colon != authority.end()) {
             m_host = std::string(host, colon);
-            m_port = std::string (colon+1, authority.end());
+            m_port = std::string(colon + 1, authority.end());
         } else {
             m_host = std::string(host, authority.end());
         }
         m_authority = decode(std::string(it, end));
         it = end;
-    }
-    else
-    {
+    } else {
         // no authority
         it = authorityBegin;
     }
 
     auto question = std::find(it, url.end(), '?');
     auto hash = std::find(it, url.end(), '#');
-    if (question == url.end())
-    {
+    if (question == url.end()) {
         m_path = decode(std::string(it, hash), true);
-    }
-    else
-    {
+    } else {
         m_path = decode(std::string(it, question), true);
         it = question;
         ++it;
@@ -150,7 +130,7 @@ Url::Url(const std::string &url)
                 if (eq == amp)
                     m_query[key] = "";
                 else
-                    m_query[key] = decode(std::string(eq+1, amp));
+                    m_query[key] = decode(std::string(eq + 1, amp));
                 keyvalue = amp;
                 if (keyvalue != query.end())
                     ++keyvalue;
@@ -194,14 +174,12 @@ std::string Url::str() const
 
     std::string str = scheme();
     str += ":";
-    if (m_haveAuthority)
-    {
+    if (m_haveAuthority) {
         str += "//";
         str += authority();
     }
     str += path();
-    if (!m_query.empty())
-    {
+    if (!m_query.empty()) {
         std::string query;
         for (const auto &kv: m_query) {
             if (!query.empty())
@@ -210,8 +188,7 @@ std::string Url::str() const
         }
         str += "?" + query;
     }
-    if (!m_fragment.empty())
-    {
+    if (!m_fragment.empty()) {
         str += "#";
         str += m_fragment;
     }
@@ -271,12 +248,12 @@ const std::string &Url::path() const
     return m_path;
 }
 
-const std::map<std::string,std::string> &Url::query() const
+const std::map<std::string, std::string> &Url::query() const
 {
     return m_query;
 }
 
-std::pair<std::string,bool> Url::query(const std::string &key) const
+std::pair<std::string, bool> Url::query(const std::string &key) const
 {
     auto it = m_query.find(key);
     if (it == m_query.end()) {
@@ -292,8 +269,7 @@ const std::string &Url::fragment() const
 }
 
 Url::Url()
-{
-}
+{}
 
 std::ostream &operator<<(std::ostream &os, const Url &url)
 {
@@ -301,9 +277,9 @@ std::ostream &operator<<(std::ostream &os, const Url &url)
     return os;
 }
 
-std::string shortenUrl(const Url &url, size_t length=20)
+std::string shortenUrl(const Url &url, size_t length = 20)
 {
     return url.str();
 }
 
-}
+} // namespace vistle

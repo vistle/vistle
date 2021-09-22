@@ -74,9 +74,8 @@ QT_BEGIN_NAMESPACE
 
 class RemoteFileIconProvider;
 
-class Q_AUTOTEST_EXPORT VistleFileInfoGatherer : public AbstractFileInfoGatherer, public vistle::FileBrowser
-{
-Q_OBJECT
+class Q_AUTOTEST_EXPORT VistleFileInfoGatherer: public AbstractFileInfoGatherer, public vistle::FileBrowser {
+    Q_OBJECT
 
 public:
     explicit VistleFileInfoGatherer(vistle::UserInterface *ui, int moduleId, QObject *parent = 0);

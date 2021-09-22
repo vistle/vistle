@@ -60,98 +60,90 @@ namespace vistle {
 using message::Id;
 
 #ifdef REDIRECT_OUTPUT
-template<typename CharT, typename TraitsT = std::char_traits<CharT> >
+template<typename CharT, typename TraitsT = std::char_traits<CharT>>
 class msgstreambuf: public std::basic_streambuf<CharT, TraitsT> {
+public:
+    msgstreambuf(Module *mod): m_module(mod), m_console(true), m_gui(false) {}
 
- public:
-   msgstreambuf(Module *mod)
-   : m_module(mod)
-   , m_console(true)
-   , m_gui(false)
-   {}
+    ~msgstreambuf()
+    {
+        std::unique_lock<std::recursive_mutex> scoped_lock(m_mutex);
+        flush();
+        for (const auto &s: m_backlog) {
+            std::cout << s << std::endl;
+            if (m_gui)
+                m_module->sendText(message::SendText::Cerr, s);
+        }
+        m_backlog.clear();
+    }
 
-   ~msgstreambuf() {
+    void flush(ssize_t count = -1)
+    {
+        std::unique_lock<std::recursive_mutex> scoped_lock(m_mutex);
+        size_t size = count < 0 ? m_buf.size() : count;
+        if (size > 0) {
+            std::string msg(m_buf.data(), size);
+            m_backlog.push_back(msg);
+            if (m_backlog.size() > BacklogSize)
+                m_backlog.pop_front();
+            if (m_gui)
+                m_module->sendText(message::SendText::Cerr, msg);
+            if (m_console)
+                std::cout << msg << std::flush;
+        }
 
-      std::unique_lock<std::recursive_mutex> scoped_lock(m_mutex);
-      flush();
-      for (const auto &s: m_backlog) {
-         std::cout << s << std::endl;
-         if (m_gui)
-            m_module->sendText(message::SendText::Cerr, s);
-      }
-      m_backlog.clear();
-   }
+        if (size == m_buf.size()) {
+            m_buf.clear();
+        } else {
+            m_buf.erase(m_buf.begin(), m_buf.begin() + size);
+        }
+    }
 
-   void flush(ssize_t count=-1) {
-      std::unique_lock<std::recursive_mutex> scoped_lock(m_mutex);
-      size_t size = count<0 ? m_buf.size() : count;
-      if (size > 0) {
-         std::string msg(m_buf.data(), size);
-         m_backlog.push_back(msg);
-         if (m_backlog.size() > BacklogSize)
-            m_backlog.pop_front();
-         if (m_gui)
-            m_module->sendText(message::SendText::Cerr, msg);
-         if (m_console)
-            std::cout << msg << std::flush;
-      }
+    int overflow(int ch)
+    {
+        std::unique_lock<std::recursive_mutex> scoped_lock(m_mutex);
+        if (ch != EOF) {
+            m_buf.push_back(ch);
+            if (ch == '\n')
+                flush();
+            return 0;
+        } else {
+            return EOF;
+        }
+    }
 
-      if (size == m_buf.size()) {
-         m_buf.clear();
-      } else {
-         m_buf.erase(m_buf.begin(), m_buf.begin()+size);
-      }
-   }
+    std::streamsize xsputn(const CharT *s, std::streamsize num)
+    {
+        std::unique_lock<std::recursive_mutex> scoped_lock(m_mutex);
+        size_t end = m_buf.size();
+        m_buf.resize(end + num);
+        memcpy(m_buf.data() + end, s, num);
+        auto it = std::find(m_buf.rbegin(), m_buf.rend(), '\n');
+        if (it != m_buf.rend()) {
+            flush(it - m_buf.rend());
+        }
+        return num;
+    }
 
-   int overflow(int ch) {
-      std::unique_lock<std::recursive_mutex> scoped_lock(m_mutex);
-      if (ch != EOF) {
-         m_buf.push_back(ch);
-         if (ch == '\n')
-            flush();
-         return 0;
-      } else {
-         return EOF;
-      }
-   }
+    void set_console_output(bool enable) { m_console = enable; }
 
-   std::streamsize xsputn (const CharT *s, std::streamsize num) {
-      std::unique_lock<std::recursive_mutex> scoped_lock(m_mutex);
-      size_t end = m_buf.size();
-      m_buf.resize(end+num);
-      memcpy(m_buf.data()+end, s, num);
-      auto it = std::find(m_buf.rbegin(), m_buf.rend(), '\n');
-      if (it != m_buf.rend()) {
-         flush(it - m_buf.rend());
-      }
-      return num;
-   }
+    void set_gui_output(bool enable) { m_gui = enable; }
 
-   void set_console_output(bool enable) {
-      m_console = enable;
-   }
+    void clear_backlog() { m_backlog.clear(); }
 
-   void set_gui_output(bool enable) {
-      m_gui = enable;
-   }
-
-   void clear_backlog() {
-      m_backlog.clear();
-   }
-
- private:
-   const size_t BacklogSize = 10;
-   Module *m_module;
-   std::vector<char> m_buf;
-   std::recursive_mutex m_mutex;
-   bool m_console, m_gui;
-   std::deque<std::string> m_backlog;
+private:
+    const size_t BacklogSize = 10;
+    Module *m_module;
+    std::vector<char> m_buf;
+    std::recursive_mutex m_mutex;
+    bool m_console, m_gui;
+    std::deque<std::string> m_backlog;
 };
 #endif
 
 
-int getTimestep(Object::const_ptr obj) {
-
+int getTimestep(Object::const_ptr obj)
+{
     if (!obj)
         return -1;
 
@@ -167,8 +159,8 @@ int getTimestep(Object::const_ptr obj) {
     return t;
 }
 
-double getRealTime(Object::const_ptr obj) {
-
+double getRealTime(Object::const_ptr obj)
+{
     if (!obj)
         return -1;
 
@@ -183,8 +175,8 @@ double getRealTime(Object::const_ptr obj) {
     return obj->getRealTime();
 }
 
-bool Module::setup(const std::string &shmname, int moduleID, int rank) {
-
+bool Module::setup(const std::string &shmname, int moduleID, int rank)
+{
 #ifndef MODULE_THREAD
     bool perRank = shmPerRank();
     Shm::attach(shmname, moduleID, rank, perRank);
@@ -221,72 +213,72 @@ Module::Module(const std::string &moduleName, const int moduleId, mpi::communica
 , m_reduced(false)
 , m_readyForQuit(false)
 {
-   m_size = m_comm.size();
-   m_rank = m_comm.rank();
+    m_size = m_comm.size();
+    m_rank = m_comm.rank();
 
 #ifndef MODULE_THREAD
-   message::DefaultSender::init(m_id, m_rank);
+    message::DefaultSender::init(m_id, m_rank);
 #endif
 
-   // names are swapped relative to communicator
-   std::string smqName = message::MessageQueue::createName("recv", id(), rank());
-   try {
-      sendMessageQueue = message::MessageQueue::open(smqName);
+    // names are swapped relative to communicator
+    std::string smqName = message::MessageQueue::createName("recv", id(), rank());
+    try {
+        sendMessageQueue = message::MessageQueue::open(smqName);
 #ifdef DEBUG
-      CERR << "sendMessageQueue name = " << smqName << std::endl;
+        CERR << "sendMessageQueue name = " << smqName << std::endl;
 #endif
-   } catch (interprocess::interprocess_exception &ex) {
-      throw vistle::exception(std::string("opening send message queue ") + smqName + ": " + ex.what());
-   }
+    } catch (interprocess::interprocess_exception &ex) {
+        throw vistle::exception(std::string("opening send message queue ") + smqName + ": " + ex.what());
+    }
 
-   std::string rmqName = message::MessageQueue::createName("send", id(), rank());
-   try {
-      receiveMessageQueue = message::MessageQueue::open(rmqName);
-   } catch (interprocess::interprocess_exception &ex) {
-      throw vistle::exception(std::string("opening receive message queue ") + rmqName + ": " + ex.what());
-   }
+    std::string rmqName = message::MessageQueue::createName("send", id(), rank());
+    try {
+        receiveMessageQueue = message::MessageQueue::open(rmqName);
+    } catch (interprocess::interprocess_exception &ex) {
+        throw vistle::exception(std::string("opening receive message queue ") + rmqName + ": " + ex.what());
+    }
 
-   m_hardware_concurrency = mpi::all_reduce(comm, std::thread::hardware_concurrency(), mpi::minimum<unsigned>());
+    m_hardware_concurrency = mpi::all_reduce(comm, std::thread::hardware_concurrency(), mpi::minimum<unsigned>());
 
 #ifdef DEBUG
-   std::cerr << "  module [" << name() << "] [" << id() << "] [" << rank()
-             << "/" << size() << "] started as " << hostname() << ":"
-             << get_process_handle()
-             << std::endl;
+    std::cerr << "  module [" << name() << "] [" << id() << "] [" << rank() << "/" << size() << "] started as "
+              << hostname() << ":" << get_process_handle() << std::endl;
 #endif
 
-   auto cm = addIntParameter("_cache_mode", "input object caching", ObjectCache::CacheDefault, Parameter::Choice);
-   V_ENUM_SET_CHOICES_SCOPE(cm, CacheMode, ObjectCache);
-   addIntParameter("_prioritize_visible", "prioritize currently visible timestep", m_prioritizeVisible, Parameter::Boolean);
+    auto cm = addIntParameter("_cache_mode", "input object caching", ObjectCache::CacheDefault, Parameter::Choice);
+    V_ENUM_SET_CHOICES_SCOPE(cm, CacheMode, ObjectCache);
+    addIntParameter("_prioritize_visible", "prioritize currently visible timestep", m_prioritizeVisible,
+                    Parameter::Boolean);
 
-   addVectorParameter("_position", "position in GUI", ParamVector(0., 0.));
+    addVectorParameter("_position", "position in GUI", ParamVector(0., 0.));
 
-   auto em = addIntParameter("_error_output_mode", "where stderr is shown", size()==1 ? 1 : 1, Parameter::Choice);
-   std::vector<std::string> errmodes;
-   errmodes.push_back("No output");
-   errmodes.push_back("Console only");
-   errmodes.push_back("GUI");
-   errmodes.push_back("Console & GUI");
-   setParameterChoices(em, errmodes);
+    auto em = addIntParameter("_error_output_mode", "where stderr is shown", size() == 1 ? 1 : 1, Parameter::Choice);
+    std::vector<std::string> errmodes;
+    errmodes.push_back("No output");
+    errmodes.push_back("Console only");
+    errmodes.push_back("GUI");
+    errmodes.push_back("Console & GUI");
+    setParameterChoices(em, errmodes);
 
-   auto outrank = addIntParameter("_error_output_rank", "rank from which to show stderr (-1: all ranks)", -1);
-   setParameterRange<Integer>(outrank, -1, size()-1);
+    auto outrank = addIntParameter("_error_output_rank", "rank from which to show stderr (-1: all ranks)", -1);
+    setParameterRange<Integer>(outrank, -1, size() - 1);
 
-   auto openmp_threads = addIntParameter("_openmp_threads", "number of OpenMP threads (0: system default)", 0);
-   setParameterRange<Integer>(openmp_threads, 0, 4096);
-   addIntParameter("_benchmark", "show timing information", m_benchmark ? 1 : 0, Parameter::Boolean);
+    auto openmp_threads = addIntParameter("_openmp_threads", "number of OpenMP threads (0: system default)", 0);
+    setParameterRange<Integer>(openmp_threads, 0, 4096);
+    addIntParameter("_benchmark", "show timing information", m_benchmark ? 1 : 0, Parameter::Boolean);
 
-   m_concurrency = addIntParameter("_concurrency", "number of tasks to keep in flight per MPI rank (-1: #cores/2)", -1);
-   setParameterRange(m_concurrency, Integer(-1), Integer(hardware_concurrency()));
+    m_concurrency =
+        addIntParameter("_concurrency", "number of tasks to keep in flight per MPI rank (-1: #cores/2)", -1);
+    setParameterRange(m_concurrency, Integer(-1), Integer(hardware_concurrency()));
 
-   int leader = Shm::the().owningRank();
-   m_commShmGroup = boost::mpi::communicator(m_comm.split(leader));
-   m_commShmLeaders =boost::mpi::communicator(m_comm.split(leader==m_rank ? 1 : MPI_UNDEFINED));
-   mpi::all_gather(m_comm, leader, m_shmLeaders);
+    int leader = Shm::the().owningRank();
+    m_commShmGroup = boost::mpi::communicator(m_comm.split(leader));
+    m_commShmLeaders = boost::mpi::communicator(m_comm.split(leader == m_rank ? 1 : MPI_UNDEFINED));
+    mpi::all_gather(m_comm, leader, m_shmLeaders);
 }
 
-void Module::prepareQuit() {
-
+void Module::prepareQuit()
+{
 #ifdef DEBUG
     CERR << "I'm quitting" << std::endl;
 #endif
@@ -308,65 +300,65 @@ void Module::prepareQuit() {
     m_readyForQuit = true;
 }
 
-const HubData &Module::getHub() const {
-
+const HubData &Module::getHub() const
+{
     int hubId = m_stateTracker->getHub(id());
     return m_stateTracker->getHubData(hubId);
 }
 
-void Module::initDone() {
-
+void Module::initDone()
+{
 #ifndef MODULE_THREAD
 #ifdef REDIRECT_OUTPUT
-   m_streambuf = new msgstreambuf<char>(this);
-   m_origStreambuf = std::cerr.rdbuf(m_streambuf);
+    m_streambuf = new msgstreambuf<char>(this);
+    m_origStreambuf = std::cerr.rdbuf(m_streambuf);
 #endif
 #endif
 
-   message::Started start(name());
-   start.setDestId(Id::ForBroadcast);
-   sendMessage(start);
+    message::Started start(name());
+    start.setDestId(Id::ForBroadcast);
+    sendMessage(start);
 
-   ParameterManager::init();
+    ParameterManager::init();
 }
 
-const std::string &Module::name() const {
-
-   return m_name;
+const std::string &Module::name() const
+{
+    return m_name;
 }
 
-int Module::id() const {
-
+int Module::id() const
+{
     return m_id;
 }
 
-unsigned Module::hardware_concurrency() const {
-
+unsigned Module::hardware_concurrency() const
+{
     return m_hardware_concurrency;
 }
 
-const mpi::communicator &Module::comm() const {
-
-   return m_comm;
+const mpi::communicator &Module::comm() const
+{
+    return m_comm;
 }
 
-int Module::rank() const {
-
-   return m_rank;
+int Module::rank() const
+{
+    return m_rank;
 }
 
-int Module::size() const {
-
-   return m_size;
+int Module::size() const
+{
+    return m_size;
 }
 
-const mpi::communicator &Module::commShmGroup() const {
-
+const mpi::communicator &Module::commShmGroup() const
+{
     return m_commShmGroup;
 }
 
-int Module::openmpThreads() const {
-
+int Module::openmpThreads() const
+{
     int ret = (int)getIntParameter("_openmp_threads");
     if (ret <= 0) {
         ret = 0;
@@ -374,214 +366,214 @@ int Module::openmpThreads() const {
     return ret;
 }
 
-void Module::setOpenmpThreads(int nthreads, bool updateParam) {
-
+void Module::setOpenmpThreads(int nthreads, bool updateParam)
+{
 #ifdef _OPENMP
     if (nthreads <= 0)
-       nthreads = omp_get_num_procs();
+        nthreads = omp_get_num_procs();
     if (nthreads > 0)
-       omp_set_num_threads(nthreads);
+        omp_set_num_threads(nthreads);
 #endif
     if (updateParam)
         setIntParameter("_openmp_threads", nthreads);
 }
 
-void Module::enableBenchmark(bool benchmark, bool updateParam) {
-
+void Module::enableBenchmark(bool benchmark, bool updateParam)
+{
     m_benchmark = benchmark;
     if (updateParam)
         setIntParameter("_benchmark", benchmark ? 1 : 0);
     int red = m_reducePolicy;
     if (m_benchmark) {
-       if (red == message::ReducePolicy::Locally)
-          red = message::ReducePolicy::OverAll;
+        if (red == message::ReducePolicy::Locally)
+            red = message::ReducePolicy::OverAll;
     }
     sendMessage(message::ReducePolicy(message::ReducePolicy::Reduce(red)));
 }
 
-bool Module::syncMessageProcessing() const {
-
-   return m_syncMessageProcessing;
+bool Module::syncMessageProcessing() const
+{
+    return m_syncMessageProcessing;
 }
 
-void Module::setSyncMessageProcessing(bool sync) {
-
-   m_syncMessageProcessing = sync;
+void Module::setSyncMessageProcessing(bool sync)
+{
+    m_syncMessageProcessing = sync;
 }
 
-ObjectCache::CacheMode Module::setCacheMode(ObjectCache::CacheMode mode, bool updateParam) {
+ObjectCache::CacheMode Module::setCacheMode(ObjectCache::CacheMode mode, bool updateParam)
+{
+    if (mode == ObjectCache::CacheDefault)
+        m_cache.setCacheMode(m_defaultCacheMode);
+    else
+        m_cache.setCacheMode(mode);
 
-   if (mode == ObjectCache::CacheDefault)
-      m_cache.setCacheMode(m_defaultCacheMode);
-   else
-      m_cache.setCacheMode(mode);
+    if (updateParam)
+        setIntParameter("_cache_mode", mode);
 
-   if (updateParam)
-      setIntParameter("_cache_mode", mode);
-
-   return m_cache.cacheMode();
+    return m_cache.cacheMode();
 }
 
-void Module::setDefaultCacheMode(ObjectCache::CacheMode mode) {
-
-   assert(mode != ObjectCache::CacheDefault);
-   m_defaultCacheMode = mode;
-   setCacheMode(m_defaultCacheMode, false);
+void Module::setDefaultCacheMode(ObjectCache::CacheMode mode)
+{
+    assert(mode != ObjectCache::CacheDefault);
+    m_defaultCacheMode = mode;
+    setCacheMode(m_defaultCacheMode, false);
 }
 
 
-ObjectCache::CacheMode Module::cacheMode() const {
-
-   return m_cache.cacheMode();
+ObjectCache::CacheMode Module::cacheMode() const
+{
+    return m_cache.cacheMode();
 }
 
-bool Module::havePort(const std::string &name) {
+bool Module::havePort(const std::string &name)
+{
+    auto param = findParameter(name);
+    if (param)
+        return true;
 
-   auto param = findParameter(name);
-   if (param)
-       return true;
+    auto iout = outputPorts.find(name);
+    if (iout != outputPorts.end())
+        return true;
 
-   auto iout = outputPorts.find(name);
-   if (iout != outputPorts.end())
-       return true;
+    auto iin = inputPorts.find(name);
+    if (iin != inputPorts.end())
+        return true;
 
-   auto iin = inputPorts.find(name);
-   if (iin != inputPorts.end())
-       return true;
-
-   return false;
+    return false;
 }
 
-Port *Module::createInputPort(const std::string &name, const std::string &description, const int flags) {
+Port *Module::createInputPort(const std::string &name, const std::string &description, const int flags)
+{
+    assert(!havePort(name));
+    if (havePort(name)) {
+        CERR << "createInputPort: already have port/parameter with name " << name << std::endl;
+        return nullptr;
+    }
 
-   assert(!havePort(name));
-   if (havePort(name)) {
-      CERR << "createInputPort: already have port/parameter with name " << name << std::endl;
-      return nullptr;
-   }
+    auto itp = inputPorts.emplace(name, Port(id(), name, Port::INPUT, flags));
+    auto &p = itp.first->second;
+    p.setDescription(description);
 
-   auto itp = inputPorts.emplace(name, Port(id(), name, Port::INPUT, flags));
-   auto &p = itp.first->second;
-   p.setDescription(description);
-
-   message::AddPort message(p);
-   message.setDestId(Id::ForBroadcast);
-   sendMessage(message);
-   return &p;
+    message::AddPort message(p);
+    message.setDestId(Id::ForBroadcast);
+    sendMessage(message);
+    return &p;
 }
 
-Port *Module::createOutputPort(const std::string &name, const std::string &description, const int flags) {
+Port *Module::createOutputPort(const std::string &name, const std::string &description, const int flags)
+{
+    assert(!havePort(name));
+    if (havePort(name)) {
+        CERR << "createOutputPort: already have port/parameter with name " << name << std::endl;
+        return nullptr;
+    }
 
-   assert(!havePort(name));
-   if (havePort(name)) {
-      CERR << "createOutputPort: already have port/parameter with name " << name << std::endl;
-      return nullptr;
-   }
+    auto itp = outputPorts.emplace(name, Port(id(), name, Port::OUTPUT, flags));
+    auto &p = itp.first->second;
+    p.setDescription(description);
 
-   auto itp = outputPorts.emplace(name, Port(id(), name, Port::OUTPUT, flags));
-   auto &p = itp.first->second;
-   p.setDescription(description);
-
-   message::AddPort message(p);
-   message.setDestId(Id::ForBroadcast);
-   sendMessage(message);
-   return &p;
+    message::AddPort message(p);
+    message.setDestId(Id::ForBroadcast);
+    sendMessage(message);
+    return &p;
 }
 
-bool Module::destroyPort(const std::string &portName) {
+bool Module::destroyPort(const std::string &portName)
+{
+    const Port *p = findInputPort(portName);
+    if (!p)
+        p = findOutputPort(portName);
+    if (!p)
+        return false;
 
-   const Port *p = findInputPort(portName);
-   if (!p)
-      p = findOutputPort(portName);
-   if (!p)
-      return false;
-
-   assert(p);
-   return destroyPort(p);
+    assert(p);
+    return destroyPort(p);
 }
 
-bool Module::destroyPort(const Port *port) {
+bool Module::destroyPort(const Port *port)
+{
+    assert(port);
+    message::RemovePort message(*port);
+    message.setDestId(Id::ForBroadcast);
+    if (findInputPort(port->getName())) {
+        inputPorts.erase(port->getName());
+    } else if (findOutputPort(port->getName())) {
+        outputPorts.erase(port->getName());
+    } else {
+        return false;
+    }
 
-   assert(port);
-   message::RemovePort message(*port);
-   message.setDestId(Id::ForBroadcast);
-   if (findInputPort(port->getName())) {
-       inputPorts.erase(port->getName());
-   } else if (findOutputPort(port->getName())) {
-       outputPorts.erase(port->getName());
-   } else {
-       return false;
-   }
-
-   sendMessage(message);
-   return true;
+    sendMessage(message);
+    return true;
 }
 
-Port *Module::findInputPort(const std::string &name) {
+Port *Module::findInputPort(const std::string &name)
+{
+    auto i = inputPorts.find(name);
 
-   auto i = inputPorts.find(name);
+    if (i == inputPorts.end())
+        return nullptr;
 
-   if (i == inputPorts.end())
-      return nullptr;
-
-   return &i->second;
+    return &i->second;
 }
 
-const Port *Module::findInputPort(const std::string &name) const {
+const Port *Module::findInputPort(const std::string &name) const
+{
+    auto i = inputPorts.find(name);
 
-   auto i = inputPorts.find(name);
+    if (i == inputPorts.end())
+        return nullptr;
 
-   if (i == inputPorts.end())
-      return nullptr;
-
-   return &i->second;
+    return &i->second;
 }
 
-Port *Module::findOutputPort(const std::string &name) {
+Port *Module::findOutputPort(const std::string &name)
+{
+    auto i = outputPorts.find(name);
 
-   auto i = outputPorts.find(name);
+    if (i == outputPorts.end())
+        return nullptr;
 
-   if (i == outputPorts.end())
-      return nullptr;
-
-   return &i->second;
+    return &i->second;
 }
 
-const Port *Module::findOutputPort(const std::string &name) const {
+const Port *Module::findOutputPort(const std::string &name) const
+{
+    auto i = outputPorts.find(name);
 
-   auto i = outputPorts.find(name);
+    if (i == outputPorts.end())
+        return nullptr;
 
-   if (i == outputPorts.end())
-      return nullptr;
-
-   return &i->second;
+    return &i->second;
 }
 
-Parameter *Module::addParameterGeneric(const std::string &name, std::shared_ptr<Parameter> param) {
+Parameter *Module::addParameterGeneric(const std::string &name, std::shared_ptr<Parameter> param)
+{
+    assert(!havePort(name));
+    if (havePort(name)) {
+        CERR << "addParameterGeneric: already have port/parameter with name " << name << std::endl;
+        return nullptr;
+    }
 
-   assert(!havePort(name));
-   if (havePort(name)) {
-       CERR << "addParameterGeneric: already have port/parameter with name " << name << std::endl;
-      return nullptr;
-   }
-
-   return ParameterManager::addParameterGeneric(name, param);
+    return ParameterManager::addParameterGeneric(name, param);
 }
 
-bool Module::removeParameter(Parameter *param) {
+bool Module::removeParameter(Parameter *param)
+{
+    std::string name = param->getName();
+    assert(havePort(name));
+    if (!havePort(name)) {
+        CERR << "removeParameter: no port with name " << name << std::endl;
+        return false;
+    }
 
-   std::string name = param->getName();
-   assert(havePort(name));
-   if (!havePort(name)) {
-      CERR << "removeParameter: no port with name " << name << std::endl;
-      return false;
-   }
-
-   return ParameterManager::removeParameter(param);
+    return ParameterManager::removeParameter(param);
 }
 
-bool Module::sendObject(const mpi::communicator &comm, Object::const_ptr obj, int destRank) const {
-
+bool Module::sendObject(const mpi::communicator &comm, Object::const_ptr obj, int destRank) const
+{
     auto saver = std::make_shared<DeepArchiveSaver>();
     vecostreambuf<buffer> memstr;
     vistle::oarchive memar(memstr);
@@ -597,12 +589,13 @@ bool Module::sendObject(const mpi::communicator &comm, Object::const_ptr obj, in
     return true;
 }
 
-bool Module::sendObject(Object::const_ptr object, int destRank) const {
+bool Module::sendObject(Object::const_ptr object, int destRank) const
+{
     return sendObject(comm(), object, destRank);
 }
 
-Object::const_ptr Module::receiveObject(const mpi::communicator &comm, int sourceRank) const {
-
+Object::const_ptr Module::receiveObject(const mpi::communicator &comm, int sourceRank) const
+{
     buffer mem;
     comm.recv(sourceRank, 0, mem);
     vistle::SubArchiveDirectory dir;
@@ -629,12 +622,13 @@ Object::const_ptr Module::receiveObject(const mpi::communicator &comm, int sourc
     return p;
 }
 
-Object::const_ptr Module::receiveObject(int destRank) const {
+Object::const_ptr Module::receiveObject(int destRank) const
+{
     return receiveObject(comm(), destRank);
 }
 
-bool Module::broadcastObject(const mpi::communicator &comm, Object::const_ptr &obj, int root) const {
-
+bool Module::broadcastObject(const mpi::communicator &comm, Object::const_ptr &obj, int root) const
+{
     if (comm.size() == 1)
         return true;
 
@@ -645,7 +639,7 @@ bool Module::broadcastObject(const mpi::communicator &comm, Object::const_ptr &o
         memar.setSaver(saver);
         obj->saveObject(memar);
         const buffer &mem = memstr.get_vector();
-        mpi::broadcast(comm, const_cast<buffer&>(mem), root);
+        mpi::broadcast(comm, const_cast<buffer &>(mem), root);
         auto dir = saver->getDirectory();
         mpi::broadcast(comm, dir, root);
         for (auto &ent: dir) {
@@ -681,13 +675,13 @@ bool Module::broadcastObject(const mpi::communicator &comm, Object::const_ptr &o
     return true;
 }
 
-bool Module::broadcastObject(Object::const_ptr &object, int root) const {
-
+bool Module::broadcastObject(Object::const_ptr &object, int root) const
+{
     return broadcastObject(comm(), object, root);
 }
 
-bool Module::broadcastObjectViaShm(Object::const_ptr &object, const std::string &objName, int root) const {
-
+bool Module::broadcastObjectViaShm(Object::const_ptr &object, const std::string &objName, int root) const
+{
     if (shmLeader(rank()) == shmLeader(root)) {
         assert(object);
     }
@@ -707,47 +701,47 @@ bool Module::broadcastObjectViaShm(Object::const_ptr &object, const std::string 
     return ok;
 }
 
-void Module::updateCacheMode() {
+void Module::updateCacheMode()
+{
+    Integer value = getIntParameter("_cache_mode");
+    switch (value) {
+    case ObjectCache::CacheNone:
+    case ObjectCache::CacheDeleteEarly:
+    case ObjectCache::CacheDeleteLate:
+    case ObjectCache::CacheDefault:
+        break;
+    default:
+        value = ObjectCache::CacheDefault;
+        break;
+    }
 
-   Integer value = getIntParameter("_cache_mode");
-   switch (value) {
-      case ObjectCache::CacheNone:
-      case ObjectCache::CacheDeleteEarly:
-      case ObjectCache::CacheDeleteLate:
-      case ObjectCache::CacheDefault:
-         break;
-      default:
-         value = ObjectCache::CacheDefault;
-         break;
-   }
-
-   setCacheMode(ObjectCache::CacheMode(value), false);
+    setCacheMode(ObjectCache::CacheMode(value), false);
 }
 
-void Module::updateOutputMode() {
-
+void Module::updateOutputMode()
+{
 #ifndef MODULE_THREAD
 #ifdef REDIRECT_OUTPUT
-   const Integer r = getIntParameter("_error_output_rank");
-   const Integer m = getIntParameter("_error_output_mode");
+    const Integer r = getIntParameter("_error_output_rank");
+    const Integer m = getIntParameter("_error_output_mode");
 
-   auto sbuf = dynamic_cast<msgstreambuf<char> *>(m_streambuf);
-   if (!sbuf)
-      return;
+    auto sbuf = dynamic_cast<msgstreambuf<char> *>(m_streambuf);
+    if (!sbuf)
+        return;
 
-   if (r == -1 || r == rank()) {
-      sbuf->set_console_output(m & 1);
-      sbuf->set_gui_output(m & 2);
-   } else {
-      sbuf->set_console_output(false);
-      sbuf->set_gui_output(false);
-   }
+    if (r == -1 || r == rank()) {
+        sbuf->set_console_output(m & 1);
+        sbuf->set_gui_output(m & 2);
+    } else {
+        sbuf->set_console_output(false);
+        sbuf->set_gui_output(false);
+    }
 #endif
 #endif
 }
 
-void Module::waitAllTasks() {
-
+void Module::waitAllTasks()
+{
     while (!m_tasks.empty()) {
         m_tasks.front()->wait();
         m_tasks.pop_front();
@@ -758,18 +752,18 @@ void Module::waitAllTasks() {
     }
 }
 
-void Module::updateMeta(vistle::Object::ptr obj) const {
-
-   if (obj) {
-      obj->setCreator(id());
-      obj->setExecutionCounter(m_executionCount);
-      if (obj->getIteration() < m_iteration)
-          obj->setIteration(m_iteration);
-   }
+void Module::updateMeta(vistle::Object::ptr obj) const
+{
+    if (obj) {
+        obj->setCreator(id());
+        obj->setExecutionCounter(m_executionCount);
+        if (obj->getIteration() < m_iteration)
+            obj->setIteration(m_iteration);
+    }
 }
 
-bool Module::addObject(const std::string &portName, vistle::Object::ptr object) {
-
+bool Module::addObject(const std::string &portName, vistle::Object::ptr object)
+{
     auto *p = findOutputPort(portName);
     if (!p) {
         CERR << "Module::addObject: output port " << portName << " not found" << std::endl;
@@ -778,291 +772,284 @@ bool Module::addObject(const std::string &portName, vistle::Object::ptr object) 
     return addObject(p, object);
 }
 
-bool Module::addObject(Port *port, vistle::Object::ptr object) {
-
-   if (object)
-       object->updateInternals();
-   updateMeta(object);
-   vistle::Object::const_ptr cobj = object;
-   return passThroughObject(port, cobj);
+bool Module::addObject(Port *port, vistle::Object::ptr object)
+{
+    if (object)
+        object->updateInternals();
+    updateMeta(object);
+    vistle::Object::const_ptr cobj = object;
+    return passThroughObject(port, cobj);
 }
 
-bool Module::passThroughObject(const std::string &portName, vistle::Object::const_ptr object) {
-   auto *p = findOutputPort(portName);
-   if (!p) {
-       CERR << "Module::passThroughObject: output port " << portName << " not found" << std::endl;
-   }
-   assert(p);
-   return passThroughObject(p, object);
+bool Module::passThroughObject(const std::string &portName, vistle::Object::const_ptr object)
+{
+    auto *p = findOutputPort(portName);
+    if (!p) {
+        CERR << "Module::passThroughObject: output port " << portName << " not found" << std::endl;
+    }
+    assert(p);
+    return passThroughObject(p, object);
 }
 
-bool Module::passThroughObject(Port *port, vistle::Object::const_ptr object) {
+bool Module::passThroughObject(Port *port, vistle::Object::const_ptr object)
+{
+    if (!object)
+        return false;
 
-   if (!object)
-      return false;
+    m_withOutput.insert(port);
 
-   m_withOutput.insert(port);
+    object->refresh();
+    assert(object->check());
 
-   object->refresh();
-   assert(object->check());
-
-   message::AddObject message(port->getName(), object);
-   sendMessage(message);
-   return true;
+    message::AddObject message(port->getName(), object);
+    sendMessage(message);
+    return true;
 }
 
-ObjectList Module::getObjects(const std::string &portName) {
+ObjectList Module::getObjects(const std::string &portName)
+{
+    ObjectList objects;
+    auto *p = findInputPort(portName);
+    if (!p) {
+        CERR << "Module::getObjects: input port " << portName << " not found" << std::endl;
+    }
+    assert(p);
 
-   ObjectList objects;
-   auto *p = findInputPort(portName);
-   if (!p) {
-      CERR << "Module::getObjects: input port " << portName << " not found" << std::endl;
-   }
-   assert(p);
+    ObjectList &olist = p->objects();
+    for (ObjectList::const_iterator it = olist.begin(); it != olist.end(); it++) {
+        Object::const_ptr object = *it;
+        if (object.get()) {
+            assert(object->check());
+        }
+        objects.push_back(object);
+    }
 
-   ObjectList &olist = p->objects();
-   for (ObjectList::const_iterator it = olist.begin(); it != olist.end(); it++) {
-       Object::const_ptr object = *it;
-       if (object.get()) {
-           assert(object->check());
-       }
-       objects.push_back(object);
-   }
-
-   return objects;
+    return objects;
 }
 
-bool Module::hasObject(const std::string &portName) const {
+bool Module::hasObject(const std::string &portName) const
+{
+    auto *p = findInputPort(portName);
+    if (!p) {
+        CERR << "Module::hasObject: input port " << portName << " not found" << std::endl;
+    }
+    assert(p);
 
-   auto *p = findInputPort(portName);
-   if (!p) {
-       CERR << "Module::hasObject: input port " << portName << " not found" << std::endl;
-   }
-   assert(p);
-
-   return hasObject(p);
+    return hasObject(p);
 }
 
-bool Module::hasObject(const Port *port) const {
-
-   return !port->objects().empty();
+bool Module::hasObject(const Port *port) const
+{
+    return !port->objects().empty();
 }
 
-vistle::Object::const_ptr Module::takeFirstObject(const std::string &portName) {
+vistle::Object::const_ptr Module::takeFirstObject(const std::string &portName)
+{
+    auto *p = findInputPort(portName);
+    if (!p) {
+        CERR << "Module::takeFirstObject: input port " << portName << " not found" << std::endl;
+    }
+    assert(p);
 
-   auto *p = findInputPort(portName);
-   if (!p) {
-      CERR << "Module::takeFirstObject: input port " << portName << " not found" << std::endl;
-   }
-   assert(p);
-
-   return takeFirstObject(p);
+    return takeFirstObject(p);
 }
 
-void Module::requestPortMapping(unsigned short forwardPort, unsigned short localPort) {
-
-   message::RequestTunnel m(forwardPort, localPort);
-   m.setDestId(Id::LocalManager);
-   sendMessage(m);
+void Module::requestPortMapping(unsigned short forwardPort, unsigned short localPort)
+{
+    message::RequestTunnel m(forwardPort, localPort);
+    m.setDestId(Id::LocalManager);
+    sendMessage(m);
 }
 
-void Module::removePortMapping(unsigned short forwardPort) {
-
-   message::RequestTunnel m(forwardPort);
-   m.setDestId(Id::LocalManager);
-   sendMessage(m);
+void Module::removePortMapping(unsigned short forwardPort)
+{
+    message::RequestTunnel m(forwardPort);
+    m.setDestId(Id::LocalManager);
+    sendMessage(m);
 }
 
-vistle::Object::const_ptr Module::takeFirstObject(Port *port) {
+vistle::Object::const_ptr Module::takeFirstObject(Port *port)
+{
+    if (!port->objects().empty()) {
+        Object::const_ptr obj = port->objects().front();
+        assert(obj->check());
+        port->objects().pop_front();
+        return obj;
+    }
 
-   if (!port->objects().empty()) {
-
-      Object::const_ptr obj = port->objects().front();
-      assert(obj->check());
-      port->objects().pop_front();
-      return obj;
-   }
-
-   return vistle::Object::ptr();
+    return vistle::Object::ptr();
 }
 
 // specialized for avoiding Object::type(), which does not exist
 template<>
-Object::const_ptr Module::expect<Object>(Port *port) {
-   if (!port) {
-       std::stringstream str;
-       str << "invalid port" << std::endl;
-       sendError(str.str());
-       return nullptr;
-   }
-   if (port->objects().empty()) {
-       if (schedulingPolicy() == message::SchedulingPolicy::Single) {
-           std::stringstream str;
-           str << "no object available at " << port->getName() << ", but one is required" << std::endl;
-           sendError(str.str());
-       }
-      return nullptr;
-   }
-   Object::const_ptr obj = port->objects().front();
-   port->objects().pop_front();
-   if (!obj) {
-      std::stringstream str;
-      str << "did not receive valid object at " << port->getName() << ", but one is required" << std::endl;
-      sendError(str.str());
-      return obj;
-   }
-   assert(obj->check());
-   return obj;
+Object::const_ptr Module::expect<Object>(Port *port)
+{
+    if (!port) {
+        std::stringstream str;
+        str << "invalid port" << std::endl;
+        sendError(str.str());
+        return nullptr;
+    }
+    if (port->objects().empty()) {
+        if (schedulingPolicy() == message::SchedulingPolicy::Single) {
+            std::stringstream str;
+            str << "no object available at " << port->getName() << ", but one is required" << std::endl;
+            sendError(str.str());
+        }
+        return nullptr;
+    }
+    Object::const_ptr obj = port->objects().front();
+    port->objects().pop_front();
+    if (!obj) {
+        std::stringstream str;
+        str << "did not receive valid object at " << port->getName() << ", but one is required" << std::endl;
+        sendError(str.str());
+        return obj;
+    }
+    assert(obj->check());
+    return obj;
 }
 
 
-bool Module::addInputObject(int sender, const std::string &senderPort, const std::string & portName,
-                            Object::const_ptr object) {
+bool Module::addInputObject(int sender, const std::string &senderPort, const std::string &portName,
+                            Object::const_ptr object)
+{
+    if (!object) {
+        CERR << "Module::addInputObject: input port " << portName << " - did not receive object" << std::endl;
+        return false;
+    }
 
-   if (!object) {
-      CERR << "Module::addInputObject: input port " << portName << " - did not receive object" << std::endl;
-      return false;
-   }
+    assert(object->check());
 
-   assert(object->check());
+    if (m_executionCount < object->getExecutionCounter()) {
+        m_executionCount = object->getExecutionCounter();
+        m_iteration = object->getIteration();
+    }
+    if (m_executionCount == object->getExecutionCounter()) {
+        if (m_iteration < object->getIteration())
+            m_iteration = object->getIteration();
+    }
 
-   if (m_executionCount < object->getExecutionCounter()) {
-      m_executionCount = object->getExecutionCounter();
-      m_iteration = object->getIteration();
-   }
-   if (m_executionCount == object->getExecutionCounter()) {
-       if (m_iteration < object->getIteration())
-           m_iteration = object->getIteration();
-   }
+    Port *p = findInputPort(portName);
 
-   Port *p = findInputPort(portName);
+    if (p) {
+        m_cache.addObject(portName, object);
+        p->objects().push_back(object);
+        return true;
+    }
 
-   if (p) {
-      m_cache.addObject(portName, object);
-      p->objects().push_back(object);
-      return true;
-   }
+    CERR << "Module::addInputObject: input port " << portName << " not found" << std::endl;
+    assert(p);
 
-   CERR << "Module::addInputObject: input port " << portName << " not found" << std::endl;
-   assert(p);
-
-   return false;
+    return false;
 }
 
-bool Module::isConnected(const std::string &portname) const {
+bool Module::isConnected(const std::string &portname) const
+{
+    const Port *p = findInputPort(portname);
+    if (!p)
+        p = findOutputPort(portname);
+    if (!p)
+        return false;
 
-   const Port *p = findInputPort(portname);
-   if (!p)
-      p = findOutputPort(portname);
-   if (!p)
-      return false;
-
-   return isConnected(*p);
+    return isConnected(*p);
 }
 
-bool Module::isConnected(const Port &port) const {
-
-   return !port.connections().empty();
+bool Module::isConnected(const Port &port) const
+{
+    return !port.connections().empty();
 }
 
-bool Module::changeParameter(const Parameter *p) {
+bool Module::changeParameter(const Parameter *p)
+{
+    std::string name = p->getName();
+    if (name[0] == '_') {
+        if (name == "_error_output_mode" || name == "_error_output_rank") {
+            updateOutputMode();
+        } else if (name == "_cache_mode") {
+            updateCacheMode();
+        } else if (name == "_openmp_threads") {
+            setOpenmpThreads((int)getIntParameter(name), false);
+        } else if (name == "_benchmark") {
+            enableBenchmark(getIntParameter(name), false);
+        } else if (name == "_prioritize_visible") {
+            m_prioritizeVisible = getIntParameter("_prioritize_visible");
+        }
+    }
 
-   std::string name = p->getName();
-   if (name[0] == '_') {
-
-      if (name == "_error_output_mode" || name == "_error_output_rank") {
-
-         updateOutputMode();
-      } else if (name == "_cache_mode") {
-
-         updateCacheMode();
-      } else if (name == "_openmp_threads") {
-
-         setOpenmpThreads((int)getIntParameter(name), false);
-      } else if (name == "_benchmark") {
-
-         enableBenchmark(getIntParameter(name), false);
-      } else if (name == "_prioritize_visible") {
-
-          m_prioritizeVisible = getIntParameter("_prioritize_visible");
-      }
-
-   }
-
-   return true;
+    return true;
 }
 
-bool Module::parameterRemoved(const int senderId, const std::string &name, const message::RemoveParameter &msg) {
-
+bool Module::parameterRemoved(const int senderId, const std::string &name, const message::RemoveParameter &msg)
+{
     return true;
 }
 
 int Module::schedulingPolicy() const
 {
-   return m_schedulingPolicy;
+    return m_schedulingPolicy;
 }
 
 void Module::setSchedulingPolicy(int schedulingPolicy)
 {
-   using namespace message;
+    using namespace message;
 
-   assert(schedulingPolicy >= SchedulingPolicy::Ignore);
-   assert(schedulingPolicy <= SchedulingPolicy::LazyGang);
+    assert(schedulingPolicy >= SchedulingPolicy::Ignore);
+    assert(schedulingPolicy <= SchedulingPolicy::LazyGang);
 
-   m_schedulingPolicy = schedulingPolicy;
-   sendMessage(SchedulingPolicy(SchedulingPolicy::Schedule(schedulingPolicy)));
+    m_schedulingPolicy = schedulingPolicy;
+    sendMessage(SchedulingPolicy(SchedulingPolicy::Schedule(schedulingPolicy)));
 }
 
 int Module::reducePolicy() const
 {
-   return m_reducePolicy;
+    return m_reducePolicy;
 }
 
 void Module::setReducePolicy(int reducePolicy)
 {
-   assert(reducePolicy >= message::ReducePolicy::Never);
-   assert(reducePolicy <= message::ReducePolicy::OverAll);
+    assert(reducePolicy >= message::ReducePolicy::Never);
+    assert(reducePolicy <= message::ReducePolicy::OverAll);
 
-   m_reducePolicy = reducePolicy;
-   if (m_benchmark) {
-      if (reducePolicy == message::ReducePolicy::Locally)
-         reducePolicy = message::ReducePolicy::OverAll;
-   }
-   sendMessage(message::ReducePolicy(message::ReducePolicy::Reduce(reducePolicy)));
+    m_reducePolicy = reducePolicy;
+    if (m_benchmark) {
+        if (reducePolicy == message::ReducePolicy::Locally)
+            reducePolicy = message::ReducePolicy::OverAll;
+    }
+    sendMessage(message::ReducePolicy(message::ReducePolicy::Reduce(reducePolicy)));
 }
 
-bool Module::parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg, const std::string &moduleName) {
-
-   (void)senderId;
-   (void)name;
-   (void)msg;
-   (void)moduleName;
-   return false;
+bool Module::parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg,
+                            const std::string &moduleName)
+{
+    (void)senderId;
+    (void)name;
+    (void)msg;
+    (void)moduleName;
+    return false;
 }
 
-bool Module::parameterChanged(const int senderId, const std::string &name, const message::SetParameter &msg) {
-
-   (void)senderId;
-   (void)name;
-   (void)msg;
-   return false;
+bool Module::parameterChanged(const int senderId, const std::string &name, const message::SetParameter &msg)
+{
+    (void)senderId;
+    (void)name;
+    (void)msg;
+    return false;
 }
 
-bool Module::objectAdded(int sender, const std::string &senderPort, const Port *port) {
-
-   return true;
+bool Module::objectAdded(int sender, const std::string &senderPort, const Port *port)
+{
+    return true;
 }
 
-void Module::connectionAdded(const Port *from, const Port *to) {
+void Module::connectionAdded(const Port *from, const Port *to)
+{}
 
-}
+void Module::connectionRemoved(const Port *from, const Port *to)
+{}
 
-void Module::connectionRemoved(const Port *from, const Port *to) {
-
-}
-
-bool Module::getNextMessage(message::Buffer &buf, bool block) {
-
+bool Module::getNextMessage(message::Buffer &buf, bool block)
+{
     if (!messageBacklog.empty()) {
         buf = messageBacklog.front();
         messageBacklog.pop_front();
@@ -1077,7 +1064,8 @@ bool Module::getNextMessage(message::Buffer &buf, bool block) {
     return receiveMessageQueue->tryReceive(buf);
 }
 
-bool Module::needsSync(const message::Message &m) const {
+bool Module::needsSync(const message::Message &m) const
+{
     switch (m.type()) {
     case vistle::message::QUIT:
         return true;
@@ -1090,472 +1078,440 @@ bool Module::needsSync(const message::Message &m) const {
     return false;
 }
 
-bool Module::dispatch(bool block, bool *messageReceived) {
+bool Module::dispatch(bool block, bool *messageReceived)
+{
+    bool again = true;
 
-   bool again = true;
-
-   try {
+    try {
 #ifndef MODULE_THREAD
-      if (parentProcessDied())
-         throw(except::parent_died());
+        if (parentProcessDied())
+            throw(except::parent_died());
 #endif
 
-      message::Buffer buf;
-      if (!getNextMessage(buf, block)) {
-          if (messageReceived)
-              *messageReceived = false;
-          if (block) {
-              return false;
-          }
-          return true;
-      }
-
-      if (messageReceived)
-         *messageReceived = true;
-
-      MessagePayload pl;
-      if (buf.payloadSize() > 0) {
-          pl = Shm::the().getArrayFromName<char>(buf.payloadName());
-          pl.unref();
-      }
-
-      if (syncMessageProcessing()) {
-         int sync = needsSync(buf) ? 1 : 0;
-         int allsync = 0;
-         mpi::all_reduce(comm(), sync, allsync, mpi::maximum<int>());
-
-         do {
-            sync = needsSync(buf) ? 1 : 0;
-
-            again &= handleMessage(&buf, pl);
-
-            if (allsync && !sync) {
-                getNextMessage(buf);
-                if (buf.payloadSize() > 0) {
-                    pl = Shm::the().getArrayFromName<char>(buf.payloadName());
-                    pl.unref();
-                } else {
-                    pl.reset();
-                }
+        message::Buffer buf;
+        if (!getNextMessage(buf, block)) {
+            if (messageReceived)
+                *messageReceived = false;
+            if (block) {
+                return false;
             }
+            return true;
+        }
 
-         } while(allsync && !sync);
-      } else {
+        if (messageReceived)
+            *messageReceived = true;
 
-         again &= handleMessage(&buf, pl);
-      }
-   } catch (vistle::except::parent_died &e) {
+        MessagePayload pl;
+        if (buf.payloadSize() > 0) {
+            pl = Shm::the().getArrayFromName<char>(buf.payloadName());
+            pl.unref();
+        }
 
-      // if parent died something is wrong - make sure that shm get cleaned up
-      Shm::the().setRemoveOnDetach();
-      throw(e);
-   }
+        if (syncMessageProcessing()) {
+            int sync = needsSync(buf) ? 1 : 0;
+            int allsync = 0;
+            mpi::all_reduce(comm(), sync, allsync, mpi::maximum<int>());
 
-   return again;
+            do {
+                sync = needsSync(buf) ? 1 : 0;
+
+                again &= handleMessage(&buf, pl);
+
+                if (allsync && !sync) {
+                    getNextMessage(buf);
+                    if (buf.payloadSize() > 0) {
+                        pl = Shm::the().getArrayFromName<char>(buf.payloadName());
+                        pl.unref();
+                    } else {
+                        pl.reset();
+                    }
+                }
+
+            } while (allsync && !sync);
+        } else {
+            again &= handleMessage(&buf, pl);
+        }
+    } catch (vistle::except::parent_died &e) {
+        // if parent died something is wrong - make sure that shm get cleaned up
+        Shm::the().setRemoveOnDetach();
+        throw(e);
+    }
+
+    return again;
 }
 
 
-void Module::sendParameterMessage(const message::Message &message, const buffer *payload) const {
+void Module::sendParameterMessage(const message::Message &message, const buffer *payload) const
+{
     sendMessage(message, payload);
 }
 
-bool Module::sendMessage(const message::Message &message, const buffer *payload) const {
-
-   // exclude SendText messages to avoid circular calls
-   if (message.type() != message::SENDTEXT
-         && (m_traceMessages == message::ANY || m_traceMessages == message.type())) {
-      CERR << "SEND: " << message << std::endl;
-   }
-   if (rank() == 0 || message::Router::the().toRank0(message)) {
-       message::Buffer buf(message);
-       if (payload) {
-           MessagePayload pl;
-           pl.construct(payload->size());
-           memcpy(pl->data(), payload->data(), payload->size());
-           pl.ref();
-           buf.setPayloadName(pl.name());
-           buf.setPayloadSize(payload->size());
-       }
+bool Module::sendMessage(const message::Message &message, const buffer *payload) const
+{
+    // exclude SendText messages to avoid circular calls
+    if (message.type() != message::SENDTEXT && (m_traceMessages == message::ANY || m_traceMessages == message.type())) {
+        CERR << "SEND: " << message << std::endl;
+    }
+    if (rank() == 0 || message::Router::the().toRank0(message)) {
+        message::Buffer buf(message);
+        if (payload) {
+            MessagePayload pl;
+            pl.construct(payload->size());
+            memcpy(pl->data(), payload->data(), payload->size());
+            pl.ref();
+            buf.setPayloadName(pl.name());
+            buf.setPayloadSize(payload->size());
+        }
 #ifdef MODULE_THREAD
-       buf.setSenderId(id());
-       buf.setRank(rank());
+        buf.setSenderId(id());
+        buf.setRank(rank());
 #endif
-       sendMessageQueue->send(buf);
-   }
+        sendMessageQueue->send(buf);
+    }
 
-   return true;
+    return true;
 }
 
-bool Module::sendMessage(const message::Message &message, const MessagePayload &payload) const {
-
-   // exclude SendText messages to avoid circular calls
-   if (message.type() != message::SENDTEXT
-         && (m_traceMessages == message::ANY || m_traceMessages == message.type())) {
-      CERR << "SEND: " << message << std::endl;
-   }
-   if (rank() == 0 || message::Router::the().toRank0(message)) {
-       message::Buffer buf(message);
-       if (payload) {
-           MessagePayload pl = payload;
-           pl.ref();
-           buf.setPayloadName(pl.name());
-           buf.setPayloadSize(pl->size());
-           buf.setPayloadRawSize(pl->size());
-       }
+bool Module::sendMessage(const message::Message &message, const MessagePayload &payload) const
+{
+    // exclude SendText messages to avoid circular calls
+    if (message.type() != message::SENDTEXT && (m_traceMessages == message::ANY || m_traceMessages == message.type())) {
+        CERR << "SEND: " << message << std::endl;
+    }
+    if (rank() == 0 || message::Router::the().toRank0(message)) {
+        message::Buffer buf(message);
+        if (payload) {
+            MessagePayload pl = payload;
+            pl.ref();
+            buf.setPayloadName(pl.name());
+            buf.setPayloadSize(pl->size());
+            buf.setPayloadRawSize(pl->size());
+        }
 #ifdef MODULE_THREAD
-       buf.setSenderId(id());
-       buf.setRank(rank());
+        buf.setSenderId(id());
+        buf.setRank(rank());
 #endif
-       sendMessageQueue->send(buf);
-   }
+        sendMessageQueue->send(buf);
+    }
 
-   return true;
+    return true;
 }
 
-bool Module::handleMessage(const vistle::message::Message *message, const MessagePayload &payload) {
+bool Module::handleMessage(const vistle::message::Message *message, const MessagePayload &payload)
+{
+    using namespace vistle::message;
 
-   using namespace vistle::message;
+    if (message->payloadSize() > 0) {
+        assert(payload);
+    }
 
-   if (message->payloadSize() > 0) {
-       assert(payload);
-   }
+    if (payload)
+        m_stateTracker->handle(*message, payload->data(), payload->size());
+    else
+        m_stateTracker->handle(*message, nullptr);
 
-   if (payload)
-       m_stateTracker->handle(*message, payload->data(), payload->size());
-   else
-       m_stateTracker->handle(*message, nullptr);
+    if (m_traceMessages == message::ANY || message->type() == m_traceMessages) {
+        CERR << "RECV: " << *message << std::endl;
+    }
 
-   if (m_traceMessages == message::ANY || message->type() == m_traceMessages) {
-      CERR << "RECV: " << *message << std::endl;
-   }
+    switch (message->type()) {
+    case vistle::message::PING: {
+        const vistle::message::Ping *ping = static_cast<const vistle::message::Ping *>(message);
 
-   switch (message->type()) {
+        std::cerr << "    module [" << name() << "] [" << id() << "] [" << rank() << "/" << size() << "] ping ["
+                  << ping->getCharacter() << "]" << std::endl;
+        vistle::message::Pong m(*ping);
+        m.setDestId(ping->senderId());
+        sendMessage(m);
+        break;
+    }
 
-      case vistle::message::PING: {
+    case vistle::message::PONG: {
+        const vistle::message::Pong *pong = static_cast<const vistle::message::Pong *>(message);
 
-         const vistle::message::Ping *ping =
-            static_cast<const vistle::message::Ping *>(message);
+        std::cerr << "    module [" << name() << "] [" << id() << "] [" << rank() << "/" << size() << "] pong ["
+                  << pong->getCharacter() << "]" << std::endl;
+        break;
+    }
 
-         std::cerr << "    module [" << name() << "] [" << id() << "] ["
-                   << rank() << "/" << size() << "] ping ["
-                   << ping->getCharacter() << "]" << std::endl;
-         vistle::message::Pong m(*ping);
-         m.setDestId(ping->senderId());
-         sendMessage(m);
-         break;
-      }
-
-      case vistle::message::PONG: {
-
-         const vistle::message::Pong *pong =
-            static_cast<const vistle::message::Pong *>(message);
-
-         std::cerr << "    module [" << name() << "] [" << id() << "] ["
-                   << rank() << "/" << size() << "] pong ["
-                   << pong->getCharacter() << "]" << std::endl;
-         break;
-      }
-
-      case vistle::message::TRACE: {
-
-         const Trace *trace = static_cast<const Trace *>(message);
-         if (trace->on()) {
+    case vistle::message::TRACE: {
+        const Trace *trace = static_cast<const Trace *>(message);
+        if (trace->on()) {
             m_traceMessages = trace->messageType();
-         } else {
+        } else {
             m_traceMessages = message::INVALID;
-         }
+        }
 
-         std::cerr << "    module [" << name() << "] [" << id() << "] ["
-                   << rank() << "/" << size() << "] trace ["
-                   << trace->on() << "]" << std::endl;
-         break;
-      }
+        std::cerr << "    module [" << name() << "] [" << id() << "] [" << rank() << "/" << size() << "] trace ["
+                  << trace->on() << "]" << std::endl;
+        break;
+    }
 
-      case message::QUIT: {
-
-         const message::Quit *quit = static_cast<const message::Quit *>(message);
-         //TODO: uuid should be included in coresponding ModuleExit message
-         (void) quit;
+    case message::QUIT: {
+        const message::Quit *quit = static_cast<const message::Quit *>(message);
+        //TODO: uuid should be included in coresponding ModuleExit message
+        (void)quit;
 #ifdef REDIRECT_OUTPUT
-         if (auto sbuf = dynamic_cast<msgstreambuf<char> *>(m_streambuf))
+        if (auto sbuf = dynamic_cast<msgstreambuf<char> *>(m_streambuf))
             sbuf->clear_backlog();
 #endif
-         return false;
-         break;
-      }
+        return false;
+        break;
+    }
 
-      case message::KILL: {
-
-         const message::Kill *kill =
-            static_cast<const message::Kill *>(message);
-         //TODO: uuid should be included in coresponding ModuleExit message
-         if (kill->getModule() == id() || kill->getModule() == message::Id::Broadcast) {
+    case message::KILL: {
+        const message::Kill *kill = static_cast<const message::Kill *>(message);
+        //TODO: uuid should be included in coresponding ModuleExit message
+        if (kill->getModule() == id() || kill->getModule() == message::Id::Broadcast) {
 #ifdef REDIRECT_OUTPUT
             if (auto sbuf = dynamic_cast<msgstreambuf<char> *>(m_streambuf))
-               sbuf->clear_backlog();
+                sbuf->clear_backlog();
 #endif
             return false;
-         } else {
-            std::cerr << "module [" << name() << "] [" << id() << "] ["
-               << rank() << "/" << size() << "]" << ": received invalid Kill message: " << *kill << std::endl;
-         }
-         break;
-      }
+        } else {
+            std::cerr << "module [" << name() << "] [" << id() << "] [" << rank() << "/" << size() << "]"
+                      << ": received invalid Kill message: " << *kill << std::endl;
+        }
+        break;
+    }
 
-      case message::ADDPORT: {
-
-         const message::AddPort *cp =
-            static_cast<const message::AddPort *>(message);
-         Port port = cp->getPort();
-         std::string name = port.getName();
-         std::string::size_type p = name.find('[');
-         std::string basename = name;
-         size_t idx = 0;
-         if (p != std::string::npos) {
-            basename = name.substr(0, p-1);
-            idx = boost::lexical_cast<size_t>(name.substr(p+1));
-         }
-         Port *existing = NULL;
-         Port *parent = NULL;
-         Port *newport = NULL;
-         switch (port.getType()) {
-            case Port::INPUT:
-               existing = findInputPort(name);
-               if (!existing)
-                  parent = findInputPort(basename);
-               if (parent) {
-                  newport = parent->child(idx, true);
-                  inputPorts.emplace(name, *newport);
-               }
-               break;
-            case Port::OUTPUT:
-               existing = findOutputPort(name);
-               if (!existing)
-                  parent = findInputPort(basename);
-               if (parent) {
-                  newport = parent->child(idx, true);
-                  outputPorts.emplace(name, *newport);
-               }
-               break;
-            case Port::PARAMETER:
-               // does not really happen - handled in AddParameter
-               break;
-            case Port::ANY:
-               break;
-         }
-         if (newport) {
+    case message::ADDPORT: {
+        const message::AddPort *cp = static_cast<const message::AddPort *>(message);
+        Port port = cp->getPort();
+        std::string name = port.getName();
+        std::string::size_type p = name.find('[');
+        std::string basename = name;
+        size_t idx = 0;
+        if (p != std::string::npos) {
+            basename = name.substr(0, p - 1);
+            idx = boost::lexical_cast<size_t>(name.substr(p + 1));
+        }
+        Port *existing = NULL;
+        Port *parent = NULL;
+        Port *newport = NULL;
+        switch (port.getType()) {
+        case Port::INPUT:
+            existing = findInputPort(name);
+            if (!existing)
+                parent = findInputPort(basename);
+            if (parent) {
+                newport = parent->child(idx, true);
+                inputPorts.emplace(name, *newport);
+            }
+            break;
+        case Port::OUTPUT:
+            existing = findOutputPort(name);
+            if (!existing)
+                parent = findInputPort(basename);
+            if (parent) {
+                newport = parent->child(idx, true);
+                outputPorts.emplace(name, *newport);
+            }
+            break;
+        case Port::PARAMETER:
+            // does not really happen - handled in AddParameter
+            break;
+        case Port::ANY:
+            break;
+        }
+        if (newport) {
             message::AddPort np(*newport);
             np.setReferrer(cp->uuid());
             sendMessage(np);
             const Port::PortSet &links = newport->linkedPorts();
-            for (Port::PortSet::iterator it = links.begin();
-                  it != links.end();
-                  ++it) {
-               const Port *p = *it;
-               message::AddPort linked(*p);
-               linked.setReferrer(cp->uuid());
-               sendMessage(linked);
+            for (Port::PortSet::iterator it = links.begin(); it != links.end(); ++it) {
+                const Port *p = *it;
+                message::AddPort linked(*p);
+                linked.setReferrer(cp->uuid());
+                sendMessage(linked);
             }
-         }
-         break;
-      }
+        }
+        break;
+    }
 
-      case message::CONNECT: {
-
-         const message::Connect *conn =
-            static_cast<const message::Connect *>(message);
-         Port *port = NULL;
-         Port *other = NULL;
-         const Port::ConstPortSet *ports = NULL;
-         std::string ownPortName;
-         bool inputConnection = false;
-         //CERR << name() << " receiving connection: " << conn->getModuleA() << ":" << conn->getPortAName() << " -> " << conn->getModuleB() << ":" << conn->getPortBName() << std::endl;
-         if (conn->getModuleA() == id()) {
+    case message::CONNECT: {
+        const message::Connect *conn = static_cast<const message::Connect *>(message);
+        Port *port = NULL;
+        Port *other = NULL;
+        const Port::ConstPortSet *ports = NULL;
+        std::string ownPortName;
+        bool inputConnection = false;
+        //CERR << name() << " receiving connection: " << conn->getModuleA() << ":" << conn->getPortAName() << " -> " << conn->getModuleB() << ":" << conn->getPortBName() << std::endl;
+        if (conn->getModuleA() == id()) {
             port = findOutputPort(conn->getPortAName());
             ownPortName = conn->getPortAName();
             if (port) {
-               other = new Port(conn->getModuleB(), conn->getPortBName(), Port::INPUT);
-               ports = &port->connections();
+                other = new Port(conn->getModuleB(), conn->getPortBName(), Port::INPUT);
+                ports = &port->connections();
             }
-            
-         } else if (conn->getModuleB() == id()) {
+
+        } else if (conn->getModuleB() == id()) {
             ownPortName = conn->getPortBName();
             port = findInputPort(conn->getPortBName());
             inputConnection = true;
             if (port) {
-               other = new Port(conn->getModuleA(), conn->getPortAName(), Port::OUTPUT);
-               ports = &port->connections();
+                other = new Port(conn->getModuleA(), conn->getPortAName(), Port::OUTPUT);
+                ports = &port->connections();
             }
-         } else {
+        } else {
             // ignore: not connected to us
             break;
-         }
+        }
 
-         bool added = false;
-         if (ports && port && other) {
+        bool added = false;
+        if (ports && port && other) {
             if (ports->find(other) == ports->end()) {
-               added = port->addConnection(other);
-               if (inputConnection)
-                  connectionAdded(other, port);
-               else
-                  connectionAdded(port, other);
+                added = port->addConnection(other);
+                if (inputConnection)
+                    connectionAdded(other, port);
+                else
+                    connectionAdded(port, other);
             }
-         } else {
+        } else {
             if (!findParameter(ownPortName))
-               CERR << " did not find port " << ownPortName << std::endl;
-         }
-         if (!added) {
-             delete other;
-         }
-         break;
-      }
+                CERR << " did not find port " << ownPortName << std::endl;
+        }
+        if (!added) {
+            delete other;
+        }
+        break;
+    }
 
-      case message::DISCONNECT: {
-
-         const message::Disconnect *disc = static_cast<const message::Disconnect *>(message);
-         Port *port = NULL;
-         Port *other = NULL;
-         const Port::ConstPortSet *ports = NULL;
-         bool inputConnection = false;
-         if (disc->getModuleA() == id()) {
+    case message::DISCONNECT: {
+        const message::Disconnect *disc = static_cast<const message::Disconnect *>(message);
+        Port *port = NULL;
+        Port *other = NULL;
+        const Port::ConstPortSet *ports = NULL;
+        bool inputConnection = false;
+        if (disc->getModuleA() == id()) {
             port = findOutputPort(disc->getPortAName());
             if (port) {
-               other = new Port(disc->getModuleB(), disc->getPortBName(), Port::INPUT);
-               ports = &port->connections();
+                other = new Port(disc->getModuleB(), disc->getPortBName(), Port::INPUT);
+                ports = &port->connections();
             }
-            
-         } else if (disc->getModuleB() == id()) {
+
+        } else if (disc->getModuleB() == id()) {
             port = findInputPort(disc->getPortBName());
             inputConnection = true;
             if (port) {
-               other = new Port(disc->getModuleA(), disc->getPortAName(), Port::OUTPUT);
-               ports = &port->connections();
+                other = new Port(disc->getModuleA(), disc->getPortAName(), Port::OUTPUT);
+                ports = &port->connections();
             }
-         }
+        }
 
-         if (ports && port && other) {
+        if (ports && port && other) {
             if (inputConnection) {
-               connectionRemoved(other, port);
-               m_cache.clear(port->getName());
+                connectionRemoved(other, port);
+                m_cache.clear(port->getName());
             } else {
-               connectionRemoved(port, other);
+                connectionRemoved(port, other);
             }
             const Port *p = port->removeConnection(*other);
             delete other;
             delete p;
-         }
-         break;
-      }
+        }
+        break;
+    }
 
-      case message::EXECUTE: {
+    case message::EXECUTE: {
+        const Execute *exec = static_cast<const Execute *>(message);
+        return handleExecute(exec);
+        break;
+    }
 
-         const Execute *exec = static_cast<const Execute *>(message);
-         return handleExecute(exec);
-         break;
-      }
-
-      case message::ADDOBJECT: {
-
-         const message::AddObject *add = static_cast<const message::AddObject *>(message);
-         auto obj = add->takeObject();
-         const Port *p = findInputPort(add->getDestPort());
-         if (!p) {
+    case message::ADDOBJECT: {
+        const message::AddObject *add = static_cast<const message::AddObject *>(message);
+        auto obj = add->takeObject();
+        const Port *p = findInputPort(add->getDestPort());
+        if (!p) {
             CERR << "unknown input port " << add->getDestPort() << " in AddObject" << std::endl;
             return true;
-         }
-         if (!obj) {
-            CERR << "did not find object " << add->objectName() << " for port " << add->getDestPort() << " in AddObject" << std::endl;
-         }
-         addInputObject(add->senderId(), add->getSenderPort(), add->getDestPort(), obj);
-         if (!objectAdded(add->senderId(), add->getSenderPort(), p)) {
-             CERR << "error in objectAdded(" << add->getSenderPort() << ")" << std::endl;
-             return false;
-         }
+        }
+        if (!obj) {
+            CERR << "did not find object " << add->objectName() << " for port " << add->getDestPort() << " in AddObject"
+                 << std::endl;
+        }
+        addInputObject(add->senderId(), add->getSenderPort(), add->getDestPort(), obj);
+        if (!objectAdded(add->senderId(), add->getSenderPort(), p)) {
+            CERR << "error in objectAdded(" << add->getSenderPort() << ")" << std::endl;
+            return false;
+        }
 
-         break;
-      }
+        break;
+    }
 
-      case message::SETPARAMETER: {
+    case message::SETPARAMETER: {
+        const message::SetParameter *param = static_cast<const message::SetParameter *>(message);
 
-         const message::SetParameter *param =
-            static_cast<const message::SetParameter *>(message);
-
-         if (param->destId() == id()) {
-
-             ParameterManager::handleMessage(*param);
-         } else {
-
+        if (param->destId() == id()) {
+            ParameterManager::handleMessage(*param);
+        } else {
             // notification of controller about current value happens in set...Parameter
             parameterChanged(param->getModule(), param->getName(), *param);
-         }
-         break;
-      }
+        }
+        break;
+    }
 
-      case message::SETPARAMETERCHOICES: {
-         const message::SetParameterChoices *choices = static_cast<const message::SetParameterChoices *>(message);
-         if (choices->senderId() != id()) {
+    case message::SETPARAMETERCHOICES: {
+        const message::SetParameterChoices *choices = static_cast<const message::SetParameterChoices *>(message);
+        if (choices->senderId() != id()) {
             //FIXME: handle somehow
             //parameterChangedWrapper(choices->senderId(), choices->getName());
-         }
-         break;
-      }
+        }
+        break;
+    }
 
-      case message::ADDPARAMETER: {
+    case message::ADDPARAMETER: {
+        const message::AddParameter *param = static_cast<const message::AddParameter *>(message);
 
-         const message::AddParameter *param =
-            static_cast<const message::AddParameter *>(message);
+        parameterAdded(param->senderId(), param->getName(), *param, param->moduleName());
+        break;
+    }
 
-         parameterAdded(param->senderId(), param->getName(), *param, param->moduleName());
-         break;
-      }
+    case message::REMOVEPARAMETER: {
+        const message::RemoveParameter *param = static_cast<const message::RemoveParameter *>(message);
 
-      case message::REMOVEPARAMETER: {
+        parameterRemoved(param->senderId(), param->getName(), *param);
+        break;
+    }
 
-         const message::RemoveParameter *param =
-            static_cast<const message::RemoveParameter *>(message);
+    case message::BARRIER: {
+        const message::Barrier *barrier = static_cast<const message::Barrier *>(message);
+        message::BarrierReached reached(barrier->uuid());
+        reached.setDestId(Id::LocalManager);
+        sendMessage(reached);
+        break;
+    }
 
-         parameterRemoved(param->senderId(), param->getName(), *param);
-         break;
-      }
+    case message::CANCELEXECUTE:
+        // not relevant if not within prepare/compute/reduce
+        cancelExecuteMessageReceived(message);
+        break;
 
-      case message::BARRIER: {
+    case message::MODULEEXIT:
+    case message::SPAWN:
+    case message::STARTED:
+    case message::MODULEAVAILABLE:
+    case message::REPLAYFINISHED:
+    case message::ADDHUB:
+    case message::REMOVEHUB:
+    case message::UPDATESTATUS:
+    case message::IDLE:
+    case message::BUSY:
+    case message::REMOTERENDERING:
+        break;
 
-         const message::Barrier *barrier = static_cast<const message::Barrier *>(message);
-         message::BarrierReached reached(barrier->uuid());
-         reached.setDestId(Id::LocalManager);
-         sendMessage(reached);
-         break;
-      }
+    default:
+        CERR << "unknown message type [" << message->type() << "]" << std::endl;
 
-      case message::CANCELEXECUTE:
-         // not relevant if not within prepare/compute/reduce
-          cancelExecuteMessageReceived(message);
-         break;
+        break;
+    }
 
-      case message::MODULEEXIT:
-      case message::SPAWN:
-      case message::STARTED:
-      case message::MODULEAVAILABLE:
-      case message::REPLAYFINISHED:
-      case message::ADDHUB:
-      case message::REMOVEHUB:
-      case message::UPDATESTATUS:
-      case message::IDLE:
-      case message::BUSY:
-      case message::REMOTERENDERING:
-         break;
-
-      default:
-         CERR << "unknown message type [" << message->type() << "]" << std::endl;
-
-         break;
-   }
-
-   return true;
+    return true;
 }
 
-bool Module::handleExecute(const vistle::message::Execute *exec) {
-
+bool Module::handleExecute(const vistle::message::Execute *exec)
+{
     using namespace vistle::message;
 
     if (m_executionCount < exec->getExecutionCount()) {
@@ -1574,9 +1530,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
     busy.setDestId(Id::LocalManager);
     sendMessage(busy);
 #endif
-    if (exec->what() == Execute::ComputeExecute
-            || exec->what() == Execute::Prepare ) {
-
+    if (exec->what() == Execute::ComputeExecute || exec->what() == Execute::Prepare) {
         if (m_lastTask) {
             CERR << "prepare: waiting for previous tasks..." << std::endl;
             waitAllTasks();
@@ -1588,16 +1542,14 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
     }
 
     bool reordered = false;
-    if (exec->what() == Execute::ComputeExecute
-            || exec->what() == Execute::ComputeObject) {
-
+    if (exec->what() == Execute::ComputeExecute || exec->what() == Execute::ComputeObject) {
         if (reducePolicy() != message::ReducePolicy::Never) {
             assert(m_prepared);
             assert(!m_reduced);
         }
         m_computed = true;
-        const bool gang = schedulingPolicy() == message::SchedulingPolicy::Gang
-                || schedulingPolicy() == message::SchedulingPolicy::LazyGang;
+        const bool gang = schedulingPolicy() == message::SchedulingPolicy::Gang ||
+                          schedulingPolicy() == message::SchedulingPolicy::LazyGang;
 
 #ifdef DEBUG
         CERR << "GANG scheduling: " << gang << std::endl;
@@ -1630,7 +1582,8 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                 if (numObject == 0) {
                     numObject = port.second.objects().size();
                 } else if (numObject != port.second.objects().size()) {
-                    CERR << "::compute(): input mismatch - expected " << numObject << " objects, have " << port.second.objects().size() << std::endl;
+                    CERR << "::compute(): input mismatch - expected " << numObject << " objects, have "
+                         << port.second.objects().size() << std::endl;
                     throw vistle::except::exception("input object mismatch");
                     return false;
                 }
@@ -1643,10 +1596,10 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
             if (!isConnected(port.second))
                 continue;
             const auto &objs = port.second.objects();
-            for (Index i=0; i<numObject && i<objs.size(); ++i) {
+            for (Index i = 0; i < numObject && i < objs.size(); ++i) {
                 const auto obj = objs[i];
                 int t = getTimestep(obj);
-                m_numTimesteps = std::max(t+1, m_numTimesteps);
+                m_numTimesteps = std::max(t + 1, m_numTimesteps);
             }
         }
 #ifdef REDUCE_DEBUG
@@ -1655,17 +1608,19 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
 
         if (exec->what() == Execute::ComputeExecute || gang) {
 #ifdef REDUCE_DEBUG
-            CERR << "all_reduce for timesteps with #objects=" << numObject << ", #timesteps=" << m_numTimesteps << std::endl;
+            CERR << "all_reduce for timesteps with #objects=" << numObject << ", #timesteps=" << m_numTimesteps
+                 << std::endl;
 #endif
             m_numTimesteps = mpi::all_reduce(comm(), m_numTimesteps, mpi::maximum<int>());
 #ifdef REDUCE_DEBUG
-            CERR << "all_reduce for timesteps finished with #objects=" << numObject << ", #timesteps=" << m_numTimesteps << std::endl;
+            CERR << "all_reduce for timesteps finished with #objects=" << numObject << ", #timesteps=" << m_numTimesteps
+                 << std::endl;
 #endif
         }
 
         if (exec->what() == Execute::ComputeExecute) {
-            if (m_prioritizeVisible && !gang && !exec->allRanks()
-                && reducePolicy() != message::ReducePolicy::PerTimestepOrdered) {
+            if (m_prioritizeVisible && !gang && !exec->allRanks() &&
+                reducePolicy() != message::ReducePolicy::PerTimestepOrdered) {
                 reordered = true;
 
                 if (exec->animationStepDuration() > 0.) {
@@ -1681,16 +1636,14 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                     headStart = (int)(m_avgComputeTime / std::abs(exec->animationStepDuration()));
                 if (reducePolicy() == message::ReducePolicy::PerTimestepZeroFirst)
                     headStart *= 2;
-                headStart = 1+std::max(0, headStart);
+                headStart = 1 + std::max(0, headStart);
 
                 struct TimeIndex {
                     double time = 0.;
                     Index idx = 0;
                     int step = -1;
 
-                    bool operator<(const TimeIndex &other) const {
-                        return step < other.step;
-                    }
+                    bool operator<(const TimeIndex &other) const { return step < other.step; }
                 };
                 std::vector<TimeIndex> sortKey(numObject);
                 for (auto &port: inputPorts) {
@@ -1699,7 +1652,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                     if (!isConnected(port.second))
                         continue;
                     const auto &objs = port.second.objects();
-                    size_t i=0;
+                    size_t i = 0;
                     for (auto &obj: objs) {
                         sortKey[i].idx = i;
                         auto t = getTimestep(obj);
@@ -1733,15 +1686,17 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
 #endif
                         auto best = sortKey[0];
                         for (auto &ti: sortKey) {
-                            if (std::abs(ti.step - exec->animationRealTime()) < std::abs(best.step - exec->animationRealTime())) {
+                            if (std::abs(ti.step - exec->animationRealTime()) <
+                                std::abs(best.step - exec->animationRealTime())) {
                                 best = ti;
                             }
                         }
 #ifdef REDUCE_DEBUG
-                        CERR << "starting with timestep=" << best.step << ", anim=" << exec->animationRealTime() << ", cur=" << best.time << std::endl;
+                        CERR << "starting with timestep=" << best.step << ", anim=" << exec->animationRealTime()
+                             << ", cur=" << best.time << std::endl;
 #endif
                         if (m_numTimesteps > 0) {
-                            startTimestep = best.step + direction*headStart;
+                            startTimestep = best.step + direction * headStart;
                         }
                     }
 
@@ -1749,7 +1704,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                         waitForZero = true;
                         startWithZero = true;
                     }
-                    const int step = direction<0 ? -1 : 1;
+                    const int step = direction < 0 ? -1 : 1;
                     if (m_numTimesteps > 0) {
                         while (startTimestep < 0)
                             startTimestep += m_numTimesteps;
@@ -1776,27 +1731,27 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                             continue;
                         auto objs = m_cache.getObjects(port.first);
                         // objects without timestep
-                        ssize_t cur = step<0 ? numObject-1 : 0;
-                        for (size_t i=0; i<numObject; ++i) {
+                        ssize_t cur = step < 0 ? numObject - 1 : 0;
+                        for (size_t i = 0; i < numObject; ++i) {
                             if (sortKey[cur].step < 0) {
                                 port.second.objects().push_back(objs[sortKey[cur].idx]);
                             }
-                            cur = (cur+step+numObject)%numObject;
+                            cur = (cur + step + numObject) % numObject;
                         }
                         // objects with timestep 0 (if to be handled first)
                         if (startWithZero) {
-                            cur = step<0 ? numObject-1 : 0;
-                            for (size_t i=0; i<numObject; ++i) {
+                            cur = step < 0 ? numObject - 1 : 0;
+                            for (size_t i = 0; i < numObject; ++i) {
                                 if (sortKey[cur].step == 0) {
                                     port.second.objects().push_back(objs[sortKey[cur].idx]);
                                 }
-                                cur = (cur+step+numObject)%numObject;
+                                cur = (cur + step + numObject) % numObject;
                             }
                         }
                         // all objects from current timestep until end...
                         bool push = false;
-                        cur = step<0 ? numObject-1 : 0;
-                        for (size_t i=0; i<numObject; ++i) {
+                        cur = step < 0 ? numObject - 1 : 0;
+                        for (size_t i = 0; i < numObject; ++i) {
                             if (step > 0) {
                                 if (sortKey[cur].step >= startTimestep)
                                     push = true;
@@ -1804,14 +1759,14 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                                 if (sortKey[cur].step <= startTimestep)
                                     push = true;
                             }
-                            if (push && (sortKey[cur].step > 0 || (!startWithZero && sortKey[cur].step==0))) {
+                            if (push && (sortKey[cur].step > 0 || (!startWithZero && sortKey[cur].step == 0))) {
                                 port.second.objects().push_back(objs[sortKey[cur].idx]);
                             }
-                            cur = (cur+step+numObject)%numObject;
+                            cur = (cur + step + numObject) % numObject;
                         }
                         // ...and from start until current timestep
-                        cur = step<0 ? numObject-1 : 0;
-                        for (size_t i=0; i<numObject; ++i) {
+                        cur = step < 0 ? numObject - 1 : 0;
+                        for (size_t i = 0; i < numObject; ++i) {
                             if (step > 0) {
                                 if (sortKey[cur].step >= startTimestep)
                                     break;
@@ -1819,16 +1774,16 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                                 if (sortKey[cur].step <= startTimestep)
                                     break;
                             }
-                            if (sortKey[cur].step > 0 || (!startWithZero && sortKey[cur].step==0)) {
+                            if (sortKey[cur].step > 0 || (!startWithZero && sortKey[cur].step == 0)) {
                                 port.second.objects().push_back(objs[sortKey[cur].idx]);
                             }
-                            cur = (cur+step+numObject)%numObject;
+                            cur = (cur + step + numObject) % numObject;
                         }
                         if (port.second.objects().size() != numObject) {
-                            CERR << "mismatch: expecting " << numObject << " objects, actually have " << port.second.objects().size() << " at port " << port.first << std::endl;
+                            CERR << "mismatch: expecting " << numObject << " objects, actually have "
+                                 << port.second.objects().size() << " at port " << port.first << std::endl;
                         }
                         assert(port.second.objects().size() == numObject);
-
                     }
                 }
             }
@@ -1854,7 +1809,8 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
 
         if (exec->allRanks() || gang || exec->what() == Execute::ComputeExecute) {
 #ifdef REDUCE_DEBUG
-            CERR << "all_reduce for execCount " << m_executionCount << " with #objects=" << numObject << ", #timesteps=" << m_numTimesteps << std::endl;
+            CERR << "all_reduce for execCount " << m_executionCount << " with #objects=" << numObject
+                 << ", #timesteps=" << m_numTimesteps << std::endl;
 #endif
             int oldExecCount = m_executionCount;
             m_executionCount = mpi::all_reduce(comm(), m_executionCount, mpi::maximum<int>());
@@ -1872,10 +1828,13 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
 #endif
         }
         int numReductions = 0;
-        bool reducePerTimestep = reducePolicy()==message::ReducePolicy::PerTimestep || reducePolicy()==message::ReducePolicy::PerTimestepZeroFirst || reducePolicy()==message::ReducePolicy::PerTimestepOrdered;
+        bool reducePerTimestep = reducePolicy() == message::ReducePolicy::PerTimestep ||
+                                 reducePolicy() == message::ReducePolicy::PerTimestepZeroFirst ||
+                                 reducePolicy() == message::ReducePolicy::PerTimestepOrdered;
         auto runReduce = [this](int timestep, int &numReductions) -> bool {
 #ifdef REDUCE_DEBUG
-            CERR << "running reduce for timestep " << timestep << ", already did " << numReductions  << " of " << m_numTimesteps << " reductions" << std::endl;
+            CERR << "running reduce for timestep " << timestep << ", already did " << numReductions << " of "
+                 << m_numTimesteps << " reductions" << std::endl;
             if (reducePolicy() != message::ReducePolicy::Locally && reducePolicy() != message::ReducePolicy::Never) {
                 CERR << "runReduce(t=" << timestep << "): barrier for reduce policy " << reducePolicy() << std::endl;
                 comm().barrier();
@@ -1897,7 +1856,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
             return reduce(timestep);
         };
         bool computeOk = false;
-        for (Index i=0; i<numObject; ++i) {
+        for (Index i = 0; i < numObject; ++i) {
             computeOk = false;
             try {
                 double start = Clock::time();
@@ -1941,7 +1900,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                     computeOk = compute();
                 }
 
-                if (reordered && timestep>=0 && m_numTimesteps>0 && reducePerTimestep) {
+                if (reordered && timestep >= 0 && m_numTimesteps > 0 && reducePerTimestep) {
                     // if processing for another timestep starts, run reduction for previous timesteps
                     // -- reordered is a requirement: otherwise, objects have not to be ordered by timestep
                     if (waitForZero) {
@@ -1951,16 +1910,16 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                         }
                     } else if (direction >= 0) {
                         if (prevTimestep > timestep) {
-                            for (int t=prevTimestep; t<m_numTimesteps; ++t) {
+                            for (int t = prevTimestep; t < m_numTimesteps; ++t) {
                                 if (t > 0 || !startWithZero)
                                     computeOk &= runReduce(t, numReductions);
                             }
-                            for (int t=0; t<timestep; ++t) {
+                            for (int t = 0; t < timestep; ++t) {
                                 if (t > 0 || !startWithZero)
                                     computeOk &= runReduce(t, numReductions);
                             }
                         } else {
-                            for (int t=prevTimestep; t<timestep; ++t) {
+                            for (int t = prevTimestep; t < timestep; ++t) {
                                 if (t > 0 || !startWithZero)
                                     computeOk &= runReduce(t, numReductions);
                             }
@@ -1968,16 +1927,16 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                         prevTimestep = timestep;
                     } else if (direction < 0) {
                         if (prevTimestep < timestep) {
-                            for (int t=prevTimestep; t>=0; --t) {
+                            for (int t = prevTimestep; t >= 0; --t) {
                                 if (t > 0 || !startWithZero)
                                     computeOk &= runReduce(t, numReductions);
                             }
-                            for (int t=m_numTimesteps-1; t>timestep; --t) {
+                            for (int t = m_numTimesteps - 1; t > timestep; --t) {
                                 if (t > 0 || !startWithZero)
                                     computeOk &= runReduce(t, numReductions);
                             }
                         } else {
-                            for (int t=prevTimestep; t>timestep; --t) {
+                            for (int t = prevTimestep; t > timestep; --t) {
                                 if (t > 0 || !startWithZero)
                                     computeOk &= runReduce(t, numReductions);
                             }
@@ -1992,13 +1951,12 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                     m_avgComputeTime = 0.95 * m_avgComputeTime + 0.05 * duration;
             } catch (boost::interprocess::interprocess_exception &e) {
                 std::cout << name() << "::compute(): interprocess_exception: " << e.what()
-                          << ", error code: " << e.get_error_code()
-                          << ", native error: " << e.get_native_error()
-                          << std::endl << std::flush;
+                          << ", error code: " << e.get_error_code() << ", native error: " << e.get_native_error()
+                          << std::endl
+                          << std::flush;
                 CERR << name() << "::compute(): interprocess_exception: " << e.what()
-                          << ", error code: " << e.get_error_code()
-                          << ", native error: " << e.get_native_error()
-                          << std::endl;
+                     << ", error code: " << e.get_error_code() << ", native error: " << e.get_native_error()
+                     << std::endl;
                 throw(e); // rethrow and probably crash - there is no guarantee that the module terminates gracefully
             } catch (std::exception &e) {
                 std::cout << name() << "::compute(" << i << "): exception - " << e.what() << std::endl << std::flush;
@@ -2011,14 +1969,14 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
             }
         }
 
-        if (reordered && m_numTimesteps>0 && reducePerTimestep) {
+        if (reordered && m_numTimesteps > 0 && reducePerTimestep) {
             // run reduction for remaining (most often just the last) timesteps
 #ifdef REDUCE_DEBUG
-            CERR << "doing outstanding " << m_numTimesteps-numReductions << " reductions" << std::endl;
+            CERR << "doing outstanding " << m_numTimesteps - numReductions << " reductions" << std::endl;
 #endif
             if (startWithZero && waitForZero) {
                 waitForZero = false;
-                assert (numReductions < m_numTimesteps);
+                assert(numReductions < m_numTimesteps);
                 runReduce(0, numReductions);
             }
             int t = prevTimestep;
@@ -2026,17 +1984,16 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                 if (t != 0 || !startWithZero)
                     runReduce(t, numReductions);
                 if (direction >= 0) {
-                    t = (t+1)%m_numTimesteps;
+                    t = (t + 1) % m_numTimesteps;
                 } else {
-                    t = (t+m_numTimesteps-1)%m_numTimesteps;
+                    t = (t + m_numTimesteps - 1) % m_numTimesteps;
                 }
             }
             assert(numReductions == m_numTimesteps);
         }
     }
 
-    if (exec->what() == Execute::ComputeExecute
-            || exec->what() == Execute::Reduce) {
+    if (exec->what() == Execute::ComputeExecute || exec->what() == Execute::Reduce) {
         waitAllTasks();
         ret &= reduceWrapper(exec, reordered);
         m_cache.clearOld();
@@ -2051,249 +2008,249 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
     return ret;
 }
 
-std::string Module::getModuleName(int id) const {
-
-   return m_stateTracker->getModuleName(id);
+std::string Module::getModuleName(int id) const
+{
+    return m_stateTracker->getModuleName(id);
 }
 
-int Module::mirrorId() const {
-
+int Module::mirrorId() const
+{
     return m_stateTracker->getMirrorId(m_id);
 }
 
-std::set<int> Module::getMirrors() const {
-
+std::set<int> Module::getMirrors() const
+{
     auto m = m_stateTracker->getMirrors(m_id);
     m.erase(m_id);
     return m;
 }
 
-Module::~Module() {
-
+Module::~Module()
+{
 #ifndef MODULE_THREAD
     Shm::the().detach();
 #endif
 
-   if (m_origStreambuf)
-      std::cerr.rdbuf(m_origStreambuf);
-   delete m_streambuf;
-   m_streambuf = nullptr;
+    if (m_origStreambuf)
+        std::cerr.rdbuf(m_origStreambuf);
+    delete m_streambuf;
+    m_streambuf = nullptr;
 
-   if (m_readyForQuit) {
-      comm().barrier();
-   } else {
-       CERR << "Emergency quit" << std::endl;
-   }
+    if (m_readyForQuit) {
+        comm().barrier();
+    } else {
+        CERR << "Emergency quit" << std::endl;
+    }
 
-   delete sendMessageQueue;
-   sendMessageQueue = nullptr;
-   delete receiveMessageQueue;
-   receiveMessageQueue = nullptr;
+    delete sendMessageQueue;
+    sendMessageQueue = nullptr;
+    delete receiveMessageQueue;
+    receiveMessageQueue = nullptr;
 }
 
-void Module::eventLoop() {
-
+void Module::eventLoop()
+{
     initDone();
     while (dispatch())
         ;
     prepareQuit();
 }
 
-void Module::sendText(int type, const std::string &msg) const {
-
-   message::SendText info(static_cast<message::SendText::TextType>(type));
-   message::SendText::Payload pl(msg);
-   sendMessageWithPayload(info, pl);
+void Module::sendText(int type, const std::string &msg) const
+{
+    message::SendText info(static_cast<message::SendText::TextType>(type));
+    message::SendText::Payload pl(msg);
+    sendMessageWithPayload(info, pl);
 }
 
-static void sendTextVarArgs(const Module *self, message::SendText::TextType type, const char *fmt, va_list args) {
-
-   if(!fmt) {
-      fmt = "(empty message)";
-   }
-   std::vector<char> text(strlen(fmt)+500);
-   vsnprintf(text.data(), text.size(), fmt, args);
-   switch (type) {
-      case message::SendText::Error:
-         std::cout << "ERR:  ";
-         break;
-      case message::SendText::Warning:
-         std::cout << "WARN: ";
-         break;
-      case message::SendText::Info:
-         std::cout << "INFO: ";
-         break;
-      default:
-         break;
-   }
-   std::cout << text.data() << std::endl;
-   message::SendText info(type);
-   message::SendText::Payload pl(text.data());
-   self->sendMessageWithPayload(info, pl);
+static void sendTextVarArgs(const Module *self, message::SendText::TextType type, const char *fmt, va_list args)
+{
+    if (!fmt) {
+        fmt = "(empty message)";
+    }
+    std::vector<char> text(strlen(fmt) + 500);
+    vsnprintf(text.data(), text.size(), fmt, args);
+    switch (type) {
+    case message::SendText::Error:
+        std::cout << "ERR:  ";
+        break;
+    case message::SendText::Warning:
+        std::cout << "WARN: ";
+        break;
+    case message::SendText::Info:
+        std::cout << "INFO: ";
+        break;
+    default:
+        break;
+    }
+    std::cout << text.data() << std::endl;
+    message::SendText info(type);
+    message::SendText::Payload pl(text.data());
+    self->sendMessageWithPayload(info, pl);
 }
 
-void Module::sendInfo(const char *fmt, ...) const {
-
-   va_list args;
-   va_start(args, fmt);
-   sendTextVarArgs(this, message::SendText::Info, fmt, args);
-   va_end(args);
+void Module::sendInfo(const char *fmt, ...) const
+{
+    va_list args;
+    va_start(args, fmt);
+    sendTextVarArgs(this, message::SendText::Info, fmt, args);
+    va_end(args);
 }
 
-void Module::sendInfo(const std::string &text) const {
-
-   std::cout << "INFO: " << text << std::endl;
-   message::SendText info(message::SendText::Info);
-   message::SendText::Payload pl(text);
-   sendMessageWithPayload(info, pl);
+void Module::sendInfo(const std::string &text) const
+{
+    std::cout << "INFO: " << text << std::endl;
+    message::SendText info(message::SendText::Info);
+    message::SendText::Payload pl(text);
+    sendMessageWithPayload(info, pl);
 }
 
-void Module::sendWarning(const char *fmt, ...) const {
-
-   va_list args;
-   va_start(args, fmt);
-   sendTextVarArgs(this, message::SendText::Warning, fmt, args);
-   va_end(args);
+void Module::sendWarning(const char *fmt, ...) const
+{
+    va_list args;
+    va_start(args, fmt);
+    sendTextVarArgs(this, message::SendText::Warning, fmt, args);
+    va_end(args);
 }
 
-void Module::sendWarning(const std::string &text) const {
-
-   std::cout << "WARN: " << text << std::endl;
-   message::SendText info(message::SendText::Warning);
-   message::SendText::Payload pl(text);
-   sendMessageWithPayload(info, pl);
+void Module::sendWarning(const std::string &text) const
+{
+    std::cout << "WARN: " << text << std::endl;
+    message::SendText info(message::SendText::Warning);
+    message::SendText::Payload pl(text);
+    sendMessageWithPayload(info, pl);
 }
 
-void Module::sendError(const char *fmt, ...) const {
-
-   va_list args;
-   va_start(args, fmt);
-   sendTextVarArgs(this, message::SendText::Error, fmt, args);
-   va_end(args);
+void Module::sendError(const char *fmt, ...) const
+{
+    va_list args;
+    va_start(args, fmt);
+    sendTextVarArgs(this, message::SendText::Error, fmt, args);
+    va_end(args);
 }
 
-void Module::sendError(const std::string &text) const {
-
-   std::cout << "ERR:  " << text << std::endl;
-   message::SendText info(message::SendText::Error);
-   message::SendText::Payload pl(text);
-   sendMessageWithPayload(info, pl);
+void Module::sendError(const std::string &text) const
+{
+    std::cout << "ERR:  " << text << std::endl;
+    message::SendText info(message::SendText::Error);
+    message::SendText::Payload pl(text);
+    sendMessageWithPayload(info, pl);
 }
 
-void Module::sendError(const message::Message &msg, const char *fmt, ...) const {
+void Module::sendError(const message::Message &msg, const char *fmt, ...) const
+{
+    if (!fmt) {
+        fmt = "(empty message)";
+    }
+    std::vector<char> text(strlen(fmt) + 500);
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(text.data(), text.size(), fmt, args);
+    va_end(args);
 
-   if(!fmt) {
-      fmt = "(empty message)";
-   }
-   std::vector<char> text(strlen(fmt)+500);
-   va_list args;
-   va_start(args, fmt);
-   vsnprintf(text.data(), text.size(), fmt, args);
-   va_end(args);
-
-   std::cout << "ERR:  " << text.data() << std::endl;
-   message::SendText info(msg);
-   message::SendText::Payload pl(text.data());
-   sendMessageWithPayload(info, pl);
+    std::cout << "ERR:  " << text.data() << std::endl;
+    message::SendText info(msg);
+    message::SendText::Payload pl(text.data());
+    sendMessageWithPayload(info, pl);
 }
 
-void Module::sendError(const message::Message &msg, const std::string &text) const {
-
-   std::cout << "ERR:  " << text << std::endl;
-   message::SendText info(msg);
-   message::SendText::Payload pl(text);
-   sendMessageWithPayload(info, pl);
+void Module::sendError(const message::Message &msg, const std::string &text) const
+{
+    std::cout << "ERR:  " << text << std::endl;
+    message::SendText info(msg);
+    message::SendText::Payload pl(text);
+    sendMessageWithPayload(info, pl);
 }
 
-void Module::setObjectReceivePolicy(int pol) {
-
-   m_receivePolicy = pol;
-   sendMessage(message::ObjectReceivePolicy(message::ObjectReceivePolicy::Policy(pol)));
+void Module::setObjectReceivePolicy(int pol)
+{
+    m_receivePolicy = pol;
+    sendMessage(message::ObjectReceivePolicy(message::ObjectReceivePolicy::Policy(pol)));
 }
 
-int Module::objectReceivePolicy() const {
-
+int Module::objectReceivePolicy() const
+{
     return m_receivePolicy;
 }
 
-void Module::startIteration() {
-
+void Module::startIteration()
+{
     ++m_iteration;
 }
 
-bool Module::prepareWrapper(const message::Execute *exec) {
-
+bool Module::prepareWrapper(const message::Execute *exec)
+{
 #ifndef DETAILED_PROGRESS
-   message::Busy busy;
-   busy.setReferrer(exec->uuid());
-   busy.setDestId(Id::LocalManager);
-   sendMessage(busy);
+    message::Busy busy;
+    busy.setReferrer(exec->uuid());
+    busy.setDestId(Id::LocalManager);
+    sendMessage(busy);
 #endif
 
-   m_numTimesteps = 0;
-   m_cancelRequested = false;
-   m_cancelExecuteCalled = false;
-   m_executeAfterCancelFound = false;
+    m_numTimesteps = 0;
+    m_cancelRequested = false;
+    m_cancelExecuteCalled = false;
+    m_executeAfterCancelFound = false;
 
-   m_withOutput.clear();
+    m_withOutput.clear();
 
-   bool collective = reducePolicy() != message::ReducePolicy::Never && reducePolicy() != message::ReducePolicy::Locally;
-   if (reducePolicy() != message::ReducePolicy::Never) {
-      assert(!m_prepared);
-   }
-   assert(!m_computed);
+    bool collective =
+        reducePolicy() != message::ReducePolicy::Never && reducePolicy() != message::ReducePolicy::Locally;
+    if (reducePolicy() != message::ReducePolicy::Never) {
+        assert(!m_prepared);
+    }
+    assert(!m_computed);
 
-   m_reduced = false;
+    m_reduced = false;
 
 #ifdef REDUCE_DEBUG
-   if (reducePolicy() != message::ReducePolicy::Locally && reducePolicy() != message::ReducePolicy::Never) {
-      CERR << "prepare(): barrier for reduce policy " << reducePolicy() << std::endl;
-      comm().barrier();
-   }
+    if (reducePolicy() != message::ReducePolicy::Locally && reducePolicy() != message::ReducePolicy::Never) {
+        CERR << "prepare(): barrier for reduce policy " << reducePolicy() << std::endl;
+        comm().barrier();
+    }
 #endif
 
-   message::ExecutionProgress start(message::ExecutionProgress::Start, m_executionCount);
-   start.setReferrer(exec->uuid());
-   start.setDestId(Id::LocalManager);
-   sendMessage(start);
+    message::ExecutionProgress start(message::ExecutionProgress::Start, m_executionCount);
+    start.setReferrer(exec->uuid());
+    start.setDestId(Id::LocalManager);
+    sendMessage(start);
 
-   if (collective) {
-       int oldExecCount = m_executionCount;
-       m_executionCount = boost::mpi::all_reduce(comm(), m_executionCount, boost::mpi::maximum<int>());
-       if (oldExecCount < m_executionCount) {
-           m_iteration = -1;
-       }
-   }
+    if (collective) {
+        int oldExecCount = m_executionCount;
+        m_executionCount = boost::mpi::all_reduce(comm(), m_executionCount, boost::mpi::maximum<int>());
+        if (oldExecCount < m_executionCount) {
+            m_iteration = -1;
+        }
+    }
 
-   if (m_benchmark) {
+    if (m_benchmark) {
+        comm().barrier();
+        m_benchmarkStart = Clock::time();
+    }
 
-      comm().barrier();
-      m_benchmarkStart = Clock::time();
-   }
+    //CERR << "prepareWrapper: prepared=" << m_prepared << std::endl;
+    m_prepared = true;
 
-   //CERR << "prepareWrapper: prepared=" << m_prepared << std::endl;
-   m_prepared = true;
+    if (cancelRequested(collective))
+        return true;
 
-   if (cancelRequested(collective))
-       return true;
+    if (reducePolicy() == message::ReducePolicy::Never)
+        return true;
 
-   if (reducePolicy() == message::ReducePolicy::Never)
-      return true;
-
-   return prepare();
+    return prepare();
 }
 
-bool Module::prepare() {
-
+bool Module::prepare()
+{
 #ifndef NDEBUG
-   if (reducePolicy() != message::ReducePolicy::Locally && reducePolicy() != message::ReducePolicy::Never)
-      comm().barrier();
+    if (reducePolicy() != message::ReducePolicy::Locally && reducePolicy() != message::ReducePolicy::Never)
+        comm().barrier();
 #endif
-   return true;
+    return true;
 }
 
-bool Module::compute() {
-
+bool Module::compute()
+{
     auto task = std::make_shared<PortTask>(this);
     if (m_lastTask) {
         task->addDependency(m_lastTask);
@@ -2302,7 +2259,7 @@ bool Module::compute() {
 
     int concurrency = m_concurrency->getValue();
     if (concurrency <= 0)
-        concurrency = hardware_concurrency()/2;
+        concurrency = hardware_concurrency() / 2;
     if (concurrency <= 1)
         concurrency = 1;
 
@@ -2312,132 +2269,130 @@ bool Module::compute() {
     }
     m_tasks.push_back(task);
 
-    task->m_future = std::async(std::launch::async, [this, task]{ return compute(task); });
+    task->m_future = std::async(std::launch::async, [this, task] { return compute(task); });
     return true;
 }
 
-bool Module::compute(std::shared_ptr<PortTask> task) const {
-
+bool Module::compute(std::shared_ptr<PortTask> task) const
+{
     (void)task;
     CERR << "compute() or compute(std::shared_ptr<PortTask>) should be reimplemented from vistle::Module" << std::endl;
     return false;
 }
 
-bool Module::reduceWrapper(const message::Execute *exec, bool reordered) {
+bool Module::reduceWrapper(const message::Execute *exec, bool reordered)
+{
+    //CERR << "reduceWrapper: prepared=" << m_prepared << ", exec count = " << m_executionCount << std::endl;
 
-   //CERR << "reduceWrapper: prepared=" << m_prepared << ", exec count = " << m_executionCount << std::endl;
-
-   assert(m_prepared);
-   if (reducePolicy() != message::ReducePolicy::Never) {
-      assert(!m_reduced);
-   }
+    assert(m_prepared);
+    if (reducePolicy() != message::ReducePolicy::Never) {
+        assert(!m_reduced);
+    }
 
 #ifdef REDUCE_DEBUG
-   if (reducePolicy() != message::ReducePolicy::Locally && reducePolicy() != message::ReducePolicy::Never) {
-      CERR << "reduce(): barrier for reduce policy " << reducePolicy() << ", request was " << *exec << std::endl;
-      comm().barrier();
-   }
+    if (reducePolicy() != message::ReducePolicy::Locally && reducePolicy() != message::ReducePolicy::Never) {
+        CERR << "reduce(): barrier for reduce policy " << reducePolicy() << ", request was " << *exec << std::endl;
+        comm().barrier();
+    }
 #endif
 
-   bool sync = false;
-   if (reducePolicy() != message::ReducePolicy::Never && reducePolicy() != message::ReducePolicy::Locally) {
-       sync = true;
-       m_numTimesteps = boost::mpi::all_reduce(comm(), m_numTimesteps, boost::mpi::maximum<int>());
-   }
+    bool sync = false;
+    if (reducePolicy() != message::ReducePolicy::Never && reducePolicy() != message::ReducePolicy::Locally) {
+        sync = true;
+        m_numTimesteps = boost::mpi::all_reduce(comm(), m_numTimesteps, boost::mpi::maximum<int>());
+    }
 
-   m_reduced = true;
+    m_reduced = true;
 
-   bool ret = true;
-   try {
-       switch(reducePolicy()) {
-       case message::ReducePolicy::Never: {
-           break;
-       }
-       case message::ReducePolicy::PerTimestep:
-       case message::ReducePolicy::PerTimestepZeroFirst:
-       case message::ReducePolicy::PerTimestepOrdered: {
-           if (!reordered) {
-               for (int t=0; t<m_numTimesteps; ++t) {
-                   if (!cancelRequested(sync)) {
-                       //CERR << "run reduce(t=" << t << "): exec count = " << m_executionCount << std::endl;
-                       ret &= reduce(t);
-                   }
-               }
-           }
-       }
-       // FALLTHRU
-       case message::ReducePolicy::Locally:
-       case message::ReducePolicy::OverAll: {
-           if (!cancelRequested(sync)) {
-               //CERR << "run reduce(t=" << -1 << "): exec count = " << m_executionCount << std::endl;
-               ret = reduce(-1);
-           }
-           break;
-       }
-       }
-   } catch (std::exception &e) {
-           ret = false;
-           std::cout << name() << "::reduce(): exception - " << e.what() << std::endl << std::flush;
-           CERR << name() << "::reduce(): exception - " << e.what() << std::endl;
-   }
+    bool ret = true;
+    try {
+        switch (reducePolicy()) {
+        case message::ReducePolicy::Never: {
+            break;
+        }
+        case message::ReducePolicy::PerTimestep:
+        case message::ReducePolicy::PerTimestepZeroFirst:
+        case message::ReducePolicy::PerTimestepOrdered: {
+            if (!reordered) {
+                for (int t = 0; t < m_numTimesteps; ++t) {
+                    if (!cancelRequested(sync)) {
+                        //CERR << "run reduce(t=" << t << "): exec count = " << m_executionCount << std::endl;
+                        ret &= reduce(t);
+                    }
+                }
+            }
+        }
+        // FALLTHRU
+        case message::ReducePolicy::Locally:
+        case message::ReducePolicy::OverAll: {
+            if (!cancelRequested(sync)) {
+                //CERR << "run reduce(t=" << -1 << "): exec count = " << m_executionCount << std::endl;
+                ret = reduce(-1);
+            }
+            break;
+        }
+        }
+    } catch (std::exception &e) {
+        ret = false;
+        std::cout << name() << "::reduce(): exception - " << e.what() << std::endl << std::flush;
+        CERR << name() << "::reduce(): exception - " << e.what() << std::endl;
+    }
 
-   for (auto &port: outputPorts) {
-       if (isConnected(port.second) && m_withOutput.find(&port.second) == m_withOutput.end()) {
-           Empty::ptr empty(new Empty(Object::Initialized));
-           addObject(&port.second, empty);
-       }
-   }
+    for (auto &port: outputPorts) {
+        if (isConnected(port.second) && m_withOutput.find(&port.second) == m_withOutput.end()) {
+            Empty::ptr empty(new Empty(Object::Initialized));
+            addObject(&port.second, empty);
+        }
+    }
 
-   if (sync) {
-       m_cancelRequested = boost::mpi::all_reduce(comm(), m_cancelRequested, std::logical_or<bool>());
-   }
+    if (sync) {
+        m_cancelRequested = boost::mpi::all_reduce(comm(), m_cancelRequested, std::logical_or<bool>());
+    }
 
-   if (m_benchmark) {
-      comm().barrier();
-      double duration = Clock::time() - m_benchmarkStart;
-      if (rank() == 0) {
+    if (m_benchmark) {
+        comm().barrier();
+        double duration = Clock::time() - m_benchmarkStart;
+        if (rank() == 0) {
 #ifdef _OPENMP
-         int nthreads = omp_get_max_threads();
-         sendInfo("compute() took %fs (OpenMP threads: %d)", duration, nthreads);
-         printf("%s:%d: compute() took %fs (OpenMP threads: %d)",
-               name().c_str(), id(), duration, nthreads);
+            int nthreads = omp_get_max_threads();
+            sendInfo("compute() took %fs (OpenMP threads: %d)", duration, nthreads);
+            printf("%s:%d: compute() took %fs (OpenMP threads: %d)", name().c_str(), id(), duration, nthreads);
 #else
-         sendInfo("compute() took %fs (no OpenMP)", duration);
-         printf("%s:%d: compute() took %fs (no OpenMP)",
-               name().c_str(), id(), duration);
+            sendInfo("compute() took %fs (no OpenMP)", duration);
+            printf("%s:%d: compute() took %fs (no OpenMP)", name().c_str(), id(), duration);
 #endif
-      }
-   }
+        }
+    }
 
-   message::ExecutionProgress fin(message::ExecutionProgress::Finish, m_executionCount);
-   fin.setReferrer(exec->uuid());
-   fin.setDestId(Id::LocalManager);
-   sendMessage(fin);
+    message::ExecutionProgress fin(message::ExecutionProgress::Finish, m_executionCount);
+    fin.setReferrer(exec->uuid());
+    fin.setDestId(Id::LocalManager);
+    sendMessage(fin);
 
 #ifndef DETAILED_PROGRESS
-   message::Idle idle;
-   idle.setReferrer(exec->uuid());
-   idle.setDestId(Id::LocalManager);
-   sendMessage(idle);
+    message::Idle idle;
+    idle.setReferrer(exec->uuid());
+    idle.setDestId(Id::LocalManager);
+    sendMessage(idle);
 #endif
 
-   m_computed = false;
-   m_prepared = false;
+    m_computed = false;
+    m_prepared = false;
 
-   return ret;
+    return ret;
 }
 
-bool Module::reduce(int timestep) {
-
+bool Module::reduce(int timestep)
+{
 #ifndef NDEBUG
-   if (reducePolicy() != message::ReducePolicy::Locally && reducePolicy() != message::ReducePolicy::Never)
-      comm().barrier();
+    if (reducePolicy() != message::ReducePolicy::Locally && reducePolicy() != message::ReducePolicy::Never)
+        comm().barrier();
 #endif
-   return true;
+    return true;
 }
 
-bool Module::cancelExecute() {
-
+bool Module::cancelExecute()
+{
     std::cerr << "canceling execution" << std::endl;
     if (rank() == 0)
         sendInfo("canceling execution");
@@ -2445,25 +2400,25 @@ bool Module::cancelExecute() {
     return true;
 }
 
-int Module::numTimesteps() const {
-
+int Module::numTimesteps() const
+{
     return m_numTimesteps;
 }
 
-void Module::setStatus(const std::string &text, message::UpdateStatus::Importance prio) {
-
+void Module::setStatus(const std::string &text, message::UpdateStatus::Importance prio)
+{
     message::UpdateStatus status(text, prio);
     status.setDestId(Id::ForBroadcast);
     sendMessage(status);
 }
 
-void Module::clearStatus() {
-
+void Module::clearStatus()
+{
     setStatus(std::string(), message::UpdateStatus::Bulk);
 }
 
-bool Module::cancelRequested(bool collective) {
-
+bool Module::cancelRequested(bool collective)
+{
     message::Buffer buf;
     while (!m_executeAfterCancelFound && receiveMessageQueue->tryReceive(buf)) {
         messageBacklog.push_back(buf);
@@ -2500,20 +2455,23 @@ bool Module::cancelRequested(bool collective) {
     return m_cancelRequested;
 }
 
-bool Module::wasCancelRequested() const {
+bool Module::wasCancelRequested() const
+{
     return m_cancelRequested;
 }
 
-void Module::cancelExecuteMessageReceived(const message::Message* msg) {
+void Module::cancelExecuteMessageReceived(const message::Message *msg)
+{
     (void)msg;
     return;
 }
 
 #undef CERR
-#define CERR std::cerr << m_module->m_name << "_" << m_module->id() << ":task" << " [" << m_module->rank() << "/" << m_module->size() << "] "
+#define CERR \
+    std::cerr << m_module->m_name << "_" << m_module->id() << ":task" \
+              << " [" << m_module->rank() << "/" << m_module->size() << "] "
 
-PortTask::PortTask(Module *module)
-: m_module(module)
+PortTask::PortTask(Module *module): m_module(module)
 {
     for (auto &p: module->inputPorts) {
         m_portsByString[p.first] = &p.second;
@@ -2533,14 +2491,14 @@ PortTask::~PortTask()
     addAllObjects();
 }
 
-bool PortTask::hasObject(const Port *p) {
-
+bool PortTask::hasObject(const Port *p)
+{
     auto it = m_input.find(p);
     return it != m_input.end();
 }
 
-Object::const_ptr PortTask::takeObject(const Port *p) {
-
+Object::const_ptr PortTask::takeObject(const Port *p)
+{
     auto it = m_input.find(p);
     if (it == m_input.end())
         return Object::const_ptr();
@@ -2555,8 +2513,8 @@ void PortTask::addDependency(std::shared_ptr<PortTask> dep)
     m_dependencies.insert(dep);
 }
 
-void PortTask::addObject(Port *port, Object::ptr obj) {
-
+void PortTask::addObject(Port *port, Object::ptr obj)
+{
     assert(m_ports.find(port) != m_ports.end());
 
     if (!dependenciesDone()) {
@@ -2569,8 +2527,8 @@ void PortTask::addObject(Port *port, Object::ptr obj) {
     m_module->addObject(port, obj);
 }
 
-void PortTask::addObject(const std::string &port, Object::ptr obj) {
-
+void PortTask::addObject(const std::string &port, Object::ptr obj)
+{
     auto it = m_portsByString.find(port);
     assert(it != m_portsByString.end());
     if (it == m_portsByString.end()) {
@@ -2594,8 +2552,8 @@ void PortTask::passThroughObject(Port *port, Object::const_ptr obj)
     m_module->passThroughObject(port, obj);
 }
 
-void PortTask::passThroughObject(const std::string &port, Object::const_ptr obj) {
-
+void PortTask::passThroughObject(const std::string &port, Object::const_ptr obj)
+{
     auto it = m_portsByString.find(port);
     assert(it != m_portsByString.end());
     if (it == m_portsByString.end()) {
@@ -2605,13 +2563,12 @@ void PortTask::passThroughObject(const std::string &port, Object::const_ptr obj)
     passThroughObject(it->second, obj);
 }
 
-void PortTask::addAllObjects() {
-
+void PortTask::addAllObjects()
+{
     assert(dependenciesDone());
 
     while (!m_objects.empty()) {
         for (auto it = m_objects.begin(); it != m_objects.end(); ++it) {
-
             auto &p = it->first;
             auto &q = it->second;
             auto &passQueue = m_passThrough[p];
@@ -2635,16 +2592,16 @@ void PortTask::addAllObjects() {
     }
 }
 
-bool PortTask::isDone() {
-
+bool PortTask::isDone()
+{
     if (!m_future.valid())
         return false;
 
     return dependenciesDone();
 }
 
-bool PortTask::dependenciesDone() {
-
+bool PortTask::dependenciesDone()
+{
     std::unique_lock<std::mutex> guard(m_mutex);
     for (auto it = m_dependencies.begin(); it != m_dependencies.end(); ++it) {
         auto &d = *it;
@@ -2654,14 +2611,14 @@ bool PortTask::dependenciesDone() {
     return true;
 }
 
-bool PortTask::wait() {
-
+bool PortTask::wait()
+{
     waitDependencies();
     return m_future.get();
 }
 
-bool PortTask::waitDependencies() {
-
+bool PortTask::waitDependencies()
+{
     std::unique_lock<std::mutex> guard(m_mutex);
     for (auto it = m_dependencies.begin(); it != m_dependencies.end(); ++it) {
         auto &d = *it;
@@ -2678,13 +2635,14 @@ bool PortTask::waitDependencies() {
 }
 
 template<class Payload>
-bool Module::sendMessageWithPayload(message::Message &message, Payload &payload) const {
-
+bool Module::sendMessageWithPayload(message::Message &message, Payload &payload) const
+{
     auto pl = addPayload(message, payload);
     return this->sendMessage(message, &pl);
 }
 
-int Module::shmLeader(int rank) const {
+int Module::shmLeader(int rank) const
+{
     if (rank == -1)
         rank = this->rank();
     return m_shmLeaders[rank];

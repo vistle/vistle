@@ -68,18 +68,17 @@ QT_BEGIN_NAMESPACE
 
 class RemoteFileIconProvider;
 
-class Q_AUTOTEST_EXPORT RemoteFileInfoGatherer : public AbstractFileInfoGatherer
-{
-Q_OBJECT
+class Q_AUTOTEST_EXPORT RemoteFileInfoGatherer: public AbstractFileInfoGatherer {
+    Q_OBJECT
 
 public:
     explicit RemoteFileInfoGatherer(QObject *parent = 0);
     ~RemoteFileInfoGatherer() override;
 
 #if QT_CONFIG(filesystemwatcher) && defined(Q_OS_WIN)
-    QStringList watchedFiles() const            { return watcher->files(); }
-    QStringList watchedDirectories() const      { return watcher->directories(); }
-    void watchPaths(const QStringList &paths)   { watcher->addPaths(paths); }
+    QStringList watchedFiles() const { return watcher->files(); }
+    QStringList watchedDirectories() const { return watcher->directories(); }
+    void watchPaths(const QStringList &paths) { watcher->addPaths(paths); }
     void unwatchPaths(const QStringList &paths) { watcher->removePaths(paths); }
 #endif // filesystemwatcher && Q_OS_WIN
 
@@ -108,7 +107,8 @@ private:
     void run() override;
     // called by run():
     void getFileInfos(const QString &path, const QStringList &files);
-    void fetch(const QFileInfo &info, QElapsedTimer &base, bool &firstTime, QVector<QPair<QString, FileInfo> > &updatedFiles, const QString &path);
+    void fetch(const QFileInfo &info, QElapsedTimer &base, bool &firstTime,
+               QVector<QPair<QString, FileInfo>> &updatedFiles, const QString &path);
 
 private:
     mutable QMutex mutex;

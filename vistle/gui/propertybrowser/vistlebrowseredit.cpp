@@ -14,8 +14,7 @@
 #include "../remotefilebrowser/remotefileinfogatherer.h"
 #include "../remotefilebrowser/remotefilesystemmodel.h"
 
-VistleBrowserEdit::VistleBrowserEdit(QWidget *parent)
-: QWidget(parent)
+VistleBrowserEdit::VistleBrowserEdit(QWidget *parent): QWidget(parent)
 {
     m_layout = new QHBoxLayout(this);
     m_button = new QToolButton(this);
@@ -30,7 +29,7 @@ VistleBrowserEdit::VistleBrowserEdit(QWidget *parent)
 
     m_title = "Vistle File Browser";
 
-    connect(m_button, &QToolButton::pressed, [this](){
+    connect(m_button, &QToolButton::pressed, [this]() {
         if (!m_browser) {
             if (m_ui) {
                 m_fig = new VistleFileInfoGatherer(m_ui, m_moduleId);
@@ -43,14 +42,14 @@ VistleBrowserEdit::VistleBrowserEdit(QWidget *parent)
             applyFileMode();
             applyNameFilters();
 
-            connect(m_browser, &QDialog::accepted, [this](){
+            connect(m_browser, &QDialog::accepted, [this]() {
                 const auto &files = m_browser->selectedFiles();
                 if (!files.empty())
                     setText(files[0]);
                 emit editingFinished();
             });
 
-            connect(m_browser, &QDialog::finished, [this](){
+            connect(m_browser, &QDialog::finished, [this]() {
                 m_button->setIcon(QIcon::fromTheme("folder", qApp->style()->standardIcon(QStyle::SP_DirClosedIcon)));
             });
         }
@@ -68,7 +67,6 @@ VistleBrowserEdit::VistleBrowserEdit(QWidget *parent)
             m_button->setIcon(QIcon::fromTheme("folder", qApp->style()->standardIcon(QStyle::SP_DirClosedIcon)));
         }
     });
-
 }
 
 VistleBrowserEdit::~VistleBrowserEdit()
@@ -147,7 +145,8 @@ void VistleBrowserEdit::setFileMode(VistleBrowserEdit::FileMode fileMode)
     applyFileMode();
 }
 
-void VistleBrowserEdit::applyFileMode() {
+void VistleBrowserEdit::applyFileMode()
+{
     if (!m_browser)
         return;
 

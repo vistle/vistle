@@ -62,17 +62,17 @@ QT_BEGIN_NAMESPACE
 /*!
     QCompleter that can deal with AbstractFileSystemModel
   */
-class RemoteFSCompleter :  public QCompleter {
+class RemoteFSCompleter: public QCompleter {
 public:
     explicit RemoteFSCompleter(AbstractFileSystemModel *model, QObject *parent = 0)
-        : QCompleter(model, parent), proxyModel(0), sourceModel(model)
+    : QCompleter(model, parent), proxyModel(0), sourceModel(model)
     {
 #if defined(Q_OS_WIN)
         setCaseSensitivity(Qt::CaseInsensitive);
 #endif
     }
     QString pathFromIndex(const QModelIndex &index) const override;
-    QStringList splitPath(const QString& path) const override;
+    QStringList splitPath(const QString &path) const override;
 
     QAbstractProxyModel *proxyModel;
     AbstractFileSystemModel *sourceModel;
@@ -81,4 +81,3 @@ public:
 QT_END_NAMESPACE
 
 #endif // QFSCOMPLETOR_P_H
-

@@ -19,50 +19,48 @@ namespace mpi = boost::mpi;
 namespace vistle {
 
 Renderer::Renderer(const std::string &name, const int moduleID, mpi::communicator comm)
-   : Module(name, moduleID, comm)
-   , m_fastestObjectReceivePolicy(message::ObjectReceivePolicy::Local)
+: Module(name, moduleID, comm), m_fastestObjectReceivePolicy(message::ObjectReceivePolicy::Local)
 {
+    setSchedulingPolicy(message::SchedulingPolicy::Ignore); // compute does not have to be called at all
+    setReducePolicy(message::ReducePolicy::Never); // because of COMBINE port
+    createInputPort("data_in", "input data", Port::COMBINE);
 
-   setSchedulingPolicy(message::SchedulingPolicy::Ignore); // compute does not have to be called at all
-   setReducePolicy(message::ReducePolicy::Never); // because of COMBINE port
-   createInputPort("data_in", "input data", Port::COMBINE);
+    m_renderMode = addIntParameter("render_mode", "Render on which nodes?", LocalOnly, Parameter::Choice);
+    V_ENUM_SET_CHOICES(m_renderMode, RenderMode);
 
-   m_renderMode = addIntParameter("render_mode", "Render on which nodes?", LocalOnly, Parameter::Choice);
-   V_ENUM_SET_CHOICES(m_renderMode, RenderMode);
+    m_objectsPerFrame = addIntParameter("objects_per_frame", "Max. no. of objects to load between calls to render",
+                                        m_numObjectsPerFrame);
+    setParameterMinimum(m_objectsPerFrame, Integer(1));
 
-   m_objectsPerFrame = addIntParameter("objects_per_frame", "Max. no. of objects to load between calls to render", m_numObjectsPerFrame);
-   setParameterMinimum(m_objectsPerFrame, Integer(1));
-
-   //std::cerr << "Renderer starting: rank=" << rank << std::endl;
+    //std::cerr << "Renderer starting: rank=" << rank << std::endl;
 }
 
-Renderer::~Renderer() {
-
-}
+Renderer::~Renderer()
+{}
 
 // all of those messages have to arrive in the same order an all ranks, but other messages may be interspersed
-bool Renderer::needsSync(const message::Message &m) const {
+bool Renderer::needsSync(const message::Message &m) const
+{
+    using namespace vistle::message;
 
-   using namespace vistle::message;
-
-   switch (m.type()) {
-      case CANCELEXECUTE:
-      case QUIT:
-      case KILL:
-      case ADDPARAMETER:
-      case SETPARAMETER:
-      case REMOVEPARAMETER:
-         return true;
-      case ADDOBJECT:
-         return objectReceivePolicy() != ObjectReceivePolicy::Local;
-      default:
-         return false;
-   }
+    switch (m.type()) {
+    case CANCELEXECUTE:
+    case QUIT:
+    case KILL:
+    case ADDPARAMETER:
+    case SETPARAMETER:
+    case REMOVEPARAMETER:
+        return true;
+    case ADDOBJECT:
+        return objectReceivePolicy() != ObjectReceivePolicy::Local;
+    default:
+        return false;
+    }
 }
 
-std::array<Object::const_ptr,3> splitObject(Object::const_ptr container) {
-
-    std::array<Object::const_ptr,3> geo_norm_data;
+std::array<Object::const_ptr, 3> splitObject(Object::const_ptr container)
+{
+    std::array<Object::const_ptr, 3> geo_norm_data;
     Object::const_ptr &grid = geo_norm_data[0];
     Object::const_ptr &normals = geo_norm_data[1];
     Object::const_ptr &tex = geo_norm_data[2];
@@ -93,8 +91,8 @@ std::array<Object::const_ptr,3> splitObject(Object::const_ptr container) {
     return geo_norm_data;
 }
 
-bool Renderer::handleMessage(const message::Message *message, const MessagePayload &payload) {
-
+bool Renderer::handleMessage(const message::Message *message, const MessagePayload &payload)
+{
     switch (message->type()) {
     case vistle::message::ADDOBJECT: {
         auto add = static_cast<const message::AddObject *>(message);
@@ -113,18 +111,18 @@ bool Renderer::handleMessage(const message::Message *message, const MessagePaylo
     return Module::handleMessage(message, payload);
 }
 
-bool Renderer::addColorMap(const std::string &species, Texture1D::const_ptr texture) {
-
+bool Renderer::addColorMap(const std::string &species, Texture1D::const_ptr texture)
+{
     return true;
 }
 
-bool Renderer::removeColorMap(const std::string &species) {
-
+bool Renderer::removeColorMap(const std::string &species)
+{
     return true;
 }
 
-bool Renderer::handleAddObject(const message::AddObject &add) {
-
+bool Renderer::handleAddObject(const message::AddObject &add)
+{
     using namespace vistle::message;
 
     const RenderMode rm = static_cast<RenderMode>(m_renderMode->getValue());
@@ -149,10 +147,8 @@ bool Renderer::handleAddObject(const message::AddObject &add) {
             assert(obj);
         }
         if (rm != AllRanks && pol == ObjectReceivePolicy::Distribute) {
-
             std::string phName;
             if (add.rank() == rank()) {
-
                 auto geo_norm_tex = splitObject(obj);
                 auto &grid = geo_norm_tex[0];
                 auto &normals = geo_norm_tex[1];
@@ -185,11 +181,8 @@ bool Renderer::handleAddObject(const message::AddObject &add) {
         }
     }
 
-    if (rm == AllRanks
-        || (rm == AllShmLeaders && rank() == shmLeader())
-        || (rm == MasterOnly && rank() == 0)
-        || (rm == LocalShmLeader && shmLeader(add.rank()) == shmLeader())
-        || (rm == LocalOnly && rank() == add.rank())) {
+    if (rm == AllRanks || (rm == AllShmLeaders && rank() == shmLeader()) || (rm == MasterOnly && rank() == 0) ||
+        (rm == LocalShmLeader && shmLeader(add.rank()) == shmLeader()) || (rm == LocalOnly && rank() == add.rank())) {
         assert(obj);
         addInputObject(add.senderId(), add.getSenderPort(), add.getDestPort(), obj);
     } else if (pol == ObjectReceivePolicy::Distribute) {
@@ -200,88 +193,89 @@ bool Renderer::handleAddObject(const message::AddObject &add) {
     return true;
 }
 
-bool Renderer::dispatch(bool block, bool *messageReceived) {
-   (void)block;
-   int quit = 0;
-   bool checkAgain = true;
-   bool wasAnyMessage = false;
-   int numSync = 0;
-   while (checkAgain) {
-      // process all messages until one needs cooperative processing
-      message::Buffer buf;
-      message::Message &message = buf;
-      bool haveMessage = getNextMessage(buf, false);
-      int needSync = 0;
-      if (haveMessage) {
-         if (needsSync(message))
-            needSync = 1;
-      }
-      int anyMessage = boost::mpi::all_reduce(comm(), haveMessage ? 1 : 0, boost::mpi::maximum<int>());
-      int anySync = 0;
-      if (anyMessage) {
-          wasAnyMessage = true;
-          anySync = boost::mpi::all_reduce(comm(), needSync, boost::mpi::maximum<int>());
-      }
-
-      do {
-         if (haveMessage) {
-            if (messageReceived)
-               *messageReceived = true;
-
+bool Renderer::dispatch(bool block, bool *messageReceived)
+{
+    (void)block;
+    int quit = 0;
+    bool checkAgain = true;
+    bool wasAnyMessage = false;
+    int numSync = 0;
+    while (checkAgain) {
+        // process all messages until one needs cooperative processing
+        message::Buffer buf;
+        message::Message &message = buf;
+        bool haveMessage = getNextMessage(buf, false);
+        int needSync = 0;
+        if (haveMessage) {
             if (needsSync(message))
-               needSync = 1;
+                needSync = 1;
+        }
+        int anyMessage = boost::mpi::all_reduce(comm(), haveMessage ? 1 : 0, boost::mpi::maximum<int>());
+        int anySync = 0;
+        if (anyMessage) {
+            wasAnyMessage = true;
+            anySync = boost::mpi::all_reduce(comm(), needSync, boost::mpi::maximum<int>());
+        }
 
-            MessagePayload pl;
-            if (buf.payloadSize() > 0) {
-                pl = Shm::the().getArrayFromName<char>(buf.payloadName());
-                pl.unref();
+        do {
+            if (haveMessage) {
+                if (messageReceived)
+                    *messageReceived = true;
+
+                if (needsSync(message))
+                    needSync = 1;
+
+                MessagePayload pl;
+                if (buf.payloadSize() > 0) {
+                    pl = Shm::the().getArrayFromName<char>(buf.payloadName());
+                    pl.unref();
+                }
+                quit = handleMessage(&message, pl) ? 0 : 1;
+                if (quit) {
+                    std::cerr << "Quitting: " << message << std::endl;
+                    break;
+                }
             }
-            quit = handleMessage(&message, pl) ? 0 : 1;
-            if (quit) {
-                std::cerr << "Quitting: " << message << std::endl;
-                break;
+
+            if (anySync && !needSync) {
+                haveMessage = getNextMessage(buf);
             }
-         }
 
-         if (anySync && !needSync) {
-            haveMessage = getNextMessage(buf);
-         }
+        } while (anySync && !needSync);
 
-      } while(anySync && !needSync);
+        int anyQuit = boost::mpi::all_reduce(comm(), quit, boost::mpi::maximum<int>());
+        if (anyQuit) {
+            prepareQuit();
+            return false;
+        }
 
-      int anyQuit = boost::mpi::all_reduce(comm(), quit, boost::mpi::maximum<int>());
-      if (anyQuit) {
-          prepareQuit();
-          return false;
-      }
+        int numMessages = messageBacklog.size() + receiveMessageQueue->getNumMessages();
+        int maxNumMessages = boost::mpi::all_reduce(comm(), numMessages, boost::mpi::maximum<int>());
+        ++numSync;
+        checkAgain = maxNumMessages > 0 && numSync < m_numObjectsPerFrame;
+    }
 
-      int numMessages = messageBacklog.size() + receiveMessageQueue->getNumMessages();
-      int maxNumMessages = boost::mpi::all_reduce(comm(), numMessages, boost::mpi::maximum<int>());
-      ++numSync;
-      checkAgain = maxNumMessages>0 && numSync<m_numObjectsPerFrame;
-   }
+    double start = 0.;
+    if (m_benchmark) {
+        comm().barrier();
+        start = Clock::time();
+    }
+    if (render() && m_benchmark) {
+        comm().barrier();
+        const double duration = Clock::time() - start;
+        if (rank() == 0) {
+            sendInfo("render took %f s", duration);
+        }
+    }
 
-   double start = 0.;
-   if (m_benchmark) {
-       comm().barrier();
-       start = Clock::time();
-   }
-   if (render() && m_benchmark) {
-       comm().barrier();
-       const double duration = Clock::time() - start;
-       if (rank() == 0) {
-           sendInfo("render took %f s", duration);
-       }
-   }
-
-   if (m_maySleep)
-      vistle::adaptive_wait(wasAnyMessage, this);
+    if (m_maySleep)
+        vistle::adaptive_wait(wasAnyMessage, this);
 
     return true;
 }
 
-int Renderer::numTimesteps() const {
-
+int Renderer::numTimesteps() const
+{
     if (m_objectList.size() <= 1)
         return 0;
 
@@ -289,86 +283,86 @@ int Renderer::numTimesteps() const {
 }
 
 
-bool Renderer::addInputObject(int sender, const std::string &senderPort, const std::string & portName,
-                                 vistle::Object::const_ptr object) {
+bool Renderer::addInputObject(int sender, const std::string &senderPort, const std::string &portName,
+                              vistle::Object::const_ptr object)
+{
+    int creatorId = object->getCreator();
+    CreatorMap::iterator it = m_creatorMap.find(creatorId);
+    if (it != m_creatorMap.end()) {
+        if (it->second.age < object->getExecutionCounter()) {
+            //std::cerr << "removing all created by " << creatorId << ", age " << object->getExecutionCounter() << ", was " << it->second.age << std::endl;
+            removeAllCreatedBy(creatorId);
+        } else if (it->second.age == object->getExecutionCounter() && it->second.iter < object->getIteration()) {
+            std::cerr << "removing all created by " << creatorId << ", age " << object->getExecutionCounter()
+                      << ": new iteration " << object->getIteration() << std::endl;
+            removeAllCreatedBy(creatorId);
+        } else if (it->second.age > object->getExecutionCounter()) {
+            std::cerr << "received outdated object created by " << creatorId << ", age "
+                      << object->getExecutionCounter() << ", was " << it->second.age << std::endl;
+            return false;
+        } else if (it->second.age == object->getExecutionCounter() && it->second.iter > object->getIteration()) {
+            std::cerr << "received outdated object created by " << creatorId << ", age "
+                      << object->getExecutionCounter() << ": old iteration " << object->getIteration() << std::endl;
+            return false;
+        }
+    } else {
+        std::string name = getModuleName(object->getCreator());
+        it = m_creatorMap.insert(std::make_pair(creatorId, Creator(object->getCreator(), name))).first;
+    }
+    Creator &creator = it->second;
+    creator.age = object->getExecutionCounter();
+    creator.iter = object->getIteration();
 
-   int creatorId = object->getCreator();
-   CreatorMap::iterator it = m_creatorMap.find(creatorId);
-   if (it != m_creatorMap.end()) {
-      if (it->second.age < object->getExecutionCounter()) {
-         //std::cerr << "removing all created by " << creatorId << ", age " << object->getExecutionCounter() << ", was " << it->second.age << std::endl;
-         removeAllCreatedBy(creatorId);
-      } else if (it->second.age == object->getExecutionCounter() && it->second.iter < object->getIteration()) {
-         std::cerr << "removing all created by " << creatorId << ", age " << object->getExecutionCounter() << ": new iteration " << object->getIteration() << std::endl;
-         removeAllCreatedBy(creatorId);
-      } else if (it->second.age > object->getExecutionCounter()) {
-         std::cerr << "received outdated object created by " << creatorId << ", age " << object->getExecutionCounter() << ", was " << it->second.age << std::endl;
-         return false;
-      } else if (it->second.age == object->getExecutionCounter() && it->second.iter > object->getIteration()) {
-         std::cerr << "received outdated object created by " << creatorId << ", age " << object->getExecutionCounter() << ": old iteration " << object->getIteration() << std::endl;
-         return false;
-      }
-   } else {
-      std::string name = getModuleName(object->getCreator());
-      it = m_creatorMap.insert(std::make_pair(creatorId, Creator(object->getCreator(), name))).first;
-   }
-   Creator &creator = it->second;
-   creator.age = object->getExecutionCounter();
-   creator.iter = object->getIteration();
+    if (Empty::as(object))
+        return true;
 
-   if (Empty::as(object))
-       return true;
+    auto geo_norm_tex = splitObject(object);
 
-   auto geo_norm_tex = splitObject(object);
-
-   if (!geo_norm_tex[0]) {
-       std::string species = object->getAttribute("_species");
-       if (auto tex = vistle::Texture1D::as(object)) {
-           auto &cmap = m_colormaps[species];
-           cmap.texture = tex;
-           cmap.creator = object->getCreator();
-           cmap.sender = sender;
-           cmap.senderPort = senderPort;
-            std::cerr << "added colormap " << species << " without object, width=" << tex->getWidth() << ", range=" << tex->getMin() << " to " << tex->getMax() << std::endl;
+    if (!geo_norm_tex[0]) {
+        std::string species = object->getAttribute("_species");
+        if (auto tex = vistle::Texture1D::as(object)) {
+            auto &cmap = m_colormaps[species];
+            cmap.texture = tex;
+            cmap.creator = object->getCreator();
+            cmap.sender = sender;
+            cmap.senderPort = senderPort;
+            std::cerr << "added colormap " << species << " without object, width=" << tex->getWidth()
+                      << ", range=" << tex->getMin() << " to " << tex->getMax() << std::endl;
             return addColorMap(species, tex);
         }
-   }
+    }
 
-   std::shared_ptr<RenderObject> ro = addObjectWrapper(sender, senderPort,
-                                                       object, geo_norm_tex[0], geo_norm_tex[1], geo_norm_tex[2]);
-   if (ro) {
-      assert(ro->timestep >= -1);
-      if (m_objectList.size() <= size_t(ro->timestep+1))
-         m_objectList.resize(ro->timestep+2);
-      m_objectList[ro->timestep+1].push_back(ro);
-   }
+    std::shared_ptr<RenderObject> ro =
+        addObjectWrapper(sender, senderPort, object, geo_norm_tex[0], geo_norm_tex[1], geo_norm_tex[2]);
+    if (ro) {
+        assert(ro->timestep >= -1);
+        if (m_objectList.size() <= size_t(ro->timestep + 1))
+            m_objectList.resize(ro->timestep + 2);
+        m_objectList[ro->timestep + 1].push_back(ro);
+    }
 
 #if 1
-   std::string variant;
-   std::string noobject;
-   if (ro) {
-       if (!ro->variant.empty())
-           variant = " variant " + ro->variant;
-   } else {
-       noobject = " NO OBJECT generated";
-   }
-   std::cerr << "++++++Renderer addInputObject " << object->getName()
-             << " type " << object->getType()
-             << " creator " << object->getCreator()
-             << " exec " << object->getExecutionCounter()
-             << " iter " << object->getIteration()
-             << " block " << object->getBlock()
-             << " timestep " << object->getTimestep()
-             << variant
-             << noobject
-             << std::endl;
+    std::string variant;
+    std::string noobject;
+    if (ro) {
+        if (!ro->variant.empty())
+            variant = " variant " + ro->variant;
+    } else {
+        noobject = " NO OBJECT generated";
+    }
+    std::cerr << "++++++Renderer addInputObject " << object->getName() << " type " << object->getType() << " creator "
+              << object->getCreator() << " exec " << object->getExecutionCounter() << " iter " << object->getIteration()
+              << " block " << object->getBlock() << " timestep " << object->getTimestep() << variant << noobject
+              << std::endl;
 #endif
 
-   return true;
+    return true;
 }
 
-std::shared_ptr<RenderObject> Renderer::addObjectWrapper(int senderId, const std::string &senderPort, Object::const_ptr container, Object::const_ptr geom, Object::const_ptr normal, Object::const_ptr texture) {
-
+std::shared_ptr<RenderObject> Renderer::addObjectWrapper(int senderId, const std::string &senderPort,
+                                                         Object::const_ptr container, Object::const_ptr geom,
+                                                         Object::const_ptr normal, Object::const_ptr texture)
+{
     auto ro = addObject(senderId, senderPort, container, geom, normal, texture);
     if (ro && !ro->variant.empty()) {
         auto it = m_variants.find(ro->variant);
@@ -382,8 +376,8 @@ std::shared_ptr<RenderObject> Renderer::addObjectWrapper(int senderId, const std
     return ro;
 }
 
-void Renderer::removeObjectWrapper(std::shared_ptr<RenderObject> ro) {
-
+void Renderer::removeObjectWrapper(std::shared_ptr<RenderObject> ro)
+{
     std::string variant;
     if (ro)
         variant = ro->variant;
@@ -396,94 +390,101 @@ void Renderer::removeObjectWrapper(std::shared_ptr<RenderObject> ro) {
     }
 }
 
-void Renderer::connectionRemoved(const Port *from, const Port *to) {
-
-   removeAllSentBy(from->getModuleID(), from->getName());
+void Renderer::connectionRemoved(const Port *from, const Port *to)
+{
+    removeAllSentBy(from->getModuleID(), from->getName());
 }
 
-void Renderer::removeObject(std::shared_ptr<RenderObject> ro) {
+void Renderer::removeObject(std::shared_ptr<RenderObject> ro)
+{}
+
+void Renderer::removeAllCreatedBy(int creatorId)
+{
+    for (auto &ol: m_objectList) {
+        for (auto &ro: ol) {
+            if (ro && ro->container && ro->container->getCreator() == creatorId) {
+                removeObjectWrapper(ro);
+                ro.reset();
+            }
+        }
+        ol.erase(std::remove_if(ol.begin(), ol.end(), [](std::shared_ptr<vistle::RenderObject> ro) { return !ro; }),
+                 ol.end());
+    }
+    while (!m_objectList.empty() && m_objectList.back().empty())
+        m_objectList.pop_back();
+
+    // only objects are updated: keep colormap
 }
 
-void Renderer::removeAllCreatedBy(int creatorId) {
+void Renderer::removeAllSentBy(int sender, const std::string &senderPort)
+{
+    for (auto &ol: m_objectList) {
+        for (auto &ro: ol) {
+            if (ro && ro->senderId == sender && ro->senderPort == senderPort) {
+                removeObjectWrapper(ro);
+                ro.reset();
+            }
+        }
+        ol.erase(std::remove_if(ol.begin(), ol.end(), [](std::shared_ptr<vistle::RenderObject> ro) { return !ro; }),
+                 ol.end());
+    }
+    while (!m_objectList.empty() && m_objectList.back().empty())
+        m_objectList.pop_back();
 
-   for (auto &ol: m_objectList) {
-      for (auto &ro: ol) {
-         if (ro && ro->container && ro->container->getCreator() == creatorId) {
-            removeObjectWrapper(ro);
-            ro.reset();
-         }
-      }
-      ol.erase(std::remove_if(ol.begin(), ol.end(), [](std::shared_ptr<vistle::RenderObject> ro) { return !ro; }), ol.end());
-   }
-   while (!m_objectList.empty() && m_objectList.back().empty())
-      m_objectList.pop_back();
-
-   // only objects are updated: keep colormap
+    // connection cut: remove colormap
+    auto it = m_colormaps.begin();
+    while (it != m_colormaps.end()) {
+        auto &cmap = it->second;
+        if (cmap.sender == sender && cmap.senderPort == senderPort) {
+            removeColorMap(it->first);
+            it = m_colormaps.erase(it);
+        } else {
+            ++it;
+        }
+    }
 }
 
-void Renderer::removeAllSentBy(int sender, const std::string &senderPort) {
+void Renderer::removeAllObjects()
+{
+    for (auto &ol: m_objectList) {
+        for (auto &ro: ol) {
+            if (ro) {
+                removeObjectWrapper(ro);
+                ro.reset();
+            }
+        }
+        ol.clear();
+    }
+    m_objectList.clear();
 
-   for (auto &ol: m_objectList) {
-      for (auto &ro: ol) {
-         if (ro && ro->senderId == sender && ro->senderPort == senderPort) {
-            removeObjectWrapper(ro);
-            ro.reset();
-         }
-      }
-      ol.erase(std::remove_if(ol.begin(), ol.end(), [](std::shared_ptr<vistle::RenderObject> ro) { return !ro; }), ol.end());
-   }
-   while (!m_objectList.empty() && m_objectList.back().empty())
-      m_objectList.pop_back();
-
-   // connection cut: remove colormap
-   auto it = m_colormaps.begin();
-   while (it != m_colormaps.end()) {
-       auto &cmap = it->second;
-       if (cmap.sender == sender && cmap.senderPort == senderPort) {
-           removeColorMap(it->first);
-           it = m_colormaps.erase(it);
-       } else {
-           ++it;
-       }
-   }
+    for (auto &cmap: m_colormaps) {
+        removeColorMap(cmap.first);
+    }
+    m_colormaps.clear();
 }
 
-void Renderer::removeAllObjects() {
-   for (auto &ol: m_objectList) {
-      for (auto &ro: ol) {
-         if (ro) {
-            removeObjectWrapper(ro);
-            ro.reset();
-         }
-      }
-      ol.clear();
-   }
-   m_objectList.clear();
-
-   for (auto &cmap: m_colormaps) {
-       removeColorMap(cmap.first);
-   }
-   m_colormaps.clear();
-}
-
-const Renderer::VariantMap &Renderer::variants() const {
-
+const Renderer::VariantMap &Renderer::variants() const
+{
     return m_variants;
 }
 
-bool Renderer::compute() {
+bool Renderer::compute()
+{
     return true;
 }
 
-bool Renderer::changeParameter(const Parameter *p) {
+bool Renderer::changeParameter(const Parameter *p)
+{
     if (p == m_renderMode) {
-        switch(m_renderMode->getValue()) {
+        switch (m_renderMode->getValue()) {
         case LocalOnly:
         case LocalShmLeader:
             setObjectReceivePolicy(m_fastestObjectReceivePolicy);
             break;
         case MasterOnly:
-            setObjectReceivePolicy(m_fastestObjectReceivePolicy >= message::ObjectReceivePolicy::Master ? m_fastestObjectReceivePolicy : message::ObjectReceivePolicy::Master);
+            setObjectReceivePolicy(m_fastestObjectReceivePolicy >= message::ObjectReceivePolicy::Master
+                                       ? m_fastestObjectReceivePolicy
+                                       : message::ObjectReceivePolicy::Master);
             break;
         case AllShmLeaders:
         case AllRanks:
@@ -499,31 +500,31 @@ bool Renderer::changeParameter(const Parameter *p) {
     return Module::changeParameter(p);
 }
 
-void Renderer::getBounds(Vector &min, Vector &max, int t) {
+void Renderer::getBounds(Vector &min, Vector &max, int t)
+{
+    if (size_t(t + 1) < m_objectList.size()) {
+        for (auto &ro: m_objectList[t + 1]) {
+            ro->updateBounds();
+            if (!ro->boundsValid()) {
+                continue;
+            }
+            for (int i = 0; i < 3; ++i) {
+                min[i] = std::min(min[i], ro->bMin[i]);
+                max[i] = std::max(max[i], ro->bMax[i]);
+            }
+        }
+    }
 
-   if (size_t(t+1) < m_objectList.size()) {
-      for (auto &ro: m_objectList[t+1]) {
-          ro->updateBounds();
-          if (!ro->boundsValid()) {
-              continue;
-          }
-          for (int i=0; i<3; ++i) {
-              min[i] = std::min(min[i], ro->bMin[i]);
-              max[i] = std::max(max[i], ro->bMax[i]);
-          }
-      }
-   }
-
-   //std::cerr << "t=" << t << ", bounds min=" << min << ", max=" << max << std::endl;
+    //std::cerr << "t=" << t << ", bounds min=" << min << ", max=" << max << std::endl;
 }
 
-void Renderer::getBounds(Vector &min, Vector &max) {
-
-   const Scalar smax = std::numeric_limits<Scalar>::max();
-   min = Vector3(smax, smax, smax);
-   max = -min;
-   for (int t=-1; t<(int)(m_objectList.size())-1; ++t)
-      getBounds(min, max, t);
+void Renderer::getBounds(Vector &min, Vector &max)
+{
+    const Scalar smax = std::numeric_limits<Scalar>::max();
+    min = Vector3(smax, smax, smax);
+    max = -min;
+    for (int t = -1; t < (int)(m_objectList.size()) - 1; ++t)
+        getBounds(min, max, t);
 }
 
 } // namespace vistle

@@ -4,15 +4,14 @@
 #include <vistle/module/module.h>
 
 class ToPolyhedra: public vistle::Module {
+public:
+    ToPolyhedra(const std::string &name, int moduleID, mpi::communicator comm);
+    ~ToPolyhedra();
 
- public:
-   ToPolyhedra(const std::string &name, int moduleID, mpi::communicator comm);
-   ~ToPolyhedra();
+private:
+    virtual bool compute();
 
- private:
-   virtual bool compute();
-
-   vistle::IntParameter *p_facestream = nullptr;
+    vistle::IntParameter *p_facestream = nullptr;
 };
 
 #endif

@@ -30,8 +30,7 @@
 #include <vistle/core/index.h>
 #include <vistle/core/unstr.h>
 
-struct Element
-{
+struct Element {
     vistle::Byte coType = vistle::UnstructuredGrid::NONE; // COVISE element type
     vistle::Index coElem = vistle::InvalidIndex; // COVISE element number
     int matNo = -1; // material number (of LS-DYNA plot file)

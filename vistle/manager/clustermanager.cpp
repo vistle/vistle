@@ -57,8 +57,7 @@
 //#define DEBUG
 
 
-#define CERR \
-   std::cerr << "ClusterManager [" << m_rank << "/" << m_size << "] "
+#define CERR std::cerr << "ClusterManager [" << m_rank << "/" << m_size << "] "
 
 namespace bi = boost::interprocess;
 
@@ -66,29 +65,32 @@ namespace vistle {
 
 using message::Id;
 
-ClusterManager::Module::~Module() {
+ClusterManager::Module::~Module()
+{
 #ifdef MODULE_THREAD
-   try {
-      if (thread.joinable()) {
-         thread.join();
-      } else {
-         std::cerr << "ClusterManager: ~Module: thread for module not joinable" << std::endl;
-      }
-   } catch (std::exception &e) {
-      std::cerr << "ClusterManager: ~Module: joining thread for module failed: " << e.what() << std::endl;
-   }
+    try {
+        if (thread.joinable()) {
+            thread.join();
+        } else {
+            std::cerr << "ClusterManager: ~Module: thread for module not joinable" << std::endl;
+        }
+    } catch (std::exception &e) {
+        std::cerr << "ClusterManager: ~Module: joining thread for module failed: " << e.what() << std::endl;
+    }
 #endif
 }
 
-void ClusterManager::Module::block(const message::Message &msg) const {
+void ClusterManager::Module::block(const message::Message &msg) const
+{
 #ifdef DEBUG
-   std::cerr << "BLOCK: " << msg << std::endl;
+    std::cerr << "BLOCK: " << msg << std::endl;
 #endif
-   blocked = true;
-   blockers.emplace_back(message::Buffer(msg));
+    blocked = true;
+    blockers.emplace_back(message::Buffer(msg));
 }
 
-void ClusterManager::Module::unblock(const message::Message &msg) const {
+void ClusterManager::Module::unblock(const message::Message &msg) const
+{
     assert(blocked);
     assert(!blockers.empty());
 
@@ -98,13 +100,11 @@ void ClusterManager::Module::unblock(const message::Message &msg) const {
         return;
 
     auto isSame = [msg](const message::Buffer &buf) -> bool {
-        return buf.uuid() == msg.uuid()
-                && buf.type() == msg.type();
+        return buf.uuid() == msg.uuid() && buf.type() == msg.type();
     };
 
     auto hasSame = [msg](const MessageWithPayload &mpl) -> bool {
-        return mpl.buf.uuid() == msg.uuid()
-                && mpl.buf.type() == msg.type();
+        return mpl.buf.uuid() == msg.uuid() && mpl.buf.type() == msg.type();
     };
 
     if (isSame(blockers.front())) {
@@ -112,8 +112,7 @@ void ClusterManager::Module::unblock(const message::Message &msg) const {
         std::cerr << "UNBLOCK: found as frontmost of " << blockers.size() << " blockers: " << msg << std::endl;
 #endif
         blockers.pop_front();
-        assert(blockedMessages.front().buf.uuid() == msg.uuid()
-                && blockedMessages.front().buf.type() == msg.type());
+        assert(blockedMessages.front().buf.uuid() == msg.uuid() && blockedMessages.front().buf.type() == msg.type());
         message::Buffer buf(msg);
         blockedMessages.front().payload.ref();
         if (blockedMessages.front().payload)
@@ -127,8 +126,7 @@ void ClusterManager::Module::unblock(const message::Message &msg) const {
             blocked = false;
             while (!blockedMessages.empty()) {
                 auto &mpl = blockedMessages.front();
-                assert((mpl.buf.payloadSize()==0 && !mpl.payload)
-                       || (mpl.buf.payloadSize()>0 && mpl.payload));
+                assert((mpl.buf.payloadSize() == 0 && !mpl.payload) || (mpl.buf.payloadSize() > 0 && mpl.payload));
                 mpl.payload.ref();
                 if (mpl.payload)
                     mpl.buf.setPayloadName(mpl.payload.name());
@@ -139,8 +137,7 @@ void ClusterManager::Module::unblock(const message::Message &msg) const {
             const auto &uuid = blockers.front().uuid();
             while (blockedMessages.front().buf.uuid() != uuid) {
                 auto &mpl = blockedMessages.front();
-                assert((mpl.buf.payloadSize()==0 && !mpl.payload)
-                       || (mpl.buf.payloadSize()>0 && mpl.payload));
+                assert((mpl.buf.payloadSize() == 0 && !mpl.payload) || (mpl.buf.payloadSize() > 0 && mpl.payload));
                 mpl.payload.ref();
                 if (mpl.payload)
                     mpl.buf.setPayloadName(mpl.payload.name());
@@ -150,7 +147,8 @@ void ClusterManager::Module::unblock(const message::Message &msg) const {
         }
     } else {
 #ifdef DEBUG
-        std::cerr << "UNBLOCK: " << blockers.size() << " blockers, frontmost: " << blockers.front() << ", received " << msg << std::endl;
+        std::cerr << "UNBLOCK: " << blockers.size() << " blockers, frontmost: " << blockers.front() << ", received "
+                  << msg << std::endl;
 #endif
         auto it = std::find_if(blockers.begin(), blockers.end(), isSame);
         if (it == blockers.end()) {
@@ -164,7 +162,7 @@ void ClusterManager::Module::unblock(const message::Message &msg) const {
             blockers.erase(it);
         }
         auto it2 = std::find_if(blockedMessages.begin(), blockedMessages.end(), hasSame);
-        assert (it2 != blockedMessages.end());
+        assert(it2 != blockedMessages.end());
         if (it2 != blockedMessages.end()) {
             //std::cerr << "UNBLOCK: updating message" << std::endl;
             it2->buf = msg;
@@ -173,44 +171,46 @@ void ClusterManager::Module::unblock(const message::Message &msg) const {
     }
 }
 
-bool ClusterManager::Module::send(const message::Message &msg, const MessagePayload &payload) const {
-   message::Buffer buf(msg);
-   if (msg.payloadSize()>0 && payload) {
-       buf.setPayloadName(payload.name());
-   } else {
-       buf.setPayloadName(std::string());
-   }
-   if (blocked) {
-      if (msg.payloadSize()>0)
-          blockedMessages.emplace_back(buf, payload);
-      else
-          blockedMessages.emplace_back(buf);
-      return true;
-   } else if (sendQueue) {
-       if (msg.payloadSize()>0 && payload)
-          payload->ref();
-      return sendQueue->send(buf);
-   }
-   return false;
+bool ClusterManager::Module::send(const message::Message &msg, const MessagePayload &payload) const
+{
+    message::Buffer buf(msg);
+    if (msg.payloadSize() > 0 && payload) {
+        buf.setPayloadName(payload.name());
+    } else {
+        buf.setPayloadName(std::string());
+    }
+    if (blocked) {
+        if (msg.payloadSize() > 0)
+            blockedMessages.emplace_back(buf, payload);
+        else
+            blockedMessages.emplace_back(buf);
+        return true;
+    } else if (sendQueue) {
+        if (msg.payloadSize() > 0 && payload)
+            payload->ref();
+        return sendQueue->send(buf);
+    }
+    return false;
 }
 
-bool ClusterManager::Module::update() const {
+bool ClusterManager::Module::update() const
+{
     if (sendQueue)
         return sendQueue->progress();
     return false;
 }
 
-void ClusterManager::Module::delay(const message::Message &msg, const MessagePayload &payload) {
+void ClusterManager::Module::delay(const message::Message &msg, const MessagePayload &payload)
+{
     delayedMessages.emplace_back(msg, payload);
 }
 
-bool  ClusterManager::Module::processDelayed() {
-
+bool ClusterManager::Module::processDelayed()
+{
     while (haveDelayed()) {
         bool ret = true;
         if (Communicator::the().getRank() == 0) {
-            if (ranksStarted == 0)
-            {
+            if (ranksStarted == 0) {
                 auto &mpl = delayedMessages.front();
                 auto &msg = mpl.buf;
                 auto type = msg.type();
@@ -226,7 +226,8 @@ bool  ClusterManager::Module::processDelayed() {
     return true;
 }
 
-bool ClusterManager::Module::haveDelayed() const {
+bool ClusterManager::Module::haveDelayed() const
+{
     return !delayedMessages.empty();
 }
 
@@ -234,7 +235,8 @@ ClusterManager::ClusterManager(boost::mpi::communicator comm, const std::vector<
 : ParameterManager("Vistle", message::Id::Vistle)
 , m_comm(comm)
 , m_portManager(new PortManager(this))
-, m_stateTracker(std::string("ClusterManager state rk")+boost::lexical_cast<std::string>(m_comm.rank()), m_portManager)
+, m_stateTracker(std::string("ClusterManager state rk") + boost::lexical_cast<std::string>(m_comm.rank()),
+                 m_portManager)
 , m_traceMessages(message::INVALID)
 , m_quitFlag(false)
 , m_rank(m_comm.rank())
@@ -244,18 +246,19 @@ ClusterManager::ClusterManager(boost::mpi::communicator comm, const std::vector<
     m_portManager->setTracker(&m_stateTracker);
 }
 
-ClusterManager::~ClusterManager() {
-
+ClusterManager::~ClusterManager()
+{
     m_portManager->setTracker(nullptr);
 }
 
-void ClusterManager::init() {
-
+void ClusterManager::init()
+{
     //ParameterManager::setId(Communicator::the().hubId());
     //ParameterManager::setId(message::Id::Vistle);
     //ParameterManager::setName("Hub");
 
-    m_compressionMode = addIntParameter("field_compression", "compression mode for data fields", Uncompressed, Parameter::Choice);
+    m_compressionMode =
+        addIntParameter("field_compression", "compression mode for data fields", Uncompressed, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_compressionMode, FieldCompressionMode);
 
     m_zfpRate = addFloatParameter("zfp_rate", "ZFP fixed compression rate", 8.);
@@ -267,18 +270,22 @@ void ClusterManager::init() {
     m_zfpAccuracy = addFloatParameter("zfp_accuracy", "ZFP compression error tolerance", 1e-10);
     setParameterRange(m_zfpAccuracy, Float(0.), Float(1e10));
 
-    m_archiveCompression = addIntParameter("archive_compression", "compression mode for archives", message::CompressionNone, Parameter::Choice);
+    m_archiveCompression = addIntParameter("archive_compression", "compression mode for archives",
+                                           message::CompressionNone, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_archiveCompression, message::CompressionMode);
 
-    m_archiveCompressionSpeed = addIntParameter("archive_compression_speed", "speed parameter of compression algorithm", -1);
+    m_archiveCompressionSpeed =
+        addIntParameter("archive_compression_speed", "speed parameter of compression algorithm", -1);
     setParameterRange(m_archiveCompressionSpeed, Integer(-1), Integer(100));
 }
 
-const StateTracker &ClusterManager::state() const {
+const StateTracker &ClusterManager::state() const
+{
     return m_stateTracker;
 }
 
-void ClusterManager::sendParameterMessage(const message::Message &message, const buffer *payload) const {
+void ClusterManager::sendParameterMessage(const message::Message &message, const buffer *payload) const
+{
     message::Buffer buf(message);
     buf.setSenderId(ParameterManager::id());
     MessagePayload pl;
@@ -290,326 +297,332 @@ void ClusterManager::sendParameterMessage(const message::Message &message, const
     sendHub(buf, pl);
 }
 
-FieldCompressionMode ClusterManager::fieldCompressionMode() const {
+FieldCompressionMode ClusterManager::fieldCompressionMode() const
+{
     std::lock_guard<std::mutex> locker(m_parameterMutex);
     return (FieldCompressionMode)m_compressionMode->getValue();
 }
 
-double ClusterManager::zfpRate() const {
+double ClusterManager::zfpRate() const
+{
     std::lock_guard<std::mutex> locker(m_parameterMutex);
     return m_zfpRate->getValue();
 }
 
-int ClusterManager::zfpPrecision() const {
+int ClusterManager::zfpPrecision() const
+{
     std::lock_guard<std::mutex> locker(m_parameterMutex);
     return m_zfpPrecision->getValue();
-
 }
 
-double ClusterManager::zfpAccuracy() const {
+double ClusterManager::zfpAccuracy() const
+{
     std::lock_guard<std::mutex> locker(m_parameterMutex);
     return m_zfpAccuracy->getValue();
 }
 
-message::CompressionMode ClusterManager::archiveCompressionMode() const {
+message::CompressionMode ClusterManager::archiveCompressionMode() const
+{
     std::lock_guard<std::mutex> locker(m_parameterMutex);
     return (message::CompressionMode)m_archiveCompression->getValue();
 }
 
-int ClusterManager::archiveCompressionSpeed() const {
+int ClusterManager::archiveCompressionSpeed() const
+{
     std::lock_guard<std::mutex> locker(m_parameterMutex);
     return m_archiveCompressionSpeed->getValue();
 }
 
-int ClusterManager::getRank() const {
-
-   return m_rank;
+int ClusterManager::getRank() const
+{
+    return m_rank;
 }
 
-int ClusterManager::getSize() const {
-
-   return m_size;
+int ClusterManager::getSize() const
+{
+    return m_size;
 }
 
-int ClusterManager::idToHub(int id) const {
-   return m_stateTracker.getHub(id);
+int ClusterManager::idToHub(int id) const
+{
+    return m_stateTracker.getHub(id);
 }
 
 
-bool ClusterManager::isLocal(int id) const {
-
-   if (id == Id::LocalHub)
-      return true;
-   if (Id::isHub(id)) {
-      return (id == Communicator::the().hubId());
-   }
-   int hub = idToHub(id);
-   return hub == Communicator::the().hubId();
+bool ClusterManager::isLocal(int id) const
+{
+    if (id == Id::LocalHub)
+        return true;
+    if (Id::isHub(id)) {
+        return (id == Communicator::the().hubId());
+    }
+    int hub = idToHub(id);
+    return hub == Communicator::the().hubId();
 }
 
-bool ClusterManager::checkBarrier(const message::uuid_t &uuid) const {
-
-   assert(m_barrierActive);
-   size_t numLocal = 0;
-   for (const auto &m: m_stateTracker.runningMap) {
-       if (m.second.hub == Communicator::the().hubId() && Id::isModule(m.second.id)) {
+bool ClusterManager::checkBarrier(const message::uuid_t &uuid) const
+{
+    assert(m_barrierActive);
+    size_t numLocal = 0;
+    for (const auto &m: m_stateTracker.runningMap) {
+        if (m.second.hub == Communicator::the().hubId() && Id::isModule(m.second.id)) {
 #ifdef BARRIER_DEBUG
-           CERR << "checkBarrier " << uuid << ": local: " << m.second.id << ":" << m.second.name << std::endl;
+            CERR << "checkBarrier " << uuid << ": local: " << m.second.id << ":" << m.second.name << std::endl;
 #endif
-           ++numLocal;
-       }
-   }
+            ++numLocal;
+        }
+    }
 #ifdef BARRIER_DEBUG
-   CERR << "checkBarrier " << uuid << ": #local=" << numLocal << ", #reached=" << reachedSet.size() << std::endl;
+    CERR << "checkBarrier " << uuid << ": #local=" << numLocal << ", #reached=" << reachedSet.size() << std::endl;
 #endif
-   return reachedSet.size() == numLocal;
+    return reachedSet.size() == numLocal;
 }
 
-void ClusterManager::barrierReached(const message::uuid_t &uuid) {
-
-   assert(m_barrierActive);
-   m_comm.barrier();
-   reachedSet.clear();
-   CERR << "Barrier [" << uuid << "] reached" << std::endl;
-   message::BarrierReached m(uuid);
-   m.setDestId(message::Id::MasterHub);
-   if (getRank() == 0)
-      sendHub(m, MessagePayload(), Id::MasterHub);
+void ClusterManager::barrierReached(const message::uuid_t &uuid)
+{
+    assert(m_barrierActive);
+    m_comm.barrier();
+    reachedSet.clear();
+    CERR << "Barrier [" << uuid << "] reached" << std::endl;
+    message::BarrierReached m(uuid);
+    m.setDestId(message::Id::MasterHub);
+    if (getRank() == 0)
+        sendHub(m, MessagePayload(), Id::MasterHub);
 }
 
-std::string ClusterManager::getModuleName(int id) const {
-
-   return m_stateTracker.getModuleName(id);
+std::string ClusterManager::getModuleName(int id) const
+{
+    return m_stateTracker.getModuleName(id);
 }
 
 
-bool ClusterManager::dispatch(bool &received) {
+bool ClusterManager::dispatch(bool &received)
+{
+    bool done = false;
 
-   bool done = false;
+    if (m_modulePriorityChange != m_stateTracker.graphChangeCount()) {
+        std::priority_queue<StateTracker::Module, std::vector<StateTracker::Module>, CompModuleHeight> pq;
 
-   if (m_modulePriorityChange != m_stateTracker.graphChangeCount()) {
-       std::priority_queue<StateTracker::Module, std::vector<StateTracker::Module>, CompModuleHeight> pq;
+        // handle messages from modules closer to sink first
+        // - should allow for objects to travel through the pipeline more quickly
+        m_modulePriorityChange = m_stateTracker.graphChangeCount();
+        for (auto m: m_stateTracker.runningMap) {
+            const auto &mod = m.second;
+            pq.emplace(mod);
+        }
 
-       // handle messages from modules closer to sink first
-       // - should allow for objects to travel through the pipeline more quickly
-       m_modulePriorityChange = m_stateTracker.graphChangeCount();
-       for (auto m: m_stateTracker.runningMap) {
-           const auto &mod = m.second;
-           pq.emplace(mod);
-       }
+        while (!pq.empty()) {
+            m_modulePriority.emplace_back(pq.top());
+            pq.pop();
+        }
+    }
 
-       while (!pq.empty()) {
-           m_modulePriority.emplace_back(pq.top());
-           pq.pop();
-       }
-   }
+    // handle messages from modules
+    for (const auto &mod: m_modulePriority) {
+        const int modId = mod.id;
 
-   // handle messages from modules
-   for (const auto &mod: m_modulePriority) {
-      const int modId = mod.id;
+        // keep messages from modules that have already reached a barrier on hold
+        if (reachedSet.find(modId) != reachedSet.end())
+            continue;
 
-      // keep messages from modules that have already reached a barrier on hold
-      if (reachedSet.find(modId) != reachedSet.end())
-         continue;
-
-      if (mod.hub == Communicator::the().hubId()) {
-         bool recv = false;
-         message::Buffer buf;
-         std::shared_ptr<message::MessageQueue> mq;
-         auto it = runningMap.find(modId);
-         if (it != runningMap.end()) {
-            it->second.update();
-            mq = it->second.recvQueue;
-         }
-         if (mq) {
-            try {
-               recv = mq->tryReceive(buf);
-            } catch (boost::interprocess::interprocess_exception &ex) {
-               CERR << "receive mq " << ex.what() << std::endl;
-               exit(-1);
+        if (mod.hub == Communicator::the().hubId()) {
+            bool recv = false;
+            message::Buffer buf;
+            std::shared_ptr<message::MessageQueue> mq;
+            auto it = runningMap.find(modId);
+            if (it != runningMap.end()) {
+                it->second.update();
+                mq = it->second.recvQueue;
             }
-         }
-
-         if (recv) {
-            received = true;
-            MessagePayload pl;
-            if (buf.payloadSize() > 0) {
-                pl = Shm::the().getArrayFromName<char>(buf.payloadName());
+            if (mq) {
+                try {
+                    recv = mq->tryReceive(buf);
+                } catch (boost::interprocess::interprocess_exception &ex) {
+                    CERR << "receive mq " << ex.what() << std::endl;
+                    exit(-1);
+                }
             }
-            if (!Communicator::the().handleMessage(buf, pl))
-                done = true;
-            pl.unref();
-         }
-      }
-   }
 
-   if (m_quitFlag) {
-      if (numRunning() == 0)
-         return false;
+            if (recv) {
+                received = true;
+                MessagePayload pl;
+                if (buf.payloadSize() > 0) {
+                    pl = Shm::the().getArrayFromName<char>(buf.payloadName());
+                }
+                if (!Communicator::the().handleMessage(buf, pl))
+                    done = true;
+                pl.unref();
+            }
+        }
+    }
+
+    if (m_quitFlag) {
+        if (numRunning() == 0)
+            return false;
 
 #if 0
       CERR << numRunning() << " modules still running..." << std::endl;
 #endif
-   }
+    }
 
-   return !done;
+    return !done;
 }
 
-bool ClusterManager::sendAll(const message::Message &message, const MessagePayload &payload) const {
-
-   // no module has id Invalid
-   return sendAllOthers(message::Id::Invalid, message, payload);
+bool ClusterManager::sendAll(const message::Message &message, const MessagePayload &payload) const
+{
+    // no module has id Invalid
+    return sendAllOthers(message::Id::Invalid, message, payload);
 }
 
-bool ClusterManager::sendAllLocal(const message::Message &message, const MessagePayload &payload) const {
-
-   // no module has id Invalid
-   return sendAllOthers(message::Id::Invalid, message, payload, true);
+bool ClusterManager::sendAllLocal(const message::Message &message, const MessagePayload &payload) const
+{
+    // no module has id Invalid
+    return sendAllOthers(message::Id::Invalid, message, payload, true);
 }
 
-bool ClusterManager::sendAllOthers(int excluded, const message::Message &message, const MessagePayload &payload, bool localOnly) const {
-
-   message::Buffer buf(message);
-   if (!localOnly) {
-      buf.setDestId(Id::ForBroadcast);
-      if (Communicator::the().isMaster()) {
-         if (getRank() == 0)
-            sendHub(buf, payload);
-      } else {
-         int senderHub = message.senderId();
-         if (senderHub >= Id::ModuleBase)
-            senderHub = idToHub(senderHub);
-         if (senderHub == Communicator::the().hubId()) {
+bool ClusterManager::sendAllOthers(int excluded, const message::Message &message, const MessagePayload &payload,
+                                   bool localOnly) const
+{
+    message::Buffer buf(message);
+    if (!localOnly) {
+        buf.setDestId(Id::ForBroadcast);
+        if (Communicator::the().isMaster()) {
             if (getRank() == 0)
-               sendHub(buf, payload);
-         }
-      }
-      return true;
-   }
+                sendHub(buf, payload);
+        } else {
+            int senderHub = message.senderId();
+            if (senderHub >= Id::ModuleBase)
+                senderHub = idToHub(senderHub);
+            if (senderHub == Communicator::the().hubId()) {
+                if (getRank() == 0)
+                    sendHub(buf, payload);
+            }
+        }
+        return true;
+    }
 
-   // handle messages to modules
-   for(auto it = runningMap.begin(), next = it;
-         it != runningMap.end();
-         it = next) {
-      // modules might be removed during message processing
-      next = it;
-      ++next;
+    // handle messages to modules
+    for (auto it = runningMap.begin(), next = it; it != runningMap.end(); it = next) {
+        // modules might be removed during message processing
+        next = it;
+        ++next;
 
-      const int modId = it->first;
-      if (modId == excluded)
-         continue;
-      const auto &mod = it->second;
-      const int hub = idToHub(modId);
+        const int modId = it->first;
+        if (modId == excluded)
+            continue;
+        const auto &mod = it->second;
+        const int hub = idToHub(modId);
 
-      if (hub == Communicator::the().hubId()) {
-         mod.send(message, payload);
-      }
-   }
+        if (hub == Communicator::the().hubId()) {
+            mod.send(message, payload);
+        }
+    }
 
-   return true;
+    return true;
 }
 
-bool ClusterManager::sendUi(const message::Message &message, const MessagePayload &payload) const {
-
-   return sendHub(message, payload);
+bool ClusterManager::sendUi(const message::Message &message, const MessagePayload &payload) const
+{
+    return sendHub(message, payload);
 }
 
-bool ClusterManager::sendHub(const message::Message &message, const MessagePayload &payload, int destHub) const {
-
-    if (getRank()!=0 && !message::Router::the().toRank0(message)) {
+bool ClusterManager::sendHub(const message::Message &message, const MessagePayload &payload, int destHub) const
+{
+    if (getRank() != 0 && !message::Router::the().toRank0(message)) {
         return true;
     }
 
     message::Buffer buf(message);
     if (Id::isHub(destHub))
-       buf.setDestId(destHub);
+        buf.setDestId(destHub);
     buf.setPayloadName(std::string());
     return Communicator::the().sendHub(buf, payload);
 }
 
-bool ClusterManager::sendMessage(const int moduleId, const message::Message &message, int destRank, const MessagePayload &payload) const {
+bool ClusterManager::sendMessage(const int moduleId, const message::Message &message, int destRank,
+                                 const MessagePayload &payload) const
+{
+    const int hub = idToHub(moduleId);
 
-   const int hub = idToHub(moduleId);
+    message::Buffer buf(message);
+    if (payload)
+        buf.setPayloadName(payload.name());
+    if (hub == Communicator::the().hubId()) {
+        //std::cerr << "local send to " << moduleId << ": " << buf << std::endl;
+        if (destRank == -1 || destRank == getRank()) {
+            RunningMap::const_iterator it = runningMap.find(moduleId);
+            if (it == runningMap.end()) {
+                CERR << "sendMessage: module " << moduleId << " not found" << std::endl;
+                std::cerr << "  message: " << buf << std::endl;
+                return true;
+            }
 
-   message::Buffer buf(message);
-   if (payload)
-       buf.setPayloadName(payload.name());
-   if (hub == Communicator::the().hubId()) {
-      //std::cerr << "local send to " << moduleId << ": " << buf << std::endl;
-      if (destRank == -1 || destRank == getRank()) {
-         RunningMap::const_iterator it = runningMap.find(moduleId);
-         if (it == runningMap.end()) {
-             CERR << "sendMessage: module " << moduleId << " not found" << std::endl;
-             std::cerr << "  message: " << buf << std::endl;
-             return true;
-         }
+            auto &mod = it->second;
+            if (buf.type() == message::ADDOBJECT) {
+                auto &addObj = buf.as<message::AddObject>();
+                if (addObj.isUnblocking()) {
+                    mod.unblock(addObj);
+                    return true;
+                }
+                if (addObj.isBlocker()) {
+                    mod.block(addObj);
+                }
+            }
+            mod.send(buf, payload);
+        } else {
+            Communicator::the().sendMessage(moduleId, message, destRank, payload);
+        }
+    } else {
+        std::cerr << "remote send to " << moduleId << ": " << message << std::endl;
+        buf.setDestId(moduleId);
+        buf.setDestRank(destRank);
+        sendHub(buf, payload);
+    }
 
-         auto &mod = it->second;
-         if (buf.type() == message::ADDOBJECT) {
-             auto &addObj = buf.as<message::AddObject>();
-             if (addObj.isUnblocking()) {
-                 mod.unblock(addObj);
-                 return true;
-             }
-             if (addObj.isBlocker()) {
-                 mod.block(addObj);
-             }
-         }
-         mod.send(buf, payload);
-      } else {
-         Communicator::the().sendMessage(moduleId, message, destRank, payload);
-      }
-   } else {
-      std::cerr << "remote send to " << moduleId << ": " << message << std::endl;
-      buf.setDestId(moduleId);
-      buf.setDestRank(destRank);
-      sendHub(buf, payload);
-   }
-
-   return true;
+    return true;
 }
 
-bool ClusterManager::handle(const message::Buffer &message, const MessagePayload &payload) {
+bool ClusterManager::handle(const message::Buffer &message, const MessagePayload &payload)
+{
+    using namespace vistle::message;
 
-   using namespace vistle::message;
+    if (message.destId() == Id::ForBroadcast) {
+        return sendHub(message, payload);
+    }
 
-   if (message.destId() == Id::ForBroadcast) {
-       return sendHub(message, payload);
-   }
+    if (message.type() == m_traceMessages || m_traceMessages == ANY) {
+        CERR << "handle: " << message << std::endl;
+    }
 
-   if (message.type() == m_traceMessages || m_traceMessages==ANY) {
-       CERR << "handle: " << message << std::endl;
-   }
+    switch (message.type()) {
+    case CONNECT:
+    case DISCONNECT:
+    case SPAWN:
+        // handled in handlePriv(...)
+        break;
+    case message::TRACE: {
+        const Trace &trace = message.as<Trace>();
+        handlePriv(trace);
+        break;
+    }
+    default:
+        if (payload)
+            m_stateTracker.handle(message, payload->data(), payload->size());
+        else
+            m_stateTracker.handle(message, nullptr);
+        break;
+    }
 
-   switch (message.type()) {
-      case CONNECT:
-      case DISCONNECT:
-      case SPAWN:
-         // handled in handlePriv(...)
-         break;
-      case message::TRACE: {
-         const Trace &trace = message.as<Trace>();
-         handlePriv(trace);
-         break;
-      }
-      default:
-         if (payload)
-             m_stateTracker.handle(message, payload->data(), payload->size());
-         else
-             m_stateTracker.handle(message, nullptr);
-         break;
-   }
+    bool result = true;
+    const int hubId = Communicator::the().hubId();
 
-   bool result = true;
-   const int hubId = Communicator::the().hubId();
-
-   int senderHub = message.senderId();
-   if (senderHub >= Id::ModuleBase)
-      senderHub = idToHub(senderHub);
-   int destHub = message.destId();
-   if (destHub >= Id::ModuleBase)
-      destHub = idToHub(destHub);
-   if (message.typeFlags() & Broadcast || message.destId() == Id::Broadcast) {
+    int senderHub = message.senderId();
+    if (senderHub >= Id::ModuleBase)
+        senderHub = idToHub(senderHub);
+    int destHub = message.destId();
+    if (destHub >= Id::ModuleBase)
+        destHub = idToHub(destHub);
+    if (message.typeFlags() & Broadcast || message.destId() == Id::Broadcast) {
 #if 0
       if (message.senderId() != hubId && senderHub == hubId) {
          CERR << "BC: " << message << std::endl;
@@ -617,232 +630,211 @@ bool ClusterManager::handle(const message::Buffer &message, const MessagePayload
             sendHub(message, payload);
       }
 #endif
-      if (message.typeFlags() & BroadcastModule) {
-         sendAllLocal(message, payload);
-      }
-   }
-   if (message::Id::isModule(message.destId())) {
-      if (destHub == hubId) {
-         //CERR << "module: " << message << std::endl;
-         if (message.type() != message::EXECUTE
-                 && message.type() != message::CANCELEXECUTE
-                 && message.type() != message::SETPARAMETER) {
-             return sendMessage(message.destId(), message, -1, payload);
-         }
-      } else if (!message.wasBroadcast()) {
-         return sendHub(message, payload);
-      }
-   }
-   if (message::Id::isHub(message.destId())) {
-       if (destHub != hubId || message.type() == message::EXECUTE || message.type() == message::CANCELEXECUTE) {
-           return sendHub(message, payload);
-       }
-   }
+        if (message.typeFlags() & BroadcastModule) {
+            sendAllLocal(message, payload);
+        }
+    }
+    if (message::Id::isModule(message.destId())) {
+        if (destHub == hubId) {
+            //CERR << "module: " << message << std::endl;
+            if (message.type() != message::EXECUTE && message.type() != message::CANCELEXECUTE &&
+                message.type() != message::SETPARAMETER) {
+                return sendMessage(message.destId(), message, -1, payload);
+            }
+        } else if (!message.wasBroadcast()) {
+            return sendHub(message, payload);
+        }
+    }
+    if (message::Id::isHub(message.destId())) {
+        if (destHub != hubId || message.type() == message::EXECUTE || message.type() == message::CANCELEXECUTE) {
+            return sendHub(message, payload);
+        }
+    }
 
-   switch (message.type()) {
+    switch (message.type()) {
+    case message::QUIT: {
+        const message::Quit &quit = message.as<Quit>();
+        result = handlePriv(quit);
+        break;
+    }
 
-      case message::QUIT: {
+    case message::SPAWN: {
+        const message::Spawn &spawn = message.as<Spawn>();
+        result = handlePriv(spawn);
+        break;
+    }
 
-         const message::Quit &quit = message.as<Quit>();
-         result = handlePriv(quit);
-         break;
-      }
+    case message::CONNECT: {
+        const message::Connect &connect = message.as<Connect>();
+        result = handlePriv(connect);
+        break;
+    }
 
-      case message::SPAWN: {
+    case message::DISCONNECT: {
+        const message::Disconnect &disc = message.as<Disconnect>();
+        result = handlePriv(disc);
+        break;
+    }
 
-         const message::Spawn &spawn = message.as<Spawn>();
-         result = handlePriv(spawn);
-         break;
-      }
+    case message::MODULEEXIT: {
+        const message::ModuleExit &moduleExit = message.as<ModuleExit>();
+        result = handlePriv(moduleExit);
+        break;
+    }
 
-      case message::CONNECT: {
+    case message::EXECUTE: {
+        const message::Execute &exec = message.as<Execute>();
+        result = handlePriv(exec);
+        break;
+    }
 
-         const message::Connect &connect = message.as<Connect>();
-         result = handlePriv(connect);
-         break;
-      }
+    case message::CANCELEXECUTE: {
+        const message::CancelExecute &cancel = message.as<CancelExecute>();
+        result = handlePriv(cancel);
+        break;
+    }
 
-      case message::DISCONNECT: {
+    case message::ADDOBJECT: {
+        const message::AddObject &m = message.as<AddObject>();
+        result = handlePriv(m);
+        break;
+    }
 
-         const message::Disconnect &disc = message.as<Disconnect>();
-         result = handlePriv(disc);
-         break;
-      }
+    case message::ADDOBJECTCOMPLETED: {
+        const message::AddObjectCompleted &m = message.as<AddObjectCompleted>();
+        result = handlePriv(m);
+        break;
+    }
 
-      case message::MODULEEXIT: {
+    case message::EXECUTIONPROGRESS: {
+        const message::ExecutionProgress &prog = message.as<ExecutionProgress>();
+        result = handlePriv(prog);
+        break;
+    }
 
-         const message::ModuleExit &moduleExit = message.as<ModuleExit>();
-         result = handlePriv(moduleExit);
-         break;
-      }
+    case message::BUSY: {
+        const message::Busy &busy = message.as<Busy>();
+        result = handlePriv(busy);
+        break;
+    }
 
-      case message::EXECUTE: {
+    case message::IDLE: {
+        const message::Idle &idle = message.as<Idle>();
+        result = handlePriv(idle);
+        break;
+    }
 
-         const message::Execute &exec = message.as<Execute>();
-         result = handlePriv(exec);
-         break;
-      }
+    case message::SETPARAMETER: {
+        const message::SetParameter &m = message.as<SetParameter>();
+        result = handlePriv(m);
+        break;
+    }
 
-      case message::CANCELEXECUTE: {
+    case message::SETPARAMETERCHOICES: {
+        const message::SetParameterChoices &m = message.as<SetParameterChoices>();
+        result = handlePriv(m, payload);
+        break;
+    }
 
-         const message::CancelExecute &cancel = message.as<CancelExecute>();
-         result = handlePriv(cancel);
-         break;
-      }
+    case message::BARRIER: {
+        const message::Barrier &m = message.as<Barrier>();
+        result = handlePriv(m);
+        break;
+    }
 
-      case message::ADDOBJECT: {
+    case message::BARRIERREACHED: {
+        const message::BarrierReached &m = message.as<BarrierReached>();
+        result = handlePriv(m);
+        break;
+    }
 
-         const message::AddObject &m = message.as<AddObject>();
-         result = handlePriv(m);
-         break;
-      }
+    case message::SENDTEXT: {
+        const message::SendText &m = message.as<SendText>();
+        result = handlePriv(m, payload);
+        break;
+    }
 
-      case message::ADDOBJECTCOMPLETED: {
-         const message::AddObjectCompleted &m = message.as<AddObjectCompleted>();
-         result = handlePriv(m);
-         break;
-      }
+    case message::REQUESTTUNNEL: {
+        const message::RequestTunnel &m = message.as<RequestTunnel>();
+        result = handlePriv(m);
+        break;
+    }
 
-      case message::EXECUTIONPROGRESS: {
+    case message::PING: {
+        const message::Ping &m = message.as<Ping>();
+        result = handlePriv(m);
+        break;
+    }
 
-         const message::ExecutionProgress &prog = message.as<ExecutionProgress>();
-         result = handlePriv(prog);
-         break;
-      }
+    case message::DATATRANSFERSTATE: {
+        const message::DataTransferState &m = message.as<DataTransferState>();
+        result = handlePriv(m);
+        break;
+    }
 
-      case message::BUSY: {
+    case message::ADDHUB:
+    case message::REMOVEHUB:
+    case message::STARTED:
+    case message::ADDPORT:
+    case message::ADDPARAMETER:
+    case message::REMOVEPARAMETER:
+    case message::MODULEAVAILABLE:
+    case message::REPLAYFINISHED:
+    case message::REDUCEPOLICY:
+    case message::SCHEDULINGPOLICY:
+    case message::OBJECTRECEIVEPOLICY:
+    case message::PONG:
+    case message::UPDATESTATUS:
+    case message::TRACE:
+        break;
 
-         const message::Busy &busy = message.as<Busy>();
-         result = handlePriv(busy);
-         break;
-      }
+    default:
 
-      case message::IDLE: {
+        CERR << "unhandled message from (id " << message.senderId() << " rank " << message.rank() << ") "
+             << "type " << message.type() << std::endl;
 
-         const message::Idle &idle = message.as<Idle>();
-         result = handlePriv(idle);
-         break;
-      }
+        break;
+    }
 
-      case message::SETPARAMETER: {
+    if (result) {
+        if (message.typeFlags() & TriggerQueue) {
+            replayMessages();
+        }
+    } else {
+        if (message.typeFlags() & QueueIfUnhandled) {
+            queueMessage(message);
+            result = true;
+        }
+    }
 
-         const message::SetParameter &m = message.as<SetParameter>();
-         result = handlePriv(m);
-         break;
-      }
-
-      case message::SETPARAMETERCHOICES: {
-         const message::SetParameterChoices &m = message.as<SetParameterChoices>();
-         result = handlePriv(m, payload);
-         break;
-      }
-
-      case message::BARRIER: {
-
-         const message::Barrier &m = message.as<Barrier>();
-         result = handlePriv(m);
-         break;
-      }
-
-      case message::BARRIERREACHED: {
-
-         const message::BarrierReached &m = message.as<BarrierReached>();
-         result = handlePriv(m);
-         break;
-      }
-
-      case message::SENDTEXT: {
-         const message::SendText &m = message.as<SendText>();
-         result = handlePriv(m, payload);
-         break;
-      }
-
-      case message::REQUESTTUNNEL: {
-         const message::RequestTunnel &m = message.as<RequestTunnel>();
-         result = handlePriv(m);
-         break;
-      }
-
-      case message::PING: {
-         const message::Ping &m = message.as<Ping>();
-         result = handlePriv(m);
-         break;
-      }
-
-      case message::DATATRANSFERSTATE: {
-         const message::DataTransferState &m = message.as<DataTransferState>();
-         result = handlePriv(m);
-         break;
-      }
-
-      case message::ADDHUB:
-      case message::REMOVEHUB:
-      case message::STARTED:
-      case message::ADDPORT:
-      case message::ADDPARAMETER:
-      case message::REMOVEPARAMETER:
-      case message::MODULEAVAILABLE:
-      case message::REPLAYFINISHED:
-      case message::REDUCEPOLICY:
-      case message::SCHEDULINGPOLICY:
-      case message::OBJECTRECEIVEPOLICY:
-      case message::PONG:
-      case message::UPDATESTATUS:
-      case message::TRACE:
-         break;
-
-      default:
-
-         CERR << "unhandled message from (id "
-            << message.senderId() << " rank " << message.rank() << ") "
-            << "type " << message.type()
-            << std::endl;
-
-         break;
-
-   }
-
-   if (result) {
-      if (message.typeFlags() & TriggerQueue) {
-         replayMessages();
-      }
-   } else {
-      if (message.typeFlags() & QueueIfUnhandled) {
-         queueMessage(message);
-         result = true;
-      }
-   }
-
-   return result;
+    return result;
 }
 
-bool ClusterManager::handlePriv(const message::Trace &trace) {
+bool ClusterManager::handlePriv(const message::Trace &trace)
+{
+    CERR << "handle: " << trace << std::endl;
 
-   CERR << "handle: " << trace << std::endl;
+    if (Id::isModule(trace.module())) {
+        sendMessage(trace.module(), trace);
+    } else if (trace.module() == Id::Broadcast) {
+        sendAllLocal(trace);
+    }
 
-   if (Id::isModule(trace.module())) {
-      sendMessage(trace.module(), trace);
-   } else if (trace.module() == Id::Broadcast) {
-      sendAllLocal(trace);
-   }
+    if (trace.module() == Communicator::the().hubId() || !(Id::isModule(trace.module() || Id::isHub(trace.module())))) {
+        if (trace.on())
+            m_traceMessages = trace.messageType();
+        else
+            m_traceMessages = message::INVALID;
+    }
 
-   if (trace.module() == Communicator::the().hubId()
-       || !(Id::isModule(trace.module() || Id::isHub(trace.module())))) {
-      if (trace.on())
-         m_traceMessages = trace.messageType();
-      else
-         m_traceMessages = message::INVALID;
-   }
+    Communicator::the().dataManager().trace(m_traceMessages);
 
-   Communicator::the().dataManager().trace(m_traceMessages);
-
-   return true;
+    return true;
 }
 
-bool ClusterManager::handlePriv(const message::Quit &quit) {
-
+bool ClusterManager::handlePriv(const message::Quit &quit)
+{
     if (quit.id() == Id::Broadcast || quit.id() == Communicator::the().hubId()) {
-
         sendAllLocal(quit);
         this->quit();
     }
@@ -850,146 +842,146 @@ bool ClusterManager::handlePriv(const message::Quit &quit) {
     return true;
 }
 
-bool ClusterManager::handlePriv(const message::Spawn &spawn) {
-
+bool ClusterManager::handlePriv(const message::Spawn &spawn)
+{
     CERR << "handling spawn: " << spawn << std::endl;
 
-   if (spawn.spawnId() == Id::Invalid) {
-      // ignore messages where master hub did not yet create an id
-       return true;
-   }
+    if (spawn.spawnId() == Id::Invalid) {
+        // ignore messages where master hub did not yet create an id
+        return true;
+    }
 
-   if (spawn.destId() == Id::Broadcast || spawn.destId() == Id::NextHop) {
-      m_stateTracker.handle(spawn, nullptr);
-      sendAllLocal(spawn);
-      return true;
-   }
+    if (spawn.destId() == Id::Broadcast || spawn.destId() == Id::NextHop) {
+        m_stateTracker.handle(spawn, nullptr);
+        sendAllLocal(spawn);
+        return true;
+    }
 
-   if (spawn.destId() != Communicator::the().hubId()) {
-       return true;
-   }
-   int newId = spawn.spawnId();
-   std::string name(spawn.getName());
+    if (spawn.destId() != Communicator::the().hubId()) {
+        return true;
+    }
+    int newId = spawn.spawnId();
+    std::string name(spawn.getName());
 
-   Module &mod = runningMap[newId];
-   std::string smqName = message::MessageQueue::createName("send", newId, m_rank);
-   std::string rmqName = message::MessageQueue::createName("recv", newId, m_rank);
+    Module &mod = runningMap[newId];
+    std::string smqName = message::MessageQueue::createName("send", newId, m_rank);
+    std::string rmqName = message::MessageQueue::createName("recv", newId, m_rank);
 
-   try {
-      mod.sendQueue.reset(message::MessageQueue::create(smqName));
-      mod.recvQueue.reset(message::MessageQueue::create(rmqName));
-   } catch (bi::interprocess_exception &ex) {
+    try {
+        mod.sendQueue.reset(message::MessageQueue::create(smqName));
+        mod.recvQueue.reset(message::MessageQueue::create(rmqName));
+    } catch (bi::interprocess_exception &ex) {
+        mod.sendQueue.reset();
+        mod.recvQueue.reset();
+        CERR << "spawn mq " << ex.what() << std::endl;
+        exit(-1);
+    }
 
-      mod.sendQueue.reset();
-      mod.recvQueue.reset();
-      CERR << "spawn mq " << ex.what() << std::endl;
-      exit(-1);
-   }
+    mod.sendQueue->makeNonBlocking();
 
-   mod.sendQueue->makeNonBlocking();
+    m_comm.barrier();
 
-   m_comm.barrier();
-
-   message::SpawnPrepared prep(spawn);
+    message::SpawnPrepared prep(spawn);
 
 #ifdef MODULE_THREAD
-   //AvailableModule::Key key(Communicator::the().hubId(), name);
-   AvailableModule::Key key(0, name);
-   auto avail = Communicator::the().localModules();
-   auto it = avail.find(key);
-   if (it == avail.end()) {
-       CERR << "did not find module " << name << std::endl;
-   } else {
-       auto &m = it->second;
-       try {
+    //AvailableModule::Key key(Communicator::the().hubId(), name);
+    AvailableModule::Key key(0, name);
+    auto avail = Communicator::the().localModules();
+    auto it = avail.find(key);
+    if (it == avail.end()) {
+        CERR << "did not find module " << name << std::endl;
+    } else {
+        auto &m = it->second;
+        try {
 #ifdef MODULE_STATIC
-          mod.newModule = ModuleRegistry::the().moduleFactory(name);
+            mod.newModule = ModuleRegistry::the().moduleFactory(name);
 #else
-          mod.newModule = boost::dll::import_alias<Module::NewModuleFunc>(m.path, "newModule", boost::dll::load_mode::default_mode);
+            mod.newModule = boost::dll::import_alias<Module::NewModuleFunc>(m.path, "newModule",
+                                                                            boost::dll::load_mode::default_mode);
 #endif
-       } catch (const std::exception &e) {
-          CERR << "importing module " << name << "(" << m.path << ") failed: " << e.what() << std::endl;
-          std::vector<const char *> vars;
+        } catch (const std::exception &e) {
+            CERR << "importing module " << name << "(" << m.path << ") failed: " << e.what() << std::endl;
+            std::vector<const char *> vars;
 #if defined(_WIN32)
-          vars.push_back("PATH");
+            vars.push_back("PATH");
 #elif defined(__APPLE__)
-          vars.push_back("DYLD_LIBRARY_PATH");
-          vars.push_back("DYLD_FRAMEWORK_PATH");
+            vars.push_back("DYLD_LIBRARY_PATH");
+            vars.push_back("DYLD_FRAMEWORK_PATH");
 #else
-          vars.push_back("LD_LIBRARY_PATH");
+            vars.push_back("LD_LIBRARY_PATH");
 #endif
-          for (auto v: vars) {
-              const char *val = getenv(v);
-              if (val) {
-                  CERR << "  " << v << ": " << val << std::endl;
-              } else {
-                  CERR << "  " << v << ": not set" << std::endl;
-              }
-          }
-       }
-       if (mod.newModule) {
-           boost::mpi::communicator ncomm(m_comm, boost::mpi::comm_duplicate);
-           std::thread t([newId, name, ncomm, &mod]() {
-               std::string mname = "vistle:" + name + ":" + std::to_string(newId);
+            for (auto v: vars) {
+                const char *val = getenv(v);
+                if (val) {
+                    CERR << "  " << v << ": " << val << std::endl;
+                } else {
+                    CERR << "  " << v << ": not set" << std::endl;
+                }
+            }
+        }
+        if (mod.newModule) {
+            boost::mpi::communicator ncomm(m_comm, boost::mpi::comm_duplicate);
+            std::thread t([newId, name, ncomm, &mod]() {
+                std::string mname = "vistle:" + name + ":" + std::to_string(newId);
 #ifdef __linux__
-#if __GLIBC__>2 || (__GLIBC__==2 && __GLIBC_MINOR__>=12)
-               pthread_setname_np(pthread_self(), mname.c_str());
+#if __GLIBC__ > 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 12)
+                pthread_setname_np(pthread_self(), mname.c_str());
 #endif
 #endif
 #ifdef __APPLE__
-               pthread_setname_np(mname.c_str());
+                pthread_setname_np(mname.c_str());
 #endif
-               //std::cerr << "thread for module " << name << ":" << newId << std::endl;
-               mod.instance = mod.newModule(name, newId, ncomm);
-               if (mod.instance)
-                   mod.instance->eventLoop();
+                //std::cerr << "thread for module " << name << ":" << newId << std::endl;
+                mod.instance = mod.newModule(name, newId, ncomm);
+                if (mod.instance)
+                    mod.instance->eventLoop();
 
-               mod.instance.reset();
-           });
-           mod.thread = std::move(t);
-       } else {
-           CERR << "no newModule method for module " << name << std::endl;
-           auto it = runningMap.find(newId);
-           if (it != runningMap.end()) {
-               runningMap.erase(it);
-           }
+                mod.instance.reset();
+            });
+            mod.thread = std::move(t);
+        } else {
+            CERR << "no newModule method for module " << name << std::endl;
+            auto it = runningMap.find(newId);
+            if (it != runningMap.end()) {
+                runningMap.erase(it);
+            }
 
-           // synthesize ModuleExit for module that has failed to start
-           message::ModuleExit m;
-           m.setSenderId(newId);
-           if (getRank() == 0)
-               sendHub(m);
-           return true;
-       }
-   }
+            // synthesize ModuleExit for module that has failed to start
+            message::ModuleExit m;
+            m.setSenderId(newId);
+            if (getRank() == 0)
+                sendHub(m);
+            return true;
+        }
+    }
 #else
-   prep.setDestId(Id::LocalHub);
-   if (getRank() == 0)
-      sendHub(prep);
+    prep.setDestId(Id::LocalHub);
+    if (getRank() == 0)
+        sendHub(prep);
 #endif
-   prep.setDestId(Id::MasterHub);
-   prep.setNotify(true);
-   if (getRank() == 0)
-      sendHub(prep);
+    prep.setDestId(Id::MasterHub);
+    prep.setNotify(true);
+    if (getRank() == 0)
+        sendHub(prep);
 
-   // inform newly started module about current parameter values of other modules
-   auto state = m_stateTracker.getState();
-   for (const auto &m: state) {
-       MessagePayload pl;
-       message::Buffer buf(m.message);
-       if (m.payload) {
-           pl.construct(m.payload->size());
-           std::copy(m.payload->begin(), m.payload->end(), pl->begin());
-           buf.setPayloadName(pl.name());
-       }
-       sendMessage(newId, buf, -1, pl);
-   }
+    // inform newly started module about current parameter values of other modules
+    auto state = m_stateTracker.getState();
+    for (const auto &m: state) {
+        MessagePayload pl;
+        message::Buffer buf(m.message);
+        if (m.payload) {
+            pl.construct(m.payload->size());
+            std::copy(m.payload->begin(), m.payload->end(), pl->begin());
+            buf.setPayloadName(pl.name());
+        }
+        sendMessage(newId, buf, -1, pl);
+    }
 
-   return true;
+    return true;
 }
 
-bool ClusterManager::handlePriv(const message::Connect &connect) {
-
+bool ClusterManager::handlePriv(const message::Connect &connect)
+{
     if (connect.isNotification()) {
         m_stateTracker.handle(connect, nullptr);
         int modFrom = connect.getModuleA();
@@ -1027,11 +1019,11 @@ bool ClusterManager::handlePriv(const message::Connect &connect) {
       return false;
    }
 #endif
-   return true;
+    return true;
 }
 
-bool ClusterManager::handlePriv(const message::Disconnect &disconnect) {
-
+bool ClusterManager::handlePriv(const message::Disconnect &disconnect)
+{
 #if 0
    const char *portFrom = disconnect.getPortAName();
    const char *portTo = disconnect.getPortBName();
@@ -1048,7 +1040,7 @@ bool ClusterManager::handlePriv(const message::Disconnect &disconnect) {
    }
 #endif
 
-   if (disconnect.isNotification()) {
+    if (disconnect.isNotification()) {
         m_stateTracker.handle(disconnect, nullptr);
         int modFrom = disconnect.getModuleA();
         int modTo = disconnect.getModuleB();
@@ -1056,9 +1048,9 @@ bool ClusterManager::handlePriv(const message::Disconnect &disconnect) {
             sendMessage(modFrom, disconnect);
         if (isLocal(modTo))
             sendMessage(modTo, disconnect);
-   } else if (isLocal(disconnect.senderId())) {
-       sendHub(disconnect);
-   }
+    } else if (isLocal(disconnect.senderId())) {
+        sendHub(disconnect);
+    }
 
 #if 0
    if (from->getType() == Port::INPUT && to->getType() == Port::OUTPUT) {
@@ -1084,12 +1076,12 @@ bool ClusterManager::handlePriv(const message::Disconnect &disconnect) {
       }
    }
 #endif
-   return true;
+    return true;
 }
 
-bool ClusterManager::handlePriv(const message::ModuleExit &moduleExit) {
-
-   const int mod = moduleExit.senderId();
+bool ClusterManager::handlePriv(const message::ModuleExit &moduleExit)
+{
+    const int mod = moduleExit.senderId();
 
     //CERR << " Module [" << mod << "] quit" << std::endl;
 
@@ -1133,9 +1125,9 @@ bool ClusterManager::handlePriv(const message::ModuleExit &moduleExit) {
     return true;
 }
 
-bool ClusterManager::handlePriv(const message::Execute &exec) {
-
-    assert (exec.getModule() >= Id::ModuleBase);
+bool ClusterManager::handlePriv(const message::Execute &exec)
+{
+    assert(exec.getModule() >= Id::ModuleBase);
     RunningMap::iterator i = runningMap.find(exec.getModule());
     if (i == runningMap.end()) {
         CERR << "did not find module to be executed: " << exec.getModule() << std::endl;
@@ -1143,7 +1135,7 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
     }
 
     auto &mod = i->second;
-    switch(exec.what()) {
+    switch (exec.what()) {
     case message::Execute::Prepare: {
         assert(!mod.prepared);
         assert(mod.reduced);
@@ -1203,7 +1195,7 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
                         mod.objectCount.resize(getSize());
                     ++mod.objectCount[exec.rank()];
                     numObjects = std::accumulate(mod.objectCount.begin(), mod.objectCount.end(), 0);
-                    if (numObjects>0 && numObjects>=getSize()*.2) {
+                    if (numObjects > 0 && numObjects >= getSize() * .2) {
                         doExec = true;
                         for (auto &c: mod.objectCount) {
                             if (c > 0) {
@@ -1225,9 +1217,9 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
     return true;
 }
 
-bool ClusterManager::handlePriv(const message::CancelExecute &cancel) {
-
-    assert (cancel.getModule() >= Id::ModuleBase);
+bool ClusterManager::handlePriv(const message::CancelExecute &cancel)
+{
+    assert(cancel.getModule() >= Id::ModuleBase);
     RunningMap::iterator i = runningMap.find(cancel.getModule());
     if (i == runningMap.end()) {
         CERR << "did not find module to cancel execution: " << cancel.getModule() << std::endl;
@@ -1247,532 +1239,544 @@ bool ClusterManager::handlePriv(const message::CancelExecute &cancel) {
     return Communicator::the().broadcastAndHandleMessage(cancel);
 }
 
-bool ClusterManager::addObjectSource(const message::AddObject &addObj) {
+bool ClusterManager::addObjectSource(const message::AddObject &addObj)
+{
+    const Port *port = portManager().findPort(addObj.senderId(), addObj.getSenderPort());
+    if (!port) {
+        CERR << "AddObject [" << addObj.objectName() << "] to port [" << addObj.getSenderPort() << "] of ["
+             << addObj.senderId() << "]: port not found" << std::endl;
+        //assert(port);
+        return true;
+    }
 
-   const Port *port = portManager().findPort(addObj.senderId(), addObj.getSenderPort());
-   if (!port) {
-      CERR << "AddObject [" << addObj.objectName() << "] to port [" << addObj.getSenderPort() << "] of [" << addObj.senderId() << "]: port not found" << std::endl;
-      //assert(port);
-      return true;
-   }
+    const Port::ConstPortSet *list = portManager().getConnectionList(port);
+    if (!list) {
+        //CERR << "AddObject [" << addObj.objectName() << "] to port [" << addObj.getSenderPort() << "] of [" << addObj.senderId() << "]: connection list not found" << std::endl;
+        assert(list);
+        return true;
+    }
 
-   const Port::ConstPortSet *list = portManager().getConnectionList(port);
-   if (!list) {
-      //CERR << "AddObject [" << addObj.objectName() << "] to port [" << addObj.getSenderPort() << "] of [" << addObj.senderId() << "]: connection list not found" << std::endl;
-      assert(list);
-      return true;
-   }
+    // if object was generated locally, forward message to remote hubs with connected modules
+    std::set<int> receivingHubs; // make sure that message is only sent once per remote hub
+    for (const Port *destPort: *list) {
+        int destId = destPort->getModuleID();
 
-   // if object was generated locally, forward message to remote hubs with connected modules
-   std::set<int> receivingHubs; // make sure that message is only sent once per remote hub
-   for (const Port *destPort: *list) {
-      int destId = destPort->getModuleID();
+        if (!isLocal(destId)) {
+            const int hub = idToHub(destId);
+            if (receivingHubs.find(hub) == receivingHubs.end()) {
+                receivingHubs.insert(hub);
+                message::AddObject a(addObj);
+                a.setDestId(hub);
+                a.setDestRank(0);
+                Communicator::the().dataManager().prepareTransfer(a);
+                // TODO: serialize object into message payload
+                sendHub(a, MessagePayload(), hub);
+            }
+        }
+    }
 
-      if (!isLocal(destId)) {
-          const int hub = idToHub(destId);
-          if (receivingHubs.find(hub) == receivingHubs.end()) {
-              receivingHubs.insert(hub);
-              message::AddObject a(addObj);
-              a.setDestId(hub);
-              a.setDestRank(0);
-              Communicator::the().dataManager().prepareTransfer(a);
-              // TODO: serialize object into message payload
-              sendHub(a, MessagePayload(), hub);
-          }
-      }
-   }
-
-   return true;
+    return true;
 }
 
-bool ClusterManager::addObjectDestination(const message::AddObject &addObj, Object::const_ptr obj) {
+bool ClusterManager::addObjectDestination(const message::AddObject &addObj, Object::const_ptr obj)
+{
+    const bool localAdd = isLocal(addObj.senderId());
+    const Port *port = portManager().findPort(addObj.senderId(), addObj.getSenderPort());
+    if (!port) {
+        CERR << "AddObject [" << addObj.objectName() << "] to port [" << addObj.getSenderPort() << "] of ["
+             << addObj.senderId() << "]: port not found" << std::endl;
+        //assert(port);
+        return true;
+    }
+    const Port::ConstPortSet *list = portManager().getConnectionList(port);
+    if (!list) {
+        //CERR << "AddObject [" << addObj.objectName() << "] to port [" << addObj.getSenderPort() << "] of [" << addObj.senderId() << "]: connection list not found" << std::endl;
+        assert(list);
+        return true;
+    }
 
-   const bool localAdd = isLocal(addObj.senderId());
-   const Port *port = portManager().findPort(addObj.senderId(), addObj.getSenderPort());
-   if (!port) {
-      CERR << "AddObject [" << addObj.objectName() << "] to port [" << addObj.getSenderPort() << "] of [" << addObj.senderId() << "]: port not found" << std::endl;
-      //assert(port);
-      return true;
-   }
-   const Port::ConstPortSet *list = portManager().getConnectionList(port);
-   if (!list) {
-      //CERR << "AddObject [" << addObj.objectName() << "] to port [" << addObj.getSenderPort() << "] of [" << addObj.senderId() << "]: connection list not found" << std::endl;
-      assert(list);
-      return true;
-   }
+    for (const Port *destPort: *list) {
+        int destId = destPort->getModuleID();
+        if (!isLocal(destId))
+            continue;
 
-   for (const Port *destPort: *list) {
+        auto it = m_stateTracker.runningMap.find(destId);
+        if (it == m_stateTracker.runningMap.end()) {
+            CERR << "port connection to module " << destId << ":" << destPort->getName() << ", which is not running"
+                 << std::endl;
+            assert("port connection to module that is not running" == 0);
+            continue;
+        }
+        auto &destMod = it->second;
 
-       int destId = destPort->getModuleID();
-       if (!isLocal(destId))
-           continue;
+        message::AddObject addObj2(addObj);
+        addObj2.setRank(m_rank); // object is/will be present on this rank
+        addObj2.setDestId(destId);
+        addObj2.setDestPort(destPort->getName());
+        addObj2.setDestRank(-1);
+        if (obj) {
+            addObj2.setObject(obj);
+        } else {
+            // receiving module will wait until it is unblocked
+            addObj2.setBlocker();
+        }
 
-       auto it = m_stateTracker.runningMap.find(destId);
-       if (it == m_stateTracker.runningMap.end()) {
-           CERR << "port connection to module " << destId << ":" << destPort->getName() << ", which is not running" << std::endl;
-           assert("port connection to module that is not running" == 0);
-           continue;
-       }
-       auto &destMod = it->second;
+        bool broadcast = false;
+        if (destMod.objectPolicy == message::ObjectReceivePolicy::Local) {
+            CERR << "LOCAL object add at " << destId << ": " << addObj2.objectName() << std::endl;
+            if (!sendMessage(destId, addObj2))
+                return false;
+            portManager().addObject(destPort);
 
-       message::AddObject addObj2(addObj);
-       addObj2.setRank(m_rank); // object is/will be present on this rank
-       addObj2.setDestId(destId);
-       addObj2.setDestPort(destPort->getName());
-       addObj2.setDestRank(-1);
-       if (obj) {
-           addObj2.setObject(obj);
-       } else {
-           // receiving module will wait until it is unblocked
-           addObj2.setBlocker();
-       }
+            if (!checkExecuteObject(destId))
+                return false;
+        } else {
+            CERR << "BROADCAST object add at " << destId << ": " << addObj2.objectName() << std::endl;
+            broadcast = true;
+            if (!Communicator::the().broadcastAndHandleMessage(addObj2))
+                return false;
+        }
 
-       bool broadcast = false;
-       if (destMod.objectPolicy == message::ObjectReceivePolicy::Local) {
-           CERR << "LOCAL object add at " << destId << ": " << addObj2.objectName() << std::endl;
-           if (!sendMessage(destId, addObj2))
-               return false;
-           portManager().addObject(destPort);
+        if (!obj) {
+            // block messages of receiving module until remote object is available
+            assert(!localAdd);
+            auto it = runningMap.find(destId);
+            if (it != runningMap.end()) {
+                Communicator::the().dataManager().requestObject(
+                    addObj, addObj.objectName(), [this, addObj, addObj2, broadcast](Object::const_ptr newobj) mutable {
+                        auto obj = addObj.getObject();
+                        assert(obj);
+                        assert(obj->getName() == newobj->getName());
+                        addObj2.setObject(newobj);
+                        obj.reset();
+                        // unblock receiving module
+                        addObj2.setUnblocking();
 
-           if (!checkExecuteObject(destId))
-               return false;
-       } else {
-           CERR << "BROADCAST object add at " << destId << ": " << addObj2.objectName() << std::endl;
-           broadcast = true;
-           if (!Communicator::the().broadcastAndHandleMessage(addObj2))
-               return false;
-       }
+                        std::unique_lock<Communicator> guard(Communicator::the());
+                        if (broadcast) {
+                            Communicator::the().broadcastAndHandleMessage(addObj2);
+                        } else {
+                            sendMessage(addObj2.destId(), addObj2);
+                        }
+                    });
+            }
+        }
+    }
 
-       if (!obj) {
-           // block messages of receiving module until remote object is available
-           assert(!localAdd);
-           auto it = runningMap.find(destId);
-           if (it != runningMap.end()) {
-               Communicator::the().dataManager().requestObject(addObj, addObj.objectName(), [this, addObj, addObj2, broadcast](Object::const_ptr newobj) mutable {
-                   auto obj = addObj.getObject();
-                   assert(obj);
-                   assert(obj->getName() == newobj->getName());
-                   addObj2.setObject(newobj);
-                   obj.reset();
-                   // unblock receiving module
-                   addObj2.setUnblocking();
-
-                   std::unique_lock<Communicator> guard(Communicator::the());
-                   if (broadcast) {
-                       Communicator::the().broadcastAndHandleMessage(addObj2);
-                   } else {
-                       sendMessage(addObj2.destId(), addObj2);
-                   }
-               });
-           }
-       }
-   }
-
-   return true;
+    return true;
 }
 
-bool ClusterManager::handlePriv(const message::AddObject &addObj) {
+bool ClusterManager::handlePriv(const message::AddObject &addObj)
+{
+    if (addObj.wasBroadcast()) {
+        assert(isLocal(addObj.destId()));
+        if (!sendMessage(addObj.destId(), addObj))
+            return false;
 
-   if (addObj.wasBroadcast()) {
-       assert(isLocal(addObj.destId()));
-       if (!sendMessage(addObj.destId(), addObj))
-           return false;
+        if (addObj.isUnblocking()) {
+            return true;
+        }
 
-       if (addObj.isUnblocking()) {
-           return true;
-       }
+        if (auto destPort = portManager().getPort(addObj.destId(), addObj.getDestPort()))
+            portManager().addObject(destPort);
+        else
+            return false;
 
-       if (auto destPort = portManager().getPort(addObj.destId(), addObj.getDestPort()))
-           portManager().addObject(destPort);
-       else
-           return false;
+        if (!checkExecuteObject(addObj.destId()))
+            return false;
 
-       if (!checkExecuteObject(addObj.destId()))
-           return false;
+        return true;
+    }
 
-       return true;
-   }
+    const bool localAdd = isLocal(addObj.senderId());
 
-   const bool localAdd = isLocal(addObj.senderId());
+    if (localAdd) {
+        addObjectSource(addObj);
+    }
 
-   if (localAdd) {
-       addObjectSource(addObj);
-   }
+    //CERR << "ADDOBJECT: " << addObj << ", local=" << localAdd << std::endl;
+    Object::const_ptr obj;
 
-   //CERR << "ADDOBJECT: " << addObj << ", local=" << localAdd << std::endl;
-   Object::const_ptr obj;
+    bool onThisRank = false;
+    int destRank = -1;
+    if (localAdd) {
+        if (addObj.rank() == getRank()) {
+            onThisRank = true;
+            obj = addObj.takeObject();
+        } else {
+            obj = Shm::the().getObjectFromName(addObj.objectName());
+        }
+        //CERR << "ADDOBJECT: local, name=" << obj->getName() << ", refcount=" << obj->refcount() << std::endl;
+    } else {
+        int block = addObj.meta().block();
+        if (block >= 0) {
+            destRank = block % getSize();
+        }
+        onThisRank = destRank == getRank() || (getRank() == 0 && destRank == -1);
 
-   bool onThisRank = false;
-   int destRank = -1;
-   if (localAdd) {
-       if (addObj.rank() == getRank()) {
-           onThisRank = true;
-           obj = addObj.takeObject();
-       } else {
-           obj = Shm::the().getObjectFromName(addObj.objectName());
-       }
-       //CERR << "ADDOBJECT: local, name=" << obj->getName() << ", refcount=" << obj->refcount() << std::endl;
-   } else {
-       int block = addObj.meta().block();
-       if (block >= 0) {
-           destRank = block % getSize();
-       }
-       onThisRank = destRank==getRank() || (getRank() == 0 && destRank == -1);
+        //CERR << "ADDOBJECT from remote, handling on rank " << destRank << std::endl;
+        if (onThisRank) {
+            obj = addObj.getObject();
+            if (obj)
+                Communicator::the().dataManager().notifyTransferComplete(addObj);
+        } else {
+            return sendMessage(Communicator::the().hubId(), addObj, destRank);
+        }
+    }
 
-      //CERR << "ADDOBJECT from remote, handling on rank " << destRank << std::endl;
-      if (onThisRank) {
-         obj = addObj.getObject();
-         if (obj)
-             Communicator::the().dataManager().notifyTransferComplete(addObj);
-      } else {
-          return sendMessage(Communicator::the().hubId(), addObj, destRank);
-      }
-   }
+    assert(onThisRank);
 
-   assert(onThisRank);
+    if (localAdd && onThisRank) {
+        assert(obj);
+    }
+    assert(!obj || obj->refcount() >= 1);
 
-   if (localAdd && onThisRank) {
-      assert(obj);
-   }
-   assert(!obj || obj->refcount() >= 1);
-
-   return addObjectDestination(addObj, obj);
+    return addObjectDestination(addObj, obj);
 }
 
-bool ClusterManager::checkExecuteObject(int destId) {
+bool ClusterManager::checkExecuteObject(int destId)
+{
+    if (!isReadyForExecute(destId))
+        return true;
 
-   if (!isReadyForExecute(destId))
-       return true;
+    int numconn = 0;
+    for (const auto input: portManager().getConnectedInputPorts(destId)) {
+        if (input->flags() & Port::NOCOMPUTE)
+            continue;
+        ++numconn;
+        if (!portManager().hasObject(input)) {
+            return true;
+        }
+    }
+    CERR << "checkExecuteObject " << destId << ": " << numconn << " connections" << std::endl;
+    if (numconn == 0)
+        return true;
+    for (const auto input: portManager().getConnectedInputPorts(destId)) {
+        if (input->flags() & Port::NOCOMPUTE)
+            continue;
+        portManager().popObject(input);
+    }
 
-   int numconn = 0;
-   for (const auto input: portManager().getConnectedInputPorts(destId)) {
-       if (input->flags() & Port::NOCOMPUTE)
-           continue;
-       ++numconn;
-       if (!portManager().hasObject(input)) {
-           return true;
-       }
-   }
-   CERR << "checkExecuteObject " << destId << ": " << numconn << " connections" << std::endl;
-   if (numconn == 0)
-       return true;
-   for (const auto input: portManager().getConnectedInputPorts(destId)) {
-       if (input->flags() & Port::NOCOMPUTE)
-           continue;
-       portManager().popObject(input);
-   }
+    auto it = m_stateTracker.runningMap.find(destId);
+    if (it == m_stateTracker.runningMap.end()) {
+        CERR << "port connection to module that is not running" << std::endl;
+        assert("port connection to module that is not running" == 0);
+        return true;
+    }
+    auto &destMod = it->second;
+    message::Execute c(message::Execute::ComputeObject, destId);
+    c.setDestId(destId);
+    //c.setUuid(addObj.uuid());
+    if (destMod.schedulingPolicy == message::SchedulingPolicy::Single) {
+        sendMessage(destId, c);
+    } else if (destMod.schedulingPolicy == message::SchedulingPolicy::Gang) {
+        c.setAllRanks(true);
+        CERR << "checkExecuteObject " << destId << ": exec b/c gang scheduling: " << c << std::endl;
+        if (!Communicator::the().broadcastAndHandleMessage(c))
+            return false;
+    } else if (destMod.schedulingPolicy == message::SchedulingPolicy::LazyGang) {
+        if (getRank() == 0) {
+            handle(c);
+        } else {
+            if (!Communicator::the().forwardToMaster(c))
+                return false;
+        }
+    }
 
-   auto it = m_stateTracker.runningMap.find(destId);
-   if (it == m_stateTracker.runningMap.end()) {
-      CERR << "port connection to module that is not running" << std::endl;
-      assert("port connection to module that is not running" == 0);
-      return true;
-   }
-   auto &destMod = it->second;
-   message::Execute c(message::Execute::ComputeObject, destId);
-   c.setDestId(destId);
-   //c.setUuid(addObj.uuid());
-   if (destMod.schedulingPolicy == message::SchedulingPolicy::Single) {
-      sendMessage(destId, c);
-   } else if (destMod.schedulingPolicy == message::SchedulingPolicy::Gang) {
-      c.setAllRanks(true);
-      CERR << "checkExecuteObject " << destId << ": exec b/c gang scheduling: " << c << std::endl;
-      if (!Communicator::the().broadcastAndHandleMessage(c))
-         return false;
-   } else if (destMod.schedulingPolicy == message::SchedulingPolicy::LazyGang) {
-       if (getRank() == 0) {
-           handle(c);
-       } else {
-           if (!Communicator::the().forwardToMaster(c))
-               return false;
-       }
-   }
-
-   return checkExecuteObject(destId);
+    return checkExecuteObject(destId);
 }
 
-bool ClusterManager::handlePriv(const message::AddObjectCompleted &complete) {
-
+bool ClusterManager::handlePriv(const message::AddObjectCompleted &complete)
+{
     return Communicator::the().dataManager().completeTransfer(complete);
 }
 
-bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
+bool ClusterManager::handlePriv(const message::ExecutionProgress &prog)
+{
+    const bool localSender = idToHub(prog.senderId()) == Communicator::the().hubId();
+    RunningMap::iterator i = runningMap.find(prog.senderId());
+    ClusterManager::Module *mod = nullptr;
+    if (i == runningMap.end()) {
+        assert(localSender == false);
+    } else {
+        mod = &i->second;
+    }
 
-   const bool localSender = idToHub(prog.senderId()) == Communicator::the().hubId();
-   RunningMap::iterator i = runningMap.find(prog.senderId());
-   ClusterManager::Module* mod = nullptr;
-   if (i == runningMap.end()) {
-      assert(localSender == false);
-   }
-   else {
-       mod = &i->second;
-   }
+    auto i2 = m_stateTracker.runningMap.find(prog.senderId());
+    if (i2 == m_stateTracker.runningMap.end()) {
+        CERR << "handle ExecutionProgress: module " << prog.senderId() << " not found, msg=" << prog << std::endl;
+        return false;
+    }
+    auto &modState = i2->second;
 
-   auto i2 = m_stateTracker.runningMap.find(prog.senderId());
-   if (i2 == m_stateTracker.runningMap.end()) {
-      CERR << "handle ExecutionProgress: module " << prog.senderId() << " not found, msg=" << prog << std::endl;
-      return false;
-   }
-   auto &modState = i2->second;
+    // initiate reduction if requested by module
 
-   // initiate reduction if requested by module
-
-   bool handleOnMaster = false;
-   // forward message to remote hubs...
-   std::set<int> receivingHubs; // ...but make sure that message is only sent once per remote hub
-   if (localSender) {
-      for (auto output: portManager().getConnectedOutputPorts(prog.senderId())) {
-         const Port::ConstPortSet *list = portManager().getConnectionList(output);
-         for (const Port *destPort: *list) {
-            int destId = destPort->getModuleID();
-            if (!isLocal(destId)) {
-               int hub = idToHub(destId);
-               receivingHubs.insert(hub);
+    bool handleOnMaster = false;
+    // forward message to remote hubs...
+    std::set<int> receivingHubs; // ...but make sure that message is only sent once per remote hub
+    if (localSender) {
+        for (auto output: portManager().getConnectedOutputPorts(prog.senderId())) {
+            const Port::ConstPortSet *list = portManager().getConnectionList(output);
+            for (const Port *destPort: *list) {
+                int destId = destPort->getModuleID();
+                if (!isLocal(destId)) {
+                    int hub = idToHub(destId);
+                    receivingHubs.insert(hub);
+                }
+                const auto it = m_stateTracker.runningMap.find(destId);
+                if (it == m_stateTracker.runningMap.end()) {
+                    CERR << "did not find " << destId << " in runningMap, but it is connected to " << prog.senderId()
+                         << ":" << output->getName() << std::endl;
+                    abort();
+                }
+                assert(it != m_stateTracker.runningMap.end());
+                const auto &destState = it->second;
+                if (destState.reducePolicy != message::ReducePolicy::Never) {
+                    bool gang = destState.schedulingPolicy == message::SchedulingPolicy::Gang ||
+                                destState.schedulingPolicy == message::SchedulingPolicy::LazyGang;
+                    if (gang || destState.reducePolicy != message::ReducePolicy::Locally)
+                        handleOnMaster = true;
+                }
             }
-            const auto it = m_stateTracker.runningMap.find(destId);
-            if (it == m_stateTracker.runningMap.end()) {
-                CERR << "did not find " << destId << " in runningMap, but it is connected to " << prog.senderId() << ":" << output->getName() << std::endl;
-                abort();
-            }
-            assert(it != m_stateTracker.runningMap.end());
-            const auto &destState = it->second;
-            if (destState.reducePolicy != message::ReducePolicy::Never) {
-                bool gang = destState.schedulingPolicy == message::SchedulingPolicy::Gang
-                        || destState.schedulingPolicy == message::SchedulingPolicy::LazyGang;
-                if (gang || destState.reducePolicy != message::ReducePolicy::Locally)
-                    handleOnMaster = true;
-            }
-         }
-      }
-   }
-   if (!receivingHubs.empty())
-       handleOnMaster = true;
+        }
+    }
+    if (!receivingHubs.empty())
+        handleOnMaster = true;
 
-   bool gang = modState.schedulingPolicy==message::SchedulingPolicy::Gang || modState.schedulingPolicy==message::SchedulingPolicy::LazyGang;
-   bool localReduce = (modState.reducePolicy == message::ReducePolicy::Locally && !gang) || modState.reducePolicy == message::ReducePolicy::Never;
-   if (!localReduce)
-       handleOnMaster = true;
-   if (localSender && handleOnMaster && m_rank != 0) {
-      //CERR << "exec progr: forward to master" << std::endl;
-      return Communicator::the().forwardToMaster(prog);
-   }
+    bool gang = modState.schedulingPolicy == message::SchedulingPolicy::Gang ||
+                modState.schedulingPolicy == message::SchedulingPolicy::LazyGang;
+    bool localReduce = (modState.reducePolicy == message::ReducePolicy::Locally && !gang) ||
+                       modState.reducePolicy == message::ReducePolicy::Never;
+    if (!localReduce)
+        handleOnMaster = true;
+    if (localSender && handleOnMaster && m_rank != 0) {
+        //CERR << "exec progr: forward to master" << std::endl;
+        return Communicator::the().forwardToMaster(prog);
+    }
 
-   bool readyForPrepare = false, readyForReduce = false;
-   bool unqueueExecute = false;
-   if (localSender) {
-       CERR << "ExecutionProgress " << prog.stage() << " received from " << prog.senderId() << ":" << prog.rank() << ", before: #started=" << mod->ranksStarted << ", #fin=" << mod->ranksFinished << std::endl;
-   } else {
-       CERR << "ExecutionProgress " << prog.stage() << " received from " << prog.senderId() << ":" << prog.rank() << std::endl;
-   }
-   switch (prog.stage()) {
-      case message::ExecutionProgress::Start: {
-         readyForPrepare = true;
-         if (handleOnMaster && localSender) {
-             assert(mod->ranksFinished < m_size);
-             ++mod->ranksStarted;
-             readyForPrepare = mod->ranksStarted==m_size;
-         }
-         break;
-      }
+    bool readyForPrepare = false, readyForReduce = false;
+    bool unqueueExecute = false;
+    if (localSender) {
+        CERR << "ExecutionProgress " << prog.stage() << " received from " << prog.senderId() << ":" << prog.rank()
+             << ", before: #started=" << mod->ranksStarted << ", #fin=" << mod->ranksFinished << std::endl;
+    } else {
+        CERR << "ExecutionProgress " << prog.stage() << " received from " << prog.senderId() << ":" << prog.rank()
+             << std::endl;
+    }
+    switch (prog.stage()) {
+    case message::ExecutionProgress::Start: {
+        readyForPrepare = true;
+        if (handleOnMaster && localSender) {
+            assert(mod->ranksFinished < m_size);
+            ++mod->ranksStarted;
+            readyForPrepare = mod->ranksStarted == m_size;
+        }
+        break;
+    }
 
-      case message::ExecutionProgress::Finish: {
-         readyForReduce = true;
-         if (handleOnMaster && localSender) {
-             ++mod->ranksFinished;
-             if (mod->ranksFinished == m_size) {
+    case message::ExecutionProgress::Finish: {
+        readyForReduce = true;
+        if (handleOnMaster && localSender) {
+            ++mod->ranksFinished;
+            if (mod->ranksFinished == m_size) {
                 if (mod->ranksStarted != m_size) {
-                   CERR << "ExecutionProgress::Finish: mismatch for module " << prog.senderId() << ": m_size=" << m_size << ", started=" << mod->ranksStarted << std::endl;
+                    CERR << "ExecutionProgress::Finish: mismatch for module " << prog.senderId()
+                         << ": m_size=" << m_size << ", started=" << mod->ranksStarted << std::endl;
                 }
                 assert(mod->ranksStarted >= m_size);
                 mod->ranksStarted -= m_size;
                 mod->ranksFinished = 0;
                 unqueueExecute = true;
-             } else {
+            } else {
                 readyForReduce = false;
-             }
-         }
-         break;
-      }
-   }
-
-   if (localSender) {
-       CERR << "ExecutionProgress " << prog.stage() << " received from " << prog.senderId() << ":" << prog.rank() << ", after: #started=" << mod->ranksStarted << ", #fin=" << mod->ranksFinished << std::endl;
-   }
-
-   if (readyForPrepare || readyForReduce) {
-       assert(!(readyForPrepare && readyForReduce));
-       for (auto hub: receivingHubs) {
-           message::Buffer buf(prog);
-           buf.setForBroadcast(false);
-           buf.setDestRank(0);
-           sendMessage(hub, buf);
-       }
-   }
-
-   //CERR << prog.senderId() << " ready for prepare: " << readyForPrepare << ", reduce: " << readyForReduce << std::endl;
-   for (auto output: portManager().getConnectedOutputPorts(prog.senderId())) {
-      const Port::ConstPortSet *list = portManager().getConnectionList(output);
-      for (const Port *destPort: *list) {
-         if (!(destPort->flags() & Port::NOCOMPUTE)) {
-            if (readyForPrepare)
-               portManager().resetInput(destPort);
-            if (readyForReduce)
-               portManager().finishInput(destPort);
-         }
-      }
-   }
-
-   for (auto output: portManager().getConnectedOutputPorts(prog.senderId())) {
-      const Port::ConstPortSet *list = portManager().getConnectionList(output);
-      for (const Port *destPort: *list) {
-         if (!(destPort->flags() & Port::NOCOMPUTE)) {
-            bool allReadyForPrepare = true, allReadyForReduce = true;
-            const int destId = destPort->getModuleID();
-            auto allInputs = portManager().getConnectedInputPorts(destId);
-            for (auto input: allInputs) {
-               if (input->flags() & Port::NOCOMPUTE)
-                    continue;
-               if (!portManager().isReset(input))
-                  allReadyForPrepare = false;
-               if (!portManager().isFinished(input))
-                  allReadyForReduce = false;
             }
-            //CERR << "exec prog: checking module " << destId << ":" << destPort->getName() << std::endl;
-            auto it = m_stateTracker.runningMap.find(destId);
-            assert(it != m_stateTracker.runningMap.end());
-            if (it->second.reducePolicy != message::ReducePolicy::Never
-                    || it->second.schedulingPolicy == message::SchedulingPolicy::Gang
-                    || it->second.schedulingPolicy == message::SchedulingPolicy::LazyGang) {
-               bool broadcast = handleOnMaster || it->second.reducePolicy!=message::ReducePolicy::Locally;
-               if (allReadyForPrepare) {
-                  for (auto input: allInputs) {
-                     portManager().popReset(input);
-                  }
-                  //CERR << "Exec prepare 1" << std::endl;
-                  if (isLocal(destId)) {
-                     //CERR << "Exec prepare 2" << std::endl;
-                     auto exec = message::Execute(message::Execute::Prepare, destId);
-                     exec.setExecutionCount(prog.getExecutionCount());
-                     exec.setDestId(destId);
-                     if (broadcast) {
-                        //CERR << "Exec prepare 3" << std::endl;
-                        if (m_rank == 0)
-                           if (!Communicator::the().broadcastAndHandleMessage(exec))
-                              return false;
-                     } else {
-                        //CERR << "Exec prepare 4" << std::endl;
-                        handlePriv(exec);
-                     }
-                  }
-               }
-               if (allReadyForReduce) {
-                  if (handleOnMaster && localSender) {
-                     assert(mod->ranksFinished==0);
-                  }
-                  // process all objects which are still in the queue befor calling reduce()
-                  if (isLocal(destId)) {
-                     if (it->second.schedulingPolicy == message::SchedulingPolicy::LazyGang) {
-                         broadcast = true;
-                         RunningMap::iterator i = runningMap.find(destId);
-                         assert(i != runningMap.end());
-                         auto &destMod = i->second;
+        }
+        break;
+    }
+    }
 
-                         assert(destMod.prepared);
-                         assert(!destMod.reduced);
-                         if (m_rank == 0) {
-                             if (ssize_t(destMod.objectCount.size()) < getSize())
-                                 destMod.objectCount.resize(getSize());
-                             int maxNumObject = 0;
-                             for (size_t r=0; r<destMod.objectCount.size(); ++r) {
-                                 auto &c = destMod.objectCount[r];
-                                 if (c > 0) {
-                                     CERR << "flushing " << c << " objects for rank " << r << ", module " << destId << std::endl;
-                                 }
-                                 if (c > maxNumObject)
-                                     maxNumObject = c;
-                                 c = 0;
-                             }
-                             for (int i=0; i<maxNumObject; ++i) {
-                                 message::Execute exec(message::Execute::ComputeObject, destId);
-                                 exec.setExecutionCount(prog.getExecutionCount());
-                                 if (!Communicator::the().broadcastAndHandleMessage(exec))
-                                     return false;
-                             }
-                             assert(std::accumulate(destMod.objectCount.begin(), destMod.objectCount.end(), 0) == 0);
-                         }
-                     }
-                  }
-                  for (auto input: allInputs) {
-                     portManager().popFinish(input);
-                  }
-                  if (isLocal(destId)) {
-                     auto exec = message::Execute(message::Execute::Reduce, destId);
-                     exec.setExecutionCount(prog.getExecutionCount());
-                     exec.setDestId(destId);
-                     if (broadcast) {
-                        if (m_rank == 0)
-                           if (!Communicator::the().broadcastAndHandleMessage(exec))
-                              return false;
-                     } else {
-                        handlePriv(exec);
-                     }
-                  }
-               }
+    if (localSender) {
+        CERR << "ExecutionProgress " << prog.stage() << " received from " << prog.senderId() << ":" << prog.rank()
+             << ", after: #started=" << mod->ranksStarted << ", #fin=" << mod->ranksFinished << std::endl;
+    }
+
+    if (readyForPrepare || readyForReduce) {
+        assert(!(readyForPrepare && readyForReduce));
+        for (auto hub: receivingHubs) {
+            message::Buffer buf(prog);
+            buf.setForBroadcast(false);
+            buf.setDestRank(0);
+            sendMessage(hub, buf);
+        }
+    }
+
+    //CERR << prog.senderId() << " ready for prepare: " << readyForPrepare << ", reduce: " << readyForReduce << std::endl;
+    for (auto output: portManager().getConnectedOutputPorts(prog.senderId())) {
+        const Port::ConstPortSet *list = portManager().getConnectionList(output);
+        for (const Port *destPort: *list) {
+            if (!(destPort->flags() & Port::NOCOMPUTE)) {
+                if (readyForPrepare)
+                    portManager().resetInput(destPort);
+                if (readyForReduce)
+                    portManager().finishInput(destPort);
             }
-         }
-      }
-   }
+        }
+    }
 
-   if (unqueueExecute) {
-       mod->processDelayed();
-   }
+    for (auto output: portManager().getConnectedOutputPorts(prog.senderId())) {
+        const Port::ConstPortSet *list = portManager().getConnectionList(output);
+        for (const Port *destPort: *list) {
+            if (!(destPort->flags() & Port::NOCOMPUTE)) {
+                bool allReadyForPrepare = true, allReadyForReduce = true;
+                const int destId = destPort->getModuleID();
+                auto allInputs = portManager().getConnectedInputPorts(destId);
+                for (auto input: allInputs) {
+                    if (input->flags() & Port::NOCOMPUTE)
+                        continue;
+                    if (!portManager().isReset(input))
+                        allReadyForPrepare = false;
+                    if (!portManager().isFinished(input))
+                        allReadyForReduce = false;
+                }
+                //CERR << "exec prog: checking module " << destId << ":" << destPort->getName() << std::endl;
+                auto it = m_stateTracker.runningMap.find(destId);
+                assert(it != m_stateTracker.runningMap.end());
+                if (it->second.reducePolicy != message::ReducePolicy::Never ||
+                    it->second.schedulingPolicy == message::SchedulingPolicy::Gang ||
+                    it->second.schedulingPolicy == message::SchedulingPolicy::LazyGang) {
+                    bool broadcast = handleOnMaster || it->second.reducePolicy != message::ReducePolicy::Locally;
+                    if (allReadyForPrepare) {
+                        for (auto input: allInputs) {
+                            portManager().popReset(input);
+                        }
+                        //CERR << "Exec prepare 1" << std::endl;
+                        if (isLocal(destId)) {
+                            //CERR << "Exec prepare 2" << std::endl;
+                            auto exec = message::Execute(message::Execute::Prepare, destId);
+                            exec.setExecutionCount(prog.getExecutionCount());
+                            exec.setDestId(destId);
+                            if (broadcast) {
+                                //CERR << "Exec prepare 3" << std::endl;
+                                if (m_rank == 0)
+                                    if (!Communicator::the().broadcastAndHandleMessage(exec))
+                                        return false;
+                            } else {
+                                //CERR << "Exec prepare 4" << std::endl;
+                                handlePriv(exec);
+                            }
+                        }
+                    }
+                    if (allReadyForReduce) {
+                        if (handleOnMaster && localSender) {
+                            assert(mod->ranksFinished == 0);
+                        }
+                        // process all objects which are still in the queue befor calling reduce()
+                        if (isLocal(destId)) {
+                            if (it->second.schedulingPolicy == message::SchedulingPolicy::LazyGang) {
+                                broadcast = true;
+                                RunningMap::iterator i = runningMap.find(destId);
+                                assert(i != runningMap.end());
+                                auto &destMod = i->second;
 
-   return true;
+                                assert(destMod.prepared);
+                                assert(!destMod.reduced);
+                                if (m_rank == 0) {
+                                    if (ssize_t(destMod.objectCount.size()) < getSize())
+                                        destMod.objectCount.resize(getSize());
+                                    int maxNumObject = 0;
+                                    for (size_t r = 0; r < destMod.objectCount.size(); ++r) {
+                                        auto &c = destMod.objectCount[r];
+                                        if (c > 0) {
+                                            CERR << "flushing " << c << " objects for rank " << r << ", module "
+                                                 << destId << std::endl;
+                                        }
+                                        if (c > maxNumObject)
+                                            maxNumObject = c;
+                                        c = 0;
+                                    }
+                                    for (int i = 0; i < maxNumObject; ++i) {
+                                        message::Execute exec(message::Execute::ComputeObject, destId);
+                                        exec.setExecutionCount(prog.getExecutionCount());
+                                        if (!Communicator::the().broadcastAndHandleMessage(exec))
+                                            return false;
+                                    }
+                                    assert(std::accumulate(destMod.objectCount.begin(), destMod.objectCount.end(), 0) ==
+                                           0);
+                                }
+                            }
+                        }
+                        for (auto input: allInputs) {
+                            portManager().popFinish(input);
+                        }
+                        if (isLocal(destId)) {
+                            auto exec = message::Execute(message::Execute::Reduce, destId);
+                            exec.setExecutionCount(prog.getExecutionCount());
+                            exec.setDestId(destId);
+                            if (broadcast) {
+                                if (m_rank == 0)
+                                    if (!Communicator::the().broadcastAndHandleMessage(exec))
+                                        return false;
+                            } else {
+                                handlePriv(exec);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (unqueueExecute) {
+        mod->processDelayed();
+    }
+
+    return true;
 }
 
-bool ClusterManager::handlePriv(const message::Busy &busy) {
-
-   if (getRank() == 0) {
-      int id = busy.senderId();
-      auto &mod = runningMap[id];
-      if (mod.busyCount == 0) {
-         message::Buffer buf(busy);
-         buf.setDestId(Id::UI);
-         sendHub(buf, MessagePayload(), Id::MasterHub);
-      }
-      ++mod.busyCount;
-   } else {
-      Communicator::the().forwardToMaster(busy);
-   }
-   return true;
+bool ClusterManager::handlePriv(const message::Busy &busy)
+{
+    if (getRank() == 0) {
+        int id = busy.senderId();
+        auto &mod = runningMap[id];
+        if (mod.busyCount == 0) {
+            message::Buffer buf(busy);
+            buf.setDestId(Id::UI);
+            sendHub(buf, MessagePayload(), Id::MasterHub);
+        }
+        ++mod.busyCount;
+    } else {
+        Communicator::the().forwardToMaster(busy);
+    }
+    return true;
 }
 
-bool ClusterManager::handlePriv(const message::Idle &idle) {
-
-   if (getRank() == 0) {
-      int id = idle.senderId();
-      auto &mod = runningMap[id];
-      --mod.busyCount;
-      if (mod.busyCount == 0) {
-         message::Buffer buf(idle);
-         buf.setDestId(Id::UI);
-         sendHub(buf, MessagePayload(), Id::MasterHub);
-      }
-   } else {
-      Communicator::the().forwardToMaster(idle);
-   }
-   return true;
+bool ClusterManager::handlePriv(const message::Idle &idle)
+{
+    if (getRank() == 0) {
+        int id = idle.senderId();
+        auto &mod = runningMap[id];
+        --mod.busyCount;
+        if (mod.busyCount == 0) {
+            message::Buffer buf(idle);
+            buf.setDestId(Id::UI);
+            sendHub(buf, MessagePayload(), Id::MasterHub);
+        }
+    } else {
+        Communicator::the().forwardToMaster(idle);
+    }
+    return true;
 }
 
-bool ClusterManager::handlePriv(const message::SetParameter &setParam) {
-
+bool ClusterManager::handlePriv(const message::SetParameter &setParam)
+{
 #ifdef DEBUG
-   CERR << "SetParameter: " << setParam << std::endl;
+    CERR << "SetParameter: " << setParam << std::endl;
 #endif
 
-   assert (setParam.getModule() >= Id::ModuleBase || setParam.getModule() == Id::Vistle || Id::isHub(setParam.getModule()));
-   int sender = setParam.senderId();
-   int dest = setParam.destId();
+    assert(setParam.getModule() >= Id::ModuleBase || setParam.getModule() == Id::Vistle ||
+           Id::isHub(setParam.getModule()));
+    int sender = setParam.senderId();
+    int dest = setParam.destId();
     RunningMap::iterator i = runningMap.find(setParam.getModule());
     Module *mod = nullptr;
     if (i == runningMap.end()) {
@@ -1790,223 +1794,220 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam) {
         mod = &i->second;
     }
 
-   bool handled = true;
-   std::shared_ptr<Parameter> applied;
-   if (message::Id::isModule(dest)) {
-      // message to owning module
-      if (setParam.wasBroadcast()) {
-          auto param = getParameter(dest, setParam.getName());
-          if (param) {
-              applied.reset(param->clone());
-              setParam.apply(applied);
-          }
-          if (mod) {
-              mod->send(setParam);
-          } else {
-              CERR << "did not find module for SetParameter 2: " << dest << ": " << setParam << std::endl;
-          }
-      } else {
-        return Communicator::the().broadcastAndHandleMessage(setParam);
-      }
-   } else if (message::Id::isModule(sender) && sender==setParam.getModule()) {
-      // message from owning module
-      auto param = getParameter(sender, setParam.getName());
-      if (param) {
-         setParam.apply(param);
-      }
-      if (dest == Id::ForBroadcast) {
-          sendHub(setParam, MessagePayload(), dest);
-          return true;
-      } else if (!Communicator::the().isMaster()) {
-         sendAllOthers(sender, setParam, MessagePayload(), true);
-      }
-   }
-
-   if (!mod)
-       return true;
-
-   // update linked parameters
-   if (Communicator::the().isMaster() && message::Id::isModule(dest)) {
-      if (setParam.getModule() != setParam.senderId()) {
-
-         const Port *port = portManager().findPort(dest, setParam.getName());
-         if (port && applied) {
-            ParameterSet conn = m_stateTracker.getConnectedParameters(*applied);
-
-            for (ParameterSet::iterator it = conn.begin();
-                  it != conn.end();
-                  ++it) {
-               const auto p = *it;
-               if (p->module()==setParam.destId() && p->getName()==setParam.getName()) {
-                  // don't update parameter which was set originally again
-                  //continue;
-               }
-               message::SetParameter set(p->module(), p->getName(), applied);
-               set.setDestId(p->module());
-               set.setUuid(setParam.uuid());
-               auto i = runningMap.find(p->module());
-               if (i != runningMap.end()) {
-                   auto &mod = i->second;
-                   if (mod.haveDelayed())
-                       mod.delay(set);
-                   else
-                       sendMessage(p->module(), set);
-               }
+    bool handled = true;
+    std::shared_ptr<Parameter> applied;
+    if (message::Id::isModule(dest)) {
+        // message to owning module
+        if (setParam.wasBroadcast()) {
+            auto param = getParameter(dest, setParam.getName());
+            if (param) {
+                applied.reset(param->clone());
+                setParam.apply(applied);
             }
-         } else {
+            if (mod) {
+                mod->send(setParam);
+            } else {
+                CERR << "did not find module for SetParameter 2: " << dest << ": " << setParam << std::endl;
+            }
+        } else {
+            return Communicator::the().broadcastAndHandleMessage(setParam);
+        }
+    } else if (message::Id::isModule(sender) && sender == setParam.getModule()) {
+        // message from owning module
+        auto param = getParameter(sender, setParam.getName());
+        if (param) {
+            setParam.apply(param);
+        }
+        if (dest == Id::ForBroadcast) {
+            sendHub(setParam, MessagePayload(), dest);
+            return true;
+        } else if (!Communicator::the().isMaster()) {
+            sendAllOthers(sender, setParam, MessagePayload(), true);
+        }
+    }
+
+    if (!mod)
+        return true;
+
+    // update linked parameters
+    if (Communicator::the().isMaster() && message::Id::isModule(dest)) {
+        if (setParam.getModule() != setParam.senderId()) {
+            const Port *port = portManager().findPort(dest, setParam.getName());
+            if (port && applied) {
+                ParameterSet conn = m_stateTracker.getConnectedParameters(*applied);
+
+                for (ParameterSet::iterator it = conn.begin(); it != conn.end(); ++it) {
+                    const auto p = *it;
+                    if (p->module() == setParam.destId() && p->getName() == setParam.getName()) {
+                        // don't update parameter which was set originally again
+                        //continue;
+                    }
+                    message::SetParameter set(p->module(), p->getName(), applied);
+                    set.setDestId(p->module());
+                    set.setUuid(setParam.uuid());
+                    auto i = runningMap.find(p->module());
+                    if (i != runningMap.end()) {
+                        auto &mod = i->second;
+                        if (mod.haveDelayed())
+                            mod.delay(set);
+                        else
+                            sendMessage(p->module(), set);
+                    }
+                }
+            } else {
 #ifdef DEBUG
-            CERR << " SetParameter ["
-               << setParam.getModule() << ":" << setParam.getName()
-               << "]: port not found" << std::endl;
+                CERR << " SetParameter [" << setParam.getModule() << ":" << setParam.getName() << "]: port not found"
+                     << std::endl;
 #endif
-         }
-      }
-   }
+            }
+        }
+    }
 
-   return handled;
+    return handled;
 }
 
-bool ClusterManager::handlePriv(const message::SetParameterChoices &setChoices, const MessagePayload &payload) {
+bool ClusterManager::handlePriv(const message::SetParameterChoices &setChoices, const MessagePayload &payload)
+{
 #ifdef DEBUG
-   CERR << "SetParameterChoices: " << setChoices << std::endl;
+    CERR << "SetParameterChoices: " << setChoices << std::endl;
 #endif
 
-   assert(payload);
-   if (!payload) {
-       return false;
-   }
+    assert(payload);
+    if (!payload) {
+        return false;
+    }
 
-   bool handled = true;
-   int sender = setChoices.senderId();
-   int dest = setChoices.destId();
-   buffer data(payload->begin(), payload->end());
-   auto pl = message::getPayload<message::SetParameterChoices::Payload>(data);
-   if (message::Id::isModule(dest)) {
-      // message to owning module
-      auto param = getParameter(dest, setChoices.getName());
-      if (param) {
-         setChoices.apply(param, pl);
-      }
-   } else if (message::Id::isModule(sender)) {
-      // message from owning module
-      auto param = getParameter(sender, setChoices.getName());
-      if (param) {
-         setChoices.apply(param, pl);
-      }
-      if (dest == Id::ForBroadcast) {
-          sendHub(setChoices, payload, Id::MasterHub);
-      } else if (!Communicator::the().isMaster()) {
-         sendAllOthers(sender, setChoices, payload, true);
-      }
-   }
+    bool handled = true;
+    int sender = setChoices.senderId();
+    int dest = setChoices.destId();
+    buffer data(payload->begin(), payload->end());
+    auto pl = message::getPayload<message::SetParameterChoices::Payload>(data);
+    if (message::Id::isModule(dest)) {
+        // message to owning module
+        auto param = getParameter(dest, setChoices.getName());
+        if (param) {
+            setChoices.apply(param, pl);
+        }
+    } else if (message::Id::isModule(sender)) {
+        // message from owning module
+        auto param = getParameter(sender, setChoices.getName());
+        if (param) {
+            setChoices.apply(param, pl);
+        }
+        if (dest == Id::ForBroadcast) {
+            sendHub(setChoices, payload, Id::MasterHub);
+        } else if (!Communicator::the().isMaster()) {
+            sendAllOthers(sender, setChoices, payload, true);
+        }
+    }
 
-   return handled;
+    return handled;
 }
 
-bool ClusterManager::handlePriv(const message::Barrier &barrier) {
-
-   m_barrierActive = true;
-   //sendHub(barrier);
-   CERR << "Barrier [" << barrier.uuid() << "]" << std::endl;
-   m_barrierUuid = barrier.uuid();
-   if (checkBarrier(m_barrierUuid)) {
-      barrierReached(m_barrierUuid);
-   } else {
-      sendAllLocal(barrier);
-   }
-   return true;
+bool ClusterManager::handlePriv(const message::Barrier &barrier)
+{
+    m_barrierActive = true;
+    //sendHub(barrier);
+    CERR << "Barrier [" << barrier.uuid() << "]" << std::endl;
+    m_barrierUuid = barrier.uuid();
+    if (checkBarrier(m_barrierUuid)) {
+        barrierReached(m_barrierUuid);
+    } else {
+        sendAllLocal(barrier);
+    }
+    return true;
 }
 
-bool ClusterManager::handlePriv(const message::BarrierReached &barrReached) {
-
-   assert(m_barrierActive);
+bool ClusterManager::handlePriv(const message::BarrierReached &barrReached)
+{
+    assert(m_barrierActive);
 #ifdef BARRIER_DEBUG
-   CERR << "BarrierReached [barrier " << barrReached.uuid() << ", module " << barrReached.senderId() << "]" << std::endl;
+    CERR << "BarrierReached [barrier " << barrReached.uuid() << ", module " << barrReached.senderId() << "]"
+         << std::endl;
 #endif
 
-   if (barrReached.senderId() >= Id::ModuleBase) {
-      assert(isLocal(barrReached.senderId()));
-      reachedSet.insert(barrReached.senderId());
-      if (checkBarrier(m_barrierUuid)) {
-         barrierReached(m_barrierUuid);
+    if (barrReached.senderId() >= Id::ModuleBase) {
+        assert(isLocal(barrReached.senderId()));
+        reachedSet.insert(barrReached.senderId());
+        if (checkBarrier(m_barrierUuid)) {
+            barrierReached(m_barrierUuid);
 #ifdef BARRIER_DEBUG
-      } else {
-         CERR << "BARRIER: reached by " << reachedSet.size() << "/" << numRunning() << std::endl;
+        } else {
+            CERR << "BARRIER: reached by " << reachedSet.size() << "/" << numRunning() << std::endl;
 #endif
-      }
-   } else if (barrReached.senderId() == Id::MasterHub) {
+        }
+    } else if (barrReached.senderId() == Id::MasterHub) {
+        m_barrierActive = false;
+    } else {
+        CERR << "BARRIER: BarrierReached message from invalid sender " << barrReached.senderId() << std::endl;
+    }
 
-      m_barrierActive = false;
-   } else {
-      CERR << "BARRIER: BarrierReached message from invalid sender " << barrReached.senderId() << std::endl;
-   }
-
-   return true;
+    return true;
 }
 
-bool ClusterManager::handlePriv(const message::SendText &text, const MessagePayload &payload) {
-
-   if (Communicator::the().isMaster()) {
-      message::Buffer buf(text);
-      buf.setDestId(Id::MasterHub);
-      sendHub(buf, payload);
-   } else {
-      sendHub(text, payload);
-   }
-   return true;
+bool ClusterManager::handlePriv(const message::SendText &text, const MessagePayload &payload)
+{
+    if (Communicator::the().isMaster()) {
+        message::Buffer buf(text);
+        buf.setDestId(Id::MasterHub);
+        sendHub(buf, payload);
+    } else {
+        sendHub(text, payload);
+    }
+    return true;
 }
 
-bool ClusterManager::handlePriv(const message::RequestTunnel &tunnel) {
+bool ClusterManager::handlePriv(const message::RequestTunnel &tunnel)
+{
+    using message::RequestTunnel;
 
-   using message::RequestTunnel;
+    CERR << "RequestTunnel: remove=" << tunnel.remove() << " ";
+    std::cerr << "host=" << tunnel.destHost() << " ";
+    if (tunnel.destType() == RequestTunnel::IPv6) {
+        std::cerr << "addr=" << tunnel.destAddrV6();
+    } else if (tunnel.destType() == RequestTunnel::IPv4) {
+        std::cerr << "addr=" << tunnel.destAddrV4();
+    } else if (tunnel.destType() == RequestTunnel::Hostname) {
+        std::cerr << "addr=" << tunnel.destHost();
+    }
+    std::cerr << std::endl;
 
-   CERR << "RequestTunnel: remove=" << tunnel.remove() << " ";
-   std::cerr << "host=" << tunnel.destHost() << " ";
-   if (tunnel.destType() == RequestTunnel::IPv6) {
-      std::cerr << "addr=" << tunnel.destAddrV6();
-   } else if (tunnel.destType() == RequestTunnel::IPv4) {
-      std::cerr << "addr=" << tunnel.destAddrV4();
-   } else if (tunnel.destType() == RequestTunnel::Hostname) {
-      std::cerr << "addr=" << tunnel.destHost();
-   }
-   std::cerr << std::endl;
+    if (m_rank > 0) {
+        return Communicator::the().forwardToMaster(tunnel);
+    }
 
-   if (m_rank > 0) {
-       return Communicator::the().forwardToMaster(tunnel);
-   }
+    message::RequestTunnel tun(tunnel);
+    tun.setDestId(Id::LocalHub);
+    if (!tunnel.remove() && tunnel.destType() == RequestTunnel::Unspecified) {
+        CERR << "RequestTunnel: fill in local address" << std::endl;
+        try {
+            auto addr = Communicator::the().m_hubSocket.local_endpoint().address();
+            if (addr.is_v6()) {
+                tun.setDestAddr(addr.to_v6());
+            } else if (addr.is_v4()) {
+                tun.setDestAddr(addr.to_v4());
+            }
+            CERR << "RequestTunnel: " << tun << std::endl;
+        } catch (std::bad_cast &except) {
+            CERR << "RequestTunnel: failed to convert local address to v6" << std::endl;
+        }
+    }
 
-   message::RequestTunnel tun(tunnel);
-   tun.setDestId(Id::LocalHub);
-   if (!tunnel.remove() && tunnel.destType()==RequestTunnel::Unspecified) {
-       CERR << "RequestTunnel: fill in local address" << std::endl;
-       try {
-           auto addr = Communicator::the().m_hubSocket.local_endpoint().address();
-           if (addr.is_v6()) {
-               tun.setDestAddr(addr.to_v6());
-           } else if (addr.is_v4()) {
-               tun.setDestAddr(addr.to_v4());
-           }
-           CERR << "RequestTunnel: " << tun << std::endl;
-       } catch (std::bad_cast &except) {
-           CERR << "RequestTunnel: failed to convert local address to v6" << std::endl;
-       }
-   }
-
-   return sendHub(tun);
+    return sendHub(tun);
 }
 
-bool ClusterManager::handlePriv(const message::Ping &ping) {
-
-   if (getRank() == 0) {
-      message::Pong pong(ping);
-      pong.setDestId(ping.senderId());
-      sendHub(pong);
-   }
-   return true;
+bool ClusterManager::handlePriv(const message::Ping &ping)
+{
+    if (getRank() == 0) {
+        message::Pong pong(ping);
+        pong.setDestId(ping.senderId());
+        sendHub(pong);
+    }
+    return true;
 }
 
-bool ClusterManager::handlePriv(const message::DataTransferState &state) {
-
+bool ClusterManager::handlePriv(const message::DataTransferState &state)
+{
     assert(m_rank == 0);
     if (ssize_t(m_numTransfering.size()) < m_size)
         m_numTransfering.resize(m_size);
@@ -2032,108 +2033,109 @@ bool ClusterManager::handlePriv(const message::DataTransferState &state) {
     return true;
 }
 
-bool ClusterManager::quit() {
+bool ClusterManager::quit()
+{
+    if (!m_quitFlag)
+        sendAllLocal(message::Kill(message::Id::Broadcast));
 
-   if (!m_quitFlag)
-      sendAllLocal(message::Kill(message::Id::Broadcast));
+    // receive all ModuleExit messages from modules
+    // retry for some time, modules that don't answer might have crashed
+    CERR << "waiting for " << numRunning() << " modules to quit" << std::endl;
 
-   // receive all ModuleExit messages from modules
-   // retry for some time, modules that don't answer might have crashed
-   CERR << "waiting for " << numRunning() << " modules to quit" << std::endl;
+    if (m_size > 1)
+        m_comm.barrier();
 
-   if (m_size > 1)
-      m_comm.barrier();
+    m_quitFlag = true;
 
-   m_quitFlag = true;
+    ParameterManager::quit();
 
-   ParameterManager::quit();
-
-   return numRunning()==0;
+    return numRunning() == 0;
 }
 
-bool ClusterManager::quitOk() const {
-
-   return m_quitFlag && numRunning()==0;
+bool ClusterManager::quitOk() const
+{
+    return m_quitFlag && numRunning() == 0;
 }
 
-PortManager &ClusterManager::portManager() const {
-
-   return *m_portManager;
+PortManager &ClusterManager::portManager() const
+{
+    return *m_portManager;
 }
 
-std::vector<std::string> ClusterManager::getParameters(int id) const {
-
-   return m_stateTracker.getParameters(id);
+std::vector<std::string> ClusterManager::getParameters(int id) const
+{
+    return m_stateTracker.getParameters(id);
 }
 
-std::shared_ptr<Parameter> ClusterManager::getParameter(int id, const std::string &name) const {
-
-   return m_stateTracker.getParameter(id, name);
+std::shared_ptr<Parameter> ClusterManager::getParameter(int id, const std::string &name) const
+{
+    return m_stateTracker.getParameter(id, name);
 }
 
-void ClusterManager::queueMessage(const message::Message &msg) {
-
-   m_messageQueue.emplace_back(msg);
+void ClusterManager::queueMessage(const message::Message &msg)
+{
+    m_messageQueue.emplace_back(msg);
 #ifdef QUEUE_DEBUG
-   CERR << "queueing " << msg.type() << ", now " << m_messageQueue.size() << " in queue" << std::endl;
+    CERR << "queueing " << msg.type() << ", now " << m_messageQueue.size() << " in queue" << std::endl;
 #endif
 }
 
-void ClusterManager::replayMessages() {
-
-   std::vector<message::Buffer> queue;
-   std::swap(m_messageQueue, queue);
+void ClusterManager::replayMessages()
+{
+    std::vector<message::Buffer> queue;
+    std::swap(m_messageQueue, queue);
 #ifdef QUEUE_DEBUG
-   if (!queue.empty())
-      CERR << "replaying " << queue.size() << " messages" << std::endl;
+    if (!queue.empty())
+        CERR << "replaying " << queue.size() << " messages" << std::endl;
 #endif
-   for (const auto &m: queue) {
-      Communicator::the().handleMessage(m);
-   }
+    for (const auto &m: queue) {
+        Communicator::the().handleMessage(m);
+    }
 }
 
-int ClusterManager::numRunning() const {
-
-   int n = 0;
-   for (auto &m: runningMap) {
-      int state = m_stateTracker.getModuleState(m.first);
-      if ((state & StateObserver::Initialized) && /* !(state & StateObserver::Killed) && */ !(state & StateObserver::Quit))
-         ++n;
-   }
-   return n;
+int ClusterManager::numRunning() const
+{
+    int n = 0;
+    for (auto &m: runningMap) {
+        int state = m_stateTracker.getModuleState(m.first);
+        if ((state & StateObserver::Initialized) &&
+            /* !(state & StateObserver::Killed) && */ !(state & StateObserver::Quit))
+            ++n;
+    }
+    return n;
 }
 
-bool ClusterManager::isReadyForExecute(int modId) const {
+bool ClusterManager::isReadyForExecute(int modId) const
+{
+    //CERR << "checking whether " << modId << " can be executed: ";
 
-   //CERR << "checking whether " << modId << " can be executed: ";
+    auto i = runningMap.find(modId);
+    if (i == runningMap.end()) {
+        //std::cerr << "module " << modId << " not found" << std::endl;
+        return false;
+    }
+    auto &mod = i->second;
 
-   auto i = runningMap.find(modId);
-   if (i == runningMap.end()) {
-      //std::cerr << "module " << modId << " not found" << std::endl;
-      return false;
-   }
-   auto &mod = i->second;
+    auto i2 = m_stateTracker.runningMap.find(modId);
+    if (i2 == m_stateTracker.runningMap.end()) {
+        //std::cerr << "module " << modId << " not found by state tracker" << std::endl;
+        return false;
+    }
+    auto &modState = i2->second;
 
-   auto i2 = m_stateTracker.runningMap.find(modId);
-   if (i2 == m_stateTracker.runningMap.end()) {
-      //std::cerr << "module " << modId << " not found by state tracker" << std::endl;
-      return false;
-   }
-   auto &modState = i2->second;
+    if (modState.reducePolicy == message::ReducePolicy::Never) {
+        //std::cerr << "reduce policy Never" << std::endl;
+        return true;
+    }
 
-   if (modState.reducePolicy == message::ReducePolicy::Never) {
-       //std::cerr << "reduce policy Never" << std::endl;
-       return true;
-   }
+    if (!mod.reduced && mod.prepared) {
+        assert(mod.ranksFinished <= m_size);
+        //std::cerr << "prepared & not reduced" << std::endl;
+        return true;
+    }
 
-   if (!mod.reduced && mod.prepared) {
-      assert(mod.ranksFinished <= m_size);
-      //std::cerr << "prepared & not reduced" << std::endl;
-      return true;
-   }
-
-   //std::cerr << "prepared: " << mod.prepared << ", reduced: " << mod.reduced << std::endl;
-   return false;
+    //std::cerr << "prepared: " << mod.prepared << ", reduced: " << mod.reduced << std::endl;
+    return false;
 }
 
 } // namespace vistle

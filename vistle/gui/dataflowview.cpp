@@ -13,8 +13,7 @@ namespace gui {
 
 DataFlowView *DataFlowView::s_instance = nullptr;
 
-DataFlowView::DataFlowView(QWidget *parent)
-   : QGraphicsView(parent)
+DataFlowView::DataFlowView(QWidget *parent): QGraphicsView(parent)
 {
     if (!s_instance)
         s_instance = this;
@@ -32,7 +31,8 @@ DataFlowView::~DataFlowView()
         disconnect(scene(), SIGNAL(selectionChanged()), this, SLOT(enableActions()));
 }
 
-DataFlowView *DataFlowView::the() {
+DataFlowView *DataFlowView::the()
+{
     if (!s_instance)
         s_instance = new DataFlowView();
 
@@ -42,7 +42,7 @@ DataFlowView *DataFlowView::the() {
 
 DataFlowNetwork *DataFlowView::scene() const
 {
-   return dynamic_cast<DataFlowNetwork *>(QGraphicsView::scene());
+    return dynamic_cast<DataFlowNetwork *>(QGraphicsView::scene());
 }
 
 /*!
@@ -53,11 +53,11 @@ DataFlowNetwork *DataFlowView::scene() const
  */
 void DataFlowView::dragEnterEvent(QDragEnterEvent *e)
 {
-   const QMimeData *mimeData = e->mimeData();
-   const QStringList &mimeFormats = mimeData->formats();
-   if (mimeFormats.contains(ModuleBrowser::mimeFormat())) {
-      e->acceptProposedAction();
-   }
+    const QMimeData *mimeData = e->mimeData();
+    const QStringList &mimeFormats = mimeData->formats();
+    if (mimeFormats.contains(ModuleBrowser::mimeFormat())) {
+        e->acceptProposedAction();
+    }
 }
 
 void DataFlowView::dragMoveEvent(QDragMoveEvent *event)
@@ -80,17 +80,15 @@ void DataFlowView::dropEvent(QDropEvent *event)
     QPointF newPos = mapToScene(event->pos());
 
     if (event->mimeData()->formats().contains(ModuleBrowser::mimeFormat())) {
-
         QByteArray encoded = event->mimeData()->data(ModuleBrowser::mimeFormat());
         QDataStream stream(&encoded, QIODevice::ReadOnly);
 
         while (!stream.atEnd()) {
-
-           int hubId;
-           stream >> hubId;
-           QString moduleName;
-           stream >> moduleName;
-           scene()->addModule(hubId, moduleName, newPos);
+            int hubId;
+            stream >> hubId;
+            QString moduleName;
+            stream >> moduleName;
+            scene()->addModule(hubId, moduleName, newPos);
         }
     }
 }
@@ -119,10 +117,10 @@ void DataFlowView::enableActions()
 
 void DataFlowView::createMenu()
 {
-   m_contextMenu = new QMenu();
-   m_contextMenu->addAction(m_execAct);
-   m_contextMenu->addSeparator();
-   m_contextMenu->addAction(m_deleteAct);
+    m_contextMenu = new QMenu();
+    m_contextMenu->addAction(m_execAct);
+    m_contextMenu->addSeparator();
+    m_contextMenu->addAction(m_deleteAct);
 }
 
 void DataFlowView::contextMenuEvent(QContextMenuEvent *event)
@@ -137,14 +135,14 @@ void DataFlowView::contextMenuEvent(QContextMenuEvent *event)
 
 QList<Module *> DataFlowView::selectedModules()
 {
-   QList<Module *> list;
-   if (scene()) {
-       for (auto &item: scene()->selectedItems()) {
-           if (auto module = dynamic_cast<Module *>(item))
-               list.append(module);
-       }
-   }
-   return list;
+    QList<Module *> list;
+    if (scene()) {
+        for (auto &item: scene()->selectedItems()) {
+            if (auto module = dynamic_cast<Module *>(item))
+                list.append(module);
+        }
+    }
+    return list;
 }
 
 void DataFlowView::setScene(QGraphicsScene *s)
@@ -185,14 +183,13 @@ void DataFlowView::deleteModules()
 
 void DataFlowView::selectAllModules()
 {
-   if (scene()) {
-       for (auto &item: scene()->items()) {
-           if (auto module = dynamic_cast<Module *>(item))
-               module->setSelected(true);
-       }
-   }
+    if (scene()) {
+        for (auto &item: scene()->items()) {
+            if (auto module = dynamic_cast<Module *>(item))
+                module->setSelected(true);
+        }
+    }
 }
-
 
 
 } // namespace gui

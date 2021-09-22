@@ -6,8 +6,9 @@
 
 namespace vistle {
 
-bool start_listen(unsigned short port, boost::asio::ip::tcp::acceptor &acceptor_v4, boost::asio::ip::tcp::acceptor &acceptor_v6, boost::system::error_code &ec) {
-
+bool start_listen(unsigned short port, boost::asio::ip::tcp::acceptor &acceptor_v4,
+                  boost::asio::ip::tcp::acceptor &acceptor_v6, boost::system::error_code &ec)
+{
     using namespace boost::asio;
 
     boost::system::error_code lec;
@@ -22,7 +23,6 @@ bool start_listen(unsigned short port, boost::asio::ip::tcp::acceptor &acceptor_
     acceptor_v4.set_option(option);
 #endif
     if (lec == boost::system::errc::address_family_not_supported) {
-
     } else if (lec) {
         acceptor_v4.close();
         ec = lec;
@@ -47,7 +47,6 @@ bool start_listen(unsigned short port, boost::asio::ip::tcp::acceptor &acceptor_
     acceptor_v6.set_option(option);
 #endif
     if (lec == boost::system::errc::address_family_not_supported) {
-
     } else if (lec) {
         acceptor_v4.close();
         acceptor_v6.close();
@@ -75,4 +74,4 @@ bool start_listen(unsigned short port, boost::asio::ip::tcp::acceptor &acceptor_
     return acceptor_v4.is_open() || acceptor_v6.is_open();
 }
 
-}
+} // namespace vistle

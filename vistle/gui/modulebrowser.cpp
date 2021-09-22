@@ -108,31 +108,29 @@ ModuleBrowser::~ModuleBrowser()
     delete ui;
 }
 
-void ModuleBrowser::prepareMenu(const QPoint &pos) {
-
+void ModuleBrowser::prepareMenu(const QPoint &pos)
+{
     auto *widget = ui->moduleListWidget;
-    QTreeWidgetItem *item = widget->itemAt( pos );
+    QTreeWidgetItem *item = widget->itemAt(pos);
     for (auto hub: hubItems) {
         int id = hub.first;
         if (hub.second == item) {
             if (id == vistle::message::Id::MasterHub)
                 break;
             auto *rmAct = new QAction(tr("&Remove"), this);
-            connect(rmAct, &QAction::triggered, [this, id](){
-                emit requestRemoveHub(id);
-            });
+            connect(rmAct, &QAction::triggered, [this, id]() { emit requestRemoveHub(id); });
 
             QMenu menu(this);
             menu.addAction(rmAct);
 
-            menu.exec( widget->mapToGlobal(pos) );
+            menu.exec(widget->mapToGlobal(pos));
             break;
         }
     }
 }
 
-void ModuleBrowser::addHub(int hub, QString hubName, int nranks, QString address, QString logname, QString realname) {
-
+void ModuleBrowser::addHub(int hub, QString hubName, int nranks, QString address, QString logname, QString realname)
+{
     auto it = hubItems.find(hub);
     if (it == hubItems.end()) {
         it = hubItems.emplace(hub, new QTreeWidgetItem({hubName}, Hub)).first;
@@ -143,8 +141,8 @@ void ModuleBrowser::addHub(int hub, QString hubName, int nranks, QString address
         item->setForeground(0, QColor(0, 0, 0));
 
         QString tt;
-        tt += "<b>" + QString::fromStdString(vistle::message::Id::toString(hub)).toHtmlEscaped() + "</b> "
-              + QString("(" + QString::number(hub) + ")").toHtmlEscaped() + "<br>";
+        tt += "<b>" + QString::fromStdString(vistle::message::Id::toString(hub)).toHtmlEscaped() + "</b> " +
+              QString("(" + QString::number(hub) + ")").toHtmlEscaped() + "<br>";
         tt += QString(logname + "@" + hubName).toHtmlEscaped() + "<br>";
         tt += QString(realname).toHtmlEscaped() + "<br>";
         tt += QString(QString::number(nranks) + " ranks").toHtmlEscaped();
@@ -152,8 +150,8 @@ void ModuleBrowser::addHub(int hub, QString hubName, int nranks, QString address
     }
 }
 
-void ModuleBrowser::removeHub(int hub) {
-
+void ModuleBrowser::removeHub(int hub)
+{
     auto it = hubItems.find(hub);
     if (it == hubItems.end())
         return;
@@ -205,7 +203,7 @@ bool ModuleBrowser::eventFilter(QObject *object, QEvent *event)
         if (event->type() == QEvent::FocusOut) {
             filterInFocus = false;
         }
-        if (auto keyEvent =  dynamic_cast<QKeyEvent*>(event)) {
+        if (auto keyEvent = dynamic_cast<QKeyEvent *>(event)) {
             return handleKeyPress(keyEvent);
         }
     }
@@ -226,7 +224,8 @@ bool ModuleBrowser::handleKeyPress(QKeyEvent *event)
                 case Qt::Key_Enter: {
                     if (currentModule.exists) {
                         emit startModule(currentModule.hostIter->first,
-                                         currentModule.hostIter->second->child(currentModule.moduleIndex)->text(0), Qt::Key_Down);
+                                         currentModule.hostIter->second->child(currentModule.moduleIndex)->text(0),
+                                         Qt::Key_Down);
                         return true;
                     }
                 }
@@ -236,13 +235,14 @@ bool ModuleBrowser::handleKeyPress(QKeyEvent *event)
 
             } else if (event->modifiers() == Qt::KeyboardModifier::AltModifier && currentModule.exists) {
                 switch (event->key()) {
-                case Qt::Key_Down: 
-                case Qt::Key_Up: 
-                case Qt::Key_Left: 
+                case Qt::Key_Down:
+                case Qt::Key_Up:
+                case Qt::Key_Left:
                 case Qt::Key_Right: {
-                        emit startModule(currentModule.hostIter->first,
-                                         currentModule.hostIter->second->child(currentModule.moduleIndex)->text(0), static_cast<Qt::Key>(event->key()));
-                        return true;
+                    emit startModule(currentModule.hostIter->first,
+                                     currentModule.hostIter->second->child(currentModule.moduleIndex)->text(0),
+                                     static_cast<Qt::Key>(event->key()));
+                    return true;
                 } break;
                 default:
                     break;

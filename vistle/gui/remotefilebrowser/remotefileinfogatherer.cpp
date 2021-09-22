@@ -41,11 +41,11 @@
 #include <qdebug.h>
 #include <qdiriterator.h>
 #ifndef Q_OS_WIN
-#  include <unistd.h>
-#  include <sys/types.h>
+#include <unistd.h>
+#include <sys/types.h>
 #endif
 #if defined(Q_OS_VXWORKS)
-#  include "qplatformdefs.h"
+#include "qplatformdefs.h"
 #endif
 
 QT_BEGIN_NAMESPACE
@@ -109,9 +109,10 @@ FileInfo toFileInfo(const QFileInfo &info)
     Creates thread
 */
 RemoteFileInfoGatherer::RemoteFileInfoGatherer(QObject *parent)
-    : AbstractFileInfoGatherer(parent), abort(false)
+: AbstractFileInfoGatherer(parent)
+, abort(false)
 #ifndef QT_NO_FILESYSTEMWATCHER
-    , watcher(0)
+, watcher(0)
 #endif
 {
     qDebug() << "new RemoteFileInfoGatherer";
@@ -120,7 +121,7 @@ RemoteFileInfoGatherer::RemoteFileInfoGatherer(QObject *parent)
     connect(watcher, SIGNAL(directoryChanged(QString)), this, SLOT(list(QString)));
     connect(watcher, SIGNAL(fileChanged(QString)), this, SLOT(updateFile(QString)));
 
-#  if defined(Q_OS_WIN) && !defined(Q_OS_WINRT)
+#if defined(Q_OS_WIN) && !defined(Q_OS_WINRT)
     const QVariant listener = watcher->property("_q_driveListener");
     if (listener.canConvert<QObject *>()) {
         if (QObject *driveListener = listener.value<QObject *>()) {
@@ -128,7 +129,7 @@ RemoteFileInfoGatherer::RemoteFileInfoGatherer(QObject *parent)
             connect(driveListener, SIGNAL(driveRemoved()), this, SLOT(driveRemoved()));
         }
     }
-#  endif // Q_OS_WIN && !Q_OS_WINRT
+#endif // Q_OS_WIN && !Q_OS_WINRT
 #endif
     start(LowPriority);
 
@@ -160,13 +161,13 @@ bool RemoteFileInfoGatherer::isRootDir(const QString &path) const
 QString RemoteFileInfoGatherer::userName() const
 {
 #ifdef Q_OS_WIN
-	auto p = getenv("USERNAME");
+    auto p = getenv("USERNAME");
 #else
     auto p = getenv("USER");
 #endif
-	if (p) {
-		return QString::fromStdString(p);
-	}
+    if (p) {
+        return QString::fromStdString(p);
+    }
     return QString("unknown");
 }
 
@@ -184,7 +185,7 @@ void RemoteFileInfoGatherer::driveRemoved()
 {
     QStringList drives;
     const QFileInfoList driveInfoList = QDir::drives();
-    for (const QFileInfo &fi : driveInfoList)
+    for (const QFileInfo &fi: driveInfoList)
         drives.append(translateDriveName(fi));
     newListOfFiles(QString(), drives);
 }
@@ -199,7 +200,7 @@ void RemoteFileInfoGatherer::fetchExtendedInformation(const QString &path, const
     QMutexLocker locker(&mutex);
     // See if we already have this dir/file in our queue
     int loc = this->path.lastIndexOf(path);
-    while (loc > 0)  {
+    while (loc > 0) {
         if (this->files.at(loc) == files) {
             return;
         }
@@ -210,9 +211,7 @@ void RemoteFileInfoGatherer::fetchExtendedInformation(const QString &path, const
     condition.wakeAll();
 
 #ifndef QT_NO_FILESYSTEMWATCHER
-    if (files.isEmpty()
-        && !path.isEmpty()
-        && !path.startsWith(QLatin1String("//")) /*don't watch UNC path*/) {
+    if (files.isEmpty() && !path.isEmpty() && !path.startsWith(QLatin1String("//")) /*don't watch UNC path*/) {
         if (!watcher->directories().contains(path))
             watcher->addPath(path);
     }
@@ -276,8 +275,8 @@ FileInfo RemoteFileInfoGatherer::getInfo(const QString &path)
             watcher->removePath(finfo.absoluteFilePath());
         } else {
             const QString path = finfo.absoluteFilePath();
-            if (!path.isEmpty() && finfo.exists() && finfo.isFile() && finfo.isReadable()
-                && !watcher->files().contains(path)) {
+            if (!path.isEmpty() && finfo.exists() && finfo.isFile() && finfo.isReadable() &&
+                !watcher->files().contains(path)) {
                 watcher->addPath(path);
             }
         }
@@ -332,13 +331,13 @@ void RemoteFileInfoGatherer::getFileInfos(const QString &path, const QStringList
             infoList = QDir::drives();
         } else {
             infoList.reserve(files.count());
-            for (const auto &file : files)
+            for (const auto &file: files)
                 infoList << QFileInfo(file);
         }
         for (int i = infoList.count() - 1; i >= 0; --i) {
             QString driveName = translateDriveName(infoList.at(i));
-            QVector<QPair<QString,FileInfo> > updatedFiles;
-            updatedFiles.append(QPair<QString,FileInfo>(driveName, toFileInfo(infoList.at(i))));
+            QVector<QPair<QString, FileInfo>> updatedFiles;
+            updatedFiles.append(QPair<QString, FileInfo>(driveName, toFileInfo(infoList.at(i))));
             emit updates(path, updatedFiles);
         }
         return;
@@ -348,7 +347,7 @@ void RemoteFileInfoGatherer::getFileInfos(const QString &path, const QStringList
     base.start();
     QFileInfo fileInfo;
     bool firstTime = true;
-    QVector<QPair<QString, FileInfo> > updatedFiles;
+    QVector<QPair<QString, FileInfo>> updatedFiles;
     QStringList filesToCheck = files;
 
     QStringList allFiles;
@@ -375,7 +374,9 @@ void RemoteFileInfoGatherer::getFileInfos(const QString &path, const QStringList
     emit directoryLoaded(path);
 }
 
-void RemoteFileInfoGatherer::fetch(const QFileInfo &fileInfo, QElapsedTimer &base, bool &firstTime, QVector<QPair<QString, FileInfo> > &updatedFiles, const QString &path) {
+void RemoteFileInfoGatherer::fetch(const QFileInfo &fileInfo, QElapsedTimer &base, bool &firstTime,
+                                   QVector<QPair<QString, FileInfo>> &updatedFiles, const QString &path)
+{
     updatedFiles.append(QPair<QString, FileInfo>(fileInfo.fileName(), toFileInfo(fileInfo)));
     QElapsedTimer current;
     current.start();
@@ -392,7 +393,8 @@ void RemoteFileInfoGatherer::fetch(const QFileInfo &fileInfo, QElapsedTimer &bas
 */
 void RemoteFileInfoGatherer::run()
 {
-    forever {
+    forever
+    {
         QMutexLocker locker(&mutex);
         while (!abort.load() && path.isEmpty())
             condition.wait(&mutex);

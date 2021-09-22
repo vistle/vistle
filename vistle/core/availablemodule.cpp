@@ -161,8 +161,8 @@ bool AvailableModuleBase::Key::operator<(const Key &rhs) const
     return hub < rhs.hub;
 }
 
-AvailableModule::AvailableModule(ModuleCompound &&other)
-:AvailableModuleBase(std::move(other)){}
+AvailableModule::AvailableModule(ModuleCompound &&other): AvailableModuleBase(std::move(other))
+{}
 
 
 bool AvailableModule::send(const sendMessageFunction &func) const

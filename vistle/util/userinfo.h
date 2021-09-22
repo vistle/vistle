@@ -10,5 +10,5 @@ V_UTILEXPORT std::string getLoginName();
 V_UTILEXPORT std::string getRealName();
 V_UTILEXPORT unsigned long getUserId();
 
-}
+} // namespace vistle
 #endif

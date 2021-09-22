@@ -5,7 +5,7 @@
 namespace vistle {
 
 PlaceHolder::PlaceHolder(const std::string &originalName, const Meta &originalMeta, Object::Type originalType)
-   : PlaceHolder::Base(PlaceHolder::Data::create("", originalName, originalMeta, originalType))
+: PlaceHolder::Base(PlaceHolder::Data::create("", originalName, originalMeta, originalType))
 {
     refreshImpl();
 }
@@ -18,7 +18,8 @@ PlaceHolder::PlaceHolder(Object::const_ptr obj)
     refreshImpl();
 }
 
-void PlaceHolder::setGeometry(Object::const_ptr geo) {
+void PlaceHolder::setGeometry(Object::const_ptr geo)
+{
     if (!geo) {
         d()->geometry = PlaceHolder::const_ptr();
         return;
@@ -33,11 +34,13 @@ void PlaceHolder::setGeometry(Object::const_ptr geo) {
     d()->geometry = ph;
 }
 
-PlaceHolder::const_ptr PlaceHolder::geometry() const {
-   return d()->geometry.getObject();
+PlaceHolder::const_ptr PlaceHolder::geometry() const
+{
+    return d()->geometry.getObject();
 }
 
-void PlaceHolder::setNormals(Object::const_ptr norm) {
+void PlaceHolder::setNormals(Object::const_ptr norm)
+{
     if (!norm) {
         d()->normals = PlaceHolder::const_ptr();
         return;
@@ -52,11 +55,13 @@ void PlaceHolder::setNormals(Object::const_ptr norm) {
     d()->normals = ph;
 }
 
-PlaceHolder::const_ptr PlaceHolder::normals() const {
-   return d()->normals.getObject();
+PlaceHolder::const_ptr PlaceHolder::normals() const
+{
+    return d()->normals.getObject();
 }
 
-void PlaceHolder::setTexture(Object::const_ptr tex) {
+void PlaceHolder::setTexture(Object::const_ptr tex)
+{
     if (!tex) {
         d()->texture = PlaceHolder::const_ptr();
         return;
@@ -70,30 +75,32 @@ void PlaceHolder::setTexture(Object::const_ptr tex) {
     d()->texture = ph;
 }
 
-PlaceHolder::const_ptr PlaceHolder::texture() const {
-   return d()->texture.getObject();
+PlaceHolder::const_ptr PlaceHolder::texture() const
+{
+    return d()->texture.getObject();
 }
 
-void PlaceHolder::refreshImpl() const {
+void PlaceHolder::refreshImpl() const
+{}
+
+bool PlaceHolder::isEmpty()
+{
+    return true;
 }
 
-bool PlaceHolder::isEmpty() {
-
-   return true;
+bool PlaceHolder::isEmpty() const
+{
+    return true;
 }
 
-bool PlaceHolder::isEmpty() const {
-
-   return true;
+bool PlaceHolder::checkImpl() const
+{
+    return true;
 }
 
-bool PlaceHolder::checkImpl() const {
-
-   return true;
-}
-
-void PlaceHolder::Data::initData() {
-   originalType = Object::UNKNOWN;
+void PlaceHolder::Data::initData()
+{
+    originalType = Object::UNKNOWN;
 }
 
 PlaceHolder::Data::Data(const PlaceHolder::Data &o, const std::string &n)
@@ -102,56 +109,52 @@ PlaceHolder::Data::Data(const PlaceHolder::Data &o, const std::string &n)
 , originalName(o.originalName)
 , originalMeta(o.originalMeta)
 , originalType(o.originalType)
-{
-}
+{}
 
-PlaceHolder::Data::Data(const std::string & name,
-      const std::string &originalName,
-      const Meta &m,
-      Object::Type originalType)
+PlaceHolder::Data::Data(const std::string &name, const std::string &originalName, const Meta &m,
+                        Object::Type originalType)
 : PlaceHolder::Base::Data(Object::PLACEHOLDER, name, m)
 , originalName(originalName)
 , originalMeta(m)
 , originalType(originalType)
+{}
+
+PlaceHolder::Data::~Data()
+{}
+
+PlaceHolder::Data *PlaceHolder::Data::create(const std::string &objId, const std::string &originalName,
+                                             const Meta &originalMeta, Object::Type originalType)
 {
+    const std::string name = Shm::the().createObjectId(objId);
+    Data *p = shm<Data>::construct(name)(name, originalName, originalMeta, originalType);
+    publish(p);
+
+    return p;
 }
 
-PlaceHolder::Data::~Data() {
-
+void PlaceHolder::setReal(Object::const_ptr r)
+{
+    d()->real = r;
 }
 
-PlaceHolder::Data * PlaceHolder::Data::create(const std::string &objId, const std::string &originalName, const Meta &originalMeta, Object::Type originalType) {
-
-   const std::string name = Shm::the().createObjectId(objId);
-   Data *p = shm<Data>::construct(name)(name, originalName, originalMeta, originalType);
-   publish(p);
-
-   return p;
+Object::const_ptr PlaceHolder::real() const
+{
+    return d()->real.getObject();
 }
 
-void PlaceHolder::setReal(Object::const_ptr r) {
-
-   d()->real = r;
+std::string PlaceHolder::originalName() const
+{
+    return d()->originalName.operator std::string();
 }
 
-Object::const_ptr PlaceHolder::real() const {
-
-   return d()->real.getObject();
+Object::Type PlaceHolder::originalType() const
+{
+    return d()->originalType;
 }
 
-std::string PlaceHolder::originalName() const {
-
-   return d()->originalName.operator std::string();
-}
-
-Object::Type PlaceHolder::originalType() const {
-
-   return d()->originalType;
-}
-
-const Meta &PlaceHolder::originalMeta() const {
-
-   return d()->originalMeta;
+const Meta &PlaceHolder::originalMeta() const
+{
+    return d()->originalMeta;
 }
 
 V_OBJECT_TYPE(PlaceHolder, Object::PLACEHOLDER)

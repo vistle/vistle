@@ -5,8 +5,8 @@ namespace vistle {
 
 static const std::string scheme("vistle");
 
-std::string VistleUrl::create(std::string host, unsigned short port, std::string key) {
-
+std::string VistleUrl::create(std::string host, unsigned short port, std::string key)
+{
     ConnectionData data;
     data.host = host;
     data.port = port;
@@ -15,8 +15,8 @@ std::string VistleUrl::create(std::string host, unsigned short port, std::string
     return create(data);
 }
 
-std::string VistleUrl::create(const ConnectionData &data) {
-
+std::string VistleUrl::create(const ConnectionData &data)
+{
     std::string url = scheme + "://" + data.host;
     if (data.port != 0) {
         url += ":" + std::to_string(data.port);
@@ -30,8 +30,8 @@ std::string VistleUrl::create(const ConnectionData &data) {
     return url;
 }
 
-bool VistleUrl::parse(std::string urlstring, ConnectionData &data) {
-
+bool VistleUrl::parse(std::string urlstring, ConnectionData &data)
+{
     Url url(urlstring);
     if (!url.valid() || url.scheme() != scheme)
         return false;
@@ -45,7 +45,6 @@ bool VistleUrl::parse(std::string urlstring, ConnectionData &data) {
                 data.port = std::stoi(port_have.first);
             }
         } else {
-
             data.host = url.host();
             if (data.host.empty())
                 data.host = "localhost";
@@ -66,4 +65,4 @@ bool VistleUrl::parse(std::string urlstring, ConnectionData &data) {
     return true;
 }
 
-}
+} // namespace vistle

@@ -193,7 +193,6 @@ std::vector<std::string> MetaData::getRegisteredCommands(SimulationObjectType ty
         free(name);
     }
     return commands;
-
 }
 
 std::vector<std::string> MetaData::getRegisteredGenericCommands() const
@@ -220,7 +219,7 @@ std::vector<std::vector<std::string>> MetaData::getMeshAndFieldNames() const
     return ports;
 }
 
-std::string  MetaData::getName(const visit_handle &handle, SimulationObjectType type) const
+std::string MetaData::getName(const visit_handle &handle, SimulationObjectType type) const
 {
     char *name;
 
