@@ -48,12 +48,23 @@ const char *VistleRenderObject::getName() const
     if (m_name.empty()) {
         m_name = "UNDEFINED";
         if (m_obj) {
-            m_name = m_obj->getName();
+            if (auto ph = vistle::PlaceHolder::as(m_obj))
+                m_name = ph->originalName();
+            else
+                m_name = m_obj->getName();
         } else if (auto ro = renderObject()) {
-            if (ro->container)
-                m_name = ro->container->getName();
-            else if (ro->geometry)
-                m_name = ro->geometry->getName() + "_container";
+            if (ro->container) {
+                if (auto ph = vistle::PlaceHolder::as(ro->container))
+                    m_name = ph->originalName();
+                else
+                    m_name = ro->container->getName();
+            } else if (ro->geometry) {
+                if (auto ph = vistle::PlaceHolder::as(ro->geometry))
+                    m_name = ph->originalName();
+                else
+                    m_name = ro->geometry->getName();
+                m_name += "_container";
+            }
         }
     }
 
