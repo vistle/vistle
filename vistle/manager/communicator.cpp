@@ -555,8 +555,21 @@ bool Communicator::handleMessage(const message::Buffer &message, const MessagePa
           }
           return m_clusterManager->handle(message, payload);
       }
+      case message::CREATEMODULECOMPOUND:
+      {
+          buffer pl;
+          if (payload) {
+              std::copy(payload->data(), payload->data()+payload->size(), std::back_inserter(pl));
+          }
+          ModuleCompound comp(message, pl);
+          AvailableModule::Key key(comp.hub(), comp.name());
+          auto av = comp.transform();
+          av.send(std::bind(&Communicator::sendHub, this, std::placeholders::_1, std::placeholders::_2));
+          m_localModules[key] = std::move(av);
+      }
+      break;
       default: {
-         return m_clusterManager->handle(message, payload);
+          return m_clusterManager->handle(message, payload);
       }
    }
 

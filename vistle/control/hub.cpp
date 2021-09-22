@@ -1256,6 +1256,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
 #ifdef HAVE_PYTHON
         moduleCompoundToFile(comp);
 #endif
+        comp.send(std::bind(&Hub::sendManager, this, std::placeholders::_1, message::Id::LocalHub, std::placeholders::_2));
     }
       default:
          break;
