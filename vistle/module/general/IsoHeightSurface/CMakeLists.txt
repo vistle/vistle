@@ -1,16 +1,13 @@
 vistle_find_package(GDAL)
-if (NOT GDAL_FOUND)
-  return()
+if(NOT GDAL_FOUND)
+    return()
 endif()
 
 set(NAME IsoHeightSurface)
 set(DESCRIPTION "extract surface at constant height")
 add_definitions(-DISOHEIGHTSURFACE)
 
-set(SOURCES
-	MapHeight.cpp
-	MapHeight.h
-)
+set(SOURCES MapHeight.cpp MapHeight.h)
 
 include("../IsoSurface/IsoSurface.cmake")
 

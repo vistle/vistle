@@ -5,61 +5,58 @@
 #  PROJ_LIBRARIES   - List of libraries when using PROJ
 #  PROJ_FOUND       - True if PROJ was found
 
-IF(PROJ_INCLUDE_DIR)
-    SET(PROJ_FIND_QUIETLY TRUE)
-ENDIF(PROJ_INCLUDE_DIR)
+if(PROJ_INCLUDE_DIR)
+    set(PROJ_FIND_QUIETLY TRUE)
+endif(PROJ_INCLUDE_DIR)
 
-FIND_PATH(PROJ_PREFIX "include/proj_api.h"
-  PATHS
-  $ENV{EXTERNLIBS}/proj4
-  DOC "PROJ - Headers"
-)
+find_path(
+    PROJ_PREFIX "include/proj_api.h"
+    PATHS $ENV{EXTERNLIBS}/proj4
+    DOC "PROJ - Headers")
 
-FIND_PATH(PROJ_INCLUDE_DIR "proj_api.h"
-  PATHS
-  ${PROJ_PREFIX}/include
-  DOC "PROJ - Headers"
-)
+find_path(
+    PROJ_INCLUDE_DIR "proj_api.h"
+    PATHS ${PROJ_PREFIX}/include
+    DOC "PROJ - Headers")
 
-SET(PROJ_NAMES Proj4 proj proj_4_9)
-SET(PROJ_DBG_NAMES Proj4D projD proj_4_9_D)
+set(PROJ_NAMES Proj4 proj proj_4_9)
+set(PROJ_DBG_NAMES Proj4D projD proj_4_9_D)
 
-FIND_LIBRARY(PROJ_LIBRARY NAMES ${PROJ_NAMES}
-  PATHS
-  ${PROJ_PREFIX}
-  PATH_SUFFIXES lib lib64
-  DOC "PROJ - Library"
-)
+find_library(
+    PROJ_LIBRARY
+    NAMES ${PROJ_NAMES}
+    PATHS ${PROJ_PREFIX}
+    PATH_SUFFIXES lib lib64
+    DOC "PROJ - Library")
 
-INCLUDE(FindPackageHandleStandardArgs)
+include(FindPackageHandleStandardArgs)
 
-IF(MSVC)
-  # VisualStudio needs a debug version
-  FIND_LIBRARY(PROJ_LIBRARY_DEBUG NAMES ${PROJ_DBG_NAMES}
-    PATHS
-    ${PROJ_PREFIX}/lib
-    DOC "PROJ - Library (Debug)"
-  )
-  
-  IF(PROJ_LIBRARY_DEBUG AND PROJ_LIBRARY)
-      SET(PROJ_LIBRARIES optimized ${PROJ_LIBRARY} debug ${PROJ_LIBRARY_DEBUG})
-  ENDIF(PROJ_LIBRARY_DEBUG AND PROJ_LIBRARY)
+if(MSVC)
+    # VisualStudio needs a debug version
+    find_library(
+        PROJ_LIBRARY_DEBUG
+        NAMES ${PROJ_DBG_NAMES}
+        PATHS ${PROJ_PREFIX}/lib
+        DOC "PROJ - Library (Debug)")
 
-  FIND_PACKAGE_HANDLE_STANDARD_ARGS(PROJ DEFAULT_MSG PROJ_LIBRARY
-      PROJ_LIBRARY_DEBUG PROJ_INCLUDE_DIR)
+    if(PROJ_LIBRARY_DEBUG AND PROJ_LIBRARY)
+        set(PROJ_LIBRARIES optimized ${PROJ_LIBRARY} debug ${PROJ_LIBRARY_DEBUG})
+    endif(PROJ_LIBRARY_DEBUG AND PROJ_LIBRARY)
 
-  MARK_AS_ADVANCED(PROJ_LIBRARY PROJ_LIBRARY_DEBUG PROJ_INCLUDE_DIR)
-  
-ELSE(MSVC)
-  # rest of the world
-  SET(PROJ_LIBRARIES ${PROJ_LIBRARY})
+    find_package_handle_standard_args(PROJ DEFAULT_MSG PROJ_LIBRARY PROJ_LIBRARY_DEBUG PROJ_INCLUDE_DIR)
 
-  FIND_PACKAGE_HANDLE_STANDARD_ARGS(PROJ DEFAULT_MSG PROJ_LIBRARY PROJ_INCLUDE_DIR)
-  
-  MARK_AS_ADVANCED(PROJ_LIBRARY PROJ_INCLUDE_DIR)
-  
-ENDIF(MSVC)
+    mark_as_advanced(PROJ_LIBRARY PROJ_LIBRARY_DEBUG PROJ_INCLUDE_DIR)
 
-IF(PROJ_FOUND)
-    SET(PROJ_INCLUDE_DIRS ${PROJ_INCLUDE_DIR})
-ENDIF(PROJ_FOUND)
+else(MSVC)
+    # rest of the world
+    set(PROJ_LIBRARIES ${PROJ_LIBRARY})
+
+    find_package_handle_standard_args(PROJ DEFAULT_MSG PROJ_LIBRARY PROJ_INCLUDE_DIR)
+
+    mark_as_advanced(PROJ_LIBRARY PROJ_INCLUDE_DIR)
+
+endif(MSVC)
+
+if(PROJ_FOUND)
+    set(PROJ_INCLUDE_DIRS ${PROJ_INCLUDE_DIR})
+endif(PROJ_FOUND)

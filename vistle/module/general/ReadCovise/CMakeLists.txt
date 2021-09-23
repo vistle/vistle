@@ -2,7 +2,7 @@ include_directories(.)
 
 add_definitions(-DNODLL)
 add_library(vistle_covise_file STATIC file/covFiles.c)
-if (NOT VISTLE_MULTI_PROCESS)
+if(NOT VISTLE_MULTI_PROCESS)
     set_target_properties(vistle_covise_file PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 endif()
 

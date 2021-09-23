@@ -7,19 +7,15 @@ find_package(HDF5 COMPONENTS C)
 #
 #add_definitions(-DH5_HAVE_PARALLEL)
 
-if (HDF5_FOUND)
-    include_directories(SYSTEM
-        ${HDF5_INCLUDE_DIRS}
-    )
+if(HDF5_FOUND)
+    include_directories(SYSTEM ${HDF5_INCLUDE_DIRS})
 
-    link_directories(
-        ${HDF5_LIBRARY_DIRS}
-    )
+    link_directories(${HDF5_LIBRARY_DIRS})
 
     add_definitions(-DHAVE_HDF5)
 endif()
 
 add_module(ReadItlrFs3d "read ITLR binary data" ReadItlrBin.cpp)
-if (HDF5_FOUND)
+if(HDF5_FOUND)
     target_link_libraries(ReadItlrFs3d ${HDF5_LIBRARIES})
 endif()

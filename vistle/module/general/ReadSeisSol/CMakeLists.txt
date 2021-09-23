@@ -8,20 +8,14 @@
 # endif()
 
 vistle_find_package(Xdmf)
-if (NOT Xdmf_FOUND)
+if(NOT Xdmf_FOUND)
     message("Skipping ReadSeisSol because of missing Xdmf")
     return()
 endif()
 
-set(HEADERS
-    ReadSeisSol.h
-    surfacetools.h
-)
+set(HEADERS ReadSeisSol.h surfacetools.h)
 
-set(SOURCES
-    ReadSeisSol.cpp
-    surfacetools.cpp
-)
+set(SOURCES ReadSeisSol.cpp surfacetools.cpp)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)

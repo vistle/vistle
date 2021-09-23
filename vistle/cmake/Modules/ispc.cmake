@@ -14,217 +14,212 @@
 ## limitations under the License.                                           ##
 ## ======================================================================== ##
 
-SET (ISPC_INCLUDE_DIR "")
-MACRO (INCLUDE_DIRECTORIES_ISPC)
-  SET (ISPC_INCLUDE_DIR ${ISPC_INCLUDE_DIR} ${ARGN})
-ENDMACRO ()
+set(ISPC_INCLUDE_DIR "")
+macro(INCLUDE_DIRECTORIES_ISPC)
+    set(ISPC_INCLUDE_DIR ${ISPC_INCLUDE_DIR} ${ARGN})
+endmacro()
 
-IF (ENABLE_ISPC_SUPPORT)
+if(ENABLE_ISPC_SUPPORT)
 
-SET(ISPC_VERSION_REQUIRED "1.7.1")
+    set(ISPC_VERSION_REQUIRED "1.7.1")
 
-IF (NOT ISPC_EXECUTABLE)
-  FIND_PROGRAM(ISPC_EXECUTABLE ispc DOC "Path to the ISPC executable.")
-  IF (NOT ISPC_EXECUTABLE)
-    MESSAGE(FATAL_ERROR "Intel SPMD Compiler (ISPC) not found. Disable ENABLE_ISPC_SUPPORT or install ISPC.")
-  ELSE()
-    MESSAGE(STATUS "Found Intel SPMD Compiler (ISPC): ${ISPC_EXECUTABLE}")
-  ENDIF()
-ENDIF()
+    if(NOT ISPC_EXECUTABLE)
+        find_program(ISPC_EXECUTABLE ispc DOC "Path to the ISPC executable.")
+        if(NOT ISPC_EXECUTABLE)
+            message(FATAL_ERROR "Intel SPMD Compiler (ISPC) not found. Disable ENABLE_ISPC_SUPPORT or install ISPC.")
+        else()
+            message(STATUS "Found Intel SPMD Compiler (ISPC): ${ISPC_EXECUTABLE}")
+        endif()
+    endif()
 
-IF(NOT ISPC_VERSION)
-  EXECUTE_PROCESS(COMMAND ${ISPC_EXECUTABLE} --version OUTPUT_VARIABLE ISPC_OUTPUT)
-  STRING(REGEX MATCH " ([0-9]+[.][0-9]+[.][0-9]+)(dev)? " DUMMY "${ISPC_OUTPUT}")
-  SET(ISPC_VERSION ${CMAKE_MATCH_1})
+    if(NOT ISPC_VERSION)
+        execute_process(COMMAND ${ISPC_EXECUTABLE} --version OUTPUT_VARIABLE ISPC_OUTPUT)
+        string(REGEX MATCH " ([0-9]+[.][0-9]+[.][0-9]+)(dev)? " DUMMY "${ISPC_OUTPUT}")
+        set(ISPC_VERSION ${CMAKE_MATCH_1})
 
-  IF (ISPC_VERSION VERSION_LESS ISPC_VERSION_REQUIRED)
-    MESSAGE(FATAL_ERROR "Need at least version ${ISPC_VERSION_REQUIRED} of Intel SPMD Compiler (ISPC).")
-  ENDIF()
+        if(ISPC_VERSION VERSION_LESS ISPC_VERSION_REQUIRED)
+            message(FATAL_ERROR "Need at least version ${ISPC_VERSION_REQUIRED} of Intel SPMD Compiler (ISPC).")
+        endif()
 
-  SET(ISPC_VERSION ${ISPC_VERSION} CACHE STRING "ISPC Version")
-  MARK_AS_ADVANCED(ISPC_VERSION)
-  MARK_AS_ADVANCED(ISPC_EXECUTABLE)
-ENDIF()
+        set(ISPC_VERSION
+            ${ISPC_VERSION}
+            CACHE STRING "ISPC Version")
+        mark_as_advanced(ISPC_VERSION)
+        mark_as_advanced(ISPC_EXECUTABLE)
+    endif()
 
-GET_FILENAME_COMPONENT(ISPC_DIR ${ISPC_EXECUTABLE} PATH)
+    get_filename_component(ISPC_DIR ${ISPC_EXECUTABLE} PATH)
 
-if (VISTLE_64BIT_INDICES)
-    SET(VISTLE_ISPC_ADDRESSING 64 CACHE STRING "32 vs 64 bit addressing in ispc")
-ELSE()
-    SET(VISTLE_ISPC_ADDRESSING 32 CACHE STRING "32 vs 64 bit addressing in ispc")
-ENDIF()
-MARK_AS_ADVANCED(VISTLE_ISPC_ADDRESSING)
+    if(VISTLE_64BIT_INDICES)
+        set(VISTLE_ISPC_ADDRESSING
+            64
+            CACHE STRING "32 vs 64 bit addressing in ispc")
+    else()
+        set(VISTLE_ISPC_ADDRESSING
+            32
+            CACHE STRING "32 vs 64 bit addressing in ispc")
+    endif()
+    mark_as_advanced(VISTLE_ISPC_ADDRESSING)
 
-MACRO (ispc_compile)
-  SET(ISPC_ADDITIONAL_ARGS "${ISPC_COMPILE_FLAGS}")
+    macro(ispc_compile)
+        set(ISPC_ADDITIONAL_ARGS "${ISPC_COMPILE_FLAGS}")
 
-  IF (__XEON__)
-    SET (ISPC_TARGET_EXT ${CMAKE_CXX_OUTPUT_EXTENSION})
-  ELSE()
-    SET (ISPC_TARGET_EXT .cpp)
-    SET (ISPC_ADDITIONAL_ARGS ${ISPC_ADDITIONAL_ARGS} --opt=force-aligned-memory)
-  ENDIF()
+        if(__XEON__)
+            set(ISPC_TARGET_EXT ${CMAKE_CXX_OUTPUT_EXTENSION})
+        else()
+            set(ISPC_TARGET_EXT .cpp)
+            set(ISPC_ADDITIONAL_ARGS ${ISPC_ADDITIONAL_ARGS} --opt=force-aligned-memory)
+        endif()
 
-  IF (CMAKE_SIZEOF_VOID_P EQUAL 8)
-    SET(ISPC_ARCHITECTURE "x86-64")
-  ELSE()
-    SET(ISPC_ARCHITECTURE "x86")
-  ENDIF()
-  #this does not work on windows
-  if("${CMAKE_GENERATOR}" MATCHES "(Win64|IA64)")
-    SET(ISPC_ARCHITECTURE "x86-64")
-  endif()
-  message(${ISPC_ARCHITECTURE})
+        if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+            set(ISPC_ARCHITECTURE "x86-64")
+        else()
+            set(ISPC_ARCHITECTURE "x86")
+        endif()
+        #this does not work on windows
+        if("${CMAKE_GENERATOR}" MATCHES "(Win64|IA64)")
+            set(ISPC_ARCHITECTURE "x86-64")
+        endif()
+        message(${ISPC_ARCHITECTURE})
 
-  SET(ISPC_TARGET_DIR ${CMAKE_CURRENT_BINARY_DIR})
-  INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR} ${ISPC_TARGET_DIR})
+        set(ISPC_TARGET_DIR ${CMAKE_CURRENT_BINARY_DIR})
+        include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${ISPC_TARGET_DIR})
 
-  IF(ISPC_INCLUDE_DIR)
-    STRING(REPLACE ";" ";-I;" ISPC_INCLUDE_DIR_PARMS "${ISPC_INCLUDE_DIR}")
-    SET(ISPC_INCLUDE_DIR_PARMS "-I" ${ISPC_INCLUDE_DIR_PARMS})
-  ENDIF()
+        if(ISPC_INCLUDE_DIR)
+            string(REPLACE ";" ";-I;" ISPC_INCLUDE_DIR_PARMS "${ISPC_INCLUDE_DIR}")
+            set(ISPC_INCLUDE_DIR_PARMS "-I" ${ISPC_INCLUDE_DIR_PARMS})
+        endif()
 
-  IF (__XEON__)
-    STRING(REPLACE ";" "," ISPC_TARGET_ARGS "${ISPC_TARGETS}")
-  ELSE()
-    SET(ISPC_TARGET_ARGS generic-16)
-    SET(ISPC_ADDITIONAL_ARGS ${ISPC_ADDITIONAL_ARGS} --emit-c++ -D__XEON_PHI__ --c++-include-file=${ISPC_DIR}/examples/intrinsics/knc.h)
-  ENDIF()
+        if(__XEON__)
+            string(REPLACE ";" "," ISPC_TARGET_ARGS "${ISPC_TARGETS}")
+        else()
+            set(ISPC_TARGET_ARGS generic-16)
+            set(ISPC_ADDITIONAL_ARGS ${ISPC_ADDITIONAL_ARGS} --emit-c++ -D__XEON_PHI__ --c++-include-file=${ISPC_DIR}/examples/intrinsics/knc.h)
+        endif()
 
-  SET(ISPC_OBJECTS "")
+        set(ISPC_OBJECTS "")
 
-  FOREACH(src ${ARGN})
-    GET_FILENAME_COMPONENT(fname ${src} NAME_WE)
-    GET_FILENAME_COMPONENT(dir ${src} PATH)
+        foreach(src ${ARGN})
+            get_filename_component(fname ${src} NAME_WE)
+            get_filename_component(dir ${src} PATH)
 
-    IF("${dir}" STREQUAL "")
-      SET(outdir ${ISPC_TARGET_DIR})
-    ELSE("${dir}" STREQUAL "")
-      SET(outdir ${ISPC_TARGET_DIR}/${dir})
-    ENDIF("${dir}" STREQUAL "")
-    SET(outdirh ${ISPC_TARGET_DIR})
+            if("${dir}" STREQUAL "")
+                set(outdir ${ISPC_TARGET_DIR})
+            else("${dir}" STREQUAL "")
+                set(outdir ${ISPC_TARGET_DIR}/${dir})
+            endif("${dir}" STREQUAL "")
+            set(outdirh ${ISPC_TARGET_DIR})
 
-    SET(deps "")
-    IF (EXISTS ${outdir}/${fname}.dev.idep)
-      FILE(READ ${outdir}/${fname}.dev.idep contents)
-      STRING(REPLACE " " ";"     contents "${contents}")
-      STRING(REPLACE ";" "\\\\;" contents "${contents}")
-      STRING(REPLACE "\n" ";"    contents "${contents}")
-      FOREACH(dep ${contents})
-        IF (EXISTS ${dep})
-          SET(deps ${deps} ${dep})
-        ENDIF (EXISTS ${dep})
-      ENDFOREACH(dep ${contents})
-    ENDIF ()
+            set(deps "")
+            if(EXISTS ${outdir}/${fname}.dev.idep)
+                file(READ ${outdir}/${fname}.dev.idep contents)
+                string(REPLACE " " ";" contents "${contents}")
+                string(REPLACE ";" "\\\\;" contents "${contents}")
+                string(REPLACE "\n" ";" contents "${contents}")
+                foreach(dep ${contents})
+                    if(EXISTS ${dep})
+                        set(deps ${deps} ${dep})
+                    endif(EXISTS ${dep})
+                endforeach(dep ${contents})
+            endif()
 
-    SET(results "${outdir}/${fname}.dev${ISPC_TARGET_EXT}")
+            set(results "${outdir}/${fname}.dev${ISPC_TARGET_EXT}")
 
-    # if we have multiple targets add additional object files
-    IF (__XEON__)
-      LIST(LENGTH ISPC_TARGETS NUM_TARGETS)
-      IF (NUM_TARGETS GREATER 1)
-        FOREACH(target ${ISPC_TARGETS})
-           # in v1.9.0 ISPC changed the ISA suffix of avx512knl-i32x16 to just 'avx512knl'
-           IF (${target} STREQUAL "avx512knl-i32x16" AND NOT ISPC_VERSION VERSION_LESS "1.9.0")
-              SET(target "avx512knl")
-           ELSEIF (${target} STREQUAL "avx512skx-i32x16")
-              SET(target "avx512skx")
-           ENDIF()
-           SET(results ${results} "${outdir}/${fname}.dev_${target}${ISPC_TARGET_EXT}")
-        ENDFOREACH()
-      ENDIF()
-    ENDIF()
+            # if we have multiple targets add additional object files
+            if(__XEON__)
+                list(LENGTH ISPC_TARGETS NUM_TARGETS)
+                if(NUM_TARGETS GREATER 1)
+                    foreach(target ${ISPC_TARGETS})
+                        # in v1.9.0 ISPC changed the ISA suffix of avx512knl-i32x16 to just 'avx512knl'
+                        if(${target} STREQUAL "avx512knl-i32x16" AND NOT ISPC_VERSION VERSION_LESS "1.9.0")
+                            set(target "avx512knl")
+                        elseif(${target} STREQUAL "avx512skx-i32x16")
+                            set(target "avx512skx")
+                        endif()
+                        set(results ${results} "${outdir}/${fname}.dev_${target}${ISPC_TARGET_EXT}")
+                    endforeach()
+                endif()
+            endif()
 
-    IF (NOT WIN32)
-      SET(ISPC_ADDITIONAL_ARGS ${ISPC_ADDITIONAL_ARGS} --pic)
-    ENDIF()
+            if(NOT WIN32)
+                set(ISPC_ADDITIONAL_ARGS ${ISPC_ADDITIONAL_ARGS} --pic)
+            endif()
 
-    ADD_CUSTOM_COMMAND(
-      OUTPUT ${results} ${outdirh}/${fname}_ispc.h
-      COMMAND ${CMAKE_COMMAND} -E make_directory ${outdir}
-      COMMAND ${ISPC_EXECUTABLE}
-      -I ${CMAKE_CURRENT_SOURCE_DIR}
-      ${ISPC_INCLUDE_DIR_PARMS}
-      --arch=${ISPC_ARCHITECTURE}
-      --addressing=${VISTLE_ISPC_ADDRESSING}
-      -O3
-      --target=${ISPC_TARGET_ARGS}
-      --math-lib=fast
-      --opt=fast-math
-      --woff
-      #--wno-perf
-      ${ISPC_ADDITIONAL_ARGS}
-      -h ${outdirh}/${fname}_ispc.h
-      -MMM  ${outdir}/${fname}.dev.idep
-      -o ${outdir}/${fname}.dev${ISPC_TARGET_EXT}
-      ${CMAKE_CURRENT_SOURCE_DIR}/${src}
-      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${src} ${deps}
-      COMMENT "Building ISPC object ${outdir}/${fname}.dev${ISPC_TARGET_EXT}"
-    )
+            add_custom_command(
+                OUTPUT ${results} ${outdirh}/${fname}_ispc.h
+                COMMAND ${CMAKE_COMMAND} -E make_directory ${outdir}
+                COMMAND
+                    ${ISPC_EXECUTABLE} -I ${CMAKE_CURRENT_SOURCE_DIR} ${ISPC_INCLUDE_DIR_PARMS} --arch=${ISPC_ARCHITECTURE}
+                    --addressing=${VISTLE_ISPC_ADDRESSING} -O3 --target=${ISPC_TARGET_ARGS} --math-lib=fast --opt=fast-math --woff
+                    #--wno-perf
+                    ${ISPC_ADDITIONAL_ARGS} -h ${outdirh}/${fname}_ispc.h -MMM ${outdir}/${fname}.dev.idep -o ${outdir}/${fname}.dev${ISPC_TARGET_EXT}
+                    ${CMAKE_CURRENT_SOURCE_DIR}/${src}
+                DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${src} ${deps}
+                COMMENT "Building ISPC object ${outdir}/${fname}.dev${ISPC_TARGET_EXT}")
 
-    SET(ISPC_OBJECTS ${ISPC_OBJECTS} ${results})
+            set(ISPC_OBJECTS ${ISPC_OBJECTS} ${results})
 
-  ENDFOREACH()
+        endforeach()
 
-ENDMACRO()
+    endmacro()
 
-MACRO (add_ispc_executable name)
-   SET(ISPC_SOURCES "")
-   SET(OTHER_SOURCES "")
-   FOREACH(src ${ARGN})
-    GET_FILENAME_COMPONENT(ext ${src} EXT)
-    IF (ext STREQUAL ".ispc")
-      SET(ISPC_SOURCES ${ISPC_SOURCES} ${src})
-    ELSE ()
-      SET(OTHER_SOURCES ${OTHER_SOURCES} ${src})
-    ENDIF ()
-  ENDFOREACH()
-  ISPC_COMPILE(${ISPC_SOURCES})
-  ADD_EXECUTABLE(${name} ${ISPC_OBJECTS} ${OTHER_SOURCES})
+    macro(add_ispc_executable name)
+        set(ISPC_SOURCES "")
+        set(OTHER_SOURCES "")
+        foreach(src ${ARGN})
+            get_filename_component(ext ${src} EXT)
+            if(ext STREQUAL ".ispc")
+                set(ISPC_SOURCES ${ISPC_SOURCES} ${src})
+            else()
+                set(OTHER_SOURCES ${OTHER_SOURCES} ${src})
+            endif()
+        endforeach()
+        ispc_compile(${ISPC_SOURCES})
+        add_executable(${name} ${ISPC_OBJECTS} ${OTHER_SOURCES})
 
-  IF (NOT __XEON__)
-    FOREACH(src ${ISPC_OBJECTS})
-      SET_SOURCE_FILES_PROPERTIES( ${src} PROPERTIES COMPILE_FLAGS -std=gnu++98 )
-    ENDFOREACH()
-  ENDIF()
-ENDMACRO()
+        if(NOT __XEON__)
+            foreach(src ${ISPC_OBJECTS})
+                set_source_files_properties(${src} PROPERTIES COMPILE_FLAGS -std=gnu++98)
+            endforeach()
+        endif()
+    endmacro()
 
-MACRO (add_ispc_library name type)
-   SET(ISPC_SOURCES "")
-   SET(OTHER_SOURCES "")
-   FOREACH(src ${ARGN})
-    GET_FILENAME_COMPONENT(ext ${src} EXT)
-    IF (ext STREQUAL ".ispc")
-      SET(ISPC_SOURCES ${ISPC_SOURCES} ${src})
-    ELSE ()
-      SET(OTHER_SOURCES ${OTHER_SOURCES} ${src})
-    ENDIF ()
-  ENDFOREACH()
-  ISPC_COMPILE(${ISPC_SOURCES})
-  ADD_LIBRARY(${name} ${type} ${ISPC_OBJECTS} ${OTHER_SOURCES})
+    macro(add_ispc_library name type)
+        set(ISPC_SOURCES "")
+        set(OTHER_SOURCES "")
+        foreach(src ${ARGN})
+            get_filename_component(ext ${src} EXT)
+            if(ext STREQUAL ".ispc")
+                set(ISPC_SOURCES ${ISPC_SOURCES} ${src})
+            else()
+                set(OTHER_SOURCES ${OTHER_SOURCES} ${src})
+            endif()
+        endforeach()
+        ispc_compile(${ISPC_SOURCES})
+        add_library(${name} ${type} ${ISPC_OBJECTS} ${OTHER_SOURCES})
 
-  IF (NOT __XEON__)
-    FOREACH(src ${ISPC_OBJECTS})
-      SET_SOURCE_FILES_PROPERTIES( ${src} PROPERTIES COMPILE_FLAGS -std=gnu++98 )
-    ENDFOREACH()
-  ENDIF()
-ENDMACRO()
+        if(NOT __XEON__)
+            foreach(src ${ISPC_OBJECTS})
+                set_source_files_properties(${src} PROPERTIES COMPILE_FLAGS -std=gnu++98)
+            endforeach()
+        endif()
+    endmacro()
 
-ELSE (ENABLE_ISPC_SUPPORT)
+else(ENABLE_ISPC_SUPPORT)
 
-MACRO (add_ispc_library name type)
-   SET(ISPC_SOURCES "")
-   SET(OTHER_SOURCES "")
-   FOREACH(src ${ARGN})
-    GET_FILENAME_COMPONENT(ext ${src} EXT)
-    IF (ext STREQUAL ".ispc")
-      SET(ISPC_SOURCES ${ISPC_SOURCES} ${src})
-    ELSE ()
-      SET(OTHER_SOURCES ${OTHER_SOURCES} ${src})
-    ENDIF ()
-  ENDFOREACH()
-  ADD_LIBRARY(${name} ${type} ${OTHER_SOURCES})
+    macro(add_ispc_library name type)
+        set(ISPC_SOURCES "")
+        set(OTHER_SOURCES "")
+        foreach(src ${ARGN})
+            get_filename_component(ext ${src} EXT)
+            if(ext STREQUAL ".ispc")
+                set(ISPC_SOURCES ${ISPC_SOURCES} ${src})
+            else()
+                set(OTHER_SOURCES ${OTHER_SOURCES} ${src})
+            endif()
+        endforeach()
+        add_library(${name} ${type} ${OTHER_SOURCES})
 
-ENDMACRO()
+    endmacro()
 
-ENDIF (ENABLE_ISPC_SUPPORT)
+endif(ENABLE_ISPC_SUPPORT)

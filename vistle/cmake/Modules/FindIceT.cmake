@@ -33,25 +33,27 @@
 # ICET_DIR              - The directory containing ICETConfig.cmake.
 #
 
-SET(ICET_DIR_DESCRIPTION "directory containing IceTConfig.cmake.  This is either the root of the build tree, or PREFIX/lib for an installation.")
-SET(ICET_DIR_MESSAGE "IceT not found.  Set ICET_DIR to the ${ICET_DIR_DESCRIPTION}")
+set(ICET_DIR_DESCRIPTION "directory containing IceTConfig.cmake.  This is either the root of the build tree, or PREFIX/lib for an installation.")
+set(ICET_DIR_MESSAGE "IceT not found.  Set ICET_DIR to the ${ICET_DIR_DESCRIPTION}")
 
-IF (NOT ICET_DIR)
-  # Get the system search path as a list.
-  IF(UNIX)
-    STRING(REGEX MATCHALL "[^:]+" ICET_DIR_SEARCH1 "$ENV{PATH}")
-  ELSE(UNIX)
-    STRING(REGEX REPLACE "\\\\" "/" ICET_DIR_SEARCH1 "$ENV{PATH}")
-  ENDIF(UNIX)
-  STRING(REGEX REPLACE "/;" ";" ICET_DIR_SEARCH2 "${ICET_DIR_SEARCH1}")
+if(NOT ICET_DIR)
+    # Get the system search path as a list.
+    if(UNIX)
+        string(REGEX MATCHALL "[^:]+" ICET_DIR_SEARCH1 "$ENV{PATH}")
+    else(UNIX)
+        string(REGEX REPLACE "\\\\" "/" ICET_DIR_SEARCH1 "$ENV{PATH}")
+    endif(UNIX)
+    string(REGEX REPLACE "/;" ";" ICET_DIR_SEARCH2 "${ICET_DIR_SEARCH1}")
 
-  # Construct a set of paths relative to the system search path.
-  SET(ICET_DIR_SEARCH "")
-  FOREACH(dir ${ICET_DIR_SEARCH2})
-    SET(ICET_DIR_SEARCH ${ICET_DIR_SEARCH} "${dir}/../lib")
-  ENDFOREACH(dir)
+    # Construct a set of paths relative to the system search path.
+    set(ICET_DIR_SEARCH "")
+    foreach(dir ${ICET_DIR_SEARCH2})
+        set(ICET_DIR_SEARCH ${ICET_DIR_SEARCH} "${dir}/../lib")
+    endforeach(dir)
 
-  FIND_PATH(ICET_DIR IceTConfig.cmake
+    find_path(
+        ICET_DIR
+        IceTConfig.cmake
         # Look in places relative to the system executable search path.
         ${ICET_DIR_SEARCH}
         # Look in standard UNIX install locations.
@@ -61,31 +63,31 @@ IF (NOT ICET_DIR)
         "C:/Program Files/IceT/lib"
         # Give documentation to user in case we can't find it.
         DOC "The ${ICET_DIR_DESCRIPTION}")
-ENDIF (NOT ICET_DIR)
+endif(NOT ICET_DIR)
 
 # If IceT was found, load the configuration file to get the rest of the
 # settings.
-IF(ICET_DIR)
-  # Make sure the ICETConfig.cmake file exists in the directory provided.
-  IF(EXISTS ${ICET_DIR}/IceTConfig.cmake)
+if(ICET_DIR)
+    # Make sure the ICETConfig.cmake file exists in the directory provided.
+    if(EXISTS ${ICET_DIR}/IceTConfig.cmake)
 
-    # We found IceT.  Load the settings.
-    SET(ICET_FOUND 1)
-    INCLUDE(${ICET_DIR}/IceTConfig.cmake)
+        # We found IceT.  Load the settings.
+        set(ICET_FOUND 1)
+        include(${ICET_DIR}/IceTConfig.cmake)
 
-  ELSE(EXISTS ${ICET_DIR}/IceTConfig.cmake)
+    else(EXISTS ${ICET_DIR}/IceTConfig.cmake)
+        # We did not find IceT.
+        set(ICET_FOUND 0)
+    endif(EXISTS ${ICET_DIR}/IceTConfig.cmake)
+else(ICET_DIR)
     # We did not find IceT.
-    SET(ICET_FOUND 0)
-  ENDIF(EXISTS ${ICET_DIR}/IceTConfig.cmake)
-ELSE(ICET_DIR)
-  # We did not find IceT.
-  SET(ICET_FOUND 0)
-ENDIF(ICET_DIR)
+    set(ICET_FOUND 0)
+endif(ICET_DIR)
 
 #-----------------------------------------------------------------------------
-IF(NOT ICET_FOUND)
-  # IceT not found, explain to the user how to specify its location.
-  IF(NOT ICET_FIND_QUIETLY)
-    MESSAGE(${ICET_DIR_MESSAGE})
-  ENDIF(NOT ICET_FIND_QUIETLY)
-ENDIF(NOT ICET_FOUND)
+if(NOT ICET_FOUND)
+    # IceT not found, explain to the user how to specify its location.
+    if(NOT ICET_FIND_QUIETLY)
+        message(${ICET_DIR_MESSAGE})
+    endif(NOT ICET_FIND_QUIETLY)
+endif(NOT ICET_FOUND)

@@ -1,15 +1,11 @@
 vistle_find_package(NETCDF)
-if (NOT NETCDF_FOUND)
+if(NOT NETCDF_FOUND)
     return()
 endif()
 
-set(HEADERS
-    ReadTsunami.h
-)
+set(HEADERS ReadTsunami.h)
 
-set(SOURCES
-    ReadTsunami.cpp
-)
+set(SOURCES ReadTsunami.cpp)
 
 add_module(ReadTsunami "read ChEESE Tsunami files" ${SOURCES} ${HEADERS})
 
