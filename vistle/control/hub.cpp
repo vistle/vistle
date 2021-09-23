@@ -1354,6 +1354,12 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                     ++m_moduleCount;
                     doSpawn = true;
                 }
+                if (restart) {
+                    if (doSpawn) {
+                        cacheModuleValues(spawn.migrateId(), notify.spawnId());
+                    }
+                    killOldModule(spawn.migrateId());
+                }
                 CERR << "sendManager: " << notify << std::endl;
                 notify.setDestId(Id::Broadcast);
                 if (shouldMirror)
@@ -1391,23 +1397,6 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                         mirror.setDestId(hubid);
                         CERR << "doSpawn: sendManager mirror: " << mirror << std::endl;
                         sendManager(mirror, spawn.hubId());
-                    }
-                } else if (restart) {
-                    if (doSpawn) {
-                        cacheModuleValues(spawn.migrateId(), notify.spawnId());
-                    }
-                    killOldModule(spawn.migrateId());
-
-                    CERR << "sendManager: " << notify << std::endl;
-                    notify.setDestId(Id::Broadcast);
-                    m_stateTracker.handle(notify, nullptr);
-                    sendManager(notify);
-                    sendUi(notify);
-                    sendSlaves(notify, true /* return to sender */);
-                    if (doSpawn) {
-                        notify.setDestId(spawn.hubId());
-                        CERR << "doSpawn: sendManager: " << notify << std::endl;
-                        sendManager(notify, spawn.hubId());
                     }
                 }
             } else {
