@@ -1280,7 +1280,6 @@ bool ClusterManager::addObjectSource(const message::AddObject &addObj)
 
 bool ClusterManager::addObjectDestination(const message::AddObject &addObj, Object::const_ptr obj)
 {
-    const bool localAdd = isLocal(addObj.senderId());
     const Port *port = portManager().findPort(addObj.senderId(), addObj.getSenderPort());
     if (!port) {
         CERR << "AddObject [" << addObj.objectName() << "] to port [" << addObj.getSenderPort() << "] of ["
