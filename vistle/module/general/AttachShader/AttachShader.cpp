@@ -1,4 +1,4 @@
-﻿#include <vistle/core/object.h>
+#include <vistle/core/object.h>
 #include <vistle/core/message.h>
 #include "AttachShader.h"
 

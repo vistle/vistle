@@ -1,4 +1,4 @@
-﻿#include <vistle/core/object.h>
+#include <vistle/core/object.h>
 #include <vistle/core/grid.h>
 #include <vistle/core/message.h>
 #include <vistle/core/celltree.h>

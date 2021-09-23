@@ -1,4 +1,4 @@
-﻿#include "TestDynamicPorts.h"
+#include "TestDynamicPorts.h"
 
 MODULE_MAIN(TestDynamicPorts)
 

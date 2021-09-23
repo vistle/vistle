@@ -1,4 +1,4 @@
-﻿#include <limits>
+#include <limits>
 #include <algorithm>
 #include <boost/mpi/collectives/broadcast.hpp>
 #include <boost/serialization/vector.hpp>

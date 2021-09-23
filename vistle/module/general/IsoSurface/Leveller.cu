@@ -1,4 +1,4 @@
-﻿//
+//
 //This code is used for both IsoCut and IsoSurface!
 //
 

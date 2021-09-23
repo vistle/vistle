@@ -1,4 +1,4 @@
-﻿#include "BlockData.h"
+#include "BlockData.h"
 #include "Integrator.h"
 #include <vistle/core/vec.h>
 #include <mutex>
