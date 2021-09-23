@@ -5,14 +5,20 @@ on:
     paths:
       - ".github/workflows/clang-format-lint.yml"
       - "vistle/**/*.h"
+      - "vistle/**/*.hxx"
       - "vistle/**/*.c"
       - "vistle/**/*.cpp"
+      - "vistle/**/*.isph"
+      - "vistle/**/*.ispc"
   pull_request:
     paths:
       - ".github/workflows/clang-format-lint.yml"
       - "vistle/**/*.h"
+      - "vistle/**/*.hxx"
       - "vistle/**/*.c"
       - "vistle/**/*.cpp"
+      - "vistle/**/*.isph"
+      - "vistle/**/*.ispc"
 
 jobs:
   build:
@@ -23,5 +29,5 @@ jobs:
         with:
           source: "vistle"
           exclude: "vistle/gui/propertybrowser vistle/module/univiz"
-          extensions: "h,c,cpp"
+          extensions: "h,hpp,hxx,c,cpp,isph,ispc"
           clangFormatVersion: 12
