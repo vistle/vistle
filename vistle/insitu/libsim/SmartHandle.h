@@ -1,6 +1,6 @@
 #ifndef VISTLE_LIBSIM_SMART_HANDLE_H
 #define VISTLE_LIBSIM_SMART_HANDLE_H
-#include "Exeption.h"
+#include "Exception.h"
 #include "libsimInterface/VisItDataTypes.h"
 #include "libsimInterface/UnstructuredMesh.h"
 #include "libsimInterface/RectilinearMesh.h"

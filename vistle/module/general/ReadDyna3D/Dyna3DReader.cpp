@@ -396,7 +396,7 @@ int Dyna3DReader<wordsize, INTEGER, REAL>::rdtaucntrl_()
 
     if ((byteswapFlag == Auto) && ((version < 1) || (version > 10000))) {
         std::cerr << "Dyna3DReader::rdtaucntrl_ info: autobyteswap: "
-                  << "asuming byteswap on (" << version << ")" << std::endl;
+                  << "assuming byteswap on (" << version << ")" << std::endl;
 
         byteswapFlag = On;
         unsigned int *buffer = (WORD *)(void *)(tauio_1.tau);
@@ -778,7 +778,7 @@ int Dyna3DReader<wordsize, INTEGER, REAL>::taugeoml_()
     NumberOfWords += NumBeamElements * 6;
     /* Shell topology */
     NumberOfWords += NumShellElements * 5;
-    /* Arbitary numbering tables */
+    /* Arbitrary numbering tables */
     NumberOfWords += NodeAndElementNumbering;
 
     if (CTrace == 'Y') {
@@ -1339,7 +1339,7 @@ int Dyna3DReader<wordsize, INTEGER, REAL>::rdstate_(vistle::Reader::Token &token
 
             // This line has been commented out and modified because in case that
             // the files contain more than 1 time step, it may produce wrong
-            // informations.
+            // information.
             // sprintf(buf, "Timestep =  %2d \t with time = %6.3f \n", istate, TimestepTime);
 #ifdef SENDINFO
             if (m_module->rank() == 0)
@@ -2900,7 +2900,7 @@ bool Dyna3DReaderBase::examine(bool rescan)
                 curfile += adapt + suffixForCount(count);
                 boost::system::error_code ec;
                 if (!exists(curfile, ec) || ec) {
-                    //std::cerr << "filesystem error while checking for existance of " << curfile.string() << ":" << ec << std::endl;
+                    //std::cerr << "filesystem error while checking for existence of " << curfile.string() << ":" << ec << std::endl;
                     break;
                 }
                 size_t size = file_size(curfile, ec);

@@ -268,7 +268,7 @@ void VistleConsole::init()
 #endif
 #endif
 
-    /* NOTE: In previous implementaion, local name and global name
+    /* NOTE: In previous implementation, local name and global name
              were allocated separately.  And it causes a problem that
              a function declared in this console cannot be called.  By
              unifying global and local name with __main__.__dict__, we
@@ -398,7 +398,7 @@ bool VistleConsole::py_check_for_unexpected_eof()
 }
 #endif
 
-//Desctructor
+//Destructor
 VistleConsole::~VistleConsole()
 {
     s_instance = nullptr;

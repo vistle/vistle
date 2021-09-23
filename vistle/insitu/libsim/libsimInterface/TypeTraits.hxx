@@ -54,7 +54,7 @@ simV2_TypeTraits_Specialize(VISIT_DATATYPE_FLOAT, float) simV2_TypeTraits_Specia
 // The simV2FloatTemplateMacro does the same things as simV2TemplateMacro
 // however it only expands the cases for float and double. This addresses
 // common situations in numerical computation where integers don't make sense
-// and for use with vtkPoints which only suppport float and double.
+// and for use with vtkPoints which only support float and double.
 #define simV2FloatTemplateMacro(call) \
     simV2TemplateMacroCase(VISIT_DATATYPE_FLOAT, call); \
     simV2TemplateMacroCase(VISIT_DATATYPE_DOUBLE, call);

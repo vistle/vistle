@@ -62,7 +62,7 @@ public:
     // called by the sim on rank 0 when m_socket receives data and on other ranks when we call slaveCommandCallback.
     // To distribude commands on all ranks, rank 0 calls slaveCommandCallback, reads from socked and broadcasts
     // while the other ranks only do the broadcast.
-    // then handels the received Vistle message
+    // then handles the received Vistle message
     bool fetchNewModuleState();
 
     // set callbacks (from sim)
@@ -82,7 +82,7 @@ private:
     insitu::message::InSituTcp m_messageHandler;
     insitu::message::SyncShmIDs m_shmIDs;
 
-    // Port info to comunicate with the vistle module
+    // Port info to communicate with the vistle module
     unsigned short m_port = 31099;
     boost::asio::io_service m_ioService;
 
@@ -94,7 +94,7 @@ private:
 
     message::ModuleInfo m_moduleInfo;
     int m_modulePort = 0;
-    size_t m_timestep = 0; // timestep couter for module
+    size_t m_timestep = 0; // timestep counter for module
 
     //std::set<IntOption> m_intOptions; // options that can be set in the module
     vistle::EnumArray<IntOption, IntOptions> m_intOptions;

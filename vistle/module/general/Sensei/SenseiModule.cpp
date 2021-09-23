@@ -134,7 +134,7 @@ void SenseiModule::connectToSim()
         infile >> rankStr;
         infile >> key;
         if (infile.eof()) {
-            CERR << "missing conncection key for rank " << rank() << endl;
+            CERR << "missing connection key for rank " << rank() << endl;
             break;
         }
     }

@@ -45,7 +45,7 @@ public:
             }
             return vistle::insitu::message::send(msg, *m_socket);
         }
-        return true; // return valuse is only meaningfull on rank 0;
+        return true; // return values is only meaningful on rank 0;
     }
     void initialize(std::shared_ptr<boost::asio::ip::tcp::socket> socket, boost::mpi::communicator comm);
     bool isInitialized();

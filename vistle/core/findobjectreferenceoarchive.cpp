@@ -21,7 +21,7 @@ const std::string FindObjectReferenceOArchive::nullObjectReferenceName = "--NULL
 //-------------------------------------------------------------------------
 
 // GET VECTOR ENTRY BY NAME
-// * often multiple consecutive searches for the same enrty will occur, therefore the hint aids performance
+// * often multiple consecutive searches for the same entry will occur, therefore the hint aids performance
 //-------------------------------------------------------------------------
 FindObjectReferenceOArchive::ReferenceData *FindObjectReferenceOArchive::getVectorEntryByNvpName(std::string name)
 {

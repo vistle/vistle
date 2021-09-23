@@ -28,7 +28,7 @@ public:
     ~ToUnstructured();
 
 private:
-    // overriden functions
+    // overridden functions
     virtual bool compute() override;
 
     // private helper functions

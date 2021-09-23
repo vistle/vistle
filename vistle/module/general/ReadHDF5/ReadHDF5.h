@@ -50,7 +50,7 @@ private:
     struct ShmVectorReader;
 
 
-    // overriden functions
+    // overridden functions
     virtual bool changeParameter(const vistle::Parameter *param) override;
     virtual bool prepare() override;
     virtual bool compute() override;
@@ -256,7 +256,7 @@ void ReadHDF5::prepare_performant_readHDF5(hid_t fileId, const boost::mpi::commu
         totalWriteSize *= totalDims[i];
     }
 
-    // obtain divisions and perform a set of neccessary reads in order to keep under the 2gb MPIO limit
+    // obtain divisions and perform a set of necessary reads in order to keep under the 2gb MPIO limit
     // limit lies in number of elements collectively within a write, not total write size based off my tests (i.e. 2e8 elements, not 2e8 bytes)
     const long double writeLimit = HDF5Const::mpiReadWriteLimitGb * HDF5Const::numBytesInGb;
     unsigned numWriteDivisions = std::ceil(totalWriteSize / writeLimit);

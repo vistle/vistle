@@ -60,8 +60,8 @@ if(NOT WIN32)
 target_compile_definitions(vistle_boost_mpi PUBLIC BOOST_MPI_DECL=__attribute__\ \(\(visibility\(\"default\"\)\)\))
 endif(NOT WIN32)
 
-
-target_link_libraries(vistle_boost_mpi #don't use vistle_target_link_libraries here bacause adding dependency for boost_mpi_HEADERS::serialization brings arrors. 
+target_link_libraries(
+    vistle_boost_mpi #don't use vistle_target_link_libraries here because adding dependency for boost_mpi_HEADERS::serialization brings errors.
     PRIVATE Boost::system
     PUBLIC Boost::serialization
     PUBLIC MPI::MPI_C

@@ -233,7 +233,7 @@ void ReadHDF5::prepare_performant(hid_t fileId)
 
     // XXX this is where I left off:
     // read in data for all above arrays
-    // implemented but havent tested all reads
+    // implemented but have not tested all reads
     dims[0] = blockArray.size();
     dims[1] = 3;
     offset[0] = 0;
@@ -493,7 +493,7 @@ herr_t ReadHDF5::prepare_iterateVariant(hid_t callingGroupId, const char *name, 
 
 // PREPARE UTILITY FUNCTION - PROCESSES AN OBJECT
 // * function falls under the template  H5L_iterate_t as it is a callback from the HDF5 iterate API call
-// * object creation and attatchment to port happens here
+// * object creation and attachment to port happens here
 // * object metadata reading also occurs here
 //-------------------------------------------------------------------------
 herr_t ReadHDF5::prepare_processObject(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData)
@@ -598,10 +598,10 @@ herr_t ReadHDF5::prepare_processArrayContainer(hid_t callingGroupId, const char 
 
 // PREPARE UTILITY FUNCTION - PROCESSES AN ARRAY LINK
 // * function falls under the template  H5L_iterate_t as it is a callback from the HDF5 iterate API call
-// * determines wether the link points to a reference object or a ShmVector
+// * determines whether the link points to a reference object or a ShmVector
 // * - if reference object, makes sure the object being referenced has already been loaded from the file,
 // *   then resolves reference
-// * - if ShmVector, loads and attatches the target array. If the array is already present in memory, the load step is skipped
+// * - if ShmVector, loads and attaches the target array. If the array is already present in memory, the load step is skipped
 //-------------------------------------------------------------------------
 herr_t ReadHDF5::prepare_processArrayLink(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData)
 {
@@ -756,7 +756,7 @@ bool ReadHDF5::util_checkFile()
         return false;
     }
 
-    // make sure name isnt a directory - this causes H5Fopen to freeze
+    // make sure name is not a directory - this causes H5Fopen to freeze
     if (isDirectory) {
         if (m_isRootNode) {
             sendInfo("File name cannot be a directory");
@@ -882,7 +882,7 @@ long double ReadHDF5::util_readSyncStandby(const boost::mpi::communicator &comm,
 }
 
 // GENERIC UTILITY HELPER FUNCTION - SYNCHRONISE COLLECTIVE READS
-// * returns wether or not all nodes are done
+// * returns whether or not all nodes are done
 //-------------------------------------------------------------------------
 long double ReadHDF5::util_syncAndGetReadSize(long double readSize, const boost::mpi::communicator &comm)
 {

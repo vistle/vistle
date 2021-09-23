@@ -77,7 +77,7 @@ void Block::move_particles(float dt, const diy::Master::ProxyWithLink &cp)
         if (!contains(domain, bounds, origin, spacing, nghost, particle->position)) {
             bool enqueued = false;
 
-            // search neighbor blocks for one that now conatins this particle
+            // search neighbor blocks for one that now contains this particle
             for (int i = 0; i < link->size(); ++i) {
                 // link bounds do not have ghost zones
                 if (contains(link->bounds(i), origin, spacing, particle->position)) {

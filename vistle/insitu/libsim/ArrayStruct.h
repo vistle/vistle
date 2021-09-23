@@ -1,6 +1,6 @@
 #ifndef VISLTE_LIBSIM_ARRAY_STRUCT_H
 #define VISLTE_LIBSIM_ARRAY_STRUCT_H
-#include "Exeption.h"
+#include "Exception.h"
 #include "SmartHandle.h"
 #include "SmartHandle.h"
 #include "VisitDataTypesToVistle.h"
@@ -47,7 +47,7 @@ struct Array {
     T *as()
     {
         if (!check<T>()) {
-            throw InsituExeption{} << "invalid Array access";
+            throw InsituException{} << "invalid Array access";
         }
         return static_cast<T *>(data);
     }
@@ -55,7 +55,7 @@ struct Array {
     const T *as() const
     {
         if (!check<T>()) {
-            throw InsituExeption{} << "invalid Array access";
+            throw InsituException{} << "invalid Array access";
         }
         return static_cast<T *>(data);
     }

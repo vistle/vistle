@@ -444,11 +444,11 @@ void ReadTsunami::computeActualLastTimestep(const ptrdiff_t &incrementTimestep, 
  * @param ghost Initial number of ghostcells.
  * @param nLatBlocks Storage for number of blocks for latitude.
  * @param nLonBlocks Storage for number of blocks for longitude.
- * @param blockPartitionIterFirst Start iterator for storage partion indices.
+ * @param blockPartitionIterFirst Start iterator for storage partition indices.
  */
 template<class Iter>
-void ReadTsunami::computeBlockPartion(const int blockNum, vistle::Index &nLatBlocks, vistle::Index &nLonBlocks,
-                                      Iter blockPartitionIterFirst)
+void ReadTsunami::computeBlockPartition(const int blockNum, vistle::Index &nLatBlocks, vistle::Index &nLonBlocks,
+                                        Iter blockPartitionIterFirst)
 {
     std::array<Index, NUM_BLOCKS> blocks;
     for (int i = 0; i < NUM_BLOCKS; i++)
@@ -461,7 +461,7 @@ void ReadTsunami::computeBlockPartion(const int blockNum, vistle::Index &nLatBlo
 }
 
 /**
-  * @brief Generates the inital polygon surfaces for sea and ground and adds only ground to scene.
+  * @brief Generates the initial polygon surfaces for sea and ground and adds only ground to scene.
   *
   * @token: Ref to internal vistle token.
   * @blockNum: current block number of parallel process.
@@ -493,7 +493,7 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
     Index nLatBlocks{0};
     Index nLonBlocks{0};
     std::array<Index, NUM_BLOCKS> bPartitionIdx;
-    computeBlockPartion(blockNum, nLatBlocks, nLonBlocks, bPartitionIdx.begin());
+    computeBlockPartition(blockNum, nLatBlocks, nLonBlocks, bPartitionIdx.begin());
 
     // dimension from lat and lon variables
     const Dim<size_t> dimSea(latvar.getDim(0).getSize(), lonvar.getDim(0).getSize());

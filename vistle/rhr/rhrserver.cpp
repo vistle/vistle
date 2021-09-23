@@ -712,7 +712,7 @@ void RhrServer::preFrame()
                 break;
             }
             default: {
-                CERR << "unexpected client identiy: " << m << std::endl;
+                CERR << "unexpected client identity: " << m << std::endl;
                 resetClient();
                 break;
             }

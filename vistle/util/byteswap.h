@@ -131,7 +131,7 @@ template<endianness from, endianness to, class T>
 struct do_byte_swap {
     inline T operator()(T value) { return swap_bytes<T, sizeof(T)>()(value); }
 };
-// specialisations when attempting to swap to the same endianess
+// specialisations when attempting to swap to the same endianness
 template<class T>
 struct do_byte_swap<little_endian, little_endian, T> {
     inline T operator()(T value) { return value; }

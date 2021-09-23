@@ -269,7 +269,7 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
         max[c] = bmin[c] + bdist[c];
     }
 
-    // output data: first if statement seperates coord-derived objects
+    // output data: first if statement separates coord-derived objects
     if (geoMode == Triangle_Geometry || geoMode == Polygon_Geometry) {
         Coords::ptr geo;
         if (geoMode == Triangle_Geometry) {
@@ -314,7 +314,7 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
         geo->z()[3] = min[0];
         geoOut = geo;
     } else {
-        // obtain dimenstions of current block while taking into consideration ghost cells
+        // obtain dimensions of current block while taking into consideration ghost cells
         Index ghostWidth[3][2];
         Index offsets[3];
 

@@ -421,7 +421,7 @@ bool coCellToVert::weightedAlgo(Index num_elem, Index num_conn, Index num_point,
             ccy = cell_center_1[cp];
             ccz = cell_center_2[cp];
 
-            // cells with 0 volume are not weigthed
+            // cells with 0 volume are not weighted
             //XXX: was soll das?
             //weight = (weight==0.0) ? 0 : (1.0/weight);
             weight = sqr(vx - ccx) + sqr(vy - ccy) + sqr(vz - ccz);

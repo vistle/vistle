@@ -169,7 +169,7 @@ static void depthdequant_t(ZType *zbuf, const Quant *quantbuf, const MinMaxDepth
                     }
                 } else {
                     d1 += Next - 1;
-                    // max quantized interpolation value means maximum posssible framebuffer depth
+                    // max quantized interpolation value means maximum possible framebuffer depth
                     const float range = d1 - d2;
                     for (int i = 0; i < size; ++i) {
                         const int xx = x + i % edge;
@@ -248,7 +248,7 @@ static void depthdequant_t(ZType *zbuf, const Quant *quantbuf, const MinMaxDepth
                     d1 |= scalemask;
                     const int lowerscale = s2;
                     const int upperscale = s1;
-                    // max quantized interpolation value means maximum posssible framebuffer depth
+                    // max quantized interpolation value means maximum possible framebuffer depth
                     const float range = d1 - d2;
                     for (int i = 0; i < size; ++i) {
                         const int xx = x + i % edge;

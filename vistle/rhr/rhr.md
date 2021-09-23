@@ -16,7 +16,7 @@ CompositorIceT.
 
 It is also compatible with Vistle's ray caster render module DisCOVERay.
 
-Depth images can be optionally compressed with a lossy algorithm similiar to Direct3D texture compression
+Depth images can be optionally compressed with a lossy algorithm similar to Direct3D texture compression
 (cf. \ref DepthQuantize), also on the GPU before read-back.
 
 This work was funded by the EU within the project CRESTA [http://cresta-project.eu]

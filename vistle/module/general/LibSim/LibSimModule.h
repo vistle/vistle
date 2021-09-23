@@ -47,15 +47,15 @@ private:
 #endif
     bool m_terminateSocketThread =
         false; // set to true when when the module in closed to get out of loops in different threads
-    bool m_simInitSent = false; // to prevent caling attemptLibSImConnection twice
-    bool m_connectedToEngine = false; // wether the socket connection to the engine is running
+    bool m_simInitSent = false; // to prevent calling attemptLibSImConnection twice
+    bool m_connectedToEngine = false; // whether the socket connection to the engine is running
     bool m_firstConnectionAttempt = true;
     std::map<std::string, vistle::Port *> m_outputPorts; // output ports for the data the simulation offers
     std::set<vistle::Parameter *> m_commandParameter; // buttons to trigger simulation commands
     std::set<vistle::Parameter *> m_customCommandParameter; // string inputs to trigger simulation commands
 
-    std::thread m_socketThread; // thread to sync tcp communcation with slaves
-    boost::mpi::communicator m_socketComm; // communicator to sync tcp communcation with slaves
+    std::thread m_socketThread; // thread to sync tcp communication with slaves
+    boost::mpi::communicator m_socketComm; // communicator to sync tcp communication with slaves
     std::mutex m_socketMutex; // mutex to sync main and socket thread
 #ifndef MODULE_THREAD
     //.........................................................................

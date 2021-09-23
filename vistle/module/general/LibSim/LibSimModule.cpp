@@ -57,7 +57,7 @@ LibSimModule::LibSimModule(const string &name, int moduleID, mpi::communicator c
 
     m_intOptions[addIntParameter("VTKVariables", "sort the variable data on the grid from VTK ordering to Vistles",
                                  false, vistle::Parameter::Boolean)] = libsim::IntOptions::VtkFormat;
-    m_intOptions[addIntParameter("contant grids", "are the grids the same for every timestep?", false,
+    m_intOptions[addIntParameter("constant grids", "are the grids the same for every timestep?", false,
                                  vistle::Parameter::Boolean)] = libsim::IntOptions::ConstGrids;
     m_intOptions[addIntParameter("frequency", "frequency in which data is retrieved from the simulation", 1)] =
         libsim::IntOptions::NthTimestep;

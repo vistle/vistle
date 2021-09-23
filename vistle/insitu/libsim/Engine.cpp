@@ -1,6 +1,6 @@
 #include "Engine.h"
 
-#include "Exeption.h"
+#include "Exception.h"
 #include "VertexTypesToVistle.h"
 #include "VisitDataTypesToVistle.h"
 
@@ -162,7 +162,7 @@ void Engine::SimulationInitiateCommand(const string &command)
         string args(command.substr(13, command.size() - 1));
         simulationCommandCallback(cmd.c_str(), args.c_str(), simulationCommandCallbackData);
 #ifndef MODULE_THREAD
-        m_messageHandler.send(GoOn{}); // request tcp message from conroller
+        m_messageHandler.send(GoOn{}); // request tcp message from controller
 #else
         if (EngineInterface::getControllSocket())
             message::send(GoOn{}, *EngineInterface::getControllSocket()); //directly send GoOn to the sim
@@ -470,13 +470,13 @@ void Engine::connectToModule(const string &hostname, int port)
     m_socket.reset(new socket(m_ioService));
     asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query, ec);
     if (ec) {
-        throw EngineExeption("initializeEngineSocket failed to resolve connect socket");
+        throw EngineException("initializeEngineSocket failed to resolve connect socket");
     }
 
     asio::connect(*m_socket, endpoint_iterator, ec);
 
     if (ec) {
-        throw EngineExeption("initializeEngineSocket failed to connect socket");
+        throw EngineException("initializeEngineSocket failed to connect socket");
     }
 }
 
@@ -492,7 +492,7 @@ void Engine::initializeSim()
             commands = m_metaData.getRegisteredCustomCommands();
             m_messageHandler.send(SetCustomCommands{commands});
 
-        } catch (const InsituExeption &ex) {
+        } catch (const InsituException &ex) {
             CERR << "finalizeInit failed: " << ex.what() << endl;
             return;
         }
@@ -504,7 +504,7 @@ void Engine::sendObjectsToModule()
 {
     try {
         m_dataTransmitter->transferObjectsToVistle(m_timestep, m_moduleInfo, gatherObjectRules());
-    } catch (const InsituExeption &ex) {
+    } catch (const InsituException &ex) {
         CERR << "transferObjectsToVistle failed: " << ex.what() << endl;
     }
 }

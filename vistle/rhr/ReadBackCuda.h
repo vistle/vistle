@@ -40,7 +40,7 @@ public:
     bool readdepthquant(GLint x, GLint y, GLint w, GLint pitch, GLint h, GLenum format, int ps, GLubyte *bits,
                         GLint buf, GLenum type = GL_UNSIGNED_BYTE);
 
-    static bool s_error; //!< whether a CUDA error occured
+    static bool s_error; //!< whether a CUDA error occurred
 private:
     bool initPbo(size_t raw, size_t compressed);
     bool pbo2cuda(GLint x, GLint y, GLint w, GLint pitch, GLint h, GLenum format, int ps, GLint buf, GLenum type,

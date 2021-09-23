@@ -129,7 +129,7 @@ std::string AvailableModuleBase::print() const
     std::stringstream ss;
     ss << "AvailableModule: " << name() << " from hub" << hub() << std::endl;
     if (!m_submodules.empty()) {
-        ss << "This is a module compund consisting of " << m_submodules.size() << " submodules:" << std::endl;
+        ss << "This is a module compound consisting of " << m_submodules.size() << " submodules:" << std::endl;
         for (const auto &sub: m_submodules)
             ss << sub.name << std::endl;
         for (const auto &conn: m_connections) {

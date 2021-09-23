@@ -409,7 +409,7 @@ bool ReaderBase::ParseGridMap()
         }
         ma2ptr.seekg(132 / 4 * sizeof(float), ios::beg);
         char test;
-        ma2ptr >> test; //to do: use this to perform byteswap if neccessary
+        ma2ptr >> test; //to do: use this to perform byteswap if necessary
         ma2ptr.seekg((132 / 4 + 1) * sizeof(float), ios::beg);
         m_mapFileData.reserve(m_mapFileHeader[0]);
         int columns = dim == 2 ? 5 : 9;

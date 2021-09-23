@@ -394,7 +394,7 @@ V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);
 
 #define MODULE_DEBUG(X)
 #else
-// MPI_THREAD_FUNNELED is sufficient, but apparantly not provided by the CentOS build of MVAPICH2
+// MPI_THREAD_FUNNELED is sufficient, but apparently not provided by the CentOS build of MVAPICH2
 #define MODULE_MAIN_THREAD(X, THREAD_MODE) \
     int main(int argc, char **argv) \
     { \

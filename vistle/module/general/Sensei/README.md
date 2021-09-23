@@ -22,5 +22,5 @@ Communication details
 	we receive vistle messages from the simulation and pass them to the manager as if the came from this module. Mainly used to add vistle objects to the pipeline.
 -SyncShmIDs:
 	The shared memory IDs for vistle objects have to be synchrinized between the moule and the Engine. This is done with a shm array that holds the necessary values. 
-	The module can only create objects outside of execue(before prepare and after prepareReduce). The Engine must only create module during execution of the module.
+	The module can only create objects outside of execute(before prepare and after prepareReduce). The Engine must only create module during execution of the module.
 	In preparation of a simulation crash the Engine must send the new shm counter directly afterwards to reduce the risk of getting out of sync with the module. 

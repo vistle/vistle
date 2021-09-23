@@ -47,7 +47,7 @@ public:
 
 private:
     bool m_initialized = false; // Module is initialized(sent port and command info)
-    bool m_ready = false; // wether the module is executing or not
+    bool m_ready = false; // whether the module is executing or not
     std::set<std::string> m_connectedPorts;
     ShmInfo m_shmInfo;
 };

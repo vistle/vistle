@@ -66,7 +66,7 @@ private:
 
     size_t m_currTimestep = 0;
     Rules m_rules;
-    std::map<std::string, MeshInfo> m_meshes; // used to find the coresponding mesh for the variables
+    std::map<std::string, MeshInfo> m_meshes; // used to find the corresponding mesh for the variables
 };
 
 } // namespace libsim

@@ -10,16 +10,16 @@
  **                                                                      **
 
  TODO:
- [x] 1. Extract external boundary of local partion
+ [x] 1. Extract external boundary of local partition
     => Domain Surface.
  [ ] 2. Share boundary with potential partition neighbors
     => share with every partition
     [ ] optimize later.
  [ ] 3. Calculate actual partition neighbors
- [ ] 4. create cell list to send to each partion
- [ ] 5. send cells to partion neighbors.
+ [ ] 4. create cell list to send to each partition
+ [ ] 5. send cells to partition neighbors.
  [ ] 6. receive cells from partition.
- [ ] 7. integrate cells into local partion.
+ [ ] 7. integrate cells into local partition.
 
  **                                                                      **
  **                                                                      **

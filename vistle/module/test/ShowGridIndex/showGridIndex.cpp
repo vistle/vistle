@@ -8,7 +8,7 @@ ShowGridIndex::ShowGridIndex(const std::string &name, int moduleID, boost::mpi::
 {
     m_gridIn = createInputPort("gridIn", "grid input");
     m_grid_out = createOutputPort("gridOut", "pass grid from grid in");
-    m_indexOut = createOutputPort("indexOut", "the indeces of the vertices of the grid");
+    m_indexOut = createOutputPort("indexOut", "the indices of the vertices of the grid");
 }
 
 bool ShowGridIndex::compute()

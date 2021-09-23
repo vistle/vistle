@@ -13,7 +13,7 @@ function(createSimV2Lib libName)
    SET(RUNTIME_SOURCES 
    DataTransmitter.cpp
    Engine.cpp
-   Exeption.cpp
+   Exception.cpp
    MetaData.cpp
    RectilinearMesh.cpp
    StructuredMesh.cpp
@@ -27,7 +27,7 @@ function(createSimV2Lib libName)
    ArrayStruct.h
    DataTransmitter.h
    Engine.h
-   Exeption.h
+   Exception.h
    IntOption.h
    MeshInfo.h
    MetaData.h

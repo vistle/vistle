@@ -242,7 +242,7 @@ int simv2_DomainBoundaries_set_extents(visit_handle h, int dom, const int extent
 // Arguments:
 //   h   : The handle to the domain boundaries object.
 //   dom : The current domain to add a neighbor for
-//   d   : The domain number of the new neigbor
+//   d   : The domain number of the new neighbor
 //   mi  : The current domain's index in the neighbor's neighbor list
 //   orientation : The three orientation values
 //   extents     : The extents of the matching boundary in the current domain

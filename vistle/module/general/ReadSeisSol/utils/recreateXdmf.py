@@ -35,7 +35,7 @@ def recreateXdmf(prefix, prefix_new, nvertex, ncells, nmem, dt, indices, lsData,
     prefix = os.path.basename(prefix)
     prefix_new = os.path.basename(prefix_new)
 
-    # fault and surface output have 3 colums in connect
+    # fault and surface output have 3 columns in connect
     ncolConnect = 4
     scell = "Tetrahedron"
     lsplit = prefix.split("-")
@@ -169,7 +169,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="recreate a xdmf file")
     parser.add_argument("prefix", help="prefix including -fault or -surface")
     parser.add_argument("--version", nargs=1, help="xdmf version (2 or 3)", type=int)
-    parser.add_argument("--idt", nargs="+", help="list of time step to differenciate (1st = 0); -1 = all", type=int)
+    parser.add_argument("--idt", nargs="+", help="list of time step to differentiate (1st = 0); -1 = all", type=int)
     parser.add_argument("--nvertex", nargs=1, metavar=("nvertex"), help="number of vertex (read if not given)", type=int)
     parser.add_argument("--ncells", nargs=1, metavar=("ncells"), help="number of cells (read if not given)", type=int)
     parser.add_argument("--dt", nargs=1, metavar=("dt"), help="output time step (read if not given)", type=float)

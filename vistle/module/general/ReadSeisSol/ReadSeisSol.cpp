@@ -600,7 +600,7 @@ bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfA
  *
  * @param unstr UnstructuredGrid::ptr with coordinates to fill.
  * @param xArrGeo XdmfArray which contains coordinates in an one dimensional array.
- * @param verticesToRead verticies to read from array.
+ * @param verticesToRead vertices to read from array.
  *
  * @return true if values stored in XdmfArray could be stroed in coords array of given unstructured grid.
  */

@@ -365,7 +365,7 @@ void QConsole::keyPressEvent(QKeyEvent *e)
     // control is pressed
     if ((e->modifiers() & Qt::ControlModifier) && (e->key() == Qt::Key_C)) {
         if (isSelectionInEditionZone()) {
-            //If Ctrl + C pressed, then undo the current commant
+            //If Ctrl + C pressed, then undo the current command
             //append("");
             //displayPrompt();
 
@@ -423,7 +423,7 @@ void QConsole::keyPressEvent(QKeyEvent *e)
                 break;
             } else { //no selection
                 //when typing normal characters,
-                //make sure the cursor is positionned in the
+                //make sure the cursor is positioned in the
                 //edition zone
                 if (!isInEditionZone()) {
                     moveCursor(QTextCursor::End, QTextCursor::MoveAnchor);
@@ -708,7 +708,7 @@ void QConsole::contextMenuEvent(QContextMenuEvent *event)
 void QConsole::cut()
 {
     //Cut only in the editing zone,
-    //perfom a copy otherwise
+    //perform a copy otherwise
     if (isInEditionZone()) {
         QTextEdit::cut();
         return;

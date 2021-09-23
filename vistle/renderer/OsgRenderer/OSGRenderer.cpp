@@ -286,7 +286,7 @@ bool OsgViewData::update(bool frameQueued)
         if (viewIdx >= 0) {
             gc = osg::GraphicsContext::createGraphicsContext(traits);
             if (!gc) {
-                CERR << "failed to create graphics constext" << std::endl;
+                CERR << "failed to create graphics context" << std::endl;
             } else {
                 if (!traits->doubleBuffer)
                     gc->setSwapCallback(new NoSwapCallback);

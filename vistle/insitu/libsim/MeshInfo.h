@@ -13,7 +13,7 @@ namespace vistle {
 namespace insitu {
 namespace libsim {
 struct MeshInfo {
-    bool combined = false; //if the mesh is made of multiple smaler meshes
+    bool combined = false; //if the mesh is made of multiple smaller meshes
     std::string name;
     int dim = 0; //2D or 3D
     visit_smart_handle<HandleType::DomainList> domainHandle;

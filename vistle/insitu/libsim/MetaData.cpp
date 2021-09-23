@@ -1,5 +1,5 @@
 #include "MetaData.h"
-#include "Exeption.h"
+#include "Exception.h"
 
 #include <vistle/insitu/libsim/libsimInterface/CommandMetaData.h>
 #include <vistle/insitu/libsim/libsimInterface/CurveMetaData.h>
@@ -82,7 +82,7 @@ size_t MetaData::getNumObjects(SimulationObjectType type) const
         getNum = simv2_SimulationMetaData_getNumMessages;
     } break;
     default:
-        throw EngineExeption("getDataNames called with invalid type") << (int)type;
+        throw EngineException("getDataNames called with invalid type") << (int)type;
 
         break;
     }
@@ -125,7 +125,7 @@ visit_handle MetaData::getNthObject(SimulationObjectType type, int n) const
         getObj = simv2_SimulationMetaData_getMessage;
     } break;
     default:
-        throw EngineExeption("getDataNames called with invalid type");
+        throw EngineException("getDataNames called with invalid type");
         break;
     }
     visit_handle obj = m_handle;
@@ -165,7 +165,7 @@ std::vector<std::string> MetaData::getObjectNames(SimulationObjectType type) con
         getName = simv2_MessageMetaData_getName;
     } break;
     default:
-        throw EngineExeption("getDataNames called with invalid type");
+        throw EngineException("getDataNames called with invalid type");
         break;
     }
 

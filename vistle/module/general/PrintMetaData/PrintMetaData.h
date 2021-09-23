@@ -71,7 +71,7 @@ public:
     ~PrintMetaData();
 
 private:
-    // overriden functions
+    // overridden functions
     virtual bool prepare() override;
     virtual bool compute() override;
     virtual bool reduce(int timestep) override;

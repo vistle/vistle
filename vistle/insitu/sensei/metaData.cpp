@@ -1,5 +1,5 @@
 #include "metaData.h"
-#include "exeption.h"
+#include "exception.h"
 
 #include <algorithm>
 #include <cassert>

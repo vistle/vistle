@@ -318,7 +318,7 @@ bool WriteHDF5::prepare()
         std::string description = m_portDescriptions[i]->getValue();
         hsize_t dims[1];
 
-        // make sure description isnt empty
+        // make sure description is not empty
         if (description.size() == 0) {
             description = "Port " + std::to_string(i);
         }
@@ -462,7 +462,7 @@ void WriteHDF5::reduce_performant()
 
     // sorting allows for the assumption that all values appartaining to a particular
     // block/timestep/port will be stored in a contiguous portion of the file. this allows
-    // for fewer seperate reads to be made.
+    // for fewer separate reads to be made.
     // (e.g. if we want to read a whole block, we can do this with one read instead of several)
     std::sort(m_objContainerVector.begin(), m_objContainerVector.end());
 
@@ -856,7 +856,7 @@ bool WriteHDF5::compute()
 
 // COMPUTE - ORGANIZED METHOD
 // * function procedure:
-// * - serailized incoming object data into a ShmArchive
+// * - serialized incoming object data into a ShmArchive
 // * - transmits information regarding object data sizes to all nodes
 // * - nodes reserve space for all objects independently
 // * - nodes write data into the HDF5 file collectively. If a object is
@@ -982,7 +982,7 @@ void WriteHDF5::compute_organized()
         int currBlock = indexWriteGatherVector[i].block;
 
 
-        // create timestep group if it doesnt already exist
+        // create timestep group if it does not already exist
         std::string groupName = "/index/t" + std::to_string(currTimestep);
         if (m_indexVariantTracker.find(currTimestep) == m_indexVariantTracker.end()) {
             m_indexVariantTracker[currTimestep];
@@ -993,7 +993,7 @@ void WriteHDF5::compute_organized()
             util_checkStatus(status);
         }
 
-        // create block group if it doesnt already exist
+        // create block group if it does not already exist
         groupName += "/b" + std::to_string(currBlock);
         if (m_indexVariantTracker[currTimestep].find(currBlock) == m_indexVariantTracker[currTimestep].end()) {
             m_indexVariantTracker[currTimestep][currBlock];
@@ -1004,7 +1004,7 @@ void WriteHDF5::compute_organized()
             util_checkStatus(status);
         }
 
-        // create port group if it doesnt already exist
+        // create port group if it does not already exist
         groupName += "/p" + std::to_string(currOrigin);
         if (m_indexVariantTracker[currTimestep][currBlock].find(currOrigin) ==
             m_indexVariantTracker[currTimestep][currBlock].end()) {
@@ -1016,7 +1016,7 @@ void WriteHDF5::compute_organized()
             util_checkStatus(status);
         }
 
-        // create variants group if it doesnt already exist
+        // create variants group if it does not already exist
         groupName += "/v" + std::to_string(m_indexVariantTracker[currTimestep][currBlock][currOrigin]);
         groupId = H5Gcreate2(m_fileId, groupName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
         util_checkId(groupId, "create group " + groupName);
@@ -1059,7 +1059,7 @@ void WriteHDF5::compute_organized()
 
     unsigned numArraysWritten = 0;
 
-    // write neccessary arrays
+    // write necessary arrays
     for (unsigned i = 0; i < objRefArchiveVector.size(); i++) {
         for (unsigned j = 0; j < objRefArchiveVector[i].getVector().size(); j++) {
             if (objRefArchiveVector[i].getVector()[j].referenceType == ReferenceType::ShmVector &&
@@ -1270,7 +1270,7 @@ bool WriteHDF5::prepare_fileNameCheck()
     }
 
 
-    // make sure name isnt a directory
+    // make sure name is not a directory
     if (isDirectory) {
         if (m_isRootNode) {
             sendInfo("File name cannot be a directory");

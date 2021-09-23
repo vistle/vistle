@@ -22,7 +22,7 @@ void broadcast(boost::mpi::communicator &c, T &t, int root)
         root = 0; // everyone does this
     }
 
-    // Compute who the executing proc. will recieve its message from.
+    // Compute who the executing proc. will receive its message from.
     int srcProc = 0;
     for (int i = 0; i < 31; i++) {
         int mask = 0x00000001;
@@ -35,7 +35,7 @@ void broadcast(boost::mpi::communicator &c, T &t, int root)
     }
     // Polling Phase
     if (c.rank() != 0) {
-        // Everyone posts a non-blocking recieve
+        // Everyone posts a non-blocking receive
         auto bcastRecv = c.irecv(srcProc, tag, t);
         // Main polling loop
         vistle::adaptive_wait(true);

@@ -323,7 +323,7 @@ void ReadWRFChem::setMeta(Object::ptr obj, int blockNr, int totalBlockNr, int ti
     obj->setNumBlocks(totalBlockNr == 0 ? 1 : totalBlockNr);
 }
 
-//emptyValue: check if variable selction is empty
+//emptyValue: check if variable selection is empty
 bool ReadWRFChem::emptyValue(vistle::StringParameter *ch) const
 {
     std::string name = "";

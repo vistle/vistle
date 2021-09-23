@@ -147,8 +147,7 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm): Mod
         addIntParameter("inset_relative", "width and center of inset are relative to range", true, Parameter::Boolean);
     m_insetCenterPara =
         addFloatParameter("inset_center", "where to inset other color map (auto range: 0.5=middle)", 0.5);
-    m_insetWidthPara =
-        addFloatParameter("inset_width", "range covered by inseted color map (auto range: relative)", 0.1);
+    m_insetWidthPara = addFloatParameter("inset_width", "range covered by inset color map (auto range: relative)", 0.1);
     auto inset_map = addIntParameter("inset_map", "transfer function to inset", COVISE, Parameter::Choice);
     V_ENUM_SET_CHOICES(inset_map, TransferFunction);
     auto inset_steps = addIntParameter("inset_steps", "number of color map steps for inset (0: as outer map)", 0);

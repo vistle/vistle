@@ -7,12 +7,12 @@ To link a simulation to Vislte instead of VisIt remove VisIt specific entries fr
 
 To connect Vistle to the simulation there are two different strategies depending on the build mode of Vistle.
 
-If Vistle is build as multi-process shared memory programm:
+If Vistle is build as multi-process shared memory program:
 
 	start Vistle and start the LibSim module. 
 	Open the simulations .sim2 file with this module and it should connect to the simulation.
 	
-If Vistle is build as single-process programm:
+If Vistle is build as single-process program:
 
 	set environmentvariables:
 		VISTLE_ROOT=path/to/vistle/build-dir (in the sim shell)
@@ -28,7 +28,7 @@ A small library that manages the first connection to a LibSim instrumented simul
 
 engineInterface
 ---------------
-In single process mode this provides an interface for the LibSimController module to get access to the simulation's controll socket.  
+In single process mode this provides an interface for the LibSimController module to get access to the simulation's control socket.  
 
 libsimInterface
 ---------------

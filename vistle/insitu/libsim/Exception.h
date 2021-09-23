@@ -1,5 +1,5 @@
-#ifndef SIMV2_EXEPTION
-#define SIMV2_EXEPTION
+#ifndef SIMV2_EXCEPTION
+#define SIMV2_EXCEPTION
 
 #include <string>
 
@@ -8,16 +8,16 @@
 
 #include <vistle/insitu/libsim/libsimInterface/VisItDataTypes.h>
 
-#include <vistle/insitu/core/exeption.h>
+#include <vistle/insitu/core/exception.h>
 namespace vistle {
 namespace insitu {
 
-struct SimV2Exeption: public InsituExeption {
+struct SimV2Exception: public InsituException {
     const char *what() const noexcept override;
 };
 
-struct EngineExeption: public InsituExeption {
-    EngineExeption(const std::string &message);
+struct EngineException: public InsituException {
+    EngineException(const std::string &message);
     const char *what() const noexcept override;
 };
 
@@ -33,7 +33,7 @@ inline void throwIfVisit_handleInvalid(const T &val)
 inline void throwIfVisit_handleInvalid(visit_handle val)
 {
     if (val == VISIT_INVALID_HANDLE || val == VISIT_ERROR) {
-        throw SimV2Exeption{};
+        throw SimV2Exception{};
     }
 }
 
@@ -42,7 +42,7 @@ inline void v2check(std::function<int(Args1...)> fnct, Args2 &&...args)
 {
     auto retval = fnct(std::forward<Args2>(args)...);
     if (retval == VISIT_INVALID_HANDLE || retval == VISIT_ERROR) {
-        throw SimV2Exeption{};
+        throw SimV2Exception{};
     }
     using tuple1 = std::tuple<Args1...>;
     using tuple2 = std::tuple<Args2...>;
@@ -66,7 +66,7 @@ inline visit_handle v2check(std::function<visit_handle(Args1...)> fnct, Args2 &&
 {
     auto retval = fnct(std::forward<Args2>(args)...);
     if (retval == VISIT_INVALID_HANDLE || retval == VISIT_ERROR) {
-        throw SimV2Exeption{};
+        throw SimV2Exception{};
     }
     return retval;
 }
@@ -82,7 +82,7 @@ inline visit_handle v2check(std::function<visit_handle()> fnct)
 {
     auto retval = fnct();
     if (retval == VISIT_INVALID_HANDLE || retval == VISIT_ERROR) {
-        throw SimV2Exeption{};
+        throw SimV2Exception{};
     }
     return retval;
 }
@@ -93,4 +93,4 @@ inline visit_handle v2check(visit_handle(fnct)())
 }
 } // namespace insitu
 } // namespace vistle
-#endif // !SIMV2_EXEPTION
+#endif // !SIMV2_EXCEPTION

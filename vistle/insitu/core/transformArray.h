@@ -2,7 +2,7 @@
 #define TRANSFORM_ARRAY_H
 
 #include "callFunctionWithVoidToTypeCast.h"
-#include "exeption.h"
+#include "exception.h"
 
 #include <vistle/core/database.h>
 #include <vistle/core/object.h>
@@ -16,9 +16,9 @@
 namespace vistle {
 namespace insitu {
 
-struct TransformArrayExeption: public InsituExeption {
-    TransformArrayExeption(const std::string &msg): m_msg(msg) {}
-    const char *what() const noexcept override { return ("TransformArrayExeption" + m_msg).c_str(); }
+struct TransformArrayException: public InsituException {
+    TransformArrayException(const std::string &msg): m_msg(msg) {}
+    const char *what() const noexcept override { return ("TransformArrayException" + m_msg).c_str(); }
     std::string m_msg;
 };
 
@@ -44,7 +44,7 @@ struct ArrayTransformer {
     void operator()(const Source *s, size_t size, Dest d) { transformArray(s, size, d); }
 };
 
-// takes a singe array of type Source and and std::array of dim (or bigger) and converts and distributes from source to
+// takes a single array of type Source and and std::array of dim (or bigger) and converts and distributes from source to
 // dest
 template<typename Source, typename Dest, typename p_Dim>
 struct InterleavedArrayTransformer {
@@ -168,7 +168,7 @@ template<typename T, size_t I>
 void transformInterleavedArray(const void *source, std::array<T *, I> dest, int size, DataType dataType, int dim)
 {
     if (static_cast<size_t>(dim) > I) {
-        throw TransformArrayExeption("transformInterleavedArray: destination array is smaller than given dimension");
+        throw TransformArrayException("transformInterleavedArray: destination array is smaller than given dimension");
     }
     detail::callFunctionWithVoidToTypeCast<void, detail::InterleavedArrayTransformer>(source, dataType, size, dest,
                                                                                       dim);

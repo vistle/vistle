@@ -1,6 +1,6 @@
 #include "addObjectMsq.h"
 #include <vistle/core/messages.h>
-#include <vistle/insitu/core/exeption.h>
+#include <vistle/insitu/core/exception.h>
 using namespace vistle::insitu::message;
 using namespace vistle::insitu;
 
@@ -13,7 +13,7 @@ AddObjectMsq::AddObjectMsq(const ModuleInfo &moduleInfo, size_t rank): m_moduleI
     try {
         m_sendMessageQueue.reset(vistle::message::MessageQueue::open(mqName));
     } catch (boost::interprocess::interprocess_exception &ex) {
-        throw vistle::insitu::InsituExeption()
+        throw vistle::insitu::InsituException()
             << "opening add object message queue with name " << mqName << ": " << ex.what();
     }
 }

@@ -1,5 +1,5 @@
 #include "VariableData.h"
-#include "Exeption.h"
+#include "Exception.h"
 
 #include <vistle/core/unstr.h>
 #include <vistle/insitu/message/SyncShmIDs.h>
@@ -16,7 +16,7 @@ vistle::insitu::libsim::VariableData::allocVarForCombinedMesh(const VariableInfo
 {
     auto unstr = vistle::UnstructuredGrid::as(varInfo.meshInfo.grids[0]);
     if (!unstr) {
-        throw InsituExeption{} << "allocVarForCombinedMesh: combined grids must be UnstructuredGrids";
+        throw InsituException{} << "allocVarForCombinedMesh: combined grids must be UnstructuredGrids";
     }
     size_t size =
         varInfo.mapping == vistle::DataBase::Mapping::Vertex ? unstr->getNumVertices() : unstr->getNumElements();

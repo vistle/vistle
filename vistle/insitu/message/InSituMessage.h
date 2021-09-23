@@ -110,7 +110,7 @@ DEFINE_IN_SITU_MESSAGE(SetCustomCommands, std::vector<std::string>)
 DEFINE_IN_SITU_MESSAGE(Ready, bool)
 DEFINE_IN_SITU_MESSAGE(
     ExecuteCommand,
-    std::pair<std::string COMMA std::string>) //command name + enmpty string for generic or + value for custom
+    std::pair<std::string COMMA std::string>) //command name + empty string for generic or + value for custom
 
 #ifdef MODULE_THREAD
 DEFINE_IN_SITU_MESSAGE(ModuleID, int)

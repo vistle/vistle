@@ -1669,7 +1669,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog)
                         if (handleOnMaster && localSender) {
                             assert(mod->ranksFinished == 0);
                         }
-                        // process all objects which are still in the queue befor calling reduce()
+                        // process all objects which are still in the queue before calling reduce()
                         if (isLocal(destId)) {
                             if (it->second.schedulingPolicy == message::SchedulingPolicy::LazyGang) {
                                 broadcast = true;

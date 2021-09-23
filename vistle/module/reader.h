@@ -115,7 +115,7 @@ protected:
 
     //! whenever an observed parameter changes, data set should be rescanned
     void observeParameter(const Parameter *param);
-    //! call during @ref examine to inform module how many timesteps are present whithin dataset
+    //! call during @ref examine to inform module how many timesteps are present within dataset
     void setTimesteps(int number);
     //! call during @ref examine to inform module nto how many the dataset will be split
     void setPartitions(int number);

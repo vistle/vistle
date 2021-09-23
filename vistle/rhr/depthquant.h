@@ -41,7 +41,7 @@ struct DepthQuantizeBits {
 typedef DepthQuantizeBits<16, 4, 0> DepthQuantizeBits16;
 typedef DepthQuantizeBits<24, 3, 4> DepthQuantizeBits24;
 
-//! min/max depth for a single 4x4 pixel tile (when storing depths and interpolation bits seperately)
+//! min/max depth for a single 4x4 pixel tile (when storing depths and interpolation bits separately)
 template<int Precision>
 struct DepthQuantizeMinMaxDepth {
     uint8_t depth[2][Precision / 8]; //!< minimum and maximum depth data

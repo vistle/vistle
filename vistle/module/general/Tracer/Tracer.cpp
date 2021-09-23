@@ -112,7 +112,7 @@ Tracer::Tracer(const std::string &name, int moduleID, mpi::communicator comm): M
     V_ENUM_SET_CHOICES(startStyle, StartStyle);
     IntParameter *integration = addIntParameter("integration", "integration method", (Integer)RK32, Parameter::Choice);
     V_ENUM_SET_CHOICES(integration, IntegrationMethod);
-    addFloatParameter("min_speed", "miniumum particle speed", 1e-4);
+    addFloatParameter("min_speed", "minimum particle speed", 1e-4);
     setParameterRange("min_speed", 0.0, 1e6);
     addFloatParameter("dt_step", "duration of a timestep (for moving points or when data does not specify realtime",
                       1. / 25);

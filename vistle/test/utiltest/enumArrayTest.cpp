@@ -27,7 +27,7 @@ int main()
     }
 
 
-    std::cerr << "test succeded" << std::endl;
+    std::cerr << "test succeeded" << std::endl;
     size_t numIter = 1000000;
     {
         std::array<TestStruct, 2> sa{TestStruct{3}, TestStruct{1}};

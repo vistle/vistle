@@ -91,7 +91,7 @@ private:
     class MetaToArrayArchive;
 
 
-    // overriden functions
+    // overridden functions
     virtual void connectionRemoved(const vistle::Port *from, const vistle::Port *to) override;
     virtual void connectionAdded(const vistle::Port *from, const vistle::Port *to) override;
     bool parameterChanged(const int senderId, const std::string &name,
@@ -140,8 +140,8 @@ private:
     bool m_doNotWrite;
     bool m_unresolvedReferencesExist;
     std::unordered_map<std::string, bool>
-        m_arrayMap; //< existence determines wether space has been allocated in file, bool describes wether array has actually been written
-    std::unordered_set<std::string> m_objectSet; //< existence determines wether entry has been written yet
+        m_arrayMap; //< existence determines whether space has been allocated in file, bool describes whether array has actually been written
+    std::unordered_set<std::string> m_objectSet; //< existence determines whether entry has been written yet
     std::vector<std::string> m_metaNvpTags;
     IndexTracker m_indexVariantTracker; //< used to keep track of the number of variants in each timestep/block/port
 
@@ -556,13 +556,13 @@ public:
                 return arrayPtr->size();
 
             } else {
-                // if vistle::VectorTypes doesnt contain the type T, but the function call requires it
+                // if vistle::VectorTypes does not contain the type T, but the function call requires it
                 assert("m_dataArrays not built properly" == NULL);
                 return 0;
             }
 
         } else {
-            // the native typemap doesnt contain the necessary type - please add it if needed
+            // the native typemap does not contain the necessary type - please add it if needed
             assert("hdf5 type not found" == NULL);
             return 0;
         }
@@ -578,7 +578,7 @@ public:
             return (static_cast<WriteHDF5::DataArray<T> *>(dataArrayIter->second))->array.size();
 
         } else {
-            // if vistle::VectorTypes doesnt contain the type T, but the function call requires it
+            // if vistle::VectorTypes does not contain the type T, but the function call requires it
             assert("m_dataArrays not built properly" == NULL);
             return 0;
         }
@@ -756,7 +756,7 @@ void WriteHDF5::util_HDF5WritePerformant(hid_t fileId, const boost::mpi::communi
         totalWriteSize *= totalDims[i];
     }
 
-    // obtain divisions and perform a set of neccessary writes in order to keep under the 2gb MPIO limit
+    // obtain divisions and perform a set of necessary writes in order to keep under the 2gb MPIO limit
     // limit lies in number of elements collectively within a write, not total write size based off my tests (i.e. 2e8 elements, not 2e8 bytes)
     const long double writeLimit = HDF5Const::mpiReadWriteLimitGb * HDF5Const::numBytesInGb;
     unsigned numWriteDivisions = std::ceil(totalWriteSize / writeLimit);
@@ -867,7 +867,7 @@ void WriteHDF5::ShmVectorReserver::operator()(T)
     if (vec) {
         auto nativeTypeMapIter = WriteHDF5::s_nativeTypeMap.find(typeid(T));
 
-        // check wether the needed vector type is not supported within the nativeTypeMap
+        // check whether the needed vector type is not supported within the nativeTypeMap
         assert(nativeTypeMapIter != WriteHDF5::s_nativeTypeMap.end());
 
         // store reservation info
@@ -920,7 +920,7 @@ void WriteHDF5::ShmVectorWriterOrganized::writeRecursive(const vistle::ShmVector
             hid_t memSpaceId;
             hid_t writeId;
 
-            // check wether the needed vector type is not supported within the nativeTypeMap
+            // check whether the needed vector type is not supported within the nativeTypeMap
             assert(nativeTypeMapIter != WriteHDF5::s_nativeTypeMap.end());
 
             // set up parallel write

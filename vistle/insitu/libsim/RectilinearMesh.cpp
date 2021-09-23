@@ -1,5 +1,5 @@
 #include "RectilinearMesh.h"
-#include "Exeption.h"
+#include "Exception.h"
 #include "VisitDataTypesToVistle.h"
 #include "UnstructuredMesh.h"
 #include "MeshInfo.h"
@@ -130,7 +130,7 @@ getMeshFromSim(const visit_smart_handle<HandleType::RectilinearMesh> &meshHandle
     for (int i = 0; i < ndims; ++i) {
         meshData[i] = getVariableData(coordHandles[i]);
         if (meshData[i].type != meshData[0].type) {
-            throw EngineExeption{"mesh data type must be consistent within a domain"};
+            throw EngineException{"mesh data type must be consistent within a domain"};
         }
     }
     return meshData;

@@ -101,8 +101,8 @@ private:
     bool computeBlock(Token &token, const T &blockNum, const U &timestep);
 
     template<class Iter>
-    void computeBlockPartion(const int blockNum, vistle::Index &nLatBlocks, vistle::Index &nLonBlocks,
-                             Iter blockPartitionIterFirst);
+    void computeBlockPartition(const int blockNum, vistle::Index &nLatBlocks, vistle::Index &nLonBlocks,
+                               Iter blockPartitionIterFirst);
 
     template<class T>
     bool computeInitial(Token &token, const T &blockNum);

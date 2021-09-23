@@ -1,7 +1,7 @@
 #ifndef CALL_FUNCTION_WITH_VOID_TO_TYPE_CAST_H
 #define CALL_FUNCTION_WITH_VOID_TO_TYPE_CAST_H
 #include "dataType.h"
-#include "exeption.h"
+#include "exception.h"
 
 namespace vistle {
 namespace insitu {
@@ -49,7 +49,7 @@ RetVal callFunctionWithVoidToTypeCast(const void *source, DataType dataType, siz
         return Func<vistle::Byte, typename std::decay<Args2>::type...>()(f, size, std::forward<Args2>(args)...);
     } break;
     default: {
-        throw InsituExeption{} << "callFunctionWithVoidToTypeCast: non-numeric data types can not be converted";
+        throw InsituException{} << "callFunctionWithVoidToTypeCast: non-numeric data types can not be converted";
     } break;
     }
 }

@@ -332,7 +332,7 @@ QColor DataFlowNetwork::highlightColor() const
  * \brief Scene::mousePressEvent
  * \param event
  *
- * \todo test connection drawing and unforseen events more thoroughly
+ * \todo test connection drawing and unforeseen events more thoroughly
  */
 void DataFlowNetwork::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
@@ -463,7 +463,7 @@ void DataFlowNetwork::createModuleCompound()
                                                 filter, &filter);
     if (text.size() - text.lastIndexOf("/") > vistle::ModuleNameLength) {
 #ifdef HAVE_PYTHON
-        vistle::PythonInterface::the().exec("print(\"Module preset must not exeed " +
+        vistle::PythonInterface::the().exec("print(\"Module preset must not exceed " +
                                             std::to_string(vistle::ModuleNameLength) + "!\"");
 #endif
         return;

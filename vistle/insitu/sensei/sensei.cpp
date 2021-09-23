@@ -1,5 +1,5 @@
 #include "sensei.h"
-#include "exeption.h"
+#include "exception.h"
 #include "intOption.h"
 
 #include <vistle/insitu/message/ShmMessage.h>
@@ -59,7 +59,7 @@ SenseiAdapter::SenseiAdapter(bool paused, MPI_Comm Comm, MetaData &&meta, Object
         m_internals->messageHandler.initialize(m_rank);
         dumpConnectionFile(comm);
     } catch (...) {
-        throw Exeption() << "failed to create connection facilities for Vistle";
+        throw Exception() << "failed to create connection facilities for Vistle";
     }
 #ifdef MODULE_THREAD
     startVistle(comm, options);
@@ -258,7 +258,7 @@ bool SenseiAdapter::recvAndHandeMessage(bool blocking)
         if (it != m_commands.end()) {
             it->second = !it->second;
         } else {
-            CERR << "receive unknow command: " << exe.value.first << endl;
+            CERR << "received unknown command: " << exe.value.first << endl;
         }
     } break;
     case InSituMessageType::ConnectionClosed: {
@@ -280,8 +280,8 @@ bool SenseiAdapter::recvAndHandeMessage(bool blocking)
 bool SenseiAdapter::initModule(const Message &msg)
 {
     if (m_connected) {
-        CERR << "warning: received connection attempt but we are already "
-                "connectted with module "
+        CERR << "warning: received connection attempt, but we are already "
+                "connected with module "
              << m_internals->moduleInfo.name() << m_internals->moduleInfo.id() << endl;
         return false;
     }

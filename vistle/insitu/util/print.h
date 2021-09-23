@@ -6,7 +6,7 @@ namespace vistle {
 
 DoNotPrintInstance << "hello world" << std::endl;
 
-This is usefull in functions that only want to print under certain circumstances e.g:
+This is useful in functions that only want to print under certain circumstances e.g:
 #ifdef X
 #define CERR std::cerr
 #else

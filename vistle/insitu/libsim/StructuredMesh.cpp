@@ -1,6 +1,6 @@
 #include "StructuredMesh.h"
 #include "ArrayStruct.h"
-#include "Exeption.h"
+#include "Exception.h"
 #include "MeshInfo.h"
 #include "UnstructuredMesh.h"
 #include "VisitDataTypesToVistle.h"
@@ -36,7 +36,7 @@ vistle::Object::ptr get(const visit_handle &meshHandle, message::SyncShmIDs &cre
         // no v2check because last visit_handle can be invalid
         if (!simv2_CurvilinearMesh_getCoords(meshHandle, &ndims, dims, &coordMode, &coordHandles[0], &coordHandles[1],
                                              &coordHandles[2], &coordHandles[3])) {
-            throw EngineExeption("makeStructuredMesh: simv2_CurvilinearMesh_getCoords failed");
+            throw EngineException("makeStructuredMesh: simv2_CurvilinearMesh_getCoords failed");
         }
         vistle::StructuredGrid::ptr mesh =
             creator.createVistleObject<vistle::StructuredGrid>(dims[0], dims[1], dims[2]);
@@ -104,7 +104,7 @@ void fillMeshCoords(int coordMode, visit_handle coordHandles[4], size_t numVerti
         separateFill(coordHandles, numVertices, gridCoords, dim);
     } break;
     default:
-        throw EngineExeption("coord mode must be interleaved(1) or separate(0), it is " + std::to_string(coordMode));
+        throw EngineException("coord mode must be interleaved(1) or separate(0), it is " + std::to_string(coordMode));
     }
 }
 
@@ -115,7 +115,7 @@ void getMeshCoord(int currDomain, const char *name, int &ndims, int dims[3], int
     // no v2check because last visit_handle can be invalid
     if (!simv2_CurvilinearMesh_getCoords(meshHandle, &ndims, dims, &coordMode, &coordHandles[0], &coordHandles[1],
                                          &coordHandles[2], &coordHandles[3])) {
-        throw EngineExeption("makeStructuredMesh: simv2_CurvilinearMesh_getCoords failed");
+        throw EngineException("makeStructuredMesh: simv2_CurvilinearMesh_getCoords failed");
     }
 }
 
@@ -124,7 +124,7 @@ void separateFill(visit_handle coordHandles[4], int numCoords, std::array<vistle
     for (int i = 0; i < dim; ++i) {
         auto meshArray = getVariableData(coordHandles[i]);
         if (meshArray.size != static_cast<size_t>(numCoords)) {
-            throw EngineExeption("get(): received points in separate mesh do not match the mesh's dimension ") << i;
+            throw EngineException("get(): received points in separate mesh do not match the mesh's dimension ") << i;
         }
         transformArray(meshArray, meshCoords[i]);
     }
@@ -135,7 +135,7 @@ void interleavedFill(visit_handle coordHandle, int numCoords, const std::array<v
 {
     auto meshArray = getVariableData(coordHandle);
     if (meshArray.size != static_cast<size_t>(numCoords * dim)) {
-        throw EngineExeption("get(): received points in interleaved mesh do not match the mesh's dimensions");
+        throw EngineException("get(): received points in interleaved mesh do not match the mesh's dimensions");
     }
 
     transformInterleavedArray(meshArray.data, meshCoords, numCoords, dataTypeToVistle(meshArray.type), dim);

@@ -463,7 +463,7 @@ bool PrintMetaData::compute()
     // acquire input data object
     Object::const_ptr data = expect<Object>("data_in");
 
-    // assert existence of useable data
+    // assert existence of usable data
     if (!data) {
         sendInfo("Error: Unknown Input Data");
         return true;

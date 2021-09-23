@@ -1249,7 +1249,7 @@ bool Module::handleMessage(const vistle::message::Message *message, const Messag
 
     case message::QUIT: {
         const message::Quit *quit = static_cast<const message::Quit *>(message);
-        //TODO: uuid should be included in coresponding ModuleExit message
+        //TODO: uuid should be included in corresponding ModuleExit message
         (void)quit;
 #ifdef REDIRECT_OUTPUT
         if (auto sbuf = dynamic_cast<msgstreambuf<char> *>(m_streambuf))
@@ -1261,7 +1261,7 @@ bool Module::handleMessage(const vistle::message::Message *message, const Messag
 
     case message::KILL: {
         const message::Kill *kill = static_cast<const message::Kill *>(message);
-        //TODO: uuid should be included in coresponding ModuleExit message
+        //TODO: uuid should be included in corresponding ModuleExit message
         if (kill->getModule() == id() || kill->getModule() == message::Id::Broadcast) {
 #ifdef REDIRECT_OUTPUT
             if (auto sbuf = dynamic_cast<msgstreambuf<char> *>(m_streambuf))

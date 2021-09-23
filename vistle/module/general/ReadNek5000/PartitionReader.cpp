@@ -247,7 +247,7 @@ bool PartitionReader::ReadVelocity(int timestep, int block, float *x, float *y, 
             //This assumes [block 0: 216u 216v 216w][block 1: 216u 216v 216w]...[block n: 216u 216v 216w]
             filepos =
                 (long)iRealHeaderSize +
-                (long)vBlocksPerFile[fileID] * dp.varOffsetBinary * m_precision + //the header and gird if one exists
+                (long)vBlocksPerFile[fileID] * dp.varOffsetBinary * m_precision + //the header and grid if one exists
                 (long)block * blockSize * dim * m_precision;
         if (m_precision == 4) {
             fseek(curOpenVarFile->file(), filepos, SEEK_SET);
@@ -620,7 +620,7 @@ bool PartitionReader::constructUnstructuredGrid(int timestep)
         myGrid[i].resize(myBlocksToRead.size() * blockSize);
     }
     for (size_t currBlock = 0; currBlock < myBlocksToRead.size(); currBlock++) {
-        //preRead the grid to verify overlapping corners. The is necessary beacause the mapfile also contains not physically (logically) linked blocks
+        //pre-read the grid to verify overlapping corners. The is necessary because the mapfile also contains not physically (logically) linked blocks
         array<vector<float>, 3> grid{vector<float>(blockSize), vector<float>(blockSize), vector<float>(blockSize)};
         if (!ReadGrid(timestep, myBlocksToRead[currBlock], grid[0].data(), grid[1].data(), grid[2].data())) {
             return false;

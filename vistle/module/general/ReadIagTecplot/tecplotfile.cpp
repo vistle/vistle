@@ -195,7 +195,7 @@ bool TecplotFile::Impl::open(std::string const &iFileName)
         if (endianTest == 16777216) {
             mOtherEndian = true;
         } else {
-            std::cerr << "Illegal endianess test value.\n";
+            std::cerr << "Illegal endianness test value.\n";
             return false;
         }
     }

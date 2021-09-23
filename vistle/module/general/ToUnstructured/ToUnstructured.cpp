@@ -70,7 +70,7 @@ bool ToUnstructured::compute()
     }
 
     StructuredGridBase::const_ptr grid = StructuredGridBase::as(gridObj);
-    // assert existence of useable data
+    // assert existence of usable data
     if (!grid) {
         sendInfo("Error: Unusable Input Data");
         return true;

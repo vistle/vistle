@@ -103,7 +103,7 @@ int simv2_initialize_batch(void *e, int argc, char *argv[])
 // Method: simv2_connect_viewer
 //
 // Purpose:
-//   Unnecessery, Vistle gui connects the renderer.
+//   Unnecessary, Vistle gui connects the renderer.
 //
 // Arguments:
 //   e    : The engine pointer.

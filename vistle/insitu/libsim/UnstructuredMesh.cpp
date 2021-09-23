@@ -1,5 +1,5 @@
 #include "UnstructuredMesh.h"
-#include "Exeption.h"
+#include "Exception.h"
 #include "VisitDataTypesToVistle.h"
 #include "VertexTypesToVistle.h"
 #include "ArrayStruct.h"
@@ -47,8 +47,8 @@ vistle::Object::ptr get(const visit_handle &meshHandle, message::SyncShmIDs &cre
             detail::SeparateAllocAndFill(ndims, coordHandles, mesh);
         } break;
         default:
-            throw EngineExeption("coord mode must be interleaved(1) or separate(0), it is " +
-                                 std::to_string(coordMode));
+            throw EngineException("coord mode must be interleaved(1) or separate(0), it is " +
+                                  std::to_string(coordMode));
         }
         return mesh;
     }
@@ -167,7 +167,7 @@ connListData getConListFromSim(const visit_handle &meshHandle)
     v2check(simv2_UnstructuredMesh_getConnectivity, meshHandle, &cld.numElements, &connListHandle);
     cld.data = getVariableData(connListHandle);
     if (cld.data.type != VISIT_DATATYPE_INT) {
-        throw EngineExeption("element list is not of expected type (int)");
+        throw EngineException("element list is not of expected type (int)");
     }
     return cld;
 }
@@ -207,7 +207,7 @@ void allocateFields(vistle::UnstructuredGrid::ptr grid, size_t totalNumVerts, si
                     int numIterations, std::array<vistle::Scalar *, 3> &gridCoords, size_t totalNumElements,
                     size_t numElements, int numCorners)
 {
-    // reserve memory for the arrays, /assume we have the same sub-grid size for the rest to reduce the amout of re-allocations
+    // reserve memory for the arrays, /assume we have the same sub-grid size for the rest to reduce the amount of re-allocations
     if (grid->x().size() < totalNumVerts + numVertices) {
         auto newSize = totalNumVerts + numVertices * (numIterations - iteration);
         grid->setSize(newSize);

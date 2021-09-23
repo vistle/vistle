@@ -78,7 +78,7 @@ OutputBlockIt blockPartitionStructured_tmpl(InputBlockIt first, InputBlockIt las
 }
 
 /**
-  * Generates a vector<T> for structured data which contains block values for each dim partioned for current blocknumber.
+  * Generates a vector<T> for structured data which contains block values for each dim partitioned for current blocknumber.
   *
   * @blockSize: Blocksize specified for each dim.
   * @bockNum: Current active blocknumber.
@@ -95,7 +95,7 @@ const std::vector<NumericType> blockPartitionStructured_tmpl(const std::vector<N
 
 
 /**
-  * Generates a vector<T> for structured data which contains block values for each dim partioned for current blocknumber.
+  * Generates a vector<T> for structured data which contains block values for each dim partitioned for current blocknumber.
   *
   * @first: Begin pointer of block container.
   * @last: End pointer of block container.

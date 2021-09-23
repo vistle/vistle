@@ -20,7 +20,7 @@ vistle::Object::ptr get(const visit_smart_handle<HandleType::CurvilinearMesh> &m
 
 namespace StructuredMesh {
 vistle::Object::ptr get(const visit_handle &meshHandle, message::SyncShmIDs &creator);
-// todo: concider ghost cells
+// TODO: consider ghost cells
 vistle::Object::ptr getCombinedUnstructured(const MeshInfo &meshInfo, message::SyncShmIDs &creator,
                                             bool vtkFormat = false);
 

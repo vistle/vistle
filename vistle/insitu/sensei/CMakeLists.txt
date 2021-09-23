@@ -14,6 +14,10 @@ set(SENSEI_HEADER
 )
 
 
+<<<<<<< HEAD
+=======
+set(SENSEI_HEADER exception.h export.h intOption.h metaData.h objectRetriever.h sensei.h)
+>>>>>>> 6acc8388b (typos)
 
 vistle_add_library(vistle_sensei ${SENSEI_SOURCES} ${SENSEI_HEADER})
 vistle_export_library(vistle_sensei ${SENSEI_SOURCES} ${SENSEI_HEADER})

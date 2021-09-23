@@ -147,7 +147,7 @@ void FileInfo::updateType()
     } else if (type() == FileInfo::System) {
         displayType = "System";
     } else if (!exists()) {
-        displayType = "Non-existant";
+        displayType = "Non-existent";
     } else {
         displayType = "Unknown";
     }

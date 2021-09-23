@@ -1,7 +1,7 @@
 #ifndef VISITDATATYPESTOVISTLE_H
 #define VISITDATATYPESTOVISTLE_H
 
-#include "Exeption.h"
+#include "Exception.h"
 #include <vistle/core/database.h>
 #include <vistle/core/object.h>
 

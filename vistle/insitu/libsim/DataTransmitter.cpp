@@ -1,6 +1,6 @@
 #include "DataTransmitter.h"
 #include "ArrayStruct.h"
-#include "Exeption.h"
+#include "Exception.h"
 #include "RectilinearMesh.h"
 #include "StructuredMesh.h"
 #include "UnstructuredMesh.h"
@@ -22,8 +22,8 @@ using namespace vistle::insitu::libsim;
 namespace vistle {
 namespace insitu {
 namespace libsim {
-struct DataTransmitterExeption: public vistle::insitu::InsituExeption {
-    DataTransmitterExeption() { *this << "DataTransmitter: "; }
+struct DataTransmitterException: public vistle::insitu::InsituException {
+    DataTransmitterException() { *this << "DataTransmitter: "; }
 };
 } // namespace libsim
 } // namespace insitu
@@ -101,7 +101,7 @@ MeshInfo DataTransmitter::collectMeshInfo(size_t nthMesh)
 
     auto domList = getVariableData(myDoms);
     if (domList.type != VISIT_DATATYPE_INT) {
-        throw DataTransmitterExeption{} << "expected domain list to be ints";
+        throw DataTransmitterException{} << "expected domain list to be ints";
     }
     meshInfo.domains = domList;
 
@@ -155,7 +155,7 @@ void DataTransmitter::makeCombinedMesh(MeshInfo &meshInfo)
         return;
     } break;
     default:
-        throw EngineExeption("meshtype ") << static_cast<int>(meshInfo.type) << " not implemented";
+        throw EngineException("meshtype ") << static_cast<int>(meshInfo.type) << " not implemented";
         break;
     }
     }
@@ -188,7 +188,7 @@ void DataTransmitter::makeSubMesh(int domain, MeshInfo &meshInfo)
         break;
     }
     if (!mesh)
-        throw DataTransmitterExeption{} << "makeSubMesh failed to get mesh " << meshInfo.name << " dom " << domain;
+        throw DataTransmitterException{} << "makeSubMesh failed to get mesh " << meshInfo.name << " dom " << domain;
     meshInfo.grids.push_back(mesh);
 }
 
@@ -239,7 +239,7 @@ VariableInfo DataTransmitter::collectVariableInfo(size_t nthVariable)
     auto meshInfo = m_meshes.find(meshName);
     free(meshName);
     if (meshInfo == m_meshes.end()) {
-        throw DataTransmitterExeption{} << "sendVarablesToModule: can't find mesh " << meshName;
+        throw DataTransmitterException{} << "sendVarablesToModule: can't find mesh " << meshName;
     }
     VariableInfo varInfo(meshInfo->second);
     char *name;

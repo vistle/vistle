@@ -134,7 +134,7 @@ public:
     void setRank(int rank);
     //! UI id, if sent from a UI
     int uiId() const;
-    //! messge size
+    //! message size
     size_t size() const;
     //! message has to be broadcast to all ranks?
     bool isForBroadcast() const;

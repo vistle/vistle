@@ -279,7 +279,7 @@ bool CaseInfo::checkWhichVariablesAreInTransientFile(index_t ntimesteps)
         index_t nvars = cfxExportVariableCount(ReadCFX::usr_level);
 
         for (index_t varnum = 1; varnum <= nvars;
-             varnum++) { //starts from 1 because cfxExportVariableName(varnum,ReadCFX::alias) only returnes values from 1 and higher
+             varnum++) { //starts from 1 because cfxExportVariableName(varnum,ReadCFX::alias) only returns values from 1 and higher
             m_variableInTransientFile.push_back(cfxExportVariableName(varnum, ReadCFX::alias));
             cfxExportVariableFree(varnum);
         }
@@ -324,7 +324,7 @@ void CaseInfo::parseResultfile()
         //std::cerr << "nvars in zone(" << i << ") = " << nvars << std::endl;
 
         for (index_t varnum = 1; varnum <= nvars;
-             varnum++) { //starts from 1 because cfxExportVariableName(varnum,ReadCFX::alias) only returnes values from 1 and higher
+             varnum++) { //starts from 1 because cfxExportVariableName(varnum,ReadCFX::alias) only returns values from 1 and higher
             const char *VariableName = cfxExportVariableName(varnum, ReadCFX::alias);
             auto it = find_if(m_allParam.begin(), m_allParam.end(),
                               [&VariableName](const Variable &obj) { return obj.varName == VariableName; });
@@ -491,7 +491,7 @@ int ReadCFX::rankFor2dAreaAndTimestep(int setMetaTimestep, int area2d, int num2d
 
 int ReadCFX::trackStartandEndForRank(int rank, int *firstTrackForRank, int *lastTrackForRank, int numberOfTracks)
 {
-    //function evenly districutes the tracks of a particle type to the ranks and returnes the number of blocks
+    //function evenly districutes the tracks of a particle type to the ranks and returns the number of blocks
 
     int tracksPerRank = std::round(numberOfTracks / size());
     if (tracksPerRank == 0) {
@@ -924,7 +924,7 @@ Polygons::ptr ReadCFX::loadPolygon(int area2d)
         nodeListOf2dAreaVec[nodeListOf2dArea[i]] = i;
     }
 
-    //Verfification
+    //Verification
     //        std::cerr << "nNodesIn2dArea = " << nNodesIn2dArea << std::endl;
     //        std::cerr << "polygon->getNumCoords()" << polygon->getNumCoords() << std::endl;
     //        for(int i=0;i<100;++i) {
@@ -983,7 +983,7 @@ Polygons::ptr ReadCFX::loadPolygon(int area2d)
     polygon->cl().resize(elemListCounter);
     ptrOnEl[nFacesIn2dArea] = elemListCounter;
 
-    //Verfification
+    //Verification
     //    std::cerr << "nodes = " << nNodesIn2dArea << "; faces = " << nFacesIn2dArea << "; connect = " << nConnectIn2dArea << std::endl;
     //    std::cerr << "nodes_total = " << m_nnodes << "; node Count() = " << cfxExportNodeCount() << std::endl;
     //    std::cerr << "nodes = " << nNodesIn2dArea << "; faces = " << nFacesIn2dArea << "; connect = " << polygon->cl().size() << std::endl;
@@ -1146,7 +1146,7 @@ DataBase::ptr ReadCFX::loadField(int area3d, Variable var)
 bool ReadCFX::free2dArea(bool boundary, int area2d)
 {
     //function to call cfxExportFree... depending which kind of 2d area is read.
-    //cfx API requires that after a call of cfxBoundaryGet oder cfxRegionGet the memory needs to be freed
+    //cfx API requires that after a call of cfxBoundaryGet or cfxRegionGet the memory needs to be freed
     //area2d can either be boundaries or regions
     if (boundary) {
         cfxExportBoundaryFree(m_2dAreasSelected[area2d].idWithZone.ID);
@@ -1425,7 +1425,7 @@ index_t ReadCFX::collectParticles()
 bool ReadCFX::loadFields(UnstructuredGrid::ptr grid, int area3d, int setMetaTimestep, int timestep, int numTimesteps,
                          index_t numSel3dArea, bool readTransientFile)
 {
-    //calles for each port the loadGrid and loadField function and the setDataObject function to get the object ready to be added to port
+    //calls for each port the loadGrid and loadField function and the setDataObject function to get the object ready to be added to port
 
     for (int i = 0; i < NumPorts; ++i) {
         std::string field = m_fieldOut[i]->getValue();
@@ -1463,7 +1463,7 @@ bool ReadCFX::loadFields(UnstructuredGrid::ptr grid, int area3d, int setMetaTime
 bool ReadCFX::load2dFields(Polygons::ptr polyg, int area2d, int setMetaTimestep, int timestep, int numTimesteps,
                            index_t numSel2dArea, bool readTransientFile)
 {
-    //calles for each port the loadPolygon and load2dField function and the set2dDataObject function to get the object ready to be added to port
+    //calls for each port the loadPolygon and load2dField function and the set2dDataObject function to get the object ready to be added to port
 
     for (int i = 0; i < Num2dPorts; ++i) {
         std::string area2dField = m_2dOut[i]->getValue();
@@ -1501,7 +1501,7 @@ bool ReadCFX::load2dFields(Polygons::ptr polyg, int area2d, int setMetaTimestep,
 
 bool ReadCFX::loadParticles(int particleTypeNumber)
 {
-    //calles loadParticleTrackCoords, loads the time of the particles and calles loadParticleValues for each variable, sets the coords to the values and calles addParticlesToPort
+    //calls loadParticleTrackCoords, loads the time of the particles and calls loadParticleValues for each variable, sets the coords to the values and calls addParticlesToPort
 
     std::vector<Particle> allParticle = m_case.getCopyOfAllParticles();
     if (cfxExportZoneSet(allParticle[0].idWithZone.zoneFlag, NULL) < 0) {

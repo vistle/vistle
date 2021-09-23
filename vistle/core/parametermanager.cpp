@@ -213,7 +213,7 @@ void ParameterManager::setParameterFilters(const std::string &name, const std::s
 
 void ParameterManager::setParameterFilters(StringParameter *param, const std::string &filters)
 {
-    // abuse Minumum for filters
+    // abuse Minimum for filters
     param->setMinimum(filters);
     updateParameter(param->getName(), param, nullptr, Parameter::Minimum);
 }
