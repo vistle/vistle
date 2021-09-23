@@ -886,7 +886,7 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn)
 #ifdef MODULE_THREAD
     //AvailableModule::Key key(Communicator::the().hubId(), name);
     AvailableModule::Key key(0, name);
-    auto &avail = Communicator::the().localModules();
+    const auto &avail = Communicator::the().localModules();
     auto it = avail.find(key);
     if (it == avail.end()) {
         CERR << "did not find module " << name << std::endl;
@@ -1338,7 +1338,7 @@ bool ClusterManager::addObjectDestination(const message::AddObject &addObj, Obje
 
         if (!obj) {
             // block messages of receiving module until remote object is available
-            assert(!localAdd);
+            assert(!isLocal(addObj.senderId()));
             auto it = runningMap.find(destId);
             if (it != runningMap.end()) {
                 Communicator::the().dataManager().requestObject(
