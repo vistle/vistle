@@ -286,32 +286,33 @@ int Renderer::numTimesteps() const
 bool Renderer::addInputObject(int sender, const std::string &senderPort, const std::string &portName,
                               vistle::Object::const_ptr object)
 {
-    int creatorId = object->getCreator();
-    CreatorMap::iterator it = m_creatorMap.find(creatorId);
+    auto it = std::find_if(m_creatorMap.begin(), m_creatorMap.end(), [sender, senderPort](const Creator &c){
+        return c.module == sender && c.port == senderPort;
+    });
     if (it != m_creatorMap.end()) {
-        if (it->second.age < object->getExecutionCounter()) {
+        if (it->age < object->getExecutionCounter()) {
             //std::cerr << "removing all created by " << creatorId << ", age " << object->getExecutionCounter() << ", was " << it->second.age << std::endl;
-            removeAllCreatedBy(creatorId);
-        } else if (it->second.age == object->getExecutionCounter() && it->second.iter < object->getIteration()) {
-            std::cerr << "removing all created by " << creatorId << ", age " << object->getExecutionCounter()
+            removeAllSentBy(sender, senderPort);
+        } else if (it->age == object->getExecutionCounter() && it->iteration < object->getIteration()) {
+            std::cerr << "removing all created by " << sender << ":" << senderPort << ", age " << object->getExecutionCounter()
                       << ": new iteration " << object->getIteration() << std::endl;
-            removeAllCreatedBy(creatorId);
-        } else if (it->second.age > object->getExecutionCounter()) {
-            std::cerr << "received outdated object created by " << creatorId << ", age "
-                      << object->getExecutionCounter() << ", was " << it->second.age << std::endl;
+            removeAllSentBy(sender, senderPort);
+        } else if (it->age > object->getExecutionCounter()) {
+            std::cerr << "received outdated object created by " << sender << ":" << senderPort << ", age "
+                      << object->getExecutionCounter() << ", was " << it->age << std::endl;
             return false;
-        } else if (it->second.age == object->getExecutionCounter() && it->second.iter > object->getIteration()) {
-            std::cerr << "received outdated object created by " << creatorId << ", age "
+        } else if (it->age == object->getExecutionCounter() && it->iteration > object->getIteration()) {
+            std::cerr << "received outdated object created by " << sender << ":" << senderPort << ", age "
                       << object->getExecutionCounter() << ": old iteration " << object->getIteration() << std::endl;
             return false;
         }
     } else {
         std::string name = getModuleName(object->getCreator());
-        it = m_creatorMap.insert(std::make_pair(creatorId, Creator(object->getCreator(), name))).first;
+        it = m_creatorMap.insert(Creator(sender, senderPort, name)).first;
     }
-    Creator &creator = it->second;
+    auto &creator = *it;
     creator.age = object->getExecutionCounter();
-    creator.iter = object->getIteration();
+    creator.iteration = object->getIteration();
 
     if (Empty::as(object))
         return true;
@@ -323,7 +324,6 @@ bool Renderer::addInputObject(int sender, const std::string &senderPort, const s
         if (auto tex = vistle::Texture1D::as(object)) {
             auto &cmap = m_colormaps[species];
             cmap.texture = tex;
-            cmap.creator = object->getCreator();
             cmap.sender = sender;
             cmap.senderPort = senderPort;
             std::cerr << "added colormap " << species << " without object, width=" << tex->getWidth()
@@ -397,24 +397,6 @@ void Renderer::connectionRemoved(const Port *from, const Port *to)
 
 void Renderer::removeObject(std::shared_ptr<RenderObject> ro)
 {}
-
-void Renderer::removeAllCreatedBy(int creatorId)
-{
-    for (auto &ol: m_objectList) {
-        for (auto &ro: ol) {
-            if (ro && ro->container && ro->container->getCreator() == creatorId) {
-                removeObjectWrapper(ro);
-                ro.reset();
-            }
-        }
-        ol.erase(std::remove_if(ol.begin(), ol.end(), [](std::shared_ptr<vistle::RenderObject> ro) { return !ro; }),
-                 ol.end());
-    }
-    while (!m_objectList.empty() && m_objectList.back().empty())
-        m_objectList.pop_back();
-
-    // only objects are updated: keep colormap
-}
 
 void Renderer::removeAllSentBy(int sender, const std::string &senderPort)
 {

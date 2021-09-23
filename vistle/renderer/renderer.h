@@ -34,7 +34,6 @@ public:
     const VariantMap &variants() const;
 
     struct ColorMap {
-        int creator = vistle::message::Id::Invalid;
         int sender = vistle::message::Id::Invalid;
         std::string senderPort;
         vistle::Texture1D::const_ptr texture;
@@ -74,22 +73,33 @@ private:
                                                    Object::const_ptr normal, Object::const_ptr texture);
     void removeObjectWrapper(std::shared_ptr<RenderObject> ro);
 
-    void removeAllCreatedBy(int creatorId);
     void removeAllSentBy(int sender, const std::string &senderPort);
 
     struct Creator {
-        Creator(int id, const std::string &basename): id(id), age(0), iter(-1)
+        Creator(int id, const std::string &port, const std::string &basename): module(id), port(port), age(0), iteration(-1)
         {
             std::stringstream s;
-            s << basename << "_" << id;
+            s << basename << "_" << module;
             name = s.str();
         }
-        int id;
-        int age;
-        int iter;
+        bool operator<(const Creator &other) const {
+            if (module == other.module)
+                return port < other.port;
+            return module < other.module;
+        }
+        bool operator==(const Creator &other) const {
+            if (module == other.module)
+                return port == other.port;
+            return false;
+        }
+
+        int module;
+        std::string port;
+        mutable int age = 0;
+        mutable int iteration = -1;
         std::string name;
     };
-    typedef std::map<int, Creator> CreatorMap;
+    typedef std::set<Creator> CreatorMap;
     CreatorMap m_creatorMap;
 
     std::vector<std::vector<std::shared_ptr<RenderObject>>> m_objectList;
