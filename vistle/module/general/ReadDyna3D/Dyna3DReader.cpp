@@ -48,9 +48,37 @@ const int OpenFlags = O_RDONLY | O_BINARY;
 const int OpenFlags = O_RDONLY;
 #endif
 
+// clang-format off
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(
     FileType,
-    (d3t0)(d3plot)(d3drlf)(d3thdt)(intfor)(d3part)(blstfor)(d3cpm)(d3ale)(d3t9)(d3t10)(d3eigv)(d3mode)(d3iter)(d3t14)(d3t15)(d3t16)(d3t17)(d3t18)(d3t19)(d3t20)(d3ssd)(d3spcm)(d3psd)(d3rms)(d3ftg)(d3acs))
+    (d3t0)
+    (d3plot)
+    (d3drlf)
+    (d3thdt)
+    (intfor)
+    (d3part)
+    (blstfor)
+    (d3cpm)
+    (d3ale)
+    (d3t9)
+    (d3t10)
+    (d3eigv)
+    (d3mode)
+    (d3iter)
+    (d3t14)
+    (d3t15)
+    (d3t16)
+    (d3t17)
+    (d3t18)
+    (d3t19)
+    (d3t20)
+    (d3ssd)
+    (d3spcm)
+    (d3psd)
+    (d3rms)
+    (d3ftg)
+    (d3acs))
+// clang-format on
 
 template<int wordsize, class INTEGER, class REAL>
 Dyna3DReader<wordsize, INTEGER, REAL>::Dyna3DReader(vistle::Reader *module): Dyna3DReaderBase(module)

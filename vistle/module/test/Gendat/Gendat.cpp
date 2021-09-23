@@ -22,6 +22,7 @@ MODULE_MAIN(Gendat)
 
 using namespace vistle;
 
+// clang-format off
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(
     GeoMode,
     (Triangle_Geometry)(Polygon_Geometry)(Uniform_Grid)(Rectilinear_Grid)(Structured_Grid)(Unstructured_Grid)(Point_Geometry)(Sphere_Geometry))
@@ -30,7 +31,10 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(
     DataMode,
     (One)(Dist_Origin)(Identity_X)(Identity_Y)(Identity_Z)(Sine_X)(Sine_Y)(Sine_Z)(Cosine_X)(Cosine_Y)(Cosine_Z)(Random))
 
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(AnimDataMode, (Constant)(Add_Scale)(Divide_Scale)(Add_X)(Add_Y)(Add_Z))
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(
+        AnimDataMode,
+        (Constant)(Add_Scale)(Divide_Scale)(Add_X)(Add_Y)(Add_Z))
+// clang-format on
 
 Gendat::Gendat(const std::string &name, int moduleID, mpi::communicator comm): Reader(name, moduleID, comm)
 {

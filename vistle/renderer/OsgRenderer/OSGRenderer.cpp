@@ -33,9 +33,11 @@
 const int MaxAsyncFrames = 2;
 static_assert(MaxAsyncFrames > 0, "MaxAsyncFrames needs to be positive");
 
+// clang-format off
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(
     OsgThreadingModel,
     (Single_Threaded)(Cull_Draw_Thread_Per_Context)(Thread_Per_Context)(Draw_Thread_Per_Context)(Cull_Thread_Per_Camera_Draw_Thread_Per_Context)(Thread_Per_Camera)(Automatic_Selection))
+// clang-format on
 
 namespace {
 

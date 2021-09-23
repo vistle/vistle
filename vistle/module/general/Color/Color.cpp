@@ -22,9 +22,33 @@ MODULE_MAIN(Color)
 
 using namespace vistle;
 
+// clang-format off
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(
     TransferFunction,
-    (COVISE)(Plasma)(Inferno)(Magma)(CoolWarmBrewer)(CoolWarm)(Frosty)(Dolomiti)(Parula)(Viridis)(Cividis)(Turbo)(Blue_Light)(Grays)(Gray20)(ANSYS)(Star)(ITSM)(Rainbow)(Earth)(Topography)(RainbowPale))
+    (COVISE)
+    (Plasma)
+    (Inferno)
+    (Magma)
+    (CoolWarmBrewer)
+    (CoolWarm)
+    (Frosty)
+    (Dolomiti)
+    (Parula)
+    (Viridis)
+    (Cividis)
+    (Turbo)
+    (Blue_Light)
+    (Grays)
+    (Gray20)
+    (ANSYS)
+    (Star)
+    (ITSM)
+    (Rainbow)
+    (Earth)
+    (Topography)
+    (RainbowPale)
+)
+// clang-format on
 
 ColorMap::ColorMap(TF &pins, const size_t steps, const size_t w, Scalar center, Scalar compress): width(w)
 {

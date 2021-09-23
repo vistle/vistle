@@ -24,9 +24,13 @@ class Particle {
     friend class boost::serialization::access;
 
 public:
+    // clang-format off
     DEFINE_ENUM_WITH_STRING_CONVERSIONS(
         StopReason,
-        (StillActive)(InitiallyOutOfDomain)(OutOfDomain)(NotMoving)(StepLimitReached)(DistanceLimitReached)(TimeLimitReached)(NumStopReasons))
+        (StillActive)(InitiallyOutOfDomain)(OutOfDomain)(NotMoving)(StepLimitReached)(DistanceLimitReached)(TimeLimitReached)
+        (NumStopReasons) // keep last
+    )
+    // clang-format on
     Particle(vistle::Index id, int rank, vistle::Index startId, const vistle::Vector3 &pos, bool forward,
              GlobalData &global, vistle::Index timestep);
     ~Particle();
