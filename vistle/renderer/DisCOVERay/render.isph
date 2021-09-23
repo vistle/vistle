@@ -8,42 +8,42 @@
 
 #include "renderobjectdata.isph"
 
-struct Vertex   { float x, y, z, a0; };
+struct Vertex {
+    float x, y, z, a0;
+};
 
 struct Light {
-   Vec4f ambient;
-   Vec4f diffuse;
-   Vec4f specular;
-   Vec3f transformedPosition;
-   float attenuation[3];
-   bool enabled;
-   bool isDirectional;
+    Vec4f ambient;
+    Vec4f diffuse;
+    Vec4f specular;
+    Vec3f transformedPosition;
+    float attenuation[3];
+    bool enabled;
+    bool isDirectional;
 };
 
 struct SceneData {
-
-   RTCScene scene;
-   Vec4f defaultColor;
-   RenderObjectData * const *ro;
-   int uvVis;
-   int doShade;
-   int numLights;
-   uniform Light *lights;
-   Vec4f modelView[4]; //< model-view matrix as row vectors
+    RTCScene scene;
+    Vec4f defaultColor;
+    RenderObjectData *const *ro;
+    int uvVis;
+    int doShade;
+    int numLights;
+    uniform Light *lights;
+    Vec4f modelView[4]; //< model-view matrix as row vectors
 };
 
 struct TileData {
+    unsigned int8 *rgba;
+    float *depth;
+    int imgWidth;
+    int x0, x1, y0, y1;
 
-   unsigned int8 *rgba;
-   float *depth;
-   int imgWidth;
-   int x0, x1, y0, y1;
-
-   Vec3f origin;
-   Vec3f corner;
-   Vec3f dx, dy;
-   float tNear, tFar;
-   Vec4f depthTransform2, depthTransform3;
+    Vec3f origin;
+    Vec3f corner;
+    Vec3f dx, dy;
+    float tNear, tFar;
+    Vec4f depthTransform2, depthTransform3;
 };
 
 export void ispcRenderTileStream(uniform const SceneData *uniform sceneData, uniform const TileData *uniform tile);

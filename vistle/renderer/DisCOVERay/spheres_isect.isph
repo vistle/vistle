@@ -16,40 +16,42 @@
 
 #include <embree3/rtcore_ray.isph>
 
-inline bool sphereIntersectN(const uniform Sphere &sphere, uniform int N, uniform int i, RTCRayN *uniform ray, RTCHitN *uniform hit) {
-
-  const Vec3f org = make_Vec3f(RTCRayN_org_x(ray,N,i),RTCRayN_org_y(ray,N,i),RTCRayN_org_z(ray,N,i));
-  const Vec3f dir = make_Vec3f(RTCRayN_dir_x(ray,N,i),RTCRayN_dir_y(ray,N,i),RTCRayN_dir_z(ray,N,i));
-  const Vec3f v = org-sphere.p;
-  const float A = dot(dir,dir);
-  const float B = dot(v,dir);
-  const float C = dot(v,v) - sqr(sphere.r);
-  const float D = B*B - A*C;
-  if (D < 0.0f) return false;
-  const float Q = sqrt(D);
-  const float rcpA = rcp(A);
-  const float t0 = rcpA*(-B-Q);
-  const float t1 = rcpA*(-B+Q);
-  float &tnear = RTCRayN_tnear(ray,N,i);
-  float &tfar = RTCRayN_tfar(ray,N,i);
-  bool haveHit = false;
-  if ((tnear < t0) & (t0 < tfar)) {
-     haveHit = true;
-     tfar = t0;
-  }
-  if ((tnear < t1) & (t1 < tfar)) {
-     haveHit = true;
-     tfar = t1;
-  }
-  if (hit && haveHit) {
-     const Vec3f Ng = org+tfar*dir-sphere.p;
-     RTCHitN_Ng_x(hit,N,i) = Ng.x;
-     RTCHitN_Ng_y(hit,N,i) = Ng.y;
-     RTCHitN_Ng_z(hit,N,i) = Ng.z;
-     RTCHitN_u(hit,N,i) = 0.f;
-     RTCHitN_v(hit,N,i) = 0.f;
-  }
-  return haveHit;
+inline bool sphereIntersectN(const uniform Sphere &sphere, uniform int N, uniform int i, RTCRayN *uniform ray,
+                             RTCHitN *uniform hit)
+{
+    const Vec3f org = make_Vec3f(RTCRayN_org_x(ray, N, i), RTCRayN_org_y(ray, N, i), RTCRayN_org_z(ray, N, i));
+    const Vec3f dir = make_Vec3f(RTCRayN_dir_x(ray, N, i), RTCRayN_dir_y(ray, N, i), RTCRayN_dir_z(ray, N, i));
+    const Vec3f v = org - sphere.p;
+    const float A = dot(dir, dir);
+    const float B = dot(v, dir);
+    const float C = dot(v, v) - sqr(sphere.r);
+    const float D = B * B - A * C;
+    if (D < 0.0f)
+        return false;
+    const float Q = sqrt(D);
+    const float rcpA = rcp(A);
+    const float t0 = rcpA * (-B - Q);
+    const float t1 = rcpA * (-B + Q);
+    float &tnear = RTCRayN_tnear(ray, N, i);
+    float &tfar = RTCRayN_tfar(ray, N, i);
+    bool haveHit = false;
+    if ((tnear < t0) & (t0 < tfar)) {
+        haveHit = true;
+        tfar = t0;
+    }
+    if ((tnear < t1) & (t1 < tfar)) {
+        haveHit = true;
+        tfar = t1;
+    }
+    if (hit && haveHit) {
+        const Vec3f Ng = org + tfar * dir - sphere.p;
+        RTCHitN_Ng_x(hit, N, i) = Ng.x;
+        RTCHitN_Ng_y(hit, N, i) = Ng.y;
+        RTCHitN_Ng_z(hit, N, i) = Ng.z;
+        RTCHitN_u(hit, N, i) = 0.f;
+        RTCHitN_v(hit, N, i) = 0.f;
+    }
+    return haveHit;
 }
 
 #if 0

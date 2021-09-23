@@ -10,17 +10,19 @@ struct Sphere;
 
 #include "spheres.isph"
 
-struct Quad { unsigned int v0, v1, v2, v3; }; // v3 is used as element id for triangles
+struct Quad {
+    unsigned int v0, v1, v2, v3;
+}; // v3 is used as element id for triangles
 
 enum PrimitiveFlags {
-   PFNone = 0,
-   PFCone = 1,
-   PFArrow = 2,
-   PFStartSphere = 4,
-   PFEndSphere = 8,
-   PFEndSphereSect = 16,
-   PFStartDisc = 32,
-   PFEndDisc = 64,
+    PFNone = 0,
+    PFCone = 1,
+    PFArrow = 2,
+    PFStartSphere = 4,
+    PFEndSphere = 8,
+    PFEndSphereSect = 16,
+    PFStartDisc = 32,
+    PFEndDisc = 64,
 };
 
 struct ColorMapData {
@@ -32,36 +34,35 @@ struct ColorMapData {
 };
 
 struct RenderObjectData {
+    int t; //!< timestep number
+    RTCDevice device; //!< embree device
+    RTCScene scene; //!< embree scene id for *this* object
+    int geomID; //!< embree geometry id of this object's scene
+    unsigned int instID; //!< embree instance id of this object's scene
 
-   int t; //!< timestep number
-   RTCDevice device; //!< embree device
-   RTCScene scene; //!< embree scene id for *this* object
-   int geomID; //!< embree geometry id of this object's scene
-   unsigned int instID; //!< embree instance id of this object's scene
+    Quad *indexBuffer; //< triangle/quad list
+    Sphere *spheres; //!< sphere data
+    unsigned int *primitiveFlags; //!< bit-wise or of several PrimitiveFlags for each primitive
+    unsigned int triangles; //! whether indexBuffer contains triangles+element id (instead of quads)
 
-   Quad *indexBuffer; //< triangle/quad list
-   Sphere *spheres; //!< sphere data
-   unsigned int *primitiveFlags; //!< bit-wise or of several PrimitiveFlags for each primitive
-   unsigned int triangles; //! whether indexBuffer contains triangles+element id (instead of quads)
-
-   unsigned int lighted; //!< whether to use lighting
-   unsigned int hasSolidColor; //!< whether object has a color different from default
-   unsigned int perPrimitiveMapping; //!< whether color should be applied per primitive
-   float solidColor[4]; //!< object color (if there is no texture)
+    unsigned int lighted; //!< whether to use lighting
+    unsigned int hasSolidColor; //!< whether object has a color different from default
+    unsigned int perPrimitiveMapping; //!< whether color should be applied per primitive
+    float solidColor[4]; //!< object color (if there is no texture)
 
 #ifdef VISTLE_SCALAR_DOUBLE
-   const double *texCoords; //!< 1D texture coordinates (mapped data)
+    const double *texCoords; //!< 1D texture coordinates (mapped data)
 #else
-   const float *texCoords; //!< 1D texture coordinates (mapped data)
+    const float *texCoords; //!< 1D texture coordinates (mapped data)
 #endif
-   Vec3f normalTransform[3]; //!< how normals are to be transformed
-   unsigned int normalsPerPrimitiveMapping; //!< whether normals are specified per primitive
+    Vec3f normalTransform[3]; //!< how normals are to be transformed
+    unsigned int normalsPerPrimitiveMapping; //!< whether normals are specified per primitive
 #ifdef VISTLE_SCALAR_DOUBLE
-   const double *normals[3]; //!< normals
+    const double *normals[3]; //!< normals
 #else
-   const float *normals[3]; //!< normals
+    const float *normals[3]; //!< normals
 #endif
-   ColorMapData *cmap; //!< color map
+    ColorMapData *cmap; //!< color map
 };
 
 export void forceRenderObjectDataExport(uniform RenderObjectData *uniform rod);

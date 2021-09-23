@@ -6,10 +6,9 @@
 
 struct RenderObjectData;
 
-struct Sphere
-{
-  Vec3f p;                      //!< position of the sphere
-  float r;                      //!< radius of the sphere
+struct Sphere {
+    Vec3f p; //!< position of the sphere
+    float r; //!< radius of the sphere
 };
 
 export uniform RTCGeometry newSpheres(uniform RenderObjectData *uniform data, uniform uintptr_t N);

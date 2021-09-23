@@ -34,83 +34,89 @@
 //                     User defined sphere geometry                         //
 // ======================================================================== //
 
-unmasked void sphereBoundsFunc(const struct RTCBoundsFunctionArguments* uniform args)
+unmasked void sphereBoundsFunc(const struct RTCBoundsFunctionArguments *uniform args)
 {
-  void* uniform ptr  = args->geometryUserPtr;
-  const uniform RenderObjectData *uniform data = (const uniform RenderObjectData *uniform)ptr;
-  const uniform Sphere& sphere = data->spheres[args->primID];
-  uniform RTCBounds* uniform bounds_o = args->bounds_o;
-  bounds_o->lower_x = sphere.p.x-sphere.r;
-  bounds_o->lower_y = sphere.p.y-sphere.r;
-  bounds_o->lower_z = sphere.p.z-sphere.r;
-  bounds_o->upper_x = sphere.p.x+sphere.r;
-  bounds_o->upper_y = sphere.p.y+sphere.r;
-  bounds_o->upper_z = sphere.p.z+sphere.r;
+    void *uniform ptr = args->geometryUserPtr;
+    const uniform RenderObjectData *uniform data = (const uniform RenderObjectData *uniform)ptr;
+    const uniform Sphere &sphere = data->spheres[args->primID];
+    uniform RTCBounds *uniform bounds_o = args->bounds_o;
+    bounds_o->lower_x = sphere.p.x - sphere.r;
+    bounds_o->lower_y = sphere.p.y - sphere.r;
+    bounds_o->lower_z = sphere.p.z - sphere.r;
+    bounds_o->upper_x = sphere.p.x + sphere.r;
+    bounds_o->upper_y = sphere.p.y + sphere.r;
+    bounds_o->upper_z = sphere.p.z + sphere.r;
 }
 
-unmasked void sphereIntersectFuncN(const RTCIntersectFunctionNArguments* uniform args) {
-    uniform int* uniform valid = args->valid;
-    void* uniform ptr  = args->geometryUserPtr;
+unmasked void sphereIntersectFuncN(const RTCIntersectFunctionNArguments *uniform args)
+{
+    uniform int *uniform valid = args->valid;
+    void *uniform ptr = args->geometryUserPtr;
     const uniform RenderObjectData *uniform data = (const uniform RenderObjectData *uniform)ptr;
     uniform unsigned int N = args->N;
-    RTCRayHitN* uniform rayhit = args->rayhit;
-    RTCRayN* uniform rays = RTCRayHitN_RayN(rayhit,N);
-    RTCHitN* uniform hits = RTCRayHitN_HitN(rayhit,N);
+    RTCRayHitN *uniform rayhit = args->rayhit;
+    RTCRayN *uniform rays = RTCRayHitN_RayN(rayhit, N);
+    RTCHitN *uniform hits = RTCRayHitN_HitN(rayhit, N);
     uniform unsigned int primID = args->primID;
-    const uniform Sphere& sphere = data->spheres[primID];
+    const uniform Sphere &sphere = data->spheres[primID];
 
     /* iterate over all rays in ray packet */
-    for (uniform unsigned int ui=0; ui<N; ui+=programCount) {
+    for (uniform unsigned int ui = 0; ui < N; ui += programCount) {
         /* calculate varying loop and execution mask */
-        unsigned int vi = ui+programIndex;
-        if (vi>=N) continue;
+        unsigned int vi = ui + programIndex;
+        if (vi >= N)
+            continue;
 
         /* ignore inactive rays */
-        if (valid[vi] != -1) continue;
+        if (valid[vi] != -1)
+            continue;
 
         if (sphereIntersectN(sphere, N, ui, rays, hits)) {
-            RTCHitN_geomID(hits,N, ui) = data->geomID;
-            RTCHitN_primID(hits,N, ui) = primID;
-            RTCHitN_instID(hits,N, ui, 0) = args->context->instID[0];
+            RTCHitN_geomID(hits, N, ui) = data->geomID;
+            RTCHitN_primID(hits, N, ui) = primID;
+            RTCHitN_instID(hits, N, ui, 0) = args->context->instID[0];
         }
     }
 }
 
-unmasked void sphereOccludedFuncN(const RTCOccludedFunctionNArguments* uniform args) {
-    uniform int* uniform valid = args->valid;
-    void* uniform ptr  = args->geometryUserPtr;
+unmasked void sphereOccludedFuncN(const RTCOccludedFunctionNArguments *uniform args)
+{
+    uniform int *uniform valid = args->valid;
+    void *uniform ptr = args->geometryUserPtr;
     const uniform RenderObjectData *uniform data = (const uniform RenderObjectData *uniform)ptr;
     uniform unsigned int N = args->N;
-    RTCRayN* uniform ray = args->ray;
+    RTCRayN *uniform ray = args->ray;
     uniform unsigned int primID = args->primID;
-    const uniform Sphere& sphere = data->spheres[primID];
+    const uniform Sphere &sphere = data->spheres[primID];
 
     /* iterate over all rays in ray packet */
-    for (uniform unsigned int ui=0; ui<N; ui+=programCount) {
+    for (uniform unsigned int ui = 0; ui < N; ui += programCount) {
         /* calculate varying loop and execution mask */
-        unsigned int vi = ui+programIndex;
-        if (vi>=N) continue;
+        unsigned int vi = ui + programIndex;
+        if (vi >= N)
+            continue;
 
         /* ignore inactive rays */
-        if (valid[vi] != -1) continue;
+        if (valid[vi] != -1)
+            continue;
 
         sphereIntersectN(sphere, N, ui, ray, NULL);
     }
 }
 
-export uniform RTCGeometry newSpheres(uniform RenderObjectData *uniform data, uniform uintptr_t numPrim) {
-
+export uniform RTCGeometry newSpheres(uniform RenderObjectData *uniform data, uniform uintptr_t numPrim)
+{
     assert(data->spheres);
 
-    uniform RTCGeometry geom = rtcNewGeometry (data->device, RTC_GEOMETRY_TYPE_USER);
-    rtcSetGeometryBuildQuality(geom,RTC_BUILD_QUALITY_MEDIUM);
-    rtcSetGeometryUserPrimitiveCount(geom,numPrim);
-    rtcSetGeometryTimeStepCount(geom,1);
-    rtcSetGeometryUserData(geom,data);
+    uniform RTCGeometry geom = rtcNewGeometry(data->device, RTC_GEOMETRY_TYPE_USER);
+    rtcSetGeometryBuildQuality(geom, RTC_BUILD_QUALITY_MEDIUM);
+    rtcSetGeometryUserPrimitiveCount(geom, numPrim);
+    rtcSetGeometryTimeStepCount(geom, 1);
+    rtcSetGeometryUserData(geom, data);
 
-    rtcSetGeometryBoundsFunction(geom,&sphereBoundsFunc,NULL);
-    rtcSetGeometryIntersectFunction (geom, &sphereIntersectFuncN);
-    rtcSetGeometryOccludedFunction (geom, &sphereOccludedFuncN);
+    rtcSetGeometryBoundsFunction(geom, &sphereBoundsFunc, NULL);
+    rtcSetGeometryIntersectFunction(geom, &sphereIntersectFuncN);
+    rtcSetGeometryOccludedFunction(geom, &sphereOccludedFuncN);
 
     return geom;
 }
