@@ -368,9 +368,9 @@ bool recv_message(socket_t &sock, message::Buffer &msg, error_code &ec, bool blo
 
 #ifdef DEBUG
     message::Type msgType;
-        auto typeBuf = boost::asio::buffer(&msgType, sizeof(msgType));
-        asio::read(sock, typeBuf, ec);
-    #define PRINT_MESSAGE_TYPE std::cerr << "message type: " << msgType << std::endl;
+    auto typeBuf = boost::asio::buffer(&msgType, sizeof(msgType));
+    asio::read(sock, typeBuf, ec);
+#define PRINT_MESSAGE_TYPE std::cerr << "message type: " << msgType << std::endl;
 #else
 #define PRINT_MESSAGE_TYPE
 #endif
@@ -386,7 +386,7 @@ bool recv_message(socket_t &sock, message::Buffer &msg, error_code &ec, bool blo
         PRINT_MESSAGE_TYPE;
     }
     assert(sz <= Message::MESSAGE_SIZE);
-    
+
     auto msgbuf = asio::buffer(&msg, sz);
     asio::read(sock, msgbuf, ec);
     if (ec) {

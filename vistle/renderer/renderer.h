@@ -76,18 +76,21 @@ private:
     void removeAllSentBy(int sender, const std::string &senderPort);
 
     struct Creator {
-        Creator(int id, const std::string &port, const std::string &basename): module(id), port(port), age(0), iteration(-1)
+        Creator(int id, const std::string &port, const std::string &basename)
+        : module(id), port(port), age(0), iteration(-1)
         {
             std::stringstream s;
             s << basename << "_" << module;
             name = s.str();
         }
-        bool operator<(const Creator &other) const {
+        bool operator<(const Creator &other) const
+        {
             if (module == other.module)
                 return port < other.port;
             return module < other.module;
         }
-        bool operator==(const Creator &other) const {
+        bool operator==(const Creator &other) const
+        {
             if (module == other.module)
                 return port == other.port;
             return false;

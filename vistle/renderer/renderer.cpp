@@ -286,7 +286,7 @@ int Renderer::numTimesteps() const
 bool Renderer::addInputObject(int sender, const std::string &senderPort, const std::string &portName,
                               vistle::Object::const_ptr object)
 {
-    auto it = std::find_if(m_creatorMap.begin(), m_creatorMap.end(), [sender, senderPort](const Creator &c){
+    auto it = std::find_if(m_creatorMap.begin(), m_creatorMap.end(), [sender, senderPort](const Creator &c) {
         return c.module == sender && c.port == senderPort;
     });
     if (it != m_creatorMap.end()) {
@@ -294,8 +294,8 @@ bool Renderer::addInputObject(int sender, const std::string &senderPort, const s
             //std::cerr << "removing all created by " << creatorId << ", age " << object->getExecutionCounter() << ", was " << it->second.age << std::endl;
             removeAllSentBy(sender, senderPort);
         } else if (it->age == object->getExecutionCounter() && it->iteration < object->getIteration()) {
-            std::cerr << "removing all created by " << sender << ":" << senderPort << ", age " << object->getExecutionCounter()
-                      << ": new iteration " << object->getIteration() << std::endl;
+            std::cerr << "removing all created by " << sender << ":" << senderPort << ", age "
+                      << object->getExecutionCounter() << ": new iteration " << object->getIteration() << std::endl;
             removeAllSentBy(sender, senderPort);
         } else if (it->age > object->getExecutionCounter()) {
             std::cerr << "received outdated object created by " << sender << ":" << senderPort << ", age "
