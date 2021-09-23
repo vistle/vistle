@@ -8,4 +8,3 @@ vistle_target_link_libraries(vistle_libsim_engine_interface
         PRIVATE Threads::Threads
 )
 endif()
-

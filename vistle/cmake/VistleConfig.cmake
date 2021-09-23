@@ -32,24 +32,3 @@ foreach(__vistle_comp IN LISTS Vistle_FIND_COMPONENTS)
   vistle_find_component(${__vistle_comp} ${Vistle_FIND_REQUIRED_${__vistle_comp}})
 
 endforeach()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

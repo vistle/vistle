@@ -15,4 +15,3 @@ add_module(ReadTsunami "read ChEESE Tsunami files" ${SOURCES} ${HEADERS})
 
 target_link_libraries(ReadTsunami ${NETCDF_LIBRARIES})
 target_include_directories(ReadTsunami SYSTEM PRIVATE ${NETCDF_INCLUDE_DIRS})
-

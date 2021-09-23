@@ -121,6 +121,3 @@ Coding Style
           }                                                                                                                                                                                                                                                                                           
 
 * prefix class attributes with `m_`
-
-
-

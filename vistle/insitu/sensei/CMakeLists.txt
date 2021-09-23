@@ -34,4 +34,3 @@ vistle_target_link_libraries(vistle_sensei
     PRIVATE vistle_clustermanager)
 endif()
 target_compile_features(vistle_sensei PUBLIC cxx_std_14)
-

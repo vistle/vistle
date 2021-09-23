@@ -33,7 +33,3 @@ if(DIY_INCLUDE_DIR)
 		vistle_util
 		)
 endif()
-
-
-
-

@@ -10,4 +10,3 @@ add_module(IsoSurfaceOld "compute iso surfaces on structured grids, deprecated" 
 target_link_libraries(IsoSurfaceOld
         ${TBB_LIBRARIES}
 )
-

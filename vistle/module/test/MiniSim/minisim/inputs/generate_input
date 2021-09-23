@@ -97,4 +97,3 @@ while i < nosc:
 
 sys.stderr.write('# max_dist = %f\n'%(max_dist))
 sys.stderr.write('# min_dist = %f\n'%(min_dist))
-

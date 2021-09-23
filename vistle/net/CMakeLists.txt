@@ -18,4 +18,3 @@ target_link_libraries(vistle_net
     PRIVATE vistle_core
 	PRIVATE Threads::Threads
 )
-

@@ -17,4 +17,3 @@ set(SOURCES
 
 add_module(MapDrape "map coordinates and drape to height field" ${SOURCES} ${HEADERS})
 target_link_libraries(MapDrape ${PROJ_LIBRARIES})
-

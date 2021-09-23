@@ -265,4 +265,3 @@ if(VISTLE_INSTALL_3RDPARTY)
 		    PUBLIC $<INSTALL_INTERFACE:include/vistle/3rdparty>
     )
 endif()
-

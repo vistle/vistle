@@ -6,5 +6,3 @@ target_link_libraries(SenseiController
 	vistle_insitu_module
 	Boost::boost
 	)
-
-

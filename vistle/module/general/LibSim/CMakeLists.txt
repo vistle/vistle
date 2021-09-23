@@ -22,4 +22,3 @@ target_link_libraries(LibSimController
 		)
 endif()
 vistle_install_docs(README.md)
-

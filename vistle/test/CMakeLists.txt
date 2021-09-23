@@ -8,4 +8,3 @@ add_subdirectory(shmtest)
 add_subdirectory(typetest)
 add_subdirectory(utiltest)
 add_subdirectory(vectortest)
-

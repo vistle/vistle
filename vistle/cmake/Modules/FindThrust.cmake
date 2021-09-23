@@ -36,4 +36,3 @@ find_package_handle_standard_args( Thrust
 if( Thrust_FOUND)
     set( THRUST_INCLUDE_DIRS "${THRUST_INCLUDE_DIR}" )
 endif( Thrust_FOUND)
-
