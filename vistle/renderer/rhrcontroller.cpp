@@ -388,6 +388,7 @@ void RhrController::removeClient(const Port *client)
 
     m_clients.erase(it);
     if (client == m_currentClient) {
+        CERR << "removed current client, still have " << m_clients.size() << " clients" << std::endl;
         m_rhr.reset();
         m_currentClient = nullptr;
         m_clientModuleId = message::Id::Invalid;
@@ -399,6 +400,8 @@ void RhrController::removeClient(const Port *client)
             sendConfigObject();
             tryConnect();
         }
+    } else {
+        CERR << "removed inactive client, still have " << m_clients.size() << " clients" << std::endl;
     }
 }
 
