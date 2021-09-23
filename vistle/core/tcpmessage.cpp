@@ -12,7 +12,11 @@
 #include "messages.h"
 #include "messagepayload.h"
 #include <deque>
-//#define DEBUG
+
+//#define DEBUG           // prefix message header with message type
+//#define BLOCKING        // blocking read for message size even for non-blocking receive
+//#define USE_BUFFER_POOL // reuse buffers, instead of allocating new ones
+
 namespace asio = boost::asio;
 using boost::system::error_code;
 
@@ -22,8 +26,6 @@ namespace message {
 typedef uint32_t SizeType;
 
 static const size_t buffersize = 16384;
-
-//#define USE_BUFFER_POOL
 
 #ifndef NDEBUG
 namespace {
@@ -316,7 +318,6 @@ bool recv_message(socket_t &sock, message::Buffer &msg, error_code &ec, bool blo
 
     SizeType sz = 0;
 
-//#define BLOCKING
 #ifdef BLOCKING
     boost::asio::socket_base::bytes_readable command(true);
     sock.io_control(command);
@@ -331,14 +332,6 @@ bool recv_message(socket_t &sock, message::Buffer &msg, error_code &ec, bool blo
 
     auto szbuf = boost::asio::buffer(&sz, sizeof(sz));
     size_t n = asio::read(sock, szbuf, ec);
-#ifdef DEBUG
-    message::Type msgType;
-    auto typeBuf = boost::asio::buffer(&msgType, sizeof(msgType));
-    asio::read(sock, typeBuf, ec);
-#define PRINT_MESSAGE_TYPE std::cerr << "mesage type " << msgType << std::endl;
-#else
-#define PRINT_MESSAGE_TYPE
-#endif
 #ifndef BLOCKING
     if (!block)
         sock.non_blocking(false);
@@ -350,8 +343,7 @@ bool recv_message(socket_t &sock, message::Buffer &msg, error_code &ec, bool blo
             return false;
         }
 #endif
-        std::cerr << "message::recv: size error " << ec.message() << std::endl;
-        PRINT_MESSAGE_TYPE
+        std::cerr << "message::recv: size error " << ec.message() << ", read " << n << " bytes" << std::endl;
         return false;
     }
 
@@ -367,7 +359,6 @@ bool recv_message(socket_t &sock, message::Buffer &msg, error_code &ec, bool blo
                 asio::read(sock, szbuf2, ec);
                 if (ec) {
                     std::cerr << "message::recv: size error " << ec.message() << std::endl;
-                    PRINT_MESSAGE_TYPE
                 }
             }
             return false;
@@ -375,22 +366,32 @@ bool recv_message(socket_t &sock, message::Buffer &msg, error_code &ec, bool blo
     }
 #endif
 
+#ifdef DEBUG
+    message::Type msgType;
+        auto typeBuf = boost::asio::buffer(&msgType, sizeof(msgType));
+        asio::read(sock, typeBuf, ec);
+    #define PRINT_MESSAGE_TYPE std::cerr << "message type: " << msgType << std::endl;
+#else
+#define PRINT_MESSAGE_TYPE
+#endif
+
     sz = ntohl(sz);
     if (sz < sizeof(Message)) {
         std::cerr << "message::recv: msg size too small: " << sz << ", min is " << sizeof(Message) << std::endl;
-        PRINT_MESSAGE_TYPE
+        PRINT_MESSAGE_TYPE;
     }
     assert(sz >= sizeof(Message));
     if (sz > Message::MESSAGE_SIZE) {
         std::cerr << "message::recv: msg size too large: " << sz << ", max is " << Message::MESSAGE_SIZE << std::endl;
-        PRINT_MESSAGE_TYPE
+        PRINT_MESSAGE_TYPE;
     }
     assert(sz <= Message::MESSAGE_SIZE);
+    
     auto msgbuf = asio::buffer(&msg, sz);
     asio::read(sock, msgbuf, ec);
     if (ec) {
         std::cerr << "message::recv: msg error " << ec.message() << std::endl;
-        PRINT_MESSAGE_TYPE
+        PRINT_MESSAGE_TYPE;
         return false;
     }
 
