@@ -197,7 +197,9 @@ case "$MPI_IMPL" in
             exec mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
         fi
         ;;
-
+      mpt)
+            exec mpirun -np ${MPISIZE} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+      ;;
     *)
         if [ -n "$MPIHOSTFILE" ]; then	
             exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} -f ${MPIHOSTFILE} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
