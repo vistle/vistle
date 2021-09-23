@@ -886,7 +886,7 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn)
 #ifdef MODULE_THREAD
     //AvailableModule::Key key(Communicator::the().hubId(), name);
     AvailableModule::Key key(0, name);
-    auto avail = Communicator::the().localModules();
+    auto &avail = Communicator::the().localModules();
     auto it = avail.find(key);
     if (it == avail.end()) {
         CERR << "did not find module " << name << std::endl;
@@ -896,11 +896,11 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn)
 #ifdef MODULE_STATIC
             mod.newModule = ModuleRegistry::the().moduleFactory(name);
 #else
-            mod.newModule = boost::dll::import_alias<Module::NewModuleFunc>(m.path, "newModule",
+            mod.newModule = boost::dll::import_alias<Module::NewModuleFunc>(m.path(), "newModule",
                                                                             boost::dll::load_mode::default_mode);
 #endif
         } catch (const std::exception &e) {
-            CERR << "importing module " << name << "(" << m.path << ") failed: " << e.what() << std::endl;
+            CERR << "importing module " << name << "(" << m.path() << ") failed: " << e.what() << std::endl;
             std::vector<const char *> vars;
 #if defined(_WIN32)
             vars.push_back("PATH");
