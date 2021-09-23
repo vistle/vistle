@@ -1,5 +1,4 @@
 ---
-Language:        Cpp
 # BasedOnStyle:  LLVM
 AccessModifierOffset: -4
 AlignEscapedNewlines: DontAlign
@@ -31,3 +30,7 @@ SpaceBeforeCtorInitializerColon: false
 SpaceBeforeInheritanceColon: false
 SpaceBeforeRangeBasedForLoopColon: false
 TabWidth:        4
+---
+Language:        Cpp
+---
+Language:        ObjC
