@@ -380,8 +380,7 @@ void RemoteConnection::operator()()
         auto payload = std::make_shared<buffer>();
         message::error_code ec;
         bool received = false;
-        if (m_moduleId != message::Id::Invalid) {
-        } else {
+        if (m_moduleId == message::Id::Invalid) {
             received = message::recv(m_sock, buf, ec, false, payload.get());
             if (ec) {
                 NOTIFY_ERROR << "message receive: " << ec.message() << std::endl;
