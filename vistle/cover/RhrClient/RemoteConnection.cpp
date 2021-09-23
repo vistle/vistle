@@ -230,7 +230,10 @@ void RemoteConnection::operator()()
 #ifdef __APPLE__
     pthread_setname_np("RHR:RemoteConnection");
 #endif
-    CERR << "starting thread on rank " << m_comm->rank() << std::endl;
+    if (m_comm)
+        CERR << "starting thread on rank " << m_comm->rank() << std::endl;
+    else
+        CERR << "starting thread on master" << std::endl;
     {
         lock_guard locker(*m_mutex);
         assert(m_running);
