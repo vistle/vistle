@@ -572,7 +572,7 @@ void DisCOVERay::renderRect(const vistle::Matrix4 &P, const vistle::Matrix4 &MV,
 void DisCOVERay::removeObject(std::shared_ptr<RenderObject> vro)
 {
     auto ro = std::static_pointer_cast<RayRenderObject>(vro);
-    auto rod = ro->data.get();
+    auto *rod = ro->data.get();
 
     if (rod->scene) {
         rtcDisableGeometry(rtcGetGeometry(m_scene, rod->instID));
