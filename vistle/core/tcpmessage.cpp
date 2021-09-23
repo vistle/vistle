@@ -316,19 +316,53 @@ bool recv_message(socket_t &sock, message::Buffer &msg, error_code &ec, bool blo
 
     SizeType sz = 0;
 
+//#define BLOCKING
+#ifdef BLOCKING
     boost::asio::socket_base::bytes_readable command(true);
     sock.io_control(command);
     std::size_t bytes_readable = command.get();
     if (bytes_readable < sizeof(sz) && !block) {
         return false;
     }
+#else
+    if (!block)
+        sock.non_blocking(true);
+#endif
 
     auto szbuf = boost::asio::buffer(&sz, sizeof(sz));
-    asio::read(sock, szbuf, ec);
+    size_t n = asio::read(sock, szbuf, ec);
+#ifndef BLOCKING
+    if (!block)
+        sock.non_blocking(false);
+#endif
     if (ec) {
+#ifndef BLOCKING
+        if (!block && ec == boost::asio::error::would_block) {
+            ec.clear();
+            return false;
+        }
+#endif
         std::cerr << "message::recv: size error " << ec.message() << std::endl;
         return false;
     }
+#ifndef BLOCKING
+    if (!block) {
+        if (n == 0) {
+            return false;
+        }
+        if (n != sizeof(sz)) {
+            std::cerr << "message::recv: short read" << std::endl;
+            if (n > 0) {
+                auto szbuf2 = boost::asio::buffer(&sz + n, sizeof(sz) - n);
+                asio::read(sock, szbuf2, ec);
+                if (ec) {
+                    std::cerr << "message::recv: size error " << ec.message() << std::endl;
+                }
+            }
+            return false;
+        }
+    }
+#endif
 
     sz = ntohl(sz);
     if (sz < sizeof(Message)) {
