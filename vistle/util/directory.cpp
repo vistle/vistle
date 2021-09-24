@@ -3,8 +3,6 @@
 #include "directory.h"
 #include "findself.h"
 
-#include <boost/filesystem/directory.hpp>
-namespace vistle {
 
 namespace directory {
 
