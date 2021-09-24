@@ -1,15 +1,16 @@
 #include "SenseiModule.h"
 
+#include <vistle/core/rectilineargrid.h>
+#include <vistle/insitu/util/print.h>
+#include <vistle/util/directory.h>
 #include <vistle/util/listenv4v6.h>
 
 #include <sstream>
-#include <vistle/core/rectilineargrid.h>
 
 #include <boost/bind.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/mpi.hpp>
 
-#include <vistle/insitu/util/print.h>
 
 using namespace std;
 using namespace vistle::insitu::sensei;
@@ -20,9 +21,9 @@ using namespace vistle::insitu::message;
 
 SenseiModule::SenseiModule(const string &name, int moduleID, mpi::communicator comm): InSituReader(name, moduleID, comm)
 {
-    m_filePath = addStringParameter("path", "path to a .vistle file", "", vistle::Parameter::ExistingFilename);
+    m_filePath = addStringParameter("path", "path to a .vistle file", directory::configHome() + "/sensei.vistle", vistle::Parameter::ExistingFilename);
     setParameterFilters(m_filePath, "simulation Files (*.vistle)");
-
+   
     m_timeout = addIntParameter("timeout time in second", "time in seconds in which simulation must respond", 10);
     setParameterMinimum(m_timeout, vistle::Integer{0});
 
