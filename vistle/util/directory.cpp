@@ -3,6 +3,7 @@
 #include "directory.h"
 #include "findself.h"
 
+namespace vistle {
 
 namespace directory {
 
