@@ -3,7 +3,6 @@
 #include "directory.h"
 #include "findself.h"
 
-#include <boost/filesystem/directory.hpp>
 namespace vistle {
 
 namespace directory {
@@ -84,20 +83,12 @@ std::string configHome()
 #else
     auto var = "XDG_CONFIG_HOME";
 #endif
-    std::string dir;
     if (const char *CONFIG = getenv(var)) {
-        dir = CONFIG + std::string("/vistle");
+        return CONFIG + std::string("/vistle");
     } else if (const char *HOME = getenv("HOME")) {
-        dir = HOME + std::string("/.config/vistle");
+        return HOME + std::string("/.config/vistle");
     }
-    static bool first = true;
-    if (first && !dir.empty())
-    {
-        boost::filesystem::create_directory(dir);
-        first = false;
-    }
-
-    return dir;
+    return "";
 }
 
 } // namespace directory
