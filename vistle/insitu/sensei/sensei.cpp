@@ -6,6 +6,7 @@
 #include <vistle/insitu/message/SyncShmIDs.h>
 #include <vistle/insitu/message/addObjectMsq.h>
 #include <vistle/util/directory.h>
+#include <vistle/util/filesystem.h>
 #include <vistle/util/enumarray.h>
 #include <vistle/util/hostname.h>
 #include <vistle/util/shmconfig.h>
@@ -222,6 +223,9 @@ void SenseiAdapter::dumpConnectionFile(MPI_Comm Comm)
     boost::mpi::gather(boost::mpi::communicator(comm, boost::mpi::comm_attach), m_internals->messageHandler.name(),
                        names, 0);
     if (m_rank == 0) {
+        if (!vistle::filesystem::exists(vistle::directory::configHome())) {
+            vistle::filesystem::create_directory(vistle::directory::configHome());
+        }
         std::ofstream outfile(directory::configHome() + "/sensei.vistle");
         for (int i = 0; i < m_mpiSize; i++) {
             outfile << std::to_string(i) << " " << names[i] << endl;
