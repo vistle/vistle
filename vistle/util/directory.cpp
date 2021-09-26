@@ -90,7 +90,8 @@ std::string configHome()
         dir = HOME + std::string("/.config/vistle");
     }
     static bool first = true;
-    if (first && !dir.empty()) {
+    if (first && !dir.empty())
+    {
         boost::filesystem::create_directory(dir);
         first = false;
     }
