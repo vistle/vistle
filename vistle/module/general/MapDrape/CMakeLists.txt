@@ -1,6 +1,5 @@
 vistle_find_package(PROJ)
 if(NOT PROJ_FOUND)
-    message("Skipping because of missing PROJ")
     return()
 endif()
 
