@@ -61,7 +61,7 @@ IsoSurface::IsoSurface(const std::string &name, int moduleID, mpi::communicator 
     m_pointOrValue = addIntParameter("point_or_value", "point or value interaction", Value, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_pointOrValue, PointOrValue);
 #endif
-    setReducePolicy(message::ReducePolicy::Locally);
+    setReducePolicy(message::ReducePolicy::OverAll);
     createInputPort("data_in");
     m_mapDataIn = createInputPort("mapdata_in");
 #endif
@@ -91,7 +91,7 @@ bool IsoSurface::changeParameter(const Parameter *param)
         else if (m_pointOrValue->getValue() == PointPerTimestep)
             setReducePolicy(message::ReducePolicy::PerTimestep);
         else
-            setReducePolicy(message::ReducePolicy::Locally);
+            setReducePolicy(message::ReducePolicy::OverAll);
     }
 #endif
 
