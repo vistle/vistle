@@ -22,8 +22,6 @@
 
 #include <osg/io_utils>
 
-#include <chrono>
-
 #include "DecodeTask.h"
 
 #ifdef __linux
@@ -34,7 +32,6 @@
 #endif
 
 //#define CONNDEBUG
-#define TILE_QUEUE_ON_MAINTHREAD
 
 
 #define CERR std::cerr << "RemoteConnection: "
@@ -91,24 +88,24 @@ const osg::BoundingSphere &RemoteConnection::getBounds() const
 }
 
 RemoteConnection::RemoteConnection(RhrClient *plugin, int moduleId, bool isMaster)
-: plugin(plugin), m_listen(false), m_sock(plugin->m_io), m_isMaster(isMaster), m_moduleId(moduleId)
+: plugin(plugin), m_sock(plugin->m_io), m_isMaster(isMaster), m_moduleId(moduleId)
 {
     init();
 }
 
 RemoteConnection::RemoteConnection(RhrClient *plugin, std::string host, unsigned short port, bool isMaster)
-: plugin(plugin), m_listen(false), m_host(host), m_port(port), m_sock(plugin->m_io), m_isMaster(isMaster)
+: plugin(plugin), m_host(host), m_port(port), m_sock(plugin->m_io), m_isMaster(isMaster)
 {
     init();
 }
 
 RemoteConnection::RemoteConnection(RhrClient *plugin, unsigned short portFirst, unsigned short portLast, bool isMaster)
 : plugin(plugin)
-, m_listen(true)
 , m_port(0)
 , m_portFirst(portFirst)
 , m_portLast(portLast)
 , m_sock(plugin->m_io)
+, m_listen(true)
 , m_isMaster(isMaster)
 , m_setServerParameters(true)
 {

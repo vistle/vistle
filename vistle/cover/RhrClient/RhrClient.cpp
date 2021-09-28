@@ -45,7 +45,6 @@
 #include <vistle/util/hostname.h>
 
 #include <vistle/cover/VistlePluginUtil/VistleInteractor.h>
-#include <vistle/cover/VistlePluginUtil/VistleRenderObject.h>
 #include <vistle/cover/VistlePluginUtil/VistleMessage.h>
 
 

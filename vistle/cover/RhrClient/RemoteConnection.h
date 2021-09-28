@@ -89,7 +89,7 @@ public:
     int m_numClusterViews = 0;
     std::vector<NodeConfig> m_nodeConfig;
     osg::ref_ptr<opencover::MultiChannelDrawer> m_drawer;
-    opencover::MultiChannelDrawer::Mode m_mode;
+    opencover::MultiChannelDrawer::Mode m_mode = opencover::MultiChannelDrawer::AsIs;
     GeometryMode m_geoMode = Invalid;
     opencover::MultiChannelDrawer::ViewSelection m_visibleViews = opencover::MultiChannelDrawer::Same;
 
