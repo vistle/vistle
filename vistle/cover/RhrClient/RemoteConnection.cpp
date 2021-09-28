@@ -19,6 +19,7 @@
 #include <vistle/core/messages.h>
 #include <vistle/core/tcpmessage.h>
 #include <vistle/util/listenv4v6.h>
+#include <vistle/util/enum.h>
 
 #include <osg/io_utils>
 
@@ -32,7 +33,6 @@
 #endif
 
 //#define CONNDEBUG
-
 
 #define CERR std::cerr << "RemoteConnection: "
 #define NOTIFY_INFO CERR
@@ -48,18 +48,19 @@ using namespace opencover;
 using namespace vistle;
 using message::RemoteRenderMessage;
 
-enum {
-    TagQuit,
-    TagContinue,
-    TagTileAll,
-    TagTileAny,
-    TagTileMiddle,
-    TagTileLeft,
-    TagTileRight,
-    TagTileSend,
-    TagData,
-};
-
+// clang-format off
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(MpiTags,
+                                    (TagQuit)
+                                    (TagContinue)
+                                    (TagTileAll)
+                                    (TagTileAny)
+                                    (TagTileMiddle)
+                                    (TagTileLeft)
+                                    (TagTileRight)
+                                    (TagTileSend)
+                                    (TagData)
+);
+// clang-format on
 
 int RemoteConnection::numViewsForMode(RemoteConnection::GeometryMode mode)
 {
@@ -818,7 +819,7 @@ void RemoteConnection::handleTileMeta(const RemoteRenderMessage &remote, const t
     bool first = msg.flags & rfbTileFirst;
     bool last = msg.flags & rfbTileLast;
     if (first || last) {
-        CERR << "TILE: " << (first ? "F" : " ") << "." << (last ? "L" : " ") << "t=" << msg.timestep
+        CERR << "TILE: " << (first ? "F" : "f") << (last ? "L" : "l") << ", t=" << msg.timestep
              << "req: " << msg.requestNumber << ", view: " << msg.viewNum << ", frame: " << msg.frameNumber
              << ", dt: " << cover->frameTime() - msg.requestTime << std::endl;
     }
@@ -1687,6 +1688,8 @@ bool RemoteConnection::distributeAndHandleTileMpi(std::shared_ptr<RemoteRenderMe
             }
         }
 
+        //CERR << "sending with tag " << toString(MpiTags(tag)) << std::endl;
+
         message::Buffer buf(*msg);
         if (tag == TagTileSend) {
             int dest = 0;
@@ -1708,6 +1711,7 @@ bool RemoteConnection::distributeAndHandleTileMpi(std::shared_ptr<RemoteRenderMe
 
     } else {
         auto status = m_comm->probe();
+        //CERR << "probing resulted in tag " << toString(MpiTags(status.tag())) << std::endl;
         if (status.tag() == TagQuit) {
             m_comm->recv(0, TagQuit);
             CERR << "quitting MPI thread" << std::endl;
@@ -1716,6 +1720,7 @@ bool RemoteConnection::distributeAndHandleTileMpi(std::shared_ptr<RemoteRenderMe
             m_comm->recv(0, TagContinue);
             return false;
         } else if (status.tag() == TagTileSend) {
+            //CERR << "distributeAndHandleTileMpi: send" << std::endl;
             message::Buffer tile;
             m_comm->recv(0, TagTileSend, tile.data(), sizeof(RemoteRenderMessage));
             msg = std::make_shared<RemoteRenderMessage>(tile.as<RemoteRenderMessage>());
@@ -1725,7 +1730,7 @@ bool RemoteConnection::distributeAndHandleTileMpi(std::shared_ptr<RemoteRenderMe
                    status.tag() == TagTileLeft || status.tag() == TagTileRight) {
             m_comm->recv(0, status.tag());
             message::Buffer tile;
-            auto comm = m_comm.get();
+            auto *comm = m_comm.get();
             bool participate = true;
             auto &nc = m_nodeConfig[m_comm->rank()];
             if (status.tag() == TagTileAny) {
@@ -1744,6 +1749,7 @@ bool RemoteConnection::distributeAndHandleTileMpi(std::shared_ptr<RemoteRenderMe
                 comm = m_commRight.get();
                 participate = nc.haveRight;
             }
+            //CERR << "distributeAndHandleTileMpi: participate=" << participate << std::endl;
             if (!participate)
                 return true;
 
