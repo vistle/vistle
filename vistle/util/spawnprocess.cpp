@@ -13,7 +13,7 @@
 #include <signal.h>
 #include <sys/wait.h>
 
-#define USE_POSIX_SPAWN
+//#define USE_POSIX_SPAWN
 #ifdef USE_POSIX_SPAWN
 #include <spawn.h>
 #endif
