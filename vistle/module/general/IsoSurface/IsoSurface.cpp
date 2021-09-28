@@ -201,7 +201,7 @@ Object::ptr IsoSurface::createHeightCut(vistle::Object::const_ptr grid, vistle::
         Vec<Scalar>::ptr newData(new Vec<Scalar>(coordsIn->getNumVertices()));
         auto heightMappedData = newData->x().data();
 
-        for (int i = 0; i < coordsIn->getNumVertices(); ++i) {
+        for (Index i = 0; i < coordsIn->getNumVertices(); ++i) {
             heightMappedData[i] = z[i] - heightField.getAlt(x[i], y[i]);
         }
         heightField.closeImage();
