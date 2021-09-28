@@ -114,29 +114,47 @@ bool PartitionReader::setPartition(int partition, unsigned numGhostLayers)
     if (partition > m_numPartitions)
         return false;
     m_partition = partition;
-
-    int max = m_mapFileHeader[3];
-    if (m_numBlocksToRead != unsigned(m_totalNumBlocks)) {
-        max = max_element(m_mapFileData.begin(), m_mapFileData.end(),
-                          [](const array<int, 9> &a, const array<int, 9> &b) { return a[0] < b[0]; }) -
-              m_mapFileData.begin();
-    }
-    int lower = max / m_numPartitions * partition;
-    int upper = lower + m_mapFileHeader[3] / m_numPartitions;
-    if (partition == m_numPartitions - 1) {
-        upper = max;
-    }
-
-
     vector<int> blocksNotToRead;
-    for (unsigned i = 0; i < m_numBlocksToRead; i++) {
-        if (m_mapFileData[i][0] >= lower && m_mapFileData[i][0] < upper) {
+
+    if (m_hasMap) {
+        int max = m_mapFileHeader[3];
+        if (m_numBlocksToRead != unsigned(m_totalNumBlocks)) {
+            max = max_element(m_mapFileData.begin(), m_mapFileData.end(),
+                              [](const array<int, 9> &a, const array<int, 9> &b) { return a[0] < b[0]; }) -
+                  m_mapFileData.begin();
+        }
+        int lower = max / m_numPartitions * partition;
+        int upper = lower + m_mapFileHeader[3] / m_numPartitions;
+        if (partition == m_numPartitions - 1) {
+            upper = max;
+        }
+
+
+        for (unsigned i = 0; i < m_numBlocksToRead; i++) {
+            if (m_mapFileData[i][0] >= lower && m_mapFileData[i][0] < upper) {
+                m_blocksToRead.push_back(i);
+            } else {
+                blocksNotToRead.push_back(i);
+            }
+        }
+        addGhostBlocks(blocksNotToRead, numGhostLayers);
+    } else {
+        int numBlocksToRead = m_totalNumBlocks / m_numPartitions;
+        int firstBlockToRead = numBlocksToRead * partition;
+        int lastBlockToRead = partition == m_numPartitions - 1 ? m_totalNumBlocks : firstBlockToRead + numBlocksToRead;
+
+        m_blocksToRead.reserve(lastBlockToRead - firstBlockToRead);
+        for (int i = firstBlockToRead; i < lastBlockToRead; i++) {
             m_blocksToRead.push_back(i);
-        } else {
-            blocksNotToRead.push_back(i);
+        }
+        blocksNotToRead.reserve(m_totalNumBlocks - m_blocksToRead.size());
+        for (int i = 0; i < m_totalNumBlocks; i++) {
+            if (i < firstBlockToRead || i >= lastBlockToRead)
+                blocksNotToRead.push_back(i);
         }
     }
-    addGhostBlocks(blocksNotToRead, numGhostLayers);
+
+
     if (!ReadBlockLocations())
         return false;
     return true;
@@ -185,7 +203,8 @@ bool PartitionReader::ReadGrid(int timestep, int block, float *x, float *y, floa
 
         } else {
             double *tmppts = new double[m_blockSize * m_dim];
-            fseek(m_curOpenGridFile->file(), iRealHeaderSize + (long)nFloatsInDomain * sizeof(double) * block, SEEK_SET);
+            fseek(m_curOpenGridFile->file(), iRealHeaderSize + (long)nFloatsInDomain * sizeof(double) * block,
+                  SEEK_SET);
             size_t res = fread(tmppts, sizeof(double), m_blockSize * m_dim, m_curOpenGridFile->file());
             (void)res;
             if (m_swapEndian)
@@ -294,7 +313,8 @@ bool PartitionReader::ReadVelocity(int timestep, int block, float *x, float *y, 
     } else {
         for (unsigned ii = 0; ii < m_blockSize; ii++) {
             fseek(m_curOpenVarFile->file(),
-                  (long)m_curOpenVarFile->iAsciiFileStart + (long)block * m_curOpenVarFile->iAsciiFileLineLen * m_blockSize +
+                  (long)m_curOpenVarFile->iAsciiFileStart +
+                      (long)block * m_curOpenVarFile->iAsciiFileLineLen * m_blockSize +
                       (long)ii * m_curOpenVarFile->iAsciiFileLineLen + (long)dp.varOffsetAscii,
                   SEEK_SET);
             if (m_dim == 3) {
@@ -332,10 +352,11 @@ bool PartitionReader::ReadVar(const string &varname, int timestep, int block, fl
             // This assumes uvw for all fields comes after the grid as [block0: 216u 216v 216w]...
             // then p or t as   [block0: 216p][block1: 216p][block2: 216p]...
             if (strcmp(varname.c_str() + 2, "velocity") == 0) {
-                filepos = (long)iRealHeaderSize + //header
-                          (long)dp.timestepHasGrid * m_blocksPerFile[fileID] * m_blockSize * m_dim * m_precision + //grid
-                          (long)block * m_blockSize * m_dim * m_precision + //start of block
-                          (long)(varname[0] - 'x') * m_blockSize * m_precision; //position within block
+                filepos =
+                    (long)iRealHeaderSize + //header
+                    (long)dp.timestepHasGrid * m_blocksPerFile[fileID] * m_blockSize * m_dim * m_precision + //grid
+                    (long)block * m_blockSize * m_dim * m_precision + //start of block
+                    (long)(varname[0] - 'x') * m_blockSize * m_precision; //position within block
             } else
                 filepos = (long)iRealHeaderSize +
                           (long)m_blocksPerFile[fileID] * dp.varOffsetBinary *
@@ -366,7 +387,8 @@ bool PartitionReader::ReadVar(const string &varname, int timestep, int block, fl
         float *var_tmp = data;
         for (unsigned ii = 0; ii < m_blockSize; ii++) {
             fseek(m_curOpenVarFile->file(),
-                  (long)m_curOpenVarFile->iAsciiFileStart + (long)block * m_curOpenVarFile->iAsciiFileLineLen * m_blockSize +
+                  (long)m_curOpenVarFile->iAsciiFileStart +
+                      (long)block * m_curOpenVarFile->iAsciiFileLineLen * m_blockSize +
                       (long)ii * m_curOpenVarFile->iAsciiFileLineLen + (long)dp.varOffsetAscii,
                   SEEK_SET);
             int res = fscanf(m_curOpenVarFile->file(), " %f", var_tmp);
@@ -606,7 +628,7 @@ bool PartitionReader::constructUnstructuredGrid(int timestep)
     //maps from  (sorted) global (from map file) cornerid(s) to cornerindex(indices) in connectivity list
     map<int, int> writtenCorners;
     map<Edge, pair<bool, vector<int>>>
-        writtenEdges; //key is sorted global indices, bool is wehter it had to be sorted, vector contains the indices to the coordinates in mesh file
+        writtenEdges; //key is sorted global indices, bool is wheter it had to be sorted, vector contains the indices to the coordinates in mesh file
     map<Plane, pair<Plane, vector<int>>>
         writtenPlanes; //key is sorted global indices, pair contains unsorted globl indices and a vector containing the indices to the coordinates in mesh file
 
@@ -621,23 +643,26 @@ bool PartitionReader::constructUnstructuredGrid(int timestep)
     }
     for (size_t currBlock = 0; currBlock < m_blocksToRead.size(); currBlock++) {
         //pre-read the grid to verify overlapping corners. The is necessary because the mapfile also contains not physically (logically) linked blocks
-        array<vector<float>, 3> grid{vector<float>(m_blockSize), vector<float>(m_blockSize), vector<float>(m_blockSize)};
+        array<vector<float>, 3> grid{vector<float>(m_blockSize), vector<float>(m_blockSize),
+                                     vector<float>(m_blockSize)};
         if (!ReadGrid(timestep, m_blocksToRead[currBlock], grid[0].data(), grid[1].data(), grid[2].data())) {
             return false;
         }
         //contains the points, that are already written(in local block indices) and where to find them in the coordinate list and a set of new edges that have to be reversed
         map<int, int> localToGloabl =
-            findAlreadyWrittenPoints(currBlock, writtenCorners, writtenEdges, writtenPlanes, grid);
-
+            m_hasMap ? findAlreadyWrittenPoints(currBlock, writtenCorners, writtenEdges, writtenPlanes, grid)
+                     : map<int, int>{};
         fillConnectivityList(localToGloabl, currBlock * m_blockSize - numDoublePoints);
         numDoublePoints += localToGloabl.size();
-
-        //add my corners/edges/planes to the "already written" maps
-        addNewCorners(writtenCorners, currBlock);
-        addNewEdges(writtenEdges, currBlock);
-        if (m_dim == 3) {
-            addNewPlanes(writtenPlanes, currBlock);
+        if (m_hasMap) {
+            //add my corners/edges/planes to the "already written" maps
+            addNewCorners(writtenCorners, currBlock);
+            addNewEdges(writtenEdges, currBlock);
+            if (m_dim == 3) {
+                addNewPlanes(writtenPlanes, currBlock);
+            }
         }
+
         //add the new connectivityList entries to my grid
         int numCon = m_numCorners * m_hexesPerBlock;
         for (int i = 0; i < numCon; i++) {
@@ -931,16 +956,13 @@ void PartitionReader::fillConnectivityList(const map<int, int> &localToGloabl, i
 
     for (size_t index = 0; index < m_blockSize; index++) {
         auto conListEntries = m_blockIndexToConnectivityIndex.find(index)->second;
-        bool added = false;
         auto it = localToGloabl.find(index);
         if (it != localToGloabl.end()) {
             for (auto entry: conListEntries) {
                 connList[entry] = it->second;
             }
             ++numDoubles;
-            added = true;
-        }
-        if (!added) {
+        } else {
             for (auto entry: conListEntries) {
                 connList[entry] = startIndexInGrid + index - numDoubles;
             }
@@ -955,7 +977,7 @@ void PartitionReader::addNewCorners(map<int, int> &allCorners, int localBlock)
     for (int i = 1; i <= m_numCorners; i++) {
         allCorners[corners[i]] =
             m_connectivityList[m_blockIndexToConnectivityIndex.find(cornerIndexToBlockIndex(i))->second[0] +
-                             localBlock * m_numCorners * m_hexesPerBlock];
+                               localBlock * m_numCorners * m_hexesPerBlock];
     }
 }
 
@@ -975,7 +997,7 @@ void PartitionReader::addNewEdges(map<Edge, pair<bool, vector<int>>> &allEdges, 
             gridIndices.reserve(blockIndices.size());
             for (int blockIndex: blockIndices) {
                 gridIndices.push_back(m_connectivityList[m_blockIndexToConnectivityIndex.find(blockIndex)->second[0] +
-                                                       localBlock * m_numCorners * m_hexesPerBlock]);
+                                                         localBlock * m_numCorners * m_hexesPerBlock]);
             }
             allEdges[e] = make_pair(s, gridIndices);
         }
@@ -991,7 +1013,7 @@ void PartitionReader::addNewPlanes(map<Plane, pair<Plane, vector<int>>> &allPlan
         gridIndices.reserve(blockIndices.size());
         for (int blockIndex: blockIndices) {
             gridIndices.push_back(m_connectivityList[m_blockIndexToConnectivityIndex.find(blockIndex)->second[0] +
-                                                   localBlock * m_numCorners * m_hexesPerBlock]);
+                                                     localBlock * m_numCorners * m_hexesPerBlock]);
         }
 
 

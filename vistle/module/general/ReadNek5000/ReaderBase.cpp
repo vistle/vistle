@@ -431,6 +431,7 @@ bool ReaderBase::ParseGridMap()
         m_hasMap = true;
     }
 
+
     sendError("ReadNek: can neither open map file " + map_filename + " nor ma2 file " + ma2_filename);
     return false;
 }
@@ -535,7 +536,6 @@ bool ReaderBase::ParseNekFileHeader()
             m_numOutputDirs *= 10;
             m_numOutputDirs += (f.get() - '0');
         }
-
     }
     ParseFieldTags(f);
     if (m_totalNumBlocks < 0) {
@@ -643,14 +643,18 @@ void ReaderBase::makeBaseConnList()
                 for (Index kk = 0; kk < m_blockDimensions[2] - 1; kk++) {
                     *nl++ = kk * (m_blockDimensions[1]) * (m_blockDimensions[0]) + jj * (m_blockDimensions[0]) + ii;
                     *nl++ = kk * (m_blockDimensions[1]) * (m_blockDimensions[0]) + jj * (m_blockDimensions[0]) + ii + 1;
-                    *nl++ = kk * (m_blockDimensions[1]) * (m_blockDimensions[0]) + (jj + 1) * (m_blockDimensions[0]) + ii + 1;
-                    *nl++ = kk * (m_blockDimensions[1]) * (m_blockDimensions[0]) + (jj + 1) * (m_blockDimensions[0]) + ii;
-                    *nl++ = (kk + 1) * (m_blockDimensions[1]) * (m_blockDimensions[0]) + jj * (m_blockDimensions[0]) + ii;
-                    *nl++ = (kk + 1) * (m_blockDimensions[1]) * (m_blockDimensions[0]) + jj * (m_blockDimensions[0]) + ii + 1;
-                    *nl++ = (kk + 1) * (m_blockDimensions[1]) * (m_blockDimensions[0]) + (jj + 1) * (m_blockDimensions[0]) +
+                    *nl++ = kk * (m_blockDimensions[1]) * (m_blockDimensions[0]) + (jj + 1) * (m_blockDimensions[0]) +
                             ii + 1;
                     *nl++ =
-                        (kk + 1) * (m_blockDimensions[1]) * (m_blockDimensions[0]) + (jj + 1) * (m_blockDimensions[0]) + ii;
+                        kk * (m_blockDimensions[1]) * (m_blockDimensions[0]) + (jj + 1) * (m_blockDimensions[0]) + ii;
+                    *nl++ =
+                        (kk + 1) * (m_blockDimensions[1]) * (m_blockDimensions[0]) + jj * (m_blockDimensions[0]) + ii;
+                    *nl++ = (kk + 1) * (m_blockDimensions[1]) * (m_blockDimensions[0]) + jj * (m_blockDimensions[0]) +
+                            ii + 1;
+                    *nl++ = (kk + 1) * (m_blockDimensions[1]) * (m_blockDimensions[0]) +
+                            (jj + 1) * (m_blockDimensions[0]) + ii + 1;
+                    *nl++ = (kk + 1) * (m_blockDimensions[1]) * (m_blockDimensions[0]) +
+                            (jj + 1) * (m_blockDimensions[0]) + ii;
                 }
             }
         }
