@@ -15,7 +15,7 @@
 ## ======================================================================== ##
 
 find_path(
-    TBB_ROOT include/tbb/task_scheduler_init.h
+    TBB_ROOT include/tbb/task_group.h
     DOC "Root of TBB installation"
     PATHS ${PROJECT_SOURCE_DIR}/tbb
           "C:/Program Files (x86)/Intel/Composer XE/tbb"
@@ -54,7 +54,7 @@ if(WIN32)
     set(TBB_BINDIR ${TBB_ROOT}/bin/${TBB_ARCH}/${TBB_VCVER})
 
     find_path(
-        TBB_INCLUDE_DIR tbb/task_scheduler_init.h
+        TBB_INCLUDE_DIR tbb/task_group.h
         PATHS ${TBB_ROOT}/include
         NO_DEFAULT_PATH)
     find_library(
@@ -129,12 +129,12 @@ else()
 
     if(APPLE)
         if(ENABLE_INSTALLER)
-            find_path(TBB_INCLUDE_DIR tbb/task_scheduler_init.h)
+            find_path(TBB_INCLUDE_DIR tbb/task_group.h)
             find_library(TBB_LIBRARY tbb)
             find_library(TBB_LIBRARY_MALLOC tbbmalloc)
         else()
             find_path(
-                TBB_INCLUDE_DIR tbb/task_scheduler_init.h
+                TBB_INCLUDE_DIR tbb/task_group.h
                 PATHS ${TBB_ROOT}/include
                 NO_DEFAULT_PATH)
             find_library(
@@ -149,7 +149,7 @@ else()
     else()
 
         find_path(
-            TBB_INCLUDE_DIR tbb/task_scheduler_init.h
+            TBB_INCLUDE_DIR tbb/task_group.h
             PATHS ${TBB_ROOT}/include
             NO_DEFAULT_PATH)
         find_library(
@@ -163,7 +163,7 @@ else()
     endif()
 
     find_path(
-        TBB_INCLUDE_DIR_MIC tbb/task_scheduler_init.h
+        TBB_INCLUDE_DIR_MIC tbb/task_group.h
         PATHS ${TBB_ROOT}/include
         NO_DEFAULT_PATH)
     find_library(
