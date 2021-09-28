@@ -15,7 +15,7 @@ using namespace std;
 namespace nek5000 {
 
 ReaderBase::ReaderBase(std::string file, int numPartitions, int blocksToRead)
-: file(file), numPartitions(numPartitions), numBlocksToRead(blocksToRead)
+: file(file), m_numPartitions(numPartitions), m_numBlocksToRead(blocksToRead)
 {}
 
 ReaderBase::~ReaderBase()
@@ -23,11 +23,12 @@ ReaderBase::~ReaderBase()
 
 bool ReaderBase::init()
 {
-    if (!parseMetaDataFile() || !ParseNekFileHeader() || !ParseGridMap()) {
+    if (!parseMetaDataFile() || !ParseNekFileHeader()) {
         return false;
     }
-    if (numBlocksToRead < 1 || numBlocksToRead > unsigned(totalNumBlocks))
-        numBlocksToRead = totalNumBlocks;
+    ParseGridMap();
+    if (m_numBlocksToRead < 1 || m_numBlocksToRead > unsigned(m_totalNumBlocks))
+        m_numBlocksToRead = m_totalNumBlocks;
     UpdateCyclesAndTimes(0);
     //create basic structures to later create connectivity lists
     makeBaseConnList();
@@ -40,7 +41,7 @@ bool ReaderBase::init()
 //getter
 size_t ReaderBase::getNumTimesteps() const
 {
-    return numTimesteps;
+    return m_numTimesteps;
 }
 
 size_t ReaderBase::getNumScalarFields() const
@@ -50,7 +51,7 @@ size_t ReaderBase::getNumScalarFields() const
 
 int ReaderBase::getDim() const
 {
-    return dim;
+    return m_dim;
 }
 
 bool ReaderBase::hasVelocity() const
@@ -71,7 +72,7 @@ bool ReaderBase::hasTemperature() const
 //protected methods
 std::string ReaderBase::GetFileName(int rawTimestep, int pardir)
 {
-    int timestep = rawTimestep + firstTimestep;
+    int timestep = rawTimestep + m_firstTimestep;
     int nPrintfTokens = 0;
 
     for (size_t ii = 0; ii < fileTemplate.size() - 1; ii++) {
@@ -80,13 +81,13 @@ std::string ReaderBase::GetFileName(int rawTimestep, int pardir)
     }
 
     if (nPrintfTokens > 1) {
-        isBinary = true;
-        isParallelFormat = true;
+        m_isBinary = true;
+        m_isParallelFormat = true;
     }
 
-    if (!isParallelFormat && nPrintfTokens != 1) {
+    if (!m_isParallelFormat && nPrintfTokens != 1) {
         sendError("Nek: The filetemplate tag must receive only one printf token for serial Nek files.");
-    } else if (isParallelFormat && (nPrintfTokens < 2 || nPrintfTokens > 3)) {
+    } else if (m_isParallelFormat && (nPrintfTokens < 2 || nPrintfTokens > 3)) {
         sendError("Nek: The filetemplate tag must receive either 2 or 3 printf tokens for parallel Nek files.");
     }
     int bufSize = fileTemplate.size();
@@ -95,7 +96,7 @@ std::string ReaderBase::GetFileName(int rawTimestep, int pardir)
     do {
         bufSize += 64;
         char *outFileName = new char[bufSize];
-        if (!isParallelFormat)
+        if (!m_isParallelFormat)
             len = snprintf(outFileName, bufSize, fileTemplate.c_str(), timestep);
         else if (nPrintfTokens == 2)
             len = snprintf(outFileName, bufSize, fileTemplate.c_str(), pardir, timestep);
@@ -114,12 +115,12 @@ void ReaderBase::sendError(const std::string &msg)
 
 void ReaderBase::UpdateCyclesAndTimes(int timestep)
 {
-    if (m_times.size() != (size_t)numTimesteps) {
-        m_times.resize(numTimesteps);
-        m_cycles.resize(numTimesteps);
-        m_timestepsWithGrid.resize(numTimesteps, false);
+    if (m_times.size() != (size_t)m_numTimesteps) {
+        m_times.resize(m_numTimesteps);
+        m_cycles.resize(m_numTimesteps);
+        m_timestepsWithGrid.resize(m_numTimesteps, false);
         m_timestepsWithGrid[0] = true;
-        m_readTimeInfoFor.resize(numTimesteps, false);
+        m_readTimeInfoFor.resize(m_numTimesteps, false);
     }
     ifstream f;
     char dummy[64];
@@ -132,7 +133,7 @@ void ReaderBase::UpdateCyclesAndTimes(int timestep)
     string gridFilename = GetFileName(timestep, 0);
     f.open(gridFilename.c_str());
 
-    if (!isParallelFormat) {
+    if (!m_isParallelFormat) {
         string tString, cString;
         f >> dummy >> dummy >> dummy >> dummy >> tString >> cString >> v; //skip #blocks and block size
         t = atof(tString.c_str());
@@ -188,48 +189,48 @@ bool ReaderBase::hasGrid(int timestep) const
 //private methods
 void ReaderBase::setAllEdgesInCornerIndices()
 {
-    allEdgesInCornerIndices.insert({1, 2});
-    allEdgesInCornerIndices.insert({1, 3});
-    allEdgesInCornerIndices.insert({2, 4});
-    allEdgesInCornerIndices.insert({3, 4});
-    if (dim == 3) {
-        allEdgesInCornerIndices.insert({1, 5});
-        allEdgesInCornerIndices.insert({2, 6});
-        allEdgesInCornerIndices.insert({3, 7});
-        allEdgesInCornerIndices.insert({4, 8});
-        allEdgesInCornerIndices.insert({5, 6});
-        allEdgesInCornerIndices.insert({5, 7});
-        allEdgesInCornerIndices.insert({6, 8});
-        allEdgesInCornerIndices.insert({7, 8});
+    m_allEdgesInCornerIndices.insert({1, 2});
+    m_allEdgesInCornerIndices.insert({1, 3});
+    m_allEdgesInCornerIndices.insert({2, 4});
+    m_allEdgesInCornerIndices.insert({3, 4});
+    if (m_dim == 3) {
+        m_allEdgesInCornerIndices.insert({1, 5});
+        m_allEdgesInCornerIndices.insert({2, 6});
+        m_allEdgesInCornerIndices.insert({3, 7});
+        m_allEdgesInCornerIndices.insert({4, 8});
+        m_allEdgesInCornerIndices.insert({5, 6});
+        m_allEdgesInCornerIndices.insert({5, 7});
+        m_allEdgesInCornerIndices.insert({6, 8});
+        m_allEdgesInCornerIndices.insert({7, 8});
     }
 }
 
 void ReaderBase::setAllPlanesInCornerIndices()
 {
     vector<Plane> planes;
-    allPlanesInCornerIndices.insert({1, 2, 3, 4});
-    allPlanesInCornerIndices.insert({1, 2, 5, 6});
-    allPlanesInCornerIndices.insert({1, 3, 5, 7});
-    allPlanesInCornerIndices.insert({2, 4, 6, 8});
-    allPlanesInCornerIndices.insert({3, 4, 7, 8});
-    allPlanesInCornerIndices.insert({5, 6, 7, 8});
+    m_allPlanesInCornerIndices.insert({1, 2, 3, 4});
+    m_allPlanesInCornerIndices.insert({1, 2, 5, 6});
+    m_allPlanesInCornerIndices.insert({1, 3, 5, 7});
+    m_allPlanesInCornerIndices.insert({2, 4, 6, 8});
+    m_allPlanesInCornerIndices.insert({3, 4, 7, 8});
+    m_allPlanesInCornerIndices.insert({5, 6, 7, 8});
 }
 
 void ReaderBase::setBlockIndexToConnectivityIndex()
 {
-    blockIndexToConnectivityIndex.clear();
-    for (size_t j = 0; j < blockSize; j++) {
+    m_blockIndexToConnectivityIndex.clear();
+    for (size_t j = 0; j < m_blockSize; j++) {
         vector<int> connectivityIndices;
-        auto index = baseConnList.begin(), end = baseConnList.end();
+        auto index = m_baseConnList.begin(), end = m_baseConnList.end();
         while (index != end) {
             index = std::find(index, end, j);
             if (index != end) {
-                int i = index - baseConnList.begin();
+                int i = index - m_baseConnList.begin();
                 connectivityIndices.push_back(i);
                 ++index;
             }
         }
-        blockIndexToConnectivityIndex[j] = connectivityIndices;
+        m_blockIndexToConnectivityIndex[j] = connectivityIndices;
     }
 }
 
@@ -262,9 +263,9 @@ bool ReaderBase::parseMetaDataFile()
         } else if (tag == "filetemplate:") {
             f >> fileTemplate;
         } else if (tag == "firsttimestep:") {
-            f >> firstTimestep;
+            f >> m_firstTimestep;
         } else if (tag == "numtimesteps:") {
-            f >> numTimesteps;
+            f >> m_numTimesteps;
         } else if (tag == "meshcoords:") {
             //This tag is now deprecated.  The same info can be discovered by
             //this reader while it scans all the headers for time and cycle info.
@@ -282,12 +283,12 @@ bool ReaderBase::parseMetaDataFile()
             string t;
             f >> t;
             if (tag == "binary") {
-                isBinary = true;
+                m_isBinary = true;
             } else if (tag == "binary6") {
-                isBinary = true;
-                isParallelFormat = true;
+                m_isBinary = true;
+                m_isParallelFormat = true;
             } else if (tag == "ascii") {
-                isBinary = false;
+                m_isBinary = false;
             } else {
                 sendError(".nek5000: Value following \"type\" must be \"ascii\" or \"binary\" or \"binary6\"");
                 if (f.is_open())
@@ -299,13 +300,13 @@ bool ReaderBase::parseMetaDataFile()
             //can be determined from the header, and the parallel nature of the
             //file can be inferred from the number of printf tokens in the template.
             //This reader scans the headers for the number of fld files
-            f >> numOutputDirs;
-            if (numOutputDirs > 1)
-                isParallelFormat = true;
+            f >> m_numOutputDirs;
+            if (m_numOutputDirs > 1)
+                m_isParallelFormat = true;
         } else if (tag == "timeperiods:") {
-            f >> numberOfTimePeriods;
+            f >> m_numberOfTimePeriods;
         } else if (tag == "gapBetweenTimePeriods:") {
-            f >> gapBetweenTimePeriods;
+            f >> m_gapBetweenTimePeriods;
         } else if (tag == "NEK3D") {
             //This is an obsolete tag, ignore it.
         } else if (tag == "version:") {
@@ -321,10 +322,10 @@ bool ReaderBase::parseMetaDataFile()
         }
     }
 
-    if (numberOfTimePeriods < 1) {
+    if (m_numberOfTimePeriods < 1) {
         sendError(".nek5000: The number of time periods must be 1 or more.");
     }
-    if (numberOfTimePeriods > 1 && gapBetweenTimePeriods <= 0.0) {
+    if (m_numberOfTimePeriods > 1 && m_gapBetweenTimePeriods <= 0.0) {
         sendError(".nek5000: The gap between time periods must be non-zero.");
         if (f.is_open())
             f.close();
@@ -384,7 +385,7 @@ bool ReaderBase::ParseGridMap()
             mptr >> m_mapFileHeader[i];
         }
         m_mapFileData.reserve(m_mapFileHeader[0]);
-        int columns = dim == 2 ? 5 : 9;
+        int columns = m_dim == 2 ? 5 : 9;
         for (int i = 0; i < m_mapFileHeader[0]; ++i) {
             array<int, 9> line;
             for (int j = 0; j < columns; j++) {
@@ -393,6 +394,7 @@ bool ReaderBase::ParseGridMap()
             m_mapFileData.emplace_back(line);
         }
         mptr.close();
+        m_hasMap = true;
         return true;
     }
     string ma2_filename = base_filename + "ma2";
@@ -412,7 +414,7 @@ bool ReaderBase::ParseGridMap()
         ma2ptr >> test; //to do: use this to perform byteswap if necessary
         ma2ptr.seekg((132 / 4 + 1) * sizeof(float), ios::beg);
         m_mapFileData.reserve(m_mapFileHeader[0]);
-        int columns = dim == 2 ? 5 : 9;
+        int columns = m_dim == 2 ? 5 : 9;
 
         int *map = new int[columns * m_mapFileHeader[0]];
         ma2ptr.read((char *)map, columns * m_mapFileHeader[0] * sizeof(float));
@@ -426,7 +428,7 @@ bool ReaderBase::ParseGridMap()
         }
         delete[] map;
         ma2ptr.close();
-        return true;
+        m_hasMap = true;
     }
 
     sendError("ReadNek: can neither open map file " + map_filename + " nor ma2 file " + ma2_filename);
@@ -450,41 +452,40 @@ bool ReaderBase::ParseNekFileHeader()
     // Determine the type (ascii or binary)
     // Parallel type is determined by the number of tokens in the file template
     // and is always binary
-    if (!isParallelFormat) {
+    if (!m_isParallelFormat) {
         float test;
         f.seekg(80, ios::beg);
 
         f.read((char *)(&test), 4);
         if (test > 6.5 && test < 6.6)
-            isBinary = true;
+            m_isBinary = true;
         else {
             ByteSwapArray(&test, 1);
             if (test > 6.5 && test < 6.6)
-                isBinary = true;
+                m_isBinary = true;
         }
         f.seekg(0, ios::beg);
     }
 
     //iHeaderSize no longer includes the size of the block index metadata, for the
     //parallel format, since this now can vary per file.
-    if (isBinary && isParallelFormat)
+    if (m_isBinary && m_isParallelFormat)
         m_headerSize = 136;
-    else if (isBinary && !isParallelFormat)
+    else if (m_isBinary && !m_isParallelFormat)
         m_headerSize = 84;
     else
         m_headerSize = 80;
 
 
-    if (!isParallelFormat) {
-        f >> totalNumBlocks;
-        f >> blockDimensions[0];
-        f >> blockDimensions[1];
-        f >> blockDimensions[2];
+    if (!m_isParallelFormat) {
+        f >> m_totalNumBlocks;
+        f >> m_blockDimensions[0];
+        f >> m_blockDimensions[1];
+        f >> m_blockDimensions[2];
 
         f >> buf2; //skip
         f >> buf2; //skip
 
-        ParseFieldTags(f);
     } else {
         //Here's are some examples of what I'm parsing:
         //#std 4  6  6  6   120  240  0.1500E+01  300  1  2XUPT
@@ -509,11 +510,11 @@ bool ReaderBase::ParseNekFileHeader()
             return false;
         }
         f >> m_precision;
-        f >> blockDimensions[0];
-        f >> blockDimensions[1];
-        f >> blockDimensions[2];
+        f >> m_blockDimensions[0];
+        f >> m_blockDimensions[1];
+        f >> m_blockDimensions[2];
         f >> buf2; //blocks per file
-        f >> totalNumBlocks;
+        f >> m_totalNumBlocks;
 
         //This bypasses some tricky and unnecessary parsing of data
         //I already have.
@@ -529,31 +530,31 @@ bool ReaderBase::ParseNekFileHeader()
             f.get();
 
         //The number of output dirs comes next, but may abut the field tags
-        numOutputDirs = 0;
+        m_numOutputDirs = 0;
         while (f.peek() >= '0' && f.peek() <= '9') {
-            numOutputDirs *= 10;
-            numOutputDirs += (f.get() - '0');
+            m_numOutputDirs *= 10;
+            m_numOutputDirs += (f.get() - '0');
         }
 
-        ParseFieldTags(f);
     }
-    if (totalNumBlocks < 0) {
+    ParseFieldTags(f);
+    if (m_totalNumBlocks < 0) {
         sendError("negative total block count");
-        totalNumBlocks = 0;
+        m_totalNumBlocks = 0;
     }
-    dim = blockDimensions[2] == 1 ? 2 : 3;
-    numCorners = dim == 2 ? 4 : 8;
-    blockSize = blockDimensions[0] * blockDimensions[1] * blockDimensions[2];
-    hexesPerBlock = (blockDimensions[0] - 1) * (blockDimensions[1] - 1);
-    if (dim == 3)
-        hexesPerBlock *= (blockDimensions[2] - 1);
-    if (isBinary) {
+    m_dim = m_blockDimensions[2] == 1 ? 2 : 3;
+    m_numCorners = m_dim == 2 ? 4 : 8;
+    m_blockSize = m_blockDimensions[0] * m_blockDimensions[1] * m_blockDimensions[2];
+    m_hexesPerBlock = (m_blockDimensions[0] - 1) * (m_blockDimensions[1] - 1);
+    if (m_dim == 3)
+        m_hexesPerBlock *= (m_blockDimensions[2] - 1);
+    if (m_isBinary) {
         // Determine endianness and whether we need to swap bytes.
         // If this machine's endian matches the file's, the read will
         // put 6.54321 into this float.
 
         float test;
-        if (!isParallelFormat) {
+        if (!m_isParallelFormat) {
             f.seekg(80, std::ios_base::beg);
             f.read((char *)(&test), 4);
         } else {
@@ -629,27 +630,27 @@ void ReaderBase::ParseFieldTags(ifstream &f)
 void ReaderBase::makeBaseConnList()
 {
     using vistle::Index;
-    baseConnList.resize(numCorners * hexesPerBlock);
-    Index *nl = baseConnList.data();
-    for (Index ii = 0; ii < blockDimensions[0] - 1; ii++) {
-        for (Index jj = 0; jj < blockDimensions[1] - 1; jj++) {
-            if (dim == 2) {
-                *nl++ = jj * (blockDimensions[0]) + ii;
-                *nl++ = jj * (blockDimensions[0]) + ii + 1;
-                *nl++ = (jj + 1) * (blockDimensions[0]) + ii + 1;
-                *nl++ = (jj + 1) * (blockDimensions[0]) + ii;
+    m_baseConnList.resize(m_numCorners * m_hexesPerBlock);
+    Index *nl = m_baseConnList.data();
+    for (Index ii = 0; ii < m_blockDimensions[0] - 1; ii++) {
+        for (Index jj = 0; jj < m_blockDimensions[1] - 1; jj++) {
+            if (m_dim == 2) {
+                *nl++ = jj * (m_blockDimensions[0]) + ii;
+                *nl++ = jj * (m_blockDimensions[0]) + ii + 1;
+                *nl++ = (jj + 1) * (m_blockDimensions[0]) + ii + 1;
+                *nl++ = (jj + 1) * (m_blockDimensions[0]) + ii;
             } else {
-                for (Index kk = 0; kk < blockDimensions[2] - 1; kk++) {
-                    *nl++ = kk * (blockDimensions[1]) * (blockDimensions[0]) + jj * (blockDimensions[0]) + ii;
-                    *nl++ = kk * (blockDimensions[1]) * (blockDimensions[0]) + jj * (blockDimensions[0]) + ii + 1;
-                    *nl++ = kk * (blockDimensions[1]) * (blockDimensions[0]) + (jj + 1) * (blockDimensions[0]) + ii + 1;
-                    *nl++ = kk * (blockDimensions[1]) * (blockDimensions[0]) + (jj + 1) * (blockDimensions[0]) + ii;
-                    *nl++ = (kk + 1) * (blockDimensions[1]) * (blockDimensions[0]) + jj * (blockDimensions[0]) + ii;
-                    *nl++ = (kk + 1) * (blockDimensions[1]) * (blockDimensions[0]) + jj * (blockDimensions[0]) + ii + 1;
-                    *nl++ = (kk + 1) * (blockDimensions[1]) * (blockDimensions[0]) + (jj + 1) * (blockDimensions[0]) +
+                for (Index kk = 0; kk < m_blockDimensions[2] - 1; kk++) {
+                    *nl++ = kk * (m_blockDimensions[1]) * (m_blockDimensions[0]) + jj * (m_blockDimensions[0]) + ii;
+                    *nl++ = kk * (m_blockDimensions[1]) * (m_blockDimensions[0]) + jj * (m_blockDimensions[0]) + ii + 1;
+                    *nl++ = kk * (m_blockDimensions[1]) * (m_blockDimensions[0]) + (jj + 1) * (m_blockDimensions[0]) + ii + 1;
+                    *nl++ = kk * (m_blockDimensions[1]) * (m_blockDimensions[0]) + (jj + 1) * (m_blockDimensions[0]) + ii;
+                    *nl++ = (kk + 1) * (m_blockDimensions[1]) * (m_blockDimensions[0]) + jj * (m_blockDimensions[0]) + ii;
+                    *nl++ = (kk + 1) * (m_blockDimensions[1]) * (m_blockDimensions[0]) + jj * (m_blockDimensions[0]) + ii + 1;
+                    *nl++ = (kk + 1) * (m_blockDimensions[1]) * (m_blockDimensions[0]) + (jj + 1) * (m_blockDimensions[0]) +
                             ii + 1;
                     *nl++ =
-                        (kk + 1) * (blockDimensions[1]) * (blockDimensions[0]) + (jj + 1) * (blockDimensions[0]) + ii;
+                        (kk + 1) * (m_blockDimensions[1]) * (m_blockDimensions[0]) + (jj + 1) * (m_blockDimensions[0]) + ii;
                 }
             }
         }

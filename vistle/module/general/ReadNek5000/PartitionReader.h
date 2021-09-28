@@ -36,22 +36,22 @@ private:
     //variables
 
     int m_partition;
-    std::vector<int> myBlocksToRead; //number of blocks to read for this partition
-    size_t numGhostBlocks = 0;
+    std::vector<int> m_blocksToRead; //number of blocks to read for this partition
+    size_t m_numGhostBlocks = 0;
 
-    std::vector<vistle::Index> connectivityList;
-    std::array<std::vector<float>, 3> myGrid;
-    int gridSize = 0;
+    std::vector<vistle::Index> m_connectivityList;
+    std::array<std::vector<float>, 3> m_grid;
+    int m_gridSize = 0;
 
     //only used in parallel binary
-    std::vector<int> vBlocksPerFile;
+    std::vector<int> m_blocksPerFile;
 
 
     //maps the local block-id to the rank <local blockID, fileID, position in file>
-    std::map<int, std::pair<int, int>> blockMap;
+    std::map<int, std::pair<int, int>> m_blockMap;
 
     // currently open file descriptors
-    std::unique_ptr<OpenFile> curOpenGridFile, curOpenVarFile;
+    std::unique_ptr<OpenFile> m_curOpenGridFile, m_curOpenVarFile;
 
     //methods
 

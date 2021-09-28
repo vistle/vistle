@@ -37,29 +37,29 @@ protected:
     std::string file; //path to meta data file
     std::string fileTemplate; //template for datafiles
 
-    int numPartitions = 0;
-    unsigned numBlocksToRead = 0; //blocks to read given by user input
-    int firstTimestep = 1;
-    int numTimesteps = 1;
-    unsigned blockDimensions[3] = {1, 1, 1};
-    unsigned blockSize = 0;
-    int dim = 1;
-    int numCorners = 0;
-    int hexesPerBlock = 0;
-    int totalNumBlocks = 0; //total number of blocks per timestep
-    int iNumberOfRanks = 1;
-    bool isBinary = false; //binary or ascii
-    int numOutputDirs = 1; //number of parallel files per timestep
-    bool isParallelFormat = false;
+    int m_numPartitions = 0;
+    unsigned m_numBlocksToRead = 0; //blocks to read given by user input
+    int m_firstTimestep = 1;
+    int m_numTimesteps = 1;
+    unsigned m_blockDimensions[3] = {1, 1, 1};
+    unsigned m_blockSize = 0;
+    int m_dim = 1;
+    int m_numCorners = 0;
+    int m_hexesPerBlock = 0;
+    int m_totalNumBlocks = 0; //total number of blocks per timestep
+    int m_numberOfRanks = 1;
+    bool m_isBinary = false; //binary or ascii
+    int m_numOutputDirs = 1; //number of parallel files per timestep
+    bool m_isParallelFormat = false;
 
-    int numberOfTimePeriods = 1;
-    double gapBetweenTimePeriods = 0.0;
+    int m_numberOfTimePeriods = 1;
+    double m_gapBetweenTimePeriods = 0.0;
 
     //connectivity list of a single isolated block
-    std::vector<vistle::Index> baseConnList;
-    std::map<int, std::vector<int>> blockIndexToConnectivityIndex;
-    std::set<Edge> allEdgesInCornerIndices;
-    std::set<Plane> allPlanesInCornerIndices;
+    std::vector<vistle::Index> m_baseConnList;
+    std::map<int, std::vector<int>> m_blockIndexToConnectivityIndex;
+    std::set<Edge> m_allEdgesInCornerIndices;
+    std::set<Plane> m_allPlanesInCornerIndices;
 
 
     // This info is embedded in, or derived from, the file header
@@ -79,6 +79,7 @@ protected:
     std::vector<bool> m_timestepsWithGrid;
     int m_defaultTimestepToReadGrid = 0;
     //header of map file containing: numBlocks, numUniqeEdges, depth, maxNumPartitions(2^dept), ?, ?
+    bool m_hasMap = false;
     std::array<int, 7> m_mapFileHeader;
     //contains the data from the .map file
     std::vector<std::array<int, 9>> m_mapFileData; //toDo: sort out blocks that do not belong to this partition
