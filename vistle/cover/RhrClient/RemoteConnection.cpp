@@ -59,7 +59,7 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(MpiTags,
                                     (TagTileRight)
                                     (TagTileSend)
                                     (TagData)
-);
+)
 // clang-format on
 
 int RemoteConnection::numViewsForMode(RemoteConnection::GeometryMode mode)
