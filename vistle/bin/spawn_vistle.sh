@@ -75,9 +75,9 @@ case $(uname) in
 esac
 
 WRAPPER="valgrind --track-origins=yes --read-var-info=yes --read-inline-info=yes --error-limit=no"
+WRAPPER="valgrind --max-threads=1024"
 WRAPPER=""
 LAUNCH=""
-#WRAPPER="$WRAPPER valgrind"
 export TSAN_OPTIONS="history_size=7 force_seq_cst_atomics=1 second_deadlock_stack=1"
 
 export MPI_UNBUFFERED_STDIO=1
