@@ -207,7 +207,7 @@ public:
     void updateStats(bool print, int localFrames);
 
     unsigned m_maxTilesPerFrame = 100;
-    bool m_handleTilesAsync = true;
+    bool m_handleTilesAsync = false;
 
     std::unique_ptr<boost::mpi::communicator> m_comm;
     std::unique_ptr<boost::mpi::communicator> m_commAny, m_commMiddle, m_commLeft, m_commRight;
@@ -217,7 +217,6 @@ public:
     bool distributeAndHandleTileMpi(std::shared_ptr<vistle::message::RemoteRenderMessage> msg,
                                     std::shared_ptr<vistle::buffer> payload);
     void setMaxTilesPerFrame(unsigned ntiles);
-    bool canHandleTile(std::shared_ptr<const vistle::message::RemoteRenderMessage> msg) const;
     void skipFrames();
 
     std::string status() const;

@@ -139,17 +139,18 @@ void RemoteConnection::init()
 {
     const std::string conf("COVER.Plugin.RhrClient");
 
-    m_handleTilesAsync = covise::coCoviseConfig::isOn("mpiThread", conf, m_handleTilesAsync);
+    bool useMpi = covise::coCoviseConfig::isOn("mpi", conf, true);
+    m_handleTilesAsync = covise::coCoviseConfig::isOn("thread", conf, m_handleTilesAsync);
 
-    if (coVRMSController::instance()->isCluster()) {
+    if (coVRMSController::instance()->isCluster() && useMpi) {
         m_comm.reset(new boost::mpi::communicator(coVRMSController::instance()->getAppCommunicator(),
                                                   boost::mpi::comm_duplicate));
-        if (!m_comm) {
-            m_handleTilesAsync = false;
-        }
     }
     if (m_handleTilesAsync) {
-        CERR << "handling tiles and MPI communication on separate thread" << std::endl;
+        if (m_comm)
+            CERR << "handling tiles and MPI communication on separate thread" << std::endl;
+        else
+            CERR << "off-loading tile handling to dedicated thread" << std::endl;
     }
 
     m_boundsNode = new osg::Node;
@@ -1132,11 +1133,6 @@ void RemoteConnection::enqueueTask(std::shared_ptr<DecodeTask> task)
         //CERR << "FIN: #running=" << m_runningTasks.size() << ", #fin=" << m_finishedTasks.size() << std::endl;
         return ok;
     });
-}
-
-bool RemoteConnection::canHandleTile(std::shared_ptr<const message::RemoteRenderMessage> msg) const
-{
-    return m_lastTileAt.empty();
 }
 
 bool RemoteConnection::handleTileMessage(std::shared_ptr<const message::RemoteRenderMessage> msg,
