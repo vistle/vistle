@@ -17,6 +17,7 @@ using namespace vistle;
 VectorField::VectorField(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
     createInputPort("grid_in");
+    createInputPort("data_in");
     createOutputPort("grid_out");
 
     auto MaxLength = std::numeric_limits<Scalar>::max();
@@ -30,8 +31,7 @@ VectorField::VectorField(const std::string &name, int moduleID, mpi::communicato
     setParameterMinimum(m_range, ParamVector(0., 0.));
 }
 
-VectorField::~VectorField()
-{}
+VectorField::~VectorField() = default;
 
 bool VectorField::compute()
 {
@@ -59,6 +59,20 @@ bool VectorField::compute()
         sendError("geometry size does not match array size: #points=%lu, but #vecs=%lu", (unsigned long)numPoints,
                   (unsigned long)vecs->getSize());
         return true;
+    }
+    DataBase::ptr mapped;
+    auto data = expect<DataBase>("data_in");
+    if (data) {
+        if (data->guessMapping() != DataBase::Vertex) {
+            sendError("no per-vertex mapping for data");
+            return true;
+        }
+        if (data->getSize() != numPoints) {
+            sendError("geometry size does not match data array size: #points=%lu, but #vecs=%lu",
+                      (unsigned long)numPoints, (unsigned long)data->getSize());
+            return true;
+        }
+        mapped = data->cloneType();
     }
 
     Scalar minLen = m_range->getValue()[0];
@@ -118,7 +132,22 @@ bool VectorField::compute()
     lines->setMeta(vecs->meta());
     lines->copyAttributes(coords);
     lines->copyAttributes(vecs);
-    addObject("grid_out", lines);
+
+    if (mapped) {
+        mapped->setSize(numPoints * 2);
+        for (Index i = 0; i < numPoints; ++i) {
+            mapped->copyEntry(i * 2, data, i);
+            mapped->copyEntry(i * 2 + 1, data, i);
+        }
+        mapped->setMeta(data->meta());
+        mapped->copyAttributes(coords);
+        mapped->copyAttributes(data);
+
+        mapped->setGrid(lines);
+        addObject("grid_out", mapped);
+    } else {
+        addObject("grid_out", lines);
+    }
 
     return true;
 }
