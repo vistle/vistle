@@ -16,7 +16,8 @@ find_path(
 
 find_path(
     PROJ_INCLUDE_DIR "proj_api.h"
-    PATHS ${PROJ_PREFIX}/include
+    PATHS ${PROJ_PREFIX}
+    PATH_SUFFIXES include
     DOC "PROJ - Headers")
 
 set(PROJ_NAMES Proj4 proj proj_4_9)
