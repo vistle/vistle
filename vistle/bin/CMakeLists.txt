@@ -27,3 +27,6 @@ if(UNIX)
 endif()
 
 install(PROGRAMS ${SPAWN_VISTLE} DESTINATION bin)
+if(UNIX)
+    install(PROGRAMS vistle_tui vistle_opener DESTINATION bin)
+endif()
