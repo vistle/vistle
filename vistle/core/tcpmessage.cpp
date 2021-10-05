@@ -13,8 +13,8 @@
 #include "messagepayload.h"
 #include <deque>
 
-//#define DEBUG           // prefix message header with message type
-//#define BLOCKING        // blocking read for message size even for non-blocking receive
+//#define DEBUG // prefix message header with message type
+#define BLOCKING // blocking read for message size even for non-blocking receive
 //#define USE_BUFFER_POOL // reuse buffers, instead of allocating new ones
 
 namespace asio = boost::asio;
