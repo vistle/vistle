@@ -25,7 +25,7 @@
   </screenshot>
  </screenshots>
  <launchable type="desktop-id">de.hlrs.vistle.desktop</launchable>
- <url type="homepage">https://www.hlrs.de/vistle</url>
+ <url type="homepage">https://vistle.io</url>
  <developer_name>HLRS</developer_name>
  <update_contact>aumueller@hlrs.de</update_contact>
 </component>
