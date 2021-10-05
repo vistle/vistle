@@ -71,8 +71,8 @@ public:
     */
     Reader(const std::string &name, const int moduleID, mpi::communicator comm);
     ~Reader() override;
-    /// called whenever an observed parameter (cf. @ref Reader::observerParameter) has been changed
-    /** called whenever an observed parameter (cf. @ref Reader::observerParameter) has been changed.
+    /// called whenever an observed parameter (cf. @ref Reader::observeParameter) has been changed
+    /** called whenever an observed parameter (cf. @ref Reader::observeParameter) has been changed.
     *  After constructing the class, the method is called after all parameters have been set to their initial value with param==nullptr.
     *  Otherwise, the changed parameter is passed.
     *  Call @ref setTimesteps and @ref setPartitions according to the data to be read.
