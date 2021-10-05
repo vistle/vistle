@@ -1,6 +1,6 @@
 # Vistle cleaner
 vistle_add_executable(clean_vistle clean_vistle.cpp)
-target_link_libraries(clean_vistle Boost::system MPI::MPI_C vistle_core vistle_util_mpi vistle_boost_mpi)
+target_link_libraries(clean_vistle Boost::system MPI::MPI_C vistle_core vistle_util_mpi ${BOOST_MPI})
 
 # Vistle manager
 set(SOURCES vistle_manager.cpp)
@@ -44,14 +44,13 @@ if(NOT VISTLE_MULTI_PROCESS)
     endif()
     target_link_libraries(
         vistle_clustermanager
-        vistle_boost_mpi
+        ${BOOST_MPI}
         Boost::system
         MPI::MPI_C
         vistle_control
         vistle_util
         vistle_util_mpi
         vistle_core
-        vistle_boost_mpi
         Threads::Threads)
 endif()
 
@@ -69,14 +68,13 @@ vistle_add_executable(vistle_manager ${SOURCES})
 
 target_link_libraries(
     vistle_manager
-    vistle_boost_mpi
+    ${BOOST_MPI}
     Boost::system
     MPI::MPI_C
     vistle_control
     vistle_util
     vistle_util_mpi
     vistle_core
-    vistle_boost_mpi
     Threads::Threads)
 
 if(NOT VISTLE_MULTI_PROCESS)

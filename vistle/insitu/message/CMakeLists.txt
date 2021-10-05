@@ -20,7 +20,7 @@ vistle_target_link_libraries(
     PRIVATE
     vistle_util
     PRIVATE
-    vistle_boost_mpi
+    ${BOOST_MPI}
     PRIVATE
     vistle_insitu_core
     PRIVATE

@@ -109,7 +109,7 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
         #target_compile_definitions(${targetname} PRIVATE MODULE_DESCRIPTION="${description}")
 
         set_target_properties(${targetname} PROPERTIES FOLDER "Modules")
-        target_link_libraries(${targetname} ${Boost_LIBRARIES} ${MPI_C_LIBRARIES} vistle_module vistle_boost_mpi)
+        target_link_libraries(${targetname} ${Boost_LIBRARIES} ${MPI_C_LIBRARIES} vistle_module ${BOOST_MPI})
     endmacro(add_module)
 endif()
 

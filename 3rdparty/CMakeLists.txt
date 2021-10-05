@@ -9,7 +9,7 @@ if(MSVC)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4996 /wd4267 /wd4800 /wd4244")
 endif()
 
-if(NOT VISTLE_GUI_ONLY)
+if(BOOST_MPI_DIR)
     include(boost-mpi.cmake)
 endif()
 

@@ -3,6 +3,6 @@ target_link_libraries(
     mpibcast
     PRIVATE Boost::boost
     PRIVATE MPI::MPI_C
-    PRIVATE vistle_boost_mpi)
+    PRIVATE ${BOOST_MPI})
 
 target_include_directories(mpibcast PRIVATE ../..)

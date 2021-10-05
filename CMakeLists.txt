@@ -107,9 +107,12 @@ else()
     set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 endif()
 
+option(VISTLE_INTERNAL_BOOST_MPI "Use internal copy of Boost.MPI" ON)
 # allow for optimizations in Boost.MPI
-if(NOT WIN32)
-    add_definitions(-DBOOST_MPI_HOMOGENEOUS)
+if(VISTLE_INTERNAL_BOOST_MPI)
+    if(NOT WIN32)
+        add_definitions(-DBOOST_MPI_HOMOGENEOUS)
+    endif()
 endif()
 
 enable_testing()
@@ -278,6 +281,11 @@ endif()
 if(NOT VISTLE_GUI_ONLY)
     set(BOOST_OPT ${BOOST_OPT} iostreams locale)
 endif()
+if(VISTLE_INTERNAL_BOOST_MPI)
+    set(BOOST_REQ)
+else()
+    set(BOOST_REQ mpi)
+endif()
 
 #set (Boost_DEBUG ON)
 if(WIN32)
@@ -299,6 +307,7 @@ vistle_find_package(
     chrono
     thread
     regex
+    ${BOOST_REQ}
     OPTIONAL_COMPONENTS
     ${BOOST_OPT})
 
@@ -365,7 +374,9 @@ if(NOT CRAY AND NOT VISTLE_GUI_ONLY)
     set(CMAKE_CXX_COMPILE_FLAGS "${CMAKE_CXX_COMPILE_FLAGS} ${MPI_C_COMPILE_FLAGS}")
     set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} ${MPI_C_LINK_FLAGS}")
 
-    if(Boost_VERSION VERSION_GREATER 106999)
+    if(NOT VISTLE_INTERNAL_BOOST_MPI)
+        message("Using external Boost.MPI for Boost ${Boost_VERSION}")
+    elseif(Boost_VERSION VERSION_GREATER 106999)
         set(BOOST_MPI_DIR "boost-mpi")
     elseif(Boost_VERSION VERSION_GREATER 106099)
         set(BOOST_MPI_DIR "boost-mpi-1.69")
@@ -376,7 +387,12 @@ if(NOT CRAY AND NOT VISTLE_GUI_ONLY)
     else()
         set(BOOST_MPI_DIR "boost-mpi-1.60")
     endif()
-    message("Using Boost.MPI from ${BOOST_MPI_DIR} for Boost ${Boost_VERSION}")
+    if(BOOST_MPI_DIR)
+        message("Using Boost.MPI from ${BOOST_MPI_DIR} for Boost ${Boost_VERSION}")
+        set(BOOST_MPI vistle_boost_mpi)
+    else()
+        set(BOOST_MPI Boost::mpi)
+    endif()
 endif()
 
 # for CMake config file version of boost this needs to be changed to version numbers such as 1.60.99 instead of 106099

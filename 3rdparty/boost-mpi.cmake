@@ -39,28 +39,28 @@ endif()
 
 set(boost_mpi_HEADERS)
 
-vistle_add_library(vistle_boost_mpi ${VISTLE_LIB_TYPE} ${boost_mpi_SOURCES} ${boost_mpi_HEADERS})
-vistle_export_library(vistle_boost_mpi ${VISTLE_LIB_TYPE} ${boost_mpi_SOURCES} ${boost_mpi_HEADERS})
+vistle_add_library(${BOOST_MPI} ${VISTLE_LIB_TYPE} ${boost_mpi_SOURCES} ${boost_mpi_HEADERS})
+vistle_export_library(${BOOST_MPI} ${VISTLE_LIB_TYPE} ${boost_mpi_SOURCES} ${boost_mpi_HEADERS})
 
-target_compile_definitions(vistle_boost_mpi PUBLIC BOOST_MPI_SOURCE)
+target_compile_definitions(${BOOST_MPI} PUBLIC BOOST_MPI_SOURCE)
 if(NOT WIN32)
-    target_compile_definitions(vistle_boost_mpi PUBLIC BOOST_MPI_DECL=__attribute__\ \(\(visibility\(\"default\"\)\)\))
+    target_compile_definitions(${BOOST_MPI} PUBLIC BOOST_MPI_DECL=__attribute__\ \(\(visibility\(\"default\"\)\)\))
 endif(NOT WIN32)
 
 target_link_libraries(
-    vistle_boost_mpi #don't use vistle_target_link_libraries here because adding dependency for boost_mpi_HEADERS::serialization brings errors.
+    ${BOOST_MPI} #don't use vistle_target_link_libraries here because adding dependency for boost_mpi_HEADERS::serialization brings errors.
     PRIVATE Boost::system
     PUBLIC Boost::serialization
     PUBLIC MPI::MPI_C)
 
 get_target_property(BOOST_SERIALIZATION_INCLUDES Boost::serialization INTERFACE_INCLUDE_DIRECTORIES)
-target_include_directories(vistle_boost_mpi SYSTEM INTERFACE ${BOOST_SERIALIZATION_INCLUDES})
+target_include_directories(${BOOST_MPI} SYSTEM INTERFACE ${BOOST_SERIALIZATION_INCLUDES})
 
-target_include_directories(vistle_boost_mpi SYSTEM PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/${BOOST_MPI_DIR}/include>)
+target_include_directories(${BOOST_MPI} SYSTEM PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/${BOOST_MPI_DIR}/include>)
 if(VISTLE_INSTALL_3RDPARTY)
     install(
         DIRECTORY ${BOOST_MPI_DIR}/include/boost
         DESTINATION include/vistle/3rdparty/${BOOST_MPI_DIR}
         COMPONENT Devel)
-    target_include_directories(vistle_boost_mpi SYSTEM PUBLIC $<INSTALL_INTERFACE:include/vistle/3rdparty/${BOOST_MPI_DIR}>)
+    target_include_directories(${BOOST_MPI} SYSTEM PUBLIC $<INSTALL_INTERFACE:include/vistle/3rdparty/${BOOST_MPI_DIR}>)
 endif()

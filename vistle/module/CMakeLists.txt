@@ -33,7 +33,7 @@ vistle_target_link_libraries(
     PUBLIC
     vistle_core
     PUBLIC
-    vistle_boost_mpi
+    ${BOOST_MPI}
     PUBLIC
     Boost::boost
     PUBLIC

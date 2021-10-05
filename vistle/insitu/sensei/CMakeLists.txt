@@ -10,7 +10,7 @@ vistle_target_link_libraries(
     PRIVATE
     Boost::serialization
     PRIVATE
-    vistle_boost_mpi
+    ${BOOST_MPI}
     PRIVATE
     vistle_core
     PRIVATE

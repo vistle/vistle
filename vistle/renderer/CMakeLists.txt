@@ -34,7 +34,7 @@ target_link_libraries(
     PUBLIC vistle_util
     PUBLIC vistle_core
     PUBLIC vistle_module
-    PUBLIC vistle_boost_mpi
+    PUBLIC ${BOOST_MPI}
     PUBLIC Boost::boost
     PUBLIC MPI::MPI_C)
 

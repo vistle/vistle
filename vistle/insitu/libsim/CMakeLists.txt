@@ -80,7 +80,7 @@ function(createSimV2Lib libName)
         PRIVATE
         Threads::Threads
         PRIVATE
-        vistle_boost_mpi
+        ${BOOST_MPI}
         PRIVATE
         vistle_core)
 

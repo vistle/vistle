@@ -7,7 +7,7 @@ else(WIN32)
 endif(WIN32)
 
 cover_add_plugin(VistlePlugin ${HEADERS} ${SOURCES})
-target_link_libraries(VistlePlugin VistlePluginUtil vistle_cover vistle_renderer vistle_boost_mpi ${COVISE_NET_LIBRARY})
+target_link_libraries(VistlePlugin VistlePluginUtil vistle_cover vistle_renderer ${BOOST_MPI} ${COVISE_NET_LIBRARY})
 
 set_target_properties(VistlePlugin PROPERTIES OUTPUT_NAME "Vistle")
 target_include_directories(

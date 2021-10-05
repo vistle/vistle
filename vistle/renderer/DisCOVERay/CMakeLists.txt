@@ -175,7 +175,7 @@ include_directories(SYSTEM ${ICET_INCLUDE_DIRS} ${EMBREE_INCLUDE_DIRS} ${TBB_INC
 
 target_link_libraries(
     DisCOVERay
-    vistle_boost_mpi
+    ${BOOST_MPI}
     vistle_module
     vistle_renderer
     vistle_rhr
