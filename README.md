@@ -157,16 +157,6 @@ You can connect a user interface to a running Vistle session later on, e.g.:
 
       vistle_gui localhost 31093
 
-### Cray XC40 (Hazel Hen)
-
-An example PBS script is provided in `scripts/vistle.pbs`. It reuses the
-parameters supplied to the batch system. Something similar to
-
-      qsub -q test -lnodes=1,ppn=1,walltime=00:10:00 scripts/vistle.pbs
-
-should get you started. This will start an instance of Vistle that connects
-back to your work station.
-
 
 Source Code Organization
 ------------------------
