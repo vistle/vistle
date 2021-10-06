@@ -6,7 +6,6 @@
 #include <future>
 
 namespace vistle {
-
 /**
  \class Reader
 
@@ -84,10 +83,15 @@ public:
     *  The size of a work unit depends on the partitioning that has been requested by @ref setPartitions
     */
     virtual bool read(Token &token, int timestep = -1, int block = -1) = 0;
+
+    virtual bool readDIYBlock(Token &token, int timestep = -1);
     /// called once on every rank after execution of the module has been initiated before read is called
     virtual bool prepareRead();
     /// called once on every rank after all read calls have been made and before execution finishes
     virtual bool finishRead();
+
+
+    bool prepareDIY(int concurrency) const;
 
     /// return number of timesteps to advance
     int timeIncrement() const;
@@ -104,6 +108,7 @@ protected:
         ParallelizeTimesteps, ///< up to 'concurrency' operations at a time, but the same block from different timesteps may be scheduled on other ranks
         ParallelizeTimeAndBlocks, ///< up to 'concurrency' operations at a time
         ParallelizeBlocks, ///< up to 'concurrency' operations at a time, all operations for one timestep have finished before operations for another timestep are started
+        ParallelizeDIYBlocks, ///< using diy for block distribution; you will need to set global dimension of your domain and number of blocks
     };
 
     /// control whether and how @ref read invocations are called in parallel
@@ -115,7 +120,7 @@ protected:
 
     //! whenever an observed parameter changes, data set should be rescanned
     void observeParameter(const Parameter *param);
-    //! call during @ref examine to inform module how many timesteps are present within dataset
+    //! call during @ref examine to inform module how many timesteps are present whithin dataset
     void setTimesteps(int number);
     //! call during @ref examine to inform module nto how many the dataset will be split
     void setPartitions(int number);

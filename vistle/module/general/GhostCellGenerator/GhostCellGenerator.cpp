@@ -34,7 +34,9 @@
 #include <boost/mpi.hpp>
 #include <sstream>
 #include <iomanip>
-#include <diy/reduce.hpp>
+#include <diy/assigner.hpp>
+#include <diy/decomposition.hpp>
+#include <diy/master.hpp>
 
 #include <vistle/core/object.h>
 #include <vistle/core/vec.h>
@@ -43,9 +45,33 @@
 #include <vistle/core/structuredgrid.h>
 
 #include "GhostCellGenerator.h"
+#include "diy/mpi/communicator.hpp"
 
 using namespace vistle;
 /* namespace b_mpi = boost::mpi; */
+namespace {
+typedef diy::DiscreteBounds Bounds;
+typedef diy::RegularGridLink RGLink;
+
+struct Block {
+    // following is mandatory
+    Block() {}
+    static void *create() { return new Block; }
+    static void destroy(void *b) { delete static_cast<Block *>(b); }
+
+    // the rest is optional
+    void show_link(const diy::Master::ProxyWithLink &cp)
+    {
+        diy::RegularLink<Bounds> *link = static_cast<diy::RegularLink<Bounds> *>(cp.link());
+        std::cout << "Block (" << cp.gid() << "): " << link->core().min[0] << ' ' << link->core().min[1] << ' '
+                  << link->core().min[2] << " - " << link->core().max[0] << ' ' << link->core().max[1] << ' '
+                  << link->core().max[2] << " : " << link->bounds().min[0] << ' ' << link->bounds().min[1] << ' '
+                  << link->bounds().min[2] << " - " << link->bounds().max[0] << ' ' << link->bounds().max[1] << ' '
+                  << link->bounds().max[2] << " : " << link->size() << ' ' //<< std::endl
+                  << std::dec << std::endl;
+    }
+};
+} // namespace
 
 GhostCellGenerator::GhostCellGenerator(const std::string &name, int moduleID, mpi::communicator comm)
 : Module(name, moduleID, comm)
@@ -91,156 +117,212 @@ bool GhostCellGenerator::compute(std::shared_ptr<PortTask> task) const
     }
 #endif
 
-    //gather all domainsurfaces => at the moment all to all comm
-    std::vector<Polygons::const_ptr> surfaceNeighbors;
-    /* b_mpi::all_gather(comm(), surface, surfaceNeighbors); */
-    MPI_Barrier(comm());
+    int dimDomain{3};
+    int minDomain{0};
+    int maxDomain{200};
+    int nThreads{1};
+    int nBlocks{4};
+    auto diy_comm = diy::mpi::communicator(comm());
+    diy::ContiguousAssigner assigner(size(), nBlocks);
 
-
-    const auto num_elem = surface->getNumElements();
-    const auto num_corners = surface->getNumCorners();
-    const auto num_vertices = surface->getNumVertices();
-
-    int proc{0};
-    for (auto surface_neighbor: surfaceNeighbors) {
-        /*    _ _ _ _             _ _ _ _ 
-             /_/_/_/_/|         /_/_/_/_/               /| 
-            /_/_/_/_/ |        /_/_/_/_/               / | 
-           /_/_/_/_/  |       /_/_/_/_/               /  |
-          /_/_/_/_/   |      /_/_/_/_/    _ _ _ _    /   |
-          |_|_|_|_|   / =>               |_|_|_|_|   |   /
-          |_|_|_|_|  /                   |_|_|_|_|   |  / 
-          |_|_|_|_| /                    |_|_|_|_|   | /  
-          |_|_|_|_|/                     |_|_|_|_|   |/   */
-
-        ++proc;
-        std::vector<int> neighbors;
-
-        //extract neighbors via vertices + send back to proc
-        const auto n_num_elem = surface_neighbor->getNumElements();
-        const auto n_num_corners = surface_neighbor->getNumCorners();
-        const auto n_num_vertices = surface_neighbor->getNumVertices();
-
-        Polygons::ptr poly_build{
-            new Polygons(num_elem + n_num_elem, num_corners + n_num_corners, num_vertices + n_num_vertices)};
-
-        /* const Index *el = &surface->el()[0]; */
-        /* const Index *cl = &surface->cl()[0]; */
-        /* Polygons::VertexOwnerList::const_ptr poly_vol = surface->getVertexOwnerList(); */
-
-        /* Polygons::ptr m_grid_out(new Polygons(0, 0, 0)); */
-        /* auto &pl = m_grid_out->el(); */
-        /* auto &pcl = m_grid_out->cl(); */
-
-        /* auto nf = m_grid_in->getNeighborFinder(); */
-        /* for (Index i=0; i<num_elem; ++i) { */
-        /*    const Index elStart = el[i], elEnd = el[i+1]; */
-        /*    bool ghost = tl[i] & UnstructuredGrid::GHOST_BIT; */
-        /*    if (!showgho && ghost) */
-        /*        continue; */
-        /*    Byte t = tl[i] & UnstructuredGrid::TYPE_MASK; */
-        /*    if (t == UnstructuredGrid::VPOLYHEDRON) { */
-        /*        if (showpol) { */
-        /*            Index j=elStart; */
-        /*            while (j<elEnd) { */
-        /*                Index numVert = cl[j]; */
-        /*                if (numVert >= 3) { */
-        /*                    auto face = &cl[j+1]; */
-        /*                    Index neighbour = nf.getNeighborElement(i, face[0], face[1], face[2]); */
-        /*                    if (neighbour == InvalidIndex) { */
-        /*                        const Index *begin = &face[0], *end=&face[numVert]; */
-        /*                        auto rbegin = std::reverse_iterator<const Index *>(end), rend = std::reverse_iterator<const Index *>(begin); */
-        /*                        std::copy(rbegin, rend, std::back_inserter(pcl)); */
-        /*                        if (haveElementData) */
-        /*                            em.emplace_back(i); */
-        /*                        pl.push_back(pcl.size()); */
-        /*                    } */
-        /*                } */
-        /*                j += numVert+1; */
-        /*            } */
-        /*            if (j != elEnd) { */
-        /*                std::cerr << "WARNING: Polyhedron incomplete: " << i << std::endl; */
-        /*            } */
-        /*        } */
-        /*    } else if (t == UnstructuredGrid::CPOLYHEDRON) { */
-        /*        if (showpol) { */
-        /*            Index facestart = InvalidIndex; */
-        /*            Index term = 0; */
-        /*            for (Index j=elStart; j<elEnd; ++j) { */
-        /*                if (facestart == InvalidIndex) { */
-        /*                    facestart = j; */
-        /*                    term = cl[j]; */
-        /*                } else if (cl[j] == term) { */
-        /*                    Index numVert = j - facestart; */
-        /*                    if (numVert >= 3) { */
-        /*                        auto face = &cl[facestart]; */
-        /*                        Index neighbour = nf.getNeighborElement(i, face[0], face[1], face[2]); */
-        /*                        if (neighbour == InvalidIndex) { */
-        /*                            const Index *begin = &face[0], *end=&face[numVert]; */
-        /*                            auto rbegin = std::reverse_iterator<const Index *>(end), rend = std::reverse_iterator<const Index *>(begin); */
-        /*                            std::copy(rbegin, rend, std::back_inserter(pcl)); */
-        /*                            if (haveElementData) */
-        /*                                em.emplace_back(i); */
-        /*                            pl.push_back(pcl.size()); */
-        /*                        } */
-        /*                    } */
-        /*                    facestart = InvalidIndex; */
-        /*                } */
-        /*            } */
-        /*        } */
-        /*    } else { */
-        /*        bool show = false; */
-        /*        switch(t) { */
-        /*        case UnstructuredGrid::PYRAMID: */
-        /*            show = showpyr; */
-        /*            break; */
-        /*        case UnstructuredGrid::PRISM: */
-        /*            show = showpri; */
-        /*            break; */
-        /*        case UnstructuredGrid::TETRAHEDRON: */
-        /*            show = showtet; */
-        /*            break; */
-        /*        case UnstructuredGrid::HEXAHEDRON: */
-        /*            show = showhex; */
-        /*            break; */
-        /*        case UnstructuredGrid::TRIANGLE: */
-        /*            show = showtri; */
-        /*            break; */
-        /*        case UnstructuredGrid::QUAD: */
-        /*            show = showqua; */
-        /*            break; */
-        /*        default: */
-        /*            break; */
-        /*        } */
-
-        /*        if (show) { */
-        /*          const auto numFaces = UnstructuredGrid::NumFaces[t]; */
-        /*          const auto &faces = UnstructuredGrid::FaceVertices[t]; */
-        /*          for (int f=0; f<numFaces; ++f) { */
-        /*             const auto &face = faces[f]; */
-        /*             Index neighbour = 0; */
-        /*             if (UnstructuredGrid::Dimensionality[t] == 3) */
-        /*                 neighbour = nf.getNeighborElement(i, cl[elStart + face[0]], cl[elStart + face[1]], cl[elStart + face[2]]); */
-        /*             if (UnstructuredGrid::Dimensionality[t] == 2 || neighbour == InvalidIndex) { */
-        /*                const auto facesize = UnstructuredGrid::FaceSizes[t][f]; */
-        /*                for (unsigned j=0;j<facesize;++j) { */
-        /*                   pcl.push_back(cl[elStart + face[j]]); */
-        /*                } */
-        /*                if (haveElementData) */
-        /*                    em.emplace_back(i); */
-        /*                pl.push_back(pcl.size()); */
-        /*             } */
-        /*          } */
-        /*       } */
-        /*    } */
-        /* } */
-
-        /* if (m_grid_out->getNumElements() == 0) { */
-        /*    return Polygons::ptr(); */
-        /* } */
-
-        /* return m_grid_out; */
+    //dim of domain
+    Bounds domain(dimDomain); // global data size
+    for (int i = 0; i < dimDomain; ++i) {
+        domain.min[i] = minDomain;
+        domain.max[i] = maxDomain;
     }
+
+    diy::Master master(diy_comm, nThreads, -1, &Block::create, &Block::destroy);
+
+    // share_face is an n-dim (size 3 in this example) vector of bools
+    // indicating whether faces are shared in each dimension
+    // uninitialized values default to false
+    diy::RegularDecomposer<Bounds>::BoolVector share_face;
+    share_face.push_back(true);
+
+    // wrap is an n-dim (size 3 in this example) vector of bools
+    // indicating whether boundary conditions are periodic in each dimension
+    // uninitialized values default to false
+    diy::RegularDecomposer<Bounds>::BoolVector wrap;
+    wrap.push_back(true);
+    wrap.push_back(true);
+
+    // ghosts is an n-dim (size 3 in this example) vector of ints
+    // indicating number of ghost cells per side in each dimension
+    // uninitialized values default to 0
+    diy::RegularDecomposer<Bounds>::CoordinateVector ghosts;
+    ghosts.push_back(1);
+    ghosts.push_back(2);
+
+    // either create the regular decomposer and call its decompose function
+    // (having the decomposer available is useful for its other member functions
+    diy::RegularDecomposer<Bounds> decomposer(dimDomain, domain, nBlocks, share_face, wrap, ghosts);
+    decomposer.decompose(rank(), assigner,
+                         [&](int gid, // block global id
+                             const Bounds &, // block bounds without any ghost added
+                             const Bounds &, // block bounds including ghost region
+                             const Bounds &, // global data bounds
+                             const RGLink &link) // neighborhood
+                         {
+                             Block *b = new Block;
+                             RGLink *l = new RGLink(link);
+
+                             master.add(gid, b, l); // add block to the master (mandatory)
+                         });
+
+    // display the decomposition
+    master.foreach (&Block::show_link);
+
+    //gather all domainsurfaces => at the moment all to all comm
+    /* std::vector<Polygons::const_ptr> surfaceNeighbors; */
+    /* b_mpi::all_gather(comm(), surface, surfaceNeighbors); */
+    /* MPI_Barrier(comm()); */
+
+
+    /* const auto num_elem = surface->getNumElements(); */
+    /* const auto num_corners = surface->getNumCorners(); */
+    /* const auto num_vertices = surface->getNumVertices(); */
+
+    /* int proc{0}; */
+    /* for (auto surface_neighbor: surfaceNeighbors) { */
+    /*     /1*    _ _ _ _             _ _ _ _ */
+    /*          /_/_/_/_/|         /_/_/_/_/               /| */
+    /*         /_/_/_/_/ |        /_/_/_/_/               / | */
+    /*        /_/_/_/_/  |       /_/_/_/_/               /  | */
+    /*       /_/_/_/_/   |      /_/_/_/_/    _ _ _ _    /   | */
+    /*       |_|_|_|_|   / =>               |_|_|_|_|   |   / */
+    /*       |_|_|_|_|  /                   |_|_|_|_|   |  / */
+    /*       |_|_|_|_| /                    |_|_|_|_|   | / */
+    /*       |_|_|_|_|/                     |_|_|_|_|   |/   *1/ */
+
+    /*     ++proc; */
+    /*     std::vector<int> neighbors; */
+
+    /*     //extract neighbors via vertices + send back to proc */
+    /*     const auto n_num_elem = surface_neighbor->getNumElements(); */
+    /*     const auto n_num_corners = surface_neighbor->getNumCorners(); */
+    /*     const auto n_num_vertices = surface_neighbor->getNumVertices(); */
+
+    /*     Polygons::ptr poly_build{ */
+    /*         new Polygons(num_elem + n_num_elem, num_corners + n_num_corners, num_vertices + n_num_vertices)}; */
+
+    /* const Index *el = &surface->el()[0]; */
+    /* const Index *cl = &surface->cl()[0]; */
+    /* Polygons::VertexOwnerList::const_ptr poly_vol = surface->getVertexOwnerList(); */
+
+    /* Polygons::ptr m_grid_out(new Polygons(0, 0, 0)); */
+    /* auto &pl = m_grid_out->el(); */
+    /* auto &pcl = m_grid_out->cl(); */
+
+    /* auto nf = m_grid_in->getNeighborFinder(); */
+    /* for (Index i=0; i<num_elem; ++i) { */
+    /*    const Index elStart = el[i], elEnd = el[i+1]; */
+    /*    bool ghost = tl[i] & UnstructuredGrid::GHOST_BIT; */
+    /*    if (!showgho && ghost) */
+    /*        continue; */
+    /*    Byte t = tl[i] & UnstructuredGrid::TYPE_MASK; */
+    /*    if (t == UnstructuredGrid::VPOLYHEDRON) { */
+    /*        if (showpol) { */
+    /*            Index j=elStart; */
+    /*            while (j<elEnd) { */
+    /*                Index numVert = cl[j]; */
+    /*                if (numVert >= 3) { */
+    /*                    auto face = &cl[j+1]; */
+    /*                    Index neighbour = nf.getNeighborElement(i, face[0], face[1], face[2]); */
+    /*                    if (neighbour == InvalidIndex) { */
+    /*                        const Index *begin = &face[0], *end=&face[numVert]; */
+    /*                        auto rbegin = std::reverse_iterator<const Index *>(end), rend = std::reverse_iterator<const Index *>(begin); */
+    /*                        std::copy(rbegin, rend, std::back_inserter(pcl)); */
+    /*                        if (haveElementData) */
+    /*                            em.emplace_back(i); */
+    /*                        pl.push_back(pcl.size()); */
+    /*                    } */
+    /*                } */
+    /*                j += numVert+1; */
+    /*            } */
+    /*            if (j != elEnd) { */
+    /*                std::cerr << "WARNING: Polyhedron incomplete: " << i << std::endl; */
+    /*            } */
+    /*        } */
+    /*    } else if (t == UnstructuredGrid::CPOLYHEDRON) { */
+    /*        if (showpol) { */
+    /*            Index facestart = InvalidIndex; */
+    /*            Index term = 0; */
+    /*            for (Index j=elStart; j<elEnd; ++j) { */
+    /*                if (facestart == InvalidIndex) { */
+    /*                    facestart = j; */
+    /*                    term = cl[j]; */
+    /*                } else if (cl[j] == term) { */
+    /*                    Index numVert = j - facestart; */
+    /*                    if (numVert >= 3) { */
+    /*                        auto face = &cl[facestart]; */
+    /*                        Index neighbour = nf.getNeighborElement(i, face[0], face[1], face[2]); */
+    /*                        if (neighbour == InvalidIndex) { */
+    /*                            const Index *begin = &face[0], *end=&face[numVert]; */
+    /*                            auto rbegin = std::reverse_iterator<const Index *>(end), rend = std::reverse_iterator<const Index *>(begin); */
+    /*                            std::copy(rbegin, rend, std::back_inserter(pcl)); */
+    /*                            if (haveElementData) */
+    /*                                em.emplace_back(i); */
+    /*                            pl.push_back(pcl.size()); */
+    /*                        } */
+    /*                    } */
+    /*                    facestart = InvalidIndex; */
+    /*                } */
+    /*            } */
+    /*        } */
+    /*    } else { */
+    /*        bool show = false; */
+    /*        switch(t) { */
+    /*        case UnstructuredGrid::PYRAMID: */
+    /*            show = showpyr; */
+    /*            break; */
+    /*        case UnstructuredGrid::PRISM: */
+    /*            show = showpri; */
+    /*            break; */
+    /*        case UnstructuredGrid::TETRAHEDRON: */
+    /*            show = showtet; */
+    /*            break; */
+    /*        case UnstructuredGrid::HEXAHEDRON: */
+    /*            show = showhex; */
+    /*            break; */
+    /*        case UnstructuredGrid::TRIANGLE: */
+    /*            show = showtri; */
+    /*            break; */
+    /*        case UnstructuredGrid::QUAD: */
+    /*            show = showqua; */
+    /*            break; */
+    /*        default: */
+    /*            break; */
+    /*        } */
+
+    /*        if (show) { */
+    /*          const auto numFaces = UnstructuredGrid::NumFaces[t]; */
+    /*          const auto &faces = UnstructuredGrid::FaceVertices[t]; */
+    /*          for (int f=0; f<numFaces; ++f) { */
+    /*             const auto &face = faces[f]; */
+    /*             Index neighbour = 0; */
+    /*             if (UnstructuredGrid::Dimensionality[t] == 3) */
+    /*                 neighbour = nf.getNeighborElement(i, cl[elStart + face[0]], cl[elStart + face[1]], cl[elStart + face[2]]); */
+    /*             if (UnstructuredGrid::Dimensionality[t] == 2 || neighbour == InvalidIndex) { */
+    /*                const auto facesize = UnstructuredGrid::FaceSizes[t][f]; */
+    /*                for (unsigned j=0;j<facesize;++j) { */
+    /*                   pcl.push_back(cl[elStart + face[j]]); */
+    /*                } */
+    /*                if (haveElementData) */
+    /*                    em.emplace_back(i); */
+    /*                pl.push_back(pcl.size()); */
+    /*             } */
+    /*          } */
+    /*       } */
+    /*    } */
+    /* } */
+
+    /* if (m_grid_out->getNumElements() == 0) { */
+    /*    return Polygons::ptr(); */
+    /* } */
+
+    /* return m_grid_out; */
+    /* } */
     /* Object::ptr surface; */
     /* broadcastObject(comm(), ugrid, ); */
     /* DataMapping vm; */

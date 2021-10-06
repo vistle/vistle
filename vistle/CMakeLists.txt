@@ -160,6 +160,8 @@ set(THRUST_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdparty/thrust")
 
 #vistle_find_package(Eigen3 REQUIRED)
 set(EIGEN3_INCLUDE_PATH "../3rdparty")
+
+#new submodule for block distribution
 set(DIY_INCLUDE_PATH "${PROJECT_SOURCE_DIR}/3rdparty/diy/include")
 
 if (NOT VISTLE_GUI_ONLY)
