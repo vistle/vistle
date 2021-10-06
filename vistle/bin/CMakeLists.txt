@@ -28,5 +28,12 @@ endif()
 
 install(PROGRAMS ${SPAWN_VISTLE} DESTINATION bin)
 if(UNIX)
-    install(PROGRAMS vistle_tui vistle_opener DESTINATION bin)
+    install(
+        PROGRAMS vistle_tui.sh
+        RENAME vistle_tui
+        DESTINATION bin)
+    install(
+        PROGRAMS vistle_opener.sh
+        RENAME vistle_opener
+        DESTINATION bin)
 endif()
