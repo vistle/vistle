@@ -42,3 +42,6 @@
 [submodule "3rdparty/cmrc"]
 	path = 3rdparty/cmrc
 	url = git://github.com/vector-of-bool/cmrc.git
+[submodule "3rdparty/diy"]
+	path = 3rdparty/diy
+	url = https://github.com/diatomic/diy.git

@@ -34,6 +34,7 @@
 #include <boost/mpi.hpp>
 #include <sstream>
 #include <iomanip>
+#include <diy/reduce.hpp>
 
 #include <vistle/core/object.h>
 #include <vistle/core/vec.h>
