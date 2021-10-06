@@ -38,6 +38,12 @@ set(ZFP_LIBRARY_PREFIX
     CACHE STRING "Prefix to prepend to the output library name")
 mark_as_advanced(ZFP_LIBRARY_PREFIX)
 add_subdirectory(zfp)
+if(VISTLE_INSTALL_3RDPARTY)
+    install(
+        DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/zfp/include/
+        DESTINATION include/vistle/3rdparty/
+        COMPONENT Devel)
+endif()
 
 #set(BUILD_SHARED_LIBS ${VISTLE_BUILD_SHARED} CACHE INTERNAL "")
 set(BUILD_SHARED_LIBS OFF)
@@ -85,4 +91,17 @@ if(NOT VISTLE_GUI_ONLY)
     set(PythonLibsNew_FIND_REQUIRED FALSE)
     set(PythonLibsNew_FOUND TRUE)
     add_subdirectory(pybind11)
+endif()
+
+if(VISTLE_INSTALL_3RDPARTY)
+    #yas
+    install(
+        DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/yas/include/yas
+        DESTINATION include/vistle/3rdparty/
+        COMPONENT Devel)
+    #eigen3
+    install(
+        DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/eigen3
+        DESTINATION include/vistle/3rdparty/
+        COMPONENT Devel)
 endif()

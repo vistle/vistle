@@ -194,13 +194,6 @@ if(ZFP_FOUND)
     target_compile_definitions(vistle_core PRIVATE HAVE_ZFP)
     target_include_directories(vistle_core SYSTEM PRIVATE ${ZFP_INCLUDE_DIRS})
     vistle_target_link_libraries(vistle_core PRIVATE ${ZFP_LIBRARIES})
-    if(VISTLE_INSTALL_3RDPARTY)
-        install(
-            DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/zfp/include/
-            DESTINATION include/vistle/3rdparty/
-            COMPONENT Devel)
-        target_include_directories(vistle_core SYSTEM PUBLIC $<INSTALL_INTERFACE:include/vistle/3rdparty>)
-    endif()
 endif()
 
 if(ZSTD_FOUND)
@@ -223,18 +216,6 @@ endif()
 
 target_include_directories(vistle_core SYSTEM PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/3rdparty>)
 target_include_directories(vistle_core SYSTEM PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/3rdparty/yas/include>)
-
 if(VISTLE_INSTALL_3RDPARTY)
-    #yas
-    install(
-        DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/yas/include/yas
-        DESTINATION include/vistle/3rdparty/
-        COMPONENT Devel)
-    target_include_directories(vistle_core SYSTEM PUBLIC $<INSTALL_INTERFACE:include/vistle/3rdparty>)
-    #eigen3
-    install(
-        DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/eigen3
-        DESTINATION include/vistle/3rdparty/
-        COMPONENT Devel)
     target_include_directories(vistle_core SYSTEM PUBLIC $<INSTALL_INTERFACE:include/vistle/3rdparty>)
 endif()
