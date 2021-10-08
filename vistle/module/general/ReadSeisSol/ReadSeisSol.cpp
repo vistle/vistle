@@ -196,6 +196,15 @@ constexpr void iter_swap(ForwardIt1 a, ForwardIt2 b) // constexpr since C++20
     std::swap(*a, *b);
 }
 
+/**
+ * @brief std::next_permutation (C++20)
+ *
+ * @tparam BidirIt
+ * @param first
+ * @param last
+ *
+ * @return 
+ */
 template<class BidirIt>
 bool next_permutation(BidirIt first, BidirIt last)
 {
@@ -249,6 +258,18 @@ constexpr void shift_order_in_range(ForwardIt begin, ForwardIt end, unsigned ran
 /**
  * @brief Calculate tetrahedron volume with corner coords.
  *
+ *     Vp = volume parallelpiped
+ *     Vt = volume tetrahedron
+ *     Vt = Vp/6
+ *
+ *     A = (x1 x2 x3 x4)
+ *     B = (y1 y2 y3 y4)
+ *     C = (z1 z2 z3 z4)
+ *                          | x1 x2 x3 x4 |
+ *     Vp = det(A, B, C) =  | y1 y2 y3 y4 |
+ *                          | z1 z2 z3 z4 |
+ *                          | 1  1  1  1  |
+ *
  * @tparam ForwardIt Iterator of container which contain corner coords.
  * @param begin Begin of container.
  *
@@ -257,19 +278,6 @@ constexpr void shift_order_in_range(ForwardIt begin, ForwardIt end, unsigned ran
 template<class ForwardIt>
 float calcTetrahedronVolume(ForwardIt begin)
 {
-    /*
-      Vp = volume parallelpiped
-      Vt = volume tetrahedron
-      Vt = Vp/6
-
-      A = (x1 x2 x3 x4)
-      B = (y1 y2 y3 y4)
-      C = (z1 z2 z3 z4)
-                           | x1 x2 x3 x4 |
-      Vp = det(A, B, C) =  | y1 y2 y3 y4 |
-                           | z1 z2 z3 z4 |
-                           | 1  1  1  1  |
-    */
     Eigen::MatrixXf mat = Eigen::Map<Eigen::Matrix<float, 4, 4>>(begin).transpose();
     auto v_p = mat.determinant();
     return v_p / 6;
@@ -667,7 +675,15 @@ void ReadSeisSol::fillUnstrGridElemList(vistle::UnstructuredGrid::ptr unstr, con
                   [n = 0, &numCornerPerElem]() mutable { return n++ * numCornerPerElem; });
 }
 
-bool ReadSeisSol::checkElemVolumeInverted(vistle::UnstructuredGrid::ptr unstr, XdmfArray *geo)
+/**
+ * @brief Check if volume of given geometry elements (triangle, tetrahedron ... ) > 0. 
+ *
+ * @param unstr UnstructuredGrid
+ * @param geo XdmfArray which contains geometry.
+ *
+ * @return True if everything could be calculated.
+ */
+bool ReadSeisSol::checkGeoElemVolume(vistle::UnstructuredGrid::ptr unstr, XdmfArray *geo)
 {
     switch (unstr->tl()[0]) {
     case UnstructuredGrid::TETRAHEDRON: {
@@ -676,16 +692,14 @@ bool ReadSeisSol::checkElemVolumeInverted(vistle::UnstructuredGrid::ptr unstr, X
             auto it = connectBegin + k;
             std::array<float, 16> arr;
 
+            // get 4 points from geo and calculate volume of tetrahedron until
+            // one permutation leads to volume > 0
             do {
-                //get 4 points
                 for (int i = 0; i < 12; i = i + 4, ++it) {
-                    /* geo->getValues(++k, arr.data() + i, 4, 3, 1); */
                     geo->getValues(*it, arr.data() + i, 4, 3, 1);
                     std::cout << *it << '\n';
                 }
                 std::fill_n(arr.begin() + 12, 4, 1);
-                /* for (auto x : arr) */
-                /*     sendInfo("blub: %f", x); */
             } while (calcTetrahedronVolume(arr.begin()) < 0 && std::next_permutation(it, it + 4));
         }
     }
@@ -714,7 +728,7 @@ bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfA
     constexpr unsigned strideVistleArr{1};
 
     //TODO: check if volume inverted, because vertices can have different order => look at tetrahedron vtk and vistle
-    if (!checkElemVolumeInverted(unstr, xArrGeo)) {
+    if (!checkGeoElemVolume(unstr, xArrGeo)) {
         /* sendInfo("inverted"); */
         /* std::array<int, 4> arr{1, 2, 3, 4}; */
         /* do { */
