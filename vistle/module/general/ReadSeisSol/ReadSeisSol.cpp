@@ -688,19 +688,25 @@ bool ReadSeisSol::checkGeoElemVolume(vistle::UnstructuredGrid::ptr unstr, XdmfAr
     switch (unstr->tl()[0]) {
     case UnstructuredGrid::TETRAHEDRON: {
         auto connectBegin = unstr->cl().begin();
+        std::array<float, 16> arr;
         for (unsigned k = 0; k < geo->getSize(); ++k) {
             auto it = connectBegin + k;
-            std::array<float, 16> arr;
 
             // get 4 points from geo and calculate volume of tetrahedron until
             // one permutation leads to volume > 0
+            std::cout << "tetrahedron no. " << k << '\n';
+            auto volume{0};
             do {
-                for (int i = 0; i < 12; i = i + 4, ++it) {
+                for (int i = 0; i < 12; i = i + 4, ++it)
                     geo->getValues(*it, arr.data() + i, 4, 3, 1);
-                    std::cout << *it << '\n';
-                }
+                for (int i = 0; i < 4; ++i)
+                    std::cout << "iterator: " << *(it + i) << '\n';
+                std::cout << '\n';
                 std::fill_n(arr.begin() + 12, 4, 1);
-            } while (calcTetrahedronVolume(arr.begin()) < 0 && std::next_permutation(it, it + 4));
+                volume = calcTetrahedronVolume(arr.begin());
+                std::cout << "volume: " << volume << '\n';
+                std::cout << '\n';
+            } while (volume <= 0 && next_permutation(it, it + 4));
         }
     }
     }
@@ -729,15 +735,6 @@ bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfA
 
     //TODO: check if volume inverted, because vertices can have different order => look at tetrahedron vtk and vistle
     if (!checkGeoElemVolume(unstr, xArrGeo)) {
-        /* sendInfo("inverted"); */
-        /* std::array<int, 4> arr{1, 2, 3, 4}; */
-        /* do { */
-        /*     for (auto x: arr) */
-        /*         sendInfo("%d", x); */
-        /* } while (next_permutation(arr.begin(), arr.end())); */
-        /* auto connectBegin = unstr->cl().begin(); */
-        /* auto connectEnd = unstr->cl().end(); */
-        /* shift_order_in_range(connectBegin, connectEnd, 4); */
     }
 
     //current order for geo-arrays is contiguous: arrGeo => x1 y1 z1 x2 y2 z2 x3 y3 z3 ... xn yn zn
