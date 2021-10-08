@@ -71,6 +71,7 @@ private:
                               Args... args);
 
     void releaseXdmfObjects();
+    bool checkElemVolumeInverted(vistle::UnstructuredGrid::ptr unstr, XdmfArray *geo);
     /* bool checkBlocks(); */
     void clearChoice();
     /* void initBlocks(); */

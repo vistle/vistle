@@ -20,7 +20,13 @@
 #include "ReadSeisSol.h"
 
 //mpi
+#include <eigen3/Eigen/src/Core/Matrix.h>
 #include <mpi.h>
+
+//eigen
+#include <eigen3/Eigen/LU>
+#include <eigen3/Eigen/Dense>
+#include <eigen3/Eigen/Core>
 
 //vistle
 #include "vistle/core/object.h"
@@ -30,6 +36,7 @@
 #include "vistle/core/scalar.h"
 #include "vistle/core/unstr.h"
 #include "vistle/core/vec.h"
+#include "vistle/core/vector.h"
 #include "vistle/module/module.h"
 #include "vistle/module/reader.h"
 #include "vistle/util/enum.h"
@@ -173,6 +180,99 @@ void extractUniquePoints(XdmfArray *arr, std::set<T> &refSet)
     if (arr)
         for (unsigned i = 0; i < arr->getSize(); ++i)
             refSet.insert(arr->getValue<T>(i));
+}
+
+/**
+ * @brief std::iter_swap (C++20)
+ *
+ * @tparam ForwardIt1 iterator type 1
+ * @tparam ForwardIt2 iterator type 2
+ * @param a iterator
+ * @param b iterator
+ */
+template<class ForwardIt1, class ForwardIt2>
+constexpr void iter_swap(ForwardIt1 a, ForwardIt2 b) // constexpr since C++20
+{
+    std::swap(*a, *b);
+}
+
+template<class BidirIt>
+bool next_permutation(BidirIt first, BidirIt last)
+{
+    if (first == last)
+        return false;
+    BidirIt i = last;
+    if (first == --i)
+        return false;
+
+    while (true) {
+        BidirIt i1, i2;
+
+        i1 = i;
+        if (*--i < *i1) {
+            i2 = last;
+            while (!(*i < *--i2))
+                ;
+            iter_swap(i, i2);
+            std::reverse(i1, last);
+            return true;
+        }
+        if (i == first) {
+            std::reverse(first, last);
+            return false;
+        }
+    }
+}
+
+/**
+ * @brief Shift order of container in value range.
+ *
+ * @tparam ForwardIt Iterator type
+ * @param begin begin iterator.
+ * @param end end iterator.
+ * @param range subrange in container.
+ * @param left shift direction.
+ */
+template<class ForwardIt>
+constexpr void shift_order_in_range(ForwardIt begin, ForwardIt end, unsigned range, bool left = true)
+{
+    auto sizeIt = range - 1;
+    for (ForwardIt i = begin; i != end; i = i + range)
+        if (left)
+            for (ForwardIt j = i; j != i + sizeIt; ++j)
+                iter_swap(j, j + 1);
+        else
+            for (ForwardIt j = i + sizeIt; j != i; --j)
+                iter_swap(j, j - 1);
+}
+
+/**
+ * @brief Calculate tetrahedron volume with corner coords.
+ *
+ * @tparam ForwardIt Iterator of container which contain corner coords.
+ * @param begin Begin of container.
+ *
+ * @return Volume of tetrahedron.
+ */
+template<class ForwardIt>
+float calcTetrahedronVolume(ForwardIt begin)
+{
+    /*
+      Vp = volume parallelpiped
+      Vt = volume tetrahedron
+      Vt = Vp/6
+
+      A = (x1 x2 x3 x4)
+      B = (y1 y2 y3 y4)
+      C = (z1 z2 z3 z4)
+                           | x1 x2 x3 x4 |
+      Vp = det(A, B, C) =  | y1 y2 y3 y4 |
+                           | z1 z2 z3 z4 |
+                           | 1  1  1  1  |
+    */
+    Eigen::MatrixXf mat = Eigen::Map<Eigen::Matrix<float, 4, 4>>(begin).transpose();
+    auto v_p = mat.determinant();
+    return v_p / 6;
 }
 } // namespace
 
@@ -567,33 +667,27 @@ void ReadSeisSol::fillUnstrGridElemList(vistle::UnstructuredGrid::ptr unstr, con
                   [n = 0, &numCornerPerElem]() mutable { return n++ * numCornerPerElem; });
 }
 
-bool checkElemVolumeInverted(vistle::UnstructuredGrid::ptr unstr, XdmfArray *geo)
+bool ReadSeisSol::checkElemVolumeInverted(vistle::UnstructuredGrid::ptr unstr, XdmfArray *geo)
 {
     switch (unstr->tl()[0]) {
     case UnstructuredGrid::TETRAHEDRON: {
-        std::array<float, 4> xArrTet;
-        std::array<float, 4> yArrTet;
-        std::array<float, 4> zArrTet;
-        geo->getValues(0, xArrTet.data(), 4, 3, 1);
-        geo->getValues(1, yArrTet.data(), 4, 3, 1);
-        geo->getValues(2, zArrTet.data(), 4, 3, 1);
-        /*
-           Vp = volume parallelpiped
-           Vt = volume tetrahedron
-           Vt = Vp/6
-           Vp = (x4-x1)[(y2-y1)(z3-z1)-(z2-z1)(y3-y1)]
-              + (y4-y1)[(z2-z1)(x3-x1)-(x2-x1)(z3-z1)]
-              + (z4-z1)[(x2-x1)(y3-y1)-(y2-y1)(x3-x1)]
-           */
-        auto v_p = (xArrTet[3] - xArrTet[0]) * ((yArrTet[1] - yArrTet[0]) * (zArrTet[2] - zArrTet[0]) -
-                                                (zArrTet[1] - zArrTet[0]) * (yArrTet[2] - yArrTet[0])) +
-                   (yArrTet[3] - yArrTet[0]) * ((zArrTet[1] - zArrTet[0]) * (xArrTet[2] - xArrTet[0]) -
-                                                (xArrTet[1] - xArrTet[0]) * (zArrTet[2] - zArrTet[0])) +
-                   (zArrTet[3] - zArrTet[0]) * ((xArrTet[1] - xArrTet[0]) * (yArrTet[2] - yArrTet[0]) -
-                                                (yArrTet[1] - yArrTet[0]) * (xArrTet[2] - xArrTet[0]));
-        std::cerr << "Vp: " << v_p << '\n';
-        if (v_p / 6 < 0)
-            return false;
+        auto connectBegin = unstr->cl().begin();
+        for (unsigned k = 0; k < geo->getSize(); ++k) {
+            auto it = connectBegin + k;
+            std::array<float, 16> arr;
+
+            do {
+                //get 4 points
+                for (int i = 0; i < 12; i = i + 4, ++it) {
+                    /* geo->getValues(++k, arr.data() + i, 4, 3, 1); */
+                    geo->getValues(*it, arr.data() + i, 4, 3, 1);
+                    std::cout << *it << '\n';
+                }
+                std::fill_n(arr.begin() + 12, 4, 1);
+                /* for (auto x : arr) */
+                /*     sendInfo("blub: %f", x); */
+            } while (calcTetrahedronVolume(arr.begin()) < 0 && std::next_permutation(it, it + 4));
+        }
     }
     }
     return true;
@@ -620,8 +714,17 @@ bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfA
     constexpr unsigned strideVistleArr{1};
 
     //TODO: check if volume inverted, because vertices can have different order => look at tetrahedron vtk and vistle
-    if (!checkElemVolumeInverted(unstr, xArrGeo))
-        sendInfo("inverted");
+    if (!checkElemVolumeInverted(unstr, xArrGeo)) {
+        /* sendInfo("inverted"); */
+        /* std::array<int, 4> arr{1, 2, 3, 4}; */
+        /* do { */
+        /*     for (auto x: arr) */
+        /*         sendInfo("%d", x); */
+        /* } while (next_permutation(arr.begin(), arr.end())); */
+        /* auto connectBegin = unstr->cl().begin(); */
+        /* auto connectEnd = unstr->cl().end(); */
+        /* shift_order_in_range(connectBegin, connectEnd, 4); */
+    }
 
     //current order for geo-arrays is contiguous: arrGeo => x1 y1 z1 x2 y2 z2 x3 y3 z3 ... xn yn zn
     xArrGeo->getValues(0, x, xArrGeo->getSize() / numCoords, numCoords, strideVistleArr);
@@ -638,7 +741,7 @@ bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfA
  * @param xArrGeo XdmfArray which contains coordinates in an one dimensional array.
  * @param verticesToRead vertices to read from array.
  *
- * @return true if values stored in XdmfArray could be stroed in coords array of given unstructured grid.
+ * @return true if values stored in XdmfArray could be stored in coords array of given unstructured grid.
  */
 bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfArray *xArrGeo,
                                       const std::set<unsigned> &verticesToRead)
@@ -1095,6 +1198,7 @@ bool ReadSeisSol::finishRead()
 }
 
 /*************** DynamicPseudoEnum **************/
+
 /**
   * @brief: Template for PseudoEnum which initializes map with an index like enum.
   *
