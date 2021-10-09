@@ -4,8 +4,8 @@
 #include <memory>
 #include <atomic>
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/process.hpp>
 #include <vistle/core/statetracker.h>
-#include <vistle/util/spawnprocess.h>
 #include <vistle/util/buffer.h>
 #include "uimanager.h"
 #include <vistle/net/tunnel.h>
@@ -20,6 +20,7 @@ class V_HUBEXPORT Hub {
 public:
     typedef boost::asio::ip::tcp::socket socket;
     typedef boost::asio::ip::tcp::acceptor acceptor;
+    typedef std::shared_ptr<socket> socket_ptr;
 
     static Hub &the();
 
@@ -31,16 +32,13 @@ public:
     bool init(int argc, char *argv[]);
     bool processScript();
     bool dispatch();
-    bool sendMessage(std::shared_ptr<socket> sock, const message::Message &msg, const buffer *payload = nullptr);
+    bool sendMessage(socket_ptr sock, const message::Message &msg, const buffer *payload = nullptr);
     unsigned short port() const;
     unsigned short dataPort() const;
-    vistle::process_handle launchProcess(const std::vector<std::string> &argv) const;
+    std::shared_ptr<boost::process::child> launchMpiProcess(const std::vector<std::string> &argv) const;
     const std::string &name() const;
 
-    bool
-    handleMessage(const message::Message &msg,
-                  std::shared_ptr<boost::asio::ip::tcp::socket> sock = std::shared_ptr<boost::asio::ip::tcp::socket>(),
-                  const buffer *payload = nullptr);
+    bool handleMessage(const message::Message &msg, socket_ptr sock = socket_ptr(), const buffer *payload = nullptr);
     bool sendManager(const message::Message &msg, int hub = message::Id::LocalHub, const buffer *payload = nullptr);
     bool sendMaster(const message::Message &msg, const buffer *payload = nullptr);
     bool sendSlaves(const message::Message &msg, bool returnToSender = false, const buffer *payload = nullptr);
@@ -61,20 +59,21 @@ private:
 
     bool hubReady();
     bool connectToMaster(const std::string &host, unsigned short port);
+    bool startVrb();
+    socket_ptr connectToVrb(unsigned short port);
+    bool handleVrb(socket_ptr sock);
     bool startUi(const std::string &uipath, bool replace = false);
     bool startPythonUi();
     bool startServer();
     bool startAccept(std::shared_ptr<acceptor> a);
-    void handleWrite(std::shared_ptr<boost::asio::ip::tcp::socket> sock, const boost::system::error_code &error);
-    void handleAccept(std::shared_ptr<acceptor> a, std::shared_ptr<boost::asio::ip::tcp::socket> sock,
-                      const boost::system::error_code &error);
-    void addSocket(std::shared_ptr<boost::asio::ip::tcp::socket> sock,
-                   message::Identify::Identity ident = message::Identify::UNKNOWN);
-    bool removeSocket(std::shared_ptr<boost::asio::ip::tcp::socket> sock, bool close = true);
-    void addClient(std::shared_ptr<boost::asio::ip::tcp::socket> sock);
-    void addSlave(const std::string &name, std::shared_ptr<boost::asio::ip::tcp::socket> sock);
+    void handleWrite(socket_ptr sock, const boost::system::error_code &error);
+    void handleAccept(std::shared_ptr<acceptor> a, socket_ptr sock, const boost::system::error_code &error);
+    void addSocket(socket_ptr sock, message::Identify::Identity ident = message::Identify::UNKNOWN);
+    bool removeSocket(socket_ptr sock, bool close = true);
+    void addClient(socket_ptr sock);
+    void addSlave(const std::string &name, socket_ptr sock);
     void removeSlave(int id);
-    bool removeClient(std::shared_ptr<boost::asio::ip::tcp::socket> sock);
+    bool removeClient(socket_ptr sock);
     void slaveReady(Slave &slave);
     bool startCleaner();
     bool processScript(const std::string &filename, bool executeModules);
@@ -94,16 +93,20 @@ private:
     boost::asio::io_service m_ioService;
     std::shared_ptr<acceptor> m_acceptorv4, m_acceptorv6;
 
-    std::map<std::shared_ptr<boost::asio::ip::tcp::socket>, message::Identify::Identity> m_sockets;
-    std::set<std::shared_ptr<boost::asio::ip::tcp::socket>> m_clients;
+    std::map<socket_ptr, message::Identify::Identity> m_sockets;
+    std::set<socket_ptr> m_clients;
+
+    unsigned short m_vrbPort = 0;
+    std::map<int, socket_ptr> m_vrbSockets;
 
     std::shared_ptr<DataProxy> m_dataProxy;
     TunnelManager m_tunnelManager;
     StateTracker m_stateTracker;
     UiManager m_uiManager;
     bool m_hasUi = false;
+    bool m_hasVrb = false;
 
-    std::map<process_handle, int> m_processMap;
+    std::map<std::shared_ptr<boost::process::child>, int> m_processMap;
     bool m_managerConnected;
 
     std::string m_prefix;
@@ -118,9 +121,9 @@ private:
     std::vector<AvailableModule> m_localModules;
 
     bool m_isMaster;
-    std::shared_ptr<boost::asio::ip::tcp::socket> m_masterSocket;
+    socket_ptr m_masterSocket;
     struct Slave {
-        std::shared_ptr<boost::asio::ip::tcp::socket> sock;
+        socket_ptr sock;
         std::string name;
         bool ready = false;
         int id = 0;
@@ -144,8 +147,6 @@ private:
 
     std::string m_statusText;
 
-    std::string sim2FilePath;
-
     bool handlePriv(const message::Quit &quit, message::Identify::Identity senderType);
     bool handlePriv(const message::RemoveHub &rm);
     bool handlePriv(const message::Execute &exec);
@@ -158,6 +159,7 @@ private:
     bool handlePriv(const message::FileQuery &query, const buffer *payload);
     bool handlePriv(const message::FileQueryResult &result, const buffer *payload);
     bool handlePriv(const message::Cover &cover, const buffer *payload);
+    bool handlePriv(const message::ModuleExit &exit);
     bool handlePriv(const message::Spawn &spawn);
 
     bool checkChildProcesses(bool emergency = false);

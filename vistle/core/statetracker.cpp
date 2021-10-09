@@ -774,12 +774,13 @@ bool StateTracker::handlePriv(const message::Spawn &spawn)
     mod.name = spawn.getName();
     mod.mirrors.insert(moduleId);
     int mid = spawn.mirroringId();
-    if (mid != Id::Invalid) {
-        mod.mirrorOfId = mid;
-        auto it = runningMap.find(mid);
-        if (it != runningMap.end()) {
-            it->second.mirrors.insert(moduleId);
-        }
+    if (mid == Id::Invalid) {
+        mid = moduleId;
+    }
+    mod.mirrorOfId = mid;
+    auto it = runningMap.find(mid);
+    if (it != runningMap.end()) {
+        it->second.mirrors.insert(moduleId);
     }
 
     mutex_locker guard(m_stateMutex);

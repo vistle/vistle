@@ -930,7 +930,9 @@ bool COVER::handleMessage(const message::Message *message, const MessagePayload 
     case vistle::message::COVER: {
         auto &cmsg = message->as<const message::Cover>();
         covise::DataHandle dh(payload->data(), payload->size(), false /* do not delete */);
-        covise::Message msg(cmsg.subtype(), dh);
+        covise::Message msg(cmsg.subType(), dh);
+        msg.sender = cmsg.sender();
+        msg.send_type = cmsg.senderType();
         coVRCommunication::instance()->handleVRB(msg);
         return true;
     }

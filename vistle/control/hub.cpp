@@ -13,7 +13,6 @@
 #include <vistle/util/hostname.h>
 #include <vistle/util/userinfo.h>
 #include <vistle/util/directory.h>
-#include <vistle/util/spawnprocess.h>
 #include <vistle/util/sleep.h>
 #include <vistle/util/listenv4v6.h>
 #include <vistle/util/crypto.h>
@@ -24,6 +23,7 @@
 #include <vistle/core/statetracker.h>
 #include <vistle/core/shm.h>
 #include <vistle/control/vistleurl.h>
+#include <vistle/util/byteswap.h>
 
 #ifdef MODULE_THREAD
 #include <vistle/insitu/libsim/connectLibsim/connect.h>
@@ -32,8 +32,8 @@
 
 #include <boost/asio.hpp>
 #include <boost/program_options.hpp>
+#include <boost/process.hpp>
 
-#include "uimanager.h"
 #include "uiclient.h"
 #include "hub.h"
 #include "fileinfocrawler.h"
@@ -46,6 +46,7 @@
 //#define DEBUG_DISTRIBUTED
 
 namespace asio = boost::asio;
+namespace proc = boost::process;
 using std::shared_ptr;
 namespace dir = vistle::directory;
 
@@ -60,6 +61,7 @@ enum Id {
     Cleaner = -1,
     GUI = -2,
     Debugger = -3,
+    VRB = -4,
 };
 }
 
@@ -382,7 +384,7 @@ bool Hub::init(int argc, char *argv[])
         args.push_back(dataport);
 #ifdef MODULE_THREAD
         if (vm.count("libsim") > 0) {
-            sim2FilePath = vm["libsim"].as<std::string>();
+            auto sim2FilePath = vm["libsim"].as<std::string>();
 
             CERR << "starting manager in simulation" << std::endl;
             if (vistle::insitu::libsim::attemptLibSImConnection(sim2FilePath, args)) {
@@ -394,16 +396,21 @@ bool Hub::init(int argc, char *argv[])
 
         } else {
 #endif // MODULE_THREAD
-            auto pid = launchProcess(args);
-            if (!pid) {
+            auto child = launchMpiProcess(args);
+            if (!child->valid()) {
                 CERR << "failed to spawn Vistle manager " << std::endl;
                 exit(1);
             }
-            m_processMap[pid] = Process::Manager;
+            m_processMap[child] = Process::Manager;
 #ifdef MODULE_THREAD
         }
 #endif // MODULE_THREAD
     }
+
+    if (m_isMaster && !m_inManager && !m_interrupt && !m_quitting) {
+        m_hasVrb = startVrb();
+    }
+
     return true;
 }
 
@@ -430,29 +437,25 @@ unsigned short Hub::dataPort() const
     return m_dataProxy->port();
 }
 
-vistle::process_handle Hub::launchProcess(const std::vector<std::string> &argv) const
+std::shared_ptr<proc::child> Hub::launchMpiProcess(const std::vector<std::string> &args) const
 {
-    assert(!argv.empty());
-    std::vector<std::string> args;
+    assert(!args.empty());
 #ifdef _WIN32
     std::string spawn = "spawn_vistle.bat";
 #else
     std::string spawn = "spawn_vistle.sh";
 #endif
-    args.push_back(spawn);
-    std::copy(argv.begin(), argv.end(), std::back_inserter(args));
-    auto pid = spawn_process(spawn, args);
+    auto child = std::make_shared<proc::child>(proc::search_path(spawn), proc::args(args));
 #ifndef _WIN32
-    if (pid == -1) {
-        std::cerr << "failed to execute " << argv[0] << " via spawn_vistle.sh, retrying with mpirun" << std::endl;
-        args[0] = "mpirun";
-        pid = spawn_process(args[0], args);
+    if (!child->valid()) {
+        std::cerr << "failed to execute " << args[0] << " via spawn_vistle.sh, retrying with mpirun" << std::endl;
+        child = std::make_shared<proc::child>(proc::search_path("mpirun"), proc::args(args));
     }
 #endif
-    return pid;
+    return child;
 }
 
-bool Hub::sendMessage(shared_ptr<socket> sock, const message::Message &msg, const buffer *payload)
+bool Hub::sendMessage(Hub::socket_ptr sock, const message::Message &msg, const buffer *payload)
 {
     bool result = true;
     bool close = msg.type() == message::CLOSECONNECTION;
@@ -546,14 +549,13 @@ bool Hub::startAccept(std::shared_ptr<acceptor> a)
     if (!a->is_open())
         return false;
 
-    shared_ptr<asio::ip::tcp::socket> sock(new asio::ip::tcp::socket(m_ioService));
+    socket_ptr sock(new asio::ip::tcp::socket(m_ioService));
     addSocket(sock);
     a->async_accept(*sock, [this, a, sock](boost::system::error_code ec) { handleAccept(a, sock, ec); });
     return true;
 }
 
-void Hub::handleAccept(std::shared_ptr<acceptor> a, shared_ptr<asio::ip::tcp::socket> sock,
-                       const boost::system::error_code &error)
+void Hub::handleAccept(std::shared_ptr<acceptor> a, Hub::socket_ptr sock, const boost::system::error_code &error)
 {
     if (error) {
         removeSocket(sock);
@@ -568,14 +570,14 @@ void Hub::handleAccept(std::shared_ptr<acceptor> a, shared_ptr<asio::ip::tcp::so
     startAccept(a);
 }
 
-void Hub::addSocket(shared_ptr<asio::ip::tcp::socket> sock, message::Identify::Identity ident)
+void Hub::addSocket(Hub::socket_ptr sock, message::Identify::Identity ident)
 {
     bool ok = m_sockets.insert(std::make_pair(sock, ident)).second;
     assert(ok);
     (void)ok;
 }
 
-bool Hub::removeSocket(shared_ptr<asio::ip::tcp::socket> sock, bool close)
+bool Hub::removeSocket(Hub::socket_ptr sock, bool close)
 {
     if (close) {
         try {
@@ -591,6 +593,13 @@ bool Hub::removeSocket(shared_ptr<asio::ip::tcp::socket> sock, bool close)
             if (s.second.sock == sock) {
                 CERR << "lost connection to slave " << s.first << std::endl;
                 s.second.sock.reset();
+            }
+        }
+        for (auto &s: m_vrbSockets) {
+            if (s.second == sock) {
+                CERR << "lost connection to VRB for module " << s.first << std::endl;
+                m_vrbSockets.erase(s.first);
+                break;
             }
         }
     } else {
@@ -609,18 +618,18 @@ bool Hub::removeSocket(shared_ptr<asio::ip::tcp::socket> sock, bool close)
     return ret;
 }
 
-void Hub::addClient(shared_ptr<asio::ip::tcp::socket> sock)
+void Hub::addClient(Hub::socket_ptr sock)
 {
     //CERR << "new client" << std::endl;
     m_clients.insert(sock);
 }
 
-bool Hub::removeClient(shared_ptr<asio::ip::tcp::socket> sock)
+bool Hub::removeClient(Hub::socket_ptr sock)
 {
     return m_clients.erase(sock) > 0;
 }
 
-void Hub::addSlave(const std::string &name, shared_ptr<asio::ip::tcp::socket> sock)
+void Hub::addSlave(const std::string &name, Hub::socket_ptr sock)
 {
     assert(m_isMaster);
     ++m_slaveCount;
@@ -663,7 +672,7 @@ bool Hub::dispatch()
     bool work = false;
     size_t avail = 0;
     do {
-        std::shared_ptr<boost::asio::ip::tcp::socket> sock;
+        socket_ptr sock;
         avail = 0;
         for (auto &s: m_clients) {
             if (!s->is_open()) {
@@ -679,7 +688,7 @@ bool Hub::dispatch()
                 removeSocket(sock);
                 return true;
             }
-            if (command.get() > avail) {
+            if (command.get() >= avail) {
                 avail = command.get();
                 sock = s;
             }
@@ -687,6 +696,13 @@ bool Hub::dispatch()
         boost::system::error_code error;
         if (sock) {
             work = true;
+#if 0
+            if (avail == 0) {
+                CERR << "socket closed" << std::endl;
+                removeSocket(sock);
+                return true;
+            }
+#endif
             handleWrite(sock, error);
         }
     } while (!m_interrupt && !m_quitting && avail > 0);
@@ -728,12 +744,12 @@ bool Hub::dispatch()
     return ret;
 }
 
-void Hub::handleWrite(std::shared_ptr<boost::asio::ip::tcp::socket> sock, const boost::system::error_code &error)
+void Hub::handleWrite(Hub::socket_ptr sock, const boost::system::error_code &error)
 {
     if (error) {
         CERR << "error during write on socket: " << error.message() << std::endl;
         removeSocket(sock);
-        m_quitting = true;
+        //m_quitting = true;
         return;
     }
 
@@ -741,6 +757,12 @@ void Hub::handleWrite(std::shared_ptr<boost::asio::ip::tcp::socket> sock, const 
     auto it = m_sockets.find(sock);
     if (it != m_sockets.end())
         senderType = it->second;
+
+    if (senderType == message::Identify::VRB) {
+        handleVrb(sock);
+        return;
+    }
+
     message::Buffer msg;
     buffer payload;
     message::error_code ec;
@@ -766,7 +788,7 @@ void Hub::handleWrite(std::shared_ptr<boost::asio::ip::tcp::socket> sock, const 
     } else if (ec) {
         CERR << "error during read from socket: " << ec.message() << std::endl;
         removeSocket(sock);
-        m_quitting = true;
+        //m_quitting = true;
     }
 }
 
@@ -877,6 +899,9 @@ bool Hub::sendModule(const message::Message &msg, int id, const buffer *payload)
         return false;
     }
 
+    if (hub == m_hubId)
+        return sendManager(msg, hub, payload);
+
     return sendHub(hub, msg, payload);
 }
 
@@ -962,7 +987,7 @@ bool Hub::hubReady()
     return true;
 }
 
-bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::socket> sock, const buffer *payload)
+bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, const buffer *payload)
 {
     using namespace vistle::message;
 
@@ -1011,7 +1036,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
     }
 
     if (msg.destId() == Id::ForBroadcast) {
-        if (m_hubId == Id::MasterHub) {
+        if (m_isMaster) {
             msg.setDestId(Id::Broadcast);
         } else {
             return sendMaster(msg, payload);
@@ -1071,6 +1096,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                     master.setAddress(m_exposedHostAddr);
                 }
                 master.setHasUserInterface(m_hasUi);
+                master.setHasVrb(m_hasVrb);
                 CERR << "MASTER HUB: " << master << std::endl;
                 m_stateTracker.handle(master, nullptr);
                 sendUi(master);
@@ -1378,18 +1404,17 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             int id = debug.getModule();
 #endif
             bool launched = false;
-            for (auto p: m_processMap) {
+            for (auto &p: m_processMap) {
                 if (p.second == id) {
                     std::vector<std::string> args;
-                    args.push_back("ddt");
                     std::stringstream str;
                     str << "-attach-mpi=" << p.first;
                     args.push_back(str.str());
-                    auto pid = spawn_process(args[0], args);
+                    auto child = std::make_shared<proc::child>(proc::search_path("ddt"), proc::args(args));
                     std::stringstream info;
-                    info << "Launched ddt as PID " << pid << ", attaching to " << p.first;
+                    info << "Launched ddt as PID " << child->id() << ", attaching to " << p.first;
                     sendInfo(info.str());
-                    m_processMap[pid] = Process::Debugger;
+                    m_processMap[child] = Process::Debugger;
                     launched = true;
                     break;
                 }
@@ -1503,6 +1528,11 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
         case COVER: {
             auto &cover = msg.as<Cover>();
             handlePriv(cover, payload);
+            break;
+        }
+        case MODULEEXIT: {
+            auto &exit = msg.as<ModuleExit>();
+            handlePriv(exit);
             break;
         }
         default: {
@@ -1650,12 +1680,12 @@ bool Hub::startCleaner()
     args.push_back(cmd);
     std::string shmname = Shm::instanceName(hostname(), m_port);
     args.push_back(shmname);
-    auto pid = launchProcess(args);
-    if (!pid) {
+    auto child = launchMpiProcess(args);
+    if (!child->valid()) {
         CERR << "failed to spawn clean_vistle" << std::endl;
         return false;
     }
-    m_processMap[pid] = Process::Cleaner;
+    m_processMap[child] = Process::Cleaner;
     return true;
 }
 
@@ -1785,28 +1815,176 @@ bool Hub::connectToMaster(const std::string &host, unsigned short port)
     return true;
 }
 
+bool Hub::startVrb()
+{
+    m_vrbPort = 0;
+
+    proc::ipstream out;
+    auto child = std::make_shared<proc::child>(proc::search_path("vrb"), proc::args({"--tui", "--printport"}),
+                                               proc::std_out > out);
+    if (!child->valid()) {
+        CERR << "could not create VRB process" << std::endl;
+        return false;
+    }
+
+    CERR << "started VRB process" << std::endl;
+
+    std::string line;
+    while (child->running() && std::getline(out, line) && !line.empty()) {
+        m_vrbPort = std::atol(line.c_str());
+    }
+    if (m_vrbPort == 0) {
+        CERR << "could not parse VRB port" << std::endl;
+        child->terminate();
+        return false;
+    }
+    CERR << "VRB process running on port " << m_vrbPort << ", running=" << child->running() << std::endl;
+
+    m_processMap[child] = Process::VRB;
+    return true;
+}
+
+Hub::socket_ptr Hub::connectToVrb(unsigned short port)
+{
+    assert(m_isMaster);
+
+    socket_ptr sock;
+    if (m_vrbPort == 0) {
+        CERR << "cannot connect to local VRB on unknown port" << std::flush;
+        return sock;
+    }
+
+    CERR << "connecting to local VRB at port " << port << std::flush;
+    bool connected = false;
+    boost::system::error_code ec;
+    while (!connected) {
+        asio::ip::tcp::resolver resolver(m_ioService);
+        asio::ip::tcp::resolver::query query("localhost", boost::lexical_cast<std::string>(port));
+        sock = std::make_shared<socket>(m_ioService);
+        asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query, ec);
+        if (ec) {
+            std::cerr << ": resolver failed: " << ec.message() << std::endl;
+            return sock;
+        }
+        asio::connect(*sock, endpoint_iterator, ec);
+        if (!ec) {
+            connected = true;
+        } else if (ec == boost::system::errc::connection_refused) {
+            std::cerr << "." << std::flush;
+            sleep(1);
+        } else {
+            std::cerr << ": connect failed: " << ec.message() << std::endl;
+            return sock;
+        }
+    }
+
+    std::cerr << " done." << std::endl;
+
+    const char DF_IEEE = 1;
+    char df = 0;
+    asio::read(*sock, asio::mutable_buffer(&df, 1), ec);
+    if (ec) {
+        CERR << "failed to read data format" << std::endl;
+        sock.reset();
+        return sock;
+    }
+    if (df != DF_IEEE) {
+        CERR << "incompatible data format " << static_cast<int>(df) << std::endl;
+        sock.reset();
+        return sock;
+    }
+    asio::write(*sock, asio::const_buffer(&DF_IEEE, 1), ec);
+    if (ec) {
+        CERR << "failed to write data format" << std::endl;
+        sock.reset();
+        return sock;
+    }
+
+    addSocket(sock, message::Identify::VRB);
+    addClient(sock);
+
+    return sock;
+}
+
+bool Hub::handleVrb(Hub::socket_ptr sock)
+{
+    if (!sock || !sock->is_open())
+        return false;
+
+    // cf. covise/src/kernel/net/covise_connect.cpp: Connection::sendMessage
+    std::array<uint32_t, 4> header; // sender id, sender type, msg type, msg length
+
+    boost::asio::socket_base::bytes_readable command(true);
+    try {
+        sock->io_control(command);
+    } catch (std::exception &ex) {
+        CERR << "handleVrb: socket error: " << ex.what() << std::endl;
+        removeSocket(sock);
+        return false;
+    }
+    if (command.get() < sizeof(header)) {
+        CERR << "handleVrb: only have " << command.get() << " bytes" << std::endl;
+        // try again later when full header is available
+        return true;
+    }
+
+    boost::asio::mutable_buffer hbuf(header.data(), header.size() * sizeof(header[0]));
+    boost::system::error_code ec;
+    boost::asio::read(*sock, hbuf, ec);
+    if (ec) {
+        CERR << "handleVrb: failed to read header: " << ec.message() << std::endl;
+        removeSocket(sock);
+        return false;
+    }
+    for (auto &v: header)
+        v = byte_swap<network_endian, host_endian>(v);
+
+    buffer data(header[3]);
+    boost::asio::mutable_buffer dbuf(data.data(), data.size());
+    boost::asio::read(*sock, dbuf, ec);
+    if (ec) {
+        CERR << "handleVrb: failed to read data: " << ec.message() << std::endl;
+        removeSocket(sock);
+        return false;
+    }
+
+    for (auto &s: m_vrbSockets) {
+        if (s.second == sock) {
+            int destMod = s.first;
+            int mir = m_stateTracker.getMirrorId(destMod);
+            message::Cover cover(mir, header[0], header[1], header[2]);
+            cover.setDestId(destMod);
+            cover.setPayloadSize(data.size());
+            //CERR << "handleVrb: " << cover << std::endl;
+            return sendModule(cover, destMod, &data);
+        }
+    }
+
+    return false;
+}
+
 bool Hub::startUi(const std::string &uipath, bool replace)
 {
     std::string port = boost::lexical_cast<std::string>(this->m_masterPort);
 
     std::vector<std::string> args;
-    args.push_back(uipath);
     if (!replace)
         args.push_back("-from-vistle");
     args.push_back(m_masterHost);
     args.push_back(port);
     if (replace) {
-        vistle::replace_process(uipath, args);
+        boost::process::system(uipath, proc::args(args));
+        exit(0);
         return false;
     }
 
-    auto pid = vistle::spawn_process(uipath, args);
-    if (!pid) {
+    auto child = std::make_shared<proc::child>(uipath, proc::args(args));
+    if (!child->valid()) {
         CERR << "failed to spawn UI " << uipath << std::endl;
         return false;
     }
 
-    m_processMap[pid] = Process::GUI;
+    m_processMap[child] = Process::GUI;
 
     return true;
 }
@@ -1817,7 +1995,6 @@ bool Hub::startPythonUi()
 
     std::string ipython = "ipython";
     std::vector<std::string> args;
-    args.push_back(ipython);
     args.push_back("-i");
     args.push_back("-c");
     std::string cmd = "import vistle; ";
@@ -1825,13 +2002,13 @@ bool Hub::startPythonUi()
     cmd += "from vistle import *; ";
     args.push_back(cmd);
     args.push_back("--");
-    auto pid = vistle::spawn_process(ipython, args);
-    if (!pid) {
+    auto child = std::make_shared<proc::child>(proc::search_path(ipython), proc::args(args));
+    if (!child->valid()) {
         CERR << "failed to spawn ipython " << ipython << std::endl;
         return false;
     }
 
-    m_processMap[pid] = Process::GUI;
+    m_processMap[child] = Process::GUI;
 
     return true;
 }
@@ -2126,14 +2303,55 @@ bool Hub::handlePriv(const message::FileQueryResult &result, const buffer *paylo
     return sendHub(result.destId(), result, payload);
 }
 
+bool Hub::handlePriv(const message::ModuleExit &exit)
+{
+    auto it = m_vrbSockets.find(exit.senderId());
+    if (it != m_vrbSockets.end()) {
+        removeSocket(it->second);
+    }
+    return true;
+}
+
 bool Hub::handlePriv(const message::Cover &cover, const buffer *payload)
 {
+    if (!m_isMaster) {
+        //CERR << "forwarding: " << cover << std::endl;
+        return sendMaster(cover, payload);
+    }
+
+    //CERR << "handling: " << cover << std::endl;
+
     auto mid = cover.mirrorId();
     auto mirrors = m_stateTracker.getMirrors(mid);
-    message::Buffer buf(cover);
-    for (auto id: mirrors) {
-        buf.setDestId(id);
-        sendModule(buf, id, payload);
+    socket_ptr sock;
+    auto it = m_vrbSockets.find(cover.senderId());
+    if (it == m_vrbSockets.end()) {
+        CERR << "connecting to VRB on behalf of " << cover.senderId() << std::endl;
+        sock = connectToVrb(m_vrbPort);
+        if (sock) {
+            m_vrbSockets.emplace(cover.senderId(), sock);
+        }
+    } else {
+        sock = it->second;
+    }
+    if (sock) {
+        std::array<uint32_t, 4> header; // sender id, sender type, msg type, msg length
+        header[0] = cover.sender();
+        header[1] = cover.senderType();
+        header[2] = cover.subType();
+        header[3] = payload->size();
+        for (auto &v: header)
+            v = byte_swap<host_endian, network_endian>(v);
+
+        boost::asio::const_buffer hbuf(header.data(), header.size() * sizeof(header[0]));
+        boost::asio::const_buffer dbuf(payload->data(), payload->size());
+        std::vector<boost::asio::const_buffer> buffers{hbuf, dbuf};
+        boost::system::error_code ec;
+        asio::write(*sock, buffers, ec);
+        if (ec) {
+            removeSocket(sock);
+            return false;
+        }
     }
 
     return true;
@@ -2143,7 +2361,7 @@ bool Hub::hasChildProcesses(bool ignoreGui)
 {
     if (ignoreGui) {
         for (const auto &pk: m_processMap) {
-            if (pk.second != Process::GUI)
+            if (pk.second != Process::GUI && pk.second != Process::VRB)
                 return true;
         }
 
@@ -2155,14 +2373,13 @@ bool Hub::hasChildProcesses(bool ignoreGui)
 
 bool Hub::checkChildProcesses(bool emergency)
 {
-    auto pid = vistle::try_wait();
-    if (!pid)
-        return false;
+    for (auto it = m_processMap.begin(), next = it; it != m_processMap.end(); it = next) {
+        next = it;
+        ++next;
 
-    auto it = m_processMap.find(pid);
-    if (it == m_processMap.end()) {
-        CERR << "unknown process with PID " << pid << " exited" << std::endl;
-    } else {
+        if (it->first->running())
+            continue;
+
         const int id = it->second;
         std::string idstring;
         switch (id) {
@@ -2178,13 +2395,22 @@ bool Hub::checkChildProcesses(bool emergency)
         case Process::GUI:
             idstring = "GUI";
             break;
+        case Process::VRB:
+            idstring = "VRB";
+            break;
         default:
-            idstring = std::to_string(id);
+            idstring = "module " + std::to_string(id);
             break;
         }
-        CERR << "process with id " << idstring << " (PID " << pid << ") exited" << std::endl;
-        m_processMap.erase(it);
-        if (!m_quitting && !emergency) {
+        CERR << "process with id " << idstring << " (PID " << it->first->id() << ") exited" << std::endl;
+        next = m_processMap.erase(it);
+
+        if (id == Process::VRB) {
+            m_vrbPort = 0;
+            while (!m_vrbSockets.empty()) {
+                removeSocket(m_vrbSockets.begin()->second);
+            }
+        } else if (!m_quitting && !emergency) {
             if (id == Process::Manager) {
                 // manager died
                 CERR << "manager died - cannot continue" << std::endl;
@@ -2221,9 +2447,7 @@ void Hub::emergencyQuit()
 
     if (!m_quitting) {
         m_uiManager.requestQuit();
-        for (auto ent: m_processMap) {
-            vistle::kill_process(ent.first);
-        }
+        m_processMap.clear();
         if (startCleaner()) {
             m_quitting = true;
             while (hasChildProcesses()) {
@@ -2265,10 +2489,10 @@ void Hub::spawnModule(const std::string &path, const std::string &name, int spaw
     argv.push_back(name);
     argv.push_back(boost::lexical_cast<std::string>(spawnId));
     std::cerr << "starting module " << name << std::endl;
-    auto pid = launchProcess(argv);
-    if (pid) {
+    auto child = launchMpiProcess(argv);
+    if (child->valid()) {
         //CERR << "started " << mod->path() << " with PID " << pid << std::endl;
-        m_processMap[pid] = spawnId;
+        m_processMap[child] = spawnId;
     } else {
         std::stringstream str;
         str << "program " << argv[0] << " failed to start";

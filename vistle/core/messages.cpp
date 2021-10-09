@@ -150,7 +150,7 @@ bool Identify::verifyMac(bool compareSessionData) const
 }
 
 AddHub::AddHub(int id, const std::string &name)
-: m_id(id), m_port(0), m_dataPort(0), m_addrType(AddHub::Unspecified), m_hasUserInterface(false)
+: m_id(id), m_port(0), m_dataPort(0), m_addrType(AddHub::Unspecified), m_hasUserInterface(false), m_hasVrb(false)
 {
     COPY_STRING(m_name, name);
     memset(m_loginName.data(), 0, m_loginName.size());
@@ -286,6 +286,16 @@ void AddHub::setHasUserInterface(bool ui)
 bool AddHub::hasUserInterface() const
 {
     return m_hasUserInterface;
+}
+
+void AddHub::setHasVrb(bool ui)
+{
+    m_hasVrb = ui;
+}
+
+bool AddHub::hasVrb() const
+{
+    return m_hasVrb;
 }
 
 
@@ -1872,7 +1882,8 @@ std::ostream &operator<<(std::ostream &s, const Message &m)
     }
     case COVER: {
         auto &mm = static_cast<const Cover &>(m);
-        s << ", mirror: " << mm.mirrorId() << ", subtype: " << mm.subtype();
+        s << ", mirror: " << mm.mirrorId() << ", sender: " << mm.sender() << ", sender type: " << mm.senderType()
+          << ", subtype: " << mm.subType();
         break;
     }
     default:
@@ -1887,7 +1898,8 @@ SetParameterChoices::Payload::Payload() = default;
 SetParameterChoices::Payload::Payload(const std::vector<std::string> &choices): choices(choices)
 {}
 
-Cover::Cover(int mirror, int subtype): m_mirrorId(mirror), m_subtype(subtype)
+Cover::Cover(int mirror, int senderId, int senderType, int subType)
+: m_mirrorId(mirror), m_senderId(senderId), m_senderType(senderType), m_subType(subType)
 {}
 
 int Cover::mirrorId() const
@@ -1895,9 +1907,19 @@ int Cover::mirrorId() const
     return m_mirrorId;
 }
 
-int Cover::subtype() const
+int Cover::sender() const
 {
-    return m_subtype;
+    return m_senderId;
+}
+
+int Cover::senderType() const
+{
+    return m_senderType;
+}
+
+int Cover::subType() const
+{
+    return m_subType;
 }
 
 

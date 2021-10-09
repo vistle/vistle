@@ -43,6 +43,7 @@ public:
                                         (REMOTEBULKDATA) //< bulk data transfer to remote hubs
                                         (RENDERSERVER) //< remote render server
                                         (RENDERCLIENT) //< remote render client
+                                        (VRB) //< COVISE/OpenCOVER request broker for collaborative VR
     )
 
     typedef std::array<char, 32> mac_t;
@@ -106,6 +107,9 @@ public:
     bool hasUserInterface() const;
     void setHasUserInterface(bool ui);
 
+    bool hasVrb() const;
+    void setHasVrb(bool vrb);
+
 private:
     int m_id;
     address_t m_name;
@@ -118,6 +122,7 @@ private:
     AddressType m_addrType;
     address_t m_address;
     bool m_hasUserInterface;
+    bool m_hasVrb;
 };
 
 //! request that a slave hub be deleted
@@ -930,14 +935,18 @@ private:
 //! wrap a COVISE message sent by COVER
 class V_COREEXPORT Cover: public MessageBase<Cover, COVER> {
 public:
-    Cover(int mirror, int subtype);
+    Cover(int mirror, int senderId, int senderType, int subType);
 
-    int subtype() const;
+    int sender() const;
+    int senderType() const;
+    int subType() const;
     int mirrorId() const;
 
 private:
     int m_mirrorId;
-    int m_subtype;
+    int m_senderId;
+    int m_senderType;
+    int m_subType;
 };
 
 

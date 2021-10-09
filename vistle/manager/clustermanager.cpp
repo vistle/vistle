@@ -646,7 +646,8 @@ bool ClusterManager::handle(const message::Buffer &message, const MessagePayload
         }
     }
     if (message::Id::isHub(message.destId())) {
-        if (destHub != hubId || message.type() == message::EXECUTE || message.type() == message::CANCELEXECUTE) {
+        if (destHub != hubId || message.type() == message::EXECUTE || message.type() == message::CANCELEXECUTE ||
+            message.type() == message::COVER) {
             return sendHub(message, payload);
         }
     }

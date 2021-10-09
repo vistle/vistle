@@ -214,7 +214,7 @@ bool VistlePlugin::sendVisMessage(const covise::Message *msg)
         return false;
     }
 
-    message::Cover cover(m_module->mirrorId(), msg->type);
+    message::Cover cover(m_module->mirrorId(), msg->sender, msg->send_type, msg->type);
     cover.setDestId(message::Id::MasterHub);
     MessagePayload pl(msg->data.data(), msg->data.length());
     cover.setPayloadSize(msg->data.length());
