@@ -15,9 +15,11 @@
 #else
 #include <boost/detail/endian.hpp>
 #if defined(BOOST_LITTLE_ENDIAN)
-#define BOOST_ENDIAN_LITTLE_BYTE
+#define BOOST_ENDIAN_BIG_BYTE 0
+#define BOOST_ENDIAN_LITTLE_BYTE 1
 #elif defined(BOOST_BIG_ENDIAN)
-#define BOOST_ENDIAN_BIG_BYTE
+#define BOOST_ENDIAN_BIG_BYTE 1
+#define BOOST_ENDIAN_LITTLE_BYTE 0
 #else
 #error "unable to determine system endianness"
 #endif
@@ -48,9 +50,9 @@ enum endianness {
     big_endian,
     network_endian = big_endian,
 
-#if defined(BOOST_ENDIAN_LITTLE_BYTE)
+#if BOOST_ENDIAN_LITTLE_BYTE
     host_endian = little_endian
-#elif defined(BOOST_ENDIAN_BIG_BYTE)
+#elif BOOST_ENDIAN_BIG_BYTE
     host_endian = big_endian
 #else
 #error "unable to determine system endianness"
@@ -142,6 +144,13 @@ struct do_byte_swap<big_endian, big_endian, T> {
 };
 
 } // namespace detail
+
+template<endianness from, endianness to, class T>
+inline T byte_swap(T value)
+#ifdef __GNUC__
+    __attribute__((warn_unused_result))
+#endif
+    ;
 
 template<endianness from, endianness to, class T>
 inline T byte_swap(T value)
