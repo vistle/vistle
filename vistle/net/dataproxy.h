@@ -74,6 +74,7 @@ private:
     bool answerRemoteIdentify(std::shared_ptr<tcp_socket> sock, const vistle::message::Identify &id);
     std::shared_ptr<tcp_socket> getRemoteDataSock(const message::Message &msg);
     std::shared_ptr<tcp_socket> getLocalDataSock(const message::Message &msg);
+    std::shared_ptr<tcp_socket> getDataSock(const message::Message &msg);
 
     void shutdownSocket(std::shared_ptr<tcp_socket> sock, const std::string &reason);
     bool removeSocket(std::shared_ptr<tcp_socket> sock);

@@ -1157,6 +1157,9 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
         if (m_dataProxy->connectRemoteData(add, [this]() { dispatch(); })) {
             m_stateTracker.handle(add, nullptr, true);
             sendUi(add);
+        } else if (add.id() != message::Id::MasterHub) {
+            m_stateTracker.handle(add, nullptr, true);
+            sendUi(add);
         } else {
             CERR << "could not establish data connection to hub " << add.address() << ":" << add.port() << " - ignoring"
                  << std::endl;
