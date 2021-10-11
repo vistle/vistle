@@ -20,13 +20,13 @@
 #include "ReadSeisSol.h"
 
 //mpi
-#include <eigen3/Eigen/src/Core/Matrix.h>
 #include <mpi.h>
 
 //eigen
 #include <eigen3/Eigen/LU>
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/Core>
+#include <eigen3/Eigen/src/Core/Matrix.h>
 
 //vistle
 #include "vistle/core/object.h"
@@ -279,6 +279,7 @@ template<class ForwardIt>
 float calcTetrahedronVolume(ForwardIt begin)
 {
     Eigen::MatrixXf mat = Eigen::Map<Eigen::Matrix<float, 4, 4>>(begin).transpose();
+    /* std::cout << mat; */
     auto v_p = mat.determinant();
     return v_p / 6;
 }
@@ -676,7 +677,7 @@ void ReadSeisSol::fillUnstrGridElemList(vistle::UnstructuredGrid::ptr unstr, con
 }
 
 /**
- * @brief Check if volume of given geometry elements (triangle, tetrahedron ... ) > 0. 
+ * @brief Check if volume of given geometry elements (triangle, tetrahedron ... ) > 0.
  *
  * @param unstr UnstructuredGrid
  * @param geo XdmfArray which contains geometry.
@@ -687,26 +688,26 @@ bool ReadSeisSol::checkGeoElemVolume(vistle::UnstructuredGrid::ptr unstr, XdmfAr
 {
     switch (unstr->tl()[0]) {
     case UnstructuredGrid::TETRAHEDRON: {
-        auto connectBegin = unstr->cl().begin();
+        std::vector<float> test(geo->getDimensions()[0] * geo->getDimensions()[1]);
+        geo->getValues(0, test.data());
+        for (auto x: test)
+            std::cout << std::to_string(x) << '\n';
+        auto clIt = unstr->cl().begin();
+        auto clEndIt = unstr->cl().end();
         std::array<float, 16> arr;
-        for (unsigned k = 0; k < geo->getSize(); ++k) {
-            auto it = connectBegin + k;
+        std::fill_n(arr.begin() + 12, 4, 1);
+        while (clIt != clEndIt) {
+            /* std::cout << "val it: " << *clIt << '\n'; */
+            for (int i = 0; i < 12; i = i + 4)
+                geo->getValues(*(clIt + i), arr.data() + i, 4, 3, 1);
 
-            // get 4 points from geo and calculate volume of tetrahedron until
-            // one permutation leads to volume > 0
-            std::cout << "tetrahedron no. " << k << '\n';
-            auto volume{0};
-            do {
-                for (int i = 0; i < 12; i = i + 4, ++it)
-                    geo->getValues(*it, arr.data() + i, 4, 3, 1);
-                for (int i = 0; i < 4; ++i)
-                    std::cout << "iterator: " << *(it + i) << '\n';
-                std::cout << '\n';
-                std::fill_n(arr.begin() + 12, 4, 1);
-                volume = calcTetrahedronVolume(arr.begin());
-                std::cout << "volume: " << volume << '\n';
-                std::cout << '\n';
-            } while (volume <= 0 && next_permutation(it, it + 4));
+            auto volume = calcTetrahedronVolume(arr.begin());
+            // volume < 0 => swap 2 corners of tetrahedron
+            if (volume <= 0)
+                iter_swap(clIt, clIt + 1);
+            /* std::cout << "volume: " << volume << '\n'; */
+            std::cout << '\n';
+            std::advance(clIt, 4);
         }
     }
     }
