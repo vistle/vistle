@@ -468,7 +468,7 @@ void ReadSeisSol::clearChoice()
 /**
   * @brief: Iterate through properties of a xdmfgridcollection.
   *
-  * @xgridCol: Constant grid collection pointer.
+  * @xdmfGridCol: Constant grid collection pointer.
   */
 void ReadSeisSol::inspectXdmfGridCollection(const XdmfGridCollection *xdmfGridCol)
 {
@@ -494,7 +494,7 @@ void ReadSeisSol::inspectXdmfGridCollection(const XdmfGridCollection *xdmfGridCo
 /**
   * @brief: Iterate through unstructured grid attributes stored in an xdmf.
   *
-  * @xugrid: const unstructured grid pointer.
+  * @xdmfUGrid: const unstructured grid pointer.
   */
 void ReadSeisSol::inspectXdmfUnstrGrid(const XdmfUnstructuredGrid *xdmfUGrid)
 {
@@ -513,7 +513,7 @@ void ReadSeisSol::inspectXdmfUnstrGrid(const XdmfUnstructuredGrid *xdmfUGrid)
 /**
  * @brief NOT IMPLEMENTED
  *
- * @param xgeo
+ * @param xdmfGeo
  */
 void ReadSeisSol::inspectXdmfGeometry(const XdmfGeometry *xdmfGeo)
 {
@@ -525,7 +525,7 @@ void ReadSeisSol::inspectXdmfGeometry(const XdmfGeometry *xdmfGeo)
 /**
  * @brief NOT IMPLEMENTED
  *
- * @param xtime
+ * @param xdmfTime
  */
 void ReadSeisSol::inspectXdmfTime(const XdmfTime *xdmfTime)
 {
@@ -537,7 +537,7 @@ void ReadSeisSol::inspectXdmfTime(const XdmfTime *xdmfTime)
 /**
  * @brief NOT IMPLEMENTED
  *
- * @param xtopo
+ * @param xdmfTopo
  */
 void ReadSeisSol::inspectXdmfTopology(const XdmfTopology *xdmfTopo)
 {
@@ -549,7 +549,7 @@ void ReadSeisSol::inspectXdmfTopology(const XdmfTopology *xdmfTopo)
 /**
   * @brief: Inspect XdmfAttribute and generate a parameter in reader.
   *
-  * @xatt: Const attribute pointer.
+  * @xdmfAtt: Const attribute pointer.
   */
 void ReadSeisSol::inspectXdmfAttribute(const XdmfAttribute *xdmfAtt)
 {
@@ -560,7 +560,7 @@ void ReadSeisSol::inspectXdmfAttribute(const XdmfAttribute *xdmfAtt)
 /**
   * @brief: Inspect XdmfDomain.
   *
-  * @xdomain: Const pointer of domain-object.
+  * @xdmfDomain: Const pointer of domain-object.
   */
 void ReadSeisSol::inspectXdmfDomain(const XdmfDomain *xdmfDomain)
 {
@@ -658,7 +658,6 @@ bool ReadSeisSol::examine(const vistle::Parameter *param)
   */
 void ReadSeisSol::fillUnstrGridTypeList(vistle::UnstructuredGrid::ptr unstr, const vistle::UnstructuredGrid::Type &type)
 {
-    /* const auto &setGhostType{type | vistle::UnstructuredGrid::GHOST_BIT}; */
     std::fill(unstr->tl().begin(), unstr->tl().end(), type);
 }
 
@@ -680,7 +679,7 @@ void ReadSeisSol::fillUnstrGridElemList(vistle::UnstructuredGrid::ptr unstr, con
  * @brief Check if volume of given geometry elements (triangle, tetrahedron ... ) > 0.
  *
  * @param unstr UnstructuredGrid
- * @param geo XdmfArray which contains geometry.
+ * @param xdmfArrGeo XdmfArray which contains geometry.
  *
  * @return True if everything could be calculated.
  */
@@ -688,9 +687,11 @@ bool ReadSeisSol::checkGeoElemVolume(vistle::UnstructuredGrid::ptr unstr, XdmfAr
 {
     switch (unstr->tl()[0]) {
     case UnstructuredGrid::TETRAHEDRON: {
+        std::cout << "dim1: "<< xdmfArrGeo->getDimensions()[0] << '\n';
+        std::cout << "dim2: "<< xdmfArrGeo->getDimensions()[1] << '\n';
         std::vector<float> test(xdmfArrGeo->getDimensions()[0] * xdmfArrGeo->getDimensions()[1]);
         xdmfArrGeo->getValues(0, test.data());
-        for (auto x : test)
+        for (auto x: test)
             std::cout << std::to_string(x) << '\n';
         auto clIt = unstr->cl().begin();
         auto clEndIt = unstr->cl().end();
@@ -715,7 +716,7 @@ bool ReadSeisSol::checkGeoElemVolume(vistle::UnstructuredGrid::ptr unstr, XdmfAr
   * @brief: Fill coordinates stored in a XdmfArray into unstructured grid vistle pointer.
   *
   * @unstr: UnstructuredGrid::ptr with coordinates to fill.
-  * @xArrGeo: XdmfArray which contains coordinates in an one dimensional array.
+  * @xdmfArrGeo: XdmfArray which contains coordinates in an one dimensional array.
   *
   * @return: true if values stored in XdmfArray could be stored in coords array of given unstructured grid.
   */
@@ -747,7 +748,7 @@ bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfA
  * @brief Fill coordinates stored in a XdmfArray into unstructured grid vistle pointer.
  *
  * @param unstr UnstructuredGrid::ptr with coordinates to fill.
- * @param xArrGeo XdmfArray which contains coordinates in an one dimensional array.
+ * @param xdmfArrGeo XdmfArray which contains coordinates in an one dimensional array.
  * @param verticesToRead vertices to read from array.
  *
  * @return true if values stored in XdmfArray could be stored in coords array of given unstructured grid.
@@ -777,7 +778,7 @@ bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfA
   * @brief: Fill connectionlist stored in a XdmfArray into unstructured grid vistle pointer.
   *
   * @unstr: UnstructuredGrid::ptr with connectionlist to fill.
-  * @xArrConn: XdmfArray which contains connectionlist in an one dimensional array.
+  * @xdmfArrConn: XdmfArray which contains connectionlist in an one dimensional array.
   *
   * @return: true if connectionlist has been updated correctly.
   */
@@ -795,23 +796,23 @@ bool ReadSeisSol::fillUnstrGridConnectList(vistle::UnstructuredGrid::ptr unstr, 
 /**
   * @brief: Helper function for reading XdmfArray with given XdmfHeavyDataController.
   *
-  * @xArr: XdmfArray for read operation.
+  * @xdmfArr: XdmfArray for read operation.
   * @controller: XdmfHeavyDataController that specifies how to read the XdmfArray.
   */
-void ReadSeisSol::readXdmfHeavyController(XdmfArray *xArr, const boost::shared_ptr<XdmfHeavyDataController> &controller)
+void ReadSeisSol::readXdmfHeavyController(XdmfArray *xdmfArr, const boost::shared_ptr<XdmfHeavyDataController> &controller)
 {
     //has to be empty otherwise potential memoryleak
-    if (xArr->isInitialized())
-        xArr->release();
+    if (xdmfArr->isInitialized())
+        xdmfArr->release();
 
-    xArr->insert(controller);
-    xArr->read();
+    xdmfArr->insert(controller);
+    xdmfArr->read();
 }
 
 /**
  * @brief Read attributes stored in HDF5 file parallel with blocks into memory.
  *
- * @param xArrAtt XdmfArray pointer for storage.
+ * @param xdmfArrAtt XdmfArray pointer for storage.
  * @param attDim Dimension of attribute per timestep.
  * @param defaultController default heavy data controller.
  * @param block current block.
@@ -854,7 +855,7 @@ void ReadSeisSol::readXdmfHDF5AttributeParallel(XdmfArray *xdmfArrAtt, unsigned 
 /**
  * @brief Reads topology parallel and return unique vertices list.
  *
- * @param xArrTopo Array to store topology data.
+ * @param xdmfArrTopo Array to store topology data.
  * @param defaultControllerTopo default HeavyDataController for topology.
  * @param block current block.
  */
@@ -891,19 +892,19 @@ void ReadSeisSol::readXdmfHDF5TopologyParallel(XdmfArray *xdmfArr,
 /**
  * @brief: Generate a scalar pointer with values from XdmfAttribute.
  *
- * @param xattribute: XdmfAttribute pointer.
+ * @param xdmfAttribute: XdmfAttribute pointer.
  * @param timestep: Current timestep.
  * @param block: Current block number.
  *
  * @return: generated vistle scalar pointer.
  */
-vistle::Vec<Scalar>::ptr ReadSeisSol::generateScalarFromXdmfAttribute(XdmfAttribute *xdmfAttribute, const int &timestep,
+vistle::Vec<Scalar>::ptr ReadSeisSol::generateScalarFromXdmfAttribute(XdmfAttribute *xdmfAtt, const int &timestep,
                                                                       const int &block)
 {
-    if (!xdmfAttribute)
+    if (!xdmfAtt)
         return nullptr;
 
-    const auto &xattDimVec = xdmfAttribute->getDimensions();
+    const auto &xattDimVec = xdmfAtt->getDimensions();
     const auto &numDims = xattDimVec.size();
     unsigned attDim = *std::max_element(xattDimVec.begin(), xattDimVec.end());
 
@@ -915,10 +916,10 @@ vistle::Vec<Scalar>::ptr ReadSeisSol::generateScalarFromXdmfAttribute(XdmfAttrib
 
     const shared_ptr<XdmfArray> xArrAtt(XdmfArray::New());
     const auto &mode = m_parallelMode->getValue();
-    const auto &controller = xdmfAttribute->getHeavyDataController();
+    const auto &controller = xdmfAtt->getHeavyDataController();
 
     if (mode == BLOCKS) {
-        if (XdmfAttributeCenter::Cell() == xdmfAttribute->getCenter())
+        if (XdmfAttributeCenter::Cell() == xdmfAtt->getCenter())
             readXdmfHDF5AttributeParallel(xArrAtt.get(), attDim, controller, block, timestep);
         else {
             sendInfo("Other options than centering attributes according to cells in block mode are not implemented");
@@ -1089,7 +1090,7 @@ bool ReadSeisSol::prepareRead()
 /**
  * @brief Reuses grid from first timestep if m_reuseGrid is enabled or create a new one for each timestep otherwise.
  *
- * @param xugrid XdmfUnstructuredGrid pointer.
+ * @param xdmfUGrid XdmfUnstructuredGrid pointer.
  * @param block current blockNum.
  *
  * @return Clone of m_unstr_grid if m_reuseGrid is true else the function creates a new one.
