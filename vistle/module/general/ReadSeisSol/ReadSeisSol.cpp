@@ -470,19 +470,19 @@ void ReadSeisSol::clearChoice()
   *
   * @xgridCol: Constant grid collection pointer.
   */
-void ReadSeisSol::inspectXdmfGridCollection(const XdmfGridCollection *xgridCol)
+void ReadSeisSol::inspectXdmfGridCollection(const XdmfGridCollection *xdmfGridCol)
 {
-    if (xgridCol) {
-        const auto &gridColType = xgridCol->getType();
+    if (xdmfGridCol) {
+        const auto &gridColType = xdmfGridCol->getType();
         if (gridColType == XdmfGridCollectionType::Temporal()) {
             //at the moment attribute number and type are the same for all ugrids.
-            if (xgridCol->getNumberUnstructuredGrids()) {
+            if (xdmfGridCol->getNumberUnstructuredGrids()) {
                 //number of unstructured grids = timestep
-                setTimesteps(xgridCol->getNumberUnstructuredGrids());
-                inspectXdmfUnstrGrid(xgridCol->getUnstructuredGrid(1).get());
+                setTimesteps(xdmfGridCol->getNumberUnstructuredGrids());
+                inspectXdmfUnstrGrid(xdmfGridCol->getUnstructuredGrid(1).get());
             }
-            if (xgridCol->getNumberCurvilinearGrids() | xgridCol->getNumberRectilinearGrids() |
-                xgridCol->getNumberRegularGrids())
+            if (xdmfGridCol->getNumberCurvilinearGrids() | xdmfGridCol->getNumberRectilinearGrids() |
+                xdmfGridCol->getNumberRegularGrids())
                 sendInfo("Other gridtypes than unstructured have not been implemented yet!");
         } else if (gridColType == XdmfGridCollectionType::Spatial())
             sendInfo("Spatial collectiontype not implemented yet!");
@@ -496,17 +496,17 @@ void ReadSeisSol::inspectXdmfGridCollection(const XdmfGridCollection *xgridCol)
   *
   * @xugrid: const unstructured grid pointer.
   */
-void ReadSeisSol::inspectXdmfUnstrGrid(const XdmfUnstructuredGrid *xugrid)
+void ReadSeisSol::inspectXdmfUnstrGrid(const XdmfUnstructuredGrid *xdmfUGrid)
 {
-    if (xugrid) {
+    if (xdmfUGrid) {
         //TODO: NOT IMPLEMENTED YET => FUNCTIONS DO NOTHING AT THE MOMENT.
-        inspectXdmfTopology(xugrid->getTopology().get());
-        inspectXdmfGeometry(xugrid->getGeometry().get());
-        inspectXdmfTime(xugrid->getTime().get());
+        inspectXdmfTopology(xdmfUGrid->getTopology().get());
+        inspectXdmfGeometry(xdmfUGrid->getGeometry().get());
+        inspectXdmfTime(xdmfUGrid->getTime().get());
 
         clearChoice();
-        for (unsigned i = 0; i < xugrid->getNumberAttributes(); ++i)
-            inspectXdmfAttribute(xugrid->getAttribute(i).get());
+        for (unsigned i = 0; i < xdmfUGrid->getNumberAttributes(); ++i)
+            inspectXdmfAttribute(xdmfUGrid->getAttribute(i).get());
     }
 }
 
@@ -515,9 +515,9 @@ void ReadSeisSol::inspectXdmfUnstrGrid(const XdmfUnstructuredGrid *xugrid)
  *
  * @param xgeo
  */
-void ReadSeisSol::inspectXdmfGeometry(const XdmfGeometry *xgeo)
+void ReadSeisSol::inspectXdmfGeometry(const XdmfGeometry *xdmfGeo)
 {
-    if (xgeo) {
+    if (xdmfGeo) {
         // set geo global ?
     }
 }
@@ -527,9 +527,9 @@ void ReadSeisSol::inspectXdmfGeometry(const XdmfGeometry *xgeo)
  *
  * @param xtime
  */
-void ReadSeisSol::inspectXdmfTime(const XdmfTime *xtime)
+void ReadSeisSol::inspectXdmfTime(const XdmfTime *xdmfTime)
 {
-    if (xtime) {
+    if (xdmfTime) {
         // set timestep defined in xdmf
     }
 }
@@ -539,9 +539,9 @@ void ReadSeisSol::inspectXdmfTime(const XdmfTime *xtime)
  *
  * @param xtopo
  */
-void ReadSeisSol::inspectXdmfTopology(const XdmfTopology *xtopo)
+void ReadSeisSol::inspectXdmfTopology(const XdmfTopology *xdmfTopo)
 {
-    if (xtopo) {
+    if (xdmfTopo) {
         // set topo global ?
     }
 }
@@ -551,10 +551,10 @@ void ReadSeisSol::inspectXdmfTopology(const XdmfTopology *xtopo)
   *
   * @xatt: Const attribute pointer.
   */
-void ReadSeisSol::inspectXdmfAttribute(const XdmfAttribute *xatt)
+void ReadSeisSol::inspectXdmfAttribute(const XdmfAttribute *xdmfAtt)
 {
-    if (xatt)
-        m_attChoiceStr.push_back(xatt->getName());
+    if (xdmfAtt)
+        m_attChoiceStr.push_back(xdmfAtt->getName());
 }
 
 /**
@@ -562,11 +562,11 @@ void ReadSeisSol::inspectXdmfAttribute(const XdmfAttribute *xatt)
   *
   * @xdomain: Const pointer of domain-object.
   */
-void ReadSeisSol::inspectXdmfDomain(const XdmfDomain *xdomain)
+void ReadSeisSol::inspectXdmfDomain(const XdmfDomain *xdmfDomain)
 {
-    if (xdomain)
-        for (unsigned i = 0; i < xdomain->getNumberGridCollections(); ++i)
-            inspectXdmfGridCollection(xdomain->getGridCollection(i).get());
+    if (xdmfDomain)
+        for (unsigned i = 0; i < xdmfDomain->getNumberGridCollections(); ++i)
+            inspectXdmfGridCollection(xdmfDomain->getGridCollection(i).get());
 }
 
 /**
@@ -684,29 +684,26 @@ void ReadSeisSol::fillUnstrGridElemList(vistle::UnstructuredGrid::ptr unstr, con
  *
  * @return True if everything could be calculated.
  */
-bool ReadSeisSol::checkGeoElemVolume(vistle::UnstructuredGrid::ptr unstr, XdmfArray *geo)
+bool ReadSeisSol::checkGeoElemVolume(vistle::UnstructuredGrid::ptr unstr, XdmfArray *xdmfArrGeo)
 {
     switch (unstr->tl()[0]) {
     case UnstructuredGrid::TETRAHEDRON: {
-        std::vector<float> test(geo->getDimensions()[0] * geo->getDimensions()[1]);
-        geo->getValues(0, test.data());
-        for (auto x: test)
+        std::vector<float> test(xdmfArrGeo->getDimensions()[0] * xdmfArrGeo->getDimensions()[1]);
+        xdmfArrGeo->getValues(0, test.data());
+        for (auto x : test)
             std::cout << std::to_string(x) << '\n';
         auto clIt = unstr->cl().begin();
         auto clEndIt = unstr->cl().end();
         std::array<float, 16> arr;
         std::fill_n(arr.begin() + 12, 4, 1);
         while (clIt != clEndIt) {
-            /* std::cout << "val it: " << *clIt << '\n'; */
             for (int i = 0; i < 12; i = i + 4)
-                geo->getValues(*(clIt + i), arr.data() + i, 4, 3, 1);
+                xdmfArrGeo->getValues(*(clIt + i), arr.data() + i, 4, 3, 1);
 
             auto volume = calcTetrahedronVolume(arr.begin());
             // volume < 0 => swap 2 corners of tetrahedron
             if (volume <= 0)
                 iter_swap(clIt, clIt + 1);
-            /* std::cout << "volume: " << volume << '\n'; */
-            std::cout << '\n';
             std::advance(clIt, 4);
         }
     }
@@ -722,9 +719,9 @@ bool ReadSeisSol::checkGeoElemVolume(vistle::UnstructuredGrid::ptr unstr, XdmfAr
   *
   * @return: true if values stored in XdmfArray could be stored in coords array of given unstructured grid.
   */
-bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfArray *xArrGeo)
+bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfArray *xdmfArrGeo)
 {
-    if (!xArrGeo)
+    if (!xdmfArrGeo)
         return false;
 
     auto x = unstr->x().data(), y = unstr->y().data(), z = unstr->z().data();
@@ -735,13 +732,13 @@ bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfA
     constexpr unsigned strideVistleArr{1};
 
     //TODO: check if volume inverted, because vertices can have different order => look at tetrahedron vtk and vistle
-    if (!checkGeoElemVolume(unstr, xArrGeo)) {
+    if (!checkGeoElemVolume(unstr, xdmfArrGeo)) {
     }
 
     //current order for geo-arrays is contiguous: arrGeo => x1 y1 z1 x2 y2 z2 x3 y3 z3 ... xn yn zn
-    xArrGeo->getValues(0, x, xArrGeo->getSize() / numCoords, numCoords, strideVistleArr);
-    xArrGeo->getValues(1, y, xArrGeo->getSize() / numCoords, numCoords, strideVistleArr);
-    xArrGeo->getValues(2, z, xArrGeo->getSize() / numCoords, numCoords, strideVistleArr);
+    xdmfArrGeo->getValues(0, x, xdmfArrGeo->getSize() / numCoords, numCoords, strideVistleArr);
+    xdmfArrGeo->getValues(1, y, xdmfArrGeo->getSize() / numCoords, numCoords, strideVistleArr);
+    xdmfArrGeo->getValues(2, z, xdmfArrGeo->getSize() / numCoords, numCoords, strideVistleArr);
 
     return true;
 }
@@ -755,22 +752,22 @@ bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfA
  *
  * @return true if values stored in XdmfArray could be stored in coords array of given unstructured grid.
  */
-bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfArray *xArrGeo,
+bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfArray *xdmfArrGeo,
                                       const std::set<unsigned> &verticesToRead)
 {
-    if (!xArrGeo)
+    if (!xdmfArrGeo)
         return false;
 
     if (verticesToRead.empty())
-        return fillUnstrGridCoords(unstr, xArrGeo);
+        return fillUnstrGridCoords(unstr, xdmfArrGeo);
 
     auto x = unstr->x().data(), y = unstr->y().data(), z = unstr->z().data();
 
     //fill only with point coords from vertToRead
     for (const auto &vert: verticesToRead) {
-        x[vert] = xArrGeo->getValue<unsigned>(vert);
-        y[vert] = xArrGeo->getValue<unsigned>(vert + 1);
-        z[vert] = xArrGeo->getValue<unsigned>(vert + 2);
+        x[vert] = xdmfArrGeo->getValue<unsigned>(vert);
+        y[vert] = xdmfArrGeo->getValue<unsigned>(vert + 1);
+        z[vert] = xdmfArrGeo->getValue<unsigned>(vert + 2);
     }
 
     return true;
@@ -784,14 +781,14 @@ bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfA
   *
   * @return: true if connectionlist has been updated correctly.
   */
-bool ReadSeisSol::fillUnstrGridConnectList(vistle::UnstructuredGrid::ptr unstr, XdmfArray *xArrConn)
+bool ReadSeisSol::fillUnstrGridConnectList(vistle::UnstructuredGrid::ptr unstr, XdmfArray *xdmfArrConn)
 {
-    if (!xArrConn)
+    if (!xdmfArrConn)
         return false;
 
     //TODO: Debug invert elementvertices for tetrahedron => vtk vertice order = inverse vistle vertice order
     auto cl = unstr->cl().data();
-    xArrConn->getValues(0, cl, xArrConn->getSize());
+    xdmfArrConn->getValues(0, cl, xdmfArrConn->getSize());
     return true;
 }
 
@@ -820,7 +817,7 @@ void ReadSeisSol::readXdmfHeavyController(XdmfArray *xArr, const boost::shared_p
  * @param block current block.
  * @param timestep current timestep.
  */
-void ReadSeisSol::readXdmfHDF5AttributeParallel(XdmfArray *xArrAtt, unsigned &attDim,
+void ReadSeisSol::readXdmfHDF5AttributeParallel(XdmfArray *xdmfArrAtt, unsigned &attDim,
                                                 const boost::shared_ptr<XdmfHeavyDataController> &defaultController,
                                                 const int block, const int timestep)
 {
@@ -848,8 +845,8 @@ void ReadSeisSol::readXdmfHDF5AttributeParallel(XdmfArray *xArrAtt, unsigned &at
     auto hdfController =
         XdmfHDF5Controller::New(h5Path, setPath, arrayType, readStart, readStride, readCount, readDataSpace);
 
-    xArrAtt->setHeavyDataController(hdfController);
-    xArrAtt->read();
+    xdmfArrAtt->setHeavyDataController(hdfController);
+    xdmfArrAtt->read();
 
     hdfController->closeFiles();
 }
@@ -861,7 +858,7 @@ void ReadSeisSol::readXdmfHDF5AttributeParallel(XdmfArray *xArrAtt, unsigned &at
  * @param defaultControllerTopo default HeavyDataController for topology.
  * @param block current block.
  */
-void ReadSeisSol::readXdmfHDF5TopologyParallel(XdmfArray *xArr,
+void ReadSeisSol::readXdmfHDF5TopologyParallel(XdmfArray *xdmfArr,
                                                const boost::shared_ptr<XdmfHeavyDataController> &defaultController,
                                                const int block)
 {
@@ -885,8 +882,8 @@ void ReadSeisSol::readXdmfHDF5TopologyParallel(XdmfArray *xArr,
     auto hdfController =
         XdmfHDF5Controller::New(h5Path, setPath, arrayType, readStart, readStride, readCount, readDataSpace);
 
-    xArr->setHeavyDataController(hdfController);
-    xArr->read();
+    xdmfArr->setHeavyDataController(hdfController);
+    xdmfArr->read();
 
     hdfController->closeFiles();
 }
@@ -900,13 +897,13 @@ void ReadSeisSol::readXdmfHDF5TopologyParallel(XdmfArray *xArr,
  *
  * @return: generated vistle scalar pointer.
  */
-vistle::Vec<Scalar>::ptr ReadSeisSol::generateScalarFromXdmfAttribute(XdmfAttribute *xattribute, const int &timestep,
+vistle::Vec<Scalar>::ptr ReadSeisSol::generateScalarFromXdmfAttribute(XdmfAttribute *xdmfAttribute, const int &timestep,
                                                                       const int &block)
 {
-    if (!xattribute)
+    if (!xdmfAttribute)
         return nullptr;
 
-    const auto &xattDimVec = xattribute->getDimensions();
+    const auto &xattDimVec = xdmfAttribute->getDimensions();
     const auto &numDims = xattDimVec.size();
     unsigned attDim = *std::max_element(xattDimVec.begin(), xattDimVec.end());
 
@@ -918,10 +915,10 @@ vistle::Vec<Scalar>::ptr ReadSeisSol::generateScalarFromXdmfAttribute(XdmfAttrib
 
     const shared_ptr<XdmfArray> xArrAtt(XdmfArray::New());
     const auto &mode = m_parallelMode->getValue();
-    const auto &controller = xattribute->getHeavyDataController();
+    const auto &controller = xdmfAttribute->getHeavyDataController();
 
     if (mode == BLOCKS) {
-        if (XdmfAttributeCenter::Cell() == xattribute->getCenter())
+        if (XdmfAttributeCenter::Cell() == xdmfAttribute->getCenter())
             readXdmfHDF5AttributeParallel(xArrAtt.get(), attDim, controller, block, timestep);
         else {
             sendInfo("Other options than centering attributes according to cells in block mode are not implemented");
@@ -1097,13 +1094,13 @@ bool ReadSeisSol::prepareRead()
  *
  * @return Clone of m_unstr_grid if m_reuseGrid is true else the function creates a new one.
  */
-vistle::UnstructuredGrid::ptr ReadSeisSol::reuseGrid(XdmfUnstructuredGrid *xugrid, int block)
+vistle::UnstructuredGrid::ptr ReadSeisSol::reuseGrid(XdmfUnstructuredGrid *xdmfUGrid, int block)
 {
     UnstructuredGrid::ptr ugrid_ptr;
     if (m_reuseGrid->getValue())
         ugrid_ptr = m_vugrid_ptr->clone();
     else {
-        ugrid_ptr = generateUnstrGridFromXdmfGrid(xugrid, block);
+        ugrid_ptr = generateUnstrGridFromXdmfGrid(xdmfUGrid, block);
         checkObjectPtr(this, ugrid_ptr, ERROR_GRID_GENERATION);
     }
     return ugrid_ptr;

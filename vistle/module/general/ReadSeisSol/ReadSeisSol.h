@@ -71,7 +71,7 @@ private:
                               Args... args);
 
     void releaseXdmfObjects();
-    bool checkGeoElemVolume(vistle::UnstructuredGrid::ptr unstr, XdmfArray *geo);
+    bool checkGeoElemVolume(vistle::UnstructuredGrid::ptr unstr, XdmfArray *xdmfArrGeo);
     /* bool checkBlocks(); */
     void clearChoice();
     /* void initBlocks(); */
@@ -89,41 +89,42 @@ private:
     bool hdfModeNotImplementedRead(Token &, int, int);
 
     //xdmf
-    vistle::UnstructuredGrid::ptr reuseGrid(XdmfUnstructuredGrid *xUgrid, int block);
+    vistle::UnstructuredGrid::ptr reuseGrid(XdmfUnstructuredGrid *xdmfUGrid, int block);
     bool prepareReadXdmf();
     bool finishReadXdmf();
-    bool readXdmfUnstrParallel(XdmfArray *arrayGeo, const XdmfHeavyDataController *defaultController, const int block);
+    bool readXdmfUnstrParallel(XdmfArray *xmdfArrGeo, const XdmfHeavyDataController *defaultController,
+                               const int block);
     bool readXdmfHDF5Data(Token &token, int timestep, int block);
-    void readXdmfHDF5TopologyParallel(XdmfArray *xArrTopo,
+    void readXdmfHDF5TopologyParallel(XdmfArray *xdmfArrTopo,
                                       const boost::shared_ptr<XdmfHeavyDataController> &defaultControllerTopo,
                                       const int block);
-    void readXdmfHDF5AttributeParallel(XdmfArray *xArrAtt, unsigned &attDim,
+    void readXdmfHDF5AttributeParallel(XdmfArray *xdmfArrAtt, unsigned &attDim,
                                        const boost::shared_ptr<XdmfHeavyDataController> &defaultController,
                                        const int block, const int timestep);
 
     void setArrayType(boost::shared_ptr<const XdmfArrayType> type);
     void setGridCenter(const boost::shared_ptr<const XdmfAttributeCenter> &type);
-    void readXdmfHeavyController(XdmfArray *xArr, const boost::shared_ptr<XdmfHeavyDataController> &controller);
+    void readXdmfHeavyController(XdmfArray *xdmfArr, const boost::shared_ptr<XdmfHeavyDataController> &controller);
 
-    vistle::Vec<vistle::Scalar>::ptr generateScalarFromXdmfAttribute(XdmfAttribute *xattribute, const int &timestep,
+    vistle::Vec<vistle::Scalar>::ptr generateScalarFromXdmfAttribute(XdmfAttribute *xdmfAttribute, const int &timestep,
                                                                      const int &block);
-    vistle::UnstructuredGrid::ptr generateUnstrGridFromXdmfGrid(XdmfUnstructuredGrid *xunstr, const int block);
-    bool fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unst, XdmfArray *xArrGeo);
-    bool fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unst, XdmfArray *xArrGeo,
+    vistle::UnstructuredGrid::ptr generateUnstrGridFromXdmfGrid(XdmfUnstructuredGrid *xdmfUGrid, const int block);
+    bool fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unst, XdmfArray *xdmfArrGeo);
+    bool fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unst, XdmfArray *xdmfArrGeo,
                              const std::set<unsigned> &verticesToRead);
-    bool fillUnstrGridConnectList(vistle::UnstructuredGrid::ptr unstr, XdmfArray *xArrConn);
+    bool fillUnstrGridConnectList(vistle::UnstructuredGrid::ptr unstr, XdmfArray *xdmfArrConn);
     template<class T>
     void fillUnstrGridElemList(vistle::UnstructuredGrid::ptr unstr, const T &numCornerPerElem);
     void fillUnstrGridTypeList(vistle::UnstructuredGrid::ptr unstr, const vistle::UnstructuredGrid::Type &type);
 
     bool inspectXdmf(); //for parameter choice
     void inspectXdmfDomain(const XdmfDomain *item);
-    void inspectXdmfGridCollection(const XdmfGridCollection *xgridCol);
-    void inspectXdmfUnstrGrid(const XdmfUnstructuredGrid *xugrid);
-    void inspectXdmfAttribute(const XdmfAttribute *xatt);
-    void inspectXdmfGeometry(const XdmfGeometry *xgeo);
-    void inspectXdmfTopology(const XdmfTopology *xtopo);
-    void inspectXdmfTime(const XdmfTime *xtime);
+    void inspectXdmfGridCollection(const XdmfGridCollection *xdmfGridCol);
+    void inspectXdmfUnstrGrid(const XdmfUnstructuredGrid *xdmfUGrid);
+    void inspectXdmfAttribute(const XdmfAttribute *xdmfAtt);
+    void inspectXdmfGeometry(const XdmfGeometry *xdmfGeo);
+    void inspectXdmfTopology(const XdmfTopology *xdmfTopo);
+    void inspectXdmfTime(const XdmfTime *xdmfTime);
 
     //vistle param
     /* std::array<vistle::IntParameter *, 3> m_blocks; */
