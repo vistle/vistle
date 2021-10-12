@@ -22,12 +22,6 @@
 //mpi
 #include <mpi.h>
 
-//eigen
-#include <eigen3/Eigen/LU>
-#include <eigen3/Eigen/Dense>
-#include <eigen3/Eigen/Core>
-#include <eigen3/Eigen/src/Core/Matrix.h>
-
 //vistle
 #include "vistle/core/object.h"
 #include "vistle/core/port.h"
@@ -40,6 +34,12 @@
 #include "vistle/module/module.h"
 #include "vistle/module/reader.h"
 #include "vistle/util/enum.h"
+
+//vistle module utils
+#include "vistle/module/general/utils/str.h"
+#include "vistle/module/general/utils/geo.h"
+#include "vistle/module/general/utils/xdmf.h"
+#include "vistle/module/general/utils/c20.h"
 
 //boost
 #include <boost/mpi/communicator.hpp>
@@ -106,46 +106,30 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(ParallelMode, (BLOCKS)(SERIAL))
   *
   * @return: Corresponding vistle type.
   */
-const UnstructuredGrid::Type XdmfUgridToVistleUgridType(const XdmfUnstructuredGrid *ugrid)
+const vistle::UnstructuredGrid::Type XdmfUgridToVistleUgridType(XdmfUnstructuredGrid *ugrid)
 {
     const auto &ugridType = ugrid->getTopology()->getType();
     const std::string &topologyType = ugridType->getName();
     if (topologyType == "Tetrahedron")
-        return UnstructuredGrid::TETRAHEDRON;
+        return vistle::UnstructuredGrid::TETRAHEDRON;
     else if (topologyType == "Triangle")
-        return UnstructuredGrid::TRIANGLE;
+        return vistle::UnstructuredGrid::TRIANGLE;
     else if (topologyType == "Polygon")
-        return UnstructuredGrid::POLYGON;
+        return vistle::UnstructuredGrid::POLYGON;
     else if (topologyType == "Pyramid")
-        return UnstructuredGrid::PYRAMID;
+        return vistle::UnstructuredGrid::PYRAMID;
     else if (topologyType == "Hexahedron")
-        return UnstructuredGrid::HEXAHEDRON;
+        return vistle::UnstructuredGrid::HEXAHEDRON;
     else if (topologyType == "Polyvertex")
-        return UnstructuredGrid::POINT;
+        return vistle::UnstructuredGrid::POINT;
     else if (topologyType == "Polyline")
-        return UnstructuredGrid::BAR;
+        return vistle::UnstructuredGrid::BAR;
     else if (topologyType == "Quadrilateral")
-        return UnstructuredGrid::QUAD;
+        return vistle::UnstructuredGrid::QUAD;
     else if (topologyType == "Wedge")
-        return UnstructuredGrid::PRISM;
+        return vistle::UnstructuredGrid::PRISM;
     else
-        return UnstructuredGrid::NONE;
-}
-
-/**
- * @brief: Checks if suffix string is the end of main.
- *
- * @param main: main string.
- * @param suffix: suffix string
- *
- * @return: True if given suffix is end of main.
- */
-bool checkFileEnding(const std::string &main, const std::string &suffix)
-{
-    if (main.size() >= suffix.size())
-        if (main.compare(main.size() - suffix.size(), suffix.size(), suffix) == 0)
-            return true;
-    return false;
+        return vistle::UnstructuredGrid::NONE;
 }
 
 /**
@@ -165,123 +149,6 @@ bool checkObjectPtr(ReadSeisSol *obj, vistle::Object::ptr vObj_ptr, const std::s
         return false;
     }
     return true;
-}
-
-/**
- * @brief Extract unique points from xdmfarray and store them in a set.
- *
- * @tparam T Set generic parameter.
- * @param arr XdmfArray with values to extract.
- * @param refSet Storage std::set.
- */
-template<class T>
-void extractUniquePoints(XdmfArray *arr, std::set<T> &refSet)
-{
-    if (arr)
-        for (unsigned i = 0; i < arr->getSize(); ++i)
-            refSet.insert(arr->getValue<T>(i));
-}
-
-/**
- * @brief std::iter_swap (C++20)
- *
- * @tparam ForwardIt1 iterator type 1
- * @tparam ForwardIt2 iterator type 2
- * @param a iterator
- * @param b iterator
- */
-template<class ForwardIt1, class ForwardIt2>
-constexpr void iter_swap(ForwardIt1 a, ForwardIt2 b) // constexpr since C++20
-{
-    std::swap(*a, *b);
-}
-
-/**
- * @brief std::next_permutation (C++20)
- *
- * @tparam BidirIt
- * @param first
- * @param last
- *
- * @return 
- */
-template<class BidirIt>
-bool next_permutation(BidirIt first, BidirIt last)
-{
-    if (first == last)
-        return false;
-    BidirIt i = last;
-    if (first == --i)
-        return false;
-
-    while (true) {
-        BidirIt i1, i2;
-
-        i1 = i;
-        if (*--i < *i1) {
-            i2 = last;
-            while (!(*i < *--i2))
-                ;
-            iter_swap(i, i2);
-            std::reverse(i1, last);
-            return true;
-        }
-        if (i == first) {
-            std::reverse(first, last);
-            return false;
-        }
-    }
-}
-
-/**
- * @brief Shift order of container in value range.
- *
- * @tparam ForwardIt Iterator type
- * @param begin begin iterator.
- * @param end end iterator.
- * @param range subrange in container.
- * @param left shift direction.
- */
-template<class ForwardIt>
-constexpr void shift_order_in_range(ForwardIt begin, ForwardIt end, unsigned range, bool left = true)
-{
-    auto sizeIt = range - 1;
-    for (ForwardIt i = begin; i != end; i = i + range)
-        if (left)
-            for (ForwardIt j = i; j != i + sizeIt; ++j)
-                iter_swap(j, j + 1);
-        else
-            for (ForwardIt j = i + sizeIt; j != i; --j)
-                iter_swap(j, j - 1);
-}
-
-/**
- * @brief Calculate tetrahedron volume with corner coords.
- *
- *     Vp = volume parallelpiped
- *     Vt = volume tetrahedron
- *     Vt = Vp/6
- *
- *     A = (x1 x2 x3 x4)
- *     B = (y1 y2 y3 y4)
- *     C = (z1 z2 z3 z4)
- *                          | x1 x2 x3 x4 |
- *     Vp = det(A, B, C) =  | y1 y2 y3 y4 |
- *                          | z1 z2 z3 z4 |
- *                          | 1  1  1  1  |
- *
- * @tparam ForwardIt Iterator of container which contain corner coords.
- * @param begin Begin of container.
- *
- * @return Volume of tetrahedron.
- */
-template<class ForwardIt>
-float calcTetrahedronVolume(ForwardIt begin)
-{
-    Eigen::MatrixXf mat = Eigen::Map<Eigen::Matrix<float, 4, 4>>(begin);
-    std::cout << mat << '\n';
-    auto v_p = mat.determinant();
-    return v_p / 6;
 }
 } // namespace
 
@@ -332,7 +199,6 @@ void ReadSeisSol::initObserveParameter()
     observeParameter(m_reuseGrid);
     observeParameter(m_block);
 }
-
 
 /**
  * @brief Initialize block parameter.
@@ -626,7 +492,7 @@ bool ReadSeisSol::inspectXdmf()
 bool ReadSeisSol::examine(const vistle::Parameter *param)
 {
     if (!param || param == m_file) {
-        if (!checkFileEnding(m_file->getValue(), ".xdmf"))
+        if (!vistle::checkFileEnding(m_file->getValue(), ".xdmf"))
             return false;
 
         callSeisModeFunction(&ReadSeisSol::inspectXdmf, &ReadSeisSol::hdfModeNotImplemented);
@@ -694,7 +560,6 @@ bool ReadSeisSol::checkGeoElemVolume(vistle::UnstructuredGrid::ptr unstr, XdmfAr
             xdmfArrGeo->getValues(cl[i] * 3, arr.data() + i * 4, 3, 1, 1);
 
         auto volume = calcTetrahedronVolume(arr.begin());
-        sendInfo("Volume: %f", volume);
         if (volume <= 0)
             return false;
         return true;
@@ -728,8 +593,9 @@ bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfA
         auto clIt = unstr->cl().begin();
         auto clItEnd = unstr->cl().end();
         while (clIt != clItEnd) {
-            auto curEnd = clIt + 4;
-            std::reverse(clIt, curEnd);
+            /* auto curEnd = clIt + 4; */
+            /* std::reverse(clIt, curEnd); */
+            iter_swap(clIt, clIt + 1);
             std::advance(clIt, 4);
         }
     }
@@ -738,6 +604,7 @@ bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfA
     xdmfArrGeo->getValues(0, x, xdmfArrGeo->getSize() / numCoords, numCoords, strideVistleArr);
     xdmfArrGeo->getValues(1, y, xdmfArrGeo->getSize() / numCoords, numCoords, strideVistleArr);
     xdmfArrGeo->getValues(2, z, xdmfArrGeo->getSize() / numCoords, numCoords, strideVistleArr);
+
 
     return true;
 }
