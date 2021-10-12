@@ -595,7 +595,7 @@ void DataProxy::printConnections() const
     }
 }
 
-bool DataProxy::connectRemoteData(const message::AddHub &remote, std::function<void()> messageDispatcher)
+bool DataProxy::connectRemoteData(const message::AddHub &remote, std::function<bool()> messageDispatcher)
 {
     CERR << "connectRemoteData: " << remote << std::endl;
 
@@ -661,53 +661,61 @@ bool DataProxy::connectRemoteData(const message::AddHub &remote, std::function<v
          << " parallel connections to " << remote.address() << ":" << dataPort << std::flush;
     boost::asio::ip::tcp::endpoint dest(remote.address(), dataPort);
 
+    bool interrupt = false;
     size_t count = 0;
-    while (m_remoteDataSocket[hubId].sockets.size() < numconn && count < numtries) {
+    while (!interrupt && m_remoteDataSocket[hubId].sockets.size() < numconn && count < numtries) {
         ++count;
         auto sock = std::make_shared<asio::ip::tcp::socket>(io());
         m_connectingSockets.insert(sock);
         lock.unlock();
 
-        messageDispatcher();
+        if (!messageDispatcher()) {
+            interrupt = true;
+        }
 
-        sock->async_connect(dest, [this, sock, remote, dataPort, hubId](const boost::system::error_code &ec) {
-            lock_guard lock(m_mutex);
-            m_connectingSockets.erase(sock);
+        if (!interrupt) {
+            sock->async_connect(dest, [this, sock, remote, dataPort, hubId](const boost::system::error_code &ec) {
+                lock_guard lock(m_mutex);
+                m_connectingSockets.erase(sock);
 
-            if (ec == asio::error::operation_aborted) {
-                return;
-            }
-            if (ec == asio::error::timed_out) {
-                return;
-            }
-            if (ec) {
-                CERR << "could not establish bulk data connection to " << remote.address() << ":" << dataPort << ": "
-                     << ec.message() << std::endl;
-                return;
-            }
+                if (ec == asio::error::operation_aborted) {
+                    return;
+                }
+                if (ec == asio::error::timed_out) {
+                    return;
+                }
+                if (ec) {
+                    CERR << "could not establish bulk data connection to " << remote.address() << ":" << dataPort
+                         << ": " << ec.message() << std::endl;
+                    return;
+                }
 
-            auto &socks = m_remoteDataSocket[hubId].sockets;
-            if (std::find(socks.begin(), socks.end(), sock) != socks.end()) {
-                return;
-            }
+                auto &socks = m_remoteDataSocket[hubId].sockets;
+                if (std::find(socks.begin(), socks.end(), sock) != socks.end()) {
+                    return;
+                }
 
-            m_remoteDataSocket[hubId].sockets.emplace_back(sock);
-            std::cerr << "." << std::flush;
-            //CERR << "connected to " << remote.address << ":" << dataPort << ", now have " << m_remoteDataSocket[hubId].sockets.size() << " connections" << std::endl;
-            lock.unlock();
+                m_remoteDataSocket[hubId].sockets.emplace_back(sock);
+                std::cerr << "." << std::flush;
+                //CERR << "connected to " << remote.address << ":" << dataPort << ", now have " << m_remoteDataSocket[hubId].sockets.size() << " connections" << std::endl;
+                lock.unlock();
 
-            startThread();
-            startThread();
-            msgForward(sock, Local);
-        });
+                startThread();
+                startThread();
+                msgForward(sock, Local);
+            });
+        }
 
         lock.lock();
     }
 
-    while (!m_connectingSockets.empty() && m_remoteDataSocket[hubId].sockets.size() < numconn) {
+    while (interrupt && !m_connectingSockets.empty() && m_remoteDataSocket[hubId].sockets.size() < numconn) {
         lock.unlock();
-        messageDispatcher();
-        usleep(10000);
+        if (!messageDispatcher()) {
+            interrupt = true;
+        } else {
+            usleep(10000);
+        }
         lock.lock();
     }
 
@@ -715,12 +723,13 @@ bool DataProxy::connectRemoteData(const message::AddHub &remote, std::function<v
     m_connectingSockets.clear();
 
     std::cerr << std::endl;
-    if (m_remoteDataSocket[hubId].sockets.empty()) {
+    if (interrupt || m_remoteDataSocket[hubId].sockets.empty()) {
         CERR << "WARNING: could not establish data connection to " << remote.address() << ":" << dataPort << std::endl;
         m_remoteDataSocket.erase(hubId);
 
         return false;
     }
+
     if (m_remoteDataSocket[hubId].sockets.size() >= numconn) {
         CERR << "connected to hub " << hubId << " at " << remote.address() << ":" << dataPort << " with "
              << m_remoteDataSocket[hubId].sockets.size() << " parallel connections" << std::endl;

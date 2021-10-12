@@ -713,8 +713,11 @@ bool Hub::dispatch()
             sendSlaves(message::CloseConnection("user interrupt"));
         }
         m_workGuard.reset();
-        while (m_ioService.stopped())
+        for (unsigned count = 0; count < 300; ++count) {
+            if (m_ioService.stopped())
+                break;
             usleep(10000);
+        }
         emergencyQuit();
     }
 
@@ -1180,7 +1183,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                 }
             }
         }
-        if (m_dataProxy->connectRemoteData(add, [this]() { dispatch(); })) {
+        if (m_dataProxy->connectRemoteData(add, [this]() { return dispatch(); })) {
             m_stateTracker.handle(add, nullptr, true);
             sendUi(add);
         } else if (add.id() != message::Id::MasterHub) {
@@ -2030,10 +2033,12 @@ bool Hub::processScript(const std::string &filename, bool executeModules)
 #ifdef HAVE_PYTHON
     setStatus("Loading " + m_scriptPath + "...");
     PythonInterpreter inter(filename, dir::share(m_prefix), executeModules);
-    while (inter.check()) {
-        dispatch();
+    bool interrupt = false;
+    while (!interrupt && inter.check()) {
+        if (!dispatch())
+            interrupt = true;
     }
-    if (inter.error()) {
+    if (interrupt || inter.error()) {
         setStatus("Loading " + m_scriptPath + " failed");
         return false;
     }
