@@ -3,17 +3,15 @@
 #include <algorithm>
 #include <cstdlib>
 
+#include <boost/process.hpp>
+#include <boost/algorithm/string.hpp>
+
 #include <vistle/module/module.h>
 #include <vistle/util/hostname.h>
-#include <vistle/util/spawnprocess.h>
 #include <vistle/util/sleep.h>
 
-#include <sys/types.h>
-#ifndef WIN32
-#include <sys/wait.h>
-#endif
-
 using namespace vistle;
+namespace proc = boost::process;
 
 namespace {
 std::vector<std::string> keytypes{"rsa", "dss", "ecdsa"};
@@ -26,7 +24,7 @@ public:
     ~Dropbear() override;
 
 private:
-    bool compute() override;
+    bool prepare() override;
 
     StringParameter *m_dbPath;
     StringParameter *m_dbOptions;
@@ -70,10 +68,8 @@ Dropbear::Dropbear(const std::string &name, int moduleID, mpi::communicator comm
 
 Dropbear::~Dropbear() = default;
 
-bool Dropbear::compute()
+bool Dropbear::prepare()
 {
-    std::stringstream str;
-
     std::string home;
     if (auto h = getenv("HOME"))
         home = h;
@@ -87,40 +83,45 @@ bool Dropbear::compute()
         requestPortMapping(port, m_dbPort->getValue());
     }
 
-    str << m_dbPath->getValue() << " " << m_dbOptions->getValue() << " -p " << m_dbPort->getValue();
+    std::string cmd = m_dbPath->getValue();
+    std::vector<std::string> args;
+    boost::algorithm::split(args, m_dbOptions->getValue(), boost::is_any_of(" \t"));
+    args.push_back("-p");
+    args.push_back(std::to_string(m_dbPort->getValue()));
+
     auto it = m_dbKey.begin();
     for (auto type: keytypes) {
         std::string key = (*it)->getValue();
         if (key.empty())
             key = home + "/.ssh/vistle_dropbear_" + type;
-        str << " -r " << key;
+        args.push_back("-r");
+        args.push_back(key);
         ++it;
     }
+
+    std::stringstream str;
+    str << "\"" << cmd;
+    for (const auto &a: args)
+        str << " " << a;
+    str << "\"";
 
     std::string host = hostname().c_str();
     std::string command = str.str();
     sendInfo("Executing %s on %s...", command.c_str(), host.c_str());
 
-    std::vector<std::string> args{"sh", "-c", command};
-    process_handle pid = spawn_process("/bin/sh", args);
-
-    int status = 0;
-    while (try_wait(pid, &status) == 0) {
-        if (cancelRequested()) {
-            kill_process(pid);
-        }
-        adaptive_wait(false, this);
-    }
-
-#ifndef WIN32
-    if (WIFEXITED(status)) {
-        sendInfo("Exit with status %d on %s", WEXITSTATUS(status), host.c_str());
-    } else if (WIFSIGNALED(status)) {
-        sendInfo("Exit with signal %d on %s", WTERMSIG(status), host.c_str());
+    auto child = proc::child(proc::search_path(cmd), proc::args(args));
+    if (!child.valid()) {
+        sendError("Failed to start dropbear on host %s", host.c_str());
     } else {
-        sendWarning("Unknown exit state %d on %s", status, host.c_str());
+        while (child.running()) {
+            if (cancelRequested()) {
+                child.terminate();
+                break;
+            }
+            adaptive_wait(false, this);
+        }
+        sendInfo("Exit with status %d on %s", child.exit_code(), host.c_str());
     }
-#endif
 
     if (rank() == exposed) {
         removePortMapping(port);

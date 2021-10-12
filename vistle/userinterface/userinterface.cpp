@@ -6,7 +6,6 @@
 
 #include <vistle/util/hostname.h>
 #include <vistle/util/sleep.h>
-#include <vistle/util/spawnprocess.h>
 #include <vistle/util/crypto.h>
 #include <vistle/core/message.h>
 #include <vistle/core/tcpmessage.h>
@@ -40,7 +39,7 @@ UserInterface::UserInterface(const std::string &host, const unsigned short port,
 
     m_hostname = hostname();
 
-    CERR << "started as " << hostname() << ":" << get_process_handle() << std::endl;
+    CERR << "started on " << hostname() << std::endl;
 
     tryConnect();
 }

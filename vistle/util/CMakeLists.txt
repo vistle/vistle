@@ -12,7 +12,6 @@ set(util_SOURCES
     listenv4v6.cpp
     netpbmimage.cpp
     sleep.cpp
-    spawnprocess.cpp
     stopwatch.cpp
     sysdep.cpp
     tools.cpp
@@ -39,7 +38,6 @@ set(util_HEADERS
     netpbmimage.h
     pybind.h
     sleep.h
-    spawnprocess.h
     ssize_t.h
     stopwatch.h
     sysdep.h
