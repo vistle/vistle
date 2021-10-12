@@ -278,8 +278,8 @@ constexpr void shift_order_in_range(ForwardIt begin, ForwardIt end, unsigned ran
 template<class ForwardIt>
 float calcTetrahedronVolume(ForwardIt begin)
 {
-    Eigen::MatrixXf mat = Eigen::Map<Eigen::Matrix<float, 4, 4>>(begin).transpose();
-    /* std::cout << mat; */
+    Eigen::MatrixXf mat = Eigen::Map<Eigen::Matrix<float, 4, 4>>(begin);
+    std::cout << mat << '\n';
     auto v_p = mat.determinant();
     return v_p / 6;
 }
@@ -687,26 +687,17 @@ bool ReadSeisSol::checkGeoElemVolume(vistle::UnstructuredGrid::ptr unstr, XdmfAr
 {
     switch (unstr->tl()[0]) {
     case UnstructuredGrid::TETRAHEDRON: {
-        std::cout << "dim1: "<< xdmfArrGeo->getDimensions()[0] << '\n';
-        std::cout << "dim2: "<< xdmfArrGeo->getDimensions()[1] << '\n';
-        std::vector<float> test(xdmfArrGeo->getDimensions()[0] * xdmfArrGeo->getDimensions()[1]);
-        xdmfArrGeo->getValues(0, test.data());
-        for (auto x: test)
-            std::cout << std::to_string(x) << '\n';
-        auto clIt = unstr->cl().begin();
-        auto clEndIt = unstr->cl().end();
+        auto cl = unstr->cl().data();
         std::array<float, 16> arr;
-        std::fill_n(arr.begin() + 12, 4, 1);
-        while (clIt != clEndIt) {
-            for (int i = 0; i < 12; i = i + 4)
-                xdmfArrGeo->getValues(*(clIt + i), arr.data() + i, 4, 3, 1);
+        std::fill_n(arr.begin(), 16, 1);
+        for (int i = 0; i < 4; ++i)
+            xdmfArrGeo->getValues(cl[i] * 3, arr.data() + i * 4, 3, 1, 1);
 
-            auto volume = calcTetrahedronVolume(arr.begin());
-            // volume < 0 => swap 2 corners of tetrahedron
-            if (volume <= 0)
-                iter_swap(clIt, clIt + 1);
-            std::advance(clIt, 4);
-        }
+        auto volume = calcTetrahedronVolume(arr.begin());
+        sendInfo("Volume: %f", volume);
+        if (volume <= 0)
+            return false;
+        return true;
     }
     }
     return true;
@@ -734,6 +725,13 @@ bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfA
 
     //TODO: check if volume inverted, because vertices can have different order => look at tetrahedron vtk and vistle
     if (!checkGeoElemVolume(unstr, xdmfArrGeo)) {
+        auto clIt = unstr->cl().begin();
+        auto clItEnd = unstr->cl().end();
+        while (clIt != clItEnd) {
+            auto curEnd = clIt + 4;
+            std::reverse(clIt, curEnd);
+            std::advance(clIt, 4);
+        }
     }
 
     //current order for geo-arrays is contiguous: arrGeo => x1 y1 z1 x2 y2 z2 x3 y3 z3 ... xn yn zn
@@ -799,7 +797,8 @@ bool ReadSeisSol::fillUnstrGridConnectList(vistle::UnstructuredGrid::ptr unstr, 
   * @xdmfArr: XdmfArray for read operation.
   * @controller: XdmfHeavyDataController that specifies how to read the XdmfArray.
   */
-void ReadSeisSol::readXdmfHeavyController(XdmfArray *xdmfArr, const boost::shared_ptr<XdmfHeavyDataController> &controller)
+void ReadSeisSol::readXdmfHeavyController(XdmfArray *xdmfArr,
+                                          const boost::shared_ptr<XdmfHeavyDataController> &controller)
 {
     //has to be empty otherwise potential memoryleak
     if (xdmfArr->isInitialized())
