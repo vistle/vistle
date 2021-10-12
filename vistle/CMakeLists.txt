@@ -153,7 +153,6 @@ option(VISTLE_SHM_DEBUG "Shared memory debugging" OFF)
 if(VISTLE_SHM_DEBUG)
     add_definitions(-DSHMDEBUG)
 endif()
-option(VISTLE_SHM_PER_RANK "Don't share shared memory segments between MPI ranks on same node" OFF)
 
 set(ENABLE_INSTALLER TRUE)
 #vistle_find_package(Thrust REQUIRED)
