@@ -6,10 +6,6 @@ on:
   pull_request:
     branches: [ master ]
 
-env:
-  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
-  BUILD_TYPE: Release
-
 jobs:
   build:
     # The CMake configure and build commands are platform agnostic and should work equally
@@ -17,6 +13,29 @@ jobs:
     # cross-platform coverage.
     # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        build_type: []
+        static_link: []
+        multi_process: []
+        double_precision: []
+        large_index: []
+        include:
+          build_type: Release
+          static_link: ON
+          modules_shared: OFF
+          multi_process: OFF
+          double_precision: ON
+          large_index: ON
+        include:
+          build_type: Debug
+          static_link: OFF
+          modules_shared: ON
+          multi_process: ON
+          double_precision: OFF
+          large_index: OFF
+
 
     steps:
     - uses: actions/checkout@v2
@@ -82,10 +101,15 @@ jobs:
       run: >
         cmake -G Ninja
         $GITHUB_WORKSPACE
-        -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+        -DCMAKE_BUILD_TYPE=${matrix.build_type}
+        -DVISTLE_BUILD_SHARED=${matrix.static_link}
+        -DVISTLE_MODULES_SHARED=${matrix.modules_shared}
+        -DVISTLE_64BIT_INDICES=${matrix.large_index}
+        -DVISTLE_DOUBLE_PRECISION=${matrix.double_precision}
+        -DVISTLE_MULTI_PROCESS=${matrix.multi_process}
 
     - name: Build
       working-directory: ${{runner.workspace}}/build
       shell: bash
       # Execute the build.  You can specify a specific target with "--target <NAME>"
-      run: cmake --build . --config $BUILD_TYPE
+      run: cmake --build . --config ${matrix.build_type}
