@@ -4,7 +4,6 @@
 #include <iterator>
 #include <vector>
 
-
 /**
   * Adds ghost cells to given startvalue and current count of data based on given dimension.
   *
@@ -13,9 +12,8 @@
   * @dimData: dimension of data for corresponding start and count.
   * @numGhost: number of ghost cells to be added.
   */
-template<typename NumericType>
-void addGhostStructured_tmpl(NumericType &start, NumericType &count, const NumericType &dimData,
-                             const NumericType &numGhost)
+template<typename ForwardIt>
+void addGhostStructured_tmpl(ForwardIt &start, ForwardIt &count, const ForwardIt &dimData, const ForwardIt &numGhost)
 {
     auto partitionSize = start + count;
     if (start == 0) {
@@ -60,8 +58,8 @@ void addGhostStructured_tmpl(NumericType &start, NumericType &count, const Numer
   * @blockNum: Current blocknumber.
   * @return: Begin iterator of container which contains block values specified for each direction and current blocknumber.
   */
-template<class InputBlockIt, class OutputBlockIt, class NumericType>
-OutputBlockIt blockPartitionStructured_tmpl(InputBlockIt first, InputBlockIt last, OutputBlockIt d_first,
+template<class ForwardIt, class OutputBlockIt, class NumericType>
+OutputBlockIt blockPartitionStructured_tmpl(ForwardIt first, ForwardIt last, OutputBlockIt d_first,
                                             const NumericType &blockNum)
 {
     const auto numBlocks{std::distance(first, last)};
@@ -102,8 +100,8 @@ const std::vector<NumericType> blockPartitionStructured_tmpl(const std::vector<N
   * @blockNum: Current blocknumber.
   * @return: Vector<T> with block values specified for each direction and current blocknumber.
   */
-template<class InputBlockIt, class NumericType>
-const std::vector<NumericType> blockPartitionStructured_tmpl(InputBlockIt first, InputBlockIt last,
+template<class ForwardIt, class NumericType>
+const std::vector<NumericType> blockPartitionStructured_tmpl(ForwardIt first, ForwardIt last,
                                                              const NumericType &blockNum)
 {
     std::vector<NumericType> distBlocks(std::distance(first, last));
