@@ -1,13 +1,7 @@
 vistle_find_package(Xdmf)
-set(module_util_SOURCES
-    str.cpp
-    )
+set(module_util_SOURCES str.cpp)
 
-set(module_util_HEADERS
-    c20.h
-    geo.h
-    str.h
-    )
+set(module_util_HEADERS c20.h geo.h str.h)
 
 if(NOT CMAKE_BUILD_TYPE STREQUAL "")
     message("CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}")
@@ -19,7 +13,7 @@ vistle_export_library(vistle_module_util ${VISTLE_LIB_TYPE} ${module_util_SOURCE
 target_include_directories(vistle_module_util SYSTEM PRIVATE ${XDMF_XdmfCore_INCLUDE_DIRS} ${XDMF_INCLUDE_DIRS})
 vistle_target_link_libraries(vistle_module_util)
 
-if (NOT Xdmf_FOUND)
+if(NOT Xdmf_FOUND)
     return()
 endif()
 
