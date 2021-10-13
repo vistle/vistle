@@ -50,6 +50,7 @@ bool Renderer::needsSync(const message::Message &m) const
     case ADDPARAMETER:
     case SETPARAMETER:
     case REMOVEPARAMETER:
+    case REPLAYFINISHED:
         return true;
     case ADDOBJECT:
         return objectReceivePolicy() != ObjectReceivePolicy::Local;
@@ -94,6 +95,10 @@ std::array<Object::const_ptr, 3> splitObject(Object::const_ptr container)
 bool Renderer::handleMessage(const message::Message *message, const MessagePayload &payload)
 {
     switch (message->type()) {
+    case vistle::message::REPLAYFINISHED: {
+        m_replayFinished = true;
+        break;
+    }
     case vistle::message::ADDOBJECT: {
         auto add = static_cast<const message::AddObject *>(message);
         if (payload)
@@ -252,7 +257,7 @@ bool Renderer::dispatch(bool block, bool *messageReceived)
         int numMessages = messageBacklog.size() + receiveMessageQueue->getNumMessages();
         int maxNumMessages = boost::mpi::all_reduce(comm(), numMessages, boost::mpi::maximum<int>());
         ++numSync;
-        checkAgain = maxNumMessages > 0 && numSync < m_numObjectsPerFrame;
+        checkAgain = !m_replayFinished || (maxNumMessages > 0 && numSync < m_numObjectsPerFrame);
     }
 
     double start = 0.;

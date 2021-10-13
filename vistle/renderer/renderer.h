@@ -60,6 +60,7 @@ protected:
     void removeAllObjects();
 
     bool m_maySleep = true;
+    bool m_replayFinished = false;
 
 private:
     virtual bool render() = 0;

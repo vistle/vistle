@@ -14,6 +14,7 @@
 
 // vistle
 #include <vistle/util/exception.h>
+#include <vistle/core/statetracker.h>
 
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
@@ -37,6 +38,7 @@ public:
     bool executeAll() override;
     void message(int toWhom, int type, int length, const void *data) override;
     bool sendVisMessage(const covise::Message *msg) override;
+    std::string collaborativeSessionId() const override;
 
 private:
     COVER *m_module = nullptr;
@@ -102,6 +104,8 @@ bool VistlePlugin::init()
         executeButton->setCallback([this]() { executeAll(); });
         executeButton->setIcon("view-refresh");
         executeButton->setPriority(ui::Element::Toolbar);
+
+        update();
 
         return true;
     }
@@ -219,6 +223,17 @@ bool VistlePlugin::sendVisMessage(const covise::Message *msg)
     MessagePayload pl(msg->data.data(), msg->data.length());
     cover.setPayloadSize(msg->data.length());
     return m_module->sendMessage(cover, pl);
+}
+
+std::string VistlePlugin::collaborativeSessionId() const
+{
+    std::string id = "COVER";
+    if (!m_module) {
+        return id;
+    }
+
+    id += "_" + std::to_string(m_module->mirrorId());
+    return id;
 }
 
 COVERPLUGIN(VistlePlugin)
