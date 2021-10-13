@@ -40,7 +40,7 @@ int StateTracker::Module::state() const
 }
 
 StateTracker::StateTracker(const std::string &name, std::shared_ptr<PortTracker> portTracker)
-: m_portTracker(portTracker), m_traceType(message::INVALID), m_traceId(Id::Invalid), m_name(name)
+: m_portTracker(portTracker), m_traceType(message::ANY), m_traceId(Id::Broadcast), m_name(name)
 {
     if (!m_portTracker) {
         m_portTracker.reset(new PortTracker());
@@ -250,6 +250,7 @@ StateTracker::VistleState StateTracker::getState() const
             Spawn spawn(m.hub, m.name);
             spawn.setSpawnId(id);
             spawn.setMirroringId(m.mirrorOfId);
+            CERR << "id " << id << " mirrors " << m.mirrorOfId << std::endl;
             appendMessage(state, spawn);
 
             if (m.initialized) {
@@ -353,6 +354,33 @@ StateTracker::VistleState StateTracker::getState() const
 
     return state;
 }
+
+void StateTracker::printModules() const
+{
+    for (auto &it: runningMap) {
+        const int id = it.first;
+        const Module &m = it.second;
+
+        if (Id::isModule(id)) {
+            CERR << "id " << id << " mirrors " << m.mirrorOfId << ":";
+
+            if (m.initialized) {
+                std::cerr << " init";
+            }
+
+            if (m.busy) {
+                std::cerr << " busy";
+            }
+
+            if (m.killed) {
+                std::cerr << " killed";
+            }
+
+            std::cerr << std::endl;
+        }
+    }
+}
+
 
 const std::map<AvailableModule::Key, AvailableModule> &StateTracker::availableModules() const
 {
@@ -1220,6 +1248,9 @@ bool StateTracker::handlePriv(const message::RemovePort &destroyPort)
 
 bool StateTracker::handlePriv(const message::ReplayFinished &reset)
 {
+    m_traceId = Id::Invalid;
+    m_traceType = message::INVALID;
+
     mutex_locker guard(m_stateMutex);
     for (StateObserver *o: m_observers) {
         o->resetModificationCount();

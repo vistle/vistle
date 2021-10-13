@@ -277,6 +277,11 @@ Module::Module(const std::string &moduleName, const int moduleId, mpi::communica
     mpi::all_gather(m_comm, leader, m_shmLeaders);
 }
 
+const StateTracker &Module::state() const
+{
+    return *m_stateTracker;
+}
+
 void Module::prepareQuit()
 {
 #ifdef DEBUG

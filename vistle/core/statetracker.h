@@ -159,6 +159,8 @@ public:
     std::string loadedWorkflowFile() const;
     std::string sessionUrl() const;
 
+    void printModules() const;
+
 protected:
     std::shared_ptr<message::Buffer> removeRequest(const message::uuid_t &uuid);
     bool registerReply(const message::uuid_t &uuid, const message::Message &msg);
