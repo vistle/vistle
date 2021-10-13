@@ -1,9 +1,13 @@
 #ifndef GEO_H
 #define GEO_H
 
+#include <array>
+#include <numeric>
 #include <eigen3/Eigen/Core>
+#include <eigen3/Eigen/src/Core/Matrix.h>
 
 namespace vistle {
+
 /**
  * @brief Calculate tetrahedron volume with corner coords.
  *
@@ -31,5 +35,24 @@ float calcTetrahedronVolume(ForwardIt begin)
     auto v_p = mat.determinant();
     return v_p / 6;
 }
+
+/**
+ * @brief Calculate volume geometry which isn't self-penetrating itself.
+ *
+ *    VK = sum (det (a,b,c) : a,b,c element cyclic ordered tripel)
+ *
+ * @tparam ForwardIt Iterator type.
+ * @param coords Coordinates container iterator (x1 y1 z1 x2 y2 z2 ... xn yn zn).
+ * @param connect Connectivity list iterator to build geometry.
+ *
+ * @return Volume.
+ */
+template<class ForwardIt>
+float calcGeoVolume(ForwardIt coords, ForwardIt coordsEnd, ForwardIt connect)
+{
+    //TODO: to implement
+    return 0;
+}
+
 } // namespace vistle
 #endif
