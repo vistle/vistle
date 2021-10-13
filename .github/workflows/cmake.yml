@@ -16,6 +16,7 @@ jobs:
 
     strategy:
       matrix:
+        variant: [All]
         build_type: [Debug]
         static_link: [OFF]
         modules_shared: [ON]
@@ -23,12 +24,13 @@ jobs:
         double_precision: [OFF]
         large_index: [OFF]
         include:
-          build_type: Release
-          static_link: ON
-          modules_shared: OFF
-          multi_process: OFF
-          double_precision: ON
-          large_index: ON
+          - variant: All
+            build_type: Release
+            static_link: ON
+            modules_shared: OFF
+            multi_process: OFF
+            double_precision: ON
+            large_index: ON
 
     steps:
     - uses: actions/checkout@v2
