@@ -17,9 +17,6 @@
 //header
 #include "ReadTsunami.h"
 
-//templates
-#include "ReadTsunami_impl.h"
-
 //vistle
 #include "vistle/core/database.h"
 #include "vistle/core/index.h"
@@ -29,6 +26,9 @@
 #include "vistle/core/scalar.h"
 #include "vistle/core/vec.h"
 #include "vistle/module/module.h"
+
+//vistle-module-util
+#include "vistle/module/general/utils/ghost.h"
 
 //std
 #include <algorithm>
@@ -367,7 +367,8 @@ auto ReadTsunami::generateNcVarExt(const netCDF::NcVar &ncVar, const T &dim, con
 {
     T count = dim / numDimBlock;
     T start = partition * count;
-    addGhostStructured_tmpl(start, count, dim, ghost);
+    structured_ghost_addition(start, count, dim, ghost);
+    /* addGhostStructured_tmpl(start, count, dim, ghost); */
     return NcVarExtended(ncVar, start, count);
 }
 
@@ -420,7 +421,7 @@ bool ReadTsunami::computeBlock(Reader::Token &token, const T &blockNum, const U 
 
 /**
  * @brief Compute actual last timestep.
- 
+ *
  * @param incrementTimestep Stepwidth.
  * @param firstTimestep first timestep.
  * @param lastTimestep last timestep selected.
@@ -457,7 +458,8 @@ void ReadTsunami::computeBlockPartition(const int blockNum, vistle::Index &nLatB
     nLatBlocks = blocks[0];
     nLonBlocks = blocks[1];
 
-    blockPartitionStructured_tmpl(blocks.begin(), blocks.end(), blockPartitionIterFirst, blockNum);
+    /* blockPartitionStructured_tmpl(blocks.begin(), blocks.end(), blockPartitionIterFirst, blockNum); */
+    structured_block_partition(blocks.begin(), blocks.end(), blockPartitionIterFirst, blockNum);
 }
 
 /**
