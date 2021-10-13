@@ -201,30 +201,6 @@ void ReadSeisSol::initObserveParameter()
 }
 
 /**
- * @brief Initialize block parameter.
- */
-/* void ReadSeisSol::initBlocks() */
-/* { */
-/*     constexpr auto blockName_constexpr{"Blocks"}; */
-/*     constexpr auto blockDescr_constexpr{"Number of blocks for partition."}; */
-
-/*     m_block = addIntParameter(blockName_constexpr, blockDescr_constexpr, 1); */
-/*     setParameterRange(m_block, Integer(1), Integer(999999)); */
-
-/* const std::string block_constStr{"Number of blocks "}; */
-/* const std::string descr_constStr{"Number of blocks in "}; */
-
-/* char bSpecifier{'x'}; */
-/* for (auto &block: m_blocks) { */
-/*     const std::string &blockName = block_constStr + bSpecifier; */
-/*     const std::string &blockDescription = descr_constStr + (bSpecifier++); */
-/*     block = addIntParameter(blockName, blockDescription, 1); */
-/*     setParameterRange(block, Integer(1), Integer(999999)); */
-/*     observeParameter(block); */
-/* } */
-/* } */
-
-/**
  * @brief Initialize scalar ports and choice parameters.
  */
 void ReadSeisSol::initScalar()
@@ -460,27 +436,6 @@ bool ReadSeisSol::inspectXdmf()
 
     return true;
 }
-
-//TIP: maybe interesting for HDF5 implementation
-/**
- * @brief Checks that total product of blocks are equal mpi size.
- *
- * @return result of "product blocks == mpisize".
- */
-/* bool ReadSeisSol::checkBlocks() */
-/* { */
-/* const int &nBlocks = m_blocks[0]->getValue() * m_blocks[1]->getValue() * m_blocks[2]->getValue(); */
-
-//parallelization over ranks
-/* setPartitions(nBlocks); */
-/* if (nBlocks == size()) */
-/*     return true; */
-/* else { */
-/*     if (rank() == 0) */
-/*         sendInfo("Number of blocks should equal MPISIZE."); */
-/*     return false; */
-/* } */
-/* } */
 
 /**
   * @brief: Called if observed parameter changes.
