@@ -31,7 +31,7 @@ void structured_ghost_addition(NumType &start, NumType &count, const NumType &di
 }
 
 /**
-  * @brief Generates partion for structured grid which contains block values for each dim partitioned for current blocknumber.
+  * @brief Generates partition for structured grid which contains block values for each dim partitioned for current blocknumber.
   *
   * @first: Begin pointer of block container.
   * @last: End pointer of block container.
