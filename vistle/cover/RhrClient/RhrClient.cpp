@@ -851,8 +851,8 @@ bool RhrClient::update()
     {
         std::lock_guard<std::mutex> locker(m_sendMutex);
         while (!m_sendQueue.empty()) {
-            coVRPluginList::instance()->message(0, PluginMessageTypes::VistleMessageOut,
-                                                sizeof(m_sendQueue.emplace_front()), &m_sendQueue.front());
+            coVRPluginList::instance()->message(0, PluginMessageTypes::VistleMessageOut, sizeof(m_sendQueue.front()),
+                                                &m_sendQueue.front());
             m_sendQueue.pop_front();
         }
     }
