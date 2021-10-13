@@ -265,16 +265,19 @@ bool Renderer::dispatch(bool block, bool *messageReceived)
         comm().barrier();
         start = Clock::time();
     }
-    if (render() && m_benchmark) {
-        comm().barrier();
-        const double duration = Clock::time() - start;
-        if (rank() == 0) {
-            sendInfo("render took %f s", duration);
+    bool haveRendered = render();
+    if (haveRendered) {
+        if (m_benchmark) {
+            comm().barrier();
+            const double duration = Clock::time() - start;
+            if (rank() == 0) {
+                sendInfo("render took %f s", duration);
+            }
         }
     }
 
     if (m_maySleep)
-        vistle::adaptive_wait(wasAnyMessage, this);
+        vistle::adaptive_wait(wasAnyMessage || haveRendered, this);
 
     return true;
 }
@@ -455,9 +458,10 @@ const Renderer::VariantMap &Renderer::variants() const
     return m_variants;
 }
 
-bool Renderer::compute()
+bool Renderer::render()
 {
-    return true;
+    // no work was done
+    return false;
 }
 
 bool Renderer::changeParameter(const Parameter *p)

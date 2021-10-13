@@ -53,7 +53,6 @@ protected:
     virtual void removeObject(std::shared_ptr<RenderObject> ro);
 
     bool changeParameter(const Parameter *p) override;
-    bool compute() override; // provide dummy implementation of Module::compute
     void connectionRemoved(const Port *from, const Port *to) override;
 
     int m_fastestObjectReceivePolicy;
@@ -63,7 +62,7 @@ protected:
     bool m_replayFinished = false;
 
 private:
-    virtual bool render() = 0;
+    virtual bool render();
 
     bool handleAddObject(const message::AddObject &add);
 
