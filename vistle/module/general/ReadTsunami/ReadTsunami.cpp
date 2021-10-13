@@ -249,7 +249,9 @@ bool ReadTsunami::inspectNetCDFVars()
         scalar->setChoices(std::vector<std::string>());
 
     //read names of scalars
-    for (auto &[name, val]: ncFile->getVars()) {
+    for (auto &name_val: ncFile->getVars()) {
+        auto &name = name_val.first;
+        auto &val = name_val.second;
         if (strContains(name, "lat"))
             latLonContainsGrid(name, 0);
         else if (strContains(name, "lon"))
@@ -564,12 +566,12 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
 
     //************* create Polygons ************//
     {
-        std::vector coords{vecLat.data(), vecLon.data()};
+        std::vector<float *> coords{vecLat.data(), vecLon.data()};
 
         //************* create sea *************//
         {
-            const auto &seaDim = Dim(latSea.count, lonSea.count);
-            const auto &polyDataSea = PolygonData(numPolySea, numPolySea * 4, verticesSea);
+            const auto &seaDim = Dim<size_t>(latSea.count, lonSea.count);
+            const auto &polyDataSea = PolygonData<size_t>(numPolySea, numPolySea * 4, verticesSea);
             ptr_sea = generateSurface(polyDataSea, seaDim, coords);
         }
 
@@ -578,8 +580,8 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
         coords[1] = vecLonGrid.data();
 
         const auto &scale = m_verticalScale->getValue();
-        const auto &grndDim = Dim(latGround.count, lonGround.count);
-        const auto &polyDataGround = PolygonData(numPolyGround, numPolyGround * 4, verticesGround);
+        const auto &grndDim = Dim<size_t>(latGround.count, lonGround.count);
+        const auto &polyDataGround = PolygonData<size_t>(numPolyGround, numPolyGround * 4, verticesGround);
         auto grndZCalc = [&vecDepth, &lonGround, &scale](size_t j, size_t k) {
             return -vecDepth[j * lonGround.count + k] * scale;
         };

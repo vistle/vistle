@@ -16,7 +16,7 @@ class FunctionObject {
 };
 */
 
-template<typename RetVal, template<typename... Args1> typename Func, typename... Args2>
+template<typename RetVal, template<typename... Args1> class Func, typename... Args2>
 RetVal callFunctionWithVoidToTypeCast(const void *source, DataType dataType, size_t size, Args2 &&...args)
 {
     switch (dataType) {

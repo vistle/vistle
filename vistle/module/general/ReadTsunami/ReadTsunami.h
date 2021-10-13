@@ -70,10 +70,10 @@ private:
         template<class T>
         void readNcVar(T *storage) const
         {
-            std::vector v_start{start};
-            std::vector v_count{count};
-            std::vector v_stride{stride};
-            std::vector v_imap{imap};
+            std::vector<size_t> v_start{start};
+            std::vector<size_t> v_count{count};
+            std::vector<ptrdiff_t> v_stride{stride};
+            std::vector<ptrdiff_t> v_imap{imap};
             ncVar->getVar(v_start, v_count, v_stride, v_imap, storage);
         }
 

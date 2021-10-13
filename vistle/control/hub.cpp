@@ -68,7 +68,7 @@ enum Id {
 #define CERR std::cerr << "Hub " << m_hubId << ": "
 
 static Hub *hub_instance = nullptr;
-volatile std::atomic<bool> Hub::m_interrupt = false;
+volatile std::atomic<bool> Hub::m_interrupt(false);
 
 void Hub::signalHandler(const boost::system::error_code &error, int signal_number)
 {

@@ -237,7 +237,10 @@ bool ReadWRFChem::examine(const vistle::Parameter *param)
             std::vector<std::string> favVars = {"co", "no2", "PM10", "o3", "U", "V", "W"};
 
             /* for (int i = 0; i < nVar; ++i) { */
-            for (auto [name, var]: ncFirstFile->getVars()) {
+            for (auto &name_var: ncFirstFile->getVars()) {
+                auto name = name_var.first;
+                auto var = name_var.second;
+
                 // getVar instead?
                 /* var = ncFirstFile->get_var(i); */
 
