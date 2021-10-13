@@ -96,12 +96,12 @@ jobs:
       run: >
         cmake -G Ninja
         $GITHUB_WORKSPACE
-        -DCMAKE_BUILD_TYPE=${matrix.build_type}
-        -DVISTLE_BUILD_SHARED=${matrix.static_link}
-        -DVISTLE_MODULES_SHARED=${matrix.modules_shared}
-        -DVISTLE_64BIT_INDICES=${matrix.large_index}
-        -DVISTLE_DOUBLE_PRECISION=${matrix.double_precision}
-        -DVISTLE_MULTI_PROCESS=${matrix.multi_process}
+        -DCMAKE_BUILD_TYPE=${{matrix.build_type}}
+        -DVISTLE_BUILD_SHARED=${{matrix.static_link}}
+        -DVISTLE_MODULES_SHARED=${{matrix.modules_shared}}
+        -DVISTLE_64BIT_INDICES=${{matrix.large_index}}
+        -DVISTLE_DOUBLE_PRECISION=${{matrix.double_precision}}
+        -DVISTLE_MULTI_PROCESS=${{matrix.multi_process}}
 
     - name: Build
       working-directory: ${{runner.workspace}}/build
