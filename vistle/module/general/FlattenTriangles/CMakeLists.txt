@@ -1,1 +1,1 @@
-add_module(FlattenTriangles "transform Polygons into Triangles" FlattenTriangles.cpp)
+add_module(FlattenTriangles "Flatten triangles and quads." FlattenTriangles.cpp)
