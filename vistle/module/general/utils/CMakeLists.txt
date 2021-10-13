@@ -1,7 +1,7 @@
 vistle_find_package(Xdmf)
 set(module_util_SOURCES str.cpp)
 
-set(module_util_HEADERS c20.h geo.h str.h)
+set(module_util_HEADERS c20.h geo.h ghost.h str.h)
 
 if(NOT CMAKE_BUILD_TYPE STREQUAL "")
     message("CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}")
