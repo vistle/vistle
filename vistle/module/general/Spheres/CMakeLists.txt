@@ -1,1 +1,1 @@
-add_module(Spheres "make Spheres from points" Spheres.cpp)
+add_module(Spheres "transform points to spheres" Spheres.cpp)

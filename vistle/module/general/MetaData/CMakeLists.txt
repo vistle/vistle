@@ -1,1 +1,1 @@
-add_module(MetaData "change the meta data" MetaData.cpp)
+add_module(MetaData "transform meta data to mappable data" MetaData.cpp)

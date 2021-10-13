@@ -15,7 +15,7 @@ if(HDF5_FOUND)
     add_definitions(-DHAVE_HDF5)
 endif()
 
-add_module(ReadItlrFs3d "read ITLR binary data" ReadItlrBin.cpp)
+add_module(ReadItlrFs3d "read ITLR FS3D (Free Surface 3D) binary data" ReadItlrBin.cpp)
 if(HDF5_FOUND)
     target_link_libraries(ReadItlrFs3d ${HDF5_LIBRARIES})
 endif()

@@ -1,1 +1,1 @@
-add_module(Thicken "transform lines to tubes" Thicken.cpp Thicken.h)
+add_module(Thicken "transform lines to tubes or points to spheres" Thicken.cpp Thicken.h)

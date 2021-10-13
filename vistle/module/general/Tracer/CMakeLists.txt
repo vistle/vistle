@@ -1,6 +1,6 @@
 add_module(
     Tracer
-    "compute particle traces"
+    "compute particle traces and streamlines"
     Tracer.cpp
     BlockData.cpp
     Integrator.cpp

@@ -1,1 +1,1 @@
-add_module(CellToVert "Convert cell mapped data to vertice mapped" CellToVert.cpp coCellToVert.cpp)
+add_module(CellToVert "convert cell mapped data to vertice mapped" CellToVert.cpp coCellToVert.cpp)

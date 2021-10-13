@@ -1,3 +1,3 @@
-add_module(PrintMetaData "print the meta data" PrintMetaData.cpp)
+add_module(PrintMetaData "print meta data" PrintMetaData.cpp)
 
 use_openmp()

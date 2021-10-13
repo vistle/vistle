@@ -1,1 +1,1 @@
-add_module(ReadVistle "read vistle data" ReadVistle.cpp)
+add_module(ReadVistle "read Vistle data" ReadVistle.cpp)

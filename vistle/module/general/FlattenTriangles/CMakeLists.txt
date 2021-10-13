@@ -1,1 +1,1 @@
-add_module(FlattenTriangles "Flatten triangles and quads." FlattenTriangles.cpp)
+add_module(FlattenTriangles "flatten indexed triangle and quad geometry" FlattenTriangles.cpp)

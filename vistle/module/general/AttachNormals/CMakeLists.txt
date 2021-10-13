@@ -1,1 +1,1 @@
-add_module(AttachNormals "AttachNormals" AttachNormals.cpp)
+add_module(AttachNormals "attach normals to grid" AttachNormals.cpp)

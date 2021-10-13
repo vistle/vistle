@@ -1,4 +1,4 @@
-add_module(LibSimController "extract data from LibSim instrumented simulations" LibSimModule.h LibSimModule.cpp)
+add_module(LibSimController "acquire data from LibSim instrumented simulations" LibSimModule.h LibSimModule.cpp)
 target_link_libraries(
     LibSimController
     vistle_insitu_core

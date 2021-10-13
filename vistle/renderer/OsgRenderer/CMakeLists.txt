@@ -24,7 +24,7 @@ else()
     use_openmp()
 endif()
 
-add_module(OsgRenderer "OpenSceneGraph renderer" OSGRenderer.cpp ../COVER/VistleGeometryGenerator.cpp EnableGLDebugOperation.cpp)
+add_module(OsgRenderer "OpenSceneGraph remote renderer" OSGRenderer.cpp ../COVER/VistleGeometryGenerator.cpp EnableGLDebugOperation.cpp)
 
 if(WIN32)
 

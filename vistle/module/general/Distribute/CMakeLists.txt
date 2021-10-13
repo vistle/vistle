@@ -1,1 +1,1 @@
-add_module(Distribute "broadcast input objects" Distribute.cpp)
+add_module(Distribute "broadcast input objects to all ranks" Distribute.cpp)

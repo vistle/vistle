@@ -35,4 +35,4 @@ endif()
 
 include_directories(SYSTEM ${THRUST_INCLUDE_DIR})
 
-add_module(CutGeometry "cuts the geometry with a basic geometry like a plane" CutGeometry.cpp ../IsoSurface/IsoDataFunctor.cpp)
+add_module(CutGeometry "clip geometry at basic geometry like plane, cylinder or sphere" CutGeometry.cpp ../IsoSurface/IsoDataFunctor.cpp)

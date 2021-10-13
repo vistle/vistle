@@ -1,1 +1,1 @@
-add_module(ColorAttribute "add color attribute" ColorAttribute.cpp)
+add_module(ColorAttribute "specify solid object color as an attribute" ColorAttribute.cpp)

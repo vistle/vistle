@@ -184,6 +184,6 @@ target_link_libraries(
     ${EMBREE_LIBRARY}
     ${TBB_LIBRARIES}
     ${EXTRA_LIBS})
-set(description "CPU ray casting renderer")
-file(APPEND ${MODULE_DESCRIPTION_FILE} ${targetname} " " ${description}\n)
-#target_compile_definitions(DisCOVERay PRIVATE MODULE_DESCRIPTION="${Iescription}")
+set(description "Embree CPU ray casting remote renderer")
+file(APPEND ${MODULE_DESCRIPTION_FILE} DisCOVERay " " ${description}\n)
+#target_compile_definitions(DisCOVERay PRIVATE MODULE_DESCRIPTION="${description}")

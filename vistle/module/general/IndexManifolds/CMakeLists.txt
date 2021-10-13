@@ -1,1 +1,1 @@
-add_module(IndexManifolds "reduce geometry to underlying points" IndexManifolds.cpp IndexManifolds.h)
+add_module(IndexManifolds "extract lower dimensional surfaces, lines or points from structured grids" IndexManifolds.cpp IndexManifolds.h)

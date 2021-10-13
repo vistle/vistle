@@ -9,7 +9,7 @@ set(SOURCES ReadSeisSol.cpp surfacetools.cpp)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-add_module(ReadSeisSol "Read ChEESE seismic data files (Xdmf/HDF5)" ${SOURCES} ${HEADERS})
+add_module(ReadSeisSol "read ChEESE seismic data files (XDMF/HDF5)" ${SOURCES} ${HEADERS})
 
 use_openmp()
 

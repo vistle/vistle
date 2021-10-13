@@ -1,1 +1,1 @@
-add_module(TransformGrid "transform grid" TransformGrid.h TransformGrid.cpp)
+add_module(TransformGrid "shuffle and mirror axes of rectilinear grids" TransformGrid.h TransformGrid.cpp)
