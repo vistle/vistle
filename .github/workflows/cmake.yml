@@ -16,11 +16,12 @@ jobs:
 
     strategy:
       matrix:
-        build_type: []
-        static_link: []
-        multi_process: []
-        double_precision: []
-        large_index: []
+        build_type: [Debug]
+        static_link: [OFF]
+        modules_shared: [ON]
+        multi_process: [ON]
+        double_precision: [OFF]
+        large_index: [OFF]
         include:
           build_type: Release
           static_link: ON
@@ -28,14 +29,6 @@ jobs:
           multi_process: OFF
           double_precision: ON
           large_index: ON
-        include:
-          build_type: Debug
-          static_link: OFF
-          modules_shared: ON
-          multi_process: ON
-          double_precision: OFF
-          large_index: OFF
-
 
     steps:
     - uses: actions/checkout@v2
