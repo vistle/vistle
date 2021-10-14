@@ -34,11 +34,13 @@ struct Flatten {
     Quads::const_ptr quad;
     DataBase::const_ptr object;
     DataBase::ptr result;
+    Index N = 0;
+    const Index *cl = nullptr;
     Flatten(Triangles::const_ptr tri, DataBase::const_ptr obj, DataBase::ptr result)
-    : tri(tri), object(obj), result(result)
+    : tri(tri), object(obj), result(result), N(tri->getNumCorners()), cl(&tri->cl()[0])
     {}
     Flatten(Quads::const_ptr quad, DataBase::const_ptr obj, DataBase::ptr result)
-    : quad(quad), object(obj), result(result)
+    : quad(quad), object(obj), result(result), N(quad->getNumCorners()), cl(&quad->cl()[0])
     {}
     template<typename S>
     void operator()(S)
@@ -50,11 +52,10 @@ struct Flatten {
         typename V::ptr out(std::dynamic_pointer_cast<V>(result));
         if (!out)
             return;
-        if (out->getSize() != tri->getNumCorners())
+        assert(out->getSize() == N);
+        if (out->getSize() != N)
             return;
 
-        Index N = tri->getNumCorners();
-        auto cl = tri->cl();
         for (int c = 0; c < Dim; ++c) {
             auto din = &in->x(c)[0];
             auto dout = out->x(c).data();
