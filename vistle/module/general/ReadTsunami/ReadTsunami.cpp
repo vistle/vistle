@@ -208,18 +208,18 @@ bool ReadTsunami::examine(const vistle::Parameter *param)
 
     const int &nBlocks = m_blocks[0]->getValue() * m_blocks[1]->getValue();
     // TODO: NetCDF not threadsafe => implement lock mechanisim?
-    setDimDomain(2);
-    setHandlePartitions(nBlocks > size());
-    setPartitions(nBlocks);
-    return true;
-    /* if (nBlocks <= size()) { */
-    /*     setDimDomain(2); */
-    /*     setPartitions(nBlocks); */
-    /*     return true; */
-    /* } else { */
-    /*     printRank0("Total number of blocks should equal MPISIZE or less."); */
-    /*     return false; */
-    /* } */
+    /* setDimDomain(2); */
+    /* setHandlePartitions(nBlocks > size()); */
+    /* setPartitions(nBlocks); */
+    /* return true; */
+    if (nBlocks <= size()) {
+        setDimDomain(2);
+        setPartitions(nBlocks);
+        return true;
+    } else {
+        printRank0("Total number of blocks should equal MPISIZE or less.");
+        return false;
+    }
 }
 
 /**
@@ -627,7 +627,7 @@ void ReadTsunami::computeActualLastTimestep(const ptrdiff_t &incrementTimestep, 
  */
 template<class Iter>
 void ReadTsunami::computeBlockPartition(const int blockNum, vistle::Index &nLatBlocks, vistle::Index &nLonBlocks,
-                                      Iter blockPartitionIterFirst)
+                                        Iter blockPartitionIterFirst)
 {
     std::array<Index, NUM_BLOCKS> blocks;
     for (int i = 0; i < NUM_BLOCKS; i++)
