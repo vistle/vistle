@@ -88,16 +88,15 @@ bool ModuleRegistry::availableModules(AvailableMap &available)
     }
 
     for (const auto &m: m_modules) {
-        AvailableModule mod;
-        mod.hub = hub;
-        mod.name = m.first;
-        auto it = moduleDescriptions.find(mod.name);
+        std::string description;
+        auto &name = m.first;
+        auto it = moduleDescriptions.find(name);
         if (it != moduleDescriptions.end()) {
-            mod.description = it->second;
+            description = it->second;
         }
+        AvailableModule::Key key(hub, name);
 
-        AvailableModule::Key key(hub, mod.name);
-        available[key] = mod;
+        available.emplace(key, AvailableModule{hub, name, "", description});
     }
 
     return true;
