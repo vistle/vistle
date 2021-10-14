@@ -99,7 +99,7 @@ bool FlattenTriangles::compute()
         return true;
     }
 
-    Object::ptr outgrid;
+    Coords::ptr outgrid;
     if (intri) {
         if (intri->getNumCorners() == 0) {
             // already flat
@@ -133,6 +133,7 @@ bool FlattenTriangles::compute()
     if (data) {
         DataBase::ptr dout = data->clone();
         dout->resetArrays();
+        dout->setSize(outgrid->getSize());
         if (intri) {
             flatten(intri, data, dout);
             dout->setGrid(outgrid);
