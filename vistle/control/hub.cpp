@@ -1414,11 +1414,11 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                 if (p.second == id) {
                     std::vector<std::string> args;
                     std::stringstream str;
-                    str << "-attach-mpi=" << p.first;
+                    str << "-attach-mpi=" << p.first->id();
                     args.push_back(str.str());
                     auto child = std::make_shared<proc::child>(proc::search_path("ddt"), proc::args(args));
                     std::stringstream info;
-                    info << "Launched ddt as PID " << child->id() << ", attaching to " << p.first;
+                    info << "Launched ddt as PID " << child->id() << ", attaching to " << p.first->id();
                     sendInfo(info.str());
                     m_processMap[child] = Process::Debugger;
                     launched = true;
