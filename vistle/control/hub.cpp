@@ -675,9 +675,12 @@ bool Hub::dispatch()
         socket_ptr sock;
         avail = 0;
         for (auto &s: m_clients) {
+            if (!s) {
+                continue;
+            }
             if (!s->is_open()) {
                 CERR << "socket closed" << std::endl;
-                removeSocket(sock);
+                removeSocket(s);
                 return true;
             }
             boost::asio::socket_base::bytes_readable command(true);
@@ -685,7 +688,7 @@ bool Hub::dispatch()
                 s->io_control(command);
             } catch (std::exception &ex) {
                 CERR << "socket error: " << ex.what() << std::endl;
-                removeSocket(sock);
+                removeSocket(s);
                 return true;
             }
             if (command.get() >= avail) {
