@@ -2,32 +2,7 @@
 
 namespace vistle {
 
-typedef diy::DiscreteBounds Bounds;
-typedef diy::RegularGridLink RGLink;
-typedef diy::Master::ProxyWithLink ProxyLink;
-
-struct Block {
-    // mandatory
-    Block() {}
-    static void *create() { return new Block; }
-    static void destroy(void *b) { delete static_cast<Block *>(b); }
-
-    // optional
-    void show_link(const ProxyLink &cp)
-    {
-        diy::RegularLink<Bounds> *link = static_cast<diy::RegularLink<Bounds> *>(cp.link());
-        std::cout << "Block (" << cp.gid() << "): " << link->core().min[0] << ' ' << link->core().min[1] << ' '
-                  << link->core().min[2] << " - " << link->core().max[0] << ' ' << link->core().max[1] << ' '
-                  << link->core().max[2] << " : " << link->bounds().min[0] << ' ' << link->bounds().min[1] << ' '
-                  << link->bounds().min[2] << " - " << link->bounds().max[0] << ' ' << link->bounds().max[1] << ' '
-                  << link->bounds().max[2] << " : " << link->size() << ' ' //<< std::endl
-                  << std::dec << std::endl;
-    }
-    void readBlock(const ProxyLink &cp) { auto blockNum = cp.gid(); }
-};
-
-Reader::Reader(const std::string &name, const int moduleID, mpi::communicator comm)
-: Module(name, moduleID, comm)
+Reader::Reader(const std::string &name, const int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
     setCurrentParameterGroup("Reader");
 
