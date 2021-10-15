@@ -6,6 +6,7 @@
 #include <vistle/core/object.h>
 #include <vistle/core/vec.h>
 #include <vistle/core/triangles.h>
+#include <vistle/core/quads.h>
 #include <vistle/core/polygons.h>
 #include <vistle/core/uniformgrid.h>
 #include <vistle/core/rectilineargrid.h>
@@ -25,7 +26,7 @@ using namespace vistle;
 // clang-format off
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(
     GeoMode,
-    (Triangle_Geometry)(Polygon_Geometry)(Uniform_Grid)(Rectilinear_Grid)(Structured_Grid)(Unstructured_Grid)(Point_Geometry)(Sphere_Geometry))
+    (Triangle_Geometry)(Quad_Geometry)(Polygon_Geometry)(Uniform_Grid)(Rectilinear_Grid)(Structured_Grid)(Unstructured_Grid)(Point_Geometry)(Sphere_Geometry))
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(
     DataMode,
@@ -247,18 +248,21 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
     Index currBlock[3] = {bx, by, bz};
     Vector gmin = m_min->getValue(), gmax = m_max->getValue();
     Vector bmin;
+    Vector min, max;
 
-    for (int i = 0; i < 3; ++i) {
-        dim[i] = m_size[i]->getValue() + 1;
-        maxBlocks[i] = m_blocks[i]->getValue();
-        bdist[i] = (gmax[i] - gmin[i]) / maxBlocks[i];
-        bmin[i] = gmin[i] + currBlock[i] * bdist[i];
-        if (m_size[i]->getValue() > 0) {
-            dist[i] = bdist[i] / m_size[i]->getValue();
+    for (int c = 0; c < 3; ++c) {
+        dim[c] = m_size[c]->getValue() + 1;
+        maxBlocks[c] = m_blocks[c]->getValue();
+        bdist[c] = (gmax[c] - gmin[c]) / maxBlocks[c];
+        bmin[c] = gmin[c] + currBlock[c] * bdist[c];
+        if (m_size[c]->getValue() > 0) {
+            dist[c] = bdist[c] / m_size[c]->getValue();
         } else {
-            bdist[i] = 0.;
-            dist[i] = 0.;
+            bdist[c] = 0.;
+            dist[c] = 0.;
         }
+        min[c] = bmin[c];
+        max[c] = bmin[c] + bdist[c];
     }
     GeoMode geoMode = (GeoMode)m_geoMode->getValue();
     Index numVert = dim[0] * dim[1] * dim[2];
@@ -267,14 +271,8 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
 
     Object::ptr geoOut;
 
-    Vector min, max;
-    for (int c = 0; c < 3; ++c) {
-        min[c] = bmin[c];
-        max[c] = bmin[c] + bdist[c];
-    }
-
     // output data: first if statement separates coord-derived objects
-    if (geoMode == Triangle_Geometry || geoMode == Polygon_Geometry) {
+    if (geoMode == Triangle_Geometry || geoMode == Quad_Geometry || geoMode == Polygon_Geometry) {
         Coords::ptr geo;
         if (geoMode == Triangle_Geometry) {
             Triangles::ptr t(new Triangles(6, 4));
@@ -287,6 +285,14 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
             t->cl()[3] = 0;
             t->cl()[4] = 3;
             t->cl()[5] = 2;
+        } else if (geoMode == Quad_Geometry) {
+            Quads::ptr q(new Quads(4, 4));
+            geo = q;
+
+            q->cl()[0] = 0;
+            q->cl()[1] = 1;
+            q->cl()[2] = 3;
+            q->cl()[3] = 2;
         } else if (geoMode == Polygon_Geometry) {
             Polygons::ptr p(new Polygons(1, 4, 4));
             geo = p;
@@ -300,11 +306,12 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
             p->el()[1] = 4;
         }
         numVert = geo->getSize();
+        numCells = geo->getInterface<ElementInterface>()->getNumElements();
 
         geo->x()[0] = min[0];
         geo->y()[0] = min[1];
         geo->z()[0] = min[2];
-        ;
+
         geo->x()[1] = max[0];
         geo->y()[1] = min[1];
         geo->z()[1] = min[2];
@@ -315,7 +322,7 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
 
         geo->x()[3] = max[0];
         geo->y()[3] = max[1];
-        geo->z()[3] = min[0];
+        geo->z()[3] = min[2];
         geoOut = geo;
     } else {
         // obtain dimensions of current block while taking into consideration ghost cells
