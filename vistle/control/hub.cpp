@@ -2400,12 +2400,15 @@ bool Hub::hasChildProcesses(bool ignoreGui)
 
 bool Hub::checkChildProcesses(bool emergency)
 {
+    bool oneDead = false;
     for (auto it = m_processMap.begin(), next = it; it != m_processMap.end(); it = next) {
         next = it;
         ++next;
 
         if (it->first->running())
             continue;
+
+        oneDead = true;
 
         const int id = it->second;
         std::string idstring;
@@ -2453,7 +2456,7 @@ bool Hub::checkChildProcesses(bool emergency)
         }
     }
 
-    return true;
+    return oneDead;
 }
 
 void Hub::emergencyQuit()
