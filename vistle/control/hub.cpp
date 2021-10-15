@@ -33,6 +33,10 @@
 #include <boost/asio.hpp>
 #include <boost/program_options.hpp>
 #include <boost/process.hpp>
+#include <boost/process/extend.hpp>
+#ifdef __linux__
+#include <sys/prctl.h>
+#endif
 
 #include "uiclient.h"
 #include "hub.h"
@@ -64,6 +68,21 @@ enum Id {
     VRB = -4,
 };
 }
+
+struct terminate_with_parent: proc::extend::handler {
+#ifdef BOOST_POSIX_API
+    template<typename Executor>
+    void on_exec_setup(Executor & /*ex*/)
+    {
+#ifdef __linux__
+        if (prctl(PR_SET_PDEATHSIG, SIGKILL) == -1) {
+            std::cerr << "Error when setting parent-death signal: " << strerror(errno) << std::endl;
+        }
+#endif
+    }
+#endif
+};
+
 
 #define CERR std::cerr << "Hub " << m_hubId << ": "
 
@@ -445,11 +464,11 @@ std::shared_ptr<proc::child> Hub::launchMpiProcess(const std::vector<std::string
 #else
     std::string spawn = "spawn_vistle.sh";
 #endif
-    auto child = std::make_shared<proc::child>(proc::search_path(spawn), proc::args(args));
+    auto child = std::make_shared<proc::child>(proc::search_path(spawn), proc::args(args), terminate_with_parent());
 #ifndef _WIN32
     if (!child->valid()) {
         std::cerr << "failed to execute " << args[0] << " via spawn_vistle.sh, retrying with mpirun" << std::endl;
-        child = std::make_shared<proc::child>(proc::search_path("mpirun"), proc::args(args));
+        child = std::make_shared<proc::child>(proc::search_path("mpirun"), proc::args(args), terminate_with_parent());
     }
 #endif
     return child;
@@ -1827,7 +1846,7 @@ bool Hub::startVrb()
 
     proc::ipstream out;
     auto child = std::make_shared<proc::child>(proc::search_path("vrb"), proc::args({"--tui", "--printport"}),
-                                               proc::std_out > out);
+                                               terminate_with_parent(), proc::std_out > out);
     if (!child->valid()) {
         CERR << "could not create VRB process" << std::endl;
         return false;
@@ -1984,7 +2003,7 @@ bool Hub::startUi(const std::string &uipath, bool replace)
         return false;
     }
 
-    auto child = std::make_shared<proc::child>(uipath, proc::args(args));
+    auto child = std::make_shared<proc::child>(uipath, proc::args(args), terminate_with_parent());
     if (!child->valid()) {
         CERR << "failed to spawn UI " << uipath << std::endl;
         return false;
@@ -2008,7 +2027,7 @@ bool Hub::startPythonUi()
     cmd += "from vistle import *; ";
     args.push_back(cmd);
     args.push_back("--");
-    auto child = std::make_shared<proc::child>(proc::search_path(ipython), proc::args(args));
+    auto child = std::make_shared<proc::child>(proc::search_path(ipython), proc::args(args), terminate_with_parent());
     if (!child->valid()) {
         CERR << "failed to spawn ipython " << ipython << std::endl;
         return false;
