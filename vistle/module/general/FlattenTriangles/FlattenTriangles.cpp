@@ -104,45 +104,51 @@ bool FlattenTriangles::compute()
     if (intri) {
         if (intri->getNumCorners() == 0) {
             // already flat
-            auto ntri = intri->clone();
-            addObject("grid_out", ntri);
-            return true;
+            outgrid = intri->clone();
+        } else {
+            Triangles::ptr tri = intri->cloneType();
+            tri->setSize(intri->getNumCorners());
+            flatten(intri, intri, tri);
+            tri->setMeta(intri->meta());
+            tri->copyAttributes(intri);
+            outgrid = tri;
         }
-
-        Triangles::ptr tri = intri->cloneType();
-        tri->setSize(intri->getNumCorners());
-        flatten(intri, intri, tri);
-        tri->setMeta(intri->meta());
-        tri->copyAttributes(intri);
-        outgrid = tri;
     } else if (inquad) {
         if (inquad->getNumCorners() == 0) {
             // already flat
-            auto nquad = inquad->clone();
-            addObject("grid_out", nquad);
-            return true;
+            outgrid = inquad->clone();
+        } else {
+            Quads::ptr q = inquad->cloneType();
+            q->setSize(inquad->getNumCorners());
+            flatten(inquad, inquad, q);
+            q->setMeta(inquad->meta());
+            q->copyAttributes(inquad);
+            outgrid = q;
         }
-
-        Quads::ptr q = inquad->cloneType();
-        q->setSize(inquad->getNumCorners());
-        flatten(inquad, inquad, q);
-        q->setMeta(inquad->meta());
-        q->copyAttributes(inquad);
-        outgrid = q;
     }
 
     if (data) {
         DataBase::ptr dout = data->clone();
-        dout->resetArrays();
-        dout->setSize(outgrid->getSize());
-        if (intri) {
-            flatten(intri, data, dout);
-            dout->setGrid(outgrid);
-        } else if (inquad) {
-            flatten(inquad, data, dout);
-            dout->setGrid(outgrid);
+        dout->setGrid(outgrid);
+        auto mapping = data->guessMapping();
+        if (mapping == DataBase::Element) {
+            dout->setMapping(DataBase::Element);
+            addObject("grid_out", dout);
+        } else if (mapping == DataBase::Vertex) {
+            dout->setMapping(DataBase::Vertex);
+            dout->resetArrays();
+            dout->setSize(outgrid->getSize());
+            if (intri) {
+                flatten(intri, data, dout);
+            } else if (inquad) {
+                flatten(inquad, data, dout);
+                dout->setGrid(outgrid);
+            }
+            addObject("grid_out", dout);
+        } else {
+            sendInfo("unsupported mapping");
+            addObject("grid_out", outgrid);
         }
-        addObject("grid_out", dout);
     } else {
         addObject("grid_out", outgrid);
     }
