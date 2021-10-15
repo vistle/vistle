@@ -30,35 +30,45 @@
 //vistle-module-util
 #include "vistle/module/general/utils/ghost.h"
 
+//vistle-module-netcdf-util
+#include "vistle/module/general/utils/vistle_netcdf.h"
+
 //std
 #include <algorithm>
 #include <array>
-#include <boost/mpi/environment.hpp>
 #include <iterator>
+#include <memory>
 #include <string>
 #include <cstddef>
+#include <vector>
 
 using namespace vistle;
 using namespace netCDF;
 
 MODULE_MAIN(ReadTsunami)
 namespace {
+
 constexpr auto ETA{"eta"};
 
+typedef vistle::netcdf::VNcVar VNcVar;
+typedef vistle::netcdf::NcVec_size NcVec_size;
+typedef vistle::netcdf::NcVec_diff NcVec_diff;
+
 template<class T>
-struct CompNumTimesteps {
+struct NTimesteps {
 private:
     const T first;
     const T last;
     const T inc;
 
 public:
-    CompNumTimesteps(T f, T l, T i): first(f), last(l), inc(i) {}
+    NTimesteps(T f, T l, T i): first(f), last(l), inc(i) {}
     void operator()(T &nTimestep) const
     {
         nTimestep = (inc > 0 && last >= first) || (inc < 0 && last <= first) ? ((last - first) / inc + 1) : -1;
     }
 };
+
 } // namespace
 
 ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicator comm)
@@ -208,18 +218,18 @@ bool ReadTsunami::examine(const vistle::Parameter *param)
 
     const int &nBlocks = m_blocks[0]->getValue() * m_blocks[1]->getValue();
     // TODO: NetCDF not threadsafe => implement lock mechanisim?
-    /* setDimDomain(2); */
-    /* setHandlePartitions(nBlocks > size()); */
-    /* setPartitions(nBlocks); */
-    /* return true; */
-    if (nBlocks <= size()) {
-        setDimDomain(2);
-        setPartitions(nBlocks);
-        return true;
-    } else {
-        printRank0("Total number of blocks should equal MPISIZE or less.");
-        return false;
-    }
+    setDimDomain(2);
+    setHandlePartitions(nBlocks > size());
+    setPartitions(nBlocks);
+    return true;
+    /* if (nBlocks <= size()) { */
+    /*     setDimDomain(2); */
+    /*     setPartitions(nBlocks); */
+    /*     return true; */
+    /* } else { */
+    /*     printRank0("Total number of blocks should equal MPISIZE or less."); */
+    /*     return false; */
+    /* } */
 }
 
 /**
@@ -434,12 +444,12 @@ bool ReadTsunami::computeInitialDIY(const Bounds &bounds, Token &token, int bloc
         return false;
 
     // get nc var objects ref
-    const NcVar &latvar = ncFile->getVar(m_latLon_Sea[0]);
-    const NcVar &lonvar = ncFile->getVar(m_latLon_Sea[1]);
-    const NcVar &grid_lat = ncFile->getVar(m_latLon_Ground[0]);
-    const NcVar &grid_lon = ncFile->getVar(m_latLon_Ground[1]);
-    const NcVar &bathymetryvar = ncFile->getVar(m_bathy->getValue());
-    const NcVar &eta = ncFile->getVar(ETA);
+    const VNcVar &latvar = ncFile->getVar(m_latLon_Sea[0]);
+    const VNcVar &lonvar = ncFile->getVar(m_latLon_Sea[1]);
+    const VNcVar &grid_lat = ncFile->getVar(m_latLon_Ground[0]);
+    const VNcVar &grid_lon = ncFile->getVar(m_latLon_Ground[1]);
+    const VNcVar &bathymetryvar = ncFile->getVar(m_bathy->getValue());
+    const VNcVar &eta = ncFile->getVar(ETA);
 
     // compute current time parameters
     const ptrdiff_t &incrementTimestep = m_increment->getValue();
@@ -483,17 +493,18 @@ bool ReadTsunami::computeInitialDIY(const Bounds &bounds, Token &token, int bloc
     {
         // read bathymetry
         {
-            const std::vector<size_t> vecStartBathy{latMin, lonMin};
-            const std::vector<size_t> vecCountBathy{countLat, countLon};
-            bathymetryvar.getVar(vecStartBathy, vecCountBathy, vecDepth.data());
+            const NcVec_size vecStartBathy{latMin, lonMin};
+            const NcVec_size vecCountBathy{countLat, countLon};
+            const NcVec_diff vecStrideBathy{1, 1};
+            bathymetryvar.getVar(vecStartBathy, vecCountBathy, vecStrideBathy, vecDepth.data());
         }
 
         // read eta
         {
             vecEta.resize(nTimesteps * verticesSea);
-            const std::vector<size_t> vecStartEta{firstTimestep, latMin, lonMin};
-            const std::vector<size_t> vecCountEta{nTimesteps, countLat, countLon};
-            const std::vector<ptrdiff_t> vecStrideEta{incrementTimestep, 1, 1};
+            const NcVec_size vecStartEta{firstTimestep, latMin, lonMin};
+            const NcVec_size vecCountEta{nTimesteps, countLat, countLon};
+            const NcVec_diff vecStrideEta{incrementTimestep, 1, 1};
             if (seaTimeConn) {
                 eta.getVar(vecStartEta, vecCountEta, vecStrideEta, vecEta.data());
 
@@ -508,10 +519,11 @@ bool ReadTsunami::computeInitialDIY(const Bounds &bounds, Token &token, int bloc
         }
 
         // read lat, lon, grid_lat, grid_lon
-        latvar.getVar(std::vector<size_t>{latMin}, std::vector<size_t>{countLat}, vecLat.data());
-        lonvar.getVar(std::vector<size_t>{lonMin}, std::vector<size_t>{countLon}, vecLon.data());
-        grid_lat.getVar(std::vector<size_t>{latMin}, std::vector<size_t>{countLat}, vecLatGrid.data());
-        grid_lon.getVar(std::vector<size_t>{lonMin}, std::vector<size_t>{countLon}, vecLonGrid.data());
+        NcVec_diff stride{1};
+        latvar.getVar(NcVec_size{latMin}, NcVec_size{countLat}, stride, vecLat.data());
+        lonvar.getVar(NcVec_size{lonMin}, NcVec_size{countLon}, stride, vecLon.data());
+        grid_lat.getVar(NcVec_size{latMin}, NcVec_size{countLat}, stride, vecLatGrid.data());
+        grid_lon.getVar(NcVec_size{lonMin}, NcVec_size{countLon}, stride, vecLonGrid.data());
     }
 
     //************* create Polygons ************//
@@ -541,8 +553,8 @@ bool ReadTsunami::computeInitialDIY(const Bounds &bounds, Token &token, int bloc
         auto ptr_grnd = generateSurface(polyDataGround, grndDim, coords, grndZCalcDiy);
 
         //************* create selected scalars *************//
-        const std::vector<size_t> vecScalarStart{latMin, lonMin};
-        const std::vector<size_t> vecScalarCount{countLat, countLon};
+        const NcVec_size vecScalarStart{latMin, lonMin};
+        const NcVec_size vecScalarCount{countLat, countLon};
         std::vector<float> vecScalar(verticesGround);
         for (size_t i = 0; i < NUM_SCALARS; ++i) {
             if (!m_scalarsOut[i]->isConnected())
@@ -552,7 +564,7 @@ bool ReadTsunami::computeInitialDIY(const Bounds &bounds, Token &token, int bloc
             Vec<Scalar>::ptr ptr_scalar(new Vec<Scalar>(verticesSea));
             ptr_Scalar[i] = ptr_scalar;
             auto scX = ptr_scalar->x().data();
-            val.getVar(vecScalarStart, vecScalarCount, scX);
+            val.getVar(vecScalarStart, vecScalarCount, NcVec_diff{1}, scX);
 
             //set some meta data
             ptr_scalar->addAttribute("_species", scName);
@@ -612,7 +624,7 @@ void ReadTsunami::computeActualLastTimestep(const ptrdiff_t &incrementTimestep, 
         lastTimestep--;
 
     m_actualLastTimestep = lastTimestep - (lastTimestep % incrementTimestep);
-    CompNumTimesteps<size_t>(firstTimestep, m_actualLastTimestep, incrementTimestep)(nTimesteps);
+    NTimesteps<size_t>(firstTimestep, m_actualLastTimestep, incrementTimestep)(nTimesteps);
 }
 
 /**
