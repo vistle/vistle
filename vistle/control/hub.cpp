@@ -2440,7 +2440,7 @@ bool Hub::checkChildProcesses(bool emergency)
             while (!m_vrbSockets.empty()) {
                 removeSocket(m_vrbSockets.begin()->second);
             }
-        } else if (!m_quitting && !emergency) {
+        } else if (!emergency) {
             if (id == Process::Manager) {
                 // manager died
                 CERR << "manager died - cannot continue" << std::endl;
