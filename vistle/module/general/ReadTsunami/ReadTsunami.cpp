@@ -29,9 +29,10 @@
 
 //vistle-module-util
 #include "vistle/module/general/utils/ghost.h"
+/* #include "vistle/module/general/utils/tsafe_ptr.h" */
 
 //vistle-module-netcdf-util
-#include "vistle/module/general/utils/vistle_netcdf.h"
+/* #include "vistle/module/general/utils/vistle_netcdf.h" */
 
 //std
 #include <algorithm>
@@ -50,9 +51,12 @@ namespace {
 
 constexpr auto ETA{"eta"};
 
-typedef vistle::netcdf::VNcVar VNcVar;
-typedef vistle::netcdf::NcVec_size NcVec_size;
-typedef vistle::netcdf::NcVec_diff NcVec_diff;
+/* typedef vistle::netcdf::VNcVar VNcVar; */
+/* typedef vistle::netcdf::VNcVar::NcVec_size NcVec_size; */
+/* typedef vistle::netcdf::VNcVar::NcVec_diff NcVec_diff; */
+typedef safe_ptr<NcVar> VNcVar;
+typedef std::vector<size_t> NcVec_size;
+typedef std::vector<ptrdiff_t> NcVec_diff;
 
 template<class T>
 struct NTimesteps {
@@ -150,6 +154,29 @@ void ReadTsunami::initScalarParamReader()
  * @return true if its not empty or cannot be opened.
  */
 bool ReadTsunami::openNcFile(std::shared_ptr<NcFile> file)
+{
+    std::string sFileName = m_filedir->getValue();
+
+    if (sFileName.empty()) {
+        printRank0("NetCDF filename is empty!");
+        return false;
+    } else {
+        try {
+            file->open(sFileName.c_str(), NcFile::read);
+            printRank0("Reading File: " + sFileName);
+        } catch (...) {
+            printRank0("Couldn't open NetCDF file!");
+            return false;
+        }
+        if (file->getVarCount() == 0) {
+            printRank0("empty NetCDF file!");
+            return false;
+        } else
+            return true;
+    }
+}
+
+bool ReadTsunami::openNcFile(safe_ptr<NcFile> file)
 {
     std::string sFileName = m_filedir->getValue();
 
@@ -402,6 +429,8 @@ auto ReadTsunami::generateNcVarExt(const netCDF::NcVar &ncVar, const T &dim, con
  */
 bool ReadTsunami::prepareRead()
 {
+    if (!openNcFile(ncFile))
+        return false;
     seaTimeConn = m_seaSurface_out->isConnected();
     for (auto scalar_out: m_scalarsOut)
         seaTimeConn = seaTimeConn || scalar_out->isConnected();
@@ -439,17 +468,18 @@ bool ReadTsunami::computeBlockDIY(const Bounds &bounds, Token &token, int timest
 
 bool ReadTsunami::computeInitialDIY(const Bounds &bounds, Token &token, int block)
 {
-    std::shared_ptr<NcFile> ncFile(new NcFile());
-    if (!openNcFile(ncFile))
-        return false;
+    /* std::shared_ptr<NcFile> ncFile(new NcFile()); */
+    /* safe_ptr<NcFile> ncFile; */
+    /* if (!openNcFile(ncFile)) */
+    /*     return false; */
 
     // get nc var objects ref
-    const VNcVar &latvar = ncFile->getVar(m_latLon_Sea[0]);
-    const VNcVar &lonvar = ncFile->getVar(m_latLon_Sea[1]);
-    const VNcVar &grid_lat = ncFile->getVar(m_latLon_Ground[0]);
-    const VNcVar &grid_lon = ncFile->getVar(m_latLon_Ground[1]);
-    const VNcVar &bathymetryvar = ncFile->getVar(m_bathy->getValue());
-    const VNcVar &eta = ncFile->getVar(ETA);
+    const auto &latvar = ncFile->getVar(m_latLon_Sea[0]);
+    const auto &lonvar = ncFile->getVar(m_latLon_Sea[1]);
+    const auto &grid_lat = ncFile->getVar(m_latLon_Ground[0]);
+    const auto &grid_lon = ncFile->getVar(m_latLon_Ground[1]);
+    const auto &bathymetryvar = ncFile->getVar(m_bathy->getValue());
+    const auto &eta = ncFile->getVar(ETA);
 
     // compute current time parameters
     const ptrdiff_t &incrementTimestep = m_increment->getValue();
@@ -460,9 +490,11 @@ bool ReadTsunami::computeInitialDIY(const Bounds &bounds, Token &token, int bloc
 
     // dimension from lat and lon variables
     const Dim<size_t> dimSea(latvar.getDim(0).getSize(), lonvar.getDim(0).getSize());
+    /* const Dim<size_t> dimSea(latvar->getDim(0).getSize(), lonvar->getDim(0).getSize()); */
 
     // get dim from grid_lon & grid_lat
     const Dim<size_t> dimGround(grid_lat.getDim(0).getSize(), grid_lon.getDim(0).getSize());
+    /* const Dim<size_t> dimGround(grid_lat->getDim(0).getSize(), grid_lon->getDim(0).getSize()); */
 
     const size_t &latMin = bounds.min[0];
     const size_t &latMax = bounds.max[0];
@@ -497,6 +529,8 @@ bool ReadTsunami::computeInitialDIY(const Bounds &bounds, Token &token, int bloc
             const NcVec_size vecCountBathy{countLat, countLon};
             const NcVec_diff vecStrideBathy{1, 1};
             bathymetryvar.getVar(vecStartBathy, vecCountBathy, vecStrideBathy, vecDepth.data());
+            /* bathymetryvar->getVar(vecStartBathy, vecCountBathy, vecStrideBathy, vecDepth.data()); */
+            sendInfo("no crash bathy");
         }
 
         // read eta
@@ -507,6 +541,7 @@ bool ReadTsunami::computeInitialDIY(const Bounds &bounds, Token &token, int bloc
             const NcVec_diff vecStrideEta{incrementTimestep, 1, 1};
             if (seaTimeConn) {
                 eta.getVar(vecStartEta, vecCountEta, vecStrideEta, vecEta.data());
+                /* eta->getVar(vecStartEta, vecCountEta, vecStrideEta, vecEta.data()); */
 
                 //filter fillvalue
                 if (m_fill->getValue()) {
@@ -516,6 +551,7 @@ bool ReadTsunami::computeInitialDIY(const Bounds &bounds, Token &token, int bloc
                     std::replace(vecEta.begin(), vecEta.end(), fillVal, fillValNew);
                 }
             }
+            sendInfo("no crash eta");
         }
 
         // read lat, lon, grid_lat, grid_lon
@@ -524,6 +560,11 @@ bool ReadTsunami::computeInitialDIY(const Bounds &bounds, Token &token, int bloc
         lonvar.getVar(NcVec_size{lonMin}, NcVec_size{countLon}, stride, vecLon.data());
         grid_lat.getVar(NcVec_size{latMin}, NcVec_size{countLat}, stride, vecLatGrid.data());
         grid_lon.getVar(NcVec_size{lonMin}, NcVec_size{countLon}, stride, vecLonGrid.data());
+        /* latvar->getVar(NcVec_size{latMin}, NcVec_size{countLat}, stride, vecLat.data()); */
+        /* lonvar->getVar(NcVec_size{lonMin}, NcVec_size{countLon}, stride, vecLon.data()); */
+        /* grid_lat->getVar(NcVec_size{latMin}, NcVec_size{countLat}, stride, vecLatGrid.data()); */
+        /* grid_lon->getVar(NcVec_size{lonMin}, NcVec_size{countLon}, stride, vecLonGrid.data()); */
+        sendInfo("no crash other");
     }
 
     //************* create Polygons ************//
@@ -560,11 +601,14 @@ bool ReadTsunami::computeInitialDIY(const Bounds &bounds, Token &token, int bloc
             if (!m_scalarsOut[i]->isConnected())
                 continue;
             const auto &scName = m_scalars[i]->getValue();
+            /* const NcVar &val = ncFile->getVar(scName); */
             const auto &val = ncFile->getVar(scName);
             Vec<Scalar>::ptr ptr_scalar(new Vec<Scalar>(verticesSea));
             ptr_Scalar[i] = ptr_scalar;
             auto scX = ptr_scalar->x().data();
             val.getVar(vecScalarStart, vecScalarCount, NcVec_diff{1}, scX);
+            /* val->getVar(vecScalarStart, vecScalarCount, NcVec_diff{1}, scX); */
+            printRank0("no crash val");
 
             //set some meta data
             ptr_scalar->addAttribute("_species", scName);
@@ -661,9 +705,9 @@ void ReadTsunami::computeBlockPartition(const int blockNum, vistle::Index &nLatB
 template<class T>
 bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
 {
-    std::shared_ptr<NcFile> ncFile(new NcFile());
-    if (!openNcFile(ncFile))
-        return false;
+    /* std::shared_ptr<NcFile> ncFile(new NcFile()); */
+    /* if (!openNcFile(ncFile)) */
+    /*     return false; */
 
     // get nc var objects ref
     const NcVar &latvar = ncFile->getVar(m_latLon_Sea[0]);
@@ -805,7 +849,7 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
         }
     }
 
-    ncFile->close();
+    /* ncFile->close(); */
     return true;
 }
 
@@ -863,5 +907,11 @@ bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &time
             val.reset();
         indexEta = 0;
     }
+    return true;
+}
+
+bool ReadTsunami::finishRead()
+{
+    ncFile->close();
     return true;
 }

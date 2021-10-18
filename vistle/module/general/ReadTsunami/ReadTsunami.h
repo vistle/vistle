@@ -19,6 +19,8 @@
 #include <vistle/module/reader.h>
 #include <vistle/core/polygons.h>
 
+#include "vistle/module/general/utils/tsafe_ptr.h"
+
 #include <netcdf>
 #include <vector>
 #include <array>
@@ -84,10 +86,12 @@ private:
     bool read(Token &token, int timestep, int block) override;
     bool readDIY(const Bounds &bounds, Token &token, int timestep, int block) override;
     bool examine(const vistle::Parameter *param) override;
+    bool finishRead() override;
 
     //Own functions
     void initScalarParamReader();
     bool openNcFile(std::shared_ptr<netCDF::NcFile> file);
+    bool openNcFile(vistle::safe_ptr<netCDF::NcFile> file);
     bool inspectNetCDFVars();
 
     typedef std::function<float(size_t, size_t)> zCalcFunc;
@@ -162,5 +166,7 @@ private:
     //lat = 0; lon = 1
     std::array<std::string, NUM_BLOCKS> m_latLon_Sea;
     std::array<std::string, NUM_BLOCKS> m_latLon_Ground;
+    /* vistle::safe_ptr<netCDF::NcFile> ncFile; */
+    std::shared_ptr<netCDF::NcFile> ncFile;
 };
 #endif
