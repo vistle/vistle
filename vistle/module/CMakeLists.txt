@@ -39,9 +39,6 @@ vistle_target_link_libraries(
     PUBLIC
     MPI::MPI_C)
 
-#diy
-target_include_directories(vistle_module PUBLIC $<BUILD_INTERFACE:${DIY_INCLUDE_DIR}>)
-
 add_subdirectory(test)
 add_subdirectory(general)
 
