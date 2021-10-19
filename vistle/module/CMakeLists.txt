@@ -41,6 +41,7 @@ vistle_target_link_libraries(
 
 add_subdirectory(test)
 add_subdirectory(general)
+add_subdirectory(utils)
 
 if(IS_DIRECTORY "${PROJECT_SOURCE_DIR}/vistle/module/univiz" AND EXISTS ${PROJECT_SOURCE_DIR}/vistle/module/univiz/CMakeLists.txt)
     set(UNIVIZ_VISTLE TRUE)

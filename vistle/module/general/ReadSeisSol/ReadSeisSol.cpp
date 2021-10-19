@@ -36,10 +36,10 @@
 #include "vistle/util/enum.h"
 
 //vistle module utils
-#include "vistle/module/general/utils/str.h"
-#include "vistle/module/general/utils/geo.h"
-#include "vistle/module/general/utils/xdmf.h"
-#include "vistle/module/general/utils/c20.h"
+#include "vistle/module/utils/str.h"
+#include "vistle/module/utils/geo.h"
+#include "vistle/module/utils/xdmf.h"
+#include "vistle/module/utils/c20.h"
 
 //boost
 #include <boost/mpi/communicator.hpp>

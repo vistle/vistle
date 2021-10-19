@@ -22,7 +22,7 @@
 #include <memory>
 #include <vector>
 #include <vistle/module/reader.h>
-#include <vistle/module/general/utils/str.h>
+#include <vistle/module/utils/str.h>
 #include <vistle/core/unstr.h>
 #include <boost/smart_ptr/shared_ptr.hpp>
 

@@ -28,7 +28,7 @@
 #include "vistle/module/module.h"
 
 //vistle-module-util
-#include "vistle/module/general/utils/ghost.h"
+#include "vistle/module/utils/ghost.h"
 
 //std
 #include <algorithm>
