@@ -16,10 +16,9 @@
 #ifndef _READTSUNAMI_H
 #define _READTSUNAMI_H
 
+#include <memory>
 #include <vistle/module/reader.h>
 #include <vistle/core/polygons.h>
-
-#include "vistle/module/general/utils/tsafe_ptr.h"
 
 #include <netcdf>
 #include <vector>
@@ -62,9 +61,9 @@ private:
 
         NcVarExtended(const netCDF::NcVar &nc, const size_t &start = 0, const size_t &count = 0,
                       const ptrdiff_t &stride = 1, const ptrdiff_t &imap = 1)
-        : start(start), count(count), stride(stride), imap(imap), ncVar(nc)
+        : start(start), count(count), stride(stride), imap(imap)
         {
-            /* ncVar = std::make_unique<netCDF::NcVar>(nc); */
+            ncVar = std::make_unique<netCDF::NcVar>(nc);
         }
 
         template<class T>
@@ -78,19 +77,17 @@ private:
         }
 
     private:
-        vistle::safe_ptr<netCDF::NcVar> ncVar;
+        std::shared_ptr<netCDF::NcVar> ncVar;
     };
 
     //Vistle functions
     bool prepareRead() override;
     bool read(Token &token, int timestep, int block) override;
     bool examine(const vistle::Parameter *param) override;
-    bool finishRead() override;
 
     //Own functions
     void initScalarParamReader();
     bool openNcFile(std::shared_ptr<netCDF::NcFile> file);
-    bool openNcFile(vistle::safe_ptr<netCDF::NcFile> file);
     bool inspectNetCDFVars();
 
     typedef std::function<float(size_t, size_t)> zCalcFunc;
@@ -162,6 +159,5 @@ private:
     //lat = 0; lon = 1
     std::array<std::string, NUM_BLOCKS> m_latLon_Sea;
     std::array<std::string, NUM_BLOCKS> m_latLon_Ground;
-    vistle::safe_ptr<netCDF::NcFile> ncFile;
 };
 #endif

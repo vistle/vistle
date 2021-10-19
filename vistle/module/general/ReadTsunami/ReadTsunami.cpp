@@ -152,30 +152,6 @@ bool ReadTsunami::openNcFile(std::shared_ptr<NcFile> file)
     }
 }
 
-bool ReadTsunami::openNcFile(safe_ptr<NcFile> file)
-{
-    std::string sFileName = m_filedir->getValue();
-
-    if (sFileName.empty()) {
-        printRank0("NetCDF filename is empty!");
-        return false;
-    } else {
-        try {
-            file->open(sFileName.c_str(), NcFile::read);
-            printRank0("Reading File: " + sFileName);
-        } catch (...) {
-            printRank0("Couldn't open NetCDF file!");
-            return false;
-        }
-        if (file->getVarCount() == 0) {
-            printRank0("empty NetCDF file!");
-            return false;
-        } else
-            return true;
-    }
-}
-
-
 /**
  * @brief Print string only on rank 0.
  *
@@ -220,6 +196,7 @@ bool ReadTsunami::examine(const vistle::Parameter *param)
     }
 
     const int &nBlocks = m_blocks[0]->getValue() * m_blocks[1]->getValue();
+    //TODO: threadsafe netcdf
     /* setPartitions(nBlocks); */
     /* return true; */
     if (nBlocks <= size()) {
@@ -236,7 +213,7 @@ bool ReadTsunami::examine(const vistle::Parameter *param)
  */
 bool ReadTsunami::inspectNetCDFVars()
 {
-    /* std::shared_ptr<NcFile> ncFile(new NcFile()); */
+    std::shared_ptr<NcFile> ncFile(new NcFile());
     if (!openNcFile(ncFile))
         return false;
 
@@ -393,8 +370,6 @@ auto ReadTsunami::generateNcVarExt(const netCDF::NcVar &ncVar, const T &dim, con
  */
 bool ReadTsunami::prepareRead()
 {
-    if (!openNcFile(ncFile))
-        return false;
     seaTimeConn = m_seaSurface_out->isConnected();
     for (auto scalar_out: m_scalarsOut)
         seaTimeConn = seaTimeConn || scalar_out->isConnected();
@@ -448,7 +423,6 @@ void ReadTsunami::computeActualLastTimestep(const ptrdiff_t &incrementTimestep, 
         lastTimestep--;
 
     m_actualLastTimestep = lastTimestep - (lastTimestep % incrementTimestep);
-    /* NTimesteps<size_t>(firstTimestep, m_actualLastTimestep, incrementTimestep)(nTimesteps); */
     auto rTime = ReaderTime(firstTimestep, m_actualLastTimestep, incrementTimestep);
     nTimesteps = rTime.calc_numtime();
 }
@@ -487,6 +461,10 @@ void ReadTsunami::computeBlockPartition(const int blockNum, vistle::Index &nLatB
 template<class T>
 bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
 {
+    std::shared_ptr<NcFile> ncFile(new NcFile());
+    if (!openNcFile(ncFile))
+        return false;
+
     // get nc var objects ref
     const NcVar &latvar = ncFile->getVar(m_latLon_Sea[0]);
     const NcVar &lonvar = ncFile->getVar(m_latLon_Sea[1]);
@@ -626,6 +604,7 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
             token.addObject(m_groundSurface_out, ptr_grnd);
         }
     }
+    ncFile->close();
     return true;
 }
 
@@ -683,11 +662,5 @@ bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &time
             val.reset();
         indexEta = 0;
     }
-    return true;
-}
-
-bool ReadTsunami::finishRead()
-{
-    ncFile->close();
     return true;
 }
