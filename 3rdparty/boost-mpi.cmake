@@ -60,7 +60,7 @@ target_include_directories(${BOOST_MPI} SYSTEM PUBLIC $<BUILD_INTERFACE:${CMAKE_
 if(VISTLE_INSTALL_3RDPARTY)
     install(
         DIRECTORY ${BOOST_MPI_DIR}/include/boost
-        DESTINATION include/vistle/3rdparty/${BOOST_MPI_DIR}
+        DESTINATION include/vistle/3rdparty/
         COMPONENT Devel)
     target_include_directories(${BOOST_MPI} SYSTEM PUBLIC $<INSTALL_INTERFACE:include/vistle/3rdparty/${BOOST_MPI_DIR}>)
 endif()
