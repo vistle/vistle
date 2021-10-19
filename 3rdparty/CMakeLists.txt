@@ -37,13 +37,8 @@ set(ZFP_LIBRARY_PREFIX
     "vistle_"
     CACHE STRING "Prefix to prepend to the output library name")
 mark_as_advanced(ZFP_LIBRARY_PREFIX)
+set(CMAKE_INSTALL_INCLUDEDIR include/vistle/3rdparty)
 add_subdirectory(zfp)
-if(VISTLE_INSTALL_3RDPARTY)
-    install(
-        DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/zfp/include/
-        DESTINATION include/vistle/3rdparty/
-        COMPONENT Devel)
-endif()
 
 #set(BUILD_SHARED_LIBS ${VISTLE_BUILD_SHARED} CACHE INTERNAL "")
 set(BUILD_SHARED_LIBS OFF)
@@ -97,11 +92,11 @@ if(VISTLE_INSTALL_3RDPARTY)
     #yas
     install(
         DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/yas/include/yas
-        DESTINATION include/vistle/3rdparty/
+        DESTINATION include/vistle/3rdparty
         COMPONENT Devel)
     #eigen3
     install(
         DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/eigen3
-        DESTINATION include/vistle/3rdparty/
+        DESTINATION include/vistle/3rdparty
         COMPONENT Devel)
 endif()
