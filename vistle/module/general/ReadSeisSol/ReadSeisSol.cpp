@@ -607,7 +607,6 @@ bool ReadSeisSol::fillUnstrGridConnectList(vistle::UnstructuredGrid::ptr unstr, 
     if (!xdmfArrConn)
         return false;
 
-    //TODO: Debug invert elementvertices for tetrahedron => vtk vertice order = inverse vistle vertice order
     auto cl = unstr->cl().data();
     xdmfArrConn->getValues(0, cl, xdmfArrConn->getSize());
     return true;
