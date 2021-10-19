@@ -164,7 +164,7 @@ set(DIY_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdparty/diy/include")
 #vistle_find_package(Eigen3 REQUIRED)
 set(EIGEN3_INCLUDE_PATH "../3rdparty")
 
-if (NOT VISTLE_GUI_ONLY)
+if(NOT VISTLE_GUI_ONLY)
     #Boost.MPI is compiled with Vistle - for easy switching of MPI versions
     include_directories(BEFORE SYSTEM "${PROJECT_SOURCE_DIR}/3rdparty/${BOOST_MPI_DIR}/include")
 endif()
