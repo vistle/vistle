@@ -10,4 +10,4 @@ set(SOURCES ReadTsunami.cpp)
 add_module(ReadTsunami "read ChEESE Tsunami files" ${SOURCES} ${HEADERS})
 
 target_include_directories(ReadTsunami SYSTEM PRIVATE ${NETCDF_INCLUDE_DIRS})
-target_link_libraries(ReadTsunami vistle_module_util vistle_module_netcdf_util ${NETCDF_LIBRARIES})
+target_link_libraries(ReadTsunami vistle_module_util ${NETCDF_LIBRARIES})
