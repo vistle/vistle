@@ -41,42 +41,5 @@ constexpr void iter_swap(ForwardIt1 a, ForwardIt2 b) // constexpr since C++20
 {
     std::swap(*a, *b);
 }
-
-/**
- * @brief std::next_permutation (C++20)
- *
- * @tparam BidirIt
- * @param first
- * @param last
- *
- * @return true if last permutation.
- */
-template<class BidirIt>
-bool next_permutation(BidirIt first, BidirIt last)
-{
-    if (first == last)
-        return false;
-    BidirIt i = last;
-    if (first == --i)
-        return false;
-
-    while (true) {
-        BidirIt i1, i2;
-
-        i1 = i;
-        if (*--i < *i1) {
-            i2 = last;
-            while (!(*i < *--i2))
-                ;
-            iter_swap(i, i2);
-            std::reverse(i1, last);
-            return true;
-        }
-        if (i == first) {
-            std::reverse(first, last);
-            return false;
-        }
-    }
-}
 } // namespace vistle
 #endif
