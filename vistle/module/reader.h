@@ -4,10 +4,6 @@
 #include "module.h"
 #include <set>
 #include <future>
-#include <diy/assigner.hpp>
-#include <diy/decomposition.hpp>
-#include <diy/master.hpp>
-#include "diy/mpi/communicator.hpp"
 
 namespace vistle {
 
@@ -67,20 +63,6 @@ public:
         std::map<std::string, std::shared_ptr<PortState>> m_ports;
     };
 
-    typedef diy::DiscreteBounds Bounds;
-    typedef diy::RegularGridLink RegGridLink;
-    typedef diy::RegularLink<Bounds> RegLink;
-    typedef diy::Master::ProxyWithLink ProxyLink;
-
-    struct Block {
-        // mandatory
-        Block() {}
-        static void *create() { return new Block; }
-        static void destroy(void *b) { delete static_cast<Block *>(b); }
-        void load_block(const void *b, diy::BinaryBuffer &bb) { diy::load(bb, *static_cast<const Block *>(b)); }
-        void save_block(const void *b, diy::BinaryBuffer &bb) { diy::save(bb, *static_cast<const Block *>(b)); }
-    };
-
     /// construct a read module, parameters correspond to @ref Module constructor
     /** construct a read module, parameters correspond to @ref Module constructor
     *  @param name name of the module in the workflow editor
@@ -102,9 +84,6 @@ public:
     *  The size of a work unit depends on the partitioning that has been requested by @ref setPartitions
     */
     virtual bool read(Token &token, int timestep = -1, int block = -1) = 0;
-    virtual bool readDIY(const ProxyLink &link, Token &token, int timestep);
-    virtual bool readDIY(const Bounds &link, Token &token, int timestep, int block);
-    virtual bool readDIYBlock(Block *b, const ProxyLink &link, Token &token, int timestep);
 
     /* virtual bool readDIYBlock(Token &token, int timestep = -1); */
     /// called once on every rank after execution of the module has been initiated before read is called
@@ -127,47 +106,15 @@ protected:
         ParallelizeTimesteps, ///< up to 'concurrency' operations at a time, but the same block from different timesteps may be scheduled on other ranks
         ParallelizeTimeAndBlocks, ///< up to 'concurrency' operations at a time
         ParallelizeBlocks, ///< up to 'concurrency' operations at a time, all operations for one timestep have finished before operations for another timestep are started
-        ParallelizeDIYBlocks, ///< using diy for block distribution; you will need to set global dimension, min and max of your domain and number of blocks as well override the readDIY function
     };
 
     /// control whether and how @ref read invocations are called in parallel
     void setParallelizationMode(ParallelizationMode mode);
 
-
-    /**
-     * @brief Set max of current domain for DIY implementation in each dimension.
-     *
-     * @param max Vector.
-     */
-    void setMaxDomain(std::vector<int> &max) { m_maxDomain = max; }
-
-    /**
-     * @brief Set min of current domain for DIY implementation in each dimension.
-     *
-     * @param max Vector.
-     */
-    void setMinDomain(std::vector<int> &min) { m_minDomain = min; }
-
-    /**
-     * @brief Set dim of current domain for DIY implementation.
-     *
-     * @param max Vector.
-     */
-    void setDimDomain(int dim) { m_dimDomain = dim; }
-
-
-    /**
-     * @brief Whether use own serialized diy block struct or default defined.
-     *
-     * @param enable Enables handling of own diy blocks.
-     */
-    void setHandleOwnDIYBlocks(bool enable) { m_handleOwnDIYBlocks = enable; }
-
     /// whether partitions should be handled by the @ref Reader class
     void setHandlePartitions(bool enable);
     /// whether timesteps may be distributed to different ranks
     void setAllowTimestepDistribution(bool allow);
-
     //! whenever an observed parameter changes, data set should be rescanned
     void observeParameter(const Parameter *param);
     //! call during @ref examine to inform module how many timesteps are present whithin dataset
@@ -220,11 +167,8 @@ private:
 
     void readTimestep(std::shared_ptr<Token> prev, ReaderProperties &prop, int timestep);
     void readTimesteps(std::shared_ptr<Token> prev, ReaderProperties &prop);
-    bool prepareDIY(std::shared_ptr<Token> prev, ReaderProperties &prop, int timestep);
     bool prepare() override;
     bool compute() override;
-    bool readBlock(Block *block, const ProxyLink &pL, ReaderProperties &prop, std::shared_ptr<Token> prev,
-                   int timepstep = -1);
 
     ParallelizationMode m_parallel = Serial;
     std::mutex m_mutex; // protect ports and message queues

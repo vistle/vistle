@@ -90,71 +90,6 @@ size_t Reader::waitForReaders(size_t maxRunning, bool &result)
     return m_tokens.size();
 }
 
-bool Reader::prepareDIY(std::shared_ptr<Token> prev, ReaderProperties &prop, int timestep)
-{
-    int dimDomain{m_dimDomain};
-    int nBlocks{m_numPartitions};
-    int nBlocksInMem{-1}; // all in memory
-    int nThreads{prop.concurrency};
-    int ghost{0};
-
-    if (m_ghost->getValue())
-        ghost++;
-
-    auto diy_comm = diy::mpi::communicator(comm());
-    diy::ContiguousAssigner assigner(size(), nBlocks);
-
-    //dim of domain
-    Bounds domain(dimDomain);
-    for (int i = 0; i < dimDomain; ++i) {
-        domain.min[i] = m_minDomain[i];
-        domain.max[i] = m_maxDomain[i];
-    }
-
-    // -1 => in memory => storage loading available as well
-    diy::Master master(diy_comm, nThreads, nBlocksInMem, &Block::create, &Block::destroy);
-
-    // share_face is an n-dim (size 3 in this example) vector of bools
-    // indicating whether faces are shared in each dimension
-    // uninitialized values default to false
-    diy::RegularDecomposer<Bounds>::BoolVector share_face;
-
-    // wrap is an n-dim (size 3 in this example) vector of bools
-    // indicating whether boundary conditions are periodic in each dimension
-    // uninitialized values default to false
-    diy::RegularDecomposer<Bounds>::BoolVector wrap;
-
-    // ghosts is an n-dim (size 3 in this example) vector of ints
-    // indicating number of ghost cells per side in each dimension
-    // uninitialized values default to 0
-    diy::RegularDecomposer<Bounds>::CoordinateVector ghosts;
-    for (int i = 0; i < dimDomain; ++i) {
-        share_face.push_back(true);
-        wrap.push_back(false);
-        ghosts.push_back(ghost);
-    }
-
-    // either create the regular decomposer and call its decompose function
-    // (having the decomposer available is useful for its other member functions
-    diy::RegularDecomposer<Bounds> decomposer(dimDomain, domain, nBlocks, share_face, wrap, ghosts);
-    decomposer.decompose(rank(), assigner,
-                         [&](int gid, // block global id
-                             const Bounds &, // block bounds without any ghost added
-                             const Bounds &, // block bounds including ghost region
-                             const Bounds &, // global data bounds
-                             const RegGridLink &link) // neighborhood
-                         {
-                             Block *b = new Block;
-                             RegGridLink *l = new RegGridLink(link);
-
-                             master.add(gid, b, l); // add block to the master (mandatory)
-                         });
-
-    master.foreach ([&](Block *b, const ProxyLink &pL) { readBlock(b, pL, prop, prev, timestep); });
-
-    return true;
-}
-
 /**
  * @brief Calls read function for corresponding parallelizationmode for given timestep blockparallel.
  *
@@ -164,37 +99,34 @@ bool Reader::prepareDIY(std::shared_ptr<Token> prev, ReaderProperties &prop, int
  */
 void Reader::readTimestep(std::shared_ptr<Token> prev, ReaderProperties &prop, int timestep)
 {
-    if (m_parallel != ParallelizeDIYBlocks) {
-        for (int p = -1; p < prop.numpart; ++p) {
-            if (!m_handlePartitions || comm().rank() == rankForTimestepAndPartition(-1, p)) {
-                prop.meta->setBlock(p);
-                auto token = std::make_shared<Token>(this, prev);
-                ++m_tokenCount;
-                token->m_id = m_tokenCount;
-                token->m_meta = *prop.meta;
-                if (waitForReaders(prop.concurrency - 1, prop.result) == 0)
-                    prev.reset();
-                m_tokens.emplace_back(token);
-                prev = token;
-                token->m_future = std::async(std::launch::async, [this, token, timestep, p]() {
-                    if (!read(*token, timestep, p)) {
-                        sendInfo("error reading time data %d on partition %d", timestep, p);
-                        return false;
-                    }
-                    return true;
-                });
-            }
-            if (cancelRequested()) {
-                waitForReaders(0, prop.result);
+    for (int p = -1; p < prop.numpart; ++p) {
+        if (!m_handlePartitions || comm().rank() == rankForTimestepAndPartition(-1, p)) {
+            prop.meta->setBlock(p);
+            auto token = std::make_shared<Token>(this, prev);
+            ++m_tokenCount;
+            token->m_id = m_tokenCount;
+            token->m_meta = *prop.meta;
+            if (waitForReaders(prop.concurrency - 1, prop.result) == 0)
                 prev.reset();
-                prop.result = false;
-            }
-            if (!prop.result)
-                break;
+            m_tokens.emplace_back(token);
+            prev = token;
+            token->m_future = std::async(std::launch::async, [this, token, timestep, p]() {
+                if (!read(*token, timestep, p)) {
+                    sendInfo("error reading time data %d on partition %d", timestep, p);
+                    return false;
+                }
+                return true;
+            });
         }
-    } else
-        prop.result = prepareDIY(prev, prop, timestep);
-    if (m_parallel == ParallelizeBlocks || m_parallel == ParallelizeDIYBlocks) {
+        if (cancelRequested()) {
+            waitForReaders(0, prop.result);
+            prev.reset();
+            prop.result = false;
+        }
+        if (!prop.result)
+            break;
+    }
+    if (m_parallel == ParallelizeBlocks) {
         waitForReaders(0, prop.result);
         prev.reset();
     }
@@ -288,87 +220,6 @@ bool Reader::prepare()
         prop.result = false;
     }
 
-    return true;
-}
-
-/**
- * @brief Callback function for master::foreach invoked for each block. Calls virtual function readDIY.
- *
- * @param b Serialized DIY-Block (set by diy::master).
- * @param pL Communcation proxy between DIY-Blocks (set by diy::master).
- * @param prop Reader properties.
- * @param prev Previous token.
- * @param timestep current Timestep.
- *
- * @return True after succesfull read.
- */
-bool Reader::readBlock(Block *b, const ProxyLink &pL, ReaderProperties &prop, std::shared_ptr<Token> prev, int timestep)
-{
-    auto token = std::make_shared<Token>(this, prev);
-    ++m_tokenCount;
-    token->m_id = m_tokenCount;
-    token->m_meta = *prop.meta;
-    if (waitForReaders(prop.concurrency - 1, prop.result) == 0)
-        prev.reset();
-    m_tokens.emplace_back(token);
-    prev = token;
-
-    auto link = static_cast<RegLink *>(pL.link());
-    auto bounds = link->bounds();
-    auto block = pL.gid();
-    token->m_future = std::async(std::launch::async, [this, token, bounds, block, timestep]() {
-        if (m_handleOwnDIYBlocks) {
-            sendInfo("not implemented yet.");
-            return true;
-            /* return readDIYBlock(Block *b, const ProxyLink &link, Token &token, int timestep) */
-        }
-        return readDIY(bounds, *token, timestep, block);
-    });
-
-    return true;
-}
-
-/**
- * @brief Virtual function invoked for each DIY-Block. Override this function in reader module when using parallelizationmode parallelizeDIYBlocks. Use this function if you need access to communcation proxy.
- *
- * @param pL Communcation proxy between DIY-Blocks.
- * @param token Token for current block.
- * @param timestep current timestep.
- *
- * @return False when something went wrong else true.
- */
-bool Reader::readDIY(const ProxyLink &pL, Token &token, int timestep)
-{
-    return true;
-}
-
-/**
- * @brief Virtual function invoked for each DIY-Block. Override this function in reader module when using parallelizationmode parallelizeDIYBlocks. Use this function if you only need boundaries of current block.
- *
- * @param bounds Bounds of block.
- * @param token Token for current block.
- * @param timestep current timestep.
- * @param block Block id.
- *
- * @return False when something went wrong else true.
- */
-bool Reader::readDIY(const Bounds &bounds, Token &token, int timestep, int block)
-{
-    return true;
-}
-
-/**
- * @brief Virtual function invoked for each DIY-Block. Override this function in reader module when using parallelizationmode parallelizeDIYBlocks. Use this function if you have implemented a own serialized block struct for DIY.
- *
- * @param b Serialized DIY-Block.
- * @param pL Communcation proxy.
- * @param token Current token for block.
- * @param timestep current Timestep.
- *
- * @return False when somethin went wrong else true.
- */
-bool Reader::readDIYBlock(Block *b, const ProxyLink &pL, Token &token, int timestep)
-{
     return true;
 }
 
