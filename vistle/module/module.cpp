@@ -44,7 +44,7 @@
 
 //#define DEBUG
 //#define REDUCE_DEBUG
-//#define DETAILED_PROGRESS
+#define DETAILED_PROGRESS
 #define REDIRECT_OUTPUT
 
 #ifdef DEBUG
@@ -289,6 +289,8 @@ void Module::prepareQuit()
 #endif
 
     if (!m_readyForQuit) {
+        waitAllTasks();
+
         ParameterManager::quit();
 
         m_cache.clear();
@@ -296,10 +298,6 @@ void Module::prepareQuit()
 
         inputPorts.clear();
         outputPorts.clear();
-
-        vistle::message::ModuleExit m;
-        m.setDestId(Id::ForBroadcast);
-        sendMessage(m);
     }
 
     m_readyForQuit = true;
@@ -1061,6 +1059,9 @@ bool Module::getNextMessage(message::Buffer &buf, bool block)
         return true;
     }
 
+    if (!receiveMessageQueue)
+        return false;
+
     if (block) {
         receiveMessageQueue->receive(buf);
         return true;
@@ -1171,7 +1172,8 @@ bool Module::sendMessage(const message::Message &message, const buffer *payload)
         buf.setSenderId(id());
         buf.setRank(rank());
 #endif
-        sendMessageQueue->send(buf);
+        if (sendMessageQueue)
+            sendMessageQueue->send(buf);
     }
 
     return true;
@@ -1196,7 +1198,8 @@ bool Module::sendMessage(const message::Message &message, const MessagePayload &
         buf.setSenderId(id());
         buf.setRank(rank());
 #endif
-        sendMessageQueue->send(buf);
+        if (sendMessageQueue)
+            sendMessageQueue->send(buf);
     }
 
     return true;
@@ -2032,6 +2035,21 @@ std::set<int> Module::getMirrors() const
 
 Module::~Module()
 {
+    if (m_readyForQuit) {
+        comm().barrier();
+    } else {
+        CERR << "Emergency quit" << std::endl;
+    }
+
+    vistle::message::ModuleExit m;
+    m.setDestId(Id::ForBroadcast);
+    sendMessage(m);
+
+    delete sendMessageQueue;
+    sendMessageQueue = nullptr;
+    delete receiveMessageQueue;
+    receiveMessageQueue = nullptr;
+
 #ifndef MODULE_THREAD
     Shm::the().detach();
 #endif
@@ -2040,17 +2058,6 @@ Module::~Module()
         std::cerr.rdbuf(m_origStreambuf);
     delete m_streambuf;
     m_streambuf = nullptr;
-
-    if (m_readyForQuit) {
-        comm().barrier();
-    } else {
-        CERR << "Emergency quit" << std::endl;
-    }
-
-    delete sendMessageQueue;
-    sendMessageQueue = nullptr;
-    delete receiveMessageQueue;
-    receiveMessageQueue = nullptr;
 }
 
 void Module::eventLoop()
@@ -2425,7 +2432,7 @@ void Module::clearStatus()
 bool Module::cancelRequested(bool collective)
 {
     message::Buffer buf;
-    while (!m_executeAfterCancelFound && receiveMessageQueue->tryReceive(buf)) {
+    while (!m_executeAfterCancelFound && receiveMessageQueue && receiveMessageQueue->tryReceive(buf)) {
         messageBacklog.push_back(buf);
         switch (buf.type()) {
         case message::CANCELEXECUTE: {
