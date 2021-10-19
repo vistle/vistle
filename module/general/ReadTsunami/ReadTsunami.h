@@ -17,10 +17,12 @@
 #define _READTSUNAMI_H
 
 #include <memory>
+#include <mpi.h>
 #include <vistle/module/reader.h>
 #include <vistle/core/polygons.h>
 
-#include <netcdf>
+/* #include <netcdf> */
+#include <pnetcdf>
 #include <vector>
 #include <array>
 
@@ -34,6 +36,9 @@ public:
     ~ReadTsunami() override;
 
 private:
+    typedef PnetCDF::NcmpiVar NcVar;
+    typedef PnetCDF::NcmpiFile NcFile;
+
     //structs
     template<class T>
     struct Dim {
@@ -54,30 +59,41 @@ private:
     };
 
     struct NcVarExtended {
-        size_t start;
-        size_t count;
+        /* size_t start; */
+        /* size_t count; */
+        /* ptrdiff_t stride; */
+        /* ptrdiff_t imap; */
+        MPI_Offset start;
+        MPI_Offset count;
         ptrdiff_t stride;
         ptrdiff_t imap;
 
-        NcVarExtended(const netCDF::NcVar &nc, const size_t &start = 0, const size_t &count = 0,
+        /* NcVarExtended(const netCDF::NcVar &nc, const size_t &start = 0, const size_t &count = 0, */
+        NcVarExtended(const NcVar &nc, const MPI_Offset &start = 0, const MPI_Offset &count = 0,
                       const ptrdiff_t &stride = 1, const ptrdiff_t &imap = 1)
         : start(start), count(count), stride(stride), imap(imap)
         {
-            ncVar = std::make_unique<netCDF::NcVar>(nc);
+            /* ncVar = std::make_unique<netCDF::NcVar>(nc); */
+            ncVar = std::make_unique<NcVar>(nc);
         }
 
         template<class T>
         void readNcVar(T *storage) const
         {
-            std::vector<size_t> v_start{start};
-            std::vector<size_t> v_count{count};
-            std::vector<ptrdiff_t> v_stride{stride};
-            std::vector<ptrdiff_t> v_imap{imap};
+            /* std::vector<size_t> v_start{start}; */
+            /* std::vector<size_t> v_count{count}; */
+            /* std::vector<ptrdiff_t> v_stride{stride}; */
+            /* std::vector<ptrdiff_t> v_imap{imap}; */
+            std::vector<MPI_Offset> v_start{start};
+            std::vector<MPI_Offset> v_count{count};
+            std::vector<MPI_Offset> v_stride{stride};
+            std::vector<MPI_Offset> v_imap{imap};
             ncVar->getVar(v_start, v_count, v_stride, v_imap, storage);
         }
 
     private:
-        std::shared_ptr<netCDF::NcVar> ncVar;
+        /* std::shared_ptr<netCDF::NcVar> ncVar; */
+        std::shared_ptr<NcVar> ncVar;
     };
 
     //Vistle functions
@@ -87,7 +103,8 @@ private:
 
     //Own functions
     void initScalarParamReader();
-    bool openNcFile(std::shared_ptr<netCDF::NcFile> file);
+    /* bool openNcFile(std::shared_ptr<netCDF::NcFile> file); */
+    bool openNcFile(std::shared_ptr<NcFile> file);
     bool inspectNetCDFVars();
 
     typedef std::function<float(size_t, size_t)> zCalcFunc;
@@ -108,11 +125,14 @@ private:
 
     template<class T, class U>
     bool computeTimestep(Token &token, const T &blockNum, const U &timestep);
+    /* void computeActualLastTimestep(const ptrdiff_t &incrementTimestep, const size_t &firstTimestep, */
+    /*                                size_t &lastTimestep, size_t &nTimesteps); */
     void computeActualLastTimestep(const ptrdiff_t &incrementTimestep, const size_t &firstTimestep,
-                                   size_t &lastTimestep, size_t &nTimesteps);
+                                   size_t &lastTimestep, MPI_Offset &nTimesteps);
 
     template<class T, class PartionIdx>
-    auto generateNcVarExt(const netCDF::NcVar &ncVar, const T &dim, const T &ghost, const T &numDimBlocks,
+    /* auto generateNcVarExt(const netCDF::NcVar &ncVar, const T &dim, const T &ghost, const T &numDimBlocks, */
+    auto generateNcVarExt(const NcVar &ncVar, const T &dim, const T &ghost, const T &numDimBlocks,
                           const PartionIdx &partition) const;
 
     template<class T, class V>

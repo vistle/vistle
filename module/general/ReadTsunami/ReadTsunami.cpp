@@ -35,12 +35,13 @@
 #include <array>
 #include <iterator>
 #include <memory>
+#include <mpi.h>
 #include <string>
 #include <cstddef>
 #include <vector>
 
 using namespace vistle;
-using namespace netCDF;
+using namespace PnetCDF;
 
 MODULE_MAIN(ReadTsunami)
 namespace {
@@ -130,6 +131,7 @@ void ReadTsunami::initScalarParamReader()
  * @return true if its not empty or cannot be opened.
  */
 bool ReadTsunami::openNcFile(std::shared_ptr<NcFile> file)
+/* bool ReadTsunami::openNcFile(const NcFile &file) */
 {
     std::string sFileName = m_filedir->getValue();
 
@@ -138,7 +140,7 @@ bool ReadTsunami::openNcFile(std::shared_ptr<NcFile> file)
         return false;
     } else {
         try {
-            file->open(sFileName.c_str(), NcFile::read);
+            /* file->open(sFileName.c_str(), NcFile::read); */
             printRank0("Reading File: " + sFileName);
         } catch (...) {
             printRank0("Couldn't open NetCDF file!");
@@ -197,15 +199,15 @@ bool ReadTsunami::examine(const vistle::Parameter *param)
 
     const int &nBlocks = m_blocks[0]->getValue() * m_blocks[1]->getValue();
     //TODO: threadsafe netcdf
-    /* setPartitions(nBlocks); */
-    /* return true; */
-    if (nBlocks <= size()) {
-        setPartitions(nBlocks);
-        return true;
-    } else {
-        printRank0("Total number of blocks should equal MPISIZE or less.");
-        return false;
-    }
+    setPartitions(nBlocks);
+    return true;
+    /* if (nBlocks <= size()) { */
+    /*     setPartitions(nBlocks); */
+    /*     return true; */
+    /* } else { */
+    /*     printRank0("Total number of blocks should equal MPISIZE or less."); */
+    /*     return false; */
+    /* } */
 }
 
 /**
@@ -213,11 +215,13 @@ bool ReadTsunami::examine(const vistle::Parameter *param)
  */
 bool ReadTsunami::inspectNetCDFVars()
 {
-    std::shared_ptr<NcFile> ncFile(new NcFile());
-    if (!openNcFile(ncFile))
-        return false;
+    /* std::shared_ptr<NcFile> ncFile(new NcFile()); */
+    /* if (!openNcFile(ncFile)) */
+    /*     return false; */
+    NcFile ncFile(comm(), m_filedir->getValue(), NcFile::read);
 
-    const int &maxTime = ncFile->getDim("time").getSize();
+    /* const int &maxTime = ncFile->getDim("time").getSize(); */
+    const int &maxTime = ncFile.getDim("time").getSize();
     setTimesteps(maxTime);
 
     //scalar inspection
@@ -239,7 +243,8 @@ bool ReadTsunami::inspectNetCDFVars()
         scalar->setChoices(std::vector<std::string>());
 
     //read names of scalars
-    for (auto &name_val: ncFile->getVars()) {
+    /* for (auto &name_val: ncFile->getVars()) { */
+    for (auto &name_val: ncFile.getVars()) {
         auto &name = name_val.first;
         auto &val = name_val.second;
         if (strContains(name, "lat"))
@@ -258,7 +263,7 @@ bool ReadTsunami::inspectNetCDFVars()
     for (auto &scalar: m_scalars)
         setParameterChoices(scalar, scalarChoiceVec);
 
-    ncFile->close();
+    /* ncFile->close(); */
 
     return true;
 }
@@ -354,7 +359,8 @@ Polygons::ptr ReadTsunami::generateSurface(const PolygonData<U> &polyData, const
   * @return: NcVarParams object.
   */
 template<class T, class PartionIdx>
-auto ReadTsunami::generateNcVarExt(const netCDF::NcVar &ncVar, const T &dim, const T &ghost, const T &numDimBlock,
+/* auto ReadTsunami::generateNcVarExt(const netCDF::NcVar &ncVar, const T &dim, const T &ghost, const T &numDimBlock, */
+auto ReadTsunami::generateNcVarExt(const NcVar &ncVar, const T &dim, const T &ghost, const T &numDimBlock,
                                    const PartionIdx &partition) const
 {
     T count = dim / numDimBlock;
@@ -416,8 +422,10 @@ bool ReadTsunami::computeBlock(Reader::Token &token, const T &blockNum, const U 
  * @param lastTimestep last timestep selected.
  * @param nTimesteps Storage value for number of timesteps.
  */
+/* void ReadTsunami::computeActualLastTimestep(const ptrdiff_t &incrementTimestep, const size_t &firstTimestep, */
+/*                                             size_t &lastTimestep, size_t &nTimesteps) */
 void ReadTsunami::computeActualLastTimestep(const ptrdiff_t &incrementTimestep, const size_t &firstTimestep,
-                                            size_t &lastTimestep, size_t &nTimesteps)
+                                            size_t &lastTimestep, MPI_Offset &nTimesteps)
 {
     if (lastTimestep < 0)
         lastTimestep--;
@@ -461,23 +469,32 @@ void ReadTsunami::computeBlockPartition(const int blockNum, vistle::Index &nLatB
 template<class T>
 bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
 {
-    std::shared_ptr<NcFile> ncFile(new NcFile());
-    if (!openNcFile(ncFile))
-        return false;
+    /* std::shared_ptr<NcFile> ncFile(new NcFile()); */
+    /* if (!openNcFile(ncFile)) */
+    /*     return false; */
+    NcFile ncFile(comm(), m_filedir->getValue(), NcFile::read);
 
     // get nc var objects ref
-    const NcVar &latvar = ncFile->getVar(m_latLon_Sea[0]);
-    const NcVar &lonvar = ncFile->getVar(m_latLon_Sea[1]);
-    const NcVar &grid_lat = ncFile->getVar(m_latLon_Ground[0]);
-    const NcVar &grid_lon = ncFile->getVar(m_latLon_Ground[1]);
-    const NcVar &bathymetryvar = ncFile->getVar(m_bathy->getValue());
-    const NcVar &eta = ncFile->getVar(ETA);
+    /* const NcVar &latvar = ncFile->getVar(m_latLon_Sea[0]); */
+    /* const NcVar &lonvar = ncFile->getVar(m_latLon_Sea[1]); */
+    /* const NcVar &grid_lat = ncFile->getVar(m_latLon_Ground[0]); */
+    /* const NcVar &grid_lon = ncFile->getVar(m_latLon_Ground[1]); */
+    /* const NcVar &bathymetryvar = ncFile->getVar(m_bathy->getValue()); */
+    /* const NcVar &eta = ncFile->getVar(ETA); */
+    const NcVar &latvar = ncFile.getVar(m_latLon_Sea[0]);
+    const NcVar &lonvar = ncFile.getVar(m_latLon_Sea[1]);
+    const NcVar &grid_lat = ncFile.getVar(m_latLon_Ground[0]);
+    const NcVar &grid_lon = ncFile.getVar(m_latLon_Ground[1]);
+    const NcVar &bathymetryvar = ncFile.getVar(m_bathy->getValue());
+    const NcVar &eta = ncFile.getVar(ETA);
 
     // compute current time parameters
     const ptrdiff_t &incrementTimestep = m_increment->getValue();
-    const size_t &firstTimestep = m_first->getValue();
+    /* const size_t &firstTimestep = m_first->getValue(); */
+    const MPI_Offset &firstTimestep = m_first->getValue();
     size_t lastTimestep = m_last->getValue();
-    size_t nTimesteps{0};
+    /* size_t nTimesteps{0}; */
+    MPI_Offset nTimesteps{0};
     computeActualLastTimestep(incrementTimestep, firstTimestep, lastTimestep, nTimesteps);
 
     // compute partition borders => structured grid
@@ -497,14 +514,20 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
         ghost++;
 
     // count and start vals for lat and lon for sea polygon
-    const auto latSea = generateNcVarExt<size_t, Index>(latvar, dimSea.dimLat, ghost, nLatBlocks, bPartitionIdx[0]);
-    const auto lonSea = generateNcVarExt<size_t, Index>(lonvar, dimSea.dimLon, ghost, nLonBlocks, bPartitionIdx[1]);
+    /* const auto latSea = generateNcVarExt<size_t, Index>(latvar, dimSea.dimLat, ghost, nLatBlocks, bPartitionIdx[0]); */
+    /* const auto lonSea = generateNcVarExt<size_t, Index>(lonvar, dimSea.dimLon, ghost, nLonBlocks, bPartitionIdx[1]); */
+    const auto latSea = generateNcVarExt<MPI_Offset, Index>(latvar, dimSea.dimLat, ghost, nLatBlocks, bPartitionIdx[0]);
+    const auto lonSea = generateNcVarExt<MPI_Offset, Index>(lonvar, dimSea.dimLon, ghost, nLonBlocks, bPartitionIdx[1]);
 
     // count and start vals for lat and lon for ground polygon
+    /* const auto latGround = */
+    /*     generateNcVarExt<size_t, Index>(grid_lat, dimGround.dimLat, ghost, nLatBlocks, bPartitionIdx[0]); */
+    /* const auto lonGround = */
+    /*     generateNcVarExt<size_t, Index>(grid_lon, dimGround.dimLon, ghost, nLonBlocks, bPartitionIdx[1]); */
     const auto latGround =
-        generateNcVarExt<size_t, Index>(grid_lat, dimGround.dimLat, ghost, nLatBlocks, bPartitionIdx[0]);
+        generateNcVarExt<MPI_Offset, Index>(grid_lat, dimGround.dimLat, ghost, nLatBlocks, bPartitionIdx[0]);
     const auto lonGround =
-        generateNcVarExt<size_t, Index>(grid_lon, dimGround.dimLon, ghost, nLonBlocks, bPartitionIdx[1]);
+        generateNcVarExt<MPI_Offset, Index>(grid_lon, dimGround.dimLon, ghost, nLonBlocks, bPartitionIdx[1]);
 
     // num of polygons for sea & grnd
     const size_t &numPolySea = (latSea.count - 1) * (lonSea.count - 1);
@@ -522,17 +545,22 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
     {
         // read bathymetry
         {
-            const std::vector<size_t> vecStartBathy{latGround.start, lonGround.start};
-            const std::vector<size_t> vecCountBathy{latGround.count, lonGround.count};
+            /* const std::vector<size_t> vecStartBathy{latGround.start, lonGround.start}; */
+            const std::vector<MPI_Offset> vecStartBathy{latGround.start, lonGround.start};
+            /* const std::vector<size_t> vecCountBathy{latGround.count, lonGround.count}; */
+            const std::vector<MPI_Offset> vecCountBathy{latGround.count, lonGround.count};
             bathymetryvar.getVar(vecStartBathy, vecCountBathy, vecDepth.data());
         }
 
         // read eta
         {
             vecEta.resize(nTimesteps * verticesSea);
-            const std::vector<size_t> vecStartEta{firstTimestep, latSea.start, lonSea.start};
-            const std::vector<size_t> vecCountEta{nTimesteps, latSea.count, lonSea.count};
-            const std::vector<ptrdiff_t> vecStrideEta{incrementTimestep, latSea.stride, lonSea.stride};
+            /* const std::vector<size_t> vecStartEta{firstTimestep, latSea.start, lonSea.start}; */
+            /* const std::vector<size_t> vecCountEta{nTimesteps, latSea.count, lonSea.count}; */
+            const std::vector<MPI_Offset> vecStartEta{firstTimestep, latSea.start, lonSea.start};
+            const std::vector<MPI_Offset> vecCountEta{nTimesteps, latSea.count, lonSea.count};
+            const std::vector<MPI_Offset> vecStrideEta{incrementTimestep, latSea.stride, lonSea.stride};
+            /* const std::vector<ptrdiff_t> vecStrideEta{incrementTimestep, latSea.stride, lonSea.stride}; */
             if (seaTimeConn) {
                 eta.getVar(vecStartEta, vecCountEta, vecStrideEta, vecEta.data());
 
@@ -577,14 +605,17 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
         auto ptr_grnd = generateSurface(polyDataGround, grndDim, coords, grndZCalc);
 
         //************* create selected scalars *************//
-        const std::vector<size_t> vecScalarStart{latSea.start, lonSea.start};
-        const std::vector<size_t> vecScalarCount{latSea.count, lonSea.count};
+        /* const std::vector<size_t> vecScalarStart{latSea.start, lonSea.start}; */
+        /* const std::vector<size_t> vecScalarCount{latSea.count, lonSea.count}; */
+        const std::vector<MPI_Offset> vecScalarStart{latSea.start, lonSea.start};
+        const std::vector<MPI_Offset> vecScalarCount{latSea.count, lonSea.count};
         std::vector<float> vecScalar(verticesGround);
         for (size_t i = 0; i < NUM_SCALARS; ++i) {
             if (!m_scalarsOut[i]->isConnected())
                 continue;
             const auto &scName = m_scalars[i]->getValue();
-            const auto &val = ncFile->getVar(scName);
+            /* const auto &val = ncFile->getVar(scName); */
+            const auto &val = ncFile.getVar(scName);
             Vec<Scalar>::ptr ptr_scalar(new Vec<Scalar>(verticesSea));
             ptr_Scalar[i] = ptr_scalar;
             auto scX = ptr_scalar->x().data();
@@ -604,7 +635,7 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
             token.addObject(m_groundSurface_out, ptr_grnd);
         }
     }
-    ncFile->close();
+    /* ncFile->close(); */
     return true;
 }
 
