@@ -88,7 +88,7 @@ private:
             std::vector<MPI_Offset> v_count{count};
             std::vector<MPI_Offset> v_stride{stride};
             std::vector<MPI_Offset> v_imap{imap};
-            ncVar->getVar(v_start, v_count, v_stride, v_imap, storage);
+            ncVar->getVar_all(v_start, v_count, v_stride, v_imap, storage);
         }
 
     private:

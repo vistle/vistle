@@ -30,12 +30,14 @@
 //vistle-module-util
 #include "vistle/module/utils/ghost.h"
 
+//mpi
+#include <mpi.h>
+
 //std
 #include <algorithm>
 #include <array>
 #include <iterator>
 #include <memory>
-#include <mpi.h>
 #include <string>
 #include <cstddef>
 #include <vector>
@@ -47,9 +49,6 @@ MODULE_MAIN(ReadTsunami)
 namespace {
 
 constexpr auto ETA{"eta"};
-
-typedef std::vector<size_t> NcVec_size;
-typedef std::vector<ptrdiff_t> NcVec_diff;
 
 } // namespace
 
@@ -265,6 +264,7 @@ bool ReadTsunami::inspectNetCDFVars()
 
     /* ncFile->close(); */
 
+    sendInfo("examine");
     return true;
 }
 
@@ -472,171 +472,181 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
     /* std::shared_ptr<NcFile> ncFile(new NcFile()); */
     /* if (!openNcFile(ncFile)) */
     /*     return false; */
-    NcFile ncFile(comm(), m_filedir->getValue(), NcFile::read);
+    try {
+        std::string fileName = m_filedir->getValue();
+        NcFile ncFile(comm(), fileName, NcFile::read);
+        sendInfo("fileName");
 
-    // get nc var objects ref
-    /* const NcVar &latvar = ncFile->getVar(m_latLon_Sea[0]); */
-    /* const NcVar &lonvar = ncFile->getVar(m_latLon_Sea[1]); */
-    /* const NcVar &grid_lat = ncFile->getVar(m_latLon_Ground[0]); */
-    /* const NcVar &grid_lon = ncFile->getVar(m_latLon_Ground[1]); */
-    /* const NcVar &bathymetryvar = ncFile->getVar(m_bathy->getValue()); */
-    /* const NcVar &eta = ncFile->getVar(ETA); */
-    const NcVar &latvar = ncFile.getVar(m_latLon_Sea[0]);
-    const NcVar &lonvar = ncFile.getVar(m_latLon_Sea[1]);
-    const NcVar &grid_lat = ncFile.getVar(m_latLon_Ground[0]);
-    const NcVar &grid_lon = ncFile.getVar(m_latLon_Ground[1]);
-    const NcVar &bathymetryvar = ncFile.getVar(m_bathy->getValue());
-    const NcVar &eta = ncFile.getVar(ETA);
+        // get nc var objects ref
+        /* const NcVar &latvar = ncFile->getVar(m_latLon_Sea[0]); */
+        /* const NcVar &lonvar = ncFile->getVar(m_latLon_Sea[1]); */
+        /* const NcVar &grid_lat = ncFile->getVar(m_latLon_Ground[0]); */
+        /* const NcVar &grid_lon = ncFile->getVar(m_latLon_Ground[1]); */
+        /* const NcVar &bathymetryvar = ncFile->getVar(m_bathy->getValue()); */
+        /* const NcVar &eta = ncFile->getVar(ETA); */
+        const NcVar &latvar = ncFile.getVar(m_latLon_Sea[0]);
+        const NcVar &lonvar = ncFile.getVar(m_latLon_Sea[1]);
+        const NcVar &grid_lat = ncFile.getVar(m_latLon_Ground[0]);
+        const NcVar &grid_lon = ncFile.getVar(m_latLon_Ground[1]);
+        const NcVar &bathymetryvar = ncFile.getVar(m_bathy->getValue());
+        const NcVar &eta = ncFile.getVar(ETA);
 
-    // compute current time parameters
-    const ptrdiff_t &incrementTimestep = m_increment->getValue();
-    /* const size_t &firstTimestep = m_first->getValue(); */
-    const MPI_Offset &firstTimestep = m_first->getValue();
-    size_t lastTimestep = m_last->getValue();
-    /* size_t nTimesteps{0}; */
-    MPI_Offset nTimesteps{0};
-    computeActualLastTimestep(incrementTimestep, firstTimestep, lastTimestep, nTimesteps);
+        // compute current time parameters
+        const ptrdiff_t &incrementTimestep = m_increment->getValue();
+        /* const size_t &firstTimestep = m_first->getValue(); */
+        const MPI_Offset &firstTimestep = m_first->getValue();
+        size_t lastTimestep = m_last->getValue();
+        /* size_t nTimesteps{0}; */
+        MPI_Offset nTimesteps{0};
+        computeActualLastTimestep(incrementTimestep, firstTimestep, lastTimestep, nTimesteps);
 
-    // compute partition borders => structured grid
-    Index nLatBlocks{0};
-    Index nLonBlocks{0};
-    std::array<Index, NUM_BLOCKS> bPartitionIdx;
-    computeBlockPartition(blockNum, nLatBlocks, nLonBlocks, bPartitionIdx.begin());
+        // compute partition borders => structured grid
+        Index nLatBlocks{0};
+        Index nLonBlocks{0};
+        std::array<Index, NUM_BLOCKS> bPartitionIdx;
+        computeBlockPartition(blockNum, nLatBlocks, nLonBlocks, bPartitionIdx.begin());
 
-    // dimension from lat and lon variables
-    const Dim<size_t> dimSea(latvar.getDim(0).getSize(), lonvar.getDim(0).getSize());
+        // dimension from lat and lon variables
+        const Dim<size_t> dimSea(latvar.getDim(0).getSize(), lonvar.getDim(0).getSize());
 
-    // get dim from grid_lon & grid_lat
-    const Dim<size_t> dimGround(grid_lat.getDim(0).getSize(), grid_lon.getDim(0).getSize());
+        // get dim from grid_lon & grid_lat
+        const Dim<size_t> dimGround(grid_lat.getDim(0).getSize(), grid_lon.getDim(0).getSize());
 
-    size_t ghost{0};
-    if (m_ghost->getValue() == 1 && !(nLatBlocks == 1 && nLonBlocks == 1))
-        ghost++;
+        size_t ghost{0};
+        if (m_ghost->getValue() == 1 && !(nLatBlocks == 1 && nLonBlocks == 1))
+            ghost++;
 
-    // count and start vals for lat and lon for sea polygon
-    /* const auto latSea = generateNcVarExt<size_t, Index>(latvar, dimSea.dimLat, ghost, nLatBlocks, bPartitionIdx[0]); */
-    /* const auto lonSea = generateNcVarExt<size_t, Index>(lonvar, dimSea.dimLon, ghost, nLonBlocks, bPartitionIdx[1]); */
-    const auto latSea = generateNcVarExt<MPI_Offset, Index>(latvar, dimSea.dimLat, ghost, nLatBlocks, bPartitionIdx[0]);
-    const auto lonSea = generateNcVarExt<MPI_Offset, Index>(lonvar, dimSea.dimLon, ghost, nLonBlocks, bPartitionIdx[1]);
+        // count and start vals for lat and lon for sea polygon
+        /* const auto latSea = generateNcVarExt<size_t, Index>(latvar, dimSea.dimLat, ghost, nLatBlocks, bPartitionIdx[0]); */
+        /* const auto lonSea = generateNcVarExt<size_t, Index>(lonvar, dimSea.dimLon, ghost, nLonBlocks, bPartitionIdx[1]); */
+        const auto latSea =
+            generateNcVarExt<MPI_Offset, Index>(latvar, dimSea.dimLat, ghost, nLatBlocks, bPartitionIdx[0]);
+        const auto lonSea =
+            generateNcVarExt<MPI_Offset, Index>(lonvar, dimSea.dimLon, ghost, nLonBlocks, bPartitionIdx[1]);
 
-    // count and start vals for lat and lon for ground polygon
-    /* const auto latGround = */
-    /*     generateNcVarExt<size_t, Index>(grid_lat, dimGround.dimLat, ghost, nLatBlocks, bPartitionIdx[0]); */
-    /* const auto lonGround = */
-    /*     generateNcVarExt<size_t, Index>(grid_lon, dimGround.dimLon, ghost, nLonBlocks, bPartitionIdx[1]); */
-    const auto latGround =
-        generateNcVarExt<MPI_Offset, Index>(grid_lat, dimGround.dimLat, ghost, nLatBlocks, bPartitionIdx[0]);
-    const auto lonGround =
-        generateNcVarExt<MPI_Offset, Index>(grid_lon, dimGround.dimLon, ghost, nLonBlocks, bPartitionIdx[1]);
+        // count and start vals for lat and lon for ground polygon
+        /* const auto latGround = */
+        /*     generateNcVarExt<size_t, Index>(grid_lat, dimGround.dimLat, ghost, nLatBlocks, bPartitionIdx[0]); */
+        /* const auto lonGround = */
+        /*     generateNcVarExt<size_t, Index>(grid_lon, dimGround.dimLon, ghost, nLonBlocks, bPartitionIdx[1]); */
+        const auto latGround =
+            generateNcVarExt<MPI_Offset, Index>(grid_lat, dimGround.dimLat, ghost, nLatBlocks, bPartitionIdx[0]);
+        const auto lonGround =
+            generateNcVarExt<MPI_Offset, Index>(grid_lon, dimGround.dimLon, ghost, nLonBlocks, bPartitionIdx[1]);
 
-    // num of polygons for sea & grnd
-    const size_t &numPolySea = (latSea.count - 1) * (lonSea.count - 1);
-    const size_t &numPolyGround = (latGround.count - 1) * (lonGround.count - 1);
+        // num of polygons for sea & grnd
+        const size_t &numPolySea = (latSea.count - 1) * (lonSea.count - 1);
+        const size_t &numPolyGround = (latGround.count - 1) * (lonGround.count - 1);
 
-    // vertices sea & grnd
-    verticesSea = latSea.count * lonSea.count;
-    const size_t &verticesGround = latGround.count * lonGround.count;
+        // vertices sea & grnd
+        verticesSea = latSea.count * lonSea.count;
+        const size_t &verticesGround = latGround.count * lonGround.count;
 
-    // storage for read in values from ncdata
-    std::vector<float> vecLat(latSea.count), vecLon(lonSea.count), vecLatGrid(latGround.count),
-        vecLonGrid(lonGround.count), vecDepth(verticesGround);
+        // storage for read in values from ncdata
+        std::vector<float> vecLat(latSea.count), vecLon(lonSea.count), vecLatGrid(latGround.count),
+            vecLonGrid(lonGround.count), vecDepth(verticesGround);
 
-    //************* read ncdata into float-pointer *************//
-    {
-        // read bathymetry
+        //************* read ncdata into float-pointer *************//
         {
-            /* const std::vector<size_t> vecStartBathy{latGround.start, lonGround.start}; */
-            const std::vector<MPI_Offset> vecStartBathy{latGround.start, lonGround.start};
-            /* const std::vector<size_t> vecCountBathy{latGround.count, lonGround.count}; */
-            const std::vector<MPI_Offset> vecCountBathy{latGround.count, lonGround.count};
-            bathymetryvar.getVar(vecStartBathy, vecCountBathy, vecDepth.data());
-        }
+            // read bathymetry
+            {
+                /* const std::vector<size_t> vecStartBathy{latGround.start, lonGround.start}; */
+                const std::vector<MPI_Offset> vecStartBathy{latGround.start, lonGround.start};
+                /* const std::vector<size_t> vecCountBathy{latGround.count, lonGround.count}; */
+                const std::vector<MPI_Offset> vecCountBathy{latGround.count, lonGround.count};
+                bathymetryvar.getVar_all(vecStartBathy, vecCountBathy, vecDepth.data());
+            }
 
-        // read eta
-        {
-            vecEta.resize(nTimesteps * verticesSea);
-            /* const std::vector<size_t> vecStartEta{firstTimestep, latSea.start, lonSea.start}; */
-            /* const std::vector<size_t> vecCountEta{nTimesteps, latSea.count, lonSea.count}; */
-            const std::vector<MPI_Offset> vecStartEta{firstTimestep, latSea.start, lonSea.start};
-            const std::vector<MPI_Offset> vecCountEta{nTimesteps, latSea.count, lonSea.count};
-            const std::vector<MPI_Offset> vecStrideEta{incrementTimestep, latSea.stride, lonSea.stride};
-            /* const std::vector<ptrdiff_t> vecStrideEta{incrementTimestep, latSea.stride, lonSea.stride}; */
-            if (seaTimeConn) {
-                eta.getVar(vecStartEta, vecCountEta, vecStrideEta, vecEta.data());
+            // read eta
+            {
+                vecEta.resize(nTimesteps * verticesSea);
+                /* const std::vector<size_t> vecStartEta{firstTimestep, latSea.start, lonSea.start}; */
+                /* const std::vector<size_t> vecCountEta{nTimesteps, latSea.count, lonSea.count}; */
+                const std::vector<MPI_Offset> vecStartEta{firstTimestep, latSea.start, lonSea.start};
+                const std::vector<MPI_Offset> vecCountEta{nTimesteps, latSea.count, lonSea.count};
+                const std::vector<MPI_Offset> vecStrideEta{incrementTimestep, latSea.stride, lonSea.stride};
+                /* const std::vector<ptrdiff_t> vecStrideEta{incrementTimestep, latSea.stride, lonSea.stride}; */
+                if (seaTimeConn) {
+                    eta.getVar_all(vecStartEta, vecCountEta, vecStrideEta, vecEta.data());
 
-                //filter fillvalue
-                if (m_fill->getValue()) {
-                    const float &fillValNew = getFloatParameter("fillValueNew");
-                    const float &fillVal = getFloatParameter("fillValue");
-                    //TODO: Bad! needs rework.
-                    std::replace(vecEta.begin(), vecEta.end(), fillVal, fillValNew);
+                    //filter fillvalue
+                    if (m_fill->getValue()) {
+                        const float &fillValNew = getFloatParameter("fillValueNew");
+                        const float &fillVal = getFloatParameter("fillValue");
+                        //TODO: Bad! needs rework.
+                        std::replace(vecEta.begin(), vecEta.end(), fillVal, fillValNew);
+                    }
                 }
             }
+
+            // read lat, lon, grid_lat, grid_lon
+            latSea.readNcVar(vecLat.data());
+            lonSea.readNcVar(vecLon.data());
+            latGround.readNcVar(vecLatGrid.data());
+            lonGround.readNcVar(vecLonGrid.data());
         }
 
-        // read lat, lon, grid_lat, grid_lon
-        latSea.readNcVar(vecLat.data());
-        lonSea.readNcVar(vecLon.data());
-        latGround.readNcVar(vecLatGrid.data());
-        lonGround.readNcVar(vecLonGrid.data());
-    }
-
-    //************* create Polygons ************//
-    {
-        std::vector<float *> coords{vecLat.data(), vecLon.data()};
-
-        //************* create sea *************//
+        //************* create Polygons ************//
         {
-            const auto &seaDim = Dim<size_t>(latSea.count, lonSea.count);
-            const auto &polyDataSea = PolygonData<size_t>(numPolySea, numPolySea * 4, verticesSea);
-            ptr_sea = generateSurface(polyDataSea, seaDim, coords);
+            std::vector<float *> coords{vecLat.data(), vecLon.data()};
+
+            //************* create sea *************//
+            {
+                const auto &seaDim = Dim<size_t>(latSea.count, lonSea.count);
+                const auto &polyDataSea = PolygonData<size_t>(numPolySea, numPolySea * 4, verticesSea);
+                ptr_sea = generateSurface(polyDataSea, seaDim, coords);
+            }
+
+            //************* create grnd *************//
+            coords[0] = vecLatGrid.data();
+            coords[1] = vecLonGrid.data();
+
+            const auto &scale = m_verticalScale->getValue();
+            const auto &grndDim = Dim<size_t>(latGround.count, lonGround.count);
+            const auto &polyDataGround = PolygonData<size_t>(numPolyGround, numPolyGround * 4, verticesGround);
+            auto grndZCalc = [&vecDepth, &lonGround, &scale](size_t j, size_t k) {
+                return -vecDepth[j * lonGround.count + k] * scale;
+            };
+            auto ptr_grnd = generateSurface(polyDataGround, grndDim, coords, grndZCalc);
+
+            //************* create selected scalars *************//
+            /* const std::vector<size_t> vecScalarStart{latSea.start, lonSea.start}; */
+            /* const std::vector<size_t> vecScalarCount{latSea.count, lonSea.count}; */
+            const std::vector<MPI_Offset> vecScalarStart{latSea.start, lonSea.start};
+            const std::vector<MPI_Offset> vecScalarCount{latSea.count, lonSea.count};
+            std::vector<float> vecScalar(verticesGround);
+            for (size_t i = 0; i < NUM_SCALARS; ++i) {
+                if (!m_scalarsOut[i]->isConnected())
+                    continue;
+                const auto &scName = m_scalars[i]->getValue();
+                /* const auto &val = ncFile->getVar(scName); */
+                const auto &val = ncFile.getVar(scName);
+                Vec<Scalar>::ptr ptr_scalar(new Vec<Scalar>(verticesSea));
+                ptr_Scalar[i] = ptr_scalar;
+                auto scX = ptr_scalar->x().data();
+                val.getVar_all(vecScalarStart, vecScalarCount, scX);
+
+                //set some meta data
+                ptr_scalar->addAttribute("_species", scName);
+                ptr_scalar->setTimestep(-1);
+                ptr_scalar->setBlock(blockNum);
+            }
+
+            // add ground data to port
+            if (m_groundSurface_out->isConnected()) {
+                ptr_grnd->setBlock(blockNum);
+                ptr_grnd->setTimestep(-1);
+                ptr_grnd->updateInternals();
+                token.addObject(m_groundSurface_out, ptr_grnd);
+            }
         }
-
-        //************* create grnd *************//
-        coords[0] = vecLatGrid.data();
-        coords[1] = vecLonGrid.data();
-
-        const auto &scale = m_verticalScale->getValue();
-        const auto &grndDim = Dim<size_t>(latGround.count, lonGround.count);
-        const auto &polyDataGround = PolygonData<size_t>(numPolyGround, numPolyGround * 4, verticesGround);
-        auto grndZCalc = [&vecDepth, &lonGround, &scale](size_t j, size_t k) {
-            return -vecDepth[j * lonGround.count + k] * scale;
-        };
-        auto ptr_grnd = generateSurface(polyDataGround, grndDim, coords, grndZCalc);
-
-        //************* create selected scalars *************//
-        /* const std::vector<size_t> vecScalarStart{latSea.start, lonSea.start}; */
-        /* const std::vector<size_t> vecScalarCount{latSea.count, lonSea.count}; */
-        const std::vector<MPI_Offset> vecScalarStart{latSea.start, lonSea.start};
-        const std::vector<MPI_Offset> vecScalarCount{latSea.count, lonSea.count};
-        std::vector<float> vecScalar(verticesGround);
-        for (size_t i = 0; i < NUM_SCALARS; ++i) {
-            if (!m_scalarsOut[i]->isConnected())
-                continue;
-            const auto &scName = m_scalars[i]->getValue();
-            /* const auto &val = ncFile->getVar(scName); */
-            const auto &val = ncFile.getVar(scName);
-            Vec<Scalar>::ptr ptr_scalar(new Vec<Scalar>(verticesSea));
-            ptr_Scalar[i] = ptr_scalar;
-            auto scX = ptr_scalar->x().data();
-            val.getVar(vecScalarStart, vecScalarCount, scX);
-
-            //set some meta data
-            ptr_scalar->addAttribute("_species", scName);
-            ptr_scalar->setTimestep(-1);
-            ptr_scalar->setBlock(blockNum);
-        }
-
-        // add ground data to port
-        if (m_groundSurface_out->isConnected()) {
-            ptr_grnd->setBlock(blockNum);
-            ptr_grnd->setTimestep(-1);
-            ptr_grnd->updateInternals();
-            token.addObject(m_groundSurface_out, ptr_grnd);
-        }
+        /* ncFile->close(); */
+        sendInfo("read");
+        return true;
+    } catch (PnetCDF::exceptions::NcmpiException &e) {
+        sendInfo("%s error code=%d Error!", e.what(), e.errorCode());
+        return false;
     }
-    /* ncFile->close(); */
-    return true;
 }
 
 /**
