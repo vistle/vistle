@@ -108,6 +108,20 @@ protected:
         ParallelizeBlocks, ///< up to 'concurrency' operations at a time, all operations for one timestep have finished before operations for another timestep are started
     };
 
+    struct ReaderTime {
+        ReaderTime(int first, int last, int inc): m_first(first), m_last(last), m_inc(inc) {}
+
+        int first() { return m_first; }
+        int last() { return m_last; }
+        int inc() { return m_inc; }
+        int calc_numtime();
+
+    private:
+        int m_first;
+        int m_last;
+        int m_inc;
+    };
+
     /// control whether and how @ref read invocations are called in parallel
     void setParallelizationMode(ParallelizationMode mode);
 
@@ -135,23 +149,8 @@ protected:
     IntParameter *m_distributeTime = nullptr;
     IntParameter *m_firstRank = nullptr;
     IntParameter *m_checkConvexity = nullptr;
-    IntParameter *m_ghost = nullptr;
 
 private:
-    struct ReaderTime {
-        ReaderTime(int first, int last, int inc): m_first(first), m_last(last), m_inc(inc) {}
-
-        int first() { return m_first; }
-        int last() { return m_last; }
-        int inc() { return m_inc; }
-        int calc_numtime();
-
-    private:
-        int m_first;
-        int m_last;
-        int m_inc;
-    };
-
     struct ReaderProperties {
         ReaderProperties(Meta *m, ReaderTime rtime, int nPart, int conc, int res)
         : meta(m), time(rtime), numpart(nPart), concurrency(conc), result(res)

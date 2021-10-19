@@ -6,8 +6,6 @@ Reader::Reader(const std::string &name, const int moduleID, mpi::communicator co
 {
     setCurrentParameterGroup("Reader");
 
-    m_ghost = addIntParameter("ghost", "Show ghostcells.", 1, Parameter::Boolean);
-
     m_first = addIntParameter("first_step", "first timestep to read", 0);
     setParameterRange(m_first, Integer(0), std::numeric_limits<Integer>::max());
 
@@ -248,7 +246,6 @@ int Reader::timeIncrement() const
 {
     return m_increment->getValue();
 }
-
 
 /**
  * @brief Set parallelize mode per mpi process.
