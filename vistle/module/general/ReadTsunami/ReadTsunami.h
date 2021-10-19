@@ -62,9 +62,9 @@ private:
 
         NcVarExtended(const netCDF::NcVar &nc, const size_t &start = 0, const size_t &count = 0,
                       const ptrdiff_t &stride = 1, const ptrdiff_t &imap = 1)
-        : start(start), count(count), stride(stride), imap(imap)
+        : start(start), count(count), stride(stride), imap(imap), ncVar(nc)
         {
-            ncVar = std::make_unique<netCDF::NcVar>(nc);
+            /* ncVar = std::make_unique<netCDF::NcVar>(nc); */
         }
 
         template<class T>
@@ -78,13 +78,12 @@ private:
         }
 
     private:
-        std::unique_ptr<netCDF::NcVar> ncVar;
+        vistle::safe_ptr<netCDF::NcVar> ncVar;
     };
 
     //Vistle functions
     bool prepareRead() override;
     bool read(Token &token, int timestep, int block) override;
-    bool readDIY(const Bounds &bounds, Token &token, int timestep, int block) override;
     bool examine(const vistle::Parameter *param) override;
     bool finishRead() override;
 
@@ -102,7 +101,6 @@ private:
 
     template<class T, class U>
     bool computeBlock(Token &token, const T &blockNum, const U &timestep);
-    bool computeBlockDIY(const Bounds &bounds, Token &token, int timestep, int block);
 
     template<class Iter>
     void computeBlockPartition(const int blockNum, vistle::Index &nLatBlocks, vistle::Index &nLonBlocks,
@@ -110,11 +108,9 @@ private:
 
     template<class T>
     bool computeInitial(Token &token, const T &blockNum);
-    bool computeInitialDIY(const Bounds &bounds, Token &token, int block);
 
     template<class T, class U>
     bool computeTimestep(Token &token, const T &blockNum, const U &timestep);
-    bool computeTimestepDIY(Token &token, int timestep, int block);
     void computeActualLastTimestep(const ptrdiff_t &incrementTimestep, const size_t &firstTimestep,
                                    size_t &lastTimestep, size_t &nTimesteps);
 
@@ -138,7 +134,7 @@ private:
     void printRank0(const std::string &str, Args... args) const;
 
     //Parameter
-    vistle::IntParameter *m_ghostTsu = nullptr;
+    vistle::IntParameter *m_ghost = nullptr;
     vistle::IntParameter *m_fill = nullptr;
     vistle::StringParameter *m_filedir = nullptr;
     vistle::StringParameter *m_bathy = nullptr;
@@ -166,7 +162,6 @@ private:
     //lat = 0; lon = 1
     std::array<std::string, NUM_BLOCKS> m_latLon_Sea;
     std::array<std::string, NUM_BLOCKS> m_latLon_Ground;
-    /* vistle::safe_ptr<netCDF::NcFile> ncFile; */
-    std::shared_ptr<netCDF::NcFile> ncFile;
+    vistle::safe_ptr<netCDF::NcFile> ncFile;
 };
 #endif

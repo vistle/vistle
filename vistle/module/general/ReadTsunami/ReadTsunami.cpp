@@ -29,10 +29,6 @@
 
 //vistle-module-util
 #include "vistle/module/general/utils/ghost.h"
-/* #include "vistle/module/general/utils/tsafe_ptr.h" */
-
-//vistle-module-netcdf-util
-/* #include "vistle/module/general/utils/vistle_netcdf.h" */
 
 //std
 #include <algorithm>
@@ -51,27 +47,8 @@ namespace {
 
 constexpr auto ETA{"eta"};
 
-/* typedef vistle::netcdf::VNcVar VNcVar; */
-/* typedef vistle::netcdf::VNcVar::NcVec_size NcVec_size; */
-/* typedef vistle::netcdf::VNcVar::NcVec_diff NcVec_diff; */
-typedef safe_ptr<NcVar> VNcVar;
 typedef std::vector<size_t> NcVec_size;
 typedef std::vector<ptrdiff_t> NcVec_diff;
-
-template<class T>
-struct NTimesteps {
-private:
-    const T first;
-    const T last;
-    const T inc;
-
-public:
-    NTimesteps(T f, T l, T i): first(f), last(l), inc(i) {}
-    void operator()(T &nTimestep) const
-    {
-        nTimestep = (inc > 0 && last >= first) || (inc < 0 && last <= first) ? ((last - first) / inc + 1) : -1;
-    }
-};
 
 } // namespace
 
@@ -83,7 +60,7 @@ ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicato
                                    Parameter::Filename);
 
     //ghost
-    /* m_ghostTsu = addIntParameter("ghost_old", "Show ghostcells.", 1, Parameter::Boolean); */
+    m_ghost = addIntParameter("ghost", "Show ghostcells.", 1, Parameter::Boolean);
     m_fill = addIntParameter("fill", "Replace filterValue.", 1, Parameter::Boolean);
     m_verticalScale = addFloatParameter("VerticalScale", "Vertical Scale parameter sea", 1.0);
 
@@ -118,8 +95,7 @@ ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicato
     observeParameter(m_blocks[1]);
     observeParameter(m_verticalScale);
 
-    /* setParallelizationMode(ParallelizeBlocks); */
-    setParallelizationMode(ParallelizeDIYBlocks);
+    setParallelizationMode(ParallelizeBlocks);
 }
 
 /**
@@ -244,19 +220,15 @@ bool ReadTsunami::examine(const vistle::Parameter *param)
     }
 
     const int &nBlocks = m_blocks[0]->getValue() * m_blocks[1]->getValue();
-    // TODO: NetCDF not threadsafe => implement lock mechanisim?
-    setDimDomain(2);
-    setHandlePartitions(nBlocks > size());
-    setPartitions(nBlocks);
-    return true;
-    /* if (nBlocks <= size()) { */
-    /*     setDimDomain(2); */
-    /*     setPartitions(nBlocks); */
-    /*     return true; */
-    /* } else { */
-    /*     printRank0("Total number of blocks should equal MPISIZE or less."); */
-    /*     return false; */
-    /* } */
+    /* setPartitions(nBlocks); */
+    /* return true; */
+    if (nBlocks <= size()) {
+        setPartitions(nBlocks);
+        return true;
+    } else {
+        printRank0("Total number of blocks should equal MPISIZE or less.");
+        return false;
+    }
 }
 
 /**
@@ -264,20 +236,12 @@ bool ReadTsunami::examine(const vistle::Parameter *param)
  */
 bool ReadTsunami::inspectNetCDFVars()
 {
-    std::shared_ptr<NcFile> ncFile(new NcFile());
+    /* std::shared_ptr<NcFile> ncFile(new NcFile()); */
     if (!openNcFile(ncFile))
         return false;
 
     const int &maxTime = ncFile->getDim("time").getSize();
     setTimesteps(maxTime);
-
-    //set block diy parameter
-    const int &maxLat = ncFile->getDim("lat").getSize();
-    const int &maxLon = ncFile->getDim("lon").getSize();
-    std::vector minDomain{0, 0};
-    std::vector maxDomain{maxLat, maxLon};
-    setMaxDomain(maxDomain);
-    setMinDomain(minDomain);
 
     //scalar inspection
     std::vector<std::string> scalarChoiceVec;
@@ -450,190 +414,6 @@ bool ReadTsunami::read(Token &token, int timestep, int block)
     return computeBlock(token, block, timestep);
 }
 
-bool ReadTsunami::readDIY(const Bounds &bounds, Token &token, int timestep, int block)
-{
-    return computeBlockDIY(bounds, token, timestep, block);
-}
-
-bool ReadTsunami::computeBlockDIY(const Bounds &bounds, Token &token, int timestep, int block)
-{
-    if (timestep == -1)
-        return computeInitialDIY(bounds, token, block);
-    else if (seaTimeConn) {
-        printRank0("(DIY) reading timestep: " + std::to_string(timestep));
-        return computeTimestepDIY(token, timestep, block);
-    }
-    return true;
-}
-
-bool ReadTsunami::computeInitialDIY(const Bounds &bounds, Token &token, int block)
-{
-    /* std::shared_ptr<NcFile> ncFile(new NcFile()); */
-    /* safe_ptr<NcFile> ncFile; */
-    /* if (!openNcFile(ncFile)) */
-    /*     return false; */
-
-    // get nc var objects ref
-    const auto &latvar = ncFile->getVar(m_latLon_Sea[0]);
-    const auto &lonvar = ncFile->getVar(m_latLon_Sea[1]);
-    const auto &grid_lat = ncFile->getVar(m_latLon_Ground[0]);
-    const auto &grid_lon = ncFile->getVar(m_latLon_Ground[1]);
-    const auto &bathymetryvar = ncFile->getVar(m_bathy->getValue());
-    const auto &eta = ncFile->getVar(ETA);
-
-    // compute current time parameters
-    const ptrdiff_t &incrementTimestep = m_increment->getValue();
-    const size_t &firstTimestep = m_first->getValue();
-    size_t lastTimestep = m_last->getValue();
-    size_t nTimesteps{0};
-    computeActualLastTimestep(incrementTimestep, firstTimestep, lastTimestep, nTimesteps);
-
-    // dimension from lat and lon variables
-    const Dim<size_t> dimSea(latvar.getDim(0).getSize(), lonvar.getDim(0).getSize());
-    /* const Dim<size_t> dimSea(latvar->getDim(0).getSize(), lonvar->getDim(0).getSize()); */
-
-    // get dim from grid_lon & grid_lat
-    const Dim<size_t> dimGround(grid_lat.getDim(0).getSize(), grid_lon.getDim(0).getSize());
-    /* const Dim<size_t> dimGround(grid_lat->getDim(0).getSize(), grid_lon->getDim(0).getSize()); */
-
-    const size_t &latMin = bounds.min[0];
-    const size_t &latMax = bounds.max[0];
-    const size_t &lonMin = bounds.min[1];
-    const size_t &lonMax = bounds.max[1];
-    //testing only  => ground dim = sea dim
-
-    auto countLat{latMax - latMin};
-    auto countLon{lonMax - lonMin};
-    if (latMin + countLat == latMax)
-        --countLat;
-    if (lonMin + countLon == lonMax)
-        --countLon;
-
-    // num of polygons for sea & grnd
-    const size_t &numPolyGround = (countLat - 1) * (countLon - 1);
-    const size_t &numPolySea = numPolyGround;
-
-    // vertices sea & grnd
-    const size_t &verticesGround = countLat * countLon;
-    verticesSea = countLat * countLon;
-
-    // storage for read in values from ncdata
-    std::vector<float> vecLat(countLat), vecLon(countLon), vecLatGrid(countLat), vecLonGrid(countLon),
-        vecDepth(verticesGround);
-
-    //************* read ncdata into float-pointer *************//
-    {
-        // read bathymetry
-        {
-            const NcVec_size vecStartBathy{latMin, lonMin};
-            const NcVec_size vecCountBathy{countLat, countLon};
-            const NcVec_diff vecStrideBathy{1, 1};
-            bathymetryvar.getVar(vecStartBathy, vecCountBathy, vecStrideBathy, vecDepth.data());
-            /* bathymetryvar->getVar(vecStartBathy, vecCountBathy, vecStrideBathy, vecDepth.data()); */
-            sendInfo("no crash bathy");
-        }
-
-        // read eta
-        {
-            vecEta.resize(nTimesteps * verticesSea);
-            const NcVec_size vecStartEta{firstTimestep, latMin, lonMin};
-            const NcVec_size vecCountEta{nTimesteps, countLat, countLon};
-            const NcVec_diff vecStrideEta{incrementTimestep, 1, 1};
-            if (seaTimeConn) {
-                eta.getVar(vecStartEta, vecCountEta, vecStrideEta, vecEta.data());
-                /* eta->getVar(vecStartEta, vecCountEta, vecStrideEta, vecEta.data()); */
-
-                //filter fillvalue
-                if (m_fill->getValue()) {
-                    const float &fillValNew = getFloatParameter("fillValueNew");
-                    const float &fillVal = getFloatParameter("fillValue");
-                    //TODO: Bad! needs rework.
-                    std::replace(vecEta.begin(), vecEta.end(), fillVal, fillValNew);
-                }
-            }
-            sendInfo("no crash eta");
-        }
-
-        // read lat, lon, grid_lat, grid_lon
-        NcVec_diff stride{1};
-        latvar.getVar(NcVec_size{latMin}, NcVec_size{countLat}, stride, vecLat.data());
-        lonvar.getVar(NcVec_size{lonMin}, NcVec_size{countLon}, stride, vecLon.data());
-        grid_lat.getVar(NcVec_size{latMin}, NcVec_size{countLat}, stride, vecLatGrid.data());
-        grid_lon.getVar(NcVec_size{lonMin}, NcVec_size{countLon}, stride, vecLonGrid.data());
-        /* latvar->getVar(NcVec_size{latMin}, NcVec_size{countLat}, stride, vecLat.data()); */
-        /* lonvar->getVar(NcVec_size{lonMin}, NcVec_size{countLon}, stride, vecLon.data()); */
-        /* grid_lat->getVar(NcVec_size{latMin}, NcVec_size{countLat}, stride, vecLatGrid.data()); */
-        /* grid_lon->getVar(NcVec_size{lonMin}, NcVec_size{countLon}, stride, vecLonGrid.data()); */
-        sendInfo("no crash other");
-    }
-
-    //************* create Polygons ************//
-    {
-        std::vector coords{vecLat.data(), vecLon.data()};
-
-        //************* create sea *************//
-        {
-            const auto &seaDim = Dim(countLat, countLon);
-            const auto &polyDataSea = PolygonData(numPolySea, numPolySea * 4, verticesSea);
-            auto seaZCalcDiy = [](size_t x, size_t y) {
-                return 0;
-            };
-            ptr_sea = generateSurface(polyDataSea, seaDim, coords, seaZCalcDiy);
-        }
-
-        //************* create grnd *************//
-        coords[0] = vecLatGrid.data();
-        coords[1] = vecLonGrid.data();
-
-        const auto &scale = m_verticalScale->getValue();
-        const auto &grndDim = Dim(countLat, countLon);
-        const auto &polyDataGround = PolygonData(numPolyGround, numPolyGround * 4, verticesGround);
-        auto grndZCalcDiy = [&vecDepth, &countLon, &scale](size_t j, size_t k) {
-            return -vecDepth[j * countLon + k] * scale;
-        };
-        auto ptr_grnd = generateSurface(polyDataGround, grndDim, coords, grndZCalcDiy);
-
-        //************* create selected scalars *************//
-        const NcVec_size vecScalarStart{latMin, lonMin};
-        const NcVec_size vecScalarCount{countLat, countLon};
-        std::vector<float> vecScalar(verticesGround);
-        for (size_t i = 0; i < NUM_SCALARS; ++i) {
-            if (!m_scalarsOut[i]->isConnected())
-                continue;
-            const auto &scName = m_scalars[i]->getValue();
-            /* const NcVar &val = ncFile->getVar(scName); */
-            const auto &val = ncFile->getVar(scName);
-            Vec<Scalar>::ptr ptr_scalar(new Vec<Scalar>(verticesSea));
-            ptr_Scalar[i] = ptr_scalar;
-            auto scX = ptr_scalar->x().data();
-            val.getVar(vecScalarStart, vecScalarCount, NcVec_diff{1}, scX);
-            /* val->getVar(vecScalarStart, vecScalarCount, NcVec_diff{1}, scX); */
-            printRank0("no crash val");
-
-            //set some meta data
-            ptr_scalar->addAttribute("_species", scName);
-            ptr_scalar->setTimestep(-1);
-            ptr_scalar->setBlock(block);
-        }
-
-        // add ground data to port
-        if (m_groundSurface_out->isConnected()) {
-            ptr_grnd->setBlock(block);
-            ptr_grnd->setTimestep(-1);
-            ptr_grnd->updateInternals();
-            token.addObject(m_groundSurface_out, ptr_grnd);
-        }
-    }
-
-    ncFile->close();
-    return true;
-}
-
-bool ReadTsunami::computeTimestepDIY(Token &token, int timestep, int block)
-{
-    return computeTimestep<int, size_t>(token, block, timestep);
-}
-
 /**
   * @brief Computing per block.
   *
@@ -668,7 +448,9 @@ void ReadTsunami::computeActualLastTimestep(const ptrdiff_t &incrementTimestep, 
         lastTimestep--;
 
     m_actualLastTimestep = lastTimestep - (lastTimestep % incrementTimestep);
-    NTimesteps<size_t>(firstTimestep, m_actualLastTimestep, incrementTimestep)(nTimesteps);
+    /* NTimesteps<size_t>(firstTimestep, m_actualLastTimestep, incrementTimestep)(nTimesteps); */
+    auto rTime = ReaderTime(firstTimestep, m_actualLastTimestep, incrementTimestep);
+    nTimesteps = rTime.calc_numtime();
 }
 
 /**
@@ -705,10 +487,6 @@ void ReadTsunami::computeBlockPartition(const int blockNum, vistle::Index &nLatB
 template<class T>
 bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
 {
-    /* std::shared_ptr<NcFile> ncFile(new NcFile()); */
-    /* if (!openNcFile(ncFile)) */
-    /*     return false; */
-
     // get nc var objects ref
     const NcVar &latvar = ncFile->getVar(m_latLon_Sea[0]);
     const NcVar &lonvar = ncFile->getVar(m_latLon_Sea[1]);
@@ -737,7 +515,7 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
     const Dim<size_t> dimGround(grid_lat.getDim(0).getSize(), grid_lon.getDim(0).getSize());
 
     size_t ghost{0};
-    if (m_ghostTsu->getValue() == 1 && !(nLatBlocks == 1 && nLonBlocks == 1))
+    if (m_ghost->getValue() == 1 && !(nLatBlocks == 1 && nLonBlocks == 1))
         ghost++;
 
     // count and start vals for lat and lon for sea polygon
@@ -848,8 +626,6 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
             token.addObject(m_groundSurface_out, ptr_grnd);
         }
     }
-
-    /* ncFile->close(); */
     return true;
 }
 
