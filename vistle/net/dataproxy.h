@@ -30,7 +30,7 @@ class V_NETEXPORT DataProxy {
 public:
     typedef boost::asio::ip::tcp::socket tcp_socket;
 
-    DataProxy(io_service &io, StateTracker &state, unsigned short basePort, bool changePort = true);
+    DataProxy(StateTracker &state, unsigned short basePort, bool changePort = true);
     ~DataProxy();
     void setHubId(int id);
     void setNumRanks(int size);
@@ -51,7 +51,7 @@ private:
     int m_numRanks = 0;
     StateTracker &m_stateTracker;
     unsigned short m_port;
-    io_service &m_io;
+    io_service m_io;
     acceptor m_acceptorv4, m_acceptorv6;
     std::vector<std::thread> m_threads;
     std::map<int, std::shared_ptr<tcp_socket>> m_localDataSocket; // MPI rank -> socket

@@ -35,7 +35,7 @@ public:
     bool sendMessage(socket_ptr sock, const message::Message &msg, const buffer *payload = nullptr);
     unsigned short port() const;
     unsigned short dataPort() const;
-    std::shared_ptr<boost::process::child> launchMpiProcess(const std::vector<std::string> &argv) const;
+    std::shared_ptr<boost::process::child> launchMpiProcess(const std::vector<std::string> &argv);
     const std::string &name() const;
 
     bool handleMessage(const message::Message &msg, socket_ptr sock = socket_ptr(), const buffer *payload = nullptr);
@@ -106,6 +106,7 @@ private:
     bool m_hasUi = false;
     bool m_hasVrb = false;
 
+    std::mutex m_processMutex; // protect access to m_processMap
     std::map<std::shared_ptr<boost::process::child>, int> m_processMap;
     bool m_managerConnected;
 
@@ -182,7 +183,9 @@ private:
 #else
     std::shared_ptr<boost::asio::io_service::work> m_workGuard;
 #endif
-    std::thread m_ioThread;
+    std::vector<std::thread> m_ioThreads;
+    void startIoThread();
+    void stopIoThreads();
 };
 
 } // namespace vistle
