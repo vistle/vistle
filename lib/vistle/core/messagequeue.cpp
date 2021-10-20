@@ -96,6 +96,12 @@ bool MessageQueue::progress()
     return m_queue.empty();
 }
 
+void MessageQueue::signal()
+{
+    std::unique_lock<std::mutex> guard(m_mutex);
+    m_mq.send(nullptr, 0, 0);
+}
+
 bool MessageQueue::send(const Message &msg)
 {
     std::unique_lock<std::mutex> guard(m_mutex);
@@ -104,7 +110,7 @@ bool MessageQueue::send(const Message &msg)
     return progress();
 }
 
-void MessageQueue::receive(Message &msg)
+bool MessageQueue::receive(Message &msg)
 {
     size_t recvSize = 0;
     unsigned priority = 0;
@@ -117,7 +123,7 @@ void MessageQueue::receive(Message &msg)
             throw except::parent_died();
     }
 #endif
-    assert(recvSize == message::Message::MESSAGE_SIZE);
+    return recvSize == message::Message::MESSAGE_SIZE;
 }
 
 bool MessageQueue::tryReceive(Message &msg)

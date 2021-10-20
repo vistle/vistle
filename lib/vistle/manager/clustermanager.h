@@ -140,6 +140,16 @@ private:
     const int m_rank;
     const int m_size;
 
+    struct MessageWithPayload {
+        MessageWithPayload(const message::Buffer &buf, const MessagePayload &pl = MessagePayload())
+        : buf(buf), payload(pl)
+        {}
+        message::Buffer buf;
+        MessagePayload payload;
+    };
+    std::mutex m_incomingMutex;
+    std::deque<MessageWithPayload> m_incomingMessages;
+
     struct Module {
 #ifdef MODULE_THREAD
         typedef std::shared_ptr<vistle::Module>(NewModuleFunc)(const std::string &name, int id, mpi::communicator comm);
@@ -147,21 +157,19 @@ private:
         std::shared_ptr<vistle::Module> instance;
         std::thread thread;
 #endif
+        std::thread messageThread;
         std::shared_ptr<message::MessageQueue> sendQueue, recvQueue;
         int ranksStarted, ranksFinished;
         bool prepared, reduced;
         int busyCount;
-        struct MessageWithPayload {
-            MessageWithPayload(const message::Buffer &buf, const MessagePayload &pl = MessagePayload())
-            : buf(buf), payload(pl)
-            {}
-            message::Buffer buf;
-            MessagePayload payload;
-        };
-        mutable bool blocked;
-        mutable std::deque<message::Buffer> blockers;
-        mutable std::deque<MessageWithPayload> blockedMessages;
-        std::deque<MessageWithPayload> delayedMessages;
+        // handling of outgoing messages
+        mutable bool blocked; // any message is blocking and cannot be sent right away
+        mutable std::deque<message::Buffer> blockers; // queue of blocking messages
+        mutable std::deque<MessageWithPayload> blockedMessages; // again, but with payload
+        std::deque<MessageWithPayload>
+            delayedMessages; // these messages have been held up for not disturbing their order
+        // handling of incoming messages
+        std::deque<MessageWithPayload> incomingMessages; // not yet processed, because module takes part in a barrier
         std::vector<int> objectCount; // no. of available object tuples on each rank
 
         Module(): ranksStarted(0), ranksFinished(0), prepared(false), reduced(true), busyCount(0), blocked(false) {}

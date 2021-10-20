@@ -79,6 +79,16 @@ ClusterManager::Module::~Module()
         std::cerr << "ClusterManager: ~Module: joining thread for module failed: " << e.what() << std::endl;
     }
 #endif
+    recvQueue->signal();
+    try {
+        if (messageThread.joinable()) {
+            messageThread.join();
+        } else {
+            std::cerr << "ClusterManager: ~Module: messageThread for module not joinable" << std::endl;
+        }
+    } catch (std::exception &e) {
+        std::cerr << "ClusterManager: ~Module: joining messageThread for module failed: " << e.what() << std::endl;
+    }
 }
 
 void ClusterManager::Module::block(const message::Message &msg) const
@@ -411,6 +421,7 @@ bool ClusterManager::dispatch(bool &received)
 {
     bool done = false;
 
+#if 0
     if (m_modulePriorityChange != m_stateTracker.graphChangeCount()) {
         std::priority_queue<StateTracker::Module, std::vector<StateTracker::Module>, CompModuleHeight> pq;
 
@@ -465,6 +476,54 @@ bool ClusterManager::dispatch(bool &received)
                 pl.unref();
             }
         }
+    }
+#else
+    std::deque<MessageWithPayload> delayed;
+    for (auto &id_mod: runningMap) {
+        auto &id = id_mod.first;
+        auto &mod = id_mod.second;
+        if (reachedSet.find(id) != reachedSet.end())
+            continue;
+        // process messages that have been delayed because of a previous barrier
+        auto &incoming = mod.incomingMessages;
+        while (!incoming.empty()) {
+            if (!Communicator::the().handleMessage(incoming.front().buf, incoming.front().payload))
+                done = true;
+            incoming.pop_front();
+        }
+        mod.update();
+    }
+
+    std::deque<MessageWithPayload> incoming;
+    {
+        std::lock_guard<std::mutex> lock(m_incomingMutex);
+        std::swap(m_incomingMessages, incoming);
+    }
+    while (!incoming.empty()) {
+        int sender = incoming.front().buf.senderId();
+        bool barrierReached = reachedSet.find(sender) != reachedSet.end();
+        if (!barrierReached) {
+            if (!Communicator::the().handleMessage(incoming.front().buf, incoming.front().payload))
+                done = true;
+        }
+        auto it = runningMap.find(sender);
+        if (barrierReached) {
+            if (it != runningMap.end()) {
+                it->second.incomingMessages.emplace_back(incoming.front().buf, incoming.front().payload);
+            }
+        } else {
+            if (it != runningMap.end()) {
+                it->second.update();
+            }
+        }
+        incoming.pop_front();
+    }
+#endif
+
+    for (auto &mod: runningMap) {
+        bool barrierReached = reachedSet.find(mod.first) != reachedSet.end();
+        if (!barrierReached)
+            mod.second.update();
     }
 
     if (m_quitFlag) {
@@ -919,6 +978,40 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn)
     }
 
     mod.sendQueue->makeNonBlocking();
+
+    std::thread mt([this, newId, name, &mod]() {
+        std::string mname = "vistle:mq" + std::to_string(newId);
+#ifdef __linux__
+#if __GLIBC__ > 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 12)
+        pthread_setname_np(pthread_self(), mname.c_str());
+#endif
+#endif
+#ifdef __APPLE__
+        pthread_setname_np(mname.c_str());
+#endif
+
+        for (;;) {
+            message::Buffer buf;
+            try {
+                if (!mod.recvQueue->receive(buf))
+                    return;
+            } catch (boost::interprocess::interprocess_exception &ex) {
+                CERR << "receive mq " << ex.what() << std::endl;
+                return;
+            }
+
+            MessagePayload pl;
+            if (buf.payloadSize() > 0) {
+                pl = Shm::the().getArrayFromName<char>(buf.payloadName());
+            }
+            std::lock_guard<std::mutex> guard(m_incomingMutex);
+            m_incomingMessages.emplace_back(buf, pl);
+
+            if (buf.type() == message::MODULEEXIT)
+                return;
+        }
+    });
+    mod.messageThread = std::move(mt);
 
     m_comm.barrier();
 
