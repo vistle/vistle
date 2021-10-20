@@ -9,4 +9,4 @@ Comment=Parallel tool for visualization of scientific data in virtual environmen
 Icon=vistle
 MimeType=text/x-vsl;
 Terminal=false
-Categories=Graphics;Science;DataVisualization;
+Categories=Science;DataVisualization;Graphics:
