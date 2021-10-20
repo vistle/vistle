@@ -83,7 +83,6 @@ struct terminate_with_parent: proc::extend::handler {
 #endif
 };
 
-static std::function<void(int, const std::error_code &)> exit_handler;
 
 #define CERR std::cerr << "Hub " << m_hubId << ": "
 
@@ -134,6 +133,7 @@ Hub::Hub(bool inManager)
 #else
 , m_workGuard(new asio::io_service::work(m_ioService))
 #endif
+, m_ioThread([this]() { m_ioService.run(); })
 {
     assert(!hub_instance);
     hub_instance = this;
@@ -145,25 +145,11 @@ Hub::Hub(bool inManager)
     make.setRank(0);
     m_uiManager.lockUi(true);
 
-    for (int i = 0; i < 4; ++i)
-        startIoThread();
-
     // install a signal handler for e.g. Ctrl-c
     m_interrupt = false;
     m_signals.add(SIGINT);
     m_signals.add(SIGTERM);
     m_signals.async_wait(signalHandler);
-
-    exit_handler = [this](int exit_code, const std::error_code &ec) {
-#if 0
-        if (ec) {
-            std::cerr << "error during child exit: " << ec.message() << std::endl;
-        } else {
-            std::cerr << "child exited with status " << exit_code << std::endl;
-        }
-#endif
-        checkChildProcesses();
-    };
 }
 
 Hub::~Hub()
@@ -179,7 +165,9 @@ Hub::~Hub()
 
     m_dataProxy.reset();
 
-    stopIoThreads();
+    m_workGuard.reset();
+    m_ioService.stop();
+    m_ioThread.join();
 
     hub_instance = nullptr;
 }
@@ -350,9 +338,10 @@ bool Hub::init(int argc, char *argv[])
 
     try {
         if (m_dataPort > 0) {
-            m_dataProxy.reset(new DataProxy(m_stateTracker, m_dataPort ? m_dataPort : m_port + 1, !m_dataPort));
+            m_dataProxy.reset(
+                new DataProxy(m_ioService, m_stateTracker, m_dataPort ? m_dataPort : m_port + 1, !m_dataPort));
         } else {
-            m_dataProxy.reset(new DataProxy(m_stateTracker, 0, 0));
+            m_dataProxy.reset(new DataProxy(m_ioService, m_stateTracker, 0, 0));
         }
         m_dataProxy->setTrace(m_traceMessages);
     } catch (std::exception &ex) {
@@ -431,7 +420,6 @@ bool Hub::init(int argc, char *argv[])
                 CERR << "failed to spawn Vistle manager " << std::endl;
                 exit(1);
             }
-            std::lock_guard<std::mutex> guard(m_processMutex);
             m_processMap[child] = Process::Manager;
 #ifdef MODULE_THREAD
         }
@@ -468,7 +456,7 @@ unsigned short Hub::dataPort() const
     return m_dataProxy->port();
 }
 
-std::shared_ptr<proc::child> Hub::launchMpiProcess(const std::vector<std::string> &args)
+std::shared_ptr<proc::child> Hub::launchMpiProcess(const std::vector<std::string> &args) const
 {
     assert(!args.empty());
 #ifdef _WIN32
@@ -476,13 +464,11 @@ std::shared_ptr<proc::child> Hub::launchMpiProcess(const std::vector<std::string
 #else
     std::string spawn = "spawn_vistle.sh";
 #endif
-    auto child = std::make_shared<proc::child>(proc::search_path(spawn), proc::args(args), terminate_with_parent(),
-                                               m_ioService, proc::on_exit(exit_handler));
+    auto child = std::make_shared<proc::child>(proc::search_path(spawn), proc::args(args), terminate_with_parent());
 #ifndef _WIN32
     if (!child->valid()) {
         std::cerr << "failed to execute " << args[0] << " via spawn_vistle.sh, retrying with mpirun" << std::endl;
-        child = std::make_shared<proc::child>(proc::search_path("mpirun"), proc::args(args), terminate_with_parent(),
-                                              m_ioService, proc::on_exit(exit_handler));
+        child = std::make_shared<proc::child>(proc::search_path("mpirun"), proc::args(args), terminate_with_parent());
     }
 #endif
     return child;
@@ -692,8 +678,6 @@ void Hub::slaveReady(Slave &slave)
     assert(m_isMaster);
     assert(!slave.ready);
 
-    startIoThread();
-
     auto state = m_stateTracker.getState();
     for (auto &m: state) {
         sendMessage(slave.sock, m.message, m.payload.get());
@@ -726,7 +710,7 @@ bool Hub::dispatch()
                 removeSocket(s);
                 return true;
             }
-            if (command.get() > avail) {
+            if (command.get() >= avail) {
                 avail = command.get();
                 sock = s;
             }
@@ -734,6 +718,13 @@ bool Hub::dispatch()
         boost::system::error_code error;
         if (sock) {
             work = true;
+#if 0
+            if (avail == 0) {
+                CERR << "socket closed" << std::endl;
+                removeSocket(sock);
+                return true;
+            }
+#endif
             handleWrite(sock, error);
         }
     } while (!m_interrupt && !m_quitting && avail > 0);
@@ -756,15 +747,15 @@ bool Hub::dispatch()
         emergencyQuit();
     }
 
-    if (m_quitting) {
-        if (checkChildProcesses())
-            work = true;
+    if (checkChildProcesses()) {
+        work = true;
+    }
 
+    if (m_quitting) {
         if (!hasChildProcesses(true)) {
             ret = false;
         } else {
 #if 0
-          std::lock_guard<std::mutex> guard(m_processMutex);
           CERR << "still " << m_processMap.size() << " processes running" << std::endl;
           for (const auto &proc: m_processMap) {
               std::cerr << "   id: " << proc.second << ", pid: " << proc.first << std::endl;
@@ -1449,15 +1440,13 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
             int id = debug.getModule();
 #endif
             bool launched = false;
-            std::lock_guard<std::mutex> guard(m_processMutex);
             for (auto &p: m_processMap) {
                 if (p.second == id) {
                     std::vector<std::string> args;
                     std::stringstream str;
                     str << "-attach-mpi=" << p.first->id();
                     args.push_back(str.str());
-                    auto child = std::make_shared<proc::child>(proc::search_path("ddt"), proc::args(args), m_ioService,
-                                                               proc::on_exit(exit_handler));
+                    auto child = std::make_shared<proc::child>(proc::search_path("ddt"), proc::args(args));
                     std::stringstream info;
                     info << "Launched ddt as PID " << child->id() << ", attaching to " << p.first->id();
                     sendInfo(info.str());
@@ -1732,7 +1721,6 @@ bool Hub::startCleaner()
         CERR << "failed to spawn clean_vistle" << std::endl;
         return false;
     }
-    std::lock_guard<std::mutex> guard(m_processMutex);
     m_processMap[child] = Process::Cleaner;
     return true;
 }
@@ -1869,8 +1857,7 @@ bool Hub::startVrb()
 
     proc::ipstream out;
     auto child = std::make_shared<proc::child>(proc::search_path("vrb"), proc::args({"--tui", "--printport"}),
-                                               terminate_with_parent(), proc::std_out > out, m_ioService,
-                                               proc::on_exit(exit_handler));
+                                               terminate_with_parent(), proc::std_out > out);
     if (!child->valid()) {
         CERR << "could not create VRB process" << std::endl;
         return false;
@@ -1889,7 +1876,6 @@ bool Hub::startVrb()
     }
     CERR << "VRB process running on port " << m_vrbPort << ", running=" << child->running() << std::endl;
 
-    std::lock_guard<std::mutex> guard(m_processMutex);
     m_processMap[child] = Process::VRB;
     return true;
 }
@@ -2028,14 +2014,12 @@ bool Hub::startUi(const std::string &uipath, bool replace)
         return false;
     }
 
-    auto child = std::make_shared<proc::child>(uipath, proc::args(args), terminate_with_parent(), m_ioService,
-                                               proc::on_exit(exit_handler));
+    auto child = std::make_shared<proc::child>(uipath, proc::args(args), terminate_with_parent());
     if (!child->valid()) {
         CERR << "failed to spawn UI " << uipath << std::endl;
         return false;
     }
 
-    std::lock_guard<std::mutex> guard(m_processMutex);
     m_processMap[child] = Process::GUI;
 
     return true;
@@ -2054,14 +2038,12 @@ bool Hub::startPythonUi()
     cmd += "from vistle import *; ";
     args.push_back(cmd);
     args.push_back("--");
-    auto child = std::make_shared<proc::child>(proc::search_path(ipython), proc::args(args), terminate_with_parent(),
-                                               m_ioService, proc::on_exit(exit_handler));
+    auto child = std::make_shared<proc::child>(proc::search_path(ipython), proc::args(args), terminate_with_parent());
     if (!child->valid()) {
         CERR << "failed to spawn ipython " << ipython << std::endl;
         return false;
     }
 
-    std::lock_guard<std::mutex> guard(m_processMutex);
     m_processMap[child] = Process::GUI;
 
     return true;
@@ -2155,7 +2137,6 @@ bool Hub::handlePriv(const message::RemoveHub &rm)
 
     return false;
 }
-
 bool Hub::processStartupScripts()
 {
     bool error = false;
@@ -2416,7 +2397,6 @@ bool Hub::handlePriv(const message::Cover &cover, const buffer *payload)
 
 bool Hub::hasChildProcesses(bool ignoreGui)
 {
-    std::lock_guard<std::mutex> guard(m_processMutex);
     if (ignoreGui) {
         for (const auto &pk: m_processMap) {
             if (pk.second != Process::GUI && pk.second != Process::VRB)
@@ -2431,7 +2411,6 @@ bool Hub::hasChildProcesses(bool ignoreGui)
 
 bool Hub::checkChildProcesses(bool emergency)
 {
-    std::lock_guard<std::mutex> guard(m_processMutex);
     bool oneDead = false;
     for (auto it = m_processMap.begin(), next = it; it != m_processMap.end(); it = next) {
         next = it;
@@ -2509,10 +2488,7 @@ void Hub::emergencyQuit()
 
     if (!m_quitting) {
         m_uiManager.requestQuit();
-        {
-            std::lock_guard<std::mutex> guard(m_processMutex);
-            m_processMap.clear();
-        }
+        m_processMap.clear();
         if (startCleaner()) {
             m_quitting = true;
             while (hasChildProcesses()) {
@@ -2557,7 +2533,6 @@ void Hub::spawnModule(const std::string &path, const std::string &name, int spaw
     auto child = launchMpiProcess(argv);
     if (child->valid()) {
         //CERR << "started " << mod->path() << " with PID " << pid << std::endl;
-        std::lock_guard<std::mutex> guard(m_processMutex);
         m_processMap[child] = spawnId;
     } else {
         std::stringstream str;
@@ -2569,20 +2544,5 @@ void Hub::spawnModule(const std::string &path, const std::string &name, int spaw
     }
 }
 
-void Hub::startIoThread()
-{
-    m_ioThreads.emplace_back([this]() { m_ioService.run(); });
-}
-
-void Hub::stopIoThreads()
-{
-    m_workGuard.reset();
-    m_ioService.stop();
-
-    while (!m_ioThreads.empty()) {
-        m_ioThreads.back().join();
-        m_ioThreads.pop_back();
-    }
-}
 
 } // namespace vistle
