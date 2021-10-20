@@ -1192,6 +1192,8 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                 std::cerr << "ignoring for unknown slave: " << msg << std::endl;
                 break;
             }
+            auto &slave = it->second;
+            slaveReady(slave);
         } else {
             if (add.id() == Id::MasterHub) {
                 CERR << "received AddHub for master with " << add.numRanks() << " ranks";
@@ -1204,11 +1206,6 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
             }
         }
         if (m_dataProxy->connectRemoteData(add, [this]() { return dispatch(); })) {
-            if (m_isMaster) {
-                auto it = m_slaves.find(add.id());
-                auto &slave = it->second;
-                slaveReady(slave);
-            }
             m_stateTracker.handle(add, nullptr, true);
             sendUi(add);
         } else if (!m_isMaster && add.id() != message::Id::MasterHub) {
@@ -1218,6 +1215,10 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
             if (m_isMaster) {
                 CERR << "could not establish data connection to hub " << add.id() << " at " << add.address() << ":"
                      << add.port() << " - ignoring" << std::endl;
+                auto rm = make.message<RemoveHub>(add.id());
+                m_stateTracker.handle(rm, nullptr);
+                sendSlaves(rm);
+                sendManager(rm);
                 removeSlave(add.id());
             } else {
                 CERR << "could not establish data connection to master hub at " << add.address() << ":" << add.port()
