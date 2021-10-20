@@ -28,11 +28,15 @@ using vistle::message::async_recv_header;
 
 using std::shared_ptr;
 
-DataProxy::DataProxy(io_service &io, StateTracker &state, unsigned short basePort, bool changePort)
+DataProxy::DataProxy(StateTracker &state, unsigned short basePort, bool changePort)
 : m_hubId(message::Id::Invalid)
 , m_stateTracker(state)
+#if BOOST_VERSION >= 106600
+, m_workGuard(asio::make_work_guard(m_io))
+#else
+, m_workGuard(new asio::io_service::work(m_io))
+#endif
 , m_port(basePort)
-, m_io(io)
 , m_acceptorv4(m_io)
 , m_acceptorv6(m_io)
 , m_boost_archive_version(0)
@@ -58,11 +62,14 @@ DataProxy::DataProxy(io_service &io, StateTracker &state, unsigned short basePor
         }
     }
 
+    startThread();
+
     CERR << "proxying data connections through port " << m_port << std::endl;
 }
 
 DataProxy::~DataProxy()
 {
+    m_workGuard.reset();
     io().stop();
     while (!io().stopped()) {
         usleep(10000);
@@ -754,7 +761,18 @@ bool DataProxy::addSocket(const message::Identify &id, std::shared_ptr<DataProxy
     startThread();
     startThread();
 
-    return serveSocket(id, sock);
+    // transfer socket to DataProxy's io service
+    auto sock2 = std::make_shared<tcp_socket>(m_io);
+    if (sock->local_endpoint().protocol() == boost::asio::ip::tcp::v4()) {
+        sock2->assign(boost::asio::ip::tcp::v4(), sock->release());
+    } else if (sock->local_endpoint().protocol() == boost::asio::ip::tcp::v6()) {
+        sock2->assign(boost::asio::ip::tcp::v6(), sock->release());
+    } else {
+        CERR << "could not transfer socket to io service" << std::endl;
+        return false;
+    }
+
+    return serveSocket(id, sock2);
 }
 
 std::shared_ptr<boost::asio::ip::tcp::socket> DataProxy::getLocalDataSock(const message::Message &msg)
