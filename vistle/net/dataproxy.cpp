@@ -624,8 +624,8 @@ bool DataProxy::connectRemoteData(const message::AddHub &remote, std::function<b
     lock_guard lock(m_mutex);
 
     asio::deadline_timer timer(io());
-    timer.expires_from_now(boost::posix_time::seconds(10));
-    timer.async_wait([this](const boost::system::error_code &ec) {
+    timer.expires_from_now(boost::posix_time::seconds(50));
+    timer.async_wait([this, hubId](const boost::system::error_code &ec) {
         if (ec == asio::error::operation_aborted) {
             // timer was cancelled
             return;
@@ -637,6 +637,7 @@ bool DataProxy::connectRemoteData(const message::AddHub &remote, std::function<b
             return;
         }
 
+        CERR << "timeout for bulk data connection to " << hubId << std::endl;
         lock_guard lock(m_mutex);
         for (auto &s: m_connectingSockets) {
             boost::system::error_code ec;
@@ -670,6 +671,7 @@ bool DataProxy::connectRemoteData(const message::AddHub &remote, std::function<b
         lock.unlock();
 
         if (!messageDispatcher()) {
+            CERR << "connecting to " << remote.id() << " was interrupted" << std::endl;
             interrupt = true;
         }
 
@@ -679,6 +681,7 @@ bool DataProxy::connectRemoteData(const message::AddHub &remote, std::function<b
                 m_connectingSockets.erase(sock);
 
                 if (ec == asio::error::operation_aborted) {
+                    CERR << "connecting to " << remote.id() << " was aborted" << std::endl;
                     return;
                 }
                 if (ec == asio::error::timed_out) {
@@ -709,9 +712,10 @@ bool DataProxy::connectRemoteData(const message::AddHub &remote, std::function<b
         lock.lock();
     }
 
-    while (interrupt && !m_connectingSockets.empty() && m_remoteDataSocket[hubId].sockets.size() < numconn) {
+    while (!interrupt && !m_connectingSockets.empty() && m_remoteDataSocket[hubId].sockets.size() < numconn) {
         lock.unlock();
         if (!messageDispatcher()) {
+            CERR << "connecting to " << remote.id() << " was interrupted" << std::endl;
             interrupt = true;
         } else {
             usleep(10000);
