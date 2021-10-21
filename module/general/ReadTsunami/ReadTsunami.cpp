@@ -38,8 +38,10 @@
 #include <array>
 #include <iterator>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <cstddef>
+#include <thread>
 #include <vector>
 
 using namespace vistle;
@@ -332,11 +334,9 @@ void ReadTsunami::fillPolyList(Polygons::ptr poly, const T &numCorner)
  * @return vistle::Polygons::ptr
  */
 template<class U, class T, class V>
-Polygons::ptr ReadTsunami::generateSurface(const PolygonData<U> &polyData, const Dim<T> &dim,
-                                           const std::vector<V> &coords, const zCalcFunc &zCalc)
+void ReadTsunami::generateSurface(Polygons::ptr surface, const PolygonData<U> &polyData, const Dim<T> &dim,
+                                  const std::vector<V> &coords, const zCalcFunc &zCalc)
 {
-    Polygons::ptr surface(new Polygons(polyData.numElements, polyData.numCorners, polyData.numVertices));
-
     // fill coords 2D
     contructLatLonSurface(surface, dim, coords, zCalc);
 
@@ -345,8 +345,6 @@ Polygons::ptr ReadTsunami::generateSurface(const PolygonData<U> &polyData, const
 
     // fill the polygon list
     fillPolyList(surface, 4);
-
-    return surface;
 }
 
 /**
@@ -474,8 +472,7 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
     /*     return false; */
     try {
         std::string fileName = m_filedir->getValue();
-        NcFile ncFile(comm(), fileName, NcFile::read);
-        sendInfo("fileName");
+        NcFile ncFile(MPI_COMM_WORLD, fileName, NcFile::read);
 
         // get nc var objects ref
         /* const NcVar &latvar = ncFile->getVar(m_latLon_Sea[0]); */
@@ -562,10 +559,10 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
                 vecEta.resize(nTimesteps * verticesSea);
                 /* const std::vector<size_t> vecStartEta{firstTimestep, latSea.start, lonSea.start}; */
                 /* const std::vector<size_t> vecCountEta{nTimesteps, latSea.count, lonSea.count}; */
+                /* const std::vector<ptrdiff_t> vecStrideEta{incrementTimestep, latSea.stride, lonSea.stride}; */
                 const std::vector<MPI_Offset> vecStartEta{firstTimestep, latSea.start, lonSea.start};
                 const std::vector<MPI_Offset> vecCountEta{nTimesteps, latSea.count, lonSea.count};
                 const std::vector<MPI_Offset> vecStrideEta{incrementTimestep, latSea.stride, lonSea.stride};
-                /* const std::vector<ptrdiff_t> vecStrideEta{incrementTimestep, latSea.stride, lonSea.stride}; */
                 if (seaTimeConn) {
                     eta.getVar_all(vecStartEta, vecCountEta, vecStrideEta, vecEta.data());
 
@@ -589,12 +586,20 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
         //************* create Polygons ************//
         {
             std::vector<float *> coords{vecLat.data(), vecLon.data()};
+            sendInfo("before sea");
 
             //************* create sea *************//
             {
-                const auto &seaDim = Dim<size_t>(latSea.count, lonSea.count);
-                const auto &polyDataSea = PolygonData<size_t>(numPolySea, numPolySea * 4, verticesSea);
-                ptr_sea = generateSurface(polyDataSea, seaDim, coords);
+                /* const auto &seaDim = Dim<size_t>(latSea.count, lonSea.count); */
+                /* const auto &polyDataSea = PolygonData<size_t>(numPolySea, numPolySea * 4, verticesSea); */
+                const auto &seaDim = Dim<MPI_Offset>(latSea.count, lonSea.count);
+                const auto &polyData = PolygonData<MPI_Offset>(numPolySea, numPolySea * 4, verticesSea);
+                sendInfo("polydata");
+                /* ptr_sea.reset(new Polygons(polyData.numElements, polyData.numCorners, polyData.numVertices)); */
+                Polygons::ptr ptr_tmp =
+                    std::make_shared<Polygons>(polyData.numElements, polyData.numCorners, polyData.numVertices);
+                generateSurface(ptr_tmp, polyData, seaDim, coords);
+                ptr_sea = ptr_tmp->clone();
             }
 
             //************* create grnd *************//
@@ -602,12 +607,21 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
             coords[1] = vecLonGrid.data();
 
             const auto &scale = m_verticalScale->getValue();
-            const auto &grndDim = Dim<size_t>(latGround.count, lonGround.count);
-            const auto &polyDataGround = PolygonData<size_t>(numPolyGround, numPolyGround * 4, verticesGround);
-            auto grndZCalc = [&vecDepth, &lonGround, &scale](size_t j, size_t k) {
+            /* const auto &grndDim = Dim<size_t>(latGround.count, lonGround.count); */
+            /* const auto &polyDataGround = PolygonData<size_t>(numPolyGround, numPolyGround * 4, verticesGround); */
+            const auto &grndDim = Dim<MPI_Offset>(latGround.count, lonGround.count);
+            const auto &polyDataGround = PolygonData<MPI_Offset>(numPolyGround, numPolyGround * 4, verticesGround);
+            /* auto grndZCalc = [&vecDepth, &lonGround, &scale](size_t j, size_t k) { */
+            /*     return -vecDepth[j * lonGround.count + k] * scale; */
+            /* }; */
+            auto grndZCalc = [&vecDepth, &lonGround, &scale](MPI_Offset j, MPI_Offset k) {
                 return -vecDepth[j * lonGround.count + k] * scale;
             };
-            auto ptr_grnd = generateSurface(polyDataGround, grndDim, coords, grndZCalc);
+
+            Polygons::ptr ptr_grnd = std::make_shared<Polygons>(polyDataGround.numElements, polyDataGround.numCorners,
+                                                                polyDataGround.numVertices);
+            generateSurface(ptr_grnd, polyDataGround, grndDim, coords, grndZCalc);
+            sendInfo("grnd");
 
             //************* create selected scalars *************//
             /* const std::vector<size_t> vecScalarStart{latSea.start, lonSea.start}; */
@@ -646,6 +660,15 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
     } catch (PnetCDF::exceptions::NcmpiException &e) {
         sendInfo("%s error code=%d Error!", e.what(), e.errorCode());
         return false;
+    }
+
+    /* check if there is any PnetCDF internal malloc residue */
+    MPI_Offset malloc_size, sum_size;
+    int err = ncmpi_inq_malloc_size(&malloc_size);
+    if (err == NC_NOERR) {
+        MPI_Reduce(&malloc_size, &sum_size, 1, MPI_OFFSET, MPI_SUM, 0, MPI_COMM_WORLD);
+        if (rank() == 0 && sum_size > 0)
+            sendInfo("heap memory allocated by PnetCDF internally has %lld bytes yet to be freed\n", sum_size);
     }
 }
 
@@ -702,6 +725,7 @@ bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &time
         for (auto &val: ptr_Scalar)
             val.reset();
         indexEta = 0;
+        ptr_sea.reset();
     }
     return true;
 }

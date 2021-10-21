@@ -18,6 +18,7 @@
 
 #include <memory>
 #include <mpi.h>
+#include <mutex>
 #include <vistle/module/reader.h>
 #include <vistle/core/polygons.h>
 
@@ -65,12 +66,12 @@ private:
         /* ptrdiff_t imap; */
         MPI_Offset start;
         MPI_Offset count;
-        ptrdiff_t stride;
-        ptrdiff_t imap;
+        MPI_Offset stride;
+        MPI_Offset imap;
 
         /* NcVarExtended(const netCDF::NcVar &nc, const size_t &start = 0, const size_t &count = 0, */
         NcVarExtended(const NcVar &nc, const MPI_Offset &start = 0, const MPI_Offset &count = 0,
-                      const ptrdiff_t &stride = 1, const ptrdiff_t &imap = 1)
+                      const MPI_Offset &stride = 1, const MPI_Offset &imap = 1)
         : start(start), count(count), stride(stride), imap(imap)
         {
             /* ncVar = std::make_unique<netCDF::NcVar>(nc); */
@@ -109,8 +110,8 @@ private:
 
     typedef std::function<float(size_t, size_t)> zCalcFunc;
     template<class U, class T, class V>
-    vistle::Polygons::ptr generateSurface(
-        const PolygonData<U> &polyData, const Dim<T> &dim, const std::vector<V> &coords,
+    void generateSurface(
+        vistle::Polygons::ptr surface, const PolygonData<U> &polyData, const Dim<T> &dim, const std::vector<V> &coords,
         const zCalcFunc &func = [](size_t x, size_t y) { return 0; });
 
     template<class T, class U>
@@ -179,5 +180,6 @@ private:
     //lat = 0; lon = 1
     std::array<std::string, NUM_BLOCKS> m_latLon_Sea;
     std::array<std::string, NUM_BLOCKS> m_latLon_Ground;
+    std::mutex _mtx;
 };
 #endif
