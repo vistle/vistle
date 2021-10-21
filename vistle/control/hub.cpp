@@ -708,7 +708,7 @@ bool Hub::dispatch()
     size_t avail = 0;
     do {
         socket_ptr sock;
-        avail = 0;
+        avail = sizeof(uint32_t) - 1;
         for (auto &s: m_clients) {
             if (!s) {
                 continue;
@@ -736,7 +736,7 @@ bool Hub::dispatch()
             work = true;
             handleWrite(sock, error);
         }
-    } while (!m_interrupt && !m_quitting && avail > 0);
+    } while (!m_interrupt && !m_quitting && avail >= sizeof(uint32_t));
 
     if (m_interrupt) {
         if (m_isMaster) {
