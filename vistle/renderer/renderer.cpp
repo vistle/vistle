@@ -400,6 +400,18 @@ void Renderer::removeObjectWrapper(std::shared_ptr<RenderObject> ro)
 void Renderer::connectionRemoved(const Port *from, const Port *to)
 {
     removeAllSentBy(from->getModuleID(), from->getName());
+
+    // connection cut: remove colormap
+    auto it = m_colormaps.begin();
+    while (it != m_colormaps.end()) {
+        auto &cmap = it->second;
+        if (cmap.sender == from->getModuleID() && cmap.senderPort == from->getName()) {
+            removeColorMap(it->first);
+            it = m_colormaps.erase(it);
+        } else {
+            ++it;
+        }
+    }
 }
 
 void Renderer::removeObject(std::shared_ptr<RenderObject> ro)
@@ -419,18 +431,6 @@ void Renderer::removeAllSentBy(int sender, const std::string &senderPort)
     }
     while (!m_objectList.empty() && m_objectList.back().empty())
         m_objectList.pop_back();
-
-    // connection cut: remove colormap
-    auto it = m_colormaps.begin();
-    while (it != m_colormaps.end()) {
-        auto &cmap = it->second;
-        if (cmap.sender == sender && cmap.senderPort == senderPort) {
-            removeColorMap(it->first);
-            it = m_colormaps.erase(it);
-        } else {
-            ++it;
-        }
-    }
 }
 
 void Renderer::removeAllObjects()

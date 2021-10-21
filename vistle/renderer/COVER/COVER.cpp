@@ -656,7 +656,7 @@ bool COVER::removeColorMap(const std::string &species)
     unsigned char red_green[] = {1, 0, 0, 1, 0, 1, 0, 1};
     cmap.image->setImage(2, 1, 1, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, red_green, osg::Image::NO_DELETE);
     cmap.image->dirty();
-    //m_colormaps.erase(species);
+    m_colormaps.erase(species);
     VistleGeometryGenerator::unlock();
     return true;
 }
