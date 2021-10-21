@@ -283,7 +283,8 @@ void ReadTsunami::contructLatLonSurface(Polygons::ptr poly, const Dim<T> &dim, c
                                         const zCalcFunc &zCalc)
 {
     int n = 0;
-    auto sx_coord = poly->x().data(), sy_coord = poly->y().data(), sz_coord = poly->z().data();
+    /* auto sx_coord = poly->x().data(), sy_coord = poly->y().data(), sz_coord = poly->z().data(); */
+    auto sx_coord = poly->x().begin(), sy_coord = poly->y().begin(), sz_coord = poly->z().begin();
     for (size_t i = 0; i < dim.dimLat; i++)
         for (size_t j = 0; j < dim.dimLon; j++, n++) {
             sx_coord[n] = coords.at(1)[j];
@@ -302,7 +303,8 @@ template<class T>
 void ReadTsunami::fillConnectListPoly2Dim(Polygons::ptr poly, const Dim<T> &dim)
 {
     int n = 0;
-    auto verticeConnectivityList = poly->cl().data();
+    /* auto verticeConnectivityList = poly->cl().data(); */
+    auto verticeConnectivityList = poly->cl().begin();
     for (size_t j = 1; j < dim.dimLat; j++)
         for (size_t k = 1; k < dim.dimLon; k++) {
             verticeConnectivityList[n++] = (j - 1) * dim.dimLon + (k - 1);
@@ -585,7 +587,7 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
 
         //************* create Polygons ************//
         {
-            std::vector<float *> coords{vecLat.data(), vecLon.data()};
+            std::vector coords{vecLat.begin(), vecLon.begin()};
             sendInfo("before sea");
 
             //************* create sea *************//
@@ -595,16 +597,13 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
                 const auto &seaDim = Dim<MPI_Offset>(latSea.count, lonSea.count);
                 const auto &polyData = PolygonData<MPI_Offset>(numPolySea, numPolySea * 4, verticesSea);
                 sendInfo("polydata");
-                /* ptr_sea.reset(new Polygons(polyData.numElements, polyData.numCorners, polyData.numVertices)); */
-                Polygons::ptr ptr_tmp =
-                    std::make_shared<Polygons>(polyData.numElements, polyData.numCorners, polyData.numVertices);
-                generateSurface(ptr_tmp, polyData, seaDim, coords);
-                ptr_sea = ptr_tmp->clone();
+                ptr_sea.reset(new Polygons(polyData.numElements, polyData.numCorners, polyData.numVertices));
+                generateSurface(ptr_sea, polyData, seaDim, coords);
             }
 
             //************* create grnd *************//
-            coords[0] = vecLatGrid.data();
-            coords[1] = vecLonGrid.data();
+            coords[0] = vecLatGrid.begin();
+            coords[1] = vecLonGrid.begin();
 
             const auto &scale = m_verticalScale->getValue();
             /* const auto &grndDim = Dim<size_t>(latGround.count, lonGround.count); */
@@ -618,8 +617,8 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
                 return -vecDepth[j * lonGround.count + k] * scale;
             };
 
-            Polygons::ptr ptr_grnd = std::make_shared<Polygons>(polyDataGround.numElements, polyDataGround.numCorners,
-                                                                polyDataGround.numVertices);
+            Polygons::ptr ptr_grnd(
+                new Polygons(polyDataGround.numElements, polyDataGround.numCorners, polyDataGround.numVertices));
             generateSurface(ptr_grnd, polyDataGround, grndDim, coords, grndZCalc);
             sendInfo("grnd");
 
