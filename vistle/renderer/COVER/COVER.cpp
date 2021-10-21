@@ -621,7 +621,7 @@ bool COVER::addColorMap(const std::string &species, Texture1D::const_ptr texture
                   << std::endl;
         return true;
     }
-    auto ro = inter->getObject();
+    auto *ro = inter->getObject();
     if (!ro) {
         std::cerr << rank() << ": no renderobject for id " << modId << " found for colormap for species " << species
                   << std::endl;
