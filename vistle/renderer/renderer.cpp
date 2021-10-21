@@ -202,10 +202,10 @@ bool Renderer::dispatch(bool block, bool *messageReceived)
 {
     (void)block;
     int quit = 0;
-    bool checkAgain = true;
     bool wasAnyMessage = false;
     int numSync = 0;
-    while (checkAgain) {
+    int maxNumMessages = 0;
+    do {
         // process all messages until one needs cooperative processing
         message::Buffer buf;
         message::Message &message = buf;
@@ -255,10 +255,9 @@ bool Renderer::dispatch(bool block, bool *messageReceived)
         }
 
         int numMessages = messageBacklog.size() + receiveMessageQueue->getNumMessages();
-        int maxNumMessages = boost::mpi::all_reduce(comm(), numMessages, boost::mpi::maximum<int>());
+        maxNumMessages = boost::mpi::all_reduce(comm(), numMessages, boost::mpi::maximum<int>());
         ++numSync;
-        checkAgain = !m_replayFinished || (maxNumMessages > 0 && numSync < m_numObjectsPerFrame);
-    }
+    } while (!m_replayFinished || (maxNumMessages > 0 && numSync < m_numObjectsPerFrame));
 
     double start = 0.;
     if (m_benchmark) {
