@@ -161,33 +161,44 @@ You can connect a user interface to a running Vistle session later on, e.g.:
 Source Code Organization
 ------------------------
 
-- `.../cmake`:
+- `cmake`:
   CMake modules
 
-- `scripts`:
-  support scripts for building Vistle
+- `contrib/scripts`:
+  support scripts for building and running Vistle
 
-- `3rdparty`:
+- `lib/3rdparty`:
   3rd party source code
 
-- `vistle`:
-  Vistle source code
+- `lib/vistle`:
+  Vistle libraries source code
 
-    - `vistle/util`: support code
-    - `vistle/core`: Vistle core data structures
-    - `vistle/userinterface`: common library for user interfaces
-    - `vistle/rhr`: library for remote hybrid rendering servers and clients
-    - `vistle/control`: Python code for controlling a Vistle session
-    - `vistle/hub`: Vistle session controller
-    - `vistle/gui`: graphical user interface
-    - `vistle/module`: visualization algorithm modules and base library
-        - `vistle/module/general`:
-        - `vistle/module/test`: various debugging aids
-    - `vistle/renderer`: renderer modules transforming geometry into pixels
-        - `vistle/renderer/DisCOVERay`: a parallel remote hybrid rendering server based on Embree (CPU ray-casting)
-        - `vistle/renderer/OsgRenderer`: a parallel remote hybrid rendering server based on OpenSceneGraph (OpenGL)
-    - `vistle/cover`: plugins for OpenCOVER, e.g. for connecting to Vistle
-        - `vistle/cover/RhrClient`: OpenCOVER remote hybrid rendering client plugin
+    - `lib/vistle/util`: support code
+    - `lib/vistle/core`: Vistle core data structures
+    - `lib/vistle/userinterface`: common library for user interfaces
+    - `lib/vistle/net`: library for Vistle network communication
+    - `lib/vistle/control`: Python code for controlling a Vistle session
+    - `lib/vistle/module`: base class and support code for visualization algorithm modules
+    - `lib/vistle/renderer`: base class and support code for render modules
+    - `lib/vistle/rhr`: library for remote hybrid rendering servers and clients
+
+- `app`:
+  Vistle applications
+
+    - `app/vistle/hub`: Vistle session controller
+    - `app/vistle/gui`: graphical user interface
+
+- `module`:
+  visualization algorithm modules and base library
+
+        - `module/general`: modules useful to a wider audience
+        - `module/test`: various debugging aids
+    - `module/render`: renderer modules transforming geometry into pixels
+        - `module/render/DisCOVERay`: a parallel remote hybrid rendering server based on Embree (CPU ray-casting)
+        - `module/render/OsgRenderer`: a parallel remote hybrid rendering server based on OpenSceneGraph (OpenGL)
+        - `module/render/COVER`: wrap OpenCOVER as a render module
+            - `module/render/COVER/plugins`: plugins for OpenCOVER, e.g. for connecting to Vistle
+                - `module/render/COVER/plugins/RhrClient`: OpenCOVER remote hybrid rendering client plugin
 
 Documentation
 -------------

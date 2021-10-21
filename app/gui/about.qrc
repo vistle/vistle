@@ -1,0 +1,6 @@
+<RCC>
+  <qresource prefix="aboutData" >
+    <file>../../README.md</file>
+    <file>../../LICENSE.txt</file>
+  </qresource>
+</RCC>

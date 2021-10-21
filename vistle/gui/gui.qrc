@@ -1,5 +1,0 @@
-<RCC>
-    <qresource prefix="icons" >
-        <file alias="vistle.png">../install/hlrs-vistle.png</file>
-    </qresource>
-</RCC>

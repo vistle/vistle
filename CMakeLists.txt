@@ -196,7 +196,7 @@ if(WIN32)
     #set(BOOST_ROOT "$ENV{EXTERNLIBS}/boost")
     #STRING(REGEX REPLACE "\\\\" "/" BOOST_ROOT ${BOOST_ROOT})
     #set(MPI_HOME "$ENV{EXTERNLIBS}/OpenMPI")
-    set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/vistle/cmake/Modules/windows;${CMAKE_MODULE_PATH}")
+    set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/Modules/windows;${CMAKE_MODULE_PATH}")
     #add_definitions(-DOMPI_IMPORTS)
 
     add_definitions(-DWIN32_LEAN_AND_MEAN)
@@ -221,7 +221,7 @@ if(WIN32)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MSVC_WARNINGS} /EHsc")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${MSVC_WARNINGS} /EHsc")
 endif(WIN32)
-set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/vistle/cmake/Modules/;${CMAKE_MODULE_PATH}")
+set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/Modules/;${CMAKE_MODULE_PATH}")
 
 include(ConfigureLinker)
 
@@ -235,7 +235,7 @@ if(NOT VISTLE_GUI_ONLY)
     endif()
 
     #vistle_find_package(IceT REQUIRED)
-    set(ICET_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/3rdparty/IceT/src/include;${CMAKE_BINARY_DIR}/3rdparty/IceT/src/include)
+    set(ICET_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/lib/3rdparty/IceT/src/include;${CMAKE_BINARY_DIR}/lib/3rdparty/IceT/src/include)
     set(ICET_CORE_LIBS "IceTCore")
     set(ICET_MPI_LIBS "IceTMPI")
     set(ICET_FOUND TRUE)
@@ -484,9 +484,9 @@ macro(vistle_export_library targetname)
 
     target_include_directories(
         ${targetname}
-        PRIVATE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>
+        PRIVATE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/lib>
         PRIVATE $<INSTALL_INTERFACE:include>
-        INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>
+        INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/lib>
         INTERFACE $<INSTALL_INTERFACE:include>)
 
     set(header "${ARGN}")
@@ -604,15 +604,233 @@ macro(vistle_install_headers directory)
 endmacro(vistle_install_headers)
 
 #install VistleConfig.cmake
-configure_file(${CMAKE_CURRENT_LIST_DIR}/vistle/cmake/VistleConfig.cmake ${PROJECT_BINARY_DIR}/lib/cmake/vistle/VistleConfig.cmake COPYONLY)
-install(FILES ${CMAKE_CURRENT_LIST_DIR}/vistle/cmake/VistleConfig.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/vistle)
+configure_file(${CMAKE_CURRENT_LIST_DIR}/cmake/VistleConfig.cmake ${PROJECT_BINARY_DIR}/lib/cmake/vistle/VistleConfig.cmake COPYONLY)
+install(FILES ${CMAKE_CURRENT_LIST_DIR}/cmake/VistleConfig.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/vistle)
 
 if(APPLE)
     add_definitions(-DGL_SILENCE_DEPRECATION)
 endif()
 
-add_subdirectory(3rdparty)
-add_subdirectory(vistle)
+if(POLICY CMP0043)
+    # configuration (RelWithDebInfo, Debug, ...) dependent COMPILE_DEFINITIONS are not used
+    # - default to new behavior
+    cmake_policy(SET CMP0043 NEW)
+endif()
+
+if(WIN32)
+    option(VISTLE_PYTHON_DEBUG "for Debug builds, use expect Python built in Debug mode" OFF)
+    if(VISTLE_PYTHON_DEBUG)
+        add_compile_options("$<$<CONFIG:DEBUG>:-DPy_DEBUG>")
+    endif()
+endif()
+
+enable_testing()
+
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
+# configure process model
+if(CRAY)
+    option(VISTLE_MULTI_PROCESS "use multiple processes communicating via shared memory" OFF)
+else()
+    option(VISTLE_MULTI_PROCESS "use multiple processes communicating via shared memory" ON)
+endif()
+option(VISTLE_MODULES_SHARED "use shared libraries for modules" ON)
+option(VISTLE_USE_SHARED_MEMORY "use shared memory even within a process" OFF)
+if(NOT VISTLE_MULTI_PROCESS)
+    add_definitions(-DMODULE_THREAD)
+    if(NOT VISTLE_MODULES_SHARED)
+        add_definitions(-DMODULE_STATIC)
+    endif()
+    if(NOT VISTLE_USE_SHARED_MEMORY)
+        add_definitions(-DNO_SHMEM)
+    endif()
+endif()
+
+# configure data-type sizes
+option(VISTLE_64BIT_INDICES "use 64-bit integers for array indices" OFF)
+if(VISTLE_64BIT_INDICES)
+    add_definitions(-DVISTLE_INDEX_64BIT)
+endif()
+
+option(VISTLE_DOUBLE_PRECISION "use double instead of float for coordinates and data arrays" OFF)
+if(VISTLE_DOUBLE_PRECISION)
+    add_definitions(-DVISTLE_SCALAR_DOUBLE)
+endif()
+
+macro(USE_OPENMP)
+    if(OPENMP_FOUND)
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_C_FLAGS}")
+        set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${OpenMP_C_FLAGS}")
+    else()
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unknown-pragmas")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-pragmas")
+    endif()
+endmacro(USE_OPENMP)
+
+macro(vistle_add_executable targetname)
+    add_executable(${targetname} ${ARGN})
+    set_target_properties(${targetname} PROPERTIES FOLDER "Executables")
+    install(
+        TARGETS ${targetname}
+        RUNTIME DESTINATION bin
+        BUNDLE DESTINATION bin)
+endmacro(vistle_add_executable)
+
+set(ALL_MODULES
+    ""
+    CACHE INTERNAL "")
+set(MODULE_DESCRIPTION_FILE ${PROJECT_BINARY_DIR}/share/vistle/moduledescriptions.txt)
+if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
+
+    file(REMOVE ${MODULE_DESCRIPTION_FILE})
+    install(FILES ${MODULE_DESCRIPTION_FILE} DESTINATION ${CMAKE_INSTALL_PREFIX}/share/vistle/)
+
+    macro(add_module targetname description)
+
+        file(APPEND ${MODULE_DESCRIPTION_FILE} ${targetname} " " ${description}\n)
+        set(ALL_MODULES
+            ${ALL_MODULES} ${targetname}
+            CACHE INTERNAL "")
+        if(VISTLE_MULTI_PROCESS)
+            add_executable(${targetname} ${ARGN})
+            set_target_properties(${targetname} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/libexec/module)
+            install(TARGETS ${targetname} RUNTIME DESTINATION libexec/module)
+        else()
+            if(VISTLE_MODULES_SHARED)
+                if(Boost_VERSION VERSION_GREATER 1.69.99)
+
+                elseif(Boost_VERSION VERSION_LESS 106400)
+                    message(FATAL_ERROR "At least Boost 1.64 is required for Boost.DLL")
+                endif()
+                add_library(${targetname} MODULE ${ARGN})
+                set_target_properties(${targetname} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib/module)
+                set_target_properties(${targetname} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib/module)
+                install(
+                    TARGETS ${targetname}
+                    RUNTIME DESTINATION lib/module
+                    LIBRARY DESTINATION lib/module)
+            else()
+                #add_library(${targetname} OBJECT ${ARGN})
+                add_library(${targetname} STATIC ${ARGN})
+            endif()
+        endif()
+        target_compile_definitions(${targetname} PRIVATE VISTLE_MODULE_NAME="${targetname}")
+        #target_compile_definitions(${targetname} PRIVATE MODULE_DESCRIPTION="${description}")
+
+        set_target_properties(${targetname} PROPERTIES FOLDER "Modules")
+        target_link_libraries(${targetname} ${Boost_LIBRARIES} ${MPI_C_LIBRARIES} vistle_module ${BOOST_MPI})
+    endmacro(add_module)
+endif()
+
+set(CMAKE_C_VISIBILITY_PRESET hidden)
+set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+
+set(VISTLE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS}")
+if(${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftemplate-depth=512")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-function")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations")
+    if(VISTLE_PEDANTIC_ERRORS)
+        add_compile_options("-pedantic-errors")
+    endif()
+    if(NOT APPLE)
+        set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-undefined")
+    else()
+        set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-undefined,error")
+    endif()
+elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
+    if(VISTLE_PEDANTIC_ERRORS)
+        add_compile_options("-pedantic-errors")
+    endif()
+    if(NOT APPLE)
+        set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-undefined")
+    endif()
+elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel")
+
+endif()
+
+if(WIN32)
+    set(CMAKE_CXX_COMPILE_FLAGS "${CMAKE_CXX_COMPILE_FLAGS} -Wall")
+else(WIN32)
+    set(CMAKE_CXX_COMPILE_FLAGS "${CMAKE_CXX_COMPILE_FLAGS} -Wall -Wno-unknown-pragmas")
+endif(WIN32)
+
+#set(CMAKE_BUILD_TYPE Debug)
+
+option(VISTLE_SHM_DEBUG "Shared memory debugging" OFF)
+if(VISTLE_SHM_DEBUG)
+    add_definitions(-DSHMDEBUG)
+endif()
+
+set(ENABLE_INSTALLER TRUE)
+#vistle_find_package(Thrust REQUIRED)
+set(THRUST_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/lib/3rdparty/thrust")
+
+#new submodule for block distribution
+set(DIY_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/lib/3rdparty/diy/include")
+
+#vistle_find_package(Eigen3 REQUIRED)
+set(EIGEN3_INCLUDE_PATH "${PROJECT_SOURCE_DIR}/lib/3rdparty")
+
+if(NOT VISTLE_GUI_ONLY)
+    #Boost.MPI is compiled with Vistle - for easy switching of MPI versions
+    include_directories(BEFORE SYSTEM "${PROJECT_SOURCE_DIR}/lib/3rdparty/${BOOST_MPI_DIR}/include")
+endif()
+if(Boost_FOUND)
+    include_directories(AFTER SYSTEM ${Boost_INCLUDE_DIRS})
+endif()
+
+# header-only python bindings
+include_directories(SYSTEM "${PROJECT_SOURCE_DIR}/lib/3rdparty/pybind11/include")
+
+# replacement for Boost.Serialization
+#include_directories(SYSTEM "${PROJECT_SOURCE_DIR}/lib/3rdparty/yas/include")
+
+# lossy floating point compression
+#vistle_find_package(ZFP)
+set(ZFP_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/lib/3rdparty/zfp/include")
+set(ZFP_LIBRARIES zfp)
+if(OPENMP_FOUND)
+    set(ZFP_LIBRARIES ${ZFP_LIBRARIES} ${OpenMP_CXX_LIBRARIES})
+endif()
+set(ZFP_FOUND TRUE)
+add_definitions(-DHAVE_ZFP)
+include_directories(SYSTEM "${ZFP_INCLUDE_DIRS}")
+
+if(NOT VISTLE_GUI_ONLY)
+    vistle_find_package(
+        OpenSceneGraph
+        3.2.0
+        COMPONENTS
+        osgViewer
+        osgGA
+        osgDB
+        osgUtil
+        osgText
+        osgParticle
+        osgSim
+        osgFX)
+    set(OpenGL_GL_PREFERENCE LEGACY)
+    vistle_find_package(OpenGL)
+
+    vistle_find_package(COVER)
+endif()
+
+set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
+set(THREADS_PREFER_PTHREAD_FLAG TRUE)
+vistle_find_package(Threads REQUIRED)
+
+set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
+set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
+set(COVISEDESTDIR ${PROJECT_BINARY_DIR})
+
+add_subdirectory(lib)
+add_subdirectory(app)
+add_subdirectory(module)
+add_subdirectory(test)
+add_subdirectory(bin)
 
 include(FeatureSummary)
 feature_summary(WHAT ALL)
