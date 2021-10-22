@@ -19,7 +19,7 @@
 #include <boost/mpi/collectives.hpp>
 
 #ifdef MODULE_THREAD
-#include "../../app/manager/manager.h"
+#include <vistle/manager/manager.h>
 #endif // MODULE_THREAD
 
 #define CERR std::cerr << "[" << m_rank << "/" << m_mpiSize << " ] SenseiAdapter: "

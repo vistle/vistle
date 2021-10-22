@@ -6,7 +6,7 @@
  */
 
 #include <mpi.h>
-#include "manager.h"
+#include <vistle/manager/manager.h>
 
 #include <iostream>
 #include <vistle/util/directory.h>
