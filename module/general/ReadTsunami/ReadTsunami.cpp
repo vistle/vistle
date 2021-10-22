@@ -725,8 +725,8 @@ bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &time
         for (auto &val: ptr_Scalar)
             val.reset();
         indexEta = 0;
-        ptr_sea.erase(blockNum);
-        vecEta.erase(blockNum);
+        /* ptr_sea.erase(blockNum); */
+        /* vecEta.erase(blockNum); */
         /* ptr_sea.reset(); */
         /* ptr.reset(); */
     }
