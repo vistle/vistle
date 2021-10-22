@@ -1,5 +1,4 @@
 #include "reader.h"
-#include <thread>
 
 namespace vistle {
 
