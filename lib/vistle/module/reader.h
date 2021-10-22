@@ -184,6 +184,7 @@ private:
     bool m_readyForRead = true;
 
     bool m_handlePartitions = true;
+    bool m_handleOwnDIYBlocks = false;
     bool m_allowTimestepDistribution = false;
 
     unsigned long m_tokenCount = 0;
