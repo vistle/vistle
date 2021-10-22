@@ -265,8 +265,6 @@ bool ReadTsunami::inspectNetCDFVars()
         setParameterChoices(scalar, scalarChoiceVec);
 
     /* ncFile->close(); */
-
-    sendInfo("examine");
     return true;
 }
 
@@ -280,7 +278,7 @@ bool ReadTsunami::inspectNetCDFVars()
   */
 template<class T, class U>
 void ReadTsunami::contructLatLonSurface(Polygons::ptr poly, const Dim<T> &dim, const std::vector<U> &coords,
-                                        const zCalcFunc &zCalc)
+                                        const ZCalcFunc &zCalc)
 {
     int n = 0;
     /* auto sx_coord = poly->x().data(), sy_coord = poly->y().data(), sz_coord = poly->z().data(); */
@@ -337,7 +335,7 @@ void ReadTsunami::fillPolyList(Polygons::ptr poly, const T &numCorner)
  */
 template<class U, class T, class V>
 void ReadTsunami::generateSurface(Polygons::ptr surface, const PolygonData<U> &polyData, const Dim<T> &dim,
-                                  const std::vector<V> &coords, const zCalcFunc &zCalc)
+                                  const std::vector<V> &coords, const ZCalcFunc &zCalc)
 {
     // fill coords 2D
     contructLatLonSurface(surface, dim, coords, zCalc);
@@ -376,6 +374,8 @@ auto ReadTsunami::generateNcVarExt(const NcVar &ncVar, const T &dim, const T &gh
  */
 bool ReadTsunami::prepareRead()
 {
+    /* ptr_sea.clear(); */
+    /* vecEta.clear(); */
     seaTimeConn = m_seaSurface_out->isConnected();
     for (auto scalar_out: m_scalarsOut)
         seaTimeConn = seaTimeConn || scalar_out->isConnected();
@@ -558,7 +558,8 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
 
             // read eta
             {
-                vecEta.resize(nTimesteps * verticesSea);
+                vecEta.insert(std::pair(blockNum, std::vector<float>(nTimesteps * verticesSea)));
+                /* vecEta.resize(nTimesteps * verticesSea); */
                 /* const std::vector<size_t> vecStartEta{firstTimestep, latSea.start, lonSea.start}; */
                 /* const std::vector<size_t> vecCountEta{nTimesteps, latSea.count, lonSea.count}; */
                 /* const std::vector<ptrdiff_t> vecStrideEta{incrementTimestep, latSea.stride, lonSea.stride}; */
@@ -566,14 +567,14 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
                 const std::vector<MPI_Offset> vecCountEta{nTimesteps, latSea.count, lonSea.count};
                 const std::vector<MPI_Offset> vecStrideEta{incrementTimestep, latSea.stride, lonSea.stride};
                 if (seaTimeConn) {
-                    eta.getVar_all(vecStartEta, vecCountEta, vecStrideEta, vecEta.data());
+                    eta.getVar_all(vecStartEta, vecCountEta, vecStrideEta, vecEta.at(blockNum).data());
 
                     //filter fillvalue
                     if (m_fill->getValue()) {
                         const float &fillValNew = getFloatParameter("fillValueNew");
                         const float &fillVal = getFloatParameter("fillValue");
                         //TODO: Bad! needs rework.
-                        std::replace(vecEta.begin(), vecEta.end(), fillVal, fillValNew);
+                        std::replace(vecEta.at(blockNum).begin(), vecEta.at(blockNum).end(), fillVal, fillValNew);
                     }
                 }
             }
@@ -588,17 +589,15 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
         //************* create Polygons ************//
         {
             std::vector coords{vecLat.begin(), vecLon.begin()};
-            sendInfo("before sea");
-
             //************* create sea *************//
             {
                 /* const auto &seaDim = Dim<size_t>(latSea.count, lonSea.count); */
                 /* const auto &polyDataSea = PolygonData<size_t>(numPolySea, numPolySea * 4, verticesSea); */
-                const auto &seaDim = Dim<MPI_Offset>(latSea.count, lonSea.count);
-                const auto &polyData = PolygonData<MPI_Offset>(numPolySea, numPolySea * 4, verticesSea);
-                sendInfo("polydata");
-                ptr_sea.reset(new Polygons(polyData.numElements, polyData.numCorners, polyData.numVertices));
-                generateSurface(ptr_sea, polyData, seaDim, coords);
+                const auto seaDim = Dim<MPI_Offset>(latSea.count, lonSea.count);
+                const auto polyData = PolygonData<MPI_Offset>(numPolySea, numPolySea * 4, verticesSea);
+                Polygons::ptr ptr(new Polygons(polyData.numElements, polyData.numCorners, polyData.numVertices));
+                ptr_sea.insert(std::pair(blockNum, ptr));
+                generateSurface(ptr, polyData, seaDim, coords);
             }
 
             //************* create grnd *************//
@@ -608,19 +607,18 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
             const auto &scale = m_verticalScale->getValue();
             /* const auto &grndDim = Dim<size_t>(latGround.count, lonGround.count); */
             /* const auto &polyDataGround = PolygonData<size_t>(numPolyGround, numPolyGround * 4, verticesGround); */
-            const auto &grndDim = Dim<MPI_Offset>(latGround.count, lonGround.count);
-            const auto &polyDataGround = PolygonData<MPI_Offset>(numPolyGround, numPolyGround * 4, verticesGround);
+            const auto grndDim = Dim<MPI_Offset>(latGround.count, lonGround.count);
+            const auto polyDataGround = PolygonData<MPI_Offset>(numPolyGround, numPolyGround * 4, verticesGround);
             /* auto grndZCalc = [&vecDepth, &lonGround, &scale](size_t j, size_t k) { */
             /*     return -vecDepth[j * lonGround.count + k] * scale; */
             /* }; */
-            auto grndZCalc = [&vecDepth, &lonGround, &scale](MPI_Offset j, MPI_Offset k) {
+            ZCalcFunc grndZCalc = [&vecDepth, &lonGround, &scale](MPI_Offset j, MPI_Offset k) {
                 return -vecDepth[j * lonGround.count + k] * scale;
             };
 
             Polygons::ptr ptr_grnd(
                 new Polygons(polyDataGround.numElements, polyDataGround.numCorners, polyDataGround.numVertices));
             generateSurface(ptr_grnd, polyDataGround, grndDim, coords, grndZCalc);
-            sendInfo("grnd");
 
             //************* create selected scalars *************//
             /* const std::vector<size_t> vecScalarStart{latSea.start, lonSea.start}; */
@@ -654,8 +652,7 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
             }
         }
         /* ncFile->close(); */
-        sendInfo("read");
-        return true;
+        /* return true; */
     } catch (PnetCDF::exceptions::NcmpiException &e) {
         sendInfo("%s error code=%d Error!", e.what(), e.errorCode());
         return false;
@@ -668,7 +665,9 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
         MPI_Reduce(&malloc_size, &sum_size, 1, MPI_OFFSET, MPI_SUM, 0, MPI_COMM_WORLD);
         if (rank() == 0 && sum_size > 0)
             sendInfo("heap memory allocated by PnetCDF internally has %lld bytes yet to be freed\n", sum_size);
+        return false;
     }
+    return true;
 }
 
 /**
@@ -682,19 +681,20 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
 template<class T, class U>
 bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &timestep)
 {
-    Polygons::ptr ptr_timestepPoly = ptr_sea->clone();
+    auto &ptr = ptr_sea[blockNum];
+    Polygons::ptr ptr_timestepPoly = ptr->clone();
     static int indexEta{0};
 
     ptr_timestepPoly->resetArrays();
 
     // reuse data from sea polygon surface and calculate z new
-    ptr_timestepPoly->d()->x[0] = ptr_sea->d()->x[0];
-    ptr_timestepPoly->d()->x[1] = ptr_sea->d()->x[1];
+    ptr_timestepPoly->d()->x[0] = ptr->d()->x[0];
+    ptr_timestepPoly->d()->x[1] = ptr->d()->x[1];
     ptr_timestepPoly->d()->x[2].construct(ptr_timestepPoly->getSize());
 
     // getting z from vecEta and copy to z()
     // verticesSea * timesteps = total count vecEta
-    auto startCopy = vecEta.begin() + (indexEta++ * verticesSea);
+    auto startCopy = vecEta.at(blockNum).begin() + (indexEta++ * verticesSea);
     std::copy_n(startCopy, verticesSea, ptr_timestepPoly->z().begin());
     ptr_timestepPoly->updateInternals();
     ptr_timestepPoly->setTimestep(timestep);
@@ -720,11 +720,15 @@ bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &time
 
     if (timestep == m_actualLastTimestep) {
         sendInfo("Cleared Cache for rank: " + std::to_string(rank()));
-        std::vector<float>().swap(vecEta);
+        /* vecEta.at(blockNum).clear(); */
+        /* std::vector<float>().swap(vecEta); */
         for (auto &val: ptr_Scalar)
             val.reset();
         indexEta = 0;
-        ptr_sea.reset();
+        ptr_sea.erase(blockNum);
+        vecEta.erase(blockNum);
+        /* ptr_sea.reset(); */
+        /* ptr.reset(); */
     }
     return true;
 }

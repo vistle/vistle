@@ -108,11 +108,11 @@ private:
     bool openNcFile(std::shared_ptr<NcFile> file);
     bool inspectNetCDFVars();
 
-    typedef std::function<float(size_t, size_t)> zCalcFunc;
+    typedef std::function<float(size_t, size_t)> ZCalcFunc;
     template<class U, class T, class V>
     void generateSurface(
         vistle::Polygons::ptr surface, const PolygonData<U> &polyData, const Dim<T> &dim, const std::vector<V> &coords,
-        const zCalcFunc &func = [](size_t x, size_t y) { return 0; });
+        const ZCalcFunc &func = [](size_t x, size_t y) { return 0; });
 
     template<class T, class U>
     bool computeBlock(Token &token, const T &blockNum, const U &timestep);
@@ -138,7 +138,7 @@ private:
 
     template<class T, class V>
     void contructLatLonSurface(vistle::Polygons::ptr poly, const Dim<T> &dim, const std::vector<V> &coords,
-                               const zCalcFunc &zCalc);
+                               const ZCalcFunc &zCalc);
 
     template<class T>
     void fillConnectListPoly2Dim(vistle::Polygons::ptr poly, const Dim<T> &dim);
@@ -165,8 +165,8 @@ private:
     vistle::Port *m_groundSurface_out = nullptr;
     std::array<vistle::Port *, NUM_SCALARS> m_scalarsOut;
 
-    //Polygons
-    vistle::Polygons::ptr ptr_sea;
+    //Polygons per block
+    std::map<int, vistle::Polygons::ptr> ptr_sea;
 
     //Scalar
     std::array<vistle::Vec<vistle::Scalar>::ptr, NUM_SCALARS> ptr_Scalar;
@@ -175,7 +175,7 @@ private:
     bool seaTimeConn;
     size_t verticesSea;
     size_t m_actualLastTimestep;
-    std::vector<float> vecEta;
+    std::map<int, std::vector<float>> vecEta;
 
     //lat = 0; lon = 1
     std::array<std::string, NUM_BLOCKS> m_latLon_Sea;
