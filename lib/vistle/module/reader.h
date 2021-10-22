@@ -164,7 +164,7 @@ private:
         bool result;
     };
 
-    void readTimestep(std::shared_ptr<Token> prev, ReaderProperties &prop, int timestep);
+    void readTimestep(std::shared_ptr<Token> prev, ReaderProperties &prop, int timestep, int step);
     void readTimesteps(std::shared_ptr<Token> prev, ReaderProperties &prop);
     bool prepare() override;
     bool compute() override;

@@ -95,10 +95,10 @@ size_t Reader::waitForReaders(size_t maxRunning, bool &result)
  * @param prop Reader properties.
  * @param timestep Current timestep.
  */
-void Reader::readTimestep(std::shared_ptr<Token> prev, ReaderProperties &prop, int timestep)
+void Reader::readTimestep(std::shared_ptr<Token> prev, ReaderProperties &prop, int timestep, int step)
 {
     for (int p = -1; p < prop.numpart; ++p) {
-        if (!m_handlePartitions || comm().rank() == rankForTimestepAndPartition(-1, p)) {
+        if (!m_handlePartitions || comm().rank() == rankForTimestepAndPartition(step, p)) {
             prop.meta->setBlock(p);
             auto token = std::make_shared<Token>(this, prev);
             ++m_tokenCount;
@@ -143,11 +143,7 @@ void Reader::readTimesteps(std::shared_ptr<Token> prev, ReaderProperties &prop)
         for (int t = prop.time.first(); prop.time.inc() < 0 ? t >= prop.time.last() : t <= prop.time.last();
              t += prop.time.inc()) {
             prop.meta->setTimeStep(step);
-            readTimestep(prev, prop, t);
-            if (m_parallel == ParallelizeBlocks) {
-                waitForReaders(0, prop.result);
-                prev.reset();
-            }
+            readTimestep(prev, prop, t, step);
             ++step;
             if (!prop.result)
                 break;
@@ -207,7 +203,7 @@ bool Reader::prepare()
     std::shared_ptr<Token> prev;
     meta.setTimeStep(-1);
     ReaderProperties prop(&meta, rTime, numpart, concurrency, true);
-    readTimestep(prev, prop, -1);
+    readTimestep(prev, prop, -1, -1);
 
     // read timesteps
     readTimesteps(prev, prop);
