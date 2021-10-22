@@ -480,7 +480,7 @@ option(VISTLE_INSTALL_3RDPARTY "Add the 3rdParty directories to the install dire
 option(VISTLE_INSTALL_HEADER "Install the Vistle headers in CMAKE_INSTALL_PREFIX/include/path to lib" ON)
 
 macro(vistle_export_library targetname)
-    string(REPLACE ${PROJECT_BINARY_DIR}/vistle "" directory ${CMAKE_CURRENT_BINARY_DIR})
+    string(REPLACE ${PROJECT_BINARY_DIR}/lib/vistle "" directory ${CMAKE_CURRENT_BINARY_DIR})
 
     target_include_directories(
         ${targetname}
@@ -827,8 +827,8 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 set(COVISEDESTDIR ${PROJECT_BINARY_DIR})
 
 add_subdirectory(lib)
-add_subdirectory(app)
 add_subdirectory(module)
+add_subdirectory(app) # has to come after module subdirectory for static module registration
 add_subdirectory(test)
 add_subdirectory(bin)
 

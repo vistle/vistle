@@ -10,8 +10,8 @@ Vistle - A Modular Data-Parallel Visualization System
 License
 -------
 
-Vistle source code is licensed under the LGPL v2.1. See `lgpl-2.1.txt` for
-details. This does not apply to the subdirectory `3rdparty`.
+Vistle source code is licensed under the LGPL v2.1. See `LICENSE.txt` for
+details. This does not apply to the subdirectory `lib/3rdparty`.
 
 
 Getting Vistle
@@ -185,14 +185,14 @@ Source Code Organization
 - `app`:
   Vistle applications
 
-    - `app/vistle/hub`: Vistle session controller
-    - `app/vistle/gui`: graphical user interface
+    - `app/hub`: Vistle session controller
+    - `app/gui`: graphical user interface
 
 - `module`:
   visualization algorithm modules and base library
 
-        - `module/general`: modules useful to a wider audience
-        - `module/test`: various debugging aids
+    - `module/general`: modules useful to a wider audience
+    - `module/test`: various debugging aids
     - `module/render`: renderer modules transforming geometry into pixels
         - `module/render/DisCOVERay`: a parallel remote hybrid rendering server based on Embree (CPU ray-casting)
         - `module/render/OsgRenderer`: a parallel remote hybrid rendering server based on OpenSceneGraph (OpenGL)

@@ -94,12 +94,12 @@ endif()
 if(VISTLE_INSTALL_3RDPARTY)
     #yas
     install(
-        DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/yas/include/yas
+        DIRECTORY yas/include/yas
         DESTINATION include/vistle/3rdparty
         COMPONENT Devel)
     #eigen3
     install(
-        DIRECTORY ${PROJECT_SOURCE_DIR}/3rdparty/eigen3
+        DIRECTORY eigen3
         DESTINATION include/vistle/3rdparty
         COMPONENT Devel)
 endif()

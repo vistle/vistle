@@ -26,7 +26,7 @@
 
 #ifdef MODULE_THREAD
 #include "engineInterface/EngineInterface.cpp"
-#include <vistle/manager/manager.h>
+#include "../../app/manager/manager.h"
 #endif // MODULE_THREAD
 
 #ifdef LIBSIM_DEBUG
