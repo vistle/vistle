@@ -38,7 +38,6 @@
 //vistle module utils
 #include "vistle/module/utils/geo.h"
 #include "vistle/xdmf/xdmf.h"
-#include "vistle/module/utils/c20.h"
 
 //boost
 #include <boost/mpi/communicator.hpp>
@@ -550,7 +549,7 @@ bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfA
         while (clIt != clItEnd) {
             /* auto curEnd = clIt + 4; */
             /* std::reverse(clIt, curEnd); */
-            iter_swap(clIt, clIt + 1);
+            std::iter_swap(clIt, clIt + 1);
             std::advance(clIt, 4);
         }
     }
