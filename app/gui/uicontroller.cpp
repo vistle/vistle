@@ -401,7 +401,7 @@ void UiController::aboutVistle()
         ui->textEdit->setMarkdown(data);
     }
 #else
-    QFile file(":/aboutData/lgpl-2.1.txt");
+    QFile file(":/aboutData/LICENSE.txt");
     if (file.open(QIODevice::ReadOnly)) {
         QString data(file.readAll());
         ui->textEdit->setPlainText(data);
