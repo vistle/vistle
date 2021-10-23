@@ -809,36 +809,68 @@ bool ReadFOAM::loadFields(const std::string &meshdir, const std::map<std::string
                           int timestep)
 {
     for (int i = 0; i < NumPorts; ++i) {
+        if (!m_volumeDataOut[i]->isConnected())
+            continue;
         std::string field = m_fieldOut[i]->getValue();
         auto it = fields.find(field);
         if (it == fields.end())
             continue;
         DataBase::ptr obj = loadField(meshdir, field);
-        setMeta(obj, processor, timestep);
-        obj->addAttribute("_species", field);
+        if (obj) {
+            setMeta(obj, processor, timestep);
+            obj->addAttribute("_species", field);
+        }
         m_currentvolumedata[processor][i] = obj;
     }
 
+    size_t numFields = 0;
+    bool canAdd = true;
+    std::vector<std::vector<DataBase::ptr>> portFields(NumBoundaryPorts);
     for (int i = 0; i < NumBoundaryPorts; ++i) {
+        if (!m_boundaryDataOut[i]->isConnected())
+            continue;
         std::string field = m_boundaryOut[i]->getValue();
         auto it = fields.find(field);
         if (it == fields.end())
             continue;
-        auto fields = loadBoundaryField(meshdir, field, processor);
+        portFields[i] = loadBoundaryField(meshdir, field, processor);
+        auto &fields = portFields[i];
+        if (numFields == 0) {
+            numFields = fields.size();
+        } else if (numFields != fields.size()) {
+            std::cerr << "MISMATCH: trying to load field " << field << " in " << meshdir << " on proc " << processor
+                      << " for t=" << timestep << std::endl;
+            std::cerr << "MISMATCH: on boundary port " << i << ", fields.size()=" << fields.size() << ", but expect "
+                      << numFields << std::endl;
+            canAdd = false;
+        }
         if (fields.size() != m_currentbound[processor].size()) {
             std::cerr << "MISMATCH: trying to load field " << field << " in " << meshdir << " on proc " << processor
                       << " for t=" << timestep << std::endl;
             std::cerr << "MISMATCH: fields.size()=" << fields.size()
                       << ", curbound[proc].size()=" << m_currentbound[processor].size() << std::endl;
+            canAdd = false;
         }
         assert(fields.size() == m_currentbound[processor].size());
+    }
+    if (!canAdd)
+        return true;
+
+    for (int i = 0; i < NumBoundaryPorts; ++i) {
+        if (!m_boundaryDataOut[i]->isConnected())
+            continue;
+        std::string field = m_boundaryOut[i]->getValue();
+        auto &fields = portFields[i];
         for (size_t j = 0; j < fields.size(); ++j) {
             auto &obj = fields[j];
-            setMeta(obj, processor, timestep);
-            obj->addAttribute("_species", field);
-            obj->setGrid(m_currentbound[processor][j]);
-            obj->setMapping(DataBase::Element);
-            addObject(m_boundaryDataOut[i], obj);
+            assert(obj);
+            if (obj) {
+                setMeta(obj, processor, timestep);
+                obj->addAttribute("_species", field);
+                obj->setGrid(m_currentbound[processor][j]);
+                obj->setMapping(DataBase::Element);
+                addObject(m_boundaryDataOut[i], obj);
+            }
         }
     }
     return true;
@@ -1323,20 +1355,41 @@ void ReadFOAM::applyGhostCellsData(int processor)
 bool ReadFOAM::addGridToPorts(int processor)
 {
     for (auto &poly: m_currentbound[processor])
-        addObject(m_boundOut, poly);
+        if (poly)
+            addObject(m_boundOut, poly);
     return true;
 }
 
 bool ReadFOAM::addVolumeDataToPorts(int processor)
 {
+    std::vector<DataBase::ptr> portData(NumPorts);
+    bool canAdd = true;
+    auto &volumedata = m_currentvolumedata[processor];
     for (int portnum = 0; portnum < NumPorts; ++portnum) {
-        auto &volumedata = m_currentvolumedata[processor];
-        if (volumedata.find(portnum) != volumedata.end()) {
-            volumedata[portnum]->setGrid(m_currentgrid[processor]);
-            volumedata[portnum]->setMapping(DataBase::Element);
-            addObject(m_volumeDataOut[portnum], volumedata[portnum]);
+        if (!m_volumeDataOut[portnum]->isConnected())
+            continue;
+        auto it = volumedata.find(portnum);
+        if (it != volumedata.end()) {
+            const auto &obj = it->second;
+            if (obj) {
+                obj->setGrid(m_currentgrid[processor]);
+                obj->setMapping(DataBase::Element);
+                portData[portnum] = obj;
+            } else {
+                canAdd = false;
+            }
         } else {
-            addObject(m_volumeDataOut[portnum], m_currentgrid[processor]);
+            if (m_currentgrid[processor])
+                portData[portnum] = m_currentgrid[processor];
+            else
+                canAdd = false;
+        }
+    }
+    if (canAdd) {
+        for (int portnum = 0; portnum < NumPorts; ++portnum) {
+            if (!m_volumeDataOut[portnum]->isConnected())
+                continue;
+            addObject(m_volumeDataOut[portnum], portData[portnum]);
         }
     }
     return true;
