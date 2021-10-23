@@ -34,7 +34,7 @@ signals:
     void mouseClickEvent();
 
 public:
-    enum Status { SPAWNING, INITIALIZED, KILLED, BUSY, ERROR_STATUS };
+    enum Status { SPAWNING, INITIALIZED, KILLED, BUSY, EXECUTING, ERROR_STATUS };
 
     Module(QGraphicsItem *parent = nullptr, QString name = QString());
     virtual ~Module();

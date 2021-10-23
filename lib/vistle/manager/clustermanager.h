@@ -172,7 +172,7 @@ private:
         bool send(const message::Message &msg, const MessagePayload &payload = MessagePayload()) const;
         bool update() const;
         void delay(const message::Message &msg, const MessagePayload &payload = MessagePayload());
-        bool processDelayed();
+        bool processDelayed(bool *haveExecute = nullptr);
         bool haveDelayed() const;
     };
     typedef std::unordered_map<int, Module> RunningMap;

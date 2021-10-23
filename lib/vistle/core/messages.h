@@ -309,6 +309,16 @@ private:
 };
 V_ENUM_OUTPUT_OP(What, Execute)
 
+//! notify that module is done executing
+class V_COREEXPORT ExecutionDone: public MessageBase<ExecutionDone, EXECUTIONDONE> {
+public:
+    ExecutionDone(int executionCount);
+    int getExecutionCount() const;
+
+private:
+    int m_executionCount; //!< count of execution after which this message was issued
+};
+
 //! trigger execution of a module function
 class V_COREEXPORT CancelExecute: public MessageBase<CancelExecute, CANCELEXECUTE> {
 public:

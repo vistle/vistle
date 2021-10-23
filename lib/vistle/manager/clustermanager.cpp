@@ -206,8 +206,10 @@ void ClusterManager::Module::delay(const message::Message &msg, const MessagePay
     delayedMessages.emplace_back(msg, payload);
 }
 
-bool ClusterManager::Module::processDelayed()
+bool ClusterManager::Module::processDelayed(bool *haveExecute)
 {
+    if (haveExecute)
+        *haveExecute = false;
     while (haveDelayed()) {
         bool ret = true;
         if (Communicator::the().getRank() == 0) {
@@ -217,8 +219,11 @@ bool ClusterManager::Module::processDelayed()
                 auto type = msg.type();
                 ret = Communicator::the().broadcastAndHandleMessage(mpl.buf, mpl.payload);
                 delayedMessages.pop_front();
-                if (type == message::EXECUTE)
+                if (type == message::EXECUTE) {
+                    if (haveExecute)
+                        *haveExecute = true;
                     break;
+                }
             }
         }
         if (!ret)
@@ -1584,12 +1589,15 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog)
                        modState.reducePolicy == message::ReducePolicy::Never;
     if (!localReduce)
         handleOnMaster = true;
+    // for reliable tracking that a module has finished we have to forward all messages to rank 0
+    handleOnMaster = true;
     if (localSender && handleOnMaster && m_rank != 0) {
         //CERR << "exec progr: forward to master" << std::endl;
         return Communicator::the().forwardToMaster(prog);
     }
 
     bool readyForPrepare = false, readyForReduce = false;
+    bool execDone = false;
     bool unqueueExecute = false;
     if (localSender) {
         CERR << "ExecutionProgress " << prog.stage() << " received from " << prog.senderId() << ":" << prog.rank()
@@ -1601,17 +1609,18 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog)
     switch (prog.stage()) {
     case message::ExecutionProgress::Start: {
         readyForPrepare = true;
-        if (handleOnMaster && localSender) {
+        if (localSender) {
             assert(mod->ranksFinished < m_size);
             ++mod->ranksStarted;
-            readyForPrepare = mod->ranksStarted == m_size;
+            if (handleOnMaster)
+                readyForPrepare = mod->ranksStarted == m_size;
         }
         break;
     }
 
     case message::ExecutionProgress::Finish: {
         readyForReduce = true;
-        if (handleOnMaster && localSender) {
+        if (localSender) {
             ++mod->ranksFinished;
             if (mod->ranksFinished == m_size) {
                 if (mod->ranksStarted != m_size) {
@@ -1621,9 +1630,12 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog)
                 assert(mod->ranksStarted >= m_size);
                 mod->ranksStarted -= m_size;
                 mod->ranksFinished = 0;
-                unqueueExecute = true;
+                execDone = true;
+                if (handleOnMaster)
+                    unqueueExecute = true;
             } else {
-                readyForReduce = false;
+                if (handleOnMaster)
+                    readyForReduce = false;
             }
         }
         break;
@@ -1762,7 +1774,19 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog)
     }
 
     if (unqueueExecute) {
-        mod->processDelayed();
+        bool haveExecute = false;
+        mod->processDelayed(&haveExecute);
+        if (haveExecute) {
+            execDone = false;
+        }
+    }
+
+    if (execDone) {
+        if (m_rank == 0) {
+            auto done = message::ExecutionDone(prog.getExecutionCount());
+            done.setSenderId(prog.senderId());
+            sendHub(done, MessagePayload(), message::Id::MasterHub);
+        }
     }
 
     return true;

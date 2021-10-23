@@ -42,6 +42,7 @@ public:
         Killed = 4,
         Quit = 8,
         Busy = 16,
+        Executing = 32,
     };
     virtual void moduleStateChanged(int moduleId, int stateBits) = 0;
 
@@ -172,13 +173,14 @@ protected:
         int mirrorOfId = message::Id::Invalid;
         std::set<int> mirrors;
         int hub;
-        bool initialized;
-        bool killed;
-        bool busy;
+        bool initialized = false;
+        bool killed = false;
+        bool busy = false;
+        bool executing = false;
         std::string name;
         ParameterMap parameters;
         ParameterOrder paramOrder;
-        int height; //< length of shortest path to a sink
+        int height = 0; //< length of shortest path to a sink
         std::string statusText;
         message::UpdateStatus::Importance statusImportance = message::UpdateStatus::Bulk;
         unsigned long statusTime = 0;
@@ -189,13 +191,10 @@ protected:
 
         int state() const;
         bool isSink() const { return height == 0; }
+        bool isExecuting() const { return executing; }
         Module(int id, int hub)
         : id(id)
         , hub(hub)
-        , initialized(false)
-        , killed(false)
-        , busy(false)
-        , height(0)
         , objectPolicy(message::ObjectReceivePolicy::Local)
         , schedulingPolicy(message::SchedulingPolicy::Single)
         , reducePolicy(message::ReducePolicy::Locally)
@@ -209,6 +208,11 @@ protected:
     typedef std::set<int> ModuleSet;
     ModuleSet busySet;
     int m_graphChangeCount = 0;
+    std::set<int> getUpstreamModules(int id, const std::string &port = std::string()) const;
+    std::set<int> getDownstreamModules(int id, const std::string &port = std::string(),
+                                       bool ignoreNoCompute = false) const;
+    bool hasCombinePort(int id) const;
+    bool isExecuting(int id) const;
 
     std::map<AvailableModule::Key, AvailableModule> m_availableModules;
 
@@ -236,6 +240,7 @@ private:
     bool handlePriv(const message::ModuleExit &moduleExit);
     bool handlePriv(const message::Execute &execute);
     bool handlePriv(const message::ExecutionProgress &prog);
+    bool handlePriv(const message::ExecutionDone &done);
     bool handlePriv(const message::Busy &busy);
     bool handlePriv(const message::Idle &idle);
     bool handlePriv(const message::AddPort &createPort);

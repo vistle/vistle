@@ -514,13 +514,17 @@ void Module::setStatus(Module::Status status)
         toolTip = "Busy";
         m_borderColor = QColor(200, 200, 30);
         break;
+    case EXECUTING:
+        toolTip = "Executing";
+        m_borderColor = QColor(120, 120, 30);
+        break;
     case ERROR_STATUS:
         toolTip = "Error";
         m_borderColor = Qt::red;
         break;
     }
 
-    m_cancelExecAct->setEnabled(status == BUSY);
+    m_cancelExecAct->setEnabled(status == BUSY || status == EXECUTING);
 
     if (m_statusText.isEmpty()) {
         setToolTip(toolTip);

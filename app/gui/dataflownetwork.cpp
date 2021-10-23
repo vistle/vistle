@@ -173,6 +173,8 @@ void DataFlowNetwork::moduleStateChanged(int moduleId, int stateBits)
             m->setStatus(Module::KILLED);
         else if (stateBits & vistle::StateObserver::Busy)
             m->setStatus(Module::BUSY);
+        else if (stateBits & vistle::StateObserver::Executing)
+            m->setStatus(Module::EXECUTING);
         else if (stateBits & vistle::StateObserver::Initialized)
             m->setStatus(Module::INITIALIZED);
         else

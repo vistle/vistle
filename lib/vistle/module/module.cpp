@@ -1526,6 +1526,10 @@ bool Module::handleMessage(const vistle::message::Message *message, const Messag
 
 bool Module::handleExecute(const vistle::message::Execute *exec)
 {
+    if (exec->getModule() != id()) {
+        return true;
+    }
+
     using namespace vistle::message;
 
     if (m_executionCount < exec->getExecutionCount()) {

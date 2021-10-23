@@ -1555,6 +1555,12 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
             break;
         }
 
+        case message::EXECUTIONDONE: {
+            auto &done = static_cast<const ExecutionDone &>(msg);
+            handlePriv(done);
+            break;
+        }
+
         case message::CANCELEXECUTE: {
             auto &cancel = static_cast<const CancelExecute &>(msg);
             handlePriv(cancel);
@@ -2228,6 +2234,17 @@ bool Hub::handlePriv(const message::Execute &exec)
     return true;
 }
 
+bool Hub::handlePriv(const message::ExecutionDone &done)
+{
+    if (m_isMaster) {
+        auto notif(done);
+        notif.setDestId(Id::Broadcast);
+        sendAll(notif);
+        handleQueue();
+    }
+
+    return true;
+}
 bool Hub::handlePriv(const message::CancelExecute &cancel)
 {
     auto toSend = make.message<message::CancelExecute>(cancel);

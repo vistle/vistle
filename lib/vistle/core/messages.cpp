@@ -544,6 +544,14 @@ double Execute::animationStepDuration() const
     return m_animationStepDuration;
 }
 
+ExecutionDone::ExecutionDone(int executionCount): m_executionCount(executionCount)
+{}
+
+int ExecutionDone::getExecutionCount() const
+{
+    return m_executionCount;
+}
+
 
 CancelExecute::CancelExecute(const int module): m_module(module)
 {}

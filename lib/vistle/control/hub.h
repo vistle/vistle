@@ -152,6 +152,7 @@ private:
     bool handlePriv(const message::Quit &quit, message::Identify::Identity senderType);
     bool handlePriv(const message::RemoveHub &rm);
     bool handlePriv(const message::Execute &exec);
+    bool handlePriv(const message::ExecutionDone &done);
     bool handlePriv(const message::CancelExecute &cancel);
     bool handlePriv(const message::Barrier &barrier);
     bool handlePriv(const message::BarrierReached &reached);

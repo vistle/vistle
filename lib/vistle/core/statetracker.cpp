@@ -36,6 +36,8 @@ int StateTracker::Module::state() const
         s |= StateObserver::Busy;
     if (killed)
         s |= StateObserver::Killed;
+    if (executing)
+        s |= StateObserver::Executing;
     return s;
 }
 
@@ -476,12 +478,6 @@ bool StateTracker::handle(const message::Message &msg, const char *payload, size
         handled = handlePriv(modexit);
         break;
     }
-    case EXECUTE: {
-        break;
-    }
-    case CANCELEXECUTE: {
-        break;
-    }
     case ADDOBJECT: {
         break;
     }
@@ -589,9 +585,22 @@ bool StateTracker::handle(const message::Message &msg, const char *payload, size
         handled = handlePriv(mod, pl);
         break;
     }
+    case EXECUTE: {
+        const auto &exec = msg.as<Execute>();
+        handled = handlePriv(exec);
+        break;
+    }
     case EXECUTIONPROGRESS: {
         const auto &prog = msg.as<ExecutionProgress>();
-        handled = handlePriv(prog, pl);
+        handled = handlePriv(prog);
+        break;
+    }
+    case EXECUTIONDONE: {
+        const auto &done = msg.as<ExecutionDone>();
+        handled = handlePriv(done);
+        break;
+    }
+    case CANCELEXECUTE: {
         break;
     }
     case LOCKUI: {
@@ -871,6 +880,9 @@ bool StateTracker::handleDisconnect(const message::Disconnect &disconnect)
 
 bool StateTracker::handlePriv(const message::Connect &connect)
 {
+    if (isExecuting(connect.getModuleA()) || isExecuting(connect.getModuleB()))
+        return false;
+
     ++m_graphChangeCount;
 
     bool ret = true;
@@ -886,6 +898,9 @@ bool StateTracker::handlePriv(const message::Connect &connect)
 
 bool StateTracker::handlePriv(const message::Disconnect &disconnect)
 {
+    if (isExecuting(disconnect.getModuleA()) || isExecuting(disconnect.getModuleB()))
+        return false;
+
     ++m_graphChangeCount;
 
     bool ret = true;
@@ -945,11 +960,63 @@ bool StateTracker::handlePriv(const message::ModuleExit &moduleExit)
 
 bool StateTracker::handlePriv(const message::Execute &execute)
 {
+    if (execute.destId() != message::Broadcast)
+        return true;
+
+    int execId = execute.getModule();
+    if (message::Id::isModule(execId)) {
+        auto executing = getDownstreamModules(execId, "", true);
+        executing.insert(execId);
+        for (auto id: executing) {
+            auto it = runningMap.find(id);
+            if (it == runningMap.end())
+                continue;
+            auto &mod = it->second;
+            mod.executing = true;
+
+            mutex_locker guard(m_stateMutex);
+            for (StateObserver *o: m_observers) {
+                o->moduleStateChanged(id, mod.state());
+            }
+        }
+    } else {
+        for (auto &id_mod: runningMap) {
+            auto &id = id_mod.first;
+            auto &mod = id_mod.second;
+            if (hasCombinePort(id))
+                continue;
+            mod.executing = true;
+
+            mutex_locker guard(m_stateMutex);
+            for (StateObserver *o: m_observers) {
+                o->moduleStateChanged(id, mod.state());
+            }
+        }
+    }
     return true;
 }
 
 bool StateTracker::handlePriv(const message::ExecutionProgress &prog)
 {
+    return true;
+}
+
+bool StateTracker::handlePriv(const message::ExecutionDone &done)
+{
+    auto id = done.senderId();
+    auto it = runningMap.find(id);
+    if (it == runningMap.end()) {
+        assert(quitMap.find(id) != quitMap.end());
+        return false;
+    }
+    auto &mod = it->second;
+    mod.executing = false;
+
+    mutex_locker guard(m_stateMutex);
+    for (StateObserver *o: m_observers) {
+        o->moduleStateChanged(id, mod.state());
+    }
+
     return true;
 }
 
@@ -1626,6 +1693,95 @@ void StateTracker::computeHeights()
 int StateTracker::graphChangeCount() const
 {
     return m_graphChangeCount;
+}
+
+std::set<int> StateTracker::getUpstreamModules(int id, const std::string &port) const
+{
+    std::set<int> result;
+
+    auto inputsToCheck = portTracker()->getInputPorts(id);
+    if (!port.empty()) {
+        // find upstream modules for just the specified port
+        auto inputNames = portTracker()->getInputPortNames(id);
+        auto it = std::find(inputNames.begin(), inputNames.end(), port);
+        if (it == inputNames.end()) {
+            // port does not exist
+            return result;
+        }
+        auto idx = it - inputNames.begin();
+        inputsToCheck = {inputsToCheck[idx]};
+    }
+
+    while (!inputsToCheck.empty()) {
+        auto in = inputsToCheck.back();
+        inputsToCheck.pop_back();
+        auto outputs = in->connections();
+        for (auto *out: outputs) {
+            auto id = out->getModuleID();
+            if (!result.insert(id).second)
+                continue;
+            auto cur = portTracker()->getInputPorts(id);
+            std::copy(cur.begin(), cur.end(), std::back_inserter(inputsToCheck));
+        }
+    }
+
+    return result;
+}
+
+std::set<int> StateTracker::getDownstreamModules(int id, const std::string &port, bool ignoreNoCompute) const
+{
+    std::set<int> result;
+
+    auto outputsToCheck = portTracker()->getOutputPorts(id);
+    if (!port.empty()) {
+        // find downstream modules for just the specified port
+        auto outputNames = portTracker()->getOutputPortNames(id);
+        auto it = std::find(outputNames.begin(), outputNames.end(), port);
+        if (it == outputNames.end()) {
+            // port does not exist
+            return result;
+        }
+        auto idx = it - outputNames.begin();
+        outputsToCheck = {outputsToCheck[idx]};
+    }
+
+    while (!outputsToCheck.empty()) {
+        auto *out = outputsToCheck.back();
+        outputsToCheck.pop_back();
+        auto inputs = out->connections();
+        for (const auto *in: inputs) {
+            if (ignoreNoCompute && (in->flags() & Port::NOCOMPUTE))
+                continue;
+            auto id = in->getModuleID();
+            if (!result.insert(id).second)
+                continue;
+            auto cur = portTracker()->getOutputPorts(id);
+            std::copy(cur.begin(), cur.end(), std::back_inserter(outputsToCheck));
+        }
+    }
+
+    return result;
+}
+
+bool StateTracker::hasCombinePort(int id) const
+{
+    auto inputs = portTracker()->getInputPorts(id);
+    for (auto *in: inputs) {
+        if (in->flags() & Port::COMBINE_BIT) {
+            assert(inputs.size() == 1);
+            return true;
+        }
+    }
+    return false;
+}
+
+bool StateTracker::isExecuting(int id) const
+{
+    auto it = runningMap.find(id);
+    if (it == runningMap.end())
+        return false;
+
+    return it->second.isExecuting();
 }
 
 std::string StateTracker::loadedWorkflowFile() const
