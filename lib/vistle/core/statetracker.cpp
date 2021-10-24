@@ -435,17 +435,17 @@ bool StateTracker::handle(const message::Message &msg, const char *payload, size
         break;
     }
     case ADDHUB: {
-        const AddHub &slave = static_cast<const AddHub &>(msg);
+        const auto &slave = msg.as<AddHub>();
         handled = handlePriv(slave);
         break;
     }
     case REMOVEHUB: {
-        const RemoveHub &rm = static_cast<const RemoveHub &>(msg);
+        const auto &rm = msg.as<RemoveHub>();
         handled = handlePriv(rm);
         break;
     }
     case SPAWN: {
-        const Spawn &spawn = static_cast<const Spawn &>(msg);
+        const auto &spawn = msg.as<Spawn>();
         registerReply(msg.uuid(), msg);
         handled = handlePriv(spawn);
         break;
@@ -454,12 +454,12 @@ bool StateTracker::handle(const message::Message &msg, const char *payload, size
         break;
     }
     case STARTED: {
-        const Started &started = static_cast<const Started &>(msg);
+        const auto &started = msg.as<Started>();
         handled = handlePriv(started);
         break;
     }
     case KILL: {
-        const Kill &kill = static_cast<const Kill &>(msg);
+        const auto &kill = msg.as<Kill>();
         handled = handlePriv(kill);
         break;
     }
@@ -467,12 +467,12 @@ bool StateTracker::handle(const message::Message &msg, const char *payload, size
         break;
     }
     case QUIT: {
-        const Quit &quit = static_cast<const Quit &>(msg);
+        const auto &quit = msg.as<Quit>();
         handled = handlePriv(quit);
         break;
     }
     case MODULEEXIT: {
-        const ModuleExit &modexit = static_cast<const ModuleExit &>(msg);
+        const auto &modexit = msg.as<ModuleExit>();
         handled = handlePriv(modexit);
         break;
     }
@@ -489,134 +489,136 @@ bool StateTracker::handle(const message::Message &msg, const char *payload, size
         break;
     }
     case ADDPORT: {
-        const AddPort &cp = static_cast<const AddPort &>(msg);
-        handled = handlePriv(cp);
+        const auto &ap = msg.as<AddPort>();
+        handled = handlePriv(ap);
         break;
     }
     case REMOVEPORT: {
-        const RemovePort &dp = static_cast<const RemovePort &>(msg);
-        handled = handlePriv(dp);
+        const auto &rp = msg.as<RemovePort>();
+        handled = handlePriv(rp);
         break;
     }
     case ADDPARAMETER: {
-        const AddParameter &add = static_cast<const AddParameter &>(msg);
+        const auto &add = msg.as<AddParameter>();
         handled = handlePriv(add);
         break;
     }
     case REMOVEPARAMETER: {
-        const RemoveParameter &rem = static_cast<const RemoveParameter &>(msg);
+        const auto &rem = msg.as<RemoveParameter>();
         handled = handlePriv(rem);
         break;
     }
     case CONNECT: {
-        const Connect &conn = static_cast<const Connect &>(msg);
+        const auto &conn = msg.as<Connect>();
         handled = handlePriv(conn);
         break;
     }
     case DISCONNECT: {
-        const Disconnect &disc = static_cast<const Disconnect &>(msg);
+        const auto &disc = msg.as<Disconnect>();
         handled = handlePriv(disc);
         break;
     }
     case SETPARAMETER: {
-        const SetParameter &set = static_cast<const SetParameter &>(msg);
+        const auto &set = msg.as<SetParameter>();
         handled = handlePriv(set);
         break;
     }
     case SETPARAMETERCHOICES: {
-        const SetParameterChoices &choice = static_cast<const SetParameterChoices &>(msg);
+        const auto &choice = msg.as<SetParameterChoices>();
         handled = handlePriv(choice, pl);
         break;
     }
     case PING: {
-        const Ping &ping = static_cast<const Ping &>(msg);
+        const auto &ping = msg.as<Ping>();
         handled = handlePriv(ping);
         break;
     }
     case PONG: {
-        const Pong &pong = static_cast<const Pong &>(msg);
+        const auto &pong = msg.as<Pong>();
         handled = handlePriv(pong);
         break;
     }
     case TRACE: {
-        const Trace &trace = static_cast<const Trace &>(msg);
+        const auto &trace = msg.as<Trace>();
         handled = handlePriv(trace);
         break;
     }
     case BUSY: {
-        const Busy &busy = static_cast<const Busy &>(msg);
+        const auto &busy = msg.as<Busy>();
         handled = handlePriv(busy);
         break;
     }
     case IDLE: {
-        const Idle &idle = static_cast<const Idle &>(msg);
+        const auto &idle = msg.as<Idle>();
         handled = handlePriv(idle);
         break;
     }
     case BARRIER: {
-        const Barrier &barrier = static_cast<const Barrier &>(msg);
+        const auto &barrier = msg.as<Barrier>();
         handled = handlePriv(barrier);
         break;
     }
     case BARRIERREACHED: {
-        const BarrierReached &reached = static_cast<const BarrierReached &>(msg);
+        const auto &reached = msg.as<BarrierReached>();
         handled = handlePriv(reached);
         registerReply(msg.uuid(), msg);
         break;
     }
     case SETID: {
-        const SetId &setid = static_cast<const SetId &>(msg);
+        const auto &setid = msg.as<SetId>();
         (void)setid;
         break;
     }
     case REPLAYFINISHED: {
-        const ReplayFinished &fin = static_cast<const ReplayFinished &>(msg);
+        const auto &fin = msg.as<ReplayFinished>();
         handled = handlePriv(fin);
         break;
     }
     case SENDTEXT: {
-        const SendText &info = static_cast<const SendText &>(msg);
+        const auto &info = msg.as<SendText>();
         handled = handlePriv(info, pl);
         break;
     }
     case UPDATESTATUS: {
-        const UpdateStatus &status = static_cast<const UpdateStatus &>(msg);
+        const auto &status = msg.as<UpdateStatus>();
         handled = handlePriv(status);
         break;
     }
     case MODULEAVAILABLE: {
-        const ModuleAvailable &mod = static_cast<const ModuleAvailable &>(msg);
+        const auto &mod = msg.as<ModuleAvailable>();
         handled = handlePriv(mod, pl);
         break;
     }
     case EXECUTIONPROGRESS: {
+        const auto &prog = msg.as<ExecutionProgress>();
+        handled = handlePriv(prog, pl);
         break;
     }
     case LOCKUI: {
         break;
     }
     case OBJECTRECEIVEPOLICY: {
-        const ObjectReceivePolicy &m = static_cast<const ObjectReceivePolicy &>(msg);
+        const auto &m = msg.as<ObjectReceivePolicy>();
         handled = handlePriv(m);
         break;
     }
     case SCHEDULINGPOLICY: {
-        const SchedulingPolicy &m = static_cast<const SchedulingPolicy &>(msg);
+        const auto &m = msg.as<SchedulingPolicy>();
         handled = handlePriv(m);
         break;
     }
     case REDUCEPOLICY: {
-        const ReducePolicy &m = static_cast<const ReducePolicy &>(msg);
+        const auto &m = msg.as<ReducePolicy>();
         handled = handlePriv(m);
         break;
     }
     case REQUESTTUNNEL: {
-        const RequestTunnel &m = static_cast<const RequestTunnel &>(msg);
+        const auto &m = msg.as<RequestTunnel>();
         handled = handlePriv(m);
         break;
     }
     case CLOSECONNECTION: {
-        const CloseConnection &m = static_cast<const CloseConnection &>(msg);
+        const auto &m = msg.as<CloseConnection>();
         handled = handlePriv(m);
         break;
     }
