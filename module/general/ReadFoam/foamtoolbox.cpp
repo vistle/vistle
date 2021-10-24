@@ -733,8 +733,10 @@ struct headerSkipper : qi::grammar<Iterator>
         start = ascii::space
                 | "/*" >> *(ascii::char_ - "*/") >> "*/"
                 | "//" >> *(ascii::char_ - qi::eol) >> qi::eol
-                | "FoamFile" >> *ascii::space >> '{' >> *(ascii::char_ - qi::eol) >> qi::eol
-                | '}';
+                | "FoamFile" >> *(ascii::char_ - qi::eol) >> qi::eol
+		/*
+                | "FoamFile" >> *ascii::space >> '{' >> *(ascii::char_ - qi::eol) >> qi::eol*/
+                | '}'>> *(ascii::char_ - qi::eol) >> qi::eol;
     }
 
     qi::rule<Iterator> start;
@@ -749,17 +751,9 @@ struct FileHeaderParser : qi::grammar<Iterator, HeaderInfo(), headerSkipper<Iter
     {
         using qi::lit;
 
-        start = version
-                >> format
-                >> fieldclass
-                >> -arch
-                >> -note
-                >> location
-                >> object
-                >> -dimensions
-                >> -(internalField|boundaryField)
-                >> -lines;
-
+        start = '{' >> version 
+	            ^ format ^ fieldclass ^ arch ^ note ^ location ^ object ^  dimensions ^ internalField ^ lines;
+ 
         version = "version" >> +(ascii::char_ - ';') >> ';';
         format = "format" >> +(ascii::char_ - ';') >> ';';
         fieldclass = "class" >> +(ascii::char_ - ';') >> ';';
@@ -771,8 +765,8 @@ struct FileHeaderParser : qi::grammar<Iterator, HeaderInfo(), headerSkipper<Iter
         nonUniformField= "nonuniform">> qi::lexeme[+(ascii::char_ - qi::eol) >> qi::eol];
         //uniformField= "uniform">> qi::lexeme[+(ascii::char_ - qi::eol) >> qi::eol];
         uniformField= "uniform">> +(ascii::char_ - ';') >> ';';
-        internalField = "internalField" >> (uniformField|nonUniformField);
         boundaryField = "boundaryField" >> qi::lexeme[+(ascii::char_ - qi::eol) >> qi::eol];
+        internalField = "internalField" >> (uniformField|nonUniformField|boundaryField);
         lines = qi::int_;
     }
 
@@ -826,6 +820,7 @@ HeaderInfo readFoamHeader(std::istream &stream)
 
     HeaderInfo info;
     info.header = getFoamHeader(stream);
+    
     std::string fileheader = info.header;
 
     info.valid = qi::phrase_parse(fileheader.begin(), fileheader.end(),
@@ -1474,7 +1469,6 @@ bool isPointingInwards(index_t face,
         // then face is a boundary-face and normal vector goes out of the domain by default
         return false;
     }
-
     index_t owner = owners[face];
     index_t neighbor = neighbors[face];
     assert(owner == cell || neighbor == cell);
@@ -1482,7 +1476,7 @@ bool isPointingInwards(index_t face,
     // cell is the index of current cell and other is index of other cell sharing the same face
     // if index of cell is higher than index of the "next door" cell
     // then normal vector points inwards else outwards
-    return cell > other;
+    return (cell > other)
 }
 
 vertex_set getVerticesForCell(
