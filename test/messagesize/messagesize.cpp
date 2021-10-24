@@ -8,7 +8,7 @@ using namespace vistle::message;
 
 #define M(t, T) \
     case message::t: { \
-        const T m = msg.as<T>(); \
+        const T &m = static_cast<T &>(static_cast<message::Message &>(msg)); \
         std::cerr << i << " size: " << sizeof(m) << ", type: " << type << std::endl; \
         break; \
     }
@@ -26,8 +26,10 @@ int main()
         }
 
             M(IDENTIFY, Identify)
+            M(CLOSECONNECTION, CloseConnection)
+            M(CREATEMODULECOMPOUND, CreateModuleCompound)
             M(ADDHUB, AddHub)
-            //M(REMOVESLAVE, RemoveSlave)
+            M(REMOVEHUB, RemoveHub)
             M(SETID, SetId)
             M(TRACE, Trace)
             M(SPAWN, Spawn)
@@ -39,7 +41,8 @@ int main()
             M(MODULEEXIT, ModuleExit)
             M(BUSY, Busy)
             M(IDLE, Idle)
-            M(EXECUTIONPROGRESS, Idle)
+            M(EXECUTIONPROGRESS, ExecutionProgress)
+            M(EXECUTIONDONE, ExecutionDone)
 
             M(EXECUTE, Execute)
             M(CANCELEXECUTE, CancelExecute)
@@ -72,6 +75,8 @@ int main()
             M(REMOTERENDERING, RemoteRenderMessage)
             M(FILEQUERY, FileQuery)
             M(FILEQUERYRESULT, FileQueryResult)
+            M(COVER, Cover)
+            //M(INSITU, InSitu)
 
         default: {
             std::cerr << i << " unhandled: " << type << std::endl;

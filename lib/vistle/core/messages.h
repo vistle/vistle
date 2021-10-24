@@ -49,7 +49,7 @@ public:
     typedef std::array<char, 32> mac_t;
     typedef std::array<char, 64> session_data_t;
 
-    Identify(const std::string &name = ""); //< request identity
+    explicit Identify(const std::string &name = ""); //< request identity
     Identify(const Identify &request, Identity id, const std::string &name = ""); //< answer identification request
     Identify(const Identify &request, Identity id, int rank);
     Identity identity() const;
@@ -128,7 +128,7 @@ private:
 //! request that a slave hub be deleted
 class V_COREEXPORT RemoveHub: public MessageBase<RemoveHub, REMOVEHUB> {
 public:
-    RemoveHub(int id);
+    explicit RemoveHub(int id);
     int id() const;
 
 private:
@@ -138,7 +138,7 @@ private:
 //! debug: request a reply containing character 'c'
 class V_COREEXPORT Ping: public MessageBase<Ping, PING> {
 public:
-    Ping(const char c);
+    explicit Ping(const char c);
 
     char getCharacter() const;
 
@@ -149,7 +149,7 @@ private:
 //! debug: reply to pong
 class V_COREEXPORT Pong: public MessageBase<Pong, PONG> {
 public:
-    Pong(const Ping &ping);
+    explicit Pong(const Ping &ping);
 
     char getCharacter() const;
     int getDestination() const;
@@ -199,7 +199,7 @@ private:
 //! notification of manager that spawning is possible (i.e. shmem has been set up)
 class V_COREEXPORT SpawnPrepared: public MessageBase<SpawnPrepared, SPAWNPREPARED> {
 public:
-    SpawnPrepared(const Spawn &spawn);
+    explicit SpawnPrepared(const Spawn &spawn);
 
     int hubId() const;
     int spawnId() const;
@@ -218,7 +218,7 @@ private:
 //! acknowledge that a module has been spawned
 class V_COREEXPORT Started: public MessageBase<Started, STARTED> {
 public:
-    Started(const std::string &name);
+    explicit Started(const std::string &name);
 
     const char *getName() const;
 
@@ -230,7 +230,7 @@ private:
 //! request a module to quit
 class V_COREEXPORT Kill: public MessageBase<Kill, KILL> {
 public:
-    Kill(const int module);
+    explicit Kill(const int module);
 
     int getModule() const;
 
@@ -242,7 +242,7 @@ private:
 //! request all modules to quit for terminating the session
 class V_COREEXPORT Quit: public MessageBase<Quit, QUIT> {
 public:
-    Quit(int id = Id::Broadcast);
+    explicit Quit(int id = Id::Broadcast);
     int id() const;
 
 private:
@@ -252,7 +252,7 @@ private:
 //! request a module to quit
 class V_COREEXPORT Debug: public MessageBase<Debug, DEBUG> {
 public:
-    Debug(const int module);
+    explicit Debug(const int module);
 
     int getModule() const;
 
@@ -282,7 +282,7 @@ public:
                                         (Reduce) // call reduce()
     )
 
-    Execute(What what = Execute::ComputeExecute, int module = Id::Broadcast, int count = -1);
+    explicit Execute(What what = Execute::ComputeExecute, int module = Id::Broadcast, int count = -1);
     Execute(int module, double realtime, double step = 0.);
 
     void setModule(int);
@@ -312,7 +312,7 @@ V_ENUM_OUTPUT_OP(What, Execute)
 //! notify that module is done executing
 class V_COREEXPORT ExecutionDone: public MessageBase<ExecutionDone, EXECUTIONDONE> {
 public:
-    ExecutionDone(int executionCount);
+    explicit ExecutionDone(int executionCount);
     int getExecutionCount() const;
 
 private:
@@ -322,7 +322,7 @@ private:
 //! trigger execution of a module function
 class V_COREEXPORT CancelExecute: public MessageBase<CancelExecute, CANCELEXECUTE> {
 public:
-    CancelExecute(const int module);
+    explicit CancelExecute(const int module);
     int getModule() const;
 
 private:
@@ -348,7 +348,7 @@ private:
 //! notification that a module has created an input/output port
 class V_COREEXPORT AddPort: public MessageBase<AddPort, ADDPORT> {
 public:
-    AddPort(const Port &port);
+    explicit AddPort(const Port &port);
     Port getPort() const;
 
 private:
@@ -361,7 +361,7 @@ private:
 //! notification that a module has destroyed an input/output port
 class V_COREEXPORT RemovePort: public MessageBase<RemovePort, REMOVEPORT> {
 public:
-    RemovePort(const Port &port);
+    explicit RemovePort(const Port &port);
     Port getPort() const;
 
 private:
@@ -374,8 +374,8 @@ class AddObjectCompleted;
 class V_COREEXPORT AddObject: public MessageBase<AddObject, ADDOBJECT> {
 public:
     AddObject(const std::string &senderPort, vistle::Object::const_ptr obj, const std::string &destPort = "");
-    AddObject(const AddObject &other);
-    AddObject(const AddObjectCompleted &complete);
+    explicit AddObject(const AddObject &other);
+    explicit AddObject(const AddObjectCompleted &complete);
     ~AddObject();
 
     bool operator<(const AddObject &other) const;
@@ -414,7 +414,7 @@ private:
 
 class V_COREEXPORT AddObjectCompleted: public MessageBase<AddObjectCompleted, ADDOBJECTCOMPLETED> {
 public:
-    AddObjectCompleted(const AddObject &msg);
+    explicit AddObjectCompleted(const AddObject &msg);
     const char *objectName() const;
     int originalDestination() const;
     const char *originalDestPort() const;
@@ -600,12 +600,12 @@ public:
 
 class V_COREEXPORT BarrierReached: public MessageBase<BarrierReached, BARRIERREACHED> {
 public:
-    BarrierReached(const uuid_t &uuid);
+    explicit BarrierReached(const uuid_t &uuid);
 };
 
 class V_COREEXPORT SetId: public MessageBase<SetId, SETID> {
 public:
-    SetId(const int id);
+    explicit SetId(const int id);
 
     int getId() const;
 
@@ -638,8 +638,8 @@ public:
     };
 
     //! Error message in response to a Message
-    SendText(const Message &inResponseTo);
-    SendText(TextType type);
+    explicit SendText(const Message &inResponseTo);
+    explicit SendText(TextType type);
 
     TextType textType() const;
     Type referenceType() const;
@@ -675,7 +675,7 @@ public:
         }
     };
 
-    UpdateStatus(const std::string &text, Importance prio = Low);
+    explicit UpdateStatus(const std::string &text, Importance prio = Low);
     UpdateStatus(Type type, const std::string &text);
     const char *text() const;
 
@@ -697,7 +697,7 @@ V_ENUM_OUTPUT_OP(Importance, UpdateStatus)
 class V_COREEXPORT ObjectReceivePolicy: public MessageBase<ObjectReceivePolicy, OBJECTRECEIVEPOLICY> {
 public:
     DEFINE_ENUM_WITH_STRING_CONVERSIONS(Policy, (Local)(Master)(Distribute))
-    ObjectReceivePolicy(Policy pol);
+    explicit ObjectReceivePolicy(Policy pol);
     Policy policy() const;
 
 private:
@@ -714,7 +714,7 @@ public:
         (Gang) //< compute called on all ranks together once per received object
         (LazyGang) //< compute called on all ranks together, but not necessarily for each received object
     )
-    SchedulingPolicy(Schedule pol);
+    explicit SchedulingPolicy(Schedule pol);
     Schedule policy() const;
 
 private:
@@ -734,7 +734,7 @@ public:
         (PerTimestepZeroFirst) //< module's reduce() method will be called on all ranks together once per timestep in arbitrary order, but zero first
         (OverAll) //< module's prepare()/reduce() method will be called on all ranks together after all timesteps have been received
     )
-    ReducePolicy(Reduce red);
+    explicit ReducePolicy(Reduce red);
     Reduce policy() const;
 
 private:
@@ -783,7 +783,7 @@ private:
 
 struct V_COREEXPORT ModuleBaseMessage {
 public:
-    ModuleBaseMessage(const AvailableModuleBase &mod);
+    explicit ModuleBaseMessage(const AvailableModuleBase &mod);
     const char *name() const;
     const char *path() const;
     int hub() const;
@@ -811,7 +811,7 @@ static_assert(sizeof(CreateModuleCompound) <= Message::MESSAGE_SIZE, "message to
 //! lock UI (block user interaction)
 class V_COREEXPORT LockUi: public MessageBase<LockUi, LOCKUI> {
 public:
-    LockUi(bool locked);
+    explicit LockUi(bool locked);
     bool locked() const;
 
 private:
@@ -831,7 +831,7 @@ public:
     //! establish tunnel - let hub forward incoming connections to srcPort to destPort on local interface, address will be filled in by rank 0 of cluster manager
     RequestTunnel(unsigned short srcPort, unsigned short destPort);
     //! remove tunnel
-    RequestTunnel(unsigned short srcPort);
+    explicit RequestTunnel(unsigned short srcPort);
 
     void setDestAddr(boost::asio::ip::address_v6 addr);
     void setDestAddr(boost::asio::ip::address_v4 addr);
