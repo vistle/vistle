@@ -357,6 +357,7 @@ private:
     bool m_prepared, m_computed, m_reduced;
     bool m_readyForQuit;
 
+    //maximum number of parallel threads per rank
     IntParameter *m_concurrency = nullptr;
     void waitAllTasks();
     std::shared_ptr<BlockTask> m_lastTask;
