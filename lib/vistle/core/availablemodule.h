@@ -104,7 +104,7 @@ private:
     mutable vistle::buffer m_cacheBuffer;
     mutable vistle::MessagePayload m_cacheMessagePayload;
     mutable bool m_changed = true;
-    std::unique_ptr<message::Message> cacheMsg(message::Type type) const;
+    std::unique_ptr<message::Buffer> cacheMsg(message::Type type) const;
 
     ARCHIVE_ACCESS
     template<class Archive>

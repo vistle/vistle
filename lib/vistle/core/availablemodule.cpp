@@ -107,21 +107,21 @@ bool AvailableModuleBase::send(message::Type type, const sendShmMessageFunction 
     return func(*msg, m_cacheMessagePayload);
 }
 
-std::unique_ptr<message::Message> AvailableModuleBase::cacheMsg(message::Type type) const
+std::unique_ptr<message::Buffer> AvailableModuleBase::cacheMsg(message::Type type) const
 {
     using namespace message;
-    std::unique_ptr<message::Message> msg;
+    auto buf = std::make_unique<message::Buffer>();
     switch (type) {
     case MODULEAVAILABLE:
-        msg = std::make_unique<ModuleAvailable>(*this);
+        *buf = ModuleAvailable(*this);
         break;
     case CREATEMODULECOMPOUND:
-        msg = std::make_unique<CreateModuleCompound>(*this);
+        *buf = CreateModuleCompound(*this);
         break;
     default:
         break;
     }
-    return msg;
+    return buf;
 }
 
 std::string AvailableModuleBase::print() const
