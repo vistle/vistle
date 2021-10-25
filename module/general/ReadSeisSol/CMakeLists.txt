@@ -1,4 +1,3 @@
-vistle_find_package(Xdmf)
 if(NOT Xdmf_FOUND)
     return()
 endif()
