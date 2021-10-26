@@ -22,7 +22,6 @@
 #include <vistle/module/reader.h>
 #include <vistle/core/polygons.h>
 
-/* #include <netcdf> */
 #include <pnetcdf>
 #include <vector>
 #include <array>
@@ -151,17 +150,16 @@ private:
     vistle::Port *m_groundSurface_out = nullptr;
     std::array<vistle::Port *, NUM_SCALARS> m_scalarsOut;
 
-
     //helper variables
-    bool seaConn;
-    size_t m_actualLastTimestep;
+    int m_actualLastTimestep;
+    std::atomic<bool> needSea = false;
 
     //Polygons per block
     std::map<int, vistle::Polygons::ptr> map_ptrSea;
     std::map<int, std::vector<float>> map_vecEta;
 
     //Scalar
-    std::map<int, std::array<VecScalarPtr, NUM_SCALARS>> map_ptrScalar;
+    std::map<int, std::array<VecScalarPtr, NUM_SCALARS>> map_VecScalarPtr;
 
     //lat = 0; lon = 1
     std::array<std::string, NUM_BLOCKS> m_latLon_Sea;

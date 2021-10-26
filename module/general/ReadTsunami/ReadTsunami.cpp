@@ -55,7 +55,7 @@ constexpr auto ETA{"eta"};
 } // namespace
 
 ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicator comm)
-: vistle::Reader(name, moduleID, comm), seaConn(false)
+: vistle::Reader(name, moduleID, comm)
 {
     // file-browser
     m_filedir = addStringParameter("file_dir", "NC File directory", "/data/ChEESE/tsunami/NewData/cadiz_5m.nc",
@@ -115,7 +115,7 @@ void ReadTsunami::initScalarParamReader()
     constexpr auto scalarPort_name{"Scalar port "};
     constexpr auto scalarPort_descr{"Port for scalar number "};
 
-    for (Index i = 0; i < NUM_SCALARS; ++i) {
+    for (int i = 0; i < NUM_SCALARS; ++i) {
         const std::string i_str{std::to_string(i)};
         const std::string &scName = scalar_name + i_str;
         const std::string &portName = scalarPort_name + i_str;
@@ -231,8 +231,8 @@ void ReadTsunami::contructLatLonSurface(Polygons::ptr poly, const Dim<T> &dim, c
 {
     int n = 0;
     auto sx_coord = poly->x().begin(), sy_coord = poly->y().begin(), sz_coord = poly->z().begin();
-    for (size_t i = 0; i < dim.dimLat; i++)
-        for (size_t j = 0; j < dim.dimLon; j++, n++) {
+    for (T i = 0; i < dim.dimLat; ++i)
+        for (T j = 0; j < dim.dimLon; ++j, ++n) {
             sx_coord[n] = coords.at(1)[j];
             sy_coord[n] = coords.at(0)[i];
             sz_coord[n] = zCalc(i, j);
@@ -248,14 +248,14 @@ void ReadTsunami::contructLatLonSurface(Polygons::ptr poly, const Dim<T> &dim, c
 template<class T>
 void ReadTsunami::fillConnectListPoly2Dim(Polygons::ptr poly, const Dim<T> &dim)
 {
-    int n = 0;
+    int n = -1;
     auto verticeConnectivityList = poly->cl().begin();
-    for (size_t j = 1; j < dim.dimLat; j++)
-        for (size_t k = 1; k < dim.dimLon; k++) {
-            verticeConnectivityList[n++] = (j - 1) * dim.dimLon + (k - 1);
-            verticeConnectivityList[n++] = j * dim.dimLon + (k - 1);
-            verticeConnectivityList[n++] = j * dim.dimLon + k;
-            verticeConnectivityList[n++] = (j - 1) * dim.dimLon + k;
+    for (T j = 1; j < dim.dimLat; ++j)
+        for (T k = 1; k < dim.dimLon; ++k) {
+            verticeConnectivityList[++n] = (j - 1) * dim.dimLon + (k - 1);
+            verticeConnectivityList[++n] = j * dim.dimLon + (k - 1);
+            verticeConnectivityList[++n] = j * dim.dimLon + k;
+            verticeConnectivityList[++n] = (j - 1) * dim.dimLon + k;
         }
 }
 
@@ -314,19 +314,6 @@ auto ReadTsunami::generateNcVarExt(const NcVar &ncVar, const T &dim, const T &gh
 }
 
 /**
- * @brief Called once before read. Checks if timestep polygon computation can be skipped.
- *
- * @return true if everything is prepared.
- */
-bool ReadTsunami::prepareRead()
-{
-    seaConn = m_seaSurface_out->isConnected();
-    for (auto scalar_out: m_scalarsOut)
-        seaConn = seaConn || scalar_out->isConnected();
-    return true;
-}
-
-/**
   * @brief Called for each timestep and for each block (MPISIZE).
   *
   * @token: Ref to internal vistle token.
@@ -337,6 +324,14 @@ bool ReadTsunami::prepareRead()
 bool ReadTsunami::read(Token &token, int timestep, int block)
 {
     return computeBlock(token, block, timestep);
+}
+
+bool ReadTsunami::prepareRead()
+{
+    needSea = m_seaSurface_out->isConnected();
+    for (auto &val: m_scalarsOut)
+        needSea = needSea || val->isConnected();
+    return true;
 }
 
 /**
@@ -352,10 +347,8 @@ bool ReadTsunami::computeBlock(Reader::Token &token, const T &blockNum, const U 
 {
     if (timestep == -1)
         return computeInitial(token, blockNum);
-    else if (seaConn) {
-        printRank0("reading timestep: " + std::to_string(timestep));
-        return computeTimestep<int, size_t>(token, blockNum, timestep);
-    }
+    else if (needSea)
+        return computeTimestep<T, U>(token, blockNum, timestep);
     return true;
 }
 
@@ -394,7 +387,7 @@ void ReadTsunami::computeBlockPartition(const int blockNum, vistle::Index &nLatB
                                         Iter blockPartitionIterFirst)
 {
     std::array<Index, NUM_BLOCKS> blocks;
-    for (int i = 0; i < NUM_BLOCKS; i++)
+    for (int i = 0; i < NUM_BLOCKS; ++i)
         blocks[i] = m_blocks[i]->getValue();
 
     nLatBlocks = blocks[0];
@@ -482,22 +475,20 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
             }
 
             // read eta
-            {
+            if (needSea) {
                 map_vecEta.insert(std::pair(blockNum, std::vector<float>(nTimesteps * verticesSea)));
                 const std::vector<MPI_Offset> vecStartEta{firstTimestep, latSea.start, lonSea.start};
                 const std::vector<MPI_Offset> vecCountEta{nTimesteps, latSea.count, lonSea.count};
                 const std::vector<MPI_Offset> vecStrideEta{incrementTimestep, latSea.stride, lonSea.stride};
-                if (seaConn) {
-                    eta.getVar_all(vecStartEta, vecCountEta, vecStrideEta, map_vecEta.at(blockNum).data());
+                eta.getVar_all(vecStartEta, vecCountEta, vecStrideEta, map_vecEta.at(blockNum).data());
 
-                    //filter fillvalue
-                    if (m_fill->getValue()) {
-                        const float &fillValNew = getFloatParameter("fillValueNew");
-                        const float &fillVal = getFloatParameter("fillValue");
-                        const auto &vecEta = map_vecEta.at(blockNum);
-                        //TODO: Bad! needs rework.
-                        std::replace(vecEta.begin(), vecEta.end(), fillVal, fillValNew);
-                    }
+                //filter fillvalue
+                if (m_fill->getValue()) {
+                    const float &fillValNew = getFloatParameter("fillValueNew");
+                    const float &fillVal = getFloatParameter("fillValue");
+                    auto &vecEta = map_vecEta[blockNum];
+                    //TODO: Bad! needs rework.
+                    std::replace(vecEta.begin(), vecEta.end(), fillVal, fillValNew);
                 }
             }
 
@@ -516,8 +507,8 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
                 const auto seaDim = Dim<MPI_Offset>(latSea.count, lonSea.count);
                 const auto polyData = PolygonData<MPI_Offset>(numPolySea, numPolySea * 4, verticesSea);
                 Polygons::ptr ptr(new Polygons(polyData.numElements, polyData.numCorners, polyData.numVertices));
-                map_ptrSea.insert(std::pair(blockNum, ptr));
                 generateSurface(ptr, polyData, seaDim, coords);
+                map_ptrSea[blockNum] = ptr;
             }
 
             //************* create grnd *************//
@@ -539,13 +530,14 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
             const std::vector<MPI_Offset> vecScalarStart{latSea.start, lonSea.start};
             const std::vector<MPI_Offset> vecScalarCount{latSea.count, lonSea.count};
             std::vector<float> vecScalar(verticesGround);
-            for (size_t i = 0; i < NUM_SCALARS; ++i) {
+            auto &scalar = map_VecScalarPtr[blockNum];
+            for (int i = 0; i < NUM_SCALARS; ++i) {
                 if (!m_scalarsOut[i]->isConnected())
                     continue;
                 const auto &scName = m_scalars[i]->getValue();
                 const auto &val = ncFile.getVar(scName);
-                Vec<Scalar>::ptr ptr_scalar(new Vec<Scalar>(verticesSea));
-                map_ptrScalar[blockNum][i] = ptr_scalar;
+                VecScalarPtr ptr_scalar(new Vec<Scalar>(verticesSea));
+                scalar[i] = ptr_scalar;
                 auto scX = ptr_scalar->x().data();
                 val.getVar_all(vecScalarStart, vecScalarCount, scX);
 
@@ -591,11 +583,12 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
 template<class T, class U>
 bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &timestep)
 {
-    auto &ptr = map_ptrSea[blockNum];
-    Polygons::ptr ptr_timestepPoly = ptr->clone();
     static int indexEta{0};
-
+    Polygons::ptr ptr = map_ptrSea[blockNum];
+    Polygons::ptr ptr_timestepPoly = ptr->clone();
     ptr_timestepPoly->resetArrays();
+    const auto size = ptr_timestepPoly->getSize();
+    sendInfo("size: %d", size);
 
     // reuse data from sea polygon surface and calculate z new
     ptr_timestepPoly->d()->x[0] = ptr->d()->x[0];
@@ -605,7 +598,8 @@ bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &time
     // getting z from vecEta and copy to z()
     // verticesSea * timesteps = total count vecEta
     const auto &verticesSea = ptr_timestepPoly->getNumVertices();
-    auto startCopy = map_vecEta.at(blockNum).begin() + (indexEta++ * verticesSea);
+    auto &vecEta = map_vecEta[blockNum];
+    auto startCopy = vecEta.begin() + (indexEta++ * verticesSea);
     std::copy_n(startCopy, verticesSea, ptr_timestepPoly->z().begin());
     ptr_timestepPoly->updateInternals();
     ptr_timestepPoly->setTimestep(timestep);
@@ -615,12 +609,12 @@ bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &time
         token.addObject(m_seaSurface_out, ptr_timestepPoly);
 
     //add scalar to ports
-    const auto &scalars = map_ptrScalar.at(blockNum);
-    for (size_t i = 0; i < NUM_SCALARS; ++i) {
+    const auto &vecScalarPtrArr = map_VecScalarPtr[blockNum];
+    for (int i = 0; i < NUM_SCALARS; ++i) {
         if (!m_scalarsOut[i]->isConnected())
             continue;
 
-        auto scalar = scalars[i]->clone();
+        auto scalar = vecScalarPtrArr[i]->clone();
         scalar->setGrid(ptr_timestepPoly);
         scalar->addAttribute("_species", scalar->getAttribute("_species"));
         scalar->setBlock(blockNum);
@@ -630,8 +624,16 @@ bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &time
         token.addObject(m_scalarsOut[i], scalar);
     }
 
-    if (timestep == m_actualLastTimestep)
+    if (timestep == m_actualLastTimestep) {
         indexEta = 0;
+
+        //reset scalar per block
+        ptr.reset();
+        vecEta.clear();
+
+        /* for (const VecScalarPtr &scVecPtr: vecScalarPtrArr) */
+        /*     scVecPtr.reset(); */
+    }
     return true;
 }
 
@@ -645,10 +647,11 @@ bool ReadTsunami::finishRead()
     sendInfo("Cleared Cache for rank: " + std::to_string(rank()));
 
     //reset scalar per block
-    for (auto &arr: map_ptrScalar)
-        for (auto &val: arr.second)
-            val.reset();
+    /* for (auto &arr: map_VecScalarPtr) */
+    /*     for (auto &val: arr.second) */
+    /*         val.reset(); */
 
+    map_VecScalarPtr.clear();
     map_ptrSea.clear();
     map_vecEta.clear();
     return true;
