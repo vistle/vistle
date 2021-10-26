@@ -538,12 +538,8 @@ public:
 
 private:
     int m_module; //!< destination module
-    param_name_t name; //!< parameter name
     int paramtype; //!< parameter type
     int dim; //!< dimensionality for vector parameters
-    bool initialize; //!< called for setting parameter default value
-    bool delayed; //!< true: wait until parameterChanged should be called
-    bool reply; //!< this messaege is in reply to a request to change a parameter and contains the value actually used
     int rangetype; //!< set parameter bounds instead of parameter value
     union {
         Integer v_int;
@@ -552,6 +548,10 @@ private:
         Integer v_ivector[MaxDimension];
         param_value_t v_string;
     };
+    param_name_t name; //!< parameter name
+    bool initialize; //!< called for setting parameter default value
+    bool delayed; //!< true: wait until parameterChanged should be called
+    bool reply; //!< this messaege is in reply to a request to change a parameter and contains the value actually used
 };
 
 //! set list of choice descriptions for a choice parameter
