@@ -234,7 +234,9 @@ void DataFlowNetwork::deleteConnection(int fromId, QString fromName, int toId, Q
     Module *mTo = findModule(toId);
 
     if (mFrom && portFrom && mTo && portTo) {
-        removeConnection(mFrom->getGuiPort(portFrom), mTo->getGuiPort(portTo));
+        auto guiFrom = mFrom->getGuiPort(portFrom);
+        auto guiTo = mTo->getGuiPort(portTo);
+        removeConnection(guiFrom, guiTo);
     }
 }
 
@@ -277,6 +279,11 @@ void DataFlowNetwork::addConnection(Port *portFrom, Port *portTo, bool sendToCon
 
 void DataFlowNetwork::removeConnection(Port *portFrom, Port *portTo, bool sendToController)
 {
+    if (!portFrom)
+        return;
+    if (!portTo)
+        return;
+
     ConnectionKey key(portFrom, portTo);
     assert(key.valid());
     auto it = m_connections.find(key);
