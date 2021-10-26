@@ -286,8 +286,10 @@ bool IsoSurface::compute(std::shared_ptr<PortTask> task) const
 #else
     auto mapdata = task->accept<DataBase>(m_mapDataIn);
     auto dataS = task->expect<Vec<Scalar>>("data_in");
-    if (!dataS)
+    if (!dataS) {
+        sendError("need Scalar data on data_in");
         return true;
+    }
     if (dataS->guessMapping() != DataBase::Vertex) {
         sendError("need per-vertex mapping on data_in");
         return true;
@@ -300,6 +302,8 @@ bool IsoSurface::compute(std::shared_ptr<PortTask> task) const
         }
         if (mapdata->grid()->getHandle() != grid->getHandle()) {
             sendError("grids on mapped data and iso-data do not match");
+            std::cerr << "grid mismatch: mapped: " << mapdata->meta() << " on " << mapdata->grid()->meta()
+                      << ", data: " << dataS->meta() << " on " << grid->meta() << std::endl;
             return true;
         }
     }
@@ -324,14 +328,13 @@ bool IsoSurface::compute(std::shared_ptr<PortTask> task) const
     task->addObject(m_dataOut, obj);
     return true;
 #elif defined(ISOHEIGHTSURFACE)
-    std::string imageName = "";
-    imageName = m_heightmap->getValue();
-    if (strcmp(imageName.c_str(), "") != 0) {
-        auto obj = createHeightCut(grid, dataS, mapdata);
-        task->addObject(m_dataOut, obj);
+    std::string mapFile = m_heightmap->getValue();
+    if (mapFile.empty()) {
+        sendInfo("No geotiff was found fo height mapping");
         return true;
     } else {
-        sendInfo("No geotiff was found fo height mapping");
+        auto obj = createHeightCut(grid, dataS, mapdata);
+        task->addObject(m_dataOut, obj);
         return true;
     }
 #else
