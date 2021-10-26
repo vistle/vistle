@@ -39,6 +39,7 @@ public:
 private:
     typedef PnetCDF::NcmpiVar NcVar;
     typedef PnetCDF::NcmpiFile NcFile;
+    typedef vistle::Vec<vistle::Scalar>::ptr VecScalarPtr;
 
     //structs
     template<class T>
@@ -60,31 +61,21 @@ private:
     };
 
     struct NcVarExtended {
-        /* size_t start; */
-        /* size_t count; */
-        /* ptrdiff_t stride; */
-        /* ptrdiff_t imap; */
         MPI_Offset start;
         MPI_Offset count;
         MPI_Offset stride;
         MPI_Offset imap;
 
-        /* NcVarExtended(const netCDF::NcVar &nc, const size_t &start = 0, const size_t &count = 0, */
         NcVarExtended(const NcVar &nc, const MPI_Offset &start = 0, const MPI_Offset &count = 0,
                       const MPI_Offset &stride = 1, const MPI_Offset &imap = 1)
         : start(start), count(count), stride(stride), imap(imap)
         {
-            /* ncVar = std::make_unique<netCDF::NcVar>(nc); */
             ncVar = std::make_unique<NcVar>(nc);
         }
 
         template<class T>
         void readNcVar(T *storage) const
         {
-            /* std::vector<size_t> v_start{start}; */
-            /* std::vector<size_t> v_count{count}; */
-            /* std::vector<ptrdiff_t> v_stride{stride}; */
-            /* std::vector<ptrdiff_t> v_imap{imap}; */
             std::vector<MPI_Offset> v_start{start};
             std::vector<MPI_Offset> v_count{count};
             std::vector<MPI_Offset> v_stride{stride};
@@ -93,19 +84,17 @@ private:
         }
 
     private:
-        /* std::shared_ptr<netCDF::NcVar> ncVar; */
         std::shared_ptr<NcVar> ncVar;
     };
 
     //Vistle functions
     bool prepareRead() override;
     bool read(Token &token, int timestep, int block) override;
+    bool finishRead() override;
     bool examine(const vistle::Parameter *param) override;
 
     //Own functions
     void initScalarParamReader();
-    /* bool openNcFile(std::shared_ptr<netCDF::NcFile> file); */
-    bool openNcFile(std::shared_ptr<NcFile> file);
     bool inspectNetCDFVars();
 
     typedef std::function<float(size_t, size_t)> ZCalcFunc;
@@ -126,13 +115,10 @@ private:
 
     template<class T, class U>
     bool computeTimestep(Token &token, const T &blockNum, const U &timestep);
-    /* void computeActualLastTimestep(const ptrdiff_t &incrementTimestep, const size_t &firstTimestep, */
-    /*                                size_t &lastTimestep, size_t &nTimesteps); */
     void computeActualLastTimestep(const ptrdiff_t &incrementTimestep, const size_t &firstTimestep,
                                    size_t &lastTimestep, MPI_Offset &nTimesteps);
 
     template<class T, class PartionIdx>
-    /* auto generateNcVarExt(const netCDF::NcVar &ncVar, const T &dim, const T &ghost, const T &numDimBlocks, */
     auto generateNcVarExt(const NcVar &ncVar, const T &dim, const T &ghost, const T &numDimBlocks,
                           const PartionIdx &partition) const;
 
@@ -165,21 +151,20 @@ private:
     vistle::Port *m_groundSurface_out = nullptr;
     std::array<vistle::Port *, NUM_SCALARS> m_scalarsOut;
 
-    //Polygons per block
-    std::map<int, vistle::Polygons::ptr> ptr_sea;
-
-    //Scalar
-    std::array<vistle::Vec<vistle::Scalar>::ptr, NUM_SCALARS> ptr_Scalar;
 
     //helper variables
-    bool seaTimeConn;
-    size_t verticesSea;
+    bool seaConn;
     size_t m_actualLastTimestep;
-    std::map<int, std::vector<float>> vecEta;
+
+    //Polygons per block
+    std::map<int, vistle::Polygons::ptr> map_ptrSea;
+    std::map<int, std::vector<float>> map_vecEta;
+
+    //Scalar
+    std::map<int, std::array<VecScalarPtr, NUM_SCALARS>> map_ptrScalar;
 
     //lat = 0; lon = 1
     std::array<std::string, NUM_BLOCKS> m_latLon_Sea;
     std::array<std::string, NUM_BLOCKS> m_latLon_Ground;
-    std::mutex _mtx;
 };
 #endif
