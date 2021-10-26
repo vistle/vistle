@@ -10,6 +10,10 @@ public:
     ~CellToVert();
 
 private:
+    static const int NumPorts = 3;
+
+    std::vector<vistle::Port *> m_data_in, m_data_out;
+
     bool compute(std::shared_ptr<vistle::PortTask> task) const override;
 };
 
