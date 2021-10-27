@@ -476,17 +476,17 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
 
             // read eta
             if (needSea) {
-                map_vecEta.insert(std::pair(blockNum, std::vector<float>(nTimesteps * verticesSea)));
+                map_vecEta[blockNum] = std::vector<float>(nTimesteps * verticesSea);
+                auto &vecEta = map_vecEta[blockNum];
                 const std::vector<MPI_Offset> vecStartEta{firstTimestep, latSea.start, lonSea.start};
                 const std::vector<MPI_Offset> vecCountEta{nTimesteps, latSea.count, lonSea.count};
                 const std::vector<MPI_Offset> vecStrideEta{incrementTimestep, latSea.stride, lonSea.stride};
-                eta.getVar_all(vecStartEta, vecCountEta, vecStrideEta, map_vecEta.at(blockNum).data());
+                eta.getVar_all(vecStartEta, vecCountEta, vecStrideEta, vecEta.data());
 
                 //filter fillvalue
                 if (m_fill->getValue()) {
                     const float &fillValNew = getFloatParameter("fillValueNew");
                     const float &fillVal = getFloatParameter("fillValue");
-                    auto &vecEta = map_vecEta[blockNum];
                     //TODO: Bad! needs rework.
                     std::replace(vecEta.begin(), vecEta.end(), fillVal, fillValNew);
                 }
@@ -624,16 +624,8 @@ bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &time
         token.addObject(m_scalarsOut[i], scalar);
     }
 
-    if (timestep == m_actualLastTimestep) {
+    if (timestep == m_actualLastTimestep)
         indexEta = 0;
-
-        //reset scalar per block
-        ptr.reset();
-        vecEta.clear();
-
-        /* for (const VecScalarPtr &scVecPtr: vecScalarPtrArr) */
-        /*     scVecPtr.reset(); */
-    }
     return true;
 }
 
@@ -647,12 +639,15 @@ bool ReadTsunami::finishRead()
     sendInfo("Cleared Cache for rank: " + std::to_string(rank()));
 
     //reset scalar per block
-    /* for (auto &arr: map_VecScalarPtr) */
-    /*     for (auto &val: arr.second) */
-    /*         val.reset(); */
+    if (!map_VecScalarPtr.empty())
+        for (auto &arr: map_VecScalarPtr)
+            for (auto &val: arr.second)
+                val.reset();
 
-    map_VecScalarPtr.clear();
-    map_ptrSea.clear();
-    map_vecEta.clear();
+    if (!map_ptrSea.empty())
+        map_ptrSea.clear();
+
+    if (!map_vecEta.empty())
+        map_vecEta.clear();
     return true;
 }
