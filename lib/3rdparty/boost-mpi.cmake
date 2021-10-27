@@ -28,13 +28,9 @@ endif()
 if(BOOST_MPI_DIR STREQUAL "boost-mpi-1.70")
     set(boost_mpi_SOURCES ${boost_mpi_SOURCES} ${BOOST_MPI_DIR}/src/offsets.cpp)
 endif()
-if (BOOST_MPI_DIR STREQUAL "boost-mpi-1.74")
-   set(boost_mpi_SOURCES ${boost_mpi_SOURCES}
-      ${BOOST_MPI_DIR}/src/offsets.cpp
-      ${BOOST_MPI_DIR}/src/status.cpp
-   )
+if(BOOST_MPI_DIR STREQUAL "boost-mpi-1.74")
+    set(boost_mpi_SOURCES ${boost_mpi_SOURCES} ${BOOST_MPI_DIR}/src/offsets.cpp ${BOOST_MPI_DIR}/src/status.cpp)
 endif()
-
 
 if(BOOST_MPI_DIR STREQUAL "boost-mpi-1.69")
     set(boost_mpi_SOURCES ${boost_mpi_SOURCES} ${BOOST_MPI_DIR}/src/offsets.cpp)
