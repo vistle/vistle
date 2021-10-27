@@ -16,6 +16,7 @@
 #ifndef _READTSUNAMI_H
 #define _READTSUNAMI_H
 
+#include <atomic>
 #include <memory>
 #include <mpi.h>
 #include <mutex>
@@ -151,8 +152,9 @@ private:
     std::array<vistle::Port *, NUM_SCALARS> m_scalarsOut;
 
     //helper variables
-    int m_actualLastTimestep;
-    std::atomic<bool> needSea = false;
+    /* int m_actualLastTimestep; */
+    std::atomic_bool needSea;
+    std::map<int, std::atomic_int> map_idxEta;
 
     //Polygons per block
     std::map<int, vistle::Polygons::ptr> map_ptrSea;
