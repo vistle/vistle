@@ -52,6 +52,11 @@ namespace {
 
 constexpr auto ETA{"eta"};
 
+template<class T>
+struct freePtr: std::unary_function<const std::shared_ptr<T> &, void> {
+    void operator()(std::shared_ptr<T> &ptr) const { ptr.reset(); }
+};
+
 } // namespace
 
 ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicator comm)
@@ -73,8 +78,6 @@ ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicato
     // block size
     m_blocks[0] = addIntParameter("blocks latitude", "number of blocks in lat-direction", 2);
     m_blocks[1] = addIntParameter("blocks longitude", "number of blocks in lon-direction", 2);
-    setParameterRange(m_blocks[0], Integer(1), Integer(999999));
-    setParameterRange(m_blocks[1], Integer(1), Integer(999999));
 
     //fillvalue
     addFloatParameter("fillValue", "ncFile fillValue offset for eta", -9999.f);
@@ -177,13 +180,18 @@ bool ReadTsunami::inspectNetCDFVars()
     const int &maxTime = ncFile.getDim("time").getSize();
     setTimesteps(maxTime);
 
+    const Integer &maxlatDim = ncFile.getDim("lat").getSize();
+    const Integer &maxlonDim = ncFile.getDim("lon").getSize();
+    setParameterRange(m_blocks[0], Integer(1), maxlatDim);
+    setParameterRange(m_blocks[1], Integer(1), maxlonDim);
+
     //scalar inspection
     std::vector<std::string> scalarChoiceVec;
     std::vector<std::string> bathyChoiceVec;
     auto strContains = [](const std::string &name, const std::string &contains) {
         return name.find(contains) != std::string::npos;
     };
-    auto latLonContainsGrid = [=](auto &name, int i) {
+    auto latLonContainsGrid = [&](auto &name, int i) {
         if (strContains(name, "grid"))
             m_latLon_Ground[i] = name;
         else
@@ -639,28 +647,19 @@ bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &time
  */
 bool ReadTsunami::finishRead()
 {
-    sendInfo("Cleared Cache for rank: " + std::to_string(rank()));
+    //reset block partition variables
+    for (auto &vecScalarPtrArr: m_block_VecScalarPtr)
+        for_each(vecScalarPtrArr.begin(), vecScalarPtrArr.end(), freePtr<Vec<Scalar, 1>>());
+    m_block_VecScalarPtr.clear();
 
-    //reset scalar per block
-    if (!m_block_VecScalarPtr.empty()) {
-        for (auto &vecScalarPtrArr: m_block_VecScalarPtr)
-            for (auto &vecScalarPtr: vecScalarPtrArr)
-                vecScalarPtr.reset();
-        m_block_VecScalarPtr.clear();
-    }
+    for_each(m_block_seaPtr.begin(), m_block_seaPtr.end(), freePtr<Polygons>());
+    m_block_seaPtr.clear();
 
-    if (!m_block_seaPtr.empty()) {
-        for (auto &ptr: m_block_seaPtr)
-            ptr.reset();
-        m_block_seaPtr.clear();
-    }
-
-    if (!m_block_etaVec.empty()) {
-        for (auto &vec: m_block_etaVec)
-            vec.clear();
-        m_block_etaVec.clear();
-    }
+    for (auto &vec: m_block_etaVec)
+        vec.clear();
+    m_block_etaVec.clear();
 
     m_block_etaIdx.clear();
+    sendInfo("Cleared Cache for rank: " + std::to_string(rank()));
     return true;
 }
