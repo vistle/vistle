@@ -152,16 +152,15 @@ private:
     std::array<vistle::Port *, NUM_SCALARS> m_scalarsOut;
 
     //helper variables
-    /* int m_actualLastTimestep; */
     std::atomic_bool needSea;
-    std::map<int, std::atomic_int> map_idxEta;
+    std::vector<std::atomic_int> m_block_etaIdx;
 
     //Polygons per block
-    std::map<int, vistle::Polygons::ptr> map_ptrSea;
-    std::map<int, std::vector<float>> map_vecEta;
+    std::vector<vistle::Polygons::ptr> m_block_seaPtr;
+    std::vector<std::vector<float>> m_block_etaVec;
 
     //Scalar
-    std::map<int, std::array<VecScalarPtr, NUM_SCALARS>> map_VecScalarPtr;
+    std::vector<std::array<VecScalarPtr, NUM_SCALARS>> m_block_VecScalarPtr;
 
     //lat = 0; lon = 1
     std::array<std::string, NUM_BLOCKS> m_latLon_Sea;

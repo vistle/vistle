@@ -98,7 +98,7 @@ ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicato
     observeParameter(m_verticalScale);
 
     setParallelizationMode(ParallelizeBlocks);
-    /* setReducePolicy(vistle::message::ReducePolicy::OverAll); */
+    setReducePolicy(vistle::message::ReducePolicy::OverAll);
 }
 
 /**
@@ -329,6 +329,12 @@ bool ReadTsunami::read(Token &token, int timestep, int block)
 
 bool ReadTsunami::prepareRead()
 {
+    const auto &part = numPartitions();
+    m_block_VecScalarPtr = std::vector<std::array<VecScalarPtr, NUM_SCALARS>>(part);
+    m_block_etaIdx = std::vector<std::atomic_int>(part);
+    m_block_etaVec = std::vector<std::vector<float>>(part);
+    m_block_seaPtr = std::vector<Polygons::ptr>(part);
+
     needSea = m_seaSurface_out->isConnected();
     for (auto &val: m_scalarsOut)
         needSea = needSea || val->isConnected();
@@ -412,31 +418,31 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
         NcFile ncFile(comm(), fileName, NcFile::read);
 
         // get nc var objects ref
-        const NcVar &latvar = ncFile.getVar(m_latLon_Sea[0]);
-        const NcVar &lonvar = ncFile.getVar(m_latLon_Sea[1]);
-        const NcVar &grid_lat = ncFile.getVar(m_latLon_Ground[0]);
-        const NcVar &grid_lon = ncFile.getVar(m_latLon_Ground[1]);
-        const NcVar &bathymetryvar = ncFile.getVar(m_bathy->getValue());
-        const NcVar &eta = ncFile.getVar(ETA);
+        const NcVar &latVar = ncFile.getVar(m_latLon_Sea[0]);
+        const NcVar &lonVar = ncFile.getVar(m_latLon_Sea[1]);
+        const NcVar &gridLatVar = ncFile.getVar(m_latLon_Ground[0]);
+        const NcVar &gridLonVar = ncFile.getVar(m_latLon_Ground[1]);
+        const NcVar &bathymetryVar = ncFile.getVar(m_bathy->getValue());
+        const NcVar &etaVar = ncFile.getVar(ETA);
 
         // compute current time parameters
-        const ptrdiff_t &incrementTimestep = m_increment->getValue();
+        const ptrdiff_t &incTimestep = m_increment->getValue();
         const MPI_Offset &firstTimestep = m_first->getValue();
         size_t lastTimestep = m_last->getValue();
         MPI_Offset nTimesteps{0};
-        computeActualLastTimestep(incrementTimestep, firstTimestep, lastTimestep, nTimesteps);
+        computeActualLastTimestep(incTimestep, firstTimestep, lastTimestep, nTimesteps);
 
         // compute partition borders => structured grid
         Index nLatBlocks{0};
         Index nLonBlocks{0};
-        std::array<Index, NUM_BLOCKS> bPartitionIdx;
-        computeBlockPartition(blockNum, nLatBlocks, nLonBlocks, bPartitionIdx.begin());
+        std::array<Index, NUM_BLOCKS> blockPartitionIdx;
+        computeBlockPartition(blockNum, nLatBlocks, nLonBlocks, blockPartitionIdx.begin());
 
         // dimension from lat and lon variables
-        const Dim<size_t> dimSea(latvar.getDim(0).getSize(), lonvar.getDim(0).getSize());
+        const Dim<size_t> dimSea(latVar.getDim(0).getSize(), lonVar.getDim(0).getSize());
 
         // get dim from grid_lon & grid_lat
-        const Dim<size_t> dimGround(grid_lat.getDim(0).getSize(), grid_lon.getDim(0).getSize());
+        const Dim<size_t> dimGround(gridLatVar.getDim(0).getSize(), gridLonVar.getDim(0).getSize());
 
         size_t ghost{0};
         if (m_ghost->getValue() == 1 && !(nLatBlocks == 1 && nLonBlocks == 1))
@@ -444,15 +450,15 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
 
         // count and start vals for lat and lon for sea polygon
         const auto latSea =
-            generateNcVarExt<MPI_Offset, Index>(latvar, dimSea.dimLat, ghost, nLatBlocks, bPartitionIdx[0]);
+            generateNcVarExt<MPI_Offset, Index>(latVar, dimSea.dimLat, ghost, nLatBlocks, blockPartitionIdx[0]);
         const auto lonSea =
-            generateNcVarExt<MPI_Offset, Index>(lonvar, dimSea.dimLon, ghost, nLonBlocks, bPartitionIdx[1]);
+            generateNcVarExt<MPI_Offset, Index>(lonVar, dimSea.dimLon, ghost, nLonBlocks, blockPartitionIdx[1]);
 
         // count and start vals for lat and lon for ground polygon
         const auto latGround =
-            generateNcVarExt<MPI_Offset, Index>(grid_lat, dimGround.dimLat, ghost, nLatBlocks, bPartitionIdx[0]);
+            generateNcVarExt<MPI_Offset, Index>(gridLatVar, dimGround.dimLat, ghost, nLatBlocks, blockPartitionIdx[0]);
         const auto lonGround =
-            generateNcVarExt<MPI_Offset, Index>(grid_lon, dimGround.dimLon, ghost, nLonBlocks, bPartitionIdx[1]);
+            generateNcVarExt<MPI_Offset, Index>(gridLonVar, dimGround.dimLon, ghost, nLonBlocks, blockPartitionIdx[1]);
 
         // num of polygons for sea & grnd
         const size_t &numPolySea = (latSea.count - 1) * (lonSea.count - 1);
@@ -472,17 +478,17 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
             {
                 const std::vector<MPI_Offset> vecStartBathy{latGround.start, lonGround.start};
                 const std::vector<MPI_Offset> vecCountBathy{latGround.count, lonGround.count};
-                bathymetryvar.getVar_all(vecStartBathy, vecCountBathy, vecDepth.data());
+                bathymetryVar.getVar_all(vecStartBathy, vecCountBathy, vecDepth.data());
             }
 
             // read eta
             if (needSea) {
-                map_vecEta[blockNum] = std::vector<float>(nTimesteps * verticesSea);
-                auto &vecEta = map_vecEta[blockNum];
+                m_block_etaVec[blockNum] = std::vector<float>(nTimesteps * verticesSea);
+                auto &vecEta = m_block_etaVec[blockNum];
                 const std::vector<MPI_Offset> vecStartEta{firstTimestep, latSea.start, lonSea.start};
                 const std::vector<MPI_Offset> vecCountEta{nTimesteps, latSea.count, lonSea.count};
-                const std::vector<MPI_Offset> vecStrideEta{incrementTimestep, latSea.stride, lonSea.stride};
-                eta.getVar_all(vecStartEta, vecCountEta, vecStrideEta, vecEta.data());
+                const std::vector<MPI_Offset> vecStrideEta{incTimestep, latSea.stride, lonSea.stride};
+                etaVar.getVar_all(vecStartEta, vecCountEta, vecStrideEta, vecEta.data());
 
                 //filter fillvalue
                 if (m_fill->getValue()) {
@@ -507,10 +513,9 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
             {
                 const auto seaDim = Dim<MPI_Offset>(latSea.count, lonSea.count);
                 const auto polyData = PolygonData<MPI_Offset>(numPolySea, numPolySea * 4, verticesSea);
-                /* Polygons::ptr ptr(new Polygons(polyData.numElements, polyData.numCorners, polyData.numVertices)); */
-                map_ptrSea[blockNum] =
+                m_block_seaPtr[blockNum] =
                     make_shared<Polygons>(polyData.numElements, polyData.numCorners, polyData.numVertices);
-                generateSurface(map_ptrSea[blockNum], polyData, seaDim, coords);
+                generateSurface(m_block_seaPtr[blockNum], polyData, seaDim, coords);
             }
 
             //************* create grnd *************//
@@ -524,37 +529,37 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
                 return -vecDepth[j * lonGround.count + k] * scale;
             };
 
-            Polygons::ptr ptr_grnd(
+            Polygons::ptr grndPtr(
                 new Polygons(polyDataGround.numElements, polyDataGround.numCorners, polyDataGround.numVertices));
-            generateSurface(ptr_grnd, polyDataGround, grndDim, coords, grndZCalc);
+            generateSurface(grndPtr, polyDataGround, grndDim, coords, grndZCalc);
 
             //************* create selected scalars *************//
             const std::vector<MPI_Offset> vecScalarStart{latSea.start, lonSea.start};
             const std::vector<MPI_Offset> vecScalarCount{latSea.count, lonSea.count};
             std::vector<float> vecScalar(verticesGround);
-            auto &scalar = map_VecScalarPtr[blockNum];
+            auto &vecScalarPtrArr = m_block_VecScalarPtr[blockNum];
             for (int i = 0; i < NUM_SCALARS; ++i) {
                 if (!m_scalarsOut[i]->isConnected())
                     continue;
                 const auto &scName = m_scalars[i]->getValue();
                 const auto &val = ncFile.getVar(scName);
-                VecScalarPtr ptr_scalar(new Vec<Scalar>(verticesSea));
-                scalar[i] = ptr_scalar;
-                auto scX = ptr_scalar->x().data();
+                VecScalarPtr scalarPtr(new Vec<Scalar>(verticesSea));
+                vecScalarPtrArr[i] = scalarPtr;
+                auto scX = scalarPtr->x().data();
                 val.getVar_all(vecScalarStart, vecScalarCount, scX);
 
                 //set some meta data
-                ptr_scalar->addAttribute("_species", scName);
-                ptr_scalar->setTimestep(-1);
-                ptr_scalar->setBlock(blockNum);
+                scalarPtr->addAttribute("_species", scName);
+                scalarPtr->setTimestep(-1);
+                scalarPtr->setBlock(blockNum);
             }
 
             // add ground data to port
             if (m_groundSurface_out->isConnected()) {
-                ptr_grnd->setBlock(blockNum);
-                ptr_grnd->setTimestep(-1);
-                ptr_grnd->updateInternals();
-                token.addObject(m_groundSurface_out, ptr_grnd);
+                grndPtr->setBlock(blockNum);
+                grndPtr->setTimestep(-1);
+                grndPtr->updateInternals();
+                token.addObject(m_groundSurface_out, grndPtr);
             }
         }
     } catch (PnetCDF::exceptions::NcmpiException &e) {
@@ -585,43 +590,43 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
 template<class T, class U>
 bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &timestep)
 {
-    Polygons::ptr &ptrSea = map_ptrSea[blockNum];
-    Polygons::ptr ptr_timestepPoly = ptrSea->clone();
-    ptr_timestepPoly->resetArrays();
+    Polygons::ptr &seaPtr = m_block_seaPtr[blockNum];
+    Polygons::ptr timestepPolyPtr = seaPtr->clone();
+    timestepPolyPtr->resetArrays();
 
     // reuse data from sea polygon surface and calculate z new
-    ptr_timestepPoly->d()->x[0] = ptrSea->d()->x[0];
-    ptr_timestepPoly->d()->x[1] = ptrSea->d()->x[1];
-    ptr_timestepPoly->d()->x[2] = ShmVector<Scalar>();
-    ptr_timestepPoly->d()->x[2].construct(ptrSea->getSize());
+    timestepPolyPtr->d()->x[0] = seaPtr->d()->x[0];
+    timestepPolyPtr->d()->x[1] = seaPtr->d()->x[1];
+    timestepPolyPtr->d()->x[2] = ShmVector<Scalar>();
+    timestepPolyPtr->d()->x[2].construct(seaPtr->getSize());
 
     // getting z from vecEta and copy to z()
     // verticesSea * timesteps = total count vecEta
-    const auto &verticesSea = ptr_timestepPoly->getNumVertices();
-    std::vector<float> &vecEta = map_vecEta[blockNum];
-    auto startCopy = vecEta.begin() + (map_idxEta[blockNum]++ * verticesSea);
-    std::copy_n(startCopy, verticesSea, ptr_timestepPoly->z().begin());
-    ptr_timestepPoly->updateInternals();
-    ptr_timestepPoly->setTimestep(timestep);
-    ptr_timestepPoly->setBlock(blockNum);
+    const auto &verticesSea = timestepPolyPtr->getNumVertices();
+    std::vector<float> &etaVec = m_block_etaVec[blockNum];
+    auto startCopy = etaVec.begin() + (m_block_etaIdx[blockNum]++ * verticesSea);
+    std::copy_n(startCopy, verticesSea, timestepPolyPtr->z().begin());
+    timestepPolyPtr->updateInternals();
+    timestepPolyPtr->setTimestep(timestep);
+    timestepPolyPtr->setBlock(blockNum);
 
     if (m_seaSurface_out->isConnected())
-        token.addObject(m_seaSurface_out, ptr_timestepPoly);
+        token.addObject(m_seaSurface_out, timestepPolyPtr);
 
     //add scalar to ports
-    std::array<VecScalarPtr, NUM_SCALARS> &vecScalarPtrArr = map_VecScalarPtr[blockNum];
+    std::array<VecScalarPtr, NUM_SCALARS> &vecScalarPtrArr = m_block_VecScalarPtr[blockNum];
     for (int i = 0; i < NUM_SCALARS; ++i) {
         if (!m_scalarsOut[i]->isConnected())
             continue;
 
-        auto scalar = vecScalarPtrArr[i]->clone();
-        scalar->setGrid(ptr_timestepPoly);
-        scalar->addAttribute("_species", scalar->getAttribute("_species"));
-        scalar->setBlock(blockNum);
-        scalar->setTimestep(timestep);
-        scalar->updateInternals();
+        auto vecScalarPtr = vecScalarPtrArr[i]->clone();
+        vecScalarPtr->setGrid(timestepPolyPtr);
+        vecScalarPtr->addAttribute("_species", vecScalarPtr->getAttribute("_species"));
+        vecScalarPtr->setBlock(blockNum);
+        vecScalarPtr->setTimestep(timestep);
+        vecScalarPtr->updateInternals();
 
-        token.addObject(m_scalarsOut[i], scalar);
+        token.addObject(m_scalarsOut[i], vecScalarPtr);
     }
 
     return true;
@@ -637,25 +642,25 @@ bool ReadTsunami::finishRead()
     sendInfo("Cleared Cache for rank: " + std::to_string(rank()));
 
     //reset scalar per block
-    if (!map_VecScalarPtr.empty()) {
-        for (auto &[_, vecScalarPtrArr]: map_VecScalarPtr)
+    if (!m_block_VecScalarPtr.empty()) {
+        for (auto &vecScalarPtrArr: m_block_VecScalarPtr)
             for (auto &vecScalarPtr: vecScalarPtrArr)
                 vecScalarPtr.reset();
-        map_VecScalarPtr.clear();
+        m_block_VecScalarPtr.clear();
     }
 
-    if (!map_ptrSea.empty()) {
-        for (auto &[_, ptr]: map_ptrSea)
+    if (!m_block_seaPtr.empty()) {
+        for (auto &ptr: m_block_seaPtr)
             ptr.reset();
-        map_ptrSea.clear();
+        m_block_seaPtr.clear();
     }
 
-    if (!map_vecEta.empty()) {
-        for (auto &[_, vec]: map_vecEta)
+    if (!m_block_etaVec.empty()) {
+        for (auto &vec: m_block_etaVec)
             vec.clear();
-        map_vecEta.clear();
+        m_block_etaVec.clear();
     }
 
-    map_idxEta.clear();
+    m_block_etaIdx.clear();
     return true;
 }
