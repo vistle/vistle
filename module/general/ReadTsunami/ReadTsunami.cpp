@@ -11,7 +11,8 @@
  **                                                                        **
  **                                                                        **
  **                                                                        **
- ** Date:  25.01.2021                                                      **
+ ** Date:  25.01.2021 Version 1 with netCDF                                **
+ ** Date:  29.10.2021 Version 2 with PnetCDF                               **
 \**************************************************************************/
 
 //header
@@ -31,6 +32,8 @@
 #include "vistle/module/utils/ghost.h"
 
 //mpi
+#include <boost/mpi/communicator.hpp>
+#include <boost/mpi/intercommunicator.hpp>
 #include <mpi.h>
 
 //std
@@ -38,24 +41,18 @@
 #include <array>
 #include <iterator>
 #include <memory>
-#include <mutex>
+#include <omp.h>
 #include <string>
 #include <cstddef>
-#include <thread>
 #include <vector>
 
 using namespace vistle;
 using namespace PnetCDF;
 
-MODULE_MAIN(ReadTsunami)
+MODULE_MAIN_THREAD(ReadTsunami, boost::mpi::threading::multiple)
 namespace {
 
 constexpr auto ETA{"eta"};
-
-template<class T>
-struct freePtr: std::unary_function<const std::shared_ptr<T> &, void> {
-    void operator()(std::shared_ptr<T> &ptr) const { ptr.reset(); }
-};
 
 } // namespace
 
@@ -101,7 +98,7 @@ ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicato
     observeParameter(m_verticalScale);
 
     setParallelizationMode(ParallelizeBlocks);
-    setReducePolicy(vistle::message::ReducePolicy::OverAll);
+    /* setReducePolicy(vistle::message::ReducePolicy::OverAll); */
 }
 
 /**
@@ -176,6 +173,7 @@ bool ReadTsunami::examine(const vistle::Parameter *param)
 bool ReadTsunami::inspectNetCDFVars()
 {
     NcFile ncFile(comm(), m_filedir->getValue(), NcFile::read);
+    sendInfo("read file: %s on rank: %d)", m_filedir->getValue().c_str(), rank());
 
     const int &maxTime = ncFile.getDim("time").getSize();
     setTimesteps(maxTime);
@@ -337,9 +335,11 @@ bool ReadTsunami::read(Token &token, int timestep, int block)
 
 bool ReadTsunami::prepareRead()
 {
+    /* sendInfo("prepareRead: %d", rank()); */
     const auto &part = numPartitions();
+
     m_block_VecScalarPtr = std::vector<std::array<VecScalarPtr, NUM_SCALARS>>(part);
-    m_block_etaIdx = std::vector<std::atomic_int>(part);
+    m_block_etaIdx = std::vector<int>(part);
     m_block_etaVec = std::vector<std::vector<float>>(part);
     m_block_seaPtr = std::vector<Polygons::ptr>(part);
 
@@ -422,8 +422,24 @@ template<class T>
 bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
 {
     try {
-        std::string fileName = m_filedir->getValue();
+        const std::string &fileName = m_filedir->getValue();
+        _mtx.lock();
+        /* int group = blockNum / size(); */
+        /* sendInfo("group: %d", group); */
+        /* auto reader_comm = comm(); */
+        /* boost::mpi::communicator pnetcdf_comm = reader_comm.split(group); */
         NcFile ncFile(comm(), fileName, NcFile::read);
+        _mtx.unlock();
+        /* if (group == 0) */
+        /*     MPI_Barrier(reader_comm); */
+        /* else */
+        /*     return true; */
+        /* else if(rank() != 0) */
+        /*     MPI_Barrier(pnetcdf_comm); */
+        /* sendInfo("new comm size: %d for block %d", pnetcdf_comm.size(), blockNum); */
+        /* sendInfo("after comm: %d", rank()); */
+        /* NcFile ncFile(pnetcdf_comm, fileName, NcFile::read); */
+        /* sendInfo("after ncmpi: %d", rank()); */
 
         // get nc var objects ref
         const NcVar &latVar = ncFile.getVar(m_latLon_Sea[0]);
@@ -648,17 +664,9 @@ bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &time
 bool ReadTsunami::finishRead()
 {
     //reset block partition variables
-    for (auto &vecScalarPtrArr: m_block_VecScalarPtr)
-        for_each(vecScalarPtrArr.begin(), vecScalarPtrArr.end(), freePtr<Vec<Scalar, 1>>());
     m_block_VecScalarPtr.clear();
-
-    for_each(m_block_seaPtr.begin(), m_block_seaPtr.end(), freePtr<Polygons>());
     m_block_seaPtr.clear();
-
-    for (auto &vec: m_block_etaVec)
-        vec.clear();
     m_block_etaVec.clear();
-
     m_block_etaIdx.clear();
     sendInfo("Cleared Cache for rank: " + std::to_string(rank()));
     return true;

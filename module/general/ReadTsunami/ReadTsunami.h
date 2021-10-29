@@ -153,7 +153,8 @@ private:
 
     //helper variables
     std::atomic_bool needSea;
-    std::vector<std::atomic_int> m_block_etaIdx;
+    std::vector<int> m_block_etaIdx;
+    std::vector<std::shared_ptr<boost::mpi::communicator>> m_block_comm;
 
     //Polygons per block
     std::vector<vistle::Polygons::ptr> m_block_seaPtr;
@@ -165,5 +166,6 @@ private:
     //lat = 0; lon = 1
     std::array<std::string, NUM_BLOCKS> m_latLon_Sea;
     std::array<std::string, NUM_BLOCKS> m_latLon_Ground;
+    std::mutex _mtx;
 };
 #endif
