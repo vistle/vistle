@@ -275,6 +275,12 @@ Module::Module(const std::string &moduleName, const int moduleId, mpi::communica
     m_commShmGroup = boost::mpi::communicator(m_comm.split(leader));
     m_commShmLeaders = boost::mpi::communicator(m_comm.split(leader == m_rank ? 1 : MPI_UNDEFINED));
     mpi::all_gather(m_comm, leader, m_shmLeaders);
+    int leaderSubRank = -1;
+    if (shmLeader() == rank()) {
+        leaderSubRank = m_commShmLeaders.rank();
+    }
+    mpi::broadcast(m_commShmGroup, leaderSubRank, 0);
+    mpi::all_gather(m_comm, leaderSubRank, m_shmLeadersSubrank);
 }
 
 const StateTracker &Module::state() const
@@ -635,7 +641,7 @@ bool Module::broadcastObject(const mpi::communicator &comm, Object::const_ptr &o
     if (comm.size() == 1)
         return true;
 
-    if (rank() == root) {
+    if (comm.rank() == root) {
         vecostreambuf<buffer> memstr;
         vistle::oarchive memar(memstr);
         auto saver = std::make_shared<DeepArchiveSaver>();
@@ -690,7 +696,7 @@ bool Module::broadcastObjectViaShm(Object::const_ptr &object, const std::string 
     }
     bool ok = true;
     if (rank() == shmLeader(rank())) {
-        ok = broadcastObject(m_commShmLeaders, object, shmLeader(root));
+        ok = broadcastObject(m_commShmLeaders, object, m_shmLeadersSubrank[root]);
     }
     if (shmLeader(rank()) != shmLeader(root)) {
         m_commShmGroup.barrier();
