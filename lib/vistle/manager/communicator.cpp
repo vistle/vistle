@@ -21,7 +21,6 @@
 #include <vistle/util/tools.h>
 #include <vistle/util/hostname.h>
 #include <vistle/util/crypto.h>
-#include <vistle/control/scanmodules.h>
 
 #include "communicator.h"
 #include "clustermanager.h"
@@ -148,11 +147,6 @@ bool Communicator::connectHub(std::string host, unsigned short port, unsigned sh
     return ret;
 }
 
-const AvailableMap &Communicator::localModules()
-{
-    return m_localModules;
-}
-
 mpi::communicator Communicator::comm() const
 {
     return m_comm;
@@ -197,33 +191,6 @@ bool Communicator::sendHub(const message::Message &message, const MessagePayload
         return false;
     }
     return forwardToMaster(message, payload);
-}
-
-bool Communicator::scanModules(const std::string &dir)
-{
-    bool result = true;
-#if defined(MODULE_THREAD) && defined(MODULE_STATIC)
-    ModuleRegistry::the().availableModules(m_localModules);
-#else
-#if !defined(MODULE_THREAD)
-    if (getRank() == 0) {
-#endif
-        if (m_localModules.empty()) {
-            result = vistle::scanModules(dir, 0, m_localModules);
-        }
-#if !defined(MODULE_THREAD)
-    }
-#endif
-#endif
-    if (getRank() == 0) {
-        for (auto &p: m_localModules) {
-            auto hub = p.second.hub();
-            p.second.setHub(m_hubId);
-            p.second.send(std::bind(&Communicator::sendHub, this, std::placeholders::_1, std::placeholders::_2));
-            p.second.setHub(hub);
-        }
-    }
-    return result;
 }
 
 void Communicator::run()
@@ -528,55 +495,17 @@ bool Communicator::handleMessage(const message::Buffer &message, const MessagePa
 
     std::lock_guard<Communicator> guard(*this);
 
-    switch (message.type()) {
-    case message::SETID: {
+    if (message.type() == message::SETID) {
         const auto &set = message.as<message::SetId>();
         m_hubId = set.getId();
         CERR << "got id " << m_hubId << std::endl;
         message::DefaultSender::init(m_hubId, m_rank);
         Shm::the().setId(m_hubId);
         m_clusterManager->init();
-        //scanModules(m_vistleRoot);
         return connectData();
-        break;
-    }
-    case message::IDENTIFY: {
-        const auto &id = message.as<message::Identify>();
-        CERR << "Identify message: " << id << std::endl;
-        assert(id.identity() == message::Identify::REQUEST);
-        if (getRank() == 0) {
-            message::Identify ident(id, message::Identify::MANAGER);
-            ident.setNumRanks(m_size);
-            ident.computeMac();
-            sendHub(ident);
-        }
-        break;
-    }
-    case message::ADDHUB: {
-        const auto &addhub = message.as<message::AddHub>();
-        CERR << "AddHub message: " << addhub << std::endl;
-        if (addhub.id() == m_hubId) {
-            scanModules(m_vistleRoot);
-        }
-        return m_clusterManager->handle(message, payload);
-    }
-    case message::CREATEMODULECOMPOUND: {
-        buffer pl;
-        if (payload) {
-            std::copy(payload->data(), payload->data() + payload->size(), std::back_inserter(pl));
-        }
-        ModuleCompound comp(message, pl);
-        AvailableModule::Key key(comp.hub(), comp.name());
-        auto av = comp.transform();
-        av.send(std::bind(&Communicator::sendHub, this, std::placeholders::_1, std::placeholders::_2));
-        m_localModules[key] = std::move(av);
-    } break;
-    default: {
-        return m_clusterManager->handle(message, payload);
-    }
     }
 
-    return true;
+    return m_clusterManager->handle(message, payload);
 }
 
 Communicator::~Communicator()

@@ -85,6 +85,7 @@ public:
 
     bool isLocal(int id) const;
     int idToHub(int id) const;
+    int hubId() const;
 
 private:
     void queueMessage(const message::Message &msg);
@@ -95,6 +96,8 @@ private:
     std::shared_ptr<PortManager> m_portManager;
     StateTracker m_stateTracker;
     message::Type m_traceMessages;
+
+    AvailableMap m_localModules;
 
     struct CompModuleHeight {
         bool operator()(const StateTracker::Module &a, const StateTracker::Module &b) { return a.height > b.height; }
@@ -128,6 +131,8 @@ private:
     bool handlePriv(const message::RequestTunnel &tunnel);
     bool handlePriv(const message::Ping &ping);
     bool handlePriv(const message::DataTransferState &state);
+
+    bool scanModules(const std::string &dir);
 
     //! check whether objects are available for a module and compute() should be called
     bool checkExecuteObject(int modId);

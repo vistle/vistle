@@ -51,7 +51,6 @@ public:
     ClusterManager &clusterManager() const;
     DataManager &dataManager() const;
     bool connectHub(std::string host, unsigned short port, unsigned short dataPort);
-    const AvailableMap &localModules();
     boost::mpi::communicator comm() const;
 
     void lock();
@@ -60,7 +59,6 @@ public:
 private:
     bool sendHub(const message::Message &message, const MessagePayload &payload = MessagePayload());
     bool connectData();
-    bool scanModules(const std::string &dir);
 
 
     boost::mpi::communicator m_comm;
@@ -97,8 +95,6 @@ private:
     boost::asio::io_service m_ioService;
     boost::asio::ip::tcp::socket m_hubSocket;
     boost::asio::ip::tcp::resolver::iterator m_dataEndpoint;
-
-    AvailableMap m_localModules;
 
     void setStatus(const std::string &text, int prio);
     void clearStatus();

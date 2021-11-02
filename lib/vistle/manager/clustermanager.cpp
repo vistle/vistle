@@ -36,6 +36,7 @@
 #include <vistle/util/enum.h>
 #include <vistle/util/stopwatch.h>
 #include <vistle/util/sysdep.h>
+#include <vistle/control/scanmodules.h>
 
 #include "clustermanager.h"
 #include "communicator.h"
@@ -253,7 +254,7 @@ ClusterManager::~ClusterManager()
 
 void ClusterManager::init()
 {
-    //ParameterManager::setId(Communicator::the().hubId());
+    //ParameterManager::setId(hubId());
     //ParameterManager::setId(message::Id::Vistle);
     //ParameterManager::setName("Hub");
 
@@ -348,16 +349,21 @@ int ClusterManager::idToHub(int id) const
     return m_stateTracker.getHub(id);
 }
 
+int ClusterManager::hubId() const
+{
+    return Communicator::the().hubId();
+}
+
 
 bool ClusterManager::isLocal(int id) const
 {
     if (id == Id::LocalHub)
         return true;
     if (Id::isHub(id)) {
-        return (id == Communicator::the().hubId());
+        return (id == hubId());
     }
     int hub = idToHub(id);
-    return hub == Communicator::the().hubId();
+    return hub == hubId();
 }
 
 bool ClusterManager::checkBarrier(const message::uuid_t &uuid) const
@@ -365,7 +371,7 @@ bool ClusterManager::checkBarrier(const message::uuid_t &uuid) const
     assert(m_barrierActive);
     size_t numLocal = 0;
     for (const auto &m: m_stateTracker.runningMap) {
-        if (m.second.hub == Communicator::the().hubId() && Id::isModule(m.second.id)) {
+        if (m.second.hub == hubId() && Id::isModule(m.second.id)) {
 #ifdef BARRIER_DEBUG
             CERR << "checkBarrier " << uuid << ": local: " << m.second.id << ":" << m.second.name << std::endl;
 #endif
@@ -425,7 +431,7 @@ bool ClusterManager::dispatch(bool &received)
         if (reachedSet.find(modId) != reachedSet.end())
             continue;
 
-        if (mod.hub == Communicator::the().hubId()) {
+        if (mod.hub == hubId()) {
             bool recv = false;
             message::Buffer buf;
             std::shared_ptr<message::MessageQueue> mq;
@@ -493,7 +499,7 @@ bool ClusterManager::sendAllOthers(int excluded, const message::Message &message
             int senderHub = message.senderId();
             if (senderHub >= Id::ModuleBase)
                 senderHub = idToHub(senderHub);
-            if (senderHub == Communicator::the().hubId()) {
+            if (senderHub == hubId()) {
                 if (getRank() == 0)
                     sendHub(buf, payload);
             }
@@ -513,7 +519,7 @@ bool ClusterManager::sendAllOthers(int excluded, const message::Message &message
         const auto &mod = it->second;
         const int hub = idToHub(modId);
 
-        if (hub == Communicator::the().hubId()) {
+        if (hub == hubId()) {
             mod.send(message, payload);
         }
     }
@@ -547,7 +553,7 @@ bool ClusterManager::sendMessage(const int moduleId, const message::Message &mes
     message::Buffer buf(message);
     if (payload)
         buf.setPayloadName(payload.name());
-    if (hub == Communicator::the().hubId()) {
+    if (hub == hubId()) {
         //std::cerr << "local send to " << moduleId << ": " << buf << std::endl;
         if (destRank == -1 || destRank == getRank()) {
             RunningMap::const_iterator it = runningMap.find(moduleId);
@@ -614,7 +620,6 @@ bool ClusterManager::handle(const message::Buffer &message, const MessagePayload
     }
 
     bool result = true;
-    const int hubId = Communicator::the().hubId();
 
     int senderHub = message.senderId();
     if (senderHub >= Id::ModuleBase)
@@ -624,7 +629,7 @@ bool ClusterManager::handle(const message::Buffer &message, const MessagePayload
         destHub = idToHub(destHub);
     if (message.typeFlags() & Broadcast || message.destId() == Id::Broadcast) {
 #if 0
-      if (message.senderId() != hubId && senderHub == hubId) {
+      if (message.senderId() != hubId() && senderHub == hubId()) {
          CERR << "BC: " << message << std::endl;
          if (getRank() == 0)
             sendHub(message, payload);
@@ -635,7 +640,7 @@ bool ClusterManager::handle(const message::Buffer &message, const MessagePayload
         }
     }
     if (message::Id::isModule(message.destId())) {
-        if (destHub == hubId) {
+        if (destHub == hubId()) {
             //CERR << "module: " << message << std::endl;
             if (message.type() != message::EXECUTE && message.type() != message::CANCELEXECUTE &&
                 message.type() != message::SETPARAMETER) {
@@ -646,13 +651,44 @@ bool ClusterManager::handle(const message::Buffer &message, const MessagePayload
         }
     }
     if (message::Id::isHub(message.destId())) {
-        if (destHub != hubId || message.type() == message::EXECUTE || message.type() == message::CANCELEXECUTE ||
+        if (destHub != hubId() || message.type() == message::EXECUTE || message.type() == message::CANCELEXECUTE ||
             message.type() == message::COVER) {
             return sendHub(message, payload);
         }
     }
 
     switch (message.type()) {
+    case message::IDENTIFY: {
+        const auto &id = message.as<message::Identify>();
+        CERR << "Identify message: " << id << std::endl;
+        assert(id.identity() == message::Identify::REQUEST);
+        if (getRank() == 0) {
+            message::Identify ident(id, message::Identify::MANAGER);
+            ident.setNumRanks(m_size);
+            ident.computeMac();
+            sendHub(ident);
+        }
+        break;
+    }
+
+    case message::ADDHUB: {
+        const auto &addhub = message.as<message::AddHub>();
+        if (addhub.id() == hubId()) {
+            scanModules(Communicator::the().m_vistleRoot);
+        }
+        break;
+    }
+
+    case message::CREATEMODULECOMPOUND: {
+        buffer pl(payload->begin(), payload->end());
+        ModuleCompound comp(message, pl);
+        AvailableModule::Key key(comp.hub(), comp.name());
+        auto av = comp.transform();
+        av.send(std::bind(&Communicator::sendHub, &Communicator::the(), std::placeholders::_1, std::placeholders::_2));
+        m_localModules[key] = std::move(av);
+        break;
+    }
+
     case message::QUIT: {
         const message::Quit &quit = message.as<Quit>();
         result = handlePriv(quit);
@@ -773,7 +809,6 @@ bool ClusterManager::handle(const message::Buffer &message, const MessagePayload
         break;
     }
 
-    case message::ADDHUB:
     case message::REMOVEHUB:
     case message::STARTED:
     case message::ADDPORT:
@@ -821,7 +856,7 @@ bool ClusterManager::handlePriv(const message::Trace &trace)
         sendAllLocal(trace);
     }
 
-    if (trace.module() == Communicator::the().hubId() || !(Id::isModule(trace.module() || Id::isHub(trace.module())))) {
+    if (trace.module() == hubId() || !(Id::isModule(trace.module() || Id::isHub(trace.module())))) {
         if (trace.on())
             m_traceMessages = trace.messageType();
         else
@@ -835,7 +870,7 @@ bool ClusterManager::handlePriv(const message::Trace &trace)
 
 bool ClusterManager::handlePriv(const message::Quit &quit)
 {
-    if (quit.id() == Id::Broadcast || quit.id() == Communicator::the().hubId()) {
+    if (quit.id() == Id::Broadcast || quit.id() == hubId()) {
         sendAllLocal(quit);
         this->quit();
     }
@@ -858,7 +893,7 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn)
         return true;
     }
 
-    if (spawn.destId() != Communicator::the().hubId()) {
+    if (spawn.destId() != hubId()) {
         return true;
     }
     int newId = spawn.spawnId();
@@ -885,7 +920,7 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn)
     message::SpawnPrepared prep(spawn);
 
 #ifdef MODULE_THREAD
-    //AvailableModule::Key key(Communicator::the().hubId(), name);
+    //AvailableModule::Key key(hubId(), name);
     AvailableModule::Key key(0, name);
     const auto &avail = Communicator::the().localModules();
     auto it = avail.find(key);
@@ -1420,7 +1455,7 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj)
             if (obj)
                 Communicator::the().dataManager().notifyTransferComplete(addObj);
         } else {
-            return sendMessage(Communicator::the().hubId(), addObj, destRank);
+            return sendMessage(hubId(), addObj, destRank);
         }
     }
 
@@ -1493,7 +1528,7 @@ bool ClusterManager::handlePriv(const message::AddObjectCompleted &complete)
 
 bool ClusterManager::handlePriv(const message::ExecutionProgress &prog)
 {
-    const bool localSender = idToHub(prog.senderId()) == Communicator::the().hubId();
+    const bool localSender = idToHub(prog.senderId()) == hubId();
     RunningMap::iterator i = runningMap.find(prog.senderId());
     ClusterManager::Module *mod = nullptr;
     if (i == runningMap.end()) {
@@ -1780,7 +1815,7 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam)
     RunningMap::iterator i = runningMap.find(setParam.getModule());
     Module *mod = nullptr;
     if (i == runningMap.end()) {
-        if (setParam.getModule() == Id::Vistle || setParam.getModule() == Communicator::the().hubId()) {
+        if (setParam.getModule() == Id::Vistle || setParam.getModule() == hubId()) {
             if (setParam.getModule() == dest) {
                 std::lock_guard<std::mutex> locker(m_parameterMutex);
                 return ParameterManager::handleMessage(setParam);
@@ -2136,6 +2171,31 @@ bool ClusterManager::isReadyForExecute(int modId) const
 
     //std::cerr << "prepared: " << mod.prepared << ", reduced: " << mod.reduced << std::endl;
     return false;
+}
+
+bool ClusterManager::scanModules(const std::string &dir)
+{
+    bool result = true;
+#if defined(MODULE_THREAD) && defined(MODULE_STATIC)
+    ModuleRegistry::the().availableModules(m_localModules);
+#else
+#if !defined(MODULE_THREAD)
+    if (getRank() == 0) {
+#endif
+        if (m_localModules.empty()) {
+            result = vistle::scanModules(dir, hubId(), m_localModules);
+        }
+#if !defined(MODULE_THREAD)
+    }
+#endif
+#endif
+    if (getRank() == 0) {
+        for (auto &p: m_localModules) {
+            p.second.send(
+                std::bind(&Communicator::sendHub, &Communicator::the(), std::placeholders::_1, std::placeholders::_2));
+        }
+    }
+    return result;
 }
 
 } // namespace vistle
