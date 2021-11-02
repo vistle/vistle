@@ -57,7 +57,7 @@ constexpr auto ETA{"eta"};
 } // namespace
 
 ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicator comm)
-: vistle::Reader(name, moduleID, comm), needSea(false) /*, map_idxEta(0)*/
+: vistle::Reader(name, moduleID, comm), needSea(false), pnetcdf_comm(comm, boost::mpi::comm_create_kind::comm_duplicate)
 {
     // file-browser
     m_filedir = addStringParameter("file_dir", "NC File directory", "/data/ChEESE/tsunami/NewData/cadiz_5m.nc",
@@ -163,6 +163,10 @@ bool ReadTsunami::examine(const vistle::Parameter *param)
     }
 
     const int &nBlocks = m_blocks[0]->getValue() * m_blocks[1]->getValue();
+    if (nBlocks % size() != 0) {
+        sendInfo("Number of blocks = x * MPISIZE!");
+        return false;
+    }
     setPartitions(nBlocks);
     return true;
 }
@@ -172,7 +176,8 @@ bool ReadTsunami::examine(const vistle::Parameter *param)
  */
 bool ReadTsunami::inspectNetCDFVars()
 {
-    NcFile ncFile(comm(), m_filedir->getValue(), NcFile::read);
+    /* NcFile ncFile(comm(), m_filedir->getValue(), NcFile::read); */
+    NcFile ncFile(pnetcdf_comm, m_filedir->getValue(), NcFile::read);
     sendInfo("read file: %s on rank: %d)", m_filedir->getValue().c_str(), rank());
 
     const int &maxTime = ncFile.getDim("time").getSize();
@@ -335,7 +340,6 @@ bool ReadTsunami::read(Token &token, int timestep, int block)
 
 bool ReadTsunami::prepareRead()
 {
-    /* sendInfo("prepareRead: %d", rank()); */
     const auto &part = numPartitions();
 
     m_block_VecScalarPtr = std::vector<std::array<VecScalarPtr, NUM_SCALARS>>(part);
@@ -423,22 +427,11 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
 {
     try {
         const std::string &fileName = m_filedir->getValue();
-        _mtx.lock();
         /* int group = blockNum / size(); */
-        /* sendInfo("group: %d", group); */
-        /* auto reader_comm = comm(); */
-        /* boost::mpi::communicator pnetcdf_comm = reader_comm.split(group); */
-        NcFile ncFile(comm(), fileName, NcFile::read);
+        /* auto thread_comm = pnetcdf_comm.split(group); */
+        _mtx.lock();
+        NcFile ncFile(pnetcdf_comm, fileName, NcFile::read);
         _mtx.unlock();
-        /* if (group == 0) */
-        /*     MPI_Barrier(reader_comm); */
-        /* else */
-        /*     return true; */
-        /* else if(rank() != 0) */
-        /*     MPI_Barrier(pnetcdf_comm); */
-        /* sendInfo("new comm size: %d for block %d", pnetcdf_comm.size(), blockNum); */
-        /* sendInfo("after comm: %d", rank()); */
-        /* NcFile ncFile(pnetcdf_comm, fileName, NcFile::read); */
         /* sendInfo("after ncmpi: %d", rank()); */
 
         // get nc var objects ref

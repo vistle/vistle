@@ -17,6 +17,7 @@
 #define _READTSUNAMI_H
 
 #include <atomic>
+#include <boost/mpi/intercommunicator.hpp>
 #include <memory>
 #include <mpi.h>
 #include <mutex>
@@ -166,6 +167,7 @@ private:
     //lat = 0; lon = 1
     std::array<std::string, NUM_BLOCKS> m_latLon_Sea;
     std::array<std::string, NUM_BLOCKS> m_latLon_Ground;
+    boost::mpi::intercommunicator pnetcdf_comm;
     std::mutex _mtx;
 };
 #endif
