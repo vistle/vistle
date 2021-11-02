@@ -468,6 +468,28 @@ unsigned short Hub::dataPort() const
     return m_dataProxy->port();
 }
 
+std::shared_ptr<proc::child> Hub::launchProcess(const std::string &prog, const std::vector<std::string> &args)
+{
+    auto path = proc::search_path(prog);
+    if (path.empty()) {
+        std::stringstream info;
+        info << "Cannot launch " << prog << ": not found";
+        sendError(info.str());
+        return nullptr;
+    }
+
+    try {
+        return std::make_shared<proc::child>(path, proc::args(args), terminate_with_parent(), m_ioService,
+                                             proc::on_exit(exit_handler));
+    } catch (std::exception &ex) {
+        std::stringstream info;
+        info << "Failed to launch: " << path << ": " << ex.what();
+        sendError(info.str());
+    }
+
+    return nullptr;
+}
+
 std::shared_ptr<proc::child> Hub::launchMpiProcess(const std::vector<std::string> &args)
 {
     assert(!args.empty());
@@ -476,13 +498,11 @@ std::shared_ptr<proc::child> Hub::launchMpiProcess(const std::vector<std::string
 #else
     std::string spawn = "spawn_vistle.sh";
 #endif
-    auto child = std::make_shared<proc::child>(proc::search_path(spawn), proc::args(args), terminate_with_parent(),
-                                               m_ioService, proc::on_exit(exit_handler));
+    auto child = launchProcess(spawn, args);
 #ifndef _WIN32
-    if (!child->valid()) {
+    if (!child || !child->valid()) {
         std::cerr << "failed to execute " << args[0] << " via spawn_vistle.sh, retrying with mpirun" << std::endl;
-        child = std::make_shared<proc::child>(proc::search_path("mpirun"), proc::args(args), terminate_with_parent(),
-                                              m_ioService, proc::on_exit(exit_handler));
+        child = launchProcess("mpirun", args);
     }
 #endif
     return child;
@@ -1448,25 +1468,26 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
 #else
             int id = debug.getModule();
 #endif
-            bool launched = false;
+            bool found = false;
             std::lock_guard<std::mutex> guard(m_processMutex);
             for (auto &p: m_processMap) {
                 if (p.second == id) {
+                    found = true;
                     std::vector<std::string> args;
                     std::stringstream str;
                     str << "-attach-mpi=" << p.first->id();
                     args.push_back(str.str());
-                    auto child = std::make_shared<proc::child>(proc::search_path("ddt"), proc::args(args), m_ioService,
-                                                               proc::on_exit(exit_handler));
-                    std::stringstream info;
-                    info << "Launched ddt as PID " << child->id() << ", attaching to " << p.first->id();
-                    sendInfo(info.str());
-                    m_processMap[child] = Process::Debugger;
-                    launched = true;
+                    auto child = launchProcess("ddt", args);
+                    if (child && child->valid()) {
+                        std::stringstream info;
+                        info << "Launched ddt as PID " << child->id() << ", attaching to " << p.first->id();
+                        sendInfo(info.str());
+                        m_processMap[child] = Process::Debugger;
+                    }
                     break;
                 }
             }
-            if (!launched) {
+            if (!found) {
                 std::stringstream str;
                 str << "Did not find PID to debug module id " << debug.getModule();
 #ifdef MODULE_THREAD
@@ -1867,11 +1888,17 @@ bool Hub::startVrb()
 {
     m_vrbPort = 0;
 
+    std::shared_ptr<proc::child> child;
     proc::ipstream out;
-    auto child = std::make_shared<proc::child>(proc::search_path("vrb"), proc::args({"--tui", "--printport"}),
-                                               terminate_with_parent(), proc::std_out > out, m_ioService,
-                                               proc::on_exit(exit_handler));
-    if (!child->valid()) {
+    try {
+        child = std::make_shared<proc::child>(proc::search_path("vrb"), proc::args({"--tui", "--printport"}),
+                                              terminate_with_parent(), proc::std_out > out, m_ioService,
+                                              proc::on_exit(exit_handler));
+    } catch (std::exception &ex) {
+        CERR << "could not create VRB process: " << ex.what() << std::endl;
+        return false;
+    }
+    if (!child || !child->valid()) {
         CERR << "could not create VRB process" << std::endl;
         return false;
     }
@@ -2054,9 +2081,8 @@ bool Hub::startPythonUi()
     cmd += "from vistle import *; ";
     args.push_back(cmd);
     args.push_back("--");
-    auto child = std::make_shared<proc::child>(proc::search_path(ipython), proc::args(args), terminate_with_parent(),
-                                               m_ioService, proc::on_exit(exit_handler));
-    if (!child->valid()) {
+    auto child = launchProcess(ipython, args);
+    if (!child || !child->valid()) {
         CERR << "failed to spawn ipython " << ipython << std::endl;
         return false;
     }

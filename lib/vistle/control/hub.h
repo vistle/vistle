@@ -35,6 +35,7 @@ public:
     bool sendMessage(socket_ptr sock, const message::Message &msg, const buffer *payload = nullptr);
     unsigned short port() const;
     unsigned short dataPort() const;
+    std::shared_ptr<boost::process::child> launchProcess(const std::string &prog, const std::vector<std::string> &argv);
     std::shared_ptr<boost::process::child> launchMpiProcess(const std::vector<std::string> &argv);
     const std::string &name() const;
 
