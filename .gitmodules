@@ -4,25 +4,25 @@
 	branch = master
 [submodule "3rdparty/qt-solutions"]
 	path = lib/3rdparty/qt-solutions
-	url = git://github.com/qtproject/qt-solutions.git
+	url = https://github.com/qtproject/qt-solutions.git
 	branch = master
 [submodule "3rdparty/thrust"]
 	path = lib/3rdparty/thrust
-	url = git://github.com/thrust/thrust.git
+	url = https://github.com/thrust/thrust.git
 	branch = main
 [submodule "3rdparty/boost-mpi"]
 	path = lib/3rdparty/boost-mpi
-	url = git://github.com/boostorg/mpi.git
+	url = https://github.com/boostorg/mpi.git
 	branch = master
 [submodule "3rdparty/boost-mpi-1.60"]
 	path = lib/3rdparty/boost-mpi-1.60
-	url = git://github.com/boostorg/mpi.git
+	url = https://github.com/boostorg/mpi.git
 [submodule "3rdparty/boost-mpi-1.69"]
 	path = lib/3rdparty/boost-mpi-1.69
-	url = git://github.com/boostorg/mpi.git
+	url = https://github.com/boostorg/mpi.git
 [submodule "3rdparty/pybind11"]
 	path = lib/3rdparty/pybind11
-	url = git://github.com/pybind/pybind11.git
+	url = https://github.com/pybind/pybind11.git
 	branch = stable
 [submodule "3rdparty/eigen3"]
 	path = lib/3rdparty/eigen3
@@ -30,23 +30,23 @@
 	branch = 3.4
 [submodule "3rdparty/yas"]
 	path = lib/3rdparty/yas
-	url = git://github.com/niXman/yas.git
+	url = https://github.com/niXman/yas.git
 	branch = master
 [submodule "3rdparty/zfp"]
 	path = lib/3rdparty/zfp
-	url = git://github.com/LLNL/zfp.git
+	url = https://github.com/LLNL/zfp.git
 	branch = master
 [submodule "vistle/module/univiz"]
 	path = module/univiz
-	url = git://github.com/vistle/univiz.git
+	url = https://github.com/vistle/univiz.git
 	branch = master
 [submodule "vistle/module/general/ReadCovise/file"]
 	path = module/general/ReadCovise/file
-	url = git://github.com/hlrs-vis/covise-file.git
+	url = https://github.com/hlrs-vis/covise-file.git
 	branch = master
 [submodule "3rdparty/cmrc"]
 	path = lib/3rdparty/cmrc
-	url = git://github.com/vector-of-bool/cmrc.git
+	url = https://github.com/vector-of-bool/cmrc.git
 	branch = master
 [submodule "3rdparty/diy"]
 	path = lib/3rdparty/diy
