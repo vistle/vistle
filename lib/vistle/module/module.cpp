@@ -1579,7 +1579,6 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
             // Compute not triggered by adding an object, get objects from cache and determine no. of objects to process
             numObject = 0;
 
-            Index numConnected = 0;
             for (auto &port: inputPorts) {
                 port.second.objects().clear();
                 if (!isConnected(port.second))
@@ -1590,7 +1589,6 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
                     (void)o;
                     objectAdded(srcPort->getModuleID(), srcPort->getName(), &port.second);
                 }
-                ++numConnected;
                 if (port.second.flags() & Port::NOCOMPUTE)
                     continue;
                 if (numObject == 0) {
