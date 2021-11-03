@@ -3,7 +3,7 @@
 
 namespace vistle {
 
-Port::Port(int m, const std::string &n, const Port::Type t, int f)
+Port::Port(int m, const std::string &n, const Port::Type t, unsigned f)
 : moduleID(m), name(n), type(t), m_flags(f), m_parent(nullptr)
 {}
 
@@ -32,7 +32,7 @@ Port::Type Port::getType() const
     return type;
 }
 
-int Port::flags() const
+unsigned Port::flags() const
 {
     return m_flags;
 }

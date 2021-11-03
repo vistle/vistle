@@ -40,13 +40,13 @@ public:
         (MULTI) //< additional ports are created for each connected port
     )
 
-    Port(int moduleID, const std::string &name, Port::Type type, int flags = 0);
+    Port(int moduleID, const std::string &name, Port::Type type, unsigned flags = 0);
     void setDescription(const std::string &desc);
     int getModuleID() const;
     const std::string &getName() const;
     const std::string &getDescription() const;
     Type getType() const;
-    int flags() const;
+    unsigned flags() const;
 
     ObjectList &objects();
     const ObjectList &objects() const;
@@ -83,7 +83,7 @@ private:
     std::string name;
     std::string description;
     Type type;
-    int m_flags;
+    unsigned m_flags;
     ObjectList m_objects;
     ConstPortSet m_connections;
     Port *m_parent;
