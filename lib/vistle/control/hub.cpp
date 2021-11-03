@@ -959,6 +959,19 @@ bool Hub::sendModule(const message::Message &msg, int id, const buffer *payload)
     return sendHub(hub, msg, payload);
 }
 
+bool Hub::sendAll(const message::Message &msg, const buffer *payload)
+{
+    if (m_isMaster) {
+        sendUi(msg, Id::Broadcast, payload);
+        sendManager(msg, Id::LocalHub, payload);
+        sendSlaves(msg, true /* return to sender */, payload);
+    } else {
+        return sendMaster(msg, payload);
+    }
+
+    return true;
+}
+
 int Hub::idToHub(int id) const
 {
     if (id >= Id::ModuleBase)
@@ -1315,43 +1328,6 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
         }
         break;
     }
-    case message::MODULEAVAILABLE: {
-        if (!payload || payload->empty()) {
-            std::cerr << "missing payload for MODULEAVAILABLE message!" << std::endl;
-            break;
-        }
-        AvailableModule mod(msg, *payload);
-        if (mod.hub() == Id::Invalid && senderType == Identify::MANAGER)
-            mod.setHub(m_hubId);
-        if (mod.hub() == Id::Invalid) {
-            CERR << "invalid module message from " << senderType << ": " << mod.print() << std::endl;
-        } else {
-            AvailableModule::Key key(mod.hub(), mod.name());
-            auto modIt = m_availableModules.emplace(key, std::move(mod));
-            modIt.first->second.send([this](const message::Message &avail, const buffer *pl) {
-                bool reverseRetval = false;
-                reverseRetval += !m_stateTracker.handle(avail, pl);
-                if (!m_isMaster)
-                    reverseRetval += !sendMaster(avail, pl);
-                reverseRetval += !sendUi(avail, Id::Broadcast, pl);
-                return reverseRetval;
-            });
-        }
-        return true;
-        break;
-    }
-    case message::CREATEMODULECOMPOUND: {
-        if (!payload) {
-            std::cerr << "missing payload for CREATEMODULECOMPOUND message!" << std::endl;
-            break;
-        }
-        ModuleCompound comp(msg, *payload);
-#ifdef HAVE_PYTHON
-        moduleCompoundToFile(comp);
-#endif
-        comp.send(
-            std::bind(&Hub::sendManager, this, std::placeholders::_1, message::Id::LocalHub, std::placeholders::_2));
-    }
     default:
         break;
     }
@@ -1431,6 +1407,20 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
 
     if (Router::the().toHandler(msg, senderType)) {
         switch (msg.type()) {
+        case message::CREATEMODULECOMPOUND: {
+            if (!payload || payload->empty()) {
+                std::cerr << "missing payload for CREATEMODULECOMPOUND message!" << std::endl;
+                break;
+            }
+            ModuleCompound comp(msg, *payload);
+#ifdef HAVE_PYTHON
+            moduleCompoundToFile(comp);
+#endif
+            comp.send(std::bind(&Hub::sendManager, this, std::placeholders::_1, message::Id::LocalHub,
+                                std::placeholders::_2));
+            break;
+        }
+
         case message::SPAWN: {
             auto &spawn = static_cast<const Spawn &>(msg);
             handlePriv(spawn);
@@ -1452,10 +1442,19 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                 assert(spawn.hubId() == m_hubId);
                 assert(m_ready);
 
-                const AvailableModule *mod = findModule({spawn.hubId(), spawn.getName()}, spawn.spawnId());
-                if (!mod)
-                    return true;
-                spawnModule(mod->path(), spawn.getName(), spawn.spawnId());
+                if (const AvailableModule *mod = findModule({spawn.hubId(), spawn.getName()})) {
+                    spawnModule(mod->path(), spawn.getName(), spawn.spawnId());
+                } else {
+                    if (spawn.hubId() == m_hubId) {
+                        std::stringstream str;
+                        str << "refusing to spawn " << spawn.getName() << ":" << spawn.spawnId()
+                            << ": not in list of available modules";
+                        sendError(str.str());
+                        auto ex = make.message<message::ModuleExit>();
+                        ex.setSenderId(spawn.spawnId());
+                        sendManager(ex);
+                    }
+                }
 #endif
             }
             break;
@@ -1512,16 +1511,6 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
             m_dataProxy->setHubId(m_hubId);
             if (m_managerConnected) {
                 sendManager(set);
-                for (auto &mod: m_localModules) {
-                    mod.setHub(m_hubId);
-                    mod.send([this](const message::Message &avail, const buffer *payload) {
-                        auto reversetRetval = !m_stateTracker.handle(avail, payload);
-                        reversetRetval += !sendMaster(avail, payload);
-                        reversetRetval += !sendUi(avail, message::Id::Broadcast, payload);
-                        return !reversetRetval;
-                    });
-                }
-                m_localModules.clear();
             }
             if (m_managerConnected) {
 #if 0
@@ -1646,9 +1635,7 @@ bool Hub::handlePriv(const message::Spawn &spawn)
         if (shouldMirror)
             notify.setMirroringId(mirroredId);
         m_stateTracker.handle(notify, nullptr);
-        sendManager(notify);
-        sendUi(notify);
-        sendSlaves(notify, true /* return to sender */);
+        sendAll(notify);
         if (doSpawn) {
             notify.setDestId(spawn.hubId());
             CERR << "doSpawn: sendManager: " << notify << std::endl;
@@ -1672,9 +1659,7 @@ bool Hub::handlePriv(const message::Spawn &spawn)
                 mirror.setDestId(Id::Broadcast);
                 m_stateTracker.handle(mirror, nullptr);
                 CERR << "sendManager mirror: " << mirror << std::endl;
-                sendManager(mirror);
-                sendUi(mirror);
-                sendSlaves(mirror, true /* return to sender */);
+                sendAll(mirror);
                 mirror.setDestId(hubid);
                 CERR << "doSpawn: sendManager mirror: " << mirror << std::endl;
                 sendManager(mirror, spawn.hubId());
@@ -2200,6 +2185,9 @@ bool Hub::processStartupScripts()
 
 bool Hub::handlePriv(const message::Execute &exec)
 {
+    if (!m_isMaster)
+        return true;
+
     auto toSend = make.message<message::Execute>(exec);
     if (exec.getExecutionCount() > m_execCount)
         m_execCount = exec.getExecutionCount();
@@ -2208,8 +2196,11 @@ bool Hub::handlePriv(const message::Execute &exec)
 
     if (Id::isModule(exec.getModule())) {
         const int hub = m_stateTracker.getHub(exec.getModule());
-        toSend.setDestId(exec.getModule());
-        sendManager(toSend, hub);
+        //toSend.setDestId(exec.getModule());
+        //sendManager(toSend, hub);
+        toSend.setDestId(message::Broadcast);
+        m_stateTracker.handle(toSend, nullptr);
+        sendAll(toSend);
     } else {
         // execute all sources in dataflow graph
         for (auto &mod: m_stateTracker.runningMap) {
@@ -2225,8 +2216,11 @@ bool Hub::handlePriv(const message::Execute &exec)
             }
             if (isSource) {
                 toSend.setModule(id);
-                toSend.setDestId(id);
-                sendManager(toSend, hub);
+                //toSend.setDestId(id);
+                //sendManager(toSend, hub);
+                toSend.setDestId(message::Broadcast);
+                m_stateTracker.handle(toSend, nullptr);
+                sendAll(toSend);
             }
         }
     }
@@ -2245,6 +2239,7 @@ bool Hub::handlePriv(const message::ExecutionDone &done)
 
     return true;
 }
+
 bool Hub::handlePriv(const message::CancelExecute &cancel)
 {
     auto toSend = make.message<message::CancelExecute>(cancel);
@@ -2312,9 +2307,7 @@ bool Hub::handlePriv(const message::Connect &conn)
 {
     auto c = make.message<message::Connect>(conn);
     c.setNotify(true);
-    sendUi(c);
-    sendManager(c);
-    sendSlaves(c);
+    sendAll(c);
 
     auto modA = conn.getModuleA();
     auto modB = conn.getModuleB();
@@ -2325,9 +2318,7 @@ bool Hub::handlePriv(const message::Connect &conn)
         if (a == modA)
             continue;
         c.setModuleA(a);
-        sendUi(c);
-        sendManager(c);
-        sendSlaves(c);
+        sendAll(c);
     }
     c.setModuleA(modA);
 
@@ -2335,9 +2326,7 @@ bool Hub::handlePriv(const message::Connect &conn)
         if (b == modB)
             continue;
         c.setModuleB(b);
-        sendUi(c);
-        sendManager(c);
-        sendSlaves(c);
+        sendAll(c);
     }
     c.setModuleB(modB);
 
@@ -2348,9 +2337,7 @@ bool Hub::handlePriv(const message::Disconnect &disc)
 {
     auto d = make.message<message::Disconnect>(disc);
     d.setNotify(true);
-    sendUi(d);
-    sendManager(d);
-    sendSlaves(d);
+    sendAll(d);
 
     auto modA = disc.getModuleA();
     auto modB = disc.getModuleB();
@@ -2361,9 +2348,7 @@ bool Hub::handlePriv(const message::Disconnect &disc)
         if (a == modA)
             continue;
         d.setModuleA(a);
-        sendUi(d);
-        sendManager(d);
-        sendSlaves(d);
+        sendAll(d);
     }
     d.setModuleA(modA);
 
@@ -2371,9 +2356,7 @@ bool Hub::handlePriv(const message::Disconnect &disc)
         if (b == modB)
             continue;
         d.setModuleB(b);
-        sendUi(d);
-        sendManager(d);
-        sendSlaves(d);
+        sendAll(d);
     }
     d.setModuleB(modB);
 
@@ -2568,26 +2551,17 @@ void Hub::emergencyQuit()
     }
 }
 
-const AvailableModule *Hub::findModule(const AvailableModule::Key &key, int spawnId)
+const AvailableModule *Hub::findModule(const AvailableModule::Key &key)
 {
-    const AvailableModule *mod = nullptr;
-    auto it = m_availableModules.find(key);
-    if (it != m_availableModules.end()) {
-        mod = &it->second;
+    const auto &avail = m_stateTracker.availableModules();
+    auto it = avail.find(key);
+    if (it == avail.end()) {
+        return nullptr;
     }
-    if (!mod) {
-        if (key.hub == m_hubId) {
-            std::stringstream str;
-            str << "refusing to spawn " << key.name << ":" << spawnId << ": not in list of available modules";
-            sendError(str.str());
-            auto ex = make.message<message::ModuleExit>();
-            ex.setSenderId(spawnId);
-            sendManager(ex);
-        }
-    }
+
+    auto *mod = &it->second;
     return mod;
 }
-
 
 void Hub::spawnModule(const std::string &path, const std::string &name, int spawnId)
 {

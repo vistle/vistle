@@ -46,6 +46,7 @@ public:
     bool sendHub(int id, const message::Message &msg, const buffer *payload = nullptr);
     bool sendUi(const message::Message &msg, int id = message::Id::Broadcast, const buffer *payload = nullptr);
     bool sendModule(const message::Message &msg, int id, const buffer *payload = nullptr);
+    bool sendAll(const message::Message &msg, const buffer *payload = nullptr);
 
     const StateTracker &stateTracker() const;
     StateTracker &stateTracker();
@@ -119,9 +120,6 @@ private:
     boost::asio::signal_set m_signals;
     static void signalHandler(const boost::system::error_code &error, int signal_number);
 
-    AvailableMap m_availableModules;
-    std::vector<AvailableModule> m_localModules;
-
     bool m_isMaster;
     socket_ptr m_masterSocket;
     struct Slave {
@@ -168,7 +166,7 @@ private:
     bool checkChildProcesses(bool emergency = false);
     bool hasChildProcesses(bool ignoreGui = false);
     void emergencyQuit();
-    const AvailableModule *findModule(const AvailableModule::Key &key, int spawnId);
+    const AvailableModule *findModule(const AvailableModule::Key &key);
     void spawnModule(const std::string &path, const std::string &name, int spawnId);
     std::vector<message::Buffer> m_queue;
     bool handleQueue();
