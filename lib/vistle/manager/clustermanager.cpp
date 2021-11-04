@@ -1085,6 +1085,8 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn)
 bool ClusterManager::handlePriv(const message::Connect &connect)
 {
     if (connect.isNotification()) {
+        CERR << "new connection: " << connect << std::endl;
+        Communicator::the().comm().barrier();
         m_stateTracker.handle(connect, nullptr);
         int modFrom = connect.getModuleA();
         int modTo = connect.getModuleB();
@@ -1092,6 +1094,69 @@ bool ClusterManager::handlePriv(const message::Connect &connect)
             sendMessage(modFrom, connect);
         if (isLocal(modTo))
             sendMessage(modTo, connect);
+        if (isLocal(modFrom)) {
+            const char *portFrom = connect.getPortAName();
+            const char *portTo = connect.getPortBName();
+            unsigned numAvailable = 0;
+            const unsigned Error(~0u);
+            auto destPort = portManager().findPort(modTo, portTo);
+            if (!destPort)
+                numAvailable = Error;
+            auto it = m_stateTracker.runningMap.find(modTo);
+            if (it == m_stateTracker.runningMap.end()) {
+                numAvailable = Error;
+            }
+            std::vector<Object::const_ptr> objs;
+            if (const Port *from = portManager().findPort(modFrom, portFrom)) {
+                CERR << "from port=" << from << std::endl;
+                PortKey key(from);
+                auto it = m_outputObjects.find(key);
+                if (numAvailable >= 0 && it != m_outputObjects.end()) {
+                    CERR << it->second.objects.size() << " objects at " << key.port << std::endl;
+                    for (auto &name: it->second.objects) {
+                        auto obj = Shm::the().getObjectFromName(name);
+                        if (!obj) {
+                            CERR << "did not find " << name << std::endl;
+                            numAvailable = Error;
+                            break;
+                        }
+                        objs.emplace_back(obj);
+                        ++numAvailable;
+                    }
+                }
+                CERR << "local conn: on this rank all available=" << numAvailable << std::endl;
+            } else {
+                CERR << "local conn: did not find port" << std::endl;
+                numAvailable = Error;
+            }
+            numAvailable =
+                boost::mpi::all_reduce(Communicator::the().comm(), numAvailable, boost::mpi::maximum<unsigned>());
+            if (numAvailable != Error && numAvailable > 0) {
+                const bool ExecuteOnAdd = false;
+                if (ExecuteOnAdd) {
+                    message::Execute prep(message::Execute::Prepare, modTo);
+                    prep.setSenderId(modFrom);
+                    prep.setDestId(modTo);
+                    prep.setRank(m_rank);
+                    handlePriv(prep);
+                }
+                CERR << "sending " << objs.size() << " objects" << std::endl;
+                for (auto obj: objs) {
+                    message::AddObject add(portFrom, obj, portTo);
+                    add.setSenderId(modFrom);
+                    add.setDestId(modTo);
+                    add.setRank(m_rank);
+                    handlePriv(add);
+                }
+                if (ExecuteOnAdd) {
+                    message::Execute red(message::Execute::Reduce, modTo);
+                    red.setSenderId(modFrom);
+                    red.setDestId(modTo);
+                    red.setRank(m_rank);
+                    handlePriv(red);
+                }
+            }
+        }
     } else {
         sendHub(connect);
     }
@@ -1141,6 +1206,11 @@ bool ClusterManager::handlePriv(const message::ModuleExit &moduleExit)
             return true;
         }
 
+        auto ports = portManager().getOutputPorts(mod);
+        for (const auto *port: ports) {
+            m_outputObjects.erase(port);
+        }
+
         ModuleSet::iterator it = reachedSet.find(mod);
         if (it != reachedSet.end()) {
             reachedSet.erase(it);
@@ -1178,16 +1248,17 @@ bool ClusterManager::handlePriv(const message::Execute &exec)
         break;
     }
     case message::Execute::Prepare: {
+        CERR << "sending prepare to " << exec.getModule() << ", checking for execution" << std::endl;
         assert(!mod.prepared);
         assert(mod.reduced);
         mod.prepared = true;
         mod.reduced = false;
         mod.send(exec);
-        CERR << "sent prepare to " << exec.getModule() << ", checking for execution" << std::endl;
         checkExecuteObject(exec.getModule());
         break;
     }
     case message::Execute::Reduce: {
+        CERR << "sending reduce to " << exec.getModule() << std::endl;
         assert(mod.prepared);
         assert(!mod.reduced);
         mod.prepared = false;
@@ -1290,11 +1361,34 @@ bool ClusterManager::addObjectSource(const message::AddObject &addObj)
         return true;
     }
 
+    const bool resendAfterConnect = message::Id::isModule(addObj.destId());
+
+    if (!resendAfterConnect) {
+        PortKey key(port);
+        auto ec = addObj.meta().executionCounter();
+        auto iter = addObj.meta().iteration();
+        auto &cache = m_outputObjects[key];
+        if (cache.execCount != ec || cache.iteration != iter) {
+            CERR << "clearing cache for " << addObj.senderId() << ":" << addObj.getSenderPort() << std::endl;
+            cache.objects.clear();
+        }
+        cache.objects.emplace_back(addObj.objectName());
+        cache.execCount = ec;
+        cache.iteration = iter;
+        CERR << "caching " << addObj.objectName() << " for " << addObj.senderId() << ":" << addObj.getSenderPort()
+             << ", port=" << port << std::endl;
+    }
+
     const Port::ConstPortSet *list = portManager().getConnectionList(port);
     if (!list) {
         //CERR << "AddObject [" << addObj.objectName() << "] to port [" << addObj.getSenderPort() << "] of [" << addObj.senderId() << "]: connection list not found" << std::endl;
         assert(list);
         return true;
+    }
+    Port::ConstPortSet ports;
+    if (resendAfterConnect) {
+        ports.emplace(portManager().findPort(addObj.destId(), addObj.getDestPort()));
+        list = &ports;
     }
 
     // if object was generated locally, forward message to remote hubs with connected modules
@@ -1310,7 +1404,7 @@ bool ClusterManager::addObjectSource(const message::AddObject &addObj)
                 a.setDestId(hub);
                 a.setDestRank(0);
                 Communicator::the().dataManager().prepareTransfer(a);
-                // TODO: serialize object into message payload
+                // TODO: serialize object into message payload - it's small and saves a round trip
                 sendHub(a, MessagePayload(), hub);
             }
         }
@@ -1333,6 +1427,13 @@ bool ClusterManager::addObjectDestination(const message::AddObject &addObj, Obje
         //CERR << "AddObject [" << addObj.objectName() << "] to port [" << addObj.getSenderPort() << "] of [" << addObj.senderId() << "]: connection list not found" << std::endl;
         assert(list);
         return true;
+    }
+
+    const bool resendAfterConnect = message::Id::isModule(addObj.destId());
+    Port::ConstPortSet ports;
+    if (resendAfterConnect) {
+        ports.emplace(portManager().findPort(addObj.destId(), addObj.getDestPort()));
+        list = &ports;
     }
 
     for (const Port *destPort: *list) {
@@ -1408,7 +1509,10 @@ bool ClusterManager::addObjectDestination(const message::AddObject &addObj, Obje
 
 bool ClusterManager::handlePriv(const message::AddObject &addObj)
 {
+    const bool resendAfterConnect = message::Id::isModule(addObj.destId());
+
     if (addObj.wasBroadcast()) {
+        assert(!resendAfterConnect);
         assert(isLocal(addObj.destId()));
         if (!sendMessage(addObj.destId(), addObj))
             return false;
@@ -1429,6 +1533,9 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj)
     }
 
     const bool localAdd = isLocal(addObj.senderId());
+    if (resendAfterConnect) {
+        assert(localAdd);
+    }
 
     if (localAdd) {
         addObjectSource(addObj);
