@@ -2457,7 +2457,8 @@ bool Hub::hasChildProcesses(bool ignoreGui)
 
 bool Hub::checkChildProcesses(bool emergency)
 {
-    std::lock_guard<std::mutex> guard(m_processMutex);
+    bool hasToQuit = false;
+    std::unique_lock<std::mutex> guard(m_processMutex);
     bool oneDead = false;
     for (auto it = m_processMap.begin(), next = it; it != m_processMap.end(); it = next) {
         next = it;
@@ -2502,7 +2503,7 @@ bool Hub::checkChildProcesses(bool emergency)
             if (id == Process::Manager) {
                 // manager died
                 CERR << "manager died - cannot continue" << std::endl;
-                emergencyQuit();
+                hasToQuit = true;
             }
             if (message::Id::isModule(id) && m_stateTracker.getModuleState(id) != StateObserver::Unknown &&
                 m_stateTracker.getModuleState(id) != StateObserver::Quit) {
@@ -2512,6 +2513,11 @@ bool Hub::checkChildProcesses(bool emergency)
                 sendManager(m); // will be returned and forwarded to master hub
             }
         }
+    }
+    guard.unlock();
+
+    if (hasToQuit) {
+        emergencyQuit();
     }
 
     return oneDead;
