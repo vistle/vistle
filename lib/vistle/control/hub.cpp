@@ -2194,34 +2194,34 @@ bool Hub::handlePriv(const message::Execute &exec)
     if (exec.getExecutionCount() < 0)
         toSend.setExecutionCount(++m_execCount);
 
-    if (Id::isModule(exec.getModule())) {
-        const int hub = m_stateTracker.getHub(exec.getModule());
-        //toSend.setDestId(exec.getModule());
-        //sendManager(toSend, hub);
-        toSend.setDestId(message::Broadcast);
-        m_stateTracker.handle(toSend, nullptr);
-        sendAll(toSend);
-    } else {
-        // execute all sources in dataflow graph
+    bool onlySources = false;
+    std::vector<int> modules{exec.getModule()}; // execute specified module
+    if (!Id::isModule(exec.getModule())) {
+        // or all modules that are a source in the dataflow graph
+        onlySources = true;
+        modules.clear();
         for (auto &mod: m_stateTracker.runningMap) {
             int id = mod.first;
             if (!Id::isModule(id))
                 continue;
-            int hub = mod.second.hub;
-            auto inputs = m_stateTracker.portTracker()->getInputPorts(id);
-            bool isSource = true;
-            for (auto &input: inputs) {
-                if (!input->connections().empty())
-                    isSource = false;
-            }
-            if (isSource) {
-                toSend.setModule(id);
-                //toSend.setDestId(id);
-                //sendManager(toSend, hub);
-                toSend.setDestId(message::Broadcast);
-                m_stateTracker.handle(toSend, nullptr);
-                sendAll(toSend);
-            }
+            modules.push_back(id);
+        }
+    }
+
+    for (auto id: modules) {
+        bool canExec = true;
+        auto inputs = m_stateTracker.portTracker()->getInputPorts(id);
+        for (auto &input: inputs) {
+            if (onlySources && !input->connections().empty())
+                canExec = false;
+            if (input->flags() & Port::COMBINE_BIT)
+                canExec = false;
+        }
+        if (canExec) {
+            toSend.setDestId(message::Broadcast);
+            toSend.setModule(id);
+            m_stateTracker.handle(toSend, nullptr);
+            sendAll(toSend);
         }
     }
 
