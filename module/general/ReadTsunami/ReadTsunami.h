@@ -11,8 +11,10 @@
  **                                                                        **
  **                                                                        **
  **                                                                        **
- ** Date:  25.01.2021                                                      **
+ ** Date:  25.01.2021 Version 1 with netCDF                                **
+ ** Date:  29.10.2021 Version 2 with PnetCDF                               **
 \**************************************************************************/
+
 #ifndef _READTSUNAMI_H
 #define _READTSUNAMI_H
 
@@ -97,6 +99,7 @@ private:
     //Own functions
     void initScalarParamReader();
     bool inspectNetCDFVars();
+    std::unique_ptr<NcFile> openNcmpiFile();
 
     typedef std::function<float(size_t, size_t)> ZCalcFunc;
     template<class U, class T, class V>
@@ -161,7 +164,7 @@ private:
     std::vector<vistle::Polygons::ptr> m_block_seaPtr;
     std::vector<std::vector<float>> m_block_etaVec;
 
-    //Scalar
+    //Scalar per block
     std::vector<std::array<VecScalarPtr, NUM_SCALARS>> m_block_VecScalarPtr;
 
     //lat = 0; lon = 1
