@@ -249,6 +249,8 @@ public:
     std::string getModuleName(int id) const;
     int mirrorId() const;
     std::set<int> getMirrors() const;
+    //request execution of this module
+    void execute() const;
 
 protected:
     void setObjectReceivePolicy(int pol);

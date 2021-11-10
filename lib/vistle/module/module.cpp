@@ -2041,6 +2041,13 @@ std::set<int> Module::getMirrors() const
     return m;
 }
 
+void Module::execute() const
+{
+    message::Execute exec{message::Execute::Request, m_id, m_executionCount};
+    sendMessage(exec);
+}
+
+
 Module::~Module()
 {
     if (m_readyForQuit) {
