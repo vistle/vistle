@@ -1,7 +1,8 @@
-vistle_find_package(VTK COMPONENTS vtkFiltersParallelDIY2 NO_MODULE)
-set(HEADERS GhostCellGenerator.h)
+vistle_find_package(VTK COMPONENTS FiltersParallelDIY2 NO_MODULE)
 
-set(SOURCES GhostCellGenerator.cpp)
+if(NOT VTK_FOUND)
+    vistle_find_package(VTK COMPONENTS vtkFiltersParallelDIY2 NO_MODULE QUIET)
+endif()
 
 if(NOT VTK_FOUND)
     return()
@@ -18,6 +19,9 @@ elseif(${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated -Wno-inconsistent-missing-override")
 endif()
 
+set(HEADERS GhostCellGenerator.h)
+
+set(SOURCES GhostCellGenerator.cpp)
 add_module(GhostCellGenerator "Generate Ghost Cells for UnstructuredGrids" GhostCellGenerator.cpp)
 
 target_include_directories(

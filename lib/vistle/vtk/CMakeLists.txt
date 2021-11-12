@@ -1,15 +1,3 @@
-vistle_find_package(
-    VTK
-    COMPONENTS
-    vtkIOLegacy
-    vtkIOXML
-    vtkFiltersCore
-    vtkCommonCore
-    vtkImagingCore
-    vtkCommonDataModel
-    vtkCommonExecutionModel
-    NO_MODULE)
-
 if(NOT VTK_FOUND)
     return()
 endif()

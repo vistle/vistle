@@ -822,6 +822,32 @@ set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 vistle_find_package(Threads REQUIRED)
 
+vistle_find_package(
+    VTK
+    COMPONENTS
+    IOLegacy
+    IOXML
+    FiltersCore
+    CommonCore
+    ImagingCore
+    CommonDataModel
+    CommonExecutionModel
+    NO_MODULE)
+
+if(NOT VTK_FOUND)
+    vistle_find_package(
+        VTK
+        COMPONENTS
+        vtkIOLegacy
+        vtkIOXML
+        vtkFiltersCore
+        vtkCommonCore
+        vtkImagingCore
+        vtkCommonDataModel
+        vtkCommonExecutionModel
+        NO_MODULE QUIET)
+endif()
+
 # do it here, so that we see the warnings just once
 vistle_find_package(Xdmf)
 

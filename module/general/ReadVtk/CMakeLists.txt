@@ -1,15 +1,3 @@
-vistle_find_package(
-    VTK
-    COMPONENTS
-    vtkIOLegacy
-    vtkIOXML
-    vtkFiltersCore
-    vtkCommonCore
-    vtkImagingCore
-    vtkCommonDataModel
-    vtkCommonExecutionModel
-    NO_MODULE)
-
 vistle_find_package(TINYXML2)
 if(TINYXML2_FOUND)
     add_definitions(-DHAVE_TINYXML2)
