@@ -22,7 +22,7 @@ public:
 private:
     virtual bool beginExecute() override;
     virtual bool endExecute() override;
-    virtual bool changeParameter(const vistle::Parameter *param);
+    virtual bool changeParameter(const vistle::Parameter *param) override;
     void SetBlockExtent(int gid, int xmin, int xmax, int ymin, int ymax, int zmin, int zmax);
 
     void SetDomainExtent(int xmin, int xmax, int ymin, int ymax, int zmin, int zmax);
