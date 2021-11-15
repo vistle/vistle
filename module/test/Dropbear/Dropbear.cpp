@@ -11,7 +11,7 @@
 #include <vistle/util/sleep.h>
 
 using namespace vistle;
-namespace proc = boost::process;
+namespace process = boost::process;
 
 namespace {
 std::vector<std::string> keytypes{"rsa", "dss", "ecdsa"};
@@ -109,7 +109,7 @@ bool Dropbear::prepare()
     std::string command = str.str();
     sendInfo("Executing %s on %s...", command.c_str(), host.c_str());
 
-    auto child = proc::child(proc::search_path(cmd), proc::args(args));
+    auto child = process::child(process::search_path(cmd), process::args(args));
     if (!child.valid()) {
         sendError("Failed to start dropbear on host %s", host.c_str());
     } else {

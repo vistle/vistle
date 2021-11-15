@@ -50,7 +50,7 @@
 //#define DEBUG_DISTRIBUTED
 
 namespace asio = boost::asio;
-namespace proc = boost::process;
+namespace process = boost::process;
 using std::shared_ptr;
 namespace dir = vistle::directory;
 
@@ -69,7 +69,7 @@ enum Id {
 };
 }
 
-struct terminate_with_parent: proc::extend::handler {
+struct terminate_with_parent: process::extend::handler {
 #ifdef BOOST_POSIX_API
     template<typename Executor>
     void on_exec_setup(Executor & /*ex*/)
@@ -468,9 +468,9 @@ unsigned short Hub::dataPort() const
     return m_dataProxy->port();
 }
 
-std::shared_ptr<proc::child> Hub::launchProcess(const std::string &prog, const std::vector<std::string> &args)
+std::shared_ptr<process::child> Hub::launchProcess(const std::string &prog, const std::vector<std::string> &args)
 {
-    auto path = proc::search_path(prog);
+    auto path = process::search_path(prog);
     if (path.empty()) {
         std::stringstream info;
         info << "Cannot launch " << prog << ": not found";
@@ -479,8 +479,8 @@ std::shared_ptr<proc::child> Hub::launchProcess(const std::string &prog, const s
     }
 
     try {
-        return std::make_shared<proc::child>(path, proc::args(args), terminate_with_parent(), m_ioService,
-                                             proc::on_exit(exit_handler));
+        return std::make_shared<process::child>(path, process::args(args), terminate_with_parent(), m_ioService,
+                                             process::on_exit(exit_handler));
     } catch (std::exception &ex) {
         std::stringstream info;
         info << "Failed to launch: " << path << ": " << ex.what();
@@ -490,7 +490,7 @@ std::shared_ptr<proc::child> Hub::launchProcess(const std::string &prog, const s
     return nullptr;
 }
 
-std::shared_ptr<proc::child> Hub::launchMpiProcess(const std::vector<std::string> &args)
+std::shared_ptr<process::child> Hub::launchMpiProcess(const std::vector<std::string> &args)
 {
     assert(!args.empty());
 #ifdef _WIN32
@@ -786,8 +786,8 @@ bool Hub::dispatch()
 #if 0
           std::lock_guard<std::mutex> guard(m_processMutex);
           CERR << "still " << m_processMap.size() << " processes running" << std::endl;
-          for (const auto &proc: m_processMap) {
-              std::cerr << "   id: " << proc.second << ", pid: " << proc.first << std::endl;
+          for (const auto &process: m_processMap) {
+              std::cerr << "   id: " << process.second << ", pid: " << process.first << std::endl;
           }
 #endif
         }
@@ -1879,12 +1879,12 @@ bool Hub::startVrb()
 {
     m_vrbPort = 0;
 
-    std::shared_ptr<proc::child> child;
-    proc::ipstream out;
+    std::shared_ptr<process::child> child;
+    process::ipstream out;
     try {
-        child = std::make_shared<proc::child>(proc::search_path("vrb"), proc::args({"--tui", "--printport"}),
-                                              terminate_with_parent(), proc::std_out > out, m_ioService,
-                                              proc::on_exit(exit_handler));
+        child = std::make_shared<process::child>(process::search_path("vrb"), process::args({"--tui", "--printport"}),
+                                              terminate_with_parent(), process::std_out > out, m_ioService,
+                                              process::on_exit(exit_handler));
     } catch (std::exception &ex) {
         CERR << "could not create VRB process: " << ex.what() << std::endl;
         return false;
@@ -2041,13 +2041,13 @@ bool Hub::startUi(const std::string &uipath, bool replace)
     args.push_back(m_masterHost);
     args.push_back(port);
     if (replace) {
-        boost::process::system(uipath, proc::args(args));
+        boost::process::system(uipath, process::args(args));
         exit(0);
         return false;
     }
 
-    auto child = std::make_shared<proc::child>(uipath, proc::args(args), terminate_with_parent(), m_ioService,
-                                               proc::on_exit(exit_handler));
+    auto child = std::make_shared<process::child>(uipath, process::args(args), terminate_with_parent(), m_ioService,
+                                               process::on_exit(exit_handler));
     if (!child->valid()) {
         CERR << "failed to spawn UI " << uipath << std::endl;
         return false;
