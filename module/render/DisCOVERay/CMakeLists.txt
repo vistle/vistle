@@ -36,90 +36,96 @@ endif()
 # ISA configuration
 ##############################################################
 
-if(EMBREE_MAX_ISA STREQUAL "NONE")
-    set(MAX_ISA 0)
-endif()
-
-if(EMBREE_MAX_ISA STREQUAL "NONE")
-    set(XEON_ISA
-        "AVX512"
-        CACHE STRING "Selects ISA to support.")
+if(CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
+    set(ISPC_TARGETS "neon-i32x8")
+    #list(APPEND ISPC_TARGETS "neon-i32x4")
+    set(__XEON__ 1)
 else()
-    set(XEON_ISA
-        "RANGE"
-        CACHE STRING "Selects ISA to support.")
-endif()
-set_property(
-    CACHE XEON_ISA
-    PROPERTY STRINGS
-             RANGE
-             SSE2
-             SSE3
-             SSSE3
-             SSE4.1
-             SSE4.2
-             AVX
-             AVX-I
-             AVX2
-             AVX512)
+    if(EMBREE_MAX_ISA STREQUAL "NONE")
+        set(MAX_ISA 0)
+    endif()
 
-if(EMBREE_MAX_ISA STREQUAL "SSE2")
-    set(MAX_ISA 1)
-endif()
+    if(EMBREE_MAX_ISA STREQUAL "NONE")
+        set(XEON_ISA
+            "AVX512"
+            CACHE STRING "Selects ISA to support.")
+    else()
+        set(XEON_ISA
+            "RANGE"
+            CACHE STRING "Selects ISA to support.")
+    endif()
+    set_property(
+        CACHE XEON_ISA
+        PROPERTY STRINGS
+        RANGE
+        SSE2
+        SSE3
+        SSSE3
+        SSE4.1
+        SSE4.2
+        AVX
+        AVX-I
+        AVX2
+        AVX512)
 
-if(EMBREE_MAX_ISA STREQUAL "SSE3")
-    set(MAX_ISA 2)
-endif()
+    if(EMBREE_MAX_ISA STREQUAL "SSE2")
+        set(MAX_ISA 1)
+    endif()
 
-if(EMBREE_MAX_ISA STREQUAL "SSSE3")
-    set(MAX_ISA 3)
-endif()
+    if(EMBREE_MAX_ISA STREQUAL "SSE3")
+        set(MAX_ISA 2)
+    endif()
 
-if(EMBREE_MAX_ISA STREQUAL "SSE4.1")
-    set(MAX_ISA 4)
-endif()
+    if(EMBREE_MAX_ISA STREQUAL "SSSE3")
+        set(MAX_ISA 3)
+    endif()
 
-if(EMBREE_MAX_ISA STREQUAL "SSE4.2")
-    set(MAX_ISA 5)
-endif()
+    if(EMBREE_MAX_ISA STREQUAL "SSE4.1")
+        set(MAX_ISA 4)
+    endif()
 
-if(EMBREE_MAX_ISA STREQUAL "AVX")
-    set(MAX_ISA 6)
-endif()
+    if(EMBREE_MAX_ISA STREQUAL "SSE4.2")
+        set(MAX_ISA 5)
+    endif()
 
-if(EMBREE_MAX_ISA STREQUAL "AVX-I")
-    set(MAX_ISA 7)
-endif()
+    if(EMBREE_MAX_ISA STREQUAL "AVX")
+        set(MAX_ISA 6)
+    endif()
 
-if(EMBREE_MAX_ISA STREQUAL "AVX2")
-    set(MAX_ISA 8)
-endif()
+    if(EMBREE_MAX_ISA STREQUAL "AVX-I")
+        set(MAX_ISA 7)
+    endif()
 
-if(EMBREE_MAX_ISA STREQUAL "AVX512")
-    set(MAX_ISA 9)
-endif()
+    if(EMBREE_MAX_ISA STREQUAL "AVX2")
+        set(MAX_ISA 8)
+    endif()
 
-if(MAX_ISA GREATER 0 OR EMBREE_ISA_SSE2)
-    set(ISPC_TARGETS "sse2")
-endif()
+    if(EMBREE_MAX_ISA STREQUAL "AVX512")
+        set(MAX_ISA 9)
+    endif()
 
-if(MAX_ISA GREATER 3 OR EMBREE_ISA_SSE42)
-    list(APPEND ISPC_TARGETS "sse4")
-endif()
+    if(MAX_ISA GREATER 0 OR EMBREE_ISA_SSE2)
+        set(ISPC_TARGETS "sse2")
+    endif()
 
-if(MAX_ISA GREATER 5 OR EMBREE_ISA_AVX)
-    list(APPEND ISPC_TARGETS "avx")
-endif()
+    if(MAX_ISA GREATER 3 OR EMBREE_ISA_SSE42)
+        list(APPEND ISPC_TARGETS "sse4")
+    endif()
 
-if(MAX_ISA GREATER 7 OR EMBREE_ISA_AVX2)
-    list(APPEND ISPC_TARGETS "avx2")
-endif()
+    if(MAX_ISA GREATER 5 OR EMBREE_ISA_AVX)
+        list(APPEND ISPC_TARGETS "avx")
+    endif()
 
-if(MAX_ISA GREATER 8 OR EMBREE_ISA_AVX512SKX)
-    list(APPEND ISPC_TARGETS "avx512skx-i32x16")
-endif()
+    if(MAX_ISA GREATER 7 OR EMBREE_ISA_AVX2)
+        list(APPEND ISPC_TARGETS "avx2")
+    endif()
 
-set(__XEON__ 1)
+    if(MAX_ISA GREATER 8 OR EMBREE_ISA_AVX512SKX)
+        list(APPEND ISPC_TARGETS "avx512skx-i32x16")
+    endif()
+
+    set(__XEON__ 1)
+endif()
 set(ENABLE_ISPC_SUPPORT ON)
 include(ispc)
 include_directories_ispc(${EMBREE_INCLUDE_DIRS})
