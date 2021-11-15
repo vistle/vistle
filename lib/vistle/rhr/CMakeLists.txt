@@ -9,11 +9,8 @@ set(RHR_SOURCES compdecomp.cpp depthquant.cpp predict.cpp rfbext.cpp)
 
 set(RHR_HEADERS compdecomp.h depthquant.h predict.h rfbext.h ReadBackCuda.h)
 
-if(TBB_FOUND)
-    set(RHR_SOURCES ${RHR_SOURCES} rhrserver.cpp)
-    set(RHR_HEADERS ${RHR_HEADERS} rhrserver.h)
-
-endif()
+set(RHR_SOURCES ${RHR_SOURCES} rhrserver.cpp)
+set(RHR_HEADERS ${RHR_HEADERS} rhrserver.h)
 
 set(RHR_CUDA_SOURCES ReadBackCuda.cu)
 
@@ -62,11 +59,6 @@ if(JPEGTURBO_FOUND)
 endif()
 if(ZLIB_FOUND)
     target_link_libraries(vistle_rhr PRIVATE ${ZLIB_LIBRARIES})
-endif()
-
-if(TBB_FOUND)
-    target_include_directories(vistle_rhr SYSTEM PUBLIC ${TBB_INCLUDE_DIRS})
-    target_link_libraries(vistle_rhr PUBLIC ${TBB_LIBRARIES})
 endif()
 
 if(ZFP_FOUND)

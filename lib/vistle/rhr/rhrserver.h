@@ -14,6 +14,7 @@
 #include <deque>
 #include <string>
 #include <map>
+#include <memory>
 
 #include <boost/asio.hpp>
 
@@ -21,8 +22,6 @@
 #include <vistle/core/message.h>
 #include <vistle/core/messagesender.h>
 #include <vistle/renderer/renderobject.h>
-
-#include <tbb/concurrent_queue.h>
 
 #include "export.h"
 #include "compdecomp.h"
@@ -34,6 +33,7 @@ namespace asio = boost::asio;
 using message::RemoteRenderMessage;
 class MessageSender;
 class Module;
+struct EncodeTask;
 
 //! Implement remote hybrid rendering server
 class V_RHREXPORT RhrServer {
@@ -302,13 +302,16 @@ private:
         explicit EncodeResult(tileMsg *msg = nullptr): message(msg) {}
 
         buffer payload;
-        tileMsg *message = nullptr;
-        RemoteRenderMessage *rhrMessage = nullptr;
+        std::unique_ptr<tileMsg> message;
+        std::unique_ptr<RemoteRenderMessage> rhrMessage;
     };
 
     friend struct EncodeTask;
 
-    tbb::concurrent_queue<EncodeResult> m_resultQueue;
+    std::mutex m_taskMutex;
+    typedef std::deque<std::shared_ptr<EncodeTask>> TaskQueue;
+    TaskQueue m_finishedTasks;
+    std::set<std::shared_ptr<EncodeTask>> m_runningTasks;
     size_t m_queuedTiles;
     bool m_firstTile;
 

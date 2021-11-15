@@ -10,14 +10,12 @@
 #include <iostream>
 #include <cassert>
 #include <cmath>
+#include <future>
 
 #include "rfbext.h"
 #include "depthquant.h"
 #include "rhrserver.h"
 #include "compdecomp.h"
-
-#include <tbb/parallel_for.h>
-#include <tbb/concurrent_queue.h>
 
 #include <vistle/util/stopwatch.h>
 #include <vistle/util/netpbmimage.h>
@@ -80,14 +78,10 @@ RhrServer::RhrServer(vistle::Module *module)
 RhrServer::~RhrServer()
 {
     while (m_queuedTiles > 0) {
-        RhrServer::EncodeResult result;
-        if (m_resultQueue.try_pop(result)) {
-            --m_queuedTiles;
-            result.payload.clear();
-            delete result.message;
-        } else {
-            usleep(10000);
-        }
+        usleep(10000);
+        std::lock_guard<std::mutex> locker(m_taskMutex);
+        m_queuedTiles -= m_finishedTasks.size();
+        m_finishedTasks.clear();
     }
     m_clientSocket.reset();
 
@@ -783,8 +777,7 @@ tileMsg *newTileMsg(const RhrServer::ImageParameters &param, const RhrServer::Vi
 
 } // namespace
 
-struct EncodeTask: public tbb::task {
-    tbb::concurrent_queue<RhrServer::EncodeResult> &resultQueue;
+struct EncodeTask {
     float *depth;
     unsigned char *rgba;
     tileMsg *message;
@@ -793,11 +786,12 @@ struct EncodeTask: public tbb::task {
     int x, y, w, h, stride;
     int bpp;
     bool subsamp;
+    RhrServer::EncodeResult result;
+    std::future<void> future; // this is just a dummy shared state
 
-    EncodeTask(tbb::concurrent_queue<RhrServer::EncodeResult> &resultQueue, int viewNum, int x, int y, int w, int h,
+    EncodeTask(int viewNum, int x, int y, int w, int h,
                float *depth, const RhrServer::ImageParameters &param, const RhrServer::ViewParameters &vp)
-    : resultQueue(resultQueue)
-    , depth(depth)
+    : depth(depth)
     , rgba(nullptr)
     , message(nullptr)
     , param(param)
@@ -859,10 +853,9 @@ struct EncodeTask: public tbb::task {
         }
     }
 
-    EncodeTask(tbb::concurrent_queue<RhrServer::EncodeResult> &resultQueue, int viewNum, int x, int y, int w, int h,
+    EncodeTask(int viewNum, int x, int y, int w, int h,
                unsigned char *rgba, const RhrServer::ImageParameters &param, const RhrServer::ViewParameters &vp)
-    : resultQueue(resultQueue)
-    , depth(nullptr)
+    : depth(nullptr)
     , rgba(rgba)
     , message(nullptr)
     , param(param)
@@ -890,7 +883,7 @@ struct EncodeTask: public tbb::task {
         }
     }
 
-    tbb::task *execute() override
+    RhrServer::EncodeResult work()
     {
         auto &msg = *message;
         RhrServer::EncodeResult result(message);
@@ -906,12 +899,11 @@ struct EncodeTask: public tbb::task {
         }
 
         msg.unzippedsize = msg.size = result.payload.size();
-        result.rhrMessage = new RemoteRenderMessage(msg, result.payload.size());
+        result.rhrMessage = std::make_unique<RemoteRenderMessage>(msg, result.payload.size());
         result.payload = message::compressPayload(compress, *result.rhrMessage, result.payload);
         msg.size = result.payload.size();
 
-        resultQueue.push(result);
-        return nullptr; // or a pointer to a new task to be executed immediately
+        return result;
     }
 };
 
@@ -965,18 +957,23 @@ void RhrServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const R
         for (int y = y0; y < y0 + h; y += tileHeight) {
             for (int x = x0; x < x0 + w; x += tileWidth) {
                 // depth
-                auto *dt = new (tbb::task::allocate_root())
-                    EncodeTask(m_resultQueue, viewNum, x, y, std::min(tileWidth, x0 + w - x),
+                auto dt = std::make_shared<EncodeTask>(viewNum, x, y, std::min(tileWidth, x0 + w - x),
                                std::min(tileHeight, y0 + h - y), depth(viewNum), m_imageParam, param);
-                tbb::task::enqueue(*dt);
-                ++m_queuedTiles;
 
                 // color
-                auto *ct = new (tbb::task::allocate_root())
-                    EncodeTask(m_resultQueue, viewNum, x, y, std::min(tileWidth, x0 + w - x),
+                auto ct = std::make_shared<EncodeTask>(viewNum, x, y, std::min(tileWidth, x0 + w - x),
                                std::min(tileHeight, y0 + h - y), rgba(viewNum), m_imageParam, param);
-                tbb::task::enqueue(*ct);
-                ++m_queuedTiles;
+
+                for (auto &task: {dt, ct}) {
+                    ++m_queuedTiles;
+                    std::lock_guard<std::mutex> locker(m_taskMutex);
+                    task->future = std::async(std::launch::async, [this, task]() {
+                        task->result = task->work();
+                        std::lock_guard<std::mutex> locker(m_taskMutex);
+                        m_finishedTasks.emplace_back(task);
+                        //CERR << "FIN: #running=" << m_runningTasks.size() << ", #fin=" << m_finishedTasks.size() << std::endl;
+                    });
+                }
             }
         }
     }
@@ -990,16 +987,23 @@ bool RhrServer::finishTiles(const RhrServer::ViewParameters &param, bool finish,
 
     bool tileReady = false;
     do {
-        RhrServer::EncodeResult result;
+        buffer payload;
         tileReady = false;
-        RemoteRenderMessage *msg = nullptr;
+        std::unique_ptr<RemoteRenderMessage> msg;
         if (m_queuedTiles == 0 && finish) {
             auto *tm = newTileMsg(m_imageParam, param, -1, 0, 0, 0, 0);
-            msg = new RemoteRenderMessage(*tm);
-        } else if (m_resultQueue.try_pop(result)) {
-            --m_queuedTiles;
-            tileReady = true;
-            msg = result.rhrMessage;
+            msg = std::make_unique<RemoteRenderMessage>(*tm);
+        } else {
+            std::lock_guard<std::mutex> locker(m_taskMutex);
+            if (!m_finishedTasks.empty()) {
+                auto &task = m_finishedTasks.back();
+                auto &result = task->result;
+                msg = std::move(result.rhrMessage);
+                payload = std::move(result.payload);
+                m_finishedTasks.pop_back();
+                --m_queuedTiles;
+                tileReady = true;
+            }
         }
         if (msg) {
             tileMsg &tm = static_cast<tileMsg &>(msg->rhr());
@@ -1015,10 +1019,8 @@ bool RhrServer::finishTiles(const RhrServer::ViewParameters &param, bool finish,
             }
             tm.frameNumber = m_framecount;
             if (sendTiles)
-                send(*msg, &result.payload);
+                send(*msg, &payload);
         }
-        delete msg;
-        result.payload.clear();
     } while (m_queuedTiles > 0 && (tileReady || finish));
 
     if (finish) {

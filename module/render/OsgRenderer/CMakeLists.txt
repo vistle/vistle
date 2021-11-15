@@ -6,22 +6,18 @@ if(NOT OPENSCENEGRAPH_FOUND OR NOT OPENGL_FOUND)
     return()
 endif()
 
-if(NOT TBB_FOUND)
-    message("OsgRenderer: TBB not found")
-    return()
-endif()
-
 if(NOT GLEW_FOUND)
     message("OsgRenderer: GLEW not found")
     return()
 endif()
 
-if(TBB_FOUND)
-    #if (NOT OPENMP_FOUND)
-    add_definitions(-DUSE_TBB)
-    #endif()
-else()
+set(USE_TBB FALSE)
+if(OPENMP_FOUND)
     use_openmp()
+elseif(TBB_FOUND)
+    add_definitions(-DUSE_TBB)
+    include_directories(SYSTEM ${TBB_INCLUDE_DIRS})
+    set(USE_TBB TRUE)
 endif()
 
 add_module(OsgRenderer "OpenSceneGraph remote renderer" OSGRenderer.cpp ../COVER/VistleGeometryGenerator.cpp EnableGLDebugOperation.cpp)
@@ -32,7 +28,7 @@ else(WIN32)
     set_source_files_properties(OSGRenderer.cpp PROPERTIES COMPILE_FLAGS "-Wno-overloaded-virtual")
 endif(WIN32)
 
-include_directories(SYSTEM ${OPENSCENEGRAPH_INCLUDE_DIRS} ${GLEW_INCLUDE_DIR} ${OPENGL_INCLUDE_DIRS} ${ICET_INCLUDE_DIRS} ${TBB_INCLUDE_DIRS})
+include_directories(SYSTEM ${OPENSCENEGRAPH_INCLUDE_DIRS} ${GLEW_INCLUDE_DIR} ${OPENGL_INCLUDE_DIRS} ${ICET_INCLUDE_DIRS})
 include_directories(../COVER)
 if(NOT APPLE AND X11_FOUND)
     add_definitions(-DUSE_X11)
@@ -50,5 +46,8 @@ target_link_libraries(
     vistle_rhr
     ${ICET_CORE_LIBS}
     ${ICET_MPI_LIBS}
-    ${ZLIB_LIBRARIES}
-    ${TBB_LIBRARIES})
+    ${ZLIB_LIBRARIES})
+
+if(USE_TBB)
+    target_link_libraries(OsgRenderer ${TBB_LIBRARIES})
+endif()

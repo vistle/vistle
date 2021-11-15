@@ -8,11 +8,6 @@ if(NOT ISPC_EXECUTABLE)
     find_program(ISPC_EXECUTABLE ispc DOC "Path to the ISPC executable.")
 endif()
 
-if(NOT TBB_FOUND)
-    message("DisCOVERay: TBB not found")
-    return()
-endif()
-
 if(NOT EMBREE_FOUND)
     message("DisCOVERay: Embree not found")
     return()
@@ -23,12 +18,12 @@ if(NOT ISPC_EXECUTABLE)
     return()
 endif()
 
-if(TBB_FOUND)
-    #if (NOT OPENMP_FOUND)
-    add_definitions(-DUSE_TBB)
-    #endif()
-else()
+set(USE_TBB FALSE)
+if(OPENMP_FOUND)
     use_openmp()
+elseif(TBB_FOUND)
+    add_definitions(-DUSE_TBB)
+    set(USE_TBB TRUE)
 endif()
 
 if(${CMAKE_CXX_COMPILER_ID} MATCHES "Clang" OR ${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
@@ -169,9 +164,8 @@ include_directories(SYSTEM ${MPI_C_INCLUDE_PATH})
 set(CMAKE_CXX_COMPILE_FLAGS "${CMAKE_CXX_COMPILE_FLAGS} ${MPI_C_COMPILE_FLAGS}")
 set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} ${MPI_C_LINK_FLAGS}")
 
-set(EXTRA_LIBS ${EXTRA_LIBS} MPI::MPI_C)
 add_definitions(-DHAS_MPI)
-include_directories(SYSTEM ${ICET_INCLUDE_DIRS} ${EMBREE_INCLUDE_DIRS} ${TBB_INCLUDE_DIRS})
+include_directories(SYSTEM ${ICET_INCLUDE_DIRS} ${EMBREE_INCLUDE_DIRS})
 
 target_link_libraries(
     DisCOVERay
@@ -182,8 +176,13 @@ target_link_libraries(
     ${ICET_CORE_LIBS}
     ${ZLIB_LIBRARIES}
     ${EMBREE_LIBRARY}
-    ${TBB_LIBRARIES}
-    ${EXTRA_LIBS})
+    MPI::MPI_C)
+
+if(USE_TBB)
+    include_directories(SYSTEM ${TBB_INCLUDE_DIRS})
+    target_link_libraries(OsgRenderer ${TBB_LIBRARIES})
+endif()
+
 set(description "Embree CPU ray casting remote renderer")
 file(APPEND ${MODULE_DESCRIPTION_FILE} DisCOVERay " " ${description}\n)
 #target_compile_definitions(DisCOVERay PRIVATE MODULE_DESCRIPTION="${description}")
