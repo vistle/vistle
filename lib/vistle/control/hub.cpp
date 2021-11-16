@@ -480,7 +480,7 @@ std::shared_ptr<process::child> Hub::launchProcess(const std::string &prog, cons
 
     try {
         return std::make_shared<process::child>(path, process::args(args), terminate_with_parent(), m_ioService,
-                                             process::on_exit(exit_handler));
+                                                process::on_exit(exit_handler));
     } catch (std::exception &ex) {
         std::stringstream info;
         info << "Failed to launch: " << path << ": " << ex.what();
@@ -1883,8 +1883,8 @@ bool Hub::startVrb()
     process::ipstream out;
     try {
         child = std::make_shared<process::child>(process::search_path("vrb"), process::args({"--tui", "--printport"}),
-                                              terminate_with_parent(), process::std_out > out, m_ioService,
-                                              process::on_exit(exit_handler));
+                                                 terminate_with_parent(), process::std_out > out, m_ioService,
+                                                 process::on_exit(exit_handler));
     } catch (std::exception &ex) {
         CERR << "could not create VRB process: " << ex.what() << std::endl;
         return false;
@@ -2047,7 +2047,7 @@ bool Hub::startUi(const std::string &uipath, bool replace)
     }
 
     auto child = std::make_shared<process::child>(uipath, process::args(args), terminate_with_parent(), m_ioService,
-                                               process::on_exit(exit_handler));
+                                                  process::on_exit(exit_handler));
     if (!child->valid()) {
         CERR << "failed to spawn UI " << uipath << std::endl;
         return false;

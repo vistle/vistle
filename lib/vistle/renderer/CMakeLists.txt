@@ -9,9 +9,7 @@ set(renderer_HEADERS ${renderer_HEADERS} parrendmgr.h rhrcontroller.h)
 vistle_add_library(vistle_renderer ${VISTLE_LIB_TYPE} ${renderer_SOURCES} ${renderer_HEADERS})
 vistle_install_headers(renderer ${renderer_HEADERS})
 
-target_include_directories(
-    vistle_renderer SYSTEM
-    PUBLIC ${ICET_INCLUDE_DIRS})
+target_include_directories(vistle_renderer SYSTEM PUBLIC ${ICET_INCLUDE_DIRS})
 
 target_link_libraries(
     vistle_renderer

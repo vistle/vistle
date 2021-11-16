@@ -789,8 +789,8 @@ struct EncodeTask {
     RhrServer::EncodeResult result;
     std::future<void> future; // this is just a dummy shared state
 
-    EncodeTask(int viewNum, int x, int y, int w, int h,
-               float *depth, const RhrServer::ImageParameters &param, const RhrServer::ViewParameters &vp)
+    EncodeTask(int viewNum, int x, int y, int w, int h, float *depth, const RhrServer::ImageParameters &param,
+               const RhrServer::ViewParameters &vp)
     : depth(depth)
     , rgba(nullptr)
     , message(nullptr)
@@ -853,8 +853,8 @@ struct EncodeTask {
         }
     }
 
-    EncodeTask(int viewNum, int x, int y, int w, int h,
-               unsigned char *rgba, const RhrServer::ImageParameters &param, const RhrServer::ViewParameters &vp)
+    EncodeTask(int viewNum, int x, int y, int w, int h, unsigned char *rgba, const RhrServer::ImageParameters &param,
+               const RhrServer::ViewParameters &vp)
     : depth(nullptr)
     , rgba(rgba)
     , message(nullptr)
@@ -957,12 +957,14 @@ void RhrServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const R
         for (int y = y0; y < y0 + h; y += tileHeight) {
             for (int x = x0; x < x0 + w; x += tileWidth) {
                 // depth
-                auto dt = std::make_shared<EncodeTask>(viewNum, x, y, std::min(tileWidth, x0 + w - x),
-                               std::min(tileHeight, y0 + h - y), depth(viewNum), m_imageParam, param);
+                auto dt =
+                    std::make_shared<EncodeTask>(viewNum, x, y, std::min(tileWidth, x0 + w - x),
+                                                 std::min(tileHeight, y0 + h - y), depth(viewNum), m_imageParam, param);
 
                 // color
-                auto ct = std::make_shared<EncodeTask>(viewNum, x, y, std::min(tileWidth, x0 + w - x),
-                               std::min(tileHeight, y0 + h - y), rgba(viewNum), m_imageParam, param);
+                auto ct =
+                    std::make_shared<EncodeTask>(viewNum, x, y, std::min(tileWidth, x0 + w - x),
+                                                 std::min(tileHeight, y0 + h - y), rgba(viewNum), m_imageParam, param);
 
                 for (auto &task: {dt, ct}) {
                     ++m_queuedTiles;

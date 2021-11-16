@@ -57,16 +57,16 @@ else()
     set_property(
         CACHE XEON_ISA
         PROPERTY STRINGS
-        RANGE
-        SSE2
-        SSE3
-        SSSE3
-        SSE4.1
-        SSE4.2
-        AVX
-        AVX-I
-        AVX2
-        AVX512)
+                 RANGE
+                 SSE2
+                 SSE3
+                 SSSE3
+                 SSE4.1
+                 SSE4.2
+                 AVX
+                 AVX-I
+                 AVX2
+                 AVX512)
 
     if(EMBREE_MAX_ISA STREQUAL "SSE2")
         set(MAX_ISA 1)

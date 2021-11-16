@@ -845,7 +845,8 @@ if(NOT VTK_FOUND)
         vtkImagingCore
         vtkCommonDataModel
         vtkCommonExecutionModel
-        NO_MODULE QUIET)
+        NO_MODULE
+        QUIET)
 endif()
 
 # do it here, so that we see the warnings just once
