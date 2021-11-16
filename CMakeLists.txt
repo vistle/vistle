@@ -824,30 +824,17 @@ vistle_find_package(Threads REQUIRED)
 
 vistle_find_package(
     VTK
+    5.0
     COMPONENTS
-    IOLegacy
-    IOXML
-    FiltersCore
-    CommonCore
-    ImagingCore
-    CommonDataModel
-    CommonExecutionModel
-    NO_MODULE)
-
-if(NOT VTK_FOUND)
-    vistle_find_package(
-        VTK
-        COMPONENTS
-        vtkIOLegacy
-        vtkIOXML
-        vtkFiltersCore
-        vtkCommonCore
-        vtkImagingCore
-        vtkCommonDataModel
-        vtkCommonExecutionModel
-        NO_MODULE
-        QUIET)
-endif()
+    vtkIOLegacy
+    vtkIOXML
+    vtkFiltersCore
+    vtkCommonCore
+    vtkImagingCore
+    vtkCommonDataModel
+    vtkCommonExecutionModel
+    NO_MODULE
+    QUIET)
 
 # do it here, so that we see the warnings just once
 vistle_find_package(Xdmf)
