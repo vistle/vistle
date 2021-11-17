@@ -65,7 +65,7 @@ private:
 
     virtual bool beginExecute() override;
     virtual bool endExecute() override;
-    virtual bool changeParameter(const vistle::Parameter *param);
+    bool changeParameter(const vistle::Parameter *param) override;
     virtual bool operate() override;
     //..........................................................................
 

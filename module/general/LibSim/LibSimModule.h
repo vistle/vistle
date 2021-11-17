@@ -25,7 +25,7 @@ public:
 private:
     virtual bool beginExecute() override;
     virtual bool endExecute() override;
-    virtual bool changeParameter(const vistle::Parameter *param);
+    bool changeParameter(const vistle::Parameter *param) override;
 
     void startControllServer();
     bool startAccept(std::shared_ptr<acceptor> a); // async accept initiates handle message toop
