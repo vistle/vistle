@@ -328,6 +328,9 @@ bool Hub::init(int argc, char *argv[])
             uiCmd.clear();
         }
     }
+    if (vm.count("hub") > 0) {
+        uiCmd.clear();
+    }
     bool pythonUi = false;
     if (vm.count("shell")) {
         pythonUi = true;
