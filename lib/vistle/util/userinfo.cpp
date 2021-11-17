@@ -27,20 +27,20 @@ std::string getLoginName()
 
 std::string getRealName()
 {
+    std::string name;
 #ifdef _WIN32
 #else
     setpwent();
     for (auto pw = getpwent(); pw; pw = getpwent()) {
         if (pw->pw_uid == getuid()) {
-            endpwent();
             if (pw->pw_gecos)
-                return pw->pw_gecos;
-            else
-                break;
+                name = pw->pw_gecos;
+            endpwent();
+            break;
         }
     }
 #endif
-    return "";
+    return name;
 }
 
 unsigned long getUserId()
