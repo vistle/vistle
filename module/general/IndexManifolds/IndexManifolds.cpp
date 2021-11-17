@@ -33,7 +33,7 @@ IndexManifolds::IndexManifolds(const std::string &name, int moduleID, mpi::commu
 IndexManifolds::~IndexManifolds()
 {}
 
-bool IndexManifolds::compute(std::shared_ptr<PortTask> task) const
+bool IndexManifolds::compute(std::shared_ptr<BlockTask> task) const
 {
     auto data = task->accept<DataBase>("data_in0");
     Object::const_ptr ingrid;

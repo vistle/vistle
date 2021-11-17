@@ -68,12 +68,12 @@ class RemoveParameter;
 class MessageQueue;
 } // namespace message
 
-class V_MODULEEXPORT PortTask {
+class V_MODULEEXPORT BlockTask {
     friend class Module;
 
 public:
-    explicit PortTask(Module *module);
-    virtual ~PortTask();
+    explicit BlockTask(Module *module);
+    virtual ~BlockTask();
 
     bool hasObject(const Port *p);
     Object::const_ptr takeObject(const Port *p);
@@ -86,7 +86,7 @@ public:
     template<class Type>
     typename Type::const_ptr expect(const std::string &port);
 
-    void addDependency(std::shared_ptr<PortTask> dep);
+    void addDependency(std::shared_ptr<BlockTask> dep);
     void addObject(Port *port, Object::ptr obj);
     void addObject(const std::string &port, Object::ptr obj);
     void passThroughObject(Port *port, Object::const_ptr obj);
@@ -105,7 +105,7 @@ protected:
     std::map<const Port *, Object::const_ptr> m_input;
     std::set<Port *> m_ports;
     std::map<std::string, Port *> m_portsByString;
-    std::set<std::shared_ptr<PortTask>> m_dependencies;
+    std::set<std::shared_ptr<BlockTask>> m_dependencies;
     std::map<Port *, std::deque<Object::ptr>> m_objects;
     std::map<Port *, std::deque<bool>> m_passThrough;
 
@@ -116,7 +116,7 @@ protected:
 class V_MODULEEXPORT Module: public ParameterManager, public MessageSender {
     friend class Reader;
     friend class Renderer;
-    friend class PortTask;
+    friend class BlockTask;
 
 public:
     static bool setup(const std::string &shmname, int moduleID, int rank);
@@ -330,7 +330,7 @@ private:
     virtual bool parameterRemoved(const int senderId, const std::string &name, const message::RemoveParameter &msg);
 
     virtual bool compute(); //< do processing - called on each rank individually
-    virtual bool compute(std::shared_ptr<PortTask> task) const;
+    virtual bool compute(std::shared_ptr<BlockTask> task) const;
 
     std::map<std::string, Port> outputPorts;
     std::map<std::string, Port> inputPorts;
@@ -359,8 +359,8 @@ private:
 
     IntParameter *m_concurrency = nullptr;
     void waitAllTasks();
-    std::shared_ptr<PortTask> m_lastTask;
-    std::deque<std::shared_ptr<PortTask>> m_tasks;
+    std::shared_ptr<BlockTask> m_lastTask;
+    std::deque<std::shared_ptr<BlockTask>> m_tasks;
 
     unsigned m_hardware_concurrency = 1;
 };

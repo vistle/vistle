@@ -15,7 +15,7 @@ public:
     ~WeldVertices();
 
 private:
-    bool compute(std::shared_ptr<vistle::PortTask> task) const override;
+    bool compute(std::shared_ptr<vistle::BlockTask> task) const override;
     vistle::Port *m_in[NumPorts], *m_out[NumPorts];
 };
 
@@ -70,7 +70,7 @@ struct Point {
 };
 
 
-bool WeldVertices::compute(std::shared_ptr<PortTask> task) const
+bool WeldVertices::compute(std::shared_ptr<BlockTask> task) const
 {
     Object::const_ptr oin[NumPorts];
     DataBase::const_ptr din[NumPorts];

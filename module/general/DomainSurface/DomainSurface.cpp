@@ -52,7 +52,7 @@ typename Vec<T, Dim>::ptr remapData(typename Vec<T, Dim>::const_ptr in, const Do
     return out;
 }
 
-bool DomainSurface::compute(std::shared_ptr<PortTask> task) const
+bool DomainSurface::compute(std::shared_ptr<BlockTask> task) const
 {
     //DomainSurface Polygon
     DataBase::const_ptr data;

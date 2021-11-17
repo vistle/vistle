@@ -657,7 +657,7 @@ bool CutGeometry::changeParameter(const Parameter *param)
     return Module::changeParameter(param) && ok;
 }
 
-bool CutGeometry::compute(std::shared_ptr<PortTask> task) const
+bool CutGeometry::compute(std::shared_ptr<BlockTask> task) const
 {
     Object::const_ptr oin = task->expect<Object>("grid_in");
     if (!oin)

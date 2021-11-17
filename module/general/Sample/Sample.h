@@ -18,7 +18,7 @@ public:
 
 private:
     //virtual bool compute() override;
-    virtual bool compute(std::shared_ptr<vistle::PortTask> task) const override;
+    virtual bool compute(std::shared_ptr<vistle::BlockTask> task) const override;
 
     virtual bool reduce(int timestep) override;
     bool objectAdded(int sender, const std::string &senderPort, const vistle::Port *port) override;

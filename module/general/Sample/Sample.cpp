@@ -229,7 +229,7 @@ bool Sample::reduce(int timestep)
     return true;
 }
 
-bool Sample::compute(std::shared_ptr<vistle::PortTask> task) const
+bool Sample::compute(std::shared_ptr<vistle::BlockTask> task) const
 {
     if (m_createCelltree->getValue()) {
         Object::const_ptr obj = task->expect<Object>("data_in");

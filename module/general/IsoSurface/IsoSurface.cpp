@@ -276,7 +276,7 @@ Object::ptr IsoSurface::work(vistle::Object::const_ptr grid, vistle::Vec<vistle:
 }
 
 
-bool IsoSurface::compute(std::shared_ptr<PortTask> task) const
+bool IsoSurface::compute(std::shared_ptr<BlockTask> task) const
 {
 #ifdef CUTTINGSURFACE
     auto mapdata = task->expect<DataBase>(m_mapDataIn);

@@ -8,7 +8,7 @@
 namespace vistle {
 
 template<class Type>
-typename Type::const_ptr PortTask::accept(const Port *port)
+typename Type::const_ptr BlockTask::accept(const Port *port)
 {
     auto it = m_input.find(port);
     if (it == m_input.end())
@@ -27,7 +27,7 @@ typename Type::const_ptr PortTask::accept(const Port *port)
     return ret;
 }
 template<class Type>
-typename Type::const_ptr PortTask::accept(const std::string &port)
+typename Type::const_ptr BlockTask::accept(const std::string &port)
 {
     auto it = m_portsByString.find(port);
     if (it == m_portsByString.end())
@@ -36,7 +36,7 @@ typename Type::const_ptr PortTask::accept(const std::string &port)
 }
 
 template<class Type>
-typename Type::const_ptr PortTask::expect(const Port *port)
+typename Type::const_ptr BlockTask::expect(const Port *port)
 {
     auto it = m_input.find(port);
     assert(it != m_input.end());
@@ -61,7 +61,7 @@ typename Type::const_ptr PortTask::expect(const Port *port)
     return Type::as(obj);
 }
 template<class Type>
-typename Type::const_ptr PortTask::expect(const std::string &port)
+typename Type::const_ptr BlockTask::expect(const std::string &port)
 {
     auto it = m_portsByString.find(port);
     assert(it != m_portsByString.end());

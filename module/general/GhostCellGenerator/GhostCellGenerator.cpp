@@ -58,7 +58,7 @@ GhostCellGenerator::~GhostCellGenerator()
 void checkData(UnstructuredGrid::const_ptr ugrid)
 {}
 
-bool GhostCellGenerator::compute(std::shared_ptr<PortTask> task) const
+bool GhostCellGenerator::compute(std::shared_ptr<BlockTask> task) const
 {
     DataBase::const_ptr data;
     Polygons::const_ptr surface;
