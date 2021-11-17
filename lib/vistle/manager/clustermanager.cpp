@@ -927,7 +927,7 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn)
 #ifdef MODULE_THREAD
     //AvailableModule::Key key(hubId(), name);
     AvailableModule::Key key(0, name);
-    const auto &avail = Communicator::the().localModules();
+    const auto &avail = m_localModules;
     auto it = avail.find(key);
     if (it == avail.end()) {
         CERR << "did not find module " << name << std::endl;
