@@ -95,6 +95,7 @@ private:
     boost::asio::io_service m_ioService;
     std::shared_ptr<acceptor> m_acceptorv4, m_acceptorv6;
 
+    std::mutex m_socketMutex; // protect access to m_sockets and m_clients
     std::map<socket_ptr, message::Identify::Identity> m_sockets;
     std::set<socket_ptr> m_clients;
 

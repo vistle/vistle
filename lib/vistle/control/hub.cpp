@@ -625,6 +625,7 @@ void Hub::handleAccept(std::shared_ptr<acceptor> a, Hub::socket_ptr sock, const 
 
 void Hub::addSocket(Hub::socket_ptr sock, message::Identify::Identity ident)
 {
+    std::unique_lock<std::mutex> lock(m_socketMutex);
     bool ok = m_sockets.insert(std::make_pair(sock, ident)).second;
     assert(ok);
     (void)ok;
@@ -666,6 +667,7 @@ bool Hub::removeSocket(Hub::socket_ptr sock, bool close)
         CERR << "removed client" << std::endl;
     }
 
+    std::unique_lock<std::mutex> lock(m_socketMutex);
     bool ret = m_sockets.erase(sock) > 0;
     sock.reset();
     return ret;
@@ -673,12 +675,14 @@ bool Hub::removeSocket(Hub::socket_ptr sock, bool close)
 
 void Hub::addClient(Hub::socket_ptr sock)
 {
+    std::unique_lock<std::mutex> lock(m_socketMutex);
     //CERR << "new client" << std::endl;
     m_clients.insert(sock);
 }
 
 bool Hub::removeClient(Hub::socket_ptr sock)
 {
+    std::unique_lock<std::mutex> lock(m_socketMutex);
     return m_clients.erase(sock) > 0;
 }
 
@@ -729,11 +733,13 @@ bool Hub::dispatch()
     do {
         socket_ptr sock;
         avail = sizeof(uint32_t) - 1;
+        std::unique_lock<std::mutex> lock(m_socketMutex);
         for (auto &s: m_clients) {
             if (!s) {
                 continue;
             }
             if (!s->is_open()) {
+                lock.unlock();
                 CERR << "socket closed" << std::endl;
                 removeSocket(s);
                 return true;
@@ -742,6 +748,7 @@ bool Hub::dispatch()
             try {
                 s->io_control(command);
             } catch (std::exception &ex) {
+                lock.unlock();
                 CERR << "socket error: " << ex.what() << std::endl;
                 removeSocket(s);
                 return true;
@@ -751,6 +758,7 @@ bool Hub::dispatch()
                 sock = s;
             }
         }
+        lock.unlock();
         boost::system::error_code error;
         if (sock) {
             work = true;
@@ -808,9 +816,12 @@ void Hub::handleWrite(Hub::socket_ptr sock, const boost::system::error_code &err
     }
 
     message::Identify::Identity senderType = message::Identify::UNKNOWN;
-    auto it = m_sockets.find(sock);
-    if (it != m_sockets.end())
-        senderType = it->second;
+    {
+        std::unique_lock<std::mutex> lock(m_socketMutex);
+        auto it = m_sockets.find(sock);
+        if (it != m_sockets.end())
+            senderType = it->second;
+    }
 
     if (senderType == message::Identify::VRB) {
         handleVrb(sock);
@@ -853,11 +864,14 @@ bool Hub::sendMaster(const message::Message &msg, const buffer *payload)
         return false;
     }
 
+    std::unique_lock<std::mutex> lock(m_socketMutex);
     int numSent = 0;
     for (auto &sock: m_sockets) {
         if (sock.second == message::Identify::HUB) {
             if (!sendMessage(sock.first, msg, payload)) {
-                removeSocket(sock.first);
+                auto s = sock.first;
+                lock.unlock();
+                removeSocket(s);
                 break;
             }
             ++numSent;
@@ -877,6 +891,7 @@ bool Hub::sendManager(const message::Message &msg, int hub, const buffer *payloa
         }
 
         int numSent = 0;
+        std::unique_lock<std::mutex> lock(m_socketMutex);
         for (auto &sock: m_sockets) {
             if (sock.second == message::Identify::MANAGER) {
                 if (!sendMessage(sock.first, msg, payload))
@@ -1017,6 +1032,7 @@ bool Hub::hubReady()
         hub.setRealName(vistle::getRealName());
         hub.setHasUserInterface(m_hasUi);
 
+        std::unique_lock<std::mutex> lock(m_socketMutex);
         for (auto &sock: m_sockets) {
             if (sock.second == message::Identify::HUB) {
                 if (m_exposedHost.empty()) {
@@ -1042,6 +1058,7 @@ bool Hub::hubReady()
                 }
             }
         }
+        lock.unlock();
 
         m_stateTracker.handle(hub, nullptr, true);
 
@@ -1061,11 +1078,14 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
     message::Buffer buf(recv);
     Message &msg = buf;
     message::Identify::Identity senderType = message::Identify::UNKNOWN;
-    auto it = m_sockets.find(sock);
-    if (sock) {
-        assert(it != m_sockets.end());
-        if (it != m_sockets.end())
-            senderType = it->second;
+    {
+        std::unique_lock<std::mutex> lock(m_socketMutex);
+        auto it = m_sockets.find(sock);
+        if (sock) {
+            assert(it != m_sockets.end());
+            if (it != m_sockets.end())
+                senderType = it->second;
+        }
     }
 
     if (senderType == Identify::UI)
@@ -1135,7 +1155,11 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
             break;
         }
         if (id.identity() != Identify::UNKNOWN && id.identity() != Identify::REQUEST) {
-            it->second = id.identity();
+            std::unique_lock<std::mutex> lock(m_socketMutex);
+            auto it = m_sockets.find(sock);
+            assert(it != m_sockets.end());
+            if (it != m_sockets.end())
+                it->second = id.identity();
         }
         if (!id.verifyMac()) {
             CERR << "message authentication failed" << std::endl;
