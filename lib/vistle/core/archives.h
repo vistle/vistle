@@ -82,10 +82,10 @@ namespace vistle {
 // repeated from core/object.h
 class Object;
 struct ObjectData;
-typedef std::shared_ptr<Object> obj_ptr;
-typedef std::shared_ptr<const Object> obj_const_ptr;
+typedef std::shared_ptr<Object> obj_ptr; // Object::ptr
+typedef std::shared_ptr<const Object> obj_const_ptr; // Object::const_ptr
 typedef std::function<void(const std::string &name)> ArrayCompletionHandler;
-typedef std::function<void(Object::const_ptr)> ObjectCompletionHandler;
+typedef std::function<void(obj_const_ptr)> ObjectCompletionHandler;
 
 struct SubArchiveDirectoryEntry {
     std::string name;
