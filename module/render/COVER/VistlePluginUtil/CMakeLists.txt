@@ -24,4 +24,5 @@ target_link_libraries(
     PRIVATE ${COVER_LIBRARY}
     PRIVATE ${OPENGL_LIBRARIES}
     PRIVATE vistle_core
-    PRIVATE vistle_module)
+    PRIVATE vistle_module
+    PRIVATE vistle_renderer)
