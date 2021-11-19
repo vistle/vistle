@@ -182,7 +182,7 @@ bool DataManager::requestArray(const std::string &referrer, const std::string &a
 {
     //CERR << "requesting array: " << arrayId << " for " << referrer << std::endl;
     {
-        std::lock_guard<std::mutex> lock(m_requestMutex);
+        std::lock_guard<std::mutex> lock(m_requestArrayMutex);
         auto it = m_requestedArrays.find(arrayId);
         if (it != m_requestedArrays.end()) {
             it->second.push_back(handler);
@@ -208,14 +208,16 @@ bool DataManager::requestObject(const message::AddObject &add, const std::string
     Object::const_ptr obj = Shm::the().getObjectFromName(objId);
     if (obj) {
 #ifdef DEBUG
+        std::lock_guard<std::mutex> lock(m_requestObjectMutex);
         CERR << m_outstandingAdds[objId].size() << " outstanding adds for " << objId << ", already have!" << std::endl;
+        lock.unlock();
 #endif
         handler(obj);
         return false;
     }
 
     {
-        std::lock_guard<std::mutex> lock(m_requestMutex);
+        std::lock_guard<std::mutex> lock(m_requestObjectMutex);
         m_outstandingAdds[objId].insert(add);
 
         auto it = m_requestedObjects.find(objId);
@@ -244,15 +246,17 @@ bool DataManager::requestObject(const std::string &referrer, const std::string &
     Object::const_ptr obj = Shm::the().getObjectFromName(objId);
     if (obj) {
 #ifdef DEBUG
+        std::lock_guard<std::mutex> lock(m_requestObjectMutex);
         CERR << m_outstandingAdds[objId].size() << " outstanding adds for subobj " << objId << ", already have!"
              << std::endl;
+        lock.unlock();
 #endif
         handler(obj);
         return false;
     }
 
     {
-        std::lock_guard<std::mutex> lock(m_requestMutex);
+        std::lock_guard<std::mutex> lock(m_requestObjectMutex);
         auto it = m_requestedObjects.find(objId);
         if (it != m_requestedObjects.end()) {
             it->second.completionHandlers.push_back(handler);
@@ -472,7 +476,7 @@ bool DataManager::handlePriv(const message::SendObject &snd, buffer *payload)
                 return false;
             }
 
-            std::unique_lock<std::mutex> lock(m_requestMutex);
+            std::unique_lock<std::mutex> lock(m_requestArrayMutex);
             //CERR << "restored array " << snd.objectId() << ", dangling in memory" << std::endl;
             auto it = m_requestedArrays.find(snd.objectId());
             if (it == m_requestedArrays.end()) {
@@ -499,7 +503,7 @@ bool DataManager::handlePriv(const message::SendObject &snd, buffer *payload)
         // an object was received
         std::string objName = snd.objectId();
         {
-            std::lock_guard<std::mutex> lock(m_requestMutex);
+            std::lock_guard<std::mutex> lock(m_requestObjectMutex);
             auto objIt = m_requestedObjects.find(objName);
             if (objIt == m_requestedObjects.end()) {
                 CERR << "object " << objName << " unexpected" << std::endl;
@@ -508,7 +512,7 @@ bool DataManager::handlePriv(const message::SendObject &snd, buffer *payload)
         }
 
         auto completionHandler = [this, objName]() mutable -> void {
-            std::unique_lock<std::mutex> lock(m_requestMutex);
+            std::unique_lock<std::mutex> lock(m_requestObjectMutex);
             auto addIt = m_outstandingAdds.find(objName);
             if (addIt == m_outstandingAdds.end()) {
                 // that's normal if a sub-object was loaded
@@ -557,7 +561,7 @@ bool DataManager::handlePriv(const message::SendObject &snd, buffer *payload)
         }
         assert(obj);
 
-        std::lock_guard<std::mutex> lock(m_requestMutex);
+        std::lock_guard<std::mutex> lock(m_requestObjectMutex);
         auto objIt = m_requestedObjects.find(objName);
         if (objIt != m_requestedObjects.end()) {
             objIt->second.obj = obj;

@@ -83,6 +83,7 @@ private:
     std::map<std::string, std::set<message::AddObject>>
         m_outstandingAdds; //!< AddObject messages for which requests to retrieve objects from remote have been sent
 
+    std::mutex m_requestArrayMutex;
     std::map<std::string, std::vector<ArrayCompletionHandler>>
         m_requestedArrays; //!< requests for (sub-)objects which have not been serviced yet
 
@@ -90,9 +91,9 @@ private:
         vistle::Object::const_ptr obj;
         std::vector<ObjectCompletionHandler> completionHandlers;
     };
+    std::mutex m_requestObjectMutex;
     std::map<std::string, OutstandingObject>
         m_requestedObjects; //!< requests for (sub-)objects which have not been serviced yet
-    std::mutex m_requestMutex;
 
     std::mutex m_recvTaskMutex;
     std::deque<std::future<bool>> m_recvTasks;
