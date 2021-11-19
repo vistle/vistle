@@ -21,3 +21,8 @@ InsituException &InsituException::operator<<(int msg)
     m_msg += std::to_string(msg);
     return *this;
 }
+
+const char *InsituException::what() const throw()
+{
+    return m_msg.c_str();
+}

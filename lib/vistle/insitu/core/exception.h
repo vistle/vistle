@@ -17,6 +17,7 @@ public:
     InsituException &operator<<(const std::string &msg);
     InsituException &operator<<(int msg);
     virtual ~InsituException() = default;
+    virtual const char *what() const throw() override;
 
 protected:
     mutable std::string m_msg;
