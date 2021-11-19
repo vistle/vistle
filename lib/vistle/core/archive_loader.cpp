@@ -2,6 +2,8 @@
 #include "archives.h"
 #include "object.h"
 
+#include <boost/mpl/for_each.hpp>
+
 #include <iostream>
 
 namespace vistle {

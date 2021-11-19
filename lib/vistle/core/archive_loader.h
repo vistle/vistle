@@ -1,18 +1,17 @@
 #ifndef VISTLE_ARCHIVE_LOADER_H
 #define VISTLE_ARCHIVE_LOADER_H
 
+#include "export.h"
 #include "archives.h"
 #include "shmvector.h"
 
 #include <vistle/util/buffer.h>
 
-#include <boost/mpl/for_each.hpp>
 #include <cassert>
 #include <set>
 #include <map>
 #include <string>
 #include <memory>
-#include <iostream>
 
 namespace vistle {
 
