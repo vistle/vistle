@@ -592,9 +592,9 @@ Port RemovePort::getPort() const
 }
 
 AddObject::AddObject(const std::string &sender, vistle::Object::const_ptr obj, const std::string &dest)
-: m_name(obj->getName())
-, m_meta(obj->meta())
+: m_meta(obj->meta())
 , m_objectType(obj->getType())
+, m_name(obj->getName())
 , handle(obj->getHandle())
 , m_handleValid(true)
 {
@@ -609,12 +609,12 @@ AddObject::AddObject(const std::string &sender, vistle::Object::const_ptr obj, c
 
 AddObject::AddObject(const AddObject &o)
 : MessageBase<AddObject, ADDOBJECT>(o)
+, m_meta(o.m_meta)
+, m_objectType(o.m_objectType)
 , senderPort(o.senderPort)
 , destPort(o.destPort)
 , m_name(o.m_name)
 , m_shmname(o.m_shmname)
-, m_meta(o.m_meta)
-, m_objectType(o.m_objectType)
 , handle(o.handle)
 , m_handleValid(false)
 {

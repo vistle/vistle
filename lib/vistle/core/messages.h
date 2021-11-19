@@ -12,6 +12,7 @@
 #include "archives_config.h"
 #include "export.h"
 #include "message.h"
+#include "objectmeta.h"
 #include "object.h"
 #include "parameter.h"
 #include "paramvector.h"
@@ -400,12 +401,12 @@ public:
     bool isUnblocking() const;
 
 private:
+    Meta m_meta;
+    int m_objectType = Object::UNKNOWN;
     port_name_t senderPort;
     port_name_t destPort;
     shm_name_t m_name;
     shmsegname_t m_shmname;
-    Meta m_meta;
-    int m_objectType = Object::UNKNOWN;
     shm_handle_t handle = 0;
     mutable bool m_handleValid = false;
     bool m_blocker = false;
