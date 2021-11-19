@@ -17,8 +17,8 @@ namespace vistle {
 namespace insitu {
 
 struct TransformArrayException: public InsituException {
-    TransformArrayException(const std::string &msg): m_msg(msg) {}
-    const char *what() const noexcept override { return ("TransformArrayException" + m_msg).c_str(); }
+    TransformArrayException(const std::string &msg): m_msg("TransformArrayException: " + msg) {}
+    const char *what() const noexcept override { return m_msg.c_str(); }
     std::string m_msg;
 };
 
