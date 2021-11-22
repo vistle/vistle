@@ -17,7 +17,7 @@ class Message;
 } // namespace message
 namespace sensei {
 namespace detail {
-class Internals;
+struct Internals;
 }
 class V_SENSEIEXPORT SenseiAdapter //: public SenseiInterface
 
