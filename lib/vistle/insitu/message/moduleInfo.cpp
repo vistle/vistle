@@ -51,6 +51,14 @@ bool ModuleInfo::update(const Message &msg)
             }
         }
     } break;
+    case InSituMessageType::ConnectPort: {
+        auto m = msg.unpackOrCast<message::ConnectPort>();
+        m_connectedPorts.insert(m.value);
+    } break;
+    case InSituMessageType::DisconnectPort: {
+        auto m = msg.unpackOrCast<message::DisconnectPort>();
+        m_connectedPorts.erase(m.value);
+    } break;
     case InSituMessageType::Ready: {
         m_ready = msg.unpackOrCast<Ready>().value;
     } break;

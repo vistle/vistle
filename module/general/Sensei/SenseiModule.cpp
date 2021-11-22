@@ -4,127 +4,50 @@
 #include <vistle/insitu/util/print.h>
 #include <vistle/util/directory.h>
 #include <vistle/util/listenv4v6.h>
-
+#include <vistle/util/hostname.h>
+#include <vistle/util/sleep.h>
 #include <sstream>
 
 #include <boost/bind.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/mpi.hpp>
 
-
 using namespace std;
+using namespace vistle;
 using namespace vistle::insitu::sensei;
 using namespace vistle::insitu::message;
 
 #define CERR cerr << "SenseiModule[" << rank() << "/" << size() << "] "
 #define DEBUG_CERR vistle::DoNotPrintInstance
 
-SenseiModule::SenseiModule(const string &name, int moduleID, mpi::communicator comm): InSituReader(name, moduleID, comm)
+SenseiModule::SenseiModule(const string &name, int moduleID, mpi::communicator comm): Reader(name, moduleID, comm)
 {
     m_filePath = addStringParameter("path", "path to a .vistle file", directory::configHome() + "/sensei.vistle",
                                     vistle::Parameter::ExistingFilename);
     setParameterFilters(m_filePath, "simulation Files (*.vistle)");
-
-    m_timeout = addIntParameter("timeout time in second", "time in seconds in which simulation must respond", 10);
-    setParameterMinimum(m_timeout, vistle::Integer{0});
+    observeParameter(m_filePath);
 
     m_deleteShm = addIntParameter("deleteShm", "delete the shm potentially used for communication with sensei", false,
                                   vistle::Parameter::Presentation::Boolean);
-
+    observeParameter(m_deleteShm);
     m_intOptions[addIntParameter("frequency", "frequency in which data is retrieved from the simulation", 1)] =
         sensei::IntOptions::NthTimestep;
     m_intOptions[addIntParameter("keep timesteps", "keep data of processed timestep during this execution", true,
                                  vistle::Parameter::Boolean)] = sensei::IntOptions::KeepTimesteps;
+
+    for (auto &pair: m_intOptions)
+        observeParameter(pair.first);
+
+    connectToSim();
 }
 
 SenseiModule::~SenseiModule()
 {
-    if (m_connectedToSim) {
-        m_messageHandler.send(ConnectionClosed{true});
-    }
-}
-
-bool SenseiModule::beginExecute()
-{
-    if (!m_connectedToSim) {
-        return true;
-    }
-    SetPorts::value_type connectedPorts;
-    std::vector<string> p;
-    for (const auto &port: m_outputPorts) {
-        if (port.second->isConnected()) {
-            p.push_back(port.first);
-        }
-    }
-    connectedPorts.push_back(p);
-    m_messageHandler.send(SetPorts{connectedPorts});
-    m_messageHandler.send(Ready{true});
-    return true;
-}
-
-bool SenseiModule::endExecute()
-{
-    if (!m_connectedToSim) {
-        return true;
-    }
-    operate(); // catch newest state
-    if (!m_connectedToSim) {
-        return true;
-    }
-    m_messageHandler.send(Ready{false});
-    while (m_connectedToSim) // wait until we receive the confirmation that the sim stopped making vistle objects or
-    // timeout
-    {
-        auto msg = m_messageHandler.timedRecv(m_timeout->getValue());
-        if (msg.type() == InSituMessageType::Invalid) {
-            CERR << "sensei simulation timed out" << endl;
-            disconnectSim();
-            return false;
-        } else if (msg.type() == InSituMessageType::Ready && !msg.unpackOrCast<Ready>().value) {
-            return true;
-        } else {
-            handleMessage(msg);
-        }
-    }
-
-    return true;
-}
-
-bool SenseiModule::changeParameter(const vistle::Parameter *param)
-{
-    Module::changeParameter(param);
-    if (!param) {
-        return true;
-    }
-    if (param == m_deleteShm) {
-        m_messageHandler.removeShm();
-    } else if (param == m_filePath) {
-        connectToSim();
-    } else if (std::find(m_commandParameter.begin(), m_commandParameter.end(), param) != m_commandParameter.end()) {
-        m_messageHandler.send(ExecuteCommand({param->getName(), ""}));
-    } else {
-        auto option = dynamic_cast<const vistle::IntParameter *>(param);
-        auto it = m_intOptions.find(option);
-        if (it != m_intOptions.end()) {
-            m_messageHandler.send(SenseiIntOption{{it->second, option->getValue()}});
-        }
-    }
-
-    return InSituReader::changeParameter(param);
-}
-
-bool vistle::insitu::sensei::SenseiModule::operate()
-{
-    bool didWork = false;
-    while (recvAndhandleMessage()) {
-        didWork = true;
-    };
-    return didWork;
+    terminateCommunicationThread();
 }
 
 void SenseiModule::connectToSim()
 {
-    reconnect();
     CERR << "trying to connect to sim with file " << m_filePath->getValue() << endl;
     std::ifstream infile(m_filePath->getValue());
     if (infile.fail()) {
@@ -142,13 +65,20 @@ void SenseiModule::connectToSim()
     }
 
     infile.close();
-
+    initRecvFromSimQueue();
+    startCommunicationThread();
     CERR << " key = " << key << endl;
     m_messageHandler.initialize(key, m_rank);
     m_messageHandler.send(ShmInfo{gatherModuleInfo()});
     m_connectedToSim = true;
+    sendIntOptions();
+}
+
+void SenseiModule::sendIntOptions()
+{
     for (const auto &option: m_intOptions) {
         m_messageHandler.send(SenseiIntOption{{option.second, option.first->getValue()}});
+        CERR << "intOption: " << option.first->getName() << " " << option.first->getValue() << std::endl;
     }
 }
 
@@ -156,6 +86,127 @@ void SenseiModule::disconnectSim()
 {
     m_connectedToSim = false;
     m_messageHandler.reset();
+    m_terminateCommunication = true;
+}
+
+void SenseiModule::startCommunicationThread()
+{
+    m_terminateCommunication = false;
+    m_communicationThread = std::make_unique<std::thread>(std::bind(&SenseiModule::communicateWithSim, this));
+}
+
+void SenseiModule::terminateCommunicationThread()
+{
+    if (m_communicationThread && m_communicationThread->joinable()) {
+        m_terminateCommunication = true;
+        m_communicationThread->join();
+    }
+}
+
+void SenseiModule::communicateWithSim()
+{
+    while (!m_terminateCommunication) {
+        bool workDone = false;
+        while (recvAndhandleMessage()) {
+            workDone = true;
+        }
+        if (recvVistleObjects()) {
+            workDone = true;
+        }
+        vistle::adaptive_wait(workDone);
+    }
+    if (m_connectedToSim) {
+        m_messageHandler.send(ConnectionClosed{true});
+    }
+}
+
+void SenseiModule::initRecvFromSimQueue()
+{
+    std::string msqName = vistle::message::MessageQueue::createName(
+        ("recvFromSim" + std::to_string(++m_instanceNum)).c_str(), id(), rank());
+    std::cerr << "created msqName " << msqName << std::endl;
+    try {
+        m_receiveFromSimMessageQueue.reset(vistle::message::MessageQueue::create(msqName));
+        CERR << "receiveFromSimMessageQueue name = " << msqName << std::endl;
+    } catch (boost::interprocess::interprocess_exception &ex) {
+        throw vistle::exception(std::string("opening recv from sim message queue with name ") + msqName + ": " +
+                                ex.what());
+    }
+}
+
+vistle::insitu::message::ModuleInfo::ShmInfo SenseiModule::gatherModuleInfo() const
+{
+    message::ModuleInfo::ShmInfo shmInfo;
+    shmInfo.hostname = vistle::hostname();
+    shmInfo.id = id();
+    shmInfo.mpiSize = size();
+    shmInfo.name = name();
+    shmInfo.numCons = m_instanceNum;
+    shmInfo.shmName = vistle::Shm::the().instanceName();
+    CERR << "vistle::Shm::the().instanceName() = " << vistle::Shm::the().instanceName()
+         << " vistle::Shm::the().name() = " << vistle::Shm::the().name() << endl;
+    return shmInfo;
+}
+
+bool SenseiModule::examine(const Parameter *param)
+{
+    if (!param) {
+        CERR << "examinating no param" << std::endl;
+        if (m_connectedToSim) {
+            sendIntOptions();
+        }
+
+        return true;
+    }
+    CERR << "examinating " << param->getName() << std::endl;
+    if (param == m_deleteShm) {
+        m_messageHandler.removeShm();
+    } else if (param == m_filePath) {
+        connectToSim();
+        return true;
+    }
+    std::lock_guard<std::mutex> g{m_communicationMutex};
+    if (std::find(m_commandParameter.begin(), m_commandParameter.end(), param) != m_commandParameter.end()) {
+        m_messageHandler.send(ExecuteCommand({param->getName(), ""}));
+    } else {
+        auto option = dynamic_cast<const vistle::IntParameter *>(param);
+        auto it = m_intOptions.find(option);
+        if (it != m_intOptions.end()) {
+            m_messageHandler.send(SenseiIntOption{{it->second, option->getValue()}});
+            m_ownExecutionCounter++;
+        }
+    }
+    return true;
+}
+bool SenseiModule::read(Reader::Token &token, int timestep, int block)
+{
+    std::lock_guard<std::mutex> g{m_communicationMutex};
+    m_executionCount = m_ownExecutionCounter;
+    for (const auto &obj: m_vistleObjects) {
+        updateMeta(obj);
+        sendMessage(obj);
+    }
+    m_vistleObjects.clear();
+    return true;
+}
+
+void SenseiModule::updateMeta(const vistle::message::Buffer &obj)
+{
+    if (obj.type() == vistle::message::ADDOBJECT) {
+        auto &objMsg = obj.as<vistle::message::AddObject>();
+        m_iteration = objMsg.meta().iteration();
+        m_executionCount = objMsg.meta().executionCounter();
+    }
+}
+
+void SenseiModule::connectionAdded(const Port *from, const Port *to)
+{
+    m_messageHandler.send(ConnectPort{from->getName()});
+}
+
+void SenseiModule::connectionRemoved(const Port *from, const Port *to)
+{
+    m_messageHandler.send(DisconnectPort{from->getName()});
 }
 
 bool SenseiModule::recvAndhandleMessage()
@@ -165,6 +216,29 @@ bool SenseiModule::recvAndhandleMessage()
         std::cerr << "received message of type " << static_cast<int>(msg.type()) << std::endl;
     }
     return handleMessage(msg);
+}
+
+bool SenseiModule::recvVistleObjects()
+{
+    std::lock_guard<std::mutex> g{m_communicationMutex};
+    if (chacheVistleObjects()) {
+        CERR << "requesting execution" << std::endl;
+        execute();
+    }
+    return !m_vistleObjects.empty();
+}
+
+bool SenseiModule::chacheVistleObjects()
+{
+    bool retval = false;
+    vistle::message::Buffer buf;
+    while (m_receiveFromSimMessageQueue && m_receiveFromSimMessageQueue->tryReceive(buf)) {
+        if (buf.type() != vistle::message::INSITU) {
+            m_vistleObjects.push_back(buf);
+            retval = true;
+        }
+    }
+    return retval;
 }
 
 bool SenseiModule::handleMessage(Message &msg)
@@ -207,8 +281,11 @@ bool SenseiModule::handleMessage(Message &msg)
             auto lb = std::find_if(m_commandParameter.begin(), m_commandParameter.end(),
                                    [portName](const auto &val) { return val->getName() == portName; });
             if (lb == m_commandParameter.end()) {
-                m_commandParameter.insert(addIntParameter(portName, "trigger command on change", false,
-                                                          vistle::Parameter::Presentation::Boolean));
+                auto p = m_commandParameter
+                             .insert(addIntParameter(portName, "trigger command on change", false,
+                                                     vistle::Parameter::Presentation::Boolean))
+                             .first;
+                observeParameter(*p);
             }
         }
     } break;
@@ -219,7 +296,6 @@ bool SenseiModule::handleMessage(Message &msg)
         auto state = msg.unpackOrCast<ConnectionClosed>();
         if (state.value) {
             CERR << "the simulation disconnected properly" << endl;
-            ;
         } else {
             CERR << " tcp connection closed...disconnecting." << endl;
         }

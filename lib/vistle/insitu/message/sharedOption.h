@@ -24,7 +24,7 @@ struct SharedOption {
     }
     const Identifier name() const { return m_name; }
 
-    int value() const { return m_val; }
+    ValueType value() const { return m_val; }
     ARCHIVE_ACCESS
     template<class Archive>
     void serialize(Archive &ar)

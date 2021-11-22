@@ -37,7 +37,6 @@ struct Internals {
     std::unique_ptr<vistle::insitu::message::AddObjectMsq>
         sendMessageQueue; // Queue to send addObject messages to module
 
-    insitu::message::SyncShmIDs shmIDs;
     message::InSituShmMessage messageHandler;
     // options that can be set in the module
     EnumArray<IntOption, IntOptions> intOptions{IntOption{IntOptions::NthTimestep, 1},
@@ -80,8 +79,9 @@ SenseiAdapter::~SenseiAdapter()
 
 bool SenseiAdapter::Execute(size_t timestep)
 {
+    CERR << "executing timestep " << timestep << std::endl;
     if (stillConnected() && !quitRequested() && WaitedForModuleCommands()) {
-        if (m_internals->moduleInfo.isReady() && haveToProcessTimestep(timestep)) {
+        if (haveToProcessTimestep(timestep)) {
             processData();
         }
         return true;
@@ -176,12 +176,13 @@ void SenseiAdapter::processData()
 
     auto dataObjects = m_callbacks.getData(m_usedData);
     for (const auto &dataObject: dataObjects) {
-        bool keepTimesteps = m_internals->intOptions[IntOptions::KeepTimesteps].value();
-        keepTimesteps ? dataObject.object()->setTimestep(m_processedTimesteps)
-                      : dataObject.object()->setIteration(m_processedTimesteps);
+        updateMeta(dataObject.object());
         addObject(dataObject.portName(), dataObject.object());
     }
-    ++m_processedTimesteps;
+    if (m_internals->intOptions[IntOptions::KeepTimesteps].value())
+        ++m_processedTimesteps;
+    else
+        ++m_iterations;
 }
 
 bool SenseiAdapter::Finalize()
@@ -244,18 +245,13 @@ bool SenseiAdapter::recvAndHandeMessage(bool blocking)
     case InSituMessageType::ShmInfo: {
         return initModule(msg);
     } break;
-    case InSituMessageType::SetPorts: {
+    case InSituMessageType::SetPorts:
+    case InSituMessageType::ConnectPort:
+    case InSituMessageType::DisconnectPort: {
         calculateUsedData();
     } break;
     case InSituMessageType::Ready: {
         m_processedTimesteps = 0;
-        if (m_internals->moduleInfo.isReady()) {
-            vistle::Shm::the().setObjectID(m_internals->shmIDs.objectID());
-            vistle::Shm::the().setArrayID(m_internals->shmIDs.arrayID());
-        } else {
-            m_internals->shmIDs.set(vistle::Shm::the().objectID(), vistle::Shm::the().arrayID());
-            m_internals->messageHandler.send(Ready{false}); // confirm that we are done creating vistle objects
-        }
     } break;
     case InSituMessageType::ExecuteCommand: {
         ExecuteCommand exe = msg.unpackOrCast<ExecuteCommand>();
@@ -269,12 +265,17 @@ bool SenseiAdapter::recvAndHandeMessage(bool blocking)
     case InSituMessageType::ConnectionClosed: {
         m_internals->sendMessageQueue.reset(nullptr);
         m_connected = false;
-        m_internals->shmIDs.close();
         CERR << "connection closed" << endl;
     } break;
     case InSituMessageType::SenseiIntOption: {
         auto option = msg.unpackOrCast<SenseiIntOption>().value;
         update(m_internals->intOptions, option);
+        if (option.name() == sensei::IntOptions::KeepTimesteps) {
+            m_processedTimesteps = 0;
+            ++m_iterations;
+        }
+        ++m_executionCount;
+
     } break;
     default:
         break;
@@ -325,7 +326,11 @@ bool SenseiAdapter::initializeVistleEnv()
 {
     try {
 #ifndef MODULE_THREAD
-        vistle::registerTypes();
+        static bool typesRegistered = false;
+        if (!typesRegistered) {
+            vistle::registerTypes(); //must not be called more than once per process
+            typesRegistered = true;
+        }
 #endif
         initializeMessageQueues();
     } catch (const vistle::exception &ex) {
@@ -346,11 +351,12 @@ void SenseiAdapter::initializeMessageQueues() throw()
          << endl;
     bool shmPerRank = vistle::shmPerRank();
     vistle::Shm::attach(shmName, m_internals->moduleInfo.id(), m_rank, shmPerRank);
-
+    static int numCalls = 0;
+    ++numCalls;
+    std::string suffix = "_sim";
+    suffix += numCalls;
+    vistle::Shm::setExternalSuffix(suffix);
     m_internals->sendMessageQueue.reset(new AddObjectMsq(m_internals->moduleInfo, m_rank));
-
-    m_internals->shmIDs.initialize(m_internals->moduleInfo.id(), m_rank, m_internals->moduleInfo.uniqueSuffix(),
-                                   SyncShmIDs::Mode::Attach);
 }
 
 std::string SenseiAdapter::portName(const std::string &meshName, const std::string &varName)
@@ -395,11 +401,19 @@ void SenseiAdapter::addObject(const std::string &port, vistle::Object::const_ptr
     }
 }
 
+void SenseiAdapter::updateMeta(vistle::Object::ptr obj) const
+{
+    if (obj) {
+        obj->setCreator(m_internals->moduleInfo.id());
+        obj->setExecutionCounter(m_executionCount);
+        obj->setTimestep(m_processedTimesteps);
+        obj->setIteration(m_iterations);
+        CERR << "adding object for timestep " << m_processedTimesteps << " on iteration " << m_iterations << std::endl;
+    }
+}
+
+
 bool SenseiAdapter::isMOduleReady()
 {
     return m_internals->moduleInfo.isReady();
-}
-void SenseiAdapter::updateShmIDs()
-{
-    m_internals->shmIDs.set(vistle::Shm::the().objectID(), vistle::Shm::the().arrayID());
 }

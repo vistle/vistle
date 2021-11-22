@@ -46,6 +46,8 @@ enum class InSituMessageType {
     SetCustomCommands,
     SetPorts, // detected ports from sim to module <--> connected ports from module
     // to Engine
+    ConnectPort,
+    DisconnectPort,
     ShmInfo
 #ifdef MODULE_THREAD
     ,
@@ -105,6 +107,8 @@ DEFINE_IN_SITU_MESSAGE(ConnectionClosed, bool) // true -> disconnected on purpos
 DEFINE_IN_SITU_MESSAGE(ShmInfo, ModuleInfo::ShmInfo)
 DEFINE_IN_SITU_MESSAGE(AddObject, std::string)
 DEFINE_IN_SITU_MESSAGE(SetPorts, std::vector<std::vector<std::string>>)
+DEFINE_IN_SITU_MESSAGE(ConnectPort, std::string)
+DEFINE_IN_SITU_MESSAGE(DisconnectPort, std::string)
 DEFINE_IN_SITU_MESSAGE(SetCommands, std::vector<std::string>)
 DEFINE_IN_SITU_MESSAGE(SetCustomCommands, std::vector<std::string>)
 DEFINE_IN_SITU_MESSAGE(Ready, bool)

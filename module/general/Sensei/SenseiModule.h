@@ -10,16 +10,17 @@
 #include <vistle/insitu/message/InSituMessage.h>
 #include <vistle/insitu/message/ShmMessage.h>
 #include <vistle/insitu/message/SyncShmIDs.h>
+#include <vistle/module/reader.h>
+
+#include <thread>
+#include <chrono>
 
 namespace vistle {
 namespace insitu {
 namespace sensei {
 
-class SenseiModule: public insitu::InSituReader {
+class SenseiModule: public vistle::Reader {
 public:
-    typedef boost::asio::ip::tcp::socket socket;
-    typedef boost::asio::ip::tcp::acceptor acceptor;
-
     typedef std::lock_guard<std::mutex> Guard;
 
     SenseiModule(const std::string &name, int moduleID, mpi::communicator comm);
@@ -29,51 +30,50 @@ private:
     insitu::message::InSituShmMessage m_messageHandler;
 
     vistle::StringParameter *m_filePath = nullptr;
-    vistle::IntParameter *m_timeout = nullptr;
     vistle::IntParameter *m_deleteShm = nullptr;
     bool m_connectedToSim = false; // whether the socket connection to the engine is running
     std::map<std::string, vistle::Port *> m_outputPorts; // output ports for the data the simulation offers
     std::set<vistle::Parameter *> m_commandParameter; // buttons to trigger simulation commands
+    std::unique_ptr<vistle::message::MessageQueue> m_receiveFromSimMessageQueue; // receives vistle messages that will be passed through to manager
+    size_t m_ownExecutionCounter = 0;
+
     //...................................................................................
-    // used to manage the int and bool options this module always offers
-    struct IntParamBase {
-        IntParamBase() {}
 
-        virtual void send() { return; };
-        const vistle::IntParameter *param() const { return m_param; }
-
-    protected:
-        IntParamBase(vistle::IntParameter *param): m_param(param) {}
-
-    private:
-        vistle::IntParameter *m_param = nullptr;
-    };
-
-    template<typename T>
-    struct IntParam: public IntParamBase {
-        IntParam(vistle::IntParameter *param, const insitu::message::InSituShmMessage &sender)
-        : IntParamBase(param), m_sender(sender)
-        {}
-        const insitu::message::InSituShmMessage &m_sender;
-        virtual void send() override { m_sender.send(T{static_cast<typename T::value_type>(param()->getValue())}); }
-    };
     std::map<const vistle::IntParameter *, sensei::IntOptions> m_intOptions;
+    int m_instanceNum = 0;
+    std::unique_ptr<std::thread> m_communicationThread;
+    std::mutex m_communicationMutex;
+    std::atomic_bool m_terminateCommunication{false};
+    std::vector<vistle::message::Buffer> m_vistleObjects;
     //..........................................................................
     // module functions
-
-    virtual bool beginExecute() override;
-    virtual bool endExecute() override;
-    bool changeParameter(const vistle::Parameter *param) override;
-    virtual bool operate() override;
+    bool examine(const Parameter *param = nullptr) override;
+    bool read(Token &token, int timestep = -1, int block = -1) override;
+    void connectionAdded(const Port *from, const Port *to) override;
+    void connectionRemoved(const Port *from, const Port *to) override;
+    
     //..........................................................................
+    void startCommunicationThread();
+    void terminateCommunicationThread();
+    
+    void communicateWithSim();
+    void initRecvFromSimQueue();
+    vistle::insitu::message::ModuleInfo::ShmInfo gatherModuleInfo() const;
+    //sync meta data with sim so that all objects that are (implicitly) sent by this module 
+    //share the same iteration and execution counter
+    void updateMeta(const vistle::message::Buffer &obj); 
 
     bool recvAndhandleMessage();
+    bool recvVistleObjects();
+    bool chacheVistleObjects();
 
     bool handleMessage(insitu::message::Message &msg);
 
     void connectToSim();
+    void sendIntOptions();
 
     void disconnectSim();
+    void addIntParam(vistle::IntParameter *param, sensei::IntOptions o);
 };
 } // namespace sensei
 } // namespace insitu

@@ -36,13 +36,7 @@ public:
     template<typename T, typename... Args>
     typename T::ptr createVistleObject(Args &&...args)
     {
-        if (isMOduleReady()) {
-            auto obj = typename T::ptr(new T(args...));
-            updateShmIDs();
-            return obj;
-        } else {
-            return nullptr;
-        }
+        return typename T::ptr(new T(args...));
     }
 
 private:
@@ -54,6 +48,8 @@ private:
 
     bool m_connected = false; // If we are connected to the module
     size_t m_processedTimesteps = 0;
+    size_t m_iterations = 0;
+    size_t m_executionCount = 0;
     // mpi info
     int m_rank = -1, m_mpiSize = 0;
     MPI_Comm comm = MPI_COMM_WORLD;
@@ -88,8 +84,9 @@ private:
     void addCommands();
     void addPorts();
     void addObject(const std::string &port, vistle::Object::const_ptr obj);
+    void updateMeta(vistle::Object::ptr obj) const;
+
     bool isMOduleReady();
-    void updateShmIDs();
 };
 } // namespace sensei
 } // namespace insitu
