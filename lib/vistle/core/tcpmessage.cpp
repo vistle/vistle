@@ -120,7 +120,7 @@ struct SendRequest {
     socket_t &sock;
     const message::Buffer msg;
     std::shared_ptr<buffer> payload;
-    MessagePayload payloadShm;
+    std::shared_ptr<MessagePayload> payloadShm;
     std::shared_ptr<socket_t> payloadSocket;
     std::function<void(error_code)> handler;
     SendRequest(socket_t &sock, const message::Message &msg, std::shared_ptr<buffer> payload,
@@ -135,16 +135,16 @@ struct SendRequest {
 
     SendRequest(socket_t &sock, const message::Message &msg, const MessagePayload &payload,
                 std::function<void(error_code)> handler)
-    : sock(sock), msg(msg), payloadShm(payload), handler(handler)
+    : sock(sock), msg(msg), payloadShm(std::make_shared<MessagePayload>(payload)), handler(handler)
     {}
 
     void operator()()
     {
         error_code ec;
         size_t n = msg.payloadSize();
-        if (payloadShm) {
-            if (n >= payloadShm->size()) {
-                n -= payloadShm->size();
+        if (payloadShm && *payloadShm) {
+            if (n >= (*payloadShm)->size()) {
+                n -= (*payloadShm)->size();
             } else {
                 n = 0;
             }
@@ -157,8 +157,8 @@ struct SendRequest {
         }
 
         bool sent = false;
-        if (payloadShm) {
-            sent = send(sock, msg, ec, &payloadShm->at(0), payloadShm->size());
+        if (payloadShm && *payloadShm) {
+            sent = send(sock, msg, ec, &(*payloadShm)->at(0), (*payloadShm)->size());
         } else {
             sent = send(sock, msg, ec, payload.get());
         }

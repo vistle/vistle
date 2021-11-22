@@ -54,21 +54,18 @@ const std::string &AvailableModuleBase::description() const
 void AvailableModuleBase::setHub(int hubId)
 {
     m_hub = hubId;
-    m_changed = true;
 }
 
 
 size_t AvailableModuleBase::addSubmodule(const AvailableModuleBase::SubModule &sub)
 {
     m_submodules.push_back(sub);
-    m_changed = true;
     return m_submodules.size() - 1;
 }
 
 void AvailableModuleBase::addConnection(const AvailableModuleBase::Connection &conn)
 {
     m_connections.insert(conn);
-    m_changed = true;
 }
 
 const std::vector<AvailableModuleBase::SubModule> AvailableModuleBase::submodules() const
@@ -86,25 +83,17 @@ bool AvailableModuleBase::send(message::Type type, const sendMessageFunction &fu
     using namespace message;
 
     auto msg = cacheMsg(type);
-    if (m_changed) {
-        m_cacheBuffer = addPayload(*msg, *this);
-        m_changed = false;
-    } else {
-        msg->setPayloadSize(m_cacheBuffer.size());
-    }
-    return func(*msg, &m_cacheBuffer);
+    auto pl = addPayload(*msg, *this);
+    return func(*msg, &pl);
 }
 
 bool AvailableModuleBase::send(message::Type type, const sendShmMessageFunction &func) const
 {
     auto msg = cacheMsg(type);
-    if (m_changed) {
-        m_cacheMessagePayload = MessagePayload{addPayload(*msg, *this)};
-        m_changed = false;
-    }
-    assert(m_cacheMessagePayload->size() > 0);
-    msg->setPayloadSize(m_cacheMessagePayload->size());
-    return func(*msg, m_cacheMessagePayload);
+    auto pl = MessagePayload{addPayload(*msg, *this)};
+    assert(pl->size() > 0);
+    msg->setPayloadSize(pl->size());
+    return func(*msg, pl);
 }
 
 std::unique_ptr<message::Buffer> AvailableModuleBase::cacheMsg(message::Type type) const
