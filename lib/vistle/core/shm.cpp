@@ -196,6 +196,7 @@ void Shm::lockObjects() const
     }
     //assert(m_lockCount==0);
     ++m_lockCount;
+    assert(m_shmDeletionMutex);
     m_shmDeletionMutex->lock();
 #endif
 }
@@ -203,6 +204,7 @@ void Shm::lockObjects() const
 void Shm::unlockObjects() const
 {
 #ifndef NO_SHMEM
+    assert(m_shmDeletionMutex);
     m_shmDeletionMutex->unlock();
     --m_lockCount;
     //assert(m_lockCount==0);
