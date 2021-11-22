@@ -139,6 +139,8 @@ public:
     static Shm &create(const std::string &shmname, int moduleID, int rank, bool perRank);
     static Shm &attach(const std::string &shmname, int moduleID, int rank, bool perRank);
     static bool isAttached();
+    //let external applications create a unique shm array by attaching a suffix Vistle's shm names
+    static void setExternalSuffix(const std::string &suffix);
 
     void detach();
     void setRemoveOnDetach();
@@ -204,12 +206,12 @@ private:
     // create on size>0, otherwise attach
     Shm(const std::string &name, const int moduleID, const int rank, size_t size = 0);
     ~Shm();
-
+    std::string createId(const std::string &id, int internalId, const std::string& suffix);
     void setId(int id);
-
     void_allocator *m_allocator;
     std::string m_name;
     bool m_remove;
+    std::string m_externalSuffix;
     int m_id;
     const int m_rank;
     int m_owningRank = -1;

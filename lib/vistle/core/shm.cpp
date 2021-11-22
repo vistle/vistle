@@ -338,6 +338,12 @@ bool Shm::isAttached()
     return s_singleton;
 }
 
+void Shm::setExternalSuffix(const std::string& suffix)
+{
+    if (s_singleton)
+        s_singleton->m_externalSuffix = suffix;
+}
+
 bool Shm::remove(const std::string &name, const int id, const int rank, bool perRank)
 {
     std::string n = shmSegName(name, rank, perRank);
@@ -434,6 +440,27 @@ const managed_shm &Shm::shm() const
 }
 #endif
 
+
+std::string Shm::createId(const std::string &id, int internalId, const std::string& suffix)
+{
+    assert(id.size() < sizeof(shm_name_t));
+    if (!id.empty()) {
+        return id;
+    }
+    std::stringstream name;
+    name
+#ifdef MODULE_THREAD
+        << -m_id << "h"
+#else
+        << m_id << "m"
+#endif
+        << internalId++ << suffix << m_rank << "r" << m_externalSuffix;
+
+    assert(name.str().size() < sizeof(shm_name_t));
+
+    return name.str();
+}
+
 std::string Shm::createObjectId(const std::string &id)
 {
 #ifdef MODULE_THREAD
@@ -441,43 +468,12 @@ std::string Shm::createObjectId(const std::string &id)
 #else
     assert(m_id > 0 || !id.empty());
 #endif
-    assert(id.size() < sizeof(shm_name_t));
-    if (!id.empty()) {
-        return id;
-    }
-    std::stringstream name;
-    name
-#ifdef MODULE_THREAD
-        << -m_id << "h"
-#else
-        << m_id << "m"
-#endif
-        << m_objectId++ << "o" << m_rank << "r";
-
-    assert(name.str().size() < sizeof(shm_name_t));
-
-    return name.str();
+    return createId(id, m_objectId++, "o");
 }
 
 std::string Shm::createArrayId(const std::string &id)
 {
-    assert(id.size() < sizeof(shm_name_t));
-    if (!id.empty()) {
-        return id;
-    }
-
-    std::stringstream name;
-    name
-#ifdef MODULE_THREAD
-        << -m_id << "h"
-#else
-        << m_id << "m"
-#endif
-        << m_arrayId++ << "a" << m_rank << "r";
-
-    assert(name.str().size() < sizeof(shm_name_t));
-
-    return name.str();
+    return createId(id, m_arrayId++, "a");
 }
 
 void Shm::markAsRemoved(const std::string &name)
