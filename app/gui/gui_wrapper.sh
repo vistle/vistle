@@ -1,8 +1,8 @@
 #! /bin/bash
 
-GDB=""
+LLDB=""
 if [ "$1" = "-g" ]; then
-   GDB="gdb --args"
+   LLDB="lldb --"
    shift
 fi
 
@@ -12,4 +12,4 @@ if which grealpath >/dev/null 2>&1; then
     grealpath=grealpath
 fi
 
-exec $GDB "$(dirname $($grealpath $0))/Vistle.app/Contents/MacOS/Vistle" "$@"
+exec $LLDB "$(dirname $($grealpath $0))/Vistle.app/Contents/MacOS/Vistle" "$@"
