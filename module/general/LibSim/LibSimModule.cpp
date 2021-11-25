@@ -212,7 +212,6 @@ bool LibSimModule::startAccept(shared_ptr<acceptor> a)
 
     shared_ptr<boost::asio::ip::tcp::socket> sock(new boost::asio::ip::tcp::socket(m_ioService));
     m_ListeningSocket = sock;
-    boost::system::error_code ec;
     a->async_accept(*sock, [this, a, sock](boost::system::error_code ec) {
         if (ec) {
             m_socket = nullptr;

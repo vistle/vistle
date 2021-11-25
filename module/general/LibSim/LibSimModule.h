@@ -49,7 +49,6 @@ private:
         false; // set to true when when the module in closed to get out of loops in different threads
     bool m_simInitSent = false; // to prevent calling attemptLibSImConnection twice
     bool m_connectedToEngine = false; // whether the socket connection to the engine is running
-    bool m_firstConnectionAttempt = true;
     std::map<std::string, vistle::Port *> m_outputPorts; // output ports for the data the simulation offers
     std::set<vistle::Parameter *> m_commandParameter; // buttons to trigger simulation commands
     std::set<vistle::Parameter *> m_customCommandParameter; // string inputs to trigger simulation commands

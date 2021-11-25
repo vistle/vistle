@@ -81,7 +81,7 @@ private:
     StringParameter *m_PH;
     StringParameter *m_gridZ;
 
-    IntParameter *m_numPartitions, *m_numPartitionsLat, *m_numPartitionsVer;
+    IntParameter *m_numPartitionsLat, *m_numPartitionsVer;
 
     NcFile *ncFirstFile;
 };

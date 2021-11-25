@@ -31,9 +31,7 @@ private:
     vistle::StringParameter *m_filePath = nullptr;
     vistle::IntParameter *m_timeout = nullptr;
     vistle::IntParameter *m_deleteShm = nullptr;
-    bool m_simInitSent = false; // to prevent calling attemptLibSImConnection twice
     bool m_connectedToSim = false; // whether the socket connection to the engine is running
-    bool m_firstConnectionAttempt = true;
     std::map<std::string, vistle::Port *> m_outputPorts; // output ports for the data the simulation offers
     std::set<vistle::Parameter *> m_commandParameter; // buttons to trigger simulation commands
     //...................................................................................
