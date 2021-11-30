@@ -925,8 +925,8 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn)
     message::SpawnPrepared prep(spawn);
 
 #ifdef MODULE_THREAD
-    //AvailableModule::Key key(hubId(), name);
-    AvailableModule::Key key(0, name);
+    AvailableModule::Key key(hubId(), name);
+    //AvailableModule::Key key(0, name);
     const auto &avail = m_localModules;
     auto it = avail.find(key);
     if (it == avail.end()) {
