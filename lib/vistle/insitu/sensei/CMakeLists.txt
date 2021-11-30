@@ -27,5 +27,6 @@ vistle_target_link_libraries(
     MPI::MPI_C)
 if(NOT VISTLE_MULTI_PROCESS)
     vistle_target_link_libraries(vistle_sensei PRIVATE vistle_clustermanager)
+    target_compile_definitions(vistle_sensei INTERFACE VISTLE_SINGLE_PROCESS)
 endif()
 target_compile_features(vistle_sensei PUBLIC cxx_std_14)
