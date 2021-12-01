@@ -1403,7 +1403,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
             ui = true;
         }
         if (Id::isModule(msg.destId()) && !Id::isHub(dest)) {
-            CERR << "failed to translate module id " << msg.destId() << " to hub" << std::endl;
+            CERR << "failed to translate module id " << msg.destId() << " to hub: " << msg << std::endl;
         } else if (!Id::isHub(dest)) {
             if (Router::the().toMasterHub(msg, senderType, sender)) {
                 sendMaster(msg, payload);
