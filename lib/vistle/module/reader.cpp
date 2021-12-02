@@ -200,7 +200,7 @@ bool Reader::prepare()
         sendInfo("reading %d timesteps with up to %d partitions", numtime, numpart);
 
     //read const parts
-    std::shared_ptr<Token> prev(nullptr);
+    std::shared_ptr<Token> prev;
     meta.setTimeStep(-1);
     ReaderProperties prop(&meta, rTime, numpart, concurrency, true);
     readTimestep(prev, prop, -1, -1);
