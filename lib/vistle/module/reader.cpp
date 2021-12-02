@@ -95,7 +95,7 @@ size_t Reader::waitForReaders(size_t maxRunning, bool &result)
  * @param prop Reader properties.
  * @param timestep Current timestep.
  */
-void Reader::readTimestep(std::shared_ptr<Token> &prev, ReaderProperties &prop, int timestep, int step)
+void Reader::readTimestep(std::shared_ptr<Token> prev, ReaderProperties &prop, int timestep, int step)
 {
     for (int p = -1; p < prop.numpart; ++p) {
         if (!m_handlePartitions || comm().rank() == rankForTimestepAndPartition(step, p)) {
@@ -136,7 +136,7 @@ void Reader::readTimestep(std::shared_ptr<Token> &prev, ReaderProperties &prop, 
  * @param prev Previous token.
  * @param prop Reader properties.
  */
-void Reader::readTimesteps(std::shared_ptr<Token> &prev, ReaderProperties &prop)
+void Reader::readTimesteps(std::shared_ptr<Token> prev, ReaderProperties &prop)
 {
     if (prop.result && prop.time.inc() != 0) {
         int step = 0;
