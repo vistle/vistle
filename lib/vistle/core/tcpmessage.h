@@ -40,6 +40,8 @@ void V_COREEXPORT async_recv_header(socket_t &sock, vistle::message::Buffer &msg
 void V_COREEXPORT return_buffer(std::shared_ptr<buffer> &buf);
 std::shared_ptr<buffer> V_COREEXPORT get_buffer(size_t size = 0);
 
+bool V_COREEXPORT clear_request_queue();
+
 } // namespace message
 } // namespace vistle
 #endif

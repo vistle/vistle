@@ -179,6 +179,8 @@ Hub::~Hub()
 
     m_dataProxy.reset();
 
+    message::clear_request_queue();
+
     stopIoThreads();
 
     hub_instance = nullptr;

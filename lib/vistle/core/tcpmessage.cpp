@@ -535,5 +535,18 @@ void async_forward(socket_t &sock, const message::Message &msg, std::shared_ptr<
     }
 }
 
+bool clear_request_queue()
+{
+    {
+        std::lock_guard<std::mutex> locker(sendQueueMutex);
+        sendQueues.clear();
+    }
+    {
+        std::lock_guard<std::mutex> locker(recvQueueMutex);
+        recvQueues.clear();
+    }
+    return true;
+}
+
 } // namespace message
 } // namespace vistle
