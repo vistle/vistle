@@ -104,9 +104,12 @@ void Module::deleteModule()
 
     cancelExecModule();
 
-    vistle::message::Kill m(m_id);
-    m.setDestId(m_id);
-    vistle::VistleConnection::the().sendMessage(m);
+    if (vistle::message::Id::isModule(m_id)) {
+        // module id already known
+        vistle::message::Kill m(m_id);
+        m.setDestId(m_id);
+        vistle::VistleConnection::the().sendMessage(m);
+    }
 }
 
 void Module::attachDebugger()
