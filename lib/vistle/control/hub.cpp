@@ -768,8 +768,8 @@ bool Hub::dispatch()
 
     if (m_interrupt) {
         if (m_isMaster) {
-            sendSlaves(message::Quit());
-            sendSlaves(message::CloseConnection("user interrupt"));
+            sendSlaves(make.message<message::Quit>());
+            sendSlaves(make.message<message::CloseConnection>("user interrupt"));
         }
         m_workGuard.reset();
         for (unsigned count = 0; count < 300; ++count) {
@@ -1217,7 +1217,8 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
         case Identify::HUB: {
             if (m_isMaster) {
                 CERR << "refusing connection from other master hub" << std::endl;
-                removeSocket(sock);
+                auto close = make.message<CloseConnection>("refusing connection from other master hub");
+                sendMessage(sock, close);
                 return true;
             }
             assert(!m_isMaster);
@@ -1227,7 +1228,8 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
         case Identify::SLAVEHUB: {
             if (!m_isMaster) {
                 CERR << "refusing connection from other slave hub, connect directly to a master" << std::endl;
-                removeSocket(sock);
+                auto close = make.message<CloseConnection>("refusing connection from other slave hub");
+                sendMessage(sock, close);
                 return true;
             }
             assert(m_isMaster);
