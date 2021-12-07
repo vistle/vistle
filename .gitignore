@@ -12,3 +12,5 @@
 /.idea
 /.ipynb_checkpoints
 **/.nfs*
+/docs/build
+/docs/source/_templates

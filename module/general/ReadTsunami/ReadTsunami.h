@@ -122,9 +122,9 @@ private:
     void computeActualLastTimestep(const ptrdiff_t &incrementTimestep, const size_t &firstTimestep,
                                    size_t &lastTimestep, MPI_Offset &nTimesteps);
 
-    template<class T, class PartionIdx>
+    template<class T, class PartionIDs>
     auto generateNcVarExt(const NcVar &ncVar, const T &dim, const T &ghost, const T &numDimBlocks,
-                          const PartionIdx &partition) const;
+                          const PartionIDs &partitionIDs) const;
 
     template<class T, class V>
     void contructLatLonSurface(vistle::Polygons::ptr poly, const Dim<T> &dim, const std::vector<V> &coords,

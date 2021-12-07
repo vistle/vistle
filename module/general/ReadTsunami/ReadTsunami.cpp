@@ -332,12 +332,12 @@ void ReadTsunami::generateSurface(Polygons::ptr surface, const PolygonData<U> &p
   * @partition: Partition scalar.
   * @return: NcVarParams object.
   */
-template<class T, class PartionIdx>
+template<class T, class PartitionIDs>
 auto ReadTsunami::generateNcVarExt(const NcVar &ncVar, const T &dim, const T &ghost, const T &numDimBlock,
-                                   const PartionIdx &partition) const
+                                   const PartitionIDs &partitionIDs) const
 {
     T count = dim / numDimBlock;
-    T start = partition * count;
+    T start = partitionIDs * count;
     structured_ghost_addition(start, count, dim, ghost);
     return NcVarExtended(ncVar, start, count);
 }
