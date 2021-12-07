@@ -17,6 +17,7 @@ We use C++ 14, but we want to be able to compile Vistle with
 Source Code Formatting
 ----------------------
 
+* use `clang-format` together with `git clang-format` and [`pre-commit`](https://pre-commit.com)
 * UNIX line-feeds
 * no tabs
 * avoid trailing spaces
@@ -29,7 +30,8 @@ Source Code Formatting
 
 * put a space between keywords and opening parentheses, but not between function name and function arguments, e.g.:
 
-        void recurse(int arg) {
+        void recurse(int arg)
+        {
             if (condition) {
                 recurse(arg+1);
             }
