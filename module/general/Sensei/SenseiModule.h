@@ -34,7 +34,8 @@ private:
     bool m_connectedToSim = false; // whether the socket connection to the engine is running
     std::map<std::string, vistle::Port *> m_outputPorts; // output ports for the data the simulation offers
     std::set<vistle::Parameter *> m_commandParameter; // buttons to trigger simulation commands
-    std::unique_ptr<vistle::message::MessageQueue> m_receiveFromSimMessageQueue; // receives vistle messages that will be passed through to manager
+    std::unique_ptr<vistle::message::MessageQueue>
+        m_receiveFromSimMessageQueue; // receives vistle messages that will be passed through to manager
     size_t m_ownExecutionCounter = 0;
 
     //...................................................................................
@@ -51,17 +52,17 @@ private:
     bool read(Token &token, int timestep = -1, int block = -1) override;
     void connectionAdded(const Port *from, const Port *to) override;
     void connectionRemoved(const Port *from, const Port *to) override;
-    
+
     //..........................................................................
     void startCommunicationThread();
     void terminateCommunicationThread();
-    
+
     void communicateWithSim();
     void initRecvFromSimQueue();
     vistle::insitu::message::ModuleInfo::ShmInfo gatherModuleInfo() const;
-    //sync meta data with sim so that all objects that are (implicitly) sent by this module 
+    //sync meta data with sim so that all objects that are (implicitly) sent by this module
     //share the same iteration and execution counter
-    void updateMeta(const vistle::message::Buffer &obj); 
+    void updateMeta(const vistle::message::Buffer &obj);
 
     bool recvAndhandleMessage();
     bool recvVistleObjects();

@@ -19,4 +19,3 @@ Communication details
 	exchange information between SENSEI's Vistle-analysis-adapter and the module
 -recvFromSim shm-message-queue:
 	we receive vistle messages from the simulation and pass them to the manager as if the came from this module. Mainly used to add vistle objects to the pipeline.
-

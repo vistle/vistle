@@ -206,7 +206,7 @@ private:
     // create on size>0, otherwise attach
     Shm(const std::string &name, const int moduleID, const int rank, size_t size = 0);
     ~Shm();
-    std::string createId(const std::string &id, int internalId, const std::string& suffix);
+    std::string createId(const std::string &id, int internalId, const std::string &suffix);
     void setId(int id);
     void_allocator *m_allocator;
     std::string m_name;

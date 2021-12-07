@@ -338,7 +338,7 @@ bool Shm::isAttached()
     return s_singleton;
 }
 
-void Shm::setExternalSuffix(const std::string& suffix)
+void Shm::setExternalSuffix(const std::string &suffix)
 {
     if (s_singleton)
         s_singleton->m_externalSuffix = suffix;
@@ -441,7 +441,7 @@ const managed_shm &Shm::shm() const
 #endif
 
 
-std::string Shm::createId(const std::string &id, int internalId, const std::string& suffix)
+std::string Shm::createId(const std::string &id, int internalId, const std::string &suffix)
 {
     assert(id.size() < sizeof(shm_name_t));
     if (!id.empty()) {
