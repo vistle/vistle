@@ -78,7 +78,7 @@ private:
     bool removeClient(socket_ptr sock);
     void slaveReady(Slave &slave);
     bool startCleaner();
-    bool processScript(const std::string &filename, bool executeModules);
+    bool processScript(const std::string &filename, bool barrierAfterLoad, bool executeModules);
     bool processStartupScripts();
     void cacheModuleValues(int oldModuleId, int newModuleId);
     void killOldModule(int migratedId);
@@ -115,6 +115,8 @@ private:
 
     std::string m_prefix;
     std::string m_scriptPath;
+    std::string m_snapshotFile;
+    bool m_barrierAfterLoad = false;
     bool m_executeModules = false;
     bool m_quitting = false, m_emergency = false;
     static volatile std::atomic<bool> m_interrupt;

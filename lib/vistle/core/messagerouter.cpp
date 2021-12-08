@@ -28,6 +28,7 @@ void Router::initRoutingTable()
     rt[DEBUG] = Track | HandleOnHub;
     rt[QUIT] = Track | Special;
     rt[CLOSECONNECTION] = Track | Special;
+    rt[SCREENSHOT] = Track | DestUi;
     rt[EXECUTE] = Special | HandleOnMaster | OnlyRank0 | Track | DestUi;
     rt[EXECUTIONDONE] = Special | HandleOnMaster | OnlyRank0 | Track | TriggerQueue;
     rt[CANCELEXECUTE] = Special | HandleOnMaster | OnlyRank0;

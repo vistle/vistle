@@ -135,6 +135,8 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
     connect(&m_observer, SIGNAL(status_s(int, QString, int)), SLOT(statusUpdated(int, QString, int)));
     connect(&m_observer, SIGNAL(moduleStatus_s(int, QString, int)), m_scene, SLOT(moduleStatus(int, QString, int)));
 
+    connect(&m_observer, SIGNAL(screenshot_s(QString)), this, SLOT(screenshot(QString)));
+
     QObject::connect(m_mainWindow->m_moduleBrowser, &ModuleBrowser::startModule, this,
                      [this](int hubId, const QString &moduleName, Qt::Key direction) {
                          m_scene->addModule(hubId, moduleName, direction);
@@ -437,6 +439,13 @@ void UiController::showConnectionInfo()
 void UiController::copyConnectionInfo()
 {
     QGuiApplication::clipboard()->setText(m_sessionUrl);
+}
+
+void UiController::screenshot(QString imageFile)
+{
+    m_mainWindow->dataFlowView()->snapshot(imageFile);
+    vistle::message::Quit quit;
+    m_vistleConnection->sendMessage(quit);
 }
 
 

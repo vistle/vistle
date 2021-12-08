@@ -74,6 +74,8 @@ public:
     virtual void loadedWorkflowChanged(const std::string &filename);
     virtual void sessionUrlChanged(const std::string &url);
 
+    virtual void message(const vistle::message::Message &msg, vistle::buffer *payload = nullptr);
+
 private:
     long m_modificationCount;
 };

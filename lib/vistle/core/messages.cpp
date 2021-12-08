@@ -481,6 +481,16 @@ bool ModuleExit::isForwarded() const
     return forwarded;
 }
 
+Screenshot::Screenshot(const std::string &filename)
+{
+    COPY_STRING(m_filename, filename);
+}
+
+const char *Screenshot::filename() const
+{
+    return m_filename.data();
+}
+
 Execute::Execute(Execute::What what, const int module, const int count)
 : m_allRanks(false), module(module), executionCount(count), m_what(what), m_realtime(0.), m_animationStepDuration(0.)
 {}

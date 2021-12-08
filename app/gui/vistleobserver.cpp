@@ -13,6 +13,7 @@
 #include <vistle/userinterface/vistleconnection.h>
 
 #include "vistleobserver.h"
+#include <vistle/core/messages.h>
 
 namespace gui {
 
@@ -181,6 +182,24 @@ void VistleObserver::status(int id, const std::string &text, vistle::message::Up
 void VistleObserver::quitRequested()
 {
     emit quit_s();
+}
+
+void VistleObserver::message(const vistle::message::Message &msg, vistle::buffer *payload)
+{
+    (void)payload;
+    using namespace vistle::message;
+
+    switch (msg.type()) {
+    case SCREENSHOT: {
+        auto &ss = msg.as<Screenshot>();
+        QString file = ss.filename();
+        emit screenshot_s(file);
+        break;
+    }
+    default: {
+        break;
+    }
+    }
 }
 
 } //namespace gui

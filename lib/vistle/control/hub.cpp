@@ -236,6 +236,7 @@ bool Hub::init(int argc, char *argv[])
         ("port,p", po::value<unsigned short>(), "control port")
         ("dataport", po::value<unsigned short>(), "data port")
         ("execute,e", "call compute() after workflow has been loaded")
+        ("snapshot", po::value<std::string>(), "store screenshot of workflow to this location")
         ("libsim,l", po::value<std::string>(), "connect to a LibSim instrumented simulation by entering the path to the .sim2 file")
         ("exposed,gateway-host,gateway,gw", po::value<std::string>(), "ports are exposed externally on this host")
         ("url", "Vistle URL, script to process, or slave name")
@@ -389,6 +390,11 @@ bool Hub::init(int argc, char *argv[])
 
     if (vm.count("execute") > 0) {
         m_executeModules = true;
+    }
+
+    if (vm.count("snapshot") > 0) {
+        m_snapshotFile = vm["snapshot"].as<std::string>();
+        m_barrierAfterLoad = true;
     }
 
     // start UI
@@ -1024,6 +1030,14 @@ bool Hub::hubReady()
             m_quitting = true;
             return false;
         }
+
+        if (!m_snapshotFile.empty()) {
+            std::cerr << "requesting screenshot to " << m_snapshotFile << std::endl;
+            auto msg = make.message<message::Screenshot>(m_snapshotFile);
+            msg.setDestId(message::Id::Broadcast);
+            sendUi(msg);
+            return true;
+        }
     } else {
         auto hub = make.message<message::AddHub>(m_hubId, m_name);
         hub.setNumRanks(m_localRanks);
@@ -1210,6 +1224,9 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                 }
             }
             m_uiManager.lockUi(false);
+            if (!m_snapshotFile.empty()) {
+                //handleMessage(make.message<Quit>());
+            }
             break;
         }
         case Identify::UI: {
@@ -2116,19 +2133,19 @@ bool Hub::startPythonUi()
 bool Hub::processScript()
 {
     if (!m_scriptPath.empty()) {
-        auto retval = processScript(m_scriptPath, m_executeModules);
+        auto retval = processScript(m_scriptPath, m_barrierAfterLoad, m_executeModules);
         setLoadedFile(m_scriptPath);
         return retval;
     }
     return true;
 }
 
-bool Hub::processScript(const std::string &filename, bool executeModules)
+bool Hub::processScript(const std::string &filename, bool barrierAfterLoad, bool executeModules)
 {
     assert(m_uiManager.isLocked());
 #ifdef HAVE_PYTHON
     setStatus("Loading " + m_scriptPath + "...");
-    PythonInterpreter inter(filename, dir::share(m_prefix), executeModules);
+    PythonInterpreter inter(filename, dir::share(m_prefix), barrierAfterLoad, executeModules);
     bool interrupt = false;
     while (!interrupt && inter.check()) {
         if (!dispatch())
@@ -2206,7 +2223,7 @@ bool Hub::processStartupScripts()
     bool error = false;
     for (const auto &script: scanStartupScripts()) {
         std::cerr << "loading script " << script << std::endl;
-        error += !processScript(script, false);
+        error += !processScript(script, false, false);
     }
     return error;
 }

@@ -11,7 +11,8 @@ class Executor;
 
 class PythonInterpreter {
 public:
-    PythonInterpreter(const std::string &filename, const std::string &path, bool executeModules = false);
+    PythonInterpreter(const std::string &filename, const std::string &path, bool barrierAfterLoad = false,
+                      bool executeModules = false);
     ~PythonInterpreter();
     bool init();
 

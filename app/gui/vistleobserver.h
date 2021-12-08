@@ -38,6 +38,8 @@ signals:
 
     void quit_s();
 
+    void screenshot_s(QString msg);
+
 public:
     VistleObserver(QObject *parent = 0);
     void newHub(int hub, const std::string &name, int nranks, const std::string &address, const std::string &logname,
@@ -68,6 +70,8 @@ public:
 
     void loadedWorkflowChanged(const std::string &filename) override;
     void sessionUrlChanged(const std::string &url) override;
+
+    void message(const vistle::message::Message &msg, vistle::buffer *payload) override;
 
 private:
     std::map<int, QString> m_moduleNames;

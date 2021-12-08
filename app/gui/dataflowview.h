@@ -23,6 +23,8 @@ public:
     QList<Module *> selectedModules();
     void setScene(QGraphicsScene *scene);
 
+    bool snapshot(const QString &filename);
+
 signals:
     void executeDataFlow();
 

@@ -56,6 +56,7 @@ private slots:
 
     void showConnectionInfo();
     void copyConnectionInfo();
+    void screenshot(QString imageefile);
 
 private:
     vistle::VistleConnection *m_vistleConnection;
