@@ -687,6 +687,13 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
 
     file(REMOVE ${MODULE_DESCRIPTION_FILE})
     install(FILES ${MODULE_DESCRIPTION_FILE} DESTINATION ${CMAKE_INSTALL_PREFIX}/share/vistle/)
+    option(VISTLE_GENERATE_DOCUMENTATION "turn this on after building to update documentation files" OFF)
+
+    macro(genereate_documentation targetname)
+        set(ENV{VISTLE_DOCUMENTATION_DIR} ${CMAKE_CURRENT_LIST_DIR})
+        set(ENV{VISTLE_DOCUMENTATION_TARGET} ${targetname})
+        execute_process(COMMAND ${PROJECT_BINARY_DIR}/bin/vistle --batch ${PROJECT_SOURCE_DIR}/doc/generateModuleInfo.vsl)
+    endmacro()
 
     macro(add_module targetname description)
 
@@ -722,6 +729,10 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
 
         set_target_properties(${targetname} PROPERTIES FOLDER "Modules")
         target_link_libraries(${targetname} ${Boost_LIBRARIES} ${MPI_C_LIBRARIES} vistle_module ${BOOST_MPI})
+
+        if(VISTLE_GENERATE_DOCUMENTATION)
+            genereate_documentation(${targetname})
+        endif()
     endmacro(add_module)
 endif()
 

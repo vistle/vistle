@@ -1,0 +1,115 @@
+import time
+import os
+def writeHeadline(file, line, type):
+    if len(line) == 0:
+        return
+    file.write(line)
+    file.write("\n")
+    for i in range (len(line)):
+        file.write(type)
+    file.write("\n")
+    return
+
+def writeTableLine(file, entries):
+    file.write("|")
+    for entry in entries:
+        file.write(entry)
+        file.write("|")
+    file.write("\n")
+
+def writePortsTable(file, names, descriptions):
+    if len(names) > 0:
+        writeTableLine(f, ["name", "description"])
+        writeTableLine(f, ["-", "-"])
+    for i in range(len(names)):
+        writeTableLine(f, [names[i], descriptions[i]]) 
+
+def writeModule(file, mod):
+    
+    name = getModuleName(mod)
+    writeHeadline(file, name, "=")
+    f.write(getModuleDescription(mod))
+    f.write("\n")
+    f.write("\n")
+
+    ports = getInputPorts(mod)
+    desc = getInputPortsDescriptions(mod)
+    if len(ports) > 0:
+        writeHeadline(file, "Input ports", "-")
+        writePortsTable(f, ports, desc)
+        f.write("\n")
+
+    ports = getOutputPorts(mod)
+    desc = getOutputPortsDescriptions(mod)
+    if len(ports) > 0:
+        writeHeadline(file, "Output ports", "-")
+        writePortsTable(f, ports, desc)
+        f.write("\n")
+
+    allParams = getParameters(mod)
+    params = []
+    for param in allParams:
+        if param[0] != '_':
+            params.append(param)
+    if len(params) > 0:
+        writeHeadline(file, "Parameters", "-")
+        writeTableLine(file, ["name", "type", "description"])
+        writeTableLine(file, ["-", "-", "-"] )
+    for param in params:
+        writeTableLine(file, [param, getParameterType(mod, param), getParameterTooltip(mod, param)])
+
+    return
+
+
+#deprecated
+def spawnMods():
+    MasterHub=getMasterHub()
+    av = getAvailable()
+    num = 0
+    modList = []
+    for mod in av:
+        request = spawnAsync(MasterHub, mod)
+        spawn = waitForSpawn(request)
+        modList.append(spawn)
+        num = num+1
+    print("spawned " + str(len(modList)) + "/" + str(num))
+    return modList
+
+def deleteEmptyLines(file):
+    file.seek(0, os.SEEK_END)
+
+    # This code means the following code skips the very last character in the file -
+    # i.e. in the case the last line is null we delete the last line
+    # and the penultimate one
+    pos = file.tell() - 1
+
+    # Read each character in the file one at a time from the penultimate
+    # character going backwards, searching for a newline character
+    # If we find a new line, exit the search
+    while pos > 0 and file.read(1) != "\n":
+        pos -= 1
+        file.seek(pos, os.SEEK_SET)
+
+    # So long as we're not at the start of the file, delete all the characters ahead
+    # of this position
+    if pos > 0:
+        file.seek(pos, os.SEEK_SET)
+        file.truncate()
+        return True
+    return false
+
+def setFileEnding(file):
+    while deleteEmptyLines(file):
+
+dir = os.environ['VISTLE_DOCUMENTATION_DIR']
+target = os.environ['VISTLE_DOCUMENTATION_TARGET']
+
+filename = dir + "/" + target + ".md"
+print(filename)
+f = open(filename, "w")
+mod = spawn(target)
+barrier()
+writeModule(f, mod)
+setFileEnding(f)
+f.close()
+quit()
