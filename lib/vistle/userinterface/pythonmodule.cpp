@@ -371,6 +371,18 @@ static std::vector<std::string> getOutputPorts(int id)
     return PORTMANAGER.getOutputPortNames(id);
 }
 
+static std::vector<std::string> getInputPortsDescriptions(int id)
+{
+    LOCKED();
+    return PORTMANAGER.getInputPortDescriptions(id);
+}
+
+static std::vector<std::string> getOutputPortsDescriptions(int id)
+{
+    LOCKED();
+    return PORTMANAGER.getOutputPortDescriptions(id);
+}
+
 static std::vector<std::pair<int, std::string>> getConnections(int id, const std::string &port)
 {
     LOCKED();
@@ -451,6 +463,17 @@ static T getParameterValue(int id, const std::string &name)
     return tparam->getValue();
 }
 
+static std::string getParameterTooltip(int id, const std::string &name)
+{
+    LOCKED();
+    const auto param = MODULEMANAGER.getParameter(id, name);
+    if (!param) {
+        std::cerr << "Python: getParameterTooltip: no such parameter" << std::endl;
+        return "None";
+    }
+    return param->description();
+}
+
 static std::string getEscapedStringParam(int id, const std::string &name)
 {
     std::string val = getParameterValue<std::string>(id, name);
@@ -513,6 +536,15 @@ static std::string getModuleName(int id)
     std::cerr << "Python: getModuleName(" id << ")" << std::endl;
 #endif
     return MODULEMANAGER.getModuleName(id);
+}
+
+static std::string getModuleDescription(int id)
+{
+    LOCKED();
+#ifdef DEBUG
+    std::cerr << "Python: getModuleDescription(" id << ")" << std::endl;
+#endif
+    return MODULEMANAGER.getModuleDescription(id);
 }
 
 static void connect(int sid, const char *sport, int did, const char *dport)
@@ -1400,7 +1432,15 @@ PY_MODULE(_vistle, m)
     m.def("getRunning", getRunning, "get list of IDs of running modules");
     m.def("getBusy", getBusy, "get list of IDs of busy modules");
     m.def("getModuleName", getModuleName, "get name of module with ID `arg1`");
+    m.def("getModuleDescription", getModuleDescription, "get description of module with ID `arg1`");
     m.def("getInputPorts", getInputPorts, "get name of input ports of module with ID `arg1`");
+    m.def("getOutputPorts", getOutputPorts, "get name of input ports of module with ID `arg1`");
+
+    m.def("getInputPortsDescriptions", getInputPortsDescriptions,
+          "get descriptions of input ports of module with ID `arg1`");
+    m.def("getOutputPortsDescriptions", getOutputPortsDescriptions,
+          "get descriptions of input ports of module with ID `arg1`");
+
     m.def("waitForHub", waitForNamedHub, "wait for slave hub named `arg1` to connect");
     m.def("waitForHub", waitForAnySlaveHub, "wait for any additional slave hub to connect");
     m.def("waitForHubs", waitForSlaveHubs, "wait for `count` additional slave hubs to connect");
@@ -1409,7 +1449,6 @@ PY_MODULE(_vistle, m)
     m.def("getVistleSession", getVistleSession, "get ID for Vistle session");
     m.def("getAllHubs", getAllHubs, "get ID of all known hubs");
     m.def("getHub", getHub, "get ID of hub for module with ID `arg1`");
-    m.def("getOutputPorts", getOutputPorts, "get name of input ports of module with ID `arg1`");
     m.def("getConnections", getConnections, "get connections to/from port `arg2` of module with ID `arg1`");
     m.def("getParameters", getParameters, "get list of parameters for module with ID `arg1`");
     m.def("getParameterType", getParameterType, "get type of parameter named `arg2` of module with ID `arg1`");
@@ -1425,6 +1464,7 @@ PY_MODULE(_vistle, m)
           "get value of parameter named `arg2` of module with ID `arg1`");
     m.def("getEscapedStringParam", getEscapedStringParam,
           "get value of parameter named `arg2` of module with ID `arg1`");
+    m.def("getParameterTooltip", getParameterTooltip, "get a short description of the module");
 
 #ifndef EMBED_PYTHON
     m.def("sessionConnect", &sessionConnect, "connect to running Vistle instance", "host"_a = "localhost",

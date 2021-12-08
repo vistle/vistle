@@ -119,6 +119,8 @@ public:
     int getHub(int id) const;
     const HubData &getHubData(int id) const;
     std::string getModuleName(int id) const;
+    std::string getModuleDescription(int id) const;
+
     int getModuleState(int id) const;
     int getMirrorId(int id) const;
     const std::set<int> &getMirrors(int id) const;

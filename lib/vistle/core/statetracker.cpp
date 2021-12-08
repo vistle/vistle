@@ -154,9 +154,19 @@ std::string StateTracker::getModuleName(int id) const
     RunningMap::const_iterator it = runningMap.find(id);
     if (it == runningMap.end())
         return std::string();
-
     return it->second.name;
 }
+
+std::string StateTracker::getModuleDescription(int id) const
+{
+    AvailableModule::Key key{getHub(id), getModuleName(id)};
+    auto mod = m_availableModules.find(key);
+    if (mod == m_availableModules.end()) {
+        return "None";
+    }
+    return mod->second.description();
+}
+
 
 int StateTracker::getModuleState(int id) const
 {
