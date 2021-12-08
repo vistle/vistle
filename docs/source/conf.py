@@ -16,11 +16,9 @@
 
 
 # -- Project information -----------------------------------------------------
-
 project = 'Vistle'
 copyright = '2021, Martin Aumueller, Dennis Grieger, Leyla Kern, Marko Djuric, Uwe Wössner'
 author = 'Martin Aumueller, Dennis Grieger, Leyla Kern, Marko Djuric, Uwe Wössner'
-
 
 # -- General configuration ---------------------------------------------------
 

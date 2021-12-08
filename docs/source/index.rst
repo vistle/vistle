@@ -22,13 +22,6 @@ More infos about Architecture: https://vistle.io/architecture/
     Development <dev/index.rst>
     Application Documentation <dev/application/index.rst>
 
-.. .. toctree::
-..    :maxdepth: 2
-..    :caption: Developer Documentation:
-
-..    api/library_root
-
-
 Indices and tables
 ==================
 
