@@ -441,6 +441,10 @@ bool StateTracker::handle(const message::Message &msg, const char *payload, size
         std::copy(payload, payload + payloadSize, std::back_inserter(pl));
     }
 
+    for (StateObserver *o: m_observers) {
+        o->message(msg, payload ? &pl : nullptr);
+    }
+
     mutex_locker locker(getMutex());
     switch (msg.type()) {
     case IDENTIFY: {
@@ -648,6 +652,7 @@ bool StateTracker::handle(const message::Message &msg, const char *payload, size
     case FILEQUERY:
     case FILEQUERYRESULT:
     case REMOTERENDERING:
+    case SCREENSHOT:
         break;
 
     default:
@@ -1863,6 +1868,12 @@ void StateObserver::sessionUrlChanged(const std::string &url)
 void StateObserver::resetModificationCount()
 {
     m_modificationCount = 0;
+}
+
+void StateObserver::message(const vistle::message::Message &msg, vistle::buffer *payload)
+{
+    (void)msg;
+    (void)payload;
 }
 
 } // namespace vistle

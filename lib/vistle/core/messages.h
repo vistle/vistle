@@ -273,7 +273,15 @@ private:
     bool forwarded;
 };
 
-//! trigger execution of a module function
+//! instruct GUI to store a snapshot of the rendered workflow
+class V_COREEXPORT Screenshot: public MessageBase<Screenshot, SCREENSHOT> {
+public:
+    explicit Screenshot(const std::string &filename);
+    const char *filename() const;
+
+private:
+    path_t m_filename;
+};
 class V_COREEXPORT Execute: public MessageBase<Execute, EXECUTE> {
 public:
     DEFINE_ENUM_WITH_STRING_CONVERSIONS(What,

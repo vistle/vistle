@@ -191,5 +191,26 @@ void DataFlowView::selectAllModules()
     }
 }
 
+bool DataFlowView::snapshot(const QString &filename)
+{
+    scene()->setSceneRect(scene()->itemsBoundingRect()); // Re-shrink the scene to it's bounding contents
+    QImage image(scene()->sceneRect().size().toSize() * 2,
+                 QImage::Format_ARGB32); // Create the image with the exact size of the shrunk scene
+    image.fill(Qt::transparent); // Start all pixels transparent
+
+    QPainter painter(&image);
+    scene()->render(&painter);
+    QString msg;
+    if (image.save(filename)) {
+        msg = QString("Picture was stored as %1 (%2x%3 pixels)")
+                  .arg(filename, QString::number(image.width()), QString::number(image.height()));
+        std::cerr << msg.toStdString() << std::endl;
+        return true;
+    } else {
+        msg = "Failed to store picture as " + filename;
+        std::cerr << msg.toStdString() << std::endl;
+        return false;
+    }
+}
 
 } // namespace gui

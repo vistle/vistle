@@ -10,9 +10,16 @@ namespace vistle {
 
 class Executor {
 public:
-    Executor(PythonInterpreter &inter, const std::string &filename, bool executeModules)
-    : m_interpreter(inter), m_filename(filename), m_executeModules(executeModules), m_done(false)
+    Executor(PythonInterpreter &inter, const std::string &filename, bool barrierAfterLoad, bool executeModules)
+    : m_interpreter(inter)
+    , m_filename(filename)
+    , m_barrierAfterLoad(barrierAfterLoad)
+    , m_executeModules(executeModules)
+    , m_done(false)
     {
+        if (m_executeModules)
+            m_barrierAfterLoad = true;
+
         if (!m_interpreter.init())
             m_error = true;
         else
@@ -29,10 +36,10 @@ public:
             ok = m_interpreter.executeFile(m_filename);
         }
 
-        if (ok && m_executeModules) {
+        if (ok && m_barrierAfterLoad) {
             pybind11::gil_scoped_acquire acquire;
             ok = m_interpreter.executeCommand("barrier()");
-            if (ok)
+            if (ok && m_executeModules)
                 ok = m_interpreter.executeCommand("compute()");
         }
 
@@ -53,17 +60,19 @@ private:
     mutable std::mutex m_mutex;
     PythonInterpreter &m_interpreter;
     const std::string &m_filename;
+    bool m_barrierAfterLoad = false;
     bool m_executeModules = false;
     volatile bool m_done = false;
     volatile bool m_error = false;
     std::unique_ptr<pybind11::gil_scoped_release> m_py_release;
 };
 
-PythonInterpreter::PythonInterpreter(const std::string &file, const std::string &path, bool executeModules)
+PythonInterpreter::PythonInterpreter(const std::string &file, const std::string &path, bool barrierAfterLoad,
+                                     bool executeModules)
 : m_pythonPath(path)
 , m_interpreter(new PythonInterface("vistle"))
 , m_module(new PythonModule)
-, m_executor(new Executor(*this, file, executeModules))
+, m_executor(new Executor(*this, file, barrierAfterLoad, executeModules))
 , m_thread(std::ref(*m_executor))
 {}
 
