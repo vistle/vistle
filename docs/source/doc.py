@@ -7,9 +7,13 @@ markdown_files = []
 index_link_list = []
 search_markdown_dirs = []
 
+docs_link_output_path_relpath = "link"
+search_dirs_key = "dirs"
+
 docpy_path = os.path.dirname(os.path.realpath(__file__))
 vistle_root_path = docpy_path.split("docs")[0]
-modules_path = docpy_path + "/modules"
+# default
+link_output_path = docpy_path + "/modules"
 md_extension_str = ".md"
 link_str = "_link"
 myst_include_str = """```{include} %s
@@ -29,8 +33,8 @@ def createDocHierachy(markdown_list, start_dir):
         print("Directory {} does not exist.".format(start_dir))
         return
     for root, filename in markdown_list:
-        rel_dir_from_module_dir = os.path.relpath(root, modules_path)
-        createLinkToMarkdownFile(modules_path, rel_dir_from_module_dir, filename)
+        rel_dir_from_module_dir = os.path.relpath(root, link_output_path)
+        createLinkToMarkdownFile(link_output_path, rel_dir_from_module_dir, filename)
 
 def addLinkToRSTFile(rst_path, md_link_filename):
     with open(rst_path, 'r') as readOnlyFile:
@@ -71,16 +75,20 @@ def searchFileInPath(path, output, predicate_func):
             if predicate_func(file):
                 output.append(Markdown(root = root, filename = file))
 
-def run(*dir_args):
-    [search_markdown_dirs.append(arg) for arg in dir_args]
+def init(search_dir_list, link_docs_output_relpath):
+    [search_markdown_dirs.append(dir) for dir in search_dir_list]
+    link_output_path = docpy_path + '/' + link_docs_output_relpath
+
+def run(search_dir_list, link_docs_output_relpath):
+    init(search_dir_list, link_docs_output_relpath)
     func = lambda file : file.endswith(md_extension_str)
     for dir in search_markdown_dirs:
         rel_dir_path = vistle_root_path + dir
         searchFileInPath(rel_dir_path, markdown_files, func)
 
-    createDocHierachy(markdown_files, modules_path)
+    createDocHierachy(markdown_files, link_output_path)
     for link in sorted(index_link_list):
-        addLinkToRSTFile(modules_path + "/index.rst", link)
+        addLinkToRSTFile(link_output_path + "/index.rst", link)
 
 if __name__ == "__main__":
-    run("module", "app")
+    run(["module", "app"], "module")
