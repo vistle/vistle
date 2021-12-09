@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+#Requires a valid Vistle source tree
+#Creates or updates the documentation file of given target in the working directory
+#e.g.: createDocumentation.sh GenDat  
+
+export VISTLE_DOCUMENTATION_DIR=$PWD
+export VISTLE_DOCUMENTATION_TARGET=$1
+
+vistle --batch ${PROJECT_SOURCE_DIR}/doc/generateModuleInfo.vsl

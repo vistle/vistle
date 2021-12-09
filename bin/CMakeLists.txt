@@ -37,3 +37,6 @@ if(UNIX)
         RENAME vistle_opener
         DESTINATION bin)
 endif()
+
+configure_file(createDocumentation.sh.in createDocumentation.sh)
+install(PROGRAMS createDocumentation.sh DESTINATION bin)
