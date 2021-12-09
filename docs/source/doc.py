@@ -73,10 +73,13 @@ def searchFileInPath(path, output, predicate_func):
             if predicate_func(file):
                 output.append(Markdown(root = root, filename = file))
 
-if __name__ == "__main__":
+def run():
     func = lambda file : file.endswith(md_extension_str)
     for dir in search_markdown_dirs.split(' '):
         rel_dir_path = vistle_root_path + dir
         searchFileInPath(rel_dir_path, markdown_files, func)
 
     createDocHierachy(markdown_files, application_path)
+
+if __name__ == "__main__":
+    run()
