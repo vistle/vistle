@@ -2,6 +2,6 @@ Application Documentation
 =========================
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 2
 
    modules/index.rst
