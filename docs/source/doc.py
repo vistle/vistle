@@ -4,6 +4,7 @@ from collections import namedtuple
 Markdown = namedtuple("Markdown", "root filename")
 
 markdown_files = []
+index_link_list = []
 
 docpy_path = os.path.dirname(os.path.realpath(__file__))
 vistle_root_path = docpy_path.split("docs")[0]
@@ -65,7 +66,8 @@ def createLinkToMarkdownFile(md_linkdir, md_root, md_filename):
         return
     with open(new_link_file_path, 'w') as f:
         f.write(myst_include_str % md_origin_path)
-    addLinkToRSTFile(modules_path + "/index.rst", new_link_file_path.split('/')[-1])
+    index_link_list.append(new_link_file_path.split('/')[-1])
+    # addLinkToRSTFile(modules_path + "/index.rst", new_link_file_path.split('/')[-1])
 
 def searchFileInPath(path, output, predicate_func):
     for root, _, files in os.walk(path):
@@ -80,6 +82,8 @@ def run():
         searchFileInPath(rel_dir_path, markdown_files, func)
 
     createDocHierachy(markdown_files, application_path)
+    for link in sorted(index_link_list):
+        addLinkToRSTFile(modules_path + "/index.rst", link)
 
 if __name__ == "__main__":
     run()
