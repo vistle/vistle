@@ -11,7 +11,25 @@ The Vistle system is modular and can be extended easily with additional visualiz
 
 More infos about Architecture: https://vistle.io/architecture/
 
+* :ref:`build-docs`
+* :ref:`user-docs`
 * :ref:`dev-docs`
+
+.. _build-docs:
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Build Documentation:
+    
+   Build Instructions <build/index.rst> 
+
+.. _user-docs:
+
+.. toctree::
+   :maxdepth: 2
+   :caption: User Documentation:
+
+   Module Guide <modules/index.rst>
 
 .. _dev-docs:
 
@@ -19,8 +37,8 @@ More infos about Architecture: https://vistle.io/architecture/
    :maxdepth: 2
    :caption: Developer Documentation:
 
-    Development <dev/index.rst>
-    Application Documentation <dev/application/index.rst>
+   Coding <dev/index.rst>
+
 
 Indices and tables
 ==================

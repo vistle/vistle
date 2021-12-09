@@ -11,8 +11,7 @@ vistle_root_path = docpy_path.split("docs")[0]
 
 # search_markdown_dirs = "module lib/vistle app"
 search_markdown_dirs = "module"
-application_path = docpy_path + "/dev/application"
-modules_path = application_path + "/modules"
+modules_path = docpy_path + "/modules"
 md_extension_str = ".md"
 link_str = "_link"
 myst_include_str = """```{include} %s
@@ -81,7 +80,7 @@ def run():
         rel_dir_path = vistle_root_path + dir
         searchFileInPath(rel_dir_path, markdown_files, func)
 
-    createDocHierachy(markdown_files, application_path)
+    createDocHierachy(markdown_files, modules_path)
     for link in sorted(index_link_list):
         addLinkToRSTFile(modules_path + "/index.rst", link)
 
