@@ -1,13 +1,17 @@
-Color
-=====
-map scalar and vector data to colors
-
+[headline]:<>
+Color - map scalar and vector data to colors
+============================================
+[headline]:<>
+[inputPorts]:<>
 Input ports
 -----------
 |name|description|
 |-|-|
 |data_in||
 
+
+[inputPorts]:<>
+[outputPorts]:<>
 Output ports
 ------------
 |name|description|
@@ -15,6 +19,9 @@ Output ports
 |data_out||
 |color_out||
 
+
+[outputPorts]:<>
+[parameters]:<>
 Parameters
 ----------
 |name|type|description|
@@ -40,3 +47,5 @@ Parameters
 |inset_steps|Int|number of color map steps for inset (0: as outer map)|
 |resolution|Int|number of steps to compute|
 |inset_opacity_factor|Float|multiplier for opacity of inset color|
+
+[parameters]:<>

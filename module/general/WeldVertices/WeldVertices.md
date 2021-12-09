@@ -1,7 +1,8 @@
-WeldVertices
-============
-weld vertices and build indexed geometry
-
+[headline]:<>
+WeldVertices - weld vertices and build indexed geometry
+=======================================================
+[headline]:<>
+[inputPorts]:<>
 Input ports
 -----------
 |name|description|
@@ -10,6 +11,9 @@ Input ports
 |data_in1||
 |data_in2||
 
+
+[inputPorts]:<>
+[outputPorts]:<>
 Output ports
 ------------
 |name|description|
@@ -17,3 +21,10 @@ Output ports
 |data_out0||
 |data_out1||
 |data_out2||
+
+
+[outputPorts]:<>
+[parameters]:<>
+
+[parameters]:<>
+:<>

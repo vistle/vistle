@@ -1,19 +1,26 @@
-BoundingBox
-===========
-compute bounding boxes
-
+[headline]:<>
+BoundingBox - compute bounding boxes
+====================================
+[headline]:<>
+[inputPorts]:<>
 Input ports
 -----------
 |name|description|
 |-|-|
 |grid_in|input data|
 
+
+[inputPorts]:<>
+[outputPorts]:<>
 Output ports
 ------------
 |name|description|
 |-|-|
 |grid_out|bounding box|
 
+
+[outputPorts]:<>
+[parameters]:<>
 Parameters
 ----------
 |name|type|description|
@@ -25,3 +32,5 @@ Parameters
 |max_block|IntVector|output parameter: block numbers containing maximum|
 |min_index|IntVector|output parameter: indices of minimum|
 |max_index|IntVector|output parameter: indices of maximum|
+
+[parameters]:<>

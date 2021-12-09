@@ -1,7 +1,12 @@
-LibSimController
-================
-acquire data from LibSim instrumented simulations
-
+[headline]:<>
+LibSimController - acquire data from LibSim instrumented simulations
+====================================================================
+[headline]:<>
+[inputPorts]:<>
+[inputPorts]:<>
+[outputPorts]:<>
+[outputPorts]:<>
+[parameters]:<>
 Parameters
 ----------
 |name|type|description|
@@ -13,3 +18,5 @@ Parameters
 |frequency|Int|frequency in which data is retrieved from the simulation|
 |combine grids|Int|combine all structure grids on a rank to a single unstructured grid|
 |keep timesteps|Int|keep data of processed timestep of this execution|
+
+[parameters]:<>

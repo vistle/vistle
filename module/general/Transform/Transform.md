@@ -1,19 +1,26 @@
-Transform
-=========
-apply transformation matrix to grid
-
+[headline]:<>
+Transform - apply transformation matrix to grid
+===============================================
+[headline]:<>
+[inputPorts]:<>
 Input ports
 -----------
 |name|description|
 |-|-|
 |data_in|input data|
 
+
+[inputPorts]:<>
+[outputPorts]:<>
 Output ports
 ------------
 |name|description|
 |-|-|
 |data_out|output data|
 
+
+[outputPorts]:<>
+[parameters]:<>
 Parameters
 ----------
 |name|type|description|
@@ -25,3 +32,5 @@ Parameters
 |repetitions|Int|how often the transformation should be repeated|
 |animation|Int|animate repetitions|
 |mirror|Int|enable mirror|
+
+[parameters]:<>

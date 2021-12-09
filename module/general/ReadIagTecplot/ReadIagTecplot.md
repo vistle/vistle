@@ -1,7 +1,10 @@
-ReadIagTecplot
-==============
-read IAG Tecplot data (hexahedra only)
-
+[headline]:<>
+ReadIagTecplot - read IAG Tecplot data (hexahedra only)
+=======================================================
+[headline]:<>
+[inputPorts]:<>
+[inputPorts]:<>
+[outputPorts]:<>
 Output ports
 ------------
 |name|description|
@@ -13,6 +16,9 @@ Output ports
 |u||
 |v||
 
+
+[outputPorts]:<>
+[parameters]:<>
 Parameters
 ----------
 |name|type|description|
@@ -23,3 +29,6 @@ Parameters
 |first_rank|Int|rank for first partition of first timestep|
 |check_convexity|Int|whether to check convexity of grid cells|
 |filename|String|name of Tecplot file|
+
+[parameters]:<>
+]:<>

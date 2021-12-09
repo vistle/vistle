@@ -1,7 +1,8 @@
-AttachNormals
-=============
-attach normals to grid
-
+[headline]:<>
+AttachNormals - attach normals to grid
+======================================
+[headline]:<>
+[inputPorts]:<>
 Input ports
 -----------
 |name|description|
@@ -9,8 +10,17 @@ Input ports
 |grid_in||
 |data_in||
 
+
+[inputPorts]:<>
+[outputPorts]:<>
 Output ports
 ------------
 |name|description|
 |-|-|
 |grid_out||
+
+
+[outputPorts]:<>
+[parameters]:<>
+
+[parameters]:<>

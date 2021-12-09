@@ -1,7 +1,8 @@
-Thicken
-=======
-transform lines to tubes or points to spheres
-
+[headline]:<>
+Thicken - transform lines to tubes or points to spheres
+=======================================================
+[headline]:<>
+[inputPorts]:<>
 Input ports
 -----------
 |name|description|
@@ -9,6 +10,9 @@ Input ports
 |grid_in||
 |data_in||
 
+
+[inputPorts]:<>
+[outputPorts]:<>
 Output ports
 ------------
 |name|description|
@@ -16,6 +20,9 @@ Output ports
 |grid_out||
 |data_out||
 
+
+[outputPorts]:<>
+[parameters]:<>
 Parameters
 ----------
 |name|type|description|
@@ -27,3 +34,6 @@ Parameters
 |start_style|Int|cap style for initial tube segments|
 |connection_style|Int|cap style for tube segment connections|
 |end_style|Int|cap style for final tube segments|
+
+[parameters]:<>
+>

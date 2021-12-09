@@ -1,7 +1,12 @@
-Dropbear
-========
-start Dropbear SSH server on compute nodes
-
+[headline]:<>
+Dropbear - start Dropbear SSH server on compute nodes
+=====================================================
+[headline]:<>
+[inputPorts]:<>
+[inputPorts]:<>
+[outputPorts]:<>
+[outputPorts]:<>
+[parameters]:<>
 Parameters
 ----------
 |name|type|description|
@@ -14,3 +19,5 @@ Parameters
 |hostkey_ecdsa|String|path to ecdsa host key (~/.ssh/vistle_dropbear_ecdsa)|
 |exposed_rank|Int|rank to expose on hub (-1: none)|
 |exposed_port|Int|port to which exposed rank's dropbear should be forwarded to on hub (<=0: absolute value used as offset to dropbear port)|
+
+[parameters]:<>

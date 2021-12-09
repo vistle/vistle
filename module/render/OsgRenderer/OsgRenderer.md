@@ -1,19 +1,26 @@
-OsgRenderer
-===========
-OpenSceneGraph remote renderer
-
+[headline]:<>
+OsgRenderer - OpenSceneGraph remote renderer
+============================================
+[headline]:<>
+[inputPorts]:<>
 Input ports
 -----------
 |name|description|
 |-|-|
 |data_in|input data|
 
+
+[inputPorts]:<>
+[outputPorts]:<>
 Output ports
 ------------
 |name|description|
 |-|-|
 |image_out|connect to COVER|
 
+
+[outputPorts]:<>
+[parameters]:<>
 Parameters
 ----------
 |name|type|description|
@@ -40,3 +47,5 @@ Parameters
 |visible_view|Int|no. of visible view (positive values will open window)|
 |threading_model|Int|OpenSceneGraph threading model|
 |asynchronicity|Int|number of outstanding frames to tolerate|
+
+[parameters]:<>

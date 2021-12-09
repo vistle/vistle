@@ -22,17 +22,17 @@ using namespace vistle::insitu::message;
 
 SenseiModule::SenseiModule(const string &name, int moduleID, mpi::communicator comm): Reader(name, moduleID, comm)
 {
-    m_filePath = addStringParameter("path", "path to a .vistle file", directory::configHome() + "/sensei.vistle",
+    m_filePath = addStringParameter("path", "path to the connection file written by the simulation", directory::configHome() + "/sensei.vistle",
                                     vistle::Parameter::ExistingFilename);
     setParameterFilters(m_filePath, "simulation Files (*.vistle)");
     observeParameter(m_filePath);
 
-    m_deleteShm = addIntParameter("deleteShm", "delete the shm potentially used for communication with sensei", false,
+    m_deleteShm = addIntParameter("deleteShm", "clean the shared memory message queues used to communicate with the simulation", false,
                                   vistle::Parameter::Presentation::Boolean);
     observeParameter(m_deleteShm);
-    m_intOptions[addIntParameter("frequency", "frequency in which data is retrieved from the simulation", 1)] =
+    m_intOptions[addIntParameter("frequency", "the pipeline is processed for every nth simulation cycle", 1)] =
         sensei::IntOptions::NthTimestep;
-    m_intOptions[addIntParameter("keep timesteps", "keep data of processed timestep during this execution", true,
+    m_intOptions[addIntParameter("keep timesteps", "if true timesteps are cached and processed as time series", true,
                                  vistle::Parameter::Boolean)] = sensei::IntOptions::KeepTimesteps;
 
     for (auto &pair: m_intOptions)

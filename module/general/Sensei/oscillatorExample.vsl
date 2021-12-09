@@ -1,0 +1,37 @@
+MasterHub=getMasterHub()
+VistleSession=getVistleSession()
+uuids = {}
+
+
+# spawn all local modules
+umSenseiController1 = spawnAsync(MasterHub, 'SenseiController')
+umDomainSurface2 = spawnAsync(MasterHub, 'DomainSurface')
+umColor3 = spawnAsync(MasterHub, 'Color')
+umCOVER4 = spawnAsync(MasterHub, 'COVER')
+
+mSenseiController1 = waitForSpawn(umSenseiController1)
+setVectorParam(mSenseiController1, '_position', -114.0, -8.0, True)
+applyParameters(mSenseiController1)
+
+mDomainSurface2 = waitForSpawn(umDomainSurface2)
+setVectorParam(mDomainSurface2, '_position', -160.0, 80.0, True)
+applyParameters(mDomainSurface2)
+
+mColor3 = waitForSpawn(umColor3)
+setVectorParam(mColor3, '_position', 0.0, 80.0, True)
+applyParameters(mColor3)
+
+mCOVER4 = waitForSpawn(umCOVER4)
+setVectorParam(mCOVER4, '_position', -64.0, 171.0, True)
+setIntParam(mCOVER4, 'render_mode', 4, True)
+applyParameters(mCOVER4)
+
+# all local connections
+connect(mSenseiController1,'mesh_data', mDomainSurface2,'data_in')
+connect(mSenseiController1,'mesh_data', mColor3,'data_in')
+connect(mDomainSurface2,'data_out', mCOVER4,'data_in')
+connect(mColor3,'color_out', mCOVER4,'data_in')
+
+# spawn all remote modules
+
+# connections between local and remote

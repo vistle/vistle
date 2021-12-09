@@ -27,7 +27,7 @@ public:
     ~SenseiModule();
 
 private:
-    insitu::message::InSituShmMessage m_messageHandler;
+    insitu::message::InSituShmMessage m_messageHandler; //communicate with the sim via in situ messages
 
     vistle::StringParameter *m_filePath = nullptr;
     vistle::IntParameter *m_deleteShm = nullptr;

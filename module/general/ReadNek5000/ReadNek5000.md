@@ -1,7 +1,10 @@
-ReadNek5000
-===========
-read .nek5000 files
-
+[headline]:<>
+ReadNek5000 - read .nek5000 files
+=================================
+[headline]:<>
+[inputPorts]:<>
+[inputPorts]:<>
+[outputPorts]:<>
 Output ports
 ------------
 |name|description|
@@ -12,6 +15,9 @@ Output ports
 |temperature_out|temperature data|
 |blockNumber_out|Nek internal block numbers|
 
+
+[outputPorts]:<>
+[parameters]:<>
 Parameters
 ----------
 |name|type|description|
@@ -26,3 +32,6 @@ Parameters
 |numGhostLayers|Int|number of ghost layers around eeach partition, a layer consists of whole blocks|
 |number of blocks|Int|number of blocks to read from file, <= 0 to read all|
 |numberOfPartitions|Int|number of parallel partitions to use for reading, 0 = one partition for each rank|
+
+[parameters]:<>
+:<>

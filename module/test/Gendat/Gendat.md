@@ -1,7 +1,10 @@
-Gendat
-======
-generate scalar and vector test data on structured and unstructured grids
-
+[headline]:<>
+Gendat - generate scalar and vector test data on structured and unstructured grids
+==================================================================================
+[headline]:<>
+[inputPorts]:<>
+[inputPorts]:<>
+[outputPorts]:<>
 Output ports
 ------------
 |name|description|
@@ -10,6 +13,9 @@ Output ports
 |data_out0|scalar data|
 |data_out1|vector data|
 
+
+[outputPorts]:<>
+[parameters]:<>
 Parameters
 ----------
 |name|type|description|
@@ -41,3 +47,6 @@ Parameters
 |element_data|Int|generate data per element/cell|
 |anim_data|Int|data animation|
 |delay|Float|wait after creating an object (s)|
+
+[parameters]:<>
+>

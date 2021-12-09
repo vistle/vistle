@@ -1,15 +1,25 @@
-ToPoints
-========
-reduce geometry to underlying points
-
+[headline]:<>
+ToPoints - reduce geometry to underlying points
+===============================================
+[headline]:<>
+[inputPorts]:<>
 Input ports
 -----------
 |name|description|
 |-|-|
 |grid_in||
 
+
+[inputPorts]:<>
+[outputPorts]:<>
 Output ports
 ------------
 |name|description|
 |-|-|
 |grid_out||
+
+
+[outputPorts]:<>
+[parameters]:<>
+
+[parameters]:<>

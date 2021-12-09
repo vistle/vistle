@@ -1,7 +1,10 @@
-ReadWrfChem
-===========
-read WRF-Chem (Weather Research and Forecasting model coupled to Chemistry) data files
-
+[headline]:<>
+ReadWrfChem - read WRF-Chem (Weather Research and Forecasting model coupled to Chemistry) data files
+====================================================================================================
+[headline]:<>
+[inputPorts]:<>
+[inputPorts]:<>
+[outputPorts]:<>
 Output ports
 ------------
 |name|description|
@@ -14,6 +17,9 @@ Output ports
 |data_out_V|scalar data|
 |data_out_W|scalar data|
 
+
+[outputPorts]:<>
+[parameters]:<>
 Parameters
 ----------
 |name|type|description|
@@ -40,3 +46,6 @@ Parameters
 |V|String|V|
 |W|String|W|
 |distribute_time|Int|distribute timesteps across MPI ranks|
+
+[parameters]:<>
+s]:<>

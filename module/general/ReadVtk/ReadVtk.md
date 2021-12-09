@@ -1,7 +1,10 @@
-ReadVtk
-=======
-read VTK data
-
+[headline]:<>
+ReadVtk - read VTK data
+=======================
+[headline]:<>
+[inputPorts]:<>
+[inputPorts]:<>
+[outputPorts]:<>
 Output ports
 ------------
 |name|description|
@@ -14,6 +17,9 @@ Output ports
 |cell_data1|cell data|
 |cell_data2|cell data|
 
+
+[outputPorts]:<>
+[parameters]:<>
 Parameters
 ----------
 |name|type|description|
@@ -32,3 +38,6 @@ Parameters
 |cell_field_0|String|cell data field|
 |cell_field_1|String|cell data field|
 |cell_field_2|String|cell data field|
+
+[parameters]:<>
+s]:<>

@@ -1,7 +1,8 @@
-Cache
-=====
-cache input objects
-
+[headline]:<>
+Cache - cache input objects
+===========================
+[headline]:<>
+[inputPorts]:<>
 Input ports
 -----------
 |name|description|
@@ -12,6 +13,9 @@ Input ports
 |data_in3|input data 3|
 |data_in4|input data 4|
 
+
+[inputPorts]:<>
+[outputPorts]:<>
 Output ports
 ------------
 |name|description|
@@ -22,6 +26,9 @@ Output ports
 |data_out3|output data 3|
 |data_out4|output data 4|
 
+
+[outputPorts]:<>
+[parameters]:<>
 Parameters
 ----------
 |name|type|description|
@@ -39,3 +46,6 @@ Parameters
 |archive_compression_speed|Int|speed parameter of compression algorithm|
 |reorder|Int|reorder timesteps|
 |renumber|Int|renumber timesteps consecutively|
+
+[parameters]:<>
+ers]:<>

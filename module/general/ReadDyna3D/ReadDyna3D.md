@@ -1,7 +1,10 @@
-ReadDyna3D
-==========
-read LS-Dyna3D ptf files
-
+[headline]:<>
+ReadDyna3D - read LS-Dyna3D ptf files
+=====================================
+[headline]:<>
+[inputPorts]:<>
+[inputPorts]:<>
+[outputPorts]:<>
 Output ports
 ------------
 |name|description|
@@ -10,6 +13,9 @@ Output ports
 |data1_out|vector data|
 |data2_out|scalar data|
 
+
+[outputPorts]:<>
+[parameters]:<>
 Parameters
 ----------
 |name|type|description|
@@ -27,3 +33,6 @@ Parameters
 |format|Int|Format of LS-DYNA3D ptf-File|
 |byteswap|Int|Perform Byteswapping|
 |OnlyGeometry|Int|Reading only Geometry? yes|no|
+
+[parameters]:<>
+>

@@ -1,7 +1,9 @@
-ScalarToVec
-===========
-combine up to three scalar fields to a vector field
+[headline]:<>
+ScalarToVec - combine up to three scalar fields to a vector field
+=================================================================
+[headline]:<>
 
+[inputPorts]:<>
 Input ports
 -----------
 |name|description|
@@ -10,8 +12,17 @@ Input ports
 |data_in1||
 |data_in2||
 
+
+[inputPorts]:<>
+[outputPorts]:<>
 Output ports
 ------------
 |name|description|
 |-|-|
 |data_out||
+
+
+[outputPorts]:<>
+[parameters]:<>
+
+[parameters]:<>

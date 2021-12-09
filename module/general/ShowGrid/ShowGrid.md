@@ -1,19 +1,26 @@
-ShowGrid
-========
-show outlines of grid cells
-
+[headline]:<>
+ShowGrid - show outlines of grid cells
+======================================
+[headline]:<>
+[inputPorts]:<>
 Input ports
 -----------
 |name|description|
 |-|-|
 |grid_in||
 
+
+[inputPorts]:<>
+[outputPorts]:<>
 Output ports
 ------------
 |name|description|
 |-|-|
 |grid_out||
 
+
+[outputPorts]:<>
+[parameters]:<>
 Parameters
 ----------
 |name|type|description|
@@ -31,3 +38,5 @@ Parameters
 |triangle|Int|Show triandle|
 |Show Cells from Cell Nr. :|Int|Show Cell Nr.|
 |Show Cells to Cell Nr. :|Int|Show Cell Nr.|
+
+[parameters]:<>

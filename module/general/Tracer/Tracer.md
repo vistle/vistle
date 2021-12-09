@@ -1,7 +1,8 @@
-Tracer
-======
-compute particle traces and streamlines
-
+[headline]:<>
+Tracer - compute particle traces and streamlines
+================================================
+[headline]:<>
+[inputPorts]:<>
 Input ports
 -----------
 |name|description|
@@ -9,6 +10,9 @@ Input ports
 |data_in0||
 |data_in1||
 
+
+[inputPorts]:<>
+[outputPorts]:<>
 Output ports
 ------------
 |name|description|
@@ -24,6 +28,9 @@ Output ports
 |cell_index||
 |block_index||
 
+
+[outputPorts]:<>
+[parameters]:<>
 Parameters
 ----------
 |name|type|description|
@@ -53,3 +60,6 @@ Parameters
 |num_active|Int|number of particles to trace simultaneously on each node (0: no. of cores)|
 |particle_placement|Int|where a particle's data shall be collected|
 |cell_index_modulus|Int|modulus for cell number output|
+
+[parameters]:<>
+eters]:<>

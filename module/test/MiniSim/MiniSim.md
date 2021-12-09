@@ -1,7 +1,10 @@
-MiniSim
-=======
-small simulation to compare performance with other in situ interfaces
-
+[headline]:<>
+MiniSim - small simulation to compare performance with other in situ interfaces
+===============================================================================
+[headline]:<>
+[inputPorts]:<>
+[inputPorts]:<>
+[outputPorts]:<>
 Output ports
 ------------
 |name|description|
@@ -9,6 +12,9 @@ Output ports
 |grid_out|structured grid|
 |data_out|oscillators|
 
+
+[outputPorts]:<>
+[parameters]:<>
 Parameters
 ----------
 |name|type|description|
@@ -24,3 +30,5 @@ Parameters
 |velocityScale|Float|scale factor to convert function gradient to velocity|
 |tEnd|Float|end time|
 |dt|Float|time step length|
+
+[parameters]:<>

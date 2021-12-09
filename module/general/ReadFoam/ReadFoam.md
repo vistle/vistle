@@ -1,7 +1,10 @@
-ReadFoam
-========
-read OpenFOAM data
-
+[headline]:<>
+ReadFoam - read OpenFOAM data
+=============================
+[headline]:<>
+[inputPorts]:<>
+[inputPorts]:<>
+[outputPorts]:<>
 Output ports
 ------------
 |name|description|
@@ -14,6 +17,9 @@ Output ports
 |data_2d_out1||
 |data_2d_out2||
 
+
+[outputPorts]:<>
+[parameters]:<>
 Parameters
 ----------
 |name|type|description|
@@ -38,3 +44,6 @@ Parameters
 |Data2d2|String|name of field|
 |build_ghostcells|Int|whether to build ghost cells|
 |only_polyhedra|Int|create only polyhedral cells|
+
+[parameters]:<>
+s]:<>

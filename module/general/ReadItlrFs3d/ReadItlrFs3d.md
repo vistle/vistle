@@ -1,7 +1,10 @@
-ReadItlrFs3d
-============
-read ITLR FS3D (Free Surface 3D) binary data
-
+[headline]:<>
+ReadItlrFs3d - read ITLR FS3D (Free Surface 3D) binary data
+===========================================================
+[headline]:<>
+[inputPorts]:<>
+[inputPorts]:<>
+[outputPorts]:<>
 Output ports
 ------------
 |name|description|
@@ -10,6 +13,9 @@ Output ports
 |data1|data output|
 |data2|data output|
 
+
+[outputPorts]:<>
+[parameters]:<>
 Parameters
 ----------
 |name|type|description|
@@ -26,3 +32,6 @@ Parameters
 |filename2|String|.lst or .bin file for data|
 |num_partitions|Int|number of partitions (-1: MPI ranks)|
 |distribute_time|Int|distribute timesteps across MPI ranks|
+
+[parameters]:<>
+>

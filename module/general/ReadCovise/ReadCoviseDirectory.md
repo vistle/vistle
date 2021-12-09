@@ -1,7 +1,10 @@
-ReadCoviseDirectory
-===================
-read COVISE data in a directory
-
+[headline]:<>
+ReadCoviseDirectory - read COVISE data in a directory
+=====================================================
+[headline]:<>
+[inputPorts]:<>
+[inputPorts]:<>
+[outputPorts]:<>
 Output ports
 ------------
 |name|description|
@@ -11,6 +14,9 @@ Output ports
 |field1_out||
 |field2_out||
 
+
+[outputPorts]:<>
+[parameters]:<>
 Parameters
 ----------
 |name|type|description|
@@ -27,3 +33,6 @@ Parameters
 |field1|String|name of COVISE file for field 3|
 |field2|String|name of COVISE file for field 4|
 |distribute_time|Int|distribute timesteps across MPI ranks|
+
+[parameters]:<>
+<>

@@ -1,7 +1,8 @@
-AttachGrid
-==========
-attach underlying grid to mappable data
-
+[headline]:<>
+AttachGrid - attach underlying grid to mappable data
+====================================================
+[headline]:<>
+[inputPorts]:<>
 Input ports
 -----------
 |name|description|
@@ -13,6 +14,9 @@ Input ports
 |data_in3||
 |data_in4||
 
+
+[inputPorts]:<>
+[outputPorts]:<>
 Output ports
 ------------
 |name|description|
@@ -22,3 +26,10 @@ Output ports
 |data_out2||
 |data_out3||
 |data_out4||
+
+
+[outputPorts]:<>
+[parameters]:<>
+
+[parameters]:<>
+ters]:<>
