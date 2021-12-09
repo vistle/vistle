@@ -7,7 +7,9 @@ markdown_files = []
 
 docpy_path = os.path.dirname(os.path.realpath(__file__))
 vistle_root_path = docpy_path.split("docs")[0]
-search_markdown_dirs = "module lib/vistle app"
+
+# search_markdown_dirs = "module lib/vistle app"
+search_markdown_dirs = "module"
 application_path = docpy_path + "/dev/application"
 modules_path = application_path + "/modules"
 md_extension_str = ".md"
