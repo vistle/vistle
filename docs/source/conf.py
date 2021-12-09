@@ -88,4 +88,4 @@ html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
 
 autosectionlabel_prefix_document = True
-doc.run()
+doc.run("module")

@@ -5,12 +5,10 @@ Markdown = namedtuple("Markdown", "root filename")
 
 markdown_files = []
 index_link_list = []
+search_markdown_dirs = []
 
 docpy_path = os.path.dirname(os.path.realpath(__file__))
 vistle_root_path = docpy_path.split("docs")[0]
-
-# search_markdown_dirs = "module lib/vistle app"
-search_markdown_dirs = "module"
 modules_path = docpy_path + "/modules"
 md_extension_str = ".md"
 link_str = "_link"
@@ -73,9 +71,10 @@ def searchFileInPath(path, output, predicate_func):
             if predicate_func(file):
                 output.append(Markdown(root = root, filename = file))
 
-def run():
+def run(*dir_args):
+    [search_markdown_dirs.append(arg) for arg in dir_args]
     func = lambda file : file.endswith(md_extension_str)
-    for dir in search_markdown_dirs.split(' '):
+    for dir in search_markdown_dirs:
         rel_dir_path = vistle_root_path + dir
         searchFileInPath(rel_dir_path, markdown_files, func)
 
@@ -84,4 +83,4 @@ def run():
         addLinkToRSTFile(modules_path + "/index.rst", link)
 
 if __name__ == "__main__":
-    run()
+    run("module", "app")
