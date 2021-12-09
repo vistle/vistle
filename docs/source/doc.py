@@ -43,7 +43,7 @@ def addLinkToRSTFile(rst_path, md_link_filename):
         writeableFile = open(rst_path, 'a')
     else:
         writeableFile = open(rst_path, 'w')
-        writeableFile.write(rst_index_header_str.format(name = "Module"))
+        writeableFile.write(rst_index_header_str.format(name = "Module Guide"))
     writeableFile.write("   " + md_link_filename + '\n')
     writeableFile.close()
 
@@ -66,7 +66,6 @@ def createLinkToMarkdownFile(md_linkdir, md_root, md_filename):
     with open(new_link_file_path, 'w') as f:
         f.write(myst_include_str % md_origin_path)
     index_link_list.append(new_link_file_path.split('/')[-1])
-    # addLinkToRSTFile(modules_path + "/index.rst", new_link_file_path.split('/')[-1])
 
 def searchFileInPath(path, output, predicate_func):
     for root, _, files in os.walk(path):
