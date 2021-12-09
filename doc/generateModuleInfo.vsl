@@ -1,79 +1,112 @@
 import time
 import os
-def writeHeadline(file, line, type):
+
+def getHeadline(line, type):
     if len(line) == 0:
         return
-    file.write(line)
-    file.write("\n")
+    retval = line + "\n"
     for i in range (len(line)):
-        file.write(type)
-    file.write("\n")
-    return
+        retval += type
+    retval += "\n"
+    return retval
 
-def writeTableLine(file, entries):
-    file.write("|")
+def getTableLine(entries):
+    retval = "|"
     for entry in entries:
-        file.write(entry)
-        file.write("|")
-    file.write("\n")
+        retval += entry + "|" 
+    retval += "\n"
+    return retval
 
-def writePortsTable(file, names, descriptions):
+def getPortsTable(names, descriptions):
+    retval = ""
     if len(names) > 0:
-        writeTableLine(f, ["name", "description"])
-        writeTableLine(f, ["-", "-"])
+        retval += getTableLine(["name", "description"]) + getTableLine(["-", "-"])
     for i in range(len(names)):
-        writeTableLine(f, [names[i], descriptions[i]]) 
+        retval += getTableLine([names[i], descriptions[i]])
+    retval += "\n" 
+    return retval
 
-def writeModule(file, mod):
+def readUntil(file, tag):
+    while True:
+        line = file.readline()
+        pos = line.find(tag)
+        if not line:
+            break
+        if pos != -1:
+            if file.tell() - pos < 0:
+                file.seek(0,0)
+            else:
+                file.seek(file.tell() - pos, 0)
+            break
+
+            
+def cacheUntil(file, tag):
     
-    name = getModuleName(mod)
-    writeHeadline(file, name, "=")
-    f.write(getModuleDescription(mod))
-    f.write("\n")
-    f.write("\n")
+    cache = ""
+    while True:
+        line = file.readline()
+        pos = line.find(tag)
+        if not line:
+            break
+        if pos == -1:
+            cache += line
+        else:
+            cache += line[0 : pos]
+            break
+    return cache
 
+def getComment(comment):
+    return "[" + comment + "]:<>\n"
+
+def cacheOldFile(file, comments): #returns a list with len(comments) + 1 with content before and after the commented sections
+    contents = {}
+    f.seek(0,0)
+    for comment in comments:
+        c = "[" + comment + "]:<>"
+        contents[comment] = cacheUntil(file, c)
+        readUntil(file, c)
+    print(contents)
+    return contents
+
+def getSection(content, tag, cache):
+    return cache[tag] + getComment(tag) + content + getComment(tag)
+
+
+def getModuleDescriptionString(mod, cache):
+    name = getModuleName(mod)
+    description = getSection(getHeadline(name + " - " + getModuleDescription(mod), "="), "headline", cache)
+    
     ports = getInputPorts(mod)
     desc = getInputPortsDescriptions(mod)
+    inputPorts = ""
     if len(ports) > 0:
-        writeHeadline(file, "Input ports", "-")
-        writePortsTable(f, ports, desc)
-        f.write("\n")
+        inputPorts += getHeadline("Input ports", "-") + getPortsTable(ports, desc) + "\n"
+    description += getSection(inputPorts, "inputPorts", cache)
+
 
     ports = getOutputPorts(mod)
     desc = getOutputPortsDescriptions(mod)
+    outputPorts = ""
     if len(ports) > 0:
-        writeHeadline(file, "Output ports", "-")
-        writePortsTable(f, ports, desc)
-        f.write("\n")
+        outputPorts += getHeadline("Output ports", "-") + getPortsTable(ports, desc) + "\n"
+    description += getSection(outputPorts, "outputPorts", cache)
 
     allParams = getParameters(mod)
     params = []
     for param in allParams:
         if param[0] != '_':
             params.append(param)
+    paramString = ""
     if len(params) > 0:
-        writeHeadline(file, "Parameters", "-")
-        writeTableLine(file, ["name", "type", "description"])
-        writeTableLine(file, ["-", "-", "-"] )
+        paramString += getHeadline("Parameters", "-") + getTableLine(["name", "type", "description"]) + getTableLine(["-", "-", "-"])
     for param in params:
-        writeTableLine(file, [param, getParameterType(mod, param), getParameterTooltip(mod, param)])
+        paramString += getTableLine([param, getParameterType(mod, param), getParameterTooltip(mod, param)])
+    paramString += "\n"
+    description += getSection(paramString, "parameters", cache)
 
-    return
+    description += cache["end of file"]
+    return description
 
-
-#deprecated
-def spawnMods():
-    MasterHub=getMasterHub()
-    av = getAvailable()
-    num = 0
-    modList = []
-    for mod in av:
-        request = spawnAsync(MasterHub, mod)
-        spawn = waitForSpawn(request)
-        modList.append(spawn)
-        num = num+1
-    print("spawned " + str(len(modList)) + "/" + str(num))
-    return modList
 
 def deleteEmptyLines(file):
     file.seek(0, os.SEEK_END)
@@ -86,7 +119,7 @@ def deleteEmptyLines(file):
     # Read each character in the file one at a time from the penultimate
     # character going backwards, searching for a newline character
     # If we find a new line, exit the search
-    while pos > 0 and file.read(1) != "\n":
+    while (pos > 0 and file.read(1) != "\n"):
         pos -= 1
         file.seek(pos, os.SEEK_SET)
 
@@ -96,20 +129,27 @@ def deleteEmptyLines(file):
         file.seek(pos, os.SEEK_SET)
         file.truncate()
         return True
-    return false
+    return False
 
 def setFileEnding(file):
     while deleteEmptyLines(file):
+        pass
 
 dir = os.environ['VISTLE_DOCUMENTATION_DIR']
 target = os.environ['VISTLE_DOCUMENTATION_TARGET']
 
 filename = dir + "/" + target + ".md"
 print(filename)
-f = open(filename, "w")
+if not os.path.isfile(filename):
+    f = open(filename, "w")
+    f.close()
+f = open(filename, "r+")
+comments = ["headline", "inputPorts", "outputPorts", "parameters", "end of file"]
+cache = cacheOldFile(f, comments)
 mod = spawn(target)
 barrier()
-writeModule(f, mod)
-setFileEnding(f)
+f.seek(0,0)
+f.write(getModuleDescriptionString(mod, cache))
+#deleteEmptyLines(f)
 f.close()
 quit()
