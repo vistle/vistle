@@ -543,6 +543,9 @@ public:
     ParamVector getVector() const;
     IntParamVector getIntVector() const;
 
+    void setImmediate(bool immed);
+    bool isImmediate() const;
+
     bool apply(std::shared_ptr<Parameter> param) const;
 
 private:
@@ -559,8 +562,10 @@ private:
     };
     param_name_t name; //!< parameter name
     bool initialize; //!< called for setting parameter default value
-    bool delayed; //!< true: wait until parameterChanged should be called
     bool reply; //!< this messaege is in reply to a request to change a parameter and contains the value actually used
+    bool delayed; //!< true: wait until parameterChanged should be called
+    bool immediate_valid; //!< whether immediate was set
+    bool immediate; //!< true: changes are communicated with higher priority
 };
 
 //! set list of choice descriptions for a choice parameter

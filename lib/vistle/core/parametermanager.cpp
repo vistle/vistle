@@ -337,6 +337,21 @@ IntParamVector ParameterManager::getIntVectorParameter(const std::string &name) 
     return value;
 }
 
+bool ParameterManager::setParameterImmediate(Parameter *param, bool immed)
+{
+    param->setImmediate(immed);
+    return updateParameter(param->getName(), param, nullptr, Parameter::Other);
+}
+
+bool ParameterManager::setParameterImmediate(const std::string &name, bool immed)
+{
+    auto param = findParameter(name);
+    assert(param);
+    if (param)
+        return setParameterImmediate(param.get(), immed);
+    return false;
+}
+
 bool ParameterManager::parameterChangedWrapper(const Parameter *p)
 {
     if (m_inParameterChanged) {

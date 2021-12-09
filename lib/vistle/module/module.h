@@ -127,7 +127,7 @@ public:
     virtual void eventLoop(); // called from MODULE_MAIN
     void initDone(); // to be called from eventLoop after module ctor has run
 
-    virtual bool dispatch(bool block = true, bool *messageReceived = nullptr);
+    virtual bool dispatch(bool block = true, bool *messageReceived = nullptr, unsigned int minPrio = 0);
 
     Parameter *addParameterGeneric(const std::string &name, std::shared_ptr<Parameter> parameter) override;
     bool removeParameter(Parameter *param) override;
@@ -304,7 +304,7 @@ protected:
     void setStatus(const std::string &text, message::UpdateStatus::Importance prio = message::UpdateStatus::Low);
     void clearStatus();
 
-    bool getNextMessage(message::Buffer &buf, bool block = true);
+    bool getNextMessage(message::Buffer &buf, bool block = true, unsigned int minPrio = 0);
 
     bool reduceWrapper(const message::Execute *exec, bool reordered = false);
     bool prepareWrapper(const message::Execute *exec);

@@ -138,6 +138,8 @@ bool vistle::VistleConnection::sendParameter(const std::shared_ptr<Parameter> p)
     mutex_lock lock(m_mutex);
     vistle::message::SetParameter set(p->module(), p->getName(), p);
     set.setDestId(p->module());
+    if (p->isImmediate())
+        set.setPriority(vistle::message::Message::ImmediateParameter);
     return sendMessage(set);
 }
 

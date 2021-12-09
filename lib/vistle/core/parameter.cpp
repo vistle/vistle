@@ -96,6 +96,16 @@ bool Parameter::isGroupExpanded() const
     return m_groupExpanded;
 }
 
+void Parameter::setImmediate(bool immed)
+{
+    m_immediate = immed;
+}
+
+bool Parameter::isImmediate() const
+{
+    return m_immediate;
+}
+
 namespace {
 
 using namespace boost;

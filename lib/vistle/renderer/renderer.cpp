@@ -206,7 +206,7 @@ bool Renderer::handleAddObject(const message::AddObject &add)
     return true;
 }
 
-bool Renderer::dispatch(bool block, bool *messageReceived)
+bool Renderer::dispatch(bool block, bool *messageReceived, unsigned int minPrio)
 {
     (void)block;
     int quit = 0;
@@ -217,7 +217,7 @@ bool Renderer::dispatch(bool block, bool *messageReceived)
         // process all messages until one needs cooperative processing
         message::Buffer buf;
         message::Message &message = buf;
-        bool haveMessage = getNextMessage(buf, false);
+        bool haveMessage = getNextMessage(buf, false, minPrio);
         int needSync = 0;
         if (haveMessage) {
             if (needsSync(message))
@@ -251,7 +251,7 @@ bool Renderer::dispatch(bool block, bool *messageReceived)
             }
 
             if (anySync && !needSync) {
-                haveMessage = getNextMessage(buf);
+                haveMessage = getNextMessage(buf, true, minPrio);
             }
 
         } while (anySync && !needSync);

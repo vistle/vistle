@@ -62,7 +62,7 @@ bool InSituReader::operate()
     return false;
 }
 
-bool InSituReader::dispatch(bool block, bool *messageReceived)
+bool InSituReader::dispatch(bool block, bool *messageReceived, unsigned int minPrio)
 {
     bool passMsg = false;
     bool msgRecv = false;
@@ -73,7 +73,7 @@ bool InSituReader::dispatch(bool block, bool *messageReceived)
         }
         passMsg = true;
     }
-    bool retval = Module::dispatch(false, &msgRecv);
+    bool retval = Module::dispatch(false, &msgRecv, minPrio);
     vistle::adaptive_wait(operate() || msgRecv || passMsg);
     if (messageReceived) {
         *messageReceived = msgRecv;

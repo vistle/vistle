@@ -47,6 +47,8 @@ public:
     void setParameterChoices(Parameter *param, const std::vector<std::string> &choices);
     void setParameterFilters(const std::string &name, const std::string &filters);
     void setParameterFilters(StringParameter *param, const std::string &filters);
+    bool setParameterImmediate(Parameter *param, bool immed);
+    bool setParameterImmediate(const std::string &name, bool immed);
 
     StringParameter *addStringParameter(const std::string &name, const std::string &description,
                                         const std::string &value, Parameter::Presentation p = Parameter::Generic);

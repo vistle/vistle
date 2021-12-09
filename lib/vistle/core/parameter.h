@@ -47,7 +47,10 @@ public:
     DEFINE_ENUM_WITH_STRING_CONVERSIONS(RangeType,
                                         // keep in that order
                                         (Minimum) // also used for filebrowser filters
-                                        (Value)(Maximum))
+                                        (Value) // update parameter value
+                                        (Maximum) // update allowed parameter maximum
+                                        (Other) // update other information than values and range
+    )
 
     Parameter(int moduleId, const std::string &name, Type = Invalid, Presentation = Generic);
     Parameter(const Parameter &other);
@@ -73,6 +76,8 @@ public:
     Presentation presentation() const;
     const std::string &description() const;
     const std::vector<std::string> &choices() const;
+    void setImmediate(bool immed);
+    bool isImmediate() const;
 
 protected:
     std::vector<std::string> m_choices;
@@ -85,6 +90,7 @@ private:
     enum Type m_type;
     enum Presentation m_presentation;
     bool m_groupExpanded = true;
+    bool m_immediate = false;
 };
 
 template<typename T>
@@ -152,7 +158,9 @@ public:
             return m_minimum;
         case Maximum:
             return m_maximum;
-        case Value:;
+        case Value:
+        case Other:
+            break;
         }
         return m_value;
     }

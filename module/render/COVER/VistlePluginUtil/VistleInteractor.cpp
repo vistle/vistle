@@ -348,6 +348,9 @@ void VistleInteractor::sendParamMessage(const std::shared_ptr<Parameter> param) 
 {
     message::SetParameter m(m_moduleId, param->getName(), param);
     m.setDestId(m_moduleId);
+    if (param->isImmediate()) {
+        m.setPriority(message::Message::ImmediateParameter);
+    }
     sendMessage(m);
 }
 

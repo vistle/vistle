@@ -1006,17 +1006,26 @@ std::shared_ptr<Parameter> RemoveParameter::getParameter() const
 SetParameter::SetParameter(int module)
 : m_module(module)
 , paramtype(Parameter::Invalid)
-, initialize(false)
-, delayed(false)
-, reply(false)
 , rangetype(Parameter::Value)
+, initialize(false)
+, reply(false)
+, delayed(false)
+, immediate_valid(false)
+, immediate(false)
 {
     name[0] = '\0';
 }
 
 SetParameter::SetParameter(int module, const std::string &n, const std::shared_ptr<Parameter> p,
                            Parameter::RangeType rt, bool defaultValue)
-: m_module(module), paramtype(p->type()), initialize(defaultValue), delayed(false), reply(false), rangetype(rt)
+: m_module(module)
+, paramtype(p->type())
+, rangetype(rt)
+, initialize(defaultValue)
+, reply(false)
+, delayed(false)
+, immediate_valid(true)
+, immediate(p->isImmediate())
 {
     const Parameter *param = p.get();
 
@@ -1048,10 +1057,12 @@ SetParameter::SetParameter(int module, const std::string &n, const std::shared_p
 SetParameter::SetParameter(int module, const std::string &n, const Integer v)
 : m_module(module)
 , paramtype(Parameter::Integer)
-, initialize(false)
-, delayed(false)
-, reply(false)
 , rangetype(Parameter::Value)
+, initialize(false)
+, reply(false)
+, delayed(false)
+, immediate_valid(false)
+, immediate(false)
 {
     COPY_STRING(name, n);
     v_int = v;
@@ -1060,10 +1071,12 @@ SetParameter::SetParameter(int module, const std::string &n, const Integer v)
 SetParameter::SetParameter(int module, const std::string &n, const Float v)
 : m_module(module)
 , paramtype(Parameter::Float)
-, initialize(false)
-, delayed(false)
-, reply(false)
 , rangetype(Parameter::Value)
+, initialize(false)
+, reply(false)
+, delayed(false)
+, immediate_valid(false)
+, immediate(false)
 {
     COPY_STRING(name, n);
     v_scalar = v;
@@ -1072,10 +1085,12 @@ SetParameter::SetParameter(int module, const std::string &n, const Float v)
 SetParameter::SetParameter(int module, const std::string &n, const ParamVector &v)
 : m_module(module)
 , paramtype(Parameter::Vector)
-, initialize(false)
-, delayed(false)
-, reply(false)
 , rangetype(Parameter::Value)
+, initialize(false)
+, reply(false)
+, delayed(false)
+, immediate_valid(false)
+, immediate(false)
 {
     COPY_STRING(name, n);
     dim = v.dim;
@@ -1086,10 +1101,12 @@ SetParameter::SetParameter(int module, const std::string &n, const ParamVector &
 SetParameter::SetParameter(int module, const std::string &n, const IntParamVector &v)
 : m_module(module)
 , paramtype(Parameter::IntVector)
-, initialize(false)
-, delayed(false)
-, reply(false)
 , rangetype(Parameter::Value)
+, initialize(false)
+, reply(false)
+, delayed(false)
+, immediate_valid(false)
+, immediate(false)
 {
     COPY_STRING(name, n);
     dim = v.dim;
@@ -1100,10 +1117,12 @@ SetParameter::SetParameter(int module, const std::string &n, const IntParamVecto
 SetParameter::SetParameter(int module, const std::string &n, const std::string &v)
 : m_module(module)
 , paramtype(Parameter::String)
-, initialize(false)
-, delayed(false)
-, reply(false)
 , rangetype(Parameter::Value)
+, initialize(false)
+, reply(false)
+, delayed(false)
+, immediate_valid(false)
+, immediate(false)
 {
     COPY_STRING(name, n);
     COPY_STRING(v_string, v);
@@ -1191,6 +1210,17 @@ std::string SetParameter::getString() const
     return v_string.data();
 }
 
+void SetParameter::setImmediate(bool immed)
+{
+    immediate_valid = true;
+    immediate = immed;
+}
+
+bool SetParameter::isImmediate() const
+{
+    return immediate;
+}
+
 bool SetParameter::apply(std::shared_ptr<vistle::Parameter> param) const
 {
     if (paramtype != param->type()) {
@@ -1199,7 +1229,13 @@ bool SetParameter::apply(std::shared_ptr<vistle::Parameter> param) const
         return false;
     }
 
+    if (immediate_valid)
+        param->setImmediate(immediate);
+
     const int rt = rangeType();
+    if (rt == Parameter::Other)
+        return true;
+
     if (auto pint = std::dynamic_pointer_cast<IntParameter>(param)) {
         if (rt == Parameter::Value)
             pint->setValue(v_int, initialize, delayed);

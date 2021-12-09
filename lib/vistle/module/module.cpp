@@ -1057,23 +1057,48 @@ void Module::connectionAdded(const Port *from, const Port *to)
 void Module::connectionRemoved(const Port *from, const Port *to)
 {}
 
-bool Module::getNextMessage(message::Buffer &buf, bool block)
+bool Module::getNextMessage(message::Buffer &buf, bool block, unsigned int minPrio)
 {
-    if (!messageBacklog.empty()) {
-        buf = messageBacklog.front();
-        messageBacklog.pop_front();
-        return true;
-    }
-
     if (!receiveMessageQueue)
         return false;
 
-    if (block) {
-        receiveMessageQueue->receive(buf);
-        return true;
-    }
+    bool recv = receiveMessageQueue->tryReceive(buf);
+    do {
+        if (recv) {
+            if (!messageBacklog.empty()) {
+                auto &front = messageBacklog.front();
+                if (buf.priority() <= front.priority()) {
+                    // keep bufferd messages sorted according to priority
+                    std::swap(buf, front);
+                    auto it = messageBacklog.begin(), next = it + 1;
+                    while (next != messageBacklog.end()) {
+                        if (it->priority() >= next->priority())
+                            std::swap(*it, *next);
+                        it = next;
+                        ++next;
+                    }
+                }
+            }
 
-    return receiveMessageQueue->tryReceive(buf);
+            if (buf.priority() >= minPrio) {
+                return true;
+            }
+
+            messageBacklog.push_front(buf);
+        } else if (!messageBacklog.empty()) {
+            buf = messageBacklog.front();
+            if (buf.priority() >= minPrio) {
+                messageBacklog.pop_front();
+                return true;
+            }
+        }
+        if (block) {
+            receiveMessageQueue->receive(buf);
+            recv = true;
+        }
+    } while (block);
+
+    return false;
 }
 
 bool Module::needsSync(const message::Message &m) const
@@ -1090,7 +1115,7 @@ bool Module::needsSync(const message::Message &m) const
     return false;
 }
 
-bool Module::dispatch(bool block, bool *messageReceived)
+bool Module::dispatch(bool block, bool *messageReceived, unsigned int minPrio)
 {
     bool again = true;
 
@@ -1101,7 +1126,7 @@ bool Module::dispatch(bool block, bool *messageReceived)
 #endif
 
         message::Buffer buf;
-        if (!getNextMessage(buf, block)) {
+        if (!getNextMessage(buf, block, minPrio)) {
             if (messageReceived)
                 *messageReceived = false;
             if (block) {
@@ -1130,7 +1155,7 @@ bool Module::dispatch(bool block, bool *messageReceived)
                 again &= handleMessage(&buf, pl);
 
                 if (allsync && !sync) {
-                    getNextMessage(buf);
+                    getNextMessage(buf, true, minPrio);
                     if (buf.payloadSize() > 0) {
                         pl = Shm::the().getArrayFromName<char>(buf.payloadName());
                         pl.unref();

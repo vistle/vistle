@@ -75,25 +75,42 @@ const std::string &MessageQueue::getName() const
 bool MessageQueue::progress()
 {
     std::unique_lock<std::mutex> guard(m_mutex);
-    while (!m_queue.empty()) {
-        guard.unlock();
-        if (m_blocking) {
-            guard.lock();
-            if (!m_queue.empty()) {
-                m_mq.send(m_queue.front().data(), message::Message::MESSAGE_SIZE, 0);
-                m_queue.pop_front();
-            }
-        } else {
-            guard.lock();
-            if (!m_queue.empty()) {
-                if (!m_mq.try_send(m_queue.front().data(), message::Message::MESSAGE_SIZE, 0)) {
-                    return m_queue.empty();
+    guard.unlock();
+
+    auto process_queue = [this, &guard](std::deque<message::Buffer> &queue) -> bool {
+        while (!queue.empty()) {
+            guard.unlock();
+            if (m_blocking) {
+                guard.lock();
+                if (!queue.empty()) {
+                    m_mq.send(queue.front().data(), message::Message::MESSAGE_SIZE, 0);
+                    queue.pop_front();
                 }
-                m_queue.pop_front();
+            } else {
+                guard.lock();
+                if (!queue.empty()) {
+                    if (!m_mq.try_send(queue.front().data(), message::Message::MESSAGE_SIZE, 0)) {
+                        break;
+                    }
+                    queue.pop_front();
+                }
             }
         }
+        return queue.empty();
+    };
+
+    guard.lock();
+    for (auto it = m_prioQueues.begin(), next = it; it != m_prioQueues.end(); it = next) {
+        ++next;
+        auto &q = it->second;
+        bool empty = process_queue(q);
+        if (empty) {
+            next = m_prioQueues.erase(it);
+        } else if (!m_blocking) {
+            return false;
+        }
     }
-    return m_queue.empty();
+    return process_queue(m_queue);
 }
 
 void MessageQueue::signal()
@@ -102,15 +119,19 @@ void MessageQueue::signal()
     m_mq.send(nullptr, 0, 0);
 }
 
-bool MessageQueue::send(const Message &msg)
+bool MessageQueue::send(const Message &msg, unsigned int priority)
 {
     std::unique_lock<std::mutex> guard(m_mutex);
-    m_queue.emplace_back(msg);
+    if (priority == 0) {
+        m_queue.emplace_back(msg);
+    } else {
+        m_prioQueues[priority].emplace_back(msg);
+    }
     guard.unlock();
     return progress();
 }
 
-bool MessageQueue::receive(Message &msg)
+bool MessageQueue::receive(Message &msg, unsigned int *ppriority)
 {
     size_t recvSize = 0;
     unsigned priority = 0;
@@ -123,10 +144,12 @@ bool MessageQueue::receive(Message &msg)
             throw except::parent_died();
     }
 #endif
+    if (ppriority)
+        *ppriority = priority;
     return recvSize == message::Message::MESSAGE_SIZE;
 }
 
-bool MessageQueue::tryReceive(Message &msg)
+bool MessageQueue::tryReceive(Message &msg, unsigned int minPrio, unsigned int *ppriority)
 {
 #ifndef NO_CHECK_FOR_DEAD_PARENT
     if (parentProcessDied())
@@ -139,6 +162,8 @@ bool MessageQueue::tryReceive(Message &msg)
     if (result) {
         assert(recvSize == message::Message::MESSAGE_SIZE);
     }
+    if (ppriority)
+        *ppriority = priority;
     return result;
 }
 
