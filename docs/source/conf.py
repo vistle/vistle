@@ -14,6 +14,7 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('.'))
 import doc
+import clear
 
 
 # -- Project information -----------------------------------------------------
@@ -28,34 +29,9 @@ author = 'Martin Aumueller, Dennis Grieger, Leyla Kern, Marko Djuric, Uwe Wössn
 # ones.
 extensions = [
     'myst_parser',
-    # 'breathe',
-    # 'exhale',
     'sphinxcontrib.mermaid',
     'sphinx.ext.autosectionlabel',
 ]
-
-# Setup the breathe extension
-# breathe_projects = {
-#     "Vistle": "./doxyoutput/xml"
-# }
-# breathe_default_project = "Vistle"
-
-# Setup the exhale extension
-# exhale_args = {
-    # These arguments are required
-    # "containmentFolder":     "./api",
-    # "rootFileName":          "library_root.rst",
-    # "doxygenStripFromPath":  "..",
-    # Heavily encouraged optional argument (see docs)
-    # "rootFileTitle":         "Library API",
-    # Suggested optional arguments
-    # "createTreeView":        True,
-    # TIP: if using the sphinx-bootstrap-theme, you need
-    # "treeViewIsBootstrap": True,
-    # "exhaleExecutesDoxygen": True,
-    # "exhaleUseDoxyfile": True,
-    # "exhaleDoxygenStdin":    "INPUT = ../../module/general/"
-# }
 
 # Tell sphinx what the primary language being documented is.
 # primary_domain = 'cpp'
@@ -88,4 +64,5 @@ html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
 
 autosectionlabel_prefix_document = True
-doc.run("../..", ["dirs", "module"], "modules")
+clear.clearDir("../build")
+doc.run("../..", ["app", "module"], "modules")
