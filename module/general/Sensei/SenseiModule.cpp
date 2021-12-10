@@ -282,10 +282,10 @@ bool SenseiModule::handleMessage(Message &msg)
             auto lb = std::find_if(m_commandParameter.begin(), m_commandParameter.end(),
                                    [portName](const auto &val) { return val->getName() == portName; });
             if (lb == m_commandParameter.end()) {
-                auto p = m_commandParameter
-                             .insert(addIntParameter(portName, "trigger command on change", false,
-                                                     vistle::Parameter::Presentation::Boolean))
-                             .first;
+                m_commandParameter
+                    .insert(addIntParameter(portName, "trigger command on change", false,
+                                            vistle::Parameter::Presentation::Boolean))
+                    .first;
             }
         }
     } break;
