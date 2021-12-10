@@ -406,33 +406,27 @@ static std::string getParameterType(int id, const std::string &name)
         std::cerr << "Python: getParameterType: no such parameter" << std::endl;
         return "None";
     }
+    return vistle::Parameter::toString(param->type());
+}
 
-    switch (param->type()) {
-    case Parameter::Integer:
-        return "Int";
-    case Parameter::Float:
-        return "Float";
-    case Parameter::Vector:
-        return "Vector";
-    case Parameter::IntVector:
-        return "IntVector";
-    case Parameter::String:
-        return "String";
-    case Parameter::Invalid:
-        return "None";
-    case Parameter::Unknown:
+static std::string getParameterPresentation(int id, const std::string &name)
+{
+    LOCKED();
+    const auto param = MODULEMANAGER.getParameter(id, name);
+    if (!param) {
+        std::cerr << "Python: getParameterPresentation: no such parameter" << std::endl;
         return "None";
     }
-
-    return "None";
+    return vistle::Parameter::toString(param->presentation());
 }
+
 
 static bool isParameterDefault(int id, const std::string &name)
 {
     LOCKED();
     const auto param = MODULEMANAGER.getParameter(id, name);
     if (!param) {
-        std::cerr << "Python: getParameterType: no such parameter: id=" << id << ", name=" << name << std::endl;
+        std::cerr << "Python: isParameterDefault: no such parameter: id=" << id << ", name=" << name << std::endl;
         return false;
     }
 
@@ -466,7 +460,16 @@ static std::string getParameterTooltip(int id, const std::string &name)
         std::cerr << "Python: getParameterTooltip: no such parameter" << std::endl;
         return "None";
     }
-    return param->description();
+    auto desc = param->description();
+    if (param->presentation() == Parameter::Choice) {
+        desc += " (";
+        for (const auto &c: param->choices())
+            desc += c + ", ";
+        desc.pop_back();
+        desc.pop_back();
+        desc += ")";
+    }
+    return desc;
 }
 
 static std::string getEscapedStringParam(int id, const std::string &name)
@@ -1430,10 +1433,8 @@ PY_MODULE(_vistle, m)
     m.def("getModuleDescription", getModuleDescription, "get description of module with ID `arg1`");
     m.def("getInputPorts", getInputPorts, "get name of input ports of module with ID `arg1`");
     m.def("getOutputPorts", getOutputPorts, "get name of input ports of module with ID `arg1`");
-
     m.def("getPortDescription", getPortDescription,
           "get description of port with name `arg2` of module with ID `arg1`");
-
     m.def("waitForHub", waitForNamedHub, "wait for slave hub named `arg1` to connect");
     m.def("waitForHub", waitForAnySlaveHub, "wait for any additional slave hub to connect");
     m.def("waitForHubs", waitForSlaveHubs, "wait for `count` additional slave hubs to connect");
@@ -1445,6 +1446,8 @@ PY_MODULE(_vistle, m)
     m.def("getConnections", getConnections, "get connections to/from port `arg2` of module with ID `arg1`");
     m.def("getParameters", getParameters, "get list of parameters for module with ID `arg1`");
     m.def("getParameterType", getParameterType, "get type of parameter named `arg2` of module with ID `arg1`");
+    m.def("getParameterPresentation", getParameterPresentation,
+          "get presentation of parameter named `arg2` of module with ID `arg1`");
     m.def("isParameterDefault", isParameterDefault,
           "check whether parameter `arg2` of module with ID `arg1` differs from its default value");
     m.def("getIntParam", getParameterValue<Integer>, "get value of parameter named `arg2` of module with ID `arg1`");
