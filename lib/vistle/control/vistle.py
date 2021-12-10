@@ -398,6 +398,7 @@ getOutputPorts = _vistle.getOutputPorts
 getConnections = _vistle.getConnections
 getParameters = _vistle.getParameters
 getParameterType = _vistle.getParameterType
+getParameterPresentation = _vistle.getParameterPresentation
 getParameterTooltip = _vistle.getParameterTooltip
 isParameterDefault = _vistle.isParameterDefault
 getIntParam = _vistle.getIntParam
