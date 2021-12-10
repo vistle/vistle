@@ -1,4 +1,4 @@
-\mainpage Remote Hybrid Rendering (RHR)
+# Remote Hybrid Rendering (RHR)
 
 Remote Hybrid Rendering (RHR) can composite 2.5D imagery rendered remotely
 with locally rendered data. This is useful to
