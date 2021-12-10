@@ -9,21 +9,17 @@ index_link_list = []
 # default
 docpy_path = os.path.dirname(os.path.realpath(__file__))
 link_output_path = docpy_path + "/modules"
+indent = "   {}\n"
 md_extension_str = ".md"
 link_str = "_link"
 myst_include_str = """```{include} %s
 :relative-images:
 ```
-"""
-rst_index_header_str = """{name}
-=================================
+""" # other python format would replace {include}
+rst_index_header_str = "{name}\n{underline}\n\n.. toctree::\n   maxdepth: 1\n\n"
 
-.. toctree::
-   maxdepth: 1
 
-"""
-
-def createDocHierachy(markdown_list, start_dir):
+def createLinks(markdown_list, start_dir):
     if (not os.path.exists(start_dir)):
         print("Directory {} does not exist.".format(start_dir))
         return
@@ -32,18 +28,28 @@ def createDocHierachy(markdown_list, start_dir):
         createLinkToMarkdownFile(link_output_path, rel_dir_from_module_dir, filename)
 
 
-def addLinkToRSTFile(rst_path, md_link_filename):
-    with open(rst_path, 'r') as readOnlyFile:
-        if md_link_filename in readOnlyFile.read():
-            return
+def strInFile(file, s) -> bool:
+    with open(file, 'r') as readOnlyFile:
+        if s in readOnlyFile.read():
+            return True
+    return False
 
-    if os.path.exists(rst_path):
-        writeableFile = open(rst_path, 'a')
-    else:
-        writeableFile = open(rst_path, 'w')
-        writeableFile.write(rst_index_header_str.format(name = "Module Guide"))
-    writeableFile.write("   " + md_link_filename + '\n')
+
+def addLinkToRSTFile(rst_path, md_link_filename):
+    if strInFile(rst_path, md_link_filename):
+        return
+    writeableFile = open(rst_path, 'a')
+    writeableFile.write(indent.format(md_link_filename))
     writeableFile.close()
+
+
+def createRSTHeaderNameFromRootPath(path, file_path = False):
+    md_name = os.path.basename(path)
+    if file_path:
+        md_name = path.split('/')[-2]
+    name_len = "{:=^" + str(len(md_name)) + "}"
+    underline = name_len.format("")
+    return rst_index_header_str.format(name = md_name, underline = underline)
 
 
 def createValidLinkFilePath(md_linkdir, md_root) -> str:
@@ -75,6 +81,21 @@ def searchFileInPath(path, output_list, predicate_func):
                 output_list.append(Markdown(root = root, filename = file))
 
 
+def createIndexFile(name):
+    with open(name, 'w') as writeableFile:
+        writeableFile.write(createRSTHeaderNameFromRootPath(name, True))
+
+
+def createIndexFileIfNotExisting(link_path):
+    if os.path.exists(link_path):
+        if not os.path.isfile(link_path):
+            rst_file_path = link_path + "/index.rst"
+            createIndexFile(rst_file_path)
+            link_path = rst_file_path
+            print("Don't forget to add " + rst_file_path + " to your main .rst file of your readthedocs environment.")
+    return link_path
+
+
 def run(root_path, search_dir_list, link_docs_output_relpath):
     markdown_files = []
     endswith = lambda file : file.endswith(md_extension_str)
@@ -83,8 +104,9 @@ def run(root_path, search_dir_list, link_docs_output_relpath):
         searchFileInPath(rel_dir_path, markdown_files, endswith)
 
     link_output_path = docpy_path + '/' + link_docs_output_relpath
-    createDocHierachy(markdown_files, link_output_path)
-    [addLinkToRSTFile(link_output_path + "/index.rst", link) for link in sorted(index_link_list)]
+    createLinks(markdown_files, link_output_path)
+    link_output_path = createIndexFileIfNotExisting(link_output_path)
+    [addLinkToRSTFile(link_output_path, link) for link in sorted(index_link_list)]
 
 
 if __name__ == "__main__":
