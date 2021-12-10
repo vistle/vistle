@@ -57,9 +57,9 @@ def getParametersString(mod):
             params.append(param)
     paramString = "\n"
     if len(params) > 0:
-        paramString += getHeadline("Parameters", "##") + getTableLine(["name", "type", "description"]) + getTableLine(["-", "-", "-"])
+        paramString += getHeadline("Parameters", "##") + getTableLine(["name", "description", "type"]) + getTableLine(["-", "-", "-"])
     for param in params:
-        paramString += getTableLine([param, getParameterType(mod, param), getParameterTooltip(mod, param)])
+        paramString += getTableLine([param, getParameterTooltip(mod, param), getParameterType(mod, param)])
     return paramString
 
 def readAdditionalDocumentation(filename):
