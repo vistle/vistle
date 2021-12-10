@@ -65,4 +65,6 @@ html_static_path = ['_static']
 
 autosectionlabel_prefix_document = True
 clear.clearDir("../build")
-doc.run("../..", ["app", "module"], "modules")
+doc.run("../..", ["doc/moduleDescriptions"], "modules")
+doc.run("../..", ["lib/vistle"], "lib")
+doc.run("../..", ["app"], "app")
