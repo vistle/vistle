@@ -13,15 +13,6 @@ def getTableLine(entries):
     retval += "\n"
     return retval
 
-def getPortsTable(names, descriptions):
-    retval = ""
-    if len(names) > 0:
-        retval += getTableLine(["name", "description"]) + getTableLine(["-", "-"])
-    for i in range(len(names)):
-        retval += getTableLine([names[i], descriptions[i]])
-    retval += "\n" 
-    return retval
-
 def getComment(comment):
     return "[" + comment + "]:<>"
 
@@ -32,22 +23,24 @@ def getModuleHeadLine(mod):
     desc = begin + desc[1:]
     return "\n" + getHeadline(name, "#")  + desc + "\n"
 
-def getInputPortsString(mod):
-    ports = getInputPorts(mod)
-    desc = getInputPortsDescriptions(mod)
-    inputPorts = "\n"
-    if len(ports) > 0:
-        inputPorts += getHeadline("Input ports", "##") + getPortsTable(ports, desc) + "\n"
-    return inputPorts
-
-
-def getOutputPortsString(mod):
+    
+def getPortDescriptionString(mod, ports):
     ports = getOutputPorts(mod)
-    desc = getOutputPortsDescriptions(mod)
-    outputPorts = "\n"
+    portsDescription = "\n"
     if len(ports) > 0:
-        outputPorts += getHeadline("Output ports", "##") + getPortsTable(ports, desc) + "\n"
-    return outputPorts
+        portsDescription += getHeadline("Output ports", "##") 
+        portsDescription += getTableLine(["name", "description"]) + getTableLine(["-", "-"])
+    for port in ports:
+        portsDescription += getTableLine([port,getPortDescription(mod, port)])
+    portsDescription += "\n" 
+    return portsDescription
+
+
+def getInputPortsStringDescription(mod):
+    return getPortDescriptionString(mod, getInputPorts(mod))
+
+def getOutputPortsDescription(mod):
+    return getPortDescriptionString(mod, getOutputPorts(mod))
 
 def getParametersString(mod):
     allParams = getParameters(mod)
@@ -138,7 +131,7 @@ destDir = os.path.dirname(os.path.realpath(__file__)) + "/moduleDescriptions/"
 content = relinkImages(content, sourceDir, destDir)
 #these replacements get inserted at in the additional documentation at the beginning or
 #if the tag is used it replaces this tag
-replacements = [Replacement(getComment("headline"), getModuleHeadLine(mod)), Replacement(getComment("inputPorts"), getInputPortsString(mod)), Replacement(getComment("outputPorts"), getOutputPortsString(mod)), Replacement(getComment("parameters"), getParametersString(mod))]
+replacements = [Replacement(getComment("headline"), getModuleHeadLine(mod)), Replacement(getComment("inputPorts"), getInputPortsStringDescription(mod)), Replacement(getComment("outputPorts"), getOutputPortsDescription(mod)), Replacement(getComment("parameters"), getParametersString(mod))]
 
 #get the position of the replacementsTags (only the forst one found is considered)
 for replacement in replacements:
