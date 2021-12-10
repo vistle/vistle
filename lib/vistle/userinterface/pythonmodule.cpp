@@ -371,17 +371,12 @@ static std::vector<std::string> getOutputPorts(int id)
     return PORTMANAGER.getOutputPortNames(id);
 }
 
-static std::vector<std::string> getInputPortsDescriptions(int id)
+std::string getPortDescription(int id, const std::string &portname)
 {
     LOCKED();
-    return PORTMANAGER.getInputPortDescriptions(id);
+    return PORTMANAGER.getPortDescription(id, portname);
 }
 
-static std::vector<std::string> getOutputPortsDescriptions(int id)
-{
-    LOCKED();
-    return PORTMANAGER.getOutputPortDescriptions(id);
-}
 
 static std::vector<std::pair<int, std::string>> getConnections(int id, const std::string &port)
 {
@@ -1436,10 +1431,8 @@ PY_MODULE(_vistle, m)
     m.def("getInputPorts", getInputPorts, "get name of input ports of module with ID `arg1`");
     m.def("getOutputPorts", getOutputPorts, "get name of input ports of module with ID `arg1`");
 
-    m.def("getInputPortsDescriptions", getInputPortsDescriptions,
-          "get descriptions of input ports of module with ID `arg1`");
-    m.def("getOutputPortsDescriptions", getOutputPortsDescriptions,
-          "get descriptions of input ports of module with ID `arg1`");
+    m.def("getPortDescription", getPortDescription,
+          "get description of port with name `arg2` of module with ID `arg1`");
 
     m.def("waitForHub", waitForNamedHub, "wait for slave hub named `arg1` to connect");
     m.def("waitForHub", waitForAnySlaveHub, "wait for any additional slave hub to connect");
@@ -1464,7 +1457,7 @@ PY_MODULE(_vistle, m)
           "get value of parameter named `arg2` of module with ID `arg1`");
     m.def("getEscapedStringParam", getEscapedStringParam,
           "get value of parameter named `arg2` of module with ID `arg1`");
-    m.def("getParameterTooltip", getParameterTooltip, "get a short description of the module");
+    m.def("getParameterTooltip", getParameterTooltip, "get a short description of the parameter");
 
 #ifndef EMBED_PYTHON
     m.def("sessionConnect", &sessionConnect, "connect to running Vistle instance", "host"_a = "localhost",

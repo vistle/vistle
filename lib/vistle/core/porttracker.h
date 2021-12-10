@@ -46,9 +46,8 @@ public:
     std::vector<std::string> getInputPortNames(const int moduleID) const;
     std::vector<std::string> getOutputPortNames(const int moduleID) const;
 
-    std::vector<std::string> getPortDescriptions(const int moduleID, Port::Type type) const;
-    std::vector<std::string> getInputPortDescriptions(const int moduleID) const;
-    std::vector<std::string> getOutputPortDescriptions(const int moduleID) const;
+    std::string getPortDescription(const Port *port) const;
+    std::string getPortDescription(const int moduleID, const std::string &name) const;
 
     std::vector<Port *> getPorts(const int moduleID, Port::Type type, bool connectedOnly = false) const;
     std::vector<Port *> getInputPorts(const int moduleID) const;
