@@ -8,7 +8,7 @@ index_link_list = []
 
 # default
 docpy_path = os.path.dirname(os.path.realpath(__file__))
-link_output_path = docpy_path + "/modules"
+# link_output_path = docpy_path + "/modules"
 indent = "   {}\n"
 md_extension_str = ".md"
 link_str = "_link"
@@ -16,16 +16,16 @@ myst_include_str = """```{include} %s
 :relative-images:
 ```
 """ # other python format would replace {include}
-rst_index_header_str = "{name}\n{underline}\n\n.. toctree::\n   maxdepth: 1\n\n"
+rst_index_header_str = "{name}\n{underline}\n\n.. toctree::\n   :maxdepth: 1\n\n"
 
 
-def createLinks(markdown_list, start_dir):
-    if (not os.path.exists(start_dir)):
-        print("Directory {} does not exist.".format(start_dir))
+def createLinks(markdown_list, root_link_output_path):
+    if not os.path.exists(root_link_output_path):
+        print("Directory {} does not exist.".format(root_link_output_path))
         return
     for root, filename in markdown_list:
-        rel_dir_from_module_dir = os.path.relpath(root, link_output_path)
-        createLinkToMarkdownFile(link_output_path, rel_dir_from_module_dir, filename)
+        rel_dir_from_module_dir = os.path.relpath(root, root_link_output_path)
+        createLinkToMarkdownFile(root_link_output_path, rel_dir_from_module_dir, filename)
 
 
 def strInFile(file, s) -> bool:
@@ -66,7 +66,10 @@ def createValidLinkFilePath(md_linkdir, md_root) -> str:
 
 def createLinkToMarkdownFile(md_linkdir, md_root, md_filename):
     md_origin_path = md_root + '/' + md_filename
-    new_link_file_path = createValidLinkFilePath(md_linkdir, md_root)
+    if md_filename == "README.md":
+        new_link_file_path = createValidLinkFilePath(md_linkdir, md_root)
+    else:
+        new_link_file_path = md_linkdir + '/' + md_filename.split('.')[0] + link_str + md_extension_str
     if new_link_file_path == "":
         return
     with open(new_link_file_path, 'w') as f:
@@ -103,16 +106,17 @@ def run(root_path, search_dir_list, link_docs_output_relpath):
         rel_dir_path = root_path + '/' + dir
         searchFileInPath(rel_dir_path, markdown_files, endswith)
 
-    link_output_path = docpy_path + '/' + link_docs_output_relpath
-    createLinks(markdown_files, link_output_path)
-    link_output_path = createIndexFileIfNotExisting(link_output_path)
+    root_link_output_path = docpy_path + '/' + link_docs_output_relpath
+    link_output_path = createIndexFileIfNotExisting(root_link_output_path)
+    createLinks(markdown_files, root_link_output_path)
     [addLinkToRSTFile(link_output_path, link) for link in sorted(index_link_list)]
+    index_link_list.clear()
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Search for Markdown files in your project and link them in readthedocs. Place this script in your docs folder and execute it. Default place for executing is <path_to_project>/docs/source.")
     parser.add_argument("-l", nargs=1, metavar=("link"), default=docpy_path,
-                        help="relative path from doc.py path to output directory where links will be created (needs index.rst in path)")
+                        help="relative path from doc.py path to output directory where links will be created")
     parser.add_argument("-r", nargs=1, metavar=("root"), default=docpy_path.split("docs")[0],
                         help="root path to git project (default: path to this script as reference and set root to path_before_docs_folder)")
     parser.add_argument("-d", nargs="+", metavar=("dirs"), default=[],
