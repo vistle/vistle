@@ -17,15 +17,10 @@ Parameters
 ----------
 |name|type|description|
 |-|-|-|
-|first_step|Int|first timestep to read|
-|last_step|Int|last timestep to read (-1: last)|
-|step_increment|Int|number of steps to increment|
-|first_rank|Int|rank for first partition of first timestep|
-|check_convexity|Int|whether to check convexity of grid cells|
-|path|String|path to a .vistle file|
-|deleteShm|Int|delete the shm potentially used for communication with sensei|
-|frequency|Int|frequency in which data is retrieved from the simulation|
-|keep timesteps|Int|keep data of processed timestep during this execution|
+|path|String|path to the connection file written by the simulation|
+|deleteShm|Int|clean the shared memory message queues used to communicate with the simulation|
+|frequency|Int|the pipeline is processed for every nth simulation cycle|
+|keep timesteps|Int|if true timesteps are cached and processed as time series|
 
 [parameters]:<>
 
