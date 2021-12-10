@@ -392,23 +392,17 @@ std::vector<std::string> PortTracker::getOutputPortNames(const int moduleID) con
     return getPortNames(moduleID, Port::OUTPUT);
 }
 
-std::vector<std::string> PortTracker::getPortDescriptions(const int moduleID, Port::Type type) const
+std::string PortTracker::getPortDescription(const Port *port) const
 {
-    std::vector<std::string> result;
-    const auto ports = getPorts(moduleID, type);
-    for (const auto &port: ports)
-        result.push_back(port->description);
-    return result;
+    if (!port)
+        return "";
+    return port->description;
 }
 
-std::vector<std::string> PortTracker::getInputPortDescriptions(const int moduleID) const
+std::string PortTracker::getPortDescription(const int moduleID, const std::string &portname) const
 {
-    return getPortDescriptions(moduleID, Port::INPUT);
-}
-
-std::vector<std::string> PortTracker::getOutputPortDescriptions(const int moduleID) const
-{
-    return getPortDescriptions(moduleID, Port::OUTPUT);
+    auto port = findPort(moduleID, portname);
+    return getPortDescription(port);
 }
 
 std::vector<Port *> PortTracker::getPorts(const int moduleID, Port::Type type, bool connectedOnly) const
