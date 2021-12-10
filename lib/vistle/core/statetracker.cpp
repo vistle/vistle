@@ -162,7 +162,7 @@ std::string StateTracker::getModuleDescription(int id) const
     AvailableModule::Key key{getHub(id), getModuleName(id)};
     auto mod = m_availableModules.find(key);
     if (mod == m_availableModules.end()) {
-        return "None";
+        return "";
     }
     return mod->second.description();
 }
