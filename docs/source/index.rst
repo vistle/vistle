@@ -18,27 +18,28 @@ More infos about Architecture: https://vistle.io/architecture/
 .. _build-docs:
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Build Documentation:
+   :maxdepth: 1
+   :caption: Build Documentation
     
    Build Instructions <build/index.rst> 
 
 .. _user-docs:
 
 .. toctree::
-   :maxdepth: 2
-   :caption: User Documentation:
+   :maxdepth: 1
+   :caption: User Documentation
 
    Module Guide <modules/index.rst>
+   Library Documentation <lib/index.rst>
 
 .. _dev-docs:
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Developer Documentation:
+   :maxdepth: 1
+   :caption: Developer Documentation
 
+   Application <app/index.rst>
    Coding <dev/index.rst>
-
 
 Indices and tables
 ==================
@@ -53,22 +54,26 @@ Building this Documentation
 Requirements:
 
 - Sphinx
+
 ::
 
     $ pip install sphinx
 
 - myst-parser
+
 ::
 
     $ pip install myst-parser
 
 - sphinxcontrib-mermaid
+
 ::
 
     $ pip install sphinxcontrib-mermaid
 
 
 Building the documentation with:
+
 ::
 
     $<Path/to/doc/root> make html
