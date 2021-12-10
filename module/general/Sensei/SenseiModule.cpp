@@ -20,23 +20,19 @@ using namespace vistle::insitu::message;
 #define CERR cerr << "SenseiModule[" << rank() << "/" << size() << "] "
 #define DEBUG_CERR vistle::DoNotPrintInstance
 
-SenseiModule::SenseiModule(const string &name, int moduleID, mpi::communicator comm): Reader(name, moduleID, comm)
+SenseiModule::SenseiModule(const string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
-    m_filePath = addStringParameter("path", "path to a .vistle file", directory::configHome() + "/sensei.vistle",
-                                    vistle::Parameter::ExistingFilename);
+    m_filePath = addStringParameter("path", "path to the connection file written by the simulation",
+                                    directory::configHome() + "/sensei.vistle", vistle::Parameter::ExistingFilename);
     setParameterFilters(m_filePath, "simulation Files (*.vistle)");
-    observeParameter(m_filePath);
 
-    m_deleteShm = addIntParameter("deleteShm", "delete the shm potentially used for communication with sensei", false,
-                                  vistle::Parameter::Presentation::Boolean);
-    observeParameter(m_deleteShm);
-    m_intOptions[addIntParameter("frequency", "frequency in which data is retrieved from the simulation", 1)] =
+    m_deleteShm =
+        addIntParameter("deleteShm", "clean the shared memory message queues used to communicate with the simulation",
+                        false, vistle::Parameter::Presentation::Boolean);
+    m_intOptions[addIntParameter("frequency", "the pipeline is processed for every nth simulation cycle", 1)] =
         sensei::IntOptions::NthTimestep;
-    m_intOptions[addIntParameter("keep timesteps", "keep data of processed timestep during this execution", true,
+    m_intOptions[addIntParameter("keep timesteps", "if true timesteps are cached and processed as time series", true,
                                  vistle::Parameter::Boolean)] = sensei::IntOptions::KeepTimesteps;
-
-    for (auto &pair: m_intOptions)
-        observeParameter(pair.first);
 
     connectToSim();
 }
@@ -48,6 +44,11 @@ SenseiModule::~SenseiModule()
 
 void SenseiModule::connectToSim()
 {
+    if (m_connectedToSim) {
+        CERR << "can not connect to a new simulation before the old simulation is disconnected." << std::endl;
+        return;
+    }
+
     CERR << "trying to connect to sim with file " << m_filePath->getValue() << endl;
     std::ifstream infile(m_filePath->getValue());
     if (infile.fail()) {
@@ -148,7 +149,7 @@ vistle::insitu::message::ModuleInfo::ShmInfo SenseiModule::gatherModuleInfo() co
     return shmInfo;
 }
 
-bool SenseiModule::examine(const Parameter *param)
+bool SenseiModule::changeParameter(const Parameter *param)
 {
     if (!param) {
         CERR << "examinating no param" << std::endl;
@@ -178,7 +179,7 @@ bool SenseiModule::examine(const Parameter *param)
     }
     return true;
 }
-bool SenseiModule::read(Reader::Token &token, int timestep, int block)
+bool SenseiModule::prepare()
 {
     std::lock_guard<std::mutex> g{m_communicationMutex};
     m_executionCount = m_ownExecutionCounter;
@@ -285,7 +286,6 @@ bool SenseiModule::handleMessage(Message &msg)
                              .insert(addIntParameter(portName, "trigger command on change", false,
                                                      vistle::Parameter::Presentation::Boolean))
                              .first;
-                observeParameter(*p);
             }
         }
     } break;
