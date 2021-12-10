@@ -4,11 +4,7 @@ import os
 def getHeadline(line, type):
     if len(line) == 0:
         return
-    retval = line + "\n"
-    for i in range (len(line)):
-        retval += type
-    retval += "\n"
-    return retval
+    return type + " " + line + "\n"
 
 def getTableLine(entries):
     retval = "|"
@@ -26,130 +22,122 @@ def getPortsTable(names, descriptions):
     retval += "\n" 
     return retval
 
-def readUntil(file, tag):
-    while True:
-        line = file.readline()
-        pos = line.find(tag)
-        if not line:
-            break
-        if pos != -1:
-            if file.tell() - pos < 0:
-                file.seek(0,0)
-            else:
-                file.seek(file.tell() - pos, 0)
-            break
-
-            
-def cacheUntil(file, tag):
-    
-    cache = ""
-    while True:
-        line = file.readline()
-        pos = line.find(tag)
-        if not line:
-            break
-        if pos == -1:
-            cache += line
-        else:
-            cache += line[0 : pos]
-            break
-    return cache
-
 def getComment(comment):
-    return "[" + comment + "]:<>\n"
+    return "[" + comment + "]:<>"
 
-def cacheOldFile(file, comments): #returns a list with len(comments) + 1 with content before and after the commented sections
-    contents = {}
-    f.seek(0,0)
-    for comment in comments:
-        c = "[" + comment + "]:<>"
-        contents[comment] = cacheUntil(file, c)
-        readUntil(file, c)
-    print(contents)
-    return contents
-
-def getSection(content, tag, cache):
-    return cache[tag] + getComment(tag) + content + getComment(tag)
-
-
-def getModuleDescriptionString(mod, cache):
+def getModuleHeadLine(mod):
     name = getModuleName(mod)
-    description = getSection(getHeadline(name + " - " + getModuleDescription(mod), "="), "headline", cache)
-    
+    desc = getModuleDescription(mod)
+    begin = desc[0:1].upper() #convert first letter to upper case
+    desc = begin + desc[1:]
+    return "\n" + getHeadline(name, "#")  + desc + "\n"
+
+def getInputPortsString(mod):
     ports = getInputPorts(mod)
     desc = getInputPortsDescriptions(mod)
-    inputPorts = ""
+    inputPorts = "\n"
     if len(ports) > 0:
-        inputPorts += getHeadline("Input ports", "-") + getPortsTable(ports, desc) + "\n"
-    description += getSection(inputPorts, "inputPorts", cache)
+        inputPorts += getHeadline("Input ports", "##") + getPortsTable(ports, desc) + "\n"
+    return inputPorts
 
 
+def getOutputPortsString(mod):
     ports = getOutputPorts(mod)
     desc = getOutputPortsDescriptions(mod)
-    outputPorts = ""
+    outputPorts = "\n"
     if len(ports) > 0:
-        outputPorts += getHeadline("Output ports", "-") + getPortsTable(ports, desc) + "\n"
-    description += getSection(outputPorts, "outputPorts", cache)
+        outputPorts += getHeadline("Output ports", "##") + getPortsTable(ports, desc) + "\n"
+    return outputPorts
 
+def getParametersString(mod):
     allParams = getParameters(mod)
     params = []
     for param in allParams:
         if param[0] != '_':
             params.append(param)
-    paramString = ""
+    paramString = "\n"
     if len(params) > 0:
-        paramString += getHeadline("Parameters", "-") + getTableLine(["name", "type", "description"]) + getTableLine(["-", "-", "-"])
+        paramString += getHeadline("Parameters", "##") + getTableLine(["name", "type", "description"]) + getTableLine(["-", "-", "-"])
     for param in params:
         paramString += getTableLine([param, getParameterType(mod, param), getParameterTooltip(mod, param)])
-    paramString += "\n"
-    description += getSection(paramString, "parameters", cache)
+    return paramString
 
-    description += cache["end of file"]
-    return description
+def readAdditionalDocumentation(filename):
+    content = ""
+    if os.path.isfile(filename):
+        f = open(filename, "r")
+        content = f.read()
+        f.close()
+    return content
 
+def relinkImages(file, sourceDir, destDir):
+    newFile = ""
+    begin = -1
+    end = 0
+    while True:
+        imgSign = "![]("
+        begin = file[end : ].find(imgSign)
+        if begin == -1:
+            break
+        begin += end + len(imgSign)
+        newFile += file[end : begin]
+        end = begin + file[begin : ].find(")")
+        image = file[begin : end] 
+        if image[0] != "/": #keep absolute path (altough they don't seem to work)
+          image = os.path.relpath(sourceDir, destDir) + "/" + image  
+        print(image)
+        newFile += image
+    newFile += file[end : ]
+    return newFile
 
-def deleteEmptyLines(file):
-    file.seek(0, os.SEEK_END)
+class Replacement:
+    replacedTag = "" 
+    replacement = "" 
+    tagFoundPos = -1
+    def __init__(self, replacedTag, replacement):
+        self.replacedTag = replacedTag           
+        self.replacement = replacement           
 
-    # This code means the following code skips the very last character in the file -
-    # i.e. in the case the last line is null we delete the last line
-    # and the penultimate one
-    pos = file.tell() - 1
-
-    # Read each character in the file one at a time from the penultimate
-    # character going backwards, searching for a newline character
-    # If we find a new line, exit the search
-    while (pos > 0 and file.read(1) != "\n"):
-        pos -= 1
-        file.seek(pos, os.SEEK_SET)
-
-    # So long as we're not at the start of the file, delete all the characters ahead
-    # of this position
-    if pos > 0:
-        file.seek(pos, os.SEEK_SET)
-        file.truncate()
-        return True
-    return False
-
-def setFileEnding(file):
-    while deleteEmptyLines(file):
-        pass
-
-dir = os.environ['VISTLE_DOCUMENTATION_DIR']
+#these have to be set to chose the module to create documentation for
 target = os.environ['VISTLE_DOCUMENTATION_TARGET']
+sourceDir = os.environ['VISTLE_DOCUMENTATION_DIR']
+filename = sourceDir +  "/" + target + ".md"
 
-filename = dir + "/" + target + ".md"
-print(filename)
-if not os.path.isfile(filename):
-    f = open(filename, "w")
-    f.close()
-f = open(filename, "r+")
-comments = ["headline", "inputPorts", "outputPorts", "parameters", "end of file"]
-cache = cacheOldFile(f, comments)
+#spawn the module and wait for its information to arrive at the hub
 mod = spawn(target)
 barrier()
-f.seek(0,0)
-f.write(getModuleDescriptionString(mod, cache))
-#deleteEmptyLines(f)
+
+
+content = readAdditionalDocumentation(filename)
+destDir = os.path.dirname(os.path.realpath(__file__)) + "/moduleDescriptions/"
+content = relinkImages(content, sourceDir, destDir)
+#these replacements get inserted at in the additional documentation at the beginning or
+#if the tag is used it replaces this tag
+replacements = [Replacement(getComment("headline"), getModuleHeadLine(mod)), Replacement(getComment("inputPorts"), getInputPortsString(mod)), Replacement(getComment("outputPorts"), getOutputPortsString(mod)), Replacement(getComment("parameters"), getParametersString(mod))]
+
+#get the position of the replacementsTags (only the forst one found is considered)
+for replacement in replacements:
+    replacement.tagFoundPos = content.find(replacement.replacedTag)
+
+newContent = ""
+
+#put the replacements that are not used at the beginning
+for replacement in replacements:
+    if replacement.tagFoundPos == -1:
+        newContent += replacement.replacement
+
+#sort to use the used tags in the wright order 
+replacements.sort(key= lambda replacement: replacement.tagFoundPos)
+
+#replace the tags with the replacement
+oldPos = 0
+for replacement in replacements:
+    if replacement.tagFoundPos >= 0:
+        newContent += content[oldPos : replacement.tagFoundPos] + replacement.replacement
+        oldPos = replacement.tagFoundPos + len(replacement.replacedTag)
+newContent += content[oldPos :]
+
+f = open(destDir + target + ".md", "w")
+f.write(newContent)
 f.close()
 quit()
