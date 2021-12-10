@@ -19,7 +19,7 @@ public:
     virtual ~ParameterManager();
 
     //! set group for all subsequently added parameters, reset with empty group
-    void setCurrentParameterGroup(const std::string &group = std::string());
+    void setCurrentParameterGroup(const std::string &group = std::string(), bool defaultExpanded = true);
     const std::string &currentParameterGroup() const;
 
     virtual Parameter *addParameterGeneric(const std::string &name, std::shared_ptr<Parameter> parameter);
@@ -102,6 +102,7 @@ private:
     int m_id = message::Id::Invalid;
     std::string m_name = std::string("ParameterManager");
     std::string m_currentParameterGroup;
+    bool m_currentParameterGroupExpanded = true;
     std::map<std::string, std::shared_ptr<Parameter>> parameters;
     bool m_inParameterChanged = false;
     std::vector<const Parameter *> m_delayedChanges;

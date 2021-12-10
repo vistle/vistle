@@ -24,9 +24,10 @@ ParameterManager::~ParameterManager()
     }
 }
 
-void ParameterManager::setCurrentParameterGroup(const std::string &group)
+void ParameterManager::setCurrentParameterGroup(const std::string &group, bool defaultExpanded)
 {
     m_currentParameterGroup = group;
+    m_currentParameterGroupExpanded = defaultExpanded;
 }
 
 void ParameterManager::init()
@@ -225,6 +226,7 @@ Parameter *ParameterManager::addParameter(const std::string &name, const std::st
     std::shared_ptr<Parameter> p(new ParameterBase<T>(id(), name, value));
     p->setDescription(description);
     p->setGroup(currentParameterGroup());
+    p->setGroupExpanded(m_currentParameterGroupExpanded);
     p->setPresentation(pres);
 
     return addParameterGeneric(name, p);
