@@ -70,25 +70,41 @@ def readAdditionalDocumentation(filename):
         f.close()
     return content
 
+class ImageSignature:
+    def __init__(self, beginSequenz, endSequenz):
+        self.beginSequenz = beginSequenz
+        self.endSequenz = endSequenz
+
 def relinkImages(file, sourceDir, destDir):
-    newFile = ""
-    begin = -1
-    end = 0
-    while True:
-        imgSign = "![]("
-        begin = file[end : ].find(imgSign)
-        if begin == -1:
-            break
-        begin += end + len(imgSign)
-        newFile += file[end : begin]
-        end = begin + file[begin : ].find(")")
-        image = file[begin : end] 
+    imageSignatures = [ImageSignature("![](", ")"), ImageSignature("<img src=\"", "\"")]
+    positions = []
+    for imageSignature in imageSignatures:
+        begin = -1
+        end = 0
+        while True:
+            begin = file[end : ].find(imageSignature.beginSequenz)
+            if begin == -1:
+                break
+            begin += end + len(imageSignature.beginSequenz)
+            end = begin + file[begin : ].find(imageSignature.endSequenz)
+            positions.append((begin, end))
+    if len(positions) == 0:
+        return file
+    positions.sort(key=lambda pos : pos[0])
+    newFile = file[0:positions[0][0]]
+    for i in range(len(positions)):
+        image = file[positions[i][0] : positions[i][1]]
         if image[0] != "/": #keep absolute path (altough they don't seem to work)
-          image = os.path.relpath(sourceDir, destDir) + "/" + image  
-        newFile += image
-    newFile += file[end : ]
+            image = os.path.relpath(sourceDir, destDir) + "/" + image  
+        end = len(file)
+        if i < len(positions) - 1:
+            end = positions[i+1][0]
+        newFile += image + file[positions[i][1] : end]
+
     return newFile
 
+
+# <img src="isosurfaceExample.png" alt="drawing" style="width:600px;"/>
 def removeEmptyLinesFromEnd(file):
    
     while True:
