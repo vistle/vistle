@@ -54,7 +54,6 @@ Parameters::Parameters(QWidget *parent, Qt::WindowFlags f)
 : Parameters::PropertyBrowser(parent)
 , m_moduleId(0)
 , m_vistle(nullptr)
-, m_internalGroup(nullptr)
 , m_groupManager(nullptr)
 , m_boolManager(nullptr)
 , m_intManager(nullptr)
@@ -98,6 +97,32 @@ Parameters::Parameters(QWidget *parent, Qt::WindowFlags f)
     QtEnumEditorFactory *comboBoxFactory = new QtEnumEditorFactory(this);
     setFactoryForManager(m_stringChoiceManager, comboBoxFactory);
     setFactoryForManager(m_intChoiceManager, comboBoxFactory);
+
+    auto itemToName = [this](QtBrowserItem *item) -> QString {
+        auto propIt = m_itemToProp.find(item);
+        if (propIt == m_itemToProp.end()) {
+            std::cerr << "property for item not found: " << item << std::endl;
+            return QString();
+        }
+        auto prop = propIt->second;
+        auto name = propertyToName(prop);
+        return name;
+    };
+
+    connect(this, &Parameters::expanded, [this, itemToName](QtBrowserItem *item) {
+        auto name = itemToName(item);
+        if (name.isEmpty())
+            return;
+        std::cerr << "Parameters: storing expanded state for " << name.toStdString() << ": true" << std::endl;
+        m_expandedState[m_moduleId][name] = true;
+    });
+    connect(this, &Parameters::collapsed, [this, itemToName](QtBrowserItem *item) {
+        auto name = itemToName(item);
+        if (name.isEmpty())
+            return;
+        std::cerr << "Parameters: storing expanded state for " << name.toStdString() << ": false" << std::endl;
+        m_expandedState[m_moduleId][name] = false;
+    });
 }
 
 void Parameters::setVistleObserver(VistleObserver *observer)
@@ -118,22 +143,54 @@ void Parameters::setVistleConnection(vistle::VistleConnection *conn)
 void Parameters::setModule(int id)
 {
     clear();
+    m_itemToProp.clear();
     m_paramToProp.clear();
     m_propToParam.clear();
     m_groups.clear();
-    m_internalGroup = nullptr;
+    m_propToGroup.clear();
 
     m_moduleId = id;
-
-    if (vistle::message::Id::isModule(id)) {
-        m_internalGroup = m_groupManager->addProperty("System Parameters");
-        addProperty(m_internalGroup);
-    }
 
     //std::cerr << "Parameters: showing for " << id << std::endl;
     auto params = m_vistle->getParameters(id);
     for (auto &p: params)
         newParameter(id, QString::fromStdString(p));
+}
+
+QString Parameters::propertyToName(QtProperty *prop) const
+{
+    auto propIt = m_propToParam.find(prop);
+    if (propIt == m_propToParam.end()) {
+        propIt = m_propToGroup.find(prop);
+        if (propIt == m_propToGroup.end())
+            return QString();
+    }
+    auto name = propIt->second;
+    return name;
+}
+
+bool Parameters::getExpandedState(QString name, bool &state)
+{
+    if (name.isEmpty())
+        return false;
+
+    auto &expanded = m_expandedState[m_moduleId];
+    auto it = expanded.find(name);
+    if (it == expanded.end())
+        return false;
+
+    state = it->second;
+    std::cerr << "Parameters: found expanded state for " << name.toStdString() << ": " << state << std::endl;
+    return true;
+}
+
+void Parameters::addItemWithProperty(QtBrowserItem *item, QtProperty *prop)
+{
+    m_itemToProp[item] = prop;
+
+    bool expanded = false;
+    if (getExpandedState(propertyToName(prop), expanded))
+        setExpanded(item, expanded);
 }
 
 void Parameters::newParameter(int moduleId, QString parameterName)
@@ -210,21 +267,39 @@ void Parameters::newParameter(int moduleId, QString parameterName)
         m_paramToProp[parameterName] = prop;
         m_propToParam[prop] = parameterName;
         QString group = QString::fromStdString(p->group());
+        bool expanded = false;
         if (parameterName.startsWith("_")) {
-            m_internalGroup->addSubProperty(prop);
-        } else if (!group.isEmpty()) {
+            group = "System Parameters";
+        } else {
+            expanded = p->isGroupExpanded();
+        }
+        if (!group.isEmpty()) {
             auto it = m_groups.find(group);
             QtProperty *g = nullptr;
             if (it == m_groups.end()) {
                 g = m_groupManager->addProperty(group);
-                addProperty(g);
+                auto item = addProperty(g);
                 m_groups[group] = g;
+                m_propToGroup[g] = group;
+                addItemWithProperty(item, g);
             } else {
                 g = it->second;
             }
             g->addSubProperty(prop);
+            if (auto *item = topLevelItem(g)) {
+                if (getExpandedState(group, expanded)) {
+                    setExpanded(item, expanded);
+                } else if (expanded) {
+                    setExpanded(item, expanded);
+                }
+            }
         } else {
-            addProperty(prop);
+            auto *item = addProperty(prop);
+            addItemWithProperty(item, prop);
+            bool expanded = false;
+            if (getExpandedState(propertyToName(prop), expanded)) {
+                setExpanded(item, expanded);
+            }
         }
     }
 

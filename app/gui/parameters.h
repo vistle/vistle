@@ -46,11 +46,15 @@ private slots:
     void propertyChanged(QtProperty *prop);
 
 private:
+    QString propertyToName(QtProperty *prop) const;
+    bool getExpandedState(QString name, bool &state);
+    void addItemWithProperty(QtBrowserItem *item, QtProperty *prop);
+
     int m_moduleId;
     vistle::VistleConnection *m_vistle;
 
-    QtProperty *m_internalGroup;
     std::map<QString, QtProperty *> m_groups;
+    std::map<QtProperty *, QString> m_propToGroup;
 
     QtGroupPropertyManager *m_groupManager;
     QtBoolPropertyManager *m_boolManager;
@@ -67,8 +71,11 @@ private:
 
     std::map<QString, QtProperty *> m_paramToProp;
     std::map<QtProperty *, QString> m_propToParam;
+    std::map<QtBrowserItem *, QtProperty *> m_itemToProp;
 
     bool m_ignorePropertyChanges = false;
+
+    std::map<int, std::map<QString, bool>> m_expandedState;
 };
 
 } //namespace gui
