@@ -85,10 +85,19 @@ def relinkImages(file, sourceDir, destDir):
         image = file[begin : end] 
         if image[0] != "/": #keep absolute path (altough they don't seem to work)
           image = os.path.relpath(sourceDir, destDir) + "/" + image  
-        print(image)
         newFile += image
     newFile += file[end : ]
     return newFile
+
+def removeEmptyLinesFromEnd(file):
+   
+    while True:
+        if file[len(file) - 1] == '\n':
+            file = file[0 : len(file) - 1]
+        else: 
+            break
+    file += "\n"
+    return file
 
 class Replacement:
     replacedTag = "" 
@@ -137,6 +146,8 @@ for replacement in replacements:
         oldPos = replacement.tagFoundPos + len(replacement.replacedTag)
 newContent += content[oldPos :]
 
+
+newContent = removeEmptyLinesFromEnd(newContent)
 f = open(destDir + target + ".md", "w")
 f.write(newContent)
 f.close()
