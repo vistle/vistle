@@ -1,6 +1,5 @@
 #ifndef SENSEI_CONTROL_MODULE_H
 #define SENSEI_CONTROL_MODULE_H
-#include <vistle/insitu/module/inSituReader.h>
 
 #include <vistle/insitu/sensei/intOption.h>
 
@@ -10,7 +9,7 @@
 #include <vistle/insitu/message/InSituMessage.h>
 #include <vistle/insitu/message/ShmMessage.h>
 #include <vistle/insitu/message/SyncShmIDs.h>
-#include <vistle/module/reader.h>
+#include <vistle/module/module.h>
 
 #include <thread>
 #include <chrono>
@@ -19,7 +18,7 @@ namespace vistle {
 namespace insitu {
 namespace sensei {
 
-class SenseiModule: public vistle::Reader {
+class SenseiModule: public vistle::Module {
 public:
     typedef std::lock_guard<std::mutex> Guard;
 
@@ -48,8 +47,9 @@ private:
     std::vector<vistle::message::Buffer> m_vistleObjects;
     //..........................................................................
     // module functions
-    bool examine(const Parameter *param = nullptr) override;
-    bool read(Token &token, int timestep = -1, int block = -1) override;
+    bool changeParameter(const Parameter *p) override;
+
+    virtual bool prepare() override;
     void connectionAdded(const Port *from, const Port *to) override;
     void connectionRemoved(const Port *from, const Port *to) override;
 
