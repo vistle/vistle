@@ -895,7 +895,7 @@ void Disconnect::reverse()
 }
 
 AddParameter::AddParameter(const Parameter &param, const std::string &modname)
-: paramtype(param.type()), presentation(param.presentation())
+: paramtype(param.type()), presentation(param.presentation()), m_groupExpanded(param.isGroupExpanded())
 {
     assert(paramtype > Parameter::Unknown);
     assert(paramtype < Parameter::Invalid);
@@ -939,6 +939,11 @@ const char *AddParameter::group() const
     return m_group.data();
 }
 
+bool AddParameter::isGroupExpanded() const
+{
+    return m_groupExpanded;
+}
+
 std::shared_ptr<Parameter> AddParameter::getParameter() const
 {
     std::shared_ptr<Parameter> p;
@@ -966,6 +971,7 @@ std::shared_ptr<Parameter> AddParameter::getParameter() const
     if (p) {
         p->setDescription(description());
         p->setGroup(group());
+        p->setGroupExpanded(isGroupExpanded());
         p->setPresentation(Parameter::Presentation(getPresentation()));
     } else {
         std::cerr << "AddParameter::getParameter (" << moduleName() << ":" << getName() << ": type "

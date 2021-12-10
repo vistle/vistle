@@ -86,6 +86,16 @@ const std::string &Parameter::group() const
     return m_group;
 }
 
+void Parameter::setGroupExpanded(bool expanded)
+{
+    m_groupExpanded = expanded;
+}
+
+bool Parameter::isGroupExpanded() const
+{
+    return m_groupExpanded;
+}
+
 namespace {
 
 using namespace boost;

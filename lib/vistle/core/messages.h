@@ -490,6 +490,7 @@ public:
     const char *moduleName() const;
     const char *description() const;
     const char *group() const;
+    bool isGroupExpanded() const;
     int getParameterType() const;
     int getPresentation() const;
     std::shared_ptr<Parameter>
@@ -502,6 +503,7 @@ private:
     description_t m_description;
     int paramtype;
     int presentation;
+    bool m_groupExpanded;
 };
 
 //! notification that a module has removed a parameter

@@ -61,6 +61,8 @@ public:
 
     void setGroup(const std::string &group);
     const std::string &group() const;
+    void setGroupExpanded(bool expanded);
+    bool isGroupExpanded() const;
 
     virtual operator std::string() const = 0;
     virtual bool isDefault() const = 0;
@@ -82,6 +84,7 @@ private:
     std::string m_group;
     enum Type m_type;
     enum Presentation m_presentation;
+    bool m_groupExpanded = true;
 };
 
 template<typename T>
