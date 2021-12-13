@@ -36,6 +36,7 @@ def addLinkToRSTFile(rst_path, md_link_filename):
         if not strInFile(arf, md_link_filename):
             arf.write(indent.format(md_link_filename))
 
+
 def createRSTHeaderNameFromRootPath(path, file_path = False):
     md_name = os.path.basename(path)
     if file_path:
@@ -57,7 +58,7 @@ def createValidLinkFilePath(md_linkdir, md_root) -> str:
     return new_link
 
 
-def createLinkToMarkdownFile(md_linkdir, md_root, md_filename):
+def createLinkToMarkdownFile(md_linkdir, md_root, md_filename) -> str:
     md_origin_path = md_root + '/' + md_filename
     if md_filename == "README.md":
         new_link_file_path = createValidLinkFilePath(md_linkdir, md_root)
@@ -70,11 +71,11 @@ def createLinkToMarkdownFile(md_linkdir, md_root, md_filename):
     return new_link_file_path.split('/')[-1]
 
 
-def searchFilesInPath(path, output_list, predicate_func):
-    for root, _, files in os.walk(path):
-        for file in files:
-            if predicate_func(file):
-                output_list.append(Markdown(root = root, filename = file))
+def searchFilesInDirs(root_path, dirs, predicate_func):
+    return [Markdown(root=root, filename=file) for path in dirs
+            for root, _, files in os.walk(root_path + '/' + path)
+            for file in files
+            if predicate_func(file)]
 
 
 def createIndexFile(name):
@@ -82,7 +83,7 @@ def createIndexFile(name):
         wf.write(createRSTHeaderNameFromRootPath(name, True))
 
 
-def createIndexFileIfNotExisting(link_path):
+def createIndexFileIfNotExisting(link_path) -> str:
     if os.path.exists(link_path):
         if not os.path.isfile(link_path):
             rst_file_path = link_path + "/index.rst"
@@ -93,9 +94,8 @@ def createIndexFileIfNotExisting(link_path):
 
 
 def run(root_path, search_dir_list, link_docs_output_relpath):
-    markdown_files = []
     endswith = lambda file : file.endswith(md_extension_str)
-    [searchFilesInPath(root_path + '/' + dir, markdown_files, endswith) for dir in search_dir_list]
+    markdown_files = searchFilesInDirs(root_path, search_dir_list, endswith)
     root_link_output_path = docpy_path + '/' + link_docs_output_relpath
     link_output_path = createIndexFileIfNotExisting(root_link_output_path)
     index_link_list = createLinks(markdown_files, root_link_output_path)
