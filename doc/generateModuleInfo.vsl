@@ -24,11 +24,10 @@ def getModuleHeadLine(mod):
     return "\n" + getHeadline(name, "#")  + desc + "\n"
 
     
-def getPortDescriptionString(mod, ports):
-    ports = getOutputPorts(mod)
+def getPortDescriptionString(mod, ports, headline):
     portsDescription = "\n"
     if len(ports) > 0:
-        portsDescription += getHeadline("Output ports", "##") 
+        portsDescription += getHeadline(headline, "##") 
         portsDescription += getTableLine(["name", "description"]) + getTableLine(["-", "-"])
     for port in ports:
         portsDescription += getTableLine([port,getPortDescription(mod, port)])
@@ -37,10 +36,10 @@ def getPortDescriptionString(mod, ports):
 
 
 def getInputPortsStringDescription(mod):
-    return getPortDescriptionString(mod, getInputPorts(mod))
+    return getPortDescriptionString(mod, getInputPorts(mod), "Input ports")
 
 def getOutputPortsDescription(mod):
-    return getPortDescriptionString(mod, getOutputPorts(mod))
+    return getPortDescriptionString(mod, getOutputPorts(mod), "Output ports")
 
 def getParametersString(mod):
     allParams = getParameters(mod)
