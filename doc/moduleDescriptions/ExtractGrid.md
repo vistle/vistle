@@ -8,7 +8,6 @@ Extract the grid a data object is mapped to
 |data_in||
 
 
-
 ## Output ports
 |name|description|
 |-|-|

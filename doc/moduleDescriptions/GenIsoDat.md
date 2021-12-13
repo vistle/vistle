@@ -3,6 +3,7 @@
 Generate test data for IsoSurface module
 
 
+
 ## Output ports
 |name|description|
 |-|-|
@@ -10,9 +11,8 @@ Generate test data for IsoSurface module
 |mapdata_out||
 
 
-
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|cell_type|Int|type of cells|
-|case_num|Int|case number (-1: all)|
+|cell_type|type of cells (Tetrahedron, Pyramid, Prism, Hexahedron, Polyhedron)|Integer|
+|case_num|case number (-1: all)|Integer|

@@ -9,17 +9,15 @@ Transform points to spheres
 |map_in||
 
 
-
 ## Output ports
 |name|description|
 |-|-|
 |grid_out||
 
 
-
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|radius|Float|radius or radius scale factor of spheres|
-|map_mode|Int|mapping of data to sphere size|
-|range|Vector|allowed radius range|
+|radius|radius or radius scale factor of spheres|Float|
+|map_mode|mapping of data to sphere size (Fixed, Radius, Surface, Volume)|Integer|
+|range|allowed radius range|Vector|

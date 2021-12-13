@@ -8,17 +8,15 @@ Transform meta data to mappable data
 |grid_in||
 
 
-
 ## Output ports
 |name|description|
 |-|-|
 |data_out||
 
 
-
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|attribute|Int|attribute to map to vertices|
-|range|IntVector|range to which data shall be clamped|
-|modulus|Int|wrap around output value|
+|attribute|attribute to map to vertices (MpiRank, BlockNumber, TimestepNumber, VertexIndex, ElementIndex, ElementType)|Integer|
+|range|range to which data shall be clamped|IntVector|
+|modulus|wrap around output value|Integer|

@@ -8,18 +8,16 @@ Shuffle and mirror axes of rectilinear grids
 |data_in|input data|
 
 
-
 ## Output ports
 |name|description|
 |-|-|
 |data_out|output data|
 
 
-
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|reverse X-axix|Int||
-|reverse Y-axix|Int||
-|reverse Z-axix|Int||
-|orderOfGridAxes|Int||
+|reverse X-axix||Integer|
+|reverse Y-axix||Integer|
+|reverse Z-axix||Integer|
+|orderOfGridAxes| (XYZ, XZY, YXZ, YZX, ZXY, ZYX)|Integer|

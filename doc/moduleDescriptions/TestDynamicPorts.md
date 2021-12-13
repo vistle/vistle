@@ -4,7 +4,9 @@ Test port removal
 
 
 
+
+
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|num_ports|Int|number of output ports|
+|num_ports|number of output ports|Integer|

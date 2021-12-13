@@ -8,15 +8,13 @@ Add color attribute from METApost description
 |data_in|input data|
 
 
-
 ## Output ports
 |name|description|
 |-|-|
 |data_out|output data|
 
 
-
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|metapost|String|filename of metapost file|
+|metapost|filename of metapost file|String|

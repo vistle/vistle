@@ -8,27 +8,25 @@ Show outlines of grid cells
 |grid_in||
 
 
-
 ## Output ports
 |name|description|
 |-|-|
 |grid_out||
 
 
-
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|normalcells|Int|Show normal (non ghost) cells|
-|ghostcells|Int|Show ghost cells|
-|convex|Int|Show convex cells|
-|nonconvex|Int|Show non-convex cells|
-|tetrahedron|Int|Show tetrahedron|
-|pyramid|Int|Show pyramid|
-|prism|Int|Show prism|
-|hexahedron|Int|Show hexahedron|
-|polyhedron|Int|Show polyhedron|
-|quad|Int|Show quad|
-|triangle|Int|Show triandle|
-|Show Cells from Cell Nr. :|Int|Show Cell Nr.|
-|Show Cells to Cell Nr. :|Int|Show Cell Nr.|
+|normalcells|Show normal (non ghost) cells|Integer|
+|ghostcells|Show ghost cells|Integer|
+|convex|Show convex cells|Integer|
+|nonconvex|Show non-convex cells|Integer|
+|tetrahedron|Show tetrahedron|Integer|
+|pyramid|Show pyramid|Integer|
+|prism|Show prism|Integer|
+|hexahedron|Show hexahedron|Integer|
+|polyhedron|Show polyhedron|Integer|
+|quad|Show quad|Integer|
+|triangle|Show triandle|Integer|
+|Show Cells from Cell Nr. :|Show Cell Nr.|Integer|
+|Show Cells to Cell Nr. :|Show Cell Nr.|Integer|

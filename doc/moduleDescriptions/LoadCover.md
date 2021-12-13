@@ -3,15 +3,15 @@
 Instruct COVER to load a file
 
 
+
 ## Output ports
 |name|description|
 |-|-|
 |grid_out||
 
 
-
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|filename|String|name of file (%1%: rank)|
-|rank|Int|rank of node where to load (-1: all nodes)|
+|filename|name of file (%1%: rank)|String|
+|rank|rank of node where to load (-1: all nodes)|Integer|

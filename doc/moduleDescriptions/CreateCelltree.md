@@ -8,7 +8,6 @@ Create a cell tree
 |grid_in|input grid|
 
 
-
 ## Output ports
 |name|description|
 |-|-|

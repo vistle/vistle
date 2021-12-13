@@ -8,7 +8,6 @@ Reduce geometry to underlying points
 |grid_in||
 
 
-
 ## Output ports
 |name|description|
 |-|-|

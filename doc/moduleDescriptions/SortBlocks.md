@@ -8,7 +8,6 @@ Sort data objects according to meta data
 |data_in||
 
 
-
 ## Output ports
 |name|description|
 |-|-|
@@ -16,12 +15,11 @@ Sort data objects according to meta data
 |data_out1||
 
 
-
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|criterion|Int|Selection criterion|
-|first_min|Int|Minimum number of MPI rank, block, timestep to output to first output (data_out0)|
-|first_max|Int|Maximum number of MPI rank, block, timestep to output to first output (data_out0)|
-|modulus|Int|Check min/max after computing modulus (-1: disable)|
-|invert|Int|Invert roles of 1st and 2nd output|
+|criterion|Selection criterion (Rank, BlockNumber, Timestep)|Integer|
+|first_min|Minimum number of MPI rank, block, timestep to output to first output (data_out0)|Integer|
+|first_max|Maximum number of MPI rank, block, timestep to output to first output (data_out0)|Integer|
+|modulus|Check min/max after computing modulus (-1: disable)|Integer|
+|invert|Invert roles of 1st and 2nd output|Integer|

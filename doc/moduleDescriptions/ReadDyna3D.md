@@ -3,6 +3,7 @@
 Read LS-Dyna3D ptf files
 
 
+
 ## Output ports
 |name|description|
 |-|-|
@@ -11,20 +12,19 @@ Read LS-Dyna3D ptf files
 |data2_out|scalar data|
 
 
-
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|first_step|Int|first timestep to read|
-|last_step|Int|last timestep to read (-1: last)|
-|step_increment|Int|number of steps to increment|
-|first_rank|Int|rank for first partition of first timestep|
-|check_convexity|Int|whether to check convexity of grid cells|
-|filename|String|Geometry file path|
-|nodalDataType|Int|Nodal results data to be read|
-|elementDataType|Int|Element results data to be read|
-|component|Int|stress tensor component|
-|Selection|String|Number selection for parts|
-|format|Int|Format of LS-DYNA3D ptf-File|
-|byteswap|Int|Perform Byteswapping|
-|OnlyGeometry|Int|Reading only Geometry? yes|no|
+|first_step|first timestep to read|Integer|
+|last_step|last timestep to read (-1: last)|Integer|
+|step_increment|number of steps to increment|Integer|
+|first_rank|rank for first partition of first timestep|Integer|
+|check_convexity|whether to check convexity of grid cells|Integer|
+|filename|Geometry file path|String|
+|nodalDataType|Nodal results data to be read (No_Node_Data, Displacements, Velocities, Accelerations)|Integer|
+|elementDataType|Element results data to be read (No_Element_Data, Stress_Tensor, Plastic_Strain, Thickness)|Integer|
+|component|stress tensor component (Sx, Sy, Sz, Txy, Tyz, Txz, Pressure, Von_Mises)|Integer|
+|Selection|Number selection for parts|String|
+|format|Format of LS-DYNA3D ptf-File (CADFEM, Original, Guess)|Integer|
+|byteswap|Perform Byteswapping (Off, On, Auto)|Integer|
+|OnlyGeometry|Reading only Geometry? yes|no|Integer|

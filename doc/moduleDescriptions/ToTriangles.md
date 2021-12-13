@@ -8,15 +8,13 @@ Decompose polygons to triangles
 |grid_in||
 
 
-
 ## Output ports
 |name|description|
 |-|-|
 |grid_out||
 
 
-
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|transform_spheres|Int|also generate triangles for sphere impostors|
+|transform_spheres|also generate triangles for sphere impostors|Integer|

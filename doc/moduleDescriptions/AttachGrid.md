@@ -13,7 +13,6 @@ Attach underlying grid to mappable data
 |data_in4||
 
 
-
 ## Output ports
 |name|description|
 |-|-|

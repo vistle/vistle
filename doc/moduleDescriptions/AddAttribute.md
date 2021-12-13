@@ -8,20 +8,18 @@ Add attributes
 |data_in|input data|
 
 
-
 ## Output ports
 |name|description|
 |-|-|
 |data_out|output data|
 
 
-
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|name0|String|attribute name|
-|value0|String|attribute value|
-|name1|String|attribute name|
-|value1|String|attribute value|
-|name2|String|attribute name|
-|value2|String|attribute value|
+|name0|attribute name|String|
+|value0|attribute value|String|
+|name1|attribute name|String|
+|value1|attribute value|String|
+|name2|attribute name|String|
+|value2|attribute value|String|

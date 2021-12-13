@@ -8,7 +8,6 @@ Flatten indexed triangle and quad geometry
 |grid_in||
 
 
-
 ## Output ports
 |name|description|
 |-|-|

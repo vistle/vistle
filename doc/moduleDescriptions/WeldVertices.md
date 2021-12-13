@@ -10,7 +10,6 @@ Weld vertices and build indexed geometry
 |data_in2||
 
 
-
 ## Output ports
 |name|description|
 |-|-|

@@ -11,9 +11,9 @@ Print meta data
 
 
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|Print Totals|Int|Print the Totals of incoming metadata (i.e. number of: blocks, cells, vertices, etc..)|
-|Print Min/Max|Int|Print max/min rank wise values of incoming data|
-|Print MPI Info|Int|Print each node MPI rank|
-|Print Verbose|Int|Prints all data elements on each node|
+|Print Totals|Print the Totals of incoming metadata (i.e. number of: blocks, cells, vertices, etc..)|Integer|
+|Print Min/Max|Print max/min rank wise values of incoming data|Integer|
+|Print MPI Info|Print each node MPI rank|Integer|
+|Print Verbose|Prints all data elements on each node|Integer|

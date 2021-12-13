@@ -8,23 +8,21 @@ Show surface of grid
 |data_in||
 
 
-
 ## Output ports
 |name|description|
 |-|-|
 |data_out||
 
 
-
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|ghost|Int|Show ghostcells|
-|tetrahedron|Int|Show tetrahedron|
-|pyramid|Int|Show pyramid|
-|prism|Int|Show prism|
-|hexahedron|Int|Show hexahedron|
-|polyhedron|Int|Show polyhedron|
-|triangle|Int|Show triangle|
-|quad|Int|Show quad|
-|reuseCoordinates|Int|Re-use the unstructured grids coordinate list and data-object|
+|ghost|Show ghostcells|Integer|
+|tetrahedron|Show tetrahedron|Integer|
+|pyramid|Show pyramid|Integer|
+|prism|Show prism|Integer|
+|hexahedron|Show hexahedron|Integer|
+|polyhedron|Show polyhedron|Integer|
+|triangle|Show triangle|Integer|
+|quad|Show quad|Integer|
+|reuseCoordinates|Re-use the unstructured grids coordinate list and data-object|Integer|

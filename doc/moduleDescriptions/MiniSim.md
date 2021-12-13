@@ -3,6 +3,7 @@
 Small simulation to compare performance with other in situ interfaces
 
 
+
 ## Output ports
 |name|description|
 |-|-|
@@ -10,18 +11,17 @@ Small simulation to compare performance with other in situ interfaces
 |data_out|oscillators|
 
 
-
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|Input params|String|path to file with input parameters|
-|numTimesteps|Int|maximum number of timesteps to execute|
-|numThreads|Int|number of threads used by the sim|
-|numGhost|Int|number of ghost cells in each direction|
-|numParticles|Int|number of particles|
-|numBlocks|Int|number of overall blocks, if zero mpi size is used|
-|verbose|Int|print debug messages|
-|sync|Int|synchronize after each timestep|
-|velocityScale|Float|scale factor to convert function gradient to velocity|
-|tEnd|Float|end time|
-|dt|Float|time step length|
+|Input params|path to file with input parameters|String|
+|numTimesteps|maximum number of timesteps to execute|Integer|
+|numThreads|number of threads used by the sim|Integer|
+|numGhost|number of ghost cells in each direction|Integer|
+|numParticles|number of particles|Integer|
+|numBlocks|number of overall blocks, if zero mpi size is used|Integer|
+|verbose|print debug messages|Integer|
+|sync|synchronize after each timestep|Integer|
+|velocityScale|scale factor to convert function gradient to velocity|Float|
+|tEnd|end time|Float|
+|dt|time step length|Float|

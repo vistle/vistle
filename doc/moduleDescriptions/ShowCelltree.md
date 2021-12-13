@@ -8,7 +8,6 @@ Show cell tree
 |grid_in||
 
 
-
 ## Output ports
 |name|description|
 |-|-|
@@ -17,10 +16,9 @@ Show cell tree
 |invalid_out||
 
 
-
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|maximum_depth|Int|maximum depth of nodes to show|
-|show_left|Int|show left separator|
-|show_right|Int|show right separator|
+|maximum_depth|maximum depth of nodes to show|Integer|
+|show_left|show left separator|Integer|
+|show_right|show right separator|Integer|

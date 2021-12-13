@@ -8,16 +8,14 @@ Advise COVER to enable depth sorting
 |data_in|input data|
 
 
-
 ## Output ports
 |name|description|
 |-|-|
 |data_out|output data|
 
 
-
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|transparency|Int|put objects into TRANSPARENT_BIN|
-|num_primitives|Int|number of primitives to put into one block|
+|transparency|put objects into TRANSPARENT_BIN|Integer|
+|num_primitives|number of primitives to put into one block|Integer|

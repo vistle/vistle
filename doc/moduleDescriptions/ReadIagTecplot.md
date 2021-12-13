@@ -3,6 +3,7 @@
 Read IAG Tecplot data (hexahedra only)
 
 
+
 ## Output ports
 |name|description|
 |-|-|
@@ -14,13 +15,12 @@ Read IAG Tecplot data (hexahedra only)
 |v||
 
 
-
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|first_step|Int|first timestep to read|
-|last_step|Int|last timestep to read (-1: last)|
-|step_increment|Int|number of steps to increment|
-|first_rank|Int|rank for first partition of first timestep|
-|check_convexity|Int|whether to check convexity of grid cells|
-|filename|String|name of Tecplot file|
+|first_step|first timestep to read|Integer|
+|last_step|last timestep to read (-1: last)|Integer|
+|step_increment|number of steps to increment|Integer|
+|first_rank|rank for first partition of first timestep|Integer|
+|check_convexity|whether to check convexity of grid cells|Integer|
+|filename|name of Tecplot file|String|

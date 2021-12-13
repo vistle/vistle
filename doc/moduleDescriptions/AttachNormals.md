@@ -9,7 +9,6 @@ Attach normals to grid
 |data_in||
 
 
-
 ## Output ports
 |name|description|
 |-|-|

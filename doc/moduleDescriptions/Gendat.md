@@ -3,6 +3,7 @@
 Generate scalar and vector test data on structured and unstructured grids
 
 
+
 ## Output ports
 |name|description|
 |-|-|
@@ -11,37 +12,36 @@ Generate scalar and vector test data on structured and unstructured grids
 |data_out1|vector data|
 
 
-
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|first_step|Int|first timestep to read|
-|last_step|Int|last timestep to read (-1: last)|
-|step_increment|Int|number of steps to increment|
-|first_rank|Int|rank for first partition of first timestep|
-|check_convexity|Int|whether to check convexity of grid cells|
-|geo_mode|Int|geometry generation mode|
-|data_mode_scalar|Int|data generation mode|
-|data_scale_scalar|Float|data scale factor (scalar)|
-|data_mode_vec_x|Int|data generation mode|
-|data_scale_vec_x|Float|data scale factor|
-|data_mode_vec_y|Int|data generation mode|
-|data_scale_vec_y|Float|data scale factor|
-|data_mode_vec_z|Int|data generation mode|
-|data_scale_vec_z|Float|data scale factor|
-|size_x|Int|number of cells per block in x-direction|
-|size_y|Int|number of cells per block in y-direction|
-|size_z|Int|number of cells per block in z-direction|
-|blocks_x|Int|number of blocks in x-direction|
-|blocks_y|Int|number of blocks in y-direction|
-|blocks_z|Int|number of blocks in z-direction|
-|ghost_layers|Int|number of ghost layers on all sides of a grid|
-|min|Vector|minimum coordinates|
-|max|Vector|maximum coordinates|
-|timesteps|Int|number of timesteps|
-|element_data|Int|generate data per element/cell|
-|anim_data|Int|data animation|
-|delay|Float|wait after creating an object (s)|
+|first_step|first timestep to read|Integer|
+|last_step|last timestep to read (-1: last)|Integer|
+|step_increment|number of steps to increment|Integer|
+|first_rank|rank for first partition of first timestep|Integer|
+|check_convexity|whether to check convexity of grid cells|Integer|
+|geo_mode|geometry generation mode (Triangle_Geometry, Quad_Geometry, Polygon_Geometry, Uniform_Grid, Rectilinear_Grid, Structured_Grid, Unstructured_Grid, Point_Geometry, Sphere_Geometry)|Integer|
+|data_mode_scalar|data generation mode (One, Dist_Origin, Identity_X, Identity_Y, Identity_Z, Sine_X, Sine_Y, Sine_Z, Cosine_X, Cosine_Y, Cosine_Z, Random)|Integer|
+|data_scale_scalar|data scale factor (scalar)|Float|
+|data_mode_vec_x|data generation mode (One, Dist_Origin, Identity_X, Identity_Y, Identity_Z, Sine_X, Sine_Y, Sine_Z, Cosine_X, Cosine_Y, Cosine_Z, Random)|Integer|
+|data_scale_vec_x|data scale factor|Float|
+|data_mode_vec_y|data generation mode (One, Dist_Origin, Identity_X, Identity_Y, Identity_Z, Sine_X, Sine_Y, Sine_Z, Cosine_X, Cosine_Y, Cosine_Z, Random)|Integer|
+|data_scale_vec_y|data scale factor|Float|
+|data_mode_vec_z|data generation mode (One, Dist_Origin, Identity_X, Identity_Y, Identity_Z, Sine_X, Sine_Y, Sine_Z, Cosine_X, Cosine_Y, Cosine_Z, Random)|Integer|
+|data_scale_vec_z|data scale factor|Float|
+|size_x|number of cells per block in x-direction|Integer|
+|size_y|number of cells per block in y-direction|Integer|
+|size_z|number of cells per block in z-direction|Integer|
+|blocks_x|number of blocks in x-direction|Integer|
+|blocks_y|number of blocks in y-direction|Integer|
+|blocks_z|number of blocks in z-direction|Integer|
+|ghost_layers|number of ghost layers on all sides of a grid|Integer|
+|min|minimum coordinates|Vector|
+|max|maximum coordinates|Vector|
+|timesteps|number of timesteps|Integer|
+|element_data|generate data per element/cell|Integer|
+|anim_data|data animation (Constant, Add_Scale, Divide_Scale, Add_X, Add_Y, Add_Z)|Integer|
+|delay|wait after creating an object (s)|Float|
 ## Isosurface Example
 
 This example uses the IsoSuface module to generate a surface with the data value 1.
@@ -51,6 +51,5 @@ To set this up create the pipeline as described in the following picture and cha
 
 Alternatively load vistle/examples/gendat-isisurface.vsl.
 The result should look like this:
-
 
 ![](../../module/test/Gendat/isosurfaceExampleResult.png)

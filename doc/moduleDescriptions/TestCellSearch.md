@@ -11,9 +11,9 @@ Test celltree
 
 
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|point|Vector|search point|
-|block|Int|number of containing block|
-|cell|Int|number of containing cell|
-|create_celltree|Int|create celltree|
+|point|search point|Vector|
+|block|number of containing block|Integer|
+|cell|number of containing cell|Integer|
+|create_celltree|create celltree|Integer|

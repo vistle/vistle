@@ -9,17 +9,15 @@ Create lines from mapped vector data
 |data_in||
 
 
-
 ## Output ports
 |name|description|
 |-|-|
 |grid_out||
 
 
-
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|scale|Float|scale factor for vector length|
-|attachment_point|Int|where to attach line to carrying point|
-|range|Vector|allowed length range (before scaling)|
+|scale|scale factor for vector length|Float|
+|attachment_point|where to attach line to carrying point (Bottom, Middle, Top)|Integer|
+|range|allowed length range (before scaling)|Vector|

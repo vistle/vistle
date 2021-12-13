@@ -8,15 +8,13 @@ Transform unstructured cells into polyhedral cells
 |grid_in||
 
 
-
 ## Output ports
 |name|description|
 |-|-|
 |grid_out||
 
 
-
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|facestream|Int|create facestream (VTK) or repeat initial vertex of polygon faces (COVISE)|
+|facestream|create facestream (VTK) or repeat initial vertex of polygon faces (COVISE)|Integer|

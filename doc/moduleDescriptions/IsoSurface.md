@@ -9,19 +9,17 @@ Extract surfaces with constant data level
 |mapdata_in||
 
 
-
 ## Output ports
 |name|description|
 |-|-|
 |data_out||
 
 
-
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|isovalue|Float|isovalue|
-|isopoint|Vector|isopoint|
-|point_or_value|Int|point or value interaction|
-|processortype|Int|processortype|
-|compute_normals|Int|compute normals (structured grids only)|
+|isovalue|isovalue|Float|
+|isopoint|isopoint|Vector|
+|point_or_value|point or value interaction (PointPerTimestep, Value, PointInFirstStep)|Integer|
+|processortype|processortype (Host, Device)|Integer|
+|compute_normals|compute normals (structured grids only)|Integer|

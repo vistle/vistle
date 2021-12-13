@@ -8,7 +8,6 @@ Attach an object
 |data_in|input data|
 
 
-
 ## Output ports
 |name|description|
 |-|-|

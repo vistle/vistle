@@ -8,15 +8,13 @@ Transform vector fields to scalar fields
 |data_in||
 
 
-
 ## Output ports
 |name|description|
 |-|-|
 |data_out||
 
 
-
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|Choose Scalar Value|Int|Choose Scalar Value|
+|Choose Scalar Value|Choose Scalar Value (X, Y, Z, AbsoluteValue)|Integer|

@@ -8,16 +8,14 @@ Attach GLSL shader for use in COVER
 |data_in||
 
 
-
 ## Output ports
 |name|description|
 |-|-|
 |data_out||
 
 
-
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|shader|String|name of shader to apply to geometry|
-|shader_params|String|shader parameters (as "key=value" "key=value1 value2"|
+|shader|name of shader to apply to geometry|String|
+|shader_params|shader parameters (as "key=value" "key=value1 value2"|String|

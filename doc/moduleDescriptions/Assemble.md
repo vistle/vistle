@@ -8,15 +8,13 @@ Assemble blocks of indexed geometry to larger blocks
 |data_in0||
 
 
-
 ## Output ports
 |name|description|
 |-|-|
 |data_out0||
 
 
-
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|attribute|String|attribute to match|
+|attribute|attribute to match|String|

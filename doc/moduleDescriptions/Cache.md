@@ -12,7 +12,6 @@ Cache input objects
 |data_in4|input data 4|
 
 
-
 ## Output ports
 |name|description|
 |-|-|
@@ -23,20 +22,19 @@ Cache input objects
 |data_out4|output data 4|
 
 
-
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|mode|Int|operation mode|
-|file|String|filename where cache should be created|
-|step|Int|step width when reading from disk|
-|start|Int|start step|
-|stop|Int|stop step|
-|field_compression|Int|compression mode for data fields|
-|zfp_rate|Float|ZFP fixed compression rate|
-|zfp_precision|Int|ZFP fixed precision|
-|zfp_accuracy|Float|ZFP compression error tolerance|
-|archive_compression|Int|compression mode for archives|
-|archive_compression_speed|Int|speed parameter of compression algorithm|
-|reorder|Int|reorder timesteps|
-|renumber|Int|renumber timesteps consecutively|
+|mode|operation mode (Memory, From_Disk, To_Disk, Automatic)|Integer|
+|file|filename where cache should be created|String|
+|step|step width when reading from disk|Integer|
+|start|start step|Integer|
+|stop|stop step|Integer|
+|field_compression|compression mode for data fields (Uncompressed, ZfpFixedRate, ZfpAccuracy, ZfpPrecision)|Integer|
+|zfp_rate|ZFP fixed compression rate|Float|
+|zfp_precision|ZFP fixed precision|Integer|
+|zfp_accuracy|ZFP compression error tolerance|Float|
+|archive_compression|compression mode for archives (CompressionNone, CompressionLz4, CompressionZstd, CompressionSnappy)|Integer|
+|archive_compression_speed|speed parameter of compression algorithm|Integer|
+|reorder|reorder timesteps|Integer|
+|renumber|renumber timesteps consecutively|Integer|

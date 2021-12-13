@@ -8,7 +8,6 @@ Broadcast input objects to all ranks
 |data_in|input data|
 
 
-
 ## Output ports
 |name|description|
 |-|-|

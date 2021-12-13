@@ -3,18 +3,20 @@
 Aquire data from SENSEI instrumented simulations
 
 
+
+
 This module is used to connect to a simulation via the SENSEI in-situ interface.
 Depending on the connected ports and the frequency parameter the module requests data from the simulation.
 Once the simulation generates the requested data the module is automatically executed.
 
 
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|path|String|path to the connection file written by the simulation|
-|deleteShm|Int|clean the shared memory message queues used to communicate with the simulation|
-|frequency|Int|the pipeline is processed for every nth simulation cycle|
-|keep timesteps|Int|if true timesteps are cached and processed as time series|
+|path|path to the connection file written by the simulation|String|
+|deleteShm|clean the shared memory message queues used to communicate with the simulation|Integer|
+|frequency|the pipeline is processed for every nth simulation cycle|Integer|
+|keep timesteps|if true timesteps are cached and processed as time series|Integer|
 
 
 simulation specific commands

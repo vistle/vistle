@@ -3,6 +3,7 @@
 Read OpenFOAM data
 
 
+
 ## Output ports
 |name|description|
 |-|-|
@@ -15,27 +16,26 @@ Read OpenFOAM data
 |data_2d_out2||
 
 
-
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|first_step|Int|first timestep to read|
-|last_step|Int|last timestep to read (-1: last)|
-|step_increment|Int|number of steps to increment|
-|first_rank|Int|rank for first partition of first timestep|
-|check_convexity|Int|whether to check convexity of grid cells|
-|casedir|String|OpenFOAM case directory|
-|starttime|Float|start reading at the first step after this time|
-|stoptime|Float|stop reading at the last step before this time|
-|read_grid|Int|load the grid?|
-|Data0|String|name of field|
-|Data1|String|name of field|
-|Data2|String|name of field|
-|read_boundary|Int|load the boundary?|
-|patches_as_variants|Int|create sub-objects with variant attribute for boundary patches|
-|patches|String|select patches|
-|Data2d0|String|name of field|
-|Data2d1|String|name of field|
-|Data2d2|String|name of field|
-|build_ghostcells|Int|whether to build ghost cells|
-|only_polyhedra|Int|create only polyhedral cells|
+|first_step|first timestep to read|Integer|
+|last_step|last timestep to read (-1: last)|Integer|
+|step_increment|number of steps to increment|Integer|
+|first_rank|rank for first partition of first timestep|Integer|
+|check_convexity|whether to check convexity of grid cells|Integer|
+|casedir|OpenFOAM case directory|String|
+|starttime|start reading at the first step after this time|Float|
+|stoptime|stop reading at the last step before this time|Float|
+|read_grid|load the grid?|Integer|
+|Data0|name of field ((NONE))|String|
+|Data1|name of field ((NONE))|String|
+|Data2|name of field ((NONE))|String|
+|read_boundary|load the boundary?|Integer|
+|patches_as_variants|create sub-objects with variant attribute for boundary patches|Integer|
+|patches|select patches|String|
+|Data2d0|name of field ((NONE))|String|
+|Data2d1|name of field ((NONE))|String|
+|Data2d2|name of field ((NONE))|String|
+|build_ghostcells|whether to build ghost cells|Integer|
+|only_polyhedra|create only polyhedral cells|Integer|

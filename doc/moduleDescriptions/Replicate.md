@@ -9,7 +9,6 @@ Deprecated
 |data_in||
 
 
-
 ## Output ports
 |name|description|
 |-|-|

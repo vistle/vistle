@@ -8,18 +8,16 @@ Add variant attribute
 |data_in|input data|
 
 
-
 ## Output ports
 |name|description|
 |-|-|
 |data_out|output data|
 
 
-
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|variant|String|variant name|
-|visibility_default|Int|control visibility default|
-|from_attribute|Int|use another attribute as variant name|
-|attribute|String|name of attribute to copy to variant|
+|variant|variant name|String|
+|visibility_default|control visibility default (DontChange, Visible, Hidden)|Integer|
+|from_attribute|use another attribute as variant name|Integer|
+|attribute|name of attribute to copy to variant|String|

@@ -3,6 +3,7 @@
 Read COVISE data in a directory
 
 
+
 ## Output ports
 |name|description|
 |-|-|
@@ -12,19 +13,18 @@ Read COVISE data in a directory
 |field2_out||
 
 
-
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|first_step|Int|first timestep to read|
-|last_step|Int|last timestep to read (-1: last)|
-|step_increment|Int|number of steps to increment|
-|first_rank|Int|rank for first partition of first timestep|
-|check_convexity|Int|whether to check convexity of grid cells|
-|directory|String|directory to scan for .covise files|
-|grid|String|filename for grid|
-|normals|String|name of COVISE file for normals|
-|field0|String|name of COVISE file for field 2|
-|field1|String|name of COVISE file for field 3|
-|field2|String|name of COVISE file for field 4|
-|distribute_time|Int|distribute timesteps across MPI ranks|
+|first_step|first timestep to read|Integer|
+|last_step|last timestep to read (-1: last)|Integer|
+|step_increment|number of steps to increment|Integer|
+|first_rank|rank for first partition of first timestep|Integer|
+|check_convexity|whether to check convexity of grid cells|Integer|
+|directory|directory to scan for .covise files|String|
+|grid|filename for grid ((none))|String|
+|normals|name of COVISE file for normals ((none))|String|
+|field0|name of COVISE file for field 2 ((none))|String|
+|field1|name of COVISE file for field 3 ((none))|String|
+|field2|name of COVISE file for field 4 ((none))|String|
+|distribute_time|distribute timesteps across MPI ranks|Integer|

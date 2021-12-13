@@ -8,20 +8,18 @@ Compute extremal values
 |data_in|input data|
 
 
-
 ## Output ports
 |name|description|
 |-|-|
 |data_out|output data|
 
 
-
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|min|Vector|output parameter: minimum|
-|max|Vector|output parameter: maximum|
-|min_block|IntVector|output parameter: block numbers containing minimum|
-|max_block|IntVector|output parameter: block numbers containing maximum|
-|min_index|IntVector|output parameter: indices of minimum|
-|max_index|IntVector|output parameter: indices of maximum|
+|min|output parameter: minimum|Vector|
+|max|output parameter: maximum|Vector|
+|min_block|output parameter: block numbers containing minimum|IntVector|
+|max_block|output parameter: block numbers containing maximum|IntVector|
+|min_index|output parameter: indices of minimum|IntVector|
+|max_index|output parameter: indices of maximum|IntVector|

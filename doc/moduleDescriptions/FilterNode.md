@@ -8,17 +8,15 @@ Filter data objects
 |data_in||
 
 
-
 ## Output ports
 |name|description|
 |-|-|
 |data_out||
 
 
-
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|criterion|Int|Selection criterion|
-|selection|Int|Number of MPI rank, block, timestep to select|
-|invert|Int|Invert block selection|
+|criterion|Selection criterion (Rank, BlockNumber, Timestep)|Integer|
+|selection|Number of MPI rank, block, timestep to select|Integer|
+|invert|Invert block selection|Integer|

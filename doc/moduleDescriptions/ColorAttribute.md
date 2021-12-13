@@ -8,15 +8,13 @@ Specify solid object color as an attribute
 |data_in|input data|
 
 
-
 ## Output ports
 |name|description|
 |-|-|
 |data_out|output data|
 
 
-
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|color|String|hexadecimal RGB/RGBA values (#rrggbb or #rrggbbaa)|
+|color|hexadecimal RGB/RGBA values (#rrggbb or #rrggbbaa)|String|

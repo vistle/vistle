@@ -8,7 +8,6 @@ Separate grid into 1D, 2D and 3D components
 |data_in||
 
 
-
 ## Output ports
 |name|description|
 |-|-|
@@ -18,8 +17,7 @@ Separate grid into 1D, 2D and 3D components
 |data_out_0d||
 
 
-
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|reuse_coordinates|Int|do not renumber vertices and reuse coordinate and data arrays|
+|reuse_coordinates|do not renumber vertices and reuse coordinate and data arrays|Integer|

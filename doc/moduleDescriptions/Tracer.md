@@ -9,7 +9,6 @@ Compute particle traces and streamlines
 |data_in1||
 
 
-
 ## Output ports
 |name|description|
 |-|-|
@@ -25,32 +24,31 @@ Compute particle traces and streamlines
 |block_index||
 
 
-
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|taskType|Int|task type|
-|startpoint1|Vector|1st initial point|
-|startpoint2|Vector|2nd initial point|
-|direction|Vector|direction for plane|
-|no_startp|Int|number of startpoints|
-|max_no_startp|Int|maximum number of startpoints|
-|steps_max|Int|maximum number of integrations per particle|
-|trace_len|Float|maximum trace distance|
-|trace_time|Float|maximum trace time|
-|tdirection|Int|direction in which to trace|
-|startStyle|Int|initial particle position configuration|
-|integration|Int|integration method|
-|min_speed|Float|minimum particle speed|
-|dt_step|Float|duration of a timestep (for moving points or when data does not specify realtime|
-|h_init|Float|fixed step size for euler integration|
-|h_min|Float|minimum step size for rk32 integration|
-|h_max|Float|maximum step size for rk32 integration|
-|err_tol_abs|Float|absolute error tolerance for rk32 integration|
-|err_tol_rel|Float|relative error tolerance for rk32 integration|
-|cell_relative|Int|whether step length control should take into account cell size|
-|velocity_relative|Int|whether step length control should take into account velocity|
-|use_celltree|Int|use celltree for accelerated cell location|
-|num_active|Int|number of particles to trace simultaneously on each node (0: no. of cores)|
-|particle_placement|Int|where a particle's data shall be collected|
-|cell_index_modulus|Int|modulus for cell number output|
+|taskType|task type (Streamlines, MovingPoints, Pathlines, Streaklines)|Integer|
+|startpoint1|1st initial point|Vector|
+|startpoint2|2nd initial point|Vector|
+|direction|direction for plane|Vector|
+|no_startp|number of startpoints|Integer|
+|max_no_startp|maximum number of startpoints|Integer|
+|steps_max|maximum number of integrations per particle|Integer|
+|trace_len|maximum trace distance|Float|
+|trace_time|maximum trace time|Float|
+|tdirection|direction in which to trace (Both, Forward, Backward)|Integer|
+|startStyle|initial particle position configuration (Line, Plane, Cylinder)|Integer|
+|integration|integration method (Euler, RK32, ConstantVelocity)|Integer|
+|min_speed|minimum particle speed|Float|
+|dt_step|duration of a timestep (for moving points or when data does not specify realtime|Float|
+|h_init|fixed step size for euler integration|Float|
+|h_min|minimum step size for rk32 integration|Float|
+|h_max|maximum step size for rk32 integration|Float|
+|err_tol_abs|absolute error tolerance for rk32 integration|Float|
+|err_tol_rel|relative error tolerance for rk32 integration|Float|
+|cell_relative|whether step length control should take into account cell size|Integer|
+|velocity_relative|whether step length control should take into account velocity|Integer|
+|use_celltree|use celltree for accelerated cell location|Integer|
+|num_active|number of particles to trace simultaneously on each node (0: no. of cores)|Integer|
+|particle_placement|where a particle's data shall be collected (InitialRank, RankById)|Integer|
+|cell_index_modulus|modulus for cell number output|Integer|

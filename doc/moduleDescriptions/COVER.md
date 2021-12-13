@@ -11,7 +11,7 @@ VR renderer for immersive environments
 
 
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|render_mode|Int|Render on which nodes?|
-|objects_per_frame|Int|Max. no. of objects to load between calls to render|
+|render_mode|Render on which nodes? (LocalOnly, MasterOnly, AllRanks, LocalShmLeader, AllShmLeaders)|Integer|
+|objects_per_frame|Max. no. of objects to load between calls to render|Integer|

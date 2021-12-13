@@ -8,21 +8,19 @@ Cut through grids with basic geometry like plane, cylinder or sphere
 |data_in||
 
 
-
 ## Output ports
 |name|description|
 |-|-|
 |data_out||
 
 
-
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|point|Vector|point on plane|
-|vertex|Vector|normal on plane|
-|scalar|Float|distance to origin of ordinates|
-|option|Int|option|
-|direction|Vector|direction for variable Cylinder|
-|processortype|Int|processortype|
-|compute_normals|Int|compute normals (structured grids only)|
+|point|point on plane|Vector|
+|vertex|normal on plane|Vector|
+|scalar|distance to origin of ordinates|Float|
+|option|option (Plane, Sphere, CylinderX, CylinderY, CylinderZ)|Integer|
+|direction|direction for variable Cylinder|Vector|
+|processortype|processortype (Host, Device)|Integer|
+|compute_normals|compute normals (structured grids only)|Integer|

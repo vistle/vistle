@@ -3,6 +3,7 @@
 Read .nek5000 files
 
 
+
 ## Output ports
 |name|description|
 |-|-|
@@ -13,17 +14,16 @@ Read .nek5000 files
 |blockNumber_out|Nek internal block numbers|
 
 
-
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|first_step|Int|first timestep to read|
-|last_step|Int|last timestep to read (-1: last)|
-|step_increment|Int|number of steps to increment|
-|first_rank|Int|rank for first partition of first timestep|
-|check_convexity|Int|whether to check convexity of grid cells|
-|filename|String|Geometry file path|
-|OnlyGeometry|Int|Reading only Geometry? yes|no|
-|numGhostLayers|Int|number of ghost layers around eeach partition, a layer consists of whole blocks|
-|number of blocks|Int|number of blocks to read from file, <= 0 to read all|
-|numberOfPartitions|Int|number of parallel partitions to use for reading, 0 = one partition for each rank|
+|first_step|first timestep to read|Integer|
+|last_step|last timestep to read (-1: last)|Integer|
+|step_increment|number of steps to increment|Integer|
+|first_rank|rank for first partition of first timestep|Integer|
+|check_convexity|whether to check convexity of grid cells|Integer|
+|filename|Geometry file path|String|
+|OnlyGeometry|Reading only Geometry? yes|no|Integer|
+|numGhostLayers|number of ghost layers around eeach partition, a layer consists of whole blocks|Integer|
+|number of blocks|number of blocks to read from file, <= 0 to read all|Integer|
+|numberOfPartitions|number of parallel partitions to use for reading, 0 = one partition for each rank|Integer|

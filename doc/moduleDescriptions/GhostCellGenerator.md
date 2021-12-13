@@ -8,7 +8,6 @@ Generate Ghost Cells for UnstructuredGrids
 |data_in||
 
 
-
 ## Output ports
 |name|description|
 |-|-|

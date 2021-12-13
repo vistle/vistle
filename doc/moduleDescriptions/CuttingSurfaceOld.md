@@ -9,7 +9,6 @@ Cut through data, deprecated
 |data_in||
 
 
-
 ## Output ports
 |name|description|
 |-|-|
@@ -17,9 +16,8 @@ Cut through data, deprecated
 |data_out||
 
 
-
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|point|Vector|point on plane|
-|vertex|Vector|normal on plane|
+|point|point on plane|Vector|
+|vertex|normal on plane|Vector|

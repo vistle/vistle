@@ -10,7 +10,6 @@ Combine up to three scalar fields to a vector field
 |data_in2||
 
 
-
 ## Output ports
 |name|description|
 |-|-|

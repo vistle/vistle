@@ -8,7 +8,6 @@ Extract lower dimensional surfaces, lines or points from structured grids
 |data_in0||
 
 
-
 ## Output ports
 |name|description|
 |-|-|
@@ -17,9 +16,8 @@ Extract lower dimensional surfaces, lines or points from structured grids
 |point_out0||
 
 
-
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|coord|IntVector|coordinates of point on surface/line|
-|direction|Int|normal on surface and direction of line|
+|coord|coordinates of point on surface/line|IntVector|
+|direction|normal on surface and direction of line (X, Y, Z)|Integer|

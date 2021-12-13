@@ -10,7 +10,6 @@ Convert cell mapped data to vertice mapped
 |data_in2||
 
 
-
 ## Output ports
 |name|description|
 |-|-|

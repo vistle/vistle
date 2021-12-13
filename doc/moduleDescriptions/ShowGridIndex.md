@@ -8,7 +8,6 @@ Show the index of each vertex in the grid
 |gridIn|grid input|
 
 
-
 ## Output ports
 |name|description|
 |-|-|

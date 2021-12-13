@@ -3,6 +3,7 @@
 Read COVISE data
 
 
+
 ## Output ports
 |name|description|
 |-|-|
@@ -12,18 +13,17 @@ Read COVISE data
 |field2_out||
 
 
-
 ## Parameters
-|name|type|description|
+|name|description|type|
 |-|-|-|
-|first_step|Int|first timestep to read|
-|last_step|Int|last timestep to read (-1: last)|
-|step_increment|Int|number of steps to increment|
-|first_rank|Int|rank for first partition of first timestep|
-|check_convexity|Int|whether to check convexity of grid cells|
-|filename|String|name of COVISE file|
-|normals|String|name of COVISE file for normals|
-|field0|String|name of COVISE file for field 2|
-|field1|String|name of COVISE file for field 3|
-|field2|String|name of COVISE file for field 4|
-|distribute_time|Int|distribute timesteps across MPI ranks|
+|first_step|first timestep to read|Integer|
+|last_step|last timestep to read (-1: last)|Integer|
+|step_increment|number of steps to increment|Integer|
+|first_rank|rank for first partition of first timestep|Integer|
+|check_convexity|whether to check convexity of grid cells|Integer|
+|filename|name of COVISE file|String|
+|normals|name of COVISE file for normals|String|
+|field0|name of COVISE file for field 2|String|
+|field1|name of COVISE file for field 3|String|
+|field2|name of COVISE file for field 4|String|
+|distribute_time|distribute timesteps across MPI ranks|Integer|

@@ -8,7 +8,6 @@ Create vertex owner list
 |grid_in|input grid|
 
 
-
 ## Output ports
 |name|description|
 |-|-|
