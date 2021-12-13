@@ -1,4 +1,4 @@
-# ReadTsunami
+[headline]:<>
 
 This module is designed to read ChEESE tsunami files a new file format for probabilistic tsunami forecasting. Data can be generated with [Tsunami-HYSEA](https://edanya.uma.es/hysea/index.php/models/tsunami-hysea) a numerical model for quake generated tsunami simulation. The raw data output of the simulation is a netCDF file which contains the following mandatory attributes:
 
@@ -15,9 +15,7 @@ This module is designed to read ChEESE tsunami files a new file format for proba
 
 - **eta**: Wave amplitude per timestep
 
-
 Additional attributes like scalar data will be mapped onto the sea surface.
-
 
 ---
 
@@ -27,20 +25,12 @@ Additional attributes like scalar data will be mapped onto the sea surface.
 
 The pnetcdf install directory should be added to your $PATH environment variable in order to be found by CMake, otherwise it won't be build.
 
-## Ports
+![](modpic.png)
 
-![ReadTsunami](modpic.png)
+[outputPorts]:<>
 
-| Name            | Description                                          | Value         |
-|-----------------|------------------------------------------------------|---------------|
-| SeaSurface      | Polygon surface which represents the sea.            | Polygons      |
-| GroundSurface   | Polygon ground which represents the sea ground.      | Polygons      |
-| Scalar Port\<X\>| Scalar values which holds a reference to sea surface.| Vec\<Scalar\> |
-
-## Parameters
-
-TODO: Add here automatic describtions.
+[parameters]:<>
 
 ## Example Usage
 
-![Example](example.png)
+![](example.png)
