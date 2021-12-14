@@ -216,7 +216,7 @@ bool SenseiModule::recvAndhandleMessage()
     if (msg.type() != message::InSituMessageType::Invalid) {
         std::cerr << "received message of type " << static_cast<int>(msg.type()) << std::endl;
     }
-    return handleMessage(msg);
+    return handleInsituMessage(msg);
 }
 
 bool SenseiModule::recvVistleObjects()
@@ -242,9 +242,9 @@ bool SenseiModule::chacheVistleObjects()
     return retval;
 }
 
-bool SenseiModule::handleMessage(Message &msg)
+bool SenseiModule::handleInsituMessage(Message &msg)
 {
-    DEBUG_CERR << "handleMessage " << (int)msg.type() << endl;
+    DEBUG_CERR << "handleInsituMessage " << (int)msg.type() << endl;
     switch (msg.type()) {
     case InSituMessageType::Invalid:
         return false;
@@ -282,10 +282,8 @@ bool SenseiModule::handleMessage(Message &msg)
             auto lb = std::find_if(m_commandParameter.begin(), m_commandParameter.end(),
                                    [portName](const auto &val) { return val->getName() == portName; });
             if (lb == m_commandParameter.end()) {
-                m_commandParameter
-                    .insert(addIntParameter(portName, "trigger command on change", false,
-                                            vistle::Parameter::Presentation::Boolean))
-                    .first;
+                m_commandParameter.insert(addIntParameter(portName, "trigger command on change", false,
+                                                          vistle::Parameter::Presentation::Boolean));
             }
         }
     } break;

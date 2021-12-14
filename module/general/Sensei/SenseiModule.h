@@ -68,7 +68,7 @@ private:
     bool recvVistleObjects();
     bool chacheVistleObjects();
 
-    bool handleMessage(insitu::message::Message &msg);
+    bool handleInsituMessage(insitu::message::Message &msg);
 
     void connectToSim();
     void sendIntOptions();
