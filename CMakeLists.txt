@@ -58,6 +58,8 @@ if("${CMAKE_SYSTEM_NAME}" STREQUAL "CrayLinuxEnvironment")
     endmacro()
 endif()
 
+ADD_CUSTOM_TARGET(vistle_doc)
+
 if(POLICY CMP0042)
     # default to finding shlibs relative to @rpath on MacOS
     cmake_policy(SET CMP0042 NEW)
@@ -711,11 +713,15 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
                 ${VISTLE_FILE} #the file that gets loaded by vistle to generate the documentation
             COMMENT "Generating documentation for " ${targetname}
         )
-
+        set(ALWAYS_BUILD)
+        if(VISTLE_GENERATE_DOCUMENTATION)
+            set(ALWAYS_BUILD ALL)
+        endif()
         ADD_CUSTOM_TARGET(${targetname}_doc
-                        ALL #always build this target
+                        ${ALWAYS_BUILD} 
                         DEPENDS ${OUTPUT_FILE}
         )
+        add_dependencies(vistle_doc ${targetname}_doc)
     endmacro()
 
     macro(add_module targetname description)
@@ -753,9 +759,8 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
         set_target_properties(${targetname} PROPERTIES FOLDER "Modules")
         target_link_libraries(${targetname} ${Boost_LIBRARIES} ${MPI_C_LIBRARIES} vistle_module ${BOOST_MPI})
 
-        if(VISTLE_GENERATE_DOCUMENTATION)
-            genereate_documentation(${targetname})
-        endif()
+        genereate_documentation(${targetname})
+
     endmacro(add_module)
 endif()
 
