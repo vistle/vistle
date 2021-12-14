@@ -1,4 +1,4 @@
-app
+App
 ===
 
 .. toctree::
