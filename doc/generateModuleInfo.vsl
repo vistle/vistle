@@ -3,7 +3,7 @@ import os
 
 def getHeadline(line, type):
     if len(line) == 0:
-        return
+        return ""
     return type + " " + line + "\n"
 
 def getTableLine(entries):
@@ -22,7 +22,6 @@ def getModuleHeadLine(mod):
     begin = desc[0:1].upper() #convert first letter to upper case
     desc = begin + desc[1:]
     return "\n" + getHeadline(name, "#")  + desc + "\n"
-
     
 def getPortDescriptionString(mod, ports, headline):
     portsDescription = "\n"
@@ -33,7 +32,6 @@ def getPortDescriptionString(mod, ports, headline):
         portsDescription += getTableLine([port,getPortDescription(mod, port)])
     portsDescription += "\n" 
     return portsDescription
-
 
 def getInputPortsStringDescription(mod):
     return getPortDescriptionString(mod, getInputPorts(mod), "Input ports")
@@ -95,10 +93,8 @@ def relinkImages(file, sourceDir, destDir):
 
     return newFile
 
-
 # <img src="isosurfaceExample.png" alt="drawing" style="width:600px;"/>
 def removeEmptyLinesFromEnd(file):
-   
     while True:
         if file[len(file) - 1] == '\n':
             file = file[0 : len(file) - 1]
@@ -123,7 +119,6 @@ filename = sourceDir +  "/" + target + ".md"
 #spawn the module and wait for its information to arrive at the hub
 mod = spawn(target)
 barrier()
-
 
 content = readAdditionalDocumentation(filename)
 destDir = os.path.dirname(os.path.realpath(__file__)) + "/moduleDescriptions/"
@@ -153,7 +148,6 @@ for replacement in replacements:
         newContent += content[oldPos : replacement.tagFoundPos] + replacement.replacement
         oldPos = replacement.tagFoundPos + len(replacement.replacedTag)
 newContent += content[oldPos :]
-
 
 newContent = removeEmptyLinesFromEnd(newContent)
 f = open(destDir + target + ".md", "w")

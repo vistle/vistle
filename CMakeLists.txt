@@ -690,9 +690,32 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
     option(VISTLE_GENERATE_DOCUMENTATION "turn this on after building to update documentation files" OFF)
 
     macro(genereate_documentation targetname)
-        set(ENV{VISTLE_DOCUMENTATION_DIR} ${CMAKE_CURRENT_LIST_DIR})
-        set(ENV{VISTLE_DOCUMENTATION_TARGET} ${targetname})
-        execute_process(COMMAND ${PROJECT_BINARY_DIR}/bin/vistle --batch ${PROJECT_SOURCE_DIR}/doc/generateModuleInfo.vsl)
+        set(CREATE_DOCUMENTATION_SCRIPT ${PROJECT_SOURCE_DIR}/doc/createDocumentation.sh)
+        if (WIN32)
+            set(CREATE_DOCUMENTATION_SCRIPT ${PROJECT_SOURCE_DIR}/doc/createDocumentation.bat)
+        endif()
+        set(VISTLE_FILE ${PROJECT_SOURCE_DIR}/doc/generateModuleInfo.vsl)
+        set(DOC_COMMAND ${CREATE_DOCUMENTATION_SCRIPT} ${targetname} ${CMAKE_CURRENT_SOURCE_DIR} ${VISTLE_FILE})
+        set(OUTPUT_FILE ${PROJECT_SOURCE_DIR}/doc/moduleDescriptions/${targetname}.md)
+        set(INPUT_FILE ${CMAKE_CURRENT_SOURCE_DIR}/${targetname}.md)
+        if(NOT EXISTS ${INPUT_FILE})
+            set(INPUT_FILE)
+        endif()
+
+        ADD_CUSTOM_COMMAND(OUTPUT ${OUTPUT_FILE}
+            COMMAND ${DOC_COMMAND}
+            DEPENDS #build if changes in:
+                ${INPUT_FILE} #the custom documentation
+                ${targetname} #the module's source code 
+                ${CREATE_DOCUMENTATION_SCRIPT} #the bridge script
+                ${VISTLE_FILE} #the file that gets loaded by vistle to generate the documentation
+            COMMENT "Generating documentation for " ${targetname}
+        )
+
+        ADD_CUSTOM_TARGET(${targetname}_doc
+                        ALL #always build this target
+                        DEPENDS ${OUTPUT_FILE}
+        )
     endmacro()
 
     macro(add_module targetname description)
