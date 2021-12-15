@@ -1,6 +1,7 @@
 import os
 import argparse
 from collections import namedtuple
+from clear import deleteFilesInDir
 
 Markdown = namedtuple("Markdown", "root filename")
 
@@ -44,6 +45,7 @@ def createLinks(markdown_list, root_link_output_path):
                                      os.path.relpath(root, root_link_output_path),
                                      filename)
             for root, filename in markdown_list]
+
 
 def addLinkToRSTFile(rst_path, md_link_filename):
     with open(rst_path, 'a+') as arf:
@@ -112,6 +114,7 @@ def run(root_path, search_dir_list, link_docs_output_relpath):
     markdown_files = searchFilesInDirs(root_path, search_dir_list, endswith)
     root_link_output_path = BASE_DIR + '/' + link_docs_output_relpath
     file_link_output_path = createIndexFileIfNotExisting(root_link_output_path)
+    deleteFilesInDir(root_link_output_path, pattern="*.md")
     index_link_list = createLinks(markdown_files, root_link_output_path)
     [addLinkToRSTFile(file_link_output_path, link) for link in sorted(index_link_list)]
 
