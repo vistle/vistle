@@ -1,3 +1,3 @@
-```{include} ../../../lib/vistle/insitu/module/README.md
+```{include} ../../../lib/vistle/module/module.md
 :relative-images:
 ```
