@@ -15,20 +15,35 @@ MYST_INCLUDE = """```{include} %s
 RST_INDEX_HEADER = "{name}\n{underline}\n\n.. toctree::\n   :maxdepth: 1\n\n"
 
 
+def strInFile(openReadOnlyFile, s) -> bool:
+    if s in openReadOnlyFile.read():
+        return True
+
+
+def check(predicate_func, val) -> bool:
+    return True if predicate_func(val) else False
+
+
+def isFileEmpty(path) -> bool:
+    return check(os.path.getsize, path)
+
+
+def isFile(path) -> bool:
+    return check(os.path.isfile, path)
+
+
+def pathExists(path) -> bool:
+    return check(os.path.exists, path)
+
+
 def createLinks(markdown_list, root_link_output_path):
-    if not os.path.exists(root_link_output_path):
+    if not pathExists(root_link_output_path):
         print("Directory {} does not exist.".format(root_link_output_path))
         return
     return [createLinkToMarkdownFile(root_link_output_path,
                                      os.path.relpath(root, root_link_output_path),
                                      filename)
             for root, filename in markdown_list]
-
-
-def strInFile(openReadOnlyFile, s) -> bool:
-    if s in openReadOnlyFile.read():
-        return True
-
 
 def addLinkToRSTFile(rst_path, md_link_filename):
     with open(rst_path, 'a+') as arf:
@@ -50,7 +65,7 @@ def createValidLinkFilePath(md_linkdir, md_root) -> str:
     for dirname in reversed(md_root.split('/')):
         new_link_filename = dirname + prevname + LINK_STR + MD_EXTENSION
         tmp_link = md_linkdir + '/' + new_link_filename
-        if not os.path.exists(tmp_link) or not os.path.getsize(tmp_link) == 0:
+        if not pathExists(tmp_link) or not isFileEmpty(tmp_link):
             new_link = tmp_link
             break
         prevname = '_' + dirname
@@ -84,8 +99,8 @@ def createIndexFile(name):
 
 
 def createIndexFileIfNotExisting(link_path) -> str:
-    if os.path.exists(link_path):
-        if not os.path.isfile(link_path):
+    if pathExists(link_path):
+        if not isFile(link_path):
             link_path = link_path + "/index.rst"
             createIndexFile(link_path)
             print("Don't forget to add " + link_path + " to your main .rst file of your readthedocs environment.")
@@ -96,9 +111,9 @@ def run(root_path, search_dir_list, link_docs_output_relpath):
     endswith = lambda file : file.endswith(MD_EXTENSION)
     markdown_files = searchFilesInDirs(root_path, search_dir_list, endswith)
     root_link_output_path = BASE_DIR + '/' + link_docs_output_relpath
-    link_output_path = createIndexFileIfNotExisting(root_link_output_path)
+    file_link_output_path = createIndexFileIfNotExisting(root_link_output_path)
     index_link_list = createLinks(markdown_files, root_link_output_path)
-    [addLinkToRSTFile(link_output_path, link) for link in sorted(index_link_list)]
+    [addLinkToRSTFile(file_link_output_path, link) for link in sorted(index_link_list)]
 
 
 if __name__ == "__main__":
