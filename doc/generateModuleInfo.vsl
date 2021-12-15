@@ -1,5 +1,56 @@
 import time
 import os
+from PIL.Image import Image
+
+
+def createModuleImage(name, inPorts, outPorts):
+    
+    size = 70
+    letterWidth = 58 / 100 * size
+    widths = [len(name) * letterWidth + size, size * (len(inPorts) + 1), size * (len(outPorts) + 1) ]
+    width = max(widths)
+    height = 3*size
+    
+    image = "<svg width=\"" + str(width) + "\" height=\"" + str(height) + "\" >\n"
+    image += getRect(0, 0, width, height, "#64c8c8ff", 5, 5) + "\n"
+
+    portDistance = size/5
+    portStartPos = portDistance
+    for p in inPorts:
+        image += getRect(portStartPos, 0, size , size, color="#c81e1eff", tooltip=p) + "\n"
+        image+=getRectTooltip(p)
+        portStartPos += portDistance + size
+
+    portStartPos = portDistance
+    for p in outPorts:
+        image += getRect(portStartPos, height - size, size, size, color="#c8c81eff", tooltip=p) + "\n"
+        portStartPos += portDistance + size
+    image += getText(name, portDistance, 1.8*size, 6/100 * size)
+    image += "</svg>"
+    return image
+
+def getText(text, x, y, size):
+    return "<text x=\"" + str(x) + "\" y=\"" + str(y) + "\" font-size=\"" + str(size) + "em\">" + text + "</text>"
+
+def getRectTooltip(tooltip):
+    return "<title>" + tooltip + "</title></rect>"
+
+def getRect(x, y , width, height, color, rx = 0, ry = 0, tooltip = ""):
+    rect = "<rect "
+    rect += "x=\"" + str(x) + "\" "
+    rect += "y=\"" + str(y) + "\" "
+    rect += "width=\"" + str(width) + "\" "
+    rect += "height=\"" + str(height) + "\" "
+    rect += "rx=\"" + str(rx) + "\" "
+    rect += "ry=\"" + str(ry) + "\" "
+    rect += "style=\"fill:" + color + ";\""
+    if len(tooltip) > 0:
+        rect += " >\n"
+        rect +=  getRectTooltip(tooltip)
+    else:
+        rect += " />"
+    return rect
+
 
 def getHeadline(line, type):
     if len(line) == 0:
@@ -23,6 +74,9 @@ def getModuleHeadLine(mod):
     desc = begin + desc[1:]
     return "\n" + getHeadline(name, "#")  + desc + "\n"
     
+def getModuleHtml(mod):
+    return  "\n" + createModuleImage(getModuleName(mod), getInputPorts(mod), getOutputPorts(mod)) + "\n"
+
 def getPortDescriptionString(mod, ports, headline):
     portsDescription = "\n"
     if len(ports) > 0:
@@ -125,18 +179,16 @@ destDir = os.path.dirname(os.path.realpath(__file__)) + "/moduleDescriptions/"
 content = relinkImages(content, sourceDir, destDir)
 #these replacements get inserted at in the additional documentation at the beginning or
 #if the tag is used it replaces this tag
-replacements = [Replacement(getComment("headline"), getModuleHeadLine(mod)), Replacement(getComment("inputPorts"), getInputPortsStringDescription(mod)), Replacement(getComment("outputPorts"), getOutputPortsDescription(mod)), Replacement(getComment("parameters"), getParametersString(mod))]
-
-#get the position of the replacementsTags (only the forst one found is considered)
-for replacement in replacements:
-    replacement.tagFoundPos = content.find(replacement.replacedTag)
+replacements = [Replacement(getComment("headline"), getModuleHeadLine(mod)), Replacement(getComment("moduleHtm"), getModuleHtml(mod)), Replacement(getComment("inputPorts"), getInputPortsStringDescription(mod)), Replacement(getComment("outputPorts"), getOutputPortsDescription(mod)), Replacement(getComment("parameters"), getParametersString(mod))]
 
 newContent = ""
-
-#put the replacements that are not used at the beginning
+#get the position of the replacementsTags (only the forst one found is considered)
+#and place the replacements that are not used at the beginning
 for replacement in replacements:
+    replacement.tagFoundPos = content.find(replacement.replacedTag)
     if replacement.tagFoundPos == -1:
         newContent += replacement.replacement
+
 
 #sort to use the used tags in the wright order 
 replacements.sort(key= lambda replacement: replacement.tagFoundPos)
