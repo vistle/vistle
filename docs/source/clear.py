@@ -1,3 +1,8 @@
+# -*- coding: utf-8 -*-
+"""
+Module for deleting files or directories
+"""
+
 import os
 from shutil import rmtree
 from pathlib import Path
