@@ -46,7 +46,7 @@ More infos about Architecture: https://vistle.io/architecture/
 
 .. toctree::
    :maxdepth: 1
-   :caption: Developer Documentation
+   :caption: Todo's
 
    Gucci Docu Features <todo/index.rst> 
 
