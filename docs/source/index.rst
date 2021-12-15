@@ -14,6 +14,7 @@ More infos about Architecture: https://vistle.io/architecture/
 * :ref:`build-docs`
 * :ref:`user-docs`
 * :ref:`dev-docs`
+* :ref:`todo-docs`
 
 .. _build-docs:
 
@@ -40,6 +41,14 @@ More infos about Architecture: https://vistle.io/architecture/
 
    Application <app/index.rst>
    Coding <dev/index.rst>
+
+.. _todo-docs:
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Developer Documentation
+
+   Gucci Docu Features <todo/index.rst> 
 
 Indices and tables
 ==================
