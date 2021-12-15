@@ -1,3 +1,8 @@
+# -*- coding: utf-8 -*-
+"""
+Module for creating symbolic links to markdown files with myst-parser
+"""
+
 import os
 import argparse
 from collections import namedtuple
