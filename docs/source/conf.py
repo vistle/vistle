@@ -14,7 +14,7 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('.'))
 from doc import run
-from clear import clearDir
+from clear import deleteDir
 
 
 # -- Project information -----------------------------------------------------
@@ -64,7 +64,7 @@ html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
 
 autosectionlabel_prefix_document = True
-clearDir("../build")
+deleteDir("../build")
 run("../..", ["doc/moduleDescriptions"], "modules")
 run("../..", ["lib/vistle"], "lib")
 run("../..", ["app"], "app")
