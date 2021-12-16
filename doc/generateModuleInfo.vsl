@@ -185,7 +185,7 @@ run()
 #content = relinkImages(content, sourceDir, destDir)
 ##these replacements get inserted at in the additional documentation at the beginning or
 ##if the tag is used it replaces this tag
-#replacements = [Replacement(getComment("headline"), getModuleHeadLine(mod)), Replacement(getComment("moduleHtm"), getModuleHtml(mod)), Replacement(getComment("inputPorts"), getInputPortsStringDescription(mod)), Replacement(getComment("outputPorts"), getOutputPortsDescription(mod)), Replacement(getComment("parameters"), getParametersString(mod))]
+#replacements = [Replacement(getComment("headline"), getModuleHeadLine(mod)), Replacement(getComment("moduleHtml"), getModuleHtml(mod)), Replacement(getComment("inputPorts"), getInputPortsStringDescription(mod)), Replacement(getComment("outputPorts"), getOutputPortsDescription(mod)), Replacement(getComment("parameters"), getParametersString(mod))]
 #
 #newContent = ""
 ##get the position of the replacementsTags (only the forst one found is considered)
