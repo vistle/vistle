@@ -1,7 +1,6 @@
 import time
 import os
 from bisect import insort
-from PIL.Image import Image
 from _vistle import getModuleName, getModuleDescription, getInputPorts, getOutputPorts, getPortDescription, getParameters, getParameterTooltip, getParameterType, spawn, barrier, quit
 
 #-------------Classes--------------#
