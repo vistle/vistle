@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/CellToVert.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/CellToVert.md
 :relative-images:
 ```

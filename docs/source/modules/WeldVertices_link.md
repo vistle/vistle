@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/WeldVertices.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/WeldVertices.md
 :relative-images:
 ```

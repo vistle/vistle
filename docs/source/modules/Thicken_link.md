@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/Thicken.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/Thicken.md
 :relative-images:
 ```

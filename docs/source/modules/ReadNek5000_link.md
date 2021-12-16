@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/ReadNek5000.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/ReadNek5000.md
 :relative-images:
 ```

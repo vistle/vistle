@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/PrintAttributes.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/PrintAttributes.md
 :relative-images:
 ```

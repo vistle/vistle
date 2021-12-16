@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/SplitDimensions.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/SplitDimensions.md
 :relative-images:
 ```

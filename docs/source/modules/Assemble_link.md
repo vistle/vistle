@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/Assemble.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/Assemble.md
 :relative-images:
 ```

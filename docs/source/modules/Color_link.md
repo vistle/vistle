@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/Color.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/Color.md
 :relative-images:
 ```

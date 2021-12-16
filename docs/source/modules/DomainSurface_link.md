@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/DomainSurface.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/DomainSurface.md
 :relative-images:
 ```

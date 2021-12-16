@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/ToTriangles.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/ToTriangles.md
 :relative-images:
 ```

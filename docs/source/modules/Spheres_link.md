@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/Spheres.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/Spheres.md
 :relative-images:
 ```

@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/ShowGridIndex.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/ShowGridIndex.md
 :relative-images:
 ```

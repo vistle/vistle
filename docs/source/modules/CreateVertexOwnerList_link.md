@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/CreateVertexOwnerList.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/CreateVertexOwnerList.md
 :relative-images:
 ```

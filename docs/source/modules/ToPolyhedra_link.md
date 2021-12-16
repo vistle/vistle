@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/ToPolyhedra.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/ToPolyhedra.md
 :relative-images:
 ```

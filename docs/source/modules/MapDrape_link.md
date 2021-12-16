@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/MapDrape.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/MapDrape.md
 :relative-images:
 ```

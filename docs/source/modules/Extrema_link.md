@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/Extrema.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/Extrema.md
 :relative-images:
 ```

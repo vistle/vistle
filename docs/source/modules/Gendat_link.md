@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/Gendat.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/Gendat.md
 :relative-images:
 ```

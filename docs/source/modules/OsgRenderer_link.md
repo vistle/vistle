@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/OsgRenderer.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/OsgRenderer.md
 :relative-images:
 ```

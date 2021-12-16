@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/Tubes.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/Tubes.md
 :relative-images:
 ```

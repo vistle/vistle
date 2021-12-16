@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/TestInterpolation.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/TestInterpolation.md
 :relative-images:
 ```

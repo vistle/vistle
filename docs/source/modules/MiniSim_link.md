@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/MiniSim.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/MiniSim.md
 :relative-images:
 ```

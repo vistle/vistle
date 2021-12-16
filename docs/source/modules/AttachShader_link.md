@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/AttachShader.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/AttachShader.md
 :relative-images:
 ```

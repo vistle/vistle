@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/IsoSurface.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/IsoSurface.md
 :relative-images:
 ```

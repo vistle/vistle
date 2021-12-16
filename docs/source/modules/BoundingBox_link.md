@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/BoundingBox.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/BoundingBox.md
 :relative-images:
 ```

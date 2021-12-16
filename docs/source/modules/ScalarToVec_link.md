@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/ScalarToVec.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/ScalarToVec.md
 :relative-images:
 ```

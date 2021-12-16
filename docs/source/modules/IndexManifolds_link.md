@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/IndexManifolds.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/IndexManifolds.md
 :relative-images:
 ```

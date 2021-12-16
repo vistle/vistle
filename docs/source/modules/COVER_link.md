@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/COVER.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/COVER.md
 :relative-images:
 ```

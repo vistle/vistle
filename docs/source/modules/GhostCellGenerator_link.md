@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/GhostCellGenerator.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/GhostCellGenerator.md
 :relative-images:
 ```

@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/FilterNode.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/FilterNode.md
 :relative-images:
 ```

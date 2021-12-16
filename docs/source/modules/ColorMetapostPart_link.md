@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/ColorMetapostPart.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/ColorMetapostPart.md
 :relative-images:
 ```

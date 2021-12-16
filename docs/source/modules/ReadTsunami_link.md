@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/ReadTsunami.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/ReadTsunami.md
 :relative-images:
 ```

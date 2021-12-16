@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/CuttingSurfaceOld.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/CuttingSurfaceOld.md
 :relative-images:
 ```

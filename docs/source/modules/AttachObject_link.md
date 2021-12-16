@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/AttachObject.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/AttachObject.md
 :relative-images:
 ```

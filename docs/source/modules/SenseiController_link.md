@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/SenseiController.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/SenseiController.md
 :relative-images:
 ```

@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/ReadSeisSol.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/ReadSeisSol.md
 :relative-images:
 ```

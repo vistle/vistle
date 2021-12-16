@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/FlattenTriangles.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/FlattenTriangles.md
 :relative-images:
 ```

@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/TestCellSearch.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/TestCellSearch.md
 :relative-images:
 ```

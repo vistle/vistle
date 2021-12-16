@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/CreateCelltree.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/CreateCelltree.md
 :relative-images:
 ```

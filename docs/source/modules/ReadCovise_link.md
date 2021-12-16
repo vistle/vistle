@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/ReadCovise.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/ReadCovise.md
 :relative-images:
 ```

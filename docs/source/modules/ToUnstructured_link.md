@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/ToUnstructured.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/ToUnstructured.md
 :relative-images:
 ```

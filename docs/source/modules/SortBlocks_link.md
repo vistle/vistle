@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/SortBlocks.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/SortBlocks.md
 :relative-images:
 ```

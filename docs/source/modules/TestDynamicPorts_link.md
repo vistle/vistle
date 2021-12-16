@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/TestDynamicPorts.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/TestDynamicPorts.md
 :relative-images:
 ```

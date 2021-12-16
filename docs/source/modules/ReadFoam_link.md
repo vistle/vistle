@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/ReadFoam.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/ReadFoam.md
 :relative-images:
 ```

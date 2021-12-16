@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/EnableTransparency.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/EnableTransparency.md
 :relative-images:
 ```

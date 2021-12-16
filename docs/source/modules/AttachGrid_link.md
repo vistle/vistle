@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/AttachGrid.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/AttachGrid.md
 :relative-images:
 ```

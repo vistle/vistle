@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/Dropbear.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/Dropbear.md
 :relative-images:
 ```

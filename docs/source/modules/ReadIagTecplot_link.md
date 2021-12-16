@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/ReadIagTecplot.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/ReadIagTecplot.md
 :relative-images:
 ```

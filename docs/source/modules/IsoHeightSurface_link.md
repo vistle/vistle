@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/IsoHeightSurface.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/IsoHeightSurface.md
 :relative-images:
 ```

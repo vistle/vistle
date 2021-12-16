@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/LibSimController.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/LibSimController.md
 :relative-images:
 ```

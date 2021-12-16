@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/ToPoints.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/ToPoints.md
 :relative-images:
 ```

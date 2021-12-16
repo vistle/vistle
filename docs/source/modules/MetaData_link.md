@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/MetaData.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/MetaData.md
 :relative-images:
 ```

@@ -1,3 +1,3 @@
-```{include} ../../../doc/moduleDescriptions/Replicate.md
+```{include} ../../../doc/GenModInfo/moduleDescriptions/Replicate.md
 :relative-images:
 ```
