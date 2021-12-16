@@ -696,7 +696,7 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
         if (WIN32)
             set(CREATE_DOCUMENTATION_SCRIPT ${PROJECT_SOURCE_DIR}/doc/createDocumentation.bat)
         endif()
-        set(VISTLE_FILES ${PROJECT_SOURCE_DIR}/doc/generateModuleInfo.vsl ${PROJECT_SOURCE_DIR}/doc/GenModInfo/genModInfo.py)
+        set(VISTLE_FILE ${PROJECT_SOURCE_DIR}/doc/generateModuleInfo.vsl)
         set(DOC_COMMAND ${CREATE_DOCUMENTATION_SCRIPT} ${targetname} ${CMAKE_CURRENT_SOURCE_DIR} ${VISTLE_FILE})
         set(OUTPUT_FILE ${PROJECT_SOURCE_DIR}/doc/GenModInfo/moduleDescriptions/${targetname}.md)
         set(INPUT_FILE ${CMAKE_CURRENT_SOURCE_DIR}/${targetname}.md)
@@ -710,7 +710,8 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
                 ${INPUT_FILE} #the custom documentation
                 ${targetname} #the module's source code 
                 ${CREATE_DOCUMENTATION_SCRIPT} #the bridge script
-                ${VISTLE_FILES} #the files that get loaded by vistle to generate the documentation
+                ${VISTLE_FILE} #the file that gets loaded by vistle to generate the documentation
+                ${PROJECT_SOURCE_DIR}/doc/GenModInfo/genModInfo.py #dependency of VISTLE_FILE
             COMMENT "Generating documentation for " ${targetname}
         )
         set(ALWAYS_BUILD)
