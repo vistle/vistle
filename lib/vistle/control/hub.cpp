@@ -1083,8 +1083,7 @@ bool Hub::hubReady()
         }
         m_ready = true;
     }
-    processStartupScripts();
-    return true;
+    return processStartupScripts();
 }
 
 bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, const buffer *payload)
@@ -1997,18 +1996,18 @@ Hub::socket_ptr Hub::connectToVrb(unsigned short port)
     char df = 0;
     asio::read(*sock, asio::mutable_buffer(&df, 1), ec);
     if (ec) {
-        CERR << "failed to read data format" << std::endl;
+        CERR << "failed to read data format, resetting socket" << std::endl;
         sock.reset();
         return sock;
     }
     if (df != DF_IEEE) {
-        CERR << "incompatible data format " << static_cast<int>(df) << std::endl;
+        CERR << "incompatible data format " << static_cast<int>(df) << ", resetting socket" << std::endl;
         sock.reset();
         return sock;
     }
     asio::write(*sock, asio::const_buffer(&DF_IEEE, 1), ec);
     if (ec) {
-        CERR << "failed to write data format" << std::endl;
+        CERR << "failed to write data format, resetting socket" << std::endl;
         sock.reset();
         return sock;
     }
@@ -2132,12 +2131,12 @@ bool Hub::startPythonUi()
 
 bool Hub::processScript()
 {
-    if (!m_scriptPath.empty()) {
-        auto retval = processScript(m_scriptPath, m_barrierAfterLoad, m_executeModules);
-        setLoadedFile(m_scriptPath);
-        return retval;
-    }
-    return true;
+    if (m_scriptPath.empty())
+        return true;
+
+    auto retval = processScript(m_scriptPath, m_barrierAfterLoad, m_executeModules);
+    setLoadedFile(m_scriptPath);
+    return retval;
 }
 
 bool Hub::processScript(const std::string &filename, bool barrierAfterLoad, bool executeModules)
@@ -2220,12 +2219,12 @@ bool Hub::handlePriv(const message::RemoveHub &rm)
 
 bool Hub::processStartupScripts()
 {
-    bool error = false;
     for (const auto &script: scanStartupScripts()) {
         std::cerr << "loading script " << script << std::endl;
-        error += !processScript(script, false, false);
+        if (!processScript(script, false, false))
+            return false;
     }
-    return error;
+    return true;
 }
 
 bool Hub::handlePriv(const message::Execute &exec)
