@@ -25,7 +25,7 @@ Additional attributes like scalar data will be mapped onto the sea surface.
 
 The pnetcdf install directory should be added to your $PATH environment variable in order to be found by CMake, otherwise it won't be build.
 
-![](modpic.png)
+[moduleHtml]:<>
 
 [outputPorts]:<>
 
