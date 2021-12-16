@@ -1990,10 +1990,16 @@ Hub::socket_ptr Hub::connectToVrb(unsigned short port)
         }
     }
 
-    std::cerr << " done." << std::endl;
+    std::cerr << ": done." << std::endl;
 
     const char DF_IEEE = 1;
     char df = 0;
+    asio::write(*sock, asio::const_buffer(&DF_IEEE, 1), ec);
+    if (ec) {
+        CERR << "failed to write data format, resetting socket" << std::endl;
+        sock.reset();
+        return sock;
+    }
     asio::read(*sock, asio::mutable_buffer(&df, 1), ec);
     if (ec) {
         CERR << "failed to read data format, resetting socket" << std::endl;
@@ -2002,12 +2008,6 @@ Hub::socket_ptr Hub::connectToVrb(unsigned short port)
     }
     if (df != DF_IEEE) {
         CERR << "incompatible data format " << static_cast<int>(df) << ", resetting socket" << std::endl;
-        sock.reset();
-        return sock;
-    }
-    asio::write(*sock, asio::const_buffer(&DF_IEEE, 1), ec);
-    if (ec) {
-        CERR << "failed to write data format, resetting socket" << std::endl;
         sock.reset();
         return sock;
     }
