@@ -65,6 +65,6 @@ html_static_path = ['_static']
 
 autosectionlabel_prefix_document = True
 deleteDir("../build")
-run("../..", ["doc/moduleDescriptions"], "modules")
+run("../..", ["doc/GenModInfo/moduleDescriptions"], "modules")
 run("../..", ["lib/vistle"], "lib")
 run("../..", ["app"], "app")
