@@ -24,7 +24,7 @@ class ImageSignature:
 #-------------Functions-------------#
 def createModuleImage(name, inPorts, outPorts):
 
-    size = 70
+    size = 30
     letterWidth = 58 / 100 * size
     widths = [len(name) * letterWidth + size, size * (len(inPorts) + 1), size * (len(outPorts) + 1) ]
     width = max(widths)
@@ -166,7 +166,7 @@ def removeEmptyLinesFromEnd(file):
     return file
 
 #-------------Main-------------#
-def run():
+def generateModuleDescriptions():
     #these have to be set to chose the module to create documentation for
     target = os.environ['VISTLE_DOCUMENTATION_TARGET']
     sourceDir = os.environ['VISTLE_DOCUMENTATION_DIR']
@@ -184,7 +184,7 @@ def run():
     tag_functions = (
         ("headline", getModuleHeadLine),
         ("inputPorts", getInputPortsStringDescription),
-        ("moduleHtm", getModuleHtml),
+        ("moduleHtml", getModuleHtml),
         ("outputPorts", getOutputPortsDescription),
         ("parameters", getParametersString)
     )
