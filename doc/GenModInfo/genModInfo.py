@@ -26,30 +26,61 @@ def createModuleImage(name, inPorts, outPorts):
 
     size = 30
     letterWidth = 58 / 100 * size
-    widths = [len(name) * letterWidth + size, size * (len(inPorts) + 1), size * (len(outPorts) + 1) ]
+    widths = [len(name) * letterWidth + size, size * (len(inPorts) + 2), size * (len(outPorts) + 2) ]
     width = max(widths)
     height = 3*size
-
-    image = "<svg width=\"" + str(width) + "\" height=\"" + str(height) + "\" >\n"
-    image += getRect(0, 0, width, height, "#64c8c8ff", 5, 5) + "\n"
+    spiderLegOffsetTop = size * len(inPorts) + size
+    spiderLegOffsetBot = size * len(outPorts) + size
+    image = "<svg width=\"" + str(10 * width) + "\" height=\"" + str(height +spiderLegOffsetTop + spiderLegOffsetBot) + "\" >\n"
+    image += getStyle(size) + "\n"
+    image += getRect(0, spiderLegOffsetTop, width, height, "#64c8c8ff", 5, 5) + "\n"
 
     portDistance = size/5
     portStartPos = portDistance
-    for p in inPorts:
-        image += getRect(portStartPos, 0, size , size, color="#c81e1eff", tooltip=p) + "\n"
-        image+=getRectTooltip(p)
+    num = len(inPorts)
+    for port, tooltip in inPorts:
+        image += getRect(portStartPos, spiderLegOffsetTop, size , size, color="#c81e1eff", tooltip=port) + "\n"
+        text = tooltip + "<tspan> ("+ port + ")</tspan>"
+        image += getPortDescriptionSpider(size, portStartPos + size/2, spiderLegOffsetTop, num, text) + "\n"
         portStartPos += portDistance + size
+        num -= 1
 
+    num = -1 * len(outPorts)
     portStartPos = portDistance
-    for p in outPorts:
-        image += getRect(portStartPos, height - size, size, size, color="#c8c81eff", tooltip=p) + "\n"
+    for port, tooltip in outPorts:
+        image += getRect(portStartPos, spiderLegOffsetTop + height - size, size, size, color="#c8c81eff", tooltip=port) + "\n"
+        text = tooltip + "<tspan> ("+ port + ")</tspan>"
+        image += getPortDescriptionSpider(size, portStartPos + size/2, spiderLegOffsetTop + height, num, text) + "\n"
         portStartPos += portDistance + size
-    image += getText(name, portDistance, 1.8*size, 6/100 * size)
+        num += 1
+    image += getText(name, portDistance, spiderLegOffsetTop + 1.85*size, "moduleName")
     image += "</svg>"
     return image
 
-def getText(text, x, y, size):
-    return "<text x=\"" + str(x) + "\" y=\"" + str(y) + "\" font-size=\"" + str(size) + "em\">" + text + "</text>"
+def getPortDescriptionSpider(size, x, y, num, desc):
+    width = size/30
+    height = abs(size * num)
+    f1 = 1
+    f2 = 1
+    if num < 0:
+        f1 = 0
+        f2 = -1
+    spider = getRect(x, y - f1 * height, width, height, "#000000") + "\n"
+    spider += getRect(x, y - f2* height, size, width, "#000000") + "\n"
+    spider += getText(desc, x + 1.2 * size, y - f2 * height + size/10, "text")
+    return spider
+
+def getStyle(size):
+    style = "<style>"
+    style += ".text { font: normal " + str( 0.8 * size) + "px sans-serif;}" 
+    style += "tspan{ font: italic " + str(0.8 * size) + "px sans-serif;}" 
+    style += ".moduleName{ font: italic " + str(size) + "px sans-serif;}" 
+    style += "</style>"
+    return style
+
+
+def getText(text, x, y, style):
+    return "<text x=\"" + str(x) + "\" y=\"" + str(y) + "\" class=\"" + style + "\" >" + text + "</text>"
 
 def getRectTooltip(tooltip):
     return "<title>" + tooltip + "</title></rect>"
@@ -89,7 +120,14 @@ def getModuleHeadLine(mod):
     return "\n" + getHeadline(name, "#")  + desc.capitalize() + "\n"
 
 def getModuleHtml(mod):
-    return  "\n" + createModuleImage(getModuleName(mod), getInputPorts(mod), getOutputPorts(mod)) + "\n"
+
+    inPorts = []
+    for p in getInputPorts(mod):
+        inPorts.append([p, getPortDescription(mod, p)])
+    outPorts = []
+    for p in getOutputPorts(mod):
+        outPorts.append([p, getPortDescription(mod, p)])
+    return  "\n" + createModuleImage(getModuleName(mod), inPorts, outPorts) + "\n"
 
 def getPortDescriptionString(mod, ports, headline):
     portsDescription = "\n"
@@ -183,9 +221,9 @@ def generateModuleDescriptions():
     #if the tag is used it replaces this tag
     tag_functions = (
         ("headline", getModuleHeadLine),
-        ("inputPorts", getInputPortsStringDescription),
+        #("inputPorts", getInputPortsStringDescription),
         ("moduleHtml", getModuleHtml),
-        ("outputPorts", getOutputPortsDescription),
+        #("outputPorts", getOutputPortsDescription),
         ("parameters", getParametersString)
     )
     replacements = []
