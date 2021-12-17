@@ -2,37 +2,45 @@
 # ReadFoam
 Read openfoam data
 
-
-
-<svg width="240" height="90" >
-<rect x="0" y="0" width="240" height="90" rx="5" ry="5" style="fill:#64c8c8ff;" />
-<rect x="6.0" y="60" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
+<svg width="2700" height="360" >
+<style>.text { font: normal 24.0px sans-serif;}tspan{ font: italic 24.0px sans-serif;}.moduleName{ font: italic 30px sans-serif;}</style>
+<rect x="0" y="30" width="270" height="90" rx="5" ry="5" style="fill:#64c8c8ff;" />
+<rect x="6.0" y="90" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
 <title>grid_out1</title></rect>
-<rect x="42.0" y="60" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
+<rect x="21.0" y="120" width="1.0" height="210" rx="0" ry="0" style="fill:#000000;" />
+<rect x="21.0" y="330" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
+<text x="57.0" y="333.0" class="text" ><tspan> (grid_out1)</tspan></text>
+<rect x="42.0" y="90" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
 <title>data_out0</title></rect>
-<rect x="78.0" y="60" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
+<rect x="57.0" y="120" width="1.0" height="180" rx="0" ry="0" style="fill:#000000;" />
+<rect x="57.0" y="300" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
+<text x="93.0" y="303.0" class="text" ><tspan> (data_out0)</tspan></text>
+<rect x="78.0" y="90" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
 <title>data_out1</title></rect>
-<rect x="114.0" y="60" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
+<rect x="93.0" y="120" width="1.0" height="150" rx="0" ry="0" style="fill:#000000;" />
+<rect x="93.0" y="270" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
+<text x="129.0" y="273.0" class="text" ><tspan> (data_out1)</tspan></text>
+<rect x="114.0" y="90" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
 <title>data_out2</title></rect>
-<rect x="150.0" y="60" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
+<rect x="129.0" y="120" width="1.0" height="120" rx="0" ry="0" style="fill:#000000;" />
+<rect x="129.0" y="240" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
+<text x="165.0" y="243.0" class="text" ><tspan> (data_out2)</tspan></text>
+<rect x="150.0" y="90" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
 <title>data_2d_out0</title></rect>
-<rect x="186.0" y="60" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
+<rect x="165.0" y="120" width="1.0" height="90" rx="0" ry="0" style="fill:#000000;" />
+<rect x="165.0" y="210" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
+<text x="201.0" y="213.0" class="text" ><tspan> (data_2d_out0)</tspan></text>
+<rect x="186.0" y="90" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
 <title>data_2d_out1</title></rect>
-<rect x="222.0" y="60" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
+<rect x="201.0" y="120" width="1.0" height="60" rx="0" ry="0" style="fill:#000000;" />
+<rect x="201.0" y="180" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
+<text x="237.0" y="183.0" class="text" ><tspan> (data_2d_out1)</tspan></text>
+<rect x="222.0" y="90" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
 <title>data_2d_out2</title></rect>
-<text x="6.0" y="54.0" font-size="1.7999999999999998em">ReadFoam</text></svg>
-
-## Output ports
-|name|description|
-|-|-|
-|grid_out1||
-|data_out0||
-|data_out1||
-|data_out2||
-|data_2d_out0||
-|data_2d_out1||
-|data_2d_out2||
-
+<rect x="237.0" y="120" width="1.0" height="30" rx="0" ry="0" style="fill:#000000;" />
+<rect x="237.0" y="150" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
+<text x="273.0" y="153.0" class="text" ><tspan> (data_2d_out2)</tspan></text>
+<text x="6.0" y="85.5" class="moduleName" >ReadFoam</text></svg>
 
 ## Parameters
 |name|description|type|

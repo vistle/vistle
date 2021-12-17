@@ -1,14 +1,6 @@
 
 # SenseiController
 Aquire data from sensei instrumented simulations
-
-
-
-<svg width="308.4" height="90" >
-<rect x="0" y="0" width="308.4" height="90" rx="5" ry="5" style="fill:#64c8c8ff;" />
-<text x="6.0" y="54.0" font-size="1.7999999999999998em">SenseiController</text></svg>
-
-
 This module is used to connect to a simulation via the SENSEI in-situ interface.
 Depending on the connected ports and the frequency parameter the module requests data from the simulation.
 Once the simulation generates the requested data the module is automatically executed.
@@ -21,7 +13,6 @@ Once the simulation generates the requested data the module is automatically exe
 |deleteShm|clean the shared memory message queues used to communicate with the simulation|Integer|
 |frequency|the pipeline is processed for every nth simulation cycle|Integer|
 |keep timesteps|if true timesteps are cached and processed as time series|Integer|
-
 
 simulation specific commands
 ----------------------------
@@ -38,3 +29,8 @@ Oscillator Example (multi-process vistle)
 - click on the run/paused parameter of this module to start/pause the simulation. The rusults should look like the following image:
 
 ![](../../../module/general/Sensei/OscillatorResult.png)
+
+<svg width="3084.0" height="150" >
+<style>.text { font: normal 24.0px sans-serif;}tspan{ font: italic 24.0px sans-serif;}.moduleName{ font: italic 30px sans-serif;}</style>
+<rect x="0" y="30" width="308.4" height="90" rx="5" ry="5" style="fill:#64c8c8ff;" />
+<text x="6.0" y="85.5" class="moduleName" >SenseiController</text></svg>

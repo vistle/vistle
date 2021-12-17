@@ -1,37 +1,6 @@
 
 # BoundingBox
 Compute bounding boxes
-
-## Input ports
-|name|description|
-|-|-|
-|grid_in|input data|
-
-
-<svg width="221.39999999999998" height="90" >
-<rect x="0" y="0" width="221.39999999999998" height="90" rx="5" ry="5" style="fill:#64c8c8ff;" />
-<rect x="6.0" y="0" width="30" height="30" rx="0" ry="0" style="fill:#c81e1eff;" >
-<title>grid_in</title></rect>
-<title>grid_in</title></rect><rect x="6.0" y="60" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
-<title>grid_out</title></rect>
-<text x="6.0" y="54.0" font-size="1.7999999999999998em">BoundingBox</text></svg>
-
-## Output ports
-|name|description|
-|-|-|
-|grid_out|bounding box|
-
-
-## Parameters
-|name|description|type|
-|-|-|-|
-|per_block|create bounding box for each block|Integer|
-|min|output parameter: minimum|Vector|
-|max|output parameter: maximum|Vector|
-|min_block|output parameter: block numbers containing minimum|IntVector|
-|max_block|output parameter: block numbers containing maximum|IntVector|
-|min_index|output parameter: indices of minimum|IntVector|
-|max_index|output parameter: indices of maximum|IntVector|
 ## Description
 
 The BoundingBox module takes its geometry input from `grid_in` and finds global minimum and maximum
@@ -52,3 +21,29 @@ Workflow for reading scalar and vector fields and drawing a bounding box around 
 
 ![](../../../module/general/BoundingBox/tiny-covise.png)
 Rendering of visualization with a enclosing bounding box
+
+<svg width="2214.0" height="210" >
+<style>.text { font: normal 24.0px sans-serif;}tspan{ font: italic 24.0px sans-serif;}.moduleName{ font: italic 30px sans-serif;}</style>
+<rect x="0" y="60" width="221.39999999999998" height="90" rx="5" ry="5" style="fill:#64c8c8ff;" />
+<rect x="6.0" y="60" width="30" height="30" rx="0" ry="0" style="fill:#c81e1eff;" >
+<title>grid_in</title></rect>
+<rect x="21.0" y="30" width="1.0" height="30" rx="0" ry="0" style="fill:#000000;" />
+<rect x="21.0" y="30" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
+<text x="57.0" y="33.0" class="text" >input data<tspan> (grid_in)</tspan></text>
+<rect x="6.0" y="120" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
+<title>grid_out</title></rect>
+<rect x="21.0" y="150" width="1.0" height="30" rx="0" ry="0" style="fill:#000000;" />
+<rect x="21.0" y="180" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
+<text x="57.0" y="183.0" class="text" >bounding box<tspan> (grid_out)</tspan></text>
+<text x="6.0" y="115.5" class="moduleName" >BoundingBox</text></svg>
+
+## Parameters
+|name|description|type|
+|-|-|-|
+|per_block|create bounding box for each block|Integer|
+|min|output parameter: minimum|Vector|
+|max|output parameter: maximum|Vector|
+|min_block|output parameter: block numbers containing minimum|IntVector|
+|max_block|output parameter: block numbers containing maximum|IntVector|
+|min_index|output parameter: indices of minimum|IntVector|
+|max_index|output parameter: indices of maximum|IntVector|

@@ -2,13 +2,10 @@
 # Dropbear
 Start dropbear ssh server on compute nodes
 
-
-
-<svg width="169.2" height="90" >
-<rect x="0" y="0" width="169.2" height="90" rx="5" ry="5" style="fill:#64c8c8ff;" />
-<text x="6.0" y="54.0" font-size="1.7999999999999998em">Dropbear</text></svg>
-
-
+<svg width="1692.0" height="150" >
+<style>.text { font: normal 24.0px sans-serif;}tspan{ font: italic 24.0px sans-serif;}.moduleName{ font: italic 30px sans-serif;}</style>
+<rect x="0" y="30" width="169.2" height="90" rx="5" ry="5" style="fill:#64c8c8ff;" />
+<text x="6.0" y="85.5" class="moduleName" >Dropbear</text></svg>
 
 ## Parameters
 |name|description|type|
