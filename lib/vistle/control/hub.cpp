@@ -168,6 +168,8 @@ Hub::Hub(bool inManager)
 
 Hub::~Hub()
 {
+    stopVrb();
+
     if (!m_isMaster) {
         sendMaster(message::RemoveHub(m_hubId));
         sendMaster(message::CloseConnection("terminating"));
@@ -1927,11 +1929,12 @@ bool Hub::startVrb()
     m_vrbPort = 0;
 
     std::shared_ptr<process::child> child;
-    process::ipstream out;
+    auto out = std::make_shared<process::ipstream>();
+    auto err = std::make_shared<process::ipstream>();
     try {
         child = std::make_shared<process::child>(process::search_path("vrb"), process::args({"--tui", "--printport"}),
-                                                 terminate_with_parent(), process::std_out > out, m_ioService,
-                                                 process::on_exit(exit_handler));
+                                                 terminate_with_parent(), process::std_out > *out,
+                                                 process::std_err > *err, m_ioService, process::on_exit(exit_handler));
     } catch (std::exception &ex) {
         CERR << "could not create VRB process: " << ex.what() << std::endl;
         return false;
@@ -1944,7 +1947,7 @@ bool Hub::startVrb()
     CERR << "started VRB process" << std::endl;
 
     std::string line;
-    while (child->running() && std::getline(out, line) && !line.empty()) {
+    while (child->running() && std::getline(*out, line) && !line.empty()) {
         m_vrbPort = std::atol(line.c_str());
     }
     if (m_vrbPort == 0) {
@@ -1954,9 +1957,39 @@ bool Hub::startVrb()
     }
     CERR << "VRB process running on port " << m_vrbPort << ", running=" << child->running() << std::endl;
 
+    auto consumeStream = [child](process::ipstream &str) mutable {
+        std::string line;
+        while (child->running() && std::getline(str, line) && !line.empty()) {
+            std::cerr << "VRB: " << line << std::endl;
+        }
+    };
+
+    m_vrb = child;
+    m_vrbThreads.emplace_back([consumeStream, out]() mutable { consumeStream(*out); });
+    m_vrbThreads.emplace_back([consumeStream, err]() mutable { consumeStream(*err); });
+
     std::lock_guard<std::mutex> guard(m_processMutex);
     m_processMap[child] = Process::VRB;
     return true;
+}
+
+void Hub::stopVrb()
+{
+    if (m_vrb->valid()) {
+        m_vrb->terminate();
+    }
+    m_vrb.reset();
+
+    m_vrbPort = 0;
+
+    while (!m_vrbSockets.empty()) {
+        removeSocket(m_vrbSockets.begin()->second);
+    }
+
+    while (!m_vrbThreads.empty()) {
+        m_vrbThreads.back().join();
+        m_vrbThreads.pop_back();
+    }
 }
 
 Hub::socket_ptr Hub::connectToVrb(unsigned short port)
@@ -1964,8 +1997,8 @@ Hub::socket_ptr Hub::connectToVrb(unsigned short port)
     assert(m_isMaster);
 
     socket_ptr sock;
-    if (m_vrbPort == 0) {
-        CERR << "cannot connect to local VRB on unknown port" << std::flush;
+    if (m_quitting || m_interrupt) {
+        CERR << "refusing to connect to local VRB at port " << port << ": shutting down" << std::endl;
         return sock;
     }
 
@@ -2457,6 +2490,11 @@ bool Hub::handlePriv(const message::Cover &cover, const buffer *payload)
     auto it = m_vrbSockets.find(cover.senderId());
     if (it == m_vrbSockets.end()) {
         CERR << "connecting to VRB on behalf of " << cover.senderId() << std::endl;
+        if (m_vrbPort == 0) {
+            CERR << "cannot connect to local VRB on unknown port" << std::flush;
+            return false;
+        }
+
         sock = connectToVrb(m_vrbPort);
         if (sock) {
             m_vrbSockets.emplace(cover.senderId(), sock);
@@ -2542,10 +2580,7 @@ bool Hub::checkChildProcesses(bool emergency)
         next = m_processMap.erase(it);
 
         if (id == Process::VRB) {
-            m_vrbPort = 0;
-            while (!m_vrbSockets.empty()) {
-                removeSocket(m_vrbSockets.begin()->second);
-            }
+            stopVrb();
         } else if (!emergency) {
             if (id == Process::Manager) {
                 // manager died
