@@ -685,6 +685,9 @@ void Hub::addClient(Hub::socket_ptr sock)
 {
     std::unique_lock<std::mutex> lock(m_socketMutex);
     //CERR << "new client" << std::endl;
+#ifdef BOOST_POSIX_API
+    fcntl(sock->native_handle(), F_SETFD, FD_CLOEXEC);
+#endif
     m_clients.insert(sock);
 }
 

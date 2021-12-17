@@ -70,6 +70,12 @@ bool start_listen(unsigned short port, boost::asio::ip::tcp::acceptor &acceptor_
             return false;
         }
     }
+#ifdef BOOST_POSIX_API
+    if (acceptor_v4.is_open())
+        fcntl(acceptor_v4.native_handle(), F_SETFD, FD_CLOEXEC);
+    if (acceptor_v6.is_open())
+        fcntl(acceptor_v6.native_handle(), F_SETFD, FD_CLOEXEC);
+#endif
 
     return acceptor_v4.is_open() || acceptor_v6.is_open();
 }
