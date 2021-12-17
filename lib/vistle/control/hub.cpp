@@ -2006,15 +2006,9 @@ Hub::socket_ptr Hub::connectToVrb(unsigned short port)
     bool connected = false;
     boost::system::error_code ec;
     while (!connected) {
-        asio::ip::tcp::resolver resolver(m_ioService);
-        asio::ip::tcp::resolver::query query("localhost", boost::lexical_cast<std::string>(port));
+        boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string("127.0.0.1"), port);
         sock = std::make_shared<socket>(m_ioService);
-        asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query, ec);
-        if (ec) {
-            std::cerr << ": resolver failed: " << ec.message() << std::endl;
-            return sock;
-        }
-        asio::connect(*sock, endpoint_iterator, ec);
+        sock->connect(endpoint, ec);
         if (!ec) {
             connected = true;
         } else if (ec == boost::system::errc::connection_refused) {
