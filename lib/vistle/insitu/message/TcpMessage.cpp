@@ -16,6 +16,18 @@ bool InSituTcp::isInitialized()
     return m_initialized;
 }
 
+bool InSituTcp::sendMessage(InSituMessageType type, const vistle::buffer &vec) const
+{
+    InSituMessage ism(type);
+    ism.setPayloadSize(vec.size());
+    boost::system::error_code err;
+    vistle::message::send(*m_socket, ism, err, &vec);
+    if (err) {
+        return false;
+    }
+    return true;
+}
+
 Message InSituTcp::recv()
 {
     vistle::buffer payload;
@@ -58,4 +70,9 @@ Message InSituTcp::recv()
     }
     boost::mpi::broadcast(m_comm, payload.data(), payload.size(), 0);
     return Message{static_cast<InSituMessageType>(type), std::move(payload)};
+}
+
+Message InSituTcp::tryRecv()
+{
+    return recv();
 }

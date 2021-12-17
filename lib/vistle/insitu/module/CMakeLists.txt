@@ -1,6 +1,6 @@
-set(LIBSIM_SOURCES inSituReader.cpp)
+set(LIBSIM_SOURCES inSituModule.cpp inSituReader.cpp)
 
-set(LIBSIM_HEADER inSituReader.h export.h)
+set(LIBSIM_HEADER inSituModule.h inSituReader.h export.h)
 
 vistle_add_library(vistle_insitu_module ${LIBSIM_SOURCES} ${LIBSIM_HEADER})
 vistle_export_library(vistle_insitu_module ${LIBSIM_SOURCES} ${LIBSIM_HEADER})

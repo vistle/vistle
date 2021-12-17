@@ -85,8 +85,6 @@ private:
     void addPorts();
     void addObject(const std::string &port, vistle::Object::const_ptr obj);
     void updateMeta(vistle::Object::ptr obj) const;
-
-    bool isMOduleReady();
 };
 } // namespace sensei
 } // namespace insitu
