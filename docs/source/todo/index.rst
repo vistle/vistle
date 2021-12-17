@@ -16,6 +16,4 @@ Gucci Features
 
     <input disabled="" type="checkbox">
 
-|uncheck| interactable port image
-
 |uncheck| add search tags for sorting
