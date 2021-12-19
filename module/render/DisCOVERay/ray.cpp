@@ -405,16 +405,16 @@ bool DisCOVERay::render()
             m_timestep != m_renderManager.timestep()) {
             for (auto &ro: anim_geometry[m_timestep])
                 if (ro->data->scene)
-                    rtcDisableGeometry(rtcGetGeometry(m_scene, ro->data->instID));
+                    rtcDisableGeometry(ro->data->geom);
         }
         m_timestep = m_renderManager.timestep();
         if (m_timestep >= 0 && anim_geometry.size() > unsigned(m_timestep)) {
             for (auto &ro: anim_geometry[m_timestep])
                 if (ro->data->scene) {
                     if (m_renderManager.isVariantVisible(ro->variant)) {
-                        rtcEnableGeometry(rtcGetGeometry(m_scene, ro->data->instID));
+                        rtcEnableGeometry(ro->data->geom);
                     } else {
-                        rtcDisableGeometry(rtcGetGeometry(m_scene, ro->data->instID));
+                        rtcDisableGeometry(ro->data->geom);
                     }
                 }
         }
@@ -422,9 +422,9 @@ bool DisCOVERay::render()
             for (auto &ro: static_geometry) {
                 if (ro->data->scene) {
                     if (m_renderManager.isVariantVisible(ro->variant)) {
-                        rtcEnableGeometry(rtcGetGeometry(m_scene, ro->data->instID));
+                        rtcEnableGeometry(ro->data->geom);
                     } else {
-                        rtcDisableGeometry(rtcGetGeometry(m_scene, ro->data->instID));
+                        rtcDisableGeometry(ro->data->geom);
                     }
                 }
             }
@@ -580,8 +580,9 @@ void DisCOVERay::removeObject(std::shared_ptr<RenderObject> vro)
     auto *rod = ro->data.get();
 
     if (rod->scene) {
-        rtcDisableGeometry(rtcGetGeometry(m_scene, rod->instID));
+        rtcDisableGeometry(rod->geom);
         rtcDetachGeometry(m_scene, rod->instID);
+        rtcReleaseGeometry(rod->geom);
         rtcCommitScene(m_scene);
 
         instances[rod->instID] = nullptr;
@@ -640,11 +641,10 @@ std::shared_ptr<RenderObject> DisCOVERay::addObject(int sender, const std::strin
 
     auto rod = ro->data.get();
     if (rod->scene) {
-        RTCGeometry geom_0 = rtcNewGeometry(m_device, RTC_GEOMETRY_TYPE_INSTANCE);
-        rtcSetGeometryInstancedScene(geom_0, rod->scene);
-        rtcSetGeometryTimeStepCount(geom_0, 1);
-        rod->instID = rtcAttachGeometry(m_scene, geom_0);
-        rtcReleaseGeometry(geom_0);
+        rod->geom = rtcNewGeometry(m_device, RTC_GEOMETRY_TYPE_INSTANCE);
+        rtcSetGeometryInstancedScene(rod->geom, rod->scene);
+        rtcSetGeometryTimeStepCount(rod->geom, 1);
+        rod->instID = rtcAttachGeometry(m_scene, rod->geom);
         if (instances.size() <= rod->instID)
             instances.resize(rod->instID + 1);
         assert(!instances[rod->instID]);
@@ -661,13 +661,13 @@ std::shared_ptr<RenderObject> DisCOVERay::addObject(int sender, const std::strin
             rod->normalTransform[c].y = inv(c, 1);
             rod->normalTransform[c].z = inv(c, 2);
         }
-        rtcSetGeometryTransform(geom_0, 0, RTC_FORMAT_FLOAT4X4_COLUMN_MAJOR, transform);
-        rtcCommitGeometry(geom_0);
+        rtcSetGeometryTransform(rod->geom, 0, RTC_FORMAT_FLOAT4X4_COLUMN_MAJOR, transform);
+        rtcCommitGeometry(rod->geom);
         if (t == -1 || t == m_timestep) {
-            rtcEnableGeometry(geom_0);
+            rtcEnableGeometry(rod->geom);
             m_renderManager.setModified();
         } else {
-            rtcDisableGeometry(geom_0);
+            rtcDisableGeometry(rod->geom);
         }
         rtcCommitScene(m_scene);
     }
