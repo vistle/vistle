@@ -186,7 +186,7 @@ target_link_libraries(
 
 if(USE_TBB)
     include_directories(SYSTEM ${TBB_INCLUDE_DIRS})
-    target_link_libraries(OsgRenderer ${TBB_LIBRARIES})
+    target_link_libraries(DisCOVERay ${TBB_LIBRARIES})
 endif()
 
 set(description "Embree CPU ray casting remote renderer")
