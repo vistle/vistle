@@ -1975,7 +1975,7 @@ bool Hub::startVrb()
 
 void Hub::stopVrb()
 {
-    if (m_vrb->valid()) {
+    if (m_vrb && m_vrb->valid()) {
         m_vrb->terminate();
     }
     m_vrb.reset();
