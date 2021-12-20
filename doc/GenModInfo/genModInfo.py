@@ -233,6 +233,7 @@ def generateModuleDescriptions():
     target = os.environ['VISTLE_DOCUMENTATION_TARGET']
     sourceDir = os.environ['VISTLE_DOCUMENTATION_DIR']
     destDir = os.path.dirname(os.path.realpath(__file__)) + "/moduleDescriptions/"
+    #the directory containing the readTheDocs module files
     ImgDestDir = os.path.dirname(os.path.realpath(__file__)) + "/../../docs/build/html/modules/"
 
     filename = sourceDir +  "/" + target + ".md"
@@ -253,9 +254,9 @@ def generateModuleDescriptions():
         if tag in tag_functions.keys():
             line = tag_functions[tag](mod)
         elif REG_IMAGE_MD.match(line):
-            line = relinkImages(line, sourceDir, destDir)
+            line = relinkImages(line, sourceDir, destDir) #destDir since markdown images get relinked by myst when building the html
         contentList[pos] = line
-    contentList = relinkHtmlImages(contentList, sourceDir, ImgDestDir)
+    contentList = relinkHtmlImages(contentList, sourceDir, ImgDestDir) #html style images are not recognized by myst parser and are therefore relinked directly to the directory containing the html sources
 
 
     with open(destDir + target + ".md", "w") as f:
