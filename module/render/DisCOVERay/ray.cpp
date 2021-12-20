@@ -579,13 +579,15 @@ void DisCOVERay::removeObject(std::shared_ptr<RenderObject> vro)
     auto ro = std::static_pointer_cast<RayRenderObject>(vro);
     auto *rod = ro->data.get();
 
-    if (rod->scene) {
-        rtcDisableGeometry(rod->geom);
-        rtcDetachGeometry(m_scene, rod->instID);
+    if (rod->instID != RTC_INVALID_GEOMETRY_ID) {
+        //rtcDisableGeometry(rod->geom); // not necessary, and crashes with embree 3.13.2
         rtcReleaseGeometry(rod->geom);
-        rtcCommitScene(m_scene);
+        rtcDetachGeometry(m_scene, rod->instID);
 
         instances[rod->instID] = nullptr;
+        rod->instID = RTC_INVALID_GEOMETRY_ID;
+
+        rtcCommitScene(m_scene);
     }
 
     const int t = ro->timestep;
