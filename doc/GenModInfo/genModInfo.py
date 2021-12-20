@@ -4,7 +4,7 @@ import re
 from bisect import insort
 from _vistle import getModuleName, getModuleDescription, getInputPorts, getOutputPorts, getPortDescription, getParameters, getParameterTooltip, getParameterType, spawn, barrier, quit
 
-REG_IMAGE = re.compile(r"!\[\w*\](\S*)$")
+REG_IMAGE_MD = re.compile(r"!\[\w*\](\S*)$")
 REG_PARENTHESIS = re.compile(r"\((.*?)\)")
 REG_SUB_PARENTHESIS = re.compile(r"\([\s\S]*\)")
 REG_TAGS_TMPL = r"\[{tag}\]:<\w*>$"
@@ -191,16 +191,50 @@ def isTag(line, tags) -> str:
         regTag = re.compile(REG_TAGS_TMPL.format(tag=tag))
         if regTag.match(line):
             return tag
-        if REG_IMAGE.match(line):
+        if REG_IMAGE_MD.match(line):
             return line[line.find("[") + 1: line.find("]")]
     return None
 
+def relinkHtmlImage(line, startFlag, endFlag, sourceDir, destDir):
+    pos = line.find(startFlag)
+    if pos != -1 and line[pos + len(startFlag)] != "/": #rel image in line
+        path = line[pos + len(startFlag) : line.find(endFlag)]
+        l = len(path)
+        path = os.path.relpath(sourceDir, destDir) + "/" + path
+        return line[ : pos + len(startFlag)] + path + line[ pos + len(startFlag) + l: ]
+    return None
+
+def relinkHtmlImages(content, sourceDir, destDir):
+    startFlag = "<img"
+    pathFlag = "src=\""
+    endPathFlag = "\""
+    endFlag = "\">"
+    for i in range(len(content)):
+        pos = content[i].find(startFlag)
+        if pos != -1: #image in line
+            line = relinkHtmlImage(content[i], pathFlag, endPathFlag, sourceDir, destDir)
+            if line != None: #source path found
+                content[i] = line
+            else: #find image in following lines
+                while True:
+                    i += 1
+                    if i > len(content) - 1:
+                        print("warning: no endflag for html img found!")
+                        break
+                    line = relinkHtmlImage(content[i], pathFlag, endPathFlag, sourceDir, destDir)
+                    if line != None:
+                        content[i] = line
+                    elif content[i].find(endFlag) != -1:
+                        break
+    return content
 
 def generateModuleDescriptions():
     #these have to be set to chose the module to create documentation for
     target = os.environ['VISTLE_DOCUMENTATION_TARGET']
     sourceDir = os.environ['VISTLE_DOCUMENTATION_DIR']
     destDir = os.path.dirname(os.path.realpath(__file__)) + "/moduleDescriptions/"
+    ImgDestDir = os.path.dirname(os.path.realpath(__file__)) + "/../../docs/build/html/modules/"
+
     filename = sourceDir +  "/" + target + ".md"
     tag_functions = {
         "headline": getModuleHeadLine,
@@ -218,9 +252,11 @@ def generateModuleDescriptions():
         line = contentList[pos]
         if tag in tag_functions.keys():
             line = tag_functions[tag](mod)
-        elif REG_IMAGE.match(line):
+        elif REG_IMAGE_MD.match(line):
             line = relinkImages(line, sourceDir, destDir)
         contentList[pos] = line
+    contentList = relinkHtmlImages(contentList, sourceDir, ImgDestDir)
+
 
     with open(destDir + target + ".md", "w") as f:
         unusedTags = tag_functions.keys() - tagPos.keys()
