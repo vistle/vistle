@@ -842,7 +842,7 @@ vistle_find_package(
     QUIET)
 
 # do it here, so that we see the warnings just once
-vistle_find_package(Xdmf)
+vistle_find_package(Xdmf QUIET)
 
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
