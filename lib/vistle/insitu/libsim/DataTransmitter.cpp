@@ -29,20 +29,18 @@ struct DataTransmitterException: public vistle::insitu::InsituException {
 } // namespace insitu
 } // namespace vistle
 
-DataTransmitter::DataTransmitter(const MetaData &metaData, message::SyncShmIDs &creator,
-                                 const message::ModuleInfo &moduleInfo, int rank)
-: m_metaData(metaData), m_creator(creator), m_sender(moduleInfo, rank), m_rank(rank)
+DataTransmitter::DataTransmitter(const MetaData &metaData, const message::ModuleInfo &moduleInfo, int rank)
+: m_metaData(metaData), m_sender(moduleInfo, rank), m_rank(rank)
 {}
 
-void DataTransmitter::transferObjectsToVistle(size_t timestep, const message::ModuleInfo &connectedPorts,
+void DataTransmitter::transferObjectsToVistle(size_t timestep, size_t iteration, const message::ModuleInfo &moduleState,
                                               const Rules &rules)
 {
     m_currTimestep = timestep;
+    m_currIteration = iteration;
     m_rules = rules;
-    auto requestedObjects = getRequestedObjets(connectedPorts);
-
-    sendMeshesToModule(requestedObjects);
-    sendVarablesToModule(requestedObjects);
+    sendMeshesToModule(m_requestedObjects, moduleState);
+    sendVarablesToModule(m_requestedObjects, moduleState);
 }
 
 void DataTransmitter::resetCache()
@@ -50,15 +48,14 @@ void DataTransmitter::resetCache()
     m_meshes.clear();
 }
 
-// private
-std::set<std::string> DataTransmitter::getRequestedObjets(const message::ModuleInfo &connectedPorts)
+void DataTransmitter::updateRequestedObjets(const message::ModuleInfo &connectedPorts)
 {
-    std::set<std::string> requested;
+    m_requestedObjects.clear();
     size_t numVars = m_metaData.getNumObjects(SimulationObjectType::variable);
     auto meshes = m_metaData.getObjectNames(SimulationObjectType::mesh);
     for (const auto &mesh: meshes) {
         if (connectedPorts.isPortConnected(mesh)) {
-            requested.insert(mesh);
+            m_requestedObjects.insert(mesh);
         }
     }
     for (size_t i = 0; i < numVars; i++) {
@@ -67,23 +64,29 @@ std::set<std::string> DataTransmitter::getRequestedObjets(const message::ModuleI
         v2check(simv2_VariableMetaData_getName, varMetaHandle, &name);
         v2check(simv2_VariableMetaData_getMeshName, varMetaHandle, &meshName);
         if (connectedPorts.isPortConnected(name)) {
-            requested.insert(name);
-            requested.insert(meshName);
+            m_requestedObjects.insert(name);
+            m_requestedObjects.insert(meshName);
         }
         free(name);
         free(meshName);
     }
-    return requested;
 }
 
-void DataTransmitter::sendMeshesToModule(const std::set<std::string> &objects)
+void DataTransmitter::updateExecutionCount()
+{
+    ++m_executionCount;
+}
+
+
+// private
+void DataTransmitter::sendMeshesToModule(const std::set<std::string> &objects, const message::ModuleInfo &moduleInfo)
 {
     size_t numMeshes = m_metaData.getNumObjects(SimulationObjectType::mesh);
     for (size_t i = 0; i < numMeshes; i++) {
         MeshInfo meshInfo = collectMeshInfo(i);
-        if (isRequested(meshInfo.name.c_str(), objects) && !sendConstantMesh(meshInfo)) {
+        if (isRequested(meshInfo.name.c_str(), objects) && !sendConstantMesh(meshInfo, moduleInfo)) {
             makeMesh(meshInfo);
-            sendMeshToModule(meshInfo);
+            sendMeshToModule(meshInfo, moduleInfo);
         }
     }
 }
@@ -110,11 +113,12 @@ MeshInfo DataTransmitter::collectMeshInfo(size_t nthMesh)
     return meshInfo;
 }
 
-bool DataTransmitter::sendConstantMesh(const MeshInfo &meshInfo)
+bool DataTransmitter::sendConstantMesh(const MeshInfo &meshInfo, const message::ModuleInfo &moduleInfo)
 {
     auto meshIt = m_meshes.find(meshInfo.name);
     if (m_rules.constGrids && meshIt != m_meshes.end()) {
         for (auto grid: meshIt->second.grids) {
+            updateMeta(grid, moduleInfo);
             m_sender.addObject(meshInfo.name, grid);
         }
         return true;
@@ -145,10 +149,10 @@ void DataTransmitter::makeCombinedMesh(MeshInfo &meshInfo)
     switch (meshInfo.type) {
     case VISIT_MESHTYPE_AMR:
     case VISIT_MESHTYPE_RECTILINEAR: {
-        mesh = RectilinearMesh::getCombinedUnstructured(meshInfo, m_creator, m_rules.vtkFormat);
+        mesh = RectilinearMesh::getCombinedUnstructured(meshInfo, m_rules.vtkFormat);
         break;
     case VISIT_MESHTYPE_CURVILINEAR: {
-        mesh = StructuredMesh::getCombinedUnstructured(meshInfo, m_creator, m_rules.vtkFormat);
+        mesh = StructuredMesh::getCombinedUnstructured(meshInfo, m_rules.vtkFormat);
     } break;
     case VISIT_MESHTYPE_UNSTRUCTURED: {
         makeMesh(meshInfo);
@@ -172,17 +176,17 @@ void DataTransmitter::makeSubMesh(int domain, MeshInfo &meshInfo)
     case VISIT_MESHTYPE_RECTILINEAR: {
         visit_smart_handle<HandleType::RectilinearMesh> meshHandle =
             v2check(simv2_invoke_GetMesh, domain, meshInfo.name.c_str());
-        mesh = get(meshHandle, m_creator);
+        mesh = get(meshHandle);
     } break;
     case VISIT_MESHTYPE_CURVILINEAR: {
         visit_smart_handle<HandleType::CurvilinearMesh> meshHandle =
             v2check(simv2_invoke_GetMesh, domain, meshInfo.name.c_str());
-        mesh = get(meshHandle, m_creator);
+        mesh = get(meshHandle);
     } break;
     case VISIT_MESHTYPE_UNSTRUCTURED: {
         visit_smart_handle<HandleType::UnstructuredMesh> meshHandle =
             v2check(simv2_invoke_GetMesh, domain, meshInfo.name.c_str());
-        mesh = get(meshHandle, m_creator);
+        mesh = get(meshHandle);
     } break;
     default:
         break;
@@ -192,19 +196,19 @@ void DataTransmitter::makeSubMesh(int domain, MeshInfo &meshInfo)
     meshInfo.grids.push_back(mesh);
 }
 
-void DataTransmitter::sendMeshToModule(const MeshInfo &meshInfo)
+void DataTransmitter::sendMeshToModule(const MeshInfo &meshInfo, const message::ModuleInfo &moduleInfo)
 {
-    assert(meshInfo.domains.size == meshInfo.grids.size());
     size_t numMeshes = meshInfo.combined ? 1 : meshInfo.domains.size;
+    assert(numMeshes == meshInfo.grids.size());
     for (size_t i = 0; i < numMeshes; i++) {
         int block = meshInfo.combined ? m_rank : meshInfo.domains.as<int>()[i];
         meshInfo.grids[i]->setBlock(block);
-        setMeshTimestep(meshInfo.grids[i]);
+        updateMeta(meshInfo.grids[i], moduleInfo);
         m_sender.addObject(meshInfo.name, meshInfo.grids[i]);
     }
 }
 
-void DataTransmitter::sendVarablesToModule(const std::set<std::string> &objects)
+void DataTransmitter::sendVarablesToModule(const std::set<std::string> &objects, const message::ModuleInfo &moduleInfo)
 {
     size_t numVars = m_metaData.getNumObjects(SimulationObjectType::variable);
     for (size_t i = 0; i < numVars; i++) {
@@ -213,12 +217,14 @@ void DataTransmitter::sendVarablesToModule(const std::set<std::string> &objects)
         if (isRequested(varInfo.name.c_str(), objects)) {
             if (varInfo.meshInfo.combined) {
                 auto var = makeCombinedVariable(varInfo);
+                updateMeta(var, moduleInfo);
                 sendVarableToModule(var, m_rank, varInfo.name.c_str());
 
             } else {
                 for (size_t iteration = 0; iteration < varInfo.meshInfo.domains.size; ++iteration) {
                     int currDomain = varInfo.meshInfo.domains.as<int>()[iteration];
                     if (auto variable = makeVariable(varInfo, iteration, m_rules.vtkFormat)) {
+                        updateMeta(variable, moduleInfo);
                         sendVarableToModule(variable, currDomain, varInfo.name.c_str());
                     } else {
                         std::cerr << "sendVarablesToModule failed to convert variable " << varInfo.name
@@ -258,14 +264,14 @@ vistle::Object::ptr DataTransmitter::makeCombinedVariable(const VariableInfo &va
         std::cerr << "combined grids in vtk format are not supported! Adding field data may fail." << std::endl;
     }
     vistle::Vec<vistle::Scalar, 1>::ptr variable;
-    variable = VariableData::allocVarForCombinedMesh(varInfo, varInfo.meshInfo.grids[0], m_creator);
+    variable = VariableData::allocVarForCombinedMesh(varInfo, varInfo.meshInfo.grids[0]);
     size_t combinedVecPos = 0;
     for (const auto dom: varInfo.meshInfo.domains.getIter<int>()) {
         visit_smart_handle<HandleType::VariableData> varHandle =
             v2check(simv2_invoke_GetVariable, dom, varInfo.name.c_str());
         auto varArray = getVariableData(varHandle);
 
-        assert(combinedVecPos + varArray.size >= variable->x().size());
+        assert(combinedVecPos + varArray.size <= variable->x().size());
         transformArray(varArray, variable->x().data() + combinedVecPos);
         combinedVecPos += varArray.size;
     }
@@ -281,11 +287,9 @@ vistle::Object::ptr DataTransmitter::makeVariable(const VariableInfo &varInfo, i
     if (vtkFormat) {
         auto var = vtkData2Vistle(varArray.data, varArray.size, dataTypeToVistle(varArray.type),
                                   varInfo.meshInfo.grids[iteration], varInfo.mapping);
-        m_creator.set(vistle::Shm::the().objectID(),
-                      vistle::Shm::the().arrayID()); // since vtkData2Vistle creates objects
         return var;
     } else {
-        auto var = m_creator.createVistleObject<vistle::Vec<vistle::Scalar, 1>>(varArray.size);
+        auto var = make_ptr<vistle::Vec<vistle::Scalar, 1>>((Index)varArray.size);
         transformArray(varArray, var->x().data());
         var->setGrid(varInfo.meshInfo.grids[iteration]);
         var->setMapping(varInfo.mapping);
@@ -295,7 +299,6 @@ vistle::Object::ptr DataTransmitter::makeVariable(const VariableInfo &varInfo, i
 
 void DataTransmitter::sendVarableToModule(vistle::Object::ptr variable, int block, const char *name)
 {
-    setTimestep(variable, m_currTimestep);
     variable->setBlock(block);
     variable->addAttribute("_species", name);
     m_sender.addObject(name, variable);
@@ -303,11 +306,9 @@ void DataTransmitter::sendVarableToModule(vistle::Object::ptr variable, int bloc
 
 void DataTransmitter::setMeshTimestep(vistle::Object::ptr mesh)
 {
-    int step;
+    int step = m_currTimestep;
     if (m_rules.constGrids) {
         step = -1;
-    } else {
-        step = m_currTimestep;
     }
     setTimestep(mesh, step);
 }
@@ -324,4 +325,15 @@ void DataTransmitter::setTimestep(vistle::Object::ptr variable, size_t timestep)
 bool DataTransmitter::isRequested(const char *objectName, const std::set<std::string> &requestedObjects)
 {
     return requestedObjects.find(objectName) != requestedObjects.end();
+}
+
+
+void DataTransmitter::updateMeta(vistle::Object::ptr obj, const message::ModuleInfo &moduleInfo) const
+{
+    if (obj) {
+        obj->setCreator(moduleInfo.id());
+        obj->setExecutionCounter(m_executionCount);
+        obj->setTimestep(m_currTimestep);
+        obj->setIteration(m_currIteration);
+    }
 }

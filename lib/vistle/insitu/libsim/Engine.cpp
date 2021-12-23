@@ -10,13 +10,13 @@
 #include <vistle/core/message.h>
 #include <vistle/core/messagequeue.h>
 #include <vistle/core/tcpmessage.h>
-
+#include <vistle/insitu/core/attachVistleShm.h>
 #include <vistle/util/directory.h>
 #include <vistle/util/hostname.h>
 #include <vistle/util/listenv4v6.h>
+#include <vistle/util/shmconfig.h>
 #include <vistle/util/sleep.h>
 #include <vistle/util/stopwatch.h>
-#include <vistle/util/shmconfig.h>
 
 #include <boost/asio/connect.hpp>
 #include <boost/mpi.hpp>
@@ -61,14 +61,12 @@ Engine *Engine::EngineInstance()
 void Engine::DisconnectSimulation()
 {
     std::cerr << "Enigne [" << instance->m_rank << "/" << instance->m_mpiSize << "] disconnecting..." << endl;
-    instance->m_messageHandler.send(ConnectionClosed{true});
+    auto msg = message::ConnectionClosed{true};
+    if (instance->m_messageHandler)
+        instance->m_messageHandler->send(msg);
     delete instance;
     instance = nullptr;
-#ifndef MODULE_THREAD
-    if (vistle::Shm::isAttached()) {
-        vistle::Shm::the().detach();
-    }
-#endif // !#ifndef MODULE_THREAD
+    insitu::detachShm();
 }
 
 bool Engine::initialize(int argC, char **argV)
@@ -78,17 +76,14 @@ bool Engine::initialize(int argC, char **argV)
         return false;
     }
 
-    CERR << "__________Engine args__________" << endl;
-    for (int i = 0; i < argC; i++) {
-        CERR << argV[i] << endl;
-    }
-    CERR << "_______________________________" << endl;
+
 #ifdef MODULE_THREAD
     return startVistle(argC, argV);
 #else
     if (checkInitArgs(argC, argV)) {
-        collectModuleInfo(argV);
-        return initializeVistleEnv();
+        m_modulePort = atoi(argV[0]);
+        m_initialized = connectToVistleModule();
+        return m_initialized;
     }
     return true;
 #endif
@@ -120,18 +115,16 @@ void Engine::SimulationTimeStepChanged()
         return;
     }
 
-    static int counter = 0;
-    DEBUG_CERR << "SimulationTimeStepChanged counter = " << counter << endl;
-    ++counter;
     m_metaData.fetchFromSim();
-    if (m_processedCycles > 0 && m_processedCycles >= m_metaData.currentCycle()) {
+    static size_t processedCycles = 0;
+    if (processedCycles > 0 && processedCycles >= m_metaData.currentCycle()) {
         DEBUG_CERR << "There is no new timestep but SimulationTimeStepChanged was called" << endl;
         return;
     }
     int numMeshes, numVars;
     v2check(simv2_SimulationMetaData_getNumMeshes, m_metaData.handle(), numMeshes);
     v2check(simv2_SimulationMetaData_getNumVariables, m_metaData.handle(), numVars);
-    if (m_metaData.currentCycle() % m_intOptions[IntOptions::NthTimestep].value()) {
+    if (m_metaData.currentCycle() % m_rules.frequency) {
         return;
     }
     static std::unique_ptr<StopWatch> watch;
@@ -140,14 +133,13 @@ void Engine::SimulationTimeStepChanged()
                                             .c_str());
     DEBUG_CERR << "Timestep " << m_metaData.currentCycle() << " has " << numMeshes << " meshes and " << numVars
                << "variables" << endl;
-    if (m_moduleInfo.isReady()) { // only here vistle::objects are allowed to be made
-        sendObjectsToModule();
+    sendObjectsToModule();
 
-        m_processedCycles = m_metaData.currentCycle();
-        ++m_timestep;
-    } else {
-        CERR << "ConnectLibSim is not ready to process data" << endl;
-    }
+    processedCycles = m_metaData.currentCycle();
+    if (m_rules.keepTimesteps)
+        ++m_processedTimesteps;
+    else
+        ++m_iterations;
 }
 
 void Engine::SimulationInitiateCommand(const string &command)
@@ -162,7 +154,7 @@ void Engine::SimulationInitiateCommand(const string &command)
         string args(command.substr(13, command.size() - 1));
         simulationCommandCallback(cmd.c_str(), args.c_str(), simulationCommandCallbackData);
 #ifndef MODULE_THREAD
-        m_messageHandler.send(GoOn{}); // request tcp message from controller
+        m_messageHandler->send(GoOn{}); // request tcp message from controller
 #else
         if (EngineInterface::getControllSocket())
             message::send(GoOn{}, *EngineInterface::getControllSocket()); //directly send GoOn to the sim
@@ -179,9 +171,6 @@ void Engine::DeleteData()
 
 bool Engine::fetchNewModuleState()
 {
-    static int counter = 0;
-    DEBUG_CERR << "handleVistleMessage counter = " << counter << endl;
-    ++counter;
     if (m_rank == 0) {
         if (!slaveCommandCallback) {
             CERR << "passCommandToSim failed : slaveCommandCallback not set" << endl;
@@ -193,21 +182,25 @@ bool Engine::fetchNewModuleState()
     }
     m_metaData.fetchFromSim();
     initializeSim();
-    auto msg = m_messageHandler.recv();
+    auto msg = m_messageHandler->recv();
     DEBUG_CERR << "received message of type " << static_cast<int>(msg.type()) << endl;
     m_moduleInfo.update(msg);
     switch (msg.type()) {
-    case InSituMessageType::Ready: {
-        if (m_moduleInfo.isReady()) {
-            vistle::Shm::the().setObjectID(m_shmIDs.objectID());
-            vistle::Shm::the().setArrayID(m_shmIDs.arrayID());
-            m_timestep = 0;
-        } else {
-            m_shmIDs.set(vistle::Shm::the().objectID(),
-                         vistle::Shm::the().arrayID()); // send final state just to be safe
-            m_messageHandler.send(Ready{false}); // confirm that we are done creating vistle objects
+    case InSituMessageType::ShmInfo:
+
+        if (m_moduleInfo.mpiSize() != static_cast<size_t>(m_mpiSize)) {
+            CERR << "mpi size of simulation must match vistle's mpi size" << endl;
+            return false;
         }
-    } break;
+        if (m_moduleInfo.hostname() != vistle::hostname()) {
+            CERR << "Simulation on " << vistle::hostname() << " is trying to connect to Vistle on "
+                 << m_moduleInfo.hostname() << "." << endl;
+            CERR << "Connection to non local host is not supported!" << endl;
+            return false;
+        }
+        insitu::attachShm(m_moduleInfo.shmName(), m_moduleInfo.id(), m_rank);
+        resetDataTransmitter();
+        break;
     case InSituMessageType::ExecuteCommand: {
         ExecuteCommand exe = msg.unpackOrCast<ExecuteCommand>();
         if (simulationCommandCallback) {
@@ -221,13 +214,21 @@ bool Engine::fetchNewModuleState()
     } break;
     case InSituMessageType::ConnectionClosed: {
         CERR << "connection closed" << endl;
-        m_shmIDs.close();
         return false;
     } break;
-    case InSituMessageType::LibSimIntOption: {
-        auto &option = msg.unpackOrCast<LibSimIntOption>().value;
-        update(m_intOptions, option);
-
+    case InSituMessageType::IntOption: {
+        auto &option = msg.unpackOrCast<IntOption>().value;
+        updateObjectRules(option);
+        if (option.name == "keep timesteps") {
+            m_processedTimesteps = 0;
+            ++m_iterations;
+        }
+        m_dataTransmitter->resetCache();
+        m_dataTransmitter->updateExecutionCount();
+    } break;
+    case InSituMessageType::ConnectPort:
+    case InSituMessageType::DisconnectPort: {
+        m_dataTransmitter->updateRequestedObjets(m_moduleInfo);
     } break;
 #ifdef MODULE_THREAD
     case InSituMessageType::ModuleID: {
@@ -257,32 +258,27 @@ void Engine::setSlaveComandCallback(void (*sc)(void))
 
 int Engine::GetInputSocket()
 {
-    if (m_rank == 0 && m_socket) {
-        return m_socket->native_handle();
-    } else {
-        return 0;
-    }
+    return m_messageHandler ? m_messageHandler->socketDescriptor() : 0;
 }
 
 //...................................................................................................
 //----------------private----------------------------------------------------------------------------
 Engine::Engine()
 {
-    m_intOptions[IntOptions::CombineGrids] = IntOption{IntOptions::CombineGrids, false};
-    m_intOptions[IntOptions::ConstGrids] = IntOption{IntOptions::ConstGrids, false};
-    m_intOptions[IntOptions::KeepTimesteps] = IntOption{IntOptions::KeepTimesteps, 1};
-    m_intOptions[IntOptions::NthTimestep] = IntOption{IntOptions::NthTimestep, 1};
-    m_intOptions[IntOptions::VtkFormat] = IntOption{IntOptions::VtkFormat, false, [this]() {
-                                                        resetDataTransmitter();
-                                                    }};
-
     auto comm = MPI_COMM_WORLD;
     setMpiComm(static_cast<void *>(&comm));
+#ifndef MODULE_THREAD
+    static bool typesREgistered = false;
+    if (!typesREgistered) {
+        typesREgistered = true;
+        vistle::registerTypes();
+    }
+#endif
 }
 
 Engine::~Engine()
 {
-    m_messageHandler.send(ConnectionClosed{true});
+    m_messageHandler->send(ConnectionClosed{true});
 #ifdef MODULE_THREAD
     m_managerThread.join();
 #endif
@@ -299,7 +295,7 @@ bool Engine::startVistle(int argC, char **argV)
         return false;
     }
     if ((m_rank == 0 && ConnectMySelf()) || m_rank > 0) {
-        m_messageHandler.initialize(
+        m_messageHandler->initialize(
             m_socket,
             boost::mpi::communicator(
                 comm, boost::mpi::comm_create_kind::comm_duplicate)); // comm is not set by the simulation code at
@@ -399,17 +395,9 @@ bool Engine::launchManager(int argC, char **argV)
 
 bool Engine::checkInitArgs(int argC, char **argV)
 {
-    if (argC != 7) {
-        CERR << "simulation requires exactly 7 parameters" << endl;
-        return false;
-    }
-    if (atoi(argV[0]) != m_mpiSize) {
-        CERR << "mpi size of simulation must match vistle's mpi size" << endl;
-        return false;
-    }
-    if (m_rank == 0 && argV[4] != vistle::hostname()) {
-        CERR << "this " << vistle::hostname() << "trying to connect to " << argV[4] << endl;
-        CERR << "Wrong host: must connect to Vistle on the same machine!" << endl;
+    auto numParams = 1;
+    if (argC != numParams) {
+        CERR << "simulation requires exactly " << numParams << " parameters" << endl;
         return false;
     }
     return true;
@@ -427,56 +415,31 @@ void Engine::collectModuleInfo(char **argV)
     m_modulePort = atoi(argV[5]);
 }
 
-bool Engine::initializeVistleEnv()
+bool Engine::connectToVistleModule()
 {
-    vistle::registerTypes();
     try {
-        bool shmPerRank = vistle::shmPerRank();
-        auto shmName = m_moduleInfo.shmName();
-        CERR << "attaching to shm: name = " << shmName << " id = " << m_moduleInfo.id() << " rank = " << m_rank << endl;
-        vistle::Shm::attach(shmName, m_moduleInfo.id(), m_rank, shmPerRank);
-        if (m_rank == 0) {
-            connectToModule(m_moduleInfo.hostname(), m_modulePort);
-        }
-        m_shmIDs.initialize(m_moduleInfo.id(), m_rank, m_moduleInfo.uniqueSuffix(), SyncShmIDs::Mode::Attach);
-        resetDataTransmitter();
-        m_messageHandler.initialize(m_socket,
-                                    boost::mpi::communicator(comm, boost::mpi::comm_create_kind::comm_duplicate));
-        m_messageHandler.send(GoOn());
+        m_messageHandler = std::make_unique<insitu::message::InSituTcp>(
+            boost::mpi::communicator(comm, boost::mpi::comm_create_kind::comm_duplicate), "localhost", m_modulePort);
+        m_messageHandler->send(GoOn());
     } catch (const vistle::exception &ex) {
-        CERR << "initializeVistleEnv: " << ex.what() << endl;
+        CERR << "connectToVistleModule: " << ex.what() << endl;
         return false;
     }
-
-    m_initialized = true;
     return true;
 }
 
-Rules Engine::gatherObjectRules()
+void Engine::updateObjectRules(const IntParam &option)
 {
-    Rules rules;
-    rules.combineGrid = m_intOptions[IntOptions::CombineGrids].value();
-    rules.constGrids = m_intOptions[IntOptions::ConstGrids].value();
-    rules.keepTimesteps = m_intOptions[IntOptions::KeepTimesteps].value();
-    rules.vtkFormat = m_intOptions[IntOptions::VtkFormat].value();
-    return rules;
-}
-
-void Engine::connectToModule(const string &hostname, int port)
-{
-    boost::system::error_code ec;
-    asio::ip::tcp::resolver resolver(m_ioService);
-    asio::ip::tcp::resolver::query query(hostname, boost::lexical_cast<string>(port));
-    m_socket.reset(new socket(m_ioService));
-    asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query, ec);
-    if (ec) {
-        throw EngineException("initializeEngineSocket failed to resolve connect socket");
-    }
-
-    asio::connect(*m_socket, endpoint_iterator, ec);
-
-    if (ec) {
-        throw EngineException("initializeEngineSocket failed to connect socket");
+    if (option.name == "combine grids") {
+        m_rules.combineGrid = option.value;
+    } else if (option.name == "constant grids") {
+        m_rules.constGrids = option.value;
+    } else if (option.name == "keep timesteps") {
+        m_rules.keepTimesteps = option.value;
+    } else if (option.name == "VTK variables") {
+        m_rules.vtkFormat = option.value;
+    } else if (option.name == "frequency") {
+        m_rules.frequency = option.value;
     }
 }
 
@@ -485,12 +448,12 @@ void Engine::initializeSim()
     if (!m_moduleInfo.isInitialized()) {
         try {
             m_metaData.fetchFromSim();
-            m_messageHandler.send(SetPorts{m_metaData.getMeshAndFieldNames()});
+            m_messageHandler->send(SetPorts{m_metaData.getMeshAndFieldNames()});
 
             auto commands = m_metaData.getRegisteredGenericCommands();
-            m_messageHandler.send(SetCommands{commands});
+            m_messageHandler->send(SetCommands{commands});
             commands = m_metaData.getRegisteredCustomCommands();
-            m_messageHandler.send(SetCustomCommands{commands});
+            m_messageHandler->send(SetCustomCommands{commands});
 
         } catch (const InsituException &ex) {
             CERR << "finalizeInit failed: " << ex.what() << endl;
@@ -503,7 +466,7 @@ void Engine::initializeSim()
 void Engine::sendObjectsToModule()
 {
     try {
-        m_dataTransmitter->transferObjectsToVistle(m_timestep, m_moduleInfo, gatherObjectRules());
+        m_dataTransmitter->transferObjectsToVistle(m_processedTimesteps, m_iterations, m_moduleInfo, m_rules);
     } catch (const InsituException &ex) {
         CERR << "transferObjectsToVistle failed: " << ex.what() << endl;
     }
@@ -514,6 +477,6 @@ void Engine::resetDataTransmitter()
     if (m_dataTransmitter) {
         m_dataTransmitter->resetCache();
     } else {
-        m_dataTransmitter = std::make_unique<DataTransmitter>(m_metaData, m_shmIDs, m_moduleInfo, m_rank);
+        m_dataTransmitter = std::make_unique<DataTransmitter>(m_metaData, m_moduleInfo, m_rank);
     }
 }

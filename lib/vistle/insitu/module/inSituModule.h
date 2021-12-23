@@ -31,6 +31,8 @@ private:
     std::unique_ptr<insitu::message::MessageHandler> m_messageHandler;
     std::map<std::string, vistle::Port *> m_outputPorts; // output ports for the data the simulation offers
     std::set<vistle::Parameter *> m_commandParameter; // buttons to trigger simulation commands
+    std::set<vistle::Parameter *> m_customCommandParameter; // string inputs to trigger simulation commands
+
     std::unique_ptr<vistle::message::MessageQueue>
         m_receiveFromSimMessageQueue; // receives vistle messages that will be passed through to manager
     size_t m_ownExecutionCounter = 0;

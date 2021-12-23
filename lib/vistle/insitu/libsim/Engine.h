@@ -2,7 +2,6 @@
 #define VISIT_VISTLE_ENGINE_H
 
 #include "DataTransmitter.h"
-#include "IntOption.h"
 #include "MeshInfo.h"
 #include "MetaData.h"
 #include "export.h"
@@ -79,25 +78,21 @@ private:
     int m_rank = -1, m_mpiSize = 0;
     MPI_Comm comm = MPI_COMM_WORLD;
 
-    insitu::message::InSituTcp m_messageHandler;
-    insitu::message::SyncShmIDs m_shmIDs;
+    std::unique_ptr<insitu::message::InSituTcp> m_messageHandler; //handles the communication with the module
+    //(the initial connection is established via different sockets)
 
     // Port info to communicate with the vistle module
     unsigned short m_port = 31099;
-    boost::asio::io_service m_ioService;
 
-    std::shared_ptr<socket> m_socket;
     // info from the simulation
-    size_t m_processedCycles = 0; // the last cycle that was processed
     MetaData m_metaData; // the meta data of the currenc cycle
     std::unique_ptr<DataTransmitter> m_dataTransmitter;
 
-    message::ModuleInfo m_moduleInfo;
-    int m_modulePort = 0;
-    size_t m_timestep = 0; // timestep counter for module
-
-    //std::set<IntOption> m_intOptions; // options that can be set in the module
-    vistle::EnumArray<IntOption, IntOptions> m_intOptions;
+    message::ModuleInfo m_moduleInfo; //information about the connected module
+    int m_modulePort = 0; //port to connect to the module (hostname is localhost)
+    size_t m_processedTimesteps = 0; // timestep counter for module
+    size_t m_iterations = 0; //iteration if we do not keep timesteps
+    Rules m_rules; //the options configured in the connected module
     // callbacks from simulation
     void (*simulationCommandCallback)(const char *, const char *, void *) = nullptr;
     void *simulationCommandCallbackData = nullptr;
@@ -127,8 +122,10 @@ private:
 
     bool checkInitArgs(int argC, char **argV);
     void collectModuleInfo(char **argV);
-    bool initializeVistleEnv();
-    Rules gatherObjectRules();
+    bool connectToVistleModule();
+    int getIntParam(const std::string &name);
+
+    void updateObjectRules(const message::IntParam &option); //translate the intOptions in rules to create vistle data
     void connectToModule(const std::string &hostname, int port);
     void initializeSim(); // if not already done, initializes the things that require the simulation
     void sendObjectsToModule();

@@ -155,20 +155,24 @@ void InSituModule::updateMeta(const vistle::message::Buffer &obj)
 {
     if (obj.type() == vistle::message::ADDOBJECT) {
         auto &objMsg = obj.as<vistle::message::AddObject>();
-        m_iteration = objMsg.meta().iteration();
+        //m_iteration = objMsg.meta().iteration();
         m_executionCount = objMsg.meta().executionCounter();
+        std::cerr << "adding object for iteration " << m_iteration << " and executionCounter " << m_executionCount
+                  << " and timestep " << objMsg.meta().timeStep() << std::endl;
     }
 }
 
 void InSituModule::connectionAdded(const Port *from, const Port *to)
 {
-    if (m_messageHandler)
+    if (m_messageHandler && from->connections().size() < 2) // assumes the port got added before this call
+    {
         m_messageHandler->send(message::ConnectPort{from->getName()});
+    }
 }
 
 void InSituModule::connectionRemoved(const Port *from, const Port *to)
 {
-    if (m_messageHandler)
+    if (m_messageHandler && from->connections().size() == 1) // assumes the port gets removed after this call
         m_messageHandler->send(message::DisconnectPort{from->getName()});
 }
 
@@ -185,7 +189,6 @@ bool InSituModule::recvVistleObjects()
 {
     std::lock_guard<std::mutex> g{m_communicationMutex};
     if (chacheVistleObjects()) {
-        CERR << "requesting execution" << std::endl;
         execute();
     }
     return !m_vistleObjects.empty();
@@ -194,11 +197,15 @@ bool InSituModule::recvVistleObjects()
 bool InSituModule::chacheVistleObjects()
 {
     bool retval = false;
-    vistle::message::Buffer buf;
-    while (m_receiveFromSimMessageQueue && m_receiveFromSimMessageQueue->tryReceive(buf)) {
-        if (buf.type() != vistle::message::INSITU) {
-            m_vistleObjects.push_back(buf);
-            retval = true;
+    auto start = std::chrono::system_clock::now();
+    auto duration = std::chrono::microseconds(100);
+    while (m_receiveFromSimMessageQueue && (std::chrono::system_clock::now() < start + duration)) {
+        vistle::message::Buffer buf;
+        if (m_receiveFromSimMessageQueue->tryReceive(buf)) {
+            if (buf.type() != vistle::message::INSITU) {
+                m_vistleObjects.push_back(buf);
+                retval = true;
+            }
         }
     }
     return retval;
@@ -233,22 +240,27 @@ bool InSituModule::handleInsituMessage(message::Message &msg)
         }
 
     } break;
-    case InSituMessageType::SetCommands: {
-        auto em = msg.unpackOrCast<SetCommands>();
-        for (auto i = m_commandParameter.begin(); i != m_commandParameter.end(); ++i) {
-            if (std::find(em.value.begin(), em.value.end(), (*i)->getName()) == em.value.end()) {
+    case InSituMessageType::SetCommands:
+    case InSituMessageType::SetCustomCommands: {
+        auto commands = msg.type() == InSituMessageType::SetCommands ? msg.unpackOrCast<SetCommands>().value
+                                                                     : msg.unpackOrCast<SetCustomCommands>().value;
+        auto &params = msg.type() == InSituMessageType::SetCommands ? m_commandParameter : m_customCommandParameter;
+
+        for (auto i = params.begin(); i != params.end(); ++i) {
+            if (std::find(commands.begin(), commands.end(), (*i)->getName()) == commands.end()) {
                 removeParameter(*i);
-                i = m_commandParameter.erase(i);
+                i = params.erase(i);
             }
         }
-        for (auto portName: em.value) {
-            auto lb = std::find_if(m_commandParameter.begin(), m_commandParameter.end(),
-                                   [portName](const auto &val) { return val->getName() == portName; });
-            if (lb == m_commandParameter.end()) {
-                m_commandParameter
-                    .insert(addIntParameter(portName, "trigger command on change", false,
-                                            vistle::Parameter::Presentation::Boolean))
-                    .first;
+        for (auto cmd: commands) {
+            auto lb =
+                std::find_if(params.begin(), params.end(), [cmd](const auto &val) { return val->getName() == cmd; });
+            if (lb == params.end()) {
+                if (msg.type() == InSituMessageType::SetCommands)
+                    params.insert(addIntParameter(cmd, "trigger command on change", false,
+                                                  vistle::Parameter::Presentation::Boolean));
+                else
+                    params.insert(addStringParameter(cmd, "trigger command on change", ""));
             }
         }
     } break;
