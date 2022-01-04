@@ -188,13 +188,13 @@ bool InSituModule::recvAndhandleMessage()
 bool InSituModule::recvVistleObjects()
 {
     std::lock_guard<std::mutex> g{m_communicationMutex};
-    if (chacheVistleObjects()) {
+    if (cacheVistleObjects()) {
         execute();
     }
     return !m_vistleObjects.empty();
 }
 
-bool InSituModule::chacheVistleObjects()
+bool InSituModule::cacheVistleObjects()
 {
     bool retval = false;
     auto start = std::chrono::system_clock::now();

@@ -64,7 +64,7 @@ private:
 
     bool recvAndhandleMessage();
     bool recvVistleObjects();
-    bool chacheVistleObjects();
+    bool cacheVistleObjects();
 
     bool handleInsituMessage(insitu::message::Message &msg);
 
