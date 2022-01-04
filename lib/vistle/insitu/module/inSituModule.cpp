@@ -106,9 +106,6 @@ vistle::insitu::message::ModuleInfo::ShmInfo InSituModule::gatherModuleInfo() co
 bool InSituModule::changeParameter(const Parameter *param)
 {
     if (!param) {
-        // if (m_connectedToSim) {
-        //     sendIntOptions();
-        // }
         return true;
     }
     if (param == m_filePath) {
@@ -139,15 +136,26 @@ bool InSituModule::changeParameter(const Parameter *param)
     return true;
 }
 
+bool isPackageComplete(const vistle::message::Buffer &buf)
+{
+    return buf.type() == vistle::message::INSITU && buf.as<vistle::insitu::message::InSituMessage>().ismType() ==
+                                                        vistle::insitu::message::InSituMessageType::PackageComplete;
+}
+
 bool InSituModule::prepare()
 {
     std::lock_guard<std::mutex> g{m_communicationMutex};
     m_executionCount = m_ownExecutionCounter;
-    for (const auto &obj: m_vistleObjects) {
-        updateMeta(obj);
-        sendMessage(obj);
+    while (m_numPackeges) {
+        auto obj = std::move(m_cachedVistleObjects.front());
+        m_cachedVistleObjects.pop_front();
+        if (isPackageComplete(obj)) {
+            --m_numPackeges;
+        } else {
+            updateMeta(obj);
+            sendMessage(obj);
+        }
     }
-    m_vistleObjects.clear();
     return true;
 }
 
@@ -155,10 +163,8 @@ void InSituModule::updateMeta(const vistle::message::Buffer &obj)
 {
     if (obj.type() == vistle::message::ADDOBJECT) {
         auto &objMsg = obj.as<vistle::message::AddObject>();
-        //m_iteration = objMsg.meta().iteration();
+        m_iteration = objMsg.meta().iteration();
         m_executionCount = objMsg.meta().executionCounter();
-        std::cerr << "adding object for iteration " << m_iteration << " and executionCounter " << m_executionCount
-                  << " and timestep " << objMsg.meta().timeStep() << std::endl;
     }
 }
 
@@ -191,8 +197,9 @@ bool InSituModule::recvVistleObjects()
     if (cacheVistleObjects()) {
         execute();
     }
-    return !m_vistleObjects.empty();
+    return !m_cachedVistleObjects.empty();
 }
+
 
 bool InSituModule::cacheVistleObjects()
 {
@@ -202,9 +209,10 @@ bool InSituModule::cacheVistleObjects()
     while (m_receiveFromSimMessageQueue && (std::chrono::system_clock::now() < start + duration)) {
         vistle::message::Buffer buf;
         if (m_receiveFromSimMessageQueue->tryReceive(buf)) {
-            if (buf.type() != vistle::message::INSITU) {
-                m_vistleObjects.push_back(buf);
-                retval = true;
+            m_cachedVistleObjects.push_back(buf);
+            retval = true;
+            if (isPackageComplete(buf)) {
+                ++m_numPackeges;
             }
         }
     }

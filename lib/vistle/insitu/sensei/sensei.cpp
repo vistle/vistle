@@ -170,7 +170,7 @@ bool SenseiAdapter::WaitedForModuleCommands()
 
 bool SenseiAdapter::haveToProcessTimestep(size_t timestep)
 {
-    return timestep % message::getIntParamValue(m_internals->moduleParams, "frequency");
+    return (timestep % message::getIntParamValue(m_internals->moduleParams, "frequency")) == 0;
 }
 
 void SenseiAdapter::processData()
@@ -180,13 +180,20 @@ void SenseiAdapter::processData()
         first = false;
         m_stopWatch = std::make_unique<StopWatch>("simulation took");
     }
-
+    if (!m_internals->sendMessageQueue) {
+        CERR << "VistleSenseiAdapter can not add vistle object: sendMessageQueue = "
+                "null"
+             << endl;
+        return;
+    }
     auto dataObjects = m_callbacks.getData(m_usedData);
     for (const auto &dataObject: dataObjects) {
         updateMeta(dataObject.object());
-        addObject(dataObject.portName(), dataObject.object());
+        m_internals->sendMessageQueue->addObject(dataObject.portName(), dataObject.object());
     }
-    if (message::getIntParamValue(m_internals->moduleParams, "Keep timesteps"))
+    m_internals->sendMessageQueue->sendObjects();
+
+    if (message::getIntParamValue(m_internals->moduleParams, "keep timesteps"))
         ++m_processedTimesteps;
     else
         ++m_iterations;
@@ -384,18 +391,6 @@ void SenseiAdapter::addPorts()
     ports[0].push_back("mesh");
     ports[1].push_back("variable");
     m_internals->messageHandler.send(SetPorts{ports});
-}
-
-void SenseiAdapter::addObject(const std::string &port, vistle::Object::const_ptr obj)
-{
-    if (m_internals->sendMessageQueue) {
-        m_internals->sendMessageQueue->addObject(port, obj);
-        m_internals->sendMessageQueue->sendObjects();
-    } else {
-        CERR << "VistleSenseiAdapter can not add vistle object: sendMessageQueue = "
-                "null"
-             << endl;
-    }
 }
 
 void SenseiAdapter::updateMeta(vistle::Object::ptr obj) const

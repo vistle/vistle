@@ -1,6 +1,8 @@
 #include "addObjectMsq.h"
 #include <vistle/core/messages.h>
 #include <vistle/insitu/core/exception.h>
+#include <vistle/insitu/message/InSituMessage.h>
+
 using namespace vistle::insitu::message;
 using namespace vistle::insitu;
 
@@ -36,4 +38,5 @@ void AddObjectMsq::sendObjects()
         m_sendMessageQueue->send(std::move(buf));
     }
     m_cache.clear();
+    m_sendMessageQueue->send(InSituMessage{InSituMessageType::PackageComplete});
 }

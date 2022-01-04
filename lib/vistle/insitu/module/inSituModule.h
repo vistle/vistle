@@ -7,6 +7,7 @@
 
 #include <string>
 #include <vector>
+#include <list>
 
 #include <vistle/insitu/message/MessageHandler.h>
 
@@ -39,11 +40,15 @@ private:
 
     //...................................................................................
 
-    int m_instanceNum = 0;
+    int m_instanceNum = 0; //to get a unique shm name when connecting to a different simulation
+    //this thread receives and handles messages from the simulation (via m_messageHandler) and caches the produces data objects
+    //for prepare to forward them to the vistle pipeline
     std::unique_ptr<std::thread> m_communicationThread;
     std::mutex m_communicationMutex;
     std::atomic_bool m_terminateCommunication{false};
-    std::vector<vistle::message::Buffer> m_vistleObjects;
+    std::list<vistle::message::Buffer> m_cachedVistleObjects;
+    //number of timesteps/iterations tat have been received completely nad are not yet forwarded to the pipeline
+    size_t m_numPackeges = 0;
     //..........................................................................
     // module functions
 
@@ -58,8 +63,8 @@ private:
     void communicateWithSim();
     void initRecvFromSimQueue();
     vistle::insitu::message::ModuleInfo::ShmInfo gatherModuleInfo() const;
-    //sync meta data with sim so that all objects that are (implicitly) sent by this module
-    //share the same iteration and execution counter
+    //sync this modules meta data with sim's data objects
+    //this sim interface decides on when to update the iteration and execution counter
     void updateMeta(const vistle::message::Buffer &obj);
 
     bool recvAndhandleMessage();
@@ -68,7 +73,7 @@ private:
 
     bool handleInsituMessage(insitu::message::Message &msg);
 
-
+    //sent info about this modules int parameters (parameters in m_intOptions) to the sim
     void sendIntOptions();
 
     void disconnectSim();

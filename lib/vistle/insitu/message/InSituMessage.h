@@ -34,7 +34,6 @@ namespace insitu {
 namespace message {
 
 enum class InSituMessageType {
-    AddObject,
     ConnectPort,
     ConnectionClosed,
     DisconnectPort,
@@ -42,6 +41,7 @@ enum class InSituMessageType {
     GoOn,
     IntOption,
     Invalid,
+    PackageComplete,
     SetCommands,
     SetCustomCommands,
     SetPorts, // detected ports from sim to module <--> connected ports from module
@@ -101,8 +101,6 @@ struct InSituPureMessage: InSituMessageBase {
 DEFINE_IN_SITU_MESSAGE_NO_PARAM(Invalid)
 DEFINE_IN_SITU_MESSAGE_NO_PARAM(GoOn)
 
-
-DEFINE_IN_SITU_MESSAGE(AddObject, std::string)
 DEFINE_IN_SITU_MESSAGE(ConnectPort, std::string)
 DEFINE_IN_SITU_MESSAGE(ConnectionClosed, bool) // true -> disconnected on purpose
 DEFINE_IN_SITU_MESSAGE(DisconnectPort, std::string)
