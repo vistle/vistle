@@ -314,6 +314,7 @@ void MiniSimModule::execute(long step, float time)
         oscillation->addAttribute("_species", "oscillation");
         Internals->sendMessageQueue->addObject(m_dataOut->getName(), oscillation);
     }
+    Internals->sendMessageQueue->sendObjects();
 }
 
 

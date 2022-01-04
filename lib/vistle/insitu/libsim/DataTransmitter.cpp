@@ -41,6 +41,7 @@ void DataTransmitter::transferObjectsToVistle(size_t timestep, size_t iteration,
     m_rules = rules;
     sendMeshesToModule(m_requestedObjects, moduleState);
     sendVarablesToModule(m_requestedObjects, moduleState);
+    m_sender.sendObjects();
 }
 
 void DataTransmitter::resetCache()

@@ -27,5 +27,13 @@ void AddObjectMsq::addObject(const std::string &port, vistle::Object::const_ptr 
     buf.setSenderId(m_moduleInfo.id());
     buf.setRank(m_rank);
 #endif
-    m_sendMessageQueue->send(buf);
+    m_cache.push_back(std::move(buf));
+}
+
+void AddObjectMsq::sendObjects()
+{
+    for (auto &buf: m_cache) {
+        m_sendMessageQueue->send(std::move(buf));
+    }
+    m_cache.clear();
 }

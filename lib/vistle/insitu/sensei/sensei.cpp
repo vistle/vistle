@@ -390,6 +390,7 @@ void SenseiAdapter::addObject(const std::string &port, vistle::Object::const_ptr
 {
     if (m_internals->sendMessageQueue) {
         m_internals->sendMessageQueue->addObject(port, obj);
+        m_internals->sendMessageQueue->sendObjects();
     } else {
         CERR << "VistleSenseiAdapter can not add vistle object: sendMessageQueue = "
                 "null"
