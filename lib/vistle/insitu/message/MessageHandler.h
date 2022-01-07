@@ -7,6 +7,7 @@ namespace vistle {
 namespace insitu {
 namespace message {
 
+
 class MessageHandler {
 public:
     template<typename SomeMessage>
@@ -27,6 +28,7 @@ public:
 
     virtual insitu::message::Message recv() = 0;
     virtual insitu::message::Message tryRecv() = 0;
+    virtual ~MessageHandler() = default;
 
 protected:
     virtual bool sendMessage(InSituMessageType type, const vistle::buffer &msg) const = 0;

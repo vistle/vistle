@@ -58,12 +58,6 @@ bool ModuleInfo::update(const Message &msg)
     case InSituMessageType::ShmInfo: {
         m_shmInfo = msg.unpackOrCast<message::ShmInfo>().value;
     } break;
-#ifdef MODULE_THREAD
-    case InSituMessageType::ModuleID: {
-        auto mid = msg.unpackOrCast<ModuleID>();
-        m_shmInfo.id = mid.value;
-    } break;
-#endif
     default:
         return false;
     }

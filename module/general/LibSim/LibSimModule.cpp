@@ -30,15 +30,15 @@ using vistle::insitu::message::InSituMessageType;
 
 
 LibSimModule::LibSimModule(const string &name, int moduleID, mpi::communicator comm): InSituModule(name, moduleID, comm)
-#ifndef MODULE_THREAD
 {
+#ifndef MODULE_THREAD
     m_filePath = addStringParameter("path", "path to a .sim2 file or directory containing these files", "",
                                     vistle::Parameter::ExistingFilename);
     setParameterFilters(m_filePath, "simulation Files (*.sim2)");
     m_simName = addStringParameter("simulation name",
                                    "the name of the simulation as used in the filename of the sim2 file ", "");
 #else
-{
+    initializeCommunication();
 #endif // !MODULE_THREAD
 
     m_intOptions.push_back(addIntParameter("VTK variables",
@@ -52,29 +52,6 @@ LibSimModule::LibSimModule(const string &name, int moduleID, mpi::communicator c
                                            vistle::Parameter::Boolean));
     m_intOptions.push_back(addIntParameter("keep timesteps", "keep data of processed timestep of this execution", true,
                                            vistle::Parameter::Boolean));
-
-#ifdef MODULE_THREAD
-    bool simRunning = true;
-    if (rank() == 0 && !insitu::EngineInterface::getControllSocket()) {
-        CERR << "can not start without running simulation" << endl;
-        simRunning = false;
-    }
-    boost::mpi::broadcast(comm, simRunning, 0);
-    if (!simRunning) {
-        return;
-    }
-
-    reconnect();
-    m_connectedToEngine = true;
-    m_messageHandler.initialize(insitu::EngineInterface::getControllSocket(),
-                                boost::mpi::communicator(comm, boost::mpi::comm_create_kind::comm_duplicate));
-    m_messageHandler.send(vistle::insitu::message::ModuleID{id()});
-    m_socketThread = std::thread([this]() {
-        while (!getBool(m_terminateSocketThread)) {
-            recvAndhandleMessage();
-        }
-    });
-#endif // !MODULE_THREAD
 }
 
 LibSimModule::~LibSimModule()
@@ -82,6 +59,14 @@ LibSimModule::~LibSimModule()
 
 std::unique_ptr<vistle::insitu::message::MessageHandler> LibSimModule::connectToSim()
 {
+#ifdef MODULE_THREAD
+    CERR << "connectToSim" << std::endl;
+    if (!libsim::EngineInterface::getHandler()) {
+        CERR << "can not start without running simulation" << endl;
+    }
+    CERR << "port " << libsim::EngineInterface::getHandler()->port() << std::endl;
+    return libsim::EngineInterface::extractHandler();
+#else
     auto handler = std::make_unique<vistle::insitu::message::InSituTcp>(comm());
     bool simInitSent = false;
     if (rank() == 0) {
@@ -113,6 +98,7 @@ std::unique_ptr<vistle::insitu::message::MessageHandler> LibSimModule::connectTo
     }
     boost::mpi::broadcast(comm(), simInitSent, 0);
     return simInitSent ? std::move(handler) : nullptr;
+#endif // !MODULE_THREAD
 }
 
 

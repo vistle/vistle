@@ -27,6 +27,7 @@ protected:
 
     virtual std::unique_ptr<insitu::message::MessageHandler> connectToSim() = 0;
     virtual bool changeParameter(const Parameter *p) override;
+    void initializeCommunication();
 
 private:
     std::unique_ptr<insitu::message::MessageHandler> m_messageHandler;

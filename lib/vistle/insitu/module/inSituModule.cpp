@@ -103,23 +103,28 @@ vistle::insitu::message::ModuleInfo::ShmInfo InSituModule::gatherModuleInfo() co
     return shmInfo;
 }
 
+void InSituModule::initializeCommunication()
+{
+    if (m_messageHandler) {
+        CERR << "can not connect to a new simulation before the old simulation is disconnected." << std::endl;
+        return;
+    }
+    if (m_messageHandler = connectToSim()) {
+        initRecvFromSimQueue();
+        startCommunicationThread();
+
+        m_messageHandler->send(message::ShmInfo{gatherModuleInfo()});
+        sendIntOptions();
+    }
+}
+
 bool InSituModule::changeParameter(const Parameter *param)
 {
     if (!param) {
         return true;
     }
-    if (param == m_filePath) {
-        if (m_messageHandler) {
-            CERR << "can not connect to a new simulation before the old simulation is disconnected." << std::endl;
-            return true;
-        }
-        if (m_messageHandler = connectToSim()) {
-            initRecvFromSimQueue();
-            startCommunicationThread();
-
-            m_messageHandler->send(message::ShmInfo{gatherModuleInfo()});
-            sendIntOptions();
-        }
+    if (m_filePath && param == m_filePath) {
+        initializeCommunication();
         return true;
     }
     if (!m_messageHandler)
@@ -146,15 +151,24 @@ bool InSituModule::prepare()
 {
     std::lock_guard<std::mutex> g{m_communicationMutex};
     m_executionCount = m_ownExecutionCounter;
-    while (m_numPackeges) {
+    size_t minNumPackates = 0;
+    boost::mpi::reduce(comm(), m_numPackeges, minNumPackates, boost::mpi::minimum<int>(), 0);
+    boost::mpi::broadcast(comm(), minNumPackates, 0);
+    CERR << "prepare: minimum packages is " << minNumPackates << "/" << m_numPackeges << std::endl;
+    //static size_t numPackagesHandled = 0;
+    while (minNumPackates) {
         auto obj = std::move(m_cachedVistleObjects.front());
         m_cachedVistleObjects.pop_front();
         if (isPackageComplete(obj)) {
             --m_numPackeges;
+            --minNumPackates;
         } else {
             updateMeta(obj);
             sendMessage(obj);
         }
+        //++numPackagesHandled;
+        //CERR << "prepare handled " << numPackagesHandled << " packes; iteration = " << m_iteration
+        //     << ", execCOunter = " << m_executionCount << std::endl;
     }
     return true;
 }

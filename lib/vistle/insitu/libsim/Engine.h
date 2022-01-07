@@ -36,9 +36,6 @@ class V_VISITXPORT Engine {
 class V_VISITXPORT Engine {
 #endif
 public:
-    typedef boost::asio::ip::tcp::socket socket;
-    typedef boost::asio::ip::tcp::acceptor acceptor;
-
     static Engine *EngineInstance();
     static void DisconnectSimulation();
     bool initialize(int argC, char **argV);
@@ -99,24 +96,11 @@ private:
     void (*slaveCommandCallback)(void) = nullptr;
 #ifdef MODULE_THREAD
     std::thread m_managerThread;
-#if BOOST_VERSION >= 106600
-    typedef boost::asio::executor_work_guard<boost::asio::io_context::executor_type> WorkGuard;
-#else
-    typedef boost::asio::io_service::work WorkGuard;
-#endif
-    std::unique_ptr<WorkGuard> m_workGuard;
-    std::unique_ptr<std::thread> m_ioThread; // thread for io_service
-    std::unique_ptr<acceptor> m_acceptorv4, m_acceptorv6;
-    std::mutex m_asioMutex;
-    std::atomic<bool> m_waitingForAccept{true}; // condition
 #endif
     Engine();
     ~Engine();
 #ifdef MODULE_THREAD
     bool startVistle(int argC, char **argV);
-    bool ConnectMySelf();
-    void initializeAsync();
-    bool startAccept(std::unique_ptr<acceptor> &a);
     bool launchManager(int argC, char **argV);
 #endif // MODULE_THREAD
 
