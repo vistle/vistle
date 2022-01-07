@@ -153,12 +153,7 @@ void Engine::SimulationInitiateCommand(const string &command)
         string cmd("INTERNALSYNC");
         string args(command.substr(13, command.size() - 1));
         simulationCommandCallback(cmd.c_str(), args.c_str(), simulationCommandCallbackData);
-#ifndef MODULE_THREAD
         m_messageHandler->send(GoOn{}); // request tcp message from controller
-#else
-        if (EngineInterface::getControllSocket())
-            message::send(GoOn{}, *EngineInterface::getControllSocket()); //directly send GoOn to the sim
-#endif
     }
 }
 
@@ -230,14 +225,6 @@ bool Engine::fetchNewModuleState()
     case InSituMessageType::DisconnectPort: {
         m_dataTransmitter->updateRequestedObjets(m_moduleInfo);
     } break;
-#ifdef MODULE_THREAD
-    case InSituMessageType::ModuleID: {
-        m_moduleInfo.setReadyState(false);
-        m_shmIDs.initialize(m_moduleInfo.id(), m_rank, m_moduleInfo.uniqueSuffix(), SyncShmIDs::Mode::Attach);
-        resetDataTransmitter();
-
-    } break;
-#endif
     default:
         return true;
     }
@@ -284,7 +271,6 @@ Engine::~Engine()
 #endif
     Engine::instance = nullptr;
 }
-
 #ifdef MODULE_THREAD
 bool Engine::startVistle(int argC, char **argV)
 {
@@ -294,80 +280,15 @@ bool Engine::startVistle(int argC, char **argV)
         CERR << "startVistle: MPI_THREAD_MULTIPLE not provided" << std::endl;
         return false;
     }
-    if ((m_rank == 0 && ConnectMySelf()) || m_rank > 0) {
-        m_messageHandler->initialize(
-            m_socket,
-            boost::mpi::communicator(
-                comm, boost::mpi::comm_create_kind::comm_duplicate)); // comm is not set by the simulation code at
-        // this point. Since most simulations never
-        // change comm, this is a easy cheat impl
-        if (launchManager(argC, argV)) {
-            m_initialized = true;
-        }
+    // comm is not set by the simulation code at
+    // this point. Since most simulations never
+    // change comm, this is a easy cheat impl
+    EngineInterface::initialize(boost::mpi::communicator(comm, boost::mpi::comm_create_kind::comm_duplicate));
+    m_modulePort = EngineInterface::getHandler()->port();
+    if (connectToVistleModule() && launchManager(argC, argV)) {
+        m_initialized = true;
     }
     return m_initialized;
-}
-
-bool Engine::ConnectMySelf()
-{
-    initializeAsync();
-    unsigned short port = m_port;
-
-    boost::system::error_code ec;
-
-    while (!vistle::start_listen(port, *m_acceptorv4, *m_acceptorv6, ec)) {
-        if (ec == boost::system::errc::address_in_use) {
-            ++port;
-        } else if (ec) {
-            CERR << "failed to listen on port " << port << ": " << ec.message() << endl;
-            return false;
-        }
-    }
-    m_port = port;
-    startAccept(m_acceptorv4);
-    startAccept(m_acceptorv6);
-    connectToModule("localhost", m_port);
-    return true;
-}
-
-void Engine::initializeAsync()
-{
-#if BOOST_VERSION >= 106600
-    m_workGuard = std::make_unique<WorkGuard>(m_ioService.get_executor());
-#else
-    m_workGuard = std::unique_ptr<WorkGuard>(new boost::asio::io_service::work(m_ioService));
-#endif
-
-    m_ioThread = std::make_unique<std::thread>([this]() {
-        m_ioService.run();
-        DEBUG_CERR << "io thread terminated" << endl;
-    });
-
-    m_acceptorv4.reset(new acceptor(m_ioService));
-    m_acceptorv6.reset(new acceptor(m_ioService));
-}
-
-bool Engine::startAccept(std::unique_ptr<acceptor> &a)
-{
-    if (!a->is_open())
-        return false;
-
-    std::shared_ptr<socket> sock(new socket(m_ioService));
-    boost::system::error_code ec;
-    a->async_accept(*sock, [this, &a, sock](boost::system::error_code ec) {
-        if (ec) {
-            if (m_waitingForAccept) {
-                EngineInterface::setControllSocket(nullptr);
-                CERR << "failed connection attempt" << endl;
-            }
-            return;
-        }
-        CERR << "server connected with engine, acceptor " << (a == m_acceptorv4 ? "v4" : "v6") << endl;
-        EngineInterface::setControllSocket(sock);
-        m_waitingForAccept = false;
-        a == m_acceptorv4 ? m_acceptorv6->close() : m_acceptorv4->close();
-    });
-    return true;
 }
 
 bool Engine::launchManager(int argC, char **argV)

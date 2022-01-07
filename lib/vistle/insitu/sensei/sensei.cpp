@@ -43,12 +43,11 @@ int getRank(MPI_Comm Comm)
 }
 
 struct Internals {
-    Internals(int rank): messageHandler(rank) {}
+    Internals(int rank): messageHandler(std::make_unique<message::InSituShmMessage>(rank)) {}
     message::ModuleInfo moduleInfo;
-    std::unique_ptr<vistle::insitu::message::AddObjectMsq>
-        sendMessageQueue; // Queue to send addObject messages to module
+    std::unique_ptr<message::AddObjectMsq> sendMessageQueue; // Queue to send addObject messages to module
 
-    message::InSituShmMessage messageHandler;
+    std::unique_ptr<message::InSituShmMessage> messageHandler;
     // options that can be set in the module
     std::vector<message::IntParam> moduleParams{{"frequency", 1}, {"keep timesteps", true}};
 };
@@ -59,7 +58,7 @@ struct Internals {
 
 SenseiAdapter::SenseiAdapter(bool paused, MPI_Comm Comm, MetaData &&meta, ObjectRetriever cbs,
                              const std::string &options)
-: m_callbacks(cbs), m_metaData(std::move(meta)), m_internals(new detail::Internals{detail::getRank(Comm)})
+: m_callbacks(std::move(cbs)), m_metaData(std::move(meta)), m_internals(new detail::Internals{detail::getRank(Comm)})
 {
     MPI_Comm_rank(Comm, &m_rank);
     MPI_Comm_size(Comm, &m_mpiSize);
@@ -70,16 +69,6 @@ SenseiAdapter::SenseiAdapter(bool paused, MPI_Comm Comm, MetaData &&meta, Object
 
 #ifdef MODULE_THREAD
     startVistle(comm, options);
-#endif
-}
-
-SenseiAdapter::~SenseiAdapter()
-{
-    m_internals->messageHandler.send(message::ConnectionClosed{true});
-    delete m_internals;
-#ifdef MODULE_THREAD
-    CERR << "Quit requested, waiting for vistle manager to finish" << endl;
-    m_managerThread.join();
 #endif
 }
 
@@ -119,12 +108,8 @@ bool SenseiAdapter::startVistle(const MPI_Comm &comm, const std::string &options
         for (auto &opt: optionsVec) {
             args.push_back(const_cast<char *>(opt.c_str()));
         }
-        std::cerr << "sensei args are:" << std::endl;
-        for (const auto c: args)
-            std::cerr << c << std::endl;
         vistle::VistleManager manager;
         manager.run(static_cast<int>(args.size()), args.data());
-        return true;
     });
     return true;
 }
@@ -146,7 +131,7 @@ bool SenseiAdapter::stillConnected()
 bool SenseiAdapter::quitRequested()
 {
     if (m_commands["exit"]) {
-        m_internals->messageHandler.send(ConnectionClosed{true});
+        m_internals->messageHandler->send(ConnectionClosed{true});
         insitu::detachShm();
         return true;
     }
@@ -199,13 +184,28 @@ void SenseiAdapter::processData()
         ++m_iterations;
 }
 
+SenseiAdapter::~SenseiAdapter()
+{
+    if (m_internals)
+        Finalize();
+}
+
 bool SenseiAdapter::Finalize()
 {
     CERR << "Finalizing" << endl;
     m_stopWatch.reset(nullptr);
     if (m_internals->moduleInfo.isInitialized()) {
-        m_internals->messageHandler.send(ConnectionClosed{true});
+        m_internals->messageHandler->send(ConnectionClosed{true});
     }
+#ifdef MODULE_THREAD
+    if (m_managerThread.joinable()) {
+        CERR << "Quit requested, waiting for vistle manager to finish" << endl;
+        m_managerThread.join();
+    }
+#endif
+
+    delete m_internals;
+    m_internals = nullptr;
     return true;
 }
 
@@ -235,7 +235,7 @@ bool SenseiAdapter::objectRequested(const std::string &name, const std::string &
 void SenseiAdapter::dumpConnectionFile(MPI_Comm Comm)
 {
     std::vector<std::string> names;
-    boost::mpi::gather(boost::mpi::communicator(comm, boost::mpi::comm_attach), m_internals->messageHandler.name(),
+    boost::mpi::gather(boost::mpi::communicator(comm, boost::mpi::comm_attach), m_internals->messageHandler->name(),
                        names, 0);
     if (m_rank == 0) {
         if (!vistle::filesystem::exists(vistle::directory::configHome())) {
@@ -251,7 +251,7 @@ void SenseiAdapter::dumpConnectionFile(MPI_Comm Comm)
 
 bool SenseiAdapter::recvAndHandeMessage(bool blocking)
 {
-    message::Message msg = blocking ? m_internals->messageHandler.recv() : m_internals->messageHandler.tryRecv();
+    message::Message msg = blocking ? m_internals->messageHandler->recv() : m_internals->messageHandler->tryRecv();
     m_internals->moduleInfo.update(msg);
     switch (msg.type()) {
     case InSituMessageType::Invalid:
@@ -305,7 +305,7 @@ bool SenseiAdapter::initModule(const Message &msg)
     }
     //m_internals->moduleInfo() is already updated with the new shm info
     if (!checkHostName() || !checkMpiSize() || !initializeVistleEnv()) {
-        m_internals->messageHandler.send(ConnectionClosed{true});
+        m_internals->messageHandler->send(ConnectionClosed{true});
         return false;
     }
     addCommands();
@@ -376,7 +376,7 @@ void SenseiAdapter::addCommands()
     for (const auto &command: m_commands) {
         commands.push_back(command.first);
     }
-    m_internals->messageHandler.send(SetCommands{commands});
+    m_internals->messageHandler->send(SetCommands{commands});
 }
 
 void SenseiAdapter::addPorts()
@@ -390,7 +390,7 @@ void SenseiAdapter::addPorts()
     }
     ports[0].push_back("mesh");
     ports[1].push_back("variable");
-    m_internals->messageHandler.send(SetPorts{ports});
+    m_internals->messageHandler->send(SetPorts{ports});
 }
 
 void SenseiAdapter::updateMeta(vistle::Object::ptr obj) const

@@ -47,10 +47,6 @@ enum class InSituMessageType {
     SetPorts, // detected ports from sim to module <--> connected ports from module
     // to Engine
     ShmInfo
-#ifdef MODULE_THREAD
-    ,
-    ModuleID
-#endif
 };
 
 class Message;
@@ -111,10 +107,6 @@ DEFINE_IN_SITU_MESSAGE(SetCommands, std::vector<std::string>)
 DEFINE_IN_SITU_MESSAGE(SetCustomCommands, std::vector<std::string>)
 DEFINE_IN_SITU_MESSAGE(SetPorts, std::vector<std::vector<std::string>>)
 DEFINE_IN_SITU_MESSAGE(ShmInfo, ModuleInfo::ShmInfo)
-
-#ifdef MODULE_THREAD
-DEFINE_IN_SITU_MESSAGE(ModuleID, int)
-#endif
 
 struct V_INSITUMESSAGEEXPORT InSituMessage
 : public vistle::message::MessageBase<InSituMessage, vistle::message::INSITU> {

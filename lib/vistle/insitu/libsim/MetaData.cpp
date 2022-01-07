@@ -221,7 +221,7 @@ std::vector<std::vector<std::string>> MetaData::getMeshAndFieldNames() const
 
 std::string MetaData::getName(const visit_handle &handle, SimulationObjectType type) const
 {
-    char *name;
+    char *name = nullptr;
 
     switch (type) {
     case SimulationObjectType::mesh:

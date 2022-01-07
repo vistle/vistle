@@ -4,7 +4,7 @@
 #include <vistle/util/export.h>
 
 #include <boost/asio/ip/tcp.hpp>
-
+#include <vistle/insitu/message/TcpMessage.h>
 #include <memory>
 
 #if defined(vistle_libsim_engine_interface_EXPORTS)
@@ -12,17 +12,21 @@
 #else
 #define V_ENGINEINTERFACEEXPORT V_IMPORT
 #endif
-
+namespace vistle {
 namespace insitu {
-class EngineInterface {
+namespace libsim {
+class V_ENGINEINTERFACEEXPORT EngineInterface {
 public:
-    static void V_ENGINEINTERFACEEXPORT setControllSocket(std::shared_ptr<boost::asio::ip::tcp::socket> socket);
-    static std::shared_ptr<boost::asio::ip::tcp::socket> V_ENGINEINTERFACEEXPORT getControllSocket();
+    static void initialize(boost::mpi::communicator comm);
+    static insitu::message::InSituTcp *getHandler();
+    static std::unique_ptr<insitu::message::InSituTcp> extractHandler();
 
 private:
-    static std::shared_ptr<boost::asio::ip::tcp::socket> m_socket;
+    static std::unique_ptr<insitu::message::InSituTcp> m_messageHandler;
 };
-
+} // namespace libsim
 } // namespace insitu
+} // namespace vistle
+
 
 #endif // !MODULEINTERFACE_H

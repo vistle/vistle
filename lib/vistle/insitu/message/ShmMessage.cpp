@@ -216,7 +216,6 @@ vistle::insitu::message::InSituShmMessage::~InSituShmMessage()
         return;
     }
     std::string msqName = m_msqName + std::to_string(m_iteration);
-    std::cerr << "removing shm for " << msqName << std::endl;
     boost::interprocess::shared_memory_object::remove((msqName + m_recvSuffix).c_str());
     boost::interprocess::shared_memory_object::remove((msqName + m_sendSuffix).c_str());
 }

@@ -34,6 +34,8 @@ void AddObjectMsq::addObject(const std::string &port, vistle::Object::const_ptr 
 
 void AddObjectMsq::sendObjects()
 {
+    if (m_cache.empty())
+        return; //if for some reason some ranks send objects and others not this breaks the sync in the module
     for (auto &buf: m_cache) {
         m_sendMessageQueue->send(std::move(buf));
     }

@@ -28,7 +28,8 @@ vistle_target_link_libraries(
     Boost::boost
     MPI::MPI_C
     Threads::Threads
-    vistle_core
     vistle_insitu_core
-    vistle_util)
+    vistle_util
+    PUBLIC
+    vistle_core)
 vistle_install_docs(README.md)
