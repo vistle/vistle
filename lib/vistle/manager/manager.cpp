@@ -105,7 +105,6 @@ bool VistleManager::run(int argc, char *argv[])
     }
 
     std::cerr << "VistleManager: my rank is " << rank << std::endl;
-    std::unique_ptr<std::thread> hubthread;
 
     bool fromVistle = false;
     if (argc > 1) {
@@ -125,6 +124,7 @@ bool VistleManager::run(int argc, char *argv[])
 #ifdef MODULE_THREAD
     std::string rank0;
     unsigned short hubPort = 0, hubDataPort = 0;
+    std::unique_ptr<std::thread> hubthread;
     if (!fromVistle && rank == 0) {
         std::cerr << "not called from vistle, creating hub in a thread" << std::endl;
         auto hub = new Hub(true);
@@ -224,8 +224,13 @@ bool VistleManager::run(int argc, char *argv[])
         lock.unlock();
         main_thread_cv.notify_all();
     }
+    if (t.joinable()) {
+        t.join();
+    }
+    if (!fromVistle && rank == 0 && hubthread->joinable())
+        hubthread->join();
+    std::cerr << "manager thread done" << std::endl;
 
-    t.join();
 #endif
     return true;
 }
