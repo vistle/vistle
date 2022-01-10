@@ -32,8 +32,8 @@ Transform lines to tubes or points to spheres
 |-|-|-|
 |radius|radius or radius scale factor of tube/sphere|Float|
 |sphere_scale|extra scale factor for spheres|Float|
-|map_mode|mapping of data to tube diameter (DoNothing, Fixed, Radius, InvRadius, Surface, InvSurface, Volume, InvVolume)|Integer|
+|map_mode|mapping of data to tube diameter (DoNothing, Fixed, Radius, InvRadius, Surface, InvSurface, Volume, InvVolume)|Int|
 |range|allowed radius range|Vector|
-|start_style|cap style for initial tube segments (Open, Flat, Round, Arrow)|Integer|
-|connection_style|cap style for tube segment connections (Open, Flat, Round, Arrow)|Integer|
-|end_style|cap style for final tube segments (Open, Flat, Round, Arrow)|Integer|
+|start_style|cap style for initial tube segments (Open, Flat, Round, Arrow)|Int|
+|connection_style|cap style for tube segment connections (Open, Flat, Round, Arrow)|Int|
+|end_style|cap style for final tube segments (Open, Flat, Round, Arrow)|Int|

@@ -69,17 +69,17 @@ The pnetcdf install directory should be added to your $PATH environment variable
 ## Parameters
 |name|description|type|
 |-|-|-|
-|first_step|first timestep to read|Integer|
-|last_step|last timestep to read (-1: last)|Integer|
-|step_increment|number of steps to increment|Integer|
-|first_rank|rank for first partition of first timestep|Integer|
-|check_convexity|whether to check convexity of grid cells|Integer|
+|first_step|first timestep to read|Int|
+|last_step|last timestep to read (-1: last)|Int|
+|step_increment|number of steps to increment|Int|
+|first_rank|rank for first partition of first timestep|Int|
+|check_convexity|whether to check convexity of grid cells|Int|
 |file_dir|NC File directory|String|
-|ghost|Show ghostcells.|Integer|
-|fill|Replace filterValue.|Integer|
+|ghost|Show ghostcells.|Int|
+|fill|Replace filterValue.|Int|
 |VerticalScale|Vertical Scale parameter sea|Float|
-|blocks latitude|number of blocks in lat-direction|Integer|
-|blocks longitude|number of blocks in lon-direction|Integer|
+|blocks latitude|number of blocks in lat-direction|Int|
+|blocks longitude|number of blocks in lon-direction|Int|
 |fillValue|ncFile fillValue offset for eta|Float|
 |fillValueNew|set new fillValue offset for eta|Float|
 |bathymetry |Select bathymetry stored in netCDF)|String|

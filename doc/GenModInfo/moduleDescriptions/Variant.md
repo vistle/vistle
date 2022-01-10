@@ -21,6 +21,6 @@ Add variant attribute
 |name|description|type|
 |-|-|-|
 |variant|variant name|String|
-|visibility_default|control visibility default (DontChange, Visible, Hidden)|Integer|
-|from_attribute|use another attribute as variant name|Integer|
+|visibility_default|control visibility default (DontChange, Visible, Hidden)|Int|
+|from_attribute|use another attribute as variant name|Int|
 |attribute|name of attribute to copy to variant|String|

@@ -20,4 +20,4 @@ Transform unstructured cells into polyhedral cells
 ## Parameters
 |name|description|type|
 |-|-|-|
-|facestream|create facestream (VTK) or repeat initial vertex of polygon faces (COVISE)|Integer|
+|facestream|create facestream (VTK) or repeat initial vertex of polygon faces (COVISE)|Int|

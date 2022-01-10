@@ -20,4 +20,4 @@ Decompose polygons to triangles
 ## Parameters
 |name|description|type|
 |-|-|-|
-|transform_spheres|also generate triangles for sphere impostors|Integer|
+|transform_spheres|also generate triangles for sphere impostors|Int|

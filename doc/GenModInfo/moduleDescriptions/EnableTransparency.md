@@ -20,5 +20,5 @@ Advise cover to enable depth sorting
 ## Parameters
 |name|description|type|
 |-|-|-|
-|transparency|put objects into TRANSPARENT_BIN|Integer|
-|num_primitives|number of primitives to put into one block|Integer|
+|transparency|put objects into TRANSPARENT_BIN|Int|
+|num_primitives|number of primitives to put into one block|Int|

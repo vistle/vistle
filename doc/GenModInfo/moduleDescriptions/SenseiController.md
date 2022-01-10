@@ -1,6 +1,6 @@
 
 # SenseiController
-Aquire data from sensei instrumented simulations
+Acquire data from sensei instrumented simulations
 This module is used to connect to a simulation via the SENSEI in-situ interface.
 Depending on the connected ports and the frequency parameter the module requests data from the simulation.
 Once the simulation generates the requested data the module is automatically executed.
@@ -10,9 +10,8 @@ Once the simulation generates the requested data the module is automatically exe
 |name|description|type|
 |-|-|-|
 |path|path to the connection file written by the simulation|String|
-|deleteShm|clean the shared memory message queues used to communicate with the simulation|Integer|
-|frequency|the pipeline is processed for every nth simulation cycle|Integer|
-|keep timesteps|if true timesteps are cached and processed as time series|Integer|
+|frequency|the pipeline is processed for every nth simulation cycle|Int|
+|keep timesteps|if true timesteps are cached and processed as time series|Int|
 
 simulation specific commands
 ----------------------------

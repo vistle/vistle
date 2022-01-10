@@ -20,7 +20,7 @@ Shuffle and mirror axes of rectilinear grids
 ## Parameters
 |name|description|type|
 |-|-|-|
-|reverse X-axix||Integer|
-|reverse Y-axix||Integer|
-|reverse Z-axix||Integer|
-|orderOfGridAxes| (XYZ, XZY, YXZ, YZX, ZXY, ZYX)|Integer|
+|reverse X-axix||Int|
+|reverse Y-axix||Int|
+|reverse Z-axix||Int|
+|orderOfGridAxes| (XYZ, XZY, YXZ, YZX, ZXY, ZYX)|Int|

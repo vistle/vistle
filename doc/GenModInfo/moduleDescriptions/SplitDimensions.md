@@ -35,4 +35,4 @@ Separate grid into 1d, 2d and 3d components
 ## Parameters
 |name|description|type|
 |-|-|-|
-|reuse_coordinates|do not renumber vertices and reuse coordinate and data arrays|Integer|
+|reuse_coordinates|do not renumber vertices and reuse coordinate and data arrays|Int|

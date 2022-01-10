@@ -23,7 +23,7 @@ Cut through grids with basic geometry like plane, cylinder or sphere
 |point|point on plane|Vector|
 |vertex|normal on plane|Vector|
 |scalar|distance to origin of ordinates|Float|
-|option|option (Plane, Sphere, CylinderX, CylinderY, CylinderZ)|Integer|
+|option|option (Plane, Sphere, CylinderX, CylinderY, CylinderZ)|Int|
 |direction|direction for variable Cylinder|Vector|
-|processortype|processortype (Host, Device)|Integer|
-|compute_normals|compute normals (structured grids only)|Integer|
+|processortype|processortype (Host, Device)|Int|
+|compute_normals|compute normals (structured grids only)|Int|

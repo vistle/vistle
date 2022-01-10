@@ -23,6 +23,6 @@ Clip geometry at basic geometry like plane, cylinder or sphere
 |point|point on plane|Vector|
 |vertex|normal on plane|Vector|
 |scalar|distance to origin of ordinates|Float|
-|option|option (Plane, Sphere, CylinderX, CylinderY, CylinderZ)|Integer|
+|option|option (Plane, Sphere, CylinderX, CylinderY, CylinderZ)|Int|
 |direction|direction for variable Cylinder|Vector|
-|flip|flip inside out|Integer|
+|flip|flip inside out|Int|

@@ -25,8 +25,8 @@ Sample data on points, unstructured and uniform grids to a uniform grid
 ## Parameters
 |name|description|type|
 |-|-|-|
-|mode|interpolation mode (First, Mean, Nearest, Linear)|Integer|
-|create_celltree|create celltree|Integer|
-|value_outside|value to be used if target is outside source domain (NaN, Zero, userDefined)|Integer|
+|mode|interpolation mode (First, Mean, Nearest, Linear)|Int|
+|create_celltree|create celltree|Int|
+|value_outside|value to be used if target is outside source domain (NaN, Zero, userDefined)|Int|
 |user_defined_value|user defined value if target outside source domain|Float|
-|mulit_hits|handling if multiple interpolatied values found for one target point  (Any, Average)|Integer|
+|mulit_hits|handling if multiple interpolatied values found for one target point  (Any, Average)|Int|

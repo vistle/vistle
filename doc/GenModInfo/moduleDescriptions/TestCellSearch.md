@@ -16,6 +16,6 @@ Test celltree
 |name|description|type|
 |-|-|-|
 |point|search point|Vector|
-|block|number of containing block|Integer|
-|cell|number of containing cell|Integer|
-|create_celltree|create celltree|Integer|
+|block|number of containing block|Int|
+|cell|number of containing cell|Int|
+|create_celltree|create celltree|Int|

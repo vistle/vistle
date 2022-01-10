@@ -31,8 +31,8 @@ Transform lines to tubes
 |name|description|type|
 |-|-|-|
 |radius|radius or radius scale factor of tube|Float|
-|map_mode|mapping of data to tube diameter (Fixed, Radius, CrossSection, InvRadius, InvCrossSection)|Integer|
+|map_mode|mapping of data to tube diameter (Fixed, Radius, CrossSection, InvRadius, InvCrossSection)|Int|
 |range|allowed radius range|Vector|
-|start_style|cap style for initial segments (Open, Flat, Round, Arrow)|Integer|
-|connection_style|cap style for segment connections (Open, Flat, Round, Arrow)|Integer|
-|end_style|cap style for final segments (Open, Flat, Round, Arrow)|Integer|
+|start_style|cap style for initial segments (Open, Flat, Round, Arrow)|Int|
+|connection_style|cap style for segment connections (Open, Flat, Round, Arrow)|Int|
+|end_style|cap style for final segments (Open, Flat, Round, Arrow)|Int|

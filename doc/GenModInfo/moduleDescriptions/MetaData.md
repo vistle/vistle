@@ -20,6 +20,6 @@ Transform meta data to mappable data
 ## Parameters
 |name|description|type|
 |-|-|-|
-|attribute|attribute to map to vertices (MpiRank, BlockNumber, TimestepNumber, VertexIndex, ElementIndex, ElementType)|Integer|
+|attribute|attribute to map to vertices (MpiRank, BlockNumber, TimestepNumber, VertexIndex, ElementIndex, ElementType)|Int|
 |range|range to which data shall be clamped|IntVector|
-|modulus|wrap around output value|Integer|
+|modulus|wrap around output value|Int|

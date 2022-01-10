@@ -31,4 +31,4 @@ Extract lower dimensional surfaces, lines or points from structured grids
 |name|description|type|
 |-|-|-|
 |coord|coordinates of point on surface/line|IntVector|
-|direction|normal on surface and direction of line (X, Y, Z)|Integer|
+|direction|normal on surface and direction of line (X, Y, Z)|Int|

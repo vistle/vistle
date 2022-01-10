@@ -25,8 +25,8 @@ Sort data objects according to meta data
 ## Parameters
 |name|description|type|
 |-|-|-|
-|criterion|Selection criterion (Rank, BlockNumber, Timestep)|Integer|
-|first_min|Minimum number of MPI rank, block, timestep to output to first output (data_out0)|Integer|
-|first_max|Maximum number of MPI rank, block, timestep to output to first output (data_out0)|Integer|
-|modulus|Check min/max after computing modulus (-1: disable)|Integer|
-|invert|Invert roles of 1st and 2nd output|Integer|
+|criterion|Selection criterion (Rank, BlockNumber, Timestep)|Int|
+|first_min|Minimum number of MPI rank, block, timestep to output to first output (data_out0)|Int|
+|first_max|Maximum number of MPI rank, block, timestep to output to first output (data_out0)|Int|
+|modulus|Check min/max after computing modulus (-1: disable)|Int|
+|invert|Invert roles of 1st and 2nd output|Int|

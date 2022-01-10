@@ -20,12 +20,12 @@ Show surface of grid
 ## Parameters
 |name|description|type|
 |-|-|-|
-|ghost|Show ghostcells|Integer|
-|tetrahedron|Show tetrahedron|Integer|
-|pyramid|Show pyramid|Integer|
-|prism|Show prism|Integer|
-|hexahedron|Show hexahedron|Integer|
-|polyhedron|Show polyhedron|Integer|
-|triangle|Show triangle|Integer|
-|quad|Show quad|Integer|
-|reuseCoordinates|Re-use the unstructured grids coordinate list and data-object|Integer|
+|ghost|Show ghostcells|Int|
+|tetrahedron|Show tetrahedron|Int|
+|pyramid|Show pyramid|Int|
+|prism|Show prism|Int|
+|hexahedron|Show hexahedron|Int|
+|polyhedron|Show polyhedron|Int|
+|triangle|Show triangle|Int|
+|quad|Show quad|Int|
+|reuseCoordinates|Re-use the unstructured grids coordinate list and data-object|Int|

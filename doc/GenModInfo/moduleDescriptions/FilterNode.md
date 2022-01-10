@@ -20,6 +20,6 @@ Filter data objects
 ## Parameters
 |name|description|type|
 |-|-|-|
-|criterion|Selection criterion (Rank, BlockNumber, Timestep)|Integer|
-|selection|Number of MPI rank, block, timestep to select|Integer|
-|invert|Invert block selection|Integer|
+|criterion|Selection criterion (Rank, BlockNumber, Timestep)|Int|
+|selection|Number of MPI rank, block, timestep to select|Int|
+|invert|Invert block selection|Int|

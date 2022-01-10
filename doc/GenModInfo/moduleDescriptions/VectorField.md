@@ -26,5 +26,5 @@ Create lines from mapped vector data
 |name|description|type|
 |-|-|-|
 |scale|scale factor for vector length|Float|
-|attachment_point|where to attach line to carrying point (Bottom, Middle, Top)|Integer|
+|attachment_point|where to attach line to carrying point (Bottom, Middle, Top)|Int|
 |range|allowed length range (before scaling)|Vector|

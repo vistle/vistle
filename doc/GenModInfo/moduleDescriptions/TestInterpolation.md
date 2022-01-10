@@ -15,6 +15,6 @@ Test interpolation
 ## Parameters
 |name|description|type|
 |-|-|-|
-|count|number of randoim points to generate per block|Integer|
-|create_celltree|create celltree|Integer|
-|mode|interpolation mode (First, Mean, Nearest, Linear)|Integer|
+|count|number of randoim points to generate per block|Int|
+|create_celltree|create celltree|Int|
+|mode|interpolation mode (First, Mean, Nearest, Linear)|Int|

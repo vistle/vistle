@@ -35,13 +35,13 @@ Read .nek5000 files
 ## Parameters
 |name|description|type|
 |-|-|-|
-|first_step|first timestep to read|Integer|
-|last_step|last timestep to read (-1: last)|Integer|
-|step_increment|number of steps to increment|Integer|
-|first_rank|rank for first partition of first timestep|Integer|
-|check_convexity|whether to check convexity of grid cells|Integer|
+|first_step|first timestep to read|Int|
+|last_step|last timestep to read (-1: last)|Int|
+|step_increment|number of steps to increment|Int|
+|first_rank|rank for first partition of first timestep|Int|
+|check_convexity|whether to check convexity of grid cells|Int|
 |filename|Geometry file path|String|
-|OnlyGeometry|Reading only Geometry? yes|no|Integer|
-|numGhostLayers|number of ghost layers around eeach partition, a layer consists of whole blocks|Integer|
-|number of blocks|number of blocks to read from file, <= 0 to read all|Integer|
-|numberOfPartitions|number of parallel partitions to use for reading, 0 = one partition for each rank|Integer|
+|OnlyGeometry|Reading only Geometry? yes|no|Int|
+|numGhostLayers|number of ghost layers around eeach partition, a layer consists of whole blocks|Int|
+|number of blocks|number of blocks to read from file, <= 0 to read all|Int|
+|numberOfPartitions|number of parallel partitions to use for reading, 0 = one partition for each rank|Int|

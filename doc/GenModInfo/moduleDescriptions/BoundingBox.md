@@ -40,7 +40,7 @@ Rendering of visualization with a enclosing bounding box
 ## Parameters
 |name|description|type|
 |-|-|-|
-|per_block|create bounding box for each block|Integer|
+|per_block|create bounding box for each block|Int|
 |min|output parameter: minimum|Vector|
 |max|output parameter: maximum|Vector|
 |min_block|output parameter: block numbers containing minimum|IntVector|

@@ -21,13 +21,13 @@ Small simulation to compare performance with other in situ interfaces
 |name|description|type|
 |-|-|-|
 |Input params|path to file with input parameters|String|
-|numTimesteps|maximum number of timesteps to execute|Integer|
-|numThreads|number of threads used by the sim|Integer|
-|numGhost|number of ghost cells in each direction|Integer|
-|numParticles|number of particles|Integer|
-|numBlocks|number of overall blocks, if zero mpi size is used|Integer|
-|verbose|print debug messages|Integer|
-|sync|synchronize after each timestep|Integer|
+|numTimesteps|maximum number of timesteps to execute|Int|
+|numThreads|number of threads used by the sim|Int|
+|numGhost|number of ghost cells in each direction|Int|
+|numParticles|number of particles|Int|
+|numBlocks|number of overall blocks, if zero mpi size is used|Int|
+|verbose|print debug messages|Int|
+|sync|synchronize after each timestep|Int|
 |velocityScale|scale factor to convert function gradient to velocity|Float|
 |tEnd|end time|Float|
 |dt|time step length|Float|

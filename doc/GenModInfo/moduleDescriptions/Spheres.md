@@ -26,5 +26,5 @@ Transform points to spheres
 |name|description|type|
 |-|-|-|
 |radius|radius or radius scale factor of spheres|Float|
-|map_mode|mapping of data to sphere size (Fixed, Radius, Surface, Volume)|Integer|
+|map_mode|mapping of data to sphere size (Fixed, Radius, Surface, Volume)|Int|
 |range|allowed radius range|Vector|

@@ -60,16 +60,16 @@ Cache input objects
 ## Parameters
 |name|description|type|
 |-|-|-|
-|mode|operation mode (Memory, From_Disk, To_Disk, Automatic)|Integer|
+|mode|operation mode (Memory, From_Disk, To_Disk, Automatic)|Int|
 |file|filename where cache should be created|String|
-|step|step width when reading from disk|Integer|
-|start|start step|Integer|
-|stop|stop step|Integer|
-|field_compression|compression mode for data fields (Uncompressed, ZfpFixedRate, ZfpAccuracy, ZfpPrecision)|Integer|
+|step|step width when reading from disk|Int|
+|start|start step|Int|
+|stop|stop step|Int|
+|field_compression|compression mode for data fields (Uncompressed, ZfpFixedRate, ZfpAccuracy, ZfpPrecision)|Int|
 |zfp_rate|ZFP fixed compression rate|Float|
-|zfp_precision|ZFP fixed precision|Integer|
+|zfp_precision|ZFP fixed precision|Int|
 |zfp_accuracy|ZFP compression error tolerance|Float|
-|archive_compression|compression mode for archives (CompressionNone, CompressionLz4, CompressionZstd, CompressionSnappy)|Integer|
-|archive_compression_speed|speed parameter of compression algorithm|Integer|
-|reorder|reorder timesteps|Integer|
-|renumber|renumber timesteps consecutively|Integer|
+|archive_compression|compression mode for archives (CompressionNone, CompressionLz4, CompressionZstd, CompressionSnappy)|Int|
+|archive_compression_speed|speed parameter of compression algorithm|Int|
+|reorder|reorder timesteps|Int|
+|renumber|renumber timesteps consecutively|Int|

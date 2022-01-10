@@ -20,4 +20,4 @@ Transform vector fields to scalar fields
 ## Parameters
 |name|description|type|
 |-|-|-|
-|Choose Scalar Value|Choose Scalar Value (X, Y, Z, AbsoluteValue)|Integer|
+|Choose Scalar Value|Choose Scalar Value (X, Y, Z, AbsoluteValue)|Int|

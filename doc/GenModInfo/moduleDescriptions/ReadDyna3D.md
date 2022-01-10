@@ -25,16 +25,16 @@ Read ls-dyna3d ptf files
 ## Parameters
 |name|description|type|
 |-|-|-|
-|first_step|first timestep to read|Integer|
-|last_step|last timestep to read (-1: last)|Integer|
-|step_increment|number of steps to increment|Integer|
-|first_rank|rank for first partition of first timestep|Integer|
-|check_convexity|whether to check convexity of grid cells|Integer|
+|first_step|first timestep to read|Int|
+|last_step|last timestep to read (-1: last)|Int|
+|step_increment|number of steps to increment|Int|
+|first_rank|rank for first partition of first timestep|Int|
+|check_convexity|whether to check convexity of grid cells|Int|
 |filename|Geometry file path|String|
-|nodalDataType|Nodal results data to be read (No_Node_Data, Displacements, Velocities, Accelerations)|Integer|
-|elementDataType|Element results data to be read (No_Element_Data, Stress_Tensor, Plastic_Strain, Thickness)|Integer|
-|component|stress tensor component (Sx, Sy, Sz, Txy, Tyz, Txz, Pressure, Von_Mises)|Integer|
+|nodalDataType|Nodal results data to be read (No_Node_Data, Displacements, Velocities, Accelerations)|Int|
+|elementDataType|Element results data to be read (No_Element_Data, Stress_Tensor, Plastic_Strain, Thickness)|Int|
+|component|stress tensor component (Sx, Sy, Sz, Txy, Tyz, Txz, Pressure, Von_Mises)|Int|
 |Selection|Number selection for parts|String|
-|format|Format of LS-DYNA3D ptf-File (CADFEM, Original, Guess)|Integer|
-|byteswap|Perform Byteswapping (Off, On, Auto)|Integer|
-|OnlyGeometry|Reading only Geometry? yes|no|Integer|
+|format|Format of LS-DYNA3D ptf-File (CADFEM, Original, Guess)|Int|
+|byteswap|Perform Byteswapping (Off, On, Auto)|Int|
+|OnlyGeometry|Reading only Geometry? yes|no|Int|

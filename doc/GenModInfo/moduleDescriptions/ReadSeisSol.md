@@ -30,15 +30,15 @@ Read cheese seismic data files (xdmf/hdf5)
 ## Parameters
 |name|description|type|
 |-|-|-|
-|first_step|first timestep to read|Integer|
-|last_step|last timestep to read (-1: last)|Integer|
-|step_increment|number of steps to increment|Integer|
-|first_rank|rank for first partition of first timestep|Integer|
-|check_convexity|whether to check convexity of grid cells|Integer|
+|first_step|first timestep to read|Int|
+|last_step|last timestep to read (-1: last)|Int|
+|step_increment|number of steps to increment|Int|
+|first_rank|rank for first partition of first timestep|Int|
+|check_convexity|whether to check convexity of grid cells|Int|
 |xfile|Xdmf File|String|
-|SeisSolMode|Select file format (XDMF, HDF5)|Integer|
-|ParallelMode|Select ParallelMode (Block or Serial (with and without timestepdistribution)) (BLOCKS, SERIAL)|Integer|
+|SeisSolMode|Select file format (XDMF, HDF5)|Int|
+|ParallelMode|Select ParallelMode (Block or Serial (with and without timestepdistribution)) (BLOCKS, SERIAL)|Int|
 |Scalar 0|Select scalar for scalar port.)|String|
 |Scalar 1|Select scalar for scalar port.)|String|
 |Scalar 2|Select scalar for scalar port.)|String|
-|ReuseGrid|Reuses grid from first XdmfGrid specified in Xdmf.|Integer|
+|ReuseGrid|Reuses grid from first XdmfGrid specified in Xdmf.|Int|

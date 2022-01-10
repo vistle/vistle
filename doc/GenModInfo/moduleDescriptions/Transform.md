@@ -23,7 +23,7 @@ Apply transformation matrix to grid
 |rotation_axis_angle|axis and angle of rotation|Vector|
 |scale|scaling factors|Vector|
 |translate|translation vector|Vector|
-|keep_original|whether to keep input|Integer|
-|repetitions|how often the transformation should be repeated|Integer|
-|animation|animate repetitions (Keep, Deanimate, Animate, TimestepAsRepetitionCount)|Integer|
-|mirror|enable mirror (Original, Mirror_X, Mirror_Y, Mirror_Z)|Integer|
+|keep_original|whether to keep input|Int|
+|repetitions|how often the transformation should be repeated|Int|
+|animation|animate repetitions (Keep, Deanimate, Animate, TimestepAsRepetitionCount)|Int|
+|mirror|enable mirror (Original, Mirror_X, Mirror_Y, Mirror_Z)|Int|

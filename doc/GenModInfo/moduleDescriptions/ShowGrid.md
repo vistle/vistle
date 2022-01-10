@@ -20,16 +20,16 @@ Show outlines of grid cells
 ## Parameters
 |name|description|type|
 |-|-|-|
-|normalcells|Show normal (non ghost) cells|Integer|
-|ghostcells|Show ghost cells|Integer|
-|convex|Show convex cells|Integer|
-|nonconvex|Show non-convex cells|Integer|
-|tetrahedron|Show tetrahedron|Integer|
-|pyramid|Show pyramid|Integer|
-|prism|Show prism|Integer|
-|hexahedron|Show hexahedron|Integer|
-|polyhedron|Show polyhedron|Integer|
-|quad|Show quad|Integer|
-|triangle|Show triandle|Integer|
-|Show Cells from Cell Nr. :|Show Cell Nr.|Integer|
-|Show Cells to Cell Nr. :|Show Cell Nr.|Integer|
+|normalcells|Show normal (non ghost) cells|Int|
+|ghostcells|Show ghost cells|Int|
+|convex|Show convex cells|Int|
+|nonconvex|Show non-convex cells|Int|
+|tetrahedron|Show tetrahedron|Int|
+|pyramid|Show pyramid|Int|
+|prism|Show prism|Int|
+|hexahedron|Show hexahedron|Int|
+|polyhedron|Show polyhedron|Int|
+|quad|Show quad|Int|
+|triangle|Show triandle|Int|
+|Show Cells from Cell Nr. :|Show Cell Nr.|Int|
+|Show Cells to Cell Nr. :|Show Cell Nr.|Int|

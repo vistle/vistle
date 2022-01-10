@@ -30,6 +30,6 @@ Show cell tree
 ## Parameters
 |name|description|type|
 |-|-|-|
-|maximum_depth|maximum depth of nodes to show|Integer|
-|show_left|show left separator|Integer|
-|show_right|show right separator|Integer|
+|maximum_depth|maximum depth of nodes to show|Int|
+|show_left|show left separator|Int|
+|show_right|show right separator|Int|

@@ -15,4 +15,4 @@ Print object statistics
 ## Parameters
 |name|description|type|
 |-|-|-|
-|continuous output|additionally write info of received objects as they arrive|Integer|
+|continuous output|additionally write info of received objects as they arrive|Int|
