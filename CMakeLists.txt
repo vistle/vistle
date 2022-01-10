@@ -58,7 +58,7 @@ if("${CMAKE_SYSTEM_NAME}" STREQUAL "CrayLinuxEnvironment")
     endmacro()
 endif()
 
-ADD_CUSTOM_TARGET(vistle_doc)
+add_custom_target(vistle_doc)
 
 if(POLICY CMP0042)
     # default to finding shlibs relative to @rpath on MacOS
@@ -89,7 +89,11 @@ set(VISTLE_CPU_ARCH
     ""
     CACHE STRING "CPU architecture to optimize for (native, corei7-avx, core-avx2, atom, ...)")
 
-option(VISTLE_PEDANTIC_ERRORS "Be pedantic about C++ standard and emit errors" ON)
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    option(VISTLE_PEDANTIC_ERRORS "Be pedantic about C++ standard and emit errors" OFF) # for diy
+else()
+    option(VISTLE_PEDANTIC_ERRORS "Be pedantic about C++ standard and emit errors" ON)
+endif()
 
 option(VISTLE_SANITIZE_UNDEFINED "Build with -fsanitize=undefined" OFF)
 option(VISTLE_SANITIZE_ADDRESS "Build with -fsanitize=address" OFF)
@@ -693,7 +697,7 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
 
     macro(genereate_documentation targetname)
         set(CREATE_DOCUMENTATION_SCRIPT ${PROJECT_SOURCE_DIR}/doc/createDocumentation.sh)
-        if (WIN32)
+        if(WIN32)
             set(CREATE_DOCUMENTATION_SCRIPT ${PROJECT_SOURCE_DIR}/doc/createDocumentation.bat)
         endif()
         set(VISTLE_FILE ${PROJECT_SOURCE_DIR}/doc/generateModuleInfo.vsl)
@@ -704,24 +708,24 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
             set(INPUT_FILE)
         endif()
 
-        ADD_CUSTOM_COMMAND(OUTPUT ${OUTPUT_FILE}
+        add_custom_command(
+            OUTPUT ${OUTPUT_FILE}
             COMMAND ${DOC_COMMAND}
             DEPENDS #build if changes in:
-                ${INPUT_FILE} #the custom documentation
-                ${targetname} #the module's source code 
-                ${CREATE_DOCUMENTATION_SCRIPT} #the bridge script
-                ${VISTLE_FILE} #the file that gets loaded by vistle to generate the documentation
-                ${PROJECT_SOURCE_DIR}/doc/GenModInfo/genModInfo.py #dependency of VISTLE_FILE
-            COMMENT "Generating documentation for " ${targetname}
-        )
+                    ${INPUT_FILE} #the custom documentation
+                    ${targetname} #the module's source code
+                    ${CREATE_DOCUMENTATION_SCRIPT} #the bridge script
+                    ${VISTLE_FILE} #the file that gets loaded by vistle to generate the documentation
+                    ${PROJECT_SOURCE_DIR}/doc/GenModInfo/genModInfo.py #dependency of VISTLE_FILE
+            COMMENT "Generating documentation for " ${targetname})
         set(ALWAYS_BUILD)
         if(VISTLE_GENERATE_DOCUMENTATION)
             set(ALWAYS_BUILD ALL)
         endif()
-        ADD_CUSTOM_TARGET(${targetname}_doc
-                        ${ALWAYS_BUILD} 
-                        DEPENDS ${OUTPUT_FILE}
-        )
+        add_custom_target(
+            ${targetname}_doc
+            ${ALWAYS_BUILD}
+            DEPENDS ${OUTPUT_FILE})
         add_dependencies(vistle_doc ${targetname}_doc)
     endmacro()
 

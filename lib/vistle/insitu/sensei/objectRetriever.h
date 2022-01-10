@@ -11,7 +11,7 @@ namespace vistle {
 namespace insitu {
 namespace sensei {
 
-class V_SENSEIEXPORT ObjectRetriever { // callbacks to retrieve GridInterfacees
+class V_SENSEIEXPORT ObjectRetriever { // callbacks to retrieve Grids
     // and Arrays from sensei
 public:
     struct V_SENSEIEXPORT PortAssignedObject {

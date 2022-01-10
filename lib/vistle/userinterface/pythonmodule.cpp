@@ -406,7 +406,15 @@ static std::string getParameterType(int id, const std::string &name)
         std::cerr << "Python: getParameterType: no such parameter" << std::endl;
         return "None";
     }
-    return vistle::Parameter::toString(param->type());
+    switch (param->type()) {
+    case Parameter::Integer:
+        return "Int"; //shorter to type for the most common type
+    case Parameter::Invalid:
+    case Parameter::Unknown:
+        return "None";
+    default:
+        return vistle::Parameter::toString(param->type());
+    }
 }
 
 static std::string getParameterPresentation(int id, const std::string &name)

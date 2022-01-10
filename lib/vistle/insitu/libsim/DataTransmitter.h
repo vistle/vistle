@@ -21,23 +21,26 @@ struct Rules {
     bool combineGrid = false;
     bool vtkFormat = false;
     bool constGrids = false;
-    bool keepTimesteps = false;
+    bool keepTimesteps = true;
+    int frequency = 1;
 };
 class DataTransmitter {
 public:
-    DataTransmitter(const MetaData &metaData, message::SyncShmIDs &creator, const message::ModuleInfo &moduleInfo,
-                    int rank);
-    void transferObjectsToVistle(size_t timestep, const message::ModuleInfo &connectedPorts, const Rules &rules);
+    DataTransmitter(const MetaData &metaData, const message::ModuleInfo &moduleInfo, int rank);
+    void transferObjectsToVistle(size_t timestep, size_t iteration, const message::ModuleInfo &moduleState,
+                                 const Rules &rules);
     void resetCache();
+
+    void updateRequestedObjets(const message::ModuleInfo &connectedPorts);
+    void updateExecutionCount();
 
 private:
     typedef std::function<vistle::Object::ptr(const visit_handle &, vistle::insitu::message::SyncShmIDs &)>
         GetMeshFunction;
 
-    std::set<std::string> getRequestedObjets(const message::ModuleInfo &connectedPorts);
-    void sendMeshesToModule(const std::set<std::string> &objects);
+    void sendMeshesToModule(const std::set<std::string> &objects, const message::ModuleInfo &moduleInfo);
     MeshInfo collectMeshInfo(size_t nthMesh);
-    bool sendConstantMesh(const MeshInfo &meshInfo);
+    bool sendConstantMesh(const MeshInfo &meshInfo, const message::ModuleInfo &moduleInfo);
 
     void makeMesh(MeshInfo &meshInfo);
     void makeSeparateMeshes(MeshInfo &meshInfo);
@@ -47,9 +50,9 @@ private:
     void makeCombinedMesh(MeshInfo &meshInfo);
     void makeSubMesh(int domain, MeshInfo &meshInfo);
 
-    void sendMeshToModule(const MeshInfo &meshInfo);
+    void sendMeshToModule(const MeshInfo &meshInfo, const message::ModuleInfo &moduleInfo);
 
-    void sendVarablesToModule(const std::set<std::string> &objects);
+    void sendVarablesToModule(const std::set<std::string> &objects, const message::ModuleInfo &moduleInfo);
     VariableInfo collectVariableInfo(size_t nthVariable);
     vistle::Object::ptr makeCombinedVariable(const VariableInfo &varInfo);
     vistle::Object::ptr makeVariable(const VariableInfo &varInfo, int iteration, bool vtkFormat);
@@ -58,14 +61,18 @@ private:
     void setMeshTimestep(vistle::Object::ptr mesh);
     void setTimestep(vistle::Object::ptr variable, size_t timestep);
     bool isRequested(const char *objectName, const std::set<std::string> &requestedObjects);
+    void updateMeta(vistle::Object::ptr obj, const message::ModuleInfo &moduleInfo) const;
 
     const MetaData &m_metaData;
-    message::SyncShmIDs &m_creator;
     message::AddObjectMsq m_sender;
     int m_rank = 0;
 
     size_t m_currTimestep = 0;
+    size_t m_currIteration = 0;
+    size_t m_executionCount = 0;
     Rules m_rules;
+    //the data objects that need to be procces according to the modules conneted ports
+    std::set<std::string> m_requestedObjects;
     std::map<std::string, MeshInfo> m_meshes; // used to find the corresponding mesh for the variables
 };
 

@@ -16,7 +16,7 @@ bool V_LIBSIMCONNECTEXPORT readSim2File(const std::string &path, std::string &ho
 // for multi process vistle they are used to create the ConnectLibSim module in the simulation process
 bool V_LIBSIMCONNECTEXPORT sendInitToSim(const std::vector<std::string> launchArgs, const std::string &host, int port,
                                          const std::string &key);
-bool V_LIBSIMCONNECTEXPORT attemptLibSImConnection(const std::string &path, const std::vector<std::string> &args);
+bool V_LIBSIMCONNECTEXPORT attemptLibSimConnection(const std::string &path, const std::vector<std::string> &args);
 } // namespace libsim
 } // namespace insitu
 } // namespace vistle

@@ -26,8 +26,14 @@ enum class HandleType {
     LastDummy
 };
 
+
 #define HANDLE_TYPE_TO_FREE_FUNC(type) &simv2_##type##_free
 typedef int (*VisitFreeFunction)(visit_handle);
+constexpr int dummyFreeFunc(visit_handle)
+{
+    return VISIT_OKAY;
+}
+
 constexpr VisitFreeFunction freeFunctions[static_cast<int>(HandleType::LastDummy)]{
     HANDLE_TYPE_TO_FREE_FUNC(CurvilinearMesh),
     HANDLE_TYPE_TO_FREE_FUNC(UnstructuredMesh),
@@ -35,7 +41,8 @@ constexpr VisitFreeFunction freeFunctions[static_cast<int>(HandleType::LastDummy
     HANDLE_TYPE_TO_FREE_FUNC(DomainList),
     HANDLE_TYPE_TO_FREE_FUNC(VariableData),
     HANDLE_TYPE_TO_FREE_FUNC(SimulationMetaData),
-    nullptr //coords are freed with their parent object
+    dummyFreeFunc //coords are freed with their parent object. Nullptr would require a check when accessing the array.
+    //A runtime check throws a compiler warning for every other type. Constexpr if is c++17 only so this seems to be the simpliest solution
 };
 
 
@@ -53,11 +60,8 @@ public:
 
     ~visit_smart_handle()
     {
-        if (freeFunctions[static_cast<int>(T)]) //compiler warning before c++17
-        {
-            if (m_handle != VISIT_INVALID_HANDLE)
-                v2check(freeFunctions[static_cast<int>(T)], m_handle);
-        }
+        if (m_handle != VISIT_INVALID_HANDLE)
+            v2check(freeFunctions[static_cast<int>(T)], m_handle);
     }
     operator visit_handle() const noexcept { return m_handle; };
     const visit_handle *operator&() const noexcept { return &m_handle; };

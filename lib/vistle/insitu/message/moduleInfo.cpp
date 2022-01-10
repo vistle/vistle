@@ -7,10 +7,6 @@ bool ModuleInfo::isInitialized() const
 {
     return m_initialized;
 }
-bool ModuleInfo::isReady() const
-{
-    return m_ready;
-}
 bool ModuleInfo::isPortConnected(const std::string &portName) const
 {
     return m_connectedPorts.find(portName) != m_connectedPorts.end();
@@ -59,18 +55,9 @@ bool ModuleInfo::update(const Message &msg)
         auto m = msg.unpackOrCast<message::DisconnectPort>();
         m_connectedPorts.erase(m.value);
     } break;
-    case InSituMessageType::Ready: {
-        m_ready = msg.unpackOrCast<Ready>().value;
-    } break;
     case InSituMessageType::ShmInfo: {
         m_shmInfo = msg.unpackOrCast<message::ShmInfo>().value;
     } break;
-#ifdef MODULE_THREAD
-    case InSituMessageType::ModuleID: {
-        auto mid = msg.unpackOrCast<ModuleID>();
-        m_shmInfo.id = mid.value;
-    } break;
-#endif
     default:
         return false;
     }
@@ -84,8 +71,4 @@ void ModuleInfo::update(const ModuleInfo::ShmInfo &shmInfo)
 void ModuleInfo::setInitState(bool state)
 {
     m_initialized = state;
-}
-void ModuleInfo::setReadyState(bool state)
-{
-    m_ready = state;
 }

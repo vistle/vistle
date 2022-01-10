@@ -1,6 +1,7 @@
 #ifndef INSITU_SHM_MESSAGE_H
 #define INSITU_SHM_MESSAGE_H
 #include "InSituMessage.h"
+#include "MessageHandler.h"
 #include "export.h"
 #include <vistle/util/boost_interprocess_config.h>
 #include <boost/interprocess/ipc/message_queue.hpp>
@@ -15,63 +16,21 @@ struct ShmMsg {
     std::array<char, ShmMessageMaxSize> buf;
 };
 
-class V_INSITUMESSAGEEXPORT InSituShmMessage {
+class V_INSITUMESSAGEEXPORT InSituShmMessage: public MessageHandler {
 public:
-    template<typename SomeMessage>
-    bool send(const SomeMessage &msg) const
-    { // not thread safe
-        if (!m_initialized) {
-            std::cerr << "ShmMessage uninitialized: can not send message!" << std::endl;
-            return false;
-        }
-        if (msg.type == InSituMessageType::Invalid) {
-            std::cerr << "ShmMessage : can not send invalid message!" << std::endl;
-            return false;
-        }
-        // std::cerr << "sending message of type " << static_cast<int>(msg.type) << std::endl;
-        vistle::vecostreambuf<vistle::buffer> buf;
-        vistle::oarchive ar(buf);
-        ar &msg;
-        vistle::buffer vec = buf.get_vector();
-        std::vector<ShmMsg> msgs;
-        int i = 0;
-        auto start = vec.begin();
-        auto end = vec.begin();
-        while (end != vec.end()) {
-            auto &mm = msgs.emplace_back(ShmMsg{static_cast<int>(msg.type), vec.size()});
-            start += i;
-            if (i += ShmMessageMaxSize < vec.size()) {
-                end += ShmMessageMaxSize;
-            } else {
-                end = vec.end();
-            }
-            std::copy(start, end, mm.buf.begin());
-        }
+    InSituShmMessage(int rank); // create a msq
+    InSituShmMessage(const std::string &msqName, int rank); // connect to a msq
+    ~InSituShmMessage();
+    bool sendMessage(InSituMessageType type, const vistle::buffer &msg) const override;
 
-        try {
-            for (auto msg: msgs) {
-                m_msqs[1]->send((void *)&msg, sizeof(msg), 0);
-            }
-        } catch (const boost::interprocess::interprocess_exception &ex) {
-            std::cerr << "ShmMessage failed to send message: " << ex.what() << std::endl;
-            return false;
-        }
-
-        return true;
-    }
-    void initialize(int rank); // create a msq
-    void initialize(const std::string &msqName, int rank); // connect to a msq
-    void reset(); // set the state back to uninitialized
     bool isInitialized();
     void removeShm();
     std::string name();
-    insitu::message::Message recv();
+    insitu::message::Message recv() override;
     insitu::message::Message tryRecv();
     insitu::message::Message timedRecv(size_t timeInSec);
-    ~InSituShmMessage();
 
 private:
-    bool m_initialized = false;
     std::array<std::unique_ptr<boost::interprocess::message_queue>, 2> m_msqs;
     bool m_creator = false; // if true we created shm objects which we have to remove
     const std::string m_msqName = "vistle_shmMessage_";

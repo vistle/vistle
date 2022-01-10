@@ -19,11 +19,10 @@ class SyncShmIDs;
 }
 
 namespace libsim {
-vistle::Object::ptr get(const visit_smart_handle<HandleType::UnstructuredMesh> &meshHandle,
-                        message::SyncShmIDs &creator);
+vistle::Object::ptr get(const visit_smart_handle<HandleType::UnstructuredMesh> &meshHandle);
 namespace UnstructuredMesh {
 
-vistle::Object::ptr get(const visit_handle &meshHandle, message::SyncShmIDs &creator);
+vistle::Object::ptr get(const visit_handle &meshHandle);
 
 namespace detail {
 void SeparateAllocAndFill(int dim, const visit_handle coordHandles[4], std::shared_ptr<vistle::UnstructuredGrid> grid);

@@ -3,7 +3,7 @@
 
 #include "export.h"
 #include "moduleInfo.h"
-#include "sharedOption.h"
+#include "sharedParam.h"
 
 #include <array>
 #include <string>
@@ -34,25 +34,19 @@ namespace insitu {
 namespace message {
 
 enum class InSituMessageType {
-    Invalid,
-    AddObject,
+    ConnectPort,
     ConnectionClosed,
+    DisconnectPort,
     ExecuteCommand,
     GoOn,
-    LibSimIntOption,
-    Ready,
-    SenseiIntOption,
+    IntOption,
+    Invalid,
+    PackageComplete,
     SetCommands,
     SetCustomCommands,
     SetPorts, // detected ports from sim to module <--> connected ports from module
     // to Engine
-    ConnectPort,
-    DisconnectPort,
     ShmInfo
-#ifdef MODULE_THREAD
-    ,
-    ModuleID
-#endif
 };
 
 class Message;
@@ -103,22 +97,16 @@ struct InSituPureMessage: InSituMessageBase {
 DEFINE_IN_SITU_MESSAGE_NO_PARAM(Invalid)
 DEFINE_IN_SITU_MESSAGE_NO_PARAM(GoOn)
 
-DEFINE_IN_SITU_MESSAGE(ConnectionClosed, bool) // true -> disconnected on purpose
-DEFINE_IN_SITU_MESSAGE(ShmInfo, ModuleInfo::ShmInfo)
-DEFINE_IN_SITU_MESSAGE(AddObject, std::string)
-DEFINE_IN_SITU_MESSAGE(SetPorts, std::vector<std::vector<std::string>>)
 DEFINE_IN_SITU_MESSAGE(ConnectPort, std::string)
+DEFINE_IN_SITU_MESSAGE(ConnectionClosed, bool) // true -> disconnected on purpose
 DEFINE_IN_SITU_MESSAGE(DisconnectPort, std::string)
+//command name + empty string for generic or + value for custom
+DEFINE_IN_SITU_MESSAGE(ExecuteCommand, std::pair<std::string COMMA std::string>)
+DEFINE_IN_SITU_MESSAGE(IntOption, IntParam)
 DEFINE_IN_SITU_MESSAGE(SetCommands, std::vector<std::string>)
 DEFINE_IN_SITU_MESSAGE(SetCustomCommands, std::vector<std::string>)
-DEFINE_IN_SITU_MESSAGE(Ready, bool)
-DEFINE_IN_SITU_MESSAGE(
-    ExecuteCommand,
-    std::pair<std::string COMMA std::string>) //command name + empty string for generic or + value for custom
-
-#ifdef MODULE_THREAD
-DEFINE_IN_SITU_MESSAGE(ModuleID, int)
-#endif
+DEFINE_IN_SITU_MESSAGE(SetPorts, std::vector<std::vector<std::string>>)
+DEFINE_IN_SITU_MESSAGE(ShmInfo, ModuleInfo::ShmInfo)
 
 struct V_INSITUMESSAGEEXPORT InSituMessage
 : public vistle::message::MessageBase<InSituMessage, vistle::message::INSITU> {

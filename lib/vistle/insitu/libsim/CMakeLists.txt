@@ -27,7 +27,6 @@ function(createSimV2Lib libName)
         DataTransmitter.h
         Engine.h
         Exception.h
-        IntOption.h
         MeshInfo.h
         MetaData.h
         RectilinearMesh.h

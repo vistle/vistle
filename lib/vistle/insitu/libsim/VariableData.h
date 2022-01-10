@@ -15,9 +15,8 @@ class SyncShmIDs;
 }
 namespace libsim {
 namespace VariableData {
-vistle::Object::ptr get(const visit_handle &varHandle, message::SyncShmIDs &creator);
-vistle::Vec<vistle::Scalar, 1>::ptr allocVarForCombinedMesh(const VariableInfo &varInfo, vistle::Object::ptr mesh,
-                                                            message::SyncShmIDs &creator);
+vistle::Object::ptr get(const visit_handle &varHandle);
+vistle::Vec<vistle::Scalar, 1>::ptr allocVarForCombinedMesh(const VariableInfo &varInfo, vistle::Object::ptr mesh);
 
 } // namespace VariableData
 

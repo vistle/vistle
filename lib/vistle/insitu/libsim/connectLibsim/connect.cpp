@@ -121,7 +121,7 @@ bool vistle::insitu::libsim::sendInitToSim(const std::vector<std::string> launch
     return true;
 }
 
-bool vistle::insitu::libsim::attemptLibSImConnection(const std::string &path, const std::vector<std::string> &args)
+bool vistle::insitu::libsim::attemptLibSimConnection(const std::string &path, const std::vector<std::string> &args)
 {
     int port;
     std::string host, key;

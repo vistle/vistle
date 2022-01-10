@@ -20,11 +20,13 @@ public:
     AddObjectMsq &operator=(AddObjectMsq &&other) = default;
 
     void addObject(const std::string &port, vistle::Object::const_ptr obj);
+    void sendObjects();
 
 private:
     std::unique_ptr<vistle::message::MessageQueue> m_sendMessageQueue;
     ModuleInfo m_moduleInfo;
     size_t m_rank = 0;
+    std::vector<vistle::message::Buffer> m_cache;
 };
 } // namespace message
 } // namespace insitu

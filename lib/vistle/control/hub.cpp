@@ -168,6 +168,8 @@ Hub::Hub(bool inManager)
 
 Hub::~Hub()
 {
+    stopVrb();
+
     if (!m_isMaster) {
         sendMaster(message::RemoveHub(m_hubId));
         sendMaster(message::CloseConnection("terminating"));
@@ -425,7 +427,7 @@ bool Hub::init(int argc, char *argv[])
             auto sim2FilePath = vm["libsim"].as<std::string>();
 
             CERR << "starting manager in simulation" << std::endl;
-            if (vistle::insitu::libsim::attemptLibSImConnection(sim2FilePath, args)) {
+            if (vistle::insitu::libsim::attemptLibSimConnection(sim2FilePath, args)) {
                 sendInfo("Successfully connected to simulation");
             } else {
                 CERR << "failed to spawn Vistle manager in the simulation" << std::endl;
@@ -685,6 +687,9 @@ void Hub::addClient(Hub::socket_ptr sock)
 {
     std::unique_lock<std::mutex> lock(m_socketMutex);
     //CERR << "new client" << std::endl;
+#ifdef BOOST_POSIX_API
+    fcntl(sock->native_handle(), F_SETFD, FD_CLOEXEC);
+#endif
     m_clients.insert(sock);
 }
 
@@ -1083,8 +1088,7 @@ bool Hub::hubReady()
         }
         m_ready = true;
     }
-    processStartupScripts();
-    return true;
+    return processStartupScripts();
 }
 
 bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, const buffer *payload)
@@ -1925,11 +1929,12 @@ bool Hub::startVrb()
     m_vrbPort = 0;
 
     std::shared_ptr<process::child> child;
-    process::ipstream out;
+    auto out = std::make_shared<process::ipstream>();
+    auto err = std::make_shared<process::ipstream>();
     try {
         child = std::make_shared<process::child>(process::search_path("vrb"), process::args({"--tui", "--printport"}),
-                                                 terminate_with_parent(), process::std_out > out, m_ioService,
-                                                 process::on_exit(exit_handler));
+                                                 terminate_with_parent(), process::std_out > *out,
+                                                 process::std_err > *err, m_ioService, process::on_exit(exit_handler));
     } catch (std::exception &ex) {
         CERR << "could not create VRB process: " << ex.what() << std::endl;
         return false;
@@ -1942,7 +1947,7 @@ bool Hub::startVrb()
     CERR << "started VRB process" << std::endl;
 
     std::string line;
-    while (child->running() && std::getline(out, line) && !line.empty()) {
+    while (child->running() && std::getline(*out, line) && !line.empty()) {
         m_vrbPort = std::atol(line.c_str());
     }
     if (m_vrbPort == 0) {
@@ -1952,9 +1957,39 @@ bool Hub::startVrb()
     }
     CERR << "VRB process running on port " << m_vrbPort << ", running=" << child->running() << std::endl;
 
+    auto consumeStream = [child](process::ipstream &str) mutable {
+        std::string line;
+        while (child->running() && std::getline(str, line) && !line.empty()) {
+            std::cerr << "VRB: " << line << std::endl;
+        }
+    };
+
+    m_vrb = child;
+    m_vrbThreads.emplace_back([consumeStream, out]() mutable { consumeStream(*out); });
+    m_vrbThreads.emplace_back([consumeStream, err]() mutable { consumeStream(*err); });
+
     std::lock_guard<std::mutex> guard(m_processMutex);
     m_processMap[child] = Process::VRB;
     return true;
+}
+
+void Hub::stopVrb()
+{
+    if (m_vrb && m_vrb->valid()) {
+        m_vrb->terminate();
+    }
+    m_vrb.reset();
+
+    m_vrbPort = 0;
+
+    while (!m_vrbSockets.empty()) {
+        removeSocket(m_vrbSockets.begin()->second);
+    }
+
+    while (!m_vrbThreads.empty()) {
+        m_vrbThreads.back().join();
+        m_vrbThreads.pop_back();
+    }
 }
 
 Hub::socket_ptr Hub::connectToVrb(unsigned short port)
@@ -1962,8 +1997,8 @@ Hub::socket_ptr Hub::connectToVrb(unsigned short port)
     assert(m_isMaster);
 
     socket_ptr sock;
-    if (m_vrbPort == 0) {
-        CERR << "cannot connect to local VRB on unknown port" << std::flush;
+    if (m_quitting || m_interrupt) {
+        CERR << "refusing to connect to local VRB at port " << port << ": shutting down" << std::endl;
         return sock;
     }
 
@@ -1971,15 +2006,9 @@ Hub::socket_ptr Hub::connectToVrb(unsigned short port)
     bool connected = false;
     boost::system::error_code ec;
     while (!connected) {
-        asio::ip::tcp::resolver resolver(m_ioService);
-        asio::ip::tcp::resolver::query query("localhost", boost::lexical_cast<std::string>(port));
+        boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string("127.0.0.1"), port);
         sock = std::make_shared<socket>(m_ioService);
-        asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query, ec);
-        if (ec) {
-            std::cerr << ": resolver failed: " << ec.message() << std::endl;
-            return sock;
-        }
-        asio::connect(*sock, endpoint_iterator, ec);
+        sock->connect(endpoint, ec);
         if (!ec) {
             connected = true;
         } else if (ec == boost::system::errc::connection_refused) {
@@ -1991,24 +2020,24 @@ Hub::socket_ptr Hub::connectToVrb(unsigned short port)
         }
     }
 
-    std::cerr << " done." << std::endl;
+    std::cerr << ": done." << std::endl;
 
     const char DF_IEEE = 1;
     char df = 0;
+    asio::write(*sock, asio::const_buffer(&DF_IEEE, 1), ec);
+    if (ec) {
+        CERR << "failed to write data format, resetting socket" << std::endl;
+        sock.reset();
+        return sock;
+    }
     asio::read(*sock, asio::mutable_buffer(&df, 1), ec);
     if (ec) {
-        CERR << "failed to read data format" << std::endl;
+        CERR << "failed to read data format, resetting socket" << std::endl;
         sock.reset();
         return sock;
     }
     if (df != DF_IEEE) {
-        CERR << "incompatible data format " << static_cast<int>(df) << std::endl;
-        sock.reset();
-        return sock;
-    }
-    asio::write(*sock, asio::const_buffer(&DF_IEEE, 1), ec);
-    if (ec) {
-        CERR << "failed to write data format" << std::endl;
+        CERR << "incompatible data format " << static_cast<int>(df) << ", resetting socket" << std::endl;
         sock.reset();
         return sock;
     }
@@ -2132,12 +2161,12 @@ bool Hub::startPythonUi()
 
 bool Hub::processScript()
 {
-    if (!m_scriptPath.empty()) {
-        auto retval = processScript(m_scriptPath, m_barrierAfterLoad, m_executeModules);
-        setLoadedFile(m_scriptPath);
-        return retval;
-    }
-    return true;
+    if (m_scriptPath.empty())
+        return true;
+
+    auto retval = processScript(m_scriptPath, m_barrierAfterLoad, m_executeModules);
+    setLoadedFile(m_scriptPath);
+    return retval;
 }
 
 bool Hub::processScript(const std::string &filename, bool barrierAfterLoad, bool executeModules)
@@ -2220,12 +2249,12 @@ bool Hub::handlePriv(const message::RemoveHub &rm)
 
 bool Hub::processStartupScripts()
 {
-    bool error = false;
     for (const auto &script: scanStartupScripts()) {
         std::cerr << "loading script " << script << std::endl;
-        error += !processScript(script, false, false);
+        if (!processScript(script, false, false))
+            return false;
     }
-    return error;
+    return true;
 }
 
 bool Hub::handlePriv(const message::Execute &exec)
@@ -2455,6 +2484,11 @@ bool Hub::handlePriv(const message::Cover &cover, const buffer *payload)
     auto it = m_vrbSockets.find(cover.senderId());
     if (it == m_vrbSockets.end()) {
         CERR << "connecting to VRB on behalf of " << cover.senderId() << std::endl;
+        if (m_vrbPort == 0) {
+            CERR << "cannot connect to local VRB on unknown port" << std::flush;
+            return false;
+        }
+
         sock = connectToVrb(m_vrbPort);
         if (sock) {
             m_vrbSockets.emplace(cover.senderId(), sock);
@@ -2540,10 +2574,7 @@ bool Hub::checkChildProcesses(bool emergency)
         next = m_processMap.erase(it);
 
         if (id == Process::VRB) {
-            m_vrbPort = 0;
-            while (!m_vrbSockets.empty()) {
-                removeSocket(m_vrbSockets.begin()->second);
-            }
+            stopVrb();
         } else if (!emergency) {
             if (id == Process::Manager) {
                 // manager died

@@ -19,17 +19,16 @@
 namespace vistle {
 namespace insitu {
 namespace libsim {
-vistle::Object::ptr get(const visit_smart_handle<HandleType::UnstructuredMesh> &meshHandle,
-                        message::SyncShmIDs &creator)
+vistle::Object::ptr get(const visit_smart_handle<HandleType::UnstructuredMesh> &meshHandle)
 {
-    return UnstructuredMesh::get(meshHandle, creator);
+    return UnstructuredMesh::get(meshHandle);
 }
 
 namespace UnstructuredMesh {
-vistle::Object::ptr get(const visit_handle &meshHandle, message::SyncShmIDs &creator)
+Object::ptr get(const visit_handle &meshHandle)
 {
     if (simv2_UnstructuredMesh_check(meshHandle) == VISIT_OKAY) {
-        vistle::UnstructuredGrid::ptr mesh = creator.createVistleObject<vistle::UnstructuredGrid>(0, 0, 0);
+        auto mesh = make_ptr<UnstructuredGrid>(Index{0}, Index{0}, Index{0});
         detail::fillTypeConnAndElemLists(meshHandle, mesh);
 
 

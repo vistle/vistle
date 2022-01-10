@@ -405,9 +405,8 @@ RayRenderObject::~RayRenderObject()
 {
     delete[] data->spheres;
     delete[] data->primitiveFlags;
-    if (data->scene) {
+    if (data->scene && data->geomID != RTC_INVALID_GEOMETRY_ID) {
         rtcDetachGeometry(data->scene, data->geomID);
-        //rtcDeleteGeometry(data->scene, data->geomID); // not possible for static geometry
         rtcReleaseScene(data->scene);
     }
     //delete[] data->indexBuffer;

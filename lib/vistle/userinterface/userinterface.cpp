@@ -231,11 +231,6 @@ bool UserInterface::handleMessage(const vistle::message::Message *message, const
         break;
     }
 
-    case message::SCREENSHOT: {
-        auto &ss = message->as<message::Screenshot>();
-        break;
-    }
-
     default:
         break;
     }

@@ -19,32 +19,31 @@
 namespace vistle {
 namespace insitu {
 namespace libsim {
-std::shared_ptr<vistle::Object> get(const visit_smart_handle<HandleType::RectilinearMesh> &meshHandle,
-                                    message::SyncShmIDs &creator)
+std::shared_ptr<Object> get(const visit_smart_handle<HandleType::RectilinearMesh> &meshHandle)
 {
-    return RectilinearMesh::get(meshHandle, creator);
+    return RectilinearMesh::get(meshHandle);
 }
 
 namespace RectilinearMesh {
 
-vistle::Object::ptr get(const visit_handle &meshHandle, message::SyncShmIDs &creator)
+Object::ptr get(const visit_handle &meshHandle)
 {
     if (simv2_RectilinearMesh_check(meshHandle) == VISIT_OKAY) {
         auto meshArray = detail::getMeshFromSim(meshHandle);
-        auto mesh = detail::makeVistleMesh(meshArray, creator);
+        auto mesh = detail::makeVistleMesh(meshArray);
         detail::addGhost(meshHandle, mesh);
         return mesh;
     }
     return nullptr;
 }
 
-vistle::Object::ptr getCombinedUnstructured(const MeshInfo &meshInfo, message::SyncShmIDs &creator, bool vtkFormat)
+Object::ptr getCombinedUnstructured(const MeshInfo &meshInfo, bool vtkFormat)
 {
     using namespace UnstructuredMesh;
     size_t totalNumElements = 0, totalNumVerts = 0;
     const int numCorners = meshInfo.dim == 2 ? 4 : 8;
-    vistle::UnstructuredGrid::ptr mesh = creator.createVistleObject<vistle::UnstructuredGrid>(0, 0, 0);
-    std::array<vistle::Scalar *, 3> gridCoords{mesh->x().data(), mesh->y().data(), mesh->z().data()};
+    auto mesh = make_ptr<UnstructuredGrid>(Index{0}, Index{0}, Index{0});
+    std::array<Scalar *, 3> gridCoords{mesh->x().data(), mesh->y().data(), mesh->z().data()};
 
     for (size_t iteration = 0; iteration < meshInfo.domains.size; iteration++) {
         visit_handle meshHandle =
@@ -89,12 +88,9 @@ vistle::Object::ptr getCombinedUnstructured(const MeshInfo &meshInfo, message::S
 
 namespace detail {
 
-vistle::RectilinearGrid::ptr makeVistleMesh(const std::array<Array<HandleType::Coords>, 3> &meshData,
-                                            message::SyncShmIDs &creator)
+RectilinearGrid::ptr makeVistleMesh(const std::array<Array<HandleType::Coords>, 3> &meshData)
 {
-    vistle::RectilinearGrid::ptr mesh =
-        creator.createVistleObject<vistle::RectilinearGrid>(meshData[0].size, meshData[1].size, meshData[2].size);
-
+    auto mesh = make_ptr<RectilinearGrid>((Index)meshData[0].size, (Index)meshData[1].size, (Index)meshData[2].size);
     for (size_t i = 0; i < 3; ++i) {
         if (meshData[i].data) {
             transformArray(meshData[i], mesh->coords(i).begin());
@@ -105,7 +101,7 @@ vistle::RectilinearGrid::ptr makeVistleMesh(const std::array<Array<HandleType::C
     return mesh;
 }
 
-void addGhost(const visit_handle &meshHandle, std::shared_ptr<vistle::RectilinearGrid> mesh)
+void addGhost(const visit_handle &meshHandle, std::shared_ptr<RectilinearGrid> mesh)
 {
     std::array<int, 3> min, max;
     v2check(simv2_RectilinearMesh_getRealIndices, meshHandle, min.data(), max.data());
@@ -114,8 +110,8 @@ void addGhost(const visit_handle &meshHandle, std::shared_ptr<vistle::Rectilinea
         assert(min[i] >= 0);
         int numTop = mesh->getNumDivisions(i) - 1 - max[i];
         assert(numTop >= 0);
-        mesh->setNumGhostLayers(i, vistle::StructuredGridBase::GhostLayerPosition::Bottom, min[i]);
-        mesh->setNumGhostLayers(i, vistle::StructuredGridBase::GhostLayerPosition::Top, numTop);
+        mesh->setNumGhostLayers(i, StructuredGridBase::GhostLayerPosition::Bottom, min[i]);
+        mesh->setNumGhostLayers(i, StructuredGridBase::GhostLayerPosition::Top, numTop);
     }
 }
 

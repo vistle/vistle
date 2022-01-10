@@ -62,6 +62,7 @@ private:
     bool hubReady();
     bool connectToMaster(const std::string &host, unsigned short port);
     bool startVrb();
+    void stopVrb();
     socket_ptr connectToVrb(unsigned short port);
     bool handleVrb(socket_ptr sock);
     bool startUi(const std::string &uipath, bool replace = false);
@@ -101,6 +102,7 @@ private:
 
     unsigned short m_vrbPort = 0;
     std::map<int, socket_ptr> m_vrbSockets;
+    std::shared_ptr<boost::process::child> m_vrb;
 
     std::shared_ptr<DataProxy> m_dataProxy;
     TunnelManager m_tunnelManager;
@@ -187,6 +189,7 @@ private:
     std::shared_ptr<boost::asio::io_service::work> m_workGuard;
 #endif
     std::vector<std::thread> m_ioThreads;
+    std::vector<std::thread> m_vrbThreads;
     void startIoThread();
     void stopIoThreads();
 };

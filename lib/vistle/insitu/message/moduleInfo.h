@@ -31,7 +31,6 @@ public:
     };
 
     bool isInitialized() const;
-    bool isReady() const;
     bool isPortConnected(const std::string &portName) const;
     size_t id() const;
     size_t mpiSize() const;
@@ -43,11 +42,9 @@ public:
     bool update(const Message &msg); // returns if message was of a type concerning this class
     void update(const ModuleInfo::ShmInfo &shmInfo);
     void setInitState(bool state);
-    void setReadyState(bool state);
 
 private:
     bool m_initialized = false; // Module is initialized(sent port and command info)
-    bool m_ready = false; // whether the module is executing or not
     std::set<std::string> m_connectedPorts;
     ShmInfo m_shmInfo;
 };

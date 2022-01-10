@@ -29,4 +29,6 @@ brew 'python3'
 
 #brew 'hdf5', args: ['with-mpi']
 brew 'hdf5'
+brew 'netcdf'
+brew 'pnetcdf'
 brew 'hlrs-vis/tap/covise'

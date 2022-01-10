@@ -151,7 +151,7 @@ if(ENABLE_ISPC_SUPPORT)
                 OUTPUT ${results} ${outdirh}/${fname}_ispc.h
                 COMMAND ${CMAKE_COMMAND} -E make_directory ${outdir}
                 COMMAND
-                    ${ISPC_EXECUTABLE} -I ${CMAKE_CURRENT_SOURCE_DIR} ${ISPC_INCLUDE_DIR_PARMS} --arch=${ISPC_ARCHITECTURE}
+                    ${ISPC_EXECUTABLE} ${ISPC_INCLUDE_DIR_PARMS} -I ${CMAKE_CURRENT_SOURCE_DIR} --arch=${ISPC_ARCHITECTURE}
                     --addressing=${VISTLE_ISPC_ADDRESSING} -O3 --target=${ISPC_TARGET_ARGS} --math-lib=fast --opt=fast-math --woff
                     #--wno-perf
                     ${ISPC_ADDITIONAL_ARGS} -h ${outdirh}/${fname}_ispc.h -MMM ${outdir}/${fname}.dev.idep -o ${outdir}/${fname}.dev${ISPC_TARGET_EXT}

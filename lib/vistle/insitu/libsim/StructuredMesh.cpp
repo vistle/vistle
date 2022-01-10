@@ -19,13 +19,13 @@
 namespace vistle {
 namespace insitu {
 namespace libsim {
-vistle::Object::ptr get(const visit_smart_handle<HandleType::CurvilinearMesh> &meshHandle, message::SyncShmIDs &creator)
+vistle::Object::ptr get(const visit_smart_handle<HandleType::CurvilinearMesh> &meshHandle)
 {
-    return StructuredMesh::get(meshHandle, creator);
+    return StructuredMesh::get(meshHandle);
 }
 
 namespace StructuredMesh {
-vistle::Object::ptr get(const visit_handle &meshHandle, message::SyncShmIDs &creator)
+vistle::Object::ptr get(const visit_handle &meshHandle)
 {
     int check = simv2_CurvilinearMesh_check(meshHandle);
     if (check == VISIT_OKAY) {
@@ -38,8 +38,8 @@ vistle::Object::ptr get(const visit_handle &meshHandle, message::SyncShmIDs &cre
                                              &coordHandles[2], &coordHandles[3])) {
             throw EngineException("makeStructuredMesh: simv2_CurvilinearMesh_getCoords failed");
         }
-        vistle::StructuredGrid::ptr mesh =
-            creator.createVistleObject<vistle::StructuredGrid>(dims[0], dims[1], dims[2]);
+        assert(dims[0] * dims[1] * dims[2] >= 0);
+        auto mesh = make_ptr<vistle::StructuredGrid>((Index)dims[0], (Index)dims[1], (Index)dims[2]);
         if (ndims == 2) {
             std::fill(mesh->z().begin(), mesh->z().end(), 0);
         }
@@ -52,13 +52,13 @@ vistle::Object::ptr get(const visit_handle &meshHandle, message::SyncShmIDs &cre
     return nullptr;
 }
 
-vistle::Object::ptr getCombinedUnstructured(const MeshInfo &meshInfo, message::SyncShmIDs &creator, bool vtkFormat)
+vistle::Object::ptr getCombinedUnstructured(const MeshInfo &meshInfo, bool vtkFormat)
 {
     using namespace UnstructuredMesh;
 
     size_t totalNumElements = 0, totalNumVerts = 0;
     const int numCorners = meshInfo.dim == 2 ? 4 : 8;
-    vistle::UnstructuredGrid::ptr mesh = creator.createVistleObject<vistle::UnstructuredGrid>(0, 0, 0);
+    auto mesh = make_ptr<vistle::UnstructuredGrid>(Index{0}, Index{0}, Index{0});
     std::array<vistle::Scalar *, 3> gridCoords{mesh->x().data(), mesh->y().data(), mesh->z().data()};
 
     for (size_t iteration = 0; iteration < meshInfo.domains.size; iteration++) {

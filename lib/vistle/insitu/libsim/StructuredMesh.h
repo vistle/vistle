@@ -15,14 +15,12 @@ class SyncShmIDs;
 }
 namespace libsim {
 struct MeshInfo;
-vistle::Object::ptr get(const visit_smart_handle<HandleType::CurvilinearMesh> &meshHandle,
-                        message::SyncShmIDs &creator);
+vistle::Object::ptr get(const visit_smart_handle<HandleType::CurvilinearMesh> &meshHandle);
 
 namespace StructuredMesh {
-vistle::Object::ptr get(const visit_handle &meshHandle, message::SyncShmIDs &creator);
+vistle::Object::ptr get(const visit_handle &meshHandle);
 // TODO: consider ghost cells
-vistle::Object::ptr getCombinedUnstructured(const MeshInfo &meshInfo, message::SyncShmIDs &creator,
-                                            bool vtkFormat = false);
+vistle::Object::ptr getCombinedUnstructured(const MeshInfo &meshInfo, bool vtkFormat = false);
 
 namespace detail {
 void getMeshCoord(int currDomain, const char *name, int &ndims, int dims[3], int &coordMode,

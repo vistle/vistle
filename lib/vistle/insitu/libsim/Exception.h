@@ -65,7 +65,7 @@ template<typename... Args1, typename... Args2>
 inline visit_handle v2check(std::function<visit_handle(Args1...)> fnct, Args2 &&...args)
 {
     auto retval = fnct(std::forward<Args2>(args)...);
-    if (retval == VISIT_INVALID_HANDLE || retval == VISIT_ERROR) {
+    if (retval == VISIT_INVALID_HANDLE) {
         throw SimV2Exception{};
     }
     return retval;

@@ -20,15 +20,14 @@ namespace detail {
 struct Internals;
 }
 class V_SENSEIEXPORT SenseiAdapter //: public SenseiInterface
-
 {
 public:
     SenseiAdapter(bool paused, MPI_Comm Comm, MetaData &&meta, ObjectRetriever cbs, const std::string &options);
     bool Execute(size_t timestep);
     bool Finalize();
 
-    void operator=(SenseiAdapter &&other) = delete;
-    void operator=(SenseiAdapter &other) = delete;
+    SenseiAdapter &operator=(SenseiAdapter &&other) = delete;
+    SenseiAdapter &operator=(SenseiAdapter &other) = delete;
     SenseiAdapter(SenseiAdapter &&other) = delete;
     SenseiAdapter(SenseiAdapter &other) = delete;
     ~SenseiAdapter();
@@ -83,10 +82,7 @@ private:
 
     void addCommands();
     void addPorts();
-    void addObject(const std::string &port, vistle::Object::const_ptr obj);
     void updateMeta(vistle::Object::ptr obj) const;
-
-    bool isMOduleReady();
 };
 } // namespace sensei
 } // namespace insitu

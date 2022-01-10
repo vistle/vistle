@@ -1,12 +1,19 @@
 #include "EngineInterface.h"
-using namespace insitu;
+using namespace vistle::insitu::libsim;
 
-std::shared_ptr<boost::asio::ip::tcp::socket> EngineInterface::m_socket{};
-void EngineInterface::setControllSocket(std::shared_ptr<boost::asio::ip::tcp::socket> socket)
+std::unique_ptr<vistle::insitu::message::InSituTcp> EngineInterface::m_messageHandler;
+
+void EngineInterface::initialize(boost::mpi::communicator comm)
 {
-    m_socket = socket;
+    m_messageHandler = std::make_unique<vistle::insitu::message::InSituTcp>(comm);
 }
-std::shared_ptr<boost::asio::ip::tcp::socket> EngineInterface::getControllSocket()
+
+vistle::insitu::message::InSituTcp *EngineInterface::getHandler()
 {
-    return m_socket;
+    return m_messageHandler.get();
+}
+
+std::unique_ptr<vistle::insitu::message::InSituTcp> EngineInterface::extractHandler()
+{
+    return std::move(m_messageHandler);
 }
