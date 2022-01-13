@@ -136,10 +136,10 @@ private:
     template<class T>
     void fillPolyList(vistle::Polygons::ptr poly, const T &numCorner);
 
-    void printMPIStats() const;
-    void printThreadStats() const;
     template<class... Args>
     void printRank0(const std::string &str, Args... args) const;
+    void printMPIStats() const;
+    void printThreadStats() const;
 
     //Parameter
     vistle::IntParameter *m_ghost = nullptr;
