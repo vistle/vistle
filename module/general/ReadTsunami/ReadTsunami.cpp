@@ -557,36 +557,38 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
     }
 
     //************* create grnd *************//
-    if (m_bathy->getValue() == choiceParamNone)
-        printRank0("File doesn't provide bathymetry data");
-    else {
-        const NcVar &bathymetryVar = ncFile->getVar(m_bathy->getValue());
-        const std::vector<MPI_Offset> vecStartBathy{latGround.start, lonGround.start};
-        const std::vector<MPI_Offset> vecCountBathy{latGround.count, lonGround.count};
-        bathymetryVar.getVar_all(vecStartBathy, vecCountBathy, vecDepth.data());
-        if (vecDepth.empty() && m_groundSurface_out->isConnected()) {
-            latGround.readNcVar(vecLatGrid.data());
-            lonGround.readNcVar(vecLonGrid.data());
+    if (m_groundSurface_out->isConnected()) {
+        if (m_bathy->getValue() == choiceParamNone)
+            printRank0("File doesn't provide bathymetry data");
+        else {
+            const NcVar &bathymetryVar = ncFile->getVar(m_bathy->getValue());
+            const std::vector<MPI_Offset> vecStartBathy{latGround.start, lonGround.start};
+            const std::vector<MPI_Offset> vecCountBathy{latGround.count, lonGround.count};
+            bathymetryVar.getVar_all(vecStartBathy, vecCountBathy, vecDepth.data());
+            if (vecDepth.empty()) {
+                latGround.readNcVar(vecLatGrid.data());
+                lonGround.readNcVar(vecLonGrid.data());
 
-            coords[0] = vecLatGrid.begin();
-            coords[1] = vecLonGrid.begin();
+                coords[0] = vecLatGrid.begin();
+                coords[1] = vecLonGrid.begin();
 
-            const auto &scale = m_verticalScale->getValue();
-            const auto grndDim = Dim<MPI_Offset>(latGround.count, lonGround.count);
-            const auto polyDataGround = PolygonData<MPI_Offset>(numPolyGround, numPolyGround * 4, verticesGround);
-            ZCalcFunc grndZCalc = [&vecDepth, &lonGround, &scale](MPI_Offset j, MPI_Offset k) {
-                return -vecDepth[j * lonGround.count + k] * scale;
-            };
+                const auto &scale = m_verticalScale->getValue();
+                const auto grndDim = Dim<MPI_Offset>(latGround.count, lonGround.count);
+                const auto polyDataGround = PolygonData<MPI_Offset>(numPolyGround, numPolyGround * 4, verticesGround);
+                ZCalcFunc grndZCalc = [&vecDepth, &lonGround, &scale](MPI_Offset j, MPI_Offset k) {
+                    return -vecDepth[j * lonGround.count + k] * scale;
+                };
 
-            Polygons::ptr grndPtr(
-                new Polygons(polyDataGround.numElements, polyDataGround.numCorners, polyDataGround.numVertices));
-            generateSurface(grndPtr, polyDataGround, grndDim, coords, grndZCalc);
+                Polygons::ptr grndPtr(
+                    new Polygons(polyDataGround.numElements, polyDataGround.numCorners, polyDataGround.numVertices));
+                generateSurface(grndPtr, polyDataGround, grndDim, coords, grndZCalc);
 
-            // add ground data to port
-            grndPtr->setBlock(blockNum);
-            grndPtr->setTimestep(-1);
-            grndPtr->updateInternals();
-            token.addObject(m_groundSurface_out, grndPtr);
+                // add ground data to port
+                grndPtr->setBlock(blockNum);
+                grndPtr->setTimestep(-1);
+                grndPtr->updateInternals();
+                token.addObject(m_groundSurface_out, grndPtr);
+            }
         }
     }
 
