@@ -7,7 +7,7 @@
  **                                                                        **
  **                                                                        **
  **                                                                        **
- ** Author:    Marko Djuric                                                **
+ ** Author:    Marko Djuric <hpcmdjur@hlrs.de>                             **
  **                                                                        **
  **                                                                        **
  **                                                                        **
