@@ -62,8 +62,7 @@ ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicato
 : vistle::Reader(name, moduleID, comm), needSea(false), pnetcdf_comm(comm, boost::mpi::comm_create_kind::comm_duplicate)
 {
     // file-browser
-    m_filedir = addStringParameter("file_dir", "NC File directory", "/data/ChEESE/tsunami/NewData/cadiz_5m.nc",
-                                   Parameter::Filename);
+    m_filedir = addStringParameter("file_dir", "NC File directory", "", Parameter::Filename);
 
     //ghost
     m_ghost = addIntParameter("ghost", "Show ghostcells.", 1, Parameter::Boolean);
@@ -195,6 +194,9 @@ std::unique_ptr<NcmpiFile> ReadTsunami::openNcmpiFile()
 bool ReadTsunami::inspectNetCDFVars()
 {
     auto ncFile = openNcmpiFile();
+
+    if (!ncFile)
+        return false;
 
     const int &maxTime = ncFile->getDim("time").getSize();
     setTimesteps(maxTime);
