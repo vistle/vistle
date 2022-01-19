@@ -519,7 +519,6 @@ public:
 
 private:
     param_name_t name;
-    param_name_t m_group;
     module_name_t module;
     int paramtype;
 };

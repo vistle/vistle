@@ -27,7 +27,7 @@ public:
     void removeShm();
     std::string name();
     insitu::message::Message recv() override;
-    insitu::message::Message tryRecv();
+    insitu::message::Message tryRecv() override;
     insitu::message::Message timedRecv(size_t timeInSec);
 
 private:

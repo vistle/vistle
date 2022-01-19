@@ -53,7 +53,6 @@ private:
     int m_rank = -1, m_mpiSize = 0;
     MPI_Comm comm = MPI_COMM_WORLD;
 
-    bool m_ready = false; // true if the module is connected and executing
     std::map<std::string, bool> m_commands; // commands and their current state
 #ifdef MODULE_THREAD
     std::thread m_managerThread;
