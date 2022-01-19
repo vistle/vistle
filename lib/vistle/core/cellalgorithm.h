@@ -13,6 +13,7 @@ V_COREEXPORT bool originInsidePolygonZ2D(const Vector3 *corners, Index nCorners)
 V_COREEXPORT bool insidePolygon(const Vector3 &point, const Vector3 *corners, Index nCorners, const Vector3 &normal);
 V_COREEXPORT bool insideConvexPolygon(const Vector3 &point, const Vector3 *corners, Index nCorners,
                                       const Vector3 &normal);
+V_COREEXPORT std::pair<Vector3, Vector3> faceNormalAndCenter(Byte type, Index f, const Vector3 *corners);
 V_COREEXPORT std::pair<Vector3, Vector3> faceNormalAndCenter(Index nCorners, const Vector3 *corners);
 V_COREEXPORT std::pair<Vector3, Vector3> faceNormalAndCenter(Index nVert, const Index *verts, const Scalar *x,
                                                              const Scalar *y, const Scalar *z);

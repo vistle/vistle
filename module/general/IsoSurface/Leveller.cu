@@ -1111,22 +1111,23 @@ struct ComputeOutputSizes {
 };
 
 Leveller::Leveller(const IsoController &isocontrol, Object::const_ptr grid, const Scalar isovalue, Index processortype)
-      : m_isocontrol(isocontrol)
-      , m_grid(grid)
-      , m_uni(UniformGrid::as(grid))
-      , m_rect(RectilinearGrid::as(grid))
-      , m_str(StructuredGrid::as(grid))
-      , m_unstr(UnstructuredGrid::as(grid))
-      , m_strbase(StructuredGridBase::as(grid))
-      , m_poly(Polygons::as(grid))
-      , m_quad(Quads::as(grid))
-      , m_tri(Triangles::as(grid))
-      , m_coord(Coords::as(grid))
-      , m_isoValue(isovalue)
-      , m_processortype(processortype)
-      , gmin(std::numeric_limits<Scalar>::max())
-      , gmax(-std::numeric_limits<Scalar>::max())
-      , m_objectTransform(grid->getTransform())
+: m_isocontrol(isocontrol)
+, m_grid(grid)
+, m_uni(UniformGrid::as(grid))
+, m_lg(LayerGrid::as(grid))
+, m_rect(RectilinearGrid::as(grid))
+, m_str(StructuredGrid::as(grid))
+, m_unstr(UnstructuredGrid::as(grid))
+, m_strbase(StructuredGridBase::as(grid))
+, m_poly(Polygons::as(grid))
+, m_quad(Quads::as(grid))
+, m_tri(Triangles::as(grid))
+, m_coord(Coords::as(grid))
+, m_isoValue(isovalue)
+, m_processortype(processortype)
+, gmin(std::numeric_limits<Scalar>::max())
+, gmax(-std::numeric_limits<Scalar>::max())
+, m_objectTransform(grid->getTransform())
 {
     if (m_strbase || m_unstr) {
         m_triangles = Triangles::ptr(new Triangles(Object::Initialized));
@@ -1244,6 +1245,20 @@ bool Leveller::process() {
                    val += dist;
                }
            }
+       } else if (m_lg) {
+           for (int i = 0; i < 2; ++i) {
+               unicoords[i].resize(dims[i]);
+               coords[i] = unicoords[i].data();
+               Scalar dist = 0;
+               if (dims[i] > 1)
+                   dist = (m_lg->max()[i] - m_lg->min()[i]) / (dims[i] - 1);
+               Scalar val = m_lg->min()[i];
+               for (Index j = 0; j < dims[i]; ++j) {
+                   unicoords[i][j] = val;
+                   val += dist;
+               }
+           }
+           coords[2] = &m_lg->z()[0];
        } else if (m_rect) {
            for (int i=0; i<3; ++i)
                coords[i] = &m_rect->coords(i)[0];

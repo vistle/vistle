@@ -23,6 +23,7 @@
 #include "unstr.h"
 #include "structuredgridbase.h"
 #include "uniformgrid.h"
+#include "layergrid.h"
 #include "rectilineargrid.h"
 #include "structuredgrid.h"
 #include "findobjectreferenceoarchive.h"
@@ -55,6 +56,7 @@ void registerTypes()
     REGISTER_TYPE(Quads, Object::QUADS);
     REGISTER_TYPE(Polygons, Object::POLYGONS);
     REGISTER_TYPE(UniformGrid, Object::UNIFORMGRID);
+    REGISTER_TYPE(LayerGrid, Object::LAYERGRID);
     REGISTER_TYPE(RectilinearGrid, Object::RECTILINEARGRID);
     REGISTER_TYPE(StructuredGrid, Object::STRUCTUREDGRID);
     REGISTER_TYPE(UnstructuredGrid, Object::UNSTRUCTUREDGRID);

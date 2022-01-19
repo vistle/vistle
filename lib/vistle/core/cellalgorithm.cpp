@@ -208,6 +208,27 @@ bool insidePolygon(const Vector3 &point, const Vector3 *corners, Index nCorners,
     return (nisect % 2) == 1;
 }
 
+std::pair<Vector3, Vector3> faceNormalAndCenter(Byte type, Index f, const Vector3 *corners)
+{
+    const auto &faces = UnstructuredGrid::FaceVertices[type];
+    const auto &sizes = UnstructuredGrid::FaceSizes[type];
+    const auto &face = faces[f];
+    Vector3 normal(0, 0, 0);
+    Vector3 center(0, 0, 0);
+    int N = sizes[f];
+    assert(N == 3 || N == 4);
+    Index v = face[N - 1];
+    const Vector3 *c0 = &corners[v];
+    for (int i = 0; i < N; ++i) {
+        Index v = face[i];
+        const Vector3 *c1 = &corners[v];
+        center += *c1;
+        normal += cross(*c0, *c1);
+        c0 = c1;
+    }
+    return std::make_pair(normal.normalized(), center / N);
+}
+
 std::pair<Vector3, Vector3> faceNormalAndCenter(Byte type, Index f, const Index *cl, const Scalar *x, const Scalar *y,
                                                 const Scalar *z)
 {
