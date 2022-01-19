@@ -37,7 +37,7 @@ bool Coords::checkImpl() const
     return true;
 }
 
-std::pair<Vector, Vector> Coords::getBounds() const
+std::pair<Vector3, Vector3> Coords::getBounds() const
 {
     return getMinMax();
 }

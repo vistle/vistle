@@ -201,10 +201,10 @@ void setDataCoords(Scalar *d, Index numVert, const Scalar *xx, const Scalar *yy,
     }
 }
 
-void setDataUniform(Scalar *d, Index dim[3], Vector min, Vector max, DataMode mode, Scalar scale, AnimDataMode anim,
+void setDataUniform(Scalar *d, Index dim[3], Vector3 min, Vector3 max, DataMode mode, Scalar scale, AnimDataMode anim,
                     Index time)
 {
-    Vector dist = max - min;
+    Vector3 dist = max - min;
     for (int c = 0; c < 3; ++c) {
         if (dim[c] > 1)
             dist[c] /= dim[c] - 1;
@@ -243,12 +243,12 @@ void setStructuredGridGlobalOffsets(StructuredGridBase::ptr ptr, Index offset[3]
 void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::Index block, vistle::Index time) const
 {
     Index dim[3];
-    Vector dist, bdist;
+    Vector3 dist, bdist;
     Index maxBlocks[3];
     Index currBlock[3] = {bx, by, bz};
-    Vector gmin = m_min->getValue(), gmax = m_max->getValue();
-    Vector bmin;
-    Vector min, max;
+    Vector3 gmin = m_min->getValue(), gmax = m_max->getValue();
+    Vector3 bmin;
+    Vector3 min, max;
 
     for (int c = 0; c < 3; ++c) {
         dim[c] = m_size[c]->getValue() + 1;

@@ -239,7 +239,7 @@ bool ParallelRemoteRenderManager::prepareFrame(size_t numTimesteps)
     }
 
     if (m_updateBounds) {
-        Vector min, max;
+        Vector3 min, max;
         m_module->getBounds(min, max);
         setLocalBounds(min, max);
         //std::cerr << "local bounds min=" << min << ", max=" << max << std::endl;
@@ -259,7 +259,7 @@ bool ParallelRemoteRenderManager::prepareFrame(size_t numTimesteps)
     if (rhr) {
         if (m_updateBounds) {
             //std::cerr << "updated bounds: min=" << m_state.bMin[0] << " " << m_state.bMin[1] << " " << m_state.bMin[2] << std::endl;
-            Vector center = 0.5 * m_state.bMin + 0.5 * m_state.bMax;
+            Vector3 center = 0.5 * m_state.bMin + 0.5 * m_state.bMax;
             Scalar radius = (m_state.bMax - m_state.bMin).norm() * 0.5;
             for (int c = 0; c < 3; ++c) {
                 if (m_state.bMin[c] > m_state.bMax[c]) {

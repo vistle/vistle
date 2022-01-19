@@ -56,19 +56,19 @@ public:
 
     bool isConvex(Index elem) const;
     bool isGhostCell(Index elem) const override;
-    std::pair<Vector, Vector> cellBounds(Index elem) const override;
-    Index findCell(const Vector &point, Index hint = InvalidIndex, int flags = NoFlags) const override;
-    bool insideConvex(Index elem, const Vector &point) const;
-    bool inside(Index elem, const Vector &point) const override;
+    std::pair<Vector3, Vector3> cellBounds(Index elem) const override;
+    Index findCell(const Vector3 &point, Index hint = InvalidIndex, int flags = NoFlags) const override;
+    bool insideConvex(Index elem, const Vector3 &point) const;
+    bool inside(Index elem, const Vector3 &point) const override;
     Index checkConvexity(); //< return number of non-convex cells
-    Scalar exitDistance(Index elem, const Vector &point, const Vector &dir) const override;
+    Scalar exitDistance(Index elem, const Vector3 &point, const Vector3 &dir) const override;
 
-    Interpolator getInterpolator(Index elem, const Vector &point, Mapping mapping = Vertex,
+    Interpolator getInterpolator(Index elem, const Vector3 &point, Mapping mapping = Vertex,
                                  InterpolationMode mode = Linear) const override;
-    std::pair<Vector, Vector> elementBounds(Index elem) const override;
+    std::pair<Vector3, Vector3> elementBounds(Index elem) const override;
     std::vector<Index> cellVertices(Index elem) const override;
     Scalar cellDiameter(Index elem) const override;
-    Vector cellCenter(Index elem) const override;
+    Vector3 cellCenter(Index elem) const override;
     std::vector<Index> getNeighborElements(Index elem) const override;
     Index cellNumFaces(Index elem) const override;
 

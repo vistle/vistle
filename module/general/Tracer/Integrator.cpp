@@ -83,7 +83,7 @@ bool Integrator::StepEuler()
         unit = cellSize;
     }
 
-    Vector vel = m_forward ? m_ptcl->m_v : -m_ptcl->m_v;
+    Vector3 vel = m_forward ? m_ptcl->m_v : -m_ptcl->m_v;
     Scalar v = std::max(vel.norm(), Scalar(1e-7));
     if (m_ptcl->m_global.velocity_relative)
         unit /= v;
@@ -92,7 +92,7 @@ bool Integrator::StepEuler()
     return true;
 }
 
-bool Integrator::hNew(Vector3 cur, Vector3 higher, Vector3 lower, Vector vel, Scalar unit)
+bool Integrator::hNew(Vector3 cur, Vector3 higher, Vector3 lower, Vector3 vel, Scalar unit)
 {
     const auto &global = m_ptcl->m_global;
     const auto h_max = global.h_max;
@@ -169,7 +169,7 @@ bool Integrator::StepRK32()
     const Scalar third(1. / 3.);
 
     for (;;) {
-        const Vector x1 = m_ptcl->m_x + 0.5 * m_h * k[0];
+        const Vector3 x1 = m_ptcl->m_x + 0.5 * m_h * k[0];
         Index el1 = grid->findCell(x1, m_ptcl->m_el, m_cellSearchFlags);
         if (el1 == InvalidIndex) {
             m_ptcl->m_x = x1;
@@ -183,7 +183,7 @@ bool Integrator::StepRK32()
         k[1] = m_velTransform * sign * Interpolator(m_ptcl->m_block, el1, x1);
         Vector3 x2nd = m_ptcl->m_x + m_h * (k[0] * 0.5 + k[1] * 0.5);
 
-        const Vector x2 = m_ptcl->m_x + m_h * (-k[0] + 2 * k[1]);
+        const Vector3 x2 = m_ptcl->m_x + m_h * (-k[0] + 2 * k[1]);
         Index el2 = grid->findCell(x2, el1, m_cellSearchFlags);
         if (el2 == InvalidIndex) {
             m_ptcl->m_x = x2nd;
@@ -211,7 +211,7 @@ bool Integrator::StepConstantVelocity()
     Index el = m_ptcl->m_el;
     auto grid = m_ptcl->m_block->getGrid();
 
-    Vector vel = m_forward ? m_ptcl->m_v : -m_ptcl->m_v;
+    Vector3 vel = m_forward ? m_ptcl->m_v : -m_ptcl->m_v;
     vel = m_velTransform * vel;
     Scalar t = grid->exitDistance(el, m_ptcl->m_x, vel);
     if (t < 0)

@@ -79,13 +79,13 @@ struct PrimitiveAdapter {
 
     Index getPrimitiveBegin(Index prim) const;
 
-    Vector getCoord(Index prim) const
+    Vector3 getCoord(Index prim) const
     {
         Index c = this->getPrimitiveBegin(prim);
         if (m_cl)
             c = m_cl[c];
 
-        return Vector(m_x[c], m_y[c], m_z[c]);
+        return Vector3(m_x[c], m_y[c], m_z[c]);
     }
 
     typename Geo::const_ptr m_geo;
@@ -156,8 +156,8 @@ struct PrimitiveBin {
 };
 
 template<class Geo>
-std::vector<PrimitiveBin> binPrimitivesRec(int level, const PrimitiveAdapter<Geo> &adp, const Vector &bmin,
-                                           const Vector &bmax, const PrimitiveBin &bin, size_t numPrimitives)
+std::vector<PrimitiveBin> binPrimitivesRec(int level, const PrimitiveAdapter<Geo> &adp, const Vector3 &bmin,
+                                           const Vector3 &bmax, const PrimitiveBin &bin, size_t numPrimitives)
 {
     if (bin.prim.size() < numPrimitives || level > 8) {
         std::vector<PrimitiveBin> result;

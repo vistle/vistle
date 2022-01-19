@@ -147,7 +147,7 @@ Extrema::~Extrema()
 
 #ifdef BOUNDINGBOX
 namespace {
-Lines::ptr makeBox(Vector min, Vector max)
+Lines::ptr makeBox(Vector3 min, Vector3 max)
 {
     Lines::ptr box(new Lines(4, 16, 8));
     Scalar *x[3];
@@ -260,7 +260,7 @@ bool Extrema::compute()
         const Index num = coord->getNumCoords();
         const Scalar *x = &coord->x()[0], *y = &coord->y()[0], *z = &coord->z()[0];
         for (Index i = 0; i < num; ++i) {
-            auto p = transformPoint(t, Vector(x[i], y[i], z[i]));
+            auto p = transformPoint(t, Vector3(x[i], y[i], z[i]));
             for (int c = 0; c < 3; ++c) {
                 if (p[c] < min[c]) {
                     min[c] = p[c];

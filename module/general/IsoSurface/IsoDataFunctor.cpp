@@ -35,17 +35,17 @@ bool IsoController::changeParameter(const vistle::Parameter *param)
     switch (m_option->getValue()) {
     case Plane: {
         if (param->getName() == "point") {
-            Vector vertex = m_module->getVectorParameter("vertex");
-            Vector point = m_module->getVectorParameter("point");
+            Vector3 vertex = m_module->getVectorParameter("vertex");
+            Vector3 point = m_module->getVectorParameter("point");
             m_module->setFloatParameter("scalar", point.dot(vertex));
         }
         return true;
     }
     case Sphere: {
         if (param->getName() == "point") {
-            Vector vertex = m_module->getVectorParameter("vertex");
-            Vector point = m_module->getVectorParameter("point");
-            Vector diff = vertex - point;
+            Vector3 vertex = m_module->getVectorParameter("vertex");
+            Vector3 point = m_module->getVectorParameter("point");
+            Vector3 diff = vertex - point;
             m_module->setFloatParameter("scalar", diff.norm());
         }
         return true;
@@ -66,20 +66,20 @@ bool IsoController::changeParameter(const vistle::Parameter *param)
         }
         if (param->getName() == "point") {
             std::cerr << "point" << std::endl;
-            Vector vertex = m_module->getVectorParameter("vertex");
-            Vector point = m_module->getVectorParameter("point");
-            Vector direction = m_module->getVectorParameter("direction");
-            Vector diff = direction.cross(vertex - point);
+            Vector3 vertex = m_module->getVectorParameter("vertex");
+            Vector3 point = m_module->getVectorParameter("point");
+            Vector3 direction = m_module->getVectorParameter("direction");
+            Vector3 diff = direction.cross(vertex - point);
             m_module->setFloatParameter("scalar", diff.norm());
         }
         if (param->getName() == "scalar") {
             std::cerr << "scalar" << std::endl;
-            Vector vertex = m_module->getVectorParameter("vertex");
-            Vector point = m_module->getVectorParameter("point");
-            Vector direction = m_module->getVectorParameter("direction");
-            Vector diff = direction.cross(vertex - point);
+            Vector3 vertex = m_module->getVectorParameter("vertex");
+            Vector3 point = m_module->getVectorParameter("point");
+            Vector3 direction = m_module->getVectorParameter("direction");
+            Vector3 diff = direction.cross(vertex - point);
             float scalar = m_module->getFloatParameter("scalar");
-            Vector newPoint = scalar * diff / diff.norm();
+            Vector3 newPoint = scalar * diff / diff.norm();
             m_module->setVectorParameter("point", ParamVector(newPoint[0], newPoint[1], newPoint[2]));
         }
         return true;
@@ -95,9 +95,9 @@ bool IsoController::changeParameter(const vistle::Parameter *param)
 IsoDataFunctor IsoController::newFunc(const vistle::Matrix4 &objTransform, const vistle::Scalar *x,
                                       const vistle::Scalar *y, const vistle::Scalar *z) const
 {
-    Vector vertex = m_module->getVectorParameter("vertex");
-    Vector point = m_module->getVectorParameter("point");
-    Vector direction = m_module->getVectorParameter("direction");
+    Vector3 vertex = m_module->getVectorParameter("vertex");
+    Vector3 point = m_module->getVectorParameter("point");
+    Vector3 direction = m_module->getVectorParameter("direction");
     auto inv = objTransform.inverse();
     auto normalTransform = inv.block<3, 3>(0, 0).inverse().transpose();
     vertex = normalTransform * vertex;
@@ -113,9 +113,9 @@ IsoDataFunctor IsoController::newFunc(const vistle::Matrix4 &objTransform, const
 IsoDataFunctor IsoController::newFunc(const vistle::Matrix4 &objTransform, const vistle::Index dims[3],
                                       const vistle::Scalar *x, const vistle::Scalar *y, const vistle::Scalar *z) const
 {
-    Vector vertex = m_module->getVectorParameter("vertex");
-    Vector point = m_module->getVectorParameter("point");
-    Vector direction = m_module->getVectorParameter("direction");
+    Vector3 vertex = m_module->getVectorParameter("vertex");
+    Vector3 point = m_module->getVectorParameter("point");
+    Vector3 direction = m_module->getVectorParameter("direction");
     auto inv = objTransform.inverse();
     auto normalTransform = inv.block<3, 3>(0, 0).inverse().transpose();
     vertex = normalTransform * vertex;

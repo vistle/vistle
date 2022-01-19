@@ -8,7 +8,7 @@ namespace vistle {
 static const Scalar Epsilon = 1e-7;
 
 // cf. http://stackoverflow.com/questions/808441/inverse-bilinear-interpolation
-Vector trilinearInverse(const Vector &pp0, const Vector pp[8])
+Vector3 trilinearInverse(const Vector3 &pp0, const Vector3 pp[8])
 {
     // Computes the inverse of the trilinear map from [0,1]^3 to the box defined
     // by points p[0],...,p[7], where the points are ordered consistent with our hexahedron order:
@@ -54,7 +54,7 @@ Vector trilinearInverse(const Vector &pp0, const Vector pp[8])
     return ss.cast<Scalar>();
 }
 
-bool insideConvexPolygon(const Vector &point, const Vector *corners, Index nCorners, const Vector &normal)
+bool insideConvexPolygon(const Vector3 &point, const Vector3 *corners, Index nCorners, const Vector3 &normal)
 {
     // project into 2D and transform point into origin
     Index max = 0;
@@ -131,7 +131,7 @@ bool originInsidePolygonZ2D(const Vector3 *corners, Index nCorners)
     return wn != 0;
 }
 
-bool insidePolygon(const Vector &point, const Vector *corners, Index nCorners, const Vector &normal)
+bool insidePolygon(const Vector3 &point, const Vector3 *corners, Index nCorners, const Vector3 &normal)
 {
     // project into 2D and transform point into origin
     Index max = 2;
@@ -208,21 +208,21 @@ bool insidePolygon(const Vector &point, const Vector *corners, Index nCorners, c
     return (nisect % 2) == 1;
 }
 
-std::pair<Vector, Vector> faceNormalAndCenter(Byte type, Index f, const Index *cl, const Scalar *x, const Scalar *y,
-                                              const Scalar *z)
+std::pair<Vector3, Vector3> faceNormalAndCenter(Byte type, Index f, const Index *cl, const Scalar *x, const Scalar *y,
+                                                const Scalar *z)
 {
     const auto &faces = UnstructuredGrid::FaceVertices[type];
     const auto &sizes = UnstructuredGrid::FaceSizes[type];
     const auto &face = faces[f];
-    Vector normal(0, 0, 0);
-    Vector center(0, 0, 0);
+    Vector3 normal(0, 0, 0);
+    Vector3 center(0, 0, 0);
     int N = sizes[f];
     assert(N == 3 || N == 4);
     Index v = cl[face[N - 1]];
-    Vector c0(x[v], y[v], z[v]);
+    Vector3 c0(x[v], y[v], z[v]);
     for (int i = 0; i < N; ++i) {
         Index v = cl[face[i]];
-        Vector c1(x[v], y[v], z[v]);
+        Vector3 c1(x[v], y[v], z[v]);
         center += c1;
         normal += cross(c0, c1);
         c0 = c1;
@@ -230,20 +230,20 @@ std::pair<Vector, Vector> faceNormalAndCenter(Byte type, Index f, const Index *c
     return std::make_pair(normal.normalized(), center / N);
 }
 
-std::pair<Vector, Vector> faceNormalAndCenter(Index nVert, const Index *verts, const Scalar *x, const Scalar *y,
-                                              const Scalar *z)
+std::pair<Vector3, Vector3> faceNormalAndCenter(Index nVert, const Index *verts, const Scalar *x, const Scalar *y,
+                                                const Scalar *z)
 {
-    Vector normal(0, 0, 0);
-    Vector center(0, 0, 0);
+    Vector3 normal(0, 0, 0);
+    Vector3 center(0, 0, 0);
     assert(nVert >= 3);
     if (nVert < 3)
         return std::make_pair(normal, center);
 
     Index v = verts[nVert - 1];
-    Vector c0(x[v], y[v], z[v]);
+    Vector3 c0(x[v], y[v], z[v]);
     for (Index i = 0; i < nVert; ++i) {
         Index v = verts[i];
-        Vector c1(x[v], y[v], z[v]);
+        Vector3 c1(x[v], y[v], z[v]);
         center += c1;
         normal += cross(c0, c1);
         c0 = c1;
@@ -252,17 +252,17 @@ std::pair<Vector, Vector> faceNormalAndCenter(Index nVert, const Index *verts, c
     return std::make_pair(normal.normalized(), center / nVert);
 }
 
-std::pair<Vector, Vector> faceNormalAndCenter(Index nVert, const Vector *corners)
+std::pair<Vector3, Vector3> faceNormalAndCenter(Index nVert, const Vector3 *corners)
 {
-    Vector normal(0, 0, 0);
-    Vector center(0, 0, 0);
+    Vector3 normal(0, 0, 0);
+    Vector3 center(0, 0, 0);
     assert(nVert >= 3);
     if (nVert < 3)
         return std::make_pair(normal, center);
 
-    Vector c0(corners[nVert - 1]);
+    Vector3 c0(corners[nVert - 1]);
     for (Index i = 0; i < nVert; ++i) {
-        Vector c1(corners[i]);
+        Vector3 c1(corners[i]);
         center += c1;
         normal += cross(c0, c1);
         c0 = c1;
@@ -271,10 +271,10 @@ std::pair<Vector, Vector> faceNormalAndCenter(Index nVert, const Vector *corners
     return std::make_pair(normal.normalized(), center / nVert);
 }
 
-bool insideCell(const Vector &point, Byte type, Index nverts, const Index *cl, const Scalar *x, const Scalar *y,
+bool insideCell(const Vector3 &point, Byte type, Index nverts, const Index *cl, const Scalar *x, const Scalar *y,
                 const Scalar *z)
 {
-    const Vector zaxis(0, 0, 1);
+    const Vector3 zaxis(0, 0, 1);
 
     type &= cell::TYPE_MASK;
     switch (type) {
@@ -290,13 +290,13 @@ bool insideCell(const Vector &point, Byte type, Index nverts, const Index *cl, c
 #ifdef INSIDE_DEBUG
         std::cerr << "POINT: " << point.transpose() << ", #faces=" << numFaces << ", type=" << type << std::endl;
 #endif
-        Vector corners[4];
+        Vector3 corners[4];
         for (int f = 0; f < numFaces; ++f) {
-            Vector min, max;
+            Vector3 min, max;
             const unsigned nCorners = UnstructuredGrid::FaceSizes[type][f];
             for (unsigned i = 0; i < nCorners; ++i) {
                 const Index v = cl[UnstructuredGrid::FaceVertices[type][f][i]];
-                corners[i] = Vector(x[v], y[v], z[v]) - point;
+                corners[i] = Vector3(x[v], y[v], z[v]) - point;
 #ifdef INSIDE_DEBUG
                 std::cerr << "   " << corners[i].transpose() << std::endl;
 #endif
@@ -369,17 +369,17 @@ bool insideCell(const Vector &point, Byte type, Index nverts, const Index *cl, c
         break;
     }
     case UnstructuredGrid::VPOLYHEDRON: {
-        std::vector<Vector> corners;
+        std::vector<Vector3> corners;
 
         int insideCount = 0;
         for (Index i = 0; i < nverts; i += cl[i] + 1) {
             const Index nCorners = cl[i];
 
-            Vector min, max;
+            Vector3 min, max;
             corners.resize(nCorners);
             for (Index k = 0; k < nCorners; ++k) {
                 const Index v = cl[i + 1 + k];
-                corners[k] = Vector(x[v], y[v], z[v]) - point;
+                corners[k] = Vector3(x[v], y[v], z[v]) - point;
                 if (k == 0) {
                     min = max = corners[0];
                 } else {
@@ -426,7 +426,7 @@ bool insideCell(const Vector &point, Byte type, Index nverts, const Index *cl, c
         break;
     }
     case UnstructuredGrid::CPOLYHEDRON: {
-        std::vector<Vector> corners;
+        std::vector<Vector3> corners;
 
         int insideCount = 0;
         Index facestart = InvalidIndex;
@@ -439,10 +439,10 @@ bool insideCell(const Vector &point, Byte type, Index nverts, const Index *cl, c
                 const Index nCorners = i - facestart;
 
                 corners.resize(nCorners);
-                Vector min, max;
+                Vector3 min, max;
                 for (Index k = 0; k < nCorners; ++k) {
                     const Index v = cl[facestart + k];
-                    corners[k] = Vector(x[v], y[v], z[v]) - point;
+                    corners[k] = Vector3(x[v], y[v], z[v]) - point;
                     if (k == 0) {
                         min = max = corners[0];
                     } else {

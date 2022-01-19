@@ -76,10 +76,10 @@ private:
 
 template<class T>
 struct add_vectors {
-    using Vector = std::vector<T>;
-    Vector operator()(const Vector &lhs, const Vector &rhs) const
+    using Vector3 = std::vector<T>;
+    Vector3 operator()(const Vector3 &lhs, const Vector3 &rhs) const
     {
-        Vector res(lhs.size(), 0);
+        Vector3 res(lhs.size(), 0);
         for (size_t i = 0; i < lhs.size(); ++i)
             res[i] = lhs[i] + rhs[i];
         return res;

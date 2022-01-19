@@ -27,7 +27,7 @@ TestCellSearch::~TestCellSearch()
 
 bool TestCellSearch::compute()
 {
-    const Vector point = m_point->getValue();
+    const Vector3 point = m_point->getValue();
 
     auto gridObj = expect<Object>("data_in");
     if (!gridObj) {

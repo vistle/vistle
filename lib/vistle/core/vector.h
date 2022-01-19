@@ -33,7 +33,7 @@ typedef Eigen::Matrix<Scalar, 2, 1> Vector2;
 typedef Eigen::Matrix<Scalar, 3, 1> Vector3;
 typedef Eigen::Matrix<Scalar, 4, 1> Vector4;
 
-typedef Vector3 Vector;
+//typedef Vector3 Vector; // typedef removed for avoiding confusion with Eigen::Vector
 
 typedef Eigen::Matrix<Scalar, 2, 3> Matrix2x3;
 typedef Eigen::Matrix<Scalar, 3, 2> Matrix3x2;
@@ -76,7 +76,7 @@ Vector3 transformPoint(const FourColMat &t, const Vector3 &v)
     return v4.block<3, 1>(0, 0) / v4[3];
 }
 
-inline Vector3 cross(const Vector &a, const Vector &b)
+inline Vector3 cross(const Vector3 &a, const Vector3 &b)
 {
     return Vector3(difference_of_products(a[1], b[2], a[2], b[1]), difference_of_products(a[2], b[0], a[0], b[2]),
                    difference_of_products(a[0], b[1], a[1], b[0]));

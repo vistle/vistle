@@ -33,7 +33,7 @@ public:
     const Index *el() const { return m_el; }
     const Index *cl() const { return m_cl; }
 
-    std::pair<Vector, Vector> getBounds() const override;
+    std::pair<Vector3, Vector3> getBounds() const override;
 
     bool hasCelltree() const override;
     Celltree::const_ptr getCelltree() const override;
@@ -62,7 +62,7 @@ public:
     };
     const NeighborFinder &getNeighborFinder() const;
 
-    virtual std::pair<Vector, Vector> elementBounds(Index elem) const;
+    virtual std::pair<Vector3, Vector3> elementBounds(Index elem) const;
     std::vector<Index> cellVertices(Index elem) const override;
     Index cellNumFaces(Index elem) const override;
 

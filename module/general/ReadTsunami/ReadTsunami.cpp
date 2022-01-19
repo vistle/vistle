@@ -258,7 +258,7 @@ bool ReadTsunami::inspectNetCDFVars()
   *
   * @poly: Pointer on Polygon.
   * @dim: Dimension of coordinates.
-  * @coords: Vector which contains coordinates.
+  * @coords: Vector3 which contains coordinates.
   * @zCalc: Function for computing z-coordinate.
   */
 template<class T, class U>

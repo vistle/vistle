@@ -13,7 +13,7 @@ typedef std::shared_ptr<const Normals> normals_const_ptr;
 
 class V_COREEXPORT GeometryInterface: virtual public ObjectInterfaceBase {
 public:
-    virtual std::pair<Vector, Vector> getBounds() const = 0;
+    virtual std::pair<Vector3, Vector3> getBounds() const = 0;
     virtual Index getNumVertices() = 0;
     virtual Index getNumVertices() const = 0;
     virtual normals_const_ptr normals() const = 0;

@@ -335,7 +335,7 @@ void DomainSurface::createVertices(StructuredGridBase::const_ptr grid, Quads::pt
     pz.resize(vm.size());
 
     for (Index i = 0; i < vm.size(); ++i) {
-        Vector p = grid->getVertex(vm[i]);
+        Vector3 p = grid->getVertex(vm[i]);
         px[i] = p[0];
         py[i] = p[1];
         pz[i] = p[2];

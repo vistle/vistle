@@ -111,9 +111,9 @@ Index UniformGrid::getNumVertices() const
 
 // GET BOUNDS
 //-------------------------------------------------------------------------
-std::pair<Vector, Vector> UniformGrid::getBounds() const
+std::pair<Vector3, Vector3> UniformGrid::getBounds() const
 {
-    return std::make_pair(Vector(m_min[0], m_min[1], m_min[2]), Vector(m_max[0], m_max[1], m_max[2]));
+    return std::make_pair(Vector3(m_min[0], m_min[1], m_min[2]), Vector3(m_max[0], m_max[1], m_max[2]));
 }
 
 Normals::const_ptr UniformGrid::normals() const
@@ -128,17 +128,17 @@ void UniformGrid::setNormals(Normals::const_ptr normals)
 
 // CELL BOUNDS
 //-------------------------------------------------------------------------
-std::pair<Vector, Vector> UniformGrid::cellBounds(Index elem) const
+std::pair<Vector3, Vector3> UniformGrid::cellBounds(Index elem) const
 {
     auto n = cellCoordinates(elem, m_numDivisions);
-    Vector min(m_min[0] + n[0] * m_dist[0], m_min[1] + n[1] * m_dist[1], m_min[2] + n[2] * m_dist[2]);
-    Vector max = min + Vector(m_dist[0], m_dist[1], m_dist[2]);
+    Vector3 min(m_min[0] + n[0] * m_dist[0], m_min[1] + n[1] * m_dist[1], m_min[2] + n[2] * m_dist[2]);
+    Vector3 max = min + Vector3(m_dist[0], m_dist[1], m_dist[2]);
     return std::make_pair(min, max);
 }
 
 // FIND CELL
 //-------------------------------------------------------------------------
-Index UniformGrid::findCell(const Vector &point, Index hint, int flags) const
+Index UniformGrid::findCell(const Vector3 &point, Index hint, int flags) const
 {
     const bool acceptGhost = flags & AcceptGhost;
 
@@ -165,7 +165,7 @@ Index UniformGrid::findCell(const Vector &point, Index hint, int flags) const
 
 // INSIDE CHECK
 //-------------------------------------------------------------------------
-bool UniformGrid::inside(Index elem, const Vector &point) const
+bool UniformGrid::inside(Index elem, const Vector3 &point) const
 {
     if (elem == InvalidIndex)
         return false;
@@ -189,12 +189,12 @@ bool UniformGrid::inside(Index elem, const Vector &point) const
     return true;
 }
 
-Scalar UniformGrid::exitDistance(Index elem, const Vector &point, const Vector &dir) const
+Scalar UniformGrid::exitDistance(Index elem, const Vector3 &point, const Vector3 &dir) const
 {
     if (elem == InvalidIndex)
         return false;
 
-    Vector raydir(dir.normalized());
+    Vector3 raydir(dir.normalized());
 
     std::array<Index, 3> n = cellCoordinates(elem, m_numDivisions);
     assert(n[0] < m_numDivisions[0] - 1);
@@ -222,10 +222,10 @@ Scalar UniformGrid::exitDistance(Index elem, const Vector &point, const Vector &
     return exitDist;
 }
 
-Vector UniformGrid::getVertex(Index v) const
+Vector3 UniformGrid::getVertex(Index v) const
 {
     auto n = vertexCoordinates(v, m_numDivisions);
-    return Vector(m_min[0] + n[0] * m_dist[0], m_min[1] + n[1] * m_dist[1], m_min[2] + n[2] * m_dist[2]);
+    return Vector3(m_min[0] + n[0] * m_dist[0], m_min[1] + n[1] * m_dist[1], m_min[2] + n[2] * m_dist[2]);
 }
 
 void UniformGrid::copyAttributes(Object::const_ptr src, bool replace)
@@ -239,7 +239,7 @@ void UniformGrid::copyAttributes(Object::const_ptr src, bool replace)
 
 // GET INTERPOLATOR
 //-------------------------------------------------------------------------
-GridInterface::Interpolator UniformGrid::getInterpolator(Index elem, const Vector &point, DataBase::Mapping mapping,
+GridInterface::Interpolator UniformGrid::getInterpolator(Index elem, const Vector3 &point, DataBase::Mapping mapping,
                                                          GridInterface::InterpolationMode mode) const
 {
     assert(inside(elem, point));
@@ -260,8 +260,8 @@ GridInterface::Interpolator UniformGrid::getInterpolator(Index elem, const Vecto
     std::array<Index, 3> n = cellCoordinates(elem, m_numDivisions);
     auto cl = cellVertices(elem, m_numDivisions);
 
-    Vector corner(m_min[0] + n[0] * m_dist[0], m_min[1] + n[1] * m_dist[1], m_min[2] + n[2] * m_dist[2]);
-    const Vector diff = point - corner;
+    Vector3 corner(m_min[0] + n[0] * m_dist[0], m_min[1] + n[1] * m_dist[1], m_min[2] + n[2] * m_dist[2]);
+    const Vector3 diff = point - corner;
 
     const Index nvert = cl.size();
     std::vector<Index> indices((mode == Linear || mode == Mean) ? nvert : 1);
@@ -278,7 +278,7 @@ GridInterface::Interpolator UniformGrid::getInterpolator(Index elem, const Vecto
         for (Index i = 0; i < nvert; ++i) {
             indices[i] = cl[i];
         }
-        Vector ss = diff;
+        Vector3 ss = diff;
         for (int c = 0; c < 3; ++c) {
             ss[c] /= m_dist[c];
             assert(ss[c] >= 0.0);
@@ -298,7 +298,7 @@ GridInterface::Interpolator UniformGrid::getInterpolator(Index elem, const Vecto
         if (mode == First) {
             indices[0] = cl[0];
         } else if (mode == Nearest) {
-            Vector ss = diff;
+            Vector3 ss = diff;
             int nearest = 0;
             for (int c = 0; c < 3; ++c) {
                 nearest <<= 1;

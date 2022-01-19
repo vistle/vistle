@@ -21,7 +21,7 @@ public:
     typedef DataBase Base;
     typedef typename shm<T>::array array;
     typedef T Scalar;
-    typedef VistleVector<Scalar, Dim> Vector;
+    typedef VistleVector<Scalar, Dim> VecVector;
 
     Vec(const Index size, const Meta &meta = Meta());
 
@@ -74,7 +74,7 @@ public:
     }
 
     void updateInternals() override;
-    std::pair<Vector, Vector> getMinMax() const;
+    std::pair<VecVector, VecVector> getMinMax() const;
 
 private:
     mutable const T *m_x[MaxDim];
@@ -82,8 +82,8 @@ private:
 
 public:
     struct Data: public Base::Data {
-        Vector min;
-        Vector max;
+        VecVector min;
+        VecVector max;
         ShmVector<T> x[Dim];
         // when used as Vec
         Data(const Index size = 0, const std::string &name = "", const Meta &meta = Meta());

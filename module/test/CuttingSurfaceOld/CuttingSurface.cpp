@@ -5,6 +5,7 @@
 #include <vistle/core/triangles.h>
 #include <vistle/core/unstr.h>
 #include <vistle/core/vec.h>
+#include <vistle/core/vector.h>
 #include <vistle/util/math.h>
 #include "tables.h"
 
@@ -34,8 +35,8 @@ CuttingSurfaceOld::~CuttingSurfaceOld()
 
 const Scalar EPSILON = 1.0e-10f;
 
-inline Vector interp(Scalar value, const Vector &p0, const Vector &p1, const Scalar f0, const Scalar f1,
-                     const Scalar v0, const Scalar v1, Scalar &v)
+inline Vector3 interp(Scalar value, const Vector3 &p0, const Vector3 &p1, const Scalar f0, const Scalar f1,
+                      const Scalar v0, const Scalar v1, Scalar &v)
 {
     Scalar diff = (f1 - f0);
 
@@ -64,7 +65,7 @@ inline Vector interp(Scalar value, const Vector &p0, const Vector &p1, const Sca
 class PlaneCut {
     UnstructuredGrid::const_ptr m_grid;
     std::vector<Object::const_ptr> m_data;
-    Vector m_normal;
+    Vector3 m_normal;
     Scalar m_distance;
 
     const Byte *tl;
@@ -86,7 +87,7 @@ class PlaneCut {
     Vec<Scalar>::ptr m_outData;
 
 public:
-    PlaneCut(UnstructuredGrid::const_ptr grid, const Vector &normal, const Scalar distance)
+    PlaneCut(UnstructuredGrid::const_ptr grid, const Vector3 &normal, const Scalar distance)
     : m_grid(grid)
     , m_normal(normal)
     , m_distance(distance)
@@ -195,7 +196,7 @@ private:
         index[6] = cl[p + 3];
         index[7] = cl[p];
 
-        Vector v[8];
+        Vector3 v[8];
         Scalar field[8];
         for (int idx = 0; idx < 8; idx++) {
             v[idx][0] = x[index[idx]];
@@ -221,7 +222,7 @@ private:
                     mapping[idx] = d[index[idx]];
             }
 
-            Vector vertlist[12];
+            Vector3 vertlist[12];
             Scalar maplist[12];
 
             vertlist[0] = interp(0.0, v[0], v[1], field[0], field[1], mapping[0], mapping[1], maplist[0]);
@@ -242,7 +243,7 @@ private:
             for (int idx = 0; idx < numVerts; idx += 3) {
                 for (int i = 0; i < 3; ++i) {
                     int edge = hexaTriTable[tableIndex][idx + i];
-                    Vector &v = vertlist[edge];
+                    Vector3 &v = vertlist[edge];
 
                     out_cl[outIdx + idx + i] = outIdx + idx + i;
                     out_x[outIdx + idx + i] = v[0];
@@ -260,7 +261,7 @@ private:
 
 std::pair<Object::ptr, Object::ptr> CuttingSurfaceOld::generateCuttingSurface(Object::const_ptr grid_object,
                                                                               Object::const_ptr data_object,
-                                                                              const Vector &normal,
+                                                                              const Vector3 &normal,
                                                                               const Scalar distance)
 {
     if (!grid_object || !data_object)
@@ -283,11 +284,11 @@ std::pair<Object::ptr, Object::ptr> CuttingSurfaceOld::generateCuttingSurface(Ob
 bool CuttingSurfaceOld::compute()
 {
     const ParamVector pnormal = getVectorParameter("vertex");
-    Vector normal(pnormal[0], pnormal[1], pnormal[2]);
+    Vector3 normal(pnormal[0], pnormal[1], pnormal[2]);
     normal.normalize();
     const ParamVector ppoint = getVectorParameter("point");
-    const Vector point = Vector(ppoint[0], ppoint[1], ppoint[2]);
-    const Vector proj = normal * point.dot(normal);
+    const Vector3 point = Vector3(ppoint[0], ppoint[1], ppoint[2]);
+    const Vector3 proj = normal * point.dot(normal);
     int max = 0;
     if (std::abs(normal[1]) > std::abs(normal[0])) {
         max = 1;

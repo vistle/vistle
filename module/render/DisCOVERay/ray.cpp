@@ -361,7 +361,7 @@ void TileTask::render(int tile) const
     data.dy.y = dy[1];
     data.dy.z = dy[2];
 
-    const Vector toLowerBottom = lowerBottom - origin;
+    const Vector3 toLowerBottom = lowerBottom - origin;
     data.corner.x = toLowerBottom[0];
     data.corner.y = toLowerBottom[1];
     data.corner.z = toLowerBottom[2];
@@ -492,22 +492,22 @@ void DisCOVERay::renderRect(const vistle::Matrix4 &P, const vistle::Matrix4 &MV,
     const auto inv = MVP.inverse();
 
     const Vector4 ro4 = MV.inverse().col(3);
-    const Vector ro = ro4.block<3, 1>(0, 0) / ro4[3];
+    const Vector3 ro = ro4.block<3, 1>(0, 0) / ro4[3];
 
     const Vector4 lbn4 = inv * Vector4(-1, -1, -1, 1);
-    Vector lbn(lbn4[0], lbn4[1], lbn4[2]);
+    Vector3 lbn(lbn4[0], lbn4[1], lbn4[2]);
     lbn /= lbn4[3];
 
     const Vector4 lbf4 = inv * Vector4(-1, -1, 1, 1);
-    Vector lbf(lbf4[0], lbf4[1], lbf4[2]);
+    Vector3 lbf(lbf4[0], lbf4[1], lbf4[2]);
     lbf /= lbf4[3];
 
     const Vector4 rbn4 = inv * Vector4(1, -1, -1, 1);
-    Vector rbn(rbn4[0], rbn4[1], rbn4[2]);
+    Vector3 rbn(rbn4[0], rbn4[1], rbn4[2]);
     rbn /= rbn4[3];
 
     const Vector4 ltn4 = inv * Vector4(-1, 1, -1, 1);
-    Vector ltn(ltn4[0], ltn4[1], ltn4[2]);
+    Vector3 ltn(ltn4[0], ltn4[1], ltn4[2]);
     ltn /= ltn4[3];
 
     const Scalar tFar = (lbf - ro).norm() / (lbn - ro).norm();

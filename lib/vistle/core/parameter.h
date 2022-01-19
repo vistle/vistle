@@ -40,7 +40,7 @@ public:
                                         (Boolean) // Integer
                                         (Choice) // Integer (fixed choice) and String (dynamic choice)
                                         (Slider) // Integer, Float
-                                        (Color) // Vector
+                                        (Color) // Vector3
                                         (InvalidPresentation) // keep last
     )
 

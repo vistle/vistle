@@ -68,7 +68,7 @@ bool ToSpheres::compute()
         rad3.resize(radius3->getSize());
         auto x = &radius3->x()[0], y = &radius3->y()[0], z = &radius3->z()[0];
         for (Index i = 0; i < rad3.size(); ++i) {
-            rad3[i] = Vector(x[i], y[i], z[i]).norm();
+            rad3[i] = Vector3(x[i], y[i], z[i]).norm();
         }
         rad = rad3.data();
     }

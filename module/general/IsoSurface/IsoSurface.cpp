@@ -117,7 +117,7 @@ bool IsoSurface::reduce(int timestep)
     if (rank() == 0)
         std::cerr << "IsoSurface::reduce(" << timestep << ")" << std::endl;
     Scalar value = m_isovalue->getValue();
-    Vector point = m_isopoint->getValue();
+    Vector3 point = m_isopoint->getValue();
 
     std::unique_lock<std::mutex> lock(m_mutex);
     std::vector<BlockData> &blocks = m_blocksForTime[timestep];

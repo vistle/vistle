@@ -338,17 +338,17 @@ bool ToTriangles::compute()
             for (Index i = 0; i < n; ++i) {
                 const Index begin = el[i], end = el[i + 1];
 
-                Vector normal;
+                Vector3 normal;
                 for (Index k = begin; k < end; ++k) {
-                    Vector cur(x[k], y[k], z[k]);
-                    Vector next = k + 1 < end ? Vector(x[k + 1], y[k + 1], z[k + 1]) : Vector(0., 0., 0.);
+                    Vector3 cur(x[k], y[k], z[k]);
+                    Vector3 next = k + 1 < end ? Vector3(x[k + 1], y[k + 1], z[k + 1]) : Vector3(0., 0., 0.);
 
-                    Vector l1 = next - cur;
-                    Vector dir;
+                    Vector3 l1 = next - cur;
+                    Vector3 dir;
                     if (k == begin) {
                         dir = l1.normalized();
                     } else {
-                        Vector l2(x[k] - x[k - 1], y[k] - y[k - 1], z[k] - z[k - 1]);
+                        Vector3 l2(x[k] - x[k - 1], y[k] - y[k - 1], z[k] - z[k - 1]);
                         if (k + 1 == end) {
                             dir = l2.normalized();
                         } else {
@@ -357,7 +357,7 @@ bool ToTriangles::compute()
                     }
 
                     if (k == begin) {
-                        normal = dir.cross(Vector(0, 0, 1)).normalized();
+                        normal = dir.cross(Vector3(0, 0, 1)).normalized();
                     } else {
                         normal = (normal - dir.dot(normal) * dir).normalized();
                     }
@@ -382,12 +382,12 @@ bool ToTriangles::compute()
                             ti[ii++] = ci + (l + 1) % NumSect;
                         }
 
-                        Vector rad = normal;
+                        Vector3 rad = normal;
                         for (Index l = 0; l < NumSect; ++l) {
                             nx[ci] = dir[0];
                             ny[ci] = dir[1];
                             nz[ci] = dir[2];
-                            Vector p = cur + r[k] * rad;
+                            Vector3 p = cur + r[k] * rad;
                             rad = rot * rad;
                             tx[ci] = p[0];
                             ty[ci] = p[1];
@@ -413,7 +413,7 @@ bool ToTriangles::compute()
                         nx[ci] = normal[0];
                         ny[ci] = normal[1];
                         nz[ci] = normal[2];
-                        Vector p = cur + r[k] * normal;
+                        Vector3 p = cur + r[k] * normal;
                         normal = rot * normal;
                         tx[ci] = p[0];
                         ty[ci] = p[1];
@@ -437,10 +437,10 @@ bool ToTriangles::compute()
 
                             Scalar tipSize = 2.0;
 
-                            Vector tip = cur + tipSize * dir * r[k];
+                            Vector3 tip = cur + tipSize * dir * r[k];
                             for (Index l = 0; l < NumSect; ++l) {
-                                Vector norm = (normal + dir).normalized();
-                                Vector p = cur + tipSize * r[k] * normal;
+                                Vector3 norm = (normal + dir).normalized();
+                                Vector3 p = cur + tipSize * r[k] * normal;
                                 normal = rot * normal;
 
                                 nx[ci] = norm[0];
@@ -454,7 +454,7 @@ bool ToTriangles::compute()
 
                             normal = rot2 * normal;
                             for (Index l = 0; l < NumSect; ++l) {
-                                Vector norm = (normal + dir).normalized();
+                                Vector3 norm = (normal + dir).normalized();
                                 normal = rot * normal;
 
                                 nx[ci] = norm[0];

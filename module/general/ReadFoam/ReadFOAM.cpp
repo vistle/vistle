@@ -429,7 +429,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
                         Index cell = (*owners)[b.startFace + i];
                         ghostCellCandidates.insert(cell);
                     }
-                    //               std::sort(ghostCellCandidates.begin(),ghostCellCandidates.end()); //Sort Vector by ascending Value
+                    //               std::sort(ghostCellCandidates.begin(),ghostCellCandidates.end()); //Sort Vector3 by ascending Value
                     //               ghostCellCandidates.erase(std::unique(ghostCellCandidates.begin(), ghostCellCandidates.end()), ghostCellCandidates.end()); //Delete duplicate entries
                     for (Index i = 0; i < b.numFaces; ++i) {
                         Index cell = (*owners)[b.startFace + i];
@@ -702,7 +702,7 @@ std::vector<DataBase::ptr> ReadFOAM::loadBoundaryField(const std::string &meshdi
     auto &boundaries = *m_boundaries[processor];
     auto owners = m_owners[processor]->data();
 
-    //Create the dataMapping Vector
+    //Create the dataMapping Vector3
     std::vector<std::string> patchNames;
     std::vector<std::vector<index_t>> dataMapping;
     if (asVariants) {

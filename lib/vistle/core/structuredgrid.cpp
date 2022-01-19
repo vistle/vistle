@@ -158,15 +158,15 @@ void StructuredGrid::createCelltree(Index dims[3]) const
 
     const Scalar *coords[3] = {&x()[0], &y()[0], &z()[0]};
     const Scalar smax = std::numeric_limits<Scalar>::max();
-    Vector vmin, vmax;
+    Vector3 vmin, vmax;
     vmin.fill(-smax);
     vmax.fill(smax);
 
     const Index nelem = getNumElements();
-    std::vector<Vector> min(nelem, vmax);
-    std::vector<Vector> max(nelem, vmin);
+    std::vector<Vector3> min(nelem, vmax);
+    std::vector<Vector3> max(nelem, vmin);
 
-    Vector gmin = vmax, gmax = vmin;
+    Vector3 gmin = vmax, gmax = vmin;
     for (Index el = 0; el < nelem; ++el) {
         const auto corners = cellVertices(el, dims);
         for (int d = 0; d < 3; ++d) {
@@ -202,11 +202,11 @@ Index StructuredGrid::getNumVertices() const
 
 // GET FUNCTION - BOUNDS
 //-------------------------------------------------------------------------
-std::pair<Vector, Vector> StructuredGrid::getBounds() const
+std::pair<Vector3, Vector3> StructuredGrid::getBounds() const
 {
     if (hasCelltree()) {
         const auto ct = getCelltree();
-        return std::make_pair(Vector(ct->min()), Vector(ct->max()));
+        return std::make_pair(Vector3(ct->min()), Vector3(ct->max()));
     }
 
     return Base::getMinMax();
@@ -224,13 +224,13 @@ void StructuredGrid::setNormals(Normals::const_ptr normals)
 
 // CELL BOUNDS
 //-------------------------------------------------------------------------
-std::pair<Vector, Vector> StructuredGrid::cellBounds(Index elem) const
+std::pair<Vector3, Vector3> StructuredGrid::cellBounds(Index elem) const
 {
     const Scalar *x[3] = {&this->x()[0], &this->y()[0], &this->z()[0]};
     auto cl = cellVertices(elem, m_numDivisions);
 
     const Scalar smax = std::numeric_limits<Scalar>::max();
-    Vector min(smax, smax, smax), max(-smax, -smax, -smax);
+    Vector3 min(smax, smax, smax), max(-smax, -smax, -smax);
     for (Index v: cl) {
         for (int c = 0; c < 3; ++c) {
             min[c] = std::min(min[c], x[c][v]);
@@ -242,7 +242,7 @@ std::pair<Vector, Vector> StructuredGrid::cellBounds(Index elem) const
 
 // FIND CELL
 //-------------------------------------------------------------------------
-Index StructuredGrid::findCell(const Vec::Vector &point, Index hint, int flags) const
+Index StructuredGrid::findCell(const Vector3 &point, Index hint, int flags) const
 {
     const bool acceptGhost = flags & AcceptGhost;
     const bool useCelltree = (flags & ForceCelltree) || (hasCelltree() && !(flags & NoCelltree));
@@ -270,7 +270,7 @@ Index StructuredGrid::findCell(const Vec::Vector &point, Index hint, int flags) 
 
 // INSIDE CHECK
 //-------------------------------------------------------------------------
-bool StructuredGrid::inside(Index elem, const Vec::Vector &point) const
+bool StructuredGrid::inside(Index elem, const Vector3 &point) const
 {
     if (elem == InvalidIndex)
         return false;
@@ -283,7 +283,7 @@ bool StructuredGrid::inside(Index elem, const Vec::Vector &point) const
     auto cl = cellVertices(elem, m_numDivisions);
 
 #ifdef ASSUME_CONVEX
-    Vector corners[8];
+    Vector3 corners[8];
     for (int i = 0; i < 8; ++i) {
         corners[i][0] = x[cl[i]];
         corners[i][1] = y[cl[i]];
@@ -294,12 +294,12 @@ bool StructuredGrid::inside(Index elem, const Vec::Vector &point) const
     const auto &faces = UnstructuredGrid::FaceVertices[type];
     const auto &sizes = UnstructuredGrid::FaceSizes[type];
     for (int f = 0; f < numFaces; ++f) {
-        Vector v0 = corners[faces[f][0]];
-        Vector edge1 = corners[faces[f][1]];
+        Vector3 v0 = corners[faces[f][0]];
+        Vector3 edge1 = corners[faces[f][1]];
         edge1 -= v0;
-        Vector n(0, 0, 0);
+        Vector3 n(0, 0, 0);
         for (unsigned i = 2; i < sizes[f]; ++i) {
-            Vector edge = corners[faces[f][i]];
+            Vector3 edge = corners[faces[f][i]];
             edge -= v0;
             n += cross(edge1, edge);
         }
@@ -315,7 +315,7 @@ bool StructuredGrid::inside(Index elem, const Vec::Vector &point) const
 #endif
 }
 
-Scalar StructuredGrid::exitDistance(Index elem, const Vec::Vector &point, const Vec::Vector &dir) const
+Scalar StructuredGrid::exitDistance(Index elem, const Vector3 &point, const Vector3 &dir) const
 {
     refresh();
     auto cl = cellVertices(elem, m_numDivisions);
@@ -324,14 +324,14 @@ Scalar StructuredGrid::exitDistance(Index elem, const Vec::Vector &point, const 
     const Scalar *y = &this->y()[0];
     const Scalar *z = &this->z()[0];
 
-    const Vector raydir(dir.normalized());
+    const Vector3 raydir(dir.normalized());
 
     Scalar exitDist = -1;
     const UnstructuredGrid::Type type = UnstructuredGrid::HEXAHEDRON;
     const auto numFaces = UnstructuredGrid::NumFaces[type];
     const auto &faces = UnstructuredGrid::FaceVertices[type];
     const auto &sizes = UnstructuredGrid::FaceSizes[type];
-    Vector corners[4];
+    Vector3 corners[4];
     for (int f = 0; f < numFaces; ++f) {
         auto nc = faceNormalAndCenter(type, f, cl.data(), x, y, z);
         auto normal = nc.first;
@@ -348,7 +348,7 @@ Scalar StructuredGrid::exitDistance(Index elem, const Vec::Vector &point, const 
         const int nCorners = sizes[f];
         for (int i = 0; i < nCorners; ++i) {
             const Index v = cl[faces[f][i]];
-            corners[i] = Vector(x[v], y[v], z[v]);
+            corners[i] = Vector3(x[v], y[v], z[v]);
         }
         const auto isect = point + t * raydir;
         if (insidePolygon(isect, corners, nCorners, normal)) {
@@ -370,8 +370,7 @@ void StructuredGrid::copyAttributes(Object::const_ptr src, bool replace)
 
 // GET INTERPOLATOR
 //-------------------------------------------------------------------------
-GridInterface::Interpolator StructuredGrid::getInterpolator(Index elem, const Vec::Vector &point,
-                                                            DataBase::Mapping mapping,
+GridInterface::Interpolator StructuredGrid::getInterpolator(Index elem, const Vector3 &point, DataBase::Mapping mapping,
                                                             GridInterface::InterpolationMode mode) const
 {
 #ifdef INTERPOL_DEBUG
@@ -393,7 +392,7 @@ GridInterface::Interpolator StructuredGrid::getInterpolator(Index elem, const Ve
     Index nvert = cl.size();
 
     const Scalar *x[3] = {&this->x()[0], &this->y()[0], &this->z()[0]};
-    Vector *corners = new Vector[nvert];
+    Vector3 *corners = new Vector3[nvert];
     for (Index i = 0; i < nvert; ++i) {
         corners[i][0] = x[0][cl[i]];
         corners[i][1] = x[1][cl[i]];
@@ -414,7 +413,7 @@ GridInterface::Interpolator StructuredGrid::getInterpolator(Index elem, const Ve
         for (Index i = 0; i < nvert; ++i) {
             indices[i] = cl[i];
         }
-        const Vector ss = trilinearInverse(point, corners);
+        const Vector3 ss = trilinearInverse(point, corners);
         weights[0] = (1 - ss[0]) * (1 - ss[1]) * (1 - ss[2]);
         weights[1] = ss[0] * (1 - ss[1]) * (1 - ss[2]);
         weights[2] = ss[0] * ss[1] * (1 - ss[2]);
