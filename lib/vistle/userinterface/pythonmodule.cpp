@@ -901,6 +901,27 @@ static void moduleCompoundConnect(int compoundId, int fromId, const std::string 
         ModuleCompound::Connection{fromId - compoundId - 1, toId - compoundId - 1, fromName, toName});
 }
 
+static void moduleCompoundExpose(int compoundId, const std::string &compoundPortName, int modId,
+                                 const std::string &modPortName)
+{
+    auto comp = findCompound(compoundId);
+    if (comp == compounds.end()) {
+        compoundNotFoundError(compoundId);
+        return;
+    }
+    auto inputs = getInputPorts(modId);
+    auto outputs = getOutputPorts(modId);
+    if (std::find(inputs.begin(), inputs.end(), modPortName) != inputs.end()) {
+        comp->module.addConnection(
+            ModuleCompound::Connection{-1, modId - compoundId - 1, modPortName, compoundPortName});
+
+    } else if (std::find(outputs.begin(), outputs.end(), modPortName) != outputs.end()) {
+        comp->module.addConnection(
+            ModuleCompound::Connection{modId - compoundId - 1, -1, compoundPortName, modPortName});
+    } else {
+        printError("moduleCompoundExpose failed: port " + modPortName + "(" + std::to_string(modId) + ") not found");
+    }
+}
 
 Float compoundDropPositionX = 0;
 Float compoundDropPositionY = 0;
@@ -1373,6 +1394,8 @@ PY_MODULE(_vistle, m)
     m.def("moduleCompoundConnect", &moduleCompoundConnect,
           "connect ports of modules inside the compound, expose port if compound id is given", "compoundId"_a,
           "fromId"_a, "toId"_a, "fromPort"_a, "toPort"_a);
+    m.def("moduleCompoundExpose", &moduleCompoundExpose, "expose the port of the submodule at compoundPortName",
+          "compoundId"_a, "compoundPortName"_a, "modId"_a, "modPortName"_a);
     m.def("setRelativePos", &setRelativePos, "move module relative to compound drop position", "moduleId"_a, "x"_a,
           "y"_a);
     m.def("setCompoundDropPosition", &setCompoundDropPosition, "set the position for a module compound", "x"_a, "y"_a);
