@@ -1,5 +1,5 @@
-#ifndef SCALAR_H
-#define SCALAR_H
+#ifndef VISTLE_SCALAR_H
+#define VISTLE_SCALAR_H
 
 #include <cinttypes>
 
