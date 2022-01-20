@@ -837,7 +837,7 @@ static void loadScript(const std::string &filename)
 #endif
 }
 
-static int moduleCompoundAlloc(const std::string &compoundName)
+static int moduleCompoundCreate(const std::string &compoundName)
 {
     auto comp = std::find_if(compounds.begin(), compounds.end(), [&compoundName](const detail::ModuleCompound &c) {
         return c.module.name() == compoundName;
@@ -861,7 +861,7 @@ static int moduleCompoundAlloc(const std::string &compoundName)
 static void compoundNotFoundError(int compoundId)
 {
     printError("module compound with id " + std::to_string(compoundId) + "hast not been found!");
-    printError("allocate it with moduleCompoundAlloc(\"compoundName\"");
+    printError("allocate it with moduleCompoundCreate(\"compoundName\"");
 }
 
 static int moduleCompoundAddModule(int compoundId, const std::string &moduleName, float x = 0, float y = 0)
@@ -956,7 +956,7 @@ void moduleCompoundToFile(const ModuleCompound &comp)
         filename += moduleCompoundSuffix;
 
     std::fstream file{filename, std::ios_base::out};
-    file << "CompoundId=moduleCompoundAlloc(\"" << comp.name() << "\")" << std::endl;
+    file << "CompoundId=moduleCompoundCreate(\"" << comp.name() << "\")" << std::endl;
     for (size_t i = 0; i < comp.submodules().size(); i++) {
         file << "um" << comp.submodules()[i].name << i << " = moduleCompoundAddModule(CompoundId, \""
              << comp.submodules()[i].name << "\", " << comp.submodules()[i].x << ", " << comp.submodules()[i].y << ")"
@@ -967,15 +967,15 @@ void moduleCompoundToFile(const ModuleCompound &comp)
         file << "moduleCompoundConnect(CompoundId, " << conn.fromId << ",\"" << conn.fromPort << "\", " << conn.toId
              << ", \"" << conn.toPort << "\")" << std::endl;
     }
-    file << "moduleCompoundCreate(CompoundId)" << std::endl;
+    file << "moduleCompoundCommit(CompoundId)" << std::endl;
 }
 
-static void moduleCompoundCreate(int compoundId)
+static void moduleCompoundCommit(int compoundId)
 {
     auto mc = findCompound(compoundId);
     if (mc == compounds.end()) {
         printError("Failed to create module compound: invalid id " + std::to_string(compoundId));
-        printError("Module compound has to be allocated using \"moduleCompoundAlloc(string compoundName)\"");
+        printError("Module compound has to be allocated using \"moduleCompoundCreate(string compoundName)\"");
         return;
     }
     mc->module.send(
@@ -1367,7 +1367,7 @@ PY_MODULE(_vistle, m)
           "return its ID",
           "hub"_a, "modulename"_a, "numspawn"_a = -1, "baserank"_a = -1, "rankskip"_a = -1);
     m.def("loadScript", &loadScript, "load a python script", "filename"_a);
-    m.def("moduleCompoundAlloc", &moduleCompoundAlloc, "allocate a new module compound", "name"_a);
+    m.def("moduleCompoundCreate", &moduleCompoundCreate, "allocate a new module compound", "name"_a);
     m.def("moduleCompoundAddModule", &moduleCompoundAddModule, "add a module to a module compound", "compoundId"_a,
           "modulename"_a, "x"_a = 0, "y"_a = 0);
     m.def("moduleCompoundConnect", &moduleCompoundConnect,
@@ -1376,7 +1376,7 @@ PY_MODULE(_vistle, m)
     m.def("setRelativePos", &setRelativePos, "move module relative to compound drop position", "moduleId"_a, "x"_a,
           "y"_a);
     m.def("setCompoundDropPosition", &setCompoundDropPosition, "set the position for a module compound", "x"_a, "y"_a);
-    m.def("moduleCompoundCreate", &moduleCompoundCreate, "lock and create the compound", "compoundId"_a);
+    m.def("moduleCompoundCommit", &moduleCompoundCommit, "lock and create the compound", "compoundId"_a);
 
     m.def("spawn", spawn,
           "spawn new module `arg1`\n"
