@@ -34,7 +34,7 @@ class V_COREEXPORT Celltree: public Object {
 public:
     typedef Object Base;
 
-    typedef typename VistleScalarVector<NumDimensions>::type Vector;
+    typedef typename VistleScalarVector<NumDimensions>::type CTVector;
     typedef CelltreeNode<sizeof(Index), NumDimensions> Node;
 
     class VisitFunctor {
@@ -77,7 +77,7 @@ public:
     //! compute bounding box of a cell
     class CellBoundsFunctor {
     public:
-        bool operator()(Index elem, Vector *min, Vector *max)
+        bool operator()(Index elem, CTVector *min, CTVector *max)
         {
             return false; // couldn't compute bounds
         }
@@ -85,8 +85,8 @@ public:
 
     Celltree(const Index numCells, const Meta &meta = Meta());
 
-    void init(const Vector *min, const Vector *max, const Vector &gmin, const Vector &gmax);
-    void refine(const Vector *min, const Vector *max, Index nodeIdx, const Vector &gmin, const Vector &gmax);
+    void init(const CTVector *min, const CTVector *max, const CTVector &gmin, const CTVector &gmax);
+    void refine(const CTVector *min, const CTVector *max, Index nodeIdx, const CTVector &gmin, const CTVector &gmax);
     template<class BoundsFunctor>
     bool validateTree(BoundsFunctor &func) const;
 
@@ -109,7 +109,7 @@ public:
 
 private:
     template<class BoundsFunctor>
-    bool validateNode(BoundsFunctor &func, Index nodenum, const Vector &min, const Vector &max) const;
+    bool validateNode(BoundsFunctor &func, Index nodenum, const CTVector &min, const CTVector &max) const;
     template<class InnerNodeFunctor, class ElementFunctor>
     bool traverseNode(Index curNode, const Node *nodes, const Index *cells, InnerNodeFunctor &visitNode,
                       ElementFunctor &visitElement) const
