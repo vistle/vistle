@@ -1656,6 +1656,61 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
     return true;
 }
 
+void Hub::spawnModule(message::Spawn &spawn)
+{
+    spawn.setSpawnId(Id::ModuleBase + m_moduleCount);
+    ++m_moduleCount;
+    spawn.setDestId(Id::Broadcast);
+    m_stateTracker.handle(spawn, nullptr);
+    sendAll(spawn);
+    spawn.setDestId(spawn.hubId());
+    sendManager(spawn, spawn.hubId());
+}
+
+bool Hub::spawnModuleCompound(const message::Spawn &spawn)
+{
+    auto avIt = m_stateTracker.availableModules().find({spawn.hubId(), spawn.getName()});
+    if (avIt != m_stateTracker.availableModules().end()) {
+        const auto &av = avIt->second;
+        if (av.isCompound()) {
+            for (const auto &sub: av.submodules()) {
+                message::Spawn subspawn{spawn.hubId(), sub.name, spawn.getMpiSize(), spawn.getBaseRank(),
+                                        spawn.getRankSkip()};
+                spawnModule(subspawn);
+            }
+            sendUi(spawn, Id::Broadcast);
+            message::Started started{spawn.getName()};
+            started.setSenderId(spawn.spawnId());
+            sendUi(started, Id::Broadcast);
+            std::vector<std::string> portsCreated;
+            for (const auto &conn: av.connections()) {
+                Port::Type type;
+                const std::string *portname = nullptr;
+                if (conn.fromId < 0) {
+                    type = Port::Type::INPUT;
+                    portname = &conn.fromPort;
+                } else if (conn.toId < 0) {
+                    type = Port::Type::OUTPUT;
+                    portname = &conn.toPort;
+                }
+                if (portname && std::find(portsCreated.begin(), portsCreated.end(), *portname) == portsCreated.end()) {
+                    Port p{spawn.spawnId(), *portname, type};
+                    message::AddPort portMsg{p};
+                    portMsg.setSenderId(spawn.spawnId());
+                    sendUi(portMsg, Id::Broadcast);
+                    portsCreated.push_back(*portname);
+                } else {
+                    message::Connect connMsg{conn.fromId + spawn.spawnId() + 1, conn.fromPort,
+                                             conn.toId + spawn.spawnId() + 1, conn.toPort};
+                    handleMessage(connMsg);
+                }
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
 bool Hub::handlePriv(const message::Spawn &spawn)
 {
     if (m_isMaster) {
@@ -1683,6 +1738,8 @@ bool Hub::handlePriv(const message::Spawn &spawn)
         notify.setDestId(Id::Broadcast);
         if (shouldMirror)
             notify.setMirroringId(mirroredId);
+        if (spawnModuleCompound(notify))
+            return true;
         m_stateTracker.handle(notify, nullptr);
         sendAll(notify);
         if (doSpawn) {

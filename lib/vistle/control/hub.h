@@ -168,6 +168,9 @@ private:
     bool handlePriv(const message::ModuleExit &exit);
     bool handlePriv(const message::Spawn &spawn);
 
+    void spawnModule(message::Spawn &spawn);
+    bool spawnModuleCompound(const message::Spawn &spawn);
+
     bool checkChildProcesses(bool emergency = false);
     bool hasChildProcesses(bool ignoreGui = false);
     void emergencyQuit();
