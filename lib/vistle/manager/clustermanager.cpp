@@ -748,6 +748,7 @@ bool ClusterManager::handle(const message::Buffer &message, const MessagePayload
         ModuleCompound comp(message, pl);
         AvailableModule::Key key(comp.hub(), comp.name());
         auto av = comp.transform();
+        av.setHub(hubId());
         av.send(std::bind(&Communicator::sendHub, &Communicator::the(), std::placeholders::_1, std::placeholders::_2));
         m_localModules[key] = std::move(av);
         break;
