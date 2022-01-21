@@ -858,10 +858,21 @@ static int moduleCompoundCreate(const std::string &compoundName)
     }
 }
 
+
 static void compoundNotFoundError(int compoundId)
 {
     printError("module compound with id " + std::to_string(compoundId) + "hast not been found!");
     printError("allocate it with moduleCompoundCreate(\"compoundName\"");
+}
+
+static void moduleCompoundSetPath(int compoundId, const std::string &path)
+{
+    auto comp = findCompound(compoundId);
+    if (comp == compounds.end()) {
+        compoundNotFoundError(compoundId);
+        return;
+    }
+    comp->module.setPath(path);
 }
 
 static int moduleCompoundAddModule(int compoundId, const std::string &moduleName, float x = 0, float y = 0)
@@ -902,7 +913,7 @@ static void moduleCompoundConnect(int compoundId, int fromId, const std::string 
 }
 
 static void moduleCompoundExpose(int compoundId, const std::string &compoundPortName, int modId,
-                                 const std::string &modPortName)
+                                 const std::string &modPortName, vistle::Port::Type portType)
 {
     auto comp = findCompound(compoundId);
     if (comp == compounds.end()) {
@@ -911,11 +922,12 @@ static void moduleCompoundExpose(int compoundId, const std::string &compoundPort
     }
     auto inputs = getInputPorts(modId);
     auto outputs = getOutputPorts(modId);
-    if (std::find(inputs.begin(), inputs.end(), modPortName) != inputs.end()) {
+    std::cerr << "inputs " << inputs.size() << " outputs " << outputs.size() << std::endl;
+    if (portType == Port::Type::INPUT) {
         comp->module.addConnection(
             ModuleCompound::Connection{-1, modId - compoundId - 1, modPortName, compoundPortName});
 
-    } else if (std::find(outputs.begin(), outputs.end(), modPortName) != outputs.end()) {
+    } else if (portType == Port::Type::OUTPUT) {
         comp->module.addConnection(
             ModuleCompound::Connection{modId - compoundId - 1, -1, compoundPortName, modPortName});
     } else {
@@ -1329,6 +1341,10 @@ PY_MODULE(_vistle, m)
     py::class_<message::SendText> st(m, "Text");
     vistle::message::SendText::enumForPython_TextType(st, "Type");
 
+    // make values of vistle::Port::Type enum known to Python as PortType.xxx
+    py::class_<Port> portEnum(m, "PortType");
+    vistle::Port::enumForPython_Type(portEnum, "PortType");
+
     py::class_<message::Id> id(m, "Id");
     py::enum_<message::Id::Reserved>(id, "Id")
         .value("Invalid", message::Id::Invalid)
@@ -1389,13 +1405,15 @@ PY_MODULE(_vistle, m)
           "hub"_a, "modulename"_a, "numspawn"_a = -1, "baserank"_a = -1, "rankskip"_a = -1);
     m.def("loadScript", &loadScript, "load a python script", "filename"_a);
     m.def("moduleCompoundCreate", &moduleCompoundCreate, "allocate a new module compound", "name"_a);
+    m.def("moduleCompoundSetPath", &moduleCompoundSetPath, "set the path to store the compound", "compoundId"_a,
+          "path"_a);
     m.def("moduleCompoundAddModule", &moduleCompoundAddModule, "add a module to a module compound", "compoundId"_a,
           "modulename"_a, "x"_a = 0, "y"_a = 0);
     m.def("moduleCompoundConnect", &moduleCompoundConnect,
           "connect ports of modules inside the compound, expose port if compound id is given", "compoundId"_a,
           "fromId"_a, "toId"_a, "fromPort"_a, "toPort"_a);
     m.def("moduleCompoundExpose", &moduleCompoundExpose, "expose the port of the submodule at compoundPortName",
-          "compoundId"_a, "compoundPortName"_a, "modId"_a, "modPortName"_a);
+          "compoundId"_a, "compoundPortName"_a, "modId"_a, "modPortName"_a, "portType"_a);
     m.def("setRelativePos", &setRelativePos, "move module relative to compound drop position", "moduleId"_a, "x"_a,
           "y"_a);
     m.def("setCompoundDropPosition", &setCompoundDropPosition, "set the position for a module compound", "x"_a, "y"_a);

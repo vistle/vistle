@@ -87,13 +87,13 @@ public:
     const std::set<Connection> connections() const;
 
 protected:
+    std::string m_path;
     bool send(message::Type type, const sendMessageFunction &func) const;
     bool send(message::Type type, const sendShmMessageFunction &func) const;
 
 private:
     int m_hub;
     std::string m_name;
-    std::string m_path;
     std::string m_description;
 
 
@@ -130,6 +130,7 @@ public:
     using AvailableModuleBase::AvailableModuleBase;
     bool send(const sendMessageFunction &func) const;
     bool send(const sendShmMessageFunction &func) const;
+    void setPath(const std::string &path);
     AvailableModule transform(); //this invalidates this object;
 };
 typedef std::map<AvailableModule::Key, AvailableModule> AvailableMap;

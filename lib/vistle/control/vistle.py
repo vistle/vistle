@@ -299,14 +299,17 @@ def loadScript(filename):
 def moduleCompoundCreate(compoundName):
    return _vistle.moduleCompoundCreate(compoundName)
 
+def moduleCompoundSetPath(compoundId, path):
+   _vistle.moduleCompoundSetPath(compoundId, path)
+
 def moduleCompoundAddModule(compoundId, moduleName, x, y):
    return _vistle.moduleCompoundAddModule(compoundId, moduleName, x, y)
 
 def moduleCompoundConnect(compoundId, fromId, fromName, toId, toName): #if fromId or toId is equal to compound id the port is exposed with the given name
    _vistle.moduleCompoundConnect(compoundId, fromId, fromName, toId, toName)
 
-def moduleCompoundExpose(compoundId, compoundPortName, modId, modPortName):
-   _vistle.moduleCompoundExpose(compoundId, compoundPortName, modId, modPortName)
+def moduleCompoundExpose(compoundId, compoundPortName, modId, modPortName, portType):
+   _vistle.moduleCompoundExpose(compoundId, compoundPortName, modId, modPortName, portType)
 
 def moduleCompoundCommit(compoundId):
    _vistle.moduleCompoundCommit(compoundId)
@@ -415,3 +418,4 @@ Message = _vistle.Message
 StateObserver = _vistle.StateObserver
 Text = _vistle.Text
 Status = _vistle.Status
+PortType = _vistle.PortType

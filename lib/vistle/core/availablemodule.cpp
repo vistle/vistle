@@ -174,6 +174,11 @@ bool ModuleCompound::send(const sendShmMessageFunction &func) const
     return AvailableModuleBase::send(message::Type::CREATEMODULECOMPOUND, func);
 }
 
+void ModuleCompound::setPath(const std::string &path)
+{
+    m_path = path;
+}
+
 AvailableModule ModuleCompound::transform()
 {
     return AvailableModule{std::move(*this)};
