@@ -27,6 +27,8 @@ void RectilinearGrid::Data::serialize(Archive &ar)
 
         ar &V_NAME(ar, ("indexoffset" + std::to_string(c)).c_str(), indexOffset[c]);
     }
+
+    ar &V_NAME(ar, "normals", normals);
 }
 
 } // namespace vistle

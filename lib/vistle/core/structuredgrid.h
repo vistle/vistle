@@ -85,8 +85,5 @@ private:
     V_DATA_END(StructuredGrid);
 };
 
-
-ARCHIVE_ASSUME_ABSTRACT(StructuredGrid)
-
 } // namespace vistle
 #endif /* STRUCTURED_GRID_H */

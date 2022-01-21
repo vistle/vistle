@@ -89,8 +89,5 @@ private:
     V_DATA_END(UniformGrid);
 };
 
-
-//ARCHIVE_ASSUME_ABSTRACT(UniformGrid)
-
 } // namespace vistle
 #endif /* UNIFORM_GRID_H */
