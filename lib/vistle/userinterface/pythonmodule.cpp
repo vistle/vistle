@@ -924,14 +924,12 @@ static void moduleCompoundExpose(int compoundId, const std::string &compoundPort
     auto outputs = getOutputPorts(modId);
     std::cerr << "inputs " << inputs.size() << " outputs " << outputs.size() << std::endl;
     if (portType == Port::Type::INPUT) {
-        comp->module.addConnection(
-            ModuleCompound::Connection{-1, modId - compoundId - 1, modPortName, compoundPortName});
+        comp->module.addConnection(ModuleCompound::Connection{-1, modId, compoundPortName, modPortName});
 
     } else if (portType == Port::Type::OUTPUT) {
-        comp->module.addConnection(
-            ModuleCompound::Connection{modId - compoundId - 1, -1, compoundPortName, modPortName});
+        comp->module.addConnection(ModuleCompound::Connection{modId, -1, modPortName, compoundPortName});
     } else {
-        printError("moduleCompoundExpose failed: port " + modPortName + "(" + std::to_string(modId) + ") not found");
+        printError("moduleCompoundExpose failed: invalid port type");
     }
 }
 
@@ -997,7 +995,12 @@ void moduleCompoundToFile(const ModuleCompound &comp)
     }
     file << std::endl;
     for (const auto &conn: comp.connections()) {
-        file << "moduleCompoundConnect(CompoundId, " << conn.fromId << ",\"" << conn.fromPort << "\", " << conn.toId
+        std::string fromIdName = conn.fromId >= 0
+                                     ? "um" + comp.submodules()[conn.fromId].name + std::to_string(conn.fromId)
+                                     : std::to_string(conn.fromId);
+        std::string toIdName = conn.toId >= 0 ? "um" + comp.submodules()[conn.toId].name + std::to_string(conn.toId)
+                                              : std::to_string(conn.toId);
+        file << "moduleCompoundConnect(CompoundId, " << fromIdName << ",\"" << conn.fromPort << "\", " << toIdName
              << ", \"" << conn.toPort << "\")" << std::endl;
     }
     file << "moduleCompoundCommit(CompoundId)" << std::endl;
