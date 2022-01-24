@@ -47,6 +47,8 @@ public:
     bool sendUi(const message::Message &msg, int id = message::Id::Broadcast, const buffer *payload = nullptr);
     bool sendModule(const message::Message &msg, int id, const buffer *payload = nullptr);
     bool sendAll(const message::Message &msg, const buffer *payload = nullptr);
+    bool sendAllUi(const message::Message &msg, const buffer *payload = nullptr);
+    bool sendAllButUi(const message::Message &msg, const buffer *payload = nullptr);
 
     const StateTracker &stateTracker() const;
     StateTracker &stateTracker();
@@ -85,7 +87,7 @@ private:
     void killOldModule(int migratedId);
     void sendInfo(const std::string &s);
     void sendError(const std::string &s);
-
+    std::vector<int> getSubmoduleIds(int modId, const AvailableModule &av);
     bool m_inManager = false;
 
     unsigned short m_basePort = 31093;
@@ -167,6 +169,10 @@ private:
     bool handlePriv(const message::Cover &cover, const buffer *payload);
     bool handlePriv(const message::ModuleExit &exit);
     bool handlePriv(const message::Spawn &spawn);
+    bool handlePriv(const message::Kill &kill);
+
+    template<typename ConnMsg>
+    bool handleConnectOrDisconnect(const ConnMsg &mm);
 
     bool checkChildProcesses(bool emergency = false);
     bool hasChildProcesses(bool ignoreGui = false);
