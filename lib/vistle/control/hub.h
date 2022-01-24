@@ -47,6 +47,8 @@ public:
     bool sendUi(const message::Message &msg, int id = message::Id::Broadcast, const buffer *payload = nullptr);
     bool sendModule(const message::Message &msg, int id, const buffer *payload = nullptr);
     bool sendAll(const message::Message &msg, const buffer *payload = nullptr);
+    bool sendAllUi(const message::Message &msg, const buffer *payload = nullptr);
+    bool sendAllButUi(const message::Message &msg, const buffer *payload = nullptr);
 
     const StateTracker &stateTracker() const;
     StateTracker &stateTracker();
@@ -170,6 +172,7 @@ private:
 
     void spawnModule(message::Spawn &spawn);
     bool spawnModuleCompound(const message::Spawn &spawn);
+    void handleMirrorConnect(const message::Connect, std::function<bool(const message::Connect &)> sendFunc);
 
     bool checkChildProcesses(bool emergency = false);
     bool hasChildProcesses(bool ignoreGui = false);

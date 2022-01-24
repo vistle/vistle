@@ -1000,6 +1000,28 @@ bool Hub::sendAll(const message::Message &msg, const buffer *payload)
     return true;
 }
 
+bool Hub::sendAllUi(const message::Message &msg, const buffer *payload)
+{
+    if (m_isMaster) {
+        sendUi(msg, Id::Broadcast, payload);
+    } else {
+        return sendMaster(msg, payload);
+    }
+    return true;
+}
+
+bool Hub::sendAllButUi(const message::Message &msg, const buffer *payload)
+{
+    if (m_isMaster) {
+        sendManager(msg, Id::LocalHub, payload);
+        sendSlaves(msg, true /* return to sender */, payload);
+    } else {
+        return sendMaster(msg, payload);
+    }
+    return true;
+}
+
+
 int Hub::idToHub(int id) const
 {
     if (id >= Id::ModuleBase)
@@ -1697,6 +1719,7 @@ bool Hub::spawnModuleCompound(const message::Spawn &spawn)
                     Port p{spawn.spawnId(), *portname, type};
                     message::AddPort portMsg{p};
                     portMsg.setSenderId(spawn.spawnId());
+                    m_stateTracker.handle(portMsg, nullptr);
                     sendUi(portMsg, Id::Broadcast);
                     portsCreated.push_back(*portname);
                 } else {
@@ -1710,6 +1733,31 @@ bool Hub::spawnModuleCompound(const message::Spawn &spawn)
     }
     return false;
 }
+
+void Hub::handleMirrorConnect(const message::Connect conn, std::function<bool(const message::Connect &)> sendFunc)
+{
+    auto modA = conn.getModuleA();
+    auto modB = conn.getModuleB();
+    auto mirA = m_stateTracker.getMirrors(modA);
+    auto mirB = m_stateTracker.getMirrors(modB);
+    auto c = conn;
+    c.setNotify(true);
+    for (auto a: mirA) {
+        if (a == modA)
+            continue;
+        c.setModuleA(a);
+        sendFunc(c);
+    }
+    c.setModuleA(modA);
+
+    for (auto b: mirB) {
+        if (b == modB)
+            continue;
+        c.setModuleB(b);
+        sendFunc(c);
+    }
+}
+
 
 bool Hub::handlePriv(const message::Spawn &spawn)
 {
@@ -1738,9 +1786,9 @@ bool Hub::handlePriv(const message::Spawn &spawn)
         notify.setDestId(Id::Broadcast);
         if (shouldMirror)
             notify.setMirroringId(mirroredId);
+        m_stateTracker.handle(notify, nullptr);
         if (spawnModuleCompound(notify))
             return true;
-        m_stateTracker.handle(notify, nullptr);
         sendAll(notify);
         if (doSpawn) {
             notify.setDestId(spawn.hubId());
@@ -2436,30 +2484,53 @@ bool Hub::handlePriv(const message::RequestTunnel &tunnel)
 
 bool Hub::handlePriv(const message::Connect &conn)
 {
-    auto c = make.message<message::Connect>(conn);
-    c.setNotify(true);
-    sendAll(c);
-
     auto modA = conn.getModuleA();
     auto modB = conn.getModuleB();
-    auto mirA = m_stateTracker.getMirrors(modA);
-    auto mirB = m_stateTracker.getMirrors(modB);
 
-    for (auto a: mirA) {
-        if (a == modA)
-            continue;
-        c.setModuleA(a);
-        sendAll(c);
-    }
-    c.setModuleA(modA);
+    const auto &avA = m_stateTracker.availableModules()
+                          .find({m_stateTracker.getHub(modA), m_stateTracker.getModuleName(modA)})
+                          ->second;
+    const auto &avB = m_stateTracker.availableModules()
+                          .find({m_stateTracker.getHub(modB), m_stateTracker.getModuleName(modB)})
+                          ->second;
 
-    for (auto b: mirB) {
-        if (b == modB)
-            continue;
-        c.setModuleB(b);
-        sendAll(c);
+
+    std::vector<Port> portsA, portsB;
+    if (avA.isCompound()) {
+        for (const auto &subConn: avA.connections()) {
+            if (subConn.toId < 0 && conn.getPortAName() == subConn.toPort) {
+                portsA.push_back({subConn.fromId + modA + 1, subConn.fromPort, Port::Type::OUTPUT});
+            }
+        }
+    } else {
+        portsA.push_back({modA, conn.getPortAName(), Port::Type::OUTPUT});
     }
-    c.setModuleB(modB);
+
+    if (avB.isCompound()) {
+        for (const auto &subConn: avB.connections()) {
+            if (subConn.fromId < 0 && conn.getPortBName() == subConn.fromPort) {
+                portsB.push_back({subConn.toId + modB + 1, subConn.toPort, Port::Type::INPUT});
+            }
+        }
+    } else {
+        portsB.push_back({modB, conn.getPortBName(), Port::Type::INPUT});
+    }
+    for (const auto &portA: portsA) {
+        for (const auto &portB: portsB) {
+            modA = portA.getModuleID();
+            modB = portB.getModuleID();
+            auto connMsg = make.message<message::Connect>(modA, portA.getName(), modB, portB.getName());
+            connMsg.setNotify(true);
+            handleMirrorConnect(connMsg, [this](const message::Connect &msg) { return sendAll(msg); });
+            sendAll(connMsg);
+            // handleMirrorConnect(connMsg, [this](const message::Connect &msg) { return sendAllButUi(msg); });
+            // sendAllButUi(connMsg);
+        }
+    }
+    auto c = make.message<message::Connect>(conn);
+    c.setNotify(true);
+    sendAllUi(c);
+    handleMirrorConnect(conn, [this](const message::Connect &msg) { return sendAllUi(msg); });
 
     return true;
 }
