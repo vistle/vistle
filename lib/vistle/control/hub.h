@@ -172,7 +172,6 @@ private:
 
     void spawnModule(message::Spawn &spawn);
     bool spawnModuleCompound(const message::Spawn &spawn);
-    void handleMirrorConnect(const message::Connect, std::function<bool(const message::Connect &)> sendFunc);
 
     bool checkChildProcesses(bool emergency = false);
     bool hasChildProcesses(bool ignoreGui = false);

@@ -1734,31 +1734,6 @@ bool Hub::spawnModuleCompound(const message::Spawn &spawn)
     return false;
 }
 
-void Hub::handleMirrorConnect(const message::Connect conn, std::function<bool(const message::Connect &)> sendFunc)
-{
-    auto modA = conn.getModuleA();
-    auto modB = conn.getModuleB();
-    auto mirA = m_stateTracker.getMirrors(modA);
-    auto mirB = m_stateTracker.getMirrors(modB);
-    auto c = conn;
-    c.setNotify(true);
-    for (auto a: mirA) {
-        if (a == modA)
-            continue;
-        c.setModuleA(a);
-        sendFunc(c);
-    }
-    c.setModuleA(modA);
-
-    for (auto b: mirB) {
-        if (b == modB)
-            continue;
-        c.setModuleB(b);
-        sendFunc(c);
-    }
-}
-
-
 bool Hub::handlePriv(const message::Spawn &spawn)
 {
     if (m_isMaster) {
@@ -2482,16 +2457,45 @@ bool Hub::handlePriv(const message::RequestTunnel &tunnel)
     return m_tunnelManager.processRequest(tunnel);
 }
 
-bool Hub::handlePriv(const message::Connect &conn)
+template<typename ConnMsg>
+void handleMirrorConnect(const ConnMsg &conn, const StateTracker &state,
+                         std::function<bool(const message::Message &)> sendFunc)
+{
+    auto modA = conn.getModuleA();
+    auto modB = conn.getModuleB();
+    auto mirA = state.getMirrors(modA);
+    auto mirB = state.getMirrors(modB);
+    auto c = conn;
+    c.setNotify(true);
+    for (auto a: mirA) {
+        if (a == modA)
+            continue;
+        c.setModuleA(a);
+        sendFunc(c);
+    }
+    c.setModuleA(modA);
+
+    for (auto b: mirB) {
+        if (b == modB)
+            continue;
+        c.setModuleB(b);
+        sendFunc(c);
+    }
+}
+
+template<typename ConnMsg>
+bool handleConnMsg(const ConnMsg &conn, Hub &hub, message::MessageFactory &make)
 {
     auto modA = conn.getModuleA();
     auto modB = conn.getModuleB();
 
-    const auto &avA = m_stateTracker.availableModules()
-                          .find({m_stateTracker.getHub(modA), m_stateTracker.getModuleName(modA)})
+    const auto &avA = hub.stateTracker()
+                          .availableModules()
+                          .find({hub.stateTracker().getHub(modA), hub.stateTracker().getModuleName(modA)})
                           ->second;
-    const auto &avB = m_stateTracker.availableModules()
-                          .find({m_stateTracker.getHub(modB), m_stateTracker.getModuleName(modB)})
+    const auto &avB = hub.stateTracker()
+                          .availableModules()
+                          .find({hub.stateTracker().getHub(modB), hub.stateTracker().getModuleName(modB)})
                           ->second;
 
 
@@ -2519,50 +2523,31 @@ bool Hub::handlePriv(const message::Connect &conn)
         for (const auto &portB: portsB) {
             modA = portA.getModuleID();
             modB = portB.getModuleID();
-            auto connMsg = make.message<message::Connect>(modA, portA.getName(), modB, portB.getName());
+            auto connMsg = make.message<ConnMsg>(modA, portA.getName(), modB, portB.getName());
             connMsg.setNotify(true);
-            handleMirrorConnect(connMsg, [this](const message::Connect &msg) { return sendAll(msg); });
-            sendAll(connMsg);
+            handleMirrorConnect(connMsg, hub.stateTracker(),
+                                [&hub](const message::Message &msg) { return hub.sendAll(msg); });
+            hub.sendAll(connMsg);
             // handleMirrorConnect(connMsg, [this](const message::Connect &msg) { return sendAllButUi(msg); });
             // sendAllButUi(connMsg);
         }
     }
-    auto c = make.message<message::Connect>(conn);
+    auto c = make.message<ConnMsg>(conn);
     c.setNotify(true);
-    sendAllUi(c);
-    handleMirrorConnect(conn, [this](const message::Connect &msg) { return sendAllUi(msg); });
+    hub.sendAllUi(c);
+    handleMirrorConnect(conn, hub.stateTracker(), [&hub](const message::Message &msg) { return hub.sendAllUi(msg); });
 
     return true;
 }
 
+bool Hub::handlePriv(const message::Connect &conn)
+{
+    return handleConnMsg(conn, *this, make);
+}
+
 bool Hub::handlePriv(const message::Disconnect &disc)
 {
-    auto d = make.message<message::Disconnect>(disc);
-    d.setNotify(true);
-    sendAll(d);
-
-    auto modA = disc.getModuleA();
-    auto modB = disc.getModuleB();
-    auto mirA = m_stateTracker.getMirrors(modA);
-    auto mirB = m_stateTracker.getMirrors(modB);
-
-    for (auto a: mirA) {
-        if (a == modA)
-            continue;
-        d.setModuleA(a);
-        sendAll(d);
-    }
-    d.setModuleA(modA);
-
-    for (auto b: mirB) {
-        if (b == modB)
-            continue;
-        d.setModuleB(b);
-        sendAll(d);
-    }
-    d.setModuleB(modB);
-
-    return true;
+    return handleConnMsg(disc, *this, make);
 }
 
 bool Hub::handlePriv(const message::FileQuery &query, const buffer *payload)
