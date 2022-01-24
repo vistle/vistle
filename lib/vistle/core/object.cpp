@@ -83,7 +83,12 @@ const char *Object::toString(Type v)
     case sym: \
         return #sym;
     switch (v) {
+        V_OBJECT_CASE(COORD)
+        V_OBJECT_CASE(COORDWRADIUS)
+        V_OBJECT_CASE(DATABASE)
+
         V_OBJECT_CASE(UNKNOWN)
+        V_OBJECT_CASE(EMPTY)
         V_OBJECT_CASE(PLACEHOLDER)
 
         V_OBJECT_CASE(TEXTURE1D)
@@ -99,6 +104,7 @@ const char *Object::toString(Type v)
         V_OBJECT_CASE(UNIFORMGRID)
         V_OBJECT_CASE(RECTILINEARGRID)
         V_OBJECT_CASE(STRUCTUREDGRID)
+        V_OBJECT_CASE(LAYERGRID)
 
         V_OBJECT_CASE(VERTEXOWNERLIST)
         V_OBJECT_CASE(CELLTREE1)
