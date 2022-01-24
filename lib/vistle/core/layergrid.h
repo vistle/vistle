@@ -42,6 +42,7 @@ public:
     Scalar *max() { return d()->max; }
     const Scalar *min() const { return m_min; }
     const Scalar *max() const { return m_max; }
+    const Scalar *dist() const { return m_dist; }
     array &z() { return x(); }
     const Scalar *z() const { return x(); }
 

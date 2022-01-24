@@ -43,6 +43,7 @@ public:
     Scalar *max() { return d()->max; }
     const Scalar *min() const { return m_min; }
     const Scalar *max() const { return m_max; }
+    const Scalar *dist() const { return m_dist; }
 
     // GeometryInterface
     std::pair<Vector3, Vector3> getBounds() const override;
