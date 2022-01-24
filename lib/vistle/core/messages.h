@@ -435,51 +435,41 @@ private:
     port_name_t m_orgDestPort;
 };
 
+//! Base class for connect and disconnect
+
+class V_COREEXPORT ConnectBase {
+public:
+    ConnectBase(const int moduleIDA, const std::string &portA, const int moduleIDB, const std::string &portB);
+
+    const char *getPortAName() const;
+    const char *getPortBName() const;
+
+    void setModuleA(int id);
+    int getModuleA() const;
+    void setModuleB(int id);
+    int getModuleB() const;
+
+    void reverse(); //! swap source and destination
+
+private:
+    port_name_t portAName;
+    port_name_t portBName;
+
+    int moduleA;
+    int moduleB;
+};
+
 //! connect an output port to an input port of another module
-class V_COREEXPORT Connect: public MessageBase<Connect, CONNECT> {
-public:
-    Connect(const int moduleIDA, const std::string &portA, const int moduleIDB, const std::string &portB);
-
-    const char *getPortAName() const;
-    const char *getPortBName() const;
-
-    void setModuleA(int id);
-    int getModuleA() const;
-    void setModuleB(int id);
-    int getModuleB() const;
-
-    void reverse(); //! swap source and destination
-
-private:
-    port_name_t portAName;
-    port_name_t portBName;
-
-    int moduleA;
-    int moduleB;
+class V_COREEXPORT Connect: public MessageBase<Connect, CONNECT>, public ConnectBase {
+    using ConnectBase::ConnectBase;
 };
-
+static_assert(sizeof(Connect) <= Message::MESSAGE_SIZE, "message too large");
 //! disconnect an output port from an input port of another module
-class V_COREEXPORT Disconnect: public MessageBase<Disconnect, DISCONNECT> {
-public:
-    Disconnect(const int moduleIDA, const std::string &portA, const int moduleIDB, const std::string &portB);
-
-    const char *getPortAName() const;
-    const char *getPortBName() const;
-
-    void setModuleA(int id);
-    int getModuleA() const;
-    void setModuleB(int id);
-    int getModuleB() const;
-
-    void reverse(); //! swap source and destination
-
-private:
-    port_name_t portAName;
-    port_name_t portBName;
-
-    int moduleA;
-    int moduleB;
+class V_COREEXPORT Disconnect: public MessageBase<Disconnect, DISCONNECT>, public ConnectBase {
+    using ConnectBase::ConnectBase;
 };
+static_assert(sizeof(Disconnect) <= Message::MESSAGE_SIZE, "message too large");
+
 
 //! notification that a module has created a parameter
 class V_COREEXPORT AddParameter: public MessageBase<AddParameter, ADDPARAMETER> {

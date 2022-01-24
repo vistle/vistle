@@ -808,87 +808,44 @@ const char *AddObjectCompleted::originalDestPort() const
     return m_orgDestPort.data();
 }
 
-Connect::Connect(const int moduleIDA, const std::string &portA, const int moduleIDB, const std::string &portB)
+ConnectBase::ConnectBase(const int moduleIDA, const std::string &portA, const int moduleIDB, const std::string &portB)
 : moduleA(moduleIDA), moduleB(moduleIDB)
 {
     COPY_STRING(portAName, portA);
     COPY_STRING(portBName, portB);
 }
 
-const char *Connect::getPortAName() const
+const char *ConnectBase::getPortAName() const
 {
     return portAName.data();
 }
 
-const char *Connect::getPortBName() const
+const char *ConnectBase::getPortBName() const
 {
     return portBName.data();
 }
 
-void Connect::setModuleA(int id)
+void ConnectBase::setModuleA(int id)
 {
     moduleA = id;
 }
 
-int Connect::getModuleA() const
+int ConnectBase::getModuleA() const
 {
     return moduleA;
 }
 
-void Connect::setModuleB(int id)
+void ConnectBase::setModuleB(int id)
 {
     moduleB = id;
 }
 
-int Connect::getModuleB() const
+int ConnectBase::getModuleB() const
 {
     return moduleB;
 }
 
-void Connect::reverse()
-{
-    std::swap(moduleA, moduleB);
-    std::swap(portAName, portBName);
-}
-
-Disconnect::Disconnect(const int moduleIDA, const std::string &portA, const int moduleIDB, const std::string &portB)
-: moduleA(moduleIDA), moduleB(moduleIDB)
-{
-    COPY_STRING(portAName, portA);
-    COPY_STRING(portBName, portB);
-}
-
-const char *Disconnect::getPortAName() const
-{
-    return portAName.data();
-}
-
-const char *Disconnect::getPortBName() const
-{
-    return portBName.data();
-}
-
-void Disconnect::setModuleA(int id)
-{
-    moduleA = id;
-}
-
-int Disconnect::getModuleA() const
-{
-    return moduleA;
-}
-
-void Disconnect::setModuleB(int id)
-{
-    moduleB = id;
-}
-
-int Disconnect::getModuleB() const
-{
-    return moduleB;
-}
-
-void Disconnect::reverse()
+void ConnectBase::reverse()
 {
     std::swap(moduleA, moduleB);
     std::swap(portAName, portBName);
