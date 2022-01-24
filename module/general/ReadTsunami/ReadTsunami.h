@@ -7,24 +7,24 @@
  **                                                                        **
  **                                                                        **
  **                                                                        **
- ** Author:    Marko Djuric                                                **
+ ** Author:    Marko Djuric <hpcmdjur@hlrs.de>                             **
  **                                                                        **
  **                                                                        **
  **                                                                        **
  ** Date:  25.01.2021 Version 1 with netCDF                                **
  ** Date:  29.10.2021 Version 2 with PnetCDF                               **
+ ** Date:  24.01.2022 Version 2.1 use layergrid instead of polygons        **
 \**************************************************************************/
 
 #ifndef _READTSUNAMI_H
 #define _READTSUNAMI_H
 
 #include <atomic>
-#include <boost/mpi/intercommunicator.hpp>
 #include <memory>
 #include <mpi.h>
 #include <mutex>
 #include <vistle/module/reader.h>
-#include <vistle/core/polygons.h>
+#include <vistle/core/layergrid.h>
 
 #include <pnetcdf>
 #include <vector>
@@ -47,21 +47,18 @@ private:
     //structs
     template<class T>
     struct Dim {
-        T dimLat;
-        T dimLon;
+        Dim(const T &l_x = 0, const T &l_y = 0, const T &l_z = 0): x(l_x), y(l_y), z(l_z) {}
+        auto &X() const { return x; }
+        auto &Y() const { return y; }
+        auto &Z() const { return z; }
 
-        Dim(const T &lat, const T &lon): dimLat(lat), dimLon(lon) {}
+    private:
+        T x;
+        T y;
+        T z;
     };
-
-    template<class T>
-    struct PolygonData {
-        T numElements;
-        T numCorners;
-        T numVertices;
-
-        PolygonData(const T &elem, const T &corn, const T &vert): numElements(elem), numCorners(corn), numVertices(vert)
-        {}
-    };
+    typedef Dim<MPI_Offset> moffDim;
+    typedef Dim<size_t> sztDim;
 
     struct NcVarExtended {
         MPI_Offset start;
@@ -102,9 +99,9 @@ private:
     std::unique_ptr<NcFile> openNcmpiFile();
 
     typedef std::function<float(size_t, size_t)> ZCalcFunc;
-    template<class U, class T, class V>
+    template<class T>
     void generateSurface(
-        vistle::Polygons::ptr surface, const PolygonData<U> &polyData, const Dim<T> &dim, const std::vector<V> &coords,
+        vistle::LayerGrid::ptr surface, const Dim<T> &dim,
         const ZCalcFunc &func = [](size_t x, size_t y) { return 0; });
 
     template<class T, class U>
@@ -126,16 +123,6 @@ private:
     auto generateNcVarExt(const NcVar &ncVar, const T &dim, const T &ghost, const T &numDimBlocks,
                           const PartionIdx &partition) const;
 
-    template<class T, class V>
-    void contructLatLonSurface(vistle::Polygons::ptr poly, const Dim<T> &dim, const std::vector<V> &coords,
-                               const ZCalcFunc &zCalc);
-
-    template<class T>
-    void fillConnectListPoly2Dim(vistle::Polygons::ptr poly, const Dim<T> &dim);
-
-    template<class T>
-    void fillPolyList(vistle::Polygons::ptr poly, const T &numCorner);
-
     template<class... Args>
     void printRank0(const std::string &str, Args... args) const;
     void printMPIStats() const;
@@ -155,22 +142,19 @@ private:
     vistle::Port *m_groundSurface_out = nullptr;
     std::array<vistle::Port *, NUM_SCALARS> m_scalarsOut;
 
-    //helper variables
-    std::atomic_bool needSea;
+    //*****helper variables*****//
+    std::atomic_bool m_needSea;
+    std::mutex m_mtx;
+    boost::mpi::intercommunicator m_pnetcdf_comm;
+
+    //per block
     std::vector<int> m_block_etaIdx;
-    std::vector<std::shared_ptr<boost::mpi::communicator>> m_block_comm;
-
-    //Polygons per block
-    std::vector<vistle::Polygons::ptr> m_block_seaPtr;
+    std::vector<moffDim> m_block_dimSea;
     std::vector<std::vector<float>> m_block_etaVec;
-
-    //Scalar per block
     std::vector<std::array<VecScalarPtr, NUM_SCALARS>> m_block_VecScalarPtr;
 
     //lat = 0; lon = 1
     std::array<std::string, NUM_BLOCKS> m_latLon_Sea;
     std::array<std::string, NUM_BLOCKS> m_latLon_Ground;
-    boost::mpi::intercommunicator pnetcdf_comm;
-    std::mutex _mtx;
 };
 #endif

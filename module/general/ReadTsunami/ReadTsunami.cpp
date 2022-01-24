@@ -1,29 +1,12 @@
-/**************************************************************************\
- **                                                                        **
- **                                                                        **
- ** Description: Read module for ChEESE tsunami nc-files                   **
- **                                                                        **
- **                                                                        **
- **                                                                        **
- **                                                                        **
- **                                                                        **
- ** Author:    Marko Djuric <hpcmdjur@hlrs.de>                             **
- **                                                                        **
- **                                                                        **
- **                                                                        **
- ** Date:  25.01.2021 Version 1 with netCDF                                **
- ** Date:  29.10.2021 Version 2 with PnetCDF                               **
-\**************************************************************************/
-
 //header
 #include "ReadTsunami.h"
 
 //vistle
 #include "vistle/core/database.h"
 #include "vistle/core/index.h"
+#include "vistle/core/layergrid.h"
 #include "vistle/core/object.h"
 #include "vistle/core/parameter.h"
-#include "vistle/core/polygons.h"
 #include "vistle/core/scalar.h"
 #include "vistle/core/vec.h"
 #include "vistle/module/module.h"
@@ -59,7 +42,9 @@ constexpr auto choiceParamNone{"None"};
 } // namespace
 
 ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicator comm)
-: vistle::Reader(name, moduleID, comm), needSea(false), pnetcdf_comm(comm, boost::mpi::comm_create_kind::comm_duplicate)
+: vistle::Reader(name, moduleID, comm)
+, m_needSea(false)
+, m_pnetcdf_comm(comm, boost::mpi::comm_create_kind::comm_duplicate)
 {
     // file-browser
     m_filedir = addStringParameter("file_dir", "NC File directory", "", Parameter::Filename);
@@ -70,8 +55,8 @@ ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicato
     m_verticalScale = addFloatParameter("VerticalScale", "Vertical Scale parameter sea", 1.0);
 
     // define ports
-    m_seaSurface_out = createOutputPort("Sea surface", "2D Grid Sea (Polygons)");
-    m_groundSurface_out = createOutputPort("Ground surface", "2D Sea floor (Polygons)");
+    m_seaSurface_out = createOutputPort("Sea surface", "2D Grid Sea (Heightmap)");
+    m_groundSurface_out = createOutputPort("Ground surface", "2D Sea floor (Heightmap)");
 
     // block size
     m_blocks[0] = addIntParameter("blocks latitude", "number of blocks in lat-direction", 2);
@@ -181,7 +166,7 @@ std::unique_ptr<NcmpiFile> ReadTsunami::openNcmpiFile()
 {
     const auto &fileName = m_filedir->getValue();
     try {
-        return make_unique<NcmpiFile>(pnetcdf_comm, fileName, NcFile::read);
+        return make_unique<NcmpiFile>(m_pnetcdf_comm, fileName, NcFile::read);
     } catch (PnetCDF::exceptions::NcmpiException &e) {
         sendInfo("%s error code=%d Error!", e.what(), e.errorCode());
         return nullptr;
@@ -254,80 +239,20 @@ bool ReadTsunami::inspectNetCDFVars()
 }
 
 /**
-  * @brief Set 2D coordinates for given polygon.
-  *
-  * @poly: Pointer on Polygon.
-  * @dim: Dimension of coordinates.
-  * @coords: Vector3 which contains coordinates.
-  * @zCalc: Function for computing z-coordinate.
-  */
-template<class T, class U>
-void ReadTsunami::contructLatLonSurface(Polygons::ptr poly, const Dim<T> &dim, const std::vector<U> &coords,
-                                        const ZCalcFunc &zCalc)
+ * @brief Generate surface from layergrid.
+ *
+ * @surface: LayerGrid pointer which will be modified.
+ * @dim: Dimension in lat and lon.
+ * @zCalc: Function for computing z-coordinate.
+ */
+template<class T>
+void ReadTsunami::generateSurface(LayerGrid::ptr surface, const Dim<T> &dim, const ZCalcFunc &zCalc)
 {
     int n = 0;
-    auto sx_coord = poly->x().begin(), sy_coord = poly->y().begin(), sz_coord = poly->z().begin();
-    for (T i = 0; i < dim.dimLat; ++i)
-        for (T j = 0; j < dim.dimLon; ++j, ++n) {
-            sx_coord[n] = coords.at(1)[j];
-            sy_coord[n] = coords.at(0)[i];
+    auto sz_coord = surface->z().begin();
+    for (T i = 0; i < dim.X(); ++i)
+        for (T j = 0; j < dim.Y(); ++j, ++n)
             sz_coord[n] = zCalc(i, j);
-        }
-}
-
-/**
-  * @brief Set the connectivitylist for given polygon for 2 dimensions and 4 Corners.
-  *
-  * @poly: Pointer on Polygon.
-  * @dim: Dimension of vertice list.
-  */
-template<class T>
-void ReadTsunami::fillConnectListPoly2Dim(Polygons::ptr poly, const Dim<T> &dim)
-{
-    int n = -1;
-    auto verticeConnectivityList = poly->cl().begin();
-    for (T j = 1; j < dim.dimLat; ++j)
-        for (T k = 1; k < dim.dimLon; ++k) {
-            verticeConnectivityList[++n] = (j - 1) * dim.dimLon + (k - 1);
-            verticeConnectivityList[++n] = j * dim.dimLon + (k - 1);
-            verticeConnectivityList[++n] = j * dim.dimLon + k;
-            verticeConnectivityList[++n] = (j - 1) * dim.dimLon + k;
-        }
-}
-
-/**
-  * @brief Set number of vertices which represent a polygon.
-  *
-  * @poly: Pointer on Polygon.
-  * @numCorner: number of corners.
-  */
-template<class T>
-void ReadTsunami::fillPolyList(Polygons::ptr poly, const T &numCorner)
-{
-    std::generate(poly->el().begin(), poly->el().end(), [n = 0, &numCorner]() mutable { return n++ * numCorner; });
-}
-
-/**
- * @brief Generate surface from polygons.
- *
- * @polyData: Data for creating polygon-surface (number elements, number corners, number vertices).
- * @dim: Dimension in lat and lon.
- * @coords: coordinates for polygons (lat, lon).
- * @zCalc: Function for computing z-coordinate.
- * @return vistle::Polygons::ptr
- */
-template<class U, class T, class V>
-void ReadTsunami::generateSurface(Polygons::ptr surface, const PolygonData<U> &polyData, const Dim<T> &dim,
-                                  const std::vector<V> &coords, const ZCalcFunc &zCalc)
-{
-    // fill coords 2D
-    contructLatLonSurface(surface, dim, coords, zCalc);
-
-    // fill vertices
-    fillConnectListPoly2Dim(surface, dim);
-
-    // fill the polygon list
-    fillPolyList(surface, 4);
 }
 
 /**
@@ -369,12 +294,11 @@ bool ReadTsunami::prepareRead()
     m_block_VecScalarPtr = std::vector<std::array<VecScalarPtr, NUM_SCALARS>>(part);
     m_block_etaIdx = std::vector<int>(part);
     m_block_etaVec = std::vector<std::vector<float>>(part);
-    m_block_seaPtr = std::vector<Polygons::ptr>(part);
+    m_block_dimSea = std::vector<moffDim>(part);
 
-
-    needSea = m_seaSurface_out->isConnected();
+    m_needSea = m_seaSurface_out->isConnected();
     for (auto &val: m_scalarsOut)
-        needSea = needSea || val->isConnected();
+        m_needSea = m_needSea || val->isConnected();
     return true;
 }
 
@@ -391,7 +315,7 @@ bool ReadTsunami::computeBlock(Reader::Token &token, const T &blockNum, const U 
 {
     if (timestep == -1)
         return computeInitial(token, blockNum);
-    else if (needSea)
+    else if (m_needSea)
         return computeTimestep<T, U>(token, blockNum, timestep);
     return true;
 }
@@ -440,7 +364,7 @@ void ReadTsunami::computeBlockPartition(const int blockNum, vistle::Index &nLatB
 }
 
 /**
-  * @brief Generates the initial polygon surfaces for sea and ground and adds only ground to scene.
+  * @brief Generates the initial surfaces for sea and ground and adds only ground to scene.
   *
   * @token: Ref to internal vistle token.
   * @blockNum: current block number of parallel process.
@@ -449,9 +373,9 @@ void ReadTsunami::computeBlockPartition(const int blockNum, vistle::Index &nLatB
 template<class T>
 bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
 {
-    _mtx.lock();
+    m_mtx.lock();
     auto ncFile = openNcmpiFile();
-    _mtx.unlock();
+    m_mtx.unlock();
 
     // get nc var objects ref
     const NcVar &latVar = ncFile->getVar(m_latLon_Sea[0]);
@@ -474,30 +398,26 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
     computeBlockPartition(blockNum, nLatBlocks, nLonBlocks, blockPartitionIdx.begin());
 
     // dimension from lat and lon variables
-    const Dim<size_t> dimSea(latVar.getDim(0).getSize(), lonVar.getDim(0).getSize());
+    const sztDim dimSeaTotal(latVar.getDim(0).getSize(), lonVar.getDim(0).getSize(), etaVar.getDim(0).getSize());
 
     // get dim from grid_lon & grid_lat
-    const Dim<size_t> dimGround(gridLatVar.getDim(0).getSize(), gridLonVar.getDim(0).getSize());
+    const sztDim dimGroundTotal(gridLatVar.getDim(0).getSize(), gridLonVar.getDim(0).getSize(), 0);
 
     size_t ghost{0};
     if (m_ghost->getValue() == 1 && !(nLatBlocks == 1 && nLonBlocks == 1))
         ghost++;
 
-    // count and start vals for lat and lon for sea polygon
+    // count and start vals for lat and lon for sea
     const auto latSea =
-        generateNcVarExt<MPI_Offset, Index>(latVar, dimSea.dimLat, ghost, nLatBlocks, blockPartitionIdx[0]);
+        generateNcVarExt<MPI_Offset, Index>(latVar, dimSeaTotal.X(), ghost, nLatBlocks, blockPartitionIdx[0]);
     const auto lonSea =
-        generateNcVarExt<MPI_Offset, Index>(lonVar, dimSea.dimLon, ghost, nLonBlocks, blockPartitionIdx[1]);
+        generateNcVarExt<MPI_Offset, Index>(lonVar, dimSeaTotal.Y(), ghost, nLonBlocks, blockPartitionIdx[1]);
 
-    // count and start vals for lat and lon for ground polygon
+    // count and start vals for lat and lon for ground
     const auto latGround =
-        generateNcVarExt<MPI_Offset, Index>(gridLatVar, dimGround.dimLat, ghost, nLatBlocks, blockPartitionIdx[0]);
+        generateNcVarExt<MPI_Offset, Index>(gridLatVar, dimGroundTotal.X(), ghost, nLatBlocks, blockPartitionIdx[0]);
     const auto lonGround =
-        generateNcVarExt<MPI_Offset, Index>(gridLonVar, dimGround.dimLon, ghost, nLonBlocks, blockPartitionIdx[1]);
-
-    // num of polygons for sea & grnd
-    const size_t &numPolySea = (latSea.count - 1) * (lonSea.count - 1);
-    const size_t &numPolyGround = (latGround.count - 1) * (lonGround.count - 1);
+        generateNcVarExt<MPI_Offset, Index>(gridLonVar, dimGroundTotal.Y(), ghost, nLonBlocks, blockPartitionIdx[1]);
 
     // vertices sea & grnd
     const size_t &verticesSea = latSea.count * lonSea.count;
@@ -508,7 +428,7 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
         vecLonGrid(lonGround.count), vecDepth(verticesGround);
 
     std::vector coords{vecLat.begin(), vecLon.begin()};
-    if (needSea) {
+    if (m_needSea) {
         latSea.readNcVar(vecLat.data());
         lonSea.readNcVar(vecLon.data());
 
@@ -528,11 +448,14 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
         }
 
         //************* create sea *************//
-        const auto seaDim = Dim<MPI_Offset>(latSea.count, lonSea.count);
-        const auto polyData = PolygonData<MPI_Offset>(numPolySea, numPolySea * 4, verticesSea);
-        m_block_seaPtr[blockNum] =
-            make_shared<Polygons>(polyData.numElements, polyData.numCorners, polyData.numVertices);
-        generateSurface(m_block_seaPtr[blockNum], polyData, seaDim, coords);
+        const auto dimSea = moffDim(latSea.count, lonSea.count, 1);
+        m_block_dimSea[blockNum] = dimSea;
+        LayerGrid::ptr seaPtr(new LayerGrid(dimSea.X(), dimSea.Y(), dimSea.Z()));
+        seaPtr->min()[0] = *vecLat.begin();
+        seaPtr->min()[1] = *vecLon.begin();
+        seaPtr->max()[0] = *(vecLat.end() - 1);
+        seaPtr->max()[1] = *(vecLon.end() - 1);
+        generateSurface(seaPtr, dimSea);
 
         //************* create selected scalars *************//
         const std::vector<MPI_Offset> vecScalarStart{latSea.start, lonSea.start};
@@ -567,7 +490,7 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
             const std::vector<MPI_Offset> vecStartBathy{latGround.start, lonGround.start};
             const std::vector<MPI_Offset> vecCountBathy{latGround.count, lonGround.count};
             bathymetryVar.getVar_all(vecStartBathy, vecCountBathy, vecDepth.data());
-            if (vecDepth.empty()) {
+            if (!vecDepth.empty()) {
                 latGround.readNcVar(vecLatGrid.data());
                 lonGround.readNcVar(vecLonGrid.data());
 
@@ -575,15 +498,17 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
                 coords[1] = vecLonGrid.begin();
 
                 const auto &scale = m_verticalScale->getValue();
-                const auto grndDim = Dim<MPI_Offset>(latGround.count, lonGround.count);
-                const auto polyDataGround = PolygonData<MPI_Offset>(numPolyGround, numPolyGround * 4, verticesGround);
                 ZCalcFunc grndZCalc = [&vecDepth, &lonGround, &scale](MPI_Offset j, MPI_Offset k) {
                     return -vecDepth[j * lonGround.count + k] * scale;
                 };
 
-                Polygons::ptr grndPtr(
-                    new Polygons(polyDataGround.numElements, polyDataGround.numCorners, polyDataGround.numVertices));
-                generateSurface(grndPtr, polyDataGround, grndDim, coords, grndZCalc);
+                LayerGrid::ptr grndPtr(new LayerGrid(latGround.count, lonGround.count, 1));
+                const auto grndDim = moffDim(latGround.count, lonGround.count, 0);
+                grndPtr->min()[0] = *vecLatGrid.begin();
+                grndPtr->min()[1] = *vecLonGrid.begin();
+                grndPtr->max()[0] = *(vecLatGrid.end() - 1);
+                grndPtr->max()[1] = *(vecLonGrid.end() - 1);
+                generateSurface(grndPtr, grndDim, grndZCalc);
 
                 // add ground data to port
                 grndPtr->setBlock(blockNum);
@@ -607,7 +532,7 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
 }
 
 /**
-  * @brief Generates polygon for corresponding timestep and adds Object to scene.
+  * @brief Generates heightmap (layergrid) for corresponding timestep and adds Object to scene.
   *
   * @token: Ref to internal vistle token.
   * @blockNum: current block number of parallel process.
@@ -617,28 +542,20 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
 template<class T, class U>
 bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &timestep)
 {
-    Polygons::ptr &seaPtr = m_block_seaPtr[blockNum];
-    Polygons::ptr timestepPolyPtr = seaPtr->clone();
-    timestepPolyPtr->resetArrays();
-
-    // reuse data from sea polygon surface and calculate z new
-    timestepPolyPtr->d()->x[0] = seaPtr->d()->x[0];
-    timestepPolyPtr->d()->x[1] = seaPtr->d()->x[1];
-    timestepPolyPtr->d()->x[2] = ShmVector<Scalar>();
-    timestepPolyPtr->d()->x[2].construct(seaPtr->getSize());
+    auto &blockSeaDim = m_block_dimSea[blockNum];
+    LayerGrid::ptr timestepPtr(new LayerGrid(blockSeaDim.X(), blockSeaDim.Y(), blockSeaDim.Z()));
 
     // getting z from vecEta and copy to z()
     // verticesSea * timesteps = total count vecEta
-    const auto &verticesSea = timestepPolyPtr->getNumVertices();
+    const auto &verticesSea = timestepPtr->getNumVertices();
     std::vector<float> &etaVec = m_block_etaVec[blockNum];
     auto startCopy = etaVec.begin() + (m_block_etaIdx[blockNum]++ * verticesSea);
-    std::copy_n(startCopy, verticesSea, timestepPolyPtr->z().begin());
-    timestepPolyPtr->updateInternals();
-    timestepPolyPtr->setTimestep(timestep);
-    timestepPolyPtr->setBlock(blockNum);
-
+    std::copy_n(startCopy, verticesSea, timestepPtr->z().begin());
+    timestepPtr->updateInternals();
+    timestepPtr->setTimestep(timestep);
+    timestepPtr->setBlock(blockNum);
     if (m_seaSurface_out->isConnected())
-        token.addObject(m_seaSurface_out, timestepPolyPtr);
+        token.addObject(m_seaSurface_out, timestepPtr);
 
     //add scalar to ports
     std::array<VecScalarPtr, NUM_SCALARS> &vecScalarPtrArr = m_block_VecScalarPtr[blockNum];
@@ -647,7 +564,7 @@ bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &time
             continue;
 
         auto vecScalarPtr = vecScalarPtrArr[i]->clone();
-        vecScalarPtr->setGrid(timestepPolyPtr);
+        vecScalarPtr->setGrid(timestepPtr);
         vecScalarPtr->addAttribute(_species, vecScalarPtr->getAttribute(_species));
         vecScalarPtr->setBlock(blockNum);
         vecScalarPtr->setTimestep(timestep);
@@ -668,7 +585,7 @@ bool ReadTsunami::finishRead()
 {
     //reset block partition variables
     m_block_VecScalarPtr.clear();
-    m_block_seaPtr.clear();
+    m_block_dimSea.clear();
     m_block_etaVec.clear();
     m_block_etaIdx.clear();
     sendInfo("Cleared Cache for rank: " + std::to_string(rank()));
