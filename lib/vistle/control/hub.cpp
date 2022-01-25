@@ -1925,6 +1925,27 @@ void Hub::clearStatus()
     m_statusText.clear();
 }
 
+int Hub::getParentCompound(int modId)
+{
+    if (!Id::isModule(modId))
+        return Id::Invalid;
+    auto modName = m_stateTracker.getModuleName(modId);
+    for (size_t i = modId - 1; i >= message::Id::ModuleBase; --i) {
+        auto modit = m_stateTracker.runningMap.find(i);
+        if (modit != m_stateTracker.runningMap.end()) {
+            auto &av = m_stateTracker.getStaticModuleInfo(modit->first);
+        if (av.isCompound()) {
+                if (av.submodules().size() >= modId - i && av.submodules()[modId - i - 1].name == modName)
+                    return modit->first;
+            else
+                    break;
+        }
+        }
+    }
+    return Id::Invalid;
+}
+
+
 bool Hub::connectToMaster(const std::string &host, unsigned short port)
 {
     assert(!m_isMaster);

@@ -212,7 +212,7 @@ private:
     void setSessionUrl(const std::string &url);
     void setStatus(const std::string &s, message::UpdateStatus::Importance prio = message::UpdateStatus::Low);
     void clearStatus();
-
+    int getParentCompound(int modId);
     std::map<int, std::vector<message::Buffer>> m_sendAfterSpawn;
 
 #if BOOST_VERSION >= 106600
