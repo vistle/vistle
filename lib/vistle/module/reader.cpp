@@ -563,7 +563,7 @@ Reader *Reader::Token::reader() const
     return m_reader;
 }
 
-int Reader::ReaderTime::calc_numtime()
+int Reader::ReaderTime::calc_numtime() const
 {
     int numtime{-1};
     if (m_inc > 0) {
