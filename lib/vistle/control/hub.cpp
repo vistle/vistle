@@ -2380,7 +2380,23 @@ bool Hub::handlePriv(const message::ExecutionDone &done)
     if (m_isMaster) {
         auto notif(done);
         notif.setDestId(Id::Broadcast);
-        sendAll(notif);
+        auto parent = getParentCompound(done.senderId());
+        if (parent != message::Id::Invalid) {
+            const auto &av = m_stateTracker.getStaticModuleInfo(parent);
+            bool isExecuing = false;
+            for (size_t i = 0; i < av.submodules().size(); i++) {
+                isExecuing &= m_stateTracker.isExecuting(parent + i + 1);
+            }
+            if (!isExecuing) {
+                auto parentDone(notif);
+                parentDone.setSenderId(parent);
+                sendUi(parentDone);
+                m_stateTracker.handle(parentDone, nullptr);
+            }
+        }
+            sendUi(notif);
+
+        sendAllButUi(notif);
         handleQueue();
     }
 
