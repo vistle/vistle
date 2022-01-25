@@ -14,11 +14,13 @@
  ** Date:  25.01.2021 Version 1 with netCDF                                **
  ** Date:  29.10.2021 Version 2 with PnetCDF                               **
  ** Date:  24.01.2022 Version 2.1 use layergrid instead of polygons        **
+ ** Date:  25.01.2022 Version 2.2 optimize creation of surfaces            **
 \**************************************************************************/
 
 #ifndef _READTSUNAMI_H
 #define _READTSUNAMI_H
 
+#include "vistle/core/index.h"
 #include <atomic>
 #include <memory>
 #include <mpi.h>
@@ -43,6 +45,10 @@ private:
     typedef PnetCDF::NcmpiVar NcVar;
     typedef PnetCDF::NcmpiFile NcFile;
     typedef vistle::Vec<vistle::Scalar>::ptr VecScalarPtr;
+    typedef std::array<VecScalarPtr, NUM_SCALARS> ArrVecScalarPtrs;
+    typedef std::vector<ArrVecScalarPtrs> VecArrVecScalarPtrs;
+    typedef std::vector<std::array<float, 2>> VecLatLon;
+    typedef std::function<float(size_t, size_t)> ZCalcFunc;
 
     //structs
     template<class T>
@@ -66,6 +72,7 @@ private:
         MPI_Offset stride;
         MPI_Offset imap;
 
+        NcVarExtended() = default;
         NcVarExtended(const NcVar &nc, const MPI_Offset &start = 0, const MPI_Offset &count = 0,
                       const MPI_Offset &stride = 1, const MPI_Offset &imap = 1)
         : start(start), count(count), stride(stride), imap(imap)
@@ -84,7 +91,7 @@ private:
         }
 
     private:
-        std::shared_ptr<NcVar> ncVar;
+        std::unique_ptr<NcVar> ncVar;
     };
 
     //Vistle functions
@@ -94,11 +101,19 @@ private:
     bool examine(const vistle::Parameter *param) override;
 
     //Own functions
+    void initETA(const NcFile *ncFile, const std::array<NcVarExtended, 2> &ncExtSea, const ReaderTime &time,
+                 const size_t &verticesSea, int block);
+    void initSea(const NcFile *ncFile, const std::array<vistle::Index, 2> &nBlocks,
+                 const std::array<vistle::Index, NUM_BLOCKS> &blockPartIdx, const ReaderTime &time, int ghost,
+                 int block);
+    void initScalars(const NcFile *ncFile, const std::array<NcVarExtended, 2> &ncExtSea, const size_t &verticesSea,
+                     int block);
+    void createGround(Token &token, const NcFile *ncFile, const std::array<vistle::Index, 2> &nBlocks,
+                      const std::array<vistle::Index, NUM_BLOCKS> &blockPartIdx, int ghost, int block);
     void initScalarParamReader();
     bool inspectNetCDFVars();
     std::unique_ptr<NcFile> openNcmpiFile();
 
-    typedef std::function<float(size_t, size_t)> ZCalcFunc;
     template<class T>
     void generateSurface(
         vistle::LayerGrid::ptr surface, const Dim<T> &dim,
@@ -116,8 +131,6 @@ private:
 
     template<class T, class U>
     bool computeTimestep(Token &token, const T &blockNum, const U &timestep);
-    void computeActualLastTimestep(const ptrdiff_t &incrementTimestep, const size_t &firstTimestep,
-                                   size_t &lastTimestep, MPI_Offset &nTimesteps);
 
     template<class T, class PartionIdx>
     auto generateNcVarExt(const NcVar &ncVar, const T &dim, const T &ghost, const T &numDimBlocks,
@@ -151,7 +164,9 @@ private:
     std::vector<int> m_block_etaIdx;
     std::vector<moffDim> m_block_dimSea;
     std::vector<std::vector<float>> m_block_etaVec;
-    std::vector<std::array<VecScalarPtr, NUM_SCALARS>> m_block_VecScalarPtr;
+    VecArrVecScalarPtrs m_block_VecScalarPtr;
+    VecLatLon m_block_min;
+    VecLatLon m_block_max;
 
     //lat = 0; lon = 1
     std::array<std::string, NUM_BLOCKS> m_latLon_Sea;
