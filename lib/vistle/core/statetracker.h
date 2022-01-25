@@ -169,6 +169,7 @@ public:
     std::string sessionUrl() const;
 
     void printModules() const;
+    const AvailableModule &getStaticModuleInfo(int modId);
 
 protected:
     std::shared_ptr<message::Buffer> removeRequest(const message::uuid_t &uuid);

@@ -2234,17 +2234,6 @@ bool Hub::processScript(const std::string &filename, bool barrierAfterLoad, bool
 #endif
 }
 
-const AvailableModule &getStaticModuleInfo(int modId, StateTracker &state)
-{
-    auto hubId = state.getHub(modId);
-    if (hubId != Id::Invalid) {
-        auto it = state.availableModules().find({hubId, state.getModuleName(modId)});
-        if (it != state.availableModules().end())
-            return it->second;
-    }
-    throw vistle::exception{"getStaticModuleInfo failed mor module with id " + std::to_string(modId)};
-}
-
 bool Hub::handlePriv(const message::Quit &quit, message::Identify::Identity senderType)
 {
     if (quit.id() == Id::Broadcast) {
@@ -2336,7 +2325,7 @@ bool Hub::handlePriv(const message::Execute &exec)
             modules.push_back(id);
         }
     } else {
-        const auto &av = getStaticModuleInfo(exec.getModule(), m_stateTracker);
+        const auto &av = m_stateTracker.getStaticModuleInfo(exec.getModule());
         if (av.isCompound()) {
             isCompound = true;
             modules = getSubmoduleIds(exec.getModule(), av);
@@ -2383,7 +2372,7 @@ bool Hub::handlePriv(const message::CancelExecute &cancel)
 
     if (Id::isModule(cancel.getModule())) {
         const int hub = m_stateTracker.getHub(cancel.getModule());
-        const auto &av = getStaticModuleInfo(cancel.getModule(), m_stateTracker);
+        const auto &av = m_stateTracker.getStaticModuleInfo(cancel.getModule());
         if (av.isCompound()) {
             for (auto sub: getSubmoduleIds(cancel.getModule(), av)) {
                 toSend.setDestId(sub);
@@ -2480,8 +2469,8 @@ bool handlePrivConnMsg(const ConnMsg &conn, Hub &hub, message::MessageFactory &m
     auto modA = conn.getModuleA();
     auto modB = conn.getModuleB();
 
-    const auto &avA = getStaticModuleInfo(modA, hub.stateTracker());
-    const auto &avB = getStaticModuleInfo(modB, hub.stateTracker());
+    const auto &avA = hub.stateTracker().getStaticModuleInfo(modA);
+    const auto &avB = hub.stateTracker().getStaticModuleInfo(modB);
 
     std::vector<Port> portsA, portsB;
     if (avA.isCompound()) {

@@ -1826,6 +1826,17 @@ void StateTracker::updateStatus()
     }
 }
 
+const AvailableModule &StateTracker::getStaticModuleInfo(int modId)
+{
+    auto hubId = getHub(modId);
+    if (hubId != Id::Invalid) {
+        auto it = availableModules().find({hubId, getModuleName(modId)});
+        if (it != availableModules().end())
+            return it->second;
+    }
+    throw vistle::exception{"getStaticModuleInfo failed mor module with id " + std::to_string(modId)};
+}
+
 void StateObserver::quitRequested()
 {}
 
