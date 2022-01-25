@@ -1349,6 +1349,10 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
         auto &mm = static_cast<const message::Disconnect &>(msg);
         return handleConnectOrDisconnect(mm);
     }
+    case message::KILL: {
+        auto kill = msg.as<message::Kill>();
+        return handlePriv(kill);
+    }
     default:
         break;
     }
@@ -1758,6 +1762,32 @@ bool Hub::handlePriv(const message::Spawn &spawn)
     return true;
 }
 
+bool Hub::handlePriv(const message::Kill &kill)
+{
+    auto parent = getParentCompound(kill.getModule());
+    if (parent != message::Id::Invalid) {
+        auto &av = m_stateTracker.getStaticModuleInfo(parent);
+        killSubmodules(parent, av);
+        message::Kill parentKill{parent};
+        m_stateTracker.handle(parentKill, nullptr);
+        vistle::message::ModuleExit exit;
+        exit.setSenderId(parent);
+        sendUi(exit);
+    } else {
+        auto &av = m_stateTracker.getStaticModuleInfo(kill.getModule());
+        m_stateTracker.handle(kill, nullptr);
+        if (av.isCompound()) {
+            vistle::message::ModuleExit exit;
+            exit.setSenderId(kill.getModule());
+            sendUi(exit);
+            killSubmodules(kill.getModule(), av);
+        } else {
+            sendManager(kill);
+        }
+    }
+    return true;
+}
+
 bool Hub::handleQueue()
 {
     using namespace message;
@@ -1945,6 +1975,15 @@ int Hub::getParentCompound(int modId)
     return Id::Invalid;
 }
 
+void Hub::killSubmodules(int modId, const AvailableModule &av)
+{
+    for (size_t i = 0; i < av.submodules().size(); i++) {
+        message::Kill subKill(modId + i + 1);
+        subKill.setDestId(modId + i + 1);
+        m_stateTracker.handle(subKill, nullptr);
+        sendManager(subKill);
+    }
+}
 
 bool Hub::connectToMaster(const std::string &host, unsigned short port)
 {

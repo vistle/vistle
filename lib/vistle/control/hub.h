@@ -169,6 +169,8 @@ private:
     bool handlePriv(const message::Cover &cover, const buffer *payload);
     bool handlePriv(const message::ModuleExit &exit);
     bool handlePriv(const message::Spawn &spawn);
+    bool handlePriv(const message::Kill &kill);
+
     template<typename ConnMsg>
     bool handleConnectOrDisconnect(const ConnMsg &mm)
     {
@@ -213,6 +215,7 @@ private:
     void setStatus(const std::string &s, message::UpdateStatus::Importance prio = message::UpdateStatus::Low);
     void clearStatus();
     int getParentCompound(int modId);
+    void killSubmodules(int modId, const AvailableModule &av);
     std::map<int, std::vector<message::Buffer>> m_sendAfterSpawn;
 
 #if BOOST_VERSION >= 106600
