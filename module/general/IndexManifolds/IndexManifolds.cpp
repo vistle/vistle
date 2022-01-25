@@ -35,12 +35,19 @@ IndexManifolds::~IndexManifolds()
 
 bool IndexManifolds::compute(std::shared_ptr<BlockTask> task) const
 {
-    auto data = task->accept<DataBase>("data_in0");
+    auto obj = task->expect<Object>("data_in0");
+    if (!obj) {
+        sendError("no input");
+        return true;
+    }
+
     Object::const_ptr ingrid;
-    if (data) {
+    auto data = DataBase::as(obj);
+    if (data && data->grid()) {
         ingrid = data->grid();
     } else {
-        ingrid = task->accept<Object>("data_in0");
+        ingrid = obj;
+        data.reset();
     }
 
     if (!ingrid) {
@@ -54,7 +61,7 @@ bool IndexManifolds::compute(std::shared_ptr<BlockTask> task) const
         return true;
     }
 
-    bool elementData = data->guessMapping() == DataBase::Element;
+    bool elementData = data && data->guessMapping() == DataBase::Element;
 
     Direction dir = static_cast<Direction>(p_direction->getValue());
     Direction dir1 = dir == X ? Y : X;
