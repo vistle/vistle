@@ -1342,62 +1342,12 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
         break;
     }
     case message::CONNECT: {
-        //CERR << "handling connect: " << msg << std::endl;
-        auto &mm = static_cast<const Connect &>(msg);
-        if (m_isMaster) {
-#if 0
-             if (mm.isNotification()) {
-                 CERR << "discarding notification on master: " << msg << std::endl;
-                 return true;
-             }
-#endif
-            if (m_stateTracker.handleConnect(mm)) {
-                handlePriv(mm);
-                handleQueue();
-            } else {
-                //CERR << "delaying connect: " << msg << std::endl;
-                m_queue.emplace_back(msg);
-                return true;
-            }
-        } else {
-            if (mm.isNotification()) {
-                m_stateTracker.handle(mm, nullptr);
-                sendManager(mm);
-                sendUi(mm);
-            } else {
-                sendMaster(mm);
-            }
-            return true;
-        }
-        break;
+        auto &mm = static_cast<const message::Connect &>(msg);
+        return handleConnectOrDisconnect(mm);
     }
     case message::DISCONNECT: {
-        auto &mm = static_cast<const Disconnect &>(msg);
-        if (m_isMaster) {
-#if 0
-             if (mm.isNotification()) {
-                 CERR << "discarding notification on master: " << msg << std::endl;
-                 return true;
-             }
-#endif
-            if (m_stateTracker.handleDisconnect(mm)) {
-                handlePriv(mm);
-                handleQueue();
-            } else {
-                m_queue.emplace_back(msg);
-                return true;
-            }
-        } else {
-            if (mm.isNotification()) {
-                m_stateTracker.handle(mm, nullptr);
-                sendManager(mm);
-                sendUi(mm);
-            } else {
-                sendMaster(mm);
-            }
-            return true;
-        }
-        break;
+        auto &mm = static_cast<const message::Disconnect &>(msg);
+        return handleConnectOrDisconnect(mm);
     }
     default:
         break;
@@ -1821,7 +1771,7 @@ bool Hub::handleQueue()
         for (auto &m: m_queue) {
             if (m.type() == message::CONNECT) {
                 auto &mm = m.as<Connect>();
-                if (m_stateTracker.handleConnect(mm)) {
+                if (m_stateTracker.handleConnectOrDisconnect(mm)) {
                     again = true;
                     handlePriv(mm);
                 } else {
@@ -1829,7 +1779,7 @@ bool Hub::handleQueue()
                 }
             } else if (m.type() == message::DISCONNECT) {
                 auto &mm = m.as<Disconnect>();
-                if (m_stateTracker.handleDisconnect(mm)) {
+                if (m_stateTracker.handleConnectOrDisconnect(mm)) {
                     again = true;
                     handlePriv(mm);
                 } else {
@@ -1931,6 +1881,19 @@ void Hub::sendError(const std::string &s)
     auto payload = addPayload(t, pl);
     sendUi(t, Id::Broadcast, &payload);
 }
+
+
+std::vector<int> Hub::getSubmoduleIds(int modId, const AvailableModule &av)
+{
+    std::vector<int> retval;
+    if (av.isCompound()) {
+        for (size_t i = 0; i < av.submodules().size(); i++) {
+            retval.push_back(modId + i + 1);
+        }
+    }
+    return retval;
+}
+
 
 void Hub::setLoadedFile(const std::string &file)
 {
@@ -2271,6 +2234,17 @@ bool Hub::processScript(const std::string &filename, bool barrierAfterLoad, bool
 #endif
 }
 
+const AvailableModule &getStaticModuleInfo(int modId, StateTracker &state)
+{
+    auto hubId = state.getHub(modId);
+    if (hubId != Id::Invalid) {
+        auto it = state.availableModules().find({hubId, state.getModuleName(modId)});
+        if (it != state.availableModules().end())
+            return it->second;
+    }
+    throw vistle::exception{"getStaticModuleInfo failed mor module with id " + std::to_string(modId)};
+}
+
 bool Hub::handlePriv(const message::Quit &quit, message::Identify::Identity senderType)
 {
     if (quit.id() == Id::Broadcast) {
@@ -2349,6 +2323,7 @@ bool Hub::handlePriv(const message::Execute &exec)
         toSend.setExecutionCount(++m_execCount);
 
     bool onlySources = false;
+    bool isCompound = false;
     std::vector<int> modules{exec.getModule()}; // execute specified module
     if (!Id::isModule(exec.getModule())) {
         // or all modules that are a source in the dataflow graph
@@ -2360,8 +2335,13 @@ bool Hub::handlePriv(const message::Execute &exec)
                 continue;
             modules.push_back(id);
         }
+    } else {
+        const auto &av = getStaticModuleInfo(exec.getModule(), m_stateTracker);
+        if (av.isCompound()) {
+            isCompound = true;
+            modules = getSubmoduleIds(exec.getModule(), av);
+        }
     }
-
     for (auto id: modules) {
         bool canExec = true;
         auto inputs = m_stateTracker.portTracker()->getInputPorts(id);
@@ -2375,7 +2355,10 @@ bool Hub::handlePriv(const message::Execute &exec)
             toSend.setDestId(message::Broadcast);
             toSend.setModule(id);
             m_stateTracker.handle(toSend, nullptr);
-            sendAll(toSend);
+            if (isCompound)
+                sendAllButUi(toSend);
+            else
+                sendAll(toSend);
         }
     }
 
@@ -2400,8 +2383,16 @@ bool Hub::handlePriv(const message::CancelExecute &cancel)
 
     if (Id::isModule(cancel.getModule())) {
         const int hub = m_stateTracker.getHub(cancel.getModule());
-        toSend.setDestId(cancel.getModule());
-        sendManager(toSend, hub);
+        const auto &av = getStaticModuleInfo(cancel.getModule(), m_stateTracker);
+        if (av.isCompound()) {
+            for (auto sub: getSubmoduleIds(cancel.getModule(), av)) {
+                toSend.setDestId(sub);
+                sendManager(toSend, hub);
+            }
+        } else {
+            toSend.setDestId(cancel.getModule());
+            sendManager(toSend, hub);
+        }
     }
 
     return true;
@@ -2484,20 +2475,13 @@ void handleMirrorConnect(const ConnMsg &conn, const StateTracker &state,
 }
 
 template<typename ConnMsg>
-bool handleConnMsg(const ConnMsg &conn, Hub &hub, message::MessageFactory &make)
+bool handlePrivConnMsg(const ConnMsg &conn, Hub &hub, message::MessageFactory &make)
 {
     auto modA = conn.getModuleA();
     auto modB = conn.getModuleB();
 
-    const auto &avA = hub.stateTracker()
-                          .availableModules()
-                          .find({hub.stateTracker().getHub(modA), hub.stateTracker().getModuleName(modA)})
-                          ->second;
-    const auto &avB = hub.stateTracker()
-                          .availableModules()
-                          .find({hub.stateTracker().getHub(modB), hub.stateTracker().getModuleName(modB)})
-                          ->second;
-
+    const auto &avA = getStaticModuleInfo(modA, hub.stateTracker());
+    const auto &avB = getStaticModuleInfo(modB, hub.stateTracker());
 
     std::vector<Port> portsA, portsB;
     if (avA.isCompound()) {
@@ -2542,12 +2526,12 @@ bool handleConnMsg(const ConnMsg &conn, Hub &hub, message::MessageFactory &make)
 
 bool Hub::handlePriv(const message::Connect &conn)
 {
-    return handleConnMsg(conn, *this, make);
+    return handlePrivConnMsg(conn, *this, make);
 }
 
 bool Hub::handlePriv(const message::Disconnect &disc)
 {
-    return handleConnMsg(disc, *this, make);
+    return handlePrivConnMsg(disc, *this, make);
 }
 
 bool Hub::handlePriv(const message::FileQuery &query, const buffer *payload)

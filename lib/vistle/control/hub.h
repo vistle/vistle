@@ -87,7 +87,7 @@ private:
     void killOldModule(int migratedId);
     void sendInfo(const std::string &s);
     void sendError(const std::string &s);
-
+    std::vector<int> getSubmoduleIds(int modId, const AvailableModule &av);
     bool m_inManager = false;
 
     unsigned short m_basePort = 31093;
@@ -169,7 +169,34 @@ private:
     bool handlePriv(const message::Cover &cover, const buffer *payload);
     bool handlePriv(const message::ModuleExit &exit);
     bool handlePriv(const message::Spawn &spawn);
-
+    template<typename ConnMsg>
+    bool handleConnectOrDisconnect(const ConnMsg &mm)
+    {
+        if (m_isMaster) {
+#if 0
+             if (mm.isNotification()) {
+                 CERR << "discarding notification on master: " << mm << std::endl;
+                 return true;
+             }
+#endif
+            if (m_stateTracker.handleConnectOrDisconnect(mm)) {
+                handlePriv(mm);
+                return handleQueue();
+            } else {
+                m_queue.emplace_back(mm);
+                return true;
+            }
+        } else {
+            if (mm.isNotification()) {
+                m_stateTracker.handle(mm, nullptr);
+                sendManager(mm);
+                sendUi(mm);
+            } else {
+                sendMaster(mm);
+            }
+            return true;
+        }
+    }
     void spawnModule(message::Spawn &spawn);
     bool spawnModuleCompound(const message::Spawn &spawn);
 

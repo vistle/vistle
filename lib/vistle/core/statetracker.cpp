@@ -873,26 +873,6 @@ bool StateTracker::handlePriv(const message::Started &started)
     return true;
 }
 
-bool StateTracker::handleConnect(const message::Connect &connect)
-{
-    if (!handlePriv(connect)) {
-        // to be queued by caller
-        //m_queue.emplace_back(connect);
-        return false;
-    }
-    return true;
-}
-
-bool StateTracker::handleDisconnect(const message::Disconnect &disconnect)
-{
-    if (!handlePriv(disconnect)) {
-        // to be queued by caller
-        //m_queue.emplace_back(disconnect);
-        return false;
-    }
-    return true;
-}
-
 bool StateTracker::handlePriv(const message::Connect &connect)
 {
     if (isExecuting(connect.getModuleA()) || isExecuting(connect.getModuleB()))
