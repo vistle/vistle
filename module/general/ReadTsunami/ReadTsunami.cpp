@@ -365,10 +365,11 @@ void ReadTsunami::initETA(const NcFile *ncFile, const std::array<NcVarExtended, 
     const NcVar &etaVar = ncFile->getVar(ETA);
     const auto &latSea = ncExtSea[0];
     const auto &lonSea = ncExtSea[1];
-    m_block_etaVec[block] = std::vector<float>(time.calc_numtime() * verticesSea);
+    auto nTimesteps = time.calc_numtime();
+    m_block_etaVec[block] = std::vector<float>(nTimesteps * verticesSea);
     auto &vecEta = m_block_etaVec[block];
     const std::vector<MPI_Offset> vecStartEta{time.first(), latSea.start, lonSea.start};
-    const std::vector<MPI_Offset> vecCountEta{time.calc_numtime(), latSea.count, lonSea.count};
+    const std::vector<MPI_Offset> vecCountEta{nTimesteps, latSea.count, lonSea.count};
     const std::vector<MPI_Offset> vecStrideEta{time.inc(), latSea.stride, lonSea.stride};
     etaVar.getVar_all(vecStartEta, vecCountEta, vecStrideEta, vecEta.data());
 
@@ -524,11 +525,6 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
     auto ncFile = openNcmpiFile();
     m_mtx.unlock();
 
-    auto inc = m_increment->getValue();
-    auto first = m_first->getValue();
-    auto last = m_last->getValue();
-    const auto &time = ReaderTime(first, last, inc);
-
     std::array<Index, 2> nBlocks;
     std::array<Index, NUM_BLOCKS> blockPartitionIdx;
     computeBlockPartition(blockNum, nBlocks[0], nBlocks[1], blockPartitionIdx.begin());
@@ -537,8 +533,16 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
     if (m_ghost->getValue() == 1 && !(nBlocks[0] == 1 && nBlocks[1] == 1))
         ghost++;
 
-    if (m_needSea)
+    if (m_needSea) {
+        auto inc = m_increment->getValue();
+        auto first = m_first->getValue();
+        auto last = m_last->getValue();
+        if (last < 0)
+            return false;
+        last = last - (last % inc);
+        const auto &time = ReaderTime(first, last, inc);
         initSea(ncFile.get(), nBlocks, blockPartitionIdx, time, ghost, blockNum);
+    }
 
     if (m_groundSurface_out->isConnected()) {
         if (m_bathy->getValue() == choiceParamNone)
@@ -571,25 +575,25 @@ template<class T, class U>
 bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &timestep)
 {
     auto &blockSeaDim = m_block_dimSea[blockNum];
-    LayerGrid::ptr timestepPtr(new LayerGrid(blockSeaDim.X(), blockSeaDim.Y(), blockSeaDim.Z()));
+    LayerGrid::ptr gridPtr(new LayerGrid(blockSeaDim.X(), blockSeaDim.Y(), blockSeaDim.Z()));
     const auto &min = m_block_min[blockNum];
     const auto &max = m_block_max[blockNum];
-    timestepPtr->min()[0] = min[0];
-    timestepPtr->min()[1] = min[1];
-    timestepPtr->max()[0] = max[0];
-    timestepPtr->max()[1] = max[1];
+    gridPtr->min()[0] = min[0];
+    gridPtr->min()[1] = min[1];
+    gridPtr->max()[0] = max[0];
+    gridPtr->max()[1] = max[1];
 
     // getting z from vecEta and copy to z()
     // verticesSea * timesteps = total count vecEta
-    const auto &verticesSea = timestepPtr->getNumVertices();
+    const auto &verticesSea = gridPtr->getNumVertices();
     std::vector<float> &etaVec = m_block_etaVec[blockNum];
     auto startCopy = etaVec.begin() + (m_block_etaIdx[blockNum]++ * verticesSea);
-    std::copy_n(startCopy, verticesSea, timestepPtr->z().begin());
-    timestepPtr->updateInternals();
-    timestepPtr->setTimestep(timestep);
-    timestepPtr->setBlock(blockNum);
+    std::copy_n(startCopy, verticesSea, gridPtr->z().begin());
+    gridPtr->updateInternals();
+    gridPtr->setTimestep(timestep);
+    gridPtr->setBlock(blockNum);
     if (m_seaSurface_out->isConnected())
-        token.addObject(m_seaSurface_out, timestepPtr);
+        token.addObject(m_seaSurface_out, gridPtr);
 
     //add scalar to ports
     ArrVecScalarPtrs &vecScalarPtrArr = m_block_VecScalarPtr[blockNum];
@@ -598,7 +602,7 @@ bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &time
             continue;
 
         auto vecScalarPtr = vecScalarPtrArr[i]->clone();
-        vecScalarPtr->setGrid(timestepPtr);
+        vecScalarPtr->setGrid(gridPtr);
         vecScalarPtr->addAttribute(_species, vecScalarPtr->getAttribute(_species));
         vecScalarPtr->setBlock(blockNum);
         vecScalarPtr->setTimestep(timestep);
