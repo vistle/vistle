@@ -444,16 +444,20 @@ void ReadTsunami::initSea(const NcFile *ncFile, const std::array<Index, 2> &nBlo
     const size_t &vertSea = latSea.count * lonSea.count;
     initETA(ncFile, latLonSea, time, vertSea, block);
 
-    const auto dimSea = moffDim(latSea.count, lonSea.count, 1);
     std::vector<float> vecLat(latSea.count), vecLon(lonSea.count);
 
     latSea.readNcVar(vecLat.data());
     lonSea.readNcVar(vecLon.data());
-    m_block_dimSea[block] = dimSea;
-    m_block_min[block][0] = *vecLat.begin();
-    m_block_min[block][1] = *vecLon.begin();
-    m_block_max[block][0] = *(vecLat.end() - 1);
-    m_block_max[block][1] = *(vecLon.end() - 1);
+    /* m_block_dimSea[block] = moffDim(latSea.count, lonSea.count, 1); */
+    m_block_dimSea[block] = moffDim(lonSea.count, latSea.count, 1);
+    /* m_block_min[block][0] = *vecLat.begin(); */
+    /* m_block_min[block][1] = *vecLon.begin(); */
+    /* m_block_max[block][0] = *(vecLat.end() - 1); */
+    /* m_block_max[block][1] = *(vecLon.end() - 1); */
+    m_block_min[block][0] = *vecLon.begin();
+    m_block_min[block][1] = *vecLat.begin();
+    m_block_max[block][0] = *(vecLon.end() - 1);
+    m_block_max[block][1] = *(vecLat.end() - 1);
 
     initScalars(ncFile, latLonSea, vertSea, block);
 }
@@ -495,12 +499,18 @@ void ReadTsunami::createGround(Token &token, const NcFile *ncFile, const std::ar
             return -vecDepth[j * lonGround.count + k] * scale;
         };
 
-        LayerGrid::ptr grndPtr(new LayerGrid(latGround.count, lonGround.count, 1));
-        const auto grndDim = moffDim(latGround.count, lonGround.count, 0);
-        grndPtr->min()[0] = *vecLatGrid.begin();
-        grndPtr->min()[1] = *vecLonGrid.begin();
-        grndPtr->max()[0] = *(vecLatGrid.end() - 1);
-        grndPtr->max()[1] = *(vecLonGrid.end() - 1);
+        /* LayerGrid::ptr grndPtr(new LayerGrid(latGround.count, lonGround.count, 1)); */
+        /* const auto grndDim = moffDim(latGround.count, lonGround.count, 0); */
+        /* grndPtr->min()[0] = *vecLatGrid.begin(); */
+        /* grndPtr->min()[1] = *vecLonGrid.begin(); */
+        /* grndPtr->max()[0] = *(vecLatGrid.end() - 1); */
+        /* grndPtr->max()[1] = *(vecLonGrid.end() - 1); */
+        LayerGrid::ptr grndPtr(new LayerGrid(lonGround.count, latGround.count, 1));
+        const auto grndDim = moffDim(lonGround.count, latGround.count, 0);
+        grndPtr->min()[0] = *vecLonGrid.begin();
+        grndPtr->min()[1] = *vecLatGrid.begin();
+        grndPtr->max()[0] = *(vecLonGrid.end() - 1);
+        grndPtr->max()[1] = *(vecLatGrid.end() - 1);
         fillHeight(grndPtr, grndDim, grndZCalc);
 
         // add ground data to port
@@ -592,12 +602,12 @@ bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &time
         token.addObject(m_seaSurface_out, gridPtr);
 
     //add scalar to ports
-    ArrVecScalarPtrs &vecScalarPtrArr = m_block_VecScalarPtr[blockNum];
+    ArrVecScalarPtrs &arrVecScaPtrs = m_block_VecScalarPtr[blockNum];
     for (int i = 0; i < NUM_SCALARS; ++i) {
         if (!m_scalarsOut[i]->isConnected())
             continue;
 
-        auto vecScalarPtr = vecScalarPtrArr[i]->clone();
+        auto vecScalarPtr = arrVecScaPtrs[i]->clone();
         vecScalarPtr->setGrid(gridPtr);
         vecScalarPtr->addAttribute(_species, vecScalarPtr->getAttribute(_species));
         vecScalarPtr->setBlock(blockNum);
