@@ -239,14 +239,14 @@ bool ReadTsunami::inspectNetCDFVars()
 }
 
 /**
- * @brief Generate surface from layergrid.
+ * @brief Fill z coordinate from layergrid.
  *
  * @surface: LayerGrid pointer which will be modified.
  * @dim: Dimension in lat and lon.
  * @zCalc: Function for computing z-coordinate.
  */
 template<class T>
-void ReadTsunami::generateSurface(LayerGrid::ptr surface, const Dim<T> &dim, const ZCalcFunc &zCalc)
+void ReadTsunami::fillHeight(LayerGrid::ptr surface, const Dim<T> &dim, const ZCalcFunc &zCalc)
 {
     int n = 0;
     auto sz_coord = surface->z().begin();
@@ -365,7 +365,7 @@ void ReadTsunami::initETA(const NcFile *ncFile, const std::array<NcVarExtended, 
     const NcVar &etaVar = ncFile->getVar(ETA);
     const auto &latSea = ncExtSea[0];
     const auto &lonSea = ncExtSea[1];
-    auto nTimesteps = time.calc_numtime();
+    const auto &nTimesteps = time.calc_numtime();
     m_block_etaVec[block] = std::vector<float>(nTimesteps * verticesSea);
     auto &vecEta = m_block_etaVec[block];
     const std::vector<MPI_Offset> vecStartEta{time.first(), latSea.start, lonSea.start};
@@ -501,7 +501,7 @@ void ReadTsunami::createGround(Token &token, const NcFile *ncFile, const std::ar
         grndPtr->min()[1] = *vecLonGrid.begin();
         grndPtr->max()[0] = *(vecLatGrid.end() - 1);
         grndPtr->max()[1] = *(vecLonGrid.end() - 1);
-        generateSurface(grndPtr, grndDim, grndZCalc);
+        fillHeight(grndPtr, grndDim, grndZCalc);
 
         // add ground data to port
         grndPtr->setBlock(block);
@@ -534,11 +534,11 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
         ghost++;
 
     if (m_needSea) {
-        auto inc = m_increment->getValue();
-        auto first = m_first->getValue();
         auto last = m_last->getValue();
         if (last < 0)
             return false;
+        auto inc = m_increment->getValue();
+        auto first = m_first->getValue();
         last = last - (last % inc);
         const auto &time = ReaderTime(first, last, inc);
         initSea(ncFile.get(), nBlocks, blockPartitionIdx, time, ghost, blockNum);
@@ -564,7 +564,7 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
 }
 
 /**
-  * @brief Generates heightmap (layergrid) for corresponding timestep and adds Object to scene.
+  * @brief Generates heightmap (layergrid) for corresponding timestep and adds object to scene.
   *
   * @token: Ref to internal vistle token.
   * @blockNum: current block number of parallel process.
@@ -576,12 +576,8 @@ bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &time
 {
     auto &blockSeaDim = m_block_dimSea[blockNum];
     LayerGrid::ptr gridPtr(new LayerGrid(blockSeaDim.X(), blockSeaDim.Y(), blockSeaDim.Z()));
-    const auto &min = m_block_min[blockNum];
-    const auto &max = m_block_max[blockNum];
-    gridPtr->min()[0] = min[0];
-    gridPtr->min()[1] = min[1];
-    gridPtr->max()[0] = max[0];
-    gridPtr->max()[1] = max[1];
+    std::copy_n(m_block_min[blockNum].begin(), 2, gridPtr->min());
+    std::copy_n(m_block_max[blockNum].begin(), 2, gridPtr->max());
 
     // getting z from vecEta and copy to z()
     // verticesSea * timesteps = total count vecEta

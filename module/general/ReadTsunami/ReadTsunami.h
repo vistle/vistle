@@ -115,7 +115,7 @@ private:
     std::unique_ptr<NcFile> openNcmpiFile();
 
     template<class T>
-    void generateSurface(
+    void fillHeight(
         vistle::LayerGrid::ptr surface, const Dim<T> &dim,
         const ZCalcFunc &func = [](size_t x, size_t y) { return 0; });
 
