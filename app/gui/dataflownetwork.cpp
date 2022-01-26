@@ -12,11 +12,11 @@
 #include <vistle/userinterface/pythonmodule.h>
 #endif
 
-#include "dataflownetwork.h"
-#include "module.h"
 #include "connection.h"
-#include "vistleconsole.h"
+#include "dataflownetwork.h"
 #include "dataflowview.h"
+#include "module.h"
+#include "vistleconsole.h"
 
 #include <vistle/core/statetracker.h>
 
@@ -44,7 +44,7 @@ DataFlowNetwork::DataFlowNetwork(vistle::VistleConnection *conn, QObject *parent
     // Initialize starting scene information.
     m_LineColor = Qt::black;
     m_mousePressed = false;
-
+    m_state.registerObserver(&m_observer);
     m_highlightColor = QColor(200, 50, 200);
 }
 
@@ -99,6 +99,16 @@ void DataFlowNetwork::addModule(int hub, QString modName, Qt::Key direction)
  * \param modName
  * \param dropPos
  */
+void DataFlowNetwork::addCompoundButtons(int hub, Module *mod)
+{
+    auto avIt = m_state.availableModules().find({hub, mod->name().toStdString()});
+    if (avIt != m_state.availableModules().end() && avIt->second.isCompound()) {
+        mod->setModuleCompound();
+        connect(mod, &Module::expandModuleCompound, this, &DataFlowNetwork::expandModuleCompound);
+    } else
+        connect(mod, &Module::createModuleCompound, this, &DataFlowNetwork::createModuleCompound);
+}
+
 void DataFlowNetwork::addModule(int hub, QString modName, QPointF dropPos)
 {
     lastDropPos = dropPos;
@@ -108,7 +118,7 @@ void DataFlowNetwork::addModule(int hub, QString modName, QPointF dropPos)
     module->setPos(dropPos);
     module->setPositionValid();
     module->setStatus(Module::SPAWNING);
-    connect(module, &Module::createModuleCompound, this, &DataFlowNetwork::createModuleCompound);
+    addCompoundButtons(hub, module);
     vistle::message::Spawn spawnMsg(hub, modName.toUtf8().constData());
     spawnMsg.setDestId(vistle::message::Id::MasterHub); // to master, for module id generation
     module->setSpawnUuid(spawnMsg.uuid());
@@ -134,10 +144,11 @@ void DataFlowNetwork::addModule(int moduleId, const boost::uuids::uuid &spawnUui
     }
     if (!mod) {
         mod = new Module(nullptr, name);
-        connect(mod, &Module::createModuleCompound, this, &DataFlowNetwork::createModuleCompound);
+
         addItem(mod);
         mod->setStatus(Module::SPAWNING);
         m_moduleList.append(mod);
+        addCompoundButtons(m_state.getHub(moduleId), mod);
     }
 
     mod->setId(moduleId);
@@ -517,11 +528,14 @@ void DataFlowNetwork::createModuleCompound()
 
     auto path = text.toStdString();
     auto name = path.substr(path.find_last_of("/") + 1);
+    if (name.size() > vistle::moduleCompoundSuffix.size() &&
+        name.substr(name.size() - vistle::moduleCompoundSuffix.size()) == vistle::moduleCompoundSuffix)
+        name = name.substr(0, name.size() - vistle::moduleCompoundSuffix.size());
     vistle::ModuleCompound comp{0, name, path, ""};
     auto selectedModules = DataFlowView::the()->selectedModules();
     std::sort(selectedModules.begin(), selectedModules.end(),
               [](const gui::Module *m1, const gui::Module *m2) { return m1->id() < m2->id(); });
-
+    std::vector<vistle::message::CollapseModuleCompound::Submodule> submodules;
     int i = 0;
     for (const auto &m: selectedModules) {
         if (m->hub() != selectedModules[0]->hub()) {
@@ -533,7 +547,7 @@ void DataFlowNetwork::createModuleCompound()
         comp.addSubmodule(vistle::ModuleCompound::SubModule{
             m->name().toStdString(), static_cast<float>(m->pos().x() - selectedModules[0]->pos().x()),
             static_cast<float>(m->pos().y() - selectedModules[0]->pos().y())});
-
+        submodules.push_back({m->id(), static_cast<float>(m->pos().x()), static_cast<float>(m->pos().y())});
         for (const auto &fromPort: m_state.portTracker()->getConnectedOutputPorts(m->id())) {
             for (const auto &toPort: fromPort->connections()) {
                 vistle::ModuleCompound::Connection c;
@@ -546,6 +560,8 @@ void DataFlowNetwork::createModuleCompound()
                              : toMod - selectedModules.begin(); //-1 for an exposed output port for the compound
                 c.fromPort = fromPort->getName();
                 c.toPort = toPort->getName();
+                if (c.toId == -1)
+                    c.type = vistle::Port::Type::OUTPUT;
                 comp.addConnection(c);
             }
         }
@@ -562,6 +578,7 @@ void DataFlowNetwork::createModuleCompound()
                     c.toId = i;
                     c.fromPort = fromPort->getName();
                     c.toPort = toPort->getName();
+                    c.type = vistle::Port::Type::INPUT;
                     comp.addConnection(c);
                 }
             }
@@ -570,7 +587,23 @@ void DataFlowNetwork::createModuleCompound()
     }
     comp.send(std::bind(&vistle::VistleConnection::sendMessage, m_vistleConnection, std::placeholders::_1,
                         std::placeholders::_2));
+    vistle::message::CollapseModuleCompound collapse{comp.name(), submodules};
+
+    //wait with the collapse request for the available module to be loaded
+    auto replyConn = std::make_shared<QMetaObject::Connection>();
+    *replyConn = connect(&m_observer, &VistleObserver::moduleAvailable_s,
+                         [this, replyConn, collapse](int hub, QString name, QString path, QString description) {
+                             if (name.toStdString() == collapse.getName()) {
+                                 m_vistleConnection->sendMessage(collapse);
+                                 QObject::disconnect(*replyConn);
+                             }
+                         });
 }
 
+void DataFlowNetwork::expandModuleCompound(int modId)
+{
+    vistle::message::ExpandModuleCompound msg{modId};
+    m_vistleConnection->sendMessage(msg);
+}
 
 } //namespace gui

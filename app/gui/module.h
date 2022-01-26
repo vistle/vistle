@@ -75,8 +75,10 @@ public:
     DataFlowNetwork *scene() const;
 
     static QColor hubColor(int hub);
+    void setModuleCompound();
 signals:
     void createModuleCompound();
+    void expandModuleCompound(int id);
 
 protected:
     void mousePressEvent(QGraphicsSceneMouseEvent *event);
@@ -105,6 +107,7 @@ private:
     QAction *m_cancelExecAct = nullptr;
     QAction *m_restartAct = nullptr;
     QAction *m_createModuleGroup = nullptr;
+    QAction *m_expandModuleGroup = nullptr;
 
 
     int m_hub;

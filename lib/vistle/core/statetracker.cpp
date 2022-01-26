@@ -1428,7 +1428,7 @@ bool StateTracker::handlePriv(const message::ModuleAvailable &avail, const buffe
 
     mutex_locker guard(m_stateMutex);
     auto modIt = m_availableModules.emplace(key, std::move(mod));
-    if (modIt.second) {
+    if (modIt.second || modIt.first->second.isCompound()) {
         for (StateObserver *o: m_observers) {
             o->moduleAvailable(modIt.first->second);
         }
@@ -1860,6 +1860,17 @@ void StateTracker::updateStatus()
             }
         }
     }
+}
+
+const AvailableModule &StateTracker::getStaticModuleInfo(int modId)
+{
+    auto hubId = getHub(modId);
+    if (hubId != Id::Invalid) {
+        auto it = availableModules().find({hubId, getModuleName(modId)});
+        if (it != availableModules().end())
+            return it->second;
+    }
+    throw vistle::exception{"getStaticModuleInfo failed for module with id " + std::to_string(modId)};
 }
 
 void StateObserver::quitRequested()

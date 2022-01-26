@@ -2273,7 +2273,12 @@ bool ClusterManager::scanModules(const std::string &dir)
 #if !defined(MODULE_THREAD)
     if (getRank() == 0) {
 #endif
-        if (m_localModules.empty()) {
+        bool empty = true;
+        for (const auto &av: m_localModules)
+            if (!av.second.isCompound())
+                empty = false;
+
+        if (empty) {
             result = vistle::scanModules(dir, hubId(), m_localModules);
         }
 #if !defined(MODULE_THREAD)

@@ -964,6 +964,8 @@ bool Hub::sendHub(int hub, const message::Message &msg, const buffer *payload)
 
 bool Hub::sendUi(const message::Message &msg, int id, const buffer *payload)
 {
+    if (getParentCompound(msg.senderId()) != message::Id::Invalid)
+        return true;
     m_uiManager.sendMessage(msg, id, payload);
     return true;
 }
@@ -1111,6 +1113,15 @@ bool Hub::hubReady()
         m_ready = true;
     }
     return true;
+}
+
+//replace the id of submodules that will be restarted with the new id
+int getReplacedId(int id, const std::vector<int> &oldSubmodules, int newParentId)
+{
+    auto it = std::find(oldSubmodules.begin(), oldSubmodules.end(), id);
+    if (it != oldSubmodules.end())
+        return newParentId + it - oldSubmodules.begin() + 1;
+    return id;
 }
 
 bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, const buffer *payload)
@@ -1349,6 +1360,10 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
         auto &mm = static_cast<const message::Disconnect &>(msg);
         return handleConnectOrDisconnect(mm);
     }
+    case message::KILL: {
+        auto kill = msg.as<message::Kill>();
+        return handlePriv(kill);
+    }
     default:
         break;
     }
@@ -1429,10 +1444,6 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
     if (Router::the().toHandler(msg, senderType)) {
         switch (msg.type()) {
         case message::CREATEMODULECOMPOUND: {
-            if (!payload || payload->empty()) {
-                std::cerr << "missing payload for CREATEMODULECOMPOUND message!" << std::endl;
-                break;
-            }
             ModuleCompound comp(msg.as<message::CreateModuleCompound>(), *payload);
 #ifdef HAVE_PYTHON
             moduleCompoundToFile(comp);
@@ -1441,45 +1452,25 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                                 std::placeholders::_2));
             break;
         }
+        case message::COLLAPSEMODULECOMPOUND: {
+            auto collapse = msg.as<message::CollapseModuleCompound>();
+            handlePriv(collapse);
 
+        } break;
+        case message::EXPANDMODULECOMPOUND: {
+            auto expand = msg.as<message::ExpandModuleCompound>();
+            handlePriv(expand);
+
+        } break;
         case message::SPAWN: {
             auto &spawn = static_cast<const Spawn &>(msg);
             handlePriv(spawn);
             break;
         }
-
         case message::SETPARAMETER: {
             auto setParam = msg.as<message::SetParameter>();
+            handlePriv(setParam);
 
-            // update linked parameters
-            if (message::Id::isModule(setParam.destId())) {
-                if (setParam.getModule() != setParam.senderId()) {
-                    const Port *port = m_stateTracker.portTracker()->findPort(setParam.destId(), setParam.getName());
-                    std::shared_ptr<Parameter> applied;
-
-                    auto param = m_stateTracker.getParameter(setParam.destId(), setParam.getName());
-                    if (param) {
-                        applied.reset(param->clone());
-                        setParam.apply(applied);
-                    }
-
-                    if (port && applied) {
-                        ParameterSet conn = m_stateTracker.getConnectedParameters(*applied);
-
-                        for (ParameterSet::iterator it = conn.begin(); it != conn.end(); ++it) {
-                            const auto p = *it;
-                            if (p->module() == setParam.destId() && p->getName() == setParam.getName()) {
-                                // don't update parameter which was set originally again
-                                continue;
-                            }
-                            message::SetParameter set(p->module(), p->getName(), applied);
-                            set.setDestId(p->module());
-                            set.setUuid(setParam.uuid());
-                            sendAll(set);
-                        }
-                    }
-                }
-            }
         } break;
         case message::SPAWNPREPARED: {
             auto &spawn = static_cast<const SpawnPrepared &>(msg);
@@ -1491,6 +1482,16 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                     }
                     m_sendAfterSpawn.erase(it);
                 }
+                for (auto it = m_sendUiAfterAllSpawn.begin(); it != m_sendUiAfterAllSpawn.end();) {
+                    if (it->first.erase(spawn.spawnId()) && it->first.size() == 0) {
+                        for (auto &m: it->second) {
+                            sendUi(m, Id::Broadcast);
+                        }
+                        it = m_sendUiAfterAllSpawn.erase(it);
+                    } else
+                        ++it;
+                }
+
             } else {
 #ifndef MODULE_THREAD
                 assert(spawn.hubId() == m_hubId);
@@ -1661,6 +1662,91 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
     return true;
 }
 
+void Hub::spawnModule(message::Spawn &spawn)
+{
+    spawn.setSpawnId(Id::ModuleBase + m_moduleCount);
+    ++m_moduleCount;
+    spawn.setDestId(Id::Broadcast);
+    m_stateTracker.handle(spawn, nullptr);
+    sendAllButUi(spawn);
+    spawn.setDestId(spawn.hubId());
+    sendManager(spawn, spawn.hubId());
+}
+
+bool Hub::spawnModuleCompound(const message::Spawn &spawn)
+{
+    auto avIt = m_stateTracker.availableModules().find({spawn.hubId(), spawn.getName()});
+    if (avIt != m_stateTracker.availableModules().end()) {
+        const auto &av = avIt->second;
+        if (av.isCompound()) {
+            m_moduleCompounds[spawn.spawnId()] = true;
+            std::set<int> submoduleIds;
+            std::vector<message::Buffer> uiMsgs;
+            for (int i = 0; i < static_cast<int>(av.submodules().size()); i++) {
+                message::Spawn subspawn{spawn.hubId(), av.submodules()[i].name, spawn.getMpiSize(), spawn.getBaseRank(),
+                                        spawn.getRankSkip()};
+                spawnModule(subspawn);
+                submoduleIds.insert(spawn.spawnId() + i + 1);
+            }
+            //sendUi(spawn, Id::Broadcast);
+            uiMsgs.push_back(spawn);
+            message::AddParameter addPos(ParameterBase<ParamVector>{spawn.spawnId(), "_position"}, spawn.getName());
+            addPos.setSenderId(spawn.spawnId());
+            m_stateTracker.handle(addPos, nullptr);
+            uiMsgs.push_back(addPos);
+
+            std::vector<std::string> portsCreated;
+            for (const auto &conn: av.connections()) {
+                switch (conn.type) {
+                case Port::Type::INPUT:
+                    addPortToCompound(spawn.spawnId(), conn.type, conn.fromPort, portsCreated, uiMsgs);
+                    break;
+                case Port::Type::OUTPUT:
+                    addPortToCompound(spawn.spawnId(), conn.type, conn.toPort, portsCreated, uiMsgs);
+                    break;
+                case Port::Type::PARAMETER: {
+                    //get param from submodule
+                    assert(conn.fromId == -1);
+                    m_waitingCompundParamConnections.emplace_back(WaitingCompundParamConnection{
+                        conn.toId + spawn.spawnId() + 1, conn.toPort, spawn.spawnId(), conn.fromPort});
+                } break;
+                case Port::Type::ANY: //internal connection
+                {
+                    message::Connect connMsg{conn.fromId + spawn.spawnId() + 1, conn.fromPort,
+                                             conn.toId + spawn.spawnId() + 1, conn.toPort};
+                    handleMessage(connMsg);
+                } break;
+                default:
+                    break;
+                }
+            }
+
+            message::Started started{spawn.getName()};
+            started.setSenderId(spawn.spawnId());
+            m_stateTracker.handle(started, nullptr);
+            uiMsgs.push_back(started);
+
+            m_sendUiAfterAllSpawn.emplace_back(std::make_pair(submoduleIds, uiMsgs));
+
+            return true;
+        }
+    }
+    return false;
+}
+
+void Hub::addPortToCompound(int modId, Port::Type type, const std::string &portname,
+                            std::vector<std::string> &alreadyCreatedPorts, std::vector<message::Buffer> &msgs)
+{
+    if (std::find(alreadyCreatedPorts.begin(), alreadyCreatedPorts.end(), portname) == alreadyCreatedPorts.end()) {
+        Port p{modId, portname, type};
+        message::AddPort portMsg{p};
+        portMsg.setSenderId(modId);
+        m_stateTracker.handle(portMsg, nullptr);
+        alreadyCreatedPorts.push_back(portname);
+        msgs.push_back(portMsg);
+    }
+}
+
 bool Hub::handlePriv(const message::Spawn &spawn)
 {
     if (m_isMaster) {
@@ -1689,6 +1775,8 @@ bool Hub::handlePriv(const message::Spawn &spawn)
         if (shouldMirror)
             notify.setMirroringId(mirroredId);
         m_stateTracker.handle(notify, nullptr);
+        if (spawnModuleCompound(notify))
+            return true;
         sendAll(notify);
         if (doSpawn) {
             notify.setDestId(spawn.hubId());
@@ -1733,6 +1821,166 @@ bool Hub::handlePriv(const message::Spawn &spawn)
     return true;
 }
 
+bool Hub::handlePriv(const message::Kill &kill)
+{
+    auto parent = getParentCompound(kill.getModule());
+    if (parent != message::Id::Invalid) {
+        auto &av = m_stateTracker.getStaticModuleInfo(parent);
+        killSubmodules(parent, av);
+        message::Kill parentKill{parent};
+        m_stateTracker.handle(parentKill, nullptr);
+        vistle::message::ModuleExit exit;
+        exit.setSenderId(parent);
+        sendUi(exit);
+        m_waitingCompundParamConnections.erase(
+            std::remove_if(m_waitingCompundParamConnections.begin(), m_waitingCompundParamConnections.end(),
+                           [parent](const WaitingCompundParamConnection &c) { return c.compoundId == parent; }),
+            m_waitingCompundParamConnections.end());
+
+    } else {
+        auto &av = m_stateTracker.getStaticModuleInfo(kill.getModule());
+        m_stateTracker.handle(kill, nullptr);
+        if (av.isCompound()) {
+            vistle::message::ModuleExit exit;
+            exit.setSenderId(kill.getModule());
+            sendUi(exit);
+            killSubmodules(kill.getModule(), av);
+        } else {
+            sendManager(kill);
+        }
+    }
+    return true;
+}
+
+bool Hub::handlePriv(const message::CollapseModuleCompound &collapse)
+{
+    auto submodules = collapse.submoduleIds();
+    //check for same hub
+    int hub = m_stateTracker.getHub(collapse.begin()->id);
+    for (auto sub: submodules) {
+        assert(m_stateTracker.getHub(sub) == hub);
+    }
+
+    const auto &av = m_stateTracker.availableModules().find({hub, collapse.getName()});
+    if (av != m_stateTracker.availableModules().end() &&
+        checkModuleCompoundContainsSubmodules(av->second, submodules)) { //check if compound is already running
+#if 0
+        //if the compound already existed (and got expanded) this code avoids restarting the submodules
+        //the is currently no save way of collapsing the submodules again
+        //(only through creating a new compound which overwrites the existing compound which is undefined behaviour if the files are different)
+        if (auto parent = isCompoundToCollapseRunning(collapse.getName(), submodules)) {
+            for (auto sub: submodules) {
+                vistle::message::ModuleExit m;
+                m.setSenderId(sub);
+                sendAllUi(m);
+            }
+            m_moduleCompounds[parent->id] = true;
+            StateTracker::VistleState state;
+            parent->initialized = true;
+            m_stateTracker.appendModuleState(state, *parent);
+            m_stateTracker.appendModulePorts(state, *parent);
+            m_stateTracker.appendModuleParameter(state, *parent);
+            m_stateTracker.appendModuleOutputConnections(state, *parent);
+            const auto inPorts = m_stateTracker.portTracker()->getConnectedInputPorts(parent->id);
+            for (const auto inPort: inPorts) {
+                for (const auto &port: inPort->connections()) {
+                    message::Connect c(port->getModuleID(), port->getName(), inPort->getModuleID(), inPort->getName());
+                    state.emplace_back(c, std::shared_ptr<const buffer>());
+                }
+            }
+            for (auto &m: state) {
+                sendAllUi(m.message, m.payload.get());
+            }
+        } else
+#endif
+        { //the compound is not running -> start it and then restart all submodules
+            int parentId = m_moduleCount + 1;
+            cacheSubmoduleValues(submodules, parentId);
+            for (const auto &conn: av->second.connections()) {
+                if (conn.fromId == -1) //input
+                {
+                    auto inputs = m_stateTracker.portTracker()->getConnectedInputPorts(submodules[conn.toId]);
+                    Port p{parentId, conn.fromPort, Port::INPUT};
+                    cacheExternalCompoundConnections(inputs, submodules, p);
+                } else if (conn.toId == -1) // output
+                {
+                    auto outputs = m_stateTracker.portTracker()->getConnectedOutputPorts(submodules[conn.fromId]);
+                    Port p{parentId, conn.toPort, Port::OUTPUT};
+
+                    cacheExternalCompoundConnections(outputs, submodules, p);
+                }
+            }
+            //calculate pos for compound
+            vistle::ParamVector pos(0.0f, 0.0f);
+            for (auto sub: submodules) {
+                auto subPos = std::dynamic_pointer_cast<const ParameterBase<ParamVector>>(
+                    m_stateTracker.getParameter(sub, "_position"));
+                pos.x += subPos->getValue().x;
+                pos.y += subPos->getValue().y;
+            }
+            pos.x = pos.x / submodules.size();
+            pos.y = pos.y / submodules.size();
+            message::Spawn spawn{hub, collapse.getName()};
+            handlePriv(spawn);
+            for (auto sub: submodules) {
+                killOldModule(sub);
+            }
+            //set Pos for compound
+            message::SetParameter posMsg(parentId, "_position", pos);
+            posMsg.setSenderId(parentId);
+            m_stateTracker.handle(posMsg, nullptr);
+            sendAllUi(posMsg);
+        }
+    }
+    return true;
+}
+
+bool Hub::handlePriv(const message::ExpandModuleCompound &expand)
+{
+    if (const auto av = findModule(
+            AvailableModule::Key{m_stateTracker.getHub(expand.id()), m_stateTracker.getModuleName(expand.id())})) {
+        if (av->isCompound()) {
+            m_moduleCompounds[expand.id()] = false;
+            std::vector<const StateTracker::Module *> submodules;
+            StateTracker::VistleState state;
+            for (size_t i = 0; i < av->submodules().size(); i++) {
+                auto subIt = m_stateTracker.runningMap.find(expand.id() + i + 1);
+                if (subIt != m_stateTracker.runningMap.end()) {
+                    submodules.push_back(&subIt->second);
+                    m_stateTracker.appendModuleState(state, subIt->second);
+                    m_stateTracker.appendModulePorts(state, subIt->second);
+                    m_stateTracker.appendModuleParameter(state, subIt->second);
+                }
+            }
+            //append port information after the ports are set
+            for (const auto submodule: submodules) {
+                m_stateTracker.appendModuleOutputConnections(state, *submodule);
+                const auto inPorts = m_stateTracker.portTracker()->getConnectedInputPorts(submodule->id);
+                for (const auto inPort: inPorts) {
+                    for (const auto &port: inPort->connections()) {
+                        //the inPort is connected to a module that is not in the compound
+                        if (port->getModuleID() < expand.id() ||
+                            port->getModuleID() > expand.id() + static_cast<int>(av->submodules().size())) {
+                            message::Connect c(port->getModuleID(), port->getName(), inPort->getModuleID(),
+                                               inPort->getName());
+                            state.emplace_back(c, std::shared_ptr<const buffer>());
+                        }
+                    }
+                }
+            }
+
+            for (auto &m: state) {
+                sendAllUi(m.message, m.payload.get());
+            }
+            message::ModuleExit k{};
+            k.setSenderId(expand.id());
+            sendAllUi(k);
+        }
+    }
+    return true;
+}
+
+
 template<typename ConnMsg>
 bool Hub::handleConnectOrDisconnect(const ConnMsg &mm)
 {
@@ -1743,8 +1991,7 @@ bool Hub::handleConnectOrDisconnect(const ConnMsg &mm)
                  return true;
              }
 #endif
-        if (m_stateTracker.handleConnectOrDisconnect(mm)) {
-            handlePriv(mm);
+        if (handlePrivConnMsg(mm)) {
             return handleQueue();
         } else {
             m_queue.emplace_back(mm);
@@ -1775,17 +2022,15 @@ bool Hub::handleQueue()
         for (auto &m: m_queue) {
             if (m.type() == message::CONNECT) {
                 auto &mm = m.as<Connect>();
-                if (m_stateTracker.handleConnectOrDisconnect(mm)) {
+                if (handlePrivConnMsg(mm)) {
                     again = true;
-                    handlePriv(mm);
                 } else {
                     queue.push_back(m);
                 }
             } else if (m.type() == message::DISCONNECT) {
                 auto &mm = m.as<Disconnect>();
-                if (m_stateTracker.handleConnectOrDisconnect(mm)) {
+                if (handlePrivConnMsg(mm)) {
                     again = true;
-                    handlePriv(mm);
                 } else {
                     queue.push_back(m);
                 }
@@ -1859,6 +2104,51 @@ void Hub::cacheModuleValues(int oldModuleId, int newModuleId)
     }
 }
 
+void Hub::cacheSubmoduleValues(const std::vector<int> &oldSubmodules, int newParentId)
+{
+    using namespace vistle::message;
+    auto lastModule = newParentId + oldSubmodules.size();
+    for (size_t i = 0; i < oldSubmodules.size(); i++) {
+        auto oldModuleId = oldSubmodules[i];
+        auto newModuleId = newParentId + i + 1;
+        auto paramNames = m_stateTracker.getParameters(oldModuleId);
+        for (const auto &pn: paramNames) {
+            auto p = m_stateTracker.getParameter(oldModuleId, pn);
+            auto pm = SetParameter(newModuleId, p->getName(), p);
+            pm.setDestId(newModuleId);
+            m_sendAfterSpawn[lastModule].emplace_back(pm);
+        }
+    }
+}
+
+void Hub::cacheExternalCompoundConnections(const std::vector<Port *> externalSubmodulePorts,
+                                           const std::vector<int> &submodules, const Port &parentPort)
+{
+    for (const auto &port: externalSubmodulePorts) {
+        for (const auto &conn: port->connections()) {
+            auto replacedId = getReplacedId(conn->getModuleID(), submodules, parentPort.getModuleID());
+            if (replacedId == conn->getModuleID()) //external
+            {
+                switch (parentPort.getType()) {
+                case Port::INPUT: {
+                    message::Connect c{conn->getModuleID(), conn->getName(), parentPort.getModuleID(),
+                                       parentPort.getName()};
+                    m_sendAfterSpawn[parentPort.getModuleID() + submodules.size()].push_back(c);
+                } break;
+                case Port::OUTPUT: {
+                    message::Connect c{parentPort.getModuleID(), parentPort.getName(), conn->getModuleID(),
+                                       conn->getName()};
+                    m_sendAfterSpawn[parentPort.getModuleID() + submodules.size()].push_back(c);
+                } break;
+
+                default:
+                    return;
+                }
+            }
+        }
+    }
+}
+
 void Hub::killOldModule(int migratedId)
 {
     assert(Id::isModule(migratedId));
@@ -1928,6 +2218,82 @@ void Hub::clearStatus()
 {
     m_statusText.clear();
 }
+
+int Hub::getParentCompound(int modId)
+{
+    if (!Id::isModule(modId))
+        return Id::Invalid;
+    auto modName = m_stateTracker.getModuleName(modId);
+    for (int i = modId - 1; i >= message::Id::ModuleBase; --i) {
+        auto modit = m_stateTracker.runningMap.find(i);
+        if (modit != m_stateTracker.runningMap.end()) {
+            auto &av = m_stateTracker.getStaticModuleInfo(modit->first);
+            if (av.isCompound()) {
+                if (static_cast<int>(av.submodules().size()) >= modId - i) {
+                    assert(av.submodules()[modId - i - 1].name == modName || modName.empty());
+                    if (m_moduleCompounds[i])
+                        return modit->first;
+                    else
+                        return Id::Invalid;
+
+                } else
+                    break;
+            }
+        }
+    }
+    return Id::Invalid;
+}
+
+void Hub::killSubmodules(int modId, const AvailableModule &av)
+{
+    for (size_t i = 0; i < av.submodules().size(); i++) {
+        message::Kill subKill(modId + i + 1);
+        subKill.setDestId(modId + i + 1);
+        m_stateTracker.handle(subKill, nullptr);
+        sendManager(subKill);
+    }
+}
+
+bool Hub::checkModuleCompoundContainsSubmodules(const AvailableModule &av, const std::vector<int> &submodules)
+{
+    for (const auto &avSub: av.submodules()) {
+        bool found = false;
+        for (const auto &compSub: submodules) {
+            if (avSub.name == m_stateTracker.getModuleName(compSub)) {
+                found = true;
+                break;
+            }
+        }
+        if (!found)
+            return false;
+    }
+    return true;
+}
+
+StateTracker::Module *Hub::isCompoundToCollapseRunning(const std::string &compoundName,
+                                                       const std::vector<int> &submodules)
+{
+    auto sortedSubs = submodules;
+    std::sort(sortedSubs.begin(), sortedSubs.end());
+    if (static_cast<size_t>(sortedSubs[sortedSubs.size() - 1]) - static_cast<size_t>(sortedSubs[0]) ==
+        sortedSubs.size() - 1) //submodules are concecutive
+    {
+        auto parent = m_stateTracker.runningMap.find(sortedSubs[0] - 1);
+        if (parent != m_stateTracker.runningMap.end() && parent->second.name == compoundName)
+            return &parent->second;
+    }
+    return nullptr;
+}
+
+bool Hub::atLeastOneInputIsConnectedToSubmodule(const std::vector<int> &submodules, const Port::ConstPortSet &conns)
+{
+    for (const auto port: conns) {
+        if (std::find(submodules.begin(), submodules.end(), port->getModuleID()) != submodules.end())
+            return true;
+    }
+    return false;
+}
+
 
 bool Hub::connectToMaster(const std::string &host, unsigned short port)
 {
@@ -2238,17 +2604,6 @@ bool Hub::processScript(const std::string &filename, bool barrierAfterLoad, bool
 #endif
 }
 
-const AvailableModule &getStaticModuleInfo(int modId, StateTracker &state)
-{
-    auto hubId = state.getHub(modId);
-    if (hubId != Id::Invalid) {
-        auto it = state.availableModules().find({hubId, state.getModuleName(modId)});
-        if (it != state.availableModules().end())
-            return it->second;
-    }
-    throw vistle::exception{"getStaticModuleInfo failed mor module with id " + std::to_string(modId)};
-}
-
 bool Hub::handlePriv(const message::Quit &quit, message::Identify::Identity senderType)
 {
     if (quit.id() == Id::Broadcast) {
@@ -2340,20 +2695,21 @@ bool Hub::handlePriv(const message::Execute &exec)
             modules.push_back(id);
         }
     } else {
-        const auto &av = getStaticModuleInfo(exec.getModule(), m_stateTracker);
+        const auto &av = m_stateTracker.getStaticModuleInfo(exec.getModule());
         if (av.isCompound()) {
             isCompound = true;
             modules = getSubmoduleIds(exec.getModule(), av);
         }
     }
     for (auto id: modules) {
-        bool canExec = true;
         auto inputs = m_stateTracker.portTracker()->getInputPorts(id);
+        bool canExec = true;
         for (auto &input: inputs) {
-            if (onlySources && !input->connections().empty())
+            if ((onlySources && !input->connections().empty()) || input->flags() & Port::COMBINE_BIT)
                 canExec = false;
-            if (input->flags() & Port::COMBINE_BIT)
-                canExec = false;
+            if (isCompound) {
+                canExec &= !atLeastOneInputIsConnectedToSubmodule(modules, input->connections());
+            }
         }
         if (canExec) {
             toSend.setDestId(message::Id::Broadcast);
@@ -2374,7 +2730,23 @@ bool Hub::handlePriv(const message::ExecutionDone &done)
     if (m_isMaster) {
         auto notif(done);
         notif.setDestId(Id::Broadcast);
-        sendAll(notif);
+        auto parent = getParentCompound(done.senderId());
+        if (parent != message::Id::Invalid) {
+            const auto &av = m_stateTracker.getStaticModuleInfo(parent);
+            bool isExecuting = false;
+            for (size_t i = 0; i < av.submodules().size(); i++) {
+                isExecuting &= m_stateTracker.isExecuting(parent + i + 1);
+            }
+            if (!isExecuting) {
+                auto parentDone(notif);
+                parentDone.setSenderId(parent);
+                sendUi(parentDone);
+                m_stateTracker.handle(parentDone, nullptr);
+            }
+        }
+        sendUi(notif);
+
+        sendAllButUi(notif);
         handleQueue();
     }
 
@@ -2387,7 +2759,7 @@ bool Hub::handlePriv(const message::CancelExecute &cancel)
 
     if (Id::isModule(cancel.getModule())) {
         const int hub = m_stateTracker.getHub(cancel.getModule());
-        const auto &av = getStaticModuleInfo(cancel.getModule(), m_stateTracker);
+        const auto &av = m_stateTracker.getStaticModuleInfo(cancel.getModule());
         if (av.isCompound()) {
             for (auto sub: getSubmoduleIds(cancel.getModule(), av)) {
                 toSend.setDestId(sub);
@@ -2452,6 +2824,121 @@ bool Hub::handlePriv(const message::RequestTunnel &tunnel)
     return m_tunnelManager.processRequest(tunnel);
 }
 
+
+void Hub::setCompoundParam(const message::SetParameter &setParam)
+{
+    //if the module is a comound the hub has to confirm the new value for the ui
+    if (setParam.getParameterType() != Parameter::Invalid && m_stateTracker.isCompound(setParam.getModule())) {
+        if (!m_stateTracker.getParameter(setParam.getModule(), setParam.getName())) {
+            cacheSetCompoundParam(setParam);
+        } else {
+            applySetCompoundParam(setParam);
+        }
+    }
+}
+
+void Hub::applySetCompoundParam(const message::SetParameter &setParam)
+{
+    auto sendUi = setParam;
+    sendUi.setReferrer(setParam.uuid());
+    sendUi.setDestId(message::Id::ForBroadcast);
+    sendUi.setSenderId(setParam.getModule());
+    m_stateTracker.handle(sendUi, nullptr);
+    sendAllUi(sendUi);
+}
+
+bool Hub::cacheSetCompoundParam(const message::SetParameter &setParam)
+{
+    auto waitingCompundParamConnection =
+        std::find_if(m_waitingCompundParamConnections.begin(), m_waitingCompundParamConnections.end(),
+                     [&setParam](const WaitingCompundParamConnection &c) {
+                         return c.compoundId == setParam.getModule() && c.compoundParamName == setParam.getName();
+                     });
+    if (waitingCompundParamConnection != m_waitingCompundParamConnections.end()) {
+        waitingCompundParamConnection->dependingMessages.push_back(setParam);
+        return true;
+    }
+    return false;
+}
+
+void Hub::updateLinkedParameters(const message::SetParameter &setParam)
+{
+    const Port *port = m_stateTracker.portTracker()->findPort(setParam.destId(), setParam.getName());
+    std::shared_ptr<Parameter> applied;
+
+    auto param = m_stateTracker.getParameter(setParam.destId(), setParam.getName());
+    if (param) {
+        applied.reset(param->clone());
+        setParam.apply(applied);
+    }
+
+    if (port && applied) {
+        ParameterSet conn = m_stateTracker.getConnectedParameters(*applied);
+
+        for (ParameterSet::iterator it = conn.begin(); it != conn.end(); ++it) {
+            const auto p = *it;
+            if (p->module() == setParam.destId() && p->getName() == setParam.getName()) {
+                // don't update parameter which was set originally again
+                continue;
+            }
+            message::SetParameter set(p->module(), p->getName(), applied);
+            set.setDestId(p->module());
+            set.setUuid(setParam.uuid());
+            sendAll(set);
+        }
+    }
+}
+
+void Hub::handleCachedSetParams(const message::SetParameter &setParam)
+{
+    //check if the set parameter is connected to a compound that has not yet created the parameter port
+    //handled in set parameter because some parameter types need info from setParameter to create the port correctly
+    ///e.g. vectorparame needs the dimension
+    auto waitingCompundParamConnection =
+        std::find_if(m_waitingCompundParamConnections.begin(), m_waitingCompundParamConnections.end(),
+                     [&setParam](const WaitingCompundParamConnection &c) {
+                         return c.moduleId == setParam.senderId() && c.moduleParamName == setParam.getName();
+                     });
+    if (waitingCompundParamConnection != m_waitingCompundParamConnections.end()) {
+        auto connectedParam = m_stateTracker.getParameter(setParam.senderId(), setParam.getName());
+        if (connectedParam) {
+            auto param = vistle::getParameter(
+                waitingCompundParamConnection->compoundId, waitingCompundParamConnection->compoundParamName,
+                Parameter::Type(setParam.getParameterType()), Parameter::Presentation(connectedParam->presentation()));
+            message::AddParameter p{*param, m_stateTracker.getModuleName(waitingCompundParamConnection->compoundId)};
+            p.setSenderId(waitingCompundParamConnection->compoundId);
+            m_stateTracker.handle(p, nullptr);
+            sendAllUi(p);
+            //set the param to apply additional parameter info (e.g. dim for vectors)
+            message::SetParameter initValMsg{waitingCompundParamConnection->compoundId,
+                                             waitingCompundParamConnection->compoundParamName, connectedParam};
+            initValMsg.setSenderId(waitingCompundParamConnection->compoundId);
+            m_stateTracker.handle(initValMsg, nullptr);
+            sendAllUi(initValMsg);
+            message::Connect conn(waitingCompundParamConnection->compoundId,
+                                  waitingCompundParamConnection->compoundParamName, setParam.senderId(),
+                                  setParam.getName());
+            handleMessage(conn);
+            for (const auto &msg: waitingCompundParamConnection->dependingMessages) {
+                handleMessage(msg);
+                // m_stateTracker.handle(msg, nullptr);
+                // sendAllUi(msg);
+            }
+
+            m_waitingCompundParamConnections.erase(waitingCompundParamConnection);
+        }
+    }
+}
+
+void Hub::handlePriv(const message::SetParameter &setParam)
+{
+    if (message::Id::isModule(setParam.destId()) && setParam.getModule() != setParam.senderId()) { //message from ui
+        setCompoundParam(setParam);
+        updateLinkedParameters(setParam);
+    }
+    handleCachedSetParams(setParam);
+}
+
 template<typename ConnMsg>
 void handleMirrorConnect(const ConnMsg &conn, const StateTracker &state,
                          std::function<bool(const message::Message &)> sendFunc)
@@ -2479,64 +2966,129 @@ void handleMirrorConnect(const ConnMsg &conn, const StateTracker &state,
 }
 
 template<typename ConnMsg>
-bool handlePrivConnMsg(const ConnMsg &conn, Hub &hub, message::MessageFactory &make)
+bool isConnectionPossible(const StateTracker &state, const ConnMsg &conn)
 {
+    if (!state.portTracker() || state.isExecuting(conn.getModuleA()) || state.isExecuting(conn.getModuleB()))
+        return false;
+    Port *pA = state.portTracker()->findPort(conn.getModuleA(), conn.getPortAName());
+    Port *pB = state.portTracker()->findPort(conn.getModuleB(), conn.getPortBName());
+    if (!pA || !pB)
+        return false;
+    if (conn.type() == message::CONNECT && (pA->connections().find(pB) != pA->connections().end() ||
+                                            pB->connections().find(pA) != pB->connections().end()))
+        return false;
+    if (conn.type() == message::DISCONNECT && (pA->connections().find(pB) == pA->connections().end() ||
+                                               pB->connections().find(pA) == pB->connections().end()))
+        return false;
+    return true;
+}
+
+
+//if this is a parameter connection:
+//apply source parameter value to the connected parameters
+template<typename ConnMsg>
+boost::optional<message::SetParameter> Hub::getSyncParamMessage(const ConnMsg &msg)
+{
+    auto param = m_stateTracker.getParameter(msg.getModuleA(), msg.getPortAName());
+    if (msg.type() == message::CONNECT && param) {
+        auto syncValMsg = make.message<message::SetParameter>(msg.getModuleB(), msg.getPortBName(), param);
+        syncValMsg.setDestId(msg.getModuleB());
+        return syncValMsg;
+    }
+    return boost::optional<message::SetParameter>();
+}
+
+template<typename ConnMsg>
+bool Hub::handlePrivConnMsg(const ConnMsg &conn)
+{
+    if (!isConnectionPossible(m_stateTracker, conn))
+        return false;
     auto modA = conn.getModuleA();
     auto modB = conn.getModuleB();
 
-    const auto &avA = getStaticModuleInfo(modA, hub.stateTracker());
-    const auto &avB = getStaticModuleInfo(modB, hub.stateTracker());
-
+    const auto &avA = m_stateTracker.getStaticModuleInfo(modA);
+    const auto &avB = m_stateTracker.getStaticModuleInfo(modB);
     std::vector<Port> portsA, portsB;
     if (avA.isCompound()) {
         for (const auto &subConn: avA.connections()) {
-            if (subConn.toId < 0 && conn.getPortAName() == subConn.toPort) {
-                portsA.push_back({subConn.fromId + modA + 1, subConn.fromPort, Port::Type::OUTPUT});
+            if (subConn.type == Port::Type::OUTPUT && conn.getPortAName() == subConn.toPort) {
+                portsA.push_back({subConn.fromId + modA + 1, subConn.fromPort, Port::Type::ANY});
             }
         }
     } else {
-        portsA.push_back({modA, conn.getPortAName(), Port::Type::OUTPUT});
+        portsA.push_back({modA, conn.getPortAName(), Port::Type::ANY});
     }
 
     if (avB.isCompound()) {
         for (const auto &subConn: avB.connections()) {
-            if (subConn.fromId < 0 && conn.getPortBName() == subConn.fromPort) {
-                portsB.push_back({subConn.toId + modB + 1, subConn.toPort, Port::Type::INPUT});
+            if (subConn.type == Port::Type::INPUT && conn.getPortBName() == subConn.fromPort) {
+                portsB.push_back({subConn.toId + modB + 1, subConn.toPort, Port::Type::ANY});
             }
         }
     } else {
         portsB.push_back({modB, conn.getPortBName(), Port::Type::INPUT});
     }
+    bool error = false;
+    std::vector<ConnMsg> connMsgs;
+    std::vector<message::SetParameter> syncValMsgs;
     for (const auto &portA: portsA) {
         for (const auto &portB: portsB) {
             modA = portA.getModuleID();
             modB = portB.getModuleID();
             auto connMsg = make.message<ConnMsg>(modA, portA.getName(), modB, portB.getName());
-            connMsg.setNotify(true);
-            handleMirrorConnect(connMsg, hub.stateTracker(),
-                                [&hub](const message::Message &msg) { return hub.sendAll(msg); });
-            hub.sendAll(connMsg);
-            // handleMirrorConnect(connMsg, [this](const message::Connect &msg) { return sendAllButUi(msg); });
-            // sendAllButUi(connMsg);
+            if (!isConnectionPossible(m_stateTracker, connMsg)) {
+                error = true;
+                break;
+            } else {
+                connMsg.setNotify(true);
+                connMsgs.push_back(connMsg);
+                //if this is a parameter connection:
+                //apply source parameter value to the connected parameters
+                auto syncValMsg = getSyncParamMessage(
+                    ConnMsg{portA.getModuleID(), portA.getName(), portB.getModuleID(), portB.getName()});
+                if (syncValMsg)
+                    syncValMsgs.push_back(*syncValMsg);
+            }
         }
     }
+
+    if (error)
+        return false;
+
+    for (const auto &msg: syncValMsgs) {
+        m_stateTracker.handle(msg, nullptr, true);
+        sendManager(msg);
+    }
+
+    for (const auto &msg: connMsgs) {
+        if (m_stateTracker.handleConnectOrDisconnect(msg)) {
+            handleMirrorConnect(msg, m_stateTracker, [this](const message::Message &m) { return sendAllButUi(m); });
+            sendAllButUi(msg);
+        } else {
+            std::cerr << "failed to add conn after check--> this should not happen! " << std::endl;
+        }
+    }
+    m_stateTracker.handleConnectOrDisconnect(conn);
     auto c = make.message<ConnMsg>(conn);
     c.setNotify(true);
-    hub.sendAllUi(c);
-    handleMirrorConnect(conn, hub.stateTracker(), [&hub](const message::Message &msg) { return hub.sendAllUi(msg); });
+    auto syncValMsg = getSyncParamMessage(c);
+    if (syncValMsg) {
+        if (avB.isCompound()) {
+            (*syncValMsg).setSenderId(conn.getModuleB());
+            m_stateTracker.handle(*syncValMsg, nullptr, true);
+            sendAllUi(*syncValMsg);
 
+        } else {
+            m_stateTracker.handle(*syncValMsg, nullptr, true);
+            sendManager(*syncValMsg);
+        }
+        std::cerr << "syncing param " << (*syncValMsg).getName() << std::endl;
+    } else //ui does not need to know aboud parameter connections
+        sendAllUi(c);
+    handleMirrorConnect(conn, m_stateTracker, [this](const message::Message &msg) { return sendAllUi(msg); });
     return true;
 }
 
-bool Hub::handlePriv(const message::Connect &conn)
-{
-    return handlePrivConnMsg(conn, *this, make);
-}
-
-bool Hub::handlePriv(const message::Disconnect &disc)
-{
-    return handlePrivConnMsg(disc, *this, make);
-}
 
 bool Hub::handlePriv(const message::FileQuery &query, const buffer *payload)
 {

@@ -271,14 +271,21 @@ void Module::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QW
  */
 void Module::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
 {
-    if (isSelected() && DataFlowView::the()->selectedModules().size() > 1) {
-        m_deleteSelAct->setVisible(true);
-        m_createModuleGroup->setVisible(true);
-        m_deleteThisAct->setVisible(false);
+    if (isSelected()) {
+        if (DataFlowView::the()->selectedModules().size() > 1) {
+            m_deleteSelAct->setVisible(true);
+            if (m_createModuleGroup)
+                m_createModuleGroup->setVisible(true);
+            m_deleteThisAct->setVisible(false);
+        } else if (m_expandModuleGroup)
+            m_expandModuleGroup->setVisible(true);
     } else {
         m_deleteSelAct->setVisible(false);
-        m_createModuleGroup->setVisible(false);
+        if (m_createModuleGroup)
+            m_createModuleGroup->setVisible(false);
         m_deleteThisAct->setVisible(true);
+        if (m_expandModuleGroup)
+            m_expandModuleGroup->setVisible(false);
     }
     m_moduleMenu->popup(event->screenPos());
 }
@@ -443,6 +450,17 @@ QColor Module::hubColor(int hub)
     const int b = 1 - (h >> 1) % 2;
     return QColor(100 + r * 100, 100 + g * 100, 100 + b * 100);
 }
+
+void Module::setModuleCompound()
+{
+    m_expandModuleGroup = new QAction("expand to submodules", this);
+    m_expandModuleGroup->setStatusTip("show the underlaying submodules of this compound");
+    connect(m_expandModuleGroup, &QAction::triggered, [this]() { emit expandModuleCompound(m_id); });
+    m_moduleMenu->addAction(m_expandModuleGroup);
+    delete m_createModuleGroup;
+    m_createModuleGroup = nullptr;
+}
+
 
 void Module::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {

@@ -1451,6 +1451,58 @@ const char *ModuleBaseMessage<MessageType>::path() const
 template class ModuleBaseMessage<MODULEAVAILABLE>;
 template class ModuleBaseMessage<CREATEMODULECOMPOUND>;
 
+CollapseModuleCompound::CollapseModuleCompound(const std::string &name,
+                                               const std::vector<CollapseModuleCompound::Submodule> &submodules)
+{
+    COPY_STRING(m_name, name);
+    if (submodules.size() > m_subModules.size()) {
+        std::cerr << "CollapseModuleCompound created with too many (" << submodules.size()
+                  << ") submodules, maximum is " << m_subModules.size() << std::endl;
+    }
+    std::copy(submodules.begin(), submodules.begin() + std::min(submodules.size(), m_subModules.size()),
+              m_subModules.begin());
+}
+
+const char *CollapseModuleCompound::getName() const
+{
+    return m_name.data();
+}
+
+std::vector<CollapseModuleCompound::Submodule> CollapseModuleCompound::submodules() const
+{
+    return std::vector<CollapseModuleCompound::Submodule>(begin(), end());
+}
+
+std::vector<int> CollapseModuleCompound::submoduleIds() const
+{
+    std::vector<int> subs(end() - begin());
+    std::transform(begin(), end(), subs.begin(), [](const Submodule &sub) { return sub.id; });
+    return subs;
+}
+
+const CollapseModuleCompound::Submodule *CollapseModuleCompound::begin() const
+{
+    return m_subModules.begin();
+}
+
+const CollapseModuleCompound::Submodule *CollapseModuleCompound::end() const
+{
+    for (size_t i = 0; i < m_subModules.size(); i++) {
+        if (m_subModules[i].id < Id::ModuleBase) {
+            return &m_subModules[i];
+        }
+    }
+    return m_subModules.end();
+}
+
+ExpandModuleCompound::ExpandModuleCompound(int moduleId): m_id(moduleId)
+{}
+
+int ExpandModuleCompound::id() const
+{
+    return m_id;
+}
+
 LockUi::LockUi(bool locked): m_locked(locked)
 {}
 

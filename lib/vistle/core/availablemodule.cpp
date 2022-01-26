@@ -39,25 +39,21 @@ void AvailableModuleBase::setHub(int hubId)
     m_hub = hubId;
 }
 
-
 size_t AvailableModuleBase::addSubmodule(const AvailableModuleBase::SubModule &sub)
 {
     m_submodules.push_back(sub);
     return m_submodules.size() - 1;
 }
 
-
 void AvailableModuleBase::addConnection(const AvailableModuleBase::Connection &conn)
 {
     m_connections.insert(conn);
 }
 
-
 const std::vector<typename AvailableModuleBase::SubModule> AvailableModuleBase::submodules() const
 {
     return m_submodules;
 }
-
 
 const std::set<typename AvailableModuleBase::Connection> AvailableModuleBase::connections() const
 {
@@ -90,6 +86,21 @@ bool AvailableModuleBase::isCompound() const
     return m_submodules.size();
 }
 
+bool AvailableModuleBase::Connection::operator<(const Connection &other) const
+{
+    bool retval = other.fromId < fromId;
+    if (other.fromId == fromId)
+        retval = other.toId < toId;
+    else
+        return retval;
+    if (other.toId == toId)
+        retval = other.fromPort < fromPort;
+    else
+        return retval;
+    if (other.fromPort == fromPort)
+        retval = other.toPort < toPort;
+    return retval;
+}
 
 AvailableModuleBase::Key::Key(int hub, const std::string &name): hub(hub), name(name)
 {}
@@ -140,6 +151,12 @@ bool ModuleCompound::send(const sendShmMessageFunction &func) const
 {
     return AvailableModuleBase::send<message::CreateModuleCompound>(func);
 }
+
+void ModuleCompound::setPath(const std::string &path)
+{
+    m_path = path;
+}
+
 
 AvailableModule ModuleCompound::transform()
 {

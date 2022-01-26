@@ -807,6 +807,39 @@ extern template class V_COREEXPORT ModuleBaseMessage<CREATEMODULECOMPOUND>;
 typedef ModuleBaseMessage<CREATEMODULECOMPOUND> CreateModuleCompound;
 static_assert(sizeof(CreateModuleCompound) <= Message::MESSAGE_SIZE, "message too large");
 
+class V_COREEXPORT CollapseModuleCompound: public MessageBase<CollapseModuleCompound, COLLAPSEMODULECOMPOUND> {
+public:
+    struct Submodule {
+        int id = -1;
+        float x = 0;
+        float y = 0;
+    };
+    CollapseModuleCompound(const std::string &name, const std::vector<Submodule> &submodules);
+
+    const char *getName() const;
+    const Submodule *begin() const;
+    const Submodule *end() const;
+    std::vector<Submodule> submodules() const;
+    std::vector<int> submoduleIds() const;
+    float x() const;
+    float y() const;
+
+private:
+    //! name of module to be started
+    module_name_t m_name;
+    std::array<Submodule, 20> m_subModules;
+};
+static_assert(sizeof(CollapseModuleCompound) <= Message::MESSAGE_SIZE, "message too large");
+
+class V_COREEXPORT ExpandModuleCompound: public MessageBase<ExpandModuleCompound, EXPANDMODULECOMPOUND> {
+public:
+    ExpandModuleCompound(int moduleId);
+    int id() const;
+
+private:
+    int m_id;
+};
+
 //! lock UI (block user interaction)
 class V_COREEXPORT LockUi: public MessageBase<LockUi, LOCKUI> {
 public:

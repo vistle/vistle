@@ -7,9 +7,10 @@
 #include <vector>
 #include "export.h"
 #include "message.h"
-#include "messages.h"
 #include "messagepayload.h"
+#include "messages.h"
 #include "object.h"
+#include "port.h"
 namespace vistle {
 
 const int ModuleNameLength = 50;
@@ -53,21 +54,9 @@ public:
     struct Connection {
         int fromId, toId; //relative to first submodule
         std::string fromPort, toPort;
-        bool operator<(const Connection &other) const
-        {
-            bool retval = other.fromId < fromId;
-            if (other.fromId == fromId)
-                retval = other.toId < toId;
-            else
-                return retval;
-            if (other.toId == toId)
-                retval = other.fromPort < fromPort;
-            else
-                return retval;
-            if (other.fromPort == fromPort)
-                retval = other.toPort < toPort;
-            return retval;
-        }
+        vistle::Port::Type type = vistle::Port::Type::ANY; //ANY for connectins between submodules
+        bool operator<(const Connection &other) const;
+
         ARCHIVE_ACCESS
         template<class Archive>
         void serialize(Archive &ar)
@@ -76,6 +65,7 @@ public:
             ar &toId;
             ar &fromPort;
             ar &toPort;
+            ar &type;
         }
     };
 
@@ -142,6 +132,7 @@ public:
 
     bool send(const sendMessageFunction &func) const;
     bool send(const sendShmMessageFunction &func) const;
+    void connect(int fromId, const std::string &fromName, int toId, const std::string &toName);
 
 private:
     AvailableModule(ModuleCompound &&other);
@@ -154,6 +145,7 @@ public:
 
     bool send(const sendMessageFunction &func) const;
     bool send(const sendShmMessageFunction &func) const;
+    void setPath(const std::string &path);
     AvailableModule transform(); //this invalidates this object;
 };
 typedef std::map<AvailableModule::Key, AvailableModule> AvailableMap;

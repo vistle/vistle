@@ -170,6 +170,8 @@ public:
     std::string sessionUrl() const;
 
     void printModules() const;
+    const AvailableModule &getStaticModuleInfo(int modId);
+    bool isExecuting(int id) const;
 
 protected:
     std::shared_ptr<message::Buffer> removeRequest(const message::uuid_t &uuid);
@@ -221,7 +223,6 @@ protected:
     std::set<int> getDownstreamModules(int id, const std::string &port = std::string(),
                                        bool ignoreNoCompute = false) const;
     bool hasCombinePort(int id) const;
-    bool isExecuting(int id) const;
 
     void appendModuleState(VistleState &state, const Module &mod) const;
     void appendModuleParameter(VistleState &state, const Module &mod) const;

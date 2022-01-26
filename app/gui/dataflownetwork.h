@@ -6,6 +6,8 @@
 #include <QGraphicsScene>
 
 #include "port.h"
+#include "vistleobserver.h"
+
 #include <vistle/core/uuid.h>
 
 #include <cassert>
@@ -66,6 +68,8 @@ private:
     ///\todo push this functionality to vHandler
     vistle::VistleConnection *m_vistleConnection;
     vistle::StateTracker &m_state;
+    VistleObserver m_observer;
+    void addCompoundButtons(int hub, Module *mod);
 
     struct ConnectionKey {
         ConnectionKey(Port *p1, Port *p2): port1(p1), port2(p2)
@@ -96,6 +100,7 @@ private:
     QColor m_highlightColor;
 private slots:
     void createModuleCompound();
+    void expandModuleCompound(int modId);
 };
 
 } //namespace gui

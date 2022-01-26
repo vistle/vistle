@@ -1,19 +1,19 @@
 #ifndef VISTLE_HUB_H
 #define VISTLE_HUB_H
 
-#include <memory>
+#include "export.h"
+#include "uimanager.h"
 #include <atomic>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/process.hpp>
-#include <vistle/core/statetracker.h>
-#include <vistle/util/buffer.h>
-#include "uimanager.h"
-#include <vistle/net/tunnel.h>
-#include <vistle/net/dataproxy.h>
+#include <memory>
 #include <vistle/control/scanmodules.h>
-
-#include "export.h"
-
+#include <vistle/core/port.h>
+#include <vistle/core/statetracker.h>
+#include <vistle/net/dataproxy.h>
+#include <vistle/net/tunnel.h>
+#include <vistle/util/buffer.h>
+#include <boost/optional.hpp>
 namespace vistle {
 
 class V_HUBEXPORT Hub {
@@ -84,6 +84,9 @@ private:
     bool processScript(const std::string &filename, bool barrierAfterLoad, bool executeModules);
     bool processStartupScripts();
     void cacheModuleValues(int oldModuleId, int newModuleId);
+    void cacheSubmoduleValues(const std::vector<int> &oldSubmodules, int newParentId);
+    void cacheExternalCompoundConnections(const std::vector<Port *> externalSubmodulePorts,
+                                          const std::vector<int> &submodules, const Port &parentPort);
     void killOldModule(int migratedId);
     void sendInfo(const std::string &s);
     void sendError(const std::string &s);
@@ -153,26 +156,45 @@ private:
     message::uuid_t m_barrierUuid;
 
     std::string m_statusText;
+    std::map<int, bool> m_moduleCompounds;
+    struct WaitingCompundParamConnection {
+        int moduleId = message::Id::Invalid;
+        std::string moduleParamName;
+        int compoundId = message::Id::Invalid;
+        std::string compoundParamName;
+        std::vector<message::Buffer> dependingMessages;
+    };
+    std::vector<WaitingCompundParamConnection> m_waitingCompundParamConnections;
 
-    bool handlePriv(const message::Quit &quit, message::Identify::Identity senderType);
-    bool handlePriv(const message::RemoveHub &rm);
-    bool handlePriv(const message::Execute &exec);
-    bool handlePriv(const message::ExecutionDone &done);
-    bool handlePriv(const message::CancelExecute &cancel);
     bool handlePriv(const message::Barrier &barrier);
     bool handlePriv(const message::BarrierReached &reached);
-    bool handlePriv(const message::RequestTunnel &tunnel);
-    bool handlePriv(const message::Connect &conn);
-    bool handlePriv(const message::Disconnect &disc);
+    bool handlePriv(const message::CancelExecute &cancel);
+    bool handlePriv(const message::CollapseModuleCompound &collapse);
+    bool handlePriv(const message::Cover &cover, const buffer *payload);
+    bool handlePriv(const message::Execute &exec);
+    bool handlePriv(const message::ExecutionDone &done);
+    bool handlePriv(const message::ExpandModuleCompound &expand);
     bool handlePriv(const message::FileQuery &query, const buffer *payload);
     bool handlePriv(const message::FileQueryResult &result, const buffer *payload);
-    bool handlePriv(const message::Cover &cover, const buffer *payload);
-    bool handlePriv(const message::ModuleExit &exit);
-    bool handlePriv(const message::Spawn &spawn);
     bool handlePriv(const message::Kill &kill);
+    bool handlePriv(const message::ModuleExit &exit);
+    bool handlePriv(const message::Quit &quit, message::Identify::Identity senderType);
+    bool handlePriv(const message::RemoveHub &rm);
+    bool handlePriv(const message::RequestTunnel &tunnel);
+    void handlePriv(const message::SetParameter &setParam);
+    bool handlePriv(const message::Spawn &spawn);
 
     template<typename ConnMsg>
+    bool handlePrivConnMsg(const ConnMsg &conn);
+    template<typename ConnMsg>
     bool handleConnectOrDisconnect(const ConnMsg &mm);
+    template<typename ConnMsg>
+    boost::optional<message::SetParameter> getSyncParamMessage(const ConnMsg &msg);
+    void spawnModule(message::Spawn &spawn);
+    bool spawnModuleCompound(const message::Spawn &spawn);
+    void addPortToCompound(int modId, Port::Type type, const std::string &portname,
+                           std::vector<std::string> &alreadyCreatedPorts, std::vector<message::Buffer> &msgs);
+
 
     bool checkChildProcesses(bool emergency = false);
     bool hasChildProcesses(bool ignoreGui = false);
@@ -186,9 +208,20 @@ private:
     void setSessionUrl(const std::string &url);
     void setStatus(const std::string &s, message::UpdateStatus::Importance prio = message::UpdateStatus::Low);
     void clearStatus();
+    int getParentCompound(int modId);
+    void killSubmodules(int modId, const AvailableModule &av);
+    bool checkModuleCompoundContainsSubmodules(const AvailableModule &av, const std::vector<int> &submodules);
+    StateTracker::Module *isCompoundToCollapseRunning(const std::string &compoundName,
+                                                      const std::vector<int> &submodules);
+    bool atLeastOneInputIsConnectedToSubmodule(const std::vector<int> &submodules, const Port::ConstPortSet &conns);
+    void setCompoundParam(const message::SetParameter &setParam);
+    void applySetCompoundParam(const message::SetParameter &setParam);
+    bool cacheSetCompoundParam(const message::SetParameter &setParam);
+    void updateLinkedParameters(const message::SetParameter &setParam);
+    void handleCachedSetParams(const message::SetParameter &setParam);
 
     std::map<int, std::vector<message::Buffer>> m_sendAfterSpawn;
-
+    std::vector<std::pair<std::set<int>, std::vector<message::Buffer>>> m_sendUiAfterAllSpawn;
 #if BOOST_VERSION >= 106600
     boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_workGuard;
 #else

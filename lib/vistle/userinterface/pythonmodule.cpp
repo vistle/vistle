@@ -814,7 +814,7 @@ static void loadScript(const std::string &filename)
 #endif
 }
 
-static int moduleCompoundAlloc(const std::string &compoundName)
+static int moduleCompoundCreate(const std::string &compoundName)
 {
     auto comp = std::find_if(compounds.begin(), compounds.end(), [&compoundName](const detail::ModuleCompound &c) {
         return c.module.name() == compoundName;
@@ -835,10 +835,21 @@ static int moduleCompoundAlloc(const std::string &compoundName)
     }
 }
 
+
 static void compoundNotFoundError(int compoundId)
 {
-    printError("module compound with id " + std::to_string(compoundId) + "hast not been found!");
-    printError("allocate it with moduleCompoundAlloc(\"compoundName\"");
+    printError("module compound with id " + std::to_string(compoundId) + "has not been found!");
+    printError("allocate it with moduleCompoundCreate(\"compoundName\"");
+}
+
+static void moduleCompoundSetPath(int compoundId, const std::string &path)
+{
+    auto comp = findCompound(compoundId);
+    if (comp == compounds.end()) {
+        compoundNotFoundError(compoundId);
+        return;
+    }
+    comp->module.setPath(path);
 }
 
 static int moduleCompoundAddModule(int compoundId, const std::string &moduleName, float x = 0, float y = 0)
@@ -878,6 +889,26 @@ static void moduleCompoundConnect(int compoundId, int fromId, const std::string 
         ModuleCompound::Connection{fromId - compoundId - 1, toId - compoundId - 1, fromName, toName});
 }
 
+static void moduleCompoundExpose(int compoundId, const std::string &compoundPortName, int modId,
+                                 const std::string &modPortName, vistle::Port::Type portType)
+{
+    auto comp = findCompound(compoundId);
+    if (comp == compounds.end()) {
+        compoundNotFoundError(compoundId);
+        return;
+    }
+    switch (portType) {
+    case Port::Type::INPUT:
+    case Port::Type::PARAMETER:
+        comp->module.addConnection(ModuleCompound::Connection{-1, modId, compoundPortName, modPortName, portType});
+        break;
+    case Port::Type::OUTPUT:
+        comp->module.addConnection(ModuleCompound::Connection{modId, -1, modPortName, compoundPortName, portType});
+        break;
+    default:
+        break;
+    }
+}
 
 Float compoundDropPositionX = 0;
 Float compoundDropPositionY = 0;
@@ -893,38 +924,6 @@ static void setRelativePos(int id, Float x, Float y)
     setVectorParam2(id, "_position", x + compoundDropPositionX, y + compoundDropPositionY, true);
 }
 
-void spawnAvailablModule(const AvailableModule &comp)
-{
-    std::cerr << "writing file " << comp.name() << moduleCompoundSuffix << std::endl;
-    auto filename = comp.path().empty() ? comp.name() : comp.path();
-    if (filename.find_last_of(moduleCompoundSuffix) != filename.size() - 1)
-        filename += moduleCompoundSuffix;
-
-    std::fstream file{filename, std::ios_base::out};
-    file << "MasterHub=getMasterHub()" << std::endl;
-    for (size_t i = 0; i < comp.submodules().size(); i++) {
-        file << "um" << comp.submodules()[i].name << i << " = spawnAsync(MasterHub, '" << comp.submodules()[i].name
-             << "')" << std::endl;
-    }
-    file << std::endl;
-    for (size_t i = 0; i < comp.submodules().size(); i++) {
-        float posX = comp.submodules()[i].x - comp.submodules()[0].x;
-        float posY = comp.submodules()[i].y - comp.submodules()[0].y;
-        file << "m" << comp.submodules()[i].name << i << " = waitForSpawn(um" << comp.submodules()[i].name << i << ")"
-             << std::endl;
-        file << "setRelativePos("
-             << "m" << comp.submodules()[i].name << i << ", " << posX << ", " << posY << ")" << std::endl;
-        file << "applyParameters(m" << comp.submodules()[i].name << i << ")" << std::endl;
-    }
-    for (const auto &conn: comp.connections()) {
-        if (conn.fromId >= 0 && conn.toId >= 0) //internal connection
-        {
-            file << "connect(m" << comp.submodules()[conn.fromId].name << conn.fromId << ",'" << conn.fromPort << "', m"
-                 << comp.submodules()[conn.toId].name << conn.toId << ",'" << conn.toPort << "')" << std::endl;
-        }
-    }
-}
-
 void moduleCompoundToFile(const ModuleCompound &comp)
 {
     std::cerr << "writing file " << comp.name() << moduleCompoundSuffix << std::endl;
@@ -933,7 +932,7 @@ void moduleCompoundToFile(const ModuleCompound &comp)
         filename += moduleCompoundSuffix;
 
     std::fstream file{filename, std::ios_base::out};
-    file << "CompoundId=moduleCompoundAlloc(\"" << comp.name() << "\")" << std::endl;
+    file << "CompoundId=moduleCompoundCreate(\"" << comp.name() << "\")" << std::endl;
     for (size_t i = 0; i < comp.submodules().size(); i++) {
         file << "um" << comp.submodules()[i].name << i << " = moduleCompoundAddModule(CompoundId, \""
              << comp.submodules()[i].name << "\", " << comp.submodules()[i].x << ", " << comp.submodules()[i].y << ")"
@@ -941,18 +940,32 @@ void moduleCompoundToFile(const ModuleCompound &comp)
     }
     file << std::endl;
     for (const auto &conn: comp.connections()) {
-        file << "moduleCompoundConnect(CompoundId, " << conn.fromId << ",\"" << conn.fromPort << "\", " << conn.toId
-             << ", \"" << conn.toPort << "\")" << std::endl;
+        if (conn.fromId < 0) //Input
+        {
+            file << "moduleCompoundExposeInput(CompoundId, \"" << conn.fromPort << "\", "
+                 << "um" + comp.submodules()[conn.toId].name << conn.toId << ", \"" << conn.toPort << "\")"
+                 << std::endl;
+        } else if (conn.toId < 0) // output
+        {
+            file << "moduleCompoundExposeOutput(CompoundId, \"" << conn.toPort << "\", "
+                 << "um" + comp.submodules()[conn.fromId].name << conn.fromId << ", \"" << conn.fromPort << "\")"
+                 << std::endl;
+        } else //internal
+        {
+            file << "moduleCompoundConnect(CompoundId, um" << comp.submodules()[conn.fromId].name << conn.fromId
+                 << ", \"" << conn.fromPort << "\", um" << comp.submodules()[conn.toId].name << conn.toId << ", \""
+                 << conn.toPort << "\")" << std::endl;
+        }
     }
-    file << "moduleCompoundCreate(CompoundId)" << std::endl;
+    file << "moduleCompoundCommit(CompoundId)" << std::endl;
 }
 
-static void moduleCompoundCreate(int compoundId)
+static void moduleCompoundCommit(int compoundId)
 {
     auto mc = findCompound(compoundId);
     if (mc == compounds.end()) {
         printError("Failed to create module compound: invalid id " + std::to_string(compoundId));
-        printError("Module compound has to be allocated using \"moduleCompoundAlloc(string compoundName)\"");
+        printError("Module compound has to be allocated using \"moduleCompoundCreate(string compoundName)\"");
         return;
     }
     mc->module.send(
@@ -1285,6 +1298,10 @@ PY_MODULE(_vistle, m)
     py::class_<message::SendText> st(m, "Text");
     vistle::message::SendText::enumForPython_TextType(st, "Type");
 
+    // make values of vistle::Port::Type enum known to Python as PortType.xxx
+    py::class_<Port> portEnum(m, "PortType");
+    vistle::Port::enumForPython_Type(portEnum, "PortType");
+
     py::class_<message::Id> id(m, "Id");
     py::enum_<message::Id::Reserved>(id, "Id")
         .value("Invalid", message::Id::Invalid)
@@ -1344,16 +1361,20 @@ PY_MODULE(_vistle, m)
           "return its ID",
           "hub"_a, "modulename"_a, "numspawn"_a = -1, "baserank"_a = -1, "rankskip"_a = -1);
     m.def("loadScript", &loadScript, "load a python script", "filename"_a);
-    m.def("moduleCompoundAlloc", &moduleCompoundAlloc, "allocate a new module compound", "name"_a);
+    m.def("moduleCompoundCreate", &moduleCompoundCreate, "allocate a new module compound", "name"_a);
+    m.def("moduleCompoundSetPath", &moduleCompoundSetPath, "set the path to store the compound", "compoundId"_a,
+          "path"_a);
     m.def("moduleCompoundAddModule", &moduleCompoundAddModule, "add a module to a module compound", "compoundId"_a,
           "modulename"_a, "x"_a = 0, "y"_a = 0);
     m.def("moduleCompoundConnect", &moduleCompoundConnect,
           "connect ports of modules inside the compound, expose port if compound id is given", "compoundId"_a,
           "fromId"_a, "toId"_a, "fromPort"_a, "toPort"_a);
+    m.def("moduleCompoundExpose", &moduleCompoundExpose, "expose the port of the submodule at compoundPortName",
+          "compoundId"_a, "compoundPortName"_a, "modId"_a, "modPortName"_a, "portType"_a);
     m.def("setRelativePos", &setRelativePos, "move module relative to compound drop position", "moduleId"_a, "x"_a,
           "y"_a);
     m.def("setCompoundDropPosition", &setCompoundDropPosition, "set the position for a module compound", "x"_a, "y"_a);
-    m.def("moduleCompoundCreate", &moduleCompoundCreate, "lock and create the compound", "compoundId"_a);
+    m.def("moduleCompoundCommit", &moduleCompoundCommit, "lock and create the compound", "compoundId"_a);
 
     m.def("spawn", spawn,
           "spawn new module `arg1`\n"
