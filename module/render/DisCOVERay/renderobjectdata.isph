@@ -38,7 +38,7 @@ struct RenderObjectData {
     RTCDevice device; //!< embree device
     RTCScene scene; //!< embree scene id for *this* object
     RTCGeometry geom; //!< embree geometry for scene instancing this object
-    int geomID; //!< embree geometry id of this object's scene
+    unsigned int geomID; //!< embree geometry id of this object's scene
     unsigned int instID; //!< embree instance id of this object's scene
 
     Quad *indexBuffer; //< triangle/quad list
