@@ -242,7 +242,7 @@ bool ReadTsunami::inspectNetCDFVars()
  * @brief Fill z coordinate from layergrid.
  *
  * @surface: LayerGrid pointer which will be modified.
- * @dim: Dimension in lat and lon.
+ * @dim: Dimension in lat (y) and lon (x).
  * @zCalc: Function for computing z-coordinate.
  */
 template<class T>
@@ -367,10 +367,10 @@ void ReadTsunami::initETA(const NcFile *ncFile, const std::array<NcVarExtended, 
     const auto &lonSea = ncExtSea[1];
     const auto &nTimesteps = time.calc_numtime();
     m_block_etaVec[block] = std::vector<float>(nTimesteps * verticesSea);
-    auto &vecEta = m_block_etaVec[block];
     const std::vector<MPI_Offset> vecStartEta{time.first(), latSea.start, lonSea.start};
     const std::vector<MPI_Offset> vecCountEta{nTimesteps, latSea.count, lonSea.count};
     const std::vector<MPI_Offset> vecStrideEta{time.inc(), latSea.stride, lonSea.stride};
+    auto &vecEta = m_block_etaVec[block];
     etaVar.getVar_all(vecStartEta, vecCountEta, vecStrideEta, vecEta.data());
 
     //filter fillvalue
@@ -438,6 +438,8 @@ void ReadTsunami::initSea(const NcFile *ncFile, const std::array<Index, 2> &nBlo
     std::array<NcVarExtended, 2> latLonSea;
     latLonSea[0] = generateNcVarExt<MPI_Offset, Index>(latVar, dimSeaTotal.X(), ghost, nBlocks[0], nBlockPartIdx[0]);
     latLonSea[1] = generateNcVarExt<MPI_Offset, Index>(lonVar, dimSeaTotal.Y(), ghost, nBlocks[1], nBlockPartIdx[1]);
+
+    // lat = Y and lon = X
     const auto &latSea = latLonSea[0];
     const auto &lonSea = latLonSea[1];
 
@@ -448,12 +450,7 @@ void ReadTsunami::initSea(const NcFile *ncFile, const std::array<Index, 2> &nBlo
 
     latSea.readNcVar(vecLat.data());
     lonSea.readNcVar(vecLon.data());
-    /* m_block_dimSea[block] = moffDim(latSea.count, lonSea.count, 1); */
     m_block_dimSea[block] = moffDim(lonSea.count, latSea.count, 1);
-    /* m_block_min[block][0] = *vecLat.begin(); */
-    /* m_block_min[block][1] = *vecLon.begin(); */
-    /* m_block_max[block][0] = *(vecLat.end() - 1); */
-    /* m_block_max[block][1] = *(vecLon.end() - 1); */
     m_block_min[block][0] = *vecLon.begin();
     m_block_min[block][1] = *vecLat.begin();
     m_block_max[block][0] = *(vecLon.end() - 1);
@@ -495,23 +492,16 @@ void ReadTsunami::createGround(Token &token, const NcFile *ncFile, const std::ar
         lonGround.readNcVar(vecLonGrid.data());
 
         const auto &scale = m_verticalScale->getValue();
-        ZCalcFunc grndZCalc = [&vecDepth, &lonGround, &scale](MPI_Offset j, MPI_Offset k) {
-            return -vecDepth[j * lonGround.count + k] * scale;
-        };
 
-        /* LayerGrid::ptr grndPtr(new LayerGrid(latGround.count, lonGround.count, 1)); */
-        /* const auto grndDim = moffDim(latGround.count, lonGround.count, 0); */
-        /* grndPtr->min()[0] = *vecLatGrid.begin(); */
-        /* grndPtr->min()[1] = *vecLonGrid.begin(); */
-        /* grndPtr->max()[0] = *(vecLatGrid.end() - 1); */
-        /* grndPtr->max()[1] = *(vecLonGrid.end() - 1); */
         LayerGrid::ptr grndPtr(new LayerGrid(lonGround.count, latGround.count, 1));
         const auto grndDim = moffDim(lonGround.count, latGround.count, 0);
         grndPtr->min()[0] = *vecLonGrid.begin();
         grndPtr->min()[1] = *vecLatGrid.begin();
         grndPtr->max()[0] = *(vecLonGrid.end() - 1);
         grndPtr->max()[1] = *(vecLatGrid.end() - 1);
-        fillHeight(grndPtr, grndDim, grndZCalc);
+        fillHeight(grndPtr, grndDim, [&vecDepth, &lonGround, &scale](MPI_Offset j, MPI_Offset k) {
+            return -vecDepth[k * lonGround.count + j] * scale;
+        });
 
         // add ground data to port
         grndPtr->setBlock(block);
@@ -593,8 +583,10 @@ bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &time
     // verticesSea * timesteps = total count vecEta
     const auto &verticesSea = gridPtr->getNumVertices();
     std::vector<float> &etaVec = m_block_etaVec[blockNum];
-    auto startCopy = etaVec.begin() + (m_block_etaIdx[blockNum]++ * verticesSea);
-    std::copy_n(startCopy, verticesSea, gridPtr->z().begin());
+    auto count = m_block_etaIdx[blockNum]++ * verticesSea;
+    fillHeight(gridPtr, blockSeaDim, [&etaVec, &blockSeaDim, &count](const auto &j, const auto &k) {
+        return etaVec[count + k * blockSeaDim.X() + j];
+    });
     gridPtr->updateInternals();
     gridPtr->setTimestep(timestep);
     gridPtr->setBlock(blockNum);
