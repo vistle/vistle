@@ -220,6 +220,35 @@ void appendMessage(std::vector<StateTracker::MessageWithPayload> &v, const messa
 
 } // namespace
 
+
+void StateTracker::appendModuleState(VistleState &state, const StateTracker::Module &m) const
+{
+    using namespace vistle::message;
+    Spawn spawn(m.hub, m.name);
+    spawn.setSpawnId(m.id);
+    spawn.setMirroringId(m.mirrorOfId);
+    //CERR << "id " << id << " mirrors " << m.mirrorOfId << std::endl;
+    appendMessage(state, spawn);
+
+    if (m.initialized) {
+        Started s(m.name);
+        s.setSenderId(m.id);
+        s.setReferrer(spawn.uuid());
+        appendMessage(state, s);
+    }
+
+    if (m.busy) {
+        Busy b;
+        b.setSenderId(m.id);
+        appendMessage(state, b);
+    }
+
+    if (m.killed) {
+        Kill k(m.id);
+        appendMessage(state, k);
+    }
+}
+
 StateTracker::VistleState StateTracker::getState() const
 {
     mutex_locker guard(m_stateMutex);
@@ -259,29 +288,7 @@ StateTracker::VistleState StateTracker::getState() const
         const Module &m = it.second;
 
         if (Id::isModule(id)) {
-            Spawn spawn(m.hub, m.name);
-            spawn.setSpawnId(id);
-            spawn.setMirroringId(m.mirrorOfId);
-            //CERR << "id " << id << " mirrors " << m.mirrorOfId << std::endl;
-            appendMessage(state, spawn);
-
-            if (m.initialized) {
-                Started s(m.name);
-                s.setSenderId(id);
-                s.setReferrer(spawn.uuid());
-                appendMessage(state, s);
-            }
-
-            if (m.busy) {
-                Busy b;
-                b.setSenderId(id);
-                appendMessage(state, b);
-            }
-
-            if (m.killed) {
-                Kill k(id);
-                appendMessage(state, k);
-            }
+            appendModuleState(state, m);
         }
 
         const ParameterMap &pmap = m.parameters;

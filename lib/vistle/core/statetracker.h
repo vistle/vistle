@@ -223,6 +223,8 @@ protected:
     bool hasCombinePort(int id) const;
     bool isExecuting(int id) const;
 
+    void appendModuleState(VistleState &state, const Module &mod) const;
+
     std::map<AvailableModule::Key, AvailableModule> m_availableModules;
 
     std::set<StateObserver *> m_observers;
