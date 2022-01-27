@@ -571,16 +571,22 @@ static void disconnect(int sid, const char *sport, int did, const char *dport)
     sendMessage(m);
 }
 
+static void sendSetParameter(message::SetParameter &msg, int id, bool delayed)
+{
+    msg.setDestId(id);
+    if (delayed)
+        msg.setDelayed();
+    auto param = MODULEMANAGER.getParameter(id, msg.getName());
+    sendMessage(msg);
+}
+
 static void setIntParam(int id, const char *name, Integer value, bool delayed)
 {
 #ifdef DEBUG
     std::cerr << "Python: setIntParam " << id << ":" << name << " = " << value << std::endl;
 #endif
     message::SetParameter m(id, name, value);
-    m.setDestId(id);
-    if (delayed)
-        m.setDelayed();
-    sendMessage(m);
+    sendSetParameter(m, id, delayed);
 }
 
 static void setFloatParam(int id, const char *name, Float value, bool delayed)
@@ -589,82 +595,55 @@ static void setFloatParam(int id, const char *name, Float value, bool delayed)
     std::cerr << "Python: setFloatParam " << id << ":" << name << " = " << value << std::endl;
 #endif
     message::SetParameter m(id, name, value);
-    m.setDestId(id);
-    if (delayed)
-        m.setDelayed();
-    sendMessage(m);
+    sendSetParameter(m, id, delayed);
 }
 
 static void setVectorParam4(int id, const char *name, Float v1, Float v2, Float v3, Float v4, bool delayed)
 {
     message::SetParameter m(id, name, ParamVector(v1, v2, v3, v4));
-    m.setDestId(id);
-    if (delayed)
-        m.setDelayed();
-    sendMessage(m);
+    sendSetParameter(m, id, delayed);
 }
 
 static void setVectorParam3(int id, const char *name, Float v1, Float v2, Float v3, bool delayed)
 {
     message::SetParameter m(id, name, ParamVector(v1, v2, v3));
-    m.setDestId(id);
-    if (delayed)
-        m.setDelayed();
-    sendMessage(m);
+    sendSetParameter(m, id, delayed);
 }
 
 static void setVectorParam2(int id, const char *name, Float v1, Float v2, bool delayed)
 {
     message::SetParameter m(id, name, ParamVector(v1, v2));
-    m.setDestId(id);
-    if (delayed)
-        m.setDelayed();
-    sendMessage(m);
+    sendSetParameter(m, id, delayed);
 }
 
 static void setVectorParam1(int id, const char *name, Float v1, bool delayed)
 {
     message::SetParameter m(id, name, ParamVector(v1));
-    m.setDestId(id);
-    if (delayed)
-        m.setDelayed();
-    sendMessage(m);
+    sendSetParameter(m, id, delayed);
 }
 
 static void setIntVectorParam4(int id, const char *name, Integer v1, Integer v2, Integer v3, Integer v4, bool delayed)
 {
     message::SetParameter m(id, name, IntParamVector(v1, v2, v3, v4));
-    m.setDestId(id);
-    if (delayed)
-        m.setDelayed();
-    sendMessage(m);
+    sendSetParameter(m, id, delayed);
 }
 
 static void setIntVectorParam3(int id, const char *name, Integer v1, Integer v2, Integer v3, bool delayed)
 {
     message::SetParameter m(id, name, IntParamVector(v1, v2, v3));
-    m.setDestId(id);
-    if (delayed)
-        m.setDelayed();
-    sendMessage(m);
+    sendSetParameter(m, id, delayed);
 }
 
 static void setIntVectorParam2(int id, const char *name, Integer v1, Integer v2, bool delayed)
 {
     message::SetParameter m(id, name, IntParamVector(v1, v2));
-    m.setDestId(id);
-    if (delayed)
-        m.setDelayed();
-    sendMessage(m);
+    sendSetParameter(m, id, delayed);
 }
 
 static void setIntVectorParam1(int id, const char *name, Integer v1, bool delayed)
 {
     message::SetParameter m(id, name, IntParamVector(v1));
-    m.setDestId(id);
-    if (delayed)
-        m.setDelayed();
-    sendMessage(m);
+    sendSetParameter(m, id, delayed);
 }
 
 static void setStringParam(int id, const char *name, const std::string &value, bool delayed)
@@ -673,10 +652,7 @@ static void setStringParam(int id, const char *name, const std::string &value, b
     std::cerr << "Python: setStringParam " << id << ":" << name << " = " << value << std::endl;
 #endif
     message::SetParameter m(id, name, value);
-    m.setDestId(id);
-    if (delayed)
-        m.setDelayed();
-    sendMessage(m);
+    sendSetParameter(m, id, delayed);
 }
 
 static void applyParameters(int id)
@@ -685,8 +661,7 @@ static void applyParameters(int id)
     std::cerr << "Python: applyParameters " << id << std::endl;
 #endif
     message::SetParameter m(id);
-    m.setDestId(id);
-    sendMessage(m);
+    sendSetParameter(m, id, false);
 }
 
 static void compute(int id = message::Id::Broadcast)
