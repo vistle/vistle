@@ -745,7 +745,7 @@ bool ClusterManager::handle(const message::Buffer &message, const MessagePayload
 
     case message::CREATEMODULECOMPOUND: {
         buffer pl(payload->begin(), payload->end());
-        ModuleCompound comp(message, pl);
+        ModuleCompound comp(message.as<message::CreateModuleCompound>(), pl);
         AvailableModule::Key key(comp.hub(), comp.name());
         auto av = comp.transform();
         av.setHub(hubId());

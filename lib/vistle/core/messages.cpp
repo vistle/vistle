@@ -1444,26 +1444,33 @@ bool Trace::on() const
     return m_on;
 }
 
-ModuleBaseMessage::ModuleBaseMessage(const AvailableModuleBase &mod): m_hub(mod.hub())
+template<Type MessageType>
+ModuleBaseMessage<MessageType>::ModuleBaseMessage(const AvailableModuleBase &mod): m_hub(mod.hub())
 {
     COPY_STRING(m_name, mod.name());
     COPY_STRING(m_path, mod.path());
 }
 
-int ModuleBaseMessage::hub() const
+template<Type MessageType>
+int ModuleBaseMessage<MessageType>::hub() const
 {
     return m_hub;
 }
 
-const char *ModuleBaseMessage::name() const
+template<Type MessageType>
+const char *ModuleBaseMessage<MessageType>::name() const
 {
     return m_name.data();
 }
 
-const char *ModuleBaseMessage::path() const
+template<Type MessageType>
+const char *ModuleBaseMessage<MessageType>::path() const
 {
     return m_path.data();
 }
+
+template class ModuleBaseMessage<MODULEAVAILABLE>;
+template class ModuleBaseMessage<CREATEMODULECOMPOUND>;
 
 LockUi::LockUi(bool locked): m_locked(locked)
 {}
