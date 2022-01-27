@@ -44,8 +44,8 @@ public:
 private:
     typedef PnetCDF::NcmpiVar NcVar;
     typedef PnetCDF::NcmpiFile NcFile;
-    typedef vistle::Vec<vistle::Scalar>::ptr VecScalarPtr;
-    typedef std::array<VecScalarPtr, NUM_SCALARS> ArrVecScalarPtrs;
+    typedef vistle::Vec<vistle::Scalar>::ptr VisVecScalarPtr;
+    typedef std::array<VisVecScalarPtr, NUM_SCALARS> ArrVecScalarPtrs;
     typedef std::vector<ArrVecScalarPtrs> VecArrVecScalarPtrs;
     typedef std::vector<std::array<float, 2>> VecLatLon;
     typedef std::function<float(size_t, size_t)> ZCalcFunc;
