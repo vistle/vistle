@@ -1433,7 +1433,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                 std::cerr << "missing payload for CREATEMODULECOMPOUND message!" << std::endl;
                 break;
             }
-            ModuleCompound comp(msg, *payload);
+            ModuleCompound comp(msg.as<message::CreateModuleCompound>(), *payload);
 #ifdef HAVE_PYTHON
             moduleCompoundToFile(comp);
 #endif
