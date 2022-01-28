@@ -34,6 +34,9 @@ using namespace PnetCDF;
 
 MODULE_MAIN_THREAD(ReadTsunami, boost::mpi::threading::multiple)
 namespace {
+constexpr auto lat{"lat"};
+constexpr auto lon{"lon"};
+constexpr auto bathy{"bathy"};
 constexpr auto ETA{"eta"};
 constexpr auto _species{"_species"};
 constexpr auto fillValue{"fillValue"};
@@ -186,8 +189,8 @@ bool ReadTsunami::inspectNetCDFVars()
     const int &maxTime = ncFile->getDim("time").getSize();
     setTimesteps(maxTime);
 
-    const Integer &maxlatDim = ncFile->getDim("lat").getSize();
-    const Integer &maxlonDim = ncFile->getDim("lon").getSize();
+    const Integer &maxlatDim = ncFile->getDim(lat).getSize();
+    const Integer &maxlonDim = ncFile->getDim(lon).getSize();
     setParameterRange(m_blocks[0], Integer(1), maxlatDim);
     setParameterRange(m_blocks[1], Integer(1), maxlonDim);
 
@@ -217,11 +220,11 @@ bool ReadTsunami::inspectNetCDFVars()
     for (auto &name_val: ncFile->getVars()) {
         auto &name = name_val.first;
         auto &val = name_val.second;
-        if (strContains(name, "lat"))
+        if (strContains(name, lat))
             latLonContainsGrid(name, 0);
-        else if (strContains(name, "lon"))
+        else if (strContains(name, lon))
             latLonContainsGrid(name, 1);
-        else if (strContains(name, "bathy")) // || strContains(name, "deformation"))
+        else if (strContains(name, bathy)) // || strContains(name, "deformation"))
             bathyChoiceVec.push_back(name);
         else if (val.getDimCount() == 2) // for now: only scalars with 2 dim depend on lat lon.
             scalarChoiceVec.push_back(name);
