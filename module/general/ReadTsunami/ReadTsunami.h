@@ -66,33 +66,41 @@ private:
     typedef Dim<MPI_Offset> moffDim;
     typedef Dim<size_t> sztDim;
 
-    struct NcVarExtended {
-        MPI_Offset start;
-        MPI_Offset count;
-        MPI_Offset stride;
-        MPI_Offset imap;
-
-        NcVarExtended() = default;
-        NcVarExtended(const NcVar &nc, const MPI_Offset &start = 0, const MPI_Offset &count = 0,
-                      const MPI_Offset &stride = 1, const MPI_Offset &imap = 1)
+    template<class NcParamType>
+    struct NcVarExt {
+        NcVarExt() = default;
+        NcVarExt(const NcVar &nc, const NcParamType &start = 0, const NcParamType &count = 0,
+                 const NcParamType &stride = 1, const NcParamType &imap = 1)
         : start(start), count(count), stride(stride), imap(imap)
         {
             ncVar = std::make_unique<NcVar>(nc);
         }
 
+        auto &Start() const { return start; }
+        auto &Count() const { return count; }
+        auto &Stride() const { return stride; }
+        auto &Imap() const { return imap; }
+
         template<class T>
         void readNcVar(T *storage) const
         {
-            std::vector<MPI_Offset> v_start{start};
-            std::vector<MPI_Offset> v_count{count};
-            std::vector<MPI_Offset> v_stride{stride};
-            std::vector<MPI_Offset> v_imap{imap};
-            ncVar->getVar_all(v_start, v_count, v_stride, v_imap, storage);
+            const std::vector<NcParamType> v_start{start}, v_count{count}, v_stride{stride}, v_imap{imap};
+            read(storage, v_start, v_count, v_stride, v_imap);
         }
 
     private:
+        template<class T, class... Args>
+        void read(T *storage, Args... args) const
+        {
+            ncVar->getVar_all(args..., storage);
+        }
         std::unique_ptr<NcVar> ncVar;
+        NcParamType start;
+        NcParamType count;
+        NcParamType stride;
+        NcParamType imap;
     };
+    typedef NcVarExt<MPI_Offset> PNcVarExt;
 
     //Vistle functions
     bool prepareRead() override;
@@ -101,12 +109,12 @@ private:
     bool examine(const vistle::Parameter *param) override;
 
     //Own functions
-    void initETA(const NcFile *ncFile, const std::array<NcVarExtended, 2> &ncExtSea, const ReaderTime &time,
+    void initETA(const NcFile *ncFile, const std::array<PNcVarExt, 2> &ncExtSea, const ReaderTime &time,
                  const size_t &verticesSea, int block);
     void initSea(const NcFile *ncFile, const std::array<vistle::Index, 2> &nBlocks,
                  const std::array<vistle::Index, NUM_BLOCKS> &blockPartIdx, const ReaderTime &time, int ghost,
                  int block);
-    void initScalars(const NcFile *ncFile, const std::array<NcVarExtended, 2> &ncExtSea, const size_t &verticesSea,
+    void initScalars(const NcFile *ncFile, const std::array<PNcVarExt, 2> &ncExtSea, const size_t &verticesSea,
                      int block);
     void createGround(Token &token, const NcFile *ncFile, const std::array<vistle::Index, 2> &nBlocks,
                       const std::array<vistle::Index, NUM_BLOCKS> &blockPartIdx, int ghost, int block);
