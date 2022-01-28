@@ -7,7 +7,7 @@
 #include <vistle/module/reader.h>
 #include <vistle/core/unstr.h>
 
-#define NUMPARAMS 3
+#define NUMPARAMS 1
 
 using namespace PnetCDF;
 using namespace vistle;
@@ -53,11 +53,23 @@ private:
     int numDataFiles = 1;
     std::vector<std::string> dataFileList;
 
+    std::vector<Object::ptr> gridList;
+    std::vector<Index> numCellsB;
+    std::vector<Index> numCornB;
+    std::vector<size_t> blockIdx;
+    std::vector<size_t> numGhosts;
+    std::vector<std::vector<int>> isGhost;
+
+    std::vector<size_t> partList;
+    Index numLevels = 0;
+    Index numCells = 0;
+
     //std::vector<UnstructuredGrid::ptr> gridList;
     std::vector<int> voc, eoc,coc,cov; // voc (Vertices on Cell); eoc (edges on Cell); coc (cells on cell); cov (vertices on Cell)
     std::vector<float> xCoords,yCoords,zCoords; //coordinates of vertices
     bool ghosts = false;
     int finalNumberOfParts = 1;
+    std::mutex mtxPartList;
 };
 
 #endif
