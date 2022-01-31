@@ -41,7 +41,7 @@ constexpr auto ETA{"eta"};
 constexpr auto _species{"_species"};
 constexpr auto fillValue{"fillValue"};
 constexpr auto fillValueNew{"fillValueNew"};
-constexpr auto choiceParamNone{"None"};
+constexpr auto NONE{"None"};
 } // namespace
 
 ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicator comm)
@@ -146,7 +146,7 @@ bool ReadTsunami::examine(const vistle::Parameter *param)
     if (!param || param == m_filedir) {
         printMPIStats();
 
-        if (!inspectNetCDFVars())
+        if (!inspectNetCDF())
             return false;
     }
 
@@ -177,15 +177,14 @@ std::unique_ptr<NcmpiFile> ReadTsunami::openNcmpiFile()
 }
 
 /**
- * @brief Inspect netCDF variables stored in file.
+ * @brief Inspect netCDF dimension (all independent variables.)
+ *
+ * @param ncFile Open nc file pointer.
+ *
+ * @return tru if everything is initialized.
  */
-bool ReadTsunami::inspectNetCDFVars()
+bool ReadTsunami::inspectDims(const NcFile *ncFile)
 {
-    auto ncFile = openNcmpiFile();
-
-    if (!ncFile)
-        return false;
-
     const int &maxTime = ncFile->getDim("time").getSize();
     setTimesteps(maxTime);
 
@@ -193,22 +192,49 @@ bool ReadTsunami::inspectNetCDFVars()
     const Integer &maxlonDim = ncFile->getDim(lon).getSize();
     setParameterRange(m_blocks[0], Integer(1), maxlatDim);
     setParameterRange(m_blocks[1], Integer(1), maxlonDim);
+    return inspectScalars(ncFile);
+}
 
-    //scalar inspection
+/**
+ * @brief Helper for checking if name includes contains.
+ *
+ * @param name name of attribute.
+ * @param contains string which will be checked for.
+ *
+ * @return true if contains is in name.
+ */
+inline auto strContains(const std::string &name, const std::string &contains)
+{
+    return name.find(contains) != std::string::npos;
+}
+
+/**
+ * @brief Helper which adds NONE to vector if its empty.
+ *
+ * @param vec ref to string vector.
+ */
+inline void ifEmptyAddNone(std::vector<std::string> &vec)
+{
+    if (vec.empty())
+        vec.push_back(NONE);
+}
+
+/**
+ * @brief Inspect netCDF variables which depends on dim variables.
+ *
+ * @param ncFile Open nc file pointer.
+ *
+ * @return true if everything is initialized.
+ */
+bool ReadTsunami::inspectScalars(const NcFile *ncFile)
+{
     std::vector<std::string> scalarChoiceVec;
     std::vector<std::string> bathyChoiceVec;
-    auto strContains = [](const std::string &name, const std::string &contains) {
-        return name.find(contains) != std::string::npos;
-    };
     auto latLonContainsGrid = [&](auto &name, int i) {
         if (strContains(name, "grid"))
             m_latLon_Ground[i] = name;
         else
             m_latLon_Sea[i] = name;
-    };
-    auto isEmpty = [](std::vector<std::string> &vec) {
-        if (vec.empty())
-            vec.push_back(choiceParamNone);
     };
 
     //delete previous choicelists.
@@ -217,9 +243,7 @@ bool ReadTsunami::inspectNetCDFVars()
         scalar->setChoices(std::vector<std::string>());
 
     //read names of scalars
-    for (auto &name_val: ncFile->getVars()) {
-        auto &name = name_val.first;
-        auto &val = name_val.second;
+    for (auto &[name, val]: ncFile->getVars()) {
         if (strContains(name, lat))
             latLonContainsGrid(name, 0);
         else if (strContains(name, lon))
@@ -229,8 +253,8 @@ bool ReadTsunami::inspectNetCDFVars()
         else if (val.getDimCount() == 2) // for now: only scalars with 2 dim depend on lat lon.
             scalarChoiceVec.push_back(name);
     }
-    isEmpty(scalarChoiceVec);
-    isEmpty(bathyChoiceVec);
+    ifEmptyAddNone(scalarChoiceVec);
+    ifEmptyAddNone(bathyChoiceVec);
 
     //init choice param with scalardata
     setParameterChoices(m_bathy, bathyChoiceVec);
@@ -242,8 +266,21 @@ bool ReadTsunami::inspectNetCDFVars()
         sendInfo("No parameter lat, lon, grid_lat or grid_lon found. Reader not able to read tsunami.");
         return false;
     }
-
     return true;
+}
+
+
+/**
+ * @brief Inspect netCDF variables stored in file.
+ */
+bool ReadTsunami::inspectNetCDF()
+{
+    auto ncFile = openNcmpiFile();
+
+    if (!ncFile)
+        return false;
+
+    return inspectDims(ncFile.get());
 }
 
 /**
@@ -408,7 +445,7 @@ void ReadTsunami::initScalars(const NcFile *ncFile, const std::array<PNcVarExt, 
         if (!m_scalarsOut[i]->isConnected())
             continue;
         const auto &scName = m_scalars[i]->getValue();
-        if (scName == choiceParamNone)
+        if (scName == NONE)
             continue;
         std::vector<float> vecScalar(verticesSea);
         const std::vector<MPI_Offset> vecScalarStart{latSea.Start(), lonSea.Start()};
@@ -553,7 +590,7 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
     }
 
     if (m_groundSurface_out->isConnected()) {
-        if (m_bathy->getValue() == choiceParamNone)
+        if (m_bathy->getValue() == NONE)
             printRank0("File doesn't provide bathymetry data");
         else
             createGround(token, ncFile.get(), nBlocks, blockPartitionIdx, ghost, blockNum);

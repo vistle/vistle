@@ -119,7 +119,9 @@ private:
     void createGround(Token &token, const NcFile *ncFile, const std::array<vistle::Index, 2> &nBlocks,
                       const std::array<vistle::Index, NUM_BLOCKS> &blockPartIdx, int ghost, int block);
     void initScalarParamReader();
-    bool inspectNetCDFVars();
+    bool inspectNetCDF();
+    bool inspectDims(const NcFile *ncFile);
+    bool inspectScalars(const NcFile *ncFile);
     std::unique_ptr<NcFile> openNcmpiFile();
 
     template<class T>
