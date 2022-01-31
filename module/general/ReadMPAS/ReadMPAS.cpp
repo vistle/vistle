@@ -320,9 +320,9 @@ bool ReadMPAS::getData(const NcmpiFile &filename, std::vector<float> *dataValues
 //start all the reading
 bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
 {
-    if (timestep < 0)
-        return true;
 
+    sendInfo("I am blck %d at time %d",block, timestep);
+    
     if (!gridList[block]) { //if grid has not been created -> do it
 
         NcmpiFile ncFirstFile(comm(), firstFileName, NcmpiFile::read);
@@ -367,7 +367,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
         size_t numMaxLevels = 1;
         //verify that dimensions in grid file and data file are matching
         if (hasDataFile) {
-            NcmpiFile ncDataFile(comm(), /*dataFileName.c_str()*/ dataFileList.at(timestep), NcmpiFile::read);
+            NcmpiFile ncDataFile(comm(), /*dataFileName.c_str()*/ dataFileList.at(0), NcmpiFile::read);
            // const NcmpiDim &dimCellsData = ncDataFile.getDim("nCells");
            // numCells = dimCellsData.getSize();
             if (dimensionExists("nVertLevels", ncDataFile)) {
@@ -549,7 +549,6 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
                 cellsOnCell.getVar_all(coc.data());
                 ghosts = true;
             }
-
             size_t numCornGhost = 0;
             std::vector<int> reducedVOC(numCells * MAX_EDGES, -1);
             Index idx = 0, neighborIdx = 0;
@@ -693,62 +692,70 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
             }
 
             el[currentElem] = idx2;
+            p->setBlock(block);
+            p->setTimestep(-1);
+            p->updateInternals();
             gridList[block] = p;
-            Object::ptr geo_out;
-            geo_out = gridList[block];
-            geo_out->setBlock(block);
-            geo_out->setTimestep(-1);
-            // geo_out->setNumBlocks(numPartitions());
-            geo_out->updateInternals();
-            token.addObject("grid_out", geo_out);
-            
+
             if (partsFile) {
                 fclose(partsFile);
                 partsFile = nullptr;
             }
         }
     }
-    // Read data
-    NcmpiVar varData;
-    Index dataIdx = 0;
-    Vec<Scalar>::ptr dataObj(new Vec<Scalar>((numCellsB[block] + numGhosts[block]) * (numLevels - 1)));
-    Scalar *ptrOnScalarData = dataObj->x().data();
+    
+    if (timestep < 0){            
+        //Object::ptr geo_out;
+       // geo_out = gridList[block];
+       // geo_out->setBlock(block);
+       // geo_out->setTimestep(-1);
+        // geo_out->setNumBlocks(numPartitions());
+        //geo_out->updateInternals();
+        token.addObject("grid_out", gridList[block]);
 
-    std::vector<float> dataValues(numCells * (numLevels - 1), 0.);
-    if (!emptyValue(m_variables[dataIdx])) {
-        if (hasDataFile) {
-            NcmpiFile ncDataFile(comm(), dataFileList.at(timestep).c_str(), NcmpiFile::read);
-            getData(ncDataFile, &dataValues, numLevels);
+        return true;
+    }else{
+        // Read data
+        NcmpiVar varData;
+        Index dataIdx = 0;
+        Vec<Scalar>::ptr dataObj(new Vec<Scalar>((numCellsB[block] + numGhosts[block]) * (numLevels - 1)));
+        Scalar *ptrOnScalarData = dataObj->x().data();
+
+        std::vector<float> dataValues(numCells * (numLevels - 1), 0.);
+        if (!emptyValue(m_variables[dataIdx])) {
+            if (hasDataFile) {
+                NcmpiFile ncDataFile(comm(), dataFileList.at(timestep).c_str(), NcmpiFile::read);
+                getData(ncDataFile, &dataValues, numLevels);
+            } else {
+                NcmpiFile ncFirstFile(comm(), firstFileName, NcmpiFile::read);
+                getData(ncFirstFile, &dataValues, numLevels);
+            }
         } else {
-            NcmpiFile ncFirstFile(comm(), firstFileName, NcmpiFile::read);
-            getData(ncFirstFile, &dataValues, numLevels);
+            if (block == 0)
+                sendInfo("No variable selected");
         }
-    } else {
-        if (block == 0)
-            sendInfo("No variable selected");
-    }
 
-    Index currentElem = 0;
-    for (Index i = 0; i < numCells; ++i) {
-        if ((partList[i] == block) || (ghosts && (isGhost[block][i] > 0))) {
-            for (int iz = 0; iz < numLevels-1; ++iz) {  
-                ptrOnScalarData[currentElem++] = dataValues[iz + i * (numLevels - 1)]; //numMaxLevels
+        Index currentElem = 0;
+        for (Index i = 0; i < numCells; ++i) {
+            if ((partList[i] == block) || (ghosts && (isGhost[block][i] > 0))) {
+                for (int iz = 0; iz < numLevels-1; ++iz) {  
+                    ptrOnScalarData[currentElem++] = dataValues[iz + i * (numLevels - 1)]; //numMaxLevels
+                }
             }
         }
-    }
 
-    if (!emptyValue(m_variables[0])) {
-        dataObj->setGrid(gridList[block]);
-        dataObj->setMapping(DataBase::Element);
-        dataObj->setBlock(block);
-        std::string pVar = m_variables[0]->getValue();
-        dataObj->addAttribute("_species", pVar);
-        dataObj->updateInternals();
-        dataObj->setTimestep(timestep);
-        token.addObject(m_dataOut[0], dataObj);
+        if (!emptyValue(m_variables[0])) {
+            dataObj->setGrid(gridList[block]);
+            dataObj->setMapping(DataBase::Element);
+            dataObj->setBlock(block);
+            std::string pVar = m_variables[0]->getValue();
+            dataObj->addAttribute("_species", pVar);
+            dataObj->updateInternals();
+            dataObj->setTimestep(timestep);
+            token.addObject(m_dataOut[0], dataObj);
+        }
+        dataValues.clear();
     }
-    dataValues.clear();
-
     return true;
 }
 
