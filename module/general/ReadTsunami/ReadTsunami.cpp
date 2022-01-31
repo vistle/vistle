@@ -238,6 +238,11 @@ bool ReadTsunami::inspectNetCDFVars()
     for (auto &scalar: m_scalars)
         setParameterChoices(scalar, scalarChoiceVec);
 
+    if (m_latLon_Ground.empty() || m_latLon_Sea.empty()) {
+        sendInfo("No parameter lat, lon, grid_lat or grid_lon found. Reader not able to read tsunami.");
+        return false;
+    }
+
     return true;
 }
 
