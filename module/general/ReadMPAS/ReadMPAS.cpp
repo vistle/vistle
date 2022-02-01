@@ -136,7 +136,7 @@ bool ReadMPAS::prepareRead()
     numCornB.clear();
     numCornB.resize(finalNumberOfParts, 0);
     blockIdx.clear();
-    blockIdx.resize(finalNumberOfParts);
+    blockIdx.resize(numPartsFile);
     numGhosts.clear();
     numGhosts.resize(finalNumberOfParts, 0);
     isGhost.clear();
@@ -321,11 +321,11 @@ bool ReadMPAS::getData(const NcmpiFile &filename, std::vector<float> *dataValues
 bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
 {
 
-    sendInfo("I am blck %d at time %d",block, timestep);
-    
+    assert(gridList.size()==numPartitions());
     if (!gridList[block]) { //if grid has not been created -> do it
 
         NcmpiFile ncFirstFile(comm(), firstFileName, NcmpiFile::read);
+        assert(dimensionExists("nCells", ncFirstFile));
         // first of all: validate that all neccesary dimensions and variables exist
         if (!dimensionExists("nCells", ncFirstFile) || !dimensionExists("nVertices", ncFirstFile) ||
             !dimensionExists("maxEdges", ncFirstFile)) {
@@ -384,105 +384,10 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
         if (numLevels < 2)
             return false;
 
-        std::vector<MPI_Offset> start = {0};
-        std::vector<MPI_Offset> stop = {numVert};
         float dH = 0.01;
         size_t numPartsUser = m_numPartitions->getValue();
 
         if (numPartsFile == 1) {
-            /* size_t numCorn = std::accumulate(eoc.begin(), eoc.end(), 0);
-        size_t numCornPlusOne = numCorn + numCells;
-        UnstructuredGrid::ptr p(new UnstructuredGrid(
-            numCells * (numLevels - 1), ((numLevels - 1) * numCornPlusOne * 2 + numCorn * (numLevels - 1) * 5),
-            numVert * numLevels));
-        Index *cl = p->cl().data();
-        Index *el = p->el().data();
-        auto tl = p->tl().data();
-
-        Index idx2 = 0, currentElem = 0, izVert = 0;
-
-        for (Index iz = 0; iz < numLevels - 1; ++iz) {
-            izVert = iz * numVert;
-            for (Index elem = 0; elem < numCells; ++elem) {
-                el[currentElem] = idx2;
-                addCell(elem, el, cl, vPerC, numVert, izVert, idx2, voc);
-                tl[currentElem++] = UnstructuredGrid::CPOLYHEDRON;
-            }
-        }
-        el[currentElem] = idx2;
-
-        std::vector<float> xCoords(numVert);
-        std::vector<float> yCoords(numVert);
-        std::vector<float> zCoords(numVert);
-        Scalar *ptrOnX = p->x().data();
-        Scalar *ptrOnY = p->y().data();
-        Scalar *ptrOnZ = p->z().data();
-
-        xC.getVar_all(start, stop, xCoords.data()); // xC->get(&xCoords[0], numVert);
-        yC.getVar_all(start, stop, yCoords.data());
-        zC.getVar_all(start, stop, zCoords.data());
-
-        Index izVert2 = 0;
-        for (Index iz = 0; iz < numLevels; ++iz) {
-            izVert2 = iz * numVert;
-            for (Index iv = 0; iv < numVert; ++iv) {
-                ptrOnX[izVert2 + iv] = (dH * iz + 1) * xCoords[iv];
-                ptrOnY[izVert2 + iv] = (dH * iz + 1) * yCoords[iv];
-                ptrOnZ[izVert2 + iv] = (dH * iz + 1) * zCoords[iv];
-            }
-        }
-        Object::ptr geo_out;
-        geo_out = p;
-        geo_out->setNumBlocks(numPartsFile);
-        geo_out->updateInternals();
-        token.addObject("grid_out", geo_out);
-
-        for (Index port = 0; port < NUMPARAMS; ++port) {
-            if (emptyValue(m_variables[port])) {
-                continue;
-            }
-
-            NcmpiVar varData;
-            if (hasDataFile) {
-                NcmpiFile ncDataFile(comm(), dataFileName.c_str(), NcmpiFile::read);
-                varData = ncDataFile.getVar(m_variables[port]->getValue().c_str());
-            } else {
-                varData = ncFirstFile.getVar(m_variables[port]->getValue().c_str());
-                if (block == 0)
-                    sendInfo("Using ncFirstFile as data source");
-            }
-            //long *numElem = varData->edges();
-            std::vector<MPI_Offset> numElem, startElem;
-            for (auto elem: varData.getDims()) {
-                if (strcmp(elem.getName().c_str(), "nCells") == 0) {
-                    numElem.push_back(elem.getSize());
-                } else if (strcmp(elem.getName().c_str(), "nVertLevels") == 0) {
-                    numElem.push_back(std::min(elem.getSize(), numLevels - 1));
-                } else {
-                    numElem.push_back(1);
-                }
-                startElem.push_back(0);
-            }
-
-            std::vector<double> dataGet(numCells);
-            Vec<Scalar>::ptr dataObj(new Vec<Scalar>(numCells * (numLevels - 1)));
-            Scalar *ptrOnScalarData = dataObj->x().data();
-            varData.getVar_all(startElem, numElem, dataGet.data());
-            Index izCells = 0;
-            for (Index iz = 0; iz < (numLevels - 1); ++iz) {
-                izCells = iz * numCells;
-                for (Index iv = 0; iv < numCells; ++iv) {
-                    ptrOnScalarData[izCells + iv] = dataGet[iv * (numLevels-1) + iz];
-                }
-            }
-            dataObj->setGrid(geo_out);
-            dataObj->setNumBlocks(numPartsFile);
-            dataObj->setMapping(DataBase::Element);
-            std::string pVar = m_variables[port]->getValue();
-            dataObj->addAttribute("_species", pVar);
-            dataObj->updateInternals();
-            token.addObject(m_dataOut[port], dataObj);
-        }*/
             sendInfo("please use a grid partition file");
             return false;
         } else {
@@ -492,10 +397,11 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
             // PARTITIONING: read partitions file and redistribute partition to number of user-defined partitions
             size_t FileBlocksPerUserBlocks = numPartsFile / numPartsUser;
             size_t remParts = numPartsFile - (numPartsUser * FileBlocksPerUserBlocks);
-            FILE *partsFile = fopen(partsPath.c_str(), "r");
 
             if (partList.size() < 1){
                 mtxPartList.lock();
+                FILE *partsFile = fopen(partsPath.c_str(), "r");
+
                 if (partsFile == nullptr) {
                     if (block == 0)
                         sendInfo("Could not read parts file");
@@ -524,19 +430,26 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
                     ++idxp;
                 }
                 blockIdx.clear();
+            if (partsFile) {
+                fclose(partsFile);
+                partsFile = nullptr;
+            }
+                mtxPartList.unlock();
 
-                if (partList.size() < numCells) {
-                    if (block == 0)
+            assert(partList.size()==numCells);
+                /*if (partList.size() < numCells) {
+                    //if (block == 0)
                         sendInfo("Partition file is too short");
                     return false;
-                }
-                mtxPartList.unlock();
+                }*/
             }
             //READ VERTEX COORDINATES given for base level (a unit sphere)
             if (xCoords.size() < 1 || yCoords.size() < 1 || zCoords.size() < 1) {
                 xCoords.resize(numVert);
                 yCoords.resize(numVert);
                 zCoords.resize(numVert);
+                std::vector<MPI_Offset> start = {0};
+                std::vector<MPI_Offset> stop = {numVert};
                 xC.getVar_all(start, stop, xCoords.data());
                 yC.getVar_all(start, stop, yCoords.data());
                 zC.getVar_all(start, stop, zCoords.data());
@@ -596,6 +509,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
                 }
             }
             vocIdxUsedTmp.clear();
+
             size_t numVertB = idx;
             size_t numCornPlusOne = numCornB[block] + numCellsB[block] + numCornGhost + numGhosts[block];
 
@@ -620,7 +534,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
             // if zGrid is given: calculate level height from it
             // o.w. use constant offsets between levels
             Index idx2 = 0, currentElem = 0, izVert = 0;
-            
+          
             if (hasZData) {
                 NcmpiVar cellsOnVertex = ncFirstFile.getVar("cellsOnVertex");
                 cov.resize(numVert * MAX_VERT);
@@ -694,16 +608,15 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
             el[currentElem] = idx2;
             p->setBlock(block);
             p->setTimestep(-1);
+            p->setNumBlocks(numPartitions());
             p->updateInternals();
             gridList[block] = p;
 
-            if (partsFile) {
-                fclose(partsFile);
-                partsFile = nullptr;
-            }
+           
         }
+
     }
-    
+
     if (timestep < 0){            
         //Object::ptr geo_out;
        // geo_out = gridList[block];
@@ -711,11 +624,12 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
        // geo_out->setTimestep(-1);
         // geo_out->setNumBlocks(numPartitions());
         //geo_out->updateInternals();
-        token.addObject("grid_out", gridList[block]);
 
+        token.addObject("grid_out", gridList[block]);
         return true;
     }else{
         // Read data
+
         NcmpiVar varData;
         Index dataIdx = 0;
         Vec<Scalar>::ptr dataObj(new Vec<Scalar>((numCellsB[block] + numGhosts[block]) * (numLevels - 1)));
@@ -727,13 +641,14 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
                 NcmpiFile ncDataFile(comm(), dataFileList.at(timestep).c_str(), NcmpiFile::read);
                 getData(ncDataFile, &dataValues, numLevels);
             } else {
-                NcmpiFile ncFirstFile(comm(), firstFileName, NcmpiFile::read);
-                getData(ncFirstFile, &dataValues, numLevels);
+                NcmpiFile ncFirstFile2(comm(), firstFileName, NcmpiFile::read);
+                getData(ncFirstFile2, &dataValues, numLevels);
             }
         } else {
             if (block == 0)
                 sendInfo("No variable selected");
         }
+        assert(partList.size() == numCells);
 
         Index currentElem = 0;
         for (Index i = 0; i < numCells; ++i) {
@@ -754,6 +669,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
             dataObj->setTimestep(timestep);
             token.addObject(m_dataOut[0], dataObj);
         }
+
         dataValues.clear();
     }
     return true;
