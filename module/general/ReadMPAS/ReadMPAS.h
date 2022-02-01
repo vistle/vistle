@@ -7,7 +7,7 @@
 #include <vistle/module/reader.h>
 #include <vistle/core/unstr.h>
 
-#define NUMPARAMS 1
+#define NUMPARAMS 3
 
 using namespace PnetCDF;
 using namespace vistle;
