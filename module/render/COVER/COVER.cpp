@@ -425,8 +425,10 @@ std::shared_ptr<vistle::RenderObject> COVER::addObject(int senderId, const std::
                                                        vistle::Object::const_ptr normals,
                                                        vistle::Object::const_ptr texture)
 {
-    if (!container)
+    if (!container) {
+        std::cerr << "COVER::addObject: no container" << std::endl;
         return nullptr;
+    }
 
     m_requireUpdate = true;
 
@@ -450,8 +452,10 @@ std::shared_ptr<vistle::RenderObject> COVER::addObject(int senderId, const std::
             cover->addPlugin(plugin.c_str());
     }
 
-    if (!geometry)
+    if (!geometry) {
+        std::cerr << "COVER::addObject: no geometry" << std::endl;
         return nullptr;
+    }
 
     auto objType = geometry->getType();
     if (objType == vistle::Object::PLACEHOLDER) {
@@ -468,7 +472,7 @@ std::shared_ptr<vistle::RenderObject> COVER::addObject(int senderId, const std::
         } else if (objType != vistle::Object::EMPTY) {
             str << "Unsupported input data: " << Object::toString(objType);
         }
-        std::cerr << str.str() << std::endl;
+        std::cerr << "COVER::addObject: " << str.str() << std::endl;
         if (m_dataTypeWarnings.find(objType) == m_dataTypeWarnings.end()) {
             m_dataTypeWarnings.insert(objType);
             cover->notify(Notify::Warning) << str.str();

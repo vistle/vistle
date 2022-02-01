@@ -5,8 +5,10 @@
 #include <vistle/core/empty.h>
 #include <vistle/core/placeholder.h>
 #include <vistle/core/coords.h>
+#include <vistle/core/layergrid.h>
 #include <vistle/core/archives.h>
 #include <vistle/core/archive_loader.h>
+#include <vistle/core/grid.h>
 
 #include "renderer.h"
 
@@ -64,29 +66,35 @@ std::array<Object::const_ptr, 3> splitObject(Object::const_ptr container)
     std::array<Object::const_ptr, 3> geo_norm_data;
     Object::const_ptr &grid = geo_norm_data[0];
     Object::const_ptr &normals = geo_norm_data[1];
-    Object::const_ptr &tex = geo_norm_data[2];
+    Object::const_ptr &data = geo_norm_data[2];
 
     if (auto ph = vistle::PlaceHolder::as(container)) {
         grid = ph->geometry();
         normals = ph->normals();
-        tex = ph->texture();
-    } else if (auto t = vistle::Texture1D::as(container)) {
-        if (auto g = vistle::Coords::as(t->grid())) {
-            grid = g;
-            normals = g->normals();
-            tex = t;
-        }
-    } else if (auto g = vistle::Coords::as(container)) {
-        grid = g;
-        normals = g->normals();
-    } else if (auto data = vistle::DataBase::as(container)) {
-        tex = data;
-        grid = data->grid();
-        if (auto g = vistle::Coords::as(data->grid())) {
-            normals = g->normals();
-        }
+        data = ph->texture();
+        return geo_norm_data;
+    }
+
+    if (auto t = vistle::Texture1D::as(container)) {
+        // do not treat as Vec<Scalar,1>
+        data = t;
+        grid = t->grid();
+    } else if (auto c = vistle::Coords::as(container)) {
+        // do not treat as Vec<Scalar,3>
+        grid = c;
+    } else if (auto l = vistle::LayerGrid::as(container)) {
+        // do not treat as Vec<Scalar,1>
+        grid = l;
+    } else if (auto d = vistle::DataBase::as(container)) {
+        data = d;
+        grid = d->grid();
     } else {
         grid = container;
+    }
+    if (!normals && grid) {
+        if (auto gi = grid->getInterface<GridInterface>()) {
+            normals = gi->normals();
+        }
     }
 
     return geo_norm_data;
