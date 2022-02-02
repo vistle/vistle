@@ -38,12 +38,12 @@ The pnetcdf install directory should be added to your $PATH environment variable
 <title>Sea surface</title></rect>
 <rect x="21.0" y="120" width="1.0" height="180" rx="0" ry="0" style="fill:#000000;" />
 <rect x="21.0" y="300" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="57.0" y="303.0" class="text" >2D Grid Sea (Polygons)<tspan> (Sea surface)</tspan></text>
+<text x="57.0" y="303.0" class="text" >2D Grid Sea (Heightmap)<tspan> (Sea surface)</tspan></text>
 <rect x="42.0" y="90" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
 <title>Ground surface</title></rect>
 <rect x="57.0" y="120" width="1.0" height="150" rx="0" ry="0" style="fill:#000000;" />
 <rect x="57.0" y="270" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="93.0" y="273.0" class="text" >2D Sea floor (Polygons)<tspan> (Ground surface)</tspan></text>
+<text x="93.0" y="273.0" class="text" >2D Sea floor (Heightmap)<tspan> (Ground surface)</tspan></text>
 <rect x="78.0" y="90" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
 <title>Scalar port 0</title></rect>
 <rect x="93.0" y="120" width="1.0" height="120" rx="0" ry="0" style="fill:#000000;" />

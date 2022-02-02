@@ -41,7 +41,7 @@ The result should look like this:
 |step_increment|number of steps to increment|Int|
 |first_rank|rank for first partition of first timestep|Int|
 |check_convexity|whether to check convexity of grid cells|Int|
-|geo_mode|geometry generation mode (Triangle_Geometry, Quad_Geometry, Polygon_Geometry, Uniform_Grid, Rectilinear_Grid, Structured_Grid, Unstructured_Grid, Point_Geometry, Sphere_Geometry)|Int|
+|geo_mode|geometry generation mode (Triangle_Geometry, Quad_Geometry, Polygon_Geometry, Uniform_Grid, Rectilinear_Grid, Layer_Grid, Structured_Grid, Unstructured_Grid, Point_Geometry, Sphere_Geometry)|Int|
 |data_mode_scalar|data generation mode (One, Dist_Origin, Identity_X, Identity_Y, Identity_Z, Sine_X, Sine_Y, Sine_Z, Cosine_X, Cosine_Y, Cosine_Z, Random)|Int|
 |data_scale_scalar|data scale factor (scalar)|Float|
 |data_mode_vec_x|data generation mode (One, Dist_Origin, Identity_X, Identity_Y, Identity_Z, Sine_X, Sine_Y, Sine_Z, Cosine_X, Cosine_Y, Cosine_Z, Random)|Int|
