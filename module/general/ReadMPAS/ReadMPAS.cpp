@@ -23,6 +23,7 @@ using namespace vistle;
 #define MAX_EDGES 6 // maximal edges on cell
 #define MSL 6371229.0 //sphere radius on mean sea level (earth radius)
 #define MAX_VERT 3 // vertex degree
+#define RAD_SCALE 20 //scale radius to make atmosphere look thicker
 
 
 // CONSTRUCTOR
@@ -384,7 +385,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
         if (numLevels < 2)
             return false;
 
-        float dH = 0.01;
+        float dH = 0.001;
         size_t numPartsUser = m_numPartitions->getValue();
 
         if (numPartsFile == 1) {
@@ -555,7 +556,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
                                     i_v1 = cov[iVOC * MAX_VERT + 0]; //cell index
                                     i_v2 = cov[iVOC * MAX_VERT + 1];
                                     i_v3 = cov[iVOC * MAX_VERT + 2];
-                                    radius = (1. / 3.) * (zGrid[(numLevels)*i_v1 + iz] + zGrid[(numLevels)*i_v2 + iz] +
+                                    radius = RAD_SCALE*(1. / 3.) * (zGrid[(numLevels)*i_v1 + iz] + zGrid[(numLevels)*i_v2 + iz] +
                                                           zGrid[(numLevels)*i_v3 + iz]) +
                                              MSL; //compute vertex z from average of neighbouring cells
                                     ptrOnX[izVert + iv] = radius * xCoords[iVOC];
