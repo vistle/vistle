@@ -60,12 +60,13 @@ private:
     std::vector<size_t> numGhosts;
     std::vector<std::vector<int>> isGhost;
 
-    std::vector<size_t> partList;
+    std::vector<int> partList;
     Index numLevels = 0;
     Index numCells = 0;
 
     //std::vector<UnstructuredGrid::ptr> gridList;
-    std::vector<int> voc, eoc,coc,cov; // voc (Vertices on Cell); eoc (edges on Cell); coc (cells on cell); cov (vertices on Cell)
+    std::vector<int> voc,coc,cov; // voc (Vertices on Cell); eoc (edges on Cell); coc (cells on cell); cov (vertices on Cell)
+    std::vector<Index> eoc;
     std::vector<float> xCoords,yCoords,zCoords; //coordinates of vertices
     bool ghosts = false;
     int finalNumberOfParts = 1;

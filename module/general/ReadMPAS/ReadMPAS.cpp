@@ -543,7 +543,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
                 zGridVar.getVar_all(startZ, stopZ, zGrid.data());
 
                 int i_v1 = 0, i_v2 = 0, i_v3 = 0;
-                for (int iz = 0; iz < numLevels; ++iz) {
+                for (Index iz = 0; iz < numLevels; ++iz) {
                     izVert = numVertB * iz;
                     for (Index i = 0; i < numCells; ++i) {
                         //radius = zGrid[i+numCells*iz]+MSL;
@@ -574,7 +574,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
                     }
                 }
             } else {
-                for (int iz = 0; iz < numLevels; ++iz) {
+                for (Index iz = 0; iz < numLevels; ++iz) {
                     izVert = numVertB * iz;
                     radius = dH * iz + 1.;
                     for (Index i = 0; i < numCells; ++i) {
@@ -637,7 +637,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
                 Index currentElem = 0;
                 for (Index i = 0; i < numCells; ++i) {
                     if ((partList[i] == block) || (ghosts && (isGhost[block][i] > 0))) {
-                        for (int iz = 0; iz < numLevels - 1; ++iz) {
+                        for (Index iz = 0; iz < numLevels - 1; ++iz) {
                             ptrOnScalarData[currentElem++] = dataValues[iz + i * (numLevels - 1)]; //numMaxLevels
                         }
                     }
