@@ -12,6 +12,7 @@
 #include <vistle/core/uniformgrid.h>
 #include <vistle/core/rectilineargrid.h>
 #include <vistle/core/structuredgrid.h>
+#include <vistle/core/layergrid.h>
 #include <vistle/core/vec.h>
 
 #ifdef CUTTINGSURFACE
@@ -117,7 +118,7 @@ bool IsoSurface::reduce(int timestep)
     if (rank() == 0)
         std::cerr << "IsoSurface::reduce(" << timestep << ")" << std::endl;
     Scalar value = m_isovalue->getValue();
-    Vector point = m_isopoint->getValue();
+    Vector3 point = m_isopoint->getValue();
 
     std::unique_lock<std::mutex> lock(m_mutex);
     std::vector<BlockData> &blocks = m_blocksForTime[timestep];
@@ -309,13 +310,14 @@ bool IsoSurface::compute(std::shared_ptr<BlockTask> task) const
     }
 #endif
     auto uni = UniformGrid::as(grid);
+    auto lg = LayerGrid::as(grid);
     auto rect = RectilinearGrid::as(grid);
     auto str = StructuredGrid::as(grid);
     auto unstr = UnstructuredGrid::as(grid);
     auto tri = Triangles::as(grid);
     auto quad = Quads::as(grid);
     auto poly = Polygons::as(grid);
-    if (!uni && !rect && !str && !unstr && !tri && !quad && !poly) {
+    if (!uni && !lg && !rect && !str && !unstr && !tri && !quad && !poly) {
         if (grid)
             sendError("grid required on input data: invalid type");
         else

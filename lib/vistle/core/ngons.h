@@ -31,7 +31,7 @@ public:
     Celltree::const_ptr getCelltree() const override;
     bool validateCelltree() const override;
 
-    virtual std::pair<Vector, Vector> elementBounds(Index elem) const;
+    virtual std::pair<Vector3, Vector3> elementBounds(Index elem) const;
 
     Index cellNumFaces(Index elem) const override { return 1; }
     std::vector<Index> cellVertices(Index elem) const override;

@@ -116,11 +116,11 @@ Index RectilinearGrid::getNumVertices() const
 
 // GET FUNCTION - BOUNDS
 //-------------------------------------------------------------------------
-std::pair<Vector, Vector> RectilinearGrid::getBounds() const
+std::pair<Vector3, Vector3> RectilinearGrid::getBounds() const
 {
-    return std::make_pair(Vector(m_coords[0][0], m_coords[1][0], m_coords[2][0]),
-                          Vector(m_coords[0][m_numDivisions[0] - 1], m_coords[1][m_numDivisions[1] - 1],
-                                 m_coords[2][m_numDivisions[2] - 1]));
+    return std::make_pair(Vector3(m_coords[0][0], m_coords[1][0], m_coords[2][0]),
+                          Vector3(m_coords[0][m_numDivisions[0] - 1], m_coords[1][m_numDivisions[1] - 1],
+                                  m_coords[2][m_numDivisions[2] - 1]));
 }
 
 Normals::const_ptr RectilinearGrid::normals() const
@@ -135,17 +135,17 @@ void RectilinearGrid::setNormals(Normals::const_ptr normals)
 
 // CELL BOUNDS
 //-------------------------------------------------------------------------
-std::pair<Vector, Vector> RectilinearGrid::cellBounds(Index elem) const
+std::pair<Vector3, Vector3> RectilinearGrid::cellBounds(Index elem) const
 {
     auto n = cellCoordinates(elem, m_numDivisions);
-    Vector min(m_coords[0][n[0]], m_coords[1][n[1]], m_coords[2][n[2]]);
-    Vector max(m_coords[0][n[0] + 1], m_coords[1][n[1] + 1], m_coords[2][n[2] + 1]);
+    Vector3 min(m_coords[0][n[0]], m_coords[1][n[1]], m_coords[2][n[2]]);
+    Vector3 max(m_coords[0][n[0] + 1], m_coords[1][n[1] + 1], m_coords[2][n[2] + 1]);
     return std::make_pair(min, max);
 }
 
 // FIND CELL
 //-------------------------------------------------------------------------
-Index RectilinearGrid::findCell(const Vector &point, Index hint, int flags) const
+Index RectilinearGrid::findCell(const Vector3 &point, Index hint, int flags) const
 {
     const bool acceptGhost = flags & AcceptGhost;
 
@@ -173,7 +173,7 @@ Index RectilinearGrid::findCell(const Vector &point, Index hint, int flags) cons
 
 // INSIDE CHECK
 //-------------------------------------------------------------------------
-bool RectilinearGrid::inside(Index elem, const Vector &point) const
+bool RectilinearGrid::inside(Index elem, const Vector3 &point) const
 {
     if (elem == InvalidIndex)
         return false;
@@ -193,12 +193,12 @@ bool RectilinearGrid::inside(Index elem, const Vector &point) const
     return true;
 }
 
-Scalar RectilinearGrid::exitDistance(Index elem, const Vector &point, const Vector &dir) const
+Scalar RectilinearGrid::exitDistance(Index elem, const Vector3 &point, const Vector3 &dir) const
 {
     if (elem == InvalidIndex)
         return false;
 
-    Vector raydir(dir.normalized());
+    Vector3 raydir(dir.normalized());
 
     std::array<Index, 3> n = cellCoordinates(elem, m_numDivisions);
     assert(n[0] < m_numDivisions[0] - 1);
@@ -226,10 +226,10 @@ Scalar RectilinearGrid::exitDistance(Index elem, const Vector &point, const Vect
     return exitDist;
 }
 
-Vector RectilinearGrid::getVertex(Index v) const
+Vector3 RectilinearGrid::getVertex(Index v) const
 {
     auto n = vertexCoordinates(v, m_numDivisions);
-    return Vector(m_coords[0][n[0]], m_coords[1][n[1]], m_coords[2][n[2]]);
+    return Vector3(m_coords[0][n[0]], m_coords[1][n[1]], m_coords[2][n[2]]);
 }
 
 void RectilinearGrid::copyAttributes(Object::const_ptr src, bool replace)
@@ -244,7 +244,8 @@ void RectilinearGrid::copyAttributes(Object::const_ptr src, bool replace)
 
 // GET INTERPOLATOR
 //-------------------------------------------------------------------------
-GridInterface::Interpolator RectilinearGrid::getInterpolator(Index elem, const Vector &point, DataBase::Mapping mapping,
+GridInterface::Interpolator RectilinearGrid::getInterpolator(Index elem, const Vector3 &point,
+                                                             DataBase::Mapping mapping,
                                                              GridInterface::InterpolationMode mode) const
 {
     assert(inside(elem, point));
@@ -265,10 +266,10 @@ GridInterface::Interpolator RectilinearGrid::getInterpolator(Index elem, const V
     std::array<Index, 3> n = cellCoordinates(elem, m_numDivisions);
     auto cl = cellVertices(elem, m_numDivisions);
 
-    Vector corner0(m_coords[0][n[0]], m_coords[1][n[1]], m_coords[2][n[2]]);
-    Vector corner1(m_coords[0][n[0] + 1], m_coords[1][n[1] + 1], m_coords[2][n[2] + 1]);
-    const Vector diff = point - corner0;
-    const Vector size = corner1 - corner0;
+    Vector3 corner0(m_coords[0][n[0]], m_coords[1][n[1]], m_coords[2][n[2]]);
+    Vector3 corner1(m_coords[0][n[0] + 1], m_coords[1][n[1] + 1], m_coords[2][n[2] + 1]);
+    const Vector3 diff = point - corner0;
+    const Vector3 size = corner1 - corner0;
 
     const Index nvert = 8;
     std::vector<Index> indices((mode == Linear || mode == Mean) ? nvert : 1);
@@ -285,7 +286,7 @@ GridInterface::Interpolator RectilinearGrid::getInterpolator(Index elem, const V
         for (Index i = 0; i < nvert; ++i) {
             indices[i] = cl[i];
         }
-        Vector ss = diff;
+        Vector3 ss = diff;
         for (int c = 0; c < 3; ++c) {
             ss[c] /= size[c];
         }
@@ -303,7 +304,7 @@ GridInterface::Interpolator RectilinearGrid::getInterpolator(Index elem, const V
         if (mode == First) {
             indices[0] = cl[0];
         } else if (mode == Nearest) {
-            Vector ss = diff;
+            Vector3 ss = diff;
             int nearest = 0;
             for (int c = 0; c < 3; ++c) {
                 nearest <<= 1;

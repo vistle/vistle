@@ -173,8 +173,8 @@ void RenderObject::updateBounds()
 void RenderObject::computeBounds()
 {
     const Scalar smax = std::numeric_limits<Scalar>::max();
-    bMin = Vector(smax, smax, smax);
-    bMax = Vector(-smax, -smax, -smax);
+    bMin = Vector3(smax, smax, smax);
+    bMax = Vector3(-smax, -smax, -smax);
 
     Matrix4 T = geometry->getTransform();
     bool identity = T.isIdentity();
@@ -183,19 +183,19 @@ void RenderObject::computeBounds()
         for (int i = 0; i < 8; ++i) {
             Vector3 v(0, 0, 0);
             if (i % 2) {
-                v += Vector(1, 0, 0);
+                v += Vector3(1, 0, 0);
             } else {
-                v -= Vector(1, 0, 0);
+                v -= Vector3(1, 0, 0);
             }
             if ((i / 2) % 2) {
-                v += Vector(0, 1, 0);
+                v += Vector3(0, 1, 0);
             } else {
-                v -= Vector(0, 1, 0);
+                v -= Vector3(0, 1, 0);
             }
             if ((i / 4) % 2) {
-                v += Vector(0, 0, 1);
+                v += Vector3(0, 0, 1);
             } else {
-                v -= Vector(0, 0, 1);
+                v -= Vector3(0, 0, 1);
             }
             if (!identity)
                 v = transformPoint(T, v);

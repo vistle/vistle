@@ -414,7 +414,7 @@ void SplitDimensions::createVertices(StructuredGridBase::const_ptr grid, Quads::
     for (const auto &v: vm) {
         Index f = v.first;
         Index s = v.second;
-        Vector p = grid->getVertex(f);
+        Vector3 p = grid->getVertex(f);
         px[s] = p[0];
         py[s] = p[1];
         pz[s] = p[2];

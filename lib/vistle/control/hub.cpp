@@ -437,7 +437,7 @@ bool Hub::init(int argc, char *argv[])
         } else {
 #endif // MODULE_THREAD
             auto child = launchMpiProcess(args);
-            if (!child->valid()) {
+            if (!child || !child->valid()) {
                 CERR << "failed to spawn Vistle manager " << std::endl;
                 exit(1);
             }
@@ -1403,7 +1403,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
             ui = true;
         }
         if (Id::isModule(msg.destId()) && !Id::isHub(dest)) {
-            CERR << "failed to translate module id " << msg.destId() << " to hub" << std::endl;
+            CERR << "failed to translate module id " << msg.destId() << " to hub: " << msg << std::endl;
         } else if (!Id::isHub(dest)) {
             if (Router::the().toMasterHub(msg, senderType, sender)) {
                 sendMaster(msg, payload);
@@ -1789,7 +1789,7 @@ bool Hub::startCleaner()
     std::string shmname = Shm::instanceName(hostname(), m_port);
     args.push_back(shmname);
     auto child = launchMpiProcess(args);
-    if (!child->valid()) {
+    if (!child || !child->valid()) {
         CERR << "failed to spawn clean_vistle" << std::endl;
         return false;
     }
@@ -2122,7 +2122,7 @@ bool Hub::startUi(const std::string &uipath, bool replace)
 
     auto child = std::make_shared<process::child>(uipath, process::args(args), terminate_with_parent(), m_ioService,
                                                   process::on_exit(exit_handler));
-    if (!child->valid()) {
+    if (!child || !child->valid()) {
         CERR << "failed to spawn UI " << uipath << std::endl;
         return false;
     }
@@ -2654,7 +2654,7 @@ void Hub::spawnModule(const std::string &path, const std::string &name, int spaw
     argv.push_back(boost::lexical_cast<std::string>(spawnId));
     std::cerr << "starting module " << name << std::endl;
     auto child = launchMpiProcess(argv);
-    if (child->valid()) {
+    if (child && child->valid()) {
         //CERR << "started " << mod->path() << " with PID " << pid << std::endl;
         std::lock_guard<std::mutex> guard(m_processMutex);
         m_processMap[child] = spawnId;

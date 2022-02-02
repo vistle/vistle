@@ -563,15 +563,18 @@ Reader *Reader::Token::reader() const
     return m_reader;
 }
 
-int Reader::ReaderTime::calc_numtime()
+int Reader::ReaderTime::calc_numtime() const
 {
     int numtime{-1};
+    auto calc = [=]() {
+        return (m_last - m_first) / m_inc + 1;
+    };
     if (m_inc > 0) {
         if (m_last >= m_first)
-            numtime = (m_last - m_first) / m_inc + 1;
+            numtime = calc();
     } else if (m_inc < 0) {
         if (m_last <= m_first)
-            numtime = (m_last - m_first) / m_inc + 1;
+            numtime = calc();
     }
     return numtime;
 }

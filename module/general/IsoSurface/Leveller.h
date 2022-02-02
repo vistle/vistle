@@ -7,6 +7,7 @@
 #include <vistle/core/scalar.h>
 #include <vistle/core/uniformgrid.h>
 #include <vistle/core/rectilineargrid.h>
+#include <vistle/core/layergrid.h>
 #include <vistle/core/structuredgrid.h>
 #include <vistle/core/unstr.h>
 #include <vistle/core/polygons.h>
@@ -31,6 +32,7 @@ class Leveller {
     const IsoController &m_isocontrol;
     vistle::Object::const_ptr m_grid;
     vistle::UniformGrid::const_ptr m_uni;
+    vistle::LayerGrid::const_ptr m_lg;
     vistle::RectilinearGrid::const_ptr m_rect;
     vistle::StructuredGrid::const_ptr m_str;
     vistle::UnstructuredGrid::const_ptr m_unstr;

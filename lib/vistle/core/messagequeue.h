@@ -30,10 +30,11 @@ public:
 
     const std::string &getName() const;
 
+    void signal(); // immediately send zero-size message
     bool send(const Message &msg);
     bool progress();
 
-    void receive(Message &msg);
+    bool receive(Message &msg);
     bool tryReceive(Message &msg);
     size_t getNumMessages();
 

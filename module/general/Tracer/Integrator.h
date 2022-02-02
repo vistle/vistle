@@ -28,7 +28,7 @@ public:
     bool StepConstantVelocity();
     vistle::Vector3 Interpolator(BlockData *bl, vistle::Index el, const vistle::Vector3 &point);
     void hInit();
-    bool hNew(vistle::Vector3 cur, vistle::Vector3 higher, vistle::Vector3 lower, vistle::Vector vel,
+    bool hNew(vistle::Vector3 cur, vistle::Vector3 higher, vistle::Vector3 lower, vistle::Vector3 vel,
               vistle::Scalar unit);
     void enableCelltree(bool value);
     vistle::Scalar h() const;

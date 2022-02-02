@@ -43,6 +43,7 @@ set(core_SOURCES
     empty.cpp
     grid.cpp
     indexed.cpp
+    layergrid.cpp
     lines.cpp
     ngons.cpp
     normals.cpp
@@ -88,6 +89,8 @@ set(core_HEADERS
     index.h
     indexed.h
     indexed_impl.h
+    layergrid.h
+    layergrid_impl.h
     lines.h
     lines_impl.h
     message.h

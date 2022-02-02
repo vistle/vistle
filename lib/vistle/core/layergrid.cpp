@@ -1,53 +1,46 @@
-//-------------------------------------------------------------------------
-// STRUCTURED GRID CLASS H
-// *
-// * Structured Grid Container Object
-//-------------------------------------------------------------------------
-
-#include "structuredgrid.h"
-#include "structuredgrid_impl.h"
-#include "archives.h"
-#include "celltree_impl.h"
+#include "object.h"
 #include "unstr.h" // for hexahedron topology
+#include "archives.h"
 #include <cassert>
 #include "cellalgorithm.h"
+#include "layergrid.h"
+#include "layergrid_impl.h"
+#include "celltree_impl.h"
 
 //#define INTERPOL_DEBUG
 
 namespace vistle {
 
-// CONSTRUCTOR
-//-------------------------------------------------------------------------
-StructuredGrid::StructuredGrid(const Index numVert_x, const Index numVert_y, const Index numVert_z, const Meta &meta)
-: StructuredGrid::Base(StructuredGrid::Data::create(numVert_x, numVert_y, numVert_z, meta))
+LayerGrid::LayerGrid(const Index numVert_x, const Index numVert_y, const Index numVert_z, const Meta &meta)
+: LayerGrid::Base(LayerGrid::Data::create(numVert_x, numVert_y, numVert_z, meta))
 {
     refreshImpl();
 }
 
-// REFRESH IMPL
-//-------------------------------------------------------------------------
-void StructuredGrid::refreshImpl() const
+void LayerGrid::refreshImpl() const
 {
     const Data *d = static_cast<Data *>(m_data);
 
     for (int c = 0; c < 3; ++c) {
-        if (d && d->x[c].valid()) {
-            m_numDivisions[c] = d->numDivisions[c];
+        m_numDivisions[c] = d ? d->numDivisions[c] : 1;
 
-            m_ghostLayers[c][0] = d->ghostLayers[c][0];
-            m_ghostLayers[c][1] = d->ghostLayers[c][1];
-        } else {
-            m_numDivisions[c] = 0;
+        m_ghostLayers[c][0] = d ? d->ghostLayers[c][0] : 0;
+        m_ghostLayers[c][1] = d ? d->ghostLayers[c][1] : 0;
+    }
 
-            m_ghostLayers[c][0] = 0;
-            m_ghostLayers[c][1] = 0;
-        }
+    for (int c = 0; c < 2; ++c) {
+        m_min[c] = d ? d->min[c] : 0.f;
+        m_max[c] = d ? d->max[c] : 0.f;
+        if (m_numDivisions[c] > 1)
+            m_dist[c] = (m_max[c] - m_min[c]) / (m_numDivisions[c] - 1);
+        else
+            m_dist[c] = 0;
     }
 }
 
 // CHECK IMPL
 //-------------------------------------------------------------------------
-bool StructuredGrid::checkImpl() const
+bool LayerGrid::checkImpl() const
 {
     V_CHECK(getSize() == getNumDivisions(0) * getNumDivisions(1) * getNumDivisions(2));
 
@@ -55,24 +48,28 @@ bool StructuredGrid::checkImpl() const
         V_CHECK(d()->ghostLayers[c][0] + d()->ghostLayers[c][1] < getNumDivisions(c));
     }
 
+    for (int c = 0; c < 2; c++) {
+        V_CHECK(d()->min[c] <= d()->max[c]);
+    }
+
     return true;
 }
 
 // IS EMPTY
 //-------------------------------------------------------------------------
-bool StructuredGrid::isEmpty()
+bool LayerGrid::isEmpty()
 {
     return Base::isEmpty();
 }
 
-bool StructuredGrid::isEmpty() const
+bool LayerGrid::isEmpty() const
 {
     return Base::isEmpty();
 }
 
 // GET FUNCTION - GHOST CELL LAYER
 //-------------------------------------------------------------------------
-Index StructuredGrid::getNumGhostLayers(unsigned dim, GhostLayerPosition pos)
+Index LayerGrid::getNumGhostLayers(unsigned dim, GhostLayerPosition pos)
 {
     unsigned layerPosition = (pos == Bottom) ? 0 : 1;
 
@@ -81,21 +78,21 @@ Index StructuredGrid::getNumGhostLayers(unsigned dim, GhostLayerPosition pos)
 
 // GET FUNCTION - GHOST CELL LAYER CONST
 //-------------------------------------------------------------------------
-Index StructuredGrid::getNumGhostLayers(unsigned dim, GhostLayerPosition pos) const
+Index LayerGrid::getNumGhostLayers(unsigned dim, GhostLayerPosition pos) const
 {
     unsigned layerPosition = (pos == Bottom) ? 0 : 1;
 
     return m_ghostLayers[dim][layerPosition];
 }
 
-void StructuredGrid::setGlobalIndexOffset(int c, Index offset)
+void LayerGrid::setGlobalIndexOffset(int c, Index offset)
 {
     d()->indexOffset[c] = offset;
 }
 
 // SET FUNCTION - GHOST CELL LAYER
 //-------------------------------------------------------------------------
-void StructuredGrid::setNumGhostLayers(unsigned dim, GhostLayerPosition pos, unsigned value)
+void LayerGrid::setNumGhostLayers(unsigned dim, GhostLayerPosition pos, unsigned value)
 {
     unsigned layerPosition = (pos == Bottom) ? 0 : 1;
 
@@ -107,7 +104,7 @@ void StructuredGrid::setNumGhostLayers(unsigned dim, GhostLayerPosition pos, uns
 
 // HAS CELL TREE CHECK
 //-------------------------------------------------------------------------
-bool StructuredGrid::hasCelltree() const
+bool LayerGrid::hasCelltree() const
 {
     if (m_celltree)
         return true;
@@ -117,7 +114,7 @@ bool StructuredGrid::hasCelltree() const
 
 // GET FUNCTION - CELL TREE
 //-------------------------------------------------------------------------
-StructuredGrid::Celltree::const_ptr StructuredGrid::getCelltree() const
+LayerGrid::Celltree::const_ptr LayerGrid::getCelltree() const
 {
     if (m_celltree)
         return m_celltree;
@@ -134,7 +131,7 @@ StructuredGrid::Celltree::const_ptr StructuredGrid::getCelltree() const
 
 // VALIDATE CELL TREE CHECK
 //-------------------------------------------------------------------------
-bool StructuredGrid::validateCelltree() const
+bool LayerGrid::validateCelltree() const
 {
     if (!hasCelltree())
         return false;
@@ -142,7 +139,7 @@ bool StructuredGrid::validateCelltree() const
     CellBoundsFunctor<Scalar, Index> boundFunc(this);
     auto ct = getCelltree();
     if (!ct->validateTree(boundFunc)) {
-        std::cerr << "StructuredGrid: Celltree validation failed with " << getNumElements()
+        std::cerr << "LayerGrid: Celltree validation failed with " << getNumElements()
                   << " elements total, bounds: " << getBounds().first << "-" << getBounds().second << std::endl;
         return false;
     }
@@ -151,12 +148,12 @@ bool StructuredGrid::validateCelltree() const
 
 // CREATE CELL TREE
 //-------------------------------------------------------------------------
-void StructuredGrid::createCelltree(Index dims[3]) const
+void LayerGrid::createCelltree(Index dims[3]) const
 {
     if (hasCelltree())
         return;
 
-    const Scalar *coords[3] = {&x()[0], &y()[0], &z()[0]};
+    const Scalar *z = &this->z()[0];
     const Scalar smax = std::numeric_limits<Scalar>::max();
     Vector3 vmin, vmax;
     vmin.fill(-smax);
@@ -170,16 +167,33 @@ void StructuredGrid::createCelltree(Index dims[3]) const
     for (Index el = 0; el < nelem; ++el) {
         const auto corners = cellVertices(el, dims);
         for (int d = 0; d < 3; ++d) {
-            for (const auto v: corners) {
-                if (min[el][d] > coords[d][v]) {
-                    min[el][d] = coords[d][v];
-                    if (gmin[d] > min[el][d])
-                        gmin[d] = min[el][d];
+            if (d == 2) {
+                for (const auto v: corners) {
+                    if (min[el][d] > z[v]) {
+                        min[el][d] = z[v];
+                        if (gmin[d] > min[el][d])
+                            gmin[d] = min[el][d];
+                    }
+                    if (max[el][d] < z[v]) {
+                        max[el][d] = z[v];
+                        if (gmax[d] < max[el][d])
+                            gmax[d] = max[el][d];
+                    }
                 }
-                if (max[el][d] < coords[d][v]) {
-                    max[el][d] = coords[d][v];
-                    if (gmax[d] < max[el][d])
-                        gmax[d] = max[el][d];
+            } else {
+                for (const auto v: corners) {
+                    auto n = vertexCoordinates(v, m_numDivisions);
+                    auto xx = m_min[d] + n[d] * m_dist[d];
+                    if (min[el][d] > xx) {
+                        min[el][d] = xx;
+                        if (gmin[d] > min[el][d])
+                            gmin[d] = min[el][d];
+                    }
+                    if (max[el][d] < xx) {
+                        max[el][d] = xx;
+                        if (gmax[d] < max[el][d])
+                            gmax[d] = max[el][d];
+                    }
                 }
             }
         }
@@ -195,54 +209,81 @@ void StructuredGrid::createCelltree(Index dims[3]) const
 #endif
 }
 
-Index StructuredGrid::getNumVertices() const
+Index LayerGrid::getNumVertices()
 {
-    return getNumDivisions(0) * getNumDivisions(1) * getNumDivisions(2);
+    return getSize();
+    //return getNumDivisions(0) * getNumDivisions(1) * getNumDivisions(2);
+}
+
+Index LayerGrid::getNumVertices() const
+{
+    return getSize();
+}
+
+Vector3 LayerGrid::getVertex(Index v) const
+{
+    auto n = vertexCoordinates(v, m_numDivisions);
+    return Vector3(m_min[0] + n[0] * m_dist[0], m_min[1] + n[1] * m_dist[1], x()[v]);
 }
 
 // GET FUNCTION - BOUNDS
 //-------------------------------------------------------------------------
-std::pair<Vector3, Vector3> StructuredGrid::getBounds() const
+std::pair<Vector3, Vector3> LayerGrid::getBounds() const
 {
     if (hasCelltree()) {
         const auto ct = getCelltree();
         return std::make_pair(Vector3(ct->min()), Vector3(ct->max()));
     }
 
-    return Base::getMinMax();
+    auto mm = Base::getMinMax();
+    return std::make_pair(Vector3(m_min[0], m_min[1], mm.first[0]), Vector3(m_max[0], m_max[1], mm.second[0]));
 }
 
-Normals::const_ptr StructuredGrid::normals() const
+Normals::const_ptr LayerGrid::normals() const
 {
     return Normals::as(d()->normals.getObject());
 }
 
-void StructuredGrid::setNormals(Normals::const_ptr normals)
+void LayerGrid::setNormals(Normals::const_ptr normals)
 {
     d()->normals = normals;
 }
 
 // CELL BOUNDS
 //-------------------------------------------------------------------------
-std::pair<Vector3, Vector3> StructuredGrid::cellBounds(Index elem) const
+std::pair<Vector3, Vector3> LayerGrid::cellBounds(Index elem) const
 {
-    const Scalar *x[3] = {&this->x()[0], &this->y()[0], &this->z()[0]};
-    auto cl = cellVertices(elem, m_numDivisions);
-
     const Scalar smax = std::numeric_limits<Scalar>::max();
-    Vector3 min(smax, smax, smax), max(-smax, -smax, -smax);
+    const Scalar *z = &this->z()[0];
+    auto cl = cellVertices(elem, m_numDivisions);
+    auto n = cellCoordinates(elem, m_numDivisions);
+    Vector3 min(m_min[0] + n[0] * m_dist[0], m_min[1] + n[1] * m_dist[1], smax);
+    Vector3 max(min[0] + m_dist[0], min[1] + m_dist[1], -smax);
     for (Index v: cl) {
-        for (int c = 0; c < 3; ++c) {
-            min[c] = std::min(min[c], x[c][v]);
-            max[c] = std::max(max[c], x[c][v]);
-        }
+        min[2] = std::min(min[2], z[v]);
+        max[2] = std::max(max[2], z[v]);
     }
     return std::make_pair(min, max);
 }
 
+std::vector<Vector3> LayerGrid::cellCorners(Index elem) const
+{
+    const Scalar *z = &this->z()[0];
+    auto n = cellCoordinates(elem, m_numDivisions);
+    auto cl = cellVertices(elem, m_numDivisions);
+    std::vector<Vector3> corners(cl.size());
+    for (unsigned i = 0; i < cl.size(); ++i) {
+        corners[i][0] = m_min[0] + (n[0] + i % 2) * m_dist[0];
+        corners[i][1] = m_min[1] + (n[1] + ((i + 1) / 2) % 2) * m_dist[1];
+        corners[i][2] = z[cl[i]];
+    }
+
+    return corners;
+}
+
 // FIND CELL
 //-------------------------------------------------------------------------
-Index StructuredGrid::findCell(const Vector3 &point, Index hint, int flags) const
+Index LayerGrid::findCell(const Vector3 &point, Index hint, int flags) const
 {
     const bool acceptGhost = flags & AcceptGhost;
     const bool useCelltree = (flags & ForceCelltree) || (hasCelltree() && !(flags & NoCelltree));
@@ -253,7 +294,7 @@ Index StructuredGrid::findCell(const Vector3 &point, Index hint, int flags) cons
 
     if (useCelltree) {
         vistle::PointVisitationFunctor<Scalar, Index> nodeFunc(point);
-        vistle::PointInclusionFunctor<StructuredGrid, Scalar, Index> elemFunc(this, point, acceptGhost);
+        vistle::PointInclusionFunctor<LayerGrid, Scalar, Index> elemFunc(this, point, acceptGhost);
         getCelltree()->traverse(nodeFunc, elemFunc);
         return elemFunc.cell;
     }
@@ -270,35 +311,39 @@ Index StructuredGrid::findCell(const Vector3 &point, Index hint, int flags) cons
 
 // INSIDE CHECK
 //-------------------------------------------------------------------------
-bool StructuredGrid::inside(Index elem, const Vector3 &point) const
+bool LayerGrid::inside(Index elem, const Vector3 &point) const
 {
     if (elem == InvalidIndex)
         return false;
 
-    const UnstructuredGrid::Type type = UnstructuredGrid::HEXAHEDRON;
-    const Scalar *x = &this->x()[0];
-    const Scalar *y = &this->y()[0];
-    const Scalar *z = &this->z()[0];
-
-    auto cl = cellVertices(elem, m_numDivisions);
-
-#ifdef ASSUME_CONVEX
-    Vector3 corners[8];
-    for (int i = 0; i < 8; ++i) {
-        corners[i][0] = x[cl[i]];
-        corners[i][1] = y[cl[i]];
-        corners[i][2] = z[cl[i]];
+    for (int c = 0; c < 2; ++c) {
+        if (point[c] < m_min[c])
+            return false;
+        if (point[c] > m_max[c])
+            return false;
     }
 
-    const auto numFaces = UnstructuredGrid::NumFaces[type];
-    const auto &faces = UnstructuredGrid::FaceVertices[type];
-    const auto &sizes = UnstructuredGrid::FaceSizes[type];
-    for (int f = 0; f < numFaces; ++f) {
+    std::array<Index, 3> n = cellCoordinates(elem, m_numDivisions);
+    for (int c = 0; c < 2; ++c) {
+        Scalar x = m_min[c] + n[c] * m_dist[c];
+        if (point[c] < x)
+            return false;
+        if (point[c] > x + m_dist[c])
+            return false;
+    }
+
+    auto corners = cellCorners(elem);
+    if (corners.size() < 8)
+        return false;
+
+    const int faces[2][4] = {{3, 2, 1, 0}, {4, 5, 6, 7}};
+    // first two faces are top and bottom
+    for (int f = 0; f < 2; ++f) {
         Vector3 v0 = corners[faces[f][0]];
         Vector3 edge1 = corners[faces[f][1]];
         edge1 -= v0;
         Vector3 n(0, 0, 0);
-        for (unsigned i = 2; i < sizes[f]; ++i) {
+        for (unsigned i = 2; i < 4; ++i) {
             Vector3 edge = corners[faces[f][i]];
             edge -= v0;
             n += cross(edge1, edge);
@@ -310,30 +355,26 @@ bool StructuredGrid::inside(Index elem, const Vector3 &point) const
             return false;
     }
     return true;
-#else
-    return insideCell(point, type, cl.size(), cl.data(), x, y, z);
-#endif
 }
 
-Scalar StructuredGrid::exitDistance(Index elem, const Vector3 &point, const Vector3 &dir) const
+Scalar LayerGrid::exitDistance(Index elem, const Vector3 &point, const Vector3 &dir) const
 {
     refresh();
-    auto cl = cellVertices(elem, m_numDivisions);
-
-    const Scalar *x = &this->x()[0];
-    const Scalar *y = &this->y()[0];
-    const Scalar *z = &this->z()[0];
-
-    const Vector3 raydir(dir.normalized());
 
     Scalar exitDist = -1;
+    const Vector3 raydir(dir.normalized());
+
+    auto verts = cellCorners(elem);
+    if (verts.size() < 8)
+        return exitDist;
+
     const UnstructuredGrid::Type type = UnstructuredGrid::HEXAHEDRON;
     const auto numFaces = UnstructuredGrid::NumFaces[type];
     const auto &faces = UnstructuredGrid::FaceVertices[type];
     const auto &sizes = UnstructuredGrid::FaceSizes[type];
     Vector3 corners[4];
     for (int f = 0; f < numFaces; ++f) {
-        auto nc = faceNormalAndCenter(type, f, cl.data(), x, y, z);
+        auto nc = faceNormalAndCenter(type, f, verts.data());
         auto normal = nc.first;
         auto center = nc.second;
 
@@ -347,8 +388,8 @@ Scalar StructuredGrid::exitDistance(Index elem, const Vector3 &point, const Vect
         }
         const int nCorners = sizes[f];
         for (int i = 0; i < nCorners; ++i) {
-            const Index v = cl[faces[f][i]];
-            corners[i] = Vector3(x[v], y[v], z[v]);
+            const Index v = faces[f][i];
+            corners[i] = verts[v];
         }
         const auto isect = point + t * raydir;
         if (insidePolygon(isect, corners, nCorners, normal)) {
@@ -359,7 +400,7 @@ Scalar StructuredGrid::exitDistance(Index elem, const Vector3 &point, const Vect
     return exitDist;
 }
 
-void StructuredGrid::copyAttributes(Object::const_ptr src, bool replace)
+void LayerGrid::copyAttributes(Object::const_ptr src, bool replace)
 {
     Base::copyAttributes(src, replace);
     if (auto s = StructuredGridBase::as(src)) {
@@ -368,10 +409,8 @@ void StructuredGrid::copyAttributes(Object::const_ptr src, bool replace)
     }
 }
 
-// GET INTERPOLATOR
-//-------------------------------------------------------------------------
-GridInterface::Interpolator StructuredGrid::getInterpolator(Index elem, const Vector3 &point, DataBase::Mapping mapping,
-                                                            GridInterface::InterpolationMode mode) const
+GridInterface::Interpolator LayerGrid::getInterpolator(Index elem, const Vector3 &point, DataBase::Mapping mapping,
+                                                       GridInterface::InterpolationMode mode) const
 {
 #ifdef INTERPOL_DEBUG
     assert(inside(elem, point));
@@ -390,14 +429,7 @@ GridInterface::Interpolator StructuredGrid::getInterpolator(Index elem, const Ve
 
     auto cl = cellVertices(elem, m_numDivisions);
     Index nvert = cl.size();
-
-    const Scalar *x[3] = {&this->x()[0], &this->y()[0], &this->z()[0]};
-    std::vector<Vector3> corners(nvert);
-    for (Index i = 0; i < nvert; ++i) {
-        corners[i][0] = x[0][cl[i]];
-        corners[i][1] = x[1][cl[i]];
-        corners[i][2] = x[2][cl[i]];
-    }
+    auto corners = cellCorners(elem);
 
     std::vector<Index> indices((mode == Linear || mode == Mean) ? nvert : 1);
     std::vector<Scalar> weights((mode == Linear || mode == Mean) ? nvert : 1);
@@ -432,7 +464,7 @@ GridInterface::Interpolator StructuredGrid::getInterpolator(Index elem, const Ve
 
             for (Index i = 0; i < nvert; ++i) {
                 const Index k = cl[i];
-                const Vector3 vert(x[0][k], x[1][k], x[2][k]);
+                const Vector3 vert = corners[i];
                 const Scalar dist = (point - vert).squaredNorm();
                 if (dist < mindist) {
                     indices[0] = k;
@@ -445,7 +477,7 @@ GridInterface::Interpolator StructuredGrid::getInterpolator(Index elem, const Ve
     return Interpolator(weights, indices);
 }
 
-void StructuredGrid::Data::initData()
+void LayerGrid::Data::initData()
 {
     for (int i = 0; i < 3; ++i) {
         indexOffset[i] = 0;
@@ -456,9 +488,9 @@ void StructuredGrid::Data::initData()
 
 // DATA OBJECT - CONSTRUCTOR FROM NAME & META
 //-------------------------------------------------------------------------
-StructuredGrid::Data::Data(const Index numVert_x, const Index numVert_y, const Index numVert_z, const std::string &name,
-                           const Meta &meta)
-: StructuredGrid::Base::Data(numVert_x * numVert_y * numVert_z, Object::STRUCTUREDGRID, name, meta)
+LayerGrid::Data::Data(const Index numVert_x, const Index numVert_y, const Index numVert_z, const std::string &name,
+                      const Meta &meta)
+: LayerGrid::Base::Data(numVert_x * numVert_y * numVert_z, Object::LAYERGRID, name, meta)
 {
     initData();
 
@@ -467,13 +499,11 @@ StructuredGrid::Data::Data(const Index numVert_x, const Index numVert_y, const I
     numDivisions[2] = numVert_z;
 
     x[0]->setDimensionHint(numVert_x, numVert_y, numVert_z);
-    x[1]->setDimensionHint(numVert_x, numVert_y, numVert_z);
-    x[2]->setDimensionHint(numVert_x, numVert_y, numVert_z);
 }
 
 // DATA OBJECT - CONSTRUCTOR FROM DATA OBJECT AND NAME
 //-------------------------------------------------------------------------
-StructuredGrid::Data::Data(const StructuredGrid::Data &o, const std::string &n): StructuredGrid::Base::Data(o, n)
+LayerGrid::Data::Data(const LayerGrid::Data &o, const std::string &n): LayerGrid::Base::Data(o, n)
 {
     initData();
 
@@ -487,13 +517,13 @@ StructuredGrid::Data::Data(const StructuredGrid::Data &o, const std::string &n):
 
 // DATA OBJECT - DESTRUCTOR
 //-------------------------------------------------------------------------
-StructuredGrid::Data::~Data()
+LayerGrid::Data::~Data()
 {}
 
 // DATA OBJECT - CREATE FUNCTION
 //-------------------------------------------------------------------------
-StructuredGrid::Data *StructuredGrid::Data::create(const Index numVert_x, const Index numVert_y, const Index numVert_z,
-                                                   const Meta &meta)
+LayerGrid::Data *LayerGrid::Data::create(const Index numVert_x, const Index numVert_y, const Index numVert_z,
+                                         const Meta &meta)
 {
     // construct shm data
     const std::string name = Shm::the().createObjectId();
@@ -505,8 +535,8 @@ StructuredGrid::Data *StructuredGrid::Data::create(const Index numVert_x, const 
 
 // MACROS
 //-------------------------------------------------------------------------
-V_OBJECT_TYPE(StructuredGrid, Object::STRUCTUREDGRID)
-V_OBJECT_CTOR(StructuredGrid)
-V_OBJECT_IMPL(StructuredGrid)
+V_OBJECT_TYPE(LayerGrid, Object::LAYERGRID)
+V_OBJECT_CTOR(LayerGrid)
+V_OBJECT_IMPL(LayerGrid)
 
 } // namespace vistle

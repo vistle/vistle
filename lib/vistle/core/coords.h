@@ -22,7 +22,7 @@ public:
 
     void resetCoords(); //< remove reference to coordinates and create empty ones
 
-    std::pair<Vector, Vector> getBounds() const override;
+    std::pair<Vector3, Vector3> getBounds() const override;
     Index getNumCoords();
     Index getNumCoords() const;
     Index getNumVertices() override;

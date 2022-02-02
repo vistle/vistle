@@ -21,8 +21,8 @@ V_COREEXPORT void Celltree<Scalar, Index, NumDimensions>::refreshImpl() const
 {}
 
 template<typename Scalar, typename Index, int NumDimensions>
-void Celltree<Scalar, Index, NumDimensions>::init(const Vector *min, const Vector *max, const Vector &gmin,
-                                                  const Vector &gmax)
+void Celltree<Scalar, Index, NumDimensions>::init(const CTVector *min, const CTVector *max, const CTVector &gmin,
+                                                  const CTVector &gmax)
 {
     assert(nodes().size() == 1);
     for (int i = 0; i < NumDimensions; ++i)
@@ -31,11 +31,11 @@ void Celltree<Scalar, Index, NumDimensions>::init(const Vector *min, const Vecto
         this->max()[i] = gmax[i];
 #ifdef CT_DEBUG
     struct MinMaxBoundsFunctor: public Celltree::CellBoundsFunctor {
-        const Vector *m_min, *m_max;
+        const CTVector *m_min, *m_max;
 
-        MinMaxBoundsFunctor(const Vector *min, const Vector *max): m_min(min), m_max(max) {}
+        MinMaxBoundsFunctor(const CTVector *min, const CTVector *max): m_min(min), m_max(max) {}
 
-        bool operator()(Index elem, Vector *min, Vector *max) const
+        bool operator()(Index elem, CTVector *min, CTVector *max) const
         {
             auto vmin = m_min[elem], vmax = m_max[elem];
             *min = vmin;
@@ -55,8 +55,8 @@ void Celltree<Scalar, Index, NumDimensions>::init(const Vector *min, const Vecto
 }
 
 template<typename Scalar, typename Index, int NumDimensions>
-void Celltree<Scalar, Index, NumDimensions>::refine(const Vector *min, const Vector *max, Index curNode,
-                                                    const Vector &gmin, const Vector &gmax)
+void Celltree<Scalar, Index, NumDimensions>::refine(const CTVector *min, const CTVector *max, Index curNode,
+                                                    const CTVector &gmin, const CTVector &gmax)
 {
     const Scalar smax = std::numeric_limits<Scalar>::max();
 
@@ -75,7 +75,7 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const Vector *min, const Vec
 
     // initialize min/max extents of buckets
     Index bucket[NumDimensions][NumBuckets];
-    Vector bmin[NumBuckets], bmax[NumBuckets];
+    CTVector bmin[NumBuckets], bmax[NumBuckets];
     for (int i = 0; i < NumBuckets; ++i) {
         for (int d = 0; d < NumDimensions; ++d)
             bucket[d][i] = 0;
@@ -83,17 +83,17 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const Vector *min, const Vec
         bmax[i].fill(-smax);
     }
 
-    auto center = [min, max](Index c) -> Vector {
+    auto center = [min, max](Index c) -> CTVector {
         return Scalar(0.5) * (min[c] + max[c]);
     };
 
     // find min/max extents of cell centers
-    Vector cmin, cmax;
+    CTVector cmin, cmax;
     cmin.fill(smax);
     cmax.fill(-smax);
     for (Index i = node->start; i < node->start + node->size; ++i) {
         const Index cell = cells[i];
-        Vector cent = center(cell);
+        CTVector cent = center(cell);
         for (int d = 0; d < NumDimensions; ++d) {
             if (cmin[d] > cent[d])
                 cmin[d] = cent[d];
@@ -103,15 +103,15 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const Vector *min, const Vec
     }
 
     // sort cells into buckets
-    const Vector crange = cmax - cmin;
+    const CTVector crange = cmax - cmin;
 
-    auto getBucket = [cmin, cmax, crange, NumBuckets](Vector center, int d) -> int {
+    auto getBucket = [cmin, cmax, crange, NumBuckets](CTVector center, int d) -> int {
         return crange[d] == 0 ? 0 : std::min(int((center[d] - cmin[d]) / crange[d] * NumBuckets), NumBuckets - 1);
     };
 
     for (Index i = node->start; i < node->start + node->size; ++i) {
         const Index cell = cells[i];
-        const Vector cent = center(cell);
+        const CTVector cent = center(cell);
         for (int d = 0; d < NumDimensions; ++d) {
             const int b = getBucket(cent, d);
             assert(b >= 0);
@@ -225,7 +225,7 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const Vector *min, const Vec
 #ifdef CT_DEBUG
     for (Index i = nleft; i < size; ++i) {
         Index c = cells[start + i];
-        Vector cent = center(c);
+        CTVector cent = center(c);
         assert(cent[D] >= split);
         assert(min[c][D] >= Rmin);
         for (int i = 0; i < 3; ++i) {
@@ -235,7 +235,7 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const Vector *min, const Vec
     }
     for (Index i = 0; i < nleft; ++i) {
         Index c = cells[start + i];
-        Vector cent = center(c);
+        CTVector cent = center(c);
         assert(cent[D] <= split);
         assert(max[c][D] <= Lmax);
         for (int i = 0; i < 3; ++i) {
@@ -255,8 +255,8 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const Vector *min, const Vec
     assert(nodes()[r].size < size);
     assert(nodes()[l].size + nodes()[r].size == size);
 
-    Vector nmin = gmin;
-    Vector nmax = gmax;
+    CTVector nmin = gmin;
+    CTVector nmax = gmax;
 
     // further refinement for left...
     nmin[best_dim] = bmin[0][best_dim];
@@ -273,7 +273,7 @@ template<typename Scalar, typename Index, int NumDimensions>
 template<class BoundsFunctor>
 bool Celltree<Scalar, Index, NumDimensions>::validateTree(BoundsFunctor &boundFunc) const
 {
-    Vector mmin, mmax;
+    CTVector mmin, mmax;
     for (int c = 0; c < NumDimensions; ++c) {
         mmin[c] = min()[c];
         mmax[c] = max()[c];
@@ -286,8 +286,8 @@ bool Celltree<Scalar, Index, NumDimensions>::validateTree(BoundsFunctor &boundFu
 
 template<typename Scalar, typename Index, int NumDimensions>
 template<class BoundsFunctor>
-bool Celltree<Scalar, Index, NumDimensions>::validateNode(BoundsFunctor &boundFunc, Index nodenum, const Vector &min,
-                                                          const Vector &max) const
+bool Celltree<Scalar, Index, NumDimensions>::validateNode(BoundsFunctor &boundFunc, Index nodenum, const CTVector &min,
+                                                          const CTVector &max) const
 {
     bool valid = true;
     const Index *cells = d()->m_cells->data();
@@ -295,7 +295,7 @@ bool Celltree<Scalar, Index, NumDimensions>::validateNode(BoundsFunctor &boundFu
     if (node->isLeaf()) {
         for (Index i = node->start; i < node->start + node->size; ++i) {
             const Index elem = cells[i];
-            Vector emin, emax;
+            CTVector emin, emax;
             boundFunc(elem, &emin, &emax);
             for (int d = 0; d < NumDimensions; ++d) {
                 if (emin[d] < min[d]) {
@@ -336,7 +336,7 @@ bool Celltree<Scalar, Index, NumDimensions>::validateNode(BoundsFunctor &boundFu
         valid = false;
     }
 
-    Vector lmax(max), rmin(min);
+    CTVector lmax(max), rmin(min);
     lmax[node->dim] = node->Lmax;
     rmin[node->dim] = node->Rmin;
 

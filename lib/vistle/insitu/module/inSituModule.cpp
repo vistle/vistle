@@ -109,7 +109,8 @@ void InSituModule::initializeCommunication()
         CERR << "can not connect to a new simulation before the old simulation is disconnected." << std::endl;
         return;
     }
-    if (m_messageHandler = connectToSim()) {
+    m_messageHandler = connectToSim();
+    if (m_messageHandler) {
         initRecvFromSimQueue();
         startCommunicationThread();
 

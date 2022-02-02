@@ -41,11 +41,11 @@ bool Indexed::checkImpl() const
     return true;
 }
 
-std::pair<Vector, Vector> Indexed::getBounds() const
+std::pair<Vector3, Vector3> Indexed::getBounds() const
 {
     if (hasCelltree()) {
         const auto ct = getCelltree();
-        return std::make_pair(Vector(ct->min()), Vector(ct->max()));
+        return std::make_pair(Vector3(ct->min()), Vector3(ct->max()));
     }
 
     return Base::getMinMax();
@@ -82,14 +82,14 @@ void Indexed::createCelltree(Index nelem, const Index *el, const Index *cl) cons
 
     const Scalar *coords[3] = {&x()[0], &y()[0], &z()[0]};
     const Scalar smax = std::numeric_limits<Scalar>::max();
-    Vector vmin, vmax;
+    Vector3 vmin, vmax;
     vmin.fill(-smax);
     vmax.fill(smax);
 
-    std::vector<Vector> min(nelem, vmax);
-    std::vector<Vector> max(nelem, vmin);
+    std::vector<Vector3> min(nelem, vmax);
+    std::vector<Vector3> max(nelem, vmin);
 
-    Vector gmin = vmax, gmax = vmin;
+    Vector3 gmin = vmax, gmax = vmin;
     for (Index i = 0; i < nelem; ++i) {
         const Index start = el[i], end = el[i + 1];
         for (Index c = start; c < end; ++c) {
@@ -304,7 +304,7 @@ const Indexed::NeighborFinder &Indexed::getNeighborFinder() const
 struct CellBoundsFunctor: public Indexed::Celltree::CellBoundsFunctor {
     CellBoundsFunctor(const Indexed *indexed): m_indexed(indexed) {}
 
-    bool operator()(Index elem, Vector *min, Vector *max) const
+    bool operator()(Index elem, Vector3 *min, Vector3 *max) const
     {
         auto b = m_indexed->elementBounds(elem);
         *min = b.first;
@@ -330,7 +330,7 @@ bool Indexed::validateCelltree() const
     return true;
 }
 
-std::pair<Vector, Vector> Indexed::elementBounds(Index elem) const
+std::pair<Vector3, Vector3> Indexed::elementBounds(Index elem) const
 {
     const Index *el = &this->el()[0];
     const Index *cl = nullptr;
@@ -340,7 +340,7 @@ std::pair<Vector, Vector> Indexed::elementBounds(Index elem) const
     const Scalar *x[3] = {&this->x()[0], &this->y()[0], &this->z()[0]};
 
     const Scalar smax = std::numeric_limits<Scalar>::max();
-    Vector min(smax, smax, smax), max(-smax, -smax, -smax);
+    Vector3 min(smax, smax, smax), max(-smax, -smax, -smax);
     for (Index i = begin; i < end; ++i) {
         Index v = i;
         if (cl)

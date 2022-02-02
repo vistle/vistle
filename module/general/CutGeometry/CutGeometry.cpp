@@ -247,7 +247,7 @@ private:
         auto vertexMap = m_vertexMap.data();
 #pragma omp parallel for
         for (ssize_t i = 0; i < ssize_t(nCoord); ++i) {
-            const Vector p(x[i], y[i], z[i]);
+            const Vector3 p(x[i], y[i], z[i]);
             vertexMap[i] = m_decider(i) > 0 ? 1 : 0;
         }
 
@@ -279,14 +279,14 @@ private:
         }
     }
 
-    inline Vector splitEdge(Index i, Index j)
+    inline Vector3 splitEdge(Index i, Index j)
     {
         Scalar a = m_decider(i);
         Scalar b = m_decider(j);
         const Scalar t = tinterp(0, a, b);
         assert(a * b <= 0);
-        Vector p1(x[i], y[i], z[i]);
-        Vector p2(x[j], y[j], z[j]);
+        Vector3 p1(x[i], y[i], z[i]);
+        Vector3 p2(x[j], y[j], z[j]);
         return lerp(p1, p2, t);
     }
 
@@ -361,14 +361,14 @@ private:
                 assert(vertexMap[in0] > 0);
                 const Index out0 = haveCornerList ? cl[start + (cornerIn + 1) % 3] : start + (cornerIn + 1) % 3;
                 assert(vertexMap[out0] == 0);
-                const Vector v0 = splitEdge(in0, out0);
+                const Vector3 v0 = splitEdge(in0, out0);
                 out_x[outIdxCoord] = v0[0];
                 out_y[outIdxCoord] = v0[1];
                 out_z[outIdxCoord] = v0[2];
 
                 const Index out1 = haveCornerList ? cl[start + (cornerIn + 2) % 3] : start + (cornerIn + 2) % 3;
                 assert(vertexMap[out1] == 0);
-                const Vector v1 = splitEdge(in0, out1);
+                const Vector3 v1 = splitEdge(in0, out1);
                 out_x[outIdxCoord + 1] = v1[0];
                 out_y[outIdxCoord + 1] = v1[1];
                 out_z[outIdxCoord + 1] = v1[2];
@@ -393,21 +393,21 @@ private:
                     const Index out0 = cl[start + cornerOut];
                     const Index in0 = cl[start + (cornerOut + 2) % 3];
                     assert(vertexMap[out0] == 0);
-                    const Vector v0 = splitEdge(in0, out0);
+                    const Vector3 v0 = splitEdge(in0, out0);
                     out_x[outIdxCoord] = v0[0];
                     out_y[outIdxCoord] = v0[1];
                     out_z[outIdxCoord] = v0[2];
 
                     const Index in1 = cl[start + (cornerOut + 1) % 3];
                     assert(vertexMap[in1] > 0);
-                    const Vector v1 = splitEdge(in1, out0);
+                    const Vector3 v1 = splitEdge(in1, out0);
                     out_x[outIdxCoord + 1] = v1[0];
                     out_y[outIdxCoord + 1] = v1[1];
                     out_z[outIdxCoord + 1] = v1[2];
 
-                    const Vector vin0(x[in0], y[in0], z[in0]);
-                    const Vector vin1(x[in1], y[in1], z[in1]);
-                    const Vector v2 = (vin0 + vin1) * Scalar(0.5);
+                    const Vector3 vin0(x[in0], y[in0], z[in0]);
+                    const Vector3 vin1(x[in1], y[in1], z[in1]);
+                    const Vector3 v2 = (vin0 + vin1) * Scalar(0.5);
                     out_x[outIdxCoord + 2] = v2[0];
                     out_y[outIdxCoord + 2] = v2[1];
                     out_z[outIdxCoord + 2] = v2[2];
@@ -438,7 +438,7 @@ private:
                     const Index out0 = start + cornerOut;
                     const Index in0 = start + (cornerOut + 2) % 3;
                     assert(vertexMap[out0] == 0);
-                    const Vector v0 = splitEdge(in0, out0);
+                    const Vector3 v0 = splitEdge(in0, out0);
 
                     out_x[outIdxCoord] = v0[0];
                     out_y[outIdxCoord] = v0[1];
@@ -446,14 +446,14 @@ private:
 
                     const Index in1 = start + (cornerOut + 1) % 3;
                     assert(vertexMap[in1] > 0);
-                    const Vector v1 = splitEdge(in1, out0);
+                    const Vector3 v1 = splitEdge(in1, out0);
                     out_x[outIdxCoord + 1] = v1[0];
                     out_y[outIdxCoord + 1] = v1[1];
                     out_z[outIdxCoord + 1] = v1[2];
 
-                    const Vector vin0(x[in0], y[in0], z[in0]);
-                    const Vector vin1(x[in1], y[in1], z[in1]);
-                    const Vector v2 = (vin0 + vin1) * Scalar(0.5);
+                    const Vector3 vin0(x[in0], y[in0], z[in0]);
+                    const Vector3 vin1(x[in1], y[in1], z[in1]);
+                    const Vector3 v2 = (vin0 + vin1) * Scalar(0.5);
                     out_x[outIdxCoord + 2] = v2[0];
                     out_y[outIdxCoord + 2] = v2[1];
                     out_z[outIdxCoord + 2] = v2[2];
@@ -601,7 +601,7 @@ private:
                     const Index newId = outIdxCoord + numCreated;
                     ++numCreated;
 
-                    const Vector v = splitEdge(idx, prevIdx);
+                    const Vector3 v = splitEdge(idx, prevIdx);
                     out_x[newId] = v[0];
                     out_y[newId] = v[1];
                     out_z[newId] = v[2];

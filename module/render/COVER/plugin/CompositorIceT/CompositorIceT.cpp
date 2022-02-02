@@ -21,7 +21,6 @@
 using namespace opencover;
 
 static CompositorIceT *plugin = NULL;
-static const bool pbuffer = true;
 static const bool doublebuffer = false;
 
 #define CERR std::cerr << "CompositorIceT(" << (plugin ? std::to_string(plugin->mpiRank()) : std::string("?")) << "): "

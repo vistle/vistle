@@ -15,9 +15,6 @@ void StructuredGrid::Data::serialize(Archive &ar)
 {
     ar &V_NAME(ar, "base_structuredGridBase", serialize_base<Base::Data>(ar, *this));
     ar &V_NAME(ar, "num_divisions", numDivisions);
-    ar &V_NAME(ar, "coords_x", x[0]);
-    ar &V_NAME(ar, "coords_y", x[1]);
-    ar &V_NAME(ar, "coords_z", x[2]);
 
     for (int c = 0; c < 3; c++) {
         std::string nvpTag = "ghostLayers" + std::to_string(c);
@@ -28,6 +25,8 @@ void StructuredGrid::Data::serialize(Archive &ar)
 
         ar &V_NAME(ar, ("indexoffset" + std::to_string(c)).c_str(), indexOffset[c]);
     }
+
+    ar &V_NAME(ar, "normals", normals);
 }
 
 } // namespace vistle

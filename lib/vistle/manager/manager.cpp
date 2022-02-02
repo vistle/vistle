@@ -17,9 +17,11 @@
 #include <vistle/control/hub.h>
 #include <boost/mpi.hpp>
 
+#ifdef MODULE_THREAD
+#include <thread>
+#endif
 
 #ifdef COVER_ON_MAINTHREAD
-#include <thread>
 #include <functional>
 #include <deque>
 #include <condition_variable>
@@ -224,13 +226,18 @@ bool VistleManager::run(int argc, char *argv[])
         lock.unlock();
         main_thread_cv.notify_all();
     }
+#endif
+
+#ifdef MODULE_THREAD
     if (t.joinable()) {
         t.join();
     }
-    if (!fromVistle && rank == 0 && hubthread->joinable())
-        hubthread->join();
-    std::cerr << "manager thread done" << std::endl;
 
+    if (hubthread && hubthread->joinable()) {
+        hubthread->join();
+    }
+
+    std::cerr << "VistleManager: threads done" << std::endl;
 #endif
     return true;
 }

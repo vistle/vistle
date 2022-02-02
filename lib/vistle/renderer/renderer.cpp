@@ -490,7 +490,7 @@ bool Renderer::changeParameter(const Parameter *p)
     return Module::changeParameter(p);
 }
 
-void Renderer::getBounds(Vector &min, Vector &max, int t)
+void Renderer::getBounds(Vector3 &min, Vector3 &max, int t)
 {
     if (size_t(t + 1) < m_objectList.size()) {
         for (auto &ro: m_objectList[t + 1]) {
@@ -508,7 +508,7 @@ void Renderer::getBounds(Vector &min, Vector &max, int t)
     //std::cerr << "t=" << t << ", bounds min=" << min << ", max=" << max << std::endl;
 }
 
-void Renderer::getBounds(Vector &min, Vector &max)
+void Renderer::getBounds(Vector3 &min, Vector3 &max)
 {
     const Scalar smax = std::numeric_limits<Scalar>::max();
     min = Vector3(smax, smax, smax);

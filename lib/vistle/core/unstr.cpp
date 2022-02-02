@@ -229,7 +229,7 @@ Index UnstructuredGrid::checkConvexity()
 
                     if (check) {
                         Index v = cl[begin + idx];
-                        const Vector p(x[v], y[v], z[v]);
+                        const Vector3 p(x[v], y[v], z[v]);
                         if (normal.dot(p - center) > Tolerance) {
                             conv = false;
                             break;
@@ -267,7 +267,7 @@ Index UnstructuredGrid::checkConvexity()
                     }
 
                     if (check) {
-                        const Vector p(x[v], y[v], z[v]);
+                        const Vector3 p(x[v], y[v], z[v]);
                         if (normal.dot(p - center) > Tolerance) {
                             conv = false;
                             break;
@@ -312,7 +312,7 @@ Index UnstructuredGrid::checkConvexity()
                         }
 
                         if (check) {
-                            const Vector p(x[v], y[v], z[v]);
+                            const Vector3 p(x[v], y[v], z[v]);
                             if (normal.dot(p - center) > Tolerance) {
                                 conv = false;
                                 break;
@@ -342,12 +342,12 @@ Index UnstructuredGrid::checkConvexity()
     return nonConvexCount;
 }
 
-std::pair<Vector, Vector> UnstructuredGrid::cellBounds(Index elem) const
+std::pair<Vector3, Vector3> UnstructuredGrid::cellBounds(Index elem) const
 {
     return elementBounds(elem);
 }
 
-Index UnstructuredGrid::findCell(const Vector &point, Index hint, int flags) const
+Index UnstructuredGrid::findCell(const Vector3 &point, Index hint, int flags) const
 {
     const bool acceptGhost = flags & AcceptGhost;
     const bool useCelltree = (flags & ForceCelltree) || (hasCelltree() && !(flags & NoCelltree));
@@ -385,7 +385,7 @@ namespace {
 
 
 // cf. http://stackoverflow.com/questions/808441/inverse-bilinear-interpolation
-Vector2 bilinearInverse(const Vector &p0, const Vector p[4])
+Vector2 bilinearInverse(const Vector3 &p0, const Vector3 p[4])
 {
     const int iter = 5;
     const Scalar tol = 1e-6f;
@@ -394,7 +394,7 @@ Vector2 bilinearInverse(const Vector &p0, const Vector p[4])
     const Scalar tol2 = tol * tol;
     for (int k = 0; k < iter; ++k) {
         const Scalar s(ss[0]), t(ss[1]);
-        Vector res = p[0] * (1 - s) * (1 - t) + p[1] * s * (1 - t) + p[2] * s * t + p[3] * (1 - s) * t - p0;
+        Vector3 res = p[0] * (1 - s) * (1 - t) + p[1] * s * (1 - t) + p[2] * s * t + p[3] * (1 - s) * t - p0;
 
         //std::cerr << "iter: " << k << ", res: " << res.transpose() << ", weights: " << ss.transpose() << std::endl;
 
@@ -422,11 +422,11 @@ Scalar UnstructuredGrid::cellDiameter(Index elem) const
     if (verts.empty())
         return 0;
     Index v0 = verts[0];
-    Vector p(x[v0], y[v0], z[v0]);
-    Vector farAway(p);
+    Vector3 p(x[v0], y[v0], z[v0]);
+    Vector3 farAway(p);
     Scalar dist2(0);
     for (Index v: verts) {
-        Vector q(x[v], y[v], z[v]);
+        Vector3 q(x[v], y[v], z[v]);
         Scalar d = (p-q).squaredNorm();
         if (d > dist2) {
 			farAway = q;
@@ -434,7 +434,7 @@ Scalar UnstructuredGrid::cellDiameter(Index elem) const
         }
     }
     for (Index v: verts) {
-        Vector q(x[v], y[v], z[v]);
+        Vector3 q(x[v], y[v], z[v]);
         Scalar d = (farAway -q).squaredNorm();
         if (d > dist2) {
             dist2 = d;
@@ -447,15 +447,15 @@ Scalar UnstructuredGrid::cellDiameter(Index elem) const
 #endif
 }
 
-Vector UnstructuredGrid::cellCenter(Index elem) const
+Vector3 UnstructuredGrid::cellCenter(Index elem) const
 {
     const Scalar *x = &this->x()[0];
     const Scalar *y = &this->y()[0];
     const Scalar *z = &this->z()[0];
     auto verts = cellVertices(elem);
-    Vector center(0, 0, 0);
+    Vector3 center(0, 0, 0);
     for (auto v: verts) {
-        Vector p(x[v], y[v], z[v]);
+        Vector3 p(x[v], y[v], z[v]);
         center += p;
     }
     center *= 1.0f / verts.size();
@@ -503,7 +503,7 @@ Index UnstructuredGrid::cellNumFaces(Index elem) const
 }
 
 
-bool UnstructuredGrid::insideConvex(Index elem, const Vector &point) const
+bool UnstructuredGrid::insideConvex(Index elem, const Vector3 &point) const
 {
     //const Scalar Tolerance = 1e-2*cellDiameter(elem); // too slow: halves particle tracing speed
     //const Scalar Tolerance = 1e-5;
@@ -563,7 +563,7 @@ bool UnstructuredGrid::insideConvex(Index elem, const Vector &point) const
     return false;
 }
 
-Scalar UnstructuredGrid::exitDistance(Index elem, const Vector &point, const Vector &dir) const
+Scalar UnstructuredGrid::exitDistance(Index elem, const Vector3 &point, const Vector3 &dir) const
 {
     const Index *el = &this->el()[0];
     const Index begin = el[elem], end = el[elem + 1];
@@ -572,7 +572,7 @@ Scalar UnstructuredGrid::exitDistance(Index elem, const Vector &point, const Vec
     const Scalar *y = &this->y()[0];
     const Scalar *z = &this->z()[0];
 
-    const Vector raydir(dir.normalized());
+    const Vector3 raydir(dir.normalized());
 
     Scalar exitDist = -1;
     const auto type(tl()[elem] & TYPE_MASK);
@@ -592,10 +592,10 @@ Scalar UnstructuredGrid::exitDistance(Index elem, const Vector &point, const Vec
             if (t < 0) {
                 continue;
             }
-            std::vector<Vector> corners(nCorners);
+            std::vector<Vector3> corners(nCorners);
             for (Index k = 0; k < nCorners; ++k) {
                 const Index v = cl[i + k + 1];
-                corners[k] = Vector(x[v], y[v], z[v]);
+                corners[k] = Vector3(x[v], y[v], z[v]);
             }
             const auto isect = point + t * raydir;
             if (insidePolygon(isect, corners.data(), nCorners, normal)) {
@@ -625,10 +625,10 @@ Scalar UnstructuredGrid::exitDistance(Index elem, const Vector &point, const Vec
                 if (t < 0) {
                     continue;
                 }
-                std::vector<Vector> corners(nCorners);
+                std::vector<Vector3> corners(nCorners);
                 for (Index k = 0; k < nCorners; ++k) {
                     const Index v = cl[facestart + k];
-                    corners[k] = Vector(x[v], y[v], z[v]);
+                    corners[k] = Vector3(x[v], y[v], z[v]);
                 }
                 const auto isect = point + t * raydir;
                 if (insidePolygon(isect, corners.data(), nCorners, normal)) {
@@ -640,7 +640,7 @@ Scalar UnstructuredGrid::exitDistance(Index elem, const Vector &point, const Vec
         }
     } else {
         const auto numFaces = NumFaces[type];
-        Vector corners[4];
+        Vector3 corners[4];
         for (int f = 0; f < numFaces; ++f) {
             auto nc = faceNormalAndCenter(type, f, cl, x, y, z);
             auto normal = nc.first;
@@ -657,7 +657,7 @@ Scalar UnstructuredGrid::exitDistance(Index elem, const Vector &point, const Vec
             const int nCorners = FaceSizes[type][f];
             for (int i = 0; i < nCorners; ++i) {
                 const Index v = cl[FaceVertices[type][f][i]];
-                corners[i] = Vector(x[v], y[v], z[v]);
+                corners[i] = Vector3(x[v], y[v], z[v]);
             }
             const auto isect = point + t * raydir;
             if (insidePolygon(isect, corners, nCorners, normal)) {
@@ -669,7 +669,7 @@ Scalar UnstructuredGrid::exitDistance(Index elem, const Vector &point, const Vec
     return exitDist;
 }
 
-bool UnstructuredGrid::inside(Index elem, const Vector &point) const
+bool UnstructuredGrid::inside(Index elem, const Vector3 &point) const
 {
     if (elem == InvalidIndex)
         return false;
@@ -685,7 +685,7 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const
     return insideCell(point, type, end - begin, cl, &this->x()[0], &this->y()[0], &this->z()[0]);
 }
 
-GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const Vector &point, Mapping mapping,
+GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const Vector3 &point, Mapping mapping,
                                                               InterpolationMode mode) const
 {
 #ifdef INTERPOL_DEBUG
@@ -729,7 +729,7 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
         switch (tl[elem] & TYPE_MASK) {
         case TETRAHEDRON: {
             assert(nvert == 4);
-            Vector coord[4];
+            Vector3 coord[4];
             for (int i = 0; i < 4; ++i) {
                 const Index ind = cl[i];
                 indices[i] = ind;
@@ -749,7 +749,7 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
         }
         case PYRAMID: {
             assert(nvert == 5);
-            Vector coord[5];
+            Vector3 coord[5];
             for (int i = 0; i < 5; ++i) {
                 const Index ind = cl[i];
                 indices[i] = ind;
@@ -757,17 +757,17 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
                     coord[i][c] = x[c][ind];
                 }
             }
-            const Vector first(coord[1] - coord[0]);
-            Vector normal(0, 0, 0);
+            const Vector3 first(coord[1] - coord[0]);
+            Vector3 normal(0, 0, 0);
             for (int i = 2; i < 4; ++i) {
                 normal += cross(first, coord[i] - coord[i - 1]);
             }
-            const Vector top = coord[4] - coord[0];
+            const Vector3 top = coord[4] - coord[0];
             const Scalar h = normal.dot(top);
             const Scalar hp = normal.dot(point - coord[0]);
             weights[4] = hp / h;
             const Scalar w = 1 - weights[4];
-            const Vector p = (point - weights[4] * coord[4]) / w;
+            const Vector3 p = (point - weights[4] * coord[4]) / w;
             const Vector2 ss = bilinearInverse(p, coord);
             weights[0] = (1 - ss[0]) * (1 - ss[1]) * w;
             weights[1] = ss[0] * (1 - ss[1]) * w;
@@ -777,7 +777,7 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
         }
         case PRISM: {
             assert(nvert == 6);
-            Vector coord[8];
+            Vector3 coord[8];
             for (int i = 0; i < 3; ++i) {
                 const Index ind1 = cl[i];
                 const Index ind2 = cl[i + 3];
@@ -791,7 +791,7 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
             // we interpolate in a hexahedron with coinciding corners
             coord[3] = coord[2];
             coord[7] = coord[6];
-            const Vector ss = trilinearInverse(point, coord);
+            const Vector3 ss = trilinearInverse(point, coord);
             weights[0] = (1 - ss[0]) * (1 - ss[1]) * (1 - ss[2]);
             weights[1] = ss[0] * (1 - ss[1]) * (1 - ss[2]);
             weights[2] = ss[1] * (1 - ss[2]);
@@ -802,7 +802,7 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
         }
         case HEXAHEDRON: {
             assert(nvert == 8);
-            Vector coord[8];
+            Vector3 coord[8];
             for (int i = 0; i < 8; ++i) {
                 const Index ind = cl[i];
                 indices[i] = ind;
@@ -810,7 +810,7 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
                     coord[i][c] = x[c][ind];
                 }
             }
-            const Vector ss = trilinearInverse(point, coord);
+            const Vector3 ss = trilinearInverse(point, coord);
             weights[0] = (1 - ss[0]) * (1 - ss[1]) * (1 - ss[2]);
             weights[1] = ss[0] * (1 - ss[1]) * (1 - ss[2]);
             weights[2] = ss[0] * ss[1] * (1 - ss[2]);
@@ -827,9 +827,9 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
 
             // polyhedron compute center
             std::vector<Index> verts = cellVertices(elem);
-            Vector center(0, 0, 0);
+            Vector3 center(0, 0, 0);
             for (auto v: verts) {
-                Vector c(x[0][v], x[1][v], x[2][v]);
+                Vector3 c(x[0][v], x[1][v], x[2][v]);
                 center += c;
             }
             center /= verts.size();
@@ -838,7 +838,7 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
             assert(inside(elem, center));
 #endif
 
-            std::vector<Vector> coord(nvert);
+            std::vector<Vector3> coord(nvert);
             Index nfaces = 0;
             Index n = 0;
             for (Index i = 0; i < nvert; i += cl[i] + 1) {
@@ -858,16 +858,16 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
 
             // find face that is hit by ray from polyhedron center through query point
             Scalar scale = 0;
-            Vector isect;
+            Vector3 isect;
             bool foundFace = false;
             n = 0;
             Index nFaceVert = 0;
-            Vector faceCenter(0, 0, 0);
+            Vector3 faceCenter(0, 0, 0);
             for (Index i = 0; i < nvert; i += cl[i] + 1) {
                 nFaceVert = cl[i];
                 auto nc = faceNormalAndCenter(nFaceVert, &cl[i + 1], x[0], x[1], x[2]);
-                const Vector dir = point - center;
-                Vector normal = nc.first;
+                const Vector3 dir = point - center;
+                Vector3 normal = nc.first;
                 faceCenter = nc.second;
                 scale = normal.dot(dir) / normal.dot(faceCenter - center);
 #ifdef INTERPOL_DEBUG
@@ -990,9 +990,9 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
 
             // polyhedron compute center
             std::vector<Index> verts = cellVertices(elem);
-            Vector center(0, 0, 0);
+            Vector3 center(0, 0, 0);
             for (auto v: verts) {
-                Vector c(x[0][v], x[1][v], x[2][v]);
+                Vector3 c(x[0][v], x[1][v], x[2][v]);
                 center += c;
             }
             center /= verts.size();
@@ -1001,7 +1001,7 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
             assert(inside(elem, center));
 #endif
 
-            std::vector<Vector> coord(nvert);
+            std::vector<Vector3> coord(nvert);
             Index nfaces = 0;
             Index n = 0;
             Index facestart = InvalidIndex;
@@ -1029,11 +1029,11 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
 
             // find face that is hit by ray from polyhedron center through query point
             Scalar scale = 0;
-            Vector isect;
+            Vector3 isect;
             bool foundFace = false;
             n = 0;
             Index nFaceVert = 0;
-            Vector faceCenter(0, 0, 0);
+            Vector3 faceCenter(0, 0, 0);
             facestart = InvalidIndex;
             term = 0;
             for (Index i = 0; i < nvert; ++i) {
@@ -1043,8 +1043,8 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
                 } else if (term == cl[i]) {
                     nFaceVert = i - facestart;
                     auto nc = faceNormalAndCenter(nFaceVert, &cl[facestart], x[0], x[1], x[2]);
-                    const Vector dir = point - center;
-                    Vector normal = nc.first;
+                    const Vector3 dir = point - center;
+                    Vector3 normal = nc.first;
                     faceCenter = nc.second;
                     scale = normal.dot(dir) / normal.dot(faceCenter - center);
 #ifdef INTERPOL_DEBUG
@@ -1202,7 +1202,7 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
     return Interpolator(weights, indices);
 }
 
-std::pair<Vector, Vector> UnstructuredGrid::elementBounds(Index elem) const
+std::pair<Vector3, Vector3> UnstructuredGrid::elementBounds(Index elem) const
 {
     const auto t = tl()[elem] & UnstructuredGrid::TYPE_MASK;
     if (NumVertices[t] >= 0) {
@@ -1214,7 +1214,7 @@ std::pair<Vector, Vector> UnstructuredGrid::elementBounds(Index elem) const
         const Index *cl = &this->cl()[0];
         const Scalar *x[3] = {&this->x()[0], &this->y()[0], &this->z()[0]};
         const Scalar smax = std::numeric_limits<Scalar>::max();
-        Vector min(smax, smax, smax), max(-smax, -smax, -smax);
+        Vector3 min(smax, smax, smax), max(-smax, -smax, -smax);
         const Index begin = el[elem], end = el[elem + 1];
         for (Index j = begin; j < end; j += cl[j] + 1) {
             Index nvert = cl[j];

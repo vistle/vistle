@@ -7,24 +7,26 @@
  **                                                                        **
  **                                                                        **
  **                                                                        **
- ** Author:    Marko Djuric                                                **
+ ** Author:    Marko Djuric <hpcmdjur@hlrs.de>                             **
  **                                                                        **
  **                                                                        **
  **                                                                        **
  ** Date:  25.01.2021 Version 1 with netCDF                                **
  ** Date:  29.10.2021 Version 2 with PnetCDF                               **
+ ** Date:  24.01.2022 Version 2.1 use layergrid instead of polygons        **
+ ** Date:  25.01.2022 Version 2.2 optimize creation of surfaces            **
 \**************************************************************************/
 
 #ifndef _READTSUNAMI_H
 #define _READTSUNAMI_H
 
+#include "vistle/core/index.h"
 #include <atomic>
-#include <boost/mpi/intercommunicator.hpp>
 #include <memory>
 #include <mpi.h>
 #include <mutex>
 #include <vistle/module/reader.h>
-#include <vistle/core/polygons.h>
+#include <vistle/core/layergrid.h>
 
 #include <pnetcdf>
 #include <vector>
@@ -42,53 +44,63 @@ public:
 private:
     typedef PnetCDF::NcmpiVar NcVar;
     typedef PnetCDF::NcmpiFile NcFile;
-    typedef vistle::Vec<vistle::Scalar>::ptr VecScalarPtr;
+    typedef vistle::Vec<vistle::Scalar>::ptr VisVecScalarPtr;
+    typedef std::array<VisVecScalarPtr, NUM_SCALARS> ArrVecScalarPtrs;
+    typedef std::vector<ArrVecScalarPtrs> VecArrVecScalarPtrs;
+    typedef std::vector<std::array<float, 2>> VecLatLon;
+    typedef std::function<float(size_t, size_t)> ZCalcFunc;
 
     //structs
     template<class T>
     struct Dim {
-        T dimLat;
-        T dimLon;
+        Dim(const T &l_x = 0, const T &l_y = 0, const T &l_z = 0): x(l_x), y(l_y), z(l_z) {}
+        auto &X() const { return x; }
+        auto &Y() const { return y; }
+        auto &Z() const { return z; }
 
-        Dim(const T &lat, const T &lon): dimLat(lat), dimLon(lon) {}
+    private:
+        T x;
+        T y;
+        T z;
     };
+    typedef Dim<MPI_Offset> moffDim;
+    typedef Dim<size_t> sztDim;
 
-    template<class T>
-    struct PolygonData {
-        T numElements;
-        T numCorners;
-        T numVertices;
-
-        PolygonData(const T &elem, const T &corn, const T &vert): numElements(elem), numCorners(corn), numVertices(vert)
-        {}
-    };
-
-    struct NcVarExtended {
-        MPI_Offset start;
-        MPI_Offset count;
-        MPI_Offset stride;
-        MPI_Offset imap;
-
-        NcVarExtended(const NcVar &nc, const MPI_Offset &start = 0, const MPI_Offset &count = 0,
-                      const MPI_Offset &stride = 1, const MPI_Offset &imap = 1)
+    template<class NcParamType>
+    struct NcVarExt {
+        NcVarExt() = default;
+        NcVarExt(const NcVar &nc, const NcParamType &start = 0, const NcParamType &count = 0,
+                 const NcParamType &stride = 1, const NcParamType &imap = 1)
         : start(start), count(count), stride(stride), imap(imap)
         {
             ncVar = std::make_unique<NcVar>(nc);
         }
 
+        auto &Start() const { return start; }
+        auto &Count() const { return count; }
+        auto &Stride() const { return stride; }
+        auto &Imap() const { return imap; }
+
         template<class T>
         void readNcVar(T *storage) const
         {
-            std::vector<MPI_Offset> v_start{start};
-            std::vector<MPI_Offset> v_count{count};
-            std::vector<MPI_Offset> v_stride{stride};
-            std::vector<MPI_Offset> v_imap{imap};
-            ncVar->getVar_all(v_start, v_count, v_stride, v_imap, storage);
+            const std::vector<NcParamType> v_start{start}, v_count{count}, v_stride{stride}, v_imap{imap};
+            read(storage, v_start, v_count, v_stride, v_imap);
         }
 
     private:
-        std::shared_ptr<NcVar> ncVar;
+        template<class T, class... Args>
+        void read(T *storage, Args... args) const
+        {
+            ncVar->getVar_all(args..., storage);
+        }
+        std::unique_ptr<NcVar> ncVar;
+        NcParamType start;
+        NcParamType count;
+        NcParamType stride;
+        NcParamType imap;
     };
+    typedef NcVarExt<MPI_Offset> PNcVarExt;
 
     //Vistle functions
     bool prepareRead() override;
@@ -97,14 +109,24 @@ private:
     bool examine(const vistle::Parameter *param) override;
 
     //Own functions
+    void initETA(const NcFile *ncFile, const std::array<PNcVarExt, 2> &ncExtSea, const ReaderTime &time,
+                 const size_t &verticesSea, int block);
+    void initSea(const NcFile *ncFile, const std::array<vistle::Index, 2> &nBlocks,
+                 const std::array<vistle::Index, NUM_BLOCKS> &blockPartIdx, const ReaderTime &time, int ghost,
+                 int block);
+    void initScalars(const NcFile *ncFile, const std::array<PNcVarExt, 2> &ncExtSea, const size_t &verticesSea,
+                     int block);
+    void createGround(Token &token, const NcFile *ncFile, const std::array<vistle::Index, 2> &nBlocks,
+                      const std::array<vistle::Index, NUM_BLOCKS> &blockPartIdx, int ghost, int block);
     void initScalarParamReader();
-    bool inspectNetCDFVars();
+    bool inspectNetCDF();
+    bool inspectDims(const NcFile *ncFile);
+    bool inspectScalars(const NcFile *ncFile);
     std::unique_ptr<NcFile> openNcmpiFile();
 
-    typedef std::function<float(size_t, size_t)> ZCalcFunc;
-    template<class U, class T, class V>
-    void generateSurface(
-        vistle::Polygons::ptr surface, const PolygonData<U> &polyData, const Dim<T> &dim, const std::vector<V> &coords,
+    template<class T>
+    void fillHeight(
+        vistle::LayerGrid::ptr surface, const Dim<T> &dim,
         const ZCalcFunc &func = [](size_t x, size_t y) { return 0; });
 
     template<class T, class U>
@@ -119,27 +141,15 @@ private:
 
     template<class T, class U>
     bool computeTimestep(Token &token, const T &blockNum, const U &timestep);
-    void computeActualLastTimestep(const ptrdiff_t &incrementTimestep, const size_t &firstTimestep,
-                                   size_t &lastTimestep, MPI_Offset &nTimesteps);
 
     template<class T, class PartionIDs>
     auto generateNcVarExt(const NcVar &ncVar, const T &dim, const T &ghost, const T &numDimBlocks,
                           const PartionIDs &partitionIDs) const;
 
-    template<class T, class V>
-    void contructLatLonSurface(vistle::Polygons::ptr poly, const Dim<T> &dim, const std::vector<V> &coords,
-                               const ZCalcFunc &zCalc);
-
-    template<class T>
-    void fillConnectListPoly2Dim(vistle::Polygons::ptr poly, const Dim<T> &dim);
-
-    template<class T>
-    void fillPolyList(vistle::Polygons::ptr poly, const T &numCorner);
-
-    void printMPIStats() const;
-    void printThreadStats() const;
     template<class... Args>
     void printRank0(const std::string &str, Args... args) const;
+    void printMPIStats() const;
+    void printThreadStats() const;
 
     //Parameter
     vistle::IntParameter *m_ghost = nullptr;
@@ -155,22 +165,21 @@ private:
     vistle::Port *m_groundSurface_out = nullptr;
     std::array<vistle::Port *, NUM_SCALARS> m_scalarsOut;
 
-    //helper variables
-    std::atomic_bool needSea;
+    //*****helper variables*****//
+    std::atomic_bool m_needSea;
+    std::mutex m_mtx;
+    boost::mpi::intercommunicator m_pnetcdf_comm;
+
+    //per block
     std::vector<int> m_block_etaIdx;
-    std::vector<std::shared_ptr<boost::mpi::communicator>> m_block_comm;
-
-    //Polygons per block
-    std::vector<vistle::Polygons::ptr> m_block_seaPtr;
+    std::vector<moffDim> m_block_dimSea;
     std::vector<std::vector<float>> m_block_etaVec;
-
-    //Scalar per block
-    std::vector<std::array<VecScalarPtr, NUM_SCALARS>> m_block_VecScalarPtr;
+    VecArrVecScalarPtrs m_block_VecScalarPtr;
+    VecLatLon m_block_min;
+    VecLatLon m_block_max;
 
     //lat = 0; lon = 1
     std::array<std::string, NUM_BLOCKS> m_latLon_Sea;
     std::array<std::string, NUM_BLOCKS> m_latLon_Ground;
-    boost::mpi::intercommunicator pnetcdf_comm;
-    std::mutex _mtx;
 };
 #endif

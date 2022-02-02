@@ -111,10 +111,10 @@ protected:
     struct ReaderTime {
         ReaderTime(int first, int last, int inc): m_first(first), m_last(last), m_inc(inc) {}
 
-        int first() { return m_first; }
-        int last() { return m_last; }
-        int inc() { return m_inc; }
-        int calc_numtime();
+        int first() const { return m_first; }
+        int last() const { return m_last; }
+        int inc() const { return m_inc; }
+        int calc_numtime() const;
 
     private:
         int m_first;

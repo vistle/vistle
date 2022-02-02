@@ -49,7 +49,7 @@ Scalar StructuredGridBase::cellDiameter(Index elem) const
     return (bounds.second - bounds.first).norm();
 }
 
-Vector StructuredGridBase::cellCenter(Index elem) const
+Vector3 StructuredGridBase::cellCenter(Index elem) const
 {
     Index dims[3];
     for (int c = 0; c < 3; ++c) {
@@ -57,7 +57,7 @@ Vector StructuredGridBase::cellCenter(Index elem) const
     }
 
     auto verts = cellVertices(elem, dims);
-    Vector center(0, 0, 0);
+    Vector3 center(0, 0, 0);
     for (auto v: verts) {
         center += getVertex(v);
     }

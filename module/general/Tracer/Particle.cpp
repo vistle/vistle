@@ -370,11 +370,11 @@ void Particle::addToOutput()
                     const auto vel0 = prevSeg->m_vhist[prevIdx];
                     const auto pos1 = seg.m_xhist[i];
                     const auto pos0 = prevSeg->m_xhist[prevIdx];
-                    Vector pos;
+                    Vector3 pos;
                     if (second_order) {
                         Scalar dt0 = time - prevTime, dt1 = nextTime - time;
-                        const Vector pos0p = pos0 + dt0 * vel0;
-                        const Vector pos1p = pos1 - dt1 * vel1;
+                        const Vector3 pos0p = pos0 + dt0 * vel0;
+                        const Vector3 pos1p = pos1 - dt1 * vel1;
                         pos = lerp(pos0p, pos1p, t);
                     } else {
                         pos = lerp(pos0, pos1, t);
@@ -387,7 +387,7 @@ void Particle::addToOutput()
                     points->z().push_back(pos[2]);
 
                     if (m_global.computeVector) {
-                        Vector vel = lerp(vel0, vel1, t);
+                        Vector3 vel = lerp(vel0, vel1, t);
                         auto vout = m_global.vecField[timestep];
                         vout->x().push_back(vel[0]);
                         vout->y().push_back(vel[1]);

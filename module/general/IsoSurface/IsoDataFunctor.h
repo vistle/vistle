@@ -44,7 +44,7 @@ inline vistle::Scalar __host__ __device__ tinterp(vistle::Scalar iso, const vist
 
 //! generate data on the fly for creating cutting surfaces as isosurfaces
 struct IsoDataFunctor {
-    IsoDataFunctor(const vistle::Vector &vertex, const vistle::Vector &point, const vistle::Vector &direction,
+    IsoDataFunctor(const vistle::Vector3 &vertex, const vistle::Vector3 &point, const vistle::Vector3 &direction,
                    const vistle::Scalar *x, const vistle::Scalar *y, const vistle::Scalar *z, int option,
                    bool flip = false)
     : m_dims{0, 0, 0}
@@ -61,7 +61,7 @@ struct IsoDataFunctor {
     , m_coords(true)
     {}
 
-    IsoDataFunctor(const vistle::Vector &vertex, const vistle::Vector &point, const vistle::Vector &direction,
+    IsoDataFunctor(const vistle::Vector3 &vertex, const vistle::Vector3 &point, const vistle::Vector3 &direction,
                    const vistle::Index dims[3], const vistle::Scalar *x, const vistle::Scalar *y,
                    const vistle::Scalar *z, int option, bool flip = false)
     : m_dims{dims[0], dims[1], dims[2]}
@@ -81,7 +81,7 @@ struct IsoDataFunctor {
     __host__ __device__ vistle::Scalar operator()(vistle::Index i)
     {
         if (m_coords) {
-            vistle::Vector coordinates(m_x[i], m_y[i], m_z[i]);
+            vistle::Vector3 coordinates(m_x[i], m_y[i], m_z[i]);
             switch (m_option) {
             case Plane: {
                 return m_sign * (m_distance - m_vertex.dot(coordinates));
@@ -96,7 +96,7 @@ struct IsoDataFunctor {
             }
         } else {
             auto idx = vistle::StructuredGridBase::vertexCoordinates(i, m_dims);
-            vistle::Vector coordinates(m_x[idx[0]], m_y[idx[1]], m_z[idx[2]]);
+            vistle::Vector3 coordinates(m_x[idx[0]], m_y[idx[1]], m_z[idx[2]]);
             switch (m_option) {
             case Plane: {
                 return m_sign * (m_distance - m_vertex.dot(coordinates));
@@ -115,9 +115,9 @@ struct IsoDataFunctor {
     const vistle::Scalar *m_x;
     const vistle::Scalar *m_y;
     const vistle::Scalar *m_z;
-    const vistle::Vector m_vertex;
-    const vistle::Vector m_point;
-    const vistle::Vector m_direction;
+    const vistle::Vector3 m_vertex;
+    const vistle::Vector3 m_point;
+    const vistle::Vector3 m_direction;
     const vistle::Scalar m_distance;
     const int m_option;
     const vistle::Scalar m_radius2;

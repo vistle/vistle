@@ -41,7 +41,7 @@ public:
     int timestep = -1;
     bool bComputed = false;
     bool bValid = false;
-    vistle::Vector bMin, bMax;
+    vistle::Vector3 bMin, bMax;
 
     bool hasSolidColor = false;
     vistle::Vector4 solidColor;

@@ -55,7 +55,7 @@ bool Ngons<N>::checkImpl() const
 }
 
 template<int N>
-std::pair<Vector, Vector> Ngons<N>::elementBounds(Index elem) const
+std::pair<Vector3, Vector3> Ngons<N>::elementBounds(Index elem) const
 {
     const Index *cl = nullptr;
     if (getNumCorners() > 0)
@@ -64,7 +64,7 @@ std::pair<Vector, Vector> Ngons<N>::elementBounds(Index elem) const
     const Scalar *x[3] = {&this->x()[0], &this->y()[0], &this->z()[0]};
 
     const Scalar smax = std::numeric_limits<Scalar>::max();
-    Vector min(smax, smax, smax), max(-smax, -smax, -smax);
+    Vector3 min(smax, smax, smax), max(-smax, -smax, -smax);
     for (Index i = begin; i < end; ++i) {
         Index v = i;
         if (cl)
@@ -132,14 +132,14 @@ void Ngons<N>::createCelltree(Index nelem, const Index *cl) const
 
     const Scalar *coords[3] = {&x()[0], &y()[0], &z()[0]};
     const Scalar smax = std::numeric_limits<Scalar>::max();
-    Vector vmin, vmax;
+    Vector3 vmin, vmax;
     vmin.fill(-smax);
     vmax.fill(smax);
 
-    std::vector<Vector> min(nelem, vmax);
-    std::vector<Vector> max(nelem, vmin);
+    std::vector<Vector3> min(nelem, vmax);
+    std::vector<Vector3> max(nelem, vmin);
 
-    Vector gmin = vmax, gmax = vmin;
+    Vector3 gmin = vmax, gmax = vmin;
     for (Index i = 0; i < nelem; ++i) {
         const Index start = i * N, end = start + N;
         for (Index c = start; c < end; ++c) {
@@ -185,7 +185,7 @@ template<int N>
 struct CellBoundsFunctor: public Ngons<N>::Celltree::CellBoundsFunctor {
     CellBoundsFunctor(const Ngons<N> *ngons): m_ngons(ngons) {}
 
-    bool operator()(Index elem, Vector *min, Vector *max) const
+    bool operator()(Index elem, Vector3 *min, Vector3 *max) const
     {
         auto b = m_ngons->elementBounds(elem);
         *min = b.first;

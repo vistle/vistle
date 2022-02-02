@@ -140,7 +140,7 @@ public:
     virtual void setNumGhostLayers(unsigned dim, GhostLayerPosition pos, unsigned value) { return; }
 
     virtual Scalar cellDiameter(Index elem) const override;
-    virtual Vector cellCenter(Index elem) const override;
+    virtual Vector3 cellCenter(Index elem) const override;
     virtual std::vector<Index> getNeighborElements(Index elem) const override;
 
     Index cellNumFaces(Index elem) const override { return 6; }

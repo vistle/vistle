@@ -89,7 +89,7 @@ bool VectorField::compute()
 
     el[0] = 0;
     for (Index i = 0; i < numPoints; ++i) {
-        Vector v(vx[i], vy[i], vz[i]);
+        Vector3 v(vx[i], vy[i], vz[i]);
         Scalar l = v.norm();
         if (l < minLen && l > 0) {
             v *= minLen / l;
@@ -98,8 +98,8 @@ bool VectorField::compute()
         }
         v *= scale;
 
-        Vector p(px[i], py[i], pz[i]);
-        Vector p0, p1;
+        Vector3 p(px[i], py[i], pz[i]);
+        Vector3 p0, p1;
         switch (att) {
         case Bottom:
             p0 = p;

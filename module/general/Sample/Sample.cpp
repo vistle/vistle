@@ -62,7 +62,7 @@ int Sample::SampleToGrid(const vistle::GeometryInterface *target, vistle::DataBa
     Scalar *ptrOnData = dataOut->x().data();
 
     for (Index i = 0; i < numVert; ++i) {
-        Vector v = target->getVertex(i);
+        Vector3 v = target->getVertex(i);
         Index cellIdxIn =
             inGrid->findCell(v, InvalidIndex, m_useCelltree ? GridInterface::NoFlags : GridInterface::NoCelltree);
         if (cellIdxIn != InvalidIndex) {

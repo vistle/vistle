@@ -9,6 +9,7 @@
 #include <vistle/core/quads.h>
 #include <vistle/core/polygons.h>
 #include <vistle/core/uniformgrid.h>
+#include <vistle/core/layergrid.h>
 #include <vistle/core/rectilineargrid.h>
 #include <vistle/core/structuredgrid.h>
 #include <vistle/core/unstr.h>
@@ -26,7 +27,7 @@ using namespace vistle;
 // clang-format off
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(
     GeoMode,
-    (Triangle_Geometry)(Quad_Geometry)(Polygon_Geometry)(Uniform_Grid)(Rectilinear_Grid)(Structured_Grid)(Unstructured_Grid)(Point_Geometry)(Sphere_Geometry))
+    (Triangle_Geometry)(Quad_Geometry)(Polygon_Geometry)(Uniform_Grid)(Rectilinear_Grid)(Layer_Grid)(Structured_Grid)(Unstructured_Grid)(Point_Geometry)(Sphere_Geometry))
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(
     DataMode,
@@ -201,10 +202,10 @@ void setDataCoords(Scalar *d, Index numVert, const Scalar *xx, const Scalar *yy,
     }
 }
 
-void setDataUniform(Scalar *d, Index dim[3], Vector min, Vector max, DataMode mode, Scalar scale, AnimDataMode anim,
+void setDataUniform(Scalar *d, Index dim[3], Vector3 min, Vector3 max, DataMode mode, Scalar scale, AnimDataMode anim,
                     Index time)
 {
-    Vector dist = max - min;
+    Vector3 dist = max - min;
     for (int c = 0; c < 3; ++c) {
         if (dim[c] > 1)
             dist[c] /= dim[c] - 1;
@@ -243,12 +244,12 @@ void setStructuredGridGlobalOffsets(StructuredGridBase::ptr ptr, Index offset[3]
 void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::Index block, vistle::Index time) const
 {
     Index dim[3];
-    Vector dist, bdist;
+    Vector3 dist, bdist;
     Index maxBlocks[3];
     Index currBlock[3] = {bx, by, bz};
-    Vector gmin = m_min->getValue(), gmax = m_max->getValue();
-    Vector bmin;
-    Vector min, max;
+    Vector3 gmin = m_min->getValue(), gmax = m_max->getValue();
+    Vector3 bmin;
+    Vector3 min, max;
 
     for (int c = 0; c < 3; ++c) {
         dim[c] = m_size[c]->getValue() + 1;
@@ -383,6 +384,16 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
 
             geoOut = r;
 
+        } else if (geoMode == Layer_Grid) {
+            LayerGrid::ptr lg(new LayerGrid(dim[0], dim[1], dim[2]));
+            setStructuredGridGhostLayers(lg, ghostWidth);
+            setStructuredGridGlobalOffsets(lg, offsets);
+            for (unsigned i = 0; i < 2; i++) {
+                lg->min()[i] = min[i];
+                lg->max()[i] = max[i];
+            }
+            geoOut = lg;
+
         } else if (geoMode == Structured_Grid) {
             StructuredGrid::ptr s(new StructuredGrid(dim[0], dim[1], dim[2]));
             setStructuredGridGhostLayers(s, ghostWidth);
@@ -451,6 +462,18 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
         } else if (geoMode == Sphere_Geometry) {
             Spheres::ptr s(new Spheres(numVert));
             geoOut = s;
+        }
+
+        if (auto lg = LayerGrid::as(geoOut)) {
+            Scalar *z = lg->z().data();
+            for (Index i = 0; i < dim[0]; ++i) {
+                for (Index j = 0; j < dim[1]; ++j) {
+                    for (Index k = 0; k < dim[2]; ++k) {
+                        Index idx = StructuredGrid::vertexIndex(i, j, k, dim);
+                        z[idx] = min[2] + k * dist[2];
+                    }
+                }
+            }
         }
 
         if (auto coords = Coords::as(geoOut)) {

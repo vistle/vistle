@@ -419,7 +419,7 @@ void Color::getMinMax(vistle::DataBase::const_ptr object, vistle::Scalar &min, v
 #pragma omp for
 #endif
             for (ssize_t index = 0; index < numElements; index++) {
-                Scalar v = Vector(x[index], y[index], z[index]).norm();
+                Scalar v = Vector3(x[index], y[index], z[index]).norm();
                 if (v < tmin)
                     tmin = v;
                 if (v > tmax)
@@ -469,7 +469,7 @@ void Color::binData(vistle::DataBase::const_ptr object, std::vector<unsigned lon
         const vistle::Scalar *y = &vec->y()[0];
         const vistle::Scalar *z = &vec->z()[0];
         for (ssize_t index = 0; index < numElements; index++) {
-            const Scalar v = Vector(x[index], y[index], z[index]).norm();
+            const Scalar v = Vector3(x[index], y[index], z[index]).norm();
             const int bin = clamp<int>((v - m_min) / w * numBins, 0, numBins - 1);
             ++bins[bin];
         }
@@ -585,7 +585,7 @@ vistle::Texture1D::ptr Color::addTexture(vistle::DataBase::const_ptr object, con
 #pragma omp parallel for
 #endif
         for (ssize_t index = 0; index < numElem; index++) {
-            const Scalar v = Vector(x[index], y[index], z[index]).norm();
+            const Scalar v = Vector3(x[index], y[index], z[index]).norm();
             tc[index] = (v - min) * invRange;
         }
     } else {

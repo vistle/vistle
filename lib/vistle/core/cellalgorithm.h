@@ -8,16 +8,18 @@
 
 namespace vistle {
 
-V_COREEXPORT Vector trilinearInverse(const Vector &p0, const Vector p[8]);
+V_COREEXPORT Vector3 trilinearInverse(const Vector3 &p0, const Vector3 p[8]);
 V_COREEXPORT bool originInsidePolygonZ2D(const Vector3 *corners, Index nCorners);
-V_COREEXPORT bool insidePolygon(const Vector &point, const Vector *corners, Index nCorners, const Vector &normal);
-V_COREEXPORT bool insideConvexPolygon(const Vector &point, const Vector *corners, Index nCorners, const Vector &normal);
-V_COREEXPORT std::pair<Vector, Vector> faceNormalAndCenter(Index nCorners, const Vector *corners);
-V_COREEXPORT std::pair<Vector, Vector> faceNormalAndCenter(Index nVert, const Index *verts, const Scalar *x,
-                                                           const Scalar *y, const Scalar *z);
-V_COREEXPORT std::pair<Vector, Vector> faceNormalAndCenter(Byte type, Index f, const Index *cl, const Scalar *x,
-                                                           const Scalar *y, const Scalar *z);
-bool V_COREEXPORT insideCell(const Vector &point, Byte type, Index nverts, const Index *cl, const Scalar *x,
+V_COREEXPORT bool insidePolygon(const Vector3 &point, const Vector3 *corners, Index nCorners, const Vector3 &normal);
+V_COREEXPORT bool insideConvexPolygon(const Vector3 &point, const Vector3 *corners, Index nCorners,
+                                      const Vector3 &normal);
+V_COREEXPORT std::pair<Vector3, Vector3> faceNormalAndCenter(Byte type, Index f, const Vector3 *corners);
+V_COREEXPORT std::pair<Vector3, Vector3> faceNormalAndCenter(Index nCorners, const Vector3 *corners);
+V_COREEXPORT std::pair<Vector3, Vector3> faceNormalAndCenter(Index nVert, const Index *verts, const Scalar *x,
+                                                             const Scalar *y, const Scalar *z);
+V_COREEXPORT std::pair<Vector3, Vector3> faceNormalAndCenter(Byte type, Index f, const Index *cl, const Scalar *x,
+                                                             const Scalar *y, const Scalar *z);
+bool V_COREEXPORT insideCell(const Vector3 &point, Byte type, Index nverts, const Index *cl, const Scalar *x,
                              const Scalar *y, const Scalar *z);
 
 template<typename Scalar, typename Index>
@@ -27,7 +29,7 @@ class PointVisitationFunctor: public Celltree<Scalar, Index>::VisitFunctor {
     typedef typename VisitFunctor::Order Order;
 
 public:
-    PointVisitationFunctor(const Vector &point): m_point(point) {}
+    PointVisitationFunctor(const Vector3 &point): m_point(point) {}
 
     bool checkBounds(const Scalar *min, const Scalar *max)
     {
@@ -69,7 +71,7 @@ public:
     }
 
 private:
-    Vector m_point;
+    Vector3 m_point;
 };
 
 template<typename Scalar, typename Index>
@@ -79,7 +81,7 @@ class LineVisitationFunctor: public Celltree<Scalar, Index>::VisitFunctor {
     typedef typename VisitFunctor::Order Order;
 
 public:
-    LineVisitationFunctor(const Vector &p0, const Vector &p1): m_p0(p0), m_p1(p1) {}
+    LineVisitationFunctor(const Vector3 &p0, const Vector3 &p1): m_p0(p0), m_p1(p1) {}
 
     bool checkBounds(const Scalar *min, const Scalar *max)
     {
@@ -123,14 +125,14 @@ public:
     }
 
 private:
-    Vector m_p0, m_p1;
+    Vector3 m_p0, m_p1;
 };
 
 template<typename Scalar, typename Index>
 struct CellBoundsFunctor: public Celltree<Scalar, Index>::CellBoundsFunctor {
     CellBoundsFunctor(const GridInterface *grid): m_grid(grid) {}
 
-    bool operator()(Index elem, Vector *min, Vector *max) const
+    bool operator()(Index elem, Vector3 *min, Vector3 *max) const
     {
         auto b = m_grid->cellBounds(elem);
         *min = b.first;
@@ -145,7 +147,7 @@ struct CellBoundsFunctor: public Celltree<Scalar, Index>::CellBoundsFunctor {
 template<class Grid, typename Scalar, typename Index>
 class PointInclusionFunctor: public Celltree<Scalar, Index>::LeafFunctor {
 public:
-    PointInclusionFunctor(const Grid *grid, const Vector &point, bool acceptGhost = false)
+    PointInclusionFunctor(const Grid *grid, const Vector3 &point, bool acceptGhost = false)
     : m_grid(grid), m_point(point), m_acceptGhost(acceptGhost), cell(InvalidIndex)
     {}
 
@@ -166,7 +168,7 @@ public:
         return true;
     }
     const Grid *m_grid;
-    Vector m_point;
+    Vector3 m_point;
     bool m_acceptGhost;
     Index cell;
 };
@@ -174,7 +176,7 @@ public:
 template<class Grid, typename Scalar, typename Index>
 class LineIntersectionFunctor: public Celltree<Scalar, Index>::LeafFunctor {
 public:
-    LineIntersectionFunctor(const Grid *grid, const Vector &p0, const Vector &p1, bool acceptGhost = false)
+    LineIntersectionFunctor(const Grid *grid, const Vector3 &p0, const Vector3 &p1, bool acceptGhost = false)
     : m_grid(grid), m_p0(p0), m_dir(p1 - p0), m_acceptGhost(acceptGhost)
     {}
 
@@ -188,7 +190,7 @@ public:
                 return true;
             auto verts = m_grid->cellVertices(elem);
             Index nCorners = verts.size();
-            std::vector<Vector> corners;
+            std::vector<Vector3> corners;
             corners.reserve(nCorners);
             for (auto v: verts) {
                 corners.emplace_back(m_grid->getVertex(v));
@@ -213,11 +215,11 @@ public:
         return true;
     }
     const Grid *m_grid;
-    const Vector m_p0;
-    const Vector m_dir;
+    const Vector3 m_p0;
+    const Vector3 m_dir;
     const bool m_acceptGhost;
     struct Intersection {
-        Vector point;
+        Vector3 point;
         Index cell;
     };
     std::vector<Intersection> intersections;

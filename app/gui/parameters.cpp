@@ -113,14 +113,14 @@ Parameters::Parameters(QWidget *parent, Qt::WindowFlags f)
         auto name = itemToName(item);
         if (name.isEmpty())
             return;
-        std::cerr << "Parameters: storing expanded state for " << name.toStdString() << ": true" << std::endl;
+        //std::cerr << "Parameters: storing expanded state for " << name.toStdString() << ": true" << std::endl;
         m_expandedState[m_moduleId][name] = true;
     });
     connect(this, &Parameters::collapsed, [this, itemToName](QtBrowserItem *item) {
         auto name = itemToName(item);
         if (name.isEmpty())
             return;
-        std::cerr << "Parameters: storing expanded state for " << name.toStdString() << ": false" << std::endl;
+        //std::cerr << "Parameters: storing expanded state for " << name.toStdString() << ": false" << std::endl;
         m_expandedState[m_moduleId][name] = false;
     });
 }
@@ -180,7 +180,7 @@ bool Parameters::getExpandedState(QString name, bool &state)
         return false;
 
     state = it->second;
-    std::cerr << "Parameters: found expanded state for " << name.toStdString() << ": " << state << std::endl;
+    //std::cerr << "Parameters: found expanded state for " << name.toStdString() << ": " << state << std::endl;
     return true;
 }
 

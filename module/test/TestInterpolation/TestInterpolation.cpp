@@ -30,12 +30,12 @@ TestInterpolation::~TestInterpolation()
 {}
 
 namespace {
-Vector randpoint(const Vector &min, const Vector &max)
+Vector3 randpoint(const Vector3 &min, const Vector3 &max)
 {
     auto rand = std::minstd_rand0();
     auto dist = std::uniform_real_distribution<Scalar>();
 
-    Vector point;
+    Vector3 point;
     for (int c = 0; c < 3; ++c) {
         point[c] = dist(rand) * (max[c] - min[c]) + min[c];
     }
@@ -72,7 +72,7 @@ bool TestInterpolation::compute()
     }
 
     auto bounds = grid->getBounds();
-    Vector min = bounds.first, max = bounds.second;
+    Vector3 min = bounds.first, max = bounds.second;
     std::vector<Scalar> xx, yy, zz;
     const Scalar *x = nullptr, *y = nullptr, *z = nullptr;
     if (auto v3 = Vec<Scalar, 3>::as(grid->object())) {
@@ -91,7 +91,7 @@ bool TestInterpolation::compute()
         Scalar *y0 = yy.data();
         Scalar *z0 = zz.data();
 
-        Vector dist = max - min;
+        Vector3 dist = max - min;
         for (int c = 0; c < 3; ++c) {
             dist[c] /= uni->getNumDivisions(c) - 1;
         }
@@ -133,12 +133,12 @@ bool TestInterpolation::compute()
     Index numChecked = 0;
     Scalar squaredError = 0;
     for (Index i = 0; i < count; ++i) {
-        Vector point(randpoint(min, max));
+        Vector3 point(randpoint(min, max));
         Index idx = grid->findCell(point);
         if (idx != InvalidIndex) {
             ++numChecked;
             GridInterface::Interpolator interpol = grid->getInterpolator(idx, point, DataBase::Vertex, mode);
-            Vector p = interpol(x, y, z);
+            Vector3 p = interpol(x, y, z);
             Scalar d2 = (point - p).squaredNorm();
             if (d2 > 0.01) {
                 std::cerr << "point: " << point.transpose() << ", recons: " << p.transpose() << std::endl;
