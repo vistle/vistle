@@ -206,15 +206,6 @@ void shm_obj_ref<T>::load(Archive &ar)
         m_name = newobj->getName();
         if (fetcher)
             fetcher->registerObjectNameTranslation(arname, m_name);
-#if 0
-        auto ref2 = T::as(Shm::the().getObjectFromName(name));
-        assert(ref2);
-        *this = ref2;
-        if (ref2) {
-            m_name = ref2->getName();
-            ar.registerObjectNameTranslation(arname, m_name);
-        }
-#endif
         if (obj) {
             obj->referenceResolved(handler);
         }
