@@ -636,9 +636,9 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
                 assert(partList.size() == numCells);
 
                 Index currentElem = 0;
-                for (Index i = 0; i < numCells; ++i) {
-                    if ((partList[i] == block) || (ghosts && (isGhost[block][i] > 0))) {
-                        for (Index iz = 0; iz < numLevels - 1; ++iz) {
+                for (Index iz = 0; iz < numLevels - 1; ++iz) {
+                    for (Index i = 0; i < numCells; ++i) {
+                        if ((partList[i] == block) || (ghosts && (isGhost[block][i] > 0))) {
                             ptrOnScalarData[currentElem++] = dataValues[iz + i * (numLevels - 1)]; //numMaxLevels
                         }
                     }
