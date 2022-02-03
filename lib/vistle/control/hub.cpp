@@ -2292,7 +2292,7 @@ bool Hub::handlePriv(const message::Execute &exec)
                 canExec = false;
         }
         if (canExec) {
-            toSend.setDestId(message::Broadcast);
+            toSend.setDestId(message::Id::Broadcast);
             toSend.setModule(id);
             m_stateTracker.handle(toSend, nullptr);
             sendAll(toSend);

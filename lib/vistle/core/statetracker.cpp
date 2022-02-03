@@ -975,7 +975,7 @@ bool StateTracker::handlePriv(const message::ModuleExit &moduleExit)
 
 bool StateTracker::handlePriv(const message::Execute &execute)
 {
-    if (execute.destId() != message::Broadcast)
+    if (execute.destId() != message::Id::Broadcast)
         return true;
 
     int execId = execute.getModule();
