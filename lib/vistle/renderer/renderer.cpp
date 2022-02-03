@@ -124,7 +124,7 @@ bool Renderer::handleMessage(const message::Message *message, const MessagePaylo
     return Module::handleMessage(message, payload);
 }
 
-bool Renderer::addColorMap(const std::string &species, Texture1D::const_ptr texture)
+bool Renderer::addColorMap(const std::string &species, Object::const_ptr cmap)
 {
     return true;
 }
@@ -344,6 +344,10 @@ bool Renderer::addInputObject(int sender, const std::string &senderPort, const s
             std::cerr << "added colormap " << species << " without object, width=" << tex->getWidth()
                       << ", range=" << tex->getMin() << " to " << tex->getMax() << std::endl;
             return addColorMap(species, tex);
+        }
+        if (auto ph = vistle::PlaceHolder::as(object)) {
+            if (ph->texture()->originalType() == vistle::Texture1D::type())
+                return addColorMap(species, ph->texture());
         }
     }
 
