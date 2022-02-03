@@ -91,7 +91,7 @@ std::array<Object::const_ptr, 3> splitObject(Object::const_ptr container)
     } else {
         grid = container;
     }
-    if (!normals && grid) {
+    if (grid) {
         if (auto gi = grid->getInterface<GridInterface>()) {
             normals = gi->normals();
         }
