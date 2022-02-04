@@ -1,3 +1,4 @@
+/.envrc
 /build
 /build-*
 /CMakeLists.txt.user*
