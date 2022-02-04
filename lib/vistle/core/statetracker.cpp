@@ -931,12 +931,18 @@ bool StateTracker::handlePriv(const message::Disconnect &disconnect)
 
 bool StateTracker::handlePriv(const message::ModuleExit &moduleExit)
 {
+    const int mod = moduleExit.senderId();
+    //CERR << " Module [" << mod << "] quit" << std::endl;
     ++m_graphChangeCount;
 
-    const int mod = moduleExit.senderId();
     portTracker()->removeModule(mod);
 
-    //CERR << " Module [" << mod << "] quit" << std::endl;
+    mutex_locker guard(m_stateMutex);
+    for (StateObserver *o: m_observers) {
+        o->incModificationCount();
+        o->deleteModule(mod);
+    }
+    guard.unlock();
 
     {
         RunningMap::iterator it = runningMap.find(mod);
@@ -963,12 +969,6 @@ bool StateTracker::handlePriv(const message::ModuleExit &moduleExit)
     }
 
     cleanQueue(mod);
-
-    mutex_locker guard(m_stateMutex);
-    for (StateObserver *o: m_observers) {
-        o->incModificationCount();
-        o->deleteModule(mod);
-    }
 
     return true;
 }
@@ -1139,6 +1139,21 @@ bool StateTracker::handlePriv(const message::RemoveParameter &removeParam)
          << "), name=" << removeParam.getName() << std::endl;
 #endif
 
+    mutex_locker guard(m_stateMutex);
+    if (portTracker()) {
+        for (StateObserver *o: m_observers) {
+            o->deletePort(removeParam.senderId(), removeParam.getName());
+        }
+
+        portTracker()->removePort(Port(removeParam.senderId(), removeParam.getName(), Port::PARAMETER));
+    }
+
+    for (StateObserver *o: m_observers) {
+        o->incModificationCount();
+        o->deleteParameter(removeParam.senderId(), removeParam.getName());
+    }
+    guard.unlock();
+
     auto mit = runningMap.find(removeParam.senderId());
     if (mit == runningMap.end())
         return false;
@@ -1159,20 +1174,6 @@ bool StateTracker::handlePriv(const message::RemoveParameter &removeParam)
                 break;
             }
         }
-    }
-
-    mutex_locker guard(m_stateMutex);
-    if (portTracker()) {
-        for (StateObserver *o: m_observers) {
-            o->deletePort(removeParam.senderId(), removeParam.getName());
-        }
-
-        portTracker()->removePort(Port(removeParam.senderId(), removeParam.getName(), Port::PARAMETER));
-    }
-
-    for (StateObserver *o: m_observers) {
-        o->incModificationCount();
-        o->deleteParameter(removeParam.senderId(), removeParam.getName());
     }
 
     return true;
