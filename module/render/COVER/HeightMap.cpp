@@ -63,7 +63,7 @@ void HeightMap::setup()
     setStateSet(state);
 }
 
-HeightMap::HeightMap(): _columns(0), _rows(0), _origin(0.0f, 0.0f, 0.0f), _dx(1.0f), _dy(1.0f), _borderWidth(0)
+HeightMap::HeightMap(): _columns(0), _rows(0), _origin(0.0f, 0.0f, 0.0f), _dx(1.0f), _dy(1.0f)
 {
     _geom = new osg::Geometry;
 
@@ -123,8 +123,12 @@ osg::BoundingBox HeightMap::computeBoundingBox() const
 void HeightMap::allocate(unsigned int numColumns, unsigned int numRows, HeightMap::DataMode mode)
 {
     if (_columns != numColumns || _rows != numRows) {
-        _xy->resize((numColumns - 1) * (numRows - 1));
-        _geom->dirtyGLObjects();
+        if (numColumns >= 1 + _borderWidth[0] + _borderWidth[1] && numRows >= 1 + _borderWidth[2] + _borderWidth[3]) {
+            _xy->resize((numColumns - 1 - _borderWidth[0] - _borderWidth[1]) *
+                        (numRows - 1 - _borderWidth[2] - _borderWidth[3]));
+        } else {
+            _xy->clear();
+        }
 
         _heightImg->allocateImage(numColumns, numRows, 1, GL_LUMINANCE, GL_FLOAT);
         _heights = (float *)_heightImg->data();
@@ -158,16 +162,10 @@ void HeightMap::allocate(unsigned int numColumns, unsigned int numRows, HeightMa
     _rows = numRows;
     _sizeUni->set(osg::Vec2f(_columns, _rows));
     _dirty = true;
-    build();
 }
 
-void HeightMap::setDirty()
+void HeightMap::dirty()
 {
-    _dataImg->dirty();
-    _heightImg->dirty();
-    _xy->dirty();
-    _geom->setPrimitiveSet(0, new osg::DrawArrays(osg::PrimitiveSet::POINTS, 0, _xy->size()));
-    _geom->dirtyGLObjects();
     _dirty = true;
 }
 
@@ -176,14 +174,19 @@ void HeightMap::build()
     if (!_dirty)
         return;
 
+    _dataImg->dirty();
+    _heightImg->dirty();
+
     unsigned idx = 0;
-    for (unsigned int r = 0; r < _rows - 1; ++r) {
-        for (unsigned int c = 0; c < _columns - 1; ++c) {
-            //(*_xy)[idx] = osg::Vec2(_origin.x() + _dx * c, _origin.y() + _dy * r);
+    for (unsigned int r = _borderWidth[2]; r < _rows - 1 - _borderWidth[3]; ++r) {
+        for (unsigned int c = _borderWidth[0]; c < _columns - 1 - _borderWidth[1]; ++c) {
             (*_xy)[idx] = osg::Vec2(c, r);
             ++idx;
         }
     }
+    _xy->dirty();
+
+    _geom->setPrimitiveSet(0, new osg::DrawArrays(osg::PrimitiveSet::POINTS, 0, _xy->size()));
     _geom->dirtyGLObjects();
 
     _dirty = false;
@@ -245,5 +248,6 @@ Vec2 HeightMap::getHeightDelta(unsigned int c, unsigned int r) const
 
 void HeightMap::drawImplementation(osg::RenderInfo &renderInfo) const
 {
+    assert(!_dirty);
     _geom->drawImplementation(renderInfo);
 }

@@ -9,6 +9,7 @@
 #include <osg/TextureRectangle>
 
 #include <memory>
+#include <array>
 
 // losely based on osg::HeightField
 class HeightMap: public osg::Drawable {
@@ -30,7 +31,7 @@ public:
     typedef std::vector<float> HeightList;
 
     void allocate(unsigned int numColumns, unsigned int numRows, DataMode mode = NoData);
-    void setDirty();
+    void dirty();
 
     inline unsigned int getNumColumns() const { return _columns; }
     inline unsigned int getNumRows() const { return _rows; }
@@ -47,10 +48,14 @@ public:
     /** Set the width in number of cells in from the edge that the height field should be rendered from.
           * This exists to allow gradient and curvature continutity to be maintained between adjacent HeightMap, where
           * the border cells will overlap adjacent HeightMap.*/
-    void setBorderWidth(unsigned int borderWidth) { _borderWidth = borderWidth; }
+    void setBorderWidth(const std::array<unsigned int, 4> &borderWidth)
+    {
+        _borderWidth = borderWidth;
+        _dirty = true;
+    }
 
     /** Get the width in number of cells in from the edge that the height field should be rendered from.*/
-    unsigned int getBorderWidth() const { return _borderWidth; }
+    const std::array<unsigned int, 4> &getBorderWidth() const { return _borderWidth; }
 
     float *getHeights() { return _heights; }
     const float *getHeights() const { return _heights; }
@@ -86,7 +91,7 @@ protected:
     float _dx;
     float _dy;
 
-    unsigned int _borderWidth;
+    std::array<unsigned int, 4> _borderWidth = {0, 0, 0, 0};
     bool _dirty = true;
 
     osg::ref_ptr<osg::Vec2Array> _xy;

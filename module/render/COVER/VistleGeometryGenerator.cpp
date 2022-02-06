@@ -43,17 +43,18 @@
 
 //#define BUILD_KDTREES
 
+using namespace vistle;
+
 namespace {
 const int NumPrimitives = 100000;
 const bool IndexGeo = true;
+const Index TileSize = 256;
 
 #ifdef COVER_PLUGIN
 const int TfTexUnit = 1;
 #endif
 const int DataAttrib = 10;
 } // namespace
-
-using namespace vistle;
 
 std::mutex VistleGeometryGenerator::s_coverMutex;
 
@@ -663,7 +664,8 @@ osg::FloatArray *buildArray(typename MappedObject::const_ptr data, Coords::const
 }
 
 template<class MappedObject, typename S>
-bool fillTexture(typename MappedObject::const_ptr data, S *tex, std::stringstream &debug, Index dims[3], Index layer)
+bool fillTexture(std::stringstream &debug, S *tex, Index sx, Index sy, typename MappedObject::const_ptr data,
+                 Index dims[3], Index ox, Index oy, Index layer)
 {
     const auto &nx = dims[0], &ny = dims[1], &nz = dims[2];
 
@@ -689,9 +691,9 @@ bool fillTexture(typename MappedObject::const_ptr data, S *tex, std::stringstrea
         }
 
         Index idx = 0;
-        for (Index y = 0; y < dims[1]; ++y) {
-            for (Index x = 0; x < dims[0]; ++x) {
-                Index sidx = vistle::StructuredGridBase::vertexIndex(x, y, layer, dims);
+        for (Index y = 0; y < sy; ++y) {
+            for (Index x = 0; x < sx; ++x) {
+                Index sidx = vistle::StructuredGridBase::vertexIndex(ox + x, oy + y, layer, dims);
                 tex[idx] = getValue<MappedObject>(data, sidx);
                 ++idx;
             }
@@ -709,9 +711,9 @@ bool fillTexture(typename MappedObject::const_ptr data, S *tex, std::stringstrea
         }
 
         Index idx = 0;
-        for (Index y = 0; y < dims[1] - 1; ++y) {
-            for (Index x = 0; x < dims[0] - 1; ++x) {
-                Index sidx = vistle::StructuredGridBase::vertexIndex(x, y, layer, dims);
+        for (Index y = 0; y < sy - 1; ++y) {
+            for (Index x = 0; x < sx - 1; ++x) {
+                Index sidx = vistle::StructuredGridBase::vertexIndex(x + ox, y + oy, layer, dims);
                 tex[idx] = getValue<MappedObject>(data, sidx);
                 ++idx;
             }
@@ -912,6 +914,8 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
     }
 #ifdef COVER_PLUGIN
     case vistle::Object::LAYERGRID: {
+        static_assert(TileSize >= 4,
+                      "TileSize needs to be at least for (start and end border and repeated border vertices)");
         vistle::LayerGrid::const_ptr lg = vistle::LayerGrid::as(m_geo);
         const Index numVertices = lg->getNumVertices();
 
@@ -950,34 +954,55 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
             s_coverMutex.unlock();
         }
 
-        const auto *z = &lg->z()[0];
+        const auto dx = lg->dist()[0];
+        const auto dy = lg->dist()[1];
         for (Index l = 0; l < dims[2]; ++l) {
-            auto hf = new HeightMap;
+            std::array<unsigned int, 4> borderWidth = {0, 0, 0, 0};
+            borderWidth[2] = 0;
+            borderWidth[3] = (TileSize >= dims[1]) ? 0 : 1;
+            for (Index y = 0; y < dims[1]; y += TileSize - 1 - 2 * borderWidth[3]) {
+                Index sy = std::min(TileSize, dims[1] - y);
+                borderWidth[3] = (y + TileSize - borderWidth[2] >= dims[1]) ? 0 : 1;
+                std::cerr << "y=" << y << ", b=" << borderWidth[2] << "," << borderWidth[3] << std::endl;
+                debug << "y=" << y << ", b=" << borderWidth[2] << "," << borderWidth[3] << std::endl;
+                borderWidth[0] = 0;
+                borderWidth[1] = (TileSize >= dims[0]) ? 0 : 1;
+                for (Index x = 0; x < dims[0]; x += TileSize - 1 - 2 * borderWidth[1]) {
+                    Index sx = std::min(TileSize, dims[0] - x);
+                    borderWidth[1] = (x + TileSize - borderWidth[0] >= dims[0]) ? 0 : 1;
 
-            hf->setOrigin(osg::Vec3(lg->min()[0], lg->min()[1], 0.));
-            hf->setXInterval(lg->dist()[0]);
-            hf->setYInterval(lg->dist()[1]);
+                    auto hf = new HeightMap;
+                    hf->setOrigin(osg::Vec3(lg->min()[0] + dx * x, lg->min()[1] + dy * y, 0.));
+                    hf->setXInterval(dx);
+                    hf->setYInterval(dy);
 
-            hf->allocate(dims[0], dims[1], dmode);
-            auto height = hf->getHeights();
-            auto data = hf->getData();
+                    hf->setBorderWidth(borderWidth);
+                    hf->allocate(sx, sy, dmode);
+                    auto height = hf->getHeights();
+                    auto data = hf->getData();
 
-            fillTexture<LayerGrid>(lg, height, debug, dims, l);
-            if (sdata) {
-                fillTexture<Vec<Scalar, 1>>(sdata, data, debug, dims, l);
-            } else if (vdata) {
-                fillTexture<Vec<Scalar, 3>>(vdata, data, debug, dims, l);
-            } else if (idata) {
-                fillTexture<Vec<Index>>(idata, data, debug, dims, l);
-            } else if (bdata) {
-                fillTexture<Vec<Byte>>(bdata, data, debug, dims, l);
-            } else if (tex) {
-                fillTexture<Texture1D>(tex, data, debug, dims, l);
+                    fillTexture<LayerGrid>(debug, height, sx, sy, lg, dims, x, y, l);
+                    if (sdata) {
+                        fillTexture<Vec<Scalar, 1>>(debug, data, sx, sy, sdata, dims, x, y, l);
+                    } else if (vdata) {
+                        fillTexture<Vec<Scalar, 3>>(debug, data, sx, sy, vdata, dims, x, y, l);
+                    } else if (idata) {
+                        fillTexture<Vec<Index>>(debug, data, sx, sy, idata, dims, x, y, l);
+                    } else if (bdata) {
+                        fillTexture<Vec<Byte>>(debug, data, sx, sy, bdata, dims, x, y, l);
+                    } else if (tex) {
+                        fillTexture<Texture1D>(debug, data, sx, sy, tex, dims, x, y, l);
+                    }
+
+                    hf->dirty();
+                    hf->build();
+                    draw.push_back(hf);
+
+                    borderWidth[0] = borderWidth[1];
+                }
+
+                borderWidth[2] = borderWidth[3];
             }
-
-            hf->setDirty();
-
-            draw.push_back(hf);
         }
         indexGeom = false;
         break;
