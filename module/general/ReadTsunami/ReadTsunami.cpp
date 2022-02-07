@@ -58,8 +58,8 @@ ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicato
     m_verticalScale = addFloatParameter("VerticalScale", "Vertical Scale parameter sea", 1.0);
 
     // define ports
-    m_seaSurface_out = createOutputPort("Sea surface", "2D Grid Sea (Heightmap)");
-    m_groundSurface_out = createOutputPort("Ground surface", "2D Sea floor (Heightmap)");
+    m_seaSurface_out = createOutputPort("Sea surface", "Grid Sea (Heightmap/LayerGrid)");
+    m_groundSurface_out = createOutputPort("Ground surface", "Sea floor (Heightmap/LayerGrid)");
 
     // block size
     m_blocks[0] = addIntParameter("blocks latitude", "number of blocks in lat-direction", 2);
@@ -358,17 +358,16 @@ bool ReadTsunami::prepareRead()
   * @brief Computing per block.
   *
   * @token: Ref to internal vistle token.
-  * @blockNum: current block number of parallelization.
+  * @block: current block number of parallelization.
   * @timestep: current timestep.
   * @return: true if all data is set and valid.
   */
-template<class T, class U>
-bool ReadTsunami::computeBlock(Reader::Token &token, const T &blockNum, const U &timestep)
+bool ReadTsunami::computeBlock(Reader::Token &token, const int block, const int timestep)
 {
     if (timestep == -1)
-        return computeInitial(token, blockNum);
+        return computeConst(token, block);
     else if (m_needSea)
-        return computeTimestep<T, U>(token, blockNum, timestep);
+        return computeTimestep(token, block, timestep);
     return true;
 }
 
@@ -376,13 +375,13 @@ bool ReadTsunami::computeBlock(Reader::Token &token, const T &blockNum, const U 
  * @brief Compute the unique block partition index for current block.
  *
  * @tparam Iter Iterator.
- * @param blockNum Current block.
+ * @param block Current block.
  * @param nLatBlocks Storage for number of blocks for latitude.
  * @param nLonBlocks Storage for number of blocks for longitude.
  * @param blockPartitionIterFirst Start iterator for storage partition indices.
  */
 template<class Iter>
-void ReadTsunami::computeBlockPartition(const int blockNum, vistle::Index &nLatBlocks, vistle::Index &nLonBlocks,
+void ReadTsunami::computeBlockPartition(const int block, vistle::Index &nLatBlocks, vistle::Index &nLonBlocks,
                                         Iter blockPartitionIterFirst)
 {
     std::array<Index, NUM_BLOCKS> blocks;
@@ -392,7 +391,7 @@ void ReadTsunami::computeBlockPartition(const int blockNum, vistle::Index &nLatB
     nLatBlocks = blocks[0];
     nLonBlocks = blocks[1];
 
-    structured_block_partition(blocks.begin(), blocks.end(), blockPartitionIterFirst, blockNum);
+    structured_block_partition(blocks.begin(), blocks.end(), blockPartitionIterFirst, block);
 }
 
 /**
@@ -560,11 +559,10 @@ void ReadTsunami::createGround(Token &token, const NcFile *ncFile, const std::ar
   * @brief Generates the initial surfaces for sea and ground and adds only ground to scene.
   *
   * @token: Ref to internal vistle token.
-  * @blockNum: current block number of parallel process.
+  * @block: current block number of parallel process.
   * @return: true if all data could be initialized.
   */
-template<class T>
-bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
+bool ReadTsunami::computeConst(Token &token, const int block)
 {
     m_mtx.lock();
     auto ncFile = openNcmpiFile();
@@ -572,7 +570,7 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
 
     std::array<Index, 2> nBlocks;
     std::array<Index, NUM_BLOCKS> blockPartitionIdx;
-    computeBlockPartition(blockNum, nBlocks[0], nBlocks[1], blockPartitionIdx.begin());
+    computeBlockPartition(block, nBlocks[0], nBlocks[1], blockPartitionIdx.begin());
 
     int ghost{0};
     if (m_ghost->getValue() == 1 && !(nBlocks[0] == 1 && nBlocks[1] == 1))
@@ -586,14 +584,14 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
         auto first = m_first->getValue();
         last = last - (last % inc);
         const auto &time = ReaderTime(first, last, inc);
-        initSea(ncFile.get(), nBlocks, blockPartitionIdx, time, ghost, blockNum);
+        initSea(ncFile.get(), nBlocks, blockPartitionIdx, time, ghost, block);
     }
 
     if (m_groundSurface_out->isConnected()) {
         if (m_bathy->getValue() == NONE)
             printRank0("File doesn't provide bathymetry data");
         else
-            createGround(token, ncFile.get(), nBlocks, blockPartitionIdx, ghost, blockNum);
+            createGround(token, ncFile.get(), nBlocks, blockPartitionIdx, ghost, block);
     }
 
     /* check if there is any PnetCDF internal malloc residue */
@@ -612,34 +610,33 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
   * @brief Generates heightmap (layergrid) for corresponding timestep and adds object to scene.
   *
   * @token: Ref to internal vistle token.
-  * @blockNum: current block number of parallel process.
+  * @block: current block number of parallel process.
   * @timestep: current timestep.
   * @return: true. TODO: add proper error-handling here.
   */
-template<class T, class U>
-bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &timestep)
+bool ReadTsunami::computeTimestep(Token &token, const int block, const int timestep)
 {
-    auto &blockSeaDim = m_block_dimSea[blockNum];
+    auto &blockSeaDim = m_block_dimSea[block];
     LayerGrid::ptr gridPtr(new LayerGrid(blockSeaDim.X(), blockSeaDim.Y(), blockSeaDim.Z()));
-    std::copy_n(m_block_min[blockNum].begin(), 2, gridPtr->min());
-    std::copy_n(m_block_max[blockNum].begin(), 2, gridPtr->max());
+    std::copy_n(m_block_min[block].begin(), 2, gridPtr->min());
+    std::copy_n(m_block_max[block].begin(), 2, gridPtr->max());
 
     // getting z from vecEta and copy to z()
     // verticesSea * timesteps = total Count() vecEta
     const auto &verticesSea = gridPtr->getNumVertices();
-    std::vector<float> &etaVec = m_block_etaVec[blockNum];
-    auto count = m_block_etaIdx[blockNum]++ * verticesSea;
+    std::vector<float> &etaVec = m_block_etaVec[block];
+    auto count = m_block_etaIdx[block]++ * verticesSea;
     fillHeight(gridPtr, blockSeaDim, [&etaVec, &blockSeaDim, &count](const auto &j, const auto &k) {
         return etaVec[count + k * blockSeaDim.X() + j];
     });
     gridPtr->updateInternals();
     gridPtr->setTimestep(timestep);
-    gridPtr->setBlock(blockNum);
+    gridPtr->setBlock(block);
     if (m_seaSurface_out->isConnected())
         token.addObject(m_seaSurface_out, gridPtr);
 
     //add scalar to ports
-    ArrVecScalarPtrs &arrVecScaPtrs = m_block_VecScalarPtr[blockNum];
+    ArrVecScalarPtrs &arrVecScaPtrs = m_block_VecScalarPtr[block];
     for (int i = 0; i < NUM_SCALARS; ++i) {
         if (!m_scalarsOut[i]->isConnected())
             continue;
@@ -647,7 +644,7 @@ bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &time
         auto vecScalarPtr = arrVecScaPtrs[i]->clone();
         vecScalarPtr->setGrid(gridPtr);
         vecScalarPtr->addAttribute(_species, vecScalarPtr->getAttribute(_species));
-        vecScalarPtr->setBlock(blockNum);
+        vecScalarPtr->setBlock(block);
         vecScalarPtr->setTimestep(timestep);
         vecScalarPtr->updateInternals();
 

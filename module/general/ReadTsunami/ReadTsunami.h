@@ -124,23 +124,17 @@ private:
     bool inspectScalars(const NcFile *ncFile);
     std::unique_ptr<NcFile> openNcmpiFile();
 
+    bool computeConst(Token &token, const int block);
+    bool computeTimestep(Token &token, const int block, const int timestep);
+    bool computeBlock(Token &token, const int block, const int timestep);
+
+    template<class Iter>
+    void computeBlockPartition(const int block, vistle::Index &nLatBlocks, vistle::Index &nLonBlocks,
+                               Iter blockPartitionIterFirst);
     template<class T>
     void fillHeight(
         vistle::LayerGrid::ptr surface, const Dim<T> &dim,
         const ZCalcFunc &func = [](size_t x, size_t y) { return 0; });
-
-    template<class T, class U>
-    bool computeBlock(Token &token, const T &blockNum, const U &timestep);
-
-    template<class Iter>
-    void computeBlockPartition(const int blockNum, vistle::Index &nLatBlocks, vistle::Index &nLonBlocks,
-                               Iter blockPartitionIterFirst);
-
-    template<class T>
-    bool computeInitial(Token &token, const T &blockNum);
-
-    template<class T, class U>
-    bool computeTimestep(Token &token, const T &blockNum, const U &timestep);
 
     template<class T, class PartionIdx>
     auto generateNcVarExt(const NcVar &ncVar, const T &dim, const T &ghost, const T &numDimBlocks,
