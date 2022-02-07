@@ -840,25 +840,23 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
     const OsgColorMap *colormap = nullptr;
 #endif
     vistle::DataBase::const_ptr database = vistle::DataBase::as(m_mapped);
+    vistle::DataBase::Mapping mapping = vistle::DataBase::Unspecified;
+    if (database) {
+        mapping = database->guessMapping(m_geo);
+        if (mapping != vistle::DataBase::Vertex) {
+            indexGeom = false;
+            debug << "NoIndex: data ";
+        }
+    }
+
     vistle::Texture1D::const_ptr tex = vistle::Texture1D::as(m_mapped);
     vistle::Vec<Scalar>::const_ptr sdata = vistle::Vec<Scalar>::as(m_mapped);
     vistle::Vec<Scalar, 3>::const_ptr vdata = vistle::Vec<Scalar, 3>::as(m_mapped);
     vistle::Vec<Index>::const_ptr idata = vistle::Vec<Index>::as(m_mapped);
     vistle::Vec<Byte>::const_ptr bdata = vistle::Vec<Byte>::as(m_mapped);
     if (tex) {
-        auto m = tex->guessMapping();
-        if (m != vistle::DataBase::Vertex) {
-            indexGeom = false;
-            debug << "NoIndex: tex ";
-        }
         sdata.reset();
     } else if (sdata || vdata || idata || bdata) {
-        auto m = database->guessMapping();
-        if (m != vistle::DataBase::Vertex) {
-            indexGeom = false;
-            debug << "NoIndex: tex/data ";
-        }
-
 #ifdef COVER_PLUGIN
         s_coverMutex.lock();
         if (m_colormaps && !m_species.empty()) {
@@ -928,18 +926,6 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
             lg->getNumDivisions(2),
         };
 
-        DataBase::Mapping mapping = DataBase::Unspecified;
-        if (sdata) {
-            mapping = sdata->guessMapping(lg);
-        } else if (vdata) {
-            mapping = vdata->guessMapping(lg);
-        } else if (idata) {
-            mapping = idata->guessMapping(lg);
-        } else if (bdata) {
-            mapping = bdata->guessMapping(lg);
-        } else if (tex) {
-            mapping = tex->guessMapping(lg);
-        }
         HeightMap::DataMode dmode = HeightMap::NoData;
         if (mapping == DataBase::Vertex)
             dmode = HeightMap::VertexData;
@@ -1392,7 +1378,6 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
 
 #ifdef COVER_PLUGIN
     if (spheres && sphere && tex) {
-        vistle::DataBase::Mapping mapping = tex->guessMapping();
         if (mapping == vistle::DataBase::Vertex) {
             const auto numCoords = spheres->getNumCoords();
             auto pix = tex->pixels().data();

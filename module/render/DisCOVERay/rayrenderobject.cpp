@@ -55,34 +55,29 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
     for (int c = 0; c < 4; ++c) {
         data->solidColor[c] = solidColor[c];
     }
-    if (this->scalars) {
-        if (this->scalars->guessMapping(geometry) == DataBase::Element)
+    if (this->mapdata) {
+        if (this->mapdata->guessMapping(geometry) == DataBase::Element)
             data->perPrimitiveMapping = 1;
-
-        data->texCoords = &this->scalars->x()[0];
-
-        std::cerr << "texcoords from scalar field" << std::endl;
-
-    } else if (this->texture) {
-        if (this->texture->guessMapping(geometry) == DataBase::Element)
-            data->perPrimitiveMapping = 1;
-
-        data->texCoords = &this->texture->coords()[0];
+    }
+    if (auto t = Texture1D::as(this->mapdata)) {
+        data->texCoords = &t->coords()[0];
 
         cmap.reset(new ispc::ColorMapData);
         data->cmap = cmap.get();
-        data->cmap->texData = this->texture->pixels().data();
-        data->cmap->texWidth = this->texture->getWidth();
+        data->cmap->texData = t->pixels().data();
+        data->cmap->texWidth = t->getWidth();
         // texcoords as computed by Color module are between 0 and 1
         data->cmap->min = 0.;
         data->cmap->max = 1.;
         data->cmap->blendWithMaterial = 0;
 
         std::cerr << "texcoords from texture" << std::endl;
-    } else if (auto vec = Vec<Scalar, 3>::as(texture)) {
-        if (vec->guessMapping(geometry) == DataBase::Element)
-            data->perPrimitiveMapping = 1;
+    } else if (auto s = Vec<Scalar, 1>::as(this->mapdata)) {
+        data->texCoords = &s->x()[0];
 
+        std::cerr << "texcoords from scalar field" << std::endl;
+
+    } else if (auto vec = Vec<Scalar, 3>::as(this->mapdata)) {
         tcoord.resize(vec->getSize());
         data->texCoords = tcoord.data();
         const Scalar *x = &vec->x()[0];
@@ -94,10 +89,7 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
             ++y;
             ++z;
         }
-    } else if (auto iscal = Vec<Index>::as(texture)) {
-        if (iscal->guessMapping(geometry) == DataBase::Element)
-            data->perPrimitiveMapping = 1;
-
+    } else if (auto iscal = Vec<Index>::as(this->mapdata)) {
         tcoord.resize(iscal->getSize());
         data->texCoords = tcoord.data();
         vistle::Scalar *d = tcoord.data();

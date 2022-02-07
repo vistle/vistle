@@ -90,8 +90,7 @@ RenderObject::RenderObject(int senderId, const std::string &senderPort, Object::
 , container(container)
 , geometry(geometry)
 , normals(Normals::as(normals))
-, texture(Texture1D::as(mapdata))
-, scalars(texture ? nullptr : Vec<Scalar>::as(mapdata))
+, mapdata(DataBase::as(mapdata))
 , timestep(-1)
 , hasSolidColor(false)
 , solidColor(0., 0., 0., 0.)
@@ -131,11 +130,8 @@ RenderObject::RenderObject(int senderId, const std::string &senderPort, Object::
             }
         }
     }
-    if (timestep < 0 && texture) {
-        timestep = texture->getTimestep();
-    }
-    if (timestep < 0 && scalars) {
-        timestep = scalars->getTimestep();
+    if (timestep < 0 && mapdata) {
+        timestep = mapdata->getTimestep();
     }
     if (timestep < 0 && geometry) {
         timestep = geometry->getTimestep();
