@@ -16,21 +16,23 @@ class ReadMPAS: public vistle::Reader {
 public:
     ReadMPAS(const std::string &name, int moduleID, mpi::communicator comm);
     ~ReadMPAS() override;
+
 private:
     enum FileType { grid_type, data_type, zgrid_type };
 
     bool prepareRead() override;
-    bool read(Token &token, int timestep=-1, int block=-1) override;
+    bool read(Token &token, int timestep = -1, int block = -1) override;
     bool examine(const vistle::Parameter *param) override;
     bool finishRead() override;
 
     bool emptyValue(vistle::StringParameter *ch) const;
     bool dimensionExists(std::string findName, const NcmpiFile &filenames);
     bool variableExists(std::string findName, const NcmpiFile &filename);
-    bool validateFile(std::string fullFileName, std::string &redFileName,  FileType type);
+    bool validateFile(std::string fullFileName, std::string &redFileName, FileType type);
 
-    bool addCell(Index elem, Index *el, Index *cl, long vPerC, long numVert, long izVert, Index &idx2,const std::vector<int> &vocList);
-    bool getData(const NcmpiFile &filename,std::vector<float> *dataValues,const MPI_Offset &nLevels);
+    bool addCell(Index elem, Index *el, Index *cl, long vPerC, long numVert, long izVert, Index &idx2,
+                 const std::vector<int> &vocList);
+    bool getData(const NcmpiFile &filename, std::vector<float> *dataValues, const MPI_Offset &nLevels);
     bool setVariableList(const NcmpiFile &filename, bool setCOC);
 
 
@@ -43,7 +45,7 @@ private:
     StringParameter *m_variables[NUMPARAMS];
     StringParameter *m_varDim;
 
-    std::vector<std::string> varDimList = {"2D","3D","other"};
+    std::vector<std::string> varDimList = {"2D", "3D", "other"};
     std::string firstFileName, dataFileName, zGridFileName;
     bool hasDataFile = false;
     bool hasZData = false;
@@ -65,9 +67,10 @@ private:
     Index numCells = 0;
 
     //std::vector<UnstructuredGrid::ptr> gridList;
-    std::vector<int> voc,coc,cov; // voc (Vertices on Cell); eoc (edges on Cell); coc (cells on cell); cov (vertices on Cell)
+    std::vector<int> voc, coc,
+        cov; // voc (Vertices on Cell); eoc (edges on Cell); coc (cells on cell); cov (vertices on Cell)
     std::vector<Index> eoc;
-    std::vector<float> xCoords,yCoords,zCoords; //coordinates of vertices
+    std::vector<float> xCoords, yCoords, zCoords; //coordinates of vertices
     bool ghosts = false;
     int finalNumberOfParts = 1;
     std::mutex mtxPartList;
