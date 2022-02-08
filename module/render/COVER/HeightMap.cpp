@@ -1,6 +1,7 @@
 #include "HeightMap.h"
 #include <osg/TextureRectangle>
 #include <iostream>
+#include <cassert>
 
 using namespace osg;
 
