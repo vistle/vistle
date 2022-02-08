@@ -566,6 +566,8 @@ bool ReadTsunami::computeConst(Token &token, const int block)
     m_mtx.lock();
     auto ncFile = openNcmpiFile();
     m_mtx.unlock();
+    if (!ncFile)
+        return false;
 
     array<Index, 2> nBlocks;
     array<Index, NUM_BLOCKS> blockPartitionIdx;
