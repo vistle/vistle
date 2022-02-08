@@ -226,7 +226,7 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
                     triangles[t].v1 = poly->cl()[start + v2 + 1];
                     triangles[t].v2 = poly->cl()[last - v2];
                 }
-                triangles[t].v3 = t;
+                triangles[t].v3 = i;
                 ++t;
             }
         }
