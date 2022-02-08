@@ -12,6 +12,7 @@
 #include <vistle/core/rectilineargrid.h>
 #include <vistle/core/structuredgrid.h>
 #include <vistle/core/structuredgridbase.h>
+#include <vistle/core/layergrid.h>
 #include <vistle/core/uniformgrid.h>
 #include <vistle/core/unstr.h>
 #include <vistle/module/module.h>
@@ -34,6 +35,8 @@ private:
     // private helper functions
     void compute_uniformVecs(vistle::UniformGrid::const_ptr obj, vistle::UnstructuredGrid::ptr unstrGridOut,
                              const Cartesian3<vistle::Index> numVertices);
+    void compute_layerVecs(vistle::LayerGrid::const_ptr obj, vistle::UnstructuredGrid::ptr unstrGridOut,
+                           const Cartesian3<vistle::Index> numVertices);
     void compute_rectilinearVecs(vistle::RectilinearGrid::const_ptr obj, vistle::UnstructuredGrid::ptr unstrGridOut,
                                  const Cartesian3<vistle::Index> numVertices);
 };
