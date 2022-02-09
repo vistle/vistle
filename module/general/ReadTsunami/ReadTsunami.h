@@ -43,6 +43,8 @@ public:
 
 private:
     typedef PnetCDF::NcmpiVar NcVar;
+    typedef PnetCDF::NcmpiDim NcDim;
+    typedef PnetCDF::NcmpiGroupAtt NcGrpAtt;
     typedef PnetCDF::NcmpiFile NcFile;
     typedef unique_ptr<NcFile> NcFilePtr;
     typedef vistle::Vec<vistle::Scalar>::ptr VisVecScalarPtr;
@@ -118,8 +120,10 @@ private:
                      int block);
     void createGround(Token &token, const NcFilePtr &ncFile, const array<vistle::Index, 2> &nBlocks,
                       const array<vistle::Index, NUM_BLOCKS> &blockPartIdx, int ghost, int block);
+    void createFault(Token &token, const NcFilePtr &ncFile);
     void initScalarParamReader();
     bool inspectNetCDF();
+    bool inspectAtts(const NcFilePtr &ncFile);
     bool inspectDims(const NcFilePtr &ncFile);
     bool inspectScalars(const NcFilePtr &ncFile);
     NcFilePtr openNcmpiFile();
@@ -148,6 +152,7 @@ private:
     //Parameter
     vistle::IntParameter *m_ghost = nullptr;
     vistle::IntParameter *m_fill = nullptr;
+    vistle::IntParameter *m_fault = nullptr;
     vistle::StringParameter *m_filedir = nullptr;
     vistle::StringParameter *m_bathy = nullptr;
     vistle::FloatParameter *m_verticalScale = nullptr;
@@ -156,11 +161,13 @@ private:
 
     //Ports
     vistle::Port *m_seaSurface_out = nullptr;
+    vistle::Port *m_fault_out = nullptr;
     vistle::Port *m_groundSurface_out = nullptr;
     array<vistle::Port *, NUM_SCALARS> m_scalarsOut;
 
     //*****helper variables*****//
     atomic_bool m_needSea;
+    atomic_bool m_faultInfo;
     mutex m_mtx;
     boost::mpi::intercommunicator m_pnetcdf_comm;
 

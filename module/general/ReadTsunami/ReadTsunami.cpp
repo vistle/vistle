@@ -7,6 +7,7 @@
 #include "vistle/core/layergrid.h"
 #include "vistle/core/object.h"
 #include "vistle/core/parameter.h"
+#include "vistle/core/polygons.h"
 #include "vistle/core/scalar.h"
 #include "vistle/core/vec.h"
 #include "vistle/module/module.h"
@@ -14,9 +15,13 @@
 //vistle-module-util
 #include "vistle/module/utils/ghost.h"
 
-//mpi
+//boost
+#include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 #include <boost/mpi/communicator.hpp>
 #include <boost/mpi/intercommunicator.hpp>
+
+//mpi
 #include <mpi.h>
 
 //std
@@ -25,6 +30,7 @@
 #include <iterator>
 #include <memory>
 #include <omp.h>
+#include <sstream>
 #include <string>
 #include <cstddef>
 #include <vector>
@@ -51,15 +57,15 @@ ReadTsunami::ReadTsunami(const string &name, int moduleID, mpi::communicator com
 {
     // file-browser
     m_filedir = addStringParameter("file_dir", "NC File directory", "", Parameter::Filename);
-
-    //ghost
     m_ghost = addIntParameter("ghost", "Show ghostcells.", 1, Parameter::Boolean);
+    m_fault = addIntParameter("fault", "Show faults.", 1, Parameter::Boolean);
     m_fill = addIntParameter("fill", "Replace filterValue.", 1, Parameter::Boolean);
     m_verticalScale = addFloatParameter("VerticalScale", "Vertical Scale parameter sea", 1.0);
 
     // define ports
     m_seaSurface_out = createOutputPort("Sea surface", "Grid Sea (Heightmap/LayerGrid)");
     m_groundSurface_out = createOutputPort("Ground surface", "Sea floor (Heightmap/LayerGrid)");
+    m_fault_out = createOutputPort("Fault wall surface", "Faults (Polygons)");
 
     // block size
     m_blocks[0] = addIntParameter("blocks latitude", "number of blocks in lat-direction", 2);
@@ -177,6 +183,22 @@ ReadTsunami::NcFilePtr ReadTsunami::openNcmpiFile()
 }
 
 /**
+ * @brief Inspect global attributes of netCDF file.
+ *
+ * @param ncFile Reference pointer to ncfile.
+ *
+ * @return True if there is no error.
+ */
+bool ReadTsunami::inspectAtts(const NcFilePtr &ncFile)
+{
+    for (auto &[name, val]: ncFile->getAtts())
+        if (!m_faultInfo)
+            if (boost::algorithm::starts_with(name, "fault_"))
+                m_faultInfo = true;
+    return true;
+}
+
+/**
  * @brief Inspect netCDF dimension (all independent variables.)
  *
  * @param ncFile Open nc file pointer.
@@ -192,7 +214,7 @@ bool ReadTsunami::inspectDims(const NcFilePtr &ncFile)
     const Integer &maxlonDim = ncFile->getDim(lon).getSize();
     setParameterRange(m_blocks[0], Integer(1), maxlatDim);
     setParameterRange(m_blocks[1], Integer(1), maxlonDim);
-    return inspectScalars(ncFile);
+    return true;
 }
 
 /**
@@ -280,7 +302,7 @@ bool ReadTsunami::inspectNetCDF()
     if (!ncFile)
         return false;
 
-    return inspectDims(ncFile);
+    return inspectDims(ncFile) && inspectScalars(ncFile) && inspectAtts(ncFile);
 }
 
 /**
@@ -554,6 +576,75 @@ void ReadTsunami::createGround(Token &token, const NcFilePtr &ncFile, const arra
     }
 }
 
+void ReadTsunami::createFault(Token &token, const NcFilePtr &ncFile)
+{
+    /**
+      Create a wall out of the fault data.
+        Data:
+        fault_331 = "time: 0.00, lon_barycenter: 22.47, lat_barycenter: 35.80, rake: 90.00, slip: 0.15" ;
+        1. use lon + lat as vert and slip as height
+        2. create polygon
+        3. add to token
+      **/
+    vector<NcGrpAtt> faults;
+    for (auto &[name, val]: ncFile->getAtts())
+        if (boost::algorithm::starts_with(name, "fault_"))
+            faults.push_back(val);
+
+    const auto &verts = faults.size();
+    const auto &elements = verts - 1;
+    const auto &corners = elements * 4;
+    Polygons::ptr fault(new Polygons(elements, corners, verts * 2));
+
+    std::generate(fault->el().begin(), fault->el().end(), [n = -1]() mutable { return ++n * 4; });
+
+    auto connectList = fault->cl().begin();
+    int n = -1;
+    for (auto i = 1; i < verts; ++i)
+        for (auto j = 1; j < 2; ++j) {
+            connectList[++n] = (i - 1) * verts + (j - 1);
+            connectList[++n] = j * verts + (j - 1);
+            connectList[++n] = j * verts + j;
+            connectList[++n] = (j - 1) * verts + j;
+        }
+
+    auto x = fault->x().begin(), y = fault->y().begin(), z = fault->z().begin();
+    n = 0;
+    for (auto &flt: faults) {
+        string input("");
+        flt.getValues(input);
+        stringstream ss;
+        ss << input;
+        string tmp;
+        string ptmp;
+        float tmpF;
+        map<string, float> mAtts;
+        while (!ss.eof()) {
+            ss >> tmp;
+            if (stringstream(tmp) >> tmpF)
+                mAtts.emplace(tmp, tmpF);
+            ptmp = tmp;
+            tmp = "";
+        }
+        auto lon_center = mAtts["lon_barycenter"];
+        auto lat_center = mAtts["lat_barycenter"];
+        auto slip = mAtts["slip"];
+        for (int i = 0; i < 2; ++i, ++n) {
+            x[n] = lon_center;
+            y[n] = lat_center;
+            if (n % 2 != 0)
+                z[n] = slip;
+            else
+                z[n] = 0;
+        }
+    }
+
+    fault->setBlock(0);
+    fault->setTimestep(-1);
+    fault->updateInternals();
+    token.addObject(m_fault_out, fault);
+}
+
 /**
   * @brief Generates the initial surfaces for sea and ground and adds only ground to scene.
   *
@@ -587,6 +678,9 @@ bool ReadTsunami::computeConst(Token &token, const int block)
         const auto &time = ReaderTime(first, last, inc);
         initSea(ncFile, nBlocks, blockPartitionIdx, time, ghost, block);
     }
+
+    if (m_fault->getValue() && m_faultInfo)
+        createFault(token, ncFile);
 
     if (m_groundSurface_out->isConnected()) {
         if (m_bathy->getValue() == NONE)
