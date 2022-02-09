@@ -44,6 +44,7 @@ public:
 private:
     typedef PnetCDF::NcmpiVar NcVar;
     typedef PnetCDF::NcmpiFile NcFile;
+    typedef unique_ptr<NcFile> NcFilePtr;
     typedef vistle::Vec<vistle::Scalar>::ptr VisVecScalarPtr;
     typedef array<VisVecScalarPtr, NUM_SCALARS> ArrVecScalarPtrs;
     typedef vector<ArrVecScalarPtrs> VecArrVecScalarPtrs;
@@ -109,18 +110,19 @@ private:
     bool examine(const vistle::Parameter *param) override;
 
     //Own functions
-    void initETA(const NcFile *ncFile, const array<PNcVarExt, 2> &ncExtSea, const ReaderTime &time,
+    void initETA(const NcFilePtr &ncFile, const array<PNcVarExt, 2> &ncExtSea, const ReaderTime &time,
                  const size_t &verticesSea, int block);
-    void initSea(const NcFile *ncFile, const array<vistle::Index, 2> &nBlocks,
+    void initSea(const NcFilePtr &ncFile, const array<vistle::Index, 2> &nBlocks,
                  const array<vistle::Index, NUM_BLOCKS> &blockPartIdx, const ReaderTime &time, int ghost, int block);
-    void initScalars(const NcFile *ncFile, const array<PNcVarExt, 2> &ncExtSea, const size_t &verticesSea, int block);
-    void createGround(Token &token, const NcFile *ncFile, const array<vistle::Index, 2> &nBlocks,
+    void initScalars(const NcFilePtr &ncFile, const array<PNcVarExt, 2> &ncExtSea, const size_t &verticesSea,
+                     int block);
+    void createGround(Token &token, const NcFilePtr &ncFile, const array<vistle::Index, 2> &nBlocks,
                       const array<vistle::Index, NUM_BLOCKS> &blockPartIdx, int ghost, int block);
     void initScalarParamReader();
     bool inspectNetCDF();
-    bool inspectDims(const NcFile *ncFile);
-    bool inspectScalars(const NcFile *ncFile);
-    unique_ptr<NcFile> openNcmpiFile();
+    bool inspectDims(const NcFilePtr &ncFile);
+    bool inspectScalars(const NcFilePtr &ncFile);
+    NcFilePtr openNcmpiFile();
 
     bool computeConst(Token &token, const int block);
     bool computeTimestep(Token &token, const int block, const int timestep);

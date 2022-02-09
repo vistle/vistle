@@ -165,11 +165,11 @@ bool ReadTsunami::examine(const vistle::Parameter *param)
  *
  * @return Return open ncFile as unique_ptr if there is no error, else a nullptr.
  */
-unique_ptr<NcmpiFile> ReadTsunami::openNcmpiFile()
+ReadTsunami::NcFilePtr ReadTsunami::openNcmpiFile()
 {
     const auto &fileName = m_filedir->getValue();
     try {
-        return make_unique<NcmpiFile>(m_pnetcdf_comm, fileName, NcFile::read);
+        return make_unique<NcFile>(m_pnetcdf_comm, fileName, NcFile::read);
     } catch (PnetCDF::exceptions::NcmpiException &e) {
         sendInfo("%s error code=%d Error!", e.what(), e.errorCode());
         return nullptr;
@@ -183,7 +183,7 @@ unique_ptr<NcmpiFile> ReadTsunami::openNcmpiFile()
  *
  * @return tru if everything is initialized.
  */
-bool ReadTsunami::inspectDims(const NcFile *ncFile)
+bool ReadTsunami::inspectDims(const NcFilePtr &ncFile)
 {
     const int &maxTime = ncFile->getDim("time").getSize();
     setTimesteps(maxTime);
@@ -226,7 +226,7 @@ inline void ifEmptyAddNone(vector<string> &vec)
  *
  * @return true if everything is initialized.
  */
-bool ReadTsunami::inspectScalars(const NcFile *ncFile)
+bool ReadTsunami::inspectScalars(const NcFilePtr &ncFile)
 {
     vector<string> scalarChoiceVec;
     vector<string> bathyChoiceVec;
@@ -280,7 +280,7 @@ bool ReadTsunami::inspectNetCDF()
     if (!ncFile)
         return false;
 
-    return inspectDims(ncFile.get());
+    return inspectDims(ncFile);
 }
 
 /**
@@ -403,7 +403,7 @@ void ReadTsunami::computeBlockPartition(const int block, vistle::Index &nLatBloc
  * @param verticesSea number of vertices for sea surface of the current block.
  * @param block current block.
  */
-void ReadTsunami::initETA(const NcFile *ncFile, const array<PNcVarExt, 2> &ncExtSea, const ReaderTime &time,
+void ReadTsunami::initETA(const NcFilePtr &ncFile, const array<PNcVarExt, 2> &ncExtSea, const ReaderTime &time,
                           const size_t &verticesSea, int block)
 {
     const NcVar &etaVar = ncFile->getVar(ETA);
@@ -434,7 +434,7 @@ void ReadTsunami::initETA(const NcFile *ncFile, const array<PNcVarExt, 2> &ncExt
  * @param verticesSea number of vertices for the sea surface.
  * @param block current block.
  */
-void ReadTsunami::initScalars(const NcFile *ncFile, const array<PNcVarExt, 2> &ncExtSea, const size_t &verticesSea,
+void ReadTsunami::initScalars(const NcFilePtr &ncFile, const array<PNcVarExt, 2> &ncExtSea, const size_t &verticesSea,
                               int block)
 {
     const auto &latSea = ncExtSea[0];
@@ -472,7 +472,7 @@ void ReadTsunami::initScalars(const NcFile *ncFile, const array<PNcVarExt, 2> &n
  * @param ghost ghostcells to add.
  * @param block current block.
  */
-void ReadTsunami::initSea(const NcFile *ncFile, const array<Index, 2> &nBlocks,
+void ReadTsunami::initSea(const NcFilePtr &ncFile, const array<Index, 2> &nBlocks,
                           const array<Index, NUM_BLOCKS> &nBlockPartIdx, const ReaderTime &time, int ghost, int block)
 {
     const NcVar &latVar = ncFile->getVar(m_latLon_Sea[0]);
@@ -513,7 +513,7 @@ void ReadTsunami::initSea(const NcFile *ncFile, const array<Index, 2> &nBlocks,
  * @param ghost ghostcells to add.
  * @param block current block.
  */
-void ReadTsunami::createGround(Token &token, const NcFile *ncFile, const array<vistle::Index, 2> &nBlocks,
+void ReadTsunami::createGround(Token &token, const NcFilePtr &ncFile, const array<vistle::Index, 2> &nBlocks,
                                const array<vistle::Index, NUM_BLOCKS> &blockPartIdx, int ghost, int block)
 {
     const NcVar &gridLatVar = ncFile->getVar(m_latLon_Ground[0]);
@@ -585,14 +585,14 @@ bool ReadTsunami::computeConst(Token &token, const int block)
         auto first = m_first->getValue();
         last = last - (last % inc);
         const auto &time = ReaderTime(first, last, inc);
-        initSea(ncFile.get(), nBlocks, blockPartitionIdx, time, ghost, block);
+        initSea(ncFile, nBlocks, blockPartitionIdx, time, ghost, block);
     }
 
     if (m_groundSurface_out->isConnected()) {
         if (m_bathy->getValue() == NONE)
             printRank0("File doesn't provide bathymetry data");
         else
-            createGround(token, ncFile.get(), nBlocks, blockPartitionIdx, ghost, block);
+            createGround(token, ncFile, nBlocks, blockPartitionIdx, ghost, block);
     }
 
     /* check if there is any PnetCDF internal malloc residue */
