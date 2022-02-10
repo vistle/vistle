@@ -471,6 +471,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
             //DETERMINE VERTICES used for this partition
             for (Index i = 0; i < numCells; ++i) {
                 if (partList[i] == block) {
+                    idxCellsInBlock[block].push_back(i);
                     for (Index d = 0; d < eoc[i]; ++d) {
                         if (vocIdxUsedTmp[voc[i * vPerC + d] - 1] < 0) {
                             vocIdxUsedTmp[voc[i * vPerC + d] - 1] = idx++;
@@ -499,6 +500,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
 
                                 if (isNew) {
                                     isGhost[block][neighborIdx] = 1;
+                                    idxCellsInBlock[block].push_back(neighborIdx);
                                     numGhosts[block]++;
                                     numCornGhost = numCornGhost + eoc[neighborIdx];
                                 }
@@ -546,62 +548,58 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
                 std::vector<float> zGrid(numCells * numLevels, 0.);
                 zGridVar.getVar_all(startZ, stopZ, zGrid.data());
 
-                int i_v1 = 0, i_v2 = 0, i_v3 = 0;
+                int i_v1 = 0, i_v2 = 0, i_v3 = 0, i = 0;
                 for (Index iz = 0; iz < numLevels; ++iz) {
                     izVert = numVertB * iz;
-                    for (Index i = 0; i < numCells; ++i) {
-                        //radius = zGrid[i+numCells*iz]+MSL;
-                        if ((partList[i] == block) || (ghosts && (isGhost[block][i] > 0))) {
-                            for (Index d = 0; d < eoc[i]; ++d) {
-                                iv = reducedVOC[i * MAX_EDGES + d] - 1;
-                                if (iv >= 0) {
-                                    iVOC = voc[i * vPerC + d] - 1; //current vertex index
-                                    i_v1 = cov[iVOC * MAX_VERT + 0]; //cell index
-                                    i_v2 = cov[iVOC * MAX_VERT + 1];
-                                    i_v3 = cov[iVOC * MAX_VERT + 2];
-                                    radius = RAD_SCALE * (1. / 3.) *
-                                                 (zGrid[(numLevels)*i_v1 + iz] + zGrid[(numLevels)*i_v2 + iz] +
-                                                  zGrid[(numLevels)*i_v3 + iz]) +
-                                             MSL; //compute vertex z from average of neighbouring cells
-                                    ptrOnX[izVert + iv] = radius * xCoords[iVOC];
-                                    ptrOnY[izVert + iv] = radius * yCoords[iVOC];
-                                    ptrOnZ[izVert + iv] = radius * zCoords[iVOC];
-                                }
+                    for (Index k = 0; k < idxCellsInBlock[block].size(); ++k) {
+                        i = idxCellsInBlock[block][k];
+                        for (Index d = 0; d < eoc[i]; ++d) {
+                            iv = reducedVOC[i * MAX_EDGES + d] - 1;
+                            if (iv >= 0) {
+                                iVOC = voc[i * vPerC + d] - 1; //current vertex index
+                                i_v1 = cov[iVOC * MAX_VERT + 0]; //cell index
+                                i_v2 = cov[iVOC * MAX_VERT + 1];
+                                i_v3 = cov[iVOC * MAX_VERT + 2];
+                                radius = RAD_SCALE * (1. / 3.) *
+                                                (zGrid[(numLevels)*i_v1 + iz] + zGrid[(numLevels)*i_v2 + iz] +
+                                                zGrid[(numLevels)*i_v3 + iz]) +
+                                            MSL; //compute vertex z from average of neighbouring cells
+                                ptrOnX[izVert + iv] = radius * xCoords[iVOC];
+                                ptrOnY[izVert + iv] = radius * yCoords[iVOC];
+                                ptrOnZ[izVert + iv] = radius * zCoords[iVOC];
                             }
-                            if (iz < numLevels - 1) {
-                                el[currentElem] = idx2;
-                                addCell(i, el, cl, MAX_EDGES, numVertB, izVert, idx2, reducedVOC);
-                                idxCellsInBlock[block].push_back(iz + i * (numLevels - 1));
-                                tl[currentElem++] = isGhost[block][i] > 0
-                                                        ? (UnstructuredGrid::CPOLYHEDRON | UnstructuredGrid::GHOST_BIT)
-                                                        : UnstructuredGrid::CPOLYHEDRON;
-                            }
+                        }
+                        if (iz < numLevels - 1) {
+                            el[currentElem] = idx2;
+                            addCell(i, el, cl, MAX_EDGES, numVertB, izVert, idx2, reducedVOC);
+                            tl[currentElem++] = isGhost[block][i] > 0
+                                                    ? (UnstructuredGrid::CPOLYHEDRON | UnstructuredGrid::GHOST_BIT)
+                                                    : UnstructuredGrid::CPOLYHEDRON;
                         }
                     }
                 }
             } else {
+                Index i = 0;
                 for (Index iz = 0; iz < numLevels; ++iz) {
                     izVert = numVertB * iz;
                     radius = dH * iz + 1.;
-                    for (Index i = 0; i < numCells; ++i) {
-                        if ((partList[i] == block) || (ghosts && (isGhost[block][i] > 0))) {
-                            for (Index d = 0; d < eoc[i]; ++d) {
-                                iv = reducedVOC[i * MAX_EDGES + d] - 1;
-                                if (iv >= 0) {
-                                    iVOC = voc[i * vPerC + d] - 1;
-                                    ptrOnX[izVert + iv] = radius * xCoords[iVOC];
-                                    ptrOnY[izVert + iv] = radius * yCoords[iVOC];
-                                    ptrOnZ[izVert + iv] = radius * zCoords[iVOC];
-                                }
+                    for (Index k = 0; k < idxCellsInBlock[block].size(); ++k) {
+                        i = idxCellsInBlock[block][k];
+                        for (Index d = 0; d < eoc[i]; ++d) {
+                            iv = reducedVOC[i * MAX_EDGES + d] - 1;
+                            if (iv >= 0) {
+                                iVOC = voc[i * vPerC + d] - 1;
+                                ptrOnX[izVert + iv] = radius * xCoords[iVOC];
+                                ptrOnY[izVert + iv] = radius * yCoords[iVOC];
+                                ptrOnZ[izVert + iv] = radius * zCoords[iVOC];
                             }
-                            if (iz < numLevels - 1) {
-                                el[currentElem] = idx2;
-                                addCell(i, el, cl, MAX_EDGES, numVertB, izVert, idx2, reducedVOC);
-                                idxCellsInBlock[block].push_back(iz + i * (numLevels - 1));
-                                tl[currentElem++] = isGhost[block][i] > 0
-                                                        ? (UnstructuredGrid::CPOLYHEDRON | UnstructuredGrid::GHOST_BIT)
-                                                        : UnstructuredGrid::CPOLYHEDRON;
-                            }
+                        }
+                        if (iz < numLevels - 1) {
+                            el[currentElem] = idx2;
+                            addCell(i, el, cl, MAX_EDGES, numVertB, izVert, idx2, reducedVOC);
+                            tl[currentElem++] = isGhost[block][i] > 0
+                                                    ? (UnstructuredGrid::CPOLYHEDRON | UnstructuredGrid::GHOST_BIT)
+                                                    : UnstructuredGrid::CPOLYHEDRON;
                         }
                     }
                 }
@@ -636,9 +634,11 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
                     NcmpiFile ncFirstFile2(comm(), firstFileName, NcmpiFile::read);
                     getData(ncFirstFile2, &dataValues, numLevels, dataIdx);
                 }
-
-                for (Index k = 0; k < idxCellsInBlock[block].size(); ++k){
-                    ptrOnScalarData[k] = dataValues[idxCellsInBlock[block][k]];
+                Index currentElem = 0;
+                for (Index iz = 0; iz < numLevels-1; ++iz) {
+                    for (Index k = 0; k < idxCellsInBlock[block].size(); ++k){
+                        ptrOnScalarData[currentElem++] = dataValues[iz + idxCellsInBlock[block][k]*(numLevels-1)];
+                    }
                 }
 
                 dataObj->setGrid(gridList[block]);
