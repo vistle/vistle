@@ -8,6 +8,62 @@ using namespace vistle;
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(PermutationOption, (XYZ)(XZY)(YXZ)(YZX)(ZXY)(ZYX))
 MODULE_MAIN(MapDrape)
 
+namespace {
+
+template<class D>
+void permutate(enum PermutationOption perm, D &x, D &y, D &z)
+{
+    switch (perm) {
+    case XYZ: {
+        break;
+    }
+    case XZY: {
+        std::swap(y, z);
+        break;
+    }
+    case YXZ: {
+        std::swap(x, y);
+        break;
+    }
+    case YZX: {
+        std::swap(x, y);
+        std::swap(y, z);
+        break;
+    }
+    case ZXY: {
+        std::swap(x, z);
+        std::swap(y, z);
+        break;
+    }
+    case ZYX: {
+        std::swap(x, z);
+        break;
+    }
+    default: {
+        assert("axis permutation not handled" == nullptr);
+    }
+    }
+}
+
+PermutationOption invert(PermutationOption perm)
+{
+    switch (perm) {
+    case YZX: {
+        return ZXY;
+        break;
+    }
+    case ZXY: {
+        return YZX;
+        break;
+    }
+    default: {
+        return perm;
+    }
+    }
+}
+
+} // namespace
+
 MapDrape::MapDrape(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
     for (unsigned i = 0; i < NumPorts; ++i) {
@@ -51,69 +107,43 @@ bool MapDrape::compute()
             data.reset();
         }
 
-        auto inGeo = Coords::as(geo);
-        if (!inGeo) {
-            sendError("input geometry on port %s does not have coordinates", data_in[port]->getName().c_str());
-            return true;
-        }
-
         if (!isConnected(*data_out[port]))
             continue;
 
-        auto it = m_alreadyMapped.find(inGeo->getName());
-        if (it == m_alreadyMapped.end()) {
-            const Scalar *xc, *yc, *zc;
-            switch (p_permutation->getValue()) {
-            case XYZ: {
-                xc = &inGeo->x()[0];
-                yc = &inGeo->y()[0];
-                zc = &inGeo->z()[0];
-                break;
-            }
-            case XZY: {
-                xc = &inGeo->x()[0];
-                yc = &inGeo->z()[0];
-                zc = &inGeo->y()[0];
-                break;
-            }
-            case YXZ: {
-                xc = &inGeo->y()[0];
-                yc = &inGeo->x()[0];
-                zc = &inGeo->z()[0];
-                break;
-            }
-            case YZX: {
-                xc = &inGeo->y()[0];
-                yc = &inGeo->z()[0];
-                zc = &inGeo->x()[0];
-                break;
-            }
-            case ZXY: {
-                xc = &inGeo->z()[0];
-                yc = &inGeo->x()[0];
-                zc = &inGeo->y()[0];
-                break;
-            }
-            case ZYX: {
-                xc = &inGeo->z()[0];
-                yc = &inGeo->y()[0];
-                zc = &inGeo->x()[0];
-                break;
-            }
-            default: {
-                assert("axis permutation not handled" == nullptr);
-                xc = yc = zc = nullptr;
-                return false;
-            }
-            }
+        StructuredGridBase::const_ptr inStr;
+        const Scalar *xc = nullptr, *yc = nullptr, *zc = nullptr;
+        auto it = m_alreadyMapped.find(geo->getName());
+        if (it != m_alreadyMapped.end()) {
+            outGeo = it->second;
+        } else if (auto inCoords = Coords::as(geo)) {
+            xc = &inCoords->x()[0];
+            yc = &inCoords->y()[0];
+            zc = &inCoords->z()[0];
 
-
-            outGeo = inGeo->clone();
+            outGeo = inCoords->clone();
             updateMeta(outGeo);
             outGeo->resetCoords();
-            outGeo->x().resize(inGeo->getNumCoords());
-            outGeo->y().resize(inGeo->getNumCoords());
-            outGeo->z().resize(inGeo->getNumCoords());
+            outGeo->x().resize(inCoords->getNumCoords());
+            outGeo->y().resize(inCoords->getNumCoords());
+            outGeo->z().resize(inCoords->getNumCoords());
+
+            assert(outGeo->getSize() == inCoords->getSize());
+        } else if (inStr = StructuredGridBase::as(geo)) {
+            Index dim[] = {inStr->getNumDivisions(0), inStr->getNumDivisions(1), inStr->getNumDivisions(2)};
+            outGeo.reset(new StructuredGrid(dim[0], dim[1], dim[2]));
+            outGeo->copyAttributes(geo);
+            updateMeta(outGeo);
+        } else {
+            sendError("input geometry on port %s does neither have coordinates nor is it a structured grid",
+                      data_in[port]->getName().c_str());
+            return true;
+        }
+
+        if (inStr || (xc && yc && zc)) {
+            assert(outGeo);
+            auto perm = PermutationOption(p_permutation->getValue());
+            permutate(perm, xc, yc, zc);
+
             auto xout = outGeo->x().data();
             auto yout = outGeo->y().data();
             auto zout = outGeo->z().data();
@@ -127,13 +157,23 @@ bool MapDrape::compute()
             offset[1] = p_offset->getValue()[1];
             offset[2] = p_offset->getValue()[2];
 
-            Index numCoords = inGeo->getSize();
-            assert(outGeo->getSize() == inGeo->getSize());
+            Index numCoords = outGeo->getSize();
 
             for (Index i = 0; i < numCoords; ++i) {
-                double x = xc[i] * DEG_TO_RAD;
-                double y = yc[i] * DEG_TO_RAD;
-                double z = zc[i];
+                double x, y, z;
+                if (xc) {
+                    assert(xc && yc && zc);
+                    x = xc[i] * DEG_TO_RAD;
+                    y = yc[i] * DEG_TO_RAD;
+                    z = zc[i];
+                } else {
+                    assert(inStr);
+                    auto v = inStr->getVertex(i);
+                    permutate(perm, v[0], v[1], v[2]);
+                    x = v[0] * DEG_TO_RAD;
+                    y = v[1] * DEG_TO_RAD;
+                    z = v[2];
+                }
 
                 pj_transform(pj_from, pj_to, 1, 1, &x, &y, &z);
 
@@ -142,9 +182,7 @@ bool MapDrape::compute()
                 zout[i] = z + offset[2];
             }
 
-            m_alreadyMapped[inGeo->getName()] = outGeo;
-        } else {
-            outGeo = it->second;
+            m_alreadyMapped[geo->getName()] = outGeo;
         }
 
         if (data) {
