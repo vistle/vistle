@@ -1,15 +1,25 @@
 #include "MapDrape.h"
 #include <vistle/core/structuredgrid.h>
 #include <vistle/core/object.h>
+#include <boost/mpl/for_each.hpp>
+
+#ifdef MAPDRAPE
 #include <proj_api.h>
+
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(PermutationOption, (XYZ)(XZY)(YXZ)(YZX)(ZXY)(ZYX))
+#endif
+
+#ifdef DISPLACE
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(DisplaceComponent, (X)(Y)(Z)(All))
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(DisplaceOperation, (Set)(Add)(Multiply))
+#endif
+
+MODULE_MAIN(MapDrape)
 
 using namespace vistle;
 
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(PermutationOption, (XYZ)(XZY)(YXZ)(YZX)(ZXY)(ZYX))
-MODULE_MAIN(MapDrape)
-
 namespace {
-
+#ifdef MAPDRAPE
 template<class D>
 void permutate(enum PermutationOption perm, D &x, D &y, D &z)
 {
@@ -44,23 +54,132 @@ void permutate(enum PermutationOption perm, D &x, D &y, D &z)
     }
     }
 }
+#endif
 
-PermutationOption invert(PermutationOption perm)
+#ifdef DISPLACE
+
+template<class Grid>
+struct GetCoord;
+template<>
+struct GetCoord<Coords> {
+    const Scalar *ix[3];
+    GetCoord(typename Coords::const_ptr &in): ix{&in->x()[0], &in->y()[0], &in->z()[0]} {}
+    Vector3 operator()(Index i) { return Vector3(ix[0][i], ix[1][i], ix[2][i]); }
+};
+
+template<>
+struct GetCoord<StructuredGridBase> {
+    typename StructuredGridBase::const_ptr &in;
+    GetCoord(typename StructuredGridBase::const_ptr &in): in(in) {}
+    Vector3 operator()(Index i) { return in->getVertex(i); }
+};
+
+template<class Grid, int Dim>
+struct DisplaceImpl {
+    typename Grid::const_ptr &grid;
+    DataBase::const_ptr &database;
+    Coords::ptr &out;
+    DisplaceComponent comp;
+    DisplaceOperation op;
+
+    DisplaceImpl(typename Grid::const_ptr &grid, DataBase::const_ptr &database, Coords::ptr &out,
+                 DisplaceComponent comp, DisplaceOperation op)
+    : grid(grid), database(database), out(out), comp(comp), op(op)
+    {}
+
+    template<typename S>
+    void operator()(S)
+    {
+        typedef Vec<S, Dim> Data;
+        typename Data::const_ptr data(Data::as(database));
+        if (!data) {
+            std::cerr << "data is not " << Object::toString(Data::type()) << std::endl;
+            return;
+        }
+
+        const Index n = data->getSize();
+        Scalar *ox[] = {out->x().data(), out->y().data(), out->z().data()};
+        GetCoord<Grid> coord(grid);
+
+        for (Index i = 0; i < n; ++i) {
+            Vector3 v = coord(i);
+            if (Dim == 1) {
+                S d = data->x()[i];
+                if (comp == All) {
+                    for (unsigned c = 0; c < 3; ++c) {
+                        switch (op) {
+                        case Set:
+                            v[c] = d;
+                            break;
+                        case Add:
+                            v[c] += d;
+                            break;
+                        case Multiply:
+                            v[c] *= d;
+                            break;
+                        }
+                    }
+                } else {
+                    switch (op) {
+                    case Set:
+                        v[comp] = d;
+                        break;
+                    case Add:
+                        v[comp] += d;
+                        break;
+                    case Multiply:
+                        v[comp] *= d;
+                        break;
+                    }
+                }
+            }
+
+            if (Dim == 3) {
+                Vector3 d(data->x()[i], data->y()[i], data->z()[i]);
+                switch (op) {
+                case Set:
+                    v = d;
+                    break;
+                case Add:
+                    v += d;
+                    break;
+                case Multiply:
+                    v = v.cwiseProduct(d);
+                    break;
+                }
+            }
+            ox[0][i] = v[0];
+            ox[1][i] = v[1];
+            ox[2][i] = v[2];
+        }
+    }
+};
+
+bool displace(Object::const_ptr &src, DataBase::const_ptr &data, Coords::ptr &coords, DisplaceComponent comp,
+              DisplaceOperation op)
 {
-    switch (perm) {
-    case YZX: {
-        return ZXY;
-        break;
+    if (data->getSize() != coords->getSize())
+        return false;
+    if (auto scoords = Coords::as(src)) {
+        if (scoords->getSize() != coords->getSize())
+            return false;
+        DisplaceImpl<Coords, 1> d1(scoords, data, coords, comp, op);
+        boost::mpl::for_each<Scalars>(d1);
+        DisplaceImpl<Coords, 3> d3(scoords, data, coords, comp, op);
+        boost::mpl::for_each<Scalars>(d3);
+        return true;
+    } else if (auto sstr = StructuredGridBase::as(src)) {
+        if (sstr->getNumVertices() != coords->getSize())
+            return false;
+        DisplaceImpl<StructuredGridBase, 1> d1(sstr, data, coords, comp, op);
+        boost::mpl::for_each<Scalars>(d1);
+        DisplaceImpl<StructuredGridBase, 3> d3(sstr, data, coords, comp, op);
+        boost::mpl::for_each<Scalars>(d3);
+        return true;
     }
-    case ZXY: {
-        return YZX;
-        break;
-    }
-    default: {
-        return perm;
-    }
-    }
+    return false;
 }
+#endif
 
 } // namespace
 
@@ -71,6 +190,7 @@ MapDrape::MapDrape(const std::string &name, int moduleID, mpi::communicator comm
         data_out[i] = createOutputPort("data_out" + std::to_string(i));
     }
 
+#ifdef MAPDRAPE
     p_mapping_from_ = addStringParameter(
         "from", "PROJ6 order of coordinates for EPSG geo coordinate ref system: 1. Latitude, 2. Longitude",
         "+proj=latlong +datum=WGS84");
@@ -80,6 +200,15 @@ MapDrape::MapDrape(const std::string &name, int moduleID, mpi::communicator comm
 
     p_permutation = addIntParameter("Axis Permutation", "permutation of the axis", XYZ, Parameter::Choice);
     V_ENUM_SET_CHOICES(p_permutation, PermutationOption);
+#endif
+#ifdef DISPLACE
+    p_component = addIntParameter("component", "component to displace for scalar input", Z, Parameter::Choice);
+    V_ENUM_SET_CHOICES(p_component, DisplaceComponent);
+    p_operation = addIntParameter("operation", "displacement operation to apply to selected component or element-wise",
+                                  Add, Parameter::Choice);
+    V_ENUM_SET_CHOICES(p_operation, DisplaceOperation);
+
+#endif
 }
 
 MapDrape::~MapDrape()
@@ -87,9 +216,9 @@ MapDrape::~MapDrape()
 
 bool MapDrape::compute()
 {
+    Coords::ptr outCoords;
+    Object::const_ptr outGeo;
     for (unsigned port = 0; port < NumPorts; ++port) {
-        Coords::ptr outGeo;
-
         if (!isConnected(*data_in[port]))
             continue;
 
@@ -107,46 +236,74 @@ bool MapDrape::compute()
             data.reset();
         }
 
+#ifdef MAPDRAPE
         if (!isConnected(*data_out[port]))
             continue;
+#endif
+#ifdef DISPLACE
+        if (port > 0 && !isConnected(*data_out[port]))
+            continue;
+#endif
+
+#ifdef DISPLACE
+        if (port > 0 && !outCoords)
+            continue;
+#endif
 
         StructuredGridBase::const_ptr inStr;
         const Scalar *xc = nullptr, *yc = nullptr, *zc = nullptr;
+#ifdef MAPDRAPE
         auto it = m_alreadyMapped.find(geo->getName());
         if (it != m_alreadyMapped.end()) {
-            outGeo = it->second;
-        } else if (auto inCoords = Coords::as(geo)) {
-            xc = &inCoords->x()[0];
-            yc = &inCoords->y()[0];
-            zc = &inCoords->z()[0];
+            outCoords = it->second;
+        } else
+#endif
+#ifdef DISPLACE
+            if (!data) {
+            outGeo = geo;
+        } else
+#endif
 
-            outGeo = inCoords->clone();
-            updateMeta(outGeo);
-            outGeo->resetCoords();
-            outGeo->x().resize(inCoords->getNumCoords());
-            outGeo->y().resize(inCoords->getNumCoords());
-            outGeo->z().resize(inCoords->getNumCoords());
+#ifdef DISPLACE
+            if (!outCoords) {
+#endif
+            if (auto inCoords = Coords::as(geo)) {
+                xc = &inCoords->x()[0];
+                yc = &inCoords->y()[0];
+                zc = &inCoords->z()[0];
 
-            assert(outGeo->getSize() == inCoords->getSize());
-        } else if (inStr = StructuredGridBase::as(geo)) {
-            Index dim[] = {inStr->getNumDivisions(0), inStr->getNumDivisions(1), inStr->getNumDivisions(2)};
-            outGeo.reset(new StructuredGrid(dim[0], dim[1], dim[2]));
-            outGeo->copyAttributes(geo);
-            updateMeta(outGeo);
-        } else {
-            sendError("input geometry on port %s does neither have coordinates nor is it a structured grid",
-                      data_in[port]->getName().c_str());
-            return true;
+                outCoords = inCoords->clone();
+                updateMeta(outCoords);
+                outCoords->resetCoords();
+                outCoords->x().resize(inCoords->getNumCoords());
+                outCoords->y().resize(inCoords->getNumCoords());
+                outCoords->z().resize(inCoords->getNumCoords());
+
+                assert(outCoords->getSize() == inCoords->getSize());
+            } else if (inStr = StructuredGridBase::as(geo)) {
+                Index dim[] = {inStr->getNumDivisions(0), inStr->getNumDivisions(1), inStr->getNumDivisions(2)};
+                outCoords.reset(new StructuredGrid(dim[0], dim[1], dim[2]));
+                outCoords->copyAttributes(geo);
+                updateMeta(outCoords);
+            } else {
+                sendError("input geometry on port %s does neither have coordinates nor is it a structured grid",
+                          data_in[port]->getName().c_str());
+                return true;
+            }
+#ifdef DISPLACE
         }
+#endif
 
         if (inStr || (xc && yc && zc)) {
-            assert(outGeo);
+            assert(outCoords);
+
+#ifdef MAPDRAPE
+            auto xout = outCoords->x().data();
+            auto yout = outCoords->y().data();
+            auto zout = outCoords->z().data();
+
             auto perm = PermutationOption(p_permutation->getValue());
             permutate(perm, xc, yc, zc);
-
-            auto xout = outGeo->x().data();
-            auto yout = outGeo->y().data();
-            auto zout = outGeo->z().data();
 
             projPJ pj_from = pj_init_plus(p_mapping_from_->getValue().c_str());
             projPJ pj_to = pj_init_plus(p_mapping_to_->getValue().c_str());
@@ -157,7 +314,7 @@ bool MapDrape::compute()
             offset[1] = p_offset->getValue()[1];
             offset[2] = p_offset->getValue()[2];
 
-            Index numCoords = outGeo->getSize();
+            Index numCoords = outCoords->getSize();
 
             for (Index i = 0; i < numCoords; ++i) {
                 double x, y, z;
@@ -182,7 +339,21 @@ bool MapDrape::compute()
                 zout[i] = z + offset[2];
             }
 
-            m_alreadyMapped[geo->getName()] = outGeo;
+            m_alreadyMapped[geo->getName()] = outCoords;
+#endif
+
+#ifdef DISPLACE
+            if (!displace(geo, data, outCoords, DisplaceComponent(p_component->getValue()),
+                          DisplaceOperation(p_operation->getValue()))) {
+                outCoords.reset();
+                sendInfo("computing displaced grid failed");
+                return true;
+            }
+#endif
+        }
+
+        if (!outGeo) {
+            outGeo = outCoords;
         }
 
         if (data) {
@@ -199,13 +370,22 @@ bool MapDrape::compute()
 
 bool MapDrape::prepare()
 {
+#ifdef MAPDRAPE
     m_alreadyMapped.clear();
+#endif
+#ifdef DISPLACE
+    if (!isConnected(*data_in[0])) {
+        sendError("input on first port is required for computing output grid");
+    }
+#endif
     return true;
 }
 
 bool MapDrape::reduce(int timestep)
 {
+#ifdef MAPDRAPE
     if (timestep == -1)
         m_alreadyMapped.clear();
+#endif
     return true;
 }
