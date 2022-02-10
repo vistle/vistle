@@ -232,12 +232,11 @@ ReadSeisSol::~ReadSeisSol()
  */
 void ReadSeisSol::releaseXdmfObjects()
 {
-    if (!xgridCollect) {
+    if (xgridCollect) {
         xgridCollect->release();
-        xgridCollect.reset();
     }
-    if (!m_vugrid_ptr)
-        m_vugrid_ptr.reset();
+    xgridCollect.reset();
+    m_vugrid_ptr.reset();
 }
 
 /**
