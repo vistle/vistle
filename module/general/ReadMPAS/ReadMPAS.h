@@ -61,6 +61,7 @@ private:
     std::vector<size_t> blockIdx;
     std::vector<size_t> numGhosts;
     std::vector<std::vector<int>> isGhost;
+    std::vector<std::vector<Index>> idxCellsInBlock;
 
     std::vector<int> partList;
     Index numLevels = 0;

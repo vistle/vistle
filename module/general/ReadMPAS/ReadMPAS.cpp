@@ -152,6 +152,8 @@ bool ReadMPAS::prepareRead()
     xCoords.clear();
     yCoords.clear();
     zCoords.clear();
+    idxCellsInBlock.clear();
+    idxCellsInBlock.resize(finalNumberOfParts, std::vector<Index>(0, 0));
 
     return true;
 }
@@ -569,6 +571,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
                             if (iz < numLevels - 1) {
                                 el[currentElem] = idx2;
                                 addCell(i, el, cl, MAX_EDGES, numVertB, izVert, idx2, reducedVOC);
+                                idxCellsInBlock[block].push_back(iz + i * (numLevels - 1));
                                 tl[currentElem++] = isGhost[block][i] > 0
                                                         ? (UnstructuredGrid::CPOLYHEDRON | UnstructuredGrid::GHOST_BIT)
                                                         : UnstructuredGrid::CPOLYHEDRON;
@@ -594,6 +597,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
                             if (iz < numLevels - 1) {
                                 el[currentElem] = idx2;
                                 addCell(i, el, cl, MAX_EDGES, numVertB, izVert, idx2, reducedVOC);
+                                idxCellsInBlock[block].push_back(iz + i * (numLevels - 1));
                                 tl[currentElem++] = isGhost[block][i] > 0
                                                         ? (UnstructuredGrid::CPOLYHEDRON | UnstructuredGrid::GHOST_BIT)
                                                         : UnstructuredGrid::CPOLYHEDRON;
@@ -619,7 +623,6 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
         // Read data
 
         NcmpiVar varData;
-        //Index dataIdx = 0;
         for (Index dataIdx = 0; dataIdx < NUMPARAMS; ++dataIdx) {
             if (!emptyValue(m_variables[dataIdx])) {
                 Vec<Scalar>::ptr dataObj(new Vec<Scalar>((numCellsB[block] + numGhosts[block]) * (numLevels - 1)));
@@ -634,15 +637,8 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
                     getData(ncFirstFile2, &dataValues, numLevels, dataIdx);
                 }
 
-                assert(partList.size() == numCells);
-
-                Index currentElem = 0;
-                for (Index iz = 0; iz < numLevels - 1; ++iz) {
-                    for (Index i = 0; i < numCells; ++i) {
-                        if ((partList[i] == block) || (ghosts && (isGhost[block][i] > 0))) {
-                            ptrOnScalarData[currentElem++] = dataValues[iz + i * (numLevels - 1)]; //numMaxLevels
-                        }
-                    }
+                for (Index k = 0; k < idxCellsInBlock[block].size(); ++k){
+                    ptrOnScalarData[k] = dataValues[idxCellsInBlock[block][k]];
                 }
 
                 dataObj->setGrid(gridList[block]);
