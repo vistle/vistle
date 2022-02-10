@@ -297,9 +297,9 @@ bool ReadMPAS::addCell(Index elem, Index *el, Index *cl, long vPerC, long numVer
 
 // GET DATA
 // read 2D or 3D data from data or grid file into a vector
-bool ReadMPAS::getData(const NcmpiFile &filename, std::vector<float> *dataValues, const MPI_Offset &nLevels)
+bool ReadMPAS::getData(const NcmpiFile &filename, std::vector<float> *dataValues, const MPI_Offset &nLevels, const Index dataIdx)
 {
-    const NcmpiVar &varData = filename.getVar(m_variables[0]->getValue().c_str());
+    const NcmpiVar &varData = filename.getVar(m_variables[dataIdx]->getValue().c_str());
     std::vector<MPI_Offset> numElem, startElem;
     for (auto elem: varData.getDims()) {
         if (strcmp(elem.getName().c_str(), "nCells") == 0) {
@@ -628,10 +628,10 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
                 std::vector<float> dataValues(numCells * (numLevels - 1), 0.);
                 if (hasDataFile) {
                     NcmpiFile ncDataFile(comm(), dataFileList.at(timestep).c_str(), NcmpiFile::read);
-                    getData(ncDataFile, &dataValues, numLevels);
+                    getData(ncDataFile, &dataValues, numLevels, dataIdx);
                 } else {
                     NcmpiFile ncFirstFile2(comm(), firstFileName, NcmpiFile::read);
-                    getData(ncFirstFile2, &dataValues, numLevels);
+                    getData(ncFirstFile2, &dataValues, numLevels, dataIdx);
                 }
 
                 assert(partList.size() == numCells);

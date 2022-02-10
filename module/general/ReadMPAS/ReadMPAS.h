@@ -32,7 +32,7 @@ private:
 
     bool addCell(Index elem, Index *el, Index *cl, long vPerC, long numVert, long izVert, Index &idx2,
                  const std::vector<int> &vocList);
-    bool getData(const NcmpiFile &filename, std::vector<float> *dataValues, const MPI_Offset &nLevels);
+    bool getData(const NcmpiFile &filename, std::vector<float> *dataValues, const MPI_Offset &nLevels, const Index dataIdx);
     bool setVariableList(const NcmpiFile &filename, bool setCOC);
 
 
