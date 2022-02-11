@@ -21,6 +21,7 @@
 #define _READTSUNAMI_H
 
 #include "vistle/core/index.h"
+#include "vistle/core/polygons.h"
 #include <atomic>
 #include <memory>
 #include <mpi.h>
@@ -139,6 +140,9 @@ private:
     void fillHeight(
         vistle::LayerGrid::ptr surface, const Dim<T> &dim,
         const ZCalcFunc &func = [](size_t x, size_t y) { return 0; });
+    void fillPolyElementList_fault(vistle::Polygons::ptr &poly, int corners);
+    void fillPolyConnectList_fault(vistle::Polygons::ptr &poly, int verts);
+    void fillCoords_fault(vistle::Polygons::ptr &poly, const vector<NcGrpAtt> &faults);
 
     template<class T, class PartionIdx>
     auto generateNcVarExt(const NcVar &ncVar, const T &dim, const T &ghost, const T &numDimBlocks,

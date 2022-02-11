@@ -17,6 +17,7 @@
 
 //boost
 #include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/erase.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/mpi/communicator.hpp>
 #include <boost/mpi/intercommunicator.hpp>
@@ -44,6 +45,9 @@ constexpr auto lat{"lat"};
 constexpr auto lon{"lon"};
 constexpr auto bathy{"bathy"};
 constexpr auto ETA{"eta"};
+constexpr auto fault_lat{"lat_barycenter"};
+constexpr auto fault_lon{"lon_barycenter"};
+constexpr auto fault_slip{"slip"};
 constexpr auto _species{"_species"};
 constexpr auto fillValue{"fillValue"};
 constexpr auto fillValueNew{"fillValueNew"};
@@ -576,16 +580,66 @@ void ReadTsunami::createGround(Token &token, const NcFilePtr &ncFile, const arra
     }
 }
 
+void ReadTsunami::fillPolyElementList_fault(vistle::Polygons::ptr &poly, int corners)
+{
+    auto &shm_el = poly->el();
+    std::generate(shm_el.begin(), shm_el.end(), [n = 0]() mutable { return n++ * 4; });
+}
+
+void ReadTsunami::fillPolyConnectList_fault(vistle::Polygons::ptr &poly, int verts)
+{
+    int n = -1;
+    auto connectList = poly->cl().begin();
+    for (auto i = 2; i < verts; i = i + 2) {
+        connectList[++n] = (i - 2);
+        connectList[++n] = (i - 1);
+        connectList[++n] = i + 1;
+        connectList[++n] = i;
+    }
+}
+
+void ReadTsunami::fillCoords_fault(vistle::Polygons::ptr &poly, const vector<NcGrpAtt> &faults)
+{
+    auto x = poly->x().begin(), y = poly->y().begin(), z = poly->z().begin();
+    string input("");
+    stringstream ss;
+    int n = -1;
+    for (auto &flt: faults) {
+        flt.getValues(input);
+        ss << input;
+        float lon;
+        float lat;
+        float slip;
+        float tmpF;
+        string tmp;
+        string ptmp;
+        while (!ss.eof()) {
+            ss >> tmp;
+            tmp.erase(remove(tmp.begin(), tmp.end(), ':'), tmp.end());
+            if (stringstream(tmp) >> tmpF) {
+                if (ptmp == fault_lon)
+                    lon = tmpF;
+                else if (ptmp == fault_lat)
+                    lat = tmpF;
+                else if (ptmp == fault_slip)
+                    slip = tmpF;
+            }
+            ptmp = tmp;
+            tmp = "";
+        }
+        for (int i = 0; i < 2; ++i, ++n) {
+            x[n] = lon;
+            y[n] = lat;
+            if (n % 2 != 0)
+                z[n] = slip;
+            else
+                z[n] = 0;
+        }
+    }
+}
+
 void ReadTsunami::createFault(Token &token, const NcFilePtr &ncFile)
 {
-    /**
-      Create a wall out of the fault data.
-        Data:
-        fault_331 = "time: 0.00, lon_barycenter: 22.47, lat_barycenter: 35.80, rake: 90.00, slip: 0.15" ;
-        1. use lon + lat as vert and slip as height
-        2. create polygon
-        3. add to token
-      **/
     vector<NcGrpAtt> faults;
     for (auto &[name, val]: ncFile->getAtts())
         if (boost::algorithm::starts_with(name, "fault_"))
@@ -595,50 +649,9 @@ void ReadTsunami::createFault(Token &token, const NcFilePtr &ncFile)
     const auto &elements = verts - 1;
     const auto &corners = elements * 4;
     Polygons::ptr fault(new Polygons(elements, corners, verts * 2));
-
-    std::generate(fault->el().begin(), fault->el().end(), [n = -1]() mutable { return ++n * 4; });
-
-    auto connectList = fault->cl().begin();
-    int n = -1;
-    for (auto i = 1; i < verts; ++i)
-        for (auto j = 1; j < 2; ++j) {
-            connectList[++n] = (i - 1) * verts + (j - 1);
-            connectList[++n] = j * verts + (j - 1);
-            connectList[++n] = j * verts + j;
-            connectList[++n] = (j - 1) * verts + j;
-        }
-
-    auto x = fault->x().begin(), y = fault->y().begin(), z = fault->z().begin();
-    n = 0;
-    for (auto &flt: faults) {
-        string input("");
-        flt.getValues(input);
-        stringstream ss;
-        ss << input;
-        string tmp;
-        string ptmp;
-        float tmpF;
-        map<string, float> mAtts;
-        while (!ss.eof()) {
-            ss >> tmp;
-            if (stringstream(tmp) >> tmpF)
-                mAtts.emplace(tmp, tmpF);
-            ptmp = tmp;
-            tmp = "";
-        }
-        auto lon_center = mAtts["lon_barycenter"];
-        auto lat_center = mAtts["lat_barycenter"];
-        auto slip = mAtts["slip"];
-        for (int i = 0; i < 2; ++i, ++n) {
-            x[n] = lon_center;
-            y[n] = lat_center;
-            if (n % 2 != 0)
-                z[n] = slip;
-            else
-                z[n] = 0;
-        }
-    }
-
+    fillPolyElementList_fault(fault, 4);
+    fillPolyConnectList_fault(fault, verts);
+    fillCoords_fault(fault, faults);
     fault->setBlock(0);
     fault->setTimestep(-1);
     fault->updateInternals();
