@@ -1,6 +1,6 @@
 /* ------------------------------------------------------------------------------------
            READ MPAS
-   
+
        - read netCDF files containing hexagonal mpas mesh, data and partition info
        - required files: "grid_file" and "part_file"
 
@@ -299,7 +299,8 @@ bool ReadMPAS::addCell(Index elem, Index *el, Index *cl, long vPerC, long numVer
 
 // GET DATA
 // read 2D or 3D data from data or grid file into a vector
-bool ReadMPAS::getData(const NcmpiFile &filename, std::vector<float> *dataValues, const MPI_Offset &nLevels, const Index dataIdx)
+bool ReadMPAS::getData(const NcmpiFile &filename, std::vector<float> *dataValues, const MPI_Offset &nLevels,
+                       const Index dataIdx)
 {
     const NcmpiVar &varData = filename.getVar(m_variables[dataIdx]->getValue().c_str());
     std::vector<MPI_Offset> numElem, startElem;
@@ -561,9 +562,9 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
                                 i_v2 = cov[iVOC * MAX_VERT + 1];
                                 i_v3 = cov[iVOC * MAX_VERT + 2];
                                 radius = RAD_SCALE * (1. / 3.) *
-                                                (zGrid[(numLevels)*i_v1 + iz] + zGrid[(numLevels)*i_v2 + iz] +
-                                                zGrid[(numLevels)*i_v3 + iz]) +
-                                            MSL; //compute vertex z from average of neighbouring cells
+                                             (zGrid[(numLevels)*i_v1 + iz] + zGrid[(numLevels)*i_v2 + iz] +
+                                              zGrid[(numLevels)*i_v3 + iz]) +
+                                         MSL; //compute vertex z from average of neighbouring cells
                                 ptrOnX[izVert + iv] = radius * xCoords[iVOC];
                                 ptrOnY[izVert + iv] = radius * yCoords[iVOC];
                                 ptrOnZ[izVert + iv] = radius * zCoords[iVOC];
@@ -635,9 +636,9 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
                     getData(ncFirstFile2, &dataValues, numLevels, dataIdx);
                 }
                 Index currentElem = 0;
-                for (Index iz = 0; iz < numLevels-1; ++iz) {
-                    for (Index k = 0; k < idxCellsInBlock[block].size(); ++k){
-                        ptrOnScalarData[currentElem++] = dataValues[iz + idxCellsInBlock[block][k]*(numLevels-1)];
+                for (Index iz = 0; iz < numLevels - 1; ++iz) {
+                    for (Index k = 0; k < idxCellsInBlock[block].size(); ++k) {
+                        ptrOnScalarData[currentElem++] = dataValues[iz + idxCellsInBlock[block][k] * (numLevels - 1)];
                     }
                 }
 
