@@ -49,6 +49,7 @@ private:
     typedef PnetCDF::NcmpiFile NcFile;
     typedef unique_ptr<NcFile> NcFilePtr;
     typedef vistle::Vec<vistle::Scalar>::ptr VisVecScalarPtr;
+    typedef vistle::Polygons::ptr PolyPtr;
     typedef array<VisVecScalarPtr, NUM_SCALARS> ArrVecScalarPtrs;
     typedef vector<ArrVecScalarPtrs> VecArrVecScalarPtrs;
     typedef vector<array<float, 2>> VecLatLon;
@@ -121,7 +122,7 @@ private:
                      int block);
     void createGround(Token &token, const NcFilePtr &ncFile, const array<vistle::Index, 2> &nBlocks,
                       const array<vistle::Index, NUM_BLOCKS> &blockPartIdx, int ghost, int block);
-    void createFault(Token &token, const NcFilePtr &ncFile);
+    void createFault(Token &token, const NcFilePtr &ncFile, int block);
     void initScalarParamReader();
     bool inspectNetCDF();
     bool inspectAtts(const NcFilePtr &ncFile);
@@ -140,9 +141,9 @@ private:
     void fillHeight(
         vistle::LayerGrid::ptr surface, const Dim<T> &dim,
         const ZCalcFunc &func = [](size_t x, size_t y) { return 0; });
-    void fillPolyElementList_fault(vistle::Polygons::ptr &poly, int corners);
-    void fillPolyConnectList_fault(vistle::Polygons::ptr &poly, int verts);
-    void fillCoords_fault(vistle::Polygons::ptr &poly, const vector<NcGrpAtt> &faults);
+    void fillPolyElementList_fault(PolyPtr poly, int corners);
+    void fillPolyConnectList_fault(PolyPtr poly, int verts);
+    void fillCoords_fault(PolyPtr poly, const vector<NcGrpAtt> &faults);
 
     template<class T, class PartionIdx>
     auto generateNcVarExt(const NcVar &ncVar, const T &dim, const T &ghost, const T &numDimBlocks,

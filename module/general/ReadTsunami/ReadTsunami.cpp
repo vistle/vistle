@@ -580,13 +580,12 @@ void ReadTsunami::createGround(Token &token, const NcFilePtr &ncFile, const arra
     }
 }
 
-void ReadTsunami::fillPolyElementList_fault(vistle::Polygons::ptr &poly, int corners)
+void ReadTsunami::fillPolyElementList_fault(PolyPtr poly, int corners)
 {
-    auto &shm_el = poly->el();
-    std::generate(shm_el.begin(), shm_el.end(), [n = 0]() mutable { return n++ * 4; });
+    std::generate(poly->el().begin(), poly->el().end(), [n = -1]() mutable { return ++n * 4; });
 }
 
-void ReadTsunami::fillPolyConnectList_fault(vistle::Polygons::ptr &poly, int verts)
+void ReadTsunami::fillPolyConnectList_fault(PolyPtr poly, int verts)
 {
     int n = -1;
     auto connectList = poly->cl().begin();
@@ -598,13 +597,13 @@ void ReadTsunami::fillPolyConnectList_fault(vistle::Polygons::ptr &poly, int ver
     }
 }
 
-void ReadTsunami::fillCoords_fault(vistle::Polygons::ptr &poly, const vector<NcGrpAtt> &faults)
+void ReadTsunami::fillCoords_fault(PolyPtr poly, const vector<NcGrpAtt> &faults)
 {
     auto x = poly->x().begin(), y = poly->y().begin(), z = poly->z().begin();
     string input("");
-    stringstream ss;
-    int n = -1;
+    int n = 0;
     for (auto &flt: faults) {
+        stringstream ss;
         flt.getValues(input);
         ss << input;
         float lon;
@@ -630,15 +629,12 @@ void ReadTsunami::fillCoords_fault(vistle::Polygons::ptr &poly, const vector<NcG
         for (int i = 0; i < 2; ++i, ++n) {
             x[n] = lon;
             y[n] = lat;
-            if (n % 2 != 0)
-                z[n] = slip;
-            else
-                z[n] = 0;
+            z[n] = n % 2 == 0 ? slip : 0;
         }
     }
 }
 
-void ReadTsunami::createFault(Token &token, const NcFilePtr &ncFile)
+void ReadTsunami::createFault(Token &token, const NcFilePtr &ncFile, int block)
 {
     vector<NcGrpAtt> faults;
     for (auto &[name, val]: ncFile->getAtts())
@@ -652,7 +648,7 @@ void ReadTsunami::createFault(Token &token, const NcFilePtr &ncFile)
     fillPolyElementList_fault(fault, 4);
     fillPolyConnectList_fault(fault, verts);
     fillCoords_fault(fault, faults);
-    fault->setBlock(0);
+    fault->setBlock(block);
     fault->setTimestep(-1);
     fault->updateInternals();
     token.addObject(m_fault_out, fault);
@@ -693,7 +689,7 @@ bool ReadTsunami::computeConst(Token &token, const int block)
     }
 
     if (m_fault->getValue() && m_faultInfo)
-        createFault(token, ncFile);
+        createFault(token, ncFile, block);
 
     if (m_groundSurface_out->isConnected()) {
         if (m_bathy->getValue() == NONE)
