@@ -601,7 +601,7 @@ bool ReadTsunami::computeConst(Token &token, const int block)
     if (err == NC_NOERR) {
         MPI_Reduce(&malloc_size, &sum_size, 1, MPI_OFFSET, MPI_SUM, 0, MPI_COMM_WORLD);
         if (rank() == 0 && sum_size > 0)
-            sendInfo("heap memory allocated by PnetCDF internally has %lld bytes yet to be freed\n", sum_size);
+            sendInfo("heap memory allocated by PnetCDF internally has %ld bytes yet to be freed\n", (long)sum_size);
     }
     return true;
 }
