@@ -33,10 +33,10 @@ public:
 
     void copyAttributes(Object::const_ptr src, bool replace = true) override;
 
-    virtual int dimension() const;
+    virtual unsigned dimension() const;
     virtual bool copyEntry(Index to, DataBase::const_ptr src, Index from);
-    virtual void setValue(Index idx, int component, const double &value);
-    virtual double value(Index idx, int component = 0) const;
+    virtual void setValue(Index idx, unsigned component, const double &value);
+    virtual double value(Index idx, unsigned component = 0) const;
 
 private:
     V_DATA_BEGIN(DataBase);
