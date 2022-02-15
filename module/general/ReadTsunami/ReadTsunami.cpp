@@ -121,7 +121,6 @@ void ReadTsunami::initScalarParamReader()
         const string &portDescr = scalarPort_descr + i_str;
         m_scalars[i] = addStringParameter(scName, "Select scalar.", "", Parameter::Choice);
         m_scalarsOut[i] = createOutputPort(portName, portDescr);
-        observeParameter(m_scalars[i]);
     }
 }
 
