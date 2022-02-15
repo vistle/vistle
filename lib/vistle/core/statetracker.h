@@ -223,6 +223,10 @@ protected:
     bool isExecuting(int id) const;
 
     void appendModuleState(VistleState &state, const Module &mod) const;
+    void appendModuleParameter(VistleState &state, const Module &mod) const;
+    void appendModulePorts(VistleState &state, const Module &mod) const;
+    void appendModuleOutputConnections(VistleState &state, const Module &mod) const;
+
 
     std::map<AvailableModule::Key, AvailableModule> m_availableModules;
 

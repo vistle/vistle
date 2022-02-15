@@ -220,7 +220,6 @@ void appendMessage(std::vector<StateTracker::MessageWithPayload> &v, const messa
 
 } // namespace
 
-
 void StateTracker::appendModuleState(VistleState &state, const StateTracker::Module &m) const
 {
     using namespace vistle::message;
@@ -246,6 +245,89 @@ void StateTracker::appendModuleState(VistleState &state, const StateTracker::Mod
     if (m.killed) {
         Kill k(m.id);
         appendMessage(state, k);
+    }
+}
+
+void StateTracker::appendModuleParameter(VistleState &state, const Module &m) const
+{
+    using namespace vistle::message;
+    const ParameterMap &pmap = m.parameters;
+    for (const auto &it2: m.paramOrder) {
+        //CERR << "module " << id << ": " << it2.first << " -> " << it2.second << std::endl;
+        const std::string &name = it2.second;
+        const auto it3 = pmap.find(name);
+        assert(it3 != pmap.end());
+        const auto param = it3->second;
+        auto id = m.id;
+        AddParameter add(*param, getModuleName(id));
+        add.setSenderId(id);
+        appendMessage(state, add);
+
+        SetParameter setDef(id, name, param, Parameter::Value, true);
+        setDef.setSenderId(id);
+        appendMessage(state, setDef);
+
+        if (param->presentation() == Parameter::Choice) {
+            SetParameterChoices choices(name, param->choices().size());
+            choices.setSenderId(id);
+            SetParameterChoices::Payload pl(param->choices());
+            auto vec = addPayload(choices, pl);
+            auto shvec = std::make_shared<buffer>(vec);
+            appendMessage(state, choices, shvec);
+        }
+
+        SetParameter setV(id, name, param, Parameter::Value);
+        setV.setSenderId(id);
+        appendMessage(state, setV);
+        SetParameter setMin(id, name, param, Parameter::Minimum);
+        setMin.setSenderId(id);
+        appendMessage(state, setMin);
+        SetParameter setMax(id, name, param, Parameter::Maximum);
+        setMax.setSenderId(id);
+        appendMessage(state, setMax);
+    }
+}
+
+void StateTracker::appendModulePorts(VistleState &state, const Module &mod) const
+{
+    using namespace vistle::message;
+    if (portTracker()) {
+        for (auto &portname: portTracker()->getInputPortNames(mod.id)) {
+            AddPort cp(*portTracker()->getPort(mod.id, portname));
+            cp.setSenderId(mod.id);
+            appendMessage(state, cp);
+        }
+
+        for (auto &portname: portTracker()->getOutputPortNames(mod.id)) {
+            AddPort cp(*portTracker()->getPort(mod.id, portname));
+            cp.setSenderId(mod.id);
+            appendMessage(state, cp);
+        }
+    }
+}
+
+void StateTracker::appendModuleOutputConnections(VistleState &state, const Module &mod) const
+{
+    using namespace vistle::message;
+
+    const int id = mod.id;
+
+    if (portTracker()) {
+        for (auto &portname: portTracker()->getOutputPortNames(id)) {
+            const Port::ConstPortSet *connected = portTracker()->getConnectionList(id, portname);
+            for (auto &dest: *connected) {
+                Connect c(id, portname, dest->getModuleID(), dest->getName());
+                appendMessage(state, c);
+            }
+        }
+
+        for (auto &paramname: getParameters(id)) {
+            const Port::ConstPortSet *connected = portTracker()->getConnectionList(id, paramname);
+            for (auto &dest: *connected) {
+                Connect c(id, paramname, dest->getModuleID(), dest->getName());
+                appendMessage(state, c);
+            }
+        }
     }
 }
 
@@ -290,79 +372,13 @@ StateTracker::VistleState StateTracker::getState() const
         if (Id::isModule(id)) {
             appendModuleState(state, m);
         }
-
-        const ParameterMap &pmap = m.parameters;
-        for (const auto &it2: m.paramOrder) {
-            //CERR << "module " << id << ": " << it2.first << " -> " << it2.second << std::endl;
-            const std::string &name = it2.second;
-            const auto it3 = pmap.find(name);
-            assert(it3 != pmap.end());
-            const auto param = it3->second;
-
-            AddParameter add(*param, getModuleName(id));
-            add.setSenderId(id);
-            appendMessage(state, add);
-
-            SetParameter setDef(id, name, param, Parameter::Value, true);
-            setDef.setSenderId(id);
-            appendMessage(state, setDef);
-
-            if (param->presentation() == Parameter::Choice) {
-                SetParameterChoices choices(name, param->choices().size());
-                choices.setSenderId(id);
-                SetParameterChoices::Payload pl(param->choices());
-                auto vec = addPayload(choices, pl);
-                auto shvec = std::make_shared<buffer>(vec);
-                appendMessage(state, choices, shvec);
-            }
-
-            SetParameter setV(id, name, param, Parameter::Value);
-            setV.setSenderId(id);
-            appendMessage(state, setV);
-            SetParameter setMin(id, name, param, Parameter::Minimum);
-            setMin.setSenderId(id);
-            appendMessage(state, setMin);
-            SetParameter setMax(id, name, param, Parameter::Maximum);
-            setMax.setSenderId(id);
-            appendMessage(state, setMax);
-        }
-
-        if (portTracker()) {
-            for (auto &portname: portTracker()->getInputPortNames(id)) {
-                AddPort cp(*portTracker()->getPort(id, portname));
-                cp.setSenderId(id);
-                appendMessage(state, cp);
-            }
-
-            for (auto &portname: portTracker()->getOutputPortNames(id)) {
-                AddPort cp(*portTracker()->getPort(id, portname));
-                cp.setSenderId(id);
-                appendMessage(state, cp);
-            }
-        }
+        appendModuleParameter(state, m);
+        appendModulePorts(state, m);
     }
 
     // connections
     for (auto &it: runningMap) {
-        const int id = it.first;
-
-        if (portTracker()) {
-            for (auto &portname: portTracker()->getOutputPortNames(id)) {
-                const Port::ConstPortSet *connected = portTracker()->getConnectionList(id, portname);
-                for (auto &dest: *connected) {
-                    Connect c(id, portname, dest->getModuleID(), dest->getName());
-                    appendMessage(state, c);
-                }
-            }
-
-            for (auto &paramname: getParameters(id)) {
-                const Port::ConstPortSet *connected = portTracker()->getConnectionList(id, paramname);
-                for (auto &dest: *connected) {
-                    Connect c(id, paramname, dest->getModuleID(), dest->getName());
-                    appendMessage(state, c);
-                }
-            }
-        }
+        appendModuleOutputConnections(state, it.second);
     }
 
     for (const auto &m: m_queue)
