@@ -42,7 +42,9 @@ using namespace PnetCDF;
 MODULE_MAIN_THREAD(ReadTsunami, boost::mpi::threading::multiple)
 namespace {
 constexpr auto lat{"lat"};
+constexpr auto grid_lat{"grid_lat"};
 constexpr auto lon{"lon"};
+constexpr auto grid_lon{"grid_lon"};
 constexpr auto bathy{"bathy"};
 constexpr auto ETA{"eta"};
 constexpr auto fault_lat{"lat_barycenter"};
@@ -52,6 +54,13 @@ constexpr auto _species{"_species"};
 constexpr auto fillValue{"fillValue"};
 constexpr auto fillValueNew{"fillValueNew"};
 constexpr auto NONE{"None"};
+
+struct COMP_VAR_DIM {
+    bool operator()(const ReadTsunami::PNcVarExt &var, const ReadTsunami::NcDim &dim) const
+    {
+        return (var.getName() == dim.getName()) && !(var.getId() ^ dim.getId());
+    }
+};
 } // namespace
 
 ReadTsunami::ReadTsunami(const string &name, int moduleID, mpi::communicator comm)
@@ -129,11 +138,22 @@ void ReadTsunami::initScalarParamReader()
  *
  * @param str Format str to print.
  */
-template<class... Args>
-void ReadTsunami::printRank0(const string &str, Args... args) const
+void ReadTsunami::printRank0(const string &str) const
 {
     if (rank() == 0)
-        sendInfo(str, args...);
+        sendInfo(str);
+}
+
+/**
+ * @brief Print string only on rank 0.
+ *
+ * @param str Format str to print.
+ * @param block current block.
+ */
+void ReadTsunami::printRank0AndBlock0(const string &str, int block) const
+{
+    if (block == 0)
+        printRank0(str);
 }
 
 /**
@@ -206,7 +226,7 @@ bool ReadTsunami::inspectAtts(const NcFilePtr &ncFile)
  *
  * @param ncFile Open nc file pointer.
  *
- * @return tru if everything is initialized.
+ * @return true if everything is initialized.
  */
 bool ReadTsunami::inspectDims(const NcFilePtr &ncFile)
 {
@@ -275,7 +295,8 @@ bool ReadTsunami::inspectScalars(const NcFilePtr &ncFile)
             latLonContainsGrid(name, 1);
         else if (strContains(name, bathy)) // || strContains(name, "deformation"))
             bathyChoiceVec.push_back(name);
-        else if (val.getDimCount() == 2) // for now: only scalars with 2 dim depend on lat lon.
+        /* else if (val.getDimCount() == 2) // for now: only scalars with 2 dim depend on lat lon. */
+        else
             scalarChoiceVec.push_back(name);
     }
     ifEmptyAddNone(scalarChoiceVec);
@@ -428,12 +449,12 @@ void ReadTsunami::computeBlockPartition(const int block, vistle::Index &nLatBloc
  * @param verticesSea number of vertices for sea surface of the current block.
  * @param block current block.
  */
-void ReadTsunami::initETA(const NcFilePtr &ncFile, const array<PNcVarExt, 2> &ncExtSea, const ReaderTime &time,
+void ReadTsunami::initETA(const NcFilePtr &ncFile, const map<string, PNcVarExt> &mapNcVars, const ReaderTime &time,
                           const size_t &verticesSea, int block)
 {
     const NcVar &etaVar = ncFile->getVar(ETA);
-    const auto &latSea = ncExtSea[0];
-    const auto &lonSea = ncExtSea[1];
+    const auto &latSea = mapNcVars.at(lat);
+    const auto &lonSea = mapNcVars.at(lon);
     const auto &nTimesteps = time.calc_numtime();
     m_block_etaVec[block] = vector<float>(nTimesteps * verticesSea);
     const vector<MPI_Offset> vecStartEta{time.first(), latSea.Start(), lonSea.Start()};
@@ -452,39 +473,67 @@ void ReadTsunami::initETA(const NcFilePtr &ncFile, const array<PNcVarExt, 2> &nc
 }
 
 /**
+ * @brief Initialize scalars which depend on latitude and longitude.
+ *
+ */
+void ReadTsunami::initScalarDepLatLon(VisVecScalarPtr &scalarPtr, const NcVar &var, const PNcVarExt &latSea,
+                                      const PNcVarExt &lonSea, int block)
+{
+    const auto &dim = latSea.Count() * lonSea.Count();
+    scalarPtr = make_shared<Vec<Scalar>>(dim);
+    vector<float> vecScalar(dim);
+    const vector<MPI_Offset> vecScalarStart{latSea.Start(), lonSea.Start()};
+    const vector<MPI_Offset> vecScalarCount{latSea.Count(), lonSea.Count()};
+    const vector<MPI_Offset> vecScalarStride{1, 1};
+    const vector<MPI_Offset> vecScalarImap{1, latSea.Count()}; // transponse
+    var.getVar_all(vecScalarStart, vecScalarCount, vecScalarStride, vecScalarImap, scalarPtr->x().begin());
+
+    //set some meta data
+    scalarPtr->addAttribute(_species, var.getName());
+    scalarPtr->setBlock(block);
+}
+
+/**
  * @brief Initialize scalars for each attribute and each block.
  *
- * @param ncFile open ncfile pointer.
- * @param ncExtSea array which contains latitude and longitude NcVarExtended objects.
- * @param verticesSea number of vertices for the sea surface.
+ * @param var NcVar.
+ * @param visVecScalarPtr storage ptr.
+ * @param mapNcVars array which contains latitude and longitude NcVarExtended objects.
  * @param block current block.
  */
-void ReadTsunami::initScalars(const NcFilePtr &ncFile, const array<PNcVarExt, 2> &ncExtSea, const size_t &verticesSea,
-                              int block)
+void ReadTsunami::initScalars(const NcVar &var, VisVecScalarPtr &visVecScalarPtr,
+                              const map<string, PNcVarExt> &mapNcVars, int block)
 {
-    const auto &latSea = ncExtSea[0];
-    const auto &lonSea = ncExtSea[1];
-    auto &vecScalarPtrArr = m_block_VecScalarPtr[block];
-    for (int i = 0; i < NUM_SCALARS; ++i) {
-        if (!m_scalarsOut[i]->isConnected())
-            continue;
-        const auto &scName = m_scalars[i]->getValue();
-        if (scName == NONE)
-            continue;
-        vector<float> vecScalar(verticesSea);
-        const vector<MPI_Offset> vecScalarStart{latSea.Start(), lonSea.Start()};
-        const vector<MPI_Offset> vecScalarCount{latSea.Count(), lonSea.Count()};
-        const vector<MPI_Offset> vecScalarStride{1, 1};
-        const vector<MPI_Offset> vecScalarImap{1, latSea.Count()}; // transponse
-        const auto &val = ncFile->getVar(scName);
-        VisVecScalarPtr scalarPtr(new Vec<Scalar>(verticesSea));
-        vecScalarPtrArr[i] = scalarPtr;
-        val.getVar_all(vecScalarStart, vecScalarCount, vecScalarStride, vecScalarImap, scalarPtr->x().begin());
-
-        //set some meta data
-        scalarPtr->addAttribute(_species, scName);
-        scalarPtr->setBlock(block);
+    const auto &dimCount = var.getDimCount();
+    if (dimCount > 2 || dimCount < 2) {
+        // no scalars with dimCount > 2 at the moment except ETA which is used as height of the tsunami => await ChEESE 2 addition.
+        if (var.getName() != ETA) // ignore ETA
+            printRank0AndBlock0("Please add implementation for " + var.getName() + " to function initScalars.", block);
+        visVecScalarPtr = nullptr;
+        return;
     }
+    int hitLatLon = 0;
+    int hitLatLonGrid = 0;
+    for (auto &dim: var.getDims())
+        for (const auto &[name, ncVarExt]: mapNcVars) {
+            if (hitLatLon == 2 || hitLatLonGrid == 2)
+                break;
+            if (COMP_VAR_DIM()(ncVarExt, dim)) {
+                if (strContains(dim.getName(), "grid_"))
+                    ++hitLatLonGrid;
+                else
+                    ++hitLatLon;
+            }
+        }
+    if (hitLatLon == 2 || hitLatLonGrid == 2) {
+        const auto &lat_ref = hitLatLon ? mapNcVars.at(lat) : mapNcVars.at(grid_lat);
+        const auto &lon_ref = hitLatLon ? mapNcVars.at(lon) : mapNcVars.at(grid_lon);
+        initScalarDepLatLon(visVecScalarPtr, var, lat_ref, lon_ref, block);
+    } else
+        printRank0AndBlock0(
+            "Scalar " + var.getName() +
+                " not depending on latitude or longitude. Please add own implementation to function initScalars.",
+            block);
 }
 
 /**
@@ -497,23 +546,17 @@ void ReadTsunami::initScalars(const NcFilePtr &ncFile, const array<PNcVarExt, 2>
  * @param ghost ghostcells to add.
  * @param block current block.
  */
-void ReadTsunami::initSea(const NcFilePtr &ncFile, const array<Index, 2> &nBlocks,
-                          const array<Index, NUM_BLOCKS> &nBlockPartIdx, const ReaderTime &time, int ghost, int block)
+void ReadTsunami::initSea(const NcFilePtr &ncFile, const map<string, PNcVarExt> &mapNcVars,
+                          const array<Index, 2> &nBlocks, const array<Index, NUM_BLOCKS> &nBlockPartIdx,
+                          const ReaderTime &time, int ghost, int block)
 {
-    const NcVar &latVar = ncFile->getVar(m_latLon_Sea[0]);
-    const NcVar &lonVar = ncFile->getVar(m_latLon_Sea[1]);
-    const sztDim dimSeaTotal(latVar.getDim(0).getSize(), lonVar.getDim(0).getSize(), 1);
-
-    array<PNcVarExt, 2> latLonSea;
-    latLonSea[0] = generateNcVarExt<MPI_Offset, Index>(latVar, dimSeaTotal.X(), ghost, nBlocks[0], nBlockPartIdx[0]);
-    latLonSea[1] = generateNcVarExt<MPI_Offset, Index>(lonVar, dimSeaTotal.Y(), ghost, nBlocks[1], nBlockPartIdx[1]);
-
     // lat = Y and lon = X
-    const auto &latSea = latLonSea[0];
-    const auto &lonSea = latLonSea[1];
-
+    const auto &latSea = mapNcVars.at(lat);
+    const auto &lonSea = mapNcVars.at(lon);
+    const sztDim dimSeaTotal(latSea.Count(), lonSea.Count(), 1);
     const size_t &vertSea = latSea.Count() * lonSea.Count();
-    initETA(ncFile, latLonSea, time, vertSea, block);
+
+    initETA(ncFile, mapNcVars, time, vertSea, block);
 
     vector<float> vecLat(latSea.Count()), vecLon(lonSea.Count());
 
@@ -524,8 +567,6 @@ void ReadTsunami::initSea(const NcFilePtr &ncFile, const array<Index, 2> &nBlock
     m_block_min[block][1] = *vecLat.begin();
     m_block_max[block][0] = *(vecLon.end() - 1);
     m_block_max[block][1] = *(vecLat.end() - 1);
-
-    initScalars(ncFile, latLonSea, vertSea, block);
 }
 
 /**
@@ -538,17 +579,12 @@ void ReadTsunami::initSea(const NcFilePtr &ncFile, const array<Index, 2> &nBlock
  * @param ghost ghostcells to add.
  * @param block current block.
  */
-void ReadTsunami::createGround(Token &token, const NcFilePtr &ncFile, const array<vistle::Index, 2> &nBlocks,
+void ReadTsunami::createGround(Token &token, const NcFilePtr &ncFile, const map<string, PNcVarExt> &mapNcVars,
+                               const array<vistle::Index, 2> &nBlocks,
                                const array<vistle::Index, NUM_BLOCKS> &blockPartIdx, int ghost, int block)
 {
-    const NcVar &gridLatVar = ncFile->getVar(m_latLon_Ground[0]);
-    const NcVar &gridLonVar = ncFile->getVar(m_latLon_Ground[1]);
-
-    const sztDim dimGroundTotal(gridLatVar.getDim(0).getSize(), gridLonVar.getDim(0).getSize(), 0);
-    const auto latGround =
-        generateNcVarExt<MPI_Offset, Index>(gridLatVar, dimGroundTotal.X(), ghost, nBlocks[0], blockPartIdx[0]);
-    const auto lonGround =
-        generateNcVarExt<MPI_Offset, Index>(gridLonVar, dimGroundTotal.Y(), ghost, nBlocks[1], blockPartIdx[1]);
+    const auto &latGround = mapNcVars.at(grid_lat);
+    const auto &lonGround = mapNcVars.at(grid_lon);
     const size_t &verticesGround = latGround.Count() * lonGround.Count();
     vector<float> vecDepth(verticesGround);
     const NcVar &bathymetryVar = ncFile->getVar(m_bathy->getValue());
@@ -676,6 +712,26 @@ bool ReadTsunami::computeConst(Token &token, const int block)
     if (m_ghost->getValue() == 1 && !(nBlocks[0] == 1 && nBlocks[1] == 1))
         ghost++;
 
+    const auto &lat_str = m_latLon_Sea[0];
+    const auto &lon_str = m_latLon_Sea[1];
+    const auto &grid_lat_str = m_latLon_Ground[0];
+    const auto &grid_lon_str = m_latLon_Ground[1];
+    const NcVar &latVar = ncFile->getVar(lat_str);
+    const NcVar &lonVar = ncFile->getVar(lon_str);
+    const NcVar &gridLatVar = ncFile->getVar(grid_lat_str);
+    const NcVar &gridLonVar = ncFile->getVar(grid_lon_str);
+    map<string, PNcVarExt> mapNcVarExt;
+    const sztDim dimSeaTotal(latVar.getDim(0).getSize(), lonVar.getDim(0).getSize(), 1);
+    const sztDim dimGroundTotal(gridLatVar.getDim(0).getSize(), gridLonVar.getDim(0).getSize(), 1);
+    mapNcVarExt[lat_str] =
+        generateNcVarExt<MPI_Offset, Index>(latVar, dimSeaTotal.X(), ghost, nBlocks[0], blockPartitionIdx[0]);
+    mapNcVarExt[lon_str] =
+        generateNcVarExt<MPI_Offset, Index>(lonVar, dimSeaTotal.Y(), ghost, nBlocks[1], blockPartitionIdx[1]);
+    mapNcVarExt[grid_lat_str] =
+        generateNcVarExt<MPI_Offset, Index>(gridLatVar, dimGroundTotal.X(), ghost, nBlocks[0], blockPartitionIdx[0]);
+    mapNcVarExt[grid_lon_str] =
+        generateNcVarExt<MPI_Offset, Index>(gridLonVar, dimGroundTotal.Y(), ghost, nBlocks[1], blockPartitionIdx[1]);
+
     if (m_needSea) {
         auto last = m_last->getValue();
         if (last < 0)
@@ -684,7 +740,7 @@ bool ReadTsunami::computeConst(Token &token, const int block)
         auto first = m_first->getValue();
         last = last - (last % inc);
         const auto &time = ReaderTime(first, last, inc);
-        initSea(ncFile, nBlocks, blockPartitionIdx, time, ghost, block);
+        initSea(ncFile, mapNcVarExt, nBlocks, blockPartitionIdx, time, ghost, block);
     }
 
     if (m_fault->getValue() && m_faultInfo)
@@ -692,9 +748,18 @@ bool ReadTsunami::computeConst(Token &token, const int block)
 
     if (m_groundSurface_out->isConnected()) {
         if (m_bathy->getValue() == NONE)
-            printRank0("File doesn't provide bathymetry data");
+            printRank0AndBlock0("File doesn't provide bathymetry data", block);
         else
-            createGround(token, ncFile, nBlocks, blockPartitionIdx, ghost, block);
+            createGround(token, ncFile, mapNcVarExt, nBlocks, blockPartitionIdx, ghost, block);
+    }
+
+    for (int i = 0; i < NUM_SCALARS; ++i) {
+        if (!m_scalarsOut[i]->isConnected())
+            continue;
+        const auto &scName = m_scalars[i]->getValue();
+        if (scName == NONE)
+            continue;
+        initScalars(ncFile->getVar(scName), m_block_VecScalarPtr[block][i], mapNcVarExt, block);
     }
 
     /* check if there is any PnetCDF internal malloc residue */
@@ -743,14 +808,19 @@ bool ReadTsunami::computeTimestep(Token &token, const int block, const int times
         if (!m_scalarsOut[i]->isConnected())
             continue;
 
-        auto vecScalarPtr = arrVecScaPtrs[i]->clone();
-        vecScalarPtr->setGrid(gridPtr);
-        vecScalarPtr->addAttribute(_species, vecScalarPtr->getAttribute(_species));
-        vecScalarPtr->setBlock(block);
-        vecScalarPtr->setTimestep(timestep);
-        vecScalarPtr->updateInternals();
+        const auto &vecScalarPtr = arrVecScaPtrs[i];
+        if (!vecScalarPtr)
+            continue;
 
-        token.addObject(m_scalarsOut[i], vecScalarPtr);
+        auto scalarPtr = vecScalarPtr->clone();
+
+        scalarPtr->setGrid(gridPtr);
+        scalarPtr->addAttribute(_species, vecScalarPtr->getAttribute(_species));
+        scalarPtr->setBlock(block);
+        scalarPtr->setTimestep(timestep);
+        scalarPtr->updateInternals();
+
+        token.addObject(m_scalarsOut[i], scalarPtr);
     }
 
     return true;

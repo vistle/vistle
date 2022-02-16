@@ -38,38 +38,10 @@ constexpr int NUM_SCALARS{4};
 
 class ReadTsunami: public vistle::Reader {
 public:
-    //default constructor
-    ReadTsunami(const string &name, int moduleID, mpi::communicator comm);
-    ~ReadTsunami() override;
-
-private:
     typedef PnetCDF::NcmpiVar NcVar;
     typedef PnetCDF::NcmpiDim NcDim;
     typedef PnetCDF::NcmpiGroupAtt NcGrpAtt;
     typedef PnetCDF::NcmpiFile NcFile;
-    typedef unique_ptr<NcFile> NcFilePtr;
-    typedef vistle::Vec<vistle::Scalar>::ptr VisVecScalarPtr;
-    typedef vistle::Polygons::ptr PolyPtr;
-    typedef array<VisVecScalarPtr, NUM_SCALARS> ArrVecScalarPtrs;
-    typedef vector<ArrVecScalarPtrs> VecArrVecScalarPtrs;
-    typedef vector<array<float, 2>> VecLatLon;
-    typedef function<float(size_t, size_t)> ZCalcFunc;
-
-    //structs
-    template<class T>
-    struct Dim {
-        Dim(const T &l_x = 0, const T &l_y = 0, const T &l_z = 0): x(l_x), y(l_y), z(l_z) {}
-        auto &X() const { return x; }
-        auto &Y() const { return y; }
-        auto &Z() const { return z; }
-
-    private:
-        T x;
-        T y;
-        T z;
-    };
-    typedef Dim<MPI_Offset> moffDim;
-    typedef Dim<size_t> sztDim;
 
     template<class NcParamType>
     struct NcVarExt {
@@ -81,6 +53,8 @@ private:
             ncVar = make_unique<NcVar>(nc);
         }
 
+        const auto getName() const { return ncVar->getName(); }
+        auto getId() const { return ncVar->getId(); }
         auto &Start() const { return start; }
         auto &Count() const { return count; }
         auto &Stride() const { return stride; }
@@ -107,6 +81,36 @@ private:
     };
     typedef NcVarExt<MPI_Offset> PNcVarExt;
 
+    //default constructor
+    ReadTsunami(const string &name, int moduleID, mpi::communicator comm);
+    ~ReadTsunami() override;
+
+private:
+    typedef unique_ptr<NcFile> NcFilePtr;
+    typedef vistle::Vec<vistle::Scalar>::ptr VisVecScalarPtr;
+    typedef vistle::Polygons::ptr PolyPtr;
+    typedef array<VisVecScalarPtr, NUM_SCALARS> ArrVecScalarPtrs;
+    typedef vector<ArrVecScalarPtrs> VecArrVecScalarPtrs;
+    typedef vector<array<float, 2>> VecLatLon;
+    typedef function<float(size_t, size_t)> ZCalcFunc;
+
+    //structs
+    template<class T>
+    struct Dim {
+        Dim(const T &l_x = 0, const T &l_y = 0, const T &l_z = 0): x(l_x), y(l_y), z(l_z) {}
+        auto &X() const { return x; }
+        auto &Y() const { return y; }
+        auto &Z() const { return z; }
+
+    private:
+        T x;
+        T y;
+        T z;
+    };
+    typedef Dim<MPI_Offset> moffDim;
+    typedef Dim<size_t> sztDim;
+
+
     //Vistle functions
     bool prepareRead() override;
     bool read(Token &token, int timestep, int block) override;
@@ -114,14 +118,17 @@ private:
     bool examine(const vistle::Parameter *param) override;
 
     //Own functions
-    void initETA(const NcFilePtr &ncFile, const array<PNcVarExt, 2> &ncExtSea, const ReaderTime &time,
+    void initETA(const NcFilePtr &ncFile, const map<string, PNcVarExt> &mapNcVars, const ReaderTime &time,
                  const size_t &verticesSea, int block);
-    void initSea(const NcFilePtr &ncFile, const array<vistle::Index, 2> &nBlocks,
-                 const array<vistle::Index, NUM_BLOCKS> &blockPartIdx, const ReaderTime &time, int ghost, int block);
-    void initScalars(const NcFilePtr &ncFile, const array<PNcVarExt, 2> &ncExtSea, const size_t &verticesSea,
-                     int block);
-    void createGround(Token &token, const NcFilePtr &ncFile, const array<vistle::Index, 2> &nBlocks,
-                      const array<vistle::Index, NUM_BLOCKS> &blockPartIdx, int ghost, int block);
+    void initSea(const NcFilePtr &ncFile, const map<string, PNcVarExt> &mapNcVars,
+                 const array<vistle::Index, 2> &nBlocks, const array<vistle::Index, NUM_BLOCKS> &blockPartIdx,
+                 const ReaderTime &time, int ghost, int block);
+    void initScalars(const NcVar &var, VisVecScalarPtr &scalarPtr, const map<string, PNcVarExt> &mapNcVars, int block);
+    void initScalarDepLatLon(VisVecScalarPtr &scalarPtr, const NcVar &var, const PNcVarExt &latSea,
+                             const PNcVarExt &lonSea, int block);
+    void createGround(Token &token, const NcFilePtr &ncFile, const map<string, PNcVarExt> &mapNcVars,
+                      const array<vistle::Index, 2> &nBlocks, const array<vistle::Index, NUM_BLOCKS> &blockPartIdx,
+                      int ghost, int block);
     void createFault(Token &token, const NcFilePtr &ncFile, int block);
     void initScalarParamReader();
     bool inspectNetCDF();
@@ -149,8 +156,8 @@ private:
     auto generateNcVarExt(const NcVar &ncVar, const T &dim, const T &ghost, const T &numDimBlocks,
                           const PartionIdx &partition) const;
 
-    template<class... Args>
-    void printRank0(const string &str, Args... args) const;
+    void printRank0(const string &str) const;
+    void printRank0AndBlock0(const string &str, int block) const;
     void printMPIStats() const;
     void printThreadStats() const;
 
