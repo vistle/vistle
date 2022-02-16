@@ -785,7 +785,7 @@ private:
 };
 
 template<Type MessageType>
-struct V_COREEXPORT ModuleBaseMessage: public MessageBase<ModuleBaseMessage<MessageType>, MessageType> {
+class V_COREEXPORT ModuleBaseMessage: public MessageBase<ModuleBaseMessage<MessageType>, MessageType> {
 public:
     explicit ModuleBaseMessage(const AvailableModuleBase &mod);
     const char *name() const;
