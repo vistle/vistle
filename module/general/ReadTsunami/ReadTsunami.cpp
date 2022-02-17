@@ -208,7 +208,7 @@ ReadTsunami::NcFilePtr ReadTsunami::openNcmpiFile()
 /**
  * @brief Inspect global attributes of netCDF file.
  *
- * @param ncFile Reference pointer to ncfile.
+ * @param ncFile Open nc file pointer.
  *
  * @return True if there is no error.
  */
@@ -295,7 +295,6 @@ bool ReadTsunami::inspectScalars(const NcFilePtr &ncFile)
             latLonContainsGrid(name, 1);
         else if (strContains(name, bathy)) // || strContains(name, "deformation"))
             bathyChoiceVec.push_back(name);
-        /* else if (val.getDimCount() == 2) // for now: only scalars with 2 dim depend on lat lon. */
         else
             scalarChoiceVec.push_back(name);
     }
@@ -444,7 +443,7 @@ void ReadTsunami::computeBlockPartition(const int block, vistle::Index &nLatBloc
  * @brief Initialize eta values (wave amplitude per timestep).
  *
  * @param ncFile open ncfile pointer.
- * @param ncExtSea array which contains latitude and longitude NcVarExtended objects.
+ * @param mapNcVars array which contains latitude and longitude NcVarExtended objects.
  * @param time ReadTimer object for current run.
  * @param verticesSea number of vertices for sea surface of the current block.
  * @param block current block.
@@ -475,6 +474,11 @@ void ReadTsunami::initETA(const NcFilePtr &ncFile, const map<string, PNcVarExt> 
 /**
  * @brief Initialize scalars which depend on latitude and longitude.
  *
+ * @param visVecScalarPtr storage ptr.
+ * @param var NcVar.
+ * @param latSea NcVarExtended of latitude.
+ * @param lonSea NcVarExtended of longitude.
+ * @param block current block.
  */
 void ReadTsunami::initScalarDepLatLon(VisVecScalarPtr &scalarPtr, const NcVar &var, const PNcVarExt &latSea,
                                       const PNcVarExt &lonSea, int block)
@@ -540,6 +544,7 @@ void ReadTsunami::initScalars(const NcVar &var, VisVecScalarPtr &visVecScalarPtr
  * @brief Initialize sea surface variables for current block.
  *
  * @param ncFile open ncfile pointer.
+ * @param mapNcVars array which contains latitude and longitude NcVarExtended objects.
  * @param nBlocks number of blocks in latitude and longitude direction.
  * @param nBlockPartIdx partition index for latitude and longitude.
  * @param time ReaderTime object which holds time parameters.
@@ -574,6 +579,7 @@ void ReadTsunami::initSea(const NcFilePtr &ncFile, const map<string, PNcVarExt> 
  *
  * @param token Token object ref.
  * @param ncFile open ncfile pointer.
+ * @param mapNcVars array which contains latitude and longitude NcVarExtended objects.
  * @param nBlocks number of blocks in latitude and longitude.
  * @param blockPartIdx partition index for latitude and longitude.
  * @param ghost ghostcells to add.
