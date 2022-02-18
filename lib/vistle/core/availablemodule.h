@@ -98,8 +98,6 @@ protected:
     {
         auto msg = T{*this};
         auto pl = MessagePayload{addPayload(msg, *this)};
-        assert(pl->size() > 0);
-        msg.setPayloadSize(pl->size());
         return func(msg, pl);
     }
     template<typename T>
