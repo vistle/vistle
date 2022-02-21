@@ -280,7 +280,7 @@ bool MapDrape::compute()
                 outCoords->z().resize(inCoords->getNumCoords());
 
                 assert(outCoords->getSize() == inCoords->getSize());
-            } else if (inStr = StructuredGridBase::as(geo)) {
+            } else if ((inStr = StructuredGridBase::as(geo))) {
                 Index dim[] = {inStr->getNumDivisions(0), inStr->getNumDivisions(1), inStr->getNumDivisions(2)};
                 outCoords.reset(new StructuredGrid(dim[0], dim[1], dim[2]));
                 outCoords->copyAttributes(geo);
