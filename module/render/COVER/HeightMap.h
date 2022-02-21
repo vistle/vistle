@@ -105,6 +105,7 @@ protected:
 
     osg::ref_ptr<osg::Uniform> _dataValid;
     osg::ref_ptr<osg::Uniform> _sizeUni;
+    osg::ref_ptr<osg::Uniform> _patchSizeUni;
     osg::ref_ptr<osg::Uniform> _distUni;
     osg::ref_ptr<osg::Uniform> _originUni;
 };

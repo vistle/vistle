@@ -8,6 +8,8 @@ using namespace osg;
 const int DataTexUnit = 0;
 const int HeightTexUnit = 2;
 
+const unsigned PatchSize[] = {3, 3};
+
 void HeightMap::setup()
 {
     setSupportsDisplayList(false);
@@ -52,6 +54,10 @@ void HeightMap::setup()
     _sizeUni = new osg::Uniform(osg::Uniform::FLOAT_VEC2, "size");
     _sizeUni->set(osg::Vec2(_columns, _rows));
     state->addUniform(_sizeUni);
+
+    _patchSizeUni = new osg::Uniform(osg::Uniform::FLOAT_VEC2, "patchSize");
+    _patchSizeUni->set(osg::Vec2(PatchSize[0], PatchSize[1]));
+    state->addUniform(_patchSizeUni);
 
     _distUni = new osg::Uniform(osg::Uniform::FLOAT_VEC2, "dist");
     _distUni->set(osg::Vec2(_dx, _dy));
@@ -125,8 +131,8 @@ void HeightMap::allocate(unsigned int numColumns, unsigned int numRows, HeightMa
 {
     if (_columns != numColumns || _rows != numRows) {
         if (numColumns >= 1 + _borderWidth[0] + _borderWidth[1] && numRows >= 1 + _borderWidth[2] + _borderWidth[3]) {
-            _xy->resize((numColumns - 1 - _borderWidth[0] - _borderWidth[1]) *
-                        (numRows - 1 - _borderWidth[2] - _borderWidth[3]));
+            _xy->resize(((numColumns - 1 - _borderWidth[0] - _borderWidth[1] + PatchSize[0] - 1) / PatchSize[0] *
+                         (numRows - 1 - _borderWidth[2] - _borderWidth[3] + PatchSize[1] - 1) / PatchSize[1]));
         } else {
             _xy->clear();
         }
@@ -179,8 +185,8 @@ void HeightMap::build()
     _heightImg->dirty();
 
     unsigned idx = 0;
-    for (unsigned int r = _borderWidth[2]; r < _rows - 1 - _borderWidth[3]; ++r) {
-        for (unsigned int c = _borderWidth[0]; c < _columns - 1 - _borderWidth[1]; ++c) {
+    for (unsigned int r = _borderWidth[2]; r < _rows - 1 - _borderWidth[3]; r += PatchSize[1]) {
+        for (unsigned int c = _borderWidth[0]; c < _columns - 1 - _borderWidth[1]; c += PatchSize[0]) {
             (*_xy)[idx] = osg::Vec2(c, r);
             ++idx;
         }
