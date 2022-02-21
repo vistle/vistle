@@ -915,33 +915,12 @@ bool AddParameter::isGroupExpanded() const
 
 std::shared_ptr<Parameter> AddParameter::getParameter() const
 {
-    std::shared_ptr<Parameter> p;
-    switch (getParameterType()) {
-    case Parameter::Integer:
-        p.reset(new IntParameter(senderId(), getName()));
-        break;
-    case Parameter::Float:
-        p.reset(new FloatParameter(senderId(), getName()));
-        break;
-    case Parameter::Vector:
-        p.reset(new VectorParameter(senderId(), getName()));
-        break;
-    case Parameter::IntVector:
-        p.reset(new IntVectorParameter(senderId(), getName()));
-        break;
-    case Parameter::String:
-        p.reset(new StringParameter(senderId(), getName()));
-        break;
-    case Parameter::Invalid:
-    case Parameter::Unknown:
-        break;
-    }
-
+    std::shared_ptr<Parameter> p = vistle::getParameter(senderId(), getName(), Parameter::Type(getParameterType()),
+                                                        Parameter::Presentation(getPresentation()));
     if (p) {
         p->setDescription(description());
         p->setGroup(group());
         p->setGroupExpanded(isGroupExpanded());
-        p->setPresentation(Parameter::Presentation(getPresentation()));
     } else {
         std::cerr << "AddParameter::getParameter (" << moduleName() << ":" << getName() << ": type "
                   << getParameterType() << " not handled" << std::endl;

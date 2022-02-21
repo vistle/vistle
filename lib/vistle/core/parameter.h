@@ -6,6 +6,7 @@
 #include <iostream>
 #include <algorithm>
 #include <limits>
+#include <memory>
 #include <boost/mpl/vector.hpp>
 #include <boost/lexical_cast.hpp>
 
@@ -283,6 +284,10 @@ V_PARAM_TYPE(std::string, StringParameter)
 V_ENUM_OUTPUT_OP(Type, Parameter)
 V_ENUM_OUTPUT_OP(Presentation, Parameter)
 V_ENUM_OUTPUT_OP(RangeType, Parameter)
+
+std::shared_ptr<Parameter> V_COREEXPORT getParameter(int moduleId, const std::string &paramName, Parameter::Type type,
+                                                     Parameter::Presentation presentation);
+
 
 } // namespace vistle
 #endif
