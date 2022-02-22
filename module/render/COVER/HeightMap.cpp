@@ -5,10 +5,72 @@
 
 using namespace osg;
 
+namespace {
+
 const int DataTexUnit = 0;
 const int HeightTexUnit = 2;
 
 const unsigned PatchSize[] = {3, 3};
+
+// all parameters relevant to generating indices for drawing a height map
+struct Signature {
+    unsigned w, h;
+    std::array<unsigned, 4> b;
+
+    Signature(const HeightMap &hm): w(hm.getNumColumns()), h(hm.getNumRows()), b{hm.getBorderWidth()} {}
+
+    unsigned size() const
+    {
+        if (w >= 1 + b[0] + b[1] && h >= 1 + b[2] + b[3]) {
+            return ((w - 1 - b[0] - b[1] + PatchSize[0] - 1) / PatchSize[0] * (h - 1 - b[2] - b[3] + PatchSize[1] - 1) /
+                    PatchSize[1]);
+        }
+
+        return 0;
+    }
+
+    bool operator<(const Signature &o) const
+    {
+        if (w != o.w)
+            return w < o.w;
+        if (h != o.h)
+            return h < o.h;
+        for (unsigned i = 0; i < 4; ++i) {
+            if (b[i] != o.b[i])
+                return b[i] < o.b[i];
+        }
+        return false;
+    }
+};
+
+std::mutex indexCacheMutex;
+std::map<Signature, osg::ref_ptr<osg::Vec2Array>> indexCache;
+
+osg::ref_ptr<osg::Vec2Array> getIndexArray(const Signature &sgn)
+{
+    std::lock_guard<std::mutex> guard(indexCacheMutex);
+    auto it = indexCache.find(sgn);
+    if (it != indexCache.end()) {
+        //std::cerr << "reusing " << sgn.w << "x" << sgn.h << std::endl;
+        return it->second;
+    }
+
+    it = indexCache.emplace(sgn, osg::ref_ptr<osg::Vec2Array>(new osg::Vec2Array(sgn.size()))).first;
+    auto &xy = *it->second;
+
+    unsigned idx = 0;
+    for (unsigned int r = sgn.b[2]; r < sgn.h - 1 - sgn.b[3]; r += PatchSize[1]) {
+        for (unsigned int c = sgn.b[0]; c < sgn.w - 1 - sgn.b[1]; c += PatchSize[0]) {
+            xy[idx] = osg::Vec2(c, r);
+            ++idx;
+        }
+    }
+    xy.dirty();
+
+    return it->second;
+}
+
+} // namespace
 
 void HeightMap::setup()
 {
@@ -17,9 +79,7 @@ void HeightMap::setup()
 
     _geom->setUseDisplayList(false);
     _geom->setUseVertexBufferObjects(true);
-    _xy = new osg::Vec2Array;
-    _geom->setVertexArray(_xy);
-    _geom->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::POINTS, 0, _xy->size()));
+    _geom->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::POINTS, 0, 0));
 
     auto state = getOrCreateStateSet();
 
@@ -130,31 +190,24 @@ osg::BoundingBox HeightMap::computeBoundingBox() const
 void HeightMap::allocate(unsigned int numColumns, unsigned int numRows, HeightMap::DataMode mode)
 {
     if (_columns != numColumns || _rows != numRows) {
-        if (numColumns >= 1 + _borderWidth[0] + _borderWidth[1] && numRows >= 1 + _borderWidth[2] + _borderWidth[3]) {
-            _xy->resize(((numColumns - 1 - _borderWidth[0] - _borderWidth[1] + PatchSize[0] - 1) / PatchSize[0] *
-                         (numRows - 1 - _borderWidth[2] - _borderWidth[3] + PatchSize[1] - 1) / PatchSize[1]));
-        } else {
-            _xy->clear();
-        }
-
         _heightImg->allocateImage(numColumns, numRows, 1, GL_LUMINANCE, GL_FLOAT);
         _heights = (float *)_heightImg->data();
 
         switch (mode) {
         case VertexData:
-            std::cerr << "HeightMap: allocating with vertex data: " << numColumns << "x" << numRows << std::endl;
+            //std::cerr << "HeightMap: allocating with vertex data: " << numColumns << "x" << numRows << std::endl;
             _dataImg->allocateImage(numColumns, numRows, 1, GL_LUMINANCE, GL_FLOAT);
             _data = (float *)_dataImg->data();
             break;
         case CellData:
-            std::cerr << "HeightMap: allocating with cell data: " << numColumns << "x" << numRows << std::endl;
+            //std::cerr << "HeightMap: allocating with cell data: " << numColumns << "x" << numRows << std::endl;
             if (numColumns > 1 && numRows > 1) {
                 _dataImg->allocateImage(numColumns - 1, numRows - 1, 1, GL_LUMINANCE, GL_FLOAT);
                 _data = (float *)_dataImg->data();
                 break;
             }
         default:
-            std::cerr << "HeightMap: allocating without data: " << numColumns << "x" << numRows << std::endl;
+            //std::cerr << "HeightMap: allocating without data: " << numColumns << "x" << numRows << std::endl;
             _dataImg->allocateImage(0, 0, 0, GL_LUMINANCE, GL_FLOAT);
             _data = nullptr;
             break;
@@ -184,16 +237,9 @@ void HeightMap::build()
     _dataImg->dirty();
     _heightImg->dirty();
 
-    unsigned idx = 0;
-    for (unsigned int r = _borderWidth[2]; r < _rows - 1 - _borderWidth[3]; r += PatchSize[1]) {
-        for (unsigned int c = _borderWidth[0]; c < _columns - 1 - _borderWidth[1]; c += PatchSize[0]) {
-            (*_xy)[idx] = osg::Vec2(c, r);
-            ++idx;
-        }
-    }
-    _xy->dirty();
-
-    _geom->setPrimitiveSet(0, new osg::DrawArrays(osg::PrimitiveSet::POINTS, 0, _xy->size()));
+    _geom->setVertexArray(getIndexArray(*this));
+    auto sz = Signature(*this).size();
+    _geom->setPrimitiveSet(0, new osg::DrawArrays(osg::PrimitiveSet::POINTS, 0, sz));
     _geom->dirtyGLObjects();
 
     _dirty = false;

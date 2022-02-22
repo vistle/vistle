@@ -94,7 +94,6 @@ protected:
     std::array<unsigned int, 4> _borderWidth = {0, 0, 0, 0};
     bool _dirty = true;
 
-    osg::ref_ptr<osg::Vec2Array> _xy;
     osg::ref_ptr<osg::Geometry> _geom;
 
     osg::ref_ptr<osg::Image> _heightImg;
