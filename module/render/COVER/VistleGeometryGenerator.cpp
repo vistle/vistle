@@ -949,8 +949,8 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
             for (Index y = 0; y < dims[1]; y += TileSize - 1 - 2 * borderWidth[3]) {
                 Index sy = std::min(TileSize, dims[1] - y);
                 borderWidth[3] = (y + TileSize - borderWidth[2] >= dims[1]) ? 0 : 1;
-                std::cerr << "y=" << y << ", b=" << borderWidth[2] << "," << borderWidth[3] << std::endl;
-                debug << "y=" << y << ", b=" << borderWidth[2] << "," << borderWidth[3] << std::endl;
+                //std::cerr << "y=" << y << ", b=" << borderWidth[2] << "," << borderWidth[3] << std::endl;
+                //debug << "y=" << y << ", b=" << borderWidth[2] << "," << borderWidth[3] << std::endl;
                 borderWidth[0] = 0;
                 borderWidth[1] = (TileSize >= dims[0]) ? 0 : 1;
                 for (Index x = 0; x < dims[0]; x += TileSize - 1 - 2 * borderWidth[1]) {
