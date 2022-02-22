@@ -177,7 +177,7 @@ def saveParameters(f, mod):
 
 def saveWorkflow(f, mods, numSlaves, remote):
    f.write("\n")
-
+   
    if remote:
       f.write("# spawn all remote modules\n")
    else:
@@ -201,20 +201,25 @@ def saveWorkflow(f, mods, numSlaves, remote):
       f.write("# connections between local and remote\n")
    else:
       f.write("# all local connections\n")
+   writtenConns = []
    for m in mods:
       hub = _vistle.getHub(m)
       if (not remote and hub!=_vistle.getMasterHub()):
             continue
       ports = _vistle.getOutputPorts(m)
-      for p in ports:
+      params = _vistle.getParameters(m)
+      for p in ports and params:
          conns = _vistle.getConnections(m, p)
          for c in conns:
             hub2 = _vistle.getHub(c[0])
             if (remote and hub==_vistle.getMasterHub() and hub2==_vistle.getMasterHub()) or (not remote and (hub!=_vistle.getMasterHub() or hub2!=_vistle.getMasterHub())):
                continue
-            f.write("connect("+modvar(m)+",'"+str(p)+"', "+modvar(c[0])+",'"+str(c[1])+"')\n")
-
-
+            if [str(m), p] in writtenConns:
+               continue
+            else:
+               f.write("connect("+modvar(m)+",'"+str(p)+"', "+modvar(c[0])+",'"+str(c[1])+"')\n")
+               writtenConns.append([str(c[0]), c[1]])
+         
 def save2(file, moduleList):
    file.write("MasterHub=getMasterHub()\n")
    file.write("VistleSession=getVistleSession()\n")
