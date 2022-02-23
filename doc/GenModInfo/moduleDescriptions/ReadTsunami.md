@@ -31,39 +31,44 @@ The reader is able to read netCDF files which uses a [PnetCDF](https://parallel-
 The pnetcdf install directory should be added to your $PATH environment variable in order to be found by CMake, otherwise it won't be build.
 
 
-<svg width="2400" height="330" >
+<svg width="2700" height="360" >
 <style>.text { font: normal 24.0px sans-serif;}tspan{ font: italic 24.0px sans-serif;}.moduleName{ font: italic 30px sans-serif;}</style>
-<rect x="0" y="30" width="240" height="90" rx="5" ry="5" style="fill:#64c8c8ff;" />
+<rect x="0" y="30" width="270" height="90" rx="5" ry="5" style="fill:#64c8c8ff;" />
 <rect x="6.0" y="90" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
 <title>Sea surface</title></rect>
-<rect x="21.0" y="120" width="1.0" height="180" rx="0" ry="0" style="fill:#000000;" />
-<rect x="21.0" y="300" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="57.0" y="303.0" class="text" >2D Grid Sea (Heightmap)<tspan> (Sea surface)</tspan></text>
+<rect x="21.0" y="120" width="1.0" height="210" rx="0" ry="0" style="fill:#000000;" />
+<rect x="21.0" y="330" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
+<text x="57.0" y="333.0" class="text" >Grid Sea (Heightmap/LayerGrid)<tspan> (Sea surface)</tspan></text>
 <rect x="42.0" y="90" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
 <title>Ground surface</title></rect>
-<rect x="57.0" y="120" width="1.0" height="150" rx="0" ry="0" style="fill:#000000;" />
-<rect x="57.0" y="270" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="93.0" y="273.0" class="text" >2D Sea floor (Heightmap)<tspan> (Ground surface)</tspan></text>
+<rect x="57.0" y="120" width="1.0" height="180" rx="0" ry="0" style="fill:#000000;" />
+<rect x="57.0" y="300" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
+<text x="93.0" y="303.0" class="text" >Sea floor (Heightmap/LayerGrid)<tspan> (Ground surface)</tspan></text>
 <rect x="78.0" y="90" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
-<title>Scalar port 0</title></rect>
-<rect x="93.0" y="120" width="1.0" height="120" rx="0" ry="0" style="fill:#000000;" />
-<rect x="93.0" y="240" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="129.0" y="243.0" class="text" >Port for scalar number 0<tspan> (Scalar port 0)</tspan></text>
+<title>Fault wall surface</title></rect>
+<rect x="93.0" y="120" width="1.0" height="150" rx="0" ry="0" style="fill:#000000;" />
+<rect x="93.0" y="270" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
+<text x="129.0" y="273.0" class="text" >Faults (Polygons)<tspan> (Fault wall surface)</tspan></text>
 <rect x="114.0" y="90" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
-<title>Scalar port 1</title></rect>
-<rect x="129.0" y="120" width="1.0" height="90" rx="0" ry="0" style="fill:#000000;" />
-<rect x="129.0" y="210" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="165.0" y="213.0" class="text" >Port for scalar number 1<tspan> (Scalar port 1)</tspan></text>
+<title>Scalar port 0</title></rect>
+<rect x="129.0" y="120" width="1.0" height="120" rx="0" ry="0" style="fill:#000000;" />
+<rect x="129.0" y="240" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
+<text x="165.0" y="243.0" class="text" >Port for scalar number 0<tspan> (Scalar port 0)</tspan></text>
 <rect x="150.0" y="90" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
-<title>Scalar port 2</title></rect>
-<rect x="165.0" y="120" width="1.0" height="60" rx="0" ry="0" style="fill:#000000;" />
-<rect x="165.0" y="180" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="201.0" y="183.0" class="text" >Port for scalar number 2<tspan> (Scalar port 2)</tspan></text>
+<title>Scalar port 1</title></rect>
+<rect x="165.0" y="120" width="1.0" height="90" rx="0" ry="0" style="fill:#000000;" />
+<rect x="165.0" y="210" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
+<text x="201.0" y="213.0" class="text" >Port for scalar number 1<tspan> (Scalar port 1)</tspan></text>
 <rect x="186.0" y="90" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
+<title>Scalar port 2</title></rect>
+<rect x="201.0" y="120" width="1.0" height="60" rx="0" ry="0" style="fill:#000000;" />
+<rect x="201.0" y="180" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
+<text x="237.0" y="183.0" class="text" >Port for scalar number 2<tspan> (Scalar port 2)</tspan></text>
+<rect x="222.0" y="90" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
 <title>Scalar port 3</title></rect>
-<rect x="201.0" y="120" width="1.0" height="30" rx="0" ry="0" style="fill:#000000;" />
-<rect x="201.0" y="150" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="237.0" y="153.0" class="text" >Port for scalar number 3<tspan> (Scalar port 3)</tspan></text>
+<rect x="237.0" y="120" width="1.0" height="30" rx="0" ry="0" style="fill:#000000;" />
+<rect x="237.0" y="150" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
+<text x="273.0" y="153.0" class="text" >Port for scalar number 3<tspan> (Scalar port 3)</tspan></text>
 <text x="6.0" y="85.5" class="moduleName" >ReadTsunami</text></svg>
 
 [outputPorts]:<>
@@ -79,6 +84,7 @@ The pnetcdf install directory should be added to your $PATH environment variable
 |check_convexity|whether to check convexity of grid cells|Int|
 |file_dir|NC File directory|String|
 |ghost|Show ghostcells.|Int|
+|fault|Show faults.|Int|
 |fill|Replace filterValue.|Int|
 |VerticalScale|Vertical Scale parameter sea|Float|
 |blocks latitude|number of blocks in lat-direction|Int|
