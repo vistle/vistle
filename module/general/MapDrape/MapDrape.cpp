@@ -4,7 +4,11 @@
 #include <boost/mpl/for_each.hpp>
 
 #ifdef MAPDRAPE
+#ifdef USE_PROJ_API
 #include <proj_api.h>
+#else
+#include <proj.h>
+#endif
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(PermutationOption, (XYZ)(XZY)(YXZ)(YZX)(ZXY)(ZYX))
 #endif
@@ -305,16 +309,24 @@ bool MapDrape::compute()
             auto perm = PermutationOption(p_permutation->getValue());
             permutate(perm, xc, yc, zc);
 
-            projPJ pj_from = pj_init_plus(p_mapping_from_->getValue().c_str());
-            projPJ pj_to = pj_init_plus(p_mapping_to_->getValue().c_str());
-            if (!pj_from || !pj_to)
-                return false;
-
             offset[0] = p_offset->getValue()[0];
             offset[1] = p_offset->getValue()[1];
             offset[2] = p_offset->getValue()[2];
 
             Index numCoords = outCoords->getSize();
+
+#ifdef USE_PROJ_API
+            projPJ pj_from = pj_init_plus(p_mapping_from_->getValue().c_str());
+            if (!pj_from) {
+                sendError("could not initialize from-mapping");
+                return true;
+            }
+            projPJ pj_to = pj_init_plus(p_mapping_to_->getValue().c_str());
+            if (!pj_to) {
+                pj_free(pj_from);
+                sendError("could not initialize to-mapping");
+                return true;
+            }
 
             for (Index i = 0; i < numCoords; ++i) {
                 double x, y, z;
@@ -338,6 +350,65 @@ bool MapDrape::compute()
                 yout[i] = y + offset[1];
                 zout[i] = z + offset[2];
             }
+
+            pj_free(pj_from);
+            pj_free(pj_to);
+#else
+            /* NOTE: the use of PROJ strings to describe CRS is strongly discouraged */
+            /* in PROJ 6, as PROJ strings are a poor way of describing a CRS, and */
+            /* more precise its geodetic datum. */
+            /* Use of codes provided by authorities (such as "EPSG:4326", etc...) */
+            /* or WKT strings will bring the full power of the "transformation */
+            /* engine" used by PROJ to determine the best transformation(s) between */
+            /* two CRS. */
+            PJ *P = proj_create_crs_to_crs(PJ_DEFAULT_CTX, p_mapping_from_->getValue().c_str(),
+                                           p_mapping_to_->getValue().c_str(), nullptr);
+            if (!P) {
+                sendError("could not initialize requested mapping");
+                return true;
+            }
+            {
+                /* proj_normalize_for_visualization() ensures that the coordinate */
+                /* order expected and returned by proj_trans() will be longitude, */
+                /* latitude for geographic CRS, and easting, northing for projected */
+                /* CRS. If instead of using PROJ strings as above, "EPSG:XXXX" codes */
+                /* had been used, this might had been necessary. */
+                PJ *P_for_GIS = proj_normalize_for_visualization(PJ_DEFAULT_CTX, P);
+                if (!P_for_GIS) {
+                    sendError("could not initialize normalization mapping");
+                    proj_destroy(P);
+                    return true;
+                }
+                proj_destroy(P);
+                P = P_for_GIS;
+            }
+
+            PJ_COORD c;
+            c.lpzt.t = HUGE_VAL;
+            for (Index i = 0; i < numCoords; ++i) {
+                if (xc) {
+                    assert(xc && yc && zc);
+                    c.lpzt.lam = xc[i];
+                    c.lpzt.phi = yc[i];
+                    c.lpzt.z = zc[i];
+                } else {
+                    assert(inStr);
+                    auto v = inStr->getVertex(i);
+                    permutate(perm, v[0], v[1], v[2]);
+                    c.lpzt.lam = v[0];
+                    c.lpzt.phi = v[1];
+                    c.lpzt.z = v[2];
+                }
+
+                PJ_COORD c_out = proj_trans(P, PJ_FWD, c);
+
+                xout[i] = c_out.xyz.x + offset[0];
+                yout[i] = c_out.xyz.y + offset[1];
+                zout[i] = c_out.xyz.z + offset[2];
+            }
+
+            proj_destroy(P);
+#endif
 
             m_alreadyMapped[geo->getName()] = outCoords;
 #endif

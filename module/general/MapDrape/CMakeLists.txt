@@ -3,8 +3,11 @@ if(NOT PROJ_FOUND)
     return()
 endif()
 
-include_directories(SYSTEM ${PROJ_INCLUDE_DIR})
-add_definitions(-DACCEPT_USE_OF_DEPRECATED_PROJ_API_H)
+include_directories(SYSTEM ${PROJ_INCLUDE_DIRS})
+if(PROJ_API)
+    add_definitions(USE_PROJ_API)
+    add_definitions(ACCEPT_USE_OF_DEPRECATED_PROJ_API_H)
+endif()
 
 set(HEADERS MapDrape.h)
 
