@@ -2,7 +2,7 @@
 #include <osg/TextureRectangle>
 #include <iostream>
 #include <cassert>
-
+#include <mutex>
 using namespace osg;
 
 namespace {
