@@ -506,23 +506,6 @@ std::vector<message::Buffer> PortTracker::removeModule(int moduleId)
         }
     }
 
-    for (const auto &mpm: m_ports) {
-        const auto &pm = *mpm.second;
-        for (const auto &pme: pm) {
-            const Port *port = pme.second;
-            if (port->getModuleID() == moduleId) {
-                CERR << "removeModule " << moduleId << ": " << *port << " still exists" << std::endl;
-            }
-            const auto &cl = port->connections();
-            for (const auto &other: cl) {
-                if (other->getModuleID() == moduleId) {
-                    CERR << "removeModule " << moduleId << ": " << *other << " still connected to " << *port
-                         << std::endl;
-                }
-            }
-        }
-    }
-
     return ret;
 }
 
