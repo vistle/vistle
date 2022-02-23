@@ -2,6 +2,7 @@
 #define COORD_H
 
 #include <cmath>
+#include <ostream>
 
 
 class Coordinate {
@@ -12,7 +13,7 @@ public:
         pos[1] = 0;
         pos[2] = 0;
     };
-    Coordinate(float v)
+    explicit Coordinate(float v)
     {
         pos[0] = v;
         pos[1] = v;
