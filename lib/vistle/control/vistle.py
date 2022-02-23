@@ -208,7 +208,8 @@ def saveWorkflow(f, mods, numSlaves, remote):
             continue
       ports = _vistle.getOutputPorts(m)
       params = _vistle.getParameters(m)
-      for p in ports and params:
+      all = ports + params
+      for p in all:
          conns = _vistle.getConnections(m, p)
          for c in conns:
             hub2 = _vistle.getHub(c[0])
@@ -219,6 +220,8 @@ def saveWorkflow(f, mods, numSlaves, remote):
             else:
                f.write("connect("+modvar(m)+",'"+str(p)+"', "+modvar(c[0])+",'"+str(c[1])+"')\n")
                writtenConns.append([str(c[0]), c[1]])
+               
+
          
 def save2(file, moduleList):
    file.write("MasterHub=getMasterHub()\n")
