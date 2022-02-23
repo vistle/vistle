@@ -1,6 +1,7 @@
 /build
 /build-*
 /CMakeLists.txt.user*
+/compile_commands.json
 /.release
 /test
 /*.log

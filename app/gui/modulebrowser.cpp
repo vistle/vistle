@@ -170,6 +170,11 @@ void ModuleBrowser::addModule(int hub, QString module, QString path, QString des
     }
     auto &hubItem = it->second;
 
+    for (int i = 0; i < hubItem->childCount(); i++) {
+        if (hubItem->child(i)->data(0, ModuleBrowser::nameRole()).toString() == module)
+            return;
+    }
+
     auto item = new QTreeWidgetItem(hubItem, {module}, Module);
     item->setData(0, hubRole(), hub);
     QString tt;

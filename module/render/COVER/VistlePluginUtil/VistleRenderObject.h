@@ -82,9 +82,8 @@ protected:
 
     mutable std::string m_name;
     mutable opencover::RenderObject *m_roGeo;
-    mutable opencover::RenderObject *m_roCol;
+    mutable opencover::RenderObject *m_roData;
     mutable opencover::RenderObject *m_roNorm;
-    mutable opencover::RenderObject *m_roTex;
 };
 
 // pseudo RenderObject for handling module parameters

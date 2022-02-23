@@ -220,6 +220,117 @@ void appendMessage(std::vector<StateTracker::MessageWithPayload> &v, const messa
 
 } // namespace
 
+void StateTracker::appendModuleState(VistleState &state, const StateTracker::Module &m) const
+{
+    using namespace vistle::message;
+    Spawn spawn(m.hub, m.name);
+    spawn.setSpawnId(m.id);
+    spawn.setMirroringId(m.mirrorOfId);
+    //CERR << "id " << id << " mirrors " << m.mirrorOfId << std::endl;
+    appendMessage(state, spawn);
+
+    if (m.initialized) {
+        Started s(m.name);
+        s.setSenderId(m.id);
+        s.setReferrer(spawn.uuid());
+        appendMessage(state, s);
+    }
+
+    if (m.busy) {
+        Busy b;
+        b.setSenderId(m.id);
+        appendMessage(state, b);
+    }
+
+    if (m.killed) {
+        Kill k(m.id);
+        appendMessage(state, k);
+    }
+}
+
+void StateTracker::appendModuleParameter(VistleState &state, const Module &m) const
+{
+    using namespace vistle::message;
+    const ParameterMap &pmap = m.parameters;
+    for (const auto &it2: m.paramOrder) {
+        //CERR << "module " << id << ": " << it2.first << " -> " << it2.second << std::endl;
+        const std::string &name = it2.second;
+        const auto it3 = pmap.find(name);
+        assert(it3 != pmap.end());
+        const auto param = it3->second;
+        auto id = m.id;
+        AddParameter add(*param, getModuleName(id));
+        add.setSenderId(id);
+        appendMessage(state, add);
+
+        SetParameter setDef(id, name, param, Parameter::Value, true);
+        setDef.setSenderId(id);
+        appendMessage(state, setDef);
+
+        if (param->presentation() == Parameter::Choice) {
+            SetParameterChoices choices(name, param->choices().size());
+            choices.setSenderId(id);
+            SetParameterChoices::Payload pl(param->choices());
+            auto vec = addPayload(choices, pl);
+            auto shvec = std::make_shared<buffer>(vec);
+            appendMessage(state, choices, shvec);
+        }
+
+        SetParameter setV(id, name, param, Parameter::Value);
+        setV.setSenderId(id);
+        appendMessage(state, setV);
+        SetParameter setMin(id, name, param, Parameter::Minimum);
+        setMin.setSenderId(id);
+        appendMessage(state, setMin);
+        SetParameter setMax(id, name, param, Parameter::Maximum);
+        setMax.setSenderId(id);
+        appendMessage(state, setMax);
+    }
+}
+
+void StateTracker::appendModulePorts(VistleState &state, const Module &mod) const
+{
+    using namespace vistle::message;
+    if (portTracker()) {
+        for (auto &portname: portTracker()->getInputPortNames(mod.id)) {
+            AddPort cp(*portTracker()->getPort(mod.id, portname));
+            cp.setSenderId(mod.id);
+            appendMessage(state, cp);
+        }
+
+        for (auto &portname: portTracker()->getOutputPortNames(mod.id)) {
+            AddPort cp(*portTracker()->getPort(mod.id, portname));
+            cp.setSenderId(mod.id);
+            appendMessage(state, cp);
+        }
+    }
+}
+
+void StateTracker::appendModuleOutputConnections(VistleState &state, const Module &mod) const
+{
+    using namespace vistle::message;
+
+    const int id = mod.id;
+
+    if (portTracker()) {
+        for (auto &portname: portTracker()->getOutputPortNames(id)) {
+            const Port::ConstPortSet *connected = portTracker()->getConnectionList(id, portname);
+            for (auto &dest: *connected) {
+                Connect c(id, portname, dest->getModuleID(), dest->getName());
+                appendMessage(state, c);
+            }
+        }
+
+        for (auto &paramname: getParameters(id)) {
+            const Port::ConstPortSet *connected = portTracker()->getConnectionList(id, paramname);
+            for (auto &dest: *connected) {
+                Connect c(id, paramname, dest->getModuleID(), dest->getName());
+                appendMessage(state, c);
+            }
+        }
+    }
+}
+
 StateTracker::VistleState StateTracker::getState() const
 {
     mutex_locker guard(m_stateMutex);
@@ -259,103 +370,15 @@ StateTracker::VistleState StateTracker::getState() const
         const Module &m = it.second;
 
         if (Id::isModule(id)) {
-            Spawn spawn(m.hub, m.name);
-            spawn.setSpawnId(id);
-            spawn.setMirroringId(m.mirrorOfId);
-            //CERR << "id " << id << " mirrors " << m.mirrorOfId << std::endl;
-            appendMessage(state, spawn);
-
-            if (m.initialized) {
-                Started s(m.name);
-                s.setSenderId(id);
-                s.setReferrer(spawn.uuid());
-                appendMessage(state, s);
-            }
-
-            if (m.busy) {
-                Busy b;
-                b.setSenderId(id);
-                appendMessage(state, b);
-            }
-
-            if (m.killed) {
-                Kill k(id);
-                appendMessage(state, k);
-            }
+            appendModuleState(state, m);
         }
-
-        const ParameterMap &pmap = m.parameters;
-        for (const auto &it2: m.paramOrder) {
-            //CERR << "module " << id << ": " << it2.first << " -> " << it2.second << std::endl;
-            const std::string &name = it2.second;
-            const auto it3 = pmap.find(name);
-            assert(it3 != pmap.end());
-            const auto param = it3->second;
-
-            AddParameter add(*param, getModuleName(id));
-            add.setSenderId(id);
-            appendMessage(state, add);
-
-            SetParameter setDef(id, name, param, Parameter::Value, true);
-            setDef.setSenderId(id);
-            appendMessage(state, setDef);
-
-            if (param->presentation() == Parameter::Choice) {
-                SetParameterChoices choices(name, param->choices().size());
-                choices.setSenderId(id);
-                SetParameterChoices::Payload pl(param->choices());
-                auto vec = addPayload(choices, pl);
-                auto shvec = std::make_shared<buffer>(vec);
-                appendMessage(state, choices, shvec);
-            }
-
-            SetParameter setV(id, name, param, Parameter::Value);
-            setV.setSenderId(id);
-            appendMessage(state, setV);
-            SetParameter setMin(id, name, param, Parameter::Minimum);
-            setMin.setSenderId(id);
-            appendMessage(state, setMin);
-            SetParameter setMax(id, name, param, Parameter::Maximum);
-            setMax.setSenderId(id);
-            appendMessage(state, setMax);
-        }
-
-        if (portTracker()) {
-            for (auto &portname: portTracker()->getInputPortNames(id)) {
-                AddPort cp(*portTracker()->getPort(id, portname));
-                cp.setSenderId(id);
-                appendMessage(state, cp);
-            }
-
-            for (auto &portname: portTracker()->getOutputPortNames(id)) {
-                AddPort cp(*portTracker()->getPort(id, portname));
-                cp.setSenderId(id);
-                appendMessage(state, cp);
-            }
-        }
+        appendModuleParameter(state, m);
+        appendModulePorts(state, m);
     }
 
     // connections
     for (auto &it: runningMap) {
-        const int id = it.first;
-
-        if (portTracker()) {
-            for (auto &portname: portTracker()->getOutputPortNames(id)) {
-                const Port::ConstPortSet *connected = portTracker()->getConnectionList(id, portname);
-                for (auto &dest: *connected) {
-                    Connect c(id, portname, dest->getModuleID(), dest->getName());
-                    appendMessage(state, c);
-                }
-            }
-
-            for (auto &paramname: getParameters(id)) {
-                const Port::ConstPortSet *connected = portTracker()->getConnectionList(id, paramname);
-                for (auto &dest: *connected) {
-                    Connect c(id, paramname, dest->getModuleID(), dest->getName());
-                    appendMessage(state, c);
-                }
-            }
-        }
+        appendModuleOutputConnections(state, it.second);
     }
 
     for (const auto &m: m_queue)
@@ -873,26 +896,6 @@ bool StateTracker::handlePriv(const message::Started &started)
     return true;
 }
 
-bool StateTracker::handleConnect(const message::Connect &connect)
-{
-    if (!handlePriv(connect)) {
-        // to be queued by caller
-        //m_queue.emplace_back(connect);
-        return false;
-    }
-    return true;
-}
-
-bool StateTracker::handleDisconnect(const message::Disconnect &disconnect)
-{
-    if (!handlePriv(disconnect)) {
-        // to be queued by caller
-        //m_queue.emplace_back(disconnect);
-        return false;
-    }
-    return true;
-}
-
 bool StateTracker::handlePriv(const message::Connect &connect)
 {
     if (isExecuting(connect.getModuleA()) || isExecuting(connect.getModuleB()))
@@ -931,12 +934,18 @@ bool StateTracker::handlePriv(const message::Disconnect &disconnect)
 
 bool StateTracker::handlePriv(const message::ModuleExit &moduleExit)
 {
+    const int mod = moduleExit.senderId();
+    //CERR << " Module [" << mod << "] quit" << std::endl;
     ++m_graphChangeCount;
 
-    const int mod = moduleExit.senderId();
     portTracker()->removeModule(mod);
 
-    //CERR << " Module [" << mod << "] quit" << std::endl;
+    mutex_locker guard(m_stateMutex);
+    for (StateObserver *o: m_observers) {
+        o->incModificationCount();
+        o->deleteModule(mod);
+    }
+    guard.unlock();
 
     {
         RunningMap::iterator it = runningMap.find(mod);
@@ -964,18 +973,12 @@ bool StateTracker::handlePriv(const message::ModuleExit &moduleExit)
 
     cleanQueue(mod);
 
-    mutex_locker guard(m_stateMutex);
-    for (StateObserver *o: m_observers) {
-        o->incModificationCount();
-        o->deleteModule(mod);
-    }
-
     return true;
 }
 
 bool StateTracker::handlePriv(const message::Execute &execute)
 {
-    if (execute.destId() != message::Broadcast)
+    if (execute.destId() != message::Id::Broadcast)
         return true;
 
     int execId = execute.getModule();
@@ -1139,6 +1142,21 @@ bool StateTracker::handlePriv(const message::RemoveParameter &removeParam)
          << "), name=" << removeParam.getName() << std::endl;
 #endif
 
+    mutex_locker guard(m_stateMutex);
+    if (portTracker()) {
+        for (StateObserver *o: m_observers) {
+            o->deletePort(removeParam.senderId(), removeParam.getName());
+        }
+
+        portTracker()->removePort(Port(removeParam.senderId(), removeParam.getName(), Port::PARAMETER));
+    }
+
+    for (StateObserver *o: m_observers) {
+        o->incModificationCount();
+        o->deleteParameter(removeParam.senderId(), removeParam.getName());
+    }
+    guard.unlock();
+
     auto mit = runningMap.find(removeParam.senderId());
     if (mit == runningMap.end())
         return false;
@@ -1159,20 +1177,6 @@ bool StateTracker::handlePriv(const message::RemoveParameter &removeParam)
                 break;
             }
         }
-    }
-
-    mutex_locker guard(m_stateMutex);
-    if (portTracker()) {
-        for (StateObserver *o: m_observers) {
-            o->deletePort(removeParam.senderId(), removeParam.getName());
-        }
-
-        portTracker()->removePort(Port(removeParam.senderId(), removeParam.getName(), Port::PARAMETER));
-    }
-
-    for (StateObserver *o: m_observers) {
-        o->incModificationCount();
-        o->deleteParameter(removeParam.senderId(), removeParam.getName());
     }
 
     return true;

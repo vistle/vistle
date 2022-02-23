@@ -96,6 +96,16 @@ bool Parameter::isGroupExpanded() const
     return m_groupExpanded;
 }
 
+void Parameter::setImmediate(bool immed)
+{
+    m_immediate = immed;
+}
+
+bool Parameter::isImmediate() const
+{
+    return m_immediate;
+}
+
 namespace {
 
 using namespace boost;
@@ -112,6 +122,38 @@ struct instantiator {
 void instantiate_parameters()
 {
     mpl::for_each<Parameters>(instantiator());
+}
+
+std::shared_ptr<Parameter> getParameter(int moduleId, const std::string &paramName, Parameter::Type type,
+                                        Parameter::Presentation presentation)
+{
+    std::shared_ptr<Parameter> p;
+    switch (type) {
+    case Parameter::Integer:
+        p.reset(new IntParameter(moduleId, paramName));
+        break;
+    case Parameter::Float:
+        p.reset(new FloatParameter(moduleId, paramName));
+        break;
+    case Parameter::Vector:
+        p.reset(new VectorParameter(moduleId, paramName));
+        break;
+    case Parameter::IntVector:
+        p.reset(new IntVectorParameter(moduleId, paramName));
+        break;
+    case Parameter::String:
+        p.reset(new StringParameter(moduleId, paramName));
+        break;
+    case Parameter::Invalid:
+    case Parameter::Unknown:
+        break;
+    }
+
+    if (p) {
+        p->setPresentation(presentation);
+    }
+
+    return p;
 }
 
 } // namespace vistle

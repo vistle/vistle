@@ -232,6 +232,12 @@ public:
     size_t payloadRawSize() const;
     //! set number of uncompressed payload bytes
     void setPayloadRawSize(size_t size);
+    //! set priority of this message in shm message queues
+    void setPriority(unsigned int prio);
+    //! get priority of this message in shm message queues
+    unsigned int priority() const;
+    // to be used with setPriority, ...
+    DEFINE_ENUM_WITH_STRING_CONVERSIONS(MessagePriority, (Normal)(ImmediateParameter))
 
     template<class SomeMessage>
     SomeMessage &as()
@@ -275,12 +281,14 @@ protected:
     int m_payloadCompression;
     //! name of payload in shared memory
     shm_name_t m_payloadName;
+    //! priority in shmem message queues
+    unsigned int m_priority;
     //! broadcast to all ranks?
     bool m_forBroadcast, m_wasBroadcast;
     //! message is not a request for action
     bool m_notification;
     //! pad message to multiple of 8 bytes
-    char m_pad[1] = {};
+    char m_pad[5] = {};
 };
 // ensure alignment
 static_assert(sizeof(Message) % sizeof(double) == 0, "not padded to ensure double alignment");

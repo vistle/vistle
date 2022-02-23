@@ -543,6 +543,9 @@ public:
     ParamVector getVector() const;
     IntParamVector getIntVector() const;
 
+    void setImmediate(bool immed);
+    bool isImmediate() const;
+
     bool apply(std::shared_ptr<Parameter> param) const;
 
 private:
@@ -559,8 +562,10 @@ private:
     };
     param_name_t name; //!< parameter name
     bool initialize; //!< called for setting parameter default value
-    bool delayed; //!< true: wait until parameterChanged should be called
     bool reply; //!< this messaege is in reply to a request to change a parameter and contains the value actually used
+    bool delayed; //!< true: wait until parameterChanged should be called
+    bool immediate_valid; //!< whether immediate was set
+    bool immediate; //!< true: changes are communicated with higher priority
 };
 
 //! set list of choice descriptions for a choice parameter
@@ -779,8 +784,8 @@ private:
     bool m_on;
 };
 
-
-struct V_COREEXPORT ModuleBaseMessage {
+template<Type MessageType>
+class V_COREEXPORT ModuleBaseMessage: public MessageBase<ModuleBaseMessage<MessageType>, MessageType> {
 public:
     explicit ModuleBaseMessage(const AvailableModuleBase &mod);
     const char *name() const;
@@ -794,17 +799,12 @@ private:
 };
 
 //! announce availability of a module to UI
-class V_COREEXPORT ModuleAvailable: public MessageBase<ModuleAvailable, MODULEAVAILABLE>, public ModuleBaseMessage {
-    using ModuleBaseMessage::ModuleBaseMessage;
-};
-
+extern template class V_COREEXPORT ModuleBaseMessage<MODULEAVAILABLE>;
+typedef ModuleBaseMessage<MODULEAVAILABLE> ModuleAvailable;
 static_assert(sizeof(ModuleAvailable) <= Message::MESSAGE_SIZE, "message too large");
-
-class V_COREEXPORT CreateModuleCompound: public MessageBase<CreateModuleCompound, CREATEMODULECOMPOUND>,
-                                         public ModuleBaseMessage {
-    using ModuleBaseMessage::ModuleBaseMessage;
-};
-
+//! tell Vistle to create and save a module compound
+extern template class V_COREEXPORT ModuleBaseMessage<CREATEMODULECOMPOUND>;
+typedef ModuleBaseMessage<CREATEMODULECOMPOUND> CreateModuleCompound;
 static_assert(sizeof(CreateModuleCompound) <= Message::MESSAGE_SIZE, "message too large");
 
 //! lock UI (block user interaction)

@@ -35,8 +35,7 @@ public:
     vistle::Object::const_ptr container;
     vistle::Object::const_ptr geometry;
     vistle::Normals::const_ptr normals;
-    vistle::Texture1D::const_ptr texture;
-    vistle::Vec<Scalar>::const_ptr scalars;
+    vistle::DataBase::const_ptr mapdata;
 
     int timestep = -1;
     bool bComputed = false;

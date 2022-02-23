@@ -97,9 +97,10 @@ bool IndexManifolds::compute(std::shared_ptr<BlockTask> task) const
         DataBase::ptr outdata;
         if (data) {
             outdata = data->cloneType();
-            outdata->setSize(elementData ? nquad : nvert);
-            outdata->setGrid(surface);
             outdata->copyAttributes(data);
+            outdata->setGrid(surface);
+            outdata->setSize(elementData ? nquad : nvert);
+            outdata->setMapping(elementData ? DataBase::Element : DataBase::Vertex);
         }
 
         Scalar *x[3];

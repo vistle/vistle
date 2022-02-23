@@ -522,6 +522,8 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
             vector->setTimestep(time);
     }
 
+    geoOut->refresh();
+
     const int dtime = time < 0 ? 0 : time;
     if (elementData) {
         const GridInterface *grid = geoOut->getInterface<GridInterface>();

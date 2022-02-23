@@ -132,8 +132,12 @@ public:
 
     bool handle(const message::Message &msg, const buffer *payload, bool track = true);
     bool handle(const message::Message &msg, const char *payload, size_t payloadSize, bool track = true);
-    bool handleConnect(const message::Connect &conn);
-    bool handleDisconnect(const message::Disconnect &disc);
+
+    template<typename ConnMsg>
+    bool handleConnectOrDisconnect(const ConnMsg &msg)
+    {
+        return handlePriv(msg);
+    }
 
     std::shared_ptr<PortTracker> portTracker() const;
 
@@ -217,6 +221,12 @@ protected:
                                        bool ignoreNoCompute = false) const;
     bool hasCombinePort(int id) const;
     bool isExecuting(int id) const;
+
+    void appendModuleState(VistleState &state, const Module &mod) const;
+    void appendModuleParameter(VistleState &state, const Module &mod) const;
+    void appendModulePorts(VistleState &state, const Module &mod) const;
+    void appendModuleOutputConnections(VistleState &state, const Module &mod) const;
+
 
     std::map<AvailableModule::Key, AvailableModule> m_availableModules;
 

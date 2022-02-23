@@ -15,7 +15,7 @@ public:
     Renderer(const std::string &name, const int moduleID, mpi::communicator comm);
     virtual ~Renderer();
 
-    bool dispatch(bool block = true, bool *messageReceived = nullptr) override;
+    bool dispatch(bool block = true, bool *messageReceived = nullptr, unsigned int minPrio = 0) override;
 
     int numTimesteps() const;
     void getBounds(Vector3 &min, Vector3 &max);
@@ -44,7 +44,7 @@ public:
 protected:
     bool handleMessage(const message::Message *message, const MessagePayload &payload) override;
 
-    virtual bool addColorMap(const std::string &species, Texture1D::const_ptr texture);
+    virtual bool addColorMap(const std::string &species, Object::const_ptr cmap);
     virtual bool removeColorMap(const std::string &species);
 
     virtual std::shared_ptr<RenderObject> addObject(int senderId, const std::string &senderPort,

@@ -465,12 +465,12 @@ std::vector<message::Buffer> PortTracker::removeModule(int moduleId)
 
     std::vector<message::Buffer> ret;
 
-    ModulePortMap::const_iterator modulePorts = m_ports.find(moduleId);
-    if (modulePorts != m_ports.end()) {
+    auto modulePortsIt = m_ports.find(moduleId);
+    if (modulePortsIt != m_ports.end()) {
         std::vector<Port *> toRemove;
-        const PortMap &portmap = *modulePorts->second;
-        for (PortMap::const_iterator it = portmap.begin(); it != portmap.end(); ++it) {
-            toRemove.push_back(it->second);
+        const auto &modulePorts = *modulePortsIt->second;
+        for (const auto &port: modulePorts) {
+            toRemove.push_back(port.second);
         }
 
         for (auto p: toRemove) {
@@ -478,9 +478,9 @@ std::vector<message::Buffer> PortTracker::removeModule(int moduleId)
             std::copy(r.begin(), r.end(), std::back_inserter(ret));
         }
 
-        assert(portmap.empty());
+        assert(modulePorts.empty());
 
-        m_ports.erase(modulePorts);
+        m_ports.erase(modulePortsIt);
     }
 
     if (m_ports.find(moduleId) != m_ports.end()) {
@@ -488,23 +488,6 @@ std::vector<message::Buffer> PortTracker::removeModule(int moduleId)
     }
 
     check();
-
-    for (const auto &mpm: m_ports) {
-        const auto &pm = *mpm.second;
-        for (const auto &pme: pm) {
-            const Port *port = pme.second;
-            if (port->getModuleID() == moduleId) {
-                CERR << "removeModule " << moduleId << ": " << *port << " still exists" << std::endl;
-            }
-            const auto &cl = port->connections();
-            for (const auto &other: cl) {
-                if (other->getModuleID() == moduleId) {
-                    CERR << "removeModule " << moduleId << ": " << *other << " still connected to " << *port
-                         << std::endl;
-                }
-            }
-        }
-    }
 
     for (const auto &mpm: m_ports) {
         const auto &pm = *mpm.second;

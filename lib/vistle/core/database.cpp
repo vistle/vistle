@@ -141,7 +141,7 @@ DataBase::Mapping DataBase::guessMapping(Object::const_ptr g) const
     return mapping();
 }
 
-int DataBase::dimension() const
+unsigned DataBase::dimension() const
 {
     assert("should never be called" == NULL);
     return 0;
@@ -153,12 +153,12 @@ bool DataBase::copyEntry(Index to, DataBase::const_ptr src, Index from)
     return false;
 }
 
-void DataBase::setValue(Index idx, int component, const double &value)
+void DataBase::setValue(Index idx, unsigned component, const double &value)
 {
     assert("should never be called" == NULL);
 }
 
-double DataBase::value(Index idx, int component) const
+double DataBase::value(Index idx, unsigned component) const
 {
     assert("should never be called" == NULL);
     return 0;

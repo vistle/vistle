@@ -17,25 +17,19 @@ BaseRenderObject::~BaseRenderObject()
 VistleRenderObject::VistleRenderObject(std::shared_ptr<const vistle::RenderObject> ro)
 : m_vistleRo(ro)
 , m_roGeo(ro->geometry ? new VistleRenderObject(ro->geometry) : nullptr)
-, m_roCol(ro->texture   ? new VistleRenderObject(ro->texture)
-          : ro->scalars ? new VistleRenderObject(ro->scalars)
-                        : nullptr)
+, m_roData(ro->mapdata ? new VistleRenderObject(ro->mapdata) : nullptr)
 , m_roNorm(ro->normals ? new VistleRenderObject(ro->normals) : nullptr)
-, m_roTex(ro->texture   ? new VistleRenderObject(ro->texture)
-          : ro->scalars ? new VistleRenderObject(ro->scalars)
-                        : nullptr)
 {}
 
 VistleRenderObject::VistleRenderObject(vistle::Object::const_ptr obj)
-: m_obj(obj), m_roGeo(NULL), m_roCol(NULL), m_roNorm(NULL), m_roTex(NULL)
+: m_obj(obj), m_roGeo(NULL), m_roData(NULL), m_roNorm(NULL)
 {}
 
 VistleRenderObject::~VistleRenderObject()
 {
     delete m_roGeo;
-    delete m_roCol;
+    delete m_roData;
     delete m_roNorm;
-    delete m_roTex;
 }
 
 std::shared_ptr<const vistle::RenderObject> VistleRenderObject::renderObject() const
@@ -135,12 +129,12 @@ RenderObject *VistleRenderObject::getNormals() const
 
 RenderObject *VistleRenderObject::getColors() const
 {
-    return m_roCol;
+    return m_roData;
 }
 
 RenderObject *VistleRenderObject::getTexture() const
 {
-    return m_roTex;
+    return m_roData;
 }
 
 RenderObject *VistleRenderObject::getVertexAttribute() const

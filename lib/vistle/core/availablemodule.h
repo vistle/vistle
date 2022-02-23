@@ -18,7 +18,6 @@ typedef std::function<bool(const message::Message &msg, const MessagePayload &pa
 
 class V_COREEXPORT AvailableModuleBase {
 public:
-    friend class ModuleBaseMessage;
     struct Key {
         int hub;
         std::string name;
@@ -27,7 +26,6 @@ public:
     };
     AvailableModuleBase() = default;
     AvailableModuleBase(int hub, const std::string &name, const std::string &path, const std::string &description);
-    AvailableModuleBase(const message::Message &msg, const buffer &payload);
     AvailableModuleBase(AvailableModuleBase &&) = default;
     AvailableModuleBase(const AvailableModuleBase &) = delete;
     AvailableModuleBase &operator=(AvailableModuleBase &&) = default;
@@ -87,21 +85,43 @@ public:
     const std::set<Connection> connections() const;
 
 protected:
-    bool send(message::Type type, const sendMessageFunction &func) const;
-    bool send(message::Type type, const sendShmMessageFunction &func) const;
+    template<typename T>
+    bool send(const sendMessageFunction &func) const
+    {
+        auto msg = T{*this};
+        auto pl = addPayload(msg, *this);
+        return func(msg, &pl);
+    }
+
+    template<typename T>
+    bool send(const sendShmMessageFunction &func) const
+    {
+        auto msg = T{*this};
+        auto pl = MessagePayload{addPayload(msg, *this)};
+        return func(msg, pl);
+    }
+    template<typename T>
+    void initialize(const T &msg)
+    {
+        m_hub = msg.hub();
+        m_name = msg.name();
+        m_path = msg.path();
+    }
 
 private:
     int m_hub;
     std::string m_name;
+
+protected:
     std::string m_path;
+
+private:
     std::string m_description;
 
 
     //for module compounds
     std::set<Connection> m_connections; //maps input-, outputports and params to parent ones
     std::vector<SubModule> m_submodules;
-
-    std::unique_ptr<message::Buffer> cacheMsg(message::Type type) const;
 
     ARCHIVE_ACCESS
     template<class Archive>
@@ -118,6 +138,8 @@ class V_COREEXPORT AvailableModule: public AvailableModuleBase {
 public:
     friend class ModuleCompound;
     using AvailableModuleBase::AvailableModuleBase;
+    AvailableModule(const message::ModuleAvailable &msg, const buffer &payload);
+
     bool send(const sendMessageFunction &func) const;
     bool send(const sendShmMessageFunction &func) const;
 
@@ -128,6 +150,8 @@ private:
 class V_COREEXPORT ModuleCompound: public AvailableModuleBase {
 public:
     using AvailableModuleBase::AvailableModuleBase;
+    ModuleCompound(const message::CreateModuleCompound &msg, const buffer &payload);
+
     bool send(const sendMessageFunction &func) const;
     bool send(const sendShmMessageFunction &func) const;
     AvailableModule transform(); //this invalidates this object;

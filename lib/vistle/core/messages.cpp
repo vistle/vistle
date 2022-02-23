@@ -915,33 +915,12 @@ bool AddParameter::isGroupExpanded() const
 
 std::shared_ptr<Parameter> AddParameter::getParameter() const
 {
-    std::shared_ptr<Parameter> p;
-    switch (getParameterType()) {
-    case Parameter::Integer:
-        p.reset(new IntParameter(senderId(), getName()));
-        break;
-    case Parameter::Float:
-        p.reset(new FloatParameter(senderId(), getName()));
-        break;
-    case Parameter::Vector:
-        p.reset(new VectorParameter(senderId(), getName()));
-        break;
-    case Parameter::IntVector:
-        p.reset(new IntVectorParameter(senderId(), getName()));
-        break;
-    case Parameter::String:
-        p.reset(new StringParameter(senderId(), getName()));
-        break;
-    case Parameter::Invalid:
-    case Parameter::Unknown:
-        break;
-    }
-
+    std::shared_ptr<Parameter> p = vistle::getParameter(senderId(), getName(), Parameter::Type(getParameterType()),
+                                                        Parameter::Presentation(getPresentation()));
     if (p) {
         p->setDescription(description());
         p->setGroup(group());
         p->setGroupExpanded(isGroupExpanded());
-        p->setPresentation(Parameter::Presentation(getPresentation()));
     } else {
         std::cerr << "AddParameter::getParameter (" << moduleName() << ":" << getName() << ": type "
                   << getParameterType() << " not handled" << std::endl;
@@ -1006,17 +985,26 @@ std::shared_ptr<Parameter> RemoveParameter::getParameter() const
 SetParameter::SetParameter(int module)
 : m_module(module)
 , paramtype(Parameter::Invalid)
-, initialize(false)
-, delayed(false)
-, reply(false)
 , rangetype(Parameter::Value)
+, initialize(false)
+, reply(false)
+, delayed(false)
+, immediate_valid(false)
+, immediate(false)
 {
     name[0] = '\0';
 }
 
 SetParameter::SetParameter(int module, const std::string &n, const std::shared_ptr<Parameter> p,
                            Parameter::RangeType rt, bool defaultValue)
-: m_module(module), paramtype(p->type()), initialize(defaultValue), delayed(false), reply(false), rangetype(rt)
+: m_module(module)
+, paramtype(p->type())
+, rangetype(rt)
+, initialize(defaultValue)
+, reply(false)
+, delayed(false)
+, immediate_valid(true)
+, immediate(p->isImmediate())
 {
     const Parameter *param = p.get();
 
@@ -1048,10 +1036,12 @@ SetParameter::SetParameter(int module, const std::string &n, const std::shared_p
 SetParameter::SetParameter(int module, const std::string &n, const Integer v)
 : m_module(module)
 , paramtype(Parameter::Integer)
-, initialize(false)
-, delayed(false)
-, reply(false)
 , rangetype(Parameter::Value)
+, initialize(false)
+, reply(false)
+, delayed(false)
+, immediate_valid(false)
+, immediate(false)
 {
     COPY_STRING(name, n);
     v_int = v;
@@ -1060,10 +1050,12 @@ SetParameter::SetParameter(int module, const std::string &n, const Integer v)
 SetParameter::SetParameter(int module, const std::string &n, const Float v)
 : m_module(module)
 , paramtype(Parameter::Float)
-, initialize(false)
-, delayed(false)
-, reply(false)
 , rangetype(Parameter::Value)
+, initialize(false)
+, reply(false)
+, delayed(false)
+, immediate_valid(false)
+, immediate(false)
 {
     COPY_STRING(name, n);
     v_scalar = v;
@@ -1072,10 +1064,12 @@ SetParameter::SetParameter(int module, const std::string &n, const Float v)
 SetParameter::SetParameter(int module, const std::string &n, const ParamVector &v)
 : m_module(module)
 , paramtype(Parameter::Vector)
-, initialize(false)
-, delayed(false)
-, reply(false)
 , rangetype(Parameter::Value)
+, initialize(false)
+, reply(false)
+, delayed(false)
+, immediate_valid(false)
+, immediate(false)
 {
     COPY_STRING(name, n);
     dim = v.dim;
@@ -1086,10 +1080,12 @@ SetParameter::SetParameter(int module, const std::string &n, const ParamVector &
 SetParameter::SetParameter(int module, const std::string &n, const IntParamVector &v)
 : m_module(module)
 , paramtype(Parameter::IntVector)
-, initialize(false)
-, delayed(false)
-, reply(false)
 , rangetype(Parameter::Value)
+, initialize(false)
+, reply(false)
+, delayed(false)
+, immediate_valid(false)
+, immediate(false)
 {
     COPY_STRING(name, n);
     dim = v.dim;
@@ -1100,10 +1096,12 @@ SetParameter::SetParameter(int module, const std::string &n, const IntParamVecto
 SetParameter::SetParameter(int module, const std::string &n, const std::string &v)
 : m_module(module)
 , paramtype(Parameter::String)
-, initialize(false)
-, delayed(false)
-, reply(false)
 , rangetype(Parameter::Value)
+, initialize(false)
+, reply(false)
+, delayed(false)
+, immediate_valid(false)
+, immediate(false)
 {
     COPY_STRING(name, n);
     COPY_STRING(v_string, v);
@@ -1191,6 +1189,17 @@ std::string SetParameter::getString() const
     return v_string.data();
 }
 
+void SetParameter::setImmediate(bool immed)
+{
+    immediate_valid = true;
+    immediate = immed;
+}
+
+bool SetParameter::isImmediate() const
+{
+    return immediate;
+}
+
 bool SetParameter::apply(std::shared_ptr<vistle::Parameter> param) const
 {
     if (paramtype != param->type()) {
@@ -1199,7 +1208,13 @@ bool SetParameter::apply(std::shared_ptr<vistle::Parameter> param) const
         return false;
     }
 
+    if (immediate_valid)
+        param->setImmediate(immediate);
+
     const int rt = rangeType();
+    if (rt == Parameter::Other)
+        return true;
+
     if (auto pint = std::dynamic_pointer_cast<IntParameter>(param)) {
         if (rt == Parameter::Value)
             pint->setValue(v_int, initialize, delayed);
@@ -1408,26 +1423,33 @@ bool Trace::on() const
     return m_on;
 }
 
-ModuleBaseMessage::ModuleBaseMessage(const AvailableModuleBase &mod): m_hub(mod.hub())
+template<Type MessageType>
+ModuleBaseMessage<MessageType>::ModuleBaseMessage(const AvailableModuleBase &mod): m_hub(mod.hub())
 {
     COPY_STRING(m_name, mod.name());
     COPY_STRING(m_path, mod.path());
 }
 
-int ModuleBaseMessage::hub() const
+template<Type MessageType>
+int ModuleBaseMessage<MessageType>::hub() const
 {
     return m_hub;
 }
 
-const char *ModuleBaseMessage::name() const
+template<Type MessageType>
+const char *ModuleBaseMessage<MessageType>::name() const
 {
     return m_name.data();
 }
 
-const char *ModuleBaseMessage::path() const
+template<Type MessageType>
+const char *ModuleBaseMessage<MessageType>::path() const
 {
     return m_path.data();
 }
+
+template class ModuleBaseMessage<MODULEAVAILABLE>;
+template class ModuleBaseMessage<CREATEMODULECOMPOUND>;
 
 LockUi::LockUi(bool locked): m_locked(locked)
 {}

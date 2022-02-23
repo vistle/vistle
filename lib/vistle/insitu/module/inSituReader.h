@@ -32,7 +32,7 @@ public:
 
 private:
     bool handleExecute(const vistle::message::Execute *exec) override final;
-    bool dispatch(bool block = true, bool *messageReceived = nullptr) override final;
+    bool dispatch(bool block = true, bool *messageReceived = nullptr, unsigned int minPrio = 0) override final;
     bool prepare() override final;
     void initRecvFromSimQueue();
 

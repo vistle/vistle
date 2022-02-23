@@ -745,7 +745,7 @@ bool ClusterManager::handle(const message::Buffer &message, const MessagePayload
 
     case message::CREATEMODULECOMPOUND: {
         buffer pl(payload->begin(), payload->end());
-        ModuleCompound comp(message, pl);
+        ModuleCompound comp(message.as<message::CreateModuleCompound>(), pl);
         AvailableModule::Key key(comp.hub(), comp.name());
         auto av = comp.transform();
         av.setHub(hubId());
@@ -1988,40 +1988,6 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam)
 
     if (!mod)
         return true;
-
-    // update linked parameters
-    if (Communicator::the().isMaster() && message::Id::isModule(dest)) {
-        if (setParam.getModule() != setParam.senderId()) {
-            const Port *port = portManager().findPort(dest, setParam.getName());
-            if (port && applied) {
-                ParameterSet conn = m_stateTracker.getConnectedParameters(*applied);
-
-                for (ParameterSet::iterator it = conn.begin(); it != conn.end(); ++it) {
-                    const auto p = *it;
-                    if (p->module() == setParam.destId() && p->getName() == setParam.getName()) {
-                        // don't update parameter which was set originally again
-                        //continue;
-                    }
-                    message::SetParameter set(p->module(), p->getName(), applied);
-                    set.setDestId(p->module());
-                    set.setUuid(setParam.uuid());
-                    auto i = runningMap.find(p->module());
-                    if (i != runningMap.end()) {
-                        auto &mod = i->second;
-                        if (mod.haveDelayed())
-                            mod.delay(set);
-                        else
-                            sendMessage(p->module(), set);
-                    }
-                }
-            } else {
-#ifdef DEBUG
-                CERR << " SetParameter [" << setParam.getModule() << ":" << setParam.getName() << "]: port not found"
-                     << std::endl;
-#endif
-            }
-        }
-    }
 
     return handled;
 }

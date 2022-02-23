@@ -178,6 +178,8 @@ bool ToUnstructured::compute()
     // pass on conversion of x, y, z vectors to specific helper functions based on grid type
     if (auto uniformGrid = UniformGrid::as(gridObj)) {
         compute_uniformVecs(uniformGrid, unstrGridOut, numVertices);
+    } else if (auto layerGrid = LayerGrid::as(gridObj)) {
+        compute_layerVecs(layerGrid, unstrGridOut, numVertices);
     } else if (auto rectilinearGrid = RectilinearGrid::as(gridObj)) {
         compute_rectilinearVecs(rectilinearGrid, unstrGridOut, numVertices);
     } else if (auto structuredGrid = StructuredGrid::as(gridObj)) {
@@ -236,6 +238,35 @@ void ToUnstructured::compute_uniformVecs(UniformGrid::const_ptr obj, Unstructure
     }
 
     return;
+}
+
+void ToUnstructured::compute_layerVecs(LayerGrid::const_ptr obj, UnstructuredGrid::ptr unstrGridOut,
+                                       const Cartesian3<Index> numVertices)
+{
+    std::array<Scalar, 2> min = {obj->min()[0], obj->min()[1]};
+    std::array<Scalar, 2> max = {obj->max()[0], obj->max()[1]};
+    Cartesian3<Index> div = numVertices;
+    if (div.x <= 2)
+        div.x = 2;
+    if (div.y <= 2)
+        div.y = 2;
+    if (div.z <= 2)
+        div.z = 2;
+    std::array<Scalar, 2> delta = {((max[0] - min[0]) / (div.x - 1)), ((max[1] - min[1]) / (div.y - 1))};
+
+    // construct vertices
+    const Index dim[3] = {numVertices.x, numVertices.y, numVertices.z};
+    for (Index i = 0; i < numVertices.x; i++) {
+        for (Index j = 0; j < numVertices.y; j++) {
+            for (Index k = 0; k < numVertices.z; k++) {
+                const Index insertionIndex = UniformGrid::vertexIndex(i, j, k, dim);
+
+                unstrGridOut->x()[insertionIndex] = min[0] + i * delta[0];
+                unstrGridOut->y()[insertionIndex] = min[1] + j * delta[1];
+            }
+        }
+    }
+    unstrGridOut->d()->x[2] = obj->d()->x[0];
 }
 
 // COMPUTE HELPER FUNCTION - PROCESS RECTILINEAR GRID OBJECT

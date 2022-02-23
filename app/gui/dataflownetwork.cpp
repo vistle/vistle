@@ -200,6 +200,20 @@ void DataFlowNetwork::deletePort(int moduleId, QString portName)
    std::cerr << text.toStdString() << std::endl;
 #endif
     if (Module *m = findModule(moduleId)) {
+        std::vector<Port *> p1, p2;
+        for (auto &c: m_connections) {
+            const auto &key = c.first;
+            if ((key.port1->module()->id() == moduleId &&
+                 key.port1->vistlePort()->getName() == portName.toStdString()) ||
+                (key.port2->module()->id() == moduleId &&
+                 key.port1->vistlePort()->getName() == portName.toStdString())) {
+                p1.push_back(key.port1);
+                p2.push_back(key.port2);
+            }
+        }
+        for (size_t i = 0; i < p1.size(); ++i) {
+            removeConnection(p1[i], p2[i]);
+        }
         m->removePort(vistle::Port(moduleId, portName.toStdString(), vistle::Port::ANY));
     }
 }
@@ -239,7 +253,30 @@ void DataFlowNetwork::deleteConnection(int fromId, QString fromName, int toId, Q
         auto guiFrom = mFrom->getGuiPort(portFrom);
         auto guiTo = mTo->getGuiPort(portTo);
         removeConnection(guiFrom, guiTo);
-    }
+    } //else {
+    //     auto conn = std::find_if(
+    //         m_connections.begin(), m_connections.end(),
+    //         [fromId, &fromName, toId, &toName](const std::pair<ConnectionKey, Connection *> &conn) {
+    //             std::cerr << "comparing: \nconn.first.port1->module()->id() = " << conn.first.port1->module()->id()
+    //                       << "\nconn.first.port1->vistlePort()->getName() = "
+    //                       << conn.first.port1->vistlePort()->getName()
+    //                       << "\nconn.first.port2->module()->id() = " << conn.first.port2->module()->id()
+    //                       << "\nconn.first.port2->vistlePort()->getName()" << conn.first.port2->vistlePort()->getName()
+    //                       << std::endl;
+
+    //             return (conn.first.port1->module()->id() == fromId && conn.first.port2->module()->id() == toId &&
+    //                     conn.first.port1->vistlePort()->getName() == fromName.toStdString() &&
+    //                     conn.first.port2->vistlePort()->getName() == toName.toStdString()) ||
+    //                    (conn.first.port1->module()->id() == toId && conn.first.port2->module()->id() == fromId &&
+    //                     conn.first.port1->vistlePort()->getName() == toName.toStdString() &&
+    //                     conn.first.port2->vistlePort()->getName() == fromName.toStdString());
+    //         });
+    //     if (conn != m_connections.end()) {
+    //         auto c = conn->second;
+    //         m_connections.erase(conn);
+    //         removeItem(c);
+    //     }
+    // }
 }
 
 void DataFlowNetwork::moduleStatus(int id, QString status, int prio)

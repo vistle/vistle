@@ -577,6 +577,8 @@ static void sendSetParameter(message::SetParameter &msg, int id, bool delayed)
     if (delayed)
         msg.setDelayed();
     auto param = MODULEMANAGER.getParameter(id, msg.getName());
+    if (param && param->isImmediate())
+        msg.setPriority(message::Message::ImmediateParameter);
     sendMessage(msg);
 }
 

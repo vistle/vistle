@@ -100,7 +100,7 @@ public:
     FloatParameter *m_pointSizeParam;
 
     // colormaps
-    bool addColorMap(const std::string &species, vistle::Texture1D::const_ptr texture) override;
+    bool addColorMap(const std::string &species, vistle::Object::const_ptr texture) override;
     bool removeColorMap(const std::string &species) override;
 
     // object lifetime management
@@ -200,20 +200,21 @@ void DisCOVERay::connectionRemoved(const Port *from, const Port *to)
     Renderer::connectionRemoved(from, to);
 }
 
-bool DisCOVERay::addColorMap(const std::string &species, Texture1D::const_ptr texture)
+bool DisCOVERay::addColorMap(const std::string &species, Object::const_ptr cmap)
 {
-    auto &cmap = m_colormaps[species];
-    cmap.tex = texture;
-    if (!cmap.cmap)
-        cmap.cmap.reset(new ispc::ColorMapData);
-    cmap.cmap->min = texture->getMin();
-    cmap.cmap->max = texture->getMax();
-    cmap.cmap->texWidth = texture->getWidth();
-    cmap.cmap->texData = texture->pixels().data();
-    cmap.cmap->blendWithMaterial = texture->hasAttribute("_blend_with_material") ? 1 : 0;
+    if (auto texture = Texture1D::as(cmap)) {
+        auto &cmap = m_colormaps[species];
+        cmap.tex = texture;
+        if (!cmap.cmap)
+            cmap.cmap.reset(new ispc::ColorMapData);
+        cmap.cmap->min = texture->getMin();
+        cmap.cmap->max = texture->getMax();
+        cmap.cmap->texWidth = texture->getWidth();
+        cmap.cmap->texData = texture->pixels().data();
+        cmap.cmap->blendWithMaterial = texture->hasAttribute("_blend_with_material") ? 1 : 0;
 
-    m_renderManager.setModified();
-
+        m_renderManager.setModified();
+    }
     return true;
 }
 

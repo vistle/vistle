@@ -1000,6 +1000,28 @@ bool Hub::sendAll(const message::Message &msg, const buffer *payload)
     return true;
 }
 
+bool Hub::sendAllUi(const message::Message &msg, const buffer *payload)
+{
+    if (m_isMaster) {
+        sendUi(msg, Id::Broadcast, payload);
+    } else {
+        return sendMaster(msg, payload);
+    }
+    return true;
+}
+
+bool Hub::sendAllButUi(const message::Message &msg, const buffer *payload)
+{
+    if (m_isMaster) {
+        sendManager(msg, Id::LocalHub, payload);
+        sendSlaves(msg, true /* return to sender */, payload);
+    } else {
+        return sendMaster(msg, payload);
+    }
+    return true;
+}
+
+
 int Hub::idToHub(int id) const
 {
     if (id >= Id::ModuleBase)
@@ -1320,62 +1342,12 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
         break;
     }
     case message::CONNECT: {
-        //CERR << "handling connect: " << msg << std::endl;
-        auto &mm = static_cast<const Connect &>(msg);
-        if (m_isMaster) {
-#if 0
-             if (mm.isNotification()) {
-                 CERR << "discarding notification on master: " << msg << std::endl;
-                 return true;
-             }
-#endif
-            if (m_stateTracker.handleConnect(mm)) {
-                handlePriv(mm);
-                handleQueue();
-            } else {
-                //CERR << "delaying connect: " << msg << std::endl;
-                m_queue.emplace_back(msg);
-                return true;
-            }
-        } else {
-            if (mm.isNotification()) {
-                m_stateTracker.handle(mm, nullptr);
-                sendManager(mm);
-                sendUi(mm);
-            } else {
-                sendMaster(mm);
-            }
-            return true;
-        }
-        break;
+        auto &mm = static_cast<const message::Connect &>(msg);
+        return handleConnectOrDisconnect(mm);
     }
     case message::DISCONNECT: {
-        auto &mm = static_cast<const Disconnect &>(msg);
-        if (m_isMaster) {
-#if 0
-             if (mm.isNotification()) {
-                 CERR << "discarding notification on master: " << msg << std::endl;
-                 return true;
-             }
-#endif
-            if (m_stateTracker.handleDisconnect(mm)) {
-                handlePriv(mm);
-                handleQueue();
-            } else {
-                m_queue.emplace_back(msg);
-                return true;
-            }
-        } else {
-            if (mm.isNotification()) {
-                m_stateTracker.handle(mm, nullptr);
-                sendManager(mm);
-                sendUi(mm);
-            } else {
-                sendMaster(mm);
-            }
-            return true;
-        }
-        break;
+        auto &mm = static_cast<const message::Disconnect &>(msg);
+        return handleConnectOrDisconnect(mm);
     }
     default:
         break;
@@ -1461,7 +1433,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                 std::cerr << "missing payload for CREATEMODULECOMPOUND message!" << std::endl;
                 break;
             }
-            ModuleCompound comp(msg, *payload);
+            ModuleCompound comp(msg.as<message::CreateModuleCompound>(), *payload);
 #ifdef HAVE_PYTHON
             moduleCompoundToFile(comp);
 #endif
@@ -1476,6 +1448,39 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
             break;
         }
 
+        case message::SETPARAMETER: {
+            auto setParam = msg.as<message::SetParameter>();
+
+            // update linked parameters
+            if (message::Id::isModule(setParam.destId())) {
+                if (setParam.getModule() != setParam.senderId()) {
+                    const Port *port = m_stateTracker.portTracker()->findPort(setParam.destId(), setParam.getName());
+                    std::shared_ptr<Parameter> applied;
+
+                    auto param = m_stateTracker.getParameter(setParam.destId(), setParam.getName());
+                    if (param) {
+                        applied.reset(param->clone());
+                        setParam.apply(applied);
+                    }
+
+                    if (port && applied) {
+                        ParameterSet conn = m_stateTracker.getConnectedParameters(*applied);
+
+                        for (ParameterSet::iterator it = conn.begin(); it != conn.end(); ++it) {
+                            const auto p = *it;
+                            if (p->module() == setParam.destId() && p->getName() == setParam.getName()) {
+                                // don't update parameter which was set originally again
+                                continue;
+                            }
+                            message::SetParameter set(p->module(), p->getName(), applied);
+                            set.setDestId(p->module());
+                            set.setUuid(setParam.uuid());
+                            sendAll(set);
+                        }
+                    }
+                }
+            }
+        } break;
         case message::SPAWNPREPARED: {
             auto &spawn = static_cast<const SpawnPrepared &>(msg);
             if (spawn.isNotification()) {
@@ -1728,6 +1733,35 @@ bool Hub::handlePriv(const message::Spawn &spawn)
     return true;
 }
 
+template<typename ConnMsg>
+bool Hub::handleConnectOrDisconnect(const ConnMsg &mm)
+{
+    if (m_isMaster) {
+#if 0
+             if (mm.isNotification()) {
+                 CERR << "discarding notification on master: " << mm << std::endl;
+                 return true;
+             }
+#endif
+        if (m_stateTracker.handleConnectOrDisconnect(mm)) {
+            handlePriv(mm);
+            return handleQueue();
+        } else {
+            m_queue.emplace_back(mm);
+            return true;
+        }
+    } else {
+        if (mm.isNotification()) {
+            m_stateTracker.handle(mm, nullptr);
+            sendManager(mm);
+            sendUi(mm);
+        } else {
+            sendMaster(mm);
+        }
+        return true;
+    }
+}
+
 bool Hub::handleQueue()
 {
     using namespace message;
@@ -1741,7 +1775,7 @@ bool Hub::handleQueue()
         for (auto &m: m_queue) {
             if (m.type() == message::CONNECT) {
                 auto &mm = m.as<Connect>();
-                if (m_stateTracker.handleConnect(mm)) {
+                if (m_stateTracker.handleConnectOrDisconnect(mm)) {
                     again = true;
                     handlePriv(mm);
                 } else {
@@ -1749,7 +1783,7 @@ bool Hub::handleQueue()
                 }
             } else if (m.type() == message::DISCONNECT) {
                 auto &mm = m.as<Disconnect>();
-                if (m_stateTracker.handleDisconnect(mm)) {
+                if (m_stateTracker.handleConnectOrDisconnect(mm)) {
                     again = true;
                     handlePriv(mm);
                 } else {
@@ -1851,6 +1885,19 @@ void Hub::sendError(const std::string &s)
     auto payload = addPayload(t, pl);
     sendUi(t, Id::Broadcast, &payload);
 }
+
+
+std::vector<int> Hub::getSubmoduleIds(int modId, const AvailableModule &av)
+{
+    std::vector<int> retval;
+    if (av.isCompound()) {
+        for (size_t i = 0; i < av.submodules().size(); i++) {
+            retval.push_back(modId + i + 1);
+        }
+    }
+    return retval;
+}
+
 
 void Hub::setLoadedFile(const std::string &file)
 {
@@ -2191,6 +2238,17 @@ bool Hub::processScript(const std::string &filename, bool barrierAfterLoad, bool
 #endif
 }
 
+const AvailableModule &getStaticModuleInfo(int modId, StateTracker &state)
+{
+    auto hubId = state.getHub(modId);
+    if (hubId != Id::Invalid) {
+        auto it = state.availableModules().find({hubId, state.getModuleName(modId)});
+        if (it != state.availableModules().end())
+            return it->second;
+    }
+    throw vistle::exception{"getStaticModuleInfo failed mor module with id " + std::to_string(modId)};
+}
+
 bool Hub::handlePriv(const message::Quit &quit, message::Identify::Identity senderType)
 {
     if (quit.id() == Id::Broadcast) {
@@ -2269,6 +2327,7 @@ bool Hub::handlePriv(const message::Execute &exec)
         toSend.setExecutionCount(++m_execCount);
 
     bool onlySources = false;
+    bool isCompound = false;
     std::vector<int> modules{exec.getModule()}; // execute specified module
     if (!Id::isModule(exec.getModule())) {
         // or all modules that are a source in the dataflow graph
@@ -2280,8 +2339,13 @@ bool Hub::handlePriv(const message::Execute &exec)
                 continue;
             modules.push_back(id);
         }
+    } else {
+        const auto &av = getStaticModuleInfo(exec.getModule(), m_stateTracker);
+        if (av.isCompound()) {
+            isCompound = true;
+            modules = getSubmoduleIds(exec.getModule(), av);
+        }
     }
-
     for (auto id: modules) {
         bool canExec = true;
         auto inputs = m_stateTracker.portTracker()->getInputPorts(id);
@@ -2292,10 +2356,13 @@ bool Hub::handlePriv(const message::Execute &exec)
                 canExec = false;
         }
         if (canExec) {
-            toSend.setDestId(message::Broadcast);
+            toSend.setDestId(message::Id::Broadcast);
             toSend.setModule(id);
             m_stateTracker.handle(toSend, nullptr);
-            sendAll(toSend);
+            if (isCompound)
+                sendAllButUi(toSend);
+            else
+                sendAll(toSend);
         }
     }
 
@@ -2320,8 +2387,16 @@ bool Hub::handlePriv(const message::CancelExecute &cancel)
 
     if (Id::isModule(cancel.getModule())) {
         const int hub = m_stateTracker.getHub(cancel.getModule());
-        toSend.setDestId(cancel.getModule());
-        sendManager(toSend, hub);
+        const auto &av = getStaticModuleInfo(cancel.getModule(), m_stateTracker);
+        if (av.isCompound()) {
+            for (auto sub: getSubmoduleIds(cancel.getModule(), av)) {
+                toSend.setDestId(sub);
+                sendManager(toSend, hub);
+            }
+        } else {
+            toSend.setDestId(cancel.getModule());
+            sendManager(toSend, hub);
+        }
     }
 
     return true;
@@ -2377,22 +2452,21 @@ bool Hub::handlePriv(const message::RequestTunnel &tunnel)
     return m_tunnelManager.processRequest(tunnel);
 }
 
-bool Hub::handlePriv(const message::Connect &conn)
+template<typename ConnMsg>
+void handleMirrorConnect(const ConnMsg &conn, const StateTracker &state,
+                         std::function<bool(const message::Message &)> sendFunc)
 {
-    auto c = make.message<message::Connect>(conn);
-    c.setNotify(true);
-    sendAll(c);
-
     auto modA = conn.getModuleA();
     auto modB = conn.getModuleB();
-    auto mirA = m_stateTracker.getMirrors(modA);
-    auto mirB = m_stateTracker.getMirrors(modB);
-
+    auto mirA = state.getMirrors(modA);
+    auto mirB = state.getMirrors(modB);
+    auto c = conn;
+    c.setNotify(true);
     for (auto a: mirA) {
         if (a == modA)
             continue;
         c.setModuleA(a);
-        sendAll(c);
+        sendFunc(c);
     }
     c.setModuleA(modA);
 
@@ -2400,41 +2474,68 @@ bool Hub::handlePriv(const message::Connect &conn)
         if (b == modB)
             continue;
         c.setModuleB(b);
-        sendAll(c);
+        sendFunc(c);
     }
-    c.setModuleB(modB);
+}
+
+template<typename ConnMsg>
+bool handlePrivConnMsg(const ConnMsg &conn, Hub &hub, message::MessageFactory &make)
+{
+    auto modA = conn.getModuleA();
+    auto modB = conn.getModuleB();
+
+    const auto &avA = getStaticModuleInfo(modA, hub.stateTracker());
+    const auto &avB = getStaticModuleInfo(modB, hub.stateTracker());
+
+    std::vector<Port> portsA, portsB;
+    if (avA.isCompound()) {
+        for (const auto &subConn: avA.connections()) {
+            if (subConn.toId < 0 && conn.getPortAName() == subConn.toPort) {
+                portsA.push_back({subConn.fromId + modA + 1, subConn.fromPort, Port::Type::OUTPUT});
+            }
+        }
+    } else {
+        portsA.push_back({modA, conn.getPortAName(), Port::Type::OUTPUT});
+    }
+
+    if (avB.isCompound()) {
+        for (const auto &subConn: avB.connections()) {
+            if (subConn.fromId < 0 && conn.getPortBName() == subConn.fromPort) {
+                portsB.push_back({subConn.toId + modB + 1, subConn.toPort, Port::Type::INPUT});
+            }
+        }
+    } else {
+        portsB.push_back({modB, conn.getPortBName(), Port::Type::INPUT});
+    }
+    for (const auto &portA: portsA) {
+        for (const auto &portB: portsB) {
+            modA = portA.getModuleID();
+            modB = portB.getModuleID();
+            auto connMsg = make.message<ConnMsg>(modA, portA.getName(), modB, portB.getName());
+            connMsg.setNotify(true);
+            handleMirrorConnect(connMsg, hub.stateTracker(),
+                                [&hub](const message::Message &msg) { return hub.sendAll(msg); });
+            hub.sendAll(connMsg);
+            // handleMirrorConnect(connMsg, [this](const message::Connect &msg) { return sendAllButUi(msg); });
+            // sendAllButUi(connMsg);
+        }
+    }
+    auto c = make.message<ConnMsg>(conn);
+    c.setNotify(true);
+    hub.sendAllUi(c);
+    handleMirrorConnect(conn, hub.stateTracker(), [&hub](const message::Message &msg) { return hub.sendAllUi(msg); });
 
     return true;
 }
 
+bool Hub::handlePriv(const message::Connect &conn)
+{
+    return handlePrivConnMsg(conn, *this, make);
+}
+
 bool Hub::handlePriv(const message::Disconnect &disc)
 {
-    auto d = make.message<message::Disconnect>(disc);
-    d.setNotify(true);
-    sendAll(d);
-
-    auto modA = disc.getModuleA();
-    auto modB = disc.getModuleB();
-    auto mirA = m_stateTracker.getMirrors(modA);
-    auto mirB = m_stateTracker.getMirrors(modB);
-
-    for (auto a: mirA) {
-        if (a == modA)
-            continue;
-        d.setModuleA(a);
-        sendAll(d);
-    }
-    d.setModuleA(modA);
-
-    for (auto b: mirB) {
-        if (b == modB)
-            continue;
-        d.setModuleB(b);
-        sendAll(d);
-    }
-    d.setModuleB(modB);
-
-    return true;
+    return handlePrivConnMsg(disc, *this, make);
 }
 
 bool Hub::handlePriv(const message::FileQuery &query, const buffer *payload)

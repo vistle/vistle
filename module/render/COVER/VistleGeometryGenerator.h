@@ -28,6 +28,9 @@ struct OsgColorMap {
 #ifdef COVER_PLUGIN
     std::shared_ptr<opencover::coVRShader> shader;
     std::shared_ptr<opencover::coVRShader> shaderUnlit;
+    std::shared_ptr<opencover::coVRShader> shaderHeightMap;
+    std::shared_ptr<opencover::coVRShader> shaderHeightMapUnlit;
+    std::vector<std::shared_ptr<opencover::coVRShader>> allShaders;
 #endif
     bool blendWithMaterial = false;
     float rangeMin = 0.f, rangeMax = 1.f;

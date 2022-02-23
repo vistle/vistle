@@ -9,11 +9,11 @@
 
 namespace vistle {
 
-template<typename T, int Dim = 1>
+template<typename T, unsigned Dim = 1>
 class Vec: public DataBase {
     V_OBJECT(Vec);
 
-    static const int MaxDim = MaxDimension;
+    static const unsigned MaxDim = MaxDimension;
     static_assert(Dim > 0, "only positive Dim allowed");
     static_assert(Dim <= MaxDim, "Dim too large");
 
@@ -22,24 +22,25 @@ public:
     typedef typename shm<T>::array array;
     typedef T Scalar;
     typedef VistleVector<Scalar, Dim> VecVector;
+    static const unsigned Dimension = Dim;
 
     Vec(const Index size, const Meta &meta = Meta());
 
     Index getSize() override { return d()->x[0]->size(); }
     Index getSize() const override { return m_size; }
 
-    int dimension() const override { return Dim; }
+    unsigned dimension() const override { return Dim; }
 
     bool copyEntry(Index to, DataBase::const_ptr src, Index from) override;
-    void setValue(Index idx, int component, const double &value) override;
-    double value(Index idx, int c = 0) const override;
+    void setValue(Index idx, unsigned component, const double &value) override;
+    double value(Index idx, unsigned c = 0) const override;
 
     void resetArrays() override;
     void setSize(const Index size) override;
     void applyDimensionHint(Object::const_ptr grid) override;
     void setExact(bool exact) override;
 
-    array &x(int c = 0) { return *d()->x[c]; }
+    array &x(unsigned c = 0) { return *d()->x[c]; }
     array &y()
     {
         assert(Dim > 1);
@@ -56,7 +57,7 @@ public:
         return Dim > 3 ? *d()->x[3] : x();
     }
 
-    const T *x(int c = 0) const { return m_x[c]; }
+    const T *x(unsigned c = 0) const { return m_x[c]; }
     const T *y() const
     {
         assert(Dim > 1);

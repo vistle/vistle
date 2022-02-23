@@ -425,8 +425,10 @@ std::shared_ptr<vistle::RenderObject> COVER::addObject(int senderId, const std::
                                                        vistle::Object::const_ptr normals,
                                                        vistle::Object::const_ptr texture)
 {
-    if (!container)
+    if (!container) {
+        std::cerr << "COVER::addObject: no container" << std::endl;
         return nullptr;
+    }
 
     m_requireUpdate = true;
 
@@ -450,8 +452,10 @@ std::shared_ptr<vistle::RenderObject> COVER::addObject(int senderId, const std::
             cover->addPlugin(plugin.c_str());
     }
 
-    if (!geometry)
+    if (!geometry) {
+        std::cerr << "COVER::addObject: no geometry" << std::endl;
         return nullptr;
+    }
 
     auto objType = geometry->getType();
     if (objType == vistle::Object::PLACEHOLDER) {
@@ -468,7 +472,7 @@ std::shared_ptr<vistle::RenderObject> COVER::addObject(int senderId, const std::
         } else if (objType != vistle::Object::EMPTY) {
             str << "Unsupported input data: " << Object::toString(objType);
         }
-        std::cerr << str.str() << std::endl;
+        std::cerr << "COVER::addObject: " << str.str() << std::endl;
         if (m_dataTypeWarnings.find(objType) == m_dataTypeWarnings.end()) {
             m_dataTypeWarnings.insert(objType);
             cover->notify(Notify::Warning) << str.str();
@@ -588,26 +592,28 @@ bool COVER::render()
     return true;
 }
 
-bool COVER::addColorMap(const std::string &species, Texture1D::const_ptr texture)
+bool COVER::addColorMap(const std::string &species, Object::const_ptr colormap)
 {
-    VistleGeometryGenerator::lock();
-    auto &cmap = m_colormaps[species];
-    cmap.setName(species);
-    cmap.setRange(texture->getMin(), texture->getMax());
+    if (auto texture = Texture1D::as(colormap)) {
+        VistleGeometryGenerator::lock();
+        auto &cmap = m_colormaps[species];
+        cmap.setName(species);
+        cmap.setRange(texture->getMin(), texture->getMax());
 
-    cmap.image->setPixelFormat(GL_RGBA);
-    cmap.image->setImage(texture->getWidth(), 1, 1, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, &texture->pixels()[0],
-                         osg::Image::NO_DELETE);
-    cmap.image->dirty();
+        cmap.image->setPixelFormat(GL_RGBA);
+        cmap.image->setImage(texture->getWidth(), 1, 1, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, &texture->pixels()[0],
+                             osg::Image::NO_DELETE);
+        cmap.image->dirty();
 
-    cmap.setBlendWithMaterial(texture->hasAttribute("_blend_with_material"));
-    VistleGeometryGenerator::unlock();
+        cmap.setBlendWithMaterial(texture->hasAttribute("_blend_with_material"));
+        VistleGeometryGenerator::unlock();
+    }
 
-    std::string plugin = texture->getAttribute("_plugin");
+    std::string plugin = colormap->getAttribute("_plugin");
     if (!plugin.empty())
         cover->addPlugin(plugin.c_str());
 
-    int modId = texture->getCreator();
+    int modId = colormap->getCreator();
     auto it = m_interactorMap.find(modId);
     if (it == m_interactorMap.end()) {
         std::cerr << rank() << ": no module with id " << modId << " found for colormap for species " << species
@@ -628,7 +634,7 @@ bool COVER::addColorMap(const std::string &species, Texture1D::const_ptr texture
         return true;
     }
 
-    auto att = texture->getAttribute("_colormap");
+    auto att = colormap->getAttribute("_colormap");
     if (att.empty()) {
         ro->removeAttribute("COLORMAP");
     } else {

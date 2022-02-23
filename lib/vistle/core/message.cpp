@@ -145,6 +145,7 @@ Message::Message(const Type t, const unsigned int s)
 , m_payloadSize(0)
 , m_payloadRawSize(0)
 , m_payloadCompression(CompressionNone)
+, m_priority(0)
 , m_forBroadcast(false)
 , m_wasBroadcast(false)
 , m_notification(false)
@@ -251,6 +252,16 @@ Type Message::type() const
 size_t Message::size() const
 {
     return m_size;
+}
+
+unsigned int Message::priority() const
+{
+    return m_priority;
+}
+
+void Message::setPriority(unsigned int prio)
+{
+    m_priority = prio;
 }
 
 size_t Message::payloadSize() const

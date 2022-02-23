@@ -50,7 +50,7 @@ public:
 
     bool render() override;
 
-    bool addColorMap(const std::string &species, vistle::Texture1D::const_ptr texture) override;
+    bool addColorMap(const std::string &species, vistle::Object::const_ptr cmap) override;
     bool removeColorMap(const std::string &species) override;
 
     std::shared_ptr<vistle::RenderObject> addObject(int senderId, const std::string &senderPort,

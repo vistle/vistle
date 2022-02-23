@@ -11,4 +11,5 @@ set(HEADERS MapDrape.h)
 set(SOURCES MapDrape.cpp)
 
 add_module(MapDrape "map coordinates and drape to height field" ${SOURCES} ${HEADERS})
+target_compile_definitions(MapDrape PRIVATE MAPDRAPE)
 target_link_libraries(MapDrape ${PROJ_LIBRARIES})
