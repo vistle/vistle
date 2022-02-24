@@ -8,7 +8,9 @@
 #include "vistle/core/object.h"
 #include "vistle/core/parameter.h"
 #include "vistle/core/polygons.h"
+#include "vistle/core/points.h"
 #include "vistle/core/scalar.h"
+#include "vistle/core/spheres.h"
 #include "vistle/core/vec.h"
 #include "vistle/module/module.h"
 
@@ -621,26 +623,27 @@ void ReadTsunami::createGround(Token &token, const NcFilePtr &ncFile, const map<
     }
 }
 
-void ReadTsunami::fillPolyElementList_fault(PolyPtr poly, int corners)
-{
-    std::generate(poly->el().begin(), poly->el().end(), [n = -1]() mutable { return ++n * 4; });
-}
+/* void ReadTsunami::fillPolyElementList_fault(PolyPtr poly, int corners) */
+/* { */
+/*     std::generate(poly->el().begin(), poly->el().end(), [n = -1]() mutable { return ++n * 4; }); */
+/* } */
 
-void ReadTsunami::fillPolyConnectList_fault(PolyPtr poly, int verts)
-{
-    int n = -1;
-    auto connectList = poly->cl().begin();
-    for (auto i = 2; i < verts; i = i + 2) {
-        connectList[++n] = (i - 2);
-        connectList[++n] = (i - 1);
-        connectList[++n] = i + 1;
-        connectList[++n] = i;
-    }
-}
+/* void ReadTsunami::fillPolyConnectList_fault(PolyPtr poly, int verts) */
+/* { */
+/*     int n = -1; */
+/*     auto connectList = poly->cl().begin(); */
+/*     for (auto i = 2; i < verts; i = i + 2) { */
+/*         connectList[++n] = (i - 2); */
+/*         connectList[++n] = (i - 1); */
+/*         connectList[++n] = i + 1; */
+/*         connectList[++n] = i; */
+/*     } */
+/* } */
 
-void ReadTsunami::fillCoords_fault(PolyPtr poly, const vector<NcGrpAtt> &faults)
+void ReadTsunami::fillCoords_fault(PointsPtr poly, const vector<NcGrpAtt> &faults)
 {
     auto x = poly->x().begin(), y = poly->y().begin(), z = poly->z().begin();
+    /* auto radius = poly->r().begin(); */
     string input("");
     int n = 0;
     for (auto &flt: faults) {
@@ -667,27 +670,36 @@ void ReadTsunami::fillCoords_fault(PolyPtr poly, const vector<NcGrpAtt> &faults)
             ptmp = tmp;
             tmp = "";
         }
-        for (int i = 0; i < 2; ++i, ++n) {
-            x[n] = lon;
-            y[n] = lat;
-            z[n] = n % 2 == 0 ? slip : 0;
-        }
+        x[n] = lon;
+        y[n] = lat;
+        z[n] = -0.001230245;
+        /* radius[n] = 0.01; */
+        /* for (int i = 0; i < 2; ++i, ++n) { */
+        /*     x[n] = lon; */
+        /*     y[n] = lat; */
+        /*     /1* z[n] = n % 2 == 0 ? slip : 0; *1/ */
+        /*     z[n] = 0; */
+        /*     radius[n] = slip; */
+        /* } */
     }
 }
 
 void ReadTsunami::createFault(Token &token, const NcFilePtr &ncFile, int block)
 {
+    string nFaultsStr("");
     vector<NcGrpAtt> faults;
     for (auto &[name, val]: ncFile->getAtts())
         if (boost::algorithm::starts_with(name, "fault_"))
             faults.push_back(val);
 
-    const auto &verts = faults.size();
-    const auto &elements = verts - 1;
-    const auto &corners = elements * 4;
-    Polygons::ptr fault(new Polygons(elements, corners, verts * 2));
-    fillPolyElementList_fault(fault, 4);
-    fillPolyConnectList_fault(fault, verts);
+    const auto &nFaults = faults.size();
+    /* const auto &verts = faults.size(); */
+    /* const auto &elements = verts - 1; */
+    /* const auto &corners = elements * 4; */
+    PointsPtr fault(new Points(nFaults));
+    /* Polygons::ptr fault(new Polygons(elements, corners, verts * 2)); */
+    /* fillPolyElementList_fault(fault, 4); */
+    /* fillPolyConnectList_fault(fault, verts); */
     fillCoords_fault(fault, faults);
     fault->setBlock(block);
     fault->setTimestep(-1);

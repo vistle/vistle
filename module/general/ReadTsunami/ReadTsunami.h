@@ -21,7 +21,9 @@
 #define _READTSUNAMI_H
 
 #include "vistle/core/index.h"
-#include "vistle/core/polygons.h"
+/* #include "vistle/core/spheres.h" */
+/* #include "vistle/core/polygons.h" */
+#include "vistle/core/points.h"
 #include <atomic>
 #include <memory>
 #include <mpi.h>
@@ -88,7 +90,9 @@ public:
 private:
     typedef unique_ptr<NcFile> NcFilePtr;
     typedef vistle::Vec<vistle::Scalar>::ptr VisVecScalarPtr;
-    typedef vistle::Polygons::ptr PolyPtr;
+    /* typedef vistle::Polygons::ptr PolyPtr; */
+    typedef vistle::Points::ptr PointsPtr;
+    /* typedef vistle::Spheres::ptr SpheresPtr; */
     typedef array<VisVecScalarPtr, NUM_SCALARS> ArrVecScalarPtrs;
     typedef vector<ArrVecScalarPtrs> VecArrVecScalarPtrs;
     typedef vector<array<float, 2>> VecLatLon;
@@ -148,9 +152,10 @@ private:
     void fillHeight(
         vistle::LayerGrid::ptr surface, const Dim<T> &dim,
         const ZCalcFunc &func = [](size_t x, size_t y) { return 0; });
-    void fillPolyElementList_fault(PolyPtr poly, int corners);
-    void fillPolyConnectList_fault(PolyPtr poly, int verts);
-    void fillCoords_fault(PolyPtr poly, const vector<NcGrpAtt> &faults);
+    /* void fillPolyElementList_fault(PolyPtr poly, int corners); */
+    /* void fillPolyConnectList_fault(PolyPtr poly, int verts); */
+    /* void fillCoords_fault(PolyPtr poly, const vector<NcGrpAtt> &faults); */
+    void fillCoords_fault(PointsPtr poly, const vector<NcGrpAtt> &faults);
 
     template<class T, class PartionIdx>
     auto generateNcVarExt(const NcVar &ncVar, const T &dim, const T &ghost, const T &numDimBlocks,
