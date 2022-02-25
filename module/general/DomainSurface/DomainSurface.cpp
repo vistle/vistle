@@ -6,6 +6,7 @@
 #include <vistle/core/unstr.h>
 #include <vistle/core/polygons.h>
 #include <vistle/core/structuredgrid.h>
+#include <vistle/module/resultcache.h>
 
 #include "DomainSurface.h"
 
@@ -26,6 +27,8 @@ DomainSurface::DomainSurface(const std::string &name, int moduleID, mpi::communi
     addIntParameter("quad", "Show quad", 0, Parameter::Boolean);
     addIntParameter("reuseCoordinates", "Re-use the unstructured grids coordinate list and data-object", 0,
                     Parameter::Boolean);
+
+    addResultCache(m_cache);
 }
 
 DomainSurface::~DomainSurface()
@@ -110,7 +113,15 @@ bool DomainSurface::compute(std::shared_ptr<BlockTask> task) const
     surface->setMeta(grid_in->meta());
     surface->copyAttributes(grid_in);
 
+    if (auto entry = m_cache.getOrLock(grid_in->getName(), surface)) {
+        m_cache.storeAndUnlock(entry, surface);
+    }
+
     if (!data) {
+        surface = surface->clone();
+        surface->setMeta(grid_in->meta());
+        surface->copyAttributes(grid_in);
+
         task->addObject("data_out", surface);
         return true;
     }

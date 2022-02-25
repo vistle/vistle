@@ -6,6 +6,10 @@
 #include <vistle/core/unstr.h>
 #include "IsoDataFunctor.h"
 
+#ifdef CUTTINGSURFACE
+#include <vistle/module/resultcache.h>
+#endif
+
 class IsoSurface: public vistle::Module {
 public:
     IsoSurface(const std::string &name, int moduleID, mpi::communicator comm);
@@ -66,6 +70,10 @@ private:
     bool m_foundPoint = false;
 
     IsoController isocontrol;
+
+#ifdef CUTTINGSURFACE
+    mutable vistle::ResultCache<vistle::Object::ptr> m_gridCache;
+#endif
 };
 
 #endif

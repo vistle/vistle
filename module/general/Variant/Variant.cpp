@@ -1,4 +1,5 @@
 #include <vistle/module/module.h>
+#include <vistle/module/resultcache.h>
 #include <vistle/core/points.h>
 #include <vistle/util/enum.h>
 
@@ -17,6 +18,8 @@ private:
 
     IntParameter *p_fromAttribute;
     StringParameter *p_attribute;
+
+    ResultCache<Object::ptr> m_cache;
 };
 
 
@@ -37,6 +40,8 @@ Variant::Variant(const std::string &name, int moduleID, mpi::communicator comm):
     p_fromAttribute =
         addIntParameter("from_attribute", "use another attribute as variant name", false, Parameter::Boolean);
     p_attribute = addStringParameter("attribute", "name of attribute to copy to variant", "_part");
+
+    addResultCache(m_cache);
 }
 
 Variant::~Variant()
@@ -50,36 +55,33 @@ bool Variant::compute()
     if (!obj)
         return true;
 
-    std::string variant = p_variant->getValue();
-    if (p_fromAttribute->getValue()) {
-        auto attr = p_attribute->getValue();
-        if (attr.empty())
-            variant.clear();
-        variant = obj->getAttribute(attr);
-    }
+    Object::ptr nobj;
+    if (auto entry = m_cache.getOrLock(obj->getName(), nobj)) {
+        std::string variant = p_variant->getValue();
+        if (p_fromAttribute->getValue()) {
+            auto attr = p_attribute->getValue();
+            if (attr.empty())
+                variant.clear();
+            variant = obj->getAttribute(attr);
+        }
 
-    if (variant.empty()) {
-        auto nobj = obj->clone();
-        addObject("data_out", nobj);
-        return true;
-    }
+        nobj = obj->clone();
+        if (!variant.empty()) {
+            switch (p_visible->getValue()) {
+            case Visible:
+                variant += "_on";
+                break;
+            case Hidden:
+                variant += "_off";
+                break;
+            }
 
-    switch (p_visible->getValue()) {
-    case Visible:
-        variant += "_on";
-        break;
-    case Hidden:
-        variant += "_off";
-        break;
+            nobj->addAttribute("_variant", variant);
+            nobj->addAttribute("_plugin", "Variant");
+        }
+        m_cache.storeAndUnlock(entry, nobj);
     }
-
-    Object::ptr out = obj->clone();
-    out->addAttribute("_variant", variant);
-    if (!variant.empty()) {
-        out->addAttribute("_plugin", "Variant");
-    }
-    addObject("data_out", out);
-
+    addObject("data_out", nobj);
     return true;
 }
 

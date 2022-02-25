@@ -1,4 +1,5 @@
 #include <vistle/module/module.h>
+#include <vistle/module/resultcache.h>
 #include <vistle/core/points.h>
 
 using namespace vistle;
@@ -12,6 +13,7 @@ private:
     virtual bool compute();
 
     StringParameter *p_color;
+    ResultCache<Object::ptr> m_cache;
 };
 
 using namespace vistle;
@@ -24,6 +26,8 @@ ColorAttribute::ColorAttribute(const std::string &name, int moduleID, mpi::commu
     din->link(dout);
 
     p_color = addStringParameter("color", "hexadecimal RGB/RGBA values (#rrggbb or #rrggbbaa)", "#ff00ff");
+
+    addResultCache(m_cache);
 }
 
 ColorAttribute::~ColorAttribute()
@@ -39,7 +43,11 @@ bool ColorAttribute::compute()
         return true;
 
     Object::ptr out = obj->clone();
-    out->addAttribute("_color", color);
+    if (auto entry = m_cache.getOrLock(obj->getName(), out)) {
+        out = obj->clone();
+        out->addAttribute("_color", color);
+        m_cache.storeAndUnlock(entry, out);
+    }
     addObject("data_out", out);
 
     return true;

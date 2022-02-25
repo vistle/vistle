@@ -1,6 +1,13 @@
-set(module_SOURCES module.cpp objectcache.cpp reader.cpp)
+set(module_SOURCES module.cpp objectcache.cpp reader.cpp resultcache.cpp)
 
-set(module_HEADERS export.h module.h module_impl.h objectcache.h reader.h)
+set(module_HEADERS
+    export.h
+    module.h
+    module_impl.h
+    objectcache.h
+    reader.h
+    resultcache.h
+    resultcache_impl.h)
 
 if(NOT VISTLE_MODULES_SHARED)
     set(module_HEADERS ${module_HEADERS} moduleregistry.h)

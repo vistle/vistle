@@ -77,6 +77,10 @@ IsoSurface::IsoSurface(const std::string &name, int moduleID, mpi::communicator 
     m_heightmap = addStringParameter("heightmap", "height map as geotif", "", Parameter::ExistingFilename);
 #endif
     m_paraMin = m_paraMax = 0.f;
+
+#ifdef CUTTINGSURFACE
+    addResultCache(m_gridCache);
+#endif
 }
 
 IsoSurface::~IsoSurface() = default;
@@ -253,6 +257,17 @@ Object::ptr IsoSurface::work(vistle::Object::const_ptr grid, vistle::Vec<vistle:
         result->updateInternals();
         result->copyAttributes(grid, false);
         result->setTransform(grid->getTransform());
+        if (mapdata && mapresult) {
+#ifdef CUTTINGSURFACE
+            if (auto entry = m_gridCache.getOrLock(grid->getName(), result)) {
+                m_gridCache.storeAndUnlock(entry, result);
+            }
+#endif
+            mapresult->updateInternals();
+            mapresult->copyAttributes(mapdata);
+            mapresult->setGrid(result);
+            return mapresult;
+        }
         if (result->getTimestep() < 0) {
             result->setTimestep(grid->getTimestep());
             result->setNumTimesteps(grid->getNumTimesteps());
@@ -260,12 +275,6 @@ Object::ptr IsoSurface::work(vistle::Object::const_ptr grid, vistle::Vec<vistle:
         if (result->getBlock() < 0) {
             result->setBlock(grid->getBlock());
             result->setNumBlocks(grid->getNumBlocks());
-        }
-        if (mapdata && mapresult) {
-            mapresult->updateInternals();
-            mapresult->copyAttributes(mapdata);
-            mapresult->setGrid(result);
-            return mapresult;
         }
 #ifndef CUTTINGSURFACE
         else {

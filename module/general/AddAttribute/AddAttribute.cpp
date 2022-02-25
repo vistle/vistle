@@ -1,4 +1,5 @@
 #include <vistle/module/module.h>
+#include <vistle/module/resultcache.h>
 #include <vistle/core/object.h>
 #include <sstream>
 
@@ -16,6 +17,8 @@ private:
 
     StringParameter *p_name[NumAttributes];
     StringParameter *p_value[NumAttributes];
+
+    ResultCache<Object::ptr> m_cache;
 };
 
 using namespace vistle;
@@ -35,6 +38,8 @@ AddAttribute::AddAttribute(const std::string &name, int moduleID, mpi::communica
         value << "value" << i;
         p_value[i] = addStringParameter(value.str(), "attribute value", "");
     }
+
+    addResultCache(m_cache);
 }
 
 AddAttribute::~AddAttribute()
@@ -47,11 +52,15 @@ bool AddAttribute::compute()
         return true;
 
     Object::ptr out = obj->clone();
+    if (auto entry = m_cache.getOrLock(obj->getName(), out)) {
+        out = obj->clone();
 
-    for (int i = 0; i < NumAttributes; ++i) {
-        if (!p_name[i]->getValue().empty()) {
-            out->addAttribute(p_name[i]->getValue(), p_value[i]->getValue());
+        for (int i = 0; i < NumAttributes; ++i) {
+            if (!p_name[i]->getValue().empty()) {
+                out->addAttribute(p_name[i]->getValue(), p_value[i]->getValue());
+            }
         }
+        m_cache.storeAndUnlock(entry, out);
     }
 
     addObject("data_out", out);

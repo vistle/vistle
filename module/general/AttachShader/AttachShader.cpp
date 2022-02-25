@@ -1,5 +1,6 @@
 #include <vistle/core/object.h>
 #include <vistle/core/message.h>
+#include <vistle/module/resultcache.h>
 #include "AttachShader.h"
 
 MODULE_MAIN(AttachShader)
@@ -17,6 +18,8 @@ AttachShader::AttachShader(const std::string &name, int moduleID, mpi::communica
     m_shader = addStringParameter("shader", "name of shader to apply to geometry", "");
     m_shaderParams =
         addStringParameter("shader_params", "shader parameters (as \"key=value\" \"key=value1 value2\"", "");
+
+    addResultCache(m_cache);
 }
 
 AttachShader::~AttachShader()
@@ -28,10 +31,13 @@ bool AttachShader::compute()
     if (!obj)
         return true;
 
-    Object::ptr nobj = obj->clone();
-    nobj->addAttribute("shader", m_shader->getValue());
-    if (!m_shaderParams->getValue().empty()) {
-        nobj->addAttribute("shader_params", m_shaderParams->getValue());
+    Object::ptr nobj;
+    if (!m_cache.getOrLock(obj->getName(), nobj)) {
+        nobj = obj->clone();
+        nobj->addAttribute("shader", m_shader->getValue());
+        if (!m_shaderParams->getValue().empty()) {
+            nobj->addAttribute("shader_params", m_shaderParams->getValue());
+        }
     }
     addObject("data_out", nobj);
 

@@ -2,6 +2,7 @@
 #define INDEXMANIFOLDS_H
 
 #include <vistle/module/module.h>
+#include <vistle/module/resultcache.h>
 
 class IndexManifolds: public vistle::Module {
 public:
@@ -16,6 +17,8 @@ private:
 
     vistle::IntVectorParameter *p_coord = nullptr;
     vistle::IntParameter *p_direction = nullptr;
+
+    mutable vistle::ResultCache<vistle::Quads::ptr> m_surfaceCache;
 };
 
 #endif

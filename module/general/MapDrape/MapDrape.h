@@ -4,6 +4,9 @@
 #include <vistle/module/module.h>
 #include <vistle/core/vector.h>
 #include <vistle/core/coords.h>
+#ifdef MAPDRAPE
+#include <vistle/module/resultcache.h>
+#endif
 
 #ifdef DISPLACE
 #define MapDrape Displace
@@ -31,7 +34,7 @@ private:
     VectorParameter *p_offset;
     float offset[3];
 
-    std::map<std::string, Coords::ptr> m_alreadyMapped;
+    ResultCache<Coords::ptr> m_alreadyMapped;
 #endif
 
 #ifdef DISPLACE

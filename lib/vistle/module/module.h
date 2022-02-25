@@ -39,6 +39,9 @@
 #include <vistle/core/messagepayload.h>
 
 #include "objectcache.h"
+#define RESULTCACHE_SKIP_DEFINITION
+#include "resultcache.h"
+#undef RESULTCACHE_SKIP_DEFINITION
 #include "export.h"
 
 #ifdef MODULE_THREAD
@@ -183,7 +186,10 @@ public:
     template<class Type>
     typename Type::const_ptr expect(const std::string &port);
 
-    //! request hub to forward incoming connections on forwardPort to be forwarded to localPort
+    //! let module clear cache at appropriate times
+    void addResultCache(ResultCacheBase &cache);
+
+    //! request hub to forward incoming TCP/IP connections on forwardPort to be forwarded to localPort
     void requestPortMapping(unsigned short forwardPort, unsigned short localPort);
     //! remove port forwarding requested by requestPortMapping
     void removePortMapping(unsigned short forwardPort);
@@ -309,6 +315,9 @@ protected:
     bool reduceWrapper(const message::Execute *exec, bool reordered = false);
     bool prepareWrapper(const message::Execute *exec);
 
+    void clearResultCaches();
+    void enableResultCaches(bool on);
+
 private:
     std::shared_ptr<StateTracker> m_stateTracker;
     int m_receivePolicy;
@@ -342,6 +351,9 @@ private:
     bool m_prioritizeVisible;
     void updateCacheMode();
     bool m_syncMessageProcessing;
+
+    IntParameter *m_useResultCache = nullptr;
+    std::vector<ResultCacheBase *> m_resultCaches;
 
     void updateOutputMode();
     std::streambuf *m_origStreambuf = nullptr, *m_streambuf = nullptr;

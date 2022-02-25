@@ -41,6 +41,20 @@ public:
 
     typedef std::map<std::string, ColorMap> ColorMapMap;
 
+    //! let module clear cache at appropriate times and manage its deletion
+    template<class CacheData>
+    vistle::ResultCache<CacheData> *getOrCreateGeometryCache(int senderId, const std::string &senderPort)
+    {
+        typedef ResultCache<CacheData> RC;
+        Creator c(senderId, senderPort);
+        auto it = m_geometryCaches.find(c);
+        if (it == m_geometryCaches.end()) {
+            it = m_geometryCaches.emplace(c, new RC).first;
+        }
+        assert(dynamic_cast<RC *>(it->second.get()));
+        return static_cast<RC *>(it->second.get());
+    }
+
 protected:
     bool handleMessage(const message::Message *message, const MessagePayload &payload) override;
 
@@ -76,7 +90,7 @@ private:
     void removeAllSentBy(int sender, const std::string &senderPort);
 
     struct Creator {
-        Creator(int id, const std::string &port, const std::string &basename)
+        Creator(int id, const std::string &port, const std::string &basename = std::string())
         : module(id), port(port), age(0), iteration(-1)
         {
             std::stringstream s;
@@ -114,6 +128,10 @@ private:
     ColorMapMap m_colormaps;
 
     int m_numObjectsPerFrame = 500;
+
+    void enableGeometryCaches(bool on);
+    std::map<Creator, std::unique_ptr<ResultCacheBase>> m_geometryCaches;
+    IntParameter *m_useGeometryCaches = nullptr;
 };
 
 } // namespace vistle

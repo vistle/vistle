@@ -34,6 +34,7 @@
 #include <vistle/core/statetracker.h>
 
 #include "objectcache.h"
+#include "resultcache_impl.h"
 
 #include "module.h"
 
@@ -863,6 +864,29 @@ vistle::Object::const_ptr Module::takeFirstObject(const std::string &portName)
     return takeFirstObject(p);
 }
 
+void Module::addResultCache(ResultCacheBase &cache)
+{
+    if (!m_useResultCache) {
+        m_useResultCache =
+            addIntParameter("_use_result_cache", "whether to try to cache results for re-use in subseqeuent timesteps",
+                            true, Parameter::Boolean);
+    }
+    cache.enable(m_useResultCache->getValue());
+    m_resultCaches.emplace_back(&cache);
+}
+
+void Module::clearResultCaches()
+{
+    for (auto &c: m_resultCaches)
+        c->clear();
+}
+
+void Module::enableResultCaches(bool on)
+{
+    for (auto &c: m_resultCaches)
+        c->enable(on);
+}
+
 void Module::requestPortMapping(unsigned short forwardPort, unsigned short localPort)
 {
     message::RequestTunnel m(forwardPort, localPort);
@@ -983,6 +1007,8 @@ bool Module::changeParameter(const Parameter *p)
             enableBenchmark(getIntParameter(name), false);
         } else if (name == "_prioritize_visible") {
             m_prioritizeVisible = getIntParameter("_prioritize_visible");
+        } else if (name == "_use_result_cache") {
+            enableResultCaches(getIntParameter(name));
         }
     }
 
@@ -2244,6 +2270,8 @@ bool Module::prepareWrapper(const message::Execute *exec)
     m_cancelExecuteCalled = false;
     m_executeAfterCancelFound = false;
 
+    clearResultCaches();
+
     m_withOutput.clear();
 
     bool collective =
@@ -2420,6 +2448,8 @@ bool Module::reduceWrapper(const message::Execute *exec, bool reordered)
     fin.setReferrer(exec->uuid());
     fin.setDestId(Id::LocalManager);
     sendMessage(fin);
+
+    clearResultCaches();
 
 #ifndef DETAILED_PROGRESS
     message::Idle idle;

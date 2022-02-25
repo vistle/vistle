@@ -8,6 +8,7 @@
 #include <vistle/core/texture1d.h>
 #include <vistle/core/coords.h>
 #include <vistle/util/math.h>
+#include <vistle/module/resultcache.h>
 
 #include "Color.h"
 
@@ -182,6 +183,8 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm): Mod
     setParameterRange(m_insetWidthPara, (Float)0, (Float)1);
     m_insetOpacity = addFloatParameter("inset_opacity_factor", "multiplier for opacity of inset color", 1.0);
     setParameterRange(m_insetOpacity, 0., 1.);
+
+    addResultCache(m_cache);
 
     ColorMap::TF pins;
     typedef ColorMap::RGBA RGBA;
@@ -751,20 +754,32 @@ bool Color::prepare()
 
 bool Color::compute()
 {
+    Object::const_ptr obj;
+    DataBase::const_ptr data;
     Coords::const_ptr coords = accept<Coords>(m_dataIn);
-    if (coords && m_dataOut->isConnected()) {
-        auto ncoords = coords->clone();
-        addObject(m_dataOut, ncoords);
+    if (coords) {
+        obj = coords;
+    } else {
+        data = accept<DataBase>(m_dataIn);
     }
-    DataBase::const_ptr data = accept<DataBase>(m_dataIn);
-    if (!data) {
-        Object::const_ptr obj = accept<Object>(m_dataIn);
+    if (!coords && !data) {
+        obj = accept<Object>(m_dataIn);
+    }
+
+    if (obj) {
+        // only grid, no mapped data
         if (m_dataOut->isConnected()) {
-            auto nobj = obj->clone();
+            Object::ptr nobj;
+            if (auto entry = m_cache.getOrLock(obj->getName(), nobj)) {
+                nobj = obj->clone();
+                m_cache.storeAndUnlock(entry, nobj);
+            }
             addObject(m_dataOut, nobj);
         }
         return true;
     }
+
+    assert(data);
 
     getMinMax(data, m_dataMin, m_dataMax);
     bool preview = getIntParameter("preview");
@@ -886,11 +901,16 @@ void Color::process(const DataBase::const_ptr data)
     sendColorMap();
 
     if (m_dataOut->isConnected()) {
-        auto out(addTexture(data, m_min, m_max, *m_colors));
-        out->setGrid(data->grid());
-        out->setMeta(data->meta());
-        out->copyAttributes(data);
+        Object::ptr nobj;
+        if (auto entry = m_cache.getOrLock(data->getName(), nobj)) {
+            auto out(addTexture(data, m_min, m_max, *m_colors));
+            out->setGrid(data->grid());
+            out->setMeta(data->meta());
+            out->copyAttributes(data);
+            nobj = out;
+            m_cache.storeAndUnlock(entry, nobj);
+        }
 
-        addObject(m_dataOut, out);
+        addObject(m_dataOut, nobj);
     }
 }
