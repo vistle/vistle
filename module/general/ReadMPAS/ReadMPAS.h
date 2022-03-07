@@ -40,6 +40,7 @@ private:
     Port *m_dataOut[NUMPARAMS];
 
     IntParameter *m_numPartitions, *m_numLevels;
+    FloatParameter *m_altitudeScale;
     StringParameter *m_gridFile, *m_partFile, *m_dataFile, *m_zGridFile;
     StringParameter *m_cellsOnCell;
     StringParameter *m_variables[NUMPARAMS];
