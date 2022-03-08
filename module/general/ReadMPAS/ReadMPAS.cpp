@@ -42,7 +42,7 @@ ReadMPAS::ReadMPAS(const std::string &name, int moduleID, mpi::communicator comm
     setIntParameter("numParts", 1);
     m_numLevels = addIntParameter("numLevels", "Number of vertical levels to read", Parameter::Integer);
     m_altitudeScale = addFloatParameter("altitudeScale", "value to scale the grid altitude (zGrid)", 20.);
-   
+
     m_cellsOnCell = addStringParameter("cellsOnCell", "List of neighboring cells (for ghosts)", "", Parameter::Choice);
     m_gridOut = createOutputPort("grid_out", "grid");
     m_varDim = addStringParameter("var_dim", "Dimension of variables", "", Parameter::Choice);
