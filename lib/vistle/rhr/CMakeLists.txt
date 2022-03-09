@@ -28,7 +28,7 @@ else()
 endif()
 
 vistle_add_library(vistle_rhr ${VISTLE_LIB_TYPE} ${RHR_SOURCES} ${RHR_HEADERS} ${RHR_CUDA_OBJ})
-vistle_install_headers(rhr ${RHR_HEADERS})
+vistle_export_library(vistle_rhr ${VISTLE_LIB_TYPE} ${RHR_SOURCES} ${RHR_HEADERS} ${RHR_CUDA_OBJ})
 
 target_link_libraries(
     vistle_rhr
