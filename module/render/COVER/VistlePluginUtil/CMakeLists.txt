@@ -5,6 +5,7 @@ set(pluginutil_HEADERS export.h VistleInteractor.h VistleMessage.h VistleRenderO
 add_definitions(-DHAS_MPI)
 
 vistle_add_library(VistlePluginUtil ${VISTLE_LIB_TYPE} ${pluginutil_SOURCES} ${pluginutil_HEADERS})
+vistle_export_library(VistlePluginUtil ${VISTLE_LIB_TYPE} ${pluginutil_SOURCES} ${pluginutil_HEADERS})
 
 target_include_directories(
     VistlePluginUtil SYSTEM

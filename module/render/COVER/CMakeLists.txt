@@ -21,6 +21,15 @@ vistle_add_library(
     VistleGeometryGenerator.cpp
     HeightMap.h
     HeightMap.cpp)
+vistle_export_library(
+    vistle_cover
+    SHARED
+    COVER.cpp
+    COVER.h
+    VistleGeometryGenerator.h
+    VistleGeometryGenerator.cpp
+    HeightMap.h
+    HeightMap.cpp)
 target_include_directories(vistle_cover SYSTEM PRIVATE ${OPENSCENEGRAPH_INCLUDE_DIRS})
 target_include_directories(
     vistle_cover
