@@ -5,6 +5,9 @@
 #include <boost/serialization/string.hpp>
 #include <boost/serialization/map.hpp>
 
+#include <IceT.h>
+#include <IceTMPI.h>
+
 namespace mpi = boost::mpi;
 
 
@@ -36,9 +39,8 @@ void toIcet(IceTDouble *imat, const vistle::Matrix4 &vmat)
 
 } // namespace
 
-ParallelRemoteRenderManager::ParallelRemoteRenderManager(Renderer *module, IceTDrawCallback drawCallback)
+ParallelRemoteRenderManager::ParallelRemoteRenderManager(Renderer *module)
 : m_module(module)
-, m_drawCallback(drawCallback)
 , m_displayRank(0)
 , m_rhrControl(module, m_displayRank)
 , m_delay(nullptr)
@@ -448,7 +450,7 @@ void ParallelRemoteRenderManager::setCurrentView(size_t i)
         icetStrategy(ICET_STRATEGY_SEQUENTIAL);
         icetDisable(ICET_COMPOSITE_ONE_BUFFER); // include depth buffer in compositing result
 
-        icetDrawCallback(m_drawCallback);
+        icetDrawCallback(nullptr);
 
         checkIceTError("after reset tiles");
     }
@@ -474,17 +476,18 @@ void ParallelRemoteRenderManager::compositeCurrentView(const unsigned char *rgba
 
     IceTImage img = icetCompositeImage(rgba, depth, viewport, proj, mv, bg);
 
-    finishCurrentView(img, timestep, lastView);
+    finishCurrentView(&img, timestep, lastView);
 }
 
-void ParallelRemoteRenderManager::finishCurrentView(const IceTImage &img, int timestep)
+void ParallelRemoteRenderManager::finishCurrentView(const IceTImagePtr imgp, int timestep)
 {
     const bool lastView = size_t(m_currentView) == m_viewData.size() - 1;
-    finishCurrentView(img, timestep, lastView);
+    finishCurrentView(imgp, timestep, lastView);
 }
 
-void ParallelRemoteRenderManager::finishCurrentView(const IceTImage &img, int timestep, bool lastView)
+void ParallelRemoteRenderManager::finishCurrentView(const IceTImagePtr imgp, int timestep, bool lastView)
 {
+    const IceTImage &img = *static_cast<const IceTImage *>(imgp);
     checkIceTError("before finishCurrentView");
 
     assert(m_currentView >= 0);
@@ -592,7 +595,7 @@ float *ParallelRemoteRenderManager::depth(size_t viewIdx)
     return m_depth[viewIdx].data();
 }
 
-void ParallelRemoteRenderManager::updateRect(size_t viewIdx, const IceTInt *viewport)
+void ParallelRemoteRenderManager::updateRect(size_t viewIdx, const int *viewport)
 {
     auto rhr = m_rhrControl.server();
     if (rhr && m_module->rank() != rootRank()) {

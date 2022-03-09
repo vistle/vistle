@@ -130,7 +130,7 @@ public:
 
 DisCOVERay::DisCOVERay(const std::string &name, int moduleId, mpi::communicator comm)
 : Renderer(name, moduleId, comm)
-, m_renderManager(this, nullptr)
+, m_renderManager(this)
 , m_tilesize(64)
 , m_doShade(true)
 , m_uvVis(false)

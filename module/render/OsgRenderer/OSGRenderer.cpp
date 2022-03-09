@@ -500,7 +500,7 @@ size_t TimestepHandler::numTimesteps() const
 OSGRenderer::OSGRenderer(const std::string &name, int moduleID, mpi::communicator comm)
 : Renderer(name, moduleID, comm)
 , osgViewer::Viewer()
-, m_renderManager(this, nullptr)
+, m_renderManager(this)
 , m_numViewsToComposite(0)
 , m_numFramesToComposite(0)
 , m_asyncFrames(0)

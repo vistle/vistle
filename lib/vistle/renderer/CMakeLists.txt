@@ -9,13 +9,13 @@ set(renderer_HEADERS ${renderer_HEADERS} parrendmgr.h rhrcontroller.h)
 vistle_add_library(vistle_renderer ${VISTLE_LIB_TYPE} ${renderer_SOURCES} ${renderer_HEADERS})
 vistle_export_library(vistle_renderer ${VISTLE_LIB_TYPE} ${renderer_SOURCES} ${renderer_HEADERS})
 
-target_include_directories(vistle_renderer SYSTEM PUBLIC ${ICET_INCLUDE_DIRS})
+target_include_directories(vistle_renderer SYSTEM PRIVATE ${ICET_INCLUDE_DIRS})
 
 target_link_libraries(
     vistle_renderer
     PUBLIC vistle_rhr
-    PUBLIC ${ICET_CORE_LIBS}
-    PUBLIC ${ICET_MPI_LIBS})
+    PRIVATE ${ICET_CORE_LIBS}
+    PRIVATE ${ICET_MPI_LIBS})
 
 if(UNIX AND NOT APPLE)
     target_link_libraries(vistle_renderer PUBLIC -lrt)
