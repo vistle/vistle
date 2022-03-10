@@ -22,8 +22,7 @@ if(Python_FOUND)
     set(control_HEADERS ${control_HEADERS} ../userinterface/pythoninterface.h ../userinterface/pythonmodule.h pythoninterpreter.h)
 endif()
 
-vistle_add_library(vistle_control ${VISTLE_LIB_TYPE} ${control_SOURCES} ${control_HEADERS})
-vistle_export_library(vistle_control ${VISTLE_LIB_TYPE} ${control_SOURCES} ${control_HEADERS})
+vistle_add_library(vistle_control EXPORT ${VISTLE_LIB_TYPE} ${control_SOURCES} ${control_HEADERS})
 target_link_libraries(
     vistle_control
     PRIVATE Boost::system

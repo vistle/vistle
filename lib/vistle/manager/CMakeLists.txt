@@ -10,9 +10,9 @@ set(LIB_SOURCES
 set(LIB_HEADERS export.h clustermanager.h datamanager.h manager.h portmanager.h run_on_main_thread.h)
 
 if(VISTLE_MULTI_PROCESS)
-    vistle_add_library(vistle_clustermanager STATIC ${LIB_SOURCES} ${LIB_HEADERS})
+    vistle_add_library(vistle_clustermanager INTERNAL STATIC ${LIB_SOURCES} ${LIB_HEADERS})
 else()
-    vistle_add_library(vistle_clustermanager ${LIB_SOURCES} ${LIB_HEADERS})
+    vistle_add_library(vistle_clustermanager EXPORT ${LIB_SOURCES} ${LIB_HEADERS})
 
     if(COVER_FOUND)
         vistle_find_package(XCB)
@@ -51,8 +51,6 @@ target_link_libraries(
     Threads::Threads)
 
 if(NOT VISTLE_MULTI_PROCESS)
-    vistle_export_library(vistle_clustermanager ${LIB_SOURCES} ${LIB_HEADERS})
-
     target_link_libraries(vistle_clustermanager ${CMAKE_DL_LIBS} vistle_module)
     if(APPLE)
         set_target_properties(vistle_clustermanager PROPERTIES LINK_FLAGS -Wl,-export_dynamic)

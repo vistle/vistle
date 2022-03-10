@@ -42,8 +42,7 @@ endif()
 
 set(boost_mpi_HEADERS)
 
-vistle_add_library(${BOOST_MPI} ${VISTLE_LIB_TYPE} ${boost_mpi_SOURCES} ${boost_mpi_HEADERS})
-vistle_export_library(${BOOST_MPI} ${VISTLE_LIB_TYPE} ${boost_mpi_SOURCES} ${boost_mpi_HEADERS})
+vistle_add_library(${BOOST_MPI} EXPORT ${VISTLE_LIB_TYPE} ${boost_mpi_SOURCES} ${boost_mpi_HEADERS})
 
 target_compile_definitions(${BOOST_MPI} PUBLIC BOOST_MPI_SOURCE)
 if(NOT WIN32)

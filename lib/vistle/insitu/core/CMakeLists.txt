@@ -8,8 +8,8 @@ set(HEADER
     transformArray.h
     attachVistleShm.h)
 
-vistle_add_library(vistle_insitu_core ${SOURCES} ${HEADER})
-vistle_export_library(vistle_insitu_core ${SOURCES} ${HEADER})
+vistle_add_library(vistle_insitu_core EXPORT ${SOURCES} ${HEADER})
+
 vistle_target_link_libraries(
     vistle_insitu_core
     PRIVATE

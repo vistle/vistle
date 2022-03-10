@@ -43,47 +43,46 @@ mark_as_advanced(ZFP_LIBRARY_PREFIX)
 set(CMAKE_INSTALL_INCLUDEDIR include/vistle/3rdparty)
 add_subdirectory(zfp)
 
-#set(BUILD_SHARED_LIBS ${VISTLE_BUILD_SHARED} CACHE INTERNAL "")
-set(BUILD_SHARED_LIBS OFF)
-set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
-set(ICET_BUILD_TESTING
-    OFF
-    CACHE INTERNAL "")
-set(ICET_USE_OPENGL
-    OFF
-    CACHE INTERNAL "")
-set(ICET_USE_OPENGL3
-    OFF
-    CACHE INTERNAL "")
-set(ICET_INSTALL_NO_RUNTIME
-    TRUE
-    CACHE INTERNAL "")
-set(ICET_INSTALL_NO_DEVELOPMENT
-    TRUE
-    CACHE INTERNAL "")
-set(LIBRARY_OUTPUT_PATH
-    ${PROJECT_BINARY_DIR}/lib
-    CACHE PATH "Output directory for building all libraries.")
-set(EXECUTABLE_OUTPUT_PATH
-    ${PROJECT_BINARY_DIR}/lib
-    CACHE PATH "Output directory for building all binaries.")
-set(ICET_LIBRARY_DIR
-    ${PROJECT_BINARY_DIR}/lib
-    CACHE PATH "Output directory for building all libraries.")
-set(ICET_EXECUTABLE_DIR
-    ${PROJECT_BINARY_DIR}/bin
-    CACHE PATH "Output directory for building all executable.")
-set(ICET_BINARY_DIR
-    ${PROJECT_BINARY_DIR}
-    CACHE PATH "Value overridden by Vistle")
-set(ICET_INSTALL_LIB_DIR
-    ${INSTALL_LIB_DIR}
-    CACHE INTERNAL "")
-if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    add_compile_options(-Wno-variadic-macros -Wno-pedantic)
-endif()
-
 if(NOT VISTLE_GUI_ONLY)
+    #set(BUILD_SHARED_LIBS ${VISTLE_BUILD_SHARED} CACHE INTERNAL "")
+    set(BUILD_SHARED_LIBS OFF)
+    set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
+    set(ICET_BUILD_TESTING
+        OFF
+        CACHE INTERNAL "")
+    set(ICET_USE_OPENGL
+        OFF
+        CACHE INTERNAL "")
+    set(ICET_USE_OPENGL3
+        OFF
+        CACHE INTERNAL "")
+    set(ICET_INSTALL_NO_RUNTIME
+        TRUE
+        CACHE INTERNAL "")
+    set(ICET_INSTALL_NO_DEVELOPMENT
+        TRUE
+        CACHE INTERNAL "")
+    set(LIBRARY_OUTPUT_PATH
+        ${PROJECT_BINARY_DIR}/lib
+        CACHE PATH "Output directory for building all libraries.")
+    set(EXECUTABLE_OUTPUT_PATH
+        ${PROJECT_BINARY_DIR}/lib
+        CACHE PATH "Output directory for building all binaries.")
+    set(ICET_LIBRARY_DIR
+        ${PROJECT_BINARY_DIR}/lib
+        CACHE PATH "Output directory for building all libraries.")
+    set(ICET_EXECUTABLE_DIR
+        ${PROJECT_BINARY_DIR}/bin
+        CACHE PATH "Output directory for building all executable.")
+    set(ICET_BINARY_DIR
+        ${PROJECT_BINARY_DIR}
+        CACHE PATH "Value overridden by Vistle")
+    set(ICET_INSTALL_LIB_DIR
+        ${INSTALL_LIB_DIR}
+        CACHE INTERNAL "")
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        add_compile_options(-Wno-variadic-macros -Wno-pedantic)
+    endif()
     add_subdirectory(IceT)
 
     set(PythonLibsNew_FIND_REQUIRED FALSE)

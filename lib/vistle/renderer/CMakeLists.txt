@@ -6,8 +6,11 @@ use_openmp()
 set(renderer_SOURCES ${renderer_SOURCES} rhrcontroller.cpp parrendmgr.cpp)
 set(renderer_HEADERS ${renderer_HEADERS} parrendmgr.h rhrcontroller.h)
 
-vistle_add_library(vistle_renderer ${VISTLE_LIB_TYPE} ${renderer_SOURCES} ${renderer_HEADERS})
-vistle_export_library(vistle_renderer ${VISTLE_LIB_TYPE} ${renderer_SOURCES} ${renderer_HEADERS})
+set(visibility EXPORT)
+if(NOT VISTLE_BUILD_SHARED)
+    set(visibility INTERNAL)
+endif()
+vistle_add_library(vistle_renderer ${visibility} ${VISTLE_LIB_TYPE} ${renderer_SOURCES} ${renderer_HEADERS})
 
 target_include_directories(vistle_renderer SYSTEM PRIVATE ${ICET_INCLUDE_DIRS})
 

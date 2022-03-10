@@ -7,8 +7,7 @@ set(SOURCES vtktovistle.cpp)
 set(HEADERS export.h vtktovistle.h)
 
 #vistle_vtk
-vistle_add_library(vistle_vtk ${SOURCES} ${HEADERS})
-vistle_export_library(vistle_vtk ${SOURCES} ${HEADERS})
+vistle_add_library(vistle_vtk EXPORT ${SOURCES} ${HEADERS})
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
     target_compile_options(vistle_vtk PRIVATE -Wno-deprecated)
@@ -29,8 +28,7 @@ vistle_target_link_libraries(
 target_compile_definitions(vistle_vtk PUBLIC ${VTK_DEFINITIONS})
 
 #vistle_insitu_vtk
-vistle_add_library(vistle_sensei_vtk ${SOURCES} ${HEADERS})
-vistle_export_library(vistle_sensei_vtk ${SOURCES} ${HEADERS})
+vistle_add_library(vistle_sensei_vtk EXPORT ${SOURCES} ${HEADERS})
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
     target_compile_options(vistle_sensei_vtk PRIVATE -Wno-deprecated)

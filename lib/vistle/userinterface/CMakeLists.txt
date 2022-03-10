@@ -8,9 +8,7 @@ if(Python_FOUND)
     set(userinterface_HEADERS ${userinterface_HEADERS} pythoninterface.h pythonmodule.h)
 endif()
 
-vistle_add_library(vistle_userinterface ${VISTLE_LIB_TYPE} ${userinterface_SOURCES} ${userinterface_HEADERS})
-vistle_export_library(vistle_userinterface ${VISTLE_LIB_TYPE} ${userinterface_SOURCES} ${userinterface_HEADERS})
-#vistle_install_headers(userinterface ${userinterface_HEADERS})
+vistle_add_library(vistle_userinterface EXPORT ${VISTLE_LIB_TYPE} ${userinterface_SOURCES} ${userinterface_HEADERS})
 target_link_libraries(
     vistle_userinterface
     PRIVATE Boost::system

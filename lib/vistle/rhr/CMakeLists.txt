@@ -27,8 +27,7 @@ else()
     add_custom_target(RHR_CUDA SOURCES ${RHR_CUDA_SOURCES})
 endif()
 
-vistle_add_library(vistle_rhr ${VISTLE_LIB_TYPE} ${RHR_SOURCES} ${RHR_HEADERS} ${RHR_CUDA_OBJ})
-vistle_export_library(vistle_rhr ${VISTLE_LIB_TYPE} ${RHR_SOURCES} ${RHR_HEADERS} ${RHR_CUDA_OBJ})
+vistle_add_library(vistle_rhr EXPORT ${VISTLE_LIB_TYPE} ${RHR_SOURCES} ${RHR_HEADERS} ${RHR_CUDA_OBJ})
 
 target_link_libraries(
     vistle_rhr

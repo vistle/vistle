@@ -40,8 +40,7 @@ function(createSimV2Lib libName)
         VisitDataTypesToVistle.h
         export.h)
 
-    vistle_add_library(${libName} ${RUNTIME_HEADERS} ${RUNTIME_SOURCES} ${LIBSIM_INTERFACE_FILES})
-    vistle_export_library(${libName} ${RUNTIME_HEADERS} ${RUNTIME_SOURCES})
+    vistle_add_library(${libName} EXPORT ${RUNTIME_HEADERS} ${RUNTIME_SOURCES} ${LIBSIM_INTERFACE_FILES})
 
     if(LIBSIM_DEBUG)
         target_compile_definitions(${libName} PRIVATE LIBSIM_DEBUG)
