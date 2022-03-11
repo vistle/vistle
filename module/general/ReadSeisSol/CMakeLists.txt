@@ -30,11 +30,11 @@ set(VISTLE_PYINSTALLER_COMPILE
 add_custom_command(
     TARGET ReadSeisSol
     POST_BUILD
-    COMMAND ${VISTLE_PYINSTALLER_COMPILE} resample_seissol_xdmf ${CMAKE_CURRENT_SOURCE_DIR}/utils/recreateXdmf.py
+    COMMAND ${VISTLE_PYINSTALLER_COMPILE} seissol_resample_xdmf ${CMAKE_CURRENT_SOURCE_DIR}/utils/recreateXdmf.py
     VERBATIM)
 
 add_custom_command(
     TARGET ReadSeisSol
     POST_BUILD
-    COMMAND ${VISTLE_PYINSTALLER_COMPILE} resample_seissol ${CMAKE_CURRENT_SOURCE_DIR}/utils/extractDataFromUnstructuredOutput.py
+    COMMAND ${VISTLE_PYINSTALLER_COMPILE} seissol_resample ${CMAKE_CURRENT_SOURCE_DIR}/utils/extractDataFromUnstructuredOutput.py
     VERBATIM)
