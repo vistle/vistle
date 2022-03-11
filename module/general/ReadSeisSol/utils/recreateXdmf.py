@@ -166,7 +166,7 @@ def ReadNdtNmemFromXdmf(xdmfFile):
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description="recreate a xdmf file")
+    parser = argparse.ArgumentParser(description="Resample seisol xdmf file.")
     parser.add_argument("prefix", help="prefix including -fault or -surface")
     parser.add_argument("--version", nargs=1, help="xdmf version (2 or 3)", type=int)
     parser.add_argument("--idt", nargs="+", help="list of time step to differentiate (1st = 0); -1 = all", type=int)
