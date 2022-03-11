@@ -1,32 +1,24 @@
 [headline]:<>
 
-[SeisSol](https://www.seissol.org/) is an Open Source Software for the numerical simulation of seismic wave phenomena and earthquake dynamics. This Reader has been developed in the ChEESE project to be able to visualize SeisSol generated earthquakes in vistle. The result of the SeisSol simulation is stored in an HDF5 file which will be read by this Reader via [XDMF](https://xdmf.org/index.php/XDMF_Model_and_Format) files. The XDMF files can be generated with the python script [seissolxdmfwriter](https://pypi.org/project/seissolxdmfwriter/) provided by the SeisSol team.
+## Introduction
 
-- **lon**: Longitude of the sea domain in WGS84 coordinates
+[SeisSol](https://www.seissol.org/) is an Open Source Software for the numerical simulation of seismic wave phenomena and earthquake dynamics. This Reader has been developed in the [ChEESE](https://cheese-coe.eu/https://cheese-coe.eu/) project to be able to visualize SeisSol generated earthquakes in Vistle. The result of the SeisSol simulation can be stored in XDMF/HDF5 or XDMF/Binary files which will be read by this Reader via [XDMF](https://xdmf.org/index.php/XDMF_Model_and_Format). The XDMF files can be generated or readjusted with the python scripts [seissolxdmfwriter](https://pypi.org/project/seissolxdmfwriter/) and [seissolxdmf](https://pypi.org/project/seissolxdmf/) provided by the SeisSol team.
 
-- **lat**: Latitdude of the sea domain in WGS84 coordinates
+## Preconditions
 
-- **grid_lat**: Latitdude of the topography in WGS84 coordinates
+### Install Requirements
 
-- **grid_lon**: Longitude of the topography in WGS84 coordinates
+- [XDMF](https://xdmf.org/index.php/XDMF_Model_and_Format) 3: build from source or installed via packagemanager
 
-- **time**: Timesteps used for the simulation
+### XDMF-File Adjustments
 
-- **eta**: Wave amplitude per timestep
-
-Additional attributes like scalar data will be mapped onto the sea surface.
+To be able to read the files and utilizing the vistle distribution it is needed to resample the intial XDMF files. For this purpose
 
 ## How the reader works
 
 The reader is able to read netCDF files which uses a [PnetCDF](https://parallel-netcdf.github.io/) supported file type. In general the module will fetch the longitude and latitude values for the sea (**lon**, **lat**) and the batheymetry (**grid_lon**, **grid_lat**) from the ncfile which has to be specified in the parameter browser. Based on each longitude-latitude pair the reader creates a 2D grid, varies the wave height (**eta** - orthogonal to longitude and latitude coordinates) per timestep and creates a 3D polygon surface representing the sea surface out of it. If an attribute **bathymetry** is provided with the netCDF file the reader will build a ground surface as well. 
 
 ---
-
-## Install Requirements
-
-- PnetCDF: build with --enable-thread-safe flag as described on [PnetCDF-GitHub](https://github.com/Parallel-NetCDF/PnetCDF)
-
-The pnetcdf install directory should be added to your $PATH environment variable in order to be found by CMake, otherwise it won't be build.
 
 [moduleHtml]:<>
 
