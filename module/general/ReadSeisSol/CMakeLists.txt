@@ -27,14 +27,26 @@ set(VISTLE_PYINSTALLER_COMPILE
     --onefile
     --name)
 
+set(SEISSOL_RESAMPLE_XDMF_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/utils/recreateXdmf.py)
+set(SEISSOL_RESAMPLE_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/utils/extractDataFromUnstructuredOutput.py)
+set(SEISSOL_RESAMPLE_XDMF_BIN ${CMAKE_CURRENT_BINARY_DIR}/utils/seissol_resample_xdmf)
+set(SEISSOL_RESAMPLE_BIN ${CMAKE_CURRENT_BINARY_DIR}/utils/seissol_resample)
+
+add_custom_target(build_seissol_resample_xdmf ALL DEPENDS ${SEISSOL_RESAMPLE_XDMF_BIN})
+add_custom_target(build_seissol_resample ALL DEPENDS "${SEISSOL_RESAMPLE_BIN}")
+
 add_custom_command(
-    TARGET ReadSeisSol
-    POST_BUILD
-    COMMAND ${VISTLE_PYINSTALLER_COMPILE} seissol_resample_xdmf ${CMAKE_CURRENT_SOURCE_DIR}/utils/recreateXdmf.py
+    OUTPUT ${SEISSOL_RESAMPLE_XDMF_BIN}
+    COMMENT "Create seissol_resample_xdmf"
+    COMMAND ${VISTLE_PYINSTALLER_COMPILE} seissol_resample_xdmf ${SEISSOL_RESAMPLE_XDMF_SOURCE}
+    COMMAND ${CMAKE_COMMAND} -E touch ${SEISSOL_RESAMPLE_XDMF_BIN}
+    DEPENDS ${SEISSOL_RESAMPLE_XDMF_SOURCE}
     VERBATIM)
 
 add_custom_command(
-    TARGET ReadSeisSol
-    POST_BUILD
-    COMMAND ${VISTLE_PYINSTALLER_COMPILE} seissol_resample ${CMAKE_CURRENT_SOURCE_DIR}/utils/extractDataFromUnstructuredOutput.py
+    OUTPUT ${SEISSOL_RESAMPLE_BIN}
+    COMMENT "Create seissol_resample"
+    COMMAND ${VISTLE_PYINSTALLER_COMPILE} seissol_resample ${SEISSOL_RESAMPLE_SOURCE}
+    COMMAND ${CMAKE_COMMAND} -E touch ${SEISSOL_RESAMPLE_BIN}
+    DEPENDS ${SEISSOL_RESAMPLE_SOURCE}
     VERBATIM)
