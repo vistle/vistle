@@ -6,10 +6,10 @@ Changes: Marko Djuric
 
 import os
 import os.path
-import seissolxdmf
 import shutil
-import recreateXdmf as rxdmf
 import argparse
+import seissolxdmf
+import recreateXdmf as rxdmf
 
 parser = argparse.ArgumentParser(description="resample output file and write as binary files")
 parser.add_argument("xdmfFilename", help="xdmf output file")
