@@ -1050,7 +1050,7 @@ bool Hub::hubReady()
         }
         m_slavesToConnect.clear();
 
-        if (!processScript()) {
+        if (!processStartupScripts() || !processScript()) {
             auto q = message::Quit();
             sendSlaves(q);
             sendManager(q);
@@ -1110,7 +1110,7 @@ bool Hub::hubReady()
         }
         m_ready = true;
     }
-    return processStartupScripts();
+    return true;
 }
 
 bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, const buffer *payload)
