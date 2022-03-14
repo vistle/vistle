@@ -1201,13 +1201,16 @@ bool StateTracker::handlePriv(const message::SetParameter &setParam)
     bool handled = false;
 
     const int senderId = setParam.senderId();
-    if (setParam.getModule() == senderId && runningMap.find(senderId) != runningMap.end()) {
-        auto param = getParameter(setParam.getModule(), setParam.getName());
-        if (param) {
-            setParam.apply(param);
-            handled = true;
+    if (setParam.getModule() == senderId) {
+        if (runningMap.find(senderId) != runningMap.end()) {
+            auto param = getParameter(setParam.getModule(), setParam.getName());
+            if (param) {
+                setParam.apply(param);
+                handled = true;
+            }
         }
-    }
+    } else
+        return true; //this message has to processed by the module first, we do not have to do anything
 
     if (handled) {
         mutex_locker guard(m_stateMutex);
