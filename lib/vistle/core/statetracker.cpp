@@ -168,6 +168,15 @@ std::string StateTracker::getModuleDescription(int id) const
 }
 
 
+bool StateTracker::isCompound(int id)
+{
+    mutex_locker guard(m_stateMutex);
+    AvailableModule::Key key{getHub(id), getModuleName(id)};
+    const auto av = m_availableModules.find(key);
+    return av != m_availableModules.end() && av->second.isCompound();
+}
+
+
 int StateTracker::getModuleState(int id) const
 {
     mutex_locker guard(m_stateMutex);
