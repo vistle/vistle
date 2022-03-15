@@ -30,7 +30,7 @@ bool ToPoints::compute()
         grid = Coords::as(d);
     }
     if (!grid) {
-        sendError("no grid");
+        sendError("no coordinates");
         return true;
     }
 
