@@ -73,5 +73,3 @@ The example will extract only the timesteps [1-3], the data arguments **partitio
 [parameters]:<>
 
 ## Example Usage
-
-![]()
