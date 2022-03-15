@@ -167,10 +167,9 @@ endif()
 add_custom_target(ispc SOURCES ${ISPC_SOURCES} ${ISPC_HEADERS})
 
 include_directories(SYSTEM ${MPI_C_INCLUDE_PATH})
+include_directories(SYSTEM ${EMBREE_INCLUDE_DIRS})
 set(CMAKE_CXX_COMPILE_FLAGS "${CMAKE_CXX_COMPILE_FLAGS} ${MPI_C_COMPILE_FLAGS}")
 set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} ${MPI_C_LINK_FLAGS}")
-
-add_definitions(-DHAS_MPI)
 
 target_link_libraries(
     DisCOVERay

@@ -5,7 +5,6 @@ endif()
 
 message("Building COVER plugins for ARCHSUFFIX ${COVISE_ARCHSUFFIX}, destination is ${COVISE_DESTDIR}")
 
-add_definitions(-DHAS_MPI)
 include_directories(..)
 
 add_subdirectory(Vistle)
