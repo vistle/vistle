@@ -54,8 +54,8 @@ Modules
    ReadFoam_link.md
    ReadIagTecplot_link.md
    ReadItlrFs3d_link.md
-   ReadMPAS_link.md
    ReadModel_link.md
+   ReadMpas_link.md
    ReadNek5000_link.md
    ReadSeisSol_link.md
    ReadTsunami_link.md

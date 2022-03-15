@@ -1,5 +1,5 @@
 
-# ReadMPAS
+# ReadMpas
 Read mpas files
 
 <svg width="1800" height="270" >
@@ -25,7 +25,7 @@ Read mpas files
 <rect x="129.0" y="120" width="1.0" height="30" rx="0" ry="0" style="fill:#000000;" />
 <rect x="129.0" y="150" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
 <text x="165.0" y="153.0" class="text" >scalar data<tspan> (data_out_2)</tspan></text>
-<text x="6.0" y="85.5" class="moduleName" >ReadMPAS</text></svg>
+<text x="6.0" y="85.5" class="moduleName" >ReadMpas</text></svg>
 
 ## Parameters
 |name|description|type|
@@ -41,6 +41,7 @@ Read mpas files
 |part_file|File containing the grid partitions|String|
 |numParts|Number of Partitions|Int|
 |numLevels|Number of vertical levels to read|Int|
+|altitudeScale|value to scale the grid altitude (zGrid)|Float|
 |cellsOnCell|List of neighboring cells (for ghosts))|String|
 |var_dim|Dimension of variables (2D, 3D, other)|String|
 |Variable_0|Variable_0 ((NONE))|String|
