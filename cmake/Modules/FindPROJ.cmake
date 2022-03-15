@@ -9,16 +9,28 @@ if(PROJ_INCLUDE_DIR)
     set(PROJ_FIND_QUIETLY TRUE)
 endif(PROJ_INCLUDE_DIR)
 
-find_path(
-    PROJ_PREFIX "include/proj_api.h"
-    PATHS $ENV{EXTERNLIBS}/proj4
-    DOC "PROJ - Headers")
+find_path(PROJ_PREFIX "include/proj.h" DOC "PROJ - Prefix")
+if(NOT PROJ_PREFIX)
+    find_path(
+        PROJ_PREFIX "include/proj_api.h"
+        PATHS $ENV{EXTERNLIBS}/proj4
+        DOC "PROJ - Prefix")
+endif()
 
 find_path(
-    PROJ_INCLUDE_DIR "proj_api.h"
+    PROJ_INCLUDE_DIR "proj.h"
     PATHS ${PROJ_PREFIX}
     PATH_SUFFIXES include
     DOC "PROJ - Headers")
+set(PROJ_API FALSE)
+if(NOT PROJ_INCLUDE_DIR)
+    find_path(
+        PROJ_INCLUDE_DIR "proj_api.h"
+        PATHS ${PROJ_PREFIX}
+        PATH_SUFFIXES include
+        DOC "PROJ - Headers")
+    set(PROJ_API TRUE)
+endif()
 
 set(PROJ_NAMES Proj4 proj proj_4_9)
 set(PROJ_DBG_NAMES Proj4D projD proj_4_9_D)
@@ -46,7 +58,7 @@ if(MSVC)
 
     find_package_handle_standard_args(PROJ DEFAULT_MSG PROJ_LIBRARY PROJ_LIBRARY_DEBUG PROJ_INCLUDE_DIR)
 
-    mark_as_advanced(PROJ_LIBRARY PROJ_LIBRARY_DEBUG PROJ_INCLUDE_DIR)
+    mark_as_advanced(PROJ_LIBRARY PROJ_LIBRARY_DEBUG PROJ_INCLUDE_DIR PROJ_API)
 
 else(MSVC)
     # rest of the world
@@ -54,10 +66,11 @@ else(MSVC)
 
     find_package_handle_standard_args(PROJ DEFAULT_MSG PROJ_LIBRARY PROJ_INCLUDE_DIR)
 
-    mark_as_advanced(PROJ_LIBRARY PROJ_INCLUDE_DIR)
+    mark_as_advanced(PROJ_LIBRARY PROJ_INCLUDE_DIR PROJ_API)
 
 endif(MSVC)
 
 if(PROJ_FOUND)
     set(PROJ_INCLUDE_DIRS ${PROJ_INCLUDE_DIR})
+    set(PROJ_LIBRARIES ${PROJ_LIBRARY})
 endif(PROJ_FOUND)

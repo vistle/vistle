@@ -1,4 +1,5 @@
 # use with direnv: https://github.com/zimbatm/direnv
+# modify a copy of this file for your installation and symlink it to .envrc in the root of your Vistle checkout
 
 os=$(uname -s|tr A-Z a-z)
 case $(uname -m) in

@@ -28,7 +28,7 @@ else(WIN32)
     set_source_files_properties(OSGRenderer.cpp PROPERTIES COMPILE_FLAGS "-Wno-overloaded-virtual")
 endif(WIN32)
 
-include_directories(SYSTEM ${OPENSCENEGRAPH_INCLUDE_DIRS} ${GLEW_INCLUDE_DIR} ${OPENGL_INCLUDE_DIRS} ${ICET_INCLUDE_DIRS})
+include_directories(SYSTEM ${OPENSCENEGRAPH_INCLUDE_DIRS} ${GLEW_INCLUDE_DIR} ${OPENGL_INCLUDE_DIRS})
 include_directories(../COVER)
 if(NOT APPLE AND X11_FOUND)
     add_definitions(-DUSE_X11)
@@ -44,8 +44,6 @@ target_link_libraries(
     vistle_module
     vistle_renderer
     vistle_rhr
-    ${ICET_CORE_LIBS}
-    ${ICET_MPI_LIBS}
     ${ZLIB_LIBRARIES})
 
 if(USE_TBB)

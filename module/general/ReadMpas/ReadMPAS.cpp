@@ -23,8 +23,6 @@ using namespace vistle;
 #define MAX_EDGES 6 // maximal edges on cell
 #define MSL 6371229.0 //sphere radius on mean sea level (earth radius)
 #define MAX_VERT 3 // vertex degree
-#define RAD_SCALE 20 //scale radius to make atmosphere look thicker
-
 
 // CONSTRUCTOR
 ReadMPAS::ReadMPAS(const std::string &name, int moduleID, mpi::communicator comm): Reader(name, moduleID, comm)
@@ -43,8 +41,9 @@ ReadMPAS::ReadMPAS(const std::string &name, int moduleID, mpi::communicator comm
     m_numPartitions = addIntParameter("numParts", "Number of Partitions", Parameter::Integer);
     setIntParameter("numParts", 1);
     m_numLevels = addIntParameter("numLevels", "Number of vertical levels to read", Parameter::Integer);
-    m_cellsOnCell = addStringParameter("cellsOnCell", "List of neighboring cells (for ghosts)", "", Parameter::Choice);
+    m_altitudeScale = addFloatParameter("altitudeScale", "value to scale the grid altitude (zGrid)", 20.);
 
+    m_cellsOnCell = addStringParameter("cellsOnCell", "List of neighboring cells (for ghosts)", "", Parameter::Choice);
     m_gridOut = createOutputPort("grid_out", "grid");
     m_varDim = addStringParameter("var_dim", "Dimension of variables", "", Parameter::Choice);
     setParameterChoices(m_varDim, varDimList);
@@ -536,6 +535,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
             // if zGrid is given: calculate level height from it
             // o.w. use constant offsets between levels
             Index idx2 = 0, currentElem = 0, izVert = 0;
+            float altScale = m_altitudeScale->getValue();
 
             if (hasZData) {
                 NcmpiVar cellsOnVertex = ncFirstFile.getVar("cellsOnVertex");
@@ -561,7 +561,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
                                 i_v1 = cov[iVOC * MAX_VERT + 0]; //cell index
                                 i_v2 = cov[iVOC * MAX_VERT + 1];
                                 i_v3 = cov[iVOC * MAX_VERT + 2];
-                                radius = RAD_SCALE * (1. / 3.) *
+                                radius = altScale * (1. / 3.) *
                                              (zGrid[(numLevels)*i_v1 + iz] + zGrid[(numLevels)*i_v2 + iz] +
                                               zGrid[(numLevels)*i_v3 + iz]) +
                                          MSL; //compute vertex z from average of neighbouring cells
@@ -583,7 +583,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
                 Index i = 0;
                 for (Index iz = 0; iz < numLevels; ++iz) {
                     izVert = numVertB * iz;
-                    radius = dH * iz + 1.;
+                    radius = altScale * dH * iz + 1.;
                     for (Index k = 0; k < idxCellsInBlock[block].size(); ++k) {
                         i = idxCellsInBlock[block][k];
                         for (Index d = 0; d < eoc[i]; ++d) {

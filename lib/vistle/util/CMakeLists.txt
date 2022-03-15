@@ -52,8 +52,7 @@ if(NOT CMAKE_BUILD_TYPE STREQUAL "")
     add_definitions(-DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}")
 endif()
 
-vistle_add_library(vistle_util ${VISTLE_LIB_TYPE} ${util_SOURCES} ${util_HEADERS})
-vistle_export_library(vistle_util ${VISTLE_LIB_TYPE} ${util_SOURCES} ${util_HEADERS})
+vistle_add_library(vistle_util EXPORT ${VISTLE_LIB_TYPE} ${util_SOURCES} ${util_HEADERS})
 
 target_include_directories(vistle_util SYSTEM PRIVATE ${BOTAN_INCLUDE_DIRS})
 vistle_target_link_libraries(
@@ -76,8 +75,11 @@ set(util_mpi_SOURCES shmconfig.cpp)
 
 set(_util_mpi_SOURCES shmconfig.h)
 
-vistle_add_library(vistle_util_mpi STATIC ${util_mpi_SOURCES} ${util_mpi_HEADERS})
-vistle_export_library(vistle_util_mpi STATIC ${util_mpi_SOURCES} ${util_mpi_HEADERS})
+set(visibility INTERNAL)
+if(NOT VISTLE_BUILD_SHARED)
+    set(visibility EXPORT)
+endif()
+vistle_add_library(vistle_util_mpi EXPORT STATIC ${util_mpi_SOURCES} ${util_mpi_HEADERS})
 target_include_directories(vistle_util SYSTEM PRIVATE ${MPI_INCLUDE_DIRS})
 vistle_target_link_libraries(vistle_util_mpi ${BOOST_MPI})
 set_target_properties(vistle_util_mpi PROPERTIES POSITION_INDEPENDENT_CODE TRUE)

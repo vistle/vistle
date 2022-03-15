@@ -2,9 +2,11 @@ set(pluginutil_SOURCES VistleInteractor.cpp VistleRenderObject.cpp)
 
 set(pluginutil_HEADERS export.h VistleInteractor.h VistleMessage.h VistleRenderObject.h)
 
-add_definitions(-DHAS_MPI)
-
-vistle_add_library(VistlePluginUtil ${VISTLE_LIB_TYPE} ${pluginutil_SOURCES} ${pluginutil_HEADERS})
+set(visibility EXPORT)
+if(NOT VISTLE_BUILD_SHARED)
+    set(visibility INTERNAL)
+endif()
+vistle_add_library(VistlePluginUtil ${visibility} ${VISTLE_LIB_TYPE} ${pluginutil_SOURCES} ${pluginutil_HEADERS})
 
 target_include_directories(
     VistlePluginUtil SYSTEM

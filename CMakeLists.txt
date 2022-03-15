@@ -17,9 +17,6 @@ if(APPLE AND ${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
     set(CMAKE_PREFIX_PATH /opt/homebrew ${CMAKE_PREFIX_PATH})
 endif()
 
-#find_package(Threads)
-#message("THREADS: ${CMAKE_THREAD_LIB_INIT}")
-
 message("CMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}")
 if("${CMAKE_SYSTEM_NAME}" STREQUAL "CrayLinuxEnvironment")
     message("compiling for Cray")
@@ -106,6 +103,9 @@ option(VISTLE_COLOR_DIAGNOSTICS "Produce ANSI-colored build output (GNU/Clang)."
 if(NOT "$ENV{VBUILD}" STREQUAL "")
     include("${PROJECT_SOURCE_DIR}/build/$ENV{VBUILD}.cmake")
 endif()
+
+option(VISTLE_INSTALL_3RDPARTY "Add the 3rdParty directories to the install directory" OFF)
+option(VISTLE_INSTALL_HEADER "Install the Vistle headers in CMAKE_INSTALL_PREFIX/include/path to lib" ON)
 
 if(VISTLE_BUILD_SHARED)
     set(VISTLE_LIB_TYPE SHARED)
@@ -382,6 +382,7 @@ if(NOT CRAY AND NOT VISTLE_GUI_ONLY)
     set(CMAKE_CXX_COMPILE_FLAGS "${CMAKE_CXX_COMPILE_FLAGS} ${MPI_C_COMPILE_FLAGS}")
     set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} ${MPI_C_LINK_FLAGS}")
 
+    # for CMake config file version of boost this needs to be changed to version numbers such as 1.60.99 instead of 106099
     if(NOT VISTLE_INTERNAL_BOOST_MPI)
         message("Using external Boost.MPI for Boost ${Boost_VERSION}")
     elseif(Boost_VERSION VERSION_GREATER 106999)
@@ -403,7 +404,6 @@ if(NOT CRAY AND NOT VISTLE_GUI_ONLY)
     endif()
 endif()
 
-# for CMake config file version of boost this needs to be changed to version numbers such as 1.60.99 instead of 106099
 add_definitions(-DBOOST_LIB_DIAGNOSTIC=1)
 
 get_property(LIB64 GLOBAL PROPERTY FIND_LIBRARY_USE_LIB64_PATHS)
@@ -435,45 +435,8 @@ if(VISTLE_USE_CUDA AND NOT VISTLE_GUI_ONLY)
 endif()
 
 include(GNUInstallDirs)
-macro(vistle_add_library targetname)
 
-    add_library(${targetname} ${ARGN})
-    set_target_properties(${targetname} PROPERTIES FOLDER "Libraries")
-    string(FIND ${targetname} "vistle_" vistle_prefix)
-    if(NOT ${vistle_prefix} EQUAL 0)
-        if(NOT "${targetname}" STREQUAL "VistlePluginUtil"
-           AND NOT "${targetname}" STREQUAL "simV2runtime_par"
-           AND NOT "${targetname}" STREQUAL "simV2runtime_ser")
-            message(WARNING " missing prefix for " ${targetname}": vistle libraries must be prefixed with vistle_")
-        endif()
-    elseif() #change the vistle_libname to vistle::libname in exported target
-        string(REPLACE "vistle_" "" target_suffix ${targetname})
-        set_target_properties(${targetname} PROPERTIES EXPORT_NAME ${target_suffix})
-        add_library(vistle::${target_suffix} ALIAS ${targetname})
-    endif()
-
-    if(CRAY)
-        set_property(
-            TARGET ${targetname}
-            APPEND_STRING
-            PROPERTY LINK_FLAGS -Wl,-soname=lib${targetname}.so)
-    endif()
-
-    target_include_directories(
-        ${targetname}
-        PRIVATE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/lib>
-        PRIVATE $<INSTALL_INTERFACE:include>
-        INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/lib>
-        INTERFACE $<INSTALL_INTERFACE:include>)
-endmacro(vistle_add_library)
-
-set(buildPackageLocation ${PROJECT_BINARY_DIR}/lib/cmake/vistle)
-set(installPackageLocation ${CMAKE_INSTALL_LIBDIR}/cmake/vistle)
-
-option(VISTLE_INSTALL_3RDPARTY "Add the 3rdParty directories to the install directory" OFF)
-option(VISTLE_INSTALL_HEADER "Install the Vistle headers in CMAKE_INSTALL_PREFIX/include/path to lib" ON)
-
-macro(vistle_export_library targetname)
+macro(vistle_install_library targetname)
     if(${CMAKE_VERSION} VERSION_LESS "3.12.4")
         install(
             TARGETS ${targetname}
@@ -506,6 +469,11 @@ macro(vistle_export_library targetname)
             DESTINATION include/vistle/${directory}
             COMPONENT Devel)
     endif()
+endmacro(vistle_install_library)
+
+macro(vistle_export_library targetname)
+    vistle_install_library(${targetname} ${ARGN})
+
     set(config_in_file ${CMAKE_CURRENT_BINARY_DIR}/cmake/${targetname}Config.cmake.in)
     file(WRITE ${config_in_file} "include(\"\${CMAKE_CURRENT_LIST_DIR}/${targetname}Targets.cmake\")")
     #message("configuring file ${config_in_file} to ${buildPackageLocation}/${targetname}Config.cmake")
@@ -536,6 +504,46 @@ macro(vistle_export_library targetname)
         DESTINATION ${installPackageLocation}
         COMPONENT ${targetname}_Development)
 endmacro(vistle_export_library)
+
+macro(vistle_add_library targetname visibility)
+    add_library(${targetname} ${ARGN})
+    set_target_properties(${targetname} PROPERTIES FOLDER "Libraries")
+    string(FIND ${targetname} "vistle_" vistle_prefix)
+    if(NOT ${vistle_prefix} EQUAL 0)
+        if(NOT "${targetname}" STREQUAL "VistlePluginUtil"
+           AND NOT "${targetname}" STREQUAL "simV2runtime_par"
+           AND NOT "${targetname}" STREQUAL "simV2runtime_ser")
+            message(WARNING " missing prefix for " ${targetname}": vistle libraries must be prefixed with vistle_")
+        endif()
+    elseif() #change the vistle_libname to vistle::libname in exported target
+        string(REPLACE "vistle_" "" target_suffix ${targetname})
+        set_target_properties(${targetname} PROPERTIES EXPORT_NAME ${target_suffix})
+        add_library(vistle::${target_suffix} ALIAS ${targetname})
+    endif()
+
+    if(CRAY)
+        set_property(
+            TARGET ${targetname}
+            APPEND_STRING
+            PROPERTY LINK_FLAGS -Wl,-soname=lib${targetname}.so)
+    endif()
+
+    target_include_directories(
+        ${targetname}
+        PRIVATE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/lib>
+        PRIVATE $<INSTALL_INTERFACE:include>
+        INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/lib>
+        INTERFACE $<INSTALL_INTERFACE:include>)
+
+    if("${visibility}" STREQUAL "EXPORT")
+        vistle_export_library(${targetname} ${ARGN})
+    elseif(NOT "${visibility}" STREQUAL "INTERNAL")
+        message(FATAL_ERROR "vistle_add_library: visibility argument wrong: ${visibility}")
+    endif()
+endmacro(vistle_add_library)
+
+set(buildPackageLocation ${PROJECT_BINARY_DIR}/lib/cmake/vistle)
+set(installPackageLocation ${CMAKE_INSTALL_LIBDIR}/cmake/vistle)
 
 function(prepend_file filename)
     file(READ ${filename} old_content)

@@ -1,10 +1,13 @@
 #ifndef VISTLE_PARRENDMGR_H
 #define VISTLE_PARRENDMGR_H
 
-#include <IceT.h>
-#include <IceTMPI.h>
 #include "rhrcontroller.h"
 #include "renderobject.h"
+
+// this is to avoid having to include IceT headers here
+struct IceTContextStruct;
+typedef struct IceTContextStruct *IceTContext;
+typedef void *IceTImagePtr;
 
 namespace vistle {
 
@@ -15,11 +18,9 @@ class V_RENDEREREXPORT ParallelRemoteRenderManager {
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-    typedef void (*IceTDrawCallback)(const IceTDouble *proj, const IceTDouble *mv, const IceTFloat *bg,
-                                     const IceTInt *viewport, IceTImage image);
     struct PerViewState;
 
-    ParallelRemoteRenderManager(Renderer *module, IceTDrawCallback drawCallback);
+    ParallelRemoteRenderManager(Renderer *module);
     ~ParallelRemoteRenderManager();
 
     Port *outputPort() const;
@@ -35,15 +36,15 @@ public:
     void setCurrentView(size_t i);
     void compositeCurrentView(const unsigned char *rgba, const float *depth, const int viewport[4], int timestep,
                               bool lastView);
-    void finishCurrentView(const IceTImage &img, int timestep);
-    void finishCurrentView(const IceTImage &img, int timestep, bool lastView);
+    void finishCurrentView(const IceTImagePtr img, int timestep);
+    void finishCurrentView(const IceTImagePtr img, int timestep, bool lastView);
     bool finishFrame(int timestep);
     vistle::Matrix4 getModelViewMat(size_t viewIdx) const;
     vistle::Matrix4 getProjMat(size_t viewIdx) const;
     const PerViewState &viewData(size_t viewIdx) const;
     unsigned char *rgba(size_t viewIdx);
     float *depth(size_t viewIdx);
-    void updateRect(size_t viewIdx, const IceTInt *viewport);
+    void updateRect(size_t viewIdx, const int *viewport);
     void setModified();
     bool sceneChanged() const;
     bool isVariantVisible(const std::string &variant) const;
@@ -54,7 +55,6 @@ public:
     bool checkIceTError(const char *msg) const;
 
     Renderer *m_module;
-    IceTDrawCallback m_drawCallback;
     int m_displayRank;
     RhrController m_rhrControl;
     IntParameter *m_continuousRendering;

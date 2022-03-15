@@ -18,8 +18,7 @@ set(HEADER
     moduleInfo.h
     sharedParam.h)
 
-vistle_add_library(vistle_insitu_message ${SOURCES} ${HEADER})
-vistle_export_library(vistle_insitu_message ${SOURCES} ${HEADER})
+vistle_add_library(vistle_insitu_message EXPORT ${SOURCES} ${HEADER})
 
 vistle_target_link_libraries(
     vistle_insitu_message
@@ -32,4 +31,5 @@ vistle_target_link_libraries(
     vistle_util
     PUBLIC
     vistle_core)
+
 vistle_install_docs(README.md)

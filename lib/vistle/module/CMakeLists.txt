@@ -9,8 +9,7 @@ endif()
 
 use_openmp()
 
-vistle_add_library(vistle_module ${VISTLE_LIB_TYPE} ${module_SOURCES} ${module_HEADERS})
-vistle_export_library(vistle_module ${VISTLE_LIB_TYPE} ${module_SOURCES} ${module_HEADERS})
+vistle_add_library(vistle_module EXPORT ${VISTLE_LIB_TYPE} ${module_SOURCES} ${module_HEADERS})
 if(NOT VISTLE_MODULES_SHARED)
     target_link_libraries(vistle_module PRIVATE vistle_module_descriptions)
     target_link_libraries(vistle_module PRIVATE vistle_control)
