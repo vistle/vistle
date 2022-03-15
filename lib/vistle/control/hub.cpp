@@ -234,7 +234,7 @@ bool Hub::init(int argc, char *argv[])
         ("hub,c", po::value<std::string>(), "connect to hub")
         ("batch,b", "do not start user interface")
         ("gui,g", "start graphical user interface")
-        ("tui,t", "start command line interface (requires ipython)")
+        ("shell,s", "start interactive Python shell (requires ipython)")
         ("port,p", po::value<unsigned short>(), "control port")
         ("dataport", po::value<unsigned short>(), "data port")
         ("execute,e", "call compute() after workflow has been loaded")
@@ -298,7 +298,7 @@ bool Hub::init(int argc, char *argv[])
         }
     }
     bool pythonUi = false;
-    if (vm.count("tui")) {
+    if (vm.count("shell")) {
         pythonUi = true;
         uiCmd.clear();
     }
