@@ -17,6 +17,7 @@
 #include <vistle/core/unstr.h>
 #include <vistle/core/structuredgridbase.h>
 #include <vistle/core/structuredgrid.h>
+#include <vistle/core/layergrid.h>
 #include <vistle/core/serialize.h>
 #include <vistle/core/objectmeta_impl.h>
 
@@ -245,6 +246,9 @@ bool Tracer::compute()
         } else if (auto str = StructuredGrid::as(grid)) {
             celltree[t + 1].emplace_back(
                 std::async(std::launch::async, [str]() -> Celltree3::const_ptr { return str->getCelltree(); }));
+        } else if (auto lg = LayerGrid::as(grid)) {
+            celltree[t + 1].emplace_back(
+                std::async(std::launch::async, [lg]() -> Celltree3::const_ptr { return lg->getCelltree(); }));
         }
     }
 
