@@ -5,6 +5,7 @@
 #include <vistle/core/lines.h>
 #include <vistle/core/coords.h>
 #include <vistle/util/math.h>
+#include <vistle/alg/objalg.h>
 
 #include "VectorField.h"
 
@@ -40,7 +41,8 @@ bool VectorField::compute()
         sendError("no vector input");
         return true;
     }
-    auto grid = vecs->grid();
+    auto split = splitContainerObject(vecs);
+    auto grid = split.geometry;
     if (!grid) {
         sendError("vectors without grid");
         return true;

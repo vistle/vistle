@@ -3,6 +3,7 @@
 #include <vistle/module/module.h>
 #include <vistle/core/points.h>
 #include <vistle/util/enum.h>
+#include <vistle/alg/objalg.h>
 
 using namespace vistle;
 
@@ -55,13 +56,10 @@ bool Transform::compute()
     if (!obj)
         return true;
 
-    Object::const_ptr geo = obj;
-    auto data = DataBase::as(obj);
-    if (data && data->grid()) {
-        geo = data->grid();
-    } else {
-        data.reset();
-    }
+    auto split = splitContainerObject(obj);
+
+    Object::const_ptr geo = split.geometry;
+    auto data = split.mapped;
 
     Matrix4 mirrorMat(Matrix4::Identity());
     switch (p_mirror->getValue()) {

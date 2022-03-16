@@ -13,6 +13,7 @@
 #include <vistle/core/coords.h>
 #include <vistle/core/lines.h>
 #include <vistle/core/structuredgridbase.h>
+#include <vistle/alg/objalg.h>
 
 #ifdef BOUNDINGBOX
 #define Extrema BoundingBox
@@ -203,10 +204,9 @@ bool Extrema::compute()
 
 #ifdef BOUNDINGBOX
     auto obj = expect<Object>("grid_in");
-    auto data = DataBase::as(obj);
-    if (data && data->grid()) {
-        obj = data->grid();
-    }
+    auto split = splitContainerObject(obj);
+    auto data = split.mapped;
+    obj = split.geometry;
 #else
     Object::const_ptr obj = expect<DataBase>("data_in");
 #endif

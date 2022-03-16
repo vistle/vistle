@@ -39,6 +39,8 @@ private:
                            const Cartesian3<vistle::Index> numVertices);
     void compute_rectilinearVecs(vistle::RectilinearGrid::const_ptr obj, vistle::UnstructuredGrid::ptr unstrGridOut,
                                  const Cartesian3<vistle::Index> numVertices);
+
+    vistle::ResultCache<vistle::UnstructuredGrid::ptr> m_cache;
 };
 
 

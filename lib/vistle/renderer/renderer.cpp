@@ -9,6 +9,7 @@
 #include <vistle/core/archives.h>
 #include <vistle/core/archive_loader.h>
 #include <vistle/core/grid.h>
+#include <vistle/alg/objalg.h>
 
 #include "renderer.h"
 
@@ -74,29 +75,11 @@ std::array<Object::const_ptr, 3> splitObject(Object::const_ptr container)
         grid = ph->geometry();
         normals = ph->normals();
         data = ph->texture();
-        return geo_norm_data;
-    }
-
-    if (auto t = vistle::Texture1D::as(container)) {
-        // do not treat as Vec<Scalar,1>
-        data = t;
-        grid = t->grid();
-    } else if (auto c = vistle::Coords::as(container)) {
-        // do not treat as Vec<Scalar,3>
-        grid = c;
-    } else if (auto l = vistle::LayerGrid::as(container)) {
-        // do not treat as Vec<Scalar,1>
-        grid = l;
-    } else if (auto d = vistle::DataBase::as(container)) {
-        data = d;
-        grid = d->grid();
     } else {
-        grid = container;
-    }
-    if (grid) {
-        if (auto gi = grid->getInterface<GridInterface>()) {
-            normals = gi->normals();
-        }
+        auto split = vistle::splitContainerObject(container);
+        grid = split.geometry;
+        normals = split.normals;
+        data = split.mapped;
     }
 
     return geo_norm_data;

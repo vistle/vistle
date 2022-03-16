@@ -7,6 +7,7 @@
 #include <vistle/core/polygons.h>
 #include <vistle/core/structuredgrid.h>
 #include <vistle/module/resultcache.h>
+#include <vistle/alg/objalg.h>
 
 #include "DomainSurface.h"
 
@@ -58,25 +59,14 @@ typename Vec<T, Dim>::ptr remapData(typename Vec<T, Dim>::const_ptr in, const Do
 bool DomainSurface::compute(std::shared_ptr<BlockTask> task) const
 {
     //DomainSurface Polygon
-    DataBase::const_ptr data;
-    StructuredGridBase::const_ptr sgrid;
-    UnstructuredGrid::const_ptr ugrid;
-    ugrid = task->accept<UnstructuredGrid>("data_in");
-    sgrid = task->accept<StructuredGridBase>("data_in");
+    auto container = task->expect<Object>("data_in");
+    auto split = splitContainerObject(container);
+    DataBase::const_ptr data = split.mapped;
+    StructuredGridBase::const_ptr sgrid = StructuredGridBase::as(split.geometry);
+    UnstructuredGrid::const_ptr ugrid = UnstructuredGrid::as(split.geometry);
     if (!ugrid && !sgrid) {
-        data = task->expect<DataBase>("data_in");
         if (!data) {
             sendError("no grid and no data received");
-            return true;
-        }
-        if (!data->grid()) {
-            sendError("no grid attached to data");
-            return true;
-        }
-        ugrid = UnstructuredGrid::as(data->grid());
-        sgrid = StructuredGridBase::as(data->grid());
-        if (!ugrid && !sgrid) {
-            sendError("no valid grid attached to data");
             return true;
         }
     }

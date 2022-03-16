@@ -13,9 +13,7 @@
 #include "vistle/core/spheres.h"
 #include "vistle/core/vec.h"
 #include "vistle/module/module.h"
-
-//vistle-module-util
-#include "vistle/module/utils/ghost.h"
+#include <vistle/alg/ghost.h>
 
 //boost
 #include <boost/algorithm/string/classification.hpp>

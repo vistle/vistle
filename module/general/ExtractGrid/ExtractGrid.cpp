@@ -1,6 +1,8 @@
 #include <vistle/core/object.h>
-#include <vistle/core/vec.h>
 #include <vistle/core/coords.h>
+#include <vistle/core/structuredgridbase.h>
+#include <vistle/alg/objalg.h>
+#include <vistle/module/resultcache.h>
 
 #include "ExtractGrid.h"
 
@@ -14,6 +16,9 @@ ExtractGrid::ExtractGrid(const std::string &name, int moduleID, mpi::communicato
 
     m_gridOut = createOutputPort("grid_out");
     m_normalsOut = createOutputPort("normals_out");
+
+    addResultCache(m_gridCache);
+    addResultCache(m_normalsCache);
 }
 
 ExtractGrid::~ExtractGrid()
@@ -21,22 +26,33 @@ ExtractGrid::~ExtractGrid()
 
 bool ExtractGrid::compute()
 {
-    auto data = expect<DataBase>(m_dataIn);
-    Coords::const_ptr out;
-    if (data->grid()) {
-        out = Coords::as(data->grid());
-    } else if (auto grid = Coords::as(Object::as(data))) {
-        out = grid;
+    auto container = expect<Object>(m_dataIn);
+    auto split = splitContainerObject(container);
+    auto grid = split.geometry;
+    auto normals = split.normals;
+    Normals::ptr nnorm;
+
+    if (normals && isConnected(*m_normalsOut)) {
+        if (auto *c = m_normalsCache.getOrLock(normals->getName(), nnorm)) {
+            nnorm = normals->clone();
+            m_normalsCache.storeAndUnlock(c, nnorm);
+        }
+        addObject(m_normalsOut, nnorm);
     }
 
-    if (out) {
-        auto nout = out->clone();
-        if (out->normals()) {
-            auto nnorm = out->normals()->clone();
-            addObject(m_normalsOut, nnorm);
-            nout->setNormals(nnorm);
+    if (isConnected(*m_gridOut)) {
+        Object::ptr ngrid;
+        if (auto *c = m_gridCache.getOrLock(grid->getName(), ngrid)) {
+            if (grid) {
+                ngrid = grid->clone();
+                if (auto coords = Coords::as(ngrid))
+                    coords->setNormals(nnorm ? nnorm : normals);
+                else if (auto str = StructuredGridBase::as(ngrid))
+                    str->setNormals(nnorm ? nnorm : normals);
+            }
+            m_gridCache.storeAndUnlock(c, ngrid);
         }
-        addObject(m_gridOut, nout);
+        addObject(m_gridOut, ngrid);
     }
 
     return true;

@@ -7,6 +7,7 @@
 #include <vistle/core/lines.h>
 #include <vistle/core/points.h>
 #include <vistle/util/enum.h>
+#include <vistle/alg/objalg.h>
 
 #include "IndexManifolds.h"
 
@@ -43,14 +44,10 @@ bool IndexManifolds::compute(std::shared_ptr<BlockTask> task) const
         return true;
     }
 
-    Object::const_ptr ingrid;
-    auto data = DataBase::as(obj);
-    if (data && data->grid()) {
-        ingrid = data->grid();
-    } else {
-        ingrid = obj;
-        data.reset();
-    }
+    auto split = splitContainerObject(obj);
+
+    Object::const_ptr ingrid = split.geometry;
+    auto data = split.mapped;
 
     if (!ingrid) {
         sendError("no grid on input");

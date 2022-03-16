@@ -23,21 +23,19 @@
 #include <mpi.h>
 
 //vistle
-#include "vistle/core/object.h"
-#include "vistle/core/port.h"
-#include "vistle/core/database.h"
-#include "vistle/core/parameter.h"
-#include "vistle/core/scalar.h"
-#include "vistle/core/unstr.h"
-#include "vistle/core/vec.h"
-#include "vistle/core/vector.h"
-#include "vistle/module/module.h"
-#include "vistle/module/reader.h"
-#include "vistle/util/enum.h"
-
-//vistle module utils
-#include "vistle/module/utils/geo.h"
-#include "vistle/xdmf/xdmf.h"
+#include <vistle/core/object.h>
+#include <vistle/core/port.h>
+#include <vistle/core/database.h>
+#include <vistle/core/parameter.h>
+#include <vistle/core/scalar.h>
+#include <vistle/core/unstr.h>
+#include <vistle/core/vec.h>
+#include <vistle/core/vector.h>
+#include <vistle/module/module.h>
+#include <vistle/module/reader.h>
+#include <vistle/util/enum.h>
+#include <vistle/alg/geo.h>
+#include <vistle/xdmf/xdmf.h>
 
 //boost
 #include <boost/mpi/communicator.hpp>

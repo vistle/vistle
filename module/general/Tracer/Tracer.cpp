@@ -20,6 +20,7 @@
 #include <vistle/core/layergrid.h>
 #include <vistle/core/serialize.h>
 #include <vistle/core/objectmeta_impl.h>
+#include <vistle/alg/objalg.h>
 
 MODULE_MAIN(Tracer)
 
@@ -201,7 +202,9 @@ bool Tracer::compute()
 
     if (!data0)
         return true;
-    auto grid = data0->grid();
+
+    auto split0 = splitContainerObject(data0);
+    auto grid = split0.geometry;
     auto unstr = UnstructuredGrid::as(grid);
     auto strb = StructuredGridBase::as(grid);
     if (!strb && !unstr) {

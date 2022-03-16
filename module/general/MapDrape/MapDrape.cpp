@@ -1,6 +1,7 @@
 #include "MapDrape.h"
 #include <vistle/core/structuredgrid.h>
 #include <vistle/core/object.h>
+#include <vistle/alg/objalg.h>
 #include <boost/mpl/for_each.hpp>
 
 #ifdef MAPDRAPE
@@ -234,13 +235,10 @@ bool MapDrape::compute()
             return true;
         }
 
-        Object::const_ptr geo = obj;
-        auto data = DataBase::as(obj);
-        if (data && data->grid()) {
-            geo = data->grid();
-        } else {
-            data.reset();
-        }
+        auto split = splitContainerObject(obj);
+
+        Object::const_ptr geo = split.geometry;
+        auto data = split.mapped;
 
 #ifdef MAPDRAPE
         if (!isConnected(*data_out[port]))

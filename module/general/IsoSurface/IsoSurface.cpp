@@ -14,6 +14,7 @@
 #include <vistle/core/structuredgrid.h>
 #include <vistle/core/layergrid.h>
 #include <vistle/core/vec.h>
+#include <vistle/alg/objalg.h>
 
 #ifdef CUTTINGSURFACE
 #define IsoSurface CuttingSurface
@@ -288,13 +289,20 @@ Object::ptr IsoSurface::work(vistle::Object::const_ptr grid, vistle::Vec<vistle:
 
 bool IsoSurface::compute(std::shared_ptr<BlockTask> task) const
 {
+    auto container = task->accept<Object>(m_mapDataIn);
+    auto split = splitContainerObject(container);
+    auto mapdata = split.mapped;
 #ifdef CUTTINGSURFACE
-    auto mapdata = task->expect<DataBase>(m_mapDataIn);
-    if (!mapdata)
+    if (!mapdata) {
+        sendError("no mapped data");
         return true;
-    auto grid = mapdata->grid();
+    }
+    auto grid = split.geometry;
+    if (!grid) {
+        sendError("no grid on input data");
+        return true;
+    }
 #else
-    auto mapdata = task->accept<DataBase>(m_mapDataIn);
     auto dataS = task->expect<Vec<Scalar>>("data_in");
     if (!dataS) {
         sendError("need Scalar data on data_in");
@@ -304,15 +312,21 @@ bool IsoSurface::compute(std::shared_ptr<BlockTask> task) const
         sendError("need per-vertex mapping on data_in");
         return true;
     }
-    Object::const_ptr grid = dataS->grid();
+    auto splitScalar = splitContainerObject(dataS);
+    auto grid = splitScalar.geometry;
+    if (!grid) {
+        sendError("no grid on scalar input data");
+        return true;
+    }
     if (mapdata) {
-        if (!mapdata->grid()) {
-            sendError("no grid for mapped data");
+        auto &mg = split.geometry;
+        if (!mg) {
+            sendError("no grid on mapped data");
             return true;
         }
-        if (mapdata->grid()->getHandle() != grid->getHandle()) {
+        if (mg->getHandle() != grid->getHandle()) {
             sendError("grids on mapped data and iso-data do not match");
-            std::cerr << "grid mismatch: mapped: " << mapdata->meta() << " on " << mapdata->grid()->meta()
+            std::cerr << "grid mismatch: mapped: " << mapdata->meta() << " on " << mg->meta()
                       << ", data: " << dataS->meta() << " on " << grid->meta() << std::endl;
             return true;
         }
@@ -327,10 +341,7 @@ bool IsoSurface::compute(std::shared_ptr<BlockTask> task) const
     auto quad = Quads::as(grid);
     auto poly = Polygons::as(grid);
     if (!uni && !lg && !rect && !str && !unstr && !tri && !quad && !poly) {
-        if (grid)
-            sendError("grid required on input data: invalid type");
-        else
-            sendError("grid required on input data: none present");
+        sendError("unsupported grid type on input data");
         return true;
     }
 

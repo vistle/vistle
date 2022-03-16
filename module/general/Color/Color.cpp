@@ -9,6 +9,7 @@
 #include <vistle/core/coords.h>
 #include <vistle/util/math.h>
 #include <vistle/module/resultcache.h>
+#include <vistle/alg/objalg.h>
 
 #include "Color.h"
 
@@ -754,19 +755,11 @@ bool Color::prepare()
 
 bool Color::compute()
 {
-    Object::const_ptr obj;
-    DataBase::const_ptr data;
-    Coords::const_ptr coords = accept<Coords>(m_dataIn);
-    if (coords) {
-        obj = coords;
-    } else {
-        data = accept<DataBase>(m_dataIn);
-    }
-    if (!coords && !data) {
-        obj = accept<Object>(m_dataIn);
-    }
+    Object::const_ptr obj = expect<Object>(m_dataIn);
+    auto split = splitContainerObject(obj);
+    DataBase::const_ptr data = split.mapped;
 
-    if (obj) {
+    if (obj && !data) {
         // only grid, no mapped data
         if (m_dataOut->isConnected()) {
             Object::ptr nobj;

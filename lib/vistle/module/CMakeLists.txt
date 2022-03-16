@@ -39,10 +39,10 @@ vistle_target_link_libraries(
     PUBLIC
     vistle_core
     PUBLIC
+    vistle_alg
+    PUBLIC
     ${BOOST_MPI}
     PUBLIC
     Boost::boost
     PUBLIC
     MPI::MPI_C)
-
-add_subdirectory(utils)
