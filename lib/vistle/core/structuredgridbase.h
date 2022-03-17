@@ -9,6 +9,7 @@
 #include "scalar.h"
 #include "shm.h"
 #include "object.h"
+#include "normals.h"
 #include "export.h"
 #include "grid.h"
 
@@ -145,6 +146,8 @@ public:
 
     Index cellNumFaces(Index elem) const override { return 6; }
     std::vector<Index> cellVertices(Index elem) const override;
+
+    virtual void setNormals(Normals::const_ptr normals) = 0;
 };
 
 ARCHIVE_ASSUME_ABSTRACT(StructuredGridBase)

@@ -51,7 +51,7 @@ public:
     Index getNumVertices() const override;
     std::pair<Vector3, Vector3> getBounds() const override;
     Normals::const_ptr normals() const override;
-    void setNormals(Normals::const_ptr normals);
+    void setNormals(Normals::const_ptr normals) override;
     std::pair<Vector3, Vector3> cellBounds(Index elem) const override;
     std::vector<Vector3> cellCorners(Index elem) const;
     Index findCell(const Vector3 &point, Index hint = InvalidIndex, int flags = NoFlags) const override;

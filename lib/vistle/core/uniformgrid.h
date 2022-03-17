@@ -48,7 +48,7 @@ public:
     // GeometryInterface
     std::pair<Vector3, Vector3> getBounds() const override;
     Normals::const_ptr normals() const override;
-    void setNormals(Normals::const_ptr normals);
+    void setNormals(Normals::const_ptr normals) override;
 
     // GridInterface
     Index getNumVertices() override;
