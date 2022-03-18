@@ -6,6 +6,9 @@
 #include <vistle/core/unstr.h>
 #include <vistle/core/structuredgridbase.h>
 #include <vistle/core/structuredgrid.h>
+#include <vistle/core/polygons.h>
+#include <vistle/core/quads.h>
+#include <vistle/core/triangles.h>
 #include <vistle/module/resultcache.h>
 #include <vistle/alg/objalg.h>
 
@@ -32,6 +35,7 @@ ShowGrid::ShowGrid(const std::string &name, int moduleID, mpi::communicator comm
     addIntParameter("prism", "Show prism", 1, Parameter::Boolean);
     addIntParameter("hexahedron", "Show hexahedron", 1, Parameter::Boolean);
     addIntParameter("polyhedron", "Show polyhedron", 1, Parameter::Boolean);
+    addIntParameter("polygon", "Show polygon", 1, Parameter::Boolean);
     addIntParameter("quad", "Show quad", 1, Parameter::Boolean);
     addIntParameter("triangle", "Show triangle", 1, Parameter::Boolean);
     m_CellNrMin = addIntParameter("Show Cells from Cell Nr. :", "Show Cell Nr.", -1);
@@ -54,7 +58,8 @@ bool ShowGrid::compute()
     const bool showpyr = getIntParameter("pyramid");
     const bool showpri = getIntParameter("prism");
     const bool showhex = getIntParameter("hexahedron");
-    const bool showpol = getIntParameter("polyhedron");
+    const bool showphd = getIntParameter("polyhedron");
+    const bool showpgo = getIntParameter("polygon");
     const bool showqua = getIntParameter("quad");
     const bool showtri = getIntParameter("triangle");
     const Integer cellnrmin = getIntParameter("Show Cells from Cell Nr. :");
@@ -117,7 +122,7 @@ bool ShowGrid::compute()
                     break;
                 case UnstructuredGrid::VPOLYHEDRON:
                 case UnstructuredGrid::CPOLYHEDRON:
-                    if (!showpol) {
+                    if (!showphd) {
                         continue;
                     }
                     break;
@@ -235,6 +240,80 @@ bool ShowGrid::compute()
                     z[i] = v[2];
                 }
             }
+        } else if (auto poly = Polygons::as(grid)) {
+            const Index *icl = &poly->cl()[0];
+
+            Index begin = 0, end = poly->getNumElements();
+            if (cellnrmin >= 0)
+                begin = std::max(cellnrmin, (Integer)begin);
+            if (cellnrmax >= 0)
+                end = std::min(cellnrmax + 1, (Integer)end);
+
+            for (Index index = begin; index < end; ++index) {
+                const bool show = shownor && showpgo;
+                if (!show)
+                    continue;
+
+                const Index begin = poly->el()[index], end = poly->el()[index + 1];
+                for (Index i = begin; i < end; ++i) {
+                    ocl.push_back(icl[i]);
+                }
+                ocl.push_back(icl[begin]);
+                oel.push_back(ocl.size());
+            }
+            out->d()->x[0] = poly->d()->x[0];
+            out->d()->x[1] = poly->d()->x[1];
+            out->d()->x[2] = poly->d()->x[2];
+        } else if (auto quad = Quads::as(grid)) {
+            auto nelem = quad->getNumElements();
+            if (nelem > 0) {
+                const Index *icl = &quad->cl()[0];
+                for (Index i = 0; i < nelem; ++i) {
+                    ocl.push_back(icl[i * 4]);
+                    ocl.push_back(icl[i * 4 + 1]);
+                    ocl.push_back(icl[i * 4 + 2]);
+                    ocl.push_back(icl[i * 4 + 3]);
+                    ocl.push_back(icl[i * 4]);
+                    oel.push_back(ocl.size());
+                }
+            } else {
+                nelem = quad->getNumVertices() / 4;
+                for (Index i = 0; i < nelem; ++i) {
+                    ocl.push_back(i * 4);
+                    ocl.push_back(i * 4 + 1);
+                    ocl.push_back(i * 4 + 2);
+                    ocl.push_back(i * 4 + 3);
+                    ocl.push_back(i * 4);
+                    oel.push_back(ocl.size());
+                }
+            }
+            out->d()->x[0] = quad->d()->x[0];
+            out->d()->x[1] = quad->d()->x[1];
+            out->d()->x[2] = quad->d()->x[2];
+        } else if (auto tri = Triangles::as(grid)) {
+            auto nelem = quad->getNumElements();
+            if (nelem > 0) {
+                const Index *icl = &tri->cl()[0];
+                for (Index i = 0; i < nelem; ++i) {
+                    ocl.push_back(icl[i * 3]);
+                    ocl.push_back(icl[i * 3 + 1]);
+                    ocl.push_back(icl[i * 3 + 2]);
+                    ocl.push_back(icl[i * 3]);
+                    oel.push_back(ocl.size());
+                }
+            } else {
+                nelem = tri->getNumVertices() / 3;
+                for (Index i = 0; i < nelem; ++i) {
+                    ocl.push_back(i * 3);
+                    ocl.push_back(i * 3 + 1);
+                    ocl.push_back(i * 3 + 2);
+                    ocl.push_back(i * 3);
+                    oel.push_back(ocl.size());
+                }
+            }
+            out->d()->x[0] = tri->d()->x[0];
+            out->d()->x[1] = tri->d()->x[1];
+            out->d()->x[2] = tri->d()->x[2];
         }
 
         out->copyAttributes(grid);
