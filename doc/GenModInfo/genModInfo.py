@@ -11,16 +11,16 @@ REG_TAGS_TMPL = r"\[{tag}\]:<\w*>$"
 
 #-------------Functions-------------#
 def createModuleImage(name, inPorts, outPorts):
-    size = 30
+    size = 1.
     letterWidth = 58 / 100 * size
     widths = [len(name) * letterWidth + size, size * (len(inPorts) + 2), size * (len(outPorts) + 2) ]
     width = max(widths)
     height = 3*size
-    spiderLegOffsetTop = size * len(inPorts) + size
-    spiderLegOffsetBot = size * len(outPorts) + size
-    image = "<svg width=\"" + str(10 * width) + "\" height=\"" + str(height +spiderLegOffsetTop + spiderLegOffsetBot) + "\" >\n"
+    spiderLegOffsetTop = size * len(inPorts) + size*0.8
+    spiderLegOffsetBot = size * len(outPorts) + size*0.8
+    image = "<svg width=\"" + str(10 * width) + "em\" height=\"" + str(height + spiderLegOffsetTop + spiderLegOffsetBot) + "em\" >\n"
     image += getStyle(size) + "\n"
-    image += getRect(0, spiderLegOffsetTop, width, height, "#64c8c8ff", 5, 5) + "\n"
+    image += getRect(0, spiderLegOffsetTop, width, height, "#64c8c8ff", 0.1, 0.1) + "\n"
 
     portDistance = size/5
     portStartPos = portDistance
@@ -32,6 +32,8 @@ def createModuleImage(name, inPorts, outPorts):
         portStartPos += portDistance + size
         num -= 1
 
+    image += getText(name, portDistance, spiderLegOffsetTop + 1.85*size, "moduleName")
+
     num = -1 * len(outPorts)
     portStartPos = portDistance
     for port, tooltip in outPorts:
@@ -40,7 +42,6 @@ def createModuleImage(name, inPorts, outPorts):
         image += getPortDescriptionSpider(size, portStartPos + size/2, spiderLegOffsetTop + height, num, text) + "\n"
         portStartPos += portDistance + size
         num += 1
-    image += getText(name, portDistance, spiderLegOffsetTop + 1.85*size, "moduleName")
     image += "</svg>"
     return image
 
@@ -59,15 +60,15 @@ def getPortDescriptionSpider(size, x, y, num, desc):
 
 def getStyle(size):
     style = "<style>"
-    style += ".text { font: normal " + str( 0.8 * size) + "px sans-serif;}"
-    style += "tspan{ font: italic " + str(0.8 * size) + "px sans-serif;}"
-    style += ".moduleName{ font: italic " + str(size) + "px sans-serif;}"
+    style += ".text { font: normal " + str(size) + "em sans-serif;}"
+    style += "tspan{ font: italic " + str(size) + "em sans-serif;}"
+    style += ".moduleName{ font: bold " + str(1.0 * size) + "em sans-serif;}"
     style += "</style>"
     return style
 
 
 def getText(text, x, y, style):
-    return "<text x=\"" + str(x) + "\" y=\"" + str(y) + "\" class=\"" + style + "\" >" + text + "</text>"
+    return "<text x=\"" + str(x) + "em\" y=\"" + str(y) + "em\" class=\"" + style + "\" >" + text + "</text>"
 
 
 def getRectTooltip(tooltip):
@@ -76,12 +77,12 @@ def getRectTooltip(tooltip):
 
 def getRect(x, y , width, height, color, rx = 0, ry = 0, tooltip = ""):
     rect = "<rect "
-    rect += "x=\"" + str(x) + "\" "
-    rect += "y=\"" + str(y) + "\" "
-    rect += "width=\"" + str(width) + "\" "
-    rect += "height=\"" + str(height) + "\" "
-    rect += "rx=\"" + str(rx) + "\" "
-    rect += "ry=\"" + str(ry) + "\" "
+    rect += "x=\"" + str(x) + "em\" "
+    rect += "y=\"" + str(y) + "em\" "
+    rect += "width=\"" + str(width) + "em\" "
+    rect += "height=\"" + str(height) + "em\" "
+    rect += "rx=\"" + str(rx) + "em\" "
+    rect += "ry=\"" + str(ry) + "em\" "
     rect += "style=\"fill:" + color + ";\""
     if len(tooltip) > 0:
         rect += " >\n"
