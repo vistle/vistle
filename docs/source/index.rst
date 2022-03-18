@@ -52,29 +52,26 @@ Indices and tables
 Building this Documentation
 ===========================
 
-Requirements:
-
-- Sphinx
+Navigate to /path/to/vistle/root/docs/ and type in.
 
 ::
 
-    $ pip install sphinx
+    $ pip install -r requirements.txt
 
-- myst-parser
+You need to compile Vistle first to be able to build the documentation. Follow the instructions in :ref:`build-docs` for the compilation.
 
-::
-
-    $ pip install myst-parser
-
-- sphinxcontrib-mermaid
+After compiling Vistle with the Ninja Generator for example type in the following commands:
 
 ::
 
-    $ pip install sphinxcontrib-mermaid
-
-
-Building the documentation with:
-
-::
-
+    $<Path/to/build> ninja vistle_doc
+    $<Path/to/build> cd ../docs
     $<Path/to/doc/root> make html
+
+
+.. tip::
+   Define an alias in your prefered shell which executes the previous commands to simplify the building process. 
+
+   For example:
+
+   alias vdoc "cd ~/vistle/build-linux64-ompi && ninja vistle_doc && cd ../docs && make html"
