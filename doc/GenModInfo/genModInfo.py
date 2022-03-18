@@ -110,7 +110,7 @@ def getComment(comment):
 def getModuleHeadLine(mod):
     name = getModuleName(mod)
     desc = getModuleDescription(mod)
-    return "\n" + getHeadline(name, "#")  + desc.capitalize() + "\n"
+    return "\n" + getHeadline(name, "#")  + desc + "\n"
 
 
 def getModuleHtml(mod):
