@@ -39,11 +39,21 @@ extensions = [
 # Tell sphinx what the pygments highlight language should be.
 # highlight_language = 'cpp'
 
+
 myst_enable_extensions = [
     'colon_fence',
 ]
 myst_all_links_external=False
 myst_heading_anchors = 3
+
+# some meta data
+language = "en"
+myst_html_meta = {
+    "description lang=en": "metadata description",
+    "description lang=fr": "description des métadonnées",
+    "keywords": "Sphinx, MyST",
+    "property=og:locale":  "en_US"
+}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
