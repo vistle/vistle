@@ -1109,6 +1109,7 @@ bool Hub::hubReady()
             return false;
         }
         m_ready = true;
+        return processStartupScripts();
     }
     return true;
 }
