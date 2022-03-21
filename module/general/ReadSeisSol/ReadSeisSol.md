@@ -99,6 +99,22 @@ The next image shows the result of an execution in COVER.
 - [IsoSurface](IsoSurface_link.md)
 - [MapDrape](MapDrape_link.md)
 
+## Troubleshooting
+
+### Inverted Normals
+
+Sometimes it can happen that you have datasets with inverted normals which looks like shown in the next image.
+
+<img src="seissol_inverted_normal.png" alt="seissol sulawesi unstr wrong normals" title="Sulawesi Unstructured Normal Issua" height="300"/>
+
+If you are certain that the scalar data seems correct you can fix the geometry with a visualization pipeline like the following one which builds a new geometry with correct normals.
+
+<center><img src="seissol_inverted_normal_prevention.png" alt="seissol sulawesi unstr map for wrong normal issue" title="Sulawesi Unstructured Normal Pipeline" height="300"/></center>
+
+The next picture shows an outcome of an execution of this example.
+
+<img src="seissol_inverted_normal_correct.png" alt="seissol sulawesi unstr wrong correct normals" title="Sulawesi Unstructured Normal Issue" height="300"/>
+
 ## Build Requirements
 
 ### Reader
