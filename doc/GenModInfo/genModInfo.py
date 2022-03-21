@@ -5,7 +5,9 @@ from bisect import insort
 from _vistle import getModuleName, getModuleDescription, getInputPorts, getOutputPorts, getPortDescription, getParameters, getParameterTooltip, getParameterType, spawn, barrier, quit
 
 REG_IMAGE_MD = re.compile(r"!\[\w*\](\S*)$")
+REG_IMAGE_HTML = re.compile(r"</?\s*[a-z-][^>]*\s*>|(\&(?:[\w\d]+|#\d+|#x[a-f\d]+);)")
 REG_PARENTHESIS = re.compile(r"\((.*?)\)")
+REG_HTML_SRC = re.compile(r"src=\"(.*?)\"")
 REG_SUB_PARENTHESIS = re.compile(r"\([\s\S]*\)")
 REG_TAGS_TMPL = r"\[{tag}\]:<\w*>$"
 
@@ -165,13 +167,17 @@ def readAdditionalDocumentation(filename):
             content = f.readlines()
     return content
 
+def relinkImage(regex, regex_substitute, substitute_format, lineStr, sourceDir, destDir):
+    match = re.search(regex, lineStr)
+    if match:
+        relPath = os.path.relpath(sourceDir, destDir) + "/" + match.group(1)
+        return re.sub(regex_substitute, substitute_format.format(relPath), lineStr)
 
-def relinkImages(lineStr, sourceDir, destDir):
-    imageName = re.search(REG_PARENTHESIS, lineStr)
-    if imageName:
-        relPath = os.path.relpath(sourceDir, destDir) + "/" + imageName.group(1)
-        return re.sub(REG_SUB_PARENTHESIS, "(" + relPath + ")", lineStr)
+def relinkMDImage(lineStr, sourceDir, destDir):
+    return relinkImage(REG_PARENTHESIS, REG_SUB_PARENTHESIS, "( {} )", lineStr, sourceDir, destDir)
 
+def relinkHtmlImage(lineStr, sourceDir, destDir):
+    return relinkImage(REG_HTML_SRC, REG_HTML_SRC, "src=\"{}\"", lineStr, sourceDir, destDir)
 
 def findTagPositions(lines, tags) -> {}:
     idx = 0
@@ -194,40 +200,10 @@ def isTag(line, tags) -> str:
             return tag
         if REG_IMAGE_MD.match(line):
             return line[line.find("[") + 1: line.find("]")]
+        if REG_IMAGE_HTML.match(line):
+            return line[line.find("src=\"") + 1: line.find("\"")]
     return None
 
-def relinkHtmlImage(line, startFlag, endFlag, sourceDir, destDir):
-    pos = line.find(startFlag)
-    if pos != -1 and line[pos + len(startFlag)] != "/": #rel image in line
-        path = line[pos + len(startFlag) : line.find(endFlag)]
-        l = len(path)
-        path = os.path.relpath(sourceDir, destDir) + "/" + path
-        return line[ : pos + len(startFlag)] + path + line[ pos + len(startFlag) + l: ]
-    return None
-
-def relinkHtmlImages(content, sourceDir, destDir):
-    startFlag = "<img"
-    pathFlag = "src=\""
-    endPathFlag = "\""
-    endFlag = "\">"
-    for i in range(len(content)):
-        pos = content[i].find(startFlag)
-        if pos != -1: #image in line
-            line = relinkHtmlImage(content[i], pathFlag, endPathFlag, sourceDir, destDir)
-            if line != None: #source path found
-                content[i] = line
-            else: #find image in following lines
-                while True:
-                    i += 1
-                    if i > len(content) - 1:
-                        print("warning: no endflag for html img found!")
-                        break
-                    line = relinkHtmlImage(content[i], pathFlag, endPathFlag, sourceDir, destDir)
-                    if line != None:
-                        content[i] = line
-                    elif content[i].find(endFlag) != -1:
-                        break
-    return content
 
 def generateModuleDescriptions():
     #these have to be set to chose the module to create documentation for
@@ -255,10 +231,10 @@ def generateModuleDescriptions():
         if tag in tag_functions.keys():
             line = tag_functions[tag](mod)
         elif REG_IMAGE_MD.match(line):
-            line = relinkImages(line, sourceDir, destDir) #destDir since markdown images get relinked by myst when building the html
+            line = relinkMDImage(line, sourceDir, destDir) #destDir since markdown images get relinked by myst when building the html
+        elif REG_IMAGE_HTML.match(line):
+            line = relinkHtmlImage(line, sourceDir, ImgDestDir)
         contentList[pos] = line
-    contentList = relinkHtmlImages(contentList, sourceDir, ImgDestDir) #html style images are not recognized by myst parser and are therefore relinked directly to the directory containing the html sources
-
 
     with open(destDir + target + ".md", "w") as f:
         unusedTags = tag_functions.keys() - tagPos.keys()
@@ -287,7 +263,7 @@ if __name__ == "__main__":
 
     for tag, pos in tagPos.items():
         line = contentList[pos]
-        line = relinkImages(line, sourceDir, destDir)
+        line = relinkMDImage(line, sourceDir, destDir)
         print(line)
 
     # for unused in (tag_functions.keys() - tagPos.keys()):
