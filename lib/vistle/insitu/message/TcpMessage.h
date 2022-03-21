@@ -8,6 +8,7 @@
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <thread>
+#include <atomic>
 namespace vistle {
 namespace insitu {
 namespace message {
@@ -52,7 +53,7 @@ private:
     std::condition_variable m_cv;
     std::function<void(void)> m_onConnectedCb;
     bool m_isConnected;
-
+    std::atomic_bool m_terminate = false;
     struct Msg {
         InSituMessageType type;
         vistle::buffer buf;

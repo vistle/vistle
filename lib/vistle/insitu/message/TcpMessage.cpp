@@ -54,6 +54,7 @@ InSituTcp::InSituTcp(boost::mpi::communicator comm, const std::string &ip, unsig
 
 InSituTcp::~InSituTcp()
 {
+    m_terminate = true;
     for (auto &a: m_acceptors)
         if (a)
             a->close();
@@ -105,7 +106,7 @@ bool InSituTcp::waitForConnection()
         m_cv.wait(lk);
         m_isConnected = m_socket != nullptr;
     }
-    vistle::insitu::broadcast(m_comm, m_isConnected, 0);
+    vistle::insitu::broadcast(m_comm, m_isConnected, 0, false, m_terminate);
 
     return m_isConnected;
 }
@@ -171,7 +172,7 @@ Message InSituTcp::recv()
             type = static_cast<int>(bf.as<InSituMessage>().ismType());
         }
     }
-    vistle::insitu::broadcast(m_comm, error, 0);
+    vistle::insitu::broadcast(m_comm, error, 0, true, m_terminate);
     if (error) {
         return Message::errorMessage();
     }
