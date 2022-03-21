@@ -25,7 +25,7 @@ vistle::Object::ptr get(const visit_smart_handle<HandleType::UnstructuredMesh> &
 }
 
 namespace UnstructuredMesh {
-Object::ptr get(const visit_handle &meshHandle)
+Object::ptr get(const visit_smart_handle<HandleType::UnstructuredMesh> &meshHandle)
 {
     if (simv2_UnstructuredMesh_check(meshHandle) == VISIT_OKAY) {
         auto mesh = make_ptr<UnstructuredGrid>(Index{0}, Index{0}, Index{0});

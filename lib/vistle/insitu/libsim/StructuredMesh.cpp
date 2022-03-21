@@ -25,7 +25,7 @@ vistle::Object::ptr get(const visit_smart_handle<HandleType::CurvilinearMesh> &m
 }
 
 namespace StructuredMesh {
-vistle::Object::ptr get(const visit_handle &meshHandle)
+vistle::Object::ptr get(const visit_smart_handle<HandleType::CurvilinearMesh> &meshHandle)
 {
     int check = simv2_CurvilinearMesh_check(meshHandle);
     if (check == VISIT_OKAY) {
