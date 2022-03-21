@@ -35,10 +35,12 @@ Renderer::Renderer(const std::string &name, const int moduleID, mpi::communicato
     setParameterMinimum(m_objectsPerFrame, Integer(1));
 
     //std::cerr << "Renderer starting: rank=" << rank << std::endl;
+    m_useGeometryCaches =
+        addIntParameter("_use_geometry_cache", "whether to try to cache geometry for re-use in subseqeuent timesteps",
+                        true, Parameter::Boolean);
 }
 
-Renderer::~Renderer()
-{}
+Renderer::~Renderer() = default;
 
 // all of those messages have to arrive in the same order an all ranks, but other messages may be interspersed
 bool Renderer::needsSync(const message::Message &m) const
@@ -411,6 +413,7 @@ void Renderer::removeObjectWrapper(std::shared_ptr<RenderObject> ro)
 
 void Renderer::connectionRemoved(const Port *from, const Port *to)
 {
+    m_geometryCaches.erase(Creator(from->getModuleID(), from->getName()));
     removeAllSentBy(from->getModuleID(), from->getName());
 
     // connection cut: remove colormap
@@ -431,6 +434,11 @@ void Renderer::removeObject(std::shared_ptr<RenderObject> ro)
 
 void Renderer::removeAllSentBy(int sender, const std::string &senderPort)
 {
+    auto it = m_geometryCaches.find(Creator(sender, senderPort));
+    if (it != m_geometryCaches.end()) {
+        it->second->clear();
+    }
+
     for (auto &ol: m_objectList) {
         for (auto &ro: ol) {
             if (ro && ro->senderId == sender && ro->senderPort == senderPort) {
@@ -499,7 +507,17 @@ bool Renderer::changeParameter(const Parameter *p)
         m_numObjectsPerFrame = m_objectsPerFrame->getValue();
     }
 
+    if (p == m_useGeometryCaches) {
+        enableGeometryCaches(m_useGeometryCaches->getValue());
+    }
+
     return Module::changeParameter(p);
+}
+
+void Renderer::enableGeometryCaches(bool on)
+{
+    for (auto &c: m_geometryCaches)
+        c.second->enable(on);
 }
 
 void Renderer::getBounds(Vector3 &min, Vector3 &max, int t)

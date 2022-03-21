@@ -204,6 +204,8 @@ MapDrape::MapDrape(const std::string &name, int moduleID, mpi::communicator comm
 
     p_permutation = addIntParameter("Axis Permutation", "permutation of the axis", XYZ, Parameter::Choice);
     V_ENUM_SET_CHOICES(p_permutation, PermutationOption);
+
+    addResultCache(m_alreadyMapped);
 #endif
 #ifdef DISPLACE
     p_component = addIntParameter("component", "component to displace for scalar input", Z, Parameter::Choice);
@@ -257,9 +259,8 @@ bool MapDrape::compute()
         StructuredGridBase::const_ptr inStr;
         const Scalar *xc = nullptr, *yc = nullptr, *zc = nullptr;
 #ifdef MAPDRAPE
-        auto it = m_alreadyMapped.find(geo->getName());
-        if (it != m_alreadyMapped.end()) {
-            outCoords = it->second;
+        auto cacheEntry = m_alreadyMapped.getOrLock(geo->getName(), outCoords);
+        if (!cacheEntry) {
         } else
 #endif
 #ifdef DISPLACE
@@ -410,7 +411,7 @@ bool MapDrape::compute()
             proj_destroy(P);
 #endif
 
-            m_alreadyMapped[geo->getName()] = outCoords;
+            m_alreadyMapped.storeAndUnlock(cacheEntry, outCoords);
 #endif
 
 #ifdef DISPLACE
@@ -441,9 +442,6 @@ bool MapDrape::compute()
 
 bool MapDrape::prepare()
 {
-#ifdef MAPDRAPE
-    m_alreadyMapped.clear();
-#endif
 #ifdef DISPLACE
     if (!isConnected(*data_in[0])) {
         sendError("input on first port is required for computing output grid");
@@ -454,9 +452,5 @@ bool MapDrape::prepare()
 
 bool MapDrape::reduce(int timestep)
 {
-#ifdef MAPDRAPE
-    if (timestep == -1)
-        m_alreadyMapped.clear();
-#endif
     return true;
 }

@@ -491,6 +491,8 @@ std::shared_ptr<vistle::RenderObject> COVER::addObject(int senderId, const std::
     auto cro = pro->coverRenderObject;
     if (VistleGeometryGenerator::isSupported(objType)) {
         auto vgr = VistleGeometryGenerator(pro, geometry, normals, texture);
+        auto cache = getOrCreateGeometryCache<GeometryCache>(senderId, senderPort);
+        vgr.setGeometryCache(*cache);
         auto species = vgr.species();
         if (!species.empty()) {
             VistleGeometryGenerator::lock();

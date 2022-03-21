@@ -28,6 +28,8 @@ IndexManifolds::IndexManifolds(const std::string &name, int moduleID, mpi::commu
     setParameterMinimum(p_coord, IntParamVector(0, 0, 0));
     p_direction = addIntParameter("direction", "normal on surface and direction of line", Z, Parameter::Choice);
     V_ENUM_SET_CHOICES(p_direction, Direction);
+
+    addResultCache(m_surfaceCache);
 }
 
 IndexManifolds::~IndexManifolds()
@@ -92,46 +94,71 @@ bool IndexManifolds::compute(std::shared_ptr<BlockTask> task) const
         Index nvert = nvert1 * nvert2;
         Index nquad = (nvert1 - 1) * (nvert2 - 1);
 
-        Quads::ptr surface(new Quads(nquad * 4, nvert));
-        surface->copyAttributes(ingrid);
-        DataBase::ptr outdata;
-        if (data) {
-            outdata = data->cloneType();
+        Quads::ptr surface;
+        auto cacheEntry = m_surfaceCache.getOrLock(ingrid->getName(), surface);
+        if (!cacheEntry) {
+            if (!data)
+                surface = surface->clone();
+        } else {
+            surface.reset(new Quads(nquad * 4, nvert));
+            surface->copyAttributes(ingrid);
+
+            Scalar *x[3];
+            for (int d = 0; d < 3; ++d) {
+                x[d] = surface->x(d).data();
+            }
+            Index *cl = surface->cl().data();
+            Index ii = 0;
+            for (Index i = 0; i < nvert1 - 1; ++i) {
+                for (Index j = 0; j < nvert2 - 1; ++j) {
+                    cl[ii++] = i * nvert2 + j;
+                    cl[ii++] = (i + 1) * nvert2 + j;
+                    cl[ii++] = (i + 1) * nvert2 + j + 1;
+                    cl[ii++] = i * nvert2 + j + 1;
+                }
+            }
+            assert(ii == nquad * 4);
+
+            Index cc[3]{c[0], c[1], c[2]};
+            cc[dir1] = bghost[dir1];
+            Index vv = 0;
+            Index cell = 0;
+            for (Index i = 0; i < nvert1; ++i) {
+                cc[dir2] = bghost[dir2];
+                for (Index j = 0; j < nvert2; ++j) {
+                    Index v = StructuredGridBase::vertexIndex(cc[0], cc[1], cc[2], dims);
+                    auto p = str->getVertex(v);
+                    for (int d = 0; d < 3; ++d)
+                        x[d][vv] = p[d];
+
+                    ++vv;
+                    ++cc[dir2];
+                }
+                ++cc[dir1];
+            }
+            assert(vv == nvert);
+            assert(cell == 0 || cell == nquad);
+
+            m_surfaceCache.storeAndUnlock(cacheEntry, surface);
+        }
+
+        if (!data) {
+            task->addObject(p_surface_out, surface);
+        } else {
+            DataBase::ptr outdata = data->cloneType();
             outdata->copyAttributes(data);
             outdata->setGrid(surface);
             outdata->setSize(elementData ? nquad : nvert);
             outdata->setMapping(elementData ? DataBase::Element : DataBase::Vertex);
-        }
 
-        Scalar *x[3];
-        for (int d = 0; d < 3; ++d) {
-            x[d] = surface->x(d).data();
-        }
-        Index *cl = surface->cl().data();
-
-        Index ii = 0;
-        for (Index i = 0; i < nvert1 - 1; ++i) {
-            for (Index j = 0; j < nvert2 - 1; ++j) {
-                cl[ii++] = i * nvert2 + j;
-                cl[ii++] = (i + 1) * nvert2 + j;
-                cl[ii++] = (i + 1) * nvert2 + j + 1;
-                cl[ii++] = i * nvert2 + j + 1;
-            }
-        }
-        assert(ii == nquad * 4);
-
-        Index cc[3]{c[0], c[1], c[2]};
-        cc[dir1] = bghost[dir1];
-        Index vv = 0;
-        Index cell = 0;
-        for (Index i = 0; i < nvert1; ++i) {
-            cc[dir2] = bghost[dir2];
-            for (Index j = 0; j < nvert2; ++j) {
-                Index v = StructuredGridBase::vertexIndex(cc[0], cc[1], cc[2], dims);
-                auto p = str->getVertex(v);
-                for (int d = 0; d < 3; ++d)
-                    x[d][vv] = p[d];
-                if (outdata) {
+            Index cc[3]{c[0], c[1], c[2]};
+            cc[dir1] = bghost[dir1];
+            Index vv = 0;
+            Index cell = 0;
+            for (Index i = 0; i < nvert1; ++i) {
+                cc[dir2] = bghost[dir2];
+                for (Index j = 0; j < nvert2; ++j) {
+                    Index v = StructuredGridBase::vertexIndex(cc[0], cc[1], cc[2], dims);
                     if (elementData) {
                         if (i + 1 < nvert1 && j + 1 < nvert2) {
                             Index c = StructuredGridBase::cellIndex(cc[0], cc[1], cc[2], dims);
@@ -141,20 +168,17 @@ bool IndexManifolds::compute(std::shared_ptr<BlockTask> task) const
                     } else {
                         outdata->copyEntry(vv, data, v);
                     }
+
+                    ++vv;
+                    ++cc[dir2];
                 }
-
-                ++vv;
-                ++cc[dir2];
+                ++cc[dir1];
             }
-            ++cc[dir1];
-        }
-        assert(vv == nvert);
-        assert(cell == 0 || cell == nquad);
+            assert(vv == nvert);
+            assert(cell == 0 || cell == nquad);
 
-        if (outdata)
             task->addObject(p_surface_out, outdata);
-        else
-            task->addObject(p_surface_out, surface);
+        }
     }
 
     if (isConnected(*p_line_out) && off[dir1] + bghost[dir1] <= coord[dir1] &&

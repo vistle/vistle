@@ -168,6 +168,15 @@ std::string StateTracker::getModuleDescription(int id) const
 }
 
 
+bool StateTracker::isCompound(int id)
+{
+    mutex_locker guard(m_stateMutex);
+    AvailableModule::Key key{getHub(id), getModuleName(id)};
+    const auto av = m_availableModules.find(key);
+    return av != m_availableModules.end() && av->second.isCompound();
+}
+
+
 int StateTracker::getModuleState(int id) const
 {
     mutex_locker guard(m_stateMutex);
@@ -1192,13 +1201,16 @@ bool StateTracker::handlePriv(const message::SetParameter &setParam)
     bool handled = false;
 
     const int senderId = setParam.senderId();
-    if (setParam.getModule() == senderId && runningMap.find(senderId) != runningMap.end()) {
-        auto param = getParameter(setParam.getModule(), setParam.getName());
-        if (param) {
-            setParam.apply(param);
-            handled = true;
+    if (setParam.getModule() == senderId) {
+        if (runningMap.find(senderId) != runningMap.end()) {
+            auto param = getParameter(setParam.getModule(), setParam.getName());
+            if (param) {
+                setParam.apply(param);
+                handled = true;
+            }
         }
-    }
+    } else
+        return true; //this message has to processed by the module first, we do not have to do anything
 
     if (handled) {
         mutex_locker guard(m_stateMutex);

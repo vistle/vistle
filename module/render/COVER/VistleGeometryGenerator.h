@@ -3,6 +3,7 @@
 
 #include <vistle/core/object.h>
 #include <vistle/renderer/renderobject.h>
+#include <vistle/module/resultcache.h>
 #include <mutex>
 #include <memory>
 #include <osg/StateSet>
@@ -40,6 +41,12 @@ struct OsgColorMap {
 
 typedef std::map<std::string, OsgColorMap> OsgColorMapMap;
 
+struct GeometryCache {
+    std::vector<osg::ref_ptr<osg::Vec3Array>> vertices;
+    std::vector<osg::ref_ptr<osg::Vec3Array>> normals;
+    std::vector<osg::ref_ptr<osg::PrimitiveSet>> primitives;
+};
+
 class VistleGeometryGenerator {
 public:
     VistleGeometryGenerator(std::shared_ptr<vistle::RenderObject> ro, vistle::Object::const_ptr geo,
@@ -47,6 +54,7 @@ public:
 
     const std::string &species() const;
     void setColorMaps(const OsgColorMapMap *colormaps);
+    void setGeometryCache(vistle::ResultCache<GeometryCache> &cache);
 
     osg::MatrixTransform *operator()(osg::ref_ptr<osg::StateSet> state = NULL);
 
@@ -64,6 +72,7 @@ private:
     std::string m_species;
 
     const OsgColorMapMap *m_colormaps = nullptr;
+    vistle::ResultCache<GeometryCache> *m_cache = nullptr;
 
     static std::mutex s_coverMutex;
 };

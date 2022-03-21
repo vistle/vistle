@@ -12,6 +12,8 @@ private:
     virtual bool compute();
 
     vistle::StringParameter *m_shader, *m_shaderParams;
+
+    vistle::ResultCache<vistle::Object::ptr> m_cache;
 };
 
 #endif

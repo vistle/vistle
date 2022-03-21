@@ -158,8 +158,7 @@ ReadSeisSol::ReadSeisSol(const std::string &name, int moduleID, mpi::communicato
 : vistle::Reader(name, moduleID, comm)
 {
     //settings
-    m_file = addStringParameter("xfile", "Xdmf File", "/data/ChEESE/SeisSol/LMU_Sulawesi_example/sula-surface.xdmf",
-                                Parameter::Filename);
+    m_file = addStringParameter("file", "XDMF File", "/path/to/XDMF_File", Parameter::Filename);
     m_seisMode = addIntParameter("SeisSolMode", "Select file format", (Integer)XDMF, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_seisMode, SeisSolMode);
     m_parallelMode =
@@ -173,11 +172,8 @@ ReadSeisSol::ReadSeisSol(const std::string &name, int moduleID, mpi::communicato
     //scalar
     initScalar();
 
-    //partition (maybe relevant for HDF5)
-    /* initBlocks(); */
-
     m_reuseGrid =
-        addIntParameter("ReuseGrid", "Reuses grid from first XdmfGrid specified in Xdmf.", 1, Parameter::Boolean);
+        addIntParameter("ReuseGrid", "Reuse grid from first XdmfGrid specified in file.", 1, Parameter::Boolean);
 
     //observer
     initObserveParameter();
@@ -206,14 +202,14 @@ void ReadSeisSol::initScalar()
 {
     constexpr auto attName_constexpr{"Scalar "};
     constexpr auto portName_constexpr{"Scalar port "};
-    constexpr auto portDescr_constexpr{"Scalar port for attribute "};
+    constexpr auto portDescr_constexpr{"Scalar port for xdmf attribute "};
 
     for (Index i = 0; i < m_attributes.size(); i++) {
         const std::string i_str{std::to_string(i)};
         const std::string &attName = attName_constexpr + i_str;
         const std::string &portName = portName_constexpr + i_str;
         const std::string &portDescr = portDescr_constexpr + i_str;
-        m_attributes[i] = addStringParameter(attName, "Select scalar for scalar port.", "", Parameter::Choice);
+        m_attributes[i] = addStringParameter(attName, "Select attribute for scalar port.", "", Parameter::Choice);
         m_scalarsOut[i] = createOutputPort(portName, portDescr);
         observeParameter(m_attributes[i]);
     }
@@ -557,7 +553,6 @@ bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfA
     xdmfArrGeo->getValues(0, x, xdmfArrGeo->getSize() / numCoords, numCoords, strideVistleArr);
     xdmfArrGeo->getValues(1, y, xdmfArrGeo->getSize() / numCoords, numCoords, strideVistleArr);
     xdmfArrGeo->getValues(2, z, xdmfArrGeo->getSize() / numCoords, numCoords, strideVistleArr);
-
 
     return true;
 }

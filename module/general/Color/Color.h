@@ -68,6 +68,7 @@ private:
     bool m_colorMapSent = false;
     vistle::Port *m_dataIn = nullptr;
     vistle::Port *m_dataOut = nullptr, *m_colorOut = nullptr;
+    vistle::ResultCache<vistle::Object::ptr> m_cache;
 };
 
 #endif

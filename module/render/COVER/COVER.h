@@ -10,6 +10,7 @@
 
 #include <vistle/renderer/renderobject.h>
 #include <vistle/renderer/renderer.h>
+#include <vistle/module/resultcache.h>
 #include <vistle/core/messages.h>
 #include <VistlePluginUtil/VistleRenderObject.h>
 #include "VistleGeometryGenerator.h"

@@ -46,7 +46,7 @@ size_t memorySize<8>()
         return (size_t)1 << 32;
     } else {
 #if defined(__APPLE__)
-        return (size_t)1 << 32;
+        return (size_t)1 << 40;
 #elif defined(_WIN32)
         return (size_t)1 << 30; // 1 GB
 #else

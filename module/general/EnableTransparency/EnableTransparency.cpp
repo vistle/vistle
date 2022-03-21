@@ -1,4 +1,5 @@
 #include <vistle/module/module.h>
+#include <vistle/module/resultcache.h>
 #include <vistle/core/object.h>
 #include <sstream>
 
@@ -14,6 +15,8 @@ private:
 
     IntParameter *p_transparency = nullptr;
     IntParameter *p_numPrimitives = nullptr;
+
+    ResultCache<Object::ptr> m_cache;
 };
 
 using namespace vistle;
@@ -29,6 +32,8 @@ EnableTransparency::EnableTransparency(const std::string &name, int moduleID, mp
     p_transparency = addIntParameter("transparency", "put objects into TRANSPARENT_BIN", 1, Parameter::Boolean);
     p_numPrimitives = addIntParameter("num_primitives", "number of primitives to put into one block", 0);
     setParameterMinimum<Integer>(p_numPrimitives, -1);
+
+    addResultCache(m_cache);
 }
 
 EnableTransparency::~EnableTransparency()
@@ -40,15 +45,20 @@ bool EnableTransparency::compute()
     if (!obj)
         return true;
 
-    Object::ptr out = obj->clone();
+    Object::ptr out;
+    if (auto ent = m_cache.getOrLock(obj->getName(), out)) {
+        out = obj->clone();
 
-    if (p_transparency->getValue()) {
-        out->addAttribute("_transparent", "true");
+        if (p_transparency->getValue()) {
+            out->addAttribute("_transparent", "true");
+        }
+
+        if (p_numPrimitives->getValue() != 0) {
+            out->addAttribute("_bin_num_primitives", std::to_string(p_numPrimitives->getValue()));
+        }
+        m_cache.storeAndUnlock(ent, out);
     }
 
-    if (p_numPrimitives->getValue() != 0) {
-        out->addAttribute("_bin_num_primitives", std::to_string(p_numPrimitives->getValue()));
-    }
 
     addObject("data_out", out);
 

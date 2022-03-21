@@ -24,6 +24,8 @@ private:
     void renumberVertices(vistle::Coords::const_ptr coords, vistle::Quads::ptr quad, DataMapping &vm) const;
     void createVertices(vistle::StructuredGridBase::const_ptr grid, vistle::Quads::ptr quad, DataMapping &vm) const;
     //bool checkNormal(vistle::Index v1, vistle::Index v2, vistle::Index v3, vistle::Scalar x_center, vistle::Scalar y_center, vistle::Scalar z_center);
+
+    mutable vistle::ResultCache<vistle::Object::ptr> m_cache;
 };
 
 #endif
