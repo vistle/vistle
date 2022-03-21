@@ -23,7 +23,7 @@ std::shared_ptr<vistle::Object> get(const visit_smart_handle<HandleType::Rectili
 namespace RectilinearMesh {
 
 // Inherited via GetVistleObjectInterface
-std::shared_ptr<vistle::Object> get(const visit_handle &meshHandle);
+std::shared_ptr<vistle::Object> get(const visit_smart_handle<HandleType::RectilinearMesh> &meshHandle);
 
 //todo: consider ghost cells
 std::shared_ptr<vistle::Object> getCombinedUnstructured(const MeshInfo &meshInfo, bool vtkFormat = false);

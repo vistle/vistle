@@ -26,7 +26,7 @@ std::shared_ptr<Object> get(const visit_smart_handle<HandleType::RectilinearMesh
 
 namespace RectilinearMesh {
 
-Object::ptr get(const visit_handle &meshHandle)
+Object::ptr get(const visit_smart_handle<HandleType::RectilinearMesh> &meshHandle)
 {
     if (simv2_RectilinearMesh_check(meshHandle) == VISIT_OKAY) {
         auto meshArray = detail::getMeshFromSim(meshHandle);
