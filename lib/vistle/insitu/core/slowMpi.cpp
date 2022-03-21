@@ -6,11 +6,11 @@
 #include <mpi.h>
 #include <thread>
 #include <chrono>
-
 constexpr auto interval = std::chrono::microseconds(500);
 namespace detail {
 template<typename T>
-void broadcast(boost::mpi::communicator &c, T &t, int root)
+void broadcast(boost::mpi::communicator &c, T &t, int root, const T &defaultValue = T{},
+               const std::atomic_bool &abort = false)
 {
     const int tag = 37;
     // Make proc 0 the root if it isn't already
@@ -41,6 +41,10 @@ void broadcast(boost::mpi::communicator &c, T &t, int root)
         vistle::adaptive_wait(true);
         while (!bcastRecv.test()) {
             vistle::adaptive_wait(false);
+            if (abort) {
+                t = defaultValue;
+                return;
+            }
         }
     }
     // Send on to other processors phase
@@ -76,7 +80,8 @@ void vistle::insitu::broadcast(boost::mpi::communicator &c, int &val, int root)
     detail::broadcast(c, val, root);
 }
 
-void vistle::insitu::broadcast(boost::mpi::communicator &c, bool &val, int root)
+void vistle::insitu::broadcast(boost::mpi::communicator &c, bool &val, int root, bool defaultValue,
+                               const std::atomic_bool &abort)
 {
-    detail::broadcast(c, val, root);
+    detail::broadcast(c, val, root, defaultValue, abort);
 }

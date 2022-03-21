@@ -52,6 +52,7 @@ void InSituModule::startCommunicationThread()
 
 void InSituModule::terminateCommunicationThread()
 {
+    m_messageHandler = nullptr;
     if (m_communicationThread && m_communicationThread->joinable()) {
         m_terminateCommunication = true;
         m_communicationThread->join();
