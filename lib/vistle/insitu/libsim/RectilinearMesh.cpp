@@ -90,7 +90,10 @@ namespace detail {
 
 RectilinearGrid::ptr makeVistleMesh(const std::array<Array<HandleType::Coords>, 3> &meshData)
 {
-    auto mesh = make_ptr<RectilinearGrid>((Index)meshData[0].size, (Index)meshData[1].size, (Index)meshData[2].size);
+    auto mesh = make_ptr<RectilinearGrid>(std::max(Index(1), Index(meshData[0].size)),
+                                          std::max(Index(1), Index(meshData[1].size)),
+                                          std::max(Index(1), Index(meshData[2].size)));
+
     for (size_t i = 0; i < 3; ++i) {
         if (meshData[i].data) {
             transformArray(meshData[i], mesh->coords(i).begin());
@@ -108,8 +111,7 @@ void addGhost(const visit_handle &meshHandle, std::shared_ptr<RectilinearGrid> m
 
     for (size_t i = 0; i < 3; i++) {
         assert(min[i] >= 0);
-        int numTop = mesh->getNumDivisions(i) - 1 - max[i];
-        assert(numTop >= 0);
+        int numTop = std::max((long)0, (long)mesh->getNumDivisions(i) - 1 - max[i]); //if 2D this would be -1
         mesh->setNumGhostLayers(i, StructuredGridBase::GhostLayerPosition::Bottom, min[i]);
         mesh->setNumGhostLayers(i, StructuredGridBase::GhostLayerPosition::Top, numTop);
     }
