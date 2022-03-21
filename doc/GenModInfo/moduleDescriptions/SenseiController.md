@@ -23,11 +23,11 @@ Oscillator Example (multi-process vistle)
 - start the simulation: *path to SENSEI build*/bin/oscillator -f ../../configs/oscillatorVistle.xml ../../miniapps/oscillators/inputs/sample.osc
 - start vistle and load oscillatorExample.vsl
 
-![](../../../module/general/Sensei/OscillatorNet.png)
+![]( ../../../module/general/Sensei/OscillatorNet.png )
 
 - click on the run/paused parameter of this module to start/pause the simulation. The rusults should look like the following image:
 
-![](../../../module/general/Sensei/OscillatorResult.png)
+![]( ../../../module/general/Sensei/OscillatorResult.png )
 
 <svg width="102.8em" height="4.6em" >
 <style>.text { font: normal 1.0em sans-serif;}tspan{ font: italic 1.0em sans-serif;}.moduleName{ font: bold 1.0em sans-serif;}</style>

@@ -11,7 +11,7 @@ To set this up create the pipeline as described in the following picture and cha
 Alternatively load vistle/examples/gendat-isisurface.vsl.
 The result should look like this:
 
-![](../../../module/test/Gendat/isosurfaceExampleResult.png)
+![]( ../../../module/test/Gendat/isosurfaceExampleResult.png )
 
 <svg width="50.0em" height="7.6em" >
 <style>.text { font: normal 1.0em sans-serif;}tspan{ font: italic 1.0em sans-serif;}.moduleName{ font: bold 1.0em sans-serif;}</style>

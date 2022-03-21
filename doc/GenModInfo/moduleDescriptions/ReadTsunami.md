@@ -96,7 +96,7 @@ This module distributes the data into domain blocks per spawned mpi process. Wit
 
 ## Example Usage
 
-![](../../../module/general/ReadTsunami/example.png)
+![]( ../../../module/general/ReadTsunami/example.png )
 
 ## Build Requirements
 
