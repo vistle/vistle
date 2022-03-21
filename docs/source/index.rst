@@ -30,6 +30,9 @@ More infos about Architecture: https://vistle.io/architecture/
    :caption: User Documentation
 
    Introduction <intro/index.rst>
+   Quickstart <quickstart/quickstart.md>
+   GUI <gui/gui.md>
+   Workflows <workflow/workflow.md>
    Module Guide <modules/index.rst>
    Library Documentation <lib/index.rst>
 
