@@ -241,6 +241,7 @@ bool Hub::init(int argc, char *argv[])
         ("snapshot", po::value<std::string>(), "store screenshot of workflow to this location")
         ("libsim,l", po::value<std::string>(), "connect to a LibSim instrumented simulation by entering the path to the .sim2 file")
         ("exposed,gateway-host,gateway,gw", po::value<std::string>(), "ports are exposed externally on this host")
+        ("root", po::value<std::string>(), "path to Vistle build directory")
         ("url", "Vistle URL, script to process, or slave name")
     ;
     // clang-format on
@@ -271,6 +272,11 @@ bool Hub::init(int argc, char *argv[])
     }
     if (vm.count("dataport") > 0) {
         m_dataPort = vm["dataport"].as<unsigned short>();
+    }
+
+    if (vm.count("root")) {
+        m_prefix = vm["root"].as<std::string>();
+        std::cerr << "set prefix to " << m_prefix << std::endl;
     }
 
     if (vm.count("exposed") > 0) {

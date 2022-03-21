@@ -101,15 +101,19 @@ bool SenseiAdapter::startVistle(const MPI_Comm &comm, const std::string &options
     m_managerThread = std::thread([VISTLE_ROOT, options, this]() {
         std::string cmd{VISTLE_ROOT};
         cmd += "/bin/vistle_manager";
-        std::vector<char *> args;
+        std::vector<const char *> args;
         std::vector<std::string> optionsVec;
-        boost::split(optionsVec, options, boost::is_any_of(" "));
-        args.push_back(const_cast<char *>(cmd.c_str()));
+        if (!options.empty())
+            boost::split(optionsVec, options, boost::is_any_of(" "));
+        std::cerr << "options are: " << options << "!" << std::endl;
+        args.push_back(cmd.c_str());
         for (auto &opt: optionsVec) {
-            args.push_back(const_cast<char *>(opt.c_str()));
+            args.push_back(opt.c_str());
         }
+        args.push_back("--root");
+        args.push_back(VISTLE_ROOT);
         vistle::VistleManager manager;
-        manager.run(static_cast<int>(args.size()), args.data());
+        manager.run(static_cast<int>(args.size()), const_cast<char **>(args.data()));
     });
     return true;
 }
