@@ -141,7 +141,7 @@ bool ReadWRFChem::inspectDir()
                 sendError("File does not end with '.nc' ");
             }
         } else {
-            sendInfo("Could not find given directory. Please specify a valid path");
+            sendInfo("Could not find given directory %s. Please specify a valid path", sFileDir.c_str());
             return false;
         }
     } catch (std::exception &ex) {
