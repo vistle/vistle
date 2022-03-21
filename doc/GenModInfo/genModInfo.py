@@ -211,7 +211,8 @@ def generateModuleDescriptions():
     sourceDir = os.environ['VISTLE_DOCUMENTATION_DIR']
     destDir = os.path.dirname(os.path.realpath(__file__)) + "/moduleDescriptions/"
     #the directory containing the readTheDocs module files
-    ImgDestDir = os.path.dirname(os.path.realpath(__file__)) + "/../../docs/build/html/modules/"
+    # ImgDestDir = os.path.dirname(os.path.realpath(__file__)) + "/../../docs/build/html/modules/"
+    ImgDestDir = os.path.dirname(os.path.realpath(__file__)) + "/../../docs/source/_build/html/modules/"
 
     filename = sourceDir +  "/" + target + ".md"
     tag_functions = {
