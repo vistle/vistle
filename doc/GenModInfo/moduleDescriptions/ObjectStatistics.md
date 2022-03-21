@@ -1,16 +1,16 @@
 
 # ObjectStatistics
-Print object statistics
+print object statistics
 
-<svg width="3084.0" height="180" >
-<style>.text { font: normal 24.0px sans-serif;}tspan{ font: italic 24.0px sans-serif;}.moduleName{ font: italic 30px sans-serif;}</style>
-<rect x="0" y="60" width="308.4" height="90" rx="5" ry="5" style="fill:#64c8c8ff;" />
-<rect x="6.0" y="60" width="30" height="30" rx="0" ry="0" style="fill:#c81e1eff;" >
+<svg width="102.8em" height="5.6em" >
+<style>.text { font: normal 1.0em sans-serif;}tspan{ font: italic 1.0em sans-serif;}.moduleName{ font: bold 1.0em sans-serif;}</style>
+<rect x="0em" y="1.8em" width="10.28em" height="3.0em" rx="0.1em" ry="0.1em" style="fill:#64c8c8ff;" />
+<rect x="0.2em" y="1.8em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c81e1eff;" >
 <title>data_in</title></rect>
-<rect x="21.0" y="30" width="1.0" height="30" rx="0" ry="0" style="fill:#000000;" />
-<rect x="21.0" y="30" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="57.0" y="33.0" class="text" >input data<tspan> (data_in)</tspan></text>
-<text x="6.0" y="115.5" class="moduleName" >ObjectStatistics</text></svg>
+<rect x="0.7em" y="0.8em" width="0.03333333333333333em" height="1.0em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="0.7em" y="0.8em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<text x="1.9em" y="0.9em" class="text" >input data<tspan> (data_in)</tspan></text>
+<text x="0.2em" y="3.6500000000000004em" class="moduleName" >ObjectStatistics</text></svg>
 
 ## Parameters
 |name|description|type|

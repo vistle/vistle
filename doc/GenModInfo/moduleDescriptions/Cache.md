@@ -1,61 +1,61 @@
 
 # Cache
-Cache input objects
+cache input objects
 
-<svg width="2100" height="450" >
-<style>.text { font: normal 24.0px sans-serif;}tspan{ font: italic 24.0px sans-serif;}.moduleName{ font: italic 30px sans-serif;}</style>
-<rect x="0" y="180" width="210" height="90" rx="5" ry="5" style="fill:#64c8c8ff;" />
-<rect x="6.0" y="180" width="30" height="30" rx="0" ry="0" style="fill:#c81e1eff;" >
+<svg width="70.0em" height="14.600000000000001em" >
+<style>.text { font: normal 1.0em sans-serif;}tspan{ font: italic 1.0em sans-serif;}.moduleName{ font: bold 1.0em sans-serif;}</style>
+<rect x="0em" y="5.8em" width="7.0em" height="3.0em" rx="0.1em" ry="0.1em" style="fill:#64c8c8ff;" />
+<rect x="0.2em" y="5.8em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c81e1eff;" >
 <title>data_in0</title></rect>
-<rect x="21.0" y="30" width="1.0" height="150" rx="0" ry="0" style="fill:#000000;" />
-<rect x="21.0" y="30" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="57.0" y="33.0" class="text" >input data 0<tspan> (data_in0)</tspan></text>
-<rect x="42.0" y="180" width="30" height="30" rx="0" ry="0" style="fill:#c81e1eff;" >
+<rect x="0.7em" y="0.7999999999999998em" width="0.03333333333333333em" height="5.0em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="0.7em" y="0.7999999999999998em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<text x="1.9em" y="0.8999999999999998em" class="text" >input data 0<tspan> (data_in0)</tspan></text>
+<rect x="1.4em" y="5.8em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c81e1eff;" >
 <title>data_in1</title></rect>
-<rect x="57.0" y="60" width="1.0" height="120" rx="0" ry="0" style="fill:#000000;" />
-<rect x="57.0" y="60" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="93.0" y="63.0" class="text" >input data 1<tspan> (data_in1)</tspan></text>
-<rect x="78.0" y="180" width="30" height="30" rx="0" ry="0" style="fill:#c81e1eff;" >
+<rect x="1.9em" y="1.7999999999999998em" width="0.03333333333333333em" height="4.0em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="1.9em" y="1.7999999999999998em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<text x="3.0999999999999996em" y="1.9em" class="text" >input data 1<tspan> (data_in1)</tspan></text>
+<rect x="2.5999999999999996em" y="5.8em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c81e1eff;" >
 <title>data_in2</title></rect>
-<rect x="93.0" y="90" width="1.0" height="90" rx="0" ry="0" style="fill:#000000;" />
-<rect x="93.0" y="90" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="129.0" y="93.0" class="text" >input data 2<tspan> (data_in2)</tspan></text>
-<rect x="114.0" y="180" width="30" height="30" rx="0" ry="0" style="fill:#c81e1eff;" >
+<rect x="3.0999999999999996em" y="2.8em" width="0.03333333333333333em" height="3.0em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="3.0999999999999996em" y="2.8em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<text x="4.3em" y="2.9em" class="text" >input data 2<tspan> (data_in2)</tspan></text>
+<rect x="3.8em" y="5.8em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c81e1eff;" >
 <title>data_in3</title></rect>
-<rect x="129.0" y="120" width="1.0" height="60" rx="0" ry="0" style="fill:#000000;" />
-<rect x="129.0" y="120" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="165.0" y="123.0" class="text" >input data 3<tspan> (data_in3)</tspan></text>
-<rect x="150.0" y="180" width="30" height="30" rx="0" ry="0" style="fill:#c81e1eff;" >
+<rect x="4.3em" y="3.8em" width="0.03333333333333333em" height="2.0em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="4.3em" y="3.8em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<text x="5.5em" y="3.9em" class="text" >input data 3<tspan> (data_in3)</tspan></text>
+<rect x="5.0em" y="5.8em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c81e1eff;" >
 <title>data_in4</title></rect>
-<rect x="165.0" y="150" width="1.0" height="30" rx="0" ry="0" style="fill:#000000;" />
-<rect x="165.0" y="150" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="201.0" y="153.0" class="text" >input data 4<tspan> (data_in4)</tspan></text>
-<rect x="6.0" y="240" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
+<rect x="5.5em" y="4.8em" width="0.03333333333333333em" height="1.0em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="5.5em" y="4.8em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<text x="6.7em" y="4.8999999999999995em" class="text" >input data 4<tspan> (data_in4)</tspan></text>
+<text x="0.2em" y="7.65em" class="moduleName" >Cache</text><rect x="0.2em" y="7.800000000000001em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c8c81eff;" >
 <title>data_out0</title></rect>
-<rect x="21.0" y="270" width="1.0" height="150" rx="0" ry="0" style="fill:#000000;" />
-<rect x="21.0" y="420" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="57.0" y="423.0" class="text" >output data 0<tspan> (data_out0)</tspan></text>
-<rect x="42.0" y="240" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
+<rect x="0.7em" y="8.8em" width="0.03333333333333333em" height="5.0em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="0.7em" y="13.8em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<text x="1.9em" y="13.9em" class="text" >output data 0<tspan> (data_out0)</tspan></text>
+<rect x="1.4em" y="7.800000000000001em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c8c81eff;" >
 <title>data_out1</title></rect>
-<rect x="57.0" y="270" width="1.0" height="120" rx="0" ry="0" style="fill:#000000;" />
-<rect x="57.0" y="390" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="93.0" y="393.0" class="text" >output data 1<tspan> (data_out1)</tspan></text>
-<rect x="78.0" y="240" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
+<rect x="1.9em" y="8.8em" width="0.03333333333333333em" height="4.0em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="1.9em" y="12.8em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<text x="3.0999999999999996em" y="12.9em" class="text" >output data 1<tspan> (data_out1)</tspan></text>
+<rect x="2.5999999999999996em" y="7.800000000000001em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c8c81eff;" >
 <title>data_out2</title></rect>
-<rect x="93.0" y="270" width="1.0" height="90" rx="0" ry="0" style="fill:#000000;" />
-<rect x="93.0" y="360" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="129.0" y="363.0" class="text" >output data 2<tspan> (data_out2)</tspan></text>
-<rect x="114.0" y="240" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
+<rect x="3.0999999999999996em" y="8.8em" width="0.03333333333333333em" height="3.0em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="3.0999999999999996em" y="11.8em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<text x="4.3em" y="11.9em" class="text" >output data 2<tspan> (data_out2)</tspan></text>
+<rect x="3.8em" y="7.800000000000001em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c8c81eff;" >
 <title>data_out3</title></rect>
-<rect x="129.0" y="270" width="1.0" height="60" rx="0" ry="0" style="fill:#000000;" />
-<rect x="129.0" y="330" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="165.0" y="333.0" class="text" >output data 3<tspan> (data_out3)</tspan></text>
-<rect x="150.0" y="240" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
+<rect x="4.3em" y="8.8em" width="0.03333333333333333em" height="2.0em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="4.3em" y="10.8em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<text x="5.5em" y="10.9em" class="text" >output data 3<tspan> (data_out3)</tspan></text>
+<rect x="5.0em" y="7.800000000000001em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c8c81eff;" >
 <title>data_out4</title></rect>
-<rect x="165.0" y="270" width="1.0" height="30" rx="0" ry="0" style="fill:#000000;" />
-<rect x="165.0" y="300" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="201.0" y="303.0" class="text" >output data 4<tspan> (data_out4)</tspan></text>
-<text x="6.0" y="235.5" class="moduleName" >Cache</text></svg>
+<rect x="5.5em" y="8.8em" width="0.03333333333333333em" height="1.0em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="5.5em" y="9.8em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<text x="6.7em" y="9.9em" class="text" >output data 4<tspan> (data_out4)</tspan></text>
+</svg>
 
 ## Parameters
 |name|description|type|

@@ -1,6 +1,6 @@
 
 # ReadSeisSol
-Read cheese seismic data files (xdmf/hdf5)
+Read SeisSol data files (XDMF/HDF5)
 
 ## Purpose
 
@@ -57,30 +57,30 @@ The example will extract the timesteps [1-3], the data arguments **partition SRs
 
 ## Ports
 
-<svg width="2214.0" height="270" >
-<style>.text { font: normal 24.0px sans-serif;}tspan{ font: italic 24.0px sans-serif;}.moduleName{ font: italic 30px sans-serif;}</style>
-<rect x="0" y="30" width="221.39999999999998" height="90" rx="5" ry="5" style="fill:#64c8c8ff;" />
-<rect x="6.0" y="90" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
+<svg width="73.8em" height="8.6em" >
+<style>.text { font: normal 1.0em sans-serif;}tspan{ font: italic 1.0em sans-serif;}.moduleName{ font: bold 1.0em sans-serif;}</style>
+<rect x="0em" y="0.8em" width="7.38em" height="3.0em" rx="0.1em" ry="0.1em" style="fill:#64c8c8ff;" />
+<text x="0.2em" y="2.6500000000000004em" class="moduleName" >ReadSeisSol</text><rect x="0.2em" y="2.8em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c8c81eff;" >
 <title>ugrid</title></rect>
-<rect x="21.0" y="120" width="1.0" height="120" rx="0" ry="0" style="fill:#000000;" />
-<rect x="21.0" y="240" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="57.0" y="243.0" class="text" >UnstructuredGrid<tspan> (ugrid)</tspan></text>
-<rect x="42.0" y="90" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
+<rect x="0.7em" y="3.8em" width="0.03333333333333333em" height="4.0em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="0.7em" y="7.8em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<text x="1.9em" y="7.8999999999999995em" class="text" >UnstructuredGrid<tspan> (ugrid)</tspan></text>
+<rect x="1.4em" y="2.8em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c8c81eff;" >
 <title>Scalar port 0</title></rect>
-<rect x="57.0" y="120" width="1.0" height="90" rx="0" ry="0" style="fill:#000000;" />
-<rect x="57.0" y="210" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="93.0" y="213.0" class="text" >Scalar port for attribute 0<tspan> (Scalar port 0)</tspan></text>
-<rect x="78.0" y="90" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
+<rect x="1.9em" y="3.8em" width="0.03333333333333333em" height="3.0em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="1.9em" y="6.8em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<text x="3.0999999999999996em" y="6.8999999999999995em" class="text" >Scalar port for xdmf attribute 0<tspan> (Scalar port 0)</tspan></text>
+<rect x="2.5999999999999996em" y="2.8em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c8c81eff;" >
 <title>Scalar port 1</title></rect>
-<rect x="93.0" y="120" width="1.0" height="60" rx="0" ry="0" style="fill:#000000;" />
-<rect x="93.0" y="180" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="129.0" y="183.0" class="text" >Scalar port for attribute 1<tspan> (Scalar port 1)</tspan></text>
-<rect x="114.0" y="90" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
+<rect x="3.0999999999999996em" y="3.8em" width="0.03333333333333333em" height="2.0em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="3.0999999999999996em" y="5.8em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<text x="4.3em" y="5.8999999999999995em" class="text" >Scalar port for xdmf attribute 1<tspan> (Scalar port 1)</tspan></text>
+<rect x="3.8em" y="2.8em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c8c81eff;" >
 <title>Scalar port 2</title></rect>
-<rect x="129.0" y="120" width="1.0" height="30" rx="0" ry="0" style="fill:#000000;" />
-<rect x="129.0" y="150" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="165.0" y="153.0" class="text" >Scalar port for attribute 2<tspan> (Scalar port 2)</tspan></text>
-<text x="6.0" y="85.5" class="moduleName" >ReadSeisSol</text></svg>
+<rect x="4.3em" y="3.8em" width="0.03333333333333333em" height="1.0em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="4.3em" y="4.8em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<text x="5.5em" y="4.8999999999999995em" class="text" >Scalar port for xdmf attribute 2<tspan> (Scalar port 2)</tspan></text>
+</svg>
 
 The first port outputs the raw geometry specified by the **Topology** and **Geometry** sections of the XDMF file as an unstructured grid object. The scalar ports 0-2 will deliver a vistle scalar object which holds one of the attributes specified in the **Attribute** definitions in the XDMF file. These scalar objects itself containing a reference to the geometry object with a cell-based mapping enabled for the attributes.
 
@@ -93,13 +93,13 @@ The first port outputs the raw geometry specified by the **Topology** and **Geom
 |step_increment|number of steps to increment|Int|
 |first_rank|rank for first partition of first timestep|Int|
 |check_convexity|whether to check convexity of grid cells|Int|
-|xfile|Xdmf File|String|
+|file|XDMF File|String|
 |SeisSolMode|Select file format (XDMF, HDF5)|Int|
 |ParallelMode|Select ParallelMode (Block or Serial (with and without timestepdistribution)) (BLOCKS, SERIAL)|Int|
-|Scalar 0|Select scalar for scalar port.)|String|
-|Scalar 1|Select scalar for scalar port.)|String|
-|Scalar 2|Select scalar for scalar port.)|String|
-|ReuseGrid|Reuses grid from first XdmfGrid specified in Xdmf.|Int|
+|Scalar 0|Select attribute for scalar port.)|String|
+|Scalar 1|Select attribute for scalar port.)|String|
+|Scalar 2|Select attribute for scalar port.)|String|
+|ReuseGrid|Reuse grid from first XdmfGrid specified in file.|Int|
 
 ---
 
@@ -139,6 +139,22 @@ The next image shows the result of an execution in COVER.
 - [DomainSurface](DomainSurface_link.md)
 - [IsoSurface](IsoSurface_link.md)
 - [MapDrape](MapDrape_link.md)
+
+## Troubleshooting
+
+### Inverted Normals
+
+Sometimes it can happen that you have datasets with inverted normals which looks like shown in the next image.
+
+<img src="../../../../module/general/ReadSeisSol/seissol_inverted_normal.png" alt="seissol sulawesi unstr wrong normals" title="Sulawesi Unstructured Normal Issua" height="300"/>
+
+If you are certain that the scalar data seems correct you can fix the geometry with a visualization pipeline like the following one which builds a new geometry with correct normals.
+
+<center><img src="../../../../module/general/ReadSeisSol/seissol_inverted_normal_prevention.png" alt="seissol sulawesi unstr map for wrong normal issue" title="Sulawesi Unstructured Normal Pipeline" height="300"/></center>
+
+The next picture shows an outcome of an execution of this example.
+
+<img src="../../../../module/general/ReadSeisSol/seissol_inverted_normal_correct.png" alt="seissol sulawesi unstr wrong correct normals" title="Sulawesi Unstructured Normal Issue" height="300"/>
 
 ## Build Requirements
 

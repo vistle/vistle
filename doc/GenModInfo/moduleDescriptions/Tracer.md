@@ -1,71 +1,71 @@
 
 # Tracer
-Compute particle traces and streamlines
+compute particle traces and streamlines
 
-<svg width="3600" height="510" >
-<style>.text { font: normal 24.0px sans-serif;}tspan{ font: italic 24.0px sans-serif;}.moduleName{ font: italic 30px sans-serif;}</style>
-<rect x="0" y="90" width="360" height="90" rx="5" ry="5" style="fill:#64c8c8ff;" />
-<rect x="6.0" y="90" width="30" height="30" rx="0" ry="0" style="fill:#c81e1eff;" >
+<svg width="120.0em" height="16.6em" >
+<style>.text { font: normal 1.0em sans-serif;}tspan{ font: italic 1.0em sans-serif;}.moduleName{ font: bold 1.0em sans-serif;}</style>
+<rect x="0em" y="2.8em" width="12.0em" height="3.0em" rx="0.1em" ry="0.1em" style="fill:#64c8c8ff;" />
+<rect x="0.2em" y="2.8em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c81e1eff;" >
 <title>data_in0</title></rect>
-<rect x="21.0" y="30" width="1.0" height="60" rx="0" ry="0" style="fill:#000000;" />
-<rect x="21.0" y="30" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="57.0" y="33.0" class="text" ><tspan> (data_in0)</tspan></text>
-<rect x="42.0" y="90" width="30" height="30" rx="0" ry="0" style="fill:#c81e1eff;" >
+<rect x="0.7em" y="0.7999999999999998em" width="0.03333333333333333em" height="2.0em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="0.7em" y="0.7999999999999998em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<text x="1.9em" y="0.8999999999999998em" class="text" ><tspan> (data_in0)</tspan></text>
+<rect x="1.4em" y="2.8em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c81e1eff;" >
 <title>data_in1</title></rect>
-<rect x="57.0" y="60" width="1.0" height="30" rx="0" ry="0" style="fill:#000000;" />
-<rect x="57.0" y="60" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="93.0" y="63.0" class="text" ><tspan> (data_in1)</tspan></text>
-<rect x="6.0" y="150" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
+<rect x="1.9em" y="1.7999999999999998em" width="0.03333333333333333em" height="1.0em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="1.9em" y="1.7999999999999998em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<text x="3.0999999999999996em" y="1.9em" class="text" ><tspan> (data_in1)</tspan></text>
+<text x="0.2em" y="4.65em" class="moduleName" >Tracer</text><rect x="0.2em" y="4.8em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c8c81eff;" >
 <title>data_out0</title></rect>
-<rect x="21.0" y="180" width="1.0" height="300" rx="0" ry="0" style="fill:#000000;" />
-<rect x="21.0" y="480" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="57.0" y="483.0" class="text" ><tspan> (data_out0)</tspan></text>
-<rect x="42.0" y="150" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
+<rect x="0.7em" y="5.8em" width="0.03333333333333333em" height="10.0em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="0.7em" y="15.8em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<text x="1.9em" y="15.9em" class="text" ><tspan> (data_out0)</tspan></text>
+<rect x="1.4em" y="4.8em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c8c81eff;" >
 <title>data_out1</title></rect>
-<rect x="57.0" y="180" width="1.0" height="270" rx="0" ry="0" style="fill:#000000;" />
-<rect x="57.0" y="450" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="93.0" y="453.0" class="text" ><tspan> (data_out1)</tspan></text>
-<rect x="78.0" y="150" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
+<rect x="1.9em" y="5.8em" width="0.03333333333333333em" height="9.0em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="1.9em" y="14.8em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<text x="3.0999999999999996em" y="14.9em" class="text" ><tspan> (data_out1)</tspan></text>
+<rect x="2.5999999999999996em" y="4.8em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c8c81eff;" >
 <title>particle_id</title></rect>
-<rect x="93.0" y="180" width="1.0" height="240" rx="0" ry="0" style="fill:#000000;" />
-<rect x="93.0" y="420" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="129.0" y="423.0" class="text" ><tspan> (particle_id)</tspan></text>
-<rect x="114.0" y="150" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
+<rect x="3.0999999999999996em" y="5.8em" width="0.03333333333333333em" height="8.0em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="3.0999999999999996em" y="13.8em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<text x="4.3em" y="13.9em" class="text" ><tspan> (particle_id)</tspan></text>
+<rect x="3.8em" y="4.8em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c8c81eff;" >
 <title>step</title></rect>
-<rect x="129.0" y="180" width="1.0" height="210" rx="0" ry="0" style="fill:#000000;" />
-<rect x="129.0" y="390" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="165.0" y="393.0" class="text" ><tspan> (step)</tspan></text>
-<rect x="150.0" y="150" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
+<rect x="4.3em" y="5.8em" width="0.03333333333333333em" height="7.0em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="4.3em" y="12.8em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<text x="5.5em" y="12.9em" class="text" ><tspan> (step)</tspan></text>
+<rect x="5.0em" y="4.8em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c8c81eff;" >
 <title>time</title></rect>
-<rect x="165.0" y="180" width="1.0" height="180" rx="0" ry="0" style="fill:#000000;" />
-<rect x="165.0" y="360" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="201.0" y="363.0" class="text" ><tspan> (time)</tspan></text>
-<rect x="186.0" y="150" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
+<rect x="5.5em" y="5.8em" width="0.03333333333333333em" height="6.0em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="5.5em" y="11.8em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<text x="6.7em" y="11.9em" class="text" ><tspan> (time)</tspan></text>
+<rect x="6.2em" y="4.8em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c8c81eff;" >
 <title>stepwidth</title></rect>
-<rect x="201.0" y="180" width="1.0" height="150" rx="0" ry="0" style="fill:#000000;" />
-<rect x="201.0" y="330" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="237.0" y="333.0" class="text" ><tspan> (stepwidth)</tspan></text>
-<rect x="222.0" y="150" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
+<rect x="6.7em" y="5.8em" width="0.03333333333333333em" height="5.0em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="6.7em" y="10.8em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<text x="7.9em" y="10.9em" class="text" ><tspan> (stepwidth)</tspan></text>
+<rect x="7.4em" y="4.8em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c8c81eff;" >
 <title>distance</title></rect>
-<rect x="237.0" y="180" width="1.0" height="120" rx="0" ry="0" style="fill:#000000;" />
-<rect x="237.0" y="300" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="273.0" y="303.0" class="text" ><tspan> (distance)</tspan></text>
-<rect x="258.0" y="150" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
+<rect x="7.9em" y="5.8em" width="0.03333333333333333em" height="4.0em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="7.9em" y="9.8em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<text x="9.1em" y="9.9em" class="text" ><tspan> (distance)</tspan></text>
+<rect x="8.6em" y="4.8em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c8c81eff;" >
 <title>stop_reason</title></rect>
-<rect x="273.0" y="180" width="1.0" height="90" rx="0" ry="0" style="fill:#000000;" />
-<rect x="273.0" y="270" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="309.0" y="273.0" class="text" ><tspan> (stop_reason)</tspan></text>
-<rect x="294.0" y="150" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
+<rect x="9.1em" y="5.8em" width="0.03333333333333333em" height="3.0em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="9.1em" y="8.8em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<text x="10.299999999999999em" y="8.9em" class="text" ><tspan> (stop_reason)</tspan></text>
+<rect x="9.799999999999999em" y="4.8em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c8c81eff;" >
 <title>cell_index</title></rect>
-<rect x="309.0" y="180" width="1.0" height="60" rx="0" ry="0" style="fill:#000000;" />
-<rect x="309.0" y="240" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="345.0" y="243.0" class="text" ><tspan> (cell_index)</tspan></text>
-<rect x="330.0" y="150" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
+<rect x="10.299999999999999em" y="5.8em" width="0.03333333333333333em" height="2.0em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="10.299999999999999em" y="7.8em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<text x="11.499999999999998em" y="7.8999999999999995em" class="text" ><tspan> (cell_index)</tspan></text>
+<rect x="10.999999999999998em" y="4.8em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c8c81eff;" >
 <title>block_index</title></rect>
-<rect x="345.0" y="180" width="1.0" height="30" rx="0" ry="0" style="fill:#000000;" />
-<rect x="345.0" y="210" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="381.0" y="213.0" class="text" ><tspan> (block_index)</tspan></text>
-<text x="6.0" y="145.5" class="moduleName" >Tracer</text></svg>
+<rect x="11.499999999999998em" y="5.8em" width="0.03333333333333333em" height="1.0em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="11.499999999999998em" y="6.8em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<text x="12.699999999999998em" y="6.8999999999999995em" class="text" ><tspan> (block_index)</tspan></text>
+</svg>
 
 ## Parameters
 |name|description|type|

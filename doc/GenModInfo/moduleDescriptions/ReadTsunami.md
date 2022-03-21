@@ -1,6 +1,6 @@
 
 # ReadTsunami
-Read cheese tsunami files
+read ChEESE Tsunami files
 
 This module is designed to read ChEESE tsunami files a new file format for probabilistic tsunami forecasting. Data can be generated with [Tsunami-HYSEA](https://edanya.uma.es/hysea/index.php/models/tsunami-hysea) a numerical model for quake generated tsunami simulation. The raw data output of the simulation is a netCDF file which contains the following mandatory attributes:
 
@@ -31,45 +31,45 @@ The reader is able to read netCDF files which uses a [PnetCDF](https://parallel-
 The pnetcdf install directory should be added to your $PATH environment variable in order to be found by CMake, otherwise it won't be build.
 
 
-<svg width="2700" height="360" >
-<style>.text { font: normal 24.0px sans-serif;}tspan{ font: italic 24.0px sans-serif;}.moduleName{ font: italic 30px sans-serif;}</style>
-<rect x="0" y="30" width="270" height="90" rx="5" ry="5" style="fill:#64c8c8ff;" />
-<rect x="6.0" y="90" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
+<svg width="90.0em" height="11.6em" >
+<style>.text { font: normal 1.0em sans-serif;}tspan{ font: italic 1.0em sans-serif;}.moduleName{ font: bold 1.0em sans-serif;}</style>
+<rect x="0em" y="0.8em" width="9.0em" height="3.0em" rx="0.1em" ry="0.1em" style="fill:#64c8c8ff;" />
+<text x="0.2em" y="2.6500000000000004em" class="moduleName" >ReadTsunami</text><rect x="0.2em" y="2.8em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c8c81eff;" >
 <title>Sea surface</title></rect>
-<rect x="21.0" y="120" width="1.0" height="210" rx="0" ry="0" style="fill:#000000;" />
-<rect x="21.0" y="330" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="57.0" y="333.0" class="text" >Grid Sea (Heightmap/LayerGrid)<tspan> (Sea surface)</tspan></text>
-<rect x="42.0" y="90" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
+<rect x="0.7em" y="3.8em" width="0.03333333333333333em" height="7.0em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="0.7em" y="10.8em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<text x="1.9em" y="10.9em" class="text" >Grid Sea (Heightmap/LayerGrid)<tspan> (Sea surface)</tspan></text>
+<rect x="1.4em" y="2.8em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c8c81eff;" >
 <title>Ground surface</title></rect>
-<rect x="57.0" y="120" width="1.0" height="180" rx="0" ry="0" style="fill:#000000;" />
-<rect x="57.0" y="300" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="93.0" y="303.0" class="text" >Sea floor (Heightmap/LayerGrid)<tspan> (Ground surface)</tspan></text>
-<rect x="78.0" y="90" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
+<rect x="1.9em" y="3.8em" width="0.03333333333333333em" height="6.0em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="1.9em" y="9.8em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<text x="3.0999999999999996em" y="9.9em" class="text" >Sea floor (Heightmap/LayerGrid)<tspan> (Ground surface)</tspan></text>
+<rect x="2.5999999999999996em" y="2.8em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c8c81eff;" >
 <title>Fault wall surface</title></rect>
-<rect x="93.0" y="120" width="1.0" height="150" rx="0" ry="0" style="fill:#000000;" />
-<rect x="93.0" y="270" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="129.0" y="273.0" class="text" >Faults (Polygons)<tspan> (Fault wall surface)</tspan></text>
-<rect x="114.0" y="90" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
+<rect x="3.0999999999999996em" y="3.8em" width="0.03333333333333333em" height="5.0em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="3.0999999999999996em" y="8.8em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<text x="4.3em" y="8.9em" class="text" >Faults (Polygons)<tspan> (Fault wall surface)</tspan></text>
+<rect x="3.8em" y="2.8em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c8c81eff;" >
 <title>Scalar port 0</title></rect>
-<rect x="129.0" y="120" width="1.0" height="120" rx="0" ry="0" style="fill:#000000;" />
-<rect x="129.0" y="240" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="165.0" y="243.0" class="text" >Port for scalar number 0<tspan> (Scalar port 0)</tspan></text>
-<rect x="150.0" y="90" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
+<rect x="4.3em" y="3.8em" width="0.03333333333333333em" height="4.0em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="4.3em" y="7.8em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<text x="5.5em" y="7.8999999999999995em" class="text" >Port for scalar number 0<tspan> (Scalar port 0)</tspan></text>
+<rect x="5.0em" y="2.8em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c8c81eff;" >
 <title>Scalar port 1</title></rect>
-<rect x="165.0" y="120" width="1.0" height="90" rx="0" ry="0" style="fill:#000000;" />
-<rect x="165.0" y="210" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="201.0" y="213.0" class="text" >Port for scalar number 1<tspan> (Scalar port 1)</tspan></text>
-<rect x="186.0" y="90" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
+<rect x="5.5em" y="3.8em" width="0.03333333333333333em" height="3.0em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="5.5em" y="6.8em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<text x="6.7em" y="6.8999999999999995em" class="text" >Port for scalar number 1<tspan> (Scalar port 1)</tspan></text>
+<rect x="6.2em" y="2.8em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c8c81eff;" >
 <title>Scalar port 2</title></rect>
-<rect x="201.0" y="120" width="1.0" height="60" rx="0" ry="0" style="fill:#000000;" />
-<rect x="201.0" y="180" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="237.0" y="183.0" class="text" >Port for scalar number 2<tspan> (Scalar port 2)</tspan></text>
-<rect x="222.0" y="90" width="30" height="30" rx="0" ry="0" style="fill:#c8c81eff;" >
+<rect x="6.7em" y="3.8em" width="0.03333333333333333em" height="2.0em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="6.7em" y="5.8em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<text x="7.9em" y="5.8999999999999995em" class="text" >Port for scalar number 2<tspan> (Scalar port 2)</tspan></text>
+<rect x="7.4em" y="2.8em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c8c81eff;" >
 <title>Scalar port 3</title></rect>
-<rect x="237.0" y="120" width="1.0" height="30" rx="0" ry="0" style="fill:#000000;" />
-<rect x="237.0" y="150" width="30" height="1.0" rx="0" ry="0" style="fill:#000000;" />
-<text x="273.0" y="153.0" class="text" >Port for scalar number 3<tspan> (Scalar port 3)</tspan></text>
-<text x="6.0" y="85.5" class="moduleName" >ReadTsunami</text></svg>
+<rect x="7.9em" y="3.8em" width="0.03333333333333333em" height="1.0em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="7.9em" y="4.8em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<text x="9.1em" y="4.8999999999999995em" class="text" >Port for scalar number 3<tspan> (Scalar port 3)</tspan></text>
+</svg>
 
 [outputPorts]:<>
 

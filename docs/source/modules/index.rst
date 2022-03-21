@@ -29,8 +29,10 @@ Modules
    EnableTransparency_link.md
    ExtractGrid_link.md
    Extrema_link.md
+   FieldToLines_link.md
    FilterNode_link.md
    FlattenTriangles_link.md
+   FlowTopo_link.md
    GenIsoDat_link.md
    Gendat_link.md
    GhostCellGenerator_link.md
@@ -70,6 +72,7 @@ Modules
    SortBlocks_link.md
    Spheres_link.md
    SplitDimensions_link.md
+   Statistics_link.md
    TestCellSearch_link.md
    TestDynamicPorts_link.md
    TestInterpolation_link.md
@@ -85,4 +88,6 @@ Modules
    Variant_link.md
    VecToScalar_link.md
    VectorField_link.md
+   VortexCores_link.md
+   VortexCriteria_link.md
    WeldVertices_link.md
