@@ -700,6 +700,7 @@ void Color::sendColorMap()
         tex->addAttribute("_species", m_species);
         if (m_blendWithMaterialPara->getValue())
             tex->addAttribute("_blend_with_material", "true");
+        updateMeta(tex);
         addObject(m_colorOut, tex);
 
         std::stringstream buffer;
@@ -765,6 +766,7 @@ bool Color::compute()
             Object::ptr nobj;
             if (auto entry = m_cache.getOrLock(obj->getName(), nobj)) {
                 nobj = obj->clone();
+                updateMeta(nobj);
                 m_cache.storeAndUnlock(entry, nobj);
             }
             addObject(m_dataOut, nobj);
@@ -901,6 +903,7 @@ void Color::process(const DataBase::const_ptr data)
             out->setMeta(data->meta());
             out->copyAttributes(data);
             nobj = out;
+            updateMeta(out);
             m_cache.storeAndUnlock(entry, nobj);
         }
 

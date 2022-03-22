@@ -101,6 +101,7 @@ bool CellToVert::compute(std::shared_ptr<BlockTask> task) const
             auto ndata = data->clone();
             ndata->setGrid(grid);
             ndata->setMapping(DataBase::Vertex);
+            updateMeta(ndata);
             task->addObject(data_out, ndata);
         } else {
             DataBase::ptr out = algo.interpolate(grid, data);
@@ -108,6 +109,7 @@ bool CellToVert::compute(std::shared_ptr<BlockTask> task) const
                 out->copyAttributes(data);
                 out->setGrid(grid);
                 out->setMapping(DataBase::Vertex);
+                updateMeta(out);
                 task->addObject(data_out, out);
             } else {
                 std::stringstream str;

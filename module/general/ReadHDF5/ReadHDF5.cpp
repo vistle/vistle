@@ -558,6 +558,7 @@ herr_t ReadHDF5::prepare_processObject(hid_t callingGroupId, const char *name, c
     // output object as long as it is not a pure reference
     linkIterData->callingModule->m_objectPersistenceVector.push_back(returnObject);
     if (linkIterData->origin != std::numeric_limits<unsigned>::max()) {
+        linkIterData->callingModule->updateMeta(returnObject);
         linkIterData->callingModule->addObject(std::string("data" + std::to_string(linkIterData->origin) + "_out"),
                                                returnObject);
     }

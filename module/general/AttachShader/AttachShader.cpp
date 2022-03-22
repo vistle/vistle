@@ -32,12 +32,14 @@ bool AttachShader::compute()
         return true;
 
     Object::ptr nobj;
-    if (!m_cache.getOrLock(obj->getName(), nobj)) {
+    if (auto *entry = m_cache.getOrLock(obj->getName(), nobj)) {
         nobj = obj->clone();
         nobj->addAttribute("shader", m_shader->getValue());
         if (!m_shaderParams->getValue().empty()) {
             nobj->addAttribute("shader_params", m_shaderParams->getValue());
         }
+        updateMeta(nobj);
+        m_cache.storeAndUnlock(entry, nobj);
     }
     addObject("data_out", nobj);
 

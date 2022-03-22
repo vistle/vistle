@@ -59,6 +59,7 @@ bool Thicken::compute()
     MapMode mode = (MapMode)m_mapMode->getValue();
     if (mode == DoNothing) {
         auto nobj = obj->clone();
+        updateMeta(nobj);
         addObject("grid_out", nobj);
 
         auto data = accept<Object>("data_in");
@@ -68,9 +69,11 @@ bool Thicken::compute()
                 if (d->grid() == obj) {
                     ndata->setGrid(nobj);
                 }
+                updateMeta(ndata);
                 addObject("data_out", ndata);
             } else {
                 auto ndata = data->clone();
+                updateMeta(ndata);
                 addObject("data_out", ndata);
             }
         }
@@ -207,8 +210,10 @@ bool Thicken::compute()
         r[i] = clamp(r[i], rmin, rmax);
     }
 
+    updateMeta(cwr);
     if (basedata) {
         basedata->setGrid(cwr);
+        updateMeta(basedata);
         addObject("grid_out", basedata);
     } else {
         addObject("grid_out", cwr);
@@ -218,6 +223,7 @@ bool Thicken::compute()
     if (data && isConnected("data_out")) {
         auto ndata = data->clone();
         ndata->setGrid(cwr);
+        updateMeta(ndata);
         addObject("data_out", ndata);
     }
 

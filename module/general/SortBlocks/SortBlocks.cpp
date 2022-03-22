@@ -85,6 +85,7 @@ bool SortBlocks::compute()
         first = !first;
 
     auto ndata = data->clone();
+    updateMeta(ndata);
     if (first) {
         addObject("data_out0", ndata);
     } else {

@@ -134,6 +134,7 @@ bool VectorField::compute()
     lines->setMeta(vecs->meta());
     lines->copyAttributes(coords);
     lines->copyAttributes(vecs);
+    updateMeta(lines);
 
     if (mapped) {
         mapped->setSize(numPoints * 2);
@@ -146,6 +147,7 @@ bool VectorField::compute()
         mapped->copyAttributes(data);
 
         mapped->setGrid(lines);
+        updateMeta(lines);
         addObject("grid_out", mapped);
     } else {
         addObject("grid_out", lines);

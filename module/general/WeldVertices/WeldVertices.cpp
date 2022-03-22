@@ -258,6 +258,7 @@ bool WeldVertices::compute(std::shared_ptr<BlockTask> task) const
 
     if (ogrid) {
         ogrid->copyAttributes(grid);
+        updateMeta(ogrid);
     }
     auto ncoord = Coords::as(ogrid);
     if (!ncoord) {
@@ -293,6 +294,7 @@ bool WeldVertices::compute(std::shared_ptr<BlockTask> task) const
                 oy[i] = y[remap[i]];
                 oz[i] = z[remap[i]];
             }
+            updateMeta(nout);
             oc->setNormals(nout);
         }
     }
@@ -302,6 +304,7 @@ bool WeldVertices::compute(std::shared_ptr<BlockTask> task) const
             if (din[i]->mapping() == DataBase::Element) {
                 auto dout = din[i]->clone();
                 dout->setGrid(ogrid);
+                updateMeta(dout);
                 task->addObject(m_out[i], dout);
             } else {
                 auto dout = din[i]->clone();
@@ -327,6 +330,7 @@ bool WeldVertices::compute(std::shared_ptr<BlockTask> task) const
                     }
                 }
                 dout->setGrid(ogrid);
+                updateMeta(dout);
                 task->addObject(m_out[i], dout);
             }
         } else {

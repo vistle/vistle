@@ -572,10 +572,7 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
     }
 
     if (geoOut) {
-        geoOut->updateInternals();
-        geoOut->setBlock(block);
-        if (time >= 0)
-            geoOut->setTimestep(time);
+        token.applyMeta(geoOut);
         token.addObject("grid_out", geoOut);
         if (scalar) {
             scalar->setMapping(elementData ? DataBase::Element : DataBase::Vertex);
@@ -589,10 +586,12 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
 
     if (scalar) {
         scalar->addAttribute("_species", "scalar");
+        token.applyMeta(scalar);
         token.addObject("data_out0", scalar);
     }
     if (vector) {
         vector->addAttribute("_species", "vector");
+        token.applyMeta(vector);
         token.addObject("data_out1", vector);
     }
 

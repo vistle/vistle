@@ -246,6 +246,7 @@ Normals::const_ptr LayerGrid::normals() const
 
 void LayerGrid::setNormals(Normals::const_ptr normals)
 {
+    assert(!normals || normals->check());
     d()->normals = normals;
 }
 

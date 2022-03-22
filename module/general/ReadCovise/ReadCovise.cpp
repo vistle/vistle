@@ -951,7 +951,6 @@ Object::ptr ReadCovise::readObjectIntern(Token &token, const int port, int fd, c
         }
     } else {
         if (object) {
-            object->updateInternals();
             applyAttributes(token, object, *elem);
             token.applyMeta(object);
             elem->obj = object;
@@ -1019,6 +1018,7 @@ bool ReadCovise::readRecursive(Token &token, int fd[], Element *elem[], int time
                 fut[port] = std::async(std::launch::async, [this, &token, port, fd, elem, timestep]() -> Object::ptr {
                     auto obj = readObject(token, port, fd[port], elem[port], timestep);
                     if (obj) {
+                        updateMeta(obj);
                         std::cerr << "read obj " << obj->getName() << " for timestep " << timestep << " on port "
                                   << port << std::endl;
                     } else {
@@ -1044,7 +1044,7 @@ bool ReadCovise::readRecursive(Token &token, int fd[], Element *elem[], int time
                     if (auto coords = Coords::as(grid)) {
                         coords->setNormals(normals);
                     } else if (auto str = StructuredGridBase::as(grid)) {
-                        //str->setNormals(normals);
+                        str->setNormals(normals);
                     }
                 }
             } else {
@@ -1058,6 +1058,7 @@ bool ReadCovise::readRecursive(Token &token, int fd[], Element *elem[], int time
             if (m_out[port] && obj[port]) {
                 if (port > 1 || !gridOnPort0)
                     obj[port]->addAttribute("_species", m_species[port]);
+                updateMeta(obj[port]);
                 addObject(m_out[port], obj[port]);
             }
         }

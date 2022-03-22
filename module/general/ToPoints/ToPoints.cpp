@@ -35,6 +35,7 @@ bool ToPoints::compute()
     }
 
     Points::ptr points = Points::clone<Vec<Scalar, 3>>(grid);
+    updateMeta(points);
     addObject("grid_out", points);
 
     return true;

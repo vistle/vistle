@@ -939,7 +939,7 @@ bool ReadSeisSol::readXdmfHDF5Data(Token &token, int timestep, int block)
     if (m_gridOut->isConnected() && vugrid_ptr.get()) {
         vugrid_ptr->setBlock(block);
         vugrid_ptr->setTimestep(timestep);
-        vugrid_ptr->updateInternals();
+        token.applyMeta(vugrid_ptr);
         token.addObject(m_gridOut, vugrid_ptr);
     }
 
@@ -959,8 +959,7 @@ bool ReadSeisSol::readXdmfHDF5Data(Token &token, int timestep, int block)
             vatt_ptr->setMapping(DataBase::Element);
             vatt_ptr->addAttribute("_species", xatt->getName());
             vatt_ptr->setTimestep(timestep);
-            vatt_ptr->updateInternals();
-
+            token.applyMeta(vatt_ptr);
             token.addObject(att_port, vatt_ptr);
         } else
             return false;

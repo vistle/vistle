@@ -102,6 +102,7 @@ bool DomainSurface::compute(std::shared_ptr<BlockTask> task) const
 
     surface->setMeta(grid_in->meta());
     surface->copyAttributes(grid_in);
+    updateMeta(surface);
 
     if (auto entry = m_cache.getOrLock(grid_in->getName(), surface)) {
         m_cache.storeAndUnlock(entry, surface);
@@ -109,9 +110,7 @@ bool DomainSurface::compute(std::shared_ptr<BlockTask> task) const
 
     if (!data) {
         surface = surface->clone();
-        surface->setMeta(grid_in->meta());
-        surface->copyAttributes(grid_in);
-
+        updateMeta(surface);
         task->addObject("data_out", surface);
         return true;
     }
@@ -124,6 +123,7 @@ bool DomainSurface::compute(std::shared_ptr<BlockTask> task) const
     if (!haveElementData && vm.empty()) {
         DataBase::ptr dout = data->clone();
         dout->setGrid(surface);
+        updateMeta(dout);
         task->addObject("data_out", dout);
         return true;
     }
@@ -150,6 +150,7 @@ bool DomainSurface::compute(std::shared_ptr<BlockTask> task) const
         data_obj_out->setGrid(surface);
         data_obj_out->setMeta(data->meta());
         data_obj_out->copyAttributes(data);
+        updateMeta(data_obj_out);
         task->addObject("data_out", data_obj_out);
     }
 

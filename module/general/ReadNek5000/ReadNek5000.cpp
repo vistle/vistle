@@ -55,7 +55,7 @@ bool ReadNek::myRead(Token &token, int timestep, int partition)
     } else {
         auto grid = m_grids[partitionReader.partition()];
         auto newGrid = grid->clone();
-        newGrid->setTimestep(timestep);
+        token.applyMeta(newGrid);
         token.addObject(m_gridPort, newGrid);
     }
     if (!m_geometryOnlyParam->getValue()) {
@@ -132,8 +132,10 @@ Object::ptr ReadNek::generateBlockNumbers(nek5000::PartitionReader &partitionRea
 bool ReadNek::addGridAndBlockNumbers(Token &token, int timestep, nek5000::PartitionReader &partitionReader)
 {
     if (auto grid = readGrid(timestep, partitionReader)) {
+        token.applyMeta(grid);
         token.addObject(m_gridPort, grid);
         auto blockNumbers = generateBlockNumbers(partitionReader, grid);
+        token.applyMeta(blockNumbers);
         token.addObject(m_blockIndexPort, blockNumbers);
         return true;
     } else
@@ -188,6 +190,7 @@ bool ReadNek::ReadVelocity(Reader::Token &token, vistle::Port *p, int timestep,
     velocity->setBlock(partitionReader.partition());
     velocity->addAttribute("_species", "velocity");
     partitionReader.fillVelocity(timestep, {velocity->x().data(), velocity->y().data(), velocity->z().data()});
+    token.applyMeta(velocity);
     token.addObject(m_velocityPort, velocity);
     return true;
 }
@@ -212,6 +215,7 @@ bool ReadNek::ReadScalarData(Reader::Token &token, vistle::Port *p, const std::s
     scal->setTimestep(timestep);
     scal->setBlock(partitionReader.partition());
     scal->addAttribute("_species", varname);
+    token.applyMeta(scal);
     token.addObject(p, scal);
     return true;
 }

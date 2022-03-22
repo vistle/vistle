@@ -60,6 +60,7 @@ bool AddAttribute::compute()
                 out->addAttribute(p_name[i]->getValue(), p_value[i]->getValue());
             }
         }
+        updateMeta(out);
         m_cache.storeAndUnlock(entry, out);
     }
 

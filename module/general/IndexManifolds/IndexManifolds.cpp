@@ -136,6 +136,7 @@ bool IndexManifolds::compute(std::shared_ptr<BlockTask> task) const
             assert(vv == nvert);
             assert(cell == 0 || cell == nquad);
 
+            updateMeta(surface);
             m_surfaceCache.storeAndUnlock(cacheEntry, surface);
         }
 
@@ -174,6 +175,7 @@ bool IndexManifolds::compute(std::shared_ptr<BlockTask> task) const
             assert(vv == nvert);
             assert(cell == 0 || cell == nquad);
 
+            updateMeta(outdata);
             task->addObject(p_surface_out, outdata);
         }
     }
@@ -222,10 +224,13 @@ bool IndexManifolds::compute(std::shared_ptr<BlockTask> task) const
 
             ++cc[dir];
         }
-        if (outdata)
+        if (outdata) {
+            updateMeta(outdata);
             task->addObject(p_line_out, outdata);
-        else
+        } else {
             task->addObject(p_line_out, line);
+            updateMeta(line);
+        }
     }
 
     if (isConnected(*p_point_out) && off[0] + bghost[0] <= coord[0] &&
@@ -250,10 +255,13 @@ bool IndexManifolds::compute(std::shared_ptr<BlockTask> task) const
         if (outdata)
             outdata->copyEntry(0, data, v);
 
-        if (outdata)
+        if (outdata) {
+            updateMeta(outdata);
             task->addObject(p_point_out, outdata);
-        else
+        } else {
             task->addObject(p_point_out, point);
+            updateMeta(point);
+        }
     }
 
     return true;

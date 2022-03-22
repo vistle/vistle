@@ -212,10 +212,12 @@ bool SplitDimensions::compute(std::shared_ptr<BlockTask> task) const
         if (!out[d])
             continue;
         if (!data) {
+            updateMeta(out[d]);
             task->addObject(p_out[d], out[d]);
         } else if (vm[d].empty()) {
             DataBase::ptr dout = data->clone();
             dout->setGrid(out[d]);
+            updateMeta(dout);
             task->addObject(p_out[d], dout);
         } else {
             DataBase::ptr data_obj_out;
@@ -237,6 +239,7 @@ bool SplitDimensions::compute(std::shared_ptr<BlockTask> task) const
                 data_obj_out->setGrid(out[d]);
                 data_obj_out->setMeta(data->meta());
                 data_obj_out->copyAttributes(data);
+                updateMeta(data_obj_out);
                 task->addObject(p_out[d], data_obj_out);
             }
         }

@@ -122,9 +122,11 @@ bool ToTriangles::compute()
     if (auto tri = Triangles::as(obj)) {
         if (data) {
             auto ndata = data->clone();
+            updateMeta(ndata);
             addObject("grid_out", ndata);
         } else {
             auto nobj = obj->clone();
+            updateMeta(nobj);
             addObject("grid_out", nobj);
         }
         return true;
@@ -284,6 +286,7 @@ bool ToTriangles::compute()
             }
         }
         norm->setMeta(obj->meta());
+        updateMeta(norm);
         tri->setNormals(norm);
 
         if (data) {
@@ -511,6 +514,7 @@ bool ToTriangles::compute()
         assert(ii == numSeg);
 
         norm->setMeta(obj->meta());
+        updateMeta(norm);
         tri->setNormals(norm);
 
         if (data) {
@@ -560,22 +564,27 @@ bool ToTriangles::compute()
     if (tri) {
         tri->setMeta(obj->meta());
         tri->copyAttributes(obj);
+        updateMeta(tri);
 
         if (data) {
-            if (!ndata)
+            if (!ndata) {
                 ndata = data->clone();
+            }
             ndata->setMeta(data->meta());
             ndata->copyAttributes(data);
             ndata->setGrid(tri);
+            updateMeta(ndata);
             addObject("grid_out", ndata);
         } else {
             addObject("grid_out", tri);
         }
     } else {
         auto out = obj->clone();
+        updateMeta(out);
         if (data) {
             auto ndata = data->clone();
             ndata->setGrid(out);
+            updateMeta(ndata);
             addObject("grid_out", ndata);
         } else {
             addObject("grid_out", out);

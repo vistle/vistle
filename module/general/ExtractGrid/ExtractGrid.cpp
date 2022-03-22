@@ -35,6 +35,7 @@ bool ExtractGrid::compute()
     if (normals && isConnected(*m_normalsOut)) {
         if (auto *c = m_normalsCache.getOrLock(normals->getName(), nnorm)) {
             nnorm = normals->clone();
+            updateMeta(nnorm);
             m_normalsCache.storeAndUnlock(c, nnorm);
         }
         addObject(m_normalsOut, nnorm);
@@ -50,6 +51,7 @@ bool ExtractGrid::compute()
                 else if (auto str = StructuredGridBase::as(ngrid))
                     str->setNormals(nnorm ? nnorm : normals);
             }
+            updateMeta(ngrid);
             m_gridCache.storeAndUnlock(c, ngrid);
         }
         addObject(m_gridOut, ngrid);

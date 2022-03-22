@@ -1569,6 +1569,7 @@ bool ReadCFX::addVolumeDataToPorts()
 
     for (int portnum = 0; portnum < NumPorts; ++portnum) {
         if (m_currentVolumedata[portnum]) {
+            updateMeta(m_currentVolumedata[portnum]);
             addObject(m_volumeDataOut[portnum], m_currentVolumedata[portnum]);
         }
     }
@@ -1581,6 +1582,7 @@ bool ReadCFX::add2dDataToPorts()
 
     for (int portnum = 0; portnum < Num2dPorts; ++portnum) {
         if (m_current2dData[portnum]) {
+            updateMeta(m_current2dData[portnum]);
             addObject(m_2dDataOut[portnum], m_current2dData[portnum]);
         }
     }
@@ -1599,6 +1601,7 @@ bool ReadCFX::addGridToPort(UnstructuredGrid::ptr grid)
         //        for(int i=0;i<4;++i) {
         //            std::cerr << t(i,0) << " " << t(i,1) << " " << t(i,2) << " " << t(i,3) << std::endl;
         //        }
+        updateMeta(grid);
         addObject(m_gridOut, grid);
     }
     return true;
@@ -1609,6 +1612,7 @@ bool ReadCFX::addPolygonToPort(Polygons::ptr polyg)
     //adds the polygon to the polygonOut port
 
     if (polyg) {
+        updateMeta(polyg);
         addObject(m_polyOut, polyg);
     }
     return true;
@@ -1621,8 +1625,10 @@ bool ReadCFX::addParticleToPorts()
     for (int portnum = 0; portnum <= NumParticlePorts; ++portnum) {
         if (m_currentParticleData[portnum]) {
             if (portnum == 0) {
+                updateMeta(m_currentParticleData[portnum]);
                 addObject(m_particleTime, m_currentParticleData[portnum]);
             } else {
+                updateMeta(m_currentParticleData[portnum]);
                 addObject(m_particleDataOut[portnum - 1], m_currentParticleData[portnum]);
             }
         }

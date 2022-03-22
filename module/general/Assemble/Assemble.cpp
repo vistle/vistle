@@ -597,8 +597,10 @@ bool Assemble::assemble(const Assemble::AssembleData &d)
     for (int i = 0; i < NumPorts; ++i) {
         if (dout[i]) {
             dout[i]->setGrid(ogrid);
+            updateMeta(dout[i]);
             addObject(m_out[i], dout[i]);
         } else if (d[i] && !d[i]->empty()) {
+            updateMeta(ogrid);
             addObject(m_out[i], ogrid);
         }
     }

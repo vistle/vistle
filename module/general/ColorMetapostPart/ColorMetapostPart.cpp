@@ -126,6 +126,7 @@ bool ColorMetapostPart::compute()
         color = it->second.str();
 
     out->addAttribute("_color", color);
+    updateMeta(out);
     addObject("data_out", out);
 
     return true;

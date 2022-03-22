@@ -2314,6 +2314,7 @@ void Dyna3DReader<wordsize, INTEGER, REAL>::createGeometry(Reader::Token &token,
         }
         *el++ = elemNo;
         grid_out->setBlock(ID);
+        token.applyMeta(grid_out);
         token.addObject(gridPort, grid_out);
 
     } // end of for (ID=0 ...)
@@ -2732,6 +2733,7 @@ void Dyna3DReader<wordsize, INTEGER, REAL>::createStateObjects(vistle::Reader::T
         grid_out->setBlock(ID);
         grid_out->setTimestep(timestep);
         grid_out->setRealTime(m_currentTime);
+        token.applyMeta(grid_out);
         token.addObject(gridPort, grid_out);
         if (Vertex_out) {
             Vertex_out->setBlock(ID);
@@ -2740,6 +2742,7 @@ void Dyna3DReader<wordsize, INTEGER, REAL>::createStateObjects(vistle::Reader::T
             Vertex_out->setGrid(grid_out);
             Vertex_out->setMapping(DataBase::Vertex);
             Vertex_out->addAttribute("_species", toString(nodalDataType));
+            token.applyMeta(Vertex_out);
             token.addObject(vectorPort, Vertex_out);
         }
         if (Scalar_out) {
@@ -2749,6 +2752,7 @@ void Dyna3DReader<wordsize, INTEGER, REAL>::createStateObjects(vistle::Reader::T
             Scalar_out->setGrid(grid_out);
             Scalar_out->setMapping(DataBase::Element);
             Scalar_out->addAttribute("_species", toString(elementDataType));
+            token.applyMeta(Scalar_out);
             token.addObject(scalarPort, Scalar_out);
         }
 

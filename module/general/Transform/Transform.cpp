@@ -107,9 +107,11 @@ bool Transform::compute()
         if (animation != Keep) {
             Object::ptr outGeo = geo->clone();
             outGeo->setTimestep(timestep);
+            updateMeta(outGeo);
             if (data) {
                 auto dataOut = data->clone();
                 dataOut->setGrid(outGeo);
+                updateMeta(dataOut);
                 addObject(data_out, dataOut);
             } else {
                 addObject(data_out, outGeo);
@@ -118,6 +120,7 @@ bool Transform::compute()
                 ++timestep;
         } else {
             auto nobj = obj->clone();
+            updateMeta(nobj);
             addObject(data_out, nobj);
         }
     }
@@ -132,9 +135,11 @@ bool Transform::compute()
             if (animation != Deanimate)
                 ++timestep;
         }
+        updateMeta(outGeo);
         if (data) {
             auto dataOut = data->clone();
             dataOut->setGrid(outGeo);
+            updateMeta(dataOut);
             addObject(data_out, dataOut);
         } else {
             addObject(data_out, outGeo);

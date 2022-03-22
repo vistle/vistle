@@ -189,6 +189,7 @@ bool ToUnstructured::compute()
             unstrGridOut->copyAttributes(gridObj);
         }
 
+        updateMeta(unstrGridOut);
         m_cache.storeAndUnlock(entry, unstrGridOut);
     }
 
@@ -198,6 +199,7 @@ bool ToUnstructured::compute()
         auto outdata = data->clone();
         outdata->copyAttributes(data);
         outdata->setGrid(unstrGridOut);
+        updateMeta(unstrGridOut);
         addObject("data_out", outdata);
     } else {
         addObject("data_out", unstrGridOut);

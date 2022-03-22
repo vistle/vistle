@@ -610,12 +610,13 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
             p->setBlock(block);
             p->setTimestep(-1);
             p->setNumBlocks(numPartitions());
-            p->updateInternals();
+            updateMeta(p);
             gridList[block] = p;
         }
     }
 
     if (timestep < 0) {
+        token.applyMeta(gridList[block]);
         token.addObject("grid_out", gridList[block]);
         return true;
     } else {
@@ -647,8 +648,8 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
                 dataObj->setBlock(block);
                 std::string pVar = m_variables[dataIdx]->getValue();
                 dataObj->addAttribute("_species", pVar);
-                dataObj->updateInternals();
                 dataObj->setTimestep(timestep);
+                token.applyMeta(dataObj);
                 token.addObject(m_dataOut[dataIdx], dataObj);
 
                 dataValues.clear();

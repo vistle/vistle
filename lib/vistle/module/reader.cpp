@@ -384,7 +384,6 @@ bool Reader::Token::addObject(const std::string &port, Object::ptr obj)
     if (!obj)
         return false;
 
-    applyMeta(obj);
 #ifdef DEBUG
     if (obj)
         std::cerr << "waiting to add object to port " << port << ", t=" << obj->getTimestep() << std::endl;
@@ -534,6 +533,8 @@ void Reader::Token::applyMeta(Object::ptr obj) const
 {
     if (!obj)
         return;
+
+    reader()->updateMeta(obj);
 
     obj->setTimestep(m_meta.timeStep());
     obj->setNumTimesteps(m_meta.numTimesteps());

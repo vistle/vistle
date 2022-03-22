@@ -219,6 +219,7 @@ Normals::const_ptr StructuredGrid::normals() const
 
 void StructuredGrid::setNormals(Normals::const_ptr normals)
 {
+    assert(!normals || normals->check());
     d()->normals = normals;
 }
 

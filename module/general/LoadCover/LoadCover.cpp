@@ -51,6 +51,7 @@ bool LoadCover::prepare()
 
         Points::ptr points(new Points(Index(0)));
         points->addAttribute("_model_file", f);
+        updateMeta(points);
         addObject("grid_out", points);
     }
 

@@ -763,6 +763,7 @@ std::vector<DataBase::ptr> ReadFOAM::loadBoundaryField(const std::string &meshdi
             }
             if (asVariants)
                 s->addAttribute("_variant", patchNames[idx]);
+            updateMeta(s);
             result.push_back(s);
 
         } else if (header.fieldclass == "volVectorField") {
@@ -777,6 +778,7 @@ std::vector<DataBase::ptr> ReadFOAM::loadBoundaryField(const std::string &meshdi
             }
             if (asVariants)
                 v->addAttribute("_variant", patchNames[idx]);
+            updateMeta(v);
             result.push_back(v);
         }
     }
@@ -803,6 +805,7 @@ void ReadFOAM::setMeta(Object::ptr obj, int processor, int timestep) const
             }
         }
     }
+    updateMeta(obj);
 }
 
 bool ReadFOAM::loadFields(const std::string &meshdir, const std::map<std::string, int> &fields, int processor,
@@ -1355,8 +1358,9 @@ void ReadFOAM::applyGhostCellsData(int processor)
 bool ReadFOAM::addGridToPorts(int processor)
 {
     for (auto &poly: m_currentbound[processor])
-        if (poly)
+        if (poly) {
             addObject(m_boundOut, poly);
+        }
     return true;
 }
 
@@ -1374,6 +1378,7 @@ bool ReadFOAM::addVolumeDataToPorts(int processor)
             if (obj) {
                 obj->setGrid(m_currentgrid[processor]);
                 obj->setMapping(DataBase::Element);
+                updateMeta(obj);
                 portData[portnum] = obj;
             } else {
                 canAdd = false;
@@ -1384,6 +1389,9 @@ bool ReadFOAM::addVolumeDataToPorts(int processor)
             else
                 canAdd = false;
         }
+    }
+    if (!canAdd) {
+        std::cerr << "CANNOT ADD" << std::endl;
     }
     if (canAdd) {
         for (int portnum = 0; portnum < NumPorts; ++portnum) {

@@ -317,6 +317,7 @@ bool ShowGrid::compute()
         }
 
         out->copyAttributes(grid);
+        updateMeta(out);
         m_cache.storeAndUnlock(entry, out);
     }
     addObject("grid_out", out);

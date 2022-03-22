@@ -534,6 +534,7 @@ bool ReadItlrBin::read(Reader::Token &token, int timestep, int block)
         if (scal) {
             scal->setGrid(m_grids[block]);
             scal->addAttribute("_species", m_species[port]);
+            token.applyMeta(scal);
             token.addObject(m_dataOut[port], scal);
         } else {
             token.addObject(m_dataOut[port], m_grids[block]);
@@ -724,6 +725,7 @@ std::vector<RectilinearGrid::ptr> ReadItlrBin::readGridBlocks(const std::string 
             t << Vector4(0, 0, -1, 0), Vector4(0, 1, 0, 0), Vector4(1, 0, 0, 0), Vector4(0, 0, 0, 1);
             grid->setTransform(t);
         }
+        updateMeta(grid);
 
         result.push_back(grid);
     }

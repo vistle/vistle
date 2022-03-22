@@ -614,9 +614,7 @@ void ReadTsunami::createGround(Token &token, const NcFilePtr &ncFile, const map<
         });
 
         // add ground data to port
-        grndPtr->setBlock(block);
-        grndPtr->setTimestep(-1);
-        grndPtr->updateInternals();
+        token.applyMeta(grndPtr);
         token.addObject(m_groundSurface_out, grndPtr);
     }
 }
@@ -699,9 +697,7 @@ void ReadTsunami::createFault(Token &token, const NcFilePtr &ncFile, int block)
     /* fillPolyElementList_fault(fault, 4); */
     /* fillPolyConnectList_fault(fault, verts); */
     /* fillCoords_fault(fault, faults); */
-    fault->setBlock(block);
-    fault->setTimestep(-1);
-    fault->updateInternals();
+    token.applyMeta(fault);
     token.addObject(m_fault_out, fault);
 }
 
@@ -812,11 +808,10 @@ bool ReadTsunami::computeTimestep(Token &token, const int block, const int times
     fillHeight(gridPtr, blockSeaDim, [&etaVec, &blockSeaDim, &count](const auto &j, const auto &k) {
         return etaVec[count + k * blockSeaDim.X() + j];
     });
-    gridPtr->updateInternals();
-    gridPtr->setTimestep(timestep);
-    gridPtr->setBlock(block);
-    if (m_seaSurface_out->isConnected())
+    token.applyMeta(gridPtr);
+    if (m_seaSurface_out->isConnected()) {
         token.addObject(m_seaSurface_out, gridPtr);
+    }
 
     //add scalar to ports
     ArrVecScalarPtrs &arrVecScaPtrs = m_block_VecScalarPtr[block];
@@ -832,10 +827,8 @@ bool ReadTsunami::computeTimestep(Token &token, const int block, const int times
 
         scalarPtr->setGrid(gridPtr);
         scalarPtr->addAttribute(_species, vecScalarPtr->getAttribute(_species));
-        scalarPtr->setBlock(block);
-        scalarPtr->setTimestep(timestep);
-        scalarPtr->updateInternals();
 
+        token.applyMeta(scalarPtr);
         token.addObject(m_scalarsOut[i], scalarPtr);
     }
 

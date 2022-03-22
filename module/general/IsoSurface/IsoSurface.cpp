@@ -249,22 +249,25 @@ Object::ptr IsoSurface::work(vistle::Object::const_ptr grid, vistle::Vec<vistle:
     }
 #endif
 
-    Object::ptr result = l.result();
+    Coords::ptr result = l.result();
+    updateMeta(result);
+    Normals::ptr normals = l.normresult();
+    updateMeta(normals);
     DataBase::ptr mapresult = l.mapresult();
+    updateMeta(mapresult);
     if (result && !result->isEmpty()) {
 #ifndef CUTTINGSURFACE
         result->copyAttributes(dataS);
 #endif
-        result->updateInternals();
         result->copyAttributes(grid, false);
         result->setTransform(grid->getTransform());
+        result->setNormals(normals);
         if (mapdata && mapresult) {
 #ifdef CUTTINGSURFACE
             if (auto entry = m_gridCache.getOrLock(grid->getName(), result)) {
                 m_gridCache.storeAndUnlock(entry, result);
             }
 #endif
-            mapresult->updateInternals();
             mapresult->copyAttributes(mapdata);
             mapresult->setGrid(result);
             return mapresult;

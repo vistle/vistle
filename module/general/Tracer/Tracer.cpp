@@ -852,70 +852,52 @@ bool Tracer::reduce(int timestep)
 
         Object::ptr geo = taskType == MovingPoints ? Object::ptr(global.points[i]) : Object::ptr(global.lines[i]);
         geo->setMeta(meta);
+        updateMeta(geo);
+
+        auto addField = [this, geo, meta](const char *name, DataBase::ptr field) {
+            field->setGrid(geo);
+            field->setMeta(meta);
+            field->addAttribute("_species", name);
+            updateMeta(field);
+            addObject(name, field);
+        };
 
         if (global.computeId) {
-            global.idField[i]->setGrid(geo);
-            global.idField[i]->setMeta(meta);
-            global.idField[i]->addAttribute("_species", "particle_id");
-            addObject("particle_id", global.idField[i]);
+            addField("particle_id", global.idField[i]);
         }
-
         if (global.computeStep) {
-            global.stepField[i]->setGrid(geo);
-            global.stepField[i]->setMeta(meta);
-            global.stepField[i]->addAttribute("_species", "step");
-            addObject("step", global.stepField[i]);
+            addField("step", global.stepField[i]);
         }
-
         if (global.computeTime) {
-            global.timeField[i]->setGrid(geo);
-            global.timeField[i]->setMeta(meta);
-            global.timeField[i]->addAttribute("_species", "time");
-            addObject("time", global.timeField[i]);
+            addField("time", global.timeField[i]);
         }
-
         if (global.computeDist) {
-            global.distField[i]->setGrid(geo);
-            global.distField[i]->setMeta(meta);
-            global.distField[i]->addAttribute("_species", "distance");
-            addObject("distance", global.distField[i]);
+            addField("distance", global.distField[i]);
         }
-
         if (global.computeStepWidth) {
-            global.stepWidthField[i]->setGrid(geo);
-            global.stepWidthField[i]->setMeta(meta);
-            global.stepWidthField[i]->addAttribute("_species", "stepwidth");
-            addObject("stepwidth", global.stepWidthField[i]);
+            addField("stepwidth", global.stepWidthField[i]);
         }
-
         if (global.computeStopReason) {
-            global.stopReasonField[i]->setGrid(geo);
-            global.stopReasonField[i]->setMeta(meta);
-            global.stopReasonField[i]->addAttribute("_species", "stop_reason");
-            addObject("stop_reason", global.stopReasonField[i]);
+            addField("stop_reason", global.stopReasonField[i]);
         }
         if (global.computeCellIndex) {
-            global.cellField[i]->setGrid(geo);
-            global.cellField[i]->setMeta(meta);
-            global.cellField[i]->addAttribute("_species", "cell_index");
-            addObject("cell_index", global.cellField[i]);
+            addField("cell_index", global.cellField[i]);
         }
         if (global.computeBlockIndex) {
-            global.blockField[i]->setGrid(geo);
-            global.blockField[i]->setMeta(meta);
-            global.blockField[i]->addAttribute("_species", "block_index");
-            addObject("block_index", global.blockField[i]);
+            addField("block_index", global.blockField[i]);
         }
 
         if (global.computeVector) {
             global.vecField[i]->setGrid(geo);
             global.vecField[i]->setMeta(meta);
+            updateMeta(global.vecField[i]);
             addObject("data_out0", global.vecField[i]);
         }
 
         if (global.computeScalar) {
             global.scalField[i]->setGrid(geo);
             global.scalField[i]->setMeta(meta);
+            updateMeta(global.scalField[i]);
             addObject("data_out1", global.scalField[i]);
         }
     }

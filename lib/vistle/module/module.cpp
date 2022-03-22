@@ -771,6 +771,8 @@ void Module::updateMeta(vistle::Object::ptr obj) const
         obj->setExecutionCounter(m_executionCount);
         if (obj->getIteration() < m_iteration)
             obj->setIteration(m_iteration);
+
+        obj->updateInternals();
     }
 }
 
@@ -786,9 +788,8 @@ bool Module::addObject(const std::string &portName, vistle::Object::ptr object)
 
 bool Module::addObject(Port *port, vistle::Object::ptr object)
 {
-    if (object)
-        object->updateInternals();
-    updateMeta(object);
+    assert(!object || object->getCreator() == id());
+
     vistle::Object::const_ptr cobj = object;
     return passThroughObject(port, cobj);
 }
@@ -2423,6 +2424,7 @@ bool Module::reduceWrapper(const message::Execute *exec, bool reordered)
     for (auto &port: outputPorts) {
         if (isConnected(port.second) && m_withOutput.find(&port.second) == m_withOutput.end()) {
             Empty::ptr empty(new Empty(Object::Initialized));
+            updateMeta(empty);
             addObject(&port.second, empty);
         }
     }

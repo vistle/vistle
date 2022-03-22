@@ -79,8 +79,10 @@ bool TransformGrid::compute()
             std::copy(axes[i], axes[i] + dims[i], gridOut->coords(i).data());
         }
     }
+    updateMeta(gridOut);
     DataBase::ptr objOut = data->clone();
     objOut->setGrid(gridOut);
+    updateMeta(objOut);
     addObject(data_out, objOut);
     return true;
 }

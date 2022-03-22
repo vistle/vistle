@@ -35,6 +35,7 @@ bool CreateVertexOwnerList::compute()
 
     unstr->getVertexOwnerList();
     auto nunstr = unstr->clone();
+    updateMeta(nunstr);
     addObject("grid_out", nunstr);
     return true;
 }

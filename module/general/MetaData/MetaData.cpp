@@ -149,6 +149,7 @@ bool MetaData::compute()
         out->setMeta(data->meta());
     out->setMapping(mapping);
     out->setGrid(grid);
+    updateMeta(out);
     addObject("data_out", out);
 
     return true;

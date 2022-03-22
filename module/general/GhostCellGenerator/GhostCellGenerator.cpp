@@ -265,6 +265,7 @@ bool GhostCellGenerator::compute(std::shared_ptr<BlockTask> task) const
     /* surface->copyAttributes(grid_in); */
 
     /* if (!data) { */
+    /*     updateMeta(surface); */
     /*     task->addObject("data_out", surface); */
     /*     return true; */
     /* } */
@@ -277,6 +278,7 @@ bool GhostCellGenerator::compute(std::shared_ptr<BlockTask> task) const
     /* if (!haveElementData && vm.empty()) { */
     /*     DataBase::ptr dout = data->clone(); */
     /*     dout->setGrid(surface); */
+    /*     updateMeta(dout); */
     /*     task->addObject("data_out", dout); */
     /*     return true; */
     /* } */
@@ -303,6 +305,7 @@ bool GhostCellGenerator::compute(std::shared_ptr<BlockTask> task) const
     /*     data_obj_out->setGrid(surface); */
     /*     data_obj_out->setMeta(data->meta()); */
     /*     data_obj_out->copyAttributes(data); */
+    /*     updateMeta(data_obj_out); */
     /*     task->addObject("data_out", data_obj_out); */
     /* } */
 

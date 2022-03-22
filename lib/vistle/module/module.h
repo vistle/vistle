@@ -92,8 +92,6 @@ public:
     void addDependency(std::shared_ptr<BlockTask> dep);
     void addObject(Port *port, Object::ptr obj);
     void addObject(const std::string &port, Object::ptr obj);
-    void passThroughObject(Port *port, Object::const_ptr obj);
-    void passThroughObject(const std::string &port, Object::const_ptr obj);
 
     void addAllObjects();
 
@@ -104,6 +102,9 @@ public:
     bool waitDependencies();
 
 protected:
+    void passThroughObject(Port *port, Object::const_ptr obj);
+    void passThroughObject(const std::string &port, Object::const_ptr obj);
+
     Module *m_module = nullptr;
     std::map<const Port *, Object::const_ptr> m_input;
     std::set<Port *> m_ports;
@@ -119,6 +120,7 @@ protected:
 class V_MODULEEXPORT Module: public ParameterManager, public MessageSender {
     friend class Reader;
     friend class Renderer;
+    friend class Cache; // for passThroughObject
     friend class BlockTask;
 
 public:
@@ -163,8 +165,6 @@ public:
 
     bool addObject(Port *port, vistle::Object::ptr object);
     bool addObject(const std::string &portName, vistle::Object::ptr object);
-    bool passThroughObject(Port *port, vistle::Object::const_ptr object);
-    bool passThroughObject(const std::string &portName, vistle::Object::const_ptr object);
 
     ObjectList getObjects(const std::string &portName);
     bool hasObject(const Port *port) const;
@@ -258,7 +258,12 @@ public:
     //request execution of this module
     void execute() const;
 
+    void updateMeta(vistle::Object::ptr object) const;
+
 protected:
+    bool passThroughObject(Port *port, vistle::Object::const_ptr object);
+    bool passThroughObject(const std::string &portName, vistle::Object::const_ptr object);
+
     void setObjectReceivePolicy(int pol);
     int objectReceivePolicy() const;
     void startIteration(); //< increase iteration counter
@@ -272,7 +277,6 @@ protected:
     std::set<Port *> m_withOutput;
 
     void setDefaultCacheMode(ObjectCache::CacheMode mode);
-    void updateMeta(vistle::Object::ptr object) const;
 
     message::MessageQueue *sendMessageQueue;
     message::MessageQueue *receiveMessageQueue;
