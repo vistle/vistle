@@ -49,9 +49,9 @@ constexpr auto lon{"lon"};
 constexpr auto grid_lon{"grid_lon"};
 constexpr auto bathy{"bathy"};
 constexpr auto ETA{"eta"};
-constexpr auto fault_lat{"lat_barycenter"};
-constexpr auto fault_lon{"lon_barycenter"};
-constexpr auto fault_slip{"slip"};
+/* constexpr auto fault_lat{"lat_barycenter"}; */
+/* constexpr auto fault_lon{"lon_barycenter"}; */
+/* constexpr auto fault_slip{"slip"}; */
 constexpr auto _species{"_species"};
 constexpr auto fillValue{"fillValue"};
 constexpr auto fillValueNew{"fillValueNew"};
@@ -73,14 +73,14 @@ ReadTsunami::ReadTsunami(const string &name, int moduleID, mpi::communicator com
     // file-browser
     m_filedir = addStringParameter("file_dir", "NC File directory", "", Parameter::Filename);
     m_ghost = addIntParameter("ghost", "Show ghostcells.", 1, Parameter::Boolean);
-    m_fault = addIntParameter("fault", "Show faults.", 1, Parameter::Boolean);
+    /* m_fault = addIntParameter("fault", "Show faults.", 1, Parameter::Boolean); */
     m_fill = addIntParameter("fill", "Replace filterValue.", 1, Parameter::Boolean);
     m_verticalScale = addFloatParameter("VerticalScale", "Vertical Scale parameter sea", 1.0);
 
     // define ports
     m_seaSurface_out = createOutputPort("Sea surface", "Grid Sea (Heightmap/LayerGrid)");
     m_groundSurface_out = createOutputPort("Ground surface", "Sea floor (Heightmap/LayerGrid)");
-    m_fault_out = createOutputPort("Fault wall surface", "Faults (Polygons)");
+    /* m_fault_out = createOutputPort("Fault wall surface", "Faults (Polygons)"); */
 
     // block size
     m_blocks[0] = addIntParameter("blocks latitude", "number of blocks in lat-direction", 2);
@@ -327,7 +327,7 @@ bool ReadTsunami::inspectNetCDF()
     if (!ncFile)
         return false;
 
-    return inspectDims(ncFile) && inspectScalars(ncFile) && inspectAtts(ncFile);
+    return inspectDims(ncFile) && inspectScalars(ncFile); // && inspectAtts(ncFile);
 }
 
 /**
@@ -640,49 +640,49 @@ void ReadTsunami::createGround(Token &token, const NcFilePtr &ncFile, const map<
 /*     } */
 /* } */
 
-void ReadTsunami::fillCoords_fault(PointsPtr poly, const vector<NcGrpAtt> &faults)
-{
-    auto x = poly->x().begin(), y = poly->y().begin(), z = poly->z().begin();
-    /* auto radius = poly->r().begin(); */
-    string input("");
-    int n = 0;
-    for (auto &flt: faults) {
-        stringstream ss;
-        flt.getValues(input);
-        ss << input;
-        float lon;
-        float lat;
-        float slip;
-        float tmpF;
-        string tmp;
-        string ptmp;
-        while (!ss.eof()) {
-            ss >> tmp;
-            tmp.erase(remove(tmp.begin(), tmp.end(), ':'), tmp.end());
-            if (stringstream(tmp) >> tmpF) {
-                if (ptmp == fault_lon)
-                    lon = tmpF;
-                else if (ptmp == fault_lat)
-                    lat = tmpF;
-                else if (ptmp == fault_slip)
-                    slip = tmpF;
-            }
-            ptmp = tmp;
-            tmp = "";
-        }
-        x[n] = lon;
-        y[n] = lat;
-        z[n] = -0.001230245;
-        /* radius[n] = 0.01; */
-        /* for (int i = 0; i < 2; ++i, ++n) { */
-        /*     x[n] = lon; */
-        /*     y[n] = lat; */
-        /*     /1* z[n] = n % 2 == 0 ? slip : 0; *1/ */
-        /*     z[n] = 0; */
-        /*     radius[n] = slip; */
-        /* } */
-    }
-}
+/* void ReadTsunami::fillCoords_fault(PointsPtr poly, const vector<NcGrpAtt> &faults) */
+/* { */
+/*     auto x = poly->x().begin(), y = poly->y().begin(), z = poly->z().begin(); */
+/* auto radius = poly->r().begin(); */
+/* string input(""); */
+/* int n = 0; */
+/* for (auto &flt: faults) { */
+/*     stringstream ss; */
+/*     flt.getValues(input); */
+/*     ss << input; */
+/*     float lon; */
+/*     float lat; */
+/*     float slip; */
+/*     float tmpF; */
+/*     string tmp; */
+/*     string ptmp; */
+/*     while (!ss.eof()) { */
+/*         ss >> tmp; */
+/*         tmp.erase(remove(tmp.begin(), tmp.end(), ':'), tmp.end()); */
+/* if (stringstream(tmp) >> tmpF) { */
+/*     if (ptmp == fault_lon) */
+/*         lon = tmpF; */
+/*     else if (ptmp == fault_lat) */
+/*         lat = tmpF; */
+/*     else if (ptmp == fault_slip) */
+/*         slip = tmpF; */
+/* } */
+/* ptmp = tmp; */
+/* tmp = ""; */
+/* } */
+/* x[n] = lon; */
+/* y[n] = lat; */
+/* z[n] = -0.001230245; */
+/* radius[n] = 0.01; */
+/* for (int i = 0; i < 2; ++i, ++n) { */
+/*     x[n] = lon; */
+/*     y[n] = lat; */
+/*     /1* z[n] = n % 2 == 0 ? slip : 0; *1/ */
+/*     z[n] = 0; */
+/*     radius[n] = slip; */
+/* } */
+/* } */
+/* } */
 
 void ReadTsunami::createFault(Token &token, const NcFilePtr &ncFile, int block)
 {
@@ -700,7 +700,7 @@ void ReadTsunami::createFault(Token &token, const NcFilePtr &ncFile, int block)
     /* Polygons::ptr fault(new Polygons(elements, corners, verts * 2)); */
     /* fillPolyElementList_fault(fault, 4); */
     /* fillPolyConnectList_fault(fault, verts); */
-    fillCoords_fault(fault, faults);
+    /* fillCoords_fault(fault, faults); */
     fault->setBlock(block);
     fault->setTimestep(-1);
     fault->updateInternals();
@@ -761,8 +761,8 @@ bool ReadTsunami::computeConst(Token &token, const int block)
         initSea(ncFile, mapNcVarExt, nBlocks, blockPartitionIdx, time, ghost, block);
     }
 
-    if (m_fault->getValue() && m_faultInfo)
-        createFault(token, ncFile, block);
+    /*     if (m_fault->getValue() && m_faultInfo) */
+    /*         createFault(token, ncFile, block); */
 
     if (m_groundSurface_out->isConnected()) {
         if (m_bathy->getValue() == NONE)
