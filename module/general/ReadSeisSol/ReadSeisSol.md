@@ -22,12 +22,13 @@ Example for the CMake generator Ninja:
     ninja build_seissol_resample_xdmf
 ```
 
-::::{Note}
+:::{Note}
 If ***path/to/build/bin*** has been added to your environment PATH your good to go to use the tool. Otherwise you can invoke it via ***./path/to/build/bin***.
+:::
+
 :::{tip}
 In the second case defining an alias for your shell which references this executable is a viable option as well.
 :::
-::::
 
 The tool can be called via shell:
 
@@ -66,29 +67,41 @@ The first port outputs the raw geometry specified by the **Topology** and **Geom
 
 ### Surfaces
 
-The visualization pipeline in the following image shows two **ReadSeisSol** modules which reading different XDMF files. The left pipeline is for the bathymetry of the area while the right one is used to visualize the fault itself. Both pipelines uses the common combination of [DomainSurface](DomainSurface_link.md) and [Color](Color_link.md) to map the scalars (**U** for bathymetry, **u_n** for fault) onto the geometry surfaces. In the end both pipelines will be visualized in [COVER](COVER_link.md). 
+The visualization pipeline in figure 1 shows two **ReadSeisSol** modules which reading different XDMF files. The left pipeline is for the bathymetry of the area while the right one is used to visualize the fault itself. Both pipelines uses the common combination of [DomainSurface](DomainSurface_link.md) and [Color](Color_link.md) to map the scalars (**U** for bathymetry, **u_n** for fault) onto the geometry surfaces. In the end both pipelines will be visualized in [COVER](COVER_link.md). 
 
-<center><img src="seissol_example.png" alt="seissol example" title="SeisSol Example" height="300"/></center>
+```{figure} seissol_example.png
+---
+align: center
+---
+Fig 1: Surface pipeline.`
+```
 
 The below images shows how the result of an execution could look like.
 
-<img src="seissol_husavik.png" alt="seissol husavik" title="SeisSol Result Husavik" height="300"/>
-<img src="seissol_husavik_fault1.png" alt="seissol husavik fault 1" title="Husavik Fault 1" height="300"/>
-<img src="seissol_husavik_fault2.png" alt="seissol husavik fault 2" title="Husavik Fault 2" height="300"/>
+![](seissol_husavik.png)
+
+![](seissol_husavik_fault1.png)
+
+![](seissol_husavik_fault2.png)
 
 ### Unstructured Grids
 
 Using the visualization pipeline like mentioned in [Surfaces](#surfaces) for unstructured data will result in a rendering output in [COVER](COVER_link.md) like the following picture.
 
-<img src="seissol_unstr.png" alt="seissol sulawesi unstr" title="Sulawesi Unstructured" height="300"/>
+![](seissol_unstr.png)
 
-Analysis of the internal grid is often more interesting than the outter boundary. With a pipeline like the below one it is possible to only visualize the simulation boundary as a bounding box and add a plane to the scene which represents a slice of the internal unstructured grid with mapped data on it ([CuttingSurface](CuttingSurface_link.md)). Since the outcome of the SeisSol simulation example is cell-based it is needed to convert the scalar data to vertices with the module [CellToVert](CellToVert_link.md).
+Analysis of the internal grid is often more interesting than the outter boundary. With a pipeline like shown in figure 2 it is possible to only visualize the simulation boundary as a bounding box and add a plane to the scene which represents a slice of the internal unstructured grid with mapped data on it ([CuttingSurface](CuttingSurface_link.md)). Since the outcome of the SeisSol simulation example is cell-based it is needed to convert the scalar data to vertices with the module [CellToVert](CellToVert_link.md).
 
-<center><img src="seissol_boundingbox.png" alt="seissol sulawesi unstr boundingbox" title="Sulawesi Unstructured Pipeline" height="300"/></center>
+```{figure} seissol_boundingbox.png
+---
+align: center
+---
+Fig 2: Unstructured grid pipeline.
+```
 
 The next image shows the result of an execution in COVER.
 
-<img src="seissol_boundingbox_cover.png" alt="seissol sulawesi unstr boundingbox cover" title="Sulawesi Unstructured Cutting Surface" height="300"/>
+![](seissol_boundingbox_cover.png)
 
 ## Related Modules
 
@@ -105,15 +118,20 @@ The next image shows the result of an execution in COVER.
 
 Sometimes it can happen that you have datasets with inverted normals which looks like shown in the next image.
 
-<img src="seissol_inverted_normal.png" alt="seissol sulawesi unstr wrong normals" title="Sulawesi Unstructured Normal Issua" height="300"/>
+![](seissol_inverted_normal.png)
 
-If you are certain that the scalar data seems correct you can fix the geometry with a visualization pipeline like the following one which builds a new geometry with correct normals.
+If you are certain that the scalar data seems correct you can fix the geometry with a visualization pipeline like shown in figure 3 which builds a new geometry with correct normals.
 
-<center><img src="seissol_inverted_normal_prevention.png" alt="seissol sulawesi unstr map for wrong normal issue" title="Sulawesi Unstructured Normal Pipeline" height="300"/></center>
+```{figure} seissol_inverted_normal_prevention.png
+---
+align: center
+---
+Fig 3: Pipeline to correct normals.
+```
 
 The next picture shows an outcome of an execution of this example.
 
-<img src="seissol_inverted_normal_correct.png" alt="seissol sulawesi unstr wrong correct normals" title="Sulawesi Unstructured Normal Issue" height="300"/>
+![](seissol_inverted_normal_correct.png)
 
 ## Build Requirements
 
