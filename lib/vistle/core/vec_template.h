@@ -160,13 +160,17 @@ void Vec<T, Dim>::updateInternals()
 template<class T, unsigned Dim>
 std::pair<typename Vec<T, Dim>::VecVector, typename Vec<T, Dim>::VecVector> Vec<T, Dim>::getMinMax() const
 {
+    VecVector min, max;
     if (d()->boundsValid()) {
-        return std::make_pair(d()->min, d()->max);
+        for (unsigned c = 0; c < Dim; ++c) {
+            min[c] = d()->x[c]->min();
+            max[c] = d()->x[c]->max();
+        }
+        return std::make_pair(min, max);
     }
 
     T smax = std::numeric_limits<T>::max();
     T smin = std::numeric_limits<T>::lowest();
-    VecVector min, max;
     Index sz = getSize();
     for (unsigned c = 0; c < Dim; ++c) {
         min[c] = smax;
@@ -191,9 +195,10 @@ void Vec<T, Dim>::Data::initData()
 template<class T, unsigned Dim>
 bool Vec<T, Dim>::Data::boundsValid() const
 {
-    for (unsigned c = 0; c < Dim; ++c)
-        if (min[c] > max[c])
+    for (unsigned c = 0; c < Dim; ++c) {
+        if (x[c] && !x[c]->bounds_valid())
             return false;
+    }
     return true;
 }
 
@@ -201,8 +206,8 @@ template<class T, unsigned Dim>
 void Vec<T, Dim>::Data::invalidateBounds()
 {
     for (unsigned c = 0; c < Dim; ++c) {
-        min[c] = std::numeric_limits<T>::max();
-        max[c] = std::numeric_limits<T>::lowest();
+        if (x[c])
+            x[c]->invalidate_bounds();
     }
 }
 
@@ -211,14 +216,8 @@ void Vec<T, Dim>::Data::updateBounds()
 {
     invalidateBounds();
     for (unsigned c = 0; c < Dim; ++c) {
-        Index sz = x[c]->size();
-        const T *d = x[c]->data();
-        for (Index i = 0; i < sz; ++i) {
-            if (d[i] < min[c])
-                min[c] = d[i];
-            if (d[i] > max[c])
-                max[c] = d[i];
-        }
+        if (x[c])
+            x[c]->update_bounds();
     }
 }
 

@@ -47,6 +47,8 @@ public:
     , m_type(other.m_type)
     , m_size(other.m_size)
     , m_capacity(other.m_capacity)
+    , m_min(other.m_min)
+    , m_max(other.m_max)
     , m_data(other.m_data)
     , m_allocator(other.m_allocator)
     {
@@ -202,12 +204,48 @@ public:
         assert(m_capacity == m_size);
     }
 
+    bool bounds_valid() const { return m_max >= m_min; }
+
+    void invalidate_bounds()
+    {
+        m_min = std::numeric_limits<value_type>::max();
+        m_max = std::numeric_limits<value_type>::lowest();
+    }
+
+    void update_bounds()
+    {
+        invalidate_bounds();
+
+        if (!m_data)
+            return;
+
+        for (auto it = begin(); it != end(); ++it) {
+            m_min = std::max(m_min, *it);
+            m_max = std::max(m_max, *it);
+        }
+    }
+
+    value_type min() const
+    {
+        assert(bounds_valid());
+        return m_min;
+    }
+
+    value_type max() const
+    {
+        assert(bounds_valid());
+        return m_max;
+    }
+
+
 private:
     const uint32_t m_type;
     size_t m_size = 0;
     size_t m_dim[3] = {0, 1, 1};
     size_t m_capacity = 0;
     bool m_exact = std::is_integral<T>::value;
+    value_type m_min = std::numeric_limits<value_type>::max();
+    value_type m_max = std::numeric_limits<value_type>::lowest();
     pointer m_data;
     allocator m_allocator;
 
@@ -237,6 +275,8 @@ void shm_array<T, allocator>::save(Archive &ar) const
     ar &V_NAME(ar, "type", m_type);
     ar &V_NAME(ar, "size", size_type(m_size));
     ar &V_NAME(ar, "exact", m_exact);
+    ar &V_NAME(ar, "min", m_min);
+    ar &V_NAME(ar, "max", m_max);
     //std::cerr << "saving array: exact=" << m_exact << ", size=" << m_size << std::endl;
     if (m_size > 0) {
         if (m_dim[0] * m_dim[1] * m_dim[2] == m_size)
@@ -257,6 +297,8 @@ void shm_array<T, allocator>::load(Archive &ar)
     ar &V_NAME(ar, "size", size);
     resize(size);
     ar &V_NAME(ar, "exact", m_exact);
+    ar &V_NAME(ar, "min", m_min);
+    ar &V_NAME(ar, "max", m_max);
     if (m_size > 0) {
         if (m_dim[0] * m_dim[1] * m_dim[2] == m_size)
             ar &V_NAME(ar, "elements", detail::wrap_array<Archive>(&m_data[0], m_exact, m_dim[0], m_dim[1], m_dim[2]));
