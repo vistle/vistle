@@ -4,11 +4,7 @@ import re
 from bisect import insort
 from _vistle import getModuleName, getModuleDescription, getInputPorts, getOutputPorts, getPortDescription, getParameters, getParameterTooltip, getParameterType, spawn, barrier, quit
 
-REG_IMAGE_MD = re.compile(r"!\[\w*\](\S*)$")
-REG_IMAGE_HTML = re.compile(r"</?\s*[a-z-][^>]*\s*>|(\&(?:[\w\d]+|#\d+|#x[a-f\d]+);)")
-REG_PARENTHESIS = re.compile(r"\((.*?)\)")
-REG_HTML_SRC = re.compile(r"src=\"(.*?)\"")
-REG_SUB_PARENTHESIS = re.compile(r"\([\s\S]*\)")
+REG_IMAGE = re.compile(r"(?:\w+(?:-\w+)+|\w*)\.(?:jpg|gif|png|bmp)")
 REG_TAGS_TMPL = r"\[{tag}\]:<\w*>$"
 
 #-------------Functions-------------#
@@ -47,6 +43,7 @@ def createModuleImage(name, inPorts, outPorts):
     image += "</svg>"
     return image
 
+
 def getPortDescriptionSpider(size, x, y, num, desc):
     width = size/30
     height = abs(size * num)
@@ -59,6 +56,7 @@ def getPortDescriptionSpider(size, x, y, num, desc):
     spider += getRect(x, y - f2* height, size, width, "#000000") + "\n"
     spider += getText(desc, x + 1.2 * size, y - f2 * height + size/10, "text")
     return spider
+
 
 def getStyle(size):
     style = "<style>"
@@ -167,23 +165,22 @@ def readAdditionalDocumentation(filename):
             content = f.readlines()
     return content
 
-def relinkImage(regex, regex_substitute, substitute_format, lineStr, sourceDir, destDir):
-    match = re.search(regex, lineStr)
+
+def relinkImage(lineStr, sourceDir, destDir):
+    match = re.search(REG_IMAGE, lineStr)
     if match:
-        relPath = os.path.relpath(sourceDir, destDir) + "/" + match.group(1)
-        return re.sub(regex_substitute, substitute_format.format(relPath), lineStr)
+        relPath = os.path.relpath(sourceDir, destDir) + "/" + match.group()
+        return re.sub(REG_IMAGE, relPath, lineStr)
+    return lineStr
 
-def relinkMDImage(lineStr, sourceDir, destDir):
-    return relinkImage(REG_PARENTHESIS, REG_SUB_PARENTHESIS, "( {} )", lineStr, sourceDir, destDir)
-
-def relinkHtmlImage(lineStr, sourceDir, destDir):
-    return relinkImage(REG_HTML_SRC, REG_HTML_SRC, "src=\"{}\"", lineStr, sourceDir, destDir)
 
 def findTagPositions(lines, tags) -> {}:
     idx = 0
     tagPos = {}
     for line in lines:
         tag = isTag(line, tags)
+        if tag is None:
+            tag = isImage(line)
         if tag != None:
             if tag in tagPos.keys():
                 tagPos[idx] = idx
@@ -193,15 +190,18 @@ def findTagPositions(lines, tags) -> {}:
     return tagPos
 
 
+def isImage(line):
+    match = re.search(REG_IMAGE, line)
+    if match:
+        return match.group()
+    return None
+
+
 def isTag(line, tags) -> str:
     for tag in tags:
         regTag = re.compile(REG_TAGS_TMPL.format(tag=tag))
         if regTag.match(line):
             return tag
-        if REG_IMAGE_MD.match(line):
-            return line[line.find("[") + 1: line.find("]")]
-        if REG_IMAGE_HTML.match(line):
-            return line[line.find("src=\"") + 1: line.find("\"")]
     return None
 
 
@@ -212,16 +212,14 @@ def generateModuleDescriptions():
     destDir = os.path.dirname(os.path.realpath(__file__)) + "/moduleDescriptions/"
     #the directory containing the readTheDocs module files
     # ImgDestDir = os.path.dirname(os.path.realpath(__file__)) + "/../../docs/build/html/modules/"
-    ImgDestDir = os.path.dirname(os.path.realpath(__file__)) + "/../../docs/source/_build/html/modules/"
 
     filename = sourceDir +  "/" + target + ".md"
     tag_functions = {
         "headline": getModuleHeadLine,
-        # "inputPorts": getInputPortsStringDescription,
         "moduleHtml": getModuleHtml,
-        # "outputPorts": getOutputPortsDescription,
         "parameters": getParametersString
     }
+
     #spawn the module and wait for its information to arrive at the hub
     mod = spawn(target)
     barrier()
@@ -231,10 +229,7 @@ def generateModuleDescriptions():
         line = contentList[pos]
         if tag in tag_functions.keys():
             line = tag_functions[tag](mod)
-        elif REG_IMAGE_MD.match(line):
-            line = relinkMDImage(line, sourceDir, destDir) #destDir since markdown images get relinked by myst when building the html
-        elif REG_IMAGE_HTML.match(line):
-            line = relinkHtmlImage(line, sourceDir, ImgDestDir)
+        line = relinkImage(line, sourceDir, destDir)
         contentList[pos] = line
 
     with open(destDir + target + ".md", "w") as f:
@@ -255,8 +250,8 @@ if __name__ == "__main__":
         "outputPorts": getOutputPortsDescription,
         "parameters": getParametersString
     }
-    source = "/home/mdjur/program/vistle/module/general/BoundingBox/BoundingBox.md"
-    sourceDir = "/home/mdjur/program/vistle/module/general/BoundingBox"
+    source = "/home/mdjur/program/vistle/module/general/ReadSeisSol/ReadSeisSol.md"
+    sourceDir = "/home/mdjur/program/vistle/module/general/ReadSeisSol"
     destDir = os.path.dirname(os.path.realpath(__file__)) + "/moduleDescriptions/"
     contentList = readAdditionalDocumentation(source)
     searchTags = tag_functions.keys()
@@ -264,7 +259,7 @@ if __name__ == "__main__":
 
     for tag, pos in tagPos.items():
         line = contentList[pos]
-        line = relinkMDImage(line, sourceDir, destDir)
+        line = relinkImage(line, sourceDir, destDir)
         print(line)
 
     # for unused in (tag_functions.keys() - tagPos.keys()):
