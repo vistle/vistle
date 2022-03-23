@@ -16,7 +16,7 @@ set(BOTAN_NAMES_DEBUG botand botan-2d botan-1d)
 
 find_path(
     BOTAN_INCLUDE_DIR
-    NAMES botan/botan.h
+    NAMES botan/botan.h botan-3/botan/botan.h
     PATH_SUFFIXES ${BOTAN_NAMES}
     DOC "The Botan include directory")
 
