@@ -333,6 +333,10 @@ bool Renderer::addInputObject(int sender, const std::string &senderPort, const s
 
     if (Empty::as(object))
         return true;
+    if (auto ph = vistle::PlaceHolder::as(object)) {
+        if (ph->originalType() == Empty::type())
+            return true;
+    }
 
     auto geo_norm_tex = splitObject(object);
 
