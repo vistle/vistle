@@ -431,22 +431,10 @@ std::shared_ptr<vistle::RenderObject> COVER::addObject(int senderId, const std::
 
     m_requireUpdate = true;
 
-    std::string plugin = container->getAttribute("_plugin");
-    if (!plugin.empty())
-        cover->addPlugin(plugin.c_str());
-
-    if (geometry) {
-        plugin = geometry->getAttribute("_plugin");
-        if (!plugin.empty())
-            cover->addPlugin(plugin.c_str());
-    }
-    if (normals) {
-        plugin = normals->getAttribute("_plugin");
-        if (!plugin.empty())
-            cover->addPlugin(plugin.c_str());
-    }
-    if (texture) {
-        plugin = texture->getAttribute("_plugin");
+    for (const auto &obj: {container, geometry, normals, texture}) {
+        if (!obj)
+            continue;
+        std::string plugin = obj->getAttribute("_plugin");
         if (!plugin.empty())
             cover->addPlugin(plugin.c_str());
     }
