@@ -479,6 +479,7 @@ StructuredGrid::Data::Data(const StructuredGrid::Data &o, const std::string &n):
 
     normals = o.normals;
     for (int c = 0; c < 3; ++c) {
+        indexOffset[c] = o.indexOffset[c];
         numDivisions[c] = o.numDivisions[c];
         ghostLayers[c][0] = o.ghostLayers[c][0];
         ghostLayers[c][1] = o.ghostLayers[c][1];
