@@ -626,15 +626,19 @@ bool COVER::addColorMap(const std::string &species, Object::const_ptr colormap)
     }
 
     auto att = colormap->getAttribute("_colormap");
-    if (att.empty()) {
-        ro->removeAttribute("COLORMAP");
-    } else {
-        ro->addAttribute("COLORMAP", att);
-        std::cerr << rank() << ": adding COLORMAP attribute for " << species << std::endl;
-    }
+    const char *oldattc = ro->getAttribute("COLORMAP");
+    std::string oldatt = oldattc ? oldattc : "";
+    if (att != oldatt) {
+        if (att.empty()) {
+            ro->removeAttribute("COLORMAP");
+        } else {
+            ro->addAttribute("COLORMAP", att);
+            //std::cerr << rank() << ": adding COLORMAP attribute for " << species << std::endl;
+        }
 
-    coVRPluginList::instance()->removeObject(inter->getObjName(), true);
-    coVRPluginList::instance()->newInteractor(inter->getObject(), inter);
+        coVRPluginList::instance()->removeObject(inter->getObjName(), true);
+        coVRPluginList::instance()->newInteractor(ro, inter);
+    }
 
     return true;
 }
