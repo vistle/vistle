@@ -698,9 +698,10 @@ bool Module::broadcastObjectViaShm(Object::const_ptr &object, const std::string 
     bool ok = true;
     if (rank() == shmLeader(rank())) {
         ok = broadcastObject(m_commShmLeaders, object, m_shmLeadersSubrank[root]);
+        assert(object);
     }
     if (shmLeader(rank()) != shmLeader(root)) {
-        m_commShmGroup.barrier();
+        m_commShmGroup.barrier(); // synchronize, so that object is available on leader
     }
     if (shmLeader(rank()) == shmLeader(root) || shmLeader(rank()) == rank()) {
         assert(object);
@@ -708,6 +709,7 @@ bool Module::broadcastObjectViaShm(Object::const_ptr &object, const std::string 
         object = Shm::the().getObjectFromName(objName);
         assert(object);
     }
+    m_commShmGroup.barrier(); // synchronize, so that leader keeps object around long enough
     return ok;
 }
 
