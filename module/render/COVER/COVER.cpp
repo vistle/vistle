@@ -574,11 +574,9 @@ bool COVER::render()
                     transform->addChild(filenode);
                 }
                 m_fileAttachmentMap.emplace(ro->coverRenderObject->getName(), filename);
-            }
-			else
-			{
+            } else {
                 transform->setNodeMask(~(opencover::Isect::Update | opencover::Isect::Intersection));
-			}
+            }
             osg::ref_ptr<osg::Group> parent = getParent(ro->coverRenderObject.get());
             parent->addChild(transform);
         } else if (!ro->coverRenderObject) {
