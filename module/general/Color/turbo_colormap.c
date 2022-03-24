@@ -4,6 +4,7 @@
 // Author: Anton Mikhailov
 
 // The look-up tables contains 256 entries. Each entry is a an sRGB triplet.
+#include "turbo_colormap.h"
 
 float turbo_srgb_floats[256][3] = {
     {0.18995, 0.07176, 0.23217}, {0.19483, 0.08339, 0.26149}, {0.19956, 0.09498, 0.29024}, {0.20415, 0.10652, 0.31844},
