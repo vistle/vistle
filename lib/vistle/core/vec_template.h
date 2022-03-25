@@ -153,8 +153,9 @@ bool Vec<T, Dim>::checkImpl() const
 template<class T, unsigned Dim>
 void Vec<T, Dim>::updateInternals()
 {
-    if (!d()->boundsValid())
+    if (!d()->boundsValid()) {
         d()->updateBounds();
+    }
 }
 
 template<class T, unsigned Dim>
@@ -188,16 +189,15 @@ std::pair<typename Vec<T, Dim>::VecVector, typename Vec<T, Dim>::VecVector> Vec<
 
 template<class T, unsigned Dim>
 void Vec<T, Dim>::Data::initData()
-{
-    invalidateBounds();
-}
+{}
 
 template<class T, unsigned Dim>
 bool Vec<T, Dim>::Data::boundsValid() const
 {
     for (unsigned c = 0; c < Dim; ++c) {
-        if (x[c] && !x[c]->bounds_valid())
+        if (x[c] && !x[c]->bounds_valid()) {
             return false;
+        }
     }
     return true;
 }

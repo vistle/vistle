@@ -55,6 +55,7 @@ public:
         other.m_data = nullptr;
         other.m_size = 0;
         other.m_capacity = 0;
+        other.invalidate_bounds();
         assert(typeId() == m_type);
     }
 
@@ -143,6 +144,7 @@ public:
         m_size = size;
         assert(m_size <= m_capacity);
         clearDimensionHint();
+        invalidate_bounds();
     }
     void resize(const size_t size, const T &value)
     {
@@ -152,6 +154,7 @@ public:
         m_size = size;
         assert(m_size <= m_capacity);
         clearDimensionHint();
+        invalidate_bounds();
     }
 
     void clearDimensionHint()
@@ -220,7 +223,7 @@ public:
             return;
 
         for (auto it = begin(); it != end(); ++it) {
-            m_min = std::max(m_min, *it);
+            m_min = std::min(m_min, *it);
             m_max = std::max(m_max, *it);
         }
     }
@@ -275,8 +278,6 @@ void shm_array<T, allocator>::save(Archive &ar) const
     ar &V_NAME(ar, "type", m_type);
     ar &V_NAME(ar, "size", size_type(m_size));
     ar &V_NAME(ar, "exact", m_exact);
-    ar &V_NAME(ar, "min", m_min);
-    ar &V_NAME(ar, "max", m_max);
     //std::cerr << "saving array: exact=" << m_exact << ", size=" << m_size << std::endl;
     if (m_size > 0) {
         if (m_dim[0] * m_dim[1] * m_dim[2] == m_size)
@@ -284,6 +285,8 @@ void shm_array<T, allocator>::save(Archive &ar) const
         else
             ar &V_NAME(ar, "elements", detail::wrap_array<Archive>(&m_data[0], m_exact, m_size));
     }
+    ar &V_NAME(ar, "min", m_min);
+    ar &V_NAME(ar, "max", m_max);
 }
 
 template<typename T, class allocator>
@@ -297,14 +300,14 @@ void shm_array<T, allocator>::load(Archive &ar)
     ar &V_NAME(ar, "size", size);
     resize(size);
     ar &V_NAME(ar, "exact", m_exact);
-    ar &V_NAME(ar, "min", m_min);
-    ar &V_NAME(ar, "max", m_max);
     if (m_size > 0) {
         if (m_dim[0] * m_dim[1] * m_dim[2] == m_size)
             ar &V_NAME(ar, "elements", detail::wrap_array<Archive>(&m_data[0], m_exact, m_dim[0], m_dim[1], m_dim[2]));
         else
             ar &V_NAME(ar, "elements", detail::wrap_array<Archive>(&m_data[0], m_exact, m_size));
     }
+    ar &V_NAME(ar, "min", m_min);
+    ar &V_NAME(ar, "max", m_max);
 }
 
 } // namespace vistle
