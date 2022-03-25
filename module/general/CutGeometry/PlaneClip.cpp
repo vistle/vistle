@@ -1,4 +1,5 @@
 #include "PlaneClip.h"
+#include "vistle/core/index.h"
 
 using namespace vistle;
 
@@ -74,6 +75,82 @@ void PlaneClip::addData(Object::const_ptr obj)
     }
 }
 
+void PlaneClip::prepareTriangles(std::vector<Index> &outIdxCorner, std::vector<Index> &outIdxCoord,
+                                 const Index &numCoordsIn, const Index &numElem)
+{
+    outIdxCorner[0] = 0;
+    outIdxCoord[0] = numCoordsIn;
+#pragma omp parallel for schedule(dynamic)
+    for (ssize_t elem = 0; elem < ssize_t(numElem); ++elem) {
+        Index numCorner = 0, numCoord = 0;
+        processTriangle(elem, numCorner, numCoord, true);
+
+        outIdxCorner[elem + 1] = numCorner;
+        outIdxCoord[elem + 1] = numCoord;
+    }
+
+    for (Index elem = 0; elem < numElem; ++elem) {
+        outIdxCoord[elem + 1] += outIdxCoord[elem];
+        outIdxCorner[elem + 1] += outIdxCorner[elem];
+    }
+
+    Index numCoord = outIdxCoord[numElem];
+    Index numCorner = outIdxCorner[numElem];
+
+    if (haveCornerList) {
+        m_outTri->cl().resize(numCorner);
+        out_cl = m_outTri->cl().data();
+    }
+
+    m_outTri->setSize(numCoord);
+    out_x = m_outTri->x().data();
+    out_y = m_outTri->y().data();
+    out_z = m_outTri->z().data();
+
+    if (m_outData) {
+        m_outData->x().resize(numCoord);
+        out_d = m_outData->x().data();
+    }
+}
+
+void PlaneClip::preparePolygons(std::vector<Index> &outIdxPoly, std::vector<Index> &outIdxCorner,
+                                std::vector<Index> &outIdxCoord, const Index &numCoordsIn, const Index &numElem)
+{
+#pragma omp parallel for schedule(dynamic)
+    for (ssize_t elem = 0; elem < ssize_t(numElem); ++elem) {
+        Index numPoly = 0, numCorner = 0, numCoord = 0;
+        processPolygon(elem, numPoly, numCorner, numCoord, true);
+        outIdxPoly[elem + 1] = numPoly;
+        outIdxCorner[elem + 1] = numCorner;
+        outIdxCoord[elem + 1] = numCoord;
+    }
+
+    for (Index elem = 0; elem < numElem; ++elem) {
+        outIdxPoly[elem + 1] += outIdxPoly[elem];
+        outIdxCorner[elem + 1] += outIdxCorner[elem];
+        outIdxCoord[elem + 1] += outIdxCoord[elem];
+    }
+    Index numPoly = outIdxPoly[numElem];
+    Index numCorner = outIdxCorner[numElem];
+    Index numCoord = outIdxCoord[numElem];
+
+    m_outPoly->el().resize(numPoly + 1);
+    out_el = m_outPoly->el().data();
+    out_el[numPoly] = numCorner;
+    m_outPoly->cl().resize(numCorner);
+    out_cl = m_outPoly->cl().data();
+
+    m_outPoly->setSize(numCoord);
+    out_x = m_outPoly->x().data();
+    out_y = m_outPoly->y().data();
+    out_z = m_outPoly->z().data();
+
+    if (m_outData) {
+        m_outData->x().resize(numCoord);
+        out_d = m_outData->x().data();
+    }
+}
+
 bool PlaneClip::process()
 {
     processCoordinates();
@@ -81,89 +158,26 @@ bool PlaneClip::process()
 
     if (m_tri) {
         const Index numElem = haveCornerList ? m_tri->getNumCorners() / 3 : m_tri->getNumCoords() / 3;
-
         std::vector<Index> outIdxCorner(numElem + 1), outIdxCoord(numElem + 1);
-        outIdxCorner[0] = 0;
-        outIdxCoord[0] = numCoordsIn;
-#pragma omp parallel for schedule(dynamic)
-        for (ssize_t elem = 0; elem < ssize_t(numElem); ++elem) {
-            Index numCorner = 0, numCoord = 0;
-            processTriangle(elem, numCorner, numCoord, true);
 
-            outIdxCorner[elem + 1] = numCorner;
-            outIdxCoord[elem + 1] = numCoord;
-        }
-
-        for (Index elem = 0; elem < numElem; ++elem) {
-            outIdxCoord[elem + 1] += outIdxCoord[elem];
-            outIdxCorner[elem + 1] += outIdxCorner[elem];
-        }
-
-        Index numCoord = outIdxCoord[numElem];
-        Index numCorner = outIdxCorner[numElem];
-
-        if (haveCornerList) {
-            m_outTri->cl().resize(numCorner);
-            out_cl = m_outTri->cl().data();
-        }
-
-        m_outTri->setSize(numCoord);
-        out_x = m_outTri->x().data();
-        out_y = m_outTri->y().data();
-        out_z = m_outTri->z().data();
-
-        if (m_outData) {
-            m_outData->x().resize(numCoord);
-            out_d = m_outData->x().data();
-        }
+        prepareTriangles(outIdxCorner, outIdxCoord, numCoordsIn, numElem);
+        /* scheduleProcess(numElem, false, outIdxCorner, outIdxCoord); */
 
 #pragma omp parallel for schedule(dynamic)
         for (ssize_t elem = 0; elem < ssize_t(numElem); ++elem) {
             processTriangle(elem, outIdxCorner[elem], outIdxCoord[elem], false);
         }
-        //std::cerr << "CuttingSurface: << " << m_outData->x().size() << " vert, " << m_outData->x().size() << " data elements" << std::endl;
 
-        return true;
+        //std::cerr << "CuttingSurface: << " << m_outData->x().size() << " vert, " << m_outData->x().size() << " data elements" << std::endl;
     } else if (m_poly) {
         const Index numElem = m_poly->getNumElements();
-
         std::vector<Index> outIdxPoly(numElem + 1), outIdxCorner(numElem + 1), outIdxCoord(numElem + 1);
         outIdxPoly[0] = 0;
         outIdxCorner[0] = 0;
         outIdxCoord[0] = numCoordsIn;
-#pragma omp parallel for schedule(dynamic)
-        for (ssize_t elem = 0; elem < ssize_t(numElem); ++elem) {
-            Index numPoly = 0, numCorner = 0, numCoord = 0;
-            processPolygon(elem, numPoly, numCorner, numCoord, true);
-            outIdxPoly[elem + 1] = numPoly;
-            outIdxCorner[elem + 1] = numCorner;
-            outIdxCoord[elem + 1] = numCoord;
-        }
 
-        for (Index elem = 0; elem < numElem; ++elem) {
-            outIdxPoly[elem + 1] += outIdxPoly[elem];
-            outIdxCorner[elem + 1] += outIdxCorner[elem];
-            outIdxCoord[elem + 1] += outIdxCoord[elem];
-        }
-        Index numPoly = outIdxPoly[numElem];
-        Index numCorner = outIdxCorner[numElem];
-        Index numCoord = outIdxCoord[numElem];
-
-        m_outPoly->el().resize(numPoly + 1);
-        out_el = m_outPoly->el().data();
-        out_el[numPoly] = numCorner;
-        m_outPoly->cl().resize(numCorner);
-        out_cl = m_outPoly->cl().data();
-
-        m_outPoly->setSize(numCoord);
-        out_x = m_outPoly->x().data();
-        out_y = m_outPoly->y().data();
-        out_z = m_outPoly->z().data();
-
-        if (m_outData) {
-            m_outData->x().resize(numCoord);
-            out_d = m_outData->x().data();
-        }
+        preparePolygons(outIdxPoly, outIdxCorner, outIdxCoord, numCoordsIn, numElem);
+        /* scheduleProcess(numElem, false, outIdxPoly, outIdxCorner, outIdxCoord); */
 
 #pragma omp parallel for schedule(dynamic)
         for (ssize_t elem = 0; elem < ssize_t(numElem); ++elem) {
@@ -171,8 +185,6 @@ bool PlaneClip::process()
         }
 
         //std::cerr << "CuttingSurface: << " << m_outData->x().size() << " vert, " << m_outData->x().size() << " data elements" << std::endl;
-
-        return true;
     }
 
     return true;

@@ -12,16 +12,47 @@ public:
     PlaneClip(Triangles::const_ptr grid, IsoDataFunctor decider);
     PlaneClip(Polygons::const_ptr grid, IsoDataFunctor decider);
 
+    /* template<class... Args> */
+    /* void processParallel(Args... args){}; */
+
+    typedef std::vector<Index> IdxVec;
+    template<class T, class... idxVecArgs>
+    void scheduleProcess(T numElem, bool numVertsOnly, idxVecArgs... ivec)
+    {
+        auto accessElem = [](const ssize_t &e, const IdxVec &vec) {
+            return vec[e];
+        };
+#pragma omp parallel for schedule(dynamic)
+        for (ssize_t elem = 0; elem < ssize_t(numElem); ++elem)
+            processParallel(elem, (accessElem(elem, ivec), ...), numVertsOnly);
+    }
+
     void addData(Object::const_ptr obj);
     bool process();
     Object::ptr result();
 
 private:
     Vector3 splitEdge(Index i, Index j);
+    void prepareTriangles(std::vector<Index> &outIdxCorner, std::vector<Index> &outIdxCoord, const Index &numCoordsIn,
+                          const Index &numElem);
+    void preparePolygons(std::vector<Index> &outIdxPoly, std::vector<Index> &outIdxCorner,
+                         std::vector<Index> &outIdxCoord, const Index &numCoordsIn, const Index &numElem);
     void processCoordinates();
     void processTriangle(const Index element, Index &outIdxCorner, Index &outIdxCoord, bool numVertsOnly);
     void processPolygon(const Index element, Index &outIdxPoly, Index &outIdxCorner, Index &outIdxCoord,
                         bool numVertsOnly);
+
+    void processParallel(const Index element, Index &outIdxCorner, Index &outIdxCoord, bool numVertsOnly)
+    {
+        processTriangle(element, outIdxCoord, outIdxCoord, numVertsOnly);
+    }
+
+    void processParallel(const Index element, Index &outIdxPoly, Index &outIdxCorner, Index &outIdxCoord,
+                         bool numVertsOnly)
+    {
+        processPolygon(element, outIdxCoord, outIdxCoord, outIdxCoord, numVertsOnly);
+    }
+
 
 private:
     Coords::const_ptr m_coord;
