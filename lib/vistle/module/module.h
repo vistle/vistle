@@ -102,16 +102,12 @@ public:
     bool waitDependencies();
 
 protected:
-    void passThroughObject(Port *port, Object::const_ptr obj);
-    void passThroughObject(const std::string &port, Object::const_ptr obj);
-
     Module *m_module = nullptr;
     std::map<const Port *, Object::const_ptr> m_input;
     std::set<Port *> m_ports;
     std::map<std::string, Port *> m_portsByString;
     std::set<std::shared_ptr<BlockTask>> m_dependencies;
     std::map<Port *, std::deque<Object::ptr>> m_objects;
-    std::map<Port *, std::deque<bool>> m_passThrough;
 
     std::mutex m_mutex;
     std::shared_future<bool> m_future;

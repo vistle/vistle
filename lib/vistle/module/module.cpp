@@ -2352,6 +2352,7 @@ bool Module::compute()
     }
     m_tasks.push_back(task);
 
+    std::unique_lock<std::mutex> guard(task->m_mutex);
     task->m_future = std::async(std::launch::async, [this, task] { return compute(task); });
     return true;
 }
@@ -2605,7 +2606,6 @@ void BlockTask::addObject(Port *port, Object::ptr obj)
 
     if (!dependenciesDone()) {
         m_objects[port].emplace_back(obj);
-        m_passThrough[port].emplace_back(false);
         return;
     }
 
@@ -2624,64 +2624,26 @@ void BlockTask::addObject(const std::string &port, Object::ptr obj)
     addObject(it->second, obj);
 }
 
-void BlockTask::passThroughObject(Port *port, Object::const_ptr obj)
-{
-    assert(m_ports.find(port) != m_ports.end());
-
-    if (!dependenciesDone()) {
-        m_objects[port].emplace_back(std::const_pointer_cast<Object>(obj));
-        m_passThrough[port].emplace_back(true);
-        return;
-    }
-
-    addAllObjects();
-    m_module->passThroughObject(port, obj);
-}
-
-void BlockTask::passThroughObject(const std::string &port, Object::const_ptr obj)
-{
-    auto it = m_portsByString.find(port);
-    assert(it != m_portsByString.end());
-    if (it == m_portsByString.end()) {
-        CERR << "BlockTask: port '" << port << "' not found" << std::endl;
-        return;
-    }
-    passThroughObject(it->second, obj);
-}
-
 void BlockTask::addAllObjects()
 {
     assert(dependenciesDone());
 
-    while (!m_objects.empty()) {
-        for (auto it = m_objects.begin(); it != m_objects.end(); ++it) {
-            auto &p = it->first;
-            auto &q = it->second;
-            auto &passQueue = m_passThrough[p];
-            assert(q.size() == passQueue.size());
-            if (!q.empty()) {
-                if (passQueue.front())
-                    m_module->passThroughObject(p, q.front());
-                else
-                    m_module->addObject(p, q.front());
-                q.pop_front();
-                passQueue.pop_front();
-            }
-
-            if (q.empty()) {
-                assert(passQueue.empty());
-                m_passThrough.erase(p);
-                m_objects.erase(it);
-                break;
-            }
-        }
+    for (auto &port_queue: m_objects) {
+        auto &port = port_queue.first;
+        auto &queue = port_queue.second;
+        for (auto &obj: queue)
+            m_module->addObject(port, obj);
     }
+
+    m_objects.clear();
 }
 
 bool BlockTask::isDone()
 {
+    std::unique_lock<std::mutex> guard(m_mutex);
     if (!m_future.valid())
         return false;
+    guard.unlock();
 
     return dependenciesDone();
 }
