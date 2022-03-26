@@ -89,19 +89,17 @@ public:
     template<class Type>
     typename Type::const_ptr expect(const std::string &port);
 
-    void addDependency(std::shared_ptr<BlockTask> dep);
     void addObject(Port *port, Object::ptr obj);
     void addObject(const std::string &port, Object::ptr obj);
 
-    void addAllObjects();
+protected:
+    void addDependency(std::shared_ptr<BlockTask> dep);
 
-    bool isDone();
-    bool dependenciesDone();
+    void addAllObjects();
 
     bool wait();
     bool waitDependencies();
 
-protected:
     Module *m_module = nullptr;
     std::map<const Port *, Object::const_ptr> m_input;
     std::set<Port *> m_ports;

@@ -8,12 +8,12 @@
 #include <iomanip>
 #include <algorithm>
 #include <deque>
+#include <mutex>
 
 #ifdef _OPENMP
 #include <omp.h>
 #endif
 
-#include <mutex>
 #include <boost/asio.hpp>
 
 #include <vistle/util/sysdep.h>
@@ -2562,8 +2562,12 @@ BlockTask::BlockTask(Module *module): m_module(module)
 {
     for (auto &p: module->inputPorts) {
         m_portsByString[p.first] = &p.second;
-        if (module->hasObject(&p.second)) {
-            m_input[&p.second] = module->takeFirstObject(&p.second);
+        if (module->isConnected(p.second)) {
+            if (module->hasObject(&p.second)) {
+                m_input[&p.second] = module->takeFirstObject(&p.second);
+            } else {
+                CERR << "no input on port " << p.first << std::endl;
+            }
         }
     }
     for (auto &p: module->outputPorts) {
@@ -2574,8 +2578,8 @@ BlockTask::BlockTask(Module *module): m_module(module)
 
 BlockTask::~BlockTask()
 {
-    waitDependencies();
-    addAllObjects();
+    assert(m_dependencies.empty());
+    assert(m_objects.empty());
 }
 
 bool BlockTask::hasObject(const Port *p)
@@ -2603,14 +2607,7 @@ void BlockTask::addDependency(std::shared_ptr<BlockTask> dep)
 void BlockTask::addObject(Port *port, Object::ptr obj)
 {
     assert(m_ports.find(port) != m_ports.end());
-
-    if (!dependenciesDone()) {
-        m_objects[port].emplace_back(obj);
-        return;
-    }
-
-    addAllObjects();
-    m_module->addObject(port, obj);
+    m_objects[port].emplace_back(obj);
 }
 
 void BlockTask::addObject(const std::string &port, Object::ptr obj)
@@ -2626,8 +2623,6 @@ void BlockTask::addObject(const std::string &port, Object::ptr obj)
 
 void BlockTask::addAllObjects()
 {
-    assert(dependenciesDone());
-
     for (auto &port_queue: m_objects) {
         auto &port = port_queue.first;
         auto &queue = port_queue.second;
@@ -2638,31 +2633,12 @@ void BlockTask::addAllObjects()
     m_objects.clear();
 }
 
-bool BlockTask::isDone()
-{
-    std::unique_lock<std::mutex> guard(m_mutex);
-    if (!m_future.valid())
-        return false;
-    guard.unlock();
-
-    return dependenciesDone();
-}
-
-bool BlockTask::dependenciesDone()
-{
-    std::unique_lock<std::mutex> guard(m_mutex);
-    for (auto it = m_dependencies.begin(); it != m_dependencies.end(); ++it) {
-        auto &d = *it;
-        if (!d->isDone())
-            return false;
-    }
-    return true;
-}
-
 bool BlockTask::wait()
 {
     waitDependencies();
-    return m_future.get();
+    bool result = m_future.get();
+    addAllObjects();
+    return result;
 }
 
 bool BlockTask::waitDependencies()
@@ -2670,11 +2646,7 @@ bool BlockTask::waitDependencies()
     std::unique_lock<std::mutex> guard(m_mutex);
     for (auto it = m_dependencies.begin(); it != m_dependencies.end(); ++it) {
         auto &d = *it;
-        if (!d->isDone()) {
-            guard.unlock();
-            d->wait();
-            guard.lock();
-        }
+        d->wait();
     }
 
     m_dependencies.clear();
