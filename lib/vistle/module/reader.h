@@ -152,20 +152,19 @@ protected:
 
 private:
     struct ReaderProperties {
-        ReaderProperties(Meta *m, ReaderTime rtime, int nPart, int conc, int res)
-        : meta(m), time(rtime), numpart(nPart), concurrency(conc), result(res)
+        ReaderProperties(const Meta *m, ReaderTime rtime, int nPart, int conc)
+        : meta(m), time(rtime), numpart(nPart), concurrency(conc)
         {}
 
     public:
-        Meta *meta;
+        const Meta *meta;
         ReaderTime time;
         int numpart;
         int concurrency;
-        bool result;
     };
 
-    void readTimestep(std::shared_ptr<Token> prev, ReaderProperties &prop, int timestep, int step);
-    void readTimesteps(std::shared_ptr<Token> prev, ReaderProperties &prop);
+    bool readTimestep(std::shared_ptr<Token> prev, const ReaderProperties &prop, int timestep, int step);
+    bool readTimesteps(std::shared_ptr<Token> prev, const ReaderProperties &prop);
     bool prepare() override;
     bool compute() override;
 

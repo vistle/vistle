@@ -79,7 +79,7 @@ size_t Reader::waitForReaders(size_t maxRunning, bool &result)
     while (m_tokens.size() > maxRunning) {
         auto token = m_tokens.front();
         if (!token->result()) {
-            sendInfo("read task %lu failed", token->id());
+            sendError("read task %lu failed", token->id());
             result = false;
         }
         m_tokens.pop_front();
@@ -95,17 +95,22 @@ size_t Reader::waitForReaders(size_t maxRunning, bool &result)
  * @param prop Reader properties.
  * @param timestep Current timestep.
  */
-void Reader::readTimestep(std::shared_ptr<Token> prev, ReaderProperties &prop, int timestep, int step)
+bool Reader::readTimestep(std::shared_ptr<Token> prev, const ReaderProperties &prop, int timestep, int step)
 {
+    bool result = true;
     for (int p = -1; p < prop.numpart; ++p) {
         if (!m_handlePartitions || comm().rank() == rankForTimestepAndPartition(step, p)) {
-            prop.meta->setBlock(p);
             auto token = std::make_shared<Token>(this, prev);
             ++m_tokenCount;
             token->m_id = m_tokenCount;
             token->m_meta = *prop.meta;
-            if (waitForReaders(prop.concurrency - 1, prop.result) == 0)
+            token->m_meta.setBlock(p);
+            token->m_meta.setTimeStep(step);
+            if (waitForReaders(prop.concurrency - 1, result) == 0)
                 prev.reset();
+            if (!result) {
+                break;
+            }
             m_tokens.emplace_back(token);
             prev = token;
             token->m_future = std::async(std::launch::async, [this, token, timestep, p]() {
@@ -117,17 +122,22 @@ void Reader::readTimestep(std::shared_ptr<Token> prev, ReaderProperties &prop, i
             });
         }
         if (cancelRequested()) {
-            waitForReaders(0, prop.result);
+            waitForReaders(0, result);
             prev.reset();
-            prop.result = false;
+            result = false;
         }
-        if (!prop.result)
+        if (!result)
             break;
     }
     if (m_parallel == ParallelizeBlocks) {
-        waitForReaders(0, prop.result);
+        waitForReaders(0, result);
         prev.reset();
     }
+    if (!result) {
+        waitForReaders(0, result);
+        prev.reset();
+    }
+    return result;
 }
 
 /**
@@ -136,22 +146,26 @@ void Reader::readTimestep(std::shared_ptr<Token> prev, ReaderProperties &prop, i
  * @param prev Previous token.
  * @param prop Reader properties.
  */
-void Reader::readTimesteps(std::shared_ptr<Token> prev, ReaderProperties &prop)
+bool Reader::readTimesteps(std::shared_ptr<Token> prev, const ReaderProperties &prop)
 {
-    if (prop.result && prop.time.inc() != 0) {
+    bool result = true;
+    if (prop.time.inc() != 0) {
         int step = 0;
         for (int t = prop.time.first(); prop.time.inc() < 0 ? t >= prop.time.last() : t <= prop.time.last();
              t += prop.time.inc()) {
-            prop.meta->setTimeStep(step);
-            readTimestep(prev, prop, t, step);
+            if (!readTimestep(prev, prop, t, step)) {
+                result = false;
+                break;
+            }
             ++step;
-            if (!prop.result)
+            if (!result)
                 break;
         }
 
-        waitForReaders(0, prop.result);
+        waitForReaders(0, result);
         prev.reset();
     }
+    return result;
 }
 
 /**
@@ -196,22 +210,30 @@ bool Reader::prepare()
         concurrency = 1;
     assert(concurrency >= 1);
 
-    if (rank() == 0)
-        sendInfo("reading %d timesteps with up to %d partitions", numtime, numpart);
+    if (rank() == 0) {
+        if (concurrency > 1) {
+            sendInfo("reading %d timesteps with up to %d partitions, %d in parallel", numtime, numpart, concurrency);
+        } else {
+            sendInfo("reading %d timesteps with up to %d partitions", numtime, numpart);
+        }
+    }
 
     //read const parts
     std::shared_ptr<Token> prev;
     meta.setTimeStep(-1);
-    ReaderProperties prop(&meta, rTime, numpart, concurrency, true);
-    readTimestep(prev, prop, -1, -1);
-
-    // read timesteps
-    readTimesteps(prev, prop);
+    ReaderProperties prop(&meta, rTime, numpart, concurrency);
+    if (!readTimestep(prev, prop, -1, -1)) {
+        sendError("error reading constant data");
+    } else {
+        // read timesteps
+        if (!readTimesteps(prev, prop)) {
+            sendError("error reading varying data");
+        }
+    }
 
     //finish read
     if (!finishRead()) {
-        sendInfo("error finishing read");
-        prop.result = false;
+        sendError("error finishing read");
     }
 
     return true;
