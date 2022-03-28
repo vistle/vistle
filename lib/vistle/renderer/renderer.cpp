@@ -426,8 +426,10 @@ void Renderer::removeAllSentBy(int sender, const std::string &senderPort)
         it->second->clear();
     }
 
-    for (auto &ol: m_objectList) {
-        for (auto &ro: ol) {
+    for (auto tit = m_objectList.rbegin(); tit != m_objectList.rend(); ++tit) {
+        auto &ol = *tit;
+        for (auto oit = ol.rbegin(); oit != ol.rend(); ++oit) {
+            auto &ro = *oit;
             if (ro && ro->senderId == sender && ro->senderPort == senderPort) {
                 removeObjectWrapper(ro);
                 ro.reset();
@@ -442,8 +444,12 @@ void Renderer::removeAllSentBy(int sender, const std::string &senderPort)
 
 void Renderer::removeAllObjects()
 {
-    for (auto &ol: m_objectList) {
-        for (auto &ro: ol) {
+    m_geometryCaches.clear();
+
+    for (auto tit = m_objectList.rbegin(); tit != m_objectList.rend(); ++tit) {
+        auto &ol = *tit;
+        for (auto oit = ol.rbegin(); oit != ol.rend(); ++oit) {
+            auto &ro = *oit;
             if (ro) {
                 removeObjectWrapper(ro);
                 ro.reset();
