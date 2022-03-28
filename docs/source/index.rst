@@ -29,10 +29,8 @@ More infos about Architecture: https://vistle.io/architecture/
    :maxdepth: 1
    :caption: User Documentation
 
-   Introduction <intro/index.rst>
    Quickstart <quickstart/quickstart.md>
-   GUI <gui/gui.md>
-   Workflows <workflow/workflow.md>
+   Introduction <intro/index.rst>
    Module Guide <modules/index.rst>
    Library Documentation <lib/index.rst>
 

@@ -3,12 +3,12 @@
 This chapter shows the basic steps to get started using Vistle. For more detailed descriptions, consult the following chapters.
 
 
-To start Vistle, open a terminal, navigate to the Vistle installation directory and open the [Vistle GUI](../gui/gui.md) by typing
+To start Vistle, open a terminal, navigate to the Vistle installation directory and open the [Vistle GUI](../intro/gui/gui.md) by typing
 
     > vistle
 
 ## Adding Modules
-Modules represent processing steps and are used to set up a workflow. To add a new module to a workflow, go to the Module Browser on the right-hand side of the [GUI](../gui/gui.md) and scroll through the list or filter for modules by name. Drag and drop a module from the list to the workflow area (the empty upper-left area) to use it. If started successfully, a module icon will appear. Modules can be deleted using the *Delete* option in the right-click menu of the module icon.
+Modules represent processing steps and are used to set up a workflow. To add a new module to a workflow, go to the Module Browser on the right-hand side of the [GUI](../intro/gui/gui.md) and scroll through the list or filter for modules by name. Drag and drop a module from the list to the workflow area (the empty upper-left area) to use it. If started successfully, a module icon will appear. Modules can be deleted using the *Delete* option in the right-click menu of the module icon.
 ![](quickstart_browser.jpeg)
 
 ### Commonly Used Modules
