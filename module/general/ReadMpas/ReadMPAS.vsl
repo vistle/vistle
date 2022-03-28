@@ -1,0 +1,39 @@
+MasterHub=getMasterHub()
+VistleSession=getVistleSession()
+uuids = {}
+
+
+# spawn all local modules
+umCOVER4 = spawnAsync(MasterHub, 'COVER')
+umColor5 = spawnAsync(MasterHub, 'Color')
+umReadMpas6 = spawnAsync(MasterHub, 'ReadMpas')
+umDomainSurface7 = spawnAsync(MasterHub, 'DomainSurface')
+
+mCOVER4 = waitForSpawn(umCOVER4)
+setVectorParam(mCOVER4, '_position', 399.0, -242.0, True)
+setIntParam(mCOVER4, 'render_mode', 4, True)
+applyParameters(mCOVER4)
+
+mColor5 = waitForSpawn(umColor5)
+setVectorParam(mColor5, '_position', 344.0, -328.0, True)
+applyParameters(mColor5)
+
+mReadMpas6 = waitForSpawn(umReadMpas6)
+setVectorParam(mReadMpas6, '_position', 387.0, -419.0, True)
+setIntParam(mReadMpas6, 'numParts', 1, True)
+setStringParam(mReadMpas6, 'var_dim', '2D', True)
+applyParameters(mReadMpas6)
+
+mDomainSurface7 = waitForSpawn(umDomainSurface7)
+setVectorParam(mDomainSurface7, '_position', 421.0, -331.0, True)
+applyParameters(mDomainSurface7)
+
+# all local connections
+connect(mColor5,'color_out', mCOVER4,'data_in')
+connect(mReadMpas6,'data_out_0', mColor5,'data_in')
+connect(mReadMpas6,'data_out_0', mDomainSurface7,'data_in')
+connect(mDomainSurface7,'data_out', mCOVER4,'data_in')
+
+# spawn all remote modules
+
+# connections between local and remote

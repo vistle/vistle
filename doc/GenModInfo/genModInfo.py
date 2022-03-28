@@ -1,6 +1,7 @@
 import time
 import os
 import re
+import subprocess
 from bisect import insort
 from _vistle import getModuleName, getModuleDescription, getInputPorts, getOutputPorts, getPortDescription, getParameters, getParameterTooltip, getParameterType, spawn, barrier, quit
 
@@ -157,6 +158,13 @@ def getParametersString(mod):
         paramString += getTableLine([param, getParameterTooltip(mod, param), getParameterType(mod, param)])
     return paramString
 
+def getExamples(mod):
+    modulename = getModuleName(mod)
+    sourceDir = os.environ['VISTLE_DOCUMENTATION_DIR']+"/"
+    imgPath = sourceDir + modulename + '_example.png'
+    vslPath = sourceDir + modulename + '.vsl'
+    subprocess.run(["vistle","--snapshot",imgPath,vslPath])
+    return "![](" +modulename+"_example.png)"
 
 def readAdditionalDocumentation(filename):
     content = ""
@@ -217,7 +225,8 @@ def generateModuleDescriptions():
     tag_functions = {
         "headline": getModuleHeadLine,
         "moduleHtml": getModuleHtml,
-        "parameters": getParametersString
+        "parameters": getParametersString,
+        "exampleImg": getExamples
     }
 
     #spawn the module and wait for its information to arrive at the hub
@@ -237,7 +246,7 @@ def generateModuleDescriptions():
         if "headline" in unusedTags:
             f.write(tag_functions["headline"]( mod ))
         [f.write(line) for line in contentList]
-        [f.write(tag_functions[unusedTag](mod)) for unusedTag in sorted(unusedTags) if unusedTag != "headline"]
+        [f.write(tag_functions[unusedTag](mod)) for unusedTag in sorted(unusedTags) if unusedTag not in ["headline","exampleImg"] ]
     quit()
 
 #-------------Main-------------#
