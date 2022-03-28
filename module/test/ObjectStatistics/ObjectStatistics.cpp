@@ -15,6 +15,7 @@
 #include <vistle/core/quads.h>
 #include <vistle/core/indexed.h>
 #include <vistle/core/structuredgridbase.h>
+#include <vistle/alg/objalg.h>
 
 using namespace vistle;
 
@@ -173,50 +174,52 @@ bool ObjectStatistics::compute()
     if (!obj)
         return true;
 
-    if (obj->getTimestep() + 1 > m_timesteps)
-        m_timesteps = obj->getTimestep() + 1;
+    auto split = splitContainerObject(obj);
+
+    if (split.timestep + 1 > m_timesteps)
+        m_timesteps = split.timestep + 1;
 
     stats s;
-    if (auto i = Indexed::as(obj)) {
+    if (split.normals) {
+        ++s.normals;
+    }
+    if (split.geometry) {
+        ++s.grids;
+    }
+    if (auto i = Indexed::as(split.geometry)) {
         s.elements = i->getNumElements();
         s.vertices = i->getNumCorners();
-        ++s.grids;
     } else if (auto t = Triangles::as(obj)) {
         s.elements = t->getNumElements();
         s.vertices = t->getNumCorners();
-        ++s.grids;
     } else if (auto q = Quads::as(obj)) {
         s.elements = q->getNumElements();
         s.vertices = q->getNumCorners();
-        ++s.grids;
     } else if (auto sg = StructuredGridBase::as(obj)) {
         s.elements = sg->getNumElements();
         s.vertices = sg->getNumVertices();
-        ++s.grids;
     }
-    if (auto c = Coords::as(obj)) {
+    if (auto c = Coords::as(split.geometry)) {
         s.coords = c->getNumCoords();
-        if (c->normals())
-            ++s.normals;
-    } else if (auto d = DataBase::as(obj)) {
-        if (d->grid())
-            ++s.grids;
-        if (auto v = Vec<Scalar, 4>::as(obj)) {
+    }
+
+    if (auto d = split.mapped) {
+        if (auto v = Vec<Scalar, 4>::as(d)) {
             s.data[4] = v->getSize();
-        } else if (auto v = Vec<Scalar, 3>::as(obj)) {
+        } else if (auto v = Vec<Scalar, 3>::as(d)) {
             s.data[3] = v->getSize();
-        } else if (auto v = Vec<Scalar, 2>::as(obj)) {
+        } else if (auto v = Vec<Scalar, 2>::as(d)) {
             s.data[2] = v->getSize();
-        } else if (auto v = Vec<Scalar, 1>::as(obj)) {
+        } else if (auto v = Vec<Scalar, 1>::as(d)) {
             s.data[1] = v->getSize();
         }
-        if (auto v = Vec<Index, 4>::as(obj)) {
+        if (auto v = Vec<Index, 4>::as(d)) {
             s.idata[4] = v->getSize();
-        } else if (auto v = Vec<Index, 3>::as(obj)) {
+        } else if (auto v = Vec<Index, 3>::as(d)) {
             s.idata[3] = v->getSize();
-        } else if (auto v = Vec<Index, 2>::as(obj)) {
+        } else if (auto v = Vec<Index, 2>::as(d)) {
             s.idata[2] = v->getSize();
-        } else if (auto v = Vec<Index, 1>::as(obj)) {
+        } else if (auto v = Vec<Index, 1>::as(d)) {
             s.idata[1] = v->getSize();
         }
     }

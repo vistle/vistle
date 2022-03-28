@@ -187,7 +187,6 @@ COVER::COVER(const std::string &name, int moduleId, mpi::communicator comm): vis
 
     vistleRoot = new osg::Group;
     vistleRoot->setName("VistlePlugin");
-    vistleRoot->setNodeMask(~(opencover::Isect::Update | opencover::Isect::Intersection));
 
     m_fastestObjectReceivePolicy = message::ObjectReceivePolicy::Distribute;
     setObjectReceivePolicy(m_fastestObjectReceivePolicy);
@@ -432,22 +431,10 @@ std::shared_ptr<vistle::RenderObject> COVER::addObject(int senderId, const std::
 
     m_requireUpdate = true;
 
-    std::string plugin = container->getAttribute("_plugin");
-    if (!plugin.empty())
-        cover->addPlugin(plugin.c_str());
-
-    if (geometry) {
-        plugin = geometry->getAttribute("_plugin");
-        if (!plugin.empty())
-            cover->addPlugin(plugin.c_str());
-    }
-    if (normals) {
-        plugin = normals->getAttribute("_plugin");
-        if (!plugin.empty())
-            cover->addPlugin(plugin.c_str());
-    }
-    if (texture) {
-        plugin = texture->getAttribute("_plugin");
+    for (const auto &obj: {container, geometry, normals, texture}) {
+        if (!obj)
+            continue;
+        std::string plugin = obj->getAttribute("_plugin");
         if (!plugin.empty())
             cover->addPlugin(plugin.c_str());
     }
@@ -575,6 +562,8 @@ bool COVER::render()
                     transform->addChild(filenode);
                 }
                 m_fileAttachmentMap.emplace(ro->coverRenderObject->getName(), filename);
+            } else {
+                transform->setNodeMask(~(opencover::Isect::Update | opencover::Isect::Intersection));
             }
             osg::ref_ptr<osg::Group> parent = getParent(ro->coverRenderObject.get());
             parent->addChild(transform);
@@ -637,15 +626,19 @@ bool COVER::addColorMap(const std::string &species, Object::const_ptr colormap)
     }
 
     auto att = colormap->getAttribute("_colormap");
-    if (att.empty()) {
-        ro->removeAttribute("COLORMAP");
-    } else {
-        ro->addAttribute("COLORMAP", att);
-        std::cerr << rank() << ": adding COLORMAP attribute for " << species << std::endl;
-    }
+    const char *oldattc = ro->getAttribute("COLORMAP");
+    std::string oldatt = oldattc ? oldattc : "";
+    if (att != oldatt) {
+        if (att.empty()) {
+            ro->removeAttribute("COLORMAP");
+        } else {
+            ro->addAttribute("COLORMAP", att);
+            //std::cerr << rank() << ": adding COLORMAP attribute for " << species << std::endl;
+        }
 
-    coVRPluginList::instance()->removeObject(inter->getObjName(), true);
-    coVRPluginList::instance()->newInteractor(inter->getObject(), inter);
+        coVRPluginList::instance()->removeObject(inter->getObjName(), true);
+        coVRPluginList::instance()->newInteractor(ro, inter);
+    }
 
     return true;
 }

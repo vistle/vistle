@@ -1332,16 +1332,14 @@ bool Leveller::process() {
          Index totalNumVertices = calculateSurface<HostData, thrust::detail::host_t>(HD);
 
          {
-             size_t idx=0;
-             Normals::ptr norm;
+             size_t idx = 0;
              if (m_strbase) {
                  if (m_computeNormals) {
-                     norm.reset(new Normals(Object::Initialized));
-                     norm->d()->x[0] = HD.m_outVertData[idx++];
-                     norm->d()->x[1] = HD.m_outVertData[idx++];
-                     norm->d()->x[2] = HD.m_outVertData[idx++];
-                     //FIXME: norm->setMeta();
-                     norm->setMapping(DataBase::Vertex);
+                     m_normals.reset(new Normals(Object::Initialized));
+                     m_normals->d()->x[0] = HD.m_outVertData[idx++];
+                     m_normals->d()->x[1] = HD.m_outVertData[idx++];
+                     m_normals->d()->x[2] = HD.m_outVertData[idx++];
+                     m_normals->setMapping(DataBase::Vertex);
                  } else {
                      idx = 3;
                  }
@@ -1351,10 +1349,6 @@ bool Leveller::process() {
                  m_triangles->d()->x[0] = HD.m_outVertData[idx++];
                  m_triangles->d()->x[1] = HD.m_outVertData[idx++];
                  m_triangles->d()->x[2] = HD.m_outVertData[idx++];
-                 if (norm) {
-                     norm->updateInternals();
-                     m_triangles->setNormals(norm);
-                 }
              } else if (m_lines) {
                  m_lines->d()->x[0] = HD.m_outVertData[idx++];
                  m_lines->d()->x[1] = HD.m_outVertData[idx++];
@@ -1543,10 +1537,16 @@ void Leveller::addMappedData(DataBase::const_ptr mapobj ){
         m_vertexdata.push_back(mapobj);
 }
 
-Object::ptr Leveller::result() {
+Coords::ptr Leveller::result()
+{
     if (m_triangles)
         return m_triangles;
     return m_lines;
+}
+
+Normals::ptr Leveller::normresult()
+{
+    return m_normals;
 }
 
 DataBase::ptr Leveller::mapresult() const {

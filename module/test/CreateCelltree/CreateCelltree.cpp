@@ -40,7 +40,7 @@ bool CreateCelltree::compute()
     cti->getCelltree();
 
     auto nobj = obj->clone();
-
+    updateMeta(nobj);
     addObject("grid_out", nobj);
 
     return true;

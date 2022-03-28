@@ -3,6 +3,7 @@
 #include <vistle/module/module.h>
 #include <vistle/core/points.h>
 #include <vistle/util/enum.h>
+#include <vistle/alg/objalg.h>
 
 using namespace vistle;
 
@@ -55,13 +56,10 @@ bool Transform::compute()
     if (!obj)
         return true;
 
-    Object::const_ptr geo = obj;
-    auto data = DataBase::as(obj);
-    if (data && data->grid()) {
-        geo = data->grid();
-    } else {
-        data.reset();
-    }
+    auto split = splitContainerObject(obj);
+
+    Object::const_ptr geo = split.geometry;
+    auto data = split.mapped;
 
     Matrix4 mirrorMat(Matrix4::Identity());
     switch (p_mirror->getValue()) {
@@ -109,9 +107,11 @@ bool Transform::compute()
         if (animation != Keep) {
             Object::ptr outGeo = geo->clone();
             outGeo->setTimestep(timestep);
+            updateMeta(outGeo);
             if (data) {
                 auto dataOut = data->clone();
                 dataOut->setGrid(outGeo);
+                updateMeta(dataOut);
                 addObject(data_out, dataOut);
             } else {
                 addObject(data_out, outGeo);
@@ -120,6 +120,7 @@ bool Transform::compute()
                 ++timestep;
         } else {
             auto nobj = obj->clone();
+            updateMeta(nobj);
             addObject(data_out, nobj);
         }
     }
@@ -134,9 +135,11 @@ bool Transform::compute()
             if (animation != Deanimate)
                 ++timestep;
         }
+        updateMeta(outGeo);
         if (data) {
             auto dataOut = data->clone();
             dataOut->setGrid(outGeo);
+            updateMeta(dataOut);
             addObject(data_out, dataOut);
         } else {
             addObject(data_out, outGeo);

@@ -5,6 +5,7 @@
 #include <vistle/core/triangles.h>
 #include <vistle/core/unstr.h>
 #include <vistle/core/vec.h>
+#include <vistle/alg/objalg.h>
 
 #include "CellToVert.h"
 #include "coCellToVert.h"
@@ -41,7 +42,9 @@ bool CellToVert::compute(std::shared_ptr<BlockTask> task) const
 
     for (int i = 0; i < NumPorts; ++i) {
         auto &data_in = m_data_in[i];
-        auto data = task->accept<DataBase>(data_in);
+        auto container = task->accept<Object>(data_in);
+        auto split = splitContainerObject(container);
+        auto data = split.mapped;
         if (!data && m_data_out[i]->isConnected()) {
             sendError("no valid input data on %s", data_in->getName().c_str());
             return true;
@@ -52,12 +55,12 @@ bool CellToVert::compute(std::shared_ptr<BlockTask> task) const
             continue;
 
         if (grid) {
-            if (data->grid() && data->grid()->getHandle() != grid->getHandle()) {
+            if (split.geometry && split.geometry->getHandle() != grid->getHandle()) {
                 sendError("grids have to match on all input objects");
                 return true;
             }
         } else {
-            grid = data->grid();
+            grid = split.geometry;
         }
     }
 
@@ -98,6 +101,7 @@ bool CellToVert::compute(std::shared_ptr<BlockTask> task) const
             auto ndata = data->clone();
             ndata->setGrid(grid);
             ndata->setMapping(DataBase::Vertex);
+            updateMeta(ndata);
             task->addObject(data_out, ndata);
         } else {
             DataBase::ptr out = algo.interpolate(grid, data);
@@ -105,6 +109,7 @@ bool CellToVert::compute(std::shared_ptr<BlockTask> task) const
                 out->copyAttributes(data);
                 out->setGrid(grid);
                 out->setMapping(DataBase::Vertex);
+                updateMeta(out);
                 task->addObject(data_out, out);
             } else {
                 std::stringstream str;

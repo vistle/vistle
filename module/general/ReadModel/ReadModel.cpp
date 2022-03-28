@@ -83,6 +83,7 @@ bool ReadModel::read(Reader::Token &token, int timestep, int block)
             return false;
         }
     } else {
+        token.applyMeta(obj);
         token.addObject("grid_out", obj);
     }
 
@@ -192,8 +193,7 @@ Object::ptr ReadModel::load(const std::string &name) const
                             n[c][i] = norm[c];
                         }
                     }
-                    normals->updateInternals();
-
+                    updateMeta(normals);
                     coords->setNormals(normals);
                 }
             }

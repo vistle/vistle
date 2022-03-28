@@ -1,6 +1,6 @@
 use_openmp()
 
-set(PREFER_TBB FALSE)
+set(PREFER_TBB TRUE)
 set(USE_TBB FALSE)
 
 set(SOURCES ${SOURCES} ../IsoSurface/IsoSurface.cpp ../IsoSurface/IsoSurface.h ../IsoSurface/IsoDataFunctor.cpp ../IsoSurface/IsoDataFunctor.h)

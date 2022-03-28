@@ -130,6 +130,7 @@ Normals::const_ptr RectilinearGrid::normals() const
 
 void RectilinearGrid::setNormals(Normals::const_ptr normals)
 {
+    assert(!normals || normals->check());
     d()->normals = normals;
 }
 
@@ -347,6 +348,7 @@ RectilinearGrid::Data::Data(const RectilinearGrid::Data &o, const std::string &n
 
     normals = o.normals;
     for (int c = 0; c < 3; ++c) {
+        indexOffset[c] = o.indexOffset[c];
         coords[c] = o.coords[c];
         for (int i = 0; i < 2; ++i)
             ghostLayers[c][i] = o.ghostLayers[c][i];

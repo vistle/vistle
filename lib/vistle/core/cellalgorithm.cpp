@@ -313,8 +313,10 @@ bool insideCell(const Vector3 &point, Byte type, Index nverts, const Index *cl, 
 #endif
         Vector3 corners[4];
         for (int f = 0; f < numFaces; ++f) {
-            Vector3 min, max;
             const unsigned nCorners = UnstructuredGrid::FaceSizes[type][f];
+            if (nCorners == 0)
+                continue;
+            Vector3 min, max;
             for (unsigned i = 0; i < nCorners; ++i) {
                 const Index v = cl[UnstructuredGrid::FaceVertices[type][f][i]];
                 corners[i] = Vector3(x[v], y[v], z[v]) - point;
@@ -395,6 +397,8 @@ bool insideCell(const Vector3 &point, Byte type, Index nverts, const Index *cl, 
         int insideCount = 0;
         for (Index i = 0; i < nverts; i += cl[i] + 1) {
             const Index nCorners = cl[i];
+            if (nCorners == 0)
+                continue;
 
             Vector3 min, max;
             corners.resize(nCorners);
@@ -458,6 +462,8 @@ bool insideCell(const Vector3 &point, Byte type, Index nverts, const Index *cl, 
                 term = cl[i];
             } else if (cl[i] == term) {
                 const Index nCorners = i - facestart;
+                if (nCorners == 0)
+                    continue;
 
                 corners.resize(nCorners);
                 Vector3 min, max;

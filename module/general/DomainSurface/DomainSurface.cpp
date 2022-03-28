@@ -7,6 +7,7 @@
 #include <vistle/core/polygons.h>
 #include <vistle/core/structuredgrid.h>
 #include <vistle/module/resultcache.h>
+#include <vistle/alg/objalg.h>
 
 #include "DomainSurface.h"
 
@@ -58,25 +59,14 @@ typename Vec<T, Dim>::ptr remapData(typename Vec<T, Dim>::const_ptr in, const Do
 bool DomainSurface::compute(std::shared_ptr<BlockTask> task) const
 {
     //DomainSurface Polygon
-    DataBase::const_ptr data;
-    StructuredGridBase::const_ptr sgrid;
-    UnstructuredGrid::const_ptr ugrid;
-    ugrid = task->accept<UnstructuredGrid>("data_in");
-    sgrid = task->accept<StructuredGridBase>("data_in");
+    auto container = task->expect<Object>("data_in");
+    auto split = splitContainerObject(container);
+    DataBase::const_ptr data = split.mapped;
+    StructuredGridBase::const_ptr sgrid = StructuredGridBase::as(split.geometry);
+    UnstructuredGrid::const_ptr ugrid = UnstructuredGrid::as(split.geometry);
     if (!ugrid && !sgrid) {
-        data = task->expect<DataBase>("data_in");
         if (!data) {
             sendError("no grid and no data received");
-            return true;
-        }
-        if (!data->grid()) {
-            sendError("no grid attached to data");
-            return true;
-        }
-        ugrid = UnstructuredGrid::as(data->grid());
-        sgrid = StructuredGridBase::as(data->grid());
-        if (!ugrid && !sgrid) {
-            sendError("no valid grid attached to data");
             return true;
         }
     }
@@ -112,6 +102,7 @@ bool DomainSurface::compute(std::shared_ptr<BlockTask> task) const
 
     surface->setMeta(grid_in->meta());
     surface->copyAttributes(grid_in);
+    updateMeta(surface);
 
     if (auto entry = m_cache.getOrLock(grid_in->getName(), surface)) {
         m_cache.storeAndUnlock(entry, surface);
@@ -119,9 +110,7 @@ bool DomainSurface::compute(std::shared_ptr<BlockTask> task) const
 
     if (!data) {
         surface = surface->clone();
-        surface->setMeta(grid_in->meta());
-        surface->copyAttributes(grid_in);
-
+        updateMeta(surface);
         task->addObject("data_out", surface);
         return true;
     }
@@ -134,6 +123,7 @@ bool DomainSurface::compute(std::shared_ptr<BlockTask> task) const
     if (!haveElementData && vm.empty()) {
         DataBase::ptr dout = data->clone();
         dout->setGrid(surface);
+        updateMeta(dout);
         task->addObject("data_out", dout);
         return true;
     }
@@ -160,6 +150,7 @@ bool DomainSurface::compute(std::shared_ptr<BlockTask> task) const
         data_obj_out->setGrid(surface);
         data_obj_out->setMeta(data->meta());
         data_obj_out->copyAttributes(data);
+        updateMeta(data_obj_out);
         task->addObject("data_out", data_obj_out);
     }
 

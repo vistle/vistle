@@ -66,6 +66,7 @@ bool AttachGrid::compute()
                 std::cerr << "cannot determine whether data is cell or vertex based: #vert grid=" << numVert
                           << ", #vert data=" << out->getSize() << std::endl;
             }
+            updateMeta(out);
             addObject(pout, out);
         }
     }

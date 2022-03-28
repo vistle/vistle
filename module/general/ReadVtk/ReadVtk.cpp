@@ -506,11 +506,10 @@ bool ReadVtk::load(Token &token, const std::string &filename, const Meta &meta, 
 
     auto grid = vistle::vtk::toGrid(dobj, checkConvexity());
     if (grid) {
-        grid->updateInternals();
-        grid->setMeta(meta);
         if (!part.empty())
             grid->addAttribute("_part", part);
     }
+    token.applyMeta(grid);
     token.addObject("grid_out", grid);
 
     vtkFieldData *fieldData = dobj->GetFieldData();
@@ -526,10 +525,10 @@ bool ReadVtk::load(Token &token, const std::string &filename, const Meta &meta, 
             if (field) {
                 field->addAttribute("_species", m_cellDataChoice[i]->getValue());
                 field->setMapping(DataBase::Element);
-                field->setMeta(meta);
                 if (!part.empty())
                     field->addAttribute("_part", part);
             }
+            token.applyMeta(field);
             token.addObject(m_cellPort[i], field);
         }
 
@@ -540,11 +539,11 @@ bool ReadVtk::load(Token &token, const std::string &filename, const Meta &meta, 
             }
             if (field) {
                 field->addAttribute("_species", m_pointDataChoice[i]->getValue());
-                field->setMeta(meta);
                 field->setMapping(DataBase::Vertex);
                 if (!part.empty())
                     field->addAttribute("_part", part);
             }
+            token.applyMeta(field);
             token.addObject(m_pointPort[i], field);
         }
     }

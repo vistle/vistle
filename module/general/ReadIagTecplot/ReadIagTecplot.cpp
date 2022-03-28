@@ -185,30 +185,36 @@ bool ReadIagTecplot::read(Reader::Token &token, int timestep, int block)
         delete mesh;
     }
 
+    token.applyMeta(unstr);
     token.addObject(m_grid, unstr);
     if (p) {
         p->addAttribute("_species", "pressure");
         p->setGrid(unstr);
+        token.applyMeta(p);
         token.addObject(m_p, p);
     }
     if (r) {
         r->addAttribute("_species", "rho");
         r->setGrid(unstr);
+        token.applyMeta(r);
         token.addObject(m_rho, r);
     }
     if (n) {
         n->addAttribute("_species", "n");
         n->setGrid(unstr);
+        token.applyMeta(n);
         token.addObject(m_n, n);
     }
     if (u) {
         u->addAttribute("_species", "u");
         u->setGrid(unstr);
+        token.applyMeta(u);
         token.addObject(m_u, u);
     }
     if (v) {
         v->addAttribute("_species", "v");
         v->setGrid(unstr);
+        token.applyMeta(v);
         token.addObject(m_v, v);
     }
 

@@ -133,6 +133,7 @@ bool FlattenTriangles::compute()
         auto mapping = data->guessMapping();
         if (mapping == DataBase::Element) {
             dout->setMapping(DataBase::Element);
+            updateMeta(dout);
             addObject("grid_out", dout);
         } else if (mapping == DataBase::Vertex) {
             dout->setMapping(DataBase::Vertex);
@@ -144,12 +145,15 @@ bool FlattenTriangles::compute()
                 flatten(inquad, data, dout);
                 dout->setGrid(outgrid);
             }
+            updateMeta(dout);
             addObject("grid_out", dout);
         } else {
             sendInfo("unsupported mapping");
+            updateMeta(outgrid);
             addObject("grid_out", outgrid);
         }
     } else {
+        updateMeta(outgrid);
         addObject("grid_out", outgrid);
     }
 

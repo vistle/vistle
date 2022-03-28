@@ -246,6 +246,7 @@ Normals::const_ptr LayerGrid::normals() const
 
 void LayerGrid::setNormals(Normals::const_ptr normals)
 {
+    assert(!normals || normals->check());
     d()->normals = normals;
 }
 
@@ -509,6 +510,7 @@ LayerGrid::Data::Data(const LayerGrid::Data &o, const std::string &n): LayerGrid
 
     normals = o.normals;
     for (int c = 0; c < 3; ++c) {
+        indexOffset[c] = o.indexOffset[c];
         numDivisions[c] = o.numDivisions[c];
         ghostLayers[c][0] = o.ghostLayers[c][0];
         ghostLayers[c][1] = o.ghostLayers[c][1];

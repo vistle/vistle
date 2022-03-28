@@ -5,6 +5,7 @@
 #include <vistle/core/lines.h>
 #include <vistle/core/coords.h>
 #include <vistle/util/math.h>
+#include <vistle/alg/objalg.h>
 
 #include "VectorField.h"
 
@@ -40,7 +41,8 @@ bool VectorField::compute()
         sendError("no vector input");
         return true;
     }
-    auto grid = vecs->grid();
+    auto split = splitContainerObject(vecs);
+    auto grid = split.geometry;
     if (!grid) {
         sendError("vectors without grid");
         return true;
@@ -132,6 +134,7 @@ bool VectorField::compute()
     lines->setMeta(vecs->meta());
     lines->copyAttributes(coords);
     lines->copyAttributes(vecs);
+    updateMeta(lines);
 
     if (mapped) {
         mapped->setSize(numPoints * 2);
@@ -144,6 +147,7 @@ bool VectorField::compute()
         mapped->copyAttributes(data);
 
         mapped->setGrid(lines);
+        updateMeta(lines);
         addObject("grid_out", mapped);
     } else {
         addObject("grid_out", lines);

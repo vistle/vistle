@@ -141,9 +141,11 @@ bool ToTubes::compute()
                         (Tubes::CapStyle)m_endStyle->getValue());
     tubes->setMeta(lines->meta());
     tubes->copyAttributes(lines);
+    updateMeta(tubes);
 
     if (basedata) {
         basedata->setGrid(tubes);
+        updateMeta(basedata);
         addObject("grid_out", basedata);
     } else {
         addObject("grid_out", tubes);
@@ -153,6 +155,7 @@ bool ToTubes::compute()
     if (data) {
         auto ndata = data->clone();
         ndata->setGrid(tubes);
+        updateMeta(ndata);
         addObject("data_out", ndata);
     }
 

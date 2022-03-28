@@ -143,8 +143,9 @@ RenderObject::RenderObject(int senderId, const std::string &senderPort, Object::
         timestep = container->getTimestep();
     }
 
-    variant = container->getAttribute("_variant");
-    if (variant.empty())
+    if (container)
+        variant = container->getAttribute("_variant");
+    if (geometry && variant.empty())
         variant = geometry->getAttribute("_variant");
 
     if (boost::algorithm::ends_with(variant, "_on")) {
@@ -212,17 +213,23 @@ void RenderObject::computeBounds()
             }
         }
     } else if (auto coords = Coords::as(geometry)) {
-        const auto nc = coords->getNumCoords();
-        const Scalar *x = coords->x(0), *y = coords->x(1), *z = coords->x(2);
-        for (Index i = 0; i < nc; ++i) {
-            Vector3 p(x[i], y[i], z[i]);
-            if (!identity)
-                p = transformPoint(T, p);
-            for (int c = 0; c < 3; ++c) {
-                if (p[c] < bMin[c])
-                    bMin[c] = p[c];
-                if (p[c] > bMax[c])
-                    bMax[c] = p[c];
+        if (identity) {
+            auto b = coords->getBounds();
+            bMin = b.first;
+            bMax = b.second;
+        } else {
+            const auto nc = coords->getNumCoords();
+            const Scalar *x = coords->x(0), *y = coords->x(1), *z = coords->x(2);
+            for (Index i = 0; i < nc; ++i) {
+                Vector3 p(x[i], y[i], z[i]);
+                if (!identity)
+                    p = transformPoint(T, p);
+                for (int c = 0; c < 3; ++c) {
+                    if (p[c] < bMin[c])
+                        bMin[c] = p[c];
+                    if (p[c] > bMax[c])
+                        bMax[c] = p[c];
+                }
             }
         }
     }

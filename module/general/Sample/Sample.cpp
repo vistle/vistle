@@ -199,11 +199,11 @@ bool Sample::reduce(int timestep)
 
                 Object::const_ptr outGrid = objAtIdx;
                 outData->setTimestep(timestep);
-                outData->updateInternals();
                 outData->setBlock(blockIdx.at(n));
                 outData->setGrid(outGrid);
                 outData->setMapping(DataBase::Vertex);
                 outData->addAttribute("_species", "scalar");
+                updateMeta(outData);
                 addObject(m_out, outData);
             } else {
                 if (found > 0) {

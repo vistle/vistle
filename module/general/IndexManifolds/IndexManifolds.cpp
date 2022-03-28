@@ -7,6 +7,7 @@
 #include <vistle/core/lines.h>
 #include <vistle/core/points.h>
 #include <vistle/util/enum.h>
+#include <vistle/alg/objalg.h>
 
 #include "IndexManifolds.h"
 
@@ -43,14 +44,10 @@ bool IndexManifolds::compute(std::shared_ptr<BlockTask> task) const
         return true;
     }
 
-    Object::const_ptr ingrid;
-    auto data = DataBase::as(obj);
-    if (data && data->grid()) {
-        ingrid = data->grid();
-    } else {
-        ingrid = obj;
-        data.reset();
-    }
+    auto split = splitContainerObject(obj);
+
+    Object::const_ptr ingrid = split.geometry;
+    auto data = split.mapped;
 
     if (!ingrid) {
         sendError("no grid on input");
@@ -139,6 +136,7 @@ bool IndexManifolds::compute(std::shared_ptr<BlockTask> task) const
             assert(vv == nvert);
             assert(cell == 0 || cell == nquad);
 
+            updateMeta(surface);
             m_surfaceCache.storeAndUnlock(cacheEntry, surface);
         }
 
@@ -177,6 +175,7 @@ bool IndexManifolds::compute(std::shared_ptr<BlockTask> task) const
             assert(vv == nvert);
             assert(cell == 0 || cell == nquad);
 
+            updateMeta(outdata);
             task->addObject(p_surface_out, outdata);
         }
     }
@@ -225,10 +224,13 @@ bool IndexManifolds::compute(std::shared_ptr<BlockTask> task) const
 
             ++cc[dir];
         }
-        if (outdata)
+        if (outdata) {
+            updateMeta(outdata);
             task->addObject(p_line_out, outdata);
-        else
+        } else {
             task->addObject(p_line_out, line);
+            updateMeta(line);
+        }
     }
 
     if (isConnected(*p_point_out) && off[0] + bghost[0] <= coord[0] &&
@@ -253,10 +255,13 @@ bool IndexManifolds::compute(std::shared_ptr<BlockTask> task) const
         if (outdata)
             outdata->copyEntry(0, data, v);
 
-        if (outdata)
+        if (outdata) {
+            updateMeta(outdata);
             task->addObject(p_point_out, outdata);
-        else
+        } else {
             task->addObject(p_point_out, point);
+            updateMeta(point);
+        }
     }
 
     return true;

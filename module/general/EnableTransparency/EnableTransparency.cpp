@@ -56,6 +56,7 @@ bool EnableTransparency::compute()
         if (p_numPrimitives->getValue() != 0) {
             out->addAttribute("_bin_num_primitives", std::to_string(p_numPrimitives->getValue()));
         }
+        updateMeta(out);
         m_cache.storeAndUnlock(ent, out);
     }
 

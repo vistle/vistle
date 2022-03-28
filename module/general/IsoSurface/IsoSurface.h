@@ -72,7 +72,7 @@ private:
     IsoController isocontrol;
 
 #ifdef CUTTINGSURFACE
-    mutable vistle::ResultCache<vistle::Object::ptr> m_gridCache;
+    mutable vistle::ResultCache<vistle::Coords::ptr> m_gridCache;
 #endif
 };
 

@@ -46,6 +46,7 @@ bool ColorAttribute::compute()
     if (auto entry = m_cache.getOrLock(obj->getName(), out)) {
         out = obj->clone();
         out->addAttribute("_color", color);
+        updateMeta(out);
         m_cache.storeAndUnlock(entry, out);
     }
     addObject("data_out", out);

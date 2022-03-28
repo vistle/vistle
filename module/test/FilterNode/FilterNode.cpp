@@ -70,11 +70,13 @@ bool FilterNode::compute()
 
     if (pass) {
         auto ndata = data->clone();
+        updateMeta(ndata);
         addObject("data_out", ndata);
     } else {
         Object::ptr obj = data->cloneType();
         obj->setMeta(data->meta());
         obj->copyAttributes(data);
+        updateMeta(obj);
         addObject("data_out", obj);
     }
 

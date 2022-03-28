@@ -28,6 +28,7 @@ target_link_libraries(
     vistle_renderer
     PUBLIC vistle_util
     PUBLIC vistle_core
+    PUBLIC vistle_alg
     PUBLIC vistle_module
     PUBLIC ${BOOST_MPI}
     PUBLIC Boost::boost

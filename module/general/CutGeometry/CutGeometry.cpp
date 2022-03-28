@@ -666,6 +666,7 @@ bool CutGeometry::compute(std::shared_ptr<BlockTask> task) const
     Object::ptr object = cutGeometry(oin);
     if (object) {
         object->copyAttributes(oin);
+        updateMeta(object);
         task->addObject("grid_out", object);
     }
 

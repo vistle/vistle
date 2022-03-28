@@ -106,6 +106,7 @@ Object::const_ptr DataBase::grid() const
 
 void DataBase::setGrid(Object::const_ptr grid)
 {
+    assert(!grid || grid->check());
     d()->grid = grid;
     applyDimensionHint(grid);
 }

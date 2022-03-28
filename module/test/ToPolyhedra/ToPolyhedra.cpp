@@ -158,6 +158,7 @@ bool ToPolyhedra::compute()
     if (poly) {
         poly->setMeta(obj->meta());
         poly->copyAttributes(obj);
+        updateMeta(poly);
     }
 
     if (data) {
@@ -165,6 +166,7 @@ bool ToPolyhedra::compute()
         ndata->setMeta(data->meta());
         ndata->copyAttributes(data);
         ndata->setGrid(poly);
+        updateMeta(ndata);
         addObject("grid_out", ndata);
     } else {
         addObject("grid_out", poly);

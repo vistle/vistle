@@ -1,5 +1,6 @@
 add_subdirectory(util)
 add_subdirectory(core)
+add_subdirectory(alg)
 add_subdirectory(net)
 add_subdirectory(control)
 add_subdirectory(rhr)

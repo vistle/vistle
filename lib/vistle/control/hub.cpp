@@ -13,6 +13,7 @@
 #include <vistle/util/hostname.h>
 #include <vistle/util/userinfo.h>
 #include <vistle/util/directory.h>
+#include <vistle/util/filesystem.h>
 #include <vistle/util/sleep.h>
 #include <vistle/util/listenv4v6.h>
 #include <vistle/util/crypto.h>
@@ -31,6 +32,7 @@
 
 
 #include <boost/asio.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 #include <boost/program_options.hpp>
 #include <boost/process.hpp>
 #include <boost/process/extend.hpp>
@@ -2215,8 +2217,25 @@ bool Hub::startPythonUi()
 
 bool Hub::processScript()
 {
+    using boost::algorithm::ends_with;
+
     if (m_scriptPath.empty())
         return true;
+
+    if (!ends_with(m_scriptPath, ".vsl") && !ends_with(m_scriptPath, ".py")) {
+        boost::system::error_code ec;
+        if (!filesystem::exists(m_scriptPath, ec)) {
+            for (const auto &ext: {".vsl", ".py"}) {
+                if (filesystem::exists(m_scriptPath + ext, ec)) {
+                    auto retval = processScript(m_scriptPath + ext, m_barrierAfterLoad, m_executeModules);
+                    if (retval) {
+                        setLoadedFile(m_scriptPath + ext);
+                        return true;
+                    }
+                }
+            }
+        }
+    }
 
     auto retval = processScript(m_scriptPath, m_barrierAfterLoad, m_executeModules);
     setLoadedFile(m_scriptPath);
@@ -2227,7 +2246,7 @@ bool Hub::processScript(const std::string &filename, bool barrierAfterLoad, bool
 {
     assert(m_uiManager.isLocked());
 #ifdef HAVE_PYTHON
-    setStatus("Loading " + m_scriptPath + "...");
+    setStatus("Loading " + filename + "...");
     PythonInterpreter inter(filename, dir::share(m_prefix), barrierAfterLoad, executeModules);
     bool interrupt = false;
     while (!interrupt && inter.check()) {
@@ -2235,10 +2254,10 @@ bool Hub::processScript(const std::string &filename, bool barrierAfterLoad, bool
             interrupt = true;
     }
     if (interrupt || inter.error()) {
-        setStatus("Loading " + m_scriptPath + " failed");
+        setStatus("Loading " + filename + " failed");
         return false;
     }
-    setStatus("Loading " + m_scriptPath + " done");
+    setStatus("Loading " + filename + " done");
     return true;
 #else
     return false;

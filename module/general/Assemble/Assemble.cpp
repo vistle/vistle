@@ -8,9 +8,12 @@
 #include <vistle/core/unstr.h>
 #include <vistle/core/coords.h>
 #include <vistle/core/coordswradius.h>
+#include <vistle/alg/objalg.h>
+
+// FIXME: throw out unnecessary ghost cells
 
 class Assemble: public vistle::Module {
-    static const int NumPorts = 1;
+    static const int NumPorts = 3;
 
 public:
     Assemble(const std::string &name, int moduleID, mpi::communicator comm);
@@ -79,25 +82,18 @@ bool Assemble::compute()
             continue;
 
         oin[i] = expect<Object>(m_in[i]);
-        din[i] = DataBase::as(oin[i]);
-        Object::const_ptr g;
-        if (tt == -1 && oin[i]) {
-            tt = oin[i]->getTimestep();
+        auto split = splitContainerObject(oin[i]);
+        din[i] = split.mapped;
+        Object::const_ptr g = split.geometry;
+        if (tt == -1) {
+            tt = split.timestep;
         }
         if (!haveAttr && oin[i] && oin[i]->hasAttribute(m_attribute)) {
             haveAttr = true;
             attr = oin[i]->getAttribute(m_attribute);
         }
-        if (din[i]) {
-            g = din[i]->grid();
-            if (!g) {
-                din[i].reset();
-            }
-        }
-        if (!g && oin[i]->getInterface<GeometryInterface>())
-            g = oin[i];
         if (grid) {
-            if (*g != *grid) {
+            if (g->getHandle() != grid->getHandle()) {
                 sendError("Grids on input ports do not match");
                 return true;
             }
@@ -108,17 +104,11 @@ bool Assemble::compute()
                 return true;
             }
             grid = g;
-            if (tt == -1 && grid) {
-                tt = grid->getTimestep();
-            }
             if (!haveAttr && grid && grid->hasAttribute(m_attribute)) {
                 haveAttr = true;
                 attr = grid->getAttribute(m_attribute);
             }
-            normals = gi->normals();
-            if (tt == -1 && normals) {
-                tt = normals->getTimestep();
-            }
+            normals = split.normals;
             if (!haveAttr && normals && normals->hasAttribute(m_attribute)) {
                 haveAttr = true;
                 attr = normals->getAttribute(m_attribute);
@@ -253,30 +243,24 @@ bool Assemble::assemble(const Assemble::AssembleData &d)
         Normals::const_ptr normals;
         std::vector<const Scalar *> floats;
         for (int i = 0; i < NumPorts; ++i) {
+            if (!d[i])
+                continue;
             oin[i] = d[i]->at(n);
-            din[i] = DataBase::as(oin[i]);
-            Object::const_ptr g;
-            if (din[i]) {
-                g = din[i]->grid();
-                if (!g) {
-                    din[i].reset();
-                }
-            }
-            if (!g && oin[i]->getInterface<GeometryInterface>())
-                g = oin[i];
+            auto split = splitContainerObject(oin[i]);
+            din[i] = split.mapped;
+            Object::const_ptr g = split.geometry;
             if (grid) {
-                if (*g != *grid) {
+                if (g && g->getHandle() != grid->getHandle()) {
                     sendError("Grids on input ports do not match");
                     return true;
                 }
             } else {
-                auto gi = g->getInterface<GeometryInterface>();
-                if (!gi) {
+                if (!g) {
                     sendError("Input does not have a grid on port %s", m_in[i]->getName().c_str());
                     return true;
                 }
                 grid = g;
-                normals = gi->normals();
+                normals = split.normals;
             }
         }
 
@@ -408,6 +392,7 @@ bool Assemble::assemble(const Assemble::AssembleData &d)
         nnormals->x().resize(normOff[numobj]);
         nnormals->y().resize(normOff[numobj]);
         nnormals->z().resize(normOff[numobj]);
+        updateMeta(nnormals);
         if (ntri)
             ntri->setNormals(nnormals);
         if (nidx)
@@ -425,30 +410,24 @@ bool Assemble::assemble(const Assemble::AssembleData &d)
         Normals::const_ptr normals;
         std::vector<const Scalar *> floats;
         for (int i = 0; i < NumPorts; ++i) {
+            if (!d[i])
+                continue;
             oin[i] = d[i]->at(n);
-            din[i] = DataBase::as(oin[i]);
-            Object::const_ptr g;
-            if (din[i]) {
-                g = din[i]->grid();
-                if (!g) {
-                    din[i].reset();
-                }
-            }
-            if (!g && oin[i]->getInterface<GeometryInterface>())
-                g = oin[i];
+            auto split = splitContainerObject(oin[i]);
+            din[i] = split.mapped;
+            Object::const_ptr g = split.geometry;
             if (grid) {
-                if (*g != *grid) {
+                if (g && g->getHandle() != grid->getHandle()) {
                     sendError("Grids on input ports do not match");
                     return true;
                 }
             } else {
-                auto gi = g->getInterface<GeometryInterface>();
-                if (!gi) {
+                if (!g) {
                     sendError("Input does not have a grid on port %s", m_in[i]->getName().c_str());
                     return true;
                 }
                 grid = g;
-                normals = gi->normals();
+                normals = split.normals;
             }
         }
 
@@ -559,6 +538,7 @@ bool Assemble::assemble(const Assemble::AssembleData &d)
         if (ogrid && n == 0) {
             ogrid->copyAttributes(grid);
         }
+        updateMeta(ogrid);
 
         if (normals) {
             Index num = normals->getSize();
@@ -597,6 +577,7 @@ bool Assemble::assemble(const Assemble::AssembleData &d)
     for (int i = 0; i < NumPorts; ++i) {
         if (dout[i]) {
             dout[i]->setGrid(ogrid);
+            updateMeta(dout[i]);
             addObject(m_out[i], dout[i]);
         } else if (d[i] && !d[i]->empty()) {
             addObject(m_out[i], ogrid);

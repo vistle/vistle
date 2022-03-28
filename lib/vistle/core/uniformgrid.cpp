@@ -123,6 +123,7 @@ Normals::const_ptr UniformGrid::normals() const
 
 void UniformGrid::setNormals(Normals::const_ptr normals)
 {
+    assert(!normals || normals->check());
     d()->normals = normals;
 }
 
@@ -344,6 +345,7 @@ UniformGrid::Data::Data(const UniformGrid::Data &o, const std::string &n): Unifo
 
     normals = o.normals;
     for (int i = 0; i < 3; ++i) {
+        indexOffset[i] = o.indexOffset[i];
         min[i] = o.min[i];
         max[i] = o.max[i];
         numDivisions[i] = o.numDivisions[i];

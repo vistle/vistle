@@ -306,6 +306,8 @@ bool Object::check() const
 {
     V_CHECK(d()->refcount() > 0); // we are holding a reference
 
+    V_CHECK(d()->meta.creator() != -1);
+
     bool terminated = false;
     for (size_t i = 0; i < sizeof(shm_name_t); ++i) {
         if (d()->name[i] == '\0') {

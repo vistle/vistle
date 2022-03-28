@@ -141,7 +141,7 @@ bool ReadWRFChem::inspectDir()
                 sendError("File does not end with '.nc' ");
             }
         } else {
-            sendInfo("Could not find given directory. Please specify a valid path");
+            sendInfo("Could not find given directory %s. Please specify a valid path", sFileDir.c_str());
             return false;
         }
     } catch (std::exception &ex) {
@@ -490,7 +490,6 @@ Object::ptr ReadWRFChem::generateGrid(Block *b) const
             strGrid->setNumGhostLayers(i, StructuredGrid::Top, b[i].ghost[1]);
         }
 
-        strGrid->updateInternals();
         // delete [] hgt;
         delete[] lat;
         delete[] lon;
@@ -530,7 +529,6 @@ Object::ptr ReadWRFChem::generateGrid(Block *b) const
             strGrid->setNumGhostLayers(i, StructuredGrid::Bottom, b[i].ghost[0]);
             strGrid->setNumGhostLayers(i, StructuredGrid::Top, b[i].ghost[1]);
         }
-        strGrid->updateInternals();
         geoOut = strGrid;
 
         delete[] hgt;
@@ -545,10 +543,10 @@ Object::ptr ReadWRFChem::generateGrid(Block *b) const
             uniGrid->setNumGhostLayers(i, StructuredGrid::Bottom, b[i].ghost[0]);
             uniGrid->setNumGhostLayers(i, StructuredGrid::Top, b[i].ghost[1]);
         }
-        uniGrid->updateInternals();
         geoOut = uniGrid;
     }
 
+    updateMeta(geoOut);
     return geoOut;
 }
 
@@ -625,6 +623,7 @@ bool ReadWRFChem::addDataToPort(Token &token, NcFile *ncDataFile, int vi, Object
     obj->setMapping(DataBase::Vertex);
     std::string pVar = m_variables[vi]->getValue();
     obj->addAttribute("_species", pVar + " [" + unit + "]");
+    token.applyMeta(obj);
     token.addObject(m_dataOut[vi], obj);
 
     return true;
@@ -696,6 +695,7 @@ bool ReadWRFChem::read(Token &token, int timestep, int block)
             setMeta(outObject[block], block, numBlocks, -1);
         }
         if (timestep == -1) {
+            token.applyMeta(outObject[block]);
             token.addObject(m_gridOut, outObject[block]);
         } else {
             // ******** DATA *************

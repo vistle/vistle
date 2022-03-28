@@ -43,6 +43,7 @@ bool ScalarToVec::compute()
         }
     }
     out->setGrid(data_in[found]->grid());
+    updateMeta(out);
     addObject(m_vecOut, out);
 
     return true;

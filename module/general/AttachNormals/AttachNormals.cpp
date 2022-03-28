@@ -29,6 +29,7 @@ bool AttachNormals::compute()
 
     auto out = grid->clone();
     out->setNormals(normals);
+    updateMeta(out);
     addObject(m_gridOut, out);
 
     return true;

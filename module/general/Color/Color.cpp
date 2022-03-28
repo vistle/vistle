@@ -9,6 +9,7 @@
 #include <vistle/core/coords.h>
 #include <vistle/util/math.h>
 #include <vistle/module/resultcache.h>
+#include <vistle/alg/objalg.h>
 
 #include "Color.h"
 
@@ -699,6 +700,7 @@ void Color::sendColorMap()
         tex->addAttribute("_species", m_species);
         if (m_blendWithMaterialPara->getValue())
             tex->addAttribute("_blend_with_material", "true");
+        updateMeta(tex);
         addObject(m_colorOut, tex);
 
         std::stringstream buffer;
@@ -754,24 +756,17 @@ bool Color::prepare()
 
 bool Color::compute()
 {
-    Object::const_ptr obj;
-    DataBase::const_ptr data;
-    Coords::const_ptr coords = accept<Coords>(m_dataIn);
-    if (coords) {
-        obj = coords;
-    } else {
-        data = accept<DataBase>(m_dataIn);
-    }
-    if (!coords && !data) {
-        obj = accept<Object>(m_dataIn);
-    }
+    Object::const_ptr obj = expect<Object>(m_dataIn);
+    auto split = splitContainerObject(obj);
+    DataBase::const_ptr data = split.mapped;
 
-    if (obj) {
+    if (obj && !data) {
         // only grid, no mapped data
         if (m_dataOut->isConnected()) {
             Object::ptr nobj;
             if (auto entry = m_cache.getOrLock(obj->getName(), nobj)) {
                 nobj = obj->clone();
+                updateMeta(nobj);
                 m_cache.storeAndUnlock(entry, nobj);
             }
             addObject(m_dataOut, nobj);
@@ -908,6 +903,7 @@ void Color::process(const DataBase::const_ptr data)
             out->setMeta(data->meta());
             out->copyAttributes(data);
             nobj = out;
+            updateMeta(out);
             m_cache.storeAndUnlock(entry, nobj);
         }
 

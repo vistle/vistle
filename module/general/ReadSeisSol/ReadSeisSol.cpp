@@ -23,21 +23,19 @@
 #include <mpi.h>
 
 //vistle
-#include "vistle/core/object.h"
-#include "vistle/core/port.h"
-#include "vistle/core/database.h"
-#include "vistle/core/parameter.h"
-#include "vistle/core/scalar.h"
-#include "vistle/core/unstr.h"
-#include "vistle/core/vec.h"
-#include "vistle/core/vector.h"
-#include "vistle/module/module.h"
-#include "vistle/module/reader.h"
-#include "vistle/util/enum.h"
-
-//vistle module utils
-#include "vistle/module/utils/geo.h"
-#include "vistle/xdmf/xdmf.h"
+#include <vistle/core/object.h>
+#include <vistle/core/port.h>
+#include <vistle/core/database.h>
+#include <vistle/core/parameter.h>
+#include <vistle/core/scalar.h>
+#include <vistle/core/unstr.h>
+#include <vistle/core/vec.h>
+#include <vistle/core/vector.h>
+#include <vistle/module/module.h>
+#include <vistle/module/reader.h>
+#include <vistle/util/enum.h>
+#include <vistle/alg/geo.h>
+#include <vistle/xdmf/xdmf.h>
 
 //boost
 #include <boost/mpi/communicator.hpp>
@@ -941,7 +939,7 @@ bool ReadSeisSol::readXdmfHDF5Data(Token &token, int timestep, int block)
     if (m_gridOut->isConnected() && vugrid_ptr.get()) {
         vugrid_ptr->setBlock(block);
         vugrid_ptr->setTimestep(timestep);
-        vugrid_ptr->updateInternals();
+        token.applyMeta(vugrid_ptr);
         token.addObject(m_gridOut, vugrid_ptr);
     }
 
@@ -961,8 +959,7 @@ bool ReadSeisSol::readXdmfHDF5Data(Token &token, int timestep, int block)
             vatt_ptr->setMapping(DataBase::Element);
             vatt_ptr->addAttribute("_species", xatt->getName());
             vatt_ptr->setTimestep(timestep);
-            vatt_ptr->updateInternals();
-
+            token.applyMeta(vatt_ptr);
             token.addObject(att_port, vatt_ptr);
         } else
             return false;

@@ -83,8 +83,6 @@ private:
 
 public:
     struct Data: public Base::Data {
-        VecVector min;
-        VecVector max;
         ShmVector<T> x[Dim];
         // when used as Vec
         Data(const Index size = 0, const std::string &name = "", const Meta &meta = Meta());

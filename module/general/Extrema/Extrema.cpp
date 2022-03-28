@@ -13,6 +13,7 @@
 #include <vistle/core/coords.h>
 #include <vistle/core/lines.h>
 #include <vistle/core/structuredgridbase.h>
+#include <vistle/alg/objalg.h>
 
 #ifdef BOUNDINGBOX
 #define Extrema BoundingBox
@@ -203,10 +204,9 @@ bool Extrema::compute()
 
 #ifdef BOUNDINGBOX
     auto obj = expect<Object>("grid_in");
-    auto data = DataBase::as(obj);
-    if (data && data->grid()) {
-        obj = data->grid();
-    }
+    auto split = splitContainerObject(obj);
+    auto data = split.mapped;
+    obj = split.geometry;
 #else
     Object::const_ptr obj = expect<DataBase>("data_in");
 #endif
@@ -313,6 +313,7 @@ bool Extrema::compute()
         Lines::ptr box = makeBox(min, max);
         box->copyAttributes(obj);
         box->setTransform(Matrix4::Identity(4, 4));
+        updateMeta(box);
         addObject("grid_out", box);
     }
 #else
@@ -323,6 +324,7 @@ bool Extrema::compute()
     out->addAttribute("maxIndex", maxIndex.str());
     //std::cerr << "Extrema: min " << min << ", max " << max << std::endl;
 
+    updateMeta(out);
     addObject("data_out", out);
 #endif
 
@@ -366,6 +368,7 @@ bool Extrema::reduce(int timestep)
     bool perBlock = getIntParameter("per_block");
     if (!perBlock && haveGeometry && rank() == 0) {
         Lines::ptr box = makeBox(gmin, gmax);
+        updateMeta(box);
         addObject("grid_out", box);
     }
 #endif

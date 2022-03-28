@@ -1,6 +1,7 @@
 #include "MapDrape.h"
 #include <vistle/core/structuredgrid.h>
 #include <vistle/core/object.h>
+#include <vistle/alg/objalg.h>
 #include <boost/mpl/for_each.hpp>
 
 #ifdef MAPDRAPE
@@ -234,13 +235,10 @@ bool MapDrape::compute()
             return true;
         }
 
-        Object::const_ptr geo = obj;
-        auto data = DataBase::as(obj);
-        if (data && data->grid()) {
-            geo = data->grid();
-        } else {
-            data.reset();
-        }
+        auto split = splitContainerObject(obj);
+
+        Object::const_ptr geo = split.geometry;
+        auto data = split.mapped;
 
 #ifdef MAPDRAPE
         if (!isConnected(*data_out[port]))
@@ -265,7 +263,7 @@ bool MapDrape::compute()
 #endif
 #ifdef DISPLACE
             if (!data) {
-            outGeo = geo;
+            outGeo = geo->clone();
         } else
 #endif
 
@@ -411,6 +409,7 @@ bool MapDrape::compute()
             proj_destroy(P);
 #endif
 
+            updateMeta(outCoords);
             m_alreadyMapped.storeAndUnlock(cacheEntry, outCoords);
 #endif
 
@@ -421,6 +420,7 @@ bool MapDrape::compute()
                 sendInfo("computing displaced grid failed");
                 return true;
             }
+            updateMeta(outCoords);
 #endif
         }
 
@@ -431,6 +431,7 @@ bool MapDrape::compute()
         if (data) {
             auto dataOut = data->clone();
             dataOut->setGrid(outGeo);
+            updateMeta(dataOut);
             addObject(data_out[port], dataOut);
         } else {
             passThroughObject(data_out[port], outGeo);

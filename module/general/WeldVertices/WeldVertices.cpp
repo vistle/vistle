@@ -6,6 +6,7 @@
 #include <vistle/core/grid.h>
 #include <vistle/core/database.h>
 #include <vistle/core/unstr.h>
+#include <vistle/alg/objalg.h>
 
 class WeldVertices: public vistle::Module {
     static const int NumPorts = 3;
@@ -81,39 +82,33 @@ bool WeldVertices::compute(std::shared_ptr<BlockTask> task) const
     for (int i = 0; i < NumPorts; ++i) {
         if (m_in[i]->isConnected()) {
             oin[i] = task->expect<Object>(m_in[i]);
-            din[i] = DataBase::as(oin[i]);
-            Object::const_ptr g;
+            auto split = splitContainerObject(oin[i]);
+
+            din[i] = split.mapped;
+            Object::const_ptr g = split.geometry;
             if (din[i]) {
-                g = din[i]->grid();
-                if (!g) {
-                    din[i].reset();
-                } else {
-                    if (din[i]->mapping() == DataBase::Vertex) {
-                        if (auto s = Vec<Scalar, 1>::as(din[i])) {
-                            floats.push_back(s->x());
-                        } else if (auto v = Vec<Scalar, 3>::as(din[i])) {
-                            floats.push_back(s->x());
-                            floats.push_back(s->y());
-                            floats.push_back(s->z());
-                        }
+                if (din[i]->mapping() == DataBase::Vertex) {
+                    if (auto s = Vec<Scalar, 1>::as(din[i])) {
+                        floats.push_back(s->x());
+                    } else if (auto v = Vec<Scalar, 3>::as(din[i])) {
+                        floats.push_back(s->x());
+                        floats.push_back(s->y());
+                        floats.push_back(s->z());
                     }
                 }
             }
-            if (!g && oin[i]->getInterface<GeometryInterface>())
-                g = oin[i];
             if (grid) {
-                if (*g != *grid) {
+                if (*split.geometry != *grid) {
                     sendError("Grids on input ports do not match");
                     return true;
                 }
             } else {
-                auto gi = g->getInterface<GeometryInterface>();
-                if (!gi) {
+                if (!split.geometry) {
                     sendError("Input does not have a grid on port %s", m_in[i]->getName().c_str());
                     return true;
                 }
-                grid = g;
-                normals = gi->normals();
+                grid = split.geometry;
+                normals = split.normals;
                 if (normals && normals->mapping() != DataBase::Element) {
                     floats.push_back(normals->x());
                     floats.push_back(normals->y());
@@ -263,6 +258,7 @@ bool WeldVertices::compute(std::shared_ptr<BlockTask> task) const
 
     if (ogrid) {
         ogrid->copyAttributes(grid);
+        updateMeta(ogrid);
     }
     auto ncoord = Coords::as(ogrid);
     if (!ncoord) {
@@ -298,6 +294,7 @@ bool WeldVertices::compute(std::shared_ptr<BlockTask> task) const
                 oy[i] = y[remap[i]];
                 oz[i] = z[remap[i]];
             }
+            updateMeta(nout);
             oc->setNormals(nout);
         }
     }
@@ -307,6 +304,7 @@ bool WeldVertices::compute(std::shared_ptr<BlockTask> task) const
             if (din[i]->mapping() == DataBase::Element) {
                 auto dout = din[i]->clone();
                 dout->setGrid(ogrid);
+                updateMeta(dout);
                 task->addObject(m_out[i], dout);
             } else {
                 auto dout = din[i]->clone();
@@ -332,6 +330,7 @@ bool WeldVertices::compute(std::shared_ptr<BlockTask> task) const
                     }
                 }
                 dout->setGrid(ogrid);
+                updateMeta(dout);
                 task->addObject(m_out[i], dout);
             }
         } else {

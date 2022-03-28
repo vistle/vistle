@@ -50,6 +50,7 @@ class Leveller {
     vistle::Index m_processortype;
     vistle::Triangles::ptr m_triangles;
     vistle::Lines::ptr m_lines;
+    vistle::Normals::ptr m_normals;
     std::vector<vistle::DataBase::ptr> m_outvertData;
     std::vector<vistle::DataBase::ptr> m_outcellData;
     vistle::Scalar gmin, gmax;
@@ -69,7 +70,8 @@ public:
 #ifndef CUTTINGSURFACE
     void setIsoData(vistle::Vec<vistle::Scalar>::const_ptr obj);
 #endif
-    vistle::Object::ptr result();
+    vistle::Coords::ptr result();
+    vistle::Normals::ptr normresult();
     vistle::DataBase::ptr mapresult() const;
     vistle::DataBase::ptr cellresult() const;
     std::pair<vistle::Scalar, vistle::Scalar> range();

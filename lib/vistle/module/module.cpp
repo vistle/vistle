@@ -8,12 +8,12 @@
 #include <iomanip>
 #include <algorithm>
 #include <deque>
+#include <mutex>
 
 #ifdef _OPENMP
 #include <omp.h>
 #endif
 
-#include <mutex>
 #include <boost/asio.hpp>
 
 #include <vistle/util/sysdep.h>
@@ -698,9 +698,10 @@ bool Module::broadcastObjectViaShm(Object::const_ptr &object, const std::string 
     bool ok = true;
     if (rank() == shmLeader(rank())) {
         ok = broadcastObject(m_commShmLeaders, object, m_shmLeadersSubrank[root]);
+        assert(object);
     }
     if (shmLeader(rank()) != shmLeader(root)) {
-        m_commShmGroup.barrier();
+        m_commShmGroup.barrier(); // synchronize, so that object is available on leader
     }
     if (shmLeader(rank()) == shmLeader(root) || shmLeader(rank()) == rank()) {
         assert(object);
@@ -708,6 +709,7 @@ bool Module::broadcastObjectViaShm(Object::const_ptr &object, const std::string 
         object = Shm::the().getObjectFromName(objName);
         assert(object);
     }
+    m_commShmGroup.barrier(); // synchronize, so that leader keeps object around long enough
     return ok;
 }
 
@@ -769,6 +771,8 @@ void Module::updateMeta(vistle::Object::ptr obj) const
         obj->setExecutionCounter(m_executionCount);
         if (obj->getIteration() < m_iteration)
             obj->setIteration(m_iteration);
+
+        obj->updateInternals();
     }
 }
 
@@ -784,9 +788,8 @@ bool Module::addObject(const std::string &portName, vistle::Object::ptr object)
 
 bool Module::addObject(Port *port, vistle::Object::ptr object)
 {
-    if (object)
-        object->updateInternals();
-    updateMeta(object);
+    assert(!object || object->getCreator() == id());
+
     vistle::Object::const_ptr cobj = object;
     return passThroughObject(port, cobj);
 }
@@ -2349,6 +2352,7 @@ bool Module::compute()
     }
     m_tasks.push_back(task);
 
+    std::unique_lock<std::mutex> guard(task->m_mutex);
     task->m_future = std::async(std::launch::async, [this, task] { return compute(task); });
     return true;
 }
@@ -2421,6 +2425,7 @@ bool Module::reduceWrapper(const message::Execute *exec, bool reordered)
     for (auto &port: outputPorts) {
         if (isConnected(port.second) && m_withOutput.find(&port.second) == m_withOutput.end()) {
             Empty::ptr empty(new Empty(Object::Initialized));
+            updateMeta(empty);
             addObject(&port.second, empty);
         }
     }
@@ -2557,8 +2562,12 @@ BlockTask::BlockTask(Module *module): m_module(module)
 {
     for (auto &p: module->inputPorts) {
         m_portsByString[p.first] = &p.second;
-        if (module->hasObject(&p.second)) {
-            m_input[&p.second] = module->takeFirstObject(&p.second);
+        if (module->isConnected(p.second)) {
+            if (module->hasObject(&p.second)) {
+                m_input[&p.second] = module->takeFirstObject(&p.second);
+            } else {
+                CERR << "no input on port " << p.first << std::endl;
+            }
         }
     }
     for (auto &p: module->outputPorts) {
@@ -2569,8 +2578,8 @@ BlockTask::BlockTask(Module *module): m_module(module)
 
 BlockTask::~BlockTask()
 {
-    waitDependencies();
-    addAllObjects();
+    assert(m_dependencies.empty());
+    assert(m_objects.empty());
 }
 
 bool BlockTask::hasObject(const Port *p)
@@ -2598,15 +2607,7 @@ void BlockTask::addDependency(std::shared_ptr<BlockTask> dep)
 void BlockTask::addObject(Port *port, Object::ptr obj)
 {
     assert(m_ports.find(port) != m_ports.end());
-
-    if (!dependenciesDone()) {
-        m_objects[port].emplace_back(obj);
-        m_passThrough[port].emplace_back(false);
-        return;
-    }
-
-    addAllObjects();
-    m_module->addObject(port, obj);
+    m_objects[port].emplace_back(obj);
 }
 
 void BlockTask::addObject(const std::string &port, Object::ptr obj)
@@ -2620,83 +2621,24 @@ void BlockTask::addObject(const std::string &port, Object::ptr obj)
     addObject(it->second, obj);
 }
 
-void BlockTask::passThroughObject(Port *port, Object::const_ptr obj)
-{
-    assert(m_ports.find(port) != m_ports.end());
-
-    if (!dependenciesDone()) {
-        m_objects[port].emplace_back(std::const_pointer_cast<Object>(obj));
-        m_passThrough[port].emplace_back(true);
-        return;
-    }
-
-    addAllObjects();
-    m_module->passThroughObject(port, obj);
-}
-
-void BlockTask::passThroughObject(const std::string &port, Object::const_ptr obj)
-{
-    auto it = m_portsByString.find(port);
-    assert(it != m_portsByString.end());
-    if (it == m_portsByString.end()) {
-        CERR << "BlockTask: port '" << port << "' not found" << std::endl;
-        return;
-    }
-    passThroughObject(it->second, obj);
-}
-
 void BlockTask::addAllObjects()
 {
-    assert(dependenciesDone());
-
-    while (!m_objects.empty()) {
-        for (auto it = m_objects.begin(); it != m_objects.end(); ++it) {
-            auto &p = it->first;
-            auto &q = it->second;
-            auto &passQueue = m_passThrough[p];
-            assert(q.size() == passQueue.size());
-            if (!q.empty()) {
-                if (passQueue.front())
-                    m_module->passThroughObject(p, q.front());
-                else
-                    m_module->addObject(p, q.front());
-                q.pop_front();
-                passQueue.pop_front();
-            }
-
-            if (q.empty()) {
-                assert(passQueue.empty());
-                m_passThrough.erase(p);
-                m_objects.erase(it);
-                break;
-            }
-        }
+    for (auto &port_queue: m_objects) {
+        auto &port = port_queue.first;
+        auto &queue = port_queue.second;
+        for (auto &obj: queue)
+            m_module->addObject(port, obj);
     }
-}
 
-bool BlockTask::isDone()
-{
-    if (!m_future.valid())
-        return false;
-
-    return dependenciesDone();
-}
-
-bool BlockTask::dependenciesDone()
-{
-    std::unique_lock<std::mutex> guard(m_mutex);
-    for (auto it = m_dependencies.begin(); it != m_dependencies.end(); ++it) {
-        auto &d = *it;
-        if (!d->isDone())
-            return false;
-    }
-    return true;
+    m_objects.clear();
 }
 
 bool BlockTask::wait()
 {
     waitDependencies();
-    return m_future.get();
+    bool result = m_future.get();
+    addAllObjects();
+    return result;
 }
 
 bool BlockTask::waitDependencies()
@@ -2704,11 +2646,7 @@ bool BlockTask::waitDependencies()
     std::unique_lock<std::mutex> guard(m_mutex);
     for (auto it = m_dependencies.begin(); it != m_dependencies.end(); ++it) {
         auto &d = *it;
-        if (!d->isDone()) {
-            guard.unlock();
-            d->wait();
-            guard.lock();
-        }
+        d->wait();
     }
 
     m_dependencies.clear();

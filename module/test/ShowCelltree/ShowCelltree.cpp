@@ -242,14 +242,17 @@ bool ShowCelltree::compute()
     }
 
     out->copyAttributes(gridObj);
+    updateMeta(out);
     addObject("grid_out", out);
     dataOut->setGrid(out);
+    updateMeta(dataOut);
     addObject("data_out", dataOut);
     if (celltreeValid) {
         vistle::Lines::ptr out(new vistle::Lines(Object::Initialized));
         out->copyAttributes(gridObj);
         vistle::Vec<Scalar>::ptr dataOut(new vistle::Vec<Scalar>(Object::Initialized));
         dataOut->setGrid(out);
+        updateMeta(dataOut);
         addObject("invalid_out", dataOut);
     } else {
         addObject("invalid_out", dataOut);

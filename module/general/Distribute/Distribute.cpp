@@ -38,6 +38,7 @@ bool Distribute::compute()
             if (r == rank()) {
                 auto nobj = obj->clone();
                 xmit = nobj;
+                updateMeta(nobj);
                 broadcastObject(xmit, r);
                 addObject("data_out", nobj);
             } else {

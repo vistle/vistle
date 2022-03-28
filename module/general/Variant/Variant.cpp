@@ -79,6 +79,7 @@ bool Variant::compute()
             nobj->addAttribute("_variant", variant);
             nobj->addAttribute("_plugin", "Variant");
         }
+        updateMeta(nobj);
         m_cache.storeAndUnlock(entry, nobj);
     }
     addObject("data_out", nobj);

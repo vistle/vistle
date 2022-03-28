@@ -98,10 +98,12 @@ bool ToSpheres::compute()
     }
     spheres->setMeta(points->meta());
     spheres->copyAttributes(points);
+    updateMeta(spheres);
 
     if (data) {
         auto dout = data->clone();
         dout->setGrid(spheres);
+        updateMeta(dout);
         addObject("grid_out", dout);
     } else {
         addObject("grid_out", spheres);
