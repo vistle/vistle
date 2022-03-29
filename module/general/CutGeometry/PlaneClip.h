@@ -1,30 +1,46 @@
 #ifndef PLANECLIP_H
 #define PLANECLIP_H
 
+#include <functional>
+#include <tuple>
+#include <utility>
 #include <vistle/core/triangles.h>
 #include <vistle/core/polygons.h>
 #include "../IsoSurface/IsoDataFunctor.h"
 
 using namespace vistle;
 
+
 class PlaneClip {
 public:
     PlaneClip(Triangles::const_ptr grid, IsoDataFunctor decider);
     PlaneClip(Polygons::const_ptr grid, IsoDataFunctor decider);
 
-    /* template<class... Args> */
-    /* void processParallel(Args... args){}; */
+    template<typename F, typename... Args>
+    auto for_each_arg(ssize_t elem, F f, Args &&...args)
+    {
+        return std::make_tuple(f(elem, args)...);
+    }
+
+    template<typename... Args>
+    void forwardProcess(Args &&...args) const
+    {
+        processParallel(std::forward<Args>(args)...);
+    }
 
     typedef std::vector<Index> IdxVec;
-    template<class T, class... idxVecArgs>
-    void scheduleProcess(T numElem, bool numVertsOnly, idxVecArgs... ivec)
+    template<typename... idxVecs>
+    void scheduleProcess(bool numVertsOnly, Index numElem, idxVecs &&...vecs)
     {
-        auto accessElem = [](const ssize_t &e, const IdxVec &vec) {
+        auto accessElem = [](const ssize_t &e, const auto &vec) {
             return vec[e];
         };
 #pragma omp parallel for schedule(dynamic)
-        for (ssize_t elem = 0; elem < ssize_t(numElem); ++elem)
-            processParallel(elem, (accessElem(elem, ivec), ...), numVertsOnly);
+        for (ssize_t elem = 0; elem < ssize_t(numElem); ++elem) {
+            auto t = std::make_tuple(numVertsOnly, elem);
+            auto forward = std::tuple_cat(t, for_each_arg(elem, accessElem, vecs...));
+            std::apply([this](auto &&...args) { processParallel(args...); }, forward);
+        }
     }
 
     void addData(Object::const_ptr obj);
@@ -42,13 +58,13 @@ private:
     void processPolygon(const Index element, Index &outIdxPoly, Index &outIdxCorner, Index &outIdxCoord,
                         bool numVertsOnly);
 
-    void processParallel(const Index element, Index &outIdxCorner, Index &outIdxCoord, bool numVertsOnly)
+    void processParallel(bool numVertsOnly, const Index element, Index &outIdxCorner, Index &outIdxCoord)
     {
         processTriangle(element, outIdxCoord, outIdxCoord, numVertsOnly);
     }
 
-    void processParallel(const Index element, Index &outIdxPoly, Index &outIdxCorner, Index &outIdxCoord,
-                         bool numVertsOnly)
+    void processParallel(bool numVertsOnly, const Index element, Index &outIdxPoly, Index &outIdxCorner,
+                         Index &outIdxCoord)
     {
         processPolygon(element, outIdxCoord, outIdxCoord, outIdxCoord, numVertsOnly);
     }

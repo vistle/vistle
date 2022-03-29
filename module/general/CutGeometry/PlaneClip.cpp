@@ -161,12 +161,12 @@ bool PlaneClip::process()
         std::vector<Index> outIdxCorner(numElem + 1), outIdxCoord(numElem + 1);
 
         prepareTriangles(outIdxCorner, outIdxCoord, numCoordsIn, numElem);
-        /* scheduleProcess(numElem, false, outIdxCorner, outIdxCoord); */
+        scheduleProcess(false, numElem, outIdxCorner, outIdxCoord);
 
-#pragma omp parallel for schedule(dynamic)
-        for (ssize_t elem = 0; elem < ssize_t(numElem); ++elem) {
-            processTriangle(elem, outIdxCorner[elem], outIdxCoord[elem], false);
-        }
+        /* #pragma omp parallel for schedule(dynamic) */
+        /*         for (ssize_t elem = 0; elem < ssize_t(numElem); ++elem) { */
+        /*             processTriangle(elem, outIdxCorner[elem], outIdxCoord[elem], false); */
+        /*         } */
 
         //std::cerr << "CuttingSurface: << " << m_outData->x().size() << " vert, " << m_outData->x().size() << " data elements" << std::endl;
     } else if (m_poly) {
@@ -177,7 +177,7 @@ bool PlaneClip::process()
         outIdxCoord[0] = numCoordsIn;
 
         preparePolygons(outIdxPoly, outIdxCorner, outIdxCoord, numCoordsIn, numElem);
-        /* scheduleProcess(numElem, false, outIdxPoly, outIdxCorner, outIdxCoord); */
+        /* scheduleProcess(false, numElem, outIdxPoly, outIdxCorner, outIdxCoord); */
 
 #pragma omp parallel for schedule(dynamic)
         for (ssize_t elem = 0; elem < ssize_t(numElem); ++elem) {
