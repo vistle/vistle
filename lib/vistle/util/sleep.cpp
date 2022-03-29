@@ -25,10 +25,10 @@ bool adaptive_wait(bool work, const void *client)
         it = idleMap.insert(std::make_pair(client, 0)).first;
 
     auto &idle = it->second;
-    protect.unlock();
 
     if (work) {
         idle = 0;
+        protect.unlock();
         return false;
     }
 
@@ -40,8 +40,10 @@ bool adaptive_wait(bool work, const void *client)
         delay = MaxDelay;
 
     idle += delay;
+    auto idletime = idle;
+    protect.unlock();
 
-    if (idle > delay) {
+    if (idletime > delay) {
 #if 0
       if (delay == MinDelay)
          std::cerr << "." << std::flush;
