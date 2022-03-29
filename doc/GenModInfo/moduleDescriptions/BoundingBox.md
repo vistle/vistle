@@ -50,10 +50,10 @@ block individually instead of for all blocks globally.
 
 ## Usage Examples
 
-![]( ../../../module/general/BoundingBox/tiny-covise-net.png )
+![](../../../module/general/BoundingBox/tiny-covise-net.png)
 Workflow for reading scalar and vector fields and drawing a bounding box around the domain of the data
 
-![]( ../../../module/general/BoundingBox/tiny-covise.png )
+![](../../../module/general/BoundingBox/tiny-covise.png)
 Rendering of visualization with a enclosing bounding box
 
 ## Related Modules

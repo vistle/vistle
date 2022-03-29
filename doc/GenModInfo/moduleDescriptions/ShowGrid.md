@@ -29,7 +29,8 @@ show outlines of grid cells
 |prism|Show prism|Int|
 |hexahedron|Show hexahedron|Int|
 |polyhedron|Show polyhedron|Int|
+|polygon|Show polygon|Int|
 |quad|Show quad|Int|
-|triangle|Show triandle|Int|
+|triangle|Show triangle|Int|
 |Show Cells from Cell Nr. :|Show Cell Nr.|Int|
 |Show Cells to Cell Nr. :|Show Cell Nr.|Int|
