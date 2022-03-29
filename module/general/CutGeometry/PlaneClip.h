@@ -7,6 +7,7 @@
 #include <vistle/core/triangles.h>
 #include <vistle/core/polygons.h>
 #include "../IsoSurface/IsoDataFunctor.h"
+#include "vistle/core/vector.h"
 
 using namespace vistle;
 
@@ -43,11 +44,11 @@ public:
 
 private:
     Vector3 splitEdge(Index i, Index j);
-    auto initPreExisting(const Index &idx);
+    auto initPreExistCorner(const Index &idx);
 
     typedef std::function<bool(const Index &)> LogicalOperation;
-    auto initPreExistingAndCheck(LogicalOperation op, const Index &idx);
-    void copySplitEdgeResultToOutCoords(const Index &curIdx, const Index &in, const Index &out);
+    auto initPreExistCornerAndCheck(LogicalOperation op, const Index &idx);
+    void copySplitEdgeResultToOutCoords(const Index &idx, const Index &in, const Index &out);
     void prepareTriangles(std::vector<Index> &outIdxCorner, std::vector<Index> &outIdxCoord, const Index &numCoordsIn,
                           const Index &numElem);
     void preparePolygons(std::vector<Index> &outIdxPoly, std::vector<Index> &outIdxCorner,
@@ -63,6 +64,11 @@ private:
     void insertElemNextToCutPlane(bool numVertsOnly, const Index *vertexMap, const Index &numIn, const Index &start,
                                   const Index &cornerIn, const Index &cornerOut, Index &outIdxCorner,
                                   Index &outIdxCoord);
+    void copyVec3ToOutCoords(const vistle::Vector3 &vec, const Index &idx, const std::array<Index, 3> &outIdxList = {},
+                             const std::array<Index, 3> &vecIdxList = {0, 1, 2});
+
+    template<typename... EigenVec3Args>
+    void iterCopyOfVec3ToOutCoords(Index &idx, EigenVec3Args &&...vecs);
 
     void processParallel(bool numVertsOnly, const Index element, Index &outIdxCorner, Index &outIdxCoord)
     {
