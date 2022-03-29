@@ -22,12 +22,6 @@ public:
         return std::make_tuple(f(elem, args)...);
     }
 
-    template<typename... Args>
-    void forwardProcess(Args &&...args) const
-    {
-        processParallel(std::forward<Args>(args)...);
-    }
-
     typedef std::vector<Index> IdxVec;
     template<typename... idxVecs>
     void scheduleProcess(bool numVertsOnly, Index numElem, idxVecs &&...vecs)
@@ -49,14 +43,26 @@ public:
 
 private:
     Vector3 splitEdge(Index i, Index j);
+    auto initPreExisting(const Index &idx);
+
+    typedef std::function<bool(const Index &)> LogicalOperation;
+    auto initPreExistingAndCheck(LogicalOperation op, const Index &idx);
+    void copySplitEdgeResultToOutCoords(const Index &curIdx, const Index &in, const Index &out);
     void prepareTriangles(std::vector<Index> &outIdxCorner, std::vector<Index> &outIdxCoord, const Index &numCoordsIn,
                           const Index &numElem);
     void preparePolygons(std::vector<Index> &outIdxPoly, std::vector<Index> &outIdxCorner,
                          std::vector<Index> &outIdxCoord, const Index &numCoordsIn, const Index &numElem);
-    void processCoordinates();
     void processTriangle(const Index element, Index &outIdxCorner, Index &outIdxCoord, bool numVertsOnly);
+    void prepareToEmitInOrder(const Index *vertexMap, const Index &start, Index &cornerIn, Index &cornerOut,
+                              Index &numIn);
     void processPolygon(const Index element, Index &outIdxPoly, Index &outIdxCorner, Index &outIdxCoord,
                         bool numVertsOnly);
+    void processCoordinates();
+    void insertElemNextToCutPlane(bool numVertsOnly, const Index *vertexMap, const Index &start, Index &outIdxCorner,
+                                  Index &outIdxCoord);
+    void insertElemNextToCutPlane(bool numVertsOnly, const Index *vertexMap, const Index &numIn, const Index &start,
+                                  const Index &cornerIn, const Index &cornerOut, Index &outIdxCorner,
+                                  Index &outIdxCoord);
 
     void processParallel(bool numVertsOnly, const Index element, Index &outIdxCorner, Index &outIdxCoord)
     {
@@ -69,6 +75,16 @@ private:
         processPolygon(element, outIdxCoord, outIdxCoord, outIdxCoord, numVertsOnly);
     }
 
+
+    /* #define PROCESS_PARALLEL_IMPL(FUNC_NAME,...) \ */
+    /* template<typename... Args> \ */
+    /* void processParallel(Args&&... args) \ */
+    /* { \ */
+    /*     FUNC_NAME(std::forward<Args>(args)...); \ */
+    /* } \ */
+
+    /* PROCESS_PARALLEL_IMPL(processTriangle); */
+    /* PROCESS_PARALLEL_IMPL(processPolygon); */
 
 private:
     Coords::const_ptr m_coord;
