@@ -907,9 +907,19 @@ public:
 
     void newHub(int hub, const std::string &name, int nranks, const std::string &address, const std::string &logname,
                 const std::string &realname) override
-    {}
+    {
+#ifdef OBSERVER_DEBUG
+        m_out << "   hub " << name << " added with " << nranks << " ranks, operated by " << realname << std::endl;
+#endif
+    }
+
     void deleteHub(int hub) override
-    {}
+    {
+#ifdef OBSERVER_DEBUG
+        m_out << "   hub " << name << " deleted" << std::endl;
+#endif
+    }
+
     void moduleAvailable(const AvailableModule &mod) override
     {
 #ifdef OBSERVER_DEBUG
