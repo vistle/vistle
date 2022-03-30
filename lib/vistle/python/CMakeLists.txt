@@ -6,7 +6,7 @@ if(Python_FOUND)
     set(python_HEADERS ${python_HEADERS} pythoninterface.h pythonmodule.h)
 endif()
 
-vistle_add_library(vistle_python INTERNAL STATIC ${python_SOURCES} ${python_HEADERS})
+vistle_add_library(vistle_python EXPORT ${VISTLE_LIB_TYPE} ${python_SOURCES} ${python_HEADERS})
 target_link_libraries(
     vistle_python
     PRIVATE Boost::system
