@@ -193,6 +193,11 @@ bool PlaneClip::process()
     return true;
 }
 
+/**
+ * @brief Get result.
+ *
+ * @return return m_outCoords.
+ */
 Object::ptr PlaneClip::result()
 {
     return m_outCoords;
@@ -238,7 +243,7 @@ void PlaneClip::processCoordinates()
 }
 
 /**
- * @brief Split the edges between two corners specified by given index. 
+ * @brief Split the edges between two corners specified by given index.
  *
  * @param i First corner.
  * @param j Secont corner.
@@ -331,6 +336,61 @@ void PlaneClip::copyVec3ToOutCoords(const vistle::Vector3 &vec, const Index &idx
 }
 
 /**
+ * @brief Copy x, y and z values from index in to out_x, out_y and out_z at index out.
+ *
+ * @param out Output index.
+ * @param in Input index.
+ */
+void PlaneClip::copyScalarToOutCoords(const Index &out, const Index &in)
+{
+    out_x[out] = x[in];
+    out_y[out] = y[in];
+    out_z[out] = z[in];
+}
+
+/**
+ * @brief Copy given index to output connect list.
+ *
+ * @param out Index for output.
+ * @param idx Value to copy.
+ */
+void PlaneClip::copyIdxToOutConnList(const Index &out, const Index &idx)
+{
+    out_cl[out] = idx;
+}
+
+/**
+ * @brief Copy given indeces to output connect list by starting with index out and incrementing this by one with each iteration.
+ *
+ * @param out Start index for ouput.
+ * @param vecIdx Values to assign.
+ *
+ * @return Last index of output assignment.
+ */
+auto PlaneClip::copyIndecesToOutConnList(const Index &out, const std::vector<Index> &vecIdx)
+{
+    Index n{0};
+    std::for_each(vecIdx.begin(), vecIdx.end(), [&](const auto &idx) {
+        copyIdxToOutConnList(out + n, idx);
+        ++n;
+    });
+    return n;
+}
+
+/**
+ * @brief Copy given indeces to output connect list by starting with index out and incrementing this by one with each iteration and check logical operation on result (useful for debugging).
+ *
+ * @param op Boolsche logical operation.
+ * @param out Start index for ouput.
+ * @param vecIdx Values to assign.
+ */
+void PlaneClip::copyIndecesToOutConnListAndCheck(LogicalOperation op, const Index &out,
+                                                 const std::vector<Index> &vecIdx)
+{
+    assert(op(copyIndecesToOutConnList(out, vecIdx)));
+}
+
+/**
  * @brief Split the edges and copy given Vector3 values to out_x, out_y and out_z.
  *
  * @param idx Current index.
@@ -389,9 +449,7 @@ void PlaneClip::insertElemNextToCutPlane(bool numVertsOnly, const Index *vertexM
         for (Index i = 0; i < 3; ++i) {
             const Index in = start + i;
             const Index out = outIdxCoord + i;
-            out_x[out] = x[in];
-            out_y[out] = y[in];
-            out_z[out] = z[in];
+            copyScalarToOutCoords(out, in);
         }
     }
 }
@@ -420,6 +478,10 @@ void PlaneClip::insertElemNextToCutPlane(bool numVertsOnly, const Index *vertexM
     auto outPredicate = [&vertexMap](const auto &idx) -> bool {
         return vertexMap[idx] == 0;
     };
+    // for debugging
+    /* auto totalCornerPredicate = [&totalCorner](const Index &idx) -> bool { */
+    /*     return idx == totalCorner; */
+    /* }; */
 
     if (numVertsOnly) {
         outIdxCorner = haveCornerList ? totalCorner : 0;
@@ -436,20 +498,13 @@ void PlaneClip::insertElemNextToCutPlane(bool numVertsOnly, const Index *vertexM
         copySplitEdgeResultToOutCoords(outIdxCoord, in0, out0);
         copySplitEdgeResultToOutCoords(outIdxCoord + 1, in0, out1);
 
-        if (haveCornerList) {
-            Index n = 0;
-            out_cl[outIdxCorner + n] = vertexMap[in0] - 1;
-            ++n;
-            out_cl[outIdxCorner + n] = outIdxCoord;
-            ++n;
-            out_cl[outIdxCorner + n] = outIdxCoord + 1;
-            ++n;
-            assert(n == totalCorner);
-        } else {
-            out_x[outIdxCoord + 2] = x[in0];
-            out_y[outIdxCoord + 2] = y[in0];
-            out_z[outIdxCoord + 2] = z[in0];
-        }
+        if (haveCornerList)
+            //debug
+            /* copyIndecesToOutConnListAndCheck(totalCornerPredicate, outIdxCorner, */
+            copyIndecesToOutConnList(outIdxCorner,
+                                     std::vector<Index>{vertexMap[in0] - 1, outIdxCoord, outIdxCoord + 1});
+        else
+            copyScalarToOutCoords(outIdxCoord + 2, in0);
     } else if (numIn == 2) {
         auto out0 = initPreExistCornerAndCheck(outPredicate, start + cornerOut);
         auto in0 = initPreExistCornerAndCheck(inPredicate, start + (cornerOut + 2) % 3);
@@ -463,43 +518,20 @@ void PlaneClip::insertElemNextToCutPlane(bool numVertsOnly, const Index *vertexM
 
         copyVec3ToOutCoords(v2, outIdxCoord + 2);
 
-        if (haveCornerList) {
-            Index n = 0;
-            out_cl[outIdxCorner + n] = vertexMap[in0] - 1;
-            ++n;
-            out_cl[outIdxCorner + n] = outIdxCoord;
-            ++n;
-            out_cl[outIdxCorner + n] = outIdxCoord + 2;
-            ++n;
-
-            out_cl[outIdxCorner + n] = outIdxCoord + 2;
-            ++n;
-            out_cl[outIdxCorner + n] = outIdxCoord;
-            ++n;
-            out_cl[outIdxCorner + n] = outIdxCoord + 1;
-            ++n;
-
-            out_cl[outIdxCorner + n] = outIdxCoord + 2;
-            ++n;
-            out_cl[outIdxCorner + n] = outIdxCoord + 1;
-            ++n;
-            out_cl[outIdxCorner + n] = vertexMap[in1] - 1;
-            ++n;
-            assert(n == totalCorner);
-        } else {
+        if (haveCornerList)
+            /* copyIndecesToOutConnListAndCheck(totalCornerPredicate, outIdxCorner, */
+            copyIndecesToOutConnList(outIdxCorner,
+                                     std::vector<Index>{vertexMap[in0] - 1, outIdxCoord, outIdxCoord + 2,
+                                                        outIdxCoord + 2, outIdxCoord, outIdxCoord + 1, outIdxCoord + 2,
+                                                        outIdxCoord + 1, vertexMap[in1] - 1});
+        else {
             const Vector3 v0 = splitEdge(in0, out0);
             const Vector3 v1 = splitEdge(in1, out0);
 
             Index out = outIdxCoord;
-            out_x[out] = x[in0];
-            out_y[out] = y[in0];
-            out_z[out] = z[in0];
-            ++out;
+            copyScalarToOutCoords(out++, in0);
             iterCopyOfVec3ToOutCoords(out, v0, v2, v2, v0, v1, v2, v1);
-            out_x[out] = x[in1];
-            out_y[out] = y[in1];
-            out_z[out] = z[in1];
-            ++out;
+            copyScalarToOutCoords(out, in1);
         }
     }
 }

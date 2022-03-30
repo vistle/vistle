@@ -18,6 +18,8 @@ public:
     PlaneClip(Triangles::const_ptr grid, IsoDataFunctor decider);
     PlaneClip(Polygons::const_ptr grid, IsoDataFunctor decider);
 
+    typedef std::function<bool(const Index &)> LogicalOperation;
+
     template<typename F, typename... Args>
     auto for_each_arg(ssize_t elem, F f, Args &&...args)
     {
@@ -46,8 +48,6 @@ public:
 private:
     Vector3 splitEdge(Index i, Index j);
     auto initPreExistCorner(const Index &idx);
-
-    typedef std::function<bool(const Index &)> LogicalOperation;
     auto initPreExistCornerAndCheck(LogicalOperation op, const Index &idx);
     void copySplitEdgeResultToOutCoords(const Index &idx, const Index &in, const Index &out);
     void prepareTriangles(std::vector<Index> &outIdxCorner, std::vector<Index> &outIdxCoord, const Index &numCoordsIn,
@@ -68,6 +68,11 @@ private:
     void copyVec3ToOutCoords(const vistle::Vector3 &vec, const Index &idx,
                              const std::array<Index, 3> &outIdxList = {InvalidIndex, InvalidIndex, InvalidIndex},
                              const std::array<Index, 3> &vecIdxList = {0, 1, 2});
+
+    void copyScalarToOutCoords(const Index &out, const Index &in);
+    void copyIdxToOutConnList(const Index &out, const Index &idx);
+    auto copyIndecesToOutConnList(const Index &out, const std::vector<Index> &vecIdx);
+    void copyIndecesToOutConnListAndCheck(LogicalOperation op, const Index &out, const std::vector<Index> &vecIdx);
 
     template<typename... VistleVec3Args>
     void iterCopyOfVec3ToOutCoords(Index &idx, VistleVec3Args &&...vecs);
