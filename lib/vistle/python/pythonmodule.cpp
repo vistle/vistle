@@ -783,14 +783,6 @@ std::vector<detail::ModuleCompound>::iterator findCompound(int id)
                         [id](const detail::ModuleCompound &c) { return c.id == id; });
 }
 
-static void loadScript(const std::string &filename)
-{
-#ifdef EMBED_PYTHON
-    std::cerr << "loading " << filename << std::endl;
-    PythonInterface::the().exec_file(filename);
-#endif
-}
-
 static int moduleCompoundAlloc(const std::string &compoundName)
 {
     auto comp = std::find_if(compounds.begin(), compounds.end(), [&compoundName](const detail::ModuleCompound &c) {
@@ -1291,11 +1283,7 @@ PY_MODULE(_vistle, m)
 
     m.def("source", &source, "execute commands from `file`", "file"_a);
     m.def("removeHub", &removeHub, "remove hub `id` from session", "id"_a);
-    m.def("spawn", spawn,
-          "spawn new module `arg1`\n"
-          "return its ID",
-          "hub"_a, "modulename"_a, "numspawn"_a = -1, "baserank"_a = -1, "rankskip"_a = -1);
-    m.def("loadScript", &loadScript, "load a python script", "filename"_a);
+
     m.def("moduleCompoundAlloc", &moduleCompoundAlloc, "allocate a new module compound", "name"_a);
     m.def("moduleCompoundAddModule", &moduleCompoundAddModule, "add a module to a module compound", "compoundId"_a,
           "modulename"_a, "x"_a = 0, "y"_a = 0);
@@ -1307,6 +1295,10 @@ PY_MODULE(_vistle, m)
     m.def("setCompoundDropPosition", &setCompoundDropPosition, "set the position for a module compound", "x"_a, "y"_a);
     m.def("moduleCompoundCreate", &moduleCompoundCreate, "lock and create the compound", "compoundId"_a);
 
+    m.def("spawn", spawn,
+          "spawn new module `arg1`\n"
+          "return its ID",
+          "hub"_a, "modulename"_a, "numspawn"_a = -1, "baserank"_a = -1, "rankskip"_a = -1);
     m.def("spawn", spawn,
           "spawn new module `arg1`\n"
           "return its ID",
