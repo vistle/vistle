@@ -1,4 +1,6 @@
 #include <cstdio>
+#include <cassert>
+#include <iostream>
 
 #include <pybind11/embed.h>
 #include <vistle/util/pybind.h>

@@ -3,9 +3,8 @@
 
 // include this before any Qt headers
 
-#include <cassert>
 #include <string>
-#include <iostream>
+#include <memory>
 #include <vistle/util/pybind.h>
 
 #include "export.h"

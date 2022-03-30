@@ -5,13 +5,11 @@
 #include <fstream>
 
 #include <pybind11/embed.h>
-#include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
-#include <pybind11/eval.h>
 #include <vistle/util/pybind.h>
 
 #include <boost/lexical_cast.hpp>
-#include <boost/asio.hpp>
+#include <boost/asio/ip/tcp.hpp>
 
 #include <vistle/core/uuid.h>
 #include <vistle/core/message.h>
@@ -971,7 +969,8 @@ public:
     void newHub(int hub, const std::string &name, int nranks, const std::string &address, const std::string &logname,
                 const std::string &realname) override
     {}
-    void deleteHub(int hub) override {}
+    void deleteHub(int hub) override
+    {}
     void moduleAvailable(const AvailableModule &mod) override
     {
 #ifdef OBSERVER_DEBUG
