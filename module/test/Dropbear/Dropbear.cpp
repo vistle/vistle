@@ -109,9 +109,17 @@ bool Dropbear::prepare()
     std::string command = str.str();
     sendInfo("Executing %s on %s...", command.c_str(), host.c_str());
 
-    auto child = process::child(process::search_path(cmd), process::args(args));
+    process::child child;
+    bool except = false;
+    try {
+        child = process::child(process::search_path(cmd), process::args(args));
+    } catch (std::exception &ex) {
+        except = true;
+        sendError("Failed to start dropbear on host %s: %s", host.c_str(), ex.what());
+    }
     if (!child.valid()) {
-        sendError("Failed to start dropbear on host %s", host.c_str());
+        if (!except)
+            sendError("Failed to start dropbear on host %s", host.c_str());
     } else {
         while (child.running()) {
             if (cancelRequested()) {
