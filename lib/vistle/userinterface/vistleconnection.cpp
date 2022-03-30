@@ -238,15 +238,18 @@ UiPythonStateAccessor::UiPythonStateAccessor(vistle::VistleConnection *vc): m_vc
 void UiPythonStateAccessor::lock()
 {
     m_vc->lock();
-};
+}
+
 void UiPythonStateAccessor::unlock()
 {
     m_vc->unlock();
-};
+}
+
 vistle::StateTracker &UiPythonStateAccessor::state()
 {
     return m_vc->ui().state();
 }
+
 bool UiPythonStateAccessor::sendMessage(const vistle::message::Message &m, const vistle::buffer *payload)
 {
     return m_vc->sendMessage(m, payload);
