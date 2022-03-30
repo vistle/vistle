@@ -893,10 +893,10 @@ static void setRelativePos(int id, Float x, Float y)
 
 void moduleCompoundToFile(const ModuleCompound &comp)
 {
-    std::cerr << "writing file " << comp.name() << moduleCompoundSuffix << std::endl;
     auto filename = comp.path().empty() ? comp.name() : comp.path();
     if (filename.find_last_of(moduleCompoundSuffix) != filename.size() - 1)
         filename += moduleCompoundSuffix;
+    std::cerr << "writing module compound " << comp.name() << " to file " << filename << std::endl;
 
     std::fstream file{filename, std::ios_base::out};
     file << "CompoundId=moduleCompoundAlloc(\"" << comp.name() << "\")" << std::endl;
