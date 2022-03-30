@@ -16,7 +16,7 @@ class StateTracker;
 
 namespace message {
 class Message;
-};
+}
 
 struct V_PYEXPORT PythonStateAccessor {
     virtual ~PythonStateAccessor();
