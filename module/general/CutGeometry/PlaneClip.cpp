@@ -1,6 +1,8 @@
 #include "PlaneClip.h"
+
 #include "vistle/core/index.h"
 #include "vistle/core/vector.h"
+
 #include <algorithm>
 #include <tuple>
 
@@ -235,6 +237,14 @@ void PlaneClip::processCoordinates()
     }
 }
 
+/**
+ * @brief Split the edges between two corners specified by given index. 
+ *
+ * @param i First corner.
+ * @param j Secont corner.
+ *
+ * @return Interpolated vector3 object between corners.
+ */
 Vector3 PlaneClip::splitEdge(Index i, Index j)
 {
     Scalar a = m_decider(i);
@@ -269,6 +279,85 @@ void PlaneClip::prepareToEmitInOrder(const Index *vertexMap, const Index &start,
             cornerOut = i;
         }
     }
+}
+
+/**
+ * @brief Initialize the prexisting corner.
+ *
+ * @param idx Current index.
+ *
+ * @return The prexisting corner from connect list if the cornerlist is available, else simply return the index.
+ */
+auto PlaneClip::initPreExistCorner(const Index &idx)
+{
+    return haveCornerList ? cl[idx] : idx;
+}
+
+/**
+ * @brief Initialize the prexisting corner and check afterwards if it fullfills the logical bool operation given.
+ *
+ * @param op Logical bool function.
+ * @param idx Current index.
+ *
+ * @return The prexisting corner from connect list if the cornerlist is available and the logical operation is correct, else simply return the index.
+ */
+auto PlaneClip::initPreExistCornerAndCheck(LogicalOperation op, const Index &idx)
+{
+    auto pre = initPreExistCorner(idx);
+    assert(op(pre));
+    return pre;
+}
+
+/**
+ * @brief Copy given Vector3 values to out_x, out_y and out_z according to given index list for output (outIdxList) and for given vector index list (vecIdxList). If output index list is not given the given index idx will be used for all outputs. If vector list is not given the default values will be {0,1,2}.
+ *
+ * @param vec Vector3 object to copy.
+ * @param idx Current index.
+ * @param outIdxList Index list for output coords (optional).
+ * @param vecIdxList Index list for Vector3 coords (optional).
+ */
+void PlaneClip::copyVec3ToOutCoords(const vistle::Vector3 &vec, const Index &idx,
+                                    const std::array<Index, 3> &outIdxList, const std::array<Index, 3> &vecIdxList)
+{
+    if (!outIdxList.empty()) {
+        out_x[outIdxList[0]] = vec[vecIdxList[0]];
+        out_y[outIdxList[1]] = vec[vecIdxList[1]];
+        out_z[outIdxList[2]] = vec[vecIdxList[2]];
+    } else {
+        out_x[idx] = vec[vecIdxList[0]];
+        out_y[idx] = vec[vecIdxList[1]];
+        out_z[idx] = vec[vecIdxList[2]];
+    }
+}
+
+/**
+ * @brief Split the edges and copy given Vector3 values to out_x, out_y and out_z.
+ *
+ * @param idx Current index.
+ * @param in Corner in visible area.
+ * @param out Corner out of visible area.
+ */
+void PlaneClip::copySplitEdgeResultToOutCoords(const Index &idx, const Index &in, const Index &out)
+{
+    const Vector3 vec = splitEdge(in, out);
+    copyVec3ToOutCoords(vec, idx);
+}
+
+/**
+ * @brief Iterate over arguments given and copy each Vector3 to out_x, out_y and out_z while incrementing given index.
+ *
+ * @tparam VistleVec3Args Vector3 arguments.
+ * @param idx Current index.
+ * @param ...vecs Parameter pack for Vector3 arguments.
+ */
+template<typename... VistleVec3Args>
+void PlaneClip::iterCopyOfVec3ToOutCoords(Index &idx, VistleVec3Args &&...vecs)
+{
+    auto copyWrapper = [&](const Vector3 &vec) {
+        copyVec3ToOutCoords(vec, idx);
+        ++idx;
+    };
+    (copyWrapper(vecs), ...);
 }
 
 /**
@@ -307,60 +396,30 @@ void PlaneClip::insertElemNextToCutPlane(bool numVertsOnly, const Index *vertexM
     }
 }
 
-auto PlaneClip::initPreExistCorner(const Index &idx)
-{
-    return haveCornerList ? cl[idx] : idx;
-}
-
-auto PlaneClip::initPreExistCornerAndCheck(LogicalOperation op, const Index &idx)
-{
-    auto pre = initPreExistCorner(idx);
-    assert(op(pre));
-    return pre;
-}
-
-void PlaneClip::copyVec3ToOutCoords(const vistle::Vector3 &vec, const Index &idx,
-                                    const std::array<Index, 3> &outIdxList, const std::array<Index, 3> &vecIdxList)
-{
-    if (!outIdxList.empty()) {
-        out_x[outIdxList[0]] = vec[vecIdxList[0]];
-        out_y[outIdxList[1]] = vec[vecIdxList[1]];
-        out_z[outIdxList[2]] = vec[vecIdxList[2]];
-    } else {
-        out_x[idx] = vec[vecIdxList[0]];
-        out_y[idx] = vec[vecIdxList[1]];
-        out_z[idx] = vec[vecIdxList[2]];
-    }
-}
-
-void PlaneClip::copySplitEdgeResultToOutCoords(const Index &idx, const Index &in, const Index &out)
-{
-    const Vector3 vec = splitEdge(in, out);
-    copyVec3ToOutCoords(vec, idx);
-}
-
-template<typename... EigenVec3Args>
-void PlaneClip::iterCopyOfVec3ToOutCoords(Index &idx, EigenVec3Args &&...vecs)
-{
-    auto copyWrapper = [&](const Vector3 &vec) {
-        copyVec3ToOutCoords(vec, idx);
-        ++idx;
-    };
-    (copyWrapper(vecs), ...);
-}
-
+/**
+ * @brief Inserts the element and all vertices, if all vertices in the element are on the right side of the cutting plane. Used if not all corners of a triangle are in the visible area.
+ *
+ * @param numVertsOnly Use only the number of vertices to set indeces of corner and coordinates.
+ * @param vertexMap Pointer to map from vertex indices in the incoming object to vertex indices in the outgoing object.
+ * @param numIn Corners inside visible area.
+ * @param cornerIn For the case where we have to split edges, new triangles might be created => corner inside.
+ * @param cornerOut For the case where we have to split edges, new triangles might be created => corner outside.
+ * @param start Start index for this triangle in vertexMap.
+ * @paparam outIdxCorner Index reference to first corner outside.
+ * @param outIdxCoord Index reference to first coordinate outside.
+ */
 void PlaneClip::insertElemNextToCutPlane(bool numVertsOnly, const Index *vertexMap, const Index &numIn,
                                          const Index &start, const Index &cornerIn, const Index &cornerOut,
                                          Index &outIdxCorner, Index &outIdxCoord)
 {
     const Index totalCorner = numIn == 1 ? 3 : 9;
     const Index newCoord = numIn == 1 ? 2 : 3;
-    auto inPredicate = [&vertexMap](const auto &idx) -> bool {
-        return vertexMap[idx] > 0;
-    };
-    auto outPredicate = [&vertexMap](const auto &idx) -> bool {
-        return vertexMap[idx] == 0;
-    };
+    /* auto inPredicate = [&vertexMap](const auto &idx) -> bool { */
+    /*     return vertexMap[idx] > 0; */
+    /* }; */
+    /* auto outPredicate = [&vertexMap](const auto &idx) -> bool { */
+    /*     return vertexMap[idx] == 0; */
+    /* }; */
 
     if (numVertsOnly) {
         outIdxCorner = haveCornerList ? totalCorner : 0;
@@ -370,12 +429,28 @@ void PlaneClip::insertElemNextToCutPlane(bool numVertsOnly, const Index *vertexM
 
     if (numIn == 1) {
         // in0 is the only pre-existing corner inside
-        const Index in0 = initPreExistCornerAndCheck(inPredicate, start + cornerIn);
-        const Index out0 = initPreExistCornerAndCheck(outPredicate, start + (cornerIn + 1) % 3);
-        const Index out1 = initPreExistCornerAndCheck(outPredicate, start + (cornerIn + 2) % 3);
+        /* const Index in0 = initPreExistCornerAndCheck(inPredicate, start + cornerIn); */
+        /* const Index out0 = initPreExistCornerAndCheck(outPredicate, start + (cornerIn + 1) % 3); */
+        /* const Index out1 = initPreExistCornerAndCheck(outPredicate, start + (cornerIn + 2) % 3); */
 
-        copySplitEdgeResultToOutCoords(outIdxCoord, in0, out0);
-        copySplitEdgeResultToOutCoords(outIdxCoord + 1, in0, out1);
+        /* copySplitEdgeResultToOutCoords(outIdxCoord, in0, out0); */
+        /* copySplitEdgeResultToOutCoords(outIdxCoord + 1, in0, out1); */
+        // in0 is the only pre-existing corner inside
+        const Index in0 = haveCornerList ? cl[start + cornerIn] : start + cornerIn;
+        assert(vertexMap[in0] > 0);
+        const Index out0 = haveCornerList ? cl[start + (cornerIn + 1) % 3] : start + (cornerIn + 1) % 3;
+        assert(vertexMap[out0] == 0);
+        const Vector3 v0 = splitEdge(in0, out0);
+        out_x[outIdxCoord] = v0[0];
+        out_y[outIdxCoord] = v0[1];
+        out_z[outIdxCoord] = v0[2];
+
+        const Index out1 = haveCornerList ? cl[start + (cornerIn + 2) % 3] : start + (cornerIn + 2) % 3;
+        assert(vertexMap[out1] == 0);
+        const Vector3 v1 = splitEdge(in0, out1);
+        out_x[outIdxCoord + 1] = v1[0];
+        out_y[outIdxCoord + 1] = v1[1];
+        out_z[outIdxCoord + 1] = v1[2];
 
         if (haveCornerList) {
             Index n = 0;
@@ -392,19 +467,41 @@ void PlaneClip::insertElemNextToCutPlane(bool numVertsOnly, const Index *vertexM
             out_z[outIdxCoord + 2] = z[in0];
         }
     } else if (numIn == 2) {
-        auto out0 = initPreExistCornerAndCheck(outPredicate, start + cornerOut);
-        auto in0 = initPreExistCornerAndCheck(inPredicate, start + (cornerOut + 2) % 3);
-        auto in1 = initPreExistCornerAndCheck(inPredicate, start + (cornerOut + 1) % 3);
+        /* auto out0 = initPreExistCornerAndCheck(outPredicate, start + cornerOut); */
+        /* auto in0 = initPreExistCornerAndCheck(inPredicate, start + (cornerOut + 2) % 3); */
+        /* auto in1 = initPreExistCornerAndCheck(inPredicate, start + (cornerOut + 1) % 3); */
 
-        copySplitEdgeResultToOutCoords(outIdxCoord, in0, out0);
-        copySplitEdgeResultToOutCoords(outIdxCoord + 1, in1, out0);
-        const Vector3 vin0(x[in0], y[in0], z[in0]);
-        const Vector3 vin1(x[in1], y[in1], z[in1]);
-        const Vector3 v2 = (vin0 + vin1) * Scalar(0.5);
+        /* copySplitEdgeResultToOutCoords(outIdxCoord, in0, out0); */
+        /* copySplitEdgeResultToOutCoords(outIdxCoord + 1, in1, out0); */
+        /* const Vector3 vin0(x[in0], y[in0], z[in0]); */
+        /* const Vector3 vin1(x[in1], y[in1], z[in1]); */
+        /* const Vector3 v2 = (vin0 + vin1) * Scalar(0.5); */
 
-        copyVec3ToOutCoords(v2, outIdxCoord + 2);
+        /* copyVec3ToOutCoords(v2, outIdxCoord + 2); */
 
         if (haveCornerList) {
+            const Index out0 = cl[start + cornerOut];
+            const Index in0 = cl[start + (cornerOut + 2) % 3];
+            assert(vertexMap[out0] == 0);
+            const Vector3 v0 = splitEdge(in0, out0);
+            out_x[outIdxCoord] = v0[0];
+            out_y[outIdxCoord] = v0[1];
+            out_z[outIdxCoord] = v0[2];
+
+            const Index in1 = cl[start + (cornerOut + 1) % 3];
+            assert(vertexMap[in1] > 0);
+            const Vector3 v1 = splitEdge(in1, out0);
+            out_x[outIdxCoord + 1] = v1[0];
+            out_y[outIdxCoord + 1] = v1[1];
+            out_z[outIdxCoord + 1] = v1[2];
+
+            const Vector3 vin0(x[in0], y[in0], z[in0]);
+            const Vector3 vin1(x[in1], y[in1], z[in1]);
+            const Vector3 v2 = (vin0 + vin1) * Scalar(0.5);
+            out_x[outIdxCoord + 2] = v2[0];
+            out_y[outIdxCoord + 2] = v2[1];
+            out_z[outIdxCoord + 2] = v2[2];
+
             Index n = 0;
             out_cl[outIdxCorner + n] = vertexMap[in0] - 1;
             ++n;
@@ -428,31 +525,78 @@ void PlaneClip::insertElemNextToCutPlane(bool numVertsOnly, const Index *vertexM
             ++n;
             assert(n == totalCorner);
         } else {
+            /* const Vector3 v0 = splitEdge(in0, out0); */
+            /* const Vector3 v1 = splitEdge(in1, out0); */
+
+            /* Index out = outIdxCoord; */
+            /* out_x[out] = x[in0]; */
+            /* out_y[out] = y[in0]; */
+            /* out_z[out] = z[in0]; */
+            /* ++out; */
+            /* iterCopyOfVec3ToOutCoords(out, v0, v2, v2, v0, v1, v2, v1); */
+            /* out_x[out] = x[in1]; */
+            /* out_y[out] = y[in1]; */
+            /* out_z[out] = z[in1]; */
+            /* ++out; */
+            const Index out0 = start + cornerOut;
+            const Index in0 = start + (cornerOut + 2) % 3;
+            assert(vertexMap[out0] == 0);
             const Vector3 v0 = splitEdge(in0, out0);
+
+            out_x[outIdxCoord] = v0[0];
+            out_y[outIdxCoord] = v0[1];
+            out_z[outIdxCoord] = v0[2];
+
+            const Index in1 = start + (cornerOut + 1) % 3;
+            assert(vertexMap[in1] > 0);
             const Vector3 v1 = splitEdge(in1, out0);
+            out_x[outIdxCoord + 1] = v1[0];
+            out_y[outIdxCoord + 1] = v1[1];
+            out_z[outIdxCoord + 1] = v1[2];
+
+            const Vector3 vin0(x[in0], y[in0], z[in0]);
+            const Vector3 vin1(x[in1], y[in1], z[in1]);
+            const Vector3 v2 = (vin0 + vin1) * Scalar(0.5);
+            out_x[outIdxCoord + 2] = v2[0];
+            out_y[outIdxCoord + 2] = v2[1];
+            out_z[outIdxCoord + 2] = v2[2];
 
             Index out = outIdxCoord;
+
             out_x[out] = x[in0];
             out_y[out] = y[in0];
             out_z[out] = z[in0];
             ++out;
-            iterCopyOfVec3ToOutCoords(out, v0, v2, v2, v0, v1, v2, v1);
-            //needs Eigen::aligned_allocator to work => ugly af
-            /* std::vector<Vector3> test{v0, v2, v2, v0, v1, v2, v1} */
-            /* copyVector3InOutCoords(v0, out); */
-            /* ++out; */
-            /* copyVector3InOutCoords(v2, out); */
-            /* ++out; */
-            /* copyVector3InOutCoords(v2, out); */
-            /* ++out; */
-            /* copyVector3InOutCoords(v0, out); */
-            /* ++out; */
-            /* copyVector3InOutCoords(v1, out); */
-            /* ++out; */
-            /* copyVector3InOutCoords(v2, out); */
-            /* ++out; */
-            /* copyVector3InOutCoords(v1, out); */
-            /* ++out; */
+            out_x[out] = v0[0];
+            out_y[out] = v0[1];
+            out_z[out] = v0[2];
+            ++out;
+            out_x[out] = v2[0];
+            out_y[out] = v2[1];
+            out_z[out] = v2[2];
+            ++out;
+
+            out_x[out] = v2[0];
+            out_y[out] = v2[1];
+            out_z[out] = v2[2];
+            ++out;
+            out_x[out] = v0[0];
+            out_y[out] = v0[1];
+            out_z[out] = v0[2];
+            ++out;
+            out_x[out] = v1[0];
+            out_y[out] = v1[1];
+            out_z[out] = v1[2];
+            ++out;
+
+            out_x[out] = v2[0];
+            out_y[out] = v2[1];
+            out_z[out] = v2[2];
+            ++out;
+            out_x[out] = v1[0];
+            out_y[out] = v1[1];
+            out_z[out] = v1[2];
+            ++out;
             out_x[out] = x[in1];
             out_y[out] = y[in1];
             out_z[out] = z[in1];
@@ -461,6 +605,14 @@ void PlaneClip::insertElemNextToCutPlane(bool numVertsOnly, const Index *vertexM
     }
 }
 
+/**
+ * @brief Process a triangle for inserting if its partially or in a whole in the visible area.
+ *
+ * @param element Index of triangle.
+ * @param outIdxCorner Index of first corner outside.
+ * @param outIdxCoord Index of first coordinates outside.
+ * @param numVertsOnly process triangle by only using vertices.
+ */
 void PlaneClip::processTriangle(const Index element, Index &outIdxCorner, Index &outIdxCoord, bool numVertsOnly)
 {
     const Index start = element * 3;
