@@ -751,7 +751,7 @@ void RemoteFileDialogPrivate::_q_goToUrl(const QUrl &url)
     auto path = url.toLocalFile();
     if (url.scheme() == QLatin1String("home"))
         path = model->homePath().toString();
-    QModelIndex idx = model->index(path);
+    QModelIndex idx = model->fsIndex(path);
     model->fetchMore(idx);
     _q_enterDirectory(idx);
 #endif
@@ -907,7 +907,7 @@ void RemoteFileDialog::selectFile(const QString &filename)
     if (filename.isEmpty())
         return;
 
-    QModelIndex index = d->model->index(filename);
+    QModelIndex index = d->model->fsIndex(filename);
     if (!QDir::isRelativePath(filename)) {
         if (index.isValid() && index.parent() != d->rootIndex())
             setDirectory(d->model->filePath(index.parent()));
@@ -1710,7 +1710,7 @@ void RemoteFileDialogComboBox::setHistory(const QStringList &paths)
 
     urlModel->setUrls(QList<QUrl>());
     QList<QUrl> list;
-    QModelIndex idx = d_ptr->model->index(d_ptr->rootPath());
+    QModelIndex idx = d_ptr->model->fsIndex(d_ptr->rootPath());
     while (idx.isValid()) {
         QString f = idx.data(AbstractFileSystemModel::FilePathRole).toString();
         std::cerr << "   " << f.toStdString() << std::endl;
@@ -1749,7 +1749,7 @@ void RemoteFileDialogComboBox::setHistory(const QStringList &paths)
 #if 0
     // Only populate the first item, showPopup will populate the rest if needed
     QList<QUrl> list;
-    QModelIndex idx = d_ptr->model->index(d_ptr->rootPath());
+    QModelIndex idx = d_ptr->model->fsIndex(d_ptr->rootPath());
     //On windows the popup display the "C:\", convert to nativeSeparators
     QUrl url = QUrl::fromLocalFile(QDir::toNativeSeparators(idx.data(AbstractFileSystemModel::FilePathRole).toString()));
     if (url.isValid())
@@ -2439,7 +2439,7 @@ void RemoteFileDialog::accept()
     case DirectoryOnly:
     case Directory: {
         QString fn = files.first();
-        QModelIndex idx = m_model->index(fn);
+        QModelIndex idx = m_model->fsIndex(fn);
         if (!idx.isValid())
             return;
         if (!m_model->isDir(idx))
@@ -2493,7 +2493,7 @@ void RemoteFileDialog::accept()
     case ExistingFiles:
         for (const auto &file: files) {
             QString fn = file;
-            QModelIndex idx = m_model->index(fn);
+            QModelIndex idx = m_model->fsIndex(fn);
             if (!idx.isValid()) {
 #if QT_CONFIG(messagebox)
                 QString message = tr("%1\nFile not found.\nPlease verify the "
@@ -3095,11 +3095,11 @@ void RemoteFileDialogPrivate::_q_createDirectory()
         folderName = newFolderString;
         qlonglong suffix = 2;
         QString full = QDir::cleanPath(prefix + folderName);
-        QModelIndex idx = model->index(full);
+        QModelIndex idx = model->fsIndex(full);
         while (idx.isValid()) {
             folderName = newFolderString + QString::number(suffix++);
             QString full = QDir::cleanPath(prefix + folderName);
-            idx = model->index(full);
+            idx = model->fsIndex(full);
         }
     }
 
@@ -3176,7 +3176,7 @@ void RemoteFileDialogPrivate::_q_autoCompleteFileName(const QString &text)
         QModelIndexList oldFiles = qFileDialogUi->listView->selectionModel()->selectedRows();
         QVector<QModelIndex> newFiles;
         for (const auto &file: multipleFiles) {
-            QModelIndex idx = model->index(file);
+            QModelIndex idx = model->fsIndex(file);
             if (oldFiles.removeAll(idx) == 0)
                 newFiles.append(idx);
         }
@@ -3223,7 +3223,7 @@ void RemoteFileDialogPrivate::_q_updateOkButton()
         case RemoteFileDialog::Directory: {
             const QString &fn = files.first();
             if (!fn.isEmpty()) {
-                QModelIndex idx = model->index(fn);
+                QModelIndex idx = model->fsIndex(fn);
                 if (!idx.isValid() || !model->isDir(idx))
                     enableButton = false;
             }
@@ -3232,7 +3232,7 @@ void RemoteFileDialogPrivate::_q_updateOkButton()
         case RemoteFileDialog::AnyFile: {
             const QString &fn = files.first();
             QString clean = QDir::cleanPath(fn);
-            QModelIndex idx = model->index(clean);
+            QModelIndex idx = model->fsIndex(clean);
             QString fileDir;
             QString fileName;
             if (model->isDir(idx)) {
@@ -3266,7 +3266,7 @@ void RemoteFileDialogPrivate::_q_updateOkButton()
         case RemoteFileDialog::ExistingFile:
         case RemoteFileDialog::ExistingFiles:
             for (const auto &file: files) {
-                QModelIndex idx = model->index(file);
+                QModelIndex idx = model->fsIndex(file);
                 if (!idx.isValid()) {
                     enableButton = false;
                     break;
@@ -3353,7 +3353,7 @@ void RemoteFileDialogPrivate::_q_goToDirectory(const QString &path)
     }
 
     QString path2 = index.data(UrlRole).toUrl().toLocalFile();
-    index = mapFromSource(model->index(path2));
+    index = mapFromSource(model->fsIndex(path2));
 
     _q_enterDirectory(index);
 }
@@ -3581,7 +3581,7 @@ void RemoteFileDialogComboBox::showPopup()
 
     urlModel->setUrls(QList<QUrl>());
     QList<QUrl> list;
-    QModelIndex idx = d_ptr->model->index(d_ptr->rootPath());
+    QModelIndex idx = d_ptr->model->fsIndex(d_ptr->rootPath());
     while (idx.isValid()) {
         QUrl url = QUrl::fromLocalFile(idx.data(AbstractFileSystemModel::FilePathRole).toString());
         if (url.isValid())
@@ -3799,7 +3799,7 @@ QStringList RemoteFSCompleter::splitPath(const QString &path) const
     } else {
         QString tildeExpanded = qt_tildeExpansion(dirModel, pathCopy);
         if (tildeExpanded != pathCopy) {
-            dirModel->fetchMore(dirModel->index(tildeExpanded));
+            dirModel->fetchMore(dirModel->fsIndex(tildeExpanded));
         }
         pathCopy = std::move(tildeExpanded);
     }
