@@ -7,6 +7,7 @@
 #include <vistle/core/triangles.h>
 #include <vistle/core/polygons.h>
 #include "../IsoSurface/IsoDataFunctor.h"
+#include "vistle/core/index.h"
 #include "vistle/core/vector.h"
 
 using namespace vistle;
@@ -64,7 +65,8 @@ private:
     void insertElemNextToCutPlane(bool numVertsOnly, const Index *vertexMap, const Index &numIn, const Index &start,
                                   const Index &cornerIn, const Index &cornerOut, Index &outIdxCorner,
                                   Index &outIdxCoord);
-    void copyVec3ToOutCoords(const vistle::Vector3 &vec, const Index &idx, const std::array<Index, 3> &outIdxList = {},
+    void copyVec3ToOutCoords(const vistle::Vector3 &vec, const Index &idx,
+                             const std::array<Index, 3> &outIdxList = {InvalidIndex, InvalidIndex, InvalidIndex},
                              const std::array<Index, 3> &vecIdxList = {0, 1, 2});
 
     template<typename... VistleVec3Args>
