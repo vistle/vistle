@@ -891,38 +891,6 @@ static void setRelativePos(int id, Float x, Float y)
     setVectorParam2(id, "_position", x + compoundDropPositionX, y + compoundDropPositionY, true);
 }
 
-void spawnAvailablModule(const AvailableModule &comp)
-{
-    std::cerr << "writing file " << comp.name() << moduleCompoundSuffix << std::endl;
-    auto filename = comp.path().empty() ? comp.name() : comp.path();
-    if (filename.find_last_of(moduleCompoundSuffix) != filename.size() - 1)
-        filename += moduleCompoundSuffix;
-
-    std::fstream file{filename, std::ios_base::out};
-    file << "MasterHub=getMasterHub()" << std::endl;
-    for (size_t i = 0; i < comp.submodules().size(); i++) {
-        file << "um" << comp.submodules()[i].name << i << " = spawnAsync(MasterHub, '" << comp.submodules()[i].name
-             << "')" << std::endl;
-    }
-    file << std::endl;
-    for (size_t i = 0; i < comp.submodules().size(); i++) {
-        float posX = comp.submodules()[i].x - comp.submodules()[0].x;
-        float posY = comp.submodules()[i].y - comp.submodules()[0].y;
-        file << "m" << comp.submodules()[i].name << i << " = waitForSpawn(um" << comp.submodules()[i].name << i << ")"
-             << std::endl;
-        file << "setRelativePos("
-             << "m" << comp.submodules()[i].name << i << ", " << posX << ", " << posY << ")" << std::endl;
-        file << "applyParameters(m" << comp.submodules()[i].name << i << ")" << std::endl;
-    }
-    for (const auto &conn: comp.connections()) {
-        if (conn.fromId >= 0 && conn.toId >= 0) //internal connection
-        {
-            file << "connect(m" << comp.submodules()[conn.fromId].name << conn.fromId << ",'" << conn.fromPort << "', m"
-                 << comp.submodules()[conn.toId].name << conn.toId << ",'" << conn.toPort << "')" << std::endl;
-        }
-    }
-}
-
 void moduleCompoundToFile(const ModuleCompound &comp)
 {
     std::cerr << "writing file " << comp.name() << moduleCompoundSuffix << std::endl;
