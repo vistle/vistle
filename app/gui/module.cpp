@@ -16,7 +16,7 @@
 #include <QMenu>
 #include <QDir>
 
-#include <vistle/userinterface/pythonmodule.h>
+#include <vistle/python/pythonmodule.h>
 #include <vistle/userinterface/vistleconnection.h>
 #include <vistle/util/directory.h>
 

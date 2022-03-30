@@ -9,6 +9,7 @@
 #include <vistle/util/pybind.h>
 
 #include <boost/lexical_cast.hpp>
+#include <boost/asio/io_service.hpp>
 #include <boost/asio/ip/tcp.hpp>
 
 #include <vistle/core/uuid.h>
@@ -16,6 +17,7 @@
 #include <vistle/core/parameter.h>
 #include <vistle/core/port.h>
 
+#include <vistle/userinterface/vistleconnection.h>
 #include "pythonmodule.h"
 #ifdef EMBED_PYTHON
 #include "pythoninterface.h"
@@ -28,36 +30,16 @@
 #include <vistle/core/porttracker.h>
 
 namespace py = pybind11;
+namespace asio = boost::asio;
 
 #ifdef EMBED_PYTHON
 #define PY_MODULE(mod, m) PYBIND11_EMBEDDED_MODULE(mod, m)
 #else
 #define PY_MODULE(mod, m) PYBIND11_MODULE(mod, m)
-#endif
 
-
-#ifdef VISTLE_CONTROL
-
-// if embedded in Vistle hub
-#include <vistle/control/hub.h>
-#define MODULEMANAGER (Hub::the().stateTracker())
-#define LOCKED() StateTracker::mutex_locker locker(Hub::the().stateTracker().getMutex())
-
-#else
-
-// if part of a user interface
-#include "vistleconnection.h"
-#define MODULEMANAGER ((pythonModuleInstance->vistleConnection().ui().state()))
-#define LOCKED() \
-    std::unique_ptr<vistle::VistleConnection::Locker> lock = pythonModuleInstance->vistleConnection().locked()
-
-#endif
-
-#define PORTMANAGER (*MODULEMANAGER.portTracker())
-
-#ifndef EMBED_PYTHON
 static std::unique_ptr<vistle::VistleConnection> connection;
 static std::unique_ptr<vistle::UserInterface> userinterface;
+static std::unique_ptr<vistle::PythonStateAccessor> pyaccessor;
 static std::unique_ptr<vistle::PythonModule> pymod;
 static std::unique_ptr<std::thread, std::function<void(std::thread *)>> vistleThread(nullptr, [](std::thread *thr) {
     if (connection) {
@@ -69,34 +51,31 @@ static std::unique_ptr<std::thread, std::function<void(std::thread *)>> vistleTh
 });
 #endif
 
-namespace asio = boost::asio;
-
 namespace vistle {
 
-namespace {
-PythonModule *pythonModuleInstance = nullptr;
-message::Type traceMessages = message::INVALID;
-} // namespace
+static PythonModule *pythonModuleInstance = nullptr;
+static message::Type traceMessages = message::INVALID;
 
-static bool sendMessage(const vistle::message::Message &m, const buffer *payload = nullptr)
+static vistle::PythonStateAccessor &access()
 {
-#ifdef VISTLE_CONTROL
-    bool ret = Hub::the().handleMessage(m, nullptr, payload);
-    assert(ret);
-    if (!ret) {
-        std::cerr << "Python: failed to send message " << m << std::endl;
-    }
-    return ret;
-#else
+    return *pythonModuleInstance->access();
+}
+
+static vistle::StateTracker &state()
+{
+    return access().state();
+}
+
+static bool sendMessage(const vistle::message::Message &m, const vistle::buffer *payload = nullptr)
+{
     if (traceMessages == m.type() || traceMessages == message::ANY) {
         std::cerr << "Python: send " << m << std::endl;
     }
     if (!pythonModuleInstance) {
-        std::cerr << "cannot send message: no connection to Vistle session" << std::endl;
+        std::cerr << "cannot send message: no Vistle module instance" << std::endl;
         return false;
     }
-    return pythonModuleInstance->vistleConnection().sendMessage(m, payload);
-#endif
+    return pythonModuleInstance->access()->sendMessage(m, payload);
 }
 
 template<class Payload>
@@ -109,7 +88,7 @@ static bool sendMessage(vistle::message::Message &m, Payload &payload)
 static std::shared_ptr<message::Buffer> waitForReply(const message::uuid_t &uuid)
 {
     py::gil_scoped_release release;
-    return MODULEMANAGER.waitForReply(uuid);
+    return state().waitForReply(uuid);
 }
 
 static bool source(const std::string &filename)
@@ -185,7 +164,7 @@ static bool barrier()
 {
     message::Barrier m;
     m.setDestId(message::Id::MasterHub);
-    MODULEMANAGER.registerRequest(m.uuid());
+    state().registerRequest(m.uuid());
     if (!sendMessage(m))
         return false;
     auto buf = waitForReply(m.uuid());
@@ -212,7 +191,7 @@ static std::string spawnAsync(int hub, const char *module, int numSpawn = -1, in
 
     message::Spawn m(hub, module, numSpawn, baseRank, rankSkip);
     m.setDestId(message::Id::MasterHub); // to master for module id generation
-    MODULEMANAGER.registerRequest(m.uuid());
+    state().registerRequest(m.uuid());
     if (!sendMessage(m))
         return "";
     std::string uuid = boost::lexical_cast<std::string>(m.uuid());
@@ -268,11 +247,11 @@ static void kill(int id)
 
 static int waitForAnySlaveHub()
 {
-    auto hubs = MODULEMANAGER.getSlaveHubs();
+    auto hubs = state().getSlaveHubs();
     if (!hubs.empty())
         return hubs[0];
 
-    hubs = MODULEMANAGER.waitForSlaveHubs(1);
+    hubs = state().waitForSlaveHubs(1);
     if (!hubs.empty())
         return hubs[0];
 
@@ -281,7 +260,7 @@ static int waitForAnySlaveHub()
 
 static std::vector<int> waitForSlaveHubs(int count)
 {
-    auto hubs = MODULEMANAGER.waitForSlaveHubs(count);
+    auto hubs = state().waitForSlaveHubs(count);
     return hubs;
 }
 
@@ -289,9 +268,9 @@ static int waitForNamedHub(const std::string &name)
 {
     std::vector<std::string> names;
     names.push_back(name);
-    const auto ids = MODULEMANAGER.waitForSlaveHubs(names);
+    const auto ids = state().waitForSlaveHubs(names);
     for (const auto id: ids) {
-        const auto n = MODULEMANAGER.hubName(id);
+        const auto n = state().hubName(id);
         if (n == name) {
             return id;
         }
@@ -301,19 +280,19 @@ static int waitForNamedHub(const std::string &name)
 
 static std::vector<int> waitForNamedHubs(const std::vector<std::string> &names)
 {
-    return MODULEMANAGER.waitForSlaveHubs(names);
+    return state().waitForSlaveHubs(names);
 }
 
 static int getHub(int id)
 {
-    LOCKED();
-    return MODULEMANAGER.getHub(id);
+    std::unique_lock<PythonStateAccessor> guard(access());
+    return state().getHub(id);
 }
 
 static int getMasterHub()
 {
-    LOCKED();
-    return MODULEMANAGER.getMasterHub();
+    std::unique_lock<PythonStateAccessor> guard(access());
+    return state().getMasterHub();
 }
 
 static int getVistleSession()
@@ -323,23 +302,23 @@ static int getVistleSession()
 
 static std::vector<int> getAllHubs()
 {
-    LOCKED();
-    return MODULEMANAGER.getSlaveHubs();
+    std::unique_lock<PythonStateAccessor> guard(access());
+    return state().getSlaveHubs();
 }
 
 static std::vector<int> getRunning()
 {
-    LOCKED();
+    std::unique_lock<PythonStateAccessor> guard(access());
 #ifdef DEBUG
     std::cerr << "Python: getRunning " << std::endl;
 #endif
-    return MODULEMANAGER.getRunningList();
+    return state().getRunningList();
 }
 
 static std::vector<std::string> getAvailable()
 {
-    LOCKED();
-    const auto &avail = MODULEMANAGER.availableModules();
+    std::unique_lock<PythonStateAccessor> guard(access());
+    const auto &avail = state().availableModules();
     std::vector<std::string> ret;
     for (auto &a: avail) {
         auto &m = a.second;
@@ -350,38 +329,38 @@ static std::vector<std::string> getAvailable()
 
 static std::vector<int> getBusy()
 {
-    LOCKED();
+    std::unique_lock<PythonStateAccessor> guard(access());
 #ifdef DEBUG
     std::cerr << "Python: getBusy " << std::endl;
 #endif
-    return MODULEMANAGER.getBusyList();
+    return state().getBusyList();
 }
 
 static std::vector<std::string> getInputPorts(int id)
 {
-    LOCKED();
-    return PORTMANAGER.getInputPortNames(id);
+    std::unique_lock<PythonStateAccessor> guard(access());
+    return state().portTracker()->getInputPortNames(id);
 }
 
 static std::vector<std::string> getOutputPorts(int id)
 {
-    LOCKED();
-    return PORTMANAGER.getOutputPortNames(id);
+    std::unique_lock<PythonStateAccessor> guard(access());
+    return state().portTracker()->getOutputPortNames(id);
 }
 
 std::string getPortDescription(int id, const std::string &portname)
 {
-    LOCKED();
-    return PORTMANAGER.getPortDescription(id, portname);
+    std::unique_lock<PythonStateAccessor> guard(access());
+    return state().portTracker()->getPortDescription(id, portname);
 }
 
 
 static std::vector<std::pair<int, std::string>> getConnections(int id, const std::string &port)
 {
-    LOCKED();
+    std::unique_lock<PythonStateAccessor> guard(access());
     std::vector<std::pair<int, std::string>> result;
 
-    if (const Port::ConstPortSet *c = PORTMANAGER.getConnectionList(id, port)) {
+    if (const Port::ConstPortSet *c = state().portTracker()->getConnectionList(id, port)) {
         for (const Port *p: *c) {
             result.push_back(std::pair<int, std::string>(p->getModuleID(), p->getName()));
         }
@@ -392,14 +371,14 @@ static std::vector<std::pair<int, std::string>> getConnections(int id, const std
 
 static std::vector<std::string> getParameters(int id)
 {
-    LOCKED();
-    return MODULEMANAGER.getParameters(id);
+    std::unique_lock<PythonStateAccessor> guard(access());
+    return state().getParameters(id);
 }
 
 static std::string getParameterType(int id, const std::string &name)
 {
-    LOCKED();
-    const auto param = MODULEMANAGER.getParameter(id, name);
+    std::unique_lock<PythonStateAccessor> guard(access());
+    const auto param = state().getParameter(id, name);
     if (!param) {
         std::cerr << "Python: getParameterType: no such parameter" << std::endl;
         return "None";
@@ -417,8 +396,8 @@ static std::string getParameterType(int id, const std::string &name)
 
 static std::string getParameterPresentation(int id, const std::string &name)
 {
-    LOCKED();
-    const auto param = MODULEMANAGER.getParameter(id, name);
+    std::unique_lock<PythonStateAccessor> guard(access());
+    const auto param = state().getParameter(id, name);
     if (!param) {
         std::cerr << "Python: getParameterPresentation: no such parameter" << std::endl;
         return "None";
@@ -429,8 +408,8 @@ static std::string getParameterPresentation(int id, const std::string &name)
 
 static bool isParameterDefault(int id, const std::string &name)
 {
-    LOCKED();
-    const auto param = MODULEMANAGER.getParameter(id, name);
+    std::unique_lock<PythonStateAccessor> guard(access());
+    const auto param = state().getParameter(id, name);
     if (!param) {
         std::cerr << "Python: isParameterDefault: no such parameter: id=" << id << ", name=" << name << std::endl;
         return false;
@@ -442,8 +421,8 @@ static bool isParameterDefault(int id, const std::string &name)
 template<typename T>
 static T getParameterValue(int id, const std::string &name)
 {
-    LOCKED();
-    const auto param = MODULEMANAGER.getParameter(id, name);
+    std::unique_lock<PythonStateAccessor> guard(access());
+    const auto param = state().getParameter(id, name);
     if (!param) {
         std::cerr << "Python: getParameterValue: no such parameter: id=" << id << ", name=" << name << std::endl;
         return T();
@@ -460,8 +439,8 @@ static T getParameterValue(int id, const std::string &name)
 
 static std::string getParameterTooltip(int id, const std::string &name)
 {
-    LOCKED();
-    const auto param = MODULEMANAGER.getParameter(id, name);
+    std::unique_lock<PythonStateAccessor> guard(access());
+    const auto param = state().getParameter(id, name);
     if (!param) {
         std::cerr << "Python: getParameterTooltip: no such parameter" << std::endl;
         return "None";
@@ -535,20 +514,20 @@ static std::string getEscapedStringParam(int id, const std::string &name)
 
 static std::string getModuleName(int id)
 {
-    LOCKED();
+    std::unique_lock<PythonStateAccessor> guard(access());
 #ifdef DEBUG
     std::cerr << "Python: getModuleName(" id << ")" << std::endl;
 #endif
-    return MODULEMANAGER.getModuleName(id);
+    return state().getModuleName(id);
 }
 
 static std::string getModuleDescription(int id)
 {
-    LOCKED();
+    std::unique_lock<PythonStateAccessor> guard(access());
 #ifdef DEBUG
     std::cerr << "Python: getModuleDescription(" id << ")" << std::endl;
 #endif
-    return MODULEMANAGER.getModuleDescription(id);
+    return state().getModuleDescription(id);
 }
 
 static void connect(int sid, const char *sport, int did, const char *dport)
@@ -574,7 +553,7 @@ static void sendSetParameter(message::SetParameter &msg, int id, bool delayed)
     msg.setDestId(id);
     if (delayed)
         msg.setDelayed();
-    auto param = MODULEMANAGER.getParameter(id, msg.getName());
+    auto param = state().getParameter(id, msg.getName());
     if (param && param->isImmediate())
         msg.setPriority(message::Message::ImmediateParameter);
     sendMessage(msg);
@@ -777,12 +756,12 @@ static void setLoadedFile(const std::string &file)
 
 static std::string getLoadedFile()
 {
-    return MODULEMANAGER.loadedWorkflowFile();
+    return state().loadedWorkflowFile();
 }
 
 static std::string getSessionUrl()
 {
-    return MODULEMANAGER.sessionUrl();
+    return state().sessionUrl();
 }
 //contains allocated compounds
 //key is compoundId
@@ -1166,7 +1145,10 @@ static bool sessionConnectWithObserver(StateObserver *o, const std::string &host
     connection.reset(new VistleConnection(*userinterface));
     if (!connection)
         return false;
-    pymod.reset(new PythonModule(connection.get()));
+    pyaccessor.reset(new UiPythonStateAccessor(connection.get()));
+    if (!pyaccessor)
+        return false;
+    pymod.reset(new PythonModule(*pyaccessor));
     if (!pymod)
         return false;
     vistleThread.reset(new std::thread(std::ref(*connection)));
@@ -1189,6 +1171,8 @@ static bool sessionDisconnect()
 {
     if (!vistleThread)
         return false;
+    if (!pyaccessor)
+        return false;
     if (!pymod)
         return false;
     if (!connection)
@@ -1198,6 +1182,7 @@ static bool sessionDisconnect()
 
     vistleThread.reset();
     pymod.reset();
+    pyaccessor.reset();
     connection.reset();
     userinterface.reset();
 
@@ -1426,24 +1411,30 @@ PY_MODULE(_vistle, m)
     py::bind_vector<ParameterVector<Integer>>(m, "ParameterVector<Integer>");
 }
 
-PythonModule::PythonModule(VistleConnection *vc): m_vistleConnection(vc)
+PythonModule::PythonModule(PythonStateAccessor &stateAccessor): m_access(&stateAccessor)
 {
     assert(pythonModuleInstance == nullptr);
     pythonModuleInstance = this;
     std::cerr << "creating Vistle python module" << std::endl;
-
-    //auto mod = py::module::import("_vistle");
 }
+
+#if 0
+PythonModule::PythonModule(VistleConnection *vc): m_access(new UiPythonStateAccessor(vc)), m_vistleConnection(vc)
+{
+    assert(pythonModuleInstance == nullptr);
+    pythonModuleInstance = this;
+    std::cerr << "creating Vistle python module" << std::endl;
+}
+#endif
 
 PythonModule::~PythonModule()
 {
     pythonModuleInstance = nullptr;
 }
 
-VistleConnection &PythonModule::vistleConnection() const
+PythonStateAccessor *PythonModule::access()
 {
-    assert(m_vistleConnection);
-    return *m_vistleConnection;
+    return m_access;
 }
 
 bool PythonModule::import(py::object *ns, const std::string &path)
@@ -1492,5 +1483,7 @@ bool PythonModule::import(py::object *ns, const std::string &path)
 
     return true;
 }
+
+PythonStateAccessor::~PythonStateAccessor() = default;
 
 } // namespace vistle

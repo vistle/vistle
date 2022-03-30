@@ -8,8 +8,8 @@
  */
 /**********************************************************************************/
 #ifdef HAVE_PYTHON
-#include <vistle/userinterface/pythoninterface.h>
-#include <vistle/userinterface/pythonmodule.h>
+#include <vistle/python/pythoninterface.h>
+#include <vistle/python/pythonmodule.h>
 #endif
 
 #include "dataflownetwork.h"

@@ -1,12 +1,28 @@
 #include <thread>
 #include <mutex>
 
-#include <vistle/userinterface/pythoninterface.h>
-#include <vistle/userinterface/pythonmodule.h>
+#include <vistle/python/pythoninterface.h>
+#include <vistle/python/pythonmodule.h>
+#include <vistle/control/hub.h>
 
 #include "pythoninterpreter.h"
 
 namespace vistle {
+
+struct HubPythonStateAccessor: public vistle::PythonStateAccessor {
+    void lock() override { state().getMutex().lock(); };
+    void unlock() override { state().getMutex().unlock(); };
+    vistle::StateTracker &state() override { return vistle::Hub::the().stateTracker(); }
+    bool sendMessage(const vistle::message::Message &m, const vistle::buffer *payload = nullptr) override
+    {
+        bool ret = vistle::Hub::the().handleMessage(m, nullptr, payload);
+        assert(ret);
+        if (!ret) {
+            std::cerr << "Python: failed to send message " << m << std::endl;
+        }
+        return ret;
+    }
+};
 
 class Executor {
 public:
@@ -71,7 +87,8 @@ PythonInterpreter::PythonInterpreter(const std::string &file, const std::string 
                                      bool executeModules)
 : m_pythonPath(path)
 , m_interpreter(new PythonInterface("vistle"))
-, m_module(new PythonModule)
+, m_access(new HubPythonStateAccessor)
+, m_module(new PythonModule(*m_access))
 , m_executor(new Executor(*this, file, barrierAfterLoad, executeModules))
 , m_thread(std::ref(*m_executor))
 {}

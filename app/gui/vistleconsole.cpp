@@ -36,8 +36,8 @@
 #endif
 #include "vistleconsole.h"
 #ifdef HAVE_PYTHON
-#include <vistle/userinterface/pythonmodule.h>
-#include <vistle/userinterface/pythoninterface.h>
+#include <vistle/python/pythonmodule.h>
+#include <vistle/python/pythoninterface.h>
 #endif
 #include <vistle/core/message.h>
 #include <vistle/core/messages.h>

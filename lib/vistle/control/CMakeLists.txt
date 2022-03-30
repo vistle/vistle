@@ -18,8 +18,8 @@ set(control_HEADERS
     vistleurl.h)
 
 if(Python_FOUND)
-    set(control_SOURCES ${control_SOURCES} ../userinterface/pythoninterface.cpp ../userinterface/pythonmodule.cpp pythoninterpreter.cpp)
-    set(control_HEADERS ${control_HEADERS} ../userinterface/pythoninterface.h ../userinterface/pythonmodule.h pythoninterpreter.h)
+    set(control_SOURCES ${control_SOURCES} pythoninterpreter.cpp)
+    set(control_HEADERS ${control_HEADERS} pythoninterpreter.h)
 endif()
 
 vistle_add_library(vistle_control EXPORT ${VISTLE_LIB_TYPE} ${control_SOURCES} ${control_HEADERS})
@@ -41,6 +41,7 @@ if(Python_FOUND)
         PRIVATE vistle_userinterface_EXPORTS
         PRIVATE EMBED_PYTHON)
     target_link_libraries(vistle_control PRIVATE Python::Python)
+    target_link_libraries(vistle_control PRIVATE vistle_python)
 endif()
 
 if(UNIX)
@@ -48,7 +49,7 @@ if(UNIX)
 endif()
 
 add_custom_target(
-    vistle_python ALL
+    vistle_python_py ALL
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/vistle.py ${PROJECT_BINARY_DIR}/share/vistle/vistle.py
     DEPENDS vistle.py
     SOURCES vistle.py)

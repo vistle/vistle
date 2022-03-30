@@ -3,17 +3,13 @@
 
 #include <string>
 #include <mutex>
-#include <vistle/userinterface/userinterface.h>
+#include "userinterface.h"
+#include <vistle/python/pythonmodule.h>
 
 namespace vistle {
 
 class V_UIEXPORT VistleConnection {
 public:
-    class Locker {
-    public:
-        virtual ~Locker() {}
-    };
-
     VistleConnection(vistle::UserInterface &ui);
     virtual ~VistleConnection();
     static VistleConnection &the();
@@ -47,7 +43,6 @@ public:
 
     void lock();
     void unlock();
-    std::unique_ptr<Locker> locked();
 
 private:
     vistle::UserInterface &m_ui;
@@ -85,6 +80,17 @@ void VistleConnection::setParameter(int id, const std::string &name, const T &va
         sendParameter(p);
     }
 }
+
+struct V_UIEXPORT UiPythonStateAccessor: public vistle::PythonStateAccessor {
+    UiPythonStateAccessor(vistle::VistleConnection *vc);
+
+    void lock() override;
+    void unlock() override;
+    StateTracker &state() override;
+    bool sendMessage(const vistle::message::Message &m, const buffer *payload = nullptr) override;
+
+    vistle::VistleConnection *m_vc = nullptr;
+};
 
 } //namespace vistle
 #endif

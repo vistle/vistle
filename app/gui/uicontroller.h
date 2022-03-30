@@ -11,6 +11,7 @@
 
 namespace vistle {
 class PythonInterface;
+struct PythonStateAccessor;
 class PythonModule;
 } // namespace vistle
 
@@ -59,15 +60,16 @@ private slots:
     void screenshot(QString imageefile);
 
 private:
-    vistle::VistleConnection *m_vistleConnection;
-    vistle::UserInterface *m_ui;
-    vistle::PythonInterface *m_python;
-    vistle::PythonModule *m_pythonMod;
-    std::thread *m_thread;
-    DataFlowNetwork *m_scene;
+    std::unique_ptr<vistle::VistleConnection> m_vistleConnection;
+    std::unique_ptr<vistle::UserInterface> m_ui;
+    std::unique_ptr<vistle::PythonInterface> m_python;
+    std::unique_ptr<vistle::PythonStateAccessor> m_pythonAccess;
+    std::unique_ptr<vistle::PythonModule> m_pythonMod;
+    std::unique_ptr<std::thread> m_thread;
+    DataFlowNetwork *m_scene = nullptr;
 
     VistleObserver m_observer;
-    MainWindow *m_mainWindow;
+    MainWindow *m_mainWindow = nullptr;
 
     QString m_currentFile;
     bool m_modified = false;

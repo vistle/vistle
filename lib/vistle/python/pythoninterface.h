@@ -11,7 +11,7 @@
 
 namespace vistle {
 
-class V_UIEXPORT PythonInterface {
+class V_PYEXPORT PythonInterface {
 public:
     PythonInterface(const std::string &name);
     ~PythonInterface();

@@ -25,6 +25,7 @@ public:
 private:
     std::string m_pythonPath;
     std::shared_ptr<PythonInterface> m_interpreter;
+    std::unique_ptr<PythonStateAccessor> m_access;
     std::shared_ptr<PythonModule> m_module;
     std::shared_ptr<Executor> m_executor;
     std::thread m_thread;

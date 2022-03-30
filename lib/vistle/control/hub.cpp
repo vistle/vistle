@@ -45,7 +45,7 @@
 #include "fileinfocrawler.h"
 #include "scanscripts.h"
 #ifdef HAVE_PYTHON
-#include <vistle/userinterface/pythonmodule.h>
+#include <vistle/python/pythonmodule.h>
 #include "pythoninterpreter.h"
 #endif
 
