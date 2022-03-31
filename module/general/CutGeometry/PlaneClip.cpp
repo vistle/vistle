@@ -156,6 +156,12 @@ void PlaneClip::preparePolygons(std::vector<Index> &outIdxPoly, std::vector<Inde
     }
 }
 
+
+/**
+ * @brief Process incoming data.
+ *
+ * @return true, if everything went well.
+ */
 bool PlaneClip::process()
 {
     processCoordinates();
@@ -426,11 +432,11 @@ void PlaneClip::iterCopyOfVec3ToOutCoords(Index &idx, VistleVec3Args &&...vecs)
  * @param numVertsOnly Use only the number of vertices to set indeces of corner and coordinates.
  * @param vertexMap Pointer to map from vertex indices in the incoming object to vertex indices in the outgoing object.
  * @param start Start index for this triangle in vertexMap.
- * @paparam outIdxCorner Index reference to first corner outside.
- * @param outIdxCoord Index reference to first coordinate outside.
+ * @param outIdxCorner Index of first corner outside.
+ * @param outIdxCoord Index of first coordinates outside.
  */
-void PlaneClip::insertElemNextToCutPlane(bool numVertsOnly, const Index *vertexMap, const Index &start,
-                                         Index &outIdxCorner, Index &outIdxCoord)
+void PlaneClip::insertTriElemNextToCutPlane(bool numVertsOnly, const Index *vertexMap, const Index &start,
+                                            Index &outIdxCorner, Index &outIdxCoord)
 {
     if (numVertsOnly) {
         outIdxCorner = haveCornerList ? 3 : 0;
@@ -438,14 +444,9 @@ void PlaneClip::insertElemNextToCutPlane(bool numVertsOnly, const Index *vertexM
         return;
     }
 
-    if (haveCornerList) {
-        for (Index i = 0; i < 3; ++i) {
-            const Index corner = start + i;
-            const Index vid = cl[corner];
-            const Index outID = vertexMap[vid] - 1;
-            out_cl[outIdxCorner + i] = outID;
-        }
-    } else {
+    if (haveCornerList)
+        fillConnListIfElemVisible(start, 3, outIdxCorner, Geometry::Triangle);
+    else {
         for (Index i = 0; i < 3; ++i) {
             const Index in = start + i;
             const Index out = outIdxCoord + i;
@@ -463,12 +464,12 @@ void PlaneClip::insertElemNextToCutPlane(bool numVertsOnly, const Index *vertexM
  * @param cornerIn For the case where we have to split edges, new triangles might be created => corner inside.
  * @param cornerOut For the case where we have to split edges, new triangles might be created => corner outside.
  * @param start Start index for this triangle in vertexMap.
- * @paparam outIdxCorner Index reference to first corner outside.
- * @param outIdxCoord Index reference to first coordinate outside.
+ * @param outIdxCorner Index ref to corner index to assign new number of corners.
+ * @param outIdxCoord Index ref to coordinate index to assign new number of coords.
  */
-void PlaneClip::insertElemNextToCutPlane(bool numVertsOnly, const Index *vertexMap, const Index &numIn,
-                                         const Index &start, const Index &cornerIn, const Index &cornerOut,
-                                         Index &outIdxCorner, Index &outIdxCoord)
+void PlaneClip::insertTriElemPartNextToCutPlane(bool numVertsOnly, const Index *vertexMap, const Index &numIn,
+                                                const Index &start, const Index &cornerIn, const Index &cornerOut,
+                                                Index &outIdxCorner, Index &outIdxCoord)
 {
     const Index totalCorner = numIn == 1 ? 3 : 9;
     const Index newCoord = numIn == 1 ? 2 : 3;
@@ -519,6 +520,7 @@ void PlaneClip::insertElemNextToCutPlane(bool numVertsOnly, const Index *vertexM
         copyVec3ToOutCoords(v2, outIdxCoord + 2);
 
         if (haveCornerList)
+            //debug
             /* copyIndecesToOutConnListAndCheck(totalCornerPredicate, outIdxCorner, */
             copyIndecesToOutConnList(outIdxCorner,
                                      std::vector<Index>{vertexMap[in0] - 1, outIdxCoord, outIdxCoord + 2,
@@ -540,8 +542,8 @@ void PlaneClip::insertElemNextToCutPlane(bool numVertsOnly, const Index *vertexM
  * @brief Process a triangle for inserting if its partially or in a whole in the visible area.
  *
  * @param element Index of triangle.
- * @param outIdxCorner Index of first corner outside.
- * @param outIdxCoord Index of first coordinates outside.
+ * @param outIdxCorner Index ref to corner index to assign new number of corners.
+ * @param outIdxCoord Index ref to coordinate index to assign new number of coords.
  * @param numVertsOnly process triangle by only using vertices.
  */
 void PlaneClip::processTriangle(const Index element, Index &outIdxCorner, Index &outIdxCoord, bool numVertsOnly)
@@ -562,11 +564,153 @@ void PlaneClip::processTriangle(const Index element, Index &outIdxCorner, Index 
     }
 
     if (numIn == 3)
-        insertElemNextToCutPlane(numVertsOnly, vertexMap, start, outIdxCorner, outIdxCoord);
+        insertTriElemNextToCutPlane(numVertsOnly, vertexMap, start, outIdxCorner, outIdxCoord);
     else if (numIn > 0)
-        insertElemNextToCutPlane(numVertsOnly, vertexMap, numIn, start, cornerIn, cornerOut, outIdxCorner, outIdxCoord);
+        insertTriElemPartNextToCutPlane(numVertsOnly, vertexMap, numIn, start, cornerIn, cornerOut, outIdxCorner,
+                                        outIdxCoord);
 }
 
+/**
+ * @brief HELPER: iterate operation of for loops in  fillConnListIfElemVisible.
+ *
+ * @param vertexMap vertex specific data.
+ * @param corner current corner.
+ * @param outIdxCorner
+ * @param it current index.
+ */
+void PlaneClip::helper_fillConnListIfElemVisible(const Index *vertexMap, const Index &corner, const Index &outIdxCorner,
+                                                 const Index &it)
+{
+    const Index vid = cl[corner];
+    const Index outID = vertexMap[vid] - 1;
+    out_cl[outIdxCorner + it] = outID;
+}
+
+/**
+ * @brief Fill connection list in case all elemets and vertices are on the right side (check not included).
+ *
+ * @param start Start index of corner of polygon in cornerlist.
+ * @param end End index of corner of polygon in cornerlist.
+ * @param outIdxCorner
+ */
+void PlaneClip::fillConnListIfElemVisible(const Index &start, const Index &end, const Index &outIdxCorner,
+                                          const Geometry &geo)
+{
+    const auto vertexMap = m_vertexMap.data();
+    switch (geo) {
+    case Geometry::Triangle:
+        for (Index i = 0; i < end; ++i) {
+            const Index corner = start + i;
+            helper_fillConnListIfElemVisible(vertexMap, corner, outIdxCorner, i);
+        }
+        break;
+    case Geometry::Polygon: //default
+        Index i = 0;
+        for (Index corner = start; corner < end; ++corner, ++i)
+            helper_fillConnListIfElemVisible(vertexMap, corner, outIdxCorner, i);
+        break;
+    }
+}
+
+/**
+ * @brief If all vertices in the element are on the right side of the cutting plane, insert the element and all vertices.
+ *
+ * @param numVertsOnly Use only the number of vertices to set indeces of corner, element number of polygons and coordinates.
+ * @param vertexMap Pointer to map from vertex indices in the incoming object to vertex indices in the outgoing object.
+ * @param numIn Corners inside visible area.
+ * @param start Start index for this triangle in vertexMap.
+ * @param outIdxPoly Index ref to polygon element to assign new number of polygons.
+ * @param outIdxCorner Index ref to corner index to assign new number of corners.
+ * @param outIdxCoord Index ref to coordinate index to assign new number of coords.
+ */
+void PlaneClip::insertPolyElemNextToPlane(bool numVertsOnly, const Index &numIn, const Index &start, const Index &end,
+                                          Index &outIdxPoly, Index &outIdxCorner, Index &outIdxCoord)
+{
+    if (numVertsOnly) {
+        outIdxPoly = 1;
+        outIdxCorner = numIn;
+        outIdxCoord = 0;
+        return;
+    }
+
+    out_el[outIdxPoly] = outIdxCorner;
+    fillConnListIfElemVisible(start, end, outIdxCorner);
+}
+
+/**
+ * @brief If not all of the vertices of an element are on the same side of the cutting plane:
+ *     - insert vertices that are on the right side of the plane
+ *     - omit vertices that are on the wrong side of the plane
+ *     - if the vertex before the processed vertex is on the
+ *       other side of the plane: insert the intersection point
+ *       between the line formed by the two vertices and the
+ *       plane
+ *
+ * @param numVertsOnly Use only the number of vertices to set indeces of corner, element number of polygons and coordinates.
+ * @param numCreate
+ * @param numCorner
+ * @param numIn Corners inside visible area.
+ * @param start Start index for this triangle in vertexMap.
+ * @param outIdxPoly Index ref to polygon element to assign new number of polygons.
+ * @param outIdxCorner Index ref to corner index to assign new number of corners.
+ * @param outIdxCoord Index ref to coordinate index to assign new number of coords.
+ */
+void PlaneClip::insertPolyElemPartNextToPlane(bool numVertsOnly, const Index &numCreate, const Index &numCorner,
+                                              const Index &numIn, const Index &start, const Index &end,
+                                              Index &outIdxPoly, Index &outIdxCorner, Index &outIdxCoord)
+{
+    const auto vertexMap = m_vertexMap.data();
+    assert(numCreate % 2 == 0);
+    assert(numCreate == 2); // we only handle convex polygons
+    if (numVertsOnly) {
+        outIdxPoly = 1;
+        outIdxCorner = numIn + numCreate;
+        outIdxCoord = numCreate;
+        return;
+    }
+
+    out_el[outIdxPoly] = outIdxCorner;
+
+    Index n = 0;
+    Index prevIdx = cl[start + numCorner - 1];
+    Index numCreated = 0;
+    bool prevIn = vertexMap[prevIdx] > 0;
+    for (Index i = 0; i < numCorner; ++i) {
+        const Index corner = start + i;
+        const Index idx = cl[corner];
+        Index outID = vertexMap[idx];
+        const bool in = outID > 0;
+        --outID;
+        if (in != prevIn) {
+            const Index newId = outIdxCoord + numCreated;
+            ++numCreated;
+
+            copySplitEdgeResultToOutCoords(newId, idx, prevIdx);
+
+            out_cl[outIdxCorner + n] = newId;
+            ++n;
+        }
+        if (in) {
+            out_cl[outIdxCorner + n] = outID;
+            ++n;
+        }
+        prevIdx = idx;
+        prevIn = in;
+    }
+    assert(numCreated == numCreate);
+    assert(n == numIn + numCreate);
+}
+
+/**
+ * @brief Process a polygon for inserting if its partially or in a whole in the visible area.
+ *
+ *
+ * @param element Index of triangle.
+ * @param outIdxPoly Index ref to polygon element to assign new number of polygons.
+ * @param outIdxCorner Index ref to corner index to assign new number of corners.
+ * @param outIdxCoord Index ref to coordinate index to assign new number of coords.
+ * @param numVertsOnly process triangle by only using vertices.
+ */
 void PlaneClip::processPolygon(const Index element, Index &outIdxPoly, Index &outIdxCorner, Index &outIdxCoord,
                                bool numVertsOnly)
 {
@@ -608,79 +752,9 @@ void PlaneClip::processPolygon(const Index element, Index &outIdxPoly, Index &ou
         return;
     }
 
-    if (numIn == nCorner) {
-        // if all vertices in the element are on the right side
-        // of the cutting plane, insert the element and all vertices
-
-        if (numVertsOnly) {
-            outIdxPoly = 1;
-            outIdxCorner = numIn;
-            outIdxCoord = 0;
-            return;
-        }
-
-        out_el[outIdxPoly] = outIdxCorner;
-
-        Index i = 0;
-        for (Index corner = start; corner < end; ++corner) {
-            const Index vid = cl[corner];
-            const Index outID = vertexMap[vid] - 1;
-            out_cl[outIdxCorner + i] = outID;
-            ++i;
-        }
-
-    } else if (numIn > 0) {
-        // if not all of the vertices of an element are on the same
-        // side of the cutting plane:
-        //   - insert vertices that are on the right side of the plane
-        //   - omit vertices that are on the wrong side of the plane
-        //   - if the vertex before the processed vertex is on the
-        //     other side of the plane: insert the intersection point
-        //     between the line formed by the two vertices and the
-        //     plane
-
-        assert(numCreate % 2 == 0);
-        assert(numCreate == 2); // we only handle convex polygons
-        if (numVertsOnly) {
-            outIdxPoly = numCreate / 2;
-            outIdxPoly = 1;
-            outIdxCorner = numIn + numCreate;
-            outIdxCoord = numCreate;
-            return;
-        }
-
-        out_el[outIdxPoly] = outIdxCorner;
-
-        Index n = 0;
-        Index prevIdx = cl[start + nCorner - 1];
-        Index numCreated = 0;
-        bool prevIn = vertexMap[prevIdx] > 0;
-        for (Index i = 0; i < nCorner; ++i) {
-            const Index corner = start + i;
-            const Index idx = cl[corner];
-            Index outID = vertexMap[idx];
-            const bool in = outID > 0;
-            --outID;
-            if (in != prevIn) {
-                const Index newId = outIdxCoord + numCreated;
-                ++numCreated;
-
-                const Vector3 v = splitEdge(idx, prevIdx);
-                out_x[newId] = v[0];
-                out_y[newId] = v[1];
-                out_z[newId] = v[2];
-
-                out_cl[outIdxCorner + n] = newId;
-                ++n;
-            }
-            if (in) {
-                out_cl[outIdxCorner + n] = outID;
-                ++n;
-            }
-            prevIdx = idx;
-            prevIn = in;
-        }
-        assert(numCreated == numCreate);
-        assert(n == numIn + numCreate);
-    }
+    if (numIn == nCorner)
+        insertPolyElemNextToPlane(numVertsOnly, numIn, start, end, outIdxPoly, outIdxCorner, outIdxCoord);
+    else if (numIn > 0)
+        insertPolyElemPartNextToPlane(numVertsOnly, numCreate, nCorner, numIn, start, end, outIdxPoly, outIdxCorner,
+                                      outIdxCoord);
 }

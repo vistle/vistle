@@ -18,8 +18,6 @@ public:
     PlaneClip(Triangles::const_ptr grid, IsoDataFunctor decider);
     PlaneClip(Polygons::const_ptr grid, IsoDataFunctor decider);
 
-    typedef std::function<bool(const Index &)> LogicalOperation;
-
     template<typename F, typename... Args>
     auto for_each_arg(ssize_t elem, F f, Args &&...args)
     {
@@ -46,36 +44,51 @@ public:
     Object::ptr result();
 
 private:
+    typedef std::function<bool(const Index &)> LogicalOperation;
+    enum Geometry { Triangle, Polygon };
+
     Vector3 splitEdge(Index i, Index j);
+    void processCoordinates();
+    void helper_fillConnListIfElemVisible(const Index *vertexMap, const Index &corner, const Index &outIdxCorner,
+                                          const Index &it);
+    void fillConnListIfElemVisible(const Index &start, const Index &end, const Index &outIdxCorner,
+                                   const Geometry &geo = Geometry::Polygon);
+
+    //triangles
     auto initPreExistCorner(const Index &idx);
     auto initPreExistCornerAndCheck(LogicalOperation op, const Index &idx);
     void copySplitEdgeResultToOutCoords(const Index &idx, const Index &in, const Index &out);
     void prepareTriangles(std::vector<Index> &outIdxCorner, std::vector<Index> &outIdxCoord, const Index &numCoordsIn,
                           const Index &numElem);
-    void preparePolygons(std::vector<Index> &outIdxPoly, std::vector<Index> &outIdxCorner,
-                         std::vector<Index> &outIdxCoord, const Index &numCoordsIn, const Index &numElem);
     void processTriangle(const Index element, Index &outIdxCorner, Index &outIdxCoord, bool numVertsOnly);
     void prepareToEmitInOrder(const Index *vertexMap, const Index &start, Index &cornerIn, Index &cornerOut,
                               Index &numIn);
-    void processPolygon(const Index element, Index &outIdxPoly, Index &outIdxCorner, Index &outIdxCoord,
-                        bool numVertsOnly);
-    void processCoordinates();
-    void insertElemNextToCutPlane(bool numVertsOnly, const Index *vertexMap, const Index &start, Index &outIdxCorner,
-                                  Index &outIdxCoord);
-    void insertElemNextToCutPlane(bool numVertsOnly, const Index *vertexMap, const Index &numIn, const Index &start,
-                                  const Index &cornerIn, const Index &cornerOut, Index &outIdxCorner,
-                                  Index &outIdxCoord);
+    void insertTriElemNextToCutPlane(bool numVertsOnly, const Index *vertexMap, const Index &start, Index &outIdxCorner,
+                                     Index &outIdxCoord);
+    void insertTriElemPartNextToCutPlane(bool numVertsOnly, const Index *vertexMap, const Index &numIn,
+                                         const Index &start, const Index &cornerIn, const Index &cornerOut,
+                                         Index &outIdxCorner, Index &outIdxCoord);
     void copyVec3ToOutCoords(const vistle::Vector3 &vec, const Index &idx,
                              const std::array<Index, 3> &outIdxList = {InvalidIndex, InvalidIndex, InvalidIndex},
                              const std::array<Index, 3> &vecIdxList = {0, 1, 2});
-
     void copyScalarToOutCoords(const Index &out, const Index &in);
     void copyIdxToOutConnList(const Index &out, const Index &idx);
     auto copyIndecesToOutConnList(const Index &out, const std::vector<Index> &vecIdx);
     void copyIndecesToOutConnListAndCheck(LogicalOperation op, const Index &out, const std::vector<Index> &vecIdx);
-
     template<typename... VistleVec3Args>
     void iterCopyOfVec3ToOutCoords(Index &idx, VistleVec3Args &&...vecs);
+
+    //polygons
+    void preparePolygons(std::vector<Index> &outIdxPoly, std::vector<Index> &outIdxCorner,
+                         std::vector<Index> &outIdxCoord, const Index &numCoordsIn, const Index &numElem);
+    void processPolygon(const Index element, Index &outIdxPoly, Index &outIdxCorner, Index &outIdxCoord,
+                        bool numVertsOnly);
+    void reassignPolygonData(const Index &poly, const Index &corner, const Index &coord);
+    void insertPolyElemNextToPlane(bool numVertsOnly, const Index &numIn, const Index &start, const Index &end,
+                                   Index &outIdxPoly, Index &outIdxCorner, Index &outIdxCoord);
+    void insertPolyElemPartNextToPlane(bool numVertsOnly, const Index &numCreate, const Index &numCorner,
+                                       const Index &numIn, const Index &start, const Index &end, Index &outIdxPoly,
+                                       Index &outIdxCorner, Index &outIdxCoord);
 
     void processParallel(bool numVertsOnly, const Index element, Index &outIdxCorner, Index &outIdxCoord)
     {
@@ -87,7 +100,6 @@ private:
     {
         processPolygon(element, outIdxCoord, outIdxCoord, outIdxCoord, numVertsOnly);
     }
-
 
     /* #define PROCESS_PARALLEL_IMPL(FUNC_NAME,...) \ */
     /* template<typename... Args> \ */
