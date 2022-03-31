@@ -6,12 +6,12 @@ generate scalar and vector test data on structured and unstructured grids
 This example uses the IsoSuface module to generate a surface with the data value 1.
 To set this up create the pipeline as described in the following picture and change the isovalue parameter of the Surface module to 1.
 
-<img src="../../../../../module/test/Gendat/isosurfaceExample.png" alt="drawing" style="width:600px;"/>
+<img src="../../../module/test/Gendat/isosurfaceExample.png" alt="drawing" style="width:600px;"/>
 
 Alternatively load vistle/examples/gendat-isisurface.vsl.
 The result should look like this:
 
-![]( ../../../module/test/Gendat/isosurfaceExampleResult.png )
+![](../../../module/test/Gendat/isosurfaceExampleResult.png)
 
 <svg width="50.0em" height="7.6em" >
 <style>.text { font: normal 1.0em sans-serif;}tspan{ font: italic 1.0em sans-serif;}.moduleName{ font: bold 1.0em sans-serif;}</style>
