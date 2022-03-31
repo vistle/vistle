@@ -7,6 +7,7 @@
 #include "communicator.h"
 #include <vistle/util/vecstreambuf.h>
 #include <vistle/util/sleep.h>
+#include <vistle/util/threadname.h>
 #include <vistle/core/archives.h>
 #include <vistle/core/archive_loader.h>
 #include <vistle/core/archive_saver.h>
@@ -51,9 +52,18 @@ DataManager::DataManager(mpi::communicator &comm)
 #else
 , m_workGuard(new asio::io_service::work(m_ioService))
 #endif
-, m_ioThread([this]() { sendLoop(); })
-, m_recvThread([this]() { recvLoop(); })
-, m_cleanThread([this]() { cleanLoop(); })
+, m_ioThread([this]() {
+    setThreadName("vistle:dmgr_send");
+    sendLoop();
+})
+, m_recvThread([this]() {
+    setThreadName("vistle:dmgr_recv");
+    recvLoop();
+})
+, m_cleanThread([this]() {
+    setThreadName("vistle:dmgr_clean");
+    cleanLoop();
+})
 {
     if (m_size > 1)
         m_req = m_comm.irecv(boost::mpi::any_source, Communicator::TagData, &m_msgSize, 1);

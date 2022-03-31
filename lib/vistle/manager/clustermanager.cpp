@@ -3,14 +3,6 @@
  */
 
 
-#ifdef __linux__
-// for pthread_setname_np
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif
-#include <pthread.h>
-#endif
-
 #include <boost/foreach.hpp>
 #include <boost/lexical_cast.hpp>
 
@@ -36,6 +28,7 @@
 #include <vistle/util/enum.h>
 #include <vistle/util/stopwatch.h>
 #include <vistle/util/sysdep.h>
+#include <vistle/util/threadname.h>
 #include <vistle/control/scanmodules.h>
 
 #include "clustermanager.h"
@@ -982,14 +975,7 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn)
 
     std::thread mt([this, newId, name, &mod]() {
         std::string mname = "vistle:mq" + std::to_string(newId);
-#ifdef __linux__
-#if __GLIBC__ > 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 12)
-        pthread_setname_np(pthread_self(), mname.c_str());
-#endif
-#endif
-#ifdef __APPLE__
-        pthread_setname_np(mname.c_str());
-#endif
+        setThreadName(mname);
 
         for (;;) {
             message::Buffer buf;
@@ -1058,14 +1044,7 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn)
             boost::mpi::communicator ncomm(m_comm, boost::mpi::comm_duplicate);
             std::thread t([newId, name, ncomm, &mod]() {
                 std::string mname = "vistle:" + name + ":" + std::to_string(newId);
-#ifdef __linux__
-#if __GLIBC__ > 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 12)
-                pthread_setname_np(pthread_self(), mname.c_str());
-#endif
-#endif
-#ifdef __APPLE__
-                pthread_setname_np(mname.c_str());
-#endif
+                setThreadName(mname);
                 //std::cerr << "thread for module " << name << ":" << newId << std::endl;
                 mod.instance = mod.newModule(name, newId, ncomm);
                 if (mod.instance)

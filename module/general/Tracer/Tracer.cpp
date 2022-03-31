@@ -21,6 +21,7 @@
 #include <vistle/core/serialize.h>
 #include <vistle/core/objectmeta_impl.h>
 #include <vistle/alg/objalg.h>
+#include <vistle/util/threadname.h>
 
 MODULE_MAIN(Tracer)
 
@@ -244,14 +245,20 @@ bool Tracer::compute()
 
     if (useCelltree) {
         if (unstr) {
-            celltree[t + 1].emplace_back(
-                std::async(std::launch::async, [unstr]() -> Celltree3::const_ptr { return unstr->getCelltree(); }));
+            celltree[t + 1].emplace_back(std::async(std::launch::async, [unstr]() -> Celltree3::const_ptr {
+                setThreadName("Tracer:Celltree");
+                return unstr->getCelltree();
+            }));
         } else if (auto str = StructuredGrid::as(grid)) {
-            celltree[t + 1].emplace_back(
-                std::async(std::launch::async, [str]() -> Celltree3::const_ptr { return str->getCelltree(); }));
+            celltree[t + 1].emplace_back(std::async(std::launch::async, [str]() -> Celltree3::const_ptr {
+                setThreadName("Tracer:Celltree");
+                return str->getCelltree();
+            }));
         } else if (auto lg = LayerGrid::as(grid)) {
-            celltree[t + 1].emplace_back(
-                std::async(std::launch::async, [lg]() -> Celltree3::const_ptr { return lg->getCelltree(); }));
+            celltree[t + 1].emplace_back(std::async(std::launch::async, [lg]() -> Celltree3::const_ptr {
+                setThreadName("Tracer:Celltree");
+                return lg->getCelltree();
+            }));
         }
     }
 

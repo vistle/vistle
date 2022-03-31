@@ -20,17 +20,11 @@
 #include <vistle/core/tcpmessage.h>
 #include <vistle/util/listenv4v6.h>
 #include <vistle/util/enum.h>
+#include <vistle/util/threadname.h>
 
 #include <osg/io_utils>
 
 #include "DecodeTask.h"
-
-#ifdef __linux
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif
-#include <pthread.h>
-#endif
 
 //#define CONNDEBUG
 
@@ -223,12 +217,8 @@ void RemoteConnection::stopThread()
 
 void RemoteConnection::operator()()
 {
-#ifdef __linux
-    pthread_setname_np(pthread_self(), "RHR:RemoteConn");
-#endif
-#ifdef __APPLE__
-    pthread_setname_np("RHR:RemoteConnection");
-#endif
+    vistle::setThreadName("RHR:RemoteConnection");
+
     if (m_comm)
         CERR << "starting thread on rank " << m_comm->rank() << std::endl;
     else

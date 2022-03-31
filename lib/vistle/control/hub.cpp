@@ -17,6 +17,7 @@
 #include <vistle/util/sleep.h>
 #include <vistle/util/listenv4v6.h>
 #include <vistle/util/crypto.h>
+#include <vistle/util/threadname.h>
 #include <vistle/core/message.h>
 #include <vistle/core/tcpmessage.h>
 #include <vistle/core/messagerouter.h>
@@ -2021,8 +2022,14 @@ bool Hub::startVrb()
     };
 
     m_vrb = child;
-    m_vrbThreads.emplace_back([consumeStream, out]() mutable { consumeStream(*out); });
-    m_vrbThreads.emplace_back([consumeStream, err]() mutable { consumeStream(*err); });
+    m_vrbThreads.emplace_back([consumeStream, out]() mutable {
+        setThreadName("vistle:vrb_cout");
+        consumeStream(*out);
+    });
+    m_vrbThreads.emplace_back([consumeStream, err]() mutable {
+        setThreadName("vistle:vrb_cerr");
+        consumeStream(*err);
+    });
 
     std::lock_guard<std::mutex> guard(m_processMutex);
     m_processMap[child] = Process::VRB;
@@ -2797,7 +2804,11 @@ void Hub::spawnModule(const std::string &path, const std::string &name, int spaw
 
 void Hub::startIoThread()
 {
-    m_ioThreads.emplace_back([this]() { m_ioService.run(); });
+    auto num = m_ioThreads.size();
+    m_ioThreads.emplace_back([this, num]() {
+        setThreadName("vistle:io:" + std::to_string(num));
+        m_ioService.run();
+    });
 }
 
 void Hub::stopIoThreads()

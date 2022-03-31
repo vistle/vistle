@@ -14,6 +14,7 @@
 #include "executor.h"
 #include "communicator.h"
 #include <vistle/util/hostname.h>
+#include <vistle/util/threadname.h>
 #include <vistle/control/hub.h>
 #include <boost/mpi.hpp>
 
@@ -135,7 +136,8 @@ bool VistleManager::run(int argc, char *argv[])
         hubDataPort = hub->dataPort();
         rank0 = hostname();
 
-        hubthread.reset(new std::thread([hub, argc, argv]() {
+        hubthread.reset(new std::thread([hub]() {
+            setThreadName("vistle:hub");
             hub->run();
             std::cerr << "Hub exited..." << std::endl;
             delete hub;
@@ -184,15 +186,16 @@ bool VistleManager::run(int argc, char *argv[])
     }
 #endif
     auto t = std::thread([args, this]() {
+        setThreadName("vistle:main2");
 #endif
         try {
             vistle::registerTypes();
             std::vector<char *> argv;
             for (auto &a: args) {
                 argv.push_back(const_cast<char *>(a.data()));
-                std::cerr << "arg: " << a << std::endl;
             }
             executer = new Vistle(argv.size(), argv.data(), m_comm);
+            std::cerr << "created Vistle executor" << std::endl;
             executer->run();
         } catch (vistle::exception &e) {
             std::cerr << "fatal exception: " << e.what() << std::endl << e.where() << std::endl;

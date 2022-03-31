@@ -6,6 +6,7 @@
 #include <condition_variable>
 #include <boost/asio/deadline_timer.hpp>
 #include <vistle/util/listenv4v6.h>
+#include <vistle/util/threadname.h>
 
 #define CERR std::cerr << "DataProxy: "
 
@@ -269,7 +270,11 @@ void DataProxy::startThread()
     if (true || m_threads.size() < std::thread::hardware_concurrency()) {
         //if (m_threads.size() < 1) {
         auto &io = m_io;
-        m_threads.emplace_back([&io]() { io.run(); });
+        auto num = m_threads.size();
+        m_threads.emplace_back([&io, num]() {
+            setThreadName("vistle:data:" + std::to_string(num));
+            io.run();
+        });
         //CERR << "now " << m_threads.size() << " threads in pool" << std::endl;
     } else {
         CERR << "not starting a new thread, already have " << m_threads.size() << " threads" << std::endl;

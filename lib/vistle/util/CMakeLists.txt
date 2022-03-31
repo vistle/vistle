@@ -14,6 +14,7 @@ set(util_SOURCES
     sleep.cpp
     stopwatch.cpp
     sysdep.cpp
+    threadname.cpp
     tools.cpp
     url.cpp
     userinfo.cpp)
@@ -41,6 +42,7 @@ set(util_HEADERS
     ssize_t.h
     stopwatch.h
     sysdep.h
+    threadname.h
     tools.h
     url.h
     userinfo.h

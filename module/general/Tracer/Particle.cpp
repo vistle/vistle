@@ -4,6 +4,7 @@
 #include <boost/serialization/vector.hpp>
 #include <vistle/core/vec.h>
 #include <vistle/util/math.h>
+#include <vistle/util/threadname.h>
 #include "Tracer.h"
 #include "Integrator.h"
 #include "Particle.h"
@@ -93,7 +94,10 @@ void Particle::startTracing()
 {
     assert(inGrid());
     m_tracing = true;
-    m_progressFuture = std::async(std::launch::async, [this]() -> bool { return trace(); });
+    m_progressFuture = std::async(std::launch::async, [this]() -> bool {
+        setThreadName("Tracer:Particle:" + std::to_string(id()));
+        return trace();
+    });
 }
 
 bool Particle::isActive() const
