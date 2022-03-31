@@ -158,13 +158,16 @@ def getParametersString(mod):
         paramString += getTableLine([param, getParameterTooltip(mod, param), getParameterType(mod, param)])
     return paramString
 
-def getExamples(mod):
+def getExamples(mod,exampleName):
     modulename = getModuleName(mod)
     sourceDir = os.environ['VISTLE_DOCUMENTATION_DIR']+"/"
-    imgPath = sourceDir + modulename + '_example.png'
-    vslPath = sourceDir + modulename + '.vsl'
-    subprocess.run(["vistle","--snapshot",imgPath,vslPath])
-    return "![](" +modulename+"_example.png)"
+    returnString = ""
+    imgPath = sourceDir + exampleName + '.png'
+    vslPath = sourceDir + exampleName + '.vsl'
+    if os.path.exists(vslPath):
+        returnString += "![](" + exampleName +".png) \n"
+        subprocess.run(["vistle","--snapshot",imgPath,vslPath])
+    return returnString
 
 def readAdditionalDocumentation(filename):
     content = ""
@@ -190,10 +193,10 @@ def findTagPositions(lines, tags) -> {}:
         if tag is None:
             tag = isImage(line)
         if tag != None:
-            if tag in tagPos.keys():
-                tagPos[idx] = idx
+            if (tag in tagPos.keys()):
+                tagPos[tag].append(idx)
             else:
-                tagPos[tag] = idx
+                tagPos[tag] = [idx]
         idx += 1
     return tagPos
 
@@ -234,12 +237,17 @@ def generateModuleDescriptions():
     barrier()
     contentList = readAdditionalDocumentation(filename)
     tagPos = findTagPositions(contentList, tag_functions.keys())
-    for tag, pos in tagPos.items():
-        line = contentList[pos]
-        if tag in tag_functions.keys():
-            line = tag_functions[tag](mod)
-        line = relinkImage(line, sourceDir, destDir)
-        contentList[pos] = line
+    for tag, posList in tagPos.items():
+        for pos in posList:
+            line = contentList[pos]
+            if tag == "exampleImg":
+                exampleName = re.search('<(.+?)>',line)
+                if exampleName:
+                    line = tag_functions[tag](mod, exampleName.group(1))
+            elif tag in tag_functions.keys():
+                line = tag_functions[tag](mod)
+            line = relinkImage(line, sourceDir, destDir)
+            contentList[pos] = line
 
     with open(destDir + target + ".md", "w") as f:
         unusedTags = tag_functions.keys() - tagPos.keys()
@@ -266,10 +274,11 @@ if __name__ == "__main__":
     searchTags = tag_functions.keys()
     tagPos = findTagPositions(contentList, tag_functions.keys())
 
-    for tag, pos in tagPos.items():
-        line = contentList[pos]
-        line = relinkImage(line, sourceDir, destDir)
-        print(line)
+    for tag, posList in tagPos.items():
+        for pos in posList:
+            line = contentList[pos]
+            line = relinkImage(line, sourceDir, destDir)
+            print(line)
 
     # for unused in (tag_functions.keys() - tagPos.keys()):
     #     print(unused)
