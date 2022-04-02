@@ -74,11 +74,11 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const CTVector *min, const C
     // sort cells into buckets for each possible split dimension
 
     // initialize min/max extents of buckets
-    Index bucket[NumDimensions][NumBuckets];
+    Index bucket[NumBuckets][NumDimensions];
     CTVector bmin[NumBuckets], bmax[NumBuckets];
     for (int i = 0; i < NumBuckets; ++i) {
         for (int d = 0; d < NumDimensions; ++d)
-            bucket[d][i] = 0;
+            bucket[i][d] = 0;
         bmin[i].fill(smax);
         bmax[i].fill(-smax);
     }
@@ -116,7 +116,7 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const CTVector *min, const C
             const int b = getBucket(cent, d);
             assert(b >= 0);
             assert(b < NumBuckets);
-            ++bucket[d][b];
+            ++bucket[b][d];
             bmin[b][d] = std::min(bmin[b][d], min[cell][d]);
             bmax[b][d] = std::max(bmax[b][d], max[cell][d]);
         }
@@ -140,7 +140,7 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const CTVector *min, const C
     for (int d = 0; d < NumDimensions; ++d) {
         Index nleft = 0;
         for (int split_b = 0; split_b < NumBuckets - 1; ++split_b) {
-            nleft += bucket[d][split_b];
+            nleft += bucket[split_b][d];
             assert(node->size >= nleft);
             const Index nright = node->size - nleft;
             Scalar weight =
@@ -156,7 +156,7 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const CTVector *min, const C
                 best_bucket = split_b;
             }
         }
-        assert(nleft + bucket[d][NumBuckets - 1] == node->size);
+        assert(nleft + bucket[NumBuckets - 1][d] == node->size);
     }
     if (best_dim == -1) {
         std::cerr << "abandoning split with " << node->size << " children" << std::endl;
@@ -186,7 +186,7 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const CTVector *min, const C
     std::cerr << "split: dim=" << best_dim << ", bucket=" << best_bucket;
     std::cerr << " (";
     for (int i = 0; i < NumBuckets; ++i) {
-        std::cerr << bucket[best_dim][i];
+        std::cerr << bucket[i][best_dim];
         if (i == best_bucket)
             std::cerr << "|";
         else if (i < NumBuckets - 1)
