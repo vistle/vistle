@@ -96,21 +96,7 @@ void Indexed::createCelltree(Index nelem, const Index *el, const Index *cl) cons
             const Index v = cl[c];
             for (int d = 0; d < 3; ++d) {
                 min[i][d] = std::min(min[i][d], coords[d][v]);
-#if 0
-            if (min[i][d] > coords[d][v]) {
-               min[i][d] = coords[d][v];
-               if (gmin[d] > min[i][d])
-                  gmin[d] = min[i][d];
-            }
-#endif
                 max[i][d] = std::max(max[i][d], coords[d][v]);
-#if 0
-            if (max[i][d] < coords[d][v]) {
-               max[i][d] = coords[d][v];
-               if (gmax[d] < max[i][d])
-                  gmax[d] = max[i][d];
-            }
-#endif
             }
         }
         for (int d = 0; d < 3; ++d) {
