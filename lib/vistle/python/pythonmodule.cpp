@@ -6,6 +6,7 @@
 
 #include <pybind11/embed.h>
 #include <pybind11/stl_bind.h>
+#include <pybind11/stl.h> // not required for compilation, but for functioning
 #include <vistle/util/pybind.h>
 
 #include <boost/lexical_cast.hpp>
