@@ -105,15 +105,15 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const CTVector *min, const C
     // sort cells into buckets
     const CTVector crange = cmax - cmin;
 
-    auto getBucket = [cmin, cmax, crange, NumBuckets](CTVector center, int d) -> int {
-        return crange[d] == 0 ? 0 : std::min(int((center[d] - cmin[d]) / crange[d] * NumBuckets), NumBuckets - 1);
+    auto getBucket = [cmin, cmax, crange, NumBuckets](Scalar center, int d) -> int {
+        return crange[d] == 0 ? 0 : std::min(int((center - cmin[d]) / crange[d] * NumBuckets), NumBuckets - 1);
     };
 
     for (Index i = node->start; i < node->start + node->size; ++i) {
         const Index cell = cells[i];
         const CTVector cent = center(cell);
         for (int d = 0; d < NumDimensions; ++d) {
-            const int b = getBucket(cent, d);
+            const int b = getBucket(cent[d], d);
             assert(b >= 0);
             assert(b < NumBuckets);
             ++bucket[b][d];
@@ -176,9 +176,6 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const CTVector *min, const C
     auto centerD = [min, max, D](Index c) -> Scalar {
         return Scalar(0.5) * (min[c][D] + max[c][D]);
     };
-    auto getBucketD = [cmin, cmax, crange, D, NumBuckets](Scalar center) -> int {
-        return crange[D] == 0 ? 0 : std::min(int((center - cmin[D]) / crange[D] * NumBuckets), NumBuckets - 1);
-    };
 
 #ifdef CT_DEBUG
     const Scalar split = cmin[D] + crange[D] / NumBuckets * (best_bucket + 1);
@@ -200,25 +197,22 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const CTVector *min, const C
 #endif
 
     Index nleft = 0;
-    Index *top = &cells[start + size];
-    for (Index *c = &cells[start]; c < top; ++c) {
+    Index *top = &cells[start + size - 1];
+    for (Index *c = &cells[start]; c <= top; ++c) {
         const Scalar cent = centerD(*c);
-        const int b = getBucketD(cent);
-        if (b > best_bucket) {
-            for (Scalar other;;) {
-                --top;
-                other = centerD(*top);
-                const int bo = getBucketD(other);
-                if (bo < best_bucket + 1) {
-                    if (c < top) {
-                        std::swap(*c, *top);
-                        ++nleft;
-                    }
-                    break;
-                }
-            }
-        } else {
+        const int b = getBucket(cent, D);
+        if (b <= best_bucket) {
             ++nleft;
+            continue;
+        }
+        for (; c < top; --top) {
+            Scalar other = centerD(*top);
+            const int bo = getBucket(other, D);
+            if (bo <= best_bucket) {
+                std::swap(*c, *top);
+                ++nleft;
+                break;
+            }
         }
     }
 
