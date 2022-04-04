@@ -73,7 +73,7 @@ The visualization pipeline in figure 1 shows two **ReadSeisSol** modules which r
 ---
 align: center
 ---
-Fig 1: Surface pipeline.`
+Fig 1: Surface pipeline.
 ```
 
 The below images shows how the result of an execution could look like.
