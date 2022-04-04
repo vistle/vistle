@@ -150,6 +150,10 @@ Tracer::Tracer(const std::string &name, int moduleID, mpi::communicator comm): M
 
     auto modulus = addIntParameter("cell_index_modulus", "modulus for cell number output", -1);
     setParameterMinimum<Integer>(modulus, -1);
+
+    setCurrentParameterGroup("");
+    m_simplificationError =
+        addFloatParameter("simplification_error", "tolerable relative error for result simplification", 3e-3);
 }
 
 Tracer::~Tracer()
@@ -475,6 +479,7 @@ bool Tracer::reduce(int timestep)
     global.velocity_relative = getIntParameter("velocity_relative");
     global.blocks.resize(numtime);
     global.cell_index_modulus = getIntParameter("cell_index_modulus");
+    global.simplification_error = getFloatParameter("simplification_error");
 
     global.computeVector = isConnected("data_out0");
     global.computeScalar = isConnected("data_out1");

@@ -308,6 +308,7 @@ bool Particle::trace()
 void Particle::finishSegment()
 {
     if (m_currentSegment) {
+        m_currentSegment->simplify(m_global.simplification_error);
         m_segments[m_currentSegment->m_num] = m_currentSegment;
         m_currentSegment.reset();
     }
@@ -551,10 +552,10 @@ void Particle::addToOutput()
             const auto &seg = *ent.second;
             auto N = seg.m_xhist.size();
             if (seg.m_num < 0) {
-                for (Index i = N; i > 1; --i) {
-                    if (i > 1 || seg.m_num != -1 || !m_forward) {
+                for (Index i = N - 1; i < N; --i) {
+                    if (i != 0 || seg.m_num != -1 || !m_forward) {
                         // avoid duplicate entry for startpoint when tracing in both directions
-                        addStep(seg, i - 1);
+                        addStep(seg, i);
                     }
                 }
             } else {
@@ -656,4 +657,135 @@ void Particle::UpdateBlock(BlockData *block)
     }
 
     m_integrator.UpdateBlock();
+}
+
+template<typename S>
+static void skipVector(std::vector<S> &v, const std::vector<Index> &use)
+{
+    if (use.empty()) {
+        v.clear();
+        return;
+    }
+
+    if (use.back() >= v.size())
+        return;
+
+    std::vector<S> vv;
+    for (auto i: use) {
+        vv.emplace_back(v[i]);
+    }
+    std::swap(v, vv);
+}
+
+Scalar Particle::Segment::cosAngle(Index i) const
+{
+    assert(i > 0);
+    assert(i + 1 < m_xhist.size());
+
+    const auto &x0 = m_xhist[i - 1], x1 = m_xhist[i + 1], x = m_xhist[i];
+    return (x - x0).normalized().dot((x1 - x).normalized());
+}
+
+double Particle::Segment::interpolationError(Index i0, Index i1, Index i) const
+{
+    assert(i0 < i);
+    assert(i < i1);
+
+    Scalar eps(1e-10);
+
+    auto x0 = m_xhist[i0], x1 = m_xhist[i1], x = m_xhist[i];
+
+    auto dir = (x1 - x0).normalized();
+    auto xi = x0 + dir.dot(x - x0) * dir;
+
+    unsigned maxc = dir.maxCoeff();
+    double t = interpolation_weight<double>(x0[maxc], x1[maxc], xi[maxc]);
+
+    double err = 0.;
+
+    if (m_vhist.size() == m_xhist.size()) {
+        auto v0 = m_vhist[i0], v1 = m_vhist[i1], v = m_vhist[i];
+        auto vi = lerp(v0, v1, t);
+        auto d = v - vi;
+        unsigned c = d.maxCoeff();
+        double e = std::abs(d[c]) > eps ? 1. : 0.;
+        if (std::abs(v[c]) > eps)
+            e = std::abs(d[c] / v[c]);
+        if (e > err)
+            err = e;
+    }
+
+    if (m_pressures.size() == m_xhist.size()) {
+        auto p0 = m_pressures[i0], p1 = m_pressures[i1], p = m_pressures[i];
+        auto pi = lerp(p0, p1, t);
+        auto d = p - pi;
+        double e = std::abs(pi) > eps ? 1. : 0.;
+        if (std::abs(p) > eps)
+            e = std::abs(d / p);
+        if (e > err)
+            err = e;
+    }
+
+    return err;
+}
+
+void Particle::Segment::simplify(double relerr)
+{
+    // no error allowed
+    if (relerr <= 0.)
+        return;
+
+    Index size = m_xhist.size();
+    // nothing to simplify
+    if (size < 2)
+        return;
+
+    std::vector<Index> use{0}; // all vertices to retain
+    Index noKinks = 0;
+    for (Index i0 = 0, i1 = 0; i0 < size; i0 = i1) {
+        use.push_back(i1);
+        // don't skip vertices where there is a kink
+        Index step = 1;
+        if (noKinks > i0) {
+            step = noKinks - i0;
+        }
+        while (i0 + step < size - 1 && Scalar(1) - cosAngle(i0 + step) < Scalar(relerr * 0.1)) {
+            ++step;
+            noKinks = i0 + step;
+        }
+
+        // skip all vertices where interpolation works well
+        i1 = i0 + step;
+        assert(i1 <= size);
+        while (step > 1) {
+            bool canSkip = true;
+            for (Index i = i0 + 1; i < i1; ++i) {
+                if (interpolationError(i0, i1, i) > relerr) {
+                    canSkip = false;
+                    break;
+                }
+            }
+            if (canSkip)
+                break;
+            step = (step + 1) / 2;
+            i1 = i0 + step;
+            assert(i1 <= size);
+        }
+        assert(i1 > use.back());
+    }
+    assert(use.back() <= size - 1);
+    if (use.back() != size - 1)
+        use.emplace_back(size - 1);
+
+    if (use.size() != size) {
+        //std::cerr << "reducing from " << size << " to " << use.size() << std::endl;
+        skipVector(m_xhist, use);
+        skipVector(m_vhist, use);
+        skipVector(m_stepWidth, use);
+        skipVector(m_pressures, use);
+        skipVector(m_steps, use);
+        skipVector(m_times, use);
+        skipVector(m_dists, use);
+        skipVector(m_cellIndex, use);
+    }
 }

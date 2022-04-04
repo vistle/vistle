@@ -79,6 +79,11 @@ public:
         : m_rank(-1), m_num(num), m_blockIndex(vistle::InvalidIndex), m_startStep(vistle::InvalidIndex)
         {}
 
+        void simplify(double relerr);
+        //! compute relative error when interpolating for index i from i0 and i1
+        double interpolationError(vistle::Index i0, vistle::Index i1, vistle::Index i) const;
+        vistle::Scalar cosAngle(vistle::Index i) const;
+
         // just for Boost.MPI
         template<class Archive>
         void serialize(Archive &ar, const unsigned int version)
