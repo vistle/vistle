@@ -30,7 +30,7 @@ File must provide at least the following variables:
 
 
 ## Usage Examples
-[exampleImg]:<ReadMPAS>
+[vslFile]:<ReadMPAS>
 
 ## Build Requirements
  This module requires the [PnetCDF](https://parallel-netcdf.github.io) library.
