@@ -261,7 +261,7 @@ def generateModuleDescriptions():
         if "headline" in unusedTags:
             f.write(tag_functions["headline"]( mod ))
         [f.write(line) for line in contentList]
-        [f.write(tag_functions[unusedTag](mod)) for unusedTag in sorted(unusedTags) if unusedTag not in ["headline","exampleImg"] ]
+        [f.write(tag_functions[unusedTag](mod)) for unusedTag in sorted(unusedTags) if unusedTag not in ["headline",VSL_TAG] ]
     quit()
 
 #-------------Main-------------#
