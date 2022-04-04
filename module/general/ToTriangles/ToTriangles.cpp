@@ -293,7 +293,7 @@ bool ToTriangles::compute()
             ndata = replicateData(data, CoordPerSphere);
         }
     } else if (auto tube = Tubes::as(obj)) {
-        const int NumSect = 5;
+        const int NumSect = 7;
         static_assert(NumSect >= 3, "too few sectors");
         Index TriPerSection = NumSect * 2;
 
@@ -341,27 +341,33 @@ bool ToTriangles::compute()
             for (Index i = 0; i < n; ++i) {
                 const Index begin = el[i], end = el[i + 1];
 
-                Vector3 normal;
+                Vector3 normal, dir;
                 for (Index k = begin; k < end; ++k) {
                     Vector3 cur(x[k], y[k], z[k]);
-                    Vector3 next = k + 1 < end ? Vector3(x[k + 1], y[k + 1], z[k + 1]) : Vector3(0., 0., 0.);
+                    Vector3 next = k + 1 < end ? Vector3(x[k + 1], y[k + 1], z[k + 1]) : cur;
 
                     Vector3 l1 = next - cur;
-                    Vector3 dir;
+                    auto len1 = Scalar(), len2 = Scalar();
                     if (k == begin) {
+                        len1 = l1.norm();
                         dir = l1.normalized();
                     } else {
                         Vector3 l2(x[k] - x[k - 1], y[k] - y[k - 1], z[k] - z[k - 1]);
+                        len2 = l2.norm();
                         if (k + 1 == end) {
                             dir = l2.normalized();
+                        } else if (len2 > 100 * len1) {
+                            dir = l2.normalized();
+                        } else if (len1 > 100 * len2) {
+                            dir = l1.normalized();
                         } else {
-                            dir = (l1.normalized() + l2.normalized()).normalized();
+                            //dir = (l1.normalized() + l2.normalized()).normalized();
                         }
                     }
 
                     if (k == begin) {
                         normal = dir.cross(Vector3(0, 0, 1)).normalized();
-                    } else {
+                    } else if (len1 > 1e-4 || len2 > 1e-4) {
                         normal = (normal - dir.dot(normal) * dir).normalized();
                     }
 
@@ -412,12 +418,13 @@ bool ToTriangles::compute()
                     }
 
                     // coordinates and normals
+                    auto n = normal;
                     for (Index l = 0; l < NumSect; ++l) {
-                        nx[ci] = normal[0];
-                        ny[ci] = normal[1];
-                        nz[ci] = normal[2];
-                        Vector3 p = cur + r[k] * normal;
-                        normal = rot * normal;
+                        nx[ci] = n[0];
+                        ny[ci] = n[1];
+                        nz[ci] = n[2];
+                        Vector3 p = cur + r[k] * n;
+                        n = rot * n;
                         tx[ci] = p[0];
                         ty[ci] = p[1];
                         tz[ci] = p[2];
@@ -440,11 +447,12 @@ bool ToTriangles::compute()
 
                             Scalar tipSize = 2.0;
 
+                            Vector3 n = normal;
                             Vector3 tip = cur + tipSize * dir * r[k];
                             for (Index l = 0; l < NumSect; ++l) {
-                                Vector3 norm = (normal + dir).normalized();
-                                Vector3 p = cur + tipSize * r[k] * normal;
-                                normal = rot * normal;
+                                Vector3 norm = (n + dir).normalized();
+                                Vector3 p = cur + tipSize * r[k] * n;
+                                n = rot * n;
 
                                 nx[ci] = norm[0];
                                 ny[ci] = norm[1];
@@ -455,10 +463,10 @@ bool ToTriangles::compute()
                                 ++ci;
                             }
 
-                            normal = rot2 * normal;
+                            n = rot2 * normal;
                             for (Index l = 0; l < NumSect; ++l) {
-                                Vector3 norm = (normal + dir).normalized();
-                                normal = rot * normal;
+                                Vector3 norm = (n + dir).normalized();
+                                n = rot * n;
 
                                 nx[ci] = norm[0];
                                 ny[ci] = norm[1];
