@@ -6,7 +6,8 @@ from bisect import insort
 from _vistle import getModuleName, getModuleDescription, getInputPorts, getOutputPorts, getPortDescription, getParameters, getParameterTooltip, getParameterType, spawn, barrier, quit
 
 REG_IMAGE = re.compile(r"(?:\w+(?:-\w+)+|\w*)\.(?:jpg|gif|png|bmp)")
-REG_TAGS_TMPL = r"\[{tag}\]:<\w*>$"
+REG_TAGS_TMPL = r"\[{tag}\]:<\w*>"
+VSL_TAG = "vslFile"
 
 #-------------Functions-------------#
 def createModuleImage(name, inPorts, outPorts):
@@ -158,15 +159,23 @@ def getParametersString(mod):
         paramString += getTableLine([param, getParameterTooltip(mod, param), getParameterType(mod, param)])
     return paramString
 
-def getExamples(mod,exampleName):
-    modulename = getModuleName(mod)
-    sourceDir = os.environ['VISTLE_DOCUMENTATION_DIR']+"/"
+def genVistleScreenshot(mod, line):
+    sourceDir = os.environ['VISTLE_DOCUMENTATION_DIR']
+    lineStartWithTag = re.search(r"^" + REG_TAGS_TMPL.format(tag=VSL_TAG), line)
+    vslNameWithoutExt = re.search('<(.+?)>', line)
     returnString = ""
-    imgPath = sourceDir + exampleName + '.png'
-    vslPath = sourceDir + exampleName + '.vsl'
-    if os.path.exists(vslPath):
-        returnString += "![](" + exampleName +".png) \n"
-        subprocess.run(["vistle","--snapshot",imgPath,vslPath])
+    if vslNameWithoutExt:
+        modulename = getModuleName(mod)
+        vslName = vslNameWithoutExt.group(1)
+        vslDir = sourceDir + "/" + vslName
+        imgPath = vslDir + '.png'
+        vslPath = vslDir + '.vsl'
+        if os.path.exists(vslPath):
+            if lineStartWithTag:
+                returnString += "![](" + vslName +".png) \n"
+            else:
+                returnString += re.sub(REG_TAGS_TMPL.format(tag=VSL_TAG), vslName +".png", line)
+            subprocess.run(["vistle","--snapshot",imgPath,vslPath])
     return returnString
 
 def readAdditionalDocumentation(filename):
@@ -210,8 +219,8 @@ def isImage(line):
 
 def isTag(line, tags) -> str:
     for tag in tags:
-        regTag = re.compile(REG_TAGS_TMPL.format(tag=tag))
-        if regTag.match(line):
+        matches = re.search(REG_TAGS_TMPL.format(tag=tag), line)
+        if matches:
             return tag
     return None
 
@@ -219,8 +228,8 @@ def isTag(line, tags) -> str:
 def generateModuleDescriptions():
     #these have to be set to chose the module to create documentation for
     target = os.environ['VISTLE_DOCUMENTATION_TARGET']
-    sourceDir = os.environ['VISTLE_DOCUMENTATION_DIR']
     destDir = os.path.dirname(os.path.realpath(__file__)) + "/moduleDescriptions/"
+    sourceDir = os.environ['VISTLE_DOCUMENTATION_DIR']
     #the directory containing the readTheDocs module files
     # ImgDestDir = os.path.dirname(os.path.realpath(__file__)) + "/../../docs/build/html/modules/"
 
@@ -229,7 +238,7 @@ def generateModuleDescriptions():
         "headline": getModuleHeadLine,
         "moduleHtml": getModuleHtml,
         "parameters": getParametersString,
-        "exampleImg": getExamples
+        VSL_TAG: genVistleScreenshot
     }
 
     #spawn the module and wait for its information to arrive at the hub
@@ -240,10 +249,8 @@ def generateModuleDescriptions():
     for tag, posList in tagPos.items():
         for pos in posList:
             line = contentList[pos]
-            if tag == "exampleImg":
-                exampleName = re.search('<(.+?)>',line)
-                if exampleName:
-                    line = tag_functions[tag](mod, exampleName.group(1))
+            if tag == VSL_TAG:
+                line = tag_functions[tag](mod, line)
             elif tag in tag_functions.keys():
                 line = tag_functions[tag](mod)
             line = relinkImage(line, sourceDir, destDir)
@@ -262,13 +269,12 @@ if __name__ == "__main__":
     # use main for testing your functions
     tag_functions = {
         "headline": getModuleHeadLine,
-        "inputPorts": getInputPortsStringDescription,
         "moduleHtml": getModuleHtml,
-        "outputPorts": getOutputPortsDescription,
-        "parameters": getParametersString
+        "parameters": getParametersString,
+        VSL_TAG: genVistleScreenshot
     }
-    source = "/home/mdjur/program/vistle/module/general/ReadSeisSol/ReadSeisSol.md"
-    sourceDir = "/home/mdjur/program/vistle/module/general/ReadSeisSol"
+    source = "/home/mdjur/program/vistle/module/general/ReadTsunami/ReadTsunami.md"
+    sourceDir = "/home/mdjur/program/vistle/module/general/ReadTsunami"
     destDir = os.path.dirname(os.path.realpath(__file__)) + "/moduleDescriptions/"
     contentList = readAdditionalDocumentation(source)
     searchTags = tag_functions.keys()
@@ -277,6 +283,9 @@ if __name__ == "__main__":
     for tag, posList in tagPos.items():
         for pos in posList:
             line = contentList[pos]
+            # if tag == VSL_TAG:
+                # line = getExamples(line)
+                # exampleName = re.search('<(.+?)>',line)
             line = relinkImage(line, sourceDir, destDir)
             print(line)
 
