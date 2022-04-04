@@ -260,7 +260,7 @@ Vector3 PlaneClip::splitEdge(Index i, Index j)
 {
     Scalar a = m_decider(i);
     Scalar b = m_decider(j);
-    const Scalar t = tinterp(0, a, b);
+    const Scalar t = interpolation_weight<Scalar>(a, b, Scalar(0));
     assert(a * b <= 0);
     Vector3 p1(x[i], y[i], z[i]);
     Vector3 p2(x[j], y[j], z[j]);

@@ -30,6 +30,7 @@ using namespace vistle;
 
 
 const int MaxNumData = 6;
+const Scalar EPSILON(1e-10);
 
 
 struct HostData {
@@ -383,17 +384,17 @@ struct ComputeOutput {
     const unsigned int edge = triTable[m_data.m_caseNums[ValidCellIndex]][idx]; \
     const unsigned int v1 = edgeTable[0][edge]; \
     const unsigned int v2 = edgeTable[1][edge]; \
-    const Scalar t = tinterp(m_data.m_isovalue, field[v1], field[v2]); \
-    Index outvertexindex = m_data.m_LocationList[ValidCellIndex]+idx; \
-    for(int j = nc; j < m_data.m_numInVertData; j++) { \
+    const Scalar t = interpolation_weight<Scalar>(field[v1], field[v2], m_data.m_isovalue); \
+    Index outvertexindex = m_data.m_LocationList[ValidCellIndex] + idx; \
+    for (int j = nc; j < m_data.m_numInVertData; j++) { \
         m_data.m_outVertPtr[j][outvertexindex] = \
             lerp(m_data.m_inVertPtr[j][cl[v1]], m_data.m_inVertPtr[j][cl[v2]], t); \
     } \
-    for(int j = 0; j < m_data.m_numInVertDataI; j++) { \
+    for (int j = 0; j < m_data.m_numInVertDataI; j++) { \
         m_data.m_outVertPtrI[j][outvertexindex] = \
             lerp(m_data.m_inVertPtrI[j][cl[v1]], m_data.m_inVertPtrI[j][cl[v2]], t); \
     } \
-    for(int j = 0; j < m_data.m_numInVertDataB; j++) { \
+    for (int j = 0; j < m_data.m_numInVertDataB; j++) { \
         m_data.m_outVertPtrB[j][outvertexindex] = \
             lerp(m_data.m_inVertPtrB[j][cl[v1]], m_data.m_inVertPtrB[j][cl[v2]], t); \
     }
@@ -513,7 +514,7 @@ struct ComputeOutput {
                               else
                                   out -= 1;
                           }
-                          Scalar t = tinterp(m_data.m_isovalue, d1, d2);
+                          Scalar t = interpolation_weight<Scalar>(d1, d2, m_data.m_isovalue);
                           for(int i = 0; i < m_data.m_numInVertData; i++) {
                               Scalar v = lerp(cd1[i], cd2[i], t);
                               middleData[i] += v;
@@ -631,7 +632,7 @@ struct ComputeOutput {
                                   else
                                       out -= 1;
                               }
-                              Scalar t = tinterp(m_data.m_isovalue, d1, d2);
+                              Scalar t = interpolation_weight<Scalar>(d1, d2, m_data.m_isovalue);
                               for(int i = 0; i < m_data.m_numInVertData; i++) {
                                   Scalar v = lerp(cd1[i], cd2[i], t);
                                   middleData[i] += v;
@@ -688,19 +689,19 @@ struct ComputeOutput {
     const unsigned int edge = triTable[m_data.m_caseNums[ValidCellIndex]][idx]; \
     const unsigned int v1 = edgeTable[0][edge]; \
     const unsigned int v2 = edgeTable[1][edge]; \
-    const Scalar t = tinterp(m_data.m_isovalue, field[v1], field[v2]); \
-    Index outvertexindex = m_data.m_LocationList[ValidCellIndex]+idx; \
-    for(int j = nc; j < m_data.m_numInVertData; j++) { \
+    const Scalar t = interpolation_weight<Scalar>(field[v1], field[v2], m_data.m_isovalue); \
+    Index outvertexindex = m_data.m_LocationList[ValidCellIndex] + idx; \
+    for (int j = nc; j < m_data.m_numInVertData; j++) { \
         m_data.m_outVertPtr[j][outvertexindex] = \
-            lerp(m_data.m_inVertPtr[j][base+v1], m_data.m_inVertPtr[j][base+v2], t); \
+            lerp(m_data.m_inVertPtr[j][base + v1], m_data.m_inVertPtr[j][base + v2], t); \
     } \
-    for(int j = 0; j < m_data.m_numInVertDataI; j++) { \
+    for (int j = 0; j < m_data.m_numInVertDataI; j++) { \
         m_data.m_outVertPtrI[j][outvertexindex] = \
-            lerp(m_data.m_inVertPtrI[j][base+v1], m_data.m_inVertPtrI[j][base+v2], t); \
+            lerp(m_data.m_inVertPtrI[j][base + v1], m_data.m_inVertPtrI[j][base + v2], t); \
     } \
-    for(int j = 0; j < m_data.m_numInVertDataB; j++) { \
+    for (int j = 0; j < m_data.m_numInVertDataB; j++) { \
         m_data.m_outVertPtrB[j][outvertexindex] = \
-            lerp(m_data.m_inVertPtrB[j][base+v1], m_data.m_inVertPtrB[j][base+v2], t); \
+            lerp(m_data.m_inVertPtrB[j][base + v1], m_data.m_inVertPtrB[j][base + v2], t); \
     }
           const Index Cellbegin = CellNr*3;
           Scalar field[3];

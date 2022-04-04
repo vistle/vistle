@@ -25,21 +25,6 @@ inline vistle::Index lerp(vistle::Index a, vistle::Index b, vistle::Scalar t)
 }
 
 
-const vistle::Scalar EPSILON = 1.0e-10f;
-
-inline vistle::Scalar __host__ __device__ tinterp(vistle::Scalar iso, const vistle::Scalar &f0,
-                                                  const vistle::Scalar &f1)
-{
-    const vistle::Scalar diff = (f1 - f0);
-    const vistle::Scalar d0 = iso - f0;
-    if (fabs(diff) < EPSILON) {
-        const vistle::Scalar d1 = f1 - iso;
-        return fabs(d0) < fabs(d1) ? 1 : 0;
-    }
-
-    return std::min(vistle::Scalar(1), std::max(vistle::Scalar(0), d0 / diff));
-}
-
 #ifdef CUTTINGSURFACE
 
 //! generate data on the fly for creating cutting surfaces as isosurfaces
