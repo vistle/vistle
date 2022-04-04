@@ -29,11 +29,22 @@ The first two ports output the geometry for the sea surface and bathymetry as an
 
 [parameters]:<>
 
+### Important to note
+
 This module distributes the data into domain blocks per spawned mpi process. With the parameters **blocks latitude** and **blocks longitude** an user needs to specify the distribution of the simulation domain. The parameter **fill** enables the option to replace in the netCDF file used fillValues for the attribute **eta** with a new fillValue to reduce the height dimension of the sea surface. If **fill** is enabled an user need to specify the current fillValue with the parameter **fillValue** (default fillValue: -9999) along with the replacement with **fillValueNew**. A netCDF file read by this reader which does not contain a bathymetry attribute named with a string containing atleast the substring *"bathy"* won't get noticed as bathymetry data and therefore not providing output data for the second port. In this case the parameter browser will show **None** for the parameter **bathymetry**. Otherwise there will be a selection of bathymetry options available.
 
 ## Example Usage
 
-![](example.png)
+### Simple cases
+
+```{figure} [vslFile]:<simple>
+---
+align: center
+---
+Fig 1: Surface pipeline.
+```
+
+![](simpleResult.png)
 
 ## Build Requirements
 
