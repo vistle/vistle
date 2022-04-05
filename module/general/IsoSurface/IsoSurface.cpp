@@ -262,16 +262,6 @@ Object::ptr IsoSurface::work(vistle::Object::const_ptr grid, vistle::Vec<vistle:
         result->copyAttributes(grid, false);
         result->setTransform(grid->getTransform());
         result->setNormals(normals);
-        if (mapdata && mapresult) {
-#ifdef CUTTINGSURFACE
-            if (auto entry = m_gridCache.getOrLock(grid->getName(), result)) {
-                m_gridCache.storeAndUnlock(entry, result);
-            }
-#endif
-            mapresult->copyAttributes(mapdata);
-            mapresult->setGrid(result);
-            return mapresult;
-        }
         if (result->getTimestep() < 0) {
             result->setTimestep(grid->getTimestep());
             result->setNumTimesteps(grid->getNumTimesteps());
@@ -280,11 +270,17 @@ Object::ptr IsoSurface::work(vistle::Object::const_ptr grid, vistle::Vec<vistle:
             result->setBlock(grid->getBlock());
             result->setNumBlocks(grid->getNumBlocks());
         }
-#ifndef CUTTINGSURFACE
-        else {
-            return result;
+#ifdef CUTTINGSURFACE
+        if (auto entry = m_gridCache.getOrLock(grid->getName(), result)) {
+            m_gridCache.storeAndUnlock(entry, result);
         }
 #endif
+        if (mapdata && mapresult) {
+            mapresult->copyAttributes(mapdata);
+            mapresult->setGrid(result);
+            return mapresult;
+        }
+        return result;
     }
     return Object::ptr();
 }
