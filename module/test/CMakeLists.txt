@@ -1,4 +1,5 @@
 add_subdirectory(CreateCelltree)
+add_subdirectory(CutGeometryOld)
 add_subdirectory(Dropbear)
 add_subdirectory(FilterNode)
 add_subdirectory(Gendat)
