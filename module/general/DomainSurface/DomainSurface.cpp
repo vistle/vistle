@@ -11,6 +11,8 @@
 
 #include "DomainSurface.h"
 
+#define USE_SET
+
 using namespace vistle;
 
 DomainSurface::DomainSurface(const std::string &name, int moduleID, mpi::communicator comm)
@@ -28,6 +30,7 @@ DomainSurface::DomainSurface(const std::string &name, int moduleID, mpi::communi
     addIntParameter("quad", "Show quad", 0, Parameter::Boolean);
     addIntParameter("reuseCoordinates", "Re-use the unstructured grids coordinate list and data-object", 0,
                     Parameter::Boolean);
+    addIntParameter("save_memory", "Less memory intensive algorithm", 1, Parameter::Boolean);
 
     addResultCache(m_cache);
 }
@@ -344,9 +347,111 @@ void DomainSurface::createVertices(StructuredGridBase::const_ptr grid, Quads::pt
     }
 }
 
+struct Face {
+    Index elem = InvalidIndex;
+    Index face = InvalidIndex;
+    std::array<Index, 3> verts;
+
+    Face(Index e, Index f, Index sz, const Index *vl, const Index *cl): elem(e), face(f)
+    {
+        if (sz == 0)
+            return;
+        Index smallIdx = 0;
+        Index smallVert = vl[cl[smallIdx]];
+        for (Index idx = smallIdx + 1; idx < sz; ++idx) {
+            if (smallVert > vl[cl[idx]]) {
+                smallIdx = idx;
+                smallVert = vl[cl[idx]];
+            }
+        }
+
+        unsigned next = (smallIdx + 1) % sz;
+        unsigned prev = (smallIdx + sz - 1) % sz;
+        if (vl[cl[next]] > vl[cl[prev]]) {
+            for (Index i = 0; i < sz && i < 3; ++i) {
+                verts[i] = vl[cl[(i + smallIdx) % sz]];
+            }
+        } else {
+            for (Index i = 0; i < sz && i < 3; ++i) {
+                verts[i] = vl[cl[(smallIdx + sz - i) % sz]];
+            }
+        }
+    }
+
+    Face(Index e, Index f, Index sz, const Index *v): elem(e), face(f)
+    {
+        if (sz == 0)
+            return;
+        Index smallIdx = 0;
+        Index smallVert = v[smallIdx];
+        for (Index idx = smallIdx + 1; idx < sz; ++idx) {
+            if (smallVert > v[idx]) {
+                smallIdx = idx;
+                smallVert = v[idx];
+            }
+        }
+
+        unsigned next = (smallIdx + 1) % sz;
+        unsigned prev = (smallIdx + sz - 1) % sz;
+        if (v[next] > v[prev]) {
+            for (Index i = 0; i < sz && i < 3; ++i) {
+                verts[i] = v[(i + smallIdx) % sz];
+            }
+        } else {
+            for (Index i = 0; i < sz && i < 3; ++i) {
+                verts[i] = v[(smallIdx + sz - i) % sz];
+            }
+        }
+    }
+
+    Face(Index e, Index f, const std::vector<Index> &v): Face(e, f, v.size(), v.data()) {}
+
+    bool operator==(const Face &other) const { return std::equal(verts.begin(), verts.end(), other.verts.begin()); }
+
+    bool operator<(const Face &other) const
+    {
+        auto mm = std::mismatch(verts.begin(), verts.end(), other.verts.begin());
+        if (mm.first == verts.end())
+            return false;
+        return *mm.first < *mm.second;
+    }
+};
+
+std::ostream &operator<<(std::ostream &os, const Face &f)
+{
+    os << f.verts.size() << "(";
+    for (auto it = f.verts.begin(); it != f.verts.end(); ++it) {
+        if (it != f.verts.begin())
+            os << " ";
+        os << *it;
+    }
+    os << ")" << std::endl;
+    return os;
+}
+
+#ifdef USE_SET
+typedef std::set<Face> FaceSet;
+#else
+struct FaceHash {
+    size_t operator()(const Face &f) const
+    {
+        const unsigned N = 3;
+        const size_t primes[N] = {21619127, 731372359, 16267148063931119};
+        size_t h = 0;
+        for (unsigned i = 0; i < N && i < f.verts.size(); ++i) {
+            h += primes[i] * f.verts[i];
+        }
+        return std::hash<size_t>()(h);
+    }
+};
+
+typedef std::unordered_set<Face, FaceHash> FaceSet;
+#endif
+
 Polygons::ptr DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m_grid_in,
                                            DomainSurface::DataMapping &em, bool haveElementData) const
 {
+    const bool useVertexOwners = getIntParameter("save_memory");
     const bool showgho = getIntParameter("ghost");
     const bool showtet = getIntParameter("tetrahedron");
     const bool showpyr = getIntParameter("pyramid");
@@ -360,73 +465,155 @@ Polygons::ptr DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m
     const Index *el = &m_grid_in->el()[0];
     const Index *cl = &m_grid_in->cl()[0];
     const Byte *tl = &m_grid_in->tl()[0];
-    UnstructuredGrid::VertexOwnerList::const_ptr vol = m_grid_in->getVertexOwnerList();
-
     Polygons::ptr m_grid_out(new Polygons(0, 0, 0));
     auto &pl = m_grid_out->el();
     auto &pcl = m_grid_out->cl();
 
-    auto nf = m_grid_in->getNeighborFinder();
-    for (Index i = 0; i < num_elem; ++i) {
+    auto processElement = [&](Index i, FaceSet &visibleFaces) {
         const Index elStart = el[i], elEnd = el[i + 1];
-        bool ghost = tl[i] & UnstructuredGrid::GHOST_BIT;
-        if (!showgho && ghost)
-            continue;
-        Byte t = tl[i] & UnstructuredGrid::TYPE_MASK;
+        const Byte t = tl[i] & UnstructuredGrid::TYPE_MASK;
         if (t == UnstructuredGrid::VPOLYHEDRON) {
-            if (showpol) {
-                Index j = elStart;
-                while (j < elEnd) {
-                    Index numVert = cl[j];
-                    if (numVert >= 3) {
-                        auto face = &cl[j + 1];
-                        Index neighbour = nf.getNeighborElement(i, face[0], face[1], face[2]);
-                        if (neighbour == InvalidIndex) {
-                            const Index *begin = &face[0], *end = &face[numVert];
-                            auto rbegin = std::reverse_iterator<const Index *>(end),
-                                 rend = std::reverse_iterator<const Index *>(begin);
-                            std::copy(rbegin, rend, std::back_inserter(pcl));
-                            if (haveElementData)
-                                em.emplace_back(i);
-                            pl.push_back(pcl.size());
-                        }
+            Index faceNum = 0;
+            Index j = elStart;
+            while (j < elEnd) {
+                Index numVert = cl[j];
+                if (numVert >= 3) {
+                    auto face = &cl[j + 1];
+                    auto it_ok = visibleFaces.emplace(i, faceNum, numVert, face);
+                    if (!it_ok.second) {
+                        // found duplicate, hence inner face: remove
+                        visibleFaces.erase(it_ok.first);
                     }
-                    j += numVert + 1;
                 }
-                if (j != elEnd) {
-                    std::cerr << "WARNING: Polyhedron incomplete: " << i << std::endl;
-                }
+                j += numVert + 1;
+                ++faceNum;
+            }
+            if (j != elEnd) {
+                std::cerr << "WARNING: Polyhedron incomplete: " << i << std::endl;
             }
         } else if (t == UnstructuredGrid::CPOLYHEDRON) {
-            if (showpol) {
-                Index facestart = InvalidIndex;
-                Index term = 0;
-                for (Index j = elStart; j < elEnd; ++j) {
-                    if (facestart == InvalidIndex) {
-                        facestart = j;
-                        term = cl[j];
-                    } else if (cl[j] == term) {
-                        Index numVert = j - facestart;
-                        if (numVert >= 3) {
-                            auto face = &cl[facestart];
-                            Index neighbour = nf.getNeighborElement(i, face[0], face[1], face[2]);
-                            if (neighbour == InvalidIndex) {
-                                const Index *begin = &face[0], *end = &face[numVert];
-                                auto rbegin = std::reverse_iterator<const Index *>(end),
-                                     rend = std::reverse_iterator<const Index *>(begin);
-                                std::copy(rbegin, rend, std::back_inserter(pcl));
-                                if (haveElementData)
-                                    em.emplace_back(i);
-                                pl.push_back(pcl.size());
-                            }
+            Index faceNum = 0;
+            Index facestart = InvalidIndex;
+            Index term = 0;
+            for (Index j = elStart; j < elEnd; ++j) {
+                if (facestart == InvalidIndex) {
+                    facestart = j;
+                    term = cl[j];
+                } else if (cl[j] == term) {
+                    Index numVert = j - facestart;
+                    if (numVert >= 3) {
+                        auto face = &cl[facestart];
+                        auto it_ok = visibleFaces.emplace(i, faceNum, numVert, face);
+                        if (!it_ok.second) {
+                            // found duplicate, hence inner face: remove
+                            visibleFaces.erase(it_ok.first);
                         }
-                        facestart = InvalidIndex;
                     }
+                    facestart = InvalidIndex;
+                    ++faceNum;
                 }
             }
         } else {
-            bool show = false;
+            const auto numFaces = UnstructuredGrid::NumFaces[t];
+            const auto &faces = UnstructuredGrid::FaceVertices[t];
+            for (int f = 0; f < numFaces; ++f) {
+                const auto &face = faces[f];
+                const auto facesize = UnstructuredGrid::FaceSizes[t][f];
+                auto it_ok = visibleFaces.emplace(i, f, facesize, cl + elStart, face);
+                //std::cerr << "Face: " << *it_ok.first << std::endl;
+                if (!it_ok.second) {
+                    // found duplicate, hence inner face: remove
+                    visibleFaces.erase(it_ok.first);
+                }
+            }
+        }
+    };
+
+    auto addFace = [&](Index i, Index f) {
+        auto elStart = el[i], elEnd = el[i + 1];
+        Byte t = tl[i] & UnstructuredGrid::TYPE_MASK;
+        switch (t) {
+        case UnstructuredGrid::VPOLYHEDRON: {
+            Index faceNum = 0;
+            Index j = elStart;
+            while (j < elEnd) {
+                Index numVert = cl[j];
+                if (faceNum == f && numVert >= 3) {
+                    auto face = &cl[j + 1];
+                    const Index *begin = &face[0], *end = &face[numVert];
+                    auto rbegin = std::reverse_iterator<const Index *>(end),
+                         rend = std::reverse_iterator<const Index *>(begin);
+                    std::copy(rbegin, rend, std::back_inserter(pcl));
+                    break;
+                }
+                j += numVert + 1;
+                ++faceNum;
+            }
+            break;
+        }
+        case UnstructuredGrid::CPOLYHEDRON: {
+            Index faceNum = 0;
+            Index facestart = InvalidIndex;
+            Index term = 0;
+            for (Index j = elStart; j < elEnd; ++j) {
+                if (facestart == InvalidIndex) {
+                    facestart = j;
+                    term = cl[j];
+                } else if (cl[j] == term) {
+                    Index numVert = j - facestart;
+                    if (faceNum == f && numVert >= 3) {
+                        auto face = &cl[facestart];
+                        const Index *begin = &face[0], *end = &face[numVert];
+                        auto rbegin = std::reverse_iterator<const Index *>(end),
+                             rend = std::reverse_iterator<const Index *>(begin);
+                        std::copy(rbegin, rend, std::back_inserter(pcl));
+                        break;
+                    }
+                    facestart = InvalidIndex;
+                    ++faceNum;
+                }
+            }
+            break;
+        }
+        case UnstructuredGrid::PYRAMID:
+        case UnstructuredGrid::PRISM:
+        case UnstructuredGrid::TETRAHEDRON:
+        case UnstructuredGrid::HEXAHEDRON:
+        case UnstructuredGrid::TRIANGLE:
+        case UnstructuredGrid::QUAD: {
+            auto verts = &cl[elStart];
+            const auto &faces = UnstructuredGrid::FaceVertices[t];
+            const auto facesize = UnstructuredGrid::FaceSizes[t][f];
+            const auto &face = faces[f];
+            for (unsigned j = 0; j < facesize; ++j) {
+                pcl.push_back(verts[face[j]]);
+            }
+            break;
+        }
+        }
+        pl.push_back(pcl.size());
+        if (haveElementData) {
+            em.emplace_back(i);
+        }
+    };
+
+    auto addToOutput = [&](const FaceSet &visibleFaces) mutable {
+        for (const auto &f: visibleFaces) {
+            const auto &i = f.elem;
+            if (i == InvalidIndex)
+                continue;
+
+            bool ghost = tl[i] & UnstructuredGrid::GHOST_BIT;
+            if (!showgho && ghost)
+                continue;
+
+            Byte t = tl[i] & UnstructuredGrid::TYPE_MASK;
+            bool show = true;
             switch (t) {
+            case UnstructuredGrid::VPOLYHEDRON:
+            case UnstructuredGrid::CPOLYHEDRON:
+                show = showpol;
+                break;
             case UnstructuredGrid::PYRAMID:
                 show = showpyr;
                 break;
@@ -445,27 +632,109 @@ Polygons::ptr DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m
             case UnstructuredGrid::QUAD:
                 show = showqua;
                 break;
-            default:
-                break;
             }
+            if (!show)
+                continue;
 
-            if (show) {
-                const auto numFaces = UnstructuredGrid::NumFaces[t];
-                const auto &faces = UnstructuredGrid::FaceVertices[t];
-                for (int f = 0; f < numFaces; ++f) {
-                    const auto &face = faces[f];
-                    Index neighbour = 0;
-                    if (UnstructuredGrid::Dimensionality[t] == 3)
-                        neighbour = nf.getNeighborElement(i, cl[elStart + face[0]], cl[elStart + face[1]],
-                                                          cl[elStart + face[2]]);
-                    if (UnstructuredGrid::Dimensionality[t] == 2 || neighbour == InvalidIndex) {
-                        const auto facesize = UnstructuredGrid::FaceSizes[t][f];
-                        for (unsigned j = 0; j < facesize; ++j) {
-                            pcl.push_back(cl[elStart + face[j]]);
+            addFace(i, f.face);
+        }
+    };
+
+    if (!useVertexOwners) {
+        FaceSet visibleFaces;
+        for (Index i = 0; i < num_elem; ++i) {
+            processElement(i, visibleFaces);
+        }
+        addToOutput(visibleFaces);
+    } else {
+        UnstructuredGrid::VertexOwnerList::const_ptr vol = m_grid_in->getVertexOwnerList();
+        auto nf = m_grid_in->getNeighborFinder();
+        for (Index i = 0; i < num_elem; ++i) {
+            const Index elStart = el[i], elEnd = el[i + 1];
+            bool ghost = tl[i] & UnstructuredGrid::GHOST_BIT;
+            if (!showgho && ghost)
+                continue;
+            Byte t = tl[i] & UnstructuredGrid::TYPE_MASK;
+            if (t == UnstructuredGrid::VPOLYHEDRON) {
+                if (showpol) {
+                    Index faceNum = 0;
+                    Index j = elStart;
+                    while (j < elEnd) {
+                        Index numVert = cl[j];
+                        if (numVert >= 3) {
+                            auto face = &cl[j + 1];
+                            Index neighbour = nf.getNeighborElement(i, face[0], face[1], face[2]);
+                            if (neighbour == InvalidIndex) {
+                                addFace(i, faceNum);
+                            }
                         }
-                        if (haveElementData)
-                            em.emplace_back(i);
-                        pl.push_back(pcl.size());
+                        j += numVert + 1;
+                        ++faceNum;
+                    }
+                    if (j != elEnd) {
+                        std::cerr << "WARNING: Polyhedron incomplete: " << i << std::endl;
+                    }
+                }
+            } else if (t == UnstructuredGrid::CPOLYHEDRON) {
+                if (showpol) {
+                    Index faceNum = 0;
+                    Index facestart = InvalidIndex;
+                    Index term = 0;
+                    for (Index j = elStart; j < elEnd; ++j) {
+                        if (facestart == InvalidIndex) {
+                            facestart = j;
+                            term = cl[j];
+                        } else if (cl[j] == term) {
+                            Index numVert = j - facestart;
+                            if (numVert >= 3) {
+                                auto face = &cl[facestart];
+                                Index neighbour = nf.getNeighborElement(i, face[0], face[1], face[2]);
+                                if (neighbour == InvalidIndex) {
+                                    addFace(i, faceNum);
+                                }
+                            }
+                            facestart = InvalidIndex;
+                            ++faceNum;
+                        }
+                    }
+                }
+            } else {
+                bool show = false;
+                switch (t) {
+                case UnstructuredGrid::PYRAMID:
+                    show = showpyr;
+                    break;
+                case UnstructuredGrid::PRISM:
+                    show = showpri;
+                    break;
+                case UnstructuredGrid::TETRAHEDRON:
+                    show = showtet;
+                    break;
+                case UnstructuredGrid::HEXAHEDRON:
+                    show = showhex;
+                    break;
+                case UnstructuredGrid::TRIANGLE:
+                    show = showtri;
+                    break;
+                case UnstructuredGrid::QUAD:
+                    show = showqua;
+                    break;
+                default:
+                    break;
+                }
+
+                if (show) {
+                    const auto numFaces = UnstructuredGrid::NumFaces[t];
+                    const auto &faces = UnstructuredGrid::FaceVertices[t];
+                    for (int f = 0; f < numFaces; ++f) {
+                        const auto &face = faces[f];
+                        Index neighbour = 0;
+                        if (UnstructuredGrid::Dimensionality[t] == 3)
+                            neighbour = nf.getNeighborElement(i, cl[elStart + face[0]], cl[elStart + face[1]],
+                                                              cl[elStart + face[2]]);
+                        if (UnstructuredGrid::Dimensionality[t] == 2 || neighbour == InvalidIndex) {
+                            addFace(i, f);
+                        }
                     }
                 }
             }
