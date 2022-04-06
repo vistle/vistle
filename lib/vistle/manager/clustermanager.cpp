@@ -880,6 +880,7 @@ bool ClusterManager::handle(const message::Buffer &message, const MessagePayload
     case message::PONG:
     case message::UPDATESTATUS:
     case message::TRACE:
+    case message::EXECUTIONDONE:
         break;
 
     default:
