@@ -58,6 +58,12 @@ bool StructuredGrid::checkImpl() const
     return true;
 }
 
+void StructuredGrid::updateInternals()
+{
+    Base::applyDimensionHint(shared_from_this());
+    Base::updateInternals();
+}
+
 // IS EMPTY
 //-------------------------------------------------------------------------
 bool StructuredGrid::isEmpty()

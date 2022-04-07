@@ -67,6 +67,8 @@ public:
 
     void copyAttributes(Object::const_ptr src, bool replace = true) override;
 
+    void updateInternals() override;
+
 private:
     // mutable pointers to ShmVectors
     mutable Scalar m_min[2];

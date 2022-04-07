@@ -156,6 +156,7 @@ void Vec<T, Dim>::updateInternals()
     if (!d()->boundsValid()) {
         d()->updateBounds();
     }
+    Base::updateInternals();
 }
 
 template<class T, unsigned Dim>

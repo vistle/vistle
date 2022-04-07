@@ -55,6 +55,12 @@ bool LayerGrid::checkImpl() const
     return true;
 }
 
+void LayerGrid::updateInternals()
+{
+    Base::applyDimensionHint(shared_from_this());
+    Base::updateInternals();
+}
+
 // IS EMPTY
 //-------------------------------------------------------------------------
 bool LayerGrid::isEmpty()
