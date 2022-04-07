@@ -2,7 +2,8 @@ if(NOT VTK_FOUND)
     return()
 endif()
 
-set(VTK_DEPENDENCIES "\nfind_dependency(
+set(VTK_DEPENDENCIES
+    "\nfind_dependency(
     VTK
     5.0
     COMPONENTS
@@ -51,8 +52,6 @@ elseif(${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
     target_compile_options(vistle_sensei_vtk PRIVATE -Wno-deprecated -Wno-inconsistent-missing-override)
 endif()
 
-
-
 target_include_directories(vistle_sensei_vtk SYSTEM PUBLIC ${VTK_INCLUDE_DIRS})
 vistle_target_link_libraries(
     vistle_sensei_vtk
@@ -68,6 +67,5 @@ target_compile_definitions(
     vistle_sensei_vtk
     PUBLIC ${VTK_DEFINITIONS}
     PUBLIC SENSEI)
-
 
 file(APPEND ${buildPackageLocation}/vistle_sensei_vtkConfig.cmake ${VTK_DEPENDENCIES})
