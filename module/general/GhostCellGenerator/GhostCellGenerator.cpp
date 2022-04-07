@@ -137,30 +137,7 @@ bool GhostCellGenerator::compute(std::shared_ptr<BlockTask> task) const
     /*    if (!showgho && ghost) */
     /*        continue; */
     /*    Byte t = tl[i] & UnstructuredGrid::TYPE_MASK; */
-    /*    if (t == UnstructuredGrid::VPOLYHEDRON) { */
-    /*        if (showpol) { */
-    /*            Index j=elStart; */
-    /*            while (j<elEnd) { */
-    /*                Index numVert = cl[j]; */
-    /*                if (numVert >= 3) { */
-    /*                    auto face = &cl[j+1]; */
-    /*                    Index neighbour = nf.getNeighborElement(i, face[0], face[1], face[2]); */
-    /*                    if (neighbour == InvalidIndex) { */
-    /*                        const Index *begin = &face[0], *end=&face[numVert]; */
-    /*                        auto rbegin = std::reverse_iterator<const Index *>(end), rend = std::reverse_iterator<const Index *>(begin); */
-    /*                        std::copy(rbegin, rend, std::back_inserter(pcl)); */
-    /*                        if (haveElementData) */
-    /*                            em.emplace_back(i); */
-    /*                        pl.push_back(pcl.size()); */
-    /*                    } */
-    /*                } */
-    /*                j += numVert+1; */
-    /*            } */
-    /*            if (j != elEnd) { */
-    /*                std::cerr << "WARNING: Polyhedron incomplete: " << i << std::endl; */
-    /*            } */
-    /*        } */
-    /*    } else if (t == UnstructuredGrid::CPOLYHEDRON) { */
+    /*    if (t == UnstructuredGrid::POLYHEDRON) { */
     /*        if (showpol) { */
     /*            Index facestart = InvalidIndex; */
     /*            Index term = 0; */
@@ -530,30 +507,7 @@ Polygons::ptr GhostCellGenerator::createSurface(vistle::UnstructuredGrid::const_
     /*    if (!showgho && ghost) */
     /*        continue; */
     /*    Byte t = tl[i] & UnstructuredGrid::TYPE_MASK; */
-    /*    if (t == UnstructuredGrid::VPOLYHEDRON) { */
-    /*        if (showpol) { */
-    /*            Index j=elStart; */
-    /*            while (j<elEnd) { */
-    /*                Index numVert = cl[j]; */
-    /*                if (numVert >= 3) { */
-    /*                    auto face = &cl[j+1]; */
-    /*                    Index neighbour = nf.getNeighborElement(i, face[0], face[1], face[2]); */
-    /*                    if (neighbour == InvalidIndex) { */
-    /*                        const Index *begin = &face[0], *end=&face[numVert]; */
-    /*                        auto rbegin = std::reverse_iterator<const Index *>(end), rend = std::reverse_iterator<const Index *>(begin); */
-    /*                        std::copy(rbegin, rend, std::back_inserter(pcl)); */
-    /*                        if (haveElementData) */
-    /*                            em.emplace_back(i); */
-    /*                        pl.push_back(pcl.size()); */
-    /*                    } */
-    /*                } */
-    /*                j += numVert+1; */
-    /*            } */
-    /*            if (j != elEnd) { */
-    /*                std::cerr << "WARNING: Polyhedron incomplete: " << i << std::endl; */
-    /*            } */
-    /*        } */
-    /*    } else if (t == UnstructuredGrid::CPOLYHEDRON) { */
+    /*    if (t == UnstructuredGrid::POLYHEDRON) { */
     /*        if (showpol) { */
     /*            Index facestart = InvalidIndex; */
     /*            Index term = 0; */

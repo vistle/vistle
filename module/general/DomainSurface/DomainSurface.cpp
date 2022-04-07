@@ -470,26 +470,7 @@ Polygons::ptr DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m
     auto processElement = [&](Index i, FaceSet &visibleFaces) {
         const Index elStart = el[i], elEnd = el[i + 1];
         const Byte t = tl[i] & UnstructuredGrid::TYPE_MASK;
-        if (t == UnstructuredGrid::VPOLYHEDRON) {
-            Index faceNum = 0;
-            Index j = elStart;
-            while (j < elEnd) {
-                Index numVert = cl[j];
-                if (numVert >= 3) {
-                    auto face = &cl[j + 1];
-                    auto it_ok = visibleFaces.emplace(i, faceNum, numVert, face);
-                    if (!it_ok.second) {
-                        // found duplicate, hence inner face: remove
-                        visibleFaces.erase(it_ok.first);
-                    }
-                }
-                j += numVert + 1;
-                ++faceNum;
-            }
-            if (j != elEnd) {
-                std::cerr << "WARNING: Polyhedron incomplete: " << i << std::endl;
-            }
-        } else if (t == UnstructuredGrid::CPOLYHEDRON) {
+        if (t == UnstructuredGrid::POLYHEDRON) {
             Index faceNum = 0;
             Index facestart = InvalidIndex;
             Index term = 0;
@@ -531,25 +512,7 @@ Polygons::ptr DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m
         auto elStart = el[i], elEnd = el[i + 1];
         Byte t = tl[i] & UnstructuredGrid::TYPE_MASK;
         switch (t) {
-        case UnstructuredGrid::VPOLYHEDRON: {
-            Index faceNum = 0;
-            Index j = elStart;
-            while (j < elEnd) {
-                Index numVert = cl[j];
-                if (faceNum == f && numVert >= 3) {
-                    auto face = &cl[j + 1];
-                    const Index *begin = &face[0], *end = &face[numVert];
-                    auto rbegin = std::reverse_iterator<const Index *>(end),
-                         rend = std::reverse_iterator<const Index *>(begin);
-                    std::copy(rbegin, rend, std::back_inserter(pcl));
-                    break;
-                }
-                j += numVert + 1;
-                ++faceNum;
-            }
-            break;
-        }
-        case UnstructuredGrid::CPOLYHEDRON: {
+        case UnstructuredGrid::POLYHEDRON: {
             Index faceNum = 0;
             Index facestart = InvalidIndex;
             Index term = 0;
@@ -608,8 +571,7 @@ Polygons::ptr DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m
             Byte t = tl[i] & UnstructuredGrid::TYPE_MASK;
             bool show = true;
             switch (t) {
-            case UnstructuredGrid::VPOLYHEDRON:
-            case UnstructuredGrid::CPOLYHEDRON:
+            case UnstructuredGrid::POLYHEDRON:
                 show = showpol;
                 break;
             case UnstructuredGrid::PYRAMID:
@@ -653,27 +615,7 @@ Polygons::ptr DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m
             if (!showgho && ghost)
                 continue;
             Byte t = tl[i] & UnstructuredGrid::TYPE_MASK;
-            if (t == UnstructuredGrid::VPOLYHEDRON) {
-                if (showpol) {
-                    Index faceNum = 0;
-                    Index j = elStart;
-                    while (j < elEnd) {
-                        Index numVert = cl[j];
-                        if (numVert >= 3) {
-                            auto face = &cl[j + 1];
-                            Index neighbour = nf.getNeighborElement(i, face[0], face[1], face[2]);
-                            if (neighbour == InvalidIndex) {
-                                addFace(i, faceNum);
-                            }
-                        }
-                        j += numVert + 1;
-                        ++faceNum;
-                    }
-                    if (j != elEnd) {
-                        std::cerr << "WARNING: Polyhedron incomplete: " << i << std::endl;
-                    }
-                }
-            } else if (t == UnstructuredGrid::CPOLYHEDRON) {
+            if (t == UnstructuredGrid::POLYHEDRON) {
                 if (showpol) {
                     Index faceNum = 0;
                     Index facestart = InvalidIndex;

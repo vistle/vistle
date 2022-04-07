@@ -353,25 +353,25 @@ bool GenIsoDat::compute()
             numElements = 1;
         }
 
-        cl.push_back(3);
         cl.push_back(1);
         cl.push_back(3);
         cl.push_back(0);
+        cl.push_back(1);
 
-        cl.push_back(3);
         cl.push_back(3);
         cl.push_back(2);
         cl.push_back(0);
-
         cl.push_back(3);
+
         cl.push_back(2);
         cl.push_back(1);
         cl.push_back(0);
+        cl.push_back(2);
 
-        cl.push_back(3);
         cl.push_back(2);
         cl.push_back(3);
         cl.push_back(1);
+        cl.push_back(2);
 
         for (Index i = 0; i < numShift; i += 2) {
             for (Index j = 0; j < numShift; j += 2) {
@@ -397,7 +397,7 @@ bool GenIsoDat::compute()
         el.push_back(16);
 
         for (Index i = 0; i < numElements; i++) {
-            tl.push_back(UnstructuredGrid::VPOLYHEDRON);
+            tl.push_back(UnstructuredGrid::POLYHEDRON);
         }
 
         std::bitset<4> newdata;

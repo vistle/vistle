@@ -162,16 +162,7 @@ bool SplitDimensions::compute(std::shared_ptr<BlockTask> task) const
             case cell::PYRAMID:
             case cell::PRISM:
             case cell::HEXAHEDRON:
-            case cell::CPOLYHEDRON:
-                if (oel3) {
-                    otl3->push_back(type);
-                    for (Index i = begin; i < end; ++i) {
-                        ocl3->push_back(icl[i]);
-                    }
-                    oel3->push_back(ocl3->size());
-                }
-                break;
-            case cell::VPOLYHEDRON:
+            case cell::POLYHEDRON:
                 if (oel3) {
                     otl3->push_back(type);
                     for (Index i = begin; i < end; ++i) {

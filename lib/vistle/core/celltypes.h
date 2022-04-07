@@ -22,11 +22,9 @@ enum CellType {
     PYRAMID = 5,
     PRISM = 6,
     HEXAHEDRON = 7,
-    VPOLYHEDRON = 8, // not in COVISE: polyhedron with facestream as in VTK
     POLYGON = 9, // not in COVISE
     POINT = 10,
-    CPOLYHEDRON = 11, // in COVISE, but has to be translated to VPOLYHEDRON
-    POLYHEDRON = CPOLYHEDRON,
+    POLYHEDRON = 11, // in COVISE
     NUM_TYPES = 12, // keep last
 };
 
@@ -116,14 +114,8 @@ struct TypeData<POLYGON> {
 };
 
 template<>
-struct TypeData<CPOLYHEDRON> {
-    const CellType type = CPOLYHEDRON;
-    const int Dimension = 3;
-};
-
-template<>
-struct TypeData<VPOLYHEDRON> {
-    const CellType type = VPOLYHEDRON;
+struct TypeData<POLYHEDRON> {
+    const CellType type = POLYHEDRON;
     const int Dimension = 3;
 };
 

@@ -100,31 +100,7 @@ bool coCellToVert::simpleAlgo(Index num_elem, Index num_conn, Index num_point, c
 
     if (elem_list) {
         for (Index i = 0; i < num_elem; i++) {
-            if (type_list && (type_list[i] & UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::VPOLYHEDRON) {
-                Index begin = elem_list[i], end = elem_list[i + 1];
-                std::vector<Index> verts;
-                verts.reserve(end - begin);
-                Index j = begin;
-                while (j < end) {
-                    Index nvert = conn_list[j];
-                    assert(nvert < end - begin);
-                    ++j;
-                    for (Index k = j; k < j + nvert; ++k) {
-                        assert(conn_list[k] < num_point);
-                        verts.push_back(conn_list[k]);
-                    }
-                    j += nvert;
-                }
-                std::sort(verts.begin(), verts.end());
-                auto last = std::unique(verts.begin(), verts.end());
-                for (auto it = verts.begin(); it != last; ++it) {
-                    Index vertex = *it;
-                    ++weight_num[vertex];
-                    for (Index c = 0; c < numComp; ++c) {
-                        tmp_out[c][vertex] += in_data[c][i];
-                    }
-                }
-            } else if (type_list && (type_list[i] & UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::CPOLYHEDRON) {
+            if (type_list && (type_list[i] & UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::POLYHEDRON) {
                 Index begin = elem_list[i], end = elem_list[i + 1];
                 std::vector<Index> verts;
                 verts.reserve(end - begin);
@@ -204,31 +180,7 @@ bool coCellToVert::simpleAlgo<Scalar>(Index num_elem, Index num_conn, Index num_
 
     if (elem_list) {
         for (Index i = 0; i < num_elem; i++) {
-            if (type_list && (type_list[i] & UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::VPOLYHEDRON) {
-                Index begin = elem_list[i], end = elem_list[i + 1];
-                std::vector<Index> verts;
-                verts.reserve(end - begin);
-                Index j = begin;
-                while (j < end) {
-                    Index nvert = conn_list[j];
-                    assert(nvert < end - begin);
-                    ++j;
-                    for (Index k = j; k < j + nvert; ++k) {
-                        assert(conn_list[k] < num_point);
-                        verts.push_back(conn_list[k]);
-                    }
-                    j += nvert;
-                }
-                std::sort(verts.begin(), verts.end());
-                auto last = std::unique(verts.begin(), verts.end());
-                for (auto it = verts.begin(); it != last; ++it) {
-                    Index vertex = *it;
-                    ++weight_num[vertex];
-                    for (Index c = 0; c < numComp; ++c) {
-                        out_data[c][vertex] += in_data[c][i];
-                    }
-                }
-            } else if (type_list && (type_list[i] & UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::CPOLYHEDRON) {
+            if (type_list && (type_list[i] & UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::POLYHEDRON) {
                 Index begin = elem_list[i], end = elem_list[i + 1];
                 std::vector<Index> verts;
                 verts.reserve(end - begin);
@@ -335,7 +287,7 @@ bool coCellToVert::weightedAlgo(Index num_elem, Index num_conn, Index num_point,
         (*xc) = (*yc) = (*zc) = 0.0;
 
         // the center can be calculated now
-        if ((el_type & UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::CPOLYHEDRON) {
+        if ((el_type & UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::POLYHEDRON) {
             assert("broken" == nullptr);
             std::vector<Index> vertices;
             vertices.reserve(num_vert_elem);
@@ -351,28 +303,6 @@ bool coCellToVert::weightedAlgo(Index num_elem, Index num_conn, Index num_point,
             auto newend = std::unique(vertices.begin(), vertices.end());
             for (auto it = vertices.begin(); it != newend; ++it) {
                 Index cur_vert = *it;
-                (*xc) += xcoord[cur_vert];
-                (*yc) += ycoord[cur_vert];
-                (*zc) += zcoord[cur_vert];
-                ++num_averaged;
-            }
-            (*xc) /= num_averaged;
-            (*yc) /= num_averaged;
-            (*zc) /= num_averaged;
-        } else if ((el_type & UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::VPOLYHEDRON) {
-            assert("broken and more broken b/c of face stream" == nullptr);
-            int num_averaged = 0;
-            int facestart = conn_list[elem_list[elem]];
-            bool face_done = true;
-            for (vert = 0; vert < num_vert_elem; vert++) {
-                int cur_vert = conn_list[elem_list[elem] + vert];
-                if (face_done) {
-                    facestart = cur_vert;
-                    face_done = false;
-                } else if (facestart == cur_vert) {
-                    face_done = true;
-                    continue;
-                }
                 (*xc) += xcoord[cur_vert];
                 (*yc) += ycoord[cur_vert];
                 (*zc) += zcoord[cur_vert];

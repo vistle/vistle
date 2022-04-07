@@ -453,120 +453,7 @@ struct ComputeOutput {
               break;
           }
 
-          case UnstructuredGrid::VPOLYHEDRON: {
-              /* find all iso-points on each edge of each face,
-               build a triangle for each consecutive pair and a center point,
-               orient outwards towards smaller values */
-
-              const auto &cl = m_data.m_cl;
-
-              const Index numVert = m_data.m_numVertices[ValidCellIndex];
-              Index numAvg = 0;
-              Scalar middleData[MaxNumData];
-              Index middleDataI[MaxNumData];
-              Byte middleDataB[MaxNumData];
-              for(int i = 0; i < MaxNumData; i++ ){
-                  middleData[i] = 0;
-                  middleDataI[i] = 0;
-                  middleDataB[i] = 0;
-              };
-              Scalar cd1[MaxNumData], cd2[MaxNumData];
-              Index cd1I[MaxNumData], cd2I[MaxNumData];
-              Byte cd1B[MaxNumData], cd2B[MaxNumData];
-
-              Index outIdx = m_data.m_LocationList[ValidCellIndex];
-              for (Index i = Cellbegin; i < Cellend; i += cl[i]+1) {
-
-                  const Index nvert = cl[i];
-                  Index c1 = cl[i+nvert];
-                  bool flipped = false, haveIsect = false;
-                  for (Index k=i+1; k<i+nvert+1; ++k) {
-                      const Index c2 = cl[k];
-
-                      for(int i = 0; i < m_data.m_numInVertData; i++){
-                          cd1[i] = m_data.m_inVertPtr[i][c1];
-                          cd2[i] = m_data.m_inVertPtr[i][c2];
-                      }
-                      for(int i = 0; i < m_data.m_numInVertDataI; i++){
-                          cd1I[i] = m_data.m_inVertPtrI[i][c1];
-                          cd2I[i] = m_data.m_inVertPtrI[i][c2];
-                      }
-                      for(int i = 0; i < m_data.m_numInVertDataB; i++){
-                          cd1B[i] = m_data.m_inVertPtrB[i][c1];
-                          cd2B[i] = m_data.m_inVertPtrB[i][c2];
-                      }
-
-                      Scalar d1 = m_data.m_isoFunc(c1);
-                      Scalar d2 = m_data.m_isoFunc(c2);
-
-                      bool smallToBig = d1 <= m_data.m_isovalue && d2 > m_data.m_isovalue;
-                      bool bigToSmall = d1 > m_data.m_isovalue && d2 <= m_data.m_isovalue;
-
-                      if (smallToBig || bigToSmall) {
-                          if (!haveIsect) {
-                              flipped = bigToSmall;
-                              haveIsect = true;
-                          }
-                          Index out = outIdx;
-                          if (flipped) {
-                              if (bigToSmall)
-                                  out += 1;
-                              else
-                                  out -= 1;
-                          }
-                          Scalar t = interpolation_weight<Scalar>(d1, d2, m_data.m_isovalue);
-                          for(int i = 0; i < m_data.m_numInVertData; i++) {
-                              Scalar v = lerp(cd1[i], cd2[i], t);
-                              middleData[i] += v;
-                              m_data.m_outVertPtr[i][out] = v;
-                          }
-                          for(int i = 0; i < m_data.m_numInVertDataI; i++){
-                              Index vI = lerp(cd1I[i], cd2I[i], t);
-                              middleDataI[i] += vI;
-                              m_data.m_outVertPtrI[i][out] = vI;
-                          }
-                          for(int i = 0; i < m_data.m_numInVertDataB; i++){
-                              Index vB = lerp(cd1B[i], cd2B[i], t);
-                              middleDataB[i] += vB;
-                              m_data.m_outVertPtrB[i][out] = vB;
-                          }
-
-                          ++outIdx;
-                          if (bigToSmall^flipped)
-                              ++outIdx;
-                          ++numAvg;
-                      }
-
-                      c1 = c2;
-                  }
-              }
-              if (numAvg > 0) {
-                  for(int i = 0; i < m_data.m_numInVertData; i++){
-                      middleData[i] /= numAvg;
-                  }
-                  for(int i = 0; i < m_data.m_numInVertDataI; i++){
-                      middleDataI[i] /= numAvg;
-                  }
-                  for(int i = 0; i < m_data.m_numInVertDataB; i++){
-                      middleDataB[i] /= numAvg;
-                  }
-              }
-              for (Index i = 2; i < numVert; i += 3) {
-                  const Index idx = m_data.m_LocationList[ValidCellIndex]+i;
-                  for(int i = 0; i < m_data.m_numInVertData; i++){
-                      m_data.m_outVertPtr[i][idx] = middleData[i];
-                  }
-                  for(int i = 0; i < m_data.m_numInVertDataI; i++){
-                      m_data.m_outVertPtrI[i][idx] = middleDataI[i];
-                  }
-                  for(int i = 0; i < m_data.m_numInVertDataB; i++){
-                      m_data.m_outVertPtrB[i][idx] = middleDataB[i];
-                  }
-              }
-              break;
-          }
-
-          case UnstructuredGrid::CPOLYHEDRON: {
+          case UnstructuredGrid::POLYHEDRON: {
               /* find all iso-points on each edge of each face,
                build a triangle for each consecutive pair and a center point,
                orient outwards towards smaller values */
@@ -836,25 +723,7 @@ struct SelectCells {
       Byte cellType = iCell.get<2>();
       if (cellType & UnstructuredGrid::GHOST_BIT)
           return 0;
-      if ((cellType & UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::VPOLYHEDRON) {
-          for (Index i=Cell; i<nextCell; i++) {
-              Index nv = m_data.m_cl[i];
-              for (Index k=0; k<nv; k++) {
-                  ++i;
-                  float val = m_data.m_isoFunc(m_data.m_cl[i]);
-                  if (val>m_data.m_isovalue) {
-                      havelower=1;
-                      if (havehigher)
-                          return 1;
-                  } else {
-                      havehigher=1;
-                      if (havelower)
-                          return 1;
-                  }
-              }
-          }
-      } else {
-          // also for CPOLYHEDRON
+          // also for POLYHEDRON
           for (Index i=Cell; i<nextCell; i++) {
               float val = m_data.m_isoFunc(m_data.m_cl[i]);
               if (val>m_data.m_isovalue) {
@@ -866,7 +735,6 @@ struct SelectCells {
                   if (havelower)
                       return 1;
               }
-          }
       }
       return 0;
    }
@@ -991,7 +859,7 @@ struct ComputeOutputSizes {
            Index begin = m_data.m_el[CellNr], end = m_data.m_el[CellNr+1];
            Index nvert = end-begin;
            Byte CellType = m_data.m_tl[CellNr] & ~UnstructuredGrid::CONVEX_BIT;
-           if (CellType != UnstructuredGrid::VPOLYHEDRON && CellType != UnstructuredGrid::CPOLYHEDRON) {
+           if (CellType != UnstructuredGrid::POLYHEDRON) {
                for (Index idx = 0; idx < nvert; idx ++) {
                    tableIndex += (((int) (m_data.m_isoFunc(m_data.m_cl[begin+idx]) > m_data.m_isovalue)) << idx);
                }
@@ -1014,29 +882,7 @@ struct ComputeOutputSizes {
                numVerts = prismNumVertsTable[tableIndex];
                break;
 
-           case UnstructuredGrid::VPOLYHEDRON: {
-
-               Index vertcounter = 0;
-               for (Index i = begin; i < end; i += cl[i]+1) {
-                   const Index N = cl[i];
-                   Index prev = cl[i+N];
-                   for (Index k=i+1; k<i+N+1; ++k) {
-                       Index v = cl[k];
-
-                       if (m_data.m_isoFunc(prev) <= m_data.m_isovalue && m_data.m_isoFunc(v) > m_data.m_isovalue) {
-                           ++vertcounter;
-                       } else if(m_data.m_isoFunc(prev) > m_data.m_isovalue && m_data.m_isoFunc(v) <= m_data.m_isovalue) {
-                           ++vertcounter;
-                       }
-
-                       prev = v;
-                   }
-               }
-               numVerts = vertcounter + vertcounter/2;
-               break;
-           }
-
-           case UnstructuredGrid::CPOLYHEDRON: {
+           case UnstructuredGrid::POLYHEDRON: {
 
                Index vertcounter = 0;
                Index facestart = InvalidIndex;

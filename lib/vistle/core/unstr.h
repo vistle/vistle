@@ -20,8 +20,6 @@ public:
         CONVEX_BIT = cell::CONVEX_BIT,
         TYPE_MASK = cell::TYPE_MASK,
 
-        POLYHEDRON = cell::POLYHEDRON,
-
         NONE = cell::NONE,
         BAR = cell::BAR,
         TRIANGLE = cell::TRIANGLE,
@@ -30,10 +28,9 @@ public:
         PYRAMID = cell::PYRAMID,
         PRISM = cell::PRISM,
         HEXAHEDRON = cell::HEXAHEDRON,
-        VPOLYHEDRON = cell::VPOLYHEDRON,
         POLYGON = cell::POLYGON,
         POINT = cell::POINT,
-        CPOLYHEDRON = cell::CPOLYHEDRON,
+        POLYHEDRON = cell::POLYHEDRON,
         NUM_TYPES = cell::NUM_TYPES,
     };
 

@@ -574,8 +574,8 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
                             el[currentElem] = idx2;
                             addCell(i, el, cl, MAX_EDGES, numVertB, izVert, idx2, reducedVOC);
                             tl[currentElem++] = isGhost[block][i] > 0
-                                                    ? (UnstructuredGrid::CPOLYHEDRON | UnstructuredGrid::GHOST_BIT)
-                                                    : UnstructuredGrid::CPOLYHEDRON;
+                                                    ? (UnstructuredGrid::POLYHEDRON | UnstructuredGrid::GHOST_BIT)
+                                                    : UnstructuredGrid::POLYHEDRON;
                         }
                     }
                 }
@@ -599,8 +599,8 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
                             el[currentElem] = idx2;
                             addCell(i, el, cl, MAX_EDGES, numVertB, izVert, idx2, reducedVOC);
                             tl[currentElem++] = isGhost[block][i] > 0
-                                                    ? (UnstructuredGrid::CPOLYHEDRON | UnstructuredGrid::GHOST_BIT)
-                                                    : UnstructuredGrid::CPOLYHEDRON;
+                                                    ? (UnstructuredGrid::POLYHEDRON | UnstructuredGrid::GHOST_BIT)
+                                                    : UnstructuredGrid::POLYHEDRON;
                         }
                     }
                 }

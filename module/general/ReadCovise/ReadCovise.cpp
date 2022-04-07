@@ -519,31 +519,6 @@ Object::ptr ReadCovise::readUNSGRD(Token &token, const int port, int fd, const b
         for (int index = 0; index < numCorners; index++)
             cl[index] = _cl[index];
 
-        if (UnstructuredGrid::POLYHEDRON == UnstructuredGrid::VPOLYHEDRON) {
-            // convert to VTK face stream
-            for (int index = 0; index < numElements; index++) {
-                tl[index] = UnstructuredGrid::VPOLYHEDRON;
-                Index begin = el[index], end = el[index + 1];
-                Index faceTerm = InvalidIndex;
-                Index faceVert = 0;
-                Index faceStart = 0;
-                for (Index i = begin; i < end; ++i) {
-                    Index v = cl[i];
-                    if (faceTerm == InvalidIndex) {
-                        faceTerm = v;
-                        faceVert = 0;
-                        faceStart = i;
-                    } else if (faceTerm == v) {
-                        cl[faceStart] = faceVert;
-                        faceTerm = InvalidIndex;
-                        faceVert = 0;
-                        faceStart = InvalidIndex;
-                    }
-                    ++faceVert;
-                }
-            }
-        }
-
         auto x = usg->x().data(), y = usg->y().data(), z = usg->z().data();
         for (int index = 0; index < numVertices; ++index) {
             x[index] = _x[index];

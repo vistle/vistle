@@ -120,8 +120,7 @@ bool ShowGrid::compute()
                         continue;
                     }
                     break;
-                case UnstructuredGrid::VPOLYHEDRON:
-                case UnstructuredGrid::CPOLYHEDRON:
+                case UnstructuredGrid::POLYHEDRON:
                     if (!showphd) {
                         continue;
                     }
@@ -157,17 +156,7 @@ bool ShowGrid::compute()
                     }
                     break;
                 }
-                case UnstructuredGrid::VPOLYHEDRON: {
-                    for (Index i = begin; i < end; i += icl[i] + 1) {
-                        const Index numFaceVert = icl[i];
-                        for (Index k = i + 1; k < i + numFaceVert + 1; ++k)
-                            ocl.push_back(icl[k]);
-                        ocl.push_back(icl[i + 1]);
-                        oel.push_back(ocl.size());
-                    }
-                    break;
-                }
-                case UnstructuredGrid::CPOLYHEDRON: {
+                case UnstructuredGrid::POLYHEDRON: {
                     Index facestart = InvalidIndex;
                     Index term = 0;
                     for (Index i = begin; i < end; ++i) {
