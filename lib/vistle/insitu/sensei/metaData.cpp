@@ -38,7 +38,7 @@ const std::string &MetaMesh::name() const
     return m_name;
 }
 
-bool MetaMesh::empty()
+bool MetaMesh::empty() const
 {
     return m_variables.empty();
 }

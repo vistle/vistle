@@ -174,8 +174,6 @@ void InSituModule::updateMeta(const vistle::message::Buffer &obj)
 {
     if (obj.type() == vistle::message::ADDOBJECT) {
         auto &objMsg = obj.as<vistle::message::AddObject>();
-        auto obj = std::const_pointer_cast<vistle::Object>(objMsg.getObject());
-        Module::updateMeta(obj);
         m_iteration = objMsg.meta().iteration();
         m_executionCount = objMsg.meta().executionCounter();
     }

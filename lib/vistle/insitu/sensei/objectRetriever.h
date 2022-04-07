@@ -16,15 +16,15 @@ class V_SENSEIEXPORT ObjectRetriever { // callbacks to retrieve Grids
 public:
     struct V_SENSEIEXPORT PortAssignedObject {
         PortAssignedObject() = default;
-        PortAssignedObject(const std::string &gridName, vistle::Object::ptr obj);
-        PortAssignedObject(const std::string &gridName, const std::string &varName, vistle::Object::ptr obj);
+        PortAssignedObject(const std::string &gridName, vistle::Object::const_ptr obj);
+        PortAssignedObject(const std::string &gridName, const std::string &varName, vistle::Object::const_ptr obj);
         const std::string &portName() const;
-        vistle::Object::ptr object() const;
+        vistle::Object::const_ptr object() const;
         operator bool() const;
 
     private:
         std::string m_portName;
-        vistle::Object::ptr m_obj;
+        vistle::Object::const_ptr m_obj;
     };
     typedef std::vector<PortAssignedObject> PortAssignedObjectList;
     ObjectRetriever(std::function<PortAssignedObjectList(const MetaData &usedData)> getData);

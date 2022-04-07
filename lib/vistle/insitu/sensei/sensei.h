@@ -37,6 +37,7 @@ public:
     {
         return typename T::ptr(new T(args...));
     }
+    void updateMeta(vistle::Object::ptr obj) const;
 
 private:
     std::unique_ptr<vistle::StopWatch> m_stopWatch;
@@ -81,7 +82,6 @@ private:
 
     void addCommands();
     void addPorts();
-    void updateMeta(vistle::Object::ptr obj) const;
 };
 } // namespace sensei
 } // namespace insitu

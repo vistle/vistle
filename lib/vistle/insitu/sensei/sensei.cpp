@@ -177,7 +177,6 @@ void SenseiAdapter::processData()
     }
     auto dataObjects = m_callbacks.getData(m_usedData);
     for (const auto &dataObject: dataObjects) {
-        updateMeta(dataObject.object());
         m_internals->sendMessageQueue->addObject(dataObject.portName(), dataObject.object());
     }
     m_internals->sendMessageQueue->sendObjects();
@@ -404,5 +403,6 @@ void SenseiAdapter::updateMeta(vistle::Object::ptr obj) const
         obj->setExecutionCounter(m_executionCount);
         obj->setTimestep(m_processedTimesteps);
         obj->setIteration(m_iterations);
+        obj->updateInternals();
     }
 }

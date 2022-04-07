@@ -85,7 +85,7 @@ void DataTransmitter::sendMeshesToModule(const std::set<std::string> &objects, c
     size_t numMeshes = m_metaData.getNumObjects(SimulationObjectType::mesh);
     for (size_t i = 0; i < numMeshes; i++) {
         MeshInfo meshInfo = collectMeshInfo(i);
-        if (isRequested(meshInfo.name.c_str(), objects) && !sendConstantMesh(meshInfo, moduleInfo)) {
+        if (isRequested(meshInfo.name.c_str(), objects) && !constantMeshCreated(meshInfo)) {
             makeMesh(meshInfo);
             sendMeshToModule(meshInfo, moduleInfo);
         }
@@ -114,17 +114,9 @@ MeshInfo DataTransmitter::collectMeshInfo(size_t nthMesh)
     return meshInfo;
 }
 
-bool DataTransmitter::sendConstantMesh(const MeshInfo &meshInfo, const message::ModuleInfo &moduleInfo)
+bool DataTransmitter::constantMeshCreated(const MeshInfo &meshInfo)
 {
-    auto meshIt = m_meshes.find(meshInfo.name);
-    if (m_rules.constGrids && meshIt != m_meshes.end()) {
-        for (auto grid: meshIt->second.grids) {
-            updateMeta(grid, moduleInfo);
-            m_sender.addObject(meshInfo.name, grid);
-        }
-        return true;
-    }
-    return false;
+    return (m_rules.constGrids && m_meshes.find(meshInfo.name) != m_meshes.end());
 }
 
 void DataTransmitter::makeMesh(MeshInfo &meshInfo)
@@ -336,5 +328,6 @@ void DataTransmitter::updateMeta(vistle::Object::ptr obj, const message::ModuleI
         obj->setExecutionCounter(m_executionCount);
         obj->setTimestep(m_currTimestep);
         obj->setIteration(m_currIteration);
+        obj->updateInternals();
     }
 }

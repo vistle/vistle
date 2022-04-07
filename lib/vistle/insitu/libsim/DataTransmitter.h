@@ -40,7 +40,7 @@ private:
 
     void sendMeshesToModule(const std::set<std::string> &objects, const message::ModuleInfo &moduleInfo);
     MeshInfo collectMeshInfo(size_t nthMesh);
-    bool sendConstantMesh(const MeshInfo &meshInfo, const message::ModuleInfo &moduleInfo);
+    bool constantMeshCreated(const MeshInfo &meshInfo);
 
     void makeMesh(MeshInfo &meshInfo);
     void makeSeparateMeshes(MeshInfo &meshInfo);
