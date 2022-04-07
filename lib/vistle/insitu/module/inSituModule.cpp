@@ -156,8 +156,6 @@ bool InSituModule::prepare()
     size_t minNumPackates = 0;
     boost::mpi::reduce(comm(), m_numPackeges, minNumPackates, boost::mpi::minimum<int>(), 0);
     boost::mpi::broadcast(comm(), minNumPackates, 0);
-    CERR << "prepare: minimum packages is " << minNumPackates << "/" << m_numPackeges << std::endl;
-    //static size_t numPackagesHandled = 0;
     while (minNumPackates) {
         auto obj = std::move(m_cachedVistleObjects.front());
         m_cachedVistleObjects.pop_front();
@@ -168,9 +166,6 @@ bool InSituModule::prepare()
             updateMeta(obj);
             sendMessage(obj);
         }
-        //++numPackagesHandled;
-        //CERR << "prepare handled " << numPackagesHandled << " packes; iteration = " << m_iteration
-        //     << ", execCOunter = " << m_executionCount << std::endl;
     }
     return true;
 }
