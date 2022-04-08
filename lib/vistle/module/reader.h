@@ -163,8 +163,8 @@ private:
         int concurrency;
     };
 
-    bool readTimestep(std::shared_ptr<Token> prev, const ReaderProperties &prop, int timestep, int step);
-    bool readTimesteps(std::shared_ptr<Token> prev, const ReaderProperties &prop);
+    bool readTimestep(std::shared_ptr<Token> &prev, const ReaderProperties &prop, int timestep, int step);
+    bool readTimesteps(std::shared_ptr<Token> &prev, const ReaderProperties &prop);
     bool prepare() override;
     bool compute() override;
 
