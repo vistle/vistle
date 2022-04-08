@@ -39,27 +39,19 @@ if(USE_QT)
     set(LIB_SOURCES ${LIB_SOURCES} ${QRC_SOURCES})
 endif()
 
-vistle_target_link_libraries(
-    vistle_clustermanager
-    PRIVATE
-    ${BOOST_MPI}
-    PRIVATE
-    Boost::system
-    PRIVATE
-    MPI::MPI_C
-    PRIVATE
-    vistle_control
-    PUBLIC
-    vistle_util
-    PRIVATE
-    vistle_util_mpi
-    PUBLIC
-    vistle_core
-    PRIVATE
-    Threads::Threads)
+
+set(vistle_clustermanager_dependencies
+PRIVATE    ${BOOST_MPI}
+PRIVATE    Boost::system
+PRIVATE    MPI::MPI_C
+PRIVATE    vistle_control
+PUBLIC     vistle_util
+PRIVATE    vistle_util_mpi
+PUBLIC     vistle_core
+PRIVATE    Threads::Threads)
 
 if(NOT VISTLE_MULTI_PROCESS)
-    vistle_target_link_libraries(vistle_clustermanager PRIVATE ${CMAKE_DL_LIBS} PRIVATE vistle_module)
+    vistle_target_link_libraries(vistle_clustermanager ${vistle_clustermanager_dependencies} PRIVATE ${CMAKE_DL_LIBS} PRIVATE vistle_module)
     if(APPLE)
         set_target_properties(vistle_clustermanager PROPERTIES LINK_FLAGS -Wl,-export_dynamic)
     endif()
@@ -74,4 +66,6 @@ if(NOT VISTLE_MULTI_PROCESS)
             endif()
         endif()
     endif()
+else()
+target_link_libraries(vistle_clustermanager ${vistle_clustermanager_dependencies})
 endif()
