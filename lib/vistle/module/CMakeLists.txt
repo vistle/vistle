@@ -27,7 +27,7 @@ if(UNIX AND NOT APPLE)
 endif()
 
 if(OpenMP_CXX_FOUND)
-    vistle_target_link_libraries(vistle_module PUBLIC OpenMP::OpenMP_CXX)
+    vistle_target_link_libraries(vistle_module PRIVATE OpenMP::OpenMP_CXX)
 endif()
 
 vistle_target_link_libraries(
@@ -42,7 +42,7 @@ vistle_target_link_libraries(
     vistle_alg
     PUBLIC
     ${BOOST_MPI}
-    PUBLIC
+    PRIVATE
     Boost::boost
     PUBLIC
     MPI::MPI_C)
