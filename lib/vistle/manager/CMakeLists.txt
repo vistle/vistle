@@ -41,14 +41,22 @@ endif()
 
 vistle_target_link_libraries(
     vistle_clustermanager
-    PRIVATE ${BOOST_MPI}
-    PRIVATE Boost::system
-    PRIVATE MPI::MPI_C
-    PRIVATE vistle_control
-    PUBLIC vistle_util
-    PRIVATE vistle_util_mpi
-    PUBLIC vistle_core
-    PRIVATE Threads::Threads)
+    PRIVATE
+    ${BOOST_MPI}
+    PRIVATE
+    Boost::system
+    PRIVATE
+    MPI::MPI_C
+    PRIVATE
+    vistle_control
+    PUBLIC
+    vistle_util
+    PRIVATE
+    vistle_util_mpi
+    PUBLIC
+    vistle_core
+    PRIVATE
+    Threads::Threads)
 
 if(NOT VISTLE_MULTI_PROCESS)
     vistle_target_link_libraries(vistle_clustermanager PRIVATE ${CMAKE_DL_LIBS} PRIVATE vistle_module)
