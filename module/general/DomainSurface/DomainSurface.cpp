@@ -350,7 +350,7 @@ struct Face {
     Index face = InvalidIndex;
     std::array<Index, 3> verts;
 
-    Face(Index e, Index f, Index sz, const Index *vl, const Index *cl): elem(e), face(f)
+    Face(Index e, Index f, Index sz, const Index *vl, const unsigned *cl): elem(e), face(f)
     {
         if (sz == 0)
             return;
