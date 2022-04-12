@@ -289,7 +289,6 @@ public:
                                         (ComputeExecute) // call compute() - because this module was executed
                                         (ComputeObject) // call compute() - because objects have been received
                                         (Reduce) // call reduce()
-                                        (Request) //Request execution
     )
 
     explicit Execute(What what = Execute::ComputeExecute, int module = Id::Broadcast, int count = -1);

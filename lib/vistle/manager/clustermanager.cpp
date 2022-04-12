@@ -1327,13 +1327,6 @@ bool ClusterManager::handlePriv(const message::Execute &exec)
         }
         break;
     }
-    case message::Execute::Request: {
-        CERR << "received exec request from" << exec.senderId() << std::endl;
-        auto exec2 = exec;
-        exec2.setWhat(message::Execute::ComputeExecute);
-        sendHub(exec2);
-        break;
-    }
     }
 
     return true;

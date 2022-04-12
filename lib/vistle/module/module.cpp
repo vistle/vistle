@@ -2098,7 +2098,8 @@ std::set<int> Module::getMirrors() const
 
 void Module::execute() const
 {
-    message::Execute exec{message::Execute::Request, m_id, m_executionCount};
+    message::Execute exec{message::Execute::ComputeExecute, m_id, m_executionCount};
+    exec.setDestId(message::Id::MasterHub);
     sendMessage(exec);
 }
 
