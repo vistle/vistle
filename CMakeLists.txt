@@ -547,8 +547,10 @@ set(buildPackageLocation ${PROJECT_BINARY_DIR}/lib/cmake/vistle)
 set(installPackageLocation ${CMAKE_INSTALL_LIBDIR}/cmake/vistle)
 
 function(prepend_file filename)
-    file(READ ${filename} old_content)
-    file(WRITE ${filename} ${ARGN} ${old_content})
+    if(EXISTS ${filename})
+        file(READ ${filename} old_content)
+        file(WRITE ${filename} ${ARGN} ${old_content})
+    endif()
 endfunction()
 
 function(getPublicBoostComponents PublicBoostComponents)
@@ -862,13 +864,13 @@ vistle_find_package(
     VTK
     5.0
     COMPONENTS
-    vtkIOLegacy
-    vtkIOXML
-    vtkFiltersCore
-    vtkCommonCore
-    vtkImagingCore
     vtkCommonDataModel
-    vtkCommonExecutionModel
+    vtkIOXML
+    vtkIOLegacy
+    #vtkCommonCore
+    #vtkFiltersCore
+    #vtkImagingCore
+    #vtkCommonExecutionModel
     NO_MODULE
     QUIET)
 
