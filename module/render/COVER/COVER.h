@@ -81,12 +81,7 @@ public:
     InteractorMap m_interactorMap;
 
     struct DelayedObject {
-        DelayedObject(std::shared_ptr<PluginRenderObject> ro, VistleGeometryGenerator generator)
-        : ro(ro)
-        , name(ro->container ? ro->container->getName() : "(no container)")
-        , generator(generator)
-        , node_future(std::async(std::launch::async, generator))
-        {}
+        DelayedObject(std::shared_ptr<PluginRenderObject> ro, VistleGeometryGenerator generator);
         std::shared_ptr<PluginRenderObject> ro;
         std::string name;
         VistleGeometryGenerator generator;
