@@ -107,31 +107,43 @@ bool Reader::readTimestep(std::shared_ptr<Token> &prev, const ReaderProperties &
             token->m_meta = *prop.meta;
             token->m_meta.setBlock(p);
             token->m_meta.setTimeStep(step);
-            if (waitForReaders(prop.concurrency - 1, result) == 0)
-                prev.reset();
-            if (!result) {
-                break;
-            }
-            m_tokens.emplace_back(token);
-            prev = token;
-            auto tname = name() + ":Read:" + std::to_string(m_tokenCount);
-            token->m_future = std::async(std::launch::async, [this, tname, token, timestep, p]() {
-                setThreadName(tname);
+            if (m_parallel == Serial) {
                 if (!read(*token, timestep, p)) {
                     sendInfo("error reading time data %d on partition %d", timestep, p);
-                    return false;
+                    result = false;
+                    break;
                 }
-                return true;
-            });
+            } else {
+                if (waitForReaders(prop.concurrency - 1, result) == 0)
+                    prev.reset();
+                if (!result) {
+                    break;
+                }
+                m_tokens.emplace_back(token);
+                prev = token;
+                auto tname = name() + ":Read:" + std::to_string(m_tokenCount);
+                token->m_future = std::async(std::launch::async, [this, tname, token, timestep, p]() {
+                    setThreadName(tname);
+                    if (!read(*token, timestep, p)) {
+                        sendInfo("error reading time data %d on partition %d", timestep, p);
+                        return false;
+                    }
+                    return true;
+                });
+            }
         }
         if (cancelRequested()) {
-            waitForReaders(0, result);
-            prev.reset();
+            if (m_parallel != Serial) {
+                waitForReaders(0, result);
+                prev.reset();
+            }
             result = false;
         }
         if (!result)
             break;
     }
+    if (m_parallel == Serial)
+        return result;
     if (m_parallel == ParallelizeBlocks) {
         waitForReaders(0, result);
         prev.reset();
