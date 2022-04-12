@@ -23,6 +23,7 @@
 #include <vistle/core/tcpmessage.h>
 #include <vistle/core/messages.h>
 #include <vistle/util/listenv4v6.h>
+#include <vistle/util/threadname.h>
 #include <vistle/module/module.h>
 
 
@@ -970,6 +971,8 @@ void RhrServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const R
                     ++m_queuedTiles;
                     std::lock_guard<std::mutex> locker(m_taskMutex);
                     task->future = std::async(std::launch::async, [this, task]() {
+                        setThreadName("RHR:Server:" + std::string(task->rgba ? "RGBA" : "Depth") + ":" +
+                                      std::to_string(task->viewNum));
                         task->result = task->work();
                         std::lock_guard<std::mutex> locker(m_taskMutex);
                         m_finishedTasks.emplace_back(task);

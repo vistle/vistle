@@ -1116,6 +1116,11 @@ void RemoteConnection::enqueueTask(std::shared_ptr<DecodeTask> task)
 
     m_runningTasks.emplace(task);
     task->result = std::async(std::launch::async, [this, task]() {
+        if (task->rgba)
+            setThreadName("RHR:Tile:RGBA");
+        else
+            setThreadName("RHR:Tile:Depth");
+
         bool ok = task->work();
         std::lock_guard<std::mutex> locker(*m_taskMutex);
         m_finishedTasks.emplace_back(task);

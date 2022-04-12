@@ -21,6 +21,7 @@
 #include <vistle/util/stopwatch.h>
 #include <vistle/util/exception.h>
 #include <vistle/util/shmconfig.h>
+#include <vistle/util/threadname.h>
 #include <vistle/core/object.h>
 #include <vistle/core/empty.h>
 #include <vistle/core/export.h>
@@ -2353,7 +2354,11 @@ bool Module::compute()
     m_tasks.push_back(task);
 
     std::unique_lock<std::mutex> guard(task->m_mutex);
-    task->m_future = std::async(std::launch::async, [this, task] { return compute(task); });
+    auto tname = name() + ":Block:" + std::to_string(m_tasks.size());
+    task->m_future = std::async(std::launch::async, [this, tname, task] {
+        setThreadName(tname);
+        return compute(task);
+    });
     return true;
 }
 

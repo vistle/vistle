@@ -1,4 +1,5 @@
 #include "reader.h"
+#include <vistle/util/threadname.h>
 
 namespace vistle {
 
@@ -113,7 +114,9 @@ bool Reader::readTimestep(std::shared_ptr<Token> &prev, const ReaderProperties &
             }
             m_tokens.emplace_back(token);
             prev = token;
-            token->m_future = std::async(std::launch::async, [this, token, timestep, p]() {
+            auto tname = name() + ":Read:" + std::to_string(m_tokenCount);
+            token->m_future = std::async(std::launch::async, [this, tname, token, timestep, p]() {
+                setThreadName(tname);
                 if (!read(*token, timestep, p)) {
                     sendInfo("error reading time data %d on partition %d", timestep, p);
                     return false;
