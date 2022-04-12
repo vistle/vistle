@@ -39,33 +39,39 @@ if(USE_QT)
     set(LIB_SOURCES ${LIB_SOURCES} ${QRC_SOURCES})
 endif()
 
-
-set(vistle_clustermanager_dependencies
-PRIVATE    ${BOOST_MPI}
-PRIVATE    Boost::system
-PRIVATE    MPI::MPI_C
-PRIVATE    vistle_control
-PUBLIC     vistle_util
-PRIVATE    vistle_util_mpi
-PUBLIC     vistle_core
-PRIVATE    Threads::Threads)
+vistle_target_link_libraries(
+    vistle_clustermanager
+    PRIVATE
+    ${BOOST_MPI}
+    PRIVATE
+    Boost::system
+    PRIVATE
+    MPI::MPI_C
+    PRIVATE
+    vistle_control
+    PUBLIC
+    vistle_util
+    PRIVATE
+    vistle_util_mpi
+    PUBLIC
+    vistle_core
+    PRIVATE
+    Threads::Threads)
 
 if(NOT VISTLE_MULTI_PROCESS)
-    vistle_target_link_libraries(vistle_clustermanager ${vistle_clustermanager_dependencies} PRIVATE ${CMAKE_DL_LIBS} PRIVATE vistle_module)
+    vistle_target_link_libraries(vistle_clustermanager PRIVATE ${CMAKE_DL_LIBS} PRIVATE vistle_module)
     if(APPLE)
         set_target_properties(vistle_clustermanager PROPERTIES LINK_FLAGS -Wl,-export_dynamic)
     endif()
     if(USE_QT)
-        target_link_libraries(vistle_clustermanager PRIVATE Qt5::Core Qt5::Widgets)
+        vistle_target_link_libraries(vistle_clustermanager PRIVATE Qt5::Core Qt5::Widgets)
         if(NOT APPLE
            AND NOT WIN32
            AND XCB_FOUND)
-            target_link_libraries(vistle_clustermanager PRIVATE ${XCB_LIBRARIES})
+            vistle_target_link_libraries(vistle_clustermanager PRIVATE ${XCB_LIBRARIES})
             if(X11_ICE_FOUND)
-                target_link_libraries(vistle_clustermanager PRIVATE ${X11_ICE_LIB})
+                vistle_target_link_libraries(vistle_clustermanager PRIVATE ${X11_ICE_LIB})
             endif()
         endif()
     endif()
-else()
-target_link_libraries(vistle_clustermanager ${vistle_clustermanager_dependencies})
 endif()
