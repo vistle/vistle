@@ -28,26 +28,26 @@ inline Float interpolation_weight(S low, S up, S between)
 
     if (up >= low) {
         if (between <= low)
-            return Float(1);
-        if (between >= up)
             return Float(0);
+        if (between >= up)
+            return Float(1);
         const S diff = up - low;
         const S d0 = between - low;
         if (diff < EPSILON) {
             const S d1 = up - between;
-            return d0 < d1 ? Float(1) : Float(0);
+            return d0 < d1 ? Float(0) : Float(1);
         }
         return Float(d0) / Float(diff);
     } else {
         if (between >= low)
-            return Float(1);
-        if (between <= up)
             return Float(0);
+        if (between <= up)
+            return Float(1);
         const S diff = low - up;
         const S d0 = low - between;
         if (diff < EPSILON) {
             const S d1 = between - up;
-            return d0 < d1 ? Float(1) : Float(0);
+            return d0 < d1 ? Float(0) : Float(1);
         }
         return Float(d0) / Float(diff);
     }
