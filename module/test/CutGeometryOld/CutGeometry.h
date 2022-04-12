@@ -5,6 +5,8 @@
 #include <vistle/core/vector.h>
 #include "../../general/IsoSurface/IsoDataFunctor.h"
 
+#define CutGeometry CutGeometryOld
+
 class CutGeometry: public vistle::Module {
 public:
     CutGeometry(const std::string &name, int moduleID, mpi::communicator comm);

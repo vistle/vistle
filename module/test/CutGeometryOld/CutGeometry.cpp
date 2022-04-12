@@ -27,6 +27,8 @@ CutGeometry::CutGeometry(const std::string &name, int moduleID, mpi::communicato
 CutGeometry::~CutGeometry()
 {}
 
+namespace {
+
 class PlaneClip {
     Coords::const_ptr m_coord;
     Triangles::const_ptr m_tri;
@@ -621,6 +623,8 @@ private:
         }
     }
 };
+
+} // namespace
 
 
 Object::ptr CutGeometry::cutGeometry(Object::const_ptr object) const
