@@ -17,6 +17,7 @@ V_UTILEXPORT std::string bin(const std::string &prefix);
 V_UTILEXPORT std::string module(const std::string &prefix);
 V_UTILEXPORT std::string share(const std::string &prefix);
 V_UTILEXPORT std::string configHome(); //config directory of the user
+V_UTILEXPORT bool setVistleRoot(const std::string &vistleRootDir);
 
 } // namespace directory
 
