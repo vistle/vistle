@@ -181,7 +181,7 @@ target_link_libraries(
     ${EMBREE_LIBRARY}
     MPI::MPI_C)
 
-if(USE_OPENMP_REQUESTED AND LIBOMP)
+if(USE_LIBOMP AND LIBOMP)
     target_link_libraries(DisCOVERay ${LIBOMP})
 endif()
 
