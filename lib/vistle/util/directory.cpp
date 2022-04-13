@@ -90,6 +90,7 @@ std::string configHome()
     }
     return "";
 }
+
 bool setVistleRoot(const std::string &vistleRootDir)
 {
     std::string vr = "VISTLE_ROOT=" + vistleRootDir;
@@ -98,7 +99,7 @@ bool setVistleRoot(const std::string &vistleRootDir)
     int retval = putenv(vistleRoot);
     if (retval != 0) {
         std::cerr << "failed to set VISTLE_ROOT: " << strerror(errno) << std::endl;
-        delete[] vistleRoot;
+        free(vistleRoot);
         return false;
     }
     return true;
