@@ -120,7 +120,9 @@ struct IsoDataFunctor {
 };
 #endif
 
-#if defined(CUTGEOMETRY)
+#if defined(CUTGEOMETRYOLD)
+#define IsoController CutGeoOldController
+#elif defined(CUTGEOMETRY)
 #define IsoController GeoController
 #elif defined(CUTTINGSURFACE)
 #define IsoController CutController

@@ -1,4 +1,5 @@
 use_openmp()
+add_definitions(-DCUTGEOMETRYOLD)
 add_definitions(-DCUTGEOMETRY)
 add_definitions(-DCUTTINGSURFACE)
 add_definitions(-DTOGGLESIGN)
