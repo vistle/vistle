@@ -43,7 +43,7 @@ ReadMPAS::ReadMPAS(const std::string &name, int moduleID, mpi::communicator comm
                                     "/mnt/raid/home/hpcleker/Desktop/MPAS/test40962/x1.40962.graph.info.part.8",
                                     Parameter::Filename);
 
-    m_numPartitions = addIntParameter("numParts", "Number of Partitions", 1);
+    m_numPartitions = addIntParameter("numParts", "Number of partitions per rank", 1);
     m_numLevels = addIntParameter("numLevels", "Number of vertical cell layers to read (0: only 2D base level)", 0);
     setParameterMinimum<Integer>(m_numLevels, 0);
     m_altitudeScale = addFloatParameter("altitudeScale", "value to scale the grid altitude (zGrid)", 20.);
@@ -73,7 +73,8 @@ ReadMPAS::ReadMPAS(const std::string &name, int moduleID, mpi::communicator comm
                                  cm, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_cellMode, CellMode);
 
-    setParallelizationMode(ParallelizeBlocks);
+    //setParallelizationMode(ParallelizeBlocks);
+    setParallelizationMode(Serial); // for MPI usage in PnetCDF
     //setReducePolicy(message::ReducePolicy::ReducePolicy::OverAll);
 
     observeParameter(m_gridFile);
@@ -106,7 +107,7 @@ bool ReadMPAS::prepareRead()
         boost::erase_all(fEnd, ".");
         numPartsFile = atoi(fEnd.c_str());
     }
-    int numPartsUser = m_numPartitions->getValue();
+    int numPartsUser = m_numPartitions->getValue() * this->size();
     if (numPartsFile < 1) {
         numPartsFile = 1;
         finalNumberOfParts = 1;
@@ -461,7 +462,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
             return false;
 
         float dH = 0.001;
-        size_t numPartsUser = m_numPartitions->getValue();
+        size_t numPartsUser = m_numPartitions->getValue() * size();
 
         if (numPartsFile == 1) {
             sendInfo("please use a grid partition file");
