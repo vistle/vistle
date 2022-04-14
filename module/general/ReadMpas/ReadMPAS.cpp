@@ -558,9 +558,9 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
                             iv = reducedVOC[i * MAX_EDGES + d] - 1;
                             if (iv >= 0) {
                                 iVOC = voc[i * vPerC + d] - 1; //current vertex index
-                                i_v1 = cov[iVOC * MAX_VERT + 0]; //cell index
-                                i_v2 = cov[iVOC * MAX_VERT + 1];
-                                i_v3 = cov[iVOC * MAX_VERT + 2];
+                                i_v1 = cov[iVOC * MAX_VERT + 0] - 1; //cell index
+                                i_v2 = cov[iVOC * MAX_VERT + 1] - 1;
+                                i_v3 = cov[iVOC * MAX_VERT + 2] - 1;
                                 radius = altScale * (1. / 3.) *
                                              (zGrid[(numLevels)*i_v1 + iz] + zGrid[(numLevels)*i_v2 + iz] +
                                               zGrid[(numLevels)*i_v3 + iz]) +
