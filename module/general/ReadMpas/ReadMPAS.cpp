@@ -13,6 +13,9 @@
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string.hpp>
 #include <vistle/core/polygons.h>
+#include <vistle/core/triangles.h>
+#include <vistle/core/unstr.h>
+#include <vistle/util/enum.h>
 #include <fstream>
 
 namespace bf = boost::filesystem;
@@ -23,6 +26,8 @@ using namespace vistle;
 #define MAX_EDGES 6 // maximal edges on cell
 #define MSL 6371229.0 //sphere radius on mean sea level (earth radius)
 #define MAX_VERT 3 // vertex degree
+
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(CellMode, (Voronoi)(Delaunay)(DelaunayProjected))
 
 // CONSTRUCTOR
 ReadMPAS::ReadMPAS(const std::string &name, int moduleID, mpi::communicator comm): Reader(name, moduleID, comm)
@@ -38,9 +43,9 @@ ReadMPAS::ReadMPAS(const std::string &name, int moduleID, mpi::communicator comm
                                     "/mnt/raid/home/hpcleker/Desktop/MPAS/test40962/x1.40962.graph.info.part.8",
                                     Parameter::Filename);
 
-    m_numPartitions = addIntParameter("numParts", "Number of Partitions", Parameter::Integer);
-    setIntParameter("numParts", 1);
-    m_numLevels = addIntParameter("numLevels", "Number of vertical levels to read", Parameter::Integer);
+    m_numPartitions = addIntParameter("numParts", "Number of Partitions", 1);
+    m_numLevels = addIntParameter("numLevels", "Number of vertical cell layers to read (0: only 2D base level)", 0);
+    setParameterMinimum<Integer>(m_numLevels, 0);
     m_altitudeScale = addFloatParameter("altitudeScale", "value to scale the grid altitude (zGrid)", 20.);
 
     m_cellsOnCell = addStringParameter("cellsOnCell", "List of neighboring cells (for ghosts)", "", Parameter::Choice);
@@ -61,6 +66,12 @@ ReadMPAS::ReadMPAS(const std::string &name, int moduleID, mpi::communicator comm
         sprintf(s_var, "data_out_%d", i);
         m_dataOut[i] = createOutputPort(s_var, "scalar data");
     }
+
+    CellMode cm = m_voronoiCells ? Voronoi : m_projectDown ? DelaunayProjected : Delaunay;
+    m_cellMode = addIntParameter("cell_mode",
+                                 "grid (based on Voronoi cells, Delaunay trianguelation, or Delaunay projected down)",
+                                 cm, Parameter::Choice);
+    V_ENUM_SET_CHOICES(m_cellMode, CellMode);
 
     setParallelizationMode(ParallelizeBlocks);
     //setReducePolicy(message::ReducePolicy::ReducePolicy::OverAll);
@@ -123,11 +134,11 @@ bool ReadMPAS::prepareRead()
             }
         }
         setTimesteps(numDataFiles);
-        sendInfo("Set Timesteps from DataFiles to %d", numDataFiles);
+        if (rank() == 0)
+            sendInfo("Set Timesteps from DataFiles to %d", numDataFiles);
     } else {
         setTimesteps(0);
     }
-
 
     gridList.clear();
     gridList.resize(finalNumberOfParts);
@@ -135,12 +146,8 @@ bool ReadMPAS::prepareRead()
     numCellsB.resize(finalNumberOfParts, 0);
     numCornB.clear();
     numCornB.resize(finalNumberOfParts, 0);
-    blockIdx.clear();
-    blockIdx.resize(numPartsFile);
-    numGhosts.clear();
-    numGhosts.resize(finalNumberOfParts, 0);
-    isGhost.clear();
-    isGhost.resize(finalNumberOfParts, std::vector<int>(1, 0));
+    numTrianglesB.clear();
+    numTrianglesB.resize(finalNumberOfParts, 0);
     numCells = 0;
     numLevels = 0;
     partList.clear();
@@ -154,6 +161,25 @@ bool ReadMPAS::prepareRead()
     idxCellsInBlock.clear();
     idxCellsInBlock.resize(finalNumberOfParts, std::vector<Index>(0, 0));
 
+    switch (m_cellMode->getValue()) {
+    case Voronoi:
+        m_voronoiCells = true;
+        m_projectDown = false;
+        break;
+    case Delaunay:
+        m_voronoiCells = false;
+        m_projectDown = false;
+        break;
+    case DelaunayProjected:
+        m_voronoiCells = false;
+        m_projectDown = true;
+        break;
+    default:
+        assert("invalid CellMode" == nullptr);
+    }
+
+    ghosts = false;
+
     return true;
 }
 
@@ -162,25 +188,19 @@ bool ReadMPAS::prepareRead()
 bool ReadMPAS::setVariableList(const NcmpiFile &filename, bool setCOC)
 {
     std::multimap<std::string, NcmpiVar> varNameListData = filename.getVars();
-    char *newEntry = new char[50];
     std::vector<std::string> AxisVarChoices{"NONE"}, Axis1dChoices{"NONE"};
-    size_t num3dVars = 0, num2dVars = 0;
 
     for (auto elem: varNameListData) {
-        const NcmpiVar &var = filename.getVar(elem.first.c_str()); //get_var(i);
-        strcpy(newEntry, elem.first.c_str()); //var->name());
+        const NcmpiVar var = filename.getVar(elem.first); //get_var(i);
         if (var.getDimCount() == 1) { //grid axis
-            Axis1dChoices.push_back(newEntry);
-            num2dVars++;
+            Axis1dChoices.push_back(elem.first);
         } else {
-            AxisVarChoices.push_back(newEntry);
-            num3dVars++;
+            AxisVarChoices.push_back(elem.first);
         }
     }
     if (setCOC)
         setParameterChoices(m_cellsOnCell, AxisVarChoices);
 
-    delete[] newEntry;
     if (strcmp(m_varDim->getValue().c_str(), varDimList[1].c_str()) == 0) {
         for (int i = 0; i < NUMPARAMS; i++)
             setParameterChoices(m_variables[i], AxisVarChoices);
@@ -210,7 +230,7 @@ bool ReadMPAS::validateFile(std::string fullFileName, std::string &redFileName, 
 
 
                 if (rank() == 0)
-                    sendInfo("Loading %s file %s", typeString.c_str(), redFileName.c_str());
+                    sendInfo("To load: %s file %s", typeString.c_str(), redFileName.c_str());
                 return true;
             }
         }
@@ -266,10 +286,11 @@ bool ReadMPAS::variableExists(std::string findName, const NcmpiFile &filename)
 
 //ADD CELL
 //compute vertices of a cell and add the cells to the cell list
-bool ReadMPAS::addCell(Index elem, Index *el, Index *cl, long vPerC, long numVert, long izVert, Index &idx2,
-                       const std::vector<int> &vocList)
+bool ReadMPAS::addCell(Index elem, bool ghost, Index &curElem, Index *el, Byte *tl, Index *cl, long vPerC, long numVert,
+                       long izVert, Index &idx2, const std::vector<Index> &vocList)
 {
     Index elemRow = elem * vPerC; //vPerC is set to MAX_EDGES if vocList is reducedVOC
+    el[curElem] = idx2;
 
     for (Index d = 0; d < eoc[elem]; ++d) { // add vertices on surface (crosssectional face)
         cl[idx2++] = ((vocList)[elemRow + d] - 1) + izVert;
@@ -293,6 +314,53 @@ bool ReadMPAS::addCell(Index elem, Index *el, Index *cl, long vPerC, long numVer
         cl[idx2++] = ((vocList)[elemRow + d] - 1) + numVert + izVert;
     }
     cl[idx2++] = (vocList)[elemRow] - 1 + numVert + izVert;
+    tl[curElem] = ghost ? (UnstructuredGrid::POLYHEDRON | UnstructuredGrid::GHOST_BIT) : UnstructuredGrid::POLYHEDRON;
+    ++curElem;
+    return true;
+}
+
+bool ReadMPAS::addPoly(Index elem, Index &curElem, Index *el, Index *cl, long vPerC, long numVert, long izVert,
+                       Index &idx2, const std::vector<Index> &vocList)
+{
+    el[curElem] = idx2;
+    Index elemRow = elem * vPerC; //vPerC is set to MAX_EDGES if vocList is reducedVOC
+
+    for (Index d = 0; d < eoc[elem]; ++d) { // add vertices on surface (crosssectional face)
+        cl[idx2++] = ((vocList)[elemRow + d] - 1) + izVert;
+    }
+    cl[idx2++] = (vocList)[elemRow] - 1 + izVert;
+    ++curElem;
+
+    return true;
+}
+
+bool ReadMPAS::addWedge(bool ghost, Index &curElem, Index center, Index n1, Index n2, Index layer, Index nVertPerLayer,
+                        Index *el, Byte *tl, Index *cl, Index &idx2)
+{
+    el[curElem] = idx2;
+    Index off = layer * nVertPerLayer;
+    cl[idx2++] = center + off;
+    cl[idx2++] = n1 + off;
+    cl[idx2++] = n2 + off;
+    off += nVertPerLayer;
+    cl[idx2++] = center + off;
+    cl[idx2++] = n1 + off;
+    cl[idx2++] = n2 + off;
+    tl[curElem] = UnstructuredGrid::PRISM;
+    if (ghost)
+        tl[curElem] |= UnstructuredGrid::GHOST_BIT;
+    ++curElem;
+
+    return true;
+}
+
+bool ReadMPAS::addTri(Index &curElem, Index center, Index n1, Index n2, Index *cl, Index &idx2)
+{
+    cl[idx2++] = center;
+    cl[idx2++] = n1;
+    cl[idx2++] = n2;
+    ++curElem;
+
     return true;
 }
 
@@ -301,13 +369,13 @@ bool ReadMPAS::addCell(Index elem, Index *el, Index *cl, long vPerC, long numVer
 bool ReadMPAS::getData(const NcmpiFile &filename, std::vector<float> *dataValues, const MPI_Offset &nLevels,
                        const Index dataIdx)
 {
-    const NcmpiVar &varData = filename.getVar(m_variables[dataIdx]->getValue().c_str());
+    const NcmpiVar varData = filename.getVar(m_variables[dataIdx]->getValue());
     std::vector<MPI_Offset> numElem, startElem;
     for (auto elem: varData.getDims()) {
-        if (strcmp(elem.getName().c_str(), "nCells") == 0) {
+        if (elem.getName() == "nCells") {
             numElem.push_back(elem.getSize());
-        } else if (strcmp(elem.getName().c_str(), "nVertLevels") == 0) {
-            numElem.push_back(std::min(elem.getSize(), nLevels - 1));
+        } else if (elem.getName() == "nVertLevels") {
+            numElem.push_back(std::min(elem.getSize(), nLevels));
         } else {
             numElem.push_back(1);
         }
@@ -322,8 +390,14 @@ bool ReadMPAS::getData(const NcmpiFile &filename, std::vector<float> *dataValues
 //start all the reading
 bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
 {
-    assert(gridList.size() == numPartitions());
+    assert(gridList.size() == Index(numPartitions()));
+    auto &idxCells = idxCellsInBlock[block];
+    if (timestep >= 0) {
+        assert(gridList[block]);
+    }
+
     if (!gridList[block]) { //if grid has not been created -> do it
+        assert(timestep == -1);
 
         NcmpiFile ncFirstFile(comm(), firstFileName, NcmpiFile::read);
         assert(dimensionExists("nCells", ncFirstFile));
@@ -339,21 +413,20 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
             return false;
         }
 
-        const NcmpiDim &dimCells = ncFirstFile.getDim("nCells");
-        const NcmpiDim &dimVert = ncFirstFile.getDim("nVertices");
-        const NcmpiDim &dimVPerC = ncFirstFile.getDim("maxEdges");
+        const NcmpiDim dimCells = ncFirstFile.getDim("nCells");
+        const NcmpiDim dimVert = ncFirstFile.getDim("nVertices");
+        const NcmpiDim dimVPerC = ncFirstFile.getDim("maxEdges");
 
-        const NcmpiVar &xC = ncFirstFile.getVar("xVertex");
-        const NcmpiVar &yC = ncFirstFile.getVar("yVertex");
-        const NcmpiVar &zC = ncFirstFile.getVar("zVertex");
-        const NcmpiVar &verticesPerCell = ncFirstFile.getVar("verticesOnCell");
-        const NcmpiVar &nEdgesOnCell = ncFirstFile.getVar("nEdgesOnCell");
+        const NcmpiVar xC = m_voronoiCells ? ncFirstFile.getVar("xVertex") : ncFirstFile.getVar("xCell");
+        const NcmpiVar yC = m_voronoiCells ? ncFirstFile.getVar("yVertex") : ncFirstFile.getVar("yCell");
+        const NcmpiVar zC = m_voronoiCells ? ncFirstFile.getVar("zVertex") : ncFirstFile.getVar("zCell");
+        const NcmpiVar verticesPerCell = ncFirstFile.getVar("verticesOnCell");
+        const NcmpiVar nEdgesOnCell = ncFirstFile.getVar("nEdgesOnCell");
 
-        const MPI_Offset &vPerC = dimVPerC.getSize(); // vertices on each cell
+        const MPI_Offset vPerC = dimVPerC.getSize(); // vertices on each cell
         if (numCells == 0)
             numCells = dimCells.getSize(); //number of cells in 2D
-        const MPI_Offset &numVert = dimVert.getSize();
-        std::vector<size_t> numVOC;
+        const MPI_Offset numVert = dimVert.getSize();
 
         // set eoc (number of Edges On each Cells), voc (Vertex index On each Cell)
         if (eoc.size() < 1) {
@@ -383,8 +456,8 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
         }
 
         if (numLevels == 0)
-            numLevels = std::min(numMaxLevels, numLevelsUser) + 1;
-        if (numLevels < 2)
+            numLevels = std::min(numMaxLevels, numLevelsUser + 1);
+        if (numLevels < 1)
             return false;
 
         float dH = 0.001;
@@ -398,82 +471,87 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
                 sendInfo("Reading started...");
 
             // PARTITIONING: read partitions file and redistribute partition to number of user-defined partitions
-            size_t FileBlocksPerUserBlocks = numPartsFile / numPartsUser;
-            size_t remParts = numPartsFile - (numPartsUser * FileBlocksPerUserBlocks);
+            size_t FileBlocksPerUserBlocks = (numPartsFile + numPartsUser - 1) / numPartsUser;
 
+            std::unique_lock<std::mutex> guardPartList(mtxPartList);
             if (partList.size() < 1) {
-                mtxPartList.lock();
                 FILE *partsFile = fopen(partsPath.c_str(), "r");
 
                 if (partsFile == nullptr) {
                     if (block == 0)
-                        sendInfo("Could not read parts file");
+                        sendInfo("Could not read parts file %s", partsPath.c_str());
                     return false;
                 }
 
-                for (Index i = 0; i < numPartsUser; ++i) {
-                    std::fill(blockIdx.begin() + (i * FileBlocksPerUserBlocks),
-                              blockIdx.begin() + ((i + 1) * FileBlocksPerUserBlocks), i);
-                }
-                if (remParts != 0) {
-                    for (Index i = 0; i < remParts; ++i) {
-                        std::fill(blockIdx.begin() + ((numPartsUser * FileBlocksPerUserBlocks) + i),
-                                  blockIdx.begin() + ((numPartsUser * FileBlocksPerUserBlocks) + (i + 1)), i);
-                    }
-                }
 
                 char buffer[10];
-                Index x = 0, xBlockIdx = 0, idxp = 0;
+                Index xBlockIdx = 0, idxp = 0;
+                partList.reserve(numCells);
                 while ((fgets(buffer, sizeof(buffer), partsFile) != NULL) && (idxp < MAX_VAL)) {
+                    unsigned x;
                     sscanf(buffer, "%u", &x);
-                    xBlockIdx = blockIdx[x];
+                    xBlockIdx = x / FileBlocksPerUserBlocks;
                     numCellsB[xBlockIdx]++;
-                    numCornB[xBlockIdx] = numCornB[xBlockIdx] + eoc[idxp]; //TODO: std instead: more effiecient?
+                    numCornB[xBlockIdx] += eoc[idxp]; //TODO: std instead: more efficient?
                     partList.push_back(xBlockIdx);
                     ++idxp;
                 }
-                blockIdx.clear();
                 if (partsFile) {
                     fclose(partsFile);
                     partsFile = nullptr;
                 }
-                mtxPartList.unlock();
 
                 assert(partList.size() == numCells);
             }
+
             //READ VERTEX COORDINATES given for base level (a unit sphere)
             if (xCoords.size() < 1 || yCoords.size() < 1 || zCoords.size() < 1) {
-                xCoords.resize(numVert);
-                yCoords.resize(numVert);
-                zCoords.resize(numVert);
                 std::vector<MPI_Offset> start = {0};
-                std::vector<MPI_Offset> stop = {numVert};
+                std::vector<MPI_Offset> stop;
+                if (m_voronoiCells) {
+                    stop.push_back(numVert);
+                    xCoords.resize(numVert);
+                    yCoords.resize(numVert);
+                    zCoords.resize(numVert);
+                } else {
+                    stop.push_back(numCells);
+                    xCoords.resize(numCells);
+                    yCoords.resize(numCells);
+                    zCoords.resize(numCells);
+                }
                 xC.getVar_all(start, stop, xCoords.data());
                 yC.getVar_all(start, stop, yCoords.data());
                 zC.getVar_all(start, stop, zCoords.data());
             }
 
             // set coc (index of neighboring cells on each cell) to determine ghost cells
-            if (!emptyValue(m_cellsOnCell) && coc.size() < 1) {
+            if ((numLevels > 1 || (!m_voronoiCells && numLevels == 1)) && !emptyValue(m_cellsOnCell) &&
+                coc.size() < 1) {
                 NcmpiVar cellsOnCell = ncFirstFile.getVar(m_cellsOnCell->getValue().c_str());
                 coc.resize(numCells * vPerC);
                 cellsOnCell.getVar_all(coc.data());
-                ghosts = true;
+                ghosts = numLevels > 1;
             }
+            guardPartList.unlock();
+
             size_t numCornGhost = 0;
-            std::vector<int> reducedVOC(numCells * MAX_EDGES, -1);
-            Index idx = 0, neighborIdx = 0;
-            bool isNew = false;
-            std::vector<int> vocIdxUsedTmp(numCells * MAX_EDGES, -1);
-            if (isGhost[block].size() <= 1)
-                isGhost[block].resize(numCells, 0);
+            size_t numGhosts = 0;
+            std::vector<unsigned char> isGhost(numCells, 0);
+            std::vector<Index> reducedVOC;
+            Index idx = 0;
+            std::vector<Index> reducedCenter;
 
             //DETERMINE VERTICES used for this partition
-            for (Index i = 0; i < numCells; ++i) {
-                if (partList[i] == block) {
-                    idxCellsInBlock[block].push_back(i);
+            idxCells.reserve(numCells / numPartsUser);
+            if (m_voronoiCells) {
+                std::vector<Index> vocIdxUsedTmp(numCells * MAX_EDGES, InvalidIndex);
+                reducedVOC.resize(numCells * MAX_EDGES, InvalidIndex);
+                for (Index i = 0; i < numCells; ++i) {
+                    if (partList[i] != block)
+                        continue;
+                    idxCells.push_back(i);
                     for (Index d = 0; d < eoc[i]; ++d) {
-                        if (vocIdxUsedTmp[voc[i * vPerC + d] - 1] < 0) {
+                        if (vocIdxUsedTmp[voc[i * vPerC + d] - 1] == InvalidIndex) {
                             vocIdxUsedTmp[voc[i * vPerC + d] - 1] = idx++;
                             reducedVOC[i * MAX_EDGES + d] =
                                 idx; // is set to idx + 1 before it is increased -> idx+1-1 =idx
@@ -482,13 +560,13 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
                         }
 
                         if (ghosts) {
-                            neighborIdx = coc[i * vPerC + d] - 1;
+                            Index neighborIdx = coc[i * vPerC + d] - 1;
                             // if (neighborIdx < 0 || neighborIdx >= numCells)
                             //   continue;
                             if (partList[neighborIdx] != block) {
-                                isNew = false;
+                                bool isNew = false;
                                 for (Index dn = 0; dn < eoc[neighborIdx]; ++dn) {
-                                    if (vocIdxUsedTmp[voc[neighborIdx * vPerC + dn] - 1] < 0) {
+                                    if (vocIdxUsedTmp[voc[neighborIdx * vPerC + dn] - 1] == InvalidIndex) {
                                         vocIdxUsedTmp[voc[neighborIdx * vPerC + dn] - 1] = idx++;
                                         reducedVOC[neighborIdx * MAX_EDGES + dn] = idx;
                                         isNew = true;
@@ -499,152 +577,408 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
                                 }
 
                                 if (isNew) {
-                                    isGhost[block][neighborIdx] = 1;
-                                    idxCellsInBlock[block].push_back(neighborIdx);
-                                    numGhosts[block]++;
+                                    isGhost[neighborIdx] = 1;
+                                    idxCells.push_back(neighborIdx);
+                                    numGhosts++;
                                     numCornGhost = numCornGhost + eoc[neighborIdx];
                                 }
                             }
                         }
                     }
                 }
+            } else {
+                reducedCenter.resize(numCells, InvalidIndex);
+                std::vector<Index> outstandingGhosts;
+                auto addVertex = [this, &reducedCenter, &idx, &idxCells](Index i) {
+                    if (reducedCenter[i] != InvalidIndex)
+                        return;
+                    idxCells.push_back(i);
+                    reducedCenter[i] = idx;
+                    ++idx;
+                };
+                // ghost triangles around cell-centers in this partition
+                auto addOwnedGhostTriangles = [this, &addVertex, &block, &vPerC, &reducedCenter, &idxCells, &idx,
+                                               &isGhost, &numGhosts](Index i) {
+                    assert(partList[i] == block);
+                    if (!ghosts)
+                        return;
+                    for (Index d = 0; d < eoc[i]; ++d) {
+                        Index n1 = coc[i * vPerC + d] - 1;
+                        Index n2 = coc[i * vPerC + (d + 1) % eoc[i]] - 1;
+                        Index smallest = std::min(n1, n2);
+                        if (i < smallest) {
+                            // no ghost: triangle owned by this center vertex
+                            continue;
+                        }
+                        if (partList[smallest] == block) {
+                            // no ghost: triangle owned by another center vertex of this block
+                            continue;
+                        }
+                        Index largest = std::max(n1, n2);
+                        if (partList[largest] == block) {
+                            if (i > largest) {
+                                // ghost, but other center vertex of this block is responsible for it
+                                continue;
+                            }
+                        }
+                        isGhost[i] = 1;
+                        numGhosts++;
+                        if (partList[n1] != block)
+                            addVertex(n1);
+                        if (partList[n2] != block)
+                            addVertex(n2);
+                    }
+                };
+                // ghost triangles around cell-centers added for owned triangles with vertices/cell-centers from other partitions
+                auto addBorrowedGhostTriangles = [this, &addVertex, &block, &vPerC, &reducedCenter, &idxCells, &isGhost,
+                                                  &numGhosts](Index i) {
+                    assert(partList[i] != block);
+                    if (!ghosts)
+                        return;
+                    assert(isGhost[i]);
+                    for (Index d = 0; d < eoc[i]; ++d) {
+                        Index n1 = coc[i * vPerC + d] - 1;
+                        Index n2 = coc[i * vPerC + (d + 1) % eoc[i]] - 1;
+                        if (partList[n1] == block || partList[n2] == block) {
+                            // non-borrowed cell-center is responsible for this triangle
+                            continue;
+                        }
+                        if (isGhost[n1] && n1 < i) {
+                            // ghost, but n1 is responsible
+                            continue;
+                        }
+                        if (isGhost[n2] && n2 < i) {
+                            // ghost, but n2 is responsible
+                            continue;
+                        }
+                        numGhosts++;
+                        addVertex(n1);
+                        addVertex(n2);
+                    }
+                };
+                // add base triangles (together with vertices borrowed from other blocks) and resulting cells to block, if their lowest numbered vertex is owned by block
+                for (Index i = 0; i < numCells; ++i) {
+                    if (partList[i] != block)
+                        continue;
+                    assert(reducedCenter[i] == InvalidIndex);
+                    addVertex(i);
+                    for (Index d = 0; d < eoc[i]; ++d) {
+                        Index n1 = coc[i * vPerC + d] - 1;
+                        Index n2 = coc[i * vPerC + (d + 1) % eoc[i]] - 1;
+                        if (i < n1 && i < n2) {
+                            // cell-center i owns this triangle
+                            ++numTrianglesB[block];
+                            if (partList[n1] != block) {
+                                if (reducedCenter[n1] == InvalidIndex) {
+                                    addVertex(n1);
+                                    if (ghosts) {
+                                        outstandingGhosts.push_back(n1);
+                                        isGhost[n1] = 1;
+                                    }
+                                }
+                            }
+                            if (partList[n2] != block) {
+                                if (reducedCenter[n2] == InvalidIndex) {
+                                    addVertex(n2);
+                                    if (ghosts) {
+                                        outstandingGhosts.push_back(n2);
+                                        isGhost[n2] = 1;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    addOwnedGhostTriangles(i);
+                    assert(idx == idxCells.size());
+                }
+                std::cerr << "block " << block << ": "
+                          << "owned ghosts=" << numGhosts;
+                for (auto i: outstandingGhosts)
+                    addBorrowedGhostTriangles(i);
+                outstandingGhosts.clear();
+                assert(idx == idxCells.size());
             }
-            vocIdxUsedTmp.clear();
 
             size_t numVertB = idx;
-            size_t numCornPlusOne = numCornB[block] + numCellsB[block] + numCornGhost + numGhosts[block];
+            size_t numCornPlusOne = numCornB[block] + numCellsB[block] + numCornGhost + numGhosts;
 
             //ASSEMBLE GRID
-            UnstructuredGrid::ptr p(new UnstructuredGrid(
-                (numCellsB[block] + numGhosts[block]) * (numLevels - 1),
-                ((numLevels - 1) * numCornPlusOne * 2 + (numCornB[block] + numCornGhost) * (numLevels - 1) * 5),
-                numVertB * numLevels));
-            Index *cl = p->cl().data();
-            Index *el = p->el().data();
-            auto tl = p->tl().data();
-            Scalar *ptrOnX = p->x().data();
-            Scalar *ptrOnY = p->y().data();
-            Scalar *ptrOnZ = p->z().data();
-            int iv = 0, iVOC = 0; // might be negative!
-            float radius = 1.;
-
             if (block == 0)
-                sendInfo("numLevels is %d", numLevels);
+                sendInfo("numLevels is %u", numLevels);
 
-            // SET GRID COORDINATES:
-            // if zGrid is given: calculate level height from it
-            // o.w. use constant offsets between levels
-            Index idx2 = 0, currentElem = 0, izVert = 0;
+            Coords::ptr grid;
             float altScale = m_altitudeScale->getValue();
+            assert(numLevels >= 1);
 
+            unsigned numZLevels = (m_voronoiCells || m_projectDown) ? numLevels : numLevels + 1;
+            std::vector<float> zGrid(Index(numCells) * numZLevels);
             if (hasZData) {
-                NcmpiVar cellsOnVertex = ncFirstFile.getVar("cellsOnVertex");
-                cov.resize(numVert * MAX_VERT);
-                cellsOnVertex.getVar_all(cov.data());
+                if (m_voronoiCells) {
+                    NcmpiVar cellsOnVertex = ncFirstFile.getVar("cellsOnVertex");
+                    cov.resize(numVert * MAX_VERT);
+                    cellsOnVertex.getVar_all(cov.data());
+                }
 
                 std::vector<MPI_Offset> startZ{0, 0};
-                std::vector<MPI_Offset> stopZ{numCells, numLevels};
+                std::vector<MPI_Offset> stopZ{numCells, numZLevels};
                 NcmpiFile ncZGridFile(comm(), zGridFileName.c_str(), NcmpiFile::read);
-                const NcmpiVar &zGridVar = ncZGridFile.getVar("zgrid");
-                std::vector<float> zGrid(numCells * numLevels, 0.);
+                const NcmpiVar zGridVar = ncZGridFile.getVar("zgrid");
                 zGridVar.getVar_all(startZ, stopZ, zGrid.data());
-
-                int i_v1 = 0, i_v2 = 0, i_v3 = 0, i = 0;
-                for (Index iz = 0; iz < numLevels; ++iz) {
-                    izVert = numVertB * iz;
-                    for (Index k = 0; k < idxCellsInBlock[block].size(); ++k) {
-                        i = idxCellsInBlock[block][k];
-                        for (Index d = 0; d < eoc[i]; ++d) {
-                            iv = reducedVOC[i * MAX_EDGES + d] - 1;
-                            if (iv >= 0) {
-                                iVOC = voc[i * vPerC + d] - 1; //current vertex index
-                                i_v1 = cov[iVOC * MAX_VERT + 0] - 1; //cell index
-                                i_v2 = cov[iVOC * MAX_VERT + 1] - 1;
-                                i_v3 = cov[iVOC * MAX_VERT + 2] - 1;
-                                radius = altScale * (1. / 3.) *
-                                             (zGrid[(numLevels)*i_v1 + iz] + zGrid[(numLevels)*i_v2 + iz] +
-                                              zGrid[(numLevels)*i_v3 + iz]) +
-                                         MSL; //compute vertex z from average of neighbouring cells
-                                ptrOnX[izVert + iv] = radius * xCoords[iVOC];
-                                ptrOnY[izVert + iv] = radius * yCoords[iVOC];
-                                ptrOnZ[izVert + iv] = radius * zCoords[iVOC];
-                            }
-                        }
-                        if (iz < numLevels - 1) {
-                            el[currentElem] = idx2;
-                            addCell(i, el, cl, MAX_EDGES, numVertB, izVert, idx2, reducedVOC);
-                            tl[currentElem++] = isGhost[block][i] > 0
-                                                    ? (UnstructuredGrid::POLYHEDRON | UnstructuredGrid::GHOST_BIT)
-                                                    : UnstructuredGrid::POLYHEDRON;
+                if (numLevels < numZLevels) {
+                    // average z levels to Voronoi cell centers
+                    float *z = zGrid.data();
+                    for (Index i = 0; i < numCells; ++i) {
+                        for (Index l = 0; l < numZLevels; ++l) {
+                            if (l < numLevels)
+                                *z = 0.5f * (*z + *(z + 1));
+                            ++z;
                         }
                     }
-                }
-            } else {
-                Index i = 0;
-                for (Index iz = 0; iz < numLevels; ++iz) {
-                    izVert = numVertB * iz;
-                    radius = altScale * dH * iz + 1.;
-                    for (Index k = 0; k < idxCellsInBlock[block].size(); ++k) {
-                        i = idxCellsInBlock[block][k];
-                        for (Index d = 0; d < eoc[i]; ++d) {
-                            iv = reducedVOC[i * MAX_EDGES + d] - 1;
-                            if (iv >= 0) {
-                                iVOC = voc[i * vPerC + d] - 1;
-                                ptrOnX[izVert + iv] = radius * xCoords[iVOC];
-                                ptrOnY[izVert + iv] = radius * yCoords[iVOC];
-                                ptrOnZ[izVert + iv] = radius * zCoords[iVOC];
-                            }
-                        }
-                        if (iz < numLevels - 1) {
-                            el[currentElem] = idx2;
-                            addCell(i, el, cl, MAX_EDGES, numVertB, izVert, idx2, reducedVOC);
-                            tl[currentElem++] = isGhost[block][i] > 0
-                                                    ? (UnstructuredGrid::POLYHEDRON | UnstructuredGrid::GHOST_BIT)
-                                                    : UnstructuredGrid::POLYHEDRON;
-                        }
-                    }
+                    assert(z == zGrid.data() + zGrid.size());
                 }
             }
 
-            el[currentElem] = idx2;
-            p->setBlock(block);
-            p->setTimestep(-1);
-            p->setNumBlocks(numPartitions());
-            updateMeta(p);
-            gridList[block] = p;
+            if (m_voronoiCells) {
+                Index *cl = nullptr;
+                Index *el = nullptr;
+                Byte *tl = nullptr;
+                if (numLevels > 1) {
+                    UnstructuredGrid::ptr p(new UnstructuredGrid(
+                        (numCellsB[block] + numGhosts) * (numLevels - 1),
+                        ((numLevels - 1) * numCornPlusOne * 2 + (numCornB[block] + numCornGhost) * (numLevels - 1) * 5),
+                        numVertB * numLevels));
+                    grid = p;
+                    cl = p->cl().data();
+                    el = p->el().data();
+                    tl = p->tl().data();
+                } else {
+                    Polygons::ptr p(new Polygons(numCellsB[block], numCornPlusOne, numVertB));
+                    grid = p;
+                    cl = p->cl().data();
+                    el = p->el().data();
+                }
+                Scalar *ptrOnX = grid->x().data();
+                Scalar *ptrOnY = grid->y().data();
+                Scalar *ptrOnZ = grid->z().data();
+
+                // SET GRID COORDINATES:
+                // if zGrid is given: calculate level height from it
+                // o.w. use constant offsets between levels
+                Index idx2 = 0, currentElem = 0;
+                if (hasZData) {
+                    for (Index iz = 0; iz < numLevels; ++iz) {
+                        Index izVert = numVertB * iz;
+                        for (Index k = 0; k < idxCells.size(); ++k) {
+                            Index i = idxCells[k];
+                            for (Index d = 0; d < eoc[i]; ++d) {
+                                Index iv = reducedVOC[i * MAX_EDGES + d];
+                                assert(iv != InvalidIndex);
+                                assert(iv > 0);
+                                --iv;
+                                Index iVOC = voc[i * vPerC + d] - 1; //current vertex index
+                                Index i_v1 = cov[iVOC * MAX_VERT + 0] - 1; //cell index
+                                Index i_v2 = cov[iVOC * MAX_VERT + 1] - 1;
+                                Index i_v3 = cov[iVOC * MAX_VERT + 2] - 1;
+                                float radius = altScale * (1. / 3.) *
+                                                   (zGrid[(numZLevels)*i_v1 + iz] + zGrid[(numZLevels)*i_v2 + iz] +
+                                                    zGrid[(numZLevels)*i_v3 + iz]) +
+                                               MSL; //compute vertex z from average of neighbouring cells
+                                ptrOnX[izVert + iv] = radius * xCoords[iVOC];
+                                ptrOnY[izVert + iv] = radius * yCoords[iVOC];
+                                ptrOnZ[izVert + iv] = radius * zCoords[iVOC];
+                            }
+                            if (tl) {
+                                if (iz < numLevels - 1) {
+                                    addCell(i, isGhost[i] > 0, currentElem, el, tl, cl, MAX_EDGES, numVertB, izVert,
+                                            idx2, reducedVOC);
+                                }
+                            } else {
+                                addPoly(i, currentElem, el, cl, MAX_EDGES, numVertB, izVert, idx2, reducedVOC);
+                            }
+                        }
+                    }
+                } else {
+                    for (Index iz = 0; iz < numLevels; ++iz) {
+                        Index izVert = numVertB * iz;
+                        float radius = altScale * dH * iz + 1.; // FIXME: MSL?
+                        for (Index k = 0; k < idxCells.size(); ++k) {
+                            Index i = idxCells[k];
+                            for (Index d = 0; d < eoc[i]; ++d) {
+                                Index iv = reducedVOC[i * MAX_EDGES + d];
+                                assert(iv != InvalidIndex);
+                                assert(iv > 0);
+                                --iv;
+                                Index iVOC = voc[i * vPerC + d] - 1;
+                                ptrOnX[izVert + iv] = radius * xCoords[iVOC];
+                                ptrOnY[izVert + iv] = radius * yCoords[iVOC];
+                                ptrOnZ[izVert + iv] = radius * zCoords[iVOC];
+                            }
+                            if (tl) {
+                                if (iz < numLevels - 1) {
+                                    addCell(i, isGhost[i] > 0, currentElem, el, tl, cl, MAX_EDGES, numVertB, izVert,
+                                            idx2, reducedVOC);
+                                }
+                            } else {
+                                addPoly(i, currentElem, el, cl, MAX_EDGES, numVertB, izVert, idx2, reducedVOC);
+                            }
+                        }
+                    }
+                }
+
+                // add sentinel
+                el[currentElem] = idx2;
+            } else {
+                assert(idxCells.size() == numVertB);
+                // build dual triangle/wedge grid
+                Byte *tl = nullptr;
+                Index *cl = nullptr;
+                Index *el = nullptr;
+                if (numLevels > 1) {
+                    auto ntri = numTrianglesB[block];
+                    ntri += numGhosts;
+                    std::cerr << "block " << block << ": base triangles: " << ntri << "=" << numTrianglesB[block] << "+"
+                              << numGhosts << std::endl;
+                    UnstructuredGrid::ptr p(
+                        new UnstructuredGrid(ntri * (numLevels - 1), ntri * 6 * (numLevels - 1), numVertB * numLevels));
+                    grid = p;
+                    tl = p->tl().data();
+                    cl = p->cl().data();
+                    el = p->el().data();
+                } else {
+                    Triangles::ptr p(new Triangles(numTrianglesB[block] * 3, numVertB));
+                    grid = p;
+                    cl = p->cl().data();
+                }
+                Scalar *ptrOnX = grid->x().data();
+                Scalar *ptrOnY = grid->y().data();
+                Scalar *ptrOnZ = grid->z().data();
+
+                // SET GRID COORDINATES:
+                // if zGrid is given: calculate level height from it
+                // o.w. use constant offsets between levels
+                for (Index k = 0; k < idxCells.size(); ++k) {
+                    Index i = idxCells[k];
+                    for (Index iz = 0; iz < numLevels; ++iz) {
+                        Index izVert = numVertB * iz;
+                        float radius = altScale * (hasZData ? zGrid[numZLevels * i + iz] : dH * iz) + MSL;
+                        ptrOnX[izVert + k] = radius * xCoords[i];
+                        ptrOnY[izVert + k] = radius * yCoords[i];
+                        ptrOnZ[izVert + k] = radius * zCoords[i];
+                    }
+                }
+
+                Index idx2 = 0, currentElem = 0;
+                for (Index k = 0; k < idxCells.size(); ++k) {
+                    Index i = idxCells[k];
+                    bool haveGhost = ghosts && isGhost[i];
+                    bool borrowed = partList[i] != block;
+                    if (borrowed && !haveGhost)
+                        continue;
+                    for (Index d = 0; d < eoc[i]; ++d) {
+                        Index n1 = coc[i * vPerC + d] - 1;
+                        Index n2 = coc[i * vPerC + (d + 1) % eoc[i]] - 1;
+                        assert(n1 != InvalidIndex);
+                        assert(n2 != InvalidIndex);
+                        bool ghost = false;
+                        Index smallest = std::min(n1, n2);
+                        if (borrowed) {
+                            if (partList[n1] == block)
+                                // other cell-center is responsible
+                                continue;
+                            if (partList[n2] == block)
+                                // other cell-center is responsible
+                                continue;
+                            if (n1 < i && isGhost[n1])
+                                // ghost, but owned by another borrowed cell-center
+                                continue;
+                            if (n2 < i && isGhost[n2])
+                                // ghost, but owned by another borrowed cell-center
+                                continue;
+                            assert(tl);
+                            ghost = true;
+                        } else if (i < smallest) {
+                            // no ghost, owned by this cell-center
+                        } else if (haveGhost) {
+                            assert(i > smallest);
+                            if (partList[smallest] == block) {
+                                // no ghost, owned by another cell-center belonging to this block
+                                continue;
+                            }
+                            Index largest = std::max(n1, n2);
+                            if (partList[largest] == block) {
+                                if (i > largest) {
+                                    // ghost, but another cell-center belonging to this block is responsible
+                                    continue;
+                                }
+                            }
+                            assert(tl);
+                            ghost = true;
+                        } else {
+                            // no ghost, owned by another cell-center belonging to another block
+                            continue;
+                        }
+                        Index rn1 = reducedCenter[n1];
+                        assert(rn1 != InvalidIndex);
+                        Index rn2 = reducedCenter[n2];
+                        assert(rn2 != InvalidIndex);
+                        if (tl) {
+                            for (Index iz = 0; iz < numLevels - 1; ++iz) {
+                                addWedge(ghost, currentElem, k, rn1, rn2, iz, numVertB, el, tl, cl, idx2);
+                            }
+                        } else {
+                            assert(!ghost);
+                            addTri(currentElem, k, rn1, rn2, cl, idx2);
+                        }
+                    }
+                }
+                // add sentinel
+                if (el)
+                    el[currentElem] = idx2;
+            }
+
+            if (grid) {
+                grid->setBlock(block);
+                grid->setTimestep(-1);
+                grid->setNumBlocks(numPartitions());
+                token.applyMeta(grid);
+                gridList[block] = grid;
+            }
         }
     }
+    assert(gridList[block]);
 
     if (timestep < 0) {
-        token.applyMeta(gridList[block]);
         token.addObject("grid_out", gridList[block]);
         return true;
     } else {
         // Read data
-
         NcmpiVar varData;
+        unsigned nLevels = m_voronoiCells ? std::max(1u, numLevels - 1) : numLevels;
         for (Index dataIdx = 0; dataIdx < NUMPARAMS; ++dataIdx) {
             if (!emptyValue(m_variables[dataIdx])) {
-                Vec<Scalar>::ptr dataObj(new Vec<Scalar>((numCellsB[block] + numGhosts[block]) * (numLevels - 1)));
+                Vec<Scalar>::ptr dataObj(new Vec<Scalar>(idxCells.size() * nLevels));
                 Scalar *ptrOnScalarData = dataObj->x().data();
 
-                std::vector<float> dataValues(numCells * (numLevels - 1), 0.);
+                std::vector<float> dataValues(Index(numCells) * nLevels, 0.);
                 if (hasDataFile) {
                     NcmpiFile ncDataFile(comm(), dataFileList.at(timestep).c_str(), NcmpiFile::read);
-                    getData(ncDataFile, &dataValues, numLevels, dataIdx);
+                    getData(ncDataFile, &dataValues, nLevels, dataIdx);
                 } else {
                     NcmpiFile ncFirstFile2(comm(), firstFileName, NcmpiFile::read);
-                    getData(ncFirstFile2, &dataValues, numLevels, dataIdx);
+                    getData(ncFirstFile2, &dataValues, nLevels, dataIdx);
                 }
                 Index currentElem = 0;
-                for (Index iz = 0; iz < numLevels - 1; ++iz) {
-                    for (Index k = 0; k < idxCellsInBlock[block].size(); ++k) {
-                        ptrOnScalarData[currentElem++] = dataValues[iz + idxCellsInBlock[block][k] * (numLevels - 1)];
+                for (Index iz = 0; iz < nLevels; ++iz) {
+                    for (Index k = 0; k < idxCells.size(); ++k) {
+                        ptrOnScalarData[currentElem++] = dataValues[iz + idxCells[k] * nLevels];
                     }
                 }
 
                 dataObj->setGrid(gridList[block]);
-                dataObj->setMapping(DataBase::Element);
+                if (m_voronoiCells)
+                    dataObj->setMapping(DataBase::Element);
+                else
+                    dataObj->setMapping(DataBase::Vertex);
                 dataObj->setBlock(block);
                 std::string pVar = m_variables[dataIdx]->getValue();
                 dataObj->addAttribute("_species", pVar);
@@ -661,6 +995,24 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
 
 bool ReadMPAS::finishRead()
 {
+    numCells = 0;
+    numLevels = 0;
+
+    gridList.clear();
+    numCellsB.clear();
+    numCornB.clear();
+    numTrianglesB.clear();
+    idxCellsInBlock.clear();
+    partList.clear();
+
+    voc.clear();
+    coc.clear();
+    cov.clear();
+    eoc.clear();
+    xCoords.clear();
+    yCoords.clear();
+    zCoords.clear();
+
     return true;
 }
 
