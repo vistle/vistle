@@ -63,9 +63,9 @@ ColorMap::ColorMap(TF &pins, const size_t steps, const size_t w, Scalar center, 
 
     for (size_t index = 0; index < width; index++) {
         Scalar x = 0.5;
-        if (steps > 1) {
+        if (steps >= 1) {
             int step = Scalar(index) / (Scalar(width) / Scalar(steps));
-            x = step / (vistle::Scalar)(steps - 1);
+            x = (step + Scalar(.5)) / (vistle::Scalar)(steps);
         }
         if (x > center) {
             auto r = 1. - center;
