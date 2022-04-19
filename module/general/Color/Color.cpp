@@ -50,7 +50,11 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(
     (Topography)
     (RainbowPale)
 )
+
 // clang-format on
+
+static const vistle::Float TopographyMin(-8000), TopographyMax(8000);
+static const vistle::Integer MaxSteps(0x4000);
 
 ColorMap::ColorMap(TF &pins, const size_t steps, const size_t w, Scalar center, Scalar compress): width(w)
 {
@@ -93,8 +97,7 @@ ColorMap::ColorMap(TF &pins, const size_t steps, const size_t w, Scalar center, 
             vistle::Scalar a = current->first;
             vistle::Scalar b = next->first;
 
-            vistle::Scalar t = (x - a) / (b - a);
-            t = vistle::clamp(t, Scalar(0), Scalar(1));
+            auto t = vistle::interpolation_weight<vistle::Scalar>(a, b, x);
 
             data[index * 4] = clamp(lerp(current->second[0], next->second[0], t) * 255.99, 0., 255.);
             data[index * 4 + 1] = clamp(lerp(current->second[1], next->second[1], t) * 255.99, 0., 255.);
@@ -154,10 +157,10 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm): Mod
     setParameterRange(m_compress, -1., 1.);
     m_opacity = addFloatParameter("opacity_factor", "multiplier for opacity", 1.0);
     setParameterRange(m_opacity, 0., 1.);
-    auto map = addIntParameter("map", "transfer function name", CoolWarmBrewer, Parameter::Choice);
-    V_ENUM_SET_CHOICES(map, TransferFunction);
-    auto steps = addIntParameter("steps", "number of color map steps", 32);
-    setParameterRange(steps, (Integer)1, (Integer)0x1000);
+    m_mapPara = addIntParameter("map", "transfer function name", CoolWarmBrewer, Parameter::Choice);
+    V_ENUM_SET_CHOICES(m_mapPara, TransferFunction);
+    m_stepsPara = addIntParameter("steps", "number of color map steps", 32);
+    setParameterRange(m_stepsPara, (Integer)1, MaxSteps);
     m_blendWithMaterialPara = addIntParameter("blend_with_material", "use alpha for blending with diffuse material",
                                               false, Parameter::Boolean);
 
@@ -177,9 +180,9 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm): Mod
     auto inset_map = addIntParameter("inset_map", "transfer function to inset", COVISE, Parameter::Choice);
     V_ENUM_SET_CHOICES(inset_map, TransferFunction);
     auto inset_steps = addIntParameter("inset_steps", "number of color map steps for inset (0: as outer map)", 0);
-    setParameterRange(inset_steps, (Integer)0, (Integer)0x1000);
+    setParameterRange(inset_steps, (Integer)0, MaxSteps);
     auto res = addIntParameter("resolution", "number of steps to compute", 1024);
-    setParameterRange(res, (Integer)1, (Integer)0x1000);
+    setParameterRange(res, (Integer)1, MaxSteps);
     setParameterRange(m_insetCenterPara, (Float)0, (Float)1);
     setParameterRange(m_insetWidthPara, (Float)0, (Float)1);
     m_insetOpacity = addFloatParameter("inset_opacity_factor", "multiplier for opacity of inset color", 1.0);
@@ -197,8 +200,8 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm): Mod
     pins.clear();
 
     transferFunctions[Topography] = pinsFromArrayWithCoord(
-        &etopo1_modified_data[0][0], sizeof(etopo1_modified_data) / sizeof(etopo1_modified_data[0]), 1.f / 255.f, -8000,
-        8000);
+        &etopo1_modified_data[0][0], sizeof(etopo1_modified_data) / sizeof(etopo1_modified_data[0]), 1.f / 255.f,
+        TopographyMin, TopographyMax);
 
 #define TF(a) pinsFromArray(&a[0][0], sizeof(a) / sizeof(a[0]))
 
@@ -485,7 +488,29 @@ bool Color::changeParameter(const Parameter *p)
 {
     bool newMap = false;
 
-    if (p == m_constrain) {
+    if (p == m_mapPara) {
+        if (m_mapPara->getValue() == Topography) {
+            setParameter<Integer>(m_autoRangePara, false);
+            setParameter<Integer>(m_constrain, false);
+            setParameter<Integer>(m_centerAbsolute, true);
+            setParameterRange<Float>(m_minPara, std::numeric_limits<Scalar>::lowest(),
+                                     std::numeric_limits<Scalar>::max());
+            setParameterRange<Float>(m_maxPara, std::numeric_limits<Scalar>::lowest(),
+                                     std::numeric_limits<Scalar>::max());
+            setParameterRange<Float>(m_center, std::numeric_limits<Scalar>::lowest(),
+                                     std::numeric_limits<Scalar>::max());
+            setParameter<Float>(m_center, 0.);
+            setParameter<Float>(m_minPara, TopographyMin);
+            setParameter<Float>(m_maxPara, TopographyMax);
+            auto steps = m_stepsPara->getValue();
+            if (steps % 2 == 0) {
+                setParameter<Integer>(m_stepsPara, steps < MaxSteps ? steps + 1 : steps - 1);
+            }
+            std::set<const vistle::Parameter *> params{m_constrain, m_autoRangePara, m_centerAbsolute, m_minPara,
+                                                       m_maxPara,   m_center,        m_stepsPara};
+            changeParameters(params);
+        }
+    } else if (p == m_constrain) {
         if (m_constrain->getValue()) {
             if (m_dataRangeValid) {
                 auto diff = m_dataMax - m_dataMin;
@@ -626,7 +651,7 @@ void Color::computeMap()
         if (relative && width > 0.) {
             int res2 = inset_steps / width;
             if (resolution < res2)
-                resolution = std::min(res2, 0x1000);
+                resolution = std::min(res2, int(MaxSteps));
         }
     }
     //std::cerr << "computing color map with " << steps << " steps and a resolution of " << resolution << std::endl;
