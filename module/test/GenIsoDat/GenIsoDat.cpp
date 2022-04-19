@@ -29,7 +29,7 @@ GenIsoDat::GenIsoDat(const std::string &name, int moduleID, mpi::communicator co
 GenIsoDat::~GenIsoDat()
 {}
 
-bool GenIsoDat::compute()
+bool GenIsoDat::prepare()
 {
     std::cerr << "cell type: " << m_cellTypeParam->getValue() << std::endl;
 
