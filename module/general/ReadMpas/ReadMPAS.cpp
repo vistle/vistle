@@ -956,50 +956,55 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
 
     if (timestep < 0) {
         token.addObject("grid_out", gridList[block]);
-        return true;
-    } else {
-        // Read data
-        NcmpiVar varData;
-        unsigned nLevels = m_voronoiCells ? std::max(1u, numLevels - 1) : numLevels;
-        for (Index dataIdx = 0; dataIdx < NUMPARAMS; ++dataIdx) {
-            if (!emptyValue(m_variables[dataIdx])) {
-                std::string pVar = m_variables[dataIdx]->getValue();
-                Vec<Scalar>::ptr dataObj(new Vec<Scalar>(idxCells.size() * nLevels));
-                Scalar *ptrOnScalarData = dataObj->x().data();
+    }
 
-                auto ft = m_varDim->getValue() == varDimList[0] ? m_2dChoices[pVar] : m_3dChoices[pVar];
+    // Read data
+    NcmpiVar varData;
+    unsigned nLevels = m_voronoiCells ? std::max(1u, numLevels - 1) : numLevels;
+    for (Index dataIdx = 0; dataIdx < NUMPARAMS; ++dataIdx) {
+        if (!emptyValue(m_variables[dataIdx])) {
+            std::string pVar = m_variables[dataIdx]->getValue();
+            Vec<Scalar>::ptr dataObj(new Vec<Scalar>(idxCells.size() * nLevels));
+            Scalar *ptrOnScalarData = dataObj->x().data();
 
-                std::vector<float> dataValues(Index(numCells) * nLevels, 0.);
-                if (ft == data_type) {
-                    NcmpiFile ncDataFile(comm(), dataFileList.at(timestep).c_str(), NcmpiFile::read);
-                    getData(ncDataFile, &dataValues, nLevels, dataIdx);
-                } else if (ft == zgrid_type) {
-                    NcmpiFile ncFirstFile2(comm(), zGridFileName, NcmpiFile::read);
-                    getData(ncFirstFile2, &dataValues, nLevels, dataIdx);
-                } else {
-                    NcmpiFile ncFirstFile2(comm(), firstFileName, NcmpiFile::read);
-                    getData(ncFirstFile2, &dataValues, nLevels, dataIdx);
-                }
-                Index currentElem = 0;
-                for (Index iz = 0; iz < nLevels; ++iz) {
-                    for (Index k = 0; k < idxCells.size(); ++k) {
-                        ptrOnScalarData[currentElem++] = dataValues[iz + idxCells[k] * nLevels];
-                    }
-                }
+            auto ft = m_varDim->getValue() == varDimList[0] ? m_2dChoices[pVar] : m_3dChoices[pVar];
 
-                dataObj->setGrid(gridList[block]);
-                if (m_voronoiCells)
-                    dataObj->setMapping(DataBase::Element);
-                else
-                    dataObj->setMapping(DataBase::Vertex);
-                dataObj->setBlock(block);
-                dataObj->addAttribute("_species", pVar);
-                dataObj->setTimestep(timestep);
-                token.applyMeta(dataObj);
-                token.addObject(m_dataOut[dataIdx], dataObj);
-
-                dataValues.clear();
+            std::vector<float> dataValues(Index(numCells) * nLevels, 0.);
+            if (ft == data_type) {
+                if (timestep < 0)
+                    continue;
+                NcmpiFile ncDataFile(comm(), dataFileList.at(timestep).c_str(), NcmpiFile::read);
+                getData(ncDataFile, &dataValues, nLevels, dataIdx);
+            } else if (ft == zgrid_type) {
+                if (timestep >= 0)
+                    continue;
+                NcmpiFile ncFirstFile2(comm(), zGridFileName, NcmpiFile::read);
+                getData(ncFirstFile2, &dataValues, nLevels, dataIdx);
+            } else {
+                if (timestep >= 0)
+                    continue;
+                NcmpiFile ncFirstFile2(comm(), firstFileName, NcmpiFile::read);
+                getData(ncFirstFile2, &dataValues, nLevels, dataIdx);
             }
+            Index currentElem = 0;
+            for (Index iz = 0; iz < nLevels; ++iz) {
+                for (Index k = 0; k < idxCells.size(); ++k) {
+                    ptrOnScalarData[currentElem++] = dataValues[iz + idxCells[k] * nLevels];
+                }
+            }
+
+            dataObj->setGrid(gridList[block]);
+            if (m_voronoiCells)
+                dataObj->setMapping(DataBase::Element);
+            else
+                dataObj->setMapping(DataBase::Vertex);
+            dataObj->setBlock(block);
+            dataObj->addAttribute("_species", pVar);
+            dataObj->setTimestep(timestep);
+            token.applyMeta(dataObj);
+            token.addObject(m_dataOut[dataIdx], dataObj);
+
+            dataValues.clear();
         }
     }
     return true;
