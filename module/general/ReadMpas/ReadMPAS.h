@@ -38,7 +38,7 @@ private:
     bool addTri(Index &curElem, Index center, Index n1, Index n2, Index *cl, Index &idx2);
     bool getData(const NcmpiFile &filename, std::vector<float> *dataValues, const MPI_Offset &nLevels,
                  const Index dataIdx);
-    bool setVariableList(const NcmpiFile &filename, bool setCOC);
+    bool setVariableList(const NcmpiFile &filename, FileType ft, bool setCOC);
 
     Port *m_gridOut = nullptr;
     Port *m_dataOut[NUMPARAMS];
@@ -53,8 +53,9 @@ private:
     bool m_projectDown = true;
     IntParameter *m_cellMode = nullptr;
 
-    std::vector<std::string> varDimList = {"2D", "3D", "other"};
+    std::vector<std::string> varDimList = {"2D", "3D"};
     std::string firstFileName, dataFileName, zGridFileName;
+    std::map<std::string, FileType> m_2dChoices, m_3dChoices;
     bool hasDataFile = false;
     bool hasZData = false;
     std::string partsPath = "";

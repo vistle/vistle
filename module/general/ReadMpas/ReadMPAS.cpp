@@ -78,6 +78,7 @@ ReadMPAS::ReadMPAS(const std::string &name, int moduleID, mpi::communicator comm
     //setReducePolicy(message::ReducePolicy::ReducePolicy::OverAll);
 
     observeParameter(m_gridFile);
+    observeParameter(m_zGridFile);
     observeParameter(m_dataFile);
     observeParameter(m_partFile);
     observeParameter(m_varDim);
@@ -91,7 +92,6 @@ ReadMPAS::~ReadMPAS()
 // set number of partitions and timesteps
 bool ReadMPAS::prepareRead()
 {
-    ReadMPAS::examine(nullptr);
     //set partitions
     std::string sPartFile = m_partFile->getValue();
     if (sPartFile.empty()) {
@@ -186,7 +186,7 @@ bool ReadMPAS::prepareRead()
 
 // SET VARIABLE LIST
 // fill the drop-down-menu in the module parameters based on the variables available from the grid or data file
-bool ReadMPAS::setVariableList(const NcmpiFile &filename, bool setCOC)
+bool ReadMPAS::setVariableList(const NcmpiFile &filename, FileType ft, bool setCOC)
 {
     std::multimap<std::string, NcmpiVar> varNameListData = filename.getVars();
     std::vector<std::string> AxisVarChoices{"NONE"}, Axis1dChoices{"NONE"};
@@ -195,20 +195,15 @@ bool ReadMPAS::setVariableList(const NcmpiFile &filename, bool setCOC)
         const NcmpiVar var = filename.getVar(elem.first); //get_var(i);
         if (var.getDimCount() == 1) { //grid axis
             Axis1dChoices.push_back(elem.first);
+            m_2dChoices[elem.first] = ft;
         } else {
             AxisVarChoices.push_back(elem.first);
+            m_3dChoices[elem.first] = ft;
         }
     }
     if (setCOC)
         setParameterChoices(m_cellsOnCell, AxisVarChoices);
 
-    if (strcmp(m_varDim->getValue().c_str(), varDimList[1].c_str()) == 0) {
-        for (int i = 0; i < NUMPARAMS; i++)
-            setParameterChoices(m_variables[i], AxisVarChoices);
-    } else if (strcmp(m_varDim->getValue().c_str(), varDimList[0].c_str()) == 0) {
-        for (int i = 0; i < NUMPARAMS; i++)
-            setParameterChoices(m_variables[i], Axis1dChoices);
-    }
     return true;
 }
 
@@ -224,11 +219,8 @@ bool ReadMPAS::validateFile(std::string fullFileName, std::string &redFileName, 
         if (bf::is_regular_file(dPath)) {
             if (bf::extension(dPath.filename()) == ".nc") {
                 redFileName = dPath.string();
-                if (!(type == zgrid_type)) {
-                    NcmpiFile newFile(comm(), redFileName, NcmpiFile::read);
-                    setVariableList(newFile, type == grid_type);
-                }
-
+                NcmpiFile newFile(comm(), redFileName, NcmpiFile::read);
+                setVariableList(newFile, type, type == grid_type);
 
                 if (rank() == 0)
                     sendInfo("To load: %s file %s", typeString.c_str(), redFileName.c_str());
@@ -239,7 +231,7 @@ bool ReadMPAS::validateFile(std::string fullFileName, std::string &redFileName, 
     //if this failed: use grid file instead
     if (type == data_type) {
         NcmpiFile newFile(comm(), firstFileName, NcmpiFile::read);
-        setVariableList(newFile, true);
+        setVariableList(newFile, grid_type, true);
     }
     if (rank() == 0)
         sendInfo("%s file not found -> using grid file instead", typeString.c_str());
@@ -252,12 +244,26 @@ bool ReadMPAS::validateFile(std::string fullFileName, std::string &redFileName, 
 // react to changes of module parameters and set them; validate files
 bool ReadMPAS::examine(const vistle::Parameter *param)
 {
-    if (!param || param == m_gridFile || param == m_varDim || param == m_dataFile) {
+    if (!param || param == m_gridFile || param == m_dataFile || param == m_zGridFile) {
+        m_2dChoices.clear();
+        m_3dChoices.clear();
+
         if (!validateFile(m_gridFile->getValue(), firstFileName, grid_type))
             return false;
         hasDataFile = validateFile(m_dataFile->getValue(), dataFileName, data_type);
         hasZData = validateFile(m_zGridFile->getValue(), zGridFileName, zgrid_type);
     }
+
+    std::vector<std::string> choices{"(NONE)"};
+    if (m_varDim->getValue() == varDimList[0]) {
+        for (const auto &var: m_2dChoices)
+            choices.push_back(var.first);
+    } else {
+        for (const auto &var: m_3dChoices)
+            choices.push_back(var.first);
+    }
+    for (int i = 0; i < NUMPARAMS; i++)
+        setParameterChoices(m_variables[i], choices);
     return true;
 }
 
@@ -267,7 +273,7 @@ bool ReadMPAS::emptyValue(vistle::StringParameter *ch) const
 {
     std::string name = "";
     name = ch->getValue();
-    return ((name == "") || (name == "NONE"));
+    return ((name == "") || (name == "NONE") || (name == "(NONE)"));
 }
 
 //DIMENSION EXISTS
@@ -957,13 +963,19 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
         unsigned nLevels = m_voronoiCells ? std::max(1u, numLevels - 1) : numLevels;
         for (Index dataIdx = 0; dataIdx < NUMPARAMS; ++dataIdx) {
             if (!emptyValue(m_variables[dataIdx])) {
+                std::string pVar = m_variables[dataIdx]->getValue();
                 Vec<Scalar>::ptr dataObj(new Vec<Scalar>(idxCells.size() * nLevels));
                 Scalar *ptrOnScalarData = dataObj->x().data();
 
+                auto ft = m_varDim->getValue() == varDimList[0] ? m_2dChoices[pVar] : m_3dChoices[pVar];
+
                 std::vector<float> dataValues(Index(numCells) * nLevels, 0.);
-                if (hasDataFile) {
+                if (ft == data_type) {
                     NcmpiFile ncDataFile(comm(), dataFileList.at(timestep).c_str(), NcmpiFile::read);
                     getData(ncDataFile, &dataValues, nLevels, dataIdx);
+                } else if (ft == zgrid_type) {
+                    NcmpiFile ncFirstFile2(comm(), zGridFileName, NcmpiFile::read);
+                    getData(ncFirstFile2, &dataValues, nLevels, dataIdx);
                 } else {
                     NcmpiFile ncFirstFile2(comm(), firstFileName, NcmpiFile::read);
                     getData(ncFirstFile2, &dataValues, nLevels, dataIdx);
@@ -981,7 +993,6 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
                 else
                     dataObj->setMapping(DataBase::Vertex);
                 dataObj->setBlock(block);
-                std::string pVar = m_variables[dataIdx]->getValue();
                 dataObj->addAttribute("_species", pVar);
                 dataObj->setTimestep(timestep);
                 token.applyMeta(dataObj);
