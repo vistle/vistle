@@ -5,6 +5,7 @@
 #include <vistle/core/vec.h>
 #include <vistle/core/unstr.h>
 #include <vistle/core/polygons.h>
+#include <vistle/core/lines.h>
 #include <vistle/core/structuredgrid.h>
 #include <vistle/module/resultcache.h>
 #include <vistle/alg/objalg.h>
@@ -20,6 +21,8 @@ DomainSurface::DomainSurface(const std::string &name, int moduleID, mpi::communi
 {
     createInputPort("data_in");
     createOutputPort("data_out");
+    createOutputPort("lines_out");
+
     addIntParameter("ghost", "Show ghostcells", 0, Parameter::Boolean);
     addIntParameter("tetrahedron", "Show tetrahedron", 1, Parameter::Boolean);
     addIntParameter("pyramid", "Show pyramid", 1, Parameter::Boolean);
@@ -59,6 +62,41 @@ typename Vec<T, Dim>::ptr remapData(typename Vec<T, Dim>::const_ptr in, const Do
     return out;
 }
 
+namespace {
+
+template<class Connected>
+void createVertices(StructuredGridBase::const_ptr grid, typename Connected::ptr conn, DomainSurface::DataMapping &vm)
+{
+    vm.clear();
+    std::map<Index, Index> mapped;
+    for (Index &v: conn->cl()) {
+        if (mapped.emplace(v, vm.size()).second) {
+            Index vv = vm.size();
+            vm.push_back(v);
+            v = vv;
+        } else {
+            v = mapped[v];
+        }
+    }
+    mapped.clear();
+
+    auto &px = conn->x();
+    auto &py = conn->y();
+    auto &pz = conn->z();
+    px.resize(vm.size());
+    py.resize(vm.size());
+    pz.resize(vm.size());
+
+    for (Index i = 0; i < vm.size(); ++i) {
+        Vector3 p = grid->getVertex(vm[i]);
+        px[i] = p[0];
+        py[i] = p[1];
+        pz[i] = p[2];
+    }
+}
+
+} // namespace
+
 bool DomainSurface::compute(std::shared_ptr<BlockTask> task) const
 {
     //DomainSurface Polygon
@@ -81,38 +119,71 @@ bool DomainSurface::compute(std::shared_ptr<BlockTask> task) const
     }
 
     Object::ptr surface;
-    DataMapping vm;
-    DataMapping em;
+    Lines::ptr lines;
+    DataMapping surfVert, lineVert;
+    DataMapping surfElem, lineElem;
+    bool createSurf = isConnected("data_out");
+    bool createLines = isConnected("lines_out");
     if (ugrid) {
-        auto poly = createSurface(ugrid, em, haveElementData);
-        surface = poly;
-        if (!poly)
-            return true;
-        renumberVertices(ugrid, poly, vm);
+        auto result = createSurface(ugrid, haveElementData, createSurf, createLines);
+        surface = result.surface;
+        surfElem = std::move(result.surfaceElements);
+        lines = result.lines;
+        lineElem = std::move(result.lineElements);
+        if (result.surface)
+            renumberVertices(ugrid, result.surface, surfVert);
+        if (result.lines)
+            renumberVertices(ugrid, result.lines, lineVert);
     } else if (sgrid) {
-        auto quad = createSurface(sgrid, em, haveElementData);
-        surface = quad;
-        if (!quad)
-            return true;
-        if (auto coords = Coords::as(grid_in)) {
-            renumberVertices(coords, quad, vm);
-        } else {
-            createVertices(sgrid, quad, vm);
+        auto result = createSurface(sgrid, haveElementData, createSurf, createLines);
+        surface = result.surface;
+        surfElem = std::move(result.surfaceElements);
+        lines = result.lines;
+        lineElem = std::move(result.lineElements);
+        if (result.surface) {
+            if (auto coords = Coords::as(grid_in)) {
+                renumberVertices(coords, result.surface, surfVert);
+            } else {
+                createVertices<Quads>(sgrid, result.surface, surfVert);
+            }
+        }
+        if (result.lines) {
+            if (auto coords = Coords::as(grid_in)) {
+                renumberVertices(coords, result.lines, lineVert);
+            } else {
+                createVertices<Lines>(sgrid, result.lines, lineVert);
+            }
         }
     }
 
-    surface->setMeta(grid_in->meta());
-    surface->copyAttributes(grid_in);
-    updateMeta(surface);
+    if (surface) {
+        surface->setMeta(grid_in->meta());
+        surface->copyAttributes(grid_in);
+        updateMeta(surface);
+    }
+
+    if (lines) {
+        lines->setMeta(grid_in->meta());
+        lines->copyAttributes(grid_in);
+        updateMeta(lines);
+    }
 
     if (auto entry = m_cache.getOrLock(grid_in->getName(), surface)) {
         m_cache.storeAndUnlock(entry, surface);
     }
 
     if (!data) {
-        surface = surface->clone();
-        updateMeta(surface);
-        task->addObject("data_out", surface);
+        if (surface) {
+            surface = surface->clone();
+            updateMeta(surface);
+            task->addObject("data_out", surface);
+        }
+
+        if (lines) {
+            lines = lines->clone();
+            updateMeta(lines);
+            task->addObject("lines_out", lines);
+        }
         return true;
     }
 
@@ -121,116 +192,213 @@ bool DomainSurface::compute(std::shared_ptr<BlockTask> task) const
         return true;
     }
 
-    if (!haveElementData && vm.empty()) {
-        DataBase::ptr dout = data->clone();
-        dout->setGrid(surface);
-        updateMeta(dout);
-        task->addObject("data_out", dout);
-        return true;
-    }
+    struct Output {
+        std::string port;
+        const DataMapping &em;
+        const DataMapping &vm;
+        Object::ptr geo;
+    };
+    std::vector<Output> data_out{{"data_out", surfElem, surfVert, surface}, {"lines_out", lineElem, lineVert, lines}};
 
-    DataBase::ptr data_obj_out;
-    const auto &dm = haveElementData ? em : vm;
-    if (auto data_in = Vec<Scalar, 3>::as(data)) {
-        data_obj_out = remapData<Scalar, 3>(data_in, dm);
-    } else if (auto data_in = Vec<Scalar, 1>::as(data)) {
-        data_obj_out = remapData<Scalar, 1>(data_in, dm);
-    } else if (auto data_in = Vec<Index, 3>::as(data)) {
-        data_obj_out = remapData<Index, 3>(data_in, dm);
-    } else if (auto data_in = Vec<Index, 1>::as(data)) {
-        data_obj_out = remapData<Index, 1>(data_in, dm);
-    } else if (auto data_in = Vec<Byte, 3>::as(data)) {
-        data_obj_out = remapData<Byte, 3>(data_in, dm);
-    } else if (auto data_in = Vec<Byte, 1>::as(data)) {
-        data_obj_out = remapData<Byte, 1>(data_in, dm);
-    } else {
-        std::cerr << "WARNING: No valid 1D or 3D element data on input Port" << std::endl;
-    }
+    for (const auto &output: data_out) {
+        const auto &port = output.port;
+        const auto &dm = haveElementData ? output.em : output.vm;
+        const auto &geo = output.geo;
 
-    if (data_obj_out) {
-        data_obj_out->setGrid(surface);
-        data_obj_out->setMeta(data->meta());
-        data_obj_out->copyAttributes(data);
-        updateMeta(data_obj_out);
-        task->addObject("data_out", data_obj_out);
-    }
+        if (!haveElementData && dm.empty()) {
+            DataBase::ptr dout = data->clone();
+            dout->setGrid(geo);
+            updateMeta(dout);
+            task->addObject(port, dout);
+            continue;
+        }
 
+        DataBase::ptr data_obj_out;
+        if (auto data_in = Vec<Scalar, 3>::as(data)) {
+            data_obj_out = remapData<Scalar, 3>(data_in, dm);
+        } else if (auto data_in = Vec<Scalar, 1>::as(data)) {
+            data_obj_out = remapData<Scalar, 1>(data_in, dm);
+        } else if (auto data_in = Vec<Index, 3>::as(data)) {
+            data_obj_out = remapData<Index, 3>(data_in, dm);
+        } else if (auto data_in = Vec<Index, 1>::as(data)) {
+            data_obj_out = remapData<Index, 1>(data_in, dm);
+        } else if (auto data_in = Vec<Byte, 3>::as(data)) {
+            data_obj_out = remapData<Byte, 3>(data_in, dm);
+        } else if (auto data_in = Vec<Byte, 1>::as(data)) {
+            data_obj_out = remapData<Byte, 1>(data_in, dm);
+        } else {
+            std::cerr << "WARNING: No valid 1D or 3D element data on input Port" << std::endl;
+        }
+
+        if (data_obj_out) {
+            data_obj_out->setGrid(geo);
+            data_obj_out->setMeta(data->meta());
+            data_obj_out->copyAttributes(data);
+            updateMeta(data_obj_out);
+            task->addObject(port, data_obj_out);
+        }
+    }
     return true;
 }
 
-Quads::ptr DomainSurface::createSurface(vistle::StructuredGridBase::const_ptr grid, DomainSurface::DataMapping &em,
-                                        bool haveElementData) const
+DomainSurface::Result<Quads> DomainSurface::createSurface(vistle::StructuredGridBase::const_ptr grid,
+                                                          bool haveElementData, bool createSurf, bool createLines) const
 {
     auto sgrid = std::dynamic_pointer_cast<const StructuredGrid, const StructuredGridBase>(grid);
+    Result<Quads> result;
 
-    Quads::ptr m_grid_out(new Quads(0, 0));
-    auto &pcl = m_grid_out->cl();
-    Index dims[3] = {grid->getNumDivisions(0), grid->getNumDivisions(1), grid->getNumDivisions(2)};
+    if (createSurf) {
+        DataMapping &em = result.surfaceElements;
+        Quads::ptr m_grid_out(new Quads(0, 0));
+        result.surface = m_grid_out;
+        auto &pcl = m_grid_out->cl();
+        Index dims[3] = {grid->getNumDivisions(0), grid->getNumDivisions(1), grid->getNumDivisions(2)};
 
-    for (int d = 0; d < 3; ++d) {
-        int d1 = d == 0 ? 1 : 0;
-        int d2 = d == d1 + 1 ? d1 + 2 : d1 + 1;
-        assert(d != d1);
-        assert(d != d2);
-        assert(d1 != d2);
+        for (int d = 0; d < 3; ++d) {
+            int d1 = d == 0 ? 1 : 0;
+            int d2 = d == d1 + 1 ? d1 + 2 : d1 + 1;
+            assert(d != d1);
+            assert(d != d2);
+            assert(d1 != d2);
 
-        Index b1 = grid->getNumGhostLayers(d1, StructuredGridBase::Bottom);
-        Index e1 = grid->getNumDivisions(d1);
-        if (grid->getNumGhostLayers(d1, StructuredGridBase::Top) + 1 < e1)
-            e1 -= grid->getNumGhostLayers(d1, StructuredGridBase::Top) + 1;
-        else
-            e1 = 0;
-        Index b2 = grid->getNumGhostLayers(d2, StructuredGridBase::Bottom);
-        Index e2 = grid->getNumDivisions(d2);
-        if (grid->getNumGhostLayers(d2, StructuredGridBase::Top) + 1 < e2)
-            e2 -= grid->getNumGhostLayers(d2, StructuredGridBase::Top) + 1;
-        else
-            e2 = 0;
+            Index b1 = grid->getNumGhostLayers(d1, StructuredGridBase::Bottom);
+            Index e1 = grid->getNumDivisions(d1);
+            if (grid->getNumGhostLayers(d1, StructuredGridBase::Top) + 1 < e1)
+                e1 -= grid->getNumGhostLayers(d1, StructuredGridBase::Top) + 1;
+            else
+                e1 = 0;
+            Index b2 = grid->getNumGhostLayers(d2, StructuredGridBase::Bottom);
+            Index e2 = grid->getNumDivisions(d2);
+            if (grid->getNumGhostLayers(d2, StructuredGridBase::Top) + 1 < e2)
+                e2 -= grid->getNumGhostLayers(d2, StructuredGridBase::Top) + 1;
+            else
+                e2 = 0;
 
-        if (grid->getNumGhostLayers(d, StructuredGridBase::Bottom) == 0) {
-            for (Index i1 = b1; i1 < e1; ++i1) {
-                for (Index i2 = b2; i2 < e2; ++i2) {
-                    Index idx[3]{0, 0, 0};
-                    idx[d1] = i1;
-                    idx[d2] = i2;
-                    if (haveElementData) {
-                        em.emplace_back(grid->cellIndex(idx, dims));
+            if (grid->getNumGhostLayers(d, StructuredGridBase::Bottom) == 0) {
+                for (Index i1 = b1; i1 < e1; ++i1) {
+                    for (Index i2 = b2; i2 < e2; ++i2) {
+                        Index idx[3]{0, 0, 0};
+                        idx[d1] = i1;
+                        idx[d2] = i2;
+                        if (haveElementData) {
+                            em.emplace_back(grid->cellIndex(idx, dims));
+                        }
+                        pcl.push_back(grid->vertexIndex(idx, dims));
+                        idx[d1] = i1 + 1;
+                        pcl.push_back(grid->vertexIndex(idx, dims));
+                        idx[d2] = i2 + 1;
+                        pcl.push_back(grid->vertexIndex(idx, dims));
+                        idx[d1] = i1;
+                        pcl.push_back(grid->vertexIndex(idx, dims));
                     }
-                    pcl.push_back(grid->vertexIndex(idx, dims));
-                    idx[d1] = i1 + 1;
-                    pcl.push_back(grid->vertexIndex(idx, dims));
-                    idx[d2] = i2 + 1;
-                    pcl.push_back(grid->vertexIndex(idx, dims));
-                    idx[d1] = i1;
-                    pcl.push_back(grid->vertexIndex(idx, dims));
                 }
             }
-        }
-        if (grid->getNumDivisions(d) > 1 && grid->getNumGhostLayers(d, StructuredGridBase::Top) == 0) {
-            for (Index i1 = b1; i1 < e1; ++i1) {
-                for (Index i2 = b2; i2 < e2; ++i2) {
-                    Index idx[3]{0, 0, 0};
-                    idx[d] = grid->getNumDivisions(d) - 1;
-                    idx[d1] = i1;
-                    idx[d2] = i2;
-                    if (haveElementData) {
-                        --idx[d];
-                        em.emplace_back(grid->cellIndex(idx, dims));
+            if (grid->getNumDivisions(d) > 1 && grid->getNumGhostLayers(d, StructuredGridBase::Top) == 0) {
+                for (Index i1 = b1; i1 < e1; ++i1) {
+                    for (Index i2 = b2; i2 < e2; ++i2) {
+                        Index idx[3]{0, 0, 0};
                         idx[d] = grid->getNumDivisions(d) - 1;
+                        idx[d1] = i1;
+                        idx[d2] = i2;
+                        if (haveElementData) {
+                            --idx[d];
+                            em.emplace_back(grid->cellIndex(idx, dims));
+                            idx[d] = grid->getNumDivisions(d) - 1;
+                        }
+                        pcl.push_back(grid->vertexIndex(idx, dims));
+                        idx[d1] = i1 + 1;
+                        pcl.push_back(grid->vertexIndex(idx, dims));
+                        idx[d2] = i2 + 1;
+                        pcl.push_back(grid->vertexIndex(idx, dims));
+                        idx[d1] = i1;
+                        pcl.push_back(grid->vertexIndex(idx, dims));
                     }
-                    pcl.push_back(grid->vertexIndex(idx, dims));
-                    idx[d1] = i1 + 1;
-                    pcl.push_back(grid->vertexIndex(idx, dims));
-                    idx[d2] = i2 + 1;
-                    pcl.push_back(grid->vertexIndex(idx, dims));
-                    idx[d1] = i1;
-                    pcl.push_back(grid->vertexIndex(idx, dims));
                 }
             }
         }
     }
 
-    return m_grid_out;
+    if (createLines) {
+        Lines::ptr m_grid_out(new Lines(0, 0, 0));
+        DataMapping &lem = result.lineElements;
+        result.lines = m_grid_out;
+        auto &lcl = m_grid_out->cl();
+        auto &ll = m_grid_out->el();
+        Index dims[3] = {grid->getNumDivisions(0), grid->getNumDivisions(1), grid->getNumDivisions(2)};
+
+        for (int d = 0; d < 3; ++d) {
+            int d1 = d == 0 ? 1 : 0;
+            int d2 = d == d1 + 1 ? d1 + 2 : d1 + 1;
+            assert(d != d1);
+            assert(d != d2);
+            assert(d1 != d2);
+
+            Index b = grid->getNumGhostLayers(d, StructuredGridBase::Bottom);
+            Index e = grid->getNumDivisions(d);
+            if (grid->getNumGhostLayers(d, StructuredGridBase::Top) < e)
+                e -= grid->getNumGhostLayers(d, StructuredGridBase::Top);
+            else
+                e = 0;
+
+            std::vector<std::array<Index, 3>> idxs;
+            if (grid->getNumGhostLayers(d1, StructuredGridBase::Bottom) == 0) {
+                if (grid->getNumGhostLayers(d2, StructuredGridBase::Bottom) == 0) {
+                    std::array<Index, 3> idx{0};
+                    idx[d1] = 0;
+                    idx[d2] = 0;
+                    idxs.push_back(idx);
+                }
+                if (grid->getNumGhostLayers(d2, StructuredGridBase::Top) == 0) {
+                    std::array<Index, 3> idx{0};
+                    idx[d1] = 0;
+                    idx[d2] = grid->getNumDivisions(d2) - 1;
+                    idxs.push_back(idx);
+                }
+            }
+            if (grid->getNumGhostLayers(d1, StructuredGridBase::Top) == 0) {
+                if (grid->getNumGhostLayers(d2, StructuredGridBase::Bottom) == 0) {
+                    std::array<Index, 3> idx{0};
+                    idx[d1] = grid->getNumDivisions(d1) - 1;
+                    idx[d2] = 0;
+                    idxs.push_back(idx);
+                }
+                if (grid->getNumGhostLayers(d2, StructuredGridBase::Top) == 0) {
+                    std::array<Index, 3> idx{0};
+                    idx[d1] = grid->getNumDivisions(d1) - 1;
+                    idx[d2] = grid->getNumDivisions(d2) - 1;
+                    idxs.push_back(idx);
+                }
+            }
+
+            for (auto idx: idxs) {
+                auto cidx = idx;
+                if (cidx[d1] + 2 >= grid->getNumDivisions(d1))
+                    --cidx[d1];
+                if (cidx[d2] + 2 >= grid->getNumDivisions(d2))
+                    --cidx[d2];
+                for (Index i = b; i < e; ++i) {
+                    idx[d] = i;
+                    cidx[d] = i;
+                    if (haveElementData) {
+                        if (i + 1 < e) {
+                            lcl.push_back(grid->vertexIndex(idx.data(), dims));
+                            ++idx[d];
+                            lcl.push_back(grid->vertexIndex(idx.data(), dims));
+                            --idx[d];
+                            lem.emplace_back(grid->cellIndex(cidx.data(), dims));
+                            ll.push_back(lcl.size());
+                        }
+                    } else {
+                        lcl.push_back(grid->vertexIndex(idx.data(), dims));
+                    }
+                }
+                if (!haveElementData)
+                    ll.push_back(lcl.size());
+            }
+        }
+    }
+
+    return result;
 }
 
 void DomainSurface::renumberVertices(Coords::const_ptr coords, Indexed::ptr poly, DataMapping &vm) const
@@ -312,36 +480,6 @@ void DomainSurface::renumberVertices(Coords::const_ptr coords, Quads::ptr quad, 
             py[i] = ycoord[vm[i]];
             pz[i] = zcoord[vm[i]];
         }
-    }
-}
-
-void DomainSurface::createVertices(StructuredGridBase::const_ptr grid, Quads::ptr quad, DataMapping &vm) const
-{
-    vm.clear();
-    std::map<Index, Index> mapped;
-    for (Index &v: quad->cl()) {
-        if (mapped.emplace(v, vm.size()).second) {
-            Index vv = vm.size();
-            vm.push_back(v);
-            v = vv;
-        } else {
-            v = mapped[v];
-        }
-    }
-    mapped.clear();
-
-    auto &px = quad->x();
-    auto &py = quad->y();
-    auto &pz = quad->z();
-    px.resize(vm.size());
-    py.resize(vm.size());
-    pz.resize(vm.size());
-
-    for (Index i = 0; i < vm.size(); ++i) {
-        Vector3 p = grid->getVertex(vm[i]);
-        px[i] = p[0];
-        py[i] = p[1];
-        pz[i] = p[2];
     }
 }
 
@@ -446,10 +584,15 @@ struct FaceHash {
 typedef std::unordered_set<Face, FaceHash> FaceSet;
 #endif
 
-Polygons::ptr DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m_grid_in,
-                                           DomainSurface::DataMapping &em, bool haveElementData) const
+DomainSurface::Result<Polygons> DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m_grid_in,
+                                                             bool haveElementData, bool createSurface,
+                                                             bool createLines) const
 {
-    const bool useVertexOwners = getIntParameter("save_memory");
+    Result<Polygons> result;
+    if (!createSurface && !createLines)
+        return result;
+
+    const bool useVertexOwners = getIntParameter("save_memory") || createLines;
     const bool showgho = getIntParameter("ghost");
     const bool showtet = getIntParameter("tetrahedron");
     const bool showpyr = getIntParameter("pyramid");
@@ -463,9 +606,16 @@ Polygons::ptr DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m
     const Index *el = &m_grid_in->el()[0];
     const Index *cl = &m_grid_in->cl()[0];
     const Byte *tl = &m_grid_in->tl()[0];
+
     Polygons::ptr m_grid_out(new Polygons(0, 0, 0));
+    result.surface = m_grid_out;
     auto &pl = m_grid_out->el();
     auto &pcl = m_grid_out->cl();
+    DataMapping &em = result.surfaceElements;
+    result.lines.reset(new Lines(0, 0, 0));
+    auto &ll = result.lines->el();
+    auto &lcl = result.lines->cl();
+    DataMapping &lem = result.lineElements;
 
     auto processElement = [&](Index i, FaceSet &visibleFaces) {
         const Index elStart = el[i], elEnd = el[i + 1];
@@ -508,7 +658,94 @@ Polygons::ptr DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m
         }
     };
 
+    std::vector<Index> currentCellFaces;
+    auto startCell = [&](Index i) {
+        currentCellFaces.clear();
+    };
+
+    auto finishCell = [&](Index i) {
+        if (currentCellFaces.size() <= 1) {
+            currentCellFaces.clear();
+            return;
+        }
+
+        struct Edge {
+            Edge(Index va, Index vb): v0(std::min(va, vb)), v1(std::max(va, vb)) {}
+            bool operator<(const Edge &o) const
+            {
+                if (v0 == o.v0)
+                    return v1 < o.v1;
+                return v0 < o.v0;
+            }
+
+            Index v0 = InvalidIndex, v1 = InvalidIndex;
+        };
+
+        std::map<Edge, unsigned int> edges;
+
+        for (auto f: currentCellFaces) {
+            auto elStart = el[i], elEnd = el[i + 1];
+            Byte t = tl[i] & UnstructuredGrid::TYPE_MASK;
+            switch (t) {
+            case UnstructuredGrid::POLYHEDRON: {
+                Index faceNum = 0;
+                Index facestart = InvalidIndex;
+                Index term = 0;
+                for (Index j = elStart; j < elEnd; ++j) {
+                    if (facestart == InvalidIndex) {
+                        facestart = j;
+                        term = cl[j];
+                    } else if (cl[j] == term) {
+                        Index numVert = j - facestart;
+                        if (faceNum == f && numVert >= 3) {
+                            auto face = &cl[facestart];
+                            for (unsigned j = 0; j < numVert; ++j) {
+                                Edge e(face[j], face[j + 1]);
+                                ++edges[e];
+                            }
+                            break;
+                        }
+                        facestart = InvalidIndex;
+                        ++faceNum;
+                    }
+                }
+                break;
+            }
+            case UnstructuredGrid::PYRAMID:
+            case UnstructuredGrid::PRISM:
+            case UnstructuredGrid::TETRAHEDRON:
+            case UnstructuredGrid::HEXAHEDRON:
+            case UnstructuredGrid::TRIANGLE:
+            case UnstructuredGrid::QUAD: {
+                auto verts = &cl[elStart];
+                const auto &faces = UnstructuredGrid::FaceVertices[t];
+                const auto facesize = UnstructuredGrid::FaceSizes[t][f];
+                const auto &face = faces[f];
+                for (unsigned j = 0; j < facesize; ++j) {
+                    Edge e(verts[face[j]], verts[face[(j + 1) % facesize]]);
+                    ++edges[e];
+                }
+                break;
+            }
+            }
+        }
+
+        for (const auto &e: edges) {
+            if (e.second <= 1)
+                continue;
+            lcl.push_back(e.first.v0);
+            lcl.push_back(e.first.v1);
+            ll.push_back(lcl.size());
+            if (haveElementData) {
+                lem.emplace_back(i);
+            }
+        }
+
+        currentCellFaces.clear();
+    };
+
     auto addFace = [&](Index i, Index f) {
+        currentCellFaces.push_back(f);
         auto elStart = el[i], elEnd = el[i + 1];
         Byte t = tl[i] & UnstructuredGrid::TYPE_MASK;
         switch (t) {
@@ -614,6 +851,7 @@ Polygons::ptr DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m
             bool ghost = tl[i] & UnstructuredGrid::GHOST_BIT;
             if (!showgho && ghost)
                 continue;
+            startCell(i);
             Byte t = tl[i] & UnstructuredGrid::TYPE_MASK;
             if (t == UnstructuredGrid::POLYHEDRON) {
                 if (showpol) {
@@ -678,14 +916,19 @@ Polygons::ptr DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m
                     }
                 }
             }
+            finishCell(i);
         }
     }
 
-    if (m_grid_out->getNumElements() == 0) {
-        return Polygons::ptr();
+    if (m_grid_out->getNumElements() == 0 || !createSurface) {
+        result.surface.reset();
     }
 
-    return m_grid_out;
+    if (result.lines->getNumElements() == 0 || !createLines) {
+        result.lines.reset();
+    }
+
+    return result;
 }
 
 //bool DomainSurface::checkNormal(Index v1, Index v2, Index v3, Scalar x_center, Scalar y_center, Scalar z_center) {
