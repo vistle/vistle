@@ -122,7 +122,6 @@ bool Thicken::compute()
         // set coordinates
         if (lines->getNumCorners() == 0) {
             tubes = Tubes::clone<Vec<Scalar, 3>>(lines);
-            tubes->components().resize(lines->getNumElements() + 1);
         } else {
             cl = &lines->cl()[0];
             tubes.reset(new Tubes(lines->getNumElements(), lines->getNumCorners()));
