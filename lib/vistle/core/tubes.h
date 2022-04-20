@@ -29,7 +29,7 @@ public:
 
     V_DATA_BEGIN(Tubes);
     ShmVector<Index> components;
-    ShmVector<unsigned char>
+    std::array<unsigned char, 3>
         style; // 0: CapStyle for start, 1: CapStyle for connections within, 2: CapStyle for end of each component
 
     Data(const Index numTubes = 0, const Index numCoords = 0, const std::string &name = "", const Meta &meta = Meta());

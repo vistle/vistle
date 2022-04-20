@@ -25,7 +25,6 @@ bool Tubes::isEmpty() const
 
 bool Tubes::checkImpl() const
 {
-    V_CHECK(d()->style->size() == 3);
     V_CHECK(components().size() > 0);
     V_CHECK(components()[0] == 0);
     V_CHECK(getNumTubes() >= 0);
@@ -41,30 +40,29 @@ Index Tubes::getNumTubes() const
 
 Tubes::CapStyle Tubes::startStyle() const
 {
-    return (CapStyle)(*d()->style)[0];
+    return (CapStyle)d()->style[0];
 }
 
 Tubes::CapStyle Tubes::jointStyle() const
 {
-    return (CapStyle)(*d()->style)[1];
+    return (CapStyle)d()->style[1];
 }
 
 Tubes::CapStyle Tubes::endStyle() const
 {
-    return (CapStyle)(*d()->style)[2];
+    return (CapStyle)d()->style[2];
 }
 
 void Tubes::setCapStyles(Tubes::CapStyle start, Tubes::CapStyle joint, Tubes::CapStyle end)
 {
-    (*d()->style)[0] = start;
-    (*d()->style)[1] = joint;
-    (*d()->style)[2] = end;
+    d()->style[0] = start;
+    d()->style[1] = joint;
+    d()->style[2] = end;
 }
 
 void Tubes::Data::initData()
 {
-    style.construct(3);
-    (*style)[0] = (*style)[1] = (*style)[2] = Tubes::Open;
+    style[0] = style[1] = style[2] = Tubes::Open;
 }
 
 Tubes::Data::Data(const Index numTubes, const Index numCoords, const std::string &name, const Meta &meta)
@@ -78,8 +76,8 @@ Tubes::Data::Data(const Index numTubes, const Index numCoords, const std::string
 Tubes::Data::Data(const Tubes::Data &o, const std::string &n): Tubes::Base::Data(o, n), components(o.components)
 {
     initData();
-    for (size_t i = 0; i < style->size(); ++i)
-        (*style)[i] = (*o.style)[i];
+    for (size_t i = 0; i < style.size(); ++i)
+        style[i] = o.style[i];
 }
 
 Tubes::Data::Data(const Vec<Scalar, 3>::Data &o, const std::string &n): Tubes::Base::Data(o, n, Object::TUBES)
