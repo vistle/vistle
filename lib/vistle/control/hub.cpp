@@ -1671,12 +1671,19 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
     return true;
 }
 
-bool Hub::handlePriv(const message::Spawn &spawn)
+bool Hub::handlePriv(const message::Spawn &spawnRecv)
 {
+    message::Spawn spawn(spawnRecv);
     if (m_isMaster) {
+        std::string moduleName(spawn.getName());
+        if (moduleName == "Tubes") {
+            spawn.setName("Thicken");
+        } else if (moduleName == "Spheres") {
+            spawn.setName("Thicken");
+        }
         bool restart = Id::isModule(spawn.migrateId());
         bool isMirror = Id::isModule(spawn.mirroringId());
-        bool shouldMirror = !restart && !isMirror && std::string(spawn.getName()) == "COVER";
+        bool shouldMirror = !restart && !isMirror && moduleName == "COVER";
         auto notify = spawn;
         notify.setReferrer(spawn.uuid());
         notify.setSenderId(m_hubId);

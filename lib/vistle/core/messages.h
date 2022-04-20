@@ -173,6 +173,7 @@ public:
     void setHubId(int id);
     int spawnId() const;
     void setSpawnId(int id);
+    void setName(const char *modname);
     const char *getName() const;
     int getMpiSize() const;
     int getBaseRank() const;

@@ -382,6 +382,12 @@ const char *Spawn::getName() const
     return name.data();
 }
 
+void Spawn::setName(const char *mod)
+{
+    assert(mod);
+    COPY_STRING(name, std::string(mod));
+}
+
 int Spawn::getMpiSize() const
 {
     return mpiSize;
