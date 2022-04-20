@@ -72,7 +72,11 @@ private:
     IsoController isocontrol;
 
 #ifdef CUTTINGSURFACE
-    mutable vistle::ResultCache<vistle::Coords::ptr> m_gridCache;
+    struct CachedResult {
+        std::shared_ptr<const std::vector<vistle::Index>> candidateCells;
+        vistle::Coords::ptr grid;
+    };
+    mutable vistle::ResultCache<CachedResult> m_gridCache;
 #endif
 };
 

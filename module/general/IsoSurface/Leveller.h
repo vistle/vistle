@@ -41,7 +41,9 @@ class Leveller {
     vistle::Quads::const_ptr m_quad;
     vistle::Triangles::const_ptr m_tri;
     vistle::Coords::const_ptr m_coord;
-#ifndef CUTTINGSURFACE
+#ifdef CUTTINGSURFACE
+    const std::vector<vistle::Index> *m_candidateCells = nullptr;
+#else
     vistle::Vec<vistle::Scalar>::const_ptr m_data;
 #endif
     std::vector<vistle::Object::const_ptr> m_vertexdata;
@@ -67,7 +69,10 @@ public:
     void addMappedData(vistle::DataBase::const_ptr mapobj);
 
     bool process();
-#ifndef CUTTINGSURFACE
+#ifdef CUTTINGSURFACE
+    void setCandidateCells(const std::vector<vistle::Index> *candidateCells);
+    const std::vector<vistle::Index> *candidateCells();
+#else
     void setIsoData(vistle::Vec<vistle::Scalar>::const_ptr obj);
 #endif
     vistle::Coords::ptr result();

@@ -230,7 +230,13 @@ Object::ptr IsoSurface::work(vistle::Object::const_ptr grid, vistle::Vec<vistle:
     Leveller l(isocontrol, grid, isoValue, processorType);
     l.setComputeNormals(m_computeNormals->getValue());
 
-#ifndef CUTTINGSURFACE
+#ifdef CUTTINGSURFACE
+    CachedResult cachedResult;
+    auto cacheEntry = m_gridCache.getOrLock(grid->getName(), cachedResult);
+    if (!cacheEntry) {
+        l.setCandidateCells(cachedResult.candidateCells.get());
+    }
+#else
     l.setIsoData(dataS);
 #endif
     if (mapdata) {
@@ -255,7 +261,7 @@ Object::ptr IsoSurface::work(vistle::Object::const_ptr grid, vistle::Vec<vistle:
     updateMeta(normals);
     DataBase::ptr mapresult = l.mapresult();
     updateMeta(mapresult);
-    if (result && !result->isEmpty()) {
+    if (result) {
 #ifndef CUTTINGSURFACE
         result->copyAttributes(dataS);
 #endif
@@ -270,11 +276,16 @@ Object::ptr IsoSurface::work(vistle::Object::const_ptr grid, vistle::Vec<vistle:
             result->setBlock(grid->getBlock());
             result->setNumBlocks(grid->getNumBlocks());
         }
+    }
 #ifdef CUTTINGSURFACE
-        if (auto entry = m_gridCache.getOrLock(grid->getName(), result)) {
-            m_gridCache.storeAndUnlock(entry, result);
-        }
+    if (cacheEntry) {
+        cachedResult.grid = result;
+        cachedResult.candidateCells.reset(l.candidateCells());
+        m_gridCache.storeAndUnlock(cacheEntry, cachedResult);
+    }
+    result = cachedResult.grid;
 #endif
+    if (result && !result->isEmpty()) {
         if (mapdata && mapresult) {
             mapresult->copyAttributes(mapdata);
             mapresult->setGrid(result);

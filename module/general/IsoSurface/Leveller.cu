@@ -46,6 +46,7 @@ struct HostData {
    std::vector<Index> m_numVertices;
    std::vector<Index> m_LocationList;
    std::vector<Index> m_SelectedCellVector;
+   bool m_SelectedCellVectorValid = false;
    int m_numVertPerCell = 0;
    Index m_nvert[3];
    Index m_nghost[3][2];
@@ -1001,29 +1002,45 @@ Index Leveller::calculateSurface(Data &data) {
         nelem = m_poly->getNumElements();
     }
     thrust::counting_iterator<Index> first(0), last = first + nelem;;
-    data.m_SelectedCellVector.resize(nelem);
+    size_t numSelectedCells = 0;
+    if (data.m_SelectedCellVectorValid) {
+        numSelectedCells = data.m_SelectedCellVector.size();
+    } else {
+        data.m_SelectedCellVector.resize(nelem);
 
-    typedef thrust::tuple<typename Data::IndexIterator, typename Data::IndexIterator, typename Data::TypeIterator> Iteratortuple;
-    typedef thrust::zip_iterator<Iteratortuple> ZipIterator;
+        typedef thrust::tuple<typename Data::IndexIterator, typename Data::IndexIterator, typename Data::TypeIterator>
+            Iteratortuple;
+        typedef thrust::zip_iterator<Iteratortuple> ZipIterator;
 
-    typename Data::VectorIndexIterator end;
-    if (m_strbase) {
-        end = thrust::copy_if(pol(), first, last, thrust::counting_iterator<Index>(0), data.m_SelectedCellVector.begin(), SelectCells<Data>(data));
-    } else if (m_unstr) {
-        ZipIterator ElTupleVec(thrust::make_tuple(&data.m_el[0], &data.m_el[1], &data.m_tl[0]));
-        end = thrust::copy_if(pol(), first, last, ElTupleVec, data.m_SelectedCellVector.begin(), SelectCells<Data>(data));
-    } else if (m_poly) {
-        ZipIterator ElTupleVec(thrust::make_tuple(&data.m_el[0], &data.m_el[1], &data.m_tl[0]));
-        end = thrust::copy_if(pol(), first, last, ElTupleVec, data.m_SelectedCellVector.begin(), SelectCells2D<Data>(data));
-    } else if (m_tri || m_quad) {
-        end = thrust::copy_if(pol(), first, last, thrust::counting_iterator<Index>(0), data.m_SelectedCellVector.begin(), SelectCells2D<Data>(data));
+        typename Data::VectorIndexIterator end;
+        if (m_strbase) {
+            end = thrust::copy_if(pol(), first, last, thrust::counting_iterator<Index>(0),
+                                  data.m_SelectedCellVector.begin(), SelectCells<Data>(data));
+        } else if (m_unstr) {
+            ZipIterator ElTupleVec(thrust::make_tuple(&data.m_el[0], &data.m_el[1], &data.m_tl[0]));
+            end = thrust::copy_if(pol(), first, last, ElTupleVec, data.m_SelectedCellVector.begin(),
+                                  SelectCells<Data>(data));
+        } else if (m_poly) {
+            ZipIterator ElTupleVec(thrust::make_tuple(&data.m_el[0], &data.m_el[1], &data.m_tl[0]));
+            end = thrust::copy_if(pol(), first, last, ElTupleVec, data.m_SelectedCellVector.begin(),
+                                  SelectCells2D<Data>(data));
+        } else if (m_tri || m_quad) {
+            end = thrust::copy_if(pol(), first, last, thrust::counting_iterator<Index>(0),
+                                  data.m_SelectedCellVector.begin(), SelectCells2D<Data>(data));
+        }
+
+        numSelectedCells = end - data.m_SelectedCellVector.begin();
+        data.m_SelectedCellVector.resize(numSelectedCells);
+        data.m_SelectedCellVectorValid = true;
     }
-
-    size_t numSelectedCells = end-data.m_SelectedCellVector.begin();
+    data.m_SelectedCellVector.resize(numSelectedCells);
     data.m_caseNums.resize(numSelectedCells);
     data.m_numVertices.resize(numSelectedCells);
     data.m_LocationList.resize(numSelectedCells);
-    thrust::transform(pol(), data.m_SelectedCellVector.begin(), end, thrust::make_zip_iterator(thrust::make_tuple(data.m_caseNums.begin(),data.m_numVertices.begin())), ComputeOutputSizes<Data>(data));
+    thrust::transform(
+        pol(), data.m_SelectedCellVector.begin(), data.m_SelectedCellVector.end(),
+        thrust::make_zip_iterator(thrust::make_tuple(data.m_caseNums.begin(), data.m_numVertices.begin())),
+        ComputeOutputSizes<Data>(data));
     thrust::exclusive_scan(pol(), data.m_numVertices.begin(), data.m_numVertices.end(), data.m_LocationList.begin());
     Index totalNumVertices = 0;
     if (!data.m_numVertices.empty())
@@ -1142,6 +1159,12 @@ bool Leveller::process() {
              HD.setGhostLayers(ghost);
          }
          HD.setComputeNormals(m_computeNormals);
+#ifdef CUTTINGSURFACE
+         if (m_candidateCells) {
+             HD.m_SelectedCellVector = *m_candidateCells;
+             HD.m_SelectedCellVectorValid = true;
+         }
+#endif
 
          for (size_t i=0; i<m_vertexdata.size(); ++i) {
             if(Vec<Scalar,1>::const_ptr Scal = Vec<Scalar,1>::as(m_vertexdata[i])){
@@ -1293,6 +1316,12 @@ bool Leveller::process() {
                  }
              }
          }
+
+#ifdef CUTTINGSURFACE
+         if (!m_candidateCells && HD.m_SelectedCellVectorValid) {
+             m_candidateCells = new std::vector<vistle::Index>(HD.m_SelectedCellVector);
+         }
+#endif
          break;
       }
 
@@ -1415,3 +1444,15 @@ DataBase::ptr Leveller::cellresult() const {
 std::pair<Scalar, Scalar> Leveller::range() {
    return std::make_pair(gmin, gmax);
 }
+
+#ifdef CUTTINGSURFACE
+const std::vector<Index> *Leveller::candidateCells()
+{
+    return m_candidateCells;
+}
+
+void Leveller::setCandidateCells(const std::vector<Index> *candidateCells)
+{
+    m_candidateCells = candidateCells;
+}
+#endif
