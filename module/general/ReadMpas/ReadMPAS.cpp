@@ -3,6 +3,7 @@
 
        - read netCDF files containing hexagonal mpas mesh, data and partition info
        - required files: "grid_file" and "part_file"
+       - cf. https://www2.mmm.ucar.edu/projects/mpas/tutorial/Boulder2019/slides/04.mesh_structure.pdf
 
        - uses pnetcdf
 
