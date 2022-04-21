@@ -353,7 +353,8 @@ bool RhrController::sendConfigObject() const
         auto obj = getConfigObject();
         if (obj) {
             CERR << "sending rhr config object" << std::endl;
-            static_cast<Module *>(m_module)->addObject(m_imageOutPort, getConfigObject());
+            m_module->updateMeta(obj);
+            m_module->addObject(m_imageOutPort, obj);
             return true;
         }
         return false;
