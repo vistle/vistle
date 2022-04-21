@@ -14,6 +14,7 @@
 #include <vistle/core/tubes.h>
 #include <vistle/core/texture1d.h>
 #include <vistle/core/unstr.h>
+#include <vistle/alg/objalg.h>
 
 #include "ToTriangles.h"
 
@@ -37,16 +38,21 @@ template<int Dim>
 struct ReplicateData {
     DataBase::const_ptr object;
     DataBase::ptr &result;
-    Index n;
-    Index nElem;
-    const Index *const el;
-    Index nStart, nEnd;
+    Index n = 0;
+    Index nElem = 0;
+    const Index *const el = nullptr;
+    Index nnElem = 0;
+    const Index *const mult = nullptr;
+    Index nStart = 0, nEnd = 0;
     ReplicateData(DataBase::const_ptr obj, DataBase::ptr &result, Index n, Index nElem, Index *el, Index nStart,
                   Index nEnd)
     : object(obj), result(result), n(n), nElem(nElem), el(el), nStart(nStart), nEnd(nEnd)
     {
         assert(nElem == 0 || el);
     }
+    ReplicateData(DataBase::const_ptr obj, DataBase::ptr &result, Index nnElem, Index *mult)
+    : object(obj), result(result), mult(mult)
+    {}
     template<typename S>
     void operator()(S)
     {
@@ -55,13 +61,24 @@ struct ReplicateData {
         if (!in)
             return;
 
-        typename V::ptr out(new V(in->getSize() * n + nElem * (nStart + nEnd)));
+        Index sz = in->getSize() * n + nElem * (nStart + nEnd);
+        if (mult) {
+            sz = nnElem;
+        }
+        typename V::ptr out(new V(sz));
         for (int i = 0; i < Dim; ++i) {
             auto din = &in->x(i)[0];
             auto dout = out->x(i).data();
 
             const Index N = in->getSize();
-            if (el) {
+            if (mult) {
+                for (Index j = 0; j < N; ++j) {
+                    for (Index k = 0; k < mult[j]; ++k) {
+                        *dout++ = *din;
+                    }
+                    ++din;
+                }
+            } else if (el) {
                 for (Index e = 0; e < nElem; ++e) {
                     const Index start = el[e], end = el[e + 1];
                     for (Index k = 0; k < nStart; ++k) {
@@ -106,17 +123,32 @@ DataBase::ptr replicateData(DataBase::const_ptr src, Index n, Index nElem = 0, I
     return result;
 }
 
+DataBase::ptr replicateData(DataBase::const_ptr src, Index nnelem, Index *mult)
+{
+    DataBase::ptr result;
+    boost::mpl::for_each<Scalars>(ReplicateData<1>(src, result, nnelem, mult));
+    boost::mpl::for_each<Scalars>(ReplicateData<3>(src, result, nnelem, mult));
+    if (auto tex = Texture1D::as(src)) {
+        auto vec1 = Vec<Scalar, 1>::as(Object::ptr(result));
+        assert(vec1);
+        auto result2 = tex->clone();
+        result2->d()->x[0] = vec1->d()->x[0];
+        result = result2;
+    }
+    return result;
+}
+
 bool ToTriangles::compute()
 {
-    auto data = expect<DataBase>("grid_in");
-    if (!data) {
+    auto container = expect<Object>("grid_in");
+    auto split = splitContainerObject(container);
+    auto data = split.mapped;
+    auto obj = split.geometry;
+    if (!obj) {
         return true;
     }
-    auto obj = data->grid();
-    if (!obj) {
-        obj = data;
-        data.reset();
-    }
+
+    bool perElement = data && data->guessMapping() == DataBase::Element;
 
     // pass through triangles
     if (auto tri = Triangles::as(obj)) {
@@ -132,15 +164,23 @@ bool ToTriangles::compute()
         return true;
     }
 
+    auto sphere = Spheres::as(obj);
+
     // transform the rest, if possible
     Triangles::ptr tri;
     DataBase::ptr ndata;
-    auto sphere = Spheres::as(obj);
+    std::vector<Index> mult;
+    bool useMultiplicity = false;
 
     if (auto poly = Polygons::as(obj)) {
         Index nelem = poly->getNumElements();
         Index nvert = poly->getNumCorners();
         Index ntri = nvert - 2 * nelem;
+
+        if (perElement) {
+            mult.reserve(ntri);
+            useMultiplicity = true;
+        }
 
         tri.reset(new Triangles(3 * ntri, 0));
         for (int i = 0; i < 3; ++i)
@@ -158,6 +198,8 @@ bool ToTriangles::compute()
                 tcl[i++] = cl[begin + v + 1];
                 tcl[i++] = cl[begin + v + 2];
             }
+            if (perElement)
+                mult.push_back(N - 2);
         }
         assert(i == 3 * ntri);
     } else if (auto quads = Quads::as(obj)) {
@@ -183,6 +225,10 @@ bool ToTriangles::compute()
             }
         }
         assert(i == 3 * ntri);
+
+        if (data && data->guessMapping() == DataBase::Element) {
+            ndata = replicateData(data, 2);
+        }
     } else if (sphere && p_transformSpheres->getValue()) {
         const int NumLat = 8;
         const int NumLong = 13;
@@ -534,12 +580,23 @@ bool ToTriangles::compute()
         auto cl = &unstr->cl()[0];
         auto tl = &unstr->tl()[0];
 
+        std::vector<Index> mult;
+        if (perElement) {
+            mult.reserve(nelem);
+            useMultiplicity = true;
+        }
         Index ntri = 0;
         for (Index e = 0; e < nelem; ++e) {
             if ((tl[e] & UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::TRIANGLE) {
                 ++ntri;
+                if (perElement)
+                    mult.push_back(1);
             } else if ((tl[e] & UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::QUAD) {
                 ntri += 2;
+                if (perElement)
+                    mult.push_back(2);
+            } else {
+                mult.push_back(0);
             }
         }
 
@@ -575,12 +632,16 @@ bool ToTriangles::compute()
         updateMeta(tri);
 
         if (data) {
+            if (data && useMultiplicity) {
+                ndata = replicateData(data, tri->getNumElements(), mult.data());
+            }
             if (!ndata) {
                 ndata = data->clone();
             }
             ndata->setMeta(data->meta());
             ndata->copyAttributes(data);
             ndata->setGrid(tri);
+            ndata->setMapping(data->guessMapping());
             updateMeta(ndata);
             addObject("grid_out", ndata);
         } else {
