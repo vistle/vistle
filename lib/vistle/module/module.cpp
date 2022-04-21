@@ -986,8 +986,10 @@ bool Module::isConnected(const std::string &portname) const
     const Port *p = findInputPort(portname);
     if (!p)
         p = findOutputPort(portname);
-    if (!p)
+    if (!p) {
+        assert("port not connected" == 0);
         return false;
+    }
 
     return isConnected(*p);
 }
