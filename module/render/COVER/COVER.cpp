@@ -100,7 +100,8 @@ bool COVER::Creator::empty() const
     return true;
 }
 
-const COVER::Variant &COVER::Creator::getVariant(const std::string &variantName) const
+const COVER::Variant &COVER::Creator::getVariant(const std::string &variantName,
+                                                 vistle::RenderObject::InitialVariantVisibility vis) const
 {
     if (variantName.empty() || variantName == "NULL")
         return baseVariant;
@@ -109,6 +110,8 @@ const COVER::Variant &COVER::Creator::getVariant(const std::string &variantName)
     if (it == variants.end()) {
         it = variants.emplace(std::make_pair(variantName, Variant(name, variantName))).first;
     }
+    if (vis != vistle::RenderObject::DontChange)
+        it->second.ro.setInitialVisibility(vis);
     baseVariant.constant->addChild(it->second.root);
     coVRPluginList::instance()->addNode(it->second.root, &it->second.ro, COVER::the()->m_plugin);
     return it->second;
@@ -476,6 +479,10 @@ std::shared_ptr<vistle::RenderObject> COVER::addObject(int senderId, const std::
     }
     pro->coverRenderObject.reset(new VistleRenderObject(pro));
     auto cro = pro->coverRenderObject;
+    int creatorId = cro->getCreator();
+    Creator &creator = getCreator(creatorId);
+    if (pro->visibility != vistle::RenderObject::DontChange)
+        creator.getVariant(variant, pro->visibility);
     if (VistleGeometryGenerator::isSupported(objType)) {
         auto vgr = VistleGeometryGenerator(pro, geometry, normals, texture);
         auto cache = getOrCreateGeometryCache<GeometryCache>(senderId, senderPort);
@@ -493,8 +500,6 @@ std::shared_ptr<vistle::RenderObject> COVER::addObject(int senderId, const std::
     osg::ref_ptr<osg::Group> parent = getParent(cro.get());
     const int t = pro->timestep;
     if (t >= 0) {
-        int creatorId = cro->getCreator();
-        Creator &creator = getCreator(creatorId);
         coVRAnimationManager::instance()->addSequence(creator.animated(variant));
     }
 

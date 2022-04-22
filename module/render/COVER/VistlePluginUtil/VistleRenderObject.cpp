@@ -337,6 +337,11 @@ VariantRenderObject::VariantRenderObject(const std::string &variantName,
     m_node->setName(nn + variant);
 }
 
+void VariantRenderObject::setInitialVisibility(vistle::RenderObject::InitialVariantVisibility visible)
+{
+    m_visible = visible;
+}
+
 const char *VariantRenderObject::getAttribute(const char *key) const
 {
     if (key) {
