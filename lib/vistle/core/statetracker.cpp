@@ -914,6 +914,16 @@ bool StateTracker::handlePriv(const message::Connect &connect)
 
     bool ret = true;
     if (portTracker()) {
+        auto destPort = Port(connect.getModuleB(), connect.getPortBName(), Port::INPUT);
+        auto port = portTracker()->findPort(destPort);
+        if (port && !(port->flags() & Port::COMBINE) && !portTracker()->getConnectionList(port)->empty()) {
+            auto &conns = *portTracker()->getConnectionList(port);
+            assert(conns.size() == 1);
+            auto old = portTracker()->findPort(**conns.begin());
+            if (old) {
+                portTracker()->removeConnection(*old, *port);
+            }
+        }
         ret = portTracker()->addConnection(connect.getModuleA(), connect.getPortAName(), connect.getModuleB(),
                                            connect.getPortBName());
     }
