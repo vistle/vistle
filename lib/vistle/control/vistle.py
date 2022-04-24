@@ -139,6 +139,7 @@ def showParameters(id):
 
 def showAllParameters():
    mods = _vistle.getRunning()
+   mods.insert(0, _vistle.Id.Vistle)
    print("id\tmodule\tname\ttype\tvalue")
    for m in mods:
       name = _vistle.getModuleName(m)
