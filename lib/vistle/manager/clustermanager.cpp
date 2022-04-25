@@ -266,26 +266,28 @@ void ClusterManager::init()
     //ParameterManager::setId(message::Id::Vistle);
     //ParameterManager::setName("Hub");
 
-    m_compressionMode =
-        addIntParameter("field_compression", "compression mode for data fields", Uncompressed, Parameter::Choice);
-    V_ENUM_SET_CHOICES(m_compressionMode, FieldCompressionMode);
+    if (hubId() == message::Id::MasterHub) {
+        m_compressionMode =
+            addIntParameter("field_compression", "compression mode for data fields", Uncompressed, Parameter::Choice);
+        V_ENUM_SET_CHOICES(m_compressionMode, FieldCompressionMode);
 
-    m_zfpRate = addFloatParameter("zfp_rate", "ZFP fixed compression rate", 8.);
-    setParameterRange(m_zfpRate, Float(1), Float(64));
+        m_zfpRate = addFloatParameter("zfp_rate", "ZFP fixed compression rate", 8.);
+        setParameterRange(m_zfpRate, Float(1), Float(64));
 
-    m_zfpPrecision = addIntParameter("zfp_precision", "ZFP fixed precision", 16);
-    setParameterRange(m_zfpPrecision, Integer(1), Integer(64));
+        m_zfpPrecision = addIntParameter("zfp_precision", "ZFP fixed precision", 16);
+        setParameterRange(m_zfpPrecision, Integer(1), Integer(64));
 
-    m_zfpAccuracy = addFloatParameter("zfp_accuracy", "ZFP compression error tolerance", 1e-10);
-    setParameterRange(m_zfpAccuracy, Float(0.), Float(1e10));
+        m_zfpAccuracy = addFloatParameter("zfp_accuracy", "ZFP compression error tolerance", 1e-10);
+        setParameterRange(m_zfpAccuracy, Float(0.), Float(1e10));
 
-    m_archiveCompression = addIntParameter("archive_compression", "compression mode for archives",
-                                           message::CompressionNone, Parameter::Choice);
-    V_ENUM_SET_CHOICES(m_archiveCompression, message::CompressionMode);
+        m_archiveCompression = addIntParameter("archive_compression", "compression mode for archives",
+                                               message::CompressionNone, Parameter::Choice);
+        V_ENUM_SET_CHOICES(m_archiveCompression, message::CompressionMode);
 
-    m_archiveCompressionSpeed =
-        addIntParameter("archive_compression_speed", "speed parameter of compression algorithm", -1);
-    setParameterRange(m_archiveCompressionSpeed, Integer(-1), Integer(100));
+        m_archiveCompressionSpeed =
+            addIntParameter("archive_compression_speed", "speed parameter of compression algorithm", -1);
+        setParameterRange(m_archiveCompressionSpeed, Integer(-1), Integer(100));
+    }
 }
 
 const StateTracker &ClusterManager::state() const
@@ -306,40 +308,54 @@ void ClusterManager::sendParameterMessage(const message::Message &message, const
     sendHub(buf, pl);
 }
 
+template<typename ValueType>
+ValueType getSessionParameter(const StateTracker &state, ParameterBase<ValueType> *param, const char *name)
+{
+    auto val = ValueType();
+    if (param) {
+        assert(param->getName() == name);
+    } else {
+        param = std::dynamic_pointer_cast<ParameterBase<ValueType>>(state.getParameter(Id::Vistle, name)).get();
+    }
+    if (param)
+        val = param->getValue();
+    return val;
+}
+
 FieldCompressionMode ClusterManager::fieldCompressionMode() const
 {
     std::lock_guard<std::mutex> locker(m_parameterMutex);
-    return (FieldCompressionMode)m_compressionMode->getValue();
+    return (FieldCompressionMode)getSessionParameter<Integer>(state(), m_compressionMode, "field_compression");
 }
 
 double ClusterManager::zfpRate() const
 {
     std::lock_guard<std::mutex> locker(m_parameterMutex);
-    return m_zfpRate->getValue();
+    return getSessionParameter<Float>(state(), m_zfpRate, "zfp_rate");
 }
 
 int ClusterManager::zfpPrecision() const
 {
     std::lock_guard<std::mutex> locker(m_parameterMutex);
-    return m_zfpPrecision->getValue();
+    return getSessionParameter<Integer>(state(), m_zfpPrecision, "zfp_precision");
 }
 
 double ClusterManager::zfpAccuracy() const
 {
     std::lock_guard<std::mutex> locker(m_parameterMutex);
-    return m_zfpAccuracy->getValue();
+    return getSessionParameter<Float>(state(), m_zfpAccuracy, "zfp_accuracy");
 }
 
 message::CompressionMode ClusterManager::archiveCompressionMode() const
 {
     std::lock_guard<std::mutex> locker(m_parameterMutex);
-    return (message::CompressionMode)m_archiveCompression->getValue();
+    return (message::CompressionMode)getSessionParameter<Integer>(state(), m_archiveCompression, "archive_compression");
 }
 
 int ClusterManager::archiveCompressionSpeed() const
 {
     std::lock_guard<std::mutex> locker(m_parameterMutex);
-    return m_archiveCompressionSpeed->getValue();
+    return getSessionParameter<Integer>(state(), m_archiveCompressionSpeed, "archive_compression_speed");
 }
 
 int ClusterManager::getRank() const
