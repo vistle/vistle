@@ -220,6 +220,7 @@ bool ReadMPAS::validateFile(std::string fullFileName, std::string &redFileName, 
         if (bf::is_regular_file(dPath)) {
             if (bf::extension(dPath.filename()) == ".nc") {
                 redFileName = dPath.string();
+                try {
                 NcmpiFile newFile(comm(), redFileName, NcmpiFile::read);
                 if (!dimensionExists("nCells", newFile)) {
                     if (rank() == 0)
@@ -238,6 +239,11 @@ bool ReadMPAS::validateFile(std::string fullFileName, std::string &redFileName, 
                     }
                 }
                 setVariableList(newFile, type, type == grid_type);
+                } catch(std::exception &ex) {
+                    if (rank() == 0)
+                        sendInfo("Exception during Pnetcdf call on %s: %s", redFileName.c_str(), ex.what());
+                    return false;
+                }
 
                 if (rank() == 0)
                     sendInfo("To load: %s file %s", typeString.c_str(), redFileName.c_str());
