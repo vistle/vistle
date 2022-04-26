@@ -221,6 +221,22 @@ bool ReadMPAS::validateFile(std::string fullFileName, std::string &redFileName, 
             if (bf::extension(dPath.filename()) == ".nc") {
                 redFileName = dPath.string();
                 NcmpiFile newFile(comm(), redFileName, NcmpiFile::read);
+                if (!dimensionExists("nCells", newFile)) {
+                    if (rank() == 0)
+                        sendInfo("File %s does not have dimension nCells, no MPAS file", redFileName.c_str());
+                    return false;
+                }
+                const NcmpiDim dimCells = newFile.getDim("nCells");
+                if (type == grid_type) {
+                    numGridCells = dimCells.getSize();
+                } else {
+                    Index nCells = dimCells.getSize();
+                    if (numGridCells != nCells) {
+                        if (rank() == 0)
+                            sendInfo("nCells=%lu from %s does not match nCells=%lu from grid file", (unsigned long)nCells, redFileName.c_str(), (unsigned long)numGridCells);
+                        return false;
+                    }
+                }
                 setVariableList(newFile, type, type == grid_type);
 
                 if (rank() == 0)

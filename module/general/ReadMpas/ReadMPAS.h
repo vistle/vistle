@@ -63,6 +63,7 @@ private:
     int numPartsFile = 1;
     int numDataFiles = 1;
     std::vector<std::string> dataFileList;
+    Index numGridCells = 0;
 
     std::vector<Object::ptr> gridList;
     std::vector<Index> numCellsB;
@@ -72,7 +73,7 @@ private:
 
     std::vector<int> partList;
     unsigned numLevels = 0;
-    unsigned numCells = 0;
+    Index numCells = 0;
 
     std::vector<unsigned> voc; // voc (Vertices on Cell)
     std::vector<unsigned> coc; // coc (cells on cell)
