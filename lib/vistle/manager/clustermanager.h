@@ -36,7 +36,7 @@ class MessageQueue;
 
 class Parameter;
 
-class ClusterManager: public ParameterManager {
+class ClusterManager {
     friend class Communicator;
     friend class DataManager;
 
@@ -49,7 +49,6 @@ public:
     bool dispatch(bool &received);
     const StateTracker &state() const;
 
-    void sendParameterMessage(const message::Message &message, const buffer *payload) const override;
     bool sendMessage(int receiver, const message::Message &message, int destRank = -1,
                      const MessagePayload &payload = MessagePayload()) const;
     bool sendAll(const message::Message &message, const MessagePayload &payload = MessagePayload()) const;
@@ -172,7 +171,8 @@ private:
         std::deque<MessageWithPayload> incomingMessages; // not yet processed, because module takes part in a barrier
         std::vector<int> objectCount; // no. of available object tuples on each rank
 
-        Module(): ranksStarted(0), ranksFinished(0), prepared(false), reduced(true), busyCount(0), blocked(false) {}
+        Module(): ranksStarted(0), ranksFinished(0), prepared(false), reduced(true), busyCount(0), blocked(false)
+        {}
         ~Module();
 
         void block(const message::Message &msg) const;
@@ -197,15 +197,6 @@ private:
     int m_reachedBarriers;
     typedef std::set<int> ModuleSet;
     ModuleSet reachedSet;
-
-    mutable std::mutex m_parameterMutex;
-    IntParameter *m_compressionMode = nullptr;
-    FloatParameter *m_zfpRate = nullptr;
-    IntParameter *m_zfpPrecision = nullptr;
-    FloatParameter *m_zfpAccuracy = nullptr;
-
-    IntParameter *m_archiveCompression = nullptr;
-    IntParameter *m_archiveCompressionSpeed = nullptr;
 
     std::vector<int> m_numTransfering;
     long m_totalNumTransferring = 0;

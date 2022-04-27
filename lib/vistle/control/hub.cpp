@@ -111,6 +111,16 @@ void Hub::signalHandler(const boost::system::error_code &error, int signal_numbe
         break;
     }
 }
+HubParameters::HubParameters(Hub &hub): ParameterManager("Vistle", message::Id::Vistle), m_hub(hub)
+{}
+
+void HubParameters::sendParameterMessage(const message::Message &message, const buffer *payload) const
+{
+    message::Buffer buf(message);
+    buf.setSenderId(id());
+    m_hub.stateTracker().handle(buf, payload ? payload->data() : nullptr, payload ? payload->size() : 0, true);
+    m_hub.sendAll(buf, payload);
+}
 
 Hub::Hub(bool inManager)
 : m_inManager(inManager)
@@ -137,6 +147,7 @@ Hub::Hub(bool inManager)
 #else
 , m_workGuard(new asio::io_service::work(m_ioService))
 #endif
+, params(*this)
 {
     assert(!hub_instance);
     hub_instance = this;
@@ -171,6 +182,8 @@ Hub::Hub(bool inManager)
 
 Hub::~Hub()
 {
+    params.quit();
+
     stopVrb();
 
     if (!m_isMaster) {
@@ -236,6 +249,7 @@ bool Hub::init(int argc, char *argv[])
         ("help,h", "show this message")
         ("hub,c", po::value<std::string>(), "connect to hub")
         ("batch,b", "do not start user interface")
+        ("proxy", "run master hub acting only as a proxy, does not require MPI")
         ("gui,g", "start graphical user interface")
         ("shell,s", "start interactive Python shell (requires ipython)")
         ("port,p", po::value<unsigned short>(), "control port")
@@ -294,7 +308,7 @@ bool Hub::init(int argc, char *argv[])
         } else {
             auto endpoint = iter->endpoint();
             m_exposedHostAddr = endpoint.address();
-            CERR << m_exposedHost << " resolved to " << m_exposedHostAddr << std::endl;
+            CERR << "AddHub: exposed host " << m_exposedHost << " resolved to " << m_exposedHostAddr << std::endl;
         }
     }
 
@@ -355,6 +369,19 @@ bool Hub::init(int argc, char *argv[])
         }
     }
 
+    if (vm.count("proxy") > 0) {
+        if (m_inManager) {
+            CERR << "proxy-onlny mode is not possible when running in manager" << std::endl;
+            return false;
+        }
+        if (!m_isMaster) {
+            CERR << "proxy-only mode is only possible for master hub" << std::endl;
+            return false;
+        }
+        m_proxyOnly = true;
+        m_localRanks = 0;
+    }
+
     try {
         startServer();
     } catch (std::exception &ex) {
@@ -369,6 +396,8 @@ bool Hub::init(int argc, char *argv[])
             m_dataProxy.reset(new DataProxy(m_stateTracker, 0, 0));
         }
         m_dataProxy->setTrace(m_traceMessages);
+        if (m_localRanks >= 0)
+            m_dataProxy->setNumRanks(m_localRanks);
     } catch (std::exception &ex) {
         CERR << "failed to initialise data server on port " << (m_dataPort ? m_dataPort : m_port + 1) << ": "
              << ex.what() << std::endl;
@@ -378,6 +407,7 @@ bool Hub::init(int argc, char *argv[])
     if (m_isMaster) {
         // this is the master hub
         m_hubId = Id::MasterHub;
+        //params.setId(m_hubId);
         if (!m_inManager) {
             message::DefaultSender::init(m_hubId, 0);
         }
@@ -408,8 +438,8 @@ bool Hub::init(int argc, char *argv[])
         m_barrierAfterLoad = true;
     }
 
-    // start UI
     if (!m_inManager && !m_interrupt && !m_quitting) {
+        // start UI
         if (!uiCmd.empty()) {
             m_hasUi = true;
             std::string uipath = dir::bin(m_prefix) + "/" + uiCmd;
@@ -423,42 +453,57 @@ bool Hub::init(int argc, char *argv[])
         std::string port = boost::lexical_cast<std::string>(this->port());
         std::string dataport = boost::lexical_cast<std::string>(dataPort());
 
-        // start manager on cluster
-        std::string cmd = dir::bin(m_prefix) + "/vistle_manager";
-        std::vector<std::string> args;
-        args.push_back(cmd);
-        args.push_back("-from-vistle");
-        args.push_back(hostname());
-        args.push_back(port);
-        args.push_back(dataport);
+        if (!m_proxyOnly) {
+            // start manager on cluster
+            std::string cmd = dir::bin(m_prefix) + "/vistle_manager";
+            std::vector<std::string> args;
+            args.push_back(cmd);
+            args.push_back("-from-vistle");
+            args.push_back(hostname());
+            args.push_back(port);
+            args.push_back(dataport);
 #ifdef MODULE_THREAD
-        if (vm.count("libsim") > 0) {
-            auto sim2FilePath = vm["libsim"].as<std::string>();
+            if (vm.count("libsim") > 0) {
+                auto sim2FilePath = vm["libsim"].as<std::string>();
 
-            CERR << "starting manager in simulation" << std::endl;
-            if (vistle::insitu::libsim::attemptLibSimConnection(sim2FilePath, args)) {
-                sendInfo("Successfully connected to simulation");
+                CERR << "starting manager in simulation" << std::endl;
+                if (vistle::insitu::libsim::attemptLibSimConnection(sim2FilePath, args)) {
+                    sendInfo("Successfully connected to simulation");
+                } else {
+                    CERR << "failed to spawn Vistle manager in the simulation" << std::endl;
+                    exit(1);
+                }
+
             } else {
-                CERR << "failed to spawn Vistle manager in the simulation" << std::endl;
-                exit(1);
-            }
-
-        } else {
 #endif // MODULE_THREAD
-            auto child = launchMpiProcess(args);
-            if (!child || !child->valid()) {
-                CERR << "failed to spawn Vistle manager " << std::endl;
-                exit(1);
-            }
-            std::lock_guard<std::mutex> guard(m_processMutex);
-            m_processMap[child] = Process::Manager;
+                auto child = launchMpiProcess(args);
+                if (!child || !child->valid()) {
+                    CERR << "failed to spawn Vistle manager " << std::endl;
+                    exit(1);
+                }
+                std::lock_guard<std::mutex> guard(m_processMutex);
+                m_processMap[child] = Process::Manager;
 #ifdef MODULE_THREAD
-        }
+            }
 #endif // MODULE_THREAD
+        }
     }
 
     if (m_isMaster && !m_inManager && !m_interrupt && !m_quitting) {
         m_hasVrb = startVrb();
+    }
+
+    if (m_proxyOnly) {
+        auto master = addHubForSelf();
+        CERR << "MASTER HUB: " << master << std::endl;
+        m_stateTracker.handle(master, nullptr);
+        sendUi(master);
+
+        if (!hubReady()) {
+            m_uiManager.lockUi(false);
+            return false;
+        }
+        m_uiManager.lockUi(false);
     }
 
     return true;
@@ -511,6 +556,7 @@ std::shared_ptr<process::child> Hub::launchProcess(const std::string &prog, cons
 
 std::shared_ptr<process::child> Hub::launchMpiProcess(const std::vector<std::string> &args)
 {
+    assert(!m_proxyOnly);
     assert(!args.empty());
 #ifdef _WIN32
     std::string spawn = "spawn_vistle.bat";
@@ -906,7 +952,10 @@ bool Hub::sendMaster(const message::Message &msg, const buffer *payload)
 bool Hub::sendManager(const message::Message &msg, int hub, const buffer *payload)
 {
     if (hub == Id::LocalHub || hub == m_hubId || (hub == Id::MasterHub && m_isMaster)) {
-        assert(m_managerConnected);
+        assert(m_managerConnected || m_proxyOnly);
+        if (m_proxyOnly) {
+            return true;
+        }
         if (!m_managerConnected) {
             CERR << "sendManager: no connection, cannot send " << msg << std::endl;
             return false;
@@ -1047,11 +1096,52 @@ int Hub::id() const
     return m_hubId;
 }
 
+message::AddHub Hub::addHubForSelf() const
+{
+    auto hub = make.message<message::AddHub>(m_hubId, m_name);
+    hub.setNumRanks(m_localRanks);
+    hub.setDestId(Id::ForBroadcast);
+    hub.setPort(m_port);
+    hub.setDataPort(m_dataProxy->port());
+    hub.setLoginName(vistle::getLoginName());
+    hub.setRealName(vistle::getRealName());
+    hub.setHasUserInterface(m_hasUi);
+    hub.setHasVrb(m_hasVrb);
+
+    if (!m_exposedHost.empty()) {
+        hub.setAddress(m_exposedHostAddr);
+        //CERR << "AddHub: exposed host: " << m_exposedHostAddr << std::endl;
+    }
+
+    return hub;
+}
+
 bool Hub::hubReady()
 {
-    assert(m_managerConnected);
+    assert(m_proxyOnly || m_managerConnected);
     if (m_isMaster) {
         m_ready = true;
+
+        auto compressionMode = params.addIntParameter("field_compression", "compression mode for data fields",
+                                                      Uncompressed, Parameter::Choice);
+        params.V_ENUM_SET_CHOICES(compressionMode, FieldCompressionMode);
+
+        auto zfpRate = params.addFloatParameter("zfp_rate", "ZFP fixed compression rate", 8.);
+        params.setParameterRange(zfpRate, Float(1), Float(64));
+
+        auto zfpPrecision = params.addIntParameter("zfp_precision", "ZFP fixed precision", 16);
+        params.setParameterRange(zfpPrecision, Integer(1), Integer(64));
+
+        auto zfpAccuracy = params.addFloatParameter("zfp_accuracy", "ZFP compression error tolerance", 1e-10);
+        params.setParameterRange(zfpAccuracy, Float(0.), Float(1e10));
+
+        auto archiveCompression = params.addIntParameter("archive_compression", "compression mode for archives",
+                                                         message::CompressionNone, Parameter::Choice);
+        params.V_ENUM_SET_CHOICES(archiveCompression, message::CompressionMode);
+
+        auto archiveCompressionSpeed =
+            params.addIntParameter("archive_compression_speed", "speed parameter of compression algorithm", -1);
+        params.setParameterRange(archiveCompressionSpeed, Integer(-1), Integer(100));
 
         for (auto s: m_slavesToConnect) {
             auto set = make.message<message::SetId>(s->id);
@@ -1075,15 +1165,7 @@ bool Hub::hubReady()
             return true;
         }
     } else {
-        auto hub = make.message<message::AddHub>(m_hubId, m_name);
-        hub.setNumRanks(m_localRanks);
-        hub.setDestId(Id::ForBroadcast);
-        hub.setPort(m_port);
-        hub.setDataPort(m_dataProxy->port());
-        hub.setLoginName(vistle::getLoginName());
-        hub.setRealName(vistle::getRealName());
-        hub.setHasUserInterface(m_hasUi);
-
+        auto hub = addHubForSelf();
         std::unique_lock<std::mutex> lock(m_socketMutex);
         for (auto &sock: m_sockets) {
             if (sock.second == message::Identify::HUB) {
@@ -1104,9 +1186,6 @@ bool Hub::hubReady()
                         CERR << "AddHub: failed to convert local address to v6: " << except.what() << std::endl;
                         return false;
                     }
-                } else {
-                    hub.setAddress(m_exposedHostAddr);
-                    CERR << "AddHub: exposed host: " << m_exposedHostAddr << std::endl;
                 }
             }
         }
@@ -1229,17 +1308,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
             CERR << "manager connected with " << m_localRanks << " ranks" << std::endl;
 
             if (m_hubId == Id::MasterHub) {
-                auto master = make.message<message::AddHub>(m_hubId, m_name);
-                master.setNumRanks(m_localRanks);
-                master.setPort(m_port);
-                master.setDataPort(m_dataProxy->port());
-                master.setLoginName(vistle::getLoginName());
-                master.setRealName(vistle::getRealName());
-                if (!m_exposedHost.empty()) {
-                    master.setAddress(m_exposedHostAddr);
-                }
-                master.setHasUserInterface(m_hasUi);
-                master.setHasVrb(m_hasVrb);
+                auto master = addHubForSelf();
                 CERR << "MASTER HUB: " << master << std::endl;
                 m_stateTracker.handle(master, nullptr);
                 sendUi(master);
@@ -1461,6 +1530,10 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
         case message::SETPARAMETER: {
             auto setParam = msg.as<message::SetParameter>();
 
+            if (setParam.destId() == params.id()) {
+                params.handleMessage(setParam);
+            }
+
             // update linked parameters
             if (message::Id::isModule(setParam.destId())) {
                 if (setParam.getModule() != setParam.senderId()) {
@@ -1565,6 +1638,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
             assert(!m_isMaster);
             auto &set = static_cast<const SetId &>(msg);
             m_hubId = set.getId();
+            //params.setId(m_hubId);
             if (!m_inManager) {
                 message::DefaultSender::init(m_hubId, 0);
             }
@@ -1822,6 +1896,8 @@ bool Hub::startCleaner()
 #if defined(MODULE_THREAD) && defined(NO_SHMEM)
     return true;
 #endif
+    if (m_proxyOnly)
+        return true;
 
 #ifdef SHMDEBUG
     CERR << "SHMDEBUG: preserving shm for session " << Shm::instanceName(hostname(), m_port) << std::endl;
@@ -2167,7 +2243,7 @@ bool Hub::handleVrb(Hub::socket_ptr sock)
             message::Cover cover(mir, header[0], header[1], header[2]);
             cover.setDestId(destMod);
             cover.setPayloadSize(data.size());
-            //CERR << "handleVrb: " << cover << std::endl;
+            CERR << "handleVrb: " << cover << std::endl;
             return sendModule(cover, destMod, &data);
         }
     }
