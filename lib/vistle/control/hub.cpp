@@ -1397,12 +1397,20 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                 }
             }
         }
-        if (m_dataProxy->connectRemoteData(add, [this]() { return dispatch(); })) {
+        sendUi(add);
+        sendManager(add, Id::LocalManager);
+        if (!m_isMaster && add.id() == Id::MasterHub) {
+            if (m_dataProxy->connectRemoteData(add, nullptr)) {
+                m_stateTracker.handle(add, nullptr, true);
+            } else {
+                CERR << "could not establish data connection to master hub at " << add.address() << ":" << add.port()
+                     << " - cannot continue" << std::endl;
+                emergencyQuit();
+            }
+        } else if (m_dataProxy->connectRemoteData(add, [this]() { return dispatch(); })) {
             m_stateTracker.handle(add, nullptr, true);
-            sendUi(add);
         } else if (!m_isMaster && add.id() != message::Id::MasterHub) {
             m_stateTracker.handle(add, nullptr, true);
-            sendUi(add);
         } else {
             if (m_isMaster) {
                 CERR << "could not establish data connection to hub " << add.id() << " at " << add.address() << ":"
@@ -1411,6 +1419,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                 m_stateTracker.handle(rm, nullptr);
                 sendSlaves(rm);
                 sendManager(rm);
+                sendUi(rm);
                 removeSlave(add.id());
             } else {
                 CERR << "could not establish data connection to master hub at " << add.address() << ":" << add.port()
