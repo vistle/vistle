@@ -13,6 +13,7 @@
 static const bool store_and_forward = true;
 static const int min_num_sockets = 2;
 static const int max_num_sockets = 12;
+static const int connection_timeout = 10; // seconds
 
 namespace asio = boost::asio;
 using boost::system::error_code;
@@ -636,7 +637,7 @@ bool DataProxy::connectRemoteData(const message::AddHub &remote, std::function<b
     lock_guard lock(m_mutex);
 
     asio::deadline_timer timer(io());
-    timer.expires_from_now(boost::posix_time::seconds(50));
+    timer.expires_from_now(boost::posix_time::seconds(connection_timeout));
     timer.async_wait([this, hubId](const boost::system::error_code &ec) {
         if (ec == asio::error::operation_aborted) {
             // timer was cancelled
