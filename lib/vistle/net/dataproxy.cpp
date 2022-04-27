@@ -203,9 +203,9 @@ bool DataProxy::answerRemoteIdentify(std::shared_ptr<DataProxy::tcp_socket> sock
         return true;
     } else if (ident.identity() == Identify::REMOTEBULKDATA) {
         if (ident.boost_archive_version() != m_boost_archive_version) {
+#ifndef USE_YAS
             std::cerr << "Boost.Archive version on hub " << m_hubId << " is " << m_boost_archive_version << ", but hub "
                       << ident.senderId() << " connected with version " << ident.boost_archive_version() << std::endl;
-#ifndef USE_YAS
             if (m_boost_archive_version < ident.boost_archive_version()) {
                 std::cerr << "Receiving of remote objects from hub " << ident.senderId() << " will fail" << std::endl;
             } else {
@@ -359,9 +359,9 @@ bool DataProxy::serveSocket(const message::Identify &id, std::shared_ptr<tcp_soc
         }
 
         if (id.boost_archive_version() != m_boost_archive_version) {
+#ifndef USE_YAS
             std::cerr << "Boost.Archive version on hub " << m_hubId << " is " << m_boost_archive_version << ", but hub "
                       << id.senderId() << " connected with version " << id.boost_archive_version() << std::endl;
-#ifndef USE_YAS
             if (m_boost_archive_version < id.boost_archive_version()) {
                 std::cerr << "Receiving of remote objects from hub " << id.senderId() << " will fail" << std::endl;
             } else {
