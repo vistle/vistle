@@ -88,8 +88,6 @@ private:
     void localMsgRecv(std::shared_ptr<tcp_socket> sock);
     void remoteMsgRecv(std::shared_ptr<tcp_socket> sock);
 
-    std::set<std::shared_ptr<tcp_socket>> m_connectingSockets;
-
     message::MessageFactory make;
     message::Type m_traceMessages = message::INVALID;
 

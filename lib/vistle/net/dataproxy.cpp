@@ -634,11 +634,12 @@ bool DataProxy::connectRemoteData(const message::AddHub &remote, std::function<b
 
     auto hubId = remote.id();
 
+    std::set<std::shared_ptr<tcp_socket>> connectingSockets;
     lock_guard lock(m_mutex);
 
     asio::deadline_timer timer(io());
     timer.expires_from_now(boost::posix_time::seconds(connection_timeout));
-    timer.async_wait([this, hubId](const boost::system::error_code &ec) {
+    timer.async_wait([this, hubId, &connectingSockets](const boost::system::error_code &ec) {
         if (ec == asio::error::operation_aborted) {
             // timer was cancelled
             return;
@@ -646,13 +647,13 @@ bool DataProxy::connectRemoteData(const message::AddHub &remote, std::function<b
         if (ec) {
             CERR << "timer failed: " << ec.message() << std::endl;
             lock_guard lock(m_mutex);
-            m_connectingSockets.clear();
+            connectingSockets.clear();
             return;
         }
 
         CERR << "timeout for bulk data connection to " << hubId << std::endl;
         lock_guard lock(m_mutex);
-        for (auto &s: m_connectingSockets) {
+        for (auto &s: connectingSockets) {
             boost::system::error_code ec;
             s->cancel(ec);
             if (ec) {
@@ -663,7 +664,7 @@ bool DataProxy::connectRemoteData(const message::AddHub &remote, std::function<b
                 CERR << "closing socket failed: " << ec.message() << std::endl;
             }
         }
-        m_connectingSockets.clear();
+        connectingSockets.clear();
     });
 
     unsigned short dataPort = remote.dataPort() ? remote.dataPort() : remote.port();
@@ -680,54 +681,57 @@ bool DataProxy::connectRemoteData(const message::AddHub &remote, std::function<b
     while (!interrupt && m_remoteDataSocket[hubId].sockets.size() < numconn && count < numtries) {
         ++count;
         auto sock = std::make_shared<asio::ip::tcp::socket>(io());
-        m_connectingSockets.insert(sock);
+        connectingSockets.insert(sock);
         lock.unlock();
 
-        if (!messageDispatcher()) {
+        if (messageDispatcher && !messageDispatcher()) {
             CERR << "connecting to " << remote.id() << " was interrupted" << std::endl;
             interrupt = true;
         }
 
         if (!interrupt) {
-            sock->async_connect(dest, [this, sock, remote, dataPort, hubId](const boost::system::error_code &ec) {
-                lock_guard lock(m_mutex);
-                m_connectingSockets.erase(sock);
+            sock->async_connect(
+                dest, [this, sock, remote, dataPort, hubId, &connectingSockets](const boost::system::error_code &ec) {
+                    lock_guard lock(m_mutex);
+                    connectingSockets.erase(sock);
 
-                if (ec == asio::error::operation_aborted) {
-                    CERR << "connecting to " << remote.id() << " was aborted" << std::endl;
-                    return;
-                }
-                if (ec == asio::error::timed_out) {
-                    return;
-                }
-                if (ec) {
-                    CERR << "could not establish bulk data connection to " << remote.address() << ":" << dataPort
-                         << ": " << ec.message() << std::endl;
-                    return;
-                }
+                    if (ec == asio::error::operation_aborted) {
+                        //CERR << "connecting to " << remote.id() << " was aborted" << std::endl;
+                        return;
+                    }
+                    if (ec == asio::error::timed_out) {
+                        CERR << "connecting to " << remote.id() << "/" << remote.address() << ":" << dataPort
+                             << " timed out" << std::endl;
+                        return;
+                    }
+                    if (ec) {
+                        CERR << "could not establish bulk data connection to " << remote.id() << "/" << remote.address()
+                             << ":" << dataPort << ": " << ec.message() << std::endl;
+                        return;
+                    }
 
-                auto &socks = m_remoteDataSocket[hubId].sockets;
-                if (std::find(socks.begin(), socks.end(), sock) != socks.end()) {
-                    return;
-                }
+                    auto &socks = m_remoteDataSocket[hubId].sockets;
+                    if (std::find(socks.begin(), socks.end(), sock) != socks.end()) {
+                        return;
+                    }
 
-                m_remoteDataSocket[hubId].sockets.emplace_back(sock);
-                std::cerr << "." << std::flush;
-                //CERR << "connected to " << remote.address << ":" << dataPort << ", now have " << m_remoteDataSocket[hubId].sockets.size() << " connections" << std::endl;
-                lock.unlock();
+                    m_remoteDataSocket[hubId].sockets.emplace_back(sock);
+                    std::cerr << "." << std::flush;
+                    //CERR << "connected to " << remote.address << ":" << dataPort << ", now have " << m_remoteDataSocket[hubId].sockets.size() << " connections" << std::endl;
+                    lock.unlock();
 
-                startThread();
-                startThread();
-                msgForward(sock, Local);
-            });
+                    startThread();
+                    startThread();
+                    msgForward(sock, Local);
+                });
         }
 
         lock.lock();
     }
 
-    while (!interrupt && !m_connectingSockets.empty() && m_remoteDataSocket[hubId].sockets.size() < numconn) {
+    while (!interrupt && !connectingSockets.empty() && m_remoteDataSocket[hubId].sockets.size() < numconn) {
         lock.unlock();
-        if (!messageDispatcher()) {
+        if (messageDispatcher && !messageDispatcher()) {
             CERR << "connecting to " << remote.id() << " was interrupted" << std::endl;
             interrupt = true;
         } else {
@@ -737,7 +741,7 @@ bool DataProxy::connectRemoteData(const message::AddHub &remote, std::function<b
     }
 
     timer.cancel();
-    m_connectingSockets.clear();
+    connectingSockets.clear();
 
     std::cerr << std::endl;
     if (interrupt || m_remoteDataSocket[hubId].sockets.empty()) {
