@@ -33,16 +33,17 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(CellMode, (Voronoi)(Delaunay)(DelaunayProjec
 // CONSTRUCTOR
 ReadMPAS::ReadMPAS(const std::string &name, int moduleID, mpi::communicator comm): Reader(name, moduleID, comm)
 {
-    m_gridFile =
-        addStringParameter("grid_file", "File containing the grid",
-                           "/mnt/raid/home/hpcleker/Desktop/MPAS/test40962/x1.40962.grid.nc", Parameter::Filename);
-    m_dataFile = addStringParameter("data_file", "File containing data", "", Parameter::Filename);
+    m_gridFile = addStringParameter("grid_file", "File containing the grid", "", Parameter::ExistingFilename);
+    m_dataFile = addStringParameter("data_file", "File containing data", "", Parameter::ExistingFilename);
     m_zGridFile = addStringParameter("zGrid_file_dir",
                                      "File containing the vertical coordinates (elevation of cell from mean sea level",
-                                     "/", Parameter::Filename);
-    m_partFile = addStringParameter("part_file", "File containing the grid partitions",
-                                    "/mnt/raid/home/hpcleker/Desktop/MPAS/test40962/x1.40962.graph.info.part.8",
-                                    Parameter::Filename);
+                                     "", Parameter::ExistingFilename);
+    for (auto &p: {m_gridFile, m_dataFile, m_zGridFile}) {
+        setParameterFilters(p, "NetCDF Files (*.nc)/All Files (*)");
+    }
+    m_partFile =
+        addStringParameter("part_file", "File containing the grid partitions", "", Parameter::ExistingFilename);
+    setParameterFilters(m_partFile, "Partitioning Files (*.part.*)/All Files (*)");
 
     m_numPartitions = addIntParameter("numParts", "Number of partitions per rank", 1);
     m_numLevels = addIntParameter("numLevels", "Number of vertical cell layers to read (0: only 2D base level)", 0);
