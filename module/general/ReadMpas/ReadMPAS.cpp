@@ -125,19 +125,40 @@ bool ReadMPAS::prepareRead()
     //set timesteps
     dataFileList.clear();
     if (hasDataFile) {
-        numDataFiles = 0;
+        unsigned nIgnored = 0;
         bf::path dataFilePath(dataFileName);
         bf::path dataDir(dataFilePath.parent_path());
         for (bf::directory_iterator it2(dataDir); it2 != bf::directory_iterator(); ++it2) { //all files in dir
             if ((bf::extension(it2->path().filename()) == ".nc") &&
                 (strncmp(dataFilePath.filename().c_str(), it2->path().filename().c_str(), 15) == 0)) {
-                dataFileList.push_back(it2->path().string());
-                numDataFiles++;
+                auto fn = it2->path().string();
+                try {
+                    NcmpiFile newFile(comm(), fn, NcmpiFile::read);
+                    if (!dimensionExists("nCells", newFile)) {
+                        std::cerr << "ReadMpas: ignoring " << fn << ", no nCells dimension" << std::endl;
+                        ++nIgnored;
+                        continue;
+                    }
+                    const NcmpiDim dimCells = newFile.getDim("nCells");
+                    if (dimCells.getSize() != numGridCells) {
+                        std::cerr << "ReadMpas: ignoring " << fn << ", expected nCells=" << numGridCells << ", but got "
+                                  << dimCells.getSize() << std::endl;
+                        ++nIgnored;
+                        continue;
+                    }
+
+                    dataFileList.push_back(fn);
+                } catch (std::exception &ex) {
+                    std::cerr << "ReadMpas: ignoring " << fn << ", exception: " << ex.what() << std::endl;
+                    ++nIgnored;
+                    continue;
+                }
             }
         }
-        setTimesteps(numDataFiles);
+        setTimesteps(dataFileList.size());
         if (rank() == 0)
-            sendInfo("Set Timesteps from DataFiles to %d", numDataFiles);
+            sendInfo("Set Timesteps from DataFiles to %u, ignored %u candidates", (unsigned)dataFileList.size(),
+                     nIgnored);
     } else {
         setTimesteps(0);
     }
@@ -221,25 +242,26 @@ bool ReadMPAS::validateFile(std::string fullFileName, std::string &redFileName, 
             if (bf::extension(dPath.filename()) == ".nc") {
                 redFileName = dPath.string();
                 try {
-                NcmpiFile newFile(comm(), redFileName, NcmpiFile::read);
-                if (!dimensionExists("nCells", newFile)) {
-                    if (rank() == 0)
-                        sendInfo("File %s does not have dimension nCells, no MPAS file", redFileName.c_str());
-                    return false;
-                }
-                const NcmpiDim dimCells = newFile.getDim("nCells");
-                if (type == grid_type) {
-                    numGridCells = dimCells.getSize();
-                } else {
-                    Index nCells = dimCells.getSize();
-                    if (numGridCells != nCells) {
+                    NcmpiFile newFile(comm(), redFileName, NcmpiFile::read);
+                    if (!dimensionExists("nCells", newFile)) {
                         if (rank() == 0)
-                            sendInfo("nCells=%lu from %s does not match nCells=%lu from grid file", (unsigned long)nCells, redFileName.c_str(), (unsigned long)numGridCells);
+                            sendInfo("File %s does not have dimension nCells, no MPAS file", redFileName.c_str());
                         return false;
                     }
-                }
-                setVariableList(newFile, type, type == grid_type);
-                } catch(std::exception &ex) {
+                    const NcmpiDim dimCells = newFile.getDim("nCells");
+                    if (type == grid_type) {
+                        numGridCells = dimCells.getSize();
+                    } else {
+                        Index nCells = dimCells.getSize();
+                        if (numGridCells != nCells) {
+                            if (rank() == 0)
+                                sendInfo("nCells=%lu from %s does not match nCells=%lu from grid file",
+                                         (unsigned long)nCells, redFileName.c_str(), (unsigned long)numGridCells);
+                            return false;
+                        }
+                    }
+                    setVariableList(newFile, type, type == grid_type);
+                } catch (std::exception &ex) {
                     if (rank() == 0)
                         sendInfo("Exception during Pnetcdf call on %s: %s", redFileName.c_str(), ex.what());
                     return false;

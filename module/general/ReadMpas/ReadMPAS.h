@@ -61,7 +61,6 @@ private:
     std::string partsPath = "";
 
     int numPartsFile = 1;
-    int numDataFiles = 1;
     std::vector<std::string> dataFileList;
     Index numGridCells = 0;
 
