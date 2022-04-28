@@ -773,7 +773,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
                 }
 
                 std::vector<MPI_Offset> startZ{0, 0};
-                std::vector<MPI_Offset> stopZ{numCells, numZLevels};
+                std::vector<MPI_Offset> stopZ{MPI_Offset(numCells), numZLevels};
                 NcmpiFile ncZGridFile(comm(), zGridFileName.c_str(), NcmpiFile::read);
                 const NcmpiVar zGridVar = ncZGridFile.getVar("zgrid");
                 zGridVar.getVar_all(startZ, stopZ, zGrid.data());
