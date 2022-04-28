@@ -213,6 +213,9 @@ private:
     void stopIoThreads();
 
     HubParameters params;
+
+    std::mutex m_outstandingDataConnectionMutex;
+    std::map<vistle::message::AddHub, std::future<bool>> m_outstandingDataConnections;
 };
 
 } // namespace vistle

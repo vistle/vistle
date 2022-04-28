@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <sstream>
 #include <cassert>
+#include <future>
 #include <signal.h>
 
 #include <vistle/util/hostname.h>
@@ -61,6 +62,13 @@ namespace vistle {
 
 using message::Router;
 using message::Id;
+
+namespace message {
+bool operator<(const message::AddHub &a1, const message::AddHub &a2)
+{
+    return a1.id() < a2.id();
+}
+} // namespace message
 
 namespace Process {
 enum Id {
@@ -869,6 +877,40 @@ bool Hub::dispatch()
         }
     }
 
+    std::unique_lock<std::mutex> dataConnGuard(m_outstandingDataConnectionMutex);
+    for (auto it = m_outstandingDataConnections.begin(); it != m_outstandingDataConnections.end(); ++it) {
+        if (!it->second.valid())
+            continue;
+        if (it->second.wait_for(std::chrono::seconds(0)) != std::future_status::ready)
+            continue;
+
+        work = true;
+
+        auto &add = it->first;
+        bool ok = it->second.get();
+        if (ok) {
+            m_stateTracker.handle(add, nullptr, true);
+            sendUi(add);
+        } else {
+            CERR << "could not establish data connection to hub " << add.id() << " at " << add.address() << ":"
+                 << add.port() << std::endl;
+            if (m_isMaster) {
+                CERR << "removing hub " << add.id() << " at " << add.address() << ":" << add.port() << std::endl;
+                auto rm = make.message<message::RemoveHub>(add.id());
+                m_stateTracker.handle(rm, nullptr);
+                sendSlaves(rm);
+                sendManager(rm);
+                removeSlave(add.id());
+            } else if (add.id() == Id::MasterHub) {
+                CERR << "terminating: cannot continue without master data connection" << std::endl;
+                emergencyQuit();
+            }
+        }
+        m_outstandingDataConnections.erase(it);
+        break;
+    }
+    dataConnGuard.unlock();
+
     vistle::adaptive_wait(work);
 
     return ret;
@@ -1397,36 +1439,11 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                 }
             }
         }
-        sendUi(add);
-        sendManager(add, Id::LocalManager);
-        if (!m_isMaster && add.id() == Id::MasterHub) {
-            if (m_dataProxy->connectRemoteData(add, nullptr)) {
-                m_stateTracker.handle(add, nullptr, true);
-            } else {
-                CERR << "could not establish data connection to master hub at " << add.address() << ":" << add.port()
-                     << " - cannot continue" << std::endl;
-                emergencyQuit();
-            }
-        } else if (m_dataProxy->connectRemoteData(add, [this]() { return dispatch(); })) {
-            m_stateTracker.handle(add, nullptr, true);
-        } else if (!m_isMaster && add.id() != message::Id::MasterHub) {
-            m_stateTracker.handle(add, nullptr, true);
-        } else {
-            if (m_isMaster) {
-                CERR << "could not establish data connection to hub " << add.id() << " at " << add.address() << ":"
-                     << add.port() << " - ignoring" << std::endl;
-                auto rm = make.message<RemoveHub>(add.id());
-                m_stateTracker.handle(rm, nullptr);
-                sendSlaves(rm);
-                sendManager(rm);
-                sendUi(rm);
-                removeSlave(add.id());
-            } else {
-                CERR << "could not establish data connection to master hub at " << add.address() << ":" << add.port()
-                     << " - cannot continue" << std::endl;
-                emergencyQuit();
-            }
-        }
+        std::unique_lock<std::mutex> guard(m_outstandingDataConnectionMutex);
+        assert(m_outstandingDataConnections.find(add) == m_outstandingDataConnections.end());
+        m_outstandingDataConnections[add] =
+            std::async(std::launch::async, [this, add]() { return m_dataProxy->connectRemoteData(add); });
+        guard.unlock();
         break;
     }
     case message::CONNECT: {
@@ -2252,7 +2269,7 @@ bool Hub::handleVrb(Hub::socket_ptr sock)
             message::Cover cover(mir, header[0], header[1], header[2]);
             cover.setDestId(destMod);
             cover.setPayloadSize(data.size());
-            CERR << "handleVrb: " << cover << std::endl;
+            //CERR << "handleVrb: " << cover << std::endl;
             return sendModule(cover, destMod, &data);
         }
     }

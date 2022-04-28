@@ -38,7 +38,7 @@ public:
     unsigned short port() const;
     void setTrace(message::Type type);
 
-    bool connectRemoteData(const message::AddHub &add, std::function<bool()> messageDispatcher);
+    bool connectRemoteData(const message::AddHub &add);
     bool addSocket(const message::Identify &id, std::shared_ptr<tcp_socket> sock);
 
 private:
