@@ -171,6 +171,7 @@ bool FileInfoCrawler::handle(const message::FileQuery &query, const buffer &payl
             std::mutex mtx;
             std::vector<FileInfo> results;
             std::vector<std::future<FileQueryResult::Status>> queryFutures;
+            //CERR << "querying " << files.size() << " files in '" << query.path() << "'" << std::endl;
             for (const auto &f: files) {
                 auto fn = path + f;
                 queryFutures.emplace_back(
@@ -178,7 +179,8 @@ bool FileInfoCrawler::handle(const message::FileQuery &query, const buffer &payl
                         FileInfo fi;
                         auto s = readEntry(fs::path(fn), fi);
                         if (s != FileQueryResult::Ok) {
-                            CERR << "status not ok (" << s << ") for " << fn << std::endl;
+                            CERR << "status not ok (" << vistle::message::FileQueryResult::toString(s) << ") for '"
+                                 << fn << "'" << std::endl;
                         }
                         std::lock_guard<std::mutex> guard(mtx);
                         results.push_back(fi);
