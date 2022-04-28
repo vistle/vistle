@@ -32,7 +32,6 @@
 
 #define CERR std::cerr << "comm [" << m_rank << "/" << m_size << "] "
 
-using namespace boost::interprocess;
 namespace asio = boost::asio;
 namespace mpi = boost::mpi;
 

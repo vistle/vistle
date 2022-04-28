@@ -24,7 +24,6 @@
 #include "celltree.h"
 //#include "archives_config.h"
 
-using namespace boost::interprocess;
 namespace interprocess = boost::interprocess;
 
 namespace vistle {
@@ -104,20 +103,19 @@ Shm::Shm(const std::string &instanceName, const int m, const int r, size_t size)
     m_objectDictionaryMutex = new std::recursive_mutex;
 #else
     if (size > 0) {
-        m_shm = new managed_shm(open_or_create, name().c_str(), size);
+        m_shm = new managed_shm(interprocess::open_or_create, name().c_str(), size);
     } else {
-        m_shm = new managed_shm(open_only, name().c_str());
+        m_shm = new managed_shm(interprocess::open_only, name().c_str());
     }
 
     m_allocator = new void_allocator(shm().get_segment_manager());
 
-    m_shmDeletionMutex =
-        m_shm->find_or_construct<boost::interprocess::interprocess_recursive_mutex>("shmdelete_mutex")();
+    m_shmDeletionMutex = m_shm->find_or_construct<interprocess::interprocess_recursive_mutex>("shmdelete_mutex")();
     m_objectDictionaryMutex =
-        m_shm->find_or_construct<boost::interprocess::interprocess_recursive_mutex>("shm_dictionary_mutex")();
+        m_shm->find_or_construct<interprocess::interprocess_recursive_mutex>("shm_dictionary_mutex")();
 
 #ifdef SHMDEBUG
-    s_shmdebugMutex = m_shm->find_or_construct<boost::interprocess::interprocess_recursive_mutex>("shmdebug_mutex")();
+    s_shmdebugMutex = m_shm->find_or_construct<interprocess::interprocess_recursive_mutex>("shmdebug_mutex")();
     s_shmdebug =
         m_shm->find_or_construct<vistle::shm<ShmDebugInfo>::vector>("shmdebug")(0, ShmDebugInfo(), allocator());
 #endif
@@ -130,7 +128,7 @@ Shm::~Shm()
 {
 #ifndef NO_SHMEM
     if (m_remove) {
-        shared_memory_object::remove(name().c_str());
+        interprocess::shared_memory_object::remove(name().c_str());
         std::cerr << "removed shm " << name() << std::endl;
     }
     delete m_shm;
@@ -282,8 +280,8 @@ bool Shm::cleanAll(int rank)
                 log = false;
             } else {
                 std::cerr << "removing shared memory: id " << shmid << std::flush;
-                ok = shared_memory_object::remove(shmSegName(shmid.c_str(), rank, false).c_str()) ||
-                     shared_memory_object::remove(shmSegName(shmid.c_str(), rank, true).c_str());
+                ok = interprocess::shared_memory_object::remove(shmSegName(shmid.c_str(), rank, false).c_str()) ||
+                     interprocess::shared_memory_object::remove(shmSegName(shmid.c_str(), rank, true).c_str());
             }
             if (log)
                 std::cerr << ": " << (ok ? "ok" : "failure") << std::endl;
@@ -371,7 +369,7 @@ Shm &Shm::create(const std::string &name, const int id, const int rank, bool per
         do {
             try {
                 s_singleton = new Shm(name, id, rank, memsize);
-            } catch (boost::interprocess::interprocess_exception &ex) {
+            } catch (interprocess::interprocess_exception &ex) {
                 std::cerr << "failed to create shared memory segment of size " << memsize << ": " << ex.what()
                           << " - retrying with halved size" << std::endl;
                 memsize /= 2;
@@ -405,7 +403,7 @@ Shm &Shm::attach(const std::string &name, const int id, const int rank, bool per
     if (!s_singleton) {
         try {
             s_singleton = new Shm(name, id, rank);
-        } catch (boost::interprocess::interprocess_exception &ex) {
+        } catch (interprocess::interprocess_exception &ex) {
             std::cerr << "failed to attach to shared memory: module id: " << id << ", rank: " << rank << ": "
                       << ex.what() << std::endl;
         }
@@ -523,7 +521,7 @@ shm_handle_t Shm::getHandleFromObject(Object::const_ptr object) const
     try {
         return m_shm->get_handle_from_address(object->d());
 
-    } catch (interprocess_exception &) {
+    } catch (interprocess::interprocess_exception &) {
     }
 
     return 0;
@@ -538,7 +536,7 @@ shm_handle_t Shm::getHandleFromObject(const Object *object) const
     try {
         return m_shm->get_handle_from_address(object->d());
 
-    } catch (interprocess_exception &) {
+    } catch (interprocess::interprocess_exception &) {
     }
 
     return 0;
@@ -553,7 +551,7 @@ shm_handle_t Shm::getHandleFromArray(const ShmData *array) const
     try {
         return m_shm->get_handle_from_address(array);
 
-    } catch (interprocess_exception &) {
+    } catch (interprocess::interprocess_exception &) {
     }
 
     return 0;
@@ -595,7 +593,7 @@ ObjectData *Shm::getObjectDataFromHandle(const shm_handle_t &handle) const
         Object::Data *od = static_cast<Object::Data *>(m_shm->get_address_from_handle(handle));
         assert(od->shmtype == ShmData::OBJECT);
         return od;
-    } catch (interprocess_exception &) {
+    } catch (interprocess::interprocess_exception &) {
         std::cerr << "Shm::getObjectDataFromHandle: invalid handle " << handle << std::endl;
     }
 
@@ -644,8 +642,8 @@ pthread_barrier_t *Shm::newBarrier(const std::string &name, int count)
 #ifndef NO_SHMEM
     if (m_rank == m_owningRank) {
         result = shm().find_or_construct<pthread_barrier_t>(name.c_str())();
-        m_barriers.emplace(name, boost::interprocess::ipcdetail::barrier_initializer(
-                                     *result, boost::interprocess::ipcdetail::barrierattr_wrapper(), count));
+        m_barriers.emplace(name, interprocess::ipcdetail::barrier_initializer(
+                                     *result, interprocess::ipcdetail::barrierattr_wrapper(), count));
     } else {
         result = shm().find<pthread_barrier_t>(name.c_str()).first;
     }
