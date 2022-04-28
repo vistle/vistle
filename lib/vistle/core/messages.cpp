@@ -52,6 +52,8 @@ Identify::Identify(const std::string &name)
 , m_numRanks(-1)
 , m_rank(-1)
 , m_boost_archive_version(boost::archive::BOOST_ARCHIVE_VERSION())
+, m_indexSize(sizeof(vistle::Index))
+, m_scalarSize(sizeof(vistle::Scalar))
 {
     COPY_STRING(m_name, name);
 
@@ -61,7 +63,12 @@ Identify::Identify(const std::string &name)
 }
 
 Identify::Identify(const Identify &request, Identify::Identity id, const std::string &name)
-: m_identity(id), m_numRanks(-1), m_rank(-1), m_boost_archive_version(boost::archive::BOOST_ARCHIVE_VERSION())
+: m_identity(id)
+, m_numRanks(-1)
+, m_rank(-1)
+, m_boost_archive_version(boost::archive::BOOST_ARCHIVE_VERSION())
+, m_indexSize(sizeof(vistle::Index))
+, m_scalarSize(sizeof(vistle::Scalar))
 {
     setReferrer(request.uuid());
     m_session_data = request.m_session_data;
@@ -76,7 +83,12 @@ Identify::Identify(const Identify &request, Identify::Identity id, const std::st
 }
 
 Identify::Identify(const Identify &request, Identity id, int rank)
-: m_identity(id), m_numRanks(-1), m_rank(rank), m_boost_archive_version(boost::archive::BOOST_ARCHIVE_VERSION())
+: m_identity(id)
+, m_numRanks(-1)
+, m_rank(rank)
+, m_boost_archive_version(boost::archive::BOOST_ARCHIVE_VERSION())
+, m_indexSize(sizeof(vistle::Index))
+, m_scalarSize(sizeof(vistle::Scalar))
 {
     setReferrer(request.uuid());
     m_session_data = request.m_session_data;
@@ -111,6 +123,16 @@ int Identify::numRanks() const
 int Identify::boost_archive_version() const
 {
     return m_boost_archive_version;
+}
+
+int Identify::indexSize() const
+{
+    return m_indexSize;
+}
+
+int Identify::scalarSize() const
+{
+    return m_scalarSize;
 }
 
 void Identify::setNumRanks(int size)

@@ -1347,6 +1347,8 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
             m_localRanks = id.numRanks();
             m_dataProxy->setNumRanks(id.numRanks());
             m_dataProxy->setBoostArchiveVersion(id.boost_archive_version());
+            m_dataProxy->setIndexSize(id.indexSize());
+            m_dataProxy->setScalarSize(id.scalarSize());
             CERR << "manager connected with " << m_localRanks << " ranks" << std::endl;
 
             if (m_hubId == Id::MasterHub) {

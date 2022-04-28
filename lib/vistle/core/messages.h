@@ -58,6 +58,8 @@ public:
     int rank() const;
     int numRanks() const;
     int boost_archive_version() const;
+    int indexSize() const;
+    int scalarSize() const;
 
     void setNumRanks(int size);
 
@@ -70,6 +72,7 @@ private:
     int m_numRanks;
     int m_rank;
     int m_boost_archive_version;
+    int m_indexSize, m_scalarSize;
     session_data_t m_session_data;
     mac_t m_mac;
 };

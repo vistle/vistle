@@ -41,7 +41,6 @@ DataProxy::DataProxy(StateTracker &state, unsigned short basePort, bool changePo
 , m_port(basePort)
 , m_acceptorv4(m_io)
 , m_acceptorv6(m_io)
-, m_boost_archive_version(0)
 {
     if (m_port == 0) {
         if (!changePort)
@@ -105,6 +104,22 @@ void DataProxy::setBoostArchiveVersion(int ver)
         CERR << "local Boost.Archive version mismatch: " << ver << " != " << m_boost_archive_version << std::endl;
     }
     m_boost_archive_version = ver;
+}
+
+void DataProxy::setIndexSize(int s)
+{
+    if (m_indexSize && m_indexSize != s) {
+        CERR << "local Index size mismatch: " << s << " != " << m_indexSize << std::endl;
+    }
+    m_indexSize = s;
+}
+
+void DataProxy::setScalarSize(int s)
+{
+    if (m_scalarSize && m_indexSize != s) {
+        CERR << "local Scalar size mismatch: " << s << " != " << m_scalarSize << std::endl;
+    }
+    m_scalarSize = s;
 }
 
 unsigned short DataProxy::port() const
@@ -213,6 +228,20 @@ bool DataProxy::answerRemoteIdentify(std::shared_ptr<DataProxy::tcp_socket> sock
                 std::cerr << "Receiving of objects sent to hub " << ident.senderId() << " will fail" << std::endl;
             }
 #endif
+        }
+        if (ident.indexSize() != m_indexSize) {
+            std::cerr << "Index size on hub " << m_hubId << " is " << m_indexSize << ", but hub " << ident.senderId()
+                      << " uses Index size " << ident.indexSize() << std::endl;
+            shutdownSocket(sock, "Index size mismatch");
+            removeSocket(sock);
+            return false;
+        }
+        if (ident.scalarSize() != m_scalarSize) {
+            std::cerr << "Scalar size on hub " << m_hubId << " is " << m_scalarSize << ", but hub " << ident.senderId()
+                      << " uses Scalar size " << ident.scalarSize() << std::endl;
+            shutdownSocket(sock, "Scalar size mismatch");
+            removeSocket(sock);
+            return false;
         }
         if (!ident.verifyMac()) {
             shutdownSocket(sock, "MAC verification failed");

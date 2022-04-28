@@ -35,6 +35,8 @@ public:
     void setHubId(int id);
     void setNumRanks(int size);
     void setBoostArchiveVersion(int ver);
+    void setIndexSize(int s);
+    void setScalarSize(int s);
     unsigned short port() const;
     void setTrace(message::Type type);
 
@@ -65,7 +67,8 @@ private:
         size_t next_socket = 0;
     };
     std::map<int, ConnectionData> m_remoteDataSocket; // hub id -> socket
-    int m_boost_archive_version;
+    int m_boost_archive_version = 0;
+    int m_indexSize = 0, m_scalarSize = 0;
     void startAccept(acceptor &a);
     void handleAccept(acceptor &a, const boost::system::error_code &error, std::shared_ptr<tcp_socket> sock);
     void handleConnect(std::shared_ptr<tcp_socket> sock0, std::shared_ptr<tcp_socket> sock1,
