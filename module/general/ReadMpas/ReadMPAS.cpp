@@ -23,6 +23,13 @@ namespace bf = boost::filesystem;
 using namespace PnetCDF;
 using namespace vistle;
 
+#if defined(MODULE_THREAD) && PNETCDF_THREAD_SAFE == 0
+static std::mutex pnetcdf_mutex; // avoid simultaneous access to PnetCDF library, if not thread-safe
+#define LOCK_PNETCDF std::unique_lock<std::mutex> pnetcdf_guard(pnetcdf_mutex)
+#else
+#define LOCK_PNETCDF
+#endif
+
 #define MAX_VAL 100000000
 #define MAX_EDGES 6 // maximal edges on cell
 #define MSL 6371229.0 //sphere radius on mean sea level (earth radius)
@@ -94,6 +101,8 @@ ReadMPAS::~ReadMPAS()
 // set number of partitions and timesteps
 bool ReadMPAS::prepareRead()
 {
+    LOCK_PNETCDF;
+
     //set partitions
     std::string sPartFile = m_partFile->getValue();
     if (sPartFile.empty()) {
@@ -290,6 +299,8 @@ bool ReadMPAS::validateFile(std::string fullFileName, std::string &redFileName, 
 // react to changes of module parameters and set them; validate files
 bool ReadMPAS::examine(const vistle::Parameter *param)
 {
+    LOCK_PNETCDF;
+
     if (!param || param == m_gridFile || param == m_dataFile || param == m_zGridFile) {
         m_2dChoices.clear();
         m_3dChoices.clear();
@@ -443,6 +454,8 @@ bool ReadMPAS::getData(const NcmpiFile &filename, std::vector<float> *dataValues
 //start all the reading
 bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
 {
+    LOCK_PNETCDF;
+
     assert(gridList.size() == Index(numPartitions()));
     auto &idxCells = idxCellsInBlock[block];
     if (timestep >= 0) {
