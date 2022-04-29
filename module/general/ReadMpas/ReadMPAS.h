@@ -2,13 +2,20 @@
 #define _ReadMPAS_H
 
 #include <cstddef>
+#include <vistle/module/reader.h>
+#ifdef USE_NETCDF
+#include <netcdf.h>
+#ifdef NETCDF_PARALLEL
+#include <netcdf_par.h>
+#endif
+#else
 #include <pnetcdf>
 #include <mpi.h>
-#include <vistle/module/reader.h>
+#endif
 
 #define NUMPARAMS 3
 
-using namespace PnetCDF;
+//using namespace PnetCDF;
 using namespace vistle;
 
 class ReadMPAS: public vistle::Reader {
@@ -25,8 +32,10 @@ private:
     bool finishRead() override;
 
     bool emptyValue(vistle::StringParameter *ch) const;
-    bool dimensionExists(std::string findName, const NcmpiFile &filenames);
-    bool variableExists(std::string findName, const NcmpiFile &filename);
+#ifndef USE_NETCDF
+    bool dimensionExists(std::string findName, const PnetCDF::NcmpiFile &filenames);
+    bool variableExists(std::string findName, const PnetCDF::NcmpiFile &filename);
+#endif
     bool validateFile(std::string fullFileName, std::string &redFileName, FileType type);
 
     bool addCell(Index elem, bool ghost, Index &curElem, Index *el, Byte *tl, Index *cl, long vPerC, long numVert,
@@ -36,9 +45,14 @@ private:
     bool addWedge(bool ghost, Index &curElem, Index center, Index n1, Index n2, Index layer, Index nVertPerLayer,
                   Index *el, Byte *tl, Index *cl, Index &idx2);
     bool addTri(Index &curElem, Index center, Index n1, Index n2, Index *cl, Index &idx2);
-    bool getData(const NcmpiFile &filename, std::vector<float> *dataValues, const MPI_Offset &nLevels,
+#ifdef USE_NETCDF
+    std::vector<vistle::Scalar> getData(int ncid, Index nLevels, Index dataIdx);
+    bool setVariableList(int ncid, FileType ft, bool setCOC);
+#else
+    bool getData(const PnetCDF::NcmpiFile &filename, std::vector<float> *dataValues, const MPI_Offset &nLevels,
                  const Index dataIdx);
-    bool setVariableList(const NcmpiFile &filename, FileType ft, bool setCOC);
+    bool setVariableList(const PnetCDF::NcmpiFile &filename, FileType ft, bool setCOC);
+#endif
 
     Port *m_gridOut = nullptr;
     Port *m_dataOut[NUMPARAMS];
