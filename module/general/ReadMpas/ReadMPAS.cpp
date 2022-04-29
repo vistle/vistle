@@ -655,7 +655,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
             } else {
                 reducedCenter.resize(numCells, InvalidIndex);
                 std::vector<Index> outstandingGhosts;
-                auto addVertex = [this, &reducedCenter, &idx, &idxCells](Index i) {
+                auto addVertex = [&reducedCenter, &idx, &idxCells](Index i) {
                     if (reducedCenter[i] != InvalidIndex)
                         return;
                     idxCells.push_back(i);
@@ -663,8 +663,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
                     ++idx;
                 };
                 // ghost triangles around cell-centers in this partition
-                auto addOwnedGhostTriangles = [this, &addVertex, &block, &vPerC, &reducedCenter, &idxCells, &idx,
-                                               &isGhost, &numGhosts](Index i) {
+                auto addOwnedGhostTriangles = [this, &addVertex, &block, &vPerC, &isGhost, &numGhosts](Index i) {
                     assert(partList[i] == block);
                     if (!ghosts)
                         return;
@@ -696,8 +695,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
                     }
                 };
                 // ghost triangles around cell-centers added for owned triangles with vertices/cell-centers from other partitions
-                auto addBorrowedGhostTriangles = [this, &addVertex, &block, &vPerC, &reducedCenter, &idxCells, &isGhost,
-                                                  &numGhosts](Index i) {
+                auto addBorrowedGhostTriangles = [this, &addVertex, &block, &vPerC, &isGhost, &numGhosts](Index i) {
                     assert(partList[i] != block);
                     if (!ghosts)
                         return;
