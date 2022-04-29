@@ -64,10 +64,10 @@ struct VtkFile {
 
 bool isCollectionFile(const std::string &fn)
 {
-    if (boost::algorithm::ends_with(fn, ".pvd"))
-        return true;
-    if (boost::algorithm::ends_with(fn, ".vtm"))
-        return true;
+    constexpr const char *collectionEndings[3] = {".pvd", ".vtm", ".pvtu"};
+    for (const auto ending: collectionEndings)
+        if (boost::algorithm::ends_with(fn, ending))
+            return true;
 
     return false;
 }
@@ -193,7 +193,7 @@ struct ReadVtkData {
 std::map<double, std::vector<VtkFile>> readXmlCollection(const std::string &filename, bool piecesAsBlocks = false)
 {
     std::map<double, std::vector<VtkFile>> timesteps;
-    const std::array<std::string, 2> types{"Collection", "vtkMultiBlockDataSet"};
+    const std::array<std::string, 3> types{"Collection", "vtkMultiBlockDataSet", "PUnstructuredGrid"};
 
 #ifdef HAVE_TINYXML2
     vistle::filesystem::path pvdpath(filename);
@@ -229,60 +229,69 @@ std::map<double, std::vector<VtkFile>> readXmlCollection(const std::string &file
         std::cerr << "readXmlCollection: did not find Collection element" << std::endl;
         return timesteps;
     }
-    auto DataSet = Collection->FirstChildElement("DataSet");
-    if (!DataSet) {
-        std::cerr << "readXmlCollection: did not find a DataSet element" << std::endl;
-        return timesteps;
-    }
-
-    int numBlocks = 0;
-    while (DataSet) {
-        double time = ConstantTime;
-        int p = 0;
-        const char *file = DataSet->Attribute("file");
-        const char *realtime = DataSet->Attribute("timestep");
-        if (realtime)
-            time = atof(realtime);
-        const char *part = DataSet->Attribute("part");
-        if (part) {
-            p = atoi(part);
-        }
-        const char *index = DataSet->Attribute("index");
-        if (index && !part) {
-            p = atoi(index);
-        }
-
-        if (file) {
-            VtkFile vtkFile;
-            vistle::filesystem::path fp(file);
-            if (fp.is_relative()) {
-                auto p = pvdpath.parent_path();
-                p /= fp;
-                vtkFile.filename = p.string();
-            } else {
-                vtkFile.filename = file;
+    if (auto DataSet = Collection->FirstChildElement("DataSet")) {
+        do {
+            double time = ConstantTime;
+            int p = 0;
+            const char *file = DataSet->Attribute("file");
+            const char *realtime = DataSet->Attribute("timestep");
+            if (realtime)
+                time = atof(realtime);
+            const char *part = DataSet->Attribute("part");
+            if (part) {
+                p = atoi(part);
             }
-            vtkFile.partNum = p;
-            if (part)
-                vtkFile.part = part;
-            if (index)
-                vtkFile.index = index;
-            vtkFile.realtime = time;
-            if (piecesAsBlocks) {
-                vtkFile.pieces = getNumPieces(vtkFile.filename);
+            const char *index = DataSet->Attribute("index");
+            if (index && !part) {
+                p = atoi(index);
             }
 
-            auto &timestep = timesteps[time];
-            timestep.push_back(vtkFile);
+            if (file) {
+                VtkFile vtkFile;
+                vistle::filesystem::path fp(file);
+                if (fp.is_relative()) {
+                    auto p = pvdpath.parent_path();
+                    p /= fp;
+                    vtkFile.filename = p.string();
+                } else {
+                    vtkFile.filename = file;
+                }
+                vtkFile.partNum = p;
+                if (part)
+                    vtkFile.part = part;
+                if (index)
+                    vtkFile.index = index;
+                vtkFile.realtime = time;
+                if (piecesAsBlocks) {
+                    vtkFile.pieces = getNumPieces(vtkFile.filename);
+                }
 
-            ++numBlocks;
-        }
+                auto &timestep = timesteps[time];
+                timestep.push_back(vtkFile);
+            }
 
-        DataSet = DataSet->NextSiblingElement("DataSet");
+
+        } while ((DataSet = DataSet->NextSiblingElement("DataSet")));
+    } else if (auto DataSet = Collection->FirstChildElement("Piece")) {
+        do {
+            if (const char *file = DataSet->Attribute("Source")) {
+                VtkFile vtkFile;
+                vistle::filesystem::path fp(file);
+                if (fp.is_relative()) {
+                    auto p = pvdpath.parent_path();
+                    p /= fp;
+                    vtkFile.filename = p.string();
+                } else {
+                    vtkFile.filename = file;
+                }
+                timesteps[ConstantTime].push_back(vtkFile);
+            }
+        } while ((DataSet = DataSet->NextSiblingElement("Piece")));
     }
 #endif
 
-    //std::cerr << "readXmlCollection(" << filename << "): num timesteps: " << timesteps.size() << ", num blocks: " << numBlocks <<  std::endl;
+    std::cerr << "readXmlCollection(" << filename << "): num timesteps: " << timesteps.size()
+              << ", num blocks: " << timesteps.begin()->second.size() << std::endl;
 
     return timesteps;
 }
@@ -319,8 +328,9 @@ ReadVtk::ReadVtk(const std::string &name, int moduleID, mpi::communicator comm):
 {
     createOutputPort("grid_out");
     m_filename = addStringParameter("filename", "name of VTK file", "", Parameter::ExistingFilename);
-    setParameterFilters(m_filename, "PVD Files (*.pvd)/XML VTK Files (*.vti *.vtp *.vtr *.vts *.vtu)/Legacy VTK Files "
-                                    "(*.vtk)/XML VTK Multiblock Data (*.vtm)/All Files (*)");
+    setParameterFilters(m_filename,
+                        "PVD Files (*.pvd)/XML VTK Files (*.vti *.vtp *.vtr *.vts *.vtu *.pvtu)/Legacy VTK Files "
+                        "(*.vtk)/XML VTK Multiblock Data (*.vtm)/All Files (*)");
     m_readPieces = addIntParameter("read_pieces", "create block for every piece in an unstructured grid", true,
                                    Parameter::Boolean);
     m_ghostCells = addIntParameter("create_ghost_cells", "create ghost cells for multi-piece unstructured grids", true,
