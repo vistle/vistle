@@ -12,12 +12,12 @@ class V_COREEXPORT CoordsWithRadius: public Coords {
 public:
     typedef Coords Base;
 
-    CoordsWithRadius(const Index numCoords, const Meta &meta = Meta());
+    CoordsWithRadius(const size_t numCoords, const Meta &meta = Meta());
 
     shm<Scalar>::array &r() { return *(d()->r); }
     const Scalar *r() const { return m_r; }
     void resetArrays() override;
-    void setSize(const Index size) override;
+    void setSize(const size_t size) override;
 
 private:
     mutable const Scalar *m_r;
@@ -25,9 +25,9 @@ private:
     V_DATA_BEGIN(CoordsWithRadius);
     ShmVector<Scalar> r;
 
-    Data(const Index numCoords = 0, Type id = UNKNOWN, const std::string &name = "", const Meta &meta = Meta());
+    Data(const size_t numCoords = 0, Type id = UNKNOWN, const std::string &name = "", const Meta &meta = Meta());
     Data(const Vec<Scalar, 3>::Data &o, const std::string &n, Type id);
-    static Data *create(const std::string &name = "", Type id = UNKNOWN, const Index numCoords = 0,
+    static Data *create(const std::string &name = "", Type id = UNKNOWN, const size_t numCoords = 0,
                         const Meta &meta = Meta());
 
     V_DATA_END(CoordsWithRadius);

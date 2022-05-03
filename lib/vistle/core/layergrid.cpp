@@ -11,7 +11,7 @@
 
 namespace vistle {
 
-LayerGrid::LayerGrid(const Index numVert_x, const Index numVert_y, const Index numVert_z, const Meta &meta)
+LayerGrid::LayerGrid(const size_t numVert_x, const size_t numVert_y, const size_t numVert_z, const Meta &meta)
 : LayerGrid::Base(LayerGrid::Data::create(numVert_x, numVert_y, numVert_z, meta))
 {
     refreshImpl();
@@ -495,10 +495,15 @@ void LayerGrid::Data::initData()
 
 // DATA OBJECT - CONSTRUCTOR FROM NAME & META
 //-------------------------------------------------------------------------
-LayerGrid::Data::Data(const Index numVert_x, const Index numVert_y, const Index numVert_z, const std::string &name,
+LayerGrid::Data::Data(const size_t numVert_x, const size_t numVert_y, const size_t numVert_z, const std::string &name,
                       const Meta &meta)
 : LayerGrid::Base::Data(numVert_x * numVert_y * numVert_z, Object::LAYERGRID, name, meta)
 {
+    CHECK_OVERFLOW(numVert_x);
+    CHECK_OVERFLOW(numVert_y);
+    CHECK_OVERFLOW(numVert_z);
+    CHECK_OVERFLOW(numVert_x * numVert_y * numVert_z);
+
     initData();
 
     numDivisions[0] = numVert_x;
@@ -530,7 +535,7 @@ LayerGrid::Data::~Data()
 
 // DATA OBJECT - CREATE FUNCTION
 //-------------------------------------------------------------------------
-LayerGrid::Data *LayerGrid::Data::create(const Index numVert_x, const Index numVert_y, const Index numVert_z,
+LayerGrid::Data *LayerGrid::Data::create(const size_t numVert_x, const size_t numVert_y, const size_t numVert_z,
                                          const Meta &meta)
 {
     // construct shm data

@@ -4,7 +4,7 @@
 
 namespace vistle {
 
-VertexOwnerList::VertexOwnerList(const Index numVertices, const Meta &meta)
+VertexOwnerList::VertexOwnerList(const size_t numVertices, const Meta &meta)
 : VertexOwnerList::Base(VertexOwnerList::Data::create("", numVertices, meta))
 {
     refreshImpl();
@@ -27,14 +27,14 @@ VertexOwnerList::Data::Data(const VertexOwnerList::Data &o, const std::string &n
 {}
 
 
-VertexOwnerList::Data::Data(const std::string &name, const Index numVertices, const Meta &meta)
+VertexOwnerList::Data::Data(const std::string &name, const size_t numVertices, const Meta &meta)
 : VertexOwnerList::Base::Data(Object::Type(Object::VERTEXOWNERLIST), name, meta)
 {
     initData();
     vertexList.construct(numVertices + 1);
 }
 
-VertexOwnerList::Data *VertexOwnerList::Data::create(const std::string &objId, const Index size, const Meta &meta)
+VertexOwnerList::Data *VertexOwnerList::Data::create(const std::string &objId, const size_t size, const Meta &meta)
 {
     const std::string name = Shm::the().createObjectId(objId);
     Data *vol = shm<Data>::construct(name)(name, size, meta);
@@ -102,6 +102,8 @@ Index VertexOwnerList::getNeighbor(Index cell, Index vertex1, Index vertex2, Ind
 
 bool VertexOwnerList::checkImpl() const
 {
+    CHECK_OVERFLOW(d()->vertexList->size());
+
     V_CHECK(!d()->vertexList->empty());
     V_CHECK(d()->vertexList->at(0) == 0);
     if (getNumVertices() > 0) {

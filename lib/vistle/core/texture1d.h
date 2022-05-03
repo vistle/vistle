@@ -15,7 +15,7 @@ class V_COREEXPORT Texture1D: public Vec<Scalar> {
 public:
     typedef Vec<Scalar> Base;
 
-    Texture1D(const Index width, const Scalar min, const Scalar max, const Meta &meta = Meta());
+    Texture1D(const size_t width, const Scalar min, const Scalar max, const Meta &meta = Meta());
 
     Index getWidth() const;
     Scalar getMin() const;
@@ -32,8 +32,8 @@ public:
 
     ShmVector<unsigned char> pixels;
 
-    static Data *create(const Index width = 0, const Scalar min = 0, const Scalar max = 0, const Meta &m = Meta());
-    Data(const std::string &name = "", const Index size = 0, const Scalar min = 0, const Scalar max = 0,
+    static Data *create(const size_t width = 0, const Scalar min = 0, const Scalar max = 0, const Meta &m = Meta());
+    Data(const std::string &name = "", const size_t size = 0, const Scalar min = 0, const Scalar max = 0,
          const Meta &m = Meta());
 
     V_DATA_END(Texture1D);

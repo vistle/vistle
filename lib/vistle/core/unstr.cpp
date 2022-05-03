@@ -133,7 +133,7 @@ const unsigned UnstructuredGrid::FaceVertices[UnstructuredGrid::NUM_TYPES][Unstr
 };
 // clang-format on
 
-UnstructuredGrid::UnstructuredGrid(const Index numElements, const Index numCorners, const Index numVertices,
+UnstructuredGrid::UnstructuredGrid(const size_t numElements, const size_t numCorners, const size_t numVertices,
                                    const Meta &meta)
 : UnstructuredGrid::Base(UnstructuredGrid::Data::create(numElements, numCorners, numVertices, meta))
 {
@@ -160,6 +160,8 @@ bool UnstructuredGrid::isEmpty() const
 
 bool UnstructuredGrid::checkImpl() const
 {
+    CHECK_OVERFLOW(d()->tl->size());
+
     V_CHECK(d()->tl->check());
     V_CHECK(d()->tl->size() == getNumElements());
     return true;
@@ -1000,7 +1002,7 @@ UnstructuredGrid::Data::Data(const UnstructuredGrid::Data &o, const std::string 
     initData();
 }
 
-UnstructuredGrid::Data::Data(const Index numElements, const Index numCorners, const Index numVertices,
+UnstructuredGrid::Data::Data(const size_t numElements, const size_t numCorners, const size_t numVertices,
                              const std::string &name, const Meta &meta)
 : UnstructuredGrid::Base::Data(numElements, numCorners, numVertices, Object::UNSTRUCTUREDGRID, name, meta)
 {
@@ -1008,8 +1010,8 @@ UnstructuredGrid::Data::Data(const Index numElements, const Index numCorners, co
     tl.construct(numElements);
 }
 
-UnstructuredGrid::Data *UnstructuredGrid::Data::create(const Index numElements, const Index numCorners,
-                                                       const Index numVertices, const Meta &meta)
+UnstructuredGrid::Data *UnstructuredGrid::Data::create(const size_t numElements, const size_t numCorners,
+                                                       const size_t numVertices, const Meta &meta)
 {
     const std::string name = Shm::the().createObjectId();
     Data *u = shm<Data>::construct(name)(numElements, numCorners, numVertices, name, meta);

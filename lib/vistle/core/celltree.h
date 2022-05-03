@@ -83,7 +83,7 @@ public:
         }
     };
 
-    Celltree(const Index numCells, const Meta &meta = Meta());
+    Celltree(const size_t numCells, const Meta &meta = Meta());
 
     void init(const CTVector *min, const CTVector *max, const CTVector &gmin, const CTVector &gmax);
     void refine(const CTVector *min, const CTVector *max, Index nodeIdx, const CTVector &gmin, const CTVector &gmax);
@@ -148,8 +148,8 @@ private:
     ShmVector<Index> m_cells;
     ShmVector<Node> m_nodes;
 
-    static Data *create(const std::string &name = "", const Index numCells = 0, const Meta &m = Meta());
-    Data(const std::string &name = "", const Index numCells = 0, const Meta &m = Meta());
+    static Data *create(const std::string &name = "", const size_t numCells = 0, const Meta &m = Meta());
+    Data(const std::string &name = "", const size_t numCells = 0, const Meta &m = Meta());
     V_DATA_END(Celltree);
 };
 

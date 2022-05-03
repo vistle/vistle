@@ -4,7 +4,7 @@
 
 namespace vistle {
 
-Tubes::Tubes(const Index numTubes, const Index numCoords, const Meta &meta)
+Tubes::Tubes(const size_t numTubes, const size_t numCoords, const Meta &meta)
 : Tubes::Base(Tubes::Data::create(numTubes, numCoords, meta))
 {
     refreshImpl();
@@ -25,6 +25,8 @@ bool Tubes::isEmpty() const
 
 bool Tubes::checkImpl() const
 {
+    CHECK_OVERFLOW(d()->components->size());
+
     V_CHECK(components().size() > 0);
     V_CHECK(components()[0] == 0);
     V_CHECK(getNumTubes() >= 0);
@@ -65,9 +67,10 @@ void Tubes::Data::initData()
     style[0] = style[1] = style[2] = Tubes::Open;
 }
 
-Tubes::Data::Data(const Index numTubes, const Index numCoords, const std::string &name, const Meta &meta)
+Tubes::Data::Data(const size_t numTubes, const size_t numCoords, const std::string &name, const Meta &meta)
 : Tubes::Base::Data(numCoords, Object::TUBES, name, meta)
 {
+    CHECK_OVERFLOW(numTubes + 1);
     initData();
     components.construct(numTubes + 1);
     (*components)[0] = 0;
@@ -87,7 +90,7 @@ Tubes::Data::Data(const Vec<Scalar, 3>::Data &o, const std::string &n): Tubes::B
     (*components)[0] = 0;
 }
 
-Tubes::Data *Tubes::Data::create(const Index numTubes, const Index numCoords, const Meta &meta)
+Tubes::Data *Tubes::Data::create(const size_t numTubes, const size_t numCoords, const Meta &meta)
 {
     const std::string name = Shm::the().createObjectId();
     Data *p = shm<Data>::construct(name)(numTubes, numCoords, name, meta);

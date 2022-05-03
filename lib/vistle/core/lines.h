@@ -14,13 +14,13 @@ class V_COREEXPORT Lines: public Indexed {
 public:
     typedef Indexed Base;
 
-    Lines(const Index numElements, const Index numCorners, const Index numVertices, const Meta &meta = Meta());
+    Lines(const size_t numElements, const size_t numCorners, const size_t numVertices, const Meta &meta = Meta());
 
     V_DATA_BEGIN(Lines);
-    Data(const Index numElements = 0, const Index numCorners = 0, const Index numVertices = 0,
+    Data(const size_t numElements = 0, const size_t numCorners = 0, const size_t numVertices = 0,
          const std::string &name = "", const Meta &meta = Meta());
-    static Data *create(const std::string &name = "", const Index numElements = 0, const Index numCorners = 0,
-                        const Index numVertices = 0, const Meta &meta = Meta());
+    static Data *create(const std::string &name = "", const size_t numElements = 0, const size_t numCorners = 0,
+                        const size_t numVertices = 0, const Meta &meta = Meta());
     V_DATA_END(Lines);
 };
 

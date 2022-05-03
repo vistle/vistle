@@ -4,6 +4,7 @@
 #include "vec_template.h"
 #include "vec_impl.h"
 #include "archives.h"
+#include <vistle/util/exception.h>
 
 namespace vistle {
 

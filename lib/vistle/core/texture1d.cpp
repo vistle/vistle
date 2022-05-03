@@ -4,7 +4,7 @@
 
 namespace vistle {
 
-Texture1D::Texture1D(const Index width, const Scalar min, const Scalar max, const Meta &meta)
+Texture1D::Texture1D(const size_t width, const Scalar min, const Scalar max, const Meta &meta)
 : Texture1D::Base(Texture1D::Data::create(width, min, max, meta))
 {
     refreshImpl();
@@ -25,6 +25,8 @@ bool Texture1D::isEmpty() const
 
 bool Texture1D::checkImpl() const
 {
+    CHECK_OVERFLOW(d()->pixels->size());
+
     V_CHECK(d()->pixels);
     //V_CHECK (d()->min <= d()->max);
     return true;
@@ -42,7 +44,7 @@ Texture1D::Data::Data(const Texture1D::Data &o, const std::string &n): Texture1D
     range[1] = o.range[1];
 }
 
-Texture1D::Data::Data(const std::string &name, const Index width, const Scalar mi, const Scalar ma, const Meta &meta)
+Texture1D::Data::Data(const std::string &name, const size_t width, const Scalar mi, const Scalar ma, const Meta &meta)
 : Texture1D::Base::Data(0, Object::TEXTURE1D, name, meta)
 {
     initData();
@@ -51,7 +53,7 @@ Texture1D::Data::Data(const std::string &name, const Index width, const Scalar m
     pixels.construct(width * 4);
 }
 
-Texture1D::Data *Texture1D::Data::create(const Index width, const Scalar min, const Scalar max, const Meta &meta)
+Texture1D::Data *Texture1D::Data::create(const size_t width, const Scalar min, const Scalar max, const Meta &meta)
 {
     const std::string name = Shm::the().createObjectId();
     Data *tex = shm<Data>::construct(name)(name, width, min, max, meta);

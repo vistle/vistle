@@ -91,7 +91,7 @@ Index DataBase::getSize() const
     return 0;
 }
 
-void DataBase::setSize(Index size)
+void DataBase::setSize(size_t size)
 {
     assert("should never be called" == NULL);
 }

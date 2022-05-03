@@ -4,7 +4,7 @@
 
 namespace vistle {
 
-CoordsWithRadius::CoordsWithRadius(const Index numCoords, const Meta &meta)
+CoordsWithRadius::CoordsWithRadius(const size_t numCoords, const Meta &meta)
 : CoordsWithRadius::Base(static_cast<Data *>(NULL))
 {
     refreshImpl();
@@ -28,6 +28,8 @@ bool CoordsWithRadius::isEmpty() const
 
 bool CoordsWithRadius::checkImpl() const
 {
+    CHECK_OVERFLOW(d()->r->size());
+
     V_CHECK(d()->r->check());
     V_CHECK(getNumVertices() == d()->r->size());
     return true;
@@ -40,7 +42,7 @@ void CoordsWithRadius::resetArrays()
     d()->r.construct();
 }
 
-void CoordsWithRadius::setSize(const Index size)
+void CoordsWithRadius::setSize(const size_t size)
 {
     Base::setSize(size);
     d()->r->resize(size);
@@ -50,7 +52,7 @@ void CoordsWithRadius::setSize(const Index size)
 void CoordsWithRadius::Data::initData()
 {}
 
-CoordsWithRadius::Data::Data(const Index numCoords, Type id, const std::string &name, const Meta &meta)
+CoordsWithRadius::Data::Data(const size_t numCoords, Type id, const std::string &name, const Meta &meta)
 : CoordsWithRadius::Base::Data(numCoords, id, name, meta)
 {
     initData();
@@ -70,7 +72,7 @@ CoordsWithRadius::Data::Data(const Vec<Scalar, 3>::Data &o, const std::string &n
     r.construct(o.x[0]->size());
 }
 
-CoordsWithRadius::Data *CoordsWithRadius::Data::create(const std::string &objId, Type id, const Index numCoords,
+CoordsWithRadius::Data *CoordsWithRadius::Data::create(const std::string &objId, Type id, const size_t numCoords,
                                                        const Meta &meta)
 {
     assert("should never be called" == NULL);

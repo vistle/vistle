@@ -24,7 +24,7 @@ public:
     typedef VistleVector<Scalar, Dim> VecVector;
     static const unsigned Dimension = Dim;
 
-    Vec(const Index size, const Meta &meta = Meta());
+    Vec(const size_t size, const Meta &meta = Meta());
 
     Index getSize() override { return d()->x[0]->size(); }
     Index getSize() const override { return m_size; }
@@ -36,7 +36,7 @@ public:
     double value(Index idx, unsigned c = 0) const override;
 
     void resetArrays() override;
-    void setSize(const Index size) override;
+    void setSize(const size_t size) override;
     void applyDimensionHint(Object::const_ptr grid) override;
     void setExact(bool exact) override;
 
@@ -85,12 +85,12 @@ public:
     struct Data: public Base::Data {
         ShmVector<T> x[Dim];
         // when used as Vec
-        Data(const Index size = 0, const std::string &name = "", const Meta &meta = Meta());
+        Data(const size_t size = 0, const std::string &name = "", const Meta &meta = Meta());
         // when used as base of another data structure
-        Data(const Index size, Type id, const std::string &name, const Meta &meta = Meta());
+        Data(const size_t size, Type id, const std::string &name, const Meta &meta = Meta());
         Data(const Data &other, const std::string &name, Type id = UNKNOWN);
         Data(Object::Type id, const std::string &name, const Meta &meta);
-        static Data *create(Index size = 0, const Meta &meta = Meta());
+        static Data *create(size_t size = 0, const Meta &meta = Meta());
         static Data *createNamed(Object::Type id, const std::string &name, const Meta &meta = Meta());
 
     protected:

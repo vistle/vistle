@@ -18,7 +18,7 @@ namespace vistle {
 
 // CONSTRUCTOR
 //-------------------------------------------------------------------------
-StructuredGrid::StructuredGrid(const Index numVert_x, const Index numVert_y, const Index numVert_z, const Meta &meta)
+StructuredGrid::StructuredGrid(const size_t numVert_x, const size_t numVert_y, const size_t numVert_z, const Meta &meta)
 : StructuredGrid::Base(StructuredGrid::Data::create(numVert_x, numVert_y, numVert_z, meta))
 {
     refreshImpl();
@@ -32,6 +32,8 @@ void StructuredGrid::refreshImpl() const
 
     for (int c = 0; c < 3; ++c) {
         if (d && d->x[c].valid()) {
+            CHECK_OVERFLOW(d->x[c]->size());
+
             m_numDivisions[c] = d->numDivisions[c];
 
             m_ghostLayers[c][0] = d->ghostLayers[c][0];
@@ -463,10 +465,15 @@ void StructuredGrid::Data::initData()
 
 // DATA OBJECT - CONSTRUCTOR FROM NAME & META
 //-------------------------------------------------------------------------
-StructuredGrid::Data::Data(const Index numVert_x, const Index numVert_y, const Index numVert_z, const std::string &name,
-                           const Meta &meta)
+StructuredGrid::Data::Data(const size_t numVert_x, const size_t numVert_y, const size_t numVert_z,
+                           const std::string &name, const Meta &meta)
 : StructuredGrid::Base::Data(numVert_x * numVert_y * numVert_z, Object::STRUCTUREDGRID, name, meta)
 {
+    CHECK_OVERFLOW(numVert_x);
+    CHECK_OVERFLOW(numVert_y);
+    CHECK_OVERFLOW(numVert_z);
+    CHECK_OVERFLOW(numVert_x * numVert_y * numVert_z);
+
     initData();
 
     numDivisions[0] = numVert_x;
@@ -500,8 +507,8 @@ StructuredGrid::Data::~Data()
 
 // DATA OBJECT - CREATE FUNCTION
 //-------------------------------------------------------------------------
-StructuredGrid::Data *StructuredGrid::Data::create(const Index numVert_x, const Index numVert_y, const Index numVert_z,
-                                                   const Meta &meta)
+StructuredGrid::Data *StructuredGrid::Data::create(const size_t numVert_x, const size_t numVert_y,
+                                                   const size_t numVert_z, const Meta &meta)
 {
     // construct shm data
     const std::string name = Shm::the().createObjectId();

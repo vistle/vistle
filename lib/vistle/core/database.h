@@ -21,7 +21,7 @@ public:
     virtual void resetArrays(); //< remove reference to data arrays and create empty ones
     virtual Index getSize();
     virtual Index getSize() const;
-    virtual void setSize(const Index size);
+    virtual void setSize(const size_t size);
     virtual void applyDimensionHint(Object::const_ptr grid);
     Object::const_ptr grid() const;
     void setGrid(Object::const_ptr grid);

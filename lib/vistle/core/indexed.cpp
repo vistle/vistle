@@ -2,11 +2,12 @@
 #include "celltree_impl.h"
 #include "indexed_impl.h"
 #include "archives.h"
+#include <vistle/util/exception.h>
 #include <cassert>
 
 namespace vistle {
 
-Indexed::Indexed(const Index numElements, const Index numCorners, const Index numVertices, const Meta &meta)
+Indexed::Indexed(const size_t numElements, const size_t numCorners, const size_t numVertices, const Meta &meta)
 : Indexed::Base(static_cast<Data *>(NULL))
 {
     refreshImpl();
@@ -24,6 +25,9 @@ bool Indexed::isEmpty() const
 
 bool Indexed::checkImpl() const
 {
+    CHECK_OVERFLOW(d()->cl->size());
+    CHECK_OVERFLOW(d()->el->size());
+
     V_CHECK(d()->el->check());
     V_CHECK(d()->cl->check());
     V_CHECK(d()->el->size() > 0);
@@ -364,11 +368,12 @@ void Indexed::refreshImpl() const
 void Indexed::Data::initData()
 {}
 
-Indexed::Data::Data(const Index numElements, const Index numCorners, const Index numVertices, Type id,
+Indexed::Data::Data(const size_t numElements, const size_t numCorners, const size_t numVertices, Type id,
                     const std::string &name, const Meta &meta)
 : Indexed::Base::Data(numVertices, id, name, meta)
 {
-    initData();
+    CHECK_OVERFLOW(numElements + 1);
+    CHECK_OVERFLOW(numCorners);
     el.construct(numElements + 1);
     cl.construct(numCorners);
     (*el)[0] = 0;
@@ -379,8 +384,8 @@ Indexed::Data::Data(const Indexed::Data &o, const std::string &name): Indexed::B
     initData();
 }
 
-Indexed::Data *Indexed::Data::create(const std::string &objId, Type id, const Index numElements, const Index numCorners,
-                                     const Index numVertices, const Meta &meta)
+Indexed::Data *Indexed::Data::create(const std::string &objId, Type id, const size_t numElements,
+                                     const size_t numCorners, const size_t numVertices, const Meta &meta)
 {
     // required for boost::serialization
     assert("should never be called" == NULL);

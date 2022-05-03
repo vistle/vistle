@@ -349,7 +349,7 @@ void Celltree<Scalar, Index, NumDimensions>::Data::serialize(Archive &ar)
 }
 
 template<typename Scalar, typename Index, int NumDimensions>
-Celltree<Scalar, Index, NumDimensions>::Celltree(const Index numCells, const Meta &meta)
+Celltree<Scalar, Index, NumDimensions>::Celltree(const size_t numCells, const Meta &meta)
 : Celltree::Base(Celltree::Data::create("", numCells, meta))
 {
     refreshImpl();
@@ -382,6 +382,9 @@ bool Celltree<Scalar, Index, NumDimensions>::isEmpty()
 template<typename Scalar, typename Index, int NumDimensions>
 bool Celltree<Scalar, Index, NumDimensions>::checkImpl() const
 {
+    CHECK_OVERFLOW(d()->m_nodes->size());
+    CHECK_OVERFLOW(d()->m_cells->size());
+
     V_CHECK(d()->m_nodes->size() >= 1);
     V_CHECK(d()->m_nodes->size() <= d()->m_cells->size());
     if ((*d()->m_nodes)[0].isLeaf()) {
@@ -413,7 +416,7 @@ Celltree<Scalar, Index, NumDimensions>::Data::Data(const Data &o, const std::str
 }
 
 template<typename Scalar, typename Index, int NumDimensions>
-Celltree<Scalar, Index, NumDimensions>::Data::Data(const std::string &name, const Index numCells, const Meta &meta)
+Celltree<Scalar, Index, NumDimensions>::Data::Data(const std::string &name, const size_t numCells, const Meta &meta)
 : Base::Data(Object::Type(Object::CELLTREE1 - 1 + NumDimensions), name, meta)
 {
     initData();
@@ -430,7 +433,7 @@ Celltree<Scalar, Index, NumDimensions>::Data::Data(const std::string &name, cons
 
 template<typename Scalar, typename Index, int NumDimensions>
 typename Celltree<Scalar, Index, NumDimensions>::Data *
-Celltree<Scalar, Index, NumDimensions>::Data::create(const std::string &objId, const Index numCells, const Meta &meta)
+Celltree<Scalar, Index, NumDimensions>::Data::create(const std::string &objId, const size_t numCells, const Meta &meta)
 {
     const std::string name = Shm::the().createObjectId(objId);
     Data *ct = shm<Data>::construct(name)(name, numCells, meta);

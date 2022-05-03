@@ -19,7 +19,7 @@ class V_COREEXPORT VertexOwnerList: public Object {
 public:
     typedef Object Base;
 
-    VertexOwnerList(const Index numVertices, const Meta &meta = Meta());
+    VertexOwnerList(const size_t numVertices, const Meta &meta = Meta());
 
     shm<Index>::array &vertexList() { return *d()->vertexList; }
     const Index *vertexList() const { return m_vertexList; }
@@ -41,8 +41,8 @@ private:
     // lists of cell numbers which use a vertex
     ShmVector<Index> cellList;
 
-    static Data *create(const std::string &name = "", const Index size = 0, const Meta &m = Meta());
-    Data(const std::string &name = "", const Index numVertices = 0, const Meta &m = Meta());
+    static Data *create(const std::string &name = "", const size_t size = 0, const Meta &m = Meta());
+    Data(const std::string &name = "", const size_t numVertices = 0, const Meta &m = Meta());
     V_DATA_END(VertexOwnerList);
 };
 
