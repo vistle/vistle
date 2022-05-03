@@ -85,3 +85,30 @@ void vistle::insitu::broadcast(const boost::mpi::communicator &c, bool &val, int
 {
     detail::broadcast(c, val, root, defaultValue, abort);
 }
+
+void vistle::insitu::barrier(const boost::mpi::communicator &c, const std::atomic_bool &abort)
+{
+    const int tag = 38;
+    auto nextRank = c.rank() + 1;
+    if (nextRank == c.size())
+        nextRank = 0;
+    auto previousRank = c.rank() == 0 ? c.size() - 1 : c.rank() - 1;
+
+    for (int i = 0; i < c.size(); i++) {
+        if (i != c.rank())
+            c.send(i, tag);
+    }
+
+    for (int i = 0; i < c.size(); i++) {
+        if (i != c.rank()) {
+            auto bcastRecv = c.irecv(i, tag);
+            vistle::adaptive_wait(true);
+            while (!bcastRecv.test()) {
+                vistle::adaptive_wait(false);
+                if (abort) {
+                    return;
+                }
+            }
+        }
+    }
+}
