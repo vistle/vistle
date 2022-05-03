@@ -1,12 +1,12 @@
 #include "inSituModule.h"
-#include <vistle/util/sleep.h>
-#include <vistle/util/hostname.h>
-#include <vistle/insitu/util/print.h>
-#include <vistle/insitu/message/InSituMessage.h>
-#include <iostream>
-
-#include <thread>
 #include <chrono>
+#include <iostream>
+#include <thread>
+#include <vistle/insitu/core/slowMpi.h>
+#include <vistle/insitu/message/InSituMessage.h>
+#include <vistle/insitu/util/print.h>
+#include <vistle/util/hostname.h>
+#include <vistle/util/sleep.h>
 
 using namespace vistle;
 using namespace vistle::insitu;
@@ -137,7 +137,6 @@ bool InSituModule::changeParameter(const Parameter *param)
         auto it = std::find(m_intOptions.begin(), m_intOptions.end(), intParam);
         if (it != m_intOptions.end()) {
             m_messageHandler->send(message::IntOption{{intParam->getName(), intParam->getValue()}});
-            m_ownExecutionCounter++;
         }
     }
     return true;
@@ -152,22 +151,17 @@ bool isPackageComplete(const vistle::message::Buffer &buf)
 bool InSituModule::prepare()
 {
     std::lock_guard<std::mutex> g{m_communicationMutex};
-    m_executionCount = m_ownExecutionCounter;
-    size_t minNumPackates = 0;
-    boost::mpi::reduce(comm(), m_numPackeges, minNumPackates, boost::mpi::minimum<int>(), 0);
-    boost::mpi::broadcast(comm(), minNumPackates, 0);
-    while (minNumPackates) {
+
+    while (true) {
         auto obj = std::move(m_cachedVistleObjects.front());
         m_cachedVistleObjects.pop_front();
         if (isPackageComplete(obj)) {
-            --m_numPackeges;
-            --minNumPackates;
+            return true;
         } else {
             updateMeta(obj);
             sendMessage(obj);
         }
     }
-    return true;
 }
 
 void InSituModule::updateMeta(const vistle::message::Buffer &obj)
@@ -176,6 +170,7 @@ void InSituModule::updateMeta(const vistle::message::Buffer &obj)
         auto &objMsg = obj.as<vistle::message::AddObject>();
         m_iteration = objMsg.meta().iteration();
         m_executionCount = objMsg.meta().executionCounter();
+        CERR << "updateMeta: iteration = " << m_iteration << ", executionCount = " << m_executionCount << std::endl;
     }
 }
 
@@ -214,20 +209,19 @@ bool InSituModule::recvVistleObjects()
 
 bool InSituModule::cacheVistleObjects()
 {
-    bool retval = false;
     auto start = std::chrono::system_clock::now();
     auto duration = std::chrono::microseconds(100);
     while (m_receiveFromSimMessageQueue && (std::chrono::system_clock::now() < start + duration)) {
         vistle::message::Buffer buf;
         if (m_receiveFromSimMessageQueue->tryReceive(buf)) {
             m_cachedVistleObjects.push_back(buf);
-            retval = true;
             if (isPackageComplete(buf)) {
-                ++m_numPackeges;
+                vistle::insitu::barrier(comm(), m_terminateCommunication);
+                return true;
             }
         }
     }
-    return retval;
+    return false;
 }
 
 bool InSituModule::handleInsituMessage(message::Message &msg)
