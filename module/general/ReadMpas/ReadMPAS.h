@@ -7,10 +7,12 @@
 #include <netcdf.h>
 #ifdef NETCDF_PARALLEL
 #include <netcdf_par.h>
+#define ReadMPAS ReadMpasNetcdf
 #endif
 #else
 #include <pnetcdf>
 #include <mpi.h>
+#define ReadMPAS ReadMpasPnetcdf
 #endif
 
 #define NUMPARAMS 3

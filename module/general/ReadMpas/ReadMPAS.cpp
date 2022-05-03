@@ -659,27 +659,27 @@ bool ReadMPAS::addCell(Index elem, bool ghost, Index &curElem, Index *el, Byte *
     el[curElem] = idx2;
 
     for (Index d = 0; d < eoc[elem]; ++d) { // add vertices on surface (crosssectional face)
-        cl[idx2++] = ((vocList)[elemRow + d] - 1) + izVert;
+        cl[idx2++] = vocList[elemRow + d] - 1 + izVert;
     }
-    cl[idx2++] = (vocList)[elemRow] - 1 + izVert;
+    cl[idx2++] = vocList[elemRow] - 1 + izVert;
 
     for (Index d = 0; d < eoc[elem]; ++d) { // add coating vertices for all coating sides
-        cl[idx2++] = ((vocList)[elemRow + d] - 1) + izVert;
-        cl[idx2++] = ((vocList)[elemRow + d] - 1) + numVert + izVert;
+        cl[idx2++] = vocList[elemRow + d] - 1 + izVert;
+        cl[idx2++] = vocList[elemRow + d] - 1 + numVert + izVert;
         if (d + 1 == eoc[elem]) {
-            cl[idx2++] = ((vocList)[elemRow] - 1) + numVert + izVert;
-            cl[idx2++] = ((vocList)[elemRow] - 1) + izVert;
+            cl[idx2++] = vocList[elemRow] - 1 + numVert + izVert;
+            cl[idx2++] = vocList[elemRow] - 1 + izVert;
         } else {
-            cl[idx2++] = ((vocList)[elemRow + d + 1] - 1) + numVert + izVert;
-            cl[idx2++] = ((vocList)[elemRow + d + 1] - 1) + izVert;
+            cl[idx2++] = vocList[elemRow + d + 1] - 1 + numVert + izVert;
+            cl[idx2++] = vocList[elemRow + d + 1] - 1 + izVert;
         }
-        cl[idx2++] = ((vocList)[elemRow + d] - 1) + izVert;
+        cl[idx2++] = vocList[elemRow + d] - 1 + izVert;
     }
 
     for (Index d = 0; d < eoc[elem]; ++d) { //add caping (bottom crossectional face)
-        cl[idx2++] = ((vocList)[elemRow + d] - 1) + numVert + izVert;
+        cl[idx2++] = vocList[elemRow + d] - 1 + numVert + izVert;
     }
-    cl[idx2++] = (vocList)[elemRow] - 1 + numVert + izVert;
+    cl[idx2++] = vocList[elemRow] - 1 + numVert + izVert;
     tl[curElem] = ghost ? (UnstructuredGrid::POLYHEDRON | UnstructuredGrid::GHOST_BIT) : UnstructuredGrid::POLYHEDRON;
     ++curElem;
     return true;
