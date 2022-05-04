@@ -99,7 +99,20 @@ size_t Reader::waitForReaders(size_t maxRunning, bool &result)
 bool Reader::readTimestep(std::shared_ptr<Token> &prev, const ReaderProperties &prop, int timestep, int step)
 {
     bool result = true;
+    std::shared_ptr<mpi::communicator> rest_comm, full_comm;
+    if (m_collectiveIo) {
+        bool have_rest = prop.numpart % size() != 0;
+        if (have_rest) {
+            int baseRank = (int)m_firstRank->getValue();
+            bool in_rest = (rank() + baseRank) % size() < prop.numpart % size();
+            rest_comm = std::make_shared<mpi::communicator>(comm().split(in_rest ? 1 : 0));
+        }
+        full_comm = std::make_shared<mpi::communicator>(comm(), mpi::comm_duplicate);
+    }
     for (int p = -1; p < prop.numpart; ++p) {
+        if (m_collectiveIo && p % size() == 0) {
+            full_comm = std::make_shared<mpi::communicator>(comm(), mpi::comm_duplicate);
+        }
         if (!m_handlePartitions || comm().rank() == rankForTimestepAndPartition(step, p)) {
             auto token = std::make_shared<Token>(this, prev);
             ++m_tokenCount;
@@ -107,6 +120,13 @@ bool Reader::readTimestep(std::shared_ptr<Token> &prev, const ReaderProperties &
             token->m_meta = *prop.meta;
             token->m_meta.setBlock(p);
             token->m_meta.setTimeStep(step);
+            if (m_collectiveIo) {
+                if (!m_handlePartitions || (p < prop.numpart / size() * size())) {
+                    token->m_comm = full_comm;
+                } else {
+                    token->m_comm = rest_comm;
+                }
+            }
             if (m_parallel == Serial) {
                 if (!read(*token, timestep, p)) {
                     sendInfo("error reading time data %d on partition %d", timestep, p);
@@ -294,6 +314,14 @@ void Reader::setParallelizationMode(Reader::ParallelizationMode mode)
     }
 }
 
+void Reader::setCollectiveIo(bool enable)
+{
+    m_collectiveIo = enable;
+    if (m_collectiveIo) {
+        setAllowTimestepDistribution(m_allowTimestepDistribution);
+    }
+}
+
 void Reader::setHandlePartitions(bool enable)
 {
     m_handlePartitions = enable;
@@ -307,7 +335,7 @@ void Reader::setHandlePartitions(bool enable)
 void Reader::setAllowTimestepDistribution(bool allow)
 {
     m_allowTimestepDistribution = allow;
-    if (m_allowTimestepDistribution) {
+    if (m_allowTimestepDistribution && !m_collectiveIo) {
         if (!m_distributeTime) {
             setCurrentParameterGroup("Reader");
             m_distributeTime = addIntParameter("distribute_time", "distribute timesteps across MPI ranks",
@@ -584,9 +612,17 @@ unsigned long Reader::Token::id() const
     return m_id;
 }
 
+mpi::communicator *Reader::Token::comm() const
+{
+    return m_comm.get();
+}
+
 std::ostream &operator<<(std::ostream &os, const Reader::Token &tok)
 {
-    os << "id: " << tok.id() << ", ports:";
+    os << "id: " << tok.id();
+    if (tok.comm())
+        os << ", collective";
+    os << ", ports:";
     for (const auto &p: tok.m_ports) {
         os << " " << p.first;
     }

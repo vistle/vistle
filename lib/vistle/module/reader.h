@@ -37,6 +37,7 @@ public:
         bool addObject(Port *port, Object::ptr obj);
         void applyMeta(vistle::Object::ptr obj) const;
         unsigned long id() const;
+        mpi::communicator *comm() const;
 
     private:
         bool result();
@@ -52,6 +53,7 @@ public:
         std::shared_ptr<Token> m_previous;
         std::shared_future<bool> m_future;
         unsigned long m_id = 0;
+        std::shared_ptr<mpi::communicator> m_comm;
 
         struct PortState {
             PortState(): future(promise.get_future().share()) {}
@@ -100,7 +102,6 @@ public:
     int numPartitions() const;
 
 protected:
-protected:
     enum ParallelizationMode {
         Serial, ///< only one operation at a time, all blocks of a timestep first, then other timesteps
         ParallelizeTimesteps, ///< up to 'concurrency' operations at a time, but the same block from different timesteps may be scheduled on other ranks
@@ -124,6 +125,10 @@ protected:
 
     /// control whether and how @ref read invocations are called in parallel
     void setParallelizationMode(ParallelizationMode mode);
+    /// control if read operations have to be called collectively
+    /*! if read operations are to be called collectively, @ref Token
+        will provide an MPI communicator */
+    void setCollectiveIo(bool enable);
 
     /// whether partitions should be handled by the @ref Reader class
     void setHandlePartitions(bool enable);
@@ -182,6 +187,7 @@ private:
     int m_numPartitions = 0;
     bool m_readyForRead = true;
 
+    bool m_collectiveIo = false;
     bool m_handlePartitions = true;
     bool m_handleOwnDIYBlocks = false;
     bool m_allowTimestepDistribution = false;
