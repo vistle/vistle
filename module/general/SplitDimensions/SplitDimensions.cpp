@@ -85,9 +85,9 @@ bool SplitDimensions::compute(std::shared_ptr<BlockTask> task) const
         return true;
     }
 
-    vistle::Points::ptr out0d(new vistle::Points(Index(0)));
+    vistle::Points::ptr out0d(new vistle::Points(size_t(0)));
     if (isConnected(*p_out[0])) {
-        out0d.reset(new vistle::Points(Index(0)));
+        out0d.reset(new vistle::Points(size_t(0)));
     }
 
     vistle::Indexed::ptr out[4];

@@ -35,10 +35,10 @@ bool GenIsoDat::prepare()
 
     vistle::UnstructuredGrid::ptr grid(new vistle::UnstructuredGrid(0, 0, 0));
 
-    vistle::Vec<Scalar>::ptr data(new vistle::Vec<Scalar>(Index(0)));
+    vistle::Vec<Scalar>::ptr data(new vistle::Vec<Scalar>(size_t(0)));
     data->setBlock(rank());
     data->setNumBlocks(size());
-    vistle::Vec<Scalar>::ptr mapdata(new vistle::Vec<Scalar>(Index(0)));
+    vistle::Vec<Scalar>::ptr mapdata(new vistle::Vec<Scalar>(size_t(0)));
     mapdata->setBlock(rank());
     mapdata->setNumBlocks(size());
 

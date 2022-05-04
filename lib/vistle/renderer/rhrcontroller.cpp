@@ -339,7 +339,7 @@ Object::ptr RhrController::getConfigObject() const
 
     CERR << "creating config object: " << conf << std::endl;
 
-    Points::ptr points(new Points(Index(0)));
+    Points::ptr points(new Points(size_t(0)));
     points->addAttribute("_rhr_config", conf);
     std::string sender = std::to_string(m_module->id()) + ":" + m_imageOutPort->getName();
     points->addAttribute("_sender", sender);
