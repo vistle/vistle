@@ -30,7 +30,7 @@ public:
     std::shared_ptr<Module> newInstance(const std::string &name, int id, mpi::communicator &comm);
     boost::function<NewModuleFunc> moduleFactory(const std::string &name);
 
-    bool availableModules(AvailableMap &available);
+    bool availableModules(AvailableMap &available, int hub);
 
 
 private:

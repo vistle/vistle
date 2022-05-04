@@ -2197,7 +2197,7 @@ bool ClusterManager::scanModules(const std::string &dir)
 {
     bool result = true;
 #if defined(MODULE_THREAD) && defined(MODULE_STATIC)
-    ModuleRegistry::the().availableModules(m_localModules);
+    result = ModuleRegistry::the().availableModules(m_localModules, hubId());
 #else
 #if !defined(MODULE_THREAD)
     if (getRank() == 0) {
