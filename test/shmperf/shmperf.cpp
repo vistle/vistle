@@ -170,14 +170,14 @@ int main(int argc, char *argv[])
     {
         bi::shared_memory_object::remove(shmname.c_str());
         vistle::Shm::create(shmname, 1, 0, true);
-        vistle::Vec<DataType, 1> v(DataType(0));
+        vistle::Vec<DataType, 1> v(size_t(0));
         time_pb(v.x(), "vistle push_back only", size);
         bi::shared_memory_object::remove(shmname.c_str());
     }
     {
         bi::shared_memory_object::remove(shmname.c_str());
         vistle::Shm::create(shmname, 1, 0, true);
-        vistle::Vec<DataType, 1> v(DataType(0));
+        vistle::Vec<DataType, 1> v(size_t(0));
         v.x().reserve(size);
         time_pb(v.x(), "vistle push_back+reserve", size);
         time_arr(v.x(), "vistle vector arr", size);
@@ -193,7 +193,7 @@ int main(int argc, char *argv[])
     {
         bi::shared_memory_object::remove(shmname.c_str());
         vistle::Shm::create(shmname, 1, 0, true);
-        vistle::Vec<DataType, 1> v(DataType(0));
+        vistle::Vec<DataType, 1> v(size_t(0));
         shm<DataType>::array &vv = v.x();
         vv.reserve(size);
         time_pb(vv, "vistle push_back+reserve", size);
