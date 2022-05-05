@@ -129,7 +129,10 @@ bool InSituModule::changeParameter(const Parameter *param)
         initializeCommunication();
         return true;
     }
-    if (!m_messageHandler)
+    bool allHaveMessageHandler = false;
+    boost::mpi::reduce(comm(), (bool)m_messageHandler, allHaveMessageHandler, boost::mpi::minimum<bool>(), 0);
+    boost::mpi::broadcast(comm(), allHaveMessageHandler, 0);
+    if (!allHaveMessageHandler)
         return true;
     if (std::find(m_commandParameter.begin(), m_commandParameter.end(), param) != m_commandParameter.end()) {
         m_messageHandler->send(message::ExecuteCommand({param->getName(), ""}));
