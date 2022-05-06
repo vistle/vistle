@@ -17,7 +17,6 @@
 
 #define NUMPARAMS 3
 
-//using namespace PnetCDF;
 using namespace vistle;
 
 class ReadMPAS: public vistle::Reader {
