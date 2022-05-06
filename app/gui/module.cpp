@@ -101,6 +101,13 @@ void Module::moveToHub(int hub)
     vistle::VistleConnection::the().sendMessage(m);
 }
 
+void Module::replaceWith(QString mod)
+{
+    vistle::message::Spawn m(m_hub, mod.toStdString());
+    m.setMigrateId(m_id);
+    vistle::VistleConnection::the().sendMessage(m);
+}
+
 /*!
  * \brief Module::deleteModule
  */
@@ -178,6 +185,7 @@ void Module::createMenus()
     m_moduleMenu->addAction(m_attachDebugger);
     m_moduleMenu->addAction(m_restartAct);
     m_moveToMenu = m_moduleMenu->addMenu("Move to...");
+    m_replaceWithMenu = m_moduleMenu->addMenu("Replace with...");
     m_moduleMenu->addAction(m_deleteThisAct);
     m_moduleMenu->addAction(m_deleteSelAct);
     m_moduleMenu->addAction(m_createModuleGroup);
@@ -286,6 +294,53 @@ void Module::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
         m_deleteThisAct->setVisible(true);
     }
     if (scene() && scene()->moduleBrowser()) {
+        static std::vector<std::vector<QString>> replaceables{{"COVER", "DisCOVERay", "OsgRenderer"},
+                                                              {"Thicken", "SpheresOld", "TubesOld"}};
+        m_replaceWithMenu->clear();
+        auto *mb = scene()->moduleBrowser();
+        auto hub = mb->getHubItem(m_hub);
+        if (hub) {
+            QString baseName = m_name;
+            unsigned ncaps = 0;
+            for (size_t i = 0; i < baseName.size(); ++i) {
+                if (baseName.at(i).isUpper()) {
+                    ++ncaps;
+                    if (ncaps == 3) {
+                        baseName = baseName.left(i);
+                        break;
+                    }
+                }
+            }
+            auto add = [this](QString name) {
+                auto act = new QAction(name, this);
+                act->setStatusTip(QString("Replace with %1").arg(name));
+                connect(act, &QAction::triggered, this, [this, name] { replaceWith(name); });
+                m_replaceWithMenu->addAction(act);
+            };
+            for (int i = 0; i < hub->childCount(); i++) {
+                auto name = hub->child(i)->data(0, ModuleBrowser::nameRole()).toString();
+                if (name.startsWith(baseName) && m_name != name) {
+                    add(name);
+                }
+            }
+
+            for (const auto &r: replaceables) {
+                auto it = std::find(r.begin(), r.end(), m_name);
+                if (it != r.end()) {
+                    for (int i = 0; i < hub->childCount(); i++) {
+                        auto name = hub->child(i)->data(0, ModuleBrowser::nameRole()).toString();
+                        if (name == m_name)
+                            continue;
+                        for (auto &m: r) {
+                            if (m == name) {
+                                add(name);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         m_moveToMenu->clear();
         auto hubs = scene()->moduleBrowser()->getHubs();
         for (auto it = hubs.rbegin(); it != hubs.rend(); ++it) {
@@ -300,6 +355,7 @@ void Module::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
     } else {
         m_moveToMenu->setVisible(false);
     }
+    m_replaceWithMenu->menuAction()->setVisible(!m_replaceWithMenu->isEmpty());
     m_moduleMenu->popup(event->screenPos());
 }
 

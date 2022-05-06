@@ -139,6 +139,14 @@ std::vector<std::pair<int, QString>> ModuleBrowser::getHubs() const
     return hubs;
 }
 
+QTreeWidgetItem *ModuleBrowser::getHubItem(int hub) const
+{
+    auto it = hubItems.find(hub);
+    if (it == hubItems.end())
+        return nullptr;
+    return it->second;
+}
+
 void ModuleBrowser::addHub(int hub, QString hubName, int nranks, QString address, QString logname, QString realname)
 {
     auto it = hubItems.find(hub);
