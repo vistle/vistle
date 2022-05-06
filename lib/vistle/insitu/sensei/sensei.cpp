@@ -77,13 +77,21 @@ SenseiAdapter::SenseiAdapter(bool paused, MPI_Comm Comm, MetaData &&meta, Object
 
 bool SenseiAdapter::Execute(size_t timestep)
 {
-    CERR << "executing timestep " << timestep << std::endl;
+    auto tStart = vistle::Clock::time();
     if (stillConnected() && !quitRequested() && WaitedForModuleCommands()) {
         if (haveToProcessTimestep(timestep)) {
+            static bool first = true;
+            if (first) {
+                first = false;
+                m_timeSpendInExecute = 0;
+                m_startTime = vistle::Clock::time();
+            }
             processData();
         }
+        m_timeSpendInExecute += vistle::Clock::time() - tStart;
         return true;
     }
+    m_timeSpendInExecute += vistle::Clock::time() - tStart;
     return false;
 }
 
@@ -167,11 +175,6 @@ bool SenseiAdapter::haveToProcessTimestep(size_t timestep)
 
 void SenseiAdapter::processData()
 {
-    static bool first = true;
-    if (first) {
-        first = false;
-        m_stopWatch = std::make_unique<StopWatch>("simulation took");
-    }
     if (!m_internals->sendMessageQueue) {
         CERR << "VistleSenseiAdapter can not add vistle object: sendMessageQueue = "
                 "null"
@@ -199,7 +202,15 @@ SenseiAdapter::~SenseiAdapter()
 bool SenseiAdapter::Finalize()
 {
     CERR << "Finalizing" << endl;
-    m_stopWatch.reset(nullptr);
+    double averageTimeSpendInExecute = 0;
+    MPI_Reduce(&m_timeSpendInExecute, &averageTimeSpendInExecute, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
+    auto simulationTime = Clock::time() - m_startTime;
+    double averageSimTime = 0;
+    MPI_Reduce(&simulationTime, &averageSimTime, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
+    if (m_rank == 0) {
+        std::cerr << "simulation took " << averageSimTime / m_mpiSize << "s" << std::endl;
+        std::cerr << "avarage time spend in execute: " << averageTimeSpendInExecute / m_mpiSize << "s" << std::endl;
+    }
     if (m_internals->moduleInfo.isInitialized()) {
         m_internals->messageHandler->send(ConnectionClosed{true});
     }

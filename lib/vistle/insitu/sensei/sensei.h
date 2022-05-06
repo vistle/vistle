@@ -41,7 +41,6 @@ public:
     void updateMeta(vistle::Object::ptr obj) const;
 
 private:
-    std::unique_ptr<vistle::StopWatch> m_stopWatch;
     ObjectRetriever m_callbacks;
     MetaData m_metaData;
     MetaData m_usedData;
@@ -54,7 +53,8 @@ private:
     // mpi info
     int m_rank = -1, m_mpiSize = 0;
     MPI_Comm comm = MPI_COMM_WORLD;
-
+    double m_timeSpendInExecute = 0;
+    double m_startTime = 0;
     std::map<std::string, bool> m_commands; // commands and their current state
 #ifdef MODULE_THREAD
     std::thread m_managerThread;
