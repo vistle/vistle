@@ -87,6 +87,7 @@ protected:
 
 public slots:
     void restartModule();
+    void moveToHub(int hub);
     void execModule();
     void cancelExecModule();
     void deleteModule();
@@ -104,6 +105,7 @@ private:
     QAction *m_execAct = nullptr;
     QAction *m_cancelExecAct = nullptr;
     QAction *m_restartAct = nullptr;
+    QMenu *m_moveToMenu = nullptr;
     QAction *m_createModuleGroup = nullptr;
 
 

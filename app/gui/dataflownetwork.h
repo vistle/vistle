@@ -19,13 +19,17 @@ namespace gui {
 
 class Module;
 class Connection;
+class MainWindow;
+class ModuleBrowser;
 
 class DataFlowNetwork: public QGraphicsScene {
     Q_OBJECT
 
 public:
-    DataFlowNetwork(vistle::VistleConnection *conn, QObject *parent = 0);
+    DataFlowNetwork(vistle::VistleConnection *conn, MainWindow *mw, QObject *parent = 0);
     ~DataFlowNetwork();
+
+    ModuleBrowser *moduleBrowser() const;
 
     void addModule(int hub, QString modName, Qt::Key direction);
     void addModule(int hub, QString modName, QPointF dropPos);
@@ -66,6 +70,7 @@ private:
     ///\todo push this functionality to vHandler
     vistle::VistleConnection *m_vistleConnection;
     vistle::StateTracker &m_state;
+    MainWindow *m_mainWindow = nullptr;
 
     struct ConnectionKey {
         ConnectionKey(Port *p1, Port *p2): port1(p1), port2(p2)

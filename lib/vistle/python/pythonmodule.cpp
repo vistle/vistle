@@ -205,6 +205,26 @@ static std::string spawnAsyncSimple(const char *module, int numSpawn = -1, int b
     return spawnAsync(message::Id::MasterHub, module, numSpawn, baseRank, rankSkip);
 }
 
+static std::string migrateAsync(int migrateId, int toHub, std::string name = std::string())
+{
+#ifdef DEBUG
+    std::cerr << "Python: migrateAsync " << name << ":" << migrateId << " to hub " << toHub << std::endl;
+#endif
+
+    if (name.empty())
+        name = state().getModuleName(migrateId);
+
+    message::Spawn m(toHub, name);
+    m.setMigrateId(migrateId);
+    m.setDestId(message::Id::MasterHub); // to master for module id generation
+    state().registerRequest(m.uuid());
+    if (!sendMessage(m))
+        return "";
+    std::string uuid = boost::lexical_cast<std::string>(m.uuid());
+
+    return uuid;
+}
+
 static int waitForSpawn(const std::string &uuid)
 {
     boost::uuids::string_generator gen;
@@ -232,6 +252,15 @@ static int spawn(int hub, const char *module, int numSpawn = -1, int baseRank = 
 static int spawnSimple(const char *module)
 {
     return spawn(message::Id::MasterHub, module);
+}
+
+static int migrate(int migrateId, int toHub, std::string name = std::string())
+{
+#ifdef DEBUG
+    std::cerr << "Python: migrate " << name << ":" << migrateId << " to hub " << toHub << std::endl;
+#endif
+    const std::string uuid = migrateAsync(migrateId, toHub, name);
+    return waitForSpawn(uuid);
 }
 
 static void kill(int id)
@@ -1325,6 +1354,14 @@ PY_MODULE(_vistle, m)
           "spawn new module `arg1`\n"
           "return uuid to wait on its ID",
           "modulename"_a, "numspawn"_a = 1, "baserank"_a = -1, "rankskip"_a = -1);
+    m.def("migrate", migrate,
+          "migrate module `id` to hub `hub`\n"
+          "return its ID",
+          "id"_a, "hub"_a, "modulename"_a = "");
+    m.def("migrateAsync", migrateAsync,
+          "migrate module `id` to hub `hub`\n"
+          "return its ID",
+          "id"_a, "hub"_a, "modulename"_a = "");
     m.def("waitForSpawn", waitForSpawn, "wait for asynchronously spawned module with uuid `arg1` and return its ID");
     m.def("kill", kill, "kill module with ID `arg1`");
     m.def("connect", connect,

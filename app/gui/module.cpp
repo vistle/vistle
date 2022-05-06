@@ -27,6 +27,7 @@
 #include "dataflownetwork.h"
 #include "mainwindow.h"
 #include "dataflowview.h"
+#include "modulebrowser.h"
 
 namespace gui {
 
@@ -90,7 +91,12 @@ void Module::cancelExecModule()
 
 void Module::restartModule()
 {
-    vistle::message::Spawn m(m_hub, m_name.toStdString());
+    moveToHub(m_hub);
+}
+
+void Module::moveToHub(int hub)
+{
+    vistle::message::Spawn m(hub, m_name.toStdString());
     m.setMigrateId(m_id);
     vistle::VistleConnection::the().sendMessage(m);
 }
@@ -126,8 +132,6 @@ void Module::createGeometry()
 
 /*!
  * \brief Module::createActions
- *
- * \todo this doesn't really work at the moment, find out what is wrong
  */
 void Module::createActions()
 {
@@ -173,6 +177,7 @@ void Module::createMenus()
     m_moduleMenu->addSeparator();
     m_moduleMenu->addAction(m_attachDebugger);
     m_moduleMenu->addAction(m_restartAct);
+    m_moveToMenu = m_moduleMenu->addMenu("Move to...");
     m_moduleMenu->addAction(m_deleteThisAct);
     m_moduleMenu->addAction(m_deleteSelAct);
     m_moduleMenu->addAction(m_createModuleGroup);
@@ -279,6 +284,21 @@ void Module::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
         m_deleteSelAct->setVisible(false);
         m_createModuleGroup->setVisible(false);
         m_deleteThisAct->setVisible(true);
+    }
+    if (scene() && scene()->moduleBrowser()) {
+        m_moveToMenu->clear();
+        auto hubs = scene()->moduleBrowser()->getHubs();
+        for (auto it = hubs.rbegin(); it != hubs.rend(); ++it) {
+            const auto &h = *it;
+            auto act = new QAction(h.second, this);
+            act->setStatusTip(QString("Migrate module to %1 (Id %2)").arg(h.second).arg(h.first));
+            int hubId = h.first;
+            connect(act, &QAction::triggered, this, [this, hubId] { moveToHub(hubId); });
+            m_moveToMenu->addAction(act);
+        }
+        m_moveToMenu->menuAction()->setVisible(hubs.size() > 1);
+    } else {
+        m_moveToMenu->setVisible(false);
     }
     m_moduleMenu->popup(event->screenPos());
 }

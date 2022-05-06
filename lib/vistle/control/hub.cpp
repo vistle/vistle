@@ -1775,6 +1775,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
 
 bool Hub::handlePriv(const message::Spawn &spawnRecv)
 {
+    bool error = false;
     message::Spawn spawn(spawnRecv);
     if (m_isMaster) {
         std::string moduleName(spawn.getName());
@@ -1797,11 +1798,27 @@ bool Hub::handlePriv(const message::Spawn &spawnRecv)
             ++m_moduleCount;
             doSpawn = true;
         }
-        if (restart) {
+        auto hubs = m_stateTracker.getHubs();
+        if (std::find(hubs.begin(), hubs.end(), spawn.hubId()) == hubs.end()) {
+            std::stringstream str;
+            str << "hub with id " << spawn.hubId() << " not known";
+            sendError(str.str());
+            error = true;
+        }
+        if (!error && restart) {
             if (doSpawn) {
-                cacheModuleValues(spawn.migrateId(), notify.spawnId());
+                if (!cacheModuleValues(spawn.migrateId(), notify.spawnId())) {
+                    std::stringstream str;
+                    str << "cannot migrate module with id " << spawn.migrateId();
+                    sendError(str.str());
+                    error = true;
+                }
             }
-            killOldModule(spawn.migrateId());
+            if (!error)
+                killOldModule(spawn.migrateId());
+        }
+        if (error) {
+            notify.setSpawnId(Id::Invalid);
         }
         CERR << "sendManager: " << notify << std::endl;
         notify.setDestId(Id::Broadcast);
@@ -1809,13 +1826,13 @@ bool Hub::handlePriv(const message::Spawn &spawnRecv)
             notify.setMirroringId(mirroredId);
         m_stateTracker.handle(notify, nullptr);
         sendAll(notify);
-        if (doSpawn) {
+        if (!error && doSpawn) {
             notify.setDestId(spawn.hubId());
             CERR << "doSpawn: sendManager: " << notify << std::endl;
             sendManager(notify, spawn.hubId());
         }
 
-        if (doSpawn && shouldMirror) {
+        if (!error && doSpawn && shouldMirror) {
             for (auto &hubid: m_stateTracker.getHubs()) {
                 if (hubid == spawn.hubId())
                     continue;
@@ -1953,10 +1970,15 @@ bool Hub::startCleaner()
     return true;
 }
 
-void Hub::cacheModuleValues(int oldModuleId, int newModuleId)
+bool Hub::cacheModuleValues(int oldModuleId, int newModuleId)
 {
     using namespace vistle::message;
+    if (!Id::isModule(oldModuleId))
+        return false;
     assert(Id::isModule(oldModuleId));
+    auto running = m_stateTracker.getRunningList();
+    if (std::find(running.begin(), running.end(), oldModuleId) == running.end())
+        return false;
     auto paramNames = m_stateTracker.getParameters(oldModuleId);
     for (const auto &pn: paramNames) {
         auto p = m_stateTracker.getParameter(oldModuleId, pn);
@@ -1978,6 +2000,7 @@ void Hub::cacheModuleValues(int oldModuleId, int newModuleId)
             m_sendAfterSpawn[newModuleId].emplace_back(cm);
         }
     }
+    return true;
 }
 
 void Hub::killOldModule(int migratedId)

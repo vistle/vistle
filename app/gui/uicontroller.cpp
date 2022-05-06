@@ -79,7 +79,7 @@ UiController::UiController(int argc, char *argv[], QObject *parent): QObject(par
     setCurrentFile(QString::fromStdString(m_ui->state().loadedWorkflowFile()));
 
     ///\todo declare the scene pointer in the header, then de-allocate in the destructor.
-    m_scene = new DataFlowNetwork(m_vistleConnection.get(), m_mainWindow->dataFlowView());
+    m_scene = new DataFlowNetwork(m_vistleConnection.get(), m_mainWindow, m_mainWindow->dataFlowView());
     m_mainWindow->dataFlowView()->setScene(m_scene);
     connect(m_mainWindow->dataFlowView(), SIGNAL(executeDataFlow()), SLOT(executeDataFlowNetwork()));
 

@@ -45,6 +45,7 @@ public:
     ~ModuleBrowser();
     bool eventFilter(QObject *object, QEvent *event) override;
     bool handleKeyPress(QKeyEvent *event);
+    std::vector<std::pair<int, QString>> getHubs() const;
 public slots:
     void addHub(int hub, QString hubName, int nranks, QString address, QString logname, QString realname);
     void removeHub(int hub);

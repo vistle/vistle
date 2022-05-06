@@ -94,7 +94,7 @@ private:
     bool startCleaner();
     bool processScript(const std::string &filename, bool barrierAfterLoad, bool executeModules);
     bool processStartupScripts();
-    void cacheModuleValues(int oldModuleId, int newModuleId);
+    bool cacheModuleValues(int oldModuleId, int newModuleId);
     void killOldModule(int migratedId);
     void sendInfo(const std::string &s);
     void sendError(const std::string &s);

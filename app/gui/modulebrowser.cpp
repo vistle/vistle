@@ -129,6 +129,16 @@ void ModuleBrowser::prepareMenu(const QPoint &pos)
     }
 }
 
+std::vector<std::pair<int, QString>> ModuleBrowser::getHubs() const
+{
+    std::vector<std::pair<int, QString>> hubs;
+
+    for (const auto &h: hubItems) {
+        hubs.emplace_back(h.first, h.second->text(0));
+    }
+    return hubs;
+}
+
 void ModuleBrowser::addHub(int hub, QString hubName, int nranks, QString address, QString logname, QString realname)
 {
     auto it = hubItems.find(hub);

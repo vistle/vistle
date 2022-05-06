@@ -17,6 +17,7 @@
 #include "connection.h"
 #include "vistleconsole.h"
 #include "dataflowview.h"
+#include "mainwindow.h"
 
 #include <vistle/core/statetracker.h>
 
@@ -32,7 +33,7 @@ namespace gui {
  * \brief Scene::Scene
  * \param parent
  */
-DataFlowNetwork::DataFlowNetwork(vistle::VistleConnection *conn, QObject *parent)
+DataFlowNetwork::DataFlowNetwork(vistle::VistleConnection *conn, MainWindow *mw, QObject *parent)
 : QGraphicsScene(parent)
 , m_Line(nullptr)
 , startPort(nullptr)
@@ -40,6 +41,7 @@ DataFlowNetwork::DataFlowNetwork(vistle::VistleConnection *conn, QObject *parent
 , endModule(nullptr)
 , m_vistleConnection(conn)
 , m_state(conn->ui().state())
+, m_mainWindow(mw)
 {
     // Initialize starting scene information.
     m_LineColor = Qt::black;
@@ -54,6 +56,13 @@ DataFlowNetwork::DataFlowNetwork(vistle::VistleConnection *conn, QObject *parent
 DataFlowNetwork::~DataFlowNetwork()
 {
     m_moduleList.clear();
+}
+
+ModuleBrowser *DataFlowNetwork::moduleBrowser() const
+{
+    if (!m_mainWindow)
+        return nullptr;
+    return m_mainWindow->moduleBrowser();
 }
 
 float abs(const QPointF p)
