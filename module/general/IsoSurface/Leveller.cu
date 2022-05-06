@@ -631,6 +631,39 @@ struct ComputeOutput {
               }
           }
       } else if (m_data.m_isPoly) {
+          const Index CellBegin = m_data.m_el[CellNr];
+          const Index CellEnd = m_data.m_el[CellNr + 1];
+          const auto &cl = &m_data.m_cl[0];
+
+          Index outIdx = m_data.m_LocationList[ValidCellIndex];
+          Index c1 = cl[CellEnd - 1];
+          for (Index k = CellBegin; k < CellEnd; ++k) {
+              const Index c2 = cl[k];
+
+              Scalar d1 = m_data.m_isoFunc(c1);
+              Scalar d2 = m_data.m_isoFunc(c2);
+
+              bool smallToBig = d1 <= m_data.m_isovalue && d2 > m_data.m_isovalue;
+              bool bigToSmall = d1 > m_data.m_isovalue && d2 <= m_data.m_isovalue;
+              if (smallToBig || bigToSmall) {
+                  Scalar t = interpolation_weight<Scalar>(d1, d2, m_data.m_isovalue);
+                  for (int i = 0; i < m_data.m_numInVertData; i++) {
+                      Scalar v = lerp(m_data.m_inVertPtr[i][c1], m_data.m_inVertPtr[i][c2], t);
+                      m_data.m_outVertPtr[i][outIdx] = v;
+                  }
+                  for (int i = 0; i < m_data.m_numInVertDataI; i++) {
+                      Index vI = lerp(m_data.m_inVertPtrI[i][c1], m_data.m_inVertPtrI[i][c2], t);
+                      m_data.m_outVertPtrI[i][outIdx] = vI;
+                  }
+                  for (int i = 0; i < m_data.m_numInVertDataB; i++) {
+                      Byte vB = lerp(m_data.m_inVertPtrB[i][c1], m_data.m_inVertPtrB[i][c2], t);
+                      m_data.m_outVertPtrB[i][outIdx] = vB;
+                  }
+
+                  ++outIdx;
+              }
+              c1 = c2;
+          }
       } else {
 
           auto cl = vistle::StructuredGridBase::cellVertices(CellNr, m_data.m_nvert);
@@ -708,138 +741,127 @@ struct ComputeOutput {
 
 template<class Data>
 struct SelectCells {
+    Data &m_data;
+    SelectCells(Data &data): m_data(data) {}
 
-   typedef float argument_type;
-   typedef float result_type;
-   Data &m_data;
-   SelectCells(Data &data) : m_data(data) {}
+    // for unstructured grids
+    __host__ __device__ int operator()(const thrust::tuple<Index, Index, Byte> iCell) const
+    {
+        int havelower = 0;
+        int havehigher = 0;
+        Index Cell = iCell.get<0>();
+        Index nextCell = iCell.get<1>();
+        Byte cellType = iCell.get<2>();
+        if (cellType & UnstructuredGrid::GHOST_BIT)
+            return 0;
+        // also for POLYHEDRON
+        for (Index i = Cell; i < nextCell; i++) {
+            Scalar val = m_data.m_isoFunc(m_data.m_cl[i]);
+            if (val > m_data.m_isovalue) {
+                havelower = 1;
+                if (havehigher)
+                    return 1;
+            } else {
+                havehigher = 1;
+                if (havelower)
+                    return 1;
+            }
+        }
+        return 0;
+    }
 
-   // for unstructured grids
-   __host__ __device__ int operator()(const thrust::tuple<Index,Index,Byte> iCell) const {
+    // for all types of structured grids
+    __host__ __device__ int operator()(const Index Cell) const
+    {
+        auto cc = vistle::StructuredGridBase::cellCoordinates(Cell, m_data.m_nvert);
+        for (int c = 0; c < 3; ++c) {
+            if (cc[c] < m_data.m_nghost[c][0])
+                return 0;
+            if (cc[c] + m_data.m_nghost[c][1] + 1 >= m_data.m_nvert[c])
+                return 0;
+        }
 
-      int havelower = 0;
-      int havehigher = 0;
-      Index Cell = iCell.get<0>();
-      Index nextCell = iCell.get<1>();
-      Byte cellType = iCell.get<2>();
-      if (cellType & UnstructuredGrid::GHOST_BIT)
-          return 0;
-          // also for POLYHEDRON
-          for (Index i=Cell; i<nextCell; i++) {
-              float val = m_data.m_isoFunc(m_data.m_cl[i]);
-              if (val>m_data.m_isovalue) {
-                  havelower=1;
-                  if (havehigher)
-                      return 1;
-              } else {
-                  havehigher=1;
-                  if (havelower)
-                      return 1;
-              }
-      }
-      return 0;
-   }
-
-   // for all types of structured grids
-   __host__ __device__ int operator()(const Index Cell) const {
-
-      auto cc = vistle::StructuredGridBase::cellCoordinates(Cell, m_data.m_nvert);
-      for (int c=0; c<3; ++c) {
-          if (cc[c] < m_data.m_nghost[c][0])
-              return 0;
-          if (cc[c]+m_data.m_nghost[c][1]+1 >= m_data.m_nvert[c])
-              return 0;
-      }
-
-      auto verts = vistle::StructuredGridBase::cellVertices(Cell, m_data.m_nvert);
-      int havelower = 0;
-      int havehigher = 0;
-      for (int i=0; i<8; ++i) {
-         float val = m_data.m_isoFunc(verts[i]);
-         if (val>m_data.m_isovalue) {
-            havelower=1;
-            if (havehigher)
-               return 1;
-         } else {
-            havehigher=1;
-            if (havelower)
-               return 1;
-         }
-      }
-      return 0;
-   }
+        auto verts = vistle::StructuredGridBase::cellVertices(Cell, m_data.m_nvert);
+        int havelower = 0;
+        int havehigher = 0;
+        for (int i = 0; i < 8; ++i) {
+            Scalar val = m_data.m_isoFunc(verts[i]);
+            if (val > m_data.m_isovalue) {
+                havelower = 1;
+                if (havehigher)
+                    return 1;
+            } else {
+                havehigher = 1;
+                if (havelower)
+                    return 1;
+            }
+        }
+        return 0;
+    }
 };
 
 template<class Data>
 struct SelectCells2D {
+    Data &m_data;
+    SelectCells2D(Data &data): m_data(data) {}
 
-   typedef float argument_type;
-   typedef float result_type;
-   Data &m_data;
-   SelectCells2D(Data &data) : m_data(data) {
-   }
+    // for polygons
+    __host__ __device__ int operator()(const thrust::tuple<Index, Index> iCell) const
+    {
+        int havelower = 0;
+        int havehigher = 0;
+        Index Cell = iCell.get<0>();
+        Index nextCell = iCell.get<1>();
+        for (Index i = Cell; i < nextCell; i++) {
+            Scalar val = m_data.m_isoFunc(m_data.m_cl[i]);
+            if (val > m_data.m_isovalue) {
+                havelower = 1;
+                if (havehigher)
+                    return 1;
+            } else {
+                havehigher = 1;
+                if (havelower)
+                    return 1;
+            }
+        }
+        return 0;
+    }
 
-   // for polygons
-   __host__ __device__ int operator()(const thrust::tuple<Index,Index,Byte> iCell) const {
-
-      int havelower = 0;
-      int havehigher = 0;
-      Index Cell = iCell.get<0>();
-      Index nextCell = iCell.get<1>();
-      for (Index i=Cell; i<nextCell; i++) {
-          Index nv = m_data.m_cl[i];
-          for (Index k=0; k<nv; k++) {
-              ++i;
-              float val = m_data.m_isoFunc(m_data.m_cl[i]);
-              if (val>m_data.m_isovalue) {
-                  havelower=1;
-                  if (havehigher)
-                      return 1;
-              } else {
-                  havehigher=1;
-                  if (havelower)
-                      return 1;
-              }
-          }
-      }
-      return 0;
-   }
-
-   // for triangles and quads
-   __host__ __device__ int operator()(const Index Cell) const {
-
-       int havelower = 0;
-       int havehigher = 0;
-       Index begin = Cell*m_data.m_numVertPerCell, end = begin+m_data.m_numVertPerCell;
-       if (m_data.m_cl) {
-           for (Index i=begin; i<end; ++i) {
-               float val = m_data.m_isoFunc(m_data.m_cl[i]);
-               if (val>m_data.m_isovalue) {
-                   havelower=1;
-                   if (havehigher)
-                       return 1;
-               } else {
-                   havehigher=1;
-                   if (havelower)
-                       return 1;
-               }
-           }
-       } else {
-           for (Index i=begin; i<end; ++i) {
-               float val = m_data.m_isoFunc(i);
-               if (val>m_data.m_isovalue) {
-                   havelower=1;
-                   if (havehigher)
-                       return 1;
-               } else {
-                   havehigher=1;
-                   if (havelower)
-                       return 1;
-               }
-           }
-       }
-       return 0;
-   }
+    // for triangles and quads
+    __host__ __device__ int operator()(const Index Cell) const
+    {
+        int havelower = 0;
+        int havehigher = 0;
+        Index begin = Cell * m_data.m_numVertPerCell, end = begin + m_data.m_numVertPerCell;
+        if (m_data.m_cl) {
+            for (Index i = begin; i < end; ++i) {
+                Scalar val = m_data.m_isoFunc(m_data.m_cl[i]);
+                if (val > m_data.m_isovalue) {
+                    havelower = 1;
+                    if (havehigher)
+                        return 1;
+                } else {
+                    havehigher = 1;
+                    if (havelower)
+                        return 1;
+                }
+            }
+        } else {
+            for (Index i = begin; i < end; ++i) {
+                Scalar val = m_data.m_isoFunc(i);
+                if (val > m_data.m_isovalue) {
+                    havelower = 1;
+                    if (havehigher)
+                        return 1;
+                } else {
+                    havehigher = 1;
+                    if (havelower)
+                        return 1;
+                }
+            }
+        }
+        return 0;
+    }
 };
 
 
@@ -934,18 +956,18 @@ struct ComputeOutputSizes {
            const auto &cl = m_data.m_cl;
            Index begin = m_data.m_el[CellNr], end = m_data.m_el[CellNr+1];
            Index vertcounter = 0;
-           Index prev = cl[end];
+           Index prev = cl[end - 1];
            for (Index i = begin; i < end; ++i) {
-               Index v = cl[i];
+               const Index v = cl[i];
                if (m_data.m_isoFunc(prev) <= m_data.m_isovalue && m_data.m_isoFunc(v) > m_data.m_isovalue) {
                    ++vertcounter;
-               } else if(m_data.m_isoFunc(prev) > m_data.m_isovalue && m_data.m_isoFunc(v) <= m_data.m_isovalue) {
+               } else if (m_data.m_isoFunc(prev) > m_data.m_isovalue && m_data.m_isoFunc(v) <= m_data.m_isovalue) {
                    ++vertcounter;
                }
-
                prev = v;
            }
-           numVerts = vertcounter + vertcounter/2;
+           assert(vertcounter % 2 == 0);
+           numVerts = vertcounter;
        } else {
            auto verts = vistle::StructuredGridBase::cellVertices(CellNr, m_data.m_nvert);
            assert(verts.size() <= 8);
@@ -1008,20 +1030,23 @@ Index Leveller::calculateSurface(Data &data) {
     } else {
         data.m_SelectedCellVector.resize(nelem);
 
-        typedef thrust::tuple<typename Data::IndexIterator, typename Data::IndexIterator, typename Data::TypeIterator>
-            Iteratortuple;
-        typedef thrust::zip_iterator<Iteratortuple> ZipIterator;
 
         typename Data::VectorIndexIterator end;
         if (m_strbase) {
             end = thrust::copy_if(pol(), first, last, thrust::counting_iterator<Index>(0),
                                   data.m_SelectedCellVector.begin(), SelectCells<Data>(data));
         } else if (m_unstr) {
+            typedef thrust::tuple<typename Data::IndexIterator, typename Data::IndexIterator,
+                                  typename Data::TypeIterator>
+                Iteratortuple;
+            typedef thrust::zip_iterator<Iteratortuple> ZipIterator;
             ZipIterator ElTupleVec(thrust::make_tuple(&data.m_el[0], &data.m_el[1], &data.m_tl[0]));
             end = thrust::copy_if(pol(), first, last, ElTupleVec, data.m_SelectedCellVector.begin(),
                                   SelectCells<Data>(data));
         } else if (m_poly) {
-            ZipIterator ElTupleVec(thrust::make_tuple(&data.m_el[0], &data.m_el[1], &data.m_tl[0]));
+            typedef thrust::tuple<typename Data::IndexIterator, typename Data::IndexIterator> Iteratortuple;
+            typedef thrust::zip_iterator<Iteratortuple> ZipIterator;
+            ZipIterator ElTupleVec(thrust::make_tuple(&data.m_el[0], &data.m_el[1]));
             end = thrust::copy_if(pol(), first, last, ElTupleVec, data.m_SelectedCellVector.begin(),
                                   SelectCells2D<Data>(data));
         } else if (m_tri || m_quad) {
@@ -1033,7 +1058,6 @@ Index Leveller::calculateSurface(Data &data) {
         data.m_SelectedCellVector.resize(numSelectedCells);
         data.m_SelectedCellVectorValid = true;
     }
-    data.m_SelectedCellVector.resize(numSelectedCells);
     data.m_caseNums.resize(numSelectedCells);
     data.m_numVertices.resize(numSelectedCells);
     data.m_LocationList.resize(numSelectedCells);
@@ -1138,26 +1162,38 @@ bool Leveller::process() {
        IsoDataFunctor isofunc = m_isocontrol.newFunc(m_grid->getTransform(), &dataobj->x()[0]);
 #endif
 
-         HostData HD =
-                 m_unstr ? HostData(m_isoValue, isofunc,
-                                    m_unstr->el(), m_unstr->tl(), m_unstr->cl(), m_unstr->x(), m_unstr->y(), m_unstr->z())
-                 : m_strbase ? HostData(m_isoValue, isofunc,
-                                        dims[0], dims[1], dims[2], coords[0], coords[1], coords[2])
-                 : m_poly ? HostData(m_isoValue, isofunc,
-                                     m_poly->el(), m_poly->cl(), m_poly->x(), m_poly->y(), m_poly->z())
-                 : m_quad ? HostData(m_isoValue, isofunc, 4,
-                                     m_quad->cl(), m_quad->x(), m_quad->y(), m_quad->z())
-                 : HostData(m_isoValue, isofunc, 3,
-                            m_tri->cl(), m_tri->x(), m_tri->y(), m_tri->z());
-         HD.setHaveCoords(m_coord ? true : false);
-         if (m_strbase) {
-             Index ghost[3][2];
-             for (int c=0; c<3; ++c) {
-                 ghost[c][0] = m_strbase->getNumGhostLayers(c, StructuredGridBase::Bottom);
-                 ghost[c][1] = m_strbase->getNumGhostLayers(c, StructuredGridBase::Top);
-             }
-             HD.setGhostLayers(ghost);
-         }
+       std::unique_ptr<HostData> HD_ptr;
+       if (m_unstr) {
+           HD_ptr = std::make_unique<HostData>(m_isoValue, isofunc, m_unstr->el(), m_unstr->tl(), m_unstr->cl(),
+                                               m_unstr->x(), m_unstr->y(), m_unstr->z());
+
+       } else if (m_strbase) {
+           HD_ptr = std::make_unique<HostData>(m_isoValue, isofunc, dims[0], dims[1], dims[2], coords[0], coords[1],
+                                               coords[2]);
+
+       } else if (m_poly) {
+           HD_ptr = std::make_unique<HostData>(m_isoValue, isofunc, m_poly->el(), m_poly->cl(), m_poly->x(),
+                                               m_poly->y(), m_poly->z());
+
+       } else if (m_quad) {
+           HD_ptr =
+               std::make_unique<HostData>(m_isoValue, isofunc, 4, m_quad->cl(), m_quad->x(), m_quad->y(), m_quad->z());
+
+       } else if (m_tri) {
+           HD_ptr = std::make_unique<HostData>(m_isoValue, isofunc, 3, m_tri->cl(), m_tri->x(), m_tri->y(), m_tri->z());
+       } else {
+           return false;
+       }
+       HostData &HD = *HD_ptr;
+       HD.setHaveCoords(m_coord ? true : false);
+       if (m_strbase) {
+           Index ghost[3][2];
+           for (int c = 0; c < 3; ++c) {
+               ghost[c][0] = m_strbase->getNumGhostLayers(c, StructuredGridBase::Bottom);
+               ghost[c][1] = m_strbase->getNumGhostLayers(c, StructuredGridBase::Top);
+           }
+           HD.setGhostLayers(ghost);
+       }
          HD.setComputeNormals(m_computeNormals);
 #ifdef CUTTINGSURFACE
          if (m_candidateCells) {
