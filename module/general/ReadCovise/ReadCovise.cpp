@@ -91,7 +91,8 @@ ReadCovise::ReadCovise(const std::string &name, int moduleID, mpi::communicator 
         m_numTime[i] = -1;
     }
 
-    setParallelizationMode(ParallelizeTimesteps);
+    setParallelizationMode(ParallelizeTimeAndBlocks);
+    setAllowTimestepDistribution(true);
 
 #ifdef READ_DIRECTORY
     observeParameter(m_directory);

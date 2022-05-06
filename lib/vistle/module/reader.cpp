@@ -308,10 +308,6 @@ int Reader::timeIncrement() const
 void Reader::setParallelizationMode(Reader::ParallelizationMode mode)
 {
     m_parallel = mode;
-
-    if (m_parallel == ParallelizeTimesteps) {
-        setAllowTimestepDistribution(true);
-    }
 }
 
 void Reader::setCollectiveIo(bool enable)
@@ -330,7 +326,7 @@ void Reader::setHandlePartitions(bool enable)
 /**
  * @brief Allow timestep distribution across MPI processes.
  *
- * @param allow Adds a bool parameter to the reader if true and enables it when parallem mode is set to ParallelizeTimesteps.
+ * @param allow Adds a bool parameter to the reader if true
  */
 void Reader::setAllowTimestepDistribution(bool allow)
 {
@@ -338,8 +334,8 @@ void Reader::setAllowTimestepDistribution(bool allow)
     if (m_allowTimestepDistribution && !m_collectiveIo) {
         if (!m_distributeTime) {
             setCurrentParameterGroup("Reader");
-            m_distributeTime = addIntParameter("distribute_time", "distribute timesteps across MPI ranks",
-                                               m_parallel == ParallelizeTimesteps, Parameter::Boolean);
+            m_distributeTime =
+                addIntParameter("distribute_time", "distribute timesteps across MPI ranks", false, Parameter::Boolean);
             setCurrentParameterGroup();
         }
     } else {
