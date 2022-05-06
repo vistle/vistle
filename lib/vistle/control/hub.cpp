@@ -379,7 +379,7 @@ bool Hub::init(int argc, char *argv[])
 
     if (vm.count("proxy") > 0) {
         if (m_inManager) {
-            CERR << "proxy-onlny mode is not possible when running in manager" << std::endl;
+            CERR << "proxy-only mode is not possible when running in manager" << std::endl;
             return false;
         }
         if (!m_isMaster) {
