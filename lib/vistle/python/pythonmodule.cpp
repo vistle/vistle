@@ -205,11 +205,14 @@ static std::string spawnAsyncSimple(const char *module, int numSpawn = -1, int b
     return spawnAsync(message::Id::MasterHub, module, numSpawn, baseRank, rankSkip);
 }
 
-static std::string migrateAsync(int migrateId, int toHub, std::string name = std::string())
+static std::string migrateAsync(int migrateId, int toHub = message::Id::Invalid, std::string name = std::string())
 {
 #ifdef DEBUG
     std::cerr << "Python: migrateAsync " << name << ":" << migrateId << " to hub " << toHub << std::endl;
 #endif
+
+    if (toHub == message::Id::Invalid)
+        toHub = state().getHub(migrateId);
 
     if (name.empty())
         name = state().getModuleName(migrateId);
@@ -254,12 +257,30 @@ static int spawnSimple(const char *module)
     return spawn(message::Id::MasterHub, module);
 }
 
-static int migrate(int migrateId, int toHub, std::string name = std::string())
+static int migrate(int migrateId, int toHub)
 {
 #ifdef DEBUG
-    std::cerr << "Python: migrate " << name << ":" << migrateId << " to hub " << toHub << std::endl;
+    std::cerr << "Python: migrate " << migrateId << " to hub " << toHub << std::endl;
 #endif
-    const std::string uuid = migrateAsync(migrateId, toHub, name);
+    const std::string uuid = migrateAsync(migrateId, toHub);
+    return waitForSpawn(uuid);
+}
+
+static int restart(int migrateId)
+{
+#ifdef DEBUG
+    std::cerr << "Python: restart " << migrateId << std::endl;
+#endif
+    const std::string uuid = migrateAsync(migrateId);
+    return waitForSpawn(uuid);
+}
+
+static int replace(int migrateId, std::string name)
+{
+#ifdef DEBUG
+    std::cerr << "Python: replace " << migrateId << " with " << name << std::endl;
+#endif
+    const std::string uuid = migrateAsync(migrateId, message::Id::Invalid, name);
     return waitForSpawn(uuid);
 }
 
@@ -1357,7 +1378,15 @@ PY_MODULE(_vistle, m)
     m.def("migrate", migrate,
           "migrate module `id` to hub `hub`\n"
           "return its ID",
-          "id"_a, "hub"_a, "modulename"_a = "");
+          "id"_a, "hub"_a);
+    m.def("restart", restart,
+          "restart module `id`\n"
+          "return its ID",
+          "id"_a);
+    m.def("replace", replace,
+          "replace module `id` with `modulename`\n"
+          "return its ID",
+          "id"_a, "modulename"_a);
     m.def("migrateAsync", migrateAsync,
           "migrate module `id` to hub `hub`\n"
           "return its ID",
