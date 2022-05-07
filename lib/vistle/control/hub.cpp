@@ -1983,9 +1983,15 @@ bool Hub::cacheModuleValues(int oldModuleId, int newModuleId)
     for (const auto &pn: paramNames) {
         auto p = m_stateTracker.getParameter(oldModuleId, pn);
         auto pm = SetParameter(newModuleId, p->getName(), p);
+        pm.setDelayed();
         pm.setDestId(newModuleId);
         m_sendAfterSpawn[newModuleId].emplace_back(pm);
     }
+    // apply all delayed parameters
+    auto pm = SetParameter(newModuleId);
+    pm.setDestId(newModuleId);
+    m_sendAfterSpawn[newModuleId].emplace_back(pm);
+
     auto inputs = m_stateTracker.portTracker()->getConnectedInputPorts(oldModuleId);
     for (const auto &in: inputs) {
         for (const auto &from: in->connections()) {
@@ -1993,6 +1999,7 @@ bool Hub::cacheModuleValues(int oldModuleId, int newModuleId)
             m_sendAfterSpawn[newModuleId].emplace_back(cm);
         }
     }
+
     auto outputs = m_stateTracker.portTracker()->getConnectedOutputPorts(oldModuleId);
     for (const auto &out: outputs) {
         for (const auto &to: out->connections()) {
@@ -2000,6 +2007,7 @@ bool Hub::cacheModuleValues(int oldModuleId, int newModuleId)
             m_sendAfterSpawn[newModuleId].emplace_back(cm);
         }
     }
+
     return true;
 }
 
