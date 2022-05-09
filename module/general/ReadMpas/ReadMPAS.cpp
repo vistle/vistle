@@ -27,11 +27,16 @@ using namespace vistle;
 static std::mutex netcdf_mutex; // avoid simultaneous access to NetCDF library
 #define LOCK_NETCDF(comm) \
     std::unique_lock<std::mutex> netcdf_guard(netcdf_mutex, std::defer_lock); \
-    if (comm.rank() == 0) \
+    if ((comm).rank() == 0) \
         netcdf_guard.lock(); \
-    comm.barrier();
+    (comm).barrier();
+#define UNLOCK_NETCDF(comm) \
+    (comm).barrier(); \
+    if (netcdf_guard) \
+        netcdf_guard.unlock();
 #else
 #define LOCK_NETCDF(comm)
+#define UNLOCK_NETCDF(comm)
 #endif
 #else
 using namespace PnetCDF;
@@ -40,11 +45,16 @@ using namespace PnetCDF;
 static std::mutex pnetcdf_mutex; // avoid simultaneous access to PnetCDF library, if not thread-safe
 #define LOCK_NETCDF(comm) \
     std::unique_lock<std::mutex> pnetcdf_guard(pnetcdf_mutex, std::defer_lock); \
-    if (comm.rank() == 0) \
+    if ((comm).rank() == 0) \
         pnetcdf_guard.lock(); \
-    comm.barrier();
+    (comm).barrier();
+#define UNLOCK_NETCDF(comm) \
+    (comm).barrier(); \
+    if (pnetcdf_guard) \
+        pnetcdf_guard.unlock();
 #else
 #define LOCK_NETCDF(comm)
+#define UNLOCK_NETCDF(comm)
 #endif
 #endif
 
@@ -285,9 +295,8 @@ ReadMPAS::ReadMPAS(const std::string &name, int moduleID, mpi::communicator comm
                                  cm, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_cellMode, CellMode);
 
-    //setParallelizationMode(ParallelizeBlocks);
-    setParallelizationMode(Serial); // for MPI usage in PnetCDF
-    //setReducePolicy(message::ReducePolicy::ReducePolicy::OverAll);
+    setParallelizationMode(ParallelizeBlocks);
+    setCollectiveIo(true); // for MPI usage in NetCDF/PnetCDF
 
     observeParameter(m_gridFile);
     observeParameter(m_zGridFile);
@@ -304,8 +313,6 @@ ReadMPAS::~ReadMPAS()
 // set number of partitions and timesteps
 bool ReadMPAS::prepareRead()
 {
-    LOCK_NETCDF(comm());
-
     switch (m_cellMode->getValue()) {
     case Voronoi:
         m_voronoiCells = true;
@@ -386,6 +393,8 @@ bool ReadMPAS::prepareRead()
     }
     setPartitions(finalNumberOfParts);
 
+    LOCK_NETCDF(comm());
+
     //set timesteps
     dataFileList.clear();
     if (hasDataFile) {
@@ -449,9 +458,11 @@ bool ReadMPAS::prepareRead()
         setTimesteps(0);
     }
 
+    UNLOCK_NETCDF(comm());
+
     gridList.clear();
     gridList.resize(finalNumberOfParts);
-    numCellsB.clear();
+
     numCellsB.resize(finalNumberOfParts, 0);
     numCornB.clear();
     numCornB.resize(finalNumberOfParts, 0);
@@ -839,8 +850,7 @@ bool ReadMPAS::getData(const NcmpiFile &filename, std::vector<float> *dataValues
 //start all the reading
 bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
 {
-    LOCK_NETCDF(comm());
-
+    assert(token.comm());
     assert(gridList.size() == Index(numPartitions()));
     auto &idxCells = idxCellsInBlock[block];
     if (timestep >= 0) {
@@ -848,10 +858,12 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
     }
 
     if (!gridList[block]) { //if grid has not been created -> do it
+        LOCK_NETCDF(*token.comm());
+
         assert(timestep == -1);
 
 #ifdef USE_NETCDF
-        NcFile ncid = NcFile::open(firstFileName, comm());
+        NcFile ncid = NcFile::open(firstFileName, *token.comm());
         if (!ncid) {
             return false;
         }
@@ -884,7 +896,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
         size_t numMaxLevels = 1;
         //verify that dimensions in grid file and data file are matching
         if (hasDataFile) {
-            auto ncdataid = NcFile::open(dataFileList.at(0), comm());
+            auto ncdataid = NcFile::open(dataFileList.at(0), *token.comm());
             if (!ncdataid) {
                 return false;
             }
@@ -902,7 +914,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
         if (numLevels < 1)
             return false;
 #else
-        NcmpiFile ncFirstFile(comm(), firstFileName, NcmpiFile::read);
+        NcmpiFile ncFirstFile(*token.comm(), firstFileName, NcmpiFile::read);
         assert(dimensionExists("nCells", ncFirstFile));
         // first of all: validate that all neccesary dimensions and variables exist
         if (!dimensionExists("nCells", ncFirstFile) || !dimensionExists("nVertices", ncFirstFile) ||
@@ -945,7 +957,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
         size_t numMaxLevels = 1;
         //verify that dimensions in grid file and data file are matching
         if (hasDataFile) {
-            NcmpiFile ncDataFile(comm(), /*dataFileName.c_str()*/ dataFileList.at(0), NcmpiFile::read);
+            NcmpiFile ncDataFile(*token.comm(), /*dataFileName.c_str()*/ dataFileList.at(0), NcmpiFile::read);
             // const NcmpiDim &dimCellsData = ncDataFile.getDim("nCells");
             // numCells = dimCellsData.getSize();
             if (dimensionExists("nVertLevels", ncDataFile)) {
@@ -1231,7 +1243,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
 
             std::vector<size_t> startZ{0, 0};
             std::vector<size_t> stopZ{size_t(numCells), numZLevels};
-            auto nczid = NcFile::open(zGridFileName, comm());
+            auto nczid = NcFile::open(zGridFileName, *token.comm());
             if (!nczid) {
                 return false;
             }
@@ -1255,7 +1267,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
 
             std::vector<MPI_Offset> startZ{0, 0};
             std::vector<MPI_Offset> stopZ{MPI_Offset(numCells), numZLevels};
-            NcmpiFile ncZGridFile(comm(), zGridFileName.c_str(), NcmpiFile::read);
+            NcmpiFile ncZGridFile(*token.comm(), zGridFileName.c_str(), NcmpiFile::read);
             if (!dimensionExists("nCells", ncZGridFile)) {
                 sendError("no nCells dimension in zGrid file %s", zGridFileName.c_str());
                 return true;
@@ -1282,6 +1294,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
                 assert(z == zGrid.data() + zGrid.size());
             }
         }
+        UNLOCK_NETCDF(*token.comm());
 
         if (m_voronoiCells) {
             Index *cl = nullptr;
@@ -1513,40 +1526,46 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
             if (ft == data_type) {
                 if (timestep < 0)
                     continue;
+
+                LOCK_NETCDF(*token.comm());
 #ifdef USE_NETCDF
-                auto ncid = NcFile::open(dataFileList.at(timestep), comm());
+                auto ncid = NcFile::open(dataFileList.at(timestep), *token.comm());
                 if (!ncid) {
                     return true;
                 }
                 dataValues = getData(ncid, nLevels, dataIdx);
 #else
-                NcmpiFile ncDataFile(comm(), dataFileList.at(timestep).c_str(), NcmpiFile::read);
+                NcmpiFile ncDataFile(*token.comm(), dataFileList.at(timestep).c_str(), NcmpiFile::read);
                 getData(ncDataFile, &dataValues, nLevels, dataIdx);
 #endif
             } else if (ft == zgrid_type) {
                 if (timestep >= 0)
                     continue;
+
+                LOCK_NETCDF(*token.comm());
 #ifdef USE_NETCDF
-                auto nczid = NcFile::open(zGridFileName, comm());
+                auto nczid = NcFile::open(zGridFileName, *token.comm());
                 if (!nczid) {
                     return true;
                 }
                 dataValues = getData(nczid, nLevels, dataIdx);
 #else
-                NcmpiFile ncFirstFile2(comm(), zGridFileName, NcmpiFile::read);
+                NcmpiFile ncFirstFile2(*token.comm(), zGridFileName, NcmpiFile::read);
                 getData(ncFirstFile2, &dataValues, nLevels, dataIdx);
 #endif
             } else {
                 if (timestep >= 0)
                     continue;
+
+                LOCK_NETCDF(*token.comm());
 #ifdef USE_NETCDF
-                auto ncid = NcFile::open(firstFileName, comm());
+                auto ncid = NcFile::open(firstFileName, *token.comm());
                 if (!ncid) {
                     return true;
                 }
                 dataValues = getData(ncid, nLevels, dataIdx);
 #else
-                NcmpiFile ncFirstFile2(comm(), firstFileName, NcmpiFile::read);
+                NcmpiFile ncFirstFile2(*token.comm(), firstFileName, NcmpiFile::read);
                 getData(ncFirstFile2, &dataValues, nLevels, dataIdx);
 #endif
             }
