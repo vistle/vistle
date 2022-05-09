@@ -294,6 +294,17 @@ void Module::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
         m_deleteThisAct->setVisible(true);
     }
     if (scene() && scene()->moduleBrowser()) {
+        auto getModules = [this](int hubId) {
+            auto *mb = scene()->moduleBrowser();
+            auto hub = mb->getHubItem(m_hub);
+            std::vector<QString> modules;
+            for (int i = 0; i < hub->childCount(); i++) {
+                auto name = hub->child(i)->data(0, ModuleBrowser::nameRole()).toString();
+                modules.emplace_back(name);
+            }
+            return modules;
+        };
+
         static std::vector<std::vector<QString>> replaceables{{"COVER", "DisCOVERay", "OsgRenderer"},
                                                               {"Thicken", "SpheresOld", "TubesOld"}};
         m_replaceWithMenu->clear();
@@ -317,18 +328,16 @@ void Module::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
                 connect(act, &QAction::triggered, this, [this, name] { replaceWith(name); });
                 m_replaceWithMenu->addAction(act);
             };
-            for (int i = 0; i < hub->childCount(); i++) {
-                auto name = hub->child(i)->data(0, ModuleBrowser::nameRole()).toString();
+            auto modules = getModules(m_hub);
+            for (const auto &name: modules) {
                 if (name.startsWith(baseName) && m_name != name) {
                     add(name);
                 }
             }
-
             for (const auto &r: replaceables) {
                 auto it = std::find(r.begin(), r.end(), m_name);
                 if (it != r.end()) {
-                    for (int i = 0; i < hub->childCount(); i++) {
-                        auto name = hub->child(i)->data(0, ModuleBrowser::nameRole()).toString();
+                    for (const auto &name: modules) {
                         if (name == m_name)
                             continue;
                         for (auto &m: r) {
@@ -342,18 +351,43 @@ void Module::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
         }
 
         m_moveToMenu->clear();
+        delete m_moveToAct;
+        m_moveToAct = nullptr;
         auto hubs = scene()->moduleBrowser()->getHubs();
+        unsigned nact = 0;
+        int otherHubId = vistle::message::Id::Invalid;
+        QString otherHubName;
         for (auto it = hubs.rbegin(); it != hubs.rend(); ++it) {
             const auto &h = *it;
-            auto act = new QAction(h.second, this);
-            act->setStatusTip(QString("Migrate module to %1 (Id %2)").arg(h.second).arg(h.first));
-            int hubId = h.first;
-            connect(act, &QAction::triggered, this, [this, hubId] { moveToHub(hubId); });
-            m_moveToMenu->addAction(act);
+            if (h.first == m_hub)
+                continue;
+            auto modules = getModules(h.first);
+            if (std::find(modules.begin(), modules.end(), m_name) != modules.end()) {
+                auto act = new QAction(h.second, this);
+                act->setStatusTip(QString("Migrate module to %1 (Id %2)").arg(h.second).arg(h.first));
+                int hubId = h.first;
+                otherHubId = hubId;
+                otherHubName = h.second;
+                connect(act, &QAction::triggered, this, [this, hubId] { moveToHub(hubId); });
+                m_moveToMenu->addAction(act);
+                ++nact;
+            }
         }
-        m_moveToMenu->menuAction()->setVisible(hubs.size() > 1);
+        if (nact > 1) {
+            m_moveToMenu->menuAction()->setVisible(true);
+        } else {
+            m_moveToMenu->menuAction()->setVisible(false);
+            if (otherHubId != vistle::message::Id::Invalid) {
+                m_moveToAct = new QAction(QString("Move to %1").arg(otherHubName), this);
+                m_moveToAct->setStatusTip(QString("Migrate module to %1 (Id %2)").arg(otherHubName).arg(otherHubId));
+                connect(m_moveToAct, &QAction::triggered, this, [this, otherHubId] { moveToHub(otherHubId); });
+                m_moduleMenu->insertAction(m_moveToMenu->menuAction(), m_moveToAct);
+            }
+        }
     } else {
         m_moveToMenu->setVisible(false);
+        if (m_moveToAct)
+            m_moveToAct->setVisible(false);
     }
     m_replaceWithMenu->menuAction()->setVisible(!m_replaceWithMenu->isEmpty());
     m_moduleMenu->popup(event->screenPos());

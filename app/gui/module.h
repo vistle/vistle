@@ -106,6 +106,7 @@ private:
     QAction *m_execAct = nullptr;
     QAction *m_cancelExecAct = nullptr;
     QAction *m_restartAct = nullptr;
+    QAction *m_moveToAct = nullptr;
     QMenu *m_moveToMenu = nullptr;
     QMenu *m_replaceWithMenu = nullptr;
     QAction *m_createModuleGroup = nullptr;
