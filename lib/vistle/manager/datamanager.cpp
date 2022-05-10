@@ -208,6 +208,8 @@ bool DataManager::requestArray(const std::string &referrer, const std::string &a
     }
 
     message::RequestObject req(hub, rank, arrayId, type, referrer);
+    req.setSenderId(Communicator::the().hubId());
+    req.setRank(m_rank);
     send(req);
     return true;
 }
@@ -246,6 +248,8 @@ bool DataManager::requestObject(const message::AddObject &add, const std::string
     }
 
     message::RequestObject req(add, objId);
+    req.setSenderId(Communicator::the().hubId());
+    req.setRank(m_rank);
     send(req);
     return true;
 }
@@ -285,6 +289,8 @@ bool DataManager::requestObject(const std::string &referrer, const std::string &
     }
 
     message::RequestObject req(hub, rank, objId, referrer);
+    req.setSenderId(Communicator::the().hubId());
+    req.setRank(m_rank);
     send(req);
     return true;
 }
@@ -326,10 +332,14 @@ void DataManager::updateStatus()
 {
     std::unique_lock<Communicator> guard(Communicator::the());
 
+    message::DataTransferState m(m_inTransitObjects.size());
+    m.setSenderId(Communicator::the().hubId());
+    m.setRank(m_rank);
+
     if (m_rank == 0)
-        Communicator::the().handleMessage(message::DataTransferState(m_inTransitObjects.size()));
+        Communicator::the().handleMessage(m);
     else
-        Communicator::the().forwardToMaster(message::DataTransferState(m_inTransitObjects.size()));
+        Communicator::the().forwardToMaster(m);
 }
 
 bool DataManager::notifyTransferComplete(const message::AddObject &addObj)
@@ -338,6 +348,8 @@ bool DataManager::notifyTransferComplete(const message::AddObject &addObj)
 
     //CERR << "sending completion notification for " << objName << std::endl;
     message::AddObjectCompleted complete(addObj);
+    complete.setSenderId(Communicator::the().hubId());
+    complete.setRank(m_rank);
     int hub = Communicator::the().clusterManager().idToHub(addObj.senderId());
     return Communicator::the().clusterManager().sendMessage(hub, complete, addObj.rank());
     //return send(complete);
@@ -448,6 +460,8 @@ bool DataManager::handlePriv(const message::RequestObject &req)
 
         snd->setDestId(req.senderId());
         snd->setDestRank(req.rank());
+        snd->setSenderId(Communicator::the().hubId());
+        snd->setRank(m_rank);
         send(*snd, compressed);
         //CERR << "sent " << snd->payloadSize() << "(" << snd->payloadRawSize() << ") bytes for " << req << " with " << *snd << std::endl;
 
