@@ -928,7 +928,8 @@ bool StateTracker::handlePriv(const message::Connect &connect)
                                            connect.getPortBName());
     }
 
-    computeHeights();
+    if (ret)
+        computeHeights();
 
     return ret;
 }
@@ -946,7 +947,8 @@ bool StateTracker::handlePriv(const message::Disconnect &disconnect)
                                               disconnect.getModuleB(), disconnect.getPortBName());
     }
 
-    computeHeights();
+    if (ret)
+        computeHeights();
 
     return ret;
 }
