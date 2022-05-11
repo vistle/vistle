@@ -21,7 +21,7 @@
 
 #if defined(_WIN32)
 #define V_UTILMPIEXPORT
-#define V_UTILMPIEXPORT 
+#define V_UTILMPIEXPORT
 #elif defined(vistle_util_mpi_EXPORTS)
 #define V_UTILMPIEXPORT V_EXPORT
 #else
