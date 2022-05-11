@@ -168,6 +168,10 @@ bool Identify::verifyMac(bool compareSessionData) const
     if (compareSessionData) {
         auto s = crypto::session_data();
         if (memcmp(s.data(), m_session_data.data(), std::min(s.size(), m_session_data.size())) != 0) {
+            std::vector<uint8_t> session_data(m_session_data.begin(), m_session_data.end());
+            std::cerr << "Identify::verifyMac: session data comparison failed: size is " << m_session_data.size()
+                      << ", expected size " << s.size() << ", data is '" << crypto::hex_encode(session_data)
+                      << "', expected '" << crypto::hex_encode(s) << "'" << std::endl;
             return false;
         }
     }
@@ -179,7 +183,11 @@ bool Identify::verifyMac(bool compareSessionData) const
 
     std::vector<uint8_t> mac(m_mac.size());
     memcpy(mac.data(), m_mac.data(), mac.size());
-    return crypto::verify_mac(static_cast<const void *>(buf.data()), sizeof(*this), key, mac);
+    if (!crypto::verify_mac(static_cast<const void *>(buf.data()), sizeof(*this), key, mac)) {
+        std::cerr << "Identify::verifyMac: verification with Botan failed" << std::endl;
+        return false;
+    }
+    return true;
 }
 
 AddHub::AddHub(int id, const std::string &name)

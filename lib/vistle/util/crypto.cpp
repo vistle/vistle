@@ -160,6 +160,11 @@ bool verify_mac(const void *data, size_t length, const std::vector<uint8_t> &key
     return mac_algo->verify_mac(mac.data(), mac.size());
 }
 
+std::string hex_encode(const std::vector<uint8_t> &data)
+{
+    return Botan::hex_encode(data.data(), data.size());
+}
+
 const std::vector<uint8_t> &session_data()
 {
     std::unique_lock<std::recursive_mutex> guard(s_mutex);
