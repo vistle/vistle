@@ -63,6 +63,17 @@ static std::mutex pnetcdf_mutex; // avoid simultaneous access to PnetCDF library
 #define MSL 6371229.0 //sphere radius on mean sea level (earth radius)
 #define MAX_VERT 3 // vertex degree
 
+static const char *DimNCells = "nCells";
+static const char *DimNVertices = "nVertices";
+static const char *DimMaxEdges = "maxEdges";
+static const char *DimNVertLevels = "nVertLevels";
+
+static const char *VarCellsOnCell = "cellsOnCell";
+static const char *VarCellsOnVertex = "cellsOnVertex";
+static const char *VarVerticesOnCell = "verticesOnCell";
+static const char *VarNEdgesOnCell = "nEdgesOnCell";
+static const char *VarZgrid = "zgrid";
+
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(CellMode, (Voronoi)(Delaunay)(DelaunayProjected))
 
 #ifdef USE_NETCDF
@@ -270,7 +281,6 @@ ReadMPAS::ReadMPAS(const std::string &name, int moduleID, mpi::communicator comm
     setParameterMinimum<Integer>(m_numLevels, 0);
     m_altitudeScale = addFloatParameter("altitudeScale", "value to scale the grid altitude (zGrid)", 20.);
 
-    m_cellsOnCell = addStringParameter("cellsOnCell", "List of neighboring cells (for ghosts)", "", Parameter::Choice);
     m_gridOut = createOutputPort("grid_out", "grid");
     m_varDim = addStringParameter("var_dim", "Dimension of variables", "", Parameter::Choice);
     setParameterChoices(m_varDim, varDimList);
@@ -418,12 +428,12 @@ bool ReadMPAS::prepareRead()
                         std::cerr << "ReadMpas: ignoring " << fn << ", could not open" << std::endl;
                         continue;
                     }
-                    if (!hasDimension(ncid, "nCells")) {
+                    if (!hasDimension(ncid, DimNCells)) {
                         std::cerr << "ReadMpas: ignoring " << fn << ", no nCells dimension" << std::endl;
                         ++nIgnored;
                         continue;
                     }
-                    size_t dimCells = getDimension(ncid, "nCells");
+                    size_t dimCells = getDimension(ncid, DimNCells);
                     if (dimCells != numGridCells) {
                         std::cerr << "ReadMpas: ignoring " << fn << ", expected nCells=" << numGridCells << ", but got "
                                   << dimCells << std::endl;
@@ -435,12 +445,12 @@ bool ReadMPAS::prepareRead()
 #else
                     try {
                         NcmpiFile newFile(comm(), fn, NcmpiFile::read);
-                        if (!dimensionExists("nCells", newFile)) {
+                        if (!dimensionExists(DimNCells, newFile)) {
                             std::cerr << "ReadMpas: ignoring " << fn << ", no nCells dimension" << std::endl;
                             ++nIgnored;
                             continue;
                         }
-                        const NcmpiDim dimCells = newFile.getDim("nCells");
+                        const NcmpiDim dimCells = newFile.getDim(DimNCells);
                         if (dimCells.getSize() != numGridCells) {
                             std::cerr << "ReadMpas: ignoring " << fn << ", expected nCells=" << numGridCells
                                       << ", but got " << dimCells.getSize() << std::endl;
@@ -537,8 +547,6 @@ bool ReadMPAS::setVariableList(int ncid, FileType ft, bool setCOC)
             m_3dChoices[name] = ft;
         }
     }
-    if (setCOC)
-        setParameterChoices(m_cellsOnCell, AxisVarChoices);
 
     return true;
 }
@@ -558,8 +566,6 @@ bool ReadMPAS::setVariableList(const NcmpiFile &filename, FileType ft, bool setC
             m_3dChoices[elem.first] = ft;
         }
     }
-    if (setCOC)
-        setParameterChoices(m_cellsOnCell, AxisVarChoices);
 
     return true;
 }
@@ -585,13 +591,13 @@ bool ReadMPAS::validateFile(std::string fullFileName, std::string &redFileName, 
                             sendInfo("Could not open %s", redFileName.c_str());
                         return false;
                     }
-                    if (!hasDimension(ncid, "nCells")) {
+                    if (!hasDimension(ncid, DimNCells)) {
                         if (rank() == 0)
                             sendInfo("File %s does not have dimension nCells, no MPAS file", redFileName.c_str());
                         return false;
                     }
                     int dimid = -1;
-                    int err = nc_inq_dimid(ncid, "nCells", &dimid);
+                    int err = nc_inq_dimid(ncid, DimNCells, &dimid);
                     if (err != NC_NOERR) {
                         return false;
                     }
@@ -605,12 +611,12 @@ bool ReadMPAS::validateFile(std::string fullFileName, std::string &redFileName, 
 #else
                     try {
                         NcmpiFile newFile(comm(), redFileName, NcmpiFile::read);
-                        if (!dimensionExists("nCells", newFile)) {
+                        if (!dimensionExists(DimNCells, newFile)) {
                             if (rank() == 0)
                                 sendInfo("File %s does not have dimension nCells, no MPAS file", redFileName.c_str());
                             return false;
                         }
-                        const NcmpiDim dimCells = newFile.getDim("nCells");
+                        const NcmpiDim dimCells = newFile.getDim(DimNCells);
                         if (type == grid_type) {
                             numGridCells = dimCells.getSize();
                         } else {
@@ -834,9 +840,9 @@ std::vector<Scalar> ReadMPAS::getData(int ncid, Index nLevels, Index dataIdx)
         }
 
         start.push_back(0);
-        if (name == "nCells") {
+        if (name == DimNCells) {
             count.push_back(dim);
-        } else if (name == "nVertLevels") {
+        } else if (name == DimNVertLevels) {
             count.push_back(std::min(dim, size_t(nLevels)));
         } else {
             count.push_back(1);
@@ -854,9 +860,9 @@ bool ReadMPAS::getData(const NcmpiFile &filename, std::vector<float> *dataValues
     const NcmpiVar varData = filename.getVar(m_variables[dataIdx]->getValue());
     std::vector<MPI_Offset> numElem, startElem;
     for (auto elem: varData.getDims()) {
-        if (elem.getName() == "nCells") {
+        if (elem.getName() == DimNCells) {
             numElem.push_back(elem.getSize());
-        } else if (elem.getName() == "nVertLevels") {
+        } else if (elem.getName() == DimNVertLevels) {
             numElem.push_back(std::min(elem.getSize(), nLevels));
         } else {
             numElem.push_back(1);
@@ -890,24 +896,24 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
         if (!ncid) {
             return false;
         }
-        if (!hasDimension(ncid, "nCells") || !hasDimension(ncid, "nVertices") || !hasDimension(ncid, "maxEdges")) {
+        if (!hasDimension(ncid, DimNCells) || !hasDimension(ncid, DimNVertices) || !hasDimension(ncid, DimMaxEdges)) {
             sendError("Missing dimension info -> quit");
             return false;
         }
-        if (!hasVariable(ncid, "xVertex") || !hasVariable(ncid, "verticesOnCell") ||
-            !hasVariable(ncid, "nEdgesOnCell")) {
+        if (!hasVariable(ncid, "xVertex") || !hasVariable(ncid, VarVerticesOnCell) ||
+            !hasVariable(ncid, VarNEdgesOnCell)) {
             sendError("Missing variable info -> quit");
             return false;
         }
 
-        numCells = getDimension(ncid, "nCells");
-        auto vPerC = getDimension(ncid, "maxEdges");
+        numCells = getDimension(ncid, DimNCells);
+        auto vPerC = getDimension(ncid, DimMaxEdges);
 
         if (eoc.empty()) {
-            eoc = getVariable<unsigned char>(ncid, "nEdgesOnCell");
+            eoc = getVariable<unsigned char>(ncid, VarNEdgesOnCell);
         }
         if (m_voronoiCells && voc.empty()) {
-            voc = getVariable<unsigned>(ncid, "verticesOnCell");
+            voc = getVariable<unsigned>(ncid, VarVerticesOnCell);
         }
         if (xCoords.empty()) {
             xCoords = getVariable<float>(ncid, m_voronoiCells ? "xVertex" : "xCell");
@@ -923,8 +929,8 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
             if (!ncdataid) {
                 return false;
             }
-            if (hasDimension(ncdataid, "nVertLevels")) {
-                numMaxLevels = getDimension(ncdataid, "nVertLevels");
+            if (hasDimension(ncdataid, DimNVertLevels)) {
+                numMaxLevels = getDimension(ncdataid, DimNVertLevels);
             } else {
                 hasDataFile = false;
                 if (block == 0)
@@ -938,28 +944,28 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
             return false;
 #else
         NcmpiFile ncFirstFile(*token.comm(), firstFileName, NcmpiFile::read);
-        assert(dimensionExists("nCells", ncFirstFile));
+        assert(dimensionExists(DimNCells, ncFirstFile));
         // first of all: validate that all neccesary dimensions and variables exist
-        if (!dimensionExists("nCells", ncFirstFile) || !dimensionExists("nVertices", ncFirstFile) ||
-            !dimensionExists("maxEdges", ncFirstFile)) {
+        if (!dimensionExists(DimNCells, ncFirstFile) || !dimensionExists(DimNVertices, ncFirstFile) ||
+            !dimensionExists(DimMaxEdges, ncFirstFile)) {
             sendError("Missing dimension info -> quit");
             return false;
         }
-        if (!variableExists("xVertex", ncFirstFile) || !variableExists("verticesOnCell", ncFirstFile) ||
-            !variableExists("nEdgesOnCell", ncFirstFile)) {
+        if (!variableExists("xVertex", ncFirstFile) || !variableExists(VarVerticesOnCell, ncFirstFile) ||
+            !variableExists(VarNEdgesOnCell, ncFirstFile)) {
             sendError("Missing variable info -> quit");
             return false;
         }
 
-        const NcmpiDim dimCells = ncFirstFile.getDim("nCells");
-        const NcmpiDim dimVert = ncFirstFile.getDim("nVertices");
-        const NcmpiDim dimVPerC = ncFirstFile.getDim("maxEdges");
+        const NcmpiDim dimCells = ncFirstFile.getDim(DimNCells);
+        const NcmpiDim dimVert = ncFirstFile.getDim(DimNVertices);
+        const NcmpiDim dimVPerC = ncFirstFile.getDim(DimMaxEdges);
 
         const NcmpiVar xC = m_voronoiCells ? ncFirstFile.getVar("xVertex") : ncFirstFile.getVar("xCell");
         const NcmpiVar yC = m_voronoiCells ? ncFirstFile.getVar("yVertex") : ncFirstFile.getVar("yCell");
         const NcmpiVar zC = m_voronoiCells ? ncFirstFile.getVar("zVertex") : ncFirstFile.getVar("zCell");
-        const NcmpiVar verticesPerCell = ncFirstFile.getVar("verticesOnCell");
-        const NcmpiVar nEdgesOnCell = ncFirstFile.getVar("nEdgesOnCell");
+        const NcmpiVar verticesPerCell = ncFirstFile.getVar(VarVerticesOnCell);
+        const NcmpiVar nEdgesOnCell = ncFirstFile.getVar(VarNEdgesOnCell);
 
         const MPI_Offset vPerC = dimVPerC.getSize(); // vertices on each cell
         if (numCells == 0)
@@ -981,10 +987,10 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
         //verify that dimensions in grid file and data file are matching
         if (hasDataFile) {
             NcmpiFile ncDataFile(*token.comm(), /*dataFileName.c_str()*/ dataFileList.at(0), NcmpiFile::read);
-            // const NcmpiDim &dimCellsData = ncDataFile.getDim("nCells");
+            // const NcmpiDim &dimCellsData = ncDataFile.getDim(DimNCells);
             // numCells = dimCellsData.getSize();
-            if (dimensionExists("nVertLevels", ncDataFile)) {
-                const NcmpiDim &dimLevel = ncDataFile.getDim("nVertLevels");
+            if (dimensionExists(DimNVertLevels, ncDataFile)) {
+                const NcmpiDim &dimLevel = ncDataFile.getDim(DimNVertLevels);
                 numMaxLevels = dimLevel.getSize();
             } else {
                 hasDataFile = false;
@@ -1046,7 +1052,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
 #ifdef USE_NETCDF
         // set coc (index of neighboring cells on each cell) to determine ghost cells
         if ((numLevels > 1 || (!m_voronoiCells && numLevels == 1)) && coc.empty()) {
-            coc = getVariable<unsigned>(ncid, "cellsOnCell");
+            coc = getVariable<unsigned>(ncid, VarCellsOnCell);
             ghosts = numLevels > 1;
         }
 #else
@@ -1071,8 +1077,8 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
         }
 
         // set coc (index of neighboring cells on each cell) to determine ghost cells
-        if ((numLevels > 1 || (!m_voronoiCells && numLevels == 1)) && !emptyValue(m_cellsOnCell) && coc.size() < 1) {
-            NcmpiVar cellsOnCell = ncFirstFile.getVar(m_cellsOnCell->getValue().c_str());
+        if ((numLevels > 1 || (!m_voronoiCells && numLevels == 1)) && coc.size() < 1) {
+            NcmpiVar cellsOnCell = ncFirstFile.getVar(VarCellsOnCell);
             coc.resize(numCells * vPerC);
             cellsOnCell.getVar_all(coc.data());
             ghosts = numLevels > 1;
@@ -1261,7 +1267,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
         if (hasZData) {
 #ifdef USE_NETCDF
             if (m_voronoiCells) {
-                cov = getVariable<unsigned>(ncid, "cellsOnVertex");
+                cov = getVariable<unsigned>(ncid, VarCellsOnVertex);
             }
 
             std::vector<size_t> startZ{0, 0};
@@ -1270,20 +1276,20 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
             if (!nczid) {
                 return false;
             }
-            if (!hasDimension(nczid, "nCells")) {
+            if (!hasDimension(nczid, DimNCells)) {
                 sendError("no nCells dimension in zGrid file %s", zGridFileName.c_str());
                 return true;
             }
-            if (getDimension(nczid, "nCells") != numGridCells) {
+            if (getDimension(nczid, DimNCells) != numGridCells) {
                 sendError("nCells %lu in zGrid file %s does not match grid's (%lu)",
-                          (unsigned long)getDimension(nczid, "nCells"), zGridFileName.c_str(),
+                          (unsigned long)getDimension(nczid, DimNCells), zGridFileName.c_str(),
                           (unsigned long)numGridCells);
                 return true;
             }
-            zGrid = getVariable<float>(nczid, "zgrid", startZ, stopZ);
+            zGrid = getVariable<float>(nczid, VarZgrid, startZ, stopZ);
 #else
             if (m_voronoiCells) {
-                NcmpiVar cellsOnVertex = ncFirstFile.getVar("cellsOnVertex");
+                NcmpiVar cellsOnVertex = ncFirstFile.getVar(VarCellsOnVertex);
                 cov.resize(numVert * MAX_VERT);
                 cellsOnVertex.getVar_all(cov.data());
             }
@@ -1291,17 +1297,17 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
             std::vector<MPI_Offset> startZ{0, 0};
             std::vector<MPI_Offset> stopZ{MPI_Offset(numCells), numZLevels};
             NcmpiFile ncZGridFile(*token.comm(), zGridFileName.c_str(), NcmpiFile::read);
-            if (!dimensionExists("nCells", ncZGridFile)) {
+            if (!dimensionExists(DimNCells, ncZGridFile)) {
                 sendError("no nCells dimension in zGrid file %s", zGridFileName.c_str());
                 return true;
             }
-            const NcmpiDim dimCells = ncZGridFile.getDim("nCells");
+            const NcmpiDim dimCells = ncZGridFile.getDim(DimNCells);
             if (dimCells.getSize() != numGridCells) {
                 sendError("nCells %lu in zGrid file %s does not match grid's (%lu)", (unsigned long)dimCells.getSize(),
                           zGridFileName.c_str(), (unsigned long)numGridCells);
                 return true;
             }
-            const NcmpiVar zGridVar = ncZGridFile.getVar("zgrid");
+            const NcmpiVar zGridVar = ncZGridFile.getVar(VarZgrid);
             zGridVar.getVar_all(startZ, stopZ, zGrid.data());
 #endif
             if (numLevels < numZLevels) {
