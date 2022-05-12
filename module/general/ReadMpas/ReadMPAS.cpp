@@ -254,13 +254,13 @@ std::vector<T> getVariable(int ncid, std::string name)
 ReadMPAS::ReadMPAS(const std::string &name, int moduleID, mpi::communicator comm): Reader(name, moduleID, comm)
 {
     m_gridFile = addStringParameter("grid_file", "File containing the grid", "", Parameter::ExistingFilename);
-    m_dataFile = addStringParameter("data_file", "File containing data", "", Parameter::ExistingFilename);
+    setParameterFilters(m_gridFile, "NetCDF Grid Files (*.grid.nc)/NetCDF Files (*.nc)/All Files (*)");
     m_zGridFile = addStringParameter("zGrid_file_dir",
                                      "File containing the vertical coordinates (elevation of cell from mean sea level",
                                      "", Parameter::ExistingFilename);
-    for (auto &p: {m_gridFile, m_dataFile, m_zGridFile}) {
-        setParameterFilters(p, "NetCDF Files (*.nc)/All Files (*)");
-    }
+    setParameterFilters(m_zGridFile, "NetCDF Vertical Coordinate Files (zgrid*.nc)/NetCDF Files (*.nc)/All Files (*)");
+    m_dataFile = addStringParameter("data_file", "File containing data", "", Parameter::ExistingFilename);
+    setParameterFilters(m_dataFile, "NetCDF History Files (history.*.nc)/NetCDF Files (*.nc)/All Files (*)");
     m_partFile =
         addStringParameter("part_file", "File containing the grid partitions", "", Parameter::ExistingFilename);
     setParameterFilters(m_partFile, "Partitioning Files (*.part.*)/All Files (*)");
