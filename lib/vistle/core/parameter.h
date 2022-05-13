@@ -62,6 +62,7 @@ public:
     void setPresentation(Presentation presentation);
     void setDescription(const std::string &description);
     void setChoices(const std::vector<std::string> &choices);
+    void setReadOnly(bool readOnly);
 
     void setGroup(const std::string &group);
     const std::string &group() const;
@@ -77,6 +78,7 @@ public:
     Presentation presentation() const;
     const std::string &description() const;
     const std::vector<std::string> &choices() const;
+    bool isReadOnly() const;
     void setImmediate(bool immed);
     bool isImmediate() const;
 
@@ -92,6 +94,7 @@ private:
     enum Presentation m_presentation;
     bool m_groupExpanded = true;
     bool m_immediate = false;
+    bool m_readOnly = false;
 };
 
 template<typename T>

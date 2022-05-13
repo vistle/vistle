@@ -546,6 +546,9 @@ public:
     ParamVector getVector() const;
     IntParamVector getIntVector() const;
 
+    void setReadOnly(bool readOnly);
+    bool isReadOnly() const;
+
     void setImmediate(bool immed);
     bool isImmediate() const;
 
@@ -567,8 +570,10 @@ private:
     bool initialize; //!< called for setting parameter default value
     bool reply; //!< this messaege is in reply to a request to change a parameter and contains the value actually used
     bool delayed; //!< true: wait until parameterChanged should be called
-    bool immediate_valid; //!< whether immediate was set
-    bool immediate; //!< true: changes are communicated with higher priority
+    bool read_only_valid = false; //!< whether read_only was set
+    bool read_only = false; //!< true: parameter can only be changed by module
+    bool immediate_valid = false; //!< whether immediate was set
+    bool immediate = false; //!< true: changes are communicated with higher priority
 };
 
 //! set list of choice descriptions for a choice parameter

@@ -141,6 +141,10 @@ Extrema::Extrema(const std::string &name, int moduleID, mpi::communicator comm):
                           IntParamVector(-1, -1, -1));
     addIntVectorParameter("min_index", "output parameter: indices of minimum", IntParamVector(-1, -1, -1));
     addIntVectorParameter("max_index", "output parameter: indices of maximum", IntParamVector(-1, -1, -1));
+
+    for (const auto &p: {"min", "max", "min_block", "max_block", "min_index", "max_index"}) {
+        setParameterReadOnly(p, true);
+    }
 }
 
 Extrema::~Extrema()

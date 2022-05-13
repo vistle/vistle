@@ -1031,6 +1031,8 @@ SetParameter::SetParameter(int module, const std::string &n, const std::shared_p
 , initialize(defaultValue)
 , reply(false)
 , delayed(false)
+, read_only_valid(true)
+, read_only(p->isReadOnly())
 , immediate_valid(true)
 , immediate(p->isImmediate())
 {
@@ -1217,6 +1219,17 @@ std::string SetParameter::getString() const
     return v_string.data();
 }
 
+void SetParameter::setReadOnly(bool readOnly)
+{
+    read_only_valid = true;
+    read_only = readOnly;
+}
+
+bool SetParameter::isReadOnly() const
+{
+    return read_only;
+}
+
 void SetParameter::setImmediate(bool immed)
 {
     immediate_valid = true;
@@ -1238,6 +1251,8 @@ bool SetParameter::apply(std::shared_ptr<vistle::Parameter> param) const
 
     if (immediate_valid)
         param->setImmediate(immediate);
+    if (read_only_valid)
+        param->setReadOnly(read_only);
 
     const int rt = rangeType();
     if (rt == Parameter::Other)

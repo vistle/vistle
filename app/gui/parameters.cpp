@@ -169,6 +169,20 @@ QString Parameters::propertyToName(QtProperty *prop) const
     return name;
 }
 
+void Parameters::setEnabled(QtProperty *prop, bool state)
+{
+    if (!prop)
+        return;
+    const auto subs = prop->subProperties();
+    for (auto p: subs) {
+        p->setEnabled(state);
+    }
+    if (subs.empty())
+        prop->setEnabled(state);
+    else
+        prop->setEnabled(true);
+}
+
 bool Parameters::getExpandedState(QString name, bool &state)
 {
     if (name.isEmpty())
@@ -355,6 +369,11 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
     if (it != m_paramToProp.end()) {
         prop = it->second;
     }
+
+    if (!prop)
+        return;
+
+    setEnabled(prop, !p->isReadOnly());
 
     if (auto ip = std::dynamic_pointer_cast<vistle::IntParameter>(p)) {
         if (ip->presentation() == vistle::Parameter::Boolean) {

@@ -96,6 +96,16 @@ bool Parameter::isGroupExpanded() const
     return m_groupExpanded;
 }
 
+void Parameter::setReadOnly(bool readOnly)
+{
+    m_readOnly = readOnly;
+}
+
+bool Parameter::isReadOnly() const
+{
+    return m_readOnly;
+}
+
 void Parameter::setImmediate(bool immed)
 {
     m_immediate = immed;

@@ -337,6 +337,21 @@ IntParamVector ParameterManager::getIntVectorParameter(const std::string &name) 
     return value;
 }
 
+bool ParameterManager::setParameterReadOnly(Parameter *param, bool readOnly)
+{
+    param->setReadOnly(readOnly);
+    return updateParameter(param->getName(), param, nullptr, Parameter::Other);
+}
+
+bool ParameterManager::setParameterReadOnly(const std::string &name, bool readOnly)
+{
+    auto param = findParameter(name);
+    assert(param);
+    if (param)
+        return setParameterReadOnly(param.get(), readOnly);
+    return false;
+}
+
 bool ParameterManager::setParameterImmediate(Parameter *param, bool immed)
 {
     param->setImmediate(immed);
