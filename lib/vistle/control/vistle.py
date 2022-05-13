@@ -397,6 +397,7 @@ getRunning = _vistle.getRunning
 getBusy = _vistle.getBusy
 getModuleName = _vistle.getModuleName
 getModuleDescription = _vistle.getModuleDescription
+hubName = _vistle.hubName
 waitForHub = _vistle.waitForHub
 waitForHubs = _vistle.waitForHubs
 waitForNamedHubs = _vistle.waitForNamedHubs

@@ -296,6 +296,11 @@ static void kill(int id)
     }
 }
 
+static std::string hubName(int id)
+{
+    return state().hubName(id);
+}
+
 static int waitForAnySlaveHub()
 {
     auto hubs = state().getSlaveHubs();
@@ -1441,6 +1446,7 @@ PY_MODULE(_vistle, m)
     m.def("getOutputPorts", getOutputPorts, "get name of input ports of module with ID `arg1`");
     m.def("getPortDescription", getPortDescription,
           "get description of port with name `arg2` of module with ID `arg1`");
+    m.def("hubName", hubName, "return name of hub with id `arg1`");
     m.def("waitForHub", waitForNamedHub, "wait for slave hub named `arg1` to connect");
     m.def("waitForHub", waitForAnySlaveHub, "wait for any additional slave hub to connect");
     m.def("waitForHubs", waitForSlaveHubs, "wait for `count` additional slave hubs to connect");
