@@ -68,8 +68,10 @@ std::vector<int> StateTracker::getHubs() const
 {
     mutex_locker guard(m_stateMutex);
     std::vector<int> hubs;
-    for (const auto &h: m_hubs)
+    for (auto it = m_hubs.rbegin(); it != m_hubs.rend(); ++it) {
+        const auto &h = *it;
         hubs.push_back(h.id);
+    }
     return hubs;
 }
 
@@ -77,9 +79,11 @@ std::vector<int> StateTracker::getSlaveHubs() const
 {
     mutex_locker guard(m_stateMutex);
     std::vector<int> hubs;
-    for (const auto &h: m_hubs)
+    for (auto it = m_hubs.rbegin(); it != m_hubs.rend(); ++it) {
+        const auto &h = *it;
         if (h.id != Id::MasterHub)
             hubs.push_back(h.id);
+    }
     return hubs;
 }
 
