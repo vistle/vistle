@@ -213,7 +213,7 @@ struct zfp_type_map<double> {
 };
 
 template<zfp_type type>
-bool compressZfp(buffer &compressed, const void *src, const Index dim[3], const ZfpParameters &param);
+bool compressZfp(buffer &compressed, const void *src, const Index dim[3], Index typeSize, const ZfpParameters &param);
 template<zfp_type type>
 bool decompressZfp(void *dest, const buffer &compressed, const Index dim[3]);
 #endif
@@ -314,9 +314,10 @@ struct archive_helper<yas_tag> {
                 //std::cerr << "trying to compresss " << std::endl;
                 buffer compressed;
                 Index dim[3];
-                for (int c = 0; c < 3; ++c)
+                for (int c = 1; c < 3; ++c)
                     dim[c] = m_dim[c] == 1 ? 0 : m_dim[c];
-                if (compressZfp<zfp_type_map<T>::value>(compressed, static_cast<const void *>(m_begin), dim, param)) {
+                if (compressZfp<zfp_type_map<T>::value>(compressed, static_cast<const void *>(m_begin), dim,
+                                                        sizeof(*m_begin), param)) {
                     ar &compress;
                     ar &m_dim[0] & m_dim[1] & m_dim[2];
                     ar &compressed;
@@ -361,16 +362,16 @@ extern template bool V_COREEXPORT decompressZfp<zfp_type_double>(void *dest, con
                                                                  const Index dim[3]);
 
 template<>
-bool V_COREEXPORT compressZfp<zfp_type_none>(buffer &compressed, const void *src, const Index dim[3],
+bool V_COREEXPORT compressZfp<zfp_type_none>(buffer &compressed, const void *src, const Index dim[3], Index typeSize,
                                              const ZfpParameters &param);
 extern template bool V_COREEXPORT compressZfp<zfp_type_int32>(buffer &compressed, const void *src, const Index dim[3],
-                                                              const ZfpParameters &param);
+                                                              Index typeSize, const ZfpParameters &param);
 extern template bool V_COREEXPORT compressZfp<zfp_type_int64>(buffer &compressed, const void *src, const Index dim[3],
-                                                              const ZfpParameters &param);
+                                                              Index typeSize, const ZfpParameters &param);
 extern template bool V_COREEXPORT compressZfp<zfp_type_float>(buffer &compressed, const void *src, const Index dim[3],
-                                                              const ZfpParameters &param);
+                                                              Index typeSize, const ZfpParameters &param);
 extern template bool V_COREEXPORT compressZfp<zfp_type_double>(buffer &compressed, const void *src, const Index dim[3],
-                                                               const ZfpParameters &param);
+                                                               Index typeSize, const ZfpParameters &param);
 #endif
 } // namespace detail
 #ifdef HAVE_ZFP
@@ -508,11 +509,23 @@ public: \
     virtual void saveToArchive(boost_oarchive &ar) const override; \
     virtual void loadFromArchive(boost_iarchive &ar) override;
 #define ARCHIVE_REGISTRATION_BOOST_INLINE \
-    void saveToArchive(boost_oarchive &ar) const override { this->serialize(ar); } \
-    void loadFromArchive(boost_iarchive &ar) override { this->serialize(ar); }
+    void saveToArchive(boost_oarchive &ar) const override \
+    { \
+        this->serialize(ar); \
+    } \
+    void loadFromArchive(boost_iarchive &ar) override \
+    { \
+        this->serialize(ar); \
+    }
 #define ARCHIVE_REGISTRATION_BOOST_IMPL(ObjType, prefix) \
-    prefix void ObjType::saveToArchive(boost_oarchive &ar) const { this->serialize(ar); } \
-    prefix void ObjType::loadFromArchive(boost_iarchive &ar) { this->serialize(ar); }
+    prefix void ObjType::saveToArchive(boost_oarchive &ar) const \
+    { \
+        this->serialize(ar); \
+    } \
+    prefix void ObjType::loadFromArchive(boost_iarchive &ar) \
+    { \
+        this->serialize(ar); \
+    }
 #else
 #define ARCHIVE_REGISTRATION_BOOST(override)
 #define ARCHIVE_REGISTRATION_BOOST_INLINE
@@ -524,11 +537,23 @@ public: \
     virtual void saveToArchive(yas_oarchive &ar) const override; \
     virtual void loadFromArchive(yas_iarchive &ar) override;
 #define ARCHIVE_REGISTRATION_YAS_INLINE \
-    void saveToArchive(yas_oarchive &ar) const override { this->serialize(ar); } \
-    void loadFromArchive(yas_iarchive &ar) override { this->serialize(ar); }
+    void saveToArchive(yas_oarchive &ar) const override \
+    { \
+        this->serialize(ar); \
+    } \
+    void loadFromArchive(yas_iarchive &ar) override \
+    { \
+        this->serialize(ar); \
+    }
 #define ARCHIVE_REGISTRATION_YAS_IMPL(ObjType, prefix) \
-    prefix void ObjType::saveToArchive(yas_oarchive &ar) const { this->serialize(ar); } \
-    prefix void ObjType::loadFromArchive(yas_iarchive &ar) { this->serialize(ar); }
+    prefix void ObjType::saveToArchive(yas_oarchive &ar) const \
+    { \
+        this->serialize(ar); \
+    } \
+    prefix void ObjType::loadFromArchive(yas_iarchive &ar) \
+    { \
+        this->serialize(ar); \
+    }
 #else
 #define ARCHIVE_REGISTRATION_YAS(override)
 #define ARCHIVE_REGISTRATION_YAS_INLINE
@@ -536,7 +561,10 @@ public: \
 #endif
 #ifdef USE_INTROSPECTION_ARCHIVE
 #define ARCHIVE_REGISTRATION_INTROSPECT \
-    void save(FindObjectReferenceOArchive &ar) const override { const_cast<ObjType *>(this)->serialize(ar, 0); }
+    void save(FindObjectReferenceOArchive &ar) const override \
+    { \
+        const_cast<ObjType *>(this)->serialize(ar, 0); \
+    }
 #else
 #define ARCHIVE_REGISTRATION_INTROSPECT
 #endif

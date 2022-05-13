@@ -37,6 +37,8 @@
 #ifdef USE_BOOST_ARCHIVE
 namespace ba = boost::archive;
 
+//#define COMP_DEBUG
+
 namespace boost {
 namespace archive {
 
@@ -392,7 +394,8 @@ template bool decompressZfp<zfp_type_float>(void *dest, const buffer &compressed
 template bool decompressZfp<zfp_type_double>(void *dest, const buffer &compressed, const Index dim[3]);
 
 template<zfp_type type>
-bool compressZfp(buffer &compressed, const void *src, const Index dim[3], const ZfpParameters &param)
+bool compressZfp(buffer &compressed, const void *src, const Index dim[3], const Index typeSize,
+                 const ZfpParameters &param)
 {
 #ifdef HAVE_ZFP
     bool ok = true;
@@ -408,7 +411,9 @@ bool compressZfp(buffer &compressed, const void *src, const Index dim[3], const 
     }
 
     if (sz < 1000) {
+#ifdef COMP_DEBUG
         std::cerr << "compressZfp: not compressing - fewer than 1000 elements" << std::endl;
+#endif
         return false;
     }
 
@@ -436,15 +441,19 @@ bool compressZfp(buffer &compressed, const void *src, const Index dim[3], const 
 
     zfp_stream_rewind(zfp);
     size_t header = zfp_write_header(zfp, field, ZFP_HEADER_FULL);
+#ifdef COMP_DEBUG
     std::cerr << "compressZfp: wrote " << header << " header bytes" << std::endl;
+#endif
     size_t zfpsize = zfp_compress(zfp, field);
     if (zfpsize == 0) {
         std::cerr << "compressZfp: zfp compression failed" << std::endl;
         ok = false;
     } else {
         compressed.resize(zfpsize);
-        std::cerr << "compressZfp: compressed " << dim[0] << "x" << dim[1] << "x" << dim[2] << " elements to "
-                  << zfpsize << " bytes" << std::endl;
+#ifdef COMP_DEBUG
+        std::cerr << "compressZfp: compressed " << dim[0] << "x" << dim[1] << "x" << dim[2] << " elements/"
+                  << sz * sizeof(float) << " to " << zfpsize * typeSize << " bytes" << std::endl;
+#endif
     }
     zfp_field_free(field);
     zfp_stream_close(zfp);
@@ -458,17 +467,18 @@ bool compressZfp(buffer &compressed, const void *src, const Index dim[3], const 
 }
 
 template<>
-bool compressZfp<zfp_type_none>(buffer &compressed, const void *src, const Index dim[3], const ZfpParameters &param)
+bool compressZfp<zfp_type_none>(buffer &compressed, const void *src, const Index dim[3], Index typeSize,
+                                const ZfpParameters &param)
 {
     return false;
 }
-template bool compressZfp<zfp_type_int32>(buffer &compressed, const void *src, const Index dim[3],
+template bool compressZfp<zfp_type_int32>(buffer &compressed, const void *src, const Index dim[3], Index typeSize,
                                           const ZfpParameters &param);
-template bool compressZfp<zfp_type_int64>(buffer &compressed, const void *src, const Index dim[3],
+template bool compressZfp<zfp_type_int64>(buffer &compressed, const void *src, const Index dim[3], Index typeSize,
                                           const ZfpParameters &param);
-template bool compressZfp<zfp_type_float>(buffer &compressed, const void *src, const Index dim[3],
+template bool compressZfp<zfp_type_float>(buffer &compressed, const void *src, const Index dim[3], Index typeSize,
                                           const ZfpParameters &param);
-template bool compressZfp<zfp_type_double>(buffer &compressed, const void *src, const Index dim[3],
+template bool compressZfp<zfp_type_double>(buffer &compressed, const void *src, const Index dim[3], Index typeSize,
                                            const ZfpParameters &param);
 
 } // namespace detail
