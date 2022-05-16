@@ -22,6 +22,7 @@
 #include <vistle/util/exception.h>
 #include <vistle/util/shmconfig.h>
 #include <vistle/util/threadname.h>
+#include <vistle/util/affinity.h>
 #include <vistle/core/object.h>
 #include <vistle/core/empty.h>
 #include <vistle/core/export.h>
@@ -182,6 +183,7 @@ bool Module::setup(const std::string &shmname, int moduleID, int rank)
 #ifndef MODULE_THREAD
     bool perRank = shmPerRank();
     Shm::attach(shmname, moduleID, rank, perRank);
+    vistle::apply_affinity_from_environment(Shm::the().nodeRank(rank), Shm::the().numRanksOnThisNode());
 #endif
     return Shm::isAttached();
 }

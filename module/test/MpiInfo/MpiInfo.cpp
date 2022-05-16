@@ -42,8 +42,11 @@ bool MpiInfo::prepare()
 {
     std::stringstream str;
     str << "prepare(): rank " << rank() << "/" << size() << " on host " << hostname() << std::endl;
+#ifdef __linux__
     str << "Process affinity: " << sched_affinity_map() << std::endl;
     str << "Thread affinity:  " << thread_affinity_map() << std::endl;
+#endif
+    str << "hwloc affinity:   " << hwloc_affinity_map() << std::endl;
 #ifdef NO_SHMEM
     str << "Shared memory:    message queues only" << std::endl;
 #else

@@ -1,4 +1,5 @@
 vistle_find_package(BOTAN REQUIRED)
+vistle_find_package(HWLOC)
 
 set(util_SOURCES
     affinity.cpp
@@ -67,6 +68,12 @@ vistle_target_link_libraries(
     Threads::Threads
     PRIVATE
     ${BOTAN_LIBRARIES})
+
+if(HWLOC_FOUND)
+    target_compile_definitions(vistle_util PRIVATE HAVE_HWLOC)
+    target_include_directories(vistle_util SYSTEM PRIVATE ${HWLOC_INCLUDE_DIRS})
+    vistle_target_link_libraries(vistle_util PRIVATE ${HWLOC_LIBRARIES})
+endif()
 
 find_library(LIBEXECINFO execinfo)
 if(LIBEXECINFO)

@@ -421,6 +421,14 @@ Shm &Shm::attach(const std::string &name, const int id, const int rank, bool per
     auto r = s_singleton->shm().find<int>("rank");
     assert(r.first && "shared memory does not contain owning rank");
     s_singleton->m_owningRank = *r.first;
+
+    auto nr = s_singleton->shm().find<int>("numRanksOnNode");
+    assert(nr.first && "shared memory does not contain numRanksOnNode");
+    s_singleton->m_ranksPerNode = *nr.first;
+
+    auto rv = s_singleton->shm().find<vistle::shm<int>::vector>("ranksOnNode");
+    assert(rv.first && "shared memory does not contain ranksOnNode");
+    std::copy(rv.first->begin(), rv.first->end(), std::back_inserter(s_singleton->m_nodeRanks));
 #endif
 
     return *s_singleton;
@@ -633,6 +641,38 @@ int Shm::owningRank() const
 {
     return m_owningRank;
 }
+
+int Shm::numRanksOnThisNode() const
+{
+    return m_ranksPerNode;
+}
+
+void Shm::setNumRanksOnThisNode(int nranks)
+{
+    assert(s_singleton);
+    m_ranksPerNode = nranks;
+#ifndef NO_SHMEM
+    auto r = shm().find_or_construct<int>("numRanksOnNode")();
+    *r = nranks;
+#endif
+}
+
+void Shm::setNodeRanks(const std::vector<int> &nodeRanks)
+{
+    assert(s_singleton);
+    m_nodeRanks = nodeRanks;
+#ifndef NO_SHMEM
+    auto r = m_shm->find_or_construct<vistle::shm<int>::vector>("ranksOnNode")(0, int(), allocator());
+    std::copy(nodeRanks.begin(), nodeRanks.end(), std::back_inserter(*r));
+#endif
+}
+
+int Shm::nodeRank(int rank) const
+{
+    assert(s_singleton);
+    return m_nodeRanks[rank];
+}
+
 
 #ifdef SHMBARRIER
 pthread_barrier_t *Shm::newBarrier(const std::string &name, int count)
