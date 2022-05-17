@@ -265,7 +265,8 @@ T *shm<T>::find_and_ref(const std::string &name)
     return t;
 #else
     Shm::the().lockObjects();
-    T *t = shm<T>::find(name);
+    // this detour to char is required because of differing object sizes caused by polymorphism of vistle::Objects
+    T *t = static_cast<T *>(static_cast<void *>(shm<char>::find(name)));
     if (t) {
         t->ref();
         assert(t->refcount() > 0);
