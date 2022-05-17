@@ -120,41 +120,49 @@ if [ -n "$PBS_ENVIRONMENT" ]; then
       exec mpirun  ${PREPENDRANK} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
    fi
 elif [ -n "$SLURM_JOB_ID" ]; then
-   exec mpiexec -bind-to none $WRAPPER "$@"
+   exec mpiexec --bind-to none $WRAPPER "$@"
    #exec srun --overcommit "$@"
    #exec srun --overcommit --cpu_bind=no "$@"
 fi
 
-BIND=0
+BINDTO=none
 case $(hostname) in
    viscluster70)
-      BIND=1
       if [ -z "$MPIHOSTS" ]; then
          MPIHOSTS=$(echo viscluster70 viscluster{71..79}|sed -e 's/ /,/g')
       fi
       ;;
    viscluster50)
-      BIND=1
       if [ -z "$MPIHOSTS" ]; then
          MPIHOSTS=$(echo viscluster50 viscluster{51..60}|sed -e 's/ /,/g')
       fi
       ;;
    viscluster80)
-      BIND=1
       if [ -z "$MPIHOSTS" ]; then
          MPIHOSTS=$(echo viscluster80 viscluster{70..79}|sed -e 's/ /,/g')
       fi
       ;;
    viscluster*)
-      BIND=1
       if [ -z "$MPIHOSTS" ]; then
          MPIHOSTS=$(echo viscluster{50..60} viscluster{70..80}|sed -e 's/ /,/g')
       fi
       ;;
    vishexa|vishexb)
-      BIND=1
       if [ -z "$MPIHOSTS" ]; then
          MPIHOSTS="vishexa,vishexb"
+      fi
+      ;;
+   keller|keller.*|buttercup|buttercup.*)
+      if [ -z "$MPIHOSTS" ]; then
+          if [ -z "$MPISIZE" ]; then
+              MPISIZE=8
+          fi
+         slots=$(((${MPISIZE:=2}+1)/2))
+         if [ "$slots" -ge "2" ]; then
+             BINDTO=numa
+         fi
+         MPIHOSTS="keller:$slots,buttercup:$slots"
+         #WRAPPER="-mca pml ucx -x UCX_LOG_LEVEL=diag"
       fi
       ;;
    *)
@@ -175,12 +183,14 @@ fi
 
 case "$MPI_IMPL" in
     ompi)
-        BIND="-bind-to none"
-        if [ "$BINDTO" = "socket0" ]; then 
-            BIND="-cpu-list 0,1,2,3,4,5,6,7"
-        elif [ "$BINDTO" = "socket1" ]; then
-            BIND="-cpu-list 8,9,10,11,12,13,14,15"
-        fi
+        case "$BINDTO" in
+            none|numa)
+                BIND="--bind-to $BINDTO"
+                ;;
+            *)
+                BIND="--bind-to none"
+                ;;
+        esac
 
         ENVS=""
         for v in $envvars; do
