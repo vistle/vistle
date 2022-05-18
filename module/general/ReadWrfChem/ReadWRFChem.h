@@ -45,20 +45,20 @@ private:
     bool examine(const vistle::Parameter *param) override;
     bool finishRead() override;
 
-    void setMeta(Object::ptr obj, int blockNr, int totalBlockNr, int timestep) const;
+    void setMeta(Object::ptr obj, Index blockNr, size_t totalBlockNr, int timestep) const;
     bool emptyValue(vistle::StringParameter *ch) const;
 
     struct Block {
-        int part = 0;
+        Index part = 0;
         size_t begin = 0, end = 0;
         int ghost[2] = {0, 0};
     };
 
     bool inspectDir();
-    bool addDataToPort(Reader::Token &token, NcFile *ncDataFile, int vi, Object::ptr outGrid, Block *b, int block,
+    bool addDataToPort(Reader::Token &token, NcFile *ncDataFile, int vi, Object::ptr outGrid, Block *b, Index block,
                        int t) const;
     Object::ptr generateGrid(Block *b) const;
-    Block computeBlock(int part, int nBlocks, long blockBegin, long cellsPerBlock, long numCellTot) const;
+    Block computeBlock(Index part, size_t nBlocks, Index blockBegin, size_t cellsPerBlock, size_t numCellTot) const;
 
     std::map<int, Object::ptr> outObject;
 
