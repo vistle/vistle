@@ -26,6 +26,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <vector>
+#include <algorithm>
 
 #include <vistle/util/enum.h>
 #include <vistle/util/buffer.h>
@@ -35,7 +36,8 @@
 
 namespace vistle {
 
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(FieldCompressionMode, (Uncompressed)(ZfpFixedRate)(ZfpAccuracy)(ZfpPrecision))
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(FieldCompressionMode,
+                                    (Uncompressed)(Predict)(ZfpFixedRate)(ZfpAccuracy)(ZfpPrecision))
 
 namespace detail {
 
@@ -217,6 +219,111 @@ bool compressZfp(buffer &compressed, const void *src, const Index dim[3], Index 
 template<zfp_type type>
 bool decompressZfp(void *dest, const buffer &compressed, const Index dim[3]);
 #endif
+template<typename S>
+struct Xor {
+    S operator()(S prev, S cur) { return cur ^ prev; }
+};
+template<typename S>
+struct Add {
+    S operator()(S prev, S cur) { return cur + prev; }
+};
+template<typename S>
+struct Sub {
+    S operator()(S prev, S cur) { return cur - prev; }
+};
+template<typename S>
+struct Ident {
+    S operator()(S prev, S cur) { return cur; }
+};
+
+template<typename T>
+struct PredictTransform {
+    using type = T;
+    using Op = Ident<T>;
+    using Rop = Op;
+    static constexpr bool use = false;
+};
+template<>
+struct PredictTransform<float> {
+    using type = uint32_t;
+    using Op = Xor<type>;
+    using Rop = Op;
+    static constexpr bool use = false;
+};
+
+template<>
+struct PredictTransform<double> {
+    using type = uint64_t;
+    using Op = Xor<type>;
+    using Rop = Op;
+    static constexpr bool use = false;
+};
+template<>
+struct PredictTransform<char> {
+    using type = uint8_t;
+    using Op = Sub<type>;
+    using Rop = Add<type>;
+    static constexpr bool use = false;
+};
+template<>
+struct PredictTransform<unsigned char> {
+    using type = uint8_t;
+    using Op = Sub<type>;
+    using Rop = Add<type>;
+    static constexpr bool use = false;
+};
+template<>
+struct PredictTransform<signed char> {
+    using type = uint8_t;
+    using Op = Sub<type>;
+    using Rop = Add<type>;
+    static constexpr bool use = false;
+};
+
+template<>
+struct PredictTransform<unsigned int> {
+    using type = uint32_t;
+    using Op = Sub<type>;
+    using Rop = Add<type>;
+    static constexpr bool use = true;
+};
+
+template<>
+struct PredictTransform<unsigned long int> {
+    using type = uint64_t;
+    using Op = Sub<type>;
+    using Rop = Add<type>;
+    static constexpr bool use = true;
+};
+template<class T, class Op, bool reverse>
+struct TransformStream {
+    typedef typename PredictTransform<T>::type Int;
+
+    Int prev;
+    bool first = true;
+    Int operator()(const T &t)
+    {
+        if (first) {
+            first = false;
+            prev = *reinterpret_cast<const Int *>(&t);
+            return prev;
+        }
+        Int result = Op()(prev, *reinterpret_cast<const Int *>(&t));
+        prev = reverse ? result : *reinterpret_cast<const Int *>(&t);
+        return result;
+    }
+};
+
+template<class T>
+struct TransformStream<T, Ident<T>, false> {
+    typedef T Int;
+    Int operator()(const T &t) { return t; }
+};
+template<class T>
+struct TransformStream<T, Ident<T>, true> {
+    typedef T Int;
+    Int operator()(const T &t) { return t; }
+};
 
 template<>
 struct archive_helper<yas_tag> {
@@ -237,10 +344,14 @@ struct archive_helper<yas_tag> {
         return obj;
     }
 
+
     template<class T>
     struct ArrayWrapper {
         typedef T value_type;
         typedef T &reference;
+        typedef TransformStream<T, typename PredictTransform<T>::Op, false> CompressStream;
+        typedef TransformStream<T, typename PredictTransform<T>::Rop, true> DecompressStream;
+
         T *m_begin, *m_end;
         Index m_dim[3] = {0, 1, 1};
         bool m_exact = true;
@@ -283,9 +394,18 @@ struct archive_helper<yas_tag> {
         template<class Archive>
         void load(Archive &ar)
         {
+            bool compPredict = false;
+            bool compZfp = false;
             bool compress = false;
             ar &compress;
             if (compress) {
+                ar &compZfp;
+                compPredict = !compZfp;
+            }
+            if (compPredict) {
+                yas::detail::concepts::array::load<yas_flags>(ar, *this);
+                std::transform(m_begin, m_end, m_begin, DecompressStream());
+            } else if (compZfp) {
                 ar &m_dim[0] & m_dim[1] & m_dim[2];
                 buffer compressed;
                 ar &compressed;
@@ -299,12 +419,23 @@ struct archive_helper<yas_tag> {
                 yas::detail::concepts::array::load<yas_flags>(ar, *this);
             }
         }
+
         template<class Archive>
         void save(Archive &ar) const
         {
-            bool compress = ar.compressionMode() != Uncompressed && !m_exact;
+            bool compPredict = PredictTransform<T>::use &&
+                               (ar.compressionMode() == Predict || (m_exact && ar.compressionMode() != Uncompressed));
+            bool compZfp = !compPredict && ar.compressionMode() != Uncompressed && !m_exact;
+            bool compress = compPredict || compZfp;
             //std::cerr << "ar.compressed()=" << compress << std::endl;
-            if (compress) {
+            if (compPredict) {
+                ar &compress;
+                ar & false;
+                std::vector<T> diff;
+                diff.reserve(size());
+                std::transform(m_begin, m_end, std::back_inserter(diff), CompressStream());
+                yas::detail::concepts::array::save<yas_flags>(ar, diff);
+            } else if (compZfp) {
 #ifdef HAVE_ZFP
                 ZfpParameters param;
                 param.mode = ar.compressionMode();
@@ -319,13 +450,16 @@ struct archive_helper<yas_tag> {
                 if (compressZfp<zfp_type_map<T>::value>(compressed, static_cast<const void *>(m_begin), dim,
                                                         sizeof(*m_begin), param)) {
                     ar &compress;
+                    ar & true;
                     ar &m_dim[0] & m_dim[1] & m_dim[2];
                     ar &compressed;
                 } else {
                     std::cerr << "compression failed" << std::endl;
+                    compZfp = false;
                     compress = false;
                 }
 #else
+                compZfp = false;
                 compress = false;
 #endif
             }

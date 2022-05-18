@@ -420,6 +420,7 @@ bool compressZfp(buffer &compressed, const void *src, const Index dim[3], const 
     zfp_stream *zfp = zfp_stream_open(nullptr);
     switch (param.mode) {
     case Uncompressed:
+    case Predict:
         assert("invalid mode for ZFP compression" == 0);
         break;
     case ZfpAccuracy:
