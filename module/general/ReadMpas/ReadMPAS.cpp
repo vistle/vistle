@@ -67,6 +67,7 @@ static const char *DimNCells = "nCells";
 static const char *DimNVertices = "nVertices";
 static const char *DimMaxEdges = "maxEdges";
 static const char *DimNVertLevels = "nVertLevels";
+static const char *DimNVertLevelsP1 = "nVertLevelsP1";
 
 static const char *VarCellsOnCell = "cellsOnCell";
 static const char *VarCellsOnVertex = "cellsOnVertex";
@@ -327,10 +328,19 @@ ReadMPAS::ReadMPAS(const std::string &name, int moduleID, mpi::communicator comm
         m_variables[i] = addStringParameter(s_var, s_var, "", Parameter::Choice);
 
         setParameterChoices(m_variables[i], varChoices);
-        observeParameter(m_variables[i]);
         sprintf(s_var, "data_out_%d", i);
         m_dataOut[i] = createOutputPort(s_var, "scalar data");
     }
+
+    m_velocityOut = createOutputPort("velocity", "composed cartesian velocity");
+    std::array<const char *, 3> vcomps{"u_zonal", "u_meridional", "w"};
+    std::array<const char *, 3> vcompval{"uReconstructZonal", "uReconstructMeridional", "w"};
+    for (int i = 0; i < 3; ++i) {
+        m_velocityVar[i] = addStringParameter(vcomps[i], vcomps[i], vcompval[i], Parameter::Choice);
+        setParameterChoices(m_velocityVar[i], varChoices);
+    }
+    m_velocityScaleRad =
+        addIntParameter("radial_scale", "scale radial velocity component with height", true, Parameter::Boolean);
 
     CellMode cm = m_voronoiCells ? Voronoi : m_projectDown ? DelaunayProjected : Delaunay;
     m_cellMode = addIntParameter("cell_mode",
@@ -729,6 +739,13 @@ bool ReadMPAS::examine(const vistle::Parameter *param)
     }
     for (int i = 0; i < NUMPARAMS; i++)
         setParameterChoices(m_variables[i], choices);
+    if (m_varDim->getValue() != varDimList[1]) {
+        choices.clear();
+        for (const auto &var: m_3dChoices)
+            choices.push_back(var.first);
+    }
+    for (int i = 0; i < 3; ++i)
+        setParameterChoices(m_velocityVar[i], choices);
     return true;
 }
 
@@ -841,9 +858,9 @@ bool ReadMPAS::addTri(Index &curElem, Index center, Index n1, Index n2, Index *c
 }
 
 #ifdef USE_NETCDF
-std::vector<Scalar> ReadMPAS::getData(int ncid, Index nLevels, Index dataIdx)
+std::vector<Scalar> ReadMPAS::getData(int ncid, Index nLevels, Index dataIdx, bool velocity)
 {
-    std::string varname = m_variables[dataIdx]->getValue();
+    std::string varname = velocity ? m_velocityVar[dataIdx]->getValue() : m_variables[dataIdx]->getValue();
 
     std::vector<Scalar> data;
     int varid = -1;
@@ -883,7 +900,7 @@ std::vector<Scalar> ReadMPAS::getData(int ncid, Index nLevels, Index dataIdx)
         start.push_back(0);
         if (name == DimNCells) {
             count.push_back(dim);
-        } else if (name == DimNVertLevels) {
+        } else if (name == DimNVertLevels || name == DimNVertLevelsP1) {
             count.push_back(std::min(dim, size_t(nLevels)));
         } else {
             count.push_back(1);
@@ -896,14 +913,15 @@ std::vector<Scalar> ReadMPAS::getData(int ncid, Index nLevels, Index dataIdx)
 // GET DATA
 // read 2D or 3D data from data or grid file into a vector
 bool ReadMPAS::getData(const NcmpiFile &filename, std::vector<float> *dataValues, const MPI_Offset &nLevels,
-                       const Index dataIdx)
+                       const Index dataIdx, bool velocity)
 {
-    const NcmpiVar varData = filename.getVar(m_variables[dataIdx]->getValue());
+    const NcmpiVar varData =
+        filename.getVar(velocity ? m_velocityVar[dataIdx]->getValue() : m_variables[dataIdx]->getValue());
     std::vector<MPI_Offset> numElem, startElem;
     for (auto elem: varData.getDims()) {
         if (elem.getName() == DimNCells) {
             numElem.push_back(elem.getSize());
-        } else if (elem.getName() == DimNVertLevels) {
+        } else if (elem.getName() == DimNVertLevels || elem.getName() == DimNVertLevelsP1) {
             numElem.push_back(std::min(elem.getSize(), nLevels));
         } else {
             numElem.push_back(1);
@@ -1643,8 +1661,8 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
 #endif
         }
         if (dataValues.size() != numCells * nLevels) {
-            std::cerr << "ReadMPAS: size mismatch, expected " << numCells * nLevels << ", but got " << dataValues.size()
-                      << std::endl;
+            std::cerr << "ReadMPAS: size mismatch for " << pVar << ", expected " << numCells * nLevels << ", but got "
+                      << dataValues.size() << std::endl;
             continue;
         }
         Index currentElem = 0;
@@ -1667,6 +1685,110 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
 
         dataValues.clear();
     }
+
+    // Read components and compute cartesian velocity
+    if (timestep < 0)
+        return true;
+    if (!isConnected(*m_velocityOut))
+        return true;
+    //unsigned nLevels = m_voronoiCells ? std::max(1u, numLevels - 1) : numLevels;
+    for (Index dataIdx = 0; dataIdx < 3; ++dataIdx) {
+        if (emptyValue(m_velocityVar[dataIdx])) {
+            return true;
+        }
+    }
+
+    std::array<std::vector<Scalar>, 3> fields;
+    std::vector<Scalar> &zonal = fields[0], &merid = fields[1], &rad = fields[2];
+
+    for (Index dataIdx = 0; dataIdx < 3; ++dataIdx) {
+        std::string pVar = m_velocityVar[dataIdx]->getValue();
+
+        auto ft = m_3dChoices[pVar];
+        if (ft == data_type) {
+            LOCK_NETCDF(*token.comm());
+#ifdef USE_NETCDF
+            auto ncid = NcFile::open(dataFileList.at(timestep), *token.comm());
+            if (!ncid) {
+                return true;
+            }
+            fields[dataIdx] = getData(ncid, nLevels, dataIdx, true);
+#else
+            fields[dataIdx].resize(numCells * nLevels);
+            NcmpiFile ncDataFile(*token.comm(), dataFileList.at(timestep).c_str(), NcmpiFile::read);
+            getData(ncDataFile, &fields[dataIdx], nLevels, dataIdx, true);
+#endif
+        } else if (ft == zgrid_type) {
+            LOCK_NETCDF(*token.comm());
+#ifdef USE_NETCDF
+            auto nczid = NcFile::open(zGridFileName, *token.comm());
+            if (!nczid) {
+                return true;
+            }
+            fields[dataIdx] = getData(nczid, nLevels, dataIdx, true);
+#else
+            NcmpiFile ncFirstFile2(*token.comm(), zGridFileName, NcmpiFile::read);
+            getData(ncFirstFile2, &fields[dataIdx], nLevels, dataIdx, true);
+#endif
+        } else {
+            LOCK_NETCDF(*token.comm());
+#ifdef USE_NETCDF
+            auto ncid = NcFile::open(firstFileName, *token.comm());
+            if (!ncid) {
+                return true;
+            }
+            fields[dataIdx] = getData(ncid, nLevels, dataIdx, true);
+#else
+            NcmpiFile ncFirstFile2(*token.comm(), firstFileName, NcmpiFile::read);
+            getData(ncFirstFile2, &fields[dataIdx], nLevels, dataIdx, true);
+#endif
+        }
+        if (fields[dataIdx].size() != numCells * nLevels) {
+            std::cerr << "ReadMPAS: size mismatch for " << pVar << ", expected " << numCells * nLevels << ", but got "
+                      << fields[dataIdx].size() << std::endl;
+            return true;
+        }
+    }
+
+    Vec<Scalar, 3>::ptr dataObj(new Vec<Scalar, 3>(idxCells.size() * nLevels));
+    Scalar *vel[3] = {dataObj->x().data(), dataObj->y().data(), dataObj->z().data()};
+
+    float altScale = m_velocityScaleRad->getValue() ? m_altitudeScale->getValue() : 1.f;
+
+    Index currentElem = 0;
+    for (Index iz = 0; iz < nLevels; ++iz) {
+        for (Index k = 0; k < idxCells.size(); ++k) {
+            Index i = idxCells[k];
+            Vector3 e_r(xCoords[i], yCoords[i], zCoords[i]);
+            e_r.normalize();
+            Vector3 e_z(-yCoords[i], xCoords[i], 0);
+            e_z.normalize();
+            Vector3 e_m = e_r.cross(e_z);
+
+            auto u = zonal[iz + idxCells[k] * nLevels];
+            auto v = merid[iz + idxCells[k] * nLevels];
+            auto w = altScale * rad[iz + idxCells[k] * nLevels];
+
+            auto vv = u * e_z + v * e_m + w * e_r;
+            for (int i = 0; i < 3; ++i)
+                vel[i][currentElem] = vv[i];
+            ++currentElem;
+        }
+    }
+    for (auto &f: fields)
+        f.clear();
+
+    dataObj->setGrid(gridList[block]);
+    if (m_voronoiCells)
+        dataObj->setMapping(DataBase::Element);
+    else
+        dataObj->setMapping(DataBase::Vertex);
+    dataObj->setBlock(block);
+    dataObj->addAttribute("_species", "cartesian_velocity");
+    dataObj->setTimestep(timestep);
+    token.applyMeta(dataObj);
+    token.addObject(m_velocityOut, dataObj);
+
     return true;
 }
 
