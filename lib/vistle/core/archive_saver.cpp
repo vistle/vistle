@@ -2,6 +2,7 @@
 #include "archives.h"
 #include "shmvector.h"
 #include "object.h"
+#include "archives_impl.h"
 
 namespace vistle {
 

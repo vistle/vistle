@@ -66,6 +66,7 @@ set(core_HEADERS
     archive_saver.h
     archives.h
     archives_config.h
+    archives_impl.h
     availablemodule.h
     cellalgorithm.h
     celltree.h

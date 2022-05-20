@@ -11,6 +11,7 @@
 #include <vistle/core/archives.h>
 #include <vistle/core/archive_loader.h>
 #include <vistle/core/archive_saver.h>
+#include <vistle/core/archives_impl.h>
 #include <vistle/core/statetracker.h>
 #include <vistle/core/object.h>
 #include <vistle/core/tcpmessage.h>

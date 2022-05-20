@@ -13,6 +13,7 @@
 #include <istream>
 
 #include "archives_config.h"
+#include "archives_impl.h"
 #include "archives.h"
 #include "object.h"
 
