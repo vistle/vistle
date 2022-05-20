@@ -504,6 +504,9 @@ bool ReadMPAS::prepareRead()
             std::cerr << "ReadMpas: filesystem exception: " << ex.what() << std::endl;
         }
 
+        std::sort(dataFileList.begin(),
+                  dataFileList.end()); // alpha-numeric sort hopefully brings timesteps into proper order
+
         setTimesteps(dataFileList.size());
         if (rank() == 0)
             sendInfo("Set Timesteps from DataFiles to %u, ignored %u candidates", (unsigned)dataFileList.size(),
