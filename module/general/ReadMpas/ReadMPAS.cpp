@@ -215,13 +215,35 @@ std::vector<T> getVariable(int ncid, std::string name, std::vector<size_t> start
             return data;
         }
     }
-    size_t s = std::accumulate(count.begin(), count.end(), 1, [](size_t a, size_t b) { return a * b; });
-    data.resize(s);
-    err = NcFuncMap<T>::get_vara(ncid, varid, start.data(), count.data(), data.data());
-    if (err != NC_NOERR) {
-        std::cerr << "Nc: get_vara " << name << " error: " << nc_strerror(err) << std::endl;
-        data.clear();
-        return data;
+    size_t size = std::accumulate(count.begin(), count.end(), 1, [](size_t a, size_t b) { return a * b; });
+    data.resize(size);
+    size_t nreads = std::max(size_t(1), size / size_t(std::numeric_limits<int>::max()));
+    unsigned splitdim = 0;
+    while (splitdim < count.size() - 1 && count[splitdim] == 1)
+        ++splitdim;
+    size_t splitcount = (count[splitdim] + nreads - 1) / nreads;
+    std::vector blockcount(count);
+    blockcount[splitdim] = splitcount;
+    size_t nvalues = std::accumulate(blockcount.begin(), blockcount.end(), 1, [](size_t a, size_t b) { return a * b; });
+    for (size_t i = 0; i < nreads; ++i) {
+        std::vector<size_t> s(start), c(count);
+        s[splitdim] = start[splitdim] + i * splitcount;
+        c[splitdim] = std::min(splitcount, count[splitdim] - s[splitdim]);
+        if (s[splitdim] >= start[splitdim] + count[splitdim])
+            continue;
+        err = NcFuncMap<T>::get_vara(ncid, varid, s.data(), c.data(), data.data() + i * nvalues);
+        if (err != NC_NOERR) {
+            std::cerr << "Nc: get_vara " << name << " error: " << nc_strerror(err) << std::endl;
+            std::cerr << "i=" << i << ", start:";
+            for (auto v: s)
+                std::cerr << " " << v;
+            std::cerr << ", count:";
+            for (auto v: c)
+                std::cerr << " " << v;
+            std::cerr << std::endl;
+            data.clear();
+            return data;
+        }
     }
 
     return data;
