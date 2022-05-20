@@ -217,7 +217,8 @@ std::vector<T> getVariable(int ncid, std::string name, std::vector<size_t> start
     }
     size_t size = std::accumulate(count.begin(), count.end(), 1, [](size_t a, size_t b) { return a * b; });
     data.resize(size);
-    size_t nreads = std::max(size_t(1), size / size_t(std::numeric_limits<int>::max()));
+    size_t intmax = std::numeric_limits<int>::max();
+    size_t nreads = std::max(size_t(1), (size * sizeof(T) + intmax - 1) / intmax);
     unsigned splitdim = 0;
     while (splitdim < count.size() - 1 && count[splitdim] == 1)
         ++splitdim;
