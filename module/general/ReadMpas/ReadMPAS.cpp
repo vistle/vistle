@@ -190,11 +190,13 @@ std::vector<T> getVariable(int ncid, std::string name, std::vector<size_t> start
     int varid = -1;
     int err = nc_inq_varid(ncid, name.c_str(), &varid);
     if (err != NC_NOERR) {
+        std::cerr << "Nc: nc_inq_varid " << name << " error: " << nc_strerror(err) << std::endl;
         return data;
     }
     int ndims = -1;
     err = nc_inq_varndims(ncid, varid, &ndims);
     if (err != NC_NOERR) {
+        std::cerr << "Nc: nc_inq_varndims " << name << " error: " << nc_strerror(err) << std::endl;
         return data;
     }
     assert(start.size() == size_t(ndims));
@@ -202,12 +204,14 @@ std::vector<T> getVariable(int ncid, std::string name, std::vector<size_t> start
     std::vector<int> dimids(ndims);
     err = nc_inq_vardimid(ncid, varid, dimids.data());
     if (err != NC_NOERR) {
+        std::cerr << "Nc: nc_inq_vardimd " << name << " error: " << nc_strerror(err) << std::endl;
         return data;
     }
     std::vector<size_t> dims(ndims);
     for (int i = 0; i < ndims; ++i) {
         err = nc_inq_dimlen(ncid, dimids[i], &dims[i]);
         if (err != NC_NOERR) {
+            std::cerr << "Nc: nc_inq_dimlen " << name << " error: " << nc_strerror(err) << std::endl;
             return data;
         }
     }
@@ -215,6 +219,7 @@ std::vector<T> getVariable(int ncid, std::string name, std::vector<size_t> start
     data.resize(s);
     err = NcFuncMap<T>::get_vara(ncid, varid, start.data(), count.data(), data.data());
     if (err != NC_NOERR) {
+        std::cerr << "Nc: get_vara " << name << " error: " << nc_strerror(err) << std::endl;
         data.clear();
         return data;
     }
@@ -229,22 +234,26 @@ std::vector<T> getVariable(int ncid, std::string name)
     int varid = -1;
     int err = nc_inq_varid(ncid, name.c_str(), &varid);
     if (err != NC_NOERR) {
+        std::cerr << "Nc: nc_inq_varid " << name << " error: " << nc_strerror(err) << std::endl;
         return data;
     }
     int ndims = -1;
     err = nc_inq_varndims(ncid, varid, &ndims);
     if (err != NC_NOERR) {
+        std::cerr << "Nc: nc_inq_varndims " << name << " error: " << nc_strerror(err) << std::endl;
         return data;
     }
     std::vector<int> dimids(ndims);
     err = nc_inq_vardimid(ncid, varid, dimids.data());
     if (err != NC_NOERR) {
+        std::cerr << "Nc: nc_inq_vardimd " << name << " error: " << nc_strerror(err) << std::endl;
         return data;
     }
     std::vector<size_t> dims(ndims);
     for (int i = 0; i < ndims; ++i) {
         err = nc_inq_dimlen(ncid, dimids[i], &dims[i]);
         if (err != NC_NOERR) {
+            std::cerr << "Nc: nc_inq_dimlen " << name << " error: " << nc_strerror(err) << std::endl;
             return data;
         }
     }
@@ -252,6 +261,7 @@ std::vector<T> getVariable(int ncid, std::string name)
     data.resize(s);
     err = NcFuncMap<T>::get_var(ncid, varid, data.data());
     if (err != NC_NOERR) {
+        std::cerr << "Nc: get_var " << name << " error: " << nc_strerror(err) << std::endl;
         data.clear();
         return data;
     }
@@ -813,16 +823,19 @@ std::vector<Scalar> ReadMPAS::getData(int ncid, Index nLevels, Index dataIdx)
     int varid = -1;
     int err = nc_inq_varid(ncid, varname.c_str(), &varid);
     if (err != NC_NOERR) {
+        std::cerr << "getData: nc_inq_varid " << varname << " error: " << nc_strerror(err) << std::endl;
         return data;
     }
     int ndims = -1;
     err = nc_inq_varndims(ncid, varid, &ndims);
     if (err != NC_NOERR) {
+        std::cerr << "getData: nc_inq_varndims " << varname << " error: " << nc_strerror(err) << std::endl;
         return data;
     }
     std::vector<int> dimids(ndims);
     err = nc_inq_vardimid(ncid, varid, dimids.data());
     if (err != NC_NOERR) {
+        std::cerr << "getData: nc_inq_vardimid " << varname << " error: " << nc_strerror(err) << std::endl;
         return data;
     }
     std::vector<size_t> start, count;
@@ -830,12 +843,14 @@ std::vector<Scalar> ReadMPAS::getData(int ncid, Index nLevels, Index dataIdx)
         char dimname[NC_MAX_NAME];
         err = nc_inq_dimname(ncid, dimids[i], dimname);
         if (err != NC_NOERR) {
+            std::cerr << "getData: nc_inq_dimname " << varname << " error: " << nc_strerror(err) << std::endl;
             return data;
         }
         std::string name(dimname);
         size_t dim = 0;
         err = nc_inq_dimlen(ncid, dimids[i], &dim);
         if (err != NC_NOERR) {
+            std::cerr << "getData: nc_inq_dimlen " << varname << " error: " << nc_strerror(err) << std::endl;
             return data;
         }
 
@@ -1540,87 +1555,90 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
     // Read data
     unsigned nLevels = m_voronoiCells ? std::max(1u, numLevels - 1) : numLevels;
     for (Index dataIdx = 0; dataIdx < NUMPARAMS; ++dataIdx) {
-        if (!emptyValue(m_variables[dataIdx])) {
-            std::string pVar = m_variables[dataIdx]->getValue();
-            Vec<Scalar>::ptr dataObj(new Vec<Scalar>(idxCells.size() * nLevels));
-            Scalar *ptrOnScalarData = dataObj->x().data();
-
-            auto ft = m_varDim->getValue() == varDimList[0] ? m_2dChoices[pVar] : m_3dChoices[pVar];
-
-#ifdef USE_NETCDF
-            std::vector<Scalar> dataValues;
-#else
-            std::vector<float> dataValues(Index(numCells) * nLevels, 0.);
-#endif
-            if (ft == data_type) {
-                if (timestep < 0)
-                    continue;
-
-                LOCK_NETCDF(*token.comm());
-#ifdef USE_NETCDF
-                auto ncid = NcFile::open(dataFileList.at(timestep), *token.comm());
-                if (!ncid) {
-                    return true;
-                }
-                dataValues = getData(ncid, nLevels, dataIdx);
-#else
-                NcmpiFile ncDataFile(*token.comm(), dataFileList.at(timestep).c_str(), NcmpiFile::read);
-                getData(ncDataFile, &dataValues, nLevels, dataIdx);
-#endif
-            } else if (ft == zgrid_type) {
-                if (timestep >= 0)
-                    continue;
-
-                LOCK_NETCDF(*token.comm());
-#ifdef USE_NETCDF
-                auto nczid = NcFile::open(zGridFileName, *token.comm());
-                if (!nczid) {
-                    return true;
-                }
-                dataValues = getData(nczid, nLevels, dataIdx);
-#else
-                NcmpiFile ncFirstFile2(*token.comm(), zGridFileName, NcmpiFile::read);
-                getData(ncFirstFile2, &dataValues, nLevels, dataIdx);
-#endif
-            } else {
-                if (timestep >= 0)
-                    continue;
-
-                LOCK_NETCDF(*token.comm());
-#ifdef USE_NETCDF
-                auto ncid = NcFile::open(firstFileName, *token.comm());
-                if (!ncid) {
-                    return true;
-                }
-                dataValues = getData(ncid, nLevels, dataIdx);
-#else
-                NcmpiFile ncFirstFile2(*token.comm(), firstFileName, NcmpiFile::read);
-                getData(ncFirstFile2, &dataValues, nLevels, dataIdx);
-#endif
-            }
-            if (dataValues.size() != Index(numCells) * nLevels) {
-                continue;
-            }
-            Index currentElem = 0;
-            for (Index iz = 0; iz < nLevels; ++iz) {
-                for (Index k = 0; k < idxCells.size(); ++k) {
-                    ptrOnScalarData[currentElem++] = dataValues[iz + idxCells[k] * nLevels];
-                }
-            }
-
-            dataObj->setGrid(gridList[block]);
-            if (m_voronoiCells)
-                dataObj->setMapping(DataBase::Element);
-            else
-                dataObj->setMapping(DataBase::Vertex);
-            dataObj->setBlock(block);
-            dataObj->addAttribute("_species", pVar);
-            dataObj->setTimestep(timestep);
-            token.applyMeta(dataObj);
-            token.addObject(m_dataOut[dataIdx], dataObj);
-
-            dataValues.clear();
+        if (emptyValue(m_variables[dataIdx])) {
+            continue;
         }
+
+        std::string pVar = m_variables[dataIdx]->getValue();
+        Vec<Scalar>::ptr dataObj(new Vec<Scalar>(idxCells.size() * nLevels));
+        Scalar *ptrOnScalarData = dataObj->x().data();
+
+#ifdef USE_NETCDF
+        std::vector<Scalar> dataValues;
+#else
+        std::vector<float> dataValues(size_t(numCells) * nLevels, 0.);
+#endif
+        auto ft = m_varDim->getValue() == varDimList[0] ? m_2dChoices[pVar] : m_3dChoices[pVar];
+        if (ft == data_type) {
+            if (timestep < 0)
+                continue;
+
+            LOCK_NETCDF(*token.comm());
+#ifdef USE_NETCDF
+            auto ncid = NcFile::open(dataFileList.at(timestep), *token.comm());
+            if (!ncid) {
+                return true;
+            }
+            dataValues = getData(ncid, nLevels, dataIdx);
+#else
+            NcmpiFile ncDataFile(*token.comm(), dataFileList.at(timestep).c_str(), NcmpiFile::read);
+            getData(ncDataFile, &dataValues, nLevels, dataIdx);
+#endif
+        } else if (ft == zgrid_type) {
+            if (timestep >= 0)
+                continue;
+
+            LOCK_NETCDF(*token.comm());
+#ifdef USE_NETCDF
+            auto nczid = NcFile::open(zGridFileName, *token.comm());
+            if (!nczid) {
+                return true;
+            }
+            dataValues = getData(nczid, nLevels, dataIdx);
+#else
+            NcmpiFile ncFirstFile2(*token.comm(), zGridFileName, NcmpiFile::read);
+            getData(ncFirstFile2, &dataValues, nLevels, dataIdx);
+#endif
+        } else {
+            if (timestep >= 0)
+                continue;
+
+            LOCK_NETCDF(*token.comm());
+#ifdef USE_NETCDF
+            auto ncid = NcFile::open(firstFileName, *token.comm());
+            if (!ncid) {
+                return true;
+            }
+            dataValues = getData(ncid, nLevels, dataIdx);
+#else
+            NcmpiFile ncFirstFile2(*token.comm(), firstFileName, NcmpiFile::read);
+            getData(ncFirstFile2, &dataValues, nLevels, dataIdx);
+#endif
+        }
+        if (dataValues.size() != size_t(numCells) * nLevels) {
+            std::cerr << "ReadMPAS: size mismatch, expected " << size_t(numCells) * nLevels << ", but got "
+                      << dataValues.size() << std::endl;
+            continue;
+        }
+        Index currentElem = 0;
+        for (Index iz = 0; iz < nLevels; ++iz) {
+            for (Index k = 0; k < idxCells.size(); ++k) {
+                ptrOnScalarData[currentElem++] = dataValues[iz + idxCells[k] * nLevels];
+            }
+        }
+
+        dataObj->setGrid(gridList[block]);
+        if (m_voronoiCells)
+            dataObj->setMapping(DataBase::Element);
+        else
+            dataObj->setMapping(DataBase::Vertex);
+        dataObj->setBlock(block);
+        dataObj->addAttribute("_species", pVar);
+        dataObj->setTimestep(timestep);
+        token.applyMeta(dataObj);
+        token.addObject(m_dataOut[dataIdx], dataObj);
+
+        dataValues.clear();
     }
     return true;
 }
