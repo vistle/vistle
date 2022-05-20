@@ -1278,7 +1278,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
         assert(numLevels >= 1);
 
         unsigned numZLevels = (m_voronoiCells || m_projectDown) ? numLevels : numLevels + 1;
-        std::vector<float> zGrid(Index(numCells) * numZLevels);
+        std::vector<float> zGrid;
         if (hasZData) {
 #ifdef USE_NETCDF
             if (m_voronoiCells) {
@@ -1286,7 +1286,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
             }
 
             std::vector<size_t> startZ{0, 0};
-            std::vector<size_t> stopZ{size_t(numCells), numZLevels};
+            std::vector<size_t> stopZ{numCells, numZLevels};
             auto nczid = NcFile::open(zGridFileName, *token.comm());
             if (!nczid) {
                 return false;
@@ -1303,6 +1303,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
             }
             zGrid = getVariable<float>(nczid, VarZgrid, startZ, stopZ);
 #else
+            zGrid.resize(numCells * numZLevels);
             if (m_voronoiCells) {
                 NcmpiVar cellsOnVertex = ncFirstFile.getVar(VarCellsOnVertex);
                 cov.resize(numVert * MAX_VERT);
@@ -1566,7 +1567,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
 #ifdef USE_NETCDF
         std::vector<Scalar> dataValues;
 #else
-        std::vector<float> dataValues(size_t(numCells) * nLevels, 0.);
+        std::vector<float> dataValues(numCells * nLevels, 0.);
 #endif
         auto ft = m_varDim->getValue() == varDimList[0] ? m_2dChoices[pVar] : m_3dChoices[pVar];
         if (ft == data_type) {
@@ -1615,9 +1616,9 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
             getData(ncFirstFile2, &dataValues, nLevels, dataIdx);
 #endif
         }
-        if (dataValues.size() != size_t(numCells) * nLevels) {
-            std::cerr << "ReadMPAS: size mismatch, expected " << size_t(numCells) * nLevels << ", but got "
-                      << dataValues.size() << std::endl;
+        if (dataValues.size() != numCells * nLevels) {
+            std::cerr << "ReadMPAS: size mismatch, expected " << numCells * nLevels << ", but got " << dataValues.size()
+                      << std::endl;
             continue;
         }
         Index currentElem = 0;

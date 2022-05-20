@@ -86,7 +86,7 @@ private:
 
     std::vector<int> partList;
     unsigned numLevels = 0;
-    Index numCells = 0;
+    size_t numCells = 0;
 
     std::vector<unsigned> voc; // voc (Vertices on Cell)
     std::vector<unsigned> coc; // coc (cells on cell)
