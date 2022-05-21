@@ -74,13 +74,9 @@ public:
     bool handle(const message::Buffer &msg, const MessagePayload &payload = MessagePayload());
     //bool handleData(const message::Message &msg);
 
-    FieldCompressionMode fieldCompressionMode() const;
-    double zfpRate() const;
-    int zfpPrecision() const;
-    double zfpAccuracy() const;
-
     message::CompressionMode archiveCompressionMode() const;
     int archiveCompressionSpeed() const;
+    const CompressionSettings &compressionSettings();
 
     bool isLocal(int id) const;
     int idToHub(int id) const;
@@ -200,6 +196,9 @@ private:
     std::vector<int> m_numTransfering;
     long m_totalNumTransferring = 0;
     double m_lastStatusUpdateTime = 0.;
+
+    CompressionSettings m_compressionSettings;
+    bool m_compressionSettingsValid = false;
 };
 
 } // namespace vistle

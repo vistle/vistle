@@ -839,6 +839,11 @@ set(ZFP_FOUND TRUE)
 add_definitions(-DHAVE_ZFP)
 include_directories(SYSTEM "${ZFP_INCLUDE_DIRS}")
 
+set(SZ3_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/lib/3rdparty/sz3/include;${PROJECT_BINARY_DIR}/lib/3rdparty/sz3/include")
+set(SZ3_FOUND TRUE)
+add_definitions(-DHAVE_SZ3)
+include_directories(SYSTEM "${SZ3_INCLUDE_DIRS}")
+
 if(NOT VISTLE_GUI_ONLY)
     vistle_find_package(
         OpenSceneGraph

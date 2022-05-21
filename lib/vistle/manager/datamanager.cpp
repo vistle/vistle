@@ -433,10 +433,7 @@ bool DataManager::handlePriv(const message::RequestObject &req)
         buffer &mem = buf.get_vector();
         vistle::oarchive memar(buf);
 #ifdef USE_YAS
-        memar.setCompressionMode(Communicator::the().clusterManager().fieldCompressionMode());
-        memar.setZfpRate(Communicator::the().clusterManager().zfpRate());
-        memar.setZfpPrecision(Communicator::the().clusterManager().zfpPrecision());
-        memar.setZfpAccuracy(Communicator::the().clusterManager().zfpAccuracy());
+        memar.setCompressionSettings(Communicator::the().clusterManager().compressionSettings());
 #endif
         if (req.isArray()) {
             ArraySaver saver(req.objectId(), req.arrayType(), memar);

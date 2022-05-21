@@ -24,6 +24,10 @@
 #include <zfp.h>
 #endif
 
+#ifdef HAVE_SZ3
+#include <SZ3/utils/Config.hpp>
+#endif
+
 #include <cassert>
 #include <cstdlib>
 #include <iostream>
@@ -60,40 +64,94 @@ class yas_iarchive;
 
 namespace detail {
 
+template<typename T>
+struct lossy_type_map {
+#ifdef HAVE_ZFP
+    static const zfp_type zfptypeid = zfp_type_none;
+#endif
+#ifdef HAVE_SZ3
+    typedef void sz3type;
+#endif
+};
+
+template<>
+struct lossy_type_map<int32_t> {
+#ifdef HAVE_ZFP
+    static const zfp_type zfptypeid = zfp_type_int32;
+#endif
+#ifdef HAVE_SZ3
+    typedef int32_t sz3type;
+#endif
+};
+template<>
+struct lossy_type_map<int64_t> {
+#ifdef HAVE_ZFP
+    static const zfp_type zfptypeid = zfp_type_int64;
+#endif
+#ifdef HAVE_SZ3
+    typedef int64_t sz3type;
+#endif
+};
+template<>
+struct lossy_type_map<float> {
+#ifdef HAVE_ZFP
+    static const zfp_type zfptypeid = zfp_type_float;
+#endif
+#ifdef HAVE_SZ3
+    typedef float sz3type;
+#endif
+};
+template<>
+struct lossy_type_map<double> {
+#ifdef HAVE_ZFP
+    static const zfp_type zfptypeid = zfp_type_double;
+#endif
+#ifdef HAVE_SZ3
+    typedef double sz3type;
+#endif
+};
+
 #ifdef HAVE_ZFP
 struct ZfpParameters {
-    FieldCompressionMode mode = Uncompressed;
+    FieldCompressionZfpMode mode = ZfpFixedRate;
     double rate = 8.;
     int precision = 20;
     double accuracy = 1e-20;
-};
-
-template<typename T>
-struct zfp_type_map {
-    static const zfp_type value = zfp_type_none;
-};
-
-template<>
-struct zfp_type_map<int32_t> {
-    static const zfp_type value = zfp_type_int32;
-};
-template<>
-struct zfp_type_map<int64_t> {
-    static const zfp_type value = zfp_type_int64;
-};
-template<>
-struct zfp_type_map<float> {
-    static const zfp_type value = zfp_type_float;
-};
-template<>
-struct zfp_type_map<double> {
-    static const zfp_type value = zfp_type_double;
 };
 
 template<zfp_type type>
 bool compressZfp(buffer &compressed, const void *src, const Index dim[3], Index typeSize, const ZfpParameters &param);
 template<zfp_type type>
 bool decompressZfp(void *dest, const buffer &compressed, const Index dim[3]);
+#endif
+
+#ifdef HAVE_SZ3
+template<typename T>
+char *compressSz3(size_t &compressedSize, const T *src, const SZ::Config &conf);
+
+template<typename T>
+bool decompressSz3(T *dest, const buffer &compressed, const Index dim[3]);
+
+template<>
+char *V_COREEXPORT compressSz3<void>(size_t &compressedSize, const void *src, const SZ::Config &conf);
+template<>
+char *V_COREEXPORT compressSz3<float>(size_t &compressedSize, const float *src, const SZ::Config &conf);
+template<>
+char *V_COREEXPORT compressSz3<double>(size_t &compressedSize, const double *src, const SZ::Config &conf);
+template<>
+char *V_COREEXPORT compressSz3<int32_t>(size_t &compressedSize, const int32_t *src, const SZ::Config &conf);
+template<>
+char *V_COREEXPORT compressSz3<int64_t>(size_t &compressedSize, const int64_t *src, const SZ::Config &conf);
+template<>
+bool V_COREEXPORT decompressSz3<void>(void *dest, const buffer &compressed, const Index dim[3]);
+template<>
+bool V_COREEXPORT decompressSz3<float>(float *dest, const buffer &compressed, const Index dim[3]);
+template<>
+bool V_COREEXPORT decompressSz3<double>(double *dest, const buffer &compressed, const Index dim[3]);
+template<>
+bool V_COREEXPORT decompressSz3<int32_t>(int32_t *dest, const buffer &compressed, const Index dim[3]);
+template<>
+bool V_COREEXPORT decompressSz3<int64_t>(int64_t *dest, const buffer &compressed, const Index dim[3]);
 #endif
 
 template<typename S>
@@ -295,11 +353,15 @@ void archive_helper<yas_tag>::ArrayWrapper<T>::load(Archive &ar)
 {
     bool compPredict = false;
     bool compZfp = false;
+    bool compSz3 = false;
     bool compress = false;
     ar &compress;
     if (compress) {
-        ar &compZfp;
-        compPredict = !compZfp;
+        ar &compPredict;
+        if (!compPredict) {
+            ar &compZfp;
+            compSz3 = !compZfp;
+        }
     }
     if (compPredict) {
         yas::detail::concepts::array::load<yas_flags>(ar, *this);
@@ -312,7 +374,17 @@ void archive_helper<yas_tag>::ArrayWrapper<T>::load(Archive &ar)
         Index dim[3];
         for (int c = 0; c < 3; ++c)
             dim[c] = m_dim[c] == 1 ? 0 : m_dim[c];
-        decompressZfp<zfp_type_map<T>::value>(static_cast<void *>(m_begin), compressed, dim);
+        decompressZfp<lossy_type_map<T>::zfptypeid>(static_cast<void *>(m_begin), compressed, dim);
+#endif
+    } else if (compSz3) {
+        ar &m_dim[0] & m_dim[1] & m_dim[2];
+        buffer compressed;
+        ar &compressed;
+#ifdef HAVE_SZ3
+        Index dim[3];
+        for (int c = 0; c < 3; ++c)
+            dim[c] = m_dim[c] == 1 ? 0 : m_dim[c];
+        decompressSz3<typename lossy_type_map<T>::sz3type>(m_begin, compressed, dim);
 #endif
     } else {
         yas::detail::concepts::array::load<yas_flags>(ar, *this);
@@ -323,43 +395,115 @@ template<class T>
 template<class Archive>
 void archive_helper<yas_tag>::ArrayWrapper<T>::save(Archive &ar) const
 {
-    bool compPredict = PredictTransform<T>::use &&
-                       (ar.compressionMode() == Predict || (m_exact && ar.compressionMode() != Uncompressed));
-    bool compZfp = !compPredict && ar.compressionMode() != Uncompressed && !m_exact;
-    bool compress = compPredict || compZfp;
+    auto cs = ar.compressionSettings();
+    bool compPredict = PredictTransform<T>::use && (cs.mode == Predict || (m_exact && cs.mode != Uncompressed));
+    bool compSz3 = !m_exact && !compPredict && cs.mode == SZ;
+    bool compZfp = !m_exact && !compPredict && cs.mode == Zfp;
+    bool compress = compPredict || compZfp || compSz3;
     //std::cerr << "ar.compressed()=" << compress << std::endl;
     if (compPredict) {
         ar &compress;
-        ar & false;
+        ar &compPredict;
         std::vector<T> diff;
         diff.reserve(size());
         std::transform(m_begin, m_end, std::back_inserter(diff), CompressStream<T>());
         yas::detail::concepts::array::save<yas_flags>(ar, diff);
     } else if (compZfp) {
+        assert(!compPredict);
+        assert(!compSz3);
 #ifdef HAVE_ZFP
         ZfpParameters param;
-        param.mode = ar.compressionMode();
-        param.rate = ar.zfpRate();
-        param.precision = ar.zfpPrecision();
-        param.accuracy = ar.zfpAccuracy();
+        param.mode = cs.zfpMode;
+        param.rate = cs.zfpRate;
+        param.precision = cs.zfpPrecision;
+        param.accuracy = cs.zfpAccuracy;
         //std::cerr << "trying to compresss " << std::endl;
         buffer compressed;
         Index dim[3];
+        dim[0] = m_dim[0];
         for (int c = 1; c < 3; ++c)
             dim[c] = m_dim[c] == 1 ? 0 : m_dim[c];
-        if (compressZfp<zfp_type_map<T>::value>(compressed, static_cast<const void *>(m_begin), dim, sizeof(*m_begin),
-                                                param)) {
+        if (compressZfp<lossy_type_map<T>::zfptypeid>(compressed, static_cast<const void *>(m_begin), dim,
+                                                      sizeof(*m_begin), param)) {
             ar &compress;
-            ar & true;
+            ar &compPredict;
+            ar &compZfp;
             ar &m_dim[0] & m_dim[1] & m_dim[2];
             ar &compressed;
         } else {
-            std::cerr << "compression failed" << std::endl;
+            std::cerr << "zfp compression for type id " << lossy_type_map<T>::zfptypeid << " failed" << std::endl;
             compZfp = false;
             compress = false;
         }
 #else
         compZfp = false;
+        compress = false;
+#endif
+    } else if (compSz3) {
+        assert(!compPredict);
+        assert(!compZfp);
+#ifdef HAVE_SZ3
+        std::vector<size_t> dims;
+        for (int c = 0; c < 3; ++c)
+            dims.push_back(m_dim[c]);
+        while (dims.back() == 1 && dims.size() > 1)
+            dims.pop_back();
+        SZ::Config conf;
+        if (dims.size() == 1)
+            conf = SZ::Config(dims[0]);
+        else if (dims.size() == 2)
+            conf = SZ::Config(dims[0], dims[1]);
+        else if (dims.size() == 3)
+            conf = SZ::Config(dims[0], dims[1], dims[2]);
+        switch (cs.szAlgo) {
+        case SzInterp:
+            conf.cmprAlgo = SZ::ALGO_INTERP;
+            break;
+        case SzInterpLorenzo:
+            conf.cmprAlgo = SZ::ALGO_INTERP_LORENZO;
+            break;
+        case SzLorenzoReg:
+            conf.cmprAlgo = SZ::ALGO_LORENZO_REG;
+            break;
+        }
+        switch (cs.szError) {
+        case SzAbs:
+            conf.errorBoundMode = SZ::EB_ABS;
+            break;
+        case SzRel:
+            conf.errorBoundMode = SZ::EB_REL;
+            break;
+        case SzPsnr:
+            conf.errorBoundMode = SZ::EB_PSNR;
+            break;
+        case SzL2:
+            conf.errorBoundMode = SZ::EB_L2NORM;
+            break;
+        case SzAbsAndRel:
+            conf.errorBoundMode = SZ::EB_ABS_AND_REL;
+            break;
+        case SzAbsOrRel:
+            conf.errorBoundMode = SZ::EB_ABS_OR_REL;
+            break;
+        }
+        conf.absErrorBound = cs.szAbsError;
+        conf.relErrorBound = cs.szRelError;
+        conf.psnrErrorBound = cs.szPsnrError;
+        conf.l2normErrorBound = cs.szL2Error;
+        conf.encoder = 0;
+        conf.lossless = 0;
+        size_t outSize = 0;
+        std::vector<T> input(m_begin, m_end);
+        char *compressedData = compressSz3<typename lossy_type_map<T>::sz3type>(outSize, input.data(), conf);
+        buffer compressed(compressedData, compressedData + outSize);
+        delete[] compressedData;
+        ar &compress;
+        ar &compPredict;
+        ar &compZfp;
+        ar &m_dim[0] & m_dim[1] & m_dim[2];
+        ar &compressed;
+#else
+        compSz3 = false;
         compress = false;
 #endif
     }
@@ -396,11 +540,34 @@ extern template bool V_COREEXPORT compressZfp<zfp_type_float>(buffer &compressed
 extern template bool V_COREEXPORT compressZfp<zfp_type_double>(buffer &compressed, const void *src, const Index dim[3],
                                                                Index typeSize, const ZfpParameters &param);
 #endif
+
+#ifdef HAVE_SZ3
+extern template char *V_COREEXPORT compressSz3<void>(size_t &compressedSize, const void *src, const SZ::Config &conf);
+extern template char *V_COREEXPORT compressSz3<float>(size_t &compressedSize, const float *src, const SZ::Config &conf);
+extern template char *V_COREEXPORT compressSz3<double>(size_t &compressedSize, const double *src,
+                                                       const SZ::Config &conf);
+extern template char *V_COREEXPORT compressSz3<int32_t>(size_t &compressedSize, const int32_t *src,
+                                                        const SZ::Config &conf);
+extern template char *V_COREEXPORT compressSz3<int64_t>(size_t &compressedSize, const int64_t *src,
+                                                        const SZ::Config &conf);
+extern template bool V_COREEXPORT decompressSz3<void>(void *dest, const buffer &compressed, const Index dim[3]);
+extern template bool V_COREEXPORT decompressSz3<float>(float *dest, const buffer &compressed, const Index dim[3]);
+extern template bool V_COREEXPORT decompressSz3<double>(double *dest, const buffer &compressed, const Index dim[3]);
+extern template bool V_COREEXPORT decompressSz3<int32_t>(int32_t *dest, const buffer &compressed, const Index dim[3]);
+extern template bool V_COREEXPORT decompressSz3<int64_t>(int64_t *dest, const buffer &compressed, const Index dim[3]);
+#endif
+
 } // namespace detail
+
 #ifdef HAVE_ZFP
 using detail::ZfpParameters;
 using detail::compressZfp;
 using detail::decompressZfp;
+#endif
+
+#ifdef HAVE_SZ3
+using detail::compressSz3;
+using detail::decompressSz3;
 #endif
 } // namespace vistle
 #endif

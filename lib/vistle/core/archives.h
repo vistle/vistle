@@ -48,13 +48,6 @@
 
 namespace vistle {
 
-struct CompressionSettings {
-    FieldCompressionMode m_compress = Uncompressed;
-    double m_zfpRate = 8.;
-    int m_zfpPrecision = 8;
-    double m_zfpAccuracy = 1e-20;
-};
-
 template<class T>
 class shm_obj_ref;
 } // namespace vistle
@@ -137,6 +130,7 @@ public:
 
     void setCompressionMode(vistle::FieldCompressionMode mode);
     void setCompressionSettings(const CompressionSettings &other);
+    const CompressionSettings &compressionSettings() const;
 
     void setSaver(std::shared_ptr<Saver> saver);
 
@@ -197,25 +191,13 @@ class V_COREEXPORT yas_oarchive: public yas_binary_oarchive<yas_oarchive, vecost
                                  public CompressionSettings {
     typedef vecostreambuf<vistle::buffer> Stream;
     typedef yas_binary_oarchive<yas_oarchive, Stream> Base;
-    FieldCompressionMode m_compress = Uncompressed;
-    double m_zfpRate = 8.;
-    int m_zfpPrecision = 8;
-    double m_zfpAccuracy = 1e-20;
+    CompressionSettings m_compress;
     std::shared_ptr<Saver> m_saver;
     Stream &m_os;
 
 public:
-    void setCompressionMode(vistle::FieldCompressionMode mode);
-    FieldCompressionMode compressionMode() const;
-
-    void setZfpRate(double rate);
-    double zfpRate() const;
-    void setZfpAccuracy(double rate);
-    double zfpAccuracy() const;
-    void setZfpPrecision(int precision);
-    int zfpPrecision() const;
-
     void setCompressionSettings(const CompressionSettings &other);
+    const CompressionSettings &compressionSettings() const;
 
     yas_oarchive(Stream &mo, unsigned int flags = 0);
 

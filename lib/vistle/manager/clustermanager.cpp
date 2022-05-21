@@ -271,40 +271,54 @@ template<typename ValueType>
 ValueType getSessionParameter(const StateTracker &state, const char *name)
 {
     auto val = ValueType();
-    auto param = std::dynamic_pointer_cast<ParameterBase<ValueType>>(state.getParameter(Id::Vistle, name)).get();
+    auto param = std::dynamic_pointer_cast<ParameterBase<Integer>>(state.getParameter(Id::Vistle, name)).get();
+    if (param)
+        val = static_cast<ValueType>(param->getValue());
+    return val;
+}
+
+template<>
+Float getSessionParameter<Float>(const StateTracker &state, const char *name)
+{
+    auto val = Float();
+    auto param = std::dynamic_pointer_cast<ParameterBase<Float>>(state.getParameter(Id::Vistle, name)).get();
     if (param)
         val = param->getValue();
     return val;
 }
 
-FieldCompressionMode ClusterManager::fieldCompressionMode() const
-{
-    return (FieldCompressionMode)getSessionParameter<Integer>(state(), "field_compression");
-}
-
-double ClusterManager::zfpRate() const
-{
-    return getSessionParameter<Float>(state(), "zfp_rate");
-}
-
-int ClusterManager::zfpPrecision() const
-{
-    return getSessionParameter<Integer>(state(), "zfp_precision");
-}
-
-double ClusterManager::zfpAccuracy() const
-{
-    return getSessionParameter<Float>(state(), "zfp_accuracy");
-}
-
 message::CompressionMode ClusterManager::archiveCompressionMode() const
 {
-    return (message::CompressionMode)getSessionParameter<Integer>(state(), "archive_compression");
+    return getSessionParameter<message::CompressionMode>(state(), "archive_compression");
 }
 
 int ClusterManager::archiveCompressionSpeed() const
 {
     return getSessionParameter<Integer>(state(), "archive_compression_speed");
+}
+
+const CompressionSettings &ClusterManager::compressionSettings()
+{
+    if (!m_compressionSettingsValid) {
+        m_compressionSettingsValid = true;
+
+        auto &cs = m_compressionSettings;
+        cs.mode = getSessionParameter<FieldCompressionMode>(state(), CompressionSettings::p_mode);
+
+        cs.zfpMode = getSessionParameter<FieldCompressionZfpMode>(state(), CompressionSettings::p_zfpMode);
+        cs.zfpRate = getSessionParameter<Float>(state(), CompressionSettings::p_zfpRate);
+        cs.zfpPrecision = getSessionParameter<Integer>(state(), CompressionSettings::p_zfpPrecision);
+        cs.zfpAccuracy = getSessionParameter<Float>(state(), CompressionSettings::p_zfpAccuracy);
+
+        cs.szAlgo = getSessionParameter<FieldCompressionSzAlgo>(state(), CompressionSettings::p_szAlgo);
+        cs.szError = getSessionParameter<FieldCompressionSzError>(state(), CompressionSettings::p_szError);
+
+        cs.szAbsError = getSessionParameter<Float>(state(), CompressionSettings::p_szAbsError);
+        cs.szRelError = getSessionParameter<Float>(state(), CompressionSettings::p_szRelError);
+        cs.szPsnrError = getSessionParameter<Float>(state(), CompressionSettings::p_szPsnrError);
+        cs.szL2Error = getSessionParameter<Float>(state(), CompressionSettings::p_szL2Error);
+    }
+    return m_compressionSettings;
 }
 
 int ClusterManager::getRank() const
@@ -1873,6 +1887,8 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam)
 
     assert(setParam.getModule() >= Id::ModuleBase || setParam.getModule() == Id::Vistle ||
            Id::isHub(setParam.getModule()));
+    if (setParam.getModule() == Id::Vistle)
+        m_compressionSettingsValid = false;
     int sender = setParam.senderId();
     int dest = setParam.destId();
     RunningMap::iterator i = runningMap.find(setParam.getModule());

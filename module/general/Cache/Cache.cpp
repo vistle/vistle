@@ -818,10 +818,10 @@ bool Cache::compute()
 
 bool Cache::prepare()
 {
-    m_compressionSettings.m_compress = (FieldCompressionMode)m_compressionMode->getValue();
-    m_compressionSettings.m_zfpRate = m_zfpRate->getValue();
-    m_compressionSettings.m_zfpAccuracy = m_zfpAccuracy->getValue();
-    m_compressionSettings.m_zfpPrecision = m_zfpPrecision->getValue();
+    m_compressionSettings.mode = (FieldCompressionMode)m_compressionMode->getValue();
+    m_compressionSettings.zfpRate = m_zfpRate->getValue();
+    m_compressionSettings.zfpAccuracy = m_zfpAccuracy->getValue();
+    m_compressionSettings.zfpPrecision = m_zfpPrecision->getValue();
 
     std::string file = p_file->getValue();
 

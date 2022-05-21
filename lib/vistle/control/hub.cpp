@@ -1167,26 +1167,52 @@ bool Hub::hubReady()
     if (m_isMaster) {
         m_ready = true;
 
-        auto compressionMode = params.addIntParameter("field_compression", "compression mode for data fields",
-                                                      Uncompressed, Parameter::Choice);
-        params.V_ENUM_SET_CHOICES(compressionMode, FieldCompressionMode);
-
-        auto zfpRate = params.addFloatParameter("zfp_rate", "ZFP fixed compression rate", 8.);
-        params.setParameterRange(zfpRate, Float(1), Float(64));
-
-        auto zfpPrecision = params.addIntParameter("zfp_precision", "ZFP fixed precision", 16);
-        params.setParameterRange(zfpPrecision, Integer(1), Integer(64));
-
-        auto zfpAccuracy = params.addFloatParameter("zfp_accuracy", "ZFP compression error tolerance", 1e-10);
-        params.setParameterRange(zfpAccuracy, Float(0.), Float(1e10));
+        CompressionSettings cs;
 
         auto archiveCompression = params.addIntParameter("archive_compression", "compression mode for archives",
                                                          message::CompressionNone, Parameter::Choice);
         params.V_ENUM_SET_CHOICES(archiveCompression, message::CompressionMode);
-
         auto archiveCompressionSpeed =
             params.addIntParameter("archive_compression_speed", "speed parameter of compression algorithm", -1);
+
         params.setParameterRange(archiveCompressionSpeed, Integer(-1), Integer(100));
+
+        auto compressionMode = params.addIntParameter(CompressionSettings::p_mode, "compression mode for data fields",
+                                                      cs.mode, Parameter::Choice);
+        params.V_ENUM_SET_CHOICES(compressionMode, FieldCompressionMode);
+
+        params.setCurrentParameterGroup("zfp");
+        auto zfpMode = params.addIntParameter(CompressionSettings::p_zfpMode, "mode for zfp compression", cs.zfpMode,
+                                              Parameter::Choice);
+        params.V_ENUM_SET_CHOICES(zfpMode, FieldCompressionZfpMode);
+        auto zfpRate = params.addFloatParameter(CompressionSettings::p_zfpRate,
+                                                "zfp fixed compression rate (bits/value)", cs.zfpRate);
+        params.setParameterRange(zfpRate, Float(1), Float(64));
+        auto zfpPrecision = params.addIntParameter(CompressionSettings::p_zfpPrecision,
+                                                   "zfp fixed precision (no. bit planes)", cs.zfpPrecision);
+        params.setParameterRange(zfpPrecision, Integer(1), Integer(64));
+        auto zfpAccuracy = params.addFloatParameter(CompressionSettings::p_zfpAccuracy, "zfp absolute error tolerance",
+                                                    cs.zfpAccuracy);
+        params.setParameterRange(zfpAccuracy, Float(0.), Float(1e10));
+
+        params.setCurrentParameterGroup("SZ");
+        params.V_ENUM_SET_CHOICES(compressionMode, FieldCompressionMode);
+        auto szAlgo = params.addIntParameter(CompressionSettings::p_szAlgo, "SZ3 compression algorithm", cs.szAlgo,
+                                             Parameter::Choice);
+        params.V_ENUM_SET_CHOICES(szAlgo, FieldCompressionSzAlgo);
+        auto szError = params.addIntParameter(CompressionSettings::p_szError, "SZ3 error control method", cs.szError,
+                                              Parameter::Choice);
+        params.V_ENUM_SET_CHOICES(szError, FieldCompressionSzError);
+        auto szRel =
+            params.addFloatParameter(CompressionSettings::p_szRelError, "SZ3 relative error tolerance", cs.szRelError);
+        auto szAbs =
+            params.addFloatParameter(CompressionSettings::p_szAbsError, "SZ3 absolute error tolerance", cs.szAbsError);
+        auto szPsnr =
+            params.addFloatParameter(CompressionSettings::p_szPsnrError, "SZ3 psnr tolerance", cs.szPsnrError);
+        auto szL2 =
+            params.addFloatParameter(CompressionSettings::p_szL2Error, "SZ3 L2 norm error tolerance", cs.szL2Error);
+
+        params.setCurrentParameterGroup("");
 
         for (auto s: m_slavesToConnect) {
             auto set = make.message<message::SetId>(s->id);

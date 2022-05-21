@@ -192,10 +192,15 @@ vistle_target_link_libraries(
     Boost::system)
 
 if(ZFP_FOUND)
-
     target_compile_definitions(vistle_core PRIVATE HAVE_ZFP)
     target_include_directories(vistle_core SYSTEM PRIVATE ${ZFP_INCLUDE_DIRS})
     vistle_target_link_libraries(vistle_core PRIVATE ${ZFP_LIBRARIES})
+endif()
+
+if(SZ3_FOUND)
+    target_compile_definitions(vistle_core PRIVATE HAVE_SZ3)
+    target_include_directories(vistle_core SYSTEM PRIVATE ${SZ3_INCLUDE_DIRS})
+    vistle_target_link_libraries(vistle_core PRIVATE ${SZ3_LIBRARIES})
 endif()
 
 if(ZSTD_FOUND)

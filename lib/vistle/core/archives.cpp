@@ -19,6 +19,10 @@
 
 #include "shmvector.h"
 
+#ifdef HAVE_SZ3
+#include <SZ3/api/sz.hpp>
+#endif
+
 #ifdef USE_BOOST_ARCHIVE
 #define BOOST_ARCHIVE_SOURCE
 #include <boost/archive/binary_oarchive.hpp>
@@ -33,12 +37,12 @@
 #include <boost/archive/impl/basic_binary_iarchive.ipp>
 #endif
 
+//#define COMP_DEBUG
+
 //#include <boost/mpl/for_each.hpp>
 
 #ifdef USE_BOOST_ARCHIVE
 namespace ba = boost::archive;
-
-//#define COMP_DEBUG
 
 namespace boost {
 namespace archive {
@@ -119,52 +123,14 @@ void Fetcher::registerArrayNameTranslation(const std::string &arname, const std:
 }
 
 #ifdef USE_YAS
-void yas_oarchive::setCompressionMode(FieldCompressionMode mode)
-{
-    m_compress = mode;
-}
-
-FieldCompressionMode yas_oarchive::compressionMode() const
-{
-    return m_compress;
-}
-
-void yas_oarchive::setZfpRate(double rate)
-{
-    m_zfpRate = rate;
-}
-
-double yas_oarchive::zfpRate() const
-{
-    return m_zfpRate;
-}
-
-void yas_oarchive::setZfpAccuracy(double accuracy)
-{
-    m_zfpAccuracy = accuracy;
-}
-
-double yas_oarchive::zfpAccuracy() const
-{
-    return m_zfpAccuracy;
-}
-
-void yas_oarchive::setZfpPrecision(int precision)
-{
-    m_zfpPrecision = precision;
-}
-
-int yas_oarchive::zfpPrecision() const
-{
-    return m_zfpPrecision;
-}
-
 void yas_oarchive::setCompressionSettings(const CompressionSettings &other)
 {
-    m_compress = other.m_compress;
-    m_zfpRate = other.m_zfpRate;
-    m_zfpPrecision = other.m_zfpPrecision;
-    m_zfpAccuracy = other.m_zfpAccuracy;
+    m_compress = other;
+}
+
+const CompressionSettings &yas_oarchive::compressionSettings() const
+{
+    return m_compress;
 }
 
 yas_oarchive::yas_oarchive(yas_oarchive::Stream &mo, unsigned int flags): yas_oarchive::Base(mo), m_os(mo)
@@ -399,16 +365,15 @@ bool compressZfp(buffer &compressed, const void *src, const Index dim[3], const 
                  const ZfpParameters &param)
 {
 #ifdef HAVE_ZFP
-    bool ok = true;
     int ndims = 1;
     size_t sz = dim[0];
     if (dim[1] != 0) {
         ndims = 2;
         sz *= dim[1];
-    }
-    if (dim[2] != 0) {
-        ndims = 3;
-        sz *= dim[2];
+        if (dim[2] != 0) {
+            ndims = 3;
+            sz *= dim[2];
+        }
     }
 
     if (sz < 1000) {
@@ -420,10 +385,6 @@ bool compressZfp(buffer &compressed, const void *src, const Index dim[3], const 
 
     zfp_stream *zfp = zfp_stream_open(nullptr);
     switch (param.mode) {
-    case Uncompressed:
-    case Predict:
-        assert("invalid mode for ZFP compression" == 0);
-        break;
     case ZfpAccuracy:
         zfp_stream_set_accuracy(zfp, param.accuracy);
         break;
@@ -447,21 +408,19 @@ bool compressZfp(buffer &compressed, const void *src, const Index dim[3], const 
     std::cerr << "compressZfp: wrote " << header << " header bytes" << std::endl;
 #endif
     size_t zfpsize = zfp_compress(zfp, field);
-    if (zfpsize == 0) {
-        std::cerr << "compressZfp: zfp compression failed" << std::endl;
-        ok = false;
-    } else {
-        compressed.resize(zfpsize);
-#ifdef COMP_DEBUG
-        std::cerr << "compressZfp: compressed " << dim[0] << "x" << dim[1] << "x" << dim[2] << " elements/"
-                  << sz * sizeof(float) << " to " << zfpsize * typeSize << " bytes" << std::endl;
-#endif
-    }
     zfp_field_free(field);
     zfp_stream_close(zfp);
     stream_close(stream);
-
-    return ok;
+    if (zfpsize == 0) {
+        std::cerr << "compressZfp: zfp compression failed" << std::endl;
+        return false;
+    }
+    compressed.resize(zfpsize);
+#ifdef COMP_DEBUG
+    std::cerr << "compressZfp: compressed " << dim[0] << "x" << dim[1] << "x" << dim[2] << " elements, size "
+              << sz * typeSize << " to " << zfpsize << " bytes" << std::endl;
+#endif
+    return true;
 #else
     assert("no support for ZFP floating point compression" == 0);
     return false;
@@ -472,6 +431,9 @@ template<>
 bool compressZfp<zfp_type_none>(buffer &compressed, const void *src, const Index dim[3], Index typeSize,
                                 const ZfpParameters &param)
 {
+#ifdef COMP_DEBUG
+    std::cerr << "compressZfp: type not capable of compression" << std::endl;
+#endif
     return false;
 }
 template bool compressZfp<zfp_type_int32>(buffer &compressed, const void *src, const Index dim[3], Index typeSize,
@@ -484,6 +446,106 @@ template bool compressZfp<zfp_type_double>(buffer &compressed, const void *src, 
                                            const ZfpParameters &param);
 
 } // namespace detail
+#endif // HAVE_ZFP
+
+#ifdef HAVE_SZ3
+namespace detail {
+
+template<>
+char *compressSz3<void>(size_t &compressedSize, const void *src, const SZ::Config &conf)
+{
+    compressedSize = 0;
+    return nullptr;
+}
+
+template<>
+char *compressSz3<float>(size_t &compressedSize, const float *src, const SZ::Config &conf)
+{
+    compressedSize = 0;
+    char *buf = SZ_compress(conf, src, compressedSize);
+#ifdef COMP_DEBUG
+    std::cerr << "compressSz3: compressed " << conf.num << " elements (dim " << int(conf.N) << "), size "
+              << conf.num * sizeof(float) << " to " << compressedSize << " bytes" << std::endl;
 #endif
+    return buf;
+}
+
+template<>
+char *compressSz3<double>(size_t &compressedSize, const double *src, const SZ::Config &conf)
+{
+    compressedSize = 0;
+    char *buf = SZ_compress(conf, src, compressedSize);
+#ifdef COMP_DEBUG
+    std::cerr << "compressSz3: compressed " << conf.num << " elements (dim " << int(conf.N) << "), size "
+              << conf.num * sizeof(double) << " to " << compressedSize << " bytes" << std::endl;
+#endif
+    return buf;
+}
+
+template<>
+char *compressSz3<int32_t>(size_t &compressedSize, const int32_t *src, const SZ::Config &conf)
+{
+    compressedSize = 0;
+    char *buf = SZ_compress(conf, src, compressedSize);
+#ifdef COMP_DEBUG
+    std::cerr << "compressSz3: compressed " << conf.num << " elements (dim " << int(conf.N) << "), size "
+              << conf.num * sizeof(int32_t) << " to " << compressedSize << " bytes" << std::endl;
+#endif
+    return buf;
+}
+
+template<>
+char *compressSz3<int64_t>(size_t &compressedSize, const int64_t *src, const SZ::Config &conf)
+{
+    compressedSize = 0;
+    char *buf = SZ_compress(conf, src, compressedSize);
+#ifdef COMP_DEBUG
+    std::cerr << "compressSz3: compressed " << conf.num << " elements (dim " << int(conf.N) << "), size "
+              << conf.num * sizeof(int64_t) << " to " << compressedSize << " bytes" << std::endl;
+#endif
+    return buf;
+}
+
+template<>
+bool decompressSz3<void>(void *dest, const buffer &compressed, const Index dim[3])
+{
+    return false;
+}
+
+template<>
+bool decompressSz3<float>(float *dest, const buffer &compressed, const Index dim[3])
+{
+    SZ::Config conf;
+    SZ_decompress(conf, const_cast<char *>(compressed.data()), compressed.size(), dest);
+    return true;
+}
+
+template<>
+bool decompressSz3<double>(double *dest, const buffer &compressed, const Index dim[3])
+{
+    SZ::Config conf;
+    SZ_decompress(conf, const_cast<char *>(compressed.data()), compressed.size(), dest);
+    return true;
+}
+
+template<>
+bool decompressSz3<int32_t>(int32_t *dest, const buffer &compressed, const Index dim[3])
+{
+    SZ::Config conf;
+    SZ_decompress(conf, const_cast<char *>(compressed.data()), compressed.size(), dest);
+    return true;
+}
+
+template<>
+bool decompressSz3<int64_t>(int64_t *dest, const buffer &compressed, const Index dim[3])
+{
+    SZ::Config conf;
+    SZ_decompress(conf, const_cast<char *>(compressed.data()), compressed.size(), dest);
+    return true;
+}
+
+} // namespace detail
+#endif // HAVE_SZ3
+
 #endif
 } // namespace vistle
