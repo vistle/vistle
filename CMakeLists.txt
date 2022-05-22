@@ -96,7 +96,7 @@ option(VISTLE_SANITIZE_THREAD "Build with -fsanitize=thread" OFF)
 
 option(VISTLE_USE_CUDA "Build with CUDA support" OFF)
 
-option(VISTLE_COLOR_DIAGNOSTICS "Produce ANSI-colored build output (GNU/Clang)." OFF)
+option(VISTLE_COLOR_DIAGNOSTICS "Produce ANSI-colored build output (GNU/Clang)." ON)
 
 if(NOT "$ENV{VBUILD}" STREQUAL "")
     include("${PROJECT_SOURCE_DIR}/build/$ENV{VBUILD}.cmake")
