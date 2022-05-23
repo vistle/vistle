@@ -544,6 +544,12 @@ bool decompressSz3<int64_t>(int64_t *dest, const buffer &compressed, const Index
     return true;
 }
 
+template char *compressSz3<void>(size_t &compressedSize, const void *src, const SZ::Config &conf);
+template char *compressSz3<float>(size_t &compressedSize, const float *src, const SZ::Config &conf);
+template char *compressSz3<double>(size_t &compressedSize, const double *src, const SZ::Config &conf);
+template char *compressSz3<int32_t>(size_t &compressedSize, const int32_t *src, const SZ::Config &conf);
+template char *compressSz3<int64_t>(size_t &compressedSize, const int64_t *src, const SZ::Config &conf);
+
 } // namespace detail
 #endif // HAVE_SZ3
 
