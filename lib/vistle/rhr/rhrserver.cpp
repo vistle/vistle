@@ -1083,10 +1083,10 @@ bool RhrServer::handleRemoteRenderMessage(std::shared_ptr<socket> sock, const vi
     }
     case rfbTile:
     default:
-        CERR << "invalid RHR message subtype received" << std::endl;
-        break;
+        CERR << "invalid RHR message subtype " << rhr.type << " received" << std::endl;
+        return false;
     }
-    return false;
+    return true;
 }
 
 } // namespace vistle
