@@ -21,7 +21,7 @@ bool setThreadName(std::string name)
 #if __GLIBC__ >= 2 && __GLIBC_MINOR__ >= 12
     const size_t maxlen = 15;
     if (name.length() > maxlen) {
-        std::cerr << "truncating thread name " << name << " to " << maxlen << " characters" << std::endl;
+        //std::cerr << "truncating thread name " << name << " to " << maxlen << " characters" << std::endl;
         name = name.substr(0, maxlen);
     }
     int err = pthread_setname_np(pthread_self(), name.c_str());
