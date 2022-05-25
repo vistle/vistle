@@ -487,6 +487,11 @@ void RhrServer::deferredResize()
 //! handle matrix update message
 bool RhrServer::handleMatrices(std::shared_ptr<socket> sock, const matricesMsg &mat)
 {
+    if (mat.viewNum < 0) {
+        CERR << "invalid view no. " << mat.viewNum << std::endl;
+        return false;
+    }
+
     size_t viewNum = mat.viewNum >= 0 ? mat.viewNum : 0;
     if (viewNum >= m_viewData.size()) {
         m_viewData.resize(viewNum + 1);
