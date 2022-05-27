@@ -779,9 +779,9 @@ tileMsg *newTileMsg(const RhrServer::ImageParameters &param, const RhrServer::Vi
 } // namespace
 
 struct EncodeTask {
-    float *depth;
-    unsigned char *rgba;
-    tileMsg *message;
+    float *depth = nullptr;
+    unsigned char *rgba = nullptr;
+    tileMsg *message = nullptr;
     const RhrServer::ImageParameters &param;
     int viewNum;
     int x, y, w, h, stride;
@@ -792,18 +792,7 @@ struct EncodeTask {
 
     EncodeTask(int viewNum, int x, int y, int w, int h, float *depth, const RhrServer::ImageParameters &param,
                const RhrServer::ViewParameters &vp)
-    : depth(depth)
-    , rgba(nullptr)
-    , message(nullptr)
-    , param(param)
-    , viewNum(viewNum)
-    , x(x)
-    , y(y)
-    , w(w)
-    , h(h)
-    , stride(vp.width)
-    , bpp(4)
-    , subsamp(false)
+    : depth(depth), param(param), viewNum(viewNum), x(x), y(y), w(w), h(h), stride(vp.width), bpp(4), subsamp(false)
     {
         assert(depth);
         message = newTileMsg(param, vp, viewNum, x, y, w, h);
@@ -856,9 +845,7 @@ struct EncodeTask {
 
     EncodeTask(int viewNum, int x, int y, int w, int h, unsigned char *rgba, const RhrServer::ImageParameters &param,
                const RhrServer::ViewParameters &vp)
-    : depth(nullptr)
-    , rgba(rgba)
-    , message(nullptr)
+    : rgba(rgba)
     , param(param)
     , viewNum(viewNum)
     , x(x)
@@ -882,6 +869,11 @@ struct EncodeTask {
         } else if (param.rgbaParam.rgbaCodec == vistle::CompressionParameters::PredictRGBA) {
             message->compression |= rfbTilePredictRGBA;
         }
+    }
+
+    ~EncodeTask()
+    {
+        delete message;
     }
 
     RhrServer::EncodeResult work()
@@ -998,6 +990,7 @@ bool RhrServer::finishTiles(const RhrServer::ViewParameters &param, bool finish,
         if (m_queuedTiles == 0 && finish) {
             auto *tm = newTileMsg(m_imageParam, param, -1, 0, 0, 0, 0);
             msg = std::make_unique<RemoteRenderMessage>(*tm);
+            delete tm;
         } else {
             std::lock_guard<std::mutex> locker(m_taskMutex);
             if (!m_finishedTasks.empty()) {
