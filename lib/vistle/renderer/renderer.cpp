@@ -205,14 +205,21 @@ bool Renderer::dispatch(bool block, bool *messageReceived, unsigned int minPrio)
         bool haveMessage = getNextMessage(buf, false, minPrio);
         int needSync = 0;
         if (haveMessage) {
-            if (needsSync(message))
+            if (needsSync(message)) {
                 needSync = 1;
+                needSync = message.type();
+            }
         }
         int anyMessage = boost::mpi::all_reduce(comm(), haveMessage ? 1 : 0, boost::mpi::maximum<int>());
         int anySync = 0;
         if (anyMessage) {
             wasAnyMessage = true;
             anySync = boost::mpi::all_reduce(comm(), needSync, boost::mpi::maximum<int>());
+            if (needSync != 0 && anySync != needSync) {
+                std::cerr << "message types requiring collective processing do not agree: local=" << needSync
+                          << ", other=" << anySync << std::endl;
+            }
+            assert(needSync == 0 || needSync == anySync);
         }
 
         do {

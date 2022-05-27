@@ -1179,12 +1179,17 @@ bool Module::dispatch(bool block, bool *messageReceived, unsigned int minPrio)
         }
 
         if (syncMessageProcessing()) {
-            int sync = needsSync(buf) ? 1 : 0;
+            int sync = needsSync(buf) ? buf.type() : 0;
             int allsync = 0;
             mpi::all_reduce(comm(), sync, allsync, mpi::maximum<int>());
+            if (sync != 0 && allsync != sync) {
+                std::cerr << "message types requiring collective processing do not agree: local=" << sync
+                          << ", other=" << allsync << std::endl;
+            }
+            assert(sync == 0 || sync == allsync);
 
             do {
-                sync = needsSync(buf) ? 1 : 0;
+                sync = needsSync(buf) ? buf.type() : 0;
 
                 again &= handleMessage(&buf, pl);
                 if (!again) {
