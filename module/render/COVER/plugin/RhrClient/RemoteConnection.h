@@ -166,6 +166,8 @@ public:
 
     void finishFrame(const vistle::message::RemoteRenderMessage &msg);
 
+    long currentFrame = -1;
+    bool expectNewFrame = true;
     // statistics and timings
     bool m_benchmark = false;
     double m_lastFrameTime = -1.;
