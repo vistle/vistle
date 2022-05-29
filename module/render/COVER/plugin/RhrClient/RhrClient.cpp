@@ -319,7 +319,7 @@ bool RhrClient::checkAdvanceFrame()
         }
     }
 
-    if (readyForAdvance && commonTimestep != m_requestedTimestep) {
+    if (readyForAdvance && commonTimestep != -1 && commonTimestep != m_requestedTimestep) {
         //CERR << "checkAdvanceFrame: common t=" << commonTimestep << " not equal to req=" << m_requestedTimestep << std::endl;
         readyForAdvance = false;
     }
