@@ -1019,6 +1019,8 @@ bool RhrServer::finishTiles(const RhrServer::ViewParameters &param, bool finish,
             if (sendTiles)
                 send(*msg, &payload);
         }
+        if (m_queuedTiles > 0 && finish && !tileReady)
+            usleep(100);
     } while (m_queuedTiles > 0 && (tileReady || finish));
 
     if (finish) {
