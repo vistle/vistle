@@ -985,8 +985,6 @@ void RhrServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const R
 
 bool RhrServer::finishTiles(const RhrServer::ViewParameters &param, bool finish, bool sendTiles)
 {
-    ++m_framecount;
-
     bool tileReady = false;
     do {
         buffer payload;
@@ -999,11 +997,11 @@ bool RhrServer::finishTiles(const RhrServer::ViewParameters &param, bool finish,
         } else {
             std::lock_guard<std::mutex> locker(m_taskMutex);
             if (!m_finishedTasks.empty()) {
-                auto &task = m_finishedTasks.back();
+                auto &task = m_finishedTasks.front();
                 auto &result = task->result;
                 msg = std::move(result.rhrMessage);
                 payload = std::move(result.payload);
-                m_finishedTasks.pop_back();
+                m_finishedTasks.pop_front();
                 --m_queuedTiles;
                 tileReady = true;
             }
@@ -1032,6 +1030,8 @@ bool RhrServer::finishTiles(const RhrServer::ViewParameters &param, bool finish,
         assert(m_queuedTiles == 0);
         m_resizeBlocked = false;
         deferredResize();
+
+        ++m_framecount;
     }
 
     return m_queuedTiles == 0;
