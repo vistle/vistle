@@ -3,6 +3,7 @@
 
 #include <sstream>
 #include <iomanip>
+#include <iostream>
 
 #include <boost/lexical_cast.hpp>
 
@@ -133,18 +134,24 @@ void RemoteConnection::init()
 {
     const std::string conf("COVER.Plugin.RhrClient");
 
-    bool useMpi = covise::coCoviseConfig::isOn("mpi", conf, true);
-    m_handleTilesAsync = covise::coCoviseConfig::isOn("thread", conf, m_handleTilesAsync);
+    bool exists = false;
+    bool useMpi = covise::coCoviseConfig::isOn("mpi", conf, false, &exists);
+    m_handleTilesAsync = useMpi && covise::coCoviseConfig::isOn("thread", conf, m_handleTilesAsync, &exists);
+
+#ifdef CONNDEBUG
+    CERR << "init: mpi=" << useMpi << ", thread=" << m_handleTilesAsync << std::endl;
+#endif
 
     if (coVRMSController::instance()->isCluster() && useMpi) {
         m_comm.reset(new boost::mpi::communicator(coVRMSController::instance()->getAppCommunicator(),
                                                   boost::mpi::comm_duplicate));
     }
-    if (m_handleTilesAsync) {
-        if (m_comm)
+    if (m_comm) {
+        if (m_handleTilesAsync) {
             CERR << "handling tiles and MPI communication on separate thread" << std::endl;
-        else
-            CERR << "off-loading tile handling to dedicated thread" << std::endl;
+        } else {
+            CERR << "off-loading MPI communication to dedicated thread" << std::endl;
+        }
     }
 
     m_boundsNode = new osg::Node;
@@ -1665,6 +1672,7 @@ const osg::Matrix &RemoteConnection::getHeadMat() const
 bool RemoteConnection::distributeAndHandleTileMpi(std::shared_ptr<RemoteRenderMessage> msg,
                                                   std::shared_ptr<vistle::buffer> payload)
 {
+    assert(m_comm);
     if (coVRMSController::instance()->isMaster()) {
         int tag = TagTileAll;
         auto comm = m_comm.get();

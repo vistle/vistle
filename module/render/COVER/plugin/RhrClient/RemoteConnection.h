@@ -209,7 +209,7 @@ public:
     void updateStats(bool print, int localFrames);
 
     unsigned m_maxTilesPerFrame = 100;
-    bool m_handleTilesAsync = false;
+    bool m_handleTilesAsync = true;
 
     std::unique_ptr<boost::mpi::communicator> m_comm;
     std::unique_ptr<boost::mpi::communicator> m_commAny, m_commMiddle, m_commLeft, m_commRight;
