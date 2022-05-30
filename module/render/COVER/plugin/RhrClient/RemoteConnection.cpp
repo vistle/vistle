@@ -598,24 +598,15 @@ bool RemoteConnection::update()
     m_needUpdate = false;
 
     if (!m_handleTilesAsync) {
-        updateTileQueue();
-
         processMessages();
     }
-
-    {
-        lock_guard locker(*m_mutex);
-        coVRMSController::instance()->syncData(&m_connected, sizeof(m_connected));
-
-        updateVariants();
-        coVRMSController::instance()->syncData(&m_numRemoteTimesteps, sizeof(m_numRemoteTimesteps));
-    }
-
     updateTileQueue();
-    {
-        lock_guard locker(*m_mutex);
-        coVRMSController::instance()->syncData(&m_remoteTimestep, sizeof(m_remoteTimestep));
-    }
+
+    lock_guard locker(*m_mutex);
+    coVRMSController::instance()->syncData(&m_connected, sizeof(m_connected));
+    updateVariants();
+    coVRMSController::instance()->syncData(&m_numRemoteTimesteps, sizeof(m_numRemoteTimesteps));
+    coVRMSController::instance()->syncData(&m_remoteTimestep, sizeof(m_remoteTimestep));
 
     return m_frameReady;
 }
@@ -640,14 +631,13 @@ void RemoteConnection::preFrame()
     }
 
     m_drawer->update();
-#if 0
-    if (m_mode != MultiChannelDrawer::AsIs)
-        m_drawer->reproject();
-#endif
 }
 
 void RemoteConnection::drawFinished()
 {
+    if (!m_frameDrawn) {
+        CERR << "*** drawFinished ***" << std::endl;
+    }
     std::lock_guard<std::mutex> locker(*m_taskMutex);
     m_frameDrawn = true;
 }
@@ -734,10 +724,11 @@ bool RemoteConnection::handleTile(const RemoteRenderMessage &msg, const tileMsg 
 {
     assert(msg.rhr().type == rfbTile);
 #ifdef CONNDEBUG
-    int flags = tile.flags;
-    bool first = flags & rfbTileFirst;
-    bool last = flags & rfbTileLast;
-    CERR << "rfbTileMessage: req: " << tile.requestNumber << ", first: " << first << ", last: " << last << std::endl;
+    std::string type = tile.format == rfbColorRGBA ? "C" : "Z";
+    CERR << "TILE recv " << (tile.flags & rfbTileFirst ? "F" : ".") << (tile.flags & rfbTileLast ? "L" : ".")
+         << " req=" << tile.requestNumber << " frame=" << tile.frameNumber
+         << (tile.format == rfbColorRGBA ? " C" : " Z") << ", view=" << tile.viewNum << ": " << tile.width << "x"
+         << tile.height << "@" << tile.x << "+" << tile.y << " t=" << tile.timestep << std::endl;
 #endif
 
     if (tile.size == 0 && tile.width == 0 && tile.height == 0 && tile.flags == 0) {
@@ -807,13 +798,12 @@ void RemoteConnection::gatherTileStats(const RemoteRenderMessage &remote, const 
 void RemoteConnection::handleTileMeta(const RemoteRenderMessage &remote, const tileMsg &msg)
 {
 #ifdef CONNDEBUG
-    CERR << "TILE "
-         << (msg.flags & rfbTileFirst  ? "F"
-             : msg.flags & rfbTileLast ? "L"
-                                       : ".")
-         << " t=" << msg.timestep << " req=" << msg.requestNumber << ", view=" << msg.viewNum << ": " << msg.width
-         << "x" << msg.height << "@" << msg.x << "+" << msg.y << std::endl;
+    CERR << "TILE meta " << (msg.flags & rfbTileFirst ? "F" : ".") << (msg.flags & rfbTileLast ? "L" : ".")
+         << " req=" << msg.requestNumber << " frame=" << msg.frameNumber << (msg.format == rfbColorRGBA ? " C" : " Z")
+         << ", view=" << msg.viewNum << ": " << msg.width << "x" << msg.height << "@" << msg.x << "+" << msg.y
+         << " t=" << msg.timestep << std::endl;
 
+#if 0
     bool first = msg.flags & rfbTileFirst;
     bool last = msg.flags & rfbTileLast;
     if (first || last) {
@@ -822,8 +812,9 @@ void RemoteConnection::handleTileMeta(const RemoteRenderMessage &remote, const t
              << ", dt: " << cover->frameTime() - msg.requestTime << std::endl;
     }
 #endif
+#endif
     if (currentFrame > msg.frameNumber) {
-        CERR << "receiving tiles out of order: expectecd at leas frame no. " << currentFrame << ", but got "
+        CERR << "receiving tiles out of order: expectecd at least frame no. " << currentFrame << ", but got "
              << msg.frameNumber << std::endl;
     }
     assert(msg.frameNumber >= currentFrame);
@@ -851,6 +842,9 @@ void RemoteConnection::handleTileMeta(const RemoteRenderMessage &remote, const t
                  << std::endl;
         return;
     }
+
+    m_receivingHead = head;
+
     m_drawer->updateMatrices(viewIdx, model, view, proj);
     int w = msg.totalwidth, h = msg.totalheight;
 
@@ -881,11 +875,10 @@ void RemoteConnection::handleTileMeta(const RemoteRenderMessage &remote, const t
             break;
         default:
             CERR << "unhandled image format " << msg.format << std::endl;
+            return;
         }
         m_drawer->resizeView(viewIdx, w, h, format, 0);
     }
-
-    m_receivingHead = head;
 }
 
 
@@ -1106,8 +1099,13 @@ void RemoteConnection::enqueueTask(std::shared_ptr<DecodeTask> task)
         task->depth = NULL;
     } else {
         task->viewData = m_drawer->getViewData(view);
-        task->rgba = reinterpret_cast<char *>(m_drawer->rgba(view));
-        task->depth = reinterpret_cast<char *>(m_drawer->depth(view));
+        if (tile.format == rfbColorRGBA) {
+            task->rgba = reinterpret_cast<char *>(m_drawer->rgba(view));
+            task->depth = NULL;
+        } else {
+            task->rgba = NULL;
+            task->depth = reinterpret_cast<char *>(m_drawer->depth(view));
+        }
 
         switch (tile.eye) {
         case rfbEyeMiddle:
@@ -1123,8 +1121,10 @@ void RemoteConnection::enqueueTask(std::shared_ptr<DecodeTask> task)
     }
 
     if (last) {
-        //CERR << "waiting for frame finish: x=" << task->msg->x << ", y=" << task->msg->y << std::endl;
-
+#ifdef CONNDEBUG
+        CERR << "waiting for frame finish: x=" << tile.x << ", y=" << tile.y << ", #queued=" << m_queuedTiles
+             << std::endl;
+#endif
         m_waitForFrame = true;
     }
 
@@ -1144,6 +1144,7 @@ void RemoteConnection::enqueueTask(std::shared_ptr<DecodeTask> task)
         std::lock_guard<std::mutex> locker(*m_taskMutex);
         m_finishedTasks.emplace_back(task);
         m_runningTasks.erase(task);
+        std::atomic_thread_fence(std::memory_order_release);
         //CERR << "FIN: #running=" << m_runningTasks.size() << ", #fin=" << m_finishedTasks.size() << std::endl;
         return ok;
     });
@@ -1209,26 +1210,17 @@ bool RemoteConnection::updateTileQueue()
 {
     //CERR << "tiles: " << m_queuedTiles << " queued, " << m_queuedTasks.size() << " deferred, " << m_finishedTasks.size() << " finished" << std::endl;
     //assert(m_queuedTiles >= m_finishedTasks.size());
-    bool haveFinishedTasks = false;
-    {
-        std::lock_guard<std::mutex> locker(*m_taskMutex);
-        haveFinishedTasks = !m_finishedTasks.empty();
-    }
-    while (haveFinishedTasks) {
-        bool frameDone = false;
-        bool waitForFrame = false;
-        std::shared_ptr<DecodeTask> dt;
-        {
-            std::lock_guard<std::mutex> locker(*m_taskMutex);
-            waitForFrame = m_waitForFrame;
-            dt = m_finishedTasks.front();
-            m_finishedTasks.pop_front();
-            haveFinishedTasks = !m_finishedTasks.empty();
+    std::unique_lock<std::mutex> locker(*m_taskMutex);
+    while (!m_finishedTasks.empty()) {
+        std::atomic_thread_fence(std::memory_order_acquire);
+        auto dt = m_finishedTasks.front();
+        m_finishedTasks.pop_front();
 
-            --m_queuedTiles;
-            assert(m_queuedTiles >= 0);
-            frameDone = m_queuedTiles == 0;
-        }
+        --m_queuedTiles;
+        assert(m_queuedTiles >= 0);
+        bool frameDone = m_queuedTiles == 0;
+        bool waitForFrame = m_waitForFrame;
+        locker.unlock();
 
         bool ok = dt->result.get();
         if (!ok) {
@@ -1243,34 +1235,30 @@ bool RemoteConnection::updateTileQueue()
             assert(!m_waitForFrame);
             return true;
         }
+
+        locker.lock();
     }
 
-    {
-        std::lock_guard<std::mutex> locker(*m_taskMutex);
-        if (m_queuedTiles > 0) {
-            return false;
-        }
+    if (m_queuedTiles > 0) {
+        return false;
+    }
 
 #if 0
-       if (!m_queuedTasks.empty() && !(m_queuedTasks.front()->msg->flags&rfbTileFirst)) {
-           CERR << "first deferred tile should have rfbTileFirst set" << std::endl;
-       }
+    if (!m_queuedTasks.empty() && !(m_queuedTasks.front()->msg->flags & rfbTileFirst)) {
+        CERR << "first deferred tile should have rfbTileFirst set" << std::endl;
+    }
 #endif
 
-        assert(m_deferredFrames == 0 || !m_queuedTasks.empty());
-        assert(m_queuedTasks.empty() || m_deferredFrames > 0);
-    }
+    assert(m_deferredFrames == 0 || !m_queuedTasks.empty());
+    assert(m_queuedTasks.empty() || m_deferredFrames > 0);
 
-    std::lock_guard<std::mutex> locker(*m_taskMutex);
+    assert(locker.owns_lock());
     while (canEnqueue()) {
-        std::shared_ptr<DecodeTask> dt;
-        {
-            if (m_queuedTasks.empty())
-                break;
-            //CERR << "emptying deferred queue: tiles=" << m_queuedTasks.size() << ", frames=" << m_deferredFrames << std::endl;
-            dt = m_queuedTasks.front();
-            m_queuedTasks.pop_front();
-        }
+        if (m_queuedTasks.empty())
+            break;
+        //CERR << "emptying deferred queue: tiles=" << m_queuedTasks.size() << ", frames=" << m_deferredFrames << std::endl;
+        auto dt = m_queuedTasks.front();
+        m_queuedTasks.pop_front();
 
         const auto &tile = static_cast<const tileMsg &>(dt->msg->rhr());
 
@@ -1365,8 +1353,9 @@ void RemoteConnection::swapFrame()
 
     m_head = m_newHead;
 
-    //CERR << "swapFrame: timestep=" << m_visibleTimestep << std::endl;
+    CERR << "swapFrame: timestep=" << m_visibleTimestep << std::endl;
 
+    std::atomic_thread_fence(std::memory_order_seq_cst);
     m_drawer->swapFrame();
 
     std::lock_guard<std::mutex> locker(*m_taskMutex);
@@ -1391,7 +1380,7 @@ void RemoteConnection::processMessages()
 #ifdef CONNDEBUG
     if (ntiles > 0) {
         lock_guard locker(*m_mutex);
-        auto last = m_receivedTiles.back().msg->rhr();
+        auto &last = m_receivedTiles.back().msg->rhr();
         assert(last.type == rfbTile);
         auto &tile = static_cast<tileMsg &>(last);
 
