@@ -876,10 +876,7 @@ struct EncodeTask {
         }
     }
 
-    ~EncodeTask()
-    {
-        delete message;
-    }
+    ~EncodeTask() { delete message; }
 
     RhrServer::EncodeResult work()
     {
