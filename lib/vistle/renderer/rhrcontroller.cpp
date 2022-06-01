@@ -55,7 +55,7 @@ RhrController::RhrController(vistle::Module *module, int displayRank)
 
     m_sendTileSizeParam =
         module->addIntVectorParameter("send_tile_size", "edge lengths of tiles used during sending", m_sendTileSize);
-    module->setParameterRange(m_sendTileSizeParam, IntParamVector(1, 1), IntParamVector(16384, 16384));
+    module->setParameterRange(m_sendTileSizeParam, IntParamVector(1, 1), IntParamVector(65536, 65536));
 
     std::vector<std::string> choices;
     m_rgbaEncoding = module->addIntParameter("color_codec", "codec for image data", m_rgbaCodec, Parameter::Choice);
