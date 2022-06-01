@@ -1187,6 +1187,9 @@ bool Module::dispatch(bool block, bool *messageReceived, unsigned int minPrio)
                 sync = needsSync(buf) ? 1 : 0;
 
                 again &= handleMessage(&buf, pl);
+                if (!again) {
+                    CERR << "collective, quitting after " << buf << std::endl;
+                }
 
                 if (allsync && !sync) {
                     getNextMessage(buf, true, minPrio);
@@ -1201,6 +1204,9 @@ bool Module::dispatch(bool block, bool *messageReceived, unsigned int minPrio)
             } while (allsync && !sync);
         } else {
             again &= handleMessage(&buf, pl);
+            if (!again) {
+                CERR << "quitting after " << buf << std::endl;
+            }
         }
     } catch (vistle::except::parent_died &e) {
         // if parent died something is wrong - make sure that shm get cleaned up
