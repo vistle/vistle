@@ -1826,6 +1826,9 @@ bool Hub::handlePriv(const message::Spawn &spawnRecv)
             mirroredId = Id::ModuleBase + m_moduleCount;
             ++m_moduleCount;
             doSpawn = true;
+        } else if (restart) {
+            doSpawn = true;
+            restart = false;
         }
         auto hubs = m_stateTracker.getHubs();
         if (std::find(hubs.begin(), hubs.end(), spawn.hubId()) == hubs.end()) {
@@ -1843,8 +1846,12 @@ bool Hub::handlePriv(const message::Spawn &spawnRecv)
                     error = true;
                 }
             }
-            if (!error)
+            if (!error) {
                 killOldModule(spawn.migrateId());
+                spawn.setSpawnId(notify.spawnId());
+                m_sendAfterExit[spawn.migrateId()].push_back(spawn);
+                return true;
+            }
         }
         if (error) {
             notify.setSpawnId(Id::Invalid);
@@ -2771,6 +2778,15 @@ bool Hub::handlePriv(const message::ModuleExit &exit)
     if (it != m_vrbSockets.end()) {
         removeSocket(it->second);
     }
+
+    auto it2 = m_sendAfterExit.find(exit.senderId());
+    if (it2 != m_sendAfterExit.end()) {
+        for (auto &m: it2->second) {
+            handleMessage(m);
+        }
+        m_sendAfterExit.erase(it2);
+    }
+
     return true;
 }
 

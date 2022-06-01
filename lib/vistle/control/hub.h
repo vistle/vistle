@@ -200,7 +200,7 @@ private:
     void setStatus(const std::string &s, message::UpdateStatus::Importance prio = message::UpdateStatus::Low);
     void clearStatus();
 
-    std::map<int, std::vector<message::Buffer>> m_sendAfterSpawn;
+    std::map<int, std::vector<message::Buffer>> m_sendAfterExit, m_sendAfterSpawn;
 
 #if BOOST_VERSION >= 106600
     boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_workGuard;
