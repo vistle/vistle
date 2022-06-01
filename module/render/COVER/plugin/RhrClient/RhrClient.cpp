@@ -254,10 +254,21 @@ std::vector<matricesMsg> RhrClient::gatherAllMatrices()
                     matrices.push_back(msg);
                 }
             }
+            unsigned num = matrices.size();
+            coVRMSController::instance()->sendSlaves(&num, sizeof(num));
+            for (unsigned i = 0; i < num; ++i) {
+                coVRMSController::instance()->sendSlaves(&matrices[i], sizeof(matrices[i]));
+            }
         } else {
             coVRMSController::instance()->sendMaster(&m_numLocalViews, sizeof(m_numLocalViews));
             for (int s = 0; s < m_numLocalViews; ++s) {
                 coVRMSController::instance()->sendMaster(&matrices[s], sizeof(matrices[s]));
+            }
+            unsigned num;
+            coVRMSController::instance()->readMaster(&num, sizeof(num));
+            matrices.resize(num);
+            for (unsigned i = 0; i < num; ++i) {
+                coVRMSController::instance()->readMaster(&matrices[i], sizeof(matrices[i]));
             }
         }
     } else {
@@ -821,11 +832,9 @@ bool RhrClient::update()
     lightsMsg lm = buildLightsMessage();
     auto matrices = gatherAllMatrices();
 
-    if (coVRMSController::instance()->isMaster()) {
-        for (auto &r: m_remotes) {
-            r.second->setLights(lm);
-            r.second->setMatrices(matrices);
-        }
+    for (auto &r: m_remotes) {
+        r.second->setLights(lm);
+        r.second->setMatrices(matrices);
     }
 
     if (m_printViewSizes) {

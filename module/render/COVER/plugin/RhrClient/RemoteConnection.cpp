@@ -541,11 +541,11 @@ bool RemoteConnection::setMatrices(const std::vector<matricesMsg> &msgs, bool fo
 {
     lock_guard locker(*m_mutex);
 
-    if (force || m_matrices != msgs) {
+    if (m_matrices != msgs) {
         m_savedMatrices = msgs;
 
         auto dt = cover->frameTime() - m_lastMatricesTime;
-        if (dt < std::min(0.1, m_avgDelay * 0.5)) {
+        if (!force && dt < std::min(0.1, m_avgDelay * 0.5)) {
             return true;
         }
 
