@@ -1485,6 +1485,11 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
         auto &mm = static_cast<const message::Disconnect &>(msg);
         return handleConnectOrDisconnect(mm);
     }
+    case MODULEEXIT: {
+        auto &exit = msg.as<ModuleExit>();
+        handlePriv(exit);
+        break;
+    }
     default:
         break;
     }
@@ -1786,11 +1791,6 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
         case COVER: {
             auto &cover = msg.as<Cover>();
             handlePriv(cover, payload);
-            break;
-        }
-        case MODULEEXIT: {
-            auto &exit = msg.as<ModuleExit>();
-            handlePriv(exit);
             break;
         }
         default: {
@@ -2774,10 +2774,32 @@ bool Hub::handlePriv(const message::FileQueryResult &result, const buffer *paylo
 
 bool Hub::handlePriv(const message::ModuleExit &exit)
 {
-    auto it = m_vrbSockets.find(exit.senderId());
+    int id = exit.senderId();
+    auto it = m_vrbSockets.find(id);
     if (it != m_vrbSockets.end()) {
         removeSocket(it->second);
     }
+
+    std::vector<message::Disconnect> disconnects;
+    auto inputs = m_stateTracker.portTracker()->getConnectedInputPorts(id);
+    for (const auto &in: inputs) {
+        for (const auto &from: in->connections()) {
+            disconnects.emplace_back(from->getModuleID(), from->getName(), id, in->getName());
+        }
+    }
+
+    auto outputs = m_stateTracker.portTracker()->getConnectedOutputPorts(id);
+    for (const auto &out: outputs) {
+        for (const auto &to: out->connections()) {
+            disconnects.emplace_back(id, out->getName(), to->getModuleID(), to->getName());
+        }
+    }
+    for (auto &dm: disconnects)
+        handleMessage(dm);
+
+    auto removePorts = m_stateTracker.portTracker()->removeModule(exit.senderId());
+    for (auto &rm: removePorts)
+        handleMessage(rm);
 
     auto it2 = m_sendAfterExit.find(exit.senderId());
     if (it2 != m_sendAfterExit.end()) {
