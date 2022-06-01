@@ -32,7 +32,7 @@ RhrController::RhrController(vistle::Module *module, int displayRank)
 , m_depthCompressMode(nullptr)
 , m_depthCompress(message::CompressionLz4)
 , m_sendTileSizeParam(nullptr)
-, m_sendTileSize((vistle::Integer)256, (vistle::Integer)256)
+, m_sendTileSize((vistle::Integer)512, (vistle::Integer)512)
 {
     m_imageOutPort = m_module->createOutputPort("image_out", "connect to COVER");
 
