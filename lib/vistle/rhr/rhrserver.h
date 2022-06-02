@@ -300,7 +300,8 @@ private:
     bool finishTiles(const ViewParameters &param, bool wait, bool sendTiles = true);
 
     struct EncodeResult {
-        explicit EncodeResult(tileMsg *msg = nullptr): message(msg) {}
+        EncodeResult() = default;
+        explicit EncodeResult(tileMsg *&msg): message(msg) { msg = nullptr; }
 
         buffer payload;
         std::unique_ptr<tileMsg> message;
@@ -311,8 +312,10 @@ private:
 
     std::mutex m_taskMutex;
     typedef std::deque<std::shared_ptr<EncodeTask>> TaskQueue;
-    TaskQueue m_finishedTasks;
-    std::set<std::shared_ptr<EncodeTask>> m_runningTasks;
+    TaskQueue m_queuedTasks, m_finishedTasks;
+    std::map<std::thread::id, std::thread> m_workers;
+    std::set<std::thread::id> m_doneWorkers;
+    bool joinWorkerThreads();
     size_t m_queuedTiles;
     bool m_firstTile;
 

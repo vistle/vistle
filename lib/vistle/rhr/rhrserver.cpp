@@ -10,7 +10,7 @@
 #include <iostream>
 #include <cassert>
 #include <cmath>
-#include <future>
+#include <thread>
 
 #include "rfbext.h"
 #include "depthquant.h"
@@ -801,7 +801,11 @@ struct EncodeTask {
     int bpp;
     bool subsamp;
     RhrServer::EncodeResult result;
-    std::future<void> future; // this is just a dummy shared state
+
+    EncodeTask() = delete;
+    EncodeTask(const EncodeTask &other) = delete;
+    EncodeTask(const EncodeTask &&other) = delete;
+    EncodeTask &operator=(const EncodeTask &other) = delete;
 
     EncodeTask(int viewNum, int x, int y, int w, int h, float *depth, const RhrServer::ImageParameters &param,
                const RhrServer::ViewParameters &vp)
@@ -882,11 +886,6 @@ struct EncodeTask {
         } else if (param.rgbaParam.rgbaCodec == vistle::CompressionParameters::PredictRGBA) {
             message->compression |= rfbTilePredictRGBA;
         }
-    }
-
-    ~EncodeTask()
-    {
-        delete message;
     }
 
     RhrServer::EncodeResult work()
@@ -972,23 +971,62 @@ void RhrServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const R
                     std::make_shared<EncodeTask>(viewNum, x, y, std::min(tileWidth, x0 + w - x),
                                                  std::min(tileHeight, y0 + h - y), rgba(viewNum), m_imageParam, param);
 
-                for (auto &task: {dt, ct}) {
-                    ++m_queuedTiles;
-                    std::lock_guard<std::mutex> locker(m_taskMutex);
-                    task->future = std::async(std::launch::async, [this, task]() {
-                        setThreadName("RHR:Server:" + std::string(task->rgba ? "RGBA" : "Depth") + ":" +
-                                      std::to_string(task->viewNum));
-                        task->result = task->work();
-                        std::lock_guard<std::mutex> locker(m_taskMutex);
-                        m_finishedTasks.emplace_back(task);
-                        //CERR << "FIN: #running=" << m_runningTasks.size() << ", #fin=" << m_finishedTasks.size() << std::endl;
-                    });
-                }
+                std::unique_lock locker(m_taskMutex);
+                ++m_queuedTiles;
+                m_queuedTasks.emplace_back(dt);
+                ++m_queuedTiles;
+                m_queuedTasks.emplace_back(ct);
             }
         }
     }
 
+    joinWorkerThreads();
+
+    std::unique_lock locker(m_taskMutex);
+    while (m_workers.size() < m_doneWorkers.size() + std::thread::hardware_concurrency() && !m_queuedTasks.empty()) {
+        locker.unlock();
+
+        auto thr = std::thread([this]() {
+            setThreadName("RHR:Encode");
+            std::unique_lock locker(m_taskMutex);
+            unsigned num = 0;
+            while (!m_queuedTasks.empty()) {
+                auto task = m_queuedTasks.front();
+                ++num;
+                m_queuedTasks.pop_front();
+                locker.unlock();
+
+                task->result = task->work();
+
+                locker.lock();
+                m_finishedTasks.emplace_back(task);
+            }
+            m_doneWorkers.emplace(std::this_thread::get_id());
+            locker.unlock();
+            CERR << "processed " << num << " tasks" << std::endl;
+        });
+        m_workers.emplace(thr.get_id(), std::move(thr));
+
+        locker.lock();
+    }
+    locker.unlock();
+
     finishTiles(param, lastView);
+}
+
+bool RhrServer::joinWorkerThreads()
+{
+    std::unique_lock locker(m_taskMutex);
+    for (auto id: m_doneWorkers) {
+        auto it = m_workers.find(id);
+        if (it != m_workers.end()) {
+            auto &thr = it->second;
+            thr.join();
+            m_workers.erase(it);
+        }
+    }
+    m_doneWorkers.clear();
+    return m_workers.empty();
 }
 
 bool RhrServer::finishTiles(const RhrServer::ViewParameters &param, bool finish, bool sendTiles)
@@ -1033,6 +1071,8 @@ bool RhrServer::finishTiles(const RhrServer::ViewParameters &param, bool finish,
         if (m_queuedTiles > 0 && finish && !tileReady)
             usleep(100);
     } while (m_queuedTiles > 0 && (tileReady || finish));
+
+    joinWorkerThreads();
 
     if (finish) {
         assert(m_queuedTiles == 0);
