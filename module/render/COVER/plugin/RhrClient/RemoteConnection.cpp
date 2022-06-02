@@ -635,9 +635,11 @@ void RemoteConnection::preFrame()
 
 void RemoteConnection::drawFinished()
 {
+#ifdef CONNDEBUG
     if (!m_frameDrawn) {
         CERR << "*** drawFinished ***" << std::endl;
     }
+#endif
     std::lock_guard<std::mutex> locker(*m_taskMutex);
     m_frameDrawn = true;
 }
