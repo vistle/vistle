@@ -1048,16 +1048,6 @@ void RhrClient::message(int toWhom, int type, int len, const void *msg)
         tb >> variantName;
         bool visible = type == PluginMessageTypes::VariantShow;
         m_coverVariants[variantName] = visible;
-        if (coVRMSController::instance()->isMaster()) {
-            variantMsg msg;
-            msg.visible = visible;
-            strncpy(msg.name, variantName.c_str(), sizeof(msg.name) - 1);
-            msg.name[sizeof(msg.name) - 1] = '\0';
-            for (auto &r: m_remotes) {
-                if (r.second->isConnected())
-                    r.second->send(msg);
-            }
-        }
 
         for (auto &r: m_remotes) {
             r.second->setVariantVisibility(variantName, visible);

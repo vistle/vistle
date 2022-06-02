@@ -705,6 +705,14 @@ void RemoteConnection::setVariantVisibility(const std::string &variant, bool vis
 {
     lock_guard locker(*m_mutex);
     m_variantVisibility[variant] = visible;
+
+    if (m_isMaster && isConnected()) {
+        variantMsg msg;
+        strncpy(msg.name, variant.c_str(), sizeof(msg.name) - 1);
+        msg.name[sizeof(msg.name) - 1] = '\0';
+        msg.visible = visible;
+        send(msg);
+    }
 }
 
 bool RemoteConnection::handleBounds(const RemoteRenderMessage &msg, const boundsMsg &bound)
