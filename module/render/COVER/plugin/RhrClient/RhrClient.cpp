@@ -494,12 +494,12 @@ bool RhrClient::init()
         coVRMSController::instance()->readSlaves(&sd);
         int channelBase = numViews;
         for (int i = 0; i < coVRMSController::instance()->getNumSlaves(); ++i) {
+            coVRMSController::instance()->sendSlave(i, &channelBase, sizeof(channelBase));
             auto *nc = static_cast<NodeConfig *>(sd.data[i]);
             nc->viewIndexOffset = channelBase;
             m_nodeConfig.push_back(*nc);
             channelBase += nc->numViews;
         }
-        coVRMSController::instance()->sendSlaves(sd);
         m_numClusterViews = channelBase;
     } else {
         coVRMSController::instance()->sendMaster(&m_localConfig, sizeof(NodeConfig));
