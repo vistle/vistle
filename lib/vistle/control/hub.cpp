@@ -1661,6 +1661,41 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
 
         case message::DEBUG: {
             auto &debug = msg.as<message::Debug>();
+#if defined(__APPLE__)
+            int id = debug.getModule();
+            auto it = m_stateTracker.runningMap.find(id);
+            if (it != m_stateTracker.runningMap.end()) {
+                const auto &mod = it->second;
+                auto pid = mod.rank0Pid;
+                std::stringstream str;
+                std::vector<std::string> args;
+                args.push_back("-l");
+                args.push_back("JavaScript");
+                args.push_back("-e");
+                args.push_back("var Xcode = Application('Xcode');\n");
+                args.push_back("-e");
+                args.push_back("Xcode.activate();\n");
+                args.push_back("-e");
+                std::stringstream proj;
+                proj << "Xcode.open(\"/Users/ma/vistle/contrib/DebugWithXcode.xcodeproj\");\n";
+                args.push_back(proj.str());
+                args.push_back("-e");
+                args.push_back("var workspace = Xcode.activeWorkspaceDocument();\n");
+                args.push_back("-e");
+                std::stringstream att;
+                att << "workspace.attach({\"toProcessIdentifier\": " << pid << ", \"suspended\": false});\n";
+                args.push_back(att.str());
+
+                std::lock_guard<std::mutex> guard(m_processMutex);
+                auto child = launchProcess("osascript", args);
+                if (child && child->valid()) {
+                    std::stringstream info;
+                    info << "Launched osacript as PID " << child->id() << ", attaching to " << pid;
+                    sendInfo(info.str());
+                    m_processMap[child] = Process::Debugger;
+                }
+            }
+#elif defined(__linux__)
 #ifdef MODULE_THREAD
             int id = 0;
 #else
@@ -1693,6 +1728,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
 #endif
                 sendError(str.str());
             }
+#endif
             break;
         }
 

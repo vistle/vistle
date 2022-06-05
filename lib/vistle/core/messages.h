@@ -226,10 +226,13 @@ public:
     explicit Started(const std::string &name);
 
     const char *getName() const;
+    void setPid(unsigned long pid);
+    unsigned long pid() const;
 
 private:
     //! name of module to be started
     module_name_t name;
+    unsigned long m_pid = 0;
 };
 
 //! request a module to quit

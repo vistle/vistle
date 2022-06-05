@@ -456,6 +456,16 @@ const char *Started::getName() const
     return name.data();
 }
 
+unsigned long Started::pid() const
+{
+    return m_pid;
+}
+
+void Started::setPid(unsigned long pid)
+{
+    m_pid = pid;
+}
+
 Kill::Kill(const int m): module(m)
 {
     assert(Id::isModule(m) || Id::isHub(m) || m == Id::Broadcast);
