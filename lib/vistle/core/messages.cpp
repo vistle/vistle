@@ -120,6 +120,16 @@ int Identify::numRanks() const
     return m_numRanks;
 }
 
+unsigned long Identify::pid() const
+{
+    return m_pid;
+}
+
+void Identify::setPid(unsigned long pid)
+{
+    m_pid = pid;
+}
+
 int Identify::boost_archive_version() const
 {
     return m_boost_archive_version;
@@ -478,7 +488,7 @@ int Kill::getModule() const
 
 Debug::Debug(const int m): module(m)
 {
-    assert(m >= Id::ModuleBase);
+    assert(message::Id::isHub(m) || message::Id::isModule(m));
 }
 
 int Debug::getModule() const

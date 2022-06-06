@@ -701,6 +701,7 @@ bool ClusterManager::handle(const message::Buffer &message, const MessagePayload
         if (getRank() == 0) {
             message::Identify ident(id, message::Identify::MANAGER);
             ident.setNumRanks(m_size);
+            ident.setPid(getpid());
             ident.computeMac();
             sendHub(ident);
         }

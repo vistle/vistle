@@ -1374,6 +1374,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
             assert(!m_managerConnected);
             m_managerConnected = true;
             m_localRanks = id.numRanks();
+            m_localManagerRank0Pid = id.pid();
             m_dataProxy->setNumRanks(id.numRanks());
             m_dataProxy->setBoostArchiveVersion(id.boost_archive_version());
             m_dataProxy->setIndexSize(id.indexSize());
@@ -1666,37 +1667,48 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                 break;
             }
 #if defined(__APPLE__)
-            auto it = m_stateTracker.runningMap.find(id);
-            if (it != m_stateTracker.runningMap.end()) {
-                const auto &mod = it->second;
-                auto pid = mod.rank0Pid;
-                std::stringstream str;
-                std::vector<std::string> args;
-                args.push_back("-l");
-                args.push_back("JavaScript");
-                args.push_back("-e");
-                args.push_back("var Xcode = Application('Xcode');\n");
-                args.push_back("-e");
-                args.push_back("Xcode.activate();\n");
-                args.push_back("-e");
-                std::stringstream proj;
-                proj << "Xcode.open(\"/Users/ma/vistle/contrib/DebugWithXcode.xcodeproj\");\n";
-                args.push_back(proj.str());
-                args.push_back("-e");
-                args.push_back("var workspace = Xcode.activeWorkspaceDocument();\n");
-                args.push_back("-e");
-                std::stringstream att;
-                att << "workspace.attach({\"toProcessIdentifier\": " << pid << ", \"suspended\": false});\n";
-                args.push_back(att.str());
-
-                std::lock_guard<std::mutex> guard(m_processMutex);
-                auto child = launchProcess("osascript", args);
-                if (child && child->valid()) {
-                    std::stringstream info;
-                    info << "Launched osacript as PID " << child->id() << ", attaching to " << pid;
-                    sendInfo(info.str());
-                    m_processMap[child] = Process::Debugger;
+            unsigned long pid = 0;
+            if (id == m_hubId) {
+                pid = m_localManagerRank0Pid;
+            } else {
+                auto it = m_stateTracker.runningMap.find(id);
+                if (it != m_stateTracker.runningMap.end()) {
+                    const auto &mod = it->second;
+                    pid = mod.rank0Pid;
                 }
+            }
+            if (pid == 0) {
+                std::stringstream str;
+                str << "Did not find PID of process to attach to for id " << id;
+                sendError(str.str());
+                break;
+            }
+            std::stringstream str;
+            std::vector<std::string> args;
+            args.push_back("-l");
+            args.push_back("JavaScript");
+            args.push_back("-e");
+            args.push_back("var Xcode = Application('Xcode');\n");
+            args.push_back("-e");
+            args.push_back("Xcode.activate();\n");
+            args.push_back("-e");
+            std::stringstream proj;
+            proj << "Xcode.open(\"/Users/ma/vistle/contrib/DebugWithXcode.xcodeproj\");\n";
+            args.push_back(proj.str());
+            args.push_back("-e");
+            args.push_back("var workspace = Xcode.activeWorkspaceDocument();\n");
+            args.push_back("-e");
+            std::stringstream att;
+            att << "workspace.attach({\"toProcessIdentifier\": " << pid << ", \"suspended\": false});\n";
+            args.push_back(att.str());
+
+            std::lock_guard<std::mutex> guard(m_processMutex);
+            auto child = launchProcess("osascript", args);
+            if (child && child->valid()) {
+                std::stringstream info;
+                info << "Launched osacript as PID " << child->id() << ", attaching to " << pid;
+                sendInfo(info.str());
+                m_processMap[child] = Process::Debugger;
             }
 #elif defined(__linux__)
 #ifdef MODULE_THREAD

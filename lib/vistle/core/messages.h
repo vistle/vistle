@@ -62,6 +62,8 @@ public:
     int scalarSize() const;
 
     void setNumRanks(int size);
+    unsigned long pid() const;
+    void setPid(unsigned long pid);
 
     void computeMac();
     bool verifyMac(bool compareSessionData = true) const;
@@ -73,6 +75,7 @@ private:
     int m_rank;
     int m_boost_archive_version;
     int m_indexSize, m_scalarSize;
+    unsigned long m_pid = 0;
     session_data_t m_session_data;
     mac_t m_mac;
 };
