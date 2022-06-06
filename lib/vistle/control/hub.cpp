@@ -1661,8 +1661,11 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
 
         case message::DEBUG: {
             auto &debug = msg.as<message::Debug>();
-#if defined(__APPLE__)
             int id = debug.getModule();
+            if (idToHub(id) != m_hubId) {
+                break;
+            }
+#if defined(__APPLE__)
             auto it = m_stateTracker.runningMap.find(id);
             if (it != m_stateTracker.runningMap.end()) {
                 const auto &mod = it->second;
@@ -1697,9 +1700,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
             }
 #elif defined(__linux__)
 #ifdef MODULE_THREAD
-            int id = 0;
-#else
-            int id = debug.getModule();
+            id = 0;
 #endif
             bool found = false;
             std::lock_guard<std::mutex> guard(m_processMutex);
@@ -1710,10 +1711,16 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                     std::stringstream str;
                     str << "-attach-mpi=" << p.first->id();
                     args.push_back(str.str());
+                    if (!m_hasUi) {
+                        args.push_back("--connect");
+                    }
                     auto child = launchProcess("ddt", args);
                     if (child && child->valid()) {
                         std::stringstream info;
                         info << "Launched ddt as PID " << child->id() << ", attaching to " << p.first->id();
+                        if (!m_hasUi) {
+                            info << ", waiting for ddt remote client to connect";
+                        }
                         sendInfo(info.str());
                         m_processMap[child] = Process::Debugger;
                     }
@@ -1722,7 +1729,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
             }
             if (!found) {
                 std::stringstream str;
-                str << "Did not find PID to debug module id " << debug.getModule();
+                str << "Did not find launcher PID to debug module id " << debug.getModule() << " on " << m_name;
 #ifdef MODULE_THREAD
                 str << " -> " << id;
 #endif
