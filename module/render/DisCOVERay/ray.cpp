@@ -628,6 +628,10 @@ std::shared_ptr<RenderObject> DisCOVERay::addObject(int sender, const std::strin
         auto &cmap = m_colormaps[species];
         if (!cmap.cmap) {
             cmap.cmap.reset(new ispc::ColorMapData);
+            cmap.cmap->blendWithMaterial = false;
+            cmap.cmap->texData = nullptr;
+            cmap.cmap->texWidth = 0;
+            cmap.cmap->min = cmap.cmap->max = 0.;
         }
         ro->data->cmap = cmap.cmap.get();
     }
