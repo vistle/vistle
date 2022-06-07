@@ -587,7 +587,8 @@ ObjectData *Shm::getObjectDataFromName(const std::string &name) const
 #ifdef NO_SHMEM
     return static_cast<Object::Data *>(vistle::shm<void>::find(name));
 #else
-    return vistle::shm<Object::Data>::find(name);
+    //access via char for working around assertion failure
+    return static_cast<Object::Data *>(static_cast<void *>(vistle::shm<char>::find(name)));
 #endif
 }
 
