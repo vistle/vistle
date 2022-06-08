@@ -1262,7 +1262,8 @@ void RhrClient::updateStatus(const string &serverKey)
     auto text = it->second->status();
     auto stat = name + ": " + text;
     stat = coVRMSController::instance()->syncString(stat);
-    m_remoteStatus[serverKey]->setText(stat);
+    if (m_remoteStatus[serverKey]->text() != stat)
+        m_remoteStatus[serverKey]->setText(stat);
 }
 
 COVERPLUGIN(RhrClient)
