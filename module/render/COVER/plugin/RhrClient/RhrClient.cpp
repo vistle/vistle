@@ -740,13 +740,13 @@ RhrClient::~RhrClient()
         cover->getObjectsRoot()->removeChild(r.second->scene());
     }
 
-    coVRAnimationManager::instance()->removeTimestepProvider(this);
-    if (m_requestedTimestep != -1)
-        commitTimestep(m_requestedTimestep);
-
     while (!m_remotes.empty()) {
         removeRemoteConnection(m_remotes.begin());
     }
+
+    if (m_requestedTimestep != -1)
+        commitTimestep(m_requestedTimestep);
+    coVRAnimationManager::instance()->removeTimestepProvider(this);
 }
 
 void RhrClient::setServerParameters(int module, const std::string &host, unsigned short port) const
