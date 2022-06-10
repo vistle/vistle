@@ -379,6 +379,7 @@ void RhrServer::handleAccept(asio::ip::tcp::acceptor &a, std::shared_ptr<asio::i
     m_clientSocket = sock;
 
     send(message::Identify());
+    initializeConnection();
 
     startAccept(a);
 }
@@ -431,6 +432,13 @@ bool RhrServer::makeConnection(const std::string &host, unsigned short port, int
     return true;
 }
 
+bool RhrServer::initializeConnection()
+{
+    animationMsg anim;
+    anim.current = m_imageParam.timestep;
+    anim.total = m_numTimesteps;
+    return send(anim);
+}
 
 void RhrServer::resize(size_t viewNum, int w, int h)
 {

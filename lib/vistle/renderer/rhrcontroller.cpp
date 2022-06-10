@@ -298,6 +298,8 @@ void RhrController::tryConnect(double wait)
         m_rhr->setClientModuleId(message::Id::Invalid);
         return;
     }
+
+    m_rhr->initializeConnection();
 }
 
 Object::ptr RhrController::getConfigObject() const

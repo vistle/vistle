@@ -82,7 +82,7 @@ public:
     std::set<std::string> m_variantsToRemove;
     std::map<std::string, std::shared_ptr<VariantRenderObject>> m_variants;
     std::map<std::string, bool> m_variantVisibility;
-    int m_requestedTimestep = -1, m_remoteTimestep = -1, m_visibleTimestep = -1, m_numRemoteTimesteps = -1;
+    int m_requestedTimestep = -1, m_remoteTimestep = -1, m_visibleTimestep = -1, m_numRemoteTimesteps = 0;
 
     int m_channelBase = 0;
     int m_numViews = 0, m_numLocalViews = 0;
@@ -198,6 +198,7 @@ public:
 
     bool checkSwapFrame();
     void swapFrame();
+    void checkDiscardFrame();
     void processMessages();
     void setVisibleTimestep(int t);
 

@@ -495,10 +495,6 @@ void RemoteConnection::connectionEstablished()
         send(msg);
     }
 
-    if (m_requestedTimestep >= 0)
-        requestTimestep(m_requestedTimestep);
-    else
-        requestTimestep(m_visibleTimestep);
     send(m_lights);
     for (auto &m: m_matrices)
         send(m);
@@ -513,8 +509,12 @@ bool RemoteConnection::requestTimestep(int t, int numTime)
 {
     lock_guard locker(*m_mutex);
 
-    //CERR << "requesting timestep=" << t << std::endl;
+#ifdef CONNDEBUG
+    CERR << "requesting timestep=" << t << " of " << numTime << " (remote: " << m_numRemoteTimesteps << ")"
+         << std::endl;
+#endif
     m_requestedTimestep = t;
+    t = m_numRemoteTimesteps > t ? t : -1;
     animationMsg msg;
     msg.current = t;
     msg.time = cover->frameTime();
@@ -570,8 +570,14 @@ bool RemoteConnection::setMatrices(const std::vector<matricesMsg> &msgs, bool fo
 
 bool RemoteConnection::handleAnimation(const RemoteRenderMessage &msg, const animationMsg &anim)
 {
-    m_numRemoteTimesteps = anim.total;
+    m_numRemoteTimesteps = std::max(0, anim.total);
     CERR << "Animation: #timesteps=" << anim.total << ", cur=" << anim.current << std::endl;
+
+    if (m_requestedTimestep >= 0)
+        requestTimestep(m_requestedTimestep < m_numRemoteTimesteps ? m_requestedTimestep : -1);
+    else
+        requestTimestep(m_visibleTimestep < m_numRemoteTimesteps ? m_visibleTimestep : -1);
+
     return true;
 }
 
@@ -1154,7 +1160,6 @@ void RemoteConnection::enqueueTask(std::shared_ptr<DecodeTask> task)
         std::lock_guard<std::mutex> locker(*m_taskMutex);
         m_finishedTasks.emplace_back(task);
         m_runningTasks.erase(task);
-        std::atomic_thread_fence(std::memory_order_release);
         //CERR << "FIN: #running=" << m_runningTasks.size() << ", #fin=" << m_finishedTasks.size() << std::endl;
         return ok;
     });
@@ -1222,7 +1227,6 @@ bool RemoteConnection::updateTileQueue()
     //assert(m_queuedTiles >= m_finishedTasks.size());
     std::unique_lock<std::mutex> locker(*m_taskMutex);
     while (!m_finishedTasks.empty()) {
-        std::atomic_thread_fence(std::memory_order_acquire);
         auto dt = m_finishedTasks.front();
         m_finishedTasks.pop_front();
 
@@ -1304,13 +1308,21 @@ void RemoteConnection::finishFrame(const RemoteRenderMessage &msg)
     }
 
     const auto &tile = static_cast<const tileMsg &>(msg.rhr());
-    //CERR << "finishFrame: #req=" << tile.requestNumber << ", t=" << tile.timestep << ", t req=" << m_requestedTimestep << std::endl;
+#ifdef CONNDEBUG
+    CERR << "finishFrame: #req=" << tile.requestNumber << ", t=" << tile.timestep << ", t req=" << m_requestedTimestep
+         << std::endl;
+#endif
 
     m_remoteTimestep = tile.timestep;
+    if (m_remoteTimestep >= m_numRemoteTimesteps) {
+        CERR << "finishFrame: t=" << tile.timestep << ", but remote claims to only have " << m_numRemoteTimesteps
+             << std::endl;
+    }
     if (m_requestedTimestep >= 0) {
         if (tile.timestep == m_requestedTimestep) {
         } else if (tile.timestep == m_visibleTimestep) {
             //CERR << "finishFrame: t=" << tile.timestep << ", but req=" << m_requestedTimestep  << " - still showing" << std::endl;
+        } else if (tile.timestep == -1 && m_requestedTimestep >= m_numRemoteTimesteps) {
         } else {
             CERR << "finishFrame: t=" << tile.timestep << ", but req=" << m_requestedTimestep << std::endl;
         }
@@ -1358,20 +1370,35 @@ bool RemoteConnection::checkSwapFrame()
 
 void RemoteConnection::swapFrame()
 {
-    //assert(m_visibleTimestep == m_remoteTimestep);
-    m_remoteTimestep = -1;
-
     m_head = m_newHead;
 
-    CERR << "swapFrame: timestep=" << m_visibleTimestep << std::endl;
+    CERR << "swapFrame: timestep=" << m_remoteTimestep << ", " << m_visibleTimestep << " should be visible"
+         << std::endl;
 
-    std::atomic_thread_fence(std::memory_order_seq_cst);
     m_drawer->swapFrame();
 
     std::lock_guard<std::mutex> locker(*m_taskMutex);
     assert(m_frameReady == true);
     m_frameReady = false;
     m_frameDrawn = false;
+}
+
+void RemoteConnection::checkDiscardFrame()
+{
+    auto t = m_numRemoteTimesteps > m_requestedTimestep ? m_requestedTimestep : -1;
+    if (m_remoteTimestep != t && m_remoteTimestep != m_visibleTimestep && m_remoteTimestep != m_requestedTimestep) {
+        if (checkSwapFrame()) {
+            CERR << "discardFrame: timestep=" << m_remoteTimestep << ", " << m_visibleTimestep << " should be visible"
+                 << std::endl;
+
+            std::lock_guard<std::mutex> locker(*m_taskMutex);
+            assert(m_frameReady == true);
+            m_frameReady = false;
+            m_frameDrawn = false;
+
+            m_head = m_newHead;
+        }
+    }
 }
 
 void RemoteConnection::processMessages()
@@ -1610,9 +1637,7 @@ int RemoteConnection::numTimesteps() const
 int RemoteConnection::currentTimestep() const
 {
     lock_guard locker(*m_mutex);
-    if (m_numRemoteTimesteps == 0)
-        return -1;
-    return m_remoteTimestep;
+    return std::min(m_remoteTimestep, m_numRemoteTimesteps - 1);
 }
 
 osg::Group *RemoteConnection::scene()
