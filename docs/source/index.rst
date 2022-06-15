@@ -43,13 +43,6 @@ More infos about Architecture: https://vistle.io/architecture/
    Application <app/index.rst>
    Coding <dev/index.rst>
 
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
 Building this Documentation
 ===========================
 
