@@ -1,0 +1,52 @@
+MasterHub=getMasterHub()
+VistleSession=getVistleSession()
+uuids = {}
+
+
+# spawn all local modules
+umDomainSurface3 = spawnAsync(MasterHub, 'DomainSurface')
+umColor4 = spawnAsync(MasterHub, 'Color')
+umReadSeisSol6 = spawnAsync(MasterHub, 'ReadSeisSol')
+umCOVER7 = spawnAsync(MasterHub, 'COVER')
+
+mDomainSurface3 = waitForSpawn(umDomainSurface3)
+setVectorParam(mDomainSurface3, '_position', 301.0, -249.0, True)
+setIntParam(mDomainSurface3, 'triangle', 1, True)
+setIntParam(mDomainSurface3, 'reuseCoordinates', 1, True)
+applyParameters(mDomainSurface3)
+
+mColor4 = waitForSpawn(umColor4)
+setVectorParam(mColor4, '_position', 451.0, -249.0, True)
+setFloatParam(mColor4, 'min', -2.551001787185669, True)
+setFloatParam(mColor4, 'max', 4.0215840339660645, True)
+setFloatParam(mColor4, 'center', 0.5146677494049072, True)
+setIntParam(mColor4, 'center_absolute', 1, True)
+setFloatParam(mColor4, 'range_compression', -0.5115416049957275, True)
+setIntParam(mColor4, 'map', 5, True)
+setIntParam(mColor4, 'steps', 4096, True)
+setIntParam(mColor4, 'blend_with_material', 1, True)
+applyParameters(mColor4)
+
+mReadSeisSol6 = waitForSpawn(umReadSeisSol6)
+setVectorParam(mReadSeisSol6, '_position', 366.0, -383.0, True)
+setIntParam(mReadSeisSol6, 'last_step', 100, True)
+setStringParam(mReadSeisSol6, 'file', '/data/ChEESE/SeisSol/Husavik/Husavik_west/HFFtest_resampled-surface.xdmf', True)
+setStringParam(mReadSeisSol6, 'Scalar 0', 'U', True)
+setStringParam(mReadSeisSol6, 'Scalar 1', 'partition', True)
+setStringParam(mReadSeisSol6, 'Scalar 2', 'partition', True)
+applyParameters(mReadSeisSol6)
+
+mCOVER7 = waitForSpawn(umCOVER7)
+setVectorParam(mCOVER7, '_position', 403.0, -64.0, True)
+setIntParam(mCOVER7, 'render_mode', 4, True)
+applyParameters(mCOVER7)
+
+# all local connections
+connect(mDomainSurface3,'data_out', mCOVER7,'data_in')
+connect(mColor4,'color_out', mCOVER7,'data_in')
+connect(mReadSeisSol6,'Scalar port 0', mDomainSurface3,'data_in')
+connect(mReadSeisSol6,'Scalar port 0', mColor4,'data_in')
+
+# spawn all remote modules
+
+# connections between local and remote
