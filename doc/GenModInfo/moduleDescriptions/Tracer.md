@@ -95,3 +95,4 @@ compute particle traces and streamlines
 |num_active|number of particles to trace simultaneously on each node (0: no. of cores)|Int|
 |particle_placement|where a particle's data shall be collected (InitialRank, RankById)|Int|
 |cell_index_modulus|modulus for cell number output|Int|
+|simplification_error|tolerable relative error for result simplification|Float|

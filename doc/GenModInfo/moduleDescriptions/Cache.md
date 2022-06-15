@@ -65,7 +65,7 @@ cache input objects
 |step|step width when reading from disk|Int|
 |start|start step|Int|
 |stop|stop step|Int|
-|field_compression|compression mode for data fields (Uncompressed, ZfpFixedRate, ZfpAccuracy, ZfpPrecision)|Int|
+|field_compression|compression mode for data fields (Uncompressed, Predict, Zfp, SZ)|Int|
 |zfp_rate|ZFP fixed compression rate|Float|
 |zfp_precision|ZFP fixed precision|Int|
 |zfp_accuracy|ZFP compression error tolerance|Float|
