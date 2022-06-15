@@ -44,26 +44,26 @@ and send their string value to the simulation on change.
 ### Mandelbrot example
 -Download the [Mandelbrot simulation](https://www.visitusers.org/index.php?title=VisIt-tutorial-in-situ#Resources) and edit the Makefile as described. Additionally set "CXX=mpic++" and add -DPARALLEL to CXXFLAGS  
 -Open mandelbrot.C and change:
-```xml
+```cpp
     /* Initialize MPI */
     MPI_Init(&argc, &argv);
 ``` 
 to
-```xml
+```cpp
     /* Initialize MPI */
     int provided = MPI_THREAD_SINGLE;
     MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
 ``` 
 #### For multi process Vistle:
 -build and run the simulation. 
-```xml
+```bash
 make
 export LD_LIBRARY_PATH=~/src/vistle/build/lib"
 mpirun -np 2 ./mandelbrot
 ```
 
 -start vistle in a new terminal
-```xml
+```bash
 export MPISIZE=2
 vistle
 ``` 
@@ -73,7 +73,7 @@ $HOME/.visit/simulations/*hash*.mandelbrot_par.sim2.
 
 #### For single process Vistle:
 -build and run the simulation. 
-```xml
+```bash
 make
 export VISTLE_ROOT=~/src/vistle/build/
 export LD_LIBRARY_PATH=$VISTLE_ROOT/lib"
@@ -87,7 +87,7 @@ mpirun -np 2 ./mandelbrot
 ```
 
 -start vistle hub in a new terminal with the LibSim start option and the path to the sim2 file
-```xml
+```bash
 export MPISIZE=2
 vistle -l $HOME/.visit/simulations/hash.mandelbrot_par.sim2
 ``` 
