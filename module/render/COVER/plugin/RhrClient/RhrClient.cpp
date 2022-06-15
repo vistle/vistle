@@ -254,10 +254,21 @@ std::vector<matricesMsg> RhrClient::gatherAllMatrices()
                     matrices.push_back(msg);
                 }
             }
+            unsigned num = matrices.size();
+            coVRMSController::instance()->sendSlaves(&num, sizeof(num));
+            for (unsigned i = 0; i < num; ++i) {
+                coVRMSController::instance()->sendSlaves(&matrices[i], sizeof(matrices[i]));
+            }
         } else {
             coVRMSController::instance()->sendMaster(&m_numLocalViews, sizeof(m_numLocalViews));
             for (int s = 0; s < m_numLocalViews; ++s) {
                 coVRMSController::instance()->sendMaster(&matrices[s], sizeof(matrices[s]));
+            }
+            unsigned num;
+            coVRMSController::instance()->readMaster(&num, sizeof(num));
+            matrices.resize(num);
+            for (unsigned i = 0; i < num; ++i) {
+                coVRMSController::instance()->readMaster(&matrices[i], sizeof(matrices[i]));
             }
         }
     } else {
@@ -319,7 +330,7 @@ bool RhrClient::checkAdvanceFrame()
         }
     }
 
-    if (readyForAdvance && commonTimestep != m_requestedTimestep) {
+    if (readyForAdvance && commonTimestep != -1 && commonTimestep != m_requestedTimestep) {
         //CERR << "checkAdvanceFrame: common t=" << commonTimestep << " not equal to req=" << m_requestedTimestep << std::endl;
         readyForAdvance = false;
     }
@@ -483,12 +494,12 @@ bool RhrClient::init()
         coVRMSController::instance()->readSlaves(&sd);
         int channelBase = numViews;
         for (int i = 0; i < coVRMSController::instance()->getNumSlaves(); ++i) {
+            coVRMSController::instance()->sendSlave(i, &channelBase, sizeof(channelBase));
             auto *nc = static_cast<NodeConfig *>(sd.data[i]);
             nc->viewIndexOffset = channelBase;
             m_nodeConfig.push_back(*nc);
             channelBase += nc->numViews;
         }
-        coVRMSController::instance()->sendSlaves(sd);
         m_numClusterViews = channelBase;
     } else {
         coVRMSController::instance()->sendMaster(&m_localConfig, sizeof(NodeConfig));
@@ -821,11 +832,9 @@ bool RhrClient::update()
     lightsMsg lm = buildLightsMessage();
     auto matrices = gatherAllMatrices();
 
-    if (coVRMSController::instance()->isMaster()) {
-        for (auto &r: m_remotes) {
-            r.second->setLights(lm);
-            r.second->setMatrices(matrices);
-        }
+    for (auto &r: m_remotes) {
+        r.second->setLights(lm);
+        r.second->setMatrices(matrices);
     }
 
     if (m_printViewSizes) {
@@ -1039,16 +1048,6 @@ void RhrClient::message(int toWhom, int type, int len, const void *msg)
         tb >> variantName;
         bool visible = type == PluginMessageTypes::VariantShow;
         m_coverVariants[variantName] = visible;
-        if (coVRMSController::instance()->isMaster()) {
-            variantMsg msg;
-            msg.visible = visible;
-            strncpy(msg.name, variantName.c_str(), sizeof(msg.name) - 1);
-            msg.name[sizeof(msg.name) - 1] = '\0';
-            for (auto &r: m_remotes) {
-                if (r.second->isConnected())
-                    r.second->send(msg);
-            }
-        }
 
         for (auto &r: m_remotes) {
             r.second->setVariantVisibility(variantName, visible);

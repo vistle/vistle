@@ -20,8 +20,6 @@ public:
         CONVEX_BIT = cell::CONVEX_BIT,
         TYPE_MASK = cell::TYPE_MASK,
 
-        POLYHEDRON = cell::POLYHEDRON,
-
         NONE = cell::NONE,
         BAR = cell::BAR,
         TRIANGLE = cell::TRIANGLE,
@@ -30,10 +28,9 @@ public:
         PYRAMID = cell::PYRAMID,
         PRISM = cell::PRISM,
         HEXAHEDRON = cell::HEXAHEDRON,
-        VPOLYHEDRON = cell::VPOLYHEDRON,
         POLYGON = cell::POLYGON,
         POINT = cell::POINT,
-        CPOLYHEDRON = cell::CPOLYHEDRON,
+        POLYHEDRON = cell::POLYHEDRON,
         NUM_TYPES = cell::NUM_TYPES,
     };
 
@@ -46,7 +43,7 @@ public:
     static const unsigned FaceSizes[NUM_TYPES][MaxNumFaces];
     static const unsigned FaceVertices[NUM_TYPES][MaxNumFaces][MaxNumVertices];
 
-    UnstructuredGrid(const Index numElements, const Index numCorners, const Index numVertices,
+    UnstructuredGrid(const size_t numElements, const size_t numCorners, const size_t numVertices,
                      const Meta &meta = Meta());
 
     void resetElements() override;
@@ -78,9 +75,9 @@ private:
     V_DATA_BEGIN(UnstructuredGrid);
     ShmVector<Byte> tl;
 
-    Data(const Index numElements = 0, const Index numCorners = 0, const Index numVertices = 0,
+    Data(const size_t numElements = 0, const size_t numCorners = 0, const size_t numVertices = 0,
          const std::string &name = "", const Meta &meta = Meta());
-    static Data *create(const Index numElements = 0, const Index numCorners = 0, const Index numVertices = 0,
+    static Data *create(const size_t numElements = 0, const size_t numCorners = 0, const size_t numVertices = 0,
                         const Meta &meta = Meta());
 
     V_DATA_END(UnstructuredGrid);

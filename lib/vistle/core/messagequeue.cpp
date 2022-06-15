@@ -16,7 +16,7 @@
 #define NO_CHECK_FOR_DEAD_PARENT
 #endif
 
-using namespace boost::interprocess;
+namespace interprocess = boost::interprocess;
 
 namespace vistle {
 namespace message {
@@ -38,23 +38,25 @@ MessageQueue *MessageQueue::create(const std::string &n)
     }
 
     message_queue::remove(n.c_str());
-    return new MessageQueue(n, create_only);
+    return new MessageQueue(n, interprocess::create_only);
 }
 
 MessageQueue *MessageQueue::open(const std::string &n)
 {
-    auto ret = new MessageQueue(n, open_only);
+    auto ret = new MessageQueue(n, interprocess::open_only);
     message_queue::remove(n.c_str());
     //std::cerr << "MessageQueue: opened and removed " << n << std::endl;
     return ret;
 }
 
-MessageQueue::MessageQueue(const std::string &n, create_only_t)
-: m_blocking(true), m_name(n), m_mq(create_only, m_name.c_str(), 10 /* num msg */, message::Message::MESSAGE_SIZE)
+MessageQueue::MessageQueue(const std::string &n, interprocess::create_only_t)
+: m_blocking(true)
+, m_name(n)
+, m_mq(interprocess::create_only, m_name.c_str(), 10 /* num msg */, message::Message::MESSAGE_SIZE)
 {}
 
-MessageQueue::MessageQueue(const std::string &n, open_only_t)
-: m_blocking(true), m_name(n), m_mq(open_only, m_name.c_str())
+MessageQueue::MessageQueue(const std::string &n, interprocess::open_only_t)
+: m_blocking(true), m_name(n), m_mq(interprocess::open_only, m_name.c_str())
 {}
 
 MessageQueue::~MessageQueue()

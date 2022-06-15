@@ -37,7 +37,6 @@ private:
 
     std::unique_ptr<vistle::message::MessageQueue>
         m_receiveFromSimMessageQueue; // receives vistle messages that will be passed through to manager
-    size_t m_ownExecutionCounter = 0;
 
     //...................................................................................
 
@@ -48,8 +47,7 @@ private:
     std::mutex m_communicationMutex;
     std::atomic_bool m_terminateCommunication{false};
     std::list<vistle::message::Buffer> m_cachedVistleObjects;
-    //number of timesteps/iterations tat have been received completely nad are not yet forwarded to the pipeline
-    size_t m_numPackeges = 0;
+
     //..........................................................................
     // module functions
 

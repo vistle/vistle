@@ -99,7 +99,7 @@ QModelIndex LocalFileSystemModel::index(int row, int column, const QModelIndex &
     return mapFromSource(m_model->index(row, column, mapToSource(parent)));
 }
 
-QModelIndex LocalFileSystemModel::index(const QString &path, int column) const
+QModelIndex LocalFileSystemModel::fsIndex(const QString &path, int column) const
 {
     return mapFromSource(m_model->index(path, column));
 }

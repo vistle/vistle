@@ -68,8 +68,10 @@ std::vector<int> StateTracker::getHubs() const
 {
     mutex_locker guard(m_stateMutex);
     std::vector<int> hubs;
-    for (const auto &h: m_hubs)
+    for (auto it = m_hubs.rbegin(); it != m_hubs.rend(); ++it) {
+        const auto &h = *it;
         hubs.push_back(h.id);
+    }
     return hubs;
 }
 
@@ -77,9 +79,11 @@ std::vector<int> StateTracker::getSlaveHubs() const
 {
     mutex_locker guard(m_stateMutex);
     std::vector<int> hubs;
-    for (const auto &h: m_hubs)
+    for (auto it = m_hubs.rbegin(); it != m_hubs.rend(); ++it) {
+        const auto &h = *it;
         if (h.id != Id::MasterHub)
             hubs.push_back(h.id);
+    }
     return hubs;
 }
 
@@ -914,11 +918,22 @@ bool StateTracker::handlePriv(const message::Connect &connect)
 
     bool ret = true;
     if (portTracker()) {
+        auto destPort = Port(connect.getModuleB(), connect.getPortBName(), Port::INPUT);
+        auto port = portTracker()->findPort(destPort);
+        if (port && !(port->flags() & Port::COMBINE) && !portTracker()->getConnectionList(port)->empty()) {
+            auto &conns = *portTracker()->getConnectionList(port);
+            assert(conns.size() == 1);
+            auto old = portTracker()->findPort(**conns.begin());
+            if (old) {
+                portTracker()->removeConnection(*old, *port);
+            }
+        }
         ret = portTracker()->addConnection(connect.getModuleA(), connect.getPortAName(), connect.getModuleB(),
                                            connect.getPortBName());
     }
 
-    computeHeights();
+    if (ret)
+        computeHeights();
 
     return ret;
 }
@@ -936,7 +951,8 @@ bool StateTracker::handlePriv(const message::Disconnect &disconnect)
                                               disconnect.getModuleB(), disconnect.getPortBName());
     }
 
-    computeHeights();
+    if (ret)
+        computeHeights();
 
     return ret;
 }

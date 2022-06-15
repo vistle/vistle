@@ -52,3 +52,6 @@
 	path = lib/3rdparty/diy
 	url = https://github.com/diatomic/diy.git
 	branch = master
+[submodule "lib/3rdparty/sz3"]
+	path = lib/3rdparty/sz3
+	url = https://github.com/szcompressor/SZ3.git

@@ -18,7 +18,7 @@ class V_COREEXPORT Coords: public Vec<Scalar, 3>, virtual public GeometryInterfa
 public:
     typedef Vec<Scalar, 3> Base;
 
-    Coords(const Index numVertices, const Meta &meta = Meta());
+    Coords(const size_t numVertices, const Meta &meta = Meta());
 
     void resetCoords(); //< remove reference to coordinates and create empty ones
 

@@ -9,6 +9,7 @@
 #include <vistle/util/listenv4v6.h>
 #include <vistle/util/sleep.h>
 #include <sstream>
+#include <fstream>
 
 #include <boost/bind.hpp>
 #include <boost/filesystem.hpp>

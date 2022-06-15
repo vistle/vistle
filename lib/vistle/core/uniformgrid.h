@@ -25,7 +25,7 @@ public:
     typedef Object Base;
 
     // constructor
-    UniformGrid(Index xdim, Index ydim, Index zdim, const Meta &meta = Meta());
+    UniformGrid(size_t xdim, size_t ydim, size_t zdim, const Meta &meta = Meta());
 
     // get/set functions
     Index getNumDivisions(int c) override { return d()->numDivisions[c]; }
@@ -83,9 +83,9 @@ private:
     Scalar max[3]; //< coordinates of maximum grid point
     Index ghostLayers[3][2]; //< number of ghost cell layers in each x, y, z directions
 
-    Data(const std::string &name, Index xdim, Index ydim, Index zdim, const Meta &meta = Meta());
+    Data(const std::string &name, size_t xdim, size_t ydim, size_t zdim, const Meta &meta = Meta());
     ~Data();
-    static Data *create(Index xdim = 0, Index ydim = 0, Index zdim = 0, const Meta &meta = Meta());
+    static Data *create(size_t xdim = 0, size_t ydim = 0, size_t zdim = 0, const Meta &meta = Meta());
 
     V_DATA_END(UniformGrid);
 };

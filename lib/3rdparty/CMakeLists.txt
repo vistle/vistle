@@ -30,6 +30,8 @@ if(NOT BUILD_SHARED_LIBS)
     set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 endif()
 
+add_subdirectory(sz3)
+
 set(BUILD_TESTING
     OFF
     CACHE INTERNAL "")

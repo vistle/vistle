@@ -42,6 +42,19 @@ struct OsgColorMap {
 typedef std::map<std::string, OsgColorMap> OsgColorMapMap;
 
 struct GeometryCache {
+    GeometryCache(): mutex(std::make_shared<std::mutex>()) {}
+    void lock()
+    {
+        assert(mutex);
+        mutex->lock();
+    }
+    void unlock()
+    {
+        assert(mutex);
+        mutex->unlock();
+    }
+
+    std::shared_ptr<std::mutex> mutex; // to protect against concurrent access to osg's reference counts?
     std::vector<osg::ref_ptr<osg::Vec3Array>> vertices;
     std::vector<osg::ref_ptr<osg::Vec3Array>> normals;
     std::vector<osg::ref_ptr<osg::PrimitiveSet>> primitives;

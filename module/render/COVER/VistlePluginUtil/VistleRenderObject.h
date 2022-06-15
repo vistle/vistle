@@ -130,6 +130,7 @@ public:
     const char *getAttribute(const char *key) const override;
 
     osg::ref_ptr<osg::Node> node() const;
+    void setInitialVisibility(vistle::RenderObject::InitialVariantVisibility visible);
 
 private:
     std::string variant;

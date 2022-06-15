@@ -5,6 +5,7 @@
 #include "ngons_impl.h"
 #include "archives.h"
 #include <cassert>
+#include <vistle/util/exception.h>
 
 namespace vistle {
 
@@ -14,7 +15,7 @@ template<int N>
 V_OBJECT_IMPL_SAVE(Ngons<N>)
 
 template<int N>
-Ngons<N>::Ngons(const Index numCorners, const Index numCoords, const Meta &meta)
+Ngons<N>::Ngons(const size_t numCorners, const size_t numCoords, const Meta &meta)
 : Ngons::Base(Ngons::Data::create(numCorners, numCoords, meta))
 {
     refreshImpl();
@@ -43,6 +44,8 @@ bool Ngons<N>::isEmpty() const
 template<int N>
 bool Ngons<N>::checkImpl() const
 {
+    CHECK_OVERFLOW(d()->cl->size());
+
     V_CHECK(d()->cl->check());
     if (getNumCorners() > 0) {
         V_CHECK(cl()[0] < getNumVertices());
@@ -224,16 +227,17 @@ Ngons<N>::Data::Data(const Ngons::Data &o, const std::string &n): Ngons::Base::D
 }
 
 template<int N>
-Ngons<N>::Data::Data(const Index numCorners, const Index numCoords, const std::string &name, const Meta &meta)
+Ngons<N>::Data::Data(const size_t numCorners, const size_t numCoords, const std::string &name, const Meta &meta)
 : Base::Data(numCoords, N == 3 ? Object::TRIANGLES : Object::QUADS, name, meta)
 {
+    CHECK_OVERFLOW(numCorners);
     initData();
     cl.construct(numCorners);
 }
 
 
 template<int N>
-typename Ngons<N>::Data *Ngons<N>::Data::create(const Index numCorners, const Index numCoords, const Meta &meta)
+typename Ngons<N>::Data *Ngons<N>::Data::create(const size_t numCorners, const size_t numCoords, const Meta &meta)
 {
     const std::string name = Shm::the().createObjectId();
     Data *t = shm<Data>::construct(name)(numCorners, numCoords, name, meta);

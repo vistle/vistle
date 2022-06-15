@@ -109,7 +109,9 @@ protected:
 
     struct Creator {
         Creator(int id, const std::string &name, osg::ref_ptr<osg::Group> parent);
-        const Variant &getVariant(const std::string &variantName) const;
+        const Variant &
+        getVariant(const std::string &variantName,
+                   vistle::RenderObject::InitialVariantVisibility vis = vistle::RenderObject::DontChange) const;
         osg::ref_ptr<osg::Group> root(const std::string &variant = std::string()) const;
         osg::ref_ptr<osg::Group> constant(const std::string &variant = std::string()) const;
         osg::ref_ptr<osg::Sequence> animated(const std::string &variant = std::string()) const;

@@ -36,7 +36,7 @@ class MessageQueue;
 
 class Parameter;
 
-class ClusterManager: public ParameterManager {
+class ClusterManager {
     friend class Communicator;
     friend class DataManager;
 
@@ -49,7 +49,6 @@ public:
     bool dispatch(bool &received);
     const StateTracker &state() const;
 
-    void sendParameterMessage(const message::Message &message, const buffer *payload) const override;
     bool sendMessage(int receiver, const message::Message &message, int destRank = -1,
                      const MessagePayload &payload = MessagePayload()) const;
     bool sendAll(const message::Message &message, const MessagePayload &payload = MessagePayload()) const;
@@ -75,13 +74,9 @@ public:
     bool handle(const message::Buffer &msg, const MessagePayload &payload = MessagePayload());
     //bool handleData(const message::Message &msg);
 
-    FieldCompressionMode fieldCompressionMode() const;
-    double zfpRate() const;
-    int zfpPrecision() const;
-    double zfpAccuracy() const;
-
     message::CompressionMode archiveCompressionMode() const;
     int archiveCompressionSpeed() const;
+    const CompressionSettings &compressionSettings();
 
     bool isLocal(int id) const;
     int idToHub(int id) const;
@@ -198,18 +193,12 @@ private:
     typedef std::set<int> ModuleSet;
     ModuleSet reachedSet;
 
-    mutable std::mutex m_parameterMutex;
-    IntParameter *m_compressionMode = nullptr;
-    FloatParameter *m_zfpRate = nullptr;
-    IntParameter *m_zfpPrecision = nullptr;
-    FloatParameter *m_zfpAccuracy = nullptr;
-
-    IntParameter *m_archiveCompression = nullptr;
-    IntParameter *m_archiveCompressionSpeed = nullptr;
-
     std::vector<int> m_numTransfering;
     long m_totalNumTransferring = 0;
     double m_lastStatusUpdateTime = 0.;
+
+    CompressionSettings m_compressionSettings;
+    bool m_compressionSettingsValid = false;
 };
 
 } // namespace vistle

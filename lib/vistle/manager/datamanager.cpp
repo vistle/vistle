@@ -7,9 +7,11 @@
 #include "communicator.h"
 #include <vistle/util/vecstreambuf.h>
 #include <vistle/util/sleep.h>
+#include <vistle/util/threadname.h>
 #include <vistle/core/archives.h>
 #include <vistle/core/archive_loader.h>
 #include <vistle/core/archive_saver.h>
+#include <vistle/core/archives_impl.h>
 #include <vistle/core/statetracker.h>
 #include <vistle/core/object.h>
 #include <vistle/core/tcpmessage.h>
@@ -51,9 +53,18 @@ DataManager::DataManager(mpi::communicator &comm)
 #else
 , m_workGuard(new asio::io_service::work(m_ioService))
 #endif
-, m_ioThread([this]() { sendLoop(); })
-, m_recvThread([this]() { recvLoop(); })
-, m_cleanThread([this]() { cleanLoop(); })
+, m_ioThread([this]() {
+    setThreadName("vistle:dmgr_send");
+    sendLoop();
+})
+, m_recvThread([this]() {
+    setThreadName("vistle:dmgr_recv");
+    recvLoop();
+})
+, m_cleanThread([this]() {
+    setThreadName("vistle:dmgr_clean");
+    cleanLoop();
+})
 {
     if (m_size > 1)
         m_req = m_comm.irecv(boost::mpi::any_source, Communicator::TagData, &m_msgSize, 1);
@@ -198,6 +209,8 @@ bool DataManager::requestArray(const std::string &referrer, const std::string &a
     }
 
     message::RequestObject req(hub, rank, arrayId, type, referrer);
+    req.setSenderId(Communicator::the().hubId());
+    req.setRank(m_rank);
     send(req);
     return true;
 }
@@ -236,6 +249,8 @@ bool DataManager::requestObject(const message::AddObject &add, const std::string
     }
 
     message::RequestObject req(add, objId);
+    req.setSenderId(Communicator::the().hubId());
+    req.setRank(m_rank);
     send(req);
     return true;
 }
@@ -275,6 +290,8 @@ bool DataManager::requestObject(const std::string &referrer, const std::string &
     }
 
     message::RequestObject req(hub, rank, objId, referrer);
+    req.setSenderId(Communicator::the().hubId());
+    req.setRank(m_rank);
     send(req);
     return true;
 }
@@ -316,10 +333,14 @@ void DataManager::updateStatus()
 {
     std::unique_lock<Communicator> guard(Communicator::the());
 
+    message::DataTransferState m(m_inTransitObjects.size());
+    m.setSenderId(Communicator::the().hubId());
+    m.setRank(m_rank);
+
     if (m_rank == 0)
-        Communicator::the().handleMessage(message::DataTransferState(m_inTransitObjects.size()));
+        Communicator::the().handleMessage(m);
     else
-        Communicator::the().forwardToMaster(message::DataTransferState(m_inTransitObjects.size()));
+        Communicator::the().forwardToMaster(m);
 }
 
 bool DataManager::notifyTransferComplete(const message::AddObject &addObj)
@@ -328,6 +349,8 @@ bool DataManager::notifyTransferComplete(const message::AddObject &addObj)
 
     //CERR << "sending completion notification for " << objName << std::endl;
     message::AddObjectCompleted complete(addObj);
+    complete.setSenderId(Communicator::the().hubId());
+    complete.setRank(m_rank);
     int hub = Communicator::the().clusterManager().idToHub(addObj.senderId());
     return Communicator::the().clusterManager().sendMessage(hub, complete, addObj.rank());
     //return send(complete);
@@ -410,10 +433,7 @@ bool DataManager::handlePriv(const message::RequestObject &req)
         buffer &mem = buf.get_vector();
         vistle::oarchive memar(buf);
 #ifdef USE_YAS
-        memar.setCompressionMode(Communicator::the().clusterManager().fieldCompressionMode());
-        memar.setZfpRate(Communicator::the().clusterManager().zfpRate());
-        memar.setZfpPrecision(Communicator::the().clusterManager().zfpPrecision());
-        memar.setZfpAccuracy(Communicator::the().clusterManager().zfpAccuracy());
+        memar.setCompressionSettings(Communicator::the().clusterManager().compressionSettings());
 #endif
         if (req.isArray()) {
             ArraySaver saver(req.objectId(), req.arrayType(), memar);
@@ -438,6 +458,8 @@ bool DataManager::handlePriv(const message::RequestObject &req)
 
         snd->setDestId(req.senderId());
         snd->setDestRank(req.rank());
+        snd->setSenderId(Communicator::the().hubId());
+        snd->setRank(m_rank);
         send(*snd, compressed);
         //CERR << "sent " << snd->payloadSize() << "(" << snd->payloadRawSize() << ") bytes for " << req << " with " << *snd << std::endl;
 

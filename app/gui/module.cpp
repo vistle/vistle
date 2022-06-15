@@ -16,7 +16,7 @@
 #include <QMenu>
 #include <QDir>
 
-#include <vistle/userinterface/pythonmodule.h>
+#include <vistle/python/pythonmodule.h>
 #include <vistle/userinterface/vistleconnection.h>
 #include <vistle/util/directory.h>
 
@@ -27,6 +27,7 @@
 #include "dataflownetwork.h"
 #include "mainwindow.h"
 #include "dataflowview.h"
+#include "modulebrowser.h"
 
 namespace gui {
 
@@ -90,7 +91,19 @@ void Module::cancelExecModule()
 
 void Module::restartModule()
 {
-    vistle::message::Spawn m(m_hub, m_name.toStdString());
+    moveToHub(m_hub);
+}
+
+void Module::moveToHub(int hub)
+{
+    vistle::message::Spawn m(hub, m_name.toStdString());
+    m.setMigrateId(m_id);
+    vistle::VistleConnection::the().sendMessage(m);
+}
+
+void Module::replaceWith(QString mod)
+{
+    vistle::message::Spawn m(m_hub, mod.toStdString());
     m.setMigrateId(m_id);
     vistle::VistleConnection::the().sendMessage(m);
 }
@@ -126,8 +139,6 @@ void Module::createGeometry()
 
 /*!
  * \brief Module::createActions
- *
- * \todo this doesn't really work at the moment, find out what is wrong
  */
 void Module::createActions()
 {
@@ -173,6 +184,8 @@ void Module::createMenus()
     m_moduleMenu->addSeparator();
     m_moduleMenu->addAction(m_attachDebugger);
     m_moduleMenu->addAction(m_restartAct);
+    m_moveToMenu = m_moduleMenu->addMenu("Move to...");
+    m_replaceWithMenu = m_moduleMenu->addMenu("Replace with...");
     m_moduleMenu->addAction(m_deleteThisAct);
     m_moduleMenu->addAction(m_deleteSelAct);
     m_moduleMenu->addAction(m_createModuleGroup);
@@ -280,6 +293,103 @@ void Module::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
         m_createModuleGroup->setVisible(false);
         m_deleteThisAct->setVisible(true);
     }
+    if (scene() && scene()->moduleBrowser()) {
+        auto getModules = [this](int hubId) {
+            auto *mb = scene()->moduleBrowser();
+            auto hub = mb->getHubItem(m_hub);
+            std::vector<QString> modules;
+            for (int i = 0; i < hub->childCount(); i++) {
+                auto name = hub->child(i)->data(0, ModuleBrowser::nameRole()).toString();
+                modules.emplace_back(name);
+            }
+            return modules;
+        };
+
+        static std::vector<std::vector<QString>> replaceables{{"COVER", "DisCOVERay", "OsgRenderer"},
+                                                              {"Thicken", "SpheresOld", "TubesOld"}};
+        m_replaceWithMenu->clear();
+        auto *mb = scene()->moduleBrowser();
+        auto hub = mb->getHubItem(m_hub);
+        if (hub) {
+            QString baseName = m_name;
+            unsigned ncaps = 0;
+            for (size_t i = 0; i < baseName.size(); ++i) {
+                if (baseName.at(i).isUpper()) {
+                    ++ncaps;
+                    if (ncaps == 3) {
+                        baseName = baseName.left(i);
+                        break;
+                    }
+                }
+            }
+            auto add = [this](QString name) {
+                auto act = new QAction(name, this);
+                act->setStatusTip(QString("Replace with %1").arg(name));
+                connect(act, &QAction::triggered, this, [this, name] { replaceWith(name); });
+                m_replaceWithMenu->addAction(act);
+            };
+            auto modules = getModules(m_hub);
+            for (const auto &name: modules) {
+                if (name.startsWith(baseName) && m_name != name) {
+                    add(name);
+                }
+            }
+            for (const auto &r: replaceables) {
+                auto it = std::find(r.begin(), r.end(), m_name);
+                if (it != r.end()) {
+                    for (const auto &name: modules) {
+                        if (name == m_name)
+                            continue;
+                        for (auto &m: r) {
+                            if (m == name) {
+                                add(name);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        m_moveToMenu->clear();
+        delete m_moveToAct;
+        m_moveToAct = nullptr;
+        auto hubs = scene()->moduleBrowser()->getHubs();
+        unsigned nact = 0;
+        int otherHubId = vistle::message::Id::Invalid;
+        QString otherHubName;
+        for (auto it = hubs.rbegin(); it != hubs.rend(); ++it) {
+            const auto &h = *it;
+            if (h.first == m_hub)
+                continue;
+            auto modules = getModules(h.first);
+            if (std::find(modules.begin(), modules.end(), m_name) != modules.end()) {
+                auto act = new QAction(h.second, this);
+                act->setStatusTip(QString("Migrate module to %1 (Id %2)").arg(h.second).arg(h.first));
+                int hubId = h.first;
+                otherHubId = hubId;
+                otherHubName = h.second;
+                connect(act, &QAction::triggered, this, [this, hubId] { moveToHub(hubId); });
+                m_moveToMenu->addAction(act);
+                ++nact;
+            }
+        }
+        if (nact > 1) {
+            m_moveToMenu->menuAction()->setVisible(true);
+        } else {
+            m_moveToMenu->menuAction()->setVisible(false);
+            if (otherHubId != vistle::message::Id::Invalid) {
+                m_moveToAct = new QAction(QString("Move to %1").arg(otherHubName), this);
+                m_moveToAct->setStatusTip(QString("Migrate module to %1 (Id %2)").arg(otherHubName).arg(otherHubId));
+                connect(m_moveToAct, &QAction::triggered, this, [this, otherHubId] { moveToHub(otherHubId); });
+                m_moduleMenu->insertAction(m_moveToMenu->menuAction(), m_moveToAct);
+            }
+        }
+    } else {
+        m_moveToMenu->setVisible(false);
+        if (m_moveToAct)
+            m_moveToAct->setVisible(false);
+    }
+    m_replaceWithMenu->menuAction()->setVisible(!m_replaceWithMenu->isEmpty());
     m_moduleMenu->popup(event->screenPos());
 }
 

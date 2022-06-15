@@ -9,7 +9,7 @@
 constexpr auto interval = std::chrono::microseconds(500);
 namespace detail {
 template<typename T>
-void broadcast(boost::mpi::communicator &c, T &t, int root, const T &defaultValue = T{},
+void broadcast(const boost::mpi::communicator &c, T &t, int root, const T &defaultValue = T{},
                const std::atomic_bool &abort = false)
 {
     const int tag = 37;
@@ -68,20 +68,47 @@ void broadcast(boost::mpi::communicator &c, T &t, int root, const T &defaultValu
 
 } // namespace detail
 
-void vistle::insitu::waitForRank(boost::mpi::communicator &c, int rank)
+void vistle::insitu::waitForRank(const boost::mpi::communicator &c, int rank)
 {
     int i = 2139;
     detail::broadcast(c, i, rank);
     assert(i == 2139);
 }
 
-void vistle::insitu::broadcast(boost::mpi::communicator &c, int &val, int root)
+void vistle::insitu::broadcast(const boost::mpi::communicator &c, int &val, int root)
 {
     detail::broadcast(c, val, root);
 }
 
-void vistle::insitu::broadcast(boost::mpi::communicator &c, bool &val, int root, bool defaultValue,
+void vistle::insitu::broadcast(const boost::mpi::communicator &c, bool &val, int root, bool defaultValue,
                                const std::atomic_bool &abort)
 {
     detail::broadcast(c, val, root, defaultValue, abort);
+}
+
+void vistle::insitu::barrier(const boost::mpi::communicator &c, const std::atomic_bool &abort)
+{
+    const int tag = 38;
+    auto nextRank = c.rank() + 1;
+    if (nextRank == c.size())
+        nextRank = 0;
+    auto previousRank = c.rank() == 0 ? c.size() - 1 : c.rank() - 1;
+
+    for (int i = 0; i < c.size(); i++) {
+        if (i != c.rank())
+            c.send(i, tag);
+    }
+
+    for (int i = 0; i < c.size(); i++) {
+        if (i != c.rank()) {
+            auto bcastRecv = c.irecv(i, tag);
+            vistle::adaptive_wait(true);
+            while (!bcastRecv.test()) {
+                vistle::adaptive_wait(false);
+                if (abort) {
+                    return;
+                }
+            }
+        }
+    }
 }

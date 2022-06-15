@@ -8,19 +8,9 @@
  */
 /**********************************************************************************/
 #include "vistleconnection.h"
-#include <vistle/userinterface/userinterface.h>
+#include "userinterface.h"
 
 namespace vistle {
-
-class VistleConnectionLocker: public VistleConnection::Locker {
-public:
-    VistleConnectionLocker(std::recursive_mutex &mtx): m_mutex(mtx) { m_mutex.lock(); }
-
-    ~VistleConnectionLocker() { m_mutex.unlock(); }
-
-private:
-    std::recursive_mutex &m_mutex;
-};
 
 VistleConnection *VistleConnection::s_instance = nullptr;
 
@@ -110,11 +100,6 @@ void VistleConnection::lock()
 void VistleConnection::unlock()
 {
     m_mutex.unlock();
-}
-
-std::unique_ptr<VistleConnection::Locker> VistleConnection::locked()
-{
-    return std::unique_ptr<Locker>(new VistleConnectionLocker(m_mutex));
 }
 
 bool VistleConnection::sendMessage(const vistle::message::Message &msg, const buffer *payload) const
@@ -243,6 +228,31 @@ bool VistleConnection::disconnect(const Port *from, const Port *to) const
 {
     message::Disconnect disc(from->getModuleID(), from->getName(), to->getModuleID(), to->getName());
     return sendMessage(disc);
+}
+
+UiPythonStateAccessor::UiPythonStateAccessor(vistle::VistleConnection *vc): m_vc(vc)
+{
+    assert(m_vc);
+}
+
+void UiPythonStateAccessor::lock()
+{
+    m_vc->lock();
+}
+
+void UiPythonStateAccessor::unlock()
+{
+    m_vc->unlock();
+}
+
+vistle::StateTracker &UiPythonStateAccessor::state()
+{
+    return m_vc->ui().state();
+}
+
+bool UiPythonStateAccessor::sendMessage(const vistle::message::Message &m, const vistle::buffer *payload)
+{
+    return m_vc->sendMessage(m, payload);
 }
 
 } //namespace vistle

@@ -32,7 +32,7 @@ RhrController::RhrController(vistle::Module *module, int displayRank)
 , m_depthCompressMode(nullptr)
 , m_depthCompress(message::CompressionLz4)
 , m_sendTileSizeParam(nullptr)
-, m_sendTileSize((vistle::Integer)256, (vistle::Integer)256)
+, m_sendTileSize((vistle::Integer)512, (vistle::Integer)512)
 {
     m_imageOutPort = m_module->createOutputPort("image_out", "connect to COVER");
 
@@ -55,7 +55,7 @@ RhrController::RhrController(vistle::Module *module, int displayRank)
 
     m_sendTileSizeParam =
         module->addIntVectorParameter("send_tile_size", "edge lengths of tiles used during sending", m_sendTileSize);
-    module->setParameterRange(m_sendTileSizeParam, IntParamVector(1, 1), IntParamVector(16384, 16384));
+    module->setParameterRange(m_sendTileSizeParam, IntParamVector(1, 1), IntParamVector(65536, 65536));
 
     std::vector<std::string> choices;
     m_rgbaEncoding = module->addIntParameter("color_codec", "codec for image data", m_rgbaCodec, Parameter::Choice);
@@ -339,7 +339,7 @@ Object::ptr RhrController::getConfigObject() const
 
     CERR << "creating config object: " << conf << std::endl;
 
-    Points::ptr points(new Points(Index(0)));
+    Points::ptr points(new Points(size_t(0)));
     points->addAttribute("_rhr_config", conf);
     std::string sender = std::to_string(m_module->id()) + ":" + m_imageOutPort->getName();
     points->addAttribute("_sender", sender);
@@ -353,7 +353,8 @@ bool RhrController::sendConfigObject() const
         auto obj = getConfigObject();
         if (obj) {
             CERR << "sending rhr config object" << std::endl;
-            static_cast<Module *>(m_module)->addObject(m_imageOutPort, getConfigObject());
+            m_module->updateMeta(obj);
+            m_module->addObject(m_imageOutPort, obj);
             return true;
         }
         return false;

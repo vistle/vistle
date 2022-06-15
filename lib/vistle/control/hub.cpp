@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <sstream>
 #include <cassert>
+#include <future>
 #include <signal.h>
 
 #include <vistle/util/hostname.h>
@@ -17,6 +18,7 @@
 #include <vistle/util/sleep.h>
 #include <vistle/util/listenv4v6.h>
 #include <vistle/util/crypto.h>
+#include <vistle/util/threadname.h>
 #include <vistle/core/message.h>
 #include <vistle/core/tcpmessage.h>
 #include <vistle/core/messagerouter.h>
@@ -45,7 +47,7 @@
 #include "fileinfocrawler.h"
 #include "scanscripts.h"
 #ifdef HAVE_PYTHON
-#include <vistle/userinterface/pythonmodule.h>
+#include <vistle/python/pythonmodule.h>
 #include "pythoninterpreter.h"
 #endif
 
@@ -60,6 +62,13 @@ namespace vistle {
 
 using message::Router;
 using message::Id;
+
+namespace message {
+bool operator<(const message::AddHub &a1, const message::AddHub &a2)
+{
+    return a1.id() < a2.id();
+}
+} // namespace message
 
 namespace Process {
 enum Id {
@@ -110,6 +119,16 @@ void Hub::signalHandler(const boost::system::error_code &error, int signal_numbe
         break;
     }
 }
+HubParameters::HubParameters(Hub &hub): ParameterManager("Vistle", message::Id::Vistle), m_hub(hub)
+{}
+
+void HubParameters::sendParameterMessage(const message::Message &message, const buffer *payload) const
+{
+    message::Buffer buf(message);
+    buf.setSenderId(id());
+    m_hub.stateTracker().handle(buf, payload ? payload->data() : nullptr, payload ? payload->size() : 0, true);
+    m_hub.sendAll(buf, payload);
+}
 
 Hub::Hub(bool inManager)
 : m_inManager(inManager)
@@ -136,6 +155,7 @@ Hub::Hub(bool inManager)
 #else
 , m_workGuard(new asio::io_service::work(m_ioService))
 #endif
+, params(*this)
 {
     assert(!hub_instance);
     hub_instance = this;
@@ -170,6 +190,8 @@ Hub::Hub(bool inManager)
 
 Hub::~Hub()
 {
+    params.quit();
+
     stopVrb();
 
     if (!m_isMaster) {
@@ -235,6 +257,7 @@ bool Hub::init(int argc, char *argv[])
         ("help,h", "show this message")
         ("hub,c", po::value<std::string>(), "connect to hub")
         ("batch,b", "do not start user interface")
+        ("proxy", "run master hub acting only as a proxy, does not require MPI")
         ("gui,g", "start graphical user interface")
         ("shell,s", "start interactive Python shell (requires ipython)")
         ("port,p", po::value<unsigned short>(), "control port")
@@ -293,7 +316,7 @@ bool Hub::init(int argc, char *argv[])
         } else {
             auto endpoint = iter->endpoint();
             m_exposedHostAddr = endpoint.address();
-            CERR << m_exposedHost << " resolved to " << m_exposedHostAddr << std::endl;
+            CERR << "AddHub: exposed host " << m_exposedHost << " resolved to " << m_exposedHostAddr << std::endl;
         }
     }
 
@@ -304,6 +327,9 @@ bool Hub::init(int argc, char *argv[])
                 CERR << "apparently running in PBS batch mode - defaulting to no UI" << std::endl;
             uiCmd.clear();
         }
+    }
+    if (vm.count("hub") > 0) {
+        uiCmd.clear();
     }
     bool pythonUi = false;
     if (vm.count("shell")) {
@@ -354,6 +380,19 @@ bool Hub::init(int argc, char *argv[])
         }
     }
 
+    if (vm.count("proxy") > 0) {
+        if (m_inManager) {
+            CERR << "proxy-only mode is not possible when running in manager" << std::endl;
+            return false;
+        }
+        if (!m_isMaster) {
+            CERR << "proxy-only mode is only possible for master hub" << std::endl;
+            return false;
+        }
+        m_proxyOnly = true;
+        m_localRanks = 0;
+    }
+
     try {
         startServer();
     } catch (std::exception &ex) {
@@ -368,6 +407,8 @@ bool Hub::init(int argc, char *argv[])
             m_dataProxy.reset(new DataProxy(m_stateTracker, 0, 0));
         }
         m_dataProxy->setTrace(m_traceMessages);
+        if (m_localRanks >= 0)
+            m_dataProxy->setNumRanks(m_localRanks);
     } catch (std::exception &ex) {
         CERR << "failed to initialise data server on port " << (m_dataPort ? m_dataPort : m_port + 1) << ": "
              << ex.what() << std::endl;
@@ -377,6 +418,7 @@ bool Hub::init(int argc, char *argv[])
     if (m_isMaster) {
         // this is the master hub
         m_hubId = Id::MasterHub;
+        //params.setId(m_hubId);
         if (!m_inManager) {
             message::DefaultSender::init(m_hubId, 0);
         }
@@ -407,8 +449,8 @@ bool Hub::init(int argc, char *argv[])
         m_barrierAfterLoad = true;
     }
 
-    // start UI
     if (!m_inManager && !m_interrupt && !m_quitting) {
+        // start UI
         if (!uiCmd.empty()) {
             m_hasUi = true;
             std::string uipath = dir::bin(m_prefix) + "/" + uiCmd;
@@ -422,42 +464,57 @@ bool Hub::init(int argc, char *argv[])
         std::string port = boost::lexical_cast<std::string>(this->port());
         std::string dataport = boost::lexical_cast<std::string>(dataPort());
 
-        // start manager on cluster
-        std::string cmd = dir::bin(m_prefix) + "/vistle_manager";
-        std::vector<std::string> args;
-        args.push_back(cmd);
-        args.push_back("-from-vistle");
-        args.push_back(hostname());
-        args.push_back(port);
-        args.push_back(dataport);
+        if (!m_proxyOnly) {
+            // start manager on cluster
+            std::string cmd = dir::bin(m_prefix) + "/vistle_manager";
+            std::vector<std::string> args;
+            args.push_back(cmd);
+            args.push_back("-from-vistle");
+            args.push_back(hostname());
+            args.push_back(port);
+            args.push_back(dataport);
 #ifdef MODULE_THREAD
-        if (vm.count("libsim") > 0) {
-            auto sim2FilePath = vm["libsim"].as<std::string>();
+            if (vm.count("libsim") > 0) {
+                auto sim2FilePath = vm["libsim"].as<std::string>();
 
-            CERR << "starting manager in simulation" << std::endl;
-            if (vistle::insitu::libsim::attemptLibSimConnection(sim2FilePath, args)) {
-                sendInfo("Successfully connected to simulation");
+                CERR << "starting manager in simulation" << std::endl;
+                if (vistle::insitu::libsim::attemptLibSimConnection(sim2FilePath, args)) {
+                    sendInfo("Successfully connected to simulation");
+                } else {
+                    CERR << "failed to spawn Vistle manager in the simulation" << std::endl;
+                    exit(1);
+                }
+
             } else {
-                CERR << "failed to spawn Vistle manager in the simulation" << std::endl;
-                exit(1);
-            }
-
-        } else {
 #endif // MODULE_THREAD
-            auto child = launchMpiProcess(args);
-            if (!child || !child->valid()) {
-                CERR << "failed to spawn Vistle manager " << std::endl;
-                exit(1);
-            }
-            std::lock_guard<std::mutex> guard(m_processMutex);
-            m_processMap[child] = Process::Manager;
+                auto child = launchMpiProcess(args);
+                if (!child || !child->valid()) {
+                    CERR << "failed to spawn Vistle manager " << std::endl;
+                    exit(1);
+                }
+                std::lock_guard<std::mutex> guard(m_processMutex);
+                m_processMap[child] = Process::Manager;
 #ifdef MODULE_THREAD
-        }
+            }
 #endif // MODULE_THREAD
+        }
     }
 
     if (m_isMaster && !m_inManager && !m_interrupt && !m_quitting) {
         m_hasVrb = startVrb();
+    }
+
+    if (m_proxyOnly) {
+        auto master = addHubForSelf();
+        CERR << "MASTER HUB: " << master << std::endl;
+        m_stateTracker.handle(master, nullptr);
+        sendUi(master);
+
+        if (!hubReady()) {
+            m_uiManager.lockUi(false);
+            return false;
+        }
+        m_uiManager.lockUi(false);
     }
 
     return true;
@@ -510,6 +567,7 @@ std::shared_ptr<process::child> Hub::launchProcess(const std::string &prog, cons
 
 std::shared_ptr<process::child> Hub::launchMpiProcess(const std::vector<std::string> &args)
 {
+    assert(!m_proxyOnly);
     assert(!args.empty());
 #ifdef _WIN32
     std::string spawn = "spawn_vistle.bat";
@@ -822,6 +880,40 @@ bool Hub::dispatch()
         }
     }
 
+    std::unique_lock<std::mutex> dataConnGuard(m_outstandingDataConnectionMutex);
+    for (auto it = m_outstandingDataConnections.begin(); it != m_outstandingDataConnections.end(); ++it) {
+        if (!it->second.valid())
+            continue;
+        if (it->second.wait_for(std::chrono::seconds(0)) != std::future_status::ready)
+            continue;
+
+        work = true;
+
+        auto &add = it->first;
+        bool ok = it->second.get();
+        if (ok) {
+            m_stateTracker.handle(add, nullptr, true);
+            sendUi(add);
+        } else {
+            CERR << "could not establish data connection to hub " << add.id() << " at " << add.address() << ":"
+                 << add.port() << std::endl;
+            if (m_isMaster) {
+                CERR << "removing hub " << add.id() << " at " << add.address() << ":" << add.port() << std::endl;
+                auto rm = make.message<message::RemoveHub>(add.id());
+                m_stateTracker.handle(rm, nullptr);
+                sendSlaves(rm);
+                sendManager(rm);
+                removeSlave(add.id());
+            } else if (add.id() == Id::MasterHub) {
+                CERR << "terminating: cannot continue without master data connection" << std::endl;
+                emergencyQuit();
+            }
+        }
+        m_outstandingDataConnections.erase(it);
+        break;
+    }
+    dataConnGuard.unlock();
+
     vistle::adaptive_wait(work);
 
     return ret;
@@ -905,7 +997,10 @@ bool Hub::sendMaster(const message::Message &msg, const buffer *payload)
 bool Hub::sendManager(const message::Message &msg, int hub, const buffer *payload)
 {
     if (hub == Id::LocalHub || hub == m_hubId || (hub == Id::MasterHub && m_isMaster)) {
-        assert(m_managerConnected);
+        assert(m_managerConnected || m_proxyOnly);
+        if (m_proxyOnly) {
+            return true;
+        }
         if (!m_managerConnected) {
             CERR << "sendManager: no connection, cannot send " << msg << std::endl;
             return false;
@@ -1046,11 +1141,78 @@ int Hub::id() const
     return m_hubId;
 }
 
+message::AddHub Hub::addHubForSelf() const
+{
+    auto hub = make.message<message::AddHub>(m_hubId, m_name);
+    hub.setNumRanks(m_localRanks);
+    hub.setDestId(Id::ForBroadcast);
+    hub.setPort(m_port);
+    hub.setDataPort(m_dataProxy->port());
+    hub.setLoginName(vistle::getLoginName());
+    hub.setRealName(vistle::getRealName());
+    hub.setHasUserInterface(m_hasUi);
+    hub.setHasVrb(m_hasVrb);
+
+    if (!m_exposedHost.empty()) {
+        hub.setAddress(m_exposedHostAddr);
+        //CERR << "AddHub: exposed host: " << m_exposedHostAddr << std::endl;
+    }
+
+    return hub;
+}
+
 bool Hub::hubReady()
 {
-    assert(m_managerConnected);
+    assert(m_proxyOnly || m_managerConnected);
     if (m_isMaster) {
         m_ready = true;
+
+        CompressionSettings cs;
+
+        auto archiveCompression = params.addIntParameter("archive_compression", "compression mode for archives",
+                                                         message::CompressionNone, Parameter::Choice);
+        params.V_ENUM_SET_CHOICES(archiveCompression, message::CompressionMode);
+        auto archiveCompressionSpeed =
+            params.addIntParameter("archive_compression_speed", "speed parameter of compression algorithm", -1);
+
+        params.setParameterRange(archiveCompressionSpeed, Integer(-1), Integer(100));
+
+        auto compressionMode = params.addIntParameter(CompressionSettings::p_mode, "compression mode for data fields",
+                                                      cs.mode, Parameter::Choice);
+        params.V_ENUM_SET_CHOICES(compressionMode, FieldCompressionMode);
+
+        params.setCurrentParameterGroup("zfp");
+        auto zfpMode = params.addIntParameter(CompressionSettings::p_zfpMode, "mode for zfp compression", cs.zfpMode,
+                                              Parameter::Choice);
+        params.V_ENUM_SET_CHOICES(zfpMode, FieldCompressionZfpMode);
+        auto zfpRate = params.addFloatParameter(CompressionSettings::p_zfpRate,
+                                                "zfp fixed compression rate (bits/value)", cs.zfpRate);
+        params.setParameterRange(zfpRate, Float(1), Float(64));
+        auto zfpPrecision = params.addIntParameter(CompressionSettings::p_zfpPrecision,
+                                                   "zfp fixed precision (no. bit planes)", cs.zfpPrecision);
+        params.setParameterRange(zfpPrecision, Integer(1), Integer(64));
+        auto zfpAccuracy = params.addFloatParameter(CompressionSettings::p_zfpAccuracy, "zfp absolute error tolerance",
+                                                    cs.zfpAccuracy);
+        params.setParameterRange(zfpAccuracy, Float(0.), Float(1e10));
+
+        params.setCurrentParameterGroup("SZ");
+        params.V_ENUM_SET_CHOICES(compressionMode, FieldCompressionMode);
+        auto szAlgo = params.addIntParameter(CompressionSettings::p_szAlgo, "SZ3 compression algorithm", cs.szAlgo,
+                                             Parameter::Choice);
+        params.V_ENUM_SET_CHOICES(szAlgo, FieldCompressionSzAlgo);
+        auto szError = params.addIntParameter(CompressionSettings::p_szError, "SZ3 error control method", cs.szError,
+                                              Parameter::Choice);
+        params.V_ENUM_SET_CHOICES(szError, FieldCompressionSzError);
+        auto szRel =
+            params.addFloatParameter(CompressionSettings::p_szRelError, "SZ3 relative error tolerance", cs.szRelError);
+        auto szAbs =
+            params.addFloatParameter(CompressionSettings::p_szAbsError, "SZ3 absolute error tolerance", cs.szAbsError);
+        auto szPsnr =
+            params.addFloatParameter(CompressionSettings::p_szPsnrError, "SZ3 psnr tolerance", cs.szPsnrError);
+        auto szL2 =
+            params.addFloatParameter(CompressionSettings::p_szL2Error, "SZ3 L2 norm error tolerance", cs.szL2Error);
+
+        params.setCurrentParameterGroup("");
 
         for (auto s: m_slavesToConnect) {
             auto set = make.message<message::SetId>(s->id);
@@ -1074,15 +1236,7 @@ bool Hub::hubReady()
             return true;
         }
     } else {
-        auto hub = make.message<message::AddHub>(m_hubId, m_name);
-        hub.setNumRanks(m_localRanks);
-        hub.setDestId(Id::ForBroadcast);
-        hub.setPort(m_port);
-        hub.setDataPort(m_dataProxy->port());
-        hub.setLoginName(vistle::getLoginName());
-        hub.setRealName(vistle::getRealName());
-        hub.setHasUserInterface(m_hasUi);
-
+        auto hub = addHubForSelf();
         std::unique_lock<std::mutex> lock(m_socketMutex);
         for (auto &sock: m_sockets) {
             if (sock.second == message::Identify::HUB) {
@@ -1103,9 +1257,6 @@ bool Hub::hubReady()
                         CERR << "AddHub: failed to convert local address to v6: " << except.what() << std::endl;
                         return false;
                     }
-                } else {
-                    hub.setAddress(m_exposedHostAddr);
-                    CERR << "AddHub: exposed host: " << m_exposedHostAddr << std::endl;
                 }
             }
         }
@@ -1225,20 +1376,12 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
             m_localRanks = id.numRanks();
             m_dataProxy->setNumRanks(id.numRanks());
             m_dataProxy->setBoostArchiveVersion(id.boost_archive_version());
+            m_dataProxy->setIndexSize(id.indexSize());
+            m_dataProxy->setScalarSize(id.scalarSize());
             CERR << "manager connected with " << m_localRanks << " ranks" << std::endl;
 
             if (m_hubId == Id::MasterHub) {
-                auto master = make.message<message::AddHub>(m_hubId, m_name);
-                master.setNumRanks(m_localRanks);
-                master.setPort(m_port);
-                master.setDataPort(m_dataProxy->port());
-                master.setLoginName(vistle::getLoginName());
-                master.setRealName(vistle::getRealName());
-                if (!m_exposedHost.empty()) {
-                    master.setAddress(m_exposedHostAddr);
-                }
-                master.setHasUserInterface(m_hasUi);
-                master.setHasVrb(m_hasVrb);
+                auto master = addHubForSelf();
                 CERR << "MASTER HUB: " << master << std::endl;
                 m_stateTracker.handle(master, nullptr);
                 sendUi(master);
@@ -1327,27 +1470,11 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                 }
             }
         }
-        if (m_dataProxy->connectRemoteData(add, [this]() { return dispatch(); })) {
-            m_stateTracker.handle(add, nullptr, true);
-            sendUi(add);
-        } else if (!m_isMaster && add.id() != message::Id::MasterHub) {
-            m_stateTracker.handle(add, nullptr, true);
-            sendUi(add);
-        } else {
-            if (m_isMaster) {
-                CERR << "could not establish data connection to hub " << add.id() << " at " << add.address() << ":"
-                     << add.port() << " - ignoring" << std::endl;
-                auto rm = make.message<RemoveHub>(add.id());
-                m_stateTracker.handle(rm, nullptr);
-                sendSlaves(rm);
-                sendManager(rm);
-                removeSlave(add.id());
-            } else {
-                CERR << "could not establish data connection to master hub at " << add.address() << ":" << add.port()
-                     << " - cannot continue" << std::endl;
-                emergencyQuit();
-            }
-        }
+        std::unique_lock<std::mutex> guard(m_outstandingDataConnectionMutex);
+        assert(m_outstandingDataConnections.find(add) == m_outstandingDataConnections.end());
+        m_outstandingDataConnections[add] =
+            std::async(std::launch::async, [this, add]() { return m_dataProxy->connectRemoteData(add); });
+        guard.unlock();
         break;
     }
     case message::CONNECT: {
@@ -1357,6 +1484,11 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
     case message::DISCONNECT: {
         auto &mm = static_cast<const message::Disconnect &>(msg);
         return handleConnectOrDisconnect(mm);
+    }
+    case MODULEEXIT: {
+        auto &exit = msg.as<ModuleExit>();
+        handlePriv(exit);
+        break;
     }
     default:
         break;
@@ -1459,6 +1591,10 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
 
         case message::SETPARAMETER: {
             auto setParam = msg.as<message::SetParameter>();
+
+            if (setParam.destId() == params.id()) {
+                params.handleMessage(setParam);
+            }
 
             // update linked parameters
             if (message::Id::isModule(setParam.destId())) {
@@ -1564,6 +1700,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
             assert(!m_isMaster);
             auto &set = static_cast<const SetId &>(msg);
             m_hubId = set.getId();
+            //params.setId(m_hubId);
             if (!m_inManager) {
                 message::DefaultSender::init(m_hubId, 0);
             }
@@ -1656,11 +1793,6 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
             handlePriv(cover, payload);
             break;
         }
-        case MODULEEXIT: {
-            auto &exit = msg.as<ModuleExit>();
-            handlePriv(exit);
-            break;
-        }
         default: {
             break;
         }
@@ -1670,12 +1802,20 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
     return true;
 }
 
-bool Hub::handlePriv(const message::Spawn &spawn)
+bool Hub::handlePriv(const message::Spawn &spawnRecv)
 {
+    bool error = false;
+    message::Spawn spawn(spawnRecv);
     if (m_isMaster) {
+        std::string moduleName(spawn.getName());
+        if (moduleName == "Tubes") {
+            spawn.setName("Thicken");
+        } else if (moduleName == "Spheres") {
+            spawn.setName("Thicken");
+        }
         bool restart = Id::isModule(spawn.migrateId());
         bool isMirror = Id::isModule(spawn.mirroringId());
-        bool shouldMirror = !restart && !isMirror && std::string(spawn.getName()) == "COVER";
+        bool shouldMirror = !restart && !isMirror && moduleName == "COVER";
         auto notify = spawn;
         notify.setReferrer(spawn.uuid());
         notify.setSenderId(m_hubId);
@@ -1686,12 +1826,35 @@ bool Hub::handlePriv(const message::Spawn &spawn)
             mirroredId = Id::ModuleBase + m_moduleCount;
             ++m_moduleCount;
             doSpawn = true;
+        } else if (restart) {
+            doSpawn = true;
+            restart = false;
         }
-        if (restart) {
+        auto hubs = m_stateTracker.getHubs();
+        if (std::find(hubs.begin(), hubs.end(), spawn.hubId()) == hubs.end()) {
+            std::stringstream str;
+            str << "hub with id " << spawn.hubId() << " not known";
+            sendError(str.str());
+            error = true;
+        }
+        if (!error && restart) {
             if (doSpawn) {
-                cacheModuleValues(spawn.migrateId(), notify.spawnId());
+                if (!cacheModuleValues(spawn.migrateId(), notify.spawnId())) {
+                    std::stringstream str;
+                    str << "cannot migrate module with id " << spawn.migrateId();
+                    sendError(str.str());
+                    error = true;
+                }
             }
-            killOldModule(spawn.migrateId());
+            if (!error) {
+                killOldModule(spawn.migrateId());
+                spawn.setSpawnId(notify.spawnId());
+                m_sendAfterExit[spawn.migrateId()].push_back(spawn);
+                return true;
+            }
+        }
+        if (error) {
+            notify.setSpawnId(Id::Invalid);
         }
         CERR << "sendManager: " << notify << std::endl;
         notify.setDestId(Id::Broadcast);
@@ -1699,13 +1862,13 @@ bool Hub::handlePriv(const message::Spawn &spawn)
             notify.setMirroringId(mirroredId);
         m_stateTracker.handle(notify, nullptr);
         sendAll(notify);
-        if (doSpawn) {
+        if (!error && doSpawn) {
             notify.setDestId(spawn.hubId());
             CERR << "doSpawn: sendManager: " << notify << std::endl;
             sendManager(notify, spawn.hubId());
         }
 
-        if (doSpawn && shouldMirror) {
+        if (!error && doSpawn && shouldMirror) {
             for (auto &hubid: m_stateTracker.getHubs()) {
                 if (hubid == spawn.hubId())
                     continue;
@@ -1814,6 +1977,8 @@ bool Hub::startCleaner()
 #if defined(MODULE_THREAD) && defined(NO_SHMEM)
     return true;
 #endif
+    if (m_proxyOnly)
+        return true;
 
 #ifdef SHMDEBUG
     CERR << "SHMDEBUG: preserving shm for session " << Shm::instanceName(hostname(), m_port) << std::endl;
@@ -1841,17 +2006,28 @@ bool Hub::startCleaner()
     return true;
 }
 
-void Hub::cacheModuleValues(int oldModuleId, int newModuleId)
+bool Hub::cacheModuleValues(int oldModuleId, int newModuleId)
 {
     using namespace vistle::message;
+    if (!Id::isModule(oldModuleId))
+        return false;
     assert(Id::isModule(oldModuleId));
+    auto running = m_stateTracker.getRunningList();
+    if (std::find(running.begin(), running.end(), oldModuleId) == running.end())
+        return false;
     auto paramNames = m_stateTracker.getParameters(oldModuleId);
     for (const auto &pn: paramNames) {
         auto p = m_stateTracker.getParameter(oldModuleId, pn);
         auto pm = SetParameter(newModuleId, p->getName(), p);
+        pm.setDelayed();
         pm.setDestId(newModuleId);
         m_sendAfterSpawn[newModuleId].emplace_back(pm);
     }
+    // apply all delayed parameters
+    auto pm = SetParameter(newModuleId);
+    pm.setDestId(newModuleId);
+    m_sendAfterSpawn[newModuleId].emplace_back(pm);
+
     auto inputs = m_stateTracker.portTracker()->getConnectedInputPorts(oldModuleId);
     for (const auto &in: inputs) {
         for (const auto &from: in->connections()) {
@@ -1859,6 +2035,7 @@ void Hub::cacheModuleValues(int oldModuleId, int newModuleId)
             m_sendAfterSpawn[newModuleId].emplace_back(cm);
         }
     }
+
     auto outputs = m_stateTracker.portTracker()->getConnectedOutputPorts(oldModuleId);
     for (const auto &out: outputs) {
         for (const auto &to: out->connections()) {
@@ -1866,6 +2043,8 @@ void Hub::cacheModuleValues(int oldModuleId, int newModuleId)
             m_sendAfterSpawn[newModuleId].emplace_back(cm);
         }
     }
+
+    return true;
 }
 
 void Hub::killOldModule(int migratedId)
@@ -2021,8 +2200,14 @@ bool Hub::startVrb()
     };
 
     m_vrb = child;
-    m_vrbThreads.emplace_back([consumeStream, out]() mutable { consumeStream(*out); });
-    m_vrbThreads.emplace_back([consumeStream, err]() mutable { consumeStream(*err); });
+    m_vrbThreads.emplace_back([consumeStream, out]() mutable {
+        setThreadName("vistle:vrb_cout");
+        consumeStream(*out);
+    });
+    m_vrbThreads.emplace_back([consumeStream, err]() mutable {
+        setThreadName("vistle:vrb_cerr");
+        consumeStream(*err);
+    });
 
     std::lock_guard<std::mutex> guard(m_processMutex);
     m_processMap[child] = Process::VRB;
@@ -2589,10 +2774,41 @@ bool Hub::handlePriv(const message::FileQueryResult &result, const buffer *paylo
 
 bool Hub::handlePriv(const message::ModuleExit &exit)
 {
-    auto it = m_vrbSockets.find(exit.senderId());
+    int id = exit.senderId();
+    auto it = m_vrbSockets.find(id);
     if (it != m_vrbSockets.end()) {
         removeSocket(it->second);
     }
+
+    std::vector<message::Disconnect> disconnects;
+    auto inputs = m_stateTracker.portTracker()->getConnectedInputPorts(id);
+    for (const auto &in: inputs) {
+        for (const auto &from: in->connections()) {
+            disconnects.emplace_back(from->getModuleID(), from->getName(), id, in->getName());
+        }
+    }
+
+    auto outputs = m_stateTracker.portTracker()->getConnectedOutputPorts(id);
+    for (const auto &out: outputs) {
+        for (const auto &to: out->connections()) {
+            disconnects.emplace_back(id, out->getName(), to->getModuleID(), to->getName());
+        }
+    }
+    for (auto &dm: disconnects)
+        handleMessage(dm);
+
+    auto removePorts = m_stateTracker.portTracker()->removeModule(exit.senderId());
+    for (auto &rm: removePorts)
+        handleMessage(rm);
+
+    auto it2 = m_sendAfterExit.find(exit.senderId());
+    if (it2 != m_sendAfterExit.end()) {
+        for (auto &m: it2->second) {
+            handleMessage(m);
+        }
+        m_sendAfterExit.erase(it2);
+    }
+
     return true;
 }
 
@@ -2797,7 +3013,11 @@ void Hub::spawnModule(const std::string &path, const std::string &name, int spaw
 
 void Hub::startIoThread()
 {
-    m_ioThreads.emplace_back([this]() { m_ioService.run(); });
+    auto num = m_ioThreads.size();
+    m_ioThreads.emplace_back([this, num]() {
+        setThreadName("vistle:io:" + std::to_string(num));
+        m_ioService.run();
+    });
 }
 
 void Hub::stopIoThreads()

@@ -21,6 +21,8 @@
 #include <vistle/util/stopwatch.h>
 #include <vistle/util/exception.h>
 #include <vistle/util/shmconfig.h>
+#include <vistle/util/threadname.h>
+#include <vistle/util/affinity.h>
 #include <vistle/core/object.h>
 #include <vistle/core/empty.h>
 #include <vistle/core/export.h>
@@ -181,6 +183,7 @@ bool Module::setup(const std::string &shmname, int moduleID, int rank)
 #ifndef MODULE_THREAD
     bool perRank = shmPerRank();
     Shm::attach(shmname, moduleID, rank, perRank);
+    vistle::apply_affinity_from_environment(Shm::the().nodeRank(rank), Shm::the().numRanksOnThisNode());
 #endif
     return Shm::isAttached();
 }
@@ -985,8 +988,10 @@ bool Module::isConnected(const std::string &portname) const
     const Port *p = findInputPort(portname);
     if (!p)
         p = findOutputPort(portname);
-    if (!p)
+    if (!p) {
+        assert("port not connected" == 0);
         return false;
+    }
 
     return isConnected(*p);
 }
@@ -1174,14 +1179,22 @@ bool Module::dispatch(bool block, bool *messageReceived, unsigned int minPrio)
         }
 
         if (syncMessageProcessing()) {
-            int sync = needsSync(buf) ? 1 : 0;
+            int sync = needsSync(buf) ? buf.type() : 0;
             int allsync = 0;
             mpi::all_reduce(comm(), sync, allsync, mpi::maximum<int>());
+            if (sync != 0 && allsync != sync) {
+                std::cerr << "message types requiring collective processing do not agree: local=" << sync
+                          << ", other=" << allsync << std::endl;
+            }
+            assert(sync == 0 || sync == allsync);
 
             do {
-                sync = needsSync(buf) ? 1 : 0;
+                sync = needsSync(buf) ? buf.type() : 0;
 
                 again &= handleMessage(&buf, pl);
+                if (!again) {
+                    CERR << "collective, quitting after " << buf << std::endl;
+                }
 
                 if (allsync && !sync) {
                     getNextMessage(buf, true, minPrio);
@@ -1196,6 +1209,9 @@ bool Module::dispatch(bool block, bool *messageReceived, unsigned int minPrio)
             } while (allsync && !sync);
         } else {
             again &= handleMessage(&buf, pl);
+            if (!again) {
+                CERR << "quitting after " << buf << std::endl;
+            }
         }
     } catch (vistle::except::parent_died &e) {
         // if parent died something is wrong - make sure that shm get cleaned up
@@ -2097,7 +2113,8 @@ std::set<int> Module::getMirrors() const
 
 void Module::execute() const
 {
-    message::Execute exec{message::Execute::Request, m_id, m_executionCount};
+    message::Execute exec{message::Execute::ComputeExecute, m_id, m_executionCount};
+    exec.setDestId(message::Id::MasterHub);
     sendMessage(exec);
 }
 
@@ -2353,7 +2370,11 @@ bool Module::compute()
     m_tasks.push_back(task);
 
     std::unique_lock<std::mutex> guard(task->m_mutex);
-    task->m_future = std::async(std::launch::async, [this, task] { return compute(task); });
+    auto tname = name() + ":Block:" + std::to_string(m_tasks.size());
+    task->m_future = std::async(std::launch::async, [this, tname, task] {
+        setThreadName(tname);
+        return compute(task);
+    });
     return true;
 }
 

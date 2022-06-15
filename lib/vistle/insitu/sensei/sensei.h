@@ -22,7 +22,8 @@ struct Internals;
 class V_SENSEIEXPORT SenseiAdapter //: public SenseiInterface
 {
 public:
-    SenseiAdapter(bool paused, MPI_Comm Comm, MetaData &&meta, ObjectRetriever cbs, const std::string &options);
+    SenseiAdapter(bool paused, MPI_Comm Comm, MetaData &&meta, ObjectRetriever cbs, const std::string &vistleRoot,
+                  const std::string &options);
     bool Execute(size_t timestep);
     bool Finalize();
 
@@ -37,9 +38,9 @@ public:
     {
         return typename T::ptr(new T(args...));
     }
+    void updateMeta(vistle::Object::ptr obj) const;
 
 private:
-    std::unique_ptr<vistle::StopWatch> m_stopWatch;
     ObjectRetriever m_callbacks;
     MetaData m_metaData;
     MetaData m_usedData;
@@ -52,7 +53,8 @@ private:
     // mpi info
     int m_rank = -1, m_mpiSize = 0;
     MPI_Comm comm = MPI_COMM_WORLD;
-
+    double m_timeSpendInExecute = 0;
+    double m_startTime = 0;
     std::map<std::string, bool> m_commands; // commands and their current state
 #ifdef MODULE_THREAD
     std::thread m_managerThread;
@@ -81,7 +83,6 @@ private:
 
     void addCommands();
     void addPorts();
-    void updateMeta(vistle::Object::ptr obj) const;
 };
 } // namespace sensei
 } // namespace insitu

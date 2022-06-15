@@ -91,6 +91,20 @@ std::string configHome()
     return "";
 }
 
+bool setVistleRoot(const std::string &vistleRootDir)
+{
+    std::string vr = "VISTLE_ROOT=" + vistleRootDir;
+    //std::cerr << "setting VISTLE_ROOT to " << vr << std::endl;
+    char *vistleRoot = strdup(vr.c_str());
+    int retval = putenv(vistleRoot);
+    if (retval != 0) {
+        std::cerr << "failed to set VISTLE_ROOT: " << strerror(errno) << std::endl;
+        free(vistleRoot);
+        return false;
+    }
+    return true;
+}
+
 } // namespace directory
 
 } // namespace vistle

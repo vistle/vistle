@@ -21,7 +21,7 @@ public:
     Iter end() const;
     Iter addVar(const std::string &name);
     const std::string &name() const;
-    bool empty();
+    bool empty() const;
 
 private:
     const std::string m_name;

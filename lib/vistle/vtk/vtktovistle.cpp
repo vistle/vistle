@@ -142,24 +142,7 @@ Object::ptr vtkUGrid2Vistle(SENSEI_ARGUMENT vtkUnstructuredGrid *vugrid, bool ch
         vtkIdType npts = 0;
         IDCONST vtkIdType *pts = nullptr;
         vugrid->GetFaceStream(i, npts, pts);
-        if (typelist[i] == UnstructuredGrid::VPOLYHEDRON) {
-            assert(UnstructuredGrid::POLYHEDRON == UnstructuredGrid::VPOLYHEDRON);
-            Index nface = npts;
-
-            vtkIdType j = 0;
-            for (Index f = 0; f < nface; ++f) {
-                assert(pts[j] >= 0);
-                Index nvert = pts[j];
-                ++j;
-                connlist.emplace_back(nvert);
-                for (Index v = 0; v < nvert; ++v) {
-                    assert(pts[j] >= 0);
-                    connlist.emplace_back(pts[j]);
-                    ++j;
-                }
-            }
-        } else if (typelist[i] == UnstructuredGrid::CPOLYHEDRON) {
-            assert(UnstructuredGrid::POLYHEDRON == UnstructuredGrid::CPOLYHEDRON);
+        if (typelist[i] == UnstructuredGrid::POLYHEDRON) {
             Index nface = npts;
 
             vtkIdType j = 0;

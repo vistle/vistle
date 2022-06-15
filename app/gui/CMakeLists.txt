@@ -91,7 +91,7 @@ target_link_libraries(
             vistle_remotefiledialog)
 
 if(Python_FOUND)
-    target_link_libraries(${gui_name} PRIVATE Python::Python)
+    target_link_libraries(${gui_name} PRIVATE Python::Python vistle_python)
 endif()
 
 if(APPLE)

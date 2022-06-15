@@ -52,6 +52,8 @@ Identify::Identify(const std::string &name)
 , m_numRanks(-1)
 , m_rank(-1)
 , m_boost_archive_version(boost::archive::BOOST_ARCHIVE_VERSION())
+, m_indexSize(sizeof(vistle::Index))
+, m_scalarSize(sizeof(vistle::Scalar))
 {
     COPY_STRING(m_name, name);
 
@@ -61,7 +63,12 @@ Identify::Identify(const std::string &name)
 }
 
 Identify::Identify(const Identify &request, Identify::Identity id, const std::string &name)
-: m_identity(id), m_numRanks(-1), m_rank(-1), m_boost_archive_version(boost::archive::BOOST_ARCHIVE_VERSION())
+: m_identity(id)
+, m_numRanks(-1)
+, m_rank(-1)
+, m_boost_archive_version(boost::archive::BOOST_ARCHIVE_VERSION())
+, m_indexSize(sizeof(vistle::Index))
+, m_scalarSize(sizeof(vistle::Scalar))
 {
     setReferrer(request.uuid());
     m_session_data = request.m_session_data;
@@ -76,7 +83,12 @@ Identify::Identify(const Identify &request, Identify::Identity id, const std::st
 }
 
 Identify::Identify(const Identify &request, Identity id, int rank)
-: m_identity(id), m_numRanks(-1), m_rank(rank), m_boost_archive_version(boost::archive::BOOST_ARCHIVE_VERSION())
+: m_identity(id)
+, m_numRanks(-1)
+, m_rank(rank)
+, m_boost_archive_version(boost::archive::BOOST_ARCHIVE_VERSION())
+, m_indexSize(sizeof(vistle::Index))
+, m_scalarSize(sizeof(vistle::Scalar))
 {
     setReferrer(request.uuid());
     m_session_data = request.m_session_data;
@@ -111,6 +123,16 @@ int Identify::numRanks() const
 int Identify::boost_archive_version() const
 {
     return m_boost_archive_version;
+}
+
+int Identify::indexSize() const
+{
+    return m_indexSize;
+}
+
+int Identify::scalarSize() const
+{
+    return m_scalarSize;
 }
 
 void Identify::setNumRanks(int size)
@@ -380,6 +402,12 @@ void Spawn::setSpawnId(int id)
 const char *Spawn::getName() const
 {
     return name.data();
+}
+
+void Spawn::setName(const char *mod)
+{
+    assert(mod);
+    COPY_STRING(name, std::string(mod));
 }
 
 int Spawn::getMpiSize() const
@@ -1003,6 +1031,8 @@ SetParameter::SetParameter(int module, const std::string &n, const std::shared_p
 , initialize(defaultValue)
 , reply(false)
 , delayed(false)
+, read_only_valid(true)
+, read_only(p->isReadOnly())
 , immediate_valid(true)
 , immediate(p->isImmediate())
 {
@@ -1189,6 +1219,17 @@ std::string SetParameter::getString() const
     return v_string.data();
 }
 
+void SetParameter::setReadOnly(bool readOnly)
+{
+    read_only_valid = true;
+    read_only = readOnly;
+}
+
+bool SetParameter::isReadOnly() const
+{
+    return read_only;
+}
+
 void SetParameter::setImmediate(bool immed)
 {
     immediate_valid = true;
@@ -1210,6 +1251,8 @@ bool SetParameter::apply(std::shared_ptr<vistle::Parameter> param) const
 
     if (immediate_valid)
         param->setImmediate(immediate);
+    if (read_only_valid)
+        param->setReadOnly(read_only);
 
     const int rt = rangeType();
     if (rt == Parameter::Other)

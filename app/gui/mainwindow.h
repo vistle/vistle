@@ -33,6 +33,7 @@ public:
     Parameters *parameters() const;
     DataFlowView *dataFlowView() const;
     VistleConsole *console() const;
+    ModuleBrowser *moduleBrowser() const;
     void setQuitOnExit(bool qoe);
 
 public slots:

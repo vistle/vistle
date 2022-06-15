@@ -33,6 +33,7 @@ private:
     IntegrationMethod int_mode;
     bool use_celltree;
 
+    double simplification_error = 0.;
     double errtolrel, errtolabs;
     double h_min, h_max, h_init;
     double min_vel;
@@ -90,6 +91,7 @@ private:
     vistle::IntParameter *m_maxStartpoints, *m_numStartpoints;
     vistle::IntParameter *m_useCelltree;
     vistle::IntParameter *m_particlePlacement = nullptr;
+    vistle::FloatParameter *m_simplificationError = nullptr;
     bool m_havePressure;
 
     bool m_haveTimeSteps = false;

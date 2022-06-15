@@ -3,16 +3,15 @@
 
 // include this before any Qt headers
 
-#include <cassert>
 #include <string>
-#include <iostream>
+#include <memory>
 #include <vistle/util/pybind.h>
 
 #include "export.h"
 
 namespace vistle {
 
-class V_UIEXPORT PythonInterface {
+class V_PYEXPORT PythonInterface {
 public:
     PythonInterface(const std::string &name);
     ~PythonInterface();

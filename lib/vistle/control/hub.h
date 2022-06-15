@@ -11,10 +11,21 @@
 #include <vistle/net/tunnel.h>
 #include <vistle/net/dataproxy.h>
 #include <vistle/control/scanmodules.h>
+#include <vistle/core/parametermanager.h>
 
 #include "export.h"
 
 namespace vistle {
+
+class Hub;
+class HubParameters: public ParameterManager {
+public:
+    HubParameters(Hub &hub);
+    void sendParameterMessage(const message::Message &message, const buffer *payload = nullptr) const override;
+
+private:
+    Hub &m_hub;
+};
 
 class V_HUBEXPORT Hub {
 public:
@@ -83,12 +94,14 @@ private:
     bool startCleaner();
     bool processScript(const std::string &filename, bool barrierAfterLoad, bool executeModules);
     bool processStartupScripts();
-    void cacheModuleValues(int oldModuleId, int newModuleId);
+    bool cacheModuleValues(int oldModuleId, int newModuleId);
     void killOldModule(int migratedId);
     void sendInfo(const std::string &s);
     void sendError(const std::string &s);
     std::vector<int> getSubmoduleIds(int modId, const AvailableModule &av);
     bool m_inManager = false;
+    bool m_proxyOnly = false;
+    vistle::message::AddHub addHubForSelf() const;
 
     unsigned short m_basePort = 31093;
     unsigned short m_port = 0, m_dataPort = 0, m_masterPort = m_basePort;
@@ -137,8 +150,8 @@ private:
     };
     std::map<int, Slave> m_slaves;
     std::vector<Slave *> m_slavesToConnect;
-    int m_slaveCount;
-    int m_hubId;
+    int m_slaveCount = 0;
+    int m_hubId = vistle::message::Id::Invalid;
     int m_localRanks = -1;
     std::string m_name;
     bool m_ready = false;
@@ -187,7 +200,7 @@ private:
     void setStatus(const std::string &s, message::UpdateStatus::Importance prio = message::UpdateStatus::Low);
     void clearStatus();
 
-    std::map<int, std::vector<message::Buffer>> m_sendAfterSpawn;
+    std::map<int, std::vector<message::Buffer>> m_sendAfterExit, m_sendAfterSpawn;
 
 #if BOOST_VERSION >= 106600
     boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_workGuard;
@@ -198,6 +211,11 @@ private:
     std::vector<std::thread> m_vrbThreads;
     void startIoThread();
     void stopIoThreads();
+
+    HubParameters params;
+
+    std::mutex m_outstandingDataConnectionMutex;
+    std::map<vistle::message::AddHub, std::future<bool>> m_outstandingDataConnections;
 };
 
 } // namespace vistle

@@ -1,5 +1,6 @@
 #include "archive_loader.h"
 #include "archives.h"
+#include "archives_impl.h"
 #include "object.h"
 
 #include <boost/mpl/for_each.hpp>

@@ -1,4 +1,5 @@
 find_path(NETCDF_INCLUDE_DIR netcdf.h)
+find_path(NETCDF_PAR_INCLUDE_DIR netcdf_par.h)
 find_path(NETCDF_C++_INCLUDE_DIR netcdf)
 
 find_library(NETCDF_LIBRARY NAMES netcdf)
@@ -45,4 +46,7 @@ endif(MSVC)
 
 if(NETCDF_FOUND)
     set(NETCDF_INCLUDE_DIRS ${NETCDF_INCLUDE_DIR} ${NETCDF_C++_INCLUDE_DIR})
+    if(NETCDF_INCLUDE_DIR STREQUAL NETCDF_PAR_INCLUDE_DIR)
+        set(NETCDF_PARALLEL TRUE)
+    endif()
 endif()

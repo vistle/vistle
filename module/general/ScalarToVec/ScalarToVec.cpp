@@ -31,7 +31,7 @@ bool ScalarToVec::compute()
         }
     }
 
-    Vec<Scalar, NumScalars>::ptr out(new Vec<Scalar, NumScalars>(Index(0)));
+    Vec<Scalar, NumScalars>::ptr out(new Vec<Scalar, NumScalars>(size_t(0)));
 
     for (int i = NumScalars - 1; i >= 0; --i) {
         if (data_in[i]) {

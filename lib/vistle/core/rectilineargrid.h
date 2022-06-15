@@ -25,7 +25,7 @@ public:
     typedef Object Base;
 
     // constructor
-    RectilinearGrid(const Index numDivX, const Index numDivY, const Index numDivZ, const Meta &meta = Meta());
+    RectilinearGrid(const size_t numDivX, const size_t numDivY, const size_t numDivZ, const Meta &meta = Meta());
 
     // get functions for metadata
     Index getNumDivisions(int c) override { return d()->coords[c]->size(); }
@@ -73,10 +73,10 @@ private:
     ShmVector<Scalar> coords[3]; //< coordinates of divisions in x, y, and z
     Index ghostLayers[3][2]; //< number of ghost cell layers in each x, y, z directions
 
-    Data(const Index numDivX, const Index numDivY, const Index numDivZ, const std::string &name,
+    Data(const size_t numDivX, const size_t numDivY, const size_t numDivZ, const std::string &name,
          const Meta &meta = Meta());
     ~Data();
-    static Data *create(const Index numDivX = 0, const Index numDivY = 0, const Index numDivZ = 0,
+    static Data *create(const size_t numDivX = 0, const size_t numDivY = 0, const size_t numDivZ = 0,
                         const Meta &meta = Meta());
 
     V_DATA_END(RectilinearGrid);

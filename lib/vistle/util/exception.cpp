@@ -39,6 +39,9 @@ consistency_error::consistency_error(const std::string &what): exception(what)
 assertion_failure::assertion_failure(const std::string &what): exception(what)
 {}
 
+index_overflow::index_overflow(const std::string &what): exception(what)
+{}
+
 parent_died::parent_died(const std::string &what): exception(what)
 {}
 

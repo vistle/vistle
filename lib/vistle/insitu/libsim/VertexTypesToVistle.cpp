@@ -54,9 +54,8 @@ vistle::Index vistle::insitu::libsim::getNumVertices(vistle::UnstructuredGrid::T
         num_verts_of_elem[vistle::UnstructuredGrid::Type::PRISM] = 6;
         num_verts_of_elem[vistle::UnstructuredGrid::Type::HEXAHEDRON] = 8;
         num_verts_of_elem[vistle::UnstructuredGrid::Type::POLYGON] = 0;
-        num_verts_of_elem[vistle::UnstructuredGrid::Type::VPOLYHEDRON] = 0;
         num_verts_of_elem[vistle::UnstructuredGrid::Type::POINT] = 1;
-        num_verts_of_elem[vistle::UnstructuredGrid::Type::CPOLYHEDRON] = 0;
+        num_verts_of_elem[vistle::UnstructuredGrid::Type::POLYHEDRON] = 0;
         init = true;
     }
     return num_verts_of_elem[type];

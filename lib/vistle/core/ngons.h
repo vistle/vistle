@@ -17,7 +17,7 @@ public:
     typedef Coords Base;
     typedef typename vistle::CelltreeInterface<3>::Celltree Celltree;
 
-    Ngons(const Index numCorners, const Index numCoords, const Meta &meta = Meta());
+    Ngons(const size_t numCorners, const size_t numCoords, const Meta &meta = Meta());
 
     Index getNumElements() override;
     Index getNumElements() const override;
@@ -46,9 +46,9 @@ private:
     V_DATA_BEGIN(Ngons);
     ShmVector<Index> cl;
 
-    Data(const Index numCorners = 0, const Index numCoords = 0, const std::string &name = "",
+    Data(const size_t numCorners = 0, const size_t numCoords = 0, const std::string &name = "",
          const Meta &meta = Meta());
-    static Data *create(const Index numCorners = 0, const Index numCoords = 0, const Meta &meta = Meta());
+    static Data *create(const size_t numCorners = 0, const size_t numCoords = 0, const Meta &meta = Meta());
     V_DATA_END(Ngons);
 
     static_assert(N == 3 || N == 4, "only usable for triangles and quads");

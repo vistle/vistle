@@ -15,7 +15,7 @@ public:
 
     DEFINE_ENUM_WITH_STRING_CONVERSIONS(CapStyle, (Open)(Flat)(Round)(Arrow))
 
-    Tubes(const Index numTubes, const Index numCoords, const Meta &meta = Meta());
+    Tubes(const size_t numTubes, const size_t numCoords, const Meta &meta = Meta());
 
     Index getNumTubes() const;
     shm<Index>::array &components() { return *d()->components; }
@@ -29,12 +29,13 @@ public:
 
     V_DATA_BEGIN(Tubes);
     ShmVector<Index> components;
-    ShmVector<unsigned char>
+    std::array<unsigned char, 3>
         style; // 0: CapStyle for start, 1: CapStyle for connections within, 2: CapStyle for end of each component
 
-    Data(const Index numTubes = 0, const Index numCoords = 0, const std::string &name = "", const Meta &meta = Meta());
+    Data(const size_t numTubes = 0, const size_t numCoords = 0, const std::string &name = "",
+         const Meta &meta = Meta());
     Data(const Vec<Scalar, 3>::Data &o, const std::string &n);
-    static Data *create(const Index numTubes = 0, const Index numCoords = 0, const Meta &meta = Meta());
+    static Data *create(const size_t numTubes = 0, const size_t numCoords = 0, const Meta &meta = Meta());
 
     V_DATA_END(Tubes);
 };

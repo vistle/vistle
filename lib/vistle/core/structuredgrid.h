@@ -29,7 +29,7 @@ public:
     typedef typename CelltreeInterface<3>::Celltree Celltree;
 
     // constructor
-    StructuredGrid(const Index numVert_x, const Index numVert_y, const Index numVert_z, const Meta &meta = Meta());
+    StructuredGrid(const size_t numVert_x, const size_t numVert_y, const size_t numVert_z, const Meta &meta = Meta());
 
     // get functions for metadata
     Index getNumDivisions(int c) override { return d()->numDivisions[c]; }
@@ -60,6 +60,8 @@ public:
 
     void copyAttributes(Object::const_ptr src, bool replace = true) override;
 
+    void updateInternals() override;
+
 private:
     // mutable pointers to ShmVectors
     mutable Index m_numDivisions[3];
@@ -76,10 +78,10 @@ private:
     Index numDivisions[3]; //< number of divisions on each axis (1 more than number of cells)
     Index ghostLayers[3][2]; //< number of ghost cell layers in each of x, y, z directions
 
-    Data(const Index numVert_x, const Index numVert_y, const Index numVert_z, const std::string &name,
+    Data(const size_t numVert_x, const size_t numVert_y, const size_t numVert_z, const std::string &name,
          const Meta &meta = Meta());
     ~Data();
-    static Data *create(const Index numVert_x = 0, const Index numVert_y = 0, const Index numVert_z = 0,
+    static Data *create(const size_t numVert_x = 0, const size_t numVert_y = 0, const size_t numVert_z = 0,
                         const Meta &meta = Meta());
 
     V_DATA_END(StructuredGrid);

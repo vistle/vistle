@@ -22,10 +22,9 @@ static const Scalar Epsilon = 1e-7;
  PYRAMID     =  5,
  PRISM       =  6,
  HEXAHEDRON  =  7,
- VPOLYHEDRON =  8,
  POLYGON     =  9,
  POINT       = 10,
- CPOLYHEDRON = 11,
+ POLYHEDRON  = 11,
  */
 
 const int UnstructuredGrid::Dimensionality[UnstructuredGrid::NUM_TYPES] = {-1, 1, 2, 2, 3, 3, 3, 3, -1, -1, 0, 3};
@@ -134,7 +133,7 @@ const unsigned UnstructuredGrid::FaceVertices[UnstructuredGrid::NUM_TYPES][Unstr
 };
 // clang-format on
 
-UnstructuredGrid::UnstructuredGrid(const Index numElements, const Index numCorners, const Index numVertices,
+UnstructuredGrid::UnstructuredGrid(const size_t numElements, const size_t numCorners, const size_t numVertices,
                                    const Meta &meta)
 : UnstructuredGrid::Base(UnstructuredGrid::Data::create(numElements, numCorners, numVertices, meta))
 {
@@ -161,6 +160,8 @@ bool UnstructuredGrid::isEmpty() const
 
 bool UnstructuredGrid::checkImpl() const
 {
+    CHECK_OVERFLOW(d()->tl->size());
+
     V_CHECK(d()->tl->check());
     V_CHECK(d()->tl->size() == getNumElements());
     return true;
@@ -246,46 +247,7 @@ Index UnstructuredGrid::checkConvexity()
             }
             break;
         }
-        case VPOLYHEDRON: {
-            bool conv = true;
-            std::vector<Index> vert = cellVertices(elem);
-            const Index begin = el[elem], end = el[elem + 1];
-            const Index nvert = end - begin;
-            for (Index i = 0; i < nvert; i += cl[begin + i] + 1) {
-                const Index N = cl[begin + i];
-                const Index *fl = cl + begin + i + 1;
-                auto nc = faceNormalAndCenter(N, fl, x, y, z);
-                auto normal = nc.first;
-                auto center = nc.second;
-                for (auto v: vert) {
-                    bool check = true;
-                    for (unsigned idx = 0; idx < N; ++idx) {
-                        if (v == fl[idx]) {
-                            check = false;
-                            break;
-                        }
-                    }
-
-                    if (check) {
-                        const Vector3 p(x[v], y[v], z[v]);
-                        if (normal.dot(p - center) > Tolerance) {
-                            conv = false;
-                            break;
-                        }
-                    }
-                }
-                if (!conv)
-                    break;
-            }
-
-            if (conv) {
-                tl[elem] |= CONVEX_BIT;
-            } else {
-                ++nonConvexCount;
-            }
-            break;
-        }
-        case CPOLYHEDRON: {
+        case POLYHEDRON: {
             bool conv = true;
             std::vector<Index> vert = cellVertices(elem);
             const Index begin = el[elem], end = el[elem + 1];
@@ -494,8 +456,7 @@ Index UnstructuredGrid::cellNumFaces(Index elem) const
         return 5;
     case HEXAHEDRON:
         return 6;
-    case CPOLYHEDRON:
-    case VPOLYHEDRON:
+    case POLYHEDRON:
         return 0;
     }
 
@@ -516,18 +477,7 @@ bool UnstructuredGrid::insideConvex(Index elem, const Vector3 &point) const
     const Scalar *z = &this->z()[0];
 
     const auto type(tl()[elem] & TYPE_MASK);
-    if (type == UnstructuredGrid::VPOLYHEDRON) {
-        const Index begin = el[elem], end = el[elem + 1];
-        const Index nvert = end - begin;
-        for (Index i = 0; i < nvert; i += cl[i] + 1) {
-            const auto nc = faceNormalAndCenter(cl[i], &cl[i + 1], x, y, z);
-            auto &normal = nc.first;
-            auto &center = nc.second;
-            if (normal.dot(point - center) > Tolerance)
-                return false;
-        }
-        return true;
-    } else if (type == UnstructuredGrid::CPOLYHEDRON) {
+    if (type == UnstructuredGrid::POLYHEDRON) {
         const Index begin = el[elem], end = el[elem + 1];
         const Index nvert = end - begin;
         Index facestart = InvalidIndex;
@@ -576,34 +526,7 @@ Scalar UnstructuredGrid::exitDistance(Index elem, const Vector3 &point, const Ve
 
     Scalar exitDist = -1;
     const auto type(tl()[elem] & TYPE_MASK);
-    if (type == UnstructuredGrid::VPOLYHEDRON) {
-        const Index nvert = end - begin;
-        for (Index i = 0; i < nvert; i += cl[i] + 1) {
-            const Index nCorners = cl[i];
-            auto nc = faceNormalAndCenter(cl[i], &cl[i + 1], x, y, z);
-            auto normal = nc.first;
-            auto center = nc.second;
-
-            const Scalar cosa = normal.dot(raydir);
-            if (std::abs(cosa) <= Epsilon) {
-                continue;
-            }
-            const Scalar t = normal.dot(center - point) / cosa;
-            if (t < 0) {
-                continue;
-            }
-            std::vector<Vector3> corners(nCorners);
-            for (Index k = 0; k < nCorners; ++k) {
-                const Index v = cl[i + k + 1];
-                corners[k] = Vector3(x[v], y[v], z[v]);
-            }
-            const auto isect = point + t * raydir;
-            if (insidePolygon(isect, corners.data(), nCorners, normal)) {
-                if (exitDist < 0 || t < exitDist)
-                    exitDist = t;
-            }
-        }
-    } else if (type == UnstructuredGrid::CPOLYHEDRON) {
+    if (type == UnstructuredGrid::POLYHEDRON) {
         const Index nvert = end - begin;
         Index term = 0;
         Index facestart = InvalidIndex;
@@ -713,7 +636,7 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
     std::vector<Index> indices((mode == Linear || mode == Mean) ? nvert : 1);
 
     if (mode == Mean) {
-        if ((tl[elem] & TYPE_MASK) == VPOLYHEDRON || (tl[elem] & TYPE_MASK) == CPOLYHEDRON) {
+        if ((tl[elem] & TYPE_MASK) == POLYHEDRON) {
             indices = cellVertices(elem);
             const Index n = indices.size();
             Scalar w = Scalar(1) / n;
@@ -821,170 +744,7 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
             weights[7] = (1 - ss[0]) * ss[1] * ss[2];
             break;
         }
-        case VPOLYHEDRON: {
-            /* subdivide n-hedron into n pyramids with tip at the center,
-               interpolate within pyramid containing point */
-
-            // polyhedron compute center
-            std::vector<Index> verts = cellVertices(elem);
-            Vector3 center(0, 0, 0);
-            for (auto v: verts) {
-                Vector3 c(x[0][v], x[1][v], x[2][v]);
-                center += c;
-            }
-            center /= verts.size();
-#ifdef INTERPOL_DEBUG
-            std::cerr << "center: " << center.transpose() << std::endl;
-            assert(inside(elem, center));
-#endif
-
-            std::vector<Vector3> coord(nvert);
-            Index nfaces = 0;
-            Index n = 0;
-            for (Index i = 0; i < nvert; i += cl[i] + 1) {
-                const Index N = cl[i];
-                ++nfaces;
-                for (Index k = i + 1; k < i + N + 1; ++k) {
-                    indices[n] = cl[k];
-                    for (int c = 0; c < 3; ++c) {
-                        coord[n][c] = x[c][cl[k]];
-                    }
-                    ++n;
-                }
-            }
-            Index ncoord = n;
-            coord.resize(ncoord);
-            weights.resize(ncoord);
-
-            // find face that is hit by ray from polyhedron center through query point
-            Scalar scale = 0;
-            Vector3 isect;
-            bool foundFace = false;
-            n = 0;
-            Index nFaceVert = 0;
-            Vector3 faceCenter(0, 0, 0);
-            for (Index i = 0; i < nvert; i += cl[i] + 1) {
-                nFaceVert = cl[i];
-                auto nc = faceNormalAndCenter(nFaceVert, &cl[i + 1], x[0], x[1], x[2]);
-                const Vector3 dir = point - center;
-                Vector3 normal = nc.first;
-                faceCenter = nc.second;
-                scale = normal.dot(dir) / normal.dot(faceCenter - center);
-#ifdef INTERPOL_DEBUG
-                std::cerr << "face: normal=" << normal.transpose() << ", center=" << faceCenter.transpose()
-                          << ", endvert=" << i << ", numvert=" << nFaceVert << ", scale=" << scale << std::endl;
-                assert(scale <= 1.01); // otherwise, point is outside of the polyhedron
-#endif
-                if (scale > 1.)
-                    scale = 1;
-                if (scale >= 0) {
-                    scale = std::min(Scalar(1), scale);
-                    if (scale > 0.001) {
-                        isect = center + dir / scale;
-#ifdef INTERPOL_DEBUG
-                        std::cerr << "isect: " << isect.transpose() << std::endl;
-#endif
-                        if (insideConvexPolygon(isect, &coord[n], nFaceVert, normal)) {
-#ifdef INTERPOL_DEBUG
-                            std::cerr << "found face: normal: " << normal.transpose()
-                                      << ", first: " << coord[n].transpose() << ", dir: " << dir.transpose()
-                                      << ", isect: " << isect.transpose() << std::endl;
-                            assert(insidePolygon(isect, &coord[n], nFaceVert, normal));
-#endif
-                            foundFace = true;
-                            break;
-                        } else {
-#ifdef INTERPOL_DEBUG
-                            assert(!insidePolygon(isect, &coord[n], nFaceVert, normal));
-#endif
-                        }
-                    } else {
-                        scale = 0;
-                        break;
-                    }
-                }
-                n += nFaceVert;
-            }
-            const Index startIndex = n;
-
-            // compute contribution of polyhedron center
-            Scalar centerWeight = 1 - scale;
-#ifdef INTERPOL_DEBUG
-            std::cerr << "center weight: " << centerWeight << ", scale: " << scale << std::endl;
-#endif
-            Scalar sum = 0;
-            if (centerWeight >= 0.0001) {
-                std::set<Index> usedIndices;
-                for (Index i = 0; i < ncoord; ++i) {
-                    if (!usedIndices.insert(indices[i]).second) {
-                        weights[i] = 0;
-                        continue;
-                    }
-                    Scalar centerDist = (coord[i] - center).norm();
-#ifdef INTERPOL_DEBUG
-                    //std::cerr << "ind " << i << ", centerDist: " << centerDist << std::endl;
-#endif
-                    if (std::abs(centerDist) > 0) {
-                        weights[i] = 1 / centerDist;
-                        sum += weights[i];
-                    } else {
-                        for (Index j = 0; j < ncoord; ++j) {
-                            weights[j] = 0;
-                        }
-                        weights[i] = 1;
-                        sum = weights[i];
-                        break;
-                    }
-                }
-#ifdef INTERPOL_DEBUG
-                std::cerr << "sum: " << sum << std::endl;
-#endif
-            }
-
-            if (sum > 0) {
-                for (Index i = 0; i < ncoord; ++i) {
-                    weights[i] *= centerWeight / sum;
-                }
-            } else {
-                for (Index i = 0; i < ncoord; ++i) {
-                    weights[i] = 0;
-                }
-            }
-
-            if (foundFace) {
-                // contribution of hit face,
-                // interpolate compatible with simple cells for faces with 3 or 4 vertices
-                if (nFaceVert == 3) {
-                    Matrix2 T;
-                    T << (coord[startIndex + 0] - coord[startIndex + 2]).block<2, 1>(0, 0),
-                        (coord[startIndex + 1] - coord[startIndex + 2]).block<2, 1>(0, 0);
-                    Vector2 w = T.inverse() * (isect - coord[startIndex + 2]).block<2, 1>(0, 0);
-                    weights[startIndex] += w[0] * (1 - centerWeight);
-                    weights[startIndex + 1] += w[1] * (1 - centerWeight);
-                    weights[startIndex + 2] += (1 - w[0] - w[1]) * (1 - centerWeight);
-                } else if (nFaceVert == 4) {
-                    Vector2 ss = bilinearInverse(isect, &coord[startIndex]);
-                    weights[startIndex] += (1 - ss[0]) * (1 - ss[1]) * (1 - centerWeight);
-                    weights[startIndex + 1] += ss[0] * (1 - ss[1]) * (1 - centerWeight);
-                    weights[startIndex + 2] += ss[0] * ss[1] * (1 - centerWeight);
-                    weights[startIndex + 3] += (1 - ss[0]) * ss[1] * (1 - centerWeight);
-                } else if (nFaceVert > 0) {
-                    // subdivide face into triangles around faceCenter
-                    Scalar sum = 0;
-                    std::vector<Scalar> fweights(nFaceVert);
-                    for (Index i = 0; i < nFaceVert; ++i) {
-                        Scalar centerDist = (coord[i] - faceCenter).norm();
-                        fweights[i] = 1 / centerDist;
-                        sum += fweights[i];
-                    }
-                    for (Index i = 0; i < nFaceVert; ++i) {
-                        weights[i + startIndex] += fweights[i] / sum * (1 - centerWeight);
-                    }
-                }
-            }
-            break;
-        }
-        case CPOLYHEDRON: {
+        case POLYHEDRON: {
             /* subdivide n-hedron into n pyramids with tip at the center,
                interpolate within pyramid containing point */
 
@@ -1172,28 +932,14 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
         } else if (mode == Nearest) {
             Scalar mindist = std::numeric_limits<Scalar>::max();
 
-            if ((tl[elem] & TYPE_MASK) == VPOLYHEDRON) {
-                indices = cellVertices(elem);
-                const Index n = indices.size();
-                for (Index i = 0; i < n; ++i) {
-                    const Index k = indices[i];
-                    const Vector3 vert(x[0][k], x[1][k], x[2][k]);
-                    const Scalar dist = (point - vert).squaredNorm();
-                    if (dist < mindist) {
-                        mindist = dist;
-                        indices[0] = k;
-                    }
-                }
-            } else {
-                // also for CPOLYHEDRON
-                for (Index i = 0; i < nvert; ++i) {
-                    const Index k = cl[i];
-                    const Vector3 vert(x[0][k], x[1][k], x[2][k]);
-                    const Scalar dist = (point - vert).squaredNorm();
-                    if (dist < mindist) {
-                        mindist = dist;
-                        indices[0] = k;
-                    }
+            // also for POLYHEDRON
+            for (Index i = 0; i < nvert; ++i) {
+                const Index k = cl[i];
+                const Vector3 vert(x[0][k], x[1][k], x[2][k]);
+                const Scalar dist = (point - vert).squaredNorm();
+                if (dist < mindist) {
+                    mindist = dist;
+                    indices[0] = k;
                 }
             }
         }
@@ -1209,25 +955,7 @@ std::pair<Vector3, Vector3> UnstructuredGrid::elementBounds(Index elem) const
         return Base::elementBounds(elem);
     }
 
-    if (t == UnstructuredGrid::VPOLYHEDRON) {
-        const Index *el = &this->el()[0];
-        const Index *cl = &this->cl()[0];
-        const Scalar *x[3] = {&this->x()[0], &this->y()[0], &this->z()[0]};
-        const Scalar smax = std::numeric_limits<Scalar>::max();
-        Vector3 min(smax, smax, smax), max(-smax, -smax, -smax);
-        const Index begin = el[elem], end = el[elem + 1];
-        for (Index j = begin; j < end; j += cl[j] + 1) {
-            Index nvert = cl[j];
-            for (Index k = j + 1; k < j + nvert + 1; ++k) {
-                Index v = cl[k];
-                for (int c = 0; c < 3; ++c) {
-                    min[c] = std::min(min[c], x[c][v]);
-                    max[c] = std::max(max[c], x[c][v]);
-                }
-            }
-        }
-        return std::make_pair(min, max);
-    } else if (t == UnstructuredGrid::CPOLYHEDRON) {
+    if (t == UnstructuredGrid::POLYHEDRON) {
         return Base::elementBounds(elem);
     }
 
@@ -1241,23 +969,7 @@ std::vector<Index> UnstructuredGrid::cellVertices(Index elem) const
         return Base::cellVertices(elem);
     }
 
-    if (t == UnstructuredGrid::VPOLYHEDRON) {
-        const Index *el = &this->el()[0];
-        const Index *cl = &this->cl()[0];
-        const Index begin = el[elem], end = el[elem + 1];
-        std::vector<Index> verts;
-        verts.reserve(end - begin);
-        for (Index j = begin; j < end; j += cl[j] + 1) {
-            Index nvert = cl[j];
-            for (Index k = j + 1; k < j + nvert + 1; ++k) {
-                verts.push_back(cl[k]);
-            }
-        }
-        std::sort(verts.begin(), verts.end());
-        auto last = std::unique(verts.begin(), verts.end());
-        verts.resize(last - verts.begin());
-        return verts;
-    } else if (t == UnstructuredGrid::CPOLYHEDRON) {
+    if (t == UnstructuredGrid::POLYHEDRON) {
         const Index *el = &this->el()[0];
         const Index *cl = &this->cl()[0];
         const Index begin = el[elem], end = el[elem + 1];
@@ -1290,7 +1002,7 @@ UnstructuredGrid::Data::Data(const UnstructuredGrid::Data &o, const std::string 
     initData();
 }
 
-UnstructuredGrid::Data::Data(const Index numElements, const Index numCorners, const Index numVertices,
+UnstructuredGrid::Data::Data(const size_t numElements, const size_t numCorners, const size_t numVertices,
                              const std::string &name, const Meta &meta)
 : UnstructuredGrid::Base::Data(numElements, numCorners, numVertices, Object::UNSTRUCTUREDGRID, name, meta)
 {
@@ -1298,8 +1010,8 @@ UnstructuredGrid::Data::Data(const Index numElements, const Index numCorners, co
     tl.construct(numElements);
 }
 
-UnstructuredGrid::Data *UnstructuredGrid::Data::create(const Index numElements, const Index numCorners,
-                                                       const Index numVertices, const Meta &meta)
+UnstructuredGrid::Data *UnstructuredGrid::Data::create(const size_t numElements, const size_t numCorners,
+                                                       const size_t numVertices, const Meta &meta)
 {
     const std::string name = Shm::the().createObjectId();
     Data *u = shm<Data>::construct(name)(numElements, numCorners, numVertices, name, meta);

@@ -169,6 +169,9 @@ void RenderObject::updateBounds()
 
 void RenderObject::computeBounds()
 {
+    if (!geometry)
+        return;
+
     const Scalar smax = std::numeric_limits<Scalar>::max();
     bMin = Vector3(smax, smax, smax);
     bMax = Vector3(-smax, -smax, -smax);

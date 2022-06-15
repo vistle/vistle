@@ -98,7 +98,7 @@ option(VISTLE_SANITIZE_THREAD "Build with -fsanitize=thread" OFF)
 
 option(VISTLE_USE_CUDA "Build with CUDA support" OFF)
 
-option(VISTLE_COLOR_DIAGNOSTICS "Produce ANSI-colored build output (GNU/Clang)." OFF)
+option(VISTLE_COLOR_DIAGNOSTICS "Produce ANSI-colored build output (GNU/Clang)." ON)
 
 if(NOT "$ENV{VBUILD}" STREQUAL "")
     include("${PROJECT_SOURCE_DIR}/build/$ENV{VBUILD}.cmake")
@@ -235,6 +235,9 @@ include(ConfigureLinker)
 
 if(NOT VISTLE_GUI_ONLY)
     find_package(OpenMP)
+    if(OPENMP_FOUND)
+        find_library(LIBOMP omp)
+    endif()
 
     if(CMAKE_VERSION VERSION_LESS 3.12)
         message(WARNING "CMake 3.12 or newer is required for compiling Python support")
@@ -546,8 +549,10 @@ set(buildPackageLocation ${PROJECT_BINARY_DIR}/lib/cmake/vistle)
 set(installPackageLocation ${CMAKE_INSTALL_LIBDIR}/cmake/vistle)
 
 function(prepend_file filename)
-    file(READ ${filename} old_content)
-    file(WRITE ${filename} ${ARGN} ${old_content})
+    if(EXISTS ${filename})
+        file(READ ${filename} old_content)
+        file(WRITE ${filename} ${ARGN} ${old_content})
+    endif()
 endfunction()
 
 function(getPublicBoostComponents PublicBoostComponents)
@@ -578,17 +583,19 @@ macro(vistle_target_link_libraries targetname)
     set(file_content ${file_content} "set(oldCMAKE_PREFIX_PATH \${CMAKE_PREFIX_PATH})\n")
     set(file_content ${file_content} "set(CMAKE_PREFIX_PATH \${CMAKE_CURRENT_LIST_DIR} \${CMAKE_PREFIX_PATH})\n")
     set(add_next_arg false)
-    set(hasPublicDependencies false)
+    set(hasDependencies false)
     foreach(arg IN ITEMS ${ARGN})
         if(add_next_arg)
-            #set(file_content ${file_content} "set(" ${arg} "_DIR \"\${CMAKE_CURRENT_LIST_DIR}\")\n")
             if(${arg} MATCHES "vistle_.*")
+                set(file_content ${file_content} "if(NOT " ${arg} "_DIR)\n")
+                set(file_content ${file_content} "  set(" ${arg} "_DIR @" ${arg} "_DIR@)\n")
+                set(file_content ${file_content} "endif()\n")
                 set(file_content ${file_content} "find_dependency(" ${arg} ")\n")
                 set(add_next_arg false)
             endif()
-        elseif(${arg} MATCHES "PUBLIC|INTERFACE")
+        elseif(${arg} MATCHES "PUBLIC|INTERFACE" OR (VISTLE_MODULES_SHARED AND ${arg} MATCHES "PRIVATE"))
             set(add_next_arg true)
-            set(hasPublicDependencies true)
+            set(hasDependencies true)
         endif()
     endforeach()
 
@@ -602,7 +609,8 @@ macro(vistle_target_link_libraries targetname)
         set(file_content ${file_content} ")\n")
     endif()
     set(file_content ${file_content} "set(CMAKE_PREFIX_PATH \${oldCMAKE_PREFIX_PATH})\n")
-    if(hasPublicDependencies)
+    set(file_content ${file_content} "find_dependency(MPI REQUIRED)\n")
+    if(hasDependencies)
         prepend_file(${buildPackageLocation}/${targetname}Config.cmake ${file_content})
     endif()
 endmacro()
@@ -680,6 +688,13 @@ macro(USE_OPENMP)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_C_FLAGS}")
         set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${OpenMP_C_FLAGS}")
+        if(${CMAKE_CXX_COMPILER_ID} STREQUAL "AppleClang")
+            set(USE_LIBOMP TRUE)
+            if(LIBOMP)
+                set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${LIBOMP}")
+                set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${LIBOMP}")
+            endif()
+        endif()
     else()
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unknown-pragmas")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-pragmas")
@@ -775,7 +790,10 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
         target_link_libraries(${targetname} ${Boost_LIBRARIES} ${MPI_C_LIBRARIES} vistle_module ${BOOST_MPI})
 
         genereate_documentation(${targetname})
-
+        if(USE_LIBOMP AND LIBOMP)
+            #message("Linking ${targetname} against libomp: ${LIBOMP}")
+            target_link_libraries(${targetname} ${LIBOMP})
+        endif()
     endmacro(add_module)
 endif()
 
@@ -860,6 +878,11 @@ set(ZFP_FOUND TRUE)
 add_definitions(-DHAVE_ZFP)
 include_directories(SYSTEM "${ZFP_INCLUDE_DIRS}")
 
+set(SZ3_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/lib/3rdparty/sz3/include;${PROJECT_BINARY_DIR}/lib/3rdparty/sz3/include")
+set(SZ3_FOUND TRUE)
+add_definitions(-DHAVE_SZ3)
+include_directories(SYSTEM "${SZ3_INCLUDE_DIRS}")
+
 if(NOT VISTLE_GUI_ONLY)
     vistle_find_package(
         OpenSceneGraph
@@ -887,13 +910,13 @@ vistle_find_package(
     VTK
     5.0
     COMPONENTS
-    vtkIOLegacy
-    vtkIOXML
-    vtkFiltersCore
-    vtkCommonCore
-    vtkImagingCore
     vtkCommonDataModel
-    vtkCommonExecutionModel
+    vtkIOXML
+    vtkIOLegacy
+    #vtkCommonCore
+    #vtkFiltersCore
+    #vtkImagingCore
+    #vtkCommonExecutionModel
     NO_MODULE
     QUIET)
 

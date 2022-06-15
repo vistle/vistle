@@ -593,21 +593,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
                     connectivities.push_back(findVertexAlongEdge(a[0], ia, cellfaces, faces));
                 } break;
 
-                case UnstructuredGrid::VPOLYHEDRON: {
-                    for (index_t j = 0; j < cellfaces.size(); j++) {
-                        index_t ia = cellfaces[j];
-                        const auto &a = faces[ia];
-                        connectivities.push_back(a.size());
-
-                        if (!isPointingInwards(ia, i, dim.internalFaces, (*owners), neighbours)) {
-                            std::copy(a.begin(), a.end(), inserter);
-                        } else {
-                            std::copy(a.rbegin(), a.rend(), inserter);
-                        }
-                    }
-                }
-
-                case UnstructuredGrid::CPOLYHEDRON: {
+                case UnstructuredGrid::POLYHEDRON: {
                     for (index_t j = 0; j < cellfaces.size(); j++) {
                         index_t ia = cellfaces[j];
                         const auto &a = faces[ia];
@@ -1088,22 +1074,9 @@ bool ReadFOAM::buildGhostCells(int processor, GhostMode mode)
             for (const Index cell: procGhostCellCandidates) {
                 Index elementStart = el[cell];
                 Index elementEnd = el[cell + 1];
-                if ((tl[cell] & UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::VPOLYHEDRON) {
-                    Index i = elementStart;
-                    while (i < elementEnd) {
-                        Index nvert = cl[i];
-                        clOut.push_back(nvert);
-                        ++i;
-                        for (Index j = 0; j < nvert; ++j) {
-                            clOut.push_back(mapIndex(cl[j]));
-                        }
-                        i += nvert;
-                    }
-                } else {
-                    // also CPOLYHEDRON
-                    for (Index j = elementStart; j < elementEnd; ++j) {
-                        clOut.push_back(mapIndex(cl[j]));
-                    }
+                // also POLYHEDRON
+                for (Index j = elementStart; j < elementEnd; ++j) {
+                    clOut.push_back(mapIndex(cl[j]));
                 }
                 elOut.push_back(clOut.size());
                 tlOut.push_back(tl[cell]);
@@ -1283,22 +1256,9 @@ void ReadFOAM::applyGhostCells(int processor, GhostMode mode)
                         return point + pointsSize;
                     }
                 };
-                if ((tlIn[cell] & UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::VPOLYHEDRON) {
-                    Index i = elementStart;
-                    while (i < elementEnd) {
-                        Index nvert = clIn[i];
-                        cl.push_back(nvert);
-                        ++i;
-                        for (Index j = 0; j < nvert; ++j) {
-                            cl.push_back(mapIndex(clIn[i + j]));
-                        }
-                        i += nvert;
-                    }
-                } else {
-                    // also CPOLYHEDRON
-                    for (Index i = elementStart; i < elementEnd; ++i) {
-                        cl.push_back(mapIndex(clIn[i]));
-                    }
+                // also POLYHEDRON
+                for (Index i = elementStart; i < elementEnd; ++i) {
+                    cl.push_back(mapIndex(clIn[i]));
                 }
                 el.push_back(cl.size());
                 tl.push_back(tlIn[cell] | UnstructuredGrid::GHOST_BIT);

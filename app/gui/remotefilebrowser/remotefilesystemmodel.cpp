@@ -268,7 +268,7 @@ QModelIndex RemoteFileSystemModel::sibling(int row, int column, const QModelInde
 
     Returns the model item index for the given \a path and \a column.
 */
-QModelIndex RemoteFileSystemModel::index(const QString &path, int column) const
+QModelIndex RemoteFileSystemModel::fsIndex(const QString &path, int column) const
 {
     Q_D(const RemoteFileSystemModel);
     RemoteFileSystemModelPrivate::RemoteFileSystemNode *node = d->node(path, false);
@@ -375,7 +375,7 @@ RemoteFileSystemModelPrivate::RemoteFileSystemNode *RemoteFileSystemModelPrivate
                 if (pathElements.count() == 1 && !absolutePath.endsWith(QLatin1Char('/')))
                     return rootNode;
                 FileInfo info = fileInfoGatherer->getInfo(host);
-                QModelIndex idx = q->index(host);
+                QModelIndex idx = q->fsIndex(host);
                 if (!idx.isValid())
                     return rootNode;
                 RemoteFileSystemModelPrivate *p = const_cast<RemoteFileSystemModelPrivate *>(this);
@@ -1115,7 +1115,7 @@ void RemoteFileSystemModel::sort(int column, Qt::SortOrder order)
 
     if (!(d->sortColumn == column && d->sortOrder != order && !d->forceSort)) {
         //we sort only from where we are, don't need to sort all the model
-        d->sortChildren(column, index(rootPath()));
+        d->sortChildren(column, fsIndex(rootPath()));
         d->sortColumn = column;
         d->forceSort = false;
     }
@@ -1531,7 +1531,7 @@ void RemoteFileSystemModel::setNameFilters(const QStringList &filters)
         // update the bypass filter to only bypass the stuff that must be kept around
         d->bypassFilters.clear();
         // We guarantee that rootPath will stick around
-        QPersistentModelIndex root(index(rootPath()));
+        QPersistentModelIndex root(fsIndex(rootPath()));
         const QModelIndexList persistentList = persistentIndexList();
         for (const auto &persistentIndex: persistentList) {
             RemoteFileSystemModelPrivate::RemoteFileSystemNode *node = d->node(persistentIndex);

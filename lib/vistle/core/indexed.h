@@ -19,7 +19,7 @@ public:
     typedef vistle::VertexOwnerList VertexOwnerList;
     typedef typename vistle::CelltreeInterface<3>::Celltree Celltree;
 
-    Indexed(const Index numElements, const Index numCorners, const Index numVertices, const Meta &meta = Meta());
+    Indexed(const size_t numElements, const size_t numCorners, const size_t numVertices, const Meta &meta = Meta());
 
     Index getNumElements() override;
     Index getNumElements() const override;
@@ -81,10 +81,10 @@ private:
     ShmVector<Index> el; //< element list: index into connectivity list - last element: sentinel
     ShmVector<Index> cl; //< connectivity list: index into coordinates
 
-    Data(const Index numElements = 0, const Index numCorners = 0, const Index numVertices = 0, Type id = UNKNOWN,
+    Data(const size_t numElements = 0, const size_t numCorners = 0, const size_t numVertices = 0, Type id = UNKNOWN,
          const std::string &name = "", const Meta &meta = Meta());
-    static Data *create(const std::string &name = "", Type id = UNKNOWN, const Index numElements = 0,
-                        const Index numCorners = 0, const Index numVertices = 0, const Meta &meta = Meta());
+    static Data *create(const std::string &name = "", Type id = UNKNOWN, const size_t numElements = 0,
+                        const size_t numCorners = 0, const size_t numVertices = 0, const Meta &meta = Meta());
 
     V_DATA_END(Indexed);
 };

@@ -57,7 +57,7 @@ struct Internals {
 } // namespace vistle
 
 SenseiAdapter::SenseiAdapter(bool paused, MPI_Comm Comm, MetaData &&meta, ObjectRetriever cbs,
-                             const std::string &options)
+                             const std::string &vistleRoot, const std::string &options)
 : m_callbacks(std::move(cbs)), m_metaData(std::move(meta)), m_internals(new detail::Internals{detail::getRank(Comm)})
 {
     MPI_Comm_rank(Comm, &m_rank);
@@ -68,19 +68,30 @@ SenseiAdapter::SenseiAdapter(bool paused, MPI_Comm Comm, MetaData &&meta, Object
     dumpConnectionFile(comm);
 
 #ifdef MODULE_THREAD
+    vistle::directory::setVistleRoot(vistleRoot);
     startVistle(comm, options);
+#else
+    (void)vistleRoot;
 #endif
 }
 
 bool SenseiAdapter::Execute(size_t timestep)
 {
-    CERR << "executing timestep " << timestep << std::endl;
+    auto tStart = vistle::Clock::time();
     if (stillConnected() && !quitRequested() && WaitedForModuleCommands()) {
         if (haveToProcessTimestep(timestep)) {
+            static bool first = true;
+            if (first) {
+                first = false;
+                m_timeSpendInExecute = 0;
+                m_startTime = vistle::Clock::time();
+            }
             processData();
         }
+        m_timeSpendInExecute += vistle::Clock::time() - tStart;
         return true;
     }
+    m_timeSpendInExecute += vistle::Clock::time() - tStart;
     return false;
 }
 
@@ -164,11 +175,6 @@ bool SenseiAdapter::haveToProcessTimestep(size_t timestep)
 
 void SenseiAdapter::processData()
 {
-    static bool first = true;
-    if (first) {
-        first = false;
-        m_stopWatch = std::make_unique<StopWatch>("simulation took");
-    }
     if (!m_internals->sendMessageQueue) {
         CERR << "VistleSenseiAdapter can not add vistle object: sendMessageQueue = "
                 "null"
@@ -177,7 +183,6 @@ void SenseiAdapter::processData()
     }
     auto dataObjects = m_callbacks.getData(m_usedData);
     for (const auto &dataObject: dataObjects) {
-        updateMeta(dataObject.object());
         m_internals->sendMessageQueue->addObject(dataObject.portName(), dataObject.object());
     }
     m_internals->sendMessageQueue->sendObjects();
@@ -197,7 +202,15 @@ SenseiAdapter::~SenseiAdapter()
 bool SenseiAdapter::Finalize()
 {
     CERR << "Finalizing" << endl;
-    m_stopWatch.reset(nullptr);
+    double averageTimeSpendInExecute = 0;
+    MPI_Reduce(&m_timeSpendInExecute, &averageTimeSpendInExecute, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
+    auto simulationTime = Clock::time() - m_startTime;
+    double averageSimTime = 0;
+    MPI_Reduce(&simulationTime, &averageSimTime, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
+    if (m_rank == 0) {
+        std::cerr << "simulation took " << averageSimTime / m_mpiSize << "s" << std::endl;
+        std::cerr << "avarage time spend in execute: " << averageTimeSpendInExecute / m_mpiSize << "s" << std::endl;
+    }
     if (m_internals->moduleInfo.isInitialized()) {
         m_internals->messageHandler->send(ConnectionClosed{true});
     }
@@ -404,5 +417,6 @@ void SenseiAdapter::updateMeta(vistle::Object::ptr obj) const
         obj->setExecutionCounter(m_executionCount);
         obj->setTimestep(m_processedTimesteps);
         obj->setIteration(m_iterations);
+        obj->updateInternals();
     }
 }

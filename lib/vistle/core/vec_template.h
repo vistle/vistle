@@ -3,6 +3,7 @@
 
 #include "scalars.h"
 #include "structuredgridbase.h"
+#include <vistle/util/exception.h>
 
 #include <limits>
 #include <type_traits>
@@ -24,8 +25,9 @@ Vec<T, Dim>::Vec(Data *data): Vec::Base(data)
 }
 
 template<class T, unsigned Dim>
-Vec<T, Dim>::Vec(const Index size, const Meta &meta): Vec::Base(Data::create(size, meta))
+Vec<T, Dim>::Vec(const size_t size, const Meta &meta): Vec::Base(Data::create(size, meta))
 {
+    CHECK_OVERFLOW(size);
     refreshImpl();
 }
 
@@ -40,8 +42,10 @@ void Vec<T, Dim>::resetArrays()
 }
 
 template<class T, unsigned Dim>
-void Vec<T, Dim>::setSize(const Index size)
+void Vec<T, Dim>::setSize(const size_t size)
 {
+    CHECK_OVERFLOW(size);
+
     for (unsigned c = 0; c < Dim; ++c) {
         if (d()->x[c].valid()) {
             d()->x[c]->resize(size);
@@ -138,6 +142,7 @@ template<class T, unsigned Dim>
 bool Vec<T, Dim>::checkImpl() const
 {
     size_t size = d()->x[0]->size();
+    CHECK_OVERFLOW(size);
     for (unsigned c = 0; c < Dim; ++c) {
         V_CHECK(d()->x[c]->check());
         V_CHECK(d()->x[c]->size() == size);
@@ -156,6 +161,7 @@ void Vec<T, Dim>::updateInternals()
     if (!d()->boundsValid()) {
         d()->updateBounds();
     }
+    Base::updateInternals();
 }
 
 template<class T, unsigned Dim>
@@ -230,9 +236,10 @@ void Vec<T, Dim>::Data::setExact(bool exact)
 }
 
 template<class T, unsigned Dim>
-Vec<T, Dim>::Data::Data(const Index size, const std::string &name, const Meta &m)
+Vec<T, Dim>::Data::Data(const size_t size, const std::string &name, const Meta &m)
 : Vec<T, Dim>::Base::Data(Vec<T, Dim>::type(), name, m)
 {
+    CHECK_OVERFLOW(size);
     initData();
 
     for (unsigned c = 0; c < Dim; ++c)
@@ -248,9 +255,10 @@ Object::Type Vec<T, Dim>::type()
 }
 
 template<class T, unsigned Dim>
-Vec<T, Dim>::Data::Data(const Index size, Type id, const std::string &name, const Meta &m)
+Vec<T, Dim>::Data::Data(const size_t size, Type id, const std::string &name, const Meta &m)
 : Vec<T, Dim>::Base::Data(id, name, m)
 {
+    CHECK_OVERFLOW(size);
     initData();
 
     for (unsigned c = 0; c < Dim; ++c)
@@ -268,7 +276,7 @@ Vec<T, Dim>::Data::Data(const Data &o, const std::string &n, Type id)
 }
 
 template<class T, unsigned Dim>
-typename Vec<T, Dim>::Data *Vec<T, Dim>::Data::create(Index size, const Meta &meta)
+typename Vec<T, Dim>::Data *Vec<T, Dim>::Data::create(size_t size, const Meta &meta)
 {
     std::string name = Shm::the().createObjectId();
     Data *t = shm<Data>::construct(name)(size, name, meta);

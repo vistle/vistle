@@ -3,14 +3,6 @@
  */
 
 
-#ifdef __linux__
-// for pthread_setname_np
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif
-#include <pthread.h>
-#endif
-
 #include <boost/foreach.hpp>
 #include <boost/lexical_cast.hpp>
 
@@ -36,6 +28,7 @@
 #include <vistle/util/enum.h>
 #include <vistle/util/stopwatch.h>
 #include <vistle/util/sysdep.h>
+#include <vistle/util/threadname.h>
 #include <vistle/control/scanmodules.h>
 
 #include "clustermanager.h"
@@ -248,8 +241,7 @@ bool ClusterManager::Module::haveDelayed() const
 }
 
 ClusterManager::ClusterManager(boost::mpi::communicator comm, const std::vector<std::string> &hosts)
-: ParameterManager("Vistle", message::Id::Vistle)
-, m_comm(comm)
+: m_comm(comm)
 , m_portManager(new PortManager(this))
 , m_stateTracker(std::string("ClusterManager state rk") + boost::lexical_cast<std::string>(m_comm.rank()),
                  m_portManager)
@@ -268,85 +260,65 @@ ClusterManager::~ClusterManager()
 }
 
 void ClusterManager::init()
-{
-    //ParameterManager::setId(hubId());
-    //ParameterManager::setId(message::Id::Vistle);
-    //ParameterManager::setName("Hub");
-
-    m_compressionMode =
-        addIntParameter("field_compression", "compression mode for data fields", Uncompressed, Parameter::Choice);
-    V_ENUM_SET_CHOICES(m_compressionMode, FieldCompressionMode);
-
-    m_zfpRate = addFloatParameter("zfp_rate", "ZFP fixed compression rate", 8.);
-    setParameterRange(m_zfpRate, Float(1), Float(64));
-
-    m_zfpPrecision = addIntParameter("zfp_precision", "ZFP fixed precision", 16);
-    setParameterRange(m_zfpPrecision, Integer(1), Integer(64));
-
-    m_zfpAccuracy = addFloatParameter("zfp_accuracy", "ZFP compression error tolerance", 1e-10);
-    setParameterRange(m_zfpAccuracy, Float(0.), Float(1e10));
-
-    m_archiveCompression = addIntParameter("archive_compression", "compression mode for archives",
-                                           message::CompressionNone, Parameter::Choice);
-    V_ENUM_SET_CHOICES(m_archiveCompression, message::CompressionMode);
-
-    m_archiveCompressionSpeed =
-        addIntParameter("archive_compression_speed", "speed parameter of compression algorithm", -1);
-    setParameterRange(m_archiveCompressionSpeed, Integer(-1), Integer(100));
-}
+{}
 
 const StateTracker &ClusterManager::state() const
 {
     return m_stateTracker;
 }
 
-void ClusterManager::sendParameterMessage(const message::Message &message, const buffer *payload) const
+template<typename ValueType>
+ValueType getSessionParameter(const StateTracker &state, const char *name)
 {
-    message::Buffer buf(message);
-    buf.setSenderId(ParameterManager::id());
-    MessagePayload pl;
-    if (payload) {
-        pl.construct(payload->size());
-        std::copy(payload->begin(), payload->end(), pl->begin());
-        //buf.setPayloadName(pl.name());
-    }
-    sendHub(buf, pl);
+    auto val = ValueType();
+    auto param = std::dynamic_pointer_cast<ParameterBase<Integer>>(state.getParameter(Id::Vistle, name)).get();
+    if (param)
+        val = static_cast<ValueType>(param->getValue());
+    return val;
 }
 
-FieldCompressionMode ClusterManager::fieldCompressionMode() const
+template<>
+Float getSessionParameter<Float>(const StateTracker &state, const char *name)
 {
-    std::lock_guard<std::mutex> locker(m_parameterMutex);
-    return (FieldCompressionMode)m_compressionMode->getValue();
-}
-
-double ClusterManager::zfpRate() const
-{
-    std::lock_guard<std::mutex> locker(m_parameterMutex);
-    return m_zfpRate->getValue();
-}
-
-int ClusterManager::zfpPrecision() const
-{
-    std::lock_guard<std::mutex> locker(m_parameterMutex);
-    return m_zfpPrecision->getValue();
-}
-
-double ClusterManager::zfpAccuracy() const
-{
-    std::lock_guard<std::mutex> locker(m_parameterMutex);
-    return m_zfpAccuracy->getValue();
+    auto val = Float();
+    auto param = std::dynamic_pointer_cast<ParameterBase<Float>>(state.getParameter(Id::Vistle, name)).get();
+    if (param)
+        val = param->getValue();
+    return val;
 }
 
 message::CompressionMode ClusterManager::archiveCompressionMode() const
 {
-    std::lock_guard<std::mutex> locker(m_parameterMutex);
-    return (message::CompressionMode)m_archiveCompression->getValue();
+    return getSessionParameter<message::CompressionMode>(state(), "archive_compression");
 }
 
 int ClusterManager::archiveCompressionSpeed() const
 {
-    std::lock_guard<std::mutex> locker(m_parameterMutex);
-    return m_archiveCompressionSpeed->getValue();
+    return getSessionParameter<Integer>(state(), "archive_compression_speed");
+}
+
+const CompressionSettings &ClusterManager::compressionSettings()
+{
+    if (!m_compressionSettingsValid) {
+        m_compressionSettingsValid = true;
+
+        auto &cs = m_compressionSettings;
+        cs.mode = getSessionParameter<FieldCompressionMode>(state(), CompressionSettings::p_mode);
+
+        cs.zfpMode = getSessionParameter<FieldCompressionZfpMode>(state(), CompressionSettings::p_zfpMode);
+        cs.zfpRate = getSessionParameter<Float>(state(), CompressionSettings::p_zfpRate);
+        cs.zfpPrecision = getSessionParameter<Integer>(state(), CompressionSettings::p_zfpPrecision);
+        cs.zfpAccuracy = getSessionParameter<Float>(state(), CompressionSettings::p_zfpAccuracy);
+
+        cs.szAlgo = getSessionParameter<FieldCompressionSzAlgo>(state(), CompressionSettings::p_szAlgo);
+        cs.szError = getSessionParameter<FieldCompressionSzError>(state(), CompressionSettings::p_szError);
+
+        cs.szAbsError = getSessionParameter<Float>(state(), CompressionSettings::p_szAbsError);
+        cs.szRelError = getSessionParameter<Float>(state(), CompressionSettings::p_szRelError);
+        cs.szPsnrError = getSessionParameter<Float>(state(), CompressionSettings::p_szPsnrError);
+        cs.szL2Error = getSessionParameter<Float>(state(), CompressionSettings::p_szL2Error);
+    }
+    return m_compressionSettings;
 }
 
 int ClusterManager::getRank() const
@@ -887,6 +859,7 @@ bool ClusterManager::handle(const message::Buffer &message, const MessagePayload
     case message::PONG:
     case message::UPDATESTATUS:
     case message::TRACE:
+    case message::EXECUTIONDONE:
         break;
 
     default:
@@ -982,14 +955,7 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn)
 
     std::thread mt([this, newId, name, &mod]() {
         std::string mname = "vistle:mq" + std::to_string(newId);
-#ifdef __linux__
-#if __GLIBC__ > 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 12)
-        pthread_setname_np(pthread_self(), mname.c_str());
-#endif
-#endif
-#ifdef __APPLE__
-        pthread_setname_np(mname.c_str());
-#endif
+        setThreadName(mname);
 
         for (;;) {
             message::Buffer buf;
@@ -1058,14 +1024,7 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn)
             boost::mpi::communicator ncomm(m_comm, boost::mpi::comm_duplicate);
             std::thread t([newId, name, ncomm, &mod]() {
                 std::string mname = "vistle:" + name + ":" + std::to_string(newId);
-#ifdef __linux__
-#if __GLIBC__ > 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 12)
-                pthread_setname_np(pthread_self(), mname.c_str());
-#endif
-#endif
-#ifdef __APPLE__
-                pthread_setname_np(mname.c_str());
-#endif
+                setThreadName(mname);
                 //std::cerr << "thread for module " << name << ":" << newId << std::endl;
                 mod.instance = mod.newModule(name, newId, ncomm);
                 if (mod.instance)
@@ -1345,13 +1304,6 @@ bool ClusterManager::handlePriv(const message::Execute &exec)
                 }
             }
         }
-        break;
-    }
-    case message::Execute::Request: {
-        CERR << "received exec request from" << exec.senderId() << std::endl;
-        auto exec2 = exec;
-        exec2.setWhat(message::Execute::ComputeExecute);
-        sendHub(exec2);
         break;
     }
     }
@@ -1935,18 +1887,13 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam)
 
     assert(setParam.getModule() >= Id::ModuleBase || setParam.getModule() == Id::Vistle ||
            Id::isHub(setParam.getModule()));
+    if (setParam.getModule() == Id::Vistle)
+        m_compressionSettingsValid = false;
     int sender = setParam.senderId();
     int dest = setParam.destId();
     RunningMap::iterator i = runningMap.find(setParam.getModule());
     Module *mod = nullptr;
     if (i == runningMap.end()) {
-        if (setParam.getModule() == Id::Vistle || setParam.getModule() == hubId()) {
-            if (setParam.getModule() == dest) {
-                std::lock_guard<std::mutex> locker(m_parameterMutex);
-                return ParameterManager::handleMessage(setParam);
-            }
-            return true;
-        }
         if (isLocal(setParam.getModule())) {
             CERR << "did not find module for SetParameter 1: " << setParam.getModule() << ": " << setParam << std::endl;
         }
@@ -2173,8 +2120,6 @@ bool ClusterManager::quit()
 
     m_quitFlag = true;
 
-    ParameterManager::quit();
-
     return numRunning() == 0;
 }
 
@@ -2268,7 +2213,7 @@ bool ClusterManager::scanModules(const std::string &dir)
 {
     bool result = true;
 #if defined(MODULE_THREAD) && defined(MODULE_STATIC)
-    ModuleRegistry::the().availableModules(m_localModules);
+    result = ModuleRegistry::the().availableModules(m_localModules, hubId());
 #else
 #if !defined(MODULE_THREAD)
     if (getRank() == 0) {

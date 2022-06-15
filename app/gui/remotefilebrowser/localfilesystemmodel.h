@@ -19,7 +19,7 @@ public:
 #if 1
     // AbstractFileSystemModel
     QModelIndex index(int row, int column, const QModelIndex &parent = QModelIndex()) const override;
-    QModelIndex index(const QString &path, int column = 0) const override;
+    QModelIndex fsIndex(const QString &path, int column = 0) const override;
     QModelIndex parent(const QModelIndex &child) const override;
     using QObject::parent;
     QModelIndex sibling(int row, int column, const QModelIndex &idx) const override;

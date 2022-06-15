@@ -15,7 +15,7 @@ namespace vistle {
 
 // CONSTRUCTOR
 //-------------------------------------------------------------------------
-RectilinearGrid::RectilinearGrid(const Index numDivX, const Index numDivY, const Index numDivZ, const Meta &meta)
+RectilinearGrid::RectilinearGrid(const size_t numDivX, const size_t numDivY, const size_t numDivZ, const Meta &meta)
 : RectilinearGrid::Base(RectilinearGrid::Data::create(numDivX, numDivY, numDivZ, meta))
 {
     refreshImpl();
@@ -330,10 +330,15 @@ void RectilinearGrid::Data::initData()
 
 // DATA OBJECT - CONSTRUCTOR FROM NAME & META
 //-------------------------------------------------------------------------
-RectilinearGrid::Data::Data(const Index numDivX, const Index numDivY, const Index numDivZ, const std::string &name,
+RectilinearGrid::Data::Data(const size_t numDivX, const size_t numDivY, const size_t numDivZ, const std::string &name,
                             const Meta &meta)
 : RectilinearGrid::Base::Data(Object::RECTILINEARGRID, name, meta)
 {
+    CHECK_OVERFLOW(numDivX);
+    CHECK_OVERFLOW(numDivY);
+    CHECK_OVERFLOW(numDivZ);
+    CHECK_OVERFLOW(numDivX * numDivY * numDivZ);
+
     initData();
     coords[0].construct(numDivX);
     coords[1].construct(numDivY);
@@ -362,7 +367,7 @@ RectilinearGrid::Data::~Data()
 
 // DATA OBJECT - CREATE FUNCTION
 //-------------------------------------------------------------------------
-RectilinearGrid::Data *RectilinearGrid::Data::create(const Index numDivX, const Index numDivY, const Index numDivZ,
+RectilinearGrid::Data *RectilinearGrid::Data::create(const size_t numDivX, const size_t numDivY, const size_t numDivZ,
                                                      const Meta &meta)
 {
     const std::string name = Shm::the().createObjectId();

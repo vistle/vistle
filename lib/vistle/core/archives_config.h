@@ -18,11 +18,6 @@
 #endif
 #endif
 
-#ifdef HAVE_ZFP
-#include <zfp.h>
-#endif
-
-#include <cassert>
 #include <cstdlib>
 #include <iostream>
 #include <vector>
@@ -35,10 +30,39 @@
 
 namespace vistle {
 
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(FieldCompressionMode, (Uncompressed)(ZfpFixedRate)(ZfpAccuracy)(ZfpPrecision))
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(FieldCompressionMode, (Uncompressed)(Predict)(Zfp)(SZ))
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(FieldCompressionZfpMode, (ZfpFixedRate)(ZfpPrecision)(ZfpAccuracy))
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(FieldCompressionSzAlgo, (SzInterpLorenzo)(SzInterp)(SzLorenzoReg))
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(FieldCompressionSzError, (SzRel)(SzAbs)(SzAbsAndRel)(SzAbsOrRel)(SzPsnr)(SzL2))
+
+struct CompressionSettings {
+    static constexpr const char *p_mode = "field_compression";
+    FieldCompressionMode mode = Uncompressed;
+
+    static constexpr const char *p_zfpMode = "zfp_mode";
+    FieldCompressionZfpMode zfpMode = ZfpFixedRate;
+    static constexpr const char *p_zfpRate = "zfp_rate";
+    double zfpRate = 16.;
+    static constexpr const char *p_zfpPrecision = "zfp_precision";
+    int zfpPrecision = 8;
+    static constexpr const char *p_zfpAccuracy = "zfp_accuracy";
+    double zfpAccuracy = 1e-20;
+
+    static constexpr const char *p_szAlgo = "sz_algo";
+    FieldCompressionSzAlgo szAlgo = SzInterpLorenzo;
+    static constexpr const char *p_szError = "sz_error_control";
+    FieldCompressionSzError szError = SzRel;
+    static constexpr const char *p_szAbsError = "sz_abs_error";
+    double szAbsError = 1e-3;
+    static constexpr const char *p_szRelError = "sz_rel_error";
+    double szRelError = 1e-4;
+    static constexpr const char *p_szPsnrError = "sz_psnr_error";
+    double szPsnrError = 80;
+    static constexpr const char *p_szL2Error = "sz_l2_error";
+    double szL2Error = 1e-1;
+};
 
 namespace detail {
-
 template<class Archive>
 struct archive_tag;
 
@@ -145,6 +169,7 @@ struct archive_helper<boost_tag> {
 } // namespace detail
 } // namespace vistle
 #endif
+
 #ifdef USE_YAS
 #include <yas/binary_iarchive.hpp>
 #include <yas/binary_oarchive.hpp>
@@ -182,41 +207,6 @@ struct ArchiveStreamType<yas_oarchive> {
     typedef yas::mem_ostream type;
 };
 
-#ifdef HAVE_ZFP
-struct ZfpParameters {
-    FieldCompressionMode mode = Uncompressed;
-    double rate = 8.;
-    int precision = 20;
-    double accuracy = 1e-20;
-};
-
-template<typename T>
-struct zfp_type_map {
-    static const zfp_type value = zfp_type_none;
-};
-
-template<>
-struct zfp_type_map<int32_t> {
-    static const zfp_type value = zfp_type_int32;
-};
-template<>
-struct zfp_type_map<int64_t> {
-    static const zfp_type value = zfp_type_int64;
-};
-template<>
-struct zfp_type_map<float> {
-    static const zfp_type value = zfp_type_float;
-};
-template<>
-struct zfp_type_map<double> {
-    static const zfp_type value = zfp_type_double;
-};
-
-template<zfp_type type>
-bool compressZfp(buffer &compressed, const void *src, const Index dim[3], const ZfpParameters &param);
-template<zfp_type type>
-bool decompressZfp(void *dest, const buffer &compressed, const Index dim[3]);
-#endif
 
 template<>
 struct archive_helper<yas_tag> {
@@ -237,102 +227,38 @@ struct archive_helper<yas_tag> {
         return obj;
     }
 
+
     template<class T>
     struct ArrayWrapper {
         typedef T value_type;
         typedef T &reference;
+
         T *m_begin, *m_end;
         Index m_dim[3] = {0, 1, 1};
         bool m_exact = true;
 
-        ArrayWrapper(T *begin, T *end): m_begin(begin), m_end(end) {}
-        T *begin() { return m_begin; }
-        const T *begin() const { return m_begin; }
-        T *end() { return m_end; }
-        const T *end() const { return m_end; }
-        bool empty() const { return m_end == m_begin; }
-        Index size() const { return (Index)(m_end - m_begin); }
-        T &operator[](size_t idx) { return *(m_begin + idx); }
-        const T &operator[](size_t idx) const { return *(m_begin + idx); }
-        void push_back(const T &) { assert("not supported" == 0); }
-        void resize(std::size_t sz)
-        {
-            if (size() != sz) {
-                std::cerr << "requesting resize from " << size() << " to " << sz << std::endl;
-                assert("not supported" == 0);
-            }
-        }
-        void setDimensions(size_t sx, size_t sy, size_t sz)
-        {
-            m_dim[0] = (Index)sx;
-            m_dim[1] = (Index)sy;
-            m_dim[2] = (Index)sz;
-        }
-        void setExact(bool exact) { m_exact = exact; }
+        ArrayWrapper(T *begin, T *end);
+        T *begin();
+        const T *begin() const;
+        T *end();
+        const T *end() const;
+        bool empty() const;
+        Index size() const;
+        T &operator[](size_t idx);
+        const T &operator[](size_t idx) const;
+        void push_back(const T &);
+        void resize(std::size_t sz);
+        void setDimensions(size_t sx, size_t sy, size_t sz);
+        void setExact(bool exact);
 
         template<class Archive>
-        void serialize(Archive &ar) const
-        {
-            save(ar);
-        }
+        void serialize(Archive &ar) const;
         template<class Archive>
-        void serialize(Archive &ar)
-        {
-            load(ar);
-        }
+        void serialize(Archive &ar);
         template<class Archive>
-        void load(Archive &ar)
-        {
-            bool compress = false;
-            ar &compress;
-            if (compress) {
-                ar &m_dim[0] & m_dim[1] & m_dim[2];
-                buffer compressed;
-                ar &compressed;
-#ifdef HAVE_ZFP
-                Index dim[3];
-                for (int c = 0; c < 3; ++c)
-                    dim[c] = m_dim[c] == 1 ? 0 : m_dim[c];
-                decompressZfp<zfp_type_map<T>::value>(static_cast<void *>(m_begin), compressed, dim);
-#endif
-            } else {
-                yas::detail::concepts::array::load<yas_flags>(ar, *this);
-            }
-        }
+        void load(Archive &ar);
         template<class Archive>
-        void save(Archive &ar) const
-        {
-            bool compress = ar.compressionMode() != Uncompressed && !m_exact;
-            //std::cerr << "ar.compressed()=" << compress << std::endl;
-            if (compress) {
-#ifdef HAVE_ZFP
-                ZfpParameters param;
-                param.mode = ar.compressionMode();
-                param.rate = ar.zfpRate();
-                param.precision = ar.zfpPrecision();
-                param.accuracy = ar.zfpAccuracy();
-                //std::cerr << "trying to compresss " << std::endl;
-                buffer compressed;
-                Index dim[3];
-                for (int c = 0; c < 3; ++c)
-                    dim[c] = m_dim[c] == 1 ? 0 : m_dim[c];
-                if (compressZfp<zfp_type_map<T>::value>(compressed, static_cast<const void *>(m_begin), dim, param)) {
-                    ar &compress;
-                    ar &m_dim[0] & m_dim[1] & m_dim[2];
-                    ar &compressed;
-                } else {
-                    std::cerr << "compression failed" << std::endl;
-                    compress = false;
-                }
-#else
-                compress = false;
-#endif
-            }
-            if (!compress) {
-                ar &compress;
-                yas::detail::concepts::array::save<yas_flags>(ar, *this);
-            }
-        }
+        void save(Archive &ar) const;
     };
 
     template<class T, class S>
@@ -348,36 +274,7 @@ struct archive_helper<yas_tag> {
     using StreamType = typename ArchiveStreamType<Archive>::type;
 };
 
-#ifdef HAVE_ZFP
-template<>
-bool V_COREEXPORT decompressZfp<zfp_type_none>(void *dest, const buffer &compressed, const Index dim[3]);
-extern template bool V_COREEXPORT decompressZfp<zfp_type_int32>(void *dest, const buffer &compressed,
-                                                                const Index dim[3]);
-extern template bool V_COREEXPORT decompressZfp<zfp_type_int64>(void *dest, const buffer &compressed,
-                                                                const Index dim[3]);
-extern template bool V_COREEXPORT decompressZfp<zfp_type_float>(void *dest, const buffer &compressed,
-                                                                const Index dim[3]);
-extern template bool V_COREEXPORT decompressZfp<zfp_type_double>(void *dest, const buffer &compressed,
-                                                                 const Index dim[3]);
-
-template<>
-bool V_COREEXPORT compressZfp<zfp_type_none>(buffer &compressed, const void *src, const Index dim[3],
-                                             const ZfpParameters &param);
-extern template bool V_COREEXPORT compressZfp<zfp_type_int32>(buffer &compressed, const void *src, const Index dim[3],
-                                                              const ZfpParameters &param);
-extern template bool V_COREEXPORT compressZfp<zfp_type_int64>(buffer &compressed, const void *src, const Index dim[3],
-                                                              const ZfpParameters &param);
-extern template bool V_COREEXPORT compressZfp<zfp_type_float>(buffer &compressed, const void *src, const Index dim[3],
-                                                              const ZfpParameters &param);
-extern template bool V_COREEXPORT compressZfp<zfp_type_double>(buffer &compressed, const void *src, const Index dim[3],
-                                                               const ZfpParameters &param);
-#endif
 } // namespace detail
-#ifdef HAVE_ZFP
-using detail::ZfpParameters;
-using detail::compressZfp;
-using detail::decompressZfp;
-#endif
 } // namespace vistle
 #endif
 

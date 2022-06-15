@@ -205,14 +205,21 @@ bool Renderer::dispatch(bool block, bool *messageReceived, unsigned int minPrio)
         bool haveMessage = getNextMessage(buf, false, minPrio);
         int needSync = 0;
         if (haveMessage) {
-            if (needsSync(message))
+            if (needsSync(message)) {
                 needSync = 1;
+                needSync = message.type();
+            }
         }
         int anyMessage = boost::mpi::all_reduce(comm(), haveMessage ? 1 : 0, boost::mpi::maximum<int>());
         int anySync = 0;
         if (anyMessage) {
             wasAnyMessage = true;
             anySync = boost::mpi::all_reduce(comm(), needSync, boost::mpi::maximum<int>());
+            if (needSync != 0 && anySync != needSync) {
+                std::cerr << "message types requiring collective processing do not agree: local=" << needSync
+                          << ", other=" << anySync << std::endl;
+            }
+            assert(needSync == 0 || needSync == anySync);
         }
 
         do {
@@ -426,8 +433,10 @@ void Renderer::removeAllSentBy(int sender, const std::string &senderPort)
         it->second->clear();
     }
 
-    for (auto &ol: m_objectList) {
-        for (auto &ro: ol) {
+    for (auto tit = m_objectList.rbegin(); tit != m_objectList.rend(); ++tit) {
+        auto &ol = *tit;
+        for (auto oit = ol.rbegin(); oit != ol.rend(); ++oit) {
+            auto &ro = *oit;
             if (ro && ro->senderId == sender && ro->senderPort == senderPort) {
                 removeObjectWrapper(ro);
                 ro.reset();
@@ -442,8 +451,12 @@ void Renderer::removeAllSentBy(int sender, const std::string &senderPort)
 
 void Renderer::removeAllObjects()
 {
-    for (auto &ol: m_objectList) {
-        for (auto &ro: ol) {
+    m_geometryCaches.clear();
+
+    for (auto tit = m_objectList.rbegin(); tit != m_objectList.rend(); ++tit) {
+        auto &ol = *tit;
+        for (auto oit = ol.rbegin(); oit != ol.rend(); ++oit) {
+            auto &ro = *oit;
             if (ro) {
                 removeObjectWrapper(ro);
                 ro.reset();

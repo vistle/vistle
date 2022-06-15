@@ -139,6 +139,7 @@ def showParameters(id):
 
 def showAllParameters():
    mods = _vistle.getRunning()
+   mods.insert(0, _vistle.Id.Vistle)
    print("id\tmodule\tname\ttype\tvalue")
    for m in mods:
       name = _vistle.getModuleName(m)
@@ -362,6 +363,10 @@ source = _vistle.source
 removeHub = _vistle.removeHub
 spawn = _vistle.spawn
 spawnAsync = _vistle.spawnAsync
+migrateAsync = _vistle.migrateAsync
+migrate = _vistle.migrate
+replace = _vistle.replace
+restart = _vistle.restart
 waitForSpawn = _vistle.waitForSpawn
 kill = _vistle.kill
 connect = _vistle.connect
@@ -392,6 +397,7 @@ getRunning = _vistle.getRunning
 getBusy = _vistle.getBusy
 getModuleName = _vistle.getModuleName
 getModuleDescription = _vistle.getModuleDescription
+hubName = _vistle.hubName
 waitForHub = _vistle.waitForHub
 waitForHubs = _vistle.waitForHubs
 waitForNamedHubs = _vistle.waitForNamedHubs

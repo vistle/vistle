@@ -13,10 +13,11 @@ class communicator;
 namespace vistle {
 namespace insitu {
 //these functions trade latency for less cpu usage
-void V_INSITUCOREEXPORT waitForRank(boost::mpi::communicator &c, int rank);
-void V_INSITUCOREEXPORT broadcast(boost::mpi::communicator &c, int &val, int root);
-void V_INSITUCOREEXPORT broadcast(boost::mpi::communicator &c, bool &val, int root, bool defaultValue = false,
+void V_INSITUCOREEXPORT waitForRank(const boost::mpi::communicator &c, int rank);
+void V_INSITUCOREEXPORT broadcast(const boost::mpi::communicator &c, int &val, int root);
+void V_INSITUCOREEXPORT broadcast(const boost::mpi::communicator &c, bool &val, int root, bool defaultValue = false,
                                   const std::atomic_bool &abort = false);
+void V_INSITUCOREEXPORT barrier(const boost::mpi::communicator &c, const std::atomic_bool &abort = false);
 
 
 } // namespace insitu

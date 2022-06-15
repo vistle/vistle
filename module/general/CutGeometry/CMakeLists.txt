@@ -24,6 +24,7 @@ endif()
 if(OPENMP_FOUND)
     add_definitions(-DUSE_OMP)
     add_definitions(-DTHRUST_HOST_SYSTEM=THRUST_HOST_SYSTEM_OMP)
+    use_openmp()
 elseif(TBB_FOUND)
     add_definitions(-DUSE_TBB)
     add_definitions(-DTHRUST_HOST_SYSTEM=THRUST_HOST_SYSTEM_TBB)
@@ -35,4 +36,4 @@ endif()
 
 include_directories(SYSTEM ${THRUST_INCLUDE_DIR})
 
-add_module(CutGeometry "clip geometry at basic geometry like plane, cylinder or sphere" CutGeometry.cpp ../IsoSurface/IsoDataFunctor.cpp)
+add_module(CutGeometry "clip geometry at basic geometry like plane, cylinder or sphere" CutGeometry.cpp PlaneClip.cpp ../IsoSurface/IsoDataFunctor.cpp)

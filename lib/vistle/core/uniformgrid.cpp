@@ -13,7 +13,7 @@ namespace vistle {
 
 // CONSTRUCTOR
 //-------------------------------------------------------------------------
-UniformGrid::UniformGrid(Index xdim, Index ydim, Index zdim, const Meta &meta)
+UniformGrid::UniformGrid(size_t xdim, size_t ydim, size_t zdim, const Meta &meta)
 : UniformGrid::Base(UniformGrid::Data::create(xdim, ydim, zdim, meta))
 {
     refreshImpl();
@@ -327,9 +327,13 @@ void UniformGrid::Data::initData()
 
 // DATA OBJECT - CONSTRUCTOR FROM NAME & META
 //-------------------------------------------------------------------------
-UniformGrid::Data::Data(const std::string &name, Index xdim, Index ydim, Index zdim, const Meta &meta)
+UniformGrid::Data::Data(const std::string &name, size_t xdim, size_t ydim, size_t zdim, const Meta &meta)
 : UniformGrid::Base::Data(Object::UNIFORMGRID, name, meta)
 {
+    CHECK_OVERFLOW(xdim);
+    CHECK_OVERFLOW(ydim);
+    CHECK_OVERFLOW(zdim);
+    CHECK_OVERFLOW(xdim * ydim * zdim);
     initData();
 
     numDivisions[0] = xdim;
@@ -359,7 +363,7 @@ UniformGrid::Data::~Data()
 
 // DATA OBJECT - CREATE FUNCTION
 //-------------------------------------------------------------------------
-UniformGrid::Data *UniformGrid::Data::create(Index xdim, Index ydim, Index zdim, const Meta &meta)
+UniformGrid::Data *UniformGrid::Data::create(size_t xdim, size_t ydim, size_t zdim, const Meta &meta)
 {
     const std::string name = Shm::the().createObjectId();
     Data *p = shm<Data>::construct(name)(name, xdim, ydim, zdim, meta);

@@ -29,16 +29,16 @@ GenIsoDat::GenIsoDat(const std::string &name, int moduleID, mpi::communicator co
 GenIsoDat::~GenIsoDat()
 {}
 
-bool GenIsoDat::compute()
+bool GenIsoDat::prepare()
 {
     std::cerr << "cell type: " << m_cellTypeParam->getValue() << std::endl;
 
     vistle::UnstructuredGrid::ptr grid(new vistle::UnstructuredGrid(0, 0, 0));
 
-    vistle::Vec<Scalar>::ptr data(new vistle::Vec<Scalar>(Index(0)));
+    vistle::Vec<Scalar>::ptr data(new vistle::Vec<Scalar>(size_t(0)));
     data->setBlock(rank());
     data->setNumBlocks(size());
-    vistle::Vec<Scalar>::ptr mapdata(new vistle::Vec<Scalar>(Index(0)));
+    vistle::Vec<Scalar>::ptr mapdata(new vistle::Vec<Scalar>(size_t(0)));
     mapdata->setBlock(rank());
     mapdata->setNumBlocks(size());
 
@@ -353,25 +353,25 @@ bool GenIsoDat::compute()
             numElements = 1;
         }
 
-        cl.push_back(3);
         cl.push_back(1);
         cl.push_back(3);
         cl.push_back(0);
+        cl.push_back(1);
 
-        cl.push_back(3);
         cl.push_back(3);
         cl.push_back(2);
         cl.push_back(0);
-
         cl.push_back(3);
+
         cl.push_back(2);
         cl.push_back(1);
         cl.push_back(0);
+        cl.push_back(2);
 
-        cl.push_back(3);
         cl.push_back(2);
         cl.push_back(3);
         cl.push_back(1);
+        cl.push_back(2);
 
         for (Index i = 0; i < numShift; i += 2) {
             for (Index j = 0; j < numShift; j += 2) {
@@ -397,7 +397,7 @@ bool GenIsoDat::compute()
         el.push_back(16);
 
         for (Index i = 0; i < numElements; i++) {
-            tl.push_back(UnstructuredGrid::VPOLYHEDRON);
+            tl.push_back(UnstructuredGrid::POLYHEDRON);
         }
 
         std::bitset<4> newdata;

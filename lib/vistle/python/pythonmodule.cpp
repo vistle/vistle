@@ -5,19 +5,20 @@
 #include <fstream>
 
 #include <pybind11/embed.h>
-#include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
-#include <pybind11/eval.h>
+#include <pybind11/stl.h> // not required for compilation, but for functioning
 #include <vistle/util/pybind.h>
 
 #include <boost/lexical_cast.hpp>
-#include <boost/asio.hpp>
+#include <boost/asio/io_service.hpp>
+#include <boost/asio/ip/tcp.hpp>
 
 #include <vistle/core/uuid.h>
 #include <vistle/core/message.h>
 #include <vistle/core/parameter.h>
 #include <vistle/core/port.h>
 
+#include <vistle/userinterface/vistleconnection.h>
 #include "pythonmodule.h"
 #ifdef EMBED_PYTHON
 #include "pythoninterface.h"
@@ -30,36 +31,16 @@
 #include <vistle/core/porttracker.h>
 
 namespace py = pybind11;
+namespace asio = boost::asio;
 
 #ifdef EMBED_PYTHON
 #define PY_MODULE(mod, m) PYBIND11_EMBEDDED_MODULE(mod, m)
 #else
 #define PY_MODULE(mod, m) PYBIND11_MODULE(mod, m)
-#endif
 
-
-#ifdef VISTLE_CONTROL
-
-// if embedded in Vistle hub
-#include <vistle/control/hub.h>
-#define MODULEMANAGER (Hub::the().stateTracker())
-#define LOCKED() StateTracker::mutex_locker locker(Hub::the().stateTracker().getMutex())
-
-#else
-
-// if part of a user interface
-#include "vistleconnection.h"
-#define MODULEMANAGER ((pythonModuleInstance->vistleConnection().ui().state()))
-#define LOCKED() \
-    std::unique_ptr<vistle::VistleConnection::Locker> lock = pythonModuleInstance->vistleConnection().locked()
-
-#endif
-
-#define PORTMANAGER (*MODULEMANAGER.portTracker())
-
-#ifndef EMBED_PYTHON
 static std::unique_ptr<vistle::VistleConnection> connection;
 static std::unique_ptr<vistle::UserInterface> userinterface;
+static std::unique_ptr<vistle::PythonStateAccessor> pyaccessor;
 static std::unique_ptr<vistle::PythonModule> pymod;
 static std::unique_ptr<std::thread, std::function<void(std::thread *)>> vistleThread(nullptr, [](std::thread *thr) {
     if (connection) {
@@ -71,34 +52,31 @@ static std::unique_ptr<std::thread, std::function<void(std::thread *)>> vistleTh
 });
 #endif
 
-namespace asio = boost::asio;
-
 namespace vistle {
 
-namespace {
-PythonModule *pythonModuleInstance = nullptr;
-message::Type traceMessages = message::INVALID;
-} // namespace
+static PythonModule *pythonModuleInstance = nullptr;
+static message::Type traceMessages = message::INVALID;
 
-static bool sendMessage(const vistle::message::Message &m, const buffer *payload = nullptr)
+static vistle::PythonStateAccessor &access()
 {
-#ifdef VISTLE_CONTROL
-    bool ret = Hub::the().handleMessage(m, nullptr, payload);
-    assert(ret);
-    if (!ret) {
-        std::cerr << "Python: failed to send message " << m << std::endl;
-    }
-    return ret;
-#else
+    return *pythonModuleInstance->access();
+}
+
+static vistle::StateTracker &state()
+{
+    return access().state();
+}
+
+static bool sendMessage(const vistle::message::Message &m, const vistle::buffer *payload = nullptr)
+{
     if (traceMessages == m.type() || traceMessages == message::ANY) {
         std::cerr << "Python: send " << m << std::endl;
     }
     if (!pythonModuleInstance) {
-        std::cerr << "cannot send message: no connection to Vistle session" << std::endl;
+        std::cerr << "cannot send message: no Vistle module instance" << std::endl;
         return false;
     }
-    return pythonModuleInstance->vistleConnection().sendMessage(m, payload);
-#endif
+    return pythonModuleInstance->access()->sendMessage(m, payload);
 }
 
 template<class Payload>
@@ -111,7 +89,7 @@ static bool sendMessage(vistle::message::Message &m, Payload &payload)
 static std::shared_ptr<message::Buffer> waitForReply(const message::uuid_t &uuid)
 {
     py::gil_scoped_release release;
-    return MODULEMANAGER.waitForReply(uuid);
+    return state().waitForReply(uuid);
 }
 
 static bool source(const std::string &filename)
@@ -187,7 +165,7 @@ static bool barrier()
 {
     message::Barrier m;
     m.setDestId(message::Id::MasterHub);
-    MODULEMANAGER.registerRequest(m.uuid());
+    state().registerRequest(m.uuid());
     if (!sendMessage(m))
         return false;
     auto buf = waitForReply(m.uuid());
@@ -214,7 +192,7 @@ static std::string spawnAsync(int hub, const char *module, int numSpawn = -1, in
 
     message::Spawn m(hub, module, numSpawn, baseRank, rankSkip);
     m.setDestId(message::Id::MasterHub); // to master for module id generation
-    MODULEMANAGER.registerRequest(m.uuid());
+    state().registerRequest(m.uuid());
     if (!sendMessage(m))
         return "";
     std::string uuid = boost::lexical_cast<std::string>(m.uuid());
@@ -225,6 +203,29 @@ static std::string spawnAsync(int hub, const char *module, int numSpawn = -1, in
 static std::string spawnAsyncSimple(const char *module, int numSpawn = -1, int baseRank = -1, int rankSkip = -1)
 {
     return spawnAsync(message::Id::MasterHub, module, numSpawn, baseRank, rankSkip);
+}
+
+static std::string migrateAsync(int migrateId, int toHub = message::Id::Invalid, std::string name = std::string())
+{
+#ifdef DEBUG
+    std::cerr << "Python: migrateAsync " << name << ":" << migrateId << " to hub " << toHub << std::endl;
+#endif
+
+    if (toHub == message::Id::Invalid)
+        toHub = state().getHub(migrateId);
+
+    if (name.empty())
+        name = state().getModuleName(migrateId);
+
+    message::Spawn m(toHub, name);
+    m.setMigrateId(migrateId);
+    m.setDestId(message::Id::MasterHub); // to master for module id generation
+    state().registerRequest(m.uuid());
+    if (!sendMessage(m))
+        return "";
+    std::string uuid = boost::lexical_cast<std::string>(m.uuid());
+
+    return uuid;
 }
 
 static int waitForSpawn(const std::string &uuid)
@@ -256,6 +257,33 @@ static int spawnSimple(const char *module)
     return spawn(message::Id::MasterHub, module);
 }
 
+static int migrate(int migrateId, int toHub)
+{
+#ifdef DEBUG
+    std::cerr << "Python: migrate " << migrateId << " to hub " << toHub << std::endl;
+#endif
+    const std::string uuid = migrateAsync(migrateId, toHub);
+    return waitForSpawn(uuid);
+}
+
+static int restart(int migrateId)
+{
+#ifdef DEBUG
+    std::cerr << "Python: restart " << migrateId << std::endl;
+#endif
+    const std::string uuid = migrateAsync(migrateId);
+    return waitForSpawn(uuid);
+}
+
+static int replace(int migrateId, std::string name)
+{
+#ifdef DEBUG
+    std::cerr << "Python: replace " << migrateId << " with " << name << std::endl;
+#endif
+    const std::string uuid = migrateAsync(migrateId, message::Id::Invalid, name);
+    return waitForSpawn(uuid);
+}
+
 static void kill(int id)
 {
 #ifdef DEBUG
@@ -268,13 +296,18 @@ static void kill(int id)
     }
 }
 
+static std::string hubName(int id)
+{
+    return state().hubName(id);
+}
+
 static int waitForAnySlaveHub()
 {
-    auto hubs = MODULEMANAGER.getSlaveHubs();
+    auto hubs = state().getSlaveHubs();
     if (!hubs.empty())
         return hubs[0];
 
-    hubs = MODULEMANAGER.waitForSlaveHubs(1);
+    hubs = state().waitForSlaveHubs(1);
     if (!hubs.empty())
         return hubs[0];
 
@@ -283,7 +316,7 @@ static int waitForAnySlaveHub()
 
 static std::vector<int> waitForSlaveHubs(int count)
 {
-    auto hubs = MODULEMANAGER.waitForSlaveHubs(count);
+    auto hubs = state().waitForSlaveHubs(count);
     return hubs;
 }
 
@@ -291,9 +324,9 @@ static int waitForNamedHub(const std::string &name)
 {
     std::vector<std::string> names;
     names.push_back(name);
-    const auto ids = MODULEMANAGER.waitForSlaveHubs(names);
+    const auto ids = state().waitForSlaveHubs(names);
     for (const auto id: ids) {
-        const auto n = MODULEMANAGER.hubName(id);
+        const auto n = state().hubName(id);
         if (n == name) {
             return id;
         }
@@ -303,19 +336,19 @@ static int waitForNamedHub(const std::string &name)
 
 static std::vector<int> waitForNamedHubs(const std::vector<std::string> &names)
 {
-    return MODULEMANAGER.waitForSlaveHubs(names);
+    return state().waitForSlaveHubs(names);
 }
 
 static int getHub(int id)
 {
-    LOCKED();
-    return MODULEMANAGER.getHub(id);
+    std::unique_lock<PythonStateAccessor> guard(access());
+    return state().getHub(id);
 }
 
 static int getMasterHub()
 {
-    LOCKED();
-    return MODULEMANAGER.getMasterHub();
+    std::unique_lock<PythonStateAccessor> guard(access());
+    return state().getMasterHub();
 }
 
 static int getVistleSession()
@@ -325,23 +358,23 @@ static int getVistleSession()
 
 static std::vector<int> getAllHubs()
 {
-    LOCKED();
-    return MODULEMANAGER.getSlaveHubs();
+    std::unique_lock<PythonStateAccessor> guard(access());
+    return state().getSlaveHubs();
 }
 
 static std::vector<int> getRunning()
 {
-    LOCKED();
+    std::unique_lock<PythonStateAccessor> guard(access());
 #ifdef DEBUG
     std::cerr << "Python: getRunning " << std::endl;
 #endif
-    return MODULEMANAGER.getRunningList();
+    return state().getRunningList();
 }
 
 static std::vector<std::string> getAvailable()
 {
-    LOCKED();
-    const auto &avail = MODULEMANAGER.availableModules();
+    std::unique_lock<PythonStateAccessor> guard(access());
+    const auto &avail = state().availableModules();
     std::vector<std::string> ret;
     for (auto &a: avail) {
         auto &m = a.second;
@@ -352,38 +385,38 @@ static std::vector<std::string> getAvailable()
 
 static std::vector<int> getBusy()
 {
-    LOCKED();
+    std::unique_lock<PythonStateAccessor> guard(access());
 #ifdef DEBUG
     std::cerr << "Python: getBusy " << std::endl;
 #endif
-    return MODULEMANAGER.getBusyList();
+    return state().getBusyList();
 }
 
 static std::vector<std::string> getInputPorts(int id)
 {
-    LOCKED();
-    return PORTMANAGER.getInputPortNames(id);
+    std::unique_lock<PythonStateAccessor> guard(access());
+    return state().portTracker()->getInputPortNames(id);
 }
 
 static std::vector<std::string> getOutputPorts(int id)
 {
-    LOCKED();
-    return PORTMANAGER.getOutputPortNames(id);
+    std::unique_lock<PythonStateAccessor> guard(access());
+    return state().portTracker()->getOutputPortNames(id);
 }
 
 std::string getPortDescription(int id, const std::string &portname)
 {
-    LOCKED();
-    return PORTMANAGER.getPortDescription(id, portname);
+    std::unique_lock<PythonStateAccessor> guard(access());
+    return state().portTracker()->getPortDescription(id, portname);
 }
 
 
 static std::vector<std::pair<int, std::string>> getConnections(int id, const std::string &port)
 {
-    LOCKED();
+    std::unique_lock<PythonStateAccessor> guard(access());
     std::vector<std::pair<int, std::string>> result;
 
-    if (const Port::ConstPortSet *c = PORTMANAGER.getConnectionList(id, port)) {
+    if (const Port::ConstPortSet *c = state().portTracker()->getConnectionList(id, port)) {
         for (const Port *p: *c) {
             result.push_back(std::pair<int, std::string>(p->getModuleID(), p->getName()));
         }
@@ -394,14 +427,14 @@ static std::vector<std::pair<int, std::string>> getConnections(int id, const std
 
 static std::vector<std::string> getParameters(int id)
 {
-    LOCKED();
-    return MODULEMANAGER.getParameters(id);
+    std::unique_lock<PythonStateAccessor> guard(access());
+    return state().getParameters(id);
 }
 
 static std::string getParameterType(int id, const std::string &name)
 {
-    LOCKED();
-    const auto param = MODULEMANAGER.getParameter(id, name);
+    std::unique_lock<PythonStateAccessor> guard(access());
+    const auto param = state().getParameter(id, name);
     if (!param) {
         std::cerr << "Python: getParameterType: no such parameter" << std::endl;
         return "None";
@@ -419,8 +452,8 @@ static std::string getParameterType(int id, const std::string &name)
 
 static std::string getParameterPresentation(int id, const std::string &name)
 {
-    LOCKED();
-    const auto param = MODULEMANAGER.getParameter(id, name);
+    std::unique_lock<PythonStateAccessor> guard(access());
+    const auto param = state().getParameter(id, name);
     if (!param) {
         std::cerr << "Python: getParameterPresentation: no such parameter" << std::endl;
         return "None";
@@ -431,8 +464,8 @@ static std::string getParameterPresentation(int id, const std::string &name)
 
 static bool isParameterDefault(int id, const std::string &name)
 {
-    LOCKED();
-    const auto param = MODULEMANAGER.getParameter(id, name);
+    std::unique_lock<PythonStateAccessor> guard(access());
+    const auto param = state().getParameter(id, name);
     if (!param) {
         std::cerr << "Python: isParameterDefault: no such parameter: id=" << id << ", name=" << name << std::endl;
         return false;
@@ -444,8 +477,8 @@ static bool isParameterDefault(int id, const std::string &name)
 template<typename T>
 static T getParameterValue(int id, const std::string &name)
 {
-    LOCKED();
-    const auto param = MODULEMANAGER.getParameter(id, name);
+    std::unique_lock<PythonStateAccessor> guard(access());
+    const auto param = state().getParameter(id, name);
     if (!param) {
         std::cerr << "Python: getParameterValue: no such parameter: id=" << id << ", name=" << name << std::endl;
         return T();
@@ -462,8 +495,8 @@ static T getParameterValue(int id, const std::string &name)
 
 static std::string getParameterTooltip(int id, const std::string &name)
 {
-    LOCKED();
-    const auto param = MODULEMANAGER.getParameter(id, name);
+    std::unique_lock<PythonStateAccessor> guard(access());
+    const auto param = state().getParameter(id, name);
     if (!param) {
         std::cerr << "Python: getParameterTooltip: no such parameter" << std::endl;
         return "None";
@@ -537,20 +570,20 @@ static std::string getEscapedStringParam(int id, const std::string &name)
 
 static std::string getModuleName(int id)
 {
-    LOCKED();
+    std::unique_lock<PythonStateAccessor> guard(access());
 #ifdef DEBUG
     std::cerr << "Python: getModuleName(" id << ")" << std::endl;
 #endif
-    return MODULEMANAGER.getModuleName(id);
+    return state().getModuleName(id);
 }
 
 static std::string getModuleDescription(int id)
 {
-    LOCKED();
+    std::unique_lock<PythonStateAccessor> guard(access());
 #ifdef DEBUG
     std::cerr << "Python: getModuleDescription(" id << ")" << std::endl;
 #endif
-    return MODULEMANAGER.getModuleDescription(id);
+    return state().getModuleDescription(id);
 }
 
 static void connect(int sid, const char *sport, int did, const char *dport)
@@ -576,7 +609,7 @@ static void sendSetParameter(message::SetParameter &msg, int id, bool delayed)
     msg.setDestId(id);
     if (delayed)
         msg.setDelayed();
-    auto param = MODULEMANAGER.getParameter(id, msg.getName());
+    auto param = state().getParameter(id, msg.getName());
     if (param && param->isImmediate())
         msg.setPriority(message::Message::ImmediateParameter);
     sendMessage(msg);
@@ -779,12 +812,12 @@ static void setLoadedFile(const std::string &file)
 
 static std::string getLoadedFile()
 {
-    return MODULEMANAGER.loadedWorkflowFile();
+    return state().loadedWorkflowFile();
 }
 
 static std::string getSessionUrl()
 {
-    return MODULEMANAGER.sessionUrl();
+    return state().sessionUrl();
 }
 //contains allocated compounds
 //key is compoundId
@@ -804,14 +837,6 @@ std::vector<detail::ModuleCompound>::iterator findCompound(int id)
 {
     return std::find_if(compounds.begin(), compounds.end(),
                         [id](const detail::ModuleCompound &c) { return c.id == id; });
-}
-
-static void loadScript(const std::string &filename)
-{
-#ifdef EMBED_PYTHON
-    std::cerr << "loading " << filename << std::endl;
-    PythonInterface::the().exec_file(filename);
-#endif
 }
 
 static int moduleCompoundAlloc(const std::string &compoundName)
@@ -893,44 +918,12 @@ static void setRelativePos(int id, Float x, Float y)
     setVectorParam2(id, "_position", x + compoundDropPositionX, y + compoundDropPositionY, true);
 }
 
-void spawnAvailablModule(const AvailableModule &comp)
-{
-    std::cerr << "writing file " << comp.name() << moduleCompoundSuffix << std::endl;
-    auto filename = comp.path().empty() ? comp.name() : comp.path();
-    if (filename.find_last_of(moduleCompoundSuffix) != filename.size() - 1)
-        filename += moduleCompoundSuffix;
-
-    std::fstream file{filename, std::ios_base::out};
-    file << "MasterHub=getMasterHub()" << std::endl;
-    for (size_t i = 0; i < comp.submodules().size(); i++) {
-        file << "um" << comp.submodules()[i].name << i << " = spawnAsync(MasterHub, '" << comp.submodules()[i].name
-             << "')" << std::endl;
-    }
-    file << std::endl;
-    for (size_t i = 0; i < comp.submodules().size(); i++) {
-        float posX = comp.submodules()[i].x - comp.submodules()[0].x;
-        float posY = comp.submodules()[i].y - comp.submodules()[0].y;
-        file << "m" << comp.submodules()[i].name << i << " = waitForSpawn(um" << comp.submodules()[i].name << i << ")"
-             << std::endl;
-        file << "setRelativePos("
-             << "m" << comp.submodules()[i].name << i << ", " << posX << ", " << posY << ")" << std::endl;
-        file << "applyParameters(m" << comp.submodules()[i].name << i << ")" << std::endl;
-    }
-    for (const auto &conn: comp.connections()) {
-        if (conn.fromId >= 0 && conn.toId >= 0) //internal connection
-        {
-            file << "connect(m" << comp.submodules()[conn.fromId].name << conn.fromId << ",'" << conn.fromPort << "', m"
-                 << comp.submodules()[conn.toId].name << conn.toId << ",'" << conn.toPort << "')" << std::endl;
-        }
-    }
-}
-
 void moduleCompoundToFile(const ModuleCompound &comp)
 {
-    std::cerr << "writing file " << comp.name() << moduleCompoundSuffix << std::endl;
     auto filename = comp.path().empty() ? comp.name() : comp.path();
     if (filename.find_last_of(moduleCompoundSuffix) != filename.size() - 1)
         filename += moduleCompoundSuffix;
+    std::cerr << "writing module compound " << comp.name() << " to file " << filename << std::endl;
 
     std::fstream file{filename, std::ios_base::out};
     file << "CompoundId=moduleCompoundAlloc(\"" << comp.name() << "\")" << std::endl;
@@ -970,8 +963,19 @@ public:
 
     void newHub(int hub, const std::string &name, int nranks, const std::string &address, const std::string &logname,
                 const std::string &realname) override
-    {}
-    void deleteHub(int hub) override {}
+    {
+#ifdef OBSERVER_DEBUG
+        m_out << "   hub " << name << " added with " << nranks << " ranks, operated by " << realname << std::endl;
+#endif
+    }
+
+    void deleteHub(int hub) override
+    {
+#ifdef OBSERVER_DEBUG
+        m_out << "   hub " << name << " deleted" << std::endl;
+#endif
+    }
+
     void moduleAvailable(const AvailableModule &mod) override
     {
 #ifdef OBSERVER_DEBUG
@@ -1199,7 +1203,10 @@ static bool sessionConnectWithObserver(StateObserver *o, const std::string &host
     connection.reset(new VistleConnection(*userinterface));
     if (!connection)
         return false;
-    pymod.reset(new PythonModule(connection.get()));
+    pyaccessor.reset(new UiPythonStateAccessor(connection.get()));
+    if (!pyaccessor)
+        return false;
+    pymod.reset(new PythonModule(*pyaccessor));
     if (!pymod)
         return false;
     vistleThread.reset(new std::thread(std::ref(*connection)));
@@ -1222,6 +1229,8 @@ static bool sessionDisconnect()
 {
     if (!vistleThread)
         return false;
+    if (!pyaccessor)
+        return false;
     if (!pymod)
         return false;
     if (!connection)
@@ -1231,6 +1240,7 @@ static bool sessionDisconnect()
 
     vistleThread.reset();
     pymod.reset();
+    pyaccessor.reset();
     connection.reset();
     userinterface.reset();
 
@@ -1339,11 +1349,7 @@ PY_MODULE(_vistle, m)
 
     m.def("source", &source, "execute commands from `file`", "file"_a);
     m.def("removeHub", &removeHub, "remove hub `id` from session", "id"_a);
-    m.def("spawn", spawn,
-          "spawn new module `arg1`\n"
-          "return its ID",
-          "hub"_a, "modulename"_a, "numspawn"_a = -1, "baserank"_a = -1, "rankskip"_a = -1);
-    m.def("loadScript", &loadScript, "load a python script", "filename"_a);
+
     m.def("moduleCompoundAlloc", &moduleCompoundAlloc, "allocate a new module compound", "name"_a);
     m.def("moduleCompoundAddModule", &moduleCompoundAddModule, "add a module to a module compound", "compoundId"_a,
           "modulename"_a, "x"_a = 0, "y"_a = 0);
@@ -1359,6 +1365,10 @@ PY_MODULE(_vistle, m)
           "spawn new module `arg1`\n"
           "return its ID",
           "hub"_a, "modulename"_a, "numspawn"_a = -1, "baserank"_a = -1, "rankskip"_a = -1);
+    m.def("spawn", spawn,
+          "spawn new module `arg1`\n"
+          "return its ID",
+          "hub"_a, "modulename"_a, "numspawn"_a = -1, "baserank"_a = -1, "rankskip"_a = -1);
     m.def("spawn", spawnSimple,
           "spawn new module `arg1`\n"
           "return its ID");
@@ -1370,6 +1380,22 @@ PY_MODULE(_vistle, m)
           "spawn new module `arg1`\n"
           "return uuid to wait on its ID",
           "modulename"_a, "numspawn"_a = 1, "baserank"_a = -1, "rankskip"_a = -1);
+    m.def("migrate", migrate,
+          "migrate module `id` to hub `hub`\n"
+          "return its ID",
+          "id"_a, "hub"_a);
+    m.def("restart", restart,
+          "restart module `id`\n"
+          "return its ID",
+          "id"_a);
+    m.def("replace", replace,
+          "replace module `id` with `modulename`\n"
+          "return its ID",
+          "id"_a, "modulename"_a);
+    m.def("migrateAsync", migrateAsync,
+          "migrate module `id` to hub `hub`\n"
+          "return its ID",
+          "id"_a, "hub"_a, "modulename"_a = "");
     m.def("waitForSpawn", waitForSpawn, "wait for asynchronously spawned module with uuid `arg1` and return its ID");
     m.def("kill", kill, "kill module with ID `arg1`");
     m.def("connect", connect,
@@ -1420,6 +1446,7 @@ PY_MODULE(_vistle, m)
     m.def("getOutputPorts", getOutputPorts, "get name of input ports of module with ID `arg1`");
     m.def("getPortDescription", getPortDescription,
           "get description of port with name `arg2` of module with ID `arg1`");
+    m.def("hubName", hubName, "return name of hub with id `arg1`");
     m.def("waitForHub", waitForNamedHub, "wait for slave hub named `arg1` to connect");
     m.def("waitForHub", waitForAnySlaveHub, "wait for any additional slave hub to connect");
     m.def("waitForHubs", waitForSlaveHubs, "wait for `count` additional slave hubs to connect");
@@ -1459,24 +1486,30 @@ PY_MODULE(_vistle, m)
     py::bind_vector<ParameterVector<Integer>>(m, "ParameterVector<Integer>");
 }
 
-PythonModule::PythonModule(VistleConnection *vc): m_vistleConnection(vc)
+PythonModule::PythonModule(PythonStateAccessor &stateAccessor): m_access(&stateAccessor)
 {
     assert(pythonModuleInstance == nullptr);
     pythonModuleInstance = this;
     std::cerr << "creating Vistle python module" << std::endl;
-
-    //auto mod = py::module::import("_vistle");
 }
+
+#if 0
+PythonModule::PythonModule(VistleConnection *vc): m_access(new UiPythonStateAccessor(vc)), m_vistleConnection(vc)
+{
+    assert(pythonModuleInstance == nullptr);
+    pythonModuleInstance = this;
+    std::cerr << "creating Vistle python module" << std::endl;
+}
+#endif
 
 PythonModule::~PythonModule()
 {
     pythonModuleInstance = nullptr;
 }
 
-VistleConnection &PythonModule::vistleConnection() const
+PythonStateAccessor *PythonModule::access()
 {
-    assert(m_vistleConnection);
-    return *m_vistleConnection;
+    return m_access;
 }
 
 bool PythonModule::import(py::object *ns, const std::string &path)
@@ -1525,5 +1558,7 @@ bool PythonModule::import(py::object *ns, const std::string &path)
 
     return true;
 }
+
+PythonStateAccessor::~PythonStateAccessor() = default;
 
 } // namespace vistle

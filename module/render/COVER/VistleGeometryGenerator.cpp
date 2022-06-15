@@ -912,6 +912,7 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
 
         if (numVertices > 0) {
             if (cached) {
+                std::unique_lock<GeometryCache> guard(cache);
                 geom->setVertexArray(cache.vertices.front());
                 geom->addPrimitiveSet(cache.primitives.front());
             } else {
@@ -1069,6 +1070,7 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
             draw.push_back(geom);
 
             if (cached) {
+                std::unique_lock<GeometryCache> guard(cache);
                 geom->setVertexArray(cache.vertices[nbin]);
                 geom->addPrimitiveSet(cache.primitives[nbin]);
                 geom->setNormalArray(cache.normals[nbin]);
@@ -1143,6 +1145,7 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
             draw.push_back(geom);
 
             if (cached) {
+                std::unique_lock<GeometryCache> guard(cache);
                 geom->setVertexArray(cache.vertices[nbin]);
                 geom->addPrimitiveSet(cache.primitives[nbin]);
                 geom->setNormalArray(cache.normals[nbin]);
@@ -1217,6 +1220,7 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
             draw.push_back(geom);
 
             if (cached) {
+                std::unique_lock<GeometryCache> guard(cache);
                 geom->setVertexArray(cache.vertices[nbin]);
                 geom->addPrimitiveSet(cache.primitives[nbin]);
                 geom->setNormalArray(cache.normals[nbin]);
@@ -1278,8 +1282,8 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
         draw.push_back(geom);
 
         if (cached) {
+            std::unique_lock<GeometryCache> guard(cache);
             geom->setVertexArray(cache.vertices.front());
-
             geom->addPrimitiveSet(cache.primitives.front());
         } else {
             const Index *el = &lines->el()[0];

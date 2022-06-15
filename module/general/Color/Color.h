@@ -57,6 +57,8 @@ private:
     vistle::FloatParameter *m_insetCenterPara = nullptr, *m_insetWidthPara = nullptr;
     vistle::IntParameter *m_blendWithMaterialPara = nullptr;
     vistle::FloatParameter *m_opacity = nullptr, *m_insetOpacity = nullptr;
+    vistle::IntParameter *m_mapPara = nullptr;
+    vistle::IntParameter *m_stepsPara = nullptr;
     std::deque<vistle::DataBase::const_ptr> m_inputQueue;
 
     bool m_dataRangeValid = false;

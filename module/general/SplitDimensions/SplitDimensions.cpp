@@ -85,9 +85,9 @@ bool SplitDimensions::compute(std::shared_ptr<BlockTask> task) const
         return true;
     }
 
-    vistle::Points::ptr out0d(new vistle::Points(Index(0)));
+    vistle::Points::ptr out0d(new vistle::Points(size_t(0)));
     if (isConnected(*p_out[0])) {
-        out0d.reset(new vistle::Points(Index(0)));
+        out0d.reset(new vistle::Points(size_t(0)));
     }
 
     vistle::Indexed::ptr out[4];
@@ -162,16 +162,7 @@ bool SplitDimensions::compute(std::shared_ptr<BlockTask> task) const
             case cell::PYRAMID:
             case cell::PRISM:
             case cell::HEXAHEDRON:
-            case cell::CPOLYHEDRON:
-                if (oel3) {
-                    otl3->push_back(type);
-                    for (Index i = begin; i < end; ++i) {
-                        ocl3->push_back(icl[i]);
-                    }
-                    oel3->push_back(ocl3->size());
-                }
-                break;
-            case cell::VPOLYHEDRON:
+            case cell::POLYHEDRON:
                 if (oel3) {
                     otl3->push_back(type);
                     for (Index i = begin; i < end; ++i) {

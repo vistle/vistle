@@ -37,6 +37,11 @@ public:
     assertion_failure(const std::string &what = "assertion failure");
 };
 
+class V_UTILEXPORT index_overflow: public exception {
+public:
+    index_overflow(const std::string &what = "index overflow");
+};
+
 class V_UTILEXPORT consistency_error: public exception {
 public:
     consistency_error(const std::string &what = "consistency check failure");

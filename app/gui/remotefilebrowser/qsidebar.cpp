@@ -133,7 +133,7 @@ bool RemoteUrlModel::canDrop(QDragEnterEvent *event)
 
     const QList<QUrl> list = event->mimeData()->urls();
     for (const auto &url: list) {
-        const QModelIndex idx = fileSystemModel->index(url.toLocalFile());
+        const QModelIndex idx = fileSystemModel->fsIndex(url.toLocalFile());
         if (!fileSystemModel->isDir(idx))
             return false;
     }
@@ -169,7 +169,7 @@ bool RemoteUrlModel::setData(const QModelIndex &index, const QVariant &value, in
         QString path;
         if (url.scheme() == HomeScheme) {
             path = fileSystemModel->homePath().toString();
-            QModelIndex dirIndex = fileSystemModel->index(path);
+            QModelIndex dirIndex = fileSystemModel->fsIndex(path);
             if (showFullPath) {
                 QStandardItemModel::setData(
                     index, QDir::toNativeSeparators(
@@ -185,7 +185,7 @@ bool RemoteUrlModel::setData(const QModelIndex &index, const QVariant &value, in
             QStandardItemModel::setData(index, fileSystemModel->homePath(Qt::DecorationRole), Qt::DecorationRole);
         } else {
             path = url.toLocalFile();
-            QModelIndex dirIndex = fileSystemModel->index(path);
+            QModelIndex dirIndex = fileSystemModel->fsIndex(path);
             //On windows the popup display the "C:\", convert to nativeSeparators
             if (showFullPath) {
                 QStandardItemModel::setData(
@@ -315,7 +315,7 @@ void RemoteUrlModel::addUrls(const QList<QUrl> &list, int row, bool move)
                 url = QUrl::fromLocalFile(cleanUrl);
             }
 
-            idx = fileSystemModel->index(cleanUrl);
+            idx = fileSystemModel->fsIndex(cleanUrl);
             if (!fileSystemModel->isDir(idx))
                 continue;
             watching.append({idx, cleanUrl});
@@ -428,7 +428,7 @@ void RemoteUrlModel::layoutChanged()
     watching.clear();
     for (int i = 0; i < numPaths; ++i) {
         QString path = paths.at(i);
-        QModelIndex newIndex = fileSystemModel->index(path);
+        QModelIndex newIndex = fileSystemModel->fsIndex(path);
         watching.append({newIndex, path});
         if (newIndex.isValid())
             changed(path);

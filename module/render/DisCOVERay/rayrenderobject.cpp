@@ -98,7 +98,7 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
         }
     }
 
-    if (geometry->isEmpty()) {
+    if (!geometry || geometry->isEmpty()) {
         return;
     }
 

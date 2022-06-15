@@ -197,6 +197,11 @@ VistleConsole *MainWindow::console() const
     return m_console;
 }
 
+ModuleBrowser *MainWindow::moduleBrowser() const
+{
+    return m_moduleBrowser;
+}
+
 void MainWindow::closeEvent(QCloseEvent *e)
 {
     writeSettings();

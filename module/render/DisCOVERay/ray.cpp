@@ -620,8 +620,7 @@ std::shared_ptr<RenderObject> DisCOVERay::addObject(int sender, const std::strin
                                                     vistle::Object::const_ptr normals,
                                                     vistle::Object::const_ptr texture)
 {
-    std::shared_ptr<RayRenderObject> ro(
-        new RayRenderObject(m_device, sender, senderPort, container, geometry, normals, texture));
+    auto ro = std::make_shared<RayRenderObject>(m_device, sender, senderPort, container, geometry, normals, texture);
 
     std::string species = container->getAttribute("_species");
     if (!species.empty() && !ro->data->cmap) {

@@ -19,8 +19,6 @@
 
 #include <vistle/util/exception.h>
 
-using namespace boost::interprocess;
-
 namespace mpl = boost::mpl;
 
 #ifdef USE_BOOST_ARCHIVE

@@ -4,7 +4,7 @@
 
 namespace vistle {
 
-Lines::Lines(const Index numElements, const Index numCorners, const Index numVertices, const Meta &meta)
+Lines::Lines(const size_t numElements, const size_t numCorners, const size_t numVertices, const Meta &meta)
 : Lines::Base(Lines::Data::create("", numElements, numCorners, numVertices, meta))
 {
     refreshImpl();
@@ -36,7 +36,7 @@ Lines::Data::Data(const Data &other, const std::string &name): Lines::Base::Data
     initData();
 }
 
-Lines::Data::Data(const Index numElements, const Index numCorners, const Index numVertices, const std::string &name,
+Lines::Data::Data(const size_t numElements, const size_t numCorners, const size_t numVertices, const std::string &name,
                   const Meta &meta)
 : Lines::Base::Data(numElements, numCorners, numVertices, Object::LINES, name, meta)
 {
@@ -44,8 +44,8 @@ Lines::Data::Data(const Index numElements, const Index numCorners, const Index n
 }
 
 
-Lines::Data *Lines::Data::create(const std::string &objId, const Index numElements, const Index numCorners,
-                                 const Index numVertices, const Meta &meta)
+Lines::Data *Lines::Data::create(const std::string &objId, const size_t numElements, const size_t numCorners,
+                                 const size_t numVertices, const Meta &meta)
 {
     const std::string name = Shm::the().createObjectId(objId);
     Data *l = shm<Data>::construct(name)(numElements, numCorners, numVertices, name, meta);

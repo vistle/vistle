@@ -10,8 +10,6 @@ public:
 
 private:
     virtual bool compute();
-
-    vistle::IntParameter *p_facestream = nullptr;
 };
 
 #endif

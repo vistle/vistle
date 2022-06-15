@@ -16,4 +16,4 @@
 **/.nfs*
 /docs/build
 /docs/source/_templates
-__pycache__/
+__pycache__

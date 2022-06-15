@@ -57,10 +57,8 @@ std::shared_ptr<Module> ModuleRegistry::newInstance(const std::string &name, int
     return it->second.newInstance(name, id, comm);
 }
 
-bool ModuleRegistry::availableModules(AvailableMap &available)
+bool ModuleRegistry::availableModules(AvailableMap &available, int hub)
 {
-    const int hub = 0;
-
     std::map<std::string, std::string> moduleDescriptions;
     try {
         auto fs = cmrc::moduledescriptions::get_filesystem();

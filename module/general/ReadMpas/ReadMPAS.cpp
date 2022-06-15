@@ -3,6 +3,7 @@
 
        - read netCDF files containing hexagonal mpas mesh, data and partition info
        - required files: "grid_file" and "part_file"
+       - cf. https://www2.mmm.ucar.edu/projects/mpas/tutorial/Boulder2019/slides/04.mesh_structure.pdf
 
        - uses pnetcdf
 
@@ -10,40 +11,310 @@
 
 ------------------------------------------------------------------------------------ */
 #include "ReadMPAS.h"
-#include <boost/filesystem.hpp>
 #include <boost/algorithm/string.hpp>
 #include <vistle/core/polygons.h>
+#include <vistle/core/triangles.h>
+#include <vistle/core/unstr.h>
+#include <vistle/util/enum.h>
+#include <vistle/util/filesystem.h>
 #include <fstream>
 
-namespace bf = boost::filesystem;
-using namespace PnetCDF;
 using namespace vistle;
+namespace bf = vistle::filesystem;
+
+#ifdef USE_NETCDF
+#if defined(MODULE_THREAD)
+static std::mutex netcdf_mutex; // avoid simultaneous access to NetCDF library
+#define LOCK_NETCDF(comm) \
+    std::unique_lock<std::mutex> netcdf_guard(netcdf_mutex, std::defer_lock); \
+    if ((comm).rank() == 0) \
+        netcdf_guard.lock(); \
+    (comm).barrier();
+#define UNLOCK_NETCDF(comm) \
+    (comm).barrier(); \
+    if (netcdf_guard) \
+        netcdf_guard.unlock();
+#else
+#define LOCK_NETCDF(comm)
+#define UNLOCK_NETCDF(comm)
+#endif
+#else
+using namespace PnetCDF;
+
+#if defined(MODULE_THREAD) && PNETCDF_THREAD_SAFE == 0
+static std::mutex pnetcdf_mutex; // avoid simultaneous access to PnetCDF library, if not thread-safe
+#define LOCK_NETCDF(comm) \
+    std::unique_lock<std::mutex> pnetcdf_guard(pnetcdf_mutex, std::defer_lock); \
+    if ((comm).rank() == 0) \
+        pnetcdf_guard.lock(); \
+    (comm).barrier();
+#define UNLOCK_NETCDF(comm) \
+    (comm).barrier(); \
+    if (pnetcdf_guard) \
+        pnetcdf_guard.unlock();
+#else
+#define LOCK_NETCDF(comm)
+#define UNLOCK_NETCDF(comm)
+#endif
+#endif
 
 #define MAX_VAL 100000000
 #define MAX_EDGES 6 // maximal edges on cell
 #define MSL 6371229.0 //sphere radius on mean sea level (earth radius)
 #define MAX_VERT 3 // vertex degree
 
+static const char *DimNCells = "nCells";
+static const char *DimNVertices = "nVertices";
+static const char *DimMaxEdges = "maxEdges";
+static const char *DimNVertLevels = "nVertLevels";
+static const char *DimNVertLevelsP1 = "nVertLevelsP1";
+
+static const char *VarCellsOnCell = "cellsOnCell";
+static const char *VarCellsOnVertex = "cellsOnVertex";
+static const char *VarVerticesOnCell = "verticesOnCell";
+static const char *VarNEdgesOnCell = "nEdgesOnCell";
+static const char *VarZgrid = "zgrid";
+
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(CellMode, (Voronoi)(Delaunay)(DelaunayProjected))
+
+#ifdef USE_NETCDF
+struct NcFile {
+    bool parallel = false;
+    int error = NC_NOERR;
+    bool valid = false;
+    std::string name;
+    int id = -1;
+    NcFile(int id, const std::string &name, bool parallel): parallel(parallel), valid(true), name(name), id(id) {}
+    NcFile(const std::string &name, int err): error(err), valid(false), name(name) {}
+    NcFile(NcFile &&o): parallel(o.parallel), valid(std::exchange(o.valid, false)), name(o.name), id(o.id) {}
+    NcFile(const NcFile &o) = delete;
+    NcFile &operator=(const NcFile &o) = delete;
+    ~NcFile()
+    {
+        if (valid) {
+            nc_close(id);
+            valid = false;
+        }
+    }
+    operator bool() const { return error == NC_NOERR; }
+    operator int() const { return id; }
+
+    static NcFile open(const std::string &name)
+    {
+        int ncid = -1;
+        int err = nc_open(name.c_str(), NC_NOWRITE, &ncid);
+        if (err != NC_NOERR) {
+            std::cerr << "error opening NetCDF file " << name << ": " << nc_strerror(err) << std::endl;
+            return NcFile(name, err);
+        }
+        return NcFile(ncid, name, false);
+    }
+
+    static NcFile open(const std::string &name, const MPI_Comm &comm)
+    {
+#ifdef NETCDF_PARALLEL
+        int ncid = -1;
+        int err = nc_open_par(name.c_str(), NC_NOWRITE, comm, MPI_INFO_NULL, &ncid);
+        if (err != NC_NOERR) {
+            std::cerr << "error opening NetCDF file " << name << ": " << nc_strerror(err) << std::endl;
+            return NcFile(name, err);
+        }
+        return NcFile(ncid, name, true);
+#else
+        return open(name);
+#endif
+    }
+};
+
+//DIMENSION EXISTS
+//check if a given dimension exists in the NC-files
+bool hasDimension(int ncid, std::string findName)
+{
+    int dimid = -1;
+    int err = nc_inq_dimid(ncid, findName.c_str(), &dimid);
+    return err == NC_NOERR;
+}
+
+size_t getDimension(int ncid, std::string name)
+{
+    size_t dim = 0;
+    int dimid = -1;
+    int err = nc_inq_dimid(ncid, name.c_str(), &dimid);
+    if (err != NC_NOERR) {
+        return dim;
+    }
+    err = nc_inq_dimlen(ncid, dimid, &dim);
+    if (err != NC_NOERR) {
+        return dim;
+    }
+    return dim;
+}
+
+//VARIABLE EXISTS
+//check if a given variable exists in the NC-files
+bool hasVariable(int ncid, std::string findName)
+{
+    int varid = -1;
+    int err = nc_inq_varid(ncid, findName.c_str(), &varid);
+    return err == NC_NOERR;
+}
+
+template<typename S>
+struct NcFuncMapBase {
+    typedef std::function<int(int, int, S *)> get_var_func();
+    //static const get_var_func get_var;
+};
+template<typename S>
+struct NcFuncMap;
+
+#define NCFUNCS(Type, getvar, getvara) \
+    template<> \
+    struct NcFuncMap<Type> { \
+        typedef std::function<int(int, int, Type *)> get_var_func; \
+        static get_var_func get_var; \
+        typedef std::function<int(int, int, const size_t *, const size_t *, Type *)> get_vara_func; \
+        static get_vara_func get_vara; \
+    }; \
+    NcFuncMap<Type>::get_var_func NcFuncMap<Type>::get_var = getvar; \
+    NcFuncMap<Type>::get_vara_func NcFuncMap<Type>::get_vara = getvara;
+
+NCFUNCS(unsigned char, nc_get_var_uchar, nc_get_vara_uchar)
+NCFUNCS(unsigned, nc_get_var_uint, nc_get_vara_uint)
+NCFUNCS(unsigned long long, nc_get_var_ulonglong, nc_get_vara_ulonglong)
+NCFUNCS(float, nc_get_var_float, nc_get_vara_float)
+NCFUNCS(double, nc_get_var_double, nc_get_vara_double)
+
+template<typename T>
+std::vector<T> getVariable(int ncid, std::string name, std::vector<size_t> start, std::vector<size_t> count)
+{
+    std::vector<T> data;
+    int varid = -1;
+    int err = nc_inq_varid(ncid, name.c_str(), &varid);
+    if (err != NC_NOERR) {
+        std::cerr << "Nc: nc_inq_varid " << name << " error: " << nc_strerror(err) << std::endl;
+        return data;
+    }
+    int ndims = -1;
+    err = nc_inq_varndims(ncid, varid, &ndims);
+    if (err != NC_NOERR) {
+        std::cerr << "Nc: nc_inq_varndims " << name << " error: " << nc_strerror(err) << std::endl;
+        return data;
+    }
+    assert(start.size() == size_t(ndims));
+    assert(count.size() == size_t(ndims));
+    std::vector<int> dimids(ndims);
+    err = nc_inq_vardimid(ncid, varid, dimids.data());
+    if (err != NC_NOERR) {
+        std::cerr << "Nc: nc_inq_vardimd " << name << " error: " << nc_strerror(err) << std::endl;
+        return data;
+    }
+    std::vector<size_t> dims(ndims);
+    for (int i = 0; i < ndims; ++i) {
+        err = nc_inq_dimlen(ncid, dimids[i], &dims[i]);
+        if (err != NC_NOERR) {
+            std::cerr << "Nc: nc_inq_dimlen " << name << " error: " << nc_strerror(err) << std::endl;
+            return data;
+        }
+    }
+    size_t size = std::accumulate(count.begin(), count.end(), 1, [](size_t a, size_t b) { return a * b; });
+    data.resize(size);
+    size_t intmax = std::numeric_limits<int>::max();
+    size_t nreads = std::max(size_t(1), (size * sizeof(T) + intmax - 1) / intmax);
+    unsigned splitdim = 0;
+    while (splitdim < count.size() - 1 && count[splitdim] == 1)
+        ++splitdim;
+    size_t splitcount = (count[splitdim] + nreads - 1) / nreads;
+    std::vector blockcount(count);
+    blockcount[splitdim] = splitcount;
+    size_t nvalues = std::accumulate(blockcount.begin(), blockcount.end(), 1, [](size_t a, size_t b) { return a * b; });
+    for (size_t i = 0; i < nreads; ++i) {
+        std::vector<size_t> s(start), c(count);
+        s[splitdim] = start[splitdim] + i * splitcount;
+        c[splitdim] = std::min(splitcount, count[splitdim] - s[splitdim]);
+        if (s[splitdim] >= start[splitdim] + count[splitdim])
+            continue;
+        err = NcFuncMap<T>::get_vara(ncid, varid, s.data(), c.data(), data.data() + i * nvalues);
+        if (err != NC_NOERR) {
+            std::cerr << "Nc: get_vara " << name << " error: " << nc_strerror(err) << std::endl;
+            std::cerr << "i=" << i << ", start:";
+            for (auto v: s)
+                std::cerr << " " << v;
+            std::cerr << ", count:";
+            for (auto v: c)
+                std::cerr << " " << v;
+            std::cerr << std::endl;
+            data.clear();
+            return data;
+        }
+    }
+
+    return data;
+}
+
+template<typename T>
+std::vector<T> getVariable(int ncid, std::string name)
+{
+    std::vector<T> data;
+    int varid = -1;
+    int err = nc_inq_varid(ncid, name.c_str(), &varid);
+    if (err != NC_NOERR) {
+        std::cerr << "Nc: nc_inq_varid " << name << " error: " << nc_strerror(err) << std::endl;
+        return data;
+    }
+    int ndims = -1;
+    err = nc_inq_varndims(ncid, varid, &ndims);
+    if (err != NC_NOERR) {
+        std::cerr << "Nc: nc_inq_varndims " << name << " error: " << nc_strerror(err) << std::endl;
+        return data;
+    }
+    std::vector<int> dimids(ndims);
+    err = nc_inq_vardimid(ncid, varid, dimids.data());
+    if (err != NC_NOERR) {
+        std::cerr << "Nc: nc_inq_vardimd " << name << " error: " << nc_strerror(err) << std::endl;
+        return data;
+    }
+    std::vector<size_t> dims(ndims);
+    for (int i = 0; i < ndims; ++i) {
+        err = nc_inq_dimlen(ncid, dimids[i], &dims[i]);
+        if (err != NC_NOERR) {
+            std::cerr << "Nc: nc_inq_dimlen " << name << " error: " << nc_strerror(err) << std::endl;
+            return data;
+        }
+    }
+    size_t s = std::accumulate(dims.begin(), dims.end(), 1, [](size_t a, size_t b) { return a * b; });
+    data.resize(s);
+    err = NcFuncMap<T>::get_var(ncid, varid, data.data());
+    if (err != NC_NOERR) {
+        std::cerr << "Nc: get_var " << name << " error: " << nc_strerror(err) << std::endl;
+        data.clear();
+        return data;
+    }
+
+    return data;
+}
+#endif
+
+
 // CONSTRUCTOR
 ReadMPAS::ReadMPAS(const std::string &name, int moduleID, mpi::communicator comm): Reader(name, moduleID, comm)
 {
-    m_gridFile =
-        addStringParameter("grid_file", "File containing the grid",
-                           "/mnt/raid/home/hpcleker/Desktop/MPAS/test40962/x1.40962.grid.nc", Parameter::Filename);
-    m_dataFile = addStringParameter("data_file", "File containing data", "", Parameter::Filename);
+    m_gridFile = addStringParameter("grid_file", "File containing the grid", "", Parameter::ExistingFilename);
+    setParameterFilters(m_gridFile, "NetCDF Grid Files (*.grid.nc)/NetCDF Files (*.nc)/All Files (*)");
     m_zGridFile = addStringParameter("zGrid_file_dir",
                                      "File containing the vertical coordinates (elevation of cell from mean sea level",
-                                     "/", Parameter::Filename);
-    m_partFile = addStringParameter("part_file", "File containing the grid partitions",
-                                    "/mnt/raid/home/hpcleker/Desktop/MPAS/test40962/x1.40962.graph.info.part.8",
-                                    Parameter::Filename);
+                                     "", Parameter::ExistingFilename);
+    setParameterFilters(m_zGridFile, "NetCDF Vertical Coordinate Files (zgrid*.nc)/NetCDF Files (*.nc)/All Files (*)");
+    m_dataFile = addStringParameter("data_file", "File containing data", "", Parameter::ExistingFilename);
+    setParameterFilters(m_dataFile, "NetCDF History Files (history.*.nc)/NetCDF Files (*.nc)/All Files (*)");
+    m_partFile =
+        addStringParameter("part_file", "File containing the grid partitions", "", Parameter::ExistingFilename);
+    setParameterFilters(m_partFile, "Partitioning Files (*.part.*)/All Files (*)");
 
-    m_numPartitions = addIntParameter("numParts", "Number of Partitions", Parameter::Integer);
-    setIntParameter("numParts", 1);
-    m_numLevels = addIntParameter("numLevels", "Number of vertical levels to read", Parameter::Integer);
+    m_numPartitions = addIntParameter("numParts", "Number of partitions (-1: automatic)", -1);
+    m_numLevels = addIntParameter("numLevels", "Number of vertical cell layers to read (0: only 2D base level)", 0);
+    setParameterMinimum<Integer>(m_numLevels, 0);
     m_altitudeScale = addFloatParameter("altitudeScale", "value to scale the grid altitude (zGrid)", 20.);
 
-    m_cellsOnCell = addStringParameter("cellsOnCell", "List of neighboring cells (for ghosts)", "", Parameter::Choice);
     m_gridOut = createOutputPort("grid_out", "grid");
     m_varDim = addStringParameter("var_dim", "Dimension of variables", "", Parameter::Choice);
     setParameterChoices(m_varDim, varDimList);
@@ -57,15 +328,31 @@ ReadMPAS::ReadMPAS(const std::string &name, int moduleID, mpi::communicator comm
         m_variables[i] = addStringParameter(s_var, s_var, "", Parameter::Choice);
 
         setParameterChoices(m_variables[i], varChoices);
-        observeParameter(m_variables[i]);
         sprintf(s_var, "data_out_%d", i);
         m_dataOut[i] = createOutputPort(s_var, "scalar data");
     }
 
+    m_velocityOut = createOutputPort("velocity", "composed cartesian velocity");
+    std::array<const char *, 3> vcomps{"u_zonal", "u_meridional", "w"};
+    std::array<const char *, 3> vcompval{"uReconstructZonal", "uReconstructMeridional", "w"};
+    for (int i = 0; i < 3; ++i) {
+        m_velocityVar[i] = addStringParameter(vcomps[i], vcomps[i], vcompval[i], Parameter::Choice);
+        setParameterChoices(m_velocityVar[i], varChoices);
+    }
+    m_velocityScaleRad =
+        addIntParameter("radial_scale", "scale radial velocity component with height", true, Parameter::Boolean);
+
+    CellMode cm = m_voronoiCells ? Voronoi : m_projectDown ? DelaunayProjected : Delaunay;
+    m_cellMode = addIntParameter("cell_mode",
+                                 "grid (based on Voronoi cells, Delaunay trianguelation, or Delaunay projected down)",
+                                 cm, Parameter::Choice);
+    V_ENUM_SET_CHOICES(m_cellMode, CellMode);
+
     setParallelizationMode(ParallelizeBlocks);
-    //setReducePolicy(message::ReducePolicy::ReducePolicy::OverAll);
+    setCollectiveIo(true); // for MPI usage in NetCDF/PnetCDF
 
     observeParameter(m_gridFile);
+    observeParameter(m_zGridFile);
     observeParameter(m_dataFile);
     observeParameter(m_partFile);
     observeParameter(m_varDim);
@@ -79,23 +366,79 @@ ReadMPAS::~ReadMPAS()
 // set number of partitions and timesteps
 bool ReadMPAS::prepareRead()
 {
-    ReadMPAS::examine(nullptr);
+    switch (m_cellMode->getValue()) {
+    case Voronoi:
+        m_voronoiCells = true;
+        m_projectDown = false;
+        break;
+    case Delaunay:
+        m_voronoiCells = false;
+        m_projectDown = false;
+        break;
+    case DelaunayProjected:
+        m_voronoiCells = false;
+        m_projectDown = true;
+        break;
+    default:
+        assert("invalid CellMode" == nullptr);
+    }
+
     //set partitions
+    int numPartsUser = 1;
     std::string sPartFile = m_partFile->getValue();
     if (sPartFile.empty()) {
         sendInfo("No partitioning file given: continue with single block");
-        return true;
+    } else {
+        numPartsUser = m_numPartitions->getValue();
     }
 
     partsPath = "";
     numPartsFile = 1;
-    bf::path path(sPartFile);
-    if (bf::is_regular_file(path)) {
-        std::string fEnd = bf::extension(path.filename());
-        boost::erase_all(fEnd, ".");
-        numPartsFile = atoi(fEnd.c_str());
+    bf::path path;
+    try {
+        path = bf::path(sPartFile);
+        if (bf::is_regular_file(path)) {
+            std::string fEnd = bf::extension(path.filename());
+            boost::erase_all(fEnd, ".");
+            numPartsFile = atoi(fEnd.c_str());
+        }
+    } catch (std::exception &ex) {
+        std::cerr << "exception: " << ex.what();
+        return false;
     }
-    int numPartsUser = m_numPartitions->getValue();
+
+    size_t numLevelsUser = m_numLevels->getValue();
+    // estimate no. of elements and vertices
+    size_t numVert = 0, numElem = 0;
+    if (m_voronoiCells) {
+        numElem = numGridCells;
+        if (numLevelsUser == 0) {
+            numVert = numElem * MAX_EDGES;
+        } else {
+            numElem *= numLevelsUser;
+            numVert = numElem * (2 * (MAX_EDGES + 1) + 5 * MAX_EDGES);
+        }
+    } else {
+        numElem = MAX_EDGES * numGridCells / 3;
+        if (numLevelsUser == 0) {
+            numVert = numElem * 3;
+        } else {
+            // on each cell center, there is a pentaprism for each neighboring cell, shared between three neighboring cells
+            numElem *= numLevelsUser;
+            numVert = numElem * 6;
+        }
+    }
+    //sendInfo("computing #parts for %lu cells, %lu levels, %lu verts", (unsigned long)numGridCells, (unsigned long)numLevelsUser, (unsigned long)numVert);
+
+    size_t numPartsSuggested = std::max(size_t(1), (numVert + InvalidIndex / 3) / (InvalidIndex / 2));
+    if (numPartsUser > 0 && numPartsSuggested > numPartsUser) {
+        if (rank() == 0)
+            sendInfo("Configured number of partitions (%u) probably not sufficient, suggested: %u",
+                     (unsigned)numPartsUser, (unsigned)numPartsSuggested);
+    } else if (numPartsUser <= 0) {
+        numPartsUser = std::max(size_t(1), (numPartsSuggested + size() - 1) / size() * size());
+    }
+
     if (numPartsFile < 1) {
         numPartsFile = 1;
         finalNumberOfParts = 1;
@@ -109,38 +452,89 @@ bool ReadMPAS::prepareRead()
     }
     setPartitions(finalNumberOfParts);
 
+    LOCK_NETCDF(comm());
+
     //set timesteps
     dataFileList.clear();
     if (hasDataFile) {
-        numDataFiles = 0;
-        bf::path dataFilePath(dataFileName);
-        bf::path dataDir(dataFilePath.parent_path());
-        for (bf::directory_iterator it2(dataDir); it2 != bf::directory_iterator(); ++it2) { //all files in dir
-            if ((bf::extension(it2->path().filename()) == ".nc") &&
-                (strncmp(dataFilePath.filename().c_str(), it2->path().filename().c_str(), 15) == 0)) {
-                dataFileList.push_back(it2->path().string());
-                numDataFiles++;
+        unsigned nIgnored = 0;
+        try {
+            bf::path dataFilePath(dataFileName);
+            bf::path dataDir(dataFilePath.parent_path());
+            for (bf::directory_iterator it2(dataDir); it2 != bf::directory_iterator(); ++it2) { //all files in dir
+                if ((bf::extension(it2->path().filename()) == ".nc") &&
+                    (strncmp(dataFilePath.filename().c_str(), it2->path().filename().c_str(), 15) == 0)) {
+                    auto fn = it2->path().string();
+#ifdef USE_NETCDF
+                    auto ncid = NcFile::open(fn, comm());
+                    if (!ncid) {
+                        std::cerr << "ReadMpas: ignoring " << fn << ", could not open" << std::endl;
+                        continue;
+                    }
+                    if (!hasDimension(ncid, DimNCells)) {
+                        std::cerr << "ReadMpas: ignoring " << fn << ", no nCells dimension" << std::endl;
+                        ++nIgnored;
+                        continue;
+                    }
+                    size_t dimCells = getDimension(ncid, DimNCells);
+                    if (dimCells != numGridCells) {
+                        std::cerr << "ReadMpas: ignoring " << fn << ", expected nCells=" << numGridCells << ", but got "
+                                  << dimCells << std::endl;
+                        ++nIgnored;
+                        continue;
+                    }
+
+                    dataFileList.push_back(fn);
+#else
+                    try {
+                        NcmpiFile newFile(comm(), fn, NcmpiFile::read);
+                        if (!dimensionExists(DimNCells, newFile)) {
+                            std::cerr << "ReadMpas: ignoring " << fn << ", no nCells dimension" << std::endl;
+                            ++nIgnored;
+                            continue;
+                        }
+                        const NcmpiDim dimCells = newFile.getDim(DimNCells);
+                        if (dimCells.getSize() != numGridCells) {
+                            std::cerr << "ReadMpas: ignoring " << fn << ", expected nCells=" << numGridCells
+                                      << ", but got " << dimCells.getSize() << std::endl;
+                            ++nIgnored;
+                            continue;
+                        }
+
+                        dataFileList.push_back(fn);
+                    } catch (std::exception &ex) {
+                        std::cerr << "ReadMpas: ignoring " << fn << ", exception: " << ex.what() << std::endl;
+                        ++nIgnored;
+                        continue;
+                    }
+#endif
+                }
             }
+        } catch (std::exception &ex) {
+            std::cerr << "ReadMpas: filesystem exception: " << ex.what() << std::endl;
         }
-        setTimesteps(numDataFiles);
-        sendInfo("Set Timesteps from DataFiles to %d", numDataFiles);
+
+        std::sort(dataFileList.begin(),
+                  dataFileList.end()); // alpha-numeric sort hopefully brings timesteps into proper order
+
+        setTimesteps(dataFileList.size());
+        if (rank() == 0)
+            sendInfo("Set Timesteps from DataFiles to %u, ignored %u candidates", (unsigned)dataFileList.size(),
+                     nIgnored);
     } else {
         setTimesteps(0);
     }
 
+    UNLOCK_NETCDF(comm());
 
     gridList.clear();
     gridList.resize(finalNumberOfParts);
-    numCellsB.clear();
+
     numCellsB.resize(finalNumberOfParts, 0);
     numCornB.clear();
     numCornB.resize(finalNumberOfParts, 0);
-    blockIdx.clear();
-    blockIdx.resize(numPartsFile);
-    numGhosts.clear();
-    numGhosts.resize(finalNumberOfParts, 0);
-    isGhost.clear();
-    isGhost.resize(finalNumberOfParts, std::vector<int>(1, 0));
+    numTrianglesB.clear();
+    numTrianglesB.resize(finalNumberOfParts, 0);
     numCells = 0;
     numLevels = 0;
     partList.clear();
@@ -154,42 +548,74 @@ bool ReadMPAS::prepareRead()
     idxCellsInBlock.clear();
     idxCellsInBlock.resize(finalNumberOfParts, std::vector<Index>(0, 0));
 
+    ghosts = false;
+
     return true;
 }
 
 // SET VARIABLE LIST
 // fill the drop-down-menu in the module parameters based on the variables available from the grid or data file
-bool ReadMPAS::setVariableList(const NcmpiFile &filename, bool setCOC)
+#ifdef USE_NETCDF
+bool ReadMPAS::setVariableList(int ncid, FileType ft, bool setCOC)
 {
-    std::multimap<std::string, NcmpiVar> varNameListData = filename.getVars();
-    char *newEntry = new char[50];
     std::vector<std::string> AxisVarChoices{"NONE"}, Axis1dChoices{"NONE"};
-    size_t num3dVars = 0, num2dVars = 0;
 
-    for (auto elem: varNameListData) {
-        const NcmpiVar &var = filename.getVar(elem.first.c_str()); //get_var(i);
-        strcpy(newEntry, elem.first.c_str()); //var->name());
-        if (var.getDimCount() == 1) { //grid axis
-            Axis1dChoices.push_back(newEntry);
-            num2dVars++;
+    int nvars = -1;
+    int err = nc_inq_nvars(ncid, &nvars);
+    if (err != NC_NOERR) {
+        return false;
+    }
+
+    int nvars2 = -1;
+    std::vector<int> varids(nvars);
+    err = nc_inq_varids(ncid, &nvars2, varids.data());
+    if (err != NC_NOERR) {
+        return false;
+    }
+
+    for (auto varid: varids) {
+        std::vector<char> varname(NC_MAX_NAME);
+        int err = nc_inq_varname(ncid, varid, varname.data());
+        if (err != NC_NOERR) {
+            continue;
+        }
+        std::string name(varname.data());
+        int ndims = -1;
+        err = nc_inq_varndims(ncid, varid, &ndims);
+        if (err != NC_NOERR) {
+            continue;
+        }
+        if (ndims == 1) {
+            Axis1dChoices.push_back(name);
+            m_2dChoices[name] = ft;
         } else {
-            AxisVarChoices.push_back(newEntry);
-            num3dVars++;
+            AxisVarChoices.push_back(name);
+            m_3dChoices[name] = ft;
         }
     }
-    if (setCOC)
-        setParameterChoices(m_cellsOnCell, AxisVarChoices);
 
-    delete[] newEntry;
-    if (strcmp(m_varDim->getValue().c_str(), varDimList[1].c_str()) == 0) {
-        for (int i = 0; i < NUMPARAMS; i++)
-            setParameterChoices(m_variables[i], AxisVarChoices);
-    } else if (strcmp(m_varDim->getValue().c_str(), varDimList[0].c_str()) == 0) {
-        for (int i = 0; i < NUMPARAMS; i++)
-            setParameterChoices(m_variables[i], Axis1dChoices);
-    }
     return true;
 }
+#else
+bool ReadMPAS::setVariableList(const NcmpiFile &filename, FileType ft, bool setCOC)
+{
+    std::multimap<std::string, NcmpiVar> varNameListData = filename.getVars();
+    std::vector<std::string> AxisVarChoices{"NONE"}, Axis1dChoices{"NONE"};
+
+    for (auto elem: varNameListData) {
+        const NcmpiVar var = filename.getVar(elem.first); //get_var(i);
+        if (var.getDimCount() == 1) { //grid axis
+            Axis1dChoices.push_back(elem.first);
+            m_2dChoices[elem.first] = ft;
+        } else {
+            AxisVarChoices.push_back(elem.first);
+            m_3dChoices[elem.first] = ft;
+        }
+    }
+
+    return true;
+}
+#endif
 
 
 //VALIDATE FILE
@@ -199,26 +625,86 @@ bool ReadMPAS::validateFile(std::string fullFileName, std::string &redFileName, 
     std::string typeString = (type == grid_type ? "Grid" : (type == data_type ? "Data " : "zGrid"));
     redFileName = "";
     if (!fullFileName.empty()) {
-        bf::path dPath(fullFileName);
-        if (bf::is_regular_file(dPath)) {
-            if (bf::extension(dPath.filename()) == ".nc") {
-                redFileName = dPath.string();
-                if (!(type == zgrid_type)) {
-                    NcmpiFile newFile(comm(), redFileName, NcmpiFile::read);
-                    setVariableList(newFile, type == grid_type);
+        try {
+            bf::path dPath(fullFileName);
+            if (bf::is_regular_file(dPath)) {
+                if (bf::extension(dPath.filename()) == ".nc") {
+                    redFileName = dPath.string();
+#ifdef USE_NETCDF
+                    auto ncid = NcFile::open(redFileName, comm());
+                    if (!ncid) {
+                        if (rank() == 0)
+                            sendInfo("Could not open %s", redFileName.c_str());
+                        return false;
+                    }
+                    if (!hasDimension(ncid, DimNCells)) {
+                        if (rank() == 0)
+                            sendInfo("File %s does not have dimension nCells, no MPAS file", redFileName.c_str());
+                        return false;
+                    }
+                    int dimid = -1;
+                    int err = nc_inq_dimid(ncid, DimNCells, &dimid);
+                    if (err != NC_NOERR) {
+                        return false;
+                    }
+                    size_t dimCells = 0;
+                    err = nc_inq_dimlen(ncid, dimid, &dimCells);
+                    if (err != NC_NOERR) {
+                        return false;
+                    }
+                    numGridCells = dimCells;
+                    setVariableList(ncid, type, type == grid_type);
+#else
+                    try {
+                        NcmpiFile newFile(comm(), redFileName, NcmpiFile::read);
+                        if (!dimensionExists(DimNCells, newFile)) {
+                            if (rank() == 0)
+                                sendInfo("File %s does not have dimension nCells, no MPAS file", redFileName.c_str());
+                            return false;
+                        }
+                        const NcmpiDim dimCells = newFile.getDim(DimNCells);
+                        if (type == grid_type) {
+                            numGridCells = dimCells.getSize();
+                        } else {
+                            Index nCells = dimCells.getSize();
+                            if (numGridCells != nCells) {
+                                if (rank() == 0)
+                                    sendInfo("nCells=%lu from %s does not match nCells=%lu from grid file",
+                                             (unsigned long)nCells, redFileName.c_str(), (unsigned long)numGridCells);
+                                return false;
+                            }
+                        }
+                        setVariableList(newFile, type, type == grid_type);
+                    } catch (std::exception &ex) {
+                        if (rank() == 0)
+                            sendInfo("Exception during Pnetcdf call on %s: %s", redFileName.c_str(), ex.what());
+                        return false;
+                    }
+#endif
+
+                    if (rank() == 0)
+                        sendInfo("To load: %s file %s", typeString.c_str(), redFileName.c_str());
+                    return true;
                 }
-
-
-                if (rank() == 0)
-                    sendInfo("Loading %s file %s", typeString.c_str(), redFileName.c_str());
-                return true;
             }
+        } catch (std::exception &ex) {
+            std::cerr << "filesystem exception: " << ex.what() << std::endl;
+            if (rank() == 0)
+                sendInfo("Filesystem exception for %s: %s", fullFileName.c_str(), ex.what());
+            return false;
         }
     }
     //if this failed: use grid file instead
     if (type == data_type) {
+#ifdef USE_NETCDF
+        auto ncid = NcFile::open(firstFileName, comm());
+        if (ncid) {
+            setVariableList(ncid, grid_type, true);
+        }
+#else
         NcmpiFile newFile(comm(), firstFileName, NcmpiFile::read);
-        setVariableList(newFile, true);
+        setVariableList(newFile, grid_type, true);
+#endif
     }
     if (rank() == 0)
         sendInfo("%s file not found -> using grid file instead", typeString.c_str());
@@ -231,12 +717,35 @@ bool ReadMPAS::validateFile(std::string fullFileName, std::string &redFileName, 
 // react to changes of module parameters and set them; validate files
 bool ReadMPAS::examine(const vistle::Parameter *param)
 {
-    if (!param || param == m_gridFile || param == m_varDim || param == m_dataFile) {
+    LOCK_NETCDF(comm());
+
+    if (!param || param == m_gridFile || param == m_dataFile || param == m_zGridFile) {
+        m_2dChoices.clear();
+        m_3dChoices.clear();
+
         if (!validateFile(m_gridFile->getValue(), firstFileName, grid_type))
             return false;
         hasDataFile = validateFile(m_dataFile->getValue(), dataFileName, data_type);
         hasZData = validateFile(m_zGridFile->getValue(), zGridFileName, zgrid_type);
     }
+
+    std::vector<std::string> choices{"(NONE)"};
+    if (m_varDim->getValue() == varDimList[0]) {
+        for (const auto &var: m_2dChoices)
+            choices.push_back(var.first);
+    } else {
+        for (const auto &var: m_3dChoices)
+            choices.push_back(var.first);
+    }
+    for (int i = 0; i < NUMPARAMS; i++)
+        setParameterChoices(m_variables[i], choices);
+    if (m_varDim->getValue() != varDimList[1]) {
+        choices.clear();
+        for (const auto &var: m_3dChoices)
+            choices.push_back(var.first);
+    }
+    for (int i = 0; i < 3; ++i)
+        setParameterChoices(m_velocityVar[i], choices);
     return true;
 }
 
@@ -246,9 +755,11 @@ bool ReadMPAS::emptyValue(vistle::StringParameter *ch) const
 {
     std::string name = "";
     name = ch->getValue();
-    return ((name == "") || (name == "NONE"));
+    return ((name == "") || (name == "NONE") || (name == "(NONE)"));
 }
 
+#ifdef USE_NETCDF
+#else
 //DIMENSION EXISTS
 //check if a given dimension exists in the NC-files
 bool ReadMPAS::dimensionExists(std::string findName, const NcmpiFile &filename)
@@ -256,6 +767,7 @@ bool ReadMPAS::dimensionExists(std::string findName, const NcmpiFile &filename)
     const NcmpiDim &findDim = filename.getDim(findName.c_str());
     return !(findDim.isNull());
 }
+
 //VARIABLE EXISTS
 //check if a given variable exists in the NC-files
 bool ReadMPAS::variableExists(std::string findName, const NcmpiFile &filename)
@@ -263,51 +775,154 @@ bool ReadMPAS::variableExists(std::string findName, const NcmpiFile &filename)
     const NcmpiVar &findVar = filename.getVar(findName.c_str());
     return !(findVar.isNull());
 }
+#endif
 
 //ADD CELL
 //compute vertices of a cell and add the cells to the cell list
-bool ReadMPAS::addCell(Index elem, Index *el, Index *cl, long vPerC, long numVert, long izVert, Index &idx2,
-                       const std::vector<int> &vocList)
+bool ReadMPAS::addCell(Index elem, bool ghost, Index &curElem, Index *el, Byte *tl, Index *cl, long vPerC, long numVert,
+                       long izVert, Index &idx2, const std::vector<Index> &vocList)
 {
+    Index elemRow = elem * vPerC; //vPerC is set to MAX_EDGES if vocList is reducedVOC
+    el[curElem] = idx2;
+
+    for (Index d = 0; d < eoc[elem]; ++d) { // add vertices on surface (crosssectional face)
+        cl[idx2++] = vocList[elemRow + d] - 1 + izVert;
+    }
+    cl[idx2++] = vocList[elemRow] - 1 + izVert;
+
+    for (Index d = 0; d < eoc[elem]; ++d) { // add coating vertices for all coating sides
+        cl[idx2++] = vocList[elemRow + d] - 1 + izVert;
+        cl[idx2++] = vocList[elemRow + d] - 1 + numVert + izVert;
+        if (d + 1 == eoc[elem]) {
+            cl[idx2++] = vocList[elemRow] - 1 + numVert + izVert;
+            cl[idx2++] = vocList[elemRow] - 1 + izVert;
+        } else {
+            cl[idx2++] = vocList[elemRow + d + 1] - 1 + numVert + izVert;
+            cl[idx2++] = vocList[elemRow + d + 1] - 1 + izVert;
+        }
+        cl[idx2++] = vocList[elemRow + d] - 1 + izVert;
+    }
+
+    for (Index d = 0; d < eoc[elem]; ++d) { //add caping (bottom crossectional face)
+        cl[idx2++] = vocList[elemRow + d] - 1 + numVert + izVert;
+    }
+    cl[idx2++] = vocList[elemRow] - 1 + numVert + izVert;
+    tl[curElem] = ghost ? (UnstructuredGrid::POLYHEDRON | UnstructuredGrid::GHOST_BIT) : UnstructuredGrid::POLYHEDRON;
+    ++curElem;
+    return true;
+}
+
+bool ReadMPAS::addPoly(Index elem, Index &curElem, Index *el, Index *cl, long vPerC, long numVert, long izVert,
+                       Index &idx2, const std::vector<Index> &vocList)
+{
+    el[curElem] = idx2;
     Index elemRow = elem * vPerC; //vPerC is set to MAX_EDGES if vocList is reducedVOC
 
     for (Index d = 0; d < eoc[elem]; ++d) { // add vertices on surface (crosssectional face)
         cl[idx2++] = ((vocList)[elemRow + d] - 1) + izVert;
     }
     cl[idx2++] = (vocList)[elemRow] - 1 + izVert;
+    ++curElem;
 
-    for (Index d = 0; d < eoc[elem]; ++d) { // add coating vertices for all coating sides
-        cl[idx2++] = ((vocList)[elemRow + d] - 1) + izVert;
-        cl[idx2++] = ((vocList)[elemRow + d] - 1) + numVert + izVert;
-        if (d == (eoc[elem] - 1)) {
-            cl[idx2++] = ((vocList)[elemRow] - 1) + numVert + izVert;
-            cl[idx2++] = ((vocList)[elemRow] - 1) + izVert;
-        } else {
-            cl[idx2++] = ((vocList)[elemRow + d + 1] - 1) + numVert + izVert;
-            cl[idx2++] = ((vocList)[elemRow + d + 1] - 1) + izVert;
-        }
-        cl[idx2++] = ((vocList)[elemRow + d] - 1) + izVert;
-    }
-
-    for (Index d = 0; d < eoc[elem]; ++d) { //add caping (bottom crossectional face)
-        cl[idx2++] = ((vocList)[elemRow + d] - 1) + numVert + izVert;
-    }
-    cl[idx2++] = (vocList)[elemRow] - 1 + numVert + izVert;
     return true;
 }
 
+bool ReadMPAS::addWedge(bool ghost, Index &curElem, Index center, Index n1, Index n2, Index layer, Index nVertPerLayer,
+                        Index *el, Byte *tl, Index *cl, Index &idx2)
+{
+    el[curElem] = idx2;
+    Index off = layer * nVertPerLayer;
+    cl[idx2++] = center + off;
+    cl[idx2++] = n1 + off;
+    cl[idx2++] = n2 + off;
+    off += nVertPerLayer;
+    cl[idx2++] = center + off;
+    cl[idx2++] = n1 + off;
+    cl[idx2++] = n2 + off;
+    tl[curElem] = UnstructuredGrid::PRISM;
+    if (ghost)
+        tl[curElem] |= UnstructuredGrid::GHOST_BIT;
+    ++curElem;
+
+    return true;
+}
+
+bool ReadMPAS::addTri(Index &curElem, Index center, Index n1, Index n2, Index *cl, Index &idx2)
+{
+    cl[idx2++] = center;
+    cl[idx2++] = n1;
+    cl[idx2++] = n2;
+    ++curElem;
+
+    return true;
+}
+
+#ifdef USE_NETCDF
+std::vector<Scalar> ReadMPAS::getData(int ncid, Index nLevels, Index dataIdx, bool velocity)
+{
+    std::string varname = velocity ? m_velocityVar[dataIdx]->getValue() : m_variables[dataIdx]->getValue();
+
+    std::vector<Scalar> data;
+    int varid = -1;
+    int err = nc_inq_varid(ncid, varname.c_str(), &varid);
+    if (err != NC_NOERR) {
+        std::cerr << "getData: nc_inq_varid " << varname << " error: " << nc_strerror(err) << std::endl;
+        return data;
+    }
+    int ndims = -1;
+    err = nc_inq_varndims(ncid, varid, &ndims);
+    if (err != NC_NOERR) {
+        std::cerr << "getData: nc_inq_varndims " << varname << " error: " << nc_strerror(err) << std::endl;
+        return data;
+    }
+    std::vector<int> dimids(ndims);
+    err = nc_inq_vardimid(ncid, varid, dimids.data());
+    if (err != NC_NOERR) {
+        std::cerr << "getData: nc_inq_vardimid " << varname << " error: " << nc_strerror(err) << std::endl;
+        return data;
+    }
+    std::vector<size_t> start, count;
+    for (int i = 0; i < ndims; ++i) {
+        char dimname[NC_MAX_NAME];
+        err = nc_inq_dimname(ncid, dimids[i], dimname);
+        if (err != NC_NOERR) {
+            std::cerr << "getData: nc_inq_dimname " << varname << " error: " << nc_strerror(err) << std::endl;
+            return data;
+        }
+        std::string name(dimname);
+        size_t dim = 0;
+        err = nc_inq_dimlen(ncid, dimids[i], &dim);
+        if (err != NC_NOERR) {
+            std::cerr << "getData: nc_inq_dimlen " << varname << " error: " << nc_strerror(err) << std::endl;
+            return data;
+        }
+
+        start.push_back(0);
+        if (name == DimNCells) {
+            count.push_back(dim);
+        } else if (name == DimNVertLevels || name == DimNVertLevelsP1) {
+            count.push_back(std::min(dim, size_t(nLevels)));
+        } else {
+            count.push_back(1);
+        }
+    }
+
+    return getVariable<Scalar>(ncid, varname, start, count);
+}
+#else
 // GET DATA
 // read 2D or 3D data from data or grid file into a vector
 bool ReadMPAS::getData(const NcmpiFile &filename, std::vector<float> *dataValues, const MPI_Offset &nLevels,
-                       const Index dataIdx)
+                       const Index dataIdx, bool velocity)
 {
-    const NcmpiVar &varData = filename.getVar(m_variables[dataIdx]->getValue().c_str());
+    const NcmpiVar varData =
+        filename.getVar(velocity ? m_velocityVar[dataIdx]->getValue() : m_variables[dataIdx]->getValue());
     std::vector<MPI_Offset> numElem, startElem;
     for (auto elem: varData.getDims()) {
-        if (strcmp(elem.getName().c_str(), "nCells") == 0) {
+        if (elem.getName() == DimNCells) {
             numElem.push_back(elem.getSize());
-        } else if (strcmp(elem.getName().c_str(), "nVertLevels") == 0) {
-            numElem.push_back(std::min(elem.getSize(), nLevels - 1));
+        } else if (elem.getName() == DimNVertLevels || elem.getName() == DimNVertLevelsP1) {
+            numElem.push_back(std::min(elem.getSize(), nLevels));
         } else {
             numElem.push_back(1);
         }
@@ -317,50 +932,111 @@ bool ReadMPAS::getData(const NcmpiFile &filename, std::vector<float> *dataValues
     varData.getVar_all(startElem, numElem, dataValues->data());
     return true;
 }
+#endif
 
 //READ
 //start all the reading
 bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
 {
-    assert(gridList.size() == numPartitions());
-    if (!gridList[block]) { //if grid has not been created -> do it
+    assert(token.comm());
+    assert(gridList.size() == Index(numPartitions()));
+    auto &idxCells = idxCellsInBlock[block];
+    if (timestep >= 0) {
+        assert(gridList[block]);
+    }
 
-        NcmpiFile ncFirstFile(comm(), firstFileName, NcmpiFile::read);
-        assert(dimensionExists("nCells", ncFirstFile));
-        // first of all: validate that all neccesary dimensions and variables exist
-        if (!dimensionExists("nCells", ncFirstFile) || !dimensionExists("nVertices", ncFirstFile) ||
-            !dimensionExists("maxEdges", ncFirstFile)) {
+    if (!gridList[block]) { //if grid has not been created -> do it
+        LOCK_NETCDF(*token.comm());
+
+        assert(timestep == -1);
+
+#ifdef USE_NETCDF
+        NcFile ncid = NcFile::open(firstFileName, *token.comm());
+        if (!ncid) {
+            return false;
+        }
+        if (!hasDimension(ncid, DimNCells) || !hasDimension(ncid, DimNVertices) || !hasDimension(ncid, DimMaxEdges)) {
             sendError("Missing dimension info -> quit");
             return false;
         }
-        if (!variableExists("xVertex", ncFirstFile) || !variableExists("verticesOnCell", ncFirstFile) ||
-            !variableExists("nEdgesOnCell", ncFirstFile)) {
+        if (!hasVariable(ncid, "xVertex") || !hasVariable(ncid, VarVerticesOnCell) ||
+            !hasVariable(ncid, VarNEdgesOnCell)) {
             sendError("Missing variable info -> quit");
             return false;
         }
 
-        const NcmpiDim &dimCells = ncFirstFile.getDim("nCells");
-        const NcmpiDim &dimVert = ncFirstFile.getDim("nVertices");
-        const NcmpiDim &dimVPerC = ncFirstFile.getDim("maxEdges");
+        numCells = getDimension(ncid, DimNCells);
+        auto vPerC = getDimension(ncid, DimMaxEdges);
 
-        const NcmpiVar &xC = ncFirstFile.getVar("xVertex");
-        const NcmpiVar &yC = ncFirstFile.getVar("yVertex");
-        const NcmpiVar &zC = ncFirstFile.getVar("zVertex");
-        const NcmpiVar &verticesPerCell = ncFirstFile.getVar("verticesOnCell");
-        const NcmpiVar &nEdgesOnCell = ncFirstFile.getVar("nEdgesOnCell");
+        if (eoc.empty()) {
+            eoc = getVariable<unsigned char>(ncid, VarNEdgesOnCell);
+        }
+        if (m_voronoiCells && voc.empty()) {
+            voc = getVariable<unsigned>(ncid, VarVerticesOnCell);
+        }
+        if (xCoords.empty()) {
+            xCoords = getVariable<float>(ncid, m_voronoiCells ? "xVertex" : "xCell");
+            yCoords = getVariable<float>(ncid, m_voronoiCells ? "yVertex" : "yCell");
+            zCoords = getVariable<float>(ncid, m_voronoiCells ? "zVertex" : "zCell");
+        }
 
-        const MPI_Offset &vPerC = dimVPerC.getSize(); // vertices on each cell
+        size_t numLevelsUser = m_numLevels->getValue();
+        size_t numMaxLevels = 1;
+        //verify that dimensions in grid file and data file are matching
+        if (hasDataFile) {
+            auto ncdataid = NcFile::open(dataFileList.at(0), *token.comm());
+            if (!ncdataid) {
+                return false;
+            }
+            if (hasDimension(ncdataid, DimNVertLevels)) {
+                numMaxLevels = getDimension(ncdataid, DimNVertLevels);
+            } else {
+                hasDataFile = false;
+                if (block == 0)
+                    sendInfo("No vertical dimension found -> number of levels set to one");
+            }
+        }
+
+        if (numLevels == 0)
+            numLevels = std::min(numMaxLevels, numLevelsUser + 1);
+        if (numLevels < 1)
+            return false;
+#else
+        NcmpiFile ncFirstFile(*token.comm(), firstFileName, NcmpiFile::read);
+        assert(dimensionExists(DimNCells, ncFirstFile));
+        // first of all: validate that all neccesary dimensions and variables exist
+        if (!dimensionExists(DimNCells, ncFirstFile) || !dimensionExists(DimNVertices, ncFirstFile) ||
+            !dimensionExists(DimMaxEdges, ncFirstFile)) {
+            sendError("Missing dimension info -> quit");
+            return false;
+        }
+        if (!variableExists("xVertex", ncFirstFile) || !variableExists(VarVerticesOnCell, ncFirstFile) ||
+            !variableExists(VarNEdgesOnCell, ncFirstFile)) {
+            sendError("Missing variable info -> quit");
+            return false;
+        }
+
+        const NcmpiDim dimCells = ncFirstFile.getDim(DimNCells);
+        const NcmpiDim dimVert = ncFirstFile.getDim(DimNVertices);
+        const NcmpiDim dimVPerC = ncFirstFile.getDim(DimMaxEdges);
+
+        const NcmpiVar xC = m_voronoiCells ? ncFirstFile.getVar("xVertex") : ncFirstFile.getVar("xCell");
+        const NcmpiVar yC = m_voronoiCells ? ncFirstFile.getVar("yVertex") : ncFirstFile.getVar("yCell");
+        const NcmpiVar zC = m_voronoiCells ? ncFirstFile.getVar("zVertex") : ncFirstFile.getVar("zCell");
+        const NcmpiVar verticesPerCell = ncFirstFile.getVar(VarVerticesOnCell);
+        const NcmpiVar nEdgesOnCell = ncFirstFile.getVar(VarNEdgesOnCell);
+
+        const MPI_Offset vPerC = dimVPerC.getSize(); // vertices on each cell
         if (numCells == 0)
             numCells = dimCells.getSize(); //number of cells in 2D
-        const MPI_Offset &numVert = dimVert.getSize();
-        std::vector<size_t> numVOC;
+        const MPI_Offset numVert = dimVert.getSize();
 
         // set eoc (number of Edges On each Cells), voc (Vertex index On each Cell)
         if (eoc.size() < 1) {
             eoc.resize(numCells);
             nEdgesOnCell.getVar_all(eoc.data());
         }
-        if (voc.size() < 1) {
+        if (m_voronoiCells && voc.size() < 1) {
             voc.resize(numCells * vPerC);
             verticesPerCell.getVar_all(voc.data());
         }
@@ -369,11 +1045,11 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
         size_t numMaxLevels = 1;
         //verify that dimensions in grid file and data file are matching
         if (hasDataFile) {
-            NcmpiFile ncDataFile(comm(), /*dataFileName.c_str()*/ dataFileList.at(0), NcmpiFile::read);
-            // const NcmpiDim &dimCellsData = ncDataFile.getDim("nCells");
+            NcmpiFile ncDataFile(*token.comm(), /*dataFileName.c_str()*/ dataFileList.at(0), NcmpiFile::read);
+            // const NcmpiDim &dimCellsData = ncDataFile.getDim(DimNCells);
             // numCells = dimCellsData.getSize();
-            if (dimensionExists("nVertLevels", ncDataFile)) {
-                const NcmpiDim &dimLevel = ncDataFile.getDim("nVertLevels");
+            if (dimensionExists(DimNVertLevels, ncDataFile)) {
+                const NcmpiDim &dimLevel = ncDataFile.getDim(DimNVertLevels);
                 numMaxLevels = dimLevel.getSize();
             } else {
                 hasDataFile = false;
@@ -383,284 +1059,759 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
         }
 
         if (numLevels == 0)
-            numLevels = std::min(numMaxLevels, numLevelsUser) + 1;
-        if (numLevels < 2)
+            numLevels = std::min(numMaxLevels, numLevelsUser + 1);
+        if (numLevels < 1)
             return false;
+#endif
 
         float dH = 0.001;
-        size_t numPartsUser = m_numPartitions->getValue();
+        size_t numPartsUser = numPartitions();
 
-        if (numPartsFile == 1) {
+        if (numPartsUser > 1 && numPartsFile == 1) {
             sendInfo("please use a grid partition file");
             return false;
-        } else {
-            if (block == 0)
-                sendInfo("Reading started...");
+        }
+        if (block == 0)
+            sendInfo("Reading started...");
 
-            // PARTITIONING: read partitions file and redistribute partition to number of user-defined partitions
-            size_t FileBlocksPerUserBlocks = numPartsFile / numPartsUser;
-            size_t remParts = numPartsFile - (numPartsUser * FileBlocksPerUserBlocks);
+        // PARTITIONING: read partitions file and redistribute partition to number of user-defined partitions
+        size_t FileBlocksPerUserBlocks = (numPartsFile + numPartsUser - 1) / numPartsUser;
 
-            if (partList.size() < 1) {
-                mtxPartList.lock();
-                FILE *partsFile = fopen(partsPath.c_str(), "r");
+        std::unique_lock<std::mutex> guardPartList(mtxPartList);
+        if (partList.size() < 1) {
+            FILE *partsFile = fopen(partsPath.c_str(), "r");
 
-                if (partsFile == nullptr) {
-                    if (block == 0)
-                        sendInfo("Could not read parts file");
-                    return false;
-                }
-
-                for (Index i = 0; i < numPartsUser; ++i) {
-                    std::fill(blockIdx.begin() + (i * FileBlocksPerUserBlocks),
-                              blockIdx.begin() + ((i + 1) * FileBlocksPerUserBlocks), i);
-                }
-                if (remParts != 0) {
-                    for (Index i = 0; i < remParts; ++i) {
-                        std::fill(blockIdx.begin() + ((numPartsUser * FileBlocksPerUserBlocks) + i),
-                                  blockIdx.begin() + ((numPartsUser * FileBlocksPerUserBlocks) + (i + 1)), i);
-                    }
-                }
-
-                char buffer[10];
-                Index x = 0, xBlockIdx = 0, idxp = 0;
-                while ((fgets(buffer, sizeof(buffer), partsFile) != NULL) && (idxp < MAX_VAL)) {
-                    sscanf(buffer, "%u", &x);
-                    xBlockIdx = blockIdx[x];
-                    numCellsB[xBlockIdx]++;
-                    numCornB[xBlockIdx] = numCornB[xBlockIdx] + eoc[idxp]; //TODO: std instead: more effiecient?
-                    partList.push_back(xBlockIdx);
-                    ++idxp;
-                }
-                blockIdx.clear();
-                if (partsFile) {
-                    fclose(partsFile);
-                    partsFile = nullptr;
-                }
-                mtxPartList.unlock();
-
-                assert(partList.size() == numCells);
+            if (partsFile == nullptr) {
+                if (block == 0)
+                    sendInfo("Could not read parts file %s", partsPath.c_str());
+                return false;
             }
-            //READ VERTEX COORDINATES given for base level (a unit sphere)
-            if (xCoords.size() < 1 || yCoords.size() < 1 || zCoords.size() < 1) {
+
+
+            char buffer[10];
+            Index xBlockIdx = 0, idxp = 0;
+            partList.reserve(numCells);
+            while ((fgets(buffer, sizeof(buffer), partsFile) != NULL) && (idxp < MAX_VAL)) {
+                unsigned x;
+                sscanf(buffer, "%u", &x);
+                xBlockIdx = x / FileBlocksPerUserBlocks;
+                numCellsB[xBlockIdx]++;
+                numCornB[xBlockIdx] += eoc[idxp]; //TODO: std instead: more efficient?
+                partList.push_back(xBlockIdx);
+                ++idxp;
+            }
+            if (partsFile) {
+                fclose(partsFile);
+                partsFile = nullptr;
+            }
+
+            assert(partList.size() == numCells);
+        }
+
+#ifdef USE_NETCDF
+        // set coc (index of neighboring cells on each cell) to determine ghost cells
+        if ((numLevels > 1 || (!m_voronoiCells && numLevels == 1)) && coc.empty()) {
+            coc = getVariable<unsigned>(ncid, VarCellsOnCell);
+            ghosts = numLevels > 1;
+        }
+#else
+        //READ VERTEX COORDINATES given for base level (a unit sphere)
+        if (xCoords.size() < 1 || yCoords.size() < 1 || zCoords.size() < 1) {
+            std::vector<MPI_Offset> start = {0};
+            std::vector<MPI_Offset> stop;
+            if (m_voronoiCells) {
+                stop.push_back(numVert);
                 xCoords.resize(numVert);
                 yCoords.resize(numVert);
                 zCoords.resize(numVert);
-                std::vector<MPI_Offset> start = {0};
-                std::vector<MPI_Offset> stop = {numVert};
-                xC.getVar_all(start, stop, xCoords.data());
-                yC.getVar_all(start, stop, yCoords.data());
-                zC.getVar_all(start, stop, zCoords.data());
+            } else {
+                stop.push_back(numCells);
+                xCoords.resize(numCells);
+                yCoords.resize(numCells);
+                zCoords.resize(numCells);
             }
+            xC.getVar_all(start, stop, xCoords.data());
+            yC.getVar_all(start, stop, yCoords.data());
+            zC.getVar_all(start, stop, zCoords.data());
+        }
 
-            // set coc (index of neighboring cells on each cell) to determine ghost cells
-            if (!emptyValue(m_cellsOnCell) && coc.size() < 1) {
-                NcmpiVar cellsOnCell = ncFirstFile.getVar(m_cellsOnCell->getValue().c_str());
-                coc.resize(numCells * vPerC);
-                cellsOnCell.getVar_all(coc.data());
-                ghosts = true;
-            }
-            size_t numCornGhost = 0;
-            std::vector<int> reducedVOC(numCells * MAX_EDGES, -1);
-            Index idx = 0, neighborIdx = 0;
-            bool isNew = false;
-            std::vector<int> vocIdxUsedTmp(numCells * MAX_EDGES, -1);
-            if (isGhost[block].size() <= 1)
-                isGhost[block].resize(numCells, 0);
+        // set coc (index of neighboring cells on each cell) to determine ghost cells
+        if ((numLevels > 1 || (!m_voronoiCells && numLevels == 1)) && coc.size() < 1) {
+            NcmpiVar cellsOnCell = ncFirstFile.getVar(VarCellsOnCell);
+            coc.resize(numCells * vPerC);
+            cellsOnCell.getVar_all(coc.data());
+            ghosts = numLevels > 1;
+        }
+#endif
+        guardPartList.unlock();
 
-            //DETERMINE VERTICES used for this partition
+        size_t numCornGhost = 0;
+        size_t numGhosts = 0;
+        std::vector<unsigned char> isGhost(numCells, 0);
+        std::vector<Index> reducedVOC;
+        Index idx = 0;
+        std::vector<Index> reducedCenter;
+
+        //DETERMINE VERTICES used for this partition
+        idxCells.reserve(numCells / numPartsUser);
+        if (m_voronoiCells) {
+            assert(voc.size() == numCells * vPerC);
+            std::vector<Index> vocIdxUsedTmp(numCells * MAX_EDGES, InvalidIndex);
+            reducedVOC.resize(numCells * MAX_EDGES, InvalidIndex);
             for (Index i = 0; i < numCells; ++i) {
-                if (partList[i] == block) {
-                    idxCellsInBlock[block].push_back(i);
-                    for (Index d = 0; d < eoc[i]; ++d) {
-                        if (vocIdxUsedTmp[voc[i * vPerC + d] - 1] < 0) {
-                            vocIdxUsedTmp[voc[i * vPerC + d] - 1] = idx++;
-                            reducedVOC[i * MAX_EDGES + d] =
-                                idx; // is set to idx + 1 before it is increased -> idx+1-1 =idx
-                        } else {
-                            reducedVOC[i * MAX_EDGES + d] = vocIdxUsedTmp[voc[i * vPerC + d] - 1] + 1;
-                        }
+                if (partList[i] != block)
+                    continue;
+                idxCells.push_back(i);
+                for (Index d = 0; d < eoc[i]; ++d) {
+                    if (vocIdxUsedTmp[voc[i * vPerC + d] - 1] == InvalidIndex) {
+                        vocIdxUsedTmp[voc[i * vPerC + d] - 1] = idx;
+                        reducedVOC[i * MAX_EDGES + d] = idx + 1;
+                        ++idx;
+                    } else {
+                        reducedVOC[i * MAX_EDGES + d] = vocIdxUsedTmp[voc[i * vPerC + d] - 1] + 1;
+                    }
 
-                        if (ghosts) {
-                            neighborIdx = coc[i * vPerC + d] - 1;
-                            // if (neighborIdx < 0 || neighborIdx >= numCells)
-                            //   continue;
-                            if (partList[neighborIdx] != block) {
-                                isNew = false;
-                                for (Index dn = 0; dn < eoc[neighborIdx]; ++dn) {
-                                    if (vocIdxUsedTmp[voc[neighborIdx * vPerC + dn] - 1] < 0) {
-                                        vocIdxUsedTmp[voc[neighborIdx * vPerC + dn] - 1] = idx++;
-                                        reducedVOC[neighborIdx * MAX_EDGES + dn] = idx;
-                                        isNew = true;
-                                    } else {
-                                        reducedVOC[neighborIdx * MAX_EDGES + dn] =
-                                            vocIdxUsedTmp[voc[neighborIdx * vPerC + dn] - 1] + 1;
-                                    }
+                    if (ghosts) {
+                        Index neighborIdx = coc[i * vPerC + d] - 1;
+                        // if (neighborIdx < 0 || neighborIdx >= numCells)
+                        //   continue;
+                        if (partList[neighborIdx] != block) {
+                            bool isNew = false;
+                            for (Index dn = 0; dn < eoc[neighborIdx]; ++dn) {
+                                if (vocIdxUsedTmp[voc[neighborIdx * vPerC + dn] - 1] == InvalidIndex) {
+                                    vocIdxUsedTmp[voc[neighborIdx * vPerC + dn] - 1] = idx;
+                                    reducedVOC[neighborIdx * MAX_EDGES + dn] = idx + 1;
+                                    ++idx;
+                                    isNew = true;
+                                } else {
+                                    reducedVOC[neighborIdx * MAX_EDGES + dn] =
+                                        vocIdxUsedTmp[voc[neighborIdx * vPerC + dn] - 1] + 1;
                                 }
+                            }
 
-                                if (isNew) {
-                                    isGhost[block][neighborIdx] = 1;
-                                    idxCellsInBlock[block].push_back(neighborIdx);
-                                    numGhosts[block]++;
-                                    numCornGhost = numCornGhost + eoc[neighborIdx];
-                                }
+                            if (isNew) {
+                                isGhost[neighborIdx] = 1;
+                                idxCells.push_back(neighborIdx);
+                                numGhosts++;
+                                numCornGhost = numCornGhost + eoc[neighborIdx];
                             }
                         }
                     }
                 }
             }
-            vocIdxUsedTmp.clear();
+        } else {
+            reducedCenter.resize(numCells, InvalidIndex);
+            std::vector<Index> outstandingGhosts;
+            auto addVertex = [&reducedCenter, &idx, &idxCells](Index i) {
+                if (reducedCenter[i] != InvalidIndex)
+                    return;
+                idxCells.push_back(i);
+                reducedCenter[i] = idx;
+                ++idx;
+            };
+            // ghost triangles around cell-centers in this partition
+            auto addOwnedGhostTriangles = [this, &addVertex, &block, &vPerC, &isGhost, &numGhosts](Index i) {
+                assert(partList[i] == block);
+                if (!ghosts)
+                    return;
+                for (Index d = 0; d < eoc[i]; ++d) {
+                    Index n1 = coc[i * vPerC + d] - 1;
+                    Index n2 = coc[i * vPerC + (d + 1) % eoc[i]] - 1;
+                    Index smallest = std::min(n1, n2);
+                    if (i < smallest) {
+                        // no ghost: triangle owned by this center vertex
+                        continue;
+                    }
+                    if (partList[smallest] == block) {
+                        // no ghost: triangle owned by another center vertex of this block
+                        continue;
+                    }
+                    Index largest = std::max(n1, n2);
+                    if (partList[largest] == block) {
+                        if (i > largest) {
+                            // ghost, but other center vertex of this block is responsible for it
+                            continue;
+                        }
+                    }
+                    isGhost[i] = 1;
+                    numGhosts++;
+                    if (partList[n1] != block)
+                        addVertex(n1);
+                    if (partList[n2] != block)
+                        addVertex(n2);
+                }
+            };
+            // ghost triangles around cell-centers added for owned triangles with vertices/cell-centers from other partitions
+            auto addBorrowedGhostTriangles = [this, &addVertex, &block, &vPerC, &isGhost, &numGhosts](Index i) {
+                assert(partList[i] != block);
+                if (!ghosts)
+                    return;
+                assert(isGhost[i]);
+                for (Index d = 0; d < eoc[i]; ++d) {
+                    Index n1 = coc[i * vPerC + d] - 1;
+                    Index n2 = coc[i * vPerC + (d + 1) % eoc[i]] - 1;
+                    if (partList[n1] == block || partList[n2] == block) {
+                        // non-borrowed cell-center is responsible for this triangle
+                        continue;
+                    }
+                    if (isGhost[n1] && n1 < i) {
+                        // ghost, but n1 is responsible
+                        continue;
+                    }
+                    if (isGhost[n2] && n2 < i) {
+                        // ghost, but n2 is responsible
+                        continue;
+                    }
+                    numGhosts++;
+                    addVertex(n1);
+                    addVertex(n2);
+                }
+            };
+            // add base triangles (together with vertices borrowed from other blocks) and resulting cells to block, if their lowest numbered vertex is owned by block
+            for (Index i = 0; i < numCells; ++i) {
+                if (partList[i] != block)
+                    continue;
+                assert(reducedCenter[i] == InvalidIndex);
+                addVertex(i);
+                for (Index d = 0; d < eoc[i]; ++d) {
+                    Index n1 = coc[i * vPerC + d] - 1;
+                    Index n2 = coc[i * vPerC + (d + 1) % eoc[i]] - 1;
+                    if (i < n1 && i < n2) {
+                        // cell-center i owns this triangle
+                        ++numTrianglesB[block];
+                        if (partList[n1] != block) {
+                            if (reducedCenter[n1] == InvalidIndex) {
+                                addVertex(n1);
+                                if (ghosts) {
+                                    outstandingGhosts.push_back(n1);
+                                    isGhost[n1] = 1;
+                                }
+                            }
+                        }
+                        if (partList[n2] != block) {
+                            if (reducedCenter[n2] == InvalidIndex) {
+                                addVertex(n2);
+                                if (ghosts) {
+                                    outstandingGhosts.push_back(n2);
+                                    isGhost[n2] = 1;
+                                }
+                            }
+                        }
+                    }
+                }
+                addOwnedGhostTriangles(i);
+                assert(idx == idxCells.size());
+            }
+            std::cerr << "block " << block << ": "
+                      << "owned ghosts=" << numGhosts;
+            for (auto i: outstandingGhosts)
+                addBorrowedGhostTriangles(i);
+            outstandingGhosts.clear();
+            assert(idx == idxCells.size());
+        }
 
-            size_t numVertB = idx;
-            size_t numCornPlusOne = numCornB[block] + numCellsB[block] + numCornGhost + numGhosts[block];
+        size_t numVertB = idx;
+        size_t numCornPlusOne = numCornB[block] + numCellsB[block] + numCornGhost + numGhosts;
 
-            //ASSEMBLE GRID
-            UnstructuredGrid::ptr p(new UnstructuredGrid(
-                (numCellsB[block] + numGhosts[block]) * (numLevels - 1),
-                ((numLevels - 1) * numCornPlusOne * 2 + (numCornB[block] + numCornGhost) * (numLevels - 1) * 5),
-                numVertB * numLevels));
-            Index *cl = p->cl().data();
-            Index *el = p->el().data();
-            auto tl = p->tl().data();
-            Scalar *ptrOnX = p->x().data();
-            Scalar *ptrOnY = p->y().data();
-            Scalar *ptrOnZ = p->z().data();
-            int iv = 0, iVOC = 0; // might be negative!
-            float radius = 1.;
+        //ASSEMBLE GRID
+        if (block == 0)
+            sendInfo("numLevels is %u", numLevels);
 
-            if (block == 0)
-                sendInfo("numLevels is %d", numLevels);
+        Coords::ptr grid;
+        float altScale = m_altitudeScale->getValue();
+        assert(numLevels >= 1);
+
+        unsigned numZLevels = (m_voronoiCells || m_projectDown) ? numLevels : numLevels + 1;
+        std::vector<float> zGrid;
+        if (hasZData) {
+#ifdef USE_NETCDF
+            if (m_voronoiCells) {
+                cov = getVariable<unsigned>(ncid, VarCellsOnVertex);
+            }
+
+            std::vector<size_t> startZ{0, 0};
+            std::vector<size_t> stopZ{numCells, numZLevels};
+            auto nczid = NcFile::open(zGridFileName, *token.comm());
+            if (!nczid) {
+                return false;
+            }
+            if (!hasDimension(nczid, DimNCells)) {
+                sendError("no nCells dimension in zGrid file %s", zGridFileName.c_str());
+                return true;
+            }
+            if (getDimension(nczid, DimNCells) != numGridCells) {
+                sendError("nCells %lu in zGrid file %s does not match grid's (%lu)",
+                          (unsigned long)getDimension(nczid, DimNCells), zGridFileName.c_str(),
+                          (unsigned long)numGridCells);
+                return true;
+            }
+            zGrid = getVariable<float>(nczid, VarZgrid, startZ, stopZ);
+#else
+            zGrid.resize(numCells * numZLevels);
+            if (m_voronoiCells) {
+                NcmpiVar cellsOnVertex = ncFirstFile.getVar(VarCellsOnVertex);
+                cov.resize(numVert * MAX_VERT);
+                cellsOnVertex.getVar_all(cov.data());
+            }
+
+            std::vector<MPI_Offset> startZ{0, 0};
+            std::vector<MPI_Offset> stopZ{MPI_Offset(numCells), numZLevels};
+            NcmpiFile ncZGridFile(*token.comm(), zGridFileName.c_str(), NcmpiFile::read);
+            if (!dimensionExists(DimNCells, ncZGridFile)) {
+                sendError("no nCells dimension in zGrid file %s", zGridFileName.c_str());
+                return true;
+            }
+            const NcmpiDim dimCells = ncZGridFile.getDim(DimNCells);
+            if (dimCells.getSize() != numGridCells) {
+                sendError("nCells %lu in zGrid file %s does not match grid's (%lu)", (unsigned long)dimCells.getSize(),
+                          zGridFileName.c_str(), (unsigned long)numGridCells);
+                return true;
+            }
+            const NcmpiVar zGridVar = ncZGridFile.getVar(VarZgrid);
+            zGridVar.getVar_all(startZ, stopZ, zGrid.data());
+#endif
+            if (numLevels < numZLevels) {
+                // average z levels to Voronoi cell centers
+                float *z = zGrid.data();
+                for (Index i = 0; i < numCells; ++i) {
+                    for (Index l = 0; l < numZLevels; ++l) {
+                        if (l < numLevels)
+                            *z = 0.5f * (*z + *(z + 1));
+                        ++z;
+                    }
+                }
+                assert(z == zGrid.data() + zGrid.size());
+            }
+        }
+        UNLOCK_NETCDF(*token.comm());
+
+        if (m_voronoiCells) {
+            Index *cl = nullptr;
+            Index *el = nullptr;
+            Byte *tl = nullptr;
+            if (numLevels > 1) {
+                UnstructuredGrid::ptr p(new UnstructuredGrid(
+                    (numCellsB[block] + numGhosts) * (numLevels - 1),
+                    ((numLevels - 1) * numCornPlusOne * 2 + (numCornB[block] + numCornGhost) * (numLevels - 1) * 5),
+                    numVertB * numLevels));
+                grid = p;
+                cl = p->cl().data();
+                el = p->el().data();
+                tl = p->tl().data();
+            } else {
+                Polygons::ptr p(new Polygons(numCellsB[block], numCornPlusOne, numVertB));
+                grid = p;
+                cl = p->cl().data();
+                el = p->el().data();
+            }
+            Scalar *ptrOnX = grid->x().data();
+            Scalar *ptrOnY = grid->y().data();
+            Scalar *ptrOnZ = grid->z().data();
 
             // SET GRID COORDINATES:
             // if zGrid is given: calculate level height from it
             // o.w. use constant offsets between levels
-            Index idx2 = 0, currentElem = 0, izVert = 0;
-            float altScale = m_altitudeScale->getValue();
-
+            Index idx2 = 0, currentElem = 0;
             if (hasZData) {
-                NcmpiVar cellsOnVertex = ncFirstFile.getVar("cellsOnVertex");
-                cov.resize(numVert * MAX_VERT);
-                cellsOnVertex.getVar_all(cov.data());
-
-                std::vector<MPI_Offset> startZ{0, 0};
-                std::vector<MPI_Offset> stopZ{numCells, numLevels};
-                NcmpiFile ncZGridFile(comm(), zGridFileName.c_str(), NcmpiFile::read);
-                const NcmpiVar &zGridVar = ncZGridFile.getVar("zgrid");
-                std::vector<float> zGrid(numCells * numLevels, 0.);
-                zGridVar.getVar_all(startZ, stopZ, zGrid.data());
-
-                int i_v1 = 0, i_v2 = 0, i_v3 = 0, i = 0;
                 for (Index iz = 0; iz < numLevels; ++iz) {
-                    izVert = numVertB * iz;
-                    for (Index k = 0; k < idxCellsInBlock[block].size(); ++k) {
-                        i = idxCellsInBlock[block][k];
+                    Index izVert = numVertB * iz;
+                    for (Index k = 0; k < idxCells.size(); ++k) {
+                        Index i = idxCells[k];
                         for (Index d = 0; d < eoc[i]; ++d) {
-                            iv = reducedVOC[i * MAX_EDGES + d] - 1;
-                            if (iv >= 0) {
-                                iVOC = voc[i * vPerC + d] - 1; //current vertex index
-                                i_v1 = cov[iVOC * MAX_VERT + 0]; //cell index
-                                i_v2 = cov[iVOC * MAX_VERT + 1];
-                                i_v3 = cov[iVOC * MAX_VERT + 2];
-                                radius = altScale * (1. / 3.) *
-                                             (zGrid[(numLevels)*i_v1 + iz] + zGrid[(numLevels)*i_v2 + iz] +
-                                              zGrid[(numLevels)*i_v3 + iz]) +
-                                         MSL; //compute vertex z from average of neighbouring cells
-                                ptrOnX[izVert + iv] = radius * xCoords[iVOC];
-                                ptrOnY[izVert + iv] = radius * yCoords[iVOC];
-                                ptrOnZ[izVert + iv] = radius * zCoords[iVOC];
-                            }
+                            Index iv = reducedVOC[i * MAX_EDGES + d];
+                            assert(iv != InvalidIndex);
+                            assert(iv > 0);
+                            --iv;
+                            Index iVOC = voc[i * vPerC + d] - 1; //current vertex index
+                            Index i_v1 = cov[iVOC * MAX_VERT + 0] - 1; //cell index
+                            Index i_v2 = cov[iVOC * MAX_VERT + 1] - 1;
+                            Index i_v3 = cov[iVOC * MAX_VERT + 2] - 1;
+                            float radius = altScale * (1. / 3.) *
+                                               (zGrid[(numZLevels)*i_v1 + iz] + zGrid[(numZLevels)*i_v2 + iz] +
+                                                zGrid[(numZLevels)*i_v3 + iz]) +
+                                           MSL; //compute vertex z from average of neighbouring cells
+                            ptrOnX[izVert + iv] = radius * xCoords[iVOC];
+                            ptrOnY[izVert + iv] = radius * yCoords[iVOC];
+                            ptrOnZ[izVert + iv] = radius * zCoords[iVOC];
                         }
-                        if (iz < numLevels - 1) {
-                            el[currentElem] = idx2;
-                            addCell(i, el, cl, MAX_EDGES, numVertB, izVert, idx2, reducedVOC);
-                            tl[currentElem++] = isGhost[block][i] > 0
-                                                    ? (UnstructuredGrid::CPOLYHEDRON | UnstructuredGrid::GHOST_BIT)
-                                                    : UnstructuredGrid::CPOLYHEDRON;
+                        if (tl) {
+                            if (iz < numLevels - 1) {
+                                addCell(i, isGhost[i] > 0, currentElem, el, tl, cl, MAX_EDGES, numVertB, izVert, idx2,
+                                        reducedVOC);
+                            }
+                        } else {
+                            addPoly(i, currentElem, el, cl, MAX_EDGES, numVertB, izVert, idx2, reducedVOC);
                         }
                     }
                 }
             } else {
-                Index i = 0;
                 for (Index iz = 0; iz < numLevels; ++iz) {
-                    izVert = numVertB * iz;
-                    radius = altScale * dH * iz + 1.;
-                    for (Index k = 0; k < idxCellsInBlock[block].size(); ++k) {
-                        i = idxCellsInBlock[block][k];
+                    Index izVert = numVertB * iz;
+                    float radius = altScale * dH * iz + 1.; // FIXME: MSL?
+                    for (Index k = 0; k < idxCells.size(); ++k) {
+                        Index i = idxCells[k];
                         for (Index d = 0; d < eoc[i]; ++d) {
-                            iv = reducedVOC[i * MAX_EDGES + d] - 1;
-                            if (iv >= 0) {
-                                iVOC = voc[i * vPerC + d] - 1;
-                                ptrOnX[izVert + iv] = radius * xCoords[iVOC];
-                                ptrOnY[izVert + iv] = radius * yCoords[iVOC];
-                                ptrOnZ[izVert + iv] = radius * zCoords[iVOC];
+                            Index iv = reducedVOC[i * MAX_EDGES + d];
+                            assert(iv != InvalidIndex);
+                            assert(iv > 0);
+                            --iv;
+                            Index iVOC = voc[i * vPerC + d] - 1;
+                            ptrOnX[izVert + iv] = radius * xCoords[iVOC];
+                            ptrOnY[izVert + iv] = radius * yCoords[iVOC];
+                            ptrOnZ[izVert + iv] = radius * zCoords[iVOC];
+                        }
+                        if (tl) {
+                            if (iz < numLevels - 1) {
+                                addCell(i, isGhost[i] > 0, currentElem, el, tl, cl, MAX_EDGES, numVertB, izVert, idx2,
+                                        reducedVOC);
+                            }
+                        } else {
+                            addPoly(i, currentElem, el, cl, MAX_EDGES, numVertB, izVert, idx2, reducedVOC);
+                        }
+                    }
+                }
+            }
+
+            // add sentinel
+            el[currentElem] = idx2;
+        } else {
+            assert(idxCells.size() == numVertB);
+            // build dual triangle/wedge grid
+            Byte *tl = nullptr;
+            Index *cl = nullptr;
+            Index *el = nullptr;
+            if (numLevels > 1) {
+                auto ntri = numTrianglesB[block];
+                ntri += numGhosts;
+                std::cerr << "block " << block << ": base triangles: " << ntri << "=" << numTrianglesB[block] << "+"
+                          << numGhosts << std::endl;
+                UnstructuredGrid::ptr p(
+                    new UnstructuredGrid(ntri * (numLevels - 1), ntri * 6 * (numLevels - 1), numVertB * numLevels));
+                grid = p;
+                tl = p->tl().data();
+                cl = p->cl().data();
+                el = p->el().data();
+            } else {
+                Triangles::ptr p(new Triangles(numTrianglesB[block] * 3, numVertB));
+                grid = p;
+                cl = p->cl().data();
+            }
+            Scalar *ptrOnX = grid->x().data();
+            Scalar *ptrOnY = grid->y().data();
+            Scalar *ptrOnZ = grid->z().data();
+
+            // SET GRID COORDINATES:
+            // if zGrid is given: calculate level height from it
+            // o.w. use constant offsets between levels
+            for (Index k = 0; k < idxCells.size(); ++k) {
+                Index i = idxCells[k];
+                for (Index iz = 0; iz < numLevels; ++iz) {
+                    Index izVert = numVertB * iz;
+                    float radius = altScale * (hasZData ? zGrid[numZLevels * i + iz] : dH * iz) + MSL;
+                    ptrOnX[izVert + k] = radius * xCoords[i];
+                    ptrOnY[izVert + k] = radius * yCoords[i];
+                    ptrOnZ[izVert + k] = radius * zCoords[i];
+                }
+            }
+
+            Index idx2 = 0, currentElem = 0;
+            for (Index k = 0; k < idxCells.size(); ++k) {
+                Index i = idxCells[k];
+                bool haveGhost = ghosts && isGhost[i];
+                bool borrowed = partList[i] != block;
+                if (borrowed && !haveGhost)
+                    continue;
+                for (Index d = 0; d < eoc[i]; ++d) {
+                    Index n1 = coc[i * vPerC + d] - 1;
+                    Index n2 = coc[i * vPerC + (d + 1) % eoc[i]] - 1;
+                    assert(n1 != InvalidIndex);
+                    assert(n2 != InvalidIndex);
+                    bool ghost = false;
+                    Index smallest = std::min(n1, n2);
+                    if (borrowed) {
+                        if (partList[n1] == block)
+                            // other cell-center is responsible
+                            continue;
+                        if (partList[n2] == block)
+                            // other cell-center is responsible
+                            continue;
+                        if (n1 < i && isGhost[n1])
+                            // ghost, but owned by another borrowed cell-center
+                            continue;
+                        if (n2 < i && isGhost[n2])
+                            // ghost, but owned by another borrowed cell-center
+                            continue;
+                        assert(tl);
+                        ghost = true;
+                    } else if (i < smallest) {
+                        // no ghost, owned by this cell-center
+                    } else if (haveGhost) {
+                        assert(i > smallest);
+                        if (partList[smallest] == block) {
+                            // no ghost, owned by another cell-center belonging to this block
+                            continue;
+                        }
+                        Index largest = std::max(n1, n2);
+                        if (partList[largest] == block) {
+                            if (i > largest) {
+                                // ghost, but another cell-center belonging to this block is responsible
+                                continue;
                             }
                         }
-                        if (iz < numLevels - 1) {
-                            el[currentElem] = idx2;
-                            addCell(i, el, cl, MAX_EDGES, numVertB, izVert, idx2, reducedVOC);
-                            tl[currentElem++] = isGhost[block][i] > 0
-                                                    ? (UnstructuredGrid::CPOLYHEDRON | UnstructuredGrid::GHOST_BIT)
-                                                    : UnstructuredGrid::CPOLYHEDRON;
+                        assert(tl);
+                        ghost = true;
+                    } else {
+                        // no ghost, owned by another cell-center belonging to another block
+                        continue;
+                    }
+                    Index rn1 = reducedCenter[n1];
+                    assert(rn1 != InvalidIndex);
+                    Index rn2 = reducedCenter[n2];
+                    assert(rn2 != InvalidIndex);
+                    if (tl) {
+                        for (Index iz = 0; iz < numLevels - 1; ++iz) {
+                            addWedge(ghost, currentElem, k, rn1, rn2, iz, numVertB, el, tl, cl, idx2);
                         }
+                    } else {
+                        assert(!ghost);
+                        addTri(currentElem, k, rn1, rn2, cl, idx2);
                     }
                 }
             }
+            // add sentinel
+            if (el)
+                el[currentElem] = idx2;
+        }
 
-            el[currentElem] = idx2;
-            p->setBlock(block);
-            p->setTimestep(-1);
-            p->setNumBlocks(numPartitions());
-            updateMeta(p);
-            gridList[block] = p;
+        if (grid) {
+            grid->setBlock(block);
+            grid->setTimestep(-1);
+            grid->setNumBlocks(numPartitions());
+            token.applyMeta(grid);
+            gridList[block] = grid;
         }
     }
+    assert(gridList[block]);
 
     if (timestep < 0) {
-        token.applyMeta(gridList[block]);
         token.addObject("grid_out", gridList[block]);
-        return true;
-    } else {
-        // Read data
+    }
 
-        NcmpiVar varData;
-        for (Index dataIdx = 0; dataIdx < NUMPARAMS; ++dataIdx) {
-            if (!emptyValue(m_variables[dataIdx])) {
-                Vec<Scalar>::ptr dataObj(new Vec<Scalar>((numCellsB[block] + numGhosts[block]) * (numLevels - 1)));
-                Scalar *ptrOnScalarData = dataObj->x().data();
+    // Read data
+    unsigned nLevels = m_voronoiCells ? std::max(1u, numLevels - 1) : numLevels;
+    for (Index dataIdx = 0; dataIdx < NUMPARAMS; ++dataIdx) {
+        if (emptyValue(m_variables[dataIdx])) {
+            continue;
+        }
 
-                std::vector<float> dataValues(numCells * (numLevels - 1), 0.);
-                if (hasDataFile) {
-                    NcmpiFile ncDataFile(comm(), dataFileList.at(timestep).c_str(), NcmpiFile::read);
-                    getData(ncDataFile, &dataValues, numLevels, dataIdx);
-                } else {
-                    NcmpiFile ncFirstFile2(comm(), firstFileName, NcmpiFile::read);
-                    getData(ncFirstFile2, &dataValues, numLevels, dataIdx);
-                }
-                Index currentElem = 0;
-                for (Index iz = 0; iz < numLevels - 1; ++iz) {
-                    for (Index k = 0; k < idxCellsInBlock[block].size(); ++k) {
-                        ptrOnScalarData[currentElem++] = dataValues[iz + idxCellsInBlock[block][k] * (numLevels - 1)];
-                    }
-                }
+        std::string pVar = m_variables[dataIdx]->getValue();
+        Vec<Scalar>::ptr dataObj(new Vec<Scalar>(idxCells.size() * nLevels));
+        Scalar *ptrOnScalarData = dataObj->x().data();
 
-                dataObj->setGrid(gridList[block]);
-                dataObj->setMapping(DataBase::Element);
-                dataObj->setBlock(block);
-                std::string pVar = m_variables[dataIdx]->getValue();
-                dataObj->addAttribute("_species", pVar);
-                dataObj->setTimestep(timestep);
-                token.applyMeta(dataObj);
-                token.addObject(m_dataOut[dataIdx], dataObj);
+#ifdef USE_NETCDF
+        std::vector<Scalar> dataValues;
+#else
+        std::vector<float> dataValues(numCells * nLevels, 0.);
+#endif
+        auto ft = m_varDim->getValue() == varDimList[0] ? m_2dChoices[pVar] : m_3dChoices[pVar];
+        if (ft == data_type) {
+            if (timestep < 0)
+                continue;
 
-                dataValues.clear();
+            LOCK_NETCDF(*token.comm());
+#ifdef USE_NETCDF
+            auto ncid = NcFile::open(dataFileList.at(timestep), *token.comm());
+            if (!ncid) {
+                return true;
+            }
+            dataValues = getData(ncid, nLevels, dataIdx);
+#else
+            NcmpiFile ncDataFile(*token.comm(), dataFileList.at(timestep).c_str(), NcmpiFile::read);
+            getData(ncDataFile, &dataValues, nLevels, dataIdx);
+#endif
+        } else if (ft == zgrid_type) {
+            if (timestep >= 0)
+                continue;
+
+            LOCK_NETCDF(*token.comm());
+#ifdef USE_NETCDF
+            auto nczid = NcFile::open(zGridFileName, *token.comm());
+            if (!nczid) {
+                return true;
+            }
+            dataValues = getData(nczid, nLevels, dataIdx);
+#else
+            NcmpiFile ncFirstFile2(*token.comm(), zGridFileName, NcmpiFile::read);
+            getData(ncFirstFile2, &dataValues, nLevels, dataIdx);
+#endif
+        } else {
+            if (timestep >= 0)
+                continue;
+
+            LOCK_NETCDF(*token.comm());
+#ifdef USE_NETCDF
+            auto ncid = NcFile::open(firstFileName, *token.comm());
+            if (!ncid) {
+                return true;
+            }
+            dataValues = getData(ncid, nLevels, dataIdx);
+#else
+            NcmpiFile ncFirstFile2(*token.comm(), firstFileName, NcmpiFile::read);
+            getData(ncFirstFile2, &dataValues, nLevels, dataIdx);
+#endif
+        }
+        if (dataValues.size() != numCells * nLevels) {
+            std::cerr << "ReadMPAS: size mismatch for " << pVar << ", expected " << numCells * nLevels << ", but got "
+                      << dataValues.size() << std::endl;
+            continue;
+        }
+        Index currentElem = 0;
+        for (Index iz = 0; iz < nLevels; ++iz) {
+            for (Index k = 0; k < idxCells.size(); ++k) {
+                ptrOnScalarData[currentElem++] = dataValues[iz + idxCells[k] * nLevels];
             }
         }
+
+        dataObj->setGrid(gridList[block]);
+        if (m_voronoiCells)
+            dataObj->setMapping(DataBase::Element);
+        else
+            dataObj->setMapping(DataBase::Vertex);
+        dataObj->setBlock(block);
+        dataObj->addAttribute("_species", pVar);
+        dataObj->setTimestep(timestep);
+        token.applyMeta(dataObj);
+        token.addObject(m_dataOut[dataIdx], dataObj);
+
+        dataValues.clear();
     }
+
+    // Read components and compute cartesian velocity
+    if (timestep < 0)
+        return true;
+    if (!isConnected(*m_velocityOut))
+        return true;
+    //unsigned nLevels = m_voronoiCells ? std::max(1u, numLevels - 1) : numLevels;
+    for (Index dataIdx = 0; dataIdx < 3; ++dataIdx) {
+        if (emptyValue(m_velocityVar[dataIdx])) {
+            return true;
+        }
+    }
+
+    std::array<std::vector<Scalar>, 3> fields;
+    std::vector<Scalar> &zonal = fields[0], &merid = fields[1], &rad = fields[2];
+
+    for (Index dataIdx = 0; dataIdx < 3; ++dataIdx) {
+        std::string pVar = m_velocityVar[dataIdx]->getValue();
+
+        auto ft = m_3dChoices[pVar];
+        if (ft == data_type) {
+            LOCK_NETCDF(*token.comm());
+#ifdef USE_NETCDF
+            auto ncid = NcFile::open(dataFileList.at(timestep), *token.comm());
+            if (!ncid) {
+                return true;
+            }
+            fields[dataIdx] = getData(ncid, nLevels, dataIdx, true);
+#else
+            fields[dataIdx].resize(numCells * nLevels);
+            NcmpiFile ncDataFile(*token.comm(), dataFileList.at(timestep).c_str(), NcmpiFile::read);
+            getData(ncDataFile, &fields[dataIdx], nLevels, dataIdx, true);
+#endif
+        } else if (ft == zgrid_type) {
+            LOCK_NETCDF(*token.comm());
+#ifdef USE_NETCDF
+            auto nczid = NcFile::open(zGridFileName, *token.comm());
+            if (!nczid) {
+                return true;
+            }
+            fields[dataIdx] = getData(nczid, nLevels, dataIdx, true);
+#else
+            NcmpiFile ncFirstFile2(*token.comm(), zGridFileName, NcmpiFile::read);
+            getData(ncFirstFile2, &fields[dataIdx], nLevels, dataIdx, true);
+#endif
+        } else {
+            LOCK_NETCDF(*token.comm());
+#ifdef USE_NETCDF
+            auto ncid = NcFile::open(firstFileName, *token.comm());
+            if (!ncid) {
+                return true;
+            }
+            fields[dataIdx] = getData(ncid, nLevels, dataIdx, true);
+#else
+            NcmpiFile ncFirstFile2(*token.comm(), firstFileName, NcmpiFile::read);
+            getData(ncFirstFile2, &fields[dataIdx], nLevels, dataIdx, true);
+#endif
+        }
+        if (fields[dataIdx].size() != numCells * nLevels) {
+            std::cerr << "ReadMPAS: size mismatch for " << pVar << ", expected " << numCells * nLevels << ", but got "
+                      << fields[dataIdx].size() << std::endl;
+            return true;
+        }
+    }
+
+    Vec<Scalar, 3>::ptr dataObj(new Vec<Scalar, 3>(idxCells.size() * nLevels));
+    Scalar *vel[3] = {dataObj->x().data(), dataObj->y().data(), dataObj->z().data()};
+
+    float altScale = m_velocityScaleRad->getValue() ? m_altitudeScale->getValue() : 1.f;
+
+    Index currentElem = 0;
+    for (Index iz = 0; iz < nLevels; ++iz) {
+        for (Index k = 0; k < idxCells.size(); ++k) {
+            Index i = idxCells[k];
+            Vector3 e_r(xCoords[i], yCoords[i], zCoords[i]);
+            e_r.normalize();
+            Vector3 e_z(-yCoords[i], xCoords[i], 0);
+            e_z.normalize();
+            Vector3 e_m = e_r.cross(e_z);
+
+            auto u = zonal[iz + idxCells[k] * nLevels];
+            auto v = merid[iz + idxCells[k] * nLevels];
+            auto w = altScale * rad[iz + idxCells[k] * nLevels];
+
+            auto vv = u * e_z + v * e_m + w * e_r;
+            for (int i = 0; i < 3; ++i)
+                vel[i][currentElem] = vv[i];
+            ++currentElem;
+        }
+    }
+    for (auto &f: fields)
+        f.clear();
+
+    dataObj->setGrid(gridList[block]);
+    if (m_voronoiCells)
+        dataObj->setMapping(DataBase::Element);
+    else
+        dataObj->setMapping(DataBase::Vertex);
+    dataObj->setBlock(block);
+    dataObj->addAttribute("_species", "cartesian_velocity");
+    dataObj->setTimestep(timestep);
+    token.applyMeta(dataObj);
+    token.addObject(m_velocityOut, dataObj);
+
     return true;
 }
 
 bool ReadMPAS::finishRead()
 {
+    numCells = 0;
+    numLevels = 0;
+
+    gridList.clear();
+    numCellsB.clear();
+    numCornB.clear();
+    numTrianglesB.clear();
+    idxCellsInBlock.clear();
+    partList.clear();
+
+    voc.clear();
+    coc.clear();
+    cov.clear();
+    eoc.clear();
+    xCoords.clear();
+    yCoords.clear();
+    zCoords.clear();
+
     return true;
 }
 

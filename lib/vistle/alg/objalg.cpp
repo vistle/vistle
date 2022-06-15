@@ -71,7 +71,7 @@ DataComponents splitContainerObject(Object::const_ptr container)
             grid = container;
         }
         if (grid) {
-            if (auto gi = grid->getInterface<GridInterface>()) {
+            if (auto gi = grid->getInterface<GeometryInterface>()) {
                 normals = gi->normals();
             }
         }

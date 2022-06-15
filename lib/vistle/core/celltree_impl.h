@@ -74,11 +74,11 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const CTVector *min, const C
     // sort cells into buckets for each possible split dimension
 
     // initialize min/max extents of buckets
-    Index bucket[NumDimensions][NumBuckets];
+    Index bucket[NumBuckets][NumDimensions];
     CTVector bmin[NumBuckets], bmax[NumBuckets];
     for (int i = 0; i < NumBuckets; ++i) {
         for (int d = 0; d < NumDimensions; ++d)
-            bucket[d][i] = 0;
+            bucket[i][d] = 0;
         bmin[i].fill(smax);
         bmax[i].fill(-smax);
     }
@@ -105,18 +105,18 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const CTVector *min, const C
     // sort cells into buckets
     const CTVector crange = cmax - cmin;
 
-    auto getBucket = [cmin, cmax, crange, NumBuckets](CTVector center, int d) -> int {
-        return crange[d] == 0 ? 0 : std::min(int((center[d] - cmin[d]) / crange[d] * NumBuckets), NumBuckets - 1);
+    auto getBucket = [cmin, cmax, crange, NumBuckets](Scalar center, int d) -> int {
+        return crange[d] == 0 ? 0 : std::min(int((center - cmin[d]) / crange[d] * NumBuckets), NumBuckets - 1);
     };
 
     for (Index i = node->start; i < node->start + node->size; ++i) {
         const Index cell = cells[i];
         const CTVector cent = center(cell);
         for (int d = 0; d < NumDimensions; ++d) {
-            const int b = getBucket(cent, d);
+            const int b = getBucket(cent[d], d);
             assert(b >= 0);
             assert(b < NumBuckets);
-            ++bucket[d][b];
+            ++bucket[b][d];
             bmin[b][d] = std::min(bmin[b][d], min[cell][d]);
             bmax[b][d] = std::max(bmax[b][d], max[cell][d]);
         }
@@ -140,7 +140,7 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const CTVector *min, const C
     for (int d = 0; d < NumDimensions; ++d) {
         Index nleft = 0;
         for (int split_b = 0; split_b < NumBuckets - 1; ++split_b) {
-            nleft += bucket[d][split_b];
+            nleft += bucket[split_b][d];
             assert(node->size >= nleft);
             const Index nright = node->size - nleft;
             Scalar weight =
@@ -156,7 +156,7 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const CTVector *min, const C
                 best_bucket = split_b;
             }
         }
-        assert(nleft + bucket[d][NumBuckets - 1] == node->size);
+        assert(nleft + bucket[NumBuckets - 1][d] == node->size);
     }
     if (best_dim == -1) {
         std::cerr << "abandoning split with " << node->size << " children" << std::endl;
@@ -176,9 +176,6 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const CTVector *min, const C
     auto centerD = [min, max, D](Index c) -> Scalar {
         return Scalar(0.5) * (min[c][D] + max[c][D]);
     };
-    auto getBucketD = [cmin, cmax, crange, D, NumBuckets](Scalar center) -> int {
-        return crange[D] == 0 ? 0 : std::min(int((center - cmin[D]) / crange[D] * NumBuckets), NumBuckets - 1);
-    };
 
 #ifdef CT_DEBUG
     const Scalar split = cmin[D] + crange[D] / NumBuckets * (best_bucket + 1);
@@ -186,7 +183,7 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const CTVector *min, const C
     std::cerr << "split: dim=" << best_dim << ", bucket=" << best_bucket;
     std::cerr << " (";
     for (int i = 0; i < NumBuckets; ++i) {
-        std::cerr << bucket[best_dim][i];
+        std::cerr << bucket[i][best_dim];
         if (i == best_bucket)
             std::cerr << "|";
         else if (i < NumBuckets - 1)
@@ -200,25 +197,22 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const CTVector *min, const C
 #endif
 
     Index nleft = 0;
-    Index *top = &cells[start + size];
-    for (Index *c = &cells[start]; c < top; ++c) {
+    Index *top = &cells[start + size - 1];
+    for (Index *c = &cells[start]; c <= top; ++c) {
         const Scalar cent = centerD(*c);
-        const int b = getBucketD(cent);
-        if (b > best_bucket) {
-            for (Scalar other;;) {
-                --top;
-                other = centerD(*top);
-                const int bo = getBucketD(other);
-                if (bo < best_bucket + 1) {
-                    if (c < top) {
-                        std::swap(*c, *top);
-                        ++nleft;
-                    }
-                    break;
-                }
-            }
-        } else {
+        const int b = getBucket(cent, D);
+        if (b <= best_bucket) {
             ++nleft;
+            continue;
+        }
+        for (; c < top; --top) {
+            Scalar other = centerD(*top);
+            const int bo = getBucket(other, D);
+            if (bo <= best_bucket) {
+                std::swap(*c, *top);
+                ++nleft;
+                break;
+            }
         }
     }
 
@@ -355,7 +349,7 @@ void Celltree<Scalar, Index, NumDimensions>::Data::serialize(Archive &ar)
 }
 
 template<typename Scalar, typename Index, int NumDimensions>
-Celltree<Scalar, Index, NumDimensions>::Celltree(const Index numCells, const Meta &meta)
+Celltree<Scalar, Index, NumDimensions>::Celltree(const size_t numCells, const Meta &meta)
 : Celltree::Base(Celltree::Data::create("", numCells, meta))
 {
     refreshImpl();
@@ -388,6 +382,9 @@ bool Celltree<Scalar, Index, NumDimensions>::isEmpty()
 template<typename Scalar, typename Index, int NumDimensions>
 bool Celltree<Scalar, Index, NumDimensions>::checkImpl() const
 {
+    CHECK_OVERFLOW(d()->m_nodes->size());
+    CHECK_OVERFLOW(d()->m_cells->size());
+
     V_CHECK(d()->m_nodes->size() >= 1);
     V_CHECK(d()->m_nodes->size() <= d()->m_cells->size());
     if ((*d()->m_nodes)[0].isLeaf()) {
@@ -419,7 +416,7 @@ Celltree<Scalar, Index, NumDimensions>::Data::Data(const Data &o, const std::str
 }
 
 template<typename Scalar, typename Index, int NumDimensions>
-Celltree<Scalar, Index, NumDimensions>::Data::Data(const std::string &name, const Index numCells, const Meta &meta)
+Celltree<Scalar, Index, NumDimensions>::Data::Data(const std::string &name, const size_t numCells, const Meta &meta)
 : Base::Data(Object::Type(Object::CELLTREE1 - 1 + NumDimensions), name, meta)
 {
     initData();
@@ -436,7 +433,7 @@ Celltree<Scalar, Index, NumDimensions>::Data::Data(const std::string &name, cons
 
 template<typename Scalar, typename Index, int NumDimensions>
 typename Celltree<Scalar, Index, NumDimensions>::Data *
-Celltree<Scalar, Index, NumDimensions>::Data::create(const std::string &objId, const Index numCells, const Meta &meta)
+Celltree<Scalar, Index, NumDimensions>::Data::create(const std::string &objId, const size_t numCells, const Meta &meta)
 {
     const std::string name = Shm::the().createObjectId(objId);
     Data *ct = shm<Data>::construct(name)(name, numCells, meta);

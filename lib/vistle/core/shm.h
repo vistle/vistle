@@ -148,6 +148,10 @@ public:
     std::string name() const;
     const std::string &instanceName() const;
     int owningRank() const;
+    void setNumRanksOnThisNode(int nranks);
+    int numRanksOnThisNode() const;
+    void setNodeRanks(const std::vector<int> &nodeRanks);
+    int nodeRank(int rank) const;
 
 #ifdef NO_SHMEM
     typedef vistle::default_init_allocator<void> void_allocator;
@@ -215,6 +219,8 @@ private:
     int m_id;
     const int m_rank;
     int m_owningRank = -1;
+    int m_ranksPerNode = -1;
+    std::vector<int> m_nodeRanks; // mapping of global rank to ranks on each node
     std::atomic<int> m_objectId, m_arrayId;
     static Shm *s_singleton;
 #ifdef NO_SHMEM
@@ -265,7 +271,8 @@ T *shm<T>::find_and_ref(const std::string &name)
     return t;
 #else
     Shm::the().lockObjects();
-    T *t = shm<T>::find(name);
+    // this detour to char is required because of differing object sizes caused by polymorphism of vistle::Objects
+    T *t = static_cast<T *>(static_cast<void *>(shm<char>::find(name)));
     if (t) {
         t->ref();
         assert(t->refcount() > 0);

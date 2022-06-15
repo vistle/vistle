@@ -6,12 +6,14 @@
 #include <condition_variable>
 #include <boost/asio/deadline_timer.hpp>
 #include <vistle/util/listenv4v6.h>
+#include <vistle/util/threadname.h>
 
 #define CERR std::cerr << "DataProxy: "
 
 static const bool store_and_forward = true;
 static const int min_num_sockets = 2;
 static const int max_num_sockets = 12;
+static const int connection_timeout = 10; // seconds
 
 namespace asio = boost::asio;
 using boost::system::error_code;
@@ -39,7 +41,6 @@ DataProxy::DataProxy(StateTracker &state, unsigned short basePort, bool changePo
 , m_port(basePort)
 , m_acceptorv4(m_io)
 , m_acceptorv6(m_io)
-, m_boost_archive_version(0)
 {
     if (m_port == 0) {
         if (!changePort)
@@ -103,6 +104,22 @@ void DataProxy::setBoostArchiveVersion(int ver)
         CERR << "local Boost.Archive version mismatch: " << ver << " != " << m_boost_archive_version << std::endl;
     }
     m_boost_archive_version = ver;
+}
+
+void DataProxy::setIndexSize(int s)
+{
+    if (m_indexSize && m_indexSize != s) {
+        CERR << "local Index size mismatch: " << s << " != " << m_indexSize << std::endl;
+    }
+    m_indexSize = s;
+}
+
+void DataProxy::setScalarSize(int s)
+{
+    if (m_scalarSize && m_indexSize != s) {
+        CERR << "local Scalar size mismatch: " << s << " != " << m_scalarSize << std::endl;
+    }
+    m_scalarSize = s;
 }
 
 unsigned short DataProxy::port() const
@@ -202,15 +219,29 @@ bool DataProxy::answerRemoteIdentify(std::shared_ptr<DataProxy::tcp_socket> sock
         return true;
     } else if (ident.identity() == Identify::REMOTEBULKDATA) {
         if (ident.boost_archive_version() != m_boost_archive_version) {
+#ifndef USE_YAS
             std::cerr << "Boost.Archive version on hub " << m_hubId << " is " << m_boost_archive_version << ", but hub "
                       << ident.senderId() << " connected with version " << ident.boost_archive_version() << std::endl;
-#ifndef USE_YAS
             if (m_boost_archive_version < ident.boost_archive_version()) {
                 std::cerr << "Receiving of remote objects from hub " << ident.senderId() << " will fail" << std::endl;
             } else {
                 std::cerr << "Receiving of objects sent to hub " << ident.senderId() << " will fail" << std::endl;
             }
 #endif
+        }
+        if (ident.indexSize() != m_indexSize) {
+            std::cerr << "Index size on hub " << m_hubId << " is " << m_indexSize << ", but hub " << ident.senderId()
+                      << " uses Index size " << ident.indexSize() << std::endl;
+            shutdownSocket(sock, "Index size mismatch");
+            removeSocket(sock);
+            return false;
+        }
+        if (ident.scalarSize() != m_scalarSize) {
+            std::cerr << "Scalar size on hub " << m_hubId << " is " << m_scalarSize << ", but hub " << ident.senderId()
+                      << " uses Scalar size " << ident.scalarSize() << std::endl;
+            shutdownSocket(sock, "Scalar size mismatch");
+            removeSocket(sock);
+            return false;
         }
         if (!ident.verifyMac()) {
             shutdownSocket(sock, "MAC verification failed");
@@ -269,7 +300,11 @@ void DataProxy::startThread()
     if (true || m_threads.size() < std::thread::hardware_concurrency()) {
         //if (m_threads.size() < 1) {
         auto &io = m_io;
-        m_threads.emplace_back([&io]() { io.run(); });
+        auto num = m_threads.size();
+        m_threads.emplace_back([&io, num]() {
+            setThreadName("vistle:data:" + std::to_string(num));
+            io.run();
+        });
         //CERR << "now " << m_threads.size() << " threads in pool" << std::endl;
     } else {
         CERR << "not starting a new thread, already have " << m_threads.size() << " threads" << std::endl;
@@ -354,9 +389,9 @@ bool DataProxy::serveSocket(const message::Identify &id, std::shared_ptr<tcp_soc
         }
 
         if (id.boost_archive_version() != m_boost_archive_version) {
+#ifndef USE_YAS
             std::cerr << "Boost.Archive version on hub " << m_hubId << " is " << m_boost_archive_version << ", but hub "
                       << id.senderId() << " connected with version " << id.boost_archive_version() << std::endl;
-#ifndef USE_YAS
             if (m_boost_archive_version < id.boost_archive_version()) {
                 std::cerr << "Receiving of remote objects from hub " << id.senderId() << " will fail" << std::endl;
             } else {
@@ -602,7 +637,7 @@ void DataProxy::printConnections() const
     }
 }
 
-bool DataProxy::connectRemoteData(const message::AddHub &remote, std::function<bool()> messageDispatcher)
+bool DataProxy::connectRemoteData(const message::AddHub &remote)
 {
     CERR << "connectRemoteData: " << remote << std::endl;
 
@@ -628,11 +663,11 @@ bool DataProxy::connectRemoteData(const message::AddHub &remote, std::function<b
 
     auto hubId = remote.id();
 
-    lock_guard lock(m_mutex);
+    auto connectingSockets = std::make_shared<std::set<std::shared_ptr<tcp_socket>>>();
 
     asio::deadline_timer timer(io());
-    timer.expires_from_now(boost::posix_time::seconds(50));
-    timer.async_wait([this, hubId](const boost::system::error_code &ec) {
+    timer.expires_from_now(boost::posix_time::seconds(connection_timeout));
+    timer.async_wait([this, hubId, connectingSockets](const boost::system::error_code &ec) {
         if (ec == asio::error::operation_aborted) {
             // timer was cancelled
             return;
@@ -640,24 +675,25 @@ bool DataProxy::connectRemoteData(const message::AddHub &remote, std::function<b
         if (ec) {
             CERR << "timer failed: " << ec.message() << std::endl;
             lock_guard lock(m_mutex);
-            m_connectingSockets.clear();
+            connectingSockets->clear();
             return;
         }
 
         CERR << "timeout for bulk data connection to " << hubId << std::endl;
         lock_guard lock(m_mutex);
-        for (auto &s: m_connectingSockets) {
+        for (auto &s: *connectingSockets) {
             boost::system::error_code ec;
             s->cancel(ec);
             if (ec) {
                 CERR << "cancelling operations on socket failed: " << ec.message() << std::endl;
-            }
-            s->close(ec);
-            if (ec) {
-                CERR << "closing socket failed: " << ec.message() << std::endl;
+            } else {
+                s->close(ec);
+                if (ec) {
+                    CERR << "closing socket failed: " << ec.message() << std::endl;
+                }
             }
         }
-        m_connectingSockets.clear();
+        connectingSockets->clear();
     });
 
     unsigned short dataPort = remote.dataPort() ? remote.dataPort() : remote.port();
@@ -669,34 +705,31 @@ bool DataProxy::connectRemoteData(const message::AddHub &remote, std::function<b
          << " parallel connections to " << remote.address() << ":" << dataPort << std::flush;
     boost::asio::ip::tcp::endpoint dest(remote.address(), dataPort);
 
-    bool interrupt = false;
     size_t count = 0;
-    while (!interrupt && m_remoteDataSocket[hubId].sockets.size() < numconn && count < numtries) {
+    lock_guard lock(m_mutex);
+    while (m_remoteDataSocket[hubId].sockets.size() < numconn && count < numtries) {
         ++count;
         auto sock = std::make_shared<asio::ip::tcp::socket>(io());
-        m_connectingSockets.insert(sock);
+        connectingSockets->insert(sock);
         lock.unlock();
 
-        if (!messageDispatcher()) {
-            CERR << "connecting to " << remote.id() << " was interrupted" << std::endl;
-            interrupt = true;
-        }
-
-        if (!interrupt) {
-            sock->async_connect(dest, [this, sock, remote, dataPort, hubId](const boost::system::error_code &ec) {
+        sock->async_connect(
+            dest, [this, sock, remote, dataPort, hubId, connectingSockets](const boost::system::error_code &ec) {
                 lock_guard lock(m_mutex);
-                m_connectingSockets.erase(sock);
+                connectingSockets->erase(sock);
 
                 if (ec == asio::error::operation_aborted) {
-                    CERR << "connecting to " << remote.id() << " was aborted" << std::endl;
+                    //CERR << "connecting to " << remote.id() << " was aborted" << std::endl;
                     return;
                 }
                 if (ec == asio::error::timed_out) {
+                    CERR << "connecting to " << remote.id() << "/" << remote.address() << ":" << dataPort
+                         << " timed out" << std::endl;
                     return;
                 }
                 if (ec) {
-                    CERR << "could not establish bulk data connection to " << remote.address() << ":" << dataPort
-                         << ": " << ec.message() << std::endl;
+                    CERR << "could not establish bulk data connection to " << remote.id() << "/" << remote.address()
+                         << ":" << dataPort << ": " << ec.message() << std::endl;
                     return;
                 }
 
@@ -706,35 +739,29 @@ bool DataProxy::connectRemoteData(const message::AddHub &remote, std::function<b
                 }
 
                 m_remoteDataSocket[hubId].sockets.emplace_back(sock);
+                lock.unlock();
                 std::cerr << "." << std::flush;
                 //CERR << "connected to " << remote.address << ":" << dataPort << ", now have " << m_remoteDataSocket[hubId].sockets.size() << " connections" << std::endl;
-                lock.unlock();
 
                 startThread();
                 startThread();
                 msgForward(sock, Local);
             });
-        }
 
         lock.lock();
     }
 
-    while (!interrupt && !m_connectingSockets.empty() && m_remoteDataSocket[hubId].sockets.size() < numconn) {
+    while (!connectingSockets->empty() && m_remoteDataSocket[hubId].sockets.size() < numconn) {
         lock.unlock();
-        if (!messageDispatcher()) {
-            CERR << "connecting to " << remote.id() << " was interrupted" << std::endl;
-            interrupt = true;
-        } else {
-            usleep(10000);
-        }
+        usleep(10000);
         lock.lock();
     }
 
     timer.cancel();
-    m_connectingSockets.clear();
+    connectingSockets->clear();
 
     std::cerr << std::endl;
-    if (interrupt || m_remoteDataSocket[hubId].sockets.empty()) {
+    if (m_remoteDataSocket[hubId].sockets.empty()) {
         CERR << "WARNING: could not establish data connection to " << remote.address() << ":" << dataPort << std::endl;
         m_remoteDataSocket.erase(hubId);
 

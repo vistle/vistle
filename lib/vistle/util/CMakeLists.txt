@@ -1,4 +1,5 @@
 vistle_find_package(BOTAN REQUIRED)
+vistle_find_package(HWLOC)
 
 set(util_SOURCES
     affinity.cpp
@@ -14,6 +15,7 @@ set(util_SOURCES
     sleep.cpp
     stopwatch.cpp
     sysdep.cpp
+    threadname.cpp
     tools.cpp
     url.cpp
     userinfo.cpp)
@@ -41,6 +43,7 @@ set(util_HEADERS
     ssize_t.h
     stopwatch.h
     sysdep.h
+    threadname.h
     tools.h
     url.h
     userinfo.h
@@ -66,6 +69,12 @@ vistle_target_link_libraries(
     PRIVATE
     ${BOTAN_LIBRARIES})
 
+if(HWLOC_FOUND)
+    target_compile_definitions(vistle_util PRIVATE HAVE_HWLOC)
+    target_include_directories(vistle_util SYSTEM PRIVATE ${HWLOC_INCLUDE_DIRS})
+    vistle_target_link_libraries(vistle_util PRIVATE ${HWLOC_LIBRARIES})
+endif()
+
 find_library(LIBEXECINFO execinfo)
 if(LIBEXECINFO)
     vistle_target_link_libraries(vistle_util PRIVATE execinfo)
@@ -81,5 +90,5 @@ if(NOT VISTLE_BUILD_SHARED)
 endif()
 vistle_add_library(vistle_util_mpi EXPORT STATIC ${util_mpi_SOURCES} ${util_mpi_HEADERS})
 target_include_directories(vistle_util SYSTEM PRIVATE ${MPI_INCLUDE_DIRS})
-vistle_target_link_libraries(vistle_util_mpi ${BOOST_MPI})
+vistle_target_link_libraries(vistle_util_mpi PRIVATE ${BOOST_MPI})
 set_target_properties(vistle_util_mpi PROPERTIES POSITION_INDEPENDENT_CODE TRUE)

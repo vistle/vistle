@@ -23,6 +23,7 @@
 #include <vistle/core/tcpmessage.h>
 #include <vistle/core/messages.h>
 #include <vistle/util/listenv4v6.h>
+#include <vistle/util/threadname.h>
 #include <vistle/module/module.h>
 
 
@@ -486,6 +487,11 @@ void RhrServer::deferredResize()
 //! handle matrix update message
 bool RhrServer::handleMatrices(std::shared_ptr<socket> sock, const matricesMsg &mat)
 {
+    if (mat.viewNum < 0) {
+        CERR << "invalid view no. " << mat.viewNum << std::endl;
+        return false;
+    }
+
     size_t viewNum = mat.viewNum >= 0 ? mat.viewNum : 0;
     if (viewNum >= m_viewData.size()) {
         m_viewData.resize(viewNum + 1);
@@ -778,9 +784,9 @@ tileMsg *newTileMsg(const RhrServer::ImageParameters &param, const RhrServer::Vi
 } // namespace
 
 struct EncodeTask {
-    float *depth;
-    unsigned char *rgba;
-    tileMsg *message;
+    float *depth = nullptr;
+    unsigned char *rgba = nullptr;
+    tileMsg *message = nullptr;
     const RhrServer::ImageParameters &param;
     int viewNum;
     int x, y, w, h, stride;
@@ -791,18 +797,7 @@ struct EncodeTask {
 
     EncodeTask(int viewNum, int x, int y, int w, int h, float *depth, const RhrServer::ImageParameters &param,
                const RhrServer::ViewParameters &vp)
-    : depth(depth)
-    , rgba(nullptr)
-    , message(nullptr)
-    , param(param)
-    , viewNum(viewNum)
-    , x(x)
-    , y(y)
-    , w(w)
-    , h(h)
-    , stride(vp.width)
-    , bpp(4)
-    , subsamp(false)
+    : depth(depth), param(param), viewNum(viewNum), x(x), y(y), w(w), h(h), stride(vp.width), bpp(4), subsamp(false)
     {
         assert(depth);
         message = newTileMsg(param, vp, viewNum, x, y, w, h);
@@ -855,9 +850,7 @@ struct EncodeTask {
 
     EncodeTask(int viewNum, int x, int y, int w, int h, unsigned char *rgba, const RhrServer::ImageParameters &param,
                const RhrServer::ViewParameters &vp)
-    : depth(nullptr)
-    , rgba(rgba)
-    , message(nullptr)
+    : rgba(rgba)
     , param(param)
     , viewNum(viewNum)
     , x(x)
@@ -882,6 +875,8 @@ struct EncodeTask {
             message->compression |= rfbTilePredictRGBA;
         }
     }
+
+    ~EncodeTask() { delete message; }
 
     RhrServer::EncodeResult work()
     {
@@ -970,6 +965,8 @@ void RhrServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const R
                     ++m_queuedTiles;
                     std::lock_guard<std::mutex> locker(m_taskMutex);
                     task->future = std::async(std::launch::async, [this, task]() {
+                        setThreadName("RHR:Server:" + std::string(task->rgba ? "RGBA" : "Depth") + ":" +
+                                      std::to_string(task->viewNum));
                         task->result = task->work();
                         std::lock_guard<std::mutex> locker(m_taskMutex);
                         m_finishedTasks.emplace_back(task);
@@ -985,8 +982,6 @@ void RhrServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const R
 
 bool RhrServer::finishTiles(const RhrServer::ViewParameters &param, bool finish, bool sendTiles)
 {
-    ++m_framecount;
-
     bool tileReady = false;
     do {
         buffer payload;
@@ -995,14 +990,15 @@ bool RhrServer::finishTiles(const RhrServer::ViewParameters &param, bool finish,
         if (m_queuedTiles == 0 && finish) {
             auto *tm = newTileMsg(m_imageParam, param, -1, 0, 0, 0, 0);
             msg = std::make_unique<RemoteRenderMessage>(*tm);
+            delete tm;
         } else {
             std::lock_guard<std::mutex> locker(m_taskMutex);
             if (!m_finishedTasks.empty()) {
-                auto &task = m_finishedTasks.back();
+                auto &task = m_finishedTasks.front();
                 auto &result = task->result;
                 msg = std::move(result.rhrMessage);
                 payload = std::move(result.payload);
-                m_finishedTasks.pop_back();
+                m_finishedTasks.pop_front();
                 --m_queuedTiles;
                 tileReady = true;
             }
@@ -1023,12 +1019,16 @@ bool RhrServer::finishTiles(const RhrServer::ViewParameters &param, bool finish,
             if (sendTiles)
                 send(*msg, &payload);
         }
+        if (m_queuedTiles > 0 && finish && !tileReady)
+            usleep(100);
     } while (m_queuedTiles > 0 && (tileReady || finish));
 
     if (finish) {
         assert(m_queuedTiles == 0);
         m_resizeBlocked = false;
         deferredResize();
+
+        ++m_framecount;
     }
 
     return m_queuedTiles == 0;
@@ -1080,10 +1080,10 @@ bool RhrServer::handleRemoteRenderMessage(std::shared_ptr<socket> sock, const vi
     }
     case rfbTile:
     default:
-        CERR << "invalid RHR message subtype received" << std::endl;
-        break;
+        CERR << "invalid RHR message subtype " << rhr.type << " received" << std::endl;
+        return false;
     }
-    return false;
+    return true;
 }
 
 } // namespace vistle

@@ -9,7 +9,7 @@ public:
     ~GenIsoDat();
 
 private:
-    virtual bool compute();
+    bool prepare() override;
 
     vistle::IntParameter *m_cellTypeParam;
     vistle::IntParameter *m_caseNumParam;

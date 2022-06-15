@@ -181,6 +181,10 @@ target_link_libraries(
     ${EMBREE_LIBRARY}
     MPI::MPI_C)
 
+if(USE_LIBOMP AND LIBOMP)
+    target_link_libraries(DisCOVERay ${LIBOMP})
+endif()
+
 if(USE_TBB)
     include_directories(SYSTEM ${TBB_INCLUDE_DIRS})
     target_link_libraries(DisCOVERay ${TBB_LIBRARIES})

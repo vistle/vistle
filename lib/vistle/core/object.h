@@ -30,6 +30,14 @@
 
 #include "archives_config.h"
 
+#define CHECK_OVERFLOW(expr) \
+    do { \
+        if ((expr) > size_t(InvalidIndex)) { \
+            throw vistle::except::index_overflow(#expr " = " + std::to_string(expr) + \
+                                                 ", recompile with 64 bit indices"); \
+        } \
+    } while (false)
+
 
 namespace vistle {
 

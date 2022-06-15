@@ -35,7 +35,7 @@ public:
 #if 0
     QModelIndex index(int row, int column, const QModelIndex &parent = QModelIndex()) const override;
 #endif
-    virtual QModelIndex index(const QString &path, int column = 0) const = 0;
+    virtual QModelIndex fsIndex(const QString &path, int column = 0) const = 0;
 #if 0
     QModelIndex parent(const QModelIndex &child) const override;
     using QObject::parent;
