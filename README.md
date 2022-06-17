@@ -23,7 +23,7 @@ Getting Vistle is as easy as
       
 If you need to update an existing working copy, then change to its directory and issue the following commands:
       
-	  git submodule sync
+	  git submodule sync --recursive
 	  git submodule update --init --recursive
 
 
