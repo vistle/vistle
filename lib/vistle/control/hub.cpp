@@ -1871,6 +1871,11 @@ bool Hub::handlePriv(const message::Spawn &spawnRecv)
         bool restart = Id::isModule(spawn.migrateId());
         bool isMirror = Id::isModule(spawn.mirroringId());
         bool shouldMirror = !restart && !isMirror && moduleName == "COVER";
+        if (shouldMirror) {
+            const auto &hub = m_stateTracker.getHubData(spawn.hubId());
+            if (!hub.hasUi)
+                shouldMirror = false;
+        }
         auto notify = spawn;
         notify.setReferrer(spawn.uuid());
         notify.setSenderId(m_hubId);
