@@ -141,7 +141,7 @@ case $(hostname) in
    viscluster80)
       BIND=1
       if [ -z "$MPIHOSTS" ]; then
-         MPIHOSTS=$(echo viscluster80 viscluster{51..60}|sed -e 's/ /,/g')
+         MPIHOSTS=$(echo viscluster80 viscluster{70..79}|sed -e 's/ /,/g')
       fi
       ;;
    viscluster*)
