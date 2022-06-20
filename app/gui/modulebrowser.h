@@ -56,6 +56,7 @@ public slots:
 
 signals:
     void requestRemoveHub(int hub);
+    void requestAttachDebugger(int hub);
     void startModule(int hub, QString moduleName, Qt::Key direction);
 
 private:

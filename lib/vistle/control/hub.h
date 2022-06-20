@@ -153,6 +153,7 @@ private:
     int m_slaveCount = 0;
     int m_hubId = vistle::message::Id::Invalid;
     int m_localRanks = -1;
+    unsigned long m_localManagerRank0Pid = 0;
     std::string m_name;
     bool m_ready = false;
 
@@ -182,7 +183,6 @@ private:
     bool handlePriv(const message::Cover &cover, const buffer *payload);
     bool handlePriv(const message::ModuleExit &exit);
     bool handlePriv(const message::Spawn &spawn);
-    bool handlePriv(const message::Kill &kill);
 
     template<typename ConnMsg>
     bool handleConnectOrDisconnect(const ConnMsg &mm);

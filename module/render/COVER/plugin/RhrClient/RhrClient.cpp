@@ -287,7 +287,8 @@ bool RhrClient::swapFrames()
     bool swapped = false;
     for (auto &r: m_remotes) {
         auto ct = r.second->currentTimestep();
-        if (ct == m_visibleTimestep || ct == -1) {
+        auto nt = r.second->numTimesteps();
+        if (ct == m_visibleTimestep || (nt <= m_visibleTimestep && ct == -1)) {
             if (r.second->checkSwapFrame()) {
                 r.second->swapFrame();
                 swapped = true;
@@ -313,8 +314,19 @@ bool RhrClient::checkAdvanceFrame()
     int commonTimestep = -1;
     for (auto &r: m_remotes) {
         int t = r.second->currentTimestep();
-        if (t == -1) {
+        int nt = r.second->numTimesteps();
+        if (nt == 0) {
+            assert(t == -1);
             continue;
+        }
+        if (t == -1) {
+            if (m_requestedTimestep < nt) {
+                // showing only static geometry is not valid for timesteps where there is data available
+                readyForAdvance = false;
+                break;
+            } else {
+                continue;
+            }
         }
         if (!r.second->checkSwapFrame()) {
             //CERR << "checkAdvanceFrame: common t=" << commonTimestep << ", not ready" << std::endl;
@@ -740,13 +752,13 @@ RhrClient::~RhrClient()
         cover->getObjectsRoot()->removeChild(r.second->scene());
     }
 
-    coVRAnimationManager::instance()->removeTimestepProvider(this);
-    if (m_requestedTimestep != -1)
-        commitTimestep(m_requestedTimestep);
-
     while (!m_remotes.empty()) {
         removeRemoteConnection(m_remotes.begin());
     }
+
+    if (m_requestedTimestep != -1)
+        commitTimestep(m_requestedTimestep);
+    coVRAnimationManager::instance()->removeTimestepProvider(this);
 }
 
 void RhrClient::setServerParameters(int module, const std::string &host, unsigned short port) const
@@ -996,15 +1008,17 @@ void RhrClient::requestTimestep(int t)
     syncRemotesAnim();
 
     //CERR << "m_requestedTimestep: " << m_requestedTimestep << " -> " << t << std::endl;
-    if (t < 0) {
-        commitTimestep(t);
-        return;
-    }
-
     if (m_remotes.empty()) {
         commitTimestep(t);
         return;
     }
+
+#if 0
+    if (t < 0) {
+        commitTimestep(t);
+        return;
+    }
+#endif
 
     m_requestedTimestep = t;
     if (checkAdvanceFrame()) {
@@ -1015,6 +1029,7 @@ void RhrClient::requestTimestep(int t)
 
     for (auto &r: m_remotes) {
         r.second->requestTimestep(t);
+        r.second->checkDiscardFrame();
     }
 }
 
@@ -1262,7 +1277,8 @@ void RhrClient::updateStatus(const string &serverKey)
     auto text = it->second->status();
     auto stat = name + ": " + text;
     stat = coVRMSController::instance()->syncString(stat);
-    m_remoteStatus[serverKey]->setText(stat);
+    if (m_remoteStatus[serverKey]->text() != stat)
+        m_remoteStatus[serverKey]->setText(stat);
 }
 
 COVERPLUGIN(RhrClient)

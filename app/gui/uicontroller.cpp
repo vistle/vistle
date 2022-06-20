@@ -139,6 +139,12 @@ UiController::UiController(int argc, char *argv[], QObject *parent): QObject(par
         vistle::message::Quit quit(id);
         m_vistleConnection->sendMessage(quit);
     });
+    connect(m_mainWindow->m_moduleBrowser, &ModuleBrowser::requestAttachDebugger, [this](int id) {
+        assert(vistle::message::Id::isHub(id));
+        vistle::message::Debug dbg(id);
+        dbg.setDestId(id);
+        m_vistleConnection->sendMessage(dbg);
+    });
 
     m_mainWindow->show();
 }

@@ -204,6 +204,8 @@ bool DomainSurface::compute(std::shared_ptr<BlockTask> task) const
         const auto &port = output.port;
         const auto &dm = haveElementData ? output.em : output.vm;
         const auto &geo = output.geo;
+        if (!geo)
+            continue;
 
         if (!haveElementData && dm.empty()) {
             DataBase::ptr dout = data->clone();

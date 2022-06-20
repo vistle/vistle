@@ -899,6 +899,9 @@ bool StateTracker::handlePriv(const message::Started &started)
     }
     assert(it != runningMap.end());
     auto &mod = it->second;
+    if (started.rank() == 0) {
+        mod.rank0Pid = started.pid();
+    }
     mod.initialized = true;
 
     mutex_locker guard(m_stateMutex);

@@ -329,6 +329,7 @@ void Module::initDone()
 #endif
 
     message::Started start(name());
+    start.setPid(getpid());
     start.setDestId(Id::ForBroadcast);
     sendMessage(start);
 

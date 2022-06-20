@@ -115,13 +115,15 @@ void ModuleBrowser::prepareMenu(const QPoint &pos)
     for (auto hub: hubItems) {
         int id = hub.first;
         if (hub.second == item) {
-            if (id == vistle::message::Id::MasterHub)
-                break;
-            auto *rmAct = new QAction(tr("&Remove"), this);
-            connect(rmAct, &QAction::triggered, [this, id]() { emit requestRemoveHub(id); });
-
             QMenu menu(this);
-            menu.addAction(rmAct);
+            if (id != vistle::message::Id::MasterHub) {
+                auto *rmAct = new QAction(tr("Remove"), this);
+                connect(rmAct, &QAction::triggered, [this, id]() { emit requestRemoveHub(id); });
+                menu.addAction(rmAct);
+            }
+            auto *dbgAct = new QAction(tr("Attach Debugger to Manager"), this);
+            connect(dbgAct, &QAction::triggered, [this, id]() { emit requestAttachDebugger(id); });
+            menu.addAction(dbgAct);
 
             menu.exec(widget->mapToGlobal(pos));
             break;

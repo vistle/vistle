@@ -69,6 +69,7 @@ public:
     void init();
     bool startServer(unsigned short port);
     bool makeConnection(const std::string &host, unsigned short port, int secondsToTry = -1);
+    bool initializeConnection();
     void preFrame();
 
     struct ViewParameters;

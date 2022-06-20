@@ -182,6 +182,7 @@ protected:
         int mirrorOfId = message::Id::Invalid;
         std::set<int> mirrors;
         int hub;
+        unsigned long rank0Pid = 0;
         bool initialized = false;
         bool killed = false;
         bool busy = false;
