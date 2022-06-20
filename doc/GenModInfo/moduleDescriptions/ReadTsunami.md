@@ -94,14 +94,26 @@ This module distributes the data into domain blocks per spawned mpi process. Wit
 
 ### Simple cases
 
+In the simplest and most cases a visualization of the simulation result can be done like shown in figure 1. 
+
 ```{figure} ../../../module/general/ReadTsunami/simple.png
 ---
 align: center
 ---
 Fig 1: Surface pipeline.
 ```
+In this example the second port will be used to visualize the topography. For the third port the additional scalar data **max_height** is selected which will directly mapped onto the sea surface. The following picture shows the result of executing this visualization pipeline.
 
 ![](../../../module/general/ReadTsunami/simpleResult.png)
+
+## Related Modules
+
+### Often Used With
+
+- [Color](Color_link.md)
+- [MapDrape](MapDrape_link.md)
+- [IndexManifolds](IndexManifolds_link.md)
+- [Variant](Variant_link.md)
 
 ## Build Requirements
 
