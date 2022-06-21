@@ -19,19 +19,19 @@ namespace sensei {
 namespace detail {
 struct Internals;
 }
-class V_SENSEIEXPORT SenseiAdapter //: public SenseiInterface
+class V_SENSEIEXPORT Adapter //: public SenseiInterface
 {
 public:
-    SenseiAdapter(bool paused, MPI_Comm Comm, MetaData &&meta, ObjectRetriever cbs, const std::string &vistleRoot,
-                  const std::string &options);
+    Adapter(bool paused, MPI_Comm Comm, MetaData &&meta, ObjectRetriever cbs, const std::string &vistleRoot,
+            const std::string &options);
     bool Execute(size_t timestep);
     bool Finalize();
 
-    SenseiAdapter &operator=(SenseiAdapter &&other) = delete;
-    SenseiAdapter &operator=(SenseiAdapter &other) = delete;
-    SenseiAdapter(SenseiAdapter &&other) = delete;
-    SenseiAdapter(SenseiAdapter &other) = delete;
-    ~SenseiAdapter();
+    Adapter &operator=(Adapter &&other) = delete;
+    Adapter &operator=(Adapter &other) = delete;
+    Adapter(Adapter &&other) = delete;
+    Adapter(Adapter &other) = delete;
+    ~Adapter();
 
     template<typename T, typename... Args>
     typename T::ptr createVistleObject(Args &&...args)
