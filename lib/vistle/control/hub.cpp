@@ -1590,6 +1590,38 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
             break;
         }
 
+        case message::ADDHUB: {
+            auto &add = static_cast<const AddHub &>(msg);
+            if (m_isMaster && add.hasUserInterface()) {
+                std::map<int, std::string> toMirror;
+                for (const auto &it: m_stateTracker.runningMap) {
+                    const auto &m = it.second;
+                    if (m.mirrorOfId == m.id) {
+                        toMirror[m.id] = m.name;
+                    }
+                }
+
+                for (auto &m: toMirror) {
+                    spawnMirror(add.id(), m.second, m.first);
+                }
+            }
+            break;
+        }
+
+        case message::ADDPARAMETER: {
+            auto addParam = msg.as<message::AddParameter>();
+            int id = addParam.senderId();
+            if (m_stateTracker.getMirrorId(id) != id)
+                break;
+            auto pn = addParam.getName();
+            auto mirrors = m_stateTracker.getMirrors(id);
+            for (auto &m: mirrors) {
+                auto con = message::Connect(id, pn, m, pn);
+                handleMessage(con);
+            }
+            break;
+        }
+
         case message::SETPARAMETER: {
             auto setParam = msg.as<message::SetParameter>();
 
@@ -1857,6 +1889,36 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
     return true;
 }
 
+bool Hub::spawnMirror(int hubId, const std::string &name, int mirroredId)
+{
+    assert(m_isMaster);
+
+    message::Spawn mirror(hubId, name);
+    //mirror.setReferrer(spawn.uuid());
+    //mirror.setSenderId(m_hubId);
+    mirror.setSpawnId(Id::ModuleBase + m_moduleCount);
+    ++m_moduleCount;
+    mirror.setMirroringId(mirroredId);
+    mirror.setDestId(Id::Broadcast);
+    m_stateTracker.handle(mirror, nullptr);
+    CERR << "sendAll mirror: " << mirror << std::endl;
+    sendAll(mirror);
+    mirror.setDestId(hubId);
+    CERR << "doSpawn: sendManager mirror: " << mirror << std::endl;
+    sendManager(mirror, hubId);
+
+    cacheModuleValues(mirroredId, mirror.spawnId());
+
+    auto paramNames = m_stateTracker.getParameters(mirroredId);
+    for (const auto &pn: paramNames) {
+        auto con = message::Connect(mirroredId, pn, mirror.spawnId(), pn);
+        con.setDestId(mirror.spawnId());
+        m_sendAfterSpawn[mirror.spawnId()].emplace_back(con);
+    }
+
+    return true;
+}
+
 bool Hub::handlePriv(const message::Spawn &spawnRecv)
 {
     bool error = false;
@@ -1936,19 +1998,7 @@ bool Hub::handlePriv(const message::Spawn &spawnRecv)
                 if (!hub.hasUi)
                     continue;
 
-                message::Spawn mirror(hubid, spawn.getName());
-                //mirror.setReferrer(spawn.uuid());
-                //mirror.setSenderId(m_hubId);
-                mirror.setSpawnId(Id::ModuleBase + m_moduleCount);
-                ++m_moduleCount;
-                mirror.setMirroringId(mirroredId);
-                mirror.setDestId(Id::Broadcast);
-                m_stateTracker.handle(mirror, nullptr);
-                CERR << "sendManager mirror: " << mirror << std::endl;
-                sendAll(mirror);
-                mirror.setDestId(hubid);
-                CERR << "doSpawn: sendManager mirror: " << mirror << std::endl;
-                sendManager(mirror, spawn.hubId());
+                spawnMirror(hubid, spawn.getName(), mirroredId);
             }
         }
     } else {
@@ -2867,6 +2917,17 @@ bool Hub::handlePriv(const message::ModuleExit &exit)
             handleMessage(m);
         }
         m_sendAfterExit.erase(it2);
+    }
+
+    if (m_isMaster) {
+        auto mirrors = m_stateTracker.getMirrors(id);
+        for (auto m: mirrors) {
+            if (m == id)
+                continue;
+            auto kill = message::Kill(m);
+            kill.setDestId(m);
+            handleMessage(kill);
+        }
     }
 
     return true;
