@@ -350,6 +350,8 @@ StateTracker::VistleState StateTracker::getState() const
     using namespace vistle::message;
     VistleState state;
 
+    appendMessage(state, Trace(m_traceId, m_traceType, m_traceId != Id::Invalid || m_traceType != message::INVALID));
+
     for (const auto &slave: m_hubs) {
         AddHub msg(slave.id, slave.name);
         msg.setLoginName(slave.logName);
@@ -838,7 +840,9 @@ bool StateTracker::handlePriv(const message::Trace &trace)
         m_traceId = trace.module();
         CERR << "tracing " << m_traceType << " from/to " << m_traceId << std::endl;
     } else {
-        CERR << "disabling tracing of " << m_traceType << " from/to " << m_traceId << std::endl;
+        if (m_traceId != Id::Invalid || m_traceType != message::INVALID) {
+            CERR << "disabling tracing of " << m_traceType << " from/to " << m_traceId << std::endl;
+        }
         m_traceId = Id::Invalid;
         m_traceType = message::INVALID;
     }
