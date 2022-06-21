@@ -24,14 +24,6 @@ class vtkImageData;
 #include <vistle/core/object.h>
 #include <vistle/core/database.h>
 
-#ifdef SENSEI //for sensei we need an extra argument to crete Vistle objects safely (with synced shm ids)
-#define SENSEI_ARGUMENT vistle::insitu::sensei::SenseiAdapter &senseiAdapter,
-#define SENSEI_PARAMETER senseiAdapter,
-#else
-#define SENSEI_ARGUMENT
-#define SENSEI_PARAMETER
-#endif // SENSEI
-
 
 namespace vistle {
 #ifdef SENSEI
@@ -43,13 +35,13 @@ class SenseiAdapter;
 #endif
 namespace vtk {
 
-Object::ptr V_VTK_EXPORT toGrid(SENSEI_ARGUMENT vtkDataObject *ds, bool checkConvex = false);
-DataBase::ptr V_VTK_EXPORT getField(SENSEI_ARGUMENT vtkDataSetAttributes *ds, const std::string &name,
+Object::ptr V_VTK_EXPORT toGrid(vtkDataObject *ds, bool checkConvex = false);
+DataBase::ptr V_VTK_EXPORT getField(vtkDataSetAttributes *ds, const std::string &name,
                                     Object::const_ptr grid = Object::const_ptr());
-DataBase::ptr V_VTK_EXPORT getField(SENSEI_ARGUMENT vtkFieldData *ds, const std::string &name,
+DataBase::ptr V_VTK_EXPORT getField(vtkFieldData *ds, const std::string &name,
                                     Object::const_ptr grid = Object::const_ptr());
 #ifdef SENSEI
-DataBase::ptr V_VTK_EXPORT vtkData2Vistle(SENSEI_ARGUMENT vtkDataArray *varr, Object::const_ptr grid);
+DataBase::ptr V_VTK_EXPORT vtkData2Vistle(vtkDataArray *varr, Object::const_ptr grid);
 #endif
 } // namespace vtk
 } // namespace vistle
