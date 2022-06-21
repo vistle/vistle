@@ -50,26 +50,18 @@
 #define IDCONST const
 #endif
 
-#ifdef SENSEI
-#include <vistle/insitu/sensei/sensei.h>
-#define CREATE_VISTLE_OBJECT(type, ...) senseiAdapter.createVistleObject<type>(__VA_ARGS__)
-#else
-#define CREATE_VISTLE_OBJECT(type, ...) std::make_shared<type>(__VA_ARGS__)
-#endif // SENSEI
-#define COMMA ,
-
 namespace vistle {
 namespace vtk {
 
 namespace {
 
 
-Object::ptr vtkUGrid2Vistle(SENSEI_ARGUMENT vtkUnstructuredGrid *vugrid, bool checkConvex)
+Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, bool checkConvex)
 {
     Index ncoord = vugrid->GetNumberOfPoints();
     Index nelem = vugrid->GetNumberOfCells();
 
-    UnstructuredGrid::ptr cugrid = CREATE_VISTLE_OBJECT(UnstructuredGrid, nelem, 0, ncoord);
+    UnstructuredGrid::ptr cugrid = make_ptr<UnstructuredGrid>(nelem, (Index)0, ncoord);
 
     Scalar *xc = cugrid->x().data();
     Scalar *yc = cugrid->y().data();
@@ -178,7 +170,7 @@ Object::ptr vtkUGrid2Vistle(SENSEI_ARGUMENT vtkUnstructuredGrid *vugrid, bool ch
     return cugrid;
 }
 
-Object::ptr vtkPoly2Vistle(SENSEI_ARGUMENT vtkPolyData *vpolydata)
+Object::ptr vtkPoly2Vistle(vtkPolyData *vpolydata)
 {
     Index ncoord = vpolydata->GetNumberOfPoints();
     Index npolys = vpolydata->GetNumberOfPolys();
@@ -200,7 +192,7 @@ Object::ptr vtkPoly2Vistle(SENSEI_ARGUMENT vtkPolyData *vpolydata)
 
         vtkCellArray *polys = vpolydata->GetPolys();
         Index ncorner = polys->GetNumberOfConnectivityEntries() - npolys + 3 * nstriptris;
-        Polygons::ptr cpoly = CREATE_VISTLE_OBJECT(Polygons, nstriptris + npolys, ncorner, ncoord);
+        Polygons::ptr cpoly = make_ptr<Polygons>(nstriptris + npolys, ncorner, ncoord);
         coords = cpoly;
 
         Index *cornerlist = cpoly->cl().data();
@@ -242,7 +234,7 @@ Object::ptr vtkPoly2Vistle(SENSEI_ARGUMENT vtkPolyData *vpolydata)
     } else if (nlines > 0) {
         vtkCellArray *lines = vpolydata->GetLines();
         Index ncorner = lines->GetNumberOfConnectivityEntries() - nlines;
-        Lines::ptr clines = CREATE_VISTLE_OBJECT(Lines, ncoord, ncorner, nlines);
+        Lines::ptr clines = make_ptr<Lines>(ncoord, ncorner, nlines);
         coords = clines;
 
         Index *cornerlist = clines->cl().data();
@@ -265,7 +257,7 @@ Object::ptr vtkPoly2Vistle(SENSEI_ARGUMENT vtkPolyData *vpolydata)
     } else if (nverts > 0) {
         if (nverts != ncoord)
             return coords;
-        Points::ptr cpoints = CREATE_VISTLE_OBJECT(Points, ncoord);
+        Points::ptr cpoints = make_ptr<Points>(ncoord);
         coords = cpoints;
     }
 
@@ -284,12 +276,12 @@ Object::ptr vtkPoly2Vistle(SENSEI_ARGUMENT vtkPolyData *vpolydata)
     return coords;
 }
 
-Object::ptr vtkSGrid2Vistle(SENSEI_ARGUMENT vtkStructuredGrid *vsgrid)
+Object::ptr vtkSGrid2Vistle(vtkStructuredGrid *vsgrid)
 {
     int dim[3];
     vsgrid->GetDimensions(dim);
 
-    StructuredGrid::ptr csgrid = CREATE_VISTLE_OBJECT(StructuredGrid, dim[0], dim[1], dim[2]);
+    StructuredGrid::ptr csgrid = make_ptr<StructuredGrid>((Index)dim[0], (Index)dim[1], (Index)dim[2]);
     Scalar *xc = csgrid->x().data();
     Scalar *yc = csgrid->y().data();
     Scalar *zc = csgrid->z().data();
@@ -310,7 +302,7 @@ Object::ptr vtkSGrid2Vistle(SENSEI_ARGUMENT vtkStructuredGrid *vsgrid)
     return csgrid;
 }
 
-Object::ptr vtkImage2Vistle(SENSEI_ARGUMENT vtkImageData *vimage)
+Object::ptr vtkImage2Vistle(vtkImageData *vimage)
 {
     int n[3];
     vimage->GetDimensions(n);
@@ -320,7 +312,7 @@ Object::ptr vtkImage2Vistle(SENSEI_ARGUMENT vtkImageData *vimage)
     vimage->GetOrigin(origin);
     double spacing[3] = {1., 1., 1.};
     vimage->GetSpacing(spacing);
-    UniformGrid::ptr ug = CREATE_VISTLE_OBJECT(UniformGrid, n[0], n[1], n[2]);
+    UniformGrid::ptr ug = make_ptr<UniformGrid>((Index)n[0], (Index)n[1], (Index)n[2]);
     for (int c = 0; c < 3; ++c) {
         ug->min()[c] = origin[c] + e[2 * c] * spacing[c];
         ug->max()[c] = origin[c] + (e[2 * c + 1]) * spacing[c];
@@ -328,19 +320,19 @@ Object::ptr vtkImage2Vistle(SENSEI_ARGUMENT vtkImageData *vimage)
     return ug;
 }
 
-Object::ptr vtkUniGrid2Vistle(SENSEI_ARGUMENT vtkUniformGrid *vugrid)
+Object::ptr vtkUniGrid2Vistle(vtkUniformGrid *vugrid)
 {
-    return vtkImage2Vistle(SENSEI_PARAMETER dynamic_cast<vtkImageData *>(vugrid));
+    return vtkImage2Vistle(dynamic_cast<vtkImageData *>(vugrid));
     //vtkUniformGrid is vtkImageData with additional ghost points which can be distributed over the whole grid.
     //vistle::UniformGrid can only have ghost cells at the outside borders
 }
 
-Object::ptr vtkRGrid2Vistle(SENSEI_ARGUMENT vtkRectilinearGrid *vrgrid)
+Object::ptr vtkRGrid2Vistle(vtkRectilinearGrid *vrgrid)
 {
     int n[3];
     vrgrid->GetDimensions(n);
 
-    RectilinearGrid::ptr rgrid = CREATE_VISTLE_OBJECT(RectilinearGrid, n[0], n[1], n[2]);
+    RectilinearGrid::ptr rgrid = make_ptr<RectilinearGrid>((Index)n[0], (Index)n[1], (Index)n[2]);
     Scalar *c[3];
     for (int i = 0; i < 3; ++i) {
         c[i] = rgrid->coords(i).data();
@@ -362,7 +354,7 @@ Object::ptr vtkRGrid2Vistle(SENSEI_ARGUMENT vtkRectilinearGrid *vrgrid)
 }
 
 template<typename ValueType, class vtkType>
-DataBase::ptr vtkArray2Vistle(SENSEI_ARGUMENT vtkType *vd, Object::const_ptr grid)
+DataBase::ptr vtkArray2Vistle(vtkType *vd, Object::const_ptr grid)
 {
     bool perCell = false;
     const Index n = vd->GetNumberOfTuples();
@@ -381,7 +373,7 @@ DataBase::ptr vtkArray2Vistle(SENSEI_ARGUMENT vtkType *vd, Object::const_ptr gri
     }
     switch (vd->GetNumberOfComponents()) {
     case 1: {
-        Vec<Scalar, 1>::ptr cf = CREATE_VISTLE_OBJECT(Vec<Scalar COMMA 1>, n);
+        Vec<Scalar, 1>::ptr cf = make_ptr<Vec<Scalar, 1>>(n);
         Scalar *x = cf->x().data();
         Index l = 0;
         for (Index k = 0; k < dataDim[2]; ++k) {
@@ -398,7 +390,7 @@ DataBase::ptr vtkArray2Vistle(SENSEI_ARGUMENT vtkType *vd, Object::const_ptr gri
         return cf;
     } break;
     case 2: {
-        Vec<Scalar, 2>::ptr cv = CREATE_VISTLE_OBJECT(Vec<Scalar COMMA 2>, n);
+        Vec<Scalar, 2>::ptr cv = make_ptr<Vec<Scalar, 2>>(n);
         Scalar *x = cv->x().data();
         Scalar *y = cv->y().data();
         Index l = 0;
@@ -424,7 +416,7 @@ DataBase::ptr vtkArray2Vistle(SENSEI_ARGUMENT vtkType *vd, Object::const_ptr gri
         return cv;
     }
     case 3: {
-        Vec<Scalar, 3>::ptr cv = CREATE_VISTLE_OBJECT(Vec<Scalar COMMA 3>, n);
+        Vec<Scalar, 3>::ptr cv = make_ptr<Vec<Scalar, 3>>(n);
         Scalar *x = cv->x().data();
         Scalar *y = cv->y().data();
         Scalar *z = cv->z().data();
@@ -459,7 +451,7 @@ DataBase::ptr vtkArray2Vistle(SENSEI_ARGUMENT vtkType *vd, Object::const_ptr gri
 #ifdef SENSEI
 } // anonymous namespace
 #endif
-DataBase::ptr vtkData2Vistle(SENSEI_ARGUMENT vtkDataArray *varr, Object::const_ptr grid)
+DataBase::ptr vtkData2Vistle(vtkDataArray *varr, Object::const_ptr grid)
 {
     DataBase::ptr data;
 
@@ -486,17 +478,17 @@ DataBase::ptr vtkData2Vistle(SENSEI_ARGUMENT vtkDataArray *varr, Object::const_p
     }
 
     if (vtkFloatArray *vd = dynamic_cast<vtkFloatArray *>(varr)) {
-        return vtkArray2Vistle<float, vtkFloatArray>(SENSEI_PARAMETER vd, grid);
+        return vtkArray2Vistle<float, vtkFloatArray>(vd, grid);
     } else if (vtkDoubleArray *vd = dynamic_cast<vtkDoubleArray *>(varr)) {
-        return vtkArray2Vistle<double, vtkDoubleArray>(SENSEI_PARAMETER vd, grid);
+        return vtkArray2Vistle<double, vtkDoubleArray>(vd, grid);
     } else if (vtkShortArray *vd = dynamic_cast<vtkShortArray *>(varr)) {
-        return vtkArray2Vistle<short, vtkShortArray>(SENSEI_PARAMETER vd, grid);
+        return vtkArray2Vistle<short, vtkShortArray>(vd, grid);
     } else if (vtkUnsignedShortArray *vd = dynamic_cast<vtkUnsignedShortArray *>(varr)) {
-        return vtkArray2Vistle<unsigned short, vtkUnsignedShortArray>(SENSEI_PARAMETER vd, grid);
+        return vtkArray2Vistle<unsigned short, vtkUnsignedShortArray>(vd, grid);
     } else if (vtkUnsignedIntArray *vd = dynamic_cast<vtkUnsignedIntArray *>(varr)) {
-        return vtkArray2Vistle<unsigned int, vtkUnsignedIntArray>(SENSEI_PARAMETER vd, grid);
+        return vtkArray2Vistle<unsigned int, vtkUnsignedIntArray>(vd, grid);
     } else if (vtkUnsignedCharArray *vd = dynamic_cast<vtkUnsignedCharArray *>(varr)) {
-        return vtkArray2Vistle<unsigned char, vtkUnsignedCharArray>(SENSEI_PARAMETER vd, grid);
+        return vtkArray2Vistle<unsigned char, vtkUnsignedCharArray>(vd, grid);
     }
 
     return nullptr;
@@ -507,31 +499,30 @@ DataBase::ptr vtkData2Vistle(SENSEI_ARGUMENT vtkDataArray *varr, Object::const_p
 } // anonymous namespace
 #endif
 
-vistle::Object::ptr toGrid(SENSEI_ARGUMENT vtkDataObject *vtk, bool checkConvex)
+vistle::Object::ptr toGrid(vtkDataObject *vtk, bool checkConvex)
 {
     if (vtkUnstructuredGrid *vugrid = dynamic_cast<vtkUnstructuredGrid *>(vtk))
-        return vtkUGrid2Vistle(SENSEI_PARAMETER vugrid, checkConvex);
+        return vtkUGrid2Vistle(vugrid, checkConvex);
 
     if (vtkPolyData *vpolydata = dynamic_cast<vtkPolyData *>(vtk))
-        return vtkPoly2Vistle(SENSEI_PARAMETER vpolydata);
+        return vtkPoly2Vistle(vpolydata);
 
     if (vtkStructuredGrid *vsgrid = dynamic_cast<vtkStructuredGrid *>(vtk))
-        return vtkSGrid2Vistle(SENSEI_PARAMETER vsgrid);
+        return vtkSGrid2Vistle(vsgrid);
 
     if (vtkRectilinearGrid *vrgrid = dynamic_cast<vtkRectilinearGrid *>(vtk))
-        return vtkRGrid2Vistle(SENSEI_PARAMETER vrgrid);
+        return vtkRGrid2Vistle(vrgrid);
 
     if (vtkUniformGrid *vugrid = dynamic_cast<vtkUniformGrid *>(vtk))
-        return vtkUniGrid2Vistle(SENSEI_PARAMETER vugrid);
+        return vtkUniGrid2Vistle(vugrid);
 
     if (vtkImageData *vimage = dynamic_cast<vtkImageData *>(vtk))
-        return vtkImage2Vistle(SENSEI_PARAMETER vimage);
+        return vtkImage2Vistle(vimage);
 
     return nullptr;
 }
 
-vistle::DataBase::ptr getField(SENSEI_ARGUMENT vtkDataSetAttributes *vtk, const std::string &name,
-                               Object::const_ptr grid)
+vistle::DataBase::ptr getField(vtkDataSetAttributes *vtk, const std::string &name, Object::const_ptr grid)
 {
     DataBase::ptr result;
 
@@ -545,14 +536,14 @@ vistle::DataBase::ptr getField(SENSEI_ARGUMENT vtkDataSetAttributes *vtk, const 
     if (!varr)
         varr = vtk->GetTensors(name.c_str());
 
-    return vtkData2Vistle(SENSEI_PARAMETER varr, grid);
+    return vtkData2Vistle(varr, grid);
 }
 
-vistle::DataBase::ptr getField(SENSEI_ARGUMENT vtkFieldData *vtk, const std::string &name, Object::const_ptr grid)
+vistle::DataBase::ptr getField(vtkFieldData *vtk, const std::string &name, Object::const_ptr grid)
 {
     DataBase::ptr result;
     auto varr = vtk->GetArray(name.c_str());
-    return vtkData2Vistle(SENSEI_PARAMETER varr, grid);
+    return vtkData2Vistle(varr, grid);
 }
 
 } // namespace vtk
