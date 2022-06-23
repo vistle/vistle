@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+   <key>NSPrincipalClass</key>
+   <string>NSApplication</string>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>English</string>
+	<key>CFBundleExecutable</key>
+	<string>vistle_opener</string>
+	<key>CFBundleGetInfoString</key>
+	<string>Open URLs with Vistle</string>
+	<key>CFBundleIconFile</key>
+	<string>vistle.icns</string>
+	<key>CFBundleIdentifier</key>
+	<string>io.vistle.vistle_opener</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleVersion</key>
+	<string>1.0</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleLongVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleSignature</key>
+	<string></string>
+	<key>CSResourcesFileMapped</key>
+	<true/>
+	<key>LSRequiresCarbon</key>
+	<true/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>Open With Vistle</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>vistle</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>
