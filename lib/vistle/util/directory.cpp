@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include "filesystem.h"
 #include "directory.h"
 #include "findself.h"
@@ -91,16 +92,53 @@ std::string configHome()
     return "";
 }
 
+static bool setvar(const std::string &varval)
+{
+    char *cvv = strdup(varval.c_str());
+    //std::cerr << "setting VISTLE_ROOT to " << vr << std::endl;
+    int retval = putenv(cvv);
+    if (retval != 0) {
+        std::cerr << "failed to set " << varval << ": " << strerror(errno) << std::endl;
+        free(cvv);
+        return false;
+    }
+    std::cerr << varval << std::endl;
+    return true;
+}
+
+static bool setvar(const std::string &var, const std::string &val)
+{
+    std::string vv = var + "=" + val;
+    return setvar(vv);
+}
+
 bool setVistleRoot(const std::string &vistleRootDir)
 {
-    std::string vr = "VISTLE_ROOT=" + vistleRootDir;
-    //std::cerr << "setting VISTLE_ROOT to " << vr << std::endl;
-    char *vistleRoot = strdup(vr.c_str());
-    int retval = putenv(vistleRoot);
-    if (retval != 0) {
-        std::cerr << "failed to set VISTLE_ROOT: " << strerror(errno) << std::endl;
-        free(vistleRoot);
-        return false;
+    return setvar("VISTLE_ROOT", vistleRootDir);
+}
+
+bool setEnvironment(const std::string &prefix)
+{
+#ifdef __APPLE__
+    std::string libpath = "DYLD_LIBRARY_PATH";
+    auto pathadd = bin(prefix) + ":" + "/opt/homebrew/bin";
+#else
+    std::string libpath = "LD_LIBRARY_PATH";
+    auto pathadd = bin(prefix);
+#endif
+    setvar(libpath, prefix + "/lib");
+
+    if (auto p = getenv("PATH")) {
+        setvar("PATH", pathadd + ":" + p);
+    } else {
+        setvar("PATH", pathadd);
+    }
+
+    auto envfile = std::ifstream(prefix + "/vistle-env.txt");
+    while (envfile.good()) {
+        std::string line;
+        std::getline(envfile, line);
+        setvar(line);
     }
     return true;
 }

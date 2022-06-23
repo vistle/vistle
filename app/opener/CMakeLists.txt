@@ -24,6 +24,7 @@ if(APPLE)
 endif()
 
 vistle_add_executable(${NAME} MACOSX_BUNDLE vistle_opener.cpp vistle_opener.h)
+target_link_libraries(${NAME} vistle_util)
 target_link_libraries(${NAME} Boost::system Boost::filesystem Boost::program_options Threads::Threads)
 target_link_libraries(${NAME} Qt5::Widgets)
 set_target_properties(${NAME} PROPERTIES MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/vistle_opener_info.plist)

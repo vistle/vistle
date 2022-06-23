@@ -10,22 +10,32 @@
 
 #include "vistle_opener.h"
 
+#include <vistle/util/directory.h>
+
 
 namespace process = boost::process;
 
+static std::string path_to_vistle;
+
 bool launchVistle(const std::vector<std::string> args)
 {
-    std::cerr << "launch" << std::endl;
+    std::cerr << "launch " << path_to_vistle << std::endl;
 
-    std::string prog = "vistle";
-    auto path = process::search_path(prog);
-    if (path.empty()) {
-        std::cerr << "Cannot launch " << prog << ": not found" << std::endl;
-        return false;
+    std::string path;
+    if (!path_to_vistle.empty()) {
+        path = path_to_vistle;
+    } else {
+        std::string prog = "vistle";
+        auto p = process::search_path(prog);
+        if (p.empty()) {
+            std::cerr << "Cannot launch " << prog << ": not found" << std::endl;
+            return false;
+        }
+        path = p.string();
     }
 
     std::vector<std::string> fullargs;
-    fullargs.push_back(path.string());
+    fullargs.push_back(path);
     std::copy(args.begin(), args.end(), std::back_inserter(fullargs));
 
     try {
@@ -83,6 +93,12 @@ bool FileOpenEventFilter::eventFilter(QObject *obj, QEvent *event)
 int main(int argc, char *argv[])
 {
     std::cerr << "start" << std::endl;
+
+    auto prefix = vistle::directory::prefix(argc, argv);
+    if (!prefix.empty()) {
+        path_to_vistle = vistle::directory::bin(prefix) + "/vistle";
+        vistle::directory::setEnvironment(prefix);
+    }
 
     if (argc > 1) {
         std::vector<std::string> args;
