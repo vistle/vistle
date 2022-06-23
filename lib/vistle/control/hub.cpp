@@ -19,6 +19,7 @@
 #include <vistle/util/listenv4v6.h>
 #include <vistle/util/crypto.h>
 #include <vistle/util/threadname.h>
+#include <vistle/util/url.h>
 #include <vistle/core/message.h>
 #include <vistle/core/tcpmessage.h>
 #include <vistle/core/messagerouter.h>
@@ -366,6 +367,11 @@ bool Hub::init(int argc, char *argv[])
             if (connectionData.kind == "/ui" || connectionData.kind == "/gui") {
                 std::string uipath = dir::bin(m_prefix) + "/" + uiCmd;
                 startUi(uipath, true);
+            }
+        } else {
+            Url u(url);
+            if (u.valid() && u.scheme() == "file") {
+                url = u.path();
             }
         }
     }
