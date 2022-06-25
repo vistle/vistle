@@ -10,18 +10,18 @@ if(APPLE)
         PROGRAMS opener_wrapper.sh
         DESTINATION bin
         RENAME ${NAME})
-
-    vistle_find_package(Qt5Core)
-    if(NOT Qt5Core_FOUND)
-        return()
-    endif()
-    vistle_find_package(Qt5Widgets)
-    vistle_find_package(Qt5Gui)
-
-    set(CMAKE_AUTOMOC ON)
-    set(CMAKE_AUTOUIC ON)
-    include_directories(${CMAKE_CURRENT_BINARY_DIR} .)
 endif()
+
+vistle_find_package(Qt5Core)
+if(NOT Qt5Core_FOUND)
+    return()
+endif()
+vistle_find_package(Qt5Widgets)
+vistle_find_package(Qt5Gui)
+
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTOUIC ON)
+include_directories(${CMAKE_CURRENT_BINARY_DIR} .)
 
 vistle_add_executable(${NAME} MACOSX_BUNDLE vistle_opener.cpp vistle_opener.h)
 target_link_libraries(${NAME} vistle_util)
