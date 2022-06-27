@@ -123,6 +123,7 @@ public:
     Module(const std::string &name, const int moduleID, mpi::communicator comm);
     virtual ~Module();
     const StateTracker &state() const;
+    StateTracker &state();
     virtual void eventLoop(); // called from MODULE_MAIN
     void initDone(); // to be called from eventLoop after module ctor has run
 

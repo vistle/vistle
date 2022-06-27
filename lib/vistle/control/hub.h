@@ -108,6 +108,8 @@ private:
     std::string m_exposedHost;
     boost::asio::ip::address m_exposedHostAddr;
     std::string m_masterHost;
+    std::string m_conferenceUrl;
+    std::string m_sessionUrl;
     boost::asio::io_service m_ioService;
     std::shared_ptr<acceptor> m_acceptorv4, m_acceptorv6;
 

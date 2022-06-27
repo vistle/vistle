@@ -24,16 +24,16 @@ class PortTracker;
 
 class V_COREEXPORT StateObserver {
 public:
-    StateObserver(): m_modificationCount(0) {}
-    virtual ~StateObserver() {}
+    StateObserver();
+    virtual ~StateObserver();
 
     virtual void newHub(int hub, const std::string &name, int nranks, const std::string &address,
-                        const std::string &logname, const std::string &realname) = 0;
-    virtual void deleteHub(int hub) = 0;
-    virtual void moduleAvailable(const AvailableModule &mod) = 0;
+                        const std::string &logname, const std::string &realname);
+    virtual void deleteHub(int hub);
+    virtual void moduleAvailable(const AvailableModule &mod);
 
-    virtual void newModule(int moduleId, const boost::uuids::uuid &spawnUuid, const std::string &moduleName) = 0;
-    virtual void deleteModule(int moduleId) = 0;
+    virtual void newModule(int moduleId, const boost::uuids::uuid &spawnUuid, const std::string &moduleName);
+    virtual void deleteModule(int moduleId);
 
     enum ModuleStateBits {
         Unknown = 0,
@@ -44,26 +44,26 @@ public:
         Busy = 16,
         Executing = 32,
     };
-    virtual void moduleStateChanged(int moduleId, int stateBits) = 0;
+    virtual void moduleStateChanged(int moduleId, int stateBits);
 
-    virtual void newParameter(int moduleId, const std::string &parameterName) = 0;
-    virtual void parameterValueChanged(int moduleId, const std::string &parameterName) = 0;
-    virtual void parameterChoicesChanged(int moduleId, const std::string &parameterName) = 0;
-    virtual void deleteParameter(int moduleId, const std::string &parameterName) = 0;
+    virtual void newParameter(int moduleId, const std::string &parameterName);
+    virtual void parameterValueChanged(int moduleId, const std::string &parameterName);
+    virtual void parameterChoicesChanged(int moduleId, const std::string &parameterName);
+    virtual void deleteParameter(int moduleId, const std::string &parameterName);
 
-    virtual void newPort(int moduleId, const std::string &portName) = 0;
-    virtual void deletePort(int moduleId, const std::string &portName) = 0;
+    virtual void newPort(int moduleId, const std::string &portName);
+    virtual void deletePort(int moduleId, const std::string &portName);
 
-    virtual void newConnection(int fromId, const std::string &fromName, int toId, const std::string &toName) = 0;
+    virtual void newConnection(int fromId, const std::string &fromName, int toId, const std::string &toName);
 
-    virtual void deleteConnection(int fromId, const std::string &fromName, int toId, const std::string &toName) = 0;
+    virtual void deleteConnection(int fromId, const std::string &fromName, int toId, const std::string &toName);
 
     virtual void info(const std::string &text, message::SendText::TextType textType, int senderId, int senderRank,
-                      message::Type refType, const message::uuid_t &refUuid) = 0;
+                      message::Type refType, const message::uuid_t &refUuid);
     //! a module sends at status update
-    virtual void status(int id, const std::string &text, message::UpdateStatus::Importance importance) = 0;
+    virtual void status(int id, const std::string &text, message::UpdateStatus::Importance importance);
     //! the overall status has changed
-    virtual void updateStatus(int id, const std::string &text, message::UpdateStatus::Importance importance) = 0;
+    virtual void updateStatus(int id, const std::string &text, message::UpdateStatus::Importance importance);
 
     virtual void quitRequested();
 
@@ -77,7 +77,7 @@ public:
     virtual void message(const vistle::message::Message &msg, vistle::buffer *payload = nullptr);
 
 private:
-    long m_modificationCount;
+    long m_modificationCount = 0;
 };
 
 struct V_COREEXPORT HubData {
@@ -157,6 +157,7 @@ public:
     const std::map<AvailableModule::Key, AvailableModule> &availableModules() const;
 
     void registerObserver(StateObserver *observer);
+    void unregisterObserver(StateObserver *observer);
 
     bool registerRequest(const message::uuid_t &uuid);
     std::shared_ptr<message::Buffer> waitForReply(const message::uuid_t &uuid);

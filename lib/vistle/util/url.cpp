@@ -2,6 +2,8 @@
 #include <algorithm>
 #include <iostream>
 #include <sstream>
+#include <iomanip>
+#include <set>
 
 namespace vistle {
 
@@ -32,6 +34,26 @@ static std::string url_decode(const std::string &str, bool in_path)
         }
     }
     return decoded;
+}
+
+static std::string url_encode(const std::string &str)
+{
+    std::set<char> reserved{' ', '!', '#', '$', '%', '&', '\'', '(', ')', '*',
+                            '+', ',', '/', ':', ';', '=', '?',  '@', '[', ']'};
+    std::string encoded;
+    encoded.reserve(str.size());
+    for (std::size_t i = 0; i < str.size(); ++i) {
+        if (reserved.find(str[i]) == reserved.end()) {
+            encoded.push_back(str[i]);
+        } else {
+            std::ostringstream os;
+            os << std::hex << std::setw(2) << std::setfill('0') << int(str[i]);
+            auto hex = os.str();
+            encoded.push_back('%');
+            std::copy(hex.begin(), hex.end(), std::back_inserter(encoded));
+        }
+    }
+    return encoded;
 }
 
 
@@ -162,6 +184,11 @@ Url Url::fromFileOrUrl(const std::string &furl)
 std::string Url::decode(const std::string &str, bool path)
 {
     return url_decode(str, path);
+}
+
+std::string Url::encode(const std::string &str)
+{
+    return url_encode(str);
 }
 
 std::string Url::str() const

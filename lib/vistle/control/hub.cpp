@@ -268,6 +268,7 @@ bool Hub::init(int argc, char *argv[])
         ("libsim,l", po::value<std::string>(), "connect to a LibSim instrumented simulation by entering the path to the .sim2 file")
         ("exposed,gateway-host,gateway,gw", po::value<std::string>(), "ports are exposed externally on this host")
         ("root", po::value<std::string>(), "path to Vistle build directory")
+        ("conference,conf", po::value<std::string>(), "URL of associated conference call")
         ("url", "Vistle URL, script to process, or slave name")
     ;
     // clang-format on
@@ -300,11 +301,6 @@ bool Hub::init(int argc, char *argv[])
         m_dataPort = vm["dataport"].as<unsigned short>();
     }
 
-    if (vm.count("root")) {
-        m_prefix = vm["root"].as<std::string>();
-        std::cerr << "set prefix to " << m_prefix << std::endl;
-    }
-
     if (vm.count("exposed") > 0) {
         m_exposedHost = vm["exposed"].as<std::string>();
         boost::asio::ip::tcp::resolver resolver(m_ioService);
@@ -319,6 +315,11 @@ bool Hub::init(int argc, char *argv[])
             m_exposedHostAddr = endpoint.address();
             CERR << "AddHub: exposed host " << m_exposedHost << " resolved to " << m_exposedHostAddr << std::endl;
         }
+    }
+
+    if (vm.count("root")) {
+        m_prefix = vm["root"].as<std::string>();
+        std::cerr << "set prefix to " << m_prefix << std::endl;
     }
 
     std::string uiCmd = "vistle_gui";
@@ -343,6 +344,10 @@ bool Hub::init(int argc, char *argv[])
     if (vm.count("batch")) {
         uiCmd.clear();
         pythonUi = false;
+    }
+
+    if (vm.count("conference")) {
+        m_conferenceUrl = vm["conference"].as<std::string>();
     }
 
     std::string url;
@@ -667,9 +672,9 @@ bool Hub::startServer()
         cd.port = m_port;
         cd.host = vistle::hostname();
         cd.hex_key = crypto::get_session_key();
-        auto url = VistleUrl::create(cd);
+        cd.conference_url = m_conferenceUrl;
+        setSessionUrl(VistleUrl::create(cd));
 
-        setSessionUrl(url);
         CERR << "listening for connections on port " << m_port << std::endl;
     }
 
@@ -2213,11 +2218,18 @@ void Hub::setLoadedFile(const std::string &file)
 
 void Hub::setSessionUrl(const std::string &url)
 {
+    m_sessionUrl = url;
     std::cerr << "Share this: " << url << std::endl;
     std::cerr << std::endl;
     auto t = make.message<message::UpdateStatus>(message::UpdateStatus::SessionUrl, url);
     m_stateTracker.handle(t, nullptr);
     sendUi(t);
+    if (m_managerConnected) {
+        sendManager(t);
+    }
+    if (m_isMaster) {
+        sendSlaves(t);
+    }
 }
 
 void Hub::setStatus(const std::string &s, message::UpdateStatus::Importance prio)

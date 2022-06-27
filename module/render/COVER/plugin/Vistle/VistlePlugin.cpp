@@ -15,6 +15,7 @@
 // vistle
 #include <vistle/util/exception.h>
 #include <vistle/core/statetracker.h>
+#include <vistle/control/vistleurl.h>
 
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
@@ -40,9 +41,35 @@ public:
     bool sendVisMessage(const covise::Message *msg) override;
     std::string collaborativeSessionId() const override;
 
+    void updateSessionUrl(const std::string &url);
+
 private:
     COVER *m_module = nullptr;
+    std::unique_ptr<vistle::StateObserver> m_observer;
 };
+
+
+class CoverVistleObserver: public vistle::StateObserver {
+    VistlePlugin *m_plug = nullptr;
+
+public:
+    CoverVistleObserver(VistlePlugin *plug): m_plug(plug) {}
+    void sessionUrlChanged(const std::string &url) override { m_plug->updateSessionUrl(url); }
+};
+
+void VistlePlugin::updateSessionUrl(const std::string &url)
+{
+    vistle::ConnectionData cd;
+    if (VistleUrl::parse(url, cd)) {
+        std::cerr << "session URL changed: " << url << std::endl;
+        if (!cd.conference_url.empty()) {
+            cover->addPlugin("Browser");
+            cover->sendMessage(this, coVRPluginSupport::TO_ALL, opencover::PluginMessageTypes::Browser,
+                               cd.conference_url.length(), cd.conference_url.c_str());
+        }
+    }
+}
+
 
 VistlePlugin::VistlePlugin(): ui::Owner("Vistle", cover->ui), m_module(nullptr)
 {
@@ -93,8 +120,13 @@ bool VistlePlugin::init()
     assert(!cover->visMenu);
 
     m_module = COVER::the();
+    m_observer = std::make_unique<CoverVistleObserver>(this);
+
     if (m_module) {
         m_module->setPlugin(this);
+
+        m_module->state().registerObserver(m_observer.get());
+        updateSessionUrl(m_module->state().sessionUrl());
 
         cover->visMenu = new ui::Menu("Vistle", this);
 
@@ -116,6 +148,7 @@ bool VistlePlugin::init()
 bool VistlePlugin::destroy()
 {
     if (m_module) {
+        m_module->state().unregisterObserver(m_observer.get());
         m_module->comm().barrier();
         m_module->prepareQuit();
 #if 0
@@ -123,6 +156,8 @@ bool VistlePlugin::destroy()
 #endif
         m_module = nullptr;
     }
+
+    m_observer.reset();
 
     return true;
 }
