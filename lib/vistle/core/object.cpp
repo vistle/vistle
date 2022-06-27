@@ -2,6 +2,7 @@
 #include "object_impl.h"
 
 #include "shm.h"
+#include "vector.h"
 #include <cassert>
 
 #include "archives.h"

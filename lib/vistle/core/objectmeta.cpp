@@ -2,6 +2,7 @@
 #include "objectmeta.h"
 #include "objectmeta_impl.h"
 #include "archives.h"
+#include "vector.h"
 
 namespace vistle {
 

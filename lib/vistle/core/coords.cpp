@@ -1,5 +1,6 @@
 #include "coords.h"
 #include "archives.h"
+#include "vector.h"
 
 #include "coords_impl.h"
 

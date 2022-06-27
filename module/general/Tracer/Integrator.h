@@ -2,6 +2,7 @@
 #define TRACER_INTEGRATOR_H
 
 #include <vistle/core/vec.h>
+#include <vistle/core/vector.h>
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(IntegrationMethod, (Euler)(RK32)(ConstantVelocity))
 
