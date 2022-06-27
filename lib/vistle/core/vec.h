@@ -3,7 +3,7 @@
 #include "index.h"
 #include "dimensions.h"
 #include "object.h"
-#include "vector.h"
+#include "vectortypes.h"
 #include "database.h"
 #include "shmvector.h"
 #include "scalars.h"

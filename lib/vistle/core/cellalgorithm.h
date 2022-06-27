@@ -2,7 +2,7 @@
 #define VISTLE_CELLINTERPOLATION_H
 
 #include "export.h"
-#include "vector.h"
+#include "vectortypes.h"
 #include "celltree.h"
 #include "grid.h"
 

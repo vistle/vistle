@@ -5,7 +5,7 @@
 #define VISTLE_LAYER_GRID_H
 
 #include "scalar.h"
-#include "vector.h"
+#include "vectortypes.h"
 #include "shm.h"
 #include "structuredgridbase.h"
 #include "vec.h"

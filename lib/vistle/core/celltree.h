@@ -6,7 +6,7 @@
 #include "index.h"
 #include "shm.h"
 #include "object.h"
-#include "vector.h"
+#include "vectortypes.h"
 #include "geometry.h"
 #include "shmvector.h"
 
@@ -29,7 +29,7 @@ class V_COREEXPORT Celltree: public Object {
 public:
     typedef Object Base;
 
-    typedef typename VistleScalarVector<NumDimensions>::type CTVector;
+    typedef ScalarVector<NumDimensions> CTVector;
     typedef CelltreeNode<sizeof(Index), NumDimensions> Node;
 
     class VisitFunctor {

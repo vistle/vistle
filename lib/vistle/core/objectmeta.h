@@ -8,8 +8,9 @@
 #include "archives_config.h"
 
 #include "export.h"
-#include "vector.h"
 #include "shm.h"
+#include "vectortypes.h"
+
 
 namespace vistle {
 

@@ -2,6 +2,7 @@
 #define CELLTREE_IMPL_H
 
 #include "shm_array_impl.h"
+#include "vector.h"
 
 namespace vistle {
 

@@ -3,7 +3,7 @@
 
 #include "export.h"
 #include "object.h"
-#include "vector.h"
+#include "vectortypes.h"
 
 namespace vistle {
 

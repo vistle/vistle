@@ -25,7 +25,7 @@
 #include "objectmeta.h"
 #include "scalars.h"
 #include "dimensions.h"
-#include "vector.h"
+#include "vectortypes.h"
 
 #include "archives_config.h"
 
