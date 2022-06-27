@@ -4,12 +4,9 @@
 #include "export.h"
 #include "scalar.h"
 #include "index.h"
-//#include "shm.h"
+#include "celltreenode_decl.h"
 
 namespace vistle {
-
-template<size_t IndexSize, int NumDimensions>
-struct CelltreeNode;
 
 template<int NumDimensions>
 struct CelltreeNode<8, NumDimensions> {
@@ -74,6 +71,18 @@ struct CelltreeNode<4, NumDimensions> {
     void serialize(Archive &ar)
     {}
 };
+
+template<size_t IndexSize, int NumDimensions>
+bool operator<(const CelltreeNode<IndexSize, NumDimensions> &n0, const CelltreeNode<IndexSize, NumDimensions> &n1)
+{
+    return n0.start < n1.start;
+}
+
+template<size_t IndexSize, int NumDimensions>
+bool operator>=(const CelltreeNode<IndexSize, NumDimensions> &n0, const CelltreeNode<IndexSize, NumDimensions> &n1)
+{
+    return n0.start >= n1.start;
+}
 
 } // namespace vistle
 

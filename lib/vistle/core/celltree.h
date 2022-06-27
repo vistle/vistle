@@ -10,18 +10,13 @@
 #include "geometry.h"
 #include "shmvector.h"
 
+#include "celltreenode_decl.h"
+
 namespace vistle {
 
 // a bounding volume hierarchy, cf. C. Garth and K. I. Joy:
 // “Fast, memory-efficient cell location in unstructured grids for visualization”,
 // IEEE Transactions on Visualization and Computer Graphics, vol. 16, no. 6, pp. 1541–1550, 2010.
-
-template<size_t IndexSize, int NumDimensions>
-struct CelltreeNode;
-
-typedef CelltreeNode<sizeof(Index), 1> CelltreeNode1;
-typedef CelltreeNode<sizeof(Index), 2> CelltreeNode2;
-typedef CelltreeNode<sizeof(Index), 3> CelltreeNode3;
 
 V_DECLARE_SHMREF(CelltreeNode1)
 V_DECLARE_SHMREF(CelltreeNode2)

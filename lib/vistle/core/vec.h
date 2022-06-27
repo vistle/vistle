@@ -6,6 +6,7 @@
 #include "vector.h"
 #include "database.h"
 #include "shmvector.h"
+#include "scalars.h"
 
 namespace vistle {
 
@@ -118,15 +119,9 @@ public:
     V_OBJECT_DECL(Vec<ValueType V_VEC_COMMA 3>) \
     /* extern template class V_COREEXPORT Vec<ValueType,4>; \
     V_OBJECT_DECL(Vec<ValueType V_VEC_COMMA 4>) */
-V_VEC_TEMPLATE(char)
-V_VEC_TEMPLATE(signed char)
-V_VEC_TEMPLATE(unsigned char)
-V_VEC_TEMPLATE(int32_t)
-V_VEC_TEMPLATE(uint32_t)
-V_VEC_TEMPLATE(int64_t)
-V_VEC_TEMPLATE(uint64_t)
-V_VEC_TEMPLATE(float)
-V_VEC_TEMPLATE(double)
+
+FOR_ALL_SCALARS(V_VEC_TEMPLATE)
+
 #undef V_VEC_TEMPLATE
 #undef V_VEC_COMMA
 

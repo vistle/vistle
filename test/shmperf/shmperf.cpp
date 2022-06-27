@@ -14,6 +14,7 @@
 #include <vector>
 
 #include <vistle/core/shm_array.h>
+#include <vistle/core/shm_array_impl.h>
 #include <vistle/core/shm.h>
 #include <vistle/core/vec.h>
 

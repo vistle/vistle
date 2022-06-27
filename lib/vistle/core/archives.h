@@ -9,7 +9,6 @@
 #include <functional>
 #include <vector>
 #include <memory>
-#include <iostream>
 #include <vistle/util/vecstreambuf.h>
 #include <vistle/util/buffer.h>
 #include "message.h"
