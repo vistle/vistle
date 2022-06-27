@@ -35,6 +35,7 @@
 //#include "shm_array.h"
 #include "shmname.h"
 #include "shmdata.h"
+#include "shm_config.h"
 
 #if defined(BOOST_INTERPROCESS_POSIX_BARRIERS) && defined(BOOST_INTERPROCESS_POSIX_PROCESS_SHARED)
 #define SHMBARRIER
@@ -92,6 +93,7 @@ struct ShmDebugInfo {
 
 template<typename T>
 struct shm {
+    typedef vistle::shm_allocator<T> allocator;
 #ifdef NO_SHMEM
     typedef vistle::default_init_allocator<T> allocator;
     typedef std::basic_string<T> string;
@@ -108,7 +110,6 @@ struct shm {
     };
     static Constructor construct(const std::string &name) { return Constructor(name); }
 #else
-    typedef boost::interprocess::allocator<T, managed_shm::segment_manager> allocator;
     typedef boost::interprocess::basic_string<T, std::char_traits<T>, allocator> string;
     typedef boost::interprocess::vector<T, allocator> vector;
     typedef vistle::shm_array<T, allocator> array;

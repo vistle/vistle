@@ -1,6 +1,7 @@
 #include "archive_saver.h"
 #include "archives.h"
 #include "shmvector.h"
+#include "shm_array_impl.h"
 #include "object.h"
 #include "archives_impl.h"
 

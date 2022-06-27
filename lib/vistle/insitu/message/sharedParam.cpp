@@ -1,5 +1,6 @@
 #include "sharedParam.h"
 #include <algorithm>
+#include <iostream>
 
 
 bool operator==(const vistle::insitu::message::IntParam &p, const std::string &name)

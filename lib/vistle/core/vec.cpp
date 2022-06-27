@@ -21,15 +21,8 @@ namespace vistle {
     V_OBJECT_INST(Vec<ValueType COMMA 4>) \
     */
 
-V_VEC_TEMPLATE_INST(char)
-V_VEC_TEMPLATE_INST(signed char)
-V_VEC_TEMPLATE_INST(unsigned char)
-V_VEC_TEMPLATE_INST(int32_t)
-V_VEC_TEMPLATE_INST(uint32_t)
-V_VEC_TEMPLATE_INST(int64_t)
-V_VEC_TEMPLATE_INST(uint64_t)
-V_VEC_TEMPLATE_INST(float)
-V_VEC_TEMPLATE_INST(double)
+FOR_ALL_SCALARS(V_VEC_TEMPLATE_INST)
+
 #undef V_VEC_TEMPLATE_INST
 
 } // namespace vistle

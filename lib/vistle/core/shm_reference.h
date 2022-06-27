@@ -220,15 +220,7 @@ private:
         vistle::yas_oarchive & ar) const;
 #endif
 
-V_DECLARE_SHMREF(char) // for MessagePayload
-V_DECLARE_SHMREF(signed char)
-V_DECLARE_SHMREF(unsigned char)
-V_DECLARE_SHMREF(int32_t)
-V_DECLARE_SHMREF(uint32_t)
-V_DECLARE_SHMREF(int64_t)
-V_DECLARE_SHMREF(uint64_t)
-V_DECLARE_SHMREF(float)
-V_DECLARE_SHMREF(double)
+FOR_ALL_SCALARS(V_DECLARE_SHMREF)
 
 
 } // namespace vistle

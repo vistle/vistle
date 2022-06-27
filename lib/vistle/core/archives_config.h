@@ -19,7 +19,6 @@
 #endif
 
 #include <cstdlib>
-#include <iostream>
 #include <vector>
 
 #include <vistle/util/enum.h>
@@ -311,7 +310,7 @@ using detail::serialize_base;
 #ifdef USE_YAS
 #include <yas/serialize.hpp>
 #include <yas/object.hpp>
-#include <yas/std_types.hpp>
+#include <yas/types/std/set.hpp>
 #include <yas/std_traits.hpp>
 #include <yas/std_streams.hpp>
 #include <yas/boost_types.hpp>
@@ -320,6 +319,8 @@ using detail::serialize_base;
 
 //#define DEBUG_SERIALIZATION
 #ifdef DEBUG_SERIALIZATION
+#include <iostream>
+
 template<class T>
 inline const boost::serialization::nvp<T> vistle_make_nvp(const char *name, T &t)
 {

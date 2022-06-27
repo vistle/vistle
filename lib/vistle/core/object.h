@@ -4,7 +4,6 @@
 #include <vector>
 #include <vistle/util/sysdep.h>
 #include <memory>
-#include <iostream>
 #include <string>
 #include <atomic>
 

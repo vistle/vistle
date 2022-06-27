@@ -26,6 +26,7 @@ set(core_SOURCES
     port.cpp
     porttracker.cpp
     shm.cpp
+    shm_array.cpp
     shm_obj_ref.cpp
     shm_reference.cpp
     shmname.cpp

@@ -1,5 +1,6 @@
 #ifndef VISTLE_MESSAGE_PAYLOAD_TEMPLATES_H
 #define VISTLE_MESSAGE_PAYLOAD_TEMPLATES_H
+#include <vistle/util/tools.h>
 #include "archives.h"
 namespace vistle {
 namespace message {
