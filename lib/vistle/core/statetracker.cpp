@@ -1667,6 +1667,12 @@ void StateTracker::registerObserver(StateObserver *observer)
     m_observers.insert(observer);
 }
 
+void StateTracker::unregisterObserver(StateObserver *observer)
+{
+    mutex_locker guard(m_stateMutex);
+    m_observers.erase(observer);
+}
+
 ParameterSet StateTracker::getConnectedParameters(const Parameter &param) const
 {
     mutex_locker guard(m_stateMutex);
@@ -1881,6 +1887,56 @@ void StateTracker::updateStatus()
         }
     }
 }
+
+
+StateObserver::StateObserver()
+{}
+StateObserver::~StateObserver()
+{}
+
+void StateObserver::newHub(int hub, const std::string &name, int nranks, const std::string &address,
+                           const std::string &logname, const std::string &realname)
+{}
+void StateObserver::deleteHub(int hub)
+{}
+void StateObserver::moduleAvailable(const AvailableModule &mod)
+{}
+
+void StateObserver::newModule(int moduleId, const boost::uuids::uuid &spawnUuid, const std::string &moduleName)
+{}
+void StateObserver::deleteModule(int moduleId)
+{}
+
+void StateObserver::moduleStateChanged(int moduleId, int stateBits)
+{}
+
+void StateObserver::newParameter(int moduleId, const std::string &parameterName)
+{}
+void StateObserver::parameterValueChanged(int moduleId, const std::string &parameterName)
+{}
+void StateObserver::parameterChoicesChanged(int moduleId, const std::string &parameterName)
+{}
+void StateObserver::deleteParameter(int moduleId, const std::string &parameterName)
+{}
+
+void StateObserver::newPort(int moduleId, const std::string &portName)
+{}
+void StateObserver::deletePort(int moduleId, const std::string &portName)
+{}
+
+void StateObserver::newConnection(int fromId, const std::string &fromName, int toId, const std::string &toName)
+{}
+
+void StateObserver::deleteConnection(int fromId, const std::string &fromName, int toId, const std::string &toName)
+{}
+
+void StateObserver::info(const std::string &text, message::SendText::TextType textType, int senderId, int senderRank,
+                         message::Type refType, const message::uuid_t &refUuid)
+{}
+void StateObserver::status(int id, const std::string &text, message::UpdateStatus::Importance importance)
+{}
+void StateObserver::updateStatus(int id, const std::string &text, message::UpdateStatus::Importance importance)
+{}
 
 void StateObserver::quitRequested()
 {}

@@ -287,6 +287,11 @@ Module::Module(const std::string &moduleName, const int moduleId, mpi::communica
     mpi::all_gather(m_comm, leaderSubRank, m_shmLeadersSubrank);
 }
 
+StateTracker &Module::state()
+{
+    return *m_stateTracker;
+}
+
 const StateTracker &Module::state() const
 {
     return *m_stateTracker;

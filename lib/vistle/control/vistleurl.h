@@ -6,17 +6,18 @@
 
 namespace vistle {
 
-class ConnectionData {
+class V_HUBEXPORT ConnectionData {
 public:
     bool master = false;
     std::string host;
     unsigned short port = 0;
     std::string hex_key;
     std::string kind;
+    std::string conference_url;
 };
 
 
-class VistleUrl {
+class V_HUBEXPORT VistleUrl {
 public:
     static bool parse(std::string url, ConnectionData &data);
     static std::string create(std::string host, unsigned short port, std::string key);

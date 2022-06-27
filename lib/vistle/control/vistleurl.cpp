@@ -27,6 +27,14 @@ std::string VistleUrl::create(const ConnectionData &data)
     if (!data.hex_key.empty()) {
         url += "?key=" + data.hex_key;
     }
+    if (!data.conference_url.empty()) {
+        if (data.hex_key.empty())
+            url += "?";
+        else
+            url += "&";
+        url += "conf=";
+        url += Url::encode(data.conference_url);
+    }
     return url;
 }
 
@@ -56,6 +64,10 @@ bool VistleUrl::parse(std::string urlstring, ConnectionData &data)
         auto key_have = url.query("key");
         if (key_have.second) {
             data.hex_key = key_have.first;
+        }
+        auto conf_have = url.query("conf");
+        if (conf_have.second) {
+            data.conference_url = conf_have.first;
         }
 
     } catch (...) {

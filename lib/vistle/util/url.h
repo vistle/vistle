@@ -12,6 +12,7 @@ public:
     Url(const std::string &url);
     static Url fromFileOrUrl(const std::string &furl);
     static std::string decode(const std::string &str, bool path = false);
+    static std::string encode(const std::string &str);
 
     std::string str() const;
     operator std::string() const;
