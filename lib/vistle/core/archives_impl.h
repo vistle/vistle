@@ -2,6 +2,8 @@
 #define VISTLE_ARCHIVES_IMPL_H
 
 #include "archives_config.h"
+#include "archives_compress_sz3.h"
+#include "archives_compress.h"
 
 //#define USE_INTROSPECTION_ARCHIVE
 //#define USE_BOOST_ARCHIVE
@@ -18,14 +20,6 @@
 #ifndef USE_BOOST_ARCHIVE_MPI
 #define USE_BOOST_ARCHIVE_MPI
 #endif
-#endif
-
-#ifdef HAVE_ZFP
-#include <zfp.h>
-#endif
-
-#ifdef HAVE_SZ3
-#include <SZ3/utils/Config.hpp>
 #endif
 
 #include <cassert>
@@ -110,49 +104,6 @@ struct lossy_type_map<double> {
     typedef double sz3type;
 #endif
 };
-
-#ifdef HAVE_ZFP
-struct ZfpParameters {
-    FieldCompressionZfpMode mode = ZfpFixedRate;
-    double rate = 8.;
-    int precision = 20;
-    double accuracy = 1e-20;
-};
-
-template<zfp_type type>
-bool compressZfp(buffer &compressed, const void *src, const Index dim[3], Index typeSize, const ZfpParameters &param);
-template<zfp_type type>
-bool decompressZfp(void *dest, const buffer &compressed, const Index dim[3]);
-#endif
-
-#ifdef HAVE_SZ3
-template<typename T>
-char *compressSz3(size_t &compressedSize, const T *src, const SZ::Config &conf);
-
-template<typename T>
-bool decompressSz3(T *dest, const buffer &compressed, const Index dim[3]);
-
-template<>
-char V_COREEXPORT *compressSz3<void>(size_t &compressedSize, const void *src, const SZ::Config &conf);
-template<>
-char V_COREEXPORT *compressSz3<float>(size_t &compressedSize, const float *src, const SZ::Config &conf);
-template<>
-char V_COREEXPORT *compressSz3<double>(size_t &compressedSize, const double *src, const SZ::Config &conf);
-template<>
-char V_COREEXPORT *compressSz3<int32_t>(size_t &compressedSize, const int32_t *src, const SZ::Config &conf);
-template<>
-char V_COREEXPORT *compressSz3<int64_t>(size_t &compressedSize, const int64_t *src, const SZ::Config &conf);
-template<>
-bool V_COREEXPORT decompressSz3<void>(void *dest, const buffer &compressed, const Index dim[3]);
-template<>
-bool V_COREEXPORT decompressSz3<float>(float *dest, const buffer &compressed, const Index dim[3]);
-template<>
-bool V_COREEXPORT decompressSz3<double>(double *dest, const buffer &compressed, const Index dim[3]);
-template<>
-bool V_COREEXPORT decompressSz3<int32_t>(int32_t *dest, const buffer &compressed, const Index dim[3]);
-template<>
-bool V_COREEXPORT decompressSz3<int64_t>(int64_t *dest, const buffer &compressed, const Index dim[3]);
-#endif
 
 template<typename S>
 struct Xor {
@@ -514,32 +465,8 @@ void archive_helper<yas_tag>::ArrayWrapper<T>::save(Archive &ar) const
 }
 } // namespace detail
 
+#if 0
 namespace detail {
-
-#ifdef HAVE_ZFP
-template<>
-bool V_COREEXPORT decompressZfp<zfp_type_none>(void *dest, const buffer &compressed, const Index dim[3]);
-extern template bool V_COREEXPORT decompressZfp<zfp_type_int32>(void *dest, const buffer &compressed,
-                                                                const Index dim[3]);
-extern template bool V_COREEXPORT decompressZfp<zfp_type_int64>(void *dest, const buffer &compressed,
-                                                                const Index dim[3]);
-extern template bool V_COREEXPORT decompressZfp<zfp_type_float>(void *dest, const buffer &compressed,
-                                                                const Index dim[3]);
-extern template bool V_COREEXPORT decompressZfp<zfp_type_double>(void *dest, const buffer &compressed,
-                                                                 const Index dim[3]);
-
-template<>
-bool V_COREEXPORT compressZfp<zfp_type_none>(buffer &compressed, const void *src, const Index dim[3], Index typeSize,
-                                             const ZfpParameters &param);
-extern template bool V_COREEXPORT compressZfp<zfp_type_int32>(buffer &compressed, const void *src, const Index dim[3],
-                                                              Index typeSize, const ZfpParameters &param);
-extern template bool V_COREEXPORT compressZfp<zfp_type_int64>(buffer &compressed, const void *src, const Index dim[3],
-                                                              Index typeSize, const ZfpParameters &param);
-extern template bool V_COREEXPORT compressZfp<zfp_type_float>(buffer &compressed, const void *src, const Index dim[3],
-                                                              Index typeSize, const ZfpParameters &param);
-extern template bool V_COREEXPORT compressZfp<zfp_type_double>(buffer &compressed, const void *src, const Index dim[3],
-                                                               Index typeSize, const ZfpParameters &param);
-#endif
 
 #ifdef HAVE_SZ3
 extern template char *compressSz3<void>(size_t &compressedSize, const void *src, const SZ::Config &conf);
@@ -556,6 +483,7 @@ extern template bool V_COREEXPORT decompressSz3<int64_t>(int64_t *dest, const bu
 #endif
 
 } // namespace detail
+#endif
 
 #ifdef HAVE_ZFP
 using detail::ZfpParameters;

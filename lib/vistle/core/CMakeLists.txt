@@ -8,6 +8,8 @@ set(core_SOURCES
     archive_loader.cpp
     archive_saver.cpp
     archives.cpp
+    archives_compress.cpp
+    archives_compress_sz3.cpp
     cellalgorithm.cpp
     filequery.cpp
     findobjectreferenceoarchive.cpp
