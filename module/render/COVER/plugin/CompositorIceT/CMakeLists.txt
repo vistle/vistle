@@ -1,5 +1,3 @@
-vistle_find_package(CUDA)
-
 using(OpenGL)
 using(Boost)
 
@@ -12,5 +10,5 @@ set(CMAKE_CXX_LINK_FLAGS ${CMAKE_CXX_LINK_FLAGS} ${MPI_LINK_FLAGS})
 set(HEADERS CompositorIceT.h)
 set(SOURCES CompositorIceT.cpp)
 
-cover_add_plugin(CompositorIceT ${CUDA_OBJ} ${HEADER} ${SOURCES})
+cover_add_plugin(CompositorIceT ${HEADER} ${SOURCES})
 target_link_libraries(CompositorIceT vistle_rhr VistlePluginUtil ${ICET_CORE_LIBS} ${ICET_MPI_LIBS} ${MPI_CXX_LIBRARIES})
