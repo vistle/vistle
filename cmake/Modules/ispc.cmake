@@ -66,12 +66,25 @@ if(ENABLE_ISPC_SUPPORT)
         if(VISTLE_TIME_BUILD)
             set(ISPC_ADDITIONAL_ARGS "${ISPC_ADDITIONAL_ARGS}" --time-trace)
         endif()
+        if(VISTLE_COLOR_DIAGNOSTICS)
+            set(ISPC_ADDITIONAL_ARGS "${ISPC_ADDITIONAL_ARGS}" --colored-output)
+        endif()
 
         if(__XEON__)
             set(ISPC_TARGET_EXT ${CMAKE_CXX_OUTPUT_EXTENSION})
         else()
             set(ISPC_TARGET_EXT .cpp)
             set(ISPC_ADDITIONAL_ARGS ${ISPC_ADDITIONAL_ARGS} --opt=force-aligned-memory)
+        endif()
+
+        if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+            set(OPTS -O0 -g)
+        elseif(CMAKE_BUILD_TYPE STREQUAL "MinSizeRel")
+            set(OPTS -O2 -DNDEBUG)
+        elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
+            set(OPTS -O3 --math-lib=fast --opt=fast-math -DNDEBUG)
+        else()
+            set(OPTS -O3 --math-lib=fast --opt=fast-math -g)
         endif()
 
         if("${CMAKE_GENERATOR}" MATCHES "(Win64|IA64)")
@@ -155,7 +168,7 @@ if(ENABLE_ISPC_SUPPORT)
                 COMMAND ${CMAKE_COMMAND} -E make_directory ${outdir}
                 COMMAND
                     ${ISPC_EXECUTABLE} ${ISPC_INCLUDE_DIR_PARMS} -I ${CMAKE_CURRENT_SOURCE_DIR} --arch=${ISPC_ARCHITECTURE}
-                    --addressing=${VISTLE_ISPC_ADDRESSING} -O3 --target=${ISPC_TARGET_ARGS} --math-lib=fast --opt=fast-math --woff
+                    --addressing=${VISTLE_ISPC_ADDRESSING} --target=${ISPC_TARGET_ARGS} ${OPTS}
                     #--wno-perf
                     ${ISPC_ADDITIONAL_ARGS} -h ${outdirh}/${fname}_ispc.h -MMM ${outdir}/${fname}.dev.idep -o ${outdir}/${fname}.dev${ISPC_TARGET_EXT}
                     ${CMAKE_CURRENT_SOURCE_DIR}/${src}
