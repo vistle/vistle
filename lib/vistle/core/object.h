@@ -6,6 +6,7 @@
 #include <memory>
 #include <string>
 #include <atomic>
+#include <functional>
 
 #ifdef NO_SHMEM
 #include <map>
