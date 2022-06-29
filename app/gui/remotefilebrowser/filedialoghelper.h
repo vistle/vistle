@@ -2,6 +2,8 @@
 #define REMOTEFILEBROWSER_HELPER_H
 
 #include <QtCore/qobjectdefs.h>
+#include <QtCore/qsharedpointer.h>
+#include <QtCore/qdir.h>
 
 class RemoteFileDialogOptionsPrivate;
 
