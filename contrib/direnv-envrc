@@ -104,8 +104,10 @@ fi
 #builddir=build-mvapich
 
 case "$system" in
-   darwin64)
-   path_add DYLD_LIBRARY_PATH "/usr/local/cuda/lib"
+   darwin64|darwinarm64)
+   if [ "$system" = "darwin64" ]; then
+       path_add DYLD_LIBRARY_PATH "/usr/local/cuda/lib"
+   fi
    if [ -n "$COVISEDIR" ]; then
        export EXTERNLIBS="$($COVISEDIR/bin/print_covise_env EXTERNLIBS)"
        #export OSGDIR="${EXTERNLIBS}/openscenegraph"
@@ -117,7 +119,9 @@ case "$system" in
        path_add DYLD_FRAMEWORK_PATH "$(${COVISEDIR}/bin/print_covise_env EXTERNLIBS)/ALL"
    fi
    path_add DYLD_LIBRARY_PATH "$builddir/lib"
+   export DYLD_LIBRARY_PATH DYLD_FRAMEWORK_PATH
    export VISTLE_DYLD_LIBRARY_PATH="$DYLD_LIBRARY_PATH"
+   export VISTLE_DYLD_FRAMEWORK_PATH="$DYLD_FRAMEWORK_PATH"
    ;;
    linux64)
    if [ -z "$EXTERNLIBS" ]; then
