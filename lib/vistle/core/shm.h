@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <iostream>
 #else
 #include <vistle/util/boost_interprocess_config.h>
 #include <boost/interprocess/containers/vector.hpp>
@@ -95,7 +96,6 @@ template<typename T>
 struct shm {
     typedef vistle::shm_allocator<T> allocator;
 #ifdef NO_SHMEM
-    typedef vistle::default_init_allocator<T> allocator;
     typedef std::basic_string<T> string;
     typedef std::vector<T> vector;
     typedef vistle::shm_array<T, allocator> array;

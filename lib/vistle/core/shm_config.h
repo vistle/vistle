@@ -28,7 +28,7 @@ typedef managed_shm::handle_t shm_handle_t;
 
 #ifdef NO_SHMEM
 template<typename T>
-using shm_allocator<T> = vistle::default_init_allocator<T>;
+using shm_allocator = vistle::default_init_allocator<T>;
 #else
 template<typename T>
 using shm_allocator = boost::interprocess::allocator<T, managed_shm::segment_manager>;
