@@ -11,7 +11,19 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED 99)
 set(CMAKE_C_EXTENSIONS OFF)
 
-project(Vistle C CXX)
+project(
+    Vistle
+    DESCRIPTION "Parallel distributed scientific visualization in VR"
+    HOMEPAGE_URL https://vistle.io
+    LANGUAGES C CXX)
+
+include(CheckLanguage)
+check_language(ISPC)
+if(CMAKE_ISPC_COMPILER)
+    enable_language(ISPC)
+else()
+    #message(STATUS "No ISPC support")
+endif()
 
 if(APPLE AND ${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
     set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} /opt/homebrew)
