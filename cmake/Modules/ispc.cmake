@@ -63,6 +63,9 @@ if(ENABLE_ISPC_SUPPORT)
 
     macro(ispc_compile)
         set(ISPC_ADDITIONAL_ARGS "${ISPC_COMPILE_FLAGS}")
+        if(VISTLE_TIME_BUILD)
+            set(ISPC_ADDITIONAL_ARGS "${ISPC_ADDITIONAL_ARGS}" --time-trace)
+        endif()
 
         if(__XEON__)
             set(ISPC_TARGET_EXT ${CMAKE_CXX_OUTPUT_EXTENSION})
