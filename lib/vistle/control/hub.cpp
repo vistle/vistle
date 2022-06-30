@@ -2005,6 +2005,8 @@ bool Hub::handlePriv(const message::Spawn &spawnRecv)
             for (auto &hubid: m_stateTracker.getHubs()) {
                 if (hubid == spawn.hubId())
                     continue;
+                if (hubid == Id::MasterHub && m_isMaster && m_proxyOnly)
+                    continue;
                 const auto &hub = m_stateTracker.getHubData(hubid);
                 if (!hub.hasUi)
                     continue;
