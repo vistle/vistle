@@ -81,7 +81,7 @@ private:
 };
 
 struct V_COREEXPORT HubData {
-    HubData(int id, const std::string &name): id(id), name(name), port(0), dataPort(0) {}
+    HubData(int id, const std::string &name);
 
     int id;
     std::string name;
@@ -92,6 +92,7 @@ struct V_COREEXPORT HubData {
     unsigned short dataPort;
     boost::asio::ip::address address;
     bool hasUi = false;
+    bool isQuitting = false;
 };
 
 class V_COREEXPORT StateTracker {
@@ -280,6 +281,8 @@ private:
     bool handlePriv(const message::SchedulingPolicy &pol);
     bool handlePriv(const message::RequestTunnel &tunnel);
     bool handlePriv(const message::CloseConnection &close);
+
+    HubData *getModifiableHubData(int id);
 
     std::shared_ptr<PortTracker> m_portTracker;
 

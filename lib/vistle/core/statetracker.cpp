@@ -139,6 +139,23 @@ int StateTracker::getHub(int id) const
     return it->second.hub;
 }
 
+HubData::HubData(int id, const std::string &name): id(id), name(name), port(0), dataPort(0)
+{
+    if (message::Id::Invalid == id)
+        isQuitting = true;
+}
+
+HubData *StateTracker::getModifiableHubData(int id)
+{
+    mutex_locker guard(m_stateMutex);
+    for (auto &hub: m_hubs) {
+        if (hub.id == id)
+            return &hub;
+    }
+
+    return nullptr;
+}
+
 const HubData &StateTracker::getHubData(int id) const
 {
     static HubData invalidHub(Id::Invalid, "");
@@ -1270,6 +1287,13 @@ bool StateTracker::handlePriv(const message::SetParameterChoices &choices, const
 
 bool StateTracker::handlePriv(const message::Quit &quit)
 {
+    int id = quit.id();
+    if (Id::isHub(id)) {
+        auto *hub = getModifiableHubData(id);
+        if (hub) {
+            hub->isQuitting = true;
+        }
+    }
     mutex_locker guard(m_stateMutex);
     for (StateObserver *o: m_observers) {
         o->quitRequested();

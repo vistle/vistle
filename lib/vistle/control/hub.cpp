@@ -2940,13 +2940,16 @@ bool Hub::handlePriv(const message::ModuleExit &exit)
     }
 
     if (m_isMaster) {
-        auto mirrors = m_stateTracker.getMirrors(id);
-        for (auto m: mirrors) {
-            if (m == id)
-                continue;
-            auto kill = message::Kill(m);
-            kill.setDestId(m);
-            handleMessage(kill);
+        const auto &hub = m_stateTracker.getHubData(idToHub(id));
+        if (!hub.isQuitting) {
+            auto mirrors = m_stateTracker.getMirrors(id);
+            for (auto m: mirrors) {
+                if (m == id)
+                    continue;
+                auto kill = message::Kill(m);
+                kill.setDestId(m);
+                handleMessage(kill);
+            }
         }
     }
 
