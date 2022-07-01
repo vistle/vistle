@@ -86,6 +86,8 @@ if(ENABLE_ISPC_SUPPORT)
         else()
             set(OPTS -O3 --math-lib=fast --opt=fast-math -g)
         endif()
+        #set(OPTS "${OPTS}" --wno-perf)
+        set(OPTS "${OPTS}" --woff)
 
         if("${CMAKE_GENERATOR}" MATCHES "(Win64|IA64)")
             set(ISPC_ARCHITECTURE "x86-64")
@@ -168,10 +170,8 @@ if(ENABLE_ISPC_SUPPORT)
                 COMMAND ${CMAKE_COMMAND} -E make_directory ${outdir}
                 COMMAND
                     ${ISPC_EXECUTABLE} ${ISPC_INCLUDE_DIR_PARMS} -I ${CMAKE_CURRENT_SOURCE_DIR} --arch=${ISPC_ARCHITECTURE}
-                    --addressing=${VISTLE_ISPC_ADDRESSING} --target=${ISPC_TARGET_ARGS} ${OPTS}
-                    #--wno-perf
-                    ${ISPC_ADDITIONAL_ARGS} -h ${outdirh}/${fname}_ispc.h -MMM ${outdir}/${fname}.dev.idep -o ${outdir}/${fname}.dev${ISPC_TARGET_EXT}
-                    ${CMAKE_CURRENT_SOURCE_DIR}/${src}
+                    --addressing=${VISTLE_ISPC_ADDRESSING} --target=${ISPC_TARGET_ARGS} ${OPTS} ${ISPC_ADDITIONAL_ARGS} -h ${outdirh}/${fname}_ispc.h -MMM
+                    ${outdir}/${fname}.dev.idep -o ${outdir}/${fname}.dev${ISPC_TARGET_EXT} ${CMAKE_CURRENT_SOURCE_DIR}/${src}
                 DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${src} ${deps}
                 COMMENT "Building ISPC object ${outdir}/${fname}.dev${ISPC_TARGET_EXT}")
 
