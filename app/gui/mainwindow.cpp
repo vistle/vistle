@@ -88,6 +88,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(ui->actionAbout, SIGNAL(triggered()), SIGNAL(aboutVistle()));
     ui->actionAbout->setMenuRole(QAction::AboutRole);
+    connect(ui->actionAbout_License, SIGNAL(triggered()), SIGNAL(aboutLicense()));
+    connect(ui->actionAbout_Icons, SIGNAL(triggered()), SIGNAL(aboutIcons()));
     connect(ui->actionAbout_Qt, SIGNAL(triggered()), SIGNAL(aboutQt()));
     ui->actionAbout_Qt->setMenuRole(QAction::AboutQtRole);
 
@@ -136,10 +138,11 @@ void MainWindow::setModified(bool state)
     setWindowModified(state);
 }
 
-void MainWindow::newHub(int hub, const QString &hubName, int nranks, const QString &address, const QString &logname,
-                        const QString &realname)
+void MainWindow::newHub(int hub, const QString &hubName, int nranks, const QString &address, int port,
+                        const QString &logname, const QString &realname, bool hasUi, const QString &systype,
+                        const QString &arch)
 {
-    m_moduleBrowser->addHub(hub, hubName, nranks, address, logname, realname);
+    m_moduleBrowser->addHub(hub, hubName, nranks, address, port, logname, realname, hasUi, systype, arch);
 }
 
 void MainWindow::deleteHub(int hub)

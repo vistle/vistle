@@ -379,6 +379,8 @@ StateTracker::VistleState StateTracker::getState() const
         if (!slave.address.is_unspecified())
             msg.setAddress(slave.address);
         msg.setHasUserInterface(slave.hasUi);
+        msg.setSystemType(slave.systemType);
+        msg.setArch(slave.arch);
         appendMessage(state, msg);
     }
 
@@ -824,6 +826,8 @@ bool StateTracker::handlePriv(const message::AddHub &slave)
     m_hubs.back().logName = slave.loginName();
     m_hubs.back().realName = slave.realName();
     m_hubs.back().hasUi = slave.hasUserInterface();
+    m_hubs.back().systemType = slave.systemType();
+    m_hubs.back().arch = slave.arch();
 
     // for per-hub parameters
     Module hub(slave.id(), slave.id());
@@ -831,7 +835,7 @@ bool StateTracker::handlePriv(const message::AddHub &slave)
     runningMap.emplace(slave.id(), hub);
 
     for (StateObserver *o: m_observers) {
-        o->newHub(slave.id(), slave.name(), slave.numRanks(), "", slave.loginName(), slave.realName());
+        o->newHub(slave.id(), slave);
     }
 
     m_slaveCondition.notify_all();
@@ -1918,8 +1922,7 @@ StateObserver::StateObserver()
 StateObserver::~StateObserver()
 {}
 
-void StateObserver::newHub(int hub, const std::string &name, int nranks, const std::string &address,
-                           const std::string &logname, const std::string &realname)
+void StateObserver::newHub(int hubId, const message::AddHub &hub)
 {}
 void StateObserver::deleteHub(int hub)
 {}

@@ -13,7 +13,8 @@ class VistleObserver: public QObject, public vistle::StateObserver {
     Q_OBJECT
 
 signals:
-    void newHub_s(int hub, QString name, int nranks, QString address, QString logname, QString realname);
+    void newHub_s(int hub, QString name, int nranks, QString address, int port, QString logname, QString realname,
+                  bool hasUi, QString systype, QString arch);
     void deleteHub_s(int hub);
     void moduleAvailable_s(int hub, QString name, QString path, QString description);
     void newModule_s(int moduleId, const boost::uuids::uuid &spawnUuid, QString moduleName);
@@ -42,8 +43,7 @@ signals:
 
 public:
     VistleObserver(QObject *parent = 0);
-    void newHub(int hub, const std::string &name, int nranks, const std::string &address, const std::string &logname,
-                const std::string &realname) override;
+    void newHub(int hubId, const vistle::message::AddHub &hub) override;
     void deleteHub(int hub) override;
     void moduleAvailable(const vistle::AvailableModule &mod) override;
     void newModule(int moduleId, const boost::uuids::uuid &spawnUuid, const std::string &moduleName) override;

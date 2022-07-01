@@ -49,7 +49,8 @@ public:
     QTreeWidgetItem *getHubItem(int hub) const;
 
 public slots:
-    void addHub(int hub, QString hubName, int nranks, QString address, QString logname, QString realname);
+    void addHub(int hub, QString hubName, int nranks, QString address, int port, QString logname, QString realname,
+                bool hasUi, QString systype, QString arch);
     void removeHub(int hub);
     void addModule(int hub, QString module, QString path, QString description);
     void setFilter(QString filter);
@@ -75,6 +76,8 @@ private:
     void selectModule(Qt::Key dir);
     void initCurrentModule(Qt::Key dir);
     void setCurrentModuleSelected(bool select);
+
+    QPixmap m_iconCluster, m_iconServer, m_iconClusterUi, m_iconServerUi;
 
     void prepareMenu(const QPoint &pos);
 };

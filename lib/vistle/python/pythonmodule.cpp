@@ -25,7 +25,7 @@
 #endif
 
 //#define DEBUG
-//#define OBSERVER_DEBUG
+#define OBSERVER_DEBUG
 
 #include <vistle/core/statetracker.h>
 #include <vistle/core/porttracker.h>
@@ -961,18 +961,18 @@ public:
 #endif
     {}
 
-    void newHub(int hub, const std::string &name, int nranks, const std::string &address, const std::string &logname,
-                const std::string &realname) override
+    void newHub(int hubId, const message::AddHub &hub) override
     {
 #ifdef OBSERVER_DEBUG
-        m_out << "   hub " << name << " added with " << nranks << " ranks, operated by " << realname << std::endl;
+        m_out << "   hub " << hub.name() << " added with " << hub.numRanks() << " ranks, operated by " << hub.realName()
+              << std::endl;
 #endif
     }
 
     void deleteHub(int hub) override
     {
 #ifdef OBSERVER_DEBUG
-        m_out << "   hub " << name << " deleted" << std::endl;
+        m_out << "   hub " << hub << " deleted" << std::endl;
 #endif
     }
 
@@ -1112,11 +1112,7 @@ public:
         );
     }
 
-    void newHub(int hub, const std::string &name, int nranks, const std::string &address, const std::string &logname,
-                const std::string &realname) override
-    {
-        PYBIND11_OVERLOAD(void, Base, newHub, hub, name, nranks, address, logname, realname);
-    }
+    void newHub(int hubId, const message::AddHub &hub) override { PYBIND11_OVERLOAD(void, Base, newHub, hubId, hub); }
 
     void deleteHub(int hub) override { PYBIND11_OVERLOAD(void, Base, deleteHub, hub); }
 

@@ -330,6 +330,26 @@ bool AddHub::hasVrb() const
     return m_hasVrb;
 }
 
+std::string AddHub::systemType() const
+{
+    return m_systemType.data();
+}
+
+void AddHub::setSystemType(const std::string &systemType)
+{
+    COPY_STRING(m_systemType, systemType);
+}
+
+std::string AddHub::arch() const
+{
+    return m_arch.data();
+}
+
+void AddHub::setArch(const std::string &arch)
+{
+    COPY_STRING(m_arch, arch);
+}
+
 
 RemoveHub::RemoveHub(int id): m_id(id)
 {}

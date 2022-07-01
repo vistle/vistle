@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>900</width>
-    <height>1000</height>
+    <height>500</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -60,7 +60,7 @@
      <item>
       <layout class="QVBoxLayout" name="verticalLayout">
        <item>
-        <widget class="QTextEdit" name="textEdit">
+        <widget class="QTextBrowser" name="textEdit">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
            <horstretch>0</horstretch>
@@ -81,6 +81,9 @@
          </property>
          <property name="acceptRichText">
           <bool>false</bool>
+         </property>
+         <property name="openExternalLinks">
+          <bool>true</bool>
          </property>
         </widget>
        </item>

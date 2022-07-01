@@ -1,5 +1,14 @@
 <RCC>
     <qresource prefix="icons" >
         <file alias="vistle.png">../../install/hlrs-vistle.png</file>
+        <file alias="cluster_ui.svg">icons/computer.svg</file>
+        <file alias="cluster.svg">icons/gears.svg</file>
+        <file alias="server.svg">icons/gear.svg</file>
+        <file alias="apple.svg">icons/apple.svg</file>
+        <file alias="windows.svg">icons/windows.svg</file>
+        <file alias="linux.svg">icons/linux.svg</file>
+        <file alias="freebsd.svg">icons/freebsd.svg</file>
+        <file alias="display.svg">icons/display.svg</file>
+        <file alias="proxy.svg">icons/link.svg</file>
     </qresource>
 </RCC>

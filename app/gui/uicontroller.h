@@ -34,6 +34,8 @@ public slots:
     void quitRequested(bool &allowed);
 
     void aboutVistle();
+    void aboutLicense();
+    void aboutIcons();
     void aboutQt();
 
 private slots:
@@ -60,6 +62,8 @@ private slots:
     void screenshot(QString imageefile);
 
 private:
+    void about(const char *title, const char *file);
+
     std::unique_ptr<vistle::VistleConnection> m_vistleConnection;
     std::unique_ptr<vistle::UserInterface> m_ui;
     std::unique_ptr<vistle::PythonInterface> m_python;

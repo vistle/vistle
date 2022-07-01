@@ -27,8 +27,7 @@ public:
     StateObserver();
     virtual ~StateObserver();
 
-    virtual void newHub(int hub, const std::string &name, int nranks, const std::string &address,
-                        const std::string &logname, const std::string &realname);
+    virtual void newHub(int hubId, const message::AddHub &hub);
     virtual void deleteHub(int hub);
     virtual void moduleAvailable(const AvailableModule &mod);
 
@@ -87,6 +86,8 @@ struct V_COREEXPORT HubData {
     std::string name;
     std::string logName;
     std::string realName;
+    std::string systemType;
+    std::string arch;
     int numRanks = 0;
     unsigned short port;
     unsigned short dataPort;
