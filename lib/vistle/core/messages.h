@@ -117,6 +117,11 @@ public:
     bool hasVrb() const;
     void setHasVrb(bool vrb);
 
+    std::string systemType() const;
+    void setSystemType(const std::string &os);
+    std::string arch() const;
+    void setArch(const std::string &arch);
+
 private:
     int m_id;
     address_t m_name;
@@ -130,6 +135,8 @@ private:
     address_t m_address;
     bool m_hasUserInterface;
     bool m_hasVrb;
+    port_name_t m_systemType;
+    port_name_t m_arch;
 };
 
 //! request that a slave hub be deleted

@@ -96,6 +96,8 @@ UiController::UiController(int argc, char *argv[], QObject *parent): QObject(par
     connect(m_mainWindow, SIGNAL(deleteSelectedModules()), m_mainWindow->dataFlowView(), SLOT(deleteModules()));
     connect(m_mainWindow, SIGNAL(aboutQt()), SLOT(aboutQt()));
     connect(m_mainWindow, SIGNAL(aboutVistle()), SLOT(aboutVistle()));
+    connect(m_mainWindow, SIGNAL(aboutLicense()), SLOT(aboutLicense()));
+    connect(m_mainWindow, SIGNAL(aboutIcons()), SLOT(aboutIcons()));
 
     connect(m_scene, SIGNAL(selectionChanged()), SLOT(moduleSelectionChanged()));
 
@@ -119,8 +121,8 @@ UiController::UiController(int argc, char *argv[], QObject *parent): QObject(par
     connect(&m_observer, SIGNAL(newParameter_s(int, QString)), SLOT(newParameter(int, QString)));
     connect(&m_observer, SIGNAL(parameterValueChanged_s(int, QString)), SLOT(parameterValueChanged(int, QString)));
 
-    connect(&m_observer, SIGNAL(newHub_s(int, QString, int, QString, QString, QString)), m_mainWindow,
-            SLOT(newHub(int, QString, int, QString, QString, QString)));
+    connect(&m_observer, SIGNAL(newHub_s(int, QString, int, QString, int, QString, QString, bool, QString, QString)),
+            m_mainWindow, SLOT(newHub(int, QString, int, QString, int, QString, QString, bool, QString, QString)));
     connect(&m_observer, SIGNAL(deleteHub_s(int)), m_mainWindow, SLOT(deleteHub(int)));
     connect(&m_observer, SIGNAL(moduleAvailable_s(int, QString, QString, QString)), m_mainWindow,
             SLOT(moduleAvailable(int, QString, QString, QString)));
@@ -381,25 +383,29 @@ void UiController::setModified(bool modified)
     m_modified = modified;
 }
 
-void UiController::aboutVistle()
+void UiController::about(const char *title, const char *filename)
 {
     QDialog *aboutDialog = new QDialog;
     ::Ui::AboutDialog *ui = new ::Ui::AboutDialog;
     ui->setupUi(aboutDialog);
+    aboutDialog->setWindowTitle(title);
 
-#if 0
-    QFile file(":/aboutData/README.md");
-    if (file.open(QIODevice::ReadOnly))
-    {
-        QString data(file.readAll());
-        ui->textEdit->setMarkdown(data);
-    }
-#else
-    QFile file(":/aboutData/LICENSE.txt");
+    QFile file(filename);
     if (file.open(QIODevice::ReadOnly)) {
         QString data(file.readAll());
-        ui->textEdit->setPlainText(data);
+        if (QString(filename).endsWith(".md")) {
+            ui->textEdit->setMarkdown(data);
+        } else {
+            ui->textEdit->setPlainText(data);
+        }
     }
+    ui->textEdit->setSearchPaths(QStringList{":/aboutData"});
+    ui->textEdit->setWordWrapMode(QTextOption::WordWrap);
+#if 0
+    connect(ui->textEdit, &QTextBrowser::sourceChanged, [&ui](const QUrl &url) {
+        bool isText = url.path().endsWith(".txt");
+        ui->textEdit->setWordWrapMode(isText ? QTextOption::NoWrap : QTextOption::WordWrap);
+    });
 #endif
 
     QString text("Welcome to scientific visualization with <a href='https://vistle.io/'>Vistle</a>!");
@@ -410,6 +416,21 @@ void UiController::aboutVistle()
     ui->label->setOpenExternalLinks(true);
 
     aboutDialog->exec();
+}
+
+void UiController::aboutVistle()
+{
+    about("About Vistle", ":/aboutData/Vistle.md");
+}
+
+void UiController::aboutLicense()
+{
+    about("License", ":/aboutData/LICENSE.txt");
+}
+
+void UiController::aboutIcons()
+{
+    about("Font Awesome Icons", ":/aboutData/icons.md");
 }
 
 void UiController::aboutQt()

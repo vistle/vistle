@@ -35,14 +35,16 @@ VistleObserver::VistleObserver(QObject *parent): QObject(parent)
     }
 }
 
-void VistleObserver::newHub(int hub, const std::string &name, int nranks, const std::string &address,
-                            const std::string &logname, const std::string &realname)
+void VistleObserver::newHub(int hubId, const vistle::message::AddHub &hub)
 {
-    QString qname = QString::fromStdString(name);
-    QString qaddress = QString::fromStdString(address);
-    QString qlogname = QString::fromStdString(logname);
-    QString qrealname = QString::fromStdString(realname);
-    emit newHub_s(hub, qname, nranks, qaddress, qlogname, qrealname);
+    QString qname = QString::fromStdString(hub.name());
+    QString qaddress = QString::fromStdString(hub.host());
+    QString qlogname = QString::fromStdString(hub.loginName());
+    QString qrealname = QString::fromStdString(hub.realName());
+    QString qsystype = QString::fromStdString(hub.systemType());
+    QString qarch = QString::fromStdString(hub.arch());
+    emit newHub_s(hubId, qname, hub.numRanks(), qaddress, hub.port(), qlogname, qrealname, hub.hasUserInterface(),
+                  qsystype, qarch);
 }
 
 void VistleObserver::deleteHub(int hub)

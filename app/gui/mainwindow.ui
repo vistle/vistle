@@ -122,6 +122,8 @@
      <string>Help</string>
     </property>
     <addaction name="actionAbout"/>
+    <addaction name="actionAbout_License"/>
+    <addaction name="actionAbout_Icons"/>
     <addaction name="actionAbout_Qt"/>
    </widget>
    <widget class="QMenu" name="menuModules">
@@ -389,6 +391,16 @@
    </property>
    <property name="toolTip">
     <string>About Vistle</string>
+   </property>
+  </action>
+  <action name="actionAbout_License">
+   <property name="text">
+    <string>License</string>
+   </property>
+  </action>
+  <action name="actionAbout_Icons">
+   <property name="text">
+    <string>About Icons</string>
    </property>
   </action>
   <action name="actionAbout_Qt">

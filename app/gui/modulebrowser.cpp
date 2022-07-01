@@ -149,7 +149,8 @@ QTreeWidgetItem *ModuleBrowser::getHubItem(int hub) const
     return it->second;
 }
 
-void ModuleBrowser::addHub(int hub, QString hubName, int nranks, QString address, QString logname, QString realname)
+void ModuleBrowser::addHub(int hub, QString hubName, int nranks, QString address, int port, QString logname,
+                           QString realname, bool hasUi, QString systype, QString arch)
 {
     auto it = hubItems.find(hub);
     if (it == hubItems.end()) {
@@ -160,13 +161,38 @@ void ModuleBrowser::addHub(int hub, QString hubName, int nranks, QString address
         item->setBackground(0, Module::hubColor(hub));
         item->setForeground(0, QColor(0, 0, 0));
 
+        QString sysicon(systype);
+        if (systype != "windows" && systype != "linux" && systype != "freebsd" && systype != "apple")
+            sysicon = "question";
+
         QString tt;
         tt += "<b>" + QString::fromStdString(vistle::message::Id::toString(hub)).toHtmlEscaped() + "</b> " +
-              QString("(" + QString::number(hub) + ")").toHtmlEscaped() + "<br>";
-        tt += QString(logname + "@" + hubName).toHtmlEscaped() + "<br>";
-        tt += QString(realname).toHtmlEscaped() + "<br>";
-        tt += QString(QString::number(nranks) + " ranks").toHtmlEscaped();
+              QString("(" + QString::number(hub) + ")").toHtmlEscaped();
+        tt += QString("<table><tr><td><img height=\"48\" src=\":/icons/%0.svg\"/>&nbsp;</td><td><br>%1<br>%2 "
+                      "ranks</td></table><br>")
+                  .arg(sysicon)
+                  .arg(arch)
+                  .arg(nranks);
+        tt += QString(realname).toHtmlEscaped() + QString(" (%0)").arg(logname) + "<br>";
+        tt += QString(hubName).toHtmlEscaped() + QString(":%0").arg(port);
         item->setData(0, Qt::ToolTipRole, tt);
+
+        QPixmap icon;
+        if (nranks == 0) {
+            icon = QPixmap(":/icons/proxy.svg");
+        } else if (nranks == 1) {
+            if (hasUi) {
+                icon = QPixmap(":/icons/display.svg");
+            } else {
+                icon = QPixmap(":/icons/server.svg");
+            }
+        } else {
+            if (hasUi)
+                icon = QPixmap(":/icons/cluster_ui.svg");
+            else
+                icon = QPixmap(":/icons/cluster.svg");
+        }
+        item->setIcon(0, icon);
     }
 }
 

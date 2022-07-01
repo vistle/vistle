@@ -1194,6 +1194,30 @@ message::AddHub Hub::addHubForSelf() const
         //CERR << "AddHub: exposed host: " << m_exposedHostAddr << std::endl;
     }
 
+#if defined(_WIN32)
+    hub.setSystemType("windows");
+#elif defined(__APPLE__)
+    hub.setSystemType("apple");
+#elif defined(__linux__)
+    hub.setSystemType("linux");
+#elif defined(__FreeBSD__)
+    hub.setSystemType("freebsd");
+#else
+    hub.setSystemType("other");
+#endif
+
+#if defined(__aarch64__)
+    hub.setArch("ARM64");
+#elif defined(__arm__)
+    hub.setArch("ARM");
+#elif defined(__x86_64)
+    hub.setArch("AMD64");
+#elif defined(__i386__)
+    hub.setArch("x86");
+#else
+    hub.setArch("Unknown");
+#endif
+
     return hub;
 }
 
