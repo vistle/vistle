@@ -2587,7 +2587,7 @@ const AvailableModule &getStaticModuleInfo(int modId, StateTracker &state)
         if (it != state.availableModules().end())
             return it->second;
     }
-    throw vistle::exception{"getStaticModuleInfo failed mor module with id " + std::to_string(modId)};
+    throw vistle::exception{"getStaticModuleInfo failed for module with id " + std::to_string(modId)};
 }
 
 bool Hub::handlePriv(const message::Quit &quit, message::Identify::Identity senderType)
