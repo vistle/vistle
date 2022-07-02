@@ -9,6 +9,7 @@
 #include <sstream>
 #include <cassert>
 #include <future>
+#include <condition_variable>
 #include <signal.h>
 
 #include <vistle/util/hostname.h>
@@ -620,28 +621,48 @@ bool Hub::sendMessage(Hub::socket_ptr sock, const message::Message &msg, const b
     if (payload)
         pl = std::make_shared<buffer>(*payload);
 
-    message::async_send(*sock, msg, pl, [this, sock, close](boost::system::error_code ec) {
-        if (ec) {
+    std::unique_ptr<std::mutex> closemutex;
+    std::unique_ptr<std::condition_variable> closecv;
+    bool closed = false;
+    if (close) {
+        closemutex = std::make_unique<std::mutex>();
+        closecv = std::make_unique<std::condition_variable>();
+    }
+
+    message::async_send(*sock, msg, pl,
+                        [this, sock, close, &closemutex, &closecv, &closed](boost::system::error_code ec) {
+                            if (close) {
+                                std::unique_lock lk(*closemutex);
+                                closecv->wait(lk, [] { return true; });
+                                closed = true;
+                                lk.unlock();
+                                closecv->notify_one();
+                            } else if (ec) {
 #if 0
-           if (ec.code() == boost::system::errc::broken_pipe) {
-               CERR << "send error, socket closed: " << ec.message() << std::endl;
-               removeSocket(sock);
-           }
+                                if (ec.code() == boost::system::errc::broken_pipe) {
+                                    CERR << "send error, socket closed: " << ec.message() << std::endl;
+                                    removeSocket(sock);
+                                }
 #endif
-            if (ec.value() == boost::asio::error::eof) {
-                CERR << "send error, socket closed: " << ec.message() << std::endl;
-                removeSocket(sock);
-            }
-            if (ec.value() == boost::asio::error::broken_pipe) {
-                CERR << "send error, broken pipe: " << ec.message() << std::endl;
-                removeSocket(sock);
-            }
-            CERR << "send error: " << ec.message() << std::endl;
-        }
-        if (close)
-            removeSocket(sock);
-    });
+                                if (ec.value() == boost::asio::error::eof) {
+                                    CERR << "send error, socket closed: " << ec.message() << std::endl;
+                                    removeSocket(sock);
+                                }
+                                if (ec.value() == boost::asio::error::broken_pipe) {
+                                    CERR << "send error, broken pipe: " << ec.message() << std::endl;
+                                    removeSocket(sock);
+                                }
+                                CERR << "send error: " << ec.message() << std::endl;
+                            }
+                        });
 #endif
+    if (close) {
+        closecv->notify_one();
+        std::unique_lock lk(*closemutex);
+        closecv->wait(lk, [&closed] { return closed; });
+        removeSocket(sock);
+        return true;
+    }
     return result;
 }
 
@@ -992,13 +1013,17 @@ bool Hub::sendMaster(const message::Message &msg, const buffer *payload)
     int numSent = 0;
     for (auto &sock: m_sockets) {
         if (sock.second == message::Identify::HUB) {
-            if (!sendMessage(sock.first, msg, payload)) {
-                auto s = sock.first;
-                lock.unlock();
+            auto s = sock.first;
+            lock.unlock();
+            bool close = msg.type() == message::CLOSECONNECTION;
+            if (!sendMessage(s, msg, payload) && !close) {
                 removeSocket(s);
                 break;
             }
             ++numSent;
+            if (close) {
+                break;
+            }
         }
     }
     assert(numSent <= 1);
@@ -2598,6 +2623,7 @@ bool Hub::handlePriv(const message::Quit &quit, message::Identify::Identity send
         if (senderType == message::Identify::MANAGER) {
             if (m_isMaster)
                 sendSlaves(quit);
+            m_quitting = true;
         } else if (senderType == message::Identify::HUB) {
             sendManager(quit);
         } else if (senderType == message::Identify::UI) {
@@ -2610,7 +2636,6 @@ bool Hub::handlePriv(const message::Quit &quit, message::Identify::Identity send
             sendSlaves(quit);
             sendManager(quit);
         }
-        m_quitting = true;
         return false;
     } else if (quit.id() == m_hubId) {
         if (m_isMaster) {
@@ -2618,10 +2643,11 @@ bool Hub::handlePriv(const message::Quit &quit, message::Identify::Identity send
         } else {
             CERR << "removal of hub requested by " << senderType << std::endl;
             m_uiManager.requestQuit();
-            if (senderType != message::Identify::MANAGER) {
+            if (senderType == message::Identify::MANAGER) {
+                m_quitting = true;
+            } else {
                 sendManager(quit);
             }
-            m_quitting = true;
             return true;
         }
     } else if (Id::isHub(quit.id())) {
@@ -2636,8 +2662,13 @@ bool Hub::handlePriv(const message::RemoveHub &rm)
     int hub = rm.id();
     if (m_isMaster) {
         if (hub != Id::MasterHub && message::Id::isHub(hub)) {
-            removeSlave(hub);
-            return sendHub(hub, message::Quit());
+            if (rm.senderId() == hub) {
+                removeSlave(hub);
+                sendUi(rm);
+                sendSlaves(rm);
+                return true;
+            }
+            return sendHub(hub, message::Quit(hub));
         } else {
             return false;
         }
@@ -3064,12 +3095,13 @@ bool Hub::checkChildProcesses(bool emergency)
             stopVrb();
         } else if (!emergency) {
             if (id == Process::Manager) {
-                // manager died
-                CERR << "manager died - cannot continue" << std::endl;
-                hasToQuit = true;
-            }
-            if (message::Id::isModule(id) && m_stateTracker.getModuleState(id) != StateObserver::Unknown &&
-                m_stateTracker.getModuleState(id) != StateObserver::Quit) {
+                if (!m_quitting) {
+                    // manager died unexpectedly
+                    CERR << "manager died - cannot continue" << std::endl;
+                    hasToQuit = true;
+                }
+            } else if (message::Id::isModule(id) && m_stateTracker.getModuleState(id) != StateObserver::Unknown &&
+                       m_stateTracker.getModuleState(id) != StateObserver::Quit) {
                 // synthesize ModuleExit message for crashed modules
                 auto m = make.message<message::ModuleExit>();
                 m.setSenderId(id);
