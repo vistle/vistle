@@ -313,7 +313,7 @@ void Module::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
         if (hub) {
             QString baseName = m_name;
             unsigned ncaps = 0;
-            for (size_t i = 0; i < baseName.size(); ++i) {
+            for (int i = 0; i < baseName.size(); ++i) {
                 if (baseName.at(i).isUpper()) {
                     ++ncaps;
                     if (ncaps == 3) {
