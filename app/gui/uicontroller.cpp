@@ -394,7 +394,11 @@ void UiController::about(const char *title, const char *filename)
     if (file.open(QIODevice::ReadOnly)) {
         QString data(file.readAll());
         if (QString(filename).endsWith(".md")) {
+#if QT_VERSION >= 0x051400
             ui->textEdit->setMarkdown(data);
+#else
+            ui->textEdit->setPlainText(data);
+#endif
         } else {
             ui->textEdit->setPlainText(data);
         }
