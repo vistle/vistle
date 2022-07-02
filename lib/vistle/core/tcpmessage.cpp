@@ -187,6 +187,10 @@ struct SendRequest {
 
         std::lock_guard<std::mutex> locker(sendQueueMutex);
         auto &sq = sendQueues[&sock];
+        if (sq.empty()) {
+            // request queues have been cleared for quitting
+            return;
+        }
         assert(!sq.empty());
         auto This = sq.front();
         sq.pop_front();
