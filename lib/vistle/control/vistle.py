@@ -1,4 +1,15 @@
 import _vistle
+import os
+import sys
+
+coviseDir = os.getenv("COVISEDIR")
+archsuffix = os.getenv("ARCHSUFFIX")
+if coviseDir and archsuffix:
+   sys.path.append(coviseDir + "/" + archsuffix + "/lib")
+   from coGRMsg import *
+
+def sendCoverMessage(msg, coverModuleId):
+   _vistle.sendCoverMessage(msg.c_str(), coverModuleId)
 
 # print to network clients
 class _stdout:

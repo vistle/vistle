@@ -12,7 +12,7 @@
 #include <mpiwrapper/mpicover.h>
 #include <PluginUtil/StaticSequence.h>
 #include <PluginUtil/PluginMessageTypes.h>
-
+#include <grmsg/coGRMsg.h>
 // vistle
 #include <vistle/core/messages.h>
 #include <vistle/core/object.h>
@@ -940,6 +940,16 @@ bool COVER::handleMessage(const message::Message *message, const MessagePayload 
         msg.sender = cmsg.sender();
         msg.send_type = cmsg.senderType();
         coVRCommunication::instance()->handleVRB(msg);
+        return true;
+    }
+    case vistle::message::Type::COGRMSG: {
+        if (payload->data()) {
+            buffer pl;
+            std::copy(payload->data(), payload->data() + payload->size(), std::back_inserter(pl));
+            auto stringMsg = message::getPayload<message::coGRMsg::Payload>(pl);
+            static const std::string prefix = "GRMSG\n"; //this is added again after guiToRenderMsg
+            coVRPluginList::instance()->guiToRenderMsg(stringMsg.content.substr(prefix.size()).c_str());
+        }
         return true;
     }
     default:
