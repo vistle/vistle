@@ -913,6 +913,14 @@ static void setCompoundDropPosition(Float x, Float y)
     compoundDropPositionY = y;
 }
 
+static void sendCoverMessage(const char *msg, int moduleId)
+{
+    message::coGRMsg m;
+    m.setDestId(moduleId);
+    message::coGRMsg::Payload pl(msg);
+    sendMessage(m, pl);
+}
+
 static void setRelativePos(int id, Float x, Float y)
 {
     setVectorParam2(id, "_position", x + compoundDropPositionX, y + compoundDropPositionY, true);
@@ -1352,6 +1360,7 @@ PY_MODULE(_vistle, m)
     m.def("moduleCompoundConnect", &moduleCompoundConnect,
           "connect ports of modules inside the compound, expose port if compound id is given", "compoundId"_a,
           "fromId"_a, "toId"_a, "fromPort"_a, "toPort"_a);
+    m.def("sendCoverMessage", &sendCoverMessage, "send a coGrMsg to COVER", "msg"_a, "coverMoudleId"_a);
     m.def("setRelativePos", &setRelativePos, "move module relative to compound drop position", "moduleId"_a, "x"_a,
           "y"_a);
     m.def("setCompoundDropPosition", &setCompoundDropPosition, "set the position for a module compound", "x"_a, "y"_a);

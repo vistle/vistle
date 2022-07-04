@@ -42,10 +42,13 @@ template V_COREEXPORT buffer addPayload<std::string>(Message &message, const std
 template V_COREEXPORT buffer addPayload<SendText::Payload>(Message &message, const SendText::Payload &payload);
 template V_COREEXPORT buffer addPayload<SetParameterChoices::Payload>(Message &message,
                                                                       const SetParameterChoices::Payload &payload);
+template V_COREEXPORT buffer addPayload<coGRMsg::Payload>(Message &message, const coGRMsg::Payload &payload);
+
 
 template V_COREEXPORT std::string getPayload(const buffer &data);
 template V_COREEXPORT SendText::Payload getPayload(const buffer &data);
 template V_COREEXPORT SetParameterChoices::Payload getPayload(const buffer &data);
+template V_COREEXPORT coGRMsg::Payload getPayload(const buffer &data);
 
 Identify::Identify(const std::string &name)
 : m_identity(Identity::REQUEST)
@@ -2004,6 +2007,13 @@ int Cover::mirrorId() const
 {
     return m_mirrorId;
 }
+
+coGRMsg::coGRMsg() = default;
+
+coGRMsg::Payload::Payload() = default;
+
+coGRMsg::Payload::Payload(const std::string &content): content(content)
+{}
 
 int Cover::sender() const
 {
