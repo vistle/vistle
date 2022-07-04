@@ -965,6 +965,7 @@ private:
 //! wrap a COVISE message sent by COVER
 class V_COREEXPORT Cover: public MessageBase<Cover, COVER> {
 public:
+    Cover(int subType);
     Cover(int mirror, int senderId, int senderType, int subType);
 
     int sender() const;
@@ -978,24 +979,6 @@ private:
     int m_senderType;
     int m_subType;
 };
-//wrapper for COVER coGRMSG
-class V_COREEXPORT coGRMsg: public MessageBase<coGRMsg, COGRMSG> {
-public:
-    struct Payload {
-        Payload();
-        Payload(const std::string &content);
-
-        std::string content;
-
-        ARCHIVE_ACCESS
-        template<class Archive>
-        void serialize(Archive &ar)
-        {
-            ar &content;
-        }
-    };
-    coGRMsg();
-};
 
 template<class Payload>
 extern V_COREEXPORT buffer addPayload(Message &message, const Payload &payload);
@@ -1006,12 +989,10 @@ extern template V_COREEXPORT buffer addPayload<std::string>(Message &message, co
 extern template V_COREEXPORT buffer addPayload<SendText::Payload>(Message &message, const SendText::Payload &payload);
 extern template V_COREEXPORT buffer
 addPayload<SetParameterChoices::Payload>(Message &message, const SetParameterChoices::Payload &payload);
-extern template V_COREEXPORT buffer addPayload<coGRMsg::Payload>(Message &message, const coGRMsg::Payload &payload);
 
 extern template V_COREEXPORT std::string getPayload(const buffer &data);
 extern template V_COREEXPORT SendText::Payload getPayload(const buffer &data);
 extern template V_COREEXPORT SetParameterChoices::Payload getPayload(const buffer &data);
-extern template V_COREEXPORT coGRMsg::Payload getPayload(const buffer &data);
 
 V_COREEXPORT std::ostream &operator<<(std::ostream &s, const Message &msg);
 

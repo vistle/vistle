@@ -71,7 +71,6 @@ void Router::initRoutingTable()
     rt[FILEQUERY] = Special;
     rt[FILEQUERYRESULT] = Special;
     rt[COVER] = Special;
-    rt[COGRMSG] = Special;
     rt[INSITU] = Special;
 
     for (int i = ANY + 1; i < NumMessageTypes; ++i) {

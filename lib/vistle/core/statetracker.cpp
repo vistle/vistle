@@ -704,7 +704,6 @@ bool StateTracker::handle(const message::Message &msg, const char *payload, size
     }
 
     case COVER:
-    case COGRMSG:
     case CREATEMODULECOMPOUND:
     case DATATRANSFERSTATE:
     case FILEQUERY:
