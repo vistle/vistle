@@ -42,13 +42,11 @@ template V_COREEXPORT buffer addPayload<std::string>(Message &message, const std
 template V_COREEXPORT buffer addPayload<SendText::Payload>(Message &message, const SendText::Payload &payload);
 template V_COREEXPORT buffer addPayload<SetParameterChoices::Payload>(Message &message,
                                                                       const SetParameterChoices::Payload &payload);
-template V_COREEXPORT buffer addPayload<coGRMsg::Payload>(Message &message, const coGRMsg::Payload &payload);
 
 
 template V_COREEXPORT std::string getPayload(const buffer &data);
 template V_COREEXPORT SendText::Payload getPayload(const buffer &data);
 template V_COREEXPORT SetParameterChoices::Payload getPayload(const buffer &data);
-template V_COREEXPORT coGRMsg::Payload getPayload(const buffer &data);
 
 Identify::Identify(const std::string &name)
 : m_identity(Identity::REQUEST)
@@ -1999,6 +1997,13 @@ SetParameterChoices::Payload::Payload() = default;
 SetParameterChoices::Payload::Payload(const std::vector<std::string> &choices): choices(choices)
 {}
 
+Cover::Cover(int subType)
+: m_mirrorId(message::Id::Invalid)
+, m_senderId(message::Id::Invalid)
+, m_senderType(message::Id::Invalid)
+, m_subType(subType)
+{}
+
 Cover::Cover(int mirror, int senderId, int senderType, int subType)
 : m_mirrorId(mirror), m_senderId(senderId), m_senderType(senderType), m_subType(subType)
 {}
@@ -2007,13 +2012,6 @@ int Cover::mirrorId() const
 {
     return m_mirrorId;
 }
-
-coGRMsg::coGRMsg() = default;
-
-coGRMsg::Payload::Payload() = default;
-
-coGRMsg::Payload::Payload(const std::string &content): content(content)
-{}
 
 int Cover::sender() const
 {

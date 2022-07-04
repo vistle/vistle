@@ -78,7 +78,6 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(
     (FILEQUERY)
     (FILEQUERYRESULT)
     (COVER)
-    (COGRMSG)
     (INSITU)
     (NumMessageTypes) // keep last
 )

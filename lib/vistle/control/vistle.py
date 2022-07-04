@@ -1,12 +1,9 @@
 import _vistle
-import os
-import sys
 
-coviseDir = os.getenv("COVISEDIR")
-archsuffix = os.getenv("ARCHSUFFIX")
-if coviseDir and archsuffix:
-   sys.path.append(coviseDir + "/" + archsuffix + "/lib")
+try:
    from coGRMsg import *
+except ImportError:
+    print("import of coGRMsg failed")
 
 def sendCoverMessage(msg, coverModuleId):
    _vistle.sendCoverMessage(msg.c_str(), coverModuleId)
@@ -313,27 +310,6 @@ def load(filename = None):
    _vistle.setLoadedFile(filename)
    _vistle.setStatus("Workflow loaded: "+filename)
 
-def loadScript(filename):
-   _vistle.loadScript(filename)
-
-def moduleCompoundAlloc(compoundName):
-   return _vistle.moduleCompoundAlloc(compoundName)
-
-def moduleCompoundAddModule(compoundId, moduleName, x, y):
-   return _vistle.moduleCompoundAddModule(compoundId, moduleName, x, y)
-
-def moduleCompoundConnect(compoundId, fromId, fromName, toId, toName): #if fromId or toId is equal to compound id the port is exposed with the given name
-   _vistle.moduleCompoundConnect(compoundId, fromId, fromName, toId, toName)
-
-def moduleCompoundCreate(compoundId):
-   _vistle.moduleCompoundCreate(compoundId)
-
-def setRelativePos(moduleId, x, y):
-   _vistle.setRelativePos(moduleId, x, y)
-
-def setCompoundDropPosition(x, y):
-   _vistle.setCompoundDropPosition(x, y)
-   
 class PythonStateObserver(_vistle.StateObserver):
     def __init__(self):
         super(PythonStateObserver, self).__init__()
@@ -437,3 +413,10 @@ Message = _vistle.Message
 StateObserver = _vistle.StateObserver
 Text = _vistle.Text
 Status = _vistle.Status
+
+moduleCompoundAlloc = _vistle.moduleCompoundAlloc
+moduleCompoundAddModule = _vistle.moduleCompoundAddModule
+moduleCompoundConnect = _vistle.moduleCompoundConnect
+moduleCompoundCreate =_vistle.moduleCompoundCreate
+setRelativePos = _vistle.setRelativePos
+setCompoundDropPosition = _vistle.setCompoundDropPosition

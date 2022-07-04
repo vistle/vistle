@@ -33,6 +33,11 @@
 namespace py = pybind11;
 namespace asio = boost::asio;
 
+enum {
+    COVISE_MESSAGE_RENDER =
+        45, // copied from covise/src/kernel/net/message_types.h, and has to agree with the value there
+};
+
 #ifdef EMBED_PYTHON
 #define PY_MODULE(mod, m) PYBIND11_EMBEDDED_MODULE(mod, m)
 #else
@@ -84,6 +89,36 @@ static bool sendMessage(vistle::message::Message &m, Payload &payload)
 {
     auto pl = addPayload(m, payload);
     return sendMessage(m, &pl);
+}
+
+static bool sendCoverMessage(int destMod, int subType, size_t len, const char *data)
+{
+    vistle::buffer pl(data, data + len);
+    message::Cover cover(subType);
+    cover.setDestId(destMod);
+    cover.setPayloadSize(pl.size());
+    return sendMessage(cover, &pl);
+}
+
+static bool sendCoverGuiMessage(const char *msg, int moduleId)
+{
+    static const char empty[] = "";
+    static const char keyword[] = "GRMSG";
+
+    if (strncmp(msg, keyword, strlen(keyword)) != 0) {
+        return false;
+    }
+
+    vistle::buffer pl(strlen(empty) + strlen(keyword) + strlen(msg) + 3);
+    auto d = pl.data();
+
+    strcpy(d, empty);
+    d += strlen(empty) + 1;
+
+    strcpy(d, msg);
+    d[strlen(keyword)] = '\0';
+
+    return sendCoverMessage(moduleId, COVISE_MESSAGE_RENDER, pl.size(), pl.data());
 }
 
 static std::shared_ptr<message::Buffer> waitForReply(const message::uuid_t &uuid)
@@ -913,14 +948,6 @@ static void setCompoundDropPosition(Float x, Float y)
     compoundDropPositionY = y;
 }
 
-static void sendCoverMessage(const char *msg, int moduleId)
-{
-    message::coGRMsg m;
-    m.setDestId(moduleId);
-    message::coGRMsg::Payload pl(msg);
-    sendMessage(m, pl);
-}
-
 static void setRelativePos(int id, Float x, Float y)
 {
     setVectorParam2(id, "_position", x + compoundDropPositionX, y + compoundDropPositionY, true);
@@ -1360,7 +1387,6 @@ PY_MODULE(_vistle, m)
     m.def("moduleCompoundConnect", &moduleCompoundConnect,
           "connect ports of modules inside the compound, expose port if compound id is given", "compoundId"_a,
           "fromId"_a, "toId"_a, "fromPort"_a, "toPort"_a);
-    m.def("sendCoverMessage", &sendCoverMessage, "send a coGrMsg to COVER", "msg"_a, "coverMoudleId"_a);
     m.def("setRelativePos", &setRelativePos, "move module relative to compound drop position", "moduleId"_a, "x"_a,
           "y"_a);
     m.def("setCompoundDropPosition", &setCompoundDropPosition, "set the position for a module compound", "x"_a, "y"_a);
@@ -1409,6 +1435,7 @@ PY_MODULE(_vistle, m)
           "disconnect output `arg2` of module with `id1` to input `arg4` of module with `id2`");
     m.def("compute", compute, "trigger execution of module with `id`", "moduleId"_a = message::Id::Broadcast);
     m.def("interrupt", cancelCompute, "interrupt execution of module with ID `arg1`");
+    m.def("sendCoverMessage", &sendCoverGuiMessage, "send a coGRMsg to COVER", "msg"_a, "coverModuleId"_a);
     m.def("quit", quit, "quit vistle session");
     m.def("ping", ping, "send first character of `arg2` to destination `arg1`", "id"_a, "data"_a = "p");
     m.def("trace", trace, "enable/disable message tracing for module `id`", "id"_a = message::Id::Broadcast,
