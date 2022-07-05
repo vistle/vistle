@@ -1,7 +1,9 @@
 import _vistle
 
+coGRMsgLoaded = False
 try:
    from coGRMsg import *
+   coGRMsgLoaded = True
 except ImportError:
     print("import of coGRMsg failed")
 
@@ -309,6 +311,13 @@ def load(filename = None):
 
    _vistle.setLoadedFile(filename)
    _vistle.setStatus("Workflow loaded: "+filename)
+
+def snapshotCover(modId, file):
+    if (coGRMsgLoaded):
+        msg = coGRPluginMsg("PBufferSnapShot", "load")
+        sendCoverMessage(msg, modId)
+        msg = coGRSnapshotMsg(file, "snapOnce")
+        sendCoverMessage(msg, modId)
 
 class PythonStateObserver(_vistle.StateObserver):
     def __init__(self):
