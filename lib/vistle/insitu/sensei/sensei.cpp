@@ -96,7 +96,7 @@ bool Adapter::Execute(size_t timestep)
 }
 
 #ifdef MODULE_THREAD
-bool SenseiAdapter::startVistle(const MPI_Comm &comm, const std::string &options)
+bool Adapter::startVistle(const MPI_Comm &comm, const std::string &options)
 {
     int prov = MPI_THREAD_SINGLE;
     MPI_Query_thread(&prov);
@@ -109,7 +109,7 @@ bool SenseiAdapter::startVistle(const MPI_Comm &comm, const std::string &options
         CERR << "VISTLE_ROOT not set to the path of the Vistle build directory." << endl;
         return false;
     }
-    m_managerThread = std::thread([VISTLE_ROOT, options, this]() {
+    m_managerThread = std::thread([VISTLE_ROOT, options]() {
         std::string cmd{VISTLE_ROOT};
         cmd += "/bin/vistle_manager";
         std::vector<const char *> args;
