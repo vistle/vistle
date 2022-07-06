@@ -316,6 +316,8 @@ def snapshotCover(modId, file):
     if (coGRMsgLoaded):
         msg = coGRPluginMsg("PBufferSnapShot", "load")
         sendCoverMessage(msg, modId)
+        if not file.endswith(".png"):
+         printWarning("snapshotCover: file should end with \".png\"")
         msg = coGRSnapshotMsg(file, "snapOnce")
         sendCoverMessage(msg, modId)
 
