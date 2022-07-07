@@ -756,6 +756,38 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
         add_dependencies(vistle_doc ${targetname}_doc)
     endmacro()
 
+    macro(generate_network_snapshot targetname network_file)
+        add_custom_command( #create a snapshot of the pipeline
+            OUTPUT  ${CMAKE_CURRENT_BINARY_DIR}/${network_file}_workflow.png
+            COMMAND vistle --snapshot ${CMAKE_CURRENT_BINARY_DIR}/${network_file}_workflow.png ${CMAKE_CURRENT_LIST_DIR}/${network_file}.vsl
+            DEPENDS  ${CMAKE_CURRENT_LIST_DIR}/${VISTLE_FILE}.vsl targetname
+            COMMENT "Generating network snapshot for " ${network_file}.vsl)
+
+        add_custom_target(
+            ${targetname}_${VISTLE_FILE}_workflow
+            ${ALWAYS_BUILD}
+            DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${VISTLE_FILE}_workflow.png)
+        add_dependencies(vistle_doc ${targetname}_${VISTLE_FILE}_workflow)
+    endmacro()
+
+    macro(generate_snapshots targetname network_file)
+        if(EXISTS ${CMAKE_CURRENT_LIST_DIR}/${network_file}.vwp) #if we have a viewpoint file we can generate an result image, only first viewpoint is considered, only first cover is considered
+            add_custom_command(
+                OUTPUT  ${CMAKE_CURRENT_BINARY_DIR}/${network_file}_result.png ${CMAKE_CURRENT_BINARY_DIR}/${network_file}_workflow.png
+                COMMAND ${CMAKE_COMMAND} -E env VISTLE_DOC_IMAGE_NAME=${network_file} VISTLE_DOC_SOURCE_DIR=${CMAKE_CURRENT_LIST_DIR} VISTLE_DOC_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR} vistle ${PROJECT_SOURCE_DIR}/doc/resultSnapShot.py
+                DEPENDS ${CMAKE_CURRENT_LIST_DIR}/${network_file}.vsl ${targetname}
+                COMMENT "Generating network and result snapshot for " ${network_file}.vsl)
+            add_custom_target(
+                ${targetname}_${network_file}_result
+                ${ALWAYS_BUILD}
+                DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${network_file}_result.png)
+            add_dependencies(vistle_doc ${targetname}_${network_file}_result)
+        else()
+            message(WARNING "can not generate snapshots for " ${targetname} " " ${network_file} ": missing viewpoint file, make sure a viewpoint file named \"" ${network_file} ".vwp\" exists!")
+        endif()
+    endmacro()
+
+
     macro(add_module targetname description)
 
         file(APPEND ${MODULE_DESCRIPTION_FILE} ${targetname} " " ${description}\n)
