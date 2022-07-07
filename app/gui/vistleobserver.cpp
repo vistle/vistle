@@ -195,7 +195,7 @@ void VistleObserver::message(const vistle::message::Message &msg, vistle::buffer
     case SCREENSHOT: {
         auto &ss = msg.as<Screenshot>();
         QString file = ss.filename();
-        emit screenshot_s(file);
+        emit screenshot_s(file, ss.quit());
         break;
     }
     default: {

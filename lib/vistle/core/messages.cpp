@@ -550,7 +550,7 @@ bool ModuleExit::isForwarded() const
     return forwarded;
 }
 
-Screenshot::Screenshot(const std::string &filename)
+Screenshot::Screenshot(const std::string &filename, bool quit): m_quit(quit)
 {
     COPY_STRING(m_filename, filename);
 }
@@ -558,6 +558,11 @@ Screenshot::Screenshot(const std::string &filename)
 const char *Screenshot::filename() const
 {
     return m_filename.data();
+}
+
+bool Screenshot::quit() const
+{
+    return m_quit;
 }
 
 Execute::Execute(Execute::What what, const int module, const int count)

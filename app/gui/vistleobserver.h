@@ -39,7 +39,7 @@ signals:
 
     void quit_s();
 
-    void screenshot_s(QString msg);
+    void screenshot_s(QString msg, bool quit);
 
 public:
     VistleObserver(QObject *parent = 0);

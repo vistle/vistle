@@ -293,11 +293,13 @@ private:
 //! instruct GUI to store a snapshot of the rendered workflow
 class V_COREEXPORT Screenshot: public MessageBase<Screenshot, SCREENSHOT> {
 public:
-    explicit Screenshot(const std::string &filename);
+    explicit Screenshot(const std::string &filename, bool quit = false);
     const char *filename() const;
+    bool quit() const;
 
 private:
     path_t m_filename;
+    bool m_quit = false;
 };
 class V_COREEXPORT Execute: public MessageBase<Execute, EXECUTE> {
 public:
