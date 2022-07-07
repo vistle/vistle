@@ -304,6 +304,7 @@ private:
 class V_COREEXPORT Execute: public MessageBase<Execute, EXECUTE> {
 public:
     DEFINE_ENUM_WITH_STRING_CONVERSIONS(What,
+                                        (Upstream) // upstream module is executing
                                         (Prepare) // call prepare()
                                         (ComputeExecute) // call compute() - because this module was executed
                                         (ComputeObject) // call compute() - because objects have been received

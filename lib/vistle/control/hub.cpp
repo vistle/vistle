@@ -2775,6 +2775,14 @@ bool Hub::handlePriv(const message::Execute &exec)
             modules = getSubmoduleIds(exec.getModule(), av);
         }
     }
+    auto downstream = m_stateTracker.getDownstreamModules(exec);
+    for (auto id: downstream) {
+        auto blockDownstream = make.message<message::Execute>(exec);
+        blockDownstream.setWhat(message::Execute::Upstream);
+        blockDownstream.setDestId(id);
+        blockDownstream.setModule(id);
+        sendModule(blockDownstream, id);
+    }
     for (auto id: modules) {
         bool canExec = true;
         auto inputs = m_stateTracker.portTracker()->getInputPorts(id);

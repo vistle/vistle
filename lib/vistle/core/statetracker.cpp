@@ -1031,34 +1031,19 @@ bool StateTracker::handlePriv(const message::Execute &execute)
     if (execute.destId() != message::Id::Broadcast)
         return true;
 
+    auto executing = getDownstreamModules(execute);
     int execId = execute.getModule();
-    if (message::Id::isModule(execId)) {
-        auto executing = getDownstreamModules(execId, "", true);
-        executing.insert(execId);
-        for (auto id: executing) {
-            auto it = runningMap.find(id);
-            if (it == runningMap.end())
-                continue;
-            auto &mod = it->second;
-            mod.executing = true;
+    executing.insert(execId);
+    for (auto id: executing) {
+        auto it = runningMap.find(id);
+        if (it == runningMap.end())
+            continue;
+        auto &mod = it->second;
+        mod.executing = true;
 
-            mutex_locker guard(m_stateMutex);
-            for (StateObserver *o: m_observers) {
-                o->moduleStateChanged(id, mod.state());
-            }
-        }
-    } else {
-        for (auto &id_mod: runningMap) {
-            auto &id = id_mod.first;
-            auto &mod = id_mod.second;
-            if (hasCombinePort(id))
-                continue;
-            mod.executing = true;
-
-            mutex_locker guard(m_stateMutex);
-            for (StateObserver *o: m_observers) {
-                o->moduleStateChanged(id, mod.state());
-            }
+        mutex_locker guard(m_stateMutex);
+        for (StateObserver *o: m_observers) {
+            o->moduleStateChanged(id, mod.state());
         }
     }
     return true;
@@ -1846,6 +1831,24 @@ std::set<int> StateTracker::getDownstreamModules(int id, const std::string &port
     }
 
     return result;
+}
+
+std::set<int> StateTracker::getDownstreamModules(const message::Execute &execute) const
+{
+    int execId = execute.getModule();
+    if (message::Id::isModule(execId)) {
+        return getDownstreamModules(execId, "", true);
+    }
+
+    std::set<int> executing;
+    for (const auto &id_mod: runningMap) {
+        const auto &id = id_mod.first;
+        const auto &mod = id_mod.second;
+        if (hasCombinePort(id))
+            continue;
+        executing.insert(id);
+    }
+    return executing;
 }
 
 bool StateTracker::hasCombinePort(int id) const

@@ -224,6 +224,7 @@ protected:
     std::set<int> getUpstreamModules(int id, const std::string &port = std::string()) const;
     std::set<int> getDownstreamModules(int id, const std::string &port = std::string(),
                                        bool ignoreNoCompute = false) const;
+    std::set<int> getDownstreamModules(const message::Execute &exec) const;
     bool hasCombinePort(int id) const;
     bool isExecuting(int id) const;
 

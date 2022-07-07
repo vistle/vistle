@@ -1570,7 +1570,11 @@ bool Module::handleMessage(const vistle::message::Message *message, const Messag
         const message::Barrier *barrier = static_cast<const message::Barrier *>(message);
         message::BarrierReached reached(barrier->uuid());
         reached.setDestId(Id::LocalManager);
-        sendMessage(reached);
+        if (m_upstreamIsExecuting) {
+            m_delayedBarrierResponse = std::make_unique<vistle::message::Buffer>(reached);
+        } else {
+            sendMessage(reached);
+        }
         break;
     }
 
@@ -1608,6 +1612,10 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
     }
 
     using namespace vistle::message;
+
+    if (exec->what() == Execute::Upstream) {
+        m_upstreamIsExecuting = true;
+    }
 
     if (m_executionCount < exec->getExecutionCount()) {
         m_executionCount = exec->getExecutionCount();
@@ -2494,6 +2502,12 @@ bool Module::reduceWrapper(const message::Execute *exec, bool reordered)
 
     m_computed = false;
     m_prepared = false;
+    m_upstreamIsExecuting = false;
+
+    if (m_delayedBarrierResponse) {
+        sendMessage(*m_delayedBarrierResponse);
+        m_delayedBarrierResponse.reset();
+    }
 
     return ret;
 }
@@ -2512,6 +2526,13 @@ bool Module::cancelExecute()
     std::cerr << "canceling execution" << std::endl;
     if (rank() == 0)
         sendInfo("canceling execution");
+
+    m_upstreamIsExecuting = false;
+
+    if (m_delayedBarrierResponse) {
+        sendMessage(*m_delayedBarrierResponse);
+        m_delayedBarrierResponse.reset();
+    }
 
     return true;
 }

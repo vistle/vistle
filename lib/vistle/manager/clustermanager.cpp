@@ -1163,6 +1163,12 @@ bool ClusterManager::handlePriv(const message::Execute &exec)
 
     auto &mod = i->second;
     switch (exec.what()) {
+    case message::Execute::Upstream: {
+        assert(!mod.prepared);
+        assert(mod.reduced);
+        mod.send(exec);
+        break;
+    }
     case message::Execute::Prepare: {
         assert(!mod.prepared);
         assert(mod.reduced);
