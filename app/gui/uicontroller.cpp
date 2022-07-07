@@ -458,8 +458,7 @@ void UiController::copyConnectionInfo()
 void UiController::screenshot(QString imageFile, bool quit)
 {
     m_mainWindow->dataFlowView()->snapshot(imageFile);
-    if (quit)
-    {
+    if (quit) {
         vistle::message::Quit q;
         m_vistleConnection->sendMessage(q);
     }
