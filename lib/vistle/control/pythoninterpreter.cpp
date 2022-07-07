@@ -4,6 +4,7 @@
 #include <vistle/python/pythoninterface.h>
 #include <vistle/python/pythonmodule.h>
 #include <vistle/control/hub.h>
+#include <vistle/util/threadname.h>
 
 #include "pythoninterpreter.h"
 
@@ -44,6 +45,7 @@ public:
 
     void operator()()
     {
+        setThreadName("Python:" + m_filename);
         assert(!m_done);
 
         bool ok = !m_error;
