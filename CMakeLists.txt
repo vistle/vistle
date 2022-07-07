@@ -743,6 +743,7 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
                     ${CREATE_DOCUMENTATION_SCRIPT} #the bridge script
                     ${VISTLE_FILE} #the file that gets loaded by vistle to generate the documentation
                     ${PROJECT_SOURCE_DIR}/doc/GenModInfo/genModInfo.py #dependency of VISTLE_FILE
+                    ${DOCUMENTATION_DEPENDENCIES} #custom dependencies set by the calling module 
             COMMENT "Generating documentation for " ${targetname})
         set(ALWAYS_BUILD)
         if(VISTLE_GENERATE_DOCUMENTATION)
