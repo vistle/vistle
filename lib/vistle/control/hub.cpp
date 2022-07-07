@@ -1290,7 +1290,7 @@ bool Hub::hubReady()
 
         if (!m_snapshotFile.empty()) {
             std::cerr << "requesting screenshot to " << m_snapshotFile << std::endl;
-            auto msg = make.message<message::Screenshot>(m_snapshotFile);
+            auto msg = make.message<message::Screenshot>(m_snapshotFile, true);
             msg.setDestId(message::Id::Broadcast);
             sendUi(msg);
             return true;
