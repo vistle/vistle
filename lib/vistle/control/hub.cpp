@@ -1265,12 +1265,16 @@ bool Hub::hubReady()
         params.V_ENUM_SET_CHOICES(szError, FieldCompressionSzError);
         auto szRel =
             params.addFloatParameter(CompressionSettings::p_szRelError, "SZ3 relative error tolerance", cs.szRelError);
+        params.setParameterRange(szRel, Float(0.), Float(1.));
         auto szAbs =
             params.addFloatParameter(CompressionSettings::p_szAbsError, "SZ3 absolute error tolerance", cs.szAbsError);
+        params.setParameterMinimum(szAbs, Float(0.));
         auto szPsnr =
-            params.addFloatParameter(CompressionSettings::p_szPsnrError, "SZ3 psnr tolerance", cs.szPsnrError);
+            params.addFloatParameter(CompressionSettings::p_szPsnrError, "SZ3 PSNR tolerance", cs.szPsnrError);
+        params.setParameterMinimum(szPsnr, Float(0.));
         auto szL2 =
             params.addFloatParameter(CompressionSettings::p_szL2Error, "SZ3 L2 norm error tolerance", cs.szL2Error);
+        params.setParameterMinimum(szL2, Float(0.));
 
         params.setCurrentParameterGroup("");
 
