@@ -186,7 +186,7 @@ Hub::Hub(bool inManager)
             std::cerr << "child exited with status " << exit_code << std::endl;
         }
 #endif
-        checkChildProcesses();
+        checkChildProcesses(false, false);
     };
 }
 
@@ -903,11 +903,11 @@ bool Hub::dispatch()
             ret = false;
         } else {
 #if 0
-          std::lock_guard<std::mutex> guard(m_processMutex);
-          CERR << "still " << m_processMap.size() << " processes running" << std::endl;
-          for (const auto &process: m_processMap) {
-              std::cerr << "   id: " << process.second << ", pid: " << process.first << std::endl;
-          }
+            std::lock_guard<std::mutex> guard(m_processMutex);
+            CERR << "still " << m_processMap.size() << " processes running" << std::endl;
+            for (const auto &process: m_processMap) {
+                std::cerr << "   id: " << process.second << ", pid: " << process.first->id() << std::endl;
+            }
 #endif
         }
     }
@@ -947,6 +947,10 @@ bool Hub::dispatch()
     dataConnGuard.unlock();
 
     vistle::adaptive_wait(work);
+
+    if (ret == false) {
+        CERR << "dispatch: returning false for Quit" << std::endl;
+    }
 
     return ret;
 }
@@ -2411,7 +2415,9 @@ void Hub::stopVrb()
     }
 
     while (!m_vrbThreads.empty()) {
-        m_vrbThreads.back().join();
+        auto &t = m_vrbThreads.back();
+        if (t.joinable())
+            t.join();
         m_vrbThreads.pop_back();
     }
 }
@@ -2648,7 +2654,12 @@ bool Hub::handlePriv(const message::Quit &quit, message::Identify::Identity send
     if (quit.id() == Id::Broadcast) {
         CERR << "quit requested by " << senderType << std::endl;
         m_uiManager.requestQuit();
-        if (senderType == message::Identify::MANAGER) {
+        if (senderType == message::Identify::UNKNOWN /* script */) {
+            if (m_isMaster)
+                sendSlaves(quit);
+            sendManager(quit);
+            m_quitting = true;
+        } else if (senderType == message::Identify::MANAGER) {
             if (m_isMaster)
                 sendSlaves(quit);
             m_quitting = true;
@@ -2660,6 +2671,7 @@ bool Hub::handlePriv(const message::Quit &quit, message::Identify::Identity send
             else
                 sendMaster(quit);
             sendManager(quit);
+            m_quitting = true;
         } else {
             sendSlaves(quit);
             sendManager(quit);
@@ -3080,7 +3092,7 @@ bool Hub::hasChildProcesses(bool ignoreGui)
     return !m_processMap.empty();
 }
 
-bool Hub::checkChildProcesses(bool emergency)
+bool Hub::checkChildProcesses(bool emergency, bool onMainThread)
 {
     bool hasToQuit = false;
     std::unique_lock<std::mutex> guard(m_processMutex);
@@ -3116,11 +3128,12 @@ bool Hub::checkChildProcesses(bool emergency)
             idstring = "module " + std::to_string(id);
             break;
         }
-        CERR << "process with id " << idstring << " (PID " << it->first->id() << ") exited" << std::endl;
-        next = m_processMap.erase(it);
 
         if (id == Process::VRB) {
-            stopVrb();
+            if (onMainThread)
+                stopVrb();
+            else
+                continue;
         } else if (!emergency) {
             if (id == Process::Manager) {
                 if (!m_quitting) {
@@ -3136,6 +3149,9 @@ bool Hub::checkChildProcesses(bool emergency)
                 sendManager(m); // will be returned and forwarded to master hub
             }
         }
+
+        CERR << "process with id " << idstring << " (PID " << it->first->id() << ") exited" << std::endl;
+        next = m_processMap.erase(it);
     }
     guard.unlock();
 
@@ -3230,7 +3246,9 @@ void Hub::stopIoThreads()
     m_ioService.stop();
 
     while (!m_ioThreads.empty()) {
-        m_ioThreads.back().join();
+        auto &t = m_ioThreads.back();
+        if (t.joinable())
+            t.join();
         m_ioThreads.pop_back();
     }
 }

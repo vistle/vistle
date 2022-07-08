@@ -189,7 +189,7 @@ private:
     template<typename ConnMsg>
     bool handleConnectOrDisconnect(const ConnMsg &mm);
 
-    bool checkChildProcesses(bool emergency = false);
+    bool checkChildProcesses(bool emergency = false, bool onMainThread = true);
     bool hasChildProcesses(bool ignoreGui = false);
     void emergencyQuit();
     const AvailableModule *findModule(const AvailableModule::Key &key);
