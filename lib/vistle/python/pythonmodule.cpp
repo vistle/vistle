@@ -172,7 +172,7 @@ static void quit()
 #endif
     message::Quit m;
     sendMessage(m);
-    exit(0);
+    //exit(0);
 }
 
 static void ping(int dest = message::Id::Broadcast, char c = '.')
