@@ -6,7 +6,9 @@ from bisect import insort
 from _vistle import getModuleName, getModuleDescription, getInputPorts, getOutputPorts, getPortDescription, getParameters, getParameterTooltip, getParameterType, spawn, barrier, quit
 
 REG_IMAGE = re.compile(r"(?:\w+(?:-\w+)+|\w*)\.(?:jpg|gif|png|bmp)")
-REG_TAGS_TMPL = r"\[{tag}\]:<\w*>"
+#REG_TAGS_TMPL = r"\[{tag}\]:<(\w*)>"
+REG_TAGS_TMPL = r"(?<=\[{tag}\]:<)(.*)(?=>)"
+
 VSL_TAG = "vslFile"
 
 #-------------Functions-------------#
@@ -159,6 +161,21 @@ def getParametersString(mod):
         paramString += getTableLine([param, getParameterTooltip(mod, param), getParameterType(mod, param)])
     return paramString
 
+def getExampleString(mod, example):
+    print("getExampleString")
+    buildDir = os.environ['VISTLE_DOCLUMENTATION_BIN_DIR']
+    sourceDir = os.environ['VISTLE_DOCUMENTATION_DIR']
+    destDir = os.path.dirname(os.path.realpath(__file__)) + "/moduleDescriptions/"
+    
+    imageDir = os.path.relpath(buildDir, destDir) + "/"
+    line = "<figure float=\"left\">\n"
+    line += "   <img src=\"" + imageDir + example + "_workflow.png\" width=\"" + "200" + "\" />\n" 
+    line += "   <img src=\"" + imageDir + example + "_result.png\" width=\"" + "500" + "\" />\n" 
+    line += "   <figcaption>Fig.1 " +  example  + " workflow (left) and expected result (right). </figcaption>\n"
+    line += "</figure>"
+
+    return line
+
 def genVistleScreenshot(mod, line):
     sourceDir = os.environ['VISTLE_DOCUMENTATION_DIR']
     lineStartWithTag = re.search(r"^" + REG_TAGS_TMPL.format(tag=VSL_TAG), line)
@@ -217,14 +234,14 @@ def isImage(line):
     return None
 
 
-def isTag(line, tags) -> str:
+def isTag(line, tags): #returns the tag and its value
     for tag in tags:
         matches = re.search(REG_TAGS_TMPL.format(tag=tag), line)
         if matches:
-            return tag
-    return None
+            return [tag, matches.group(1)]
+    return [None, None]
 
-
+    
 def generateModuleDescriptions():
     #these have to be set to chose the module to create documentation for
     target = os.environ['VISTLE_DOCUMENTATION_TARGET']
@@ -234,34 +251,42 @@ def generateModuleDescriptions():
     # ImgDestDir = os.path.dirname(os.path.realpath(__file__)) + "/../../docs/build/html/modules/"
 
     filename = sourceDir +  "/" + target + ".md"
-    tag_functions = {
+    
+    # tags with the format [tag]:<value> can be replace by asignig a replacement function to the tag:
+    essential_tags = { #these can only apear once and if not found these will be added at the end 
         "headline": getModuleHeadLine,
         "moduleHtml": getModuleHtml,
-        "parameters": getParametersString,
-        VSL_TAG: genVistleScreenshot
+        "parameters": getParametersString
+    }
+
+    optional_tags = {
+        VSL_TAG: genVistleScreenshot,
+        "example": getExampleString
     }
 
     #spawn the module and wait for its information to arrive at the hub
     mod = spawn(target)
     barrier()
     contentList = readAdditionalDocumentation(filename)
-    tagPos = findTagPositions(contentList, tag_functions.keys())
-    for tag, posList in tagPos.items():
-        for pos in posList:
-            line = contentList[pos]
-            if tag == VSL_TAG:
-                line = tag_functions[tag](mod, line)
-            elif tag in tag_functions.keys():
-                line = tag_functions[tag](mod)
-            line = relinkImage(line, sourceDir, destDir)
-            contentList[pos] = line
+    newContentList = []
+    for line in contentList:
+        tag = isTag(line, essential_tags.keys())
+        if tag[0] != None:
+            line = essential_tags[tag[0]](mod)
+            del essential_tags[tag[0]]
+        else:
+            tag = isTag(line, optional_tags.keys())
+            if tag[0] != None:
+                line = optional_tags[tag[0]](mod, tag[1])
+        newContentList.append(line)
 
+    #add the missing essential sections
     with open(destDir + target + ".md", "w") as f:
-        unusedTags = tag_functions.keys() - tagPos.keys()
-        if "headline" in unusedTags:
-            f.write(tag_functions["headline"]( mod ))
-        [f.write(line) for line in contentList]
-        [f.write(tag_functions[unusedTag](mod)) for unusedTag in sorted(unusedTags) if unusedTag not in ["headline",VSL_TAG] ]
+        if "headline" in essential_tags.keys():
+            f.write(essential_tags["headline"](mod))
+            del essential_tags["headline"]
+        [f.write(line) for line in newContentList]
+        [f.write(essential_tags[tag](mod)) for tag in essential_tags]
     quit()
 
 #-------------Main-------------#
