@@ -41,7 +41,7 @@ public:
     Module *findModule(const boost::uuids::uuid &spawnUuid) const;
 
     QColor highlightColor() const;
-
+    QRect calculateBoundingBox() const;
 public slots:
     void addModule(int moduleId, const boost::uuids::uuid &spawnUuid, QString name);
     void deleteModule(int moduleId);
