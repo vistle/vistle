@@ -7,7 +7,8 @@ try:
 except ImportError:
     print("import of coGRMsg failed")
 
-def sendCoverMessage(msg, coverModuleId):
+def findFirstModule(moduleName):
+   return _vistle.findFirstModule(moduleName)
    _vistle.sendCoverMessage(msg.c_str(), coverModuleId)
 
 # print to network clients
