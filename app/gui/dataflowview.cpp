@@ -193,7 +193,9 @@ void DataFlowView::selectAllModules()
 
 bool DataFlowView::snapshot(const QString &filename)
 {
-    scene()->setSceneRect(scene()->itemsBoundingRect()); // Re-shrink the scene to it's bounding contents
+    //scene()->itemsBoundingRect() does not return a correct boundig box
+    scene()->setSceneRect(scene()->calculateBoundingBox()); // Re-shrink the scene to it's bounding contents
+
     QImage image(scene()->sceneRect().size().toSize() * 2,
                  QImage::Format_ARGB32); // Create the image with the exact size of the shrunk scene
     image.fill(Qt::transparent); // Start all pixels transparent
