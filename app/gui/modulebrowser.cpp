@@ -354,14 +354,14 @@ void ModuleBrowser::selectModule(Qt::Key dir)
         if (dir == Qt::Key::Key_Up) {
             if (goToPreviousModule()) {
                 setCurrentModuleSelected(true);
+                return;
             }
-            return;
         }
         if (dir == Qt::Key::Key_Down) {
             if (goToNextModule()) {
                 setCurrentModuleSelected(true);
+                return;
             }
-            return;
         }
     } while (!(currentModule.hostIter == old.hostIter && currentModule.moduleIndex == old.moduleIndex));
     initCurrentModule(dir);
