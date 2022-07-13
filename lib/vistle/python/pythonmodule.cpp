@@ -619,6 +619,14 @@ static std::string getModuleName(int id)
     return state().getModuleName(id);
 }
 
+static int findFirstModule(const std::string &moduleName)
+{
+    for (auto mod: state().getRunningList())
+        if (getModuleName(mod) == moduleName)
+            return mod;
+    return 0;
+}
+
 static std::string getModuleDescription(int id)
 {
     std::unique_lock<PythonStateAccessor> guard(access());
@@ -1479,6 +1487,7 @@ PY_MODULE(_vistle, m)
     m.def("applyParameters", applyParameters, "apply delayed parameter changes");
     m.def("getAvailable", getAvailable, "get list of names of available modules");
     m.def("getRunning", getRunning, "get list of IDs of running modules");
+    m.def("findFirstModule", findFirstModule, "find the first instance of a module and return its id", "moduleName"_a);
     m.def("getBusy", getBusy, "get list of IDs of busy modules");
     m.def("getModuleName", getModuleName, "get name of module with ID `arg1`");
     m.def("getModuleDescription", getModuleDescription, "get description of module with ID `arg1`");
