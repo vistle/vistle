@@ -363,6 +363,17 @@ Module *DataFlowNetwork::findModule(int id) const
     return nullptr;
 }
 
+bool DataFlowNetwork::moveModule(int moduleId, float x, float y)
+{
+    if (Module *m = findModule(moduleId)) {
+        m->setPos(x, y);
+        m->setPositionValid();
+        lastDropPos = {x, y};
+        return true;
+    }
+    return false;
+}
+
 Module *DataFlowNetwork::findModule(const boost::uuids::uuid &spawnUuid) const
 {
     for (Module *mod: m_moduleList) {

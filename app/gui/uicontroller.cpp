@@ -344,14 +344,11 @@ void UiController::parameterValueChanged(int moduleId, QString parameterName)
    m_console->appendDebug(text);
 #endif
     if (parameterName == "_position") {
-        if (Module *m = m_scene->findModule(moduleId)) {
-            auto p = vistle::VistleConnection::the().getParameter(moduleId, "_position");
-            auto vp = std::dynamic_pointer_cast<vistle::VectorParameter>(p);
-            if (vp && !vp->isDefault()) {
-                vistle::ParamVector pos = vp->getValue();
-                m->setPos(pos[0], pos[1]);
-                m->setPositionValid();
-            }
+        auto p = vistle::VistleConnection::the().getParameter(moduleId, "_position");
+        auto vp = std::dynamic_pointer_cast<vistle::VectorParameter>(p);
+        if (vp && !vp->isDefault()) {
+            vistle::ParamVector pos = vp->getValue();
+            m_scene->moveModule(moduleId, pos[0], pos[1]);
         }
     }
 }
@@ -467,6 +464,5 @@ void UiController::screenshot(QString imageFile, bool quit)
         m_vistleConnection->sendMessage(q);
     }
 }
-
 
 } // namespace gui

@@ -38,6 +38,8 @@ public:
     void removeConnection(Port *portFrom, Port *portTo, bool sendToController = false);
 
     Module *findModule(int id) const;
+    bool moveModule(int moduleId, float x, float y);
+
     Module *findModule(const boost::uuids::uuid &spawnUuid) const;
 
     QColor highlightColor() const;
