@@ -9,6 +9,10 @@ except ImportError:
 
 def findFirstModule(moduleName):
    return _vistle.findFirstModule(moduleName)
+
+def sendCoverMessage(msg, coverModuleId = -1):
+   if coverModuleId == -1:
+      coverModuleId = findFirstModule("COVER")
    _vistle.sendCoverMessage(msg.c_str(), coverModuleId)
 
 # print to network clients
