@@ -170,7 +170,7 @@ def getExampleString(mod, example):
     imageDir = os.path.relpath(buildDir, destDir) + "/"
     line = "<figure float=\"left\">\n"
     line += "   <img src=\"" + imageDir + example + "_workflow.png\" width=\"" + "200" + "\" />\n" 
-    line += "   <img src=\"" + imageDir + example + "_result.png\" width=\"" + "500" + "\" />\n" 
+    line += "   <img src=\"" + imageDir + example + "_result.png\" width=\"" + "300" + "\" />\n" 
     line += "   <figcaption>Fig.1 " +  example  + " workflow (left) and expected result (right). </figcaption>\n"
     line += "</figure>"
 
