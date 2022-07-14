@@ -1,12 +1,14 @@
 option(VISTLE_GENERATE_DOCUMENTATION "turn this on after building to update documentation files" OFF)
 
 macro(genereate_documentation targetname)
-    set(CREATE_DOCUMENTATION_SCRIPT ${PROJECT_SOURCE_DIR}/doc/createDocumentation.sh)
-    if(WIN32)
-        set(CREATE_DOCUMENTATION_SCRIPT ${PROJECT_SOURCE_DIR}/doc/createDocumentation.bat)
-    endif()
-    set(VISTLE_FILE ${PROJECT_SOURCE_DIR}/doc/generateModuleInfo.vsl)
-    set(DOC_COMMAND ${CREATE_DOCUMENTATION_SCRIPT} ${targetname} ${CMAKE_CURRENT_SOURCE_DIR} ${VISTLE_FILE})
+
+    set(VISTLE_DOCUMENTATION_WORKFLOW ${PROJECT_SOURCE_DIR}/doc/generateModuleInfo.vsl)
+    set(DOC_COMMAND ${CMAKE_COMMAND} -E env 
+        VISTLE_DOCUMENTATION_TARGET=${targetname}
+        VISTLE_DOCUMENTATION_DIR=${CMAKE_CURRENT_SOURCE_DIR}
+        VISTLE_DOCLUMENTATION_BIN_DIR=${CMAKE_CURRENT_BINARY_DIR}
+            vistle --batch ${VISTLE_DOCUMENTATION_WORKFLOW})
+
     set(OUTPUT_FILE ${PROJECT_SOURCE_DIR}/doc/GenModInfo/moduleDescriptions/${targetname}.md)
     set(INPUT_FILE ${CMAKE_CURRENT_SOURCE_DIR}/${targetname}.md)
     if(NOT EXISTS ${INPUT_FILE})
@@ -19,9 +21,8 @@ macro(genereate_documentation targetname)
         DEPENDS #build if changes in:
                 ${INPUT_FILE} #the custom documentation
                 ${targetname} #the module's source code
-                ${CREATE_DOCUMENTATION_SCRIPT} #the bridge script
-                ${VISTLE_FILE} #the file that gets loaded by vistle to generate the documentation
-                ${PROJECT_SOURCE_DIR}/doc/GenModInfo/genModInfo.py #dependency of VISTLE_FILE
+                ${VISTLE_DOCUMENTATION_WORKFLOW} #the file that gets loaded by vistle to generate the documentation
+                ${PROJECT_SOURCE_DIR}/doc/GenModInfo/genModInfo.py #dependency of VISTLE_DOCUMENTATION_WORKFLOW
                 ${DOCUMENTATION_DEPENDENCIES} #custom dependencies set by the calling module 
         COMMENT "Generating documentation for " ${targetname})
     set(ALWAYS_BUILD)
@@ -39,14 +40,14 @@ macro(generate_network_snapshot targetname network_file)
     add_custom_command( #create a snapshot of the pipeline
         OUTPUT  ${CMAKE_CURRENT_BINARY_DIR}/${network_file}_workflow.png
         COMMAND vistle --snapshot ${CMAKE_CURRENT_BINARY_DIR}/${network_file}_workflow.png ${CMAKE_CURRENT_LIST_DIR}/${network_file}.vsl
-        DEPENDS  ${CMAKE_CURRENT_LIST_DIR}/${VISTLE_FILE}.vsl targetname
+        DEPENDS  ${CMAKE_CURRENT_LIST_DIR}/${VISTLE_DOCUMENTATION_WORKFLOW}.vsl targetname
         COMMENT "Generating network snapshot for " ${network_file}.vsl)
 
     add_custom_target(
-        ${targetname}_${VISTLE_FILE}_workflow
+        ${targetname}_${VISTLE_DOCUMENTATION_WORKFLOW}_workflow
         ${ALWAYS_BUILD}
-        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${VISTLE_FILE}_workflow.png)
-    add_dependencies(${targetname}_doc ${targetname}_${VISTLE_FILE}_workflow)
+        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${VISTLE_DOCUMENTATION_WORKFLOW}_workflow.png)
+    add_dependencies(${targetname}_doc ${targetname}_${VISTLE_DOCUMENTATION_WORKFLOW}_workflow)
 endmacro()
 
 macro(generate_snapshots targetname network_file)

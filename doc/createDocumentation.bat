@@ -1,5 +1,0 @@
-REM @echo off
-
-set VISTLE_DOCUMENTATION_TARGET=%1
-set VISTLE_DOCUMENTATION_DIR=%2
-vistle --batch %3
