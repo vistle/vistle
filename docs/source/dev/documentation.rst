@@ -1,8 +1,8 @@
-Coding Guidelines
+Documentation
 =================
 
 .. toctree::
    :maxdepth: 1
 
-   coding
-   documentation
+   documentation/snapshot
+

@@ -42,6 +42,7 @@ More infos about Architecture: https://vistle.io/architecture/
 
    Application <app/index.rst>
    Coding <dev/index.rst>
+   Documentation <dev/documentation.rst>
 
 Building this Documentation
 ===========================
