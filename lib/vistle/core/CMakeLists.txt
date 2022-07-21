@@ -133,6 +133,7 @@ set(core_HEADERS
     serialize.h
     shm.h
     shm_array.h
+    shm_config.h
     shm_impl.h
     shm_obj_ref.h
     shm_obj_ref_impl.h
