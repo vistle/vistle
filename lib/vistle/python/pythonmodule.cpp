@@ -100,7 +100,7 @@ static bool sendCoverMessage(int destMod, int subType, size_t len, const char *d
     return sendMessage(cover, &pl);
 }
 
-static bool snapShotGui(const std::string &filename)
+static bool snapshotGui(const std::string &filename)
 {
     auto msg = message::Screenshot(filename);
     msg.setDestId(message::Id::Broadcast);
@@ -1451,7 +1451,7 @@ PY_MODULE(_vistle, m)
     m.def("compute", compute, "trigger execution of module with `id`", "moduleId"_a = message::Id::Broadcast);
     m.def("interrupt", cancelCompute, "interrupt execution of module with ID `arg1`");
     m.def("sendCoverMessage", &sendCoverGuiMessage, "send a coGRMsg to COVER", "msg"_a, "coverModuleId"_a);
-    m.def("snapShotGui", &snapShotGui, "save a snapshot of the mapeditor workflow", "filename"_a);
+    m.def("snapshotGui", &snapshotGui, "save a snapshot of the mapeditor workflow", "filename"_a);
     m.def("quit", quit, "quit vistle session");
     m.def("ping", ping, "send first character of `arg2` to destination `arg1`", "id"_a, "data"_a = "p");
     m.def("trace", trace, "enable/disable message tracing for module `id`", "id"_a = message::Id::Broadcast,
