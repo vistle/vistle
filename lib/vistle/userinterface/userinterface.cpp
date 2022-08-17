@@ -101,11 +101,17 @@ bool UserInterface::tryConnect()
 
     asio::ip::tcp::resolver resolver(m_ioService);
     asio::ip::tcp::resolver::query query(host, boost::lexical_cast<std::string>(m_remotePort));
-    asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
     boost::system::error_code ec;
+    asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query, ec);
+    if (ec) {
+        CERR << "could not resolve " << host << ":" << m_remotePort << ": " << ec.message() << std::endl;
+        m_isConnected = false;
+        return false;
+    }
     asio::connect(socket(), endpoint_iterator, ec);
     if (ec) {
-        CERR << "could not establish connection to " << host << ":" << m_remotePort << std::endl;
+        CERR << "could not establish connection to " << host << ":" << m_remotePort << ": " << ec.message()
+             << std::endl;
         m_isConnected = false;
         return false;
     }
