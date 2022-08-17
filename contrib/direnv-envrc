@@ -168,13 +168,9 @@ echo Build: "$builddir"
 
 export COVISEDESTDIR="$(pwd -P)/${builddir}"
 export COVISE_PATH="$COVISEDESTDIR:$COVISEDIR"
-path_add PYTHON_PATH "${builddir}/lib"
 path_add PYTHONPATH "${builddir}/lib"
-path_add PYTHON_PATH "${builddir}/share/vistle"
 path_add PYTHONPATH "${builddir}/share/vistle"
-path_add PYTHON_PATH "${COVISEDIR}/Python"
 path_add PYTHONPATH "${COVISEDIR}/Python"
-path_add PYTHON_PATH "${COVISEDIR}/${ARCHSUFFIX}/lib"
 path_add PYTHONPATH "${COVISEDIR}/${ARCHSUFFIX}/lib"
 
 export ACK_OPTIONS="--ignore-dir=doc"
