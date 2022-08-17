@@ -261,7 +261,7 @@ bool Hub::init(int argc, char *argv[])
         ("batch,b", "do not start user interface")
         ("proxy", "run master hub acting only as a proxy, does not require MPI")
         ("gui,g", "start graphical user interface")
-        ("shell,s", "start interactive Python shell (requires ipython)")
+        ("shell,s", "start interactive Python shell (requires ipython or python)")
         ("port,p", po::value<unsigned short>(), "control port")
         ("dataport", po::value<unsigned short>(), "data port")
         ("execute,e", "call compute() after workflow has been loaded")
@@ -2578,8 +2578,12 @@ bool Hub::startPythonUi()
     args.push_back("--");
     auto child = launchProcess(ipython, args);
     if (!child || !child->valid()) {
-        CERR << "failed to spawn ipython " << ipython << std::endl;
-        return false;
+        CERR << "failed to spawn ipython " << ipython << ", trying again with python" << std::endl;
+        child = launchProcess("python", args);
+        if (!child || !child->valid()) {
+            CERR << "failed to spawn python" << std::endl;
+            return false;
+        }
     }
 
     std::lock_guard<std::mutex> guard(m_processMutex);
