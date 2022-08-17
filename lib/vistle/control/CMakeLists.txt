@@ -40,6 +40,7 @@ if(Python_FOUND)
     target_compile_definitions(vistle_control PRIVATE HAVE_PYTHON)
     target_link_libraries(vistle_control PRIVATE Python::Python)
     target_link_libraries(vistle_control PRIVATE vistle_python)
+    target_link_libraries(vistle_control PRIVATE vistle_pythonmodule)
 
     add_custom_target(
         vistle_python_py ALL

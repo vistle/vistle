@@ -87,6 +87,7 @@ target_link_libraries(
             vistle_util
             vistle_core
             vistle_userinterface
+            vistle_pythonmodule
             vistle_propertybrowser
             vistle_remotefiledialog)
 

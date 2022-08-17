@@ -1608,6 +1608,4 @@ bool PythonModule::import(py::object *ns, const std::string &path)
     return true;
 }
 
-PythonStateAccessor::~PythonStateAccessor() = default;
-
 } // namespace vistle
