@@ -26,5 +26,6 @@ if(Python_FOUND)
         PRIVATE Boost::system
         PRIVATE Python::Python
         PRIVATE vistle_core
-        PRIVATE vistle_util)
+        PRIVATE vistle_util
+        PRIVATE vistle_userinterface)
 endif()
