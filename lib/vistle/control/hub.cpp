@@ -2565,6 +2565,7 @@ bool Hub::startUi(const std::string &uipath, bool replace)
 
 bool Hub::startPythonUi()
 {
+    std::vector<std::string> python_shells{"ipython", "ipython3", "python", "python3"};
     std::string port = boost::lexical_cast<std::string>(this->m_masterPort);
 
     std::string ipython = "ipython";
@@ -2576,20 +2577,22 @@ bool Hub::startPythonUi()
     cmd += "from vistle import *; ";
     args.push_back(cmd);
     args.push_back("--");
-    auto child = launchProcess(ipython, args);
-    if (!child || !child->valid()) {
-        CERR << "failed to spawn ipython " << ipython << ", trying again with python" << std::endl;
-        child = launchProcess("python", args);
-        if (!child || !child->valid()) {
-            CERR << "failed to spawn python" << std::endl;
-            return false;
+    std::shared_ptr<process::child> child;
+    for (const auto &shell: python_shells) {
+        auto child = launchProcess(shell, args);
+        if (child && child->valid()) {
+            std::lock_guard<std::mutex> guard(m_processMutex);
+            m_processMap[child] = Process::GUI;
+            return true;
         }
     }
 
-    std::lock_guard<std::mutex> guard(m_processMutex);
-    m_processMap[child] = Process::GUI;
-
-    return true;
+    CERR << "failed to spawn any Python shell, tried:";
+    for (const auto &shell: python_shells) {
+        std::cerr << " " << shell;
+    }
+    std::cerr << std::endl;
+    return false;
 }
 
 
