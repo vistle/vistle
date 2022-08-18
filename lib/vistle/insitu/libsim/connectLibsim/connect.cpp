@@ -53,8 +53,7 @@ bool vistle::insitu::libsim::sendInitToSim(const std::vector<std::string> launch
     boost::system::error_code ec;
     std::unique_ptr<boost::asio::ip::tcp::socket> s;
     asio::ip::tcp::resolver resolver(ios);
-    asio::ip::tcp::resolver::query query(host, boost::lexical_cast<std::string>(port),
-                                         asio::ip::tcp::resolver::query::numeric_service);
+    asio::ip::tcp::resolver::query query(host, std::to_string(port), asio::ip::tcp::resolver::query::numeric_service);
     s.reset(new boost::asio::ip::tcp::socket(m_ioService));
     asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query, ec);
     if (ec) {

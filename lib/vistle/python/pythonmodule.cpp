@@ -785,7 +785,7 @@ static void requestTunnel(unsigned short listenPort, const std::string &destHost
     asio::io_service io_service;
     asio::ip::tcp::resolver resolver(io_service);
     try {
-        auto endpoints = resolver.resolve({destHost, boost::lexical_cast<std::string>(destPort)});
+        auto endpoints = resolver.resolve({destHost, std::to_string(destPort)});
         auto addr = (*endpoints).endpoint().address();
         if (addr.is_v6()) {
             m.setDestAddr(addr.to_v6());

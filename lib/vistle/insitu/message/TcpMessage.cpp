@@ -37,8 +37,7 @@ InSituTcp::InSituTcp(boost::mpi::communicator comm, const std::string &ip, unsig
     if (m_comm.rank() == 0) {
         boost::system::error_code ec;
         asio::ip::tcp::resolver resolver(m_ioService);
-        asio::ip::tcp::resolver::query query(ip, boost::lexical_cast<std::string>(port),
-                                             asio::ip::tcp::resolver::query::numeric_service);
+        asio::ip::tcp::resolver::query query(ip, std::to_string(port), asio::ip::tcp::resolver::query::numeric_service);
         m_socket.reset(new socket(m_ioService));
         asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query, ec);
         if (ec) {

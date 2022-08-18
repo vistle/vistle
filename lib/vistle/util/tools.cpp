@@ -2,8 +2,6 @@
 #include <iostream>
 #include <cstdlib>
 
-#include <boost/lexical_cast.hpp>
-
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
 #define HAVE_EXECINFO
 #include <execinfo.h>
@@ -56,8 +54,7 @@ bool attach_debugger()
         std::cerr << "failed to fork for attaching debugger" << std::endl;
         return false;
     } else if (pid == 0) {
-        execlp("attach_debugger_vistle.sh", "attach_debugger_vistle.sh",
-               boost::lexical_cast<std::string>(getppid()).c_str(), nullptr);
+        execlp("attach_debugger_vistle.sh", "attach_debugger_vistle.sh", std::to_string(getppid()).c_str(), nullptr);
 #if 0
       std::stringstream cmd;
       cmd << "attach_debugger_vistle.sh";

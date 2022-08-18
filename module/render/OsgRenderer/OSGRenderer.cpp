@@ -1,7 +1,6 @@
 #include <GL/glew.h>
 
 #include <vector>
-#include <boost/lexical_cast.hpp>
 
 #include <osg/DisplaySettings>
 #include <osg/Group>
@@ -282,7 +281,7 @@ bool OsgViewData::update(bool frameQueued)
         traits->depth = 24;
         traits->doubleBuffer = false;
         traits->windowDecoration = true;
-        traits->windowName = "OsgRenderer: view " + boost::lexical_cast<std::string>(viewIdx);
+        traits->windowName = "OsgRenderer: view " + std::to_string(viewIdx);
         traits->pbuffer = true;
         traits->vsync = false;
         if (viewIdx >= 0) {

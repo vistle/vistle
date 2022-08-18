@@ -86,7 +86,7 @@ bool TunnelManager::addTunnel(const message::RequestTunnel &msg)
             return false;
         }
         asio::ip::tcp::resolver resolver(io());
-        auto endpoints = resolver.resolve({destHost, boost::lexical_cast<std::string>(destPort)});
+        auto endpoints = resolver.resolve({destHost, std::to_string(destPort)});
         destAddr = (*endpoints).endpoint().address();
         std::cerr << destHost << " resolved to " << destAddr << std::endl;
     }

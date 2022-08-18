@@ -4,7 +4,6 @@
 
 
 #include <boost/foreach.hpp>
-#include <boost/lexical_cast.hpp>
 
 #include <sys/types.h>
 
@@ -243,8 +242,7 @@ bool ClusterManager::Module::haveDelayed() const
 ClusterManager::ClusterManager(boost::mpi::communicator comm, const std::vector<std::string> &hosts)
 : m_comm(comm)
 , m_portManager(new PortManager(this))
-, m_stateTracker(std::string("ClusterManager state rk") + boost::lexical_cast<std::string>(m_comm.rank()),
-                 m_portManager)
+, m_stateTracker(std::string("ClusterManager state rk") + std::to_string(m_comm.rank()), m_portManager)
 , m_traceMessages(message::INVALID)
 , m_quitFlag(false)
 , m_rank(m_comm.rank())

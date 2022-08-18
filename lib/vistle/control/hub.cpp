@@ -474,8 +474,8 @@ bool Hub::init(int argc, char *argv[])
             startPythonUi();
         }
 
-        std::string port = boost::lexical_cast<std::string>(this->port());
-        std::string dataport = boost::lexical_cast<std::string>(dataPort());
+        std::string port = std::to_string(this->port());
+        std::string dataport = std::to_string(dataPort());
 
         if (!m_proxyOnly) {
             // start manager on cluster
@@ -2314,7 +2314,7 @@ bool Hub::connectToMaster(const std::string &host, unsigned short port)
     boost::system::error_code ec;
     while (!connected) {
         asio::ip::tcp::resolver resolver(m_ioService);
-        asio::ip::tcp::resolver::query query(host, boost::lexical_cast<std::string>(port));
+        asio::ip::tcp::resolver::query query(host, std::to_string(port));
         m_masterSocket.reset(new boost::asio::ip::tcp::socket(m_ioService));
         asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query, ec);
         if (ec) {
@@ -2538,7 +2538,7 @@ bool Hub::handleVrb(Hub::socket_ptr sock)
 
 bool Hub::startUi(const std::string &uipath, bool replace)
 {
-    std::string port = boost::lexical_cast<std::string>(this->m_masterPort);
+    std::string port = std::to_string(this->m_masterPort);
 
     std::vector<std::string> args;
     if (!replace)
@@ -2567,7 +2567,7 @@ bool Hub::startUi(const std::string &uipath, bool replace)
 bool Hub::startPythonUi()
 {
     std::vector<std::string> python_shells{"ipython", "ipython3", "python", "python3"};
-    std::string port = boost::lexical_cast<std::string>(this->m_masterPort);
+    std::string port = std::to_string(this->m_masterPort);
 
     std::string ipython = "ipython";
     std::vector<std::string> args;
@@ -3222,7 +3222,7 @@ void Hub::spawnModule(const std::string &path, const std::string &name, int spaw
     argv.push_back(path);
     argv.push_back(Shm::instanceName(hostname(), m_port));
     argv.push_back(name);
-    argv.push_back(boost::lexical_cast<std::string>(spawnId));
+    argv.push_back(std::to_string(spawnId));
     std::cerr << "starting module " << name << std::endl;
     auto child = launchMpiProcess(argv);
     if (child && child->valid()) {

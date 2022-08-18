@@ -1,5 +1,3 @@
-#include <boost/lexical_cast.hpp>
-
 #include <IceT.h>
 #include <IceTMPI.h>
 
@@ -244,7 +242,7 @@ osg::ref_ptr<osg::GraphicsContext> CompositorIceT::createGraphicsContext(int vie
         traits->depth = 24;
         traits->doubleBuffer = pbuffer ? false : doublebuffer;
         traits->windowDecoration = true;
-        traits->windowName = "OsgRenderer: view " + boost::lexical_cast<std::string>(view);
+        traits->windowName = "OsgRenderer: view " + std::to_string(view);
         traits->pbuffer = true;
         traits->vsync = false;
 

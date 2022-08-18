@@ -104,7 +104,7 @@ bool UserInterface::tryConnect()
         host = "localhost";
 
     asio::ip::tcp::resolver resolver(m_ioService);
-    asio::ip::tcp::resolver::query query(host, boost::lexical_cast<std::string>(m_remotePort),
+    asio::ip::tcp::resolver::query query(host, std::to_string(m_remotePort),
                                          asio::ip::tcp::resolver::query::numeric_service);
     boost::system::error_code ec;
     asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query, ec);

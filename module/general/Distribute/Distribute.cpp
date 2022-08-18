@@ -1,4 +1,3 @@
-#include <boost/lexical_cast.hpp>
 #include <vistle/module/module.h>
 
 using namespace vistle;

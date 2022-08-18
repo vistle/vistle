@@ -5,8 +5,6 @@
 #include <iomanip>
 #include <iostream>
 
-#include <boost/lexical_cast.hpp>
-
 #include <VistlePluginUtil/VistleRenderObject.h>
 
 #include <config/CoviseConfig.h>
@@ -343,7 +341,7 @@ void RemoteConnection::operator()()
         }
     } else {
         asio::ip::tcp::resolver resolver(plugin->m_io);
-        asio::ip::tcp::resolver::query query(m_host, boost::lexical_cast<std::string>(m_port),
+        asio::ip::tcp::resolver::query query(m_host, std::to_string(m_port),
                                              asio::ip::tcp::resolver::query::numeric_service);
         boost::system::error_code ec;
         asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query, ec);

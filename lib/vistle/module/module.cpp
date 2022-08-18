@@ -41,6 +41,7 @@
 #include "module.h"
 
 #include <boost/serialization/vector.hpp>
+#include <boost/lexical_cast.hpp>
 #include <vistle/core/shm_reference.h>
 #include <vistle/core/archive_saver.h>
 #include <vistle/core/archive_loader.h>
