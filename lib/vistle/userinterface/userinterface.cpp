@@ -7,6 +7,7 @@
 #include <vistle/util/hostname.h>
 #include <vistle/util/sleep.h>
 #include <vistle/util/crypto.h>
+#include <vistle/util/sysdep.h>
 #include <vistle/core/message.h>
 #include <vistle/core/tcpmessage.h>
 #include <vistle/core/parameter.h>
@@ -113,6 +114,8 @@ bool UserInterface::tryConnect()
         CERR << "could not establish connection to " << host << ":" << m_remotePort << ": " << ec.message()
              << std::endl;
         m_isConnected = false;
+        if (ec == boost::system::errc::connection_refused)
+            return true;
         return false;
     }
     m_isConnected = true;
@@ -132,6 +135,15 @@ StateTracker &UserInterface::state()
 bool UserInterface::dispatch()
 {
     bool work = false;
+    while (!isConnected()) {
+        if (!tryConnect()) {
+            return false;
+        }
+        if (isConnected())
+            break;
+        sleep(1);
+    }
+
     while (isConnected()) {
         work = true;
 
