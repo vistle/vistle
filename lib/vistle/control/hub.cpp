@@ -305,7 +305,8 @@ bool Hub::init(int argc, char *argv[])
     if (vm.count("exposed") > 0) {
         m_exposedHost = vm["exposed"].as<std::string>();
         boost::asio::ip::tcp::resolver resolver(m_ioService);
-        boost::asio::ip::tcp::resolver::query query(m_exposedHost, std::to_string(dataPort()));
+        boost::asio::ip::tcp::resolver::query query(m_exposedHost, std::to_string(dataPort()),
+                                                    boost::asio::ip::tcp::resolver::query::numeric_service);
         boost::system::error_code ec;
         boost::asio::ip::tcp::resolver::iterator iter = resolver.resolve(query, ec);
         if (ec) {

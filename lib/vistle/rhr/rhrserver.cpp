@@ -391,7 +391,7 @@ bool RhrServer::makeConnection(const std::string &host, unsigned short port, int
     CERR << "connecting to " << host << ":" << port << "..." << std::endl;
 
     asio::ip::tcp::resolver resolver(m_io);
-    asio::ip::tcp::resolver::query query(host, std::to_string(port));
+    asio::ip::tcp::resolver::query query(host, std::to_string(port), asio::ip::tcp::resolver::query::numeric_service);
     boost::system::error_code ec;
     asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query, ec);
     if (ec) {
@@ -884,7 +884,10 @@ struct EncodeTask {
         }
     }
 
-    ~EncodeTask() { delete message; }
+    ~EncodeTask()
+    {
+        delete message;
+    }
 
     RhrServer::EncodeResult work()
     {
