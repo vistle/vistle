@@ -71,6 +71,9 @@ void UserInterface::cancel()
         }
     }
     m_ioService.stop();
+
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_quit = true;
 }
 
 int UserInterface::id() const
@@ -138,6 +141,11 @@ bool UserInterface::dispatch()
     while (!isConnected()) {
         if (!tryConnect()) {
             return false;
+        }
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            if (m_quit)
+                return false;
         }
         if (isConnected())
             break;
@@ -229,6 +237,8 @@ bool UserInterface::handleMessage(const vistle::message::Message *message, const
     case message::QUIT: {
         const message::Quit *quit = static_cast<const message::Quit *>(message);
         (void)quit;
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_quit = true;
         return false;
         break;
     }
