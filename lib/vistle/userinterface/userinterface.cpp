@@ -110,6 +110,7 @@ bool UserInterface::tryConnect()
     if (ec) {
         CERR << "could not resolve " << host << ":" << m_remotePort << ": " << ec.message() << std::endl;
         m_isConnected = false;
+        m_quit = true;
         return false;
     }
     asio::connect(socket(), endpoint_iterator, ec);
@@ -117,8 +118,10 @@ bool UserInterface::tryConnect()
         CERR << "could not establish connection to " << host << ":" << m_remotePort << ": " << ec.message()
              << std::endl;
         m_isConnected = false;
-        if (ec == boost::system::errc::connection_refused)
+        if (ec == boost::system::errc::connection_refused) {
             return true;
+        }
+        m_quit = true;
         return false;
     }
     m_isConnected = true;
@@ -343,6 +346,12 @@ bool UserInterface::isInitialized() const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
     return m_initialized;
+}
+
+bool UserInterface::isQuitting() const
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_quit;
 }
 
 const std::string &UserInterface::remoteHost() const

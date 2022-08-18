@@ -44,6 +44,7 @@ public:
     virtual ~UserInterface();
 
     bool isInitialized() const;
+    bool isQuitting() const;
 
     void stop();
     void cancel();

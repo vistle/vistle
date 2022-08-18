@@ -1259,11 +1259,11 @@ static bool sessionConnectWithObserver(StateObserver *o, const std::string &host
     if (!vistleThread)
         return false;
 
-    while (!userinterface->isInitialized()) {
+    while (!userinterface->isInitialized() && !userinterface->isQuitting()) {
         usleep(100);
     }
 
-    return true;
+    return userinterface->isInitialized();
 }
 
 static bool sessionConnect(const std::string &host, unsigned short port)
