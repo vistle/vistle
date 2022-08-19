@@ -48,46 +48,6 @@ bool attach_debugger()
     //sleep(60);
     abort();
     return true;
-
-    pid_t pid = fork();
-    if (pid == -1) {
-        std::cerr << "failed to fork for attaching debugger" << std::endl;
-        return false;
-    } else if (pid == 0) {
-        execlp("attach_debugger_vistle.sh", "attach_debugger_vistle.sh", std::to_string(getppid()).c_str(), nullptr);
-#if 0
-      std::stringstream cmd;
-      cmd << "attach_debugger_vistle.sh";
-      cmd << " ";
-      cmd << getppid();
-      const int ret = system(cmd.str().c_str());
-      if (ret < 0) {
-         std::cerr << "failed to execute debugger" << std::endl;
-         exit(1);
-      } else {
-         exit(ret);
-      }
-      return false;
-#else
-        std::cerr << "failed to execute debugger: " << strerror(errno) << std::endl;
-        exit(1);
-#endif
-    } else {
-#ifndef __EMSCRIPTEN__
-        kill(getpid(), SIGSTOP);
-        sleep(1);
-#endif
-#if 0
-      const int wait = 30;
-      unsigned int remain = sleep(wait);
-      if (remain == 0) {
-         std::cerr << "debugger failed to attach during " << wait << " seconds" << std::endl;
-         return false;
-      }
-      sleep(3);
-#endif
-        return true;
-    }
 #endif
 }
 
