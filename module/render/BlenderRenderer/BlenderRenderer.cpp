@@ -88,6 +88,10 @@ void BlenderRenderer::removeObject(std::shared_ptr<vistle::RenderObject> vro)
 {
     if (!tryConnect())
         return;
+
+    //--- send info to blender
+    std::string operation_type = "REM";
+    send(operation_type.c_str(), operation_type.length());
 }
 
 template<typename T>
@@ -154,6 +158,7 @@ std::shared_ptr<vistle::RenderObject> BlenderRenderer::addObject(int senderId, c
 
         //--- send data to blender
         Object::Type type = geometry->getType();
+        std::string operation_type = "ADD";
 
         switch (type) {
         case vistle::Object::POLYGONS:
@@ -232,7 +237,7 @@ std::shared_ptr<vistle::RenderObject> BlenderRenderer::addObject(int senderId, c
             if (texture) {
                 auto tex1D = vistle::Texture1D::as(texture);
                 auto x_tex1d = tex1D->x();
-                if (!isinf(x_tex1d[0])) {
+                if (!std::isinf(x_tex1d[0])) {
                     num_values = numVertices;
                     values_array = new float[num_values];
                     for (int i = 0; i < num_values; i++) {
@@ -243,6 +248,7 @@ std::shared_ptr<vistle::RenderObject> BlenderRenderer::addObject(int senderId, c
             }
 
             // send data
+            send(operation_type.c_str(), operation_type.length());
             send(geom_type);
             send(exec_counter);
             send(obj_id_length);
@@ -320,6 +326,7 @@ std::shared_ptr<vistle::RenderObject> BlenderRenderer::addObject(int senderId, c
                     }*/
 
             // send data
+            send(operation_type.c_str(), operation_type.length());
             send(geom_type);
             send(exec_counter);
             send(obj_id_length);
