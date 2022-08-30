@@ -1679,12 +1679,22 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
 
         case message::ADDPARAMETER: {
             auto addParam = msg.as<message::AddParameter>();
-            int id = addParam.senderId();
-            if (m_stateTracker.getMirrorId(id) != id)
+            if (!m_isMaster) {
+                // set up parameter connections on master hub
                 break;
+            }
+            int id = addParam.senderId();
+            if (m_stateTracker.getMirrorId(id) != id) {
+                // connect parameters of mirrored instances to original parameter only
+                break;
+            }
             auto pn = addParam.getName();
             auto mirrors = m_stateTracker.getMirrors(id);
             for (auto &m: mirrors) {
+                if (m == id) {
+                    // skip connection to self
+                    continue;
+                }
                 auto con = message::Connect(id, pn, m, pn);
                 handleMessage(con);
             }
@@ -1981,7 +1991,6 @@ bool Hub::spawnMirror(int hubId, const std::string &name, int mirroredId)
     auto paramNames = m_stateTracker.getParameters(mirroredId);
     for (const auto &pn: paramNames) {
         auto con = message::Connect(mirroredId, pn, mirror.spawnId(), pn);
-        con.setDestId(mirror.spawnId());
         m_sendAfterSpawn[mirror.spawnId()].emplace_back(con);
     }
 
@@ -2878,6 +2887,12 @@ void handleMirrorConnect(const ConnMsg &conn, const StateTracker &state,
 {
     auto modA = conn.getModuleA();
     auto modB = conn.getModuleB();
+    auto portA = state.portTracker()->getPort(modA, conn.getPortAName());
+    auto portB = state.portTracker()->getPort(modB, conn.getPortBName());
+    if (!portA || portA->getType() == Port::PARAMETER)
+        return;
+    if (!portB || portB->getType() == Port::PARAMETER)
+        return;
     auto mirA = state.getMirrors(modA);
     auto mirB = state.getMirrors(modB);
     auto c = conn;
