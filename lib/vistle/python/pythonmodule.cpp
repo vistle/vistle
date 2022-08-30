@@ -1013,9 +1013,15 @@ public:
 
     void newHub(int hubId, const message::AddHub &hub) override
     {
+        newHubSimple(hubId, hub.name(), hub.numRanks(), hub.host(), hub.loginName(), hub.realName());
+    }
+
+    void newHubSimple(int hubId, const std::string &name, int numRanks, const std::string &host,
+                      const std::string &username, const std::string &realname)
+    {
 #ifdef OBSERVER_DEBUG
-        m_out << "   hub " << hub.name() << " added with " << hub.numRanks() << " ranks, operated by " << hub.realName()
-              << std::endl;
+        m_out << "   hub " << name << " on " << host << " added with " << numRanks << " ranks, operated by " << realname
+              << " (" << username << ")" << std::endl;
 #endif
     }
 
@@ -1028,8 +1034,13 @@ public:
 
     void moduleAvailable(const AvailableModule &mod) override
     {
+        moduleAvailableSimple(mod.hub(), mod.name(), mod.path());
+    }
+
+    void moduleAvailableSimple(int hubId, const std::string &name, const std::string &path)
+    {
 #ifdef OBSERVER_DEBUG
-        m_out << "   hub: " << mod.hub() << ", module: " << mod.name() << " (" << mod.path() << ")" << std::endl;
+        m_out << "   hub: " << hubId << ", module: " << name << " (" << path << ")" << std::endl;
 #endif
     }
 
@@ -1155,83 +1166,83 @@ public:
 
     void moduleAvailable(const AvailableModule &mod) override
     {
-        PYBIND11_OVERLOAD(void, /* Return type */
-                          Base, /* Parent class */
-                          moduleAvailable, /* Name of function in C++ (must match Python name) */
-                          mod /* parameters */
-        );
+        PYBIND11_OVERRIDE_NAME(void, Base, "moduleAvailable", moduleAvailableSimple, mod.hub(), mod.name(), mod.path());
     }
 
-    void newHub(int hubId, const message::AddHub &hub) override { PYBIND11_OVERLOAD(void, Base, newHub, hubId, hub); }
+    void newHub(int hubId, const message::AddHub &hub) override
+    {
+        PYBIND11_OVERRIDE_NAME(void, Base, "newHub", newHubSimple, hubId, hub.name(), hub.numRanks(), hub.host(),
+                               hub.loginName(), hub.realName());
+    }
 
-    void deleteHub(int hub) override { PYBIND11_OVERLOAD(void, Base, deleteHub, hub); }
+    void deleteHub(int hub) override { PYBIND11_OVERRIDE(void, Base, deleteHub, hub); }
 
     void newModule(int moduleId, const boost::uuids::uuid &spawnUuid, const std::string &moduleName) override
     {
-        PYBIND11_OVERLOAD(void, Base, newModule, moduleId, spawnUuid, moduleName);
+        PYBIND11_OVERRIDE(void, Base, newModule, moduleId, spawnUuid, moduleName);
     }
 
-    void deleteModule(int moduleId) override { PYBIND11_OVERLOAD(void, Base, deleteModule, moduleId); }
+    void deleteModule(int moduleId) override { PYBIND11_OVERRIDE(void, Base, deleteModule, moduleId); }
 
     void moduleStateChanged(int moduleId, int stateBits) override
     {
-        PYBIND11_OVERLOAD(void, Base, moduleStateChanged, moduleId, stateBits);
+        PYBIND11_OVERRIDE(void, Base, moduleStateChanged, moduleId, stateBits);
     }
 
     void newParameter(int moduleId, const std::string &parameterName) override
     {
-        PYBIND11_OVERLOAD(void, Base, newParameter, moduleId, parameterName);
+        PYBIND11_OVERRIDE(void, Base, newParameter, moduleId, parameterName);
     }
 
     void deleteParameter(int moduleId, const std::string &parameterName) override
     {
-        PYBIND11_OVERLOAD(void, Base, deleteParameter, moduleId, parameterName);
+        PYBIND11_OVERRIDE(void, Base, deleteParameter, moduleId, parameterName);
     }
 
     void parameterValueChanged(int moduleId, const std::string &parameterName) override
     {
-        PYBIND11_OVERLOAD(void, Base, parameterValueChanged, moduleId, parameterName);
+        PYBIND11_OVERRIDE(void, Base, parameterValueChanged, moduleId, parameterName);
     }
 
     void parameterChoicesChanged(int moduleId, const std::string &parameterName) override
     {
-        PYBIND11_OVERLOAD(void, Base, parameterChoicesChanged, moduleId, parameterName);
+        PYBIND11_OVERRIDE(void, Base, parameterChoicesChanged, moduleId, parameterName);
     }
 
     void newPort(int moduleId, const std::string &portName) override
     {
-        PYBIND11_OVERLOAD(void, Base, newPort, moduleId, portName);
+        PYBIND11_OVERRIDE(void, Base, newPort, moduleId, portName);
     }
 
     void deletePort(int moduleId, const std::string &portName) override
     {
-        PYBIND11_OVERLOAD(void, Base, deletePort, moduleId, portName);
+        PYBIND11_OVERRIDE(void, Base, deletePort, moduleId, portName);
     }
 
     void newConnection(int fromId, const std::string &fromName, int toId, const std::string &toName) override
     {
-        PYBIND11_OVERLOAD(void, Base, newConnection, fromId, fromName, toId, toName);
+        PYBIND11_OVERRIDE(void, Base, newConnection, fromId, fromName, toId, toName);
     }
 
     void deleteConnection(int fromId, const std::string &fromName, int toId, const std::string &toName) override
     {
-        PYBIND11_OVERLOAD(void, Base, deleteConnection, fromId, fromName, toId, toName);
+        PYBIND11_OVERRIDE(void, Base, deleteConnection, fromId, fromName, toId, toName);
     }
 
     void info(const std::string &text, message::SendText::TextType textType, int senderId, int senderRank,
               message::Type refType, const message::uuid_t &refUuid) override
     {
-        PYBIND11_OVERLOAD(void, Base, info, text, textType, senderId, senderRank, refType, refUuid);
+        PYBIND11_OVERRIDE(void, Base, info, text, textType, senderId, senderRank, refType, refUuid);
     }
 
     void status(int id, const std::string &text, message::UpdateStatus::Importance prio) override
     {
-        PYBIND11_OVERLOAD(void, Base, status, id, text, prio);
+        PYBIND11_OVERRIDE(void, Base, status, id, text, prio);
     }
 
     void updateStatus(int id, const std::string &text, message::UpdateStatus::Importance prio) override
     {
-        PYBIND11_OVERLOAD(void, Base, updateStatus, id, text, prio);
+        PYBIND11_OVERRIDE(void, Base, updateStatus, id, text, prio);
     }
 };
 
@@ -1356,10 +1367,7 @@ PY_MODULE(_vistle, m)
 
     typedef vistle::StateObserver SO;
     py::class_<StateObserver>(m, "StateObserverBase")
-        //.def(py::init<>())
-        .def("moduleAvailable", &SO::moduleAvailable)
-        .def("newModule", &SO::newModule)
-        .def("deleteModule", &SO::deleteModule)
+        //.def("moduleAvailable", &SO::moduleAvailable)
         .def("moduleStateChanged", &SO::moduleStateChanged)
         .def("newParameter", &SO::newParameter)
         .def("deleteParameter", &SO::deleteParameter)
@@ -1376,8 +1384,9 @@ PY_MODULE(_vistle, m)
     typedef vistle::TrivialStateObserver TSO;
     py::class_<TrivialStateObserver, PyStateObserver, StateObserver>(m, "StateObserver")
         .def(py::init([]() { return new PyStateObserver; }))
-        //.def(py::init<>())
-        .def("moduleAvailable", &TSO::moduleAvailable)
+        .def("newHub", &TSO::newHubSimple)
+        .def("deleteHub", &TSO::deleteHub)
+        .def("moduleAvailable", &TSO::moduleAvailableSimple)
         .def("newModule", &TSO::newModule)
         .def("deleteModule", &TSO::deleteModule)
         .def("moduleStateChanged", &TSO::moduleStateChanged)
