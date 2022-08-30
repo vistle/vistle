@@ -410,7 +410,7 @@ std::shared_ptr<vistle::RenderObject> BlenderRenderer::addObject(int senderId, c
     //
     //    coVRPluginList::instance()->addObject(cro.get(), parent, cro->getGeometry(), cro->getNormals(), cro->getColors(), cro->getTexture());
     //    return pro;
-    return nullptr;
+    return ro;
 }
 
 bool BlenderRenderer::addColorMap(const std::string &species, Object::const_ptr texture)
