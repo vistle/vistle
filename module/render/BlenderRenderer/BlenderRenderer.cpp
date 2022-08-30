@@ -22,6 +22,14 @@
 namespace asio = boost::asio;
 using namespace vistle;
 
+
+BlenderRenderObject::BlenderRenderObject(int senderId, const std::string &senderPort,
+                                         vistle::Object::const_ptr container, vistle::Object::const_ptr geometry,
+                                         vistle::Object::const_ptr normals, vistle::Object::const_ptr texture)
+: vistle::RenderObject(senderId, senderPort, container, geometry, normals, texture)
+{}
+
+
 BlenderRenderer::BlenderRenderer(const std::string &name, int moduleId, mpi::communicator comm)
 : vistle::Renderer(name, moduleId, comm), m_socket(m_ioService)
 {
@@ -150,169 +158,176 @@ std::shared_ptr<vistle::RenderObject> BlenderRenderer::addObject(int senderId, c
     if (!container)
         return nullptr;
 
-    if (geometry) {
-        std::cerr << "++++++Info " << container->getName() << " type " << container->getType() << " creator "
-                  << container->getCreator() << " exec " << container->getExecutionCounter() << " iter "
-                  << container->getIteration() << " block " << container->getBlock() << " timestep "
-                  << container->getTimestep() << std::endl;
+    if (!geometry)
+        return nullptr;
 
-        //--- send data to blender
-        Object::Type type = geometry->getType();
-        std::string operation_type = "ADD";
 
-        switch (type) {
-        case vistle::Object::POLYGONS:
-        case vistle::Object::TRIANGLES:
-        case vistle::Object::QUADS: {
-            vistle::Polygons::const_ptr polygons = vistle::Polygons::as(geometry);
-            vistle::Triangles::const_ptr triangles = vistle::Triangles::as(geometry);
-            vistle::Quads::const_ptr quads = vistle::Quads::as(geometry);
-            vistle::Coords::const_ptr coords = vistle::Coords::as(geometry);
-            assert(coords);
-            int N = 0;
-            Index numElements = 0;
-            Index numCorners = 0;
-            const Index numVertices = coords->getNumVertices();
-            if (polygons) {
-                numElements = polygons->getNumElements();
-                numCorners = polygons->getNumCorners();
-            } else if (triangles) {
-                N = 3;
-                numElements = triangles->getNumElements();
-                numCorners = triangles->getNumCorners();
-            } else if (quads) {
-                N = 4;
-                numElements = quads->getNumElements();
-                numCorners = quads->getNumCorners();
-            }
+    std::cerr << "++++++Info " << container->getName() << " type " << container->getType() << " creator "
+              << container->getCreator() << " exec " << container->getExecutionCounter() << " iter "
+              << container->getIteration() << " block " << container->getBlock() << " timestep "
+              << container->getTimestep() << std::endl;
 
-            // prepare data
-            char geom_type = 'p'; // info
-            int exec_counter = container->getExecutionCounter();
-            std::string obj_id = container->getName();
-            int obj_id_length = obj_id.length();
-            int time_step = container->getTimestep();
+    //--- send data to blender
+    Object::Type type = geometry->getType();
+    std::string operation_type = "ADD";
 
-            int num_el = numElements; // elements
-            int *el_array = new int[num_el];
-            for (int i = 0; i < num_el; i++) {
-                el_array[i] = polygons ? polygons->el()[i] : i * N;
-            }
+    std::shared_ptr<BlenderRenderObject> ro;
 
-            int num_corn = numCorners; // corners
-            if (num_corn == 0) {
-                num_corn = numElements * N;
-            }
-            int *corn_array = new int[num_corn];
-            if (numCorners > 0) {
-                if (polygons) {
-                    for (int i = 0; i < num_corn; i++) {
-                        corn_array[i] = polygons->cl()[i];
-                    }
-                } else if (triangles) {
-                    for (int i = 0; i < num_corn; i++) {
-                        corn_array[i] = triangles->cl()[i];
-                    }
-                } else if (quads) {
-                    for (int i = 0; i < num_corn; i++) {
-                        corn_array[i] = quads->cl()[i];
-                    }
-                }
-            } else {
-                for (int i = 0; i < num_corn; i++) {
-                    corn_array[i] = i;
-                }
-            }
-
-            int num_vert = numVertices; // vertices
-            int vert_arr_size = num_vert * 3;
-            float *vert_array = new float[vert_arr_size];
-            for (int i = 0; i < vert_arr_size; i++) {
-                vert_array[i] = coords->getVertex(i / 3)[i % 3];
-            }
-
-            int num_values = 0; // vert_values
-            float *values_array;
-            bool is_valid_tex = false;
-            if (texture) {
-                auto tex1D = vistle::Texture1D::as(texture);
-                auto x_tex1d = tex1D->x();
-                if (!std::isinf(x_tex1d[0])) {
-                    num_values = numVertices;
-                    values_array = new float[num_values];
-                    for (int i = 0; i < num_values; i++) {
-                        values_array[i] = x_tex1d[i];
-                    }
-                    is_valid_tex = true;
-                }
-            }
-
-            // send data
-            send(operation_type.c_str(), operation_type.length());
-            send(geom_type);
-            send(exec_counter);
-            send(obj_id_length);
-            send(obj_id.c_str(), obj_id.length());
-            send(time_step);
-            send(num_el);
-            send(el_array, num_el);
-            send(num_corn);
-            send(corn_array, num_corn);
-            send(num_vert);
-            send(vert_array, vert_arr_size);
-            send(num_values);
-            if (is_valid_tex) {
-                send(values_array, num_values);
-            }
-
-            // finalize
-            delete[] el_array;
-            delete[] corn_array;
-            delete[] vert_array;
-            if (is_valid_tex) {
-                delete[] values_array;
-            }
-
-            break;
+    switch (type) {
+    case vistle::Object::POLYGONS:
+    case vistle::Object::TRIANGLES:
+    case vistle::Object::QUADS: {
+        vistle::Polygons::const_ptr polygons = vistle::Polygons::as(geometry);
+        vistle::Triangles::const_ptr triangles = vistle::Triangles::as(geometry);
+        vistle::Quads::const_ptr quads = vistle::Quads::as(geometry);
+        vistle::Coords::const_ptr coords = vistle::Coords::as(geometry);
+        assert(coords);
+        int N = 0;
+        Index numElements = 0;
+        Index numCorners = 0;
+        const Index numVertices = coords->getNumVertices();
+        if (polygons) {
+            numElements = polygons->getNumElements();
+            numCorners = polygons->getNumCorners();
+        } else if (triangles) {
+            N = 3;
+            numElements = triangles->getNumElements();
+            numCorners = triangles->getNumCorners();
+        } else if (quads) {
+            N = 4;
+            numElements = quads->getNumElements();
+            numCorners = quads->getNumCorners();
         }
 
-        case vistle::Object::LINES: {
-            vistle::Lines::const_ptr polygons = vistle::Lines::as(geometry);
+        // prepare data
+        char geom_type = 'p'; // info
+        int exec_counter = container->getExecutionCounter();
+        std::string obj_id = container->getName();
+        int obj_id_length = obj_id.length();
+        int time_step = container->getTimestep();
 
-            const Index numElements = polygons->getNumElements();
-            const Index numCorners = polygons->getNumCorners();
-            const Index numVertices = polygons->getNumVertices();
+        int num_el = numElements; // elements
+        int *el_array = new int[num_el];
+        for (int i = 0; i < num_el; i++) {
+            el_array[i] = polygons ? polygons->el()[i] : i * N;
+        }
 
-            // prepare data
-            char geom_type = 'l'; // info
-            int exec_counter = container->getExecutionCounter();
-            std::string obj_id = container->getName();
-            int obj_id_length = obj_id.length();
-            int time_step = container->getTimestep();
-
-            int num_el = numElements; // elements
-            int *el_array = new int[num_el];
-            for (int i = 0; i < num_el; i++) {
-                el_array[i] = polygons->el()[i];
+        int num_corn = numCorners; // corners
+        if (num_corn == 0) {
+            num_corn = numElements * N;
+        }
+        int *corn_array = new int[num_corn];
+        if (numCorners > 0) {
+            if (polygons) {
+                for (int i = 0; i < num_corn; i++) {
+                    corn_array[i] = polygons->cl()[i];
+                }
+            } else if (triangles) {
+                for (int i = 0; i < num_corn; i++) {
+                    corn_array[i] = triangles->cl()[i];
+                }
+            } else if (quads) {
+                for (int i = 0; i < num_corn; i++) {
+                    corn_array[i] = quads->cl()[i];
+                }
             }
-
-            int num_corn = numCorners; // corners
-            int *corn_array = new int[num_corn];
+        } else {
             for (int i = 0; i < num_corn; i++) {
-                corn_array[i] = polygons->cl()[i];
+                corn_array[i] = i;
             }
+        }
 
-            int num_vert = numVertices; // vertices
-            int vert_arr_size = num_vert * 3;
-            float *vert_array = new float[vert_arr_size];
-            for (int i = 0; i < vert_arr_size; i++) {
-                vert_array[i] = polygons->getVertex(i / 3)[i % 3];
+        int num_vert = numVertices; // vertices
+        int vert_arr_size = num_vert * 3;
+        float *vert_array = new float[vert_arr_size];
+        for (int i = 0; i < vert_arr_size; i++) {
+            vert_array[i] = coords->getVertex(i / 3)[i % 3];
+        }
+
+        int num_values = 0; // vert_values
+        float *values_array;
+        bool is_valid_tex = false;
+        if (texture) {
+            auto tex1D = vistle::Texture1D::as(texture);
+            auto x_tex1d = tex1D->x();
+            if (!std::isinf(x_tex1d[0])) {
+                num_values = numVertices;
+                values_array = new float[num_values];
+                for (int i = 0; i < num_values; i++) {
+                    values_array[i] = x_tex1d[i];
+                }
+                is_valid_tex = true;
             }
+        }
 
-            int num_values = 0; // vert_values
-            float *values_array = nullptr;
-            bool is_valid_tex = false;
-            /*if (texture) {
+        // send data
+        send(operation_type.c_str(), operation_type.length());
+        send(geom_type);
+        send(exec_counter);
+        send(obj_id_length);
+        send(obj_id.c_str(), obj_id.length());
+        send(time_step);
+        send(num_el);
+        send(el_array, num_el);
+        send(num_corn);
+        send(corn_array, num_corn);
+        send(num_vert);
+        send(vert_array, vert_arr_size);
+        send(num_values);
+        if (is_valid_tex) {
+            send(values_array, num_values);
+        }
+
+        // finalize
+        delete[] el_array;
+        delete[] corn_array;
+        delete[] vert_array;
+        if (is_valid_tex) {
+            delete[] values_array;
+        }
+
+        ro.reset(new BlenderRenderObject(senderId, senderPort, container, geometry, normals, texture));
+
+        break;
+    }
+
+    case vistle::Object::LINES: {
+        vistle::Lines::const_ptr polygons = vistle::Lines::as(geometry);
+
+        const Index numElements = polygons->getNumElements();
+        const Index numCorners = polygons->getNumCorners();
+        const Index numVertices = polygons->getNumVertices();
+
+        // prepare data
+        char geom_type = 'l'; // info
+        int exec_counter = container->getExecutionCounter();
+        std::string obj_id = container->getName();
+        int obj_id_length = obj_id.length();
+        int time_step = container->getTimestep();
+
+        int num_el = numElements; // elements
+        int *el_array = new int[num_el];
+        for (int i = 0; i < num_el; i++) {
+            el_array[i] = polygons->el()[i];
+        }
+
+        int num_corn = numCorners; // corners
+        int *corn_array = new int[num_corn];
+        for (int i = 0; i < num_corn; i++) {
+            corn_array[i] = polygons->cl()[i];
+        }
+
+        int num_vert = numVertices; // vertices
+        int vert_arr_size = num_vert * 3;
+        float *vert_array = new float[vert_arr_size];
+        for (int i = 0; i < vert_arr_size; i++) {
+            vert_array[i] = polygons->getVertex(i / 3)[i % 3];
+        }
+
+        int num_values = 0; // vert_values
+        float *values_array = nullptr;
+        bool is_valid_tex = false;
+        /*if (texture) {
                         auto tex1D = vistle::Texture1D::as(texture);
                         auto x_tex1d = tex1D->x();
                         if(!isinf(x_tex1d[0])){
@@ -325,50 +340,48 @@ std::shared_ptr<vistle::RenderObject> BlenderRenderer::addObject(int senderId, c
                         }
                     }*/
 
-            // send data
-            send(operation_type.c_str(), operation_type.length());
-            send(geom_type);
-            send(exec_counter);
-            send(obj_id_length);
-            send(obj_id.c_str(), obj_id.length());
-            send(time_step);
-            send(num_el);
-            send(el_array, num_el);
-            send(num_corn);
-            send(corn_array, num_corn);
-            send(num_vert);
-            send(vert_array, vert_arr_size);
-            send(num_values);
-            if (is_valid_tex) {
-                send(values_array, num_values);
-            }
-
-            // finalize
-            delete[] el_array;
-            delete[] corn_array;
-            delete[] vert_array;
-            if (is_valid_tex) {
-                delete[] values_array;
-            }
-
-            break;
+        // send data
+        send(operation_type.c_str(), operation_type.length());
+        send(geom_type);
+        send(exec_counter);
+        send(obj_id_length);
+        send(obj_id.c_str(), obj_id.length());
+        send(time_step);
+        send(num_el);
+        send(el_array, num_el);
+        send(num_corn);
+        send(corn_array, num_corn);
+        send(num_vert);
+        send(vert_array, vert_arr_size);
+        send(num_values);
+        if (is_valid_tex) {
+            send(values_array, num_values);
         }
 
-        default:
-            break;
-
-
-            //send(sock , hello , strlen(hello) , 0 );
-            //printf("Client message sent\n");
-            /*char buffer[1024] = {0};
-            int valread = read( sock , buffer, 1024);
-            printf("%s\n",buffer );*/
-            //////////////////////
+        // finalize
+        delete[] el_array;
+        delete[] corn_array;
+        delete[] vert_array;
+        if (is_valid_tex) {
+            delete[] values_array;
         }
+
+        ro.reset(new BlenderRenderObject(senderId, senderPort, container, geometry, normals, texture));
+
+        break;
     }
 
-    if (!geometry)
-        return nullptr;
+    default:
+        break;
+
+
+        //send(sock , hello , strlen(hello) , 0 );
+        //printf("Client message sent\n");
+        /*char buffer[1024] = {0};
+            int valread = read( sock , buffer, 1024);
+            printf("%s\n",buffer );*/
+        //////////////////////
+    }
 
     auto objType = geometry->getType();
     if (objType == vistle::Object::PLACEHOLDER) {

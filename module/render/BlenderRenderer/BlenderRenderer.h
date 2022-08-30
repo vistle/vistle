@@ -8,6 +8,14 @@
 #include <vistle/core/messages.h>
 #include <boost/asio.hpp>
 
+
+class BlenderRenderObject: public vistle::RenderObject {
+public:
+    BlenderRenderObject(int senderId, const std::string &senderPort, vistle::Object::const_ptr container,
+                        vistle::Object::const_ptr geometry, vistle::Object::const_ptr normals,
+                        vistle::Object::const_ptr texture);
+};
+
 class BlenderRenderer: public vistle::Renderer {
 public:
     BlenderRenderer(const std::string &name, int moduleId, mpi::communicator comm);
