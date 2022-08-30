@@ -831,6 +831,7 @@ endif()
 
 # header-only python bindings
 include_directories(SYSTEM "${PROJECT_SOURCE_DIR}/lib/3rdparty/pybind11/include")
+add_definitions(-DPYBIND11_DETAILED_ERROR_MESSAGES)
 
 # replacement for Boost.Serialization
 #include_directories(SYSTEM "${PROJECT_SOURCE_DIR}/lib/3rdparty/yas/include")
