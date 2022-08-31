@@ -2281,6 +2281,7 @@ int Module::objectReceivePolicy() const
 void Module::startIteration()
 {
     ++m_iteration;
+    clearResultCaches();
 }
 
 bool Module::prepareWrapper(const message::Execute *exec)
