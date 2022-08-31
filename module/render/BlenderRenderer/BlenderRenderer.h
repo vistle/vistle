@@ -45,6 +45,8 @@ protected:
     template<typename T>
     bool send(const T *d, size_t n);
 
+    void sendObjectInfo(int senderId, const std::string &senderPort, vistle::Object::const_ptr container);
+
     //typedef std::map<std::string, OsgColorMap> ColorMapMap;
     //ColorMapMap m_colormaps;
 

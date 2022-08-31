@@ -97,9 +97,10 @@ void BlenderRenderer::removeObject(std::shared_ptr<vistle::RenderObject> vro)
     if (!tryConnect())
         return;
 
-    //--- send info to blender
+    //--- send data to blender
     std::string operation_type = "REM";
     send(operation_type.c_str(), operation_type.length());
+    sendObjectInfo(vro->senderId, vro->senderPort, vro->container);
 }
 
 template<typename T>
@@ -146,6 +147,22 @@ bool BlenderRenderer::send(const std::vector<T> &d)
     return send(d.data(), d.size());
 }
 
+void BlenderRenderer::sendObjectInfo(int senderId, const std::string &senderPort, vistle::Object::const_ptr container){
+    // get info
+    int sender_port_length = senderPort.length();
+    std::string obj_id = container->getName();
+    int obj_id_length = obj_id.length();
+    int time_step = container->getTimestep();
+
+    //send data
+    send(senderId);
+    send(sender_port_length);
+    send(senderPort.c_str(), sender_port_length);
+    send(obj_id_length);
+    send(obj_id.c_str(), obj_id.length());
+    send(time_step);
+}
+
 std::shared_ptr<vistle::RenderObject> BlenderRenderer::addObject(int senderId, const std::string &senderPort,
                                                                  vistle::Object::const_ptr container,
                                                                  vistle::Object::const_ptr geometry,
@@ -177,6 +194,7 @@ std::shared_ptr<vistle::RenderObject> BlenderRenderer::addObject(int senderId, c
     case vistle::Object::POLYGONS:
     case vistle::Object::TRIANGLES:
     case vistle::Object::QUADS: {
+        // prepare data
         vistle::Polygons::const_ptr polygons = vistle::Polygons::as(geometry);
         vistle::Triangles::const_ptr triangles = vistle::Triangles::as(geometry);
         vistle::Quads::const_ptr quads = vistle::Quads::as(geometry);
@@ -199,12 +217,7 @@ std::shared_ptr<vistle::RenderObject> BlenderRenderer::addObject(int senderId, c
             numCorners = quads->getNumCorners();
         }
 
-        // prepare data
         char geom_type = 'p'; // info
-        int exec_counter = container->getExecutionCounter();
-        std::string obj_id = container->getName();
-        int obj_id_length = obj_id.length();
-        int time_step = container->getTimestep();
 
         int num_el = numElements; // elements
         int *el_array = new int[num_el];
@@ -263,10 +276,7 @@ std::shared_ptr<vistle::RenderObject> BlenderRenderer::addObject(int senderId, c
         // send data
         send(operation_type.c_str(), operation_type.length());
         send(geom_type);
-        send(exec_counter);
-        send(obj_id_length);
-        send(obj_id.c_str(), obj_id.length());
-        send(time_step);
+        sendObjectInfo(senderId, senderPort, container);
         send(num_el);
         send(el_array, num_el);
         send(num_corn);
@@ -300,10 +310,6 @@ std::shared_ptr<vistle::RenderObject> BlenderRenderer::addObject(int senderId, c
 
         // prepare data
         char geom_type = 'l'; // info
-        int exec_counter = container->getExecutionCounter();
-        std::string obj_id = container->getName();
-        int obj_id_length = obj_id.length();
-        int time_step = container->getTimestep();
 
         int num_el = numElements; // elements
         int *el_array = new int[num_el];
@@ -343,10 +349,7 @@ std::shared_ptr<vistle::RenderObject> BlenderRenderer::addObject(int senderId, c
         // send data
         send(operation_type.c_str(), operation_type.length());
         send(geom_type);
-        send(exec_counter);
-        send(obj_id_length);
-        send(obj_id.c_str(), obj_id.length());
-        send(time_step);
+        sendObjectInfo(senderId, senderPort, container);
         send(num_el);
         send(el_array, num_el);
         send(num_corn);
