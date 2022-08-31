@@ -1828,7 +1828,7 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam)
     Module *mod = nullptr;
     if (i == runningMap.end()) {
         if (isLocal(setParam.getModule())) {
-            CERR << "did not find module for SetParameter 1: " << setParam.getModule() << ": " << setParam << std::endl;
+            CERR << "did not find module for SetParameter: " << setParam.getModule() << ": " << setParam << std::endl;
         }
     } else {
         mod = &i->second;
@@ -1846,8 +1846,6 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam)
             }
             if (mod) {
                 mod->send(setParam);
-            } else {
-                CERR << "did not find module for SetParameter 2: " << dest << ": " << setParam << std::endl;
             }
         } else {
             return Communicator::the().broadcastAndHandleMessage(setParam);
