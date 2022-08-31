@@ -1086,53 +1086,11 @@ bool ClusterManager::handlePriv(const message::Connect &connect)
     } else {
         sendHub(connect);
     }
-#if 0
-   int modFrom = connect.getModuleA();
-   int modTo = connect.getModuleB();
-   const char *portFrom = connect.getPortAName();
-   const char *portTo = connect.getPortBName();
-   const Port *from = portManager().getPort(modFrom, portFrom);
-   const Port *to = portManager().getPort(modTo, portTo);
-
-   message::Connect c = connect;
-   if (from && to && from->getType() == Port::INPUT && to->getType() == Port::OUTPUT) {
-      c.reverse();
-      std::swap(modFrom, modTo);
-      std::swap(portFrom, portTo);
-   }
-
-   if (m_stateTracker.handle(c)) {
-      // inform modules about connections
-       sendMessage(modFrom, c);
-       sendMessage(modTo, c);
-      if (Communicator::the().isMaster()) {
-         sendUi(c);
-      }
-   } else {
-      return false;
-   }
-#endif
     return true;
 }
 
 bool ClusterManager::handlePriv(const message::Disconnect &disconnect)
 {
-#if 0
-   const char *portFrom = disconnect.getPortAName();
-   const char *portTo = disconnect.getPortBName();
-   const Port *from = portManager().findPort(modFrom, portFrom);
-   const Port *to = portManager().findPort(modTo, portTo);
-
-   if (!from) {
-      CERR << " Did not find source port: " << disconnect << std::endl;
-      return true;
-   }
-   if (!to) {
-      CERR << " Did not find destination port: " << disconnect << std::endl;
-      return true;
-   }
-#endif
-
     if (disconnect.isNotification()) {
         m_stateTracker.handle(disconnect, nullptr);
         int modFrom = disconnect.getModuleA();
@@ -1145,30 +1103,6 @@ bool ClusterManager::handlePriv(const message::Disconnect &disconnect)
         sendHub(disconnect);
     }
 
-#if 0
-   if (from->getType() == Port::INPUT && to->getType() == Port::OUTPUT) {
-      d.reverse();
-      std::swap(modFrom, modTo);
-      std::swap(portFrom, portTo);
-   }
-   
-   if (m_stateTracker.handle(d)) {
-
-       sendMessage(modFrom, d);
-       sendMessage(modTo, d);
-
-       if (Communicator::the().isMaster()) {
-         sendUi(d);
-      }
-   } else {
-
-      if (!m_messageQueue.empty()) {
-         // only if messages are already queued, there is a chance that this
-         // connection might still be established
-         return false;
-      }
-   }
-#endif
     return true;
 }
 
