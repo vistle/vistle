@@ -298,6 +298,14 @@ void DataFlowNetwork::moduleStatus(int id, QString status, int prio)
 
 void DataFlowNetwork::addConnection(Port *portFrom, Port *portTo, bool sendToController)
 {
+    if (!portFrom) {
+        // parameter ports currently do not have a GUI representation
+        return;
+    }
+    if (!portTo) {
+        return;
+    }
+
     assert(portFrom);
     assert(portTo);
 
