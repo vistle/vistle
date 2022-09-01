@@ -41,12 +41,4 @@ if(Python_FOUND)
     target_link_libraries(vistle_control PRIVATE Python::Python)
     target_link_libraries(vistle_control PRIVATE vistle_python)
     target_link_libraries(vistle_control PRIVATE vistle_pythonmodule)
-
-    add_custom_target(
-        vistle_python_py ALL
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/vistle.py ${PROJECT_BINARY_DIR}/share/vistle/vistle.py
-        DEPENDS vistle.py
-        SOURCES vistle.py)
-
-    install(FILES vistle.py DESTINATION share/vistle)
 endif()
