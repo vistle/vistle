@@ -454,7 +454,7 @@ std::shared_ptr<vistle::RenderObject> COVER::addObject(int senderId, const std::
     }
 
     if (!geometry) {
-        std::cerr << "COVER::addObject: no geometry" << std::endl;
+        std::cerr << "COVER::addObject: container " << container->getName() << ": no geometry" << std::endl;
         return nullptr;
     }
 
