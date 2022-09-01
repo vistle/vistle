@@ -1115,13 +1115,13 @@ bool Hub::sendUi(const message::Message &msg, int id, const buffer *payload)
 bool Hub::sendModule(const message::Message &msg, int id, const buffer *payload)
 {
     if (!Id::isModule(id)) {
-        CERR << "sendModule: id " << id << " is not for a module" << std::endl;
+        CERR << "sendModule: id " << id << " is not for a module: " << msg << std::endl;
         return false;
     }
 
     int hub = idToHub(id);
     if (Id::Invalid == hub) {
-        CERR << "sendModule: could not find hub for id " << id << std::endl;
+        CERR << "sendModule: could not find hub for id " << id << ": " << msg << std::endl;
         return false;
     }
 
