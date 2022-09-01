@@ -39,8 +39,10 @@ bool DataBase::checkImpl() const
 void DataBase::copyAttributes(Object::const_ptr src, bool replace)
 {
     Base::copyAttributes(src, replace);
-    if (auto d = DataBase::as(src)) {
-        setMapping(d->mapping());
+    if (replace || mapping() == DataBase::Unspecified) {
+        if (auto d = DataBase::as(src)) {
+            setMapping(d->mapping());
+        }
     }
 }
 
