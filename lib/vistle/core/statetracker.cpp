@@ -1844,6 +1844,8 @@ std::set<int> StateTracker::getDownstreamModules(const message::Execute &execute
     for (const auto &id_mod: runningMap) {
         const auto &id = id_mod.first;
         const auto &mod = id_mod.second;
+        if (!Id::isModule(id))
+            continue;
         if (hasCombinePort(id))
             continue;
         executing.insert(id);
