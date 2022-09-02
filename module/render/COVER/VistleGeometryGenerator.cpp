@@ -294,7 +294,11 @@ struct DataAdapter;
 template<class Geometry, class Mapped, bool normalize>
 struct DataAdapter<Geometry, osg::Vec3Array, Mapped, normalize> {
     DataAdapter(typename Geometry::const_ptr tri, typename Mapped::const_ptr mapped)
-    : x(&mapped->x()[0]), y(&mapped->y()[0]), z(&mapped->z()[0]), mapping(mapped->guessMapping(tri))
+    : size(mapped->getSize())
+    , x(size > 0 ? &mapped->x()[0] : nullptr)
+    , y(size > 0 ? &mapped->y()[0] : nullptr)
+    , z(size > 0 ? &mapped->z()[0] : nullptr)
+    , mapping(mapped->guessMapping(tri))
     {}
     osg::Vec3 getValue(Index idx)
     {
@@ -303,6 +307,7 @@ struct DataAdapter<Geometry, osg::Vec3Array, Mapped, normalize> {
             val.normalize();
         return val;
     }
+    vistle::Index size = 0;
     const typename Mapped::Scalar *x, *y, *z;
     vistle::DataBase::Mapping mapping = vistle::DataBase::Unspecified;
 };
@@ -310,9 +315,14 @@ struct DataAdapter<Geometry, osg::Vec3Array, Mapped, normalize> {
 template<class Geometry, bool normalize>
 struct DataAdapter<Geometry, osg::FloatArray, typename vistle::Vec<Scalar, 3>::const_ptr, normalize> {
     DataAdapter(typename Geometry::const_ptr tri, typename vistle::Vec<Scalar, 3>::const_ptr mapped)
-    : x(&mapped->x()[0]), y(&mapped->y()[0]), z(&mapped->z()[0]), mapping(mapped->guessMapping(tri))
+    : size(mapped->getSize())
+    , x(size > 0 ? &mapped->x()[0] : nullptr)
+    , y(size > 0 ? &mapped->y()[0] : nullptr)
+    , z(size > 0 ? &mapped->z()[0] : nullptr)
+    , mapping(mapped->guessMapping(tri))
     {}
     float getValue(Index idx) { return sqrt(x[idx] * x[idx] + y[idx] * y[idx] + z[idx] * z[idx]); }
+    vistle::Index size = 0;
     const Scalar *x, *y, *z;
     vistle::DataBase::Mapping mapping = vistle::DataBase::Unspecified;
 };
@@ -320,9 +330,10 @@ struct DataAdapter<Geometry, osg::FloatArray, typename vistle::Vec<Scalar, 3>::c
 template<class Geometry, bool normalize>
 struct DataAdapter<Geometry, osg::FloatArray, typename vistle::Vec<Index>::const_ptr, normalize> {
     DataAdapter(typename Geometry::const_ptr tri, typename vistle::Vec<Index>::const_ptr mapped)
-    : x(&mapped->x()[0]), mapping(mapped->guessMapping(tri))
+    : size(mapped->getSize()), x(size > 0 ? &mapped->x()[0] : nullptr), mapping(mapped->guessMapping(tri))
     {}
     float getValue(Index idx) { return x[idx]; }
+    vistle::Index size = 0;
     const Index *x;
     vistle::DataBase::Mapping mapping = vistle::DataBase::Unspecified;
 };
@@ -330,16 +341,19 @@ struct DataAdapter<Geometry, osg::FloatArray, typename vistle::Vec<Index>::const
 template<class Geometry, class Mapped, bool normalize>
 struct DataAdapter<Geometry, osg::FloatArray, Mapped, normalize> {
     DataAdapter(typename Geometry::const_ptr tri, typename Mapped::const_ptr mapped)
-    : x(&mapped->x()[0]), mapping(mapped->guessMapping(tri))
+    : size(mapped->getSize()), x(size > 0 ? &mapped->x()[0] : nullptr), mapping(mapped->guessMapping(tri))
     {}
     float getValue(Index idx) { return x[idx]; }
+    vistle::Index size = 0;
     const typename Mapped::Scalar *x;
     vistle::DataBase::Mapping mapping = vistle::DataBase::Unspecified;
 };
 
 template<class Geometry, bool normalize>
 struct DataAdapter<Geometry, osg::Vec3Array, osg::Vec3Array, normalize> {
-    DataAdapter(typename Geometry::const_ptr tri, osg::Vec3Array *mapped): mapped(mapped) {}
+    DataAdapter(typename Geometry::const_ptr tri, osg::Vec3Array *mapped)
+    : size(mapped->size()), mapped(size > 0 ? mapped : nullptr)
+    {}
     osg::Vec3 getValue(Index idx)
     {
         osg::Vec3 val = (*mapped)[idx];
@@ -348,6 +362,7 @@ struct DataAdapter<Geometry, osg::Vec3Array, osg::Vec3Array, normalize> {
         return val;
     }
     vistle::DataBase::Mapping mapping = vistle::DataBase::Vertex;
+    vistle::Index size = 0;
     osg::Vec3Array *mapped = nullptr;
 };
 
@@ -360,7 +375,19 @@ Array *applyTriangle(typename Geometry::const_ptr tri, MappedPtr mapped, bool in
     auto arr = new Array;
     arr->setBinding(osg::Array::BIND_PER_VERTEX);
     DataAdapter<Geometry, Array, typename std::remove_reference<decltype(*mapped)>::type, normalize> adap(tri, mapped);
-    if (adap.mapping != vistle::DataBase::Vertex && adap.mapping != vistle::DataBase::Element) {
+    if (adap.mapping == vistle::DataBase::Vertex) {
+        if (adap.size < tri->getNumCoords()) {
+            std::cerr << "applyTriangle: not enough data (" << adap.size << ") for " << tri->getNumCoords()
+                      << " coordinates" << std::endl;
+            return nullptr;
+        }
+    } else if (adap.mapping == vistle::DataBase::Element) {
+        if (adap.size < tri->getNumElements()) {
+            std::cerr << "applyTriangle: not enough data (" << adap.size << ") for " << tri->getNumElements()
+                      << " elements" << std::endl;
+            return nullptr;
+        }
+    } else {
         std::cerr << "applyTriangle: mapping=" << adap.mapping << " not handled" << std::endl;
         return nullptr;
     }

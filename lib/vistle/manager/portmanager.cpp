@@ -4,6 +4,7 @@
 #include <cassert>
 #include <iostream>
 #include <algorithm>
+#include <boost/lexical_cast.hpp>
 
 namespace vistle {
 

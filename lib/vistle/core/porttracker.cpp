@@ -242,8 +242,8 @@ bool PortTracker::addConnection(const Port &from, const Port &to)
                     added = true;
                 } else {
                     f->removeConnection(*t);
-                    CERR << "PortTracker::addConnection: inconsistent connection states for data connection"
-                         << std::endl;
+                    CERR << "PortTracker::addConnection: inconsistent connection states for data connection, from: "
+                         << from << ", to: " << to << std::endl;
                     check();
                     return true;
                 }
@@ -259,8 +259,8 @@ bool PortTracker::addConnection(const Port &from, const Port &to)
                 added = true;
             } else {
                 f->removeConnection(*t);
-                CERR << "PortTracker::addConnection: inconsistent connection states for parameter connection"
-                     << std::endl;
+                CERR << "PortTracker::addConnection: inconsistent connection states for parameter connection, from: "
+                     << from << ", to: " << to << std::endl;
                 check();
                 return true;
             }

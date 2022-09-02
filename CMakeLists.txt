@@ -244,6 +244,9 @@ if(NOT VISTLE_GUI_ONLY)
         message(WARNING "CMake 3.12 or newer is required for compiling Python support")
     else()
         vistle_find_package(Python COMPONENTS Interpreter Development REQUIRED)
+        if(Python_FOUND)
+            message("Found Python version ${Python_VERSION}")
+        endif()
     endif()
 
     #vistle_find_package(IceT REQUIRED)
@@ -834,6 +837,7 @@ endif()
 
 # header-only python bindings
 include_directories(SYSTEM "${PROJECT_SOURCE_DIR}/lib/3rdparty/pybind11/include")
+add_definitions(-DPYBIND11_DETAILED_ERROR_MESSAGES)
 
 # replacement for Boost.Serialization
 #include_directories(SYSTEM "${PROJECT_SOURCE_DIR}/lib/3rdparty/yas/include")
@@ -849,10 +853,16 @@ set(ZFP_FOUND TRUE)
 add_definitions(-DHAVE_ZFP)
 include_directories(SYSTEM "${ZFP_INCLUDE_DIRS}")
 
-set(SZ3_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/lib/3rdparty/sz3/include;${PROJECT_BINARY_DIR}/lib/3rdparty/sz3/include")
-set(SZ3_FOUND TRUE)
-add_definitions(-DHAVE_SZ3)
-include_directories(SYSTEM "${SZ3_INCLUDE_DIRS}")
+if(CMAKE_VERSION VERSION_LESS 3.18)
+    message("Not building with SZ3 support: CMake older than 3.18")
+    set(USE_SZ3 FALSE)
+else()
+    set(SZ3_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/lib/3rdparty/sz3/include;${PROJECT_BINARY_DIR}/lib/3rdparty/sz3/include")
+    set(SZ3_FOUND TRUE)
+    add_definitions(-DHAVE_SZ3)
+    include_directories(SYSTEM "${SZ3_INCLUDE_DIRS}")
+    set(USE_SZ3 TRUE)
+endif()
 
 if(NOT VISTLE_GUI_ONLY)
     vistle_find_package(

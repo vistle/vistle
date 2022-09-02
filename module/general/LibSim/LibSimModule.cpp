@@ -12,6 +12,7 @@
 #include <boost/bind.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/mpi.hpp>
+#include <boost/range/iterator_range_core.hpp>
 
 #include <vistle/core/message.h>
 #include <vistle/core/tcpmessage.h>

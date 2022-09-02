@@ -8,7 +8,6 @@
 #include <limits>
 #include <memory>
 #include <boost/mpl/vector.hpp>
-#include <boost/lexical_cast.hpp>
 
 #include <vistle/util/enum.h>
 #include "paramvector.h"
@@ -19,6 +18,13 @@ class VistleInteractor;
 namespace gui {
 class Parameters;
 }
+
+namespace std {
+inline std::string to_string(const string &s)
+{
+    return s;
+}
+} // namespace std
 
 namespace vistle {
 
@@ -188,7 +194,7 @@ public:
     }
     virtual T minimum() const { return m_minimum; }
     virtual T maximum() const { return m_maximum; }
-    operator std::string() const { return boost::lexical_cast<std::string>(m_value); }
+    operator std::string() const { return std::to_string(m_value); }
 
 private:
     T m_value;

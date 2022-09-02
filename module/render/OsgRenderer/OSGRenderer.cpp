@@ -1,7 +1,8 @@
 #include <GL/glew.h>
 
+#include "OSGRenderer.h"
+
 #include <vector>
-#include <boost/lexical_cast.hpp>
 
 #include <osg/DisplaySettings>
 #include <osg/Group>
@@ -14,7 +15,7 @@
 #include <osg/io_utils>
 
 #include <VistleGeometryGenerator.h>
-#include "OSGRenderer.h"
+
 #include "EnableGLDebugOperation.h"
 #include <osgViewer/Renderer>
 #include <osg/TextureRectangle>
@@ -22,10 +23,15 @@
 #include <vistle/util/enum.h>
 #include <vistle/rhr/rfbext.h>
 
-
+#ifdef HAVE_EGL
+#include <EGL/egl.h>
+#include "EGLWindow.h"
+#else
 #ifdef USE_X11
 #include <X11/Xlib.h>
 #endif
+#endif
+
 
 #define CERR std::cerr << "OsgRenderer: "
 
@@ -269,23 +275,34 @@ bool OsgViewData::update(bool frameQueued)
         CERR << "creating PBuffer of size " << vd.width << "x" << vd.height << std::endl;
         createCamera();
 
-        osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits(viewer.displaySettings);
-        traits->readDISPLAY();
-        traits->setScreenIdentifier(":0");
-        traits->setUndefinedScreenDetailsToDefaultScreen();
-        traits->sharedContext = viewIdx >= 0 ? viewer.getCamera()->getGraphicsContext() : nullptr;
-        traits->x = 0;
-        traits->y = 0;
-        traits->width = vd.width;
-        traits->height = vd.height;
-        traits->alpha = 0;
-        traits->depth = 24;
-        traits->doubleBuffer = false;
-        traits->windowDecoration = true;
-        traits->windowName = "OsgRenderer: view " + boost::lexical_cast<std::string>(viewIdx);
-        traits->pbuffer = true;
-        traits->vsync = false;
         if (viewIdx >= 0) {
+#ifdef HAVE_EGL
+            gc = new EglGraphicsWindow(1, 1);
+            if (!gc) {
+                CERR << "failed to create EGL graphics context" << std::endl;
+            } else {
+                gc->setSwapCallback(new NoSwapCallback);
+                gc->realize();
+                camera->setGraphicsContext(gc);
+            }
+#else
+            osg::ref_ptr<osg::GraphicsContext::Traits> traits =
+                new osg::GraphicsContext::Traits(viewer.displaySettings);
+            traits->readDISPLAY();
+            traits->setScreenIdentifier(":0");
+            traits->setUndefinedScreenDetailsToDefaultScreen();
+            traits->sharedContext = viewIdx >= 0 ? viewer.getCamera()->getGraphicsContext() : nullptr;
+            traits->x = 0;
+            traits->y = 0;
+            traits->width = vd.width;
+            traits->height = vd.height;
+            traits->alpha = 0;
+            traits->depth = 24;
+            traits->doubleBuffer = false;
+            traits->windowDecoration = true;
+            traits->windowName = "OsgRenderer: view " + std::to_string(viewIdx);
+            traits->pbuffer = true;
+            traits->vsync = false;
             gc = osg::GraphicsContext::createGraphicsContext(traits);
             if (!gc) {
                 CERR << "failed to create graphics context" << std::endl;
@@ -297,10 +314,11 @@ bool OsgViewData::update(bool frameQueued)
                 camera->setGraphicsContext(gc);
             }
             camera->setDisplaySettings(viewer.displaySettings);
-            camera->setRenderTargetImplementation(osg::Camera::PIXEL_BUFFER);
             GLenum buffer = traits->doubleBuffer ? GL_BACK : GL_FRONT;
             camera->setDrawBuffer(buffer);
             camera->setReadBuffer(buffer);
+#endif
+            camera->setRenderTargetImplementation(osg::Camera::PIXEL_BUFFER);
             camera->setRenderOrder(osg::Camera::PRE_RENDER);
         } else {
             gc = camera->getGraphicsContext();
@@ -530,11 +548,19 @@ OSGRenderer::OSGRenderer(const std::string &name, int moduleID, mpi::communicato
     m_async = addIntParameter("asynchronicity", "number of outstanding frames to tolerate", m_asyncFrames);
     setParameterRange(m_async, (vistle::Integer)0, (vistle::Integer)MaxAsyncFrames);
 
-    //setRealizeOperation(new EnableGLDebugOperation());
+    setRealizeOperation(new EnableGLDebugOperation());
 
     displaySettings = new osg::DisplaySettings;
     displaySettings->setStereo(false);
 
+#ifdef HAVE_EGL
+    osg::ref_ptr<osg::GraphicsContext> gc = new EglGraphicsWindow(1, 1);
+    if (!gc) {
+        CERR << "Failed to create master EGL graphics context" << std::endl;
+        return;
+    }
+    gc->setSwapCallback(new NoSwapCallback);
+#else
     osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits(displaySettings);
     traits->readDISPLAY();
     traits->setScreenIdentifier(":0");
@@ -557,15 +583,20 @@ OSGRenderer::OSGRenderer(const std::string &name, int moduleID, mpi::communicato
     }
     if (!traits->doubleBuffer)
         gc->setSwapCallback(new NoSwapCallback);
+#endif
 
     getCamera()->setGraphicsContext(gc.get());
     getCamera()->setDisplaySettings(displaySettings);
-    getCamera()->setViewport(new osg::Viewport(0, 0, traits->width, traits->height));
     getCamera()->setComputeNearFarMode(osgUtil::CullVisitor::DO_NOT_COMPUTE_NEAR_FAR);
 
+#ifdef HAVE_EGL
+    getCamera()->setViewport(new osg::Viewport(0, 0, 1, 1));
+#else
+    getCamera()->setViewport(new osg::Viewport(0, 0, traits->width, traits->height));
     GLenum buffer = traits->doubleBuffer ? GL_BACK : GL_FRONT;
     getCamera()->setDrawBuffer(buffer);
     getCamera()->setReadBuffer(buffer);
+#endif
 
     realize();
 

@@ -172,7 +172,7 @@ static void quit()
 #endif
     message::Quit m;
     sendMessage(m);
-    exit(0);
+    //exit(0);
 }
 
 static void ping(int dest = message::Id::Broadcast, char c = '.')
@@ -785,7 +785,7 @@ static void requestTunnel(unsigned short listenPort, const std::string &destHost
     asio::io_service io_service;
     asio::ip::tcp::resolver resolver(io_service);
     try {
-        auto endpoints = resolver.resolve({destHost, boost::lexical_cast<std::string>(destPort)});
+        auto endpoints = resolver.resolve({destHost, std::to_string(destPort)});
         auto addr = (*endpoints).endpoint().address();
         if (addr.is_v6()) {
             m.setDestAddr(addr.to_v6());
@@ -1270,11 +1270,11 @@ static bool sessionConnectWithObserver(StateObserver *o, const std::string &host
     if (!vistleThread)
         return false;
 
-    while (!userinterface->isInitialized()) {
+    while (!userinterface->isInitialized() && !userinterface->isQuitting()) {
         usleep(100);
     }
 
-    return true;
+    return userinterface->isInitialized();
 }
 
 static bool sessionConnect(const std::string &host, unsigned short port)
@@ -1616,7 +1616,5 @@ bool PythonModule::import(py::object *ns, const std::string &path)
 
     return true;
 }
-
-PythonStateAccessor::~PythonStateAccessor() = default;
 
 } // namespace vistle

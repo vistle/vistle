@@ -405,23 +405,27 @@ void Module::updatePosition(QPointF newPos) const
 
 void Module::addPort(const vistle::Port &port)
 {
-    Port *guiPort = new Port(&port, this);
-    m_vistleToGui[port] = guiPort;
+    Port *guiPort = nullptr;
 
     switch (port.getType()) {
     case vistle::Port::ANY:
         std::cerr << "cannot handle port type ANY" << std::endl;
         break;
     case vistle::Port::INPUT:
+        guiPort = new Port(&port, this);
         m_inPorts.push_back(guiPort);
         break;
     case vistle::Port::OUTPUT:
+        guiPort = new Port(&port, this);
         m_outPorts.push_back(guiPort);
         break;
     case vistle::Port::PARAMETER:
-        m_paramPorts.push_back(guiPort);
+        //m_paramPorts.push_back(guiPort);
         break;
     }
+
+    if (guiPort)
+        m_vistleToGui[port] = guiPort;
 
     doLayout();
 }

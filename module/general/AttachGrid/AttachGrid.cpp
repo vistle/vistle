@@ -13,7 +13,7 @@ AttachGrid::AttachGrid(const std::string &name, int moduleID, mpi::communicator 
     m_gridIn = createInputPort("grid_in");
 
     for (int i = 0; i < 5; ++i) {
-        std::string number = boost::lexical_cast<std::string>(i);
+        std::string number = std::to_string(i);
         m_dataIn.push_back(createInputPort("data_in" + number));
         m_dataOut.push_back(createOutputPort("data_out" + number));
     }

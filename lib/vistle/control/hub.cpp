@@ -186,7 +186,7 @@ Hub::Hub(bool inManager)
             std::cerr << "child exited with status " << exit_code << std::endl;
         }
 #endif
-        checkChildProcesses();
+        checkChildProcesses(false, false);
     };
 }
 
@@ -261,7 +261,7 @@ bool Hub::init(int argc, char *argv[])
         ("batch,b", "do not start user interface")
         ("proxy", "run master hub acting only as a proxy, does not require MPI")
         ("gui,g", "start graphical user interface")
-        ("shell,s", "start interactive Python shell (requires ipython)")
+        ("shell,s", "start interactive Python shell (requires ipython or python)")
         ("port,p", po::value<unsigned short>(), "control port")
         ("dataport", po::value<unsigned short>(), "data port")
         ("execute,e", "call compute() after workflow has been loaded")
@@ -305,7 +305,8 @@ bool Hub::init(int argc, char *argv[])
     if (vm.count("exposed") > 0) {
         m_exposedHost = vm["exposed"].as<std::string>();
         boost::asio::ip::tcp::resolver resolver(m_ioService);
-        boost::asio::ip::tcp::resolver::query query(m_exposedHost, std::to_string(dataPort()));
+        boost::asio::ip::tcp::resolver::query query(m_exposedHost, std::to_string(dataPort()),
+                                                    boost::asio::ip::tcp::resolver::query::numeric_service);
         boost::system::error_code ec;
         boost::asio::ip::tcp::resolver::iterator iter = resolver.resolve(query, ec);
         if (ec) {
@@ -473,8 +474,8 @@ bool Hub::init(int argc, char *argv[])
             startPythonUi();
         }
 
-        std::string port = boost::lexical_cast<std::string>(this->port());
-        std::string dataport = boost::lexical_cast<std::string>(dataPort());
+        std::string port = std::to_string(this->port());
+        std::string dataport = std::to_string(dataPort());
 
         if (!m_proxyOnly) {
             // start manager on cluster
@@ -903,11 +904,11 @@ bool Hub::dispatch()
             ret = false;
         } else {
 #if 0
-          std::lock_guard<std::mutex> guard(m_processMutex);
-          CERR << "still " << m_processMap.size() << " processes running" << std::endl;
-          for (const auto &process: m_processMap) {
-              std::cerr << "   id: " << process.second << ", pid: " << process.first << std::endl;
-          }
+            std::lock_guard<std::mutex> guard(m_processMutex);
+            CERR << "still " << m_processMap.size() << " processes running" << std::endl;
+            for (const auto &process: m_processMap) {
+                std::cerr << "   id: " << process.second << ", pid: " << process.first->id() << std::endl;
+            }
 #endif
         }
     }
@@ -947,6 +948,10 @@ bool Hub::dispatch()
     dataConnGuard.unlock();
 
     vistle::adaptive_wait(work);
+
+    if (ret == false) {
+        CERR << "dispatch: returning false for Quit" << std::endl;
+    }
 
     return ret;
 }
@@ -1110,13 +1115,13 @@ bool Hub::sendUi(const message::Message &msg, int id, const buffer *payload)
 bool Hub::sendModule(const message::Message &msg, int id, const buffer *payload)
 {
     if (!Id::isModule(id)) {
-        CERR << "sendModule: id " << id << " is not for a module" << std::endl;
+        CERR << "sendModule: id " << id << " is not for a module: " << msg << std::endl;
         return false;
     }
 
     int hub = idToHub(id);
     if (Id::Invalid == hub) {
-        CERR << "sendModule: could not find hub for id " << id << std::endl;
+        CERR << "sendModule: could not find hub for id " << id << ": " << msg << std::endl;
         return false;
     }
 
@@ -1265,12 +1270,16 @@ bool Hub::hubReady()
         params.V_ENUM_SET_CHOICES(szError, FieldCompressionSzError);
         auto szRel =
             params.addFloatParameter(CompressionSettings::p_szRelError, "SZ3 relative error tolerance", cs.szRelError);
+        params.setParameterRange(szRel, Float(0.), Float(1.));
         auto szAbs =
             params.addFloatParameter(CompressionSettings::p_szAbsError, "SZ3 absolute error tolerance", cs.szAbsError);
+        params.setParameterMinimum(szAbs, Float(0.));
         auto szPsnr =
-            params.addFloatParameter(CompressionSettings::p_szPsnrError, "SZ3 psnr tolerance", cs.szPsnrError);
+            params.addFloatParameter(CompressionSettings::p_szPsnrError, "SZ3 PSNR tolerance", cs.szPsnrError);
+        params.setParameterMinimum(szPsnr, Float(0.));
         auto szL2 =
             params.addFloatParameter(CompressionSettings::p_szL2Error, "SZ3 L2 norm error tolerance", cs.szL2Error);
+        params.setParameterMinimum(szL2, Float(0.));
 
         params.setCurrentParameterGroup("");
 
@@ -1670,12 +1679,22 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
 
         case message::ADDPARAMETER: {
             auto addParam = msg.as<message::AddParameter>();
-            int id = addParam.senderId();
-            if (m_stateTracker.getMirrorId(id) != id)
+            if (!m_isMaster) {
+                // set up parameter connections on master hub
                 break;
+            }
+            int id = addParam.senderId();
+            if (m_stateTracker.getMirrorId(id) != id) {
+                // connect parameters of mirrored instances to original parameter only
+                break;
+            }
             auto pn = addParam.getName();
             auto mirrors = m_stateTracker.getMirrors(id);
             for (auto &m: mirrors) {
+                if (m == id) {
+                    // skip connection to self
+                    continue;
+                }
                 auto con = message::Connect(id, pn, m, pn);
                 handleMessage(con);
             }
@@ -1972,7 +1991,6 @@ bool Hub::spawnMirror(int hubId, const std::string &name, int mirroredId)
     auto paramNames = m_stateTracker.getParameters(mirroredId);
     for (const auto &pn: paramNames) {
         auto con = message::Connect(mirroredId, pn, mirror.spawnId(), pn);
-        con.setDestId(mirror.spawnId());
         m_sendAfterSpawn[mirror.spawnId()].emplace_back(con);
     }
 
@@ -2305,7 +2323,7 @@ bool Hub::connectToMaster(const std::string &host, unsigned short port)
     boost::system::error_code ec;
     while (!connected) {
         asio::ip::tcp::resolver resolver(m_ioService);
-        asio::ip::tcp::resolver::query query(host, boost::lexical_cast<std::string>(port));
+        asio::ip::tcp::resolver::query query(host, std::to_string(port));
         m_masterSocket.reset(new boost::asio::ip::tcp::socket(m_ioService));
         asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query, ec);
         if (ec) {
@@ -2407,7 +2425,9 @@ void Hub::stopVrb()
     }
 
     while (!m_vrbThreads.empty()) {
-        m_vrbThreads.back().join();
+        auto &t = m_vrbThreads.back();
+        if (t.joinable())
+            t.join();
         m_vrbThreads.pop_back();
     }
 }
@@ -2527,7 +2547,7 @@ bool Hub::handleVrb(Hub::socket_ptr sock)
 
 bool Hub::startUi(const std::string &uipath, bool replace)
 {
-    std::string port = boost::lexical_cast<std::string>(this->m_masterPort);
+    std::string port = std::to_string(this->m_masterPort);
 
     std::vector<std::string> args;
     if (!replace)
@@ -2555,7 +2575,8 @@ bool Hub::startUi(const std::string &uipath, bool replace)
 
 bool Hub::startPythonUi()
 {
-    std::string port = boost::lexical_cast<std::string>(this->m_masterPort);
+    std::vector<std::string> python_shells{"ipython", "ipython3", "python", "python3"};
+    std::string port = std::to_string(this->m_masterPort);
 
     std::string ipython = "ipython";
     std::vector<std::string> args;
@@ -2566,16 +2587,22 @@ bool Hub::startPythonUi()
     cmd += "from vistle import *; ";
     args.push_back(cmd);
     args.push_back("--");
-    auto child = launchProcess(ipython, args);
-    if (!child || !child->valid()) {
-        CERR << "failed to spawn ipython " << ipython << std::endl;
-        return false;
+    std::shared_ptr<process::child> child;
+    for (const auto &shell: python_shells) {
+        auto child = launchProcess(shell, args);
+        if (child && child->valid()) {
+            std::lock_guard<std::mutex> guard(m_processMutex);
+            m_processMap[child] = Process::GUI;
+            return true;
+        }
     }
 
-    std::lock_guard<std::mutex> guard(m_processMutex);
-    m_processMap[child] = Process::GUI;
-
-    return true;
+    CERR << "failed to spawn any Python shell, tried:";
+    for (const auto &shell: python_shells) {
+        std::cerr << " " << shell;
+    }
+    std::cerr << std::endl;
+    return false;
 }
 
 
@@ -2644,7 +2671,12 @@ bool Hub::handlePriv(const message::Quit &quit, message::Identify::Identity send
     if (quit.id() == Id::Broadcast) {
         CERR << "quit requested by " << senderType << std::endl;
         m_uiManager.requestQuit();
-        if (senderType == message::Identify::MANAGER) {
+        if (senderType == message::Identify::UNKNOWN /* script */) {
+            if (m_isMaster)
+                sendSlaves(quit);
+            sendManager(quit);
+            m_quitting = true;
+        } else if (senderType == message::Identify::MANAGER) {
             if (m_isMaster)
                 sendSlaves(quit);
             m_quitting = true;
@@ -2656,6 +2688,7 @@ bool Hub::handlePriv(const message::Quit &quit, message::Identify::Identity send
             else
                 sendMaster(quit);
             sendManager(quit);
+            m_quitting = true;
         } else {
             sendSlaves(quit);
             sendManager(quit);
@@ -2741,6 +2774,14 @@ bool Hub::handlePriv(const message::Execute &exec)
             isCompound = true;
             modules = getSubmoduleIds(exec.getModule(), av);
         }
+    }
+    auto downstream = m_stateTracker.getDownstreamModules(exec);
+    for (auto id: downstream) {
+        auto blockDownstream = make.message<message::Execute>(exec);
+        blockDownstream.setWhat(message::Execute::Upstream);
+        blockDownstream.setDestId(id);
+        blockDownstream.setModule(id);
+        sendModule(blockDownstream, id);
     }
     for (auto id: modules) {
         bool canExec = true;
@@ -2854,6 +2895,12 @@ void handleMirrorConnect(const ConnMsg &conn, const StateTracker &state,
 {
     auto modA = conn.getModuleA();
     auto modB = conn.getModuleB();
+    auto portA = state.portTracker()->getPort(modA, conn.getPortAName());
+    auto portB = state.portTracker()->getPort(modB, conn.getPortBName());
+    if (!portA || portA->getType() == Port::PARAMETER)
+        return;
+    if (!portB || portB->getType() == Port::PARAMETER)
+        return;
     auto mirA = state.getMirrors(modA);
     auto mirB = state.getMirrors(modB);
     auto c = conn;
@@ -3076,7 +3123,7 @@ bool Hub::hasChildProcesses(bool ignoreGui)
     return !m_processMap.empty();
 }
 
-bool Hub::checkChildProcesses(bool emergency)
+bool Hub::checkChildProcesses(bool emergency, bool onMainThread)
 {
     bool hasToQuit = false;
     std::unique_lock<std::mutex> guard(m_processMutex);
@@ -3112,11 +3159,12 @@ bool Hub::checkChildProcesses(bool emergency)
             idstring = "module " + std::to_string(id);
             break;
         }
-        CERR << "process with id " << idstring << " (PID " << it->first->id() << ") exited" << std::endl;
-        next = m_processMap.erase(it);
 
         if (id == Process::VRB) {
-            stopVrb();
+            if (onMainThread)
+                stopVrb();
+            else
+                continue;
         } else if (!emergency) {
             if (id == Process::Manager) {
                 if (!m_quitting) {
@@ -3132,6 +3180,9 @@ bool Hub::checkChildProcesses(bool emergency)
                 sendManager(m); // will be returned and forwarded to master hub
             }
         }
+
+        CERR << "process with id " << idstring << " (PID " << it->first->id() << ") exited" << std::endl;
+        next = m_processMap.erase(it);
     }
     guard.unlock();
 
@@ -3194,7 +3245,7 @@ void Hub::spawnModule(const std::string &path, const std::string &name, int spaw
     argv.push_back(path);
     argv.push_back(Shm::instanceName(hostname(), m_port));
     argv.push_back(name);
-    argv.push_back(boost::lexical_cast<std::string>(spawnId));
+    argv.push_back(std::to_string(spawnId));
     std::cerr << "starting module " << name << std::endl;
     auto child = launchMpiProcess(argv);
     if (child && child->valid()) {
@@ -3226,7 +3277,9 @@ void Hub::stopIoThreads()
     m_ioService.stop();
 
     while (!m_ioThreads.empty()) {
-        m_ioThreads.back().join();
+        auto &t = m_ioThreads.back();
+        if (t.joinable())
+            t.join();
         m_ioThreads.pop_back();
     }
 }

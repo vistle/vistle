@@ -4,6 +4,7 @@
 #include <string>
 #include "export.h"
 #include <vistle/util/buffer.h>
+#include "pythonstateaccessor.h"
 
 namespace pybind11 {
 class object;
@@ -18,15 +19,7 @@ namespace message {
 class Message;
 }
 
-struct V_PYEXPORT PythonStateAccessor {
-    virtual ~PythonStateAccessor();
-    virtual void lock() = 0;
-    virtual void unlock() = 0;
-    virtual StateTracker &state() = 0;
-    virtual bool sendMessage(const vistle::message::Message &m, const buffer *payload = nullptr) = 0;
-};
-
-class V_PYEXPORT PythonModule {
+class V_PYMODEXPORT PythonModule {
 public:
     explicit PythonModule(PythonStateAccessor &stateAccessor);
     ~PythonModule();
@@ -39,7 +32,7 @@ private:
     PythonStateAccessor *m_access = nullptr;
 };
 
-void V_PYEXPORT moduleCompoundToFile(const ModuleCompound &comp);
+void V_PYMODEXPORT moduleCompoundToFile(const ModuleCompound &comp);
 
 } // namespace vistle
 

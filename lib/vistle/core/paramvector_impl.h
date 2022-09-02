@@ -4,7 +4,6 @@
 #include <cassert>
 #include <cstring>
 #include <limits>
-#include <boost/lexical_cast.hpp>
 
 namespace vistle {
 
@@ -218,7 +217,7 @@ ParameterVector<S> ParameterVector<S>::maximum() const {
 template<typename S>
 std::string ParameterVector<S>::str() const
 {
-    return boost::lexical_cast<std::string>(*this);
+    return std::to_string(*this);
 }
 
 template<typename S>

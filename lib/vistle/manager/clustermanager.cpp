@@ -4,7 +4,6 @@
 
 
 #include <boost/foreach.hpp>
-#include <boost/lexical_cast.hpp>
 
 #include <sys/types.h>
 
@@ -243,8 +242,7 @@ bool ClusterManager::Module::haveDelayed() const
 ClusterManager::ClusterManager(boost::mpi::communicator comm, const std::vector<std::string> &hosts)
 : m_comm(comm)
 , m_portManager(new PortManager(this))
-, m_stateTracker(std::string("ClusterManager state rk") + boost::lexical_cast<std::string>(m_comm.rank()),
-                 m_portManager)
+, m_stateTracker(std::string("ClusterManager state rk") + std::to_string(m_comm.rank()), m_portManager)
 , m_traceMessages(message::INVALID)
 , m_quitFlag(false)
 , m_rank(m_comm.rank())
@@ -1088,53 +1086,11 @@ bool ClusterManager::handlePriv(const message::Connect &connect)
     } else {
         sendHub(connect);
     }
-#if 0
-   int modFrom = connect.getModuleA();
-   int modTo = connect.getModuleB();
-   const char *portFrom = connect.getPortAName();
-   const char *portTo = connect.getPortBName();
-   const Port *from = portManager().getPort(modFrom, portFrom);
-   const Port *to = portManager().getPort(modTo, portTo);
-
-   message::Connect c = connect;
-   if (from && to && from->getType() == Port::INPUT && to->getType() == Port::OUTPUT) {
-      c.reverse();
-      std::swap(modFrom, modTo);
-      std::swap(portFrom, portTo);
-   }
-
-   if (m_stateTracker.handle(c)) {
-      // inform modules about connections
-       sendMessage(modFrom, c);
-       sendMessage(modTo, c);
-      if (Communicator::the().isMaster()) {
-         sendUi(c);
-      }
-   } else {
-      return false;
-   }
-#endif
     return true;
 }
 
 bool ClusterManager::handlePriv(const message::Disconnect &disconnect)
 {
-#if 0
-   const char *portFrom = disconnect.getPortAName();
-   const char *portTo = disconnect.getPortBName();
-   const Port *from = portManager().findPort(modFrom, portFrom);
-   const Port *to = portManager().findPort(modTo, portTo);
-
-   if (!from) {
-      CERR << " Did not find source port: " << disconnect << std::endl;
-      return true;
-   }
-   if (!to) {
-      CERR << " Did not find destination port: " << disconnect << std::endl;
-      return true;
-   }
-#endif
-
     if (disconnect.isNotification()) {
         m_stateTracker.handle(disconnect, nullptr);
         int modFrom = disconnect.getModuleA();
@@ -1147,30 +1103,6 @@ bool ClusterManager::handlePriv(const message::Disconnect &disconnect)
         sendHub(disconnect);
     }
 
-#if 0
-   if (from->getType() == Port::INPUT && to->getType() == Port::OUTPUT) {
-      d.reverse();
-      std::swap(modFrom, modTo);
-      std::swap(portFrom, portTo);
-   }
-   
-   if (m_stateTracker.handle(d)) {
-
-       sendMessage(modFrom, d);
-       sendMessage(modTo, d);
-
-       if (Communicator::the().isMaster()) {
-         sendUi(d);
-      }
-   } else {
-
-      if (!m_messageQueue.empty()) {
-         // only if messages are already queued, there is a chance that this
-         // connection might still be established
-         return false;
-      }
-   }
-#endif
     return true;
 }
 
@@ -1231,6 +1163,12 @@ bool ClusterManager::handlePriv(const message::Execute &exec)
 
     auto &mod = i->second;
     switch (exec.what()) {
+    case message::Execute::Upstream: {
+        assert(!mod.prepared);
+        assert(mod.reduced);
+        mod.send(exec);
+        break;
+    }
     case message::Execute::Prepare: {
         assert(!mod.prepared);
         assert(mod.reduced);
@@ -1896,7 +1834,7 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam)
     Module *mod = nullptr;
     if (i == runningMap.end()) {
         if (isLocal(setParam.getModule())) {
-            CERR << "did not find module for SetParameter 1: " << setParam.getModule() << ": " << setParam << std::endl;
+            CERR << "did not find module for SetParameter: " << setParam.getModule() << ": " << setParam << std::endl;
         }
     } else {
         mod = &i->second;
@@ -1914,8 +1852,6 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam)
             }
             if (mod) {
                 mod->send(setParam);
-            } else {
-                CERR << "did not find module for SetParameter 2: " << dest << ": " << setParam << std::endl;
             }
         } else {
             return Communicator::the().broadcastAndHandleMessage(setParam);

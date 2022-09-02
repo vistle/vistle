@@ -7,6 +7,7 @@
 #include <vistle/util/hostname.h>
 #include <vistle/util/sleep.h>
 #include <vistle/util/crypto.h>
+#include <vistle/util/sysdep.h>
 #include <vistle/core/message.h>
 #include <vistle/core/tcpmessage.h>
 #include <vistle/core/parameter.h>
@@ -70,6 +71,9 @@ void UserInterface::cancel()
         }
     }
     m_ioService.stop();
+
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_quit = true;
 }
 
 int UserInterface::id() const
@@ -100,13 +104,25 @@ bool UserInterface::tryConnect()
         host = "localhost";
 
     asio::ip::tcp::resolver resolver(m_ioService);
-    asio::ip::tcp::resolver::query query(host, boost::lexical_cast<std::string>(m_remotePort));
-    asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
+    asio::ip::tcp::resolver::query query(host, std::to_string(m_remotePort),
+                                         asio::ip::tcp::resolver::query::numeric_service);
     boost::system::error_code ec;
+    asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query, ec);
+    if (ec) {
+        CERR << "could not resolve " << host << ":" << m_remotePort << ": " << ec.message() << std::endl;
+        m_isConnected = false;
+        m_quit = true;
+        return false;
+    }
     asio::connect(socket(), endpoint_iterator, ec);
     if (ec) {
-        CERR << "could not establish connection to " << host << ":" << m_remotePort << std::endl;
+        CERR << "could not establish connection to " << host << ":" << m_remotePort << ": " << ec.message()
+             << std::endl;
         m_isConnected = false;
+        if (ec == boost::system::errc::connection_refused) {
+            return true;
+        }
+        m_quit = true;
         return false;
     }
     m_isConnected = true;
@@ -126,6 +142,20 @@ StateTracker &UserInterface::state()
 bool UserInterface::dispatch()
 {
     bool work = false;
+    while (!isConnected()) {
+        if (!tryConnect()) {
+            return false;
+        }
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            if (m_quit)
+                return false;
+        }
+        if (isConnected())
+            break;
+        sleep(1);
+    }
+
     while (isConnected()) {
         work = true;
 
@@ -211,6 +241,8 @@ bool UserInterface::handleMessage(const vistle::message::Message *message, const
     case message::QUIT: {
         const message::Quit *quit = static_cast<const message::Quit *>(message);
         (void)quit;
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_quit = true;
         return false;
         break;
     }
@@ -315,6 +347,12 @@ bool UserInterface::isInitialized() const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
     return m_initialized;
+}
+
+bool UserInterface::isQuitting() const
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_quit;
 }
 
 const std::string &UserInterface::remoteHost() const

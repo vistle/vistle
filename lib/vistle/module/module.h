@@ -367,8 +367,10 @@ private:
 
     int m_numTimesteps;
     bool m_cancelRequested = false, m_cancelExecuteCalled = false, m_executeAfterCancelFound = false;
-    bool m_prepared, m_computed, m_reduced;
-    bool m_readyForQuit;
+    bool m_upstreamIsExecuting = false, m_prepared = false, m_computed = false, m_reduced = false;
+    bool m_readyForQuit = false;
+
+    std::unique_ptr<vistle::message::Buffer> m_delayedBarrierResponse;
 
     //maximum number of parallel threads per rank
     IntParameter *m_concurrency = nullptr;

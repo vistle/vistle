@@ -123,9 +123,10 @@ bool Communicator::connectHub(std::string host, unsigned short port, unsigned sh
     }
 
     asio::ip::tcp::resolver resolver(m_ioService);
-    asio::ip::tcp::resolver::query query(host, boost::lexical_cast<std::string>(port));
+    asio::ip::tcp::resolver::query query(host, std::to_string(port), asio::ip::tcp::resolver::query::numeric_service);
     auto ep = resolver.resolve(query);
-    asio::ip::tcp::resolver::query queryd(host, boost::lexical_cast<std::string>(dataPort));
+    asio::ip::tcp::resolver::query queryd(host, std::to_string(dataPort),
+                                          asio::ip::tcp::resolver::query::numeric_service);
     m_dataEndpoint = resolver.resolve(queryd);
     boost::system::error_code ec;
 

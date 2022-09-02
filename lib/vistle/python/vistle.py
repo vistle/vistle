@@ -345,9 +345,9 @@ class PythonStateObserver(_vistle.StateObserver):
     def deleteParameter(self, moduleId, parameterName):
         super(PythonStateObserver, self).deleteParameter(moduleId, parameterName)
     def parameterValueChanged(self, moduleId, parameterName):
-        super(PythonStateObserver, self).deleteParameter(moduleId, parameterName)
+        super(PythonStateObserver, self).parameterValueChanged(moduleId, parameterName)
     def parameterChoicesChanged(self, moduleId, parameterName):
-        super(PythonStateObserver, self).deleteParameter(moduleId, parameterName)
+        super(PythonStateObserver, self).parameterChoicesChanged(moduleId, parameterName)
     def newPort(self, moduleId, portName):
         super(PythonStateObserver, self).newPort(moduleId, portName)
     def deletePort(self, moduleId, portName):

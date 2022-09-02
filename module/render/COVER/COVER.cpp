@@ -16,6 +16,7 @@
 #include <vistle/core/messages.h>
 #include <vistle/core/object.h>
 #include <vistle/core/placeholder.h>
+#include <vistle/util/threadname.h>
 
 #include <osg/Node>
 #include <osg/Group>
@@ -59,6 +60,17 @@ using namespace opencover;
 using namespace vistle;
 
 COVER *COVER::s_instance = nullptr;
+
+COVER::DelayedObject::DelayedObject(std::shared_ptr<PluginRenderObject> ro, VistleGeometryGenerator generator)
+: ro(ro)
+, name(ro->container ? ro->container->getName() : "(no container)")
+, generator(generator)
+, node_future(std::async(std::launch::async, [this]() {
+    setThreadName("COVER:Geom:" + name);
+    auto result = this->generator();
+    return result;
+}))
+{}
 
 COVER::Variant::Variant(const std::string &basename, const std::string &variant): variant(variant), ro(variant)
 {
@@ -442,7 +454,7 @@ std::shared_ptr<vistle::RenderObject> COVER::addObject(int senderId, const std::
     }
 
     if (!geometry) {
-        std::cerr << "COVER::addObject: no geometry" << std::endl;
+        std::cerr << "COVER::addObject: container " << container->getName() << ": no geometry" << std::endl;
         return nullptr;
     }
 

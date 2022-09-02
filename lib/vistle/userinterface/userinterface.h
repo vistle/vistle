@@ -44,6 +44,7 @@ public:
     virtual ~UserInterface();
 
     bool isInitialized() const;
+    bool isQuitting() const;
 
     void stop();
     void cancel();
@@ -77,7 +78,8 @@ protected:
     std::string m_hostname;
     std::string m_remoteHost;
     unsigned short m_remotePort;
-    bool m_isConnected;
+    bool m_isConnected = false;
+    bool m_quit = false;
 
     StateTracker m_stateTracker;
 

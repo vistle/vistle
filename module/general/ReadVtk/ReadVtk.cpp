@@ -22,9 +22,11 @@
 #include <vtkInformation.h>
 #include <vtkPointData.h>
 #include <vtkUnstructuredGrid.h>
+#include <vtkPolyData.h>
 #include <vtkXMLGenericDataObjectReader.h>
 #include <vtkXMLMultiBlockDataReader.h>
 #include <vtkXMLUnstructuredGridReader.h>
+#include <vtkXMLPolyDataReader.h>
 #include <vtkVersion.h>
 #if VTK_MAJOR_VERSION < 5
 #include <vtkIdType.h>
@@ -96,6 +98,9 @@ VtkFile readFile(const std::string &filename, int piece = -1, bool ghost = false
     if (auto unstr = vtkXMLUnstructuredDataReader::SafeDownCast(reader)) {
         numPieces = unstr->GetNumberOfPieces();
     }
+    if (auto poly = vtkXMLPolyDataReader::SafeDownCast(reader)) {
+        numPieces = poly->GetNumberOfPieces();
+    }
 #endif
     result.pieces = numPieces;
 
@@ -161,6 +166,9 @@ VtkFile getDataSet(const std::string &filename, int piece = -1, bool ghost = fal
     }
     if (!fileinfo.dataset) {
         fileinfo = readFile<vtkXMLUnstructuredGridReader>(filename, piece, ghost, onlyMeta);
+    }
+    if (!fileinfo.dataset) {
+        fileinfo = readFile<vtkXMLPolyDataReader>(filename, piece, ghost, onlyMeta);
     }
     if (!fileinfo.dataset) {
         fileinfo = readFile<vtkXMLMultiBlockDataReader>(filename, piece, ghost, onlyMeta);
