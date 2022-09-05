@@ -214,26 +214,27 @@ def findTagPositions(lines, tags) -> {}:
     idx = 0
     tagPos = {}
     for line in lines:
-        tag = isTag(line, tags)
-        if tag is None:
-            tag = isImage(line)
-        if tag != None:
-            if (tag in tagPos.keys()):
-                tagPos[tag].append(idx)
+        tag = findTag(line, tags)
+        if tag[0] is None:
+            tag = findImage(line)
+        if tag[0] != None:
+            key = tag[0]
+            if (key in tagPos.keys()):
+                tagPos[key].append(idx)
             else:
-                tagPos[tag] = [idx]
+                tagPos[key] = [idx]
         idx += 1
     return tagPos
 
 
-def isImage(line):
+def findImage(line):
     match = re.search(REG_IMAGE, line)
     if match:
-        return match.group()
-    return None
+        return ["image", match.group()]
+    return [None, None]
 
 
-def isTag(line, tags): #returns the tag and its value
+def findTag(line, tags): #returns the tag and its value
     for tag in tags:
         matches = re.search(REG_TAGS_TMPL.format(tag=tag), line)
         if matches:
@@ -269,12 +270,12 @@ def generateModuleDescriptions():
     contentList = readAdditionalDocumentation(filename)
     newContentList = []
     for line in contentList:
-        tag = isTag(line, essential_tags.keys())
+        tag = findTag(line, essential_tags.keys())
         if tag[0] != None:
             line = essential_tags[tag[0]](mod)
             del essential_tags[tag[0]]
         else:
-            tag = isTag(line, optional_tags.keys())
+            tag = findTag(line, optional_tags.keys())
             if tag[0] != None:
                 line = optional_tags[tag[0]](mod, tag[1])
         newContentList.append(line)
