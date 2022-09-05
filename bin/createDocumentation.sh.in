@@ -3,7 +3,9 @@
 #Creates or updates the documentation file of given target in the working directory
 #e.g.: createDocumentation.sh GenDat  
 
-export VISTLE_DOCUMENTATION_DIR=$PWD
 export VISTLE_DOCUMENTATION_TARGET=$1
+#export VISTLE_DOCUMENTATION_DIR=$PWD
+[ -n "$2" ] && shift
+export VISTLE_DOCUMENTATION_DIR=${PROJECT_SOURCE_DIR}/module/general/"$1"
 
 vistle --batch ${PROJECT_SOURCE_DIR}/doc/generateModuleInfo.vsl
