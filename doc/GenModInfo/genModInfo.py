@@ -297,8 +297,9 @@ if __name__ == "__main__":
         "parameters": getParametersString,
         VSL_TAG: genVistleScreenshot
     }
-    source = "/home/mdjur/program/vistle/module/general/ReadTsunami/ReadTsunami.md"
-    sourceDir = "/home/mdjur/program/vistle/module/general/ReadTsunami"
+    vistleDir = os.path.dirname(os.path.realpath(__file__)) + "/../../"
+    sourceDir = vistleDir + "module/general/ReadTsunami/"
+    source = sourceDir + "ReadTsunami.md"
     destDir = os.path.dirname(os.path.realpath(__file__)) + "/moduleDescriptions/"
     contentList = readAdditionalDocumentation(source)
     searchTags = tag_functions.keys()
