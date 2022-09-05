@@ -3,7 +3,7 @@ import os
 import re
 import subprocess
 from bisect import insort
-from _vistle import getModuleName, getModuleDescription, getInputPorts, getOutputPorts, getPortDescription, getParameters, getParameterTooltip, getParameterType, spawn, barrier, quit
+import vistle
 
 REG_IMAGE = re.compile(r"(?:\w+(?:-\w+)+|\w*)\.(?:jpg|gif|png|bmp)")
 #REG_TAGS_TMPL = r"\[{tag}\]:<(\w*)>"
@@ -113,20 +113,19 @@ def getComment(comment):
 
 
 def getModuleHeadLine(mod):
-    name = getModuleName(mod)
-    desc = getModuleDescription(mod)
+    name = vistle.getModuleName(mod)
+    desc = vistle.getModuleDescription(mod)
     return "\n" + getHeadline(name, "#")  + desc + "\n"
 
 
 def getModuleHtml(mod):
-
     inPorts = []
-    for p in getInputPorts(mod):
-        inPorts.append([p, getPortDescription(mod, p)])
+    for p in vistle.getInputPorts(mod):
+        inPorts.append([p, vistle.getPortDescription(mod, p)])
     outPorts = []
-    for p in getOutputPorts(mod):
-        outPorts.append([p, getPortDescription(mod, p)])
-    return  "\n" + createModuleImage(getModuleName(mod), inPorts, outPorts) + "\n"
+    for p in vistle.getOutputPorts(mod):
+        outPorts.append([p, vistle.getPortDescription(mod, p)])
+    return  "\n" + createModuleImage(vistle.getModuleName(mod), inPorts, outPorts) + "\n"
 
 
 def getPortDescriptionString(mod, ports, headline):
@@ -135,21 +134,21 @@ def getPortDescriptionString(mod, ports, headline):
         portsDescription += getHeadline(headline, "##")
         portsDescription += getTableLine(["name", "description"]) + getTableLine(["-", "-"])
     for port in ports:
-        portsDescription += getTableLine([port,getPortDescription(mod, port)])
+        portsDescription += getTableLine([port,vistle.getPortDescription(mod, port)])
     portsDescription += "\n"
     return portsDescription
 
 
 def getInputPortsStringDescription(mod):
-    return getPortDescriptionString(mod, getInputPorts(mod), "Input ports")
+    return getPortDescriptionString(mod, vistle.getInputPorts(mod), "Input ports")
 
 
 def getOutputPortsDescription(mod):
-    return getPortDescriptionString(mod, getOutputPorts(mod), "Output ports")
+    return getPortDescriptionString(mod, vistle.getOutputPorts(mod), "Output ports")
 
 
 def getParametersString(mod):
-    allParams = getParameters(mod)
+    allParams = vistle.getParameters(mod)
     params = []
     for param in allParams:
         if param[0] != '_':
@@ -158,7 +157,7 @@ def getParametersString(mod):
     if len(params) > 0:
         paramString += getHeadline("Parameters", "##") + getTableLine(["name", "description", "type"]) + getTableLine(["-", "-", "-"])
     for param in params:
-        paramString += getTableLine([param, getParameterTooltip(mod, param), getParameterType(mod, param)])
+        paramString += getTableLine([param, vistle.getParameterTooltip(mod, param), vistle.getParameterType(mod, param)])
     return paramString
 
 def getExampleString(mod, example):
@@ -182,7 +181,7 @@ def genVistleScreenshot(mod, line):
     vslNameWithoutExt = re.search('<(.+?)>', line)
     returnString = ""
     if vslNameWithoutExt:
-        modulename = getModuleName(mod)
+        modulename = vistle.getModuleName(mod)
         vslName = vslNameWithoutExt.group(1)
         vslDir = sourceDir + "/" + vslName
         imgPath = vslDir + '.png'
@@ -265,8 +264,8 @@ def generateModuleDescriptions():
     }
 
     #spawn the module and wait for its information to arrive at the hub
-    mod = spawn(target)
-    barrier()
+    mod = vistle.spawn(target)
+    vistle.barrier()
     contentList = readAdditionalDocumentation(filename)
     newContentList = []
     for line in contentList:
@@ -287,7 +286,7 @@ def generateModuleDescriptions():
             del essential_tags["headline"]
         [f.write(line) for line in newContentList]
         [f.write(essential_tags[tag](mod)) for tag in essential_tags]
-    quit()
+    vistle.quit()
 
 #-------------Main-------------#
 if __name__ == "__main__":
