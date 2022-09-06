@@ -32,6 +32,14 @@ macro(add_module_doc_target targetname)
     else()
         add_dependencies(vistle_doc ${targetname}_doc)
     endif()
+
+    file(GLOB WORKFLOWS LIST_DIRECTORIES FALSE ${CMAKE_CURRENT_SOURCE_DIR}/*.vsl)
+    foreach(file ${WORKFLOWS})
+        get_filename_component(workflow ${file} NAME_WLE)
+        message("Workflow: ${targetname} ${workflow} ${file}")
+        #generate_network_snapshot(${targetname} ${workflow})
+        generate_snapshots(${targetname} ${workflow})
+    endforeach()
 endmacro()
 
 macro(generate_network_snapshot targetname network_file)
@@ -42,9 +50,9 @@ macro(generate_network_snapshot targetname network_file)
         COMMENT "Generating network snapshot for " ${network_file}.vsl)
 
     add_custom_target(
-        ${targetname}_${VISTLE_DOCUMENTATION_WORKFLOW}_workflow
-        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${VISTLE_DOCUMENTATION_WORKFLOW}_workflow.png)
-    add_dependencies(${targetname}_doc ${targetname}_${VISTLE_DOCUMENTATION_WORKFLOW}_workflow)
+        ${targetname}_${network_file}_workflow
+        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${network_file}_workflow.png)
+    add_dependencies(${targetname}_doc ${targetname}_${network_file}_workflow)
 endmacro()
 
 macro(generate_snapshots targetname network_file)

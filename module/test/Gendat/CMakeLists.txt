@@ -1,5 +1,5 @@
 add_module(Gendat "generate scalar and vector test data on structured and unstructured grids" Gendat.cpp)
-generate_snapshots(Gendat Isosurface)
+#generate_snapshots(Gendat Isosurface)
 #enable_testing()
 
 #set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR})
