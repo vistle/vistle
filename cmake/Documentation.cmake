@@ -1,6 +1,4 @@
-option(VISTLE_GENERATE_DOCUMENTATION "turn this on after building to update documentation files" OFF)
-
-macro(genereate_documentation targetname)
+macro(add_module_doc_target targetname)
 
     set(VISTLE_DOCUMENTATION_WORKFLOW ${PROJECT_SOURCE_DIR}/doc/generateModuleInfo.vsl)
     set(DOC_COMMAND ${CMAKE_COMMAND} -E env 
@@ -25,15 +23,15 @@ macro(genereate_documentation targetname)
                 ${PROJECT_SOURCE_DIR}/doc/GenModInfo/genModInfo.py #dependency of VISTLE_DOCUMENTATION_WORKFLOW
                 ${DOCUMENTATION_DEPENDENCIES} #custom dependencies set by the calling module 
         COMMENT "Generating documentation for " ${targetname})
-    set(ALWAYS_BUILD)
-    if(VISTLE_GENERATE_DOCUMENTATION)
-        set(ALWAYS_BUILD ALL)
-    endif()
     add_custom_target(
         ${targetname}_doc
-        ${ALWAYS_BUILD}
         DEPENDS ${OUTPUT_FILE})
-    add_dependencies(vistle_doc ${targetname}_doc)
+    if (VISTLE_DOC_SKIP)
+        message("Skipping ${targetname}_doc: ${VISTLE_DOC_SKIP}")
+        add_dependencies(vistle_doc_skip ${targetname}_doc)
+    else()
+        add_dependencies(vistle_doc ${targetname}_doc)
+    endif()
 endmacro()
 
 macro(generate_network_snapshot targetname network_file)
@@ -45,7 +43,6 @@ macro(generate_network_snapshot targetname network_file)
 
     add_custom_target(
         ${targetname}_${VISTLE_DOCUMENTATION_WORKFLOW}_workflow
-        ${ALWAYS_BUILD}
         DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${VISTLE_DOCUMENTATION_WORKFLOW}_workflow.png)
     add_dependencies(${targetname}_doc ${targetname}_${VISTLE_DOCUMENTATION_WORKFLOW}_workflow)
 endmacro()
@@ -64,7 +61,6 @@ macro(generate_snapshots targetname network_file)
             COMMENT "Generating network and result snapshot for " ${network_file}.vsl)
         add_custom_target(
             ${targetname}_${network_file}_result
-            ${ALWAYS_BUILD}
             DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${network_file}_result.png ${CMAKE_CURRENT_BINARY_DIR}/${network_file}_workflow.png)
         add_dependencies(${targetname}_doc ${targetname}_${network_file}_result)
     else()

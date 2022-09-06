@@ -56,6 +56,7 @@ if("${CMAKE_SYSTEM_NAME}" STREQUAL "CrayLinuxEnvironment")
 endif()
 
 add_custom_target(vistle_doc)
+add_custom_target(vistle_doc_skip)
 
 if(POLICY CMP0042)
     # default to finding shlibs relative to @rpath on MacOS
@@ -720,6 +721,7 @@ set(ALL_MODULES
 set(MODULE_DESCRIPTION_FILE ${PROJECT_BINARY_DIR}/share/vistle/moduledescriptions.txt)
 if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
 
+    set(VISTLE_DOC_SKIP FALSE)
     file(REMOVE ${MODULE_DESCRIPTION_FILE})
     install(FILES ${MODULE_DESCRIPTION_FILE} DESTINATION ${CMAKE_INSTALL_PREFIX}/share/vistle/)
 
@@ -758,14 +760,14 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
         target_compile_definitions(${targetname} PRIVATE VISTLE_MODULE_NAME="${targetname}")
         #target_compile_definitions(${targetname} PRIVATE MODULE_DESCRIPTION="${description}")
 
-        set_target_properties(${targetname} PROPERTIES FOLDER "Modules")
         target_link_libraries(${targetname} ${Boost_LIBRARIES} ${MPI_C_LIBRARIES} vistle_module ${BOOST_MPI})
-
-        genereate_documentation(${targetname})
         if(USE_LIBOMP AND LIBOMP)
             #message("Linking ${targetname} against libomp: ${LIBOMP}")
             target_link_libraries(${targetname} ${LIBOMP})
         endif()
+
+        set_target_properties(${targetname} PROPERTIES FOLDER "Modules")
+        add_module_doc_target(${targetname} ${VISTLE_DOC_SKIP})
     endmacro(add_module)
 
     include(cmake/Documentation.cmake)
