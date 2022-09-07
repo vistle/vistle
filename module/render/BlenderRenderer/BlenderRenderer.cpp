@@ -22,6 +22,7 @@
 namespace asio = boost::asio;
 using namespace vistle;
 
+static const unsigned short blender_port = 50007;
 
 BlenderRenderObject::BlenderRenderObject(int senderId, const std::string &senderPort,
                                          vistle::Object::const_ptr container, vistle::Object::const_ptr geometry,
@@ -38,21 +39,22 @@ BlenderRenderer::BlenderRenderer(const std::string &name, int moduleId, mpi::com
 
     setIntParameter("render_mode", MasterOnly);
 
-    tryConnect();
+    if (!tryConnect(false)) {
+        sendInfo("please start Blender on port %hu, will try to connect again later", blender_port);
+    }
 }
 
-bool BlenderRenderer::tryConnect()
+bool BlenderRenderer::tryConnect(bool retry)
 {
     if (m_connected)
         return true;
 
     std::string host("localhost");
-    unsigned short port = 50007;
 
     boost::system::error_code ec;
-    while (!m_connected) {
+    do {
         asio::ip::tcp::resolver resolver(m_ioService);
-        asio::ip::tcp::resolver::query query(host, std::to_string(port),
+        asio::ip::tcp::resolver::query query(host, std::to_string(blender_port),
                                              asio::ip::tcp::resolver::query::numeric_service);
         asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query, ec);
         if (ec) {
@@ -68,7 +70,7 @@ bool BlenderRenderer::tryConnect()
         } else {
             break;
         }
-    }
+    } while (retry && !m_connected);
 
     return m_connected;
 }
@@ -147,7 +149,8 @@ bool BlenderRenderer::send(const std::vector<T> &d)
     return send(d.data(), d.size());
 }
 
-void BlenderRenderer::sendObjectInfo(int senderId, const std::string &senderPort, vistle::Object::const_ptr container){
+void BlenderRenderer::sendObjectInfo(int senderId, const std::string &senderPort, vistle::Object::const_ptr container)
+{
     // get info
     int sender_port_length = senderPort.length();
     std::string obj_id = container->getName();
