@@ -150,9 +150,10 @@ void MainWindow::deleteHub(int hub)
     m_moduleBrowser->removeHub(hub);
 }
 
-void MainWindow::moduleAvailable(int hub, const QString &mod, const QString &path, const QString &description)
+void MainWindow::moduleAvailable(int hub, const QString &mod, const QString &path, const QString &category,
+                                 const QString &description)
 {
-    m_moduleBrowser->addModule(hub, mod, path, description);
+    m_moduleBrowser->addModule(hub, mod, path, category, description);
 }
 
 void MainWindow::enableConnectButton(bool state)

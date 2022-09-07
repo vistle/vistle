@@ -16,7 +16,7 @@ signals:
     void newHub_s(int hub, QString name, int nranks, QString address, int port, QString logname, QString realname,
                   bool hasUi, QString systype, QString arch);
     void deleteHub_s(int hub);
-    void moduleAvailable_s(int hub, QString name, QString path, QString description);
+    void moduleAvailable_s(int hub, QString name, QString path, QString category, QString description);
     void newModule_s(int moduleId, const boost::uuids::uuid &spawnUuid, QString moduleName);
     void deleteModule_s(int moduleId);
     void moduleStateChanged_s(int moduleId, int stateBits);

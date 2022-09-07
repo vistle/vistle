@@ -41,7 +41,7 @@
 	url = https://github.com/vistle/univiz.git
 	branch = master
 [submodule "vistle/module/general/ReadCovise/file"]
-	path = module/general/ReadCovise/file
+	path = module/read/ReadCovise/file
 	url = https://github.com/hlrs-vis/covise-file.git
 	branch = master
 [submodule "3rdparty/cmrc"]

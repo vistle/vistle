@@ -8,15 +8,21 @@
 
 namespace vistle {
 
-std::map<std::string, std::string> readModuleDescriptions(std::istream &str)
+std::map<std::string, ModuleDescription> readModuleDescriptions(std::istream &str)
 {
-    std::map<std::string, std::string> moduleDescriptions;
+    std::map<std::string, ModuleDescription> moduleDescriptions;
 
     std::string line;
     while (std::getline(str, line)) {
-        auto del = line.find_first_of(" ");
-        moduleDescriptions[line.substr(0, del)] = line.substr(del + 1, line.size());
-        //std::cerr << "module: " << line.substr(0, del) << " -> description: " << line.substr(del+1, line.size()) << std::endl;
+        auto sep = line.find_first_of(" ");
+        auto mod = line.substr(0, sep);
+        line = line.substr(sep + 1);
+        sep = line.find_first_of(" ");
+        auto cat = line.substr(0, sep);
+        auto desc = line.substr(sep + 1);
+        moduleDescriptions[mod].category = cat;
+        moduleDescriptions[mod].description = desc;
+        std::cerr << "module: " << mod << " -> " << cat << ", description: " << cat << std::endl;
     }
     return moduleDescriptions;
 }
@@ -27,7 +33,7 @@ bool scanModules(const std::string &prefix, int hub, AvailableMap &available)
     namespace bf = vistle::filesystem;
     using vistle::directory::build_type;
 
-    std::map<std::string, std::string> moduleDescriptions;
+    std::map<std::string, ModuleDescription> moduleDescriptions;
 
     auto share = directory::share(prefix);
     bf::path pshare(share);
@@ -107,9 +113,14 @@ bool scanModules(const std::string &prefix, int hub, AvailableMap &available)
 #else
         name = stem;
 #endif
+        std::string cat = "Unspecified";
+        std::string desc = "";
         auto descit = moduleDescriptions.find(name);
-        AvailableModule mod{hub, name, bf::path(*it).string(),
-                            descit != moduleDescriptions.end() ? descit->second : ""};
+        if (descit != moduleDescriptions.end()) {
+            cat = descit->second.category;
+            desc = descit->second.description;
+        }
+        AvailableModule mod{hub, name, bf::path(*it).string(), cat, desc};
 
         AvailableModule::Key key(hub, name);
         auto prev = available.find(key);

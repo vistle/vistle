@@ -5,10 +5,16 @@
 
 #include "export.h"
 #include <istream>
+#include <string>
 
 namespace vistle {
 
-V_HUBEXPORT std::map<std::string, std::string> readModuleDescriptions(std::istream &str);
+struct ModuleDescription {
+    std::string category;
+    std::string description;
+};
+
+V_HUBEXPORT std::map<std::string, ModuleDescription> readModuleDescriptions(std::istream &str);
 
 V_HUBEXPORT bool scanModules(const std::string &directory, int hub, AvailableMap &available);
 

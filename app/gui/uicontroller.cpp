@@ -124,8 +124,8 @@ UiController::UiController(int argc, char *argv[], QObject *parent): QObject(par
     connect(&m_observer, SIGNAL(newHub_s(int, QString, int, QString, int, QString, QString, bool, QString, QString)),
             m_mainWindow, SLOT(newHub(int, QString, int, QString, int, QString, QString, bool, QString, QString)));
     connect(&m_observer, SIGNAL(deleteHub_s(int)), m_mainWindow, SLOT(deleteHub(int)));
-    connect(&m_observer, SIGNAL(moduleAvailable_s(int, QString, QString, QString)), m_mainWindow,
-            SLOT(moduleAvailable(int, QString, QString, QString)));
+    connect(&m_observer, SIGNAL(moduleAvailable_s(int, QString, QString, QString, QString)), m_mainWindow,
+            SLOT(moduleAvailable(int, QString, QString, QString, QString)));
 
     connect(&m_observer, SIGNAL(status_s(int, QString, int)), SLOT(statusUpdated(int, QString, int)));
     connect(&m_observer, SIGNAL(moduleStatus_s(int, QString, int)), m_scene, SLOT(moduleStatus(int, QString, int)));
@@ -147,6 +147,8 @@ UiController::UiController(int argc, char *argv[], QObject *parent): QObject(par
         dbg.setDestId(id);
         m_vistleConnection->sendMessage(dbg);
     });
+    connect(m_mainWindow->m_moduleBrowser, &ModuleBrowser::showStatusTip,
+            [this](const QString &tip) { m_mainWindow->statusBar()->showMessage(tip, 3000); });
 
     m_mainWindow->show();
 }

@@ -556,7 +556,7 @@ void DataFlowNetwork::createModuleCompound()
 
     auto path = text.toStdString();
     auto name = path.substr(path.find_last_of("/") + 1);
-    vistle::ModuleCompound comp{0, name, path, ""};
+    vistle::ModuleCompound comp{0, name, path, "Compound", ""};
     auto selectedModules = DataFlowView::the()->selectedModules();
     std::sort(selectedModules.begin(), selectedModules.end(),
               [](const gui::Module *m1, const gui::Module *m2) { return m1->id() < m2->id(); });

@@ -236,5 +236,5 @@ if(USE_TBB)
 endif()
 
 set(description "Embree CPU ray casting remote renderer")
-file(APPEND ${MODULE_DESCRIPTION_FILE} DisCOVERay " " ${description}\n)
+file(APPEND ${MODULE_DESCRIPTION_FILE} "DisCOVERay ${VISTLE_MODULE_CATEGORY} ${description}\n")
 #target_compile_definitions(DisCOVERay PRIVATE MODULE_DESCRIPTION="${description}")

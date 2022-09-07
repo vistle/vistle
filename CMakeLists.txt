@@ -723,7 +723,10 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
 
     macro(add_module targetname description)
 
-        file(APPEND ${MODULE_DESCRIPTION_FILE} ${targetname} " " ${description}\n)
+        if(NOT VISTLE_MODULE_CATEGORY)
+            set(VISTLE_MODULE_CATEGORY "Unspecified")
+        endif()
+        file(APPEND ${MODULE_DESCRIPTION_FILE} "${targetname} ${VISTLE_MODULE_CATEGORY} ${description}\n")
         set(ALL_MODULES
             ${ALL_MODULES} ${targetname}
             CACHE INTERNAL "")

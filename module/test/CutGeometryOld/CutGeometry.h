@@ -3,7 +3,7 @@
 
 #include <vistle/module/module.h>
 #include <vistle/core/vector.h>
-#include "../../general/IsoSurface/IsoDataFunctor.h"
+#include "../../map/IsoSurface/IsoDataFunctor.h"
 
 #define CutGeometry CutGeometryOld
 
