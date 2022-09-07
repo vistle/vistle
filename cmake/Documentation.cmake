@@ -66,6 +66,7 @@ macro(generate_snapshots targetname network_file)
                 VISTLE_DOC_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}
                      vistle ${PROJECT_SOURCE_DIR}/doc/resultSnapShot.py
             DEPENDS ${CMAKE_CURRENT_LIST_DIR}/${network_file}.vsl ${CMAKE_CURRENT_LIST_DIR}/${network_file}.vwp ${targetname}
+            ${PROJECT_SOURCE_DIR}/doc/resultSnapShot.py
             COMMENT "Generating network and result snapshot for " ${network_file}.vsl)
         add_custom_target(
             ${targetname}_${network_file}_result
