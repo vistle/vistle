@@ -34,7 +34,7 @@ public:
     void prepareQuit() override;
 
 protected:
-    bool tryConnect();
+    bool tryConnect(bool retry = true);
 
     template<typename T>
     bool send(T d);
