@@ -1,5 +1,3 @@
-add_definitions(-DHAS_MPI)
-
 add_module(BlenderRenderer "Blender remote renderer" BlenderRenderer.cpp)
 
 target_link_libraries(BlenderRenderer vistle_renderer vistle_util)
