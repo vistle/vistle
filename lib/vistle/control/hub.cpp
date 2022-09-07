@@ -2470,12 +2470,14 @@ Hub::socket_ptr Hub::connectToVrb(unsigned short port)
         sock.reset();
         return sock;
     }
+    CERR << "reading VRB data format" << std::flush;
     asio::read(*sock, asio::mutable_buffer(&df, 1), ec);
     if (ec) {
         CERR << "failed to read data format, resetting socket" << std::endl;
         sock.reset();
         return sock;
     }
+    std::cerr << ": done." << std::endl;
     if (df != DF_IEEE) {
         CERR << "incompatible data format " << static_cast<int>(df) << ", resetting socket" << std::endl;
         sock.reset();
@@ -3072,11 +3074,11 @@ bool Hub::handlePriv(const message::Cover &cover, const buffer *payload)
     socket_ptr sock;
     auto it = m_vrbSockets.find(cover.senderId());
     if (it == m_vrbSockets.end()) {
-        CERR << "connecting to VRB on behalf of " << cover.senderId() << std::endl;
         if (m_vrbPort == 0) {
-            CERR << "cannot connect to local VRB on unknown port" << std::flush;
+            CERR << "cannot connect to VRB on unknown port on behalf of " << cover.senderId() << std::endl;
             return false;
         }
+        CERR << "connecting to VRB on port " << m_vrbPort << " on behalf of " << cover.senderId() << std::endl;
 
         sock = connectToVrb(m_vrbPort);
         if (sock) {
@@ -3161,10 +3163,13 @@ bool Hub::checkChildProcesses(bool emergency, bool onMainThread)
         }
 
         if (id == Process::VRB) {
-            if (onMainThread)
+            if (onMainThread) {
                 stopVrb();
-            else
+            } else {
+                CERR << "VRB on port " << m_vrbPort << " has exited" << std::endl;
+                m_vrbPort = 0;
                 continue;
+            }
         } else if (!emergency) {
             if (id == Process::Manager) {
                 if (!m_quitting) {
