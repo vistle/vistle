@@ -377,7 +377,7 @@
   </action>
   <action name="actionExecute">
    <property name="text">
-    <string>&amp;Execute</string>
+    <string>&amp;Execute Workflow</string>
    </property>
    <property name="toolTip">
     <string>Execute all source modules</string>
