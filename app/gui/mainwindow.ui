@@ -167,7 +167,7 @@
     <set>Qt::BottomDockWidgetArea|Qt::TopDockWidgetArea</set>
    </property>
    <property name="windowTitle">
-    <string>&amp;Vistle Console</string>
+    <string>Vistle Console</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>8</number>
@@ -208,7 +208,7 @@
     <set>Qt::LeftDockWidgetArea|Qt::RightDockWidgetArea</set>
    </property>
    <property name="windowTitle">
-    <string>&amp;Module Parameters</string>
+    <string>Module Parameters</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>2</number>
@@ -255,7 +255,7 @@
     <set>Qt::LeftDockWidgetArea|Qt::RightDockWidgetArea</set>
    </property>
    <property name="windowTitle">
-    <string>Mod&amp;ule Browser</string>
+    <string>Module Browser</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>2</number>
