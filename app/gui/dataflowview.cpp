@@ -104,6 +104,14 @@ void DataFlowView::createActions()
     m_execAct = new QAction("Execute Workflow", this);
     m_execAct->setStatusTip("Execute the workflow");
     connect(m_execAct, SIGNAL(triggered()), this, SLOT(execModules()));
+
+    m_selectSourcesAct = new QAction("Select Sources", this);
+    m_selectSourcesAct->setStatusTip("Select all source modules");
+    connect(m_selectSourcesAct, SIGNAL(triggered()), this, SLOT(selectSourceModules()));
+
+    m_selectSinksAct = new QAction("Select Sinks", this);
+    m_selectSinksAct->setStatusTip("Select all sink modules");
+    connect(m_selectSinksAct, SIGNAL(triggered()), this, SLOT(selectSinkModules()));
 }
 
 void DataFlowView::enableActions()
@@ -119,6 +127,9 @@ void DataFlowView::createMenu()
 {
     m_contextMenu = new QMenu();
     m_contextMenu->addAction(m_execAct);
+    m_contextMenu->addSeparator();
+    m_contextMenu->addAction(m_selectSourcesAct);
+    m_contextMenu->addAction(m_selectSinksAct);
     m_contextMenu->addSeparator();
     m_contextMenu->addAction(m_deleteAct);
 }
@@ -186,6 +197,48 @@ void DataFlowView::selectAllModules()
     if (scene()) {
         for (auto &item: scene()->items()) {
             if (auto module = dynamic_cast<Module *>(item))
+                module->setSelected(true);
+        }
+    }
+}
+
+void DataFlowView::selectSourceModules()
+{
+    if (!scene())
+        return;
+
+    for (auto &item: scene()->items()) {
+        if (auto module = dynamic_cast<Module *>(item)) {
+            bool select = true;
+            for (auto *p: module->inputPorts()) {
+                auto *vp = module->getVistlePort(p);
+                if (vp->isConnected()) {
+                    select = false;
+                    break;
+                }
+            }
+            if (select)
+                module->setSelected(true);
+        }
+    }
+}
+
+void DataFlowView::selectSinkModules()
+{
+    if (!scene())
+        return;
+
+    for (auto &item: scene()->items()) {
+        if (auto module = dynamic_cast<Module *>(item)) {
+            bool select = true;
+            for (auto *p: module->outputPorts()) {
+                auto *vp = module->getVistlePort(p);
+                if (vp->isConnected()) {
+                    select = false;
+                    break;
+                }
+            }
+            if (select)
                 module->setSelected(true);
         }
     }

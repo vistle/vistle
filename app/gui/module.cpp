@@ -474,6 +474,16 @@ void Module::removePort(const vistle::Port &port)
     doLayout();
 }
 
+QList<Port *> Module::inputPorts() const
+{
+    return m_inPorts;
+}
+
+QList<Port *> Module::outputPorts() const
+{
+    return m_outPorts;
+}
+
 QString Module::name() const
 {
     return m_name;

@@ -212,10 +212,8 @@ void DataFlowNetwork::deletePort(int moduleId, QString portName)
         std::vector<Port *> p1, p2;
         for (auto &c: m_connections) {
             const auto &key = c.first;
-            if ((key.port1->module()->id() == moduleId &&
-                 key.port1->vistlePort()->getName() == portName.toStdString()) ||
-                (key.port2->module()->id() == moduleId &&
-                 key.port1->vistlePort()->getName() == portName.toStdString())) {
+            if ((key.port1->module()->id() == moduleId && key.port1->name() == portName) ||
+                (key.port2->module()->id() == moduleId && key.port1->name() == portName)) {
                 p1.push_back(key.port1);
                 p2.push_back(key.port2);
             }
@@ -351,8 +349,8 @@ void DataFlowNetwork::removeConnection(Port *portFrom, Port *portTo, bool sendTo
 
     if (sendToController) {
         c->setState(Connection::ToRemove);
-        const vistle::Port *vFrom = portFrom->module()->getVistlePort(portFrom);
-        const vistle::Port *vTo = portTo->module()->getVistlePort(portTo);
+        const vistle::Port *vFrom = portFrom->vistlePort();
+        const vistle::Port *vTo = portTo->vistlePort();
         m_vistleConnection->disconnect(vFrom, vTo);
     } else {
         m_connections.erase(it);

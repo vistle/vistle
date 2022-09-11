@@ -23,7 +23,12 @@ static QColor InColor(200, 30, 30);
 static QColor OutColor(200, 200, 30);
 static QColor ParamColor(30, 30, 200);
 
-Port::Port(const vistle::Port *port, Module *parent): Base(parent), m_port(new vistle::Port(*port)), m_module(parent)
+Port::Port(const vistle::Port *port, Module *parent)
+: Base(parent)
+, m_port(port)
+, m_module(parent)
+, m_moduleId(port->getModuleID())
+, m_name(QString::fromStdString(port->getName()))
 {
     switch (port->getType()) {
     case vistle::Port::INPUT:
@@ -44,10 +49,9 @@ Port::Port(const vistle::Port *port, Module *parent): Base(parent), m_port(new v
     createTooltip();
 }
 
-Port::Port(Port::Type type, Module *parent): Base(parent), m_portType(type), m_module(parent)
+QString Port::name() const
 {
-    createGeometry();
-    createTooltip();
+    return m_name;
 }
 
 bool Port::valid() const
@@ -55,23 +59,22 @@ bool Port::valid() const
     return m_port != nullptr;
 }
 
-vistle::Port *Port::vistlePort() const
+const vistle::Port *Port::vistlePort() const
 {
-    return m_port.get();
+    return m_port;
 }
 
 bool Port::operator<(const Port &other) const
 {
-    assert(valid());
-    assert(other.valid());
-    return *m_port < *other.m_port;
+    if (m_moduleId == other.m_moduleId) {
+        return m_name < other.m_name;
+    }
+    return m_moduleId < other.m_moduleId;
 }
 
 bool Port::operator==(const Port &other) const
 {
-    assert(valid());
-    assert(other.valid());
-    return *m_port == *other.m_port;
+    return m_moduleId == other.m_moduleId && m_name == other.m_name;
 }
 
 Port::Type Port::portType() const

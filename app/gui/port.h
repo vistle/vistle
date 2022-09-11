@@ -27,12 +27,12 @@ public:
     };
 
     Port(const vistle::Port *port, Module *parent);
-    Port(Type type, Module *parent);
 
     bool valid() const;
     Type portType() const;
     Module *module() const;
-    vistle::Port *vistlePort() const;
+    QString name() const;
+    const vistle::Port *vistlePort() const;
 
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 
@@ -54,9 +54,11 @@ private:
     void createGeometry();
 
     Type m_portType; //< type of port
-    std::shared_ptr<vistle::Port> m_port;
+    const vistle::Port *m_port = nullptr;
     QColor m_color;
-    Module *m_module;
+    Module *m_module = nullptr;
+    int m_moduleId = 0;
+    QString m_name;
 };
 
 } //namespace gui

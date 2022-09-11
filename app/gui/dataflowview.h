@@ -35,6 +35,8 @@ public slots:
     void cancelExecModules();
     void deleteModules();
     void selectAllModules();
+    void selectSourceModules();
+    void selectSinkModules();
 
 protected:
     void dragEnterEvent(QDragEnterEvent *e);
@@ -44,9 +46,11 @@ protected:
     void createActions();
     void createMenu();
 
-    QMenu *m_contextMenu;
-    QAction *m_deleteAct;
-    QAction *m_execAct;
+    QMenu *m_contextMenu = nullptr;
+    QAction *m_deleteAct = nullptr;
+    QAction *m_execAct = nullptr;
+    QAction *m_selectSourcesAct = nullptr;
+    QAction *m_selectSinksAct = nullptr;
 
 private:
     static DataFlowView *s_instance;

@@ -48,6 +48,8 @@ public:
 
     void addPort(const vistle::Port &port);
     void removePort(const vistle::Port &port);
+    QList<Port *> inputPorts() const;
+    QList<Port *> outputPorts() const;
 
     // vistle methods
     QString name() const;
