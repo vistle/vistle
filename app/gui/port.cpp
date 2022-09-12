@@ -144,11 +144,11 @@ void Port::createTooltip()
     if (m_port) {
         QString desc = QString::fromStdString(m_port->getDescription());
         QString name = QString::fromStdString(m_port->getName());
-        if (desc.isEmpty()) {
-            toolTip = name;
-        } else {
-            toolTip = name + ": " + desc;
+        toolTip = desc;
+        if (!toolTip.isEmpty()) {
+            toolTip += " ";
         }
+        toolTip += "(" + name + ")";
     }
 
     setToolTip(toolTip);
