@@ -25,7 +25,7 @@ UserInterface::UserInterface(const std::string &host, const unsigned short port,
 , m_remoteHost(host)
 , m_remotePort(port)
 , m_isConnected(false)
-, m_stateTracker("UI state")
+, m_stateTracker(message::Id::UI, "UI state")
 , m_socket(m_ioService)
 , m_locked(true)
 {

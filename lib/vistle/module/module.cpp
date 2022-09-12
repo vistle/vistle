@@ -197,7 +197,7 @@ Module::Module(const std::string &moduleName, const int moduleId, mpi::communica
 , m_id(moduleId)
 , m_executionCount(0)
 , m_iteration(-1)
-, m_stateTracker(new StateTracker(m_name))
+, m_stateTracker(new StateTracker(moduleId, m_name))
 , m_receivePolicy(message::ObjectReceivePolicy::Local)
 , m_schedulingPolicy(message::SchedulingPolicy::Single)
 , m_reducePolicy(message::ReducePolicy::Locally)

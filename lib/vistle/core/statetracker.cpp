@@ -41,8 +41,8 @@ int StateTracker::Module::state() const
     return s;
 }
 
-StateTracker::StateTracker(const std::string &name, std::shared_ptr<PortTracker> portTracker)
-: m_portTracker(portTracker), m_traceType(message::INVALID), m_traceId(Id::Invalid), m_name(name)
+StateTracker::StateTracker(int id, const std::string &name, std::shared_ptr<PortTracker> portTracker)
+: m_id(id), m_portTracker(portTracker), m_traceType(message::INVALID), m_traceId(Id::Invalid), m_name(name)
 {
     if (!m_portTracker) {
         m_portTracker.reset(new PortTracker());
@@ -57,6 +57,11 @@ StateTracker::StateTracker(const std::string &name, std::shared_ptr<PortTracker>
 StateTracker::mutex &StateTracker::getMutex()
 {
     return m_replyMutex;
+}
+
+void StateTracker::setId(int id)
+{
+    m_id = id;
 }
 
 int StateTracker::getMasterHub() const
@@ -428,7 +433,7 @@ StateTracker::VistleState StateTracker::getState() const
     return state;
 }
 
-void StateTracker::printModules() const
+void StateTracker::printModules(bool withConnections) const
 {
     for (auto &it: runningMap) {
         const int id = it.first;
@@ -448,8 +453,27 @@ void StateTracker::printModules() const
             if (m.killed) {
                 std::cerr << " killed";
             }
-
             std::cerr << std::endl;
+
+            if (withConnections) {
+                auto outputs = portTracker()->getOutputPorts(id);
+                for (auto &p: outputs) {
+                    auto &conns = *portTracker()->getConnectionList(p);
+                    if (conns.empty())
+                        continue;
+                    std::cerr << "    " << p->getName() << " ->";
+                    bool first = true;
+                    for (auto &c: conns) {
+                        if (first)
+                            std::cerr << " ";
+                        else
+                            std::cerr << ", ";
+                        std::cerr << " " << c->getModuleID() << ":" << c->getName();
+                        first = false;
+                    }
+                    std::cerr << std::endl;
+                }
+            }
         }
     }
 }
@@ -541,6 +565,8 @@ bool StateTracker::handle(const message::Message &msg, const char *payload, size
         break;
     }
     case DEBUG: {
+        const auto &debug = msg.as<Debug>();
+        handled = handlePriv(debug);
         break;
     }
     case QUIT: {
@@ -855,6 +881,23 @@ bool StateTracker::handlePriv(const message::Ping &ping)
 bool StateTracker::handlePriv(const message::Pong &pong)
 {
     CERR << "Pong [" << pong.senderId() << " " << pong.getCharacter() << "]" << std::endl;
+    return true;
+}
+
+bool StateTracker::handlePriv(const message::Debug &debug)
+{
+    switch (debug.getRequest()) {
+    case message::Debug::PrintState: {
+        int id = debug.getModule();
+        if (id == m_id || id == message::Id::Invalid) {
+            printModules(true);
+        }
+        break;
+    }
+    case message::Debug::AttachDebugger: {
+        break;
+    }
+    }
     return true;
 }
 

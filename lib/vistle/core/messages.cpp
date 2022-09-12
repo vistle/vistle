@@ -515,14 +515,21 @@ int Kill::getModule() const
     return module;
 }
 
-Debug::Debug(const int m): module(m)
+Debug::Debug(const int m, Debug::Request req): m_module(m), m_request(req)
 {
-    assert(message::Id::isHub(m) || message::Id::isModule(m));
+    if (req == AttachDebugger) {
+        assert(message::Id::isHub(m) || message::Id::isModule(m));
+    }
 }
 
 int Debug::getModule() const
 {
-    return module;
+    return m_module;
+}
+
+Debug::Request Debug::getRequest() const
+{
+    return static_cast<Request>(m_request);
 }
 
 
@@ -1937,6 +1944,7 @@ std::ostream &operator<<(std::ostream &s, const Message &m)
     }
     case DEBUG: {
         auto &mm = static_cast<const Debug &>(m);
+        s << ", req: " << mm.getRequest();
         s << ", id: " << mm.getModule();
         break;
     }

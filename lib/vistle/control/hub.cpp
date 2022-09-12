@@ -139,7 +139,7 @@ Hub::Hub(bool inManager)
 , m_masterHost("localhost")
 , m_acceptorv4(new boost::asio::ip::tcp::acceptor(m_ioService))
 , m_acceptorv6(new boost::asio::ip::tcp::acceptor(m_ioService))
-, m_stateTracker("Hub state")
+, m_stateTracker(message::Id::Invalid, "Hub state")
 , m_uiManager(*this, m_stateTracker)
 , m_managerConnected(false)
 , m_quitting(false)
@@ -1774,91 +1774,99 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
         case message::DEBUG: {
             auto &debug = msg.as<message::Debug>();
             int id = debug.getModule();
+            auto req = debug.getRequest();
             if (idToHub(id) != m_hubId) {
                 break;
             }
+            switch (req) {
+            case Debug::AttachDebugger: {
 #if defined(__APPLE__)
-            unsigned long pid = 0;
-            if (id == m_hubId) {
-                pid = m_localManagerRank0Pid;
-            } else {
-                auto it = m_stateTracker.runningMap.find(id);
-                if (it != m_stateTracker.runningMap.end()) {
-                    const auto &mod = it->second;
-                    pid = mod.rank0Pid;
+                unsigned long pid = 0;
+                if (id == m_hubId) {
+                    pid = m_localManagerRank0Pid;
+                } else {
+                    auto it = m_stateTracker.runningMap.find(id);
+                    if (it != m_stateTracker.runningMap.end()) {
+                        const auto &mod = it->second;
+                        pid = mod.rank0Pid;
+                    }
                 }
-            }
-            if (pid == 0) {
-                std::stringstream str;
-                str << "Did not find PID of process to attach to for id " << id;
-                sendError(str.str());
-                break;
-            }
-            std::stringstream str;
-            std::vector<std::string> args;
-            args.push_back("-l");
-            args.push_back("JavaScript");
-            args.push_back("-e");
-            args.push_back("var Xcode = Application('Xcode');\n");
-            args.push_back("-e");
-            args.push_back("Xcode.activate();\n");
-            args.push_back("-e");
-            std::stringstream proj;
-            proj << "Xcode.open(\"/Users/ma/vistle/contrib/DebugWithXcode.xcodeproj\");\n";
-            args.push_back(proj.str());
-            args.push_back("-e");
-            args.push_back("var workspace = Xcode.activeWorkspaceDocument();\n");
-            args.push_back("-e");
-            std::stringstream att;
-            att << "workspace.attach({\"toProcessIdentifier\": " << pid << ", \"suspended\": false});\n";
-            args.push_back(att.str());
-
-            std::lock_guard<std::mutex> guard(m_processMutex);
-            auto child = launchProcess("osascript", args);
-            if (child && child->valid()) {
-                std::stringstream info;
-                info << "Launched osacript as PID " << child->id() << ", attaching to " << pid;
-                sendInfo(info.str());
-                m_processMap[child] = Process::Debugger;
-            }
-#elif defined(__linux__)
-#ifdef MODULE_THREAD
-            id = 0;
-#endif
-            bool found = false;
-            std::lock_guard<std::mutex> guard(m_processMutex);
-            for (auto &p: m_processMap) {
-                if (p.second == id) {
-                    found = true;
-                    std::vector<std::string> args;
+                if (pid == 0) {
                     std::stringstream str;
-                    str << "-attach-mpi=" << p.first->id();
-                    args.push_back(str.str());
-                    if (!m_hasUi) {
-                        args.push_back("--connect");
-                    }
-                    auto child = launchProcess("ddt", args);
-                    if (child && child->valid()) {
-                        std::stringstream info;
-                        info << "Launched ddt as PID " << child->id() << ", attaching to " << p.first->id();
-                        if (!m_hasUi) {
-                            info << ", waiting for ddt remote client to connect";
-                        }
-                        sendInfo(info.str());
-                        m_processMap[child] = Process::Debugger;
-                    }
+                    str << "Did not find PID of process to attach to for id " << id;
+                    sendError(str.str());
                     break;
                 }
-            }
-            if (!found) {
                 std::stringstream str;
-                str << "Did not find launcher PID to debug module id " << debug.getModule() << " on " << m_name;
+                std::vector<std::string> args;
+                args.push_back("-l");
+                args.push_back("JavaScript");
+                args.push_back("-e");
+                args.push_back("var Xcode = Application('Xcode');\n");
+                args.push_back("-e");
+                args.push_back("Xcode.activate();\n");
+                args.push_back("-e");
+                std::stringstream proj;
+                proj << "Xcode.open(\"/Users/ma/vistle/contrib/DebugWithXcode.xcodeproj\");\n";
+                args.push_back(proj.str());
+                args.push_back("-e");
+                args.push_back("var workspace = Xcode.activeWorkspaceDocument();\n");
+                args.push_back("-e");
+                std::stringstream att;
+                att << "workspace.attach({\"toProcessIdentifier\": " << pid << ", \"suspended\": false});\n";
+                args.push_back(att.str());
+
+                std::lock_guard<std::mutex> guard(m_processMutex);
+                auto child = launchProcess("osascript", args);
+                if (child && child->valid()) {
+                    std::stringstream info;
+                    info << "Launched osacript as PID " << child->id() << ", attaching to " << pid;
+                    sendInfo(info.str());
+                    m_processMap[child] = Process::Debugger;
+                }
+#elif defined(__linux__)
 #ifdef MODULE_THREAD
-                str << " -> " << id;
+                id = 0;
 #endif
-                sendError(str.str());
+                bool found = false;
+                std::lock_guard<std::mutex> guard(m_processMutex);
+                for (auto &p: m_processMap) {
+                    if (p.second == id) {
+                        found = true;
+                        std::vector<std::string> args;
+                        std::stringstream str;
+                        str << "-attach-mpi=" << p.first->id();
+                        args.push_back(str.str());
+                        if (!m_hasUi) {
+                            args.push_back("--connect");
+                        }
+                        auto child = launchProcess("ddt", args);
+                        if (child && child->valid()) {
+                            std::stringstream info;
+                            info << "Launched ddt as PID " << child->id() << ", attaching to " << p.first->id();
+                            if (!m_hasUi) {
+                                info << ", waiting for ddt remote client to connect";
+                            }
+                            sendInfo(info.str());
+                            m_processMap[child] = Process::Debugger;
+                        }
+                        break;
+                    }
+                }
+                if (!found) {
+                    std::stringstream str;
+                    str << "Did not find launcher PID to debug module id " << debug.getModule() << " on " << m_name;
+#ifdef MODULE_THREAD
+                    str << " -> " << id;
+#endif
+                    sendError(str.str());
+                }
+#endif
+                break;
             }
-#endif
+            case Debug::PrintState:
+                break;
+            }
             break;
         }
 
@@ -1866,6 +1874,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
             assert(!m_isMaster);
             auto &set = static_cast<const SetId &>(msg);
             m_hubId = set.getId();
+            m_stateTracker.setId(m_hubId);
             //params.setId(m_hubId);
             if (!m_inManager) {
                 message::DefaultSender::init(m_hubId, 0);

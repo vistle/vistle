@@ -189,7 +189,7 @@ static void trace(int id = message::Id::Broadcast, message::Type type = message:
 {
 #ifdef DEBUG
     auto cerrflags = std::cerr.flags();
-    std::cerr << "Python: trace " << id < < < < ", type " << type << ": " << std::boolalpha << onoff << std::endl;
+    std::cerr << "Python: trace " << id << ", type " << type << ": " << std::boolalpha << onoff << std::endl;
     std::cerr.flags(cerrflags);
 #endif
     if (id == message::Id::Broadcast || id == message::Id::UI) {
@@ -200,6 +200,16 @@ static void trace(int id = message::Id::Broadcast, message::Type type = message:
     }
 
     message::Trace m(id, type, onoff);
+    sendMessage(m);
+}
+
+static void debug(int id = message::Id::Invalid)
+{
+#ifdef DEBUG
+    std::cerr << "Python: debug " << id << std::endl;
+#endif
+
+    message::Debug m(id, message::Debug::PrintState);
     sendMessage(m);
 }
 
@@ -614,7 +624,7 @@ static std::string getModuleName(int id)
 {
     std::unique_lock<PythonStateAccessor> guard(access());
 #ifdef DEBUG
-    std::cerr << "Python: getModuleName(" id << ")" << std::endl;
+    std::cerr << "Python: getModuleName(" << id << ")" << std::endl;
 #endif
     return state().getModuleName(id);
 }
@@ -631,7 +641,7 @@ static std::string getModuleDescription(int id)
 {
     std::unique_lock<PythonStateAccessor> guard(access());
 #ifdef DEBUG
-    std::cerr << "Python: getModuleDescription(" id << ")" << std::endl;
+    std::cerr << "Python: getModuleDescription(" << id << ")" << std::endl;
 #endif
     return state().getModuleDescription(id);
 }
@@ -1465,6 +1475,7 @@ PY_MODULE(_vistle, m)
     m.def("ping", ping, "send first character of `arg2` to destination `arg1`", "id"_a, "data"_a = "p");
     m.def("trace", trace, "enable/disable message tracing for module `id`", "id"_a = message::Id::Broadcast,
           "type"_a = message::ANY, "enable"_a = true);
+    m.def("debug", debug, "request a module to print its state", "id"_a = message::Id::Invalid);
     m.def("barrier", barrier, "wait until all modules reply");
     m.def("requestTunnel", requestTunnel,
           "start TCP tunnel listening on port `arg1` on hub forwarding incoming connections to `arg2`:`arg3`",

@@ -103,12 +103,15 @@ class V_COREEXPORT StateTracker {
     friend class PortTracker;
 
 public:
-    StateTracker(const std::string &name, std::shared_ptr<PortTracker> portTracker = std::shared_ptr<PortTracker>());
+    StateTracker(int id, const std::string &name,
+                 std::shared_ptr<PortTracker> portTracker = std::shared_ptr<PortTracker>());
     ~StateTracker();
 
     typedef std::recursive_mutex mutex;
     typedef std::unique_lock<mutex> mutex_locker;
     mutex &getMutex();
+
+    void setId(int id);
 
     bool dispatch(bool &received);
 
@@ -172,7 +175,7 @@ public:
     std::string loadedWorkflowFile() const;
     std::string sessionUrl() const;
 
-    void printModules() const;
+    void printModules(bool withConnections = false) const;
 
 protected:
     std::shared_ptr<message::Buffer> removeRequest(const message::uuid_t &uuid);
@@ -253,6 +256,7 @@ private:
     bool handlePriv(const message::Ping &ping);
     bool handlePriv(const message::Pong &pong);
     bool handlePriv(const message::Trace &trace);
+    bool handlePriv(const message::Debug &debug);
     bool handlePriv(const message::Spawn &spawn);
     bool handlePriv(const message::Started &started);
     bool handlePriv(const message::Connect &connect);
@@ -286,6 +290,7 @@ private:
 
     HubData *getModifiableHubData(int id);
 
+    int m_id = message::Id::Invalid;
     std::shared_ptr<PortTracker> m_portTracker;
 
     std::set<message::uuid_t> m_alreadySeen;

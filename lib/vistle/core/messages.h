@@ -270,13 +270,17 @@ private:
 //! request to attach a debugger to a module
 class V_COREEXPORT Debug: public MessageBase<Debug, DEBUG> {
 public:
-    explicit Debug(const int module);
+    DEFINE_ENUM_WITH_STRING_CONVERSIONS(Request, (AttachDebugger)(PrintState))
+
+    explicit Debug(const int module, Request req = AttachDebugger);
 
     int getModule() const;
+    Request getRequest() const;
 
 private:
-    //! ID of module to stop
-    const int module;
+    //! ID of module to debug
+    const int m_module;
+    const int m_request; //< action to perform
 };
 
 //! notify that a module has quit

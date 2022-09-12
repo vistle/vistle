@@ -381,6 +381,7 @@ compute = _vistle.compute #exectue called compute to prevent name clash with pyt
 interrupt = _vistle.interrupt
 quit = _vistle.quit
 trace = _vistle.trace
+debug = _vistle.debug
 barrier = _vistle.barrier
 requestTunnel = _vistle.requestTunnel
 removeTunnel = _vistle.removeTunnel
