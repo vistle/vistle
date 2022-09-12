@@ -42,7 +42,8 @@ public slots:
     void newHub(int hub, const QString &hubName, int nranks, const QString &address, int port, const QString &logname,
                 const QString &realname, bool hasUi, const QString &systype, const QString &arch);
     void deleteHub(int hub);
-    void moduleAvailable(int hub, const QString &module, const QString &path, const QString &description);
+    void moduleAvailable(int hub, const QString &module, const QString &path, const QString &category,
+                         const QString &description);
     void enableConnectButton(bool state);
 
 signals:
@@ -66,10 +67,10 @@ protected:
     void closeEvent(QCloseEvent *);
 
 private:
-    Ui::MainWindow *ui;
-    VistleConsole *m_console;
-    Parameters *m_parameters;
-    ModuleBrowser *m_moduleBrowser;
+    Ui::MainWindow *ui = nullptr;
+    VistleConsole *m_console = nullptr;
+    Parameters *m_parameters = nullptr;
+    ModuleBrowser *m_moduleBrowser = nullptr;
 
     QList<QString> loadModuleFile();
 

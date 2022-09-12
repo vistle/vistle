@@ -299,13 +299,16 @@ void Module::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
             auto hub = mb->getHubItem(m_hub);
             std::vector<QString> modules;
             for (int i = 0; i < hub->childCount(); i++) {
-                auto name = hub->child(i)->data(0, ModuleBrowser::nameRole()).toString();
-                modules.emplace_back(name);
+                auto *category = hub->child(i);
+                for (int j = 0; j < category->childCount(); ++j) {
+                    auto name = category->child(j)->data(0, ModuleBrowser::nameRole()).toString();
+                    modules.emplace_back(name);
+                }
             }
             return modules;
         };
 
-        static std::vector<std::vector<QString>> replaceables{{"COVER", "DisCOVERay", "OsgRenderer"},
+        static std::vector<std::vector<QString>> replaceables{{"COVER", "DisCOVERay", "OsgRenderer", "BlenderRenderer"},
                                                               {"Thicken", "SpheresOld", "TubesOld"}};
         m_replaceWithMenu->clear();
         auto *mb = scene()->moduleBrowser();
@@ -622,6 +625,21 @@ void Module::setStatus(Module::Status status)
     case INITIALIZED:
         toolTip = "Initialized";
         m_borderColor = scene()->highlightColor();
+        if (scene() && scene()->moduleBrowser()) {
+            auto *mb = scene()->moduleBrowser();
+            auto hub = mb->getHubItem(m_hub);
+            if (hub) {
+                for (int i = 0; i < hub->childCount(); i++) {
+                    auto *category = hub->child(i);
+                    for (int j = 0; j < category->childCount(); ++j) {
+                        auto name = category->child(j)->data(0, ModuleBrowser::nameRole()).toString();
+                        if (name == m_name) {
+                            toolTip = category->child(j)->data(0, ModuleBrowser::descriptionRole()).toString();
+                        }
+                    }
+                }
+            }
+        }
         break;
     case KILLED:
         toolTip = "Killed";

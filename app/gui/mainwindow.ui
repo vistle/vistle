@@ -39,6 +39,18 @@
   </property>
   <widget class="QWidget" name="centralWidget">
    <layout class="QHBoxLayout" name="horizontalLayout_3">
+    <property name="leftMargin">
+     <number>0</number>
+    </property>
+    <property name="topMargin">
+     <number>0</number>
+    </property>
+    <property name="rightMargin">
+     <number>0</number>
+    </property>
+    <property name="bottomMargin">
+     <number>0</number>
+    </property>
     <item>
      <widget class="gui::DataFlowView" name="drawArea">
       <property name="enabled">
@@ -87,7 +99,7 @@
      <x>0</x>
      <y>0</y>
      <width>857</width>
-     <height>30</height>
+     <height>24</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuHello_World">
@@ -167,7 +179,7 @@
     <set>Qt::BottomDockWidgetArea|Qt::TopDockWidgetArea</set>
    </property>
    <property name="windowTitle">
-    <string>&amp;Vistle Console</string>
+    <string>Vistle Console</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>8</number>
@@ -208,7 +220,7 @@
     <set>Qt::LeftDockWidgetArea|Qt::RightDockWidgetArea</set>
    </property>
    <property name="windowTitle">
-    <string>&amp;Module Parameters</string>
+    <string>Module Parameters</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>2</number>
@@ -255,7 +267,7 @@
     <set>Qt::LeftDockWidgetArea|Qt::RightDockWidgetArea</set>
    </property>
    <property name="windowTitle">
-    <string>Mod&amp;ule Browser</string>
+    <string>Module Browser</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>2</number>
@@ -365,7 +377,7 @@
   </action>
   <action name="actionExecute">
    <property name="text">
-    <string>&amp;Execute</string>
+    <string>&amp;Execute Workflow</string>
    </property>
    <property name="toolTip">
     <string>Execute all source modules</string>

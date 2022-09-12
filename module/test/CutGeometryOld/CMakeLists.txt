@@ -10,9 +10,9 @@ if(NOT APPLE
    AND FALSE)
     include_directories(SYSTEM ${CUDA_INCLUDE_DIRS})
     add_definitions(-DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_CUDA)
-    cuda_compile(CUDA_OBJ "../../general/IsoSurface/Leveller.cu")
+    cuda_compile(CUDA_OBJ "../../map/IsoSurface/Leveller.cu")
 else()
-    set(SOURCES ${SOURCES} "../../general/IsoSurface/Leveller.cpp")
+    set(SOURCES ${SOURCES} "../../map/IsoSurface/Leveller.cpp")
     if(OPENMP_FOUND)
         add_definitions(-DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_OMP)
     elseif(TBB_FOUND)
@@ -36,4 +36,4 @@ endif()
 
 include_directories(SYSTEM ${THRUST_INCLUDE_DIR})
 
-add_module(CutGeometryOld "clip geometry at basic geometry like plane, cylinder or sphere" CutGeometry.cpp ../../general/IsoSurface/IsoDataFunctor.cpp)
+add_module(CutGeometryOld "clip geometry at basic geometry like plane, cylinder or sphere" CutGeometry.cpp ../../map/IsoSurface/IsoDataFunctor.cpp)

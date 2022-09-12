@@ -25,7 +25,8 @@ public:
         bool operator<(const Key &rhs) const;
     };
     AvailableModuleBase() = default;
-    AvailableModuleBase(int hub, const std::string &name, const std::string &path, const std::string &description);
+    AvailableModuleBase(int hub, const std::string &name, const std::string &path, const std::string &category,
+                        const std::string &description);
     AvailableModuleBase(AvailableModuleBase &&) = default;
     AvailableModuleBase(const AvailableModuleBase &) = delete;
     AvailableModuleBase &operator=(AvailableModuleBase &&) = default;
@@ -34,6 +35,7 @@ public:
     int hub() const;
     const std::string &name() const;
     const std::string &path() const;
+    const std::string &category() const;
     const std::string &description() const;
     void setHub(int hubId);
     std::string print() const;
@@ -116,6 +118,7 @@ protected:
     std::string m_path;
 
 private:
+    std::string m_category;
     std::string m_description;
 
 
@@ -127,6 +130,7 @@ private:
     template<class Archive>
     void serialize(Archive &ar)
     {
+        ar &m_category;
         ar &m_description;
         ar &m_connections;
         ar &m_submodules;

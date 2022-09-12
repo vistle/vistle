@@ -101,8 +101,8 @@ void DataFlowView::createActions()
     m_deleteAct->setStatusTip("Delete the selected modules and all their connections");
     connect(m_deleteAct, SIGNAL(triggered()), this, SLOT(deleteModules()));
 
-    m_execAct = new QAction("Execute", this);
-    m_execAct->setStatusTip("Execute the work flow");
+    m_execAct = new QAction("Execute Workflow", this);
+    m_execAct->setStatusTip("Execute the workflow");
     connect(m_execAct, SIGNAL(triggered()), this, SLOT(execModules()));
 }
 

@@ -7,6 +7,7 @@
 
 #include <cmath>
 #include <QTextEdit>
+#include <QLayout>
 #include <QDebug>
 
 #include <vistle/userinterface/vistleconnection.h>
@@ -65,6 +66,9 @@ Parameters::Parameters(QWidget *parent, Qt::WindowFlags f)
 , m_vectorManager(nullptr)
 , m_intVectorManager(nullptr)
 {
+    if (layout())
+        layout()->setMargin(3);
+
     m_groupManager = new QtGroupPropertyManager(this); // no change notifications
 
     m_boolManager = addPropertyManager<QtBoolPropertyManager>(this);

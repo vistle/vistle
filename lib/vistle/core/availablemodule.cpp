@@ -6,8 +6,8 @@ namespace vistle {
 
 
 AvailableModuleBase::AvailableModuleBase(int hub, const std::string &name, const std::string &path,
-                                         const std::string &description)
-: m_hub(hub), m_name(name), m_path(path), m_description(description)
+                                         const std::string &category, const std::string &description)
+: m_hub(hub), m_name(name), m_path(path), m_category(category), m_description(description)
 {}
 
 int AvailableModuleBase::hub() const
@@ -27,6 +27,11 @@ const std::string &AvailableModuleBase::path() const
     return m_path;
 }
 
+
+const std::string &AvailableModuleBase::category() const
+{
+    return m_category;
+}
 
 const std::string &AvailableModuleBase::description() const
 {

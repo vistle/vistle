@@ -900,7 +900,7 @@ static int moduleCompoundAlloc(const std::string &compoundName)
             --i;
             auto it = findCompound(i);
             if (it == compounds.end()) {
-                compounds.push_back(detail::ModuleCompound{i, ModuleCompound{0, compoundName, "", ""}});
+                compounds.push_back(detail::ModuleCompound{i, ModuleCompound{0, compoundName, "", "Compound", ""}});
                 return i;
             }
         }

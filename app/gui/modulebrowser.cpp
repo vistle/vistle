@@ -8,17 +8,67 @@
 #include <QKeyEvent>
 #include <QMimeData>
 #include <QMenu>
+#include <QSettings>
 #include <fstream>
+
 namespace gui {
 
 enum ItemTypes {
     Hub,
+    Category,
     Module,
 };
+
+static std::array<ModuleBrowser::WidgetIndex, 2> ModuleLists{ModuleBrowser::Main, ModuleBrowser::Filtered};
+static std::array<const char *, 10> Categories{"Simulation", "Read",        "Filter",  "Map",    "Geometry",
+                                               "Render",     "Information", "General", "UniViz", "Test"};
+static std::map<std::string, std::string> CategoryDescriptions{
+    {"Simulation", "acquire data from running simulations for in situ processing"},
+    {"Read", "read data from files"},
+    {"Filter", "transform abstract data into abstract data"},
+    {"Map", "map abstract data to geometric shapes"},
+    {"Geometry", "process geometric shapes"},
+    {"Render", "render images from geometric shapes"},
+    {"General", "process data at any stage in the pipeline"},
+    {"Information", "provide information on input"},
+    {"UniViz", "flow visualization modules by Filip Sadlo"},
+    {"Test", "support testing and development of Vistle and modules"},
+};
+
+class CategoryItem: public QTreeWidgetItem {
+    using QTreeWidgetItem::QTreeWidgetItem;
+    bool operator<(const QTreeWidgetItem &other) const override
+    {
+        if (other.type() != Category)
+            return *static_cast<const QTreeWidgetItem *>(this) < other;
+        std::string mytext = text(0).toStdString();
+        std::string otext = other.text(0).toStdString();
+        auto myit = std::find(Categories.begin(), Categories.end(), mytext);
+        auto oit = std::find(Categories.begin(), Categories.end(), otext);
+        if (myit == oit) {
+            return mytext < otext;
+        }
+        if (myit == Categories.end())
+            return false;
+        return myit < oit;
+    }
+};
+
 
 ModuleListWidget::ModuleListWidget(QWidget *parent): QTreeWidget(parent)
 {
     header()->setVisible(false);
+    setSelectionMode(SingleSelection);
+    sortItems(0, Qt::AscendingOrder);
+    connect(this, &QTreeWidget::currentItemChanged, [this](QTreeWidgetItem *cur, QTreeWidgetItem *prev) {
+        if (prev) {
+            prev->setSelected(false);
+        }
+        if (cur) {
+            cur->setSelected(true);
+            emit showStatusTip(cur->data(0, ModuleBrowser::descriptionRole()).toString());
+        }
+    });
 }
 
 QMimeData *ModuleListWidget::mimeData(const QList<QTreeWidgetItem *> dragList) const
@@ -44,30 +94,61 @@ void ModuleListWidget::setFilter(QString filter)
 {
     m_filter = filter.trimmed();
 
+    bool firstMatch = true;
     for (int idx = 0; idx < topLevelItemCount(); ++idx) {
         auto ti = topLevelItem(idx);
+        ti->setExpanded(true);
         for (int i = 0; i < ti->childCount(); ++i) {
-            auto item = ti->child(i);
-            filterItem(item);
+            auto cat = ti->child(i);
+            cat->setExpanded(true);
+            unsigned nvis = 0;
+            for (int j = 0; j < cat->childCount(); ++j) {
+                auto item = cat->child(j);
+                if (filterModule(item)) {
+                    ++nvis;
+                    item->setHidden(false);
+                    item->setSelected(firstMatch);
+                    if (firstMatch)
+                        setCurrentItem(item);
+                    firstMatch = false;
+                } else {
+                    item->setSelected(false);
+                    item->setHidden(true);
+                }
+            }
+            cat->setHidden(nvis == 0);
         }
     }
 }
 
-void ModuleListWidget::filterItem(QTreeWidgetItem *item) const
+bool ModuleListWidget::filterModule(QTreeWidgetItem *item) const
 {
-    if (item->type() != Module) {
-        item->setHidden(false);
-        return;
+    assert(item->type() == Module);
+
+    bool onlyModules = false;
+    auto matchType = Qt::CaseInsensitive;
+    for (const auto &c: m_filter) {
+        if (c.isUpper()) {
+            matchType = Qt::CaseSensitive;
+            onlyModules = true;
+        }
     }
 
     const auto name = item->data(0, ModuleBrowser::nameRole()).toString();
-    const bool match = name.contains(m_filter, Qt::CaseInsensitive);
-    item->setHidden(!match);
-    if (!match) {
-        item->setSelected(false);
+    bool match = name.contains(m_filter, matchType);
+    if (!match && !onlyModules) {
+        const auto desc = item->data(0, ModuleBrowser::descriptionRole()).toString();
+        match = desc.contains(m_filter, matchType);
     }
-}
+#if 0
+    if (!match && !onlyModules) {
+        const auto cat = item->data(0, ModuleBrowser::categoryRole()).toString();
+        match = cat.contains(m_filter, matchType);
+    }
+#endif
 
+    return match;
+}
 
 const char *ModuleBrowser::mimeFormat()
 {
@@ -89,30 +170,63 @@ int ModuleBrowser::pathRole()
     return Qt::UserRole + 1;
 }
 
+int ModuleBrowser::categoryRole()
+{
+    return Qt::UserRole + 2;
+}
+
+int ModuleBrowser::descriptionRole()
+{
+    return Qt::UserRole + 3;
+}
+
+int ModuleBrowser::toolTipRole()
+{
+    return Qt::ToolTipRole;
+}
+
 ModuleBrowser::ModuleBrowser(QWidget *parent): QWidget(parent), ui(new Ui::ModuleBrowser)
 {
+    m_primaryHub = vistle::message::Id::Invalid;
+    readSettings();
+
     ui->setupUi(this);
+    m_moduleListWidget[Main] = ui->moduleListWidget;
+    m_moduleListWidget[Filtered] = ui->filteredModuleListWidget;
 
     connect(filterEdit(), SIGNAL(textChanged(QString)), SLOT(setFilter(QString)));
     filterEdit()->installEventFilter(this);
-    ui->moduleListWidget->setFocusProxy(filterEdit());
     setFocusProxy(filterEdit());
     ui->filterEdit->installEventFilter(this);
 
-    ui->moduleListWidget->setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(ui->moduleListWidget, &ModuleListWidget::customContextMenuRequested, this, &ModuleBrowser::prepareMenu);
+    for (auto idx: ModuleLists) {
+        m_moduleListWidget[idx]->setFocusProxy(filterEdit());
+        m_moduleListWidget[idx]->setContextMenuPolicy(Qt::CustomContextMenu);
+        connect(m_moduleListWidget[idx], &ModuleListWidget::customContextMenuRequested, this,
+                &ModuleBrowser::prepareMenu);
+        connect(m_moduleListWidget[idx], &ModuleListWidget::showStatusTip, this, &ModuleBrowser::showStatusTip);
+    }
 }
 
 ModuleBrowser::~ModuleBrowser()
 {
+    writeSettings();
+
     delete ui;
+}
+
+ModuleBrowser::WidgetIndex ModuleBrowser::visibleWidgetIndex() const
+{
+    if (m_filter.trimmed().isEmpty())
+        return Main;
+    return Filtered;
 }
 
 void ModuleBrowser::prepareMenu(const QPoint &pos)
 {
-    auto *widget = ui->moduleListWidget;
+    auto *widget = m_moduleListWidget[visibleWidgetIndex()];
     QTreeWidgetItem *item = widget->itemAt(pos);
-    for (auto hub: hubItems) {
+    for (auto hub: m_hubItems[visibleWidgetIndex()]) {
         int id = hub.first;
         if (hub.second == item) {
             QMenu menu(this);
@@ -135,101 +249,165 @@ std::vector<std::pair<int, QString>> ModuleBrowser::getHubs() const
 {
     std::vector<std::pair<int, QString>> hubs;
 
-    for (const auto &h: hubItems) {
+    for (const auto &h: m_hubItems[Main]) {
         hubs.emplace_back(h.first, h.second->text(0));
     }
     return hubs;
 }
 
-QTreeWidgetItem *ModuleBrowser::getHubItem(int hub) const
+QTreeWidgetItem *ModuleBrowser::getHubItem(int hub, ModuleBrowser::WidgetIndex idx) const
 {
-    auto it = hubItems.find(hub);
-    if (it == hubItems.end())
+    auto it = m_hubItems[idx].find(hub);
+    if (it == m_hubItems[idx].end())
         return nullptr;
     return it->second;
+}
+
+QTreeWidgetItem *ModuleBrowser::getCategoryItem(int hub, QString category, ModuleBrowser::WidgetIndex idx) const
+{
+    auto hubItem = getHubItem(hub, idx);
+    if (!hubItem)
+        return nullptr;
+    for (int i = 0; i < hubItem->childCount(); ++i) {
+        auto name = hubItem->child(i)->data(0, ModuleBrowser::nameRole()).toString();
+        if (name == category)
+            return hubItem->child(i);
+    }
+    return nullptr;
 }
 
 void ModuleBrowser::addHub(int hub, QString hubName, int nranks, QString address, int port, QString logname,
                            QString realname, bool hasUi, QString systype, QString arch)
 {
-    auto it = hubItems.find(hub);
-    if (it == hubItems.end()) {
-        it = hubItems.emplace(hub, new QTreeWidgetItem({hubName}, Hub)).first;
-        auto &item = it->second;
-        ui->moduleListWidget->addTopLevelItem(item);
-        item->setExpanded(hubItems.size() <= 1);
-        item->setBackground(0, Module::hubColor(hub));
-        item->setForeground(0, QColor(0, 0, 0));
+    for (auto idx: ModuleLists) {
+        auto it = m_hubItems[idx].find(hub);
+        if (it == m_hubItems[idx].end()) {
+            it = m_hubItems[idx].emplace(hub, new QTreeWidgetItem({hubName}, Hub)).first;
+            auto &item = it->second;
+            m_moduleListWidget[idx]->addTopLevelItem(item);
+            item->setExpanded(m_hubItems[idx].size() <= 1);
+            item->setBackground(0, Module::hubColor(hub));
+            item->setForeground(0, QColor(0, 0, 0));
 
-        QString sysicon(systype);
-        if (systype != "windows" && systype != "linux" && systype != "freebsd" && systype != "apple")
-            sysicon = "question";
+            QString sysicon(systype);
+            if (systype != "windows" && systype != "linux" && systype != "freebsd" && systype != "apple")
+                sysicon = "question";
 
-        QString tt;
-        tt += "<b>" + QString::fromStdString(vistle::message::Id::toString(hub)).toHtmlEscaped() + "</b> " +
-              QString("(" + QString::number(hub) + ")").toHtmlEscaped();
-        tt += QString("<table><tr><td><img height=\"48\" src=\":/icons/%0.svg\"/>&nbsp;</td><td><br>%1<br>%2 "
-                      "ranks</td></table><br>")
-                  .arg(sysicon)
-                  .arg(arch)
-                  .arg(nranks);
-        tt += QString(realname).toHtmlEscaped() + QString(" (%0)").arg(logname) + "<br>";
-        tt += QString(hubName).toHtmlEscaped() + QString(":%0").arg(port);
-        item->setData(0, Qt::ToolTipRole, tt);
+            QString tt;
+            tt += "<b>" + QString::fromStdString(vistle::message::Id::toString(hub)).toHtmlEscaped() + "</b> " +
+                  QString("(" + QString::number(hub) + ")").toHtmlEscaped();
+            tt += QString("<table><tr><td><img height=\"48\" src=\":/icons/%0.svg\"/>&nbsp;</td><td><br>%1<br>%2 "
+                          "ranks</td></table><br>")
+                      .arg(sysicon)
+                      .arg(arch)
+                      .arg(nranks);
+            tt += QString(realname).toHtmlEscaped() + QString(" (%0)").arg(logname) + "<br>";
+            tt += QString(hubName).toHtmlEscaped() + QString(":%0").arg(port);
+            item->setData(0, Qt::ToolTipRole, tt);
 
-        QPixmap icon;
-        if (nranks == 0) {
-            icon = QPixmap(":/icons/proxy.svg");
-        } else if (nranks == 1) {
-            if (hasUi) {
-                icon = QPixmap(":/icons/display.svg");
+            QPixmap icon;
+            if (nranks == 0) {
+                icon = QPixmap(":/icons/proxy.svg");
+            } else if (nranks == 1) {
+                if (hasUi) {
+                    icon = QPixmap(":/icons/display.svg");
+                } else {
+                    icon = QPixmap(":/icons/server.svg");
+                }
             } else {
-                icon = QPixmap(":/icons/server.svg");
+                if (hasUi)
+                    icon = QPixmap(":/icons/cluster_ui.svg");
+                else
+                    icon = QPixmap(":/icons/cluster.svg");
             }
-        } else {
-            if (hasUi)
-                icon = QPixmap(":/icons/cluster_ui.svg");
-            else
-                icon = QPixmap(":/icons/cluster.svg");
+            item->setIcon(0, icon);
+
+            if (idx == Main && hub == vistle::message::Id::MasterHub) {
+                m_moduleListWidget[idx]->setCurrentItem(item);
+                item->setSelected(true);
+            }
         }
-        item->setIcon(0, icon);
     }
 }
 
 void ModuleBrowser::removeHub(int hub)
 {
-    auto it = hubItems.find(hub);
-    if (it == hubItems.end())
-        return;
+    for (auto idx: ModuleLists) {
+        auto it = m_hubItems[idx].find(hub);
+        if (it == m_hubItems[idx].end())
+            continue;
 
-    auto &item = it->second;
-    delete item;
-    hubItems.erase(it);
+        auto &item = it->second;
+        delete item;
+        m_hubItems[idx].erase(it);
+    }
 }
 
-void ModuleBrowser::addModule(int hub, QString module, QString path, QString description)
+QTreeWidgetItem *ModuleBrowser::addCategory(int hub, QString category, QString description,
+                                            ModuleBrowser::WidgetIndex idx)
 {
-    currentModule.exists = false;
-    auto it = hubItems.find(hub);
-    if (it == hubItems.end()) {
-        return;
-    }
-    auto &hubItem = it->second;
+    auto *hubItem = getHubItem(hub, idx);
+    assert(hubItem);
 
-    for (int i = 0; i < hubItem->childCount(); i++) {
-        if (hubItem->child(i)->data(0, ModuleBrowser::nameRole()).toString() == module)
-            return;
-    }
-
-    auto item = new QTreeWidgetItem(hubItem, {module}, Module);
+    auto item = new CategoryItem(hubItem, {category}, Category);
     item->setData(0, hubRole(), hub);
+    item->setData(0, categoryRole(), category);
+    item->setData(0, descriptionRole(), description);
     QString tt;
-    if (!description.isEmpty())
-        tt = "<p>" + description.toHtmlEscaped() + "</p>";
-    tt += "<small><i>" + path.toHtmlEscaped();
-
+    if (!description.isEmpty()) {
+        tt += description.toHtmlEscaped();
+    }
     item->setData(0, Qt::ToolTipRole, tt);
-    ui->moduleListWidget->filterItem(item);
+    if (idx == Main && hub == m_primaryHub) {
+        item->setExpanded(m_categoryExpanded[category.toStdString()]);
+    }
+
+    setFilter(m_filter);
+
+    return item;
+}
+
+void ModuleBrowser::addModule(int hub, QString module, QString path, QString category, QString description)
+{
+    if (m_primaryHub == vistle::message::Id::Invalid || m_primaryHub < hub) {
+        m_primaryHub = hub;
+    }
+
+    for (auto idx: ModuleLists) {
+        auto catItem = getCategoryItem(hub, category, idx);
+        if (!catItem) {
+            std::string cat = category.toStdString();
+            std::string desc;
+            auto it = CategoryDescriptions.find(cat);
+            if (it != CategoryDescriptions.end())
+                desc = it->second;
+            catItem = addCategory(hub, category, QString::fromStdString(desc), idx);
+        }
+
+        for (int i = 0; i < catItem->childCount(); i++) {
+            if (catItem->child(i)->data(0, ModuleBrowser::nameRole()).toString() == module)
+                continue;
+        }
+
+        auto item = new QTreeWidgetItem(catItem, {module}, Module);
+        item->setData(0, hubRole(), hub);
+        item->setData(0, categoryRole(), category);
+        item->setData(0, descriptionRole(), description);
+        QString tt;
+        if (!description.isEmpty() || !category.isEmpty()) {
+            tt += "<p>";
+            if (!description.isEmpty())
+                tt += description.toHtmlEscaped();
+            if (!category.isEmpty())
+                tt += "<br><i><b>" + category.toHtmlEscaped() + "</b></i>";
+            tt += "</p>";
+        }
+        tt += "<small><i>" + path.toHtmlEscaped() + "</i></small>";
+
+        item->setData(0, Qt::ToolTipRole, tt);
+        m_moduleListWidget[idx]->sortItems(0, Qt::AscendingOrder);
+    }
+    setFilter(m_filter);
 }
 
 QLineEdit *ModuleBrowser::filterEdit() const
@@ -239,20 +417,20 @@ QLineEdit *ModuleBrowser::filterEdit() const
 
 void ModuleBrowser::setFilter(QString filter)
 {
-    ui->moduleListWidget->setFilter(filter);
-    selectModule(Qt::Key_Down);
+    m_filter = filter;
+
+    ui->filteredModuleListWidget->setFilter(m_filter);
+    ui->stackedWidget->setCurrentIndex(visibleWidgetIndex());
 }
 
 bool ModuleBrowser::eventFilter(QObject *object, QEvent *event)
 {
-    static QMetaObject::Connection conn;
-    static QKeyEvent down{QEvent::Type::KeyPress, Qt::Key_Down, Qt::NoModifier};
     if (object == filterEdit()) {
         if (event->type() == QEvent::FocusIn) {
-            filterInFocus = true;
+            m_filterInFocus = true;
         }
         if (event->type() == QEvent::FocusOut) {
-            filterInFocus = false;
+            m_filterInFocus = false;
         }
         if (auto keyEvent = dynamic_cast<QKeyEvent *>(event)) {
             return handleKeyPress(keyEvent);
@@ -263,134 +441,121 @@ bool ModuleBrowser::eventFilter(QObject *object, QEvent *event)
 
 bool ModuleBrowser::handleKeyPress(QKeyEvent *event)
 {
-    if (filterInFocus) {
-        if (event->type() == QEvent::KeyPress) {
-            if (event->modifiers() == Qt::KeyboardModifier::NoModifier) {
-                switch (event->key()) {
-                case Qt::Key_Down:
-                case Qt::Key_Up: {
-                    selectModule(static_cast<Qt::Key>(event->key()));
-                    return true;
-                } break;
-                case Qt::Key_Enter: {
-                    if (currentModule.exists && currentModule.hostIter->second->childCount() > 0) {
-                        emit startModule(currentModule.hostIter->first,
-                                         currentModule.hostIter->second->child(currentModule.moduleIndex)->text(0),
-                                         Qt::Key_Down);
-                        return true;
+    if (!m_filterInFocus)
+        return false;
+
+    bool press = false;
+    if (event->type() == QEvent::KeyPress) {
+        press = true;
+    }
+
+    auto mod = event->modifiers() & (Qt::ShiftModifier | Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier);
+
+    if (event->type() == QEvent::KeyPress || event->type() == QEvent::KeyRelease) {
+        if (mod == Qt::KeyboardModifier::NoModifier) {
+            switch (event->key()) {
+            case Qt::Key_Escape: {
+                // clear filter text
+                filterEdit()->setText("");
+                return true;
+                break;
+            }
+            case Qt::Key_Left:
+            case Qt::Key_Right:
+                if (!m_filter.isEmpty()) {
+                    // navigate in filter text
+                    break;
+                }
+                // fall through
+            case Qt::Key_Down:
+            case Qt::Key_Up: {
+                // navigate in module tree
+                if (press)
+                    m_moduleListWidget[visibleWidgetIndex()]->keyPressEvent(event);
+                else
+                    m_moduleListWidget[visibleWidgetIndex()]->keyReleaseEvent(event);
+                return true;
+                break;
+            }
+            case Qt::Key_Return:
+            case Qt::Key_Enter: {
+                auto selection = m_moduleListWidget[visibleWidgetIndex()]->selectedItems();
+                if (!selection.isEmpty()) {
+                    assert(selection.size() == 1);
+                    auto item = selection.front();
+                    if (item->type() == Module) {
+                        if (press) {
+                            emit startModule(item->data(0, hubRole()).toInt(), item->text(0), Qt::Key_Down);
+                        }
                     }
                 }
-                default:
-                    break;
-                }
-
-            } else if (event->modifiers() == Qt::KeyboardModifier::AltModifier && currentModule.exists) {
-                switch (event->key()) {
-                case Qt::Key_Down:
-                case Qt::Key_Up:
-                case Qt::Key_Left:
-                case Qt::Key_Right:
-                    if (currentModule.hostIter->second->childCount() > 0) {
-                        emit startModule(currentModule.hostIter->first,
-                                         currentModule.hostIter->second->child(currentModule.moduleIndex)->text(0),
-                                         static_cast<Qt::Key>(event->key()));
-                        return true;
+                return true;
+                break;
+            }
+            default:
+                break;
+            }
+        } else if (mod == Qt::KeyboardModifier::ShiftModifier || mod == Qt::KeyboardModifier::AltModifier) {
+            switch (event->key()) {
+            case Qt::Key_Down:
+            case Qt::Key_Up:
+            case Qt::Key_Left:
+            case Qt::Key_Right: {
+                auto selection = m_moduleListWidget[visibleWidgetIndex()]->selectedItems();
+                if (!selection.isEmpty()) {
+                    assert(selection.size() == 1);
+                    auto item = selection.front();
+                    if (item->type() == Module) {
+                        if (press) {
+                            emit startModule(item->data(0, hubRole()).toInt(), item->text(0),
+                                             static_cast<Qt::Key>(event->key()));
+                        }
                     }
-                    break;
-                default:
-                    break;
                 }
+                return true;
+                break;
+            }
+            default:
+                break;
             }
         }
     }
+
     return false;
 }
 
-
-bool ModuleBrowser::goToNextModule()
+void ModuleBrowser::readSettings()
 {
-    ++currentModule.moduleIndex;
-    if (currentModule.moduleIndex == currentModule.hostIter->second->childCount()) {
-        currentModule.moduleIndex = 0;
-        ++currentModule.hostIter;
-        if (currentModule.hostIter == hubItems.end()) {
-            currentModule.hostIter = hubItems.begin();
+    QSettings settings;
+    settings.beginGroup("ModuleBrowser");
+
+    QStringList categories = settings.childKeys();
+    for (const auto &cat: categories) {
+        m_categoryExpanded[cat.toStdString()] = settings.value(cat).toBool();
+    }
+
+    settings.endGroup();
+}
+
+void ModuleBrowser::writeSettings()
+{
+    QSettings settings;
+    settings.beginGroup("ModuleBrowser");
+
+    if (m_primaryHub != vistle::message::Id::Invalid) {
+        auto hubItem = getHubItem(m_primaryHub);
+        for (unsigned i = 0; i < hubItem->childCount(); ++i) {
+            auto *child = hubItem->child(i);
+            auto cat = child->text(0).toStdString();
+            m_categoryExpanded[cat] = child->isExpanded();
         }
     }
-    if (currentModule.hostIter->second->childCount() == 0)
-        return false;
-    if (!currentModule.hostIter->second->child(currentModule.moduleIndex)->isHidden()) {
-        return true;
+
+    for (const auto &cat: m_categoryExpanded) {
+        settings.setValue(cat.first.c_str(), cat.second);
     }
-    return false;
+
+    settings.endGroup();
 }
-
-
-bool ModuleBrowser::goToPreviousModule()
-{
-    --currentModule.moduleIndex;
-    if (currentModule.moduleIndex < 0) {
-        currentModule.hostIter == hubItems.begin() ? currentModule.hostIter = --hubItems.end()
-                                                   : --currentModule.hostIter;
-        currentModule.moduleIndex = currentModule.hostIter->second->childCount() - 1;
-    }
-    if (currentModule.hostIter->second->childCount() == 0)
-        return false;
-    if (!currentModule.hostIter->second->child(currentModule.moduleIndex)->isHidden()) {
-        return true;
-    }
-    return false;
-}
-
-void ModuleBrowser::selectModule(Qt::Key dir)
-{
-    if (!currentModule.exists) {
-        initCurrentModule(Qt::Key_Down);
-        return;
-    }
-    setCurrentModuleSelected(false);
-    auto old = currentModule;
-    do {
-        if (dir == Qt::Key::Key_Up) {
-            if (goToPreviousModule()) {
-                setCurrentModuleSelected(true);
-                return;
-            }
-        }
-        if (dir == Qt::Key::Key_Down) {
-            if (goToNextModule()) {
-                setCurrentModuleSelected(true);
-                return;
-            }
-        }
-    } while (!(currentModule.hostIter == old.hostIter && currentModule.moduleIndex == old.moduleIndex));
-    initCurrentModule(dir);
-}
-
-void ModuleBrowser::initCurrentModule(Qt::Key dir)
-{
-    assert(dir == Qt::Key::Key_Down || dir == Qt::Key::Key_Up);
-    currentModule.exists = true;
-    if (dir == Qt::Key::Key_Down) {
-        currentModule.hostIter = hubItems.begin();
-        currentModule.moduleIndex = 0;
-    } else {
-        assert(!hubItems.empty());
-        currentModule.hostIter = --hubItems.end();
-        currentModule.moduleIndex = currentModule.hostIter->second->childCount() - 1;
-    }
-    setCurrentModuleSelected(true);
-}
-
-void ModuleBrowser::setCurrentModuleSelected(bool select)
-{
-    if (auto *h = currentModule.hostIter->second) {
-        if (auto *c = h->child(currentModule.moduleIndex)) {
-            c->setSelected(select);
-        }
-        h->setExpanded(true);
-    }
-}
-
 
 } // namespace gui

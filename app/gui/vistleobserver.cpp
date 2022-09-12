@@ -55,7 +55,7 @@ void VistleObserver::deleteHub(int hub)
 void VistleObserver::moduleAvailable(const vistle::AvailableModule &mod)
 {
     emit moduleAvailable_s(mod.hub(), QString::fromStdString(mod.name()), QString::fromStdString(mod.path()),
-                           QString::fromStdString(mod.description()));
+                           QString::fromStdString(mod.category()), QString::fromStdString(mod.description()));
 }
 
 void VistleObserver::newModule(int moduleId, const boost::uuids::uuid &spawnUuid, const std::string &moduleName)

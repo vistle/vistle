@@ -7,7 +7,7 @@
 #include <vistle/util/math.h>
 
 #include "CutGeometry.h"
-#include "../../general/IsoSurface/IsoDataFunctor.h"
+#include "../../map/IsoSurface/IsoDataFunctor.h"
 
 MODULE_MAIN(CutGeometry)
 
