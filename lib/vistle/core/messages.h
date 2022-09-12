@@ -267,7 +267,7 @@ private:
     const int m_id;
 };
 
-//! request a module to quit
+//! request to attach a debugger to a module
 class V_COREEXPORT Debug: public MessageBase<Debug, DEBUG> {
 public:
     explicit Debug(const int module);
