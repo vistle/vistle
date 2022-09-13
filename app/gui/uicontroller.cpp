@@ -298,6 +298,8 @@ void UiController::moduleSelectionChanged()
     for (auto &item: selected) {
         if (Module *m = dynamic_cast<Module *>(item)) {
             selectedModules.push_back(m);
+            if (selectedModules.size() > 1)
+                break;
         }
     }
 
