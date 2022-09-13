@@ -205,6 +205,7 @@ void DataFlowNetwork::moduleStateChanged(int moduleId, int stateBits)
 void DataFlowNetwork::newPort(int moduleId, QString portName)
 {
     if (Module *m = findModule(moduleId)) {
+        std::lock_guard guard(m_state);
         const vistle::Port *port = m_state.portTracker()->getPort(moduleId, portName.toStdString());
         if (port) {
             m->addPort(*port);

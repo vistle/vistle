@@ -114,6 +114,8 @@ public:
     typedef std::recursive_mutex mutex;
     typedef std::unique_lock<mutex> mutex_locker;
     mutex &getMutex();
+    void lock();
+    void unlock();
 
     void setId(int id);
 
