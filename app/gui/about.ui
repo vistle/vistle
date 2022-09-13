@@ -16,11 +16,6 @@
     <verstretch>0</verstretch>
    </sizepolicy>
   </property>
-  <property name="font">
-   <font>
-    <family>Sans Serif</family>
-   </font>
-  </property>
   <property name="windowTitle">
    <string>About Vistle</string>
   </property>
