@@ -345,6 +345,8 @@ void StateTracker::appendModuleOutputConnections(VistleState &state, const Modul
     if (portTracker()) {
         for (auto &portname: portTracker()->getOutputPortNames(id)) {
             const Port::ConstPortSet *connected = portTracker()->getConnectionList(id, portname);
+            if (!connected)
+                continue;
             for (auto &dest: *connected) {
                 Connect c(id, portname, dest->getModuleID(), dest->getName());
                 appendMessage(state, c);
@@ -353,6 +355,8 @@ void StateTracker::appendModuleOutputConnections(VistleState &state, const Modul
 
         for (auto &paramname: getParameters(id)) {
             const Port::ConstPortSet *connected = portTracker()->getConnectionList(id, paramname);
+            if (!connected)
+                continue;
             for (auto &dest: *connected) {
                 Connect c(id, paramname, dest->getModuleID(), dest->getName());
                 appendMessage(state, c);
