@@ -2,6 +2,7 @@
 #define GUI_PORT_H
 
 #include <QGraphicsItem>
+#include <QAction>
 #include <memory>
 
 namespace vistle {
@@ -43,15 +44,22 @@ public:
 
 signals:
     void clicked(Port *port);
+    void selectConnected(int direction, int id, QString port);
 
 protected:
     void mousePressEvent(QGraphicsSceneMouseEvent *event);
     void mouseReleaseEvent(QGraphicsSceneMouseEvent *event);
     void mouseMoveEvent(QGraphicsSceneMouseEvent *event);
+    void contextMenuEvent(QGraphicsSceneContextMenuEvent *event);
 
 private:
     void createTooltip();
+    void createMenus();
     void createGeometry();
+
+    QMenu *m_portMenu = nullptr;
+    QAction *m_selectUpstreamAct = nullptr, *m_selectDownstreamAct = nullptr, *m_selectConnectedAct = nullptr;
+    QAction *m_disconnectAct = nullptr;
 
     Type m_portType; //< type of port
     const vistle::Port *m_port = nullptr;

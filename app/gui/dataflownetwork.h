@@ -9,6 +9,7 @@
 #include <vistle/core/uuid.h>
 
 #include <cassert>
+#include <set>
 
 namespace vistle {
 class VistleConnection;
@@ -21,6 +22,14 @@ class Module;
 class Connection;
 class MainWindow;
 class ModuleBrowser;
+
+enum SelectionDirection {
+    SelectConnected,
+    SelectUp,
+    SelectUpstream,
+    SelectDown,
+    SelectDownstream,
+};
 
 class DataFlowNetwork: public QGraphicsScene {
     Q_OBJECT
@@ -36,6 +45,7 @@ public:
 
     void addConnection(Port *portFrom, Port *portTo, bool sendToController = false);
     void removeConnection(Port *portFrom, Port *portTo, bool sendToController = false);
+    void removeConnections(Port *port, bool sendToController = false);
 
     Module *findModule(int id) const;
     bool moveModule(int moduleId, float x, float y);
@@ -101,8 +111,11 @@ private:
     ConnectionMap m_connections;
 
     QColor m_highlightColor;
+
+    void selectModules(const std::set<int> &moduleIds);
 private slots:
     void createModuleCompound();
+    void selectConnected(int direction, int id, QString port = QString());
 };
 
 } //namespace gui

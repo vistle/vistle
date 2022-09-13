@@ -73,6 +73,8 @@ Module::~Module()
     delete m_cancelExecAct;
     delete m_deleteThisAct;
     delete m_deleteSelAct;
+    delete m_selectUpstreamAct;
+    delete m_selectDownstreamAct;
     delete m_createModuleGroup;
 }
 
@@ -142,6 +144,18 @@ void Module::createGeometry()
  */
 void Module::createActions()
 {
+    m_selectUpstreamAct = new QAction("Select Upstream", this);
+    m_selectUpstreamAct->setStatusTip("Select all modules feeding data to this one");
+    connect(m_selectUpstreamAct, &QAction::triggered, [this]() { emit selectConnected(SelectUpstream, m_id); });
+
+    m_selectDownstreamAct = new QAction("Select Downstream", this);
+    m_selectDownstreamAct->setStatusTip("Select all modules this module feeds into");
+    connect(m_selectDownstreamAct, &QAction::triggered, [this]() { emit selectConnected(SelectDownstream, m_id); });
+
+    m_selectConnectedAct = new QAction("Select Connected", this);
+    m_selectConnectedAct->setStatusTip("Select all modules with a direct connection to this one");
+    connect(m_selectConnectedAct, &QAction::triggered, [this]() { emit selectConnected(SelectConnected, m_id); });
+
     m_deleteThisAct = new QAction("Delete", this);
     m_deleteThisAct->setShortcuts(QKeySequence::Delete);
     m_deleteThisAct->setStatusTip("Delete the module and all of its connections");
@@ -182,13 +196,18 @@ void Module::createMenus()
     m_moduleMenu->addAction(m_execAct);
     m_moduleMenu->addAction(m_cancelExecAct);
     m_moduleMenu->addSeparator();
+    m_moduleMenu->addAction(m_selectUpstreamAct);
+    m_moduleMenu->addAction(m_selectConnectedAct);
+    m_moduleMenu->addAction(m_selectDownstreamAct);
+    m_moduleMenu->addSeparator();
+    m_moduleMenu->addAction(m_createModuleGroup);
     m_moduleMenu->addAction(m_attachDebugger);
     m_moduleMenu->addAction(m_restartAct);
     m_moveToMenu = m_moduleMenu->addMenu("Move to...");
     m_replaceWithMenu = m_moduleMenu->addMenu("Replace with...");
+    m_moduleMenu->addSeparator();
     m_moduleMenu->addAction(m_deleteThisAct);
     m_moduleMenu->addAction(m_deleteSelAct);
-    m_moduleMenu->addAction(m_createModuleGroup);
 }
 
 void Module::doLayout()

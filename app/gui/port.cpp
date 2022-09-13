@@ -11,6 +11,8 @@
 #include <cassert>
 
 #include <QCursor>
+#include <QAction>
+#include <QMenu>
 #include <QRadialGradient>
 #include <QPainter>
 #include <QGraphicsSceneMouseEvent>
@@ -46,7 +48,53 @@ Port::Port(const vistle::Port *port, Module *parent)
     }
 
     createGeometry();
+    createMenus();
     createTooltip();
+}
+
+void Port::createMenus()
+{
+    connect(this, &Port::selectConnected, m_module, &Module::selectConnected);
+
+    m_portMenu = new QMenu();
+
+    if (m_portType == Input) {
+        m_selectUpstreamAct = new QAction("Select Upstream", this);
+        m_selectUpstreamAct->setStatusTip("Select all modules feeding data to this port");
+        connect(m_selectUpstreamAct, &QAction::triggered,
+                [this]() { emit selectConnected(SelectUpstream, m_moduleId, m_name); });
+        m_portMenu->addAction(m_selectUpstreamAct);
+    }
+
+    m_selectConnectedAct = new QAction("Select Connected", this);
+    m_selectConnectedAct->setStatusTip("Select all modules connected to this port");
+    connect(m_selectConnectedAct, &QAction::triggered,
+            [this]() { emit selectConnected(SelectConnected, m_moduleId, m_name); });
+    m_portMenu->addAction(m_selectConnectedAct);
+
+    if (m_portType == Output) {
+        m_selectDownstreamAct = new QAction("Select Downstream", this);
+        m_selectDownstreamAct->setStatusTip("Select all modules this port feeds into");
+        connect(m_selectDownstreamAct, &QAction::triggered,
+                [this]() { emit selectConnected(SelectDownstream, m_moduleId, m_name); });
+        m_portMenu->addAction(m_selectDownstreamAct);
+    }
+
+    m_portMenu->addSeparator();
+
+    m_disconnectAct = new QAction("Remove Connections", this);
+    m_disconnectAct->setStatusTip("Remove connections to all other modules");
+    connect(m_disconnectAct, &QAction::triggered, [this]() {
+        auto *sc = dynamic_cast<DataFlowNetwork *>(scene());
+        assert(sc);
+        sc->removeConnections(this, true);
+    });
+    m_portMenu->addAction(m_disconnectAct);
+}
+
+void Port::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
+{
+    m_portMenu->popup(event->screenPos());
 }
 
 QString Port::name() const

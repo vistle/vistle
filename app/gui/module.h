@@ -79,6 +79,7 @@ public:
     static QColor hubColor(int hub);
 signals:
     void createModuleCompound();
+    void selectConnected(int direction, int id, QString port = QString());
 
 protected:
     void mousePressEvent(QGraphicsSceneMouseEvent *event);
@@ -103,6 +104,7 @@ private:
     void doLayout();
 
     QMenu *m_moduleMenu = nullptr;
+    QAction *m_selectUpstreamAct = nullptr, *m_selectDownstreamAct = nullptr, *m_selectConnectedAct = nullptr;
     QAction *m_deleteThisAct = nullptr, *m_deleteSelAct = nullptr;
     QAction *m_attachDebugger = nullptr;
     QAction *m_execAct = nullptr;

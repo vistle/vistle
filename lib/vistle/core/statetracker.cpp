@@ -1811,7 +1811,7 @@ int StateTracker::graphChangeCount() const
     return m_graphChangeCount;
 }
 
-std::set<int> StateTracker::getUpstreamModules(int id, const std::string &port) const
+std::set<int> StateTracker::getUpstreamModules(int id, const std::string &port, bool recurse) const
 {
     std::set<int> result;
 
@@ -1836,6 +1836,8 @@ std::set<int> StateTracker::getUpstreamModules(int id, const std::string &port) 
             auto id = out->getModuleID();
             if (!result.insert(id).second)
                 continue;
+            if (!recurse)
+                continue;
             auto cur = portTracker()->getInputPorts(id);
             std::copy(cur.begin(), cur.end(), std::back_inserter(inputsToCheck));
         }
@@ -1844,7 +1846,8 @@ std::set<int> StateTracker::getUpstreamModules(int id, const std::string &port) 
     return result;
 }
 
-std::set<int> StateTracker::getDownstreamModules(int id, const std::string &port, bool ignoreNoCompute) const
+std::set<int> StateTracker::getDownstreamModules(int id, const std::string &port, bool recurse,
+                                                 bool ignoreNoCompute) const
 {
     std::set<int> result;
 
@@ -1871,6 +1874,8 @@ std::set<int> StateTracker::getDownstreamModules(int id, const std::string &port
             auto id = in->getModuleID();
             if (!result.insert(id).second)
                 continue;
+            if (!recurse)
+                continue;
             auto cur = portTracker()->getOutputPorts(id);
             std::copy(cur.begin(), cur.end(), std::back_inserter(outputsToCheck));
         }
@@ -1883,7 +1888,7 @@ std::set<int> StateTracker::getDownstreamModules(const message::Execute &execute
 {
     int execId = execute.getModule();
     if (message::Id::isModule(execId)) {
-        return getDownstreamModules(execId, "", true);
+        return getDownstreamModules(execId, "", true, true);
     }
 
     std::set<int> executing;
@@ -1897,6 +1902,34 @@ std::set<int> StateTracker::getDownstreamModules(const message::Execute &execute
         executing.insert(id);
     }
     return executing;
+}
+
+std::set<int> StateTracker::getConnectedModules(StateTracker::ConnectionKind kind, int id,
+                                                const std::string &port) const
+{
+    std::set<int> modules;
+    switch (kind) {
+    case Neighbor: {
+        modules = getUpstreamModules(id, port, false);
+        auto add = getDownstreamModules(id, port, false);
+        for (auto m: add)
+            modules.insert(m);
+        break;
+    }
+    case Upstream:
+        modules = getUpstreamModules(id, port);
+        break;
+    case Downstream:
+        modules = getDownstreamModules(id, port);
+        break;
+    case Previous:
+        modules = getUpstreamModules(id, port, false);
+        break;
+    case Next:
+        modules = getDownstreamModules(id, port, false);
+        break;
+    }
+    return modules;
 }
 
 bool StateTracker::hasCombinePort(int id) const

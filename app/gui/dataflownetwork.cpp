@@ -118,6 +118,7 @@ void DataFlowNetwork::addModule(int hub, QString modName, QPointF dropPos)
     module->setPositionValid();
     module->setStatus(Module::SPAWNING);
     connect(module, &Module::createModuleCompound, this, &DataFlowNetwork::createModuleCompound);
+    connect(module, &Module::selectConnected, this, &DataFlowNetwork::selectConnected);
     vistle::message::Spawn spawnMsg(hub, modName.toUtf8().constData());
     spawnMsg.setDestId(vistle::message::Id::MasterHub); // to master, for module id generation
     module->setSpawnUuid(spawnMsg.uuid());
@@ -144,6 +145,7 @@ void DataFlowNetwork::addModule(int moduleId, const boost::uuids::uuid &spawnUui
     if (!mod) {
         mod = new Module(nullptr, name);
         connect(mod, &Module::createModuleCompound, this, &DataFlowNetwork::createModuleCompound);
+        connect(mod, &Module::selectConnected, this, &DataFlowNetwork::selectConnected);
         addItem(mod);
         mod->setStatus(Module::SPAWNING);
         m_moduleList.append(mod);
@@ -358,6 +360,28 @@ void DataFlowNetwork::removeConnection(Port *portFrom, Port *portTo, bool sendTo
     }
 }
 
+void DataFlowNetwork::removeConnections(Port *port, bool sendToController)
+{
+    if (!port)
+        return;
+
+    for (auto it = m_connections.begin(); it != m_connections.end(); ++it) {
+        Connection *c = it->second;
+        if (c->source() != port && c->destination() != port)
+            continue;
+
+        if (sendToController) {
+            c->setState(Connection::ToRemove);
+            const vistle::Port *vFrom = c->source()->vistlePort();
+            const vistle::Port *vTo = c->destination()->vistlePort();
+            m_vistleConnection->disconnect(vFrom, vTo);
+        } else {
+            m_connections.erase(it);
+            removeItem(c);
+        }
+    }
+}
+
 Module *DataFlowNetwork::findModule(int id) const
 {
     for (Module *mod: m_moduleList) {
@@ -535,6 +559,38 @@ void DataFlowNetwork::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
     // update the line drawing
     QLineF newLine(m_Line->line().p1(), event->scenePos());
     m_Line->setLine(newLine);
+}
+
+void DataFlowNetwork::selectConnected(int direction, int id, QString port)
+{
+    std::set<int> modules;
+    switch (direction) {
+    case SelectConnected:
+        modules = m_state.getConnectedModules(vistle::StateTracker::Neighbor, id, port.toStdString());
+        break;
+    case SelectUp:
+        modules = m_state.getConnectedModules(vistle::StateTracker::Previous, id, port.toStdString());
+        break;
+    case SelectUpstream:
+        modules = m_state.getConnectedModules(vistle::StateTracker::Upstream, id, port.toStdString());
+        break;
+    case SelectDown:
+        modules = m_state.getConnectedModules(vistle::StateTracker::Next, id, port.toStdString());
+        break;
+    case SelectDownstream:
+        modules = m_state.getConnectedModules(vistle::StateTracker::Downstream, id, port.toStdString());
+        break;
+    }
+    selectModules(modules);
+}
+
+void DataFlowNetwork::selectModules(const std::set<int> &moduleIds)
+{
+    for (auto &m: m_moduleList) {
+        if (std::find(moduleIds.begin(), moduleIds.end(), m->id()) != moduleIds.end()) {
+            m->setSelected(true);
+        }
+    }
 }
 
 void DataFlowNetwork::createModuleCompound()

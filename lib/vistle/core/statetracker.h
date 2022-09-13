@@ -177,6 +177,16 @@ public:
 
     void printModules(bool withConnections = false) const;
 
+    enum ConnectionKind {
+        Neighbor,
+        Upstream,
+        Downstream,
+        Previous,
+        Next,
+    };
+
+    std::set<int> getConnectedModules(ConnectionKind kind, int id, const std::string &port = std::string()) const;
+
 protected:
     std::shared_ptr<message::Buffer> removeRequest(const message::uuid_t &uuid);
     bool registerReply(const message::uuid_t &uuid, const message::Message &msg);
@@ -224,8 +234,8 @@ protected:
     typedef std::set<int> ModuleSet;
     ModuleSet busySet;
     int m_graphChangeCount = 0;
-    std::set<int> getUpstreamModules(int id, const std::string &port = std::string()) const;
-    std::set<int> getDownstreamModules(int id, const std::string &port = std::string(),
+    std::set<int> getUpstreamModules(int id, const std::string &port = std::string(), bool recurse = true) const;
+    std::set<int> getDownstreamModules(int id, const std::string &port = std::string(), bool recurse = true,
                                        bool ignoreNoCompute = false) const;
     std::set<int> getDownstreamModules(const message::Execute &exec) const;
     bool hasCombinePort(int id) const;
