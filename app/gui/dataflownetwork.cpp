@@ -420,7 +420,8 @@ QRect DataFlowNetwork::calculateBoundingBox() const
 void DataFlowNetwork::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
     if (event->button() != Qt::LeftButton) {
-        QGraphicsScene::mousePressEvent(event);
+        //QGraphicsScene::mousePressEvent(event);
+        event->accept(); // accepting instead of forwarding the event retains current selection when right-clicking
         return;
     }
 
