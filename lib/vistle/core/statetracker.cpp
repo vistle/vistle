@@ -1158,16 +1158,18 @@ bool StateTracker::handlePriv(const message::AddParameter &addParam)
 
     mutex_locker guard(m_stateMutex);
     for (StateObserver *o: m_observers) {
+        const Port *p = nullptr;
+        if (portTracker()) {
+            p = portTracker()->addPort(addParam.senderId(), addParam.getName(), addParam.description(),
+                                       Port::PARAMETER);
+        }
+
         o->incModificationCount();
         o->newParameter(addParam.senderId(), addParam.getName());
-    }
-
-    if (portTracker()) {
-        const Port *p =
-            portTracker()->addPort(addParam.senderId(), addParam.getName(), addParam.description(), Port::PARAMETER);
-
-        for (StateObserver *o: m_observers) {
-            o->newPort(p->getModuleID(), p->getName());
+        if (p) {
+            for (StateObserver *o: m_observers) {
+                o->newPort(p->getModuleID(), p->getName());
+            }
         }
     }
 
@@ -1182,19 +1184,16 @@ bool StateTracker::handlePriv(const message::RemoveParameter &removeParam)
 #endif
 
     mutex_locker guard(m_stateMutex);
-    if (portTracker()) {
-        for (StateObserver *o: m_observers) {
-            o->deletePort(removeParam.senderId(), removeParam.getName());
-        }
-
-        portTracker()->removePort(Port(removeParam.senderId(), removeParam.getName(), Port::PARAMETER));
-    }
-
     for (StateObserver *o: m_observers) {
+        o->deletePort(removeParam.senderId(), removeParam.getName());
         o->incModificationCount();
         o->deleteParameter(removeParam.senderId(), removeParam.getName());
     }
     guard.unlock();
+
+    if (portTracker()) {
+        portTracker()->removePort(Port(removeParam.senderId(), removeParam.getName(), Port::PARAMETER));
+    }
 
     auto mit = runningMap.find(removeParam.senderId());
     if (mit == runningMap.end())
