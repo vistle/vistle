@@ -156,6 +156,20 @@ QPointF Port::scenePos() const
     return mapToScene(mapFromItem(m_module, m_module->portPos(this)));
 }
 
+void Port::hoverEnterEvent(QGraphicsSceneHoverEvent *event)
+{
+    auto *sc = dynamic_cast<DataFlowNetwork *>(scene());
+    assert(sc);
+    sc->setConnectionHighlights(this, true);
+}
+
+void Port::hoverLeaveEvent(QGraphicsSceneHoverEvent *event)
+{
+    auto *sc = dynamic_cast<DataFlowNetwork *>(scene());
+    assert(sc);
+    sc->setConnectionHighlights(this, false);
+}
+
 void Port::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
     Base::mousePressEvent(event);

@@ -360,6 +360,20 @@ void DataFlowNetwork::removeConnection(Port *portFrom, Port *portTo, bool sendTo
     }
 }
 
+void DataFlowNetwork::setConnectionHighlights(Port *port, bool highlight)
+{
+    if (!port)
+        return;
+
+    for (auto it = m_connections.begin(); it != m_connections.end(); ++it) {
+        Connection *c = it->second;
+        if (c->source() != port && c->destination() != port)
+            continue;
+
+        c->setHighlight(highlight);
+    }
+}
+
 void DataFlowNetwork::removeConnections(Port *port, bool sendToController)
 {
     if (!port)

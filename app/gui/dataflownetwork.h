@@ -46,6 +46,7 @@ public:
     void addConnection(Port *portFrom, Port *portTo, bool sendToController = false);
     void removeConnection(Port *portFrom, Port *portTo, bool sendToController = false);
     void removeConnections(Port *port, bool sendToController = false);
+    void setConnectionHighlights(Port *port, bool highlight);
 
     Module *findModule(int id) const;
     bool moveModule(int moduleId, float x, float y);
