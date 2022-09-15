@@ -52,8 +52,6 @@ MainWindow::MainWindow(QWidget *parent)
 
     m_moduleBrowser = ui->moduleBrowser;
 
-    ui->drawArea->setAttribute(Qt::WA_AlwaysShowToolTips);
-    ui->drawArea->setDragMode(QGraphicsView::RubberBandDrag);
     ui->drawArea->show();
 
     connect(ui->actionQuit, SIGNAL(triggered()), SLOT(close()));

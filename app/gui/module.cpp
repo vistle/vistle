@@ -54,7 +54,7 @@ Module::Module(QGraphicsItem *parent, QString name)
 
     setFlag(QGraphicsItem::ItemIsMovable);
     setFlag(QGraphicsItem::ItemIsSelectable);
-    setFlag(QGraphicsItem::ItemIsFocusable);
+    //setFlag(QGraphicsItem::ItemIsFocusable);
     setFlag(QGraphicsItem::ItemSendsGeometryChanges);
     setCursor(Qt::OpenHandCursor);
 
@@ -76,6 +76,14 @@ Module::~Module()
     delete m_selectUpstreamAct;
     delete m_selectDownstreamAct;
     delete m_createModuleGroup;
+}
+
+QVariant Module::itemChange(GraphicsItemChange change, const QVariant &value)
+{
+    if (change == ItemPositionChange) {
+        ensureVisible();
+    }
+    return QGraphicsItem::itemChange(change, value);
 }
 
 void Module::execModule()
@@ -593,6 +601,8 @@ QColor Module::hubColor(int hub)
 void Module::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
     Base::mousePressEvent(event);
+    scene()->setSceneRect(QRectF());
+    setCursor(Qt::ClosedHandCursor);
 }
 
 void Module::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
@@ -604,6 +614,8 @@ void Module::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
             sendPosition();
     }
     Base::mouseReleaseEvent(event);
+    scene()->setSceneRect(scene()->itemsBoundingRect());
+    setCursor(Qt::OpenHandCursor);
 }
 
 void Module::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event)

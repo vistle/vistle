@@ -86,9 +86,6 @@
       <property name="lineWidth">
        <number>0</number>
       </property>
-      <property name="dragMode">
-       <enum>QGraphicsView::ScrollHandDrag</enum>
-      </property>
      </widget>
     </item>
    </layout>

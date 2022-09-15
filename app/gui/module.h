@@ -88,6 +88,8 @@ protected:
     void contextMenuEvent(QGraphicsSceneContextMenuEvent *event);
     void updatePosition(QPointF newPos) const;
 
+    QVariant itemChange(GraphicsItemChange change, const QVariant &value);
+
 public slots:
     void restartModule();
     void moveToHub(int hub);

@@ -39,12 +39,20 @@ public slots:
     void selectSinkModules();
 
 protected:
+    void wheelEvent(QWheelEvent *event);
+    void mousePressEvent(QMouseEvent *event);
+    void mouseMoveEvent(QMouseEvent *event);
+    void mouseReleaseEvent(QMouseEvent *event);
     void dragEnterEvent(QDragEnterEvent *e);
     void dragMoveEvent(QDragMoveEvent *event);
     void dropEvent(QDropEvent *event);
 
     void createActions();
     void createMenu();
+
+    bool m_isPanning = false;
+    QPoint m_panPos;
+    QCursor m_savedCursor;
 
     QMenu *m_contextMenu = nullptr;
     QAction *m_deleteAct = nullptr;

@@ -21,6 +21,11 @@ DataFlowView::DataFlowView(QWidget *parent): QGraphicsView(parent)
     createActions();
     createMenu();
 
+    setAttribute(Qt::WA_AlwaysShowToolTips);
+    setDragMode(QGraphicsView::RubberBandDrag);
+    setMouseTracking(true);
+    setTransformationAnchor(QGraphicsView::NoAnchor);
+
     if (scene())
         connect(scene(), SIGNAL(selectionChanged()), this, SLOT(enableActions()));
 }
@@ -90,6 +95,70 @@ void DataFlowView::dropEvent(QDropEvent *event)
             stream >> moduleName;
             scene()->addModule(hubId, moduleName, newPos);
         }
+    }
+}
+
+void DataFlowView::wheelEvent(QWheelEvent *event)
+{
+    if (event->modifiers() & Qt::ControlModifier) {
+        const ViewportAnchor ranchor = resizeAnchor();
+        const ViewportAnchor tanchor = transformationAnchor();
+        setResizeAnchor(QGraphicsView::AnchorUnderMouse);
+        setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
+        int angle = event->angleDelta().y();
+        qreal factor;
+        if (angle > 0) {
+            factor = 1.0003;
+        } else {
+            factor = 1.0 / 1.0003;
+        }
+        qreal f = 1.0;
+        for (int i = 0; i < abs(angle); ++i)
+            f *= factor;
+        scale(f, f);
+        setResizeAnchor(ranchor);
+        setTransformationAnchor(tanchor);
+    } else {
+        QGraphicsView::wheelEvent(event);
+    }
+}
+
+void DataFlowView::mousePressEvent(QMouseEvent *event)
+{
+    if (event->button() == Qt::MiddleButton) {
+        m_isPanning = true;
+        m_panPos = event->pos();
+        m_savedCursor = viewport()->cursor();
+        viewport()->setCursor(Qt::ClosedHandCursor);
+        event->accept();
+    } else {
+        QGraphicsView::mousePressEvent(event);
+    }
+}
+
+void DataFlowView::mouseMoveEvent(QMouseEvent *event)
+{
+    if (m_isPanning) {
+        event->accept();
+        QPointF oldp = mapToScene(m_panPos);
+        QPointF newp = mapToScene(event->pos());
+        m_panPos = event->pos();
+        QPointF translation = newp - oldp;
+
+        translate(translation.x(), translation.y());
+    } else {
+        QGraphicsView::mouseMoveEvent(event);
+    }
+}
+
+void DataFlowView::mouseReleaseEvent(QMouseEvent *event)
+{
+    if (m_isPanning) {
+        m_isPanning = false;
+        viewport()->setCursor(m_savedCursor);
+        event->accept();
+    } else {
+        QGraphicsView::mouseReleaseEvent(event);
     }
 }
 
