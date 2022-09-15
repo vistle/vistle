@@ -71,6 +71,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->actionCopy_Session_URL, SIGNAL(triggered()), SIGNAL(copySessionUrl()));
     ui->actionSelect_All->setShortcut(QKeySequence::StandardKey::SelectAll);
     connect(ui->actionSelect_All, SIGNAL(triggered()), SIGNAL(selectAllModules()));
+    connect(ui->actionSelectInvert, SIGNAL(triggered()), SIGNAL(selectInvert()));
     QList<QKeySequence> deleteKeys;
     deleteKeys.push_back(QKeySequence::StandardKey::Delete);
 #ifdef Q_OS_MAC
@@ -78,6 +79,11 @@ MainWindow::MainWindow(QWidget *parent)
 #endif
     ui->actionDelete->setShortcuts(deleteKeys);
     connect(ui->actionDelete, SIGNAL(triggered()), SIGNAL(deleteSelectedModules()));
+    connect(ui->actionSelectClear, SIGNAL(triggered()), SIGNAL(selectClear()));
+    connect(ui->actionViewAll, SIGNAL(triggered()), SIGNAL(zoomAll()));
+    connect(ui->actionViewOrig, SIGNAL(triggered()), SIGNAL(zoomOrig()));
+    connect(ui->actionSelectSinks, SIGNAL(triggered()), SIGNAL(selectSinkModules()));
+    connect(ui->actionSelectSources, SIGNAL(triggered()), SIGNAL(selectSourceModules()));
 
     connect(ui->actionNative_Menubar, &QAction::toggled, [this](bool native) {
         if (menuBar())

@@ -181,6 +181,10 @@ void DataFlowView::createActions()
     m_selectSinksAct = new QAction("Select Sinks", this);
     m_selectSinksAct->setStatusTip("Select all sink modules");
     connect(m_selectSinksAct, SIGNAL(triggered()), this, SLOT(selectSinkModules()));
+
+    m_selectInvertAct = new QAction("Invert Selection", this);
+    m_selectInvertAct->setStatusTip("Toggle selection state of modules");
+    connect(m_selectInvertAct, SIGNAL(triggered()), this, SLOT(selectInvert()));
 }
 
 void DataFlowView::enableActions()
@@ -199,6 +203,7 @@ void DataFlowView::createMenu()
     m_contextMenu->addSeparator();
     m_contextMenu->addAction(m_selectSourcesAct);
     m_contextMenu->addAction(m_selectSinksAct);
+    m_contextMenu->addAction(m_selectInvertAct);
     m_contextMenu->addSeparator();
     m_contextMenu->addAction(m_deleteAct);
 }
@@ -311,6 +316,40 @@ void DataFlowView::selectSinkModules()
                 module->setSelected(true);
         }
     }
+}
+
+void DataFlowView::selectClear()
+{
+    if (!scene())
+        return;
+
+    for (auto &item: scene()->items()) {
+        if (auto module = dynamic_cast<Module *>(item)) {
+            module->setSelected(false);
+        }
+    }
+}
+
+void DataFlowView::selectInvert()
+{
+    if (!scene())
+        return;
+
+    for (auto &item: scene()->items()) {
+        if (auto module = dynamic_cast<Module *>(item)) {
+            module->setSelected(!module->isSelected());
+        }
+    }
+}
+
+void DataFlowView::zoomOrig()
+{
+    setTransform(QTransform());
+}
+
+void DataFlowView::zoomAll()
+{
+    fitInView(scene()->itemsBoundingRect(), Qt::KeepAspectRatio);
 }
 
 bool DataFlowView::snapshot(const QString &filename)

@@ -93,7 +93,13 @@ UiController::UiController(int argc, char *argv[], QObject *parent): QObject(par
     connect(m_mainWindow, SIGNAL(showSessionUrl()), SLOT(showConnectionInfo()));
     connect(m_mainWindow, SIGNAL(copySessionUrl()), SLOT(copyConnectionInfo()));
     connect(m_mainWindow, SIGNAL(selectAllModules()), m_mainWindow->dataFlowView(), SLOT(selectAllModules()));
+    connect(m_mainWindow, SIGNAL(selectInvert()), m_mainWindow->dataFlowView(), SLOT(selectInvert()));
+    connect(m_mainWindow, SIGNAL(selectClear()), m_mainWindow->dataFlowView(), SLOT(selectClear()));
+    connect(m_mainWindow, SIGNAL(selectSourceModules()), m_mainWindow->dataFlowView(), SLOT(selectSourceModules()));
+    connect(m_mainWindow, SIGNAL(selectSinkModules()), m_mainWindow->dataFlowView(), SLOT(selectSinkModules()));
     connect(m_mainWindow, SIGNAL(deleteSelectedModules()), m_mainWindow->dataFlowView(), SLOT(deleteModules()));
+    connect(m_mainWindow, SIGNAL(zoomOrig()), m_mainWindow->dataFlowView(), SLOT(zoomOrig()));
+    connect(m_mainWindow, SIGNAL(zoomAll()), m_mainWindow->dataFlowView(), SLOT(zoomAll()));
     connect(m_mainWindow, SIGNAL(aboutQt()), SLOT(aboutQt()));
     connect(m_mainWindow, SIGNAL(aboutVistle()), SLOT(aboutVistle()));
     connect(m_mainWindow, SIGNAL(aboutLicense()), SLOT(aboutLicense()));

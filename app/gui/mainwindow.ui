@@ -108,13 +108,11 @@
     <addaction name="actionSave"/>
     <addaction name="actionSave_As"/>
     <addaction name="separator"/>
-    <addaction name="separator"/>
     <addaction name="actionShow_Session_URL"/>
     <addaction name="actionCopy_Session_URL"/>
     <addaction name="separator"/>
     <addaction name="actionConnect"/>
     <addaction name="actionQuit"/>
-    <addaction name="separator"/>
     <addaction name="separator"/>
    </widget>
    <widget class="QMenu" name="menuEdit">
@@ -122,6 +120,8 @@
      <string>Edit</string>
     </property>
     <addaction name="separator"/>
+    <addaction name="actionSelectClear"/>
+    <addaction name="actionSelectInvert"/>
     <addaction name="actionSelect_All"/>
     <addaction name="separator"/>
     <addaction name="actionDelete"/>
@@ -139,6 +139,12 @@
     <property name="title">
      <string>Modules</string>
     </property>
+    <addaction name="actionViewOrig"/>
+    <addaction name="actionViewAll"/>
+    <addaction name="separator"/>
+    <addaction name="actionSelectSources"/>
+    <addaction name="actionSelectSinks"/>
+    <addaction name="separator"/>
     <addaction name="actionExecute"/>
    </widget>
    <addaction name="menuHello_World"/>
@@ -231,6 +237,9 @@
    <property name="movable">
     <bool>false</bool>
    </property>
+   <property name="toolButtonStyle">
+    <enum>Qt::ToolButtonTextBesideIcon</enum>
+   </property>
    <property name="floatable">
     <bool>false</bool>
    </property>
@@ -240,12 +249,17 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
+   <addaction name="actionOpen"/>
    <addaction name="actionSave"/>
+   <addaction name="separator"/>
+   <addaction name="actionSelectInvert"/>
    <addaction name="actionSelect_All"/>
    <addaction name="actionDelete"/>
    <addaction name="separator"/>
-   <addaction name="actionExecute"/>
+   <addaction name="actionViewOrig"/>
+   <addaction name="actionViewAll"/>
    <addaction name="separator"/>
+   <addaction name="actionExecute"/>
   </widget>
   <widget class="QDockWidget" name="modulesDock">
    <property name="sizePolicy">
@@ -284,6 +298,10 @@
    </property>
   </action>
   <action name="actionOpen">
+   <property name="icon">
+    <iconset resource="gui.qrc">
+     <normaloff>:/icons/open.svg</normaloff>:/icons/open.svg</iconset>
+   </property>
    <property name="text">
     <string>&amp;Open...</string>
    </property>
@@ -292,6 +310,10 @@
    </property>
   </action>
   <action name="actionSave">
+   <property name="icon">
+    <iconset theme="document-save" resource="gui.qrc">
+     <normaloff>:/icons/save.svg</normaloff>:/icons/save.svg</iconset>
+   </property>
    <property name="text">
     <string>&amp;Save</string>
    </property>
@@ -323,6 +345,10 @@
    </property>
   </action>
   <action name="actionSelect_All">
+   <property name="icon">
+    <iconset theme="edit-select-all" resource="gui.qrc">
+     <normaloff>:/icons/select.svg</normaloff>:/icons/select.svg</iconset>
+   </property>
    <property name="text">
     <string>&amp;Select All</string>
    </property>
@@ -331,6 +357,10 @@
    </property>
   </action>
   <action name="actionDelete">
+   <property name="icon">
+    <iconset theme="edit-delete" resource="gui.qrc">
+     <normaloff>:/icons/delete.svg</normaloff>:/icons/delete.svg</iconset>
+   </property>
    <property name="text">
     <string>&amp;Delete</string>
    </property>
@@ -373,6 +403,10 @@
    </property>
   </action>
   <action name="actionExecute">
+   <property name="icon">
+    <iconset resource="gui.qrc">
+     <normaloff>:/icons/execute.svg</normaloff>:/icons/execute.svg</iconset>
+   </property>
    <property name="text">
     <string>&amp;Execute Workflow</string>
    </property>
@@ -427,6 +461,66 @@
     <string>Copy Session URL</string>
    </property>
   </action>
+  <action name="actionViewAll">
+   <property name="icon">
+    <iconset resource="gui.qrc">
+     <normaloff>:/icons/viewall.svg</normaloff>:/icons/viewall.svg</iconset>
+   </property>
+   <property name="text">
+    <string>View All</string>
+   </property>
+   <property name="toolTip">
+    <string>Zoom to whole workflow graph</string>
+   </property>
+  </action>
+  <action name="actionViewOrig">
+   <property name="icon">
+    <iconset resource="gui.qrc">
+     <normaloff>:/icons/vieworig.svg</normaloff>:/icons/vieworig.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Original Size</string>
+   </property>
+   <property name="toolTip">
+    <string>Zoom workflow graph to original size</string>
+   </property>
+  </action>
+  <action name="actionSelectInvert">
+   <property name="icon">
+    <iconset resource="gui.qrc">
+     <normaloff>:/icons/invert.svg</normaloff>:/icons/invert.svg</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Invert Selection</string>
+   </property>
+   <property name="toolTip">
+    <string>Invert selection</string>
+   </property>
+  </action>
+  <action name="actionSelectSources">
+   <property name="text">
+    <string>&amp;Select Sources</string>
+   </property>
+   <property name="toolTip">
+    <string>Select source modules</string>
+   </property>
+  </action>
+  <action name="actionSelectSinks">
+   <property name="text">
+    <string>&amp;Select Sinks</string>
+   </property>
+   <property name="toolTip">
+    <string>Select sink modules</string>
+   </property>
+  </action>
+  <action name="actionSelectClear">
+   <property name="text">
+    <string>&amp;Clear Selection</string>
+   </property>
+   <property name="toolTip">
+    <string>Deselect selected modules</string>
+   </property>
+  </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <customwidgets>
@@ -448,6 +542,8 @@
    <container>1</container>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources>
+  <include location="gui.qrc"/>
+ </resources>
  <connections/>
 </ui>

@@ -35,8 +35,13 @@ public slots:
     void cancelExecModules();
     void deleteModules();
     void selectAllModules();
+    void selectInvert();
+    void selectClear();
     void selectSourceModules();
     void selectSinkModules();
+
+    void zoomOrig();
+    void zoomAll();
 
 protected:
     void wheelEvent(QWheelEvent *event);
@@ -59,6 +64,7 @@ protected:
     QAction *m_execAct = nullptr;
     QAction *m_selectSourcesAct = nullptr;
     QAction *m_selectSinksAct = nullptr;
+    QAction *m_selectInvertAct = nullptr;
 
 private:
     static DataFlowView *s_instance;

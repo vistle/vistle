@@ -57,7 +57,13 @@ signals:
     void showSessionUrl();
     void copySessionUrl();
     void selectAllModules();
+    void selectInvert();
+    void selectClear();
+    void selectSourceModules();
+    void selectSinkModules();
     void deleteSelectedModules();
+    void zoomOrig();
+    void zoomAll();
     void aboutQt();
     void aboutVistle();
     void aboutLicense();
