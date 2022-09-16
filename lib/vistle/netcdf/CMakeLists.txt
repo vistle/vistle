@@ -1,0 +1,15 @@
+vistle_find_package(NETCDF)
+if(NOT NETCDF_FOUND)
+    return()
+endif()
+
+set(netcdf_SOURCES ncwrap.cpp)
+set(netcdf_HEADERS ncwrap.h)
+
+vistle_add_library(vistle_netcdf INTERNAL STATIC ${netcdf_SOURCES} ${netcdf_HEADERS})
+target_compile_definitions(vistle_netcdf PRIVATE USE_NETCDF)
+if(NETCDF_PARALLEL)
+    target_compile_definitions(vistle_netcdf PRIVATE NETCDF_PARALLEL)
+endif()
+vistle_target_link_libraries(vistle_netcdf ${NETCDF_LIBRARIES})
+target_include_directories(vistle_netcdf SYSTEM PRIVATE ${NETCDF_INCLUDE_DIRS})
