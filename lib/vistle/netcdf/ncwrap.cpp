@@ -109,20 +109,19 @@ NCFUNCS(float, nc_get_var_float, nc_get_vara_float)
 NCFUNCS(double, nc_get_var_double, nc_get_vara_double)
 
 template<typename T>
-std::vector<T> getVariable(int ncid, std::string name, std::vector<size_t> start, std::vector<size_t> count)
+bool getVariable(int ncid, std::string name, T *data, std::vector<size_t> start, std::vector<size_t> count)
 {
-    std::vector<T> data;
     int varid = -1;
     int err = nc_inq_varid(ncid, name.c_str(), &varid);
     if (err != NC_NOERR) {
         std::cerr << "Nc: nc_inq_varid " << name << " error: " << nc_strerror(err) << std::endl;
-        return data;
+        return false;
     }
     int ndims = -1;
     err = nc_inq_varndims(ncid, varid, &ndims);
     if (err != NC_NOERR) {
         std::cerr << "Nc: nc_inq_varndims " << name << " error: " << nc_strerror(err) << std::endl;
-        return data;
+        return false;
     }
     assert(start.size() == size_t(ndims));
     assert(count.size() == size_t(ndims));
@@ -130,18 +129,18 @@ std::vector<T> getVariable(int ncid, std::string name, std::vector<size_t> start
     err = nc_inq_vardimid(ncid, varid, dimids.data());
     if (err != NC_NOERR) {
         std::cerr << "Nc: nc_inq_vardimd " << name << " error: " << nc_strerror(err) << std::endl;
-        return data;
+        return false;
     }
     std::vector<size_t> dims(ndims);
     for (int i = 0; i < ndims; ++i) {
         err = nc_inq_dimlen(ncid, dimids[i], &dims[i]);
         if (err != NC_NOERR) {
             std::cerr << "Nc: nc_inq_dimlen " << name << " error: " << nc_strerror(err) << std::endl;
-            return data;
+            return false;
         }
     }
     size_t size = std::accumulate(count.begin(), count.end(), 1, [](size_t a, size_t b) { return a * b; });
-    data.resize(size);
+
     size_t intmax = std::numeric_limits<int>::max();
     size_t nreads = std::max(size_t(1), (size * sizeof(T) + intmax - 1) / intmax);
     unsigned splitdim = 0;
@@ -157,7 +156,7 @@ std::vector<T> getVariable(int ncid, std::string name, std::vector<size_t> start
         c[splitdim] = std::min(splitcount, count[splitdim] - s[splitdim]);
         if (s[splitdim] >= start[splitdim] + count[splitdim])
             continue;
-        err = NcFuncMap<T>::get_vara(ncid, varid, s.data(), c.data(), data.data() + i * nvalues);
+        err = NcFuncMap<T>::get_vara(ncid, varid, s.data(), c.data(), data + i * nvalues);
         if (err != NC_NOERR) {
             std::cerr << "Nc: get_vara " << name << " error: " << nc_strerror(err) << std::endl;
             std::cerr << "i=" << i << ", start:";
@@ -167,11 +166,23 @@ std::vector<T> getVariable(int ncid, std::string name, std::vector<size_t> start
             for (auto v: c)
                 std::cerr << " " << v;
             std::cerr << std::endl;
-            data.clear();
-            return data;
+            return false;
         }
     }
 
+    return true;
+}
+
+template<typename T>
+std::vector<T> getVariable(int ncid, std::string name, std::vector<size_t> start, std::vector<size_t> count)
+{
+    std::vector<T> data;
+    size_t size = std::accumulate(count.begin(), count.end(), 1, [](size_t a, size_t b) { return a * b; });
+    data.resize(size);
+    if (!getVariable(ncid, name, data.data(), start, count)) {
+        data.clear();
+        data.shrink_to_fit();
+    }
     return data;
 }
 

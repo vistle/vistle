@@ -42,6 +42,8 @@ size_t getDimension(int ncid, std::string name);
 bool hasVariable(int ncid, std::string findName);
 
 template<typename T>
+bool getVariable(int ncid, std::string name, T *data, std::vector<size_t> start, std::vector<size_t> count);
+template<typename T>
 std::vector<T> getVariable(int ncid, std::string name, std::vector<size_t> start, std::vector<size_t> count);
 template<typename T>
 std::vector<T> getVariable(int ncid, std::string name);
