@@ -235,12 +235,12 @@ bool Extrema::compute()
                 for (int c = 0; c < 3; ++c) {
                     if (p[c] < min[c]) {
                         min[c] = p[c];
-                        minIndex[c] = InvalidIndex;
+                        minIndex[c] = i;
                         minBlock[c] = obj->getBlock();
                     }
                     if (p[c] > max[c]) {
                         max[c] = p[c];
-                        maxIndex[c] = InvalidIndex;
+                        maxIndex[c] = i;
                         maxBlock[c] = obj->getBlock();
                     }
                 }
@@ -251,12 +251,12 @@ bool Extrema::compute()
                 for (int c = 0; c < 3; ++c) {
                     if (p[c] < min[c]) {
                         min[c] = p[c];
-                        minIndex[c] = InvalidIndex;
+                        minIndex[c] = i;
                         minBlock[c] = obj->getBlock();
                     }
                     if (p[c] > max[c]) {
                         max[c] = p[c];
-                        maxIndex[c] = InvalidIndex;
+                        maxIndex[c] = i;
                         maxBlock[c] = obj->getBlock();
                     }
                 }
