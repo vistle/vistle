@@ -164,54 +164,44 @@ void LayerGrid::createCelltree(Index dims[3]) const
     if (hasCelltree())
         return;
 
-    const Scalar *z = &this->z()[0];
     const Scalar smax = std::numeric_limits<Scalar>::max();
     Vector3 vmin, vmax;
     vmin.fill(-smax);
     vmax.fill(smax);
 
     const Index nelem = getNumElements();
-    std::vector<Vector3> min(nelem, vmax);
-    std::vector<Vector3> max(nelem, vmin);
+    std::vector<Celltree::AABB> bounds(nelem);
 
+    const Scalar *z = &this->z()[0];
     Vector3 gmin = vmax, gmax = vmin;
     for (Index el = 0; el < nelem; ++el) {
+        Scalar min[3]{smax, smax, smax};
+        Scalar max[3]{-smax, -smax, -smax};
         const auto corners = cellVertices(el, dims);
-        for (int d = 0; d < 3; ++d) {
-            if (d == 2) {
-                for (const auto v: corners) {
-                    if (min[el][d] > z[v]) {
-                        min[el][d] = z[v];
-                        if (gmin[d] > min[el][d])
-                            gmin[d] = min[el][d];
-                    }
-                    if (max[el][d] < z[v]) {
-                        max[el][d] = z[v];
-                        if (gmax[d] < max[el][d])
-                            gmax[d] = max[el][d];
-                    }
-                }
-            } else {
-                for (const auto v: corners) {
-                    auto n = vertexCoordinates(v, m_numDivisions);
+        for (const auto v: corners) {
+            auto n = vertexCoordinates(v, m_numDivisions);
+            for (int d = 0; d < 3; ++d) {
+                if (d == 2) {
+                    min[d] = std::min(min[d], z[v]);
+                    max[d] = std::min(max[d], z[v]);
+                } else {
                     auto xx = m_min[d] + n[d] * m_dist[d];
-                    if (min[el][d] > xx) {
-                        min[el][d] = xx;
-                        if (gmin[d] > min[el][d])
-                            gmin[d] = min[el][d];
-                    }
-                    if (max[el][d] < xx) {
-                        max[el][d] = xx;
-                        if (gmax[d] < max[el][d])
-                            gmax[d] = max[el][d];
-                    }
+                    min[d] = std::min(min[d], xx);
+                    max[d] = std::min(max[d], xx);
                 }
             }
+        }
+        auto &b = bounds[el];
+        for (int d = 0; d < 3; ++d) {
+            gmin[d] = std::min(gmin[d], min[d]);
+            gmax[d] = std::max(gmax[d], max[d]);
+            b.mmin[d] = min[d];
+            b.mmax[d] = max[d];
         }
     }
 
     typename Celltree::ptr ct(new Celltree(nelem));
-    ct->init(min.data(), max.data(), gmin, gmax);
+    ct->init(bounds.data(), gmin, gmax);
     addAttachment("celltree", ct);
 #ifndef NDEBUG
     if (!validateCelltree()) {

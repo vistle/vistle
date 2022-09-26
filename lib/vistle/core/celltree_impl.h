@@ -3,15 +3,46 @@
 
 #include "shm_array_impl.h"
 #include "vector.h"
+#include <deque>
+
+#define CT_PARALLEL_BUILD
+//#define CT_DEBUG
+
+
+#ifdef CT_PARALLEL_BUILD
+#include <mutex>
+#include <thread>
+#endif
 
 namespace vistle {
 
-//#define CT_DEBUG
-//#define CT_DEBUG_VERBOSE
+namespace {
+const int NumBuckets = 7;
+const unsigned MaxLeafSize = 32;
+const float FavorEqualSplits = 2.f;
+} // namespace
 
-//const Scalar Epsilon = std::numeric_limits<Scalar>::epsilon();
+template<typename Scalar, typename Index, int NumDimensions>
+struct Celltree<Scalar, Index, NumDimensions>::NodeData {
+    NodeData(Index node, Index depth, Index start, Index size): node(node), depth(depth), start(start), size(size) {}
+    NodeData(const NodeData &parent, Index node, Index start, Index size)
+    : node(node), depth(parent.depth + 1), start(start), size(size)
+    {}
+    Index node = InvalidIndex;
+    Index depth = 0;
+    Index start = InvalidIndex;
+    Index size = 0;
+};
 
-const unsigned MaxLeafSize = 8;
+template<typename Scalar, typename Index, int NumDimensions>
+struct Celltree<Scalar, Index, NumDimensions>::GlobalData {
+#ifdef CT_PARALLEL_BUILD
+    std::mutex mutex;
+    std::atomic<unsigned> numRunning = 0;
+    std::atomic<unsigned> numWorking = 0;
+#endif
+    std::deque<NodeData> nodesToSplit;
+};
 
 template<typename Scalar, typename Index, int NumDimensions>
 Object::Type Celltree<Scalar, Index, NumDimensions>::type()
@@ -32,61 +63,116 @@ V_COREEXPORT void Celltree<Scalar, Index, NumDimensions>::print(std::ostream &os
 }
 
 template<typename Scalar, typename Index, int NumDimensions>
-void Celltree<Scalar, Index, NumDimensions>::init(const CTVector *min, const CTVector *max, const CTVector &gmin,
-                                                  const CTVector &gmax)
+void Celltree<Scalar, Index, NumDimensions>::init(const AABB *bounds, const CTVector &gmin, const CTVector &gmax)
 {
     assert(nodes().size() == 1);
     for (int i = 0; i < NumDimensions; ++i)
         this->min()[i] = gmin[i];
     for (int i = 0; i < NumDimensions; ++i)
         this->max()[i] = gmax[i];
-#ifdef CT_DEBUG
-    struct MinMaxBoundsFunctor: public Celltree::CellBoundsFunctor {
-        const CTVector *m_min, *m_max;
+    nodes().reserve(cells().size() / MaxLeafSize);
+    GlobalData data;
+    NodeData node(0, 0, nodes()[0].start, nodes()[0].size);
+    data.nodesToSplit.emplace_front(node);
 
-        MinMaxBoundsFunctor(const CTVector *min, const CTVector *max): m_min(min), m_max(max) {}
-
-        bool operator()(Index elem, CTVector *min, CTVector *max) const
-        {
-            auto vmin = m_min[elem], vmax = m_max[elem];
-            *min = vmin;
-            *max = vmax;
-
-            return true;
+    size_t nthreads = 1;
+#ifdef CT_PARALLEL_BUILD
+    std::deque<std::thread> threads;
+    std::unique_lock guard(data.mutex);
+    while (data.numWorking > 0 || !data.nodesToSplit.empty()) {
+        guard.unlock();
+        if (data.numRunning < (std::thread::hardware_concurrency() + 1) / 2) {
+            threads.push_back(std::thread([this, &bounds, &data]() mutable {
+                static const unsigned maxidlecount = 5;
+                unsigned idlecount = 0;
+                ++data.numRunning;
+                do {
+                    std::unique_lock guard(data.mutex);
+                    while (!data.nodesToSplit.empty()) {
+                        idlecount = 0;
+                        auto n = data.nodesToSplit.front();
+                        data.nodesToSplit.pop_front();
+                        ++data.numWorking;
+                        guard.unlock();
+                        refine(bounds, n, data);
+                        guard.lock();
+                        --data.numWorking;
+                    }
+                    guard.unlock();
+                    ++idlecount;
+                    if (data.numWorking == 0)
+                        continue;
+                    usleep(10000 * idlecount);
+                } while (idlecount < maxidlecount && data.numWorking > 0);
+                --data.numRunning;
+            }));
         }
-    };
-    MinMaxBoundsFunctor boundFunc(min, max);
-    this->validateTree(boundFunc);
+        usleep(10000);
+        guard.lock();
+    }
+    guard.unlock();
+    nthreads += threads.size();
+    while (!threads.empty()) {
+        threads.front().join();
+        threads.pop_front();
+    }
+#else
+    while (!data.nodesToSplit.empty()) {
+        auto n = data.nodesToSplit.front();
+        data.nodesToSplit.pop_front();
+        refine(bounds, n, data);
+    }
 #endif
-    refine(min, max, 0, gmin, gmax);
-#ifdef CT_DEBUG
-    std::cerr << "created celltree: " << nodes().size() << " nodes, " << cells().size() << " cells" << std::endl;
-    validateTree(boundFunc);
-#endif
+
+    std::cerr << "created celltree: " << nodes().size() << " nodes, " << cells().size() << " cells, used " << nthreads
+              << " threads" << std::endl;
 }
 
 template<typename Scalar, typename Index, int NumDimensions>
-void Celltree<Scalar, Index, NumDimensions>::refine(const CTVector *min, const CTVector *max, Index curNode,
-                                                    const CTVector &gmin, const CTVector &gmax)
+void Celltree<Scalar, Index, NumDimensions>::refine(const AABB *bounds, Celltree::NodeData &nodeData,
+                                                    Celltree::GlobalData &data)
 {
-    const Scalar smax = std::numeric_limits<Scalar>::max();
+    static const Scalar smax = std::numeric_limits<Scalar>::max();
 
-    const int NumBuckets = 5;
-
-    Node *node = &(nodes()[curNode]);
+    const Index nodeStart = nodeData.start;
+    const Index nodeSize = nodeData.size;
 
     // only split node if necessary
-    if (node->size <= MaxLeafSize)
+    if (nodeSize <= MaxLeafSize)
         return;
 
     // cell index array, contains runs of cells belonging to nodes
     Index *cells = d()->m_cells->data();
 
     // sort cells into buckets for each possible split dimension
+    auto center = [&bounds](int d, Index cell) {
+        const auto &c = bounds[cell];
+        return Scalar(0.5) * (c.min(d) + c.max(d));
+    };
+
+    // find min/max extents of cell centers
+    CTVector cmin, cmax;
+    cmin.fill(smax);
+    cmax.fill(-smax);
+    for (Index i = nodeStart; i < nodeStart + nodeSize; ++i) {
+        const Index cell = cells[i];
+        for (int d = 0; d < NumDimensions; ++d) {
+            const auto cent = center(d, cell);
+            cmin[d] = std::min(cmin[d], cent);
+            cmax[d] = std::max(cmax[d], cent);
+        }
+    }
+
+    // sort cells into buckets
+    const CTVector crange = (cmax - cmin);
+    const CTVector crangeI = crange.cwiseInverse() * NumBuckets;
+    auto getBucket = [cmin, cmax, crangeI](Scalar center, int d) -> int {
+        return std::min(int((center - cmin[d]) * crangeI[d]), NumBuckets - 1);
+    };
 
     // initialize min/max extents of buckets
     Index bucket[NumBuckets][NumDimensions];
-    CTVector bmin[NumBuckets], bmax[NumBuckets];
+    CTVector bmin[NumBuckets]{CTVector::Constant(smax)}, bmax[NumBuckets]{CTVector::Constant(-smax)};
     for (int i = 0; i < NumBuckets; ++i) {
         for (int d = 0; d < NumDimensions; ++d)
             bucket[i][d] = 0;
@@ -94,47 +180,25 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const CTVector *min, const C
         bmax[i].fill(-smax);
     }
 
-    auto center = [min, max](Index c) -> CTVector {
-        return Scalar(0.5) * (min[c] + max[c]);
-    };
-
-    // find min/max extents of cell centers
-    CTVector cmin, cmax;
-    cmin.fill(smax);
-    cmax.fill(-smax);
-    for (Index i = node->start; i < node->start + node->size; ++i) {
+    for (Index i = nodeStart; i < nodeStart + nodeSize; ++i) {
         const Index cell = cells[i];
-        CTVector cent = center(cell);
         for (int d = 0; d < NumDimensions; ++d) {
-            if (cmin[d] > cent[d])
-                cmin[d] = cent[d];
-            if (cmax[d] < cent[d])
-                cmax[d] = cent[d];
-        }
-    }
-
-    // sort cells into buckets
-    const CTVector crange = cmax - cmin;
-
-    auto getBucket = [cmin, cmax, crange, NumBuckets](Scalar center, int d) -> int {
-        return crange[d] == 0 ? 0 : std::min(int((center - cmin[d]) / crange[d] * NumBuckets), NumBuckets - 1);
-    };
-
-    for (Index i = node->start; i < node->start + node->size; ++i) {
-        const Index cell = cells[i];
-        const CTVector cent = center(cell);
-        for (int d = 0; d < NumDimensions; ++d) {
-            const int b = getBucket(cent[d], d);
+            if (crange[d] == 0)
+                continue;
+            const int b = getBucket(center(d, cell), d);
             assert(b >= 0);
             assert(b < NumBuckets);
             ++bucket[b][d];
-            bmin[b][d] = std::min(bmin[b][d], min[cell][d]);
-            bmax[b][d] = std::max(bmax[b][d], max[cell][d]);
+            const auto &bound = bounds[cell];
+            bmin[b][d] = std::min(bmin[b][d], bound.min(d));
+            bmax[b][d] = std::max(bmax[b][d], bound.max(d));
         }
     }
 
     // adjust bucket bounds for empty buckets
     for (int d = 0; d < NumDimensions; ++d) {
+        if (crange[d] == 0)
+            continue;
         for (int b = NumBuckets - 2; b >= 0; --b) {
             if (bmin[b][d] > bmin[b + 1][d])
                 bmin[b][d] = bmin[b + 1][d];
@@ -149,107 +213,99 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const CTVector *min, const C
     Scalar min_weight(smax);
     int best_dim = -1, best_bucket = -1;
     for (int d = 0; d < NumDimensions; ++d) {
+        if (crange[d] == 0)
+            continue;
         Index nleft = 0;
         for (int split_b = 0; split_b < NumBuckets - 1; ++split_b) {
             nleft += bucket[split_b][d];
-            assert(node->size >= nleft);
-            const Index nright = node->size - nleft;
+            assert(nodeSize >= nleft);
+            const Index nright = nodeSize - nleft;
             Scalar weight =
-                nleft * (bmax[split_b][d] - bmin[0][d]) + nright * (bmax[NumBuckets - 1][d] - bmin[split_b + 1][d]);
-            if (crange[d] > 0)
-                weight /= node->size * crange[d];
-            else
-                weight = smax;
-            //std::cerr << "d="<<d<< ", b=" << split_b<< ", weight=" << weight << std::endl;
+                std::pow(float(nleft) / float(nodeSize), FavorEqualSplits) * (bmax[split_b][d] - bmin[0][d]) +
+                std::pow(float(nright) / float(nodeSize), FavorEqualSplits) *
+                    (bmax[NumBuckets - 1][d] - bmin[split_b + 1][d]);
+            weight /= crange[d];
+            //std::cerr << "d=" << d << ", b=" << split_b << ", weight=" << weight << std::endl;
             if (nleft > 0 && nright > 0 && weight < min_weight) {
                 min_weight = weight;
                 best_dim = d;
                 best_bucket = split_b;
             }
         }
-        assert(nleft + bucket[NumBuckets - 1][d] == node->size);
-    }
-    if (best_dim == -1) {
-        std::cerr << "abandoning split with " << node->size << " children" << std::endl;
-        return;
+        assert(nleft + bucket[NumBuckets - 1][d] == nodeSize);
     }
 
     // split index lists...
-    const Index size = node->size;
-    const Index start = node->start;
-
-    // record children into node being split
-    const Scalar Lmax = bmax[best_bucket][best_dim];
-    const Scalar Rmin = bmin[best_bucket + 1][best_dim];
-    *node = Node(best_dim, Lmax, Rmin, nodes().size());
-    const Index D = best_dim;
-
-    auto centerD = [min, max, D](Index c) -> Scalar {
-        return Scalar(0.5) * (min[c][D] + max[c][D]);
-    };
-
-#ifdef CT_DEBUG
-    const Scalar split = cmin[D] + crange[D] / NumBuckets * (best_bucket + 1);
-#ifdef CT_DEBUG_VERBOSE
-    std::cerr << "split: dim=" << best_dim << ", bucket=" << best_bucket;
-    std::cerr << " (";
-    for (int i = 0; i < NumBuckets; ++i) {
-        std::cerr << bucket[i][best_dim];
-        if (i == best_bucket)
-            std::cerr << "|";
-        else if (i < NumBuckets - 1)
-            std::cerr << " ";
-    }
-    std::cerr << ")";
-    std::cerr << " split: " << split;
-    std::cerr << " (" << cmin[D] << " - " << cmax[D] << ")";
-    std::cerr << std::endl;
-#endif
-#endif
+    const Index size = nodeSize;
+    const Index start = nodeStart;
 
     Index nleft = 0;
-    Index *top = &cells[start + size - 1];
-    for (Index *c = &cells[start]; c <= top; ++c) {
-        const Scalar cent = centerD(*c);
-        const int b = getBucket(cent, D);
-        if (b <= best_bucket) {
-            ++nleft;
-            continue;
-        }
-        for (; c < top; --top) {
-            Scalar other = centerD(*top);
-            const int bo = getBucket(other, D);
-            if (bo <= best_bucket) {
-                std::swap(*c, *top);
-                ++nleft;
-                break;
+    Scalar Lmax, Rmin;
+    if (best_dim == -1) {
+        crange.maxCoeff(&best_dim);
+        nleft = size / 2;
+        std::cerr << "abandoning split with " << nodeSize << " children, fall back to @" << best_dim << " after "
+                  << nleft << " cells" << std::endl;
+        std::nth_element(&cells[start], &cells[start + nleft], &cells[start + size],
+                         [center, best_dim](Index a, Index b) { return center(best_dim, a) < center(best_dim, b); });
+
+        auto findBounds = [bounds, cells](Index begin, Index end) -> std::pair<CTVector, CTVector> {
+            CTVector gmin, gmax;
+            gmin.fill(smax);
+            gmax.fill(-smax);
+            for (Index i = begin; i < end; ++i) {
+                const Index cell = cells[i];
+                const auto &bound = bounds[cell];
+                for (int d = 0; d < NumDimensions; ++d) {
+                    gmin[d] = std::min(gmin[d], bound.min(d));
+                    gmax[d] = std::max(gmax[d], bound.max(d));
+                }
             }
-        }
-    }
+            return std::make_pair(gmin, gmax);
+        };
 
-#ifdef CT_DEBUG
-    for (Index i = nleft; i < size; ++i) {
-        Index c = cells[start + i];
-        CTVector cent = center(c);
-        assert(cent[D] >= split);
-        assert(min[c][D] >= Rmin);
-        for (int i = 0; i < 3; ++i) {
-            assert(min[c][i] >= gmin[i]);
-            assert(max[c][i] <= gmax[i]);
-        }
-    }
-    for (Index i = 0; i < nleft; ++i) {
-        Index c = cells[start + i];
-        CTVector cent = center(c);
-        assert(cent[D] <= split);
-        assert(max[c][D] <= Lmax);
-        for (int i = 0; i < 3; ++i) {
-            assert(min[c][i] >= gmin[i]);
-            assert(max[c][i] <= gmax[i]);
-        }
-    }
+        auto Lbounds = findBounds(start, start + nleft);
+        auto Rbounds = findBounds(start + nleft, start + size);
+        auto Lmax = Lbounds.second[best_dim];
+        auto Rmin = Rbounds.first[best_dim];
+
+#ifdef CT_PARALLEL_BUILD
+        std::unique_lock guard(data.mutex);
 #endif
+        Node *node = &(nodes()[nodeData.node]);
+        // promote to inner node
+        *node = Node(best_dim, Lmax, Rmin, nodes().size());
+        Index l = nodes().size();
+        nodes().push_back(Node(start, nleft));
 
+        Index r = nodes().size();
+        nodes().push_back(Node(start + nleft, size - nleft));
+
+        assert(nodes()[l].size < size);
+        assert(nodes()[r].size < size);
+        assert(nodes()[l].size + nodes()[r].size == size);
+
+        data.nodesToSplit.emplace_front(nodeData, l, start, nleft);
+        data.nodesToSplit.emplace_front(nodeData, r, start + nleft, size - nleft);
+        return;
+    } else {
+        auto mid =
+            std::partition(&cells[start], &cells[start + size], [getBucket, center, best_dim, best_bucket](Index c) {
+                return getBucket(center(best_dim, c), best_dim) <= best_bucket;
+            });
+        nleft = mid - &cells[start];
+        Lmax = bmax[best_bucket][best_dim];
+        Rmin = bmin[best_bucket + 1][best_dim];
+    }
+
+    // record children into node being split
+
+#ifdef CT_PARALLEL_BUILD
+    std::unique_lock guard(data.mutex);
+#endif
+    Node *node = &(nodes()[nodeData.node]);
+    // promote to inner node
+    *node = Node(best_dim, Lmax, Rmin, nodes().size());
     Index l = nodes().size();
     nodes().push_back(Node(start, nleft));
 
@@ -260,18 +316,8 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const CTVector *min, const C
     assert(nodes()[r].size < size);
     assert(nodes()[l].size + nodes()[r].size == size);
 
-    CTVector nmin = gmin;
-    CTVector nmax = gmax;
-
-    // further refinement for left...
-    nmin[best_dim] = bmin[0][best_dim];
-    nmax[best_dim] = bmax[best_bucket][best_dim];
-    refine(min, max, l, nmin, nmax);
-
-    // ...and right subnodes
-    nmin[best_dim] = bmin[best_bucket + 1][best_dim];
-    nmax[best_dim] = bmax[NumBuckets - 1][best_dim];
-    refine(min, max, r, nmin, nmax);
+    data.nodesToSplit.emplace_front(nodeData, l, start, nleft);
+    data.nodesToSplit.emplace_front(nodeData, r, start + nleft, size - nleft);
 }
 
 template<typename Scalar, typename Index, int NumDimensions>

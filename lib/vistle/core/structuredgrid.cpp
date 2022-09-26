@@ -170,37 +170,37 @@ void StructuredGrid::createCelltree(Index dims[3]) const
     if (hasCelltree())
         return;
 
-    const Scalar *coords[3] = {&x()[0], &y()[0], &z()[0]};
     const Scalar smax = std::numeric_limits<Scalar>::max();
     Vector3 vmin, vmax;
     vmin.fill(-smax);
     vmax.fill(smax);
 
     const Index nelem = getNumElements();
-    std::vector<Vector3> min(nelem, vmax);
-    std::vector<Vector3> max(nelem, vmin);
+    std::vector<Celltree::AABB> bounds(nelem);
 
     Vector3 gmin = vmax, gmax = vmin;
+    const Scalar *coords[3] = {&x()[0], &y()[0], &z()[0]};
     for (Index el = 0; el < nelem; ++el) {
+        Scalar min[3]{smax, smax, smax};
+        Scalar max[3]{-smax, -smax, -smax};
         const auto corners = cellVertices(el, dims);
-        for (int d = 0; d < 3; ++d) {
-            for (const auto v: corners) {
-                if (min[el][d] > coords[d][v]) {
-                    min[el][d] = coords[d][v];
-                    if (gmin[d] > min[el][d])
-                        gmin[d] = min[el][d];
-                }
-                if (max[el][d] < coords[d][v]) {
-                    max[el][d] = coords[d][v];
-                    if (gmax[d] < max[el][d])
-                        gmax[d] = max[el][d];
-                }
+        for (const auto v: corners) {
+            for (int d = 0; d < 3; ++d) {
+                min[d] = std::min(min[d], coords[d][v]);
+                max[d] = std::max(max[d], coords[d][v]);
             }
+        }
+        auto &b = bounds[el];
+        for (int d = 0; d < 3; ++d) {
+            gmin[d] = std::min(gmin[d], min[d]);
+            gmax[d] = std::max(gmax[d], max[d]);
+            b.mmin[d] = min[d];
+            b.mmax[d] = max[d];
         }
     }
 
     typename Celltree::ptr ct(new Celltree(nelem));
-    ct->init(min.data(), max.data(), gmin, gmax);
+    ct->init(bounds.data(), gmin, gmax);
     addAttachment("celltree", ct);
 #ifndef NDEBUG
     if (!validateCelltree()) {
