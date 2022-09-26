@@ -45,6 +45,7 @@ public:
     QPointF portPos(const Port *port) const;
     void setStatus(Module::Status status);
     void setStatusText(QString text, int prio);
+    void setInfo(QString text);
 
     void addPort(const vistle::Port &port);
     void removePort(const vistle::Port &port);
@@ -127,6 +128,7 @@ private:
     QString m_displayName;
     Module::Status m_Status;
     QString m_statusText;
+    QString m_info;
     bool m_validPosition;
 
     QList<Port *> m_inPorts, m_outPorts, m_paramPorts;

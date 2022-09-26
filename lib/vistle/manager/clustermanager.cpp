@@ -830,6 +830,12 @@ bool ClusterManager::handle(const message::Buffer &message, const MessagePayload
         break;
     }
 
+    case message::ITEMINFO: {
+        const message::ItemInfo &m = message.as<ItemInfo>();
+        result = handlePriv(m, payload);
+        break;
+    }
+
     case message::REQUESTTUNNEL: {
         const message::RequestTunnel &m = message.as<RequestTunnel>();
         result = handlePriv(m);
@@ -1966,6 +1972,18 @@ bool ClusterManager::handlePriv(const message::SendText &text, const MessagePayl
         sendHub(buf, payload);
     } else {
         sendHub(text, payload);
+    }
+    return true;
+}
+
+bool ClusterManager::handlePriv(const message::ItemInfo &info, const MessagePayload &payload)
+{
+    if (Communicator::the().isMaster()) {
+        message::Buffer buf(info);
+        buf.setDestId(Id::MasterHub);
+        sendHub(buf, payload);
+    } else {
+        sendHub(info, payload);
     }
     return true;
 }

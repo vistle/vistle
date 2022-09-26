@@ -717,4 +717,9 @@ void Module::setStatusText(QString text, int prio)
     }
 }
 
+void Module::setInfo(QString text)
+{
+    m_info = text;
+}
+
 } //namespace gui

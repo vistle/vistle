@@ -123,6 +123,7 @@ private:
     bool handlePriv(const message::Barrier &barrier);
     bool handlePriv(const message::BarrierReached &barrierReached);
     bool handlePriv(const message::SendText &text, const MessagePayload &payload);
+    bool handlePriv(const message::ItemInfo &info, const MessagePayload &payload);
     bool handlePriv(const message::RequestTunnel &tunnel);
     bool handlePriv(const message::Ping &ping);
     bool handlePriv(const message::DataTransferState &state);

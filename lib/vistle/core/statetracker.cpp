@@ -676,6 +676,11 @@ bool StateTracker::handle(const message::Message &msg, const char *payload, size
         handled = handlePriv(info, pl);
         break;
     }
+    case ITEMINFO: {
+        const auto &info = msg.as<ItemInfo>();
+        handled = handlePriv(info, pl);
+        break;
+    }
     case UPDATESTATUS: {
         const auto &status = msg.as<UpdateStatus>();
         handled = handlePriv(status);
@@ -1434,6 +1439,17 @@ bool StateTracker::handlePriv(const message::ReplayFinished &reset)
     return true;
 }
 
+bool StateTracker::handlePriv(const message::ItemInfo &info, const buffer &payload)
+{
+    auto pl = message::getPayload<message::ItemInfo::Payload>(payload);
+    mutex_locker guard(m_stateMutex);
+    for (StateObserver *o: m_observers) {
+        o->itemInfo(pl.text, info.infoType(), info.senderId(), info.port());
+    }
+
+    return true;
+}
+
 bool StateTracker::handlePriv(const message::SendText &info, const buffer &payload)
 {
     auto pl = message::getPayload<message::SendText::Payload>(payload);
@@ -2043,6 +2059,9 @@ void StateObserver::deleteConnection(int fromId, const std::string &fromName, in
 
 void StateObserver::info(const std::string &text, message::SendText::TextType textType, int senderId, int senderRank,
                          message::Type refType, const message::uuid_t &refUuid)
+{}
+void StateObserver::itemInfo(const std::string &text, message::ItemInfo::InfoType type, int senderId,
+                             const std::string &port)
 {}
 void StateObserver::status(int id, const std::string &text, message::UpdateStatus::Importance importance)
 {}

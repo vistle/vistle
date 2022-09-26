@@ -786,6 +786,18 @@ void Module::updateMeta(vistle::Object::ptr obj) const
     }
 }
 
+void Module::setItemInfo(const std::string &text, const std::string &port)
+{
+    auto &old = m_currentItemInfo[port];
+    if (old != text) {
+        using message::ItemInfo;
+        ItemInfo info(port.empty() ? ItemInfo::Module : ItemInfo::Port, port);
+        ItemInfo::Payload pl(text);
+        sendMessageWithPayload(info, pl);
+        old = text;
+    }
+}
+
 bool Module::addObject(const std::string &portName, vistle::Object::ptr object)
 {
     auto *p = findOutputPort(portName);
@@ -826,6 +838,21 @@ bool Module::passThroughObject(Port *port, vistle::Object::const_ptr object)
 
     message::AddObject message(port->getName(), object);
     sendMessage(message);
+
+    std::string info;
+    std::string species = object->getAttribute("_species");
+    if (!species.empty()) {
+        info += species + " - ";
+    }
+    std::string type = Object::toString(object->getType());
+    info += type;
+    if (auto d = DataBase::as(object)) {
+        if (auto g = d->grid()) {
+            info += " on ";
+            info += Object::toString(g->getType());
+        }
+    }
+    setItemInfo(info, port->getName());
     return true;
 }
 

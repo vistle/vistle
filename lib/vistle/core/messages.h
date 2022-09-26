@@ -687,6 +687,39 @@ private:
 };
 V_ENUM_OUTPUT_OP(TextType, SendText)
 
+//! provide information on a GUI item, such as a tooltip for an input or output port
+class V_COREEXPORT ItemInfo: public MessageBase<ItemInfo, ITEMINFO> {
+public:
+    DEFINE_ENUM_WITH_STRING_CONVERSIONS(InfoType, (Module)(Port))
+
+    struct V_COREEXPORT Payload {
+        Payload();
+        Payload(const std::string &text);
+
+        std::string text;
+
+        ARCHIVE_ACCESS
+        template<class Archive>
+        void serialize(Archive &ar)
+        {
+            ar &text;
+        }
+    };
+
+    //! Error message in response to a Message
+    explicit ItemInfo(InfoType type, const std::string port = std::string());
+
+    InfoType infoType() const;
+    const char *port() const;
+
+private:
+    //! type of text
+    InfoType m_infoType;
+    //! name of port, if any
+    port_name_t m_port;
+};
+V_ENUM_OUTPUT_OP(InfoType, ItemInfo)
+
 //! update status of a module (or other entity)
 class V_COREEXPORT UpdateStatus: public MessageBase<UpdateStatus, UPDATESTATUS> {
 public:

@@ -40,12 +40,14 @@ static T min(T a, T b)
 
 template V_COREEXPORT buffer addPayload<std::string>(Message &message, const std::string &payload);
 template V_COREEXPORT buffer addPayload<SendText::Payload>(Message &message, const SendText::Payload &payload);
+template V_COREEXPORT buffer addPayload<ItemInfo::Payload>(Message &message, const ItemInfo::Payload &payload);
 template V_COREEXPORT buffer addPayload<SetParameterChoices::Payload>(Message &message,
                                                                       const SetParameterChoices::Payload &payload);
 
 
 template V_COREEXPORT std::string getPayload(const buffer &data);
 template V_COREEXPORT SendText::Payload getPayload(const buffer &data);
+template V_COREEXPORT ItemInfo::Payload getPayload(const buffer &data);
 template V_COREEXPORT SetParameterChoices::Payload getPayload(const buffer &data);
 
 Identify::Identify(const std::string &name)
@@ -1435,6 +1437,26 @@ SendText::Payload::Payload() = default;
 SendText::Payload::Payload(const std::string &text): text(text)
 {}
 
+ItemInfo::ItemInfo(ItemInfo::InfoType type, const std::string port): m_infoType(type)
+{
+    COPY_STRING(m_port, port);
+}
+
+ItemInfo::InfoType ItemInfo::infoType() const
+{
+    return m_infoType;
+}
+
+const char *ItemInfo::port() const
+{
+    return m_port.data();
+}
+
+ItemInfo::Payload::Payload() = default;
+
+ItemInfo::Payload::Payload(const std::string &text): text(text)
+{}
+
 UpdateStatus::UpdateStatus(const std::string &text, UpdateStatus::Importance prio)
 : m_importance(prio), m_statusType(UpdateStatus::Text)
 {
@@ -1961,6 +1983,12 @@ std::ostream &operator<<(std::ostream &s, const Message &m)
     case SENDTEXT: {
         auto &mm = static_cast<const SendText &>(m);
         s << ", type: " << mm.textType();
+        break;
+    }
+    case ITEMINFO: {
+        auto &mm = static_cast<const ItemInfo &>(m);
+        s << ", type: " << mm.infoType();
+        s << ", port: " << mm.port();
         break;
     }
     case UPDATESTATUS: {

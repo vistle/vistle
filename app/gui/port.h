@@ -41,6 +41,7 @@ public:
 
     bool operator<(const Port &other) const;
     bool operator==(const Port &other) const;
+    void setInfo(QString info);
 
 signals:
     void clicked(Port *port);
@@ -69,6 +70,7 @@ private:
     Module *m_module = nullptr;
     int m_moduleId = 0;
     QString m_name;
+    QString m_info;
 };
 
 } //namespace gui

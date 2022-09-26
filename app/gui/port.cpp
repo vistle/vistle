@@ -202,6 +202,12 @@ void Port::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
     Base::mouseMoveEvent(event);
 }
 
+void Port::setInfo(QString text)
+{
+    m_info = text;
+    createTooltip();
+}
+
 void Port::createTooltip()
 {
     QString toolTip = "Invalid!";
@@ -214,6 +220,11 @@ void Port::createTooltip()
             toolTip += " ";
         }
         toolTip += "(" + name + ")";
+    }
+
+    if (!m_info.isEmpty()) {
+        toolTip += "\n";
+        toolTip += m_info;
     }
 
     setToolTip(toolTip);

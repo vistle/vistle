@@ -59,6 +59,8 @@ public:
 
     virtual void info(const std::string &text, message::SendText::TextType textType, int senderId, int senderRank,
                       message::Type refType, const message::uuid_t &refUuid);
+    virtual void itemInfo(const std::string &text, message::ItemInfo::InfoType type, int senderId,
+                          const std::string &port);
     //! a module sends at status update
     virtual void status(int id, const std::string &text, message::UpdateStatus::Importance importance);
     //! the overall status has changed
@@ -288,6 +290,7 @@ private:
     bool handlePriv(const message::Barrier &barrier);
     bool handlePriv(const message::BarrierReached &barrierReached);
     bool handlePriv(const message::SendText &info, const buffer &payload);
+    bool handlePriv(const message::ItemInfo &info, const buffer &payload);
     bool handlePriv(const message::UpdateStatus &status);
     bool handlePriv(const message::ReplayFinished &reset);
     bool handlePriv(const message::Quit &quit);

@@ -64,6 +64,7 @@ public slots:
     void newConnection(int fromId, QString fromName, int toId, QString toName);
     void deleteConnection(int fromId, QString fromName, int toId, QString toName);
     void moduleStatus(int id, QString status, int prio);
+    void itemInfoChanged(QString text, int type, int id, QString port);
 
 protected:
     void mousePressEvent(QGraphicsSceneMouseEvent *event); //< re-implemented

@@ -117,6 +117,8 @@ UiController::UiController(int argc, char *argv[], QObject *parent): QObject(par
             SLOT(addModule(int, boost::uuids::uuid, QString)));
     connect(&m_observer, SIGNAL(deleteModule_s(int)), m_scene, SLOT(deleteModule(int)));
     connect(&m_observer, SIGNAL(moduleStateChanged_s(int, int)), m_scene, SLOT(moduleStateChanged(int, int)));
+    connect(&m_observer, SIGNAL(itemInfo_s(QString, int, int, QString)), m_scene,
+            SLOT(itemInfoChanged(QString, int, int, QString)));
     connect(&m_observer, SIGNAL(newPort_s(int, QString)), m_scene, SLOT(newPort(int, QString)));
     connect(&m_observer, SIGNAL(deletePort_s(int, QString)), m_scene, SLOT(deletePort(int, QString)));
     connect(&m_observer, SIGNAL(newConnection_s(int, QString, int, QString)), m_scene,

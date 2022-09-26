@@ -295,6 +295,19 @@ void DataFlowNetwork::moduleStatus(int id, QString status, int prio)
     }
 }
 
+void DataFlowNetwork::itemInfoChanged(QString text, int type, int id, QString port)
+{
+    if (Module *m = findModule(id)) {
+        if (port.isEmpty()) {
+            m->setInfo(text);
+        } else {
+            const vistle::Port *p = m_state.portTracker()->findPort(id, port.toStdString());
+            if (auto *gp = m->getGuiPort(p)) {
+                gp->setInfo(text);
+            }
+        }
+    }
+}
 
 void DataFlowNetwork::addConnection(Port *portFrom, Port *portTo, bool sendToController)
 {

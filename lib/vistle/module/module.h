@@ -195,6 +195,9 @@ public:
     template<class Payload>
     bool sendMessageWithPayload(message::Message &message, Payload &payload) const;
 
+    //! provide some information to be used as e.g. a tooltip
+    void setItemInfo(const std::string &text, const std::string &port = std::string());
+
     //! type should be a message::SendText::TextType
     void sendText(int type, const std::string &msg) const;
 
@@ -379,6 +382,8 @@ private:
     std::deque<std::shared_ptr<BlockTask>> m_tasks;
 
     unsigned m_hardware_concurrency = 1;
+
+    std::map<std::string, std::string> m_currentItemInfo;
 };
 
 V_MODULEEXPORT int getTimestep(Object::const_ptr obj);
