@@ -129,10 +129,10 @@ void MainWindow::setQuitOnExit(bool qoe)
         ui->actionQuit->setMenuRole(QAction::QuitRole);
         if (qoe) {
             ui->actionQuit->setText("Quit");
-            ui->actionQuit->setToolTip("Quit Vistle session");
+            ui->actionQuit->setStatusTip("Quit Vistle session");
         } else {
             ui->actionQuit->setText("Leave");
-            ui->actionQuit->setToolTip("Quit Vistle GUI");
+            ui->actionQuit->setStatusTip("Quit Vistle GUI");
         }
     }
 }

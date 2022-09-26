@@ -280,7 +280,7 @@ void Parameters::newParameter(int moduleId, QString parameterName)
     }
 
     if (prop) {
-        prop->setToolTip(QString::fromStdString(p->description()));
+        prop->setStatusTip(QString::fromStdString(p->description()));
         prop->setWhatsThis(QString::fromStdString(p->description()));
         m_paramToProp[parameterName] = prop;
         m_propToParam[prop] = parameterName;
@@ -391,7 +391,7 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
             QString tip = QString("%1 (default: %2, %3 – %4)")
                               .arg(QString::fromStdString(p->description()), QString::number(ip->getDefaultValue()),
                                    QString::number(ip->minimum()), QString::number(ip->maximum()));
-            prop->setToolTip(tip);
+            prop->setStatusTip(tip);
         }
     } else if (auto fp = std::dynamic_pointer_cast<vistle::FloatParameter>(p)) {
         m_floatManager->setValue(prop, fp->getValue());
@@ -417,7 +417,7 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
         QString tip = QString("%1 (default: %2, %3 – %4)")
                           .arg(QString::fromStdString(p->description()), QString::number(fp->getDefaultValue()),
                                QString::number(fp->minimum()), QString::number(fp->maximum()));
-        prop->setToolTip(tip);
+        prop->setStatusTip(tip);
     } else if (auto sp = std::dynamic_pointer_cast<vistle::StringParameter>(p)) {
         if (sp->presentation() == vistle::Parameter::Choice) {
             QStringList choices = m_stringChoiceManager->enumNames(prop);
@@ -465,7 +465,7 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
                            QString::number(value[1]), QString::number(value[2]), QString::number(value[3]));
             break;
         }
-        prop->setToolTip(tip);
+        prop->setStatusTip(tip);
     } else if (auto vp = std::dynamic_pointer_cast<vistle::IntVectorParameter>(p)) {
         vistle::IntParamVector value = vp->getValue();
         if (!prop) {
