@@ -435,16 +435,6 @@ QColor DataFlowNetwork::highlightColor() const
 }
 
 
-QRect DataFlowNetwork::calculateBoundingBox() const
-{
-    QRectF rect;
-    //for some reason sceneBoundingRect returns strange values
-    //this is why we calculate the scene rect ourselves
-    for (const auto &mod: m_moduleList)
-        rect = rect.united(QRectF{mod->scenePos(), mod->rect().size()});
-    return rect.toRect();
-}
-
 ///\todo an exception is very occasionally thrown upon a simple click inside a module's port.
 ///\todo left clicking inside a module's context menu still sends the left click event to the scene, but creates
 ///a segfault when the connection is completed
