@@ -601,7 +601,6 @@ QColor Module::hubColor(int hub)
 void Module::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
     Base::mousePressEvent(event);
-    scene()->setSceneRect(QRectF());
     setCursor(Qt::ClosedHandCursor);
 }
 
