@@ -47,6 +47,7 @@ private:
     std::shared_ptr<ColorMap> m_colors;
 
     bool m_autoRange = true, m_autoInsetCenter = true, m_nest = false;
+    vistle::StringParameter *m_speciesPara = nullptr;
     vistle::IntParameter *m_autoRangePara, *m_autoInsetCenterPara, *m_nestPara;
     vistle::FloatParameter *m_minPara = nullptr, *m_maxPara = nullptr;
     vistle::IntParameter *m_constrain = nullptr;

@@ -147,6 +147,9 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm): Mod
     m_dataOut = createOutputPort("data_out");
     m_colorOut = createOutputPort("color_out");
 
+    m_speciesPara = addStringParameter("species", "species attribute of input data", "");
+    setParameterReadOnly(m_speciesPara, true);
+
     m_minPara = addFloatParameter("min", "minimum value of range to map", 0.0);
     m_maxPara = addFloatParameter("max", "maximum value of range to map", 0.0);
     m_constrain = addIntParameter("constrain_range", "constrain range for min/max to data", true, Parameter::Boolean);
@@ -716,6 +719,8 @@ void Color::sendColorMap()
 {
     if (m_colorMapSent)
         return;
+
+    setParameter(m_speciesPara, m_species);
 
     if (m_colorOut->isConnected() && !m_species.empty()) {
         vistle::Texture1D::ptr tex(new vistle::Texture1D(m_colors->width, m_min, m_max));
