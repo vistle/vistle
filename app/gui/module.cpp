@@ -305,7 +305,7 @@ void Module::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QW
     painter->drawRoundedRect(rect(), portDistance, portDistance);
 
     painter->setPen(Qt::black);
-    painter->drawText(QPointF(portDistance, portDistance + Port::portSize + m_fontHeight / 2.), m_displayName);
+    painter->drawText(QPointF(portDistance, Port::portSize + m_fontHeight / 2.), m_displayName);
 
     QFont font;
     QFontMetrics fm(font);
