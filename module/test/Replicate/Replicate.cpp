@@ -16,10 +16,10 @@ MODULE_MAIN(Replicate)
 
 Replicate::Replicate(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
-    createInputPort("grid_in");
-    createInputPort("data_in");
+    createInputPort("grid_in", "object to replicate");
+    createInputPort("data_in", "reference data");
 
-    createOutputPort("grid_out");
+    createOutputPort("grid_out", "replicated data");
 }
 
 Replicate::~Replicate()

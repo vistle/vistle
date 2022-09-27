@@ -61,13 +61,13 @@ ReadFOAM::ReadFOAM(const std::string &name, int moduleId, mpi::communicator comm
     m_readGrid = addIntParameter("read_grid", "load the grid?", 1, Parameter::Boolean);
 
     //Mesh ports
-    m_boundOut = createOutputPort("grid_out1");
+    m_boundOut = createOutputPort("grid_out1", "boundary geometry");
 
     for (int i = 0; i < NumPorts; ++i) {
         { // Data Ports
             std::stringstream s;
             s << "data_out" << i;
-            m_volumeDataOut.push_back(createOutputPort(s.str()));
+            m_volumeDataOut.push_back(createOutputPort(s.str(), "data on 3D volume"));
         }
         { // Date Choice Parameters
             std::stringstream s;
@@ -87,7 +87,7 @@ ReadFOAM::ReadFOAM(const std::string &name, int moduleId, mpi::communicator comm
         { // 2d Data Ports
             std::stringstream s;
             s << "data_2d_out" << i;
-            m_boundaryDataOut.push_back(createOutputPort(s.str()));
+            m_boundaryDataOut.push_back(createOutputPort(s.str(), "data on boundary"));
         }
         { // 2d Data Choice Parameters
             std::stringstream s;

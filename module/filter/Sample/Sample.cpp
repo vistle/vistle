@@ -22,7 +22,7 @@ Sample::Sample(const std::string &name, int moduleID, mpi::communicator comm): M
     createInputPort("data_in", "object with data to be sampled");
     createInputPort("ref_in", "target grid", Port::Flags::NOCOMPUTE);
 
-    m_out = createOutputPort("data_out");
+    m_out = createOutputPort("data_out", "data sampled to target grid");
 
     m_mode = addIntParameter("mode", "interpolation mode", Linear, Parameter::Choice);
     m_createCelltree = addIntParameter("create_celltree", "create celltree", 0, Parameter::Boolean);

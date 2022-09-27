@@ -191,8 +191,8 @@ bool displace(Object::const_ptr &src, DataBase::const_ptr &data, Coords::ptr &co
 MapDrape::MapDrape(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
     for (unsigned i = 0; i < NumPorts; ++i) {
-        data_in[i] = createInputPort("data_in" + std::to_string(i));
-        data_out[i] = createOutputPort("data_out" + std::to_string(i));
+        data_in[i] = createInputPort("data_in" + std::to_string(i), "input data");
+        data_out[i] = createOutputPort("data_out" + std::to_string(i), "output data");
     }
 
 #ifdef MAPDRAPE

@@ -143,9 +143,9 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm): Mod
 {
     setReducePolicy(message::ReducePolicy::OverAll);
 
-    m_dataIn = createInputPort("data_in");
-    m_dataOut = createOutputPort("data_out");
-    m_colorOut = createOutputPort("color_out");
+    m_dataIn = createInputPort("data_in", "field to create colormap for");
+    m_dataOut = createOutputPort("data_out", "field converted to colors");
+    m_colorOut = createOutputPort("color_out", "color map");
 
     m_speciesPara = addStringParameter("species", "species attribute of input data", "");
     setParameterReadOnly(m_speciesPara, true);

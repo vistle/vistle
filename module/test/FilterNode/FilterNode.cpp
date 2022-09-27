@@ -13,8 +13,8 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(Choices, (Rank)(BlockNumber)(Timestep))
 
 FilterNode::FilterNode(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
-    createInputPort("data_in");
-    createOutputPort("data_out");
+    createInputPort("data_in", "partitioned data");
+    createOutputPort("data_out", "data with non-matching blocks removed");
 
     m_criterionParam = addIntParameter("criterion", "Selection criterion", 0, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_criterionParam, Choices);

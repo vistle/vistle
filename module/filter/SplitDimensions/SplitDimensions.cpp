@@ -16,11 +16,11 @@ using namespace vistle;
 SplitDimensions::SplitDimensions(const std::string &name, int moduleID, mpi::communicator comm)
 : Module(name, moduleID, comm)
 {
-    p_in = createInputPort("data_in");
-    p_out[3] = createOutputPort("data_out_3d");
-    p_out[2] = createOutputPort("data_out_2d");
-    p_out[1] = createOutputPort("data_out_1d");
-    p_out[0] = createOutputPort("data_out_0d");
+    p_in = createInputPort("data_in", "(data on) unstructured grid");
+    p_out[3] = createOutputPort("data_out_3d", "3-dimensional elements of input");
+    p_out[2] = createOutputPort("data_out_2d", "2-dimensional elements of input (triangles and quads)");
+    p_out[1] = createOutputPort("data_out_1d", "1-dimensional elements of input (bars)");
+    p_out[0] = createOutputPort("data_out_0d", "3-dimensional elements of input (points)");
 
     p_reuse = addIntParameter("reuse_coordinates", "do not renumber vertices and reuse coordinate and data arrays",
                               false, Parameter::Boolean);

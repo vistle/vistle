@@ -12,8 +12,8 @@ using namespace vistle;
 
 ToPoints::ToPoints(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
-    createInputPort("grid_in");
-    createOutputPort("grid_out");
+    createInputPort("grid_in", "grid or geometry");
+    createOutputPort("grid_out", "unconnected points");
 }
 
 ToPoints::~ToPoints()

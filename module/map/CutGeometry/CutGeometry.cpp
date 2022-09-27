@@ -21,8 +21,8 @@ CutGeometry::CutGeometry(const std::string &name, int moduleID, mpi::communicato
 
     setDefaultCacheMode(ObjectCache::CacheDeleteLate);
 
-    createInputPort("grid_in");
-    createOutputPort("grid_out");
+    createInputPort("grid_in", "bare input grid without mapped data");
+    createOutputPort("grid_out", "clipped grid");
 }
 
 CutGeometry::~CutGeometry()

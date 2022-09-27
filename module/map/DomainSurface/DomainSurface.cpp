@@ -19,9 +19,9 @@ using namespace vistle;
 DomainSurface::DomainSurface(const std::string &name, int moduleID, mpi::communicator comm)
 : Module(name, moduleID, comm)
 {
-    createInputPort("data_in");
-    createOutputPort("data_out");
-    createOutputPort("lines_out");
+    createInputPort("data_in", "geometry or mapped data");
+    createOutputPort("data_out", "domain boundary with mapped data");
+    createOutputPort("lines_out", "outline/edges of domain boundary");
 
     addIntParameter("ghost", "Show ghostcells", 0, Parameter::Boolean);
     addIntParameter("tetrahedron", "Show tetrahedron", 1, Parameter::Boolean);

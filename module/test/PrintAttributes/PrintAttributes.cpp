@@ -10,7 +10,7 @@ using namespace vistle;
 PrintAttributes::PrintAttributes(const std::string &name, int moduleID, mpi::communicator comm)
 : Module(name, moduleID, comm)
 {
-    createInputPort("data_in");
+    createInputPort("data_in", "data");
 }
 
 PrintAttributes::~PrintAttributes()

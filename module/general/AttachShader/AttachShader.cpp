@@ -11,9 +11,9 @@ AttachShader::AttachShader(const std::string &name, int moduleID, mpi::communica
 {
     setDefaultCacheMode(ObjectCache::CacheDeleteLate);
 
-    createInputPort("data_in");
+    createInputPort("data_in", "input data or geometry");
 
-    createOutputPort("data_out");
+    createOutputPort("data_out", "data or geometry with attribute requesting COVER to apply shader");
 
     m_shader = addStringParameter("shader", "name of shader to apply to geometry", "");
     m_shaderParams =

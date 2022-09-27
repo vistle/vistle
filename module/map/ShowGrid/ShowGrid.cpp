@@ -22,8 +22,8 @@ ShowGrid::ShowGrid(const std::string &name, int moduleID, mpi::communicator comm
 {
     setDefaultCacheMode(ObjectCache::CacheDeleteLate);
 
-    createInputPort("grid_in");
-    createOutputPort("grid_out");
+    createInputPort("grid_in", "grid or data mapped to grid");
+    createOutputPort("grid_out", "edges of grid cells");
 
     addIntParameter("normalcells", "Show normal (non ghost) cells", 1, Parameter::Boolean);
     addIntParameter("ghostcells", "Show ghost cells", 0, Parameter::Boolean);

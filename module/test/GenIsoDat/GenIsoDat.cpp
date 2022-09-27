@@ -17,8 +17,8 @@ using namespace vistle;
 
 GenIsoDat::GenIsoDat(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
-    createOutputPort("data_out");
-    createOutputPort("mapdata_out");
+    createOutputPort("data_out", "scalar data on grid");
+    createOutputPort("mapdata_out", "additional field");
 
     m_cellTypeParam = addIntParameter("cell_type", "type of cells", 1, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_cellTypeParam, Choices);

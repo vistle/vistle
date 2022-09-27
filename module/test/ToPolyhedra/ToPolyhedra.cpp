@@ -14,8 +14,8 @@ using namespace vistle;
 
 ToPolyhedra::ToPolyhedra(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
-    createInputPort("grid_in");
-    createOutputPort("grid_out");
+    createInputPort("grid_in", "unstructured grid");
+    createOutputPort("grid_out", "unstructured grid with tesselated polyhedra");
 }
 
 ToPolyhedra::~ToPolyhedra()
