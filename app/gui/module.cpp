@@ -225,11 +225,14 @@ void Module::doLayout()
     // get the pixel width of the string
     QFont font;
     QFontMetrics fm(font);
-    QRect textRect = fm.boundingRect(m_displayName);
-    m_fontHeight = textRect.height() + 4 * portDistance;
+    QRect nameRect = fm.boundingRect(m_displayName);
+    m_fontHeight = nameRect.height() + 4 * portDistance;
 
-    double w = textRect.width() + 2 * portDistance;
+    double w = nameRect.width() + 2 * portDistance;
     double h = m_fontHeight + 2 * portDistance;
+
+    QString id = " " + QString::number(m_id);
+    QRect idRect = fm.boundingRect(id);
 
     {
         int idx = 0;
@@ -237,7 +240,7 @@ void Module::doLayout()
             in->setPos(portDistance + idx * (portDistance + Port::portSize), 0.);
             ++idx;
         }
-        w = qMax(w, 2 * portDistance + idx * (portDistance + Port::portSize));
+        w = qMax(w, 2 * portDistance + idx * (portDistance + Port::portSize) + idRect.width());
     }
 
     {
@@ -303,6 +306,12 @@ void Module::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QW
 
     painter->setPen(Qt::black);
     painter->drawText(QPointF(portDistance, portDistance + Port::portSize + m_fontHeight / 2.), m_displayName);
+
+    QFont font;
+    QFontMetrics fm(font);
+    QString id = QString::number(m_id);
+    QRect idRect = fm.boundingRect(id);
+    painter->drawText(rect().x() + rect().width() - idRect.width() - portDistance, m_fontHeight / 2., id);
 }
 
 /*!
@@ -519,7 +528,8 @@ QString Module::name() const
 void Module::setName(QString name)
 {
     m_name = name;
-    m_displayName = QString("%1_%2").arg(name, QString::number(m_id));
+    //m_displayName = QString("%1_%2").arg(name, QString::number(m_id));
+    m_displayName = name;
 
     doLayout();
 }
@@ -532,6 +542,8 @@ int Module::id() const
 void Module::setId(int id)
 {
     m_id = id;
+
+    doLayout();
 }
 
 int Module::hub() const
