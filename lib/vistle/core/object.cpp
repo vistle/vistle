@@ -8,11 +8,7 @@
 #include "archives.h"
 #include <iostream>
 #include <iomanip>
-
-#include <limits.h>
-
-#include <boost/tuple/tuple.hpp>
-#include <boost/foreach.hpp>
+#include <climits>
 
 #include <boost/mpl/for_each.hpp>
 
@@ -78,38 +74,38 @@ namespace vistle {
 
 const char *Object::toString(Type v)
 {
-#define V_OBJECT_CASE(sym) \
+#define V_OBJECT_CASE(sym, str) \
     case sym: \
-        return #sym;
+        return #str;
     switch (v) {
-        V_OBJECT_CASE(COORD)
-        V_OBJECT_CASE(COORDWRADIUS)
-        V_OBJECT_CASE(DATABASE)
+        V_OBJECT_CASE(COORD, Coords)
+        V_OBJECT_CASE(COORDWRADIUS, CoordWRadius)
+        V_OBJECT_CASE(DATABASE, Data)
 
-        V_OBJECT_CASE(UNKNOWN)
-        V_OBJECT_CASE(EMPTY)
-        V_OBJECT_CASE(PLACEHOLDER)
+        V_OBJECT_CASE(UNKNOWN, Unknown)
+        V_OBJECT_CASE(EMPTY, Empty)
+        V_OBJECT_CASE(PLACEHOLDER, Placeholder)
 
-        V_OBJECT_CASE(TEXTURE1D)
+        V_OBJECT_CASE(TEXTURE1D, Texture1D)
 
-        V_OBJECT_CASE(POINTS)
-        V_OBJECT_CASE(SPHERES)
-        V_OBJECT_CASE(LINES)
-        V_OBJECT_CASE(TUBES)
-        V_OBJECT_CASE(TRIANGLES)
-        V_OBJECT_CASE(QUADS)
-        V_OBJECT_CASE(POLYGONS)
-        V_OBJECT_CASE(UNSTRUCTUREDGRID)
-        V_OBJECT_CASE(UNIFORMGRID)
-        V_OBJECT_CASE(RECTILINEARGRID)
-        V_OBJECT_CASE(STRUCTUREDGRID)
-        V_OBJECT_CASE(LAYERGRID)
+        V_OBJECT_CASE(POINTS, Points)
+        V_OBJECT_CASE(SPHERES, Spheres)
+        V_OBJECT_CASE(LINES, Lines)
+        V_OBJECT_CASE(TUBES, Tubes)
+        V_OBJECT_CASE(TRIANGLES, Triangles)
+        V_OBJECT_CASE(QUADS, Quads)
+        V_OBJECT_CASE(POLYGONS, Polygons)
+        V_OBJECT_CASE(UNSTRUCTUREDGRID, UnstructuredGrid)
+        V_OBJECT_CASE(UNIFORMGRID, UniformGrid)
+        V_OBJECT_CASE(RECTILINEARGRID, RectilinearGrid)
+        V_OBJECT_CASE(STRUCTUREDGRID, StructuredGrid)
+        V_OBJECT_CASE(LAYERGRID, LayerGrid)
 
-        V_OBJECT_CASE(VERTEXOWNERLIST)
-        V_OBJECT_CASE(CELLTREE1)
-        V_OBJECT_CASE(CELLTREE2)
-        V_OBJECT_CASE(CELLTREE3)
-        V_OBJECT_CASE(NORMALS)
+        V_OBJECT_CASE(VERTEXOWNERLIST, VertexOwnerList)
+        V_OBJECT_CASE(CELLTREE1, Celltree1)
+        V_OBJECT_CASE(CELLTREE2, Celltree2)
+        V_OBJECT_CASE(CELLTREE3, Celltree3)
+        V_OBJECT_CASE(NORMALS, Normals)
 
     default:
         break;
@@ -128,7 +124,28 @@ const char *Object::toString(Type v)
         const char *scalstr = "(invalid)";
         if (scalidx < ScalarTypeNames.size())
             scalstr = ScalarTypeNames[scalidx];
-        snprintf(buf, sizeof(buf), "VEC<%s,%d>", scalstr, dim);
+            //snprintf(buf, sizeof(buf), "VEC<%s,%d>", scalstr, dim);
+#ifdef VISTLE_SCALAR_DOUBLE
+        if (std::string("double") == scalstr)
+            scalstr = "Scalar";
+#else
+        if (std::string("float") == scalstr)
+            scalstr = "Scalar";
+#endif
+#ifdef VISTLE_INDEX_64BIT
+        if (std::string("uint64_t") == scalstr)
+            scalstr = "Index";
+        if (std::string("int64_t") == scalstr)
+            scalstr = "SIndex";
+#else
+        if (std::string("uint32_t") == scalstr)
+            scalstr = "Index";
+        if (std::string("int32_t") == scalstr)
+            scalstr = "SIndex";
+#endif
+        if (std::string("unsigned char") == scalstr)
+            scalstr = "Byte";
+        snprintf(buf, sizeof(buf), "%s%d", scalstr, dim);
     }
 
     return buf;
