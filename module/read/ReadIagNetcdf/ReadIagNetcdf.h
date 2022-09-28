@@ -37,7 +37,7 @@ private:
     StringParameter *m_variables[NUMPORTS];
     Port *m_dataOut[NUMPORTS], *m_gridOut;
     StringParameter *m_bvariables[NUMPORTS];
-    Port *m_boundaryDataOut[NUMPORTS], *m_boundaryOut;
+    Port *m_boundaryDataOut[NUMPORTS], *m_boundaryOut, *m_boundaryVarOut;
     std::vector<std::string> m_gridVariables, m_dataVariables;
     std::string m_gridFileName, m_dataFileName;
     std::vector<std::string> m_dataFiles;
@@ -45,6 +45,7 @@ private:
     Index m_numVertices = 0;
     UnstructuredGrid::ptr m_grid;
     Polygons::ptr m_boundary;
+    Vec<Index>::ptr m_markerData;
 };
 
 #endif

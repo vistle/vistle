@@ -81,6 +81,7 @@ ReadIagNetcdf::ReadIagNetcdf(const std::string &name, int moduleID, mpi::communi
     }
 
     m_boundaryOut = createOutputPort("boundary_out", "boundary with patch markers");
+    m_boundaryVarOut = createOutputPort("boundary_var_out", "boundary with animated patch markers");
     for (int i = 0; i < NUMPORTS; ++i) {
         m_bvariables[i] =
             addStringParameter("boundary_variable" + std::to_string(i), "Variable on boundary", "", Parameter::Choice);
@@ -399,6 +400,8 @@ bool ReadIagNetcdf::read(Token &token, int timestep, int block)
         }
 
         bool needBoundary = m_boundaryOut->isConnected();
+        if (m_boundaryVarOut->isConnected())
+            needBoundary = true;
         for (unsigned i = 0; i < NUMPORTS; ++i) {
             if (m_boundaryDataOut[i]->isConnected())
                 needBoundary = true;
@@ -441,16 +444,17 @@ bool ReadIagNetcdf::read(Token &token, int timestep, int block)
                 token.addObject(m_boundaryDataOut[dataIdx], m_boundary);
             }
 
-            if (m_boundaryOut->isConnected()) {
-                auto markerData = std::make_shared<Vec<Index>>(numElem);
-                if (!getVariable<Index>(ncGridId, "boundarymarker_of_surfaces", markerData->x().data(), {0},
+            if (m_boundaryOut->isConnected() || m_boundaryVarOut->isConnected()) {
+                m_markerData = std::make_shared<Vec<Index>>(numElem);
+                if (!getVariable<Index>(ncGridId, "boundarymarker_of_surfaces", m_markerData->x().data(), {0},
                                         {numElem})) {
                     sendWarning("could not read surface markers");
                 }
-                markerData->addAttribute("_species", "marker");
-                markerData->setGrid(m_boundary);
-                token.applyMeta(markerData);
-                token.addObject(m_boundaryOut, markerData);
+                m_markerData->addAttribute("_species", "marker");
+                m_markerData->setGrid(m_boundary);
+                token.applyMeta(m_markerData);
+                if (m_boundaryOut->isConnected())
+                    token.addObject(m_boundaryOut, m_markerData);
             }
         }
         return true;
@@ -510,6 +514,9 @@ bool ReadIagNetcdf::read(Token &token, int timestep, int block)
         }
     }
 
+    if (m_boundaryVarOut->isConnected()) {
+        token.addObject(m_boundaryVarOut, m_markerData);
+    }
     for (Index bIdx = 0; bIdx < NUMPORTS; ++bIdx) {
         if (emptyValue(m_bvariables[bIdx])) {
             continue;
