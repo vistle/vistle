@@ -163,6 +163,8 @@ Threshold::Threshold(const std::string &name, int moduleID, mpi::communicator co
     V_ENUM_SET_CHOICES(p_operation, Operation);
     p_threshold = addFloatParameter("threshold", "selection threshold", 0);
 #endif
+
+    addResultCache(m_gridCache);
 }
 
 Threshold::~Threshold()
@@ -241,64 +243,73 @@ bool Threshold::compute(std::shared_ptr<BlockTask> task) const
     Indexed::const_ptr grid_in = ugrid ? Indexed::as(ugrid) : Indexed::as(poly);
     assert(grid_in);
 
+    CachedResult cachedResult;
+    if (auto cacheEntry = m_gridCache.getOrLock(data->getName(), cachedResult)) {
 #ifdef CELLSELECT
-    CellSelector select(m_restraint, data);
+        CellSelector select(m_restraint, data);
 #else
-    CellSelector select((Operation)p_operation->getValue(), p_threshold->getValue(), data);
+        CellSelector select((Operation)p_operation->getValue(), p_threshold->getValue(), data);
 #endif
 
-    auto outgrid = grid_in->cloneType();
+        auto outgrid = grid_in->cloneType();
 
-    VerticesMapping vm;
-    ElementsMapping em;
-    const Index *icl = &grid_in->cl()[0];
-    const Index *iel = &grid_in->el()[0];
-    const Byte *itl = nullptr;
-    if (ugrid) {
-        itl = &ugrid->tl()[0];
-    }
-
-    Index nelem = grid_in->getNumElements();
-    Index ncorn = 0;
-    for (Index e = 0; e < nelem; ++e) {
-        const Index begin = iel[e], end = iel[e + 1];
-        if (m_invert ^ select(e)) {
-            em.push_back(e);
-            ncorn += end - begin;
+        VerticesMapping &vm = cachedResult.vm;
+        ElementsMapping &em = cachedResult.em;
+        const Index *icl = &grid_in->cl()[0];
+        const Index *iel = &grid_in->el()[0];
+        const Byte *itl = nullptr;
+        if (ugrid) {
+            itl = &ugrid->tl()[0];
         }
-    }
 
-    outgrid->el().resize(em.size() + 1);
-    outgrid->cl().resize(ncorn);
-    auto *el = &outgrid->el()[0];
-    auto *cl = &outgrid->cl()[0];
-    Byte *tl = nullptr;
-    if (ugrid && !em.empty()) {
-        auto otl = &std::dynamic_pointer_cast<UnstructuredGrid>(outgrid)->tl();
-        otl->resize(em.size());
-        tl = &otl->at(0);
-    }
+        Index nelem = grid_in->getNumElements();
+        Index ncorn = 0;
+        for (Index e = 0; e < nelem; ++e) {
+            const Index begin = iel[e], end = iel[e + 1];
+            if (m_invert ^ select(e)) {
+                em.push_back(e);
+                ncorn += end - begin;
+            }
+        }
 
-    Index cidx = 0;
-    for (const auto &e: em) {
+        outgrid->el().resize(em.size() + 1);
+        outgrid->cl().resize(ncorn);
+        auto *el = &outgrid->el()[0];
+        auto *cl = &outgrid->cl()[0];
+        Byte *tl = nullptr;
+        if (ugrid && !em.empty()) {
+            auto otl = &std::dynamic_pointer_cast<UnstructuredGrid>(outgrid)->tl();
+            otl->resize(em.size());
+            tl = &otl->at(0);
+        }
+
+        Index cidx = 0;
+        for (const auto &e: em) {
+            *el = cidx;
+            ++el;
+
+            const Index begin = iel[e], end = iel[e + 1];
+            for (Index i = begin; i < end; ++i) {
+                cl[cidx] = icl[i];
+                ++cidx;
+            }
+            if (tl) {
+                *tl = itl[e];
+                ++tl;
+            }
+        }
         *el = cidx;
-        ++el;
 
-        const Index begin = iel[e], end = iel[e + 1];
-        for (Index i = begin; i < end; ++i) {
-            cl[cidx] = icl[i];
-            ++cidx;
-        }
-        if (tl) {
-            *tl = itl[e];
-            ++tl;
-        }
+        renumberVertices(grid_in, outgrid, vm);
+        outgrid->setMeta(grid_in->meta());
+        outgrid->copyAttributes(grid_in);
+
+        cachedResult.grid = outgrid;
+        m_gridCache.storeAndUnlock(cacheEntry, cachedResult);
     }
-    *el = cidx;
-
-    renumberVertices(grid_in, outgrid, vm);
-    outgrid->setMeta(grid_in->meta());
-    outgrid->copyAttributes(grid_in);
+    auto &outgrid = cachedResult.grid;
+    auto &em = cachedResult.em;
+    auto &vm = cachedResult.vm;
 
     for (unsigned i = 0; i < NUMPORTS; ++i) {
         if (!p_out[i]->isConnected())

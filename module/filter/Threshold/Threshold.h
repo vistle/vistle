@@ -6,6 +6,7 @@
 #include <vistle/core/polygons.h>
 #include <vistle/util/coRestraint.h>
 #include <memory>
+#include <vistle/module/resultcache.h>
 
 #ifdef CELLSELECT
 #define Threshold CellSelect
@@ -38,6 +39,13 @@ private:
 #endif
     vistle::Port *p_in[NUMPORTS] = {};
     vistle::Port *p_out[NUMPORTS] = {};
+
+    struct CachedResult {
+        VerticesMapping vm;
+        ElementsMapping em;
+        vistle::Indexed::ptr grid;
+    };
+    mutable vistle::ResultCache<CachedResult> m_gridCache;
 };
 
 #endif
