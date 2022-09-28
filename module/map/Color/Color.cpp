@@ -2,6 +2,7 @@
 #include <iomanip>
 #include <cfloat>
 #include <limits>
+#include <random>
 #include <vistle/core/vector.h>
 #include <vistle/core/object.h>
 #include <vistle/core/vec.h>
@@ -13,10 +14,12 @@
 
 #include "Color.h"
 
+#ifndef COLOR_RANDOM
 #include "matplotlib.h"
 #include "fake_parula.h"
 #include "turbo_colormap.h"
 #include "etopo1_modified.h"
+#endif
 
 MODULE_MAIN(Color)
 
@@ -24,6 +27,7 @@ MODULE_MAIN(Color)
 
 using namespace vistle;
 
+#ifndef COLOR_RANDOM
 // clang-format off
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(
     TransferFunction,
@@ -50,11 +54,26 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(
     (Topography)
     (RainbowPale)
 )
-
 // clang-format on
 
 static const vistle::Float TopographyMin(-8000), TopographyMax(8000);
+#endif
+
 static const vistle::Integer MaxSteps(0x4000);
+
+ColorMap::ColorMap(const size_t steps): width(steps)
+{
+    auto rand = std::minstd_rand0();
+    auto dist = std::uniform_int_distribution<unsigned short>(0, 0xff);
+
+    data.resize(steps * 4);
+    for (size_t i = 0; i < width; ++i) {
+        data[i * 4 + 0] = dist(rand);
+        data[i * 4 + 1] = dist(rand);
+        data[i * 4 + 2] = dist(rand);
+        data[i * 4 + 3] = 0xff;
+    }
+}
 
 ColorMap::ColorMap(TF &pins, const size_t steps, const size_t w, Scalar center, Scalar compress): width(w)
 {
@@ -107,9 +126,9 @@ ColorMap::ColorMap(TF &pins, const size_t steps, const size_t w, Scalar center, 
     }
 }
 
-ColorMap::~ColorMap()
-{}
+ColorMap::~ColorMap() = default;
 
+#ifndef COLOR_RANDOM
 ColorMap::TF pinsFromArray(const float *data, size_t n)
 {
     ColorMap::TF tf;
@@ -137,6 +156,7 @@ ColorMap::TF pinsFromArrayWithCoord(const float *data, size_t n, Scalar scale = 
 
     return tf;
 }
+#endif
 
 
 Color::Color(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
@@ -153,17 +173,21 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm): Mod
     m_minPara = addFloatParameter("min", "minimum value of range to map", 0.0);
     m_maxPara = addFloatParameter("max", "maximum value of range to map", 0.0);
     m_constrain = addIntParameter("constrain_range", "constrain range for min/max to data", true, Parameter::Boolean);
+#ifndef COLOR_RANDOM
     m_center = addFloatParameter("center", "center of colormap range", 0.5);
     setParameterRange(m_center, 0., 1.);
     m_centerAbsolute = addIntParameter("center_absolute", "absolute value for center", false, Parameter::Boolean);
     m_compress = addFloatParameter("range_compression", "compression of range towards center", 0.);
     setParameterRange(m_compress, -1., 1.);
+#endif
     m_opacity = addFloatParameter("opacity_factor", "multiplier for opacity", 1.0);
     setParameterRange(m_opacity, 0., 1.);
+#ifndef COLOR_RANDOM
     m_mapPara = addIntParameter("map", "transfer function name", CoolWarmBrewer, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_mapPara, TransferFunction);
     m_stepsPara = addIntParameter("steps", "number of color map steps", 32);
     setParameterRange(m_stepsPara, (Integer)1, MaxSteps);
+#endif
     m_blendWithMaterialPara = addIntParameter("blend_with_material", "use alpha for blending with diffuse material",
                                               false, Parameter::Boolean);
 
@@ -171,6 +195,7 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm): Mod
     addIntParameter("preview", "use preliminary colormap for showing preview when determining bounds", true,
                     Parameter::Boolean);
 
+#ifndef COLOR_RANDOM
     setCurrentParameterGroup("Nested Color Map");
     m_nestPara = addIntParameter("nest", "inset another color map", m_nest, Parameter::Boolean);
     m_autoInsetCenterPara =
@@ -190,9 +215,11 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm): Mod
     setParameterRange(m_insetWidthPara, (Float)0, (Float)1);
     m_insetOpacity = addFloatParameter("inset_opacity_factor", "multiplier for opacity of inset color", 1.0);
     setParameterRange(m_insetOpacity, 0., 1.);
+#endif
 
     addResultCache(m_cache);
 
+#ifndef COLOR_RANDOM
     ColorMap::TF pins;
     typedef ColorMap::RGBA RGBA;
 
@@ -325,6 +352,7 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm): Mod
     pins[0.0] = pins[1.0] = RGBA(d, d, d, 1.0);
     transferFunctions[Gray20] = pins;
     pins.clear();
+#endif
 }
 
 Color::~Color()
@@ -491,6 +519,7 @@ bool Color::changeParameter(const Parameter *p)
 {
     bool newMap = false;
 
+#ifndef COLOR_RANDOM
     if (p == m_mapPara) {
         if (m_mapPara->getValue() == Topography) {
             setParameter<Integer>(m_autoRangePara, false);
@@ -513,7 +542,9 @@ bool Color::changeParameter(const Parameter *p)
                                                        m_maxPara,   m_center,        m_stepsPara};
             changeParameters(params);
         }
-    } else if (p == m_constrain) {
+    } else
+#endif
+        if (p == m_constrain) {
         if (m_constrain->getValue()) {
             if (m_dataRangeValid) {
                 auto diff = m_dataMax - m_dataMin;
@@ -636,11 +667,18 @@ vistle::Texture1D::ptr Color::addTexture(vistle::DataBase::const_ptr object, con
 
 void Color::computeMap()
 {
+    Scalar op = m_opacity->getValue();
+#ifdef COLOR_RANDOM
+    auto steps = std::min(Float(MaxSteps), 1 + std::abs(m_maxPara->getValue() - m_minPara->getValue()));
+    m_colors.reset(new ColorMap(steps));
+    for (size_t i = 0; i < m_colors->width; ++i) {
+        m_colors->data[i * 4 + 3] *= op;
+    }
+#else
     auto pins = transferFunctions[getIntParameter("map")];
     if (pins.empty()) {
         pins = transferFunctions[COVISE];
     }
-    Scalar op = m_opacity->getValue();
     Scalar inset_op = m_insetOpacity->getValue();
     int steps = getIntParameter("steps");
     int resolution = steps;
@@ -702,6 +740,7 @@ void Color::computeMap()
                 m_colors->data[i * 4 + c] = inset.data[(i - insetStart) * 4 + c];
         }
     }
+#endif
 
     if (m_reverse) {
         for (size_t i = 0; i < m_colors->width; ++i) {
@@ -723,7 +762,11 @@ void Color::sendColorMap()
     setParameter(m_speciesPara, m_species);
 
     if (m_colorOut->isConnected() && !m_species.empty()) {
+#ifdef COLOR_RANDOM
+        vistle::Texture1D::ptr tex(new vistle::Texture1D(m_colors->width, m_min - 0.5, m_max + 0.5));
+#else
         vistle::Texture1D::ptr tex(new vistle::Texture1D(m_colors->width, m_min, m_max));
+#endif
         unsigned char *pix = &tex->pixels()[0];
         for (size_t index = 0; index < m_colors->width * 4; index++)
             pix[index] = m_colors->data[index];
@@ -736,8 +779,13 @@ void Color::sendColorMap()
         std::stringstream buffer;
         buffer << tex->getName() << '\n'
                << m_species << '\n'
+#ifdef COLOR_RANDOM
+               << (m_reverse ? m_max : m_min) - 0.5 << '\n'
+               << (m_reverse ? m_min : m_max) + 0.5 << '\n'
+#else
                << (m_reverse ? m_max : m_min) << '\n'
                << (m_reverse ? m_min : m_max) << '\n'
+#endif
                << m_colors->width << '\n'
                << '0';
 

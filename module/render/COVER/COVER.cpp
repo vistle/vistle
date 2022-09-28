@@ -249,7 +249,7 @@ bool COVER::parameterAdded(const int senderId, const std::string &name, const me
         plugin = "CuttingSurface";
     if (plugin == "DisCOVERay" || plugin == "OsgRenderer")
         plugin = "RhrClient";
-    if (plugin == "Color")
+    if (plugin == "Color" || plugin == "ColorRandom")
         plugin = "ColorBars";
         // std::cerr << "parameterAdded: sender=" <<  senderId << ", name=" << name << ", plugin=" << plugin << std::endl;
 
