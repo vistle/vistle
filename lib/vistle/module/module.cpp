@@ -1798,6 +1798,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
                         break;
                     assert(i == numObject);
                 }
+                //reordered = mpi::all_reduce(comm(), reordered, std::logical_and<bool>());
                 if (reordered) {
                     for (auto &key: sortKey) {
                         if (key.step >= 0 && key.time == 0.)
@@ -1832,7 +1833,6 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
                         waitForZero = true;
                         startWithZero = true;
                     }
-                    const int step = direction < 0 ? -1 : 1;
                     if (m_numTimesteps > 0) {
                         while (startTimestep < 0)
                             startTimestep += m_numTimesteps;
@@ -1841,15 +1841,19 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
 #ifdef REDUCE_DEBUG
                     CERR << "startTimestep determined to be " << startTimestep << std::endl;
 #endif
-                    if (startTimestep == -1)
-                        startTimestep = 0;
-                    if (direction < 0) {
-                        startTimestep = mpi::all_reduce(comm(), startTimestep, mpi::maximum<int>());
-                    } else {
-                        startTimestep = mpi::all_reduce(comm(), startTimestep, mpi::minimum<int>());
-                    }
-                    assert(startTimestep >= 0);
+                }
 
+                if (startTimestep == -1)
+                    startTimestep = 0;
+                if (direction < 0) {
+                    startTimestep = mpi::all_reduce(comm(), startTimestep, mpi::maximum<int>());
+                } else {
+                    startTimestep = mpi::all_reduce(comm(), startTimestep, mpi::minimum<int>());
+                }
+                assert(startTimestep >= 0);
+
+                if (reordered) {
+                    const int step = direction < 0 ? -1 : 1;
                     // add objects to port queue in processing order
                     for (auto &port: inputPorts) {
                         if (port.second.flags() & Port::NOCOMPUTE)
