@@ -1949,6 +1949,10 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
             if (oldExecCount < m_executionCount) {
                 m_iteration = -1;
             }
+#ifdef REDUCE_DEBUG
+            CERR << "all_reduce for execCount finished " << m_executionCount << " with execCount=" << m_executionCount
+                 << std::endl;
+#endif
         }
 
         int prevTimestep = -1;
@@ -2135,6 +2139,10 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
     idle.setReferrer(exec->uuid());
     idle.setDestId(Id::LocalManager);
     sendMessage(idle);
+#endif
+
+#ifdef REDUCE_DEBUG
+    CERR << "EXEC FINISHED: count=" << m_executionCount << std::endl;
 #endif
 
     return ret;
@@ -2612,6 +2620,9 @@ bool Module::cancelRequested(bool collective)
     }
 
     if (collective) {
+#ifdef REDUCE_DEBUG
+        CERR << "running all_reduce for CANCEL: requested=" << m_cancelRequested << std::endl;
+#endif
         m_cancelRequested = boost::mpi::all_reduce(comm(), m_cancelRequested, std::logical_or<bool>());
     }
 
@@ -2619,6 +2630,12 @@ bool Module::cancelRequested(bool collective)
         cancelExecute();
         m_cancelExecuteCalled = true;
     }
+
+#ifdef REDUCE_DEBUG
+    if (m_cancelRequested) {
+        CERR << "CANCEL requested!" << std::endl;
+    }
+#endif
 
     return m_cancelRequested;
 }
