@@ -344,8 +344,12 @@ void Module::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
             return modules;
         };
 
-        static std::vector<std::vector<QString>> replaceables{{"COVER", "DisCOVERay", "OsgRenderer", "BlenderRenderer"},
-                                                              {"Thicken", "SpheresOld", "TubesOld"}};
+        static std::vector<std::vector<QString>> replaceables{
+            {"COVER", "DisCOVERay", "OsgRenderer", "BlenderRenderer"},
+            {"Thicken", "SpheresOld", "TubesOld"},
+            {"Threshold", "CellSelect"},
+            {"AddAttribute", "AttachShader", "ColorAttribute", "EnableTransparency", "Variant"},
+        };
         m_replaceWithMenu->clear();
         auto *mb = scene()->moduleBrowser();
         auto hub = mb->getHubItem(m_hub);
