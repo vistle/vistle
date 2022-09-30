@@ -53,10 +53,8 @@ void Integrator::UpdateBlock()
         Vec<Scalar, 3>::const_ptr vecfld = bl->getVecFld();
         for (int i = 0; i < 3; ++i)
             m_v[i] = &vecfld->x(i)[0];
-        m_velTransform = bl->velocityTransform();
     } else {
         m_v[0] = m_v[1] = m_v[2] = nullptr;
-        m_velTransform.setIdentity();
     }
 }
 
@@ -180,7 +178,7 @@ bool Integrator::StepRK32()
             cellSize = std::min(grid->cellDiameter(el1), cellSize);
         }
 
-        k[1] = m_velTransform * sign * Interpolator(m_ptcl->m_block, el1, x1);
+        k[1] = sign * Interpolator(m_ptcl->m_block, el1, x1);
         Vector3 x2nd = m_ptcl->m_x + m_h * (k[0] * 0.5 + k[1] * 0.5);
 
         const Vector3 x2 = m_ptcl->m_x + m_h * (-k[0] + 2 * k[1]);
@@ -194,7 +192,7 @@ bool Integrator::StepRK32()
             cellSize = std::min(grid->cellDiameter(el2), cellSize);
         }
 
-        k[2] = m_velTransform * sign * Interpolator(m_ptcl->m_block, el2, x2);
+        k[2] = sign * Interpolator(m_ptcl->m_block, el2, x2);
         Vector3 x3rd = m_ptcl->m_x + m_h * (0.5 * k[0] * third + 2 * k[1] * third + 0.5 * k[2] * third);
         m_hact = m_h;
 
@@ -212,7 +210,6 @@ bool Integrator::StepConstantVelocity()
     auto grid = m_ptcl->m_block->getGrid();
 
     Vector3 vel = m_forward ? m_ptcl->m_v : -m_ptcl->m_v;
-    vel = m_velTransform * vel;
     Scalar t = grid->exitDistance(el, m_ptcl->m_x, vel);
     if (t < 0)
         return false;

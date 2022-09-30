@@ -17,7 +17,6 @@ private:
     Particle *m_ptcl;
     bool m_forward;
     const vistle::Scalar *m_v[3];
-    vistle::Matrix3 m_velTransform;
     int m_cellSearchFlags;
 
 public:
