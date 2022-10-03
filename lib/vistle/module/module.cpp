@@ -788,6 +788,8 @@ void Module::updateMeta(vistle::Object::ptr obj) const
 
 void Module::setItemInfo(const std::string &text, const std::string &port)
 {
+    if (rank() != 0)
+        return;
     auto &old = m_currentItemInfo[port];
     if (old != text) {
         using message::ItemInfo;
