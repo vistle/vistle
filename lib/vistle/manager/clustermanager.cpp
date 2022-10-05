@@ -1173,8 +1173,7 @@ bool ClusterManager::handlePriv(const message::Execute &exec)
     auto &mod = i->second;
     switch (exec.what()) {
     case message::Execute::Upstream: {
-        assert(!mod.prepared);
-        assert(mod.reduced);
+        CERR << "sending upstream exec to " << exec.getModule() << std::endl;
         mod.send(exec);
         break;
     }
