@@ -307,6 +307,15 @@ if(WIN32)
     set(Boost_USE_STATIC_RUNTIME OFF)
 endif(WIN32)
 
+if(APPLE)
+    # force use of pthread_mutexattr_setpshared on macos:
+    # we do not use condition variables, so the bug that not providing this
+    # define is supposed to work around is not relevant to Vistle, but the
+    # lack of mutexes working between processes is a real problem
+    # cf. https://github.com/boostorg/interprocess/issues/53
+    add_definitions(-DBOOST_INTERPROCESS_POSIX_PROCESS_SHARED)
+endif()
+
 vistle_find_package(
     Boost
     1.59
