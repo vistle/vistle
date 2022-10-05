@@ -38,8 +38,7 @@ void ObjectCache::setCacheMode(ObjectCache::CacheMode mode)
 {
     if (mode != m_cacheMode) {
         if (m_cacheMode == CacheDeleteLate) {
-            m_cache.clear();
-            std::swap(m_cache, m_oldCache);
+            m_oldCache.clear();
         }
         if (mode == CacheNone)
             clear();
