@@ -201,7 +201,7 @@ Module::Module(const std::string &moduleName, const int moduleId, mpi::communica
 , m_receivePolicy(message::ObjectReceivePolicy::Local)
 , m_schedulingPolicy(message::SchedulingPolicy::Single)
 , m_reducePolicy(message::ReducePolicy::Locally)
-, m_defaultCacheMode(ObjectCache::CacheNone)
+, m_defaultCacheMode(ObjectCache::CacheByName)
 , m_prioritizeVisible(true)
 , m_syncMessageProcessing(false)
 , m_origStreambuf(nullptr)
@@ -1701,10 +1701,16 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
             numObject = 0;
 
             for (auto &port: inputPorts) {
-                port.second.objects().clear();
+                ObjectList received;
+                std::swap(received, port.second.objects());
                 if (!isConnected(port.second))
                     continue;
-                port.second.objects() = m_cache.getObjects(port.first);
+                auto cache = m_cache.getObjects(port.first);
+                cache.second = mpi::all_reduce(comm(), cache.second, std::logical_and<bool>());
+                if (!cache.second)
+                    cache.first.clear();
+                port.second.objects() = cache.first;
+                received.clear();
                 auto srcPort = *port.second.connections().begin();
                 for (const auto &o: port.second.objects()) {
                     (void)o;
@@ -1863,10 +1869,18 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
                     for (auto &port: inputPorts) {
                         if (port.second.flags() & Port::NOCOMPUTE)
                             continue;
-                        port.second.objects().clear();
+                        ObjectList received;
+                        std::swap(received, port.second.objects());
                         if (!isConnected(port.second))
                             continue;
-                        auto objs = m_cache.getObjects(port.first);
+                        auto cache = m_cache.getObjects(port.first);
+                        if (!cache.second) {
+                            // FIXME: should collectively ignore cache
+                            CERR << "failed to retrieve objects from input cache" << std::endl;
+                            cache.first.clear();
+                        }
+                        auto objs = cache.first;
+                        received.clear();
                         // objects without timestep
                         ssize_t cur = step < 0 ? numObject - 1 : 0;
                         for (size_t i = 0; i < numObject; ++i) {

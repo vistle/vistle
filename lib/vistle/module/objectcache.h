@@ -14,7 +14,8 @@ typedef std::deque<vistle::Object::const_ptr> ObjectList;
 
 class ObjectCache {
 public:
-    DEFINE_ENUM_WITH_STRING_CONVERSIONS(CacheMode, (CacheDefault)(CacheNone)(CacheDeleteEarly)(CacheDeleteLate))
+    DEFINE_ENUM_WITH_STRING_CONVERSIONS(CacheMode,
+                                        (CacheDefault)(CacheNone)(CacheByName)(CacheDeleteEarly)(CacheDeleteLate))
 
     ObjectCache();
     ~ObjectCache();
@@ -26,11 +27,14 @@ public:
     void setCacheMode(CacheMode mode);
 
     void addObject(const std::string &portname, Object::const_ptr object);
-    const ObjectList &getObjects(const std::string &portname) const;
+    std::pair<ObjectList, bool> getObjects(const std::string &portname) const;
 
 private:
     CacheMode m_cacheMode;
+    Meta m_meta;
+    typedef std::deque<std::string> NameList;
     std::map<std::string, ObjectList> m_cache, m_oldCache;
+    std::map<std::string, NameList> m_nameCache;
     ObjectList m_emptyList;
 };
 
