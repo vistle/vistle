@@ -269,7 +269,9 @@ bool COVER::parameterAdded(const int senderId, const std::string &name, const me
         m_interactorMap[senderId]->setPluginName(plugin);
         it = m_interactorMap.find(senderId);
         std::cerr << "created interactor for " << moduleName << ":" << senderId << std::endl;
-        it->second->incRefCount();
+        auto inter = it->second;
+        inter->incRefCount();
+        coVRPluginList::instance()->newInteractor(inter->getObject(), inter);
     }
     VistleInteractor *inter = it->second;
     inter->addParam(name, msg);
