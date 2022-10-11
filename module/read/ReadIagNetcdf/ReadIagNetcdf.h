@@ -43,9 +43,9 @@ private:
     std::vector<std::string> m_dataFiles;
 
     Index m_numVertices = 0;
-    UnstructuredGrid::ptr m_grid;
-    Polygons::ptr m_boundary;
-    Vec<Index>::ptr m_markerData;
+    UnstructuredGrid::const_ptr m_grid;
+    Polygons::const_ptr m_boundary;
+    Vec<Index>::const_ptr m_markerData;
 };
 
 #endif
