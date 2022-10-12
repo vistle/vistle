@@ -136,7 +136,7 @@ ReadMPAS::ReadMPAS(const std::string &name, int moduleID, mpi::communicator comm
     V_ENUM_SET_CHOICES(m_cellMode, CellMode);
 
     setParallelizationMode(ParallelizeBlocks);
-    setCollectiveIo(true); // for MPI usage in NetCDF/PnetCDF
+    setCollectiveIo(Reader::Collective); // for MPI usage in NetCDF/PnetCDF
 
     observeParameter(m_gridFile);
     observeParameter(m_zGridFile);

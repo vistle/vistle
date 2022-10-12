@@ -111,6 +111,18 @@ protected:
         ParallelizeBlocks, ///< up to 'concurrency' operations at a time, all operations for one timestep have finished before operations for another timestep are started
     };
 
+    enum PartitionHandling {
+        Monolithic, ///< call into read on all ranks and let module handle partitioning
+        PartitionTimesteps, ///< call into read on all ranks for constant data, and onto dedicated ranks for partitions of timesteps
+        Partition, ///< call into read once per partition and timestep (including "constant timestep")
+    };
+
+    enum CollectiveIo {
+        Individual, ///< never provide a common communicator for read calls
+        CollectiveConstant, ///< provide a common communicator in Token passed to read for constant timestep
+        Collective, ///< always provide a communicator spanning all participating ranks (timesteps and static data)
+    };
+
     struct ReaderTime {
         ReaderTime(int first, int last, int inc): m_first(first), m_last(last), m_inc(inc) {}
 
@@ -130,10 +142,10 @@ protected:
     /// control if read operations have to be called collectively
     /*! if read operations are to be called collectively, @ref Token
         will provide an MPI communicator */
-    void setCollectiveIo(bool enable);
+    void setCollectiveIo(CollectiveIo collective);
 
     /// whether partitions should be handled by the @ref Reader class
-    void setHandlePartitions(bool enable);
+    void setHandlePartitions(PartitionHandling part);
     /// whether timesteps may be distributed to different ranks
     void setAllowTimestepDistribution(bool allow);
     //! whenever an observed parameter changes, data set should be rescanned
@@ -189,8 +201,8 @@ private:
     int m_numPartitions = 0;
     bool m_readyForRead = true;
 
-    bool m_collectiveIo = false;
-    bool m_handlePartitions = true;
+    CollectiveIo m_collectiveIo = Individual;
+    PartitionHandling m_handlePartitions = Partition;
     bool m_handleOwnDIYBlocks = false;
     bool m_allowTimestepDistribution = false;
 

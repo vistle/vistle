@@ -119,8 +119,10 @@ size_t Reader::waitForReaders(size_t maxRunning, bool &result)
 bool Reader::readTimestep(std::shared_ptr<Token> &prev, const ReaderProperties &prop, int timestep, int step)
 {
     bool result = true;
+    bool collective = m_collectiveIo == Collective || (timestep < 0 && m_collectiveIo == CollectiveConstant);
+    bool partitioned = m_handlePartitions == Partition || (timestep >= 0 && m_handlePartitions == PartitionTimesteps);
     std::shared_ptr<mpi::communicator> rest_comm, full_comm;
-    if (m_collectiveIo) {
+    if (collective) {
         bool have_rest = prop.numpart % size() != 0;
         if (have_rest) {
             int baseRank = (int)m_firstRank->getValue();
@@ -130,18 +132,18 @@ bool Reader::readTimestep(std::shared_ptr<Token> &prev, const ReaderProperties &
         full_comm = std::make_shared<mpi::communicator>(comm(), mpi::comm_duplicate);
     }
     for (int p = -1; p < prop.numpart; ++p) {
-        if (m_collectiveIo && p % size() == 0) {
+        if (collective && p % size() == 0) {
             full_comm = std::make_shared<mpi::communicator>(comm(), mpi::comm_duplicate);
         }
-        if (!m_handlePartitions || comm().rank() == rankForTimestepAndPartition(step, p)) {
+        if (!partitioned || comm().rank() == rankForTimestepAndPartition(step, p)) {
             auto token = std::make_shared<Token>(this, prev);
             ++m_tokenCount;
             token->m_id = m_tokenCount;
             token->m_meta = *prop.meta;
             token->m_meta.setBlock(p);
             token->m_meta.setTimeStep(step);
-            if (m_collectiveIo) {
-                if (!m_handlePartitions || (p < prop.numpart / size() * size())) {
+            if (collective) {
+                if (!partitioned || (p < prop.numpart / size() * size())) {
                     token->m_comm = full_comm;
                 } else {
                     token->m_comm = rest_comm;
@@ -248,7 +250,7 @@ bool Reader::prepare()
     auto rTime = ReaderTime(first, last, inc);
 
     int numpart = m_numPartitions;
-    if (!m_handlePartitions)
+    if (m_handlePartitions == Monolithic)
         numpart = 0;
 
     Meta meta;
@@ -277,9 +279,13 @@ bool Reader::prepare()
     std::shared_ptr<Token> prev;
     meta.setTimeStep(-1);
     ReaderProperties prop(&meta, rTime, numpart, concurrency);
+    if (m_handlePartitions == PartitionTimesteps) {
+        prop.numpart = 0;
+    }
     if (!readTimestep(prev, prop, -1, -1)) {
         sendError("error reading constant data");
     } else {
+        prop.numpart = numpart;
         // read timesteps
         if (!readTimesteps(prev, prop)) {
             sendError("error reading varying data");
@@ -330,17 +336,17 @@ void Reader::setParallelizationMode(Reader::ParallelizationMode mode)
     m_parallel = mode;
 }
 
-void Reader::setCollectiveIo(bool enable)
+void Reader::setCollectiveIo(Reader::CollectiveIo collective)
 {
-    m_collectiveIo = enable;
-    if (m_collectiveIo) {
+    m_collectiveIo = collective;
+    if (m_collectiveIo != Individual) {
         setAllowTimestepDistribution(m_allowTimestepDistribution);
     }
 }
 
-void Reader::setHandlePartitions(bool enable)
+void Reader::setHandlePartitions(Reader::PartitionHandling part)
 {
-    m_handlePartitions = enable;
+    m_handlePartitions = part;
 }
 
 /**
@@ -351,7 +357,7 @@ void Reader::setHandlePartitions(bool enable)
 void Reader::setAllowTimestepDistribution(bool allow)
 {
     m_allowTimestepDistribution = allow;
-    if (m_allowTimestepDistribution && !m_collectiveIo) {
+    if (m_allowTimestepDistribution && m_collectiveIo != Collective) {
         if (!m_distributeTime) {
             setCurrentParameterGroup("Reader");
             m_distributeTime =

@@ -48,7 +48,8 @@ ReadFOAM::ReadFOAM(const std::string &name, int moduleId, mpi::communicator comm
 : Reader(name, moduleId, comm), m_boundOut(nullptr)
 {
     // all ranks have to be scheduled simultaneously
-    Reader::setHandlePartitions(false);
+    Reader::setHandlePartitions(Reader::Monolithic);
+    Reader::setCollectiveIo(Reader::Collective);
 
     // file browser parameter
     m_casedir =
