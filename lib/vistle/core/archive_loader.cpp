@@ -178,6 +178,25 @@ void DeepArchiveFetcher::releaseArrays()
     m_ownedArrays.clear();
 }
 
+std::ostream &operator<<(std::ostream &s, const DeepArchiveFetcher &daf)
+{
+    s << "Objects:";
+    for (const auto &o: daf.m_objects) {
+        s << " " << o.first << "("
+          << ")";
+    }
+    s << " ";
+    s << "Arrays:";
+    for (const auto &a: daf.m_arrays) {
+        auto it = daf.m_rawSize.find(a.first);
+        size_t unc = 0;
+        if (it != daf.m_rawSize.end())
+            unc = it->second;
+        s << " " << a.first << "(" << a.second.size() << "->" << unc << ")";
+    }
+    return s;
+}
+
 ArrayLoader::ArrayLoader(const std::string &name, int type, const iarchive &ar)
 : m_ok(false), m_arname(name), m_type(type), m_ar(ar)
 {

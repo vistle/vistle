@@ -12,6 +12,7 @@
 #include <map>
 #include <string>
 #include <memory>
+#include <ostream>
 
 namespace vistle {
 
@@ -79,6 +80,8 @@ struct V_COREEXPORT ArrayLoader {
 };
 
 class V_COREEXPORT DeepArchiveFetcher: public Fetcher, public std::enable_shared_from_this<DeepArchiveFetcher> {
+    friend std::ostream &operator<<(std::ostream &os, const DeepArchiveFetcher &daf);
+
 public:
     DeepArchiveFetcher(const std::map<std::string, buffer> &objects, const std::map<std::string, buffer> &arrays,
                        const std::map<std::string, message::CompressionMode> &compressions,
@@ -113,6 +116,7 @@ private:
     std::set<std::shared_ptr<ArrayLoader::ArrayOwner>> m_ownedArrays;
 };
 
+V_COREEXPORT std::ostream &operator<<(std::ostream &os, const DeepArchiveFetcher &daf);
 
 } // namespace vistle
 #endif
