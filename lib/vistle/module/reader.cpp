@@ -474,7 +474,7 @@ bool Reader::Token::result()
 bool Reader::Token::waitDone()
 {
     //#ifdef DEBUG
-    std::cerr << "Reader::Token: finishing " << id() << ", meta: " << m_meta << "..." << std::endl;
+    std::cerr << "Reader::Token: waiting to finish " << id() << ", meta: " << m_meta << "..." << std::endl;
     //#endif
     {
         std::lock_guard<std::mutex> locker(m_mutex);
@@ -482,7 +482,7 @@ bool Reader::Token::waitDone()
             return m_result;
 
         if (!m_future.valid()) {
-            std::cerr << "Reader::Token: finishing " << id() << ", but future not valid 1" << std::endl;
+            std::cerr << "Reader::Token: waiting to finish " << id() << ", but future not valid 1" << std::endl;
             m_finished = true;
             m_result = false;
         }
@@ -493,13 +493,14 @@ bool Reader::Token::waitDone()
             try {
                 m_future.wait();
             } catch (std::exception &ex) {
-                std::cerr << "Reader::Token: finishing " << id() << ", but future throws: " << ex.what() << std::endl;
+                std::cerr << "Reader::Token: waiting to finish " << id() << ", but future throws: " << ex.what()
+                          << std::endl;
                 std::lock_guard<std::mutex> locker(m_mutex);
                 m_finished = true;
                 m_result = false;
             }
         } else {
-            std::cerr << "Reader::Token: finishing " << id() << ", but future not valid 2" << std::endl;
+            std::cerr << "Reader::Token: waiting to finish " << id() << ", but future not valid 2" << std::endl;
             std::lock_guard<std::mutex> locker(m_mutex);
             m_finished = true;
             m_result = false;
@@ -508,7 +509,7 @@ bool Reader::Token::waitDone()
 
     std::lock_guard<std::mutex> locker(m_mutex);
     if (!m_finished && !m_future.valid()) {
-        std::cerr << "Reader::Token: finishing " << id() << ", but future not valid 3" << std::endl;
+        std::cerr << "Reader::Token: waiting to finish " << id() << ", but future not valid 3" << std::endl;
         m_finished = true;
         m_result = false;
     }
@@ -517,11 +518,13 @@ bool Reader::Token::waitDone()
         try {
             m_result = m_future.get();
         } catch (std::exception &ex) {
-            std::cerr << "Reader::Token: finishing " << id() << ", but future throws: " << ex.what() << std::endl;
+            std::cerr << "Reader::Token: waiting to finish " << id() << ", but future throws: " << ex.what()
+                      << std::endl;
             m_finished = true;
             m_result = false;
         } catch (...) {
-            std::cerr << "Reader::Token: finishing " << id() << ", but future throws unknown exception" << std::endl;
+            std::cerr << "Reader::Token: waiting to finish " << id() << ", but future throws unknown exception"
+                      << std::endl;
             m_finished = true;
             m_result = false;
         }
