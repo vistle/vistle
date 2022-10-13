@@ -46,15 +46,21 @@ void DeepArchiveFetcher::requestArray(const std::string &arname, int type,
         }
     }
     vecistreambuf<buffer> vb(comp == message::CompressionNone ? it->second : raw);
-    iarchive ar(vb);
-    ar.setFetcher(shared_from_this());
-    ArrayLoader loader(arname, type, ar);
-    if (loader.load()) {
-        //std::cerr << "DeepArchiveFetcher: success array " << arname << std::endl;
-        m_ownedArrays.emplace(loader.owner());
-        completeCallback(ar.translateArrayName(arname));
-    } else {
-        std::cerr << "DeepArchiveFetcher: failed to load array " << arname << std::endl;
+    try {
+        iarchive ar(vb);
+        ar.setFetcher(shared_from_this());
+        ArrayLoader loader(arname, type, ar);
+        if (loader.load()) {
+            //std::cerr << "DeepArchiveFetcher: success array " << arname << std::endl;
+            m_ownedArrays.emplace(loader.owner());
+            completeCallback(ar.translateArrayName(arname));
+        } else {
+            std::cerr << "DeepArchiveFetcher: failed to load array " << arname << " of type " << type << std::endl;
+        }
+    } catch (std::exception &ex) {
+        std::cerr << "DeepArchiveFetcher: exception " << ex.what() << " while loading array " << arname << " of type "
+                  << type << std::endl;
+        throw ex;
     }
 }
 

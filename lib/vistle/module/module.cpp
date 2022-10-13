@@ -719,6 +719,7 @@ bool Module::broadcastObject(const mpi::communicator &comm, Object::const_ptr &o
         vistle::iarchive memar(membuf);
         auto fetcher = std::make_shared<DeepArchiveFetcher>(objects, arrays, comp, rawsizes);
         memar.setFetcher(fetcher);
+        //std::cerr << "DeepArchiveFetcher: " << *fetcher << std::endl;
         obj.reset(Object::loadObject(memar));
         obj->refresh();
         obj->check();
