@@ -321,6 +321,7 @@ void Object::refresh() const
 bool Object::check() const
 {
     V_CHECK(d()->refcount() > 0); // we are holding a reference
+    V_CHECK(d()->isComplete()); // we are holding a reference
 
     V_CHECK(d()->meta.creator() != -1);
 

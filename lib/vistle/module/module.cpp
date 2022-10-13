@@ -688,6 +688,8 @@ bool Module::broadcastObject(const mpi::communicator &comm, Object::const_ptr &o
         auto fetcher = std::make_shared<DeepArchiveFetcher>(objects, arrays, comp, rawsizes);
         memar.setFetcher(fetcher);
         obj.reset(Object::loadObject(memar));
+        obj->refresh();
+        obj->check();
         //std::cerr << "broadcastObject recv " << obj->getName() << ": refcount=" << obj->refcount() << std::endl;
         //obj->unref();
     }
