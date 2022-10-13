@@ -284,10 +284,19 @@ bool Reader::prepare()
     }
     if (!readTimestep(prev, prop, -1, -1)) {
         sendError("error reading constant data");
+        prev.reset();
     } else {
         prop.numpart = numpart;
+        bool result = true;
+        if (m_parallel == ParallelizeTimeAndBlocksAfterStatic) {
+            waitForReaders(0, result);
+            prev.reset();
+            if (!result) {
+                sendError("error waiting for reading static data");
+            }
+        }
         // read timesteps
-        if (!readTimesteps(prev, prop)) {
+        if (result && !readTimesteps(prev, prop)) {
             sendError("error reading varying data");
         }
     }
@@ -361,7 +370,7 @@ void Reader::setAllowTimestepDistribution(bool allow)
         if (!m_distributeTime) {
             setCurrentParameterGroup("Reader");
             m_distributeTime =
-                addIntParameter("distribute_time", "distribute timesteps across MPI ranks", false, Parameter::Boolean);
+                addIntParameter("distribute_time", "distribute timesteps across MPI ranks", true, Parameter::Boolean);
             setCurrentParameterGroup();
         }
     } else {

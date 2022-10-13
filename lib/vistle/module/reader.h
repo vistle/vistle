@@ -107,8 +107,9 @@ protected:
 
     enum ParallelizationMode {
         Serial, ///< only one operation at a time, all blocks of a timestep first, then other timesteps
-        ParallelizeTimeAndBlocks, ///< up to 'concurrency' operations at a time
         ParallelizeBlocks, ///< up to 'concurrency' operations at a time, all operations for one timestep have finished before operations for another timestep are started
+        ParallelizeTimeAndBlocksAfterStatic, ///< up to 'concurrency' operations at a time, but finish reading of static data first
+        ParallelizeTimeAndBlocks, ///< up to 'concurrency' operations at a time
     };
 
     enum PartitionHandling {
