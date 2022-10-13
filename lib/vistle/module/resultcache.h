@@ -6,6 +6,7 @@
 #include <string>
 #include <map>
 #include <mutex>
+#include <deque>
 
 namespace vistle {
 
@@ -28,6 +29,7 @@ public:
 
     private:
         std::mutex mutex;
+        size_t generation = 0;
         Result data;
     };
 
@@ -42,9 +44,13 @@ public:
     void clear() override;
 
 protected:
-    std::map<std::string, Entry> m_cache;
-    Entry m_empty;
     std::mutex m_mutex;
+    size_t m_generation = 0, m_purgedGenerations = 0;
+    Entry m_empty;
+    std::deque<std::map<std::string, Entry>> m_cache;
+    std::deque<size_t> m_borrowCount;
+
+    void purgeOldGenerations(); // assumes that m_mutex is already locked
 };
 
 } // namespace vistle
