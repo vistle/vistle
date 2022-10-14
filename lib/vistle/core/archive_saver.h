@@ -61,7 +61,7 @@ struct V_COREEXPORT ArraySaver {
 
     bool m_ok;
     std::string m_name;
-    int m_type;
+    unsigned m_type;
     vistle::oarchive &m_ar;
     const void *m_array = nullptr;
 };

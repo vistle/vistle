@@ -74,7 +74,7 @@ struct V_COREEXPORT ArrayLoader {
     bool m_ok;
     std::string m_arname; //<! name in archive
     std::string m_name; //<! name in shmem
-    int m_type;
+    unsigned m_type;
     const vistle::iarchive &m_ar;
 };
 

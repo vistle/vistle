@@ -23,7 +23,7 @@ public:
     typedef uint64_t size_type;
     typedef const value_type &const_reference;
 
-    static int typeId();
+    static unsigned typeId();
 
     shm_array(const allocator &alloc = allocator());
     shm_array(const size_t size, const allocator &alloc = allocator());
@@ -31,7 +31,7 @@ public:
     shm_array(shm_array &&other);
     ~shm_array();
 
-    int type() const { return m_type; }
+    unsigned type() const { return m_type; }
     bool check() const;
 
     typedef typename allocator::pointer pointer;
