@@ -236,7 +236,8 @@ Indexed::NeighborFinder::NeighborFinder(const Indexed *indexed): indexed(indexed
 Index Indexed::NeighborFinder::getNeighborElement(Index elem, Index v1, Index v2, Index v3) const
 {
     if (v1 == v2 || v1 == v3 || v2 == v3) {
-        std::cerr << "WARNING: getNeighborElement was not called with 3 unique vertices." << std::endl;
+        std::cerr << "WARNING: getNeighborElement was not called with 3 unique vertices: " << v1 << " " << v2 << " "
+                  << v3 << std::endl;
         return InvalidIndex;
     }
 

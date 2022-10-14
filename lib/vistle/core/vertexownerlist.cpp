@@ -80,7 +80,8 @@ Index VertexOwnerList::getNeighbor(Index cell, Index vertex1, Index vertex2, Ind
     std::array<Index, 3> vertices;
 
     if (vertex1 == vertex2 || vertex1 == vertex3 || vertex2 == vertex3) {
-        std::cerr << "WARNING: getNeighbor was not called with 3 unique vertices." << std::endl;
+        std::cerr << "WARNING: getNeighbor was not called with 3 unique vertices: " << vertex1 << " " << vertex2 << " "
+                  << vertex3 << std::endl;
         return InvalidIndex;
     }
     vertices[0] = vertex1;
@@ -93,14 +94,11 @@ Index VertexOwnerList::getNeighbor(Index cell, Index vertex1, Index vertex2, Ind
         auto num = cells_num.second;
         for (Index j = 0; j < num; ++j) {
             Index c = cells[j];
-            if (c != cell)
-                ++cellCount[c];
-        }
-    }
-
-    for (auto &c: cellCount) {
-        if (c.second == 3) {
-            return c.first;
+            if (c != cell) {
+                if (++cellCount[c] == 3) {
+                    return c;
+                }
+            }
         }
     }
 
