@@ -53,6 +53,13 @@ bool VertexOwnerList::isEmpty() const
     return getNumVertices() == 0;
 }
 
+void VertexOwnerList::print(std::ostream &os) const
+{
+    Base::print(os);
+    os << " vertexlist(" << *d()->vertexList << ")";
+    os << " celllist(" << *d()->cellList << ")";
+}
+
 Index VertexOwnerList::getNumVertices() const
 {
     return d()->vertexList->size() - 1;

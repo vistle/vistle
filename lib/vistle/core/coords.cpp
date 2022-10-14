@@ -38,6 +38,16 @@ bool Coords::checkImpl() const
     return true;
 }
 
+void Coords::print(std::ostream &os) const
+{
+    Base::print(os);
+    os << " norm(";
+    if (normals()) {
+        os << normals();
+    }
+    os << ")";
+}
+
 std::pair<Vector3, Vector3> Coords::getBounds() const
 {
     return getMinMax();

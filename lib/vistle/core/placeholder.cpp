@@ -98,6 +98,12 @@ bool PlaceHolder::checkImpl() const
     return true;
 }
 
+void PlaceHolder::print(std::ostream &os) const
+{
+    Base::print(os);
+    os << " orig(" << *d()->originalName << ")";
+}
+
 void PlaceHolder::Data::initData()
 {
     originalType = Object::UNKNOWN;

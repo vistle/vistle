@@ -35,6 +35,12 @@ bool Tubes::checkImpl() const
     return true;
 }
 
+void Tubes::print(std::ostream &os) const
+{
+    Base::print(os);
+    os << " components(" << *d()->components << ")";
+}
+
 Index Tubes::getNumTubes() const
 {
     return components().size() - 1;

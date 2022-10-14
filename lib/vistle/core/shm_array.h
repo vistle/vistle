@@ -5,6 +5,7 @@
 #include <atomic>
 #include <cstring>
 #include <type_traits>
+#include <ostream>
 
 #include "export.h"
 #include "index.h"
@@ -17,7 +18,15 @@
 namespace vistle {
 
 template<typename T, class allocator>
+class shm_array;
+
+template<typename T, class allocator>
+std::ostream &operator<<(std::ostream &os, const shm_array<T, allocator> &arr);
+
+template<typename T, class allocator>
 class shm_array: public ShmData {
+    friend std::ostream &operator<< <T, allocator>(std::ostream &os, const shm_array<T, allocator> &arr);
+
 public:
     typedef T value_type;
     typedef uint64_t size_type;
@@ -115,7 +124,10 @@ private:
     shm_array &operator=(const shm_array &rhs) = delete;
 };
 
-#define SHMARR_EXPORT(T) extern template class V_COREEXPORT shm_array<T, shm_allocator<T>>;
+#define SHMARR_EXPORT(T) \
+    extern template class V_COREEXPORT shm_array<T, shm_allocator<T>>; \
+    extern template V_COREEXPORT std::ostream &operator<< <T, shm_allocator<T>>( \
+        std::ostream &, const shm_array<T, shm_allocator<T>> &);
 
 FOR_ALL_SCALARS(SHMARR_EXPORT)
 #if 0

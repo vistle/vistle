@@ -2,11 +2,11 @@
 #define OBJECT_H
 
 #include <vector>
-#include <vistle/util/sysdep.h>
 #include <memory>
 #include <string>
 #include <atomic>
 #include <functional>
+#include <ostream>
 
 #ifdef NO_SHMEM
 #include <map>
@@ -18,6 +18,7 @@
 
 #include <boost/mpl/size.hpp>
 
+#include <vistle/util/sysdep.h>
 #include <vistle/util/enum.h>
 
 #include "export.h"
@@ -143,6 +144,7 @@ public:
 
     virtual void refresh() const; //!< refresh cached pointers from shm
     virtual bool check() const;
+    virtual void print(std::ostream &os) const;
     virtual void updateInternals();
 
     virtual bool isEmpty() const;
@@ -234,6 +236,7 @@ private:
     Object(const Object &) = delete;
     Object &operator=(const Object &) = delete;
 };
+V_COREEXPORT std::ostream &operator<<(std::ostream &os, const Object &);
 
 ARCHIVE_ASSUME_ABSTRACT(Object)
 
@@ -391,7 +394,10 @@ public: \
     typedef std::shared_ptr<const ObjType> const_ptr; \
     typedef ObjType Class; \
     static Object::Type type(); \
-    static const char *typeName() { return #ObjType; } \
+    static const char *typeName() \
+    { \
+        return #ObjType; \
+    } \
     static std::shared_ptr<const ObjType> as(std::shared_ptr<const Object> ptr) \
     { \
         return std::dynamic_pointer_cast<const ObjType>(ptr); \
@@ -400,7 +406,10 @@ public: \
     { \
         return std::dynamic_pointer_cast<ObjType>(ptr); \
     } \
-    static Object *createFromData(Object::Data *data) { return new ObjType(static_cast<ObjType::Data *>(data)); } \
+    static Object *createFromData(Object::Data *data) \
+    { \
+        return new ObjType(static_cast<ObjType::Data *>(data)); \
+    } \
     std::shared_ptr<const Object> object() const override \
     { \
         return static_cast<const Object *>(this)->shared_from_this(); \
@@ -412,9 +421,18 @@ public: \
         publish(data); \
         return Object::ptr(createFromData(data)); \
     } \
-    ptr clone() const { return ObjType::as(cloneInternal()); } \
-    ptr cloneType() const { return ObjType::as(cloneTypeInternal()); } \
-    Object::ptr cloneTypeInternal() const override { return Object::ptr(new ObjType(Object::Initialized)); } \
+    ptr clone() const \
+    { \
+        return ObjType::as(cloneInternal()); \
+    } \
+    ptr cloneType() const \
+    { \
+        return ObjType::as(cloneTypeInternal()); \
+    } \
+    Object::ptr cloneTypeInternal() const override \
+    { \
+        return Object::ptr(new ObjType(Object::Initialized)); \
+    } \
     static Object *createEmpty(const std::string &name) \
     { \
         if (name.empty()) \
@@ -438,14 +456,20 @@ public: \
     { \
         return ObjType::clone<OtherType>(std::const_pointer_cast<OtherType>(other)); \
     } \
-    static void destroy(const std::string &name) { shm<ObjType::Data>::destroy(name); } \
+    static void destroy(const std::string &name) \
+    { \
+        shm<ObjType::Data>::destroy(name); \
+    } \
     void refresh() const override \
     { \
         Base::refresh(); \
         refreshImpl(); \
     } \
     void refreshImpl() const; \
-    explicit ObjType(Object::InitializedFlags): Base(ObjType::Data::create()) { refreshImpl(); } \
+    explicit ObjType(Object::InitializedFlags): Base(ObjType::Data::create()) \
+    { \
+        refreshImpl(); \
+    } \
     virtual bool isEmpty() override; \
     virtual bool isEmpty() const override; \
     bool check() const override \
@@ -453,17 +477,30 @@ public: \
         refresh(); \
         if (isEmpty()) { \
         }; \
-        if (!Base::check()) \
+        if (!Base::check()) { \
+            std::cerr << *this << std::endl; \
             return false; \
-        return checkImpl(); \
+        } \
+        if (!checkImpl()) { \
+            std::cerr << *this << std::endl; \
+            return false; \
+        } \
+        return true; \
     } \
     struct Data; \
-    const Data *d() const { return static_cast<Data *>(Object::m_data); } \
-    Data *d() { return static_cast<Data *>(Object::m_data); } \
+    const Data *d() const \
+    { \
+        return static_cast<Data *>(Object::m_data); \
+    } \
+    Data *d() \
+    { \
+        return static_cast<Data *>(Object::m_data); \
+    } \
     /* ARCHIVE_REGISTRATION(override) */ \
     ARCHIVE_REGISTRATION_INLINE \
 protected: \
     bool checkImpl() const; \
+    void print(std::ostream &os) const override; \
     explicit ObjType(Data *data); \
     ObjType(); \
 \

@@ -303,6 +303,33 @@ typename Vec<T, Dim>::Data *Vec<T, Dim>::Data::createNamed(Object::Type id, cons
 }
 #endif
 
+template<class T, unsigned Dim>
+void Vec<T, Dim>::print(std::ostream &os) const
+{
+    Base::print(os);
+    for (unsigned c = 0; c < Dim; ++c) {
+        os << " ";
+        switch (c) {
+        case 0:
+            os << "x";
+            break;
+        case 1:
+            os << "y";
+            break;
+        case 2:
+            os << "z";
+            break;
+        case 3:
+            os << "w";
+            break;
+        default:
+            os << "x" << c;
+            break;
+        }
+        os << "(" << *d()->x[c] << ")";
+    }
+}
+
 } // namespace vistle
 
 #endif

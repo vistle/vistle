@@ -28,6 +28,11 @@ bool Lines::checkImpl() const
     return true;
 }
 
+void Lines::print(std::ostream &os) const
+{
+    Base::print(os);
+}
+
 void Lines::Data::initData()
 {}
 

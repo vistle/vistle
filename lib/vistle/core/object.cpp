@@ -151,6 +151,21 @@ const char *Object::toString(Type v)
     return buf;
 }
 
+std::ostream &operator<<(std::ostream &os, const Object &obj)
+{
+    obj.print(os);
+    return os;
+}
+
+void Object::print(std::ostream &os) const
+{
+    os << toString(getType()) << ":" << getName() << "(#ref:" << d()->refcount();
+    if (!d()->isComplete()) {
+        os << " INCOMPLETE";
+    }
+    os << ")";
+}
+
 Object *Object::create(Data *data)
 {
     if (!data)

@@ -78,6 +78,12 @@ bool StructuredGrid::isEmpty() const
     return Base::isEmpty();
 }
 
+void StructuredGrid::print(std::ostream &os) const
+{
+    Base::print(os);
+    os << " " << getSize() << "=" << getNumDivisions(0) << "x" << getNumDivisions(1) << "x" << getNumDivisions(2);
+}
+
 // GET FUNCTION - GHOST CELL LAYER
 //-------------------------------------------------------------------------
 Index StructuredGrid::getNumGhostLayers(unsigned dim, GhostLayerPosition pos)

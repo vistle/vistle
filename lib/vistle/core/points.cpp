@@ -27,6 +27,11 @@ bool Points::checkImpl() const
     return true;
 }
 
+void Points::print(std::ostream &os) const
+{
+    Base::print(os);
+}
+
 Index Points::getNumPoints()
 {
     return getNumCoords();

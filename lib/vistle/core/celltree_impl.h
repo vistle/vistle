@@ -24,6 +24,14 @@ V_COREEXPORT void Celltree<Scalar, Index, NumDimensions>::refreshImpl() const
 {}
 
 template<typename Scalar, typename Index, int NumDimensions>
+V_COREEXPORT void Celltree<Scalar, Index, NumDimensions>::print(std::ostream &os) const
+{
+    Base::print(os);
+    os << " cells(" << cells() << ")";
+    os << " nodes(" << nodes() << ")";
+}
+
+template<typename Scalar, typename Index, int NumDimensions>
 void Celltree<Scalar, Index, NumDimensions>::init(const CTVector *min, const CTVector *max, const CTVector &gmin,
                                                   const CTVector &gmax)
 {

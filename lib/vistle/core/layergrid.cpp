@@ -73,7 +73,12 @@ bool LayerGrid::isEmpty() const
     return Base::isEmpty();
 }
 
-// GET FUNCTION - GHOST CELL LAYER
+void LayerGrid::print(std::ostream &os) const
+{
+    Base::print(os);
+    os << " " << getSize() << "=" << getNumDivisions(0) << "x" << getNumDivisions(1) << "x" << getNumDivisions(2);
+}
+
 //-------------------------------------------------------------------------
 Index LayerGrid::getNumGhostLayers(unsigned dim, GhostLayerPosition pos)
 {

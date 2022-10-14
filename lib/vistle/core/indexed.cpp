@@ -215,6 +215,13 @@ void Indexed::removeVertexOwnerList() const
     removeAttachment("vertexownerlist");
 }
 
+void Indexed::print(std::ostream &os) const
+{
+    Base::print(os);
+    os << " cl(" << *d()->cl << ")";
+    os << " el(" << *d()->el << ")";
+}
+
 Indexed::NeighborFinder::NeighborFinder(const Indexed *indexed): indexed(indexed)
 {
     auto ol = indexed->getVertexOwnerList();

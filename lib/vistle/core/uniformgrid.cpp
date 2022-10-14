@@ -64,6 +64,12 @@ bool UniformGrid::isEmpty() const
     return Base::isEmpty();
 }
 
+void UniformGrid::print(std::ostream &os) const
+{
+    Base::print(os);
+    os << " " << m_size << "=" << getNumDivisions(0) << "x" << getNumDivisions(1) << "x" << getNumDivisions(2);
+}
+
 // GET FUNCTION - GHOST CELL LAYER
 //-------------------------------------------------------------------------
 Index UniformGrid::getNumGhostLayers(unsigned dim, GhostLayerPosition pos)

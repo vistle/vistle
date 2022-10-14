@@ -262,5 +262,14 @@ void shm_array<T, allocator>::load(Archive &ar)
     ar &V_NAME(ar, "max", m_max);
 }
 
+template<typename T, class allocator>
+std::ostream &operator<<(std::ostream &os, const shm_array<T, allocator> &arr)
+{
+    //os << arr.name << " ";
+    os << ScalarTypeNames[arr.typeId()] << "[" << arr.size() << "]";
+    os << " #ref:" << arr.refcount();
+    return os;
+}
+
 } // namespace vistle
 #endif

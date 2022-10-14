@@ -32,6 +32,12 @@ bool Texture1D::checkImpl() const
     return true;
 }
 
+void Texture1D::print(std::ostream &os) const
+{
+    Base::print(os);
+    os << " pixels(" << *d()->pixels << ")";
+}
+
 void Texture1D::Data::initData()
 {
     range[0] = range[1] = 0.;
