@@ -74,37 +74,6 @@ std::pair<const Index *, Index> VertexOwnerList::getSurroundingCells(Index v) co
     return std::make_pair(ptr, n);
 }
 
-Index VertexOwnerList::getNeighbor(Index cell, Index vertex1, Index vertex2, Index vertex3) const
-{
-    std::map<Index, Index> cellCount;
-    std::array<Index, 3> vertices;
-
-    if (vertex1 == vertex2 || vertex1 == vertex3 || vertex2 == vertex3) {
-        std::cerr << "WARNING: getNeighbor was not called with 3 unique vertices: " << vertex1 << " " << vertex2 << " "
-                  << vertex3 << std::endl;
-        return InvalidIndex;
-    }
-    vertices[0] = vertex1;
-    vertices[1] = vertex2;
-    vertices[2] = vertex3;
-
-    for (Index i = 0; i < 3; ++i) {
-        const auto cells_num = getSurroundingCells(vertices[i]);
-        auto cells = cells_num.first;
-        auto num = cells_num.second;
-        for (Index j = 0; j < num; ++j) {
-            Index c = cells[j];
-            if (c != cell) {
-                if (++cellCount[c] == 3) {
-                    return c;
-                }
-            }
-        }
-    }
-
-    return InvalidIndex;
-}
-
 bool VertexOwnerList::checkImpl() const
 {
     CHECK_OVERFLOW(d()->vertexList->size());
