@@ -41,8 +41,8 @@ int StateTracker::Module::state() const
     return s;
 }
 
-StateTracker::StateTracker(const std::string &name, std::shared_ptr<PortTracker> portTracker)
-: m_portTracker(portTracker), m_traceType(message::INVALID), m_traceId(Id::Invalid), m_name(name)
+StateTracker::StateTracker(int id, const std::string &name, std::shared_ptr<PortTracker> portTracker)
+: m_id(id), m_portTracker(portTracker), m_traceType(message::INVALID), m_traceId(Id::Invalid), m_name(name)
 {
     if (!m_portTracker) {
         m_portTracker.reset(new PortTracker());
@@ -57,6 +57,11 @@ StateTracker::StateTracker(const std::string &name, std::shared_ptr<PortTracker>
 StateTracker::mutex &StateTracker::getMutex()
 {
     return m_replyMutex;
+}
+
+void StateTracker::setId(int id)
+{
+    m_id = id;
 }
 
 int StateTracker::getMasterHub() const
@@ -345,6 +350,8 @@ void StateTracker::appendModuleOutputConnections(VistleState &state, const Modul
     if (portTracker()) {
         for (auto &portname: portTracker()->getOutputPortNames(id)) {
             const Port::ConstPortSet *connected = portTracker()->getConnectionList(id, portname);
+            if (!connected)
+                continue;
             for (auto &dest: *connected) {
                 Connect c(id, portname, dest->getModuleID(), dest->getName());
                 appendMessage(state, c);
@@ -353,6 +360,8 @@ void StateTracker::appendModuleOutputConnections(VistleState &state, const Modul
 
         for (auto &paramname: getParameters(id)) {
             const Port::ConstPortSet *connected = portTracker()->getConnectionList(id, paramname);
+            if (!connected)
+                continue;
             for (auto &dest: *connected) {
                 Connect c(id, paramname, dest->getModuleID(), dest->getName());
                 appendMessage(state, c);
@@ -424,7 +433,7 @@ StateTracker::VistleState StateTracker::getState() const
     return state;
 }
 
-void StateTracker::printModules() const
+void StateTracker::printModules(bool withConnections) const
 {
     for (auto &it: runningMap) {
         const int id = it.first;
@@ -444,8 +453,27 @@ void StateTracker::printModules() const
             if (m.killed) {
                 std::cerr << " killed";
             }
-
             std::cerr << std::endl;
+
+            if (withConnections) {
+                auto outputs = portTracker()->getOutputPorts(id);
+                for (auto &p: outputs) {
+                    auto &conns = *portTracker()->getConnectionList(p);
+                    if (conns.empty())
+                        continue;
+                    std::cerr << "    " << p->getName() << " ->";
+                    bool first = true;
+                    for (auto &c: conns) {
+                        if (first)
+                            std::cerr << " ";
+                        else
+                            std::cerr << ", ";
+                        std::cerr << " " << c->getModuleID() << ":" << c->getName();
+                        first = false;
+                    }
+                    std::cerr << std::endl;
+                }
+            }
         }
     }
 }
@@ -537,6 +565,8 @@ bool StateTracker::handle(const message::Message &msg, const char *payload, size
         break;
     }
     case DEBUG: {
+        const auto &debug = msg.as<Debug>();
+        handled = handlePriv(debug);
         break;
     }
     case QUIT: {
@@ -643,6 +673,11 @@ bool StateTracker::handle(const message::Message &msg, const char *payload, size
     }
     case SENDTEXT: {
         const auto &info = msg.as<SendText>();
+        handled = handlePriv(info, pl);
+        break;
+    }
+    case ITEMINFO: {
+        const auto &info = msg.as<ItemInfo>();
         handled = handlePriv(info, pl);
         break;
     }
@@ -851,6 +886,23 @@ bool StateTracker::handlePriv(const message::Ping &ping)
 bool StateTracker::handlePriv(const message::Pong &pong)
 {
     CERR << "Pong [" << pong.senderId() << " " << pong.getCharacter() << "]" << std::endl;
+    return true;
+}
+
+bool StateTracker::handlePriv(const message::Debug &debug)
+{
+    switch (debug.getRequest()) {
+    case message::Debug::PrintState: {
+        int id = debug.getModule();
+        if (id == m_id || id == message::Id::Invalid) {
+            printModules(true);
+        }
+        break;
+    }
+    case message::Debug::AttachDebugger: {
+        break;
+    }
+    }
     return true;
 }
 
@@ -1154,16 +1206,18 @@ bool StateTracker::handlePriv(const message::AddParameter &addParam)
 
     mutex_locker guard(m_stateMutex);
     for (StateObserver *o: m_observers) {
+        const Port *p = nullptr;
+        if (portTracker()) {
+            p = portTracker()->addPort(addParam.senderId(), addParam.getName(), addParam.description(),
+                                       Port::PARAMETER);
+        }
+
         o->incModificationCount();
         o->newParameter(addParam.senderId(), addParam.getName());
-    }
-
-    if (portTracker()) {
-        const Port *p =
-            portTracker()->addPort(addParam.senderId(), addParam.getName(), addParam.description(), Port::PARAMETER);
-
-        for (StateObserver *o: m_observers) {
-            o->newPort(p->getModuleID(), p->getName());
+        if (p) {
+            for (StateObserver *o: m_observers) {
+                o->newPort(p->getModuleID(), p->getName());
+            }
         }
     }
 
@@ -1178,19 +1232,16 @@ bool StateTracker::handlePriv(const message::RemoveParameter &removeParam)
 #endif
 
     mutex_locker guard(m_stateMutex);
-    if (portTracker()) {
-        for (StateObserver *o: m_observers) {
-            o->deletePort(removeParam.senderId(), removeParam.getName());
-        }
-
-        portTracker()->removePort(Port(removeParam.senderId(), removeParam.getName(), Port::PARAMETER));
-    }
-
     for (StateObserver *o: m_observers) {
+        o->deletePort(removeParam.senderId(), removeParam.getName());
         o->incModificationCount();
         o->deleteParameter(removeParam.senderId(), removeParam.getName());
     }
     guard.unlock();
+
+    if (portTracker()) {
+        portTracker()->removePort(Port(removeParam.senderId(), removeParam.getName(), Port::PARAMETER));
+    }
 
     auto mit = runningMap.find(removeParam.senderId());
     if (mit == runningMap.end())
@@ -1385,6 +1436,17 @@ bool StateTracker::handlePriv(const message::ReplayFinished &reset)
     for (StateObserver *o: m_observers) {
         o->resetModificationCount();
     }
+    return true;
+}
+
+bool StateTracker::handlePriv(const message::ItemInfo &info, const buffer &payload)
+{
+    auto pl = message::getPayload<message::ItemInfo::Payload>(payload);
+    mutex_locker guard(m_stateMutex);
+    for (StateObserver *o: m_observers) {
+        o->itemInfo(pl.text, info.infoType(), info.senderId(), info.port());
+    }
+
     return true;
 }
 
@@ -1765,7 +1827,7 @@ int StateTracker::graphChangeCount() const
     return m_graphChangeCount;
 }
 
-std::set<int> StateTracker::getUpstreamModules(int id, const std::string &port) const
+std::set<int> StateTracker::getUpstreamModules(int id, const std::string &port, bool recurse) const
 {
     std::set<int> result;
 
@@ -1790,6 +1852,8 @@ std::set<int> StateTracker::getUpstreamModules(int id, const std::string &port) 
             auto id = out->getModuleID();
             if (!result.insert(id).second)
                 continue;
+            if (!recurse)
+                continue;
             auto cur = portTracker()->getInputPorts(id);
             std::copy(cur.begin(), cur.end(), std::back_inserter(inputsToCheck));
         }
@@ -1798,7 +1862,8 @@ std::set<int> StateTracker::getUpstreamModules(int id, const std::string &port) 
     return result;
 }
 
-std::set<int> StateTracker::getDownstreamModules(int id, const std::string &port, bool ignoreNoCompute) const
+std::set<int> StateTracker::getDownstreamModules(int id, const std::string &port, bool recurse,
+                                                 bool ignoreNoCompute) const
 {
     std::set<int> result;
 
@@ -1825,6 +1890,8 @@ std::set<int> StateTracker::getDownstreamModules(int id, const std::string &port
             auto id = in->getModuleID();
             if (!result.insert(id).second)
                 continue;
+            if (!recurse)
+                continue;
             auto cur = portTracker()->getOutputPorts(id);
             std::copy(cur.begin(), cur.end(), std::back_inserter(outputsToCheck));
         }
@@ -1837,7 +1904,7 @@ std::set<int> StateTracker::getDownstreamModules(const message::Execute &execute
 {
     int execId = execute.getModule();
     if (message::Id::isModule(execId)) {
-        return getDownstreamModules(execId, "", true);
+        return getDownstreamModules(execId, "", true, true);
     }
 
     std::set<int> executing;
@@ -1851,6 +1918,34 @@ std::set<int> StateTracker::getDownstreamModules(const message::Execute &execute
         executing.insert(id);
     }
     return executing;
+}
+
+std::set<int> StateTracker::getConnectedModules(StateTracker::ConnectionKind kind, int id,
+                                                const std::string &port) const
+{
+    std::set<int> modules;
+    switch (kind) {
+    case Neighbor: {
+        modules = getUpstreamModules(id, port, false);
+        auto add = getDownstreamModules(id, port, false);
+        for (auto m: add)
+            modules.insert(m);
+        break;
+    }
+    case Upstream:
+        modules = getUpstreamModules(id, port);
+        break;
+    case Downstream:
+        modules = getDownstreamModules(id, port);
+        break;
+    case Previous:
+        modules = getUpstreamModules(id, port, false);
+        break;
+    case Next:
+        modules = getDownstreamModules(id, port, false);
+        break;
+    }
+    return modules;
 }
 
 bool StateTracker::hasCombinePort(int id) const
@@ -1964,6 +2059,9 @@ void StateObserver::deleteConnection(int fromId, const std::string &fromName, in
 
 void StateObserver::info(const std::string &text, message::SendText::TextType textType, int senderId, int senderRank,
                          message::Type refType, const message::uuid_t &refUuid)
+{}
+void StateObserver::itemInfo(const std::string &text, message::ItemInfo::InfoType type, int senderId,
+                             const std::string &port)
 {}
 void StateObserver::status(int id, const std::string &text, message::UpdateStatus::Importance importance)
 {}

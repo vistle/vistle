@@ -45,9 +45,12 @@ public:
     QPointF portPos(const Port *port) const;
     void setStatus(Module::Status status);
     void setStatusText(QString text, int prio);
+    void setInfo(QString text);
 
     void addPort(const vistle::Port &port);
     void removePort(const vistle::Port &port);
+    QList<Port *> inputPorts() const;
+    QList<Port *> outputPorts() const;
 
     // vistle methods
     QString name() const;
@@ -77,6 +80,7 @@ public:
     static QColor hubColor(int hub);
 signals:
     void createModuleCompound();
+    void selectConnected(int direction, int id, QString port = QString());
 
 protected:
     void mousePressEvent(QGraphicsSceneMouseEvent *event);
@@ -84,6 +88,8 @@ protected:
     void mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event);
     void contextMenuEvent(QGraphicsSceneContextMenuEvent *event);
     void updatePosition(QPointF newPos) const;
+
+    QVariant itemChange(GraphicsItemChange change, const QVariant &value);
 
 public slots:
     void restartModule();
@@ -101,6 +107,7 @@ private:
     void doLayout();
 
     QMenu *m_moduleMenu = nullptr;
+    QAction *m_selectUpstreamAct = nullptr, *m_selectDownstreamAct = nullptr, *m_selectConnectedAct = nullptr;
     QAction *m_deleteThisAct = nullptr, *m_deleteSelAct = nullptr;
     QAction *m_attachDebugger = nullptr;
     QAction *m_execAct = nullptr;
@@ -121,6 +128,7 @@ private:
     QString m_displayName;
     Module::Status m_Status;
     QString m_statusText;
+    QString m_info;
     bool m_validPosition;
 
     QList<Port *> m_inPorts, m_outPorts, m_paramPorts;

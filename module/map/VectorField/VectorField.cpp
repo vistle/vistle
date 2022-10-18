@@ -17,9 +17,9 @@ using namespace vistle;
 
 VectorField::VectorField(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
-    createInputPort("grid_in");
-    createInputPort("data_in");
-    createOutputPort("grid_out");
+    createInputPort("grid_in", "vector data mapped to grid or geometry");
+    createInputPort("data_in", "mapped data field");
+    createOutputPort("grid_out", "line strokes with mapped data");
 
     auto MaxLength = std::numeric_limits<Scalar>::max();
 

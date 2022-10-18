@@ -344,7 +344,7 @@ void ReadVtk::setChoices(const VtkFile &fileinfo)
 
 ReadVtk::ReadVtk(const std::string &name, int moduleID, mpi::communicator comm): Reader(name, moduleID, comm)
 {
-    createOutputPort("grid_out");
+    createOutputPort("grid_out", "grid or geometry");
     m_filename = addStringParameter("filename", "name of VTK file", "", Parameter::ExistingFilename);
     setParameterFilters(m_filename,
                         "PVD Files (*.pvd)/XML VTK Files (*.vti *.vtp *.vtr *.vts *.vtu *.pvtu)/Legacy VTK Files "

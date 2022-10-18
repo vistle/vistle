@@ -53,7 +53,7 @@ IsoSurface::IsoSurface(const std::string &name, int moduleID, mpi::communicator 
 
     setDefaultCacheMode(ObjectCache::CacheDeleteLate);
 #ifdef CUTTINGSURFACE
-    m_mapDataIn = createInputPort("data_in");
+    m_mapDataIn = createInputPort("data_in", "input grid or geometry with mapped data");
 #else
 #ifdef ISOHEIGHTSURFACE
     m_isovalue = addFloatParameter("iso height", "height above ground", 0.0);
@@ -64,10 +64,10 @@ IsoSurface::IsoSurface(const std::string &name, int moduleID, mpi::communicator 
     V_ENUM_SET_CHOICES(m_pointOrValue, PointOrValue);
 #endif
     setReducePolicy(message::ReducePolicy::OverAll);
-    createInputPort("data_in");
-    m_mapDataIn = createInputPort("mapdata_in");
+    createInputPort("data_in", "input gird or geometry with scalar data");
+    m_mapDataIn = createInputPort("mapdata_in", "additional mapped field");
 #endif
-    m_dataOut = createOutputPort("data_out");
+    m_dataOut = createOutputPort("data_out", "surface with mapped data");
 
     m_processortype = addIntParameter("processortype", "processortype", 0, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_processortype, ThrustBackend);

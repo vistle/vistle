@@ -54,7 +54,7 @@ Module::Module(QGraphicsItem *parent, QString name)
 
     setFlag(QGraphicsItem::ItemIsMovable);
     setFlag(QGraphicsItem::ItemIsSelectable);
-    setFlag(QGraphicsItem::ItemIsFocusable);
+    //setFlag(QGraphicsItem::ItemIsFocusable);
     setFlag(QGraphicsItem::ItemSendsGeometryChanges);
     setCursor(Qt::OpenHandCursor);
 
@@ -73,7 +73,17 @@ Module::~Module()
     delete m_cancelExecAct;
     delete m_deleteThisAct;
     delete m_deleteSelAct;
+    delete m_selectUpstreamAct;
+    delete m_selectDownstreamAct;
     delete m_createModuleGroup;
+}
+
+QVariant Module::itemChange(GraphicsItemChange change, const QVariant &value)
+{
+    if (change == ItemPositionChange) {
+        ensureVisible();
+    }
+    return QGraphicsItem::itemChange(change, value);
 }
 
 void Module::execModule()
@@ -142,6 +152,18 @@ void Module::createGeometry()
  */
 void Module::createActions()
 {
+    m_selectUpstreamAct = new QAction("Select Upstream", this);
+    m_selectUpstreamAct->setStatusTip("Select all modules feeding data to this one");
+    connect(m_selectUpstreamAct, &QAction::triggered, [this]() { emit selectConnected(SelectUpstream, m_id); });
+
+    m_selectDownstreamAct = new QAction("Select Downstream", this);
+    m_selectDownstreamAct->setStatusTip("Select all modules this module feeds into");
+    connect(m_selectDownstreamAct, &QAction::triggered, [this]() { emit selectConnected(SelectDownstream, m_id); });
+
+    m_selectConnectedAct = new QAction("Select Connected", this);
+    m_selectConnectedAct->setStatusTip("Select all modules with a direct connection to this one");
+    connect(m_selectConnectedAct, &QAction::triggered, [this]() { emit selectConnected(SelectConnected, m_id); });
+
     m_deleteThisAct = new QAction("Delete", this);
     m_deleteThisAct->setShortcuts(QKeySequence::Delete);
     m_deleteThisAct->setStatusTip("Delete the module and all of its connections");
@@ -182,13 +204,18 @@ void Module::createMenus()
     m_moduleMenu->addAction(m_execAct);
     m_moduleMenu->addAction(m_cancelExecAct);
     m_moduleMenu->addSeparator();
+    m_moduleMenu->addAction(m_selectUpstreamAct);
+    m_moduleMenu->addAction(m_selectConnectedAct);
+    m_moduleMenu->addAction(m_selectDownstreamAct);
+    m_moduleMenu->addSeparator();
+    m_moduleMenu->addAction(m_createModuleGroup);
     m_moduleMenu->addAction(m_attachDebugger);
     m_moduleMenu->addAction(m_restartAct);
     m_moveToMenu = m_moduleMenu->addMenu("Move to...");
     m_replaceWithMenu = m_moduleMenu->addMenu("Replace with...");
+    m_moduleMenu->addSeparator();
     m_moduleMenu->addAction(m_deleteThisAct);
     m_moduleMenu->addAction(m_deleteSelAct);
-    m_moduleMenu->addAction(m_createModuleGroup);
 }
 
 void Module::doLayout()
@@ -198,11 +225,14 @@ void Module::doLayout()
     // get the pixel width of the string
     QFont font;
     QFontMetrics fm(font);
-    QRect textRect = fm.boundingRect(m_displayName);
-    m_fontHeight = textRect.height() + 4 * portDistance;
+    QRect nameRect = fm.boundingRect(m_displayName);
+    m_fontHeight = nameRect.height() + 4 * portDistance;
 
-    double w = textRect.width() + 2 * portDistance;
+    double w = nameRect.width() + 2 * portDistance;
     double h = m_fontHeight + 2 * portDistance;
+
+    QString id = " " + QString::number(m_id);
+    QRect idRect = fm.boundingRect(id);
 
     {
         int idx = 0;
@@ -210,7 +240,7 @@ void Module::doLayout()
             in->setPos(portDistance + idx * (portDistance + Port::portSize), 0.);
             ++idx;
         }
-        w = qMax(w, 2 * portDistance + idx * (portDistance + Port::portSize));
+        w = qMax(w, 2 * portDistance + idx * (portDistance + Port::portSize) + idRect.width());
     }
 
     {
@@ -275,7 +305,13 @@ void Module::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QW
     painter->drawRoundedRect(rect(), portDistance, portDistance);
 
     painter->setPen(Qt::black);
-    painter->drawText(QPointF(portDistance, portDistance + Port::portSize + m_fontHeight / 2.), m_displayName);
+    painter->drawText(QPointF(portDistance, Port::portSize + m_fontHeight / 2.), m_displayName);
+
+    QFont font;
+    QFontMetrics fm(font);
+    QString id = QString::number(m_id);
+    QRect idRect = fm.boundingRect(id);
+    painter->drawText(rect().x() + rect().width() - idRect.width() - portDistance, m_fontHeight / 2., id);
 }
 
 /*!
@@ -308,8 +344,12 @@ void Module::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
             return modules;
         };
 
-        static std::vector<std::vector<QString>> replaceables{{"COVER", "DisCOVERay", "OsgRenderer", "BlenderRenderer"},
-                                                              {"Thicken", "SpheresOld", "TubesOld"}};
+        static std::vector<std::vector<QString>> replaceables{
+            {"COVER", "DisCOVERay", "OsgRenderer", "BlenderRenderer"},
+            {"Thicken", "SpheresOld", "TubesOld"},
+            {"Threshold", "CellSelect"},
+            {"AddAttribute", "AttachShader", "ColorAttribute", "EnableTransparency", "Variant"},
+        };
         m_replaceWithMenu->clear();
         auto *mb = scene()->moduleBrowser();
         auto hub = mb->getHubItem(m_hub);
@@ -474,6 +514,16 @@ void Module::removePort(const vistle::Port &port)
     doLayout();
 }
 
+QList<Port *> Module::inputPorts() const
+{
+    return m_inPorts;
+}
+
+QList<Port *> Module::outputPorts() const
+{
+    return m_outPorts;
+}
+
 QString Module::name() const
 {
     return m_name;
@@ -482,7 +532,8 @@ QString Module::name() const
 void Module::setName(QString name)
 {
     m_name = name;
-    m_displayName = QString("%1_%2").arg(name, QString::number(m_id));
+    //m_displayName = QString("%1_%2").arg(name, QString::number(m_id));
+    m_displayName = name;
 
     doLayout();
 }
@@ -495,6 +546,8 @@ int Module::id() const
 void Module::setId(int id)
 {
     m_id = id;
+
+    doLayout();
 }
 
 int Module::hub() const
@@ -564,6 +617,7 @@ QColor Module::hubColor(int hub)
 void Module::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
     Base::mousePressEvent(event);
+    setCursor(Qt::ClosedHandCursor);
 }
 
 void Module::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
@@ -575,6 +629,8 @@ void Module::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
             sendPosition();
     }
     Base::mouseReleaseEvent(event);
+    scene()->setSceneRect(scene()->itemsBoundingRect());
+    setCursor(Qt::OpenHandCursor);
 }
 
 void Module::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event)
@@ -675,6 +731,11 @@ void Module::setStatusText(QString text, int prio)
     if (text.isEmpty()) {
         setStatus(m_Status);
     }
+}
+
+void Module::setInfo(QString text)
+{
+    m_info = text;
 }
 
 } //namespace gui

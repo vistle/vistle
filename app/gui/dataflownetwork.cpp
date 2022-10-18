@@ -118,6 +118,7 @@ void DataFlowNetwork::addModule(int hub, QString modName, QPointF dropPos)
     module->setPositionValid();
     module->setStatus(Module::SPAWNING);
     connect(module, &Module::createModuleCompound, this, &DataFlowNetwork::createModuleCompound);
+    connect(module, &Module::selectConnected, this, &DataFlowNetwork::selectConnected);
     vistle::message::Spawn spawnMsg(hub, modName.toUtf8().constData());
     spawnMsg.setDestId(vistle::message::Id::MasterHub); // to master, for module id generation
     module->setSpawnUuid(spawnMsg.uuid());
@@ -144,6 +145,7 @@ void DataFlowNetwork::addModule(int moduleId, const boost::uuids::uuid &spawnUui
     if (!mod) {
         mod = new Module(nullptr, name);
         connect(mod, &Module::createModuleCompound, this, &DataFlowNetwork::createModuleCompound);
+        connect(mod, &Module::selectConnected, this, &DataFlowNetwork::selectConnected);
         addItem(mod);
         mod->setStatus(Module::SPAWNING);
         m_moduleList.append(mod);
@@ -212,10 +214,8 @@ void DataFlowNetwork::deletePort(int moduleId, QString portName)
         std::vector<Port *> p1, p2;
         for (auto &c: m_connections) {
             const auto &key = c.first;
-            if ((key.port1->module()->id() == moduleId &&
-                 key.port1->vistlePort()->getName() == portName.toStdString()) ||
-                (key.port2->module()->id() == moduleId &&
-                 key.port1->vistlePort()->getName() == portName.toStdString())) {
+            if ((key.port1->module()->id() == moduleId && key.port1->name() == portName) ||
+                (key.port2->module()->id() == moduleId && key.port1->name() == portName)) {
                 p1.push_back(key.port1);
                 p2.push_back(key.port2);
             }
@@ -295,6 +295,19 @@ void DataFlowNetwork::moduleStatus(int id, QString status, int prio)
     }
 }
 
+void DataFlowNetwork::itemInfoChanged(QString text, int type, int id, QString port)
+{
+    if (Module *m = findModule(id)) {
+        if (port.isEmpty()) {
+            m->setInfo(text);
+        } else {
+            const vistle::Port *p = m_state.portTracker()->findPort(id, port.toStdString());
+            if (auto *gp = m->getGuiPort(p)) {
+                gp->setInfo(text);
+            }
+        }
+    }
+}
 
 void DataFlowNetwork::addConnection(Port *portFrom, Port *portTo, bool sendToController)
 {
@@ -351,12 +364,48 @@ void DataFlowNetwork::removeConnection(Port *portFrom, Port *portTo, bool sendTo
 
     if (sendToController) {
         c->setState(Connection::ToRemove);
-        const vistle::Port *vFrom = portFrom->module()->getVistlePort(portFrom);
-        const vistle::Port *vTo = portTo->module()->getVistlePort(portTo);
+        const vistle::Port *vFrom = portFrom->vistlePort();
+        const vistle::Port *vTo = portTo->vistlePort();
         m_vistleConnection->disconnect(vFrom, vTo);
     } else {
         m_connections.erase(it);
         removeItem(c);
+    }
+}
+
+void DataFlowNetwork::setConnectionHighlights(Port *port, bool highlight)
+{
+    if (!port)
+        return;
+
+    for (auto it = m_connections.begin(); it != m_connections.end(); ++it) {
+        Connection *c = it->second;
+        if (c->source() != port && c->destination() != port)
+            continue;
+
+        c->setHighlight(highlight);
+    }
+}
+
+void DataFlowNetwork::removeConnections(Port *port, bool sendToController)
+{
+    if (!port)
+        return;
+
+    for (auto it = m_connections.begin(); it != m_connections.end(); ++it) {
+        Connection *c = it->second;
+        if (c->source() != port && c->destination() != port)
+            continue;
+
+        if (sendToController) {
+            c->setState(Connection::ToRemove);
+            const vistle::Port *vFrom = c->source()->vistlePort();
+            const vistle::Port *vTo = c->destination()->vistlePort();
+            m_vistleConnection->disconnect(vFrom, vTo);
+        } else {
+            m_connections.erase(it);
+            removeItem(c);
+        }
     }
 }
 
@@ -399,16 +448,6 @@ QColor DataFlowNetwork::highlightColor() const
 }
 
 
-QRect DataFlowNetwork::calculateBoundingBox() const
-{
-    QRectF rect;
-    //for some reason sceneBoundingRect returns strange values
-    //this is why we calculate the scene rect ourselves
-    for (const auto &mod: m_moduleList)
-        rect = rect.united(QRectF{mod->scenePos(), mod->rect().size()});
-    return rect.toRect();
-}
-
 ///\todo an exception is very occasionally thrown upon a simple click inside a module's port.
 ///\todo left clicking inside a module's context menu still sends the left click event to the scene, but creates
 ///a segfault when the connection is completed
@@ -422,7 +461,8 @@ QRect DataFlowNetwork::calculateBoundingBox() const
 void DataFlowNetwork::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
     if (event->button() != Qt::LeftButton) {
-        QGraphicsScene::mousePressEvent(event);
+        //QGraphicsScene::mousePressEvent(event);
+        event->accept(); // accepting instead of forwarding the event retains current selection when right-clicking
         return;
     }
 
@@ -536,6 +576,38 @@ void DataFlowNetwork::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
     // update the line drawing
     QLineF newLine(m_Line->line().p1(), event->scenePos());
     m_Line->setLine(newLine);
+}
+
+void DataFlowNetwork::selectConnected(int direction, int id, QString port)
+{
+    std::set<int> modules;
+    switch (direction) {
+    case SelectConnected:
+        modules = m_state.getConnectedModules(vistle::StateTracker::Neighbor, id, port.toStdString());
+        break;
+    case SelectUp:
+        modules = m_state.getConnectedModules(vistle::StateTracker::Previous, id, port.toStdString());
+        break;
+    case SelectUpstream:
+        modules = m_state.getConnectedModules(vistle::StateTracker::Upstream, id, port.toStdString());
+        break;
+    case SelectDown:
+        modules = m_state.getConnectedModules(vistle::StateTracker::Next, id, port.toStdString());
+        break;
+    case SelectDownstream:
+        modules = m_state.getConnectedModules(vistle::StateTracker::Downstream, id, port.toStdString());
+        break;
+    }
+    selectModules(modules);
+}
+
+void DataFlowNetwork::selectModules(const std::set<int> &moduleIds)
+{
+    for (auto &m: m_moduleList) {
+        if (std::find(moduleIds.begin(), moduleIds.end(), m->id()) != moduleIds.end()) {
+            m->setSelected(true);
+        }
+    }
 }
 
 void DataFlowNetwork::createModuleCompound()

@@ -48,8 +48,8 @@ using namespace vistle;
 GhostCellGenerator::GhostCellGenerator(const std::string &name, int moduleID, mpi::communicator comm)
 : Module(name, moduleID, comm)
 {
-    createInputPort("data_in");
-    createOutputPort("data_out");
+    createInputPort("data_in", "input grid");
+    createOutputPort("data_out", "grid with added ghost/halo cells");
 }
 
 GhostCellGenerator::~GhostCellGenerator()

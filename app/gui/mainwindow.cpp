@@ -52,8 +52,6 @@ MainWindow::MainWindow(QWidget *parent)
 
     m_moduleBrowser = ui->moduleBrowser;
 
-    ui->drawArea->setAttribute(Qt::WA_AlwaysShowToolTips);
-    ui->drawArea->setDragMode(QGraphicsView::RubberBandDrag);
     ui->drawArea->show();
 
     connect(ui->actionQuit, SIGNAL(triggered()), SLOT(close()));
@@ -73,6 +71,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->actionCopy_Session_URL, SIGNAL(triggered()), SIGNAL(copySessionUrl()));
     ui->actionSelect_All->setShortcut(QKeySequence::StandardKey::SelectAll);
     connect(ui->actionSelect_All, SIGNAL(triggered()), SIGNAL(selectAllModules()));
+    connect(ui->actionSelectInvert, SIGNAL(triggered()), SIGNAL(selectInvert()));
     QList<QKeySequence> deleteKeys;
     deleteKeys.push_back(QKeySequence::StandardKey::Delete);
 #ifdef Q_OS_MAC
@@ -80,6 +79,11 @@ MainWindow::MainWindow(QWidget *parent)
 #endif
     ui->actionDelete->setShortcuts(deleteKeys);
     connect(ui->actionDelete, SIGNAL(triggered()), SIGNAL(deleteSelectedModules()));
+    connect(ui->actionSelectClear, SIGNAL(triggered()), SIGNAL(selectClear()));
+    connect(ui->actionViewAll, SIGNAL(triggered()), SIGNAL(zoomAll()));
+    connect(ui->actionViewOrig, SIGNAL(triggered()), SIGNAL(zoomOrig()));
+    connect(ui->actionSelectSinks, SIGNAL(triggered()), SIGNAL(selectSinkModules()));
+    connect(ui->actionSelectSources, SIGNAL(triggered()), SIGNAL(selectSourceModules()));
 
     connect(ui->actionNative_Menubar, &QAction::toggled, [this](bool native) {
         if (menuBar())
@@ -125,10 +129,10 @@ void MainWindow::setQuitOnExit(bool qoe)
         ui->actionQuit->setMenuRole(QAction::QuitRole);
         if (qoe) {
             ui->actionQuit->setText("Quit");
-            ui->actionQuit->setToolTip("Quit Vistle session");
+            ui->actionQuit->setStatusTip("Quit Vistle session");
         } else {
             ui->actionQuit->setText("Leave");
-            ui->actionQuit->setToolTip("Quit Vistle GUI");
+            ui->actionQuit->setStatusTip("Quit Vistle GUI");
         }
     }
 }

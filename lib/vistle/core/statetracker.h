@@ -59,6 +59,8 @@ public:
 
     virtual void info(const std::string &text, message::SendText::TextType textType, int senderId, int senderRank,
                       message::Type refType, const message::uuid_t &refUuid);
+    virtual void itemInfo(const std::string &text, message::ItemInfo::InfoType type, int senderId,
+                          const std::string &port);
     //! a module sends at status update
     virtual void status(int id, const std::string &text, message::UpdateStatus::Importance importance);
     //! the overall status has changed
@@ -103,12 +105,15 @@ class V_COREEXPORT StateTracker {
     friend class PortTracker;
 
 public:
-    StateTracker(const std::string &name, std::shared_ptr<PortTracker> portTracker = std::shared_ptr<PortTracker>());
+    StateTracker(int id, const std::string &name,
+                 std::shared_ptr<PortTracker> portTracker = std::shared_ptr<PortTracker>());
     ~StateTracker();
 
     typedef std::recursive_mutex mutex;
     typedef std::unique_lock<mutex> mutex_locker;
     mutex &getMutex();
+
+    void setId(int id);
 
     bool dispatch(bool &received);
 
@@ -172,7 +177,17 @@ public:
     std::string loadedWorkflowFile() const;
     std::string sessionUrl() const;
 
-    void printModules() const;
+    void printModules(bool withConnections = false) const;
+
+    enum ConnectionKind {
+        Neighbor,
+        Upstream,
+        Downstream,
+        Previous,
+        Next,
+    };
+
+    std::set<int> getConnectedModules(ConnectionKind kind, int id, const std::string &port = std::string()) const;
 
 protected:
     std::shared_ptr<message::Buffer> removeRequest(const message::uuid_t &uuid);
@@ -221,8 +236,8 @@ protected:
     typedef std::set<int> ModuleSet;
     ModuleSet busySet;
     int m_graphChangeCount = 0;
-    std::set<int> getUpstreamModules(int id, const std::string &port = std::string()) const;
-    std::set<int> getDownstreamModules(int id, const std::string &port = std::string(),
+    std::set<int> getUpstreamModules(int id, const std::string &port = std::string(), bool recurse = true) const;
+    std::set<int> getDownstreamModules(int id, const std::string &port = std::string(), bool recurse = true,
                                        bool ignoreNoCompute = false) const;
     std::set<int> getDownstreamModules(const message::Execute &exec) const;
     bool hasCombinePort(int id) const;
@@ -253,6 +268,7 @@ private:
     bool handlePriv(const message::Ping &ping);
     bool handlePriv(const message::Pong &pong);
     bool handlePriv(const message::Trace &trace);
+    bool handlePriv(const message::Debug &debug);
     bool handlePriv(const message::Spawn &spawn);
     bool handlePriv(const message::Started &started);
     bool handlePriv(const message::Connect &connect);
@@ -274,6 +290,7 @@ private:
     bool handlePriv(const message::Barrier &barrier);
     bool handlePriv(const message::BarrierReached &barrierReached);
     bool handlePriv(const message::SendText &info, const buffer &payload);
+    bool handlePriv(const message::ItemInfo &info, const buffer &payload);
     bool handlePriv(const message::UpdateStatus &status);
     bool handlePriv(const message::ReplayFinished &reset);
     bool handlePriv(const message::Quit &quit);
@@ -286,6 +303,7 @@ private:
 
     HubData *getModifiableHubData(int id);
 
+    int m_id = message::Id::Invalid;
     std::shared_ptr<PortTracker> m_portTracker;
 
     std::set<message::uuid_t> m_alreadySeen;

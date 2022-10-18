@@ -348,7 +348,6 @@ void Reader::setAllowTimestepDistribution(bool allow)
 void Reader::observeParameter(const Parameter *param)
 {
     m_observedParameters.insert(param);
-    m_readyForRead = false;
 }
 
 void Reader::setTimesteps(int number)

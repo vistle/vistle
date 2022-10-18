@@ -53,7 +53,7 @@ PrintMetaData::PrintMetaData(const std::string &name, int moduleID, mpi::communi
 : Module(name, moduleID, comm)
 {
     // create ports
-    createInputPort("data_in");
+    createInputPort("data_in", "data");
 
     // add module parameters
     m_param_doPrintTotals = addIntParameter(

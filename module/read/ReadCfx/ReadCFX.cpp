@@ -123,15 +123,15 @@ ReadCFX::ReadCFX(const std::string &name, int moduleID, mpi::communicator comm):
     m_zoneSelection = addStringParameter("zones", "select zone numbers e.g. 1,4,6-10", "all");
 
     // mesh ports
-    m_gridOut = createOutputPort("grid_out1");
-    m_polyOut = createOutputPort("poly_out1");
+    m_gridOut = createOutputPort("grid_out1", "volume grid");
+    m_polyOut = createOutputPort("poly_out1", "boundary geometry");
 
     // data ports and data choice parameters
     for (int i = 0; i < NumPorts; ++i) {
         { // data ports
             std::stringstream s;
             s << "data_out" << i;
-            m_volumeDataOut.push_back(createOutputPort(s.str()));
+            m_volumeDataOut.push_back(createOutputPort(s.str(), "volume data"));
         }
         { // data choice parameters
             std::stringstream s;
@@ -151,7 +151,7 @@ ReadCFX::ReadCFX(const std::string &name, int moduleID, mpi::communicator comm):
         { // 2d data ports
             std::stringstream s;
             s << "data_2d_out" << i;
-            m_2dDataOut.push_back(createOutputPort(s.str()));
+            m_2dDataOut.push_back(createOutputPort(s.str(), "boundary data"));
         }
         { // 2d data choice parameters
             std::stringstream s;
@@ -166,14 +166,14 @@ ReadCFX::ReadCFX(const std::string &name, int moduleID, mpi::communicator comm):
 
     //particle selection
     m_particleSelection = addStringParameter("particle type", "select particle type e.g. 1,4,6-10", "0");
-    m_particleTime = createOutputPort("particle_time");
+    m_particleTime = createOutputPort("particle_time", "particle time");
 
     // particle data ports and particle choice parameters
     for (int i = 0; i < NumParticlePorts; ++i) {
         { // particle data ports
             std::stringstream s;
             s << "data_particle_out" << i;
-            m_particleDataOut.push_back(createOutputPort(s.str()));
+            m_particleDataOut.push_back(createOutputPort(s.str(), "particle data"));
         }
         { // particle choice parameters
             std::stringstream s;

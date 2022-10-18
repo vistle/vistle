@@ -69,18 +69,18 @@ Tracer::Tracer(const std::string &name, int moduleID, mpi::communicator comm): M
     setDefaultCacheMode(ObjectCache::CacheDeleteLate);
     setReducePolicy(message::ReducePolicy::PerTimestep);
 
-    createInputPort("data_in0");
-    createInputPort("data_in1");
-    createOutputPort("data_out0");
-    createOutputPort("data_out1");
-    createOutputPort("particle_id");
-    createOutputPort("step");
-    createOutputPort("time");
-    createOutputPort("stepwidth");
-    createOutputPort("distance");
-    createOutputPort("stop_reason");
-    createOutputPort("cell_index");
-    createOutputPort("block_index");
+    createInputPort("data_in0", "vector field");
+    createInputPort("data_in1", "additional field on same geometry");
+    createOutputPort("data_out0", "stream lines or points with mapped vector");
+    createOutputPort("data_out1", "stream lines or points with mapped field");
+    createOutputPort("particle_id", "stream lines or points with mapped particle id");
+    createOutputPort("step", "stream lines or points with step number");
+    createOutputPort("time", "stream lines or points with time");
+    createOutputPort("stepwidth", "stream lines or points with stepwidth");
+    createOutputPort("distance", "stream lines or points with accumulated distance");
+    createOutputPort("stop_reason", "stream lines or points with reason for finishing trace");
+    createOutputPort("cell_index", "stream lines or points with cell index");
+    createOutputPort("block_index", "stream lines or points with block index");
 
 #if 0
     const char *TracerInteraction::P_DIRECTION = "direction";

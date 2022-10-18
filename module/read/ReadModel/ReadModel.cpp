@@ -22,7 +22,7 @@ using namespace vistle;
 
 ReadModel::ReadModel(const std::string &name, int moduleID, mpi::communicator comm): Reader(name, moduleID, comm)
 {
-    createOutputPort("grid_out");
+    createOutputPort("grid_out", "grid or geometry");
     auto filename = addStringParameter("filename", "name of file (%1%: block, %2%: timestep)", "", Parameter::Filename);
     observeParameter(filename);
 

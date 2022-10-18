@@ -197,11 +197,11 @@ Module::Module(const std::string &moduleName, const int moduleId, mpi::communica
 , m_id(moduleId)
 , m_executionCount(0)
 , m_iteration(-1)
-, m_stateTracker(new StateTracker(m_name))
+, m_stateTracker(new StateTracker(moduleId, m_name))
 , m_receivePolicy(message::ObjectReceivePolicy::Local)
 , m_schedulingPolicy(message::SchedulingPolicy::Single)
 , m_reducePolicy(message::ReducePolicy::Locally)
-, m_defaultCacheMode(ObjectCache::CacheNone)
+, m_defaultCacheMode(ObjectCache::CacheByName)
 , m_prioritizeVisible(true)
 , m_syncMessageProcessing(false)
 , m_origStreambuf(nullptr)
@@ -786,6 +786,20 @@ void Module::updateMeta(vistle::Object::ptr obj) const
     }
 }
 
+void Module::setItemInfo(const std::string &text, const std::string &port)
+{
+    if (rank() != 0)
+        return;
+    auto &old = m_currentItemInfo[port];
+    if (old != text) {
+        using message::ItemInfo;
+        ItemInfo info(port.empty() ? ItemInfo::Module : ItemInfo::Port, port);
+        ItemInfo::Payload pl(text);
+        sendMessageWithPayload(info, pl);
+        old = text;
+    }
+}
+
 bool Module::addObject(const std::string &portName, vistle::Object::ptr object)
 {
     auto *p = findOutputPort(portName);
@@ -826,6 +840,21 @@ bool Module::passThroughObject(Port *port, vistle::Object::const_ptr object)
 
     message::AddObject message(port->getName(), object);
     sendMessage(message);
+
+    std::string info;
+    std::string species = object->getAttribute("_species");
+    if (!species.empty()) {
+        info += species + " - ";
+    }
+    std::string type = Object::toString(object->getType());
+    info += type;
+    if (auto d = DataBase::as(object)) {
+        if (auto g = d->grid()) {
+            info += " on ";
+            info += Object::toString(g->getType());
+        }
+    }
+    setItemInfo(info, port->getName());
     return true;
 }
 
@@ -1620,7 +1649,10 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
     if (m_executionCount < exec->getExecutionCount()) {
         m_executionCount = exec->getExecutionCount();
         m_iteration = -1;
+    } else if (exec->what() == Execute::Prepare) {
+        ++m_iteration;
     }
+
 
     if (schedulingPolicy() == message::SchedulingPolicy::Ignore)
         return true;
@@ -1669,10 +1701,16 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
             numObject = 0;
 
             for (auto &port: inputPorts) {
-                port.second.objects().clear();
+                ObjectList received;
+                std::swap(received, port.second.objects());
                 if (!isConnected(port.second))
                     continue;
-                port.second.objects() = m_cache.getObjects(port.first);
+                auto cache = m_cache.getObjects(port.first);
+                cache.second = mpi::all_reduce(comm(), cache.second, std::logical_and<bool>());
+                if (!cache.second)
+                    cache.first.clear();
+                port.second.objects() = cache.first;
+                received.clear();
                 auto srcPort = *port.second.connections().begin();
                 for (const auto &o: port.second.objects()) {
                     (void)o;
@@ -1771,6 +1809,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
                         break;
                     assert(i == numObject);
                 }
+                //reordered = mpi::all_reduce(comm(), reordered, std::logical_and<bool>());
                 if (reordered) {
                     for (auto &key: sortKey) {
                         if (key.step >= 0 && key.time == 0.)
@@ -1805,7 +1844,6 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
                         waitForZero = true;
                         startWithZero = true;
                     }
-                    const int step = direction < 0 ? -1 : 1;
                     if (m_numTimesteps > 0) {
                         while (startTimestep < 0)
                             startTimestep += m_numTimesteps;
@@ -1814,23 +1852,35 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
 #ifdef REDUCE_DEBUG
                     CERR << "startTimestep determined to be " << startTimestep << std::endl;
 #endif
-                    if (startTimestep == -1)
-                        startTimestep = 0;
-                    if (direction < 0) {
-                        startTimestep = mpi::all_reduce(comm(), startTimestep, mpi::maximum<int>());
-                    } else {
-                        startTimestep = mpi::all_reduce(comm(), startTimestep, mpi::minimum<int>());
-                    }
-                    assert(startTimestep >= 0);
+                }
 
+                if (startTimestep == -1)
+                    startTimestep = 0;
+                if (direction < 0) {
+                    startTimestep = mpi::all_reduce(comm(), startTimestep, mpi::maximum<int>());
+                } else {
+                    startTimestep = mpi::all_reduce(comm(), startTimestep, mpi::minimum<int>());
+                }
+                assert(startTimestep >= 0);
+
+                if (reordered) {
+                    const int step = direction < 0 ? -1 : 1;
                     // add objects to port queue in processing order
                     for (auto &port: inputPorts) {
                         if (port.second.flags() & Port::NOCOMPUTE)
                             continue;
-                        port.second.objects().clear();
+                        ObjectList received;
+                        std::swap(received, port.second.objects());
                         if (!isConnected(port.second))
                             continue;
-                        auto objs = m_cache.getObjects(port.first);
+                        auto cache = m_cache.getObjects(port.first);
+                        if (!cache.second) {
+                            // FIXME: should collectively ignore cache
+                            CERR << "failed to retrieve objects from input cache" << std::endl;
+                            cache.first.clear();
+                        }
+                        auto objs = cache.first;
+                        received.clear();
                         // objects without timestep
                         ssize_t cur = step < 0 ? numObject - 1 : 0;
                         for (size_t i = 0; i < numObject; ++i) {
@@ -1918,6 +1968,10 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
             if (oldExecCount < m_executionCount) {
                 m_iteration = -1;
             }
+#ifdef REDUCE_DEBUG
+            CERR << "all_reduce for execCount finished " << m_executionCount << " with execCount=" << m_executionCount
+                 << std::endl;
+#endif
         }
 
         int prevTimestep = -1;
@@ -2104,6 +2158,10 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
     idle.setReferrer(exec->uuid());
     idle.setDestId(Id::LocalManager);
     sendMessage(idle);
+#endif
+
+#ifdef REDUCE_DEBUG
+    CERR << "EXEC FINISHED: count=" << m_executionCount << std::endl;
 #endif
 
     return ret;
@@ -2581,6 +2639,9 @@ bool Module::cancelRequested(bool collective)
     }
 
     if (collective) {
+#ifdef REDUCE_DEBUG
+        CERR << "running all_reduce for CANCEL: requested=" << m_cancelRequested << std::endl;
+#endif
         m_cancelRequested = boost::mpi::all_reduce(comm(), m_cancelRequested, std::logical_or<bool>());
     }
 
@@ -2588,6 +2649,12 @@ bool Module::cancelRequested(bool collective)
         cancelExecute();
         m_cancelExecuteCalled = true;
     }
+
+#ifdef REDUCE_DEBUG
+    if (m_cancelRequested) {
+        CERR << "CANCEL requested!" << std::endl;
+    }
+#endif
 
     return m_cancelRequested;
 }

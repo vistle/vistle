@@ -35,8 +35,19 @@ public slots:
     void cancelExecModules();
     void deleteModules();
     void selectAllModules();
+    void selectInvert();
+    void selectClear();
+    void selectSourceModules();
+    void selectSinkModules();
+
+    void zoomOrig();
+    void zoomAll();
 
 protected:
+    void wheelEvent(QWheelEvent *event);
+    void mousePressEvent(QMouseEvent *event);
+    void mouseMoveEvent(QMouseEvent *event);
+    void mouseReleaseEvent(QMouseEvent *event);
     void dragEnterEvent(QDragEnterEvent *e);
     void dragMoveEvent(QDragMoveEvent *event);
     void dropEvent(QDropEvent *event);
@@ -44,9 +55,16 @@ protected:
     void createActions();
     void createMenu();
 
-    QMenu *m_contextMenu;
-    QAction *m_deleteAct;
-    QAction *m_execAct;
+    bool m_isPanning = false;
+    QPoint m_panPos;
+    QCursor m_savedCursor;
+
+    QMenu *m_contextMenu = nullptr;
+    QAction *m_deleteAct = nullptr;
+    QAction *m_execAct = nullptr;
+    QAction *m_selectSourcesAct = nullptr;
+    QAction *m_selectSinksAct = nullptr;
+    QAction *m_selectInvertAct = nullptr;
 
 private:
     static DataFlowView *s_instance;

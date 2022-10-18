@@ -1,6 +1,16 @@
 <RCC>
     <qresource prefix="icons" >
         <file alias="vistle.png">../../install/hlrs-vistle.png</file>
+
+        <file alias="open.svg">icons/folder-open.svg</file>
+        <file alias="save.svg">icons/file-circle-check.svg</file>
+        <file alias="delete.svg">icons/eraser.svg</file>
+        <file alias="select.svg">icons/check-double.svg</file>
+        <file alias="invert.svg">icons/square-check.svg</file>
+        <file alias="execute.svg">icons/gear.svg</file>
+        <file alias="viewall.svg">icons/binoculars.svg</file>
+        <file alias="vieworig.svg">icons/eye.svg</file>
+
         <file alias="cluster_ui.svg">icons/computer.svg</file>
         <file alias="cluster.svg">icons/gears.svg</file>
         <file alias="server.svg">icons/gear.svg</file>

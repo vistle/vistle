@@ -20,10 +20,10 @@ using namespace vistle;
 
 Thicken::Thicken(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
-    createInputPort("grid_in");
-    createInputPort("data_in");
-    createOutputPort("grid_out");
-    createOutputPort("data_out");
+    createInputPort("grid_in", "lines or points with scalar data for radius");
+    createInputPort("data_in", "mapped data");
+    createOutputPort("grid_out", "tubes or spheres");
+    createOutputPort("data_out", "tubes or spheres with mapped data");
 
     m_radius = addFloatParameter("radius", "radius or radius scale factor of tube/sphere", 1.);
     setParameterMinimum(m_radius, (Float)0.);

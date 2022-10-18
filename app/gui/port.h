@@ -2,6 +2,7 @@
 #define GUI_PORT_H
 
 #include <QGraphicsItem>
+#include <QAction>
 #include <memory>
 
 namespace vistle {
@@ -27,12 +28,12 @@ public:
     };
 
     Port(const vistle::Port *port, Module *parent);
-    Port(Type type, Module *parent);
 
     bool valid() const;
     Type portType() const;
     Module *module() const;
-    vistle::Port *vistlePort() const;
+    QString name() const;
+    const vistle::Port *vistlePort() const;
 
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 
@@ -40,23 +41,36 @@ public:
 
     bool operator<(const Port &other) const;
     bool operator==(const Port &other) const;
+    void setInfo(QString info);
 
 signals:
     void clicked(Port *port);
+    void selectConnected(int direction, int id, QString port);
 
 protected:
+    void hoverEnterEvent(QGraphicsSceneHoverEvent *event);
+    void hoverLeaveEvent(QGraphicsSceneHoverEvent *event);
     void mousePressEvent(QGraphicsSceneMouseEvent *event);
     void mouseReleaseEvent(QGraphicsSceneMouseEvent *event);
     void mouseMoveEvent(QGraphicsSceneMouseEvent *event);
+    void contextMenuEvent(QGraphicsSceneContextMenuEvent *event);
 
 private:
     void createTooltip();
+    void createMenus();
     void createGeometry();
 
+    QMenu *m_portMenu = nullptr;
+    QAction *m_selectUpstreamAct = nullptr, *m_selectDownstreamAct = nullptr, *m_selectConnectedAct = nullptr;
+    QAction *m_disconnectAct = nullptr;
+
     Type m_portType; //< type of port
-    std::shared_ptr<vistle::Port> m_port;
+    const vistle::Port *m_port = nullptr;
     QColor m_color;
-    Module *m_module;
+    Module *m_module = nullptr;
+    int m_moduleId = 0;
+    QString m_name;
+    QString m_info;
 };
 
 } //namespace gui

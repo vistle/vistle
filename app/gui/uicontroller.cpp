@@ -93,7 +93,13 @@ UiController::UiController(int argc, char *argv[], QObject *parent): QObject(par
     connect(m_mainWindow, SIGNAL(showSessionUrl()), SLOT(showConnectionInfo()));
     connect(m_mainWindow, SIGNAL(copySessionUrl()), SLOT(copyConnectionInfo()));
     connect(m_mainWindow, SIGNAL(selectAllModules()), m_mainWindow->dataFlowView(), SLOT(selectAllModules()));
+    connect(m_mainWindow, SIGNAL(selectInvert()), m_mainWindow->dataFlowView(), SLOT(selectInvert()));
+    connect(m_mainWindow, SIGNAL(selectClear()), m_mainWindow->dataFlowView(), SLOT(selectClear()));
+    connect(m_mainWindow, SIGNAL(selectSourceModules()), m_mainWindow->dataFlowView(), SLOT(selectSourceModules()));
+    connect(m_mainWindow, SIGNAL(selectSinkModules()), m_mainWindow->dataFlowView(), SLOT(selectSinkModules()));
     connect(m_mainWindow, SIGNAL(deleteSelectedModules()), m_mainWindow->dataFlowView(), SLOT(deleteModules()));
+    connect(m_mainWindow, SIGNAL(zoomOrig()), m_mainWindow->dataFlowView(), SLOT(zoomOrig()));
+    connect(m_mainWindow, SIGNAL(zoomAll()), m_mainWindow->dataFlowView(), SLOT(zoomAll()));
     connect(m_mainWindow, SIGNAL(aboutQt()), SLOT(aboutQt()));
     connect(m_mainWindow, SIGNAL(aboutVistle()), SLOT(aboutVistle()));
     connect(m_mainWindow, SIGNAL(aboutLicense()), SLOT(aboutLicense()));
@@ -111,6 +117,8 @@ UiController::UiController(int argc, char *argv[], QObject *parent): QObject(par
             SLOT(addModule(int, boost::uuids::uuid, QString)));
     connect(&m_observer, SIGNAL(deleteModule_s(int)), m_scene, SLOT(deleteModule(int)));
     connect(&m_observer, SIGNAL(moduleStateChanged_s(int, int)), m_scene, SLOT(moduleStateChanged(int, int)));
+    connect(&m_observer, SIGNAL(itemInfo_s(QString, int, int, QString)), m_scene,
+            SLOT(itemInfoChanged(QString, int, int, QString)));
     connect(&m_observer, SIGNAL(newPort_s(int, QString)), m_scene, SLOT(newPort(int, QString)));
     connect(&m_observer, SIGNAL(deletePort_s(int, QString)), m_scene, SLOT(deletePort(int, QString)));
     connect(&m_observer, SIGNAL(newConnection_s(int, QString, int, QString)), m_scene,
@@ -298,6 +306,8 @@ void UiController::moduleSelectionChanged()
     for (auto &item: selected) {
         if (Module *m = dynamic_cast<Module *>(item)) {
             selectedModules.push_back(m);
+            if (selectedModules.size() > 1)
+                break;
         }
     }
 

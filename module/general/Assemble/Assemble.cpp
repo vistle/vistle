@@ -41,8 +41,8 @@ using namespace vistle;
 Assemble::Assemble(const std::string &name, int moduleID, mpi::communicator comm): vistle::Module(name, moduleID, comm)
 {
     for (int i = 0; i < NumPorts; ++i) {
-        m_in[i] = createInputPort("data_in" + std::to_string(i));
-        m_out[i] = createOutputPort("data_out" + std::to_string(i));
+        m_in[i] = createInputPort("data_in" + std::to_string(i), "geometry with mapped data");
+        m_out[i] = createOutputPort("data_out" + std::to_string(i), "geometry assembled into single block per rank");
     }
 
     p_attribute = addStringParameter("attribute", "attribute to match", "");

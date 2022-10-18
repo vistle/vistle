@@ -71,11 +71,6 @@ void VistleInteractor::applyParam(const std::string &name, const vistle::message
     msg.apply(param);
 }
 
-void VistleInteractor::removedObject()
-{
-    std::cerr << "VistleInteractor(" << m_moduleName << ") / " << getObjName() << std::endl;
-}
-
 /// returns true, if Interactor comes from same Module as intteractor i;
 bool VistleInteractor::isSameModule(coInteractor *i) const
 {

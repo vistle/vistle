@@ -20,10 +20,10 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(Direction, (X)(Y)(Z))
 IndexManifolds::IndexManifolds(const std::string &name, int moduleID, mpi::communicator comm)
 : Module(name, moduleID, comm)
 {
-    p_data_in = createInputPort("data_in0");
-    p_surface_out = createOutputPort("surface_out0");
-    p_line_out = createOutputPort("line_out0");
-    p_point_out = createOutputPort("point_out0");
+    p_data_in = createInputPort("data_in0", "(data on) structured grid");
+    p_surface_out = createOutputPort("surface_out0", "2D slice of input");
+    p_line_out = createOutputPort("line_out0", "1D line of input");
+    p_point_out = createOutputPort("point_out0", "0D point of input");
 
     p_coord = addIntVectorParameter("coord", "coordinates of point on surface/line", IntParamVector(0, 0, 0));
     setParameterMinimum(p_coord, IntParamVector(0, 0, 0));

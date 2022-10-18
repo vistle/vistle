@@ -26,7 +26,7 @@ bool TestDynamicPorts::changeParameter(const Parameter *param)
     if (param == m_numPortsParam) {
         int numPorts = m_numPortsParam->getValue();
         for (int i = m_numPorts; i < numPorts; ++i) {
-            createOutputPort(portName(i));
+            createOutputPort(portName(i), "test port");
         }
         for (int i = numPorts; i < m_numPorts; ++i) {
             destroyPort(portName(i));

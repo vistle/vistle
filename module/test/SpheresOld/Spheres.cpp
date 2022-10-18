@@ -15,9 +15,9 @@ using namespace vistle;
 
 ToSpheres::ToSpheres(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
-    createInputPort("grid_in");
-    createInputPort("map_in");
-    createOutputPort("grid_out");
+    createInputPort("grid_in", "points or scalar data on points");
+    createInputPort("map_in", "mapped data");
+    createOutputPort("grid_out", "spheres");
 
     auto MaxRad = std::numeric_limits<Scalar>::max();
 

@@ -14,7 +14,7 @@ TestCellSearch::TestCellSearch(const std::string &name, int moduleID, mpi::commu
 {
     setDefaultCacheMode(ObjectCache::CacheDeleteLate);
 
-    createInputPort("data_in");
+    createInputPort("data_in", "grid");
 
     m_point = addVectorParameter("point", "search point", ParamVector(0., 0., 0.));
     m_block = addIntParameter("block", "number of containing block", -1);

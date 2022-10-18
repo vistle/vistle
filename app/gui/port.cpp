@@ -11,6 +11,8 @@
 #include <cassert>
 
 #include <QCursor>
+#include <QAction>
+#include <QMenu>
 #include <QRadialGradient>
 #include <QPainter>
 #include <QGraphicsSceneMouseEvent>
@@ -23,7 +25,12 @@ static QColor InColor(200, 30, 30);
 static QColor OutColor(200, 200, 30);
 static QColor ParamColor(30, 30, 200);
 
-Port::Port(const vistle::Port *port, Module *parent): Base(parent), m_port(new vistle::Port(*port)), m_module(parent)
+Port::Port(const vistle::Port *port, Module *parent)
+: Base(parent)
+, m_port(port)
+, m_module(parent)
+, m_moduleId(port->getModuleID())
+, m_name(QString::fromStdString(port->getName()))
 {
     switch (port->getType()) {
     case vistle::Port::INPUT:
@@ -41,13 +48,58 @@ Port::Port(const vistle::Port *port, Module *parent): Base(parent), m_port(new v
     }
 
     createGeometry();
+    createMenus();
     createTooltip();
 }
 
-Port::Port(Port::Type type, Module *parent): Base(parent), m_portType(type), m_module(parent)
+void Port::createMenus()
 {
-    createGeometry();
-    createTooltip();
+    connect(this, &Port::selectConnected, m_module, &Module::selectConnected);
+
+    m_portMenu = new QMenu();
+
+    if (m_portType == Input) {
+        m_selectUpstreamAct = new QAction("Select Upstream", this);
+        m_selectUpstreamAct->setStatusTip("Select all modules feeding data to this port");
+        connect(m_selectUpstreamAct, &QAction::triggered,
+                [this]() { emit selectConnected(SelectUpstream, m_moduleId, m_name); });
+        m_portMenu->addAction(m_selectUpstreamAct);
+    }
+
+    m_selectConnectedAct = new QAction("Select Connected", this);
+    m_selectConnectedAct->setStatusTip("Select all modules connected to this port");
+    connect(m_selectConnectedAct, &QAction::triggered,
+            [this]() { emit selectConnected(SelectConnected, m_moduleId, m_name); });
+    m_portMenu->addAction(m_selectConnectedAct);
+
+    if (m_portType == Output) {
+        m_selectDownstreamAct = new QAction("Select Downstream", this);
+        m_selectDownstreamAct->setStatusTip("Select all modules this port feeds into");
+        connect(m_selectDownstreamAct, &QAction::triggered,
+                [this]() { emit selectConnected(SelectDownstream, m_moduleId, m_name); });
+        m_portMenu->addAction(m_selectDownstreamAct);
+    }
+
+    m_portMenu->addSeparator();
+
+    m_disconnectAct = new QAction("Remove Connections", this);
+    m_disconnectAct->setStatusTip("Remove connections to all other modules");
+    connect(m_disconnectAct, &QAction::triggered, [this]() {
+        auto *sc = dynamic_cast<DataFlowNetwork *>(scene());
+        assert(sc);
+        sc->removeConnections(this, true);
+    });
+    m_portMenu->addAction(m_disconnectAct);
+}
+
+void Port::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
+{
+    m_portMenu->popup(event->screenPos());
+}
+
+QString Port::name() const
+{
+    return m_name;
 }
 
 bool Port::valid() const
@@ -55,23 +107,22 @@ bool Port::valid() const
     return m_port != nullptr;
 }
 
-vistle::Port *Port::vistlePort() const
+const vistle::Port *Port::vistlePort() const
 {
-    return m_port.get();
+    return m_port;
 }
 
 bool Port::operator<(const Port &other) const
 {
-    assert(valid());
-    assert(other.valid());
-    return *m_port < *other.m_port;
+    if (m_moduleId == other.m_moduleId) {
+        return m_name < other.m_name;
+    }
+    return m_moduleId < other.m_moduleId;
 }
 
 bool Port::operator==(const Port &other) const
 {
-    assert(valid());
-    assert(other.valid());
-    return *m_port == *other.m_port;
+    return m_moduleId == other.m_moduleId && m_name == other.m_name;
 }
 
 Port::Type Port::portType() const
@@ -103,6 +154,20 @@ void Port::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWid
 QPointF Port::scenePos() const
 {
     return mapToScene(mapFromItem(m_module, m_module->portPos(this)));
+}
+
+void Port::hoverEnterEvent(QGraphicsSceneHoverEvent *event)
+{
+    auto *sc = dynamic_cast<DataFlowNetwork *>(scene());
+    assert(sc);
+    sc->setConnectionHighlights(this, true);
+}
+
+void Port::hoverLeaveEvent(QGraphicsSceneHoverEvent *event)
+{
+    auto *sc = dynamic_cast<DataFlowNetwork *>(scene());
+    assert(sc);
+    sc->setConnectionHighlights(this, false);
 }
 
 void Port::mousePressEvent(QGraphicsSceneMouseEvent *event)
@@ -137,6 +202,12 @@ void Port::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
     Base::mouseMoveEvent(event);
 }
 
+void Port::setInfo(QString text)
+{
+    m_info = text;
+    createTooltip();
+}
+
 void Port::createTooltip()
 {
     QString toolTip = "Invalid!";
@@ -149,6 +220,11 @@ void Port::createTooltip()
             toolTip += " ";
         }
         toolTip += "(" + name + ")";
+    }
+
+    if (!m_info.isEmpty()) {
+        toolTip += "\n";
+        toolTip += m_info;
     }
 
     setToolTip(toolTip);

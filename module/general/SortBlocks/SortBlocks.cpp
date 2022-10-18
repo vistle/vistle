@@ -13,9 +13,9 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(Choices, (Rank)(BlockNumber)(Timestep))
 
 SortBlocks::SortBlocks(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
-    createInputPort("data_in");
-    createOutputPort("data_out0");
-    createOutputPort("data_out1");
+    createInputPort("data_in", "partitioned data");
+    createOutputPort("data_out0", "matching partitions");
+    createOutputPort("data_out1", "non-matching partitions");
 
     m_criterionParam = addIntParameter("criterion", "Selection criterion", BlockNumber, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_criterionParam, Choices);

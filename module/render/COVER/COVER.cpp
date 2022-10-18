@@ -249,7 +249,7 @@ bool COVER::parameterAdded(const int senderId, const std::string &name, const me
         plugin = "CuttingSurface";
     if (plugin == "DisCOVERay" || plugin == "OsgRenderer")
         plugin = "RhrClient";
-    if (plugin == "Color")
+    if (plugin == "Color" || plugin == "ColorRandom")
         plugin = "ColorBars";
         // std::cerr << "parameterAdded: sender=" <<  senderId << ", name=" << name << ", plugin=" << plugin << std::endl;
 
@@ -269,7 +269,9 @@ bool COVER::parameterAdded(const int senderId, const std::string &name, const me
         m_interactorMap[senderId]->setPluginName(plugin);
         it = m_interactorMap.find(senderId);
         std::cerr << "created interactor for " << moduleName << ":" << senderId << std::endl;
-        it->second->incRefCount();
+        auto inter = it->second;
+        inter->incRefCount();
+        coVRPluginList::instance()->newInteractor(inter->getObject(), inter);
     }
     VistleInteractor *inter = it->second;
     inter->addParam(name, msg);
@@ -642,19 +644,15 @@ bool COVER::addColorMap(const std::string &species, Object::const_ptr colormap)
     }
 
     auto att = colormap->getAttribute("_colormap");
-    const char *oldattc = ro->getAttribute("COLORMAP");
-    std::string oldatt = oldattc ? oldattc : "";
-    if (att != oldatt) {
-        if (att.empty()) {
-            ro->removeAttribute("COLORMAP");
-        } else {
-            ro->addAttribute("COLORMAP", att);
-            //std::cerr << rank() << ": adding COLORMAP attribute for " << species << std::endl;
-        }
-
-        coVRPluginList::instance()->removeObject(inter->getObjName(), true);
-        coVRPluginList::instance()->newInteractor(ro, inter);
+    if (att.empty()) {
+        ro->removeAttribute("COLORMAP");
+    } else {
+        ro->addAttribute("COLORMAP", att);
+        std::cerr << rank() << ": adding COLORMAP attribute for " << species << std::endl;
     }
+
+    coVRPluginList::instance()->removeObject(inter->getObjName(), true);
+    coVRPluginList::instance()->newInteractor(inter->getObject(), inter);
 
     return true;
 }

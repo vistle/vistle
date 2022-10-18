@@ -24,10 +24,10 @@ ShowCelltree::ShowCelltree(const std::string &name, int moduleID, mpi::communica
     m_showLeft = addIntParameter("show_left", "show left separator", 1, Parameter::Boolean);
     m_showRight = addIntParameter("show_right", "show right separator", 1, Parameter::Boolean);
 
-    createInputPort("grid_in");
-    createOutputPort("grid_out");
-    createOutputPort("data_out");
-    createOutputPort("invalid_out");
+    createInputPort("grid_in", "grid with attached celltree");
+    createOutputPort("grid_out", "celltree visualization");
+    createOutputPort("data_out", "mapped tree depth");
+    createOutputPort("invalid_out", "invalid");
 }
 
 ShowCelltree::~ShowCelltree()

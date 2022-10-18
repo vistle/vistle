@@ -102,6 +102,26 @@ private:
 
     bool m_quitFlag;
 
+    struct PortKey {
+        PortKey(int module, const std::string &port): module(module), port(port) {}
+        PortKey(const Port *p): module(p->getModuleID()), port(p->getName()) {}
+
+        bool operator<(const PortKey &other) const
+        {
+            if (module == other.module)
+                return port < other.port;
+            return module < other.module;
+        }
+
+        int module;
+        std::string port;
+    };
+    struct PortObjectCache {
+        int iteration = 0;
+        int execCount = 0;
+        std::vector<std::string> objects;
+    };
+    std::map<PortKey, PortObjectCache> m_outputObjects; // current objects at local output ports
     bool addObjectSource(const message::AddObject &addObj);
     bool addObjectDestination(const message::AddObject &addObj, Object::const_ptr obj);
 
@@ -123,6 +143,7 @@ private:
     bool handlePriv(const message::Barrier &barrier);
     bool handlePriv(const message::BarrierReached &barrierReached);
     bool handlePriv(const message::SendText &text, const MessagePayload &payload);
+    bool handlePriv(const message::ItemInfo &info, const MessagePayload &payload);
     bool handlePriv(const message::RequestTunnel &tunnel);
     bool handlePriv(const message::Ping &ping);
     bool handlePriv(const message::DataTransferState &state);
@@ -167,7 +188,8 @@ private:
         std::deque<MessageWithPayload> incomingMessages; // not yet processed, because module takes part in a barrier
         std::vector<int> objectCount; // no. of available object tuples on each rank
 
-        Module(): ranksStarted(0), ranksFinished(0), prepared(false), reduced(true), busyCount(0), blocked(false) {}
+        Module(): ranksStarted(0), ranksFinished(0), prepared(false), reduced(true), busyCount(0), blocked(false)
+        {}
         ~Module();
 
         void block(const message::Message &msg) const;

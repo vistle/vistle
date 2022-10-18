@@ -11,10 +11,10 @@ MODULE_MAIN(AttachNormals)
 AttachNormals::AttachNormals(const std::string &name, int moduleID, mpi::communicator comm)
 : Module(name, moduleID, comm)
 {
-    m_gridIn = createInputPort("grid_in");
-    m_dataIn = createInputPort("data_in");
+    m_gridIn = createInputPort("grid_in", "grid or geometry");
+    m_dataIn = createInputPort("data_in", "normals");
 
-    m_gridOut = createOutputPort("grid_out");
+    m_gridOut = createOutputPort("grid_out", "grid with attached normals");
 }
 
 AttachNormals::~AttachNormals()

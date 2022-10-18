@@ -267,16 +267,20 @@ private:
     const int m_id;
 };
 
-//! request a module to quit
+//! request to attach a debugger to a module
 class V_COREEXPORT Debug: public MessageBase<Debug, DEBUG> {
 public:
-    explicit Debug(const int module);
+    DEFINE_ENUM_WITH_STRING_CONVERSIONS(Request, (AttachDebugger)(PrintState))
+
+    explicit Debug(const int module, Request req = AttachDebugger);
 
     int getModule() const;
+    Request getRequest() const;
 
 private:
-    //! ID of module to stop
-    const int module;
+    //! ID of module to debug
+    const int m_module;
+    const int m_request; //< action to perform
 };
 
 //! notify that a module has quit
@@ -682,6 +686,39 @@ private:
     Type m_referenceType;
 };
 V_ENUM_OUTPUT_OP(TextType, SendText)
+
+//! provide information on a GUI item, such as a tooltip for an input or output port
+class V_COREEXPORT ItemInfo: public MessageBase<ItemInfo, ITEMINFO> {
+public:
+    DEFINE_ENUM_WITH_STRING_CONVERSIONS(InfoType, (Module)(Port))
+
+    struct V_COREEXPORT Payload {
+        Payload();
+        Payload(const std::string &text);
+
+        std::string text;
+
+        ARCHIVE_ACCESS
+        template<class Archive>
+        void serialize(Archive &ar)
+        {
+            ar &text;
+        }
+    };
+
+    //! Error message in response to a Message
+    explicit ItemInfo(InfoType type, const std::string port = std::string());
+
+    InfoType infoType() const;
+    const char *port() const;
+
+private:
+    //! type of text
+    InfoType m_infoType;
+    //! name of port, if any
+    port_name_t m_port;
+};
+V_ENUM_OUTPUT_OP(InfoType, ItemInfo)
 
 //! update status of a module (or other entity)
 class V_COREEXPORT UpdateStatus: public MessageBase<UpdateStatus, UPDATESTATUS> {

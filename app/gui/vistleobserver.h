@@ -31,6 +31,7 @@ signals:
     void modified(bool state);
 
     void info_s(QString msg, int type);
+    void itemInfo_s(QString info, int type, int senderId, QString portName);
     void status_s(int id, QString msg, int prio);
     void moduleStatus_s(int id, QString msg, int prio);
 
@@ -60,6 +61,8 @@ public:
 
     void info(const std::string &text, vistle::message::SendText::TextType textType, int senderId, int senderRank,
               vistle::message::Type refType, const vistle::message::uuid_t &refUuid) override;
+    void itemInfo(const std::string &text, vistle::message::ItemInfo::InfoType type, int senderId,
+                  const std::string &port) override;
     void status(int id, const std::string &text, vistle::message::UpdateStatus::Importance priority) override;
     void updateStatus(int id, const std::string &text, vistle::message::UpdateStatus::Importance priority) override;
 

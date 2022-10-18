@@ -10,12 +10,12 @@ MODULE_MAIN(AttachGrid)
 
 AttachGrid::AttachGrid(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
-    m_gridIn = createInputPort("grid_in");
+    m_gridIn = createInputPort("grid_in", "grid to attach");
 
     for (int i = 0; i < 5; ++i) {
         std::string number = std::to_string(i);
-        m_dataIn.push_back(createInputPort("data_in" + number));
-        m_dataOut.push_back(createOutputPort("data_out" + number));
+        m_dataIn.push_back(createInputPort("data_in" + number, "data"));
+        m_dataOut.push_back(createOutputPort("data_out" + number, "data with input grid attached"));
     }
 }
 

@@ -200,7 +200,7 @@ bool Particle::findCell(double time)
 void Particle::EmitData()
 {
     m_currentSegment->m_xhist.push_back(transformPoint(m_block->transform(), m_xold));
-    m_currentSegment->m_vhist.push_back(m_v);
+    m_currentSegment->m_vhist.push_back(m_block->velocityTransform() * m_v);
     m_currentSegment->m_times.push_back(m_time);
     if (m_global.computeStep)
         m_currentSegment->m_steps.push_back(m_stp);
@@ -233,7 +233,6 @@ bool Particle::Step()
     const auto &grid = m_block->getGrid();
     auto inter = grid->getInterpolator(m_el, m_x, m_block->m_vecmap);
     m_v = inter(m_block->m_vx, m_block->m_vy, m_block->m_vz);
-    m_v = m_block->velocityTransform() * m_v;
     if (m_block->m_p) {
         if (m_block->m_scamap != m_block->m_vecmap)
             inter = grid->getInterpolator(m_el, m_x, m_block->m_scamap);

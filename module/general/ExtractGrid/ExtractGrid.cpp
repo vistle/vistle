@@ -12,10 +12,10 @@ MODULE_MAIN(ExtractGrid)
 
 ExtractGrid::ExtractGrid(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
-    m_dataIn = createInputPort("data_in");
+    m_dataIn = createInputPort("data_in", "data mapped to geometry or grid");
 
-    m_gridOut = createOutputPort("grid_out");
-    m_normalsOut = createOutputPort("normals_out");
+    m_gridOut = createOutputPort("grid_out", "geometry or grid");
+    m_normalsOut = createOutputPort("normals_out", "normals mapped to grid");
 
     addResultCache(m_gridCache);
     addResultCache(m_normalsCache);

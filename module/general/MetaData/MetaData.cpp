@@ -19,9 +19,9 @@ MODULE_MAIN(MetaData)
 
 MetaData::MetaData(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
-    createInputPort("grid_in");
+    createInputPort("grid_in", "input grid or geometry");
 
-    createOutputPort("data_out");
+    createOutputPort("data_out", "geometry with mapped block attribute");
 
     m_kind = addIntParameter("attribute", "attribute to map to vertices", (Integer)BlockNumber, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_kind, MetaAttribute);

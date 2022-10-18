@@ -25,7 +25,7 @@ void Router::initRoutingTable()
     rt[STARTED] = Track | DestUi | DestManager | DestModules | OnlyRank0;
     rt[MODULEEXIT] = Track | DestUi | DestManager | DestModules | OnlyRank0 | CleanQueue;
     rt[KILL] = DestModules | HandleOnDest;
-    rt[DEBUG] = Track | HandleOnHub;
+    rt[DEBUG] = Track | DestHub | DestModules | DestUi;
     rt[QUIT] = Track | Special;
     rt[CLOSECONNECTION] = Track | Special;
     rt[SCREENSHOT] = Track | DestUi;
@@ -48,6 +48,7 @@ void Router::initRoutingTable()
     rt[IDLE] = DestUi | DestMasterHub;
     rt[LOCKUI] = DestUi;
     rt[SENDTEXT] = DestUi | DestMasterHub;
+    rt[ITEMINFO] = Track | DestUi | DestMasterHub;
     rt[UPDATESTATUS] = Track | DestUi | DestMasterHub | DestModules;
 
     rt[OBJECTRECEIVEPOLICY] = DestLocalManager | Track;

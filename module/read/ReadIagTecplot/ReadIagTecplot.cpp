@@ -227,12 +227,12 @@ ReadIagTecplot::ReadIagTecplot(const std::string &name, int moduleID, mpi::commu
 {
     m_filename = addStringParameter("filename", "name of Tecplot file", "", vistle::Parameter::ExistingFilename);
 
-    m_grid = createOutputPort("grid_out");
-    m_p = createOutputPort("p");
-    m_rho = createOutputPort("rho");
-    m_n = createOutputPort("n");
-    m_u = createOutputPort("u");
-    m_v = createOutputPort("v");
+    m_grid = createOutputPort("grid_out", "grid or geometry");
+    m_p = createOutputPort("p", "pressure");
+    m_rho = createOutputPort("rho", "rho");
+    m_n = createOutputPort("n", "n");
+    m_u = createOutputPort("u", "u");
+    m_v = createOutputPort("v", "v");
 
     //setParallelizationMode(Serial);
     setParallelizationMode(ParallelizeTimeAndBlocks);

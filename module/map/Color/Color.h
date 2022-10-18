@@ -7,11 +7,17 @@
 
 #include <deque>
 
+#ifdef COLOR_RANDOM
+#define Color ColorRandom
+#define ColorMap ColorMapRandom
+#endif
+
 class ColorMap {
 public:
     typedef vistle::Vector4 RGBA;
     typedef std::map<vistle::Scalar, RGBA> TF;
 
+    ColorMap(const size_t steps);
     ColorMap(TF &pins, const size_t steps, const size_t width, vistle::Scalar center = 0.5f,
              vistle::Scalar compress = 1.f);
     ~ColorMap();
@@ -42,11 +48,14 @@ private:
 
     void process(const vistle::DataBase::const_ptr data);
 
+#ifndef COLOR_RANDOM
     std::map<int, ColorMap::TF> transferFunctions;
+#endif
 
     std::shared_ptr<ColorMap> m_colors;
 
     bool m_autoRange = true, m_autoInsetCenter = true, m_nest = false;
+    vistle::StringParameter *m_speciesPara = nullptr;
     vistle::IntParameter *m_autoRangePara, *m_autoInsetCenterPara, *m_nestPara;
     vistle::FloatParameter *m_minPara = nullptr, *m_maxPara = nullptr;
     vistle::IntParameter *m_constrain = nullptr;
