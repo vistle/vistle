@@ -21,9 +21,8 @@ MYST_INCLUDE = """```{include} %s
 RST_INDEX_HEADER = "{name}\n{underline}\n\n.. toctree::\n   :maxdepth: 1\n\n"
 
 
-def strInFile(openReadOnlyFile, s) -> bool:
-    if s in openReadOnlyFile.read():
-        return True
+def strInFile(openReadOnlyFile, val) -> bool:
+    return True if val in openReadOnlyFile.read() else False
 
 
 def check(predicate_func, val) -> bool:
@@ -86,7 +85,7 @@ def createLinkToMarkdownFile(md_linkdir, md_root, md_filename) -> str:
         new_link_file_path = createValidLinkFilePath(md_linkdir, md_root)
     if new_link_file_path == "":
         print("Please rename your README.md in " + md_root + " to 'Modulename'.md.")
-        return
+        return ""
     # write include string
     with open(new_link_file_path, 'w') as f:
         f.write(MYST_INCLUDE % md_origin_path)
@@ -121,7 +120,7 @@ def run(root_path, search_dir_list, link_docs_output_relpath):
     file_link_output_path = createIndexFileIfNotExisting(root_link_output_path)
     deleteFilesInDir(root_link_output_path, pattern="*.md")
     index_link_list = createLinks(markdown_files, root_link_output_path)
-    [addLinkToRSTFile(file_link_output_path, link) for link in sorted(index_link_list)]
+    _ = [addLinkToRSTFile(file_link_output_path, link) for link in sorted(index_link_list)]
 
 
 if __name__ == "__main__":
