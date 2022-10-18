@@ -306,6 +306,7 @@ def generateModuleDescriptions() -> None:
             tag = findTag(line, optional_tags.keys())
             if tag[0] is not None:
                 line = optional_tags[tag[0]](mod, tag[1])
+        line = relinkImage(line, SOURCEDIR, DESTDIR)
         newContentList.append(line)
 
     # add the missing essential sections
