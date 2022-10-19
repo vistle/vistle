@@ -65,6 +65,8 @@ vistle_target_link_libraries(
     PUBLIC
     Boost::filesystem
     PRIVATE
+    Boost::timer
+    PRIVATE
     Threads::Threads
     PRIVATE
     ${BOTAN_LIBRARIES})

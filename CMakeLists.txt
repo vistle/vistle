@@ -329,6 +329,7 @@ vistle_find_package(
     chrono
     thread
     regex
+    timer
     ${BOOST_REQ}
     OPTIONAL_COMPONENTS
     ${BOOST_OPT})

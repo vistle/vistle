@@ -5,6 +5,14 @@
 
 #include <string>
 #include <chrono>
+#include <memory>
+
+namespace boost {
+namespace timer {
+class cpu_timer;
+class auto_cpu_timer;
+} // namespace timer
+} // namespace boost
 
 namespace vistle {
 
@@ -27,6 +35,7 @@ public:
 private:
     std::string m_description;
     clock_type::time_point m_start;
+    std::unique_ptr<boost::timer::auto_cpu_timer> m_timer;
 };
 
 } // namespace vistle
