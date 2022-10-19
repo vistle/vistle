@@ -135,7 +135,7 @@ private:
     std::string m_prefix;
     std::string m_scriptPath;
     std::string m_snapshotFile;
-    bool m_barrierAfterLoad = false;
+    bool m_barrierAfterLoad = true;
     bool m_executeModules = false;
     bool m_quitting = false, m_emergency = false;
     static volatile std::atomic<bool> m_interrupt;
