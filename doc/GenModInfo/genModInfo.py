@@ -13,7 +13,7 @@ DESTDIR = os.path.dirname(os.path.realpath(
     __file__)) + "/moduleDescriptions/"
 
 REG_IMAGE = re.compile(r"(?:\w+(?:-\w+)+|\w*)\.(?:jpg|gif|png|bmp)")
-REG_TAGS_TMPL = r"(?<=\[{tag}\]:<)(.*)(?=>)"
+REG_TAGS_TMPL = r"\[{tag}\]:<(\w*)>"
 
 HEADLINE_TAG = "headline"
 HTML_TAG = "moduleHtml"
@@ -22,7 +22,6 @@ EXAMPLE_TAG = "example"
 VSL_TAG = "vslFile"
 
 #-------------Functions-------------#
-
 
 def createModuleImage(name, inPorts, outPorts):
     size = 1.
@@ -116,8 +115,8 @@ def getRect(x, y, width, height, color, rx=0.0, ry=0.0, tooltip=""):
     return rect
 
 
-def getHeadline(line, type):
-    return "" if len(line) == 0 else type + " " + line + '\n'
+def getHeadline(line, typestr):
+    return "" if len(line) == 0 else typestr + " " + line + '\n'
 
 
 def getTableLine(entries):
@@ -221,7 +220,7 @@ def genVistleScreenshot(mod, line) -> str:
     return returnString
 
 
-def readAdditionalDocumentation(filename) -> (list[str] | str):
+def readAdditionalDocumentation(filename):
     content = ""
     if os.path.isfile(filename):
         with open(filename, "r") as f:
@@ -229,7 +228,7 @@ def readAdditionalDocumentation(filename) -> (list[str] | str):
     return content
 
 
-def relinkImage(line, sourceDir, destDir) -> (str | None):
+def relinkImage(line, sourceDir, destDir):
     match = re.search(REG_IMAGE, line)
     if match:
         relPath = os.path.relpath(sourceDir, destDir) + "/" + match.group()
@@ -237,33 +236,16 @@ def relinkImage(line, sourceDir, destDir) -> (str | None):
     return line
 
 
-def findTagPositions(lines, tags) -> dict:
-    idx = 0
-    tagPos = {}
-    for line in lines:
-        tag = findTag(line, tags)
-        if tag[0] is None:
-            tag = findImage(line)
-        if tag[0] != None:
-            key = tag[0]
-            if key in tagPos.keys():
-                tagPos[key].append(idx)
-            else:
-                tagPos[key] = [idx]
-        idx += 1
-    return tagPos
-
-
-def findImage(line) -> (list[str] | list[None]):
+def findImage(line):
     match = re.search(REG_IMAGE, line)
     if match:
-        return ["image", match.group()]
-    return [None, None]
+        return ("image", match.group())
+    return (None, None)
 
 
 def findTag(line, tags):
     """
-    Returns the tag and its value.
+    Returns tuple with tag and its value.
 
     Args:
         line: current line in file
@@ -273,8 +255,8 @@ def findTag(line, tags):
     for tag in tags:
         matches = re.search(REG_TAGS_TMPL.format(tag=tag), line)
         if matches:
-            return [tag, matches.group(1)]
-    return [None, None]
+            return (tag, matches.group(1))
+    return (None, None)
 
 
 def generateModuleDescriptions() -> None:
@@ -295,27 +277,35 @@ def generateModuleDescriptions() -> None:
     # spawn the module and wait for its information to arrive at the hub
     mod = vistle.spawn(TARGET)
     vistle.barrier()
-    contentList = readAdditionalDocumentation(filename)
-    newContentList = []
-    for line in contentList:
-        tag = findTag(line, essential_tags.keys())
-        if tag[0] is not None:
-            line = essential_tags[tag[0]](mod)
-            del essential_tags[tag[0]]
+
+    content_list = readAdditionalDocumentation(filename)
+    output = []
+    used_tags = set()
+    for line in content_list:
+        tag, _ = findTag(line, essential_tags.keys())
+        # check if its an essential tag
+        if tag is not None:
+            line = essential_tags[tag](mod)
+            used_tags.add(tag)
         else:
-            tag = findTag(line, optional_tags.keys())
-            if tag[0] is not None:
-                line = optional_tags[tag[0]](mod, tag[1])
+            tag, value = findTag(line, optional_tags.keys())
+            # check if its an optional tag
+            if tag is not None:
+                line = optional_tags[tag](mod, value)
         line = relinkImage(line, SOURCEDIR, DESTDIR)
-        newContentList.append(line)
+        output.append(line)
 
     # add the missing essential sections
     with open(DESTDIR + TARGET + ".md", "w") as f:
-        if HEADLINE_TAG in essential_tags.keys():
+        unused_essential_tags = essential_tags.keys() - used_tags
+        if HEADLINE_TAG in unused_essential_tags:
             f.write(essential_tags[HEADLINE_TAG](mod))
-            del essential_tags[HEADLINE_TAG]
-        _ = [f.write(line) for line in newContentList]
-        _ = [f.write(essential_tags[tag](mod)) for tag in essential_tags]
+            unused_essential_tags.remove(HEADLINE_TAG)
+        # add content to file
+        _ = [f.write(line) for line in output]
+        # add default for unused essential keys
+        _ = [f.write(essential_tags[tag](mod)) for tag in sorted(unused_essential_tags)]
+
     vistle.quit()
 
 
@@ -335,7 +325,7 @@ if __name__ == "__main__":
         __file__)) + "/moduleDescriptions/"
     contentList = readAdditionalDocumentation(source)
     searchTags = tag_functions.keys()
-    tagPos = findTagPositions(contentList, tag_functions.keys())
+    # tagPos = findTags(contentList, tag_functions.keys())
 
     for tag, posList in tagPos.items():
         for pos in posList:
