@@ -200,24 +200,25 @@ def getExampleString(mod, example):
 
 
 def genVistleScreenshot(mod, line) -> str:
-    lineStartWithTag = re.search(
+    line_start_with_tag = re.search(
         r"^" + REG_TAGS_TMPL.format(tag=VSL_TAG), line)
-    vslNameWithoutExt = re.search('<(.+?)>', line)
-    returnString = ""
-    if vslNameWithoutExt:
-        modulename = vistle.getModuleName(mod)
-        vslName = vslNameWithoutExt.group(1)
-        vslDir = SOURCEDIR + "/" + vslName
-        imgPath = vslDir + '.png'
-        vslPath = vslDir + '.vsl'
-        if os.path.exists(vslPath):
-            if lineStartWithTag:
-                returnString += "![](" + vslName + ".png) \n"
-            else:
-                returnString += re.sub(REG_TAGS_TMPL.format(tag=VSL_TAG),
-                                       vslName + ".png", line)
-            subprocess.run(["vistle", "--snapshot", imgPath, vslPath])
-    return returnString
+    vsl_name_without_ext = re.search('<(.+?)>', line)
+    out = ""
+    if vsl_name_without_ext:
+       modulename = vistle.getModuleName(mod)
+       vsl_name = vsl_name_without_ext.group(1)
+       vsl_dir = SOURCEDIR + "/" + vsl_name
+       img_path = vsl_dir + '.png'
+       vsl_path = vsl_dir + '.vsl'
+
+       if os.path.exists(vsl_path):
+           if line_start_with_tag:
+               out += "![](" + vsl_name + ".png) \n"
+           else:
+               out += re.sub(REG_TAGS_TMPL.format(tag=VSL_TAG),
+                                      vsl_name + ".png", line)
+           subprocess.run(["vistle", "--snapshot", img_path, vsl_path], check=True)
+    return out
 
 
 def readAdditionalDocumentation(filename):
@@ -327,14 +328,14 @@ if __name__ == "__main__":
     searchTags = tag_functions.keys()
     # tagPos = findTags(contentList, tag_functions.keys())
 
-    for tag, posList in tagPos.items():
-        for pos in posList:
-            line = contentList[pos]
+    # for tag, posList in tagPos.items():
+        # for pos in posList:
+            # line = contentList[pos]
             # if tag == VSL_TAG:
             # line = getExamples(line)
             # exampleName = re.search('<(.+?)>',line)
-            line = relinkImage(line, sourceDir, destDir)
-            print(line)
+            # line = relinkImage(line, sourceDir, destDir)
+            # print(line)
 
     # for unused in (tag_functions.keys() - tagPos.keys()):
     #     print(unused)
