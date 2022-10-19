@@ -20,6 +20,8 @@ ShowCelltree::ShowCelltree(const std::string &name, int moduleID, mpi::communica
 {
     setDefaultCacheMode(ObjectCache::CacheDeleteLate);
 
+    m_validate = addIntParameter("validate_tree", "check celltree for consistency", false, Parameter::Boolean);
+    m_minDepth = addIntParameter("minimum_depth", "minimum depth of nodes to show", 9);
     m_maxDepth = addIntParameter("maximum_depth", "maximum depth of nodes to show", 10);
     m_showLeft = addIntParameter("show_left", "show left separator", 1, Parameter::Boolean);
     m_showRight = addIntParameter("show_right", "show right separator", 1, Parameter::Boolean);
@@ -34,7 +36,7 @@ ShowCelltree::~ShowCelltree()
 {}
 
 void visit(Celltree3::Node *nodes, Celltree3::Node &cur, Vector3 min, Vector3 max, Lines::ptr lines,
-           Vec<Scalar>::ptr data, int depth, int maxdepth, int show)
+           Vec<Scalar>::ptr data, int depth, int mindepth, int maxdepth, int show)
 {
     if (cur.isLeaf())
         return;
@@ -43,6 +45,19 @@ void visit(Celltree3::Node *nodes, Celltree3::Node &cur, Vector3 min, Vector3 ma
         return;
 
     const int D = cur.dim;
+    const Index L = cur.child;
+    const Index R = cur.child + 1;
+    Vector3 lmax = max;
+    lmax[D] = cur.Lmax;
+    Vector3 rmin = min;
+    rmin[D] = cur.Rmin;
+    ::visit(nodes, nodes[L], min, lmax, lines, data, depth + 1, mindepth, maxdepth, show);
+    ::visit(nodes, nodes[R], rmin, max, lines, data, depth + 1, mindepth, maxdepth, show);
+
+    if (depth < mindepth)
+        return;
+
+
     auto &el = lines->el();
     auto &x = lines->x();
     auto &y = lines->y();
@@ -187,15 +202,6 @@ void visit(Celltree3::Node *nodes, Celltree3::Node &cur, Vector3 min, Vector3 ma
             data->x().push_back(Scalar(depth + 0.5));
         }
     }
-
-    const Index L = cur.child;
-    const Index R = cur.child + 1;
-    Vector3 lmax = max;
-    lmax[D] = cur.Lmax;
-    Vector3 rmin = min;
-    rmin[D] = cur.Rmin;
-    ::visit(nodes, nodes[L], min, lmax, lines, data, depth + 1, maxdepth, show);
-    ::visit(nodes, nodes[R], rmin, max, lines, data, depth + 1, maxdepth, show);
 }
 
 bool ShowCelltree::compute()
@@ -221,7 +227,7 @@ bool ShowCelltree::compute()
 
     bool celltreeValid = true;
     auto ct = cti->getCelltree();
-    if (!cti->validateCelltree()) {
+    if (m_validate->getValue() && !cti->validateCelltree()) {
         sendError("Celltree verification failed on block %d, time=%d", gridObj->getBlock(), gridObj->getTimestep());
         celltreeValid = false;
     }
@@ -238,7 +244,8 @@ bool ShowCelltree::compute()
     if (!ct->nodes().empty()) {
         Vector3 min(ct->min()[0], ct->min()[1], ct->min()[2]);
         Vector3 max(ct->max()[0], ct->max()[1], ct->max()[2]);
-        ::visit(ct->nodes().data(), ct->nodes()[0], min, max, out, dataOut, 0, m_maxDepth->getValue(), show);
+        ::visit(ct->nodes().data(), ct->nodes()[0], min, max, out, dataOut, 0, m_minDepth->getValue(),
+                m_maxDepth->getValue(), show);
     }
 
     out->copyAttributes(gridObj);

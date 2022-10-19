@@ -9,7 +9,7 @@ public:
     ~ShowCelltree();
 
 private:
-    vistle::IntParameter *m_maxDepth, *m_showLeft, *m_showRight;
+    vistle::IntParameter *m_validate, *m_minDepth, *m_maxDepth, *m_showLeft, *m_showRight;
     virtual bool compute();
 };
 
