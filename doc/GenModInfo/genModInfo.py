@@ -256,7 +256,7 @@ def findTag(line, tags):
     for tag in tags:
         matches = re.search(REG_TAGS_TMPL.format(tag=tag), line)
         if matches:
-            return (tag, matches.group(1))
+            return (tag, matches.group(1)) if tag is not VSL_TAG else (tag, line)
     return (None, None)
 
 
