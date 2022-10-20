@@ -31,10 +31,14 @@ public:
 
     StopWatch(const char *description);
     ~StopWatch();
+    void reset();
+    void stop();
+    void resume();
+    void report();
 
 private:
     std::string m_description;
-    clock_type::time_point m_start;
+    std::string m_format;
     std::unique_ptr<boost::timer::auto_cpu_timer> m_timer;
 };
 
