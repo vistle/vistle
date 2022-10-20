@@ -98,13 +98,13 @@ The module should now display two output ports: AMR mesh and mandelbrot.
 -enable VTK variables for the LibSimController module  
 -connect the mandelbrot port with the following modues as shown in the picture:
 
-![](../../../module/general/LibSim/mandelbrot_map.png)
+![](../../../module/insitu/LibSim/mandelbrot_map.png)
 
 -enable quad for Domainsurface  
 -pres step in the LibSimController module to execute one timestep or type *step* in the commandline of the simulation
 -in COVER *view all* and rotate the image. Use *Navigation/Center view* to allign the image. The rusult should look like:
 
-![](../../../module/general/LibSim/mandelbrot.png)
+![](../../../module/insitu/LibSim/mandelbrot.png)
 
 ## Related Modules
 SenseiController
