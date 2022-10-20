@@ -37,18 +37,19 @@ set(gui_SOURCES
     qconsole/qconsole.cpp)
 
 set(gui_HEADERS
-    mainwindow.h
     connection.h
-    module.h
     dataflownetwork.h
-    port.h
-    vistleobserver.h
-    parameters.h
-    modulebrowser.h
     dataflowview.h
-    vistleconsole.h
+    macosutils.h
+    mainwindow.h
     modifieddialog.h
+    module.h
+    modulebrowser.h
+    parameters.h
+    port.h
     uicontroller.h
+    vistleconsole.h
+    vistleobserver.h
     qconsole/qconsole.h)
 
 set(gui_FORMS mainwindow.ui about.ui modulebrowser.ui modifieddialog.ui)

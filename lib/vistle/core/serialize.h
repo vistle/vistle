@@ -1,5 +1,5 @@
-#ifndef SERIALIZE_H
-#define SERIALIZE_H
+#ifndef VISTLE_SERIALIZE_H
+#define VISTLE_SERIALIZE_H
 
 #include "archives_config.h"
 

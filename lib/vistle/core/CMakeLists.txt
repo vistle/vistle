@@ -68,6 +68,8 @@ set(core_HEADERS
     archive_loader.h
     archive_saver.h
     archives.h
+    archives_compress.h
+    archives_compress_sz3.h
     archives_config.h
     archives_impl.h
     availablemodule.h
@@ -75,6 +77,7 @@ set(core_HEADERS
     celltree.h
     celltree_impl.h
     celltreenode.h
+    celltreenode_decl.h
     celltypes.h
     coords.h
     coords_impl.h
@@ -133,6 +136,7 @@ set(core_HEADERS
     serialize.h
     shm.h
     shm_array.h
+    shm_array_impl.h
     shm_config.h
     shm_impl.h
     shm_obj_ref.h
@@ -164,8 +168,10 @@ set(core_HEADERS
     vec_impl.h
     vec_template.h
     vector.h
+    vectortypes.h
     vertexownerlist.h
     vertexownerlist_impl.h)
+
 if(MSVC)
     set_source_files_properties(allobjects.cpp PROPERTIES COMPILE_FLAGS /bigobj)
     set_source_files_properties(cellalgorithm.cpp PROPERTIES COMPILE_FLAGS /bigobj)
