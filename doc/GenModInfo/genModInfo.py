@@ -10,7 +10,7 @@ BUILDDIR = os.environ['VISTLE_DOCUMENTATION_BIN_DIR']
 SOURCEDIR = os.environ['VISTLE_DOCUMENTATION_DIR']
 TARGET = os.environ['VISTLE_DOCUMENTATION_TARGET']
 DESTDIR = os.path.dirname(os.path.realpath(
-    __file__)) + "/moduleDescriptions/"
+    __file__)) + "/../../docs/source/modules/"
 
 REG_IMAGE = re.compile(r"(?:\w+(?:-\w+)+|\w*)\.(?:jpg|gif|png|bmp)")
 REG_TAGS_TMPL = r"\[{tag}\]:<(\w*)>"
