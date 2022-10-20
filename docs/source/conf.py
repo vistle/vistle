@@ -77,6 +77,6 @@ html_theme = 'sphinx_rtd_theme'
 
 autosectionlabel_prefix_document = True
 deleteDir("../build")
-run("../..", ["doc/GenModInfo/moduleDescriptions"], "modules")
+run("../..", ["docs/source/modules"], "modules", link_rst_only=True)
 run("../..", ["lib/vistle"], "lib")
 run("../..", ["app"], "app")
