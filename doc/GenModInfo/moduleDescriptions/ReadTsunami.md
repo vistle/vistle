@@ -29,35 +29,35 @@ The reader is able to read netCDF files which uses a [PnetCDF](https://parallel-
 <svg width="80.0em" height="10.6em" >
 <style>.text { font: normal 1.0em sans-serif;}tspan{ font: italic 1.0em sans-serif;}.moduleName{ font: bold 1.0em sans-serif;}</style>
 <rect x="0em" y="0.8em" width="8.0em" height="3.0em" rx="0.1em" ry="0.1em" style="fill:#64c8c8ff;" />
-<text x="0.2em" y="2.6500000000000004em" class="moduleName" >ReadTsunami</text><rect x="0.2em" y="2.8em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c8c81eff;" >
+<text x="0.2em" y="2.6500000000000004em" class="moduleName" >ReadTsunami</text><rect x="0.2em" y="2.8em" width="1.0em" height="1.0em" rx="0.0em" ry="0.0em" style="fill:#c8c81eff;" >
 <title>Sea surface</title></rect>
-<rect x="0.7em" y="3.8em" width="0.03333333333333333em" height="6.0em" rx="0em" ry="0em" style="fill:#000000;" />
-<rect x="0.7em" y="9.8em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="0.7em" y="3.8em" width="0.03333333333333333em" height="6.0em" rx="0.0em" ry="0.0em" style="fill:#000000;" />
+<rect x="0.7em" y="9.8em" width="1.0em" height="0.03333333333333333em" rx="0.0em" ry="0.0em" style="fill:#000000;" />
 <text x="1.9em" y="9.9em" class="text" >Grid Sea (Heightmap/LayerGrid)<tspan> (Sea surface)</tspan></text>
-<rect x="1.4em" y="2.8em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c8c81eff;" >
+<rect x="1.4em" y="2.8em" width="1.0em" height="1.0em" rx="0.0em" ry="0.0em" style="fill:#c8c81eff;" >
 <title>Ground surface</title></rect>
-<rect x="1.9em" y="3.8em" width="0.03333333333333333em" height="5.0em" rx="0em" ry="0em" style="fill:#000000;" />
-<rect x="1.9em" y="8.8em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="1.9em" y="3.8em" width="0.03333333333333333em" height="5.0em" rx="0.0em" ry="0.0em" style="fill:#000000;" />
+<rect x="1.9em" y="8.8em" width="1.0em" height="0.03333333333333333em" rx="0.0em" ry="0.0em" style="fill:#000000;" />
 <text x="3.0999999999999996em" y="8.9em" class="text" >Sea floor (Heightmap/LayerGrid)<tspan> (Ground surface)</tspan></text>
-<rect x="2.5999999999999996em" y="2.8em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c8c81eff;" >
+<rect x="2.5999999999999996em" y="2.8em" width="1.0em" height="1.0em" rx="0.0em" ry="0.0em" style="fill:#c8c81eff;" >
 <title>Scalar port 0</title></rect>
-<rect x="3.0999999999999996em" y="3.8em" width="0.03333333333333333em" height="4.0em" rx="0em" ry="0em" style="fill:#000000;" />
-<rect x="3.0999999999999996em" y="7.8em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="3.0999999999999996em" y="3.8em" width="0.03333333333333333em" height="4.0em" rx="0.0em" ry="0.0em" style="fill:#000000;" />
+<rect x="3.0999999999999996em" y="7.8em" width="1.0em" height="0.03333333333333333em" rx="0.0em" ry="0.0em" style="fill:#000000;" />
 <text x="4.3em" y="7.8999999999999995em" class="text" >Port for scalar number 0<tspan> (Scalar port 0)</tspan></text>
-<rect x="3.8em" y="2.8em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c8c81eff;" >
+<rect x="3.8em" y="2.8em" width="1.0em" height="1.0em" rx="0.0em" ry="0.0em" style="fill:#c8c81eff;" >
 <title>Scalar port 1</title></rect>
-<rect x="4.3em" y="3.8em" width="0.03333333333333333em" height="3.0em" rx="0em" ry="0em" style="fill:#000000;" />
-<rect x="4.3em" y="6.8em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="4.3em" y="3.8em" width="0.03333333333333333em" height="3.0em" rx="0.0em" ry="0.0em" style="fill:#000000;" />
+<rect x="4.3em" y="6.8em" width="1.0em" height="0.03333333333333333em" rx="0.0em" ry="0.0em" style="fill:#000000;" />
 <text x="5.5em" y="6.8999999999999995em" class="text" >Port for scalar number 1<tspan> (Scalar port 1)</tspan></text>
-<rect x="5.0em" y="2.8em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c8c81eff;" >
+<rect x="5.0em" y="2.8em" width="1.0em" height="1.0em" rx="0.0em" ry="0.0em" style="fill:#c8c81eff;" >
 <title>Scalar port 2</title></rect>
-<rect x="5.5em" y="3.8em" width="0.03333333333333333em" height="2.0em" rx="0em" ry="0em" style="fill:#000000;" />
-<rect x="5.5em" y="5.8em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="5.5em" y="3.8em" width="0.03333333333333333em" height="2.0em" rx="0.0em" ry="0.0em" style="fill:#000000;" />
+<rect x="5.5em" y="5.8em" width="1.0em" height="0.03333333333333333em" rx="0.0em" ry="0.0em" style="fill:#000000;" />
 <text x="6.7em" y="5.8999999999999995em" class="text" >Port for scalar number 2<tspan> (Scalar port 2)</tspan></text>
-<rect x="6.2em" y="2.8em" width="1.0em" height="1.0em" rx="0em" ry="0em" style="fill:#c8c81eff;" >
+<rect x="6.2em" y="2.8em" width="1.0em" height="1.0em" rx="0.0em" ry="0.0em" style="fill:#c8c81eff;" >
 <title>Scalar port 3</title></rect>
-<rect x="6.7em" y="3.8em" width="0.03333333333333333em" height="1.0em" rx="0em" ry="0em" style="fill:#000000;" />
-<rect x="6.7em" y="4.8em" width="1.0em" height="0.03333333333333333em" rx="0em" ry="0em" style="fill:#000000;" />
+<rect x="6.7em" y="3.8em" width="0.03333333333333333em" height="1.0em" rx="0.0em" ry="0.0em" style="fill:#000000;" />
+<rect x="6.7em" y="4.8em" width="1.0em" height="0.03333333333333333em" rx="0.0em" ry="0.0em" style="fill:#000000;" />
 <text x="7.9em" y="4.8999999999999995em" class="text" >Port for scalar number 3<tspan> (Scalar port 3)</tspan></text>
 </svg>
 
@@ -96,37 +96,39 @@ This module distributes the data into domain blocks per spawned mpi process. Wit
 
 In the simplest and most cases a visualization of the simulation result can be done like shown in figure 1. 
 
-```{figure} ../../../module/general/ReadTsunami/simple.png
+```{figure} ../../../module/read/ReadTsunami/simple.png
 ---
 align: center
+width: 150px
 ---
 Fig 1: Simple vizualization pipeline.
 ```
 In this example the second port will be used to visualize the topography. For the third port the additional scalar data **max_height** is selected which will directly mapped onto the sea surface. The following picture shows the result of executing this visualization pipeline.
 
-![](../../../module/general/ReadTsunami/simpleResult.png)
+![](../../../module/read/ReadTsunami/simpleResult.png)
 
 ### Cádiz Tsunami
 
 Visualizing simulation data next to additional topographic data assumes that coordinates are set up for a specific coordinate system. In the next example google maps data of the city Cádiz is used to generate a more immersive experience in VR. In such an example the tsunami data needs to be converted into another coordinate system because google maps uses a certain type of map projection called Mercator. The figure 2 shows the visualization pipeline of this example. [MapDrape](MapDrape_link.md) is used in this context to make a coordinate system conversion of the dataset from WGS84 to Mercator. [IndexManifolds](IndexManifolds_link.md) needs to be used here to specify which layer of the LayerGrid needs to be used as input for MapDrape. [LoadCover](LoadCover_link.md) loads the google data as VRML file while the [Variant](Variant_link.md) modules allows the user to disable data later in COVER.
 
-```{figure} ../../../module/general/ReadTsunami/cadiz.png
+```{figure} ../../../module/read/ReadTsunami/cadiz.png
 ---
 align: center
+width: 500px
 ---
 Fig 2: Cádiz pipeline.
 ```
 The first picture shows the result of executing the visualization pipeline from above with the topographic data which comes with the netCDF data.
 
-![](../../../module/general/ReadTsunami/tsunamiCadizNcTopo.png)
+![](../../../module/read/ReadTsunami/tsunamiCadizNcTopo.png)
 
 In comparison to the previous topographic data the same simulation data with the additional google maps data is shown in the following pictures.
 
-![](../../../module/general/ReadTsunami/tsunamiCadiz.png)
+![](../../../module/read/ReadTsunami/tsunamiCadiz.png)
 
-![](../../../module/general/ReadTsunami/tsunamiCadizClose.png)
+![](../../../module/read/ReadTsunami/tsunamiCadizClose.png)
 
-![](../../../module/general/ReadTsunami/tsunamiCadizClose2.png)
+![](../../../module/read/ReadTsunami/tsunamiCadizClose2.png)
 
 ## Related Modules
 

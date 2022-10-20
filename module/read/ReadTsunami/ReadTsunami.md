@@ -42,6 +42,7 @@ In the simplest and most cases a visualization of the simulation result can be d
 ```{figure} [vslFile]:<simple>
 ---
 align: center
+width: 150px
 ---
 Fig 1: Simple vizualization pipeline.
 ```
@@ -56,6 +57,7 @@ Visualizing simulation data next to additional topographic data assumes that coo
 ```{figure} [vslFile]:<cadiz>
 ---
 align: center
+width: 500px
 ---
 Fig 2: Cádiz pipeline.
 ```
