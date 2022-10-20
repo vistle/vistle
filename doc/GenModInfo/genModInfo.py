@@ -184,17 +184,12 @@ def getParametersString(mod):
     return paramString
 
 
-def getExampleString(mod, example):
-    print("getExampleString")
-    imageDir = os.path.relpath(BUILDDIR, DESTDIR) + "/"
-    line = "<figure float=\"left\">\n"
-    line += "   <img src=\"" + imageDir + example + \
-        "_workflow.png\" width=\"" + "200" + "\" />\n"
-    line += "   <img src=\"" + imageDir + example + \
-        "_result.png\" width=\"" + "300" + "\" />\n"
-    line += "   <figcaption>Fig.1 " + example + \
-        " workflow (left) and expected result (right). </figcaption>\n"
-    line += "</figure>"
+def getExampleString(mod, example) -> str:
+    line = f"""<figure float=\"left\">
+    <img src=\"{example}_workflow.png\" width=\"200\"/>
+    <img src=\"{example}_result.png\" width=\"300\"/>
+    <figcaption>Fig.1 {example} workflow (left) and expected result (right).</figcaption>
+</figure>"""
 
     return line
 
@@ -229,11 +224,10 @@ def readAdditionalDocumentation(filename):
     return content
 
 
-def relinkImage(line, sourceDir, destDir):
-    match = re.search(REG_IMAGE, line)
-    if match:
+def relinkImage(line: str, sourceDir, destDir):
+    for match in re.finditer(REG_IMAGE, line):
         relPath = os.path.relpath(sourceDir, destDir) + "/" + match.group()
-        return re.sub(REG_IMAGE, relPath, line)
+        line = line.replace(match.group(), relPath)
     return line
 
 
@@ -261,7 +255,6 @@ def findTag(line, tags):
 
 
 def generateModuleDescriptions() -> None:
-    # ImgDestDir = os.path.dirname(os.path.realpath(__file__)) + "/../../docs/build/html/modules/"
     filename = SOURCEDIR + "/" + TARGET + ".md"
     # tags with the format [tag]:<value> can be replace by asignig a replacement function to the tag:
     essential_tags = {  # these can only apear once and if not found these will be added at the end
@@ -293,7 +286,11 @@ def generateModuleDescriptions() -> None:
             # check if its an optional tag
             if tag is not None:
                 line = optional_tags[tag](mod, value)
-        line = relinkImage(line, SOURCEDIR, DESTDIR)
+        source = SOURCEDIR
+        dest = DESTDIR
+        if tag is EXAMPLE_TAG:
+            source = BUILDDIR
+        line = relinkImage(line, source, dest)
         output.append(line)
 
     # add the missing essential sections
