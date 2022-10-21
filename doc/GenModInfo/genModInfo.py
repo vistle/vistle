@@ -14,6 +14,7 @@ DESTDIR = os.path.dirname(os.path.realpath(
 
 REG_IMAGE = re.compile(r"(?:\w+(?:-\w+)+|\w*)\.(?:jpg|gif|png|bmp)")
 REG_TAGS_TMPL = r"\[{tag}\]:<(\w*)>"
+REG_HTML_IMG = r"<img[^\>]+/>"
 
 HEADLINE_TAG = "headline"
 HTML_TAG = "moduleHtml"
@@ -226,10 +227,14 @@ def readAdditionalDocumentation(filename):
     return content
 
 
-def relinkImage(line: str, sourceDir, destDir):
+def relinkImage(line: str, sourceDir: str, destDir: str) -> str:
     for match in re.finditer(REG_IMAGE, line):
-        relPath = os.path.relpath(sourceDir, destDir) + "/" + match.group()
-        line = line.replace(match.group(), relPath)
+        rel_path = os.path.relpath(sourceDir, destDir) + "/" + match.group()
+        # dennis gucci feature: automatic relink and copy of images for html format is not supported in Myst Parser
+        # => HTML needs direct link from myst build dir
+        if re.search(REG_HTML_IMG, line):
+            rel_path = "../" + rel_path
+        line = line.replace(match.group(), rel_path)
     return line
 
 
@@ -288,11 +293,7 @@ def generateModuleDescriptions() -> None:
             # check if its an optional tag
             if tag is not None:
                 line = optional_tags[tag](mod, value)
-        source = SOURCEDIR
-        dest = DESTDIR
-        if tag is EXAMPLE_TAG:
-            source = BUILDDIR
-        line = relinkImage(line, source, dest)
+        line = relinkImage(line, SOURCEDIR, DESTDIR)
         output.append(line)
 
     # add the missing essential sections
