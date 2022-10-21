@@ -34,4 +34,4 @@ Rendering of visualization with a enclosing bounding box
 
 ### Similar Modules
 
-[Extrema](Extrema_link)
+[Extrema](Extrema.md)

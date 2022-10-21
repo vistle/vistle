@@ -16,14 +16,14 @@ Some commonly employed modules are listed in the following. A complete list of m
 
 * I/O: all modules starting with *Read*...
 * Processing *scalar* data:
-    [DomainSurface](../modules/DomainSurface_link.md), [IsoSurface](../modules/IsoSurface_link.md), [CuttingSurface](../modules/CuttingSurface_link.md)
+    [DomainSurface](../modules/DomainSurface.md), [IsoSurface](../modules/IsoSurface.md), [CuttingSurface](../modules/CuttingSurface.md)
 * Processing *vector* data:
-    [Tracer](../modules/Tracer_link.md), [VectorField](../modules/VectorField_link.md)
+    [Tracer](../modules/Tracer.md), [VectorField](../modules/VectorField.md)
 * Colorization:
-    [Color](../modules/Color_link.md)
+    [Color](../modules/Color.md)
 * Rendering: 
-    [COVER](../modules/COVER_link.md)
-* Other useful tools: [BoundingBox](../modules/BoundingBox_link.md), [ObjectStatistics](../modules/ObjectStatistics_link.md)
+    [COVER](../modules/COVER.md)
+* Other useful tools: [BoundingBox](../modules/BoundingBox.md), [ObjectStatistics](../modules/ObjectStatistics.md)
 ## Configuring Modules
 By clicking on a module icon in the workflow area, its parameters will appear on the right-hand side replacing the Module Browser frame.
 Within these, modules can be configured as by specifying the path to data files, selecting variables to be read or setting isovalues.
@@ -38,5 +38,5 @@ A workflow can be executed by clicking on *Execute* in the menu bar, or double-c
 ![](quickstart_workflow.jpeg)
 
 ## Rendering and Interaction
-To render the results, a workflow is typically finalized with a [COVER](../modules/COVER_link.md) module. The outcome will be rendered in the COVER window. Navigation is possible using the mouse.
+To render the results, a workflow is typically finalized with a [COVER](../modules/COVER.md) module. The outcome will be rendered in the COVER window. Navigation is possible using the mouse.
 ![](quickstart_cover.jpeg)

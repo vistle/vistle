@@ -52,7 +52,7 @@ In this example the second port will be used to visualize the topography. For th
 
 ### Cádiz Tsunami
 
-Visualizing simulation data next to additional topographic data assumes that coordinates are set up for a specific coordinate system. In the next example google maps data of the city Cádiz is used to generate a more immersive experience in VR. In such an example the tsunami data needs to be converted into another coordinate system because google maps uses a certain type of map projection called Mercator. The figure 2 shows the visualization pipeline of this example. [MapDrape](MapDrape_link.md) is used in this context to make a coordinate system conversion of the dataset from WGS84 to Mercator. [IndexManifolds](IndexManifolds_link.md) needs to be used here to specify which layer of the LayerGrid needs to be used as input for MapDrape. [LoadCover](LoadCover_link.md) loads the google data as VRML file while the [Variant](Variant_link.md) modules allows the user to disable data later in COVER.
+Visualizing simulation data next to additional topographic data assumes that coordinates are set up for a specific coordinate system. In the next example google maps data of the city Cádiz is used to generate a more immersive experience in VR. In such an example the tsunami data needs to be converted into another coordinate system because google maps uses a certain type of map projection called Mercator. The figure 2 shows the visualization pipeline of this example. [MapDrape](MapDrape.md) is used in this context to make a coordinate system conversion of the dataset from WGS84 to Mercator. [IndexManifolds](IndexManifolds.md) needs to be used here to specify which layer of the LayerGrid needs to be used as input for MapDrape. [LoadCover](LoadCover.md) loads the google data as VRML file while the [Variant](Variant.md) modules allows the user to disable data later in COVER.
 
 ```{figure} [vslFile]:<cadiz>
 ---
@@ -77,10 +77,10 @@ In comparison to the previous topographic data the same simulation data with the
 
 ### Often Used With
 
-- [Color](Color_link.md)
-- [MapDrape](MapDrape_link.md)
-- [IndexManifolds](IndexManifolds_link.md)
-- [Variant](Variant_link.md)
+- [Color](Color.md)
+- [MapDrape](MapDrape.md)
+- [IndexManifolds](IndexManifolds.md)
+- [Variant](Variant.md)
 
 ## Build Requirements
 

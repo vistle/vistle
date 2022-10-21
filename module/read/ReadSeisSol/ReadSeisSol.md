@@ -67,7 +67,7 @@ The first port outputs the raw geometry specified by the **Topology** and **Geom
 
 ### Surfaces
 
-The visualization pipeline in figure 1 shows two **ReadSeisSol** modules which reading different XDMF files. The left pipeline is for the bathymetry of the area while the right one is used to visualize the fault itself. Both pipelines uses the common combination of [DomainSurface](DomainSurface_link.md) and [Color](Color_link.md) to map the scalars (**U** for bathymetry, **u_n** for fault) onto the geometry surfaces. In the end both pipelines will be visualized in [COVER](COVER_link.md). 
+The visualization pipeline in figure 1 shows two **ReadSeisSol** modules which reading different XDMF files. The left pipeline is for the bathymetry of the area while the right one is used to visualize the fault itself. Both pipelines uses the common combination of [DomainSurface](DomainSurface.md) and [Color](Color.md) to map the scalars (**U** for bathymetry, **u_n** for fault) onto the geometry surfaces. In the end both pipelines will be visualized in [COVER](COVER.md). 
 
 ```{figure} seissol_example.png
 ---
@@ -86,11 +86,11 @@ The below images shows how the result of an execution could look like.
 
 ### Unstructured Grids
 
-Using the visualization pipeline like mentioned in [Surfaces](#surfaces) for unstructured data will result in a rendering output in [COVER](COVER_link.md) like the following picture.
+Using the visualization pipeline like mentioned in [Surfaces](#surfaces) for unstructured data will result in a rendering output in [COVER](COVER.md) like the following picture.
 
 ![](seissol_unstr.png)
 
-Analysis of the internal grid is often more interesting than the outter boundary. With a pipeline like shown in figure 2 it is possible to only visualize the simulation boundary as a bounding box and add a plane to the scene which represents a slice of the internal unstructured grid with mapped data on it ([CuttingSurface](CuttingSurface_link.md)). Since the outcome of the SeisSol simulation example is cell-based it is needed to convert the scalar data to vertices with the module [CellToVert](CellToVert_link.md).
+Analysis of the internal grid is often more interesting than the outter boundary. With a pipeline like shown in figure 2 it is possible to only visualize the simulation boundary as a bounding box and add a plane to the scene which represents a slice of the internal unstructured grid with mapped data on it ([CuttingSurface](CuttingSurface.md)). Since the outcome of the SeisSol simulation example is cell-based it is needed to convert the scalar data to vertices with the module [CellToVert](CellToVert.md).
 
 ```{figure} seissol_boundingbox.png
 ---
@@ -107,10 +107,10 @@ The next image shows the result of an execution in COVER.
 
 ### Often Used With
 
-- [Color](Color_link.md)
-- [DomainSurface](DomainSurface_link.md)
-- [IsoSurface](IsoSurface_link.md)
-- [MapDrape](MapDrape_link.md)
+- [Color](Color.md)
+- [DomainSurface](DomainSurface.md)
+- [IsoSurface](IsoSurface.md)
+- [MapDrape](MapDrape.md)
 
 ## Troubleshooting
 
