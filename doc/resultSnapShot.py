@@ -12,7 +12,7 @@ sendCoverMessage(coGRSetViewpointFile(sourceDir + "/" + imageName + ".vwp", 0))
 sendCoverMessage(coGRShowViewpointMsg(0))
 import time
 time.sleep(3) #needed until we can wait for cover to finish rendering
-snapshotGui(binaryDir + "/" + imageName + "_workflow.png")
-snapshotCover(findFirstModule("COVER"), binaryDir + "/" + imageName +  "_result.png")
+snapshotGui(sourceDir + "/" + imageName + "_workflow.png")
+snapshotCover(findFirstModule("COVER"), sourceDir + "/" + imageName +  "_result.png")
 time.sleep(1) #needed until we can wait for cover to finish rendering
 quit()
