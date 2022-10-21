@@ -623,15 +623,16 @@ void Module::mousePressEvent(QGraphicsSceneMouseEvent *event)
 
 void Module::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 {
+    Base::mouseReleaseEvent(event);
+    setCursor(Qt::OpenHandCursor);
     auto p = getParameter<vistle::ParamVector>("_position");
     if (p) {
         vistle::ParamVector v = p->getValue();
-        if (v[0] != pos().x() || v[1] != pos().y())
+        if (v[0] != pos().x() || v[1] != pos().y()) {
             sendPosition();
+            scene()->setSceneRect(scene()->itemsBoundingRect());
+        }
     }
-    Base::mouseReleaseEvent(event);
-    scene()->setSceneRect(scene()->itemsBoundingRect());
-    setCursor(Qt::OpenHandCursor);
 }
 
 void Module::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event)
