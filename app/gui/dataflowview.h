@@ -25,6 +25,8 @@ public:
 
     bool snapshot(const QString &filename);
 
+    bool isSnapToGrid() const;
+
 signals:
     void executeDataFlow();
 
@@ -42,6 +44,8 @@ public slots:
 
     void zoomOrig();
     void zoomAll();
+
+    void snapToGridChanged(bool snap);
 
 protected:
     void wheelEvent(QWheelEvent *event);
@@ -66,7 +70,11 @@ protected:
     QAction *m_selectSinksAct = nullptr;
     QAction *m_selectInvertAct = nullptr;
 
+    bool m_snapToGrid = true;
+
 private:
+    void readSettings();
+    void writeSettings();
     static DataFlowView *s_instance;
 };
 

@@ -35,6 +35,7 @@ public:
     VistleConsole *console() const;
     ModuleBrowser *moduleBrowser() const;
     void setQuitOnExit(bool qoe);
+    bool isSnapToGrid() const;
 
 public slots:
     void setFilename(const QString &filename);
@@ -45,6 +46,7 @@ public slots:
     void moduleAvailable(int hub, const QString &module, const QString &path, const QString &category,
                          const QString &description);
     void enableConnectButton(bool state);
+    void enableSnapToGrid(bool snap);
 
 signals:
     void quitRequested(bool &allowed);
@@ -68,6 +70,7 @@ signals:
     void aboutVistle();
     void aboutLicense();
     void aboutIcons();
+    void snapToGridChanged(bool snap);
 
 protected:
     void closeEvent(QCloseEvent *);

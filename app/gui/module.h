@@ -29,6 +29,7 @@ class Module: public QObject, public QGraphicsRectItem {
     typedef QGraphicsRectItem Base;
 
     static const double portDistance;
+    static bool s_snapToGrid;
 
 signals:
     void mouseClickEvent();
@@ -38,6 +39,13 @@ public:
 
     Module(QGraphicsItem *parent = nullptr, QString name = QString());
     virtual ~Module();
+
+    static QPointF gridSpacing();
+    static float gridSpacingX();
+    static float gridSpacingY();
+    static float snapX(float x);
+    static float snapY(float y);
+
     QRectF boundingRect() const; // re-implemented
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
                QWidget *widget); // re-implemented
@@ -99,6 +107,7 @@ public slots:
     void cancelExecModule();
     void deleteModule();
     void attachDebugger();
+    void projectToGrid();
 
 private:
     void createGeometry();
@@ -130,7 +139,7 @@ private:
     Module::Status m_Status;
     QString m_statusText;
     QString m_info;
-    bool m_validPosition;
+    bool m_validPosition = false;
 
     QList<Port *> m_inPorts, m_outPorts, m_paramPorts;
     QColor m_color;

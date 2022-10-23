@@ -141,6 +141,7 @@
     </property>
     <addaction name="actionViewOrig"/>
     <addaction name="actionViewAll"/>
+    <addaction name="actionSnapToGrid"/>
     <addaction name="separator"/>
     <addaction name="actionSelectSources"/>
     <addaction name="actionSelectSinks"/>
@@ -519,6 +520,17 @@
    </property>
    <property name="toolTip">
     <string>Deselect selected modules</string>
+   </property>
+  </action>
+  <action name="actionSnapToGrid">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Snap To Grid</string>
+   </property>
+   <property name="toolTip">
+    <string>snap modules to positions aligning ports</string>
    </property>
   </action>
  </widget>

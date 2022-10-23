@@ -9,6 +9,7 @@
 #include <QDragEnterEvent>
 #include <QDragLeaveEvent>
 #include <QDragMoveEvent>
+#include <QSettings>
 
 namespace gui {
 
@@ -397,6 +398,16 @@ bool DataFlowView::snapshot(const QString &filename)
         std::cerr << msg.toStdString() << std::endl;
         return false;
     }
+}
+
+void DataFlowView::snapToGridChanged(bool snap)
+{
+    m_snapToGrid = snap;
+}
+
+bool DataFlowView::isSnapToGrid() const
+{
+    return m_snapToGrid;
 }
 
 } // namespace gui

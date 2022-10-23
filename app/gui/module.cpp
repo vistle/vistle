@@ -26,6 +26,7 @@
 #include "connection.h"
 #include "dataflownetwork.h"
 #include "mainwindow.h"
+#include "uicontroller.h"
 #include "dataflowview.h"
 #include "modulebrowser.h"
 
@@ -33,6 +34,7 @@ namespace gui {
 
 const double Module::portDistance = 3.;
 boost::uuids::nil_generator nil_uuid;
+bool Module::s_snapToGrid = true;
 
 /*!
  * \brief Module::Module
@@ -79,12 +81,45 @@ Module::~Module()
     delete m_createModuleGroup;
 }
 
+float Module::gridSpacingX()
+{
+    return portDistance + Port::portSize;
+}
+
+float Module::gridSpacingY()
+{
+    return gridSpacingX();
+}
+
+QPointF Module::gridSpacing()
+{
+    return QPointF(gridSpacingX(), gridSpacingY());
+}
+
+float Module::snapX(float x)
+{
+    return std::round(x / Module::gridSpacingX()) * Module::gridSpacingX();
+}
+
+float Module::snapY(float y)
+{
+    return std::round(y / Module::gridSpacingY()) * Module::gridSpacingY();
+}
+
 QVariant Module::itemChange(GraphicsItemChange change, const QVariant &value)
 {
     if (change == ItemPositionChange) {
         ensureVisible();
     }
     return QGraphicsItem::itemChange(change, value);
+}
+
+void Module::projectToGrid()
+{
+    if (DataFlowView::the()->isSnapToGrid()) {
+        auto p = QPointF(snapX(pos().x()), snapY(pos().y()));
+        setPos(p);
+    }
 }
 
 void Module::execModule()
@@ -638,6 +673,7 @@ bool Module::isPositionValid() const
 
 void Module::setPositionValid()
 {
+    projectToGrid();
     m_validPosition = true;
 }
 
@@ -679,6 +715,11 @@ void Module::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 {
     Base::mouseReleaseEvent(event);
     setCursor(Qt::OpenHandCursor);
+    projectToGrid();
+    for (auto *item: scene()->selectedItems()) {
+        if (auto *mod = dynamic_cast<Module *>(item))
+            mod->projectToGrid();
+    }
     auto p = getParameter<vistle::ParamVector>("_position");
     if (p) {
         vistle::ParamVector v = p->getValue();

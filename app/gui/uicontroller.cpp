@@ -104,6 +104,7 @@ UiController::UiController(int argc, char *argv[], QObject *parent): QObject(par
     connect(m_mainWindow, SIGNAL(aboutVistle()), SLOT(aboutVistle()));
     connect(m_mainWindow, SIGNAL(aboutLicense()), SLOT(aboutLicense()));
     connect(m_mainWindow, SIGNAL(aboutIcons()), SLOT(aboutIcons()));
+    connect(m_mainWindow, SIGNAL(snapToGridChanged(bool)), m_mainWindow->dataFlowView(), SLOT(snapToGridChanged(bool)));
 
     connect(m_scene, SIGNAL(selectionChanged()), SLOT(moduleSelectionChanged()));
 
@@ -170,6 +171,8 @@ void UiController::init()
 #ifdef HAVE_PYTHON
     m_pythonMod->import(&vistle::PythonInterface::the().nameSpace(), m_pythonDir);
 #endif
+
+    m_mainWindow->dataFlowView()->snapToGridChanged(m_mainWindow->isSnapToGrid());
 
     moduleSelectionChanged();
 }

@@ -80,6 +80,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->actionDelete->setShortcuts(deleteKeys);
     connect(ui->actionDelete, SIGNAL(triggered()), SIGNAL(deleteSelectedModules()));
     connect(ui->actionSelectClear, SIGNAL(triggered()), SIGNAL(selectClear()));
+    connect(ui->actionSnapToGrid, SIGNAL(triggered(bool)), SIGNAL(snapToGridChanged(bool)));
     connect(ui->actionViewAll, SIGNAL(triggered()), SIGNAL(zoomAll()));
     connect(ui->actionViewOrig, SIGNAL(triggered()), SIGNAL(zoomOrig()));
     connect(ui->actionSelectSinks, SIGNAL(triggered()), SIGNAL(selectSinkModules()));
@@ -240,6 +241,10 @@ void MainWindow::readSettings()
     if (menuBar())
         menuBar()->setNativeMenuBar(settings.value("nativeMenuBar", true).toBool());
 
+    bool snapToGrid = settings.value("snapToGrid", ui->actionSnapToGrid->isChecked()).toBool();
+    ui->actionSnapToGrid->setChecked(snapToGrid);
+    emit snapToGridChanged(snapToGrid);
+
     settings.endGroup();
 }
 
@@ -256,7 +261,19 @@ void MainWindow::writeSettings()
     if (menuBar())
         settings.setValue("nativeMenuBar", menuBar()->isNativeMenuBar());
 
+    settings.setValue("snapToGrid", ui->actionSnapToGrid->isChecked());
+
     settings.endGroup();
+}
+
+void MainWindow::enableSnapToGrid(bool snap)
+{
+    ui->actionSnapToGrid->setChecked(snap);
+}
+
+bool MainWindow::isSnapToGrid() const
+{
+    return ui->actionSnapToGrid->isChecked();
 }
 
 } //namespace gui
