@@ -9,6 +9,7 @@
 /**********************************************************************************/
 #include "vistleconnection.h"
 #include "userinterface.h"
+#include <vistle/util/threadname.h>
 
 namespace vistle {
 
@@ -67,6 +68,7 @@ void VistleConnection::cancel()
 
 void VistleConnection::operator()()
 {
+    setThreadName("VistleConnection");
     mutex_lock lock(m_mutex);
     m_started = true;
     lock.unlock();
