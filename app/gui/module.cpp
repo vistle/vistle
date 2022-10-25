@@ -234,13 +234,22 @@ void Module::doLayout()
     QString id = " " + QString::number(m_id);
     QRect idRect = fm.boundingRect(id);
 
+    QRect infoRect;
+    if (m_inPorts.isEmpty()) {
+        QString t = m_info;
+        if (t.length() > 21) {
+            t = t.left(20) + "…";
+        }
+        infoRect = fm.boundingRect(t);
+    }
+
     {
         int idx = 0;
         for (Port *in: m_inPorts) {
             in->setPos(portDistance + idx * (portDistance + Port::portSize), 0.);
             ++idx;
         }
-        w = qMax(w, 2 * portDistance + idx * (portDistance + Port::portSize) + idRect.width());
+        w = qMax(w, 2 * portDistance + idx * (portDistance + Port::portSize) + infoRect.width() + idRect.width());
     }
 
     {
@@ -309,6 +318,15 @@ void Module::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QW
 
     QFont font;
     QFontMetrics fm(font);
+
+    if (m_inPorts.isEmpty()) {
+        QString t = m_info;
+        if (t.length() > 21) {
+            t = t.left(20) + "…";
+        }
+        painter->drawText(QPointF(portDistance, m_fontHeight / 2.), t);
+    }
+
     QString id = QString::number(m_id);
     QRect idRect = fm.boundingRect(id);
     painter->drawText(rect().x() + rect().width() - idRect.width() - portDistance, m_fontHeight / 2., id);
@@ -455,10 +473,14 @@ void Module::addPort(const vistle::Port &port)
     case vistle::Port::ANY:
         std::cerr << "cannot handle port type ANY" << std::endl;
         break;
-    case vistle::Port::INPUT:
+    case vistle::Port::INPUT: {
         guiPort = new Port(&port, this);
+        bool update = m_inPorts.isEmpty();
         m_inPorts.push_back(guiPort);
+        if (update)
+            updateText();
         break;
+    }
     case vistle::Port::OUTPUT:
         guiPort = new Port(&port, this);
         m_outPorts.push_back(guiPort);
@@ -493,6 +515,8 @@ void Module::removePort(const vistle::Port &port)
         auto it = std::find(m_inPorts.begin(), m_inPorts.end(), gport);
         if (it != m_inPorts.end())
             m_inPorts.erase(it);
+        if (m_inPorts.isEmpty())
+            updateText();
         break;
     }
     case vistle::Port::OUTPUT: {
@@ -533,8 +557,33 @@ QString Module::name() const
 void Module::setName(QString name)
 {
     m_name = name;
+    updateText();
+}
+
+void Module::updateText()
+{
     //m_displayName = QString("%1_%2").arg(name, QString::number(m_id));
-    m_displayName = name;
+    m_displayName = m_name;
+    if (m_inPorts.isEmpty()) {
+    } else {
+        if (!m_info.isEmpty()) {
+            m_displayName = m_name[0];
+            if (m_name.startsWith("IsoSurface"))
+                m_displayName = "Iso";
+            if (m_name.startsWith("CuttingSurface"))
+                m_displayName = "Cut";
+            if (m_name.startsWith("AddAttribute"))
+                m_displayName = "Attr";
+            if (m_name.startsWith("Variant"))
+                m_displayName = "Var";
+            if (m_name.startsWith("Tracer"))
+                m_displayName = "Tracer";
+            m_displayName += ":" + m_info;
+            if (m_displayName.length() > 21) {
+                m_displayName = m_displayName.left(20) + "…";
+            }
+        }
+    }
 
     doLayout();
 }
@@ -717,6 +766,10 @@ void Module::setStatus(Module::Status status)
         break;
     }
 
+    if (!m_info.isEmpty()) {
+        toolTip += " - " + m_info;
+    }
+
     m_cancelExecAct->setEnabled(status == BUSY || status == EXECUTING);
 
     if (m_statusText.isEmpty()) {
@@ -738,6 +791,7 @@ void Module::setStatusText(QString text, int prio)
 void Module::setInfo(QString text)
 {
     m_info = text;
+    updateText();
 }
 
 } //namespace gui

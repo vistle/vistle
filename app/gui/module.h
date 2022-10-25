@@ -105,6 +105,7 @@ private:
     void createActions();
     void createMenus();
     void doLayout();
+    void updateText();
 
     QMenu *m_moduleMenu = nullptr;
     QAction *m_selectUpstreamAct = nullptr, *m_selectDownstreamAct = nullptr, *m_selectConnectedAct = nullptr;

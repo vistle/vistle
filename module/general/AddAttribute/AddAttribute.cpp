@@ -13,7 +13,8 @@ public:
     ~AddAttribute();
 
 private:
-    virtual bool compute();
+    bool compute() override;
+    bool changeParameter(const Parameter *p) override;
 
     StringParameter *p_name[NumAttributes];
     StringParameter *p_value[NumAttributes];
@@ -44,6 +45,15 @@ AddAttribute::AddAttribute(const std::string &name, int moduleID, mpi::communica
 
 AddAttribute::~AddAttribute()
 {}
+
+bool AddAttribute::changeParameter(const Parameter *p)
+{
+    if (p == p_name[0] || p == p_value[0]) {
+        auto str = p_name[0]->getValue() + "=" + p_value[0]->getValue();
+        setItemInfo(str);
+    }
+    return Module::changeParameter(p);
+}
 
 bool AddAttribute::compute()
 {

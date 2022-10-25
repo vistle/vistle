@@ -30,6 +30,26 @@ Reader::Reader(const std::string &name, const int moduleID, mpi::communicator co
 Reader::~Reader()
 {}
 
+Parameter *Reader::addParameterGeneric(const std::string &name, std::shared_ptr<Parameter> parameter)
+{
+    auto param = std::dynamic_pointer_cast<StringParameter>(parameter);
+    if (!m_firstFileBrowser && param) {
+        auto pres = param->presentation();
+        if (pres == Parameter::ExistingFilename || pres == Parameter::ExistingDirectory) {
+            std::cerr << "add browser param: " << name << std::endl;
+            m_firstFileBrowser = param;
+        }
+    }
+    return Module::addParameterGeneric(name, parameter);
+}
+
+bool Reader::removeParameter(Parameter *param)
+{
+    if (param == m_firstFileBrowser.get())
+        m_firstFileBrowser.reset();
+    return Module::removeParameter(param);
+}
+
 void Reader::prepareQuit()
 {
     m_observedParameters.clear();
@@ -385,9 +405,7 @@ void Reader::setPartitions(int number)
 
 bool Reader::changeParameters(std::set<const Parameter *> params)
 {
-    bool ret = true;
-    for (auto &p: params)
-        ret &= Module::changeParameter(p);
+    bool ret = Module::changeParameters(params);
 
     for (auto &p: params) {
         auto it = m_observedParameters.find(p);
@@ -403,6 +421,21 @@ bool Reader::changeParameters(std::set<const Parameter *> params)
 
 bool Reader::changeParameter(const Parameter *param)
 {
+    if (m_firstFileBrowser && (m_firstFileBrowser.get() == param || !param)) {
+        auto val = m_firstFileBrowser->getValue();
+        auto slash = val.find_last_of("/");
+        while (!val.empty() && slash == val.length() - 1) {
+            val = val.substr(0, val.length() - 1);
+            slash = val.find_last_of("/");
+        }
+        if (slash != std::string::npos) {
+            val = val.substr(slash + 1);
+        }
+        auto dot = val.find_first_of(".");
+        val = val.substr(0, dot);
+        setItemInfo(val);
+    }
+
     bool ret = Module::changeParameter(param);
 
     auto it = m_observedParameters.find(param);

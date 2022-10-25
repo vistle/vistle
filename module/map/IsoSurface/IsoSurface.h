@@ -54,6 +54,9 @@ private:
     bool prepare() override;
     bool reduce(int timestep) override;
     bool changeParameter(const vistle::Parameter *param) override;
+    void setInputSpecies(const std::string &species) override;
+
+    void updateModuleInfo();
 
     vistle::FloatParameter *m_isovalue;
     vistle::VectorParameter *m_isopoint;
@@ -68,6 +71,7 @@ private:
     vistle::Float m_paraMin, m_paraMax;
     bool m_performedPointSearch = false;
     bool m_foundPoint = false;
+    std::string m_species;
 
     IsoController isocontrol;
 

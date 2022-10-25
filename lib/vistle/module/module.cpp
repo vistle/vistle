@@ -987,6 +987,8 @@ Object::const_ptr Module::expect<Object>(Port *port)
     return obj;
 }
 
+void Module::setInputSpecies(const std::string &species)
+{}
 
 bool Module::addInputObject(int sender, const std::string &senderPort, const std::string &portName,
                             Object::const_ptr object)
@@ -997,6 +999,14 @@ bool Module::addInputObject(int sender, const std::string &senderPort, const std
     }
 
     assert(object->check());
+
+    if (object->hasAttribute("_species")) {
+        std::string species = object->getAttribute("_species");
+        if (m_inputSpecies != species) {
+            m_inputSpecies = species;
+            setInputSpecies(m_inputSpecies);
+        }
+    }
 
     if (m_executionCount < object->getExecutionCounter()) {
         m_executionCount = object->getExecutionCounter();

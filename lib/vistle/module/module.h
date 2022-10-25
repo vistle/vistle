@@ -262,6 +262,8 @@ protected:
     bool passThroughObject(Port *port, vistle::Object::const_ptr object);
     bool passThroughObject(const std::string &portName, vistle::Object::const_ptr object);
 
+    virtual void setInputSpecies(const std::string &species); //< _species attribute on input has changed
+
     void setObjectReceivePolicy(int pol);
     int objectReceivePolicy() const;
     void startIteration(); //< increase iteration counter
@@ -384,6 +386,7 @@ private:
     unsigned m_hardware_concurrency = 1;
 
     std::map<std::string, std::string> m_currentItemInfo;
+    std::string m_inputSpecies;
 };
 
 V_MODULEEXPORT int getTimestep(Object::const_ptr obj);

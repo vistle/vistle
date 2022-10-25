@@ -102,6 +102,9 @@ public:
     int numPartitions() const;
 
 protected:
+    Parameter *addParameterGeneric(const std::string &name, std::shared_ptr<Parameter> parameter) override;
+    bool removeParameter(Parameter *param) override;
+
     enum ParallelizationMode {
         Serial, ///< only one operation at a time, all blocks of a timestep first, then other timesteps
         ParallelizeTimeAndBlocks, ///< up to 'concurrency' operations at a time
@@ -192,6 +195,7 @@ private:
     bool m_allowTimestepDistribution = false;
 
     unsigned long m_tokenCount = 0;
+    std::shared_ptr<StringParameter> m_firstFileBrowser;
 
     /*
     * # files (api)

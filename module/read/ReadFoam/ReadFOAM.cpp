@@ -51,7 +51,8 @@ ReadFOAM::ReadFOAM(const std::string &name, int moduleId, mpi::communicator comm
     Reader::setHandlePartitions(false);
 
     // file browser parameter
-    m_casedir = addStringParameter("casedir", "OpenFOAM case directory", "/data/OpenFOAM", Parameter::Directory);
+    m_casedir =
+        addStringParameter("casedir", "OpenFOAM case directory", "/data/OpenFOAM", Parameter::ExistingDirectory);
     //Time Parameters
     m_starttime = addFloatParameter("starttime", "start reading at the first step after this time", 0.);
     setParameterMinimum<Float>(m_starttime, 0.);

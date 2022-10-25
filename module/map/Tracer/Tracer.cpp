@@ -936,6 +936,20 @@ bool Tracer::changeParameter(const Parameter *param)
             setReducePolicy(message::ReducePolicy::PerTimestep);
         else
             setReducePolicy(message::ReducePolicy::OverAll);
+        switch (m_taskType->getValue()) {
+        case Streamlines:
+            setItemInfo("Streams");
+            break;
+        case Pathlines:
+            setItemInfo("Paths");
+            break;
+        case Streaklines:
+            setItemInfo("Streaks");
+            break;
+        case MovingPoints:
+            setItemInfo("Points");
+            break;
+        }
     }
     return Module::changeParameter(param);
 }

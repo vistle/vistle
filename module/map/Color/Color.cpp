@@ -760,6 +760,7 @@ void Color::sendColorMap()
         return;
 
     setParameter(m_speciesPara, m_species);
+    setItemInfo(m_species);
 
     if (m_colorOut->isConnected() && !m_species.empty()) {
 #ifdef COLOR_RANDOM
