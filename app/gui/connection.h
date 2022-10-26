@@ -13,9 +13,9 @@ namespace gui {
 class Module;
 class DataFlowNetwork;
 
-class Connection: public QGraphicsLineItem {
+class Connection: public QGraphicsPathItem {
     Q_INTERFACES(QGraphicsItem)
-    typedef QGraphicsLineItem Base;
+    typedef QGraphicsPathItem Base;
 
 public:
     enum State {
