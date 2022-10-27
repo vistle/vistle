@@ -56,6 +56,7 @@ Module::Module(QGraphicsItem *parent, QString name)
     setFlag(QGraphicsItem::ItemIsSelectable);
     //setFlag(QGraphicsItem::ItemIsFocusable);
     setFlag(QGraphicsItem::ItemSendsGeometryChanges);
+    setAcceptHoverEvents(true);
     setCursor(Qt::OpenHandCursor);
 
     createActions();
