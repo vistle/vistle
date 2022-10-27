@@ -3,6 +3,7 @@
 #include "dataflownetwork.h"
 #include "module.h"
 
+#include <QApplication>
 #include <QMenu>
 #include <QMimeData>
 #include <QDragEnterEvent>
@@ -123,6 +124,24 @@ void DataFlowView::wheelEvent(QWheelEvent *event)
     }
 }
 
+namespace {
+void swapCtrlMeta(QMouseEvent *event)
+{
+    // in order to make additive selection work on macos
+    if (qApp->testAttribute(Qt::AA_MacDontSwapCtrlAndMeta)) {
+        bool meta = event->modifiers() & Qt::MetaModifier;
+        bool ctrl = event->modifiers() & Qt::ControlModifier;
+        auto mods = event->modifiers();
+        mods &= ~(Qt::MetaModifier | Qt::ControlModifier);
+        if (meta)
+            mods |= Qt::ControlModifier;
+        if (ctrl)
+            mods |= Qt::MetaModifier;
+        event->setModifiers(mods);
+    }
+}
+} // namespace
+
 void DataFlowView::mousePressEvent(QMouseEvent *event)
 {
     if (event->button() == Qt::MiddleButton) {
@@ -132,6 +151,7 @@ void DataFlowView::mousePressEvent(QMouseEvent *event)
         viewport()->setCursor(Qt::ClosedHandCursor);
         event->accept();
     } else {
+        swapCtrlMeta(event);
         QGraphicsView::mousePressEvent(event);
     }
 }
@@ -147,6 +167,7 @@ void DataFlowView::mouseMoveEvent(QMouseEvent *event)
 
         translate(translation.x(), translation.y());
     } else {
+        swapCtrlMeta(event);
         QGraphicsView::mouseMoveEvent(event);
     }
 }
@@ -158,6 +179,7 @@ void DataFlowView::mouseReleaseEvent(QMouseEvent *event)
         viewport()->setCursor(m_savedCursor);
         event->accept();
     } else {
+        swapCtrlMeta(event);
         QGraphicsView::mouseReleaseEvent(event);
     }
 }
