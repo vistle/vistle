@@ -14,7 +14,8 @@ public:
     ~Transform();
 
 private:
-    virtual bool compute();
+    bool compute() override;
+    bool changeParameter(const Parameter *param) override;
 
     Port *data_in, *data_out;
 
@@ -52,6 +53,59 @@ Transform::Transform(const std::string &name, int moduleID, mpi::communicator co
 
 Transform::~Transform()
 {}
+
+bool Transform::changeParameter(const Parameter *param)
+{
+    int count = 0;
+    std::string kind = "";
+
+    if (p_rotation_axis_angle->getValue()[3] != 0) {
+        ++count;
+        kind = "Rotate";
+    }
+
+    auto scal = p_scale->getValue();
+    bool scale = false;
+    for (int c = 0; c < 3; ++c) {
+        if (scal[c] != 1) {
+            if (!scale)
+                ++count;
+            scale = true;
+            kind = "Scale";
+        }
+    }
+
+    bool translate = false;
+    auto trans = p_translate->getValue();
+    for (int c = 0; c < 3; ++c) {
+        if (trans[c] != 0) {
+            if (!translate)
+                ++count;
+            translate = true;
+            kind = "Translate";
+        }
+    }
+
+    auto mirr = p_mirror->getValue();
+    if (mirr != Original) {
+        ++count;
+        kind = "Mirror";
+    }
+
+    auto anim = p_animation->getValue();
+    if (anim != Keep) {
+        ++count;
+        kind = "Animate";
+    }
+
+    if (count == 1) {
+        setItemInfo(kind);
+    } else {
+        setItemInfo(std::string());
+    }
+
+    return Module::changeParameter(param);
+}
 
 bool Transform::compute()
 {

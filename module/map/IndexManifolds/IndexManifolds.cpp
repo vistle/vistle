@@ -36,6 +36,18 @@ IndexManifolds::IndexManifolds(const std::string &name, int moduleID, mpi::commu
 IndexManifolds::~IndexManifolds()
 {}
 
+bool IndexManifolds::changeParameter(const vistle::Parameter *p)
+{
+    if (p == p_coord || p == p_direction) {
+        Direction dir = static_cast<Direction>(p_direction->getValue());
+        auto c = p_coord->getValue();
+        std::stringstream str;
+        str << toString(dir) << "=" << c[dir];
+        setItemInfo(str.str());
+    }
+    return Module::changeParameter(p);
+}
+
 bool IndexManifolds::compute(std::shared_ptr<BlockTask> task) const
 {
     auto obj = task->expect<Object>("data_in0");

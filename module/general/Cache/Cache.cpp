@@ -1093,23 +1093,31 @@ bool Cache::reduce(int t)
 bool Cache::changeParameter(const Parameter *p)
 {
     if (p == p_mode) {
+        std::string mode = "";
+
         m_mode = OperationMode(p_mode->getValue());
         switch (m_mode) {
         case Memory:
             m_fromDisk = m_toDisk = false;
+            mode = "Mem";
             break;
         case To_Disk:
             m_fromDisk = false;
             m_toDisk = true;
+            mode = "Write";
             break;
         case From_Disk:
             m_fromDisk = true;
             m_toDisk = false;
+            mode = "Read";
             break;
         case Automatic:
             m_fromDisk = m_toDisk = false;
+            mode = "Auto";
             break;
         }
+
+        setItemInfo(mode);
     }
 
     return Module::changeParameter(p);

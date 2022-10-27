@@ -10,6 +10,7 @@ public:
     ~IndexManifolds();
 
 private:
+    bool changeParameter(const vistle::Parameter *p) override;
     bool compute(std::shared_ptr<vistle::BlockTask> task) const override;
 
     vistle::Port *p_data_in = nullptr;

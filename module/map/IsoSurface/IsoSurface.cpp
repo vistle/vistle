@@ -131,7 +131,7 @@ void IsoSurface::updateModuleInfo()
         if (m_species.empty())
             setItemInfo(str.str());
         else
-            setItemInfo(m_species + ":" + str.str());
+            setItemInfo(m_species + "=" + str.str());
     }
 #else
     setItemInfo(m_species);

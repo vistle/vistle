@@ -938,13 +938,13 @@ bool Tracer::changeParameter(const Parameter *param)
             setReducePolicy(message::ReducePolicy::OverAll);
         switch (m_taskType->getValue()) {
         case Streamlines:
-            setItemInfo("Streams");
+            setItemInfo("Streamlines");
             break;
         case Pathlines:
-            setItemInfo("Paths");
+            setItemInfo("Pathlines");
             break;
         case Streaklines:
-            setItemInfo("Streaks");
+            setItemInfo("Streaklines");
             break;
         case MovingPoints:
             setItemInfo("Points");

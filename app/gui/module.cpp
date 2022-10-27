@@ -568,7 +568,9 @@ void Module::updateText()
     if (m_inPorts.isEmpty()) {
     } else {
         if (!m_info.isEmpty()) {
-            m_displayName = m_name[0];
+            m_displayName = m_name;
+            if (m_name == "IndexManifolds")
+                m_displayName = "Index";
             if (m_name.startsWith("IsoSurface"))
                 m_displayName = "Iso";
             if (m_name.startsWith("CuttingSurface"))
@@ -577,8 +579,10 @@ void Module::updateText()
                 m_displayName = "Attr";
             if (m_name.startsWith("Variant"))
                 m_displayName = "Var";
-            if (m_name.startsWith("Tracer"))
-                m_displayName = "Tracer";
+            if (m_name.startsWith("Transform"))
+                m_displayName = "X";
+            if (m_name.startsWith("Thicken"))
+                m_displayName = "Th";
             m_displayName += ":" + m_info;
             if (m_displayName.length() > 21) {
                 m_displayName = m_displayName.left(20) + "…";
