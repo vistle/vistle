@@ -94,6 +94,13 @@ void Port::createMenus()
 
 void Port::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
 {
+    bool hasCon = !m_port->connections().empty();
+    m_disconnectAct->setEnabled(hasCon);
+    m_selectConnectedAct->setEnabled(hasCon);
+    if (m_selectDownstreamAct)
+        m_selectDownstreamAct->setEnabled(hasCon);
+    if (m_selectUpstreamAct)
+        m_selectUpstreamAct->setEnabled(hasCon);
     m_portMenu->popup(event->screenPos());
 }
 
