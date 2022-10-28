@@ -32,6 +32,7 @@ signals:
 
 public slots:
     void enableActions();
+    void changeConnectionEmphasis();
 
     void execModules();
     void cancelExecModules();

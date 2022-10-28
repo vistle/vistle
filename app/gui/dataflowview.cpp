@@ -28,14 +28,18 @@ DataFlowView::DataFlowView(QWidget *parent): QGraphicsView(parent)
     setMouseTracking(true);
     setTransformationAnchor(QGraphicsView::NoAnchor);
 
-    if (scene())
+    if (scene()) {
         connect(scene(), SIGNAL(selectionChanged()), this, SLOT(enableActions()));
+        connect(scene(), SIGNAL(selectionChanged()), this, SLOT(changeConnectionEmphasis()));
+    }
 }
 
 DataFlowView::~DataFlowView()
 {
-    if (scene())
+    if (scene()) {
         disconnect(scene(), SIGNAL(selectionChanged()), this, SLOT(enableActions()));
+        disconnect(scene(), SIGNAL(selectionChanged()), this, SLOT(changeConnectionEmphasis()));
+    }
 }
 
 DataFlowView *DataFlowView::the()
@@ -219,6 +223,12 @@ void DataFlowView::enableActions()
     }
 }
 
+void DataFlowView::changeConnectionEmphasis()
+{
+    if (scene())
+        scene()->emphasizeConnections(selectedModules());
+}
+
 void DataFlowView::createMenu()
 {
     m_contextMenu = new QMenu();
@@ -255,12 +265,17 @@ QList<Module *> DataFlowView::selectedModules()
 
 void DataFlowView::setScene(QGraphicsScene *s)
 {
-    if (scene())
+    if (scene()) {
         disconnect(scene(), SIGNAL(selectionChanged()), this, SLOT(enableActions()));
+        disconnect(scene(), SIGNAL(selectionChanged()), this, SLOT(changeConnectionEmphasis()));
+    }
     QGraphicsView::setScene(s);
-    if (scene())
+    if (scene()) {
         connect(scene(), SIGNAL(selectionChanged()), this, SLOT(enableActions()));
+        connect(scene(), SIGNAL(selectionChanged()), this, SLOT(changeConnectionEmphasis()));
+    }
     enableActions();
+    changeConnectionEmphasis();
 }
 
 void DataFlowView::execModules()

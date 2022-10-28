@@ -55,6 +55,7 @@ public:
 
     QColor highlightColor() const;
     QRect calculateBoundingBox() const;
+    bool isDark() const;
 public slots:
     void addModule(int moduleId, const boost::uuids::uuid &spawnUuid, QString name);
     void deleteModule(int moduleId);
@@ -65,6 +66,8 @@ public slots:
     void deleteConnection(int fromId, QString fromName, int toId, QString toName);
     void moduleStatus(int id, QString status, int prio);
     void itemInfoChanged(QString text, int type, int id, QString port);
+
+    void emphasizeConnections(QList<Module *> modules);
 
 protected:
     void mousePressEvent(QGraphicsSceneMouseEvent *event); //< re-implemented

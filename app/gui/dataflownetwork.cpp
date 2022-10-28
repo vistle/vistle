@@ -442,6 +442,14 @@ Module *DataFlowNetwork::findModule(const boost::uuids::uuid &spawnUuid) const
     return nullptr;
 }
 
+bool DataFlowNetwork::isDark() const
+{
+    const auto &palette = DataFlowView::the()->palette();
+    auto &fg = palette.color(QPalette::Text);
+    auto &bg = palette.color(QPalette::Base);
+    return fg.value() > bg.value();
+}
+
 QColor DataFlowNetwork::highlightColor() const
 {
     return m_highlightColor;
@@ -603,10 +611,21 @@ void DataFlowNetwork::selectConnected(int direction, int id, QString port)
 
 void DataFlowNetwork::selectModules(const std::set<int> &moduleIds)
 {
-    for (auto &m: m_moduleList) {
+    for (auto *m: m_moduleList) {
         if (std::find(moduleIds.begin(), moduleIds.end(), m->id()) != moduleIds.end()) {
             m->setSelected(true);
         }
+    }
+}
+
+void DataFlowNetwork::emphasizeConnections(QList<Module *> modules)
+{
+    for (auto &c: m_connections) {
+        auto &key = c.first;
+        auto *conn = c.second;
+        auto *m1 = key.port1->module();
+        auto *m2 = key.port2->module();
+        conn->setEmphasis(modules.contains(m1) || modules.contains(m2));
     }
 }
 

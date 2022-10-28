@@ -63,19 +63,45 @@ void Connection::setState(Connection::State state)
 {
     m_state = state;
 
-    if (!isHighlighted()) {
-        switch (m_state) {
-        case ToEstablish:
-            setColor(QColor(140, 140, 140));
-            break;
-        case Established:
-            setColor(QColor(0, 0, 0));
-            break;
-        case ToRemove:
-            setColor(QColor(200, 50, 50));
-            break;
-        }
+    if (isHighlighted()) {
+        setZValue(HighlightZ);
+        setColor(scene()->highlightColor());
+        return;
     }
+
+    setZValue(NormalZ);
+
+    if (isEmphasized()) {
+        if (scene()->isDark()) {
+            setColor(scene()->highlightColor().darker());
+        } else {
+            setColor(scene()->highlightColor().darker(140));
+        }
+        return;
+    }
+
+    switch (m_state) {
+    case ToEstablish:
+        setColor(QColor(140, 140, 140));
+        break;
+    case Established:
+        setColor(QColor(0, 0, 0));
+        break;
+    case ToRemove:
+        setColor(QColor(200, 50, 50));
+        break;
+    }
+}
+
+bool Connection::isEmphasized() const
+{
+    return m_emphasized;
+}
+
+void Connection::setEmphasis(bool em)
+{
+    m_emphasized = em;
+    setState(m_state);
 }
 
 bool Connection::isHighlighted() const
@@ -86,13 +112,7 @@ bool Connection::isHighlighted() const
 void Connection::setHighlight(bool highlight)
 {
     m_highlight = highlight;
-    if (isHighlighted()) {
-        setColor(scene()->highlightColor());
-        setZValue(HighlightZ);
-    } else {
-        setState(m_state);
-        setZValue(NormalZ);
-    }
+    setState(m_state);
 }
 
 void Connection::setColor(const QColor &color)
