@@ -174,6 +174,8 @@ void gui::VistleObserver::info(const std::string &text, vistle::message::SendTex
     }
     QString msg = QString("%1: %2").arg(sender, t);
     emit info_s(msg, textType);
+
+    emit message_s(senderId, textType, t);
 }
 
 void VistleObserver::updateStatus(int id, const std::string &text, vistle::message::UpdateStatus::Importance priority)

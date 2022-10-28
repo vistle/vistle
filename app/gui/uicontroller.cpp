@@ -8,6 +8,7 @@
 #include "modifieddialog.h"
 #include "modulebrowser.h"
 #include "parameters.h"
+#include "moduleview.h"
 #include "uicontroller.h"
 #include "vistleconsole.h"
 #include <vistle/util/directory.h>
@@ -118,6 +119,18 @@ UiController::UiController(int argc, char *argv[], QObject *parent): QObject(par
             SLOT(addModule(int, boost::uuids::uuid, QString)));
     connect(&m_observer, SIGNAL(deleteModule_s(int)), m_scene, SLOT(deleteModule(int)));
     connect(&m_observer, SIGNAL(moduleStateChanged_s(int, int)), m_scene, SLOT(moduleStateChanged(int, int)));
+    connect(&m_observer, &VistleObserver::message_s, [this](int senderId, int type, QString text) {
+        if (m_scene)
+            m_scene->moduleMessage(senderId, type, text);
+        if (senderId == m_mainWindow->moduleView()->id()) {
+            emit visibleModuleMessage(senderId, type, text);
+        }
+    });
+    connect(m_mainWindow->moduleView(), SIGNAL(clearMessages(int)), m_scene, SLOT(clearMessages(int)));
+    connect(m_mainWindow->moduleView(), SIGNAL(messagesVisibilityChanged(int, bool)), m_scene,
+            SLOT(messagesVisibilityChanged(int, bool)));
+    connect(this, SIGNAL(visibleModuleMessage(int, int, QString)), m_mainWindow->moduleView(),
+            SLOT(appendMessage(int, int, QString)));
     connect(&m_observer, SIGNAL(itemInfo_s(QString, int, int, QString)), m_scene,
             SLOT(itemInfoChanged(QString, int, int, QString)));
     connect(&m_observer, SIGNAL(newPort_s(int, QString)), m_scene, SLOT(newPort(int, QString)));
@@ -158,6 +171,19 @@ UiController::UiController(int argc, char *argv[], QObject *parent): QObject(par
     });
     connect(m_mainWindow->m_moduleBrowser, &ModuleBrowser::showStatusTip,
             [this](const QString &tip) { m_mainWindow->statusBar()->showMessage(tip, 3000); });
+
+    connect(m_mainWindow->moduleView(), &ModuleView::executeModule, [this](int id) {
+        auto mod = m_scene->findModule(id);
+        if (mod) {
+            mod->execModule();
+        }
+    });
+    connect(m_mainWindow->moduleView(), &ModuleView::deleteModule, [this](int id) {
+        auto mod = m_scene->findModule(id);
+        if (mod) {
+            mod->deleteModule();
+        }
+    });
 
     m_mainWindow->show();
 }
@@ -317,20 +343,26 @@ void UiController::moduleSelectionChanged()
     QString title = "Module Parameters";
     if (selectedModules.size() == 1) {
         const Module *m = selectedModules[0];
-        m_mainWindow->parameters()->setModule(m->id());
+        auto id = m->id();
+        m_mainWindow->parameters()->setModule(id);
         title = QString("Parameters: %1").arg(m->name());
         m_mainWindow->parameters()->adjustSize();
         m_mainWindow->parameters()->show();
-        m_mainWindow->parameterDock()->show();
-        m_mainWindow->parameterDock()->raise();
+        m_mainWindow->moduleViewDock()->show();
+        m_mainWindow->moduleViewDock()->raise();
+        m_mainWindow->moduleView()->setId(id);
+        if (Module *m = m_scene->findModule(id)) {
+            m_mainWindow->moduleView()->setMessages(m->messages(), m->messagesVisible());
+        }
     } else {
         m_mainWindow->parameters()->setModule(vistle::message::Id::Vistle);
+        m_mainWindow->moduleView()->setId(vistle::message::Id::Vistle);
         title = QString("Session Parameters");
         m_mainWindow->parameters()->adjustSize();
         m_mainWindow->modulesDock()->show();
         m_mainWindow->modulesDock()->raise();
     }
-    m_mainWindow->parameterDock()->setWindowTitle(title);
+    m_mainWindow->moduleViewDock()->setWindowTitle(title);
 }
 
 void UiController::newParameter(int moduleId, QString parameterName)

@@ -172,6 +172,18 @@ void Module::deleteModule()
     }
 }
 
+void Module::setParameterDefaults()
+{
+    if (vistle::message::Id::isModule(m_id)) {
+        // module id already known
+#if 0
+        vistle::message::ResetParameters m(m_id);
+        m.setDestId(m_id);
+        vistle::VistleConnection::the().sendMessage(m);
+#endif
+    }
+}
+
 void Module::attachDebugger()
 {
     vistle::message::Debug m(m_id);
@@ -344,7 +356,7 @@ void Module::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QW
         QPen pen(scene()->highlightColor(), borderWidth, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
         painter->setPen(pen);
     } else {
-        if (m_Status == INITIALIZED) {
+        if (!m_errorState && m_Status == INITIALIZED) {
             painter->setPen(Qt::NoPen);
         } else {
             painter->setPen(highlightPen);
@@ -809,12 +821,17 @@ void Module::setStatus(Module::Status status)
         break;
     case EXECUTING:
         toolTip = "Executing";
+        m_errorState = false;
         m_borderColor = QColor(120, 120, 30);
         break;
     case ERROR_STATUS:
         toolTip = "Error";
         m_borderColor = Qt::red;
         break;
+    }
+
+    if (m_errorState) {
+        m_borderColor = Qt::red;
     }
 
     if (!m_info.isEmpty()) {
@@ -843,6 +860,41 @@ void Module::setInfo(QString text)
 {
     m_info = text;
     updateText();
+}
+
+void Module::clearMessages()
+{
+    m_messages.clear();
+    m_errorState = false;
+    setStatus(m_Status);
+    doLayout();
+}
+
+void Module::moduleMessage(int type, QString message)
+{
+    m_messages.push_back({type, message});
+    if (type == vistle::message::SendText::Error) {
+        if (!m_errorState) {
+            m_errorState = true;
+            setStatus(m_Status);
+            doLayout();
+        }
+    }
+}
+
+QList<Module::Message> &Module::messages()
+{
+    return m_messages;
+}
+
+bool Module::messagesVisible() const
+{
+    return m_messagesVisible;
+}
+
+void Module::setMessagesVisibility(bool visible)
+{
+    m_messagesVisible = visible;
 }
 
 } //namespace gui

@@ -38,6 +38,11 @@ signals:
 public:
     enum Status { SPAWNING, INITIALIZED, KILLED, BUSY, EXECUTING, ERROR_STATUS };
 
+    struct Message {
+        int type;
+        QString text;
+    };
+
     Module(QGraphicsItem *parent = nullptr, QString name = QString());
     virtual ~Module();
 
@@ -55,6 +60,11 @@ public:
     void setStatus(Module::Status status);
     void setStatusText(QString text, int prio);
     void setInfo(QString text);
+    void clearMessages();
+    void moduleMessage(int type, QString message);
+    QList<Message> &messages();
+    void setMessagesVisibility(bool visible);
+    bool messagesVisible() const;
 
     void addPort(const vistle::Port &port);
     void removePort(const vistle::Port &port);
@@ -109,6 +119,7 @@ public slots:
     void deleteModule();
     void attachDebugger();
     void projectToGrid();
+    void setParameterDefaults();
 
 private:
     void createGeometry();
@@ -140,6 +151,9 @@ private:
     Module::Status m_Status;
     QString m_statusText;
     QString m_info;
+    bool m_errorState = false;
+    QList<Message> m_messages;
+    bool m_messagesVisible = true;
     bool m_validPosition = false;
 
     QList<Port *> m_inPorts, m_outPorts, m_paramPorts;

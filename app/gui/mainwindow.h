@@ -8,6 +8,7 @@
 namespace gui {
 
 class Parameters;
+class ModuleView;
 class DataFlowView;
 class ModuleBrowser;
 class VistleConsole;
@@ -28,9 +29,10 @@ public:
     QMenu *createPopupMenu();
 
     QDockWidget *consoleDock() const;
-    QDockWidget *parameterDock() const;
+    QDockWidget *moduleViewDock() const;
     QDockWidget *modulesDock() const;
     Parameters *parameters() const;
+    ModuleView *moduleView() const;
     DataFlowView *dataFlowView() const;
     VistleConsole *console() const;
     ModuleBrowser *moduleBrowser() const;

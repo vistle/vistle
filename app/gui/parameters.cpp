@@ -156,9 +156,11 @@ void Parameters::setModule(int id)
     m_moduleId = id;
 
     //std::cerr << "Parameters: showing for " << id << std::endl;
-    auto params = m_vistle->getParameters(id);
-    for (auto &p: params)
-        newParameter(id, QString::fromStdString(p));
+    if (m_vistle) {
+        auto params = m_vistle->getParameters(id);
+        for (auto &p: params)
+            newParameter(id, QString::fromStdString(p));
+    }
 }
 
 QString Parameters::propertyToName(QtProperty *prop) const

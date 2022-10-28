@@ -12,6 +12,7 @@
 #include "ui_mainwindow.h"
 #include "parameters.h"
 #include "modulebrowser.h"
+#include "moduleview.h"
 #include "vistleconsole.h"
 
 #include <QString>
@@ -37,7 +38,7 @@ MainWindow::MainWindow(QWidget *parent)
     setCorner(Qt::TopRightCorner, Qt::RightDockWidgetArea);
     setCorner(Qt::BottomRightCorner, Qt::RightDockWidgetArea);
 
-    tabifyDockWidget(ui->modulesDock, ui->parameterDock);
+    tabifyDockWidget(ui->modulesDock, ui->moduleViewDock);
 
     m_console = ui->consoleWidget;
 
@@ -46,9 +47,9 @@ MainWindow::MainWindow(QWidget *parent)
     m_parameters->setSizePolicy(QSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred));
     m_parameters->adjustSize();
     m_parameters->show();
-    ui->parameterScroller->setWidgetResizable(true);
-    ui->parameterScroller->setWidget(m_parameters);
-    ui->parameterScroller->show();
+    ui->moduleView->parameterScroller()->setWidgetResizable(true);
+    ui->moduleView->parameterScroller()->setWidget(m_parameters);
+    ui->moduleView->parameterScroller()->show();
 
     m_moduleBrowser = ui->moduleBrowser;
 
@@ -181,9 +182,9 @@ QDockWidget *MainWindow::consoleDock() const
     return ui->consoleDock;
 }
 
-QDockWidget *MainWindow::parameterDock() const
+QDockWidget *MainWindow::moduleViewDock() const
 {
-    return ui->parameterDock;
+    return ui->moduleViewDock;
 }
 
 QDockWidget *MainWindow::modulesDock() const
@@ -194,6 +195,11 @@ QDockWidget *MainWindow::modulesDock() const
 Parameters *MainWindow::parameters() const
 {
     return m_parameters;
+}
+
+ModuleView *MainWindow::moduleView() const
+{
+    return ui->moduleView;
 }
 
 DataFlowView *MainWindow::dataFlowView() const

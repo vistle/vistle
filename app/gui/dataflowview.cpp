@@ -387,6 +387,9 @@ void DataFlowView::zoomOrig()
 
 void DataFlowView::zoomAll()
 {
+    if (!scene())
+        return;
+
     scene()->setSceneRect(scene()->itemsBoundingRect()); // Re-shrink the scene to it's bounding contents
     fitInView(scene()->itemsBoundingRect(), Qt::KeepAspectRatio);
 }

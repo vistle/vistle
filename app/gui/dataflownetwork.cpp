@@ -309,6 +309,28 @@ void DataFlowNetwork::itemInfoChanged(QString text, int type, int id, QString po
     }
 }
 
+void DataFlowNetwork::moduleMessage(int senderId, int type, QString message)
+{
+    if (Module *m = findModule(senderId)) {
+        m->moduleMessage(type, message);
+    }
+}
+
+void DataFlowNetwork::clearMessages(int moduleId)
+{
+    if (Module *m = findModule(moduleId)) {
+        m->clearMessages();
+    }
+}
+
+void DataFlowNetwork::messagesVisibilityChanged(int moduleId, bool visible)
+{
+    if (Module *m = findModule(moduleId)) {
+        m->setMessagesVisibility(visible);
+    }
+}
+
+
 void DataFlowNetwork::addConnection(Port *portFrom, Port *portTo, bool sendToController)
 {
     if (!portFrom) {

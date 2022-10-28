@@ -30,6 +30,7 @@ set(gui_SOURCES
     vistleobserver.cpp
     parameters.cpp
     modulebrowser.cpp
+    moduleview.cpp
     dataflowview.cpp
     vistleconsole.cpp
     modifieddialog.cpp
@@ -45,6 +46,7 @@ set(gui_HEADERS
     modifieddialog.h
     module.h
     modulebrowser.h
+    moduleview.h
     parameters.h
     port.h
     uicontroller.h
@@ -52,7 +54,7 @@ set(gui_HEADERS
     vistleobserver.h
     qconsole/qconsole.h)
 
-set(gui_FORMS mainwindow.ui about.ui modulebrowser.ui modifieddialog.ui)
+set(gui_FORMS mainwindow.ui about.ui modulebrowser.ui moduleview.ui modifieddialog.ui)
 
 set(gui_name vistle_gui)
 if(APPLE)

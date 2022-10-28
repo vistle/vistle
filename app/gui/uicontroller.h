@@ -29,6 +29,7 @@ public:
     void finish();
 
 signals:
+    void visibleModuleMessage(int id, int type, QString message);
 
 public slots:
     void quitRequested(bool &allowed);

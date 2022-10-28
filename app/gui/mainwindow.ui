@@ -192,45 +192,6 @@
     <layout class="QHBoxLayout" name="horizontalLayout_2"/>
    </widget>
   </widget>
-  <widget class="QDockWidget" name="parameterDock">
-   <property name="enabled">
-    <bool>true</bool>
-   </property>
-   <property name="sizePolicy">
-    <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-     <horstretch>0</horstretch>
-     <verstretch>0</verstretch>
-    </sizepolicy>
-   </property>
-   <property name="minimumSize">
-    <size>
-     <width>104</width>
-     <height>131</height>
-    </size>
-   </property>
-   <property name="maximumSize">
-    <size>
-     <width>524287</width>
-     <height>524287</height>
-    </size>
-   </property>
-   <property name="focusPolicy">
-    <enum>Qt::StrongFocus</enum>
-   </property>
-   <property name="features">
-    <set>QDockWidget::DockWidgetFloatable|QDockWidget::DockWidgetMovable</set>
-   </property>
-   <property name="allowedAreas">
-    <set>Qt::LeftDockWidgetArea|Qt::RightDockWidgetArea</set>
-   </property>
-   <property name="windowTitle">
-    <string>Module Parameters</string>
-   </property>
-   <attribute name="dockWidgetArea">
-    <number>2</number>
-   </attribute>
-   <widget class="QScrollArea" name="parameterScroller"/>
-  </widget>
   <widget class="QToolBar" name="toolBar">
    <property name="windowTitle">
     <string>Toolbar</string>
@@ -285,6 +246,28 @@
     <number>2</number>
    </attribute>
    <widget class="gui::ModuleBrowser" name="moduleBrowser">
+    <property name="focusPolicy">
+     <enum>Qt::StrongFocus</enum>
+    </property>
+   </widget>
+  </widget>
+  <widget class="QDockWidget" name="moduleViewDock">
+   <property name="focusPolicy">
+    <enum>Qt::StrongFocus</enum>
+   </property>
+   <property name="features">
+    <set>QDockWidget::DockWidgetFloatable|QDockWidget::DockWidgetMovable</set>
+   </property>
+   <property name="allowedAreas">
+    <set>Qt::LeftDockWidgetArea|Qt::RightDockWidgetArea</set>
+   </property>
+   <property name="windowTitle">
+    <string>Module</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>2</number>
+   </attribute>
+   <widget class="gui::ModuleView" name="moduleView">
     <property name="focusPolicy">
      <enum>Qt::StrongFocus</enum>
     </property>
@@ -551,6 +534,12 @@
    <class>gui::VistleConsole</class>
    <extends>QWidget</extends>
    <header>vistleconsole.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>gui::ModuleView</class>
+   <extends>QWidget</extends>
+   <header>moduleview.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

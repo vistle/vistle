@@ -31,6 +31,7 @@ signals:
     void modified(bool state);
 
     void info_s(QString msg, int type);
+    void message_s(int senderId, int type, QString msg);
     void itemInfo_s(QString info, int type, int senderId, QString portName);
     void status_s(int id, QString msg, int prio);
     void moduleStatus_s(int id, QString msg, int prio);

@@ -66,6 +66,9 @@ public slots:
     void deleteConnection(int fromId, QString fromName, int toId, QString toName);
     void moduleStatus(int id, QString status, int prio);
     void itemInfoChanged(QString text, int type, int id, QString port);
+    void moduleMessage(int senderId, int type, QString message);
+    void clearMessages(int moduleId);
+    void messagesVisibilityChanged(int moduleId, bool visible);
 
     void emphasizeConnections(QList<Module *> modules);
 
