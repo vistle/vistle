@@ -35,6 +35,7 @@ namespace gui {
 const double Module::portDistance = 3.;
 boost::uuids::nil_generator nil_uuid;
 bool Module::s_snapToGrid = true;
+const double Module::borderWidth = 4.;
 
 /*!
  * \brief Module::Module
@@ -318,7 +319,11 @@ void Module::doLayout()
  */
 QRectF Module::boundingRect() const
 {
-    return rect().united(childrenBoundingRect());
+    const auto m = borderWidth / 2.;
+    auto r = rect();
+    r = r.marginsAdded(QMarginsF(m, m, m, m));
+
+    return r.united(childrenBoundingRect());
 }
 
 /*!
@@ -334,9 +339,9 @@ void Module::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QW
     QBrush brush(m_color, Qt::SolidPattern);
     painter->setBrush(brush);
 
-    QPen highlightPen(m_borderColor, 4, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+    QPen highlightPen(m_borderColor, borderWidth, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
     if (isSelected() && m_Status != BUSY) {
-        QPen pen(scene()->highlightColor(), 4, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+        QPen pen(scene()->highlightColor(), borderWidth, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
         painter->setPen(pen);
     } else {
         if (m_Status == INITIALIZED) {
