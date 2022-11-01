@@ -23,6 +23,7 @@
 #include <QStatusBar>
 #include <QMenuBar>
 #include <QUrl>
+#include <QDesktopServices>
 
 #include "ui_about.h"
 
@@ -158,6 +159,23 @@ UiController::UiController(int argc, char *argv[], QObject *parent): QObject(par
                      [this](int hubId, const QString &moduleName, Qt::Key direction) {
                          m_scene->addModule(hubId, moduleName, direction);
                      });
+    connect(m_mainWindow->m_console, &QConsole::anchorClicked, [this](QString link) {
+        bool isNumber = false;
+        int id = link.toInt(&isNumber);
+        if (isNumber) {
+            if (vistle::message::Id::isModule(id)) {
+                m_scene->clearSelection();
+                if (auto mod = m_scene->findModule(id)) {
+                    mod->setSelected(true);
+                }
+            }
+        } else if (link.startsWith("vistle:")) {
+            qApp->clipboard()->setText(link);
+            m_mainWindow->statusBar()->showMessage("Link copied to clipboard", 3000);
+        } else {
+            QDesktopServices::openUrl(link);
+        }
+    });
 
     connect(m_mainWindow->m_moduleBrowser, &ModuleBrowser::requestRemoveHub, [this](int id) {
         vistle::message::Quit quit(id);
@@ -488,10 +506,9 @@ void UiController::aboutQt()
 
 void UiController::showConnectionInfo()
 {
-#if 0
-    m_mainWindow->m_console->appendInfo(QString("Share this: <a href=\"%1\">%1</a>")
-            .arg(m_sessionUrl),
-            vistle::message::SendText::Info);
+#if 1
+    m_mainWindow->m_console->appendInfo(QString("Share this: <a href=\"%1\">%1</a>").arg(m_sessionUrl),
+                                        vistle::message::SendText::Info);
 #else
     m_mainWindow->m_console->appendInfo(QString("Share this: %1").arg(m_sessionUrl), vistle::message::SendText::Info);
 #endif

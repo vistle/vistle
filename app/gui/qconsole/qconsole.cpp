@@ -35,6 +35,7 @@
 #include <QScrollBar>
 #include <QDesktopWidget>
 #include <QTextBlock>
+#include <iostream>
 
 #define USE_POPUP_COMPLETER
 #define WRITE_ONLY QIODevice::WriteOnly
@@ -169,9 +170,12 @@ QConsole::QConsole(QWidget *parent, const QString &welcomeText)
 , promptLength(0)
 , promptParagraph(0)
 {
-    setAcceptRichText(false);
     QPalette palette = QApplication::palette();
     setCmdColor(palette.text().color());
+
+    setAcceptRichText(true);
+    setTextInteractionFlags(Qt::LinksAccessibleByMouse | textInteractionFlags());
+    setMouseTracking(true);
 
     //Disable undo/redo
     setUndoRedoEnabled(false);
@@ -611,10 +615,43 @@ void QConsole::mousePressEvent(QMouseEvent *event)
         QTextCursor cursor = cursorForPosition(event->pos());
         setTextCursor(cursor);
         paste();
+        QTextEdit::mousePressEvent(event);
+        return;
+    }
+
+    if (event->button() == Qt::LeftButton) {
+        auto anchor = anchorAt(event->pos());
+        pressedLink = anchor;
+        if (!anchor.isEmpty()) {
+            qApp->setOverrideCursor(Qt::PointingHandCursor);
+        }
+        QTextEdit::mousePressEvent(event);
         return;
     }
 
     QTextEdit::mousePressEvent(event);
+}
+
+void QConsole::mouseMoveEvent(QMouseEvent *event)
+{
+    QTextEdit::mouseMoveEvent(event);
+    auto anchor = anchorAt(event->pos());
+    if (!anchor.isEmpty()) {
+        viewport()->setCursor(Qt::PointingHandCursor);
+    } else {
+        viewport()->setCursor(Qt::IBeamCursor);
+    }
+}
+
+void QConsole::mouseReleaseEvent(QMouseEvent *event)
+{
+    auto anchor = anchorAt(event->pos());
+    if (!anchor.isEmpty() && pressedLink == anchor) {
+        emit anchorClicked(anchor);
+        qApp->restoreOverrideCursor();
+    }
+    pressedLink = QString();
+    QTextEdit::mouseReleaseEvent(event);
 }
 
 

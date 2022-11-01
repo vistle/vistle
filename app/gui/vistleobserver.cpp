@@ -165,8 +165,8 @@ void gui::VistleObserver::info(const std::string &text, vistle::message::SendTex
         t.chop(1);
     QString sender;
     if (senderId >= vistle::message::Id::ModuleBase) {
-        sender =
-            QString("%1_%2(%3)").arg(m_moduleNames[senderId], QString::number(senderId), QString::number(senderRank));
+        sender = QString("<a href=\"%2\">%1_%2(%3)</a>")
+                     .arg(m_moduleNames[senderId], QString::number(senderId), QString::number(senderRank));
     } else {
         sender = m_moduleNames[senderId];
         if (sender.isEmpty())
