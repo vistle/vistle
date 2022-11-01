@@ -111,14 +111,16 @@ bool ReadCovise::examine(const Parameter *param)
     if (!param || param == m_directory) {
         std::vector<std::string> choices;
         choices.emplace_back(NONE);
-        auto dir = filesystem::path(m_directory->getValue());
+        auto dirstr = m_directory->getValue();
+        auto dir = filesystem::path(dirstr);
         try {
             if (!filesystem::is_directory(dir)) {
-                sendInfo("not a directory: %s", dir.string().c_str());
+                sendError("not a directory: %s", dir.string().c_str());
                 return false;
             }
         } catch (const filesystem::filesystem_error &e) {
-            sendInfo("error while opening %s", dir.string().c_str());
+            if (!dirstr.empty())
+                sendError("error while opening %s", dir.string().c_str());
             return false;
         }
 
@@ -153,7 +155,8 @@ bool ReadCovise::examine(const Parameter *param)
             std::string file = m_fieldFile[i]->getValue();
             int fd = covOpenInFile(file.c_str());
             if (fd == 0) {
-                sendInfo("failed to open %s or not a COVISE file", file.c_str());
+                if (!file.empty())
+                    sendError("failed to open %s or not a COVISE file", file.c_str());
                 return false;
             }
             covCloseInFile(fd);
@@ -204,7 +207,8 @@ bool ReadCovise::prepareRead()
 
         m_fd[port] = covOpenInFile(name.c_str());
         if (!m_fd[port]) {
-            sendWarning("failed to open %s or not a COVISE file", name.c_str());
+            if (!name.empty())
+                sendError("failed to open %s or not a COVISE file", name.c_str());
             m_filename[port].clear();
         }
     }
