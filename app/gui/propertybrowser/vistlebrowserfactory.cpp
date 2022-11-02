@@ -98,19 +98,15 @@ void VistleBrowserFactoryPrivate::slotRegExpChanged(QtProperty *property, const 
 
 void VistleBrowserFactoryPrivate::slotModuleIdChanged(QtProperty *property, int id)
 {
-    qDebug() << "SLOT moduleId changed" << id;
     if (!m_createdEditors.contains(property))
         return;
-    qDebug() << "SLOT moduleId changed" << id << "CONTAINS";
 
     VistleBrowserPropertyManager *manager = q_ptr->propertyManager(property);
     if (!manager)
         return;
-    qDebug() << "SLOT moduleId changed" << id << "HAVE MANAGER";
 
     QListIterator<VistleBrowserEdit *> itEditor(m_createdEditors[property]);
     while (itEditor.hasNext()) {
-        qDebug() << "SLOT moduleId changed" << id << "HAVE EDITOR";
         VistleBrowserEdit *editor = itEditor.next();
         editor->blockSignals(true);
         editor->setModuleId(id);
