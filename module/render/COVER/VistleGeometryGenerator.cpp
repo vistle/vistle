@@ -48,9 +48,9 @@ using namespace vistle;
 namespace {
 const int NumPrimitives = 100000;
 const bool IndexGeo = true;
-const Index TileSize = 256;
 
 #ifdef COVER_PLUGIN
+const Index TileSize = 256;
 const int TfTexUnit = 1;
 #endif
 const int DataAttrib = 10;
