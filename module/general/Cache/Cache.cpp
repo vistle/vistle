@@ -81,7 +81,7 @@ Cache::Cache(const std::string &name, int moduleID, mpi::communicator comm): Mod
     setParameterMinimum(p_stop, Integer(0));
 
     m_compressionMode =
-        addIntParameter("field_compression", "compression mode for data fields", Uncompressed, Parameter::Choice);
+        addIntParameter("field_compression", "compression mode for data fields", Predict, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_compressionMode, FieldCompressionMode);
     m_zfpRate = addFloatParameter("zfp_rate", "ZFP fixed compression rate", 8.);
     setParameterRange(m_zfpRate, Float(1), Float(64));
