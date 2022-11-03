@@ -190,7 +190,7 @@ bool Cache::prepare()
 
     file += ".";
     file += std::to_string(rank());
-    file += ".vslp";
+    file += ".vsld";
 
     if (m_toDisk) {
         m_saver.reset(new DeepArchiveSaver);
