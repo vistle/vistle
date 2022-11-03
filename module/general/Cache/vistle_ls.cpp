@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
     int filenum = 1;
 
     if (argc > 1) {
-        if (argv[1] == std::string("-d")) {
+        if (argv[1] == std::string("-v")) {
             deep = true;
             ++filenum;
 
@@ -35,17 +35,24 @@ int main(int argc, char *argv[])
     }
 
     if (filenum >= argc) {
-        std::cerr << "filename argument required" << std::endl;
+        std::cerr << "usage: vistle_ls [-v] file ..." << std::endl;
+        std::cerr << "\t-v\tverbose introspection" << std::endl;
         return 1;
     }
 
+    size_t totalRawSize = 0, totalCompressedSize = 0;
+    int numFiles = 0, numError = 0;
     for (; filenum < argc; ++filenum) {
+        ++numFiles;
         std::string filename(argv[filenum]);
-
+        if (argc > 3 || (!deep && argc > 2)) {
+            std::cout << filename << ":" << std::endl;
+        }
         auto fd = open(filename.c_str(), O_RDONLY);
         if (fd == -1) {
             std::cerr << "could not open " << filename << ": " << strerror(errno) << std::endl;
-            return 1;
+            ++numError;
+            continue;
         }
 
         typedef std::vector<std::string> TimestepObjects;
@@ -89,7 +96,7 @@ int main(int argc, char *argv[])
         };
 
 
-        size_t totalRawSize = 0, totalCompressedSize = 0;
+        size_t fileRawSize = 0, fileCompressedSize = 0;
         int numArrays = 0;
         int numObjects = 0;
         int numRootObjects = 0;
@@ -97,7 +104,8 @@ int main(int argc, char *argv[])
         std::set<int> usedPorts;
         int start = 0, stop = 1 << 20, step = 1;
         std::string objectToRestore;
-        for (bool error = false; !error;) {
+        bool error = false;
+        for (error = false; !error;) {
             ChunkHeader cheader, chgood;
             if (!Read(fd, cheader)) {
                 break;
@@ -105,7 +113,8 @@ int main(int argc, char *argv[])
             if (cheader.version != chgood.version) {
                 fprintf(stderr, "Cannot read Vistle files of version %d, only %d is supported", (int)cheader.version,
                         chgood.version);
-                break;
+                error = true;
+                continue;
             }
             //std::cerr << "ChunkHeader: " << cheader << std::endl;
             //std::cerr << "ChunkHeader: found type=" << cheader.type << std::endl;
@@ -126,8 +135,8 @@ int main(int argc, char *argv[])
                     std::cout << " (" << std::setprecision(3) << 100. * ent.compressedSize / ent.size << "%)";
                 }
                 std::cout << std::endl;
-                totalRawSize += ent.size;
-                totalCompressedSize += ent.compressedSize;
+                fileRawSize += ent.size;
+                fileCompressedSize += ent.compressedSize;
                 if (ent.is_array) {
                     ++numArrays;
                 } else {
@@ -195,15 +204,22 @@ int main(int argc, char *argv[])
             }
         }
         close(fd);
+        if (error) {
+            ++numError;
+            continue;
+        }
 
-        std::cout << totalRawSize << " data bytes";
-        if (totalCompressedSize != totalRawSize) {
-            std::cout << " (" << totalCompressedSize << " compressed, " << std::setprecision(3)
-                      << 100. * totalCompressedSize / totalRawSize << "%)";
+        std::cout << "\t" << fileRawSize << " data bytes";
+        if (fileCompressedSize != fileRawSize) {
+            std::cout << " (" << fileCompressedSize << " compressed, " << std::setprecision(3)
+                      << 100. * fileCompressedSize / fileRawSize << "%)";
         }
         std::cout << std::endl;
-        std::cout << numArrays << " arrays, " << numObjects << " objects (" << numRootObjects << " root) on "
+        std::cout << "\t" << numArrays << " arrays, " << numObjects << " objects (" << numRootObjects << " root) on "
                   << usedPorts.size() << " ports" << std::endl;
+
+        totalRawSize += fileRawSize;
+        totalCompressedSize += fileCompressedSize;
     }
 
     if (deep) {
@@ -211,5 +227,18 @@ int main(int argc, char *argv[])
         vistle::Shm::remove("vistle_ls", 1, 0, false);
     }
 
+    if (numFiles > 1) {
+        std::cout << numFiles << " files";
+        if (numError > 0) {
+            std::cout << ", " << numError << " errors";
+        }
+        std::cout << ", ";
+        std::cout << totalRawSize << " total data bytes";
+        if (totalCompressedSize != totalRawSize) {
+            std::cout << " (" << totalCompressedSize << " compressed, " << std::setprecision(3)
+                      << 100. * totalCompressedSize / totalRawSize << "%)";
+        }
+        std::cout << std::endl;
+    }
     return 0;
 }

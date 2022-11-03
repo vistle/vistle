@@ -163,6 +163,19 @@ void Object::print(std::ostream &os) const
     if (!d()->isComplete()) {
         os << " INCOMPLETE";
     }
+    if (meta().block() >= 0 || meta().numBlocks() >= 0) {
+        os << " block=" << meta().block() << "/" << meta().numBlocks();
+    }
+    if (meta().timeStep() >= 0 || meta().numTimesteps() >= 0) {
+        os << " time=" << meta().timeStep() << "/" << meta().numTimesteps();
+    }
+    if (meta().iteration() >= 0) {
+        os << " iter=" << meta().iteration();
+    }
+    const auto attrs = getAttributeList();
+    for (const auto &att: attrs) {
+        os << " " << att << "=" << getAttribute(att);
+    }
     os << ")";
 }
 

@@ -170,12 +170,14 @@ double DataBase::value(Index idx, unsigned component) const
 void DataBase::print(std::ostream &os) const
 {
     Base::print(os);
-    os << " map:" << toString(mapping());
-    os << " grid(";
-    if (grid()) {
-        os << *grid();
+    if (!getInterface<GeometryInterface>()) {
+        os << " map:" << toString(mapping());
+        os << " grid(";
+        if (grid()) {
+            os << *grid();
+        }
+        os << ")";
     }
-    os << ")";
 }
 
 V_OBJECT_TYPE(DataBase, Object::DATABASE)
