@@ -1660,10 +1660,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
     if (m_executionCount < exec->getExecutionCount()) {
         m_executionCount = exec->getExecutionCount();
         m_iteration = -1;
-    } else if (exec->what() == Execute::Prepare) {
-        ++m_iteration;
     }
-
 
     if (schedulingPolicy() == message::SchedulingPolicy::Ignore)
         return true;
