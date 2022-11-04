@@ -781,8 +781,7 @@ void Module::updateMeta(vistle::Object::ptr obj) const
     if (obj) {
         obj->setCreator(id());
         obj->setExecutionCounter(m_executionCount);
-        if (obj->getIteration() < m_iteration)
-            obj->setIteration(m_iteration);
+        obj->setIteration(m_iteration);
 
         obj->updateInternals();
     }
@@ -1980,6 +1979,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
             if (oldExecCount < m_executionCount) {
                 m_iteration = -1;
             }
+            m_iteration = mpi::all_reduce(comm(), m_iteration, mpi::maximum<int>());
 #ifdef REDUCE_DEBUG
             CERR << "all_reduce for execCount finished " << m_executionCount << " with execCount=" << m_executionCount
                  << std::endl;
@@ -2407,6 +2407,7 @@ bool Module::prepareWrapper(const message::Execute *exec)
         if (oldExecCount < m_executionCount) {
             m_iteration = -1;
         }
+        m_iteration = mpi::all_reduce(comm(), m_iteration, mpi::maximum<int>());
     }
 
     if (m_benchmark) {
