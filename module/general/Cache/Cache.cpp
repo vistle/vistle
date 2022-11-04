@@ -48,6 +48,7 @@ private:
     IntParameter *p_reorder = nullptr;
     IntParameter *p_renumber = nullptr;
 
+    std::string m_file;
     int m_fd = -1;
     std::shared_ptr<DeepArchiveSaver> m_saver;
 
@@ -111,7 +112,7 @@ int Cache::archiveCompressionSpeed() const
     return m_archiveCompressionSpeed->getValue();
 }
 
-#define CERR std::cerr << "Cache: "
+#define CERR std::cerr << "Cache(" << rank() << "): "
 
 
 bool Cache::compute()
@@ -124,9 +125,13 @@ bool Cache::compute()
     }
 
     for (int i = 0; i < NumPorts; ++i) {
-        Object::const_ptr obj = accept<Object>(m_inPort[i]);
+        if (!isConnected(*m_inPort[i]))
+            continue;
+        Object::const_ptr obj = expect<Object>(m_inPort[i]);
         if (obj) {
-            passThroughObject(m_outPort[i], obj);
+            auto cloned = obj->clone();
+            updateMeta(cloned);
+            addObject(m_outPort[i], cloned);
 
             if (m_toDisk) {
                 assert(m_fd != -1);
@@ -149,13 +154,17 @@ bool Cache::compute()
                 // copy serialized object to disk
                 const buffer &mem = memstr.get_vector();
                 SubArchiveDirectoryEntry ent{obj->getName(), false, mem.size(), const_cast<char *>(mem.data())};
-                if (!WriteChunk(this, m_fd, ent))
+                if (!WriteChunk(this, m_fd, ent)) {
+                    sendError("saving object data to %s failed", m_file.c_str());
                     return false;
+                }
 
                 // add reference to object to port
                 PortObjectHeader pheader(i, obj->getTimestep(), obj->getBlock(), obj->getName());
-                if (!WriteChunk(this, m_fd, pheader))
+                if (!WriteChunk(this, m_fd, pheader)) {
+                    sendError("saving meta data to %s failed", m_file.c_str());
                     return false;
+                }
             }
         }
     }
@@ -189,12 +198,14 @@ bool Cache::prepare()
     file += ".";
     file += std::to_string(rank());
     file += ".vsld";
+    m_file = file;
 
     if (m_toDisk) {
         m_saver.reset(new DeepArchiveSaver);
         m_saver->setCompressionSettings(m_compressionSettings);
-        m_fd = open(file.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_BINARY,
+        m_fd = open(m_file.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_BINARY,
                     S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+        return true;
     }
 
     if (!m_fromDisk)
@@ -207,9 +218,9 @@ bool Cache::prepare()
     bool reorder = p_reorder->getValue();
     bool renumber = p_renumber->getValue();
 
-    m_fd = open(file.c_str(), O_RDONLY | O_BINARY);
+    m_fd = open(m_file.c_str(), O_RDONLY | O_BINARY);
     if (m_fd == -1) {
-        sendError("Could not open %s: %s", file.c_str(), strerror(errno));
+        sendError("Could not open %s: %s", m_file.c_str(), strerror(errno));
     }
     int errorfd = mpi::all_reduce(comm(), m_fd, mpi::minimum<int>());
     if (errorfd == -1) {
