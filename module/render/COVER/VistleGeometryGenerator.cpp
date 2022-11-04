@@ -1,7 +1,3 @@
-#ifndef _USE_MATH_DEFINES
-#define _USE_MATH_DEFINES // for M_PI with MSVC
-#endif
-
 #include "VistleGeometryGenerator.h"
 
 #include <cmath>
