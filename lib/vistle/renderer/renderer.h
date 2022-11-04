@@ -46,7 +46,7 @@ public:
     vistle::ResultCache<CacheData> *getOrCreateGeometryCache(int senderId, const std::string &senderPort)
     {
         typedef ResultCache<CacheData> RC;
-        Creator c(senderId, senderPort);
+        SendPort c(senderId, senderPort);
         auto it = m_geometryCaches.find(c);
         if (it == m_geometryCaches.end()) {
             it = m_geometryCaches.emplace(c, new RC).first;
@@ -89,21 +89,21 @@ private:
 
     void removeAllSentBy(int sender, const std::string &senderPort);
 
-    struct Creator {
-        Creator(int id, const std::string &port, const std::string &basename = std::string())
+    struct SendPort {
+        SendPort(int id, const std::string &port, const std::string &basename = std::string())
         : module(id), port(port), age(0), iteration(-1)
         {
             std::stringstream s;
             s << basename << "_" << module;
             name = s.str();
         }
-        bool operator<(const Creator &other) const
+        bool operator<(const SendPort &other) const
         {
             if (module == other.module)
                 return port < other.port;
             return module < other.module;
         }
-        bool operator==(const Creator &other) const
+        bool operator==(const SendPort &other) const
         {
             if (module == other.module)
                 return port == other.port;
@@ -116,8 +116,8 @@ private:
         mutable int iteration = -1;
         std::string name;
     };
-    typedef std::set<Creator> CreatorMap;
-    CreatorMap m_creatorMap;
+    typedef std::set<SendPort> SenderPortMap;
+    SenderPortMap m_sendPortMap;
 
     std::vector<std::vector<std::shared_ptr<RenderObject>>> m_objectList;
     IntParameter *m_renderMode = nullptr;
@@ -130,7 +130,7 @@ private:
     int m_numObjectsPerFrame = 500;
 
     void enableGeometryCaches(bool on);
-    std::map<Creator, std::unique_ptr<ResultCacheBase>> m_geometryCaches;
+    std::map<SendPort, std::unique_ptr<ResultCacheBase>> m_geometryCaches;
     IntParameter *m_useGeometryCaches = nullptr;
 };
 
