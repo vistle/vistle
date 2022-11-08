@@ -92,6 +92,18 @@ void Port::createMenus()
     m_portMenu->addAction(m_disconnectAct);
 }
 
+QVariant Port::itemChange(GraphicsItemChange change, const QVariant &value)
+{
+    if (change == ItemEnabledHasChanged) {
+        if (isEnabled()) {
+            setToolTip(m_tooltip);
+        } else {
+            setToolTip("");
+        }
+    }
+    return QGraphicsItem::itemChange(change, value);
+}
+
 void Port::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
 {
     bool hasCon = !m_port->connections().empty();
@@ -244,7 +256,9 @@ void Port::createTooltip()
         toolTip += m_info;
     }
 
-    setToolTip(toolTip);
+    if (isEnabled())
+        setToolTip(toolTip);
+    m_tooltip = toolTip;
 }
 
 void Port::createGeometry()

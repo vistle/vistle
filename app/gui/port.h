@@ -35,7 +35,7 @@ public:
     QString name() const;
     const vistle::Port *vistlePort() const;
 
-    void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
 
     QPointF scenePos() const;
 
@@ -48,12 +48,13 @@ signals:
     void selectConnected(int direction, int id, QString port);
 
 protected:
-    void hoverEnterEvent(QGraphicsSceneHoverEvent *event);
-    void hoverLeaveEvent(QGraphicsSceneHoverEvent *event);
-    void mousePressEvent(QGraphicsSceneMouseEvent *event);
-    void mouseReleaseEvent(QGraphicsSceneMouseEvent *event);
-    void mouseMoveEvent(QGraphicsSceneMouseEvent *event);
-    void contextMenuEvent(QGraphicsSceneContextMenuEvent *event);
+    void hoverEnterEvent(QGraphicsSceneHoverEvent *event) override;
+    void hoverLeaveEvent(QGraphicsSceneHoverEvent *event) override;
+    void mousePressEvent(QGraphicsSceneMouseEvent *event) override;
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent *event) override;
+    void mouseMoveEvent(QGraphicsSceneMouseEvent *event) override;
+    void contextMenuEvent(QGraphicsSceneContextMenuEvent *event) override;
+    QVariant itemChange(GraphicsItemChange change, const QVariant &value) override;
 
 private:
     void createTooltip();
@@ -71,6 +72,7 @@ private:
     int m_moduleId = 0;
     QString m_name;
     QString m_info;
+    QString m_tooltip;
 };
 
 } //namespace gui

@@ -22,6 +22,8 @@ namespace gui {
 class Connection;
 class DataFlowNetwork;
 
+const bool LayersAsOpacity = true;
+
 class Module: public QObject, public QGraphicsRectItem {
     Q_OBJECT
     Q_INTERFACES(QGraphicsItem)
@@ -31,9 +33,6 @@ class Module: public QObject, public QGraphicsRectItem {
     static const double portDistance;
     static const double borderWidth;
     static bool s_snapToGrid;
-
-signals:
-    void mouseClickEvent();
 
 public:
     enum Status { SPAWNING, INITIALIZED, KILLED, BUSY, EXECUTING, ERROR_STATUS };
@@ -52,9 +51,9 @@ public:
     static float snapX(float x);
     static float snapY(float y);
 
-    QRectF boundingRect() const; // re-implemented
+    QRectF boundingRect() const override; // re-implemented
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
-               QWidget *widget); // re-implemented
+               QWidget *widget) override; // re-implemented
     ///\todo this functionality is unnecessary, push functionality to port
     QPointF portPos(const Port *port) const;
     void setStatus(Module::Status status);
@@ -90,6 +89,9 @@ public:
     void sendPosition() const;
     bool isPositionValid() const;
     void setPositionValid();
+    int layer() const;
+    void setLayer(int layer);
+    void updateLayer();
 
     Port *getGuiPort(const vistle::Port *port) const;
     const vistle::Port *getVistlePort(Port *port) const;
@@ -100,15 +102,16 @@ public:
 signals:
     void createModuleCompound();
     void selectConnected(int direction, int id, QString port = QString());
+    void visibleChanged(bool visible);
 
 protected:
-    void mousePressEvent(QGraphicsSceneMouseEvent *event);
-    void mouseReleaseEvent(QGraphicsSceneMouseEvent *event);
-    void mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event);
-    void contextMenuEvent(QGraphicsSceneContextMenuEvent *event);
+    void mousePressEvent(QGraphicsSceneMouseEvent *event) override;
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent *event) override;
+    void mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event) override;
+    void contextMenuEvent(QGraphicsSceneContextMenuEvent *event) override;
     void updatePosition(QPointF newPos) const;
 
-    QVariant itemChange(GraphicsItemChange change, const QVariant &value);
+    QVariant itemChange(GraphicsItemChange change, const QVariant &value) override;
 
 public slots:
     void restartModule();
@@ -139,6 +142,7 @@ private:
     QMenu *m_moveToMenu = nullptr;
     QMenu *m_replaceWithMenu = nullptr;
     QAction *m_createModuleGroup = nullptr;
+    QMenu *m_layerMenu = nullptr;
 
 
     int m_hub;
@@ -151,10 +155,12 @@ private:
     Module::Status m_Status;
     QString m_statusText;
     QString m_info;
+    QString m_tooltip;
     bool m_errorState = false;
     QList<Message> m_messages;
     bool m_messagesVisible = true;
     bool m_validPosition = false;
+    int m_layer = 0;
 
     QList<Port *> m_inPorts, m_outPorts, m_paramPorts;
     QColor m_color;

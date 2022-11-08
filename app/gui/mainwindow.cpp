@@ -118,6 +118,16 @@ MainWindow::~MainWindow()
     /// scene; QDrag; mimeData;
 }
 
+QToolBar *MainWindow::toolBar() const
+{
+    return ui->toolBar;
+}
+
+QAction *MainWindow::layerWidgetPosition() const
+{
+    return ui->actionArrange;
+}
+
 QMenu *MainWindow::createPopupMenu()
 {
     auto menu = QMainWindow::createPopupMenu();

@@ -83,7 +83,9 @@ UiController::UiController(int argc, char *argv[], QObject *parent): QObject(par
     ///\todo declare the scene pointer in the header, then de-allocate in the destructor.
     m_scene = new DataFlowNetwork(m_vistleConnection.get(), m_mainWindow, m_mainWindow->dataFlowView());
     m_mainWindow->dataFlowView()->setScene(m_scene);
+    m_mainWindow->dataFlowView()->addToToolBar(m_mainWindow->toolBar(), m_mainWindow->layerWidgetPosition());
     connect(m_mainWindow->dataFlowView(), SIGNAL(executeDataFlow()), SLOT(executeDataFlowNetwork()));
+    connect(m_mainWindow->dataFlowView(), SIGNAL(visibleLayerChanged(int)), m_scene, SLOT(visibleLayerChanged(int)));
 
     connect(m_mainWindow, SIGNAL(quitRequested(bool &)), SLOT(quitRequested(bool &)));
     connect(m_mainWindow, SIGNAL(newDataFlow()), SLOT(clearDataFlowNetwork()));
@@ -414,6 +416,21 @@ void UiController::parameterValueChanged(int moduleId, QString parameterName)
         if (vp && !vp->isDefault()) {
             vistle::ParamVector pos = vp->getValue();
             m_scene->moveModule(moduleId, pos[0], pos[1]);
+        }
+    }
+    if (parameterName == "_layer") {
+        auto p = vistle::VistleConnection::the().getParameter(moduleId, "_layer");
+        auto l = std::dynamic_pointer_cast<vistle::IntParameter>(p);
+        if (l) {
+            const int layer = l->getValue();
+            if (layer >= DataFlowView::the()->numLayers()) {
+                DataFlowView::the()->setNumLayers(layer + 1);
+            }
+            if (!l->isDefault()) {
+                if (Module *m = m_scene->findModule(moduleId)) {
+                    m->setLayer(layer);
+                }
+            }
         }
     }
 }

@@ -102,6 +102,18 @@ void DataFlowNetwork::addModule(int hub, QString modName, Qt::Key direction)
     addModule(hub, modName, newPos);
 }
 
+Module *DataFlowNetwork::newModule(QString modName)
+{
+    Module *module = new Module(nullptr, modName);
+    addItem(module);
+    m_moduleList.append(module);
+    module->setStatus(Module::SPAWNING);
+    connect(module, &Module::createModuleCompound, this, &DataFlowNetwork::createModuleCompound);
+    connect(module, &Module::selectConnected, this, &DataFlowNetwork::selectConnected);
+    connect(module, &Module::visibleChanged, this, &DataFlowNetwork::updateConnectionVisibility);
+    return module;
+}
+
 
 /*!
  * \brief Scene::addModule add a module to the draw area.
@@ -110,15 +122,12 @@ void DataFlowNetwork::addModule(int hub, QString modName, Qt::Key direction)
  */
 void DataFlowNetwork::addModule(int hub, QString modName, QPointF dropPos)
 {
+    auto module = newModule(modName);
     lastDropPos = dropPos;
-    Module *module = new Module(0, modName);
     ///\todo improve how the data such as the name is set in the module.
-    addItem(module);
+    module->setLayer(DataFlowView::the()->visibleLayer());
     module->setPos(dropPos);
     module->setPositionValid();
-    module->setStatus(Module::SPAWNING);
-    connect(module, &Module::createModuleCompound, this, &DataFlowNetwork::createModuleCompound);
-    connect(module, &Module::selectConnected, this, &DataFlowNetwork::selectConnected);
     vistle::message::Spawn spawnMsg(hub, modName.toUtf8().constData());
     spawnMsg.setDestId(vistle::message::Id::MasterHub); // to master, for module id generation
     module->setSpawnUuid(spawnMsg.uuid());
@@ -126,7 +135,6 @@ void DataFlowNetwork::addModule(int hub, QString modName, QPointF dropPos)
 
     ///\todo add the objects only to the map (sortMap) currently used for sorting, not to the list.
     ///This will remove the need for moduleList altogether
-    m_moduleList.append(module);
     module->setHub(hub);
 }
 
@@ -143,12 +151,7 @@ void DataFlowNetwork::addModule(int moduleId, const boost::uuids::uuid &spawnUui
         mod = findModule(moduleId);
     }
     if (!mod) {
-        mod = new Module(nullptr, name);
-        connect(mod, &Module::createModuleCompound, this, &DataFlowNetwork::createModuleCompound);
-        connect(mod, &Module::selectConnected, this, &DataFlowNetwork::selectConnected);
-        addItem(mod);
-        mod->setStatus(Module::SPAWNING);
-        m_moduleList.append(mod);
+        mod = newModule(name);
     }
 
     mod->setId(moduleId);
@@ -366,6 +369,8 @@ void DataFlowNetwork::addConnection(Port *portFrom, Port *portTo, bool sendToCon
     } else {
         c->setState(Connection::Established);
     }
+
+    c->updateVisibility(DataFlowView::the()->visibleLayer());
 }
 
 void DataFlowNetwork::removeConnection(Port *portFrom, Port *portTo, bool sendToController)
@@ -608,6 +613,12 @@ void DataFlowNetwork::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
     m_Line->setLine(newLine);
 }
 
+void DataFlowNetwork::wheelEvent(QGraphicsSceneWheelEvent *event)
+{
+    // especially ignore wheel events on disabled items
+    event->ignore();
+}
+
 void DataFlowNetwork::selectConnected(int direction, int id, QString port)
 {
     std::set<int> modules;
@@ -649,6 +660,33 @@ void DataFlowNetwork::emphasizeConnections(QList<Module *> modules)
         auto *m2 = key.port2->module();
         conn->setEmphasis(modules.contains(m1) || modules.contains(m2));
     }
+}
+
+QRectF DataFlowNetwork::computeBoundingRect(int layer) const
+{
+    QRectF bounds;
+    for (auto *m: m_moduleList) {
+        if (layer == AllLayers || m->layer() == AllLayers || layer == m->layer()) {
+            bounds = bounds.united(m->mapToScene(m->boundingRect()).boundingRect());
+        }
+    }
+    return bounds;
+}
+
+void DataFlowNetwork::updateConnectionVisibility()
+{
+    int layer = DataFlowView::the()->visibleLayer();
+    for (auto &c: m_connections) {
+        c.second->updateVisibility(layer);
+    }
+}
+
+void DataFlowNetwork::visibleLayerChanged(int layer)
+{
+    for (auto *m: m_moduleList) {
+        m->updateLayer();
+    }
+    updateConnectionVisibility();
 }
 
 void DataFlowNetwork::createModuleCompound()

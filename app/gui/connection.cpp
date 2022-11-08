@@ -93,6 +93,26 @@ void Connection::setState(Connection::State state)
     }
 }
 
+void Connection::updateVisibility(int layer)
+{
+    auto *m1 = source()->module();
+    auto *m2 = destination()->module();
+    bool v1 = layer < 0 || m1->layer() < 0 || m1->layer() == layer;
+    bool v2 = layer < 0 || m2->layer() < 0 || m2->layer() == layer;
+
+    if (LayersAsOpacity) {
+        setEnabled(v1 & v2);
+        if (v1 && v2) {
+            setOpacity(1.0);
+        } else {
+            setOpacity(0.05);
+            setEnabled(false);
+        }
+    } else {
+        setVisible(v1 && v2);
+    }
+}
+
 bool Connection::isEmphasized() const
 {
     return m_emphasized;

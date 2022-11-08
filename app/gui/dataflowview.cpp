@@ -10,6 +10,9 @@
 #include <QDragLeaveEvent>
 #include <QDragMoveEvent>
 #include <QSettings>
+#include <QComboBox>
+#include <QToolBar>
+#include <QDebug>
 
 namespace gui {
 
@@ -50,6 +53,70 @@ DataFlowView *DataFlowView::the()
     return s_instance;
 }
 
+
+QAction *DataFlowView::addToToolBar(QToolBar *toolbar, QAction *before)
+{
+    if (m_visibleLayer)
+        return nullptr;
+
+    m_visibleLayer = new QComboBox(this);
+    m_visibleLayer->addItem("New Layer");
+    m_visibleLayer->addItem("All Layers");
+    for (int i = 0; i < m_numLayers; ++i) {
+        m_visibleLayer->addItem(QString("Layer %1").arg(i));
+    }
+    m_visibleLayer->setCurrentIndex(2);
+    emit visibleLayerChanged(0);
+
+    connect(m_visibleLayer, QOverload<int>::of(&QComboBox::activated), [this](int idx) {
+        if (idx < 0) {
+            emit visibleLayerChanged(-1);
+            return;
+        }
+        if (idx == 0) {
+            m_visibleLayer->addItem(QString("Layer %1").arg(m_numLayers));
+            int cur = m_numLayers;
+            ++m_numLayers;
+            m_visibleLayer->setCurrentIndex(cur + 2);
+            emit visibleLayerChanged(cur);
+            return;
+        }
+        emit visibleLayerChanged(idx - 2);
+    });
+
+    if (before)
+        return toolbar->insertWidget(before, m_visibleLayer);
+    return toolbar->addWidget(m_visibleLayer);
+}
+
+int DataFlowView::numLayers() const
+{
+    if (!m_visibleLayer)
+        return 1;
+    return m_visibleLayer->count() - 2;
+}
+
+void DataFlowView::setNumLayers(int num)
+{
+    if (num <= 0)
+        num = 0;
+    m_numLayers = num;
+    if (m_visibleLayer) {
+        if (m_visibleLayer->count() > m_numLayers + 2) {
+            m_visibleLayer->removeItem(m_visibleLayer->count() - 1);
+        }
+        for (int i = m_visibleLayer->count() - 2; i < m_numLayers; ++i) {
+            m_visibleLayer->addItem(QString("Layer %1").arg(i));
+        }
+    }
+}
+
+int DataFlowView::visibleLayer() const
+{
+    if (!m_visibleLayer)
+        return -1;
+    return m_visibleLayer->currentIndex() - 2;
+}
 
 DataFlowNetwork *DataFlowView::scene() const
 {
@@ -243,9 +310,11 @@ void DataFlowView::createMenu()
 
 void DataFlowView::contextMenuEvent(QContextMenuEvent *event)
 {
-    if (itemAt(event->pos())) {
-        QGraphicsView::contextMenuEvent(event);
-        return;
+    if (auto item = itemAt(event->pos())) {
+        if (item->isEnabled()) {
+            QGraphicsView::contextMenuEvent(event);
+            return;
+        }
     }
 
     m_contextMenu->popup(event->globalPos());
@@ -390,8 +459,16 @@ void DataFlowView::zoomAll()
     if (!scene())
         return;
 
-    scene()->setSceneRect(scene()->itemsBoundingRect()); // Re-shrink the scene to it's bounding contents
-    fitInView(scene()->itemsBoundingRect(), Qt::KeepAspectRatio);
+    QRectF bounds = scene()->itemsBoundingRect();
+    bounds.adjust(-Port::portSize, -Port::portSize, +Port::portSize, +Port::portSize);
+    scene()->setSceneRect(bounds); // Re-shrink the scene to it's bounding contents
+    if (visibleLayer() != DataFlowNetwork::AllLayers) {
+        QRectF lbounds = scene()->computeBoundingRect(visibleLayer());
+        if (!lbounds.isEmpty()) {
+            bounds = lbounds.adjusted(-Port::portSize, -Port::portSize, +Port::portSize, +Port::portSize);
+        }
+    }
+    fitInView(bounds, Qt::KeepAspectRatio);
 }
 
 bool DataFlowView::snapshot(const QString &filename)
@@ -427,5 +504,6 @@ bool DataFlowView::isSnapToGrid() const
 {
     return m_snapToGrid;
 }
+
 
 } // namespace gui

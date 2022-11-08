@@ -4,6 +4,8 @@
 #include <QGraphicsView>
 
 class QMenu;
+class QComboBox;
+class QToolBar;
 
 namespace gui {
 
@@ -27,8 +29,14 @@ public:
 
     bool isSnapToGrid() const;
 
+    QAction *addToToolBar(QToolBar *toolbar, QAction *before = nullptr);
+    int visibleLayer() const;
+    int numLayers() const;
+    void setNumLayers(int num);
+
 signals:
     void executeDataFlow();
+    void visibleLayerChanged(int layer);
 
 public slots:
     void enableActions();
@@ -70,6 +78,9 @@ protected:
     QAction *m_selectSourcesAct = nullptr;
     QAction *m_selectSinksAct = nullptr;
     QAction *m_selectInvertAct = nullptr;
+
+    QComboBox *m_visibleLayer = nullptr;
+    int m_numLayers = 1;
 
     bool m_snapToGrid = true;
 

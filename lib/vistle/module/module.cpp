@@ -256,6 +256,8 @@ Module::Module(const std::string &moduleName, const int moduleId, mpi::communica
                     Parameter::Boolean);
 
     addVectorParameter("_position", "position in GUI", ParamVector(0., 0.));
+    auto layer = addIntParameter("_layer", "layer in GUI", Integer(0));
+    setParameterMinimum(layer, Integer(-1));
 
     auto em = addIntParameter("_error_output_mode", "where stderr is shown", size() == 1 ? 1 : 1, Parameter::Choice);
     std::vector<std::string> errmodes;

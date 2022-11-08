@@ -28,6 +28,9 @@ public:
 
     QMenu *createPopupMenu();
 
+    QToolBar *toolBar() const;
+    QAction *layerWidgetPosition() const;
+
     QDockWidget *consoleDock() const;
     QDockWidget *moduleViewDock() const;
     QDockWidget *modulesDock() const;

@@ -67,6 +67,7 @@ Module::Module(QGraphicsItem *parent, QString name)
     createGeometry();
 
     setStatus(m_Status);
+    setLayer(m_layer);
 }
 
 Module::~Module()
@@ -111,6 +112,13 @@ QVariant Module::itemChange(GraphicsItemChange change, const QVariant &value)
 {
     if (change == ItemPositionChange) {
         ensureVisible();
+    }
+    if (change == ItemEnabledHasChanged) {
+        if (isEnabled()) {
+            setToolTip(m_tooltip);
+        } else {
+            setToolTip("");
+        }
     }
     return QGraphicsItem::itemChange(change, value);
 }
@@ -252,6 +260,8 @@ void Module::createMenus()
     m_moduleMenu = new QMenu();
     m_moduleMenu->addAction(m_execAct);
     m_moduleMenu->addAction(m_cancelExecAct);
+    m_moduleMenu->addSeparator();
+    m_layerMenu = m_moduleMenu->addMenu("To Layer...");
     m_moduleMenu->addSeparator();
     m_moduleMenu->addAction(m_selectUpstreamAct);
     m_moduleMenu->addAction(m_selectConnectedAct);
@@ -505,6 +515,35 @@ void Module::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
             m_moveToAct->setVisible(false);
     }
     m_replaceWithMenu->menuAction()->setVisible(!m_replaceWithMenu->isEmpty());
+
+    m_layerMenu->clear();
+    auto act = m_layerMenu->addAction("All Layers");
+    act->setCheckable(true);
+    act->setChecked(layer() == DataFlowNetwork::AllLayers);
+    connect(act, &QAction::triggered, [this] {
+        if (isSelected() && DataFlowView::the()->selectedModules().size() > 1) {
+            for (auto *m: DataFlowView::the()->selectedModules()) {
+                m->setLayer(DataFlowNetwork::AllLayers);
+            }
+        } else {
+            setLayer(DataFlowNetwork::AllLayers);
+        }
+    });
+    for (int i = 0; i < DataFlowView::the()->numLayers(); ++i) {
+        auto act = m_layerMenu->addAction(QString("Layer %1").arg(i));
+        act->setCheckable(true);
+        act->setChecked(layer() == i);
+        connect(act, &QAction::triggered, [this, i] {
+            if (isSelected() && DataFlowView::the()->selectedModules().size() > 1) {
+                for (auto *m: DataFlowView::the()->selectedModules()) {
+                    m->setLayer(i);
+                }
+            } else {
+                setLayer(i);
+            }
+        });
+    }
+
     m_moduleMenu->popup(event->screenPos());
 }
 
@@ -678,6 +717,45 @@ void Module::setSpawnUuid(const boost::uuids::uuid &uuid)
     m_spawnUuid = uuid;
 }
 
+int Module::layer() const
+{
+    return m_layer;
+}
+
+void Module::setLayer(int layer)
+{
+    if (m_layer != layer) {
+        m_layer = layer;
+        setParameter("_layer", vistle::Integer(layer));
+    }
+    updateLayer();
+}
+
+void Module::updateLayer()
+{
+    bool oldVis = isVisible();
+    int activeLayer = DataFlowView::the()->visibleLayer();
+    bool newVis =
+        m_layer == DataFlowNetwork::AllLayers || m_layer == activeLayer || activeLayer == DataFlowNetwork::AllLayers;
+
+    if (LayersAsOpacity) {
+        setEnabled(newVis);
+        if (newVis) {
+            setOpacity(1.0);
+            setAcceptedMouseButtons(Qt::AllButtons);
+        } else {
+            setOpacity(0.05);
+            setAcceptedMouseButtons(Qt::NoButton);
+        }
+    } else {
+        setVisible(newVis);
+    }
+
+    if (oldVis != newVis) {
+        emit visibleChanged(newVis);
+    }
+}
+
 void Module::sendPosition() const
 {
     updatePosition(pos());
@@ -841,7 +919,9 @@ void Module::setStatus(Module::Status status)
     m_cancelExecAct->setEnabled(status == BUSY || status == EXECUTING);
 
     if (m_statusText.isEmpty()) {
-        setToolTip(toolTip);
+        if (isEnabled())
+            setToolTip(toolTip);
+        m_tooltip = toolTip;
     }
 
     update();
@@ -850,7 +930,9 @@ void Module::setStatus(Module::Status status)
 void Module::setStatusText(QString text, int prio)
 {
     m_statusText = text;
-    setToolTip(text);
+    if (isEnabled())
+        setToolTip(text);
+    m_tooltip = text;
     if (text.isEmpty()) {
         setStatus(m_Status);
     }
