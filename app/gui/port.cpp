@@ -156,6 +156,16 @@ void Port::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWid
     gradient.setColorAt(1, m_color);
     painter->setBrush(gradient);
     painter->drawRect(0, 0, portSize, portSize);
+
+    if (m_portType == Port::Input) {
+        if (vistlePort()->isConnected() && !(vistlePort()->flags() & vistle::Port::COMBINE_BIT)) {
+            painter->setPen(QPen(Qt::black, 2));
+            painter->setBrush(Qt::NoBrush);
+            auto s = .25 * portSize, b = .75 * portSize;
+            painter->drawLine(QPointF(s, s), QPointF(b, b));
+            painter->drawLine(QPointF(s, b), QPointF(b, s));
+        }
+    }
 }
 
 QPointF Port::scenePos() const
