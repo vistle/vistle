@@ -1108,11 +1108,9 @@ bool ClusterManager::handlePriv(const message::Connect &connect)
             }
             std::vector<Object::const_ptr> objs;
             if (const Port *from = portManager().findPort(modFrom, portFrom)) {
-                CERR << "from port=" << from << std::endl;
                 PortKey key(from);
                 auto it = m_outputObjects.find(key);
                 if (numAvailable >= 0 && it != m_outputObjects.end()) {
-                    CERR << it->second.objects.size() << " objects at " << key.port << std::endl;
                     for (auto &name: it->second.objects) {
                         auto obj = Shm::the().getObjectFromName(name);
                         if (!obj) {
@@ -1124,7 +1122,7 @@ bool ClusterManager::handlePriv(const message::Connect &connect)
                         ++numAvailable;
                     }
                 }
-                CERR << "local conn: on this rank all available=" << numAvailable << std::endl;
+                //CERR << "local conn: on this rank all available=" << numAvailable << std::endl;
             } else {
                 CERR << "local conn: did not find port" << std::endl;
                 numAvailable = Error;
@@ -1132,28 +1130,13 @@ bool ClusterManager::handlePriv(const message::Connect &connect)
             numAvailable =
                 boost::mpi::all_reduce(Communicator::the().comm(), numAvailable, boost::mpi::maximum<unsigned>());
             if (numAvailable != Error && numAvailable > 0) {
-                const bool ExecuteOnAdd = false;
-                if (ExecuteOnAdd) {
-                    message::Execute prep(message::Execute::Prepare, modTo);
-                    prep.setSenderId(modFrom);
-                    prep.setDestId(modTo);
-                    prep.setRank(m_rank);
-                    handlePriv(prep);
-                }
-                CERR << "sending " << objs.size() << " objects" << std::endl;
+                //CERR << "re-sending " << objs.size() << " objects" << std::endl;
                 for (auto obj: objs) {
                     message::AddObject add(portFrom, obj, portTo);
                     add.setSenderId(modFrom);
                     add.setDestId(modTo);
                     add.setRank(m_rank);
                     handlePriv(add);
-                }
-                if (ExecuteOnAdd) {
-                    message::Execute red(message::Execute::Reduce, modTo);
-                    red.setSenderId(modFrom);
-                    red.setDestId(modTo);
-                    red.setRank(m_rank);
-                    handlePriv(red);
                 }
             }
         }
