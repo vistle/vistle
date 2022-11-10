@@ -1212,7 +1212,6 @@ bool StateTracker::handlePriv(const message::AddParameter &addParam)
                                        Port::PARAMETER);
         }
 
-        o->incModificationCount();
         o->newParameter(addParam.senderId(), addParam.getName());
         if (p) {
             for (StateObserver *o: m_observers) {
@@ -1234,7 +1233,6 @@ bool StateTracker::handlePriv(const message::RemoveParameter &removeParam)
     mutex_locker guard(m_stateMutex);
     for (StateObserver *o: m_observers) {
         o->deletePort(removeParam.senderId(), removeParam.getName());
-        o->incModificationCount();
         o->deleteParameter(removeParam.senderId(), removeParam.getName());
     }
     guard.unlock();
@@ -1292,7 +1290,10 @@ bool StateTracker::handlePriv(const message::SetParameter &setParam)
     if (handled) {
         mutex_locker guard(m_stateMutex);
         for (StateObserver *o: m_observers) {
-            o->incModificationCount();
+            if (!(setParam.isInitialization() || setParam.rangeType() == Parameter::Minimum ||
+                  setParam.rangeType() == Parameter::Maximum)) {
+                o->incModificationCount();
+            }
             o->parameterValueChanged(setParam.senderId(), setParam.getName());
         }
     }
@@ -1318,7 +1319,6 @@ bool StateTracker::handlePriv(const message::SetParameterChoices &choices, const
 
     mutex_locker guard(m_stateMutex);
     for (StateObserver *o: m_observers) {
-        o->incModificationCount();
         o->parameterChoicesChanged(choices.senderId(), choices.getName());
     }
 
@@ -1402,7 +1402,6 @@ bool StateTracker::handlePriv(const message::AddPort &createPort)
 
         mutex_locker guard(m_stateMutex);
         for (StateObserver *o: m_observers) {
-            o->incModificationCount();
             o->newPort(p->getModuleID(), p->getName());
         }
     }
@@ -1420,7 +1419,6 @@ bool StateTracker::handlePriv(const message::RemovePort &destroyPort)
         if (portTracker()->findPort(p)) {
             mutex_locker guard(m_stateMutex);
             for (StateObserver *o: m_observers) {
-                o->incModificationCount();
                 o->deletePort(id, name);
             }
             portTracker()->removePort(p);
