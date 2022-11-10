@@ -1467,6 +1467,9 @@ bool StateTracker::handlePriv(const message::UpdateStatus &status)
         for (StateObserver *o: m_observers) {
             o->loadedWorkflowChanged(m_loadedWorkflowFile);
         }
+        for (StateObserver *o: m_observers) {
+            o->resetModificationCount();
+        }
 
         return true;
     }
