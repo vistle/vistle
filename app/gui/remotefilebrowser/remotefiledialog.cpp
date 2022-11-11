@@ -2451,41 +2451,30 @@ void RemoteFileDialog::accept()
 
     case AnyFile: {
         QString fn = files.first();
-#if 0
-        QFileInfo info(fn);
-        if (info.isDir()) {
-            setDirectory(info.absoluteFilePath());
+        QModelIndex idx = m_model->fsIndex(fn);
+        if (idx.isValid() && m_model->isDir(idx)) {
+            setDirectory(fn);
             return;
         }
-
+#if 0
         if (!info.exists()) {
             int maxNameLength = d->maxNameLength(info.path());
             if (maxNameLength >= 0 && info.fileName().length() > maxNameLength)
                 return;
         }
-
-        // check if we have to ask for permission to overwrite the file
-        if (!info.exists() || !confirmOverwrite() || acceptMode() == AcceptOpen) {
+#endif
+        if (!idx.isValid() || !confirmOverwrite() || acceptMode() == AcceptOpen) {
             d->emitFilesSelected(QStringList(fn));
             QDialog::accept();
 #if QT_CONFIG(messagebox)
         } else {
-            if (QMessageBox::warning(this, windowTitle(),
-                                     tr("%1 already exists.\nDo you want to replace it?")
-                                     .arg(info.fileName()),
-                                     QMessageBox::Yes | QMessageBox::No, QMessageBox::No)
-                    == QMessageBox::Yes) {
+            if (QMessageBox::warning(this, windowTitle(), tr("%1 already exists.\nDo you want to replace it?").arg(fn),
+                                     QMessageBox::Yes | QMessageBox::No, QMessageBox::No) == QMessageBox::Yes) {
                 d->emitFilesSelected(QStringList(fn));
                 QDialog::accept();
             }
 #endif
         }
-#else
-        if (!confirmOverwrite() || acceptMode() == AcceptOpen) {
-            d->emitFilesSelected(QStringList(fn));
-            QDialog::accept();
-        }
-#endif
         return;
     }
 
