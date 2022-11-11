@@ -61,6 +61,8 @@ public:
     QColor highlightColor() const;
     QRectF computeBoundingRect(int layer = AllLayers) const;
     bool isDark() const;
+    vistle::StateTracker &state() const;
+
 public slots:
     void addModule(int moduleId, const boost::uuids::uuid &spawnUuid, QString name);
     void deleteModule(int moduleId);

@@ -128,7 +128,9 @@ bool Port::valid() const
 
 const vistle::Port *Port::vistlePort() const
 {
-    return m_port;
+    DataFlowNetwork *sc = dynamic_cast<DataFlowNetwork *>(scene());
+    auto p = sc->state().portTracker()->getPort(m_moduleId, m_name.toStdString());
+    return p;
 }
 
 bool Port::operator<(const Port &other) const
@@ -170,7 +172,7 @@ void Port::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWid
     painter->drawRect(0, 0, portSize, portSize);
 
     if (m_portType == Port::Input) {
-        if (vistlePort()->isConnected() && !(vistlePort()->flags() & vistle::Port::COMBINE_BIT)) {
+        if (vistlePort() && vistlePort()->isConnected() && !(vistlePort()->flags() & vistle::Port::COMBINE_BIT)) {
             painter->setPen(QPen(Qt::black, 2));
             painter->setBrush(Qt::NoBrush);
             auto s = .25 * portSize, b = .75 * portSize;

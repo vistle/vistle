@@ -58,6 +58,11 @@ DataFlowNetwork::~DataFlowNetwork()
     m_moduleList.clear();
 }
 
+vistle::StateTracker &DataFlowNetwork::state() const
+{
+    return m_state;
+}
+
 ModuleBrowser *DataFlowNetwork::moduleBrowser() const
 {
     if (!m_mainWindow)
@@ -393,7 +398,8 @@ void DataFlowNetwork::removeConnection(Port *portFrom, Port *portTo, bool sendTo
         c->setState(Connection::ToRemove);
         const vistle::Port *vFrom = portFrom->vistlePort();
         const vistle::Port *vTo = portTo->vistlePort();
-        m_vistleConnection->disconnect(vFrom, vTo);
+        if (vFrom && vTo)
+            m_vistleConnection->disconnect(vFrom, vTo);
     } else {
         m_connections.erase(it);
         removeItem(c);
@@ -428,7 +434,8 @@ void DataFlowNetwork::removeConnections(Port *port, bool sendToController)
             c->setState(Connection::ToRemove);
             const vistle::Port *vFrom = c->source()->vistlePort();
             const vistle::Port *vTo = c->destination()->vistlePort();
-            m_vistleConnection->disconnect(vFrom, vTo);
+            if (vFrom && vTo)
+                m_vistleConnection->disconnect(vFrom, vTo);
         } else {
             m_connections.erase(it);
             removeItem(c);

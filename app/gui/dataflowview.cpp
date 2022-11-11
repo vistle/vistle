@@ -393,7 +393,7 @@ void DataFlowView::selectSourceModules()
             bool select = true;
             for (auto *p: module->inputPorts()) {
                 auto *vp = module->getVistlePort(p);
-                if (vp->isConnected()) {
+                if (vp && vp->isConnected()) {
                     select = false;
                     break;
                 }
@@ -414,7 +414,7 @@ void DataFlowView::selectSinkModules()
             bool select = true;
             for (auto *p: module->outputPorts()) {
                 auto *vp = module->getVistlePort(p);
-                if (vp->isConnected()) {
+                if (vp && vp->isConnected()) {
                     select = false;
                     break;
                 }
