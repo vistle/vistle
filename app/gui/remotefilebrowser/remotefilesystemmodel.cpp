@@ -691,8 +691,13 @@ QVariant RemoteFileSystemModel::myComputer(int role) const
     Q_D(const RemoteFileSystemModel);
 #endif
     switch (role) {
-    case Qt::DisplayRole:
+    case Qt::DisplayRole: {
+        auto h = d->fileInfoGatherer->hostname();
+        if (!h.isEmpty()) {
+            return h;
+        }
         return RemoteFileSystemModelPrivate::myComputer();
+    }
 #ifndef QT_NO_FILESYSTEMWATCHER
     case Qt::DecorationRole:
         return d->fileInfoGatherer->iconProvider()->icon(RemoteFileIconProvider::Computer);

@@ -1,6 +1,7 @@
 #include "fileinfocrawler.h"
 #include <vistle/core/filequery.h>
 #include <vistle/util/filesystem.h>
+#include <vistle/util/hostname.h>
 
 #include <future>
 
@@ -147,6 +148,7 @@ bool FileInfoCrawler::handle(const message::FileQuery &query, const buffer &payl
         switch (query.command()) {
         case FileQuery::SystemInfo: {
             SystemInfo info;
+            info.hostname = hostname();
 #ifdef WIN32
             info.iswindows = true;
 #else

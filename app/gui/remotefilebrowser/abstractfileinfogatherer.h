@@ -155,6 +155,7 @@ public:
     virtual QString userName() const = 0;
     virtual QString homePath() const = 0;
     virtual QString workingDirectory() const = 0;
+    virtual QString hostname() const { return ""; }
 
     // only callable from this->thread():
     virtual void removePath(const QString &path) = 0;
