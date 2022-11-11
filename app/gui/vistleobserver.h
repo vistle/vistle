@@ -36,7 +36,7 @@ signals:
     void status_s(int id, QString msg, int prio);
     void moduleStatus_s(int id, QString msg, int prio);
 
-    void loadedWorkflowChanged_s(QString file);
+    void loadedWorkflowChanged_s(QString file, int sender);
     void sessionUrlChanged_s(QString url);
 
     void uiLock_s(bool);
@@ -73,7 +73,7 @@ public:
     void incModificationCount() override;
     void resetModificationCount() override;
 
-    void loadedWorkflowChanged(const std::string &filename) override;
+    void loadedWorkflowChanged(const std::string &filename, int sender) override;
     void sessionUrlChanged(const std::string &url) override;
 
     void uiLockChanged(bool locked) override;

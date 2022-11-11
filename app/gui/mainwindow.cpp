@@ -60,11 +60,15 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->actionNew, SIGNAL(triggered()), SIGNAL(newDataFlow()));
     ui->actionNew->setShortcut(QKeySequence::StandardKey::New);
     connect(ui->actionOpen, SIGNAL(triggered()), SIGNAL(loadDataFlow()));
+    connect(ui->actionOpen, &QAction::triggered, [this]() { emit loadDataFlowOnHub(); });
     ui->actionOpen->setShortcut(QKeySequence::StandardKey::Open);
+    connect(ui->actionOpenOnGui, SIGNAL(triggered()), SIGNAL(loadDataFlowOnGui()));
+    connect(ui->actionOpenOnHub, SIGNAL(triggered()), SIGNAL(loadDataFlowOnHub()));
     connect(ui->actionSave, SIGNAL(triggered()), SIGNAL(saveDataFlow()));
     ui->actionSave->setShortcut(QKeySequence::StandardKey::Save);
-    connect(ui->actionSave_As, SIGNAL(triggered()), SIGNAL(saveDataFlowAs()));
-    ui->actionSave_As->setShortcut(QKeySequence::StandardKey::SaveAs);
+    connect(ui->actionSaveOnGui, SIGNAL(triggered()), SIGNAL(saveDataFlowOnGui()));
+    connect(ui->actionSaveOnHub, SIGNAL(triggered()), SIGNAL(saveDataFlowOnHub()));
+    ui->actionSaveOnHub->setShortcut(QKeySequence::StandardKey::SaveAs);
     connect(ui->actionExecute, SIGNAL(triggered()), SIGNAL(executeDataFlow()));
     ui->actionExecute->setShortcut(QKeySequence::StandardKey::Refresh);
     connect(ui->actionConnect, SIGNAL(triggered()), SIGNAL(connectVistle()));
@@ -104,6 +108,13 @@ MainWindow::MainWindow(QWidget *parent)
     ui->modulesDock->show();
     ui->modulesDock->raise();
     ui->modulesDock->setFocus();
+
+#ifndef HAVE_PYTHON
+    ui->actionSaveOnGui->setEnabled(false);
+    ui->actionSaveOnGui->setVisible(false);
+    ui->actionOpenOnGui->setEnabled(false);
+    ui->actionOpenOnGui->setVisible(false);
+#endif
 
     readSettings();
 

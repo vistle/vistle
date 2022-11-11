@@ -142,9 +142,9 @@ void VistleObserver::resetModificationCount()
         emit modified(false);
 }
 
-void VistleObserver::loadedWorkflowChanged(const std::string &filename)
+void VistleObserver::loadedWorkflowChanged(const std::string &filename, int sender)
 {
-    emit loadedWorkflowChanged_s(QString::fromStdString(filename));
+    emit loadedWorkflowChanged_s(QString::fromStdString(filename), sender);
 }
 
 void VistleObserver::sessionUrlChanged(const std::string &url)

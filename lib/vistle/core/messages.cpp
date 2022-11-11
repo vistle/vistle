@@ -394,6 +394,29 @@ int Pong::getDestination() const
     return module;
 }
 
+
+LoadWorkflow::LoadWorkflow(const std::string &pathname)
+{
+    COPY_STRING(m_pathname, pathname);
+}
+
+const char *LoadWorkflow::pathname() const
+{
+    return m_pathname.data();
+}
+
+
+SaveWorkflow::SaveWorkflow(const std::string &pathname)
+{
+    COPY_STRING(m_pathname, pathname);
+}
+
+const char *SaveWorkflow::pathname() const
+{
+    return m_pathname.data();
+}
+
+
 Spawn::Spawn(int hub, const std::string &n, int mpiSize, int baseRank, int rankSkip)
 : m_hub(hub), m_spawnId(Id::Invalid), mpiSize(mpiSize), baseRank(baseRank), rankSkip(rankSkip)
 {

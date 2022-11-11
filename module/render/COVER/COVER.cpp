@@ -323,7 +323,7 @@ void COVER::prepareQuit()
 
 bool COVER::executeAll() const
 {
-    message::Execute exec; // execute all sources in data flow graph
+    message::Execute exec; // execute all sources in dataflow graph
     exec.setDestId(message::Id::MasterHub);
     sendMessage(exec);
     return true;

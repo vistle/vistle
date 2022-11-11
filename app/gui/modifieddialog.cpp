@@ -15,11 +15,11 @@ ModifiedDialog::ModifiedDialog(const QString &reason, QWidget *parent): QMessage
 
     setWindowTitle(QString("%1").arg(reason));
 
-    setText("The data flow network has been modified.");
+    setText("The workflow has been modified.");
     if (reason == "Open") {
-        setInformativeText("You will lose your changes, if you load another data flow network without saving.");
+        setInformativeText("You will lose your changes, if you load another workflow without saving.");
     } else if (reason == "New") {
-        setInformativeText("You will lose your changes, if you clear the data flow network without saving.");
+        setInformativeText("You will lose your changes, if you clear the workflow without saving.");
     } else if (reason == "Quit") {
         setInformativeText("You will lose your changes, if you quit without saving.");
     } else {

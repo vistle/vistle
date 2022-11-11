@@ -95,6 +95,7 @@ private:
     bool startCleaner();
     bool processScript(const std::string &filename, bool barrierAfterLoad, bool executeModules);
     bool processStartupScripts();
+    bool processCommand(const std::string &filename);
     bool cacheModuleValues(int oldModuleId, int newModuleId);
     void killOldModule(int migratedId);
     void sendInfo(const std::string &s);
@@ -139,6 +140,8 @@ private:
     bool m_barrierAfterLoad = true;
     bool m_executeModules = false;
     bool m_quitting = false, m_emergency = false;
+    int m_numRunningModules = 0;
+    std::function<bool(void)> m_lastModuleQuitAction;
     static volatile std::atomic<bool> m_interrupt;
     boost::asio::signal_set m_signals;
     static void signalHandler(const boost::system::error_code &error, int signal_number);
@@ -186,6 +189,8 @@ private:
     bool handlePriv(const message::Cover &cover, const buffer *payload);
     bool handlePriv(const message::ModuleExit &exit);
     bool handlePriv(const message::Spawn &spawn);
+    bool handlePriv(const message::LoadWorkflow &load);
+    bool handlePriv(const message::SaveWorkflow &save);
 
     template<typename ConnMsg>
     bool handleConnectOrDisconnect(const ConnMsg &mm);

@@ -14,7 +14,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Clear Data Flow Network?</string>
+   <string>Clear Workflow?</string>
   </property>
   <property name="modal">
    <bool>true</bool>
@@ -23,7 +23,7 @@
    <item row="0" column="0">
     <widget class="QLabel" name="label">
      <property name="text">
-      <string>The data flow network was modified. Do you want to replace it?</string>
+      <string>The workflow was modified. Do you want to replace it?</string>
      </property>
      <property name="wordWrap">
       <bool>true</bool>

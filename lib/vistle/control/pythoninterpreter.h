@@ -11,8 +11,13 @@ class Executor;
 
 class PythonInterpreter {
 public:
-    PythonInterpreter(const std::string &filename, const std::string &path, bool barrierAfterLoad = false,
-                      bool executeModules = false);
+    enum Flags {
+        Command = 0,
+        LoadFile = 1,
+        BarrierAfterLoad = 2,
+        ExecuteModules = 4,
+    };
+    PythonInterpreter(const std::string &str, const std::string &path, int flags);
     ~PythonInterpreter();
     bool init();
 

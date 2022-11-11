@@ -43,9 +43,11 @@ private slots:
     void setModified(bool mod);
     bool checkModified(const QString &reason);
     void clearDataFlowNetwork();
-    void loadDataFlowNetwork();
-    void saveDataFlowNetwork(const QString &filename = QString());
-    void saveDataFlowNetworkAs(const QString &filename = QString());
+    void loadDataFlowNetworkOnGui();
+    void loadDataFlowNetworkOnHub();
+    void saveDataFlowNetwork(const QString &filename = QString(), int hubId = vistle::message::Id::Invalid);
+    void saveDataFlowNetworkOnGui(const QString &filename = QString());
+    void saveDataFlowNetworkOnHub(const QString &filename = QString());
     void executeDataFlowNetwork();
     void connectVistle();
 
@@ -55,7 +57,7 @@ private slots:
     void parameterValueChanged(int moduleId, QString parameterName);
 
     void statusUpdated(int id, QString text, int prio);
-    void setCurrentFile(QString file);
+    void setCurrentFile(QString file, int loaderId);
     void setSessionUrl(QString url);
 
     void showConnectionInfo();
@@ -79,6 +81,7 @@ private:
     MainWindow *m_mainWindow = nullptr;
 
     QString m_currentFile;
+    int m_currentFileOnHub = vistle::message::Id::Invalid;
     bool m_modified = false;
     std::string m_pythonDir;
 

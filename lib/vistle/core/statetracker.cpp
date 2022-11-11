@@ -102,6 +102,17 @@ const std::string &StateTracker::hubName(int id) const
     return unknown;
 }
 
+int StateTracker::getNumRunning() const
+{
+    mutex_locker guard(m_stateMutex);
+    int num = 0;
+    for (RunningMap::const_iterator it = runningMap.begin(); it != runningMap.end(); ++it) {
+        if (Id::isModule(it->first))
+            ++num;
+    }
+    return num;
+}
+
 std::vector<int> StateTracker::getRunningList() const
 {
     mutex_locker guard(m_stateMutex);
@@ -403,7 +414,9 @@ StateTracker::VistleState StateTracker::getState() const
     }
 
     // loaded map
-    appendMessage(state, UpdateStatus(UpdateStatus::LoadedFile, m_loadedWorkflowFile));
+    UpdateStatus loaded(UpdateStatus::LoadedFile, m_loadedWorkflowFile);
+    loaded.setSenderId(workflowLoader());
+    appendMessage(state, loaded);
     if (!m_sessionUrl.empty())
         appendMessage(state, UpdateStatus(UpdateStatus::SessionUrl, m_sessionUrl));
 
@@ -543,6 +556,16 @@ bool StateTracker::handle(const message::Message &msg, const char *payload, size
     case REMOVEHUB: {
         const auto &rm = msg.as<RemoveHub>();
         handled = handlePriv(rm);
+        break;
+    }
+    case LOADWORKFLOW: {
+        const auto &load = msg.as<LoadWorkflow>();
+        handled = handlePriv(load);
+        break;
+    }
+    case SAVEWORKFLOW: {
+        const auto &save = msg.as<SaveWorkflow>();
+        handled = handlePriv(save);
         break;
     }
     case SPAWN: {
@@ -919,6 +942,16 @@ bool StateTracker::handlePriv(const message::Trace &trace)
         m_traceId = Id::Invalid;
         m_traceType = message::INVALID;
     }
+    return true;
+}
+
+bool StateTracker::handlePriv(const message::LoadWorkflow &load)
+{
+    return true;
+}
+
+bool StateTracker::handlePriv(const message::SaveWorkflow &save)
+{
     return true;
 }
 
@@ -1460,10 +1493,11 @@ bool StateTracker::handlePriv(const message::SendText &info, const buffer &paylo
 bool StateTracker::handlePriv(const message::UpdateStatus &status)
 {
     if (status.statusType() == message::UpdateStatus::LoadedFile) {
+        m_workflowLoader = status.senderId();
         m_loadedWorkflowFile = status.text();
         mutex_locker guard(m_stateMutex);
         for (StateObserver *o: m_observers) {
-            o->loadedWorkflowChanged(m_loadedWorkflowFile);
+            o->loadedWorkflowChanged(m_loadedWorkflowFile, m_workflowLoader);
         }
         for (StateObserver *o: m_observers) {
             o->resetModificationCount();
@@ -1973,6 +2007,11 @@ std::string StateTracker::loadedWorkflowFile() const
     return m_loadedWorkflowFile;
 }
 
+int StateTracker::workflowLoader() const
+{
+    return m_workflowLoader;
+}
+
 std::string StateTracker::sessionUrl() const
 {
     return m_sessionUrl;
@@ -2080,7 +2119,7 @@ long StateObserver::modificationCount() const
     return m_modificationCount;
 }
 
-void StateObserver::loadedWorkflowChanged(const std::string &filename)
+void StateObserver::loadedWorkflowChanged(const std::string &filename, int sender)
 {}
 
 void StateObserver::sessionUrlChanged(const std::string &url)

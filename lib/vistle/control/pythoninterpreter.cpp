@@ -27,11 +27,12 @@ struct HubPythonStateAccessor: public vistle::PythonStateAccessor {
 
 class Executor {
 public:
-    Executor(PythonInterpreter &inter, const std::string &filename, bool barrierAfterLoad, bool executeModules)
+    Executor(PythonInterpreter &inter, const std::string &str, int flags)
     : m_interpreter(inter)
-    , m_filename(filename)
-    , m_barrierAfterLoad(barrierAfterLoad)
-    , m_executeModules(executeModules)
+    , m_filename(flags & PythonInterpreter::LoadFile ? str : "")
+    , m_command(flags & PythonInterpreter::LoadFile ? "" : str)
+    , m_barrierAfterLoad(flags & PythonInterpreter::BarrierAfterLoad)
+    , m_executeModules(flags & PythonInterpreter::ExecuteModules)
     , m_done(false)
     {
         if (m_executeModules)
@@ -49,16 +50,20 @@ public:
         assert(!m_done);
 
         bool ok = !m_error;
-        if (ok && !m_filename.empty()) {
+        if (ok) {
             pybind11::gil_scoped_acquire acquire;
-            ok = m_interpreter.executeFile(m_filename);
-        }
-
-        if (ok && m_barrierAfterLoad) {
-            pybind11::gil_scoped_acquire acquire;
-            ok = m_interpreter.executeCommand("barrier()");
-            if (ok && m_executeModules)
+            if (ok && !m_filename.empty()) {
+                ok = m_interpreter.executeFile(m_filename);
+            }
+            if (ok && !m_command.empty()) {
+                ok = m_interpreter.executeCommand(m_command);
+            }
+            if (ok && m_barrierAfterLoad) {
+                ok = m_interpreter.executeCommand("barrier()");
+            }
+            if (ok && m_executeModules) {
                 ok = m_interpreter.executeCommand("compute()");
+            }
         }
 
         std::lock_guard<std::mutex> locker(m_mutex);
@@ -77,7 +82,8 @@ public:
 private:
     mutable std::mutex m_mutex;
     PythonInterpreter &m_interpreter;
-    const std::string &m_filename;
+    const std::string m_filename;
+    const std::string m_command;
     bool m_barrierAfterLoad = false;
     bool m_executeModules = false;
     volatile bool m_done = false;
@@ -85,13 +91,12 @@ private:
     std::unique_ptr<pybind11::gil_scoped_release> m_py_release;
 };
 
-PythonInterpreter::PythonInterpreter(const std::string &file, const std::string &path, bool barrierAfterLoad,
-                                     bool executeModules)
+PythonInterpreter::PythonInterpreter(const std::string &str, const std::string &path, int flags)
 : m_pythonPath(path)
 , m_interpreter(new PythonInterface("vistle"))
 , m_access(new HubPythonStateAccessor)
 , m_module(new PythonModule(*m_access))
-, m_executor(new Executor(*this, file, barrierAfterLoad, executeModules))
+, m_executor(new Executor(*this, str, flags))
 , m_thread(std::ref(*m_executor))
 {}
 

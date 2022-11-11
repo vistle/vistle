@@ -57,8 +57,11 @@ signals:
     void quitRequested(bool &allowed);
     void newDataFlow();
     void loadDataFlow();
+    void loadDataFlowOnGui();
+    void loadDataFlowOnHub();
     void saveDataFlow();
-    void saveDataFlowAs();
+    void saveDataFlowOnGui();
+    void saveDataFlowOnHub();
     void executeDataFlow();
     void connectVistle();
     void showSessionUrl();

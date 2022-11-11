@@ -1361,6 +1361,21 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
 {
     using namespace vistle::message;
 
+    if (m_numRunningModules > 0 && m_stateTracker.getNumRunning() == 0) {
+        m_numRunningModules = 0;
+        if (m_lastModuleQuitAction) {
+            CERR << "executing lastModuleQuitAction... " << std::flush;
+            if (m_lastModuleQuitAction()) {
+                std::cerr << "ok";
+            } else {
+                std::cerr << "ERROR";
+            }
+            std::cerr << std::endl;
+            m_lastModuleQuitAction = nullptr;
+        }
+    }
+    m_numRunningModules = m_stateTracker.getNumRunning();
+
     message::Buffer buf(recv);
     Message &msg = buf;
     message::Identify::Identity senderType = message::Identify::UNKNOWN;
@@ -1665,6 +1680,18 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
 #endif
             comp.send(std::bind(&Hub::sendManager, this, std::placeholders::_1, message::Id::LocalHub,
                                 std::placeholders::_2));
+            break;
+        }
+
+        case message::LOADWORKFLOW: {
+            auto &load = msg.as<LoadWorkflow>();
+            handlePriv(load);
+            break;
+        }
+
+        case message::SAVEWORKFLOW: {
+            auto &save = msg.as<SaveWorkflow>();
+            handlePriv(save);
             break;
         }
 
@@ -2019,6 +2046,43 @@ bool Hub::spawnMirror(int hubId, const std::string &name, int mirroredId)
     }
 
     return true;
+}
+
+bool Hub::handlePriv(const message::LoadWorkflow &load)
+{
+    std::cerr << "to load: " << load.pathname() << std::endl;
+    m_uiManager.lockUi(true);
+    auto mods = m_stateTracker.getRunningList();
+    for (auto id: mods) {
+        message::Kill m(id);
+        m.setDestId(id);
+        sendModule(m, id);
+    }
+    assert(!m_lastModuleQuitAction);
+    auto act = [this, load]() {
+        bool result = processScript(load.pathname(), true, false);
+        m_uiManager.lockUi(false);
+        return result;
+    };
+    if (m_stateTracker.getNumRunning() == 0) {
+        return act();
+    }
+
+    m_numRunningModules = m_stateTracker.getNumRunning();
+    m_lastModuleQuitAction = act;
+    return true;
+}
+
+bool Hub::handlePriv(const message::SaveWorkflow &save)
+{
+    std::cerr << "to save: " << save.pathname() << std::endl;
+    m_uiManager.lockUi(true);
+    std::string cmd = "save(\"";
+    cmd += save.pathname();
+    cmd += "\")";
+    bool result = processCommand(cmd);
+    m_uiManager.lockUi(false);
+    return result;
 }
 
 bool Hub::handlePriv(const message::Spawn &spawnRecv)
@@ -2663,7 +2727,12 @@ bool Hub::processScript(const std::string &filename, bool barrierAfterLoad, bool
     assert(m_uiManager.isLocked());
 #ifdef HAVE_PYTHON
     setStatus("Loading " + filename + "...");
-    PythonInterpreter inter(filename, m_dir->share(), barrierAfterLoad, executeModules);
+    int flags = PythonInterpreter::LoadFile;
+    if (barrierAfterLoad)
+        flags |= PythonInterpreter::BarrierAfterLoad;
+    if (executeModules)
+        flags |= PythonInterpreter::ExecuteModules;
+    PythonInterpreter inter(filename, m_dir->share(), flags);
     bool interrupt = false;
     while (!interrupt && inter.check()) {
         if (!dispatch())
@@ -2674,6 +2743,28 @@ bool Hub::processScript(const std::string &filename, bool barrierAfterLoad, bool
         return false;
     }
     setStatus("Loading " + filename + " done");
+    return true;
+#else
+    return false;
+#endif
+}
+
+bool Hub::processCommand(const std::string &command)
+{
+    assert(m_uiManager.isLocked());
+#ifdef HAVE_PYTHON
+    setStatus("Executing " + command + "...");
+    PythonInterpreter inter(command, m_dir->share(), PythonInterpreter::Command);
+    bool interrupt = false;
+    while (!interrupt && inter.check()) {
+        if (!dispatch())
+            interrupt = true;
+    }
+    if (interrupt || inter.error()) {
+        setStatus("Executing " + command + " failed");
+        return false;
+    }
+    setStatus("Executing " + command + " done");
     return true;
 #else
     return false;

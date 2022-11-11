@@ -72,7 +72,7 @@ public:
     virtual void incModificationCount();
     long modificationCount() const;
 
-    virtual void loadedWorkflowChanged(const std::string &filename);
+    virtual void loadedWorkflowChanged(const std::string &filename, int sender);
     virtual void sessionUrlChanged(const std::string &url);
 
     virtual void message(const vistle::message::Message &msg, vistle::buffer *payload = nullptr);
@@ -124,6 +124,7 @@ public:
     std::vector<int> getSlaveHubs() const;
     const std::string &hubName(int id) const;
     std::vector<int> getRunningList() const;
+    int getNumRunning() const;
     std::vector<int> getBusyList() const;
     int getHub(int id) const;
     const HubData &getHubData(int id) const;
@@ -177,6 +178,7 @@ public:
     int graphChangeCount() const;
 
     std::string loadedWorkflowFile() const;
+    int workflowLoader() const;
     std::string sessionUrl() const;
 
     void printModules(bool withConnections = false) const;
@@ -272,6 +274,8 @@ private:
     bool handlePriv(const message::Trace &trace);
     bool handlePriv(const message::Debug &debug);
     bool handlePriv(const message::Spawn &spawn);
+    bool handlePriv(const message::LoadWorkflow &load);
+    bool handlePriv(const message::SaveWorkflow &save);
     bool handlePriv(const message::Started &started);
     bool handlePriv(const message::Connect &connect);
     bool handlePriv(const message::Disconnect &disc);
@@ -333,6 +337,7 @@ private:
 
     mutable mutex m_stateMutex;
 
+    int m_workflowLoader = message::Id::Invalid;
     std::string m_loadedWorkflowFile;
     std::string m_sessionUrl;
 };
