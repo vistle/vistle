@@ -1722,50 +1722,15 @@ void RemoteFileDialogComboBox::setHistory(const QStringList &paths)
 
     qInfo() << "setHistory" << paths;
 
-    urlModel->setUrls(QList<QUrl>());
-    QList<QUrl> list;
-    QModelIndex idx = d_ptr->model->fsIndex(d_ptr->rootPath());
-    while (idx.isValid()) {
-        QString f = idx.data(AbstractFileSystemModel::FilePathRole).toString();
-        std::cerr << "   " << f.toStdString() << std::endl;
-        QUrl url = QUrl::fromLocalFile(idx.data(AbstractFileSystemModel::FilePathRole).toString());
-        if (url.isValid())
-            list.append(url);
-        idx = idx.parent();
-    }
-    // add "my computer"
-    list.append(QUrl(QLatin1String("file:")));
-    urlModel->addUrls(list, 0);
-    idx = model()->index(model()->rowCount() - 1, 0);
-
-    // append history
-    QList<QUrl> urls;
-    for (int i = 0; i < m_history.count(); ++i) {
-        QUrl path = QUrl::fromLocalFile(m_history.at(i));
-        if (!urls.contains(path))
-            urls.prepend(path);
-    }
-    if (urls.count() > 0) {
-        model()->insertRow(model()->rowCount());
-        idx = model()->index(model()->rowCount() - 1, 0);
-        // ### TODO maybe add a horizontal line before this
-        model()->setData(idx, RemoteFileDialog::tr("Recent Places"));
-        QStandardItemModel *m = qobject_cast<QStandardItemModel *>(model());
-        if (m) {
-            Qt::ItemFlags flags = m->flags(idx);
-            flags &= ~Qt::ItemIsEnabled;
-            m->item(idx.row(), idx.column())->setFlags(flags);
-        }
-        urlModel->addUrls(urls, -1, false);
-    }
-    setCurrentIndex(0);
-
 #if 0
+    populatePopup();
+#else
     // Only populate the first item, showPopup will populate the rest if needed
     QList<QUrl> list;
     QModelIndex idx = d_ptr->model->fsIndex(d_ptr->rootPath());
     //On windows the popup display the "C:\", convert to nativeSeparators
-    QUrl url = QUrl::fromLocalFile(QDir::toNativeSeparators(idx.data(AbstractFileSystemModel::FilePathRole).toString()));
+    QUrl url =
+        QUrl::fromLocalFile(QDir::toNativeSeparators(idx.data(AbstractFileSystemModel::FilePathRole).toString()));
     if (url.isValid())
         list.append(url);
     urlModel->setUrls(list);
@@ -3499,6 +3464,9 @@ void RemoteFileDialogPrivate::_q_directoryLoaded(const QString &path)
         setRootIndex(root);
     }
     qFileDialogUi->listView->selectionModel()->clear();
+
+    qFileDialogUi->lookInCombo->populatePopup();
+
     auto pn = path;
     if (!pn.endsWith(QLatin1Char('/')))
         pn += QLatin1Char('/');
@@ -3584,18 +3552,14 @@ void RemoteFileDialogComboBox::setFileDialogPrivate(RemoteFileDialogPrivate *d_p
     setModel(urlModel);
 }
 
-void RemoteFileDialogComboBox::showPopup()
+void RemoteFileDialogComboBox::populatePopup()
 {
-#if 1
-    if (model()->rowCount() > 1)
-        QComboBox::showPopup();
-#endif
-
     urlModel->setUrls(QList<QUrl>());
     QList<QUrl> list;
     QModelIndex idx = d_ptr->model->fsIndex(d_ptr->rootPath());
     while (idx.isValid()) {
         QUrl url = QUrl::fromLocalFile(idx.data(AbstractFileSystemModel::FilePathRole).toString());
+        qInfo() << "history url" << url;
         if (url.isValid())
             list.append(url);
         idx = idx.parent();
@@ -3626,9 +3590,18 @@ void RemoteFileDialogComboBox::showPopup()
         urlModel->addUrls(urls, -1, false);
     }
     setCurrentIndex(0);
+}
 
+void RemoteFileDialogComboBox::showPopup()
+{
+#if 1
+    if (model()->rowCount() <= 1) {
+        populatePopup();
+    }
+#endif
     QComboBox::showPopup();
 }
+
 
 // Exact same as QComboBox::paintEvent(), except we elide the text.
 void RemoteFileDialogComboBox::paintEvent(QPaintEvent *)

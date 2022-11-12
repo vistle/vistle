@@ -288,6 +288,7 @@ public:
     void setFileDialogPrivate(RemoteFileDialogPrivate *d_pointer);
     void showPopup() override;
     void setHistory(const QStringList &paths);
+    void populatePopup();
     QStringList history() const { return m_history; }
     void paintEvent(QPaintEvent *) override;
 
