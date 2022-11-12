@@ -3408,7 +3408,7 @@ void RemoteFileDialogPrivate::_q_selectionChanged()
     const RemoteFileDialog::FileMode fileMode = q_func()->fileMode();
     const QModelIndexList indexes = qFileDialogUi->listView->selectionModel()->selectedRows();
     bool stripDirs = (fileMode != RemoteFileDialog::DirectoryOnly && fileMode != RemoteFileDialog::Directory);
-    bool clearOnDirectory = fileMode != RemoteFileDialog::ExistingFiles;
+    bool clearOnDirectory = fileMode != RemoteFileDialog::ExistingFiles && fileMode != RemoteFileDialog::ExistingFile;
     bool haveDirectory = false;
 
     QStringList allFiles;
