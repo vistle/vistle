@@ -3499,6 +3499,15 @@ void RemoteFileDialogPrivate::_q_directoryLoaded(const QString &path)
         setRootIndex(root);
     }
     qFileDialogUi->listView->selectionModel()->clear();
+    auto pn = path;
+    if (!pn.endsWith(QLatin1Char('/')))
+        pn += QLatin1Char('/');
+    pn += lineEdit()->text();
+    QModelIndex idx = model->fsIndex(pn);
+    qInfo() << "DIRECTORY w/ file" << pn << idx.isValid();
+    if (!idx.isValid())
+        return;
+    select(idx);
 }
 
 void RemoteFileDialogPrivate::_q_emitUrlSelected(const QUrl &file)
