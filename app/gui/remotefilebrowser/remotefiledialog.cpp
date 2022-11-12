@@ -3466,6 +3466,7 @@ void RemoteFileDialogPrivate::_q_directoryLoaded(const QString &path)
     qFileDialogUi->listView->selectionModel()->clear();
 
     qFileDialogUi->lookInCombo->populatePopup();
+    _q_updateOkButton();
 
     auto pn = path;
     if (!pn.endsWith(QLatin1Char('/')))
