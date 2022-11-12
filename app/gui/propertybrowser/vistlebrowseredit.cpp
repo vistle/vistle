@@ -55,11 +55,7 @@ VistleBrowserEdit::VistleBrowserEdit(QWidget *parent): QWidget(parent)
         }
 
         if (m_browser->isHidden()) {
-            if (m_browser->fileMode() == RemoteFileDialog::Directory) {
-                m_browser->setDirectory(text());
-            } else {
-                m_browser->selectFile(text());
-            }
+            m_browser->selectFile(text());
             m_browser->show();
             m_button->setIcon(QIcon::fromTheme("folder-open", qApp->style()->standardIcon(QStyle::SP_DirOpenIcon)));
         } else {

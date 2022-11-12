@@ -907,15 +907,25 @@ void RemoteFileDialog::selectFile(const QString &filename)
     if (filename.isEmpty())
         return;
 
-    QModelIndex index = d->model->fsIndex(filename);
-    if (!QDir::isRelativePath(filename)) {
-        if (index.isValid() && index.parent() != d->rootIndex())
-            setDirectory(d->model->filePath(index.parent()));
+    auto fn = filename;
+    QModelIndex index = d->model->fsIndex(fn);
+    if (index.isValid()) {
+        if (!QDir::isRelativePath(fn)) {
+            if (index.isValid() && index.parent() != d->rootIndex())
+                setDirectory(d->model->filePath(index.parent()));
+        }
+    } else {
+        auto pathname = QDir::cleanPath(fn);
+        auto comps = pathname.split("/");
+        fn = comps.back();
+        comps.pop_back();
+        auto dir = comps.join("/");
+        setDirectory(dir);
     }
 
     d->qFileDialogUi->listView->selectionModel()->clear();
     if (!isVisible() || !d->lineEdit()->hasFocus())
-        d->lineEdit()->setText(index.isValid() ? index.data().toString() : fileFromPath(d->rootPath(), filename));
+        d->lineEdit()->setText(index.isValid() ? index.data().toString() : fileFromPath(d->rootPath(), fn));
 }
 
 /*!
