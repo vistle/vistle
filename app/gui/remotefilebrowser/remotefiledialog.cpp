@@ -780,8 +780,12 @@ void RemoteFileDialog::setDirectory(const QString &directory)
     Q_D(RemoteFileDialog);
     QString newDirectory = directory;
     //we remove .. and . from the given path if exist
-    if (!directory.isEmpty())
+    if (!directory.isEmpty()) {
         newDirectory = QDir::cleanPath(directory);
+        if (QDir::isRelativePath(newDirectory)) {
+            newDirectory = d->model->workingDirectory() + "/" + newDirectory;
+        }
+    }
 
     if (!directory.isEmpty() && newDirectory.isEmpty())
         return;
@@ -2387,7 +2391,7 @@ QUrl RemoteFileDialogPrivate::workingDirectory(const QUrl &url)
     QUrl directory = _qt_get_directory(*lastVisitedDir());
     if (!directory.isEmpty())
         return directory;
-    return QUrl::fromLocalFile(QDir::currentPath());
+    return QUrl::fromLocalFile(model->workingDirectory());
 }
 #endif
 
