@@ -67,9 +67,11 @@ private:
 
     std::unique_ptr<vistle::VistleConnection> m_vistleConnection;
     std::unique_ptr<vistle::UserInterface> m_ui;
+#ifdef HAVE_PYTHON
     std::unique_ptr<vistle::PythonInterface> m_python;
     std::unique_ptr<vistle::PythonStateAccessor> m_pythonAccess;
     std::unique_ptr<vistle::PythonModule> m_pythonMod;
+#endif
     std::unique_ptr<std::thread> m_thread;
     DataFlowNetwork *m_scene = nullptr;
 
