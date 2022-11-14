@@ -2392,7 +2392,7 @@ bool Hub::startVrb()
         m_vrbPort = std::atol(line.c_str());
     }
     if (m_vrbPort == 0) {
-        CERR << "could not parse VRB port" << std::endl;
+        CERR << "could not parse VRB port \"" << line << "\"" << std::endl;
         child->terminate();
         return false;
     }
