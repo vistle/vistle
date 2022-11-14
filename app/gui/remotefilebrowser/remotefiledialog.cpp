@@ -737,20 +737,14 @@ void RemoteFileDialog::setVisible(bool visible)
 */
 void RemoteFileDialogPrivate::_q_goToUrl(const QUrl &url)
 {
-#if 0
     //The shortcut in the side bar may have a parent that is not fetched yet (e.g. an hidden file)
     //so we force the fetching
-    RemoteFileSystemModelPrivate::FileSystemNode *node = model->d_func()->node(url.toLocalFile(), true);
-    QModelIndex idx =  model->index(node);
-    _q_enterDirectory(idx);
-#else
     auto path = url.toLocalFile();
     if (url.scheme() == QLatin1String("home"))
         path = model->homePath().toString();
     QModelIndex idx = model->fsIndex(path);
     model->fetchMore(idx);
     _q_enterDirectory(idx);
-#endif
 }
 
 /*!
@@ -3277,6 +3271,7 @@ void RemoteFileDialogPrivate::_q_enterDirectory(const QModelIndex &index)
             lineEdit()->clear();
         }
     } else {
+        qInfo() << "ENTER DIRECTORY, but no" << path;
         // Do not accept when shift-clicking to multi-select a file in environments with single-click-activation (KDE)
         if (!q->style()->styleHint(QStyle::SH_ItemView_ActivateItemOnSingleClick, nullptr, qFileDialogUi->treeView) ||
             q->fileMode() != RemoteFileDialog::ExistingFiles || !(QGuiApplication::keyboardModifiers() & Qt::CTRL)) {
