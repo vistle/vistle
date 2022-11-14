@@ -879,7 +879,7 @@ static inline bool isCaseSensitiveFileSystem(const QString &path)
 
 // Determine the file name to be set on the line edit from the path
 // passed to selectFile() in mode RemoteFileDialog::AcceptSave.
-static inline QString fileFromPath(const QString &rootPath, QString path)
+QString RemoteFileDialog::fileFromPath(const QString &rootPath, QString path)
 {
     if (!QDir::isRelativePath(path))
         return path;
@@ -890,11 +890,8 @@ static inline QString fileFromPath(const QString &rootPath, QString path)
         return path;
 
     if (path.at(0) == QDir::separator()
-#ifdef Q_OS_WIN
         //On Windows both cases can happen
-        || path.at(0) == QLatin1Char('/')
-#endif
-    ) {
+        || (m_model->isWindows() && path.at(0) == QLatin1Char('/'))) {
         path.remove(0, 1);
     }
     return path;
