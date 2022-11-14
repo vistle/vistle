@@ -3264,8 +3264,8 @@ void RemoteFileDialogPrivate::_q_enterDirectory(const QModelIndex &index)
     // My Computer or a directory
     QModelIndex sourceIndex = index.model() == proxyModel ? mapToSource(index) : index;
     QString path = sourceIndex.data(AbstractFileSystemModel::FilePathRole).toString();
-    qInfo() << "ENTER DIRECTORY" << path;
     if (path.isEmpty() || model->isDir(sourceIndex)) {
+        qInfo() << "ENTER DIRECTORY" << path;
         updateCursor(model->canFetchMore(index));
         model->fetchMore(index);
         const RemoteFileDialog::FileMode fileMode = q->fileMode();
