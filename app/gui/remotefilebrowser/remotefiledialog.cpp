@@ -226,8 +226,6 @@ QStringList cleanFilterList(const QString &filter)
 
     This value is obsolete since Qt 4.5:
 
-    \value DirectoryOnly  Use \c Directory and setOption(ShowDirsOnly, true) instead.
-
     \sa setFileMode()
 */
 
@@ -498,7 +496,7 @@ void RemoteFileDialogPrivate::retranslateWindowTitle()
         return;
     if (q->acceptMode() == RemoteFileDialog::AcceptOpen) {
         const RemoteFileDialog::FileMode fileMode = q->fileMode();
-        if (fileMode == RemoteFileDialog::DirectoryOnly || fileMode == RemoteFileDialog::Directory)
+        if (fileMode == RemoteFileDialog::Directory)
             q->setWindowTitle(RemoteFileDialog::tr("Find Directory"));
         else
             q->setWindowTitle(RemoteFileDialog::tr("Open"));
@@ -525,7 +523,6 @@ void RemoteFileDialogPrivate::updateFileNameLabel()
         setLabelTextControl(RemoteFileDialog::FileName, options->labelText(RemoteFileDialogOptions::FileName));
     } else {
         switch (q_func()->fileMode()) {
-        case RemoteFileDialog::DirectoryOnly:
         case RemoteFileDialog::Directory:
             setLabelTextControl(RemoteFileDialog::FileName, RemoteFileDialog::tr("Directory:"));
             break;
@@ -553,7 +550,6 @@ void RemoteFileDialogPrivate::updateOkButtonText(bool saveAsOnFolder)
         return;
     } else {
         switch (q->fileMode()) {
-        case RemoteFileDialog::DirectoryOnly:
         case RemoteFileDialog::Directory:
             setLabelTextControl(RemoteFileDialog::Accept, RemoteFileDialog::tr("&Choose"));
             break;
@@ -1464,9 +1460,6 @@ void RemoteFileDialog::setFileMode(RemoteFileDialog::FileMode mode)
     Q_D(RemoteFileDialog);
     d->options->setFileMode(static_cast<RemoteFileDialogOptions::FileMode>(mode));
 
-    // keep ShowDirsOnly option in sync with fileMode (BTW, DirectoryOnly is obsolete)
-    setOption(ShowDirsOnly, mode == DirectoryOnly);
-
     d->retranslateWindowTitle();
 
     // set selection mode and behavior
@@ -1480,7 +1473,7 @@ void RemoteFileDialog::setFileMode(RemoteFileDialog::FileMode mode)
     // set filter
     d->model->setFilter(d->filterForMode(filter()));
     // setup file type for directory
-    if (mode == DirectoryOnly || mode == Directory) {
+    if (mode == Directory) {
         d->qFileDialogUi->fileTypeCombo->clear();
         d->qFileDialogUi->fileTypeCombo->addItem(tr("Directories"));
         d->qFileDialogUi->fileTypeCombo->setEnabled(false);
@@ -2315,7 +2308,7 @@ QUrl RemoteFileDialog::getExistingDirectoryUrl(QWidget *parent,
     args.parent = parent;
     args.caption = caption;
     args.directory = RemoteFileDialogPrivate::workingDirectory(dir);
-    args.mode = (options & ShowDirsOnly ? DirectoryOnly : Directory);
+    args.mode = Directory;
     args.options = options;
 
     RemoteFileDialog dialog(args);
@@ -2413,7 +2406,6 @@ void RemoteFileDialog::accept()
     }
 
     switch (fileMode()) {
-    case DirectoryOnly:
     case Directory: {
         QString fn = files.first();
         QModelIndex idx = m_model->fsIndex(fn);
@@ -3179,13 +3171,12 @@ void RemoteFileDialogPrivate::_q_updateOkButton()
         return;
     }
 
-    if (files.isEmpty() && fileMode != RemoteFileDialog::Directory && fileMode != RemoteFileDialog::DirectoryOnly) {
+    if (files.isEmpty() && fileMode != RemoteFileDialog::Directory) {
         enableButton = false;
     } else if (lineEditText == QLatin1String("..")) {
         isOpenDirectory = true;
     } else {
         switch (fileMode) {
-        case RemoteFileDialog::DirectoryOnly:
         case RemoteFileDialog::Directory: {
             const QString &fn = files.first();
             if (!fn.isEmpty()) {
@@ -3280,7 +3271,7 @@ void RemoteFileDialogPrivate::_q_enterDirectory(const QModelIndex &index)
         const RemoteFileDialog::FileMode fileMode = q->fileMode();
         q->setDirectory(path);
         emit q->directoryEntered(path);
-        if (fileMode == RemoteFileDialog::Directory || fileMode == RemoteFileDialog::DirectoryOnly) {
+        if (fileMode == RemoteFileDialog::Directory) {
             // ### find out why you have to do both of these.
             lineEdit()->setText(QString());
             lineEdit()->clear();
@@ -3370,7 +3361,7 @@ void RemoteFileDialogPrivate::_q_selectionChanged()
 {
     const RemoteFileDialog::FileMode fileMode = q_func()->fileMode();
     const QModelIndexList indexes = qFileDialogUi->listView->selectionModel()->selectedRows();
-    bool stripDirs = (fileMode != RemoteFileDialog::DirectoryOnly && fileMode != RemoteFileDialog::Directory);
+    bool stripDirs = (fileMode != RemoteFileDialog::Directory);
     bool clearOnDirectory = fileMode != RemoteFileDialog::ExistingFiles && fileMode != RemoteFileDialog::ExistingFile;
     bool haveDirectory = false;
 
@@ -3426,7 +3417,7 @@ void RemoteFileDialogPrivate::_q_rowsInserted(const QModelIndex &parent)
 void RemoteFileDialogPrivate::_q_fileRenamed(const QString &path, const QString &oldName, const QString &newName)
 {
     const RemoteFileDialog::FileMode fileMode = q_func()->fileMode();
-    if (fileMode == RemoteFileDialog::Directory || fileMode == RemoteFileDialog::DirectoryOnly) {
+    if (fileMode == RemoteFileDialog::Directory) {
         if (path == rootPath() && lineEdit()->text() == oldName)
             lineEdit()->setText(newName);
     }

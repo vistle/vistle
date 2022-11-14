@@ -161,13 +161,7 @@ public:
 
     QDir::Filters filterForMode(QDir::Filters filters) const
     {
-        const RemoteFileDialog::FileMode fileMode = q_func()->fileMode();
-        if (fileMode == RemoteFileDialog::DirectoryOnly) {
-            filters |= QDir::Drives | QDir::AllDirs | QDir::Dirs;
-            filters &= ~QDir::Files;
-        } else {
-            filters |= QDir::Drives | QDir::AllDirs | QDir::Files | QDir::Dirs;
-        }
+        filters |= QDir::Drives | QDir::AllDirs | QDir::Files | QDir::Dirs;
         return filters;
     }
 
