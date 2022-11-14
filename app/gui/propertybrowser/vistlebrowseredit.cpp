@@ -164,13 +164,11 @@ void VistleBrowserEdit::applyFileMode()
         m_browser->setReadOnly(true);
         break;
     }
-#if 0
     if (m_fileMode == Directory || m_fileMode == ExistingDirectory) {
         m_browser->setOption(RemoteFileDialog::ShowDirsOnly);
     } else {
         m_browser->setOption(RemoteFileDialog::ShowDirsOnly, false);
     }
-#endif
 }
 
 void VistleBrowserEdit::applyNameFilters()

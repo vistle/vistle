@@ -958,6 +958,11 @@ Qt::ItemFlags RemoteFileSystemModel::flags(const QModelIndex &index) const
         // ### TODO you shouldn't be able to set this as the current item, task 119433
         return flags;
     }
+    const bool hideFiles = !(d->filters & QDir::Files);
+    if (d->nameFilterDisables && hideFiles && !indexNode->isDir()) {
+        flags &= ~Qt::ItemIsEnabled;
+        return flags;
+    }
 
     flags |= Qt::ItemIsDragEnabled;
     if (d->readOnly)
@@ -1964,7 +1969,7 @@ bool RemoteFileSystemModelPrivate::filtersAcceptsNode(const RemoteFileSystemNode
     const bool filterPermissions =
         ((filters & QDir::PermissionMask) && (filters & QDir::PermissionMask) != QDir::PermissionMask);
     const bool hideDirs = !(filters & (QDir::Dirs | QDir::AllDirs));
-    const bool hideFiles = !(filters & QDir::Files);
+    const bool hideFiles = !nameFilterDisables && !(filters & QDir::Files);
     const bool hideReadable = !(!filterPermissions || (filters & QDir::Readable));
     const bool hideWritable = !(!filterPermissions || (filters & QDir::Writable));
     const bool hideExecutable = !(!filterPermissions || (filters & QDir::Executable));
