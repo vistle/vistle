@@ -175,7 +175,7 @@ QString Parameters::propertyToName(QtProperty *prop) const
     return name;
 }
 
-void Parameters::setEnabled(QtProperty *prop, bool state)
+void Parameters::setParameterEnabled(QtProperty *prop, bool state)
 {
     if (!prop)
         return;
@@ -379,7 +379,7 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
     if (!prop)
         return;
 
-    setEnabled(prop, !p->isReadOnly());
+    setParameterEnabled(prop, !p->isReadOnly());
 
     if (auto ip = std::dynamic_pointer_cast<vistle::IntParameter>(p)) {
         if (ip->presentation() == vistle::Parameter::Boolean) {

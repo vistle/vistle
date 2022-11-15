@@ -47,7 +47,7 @@ private slots:
 
 private:
     QString propertyToName(QtProperty *prop) const;
-    void setEnabled(QtProperty *prop, bool state);
+    void setParameterEnabled(QtProperty *prop, bool state);
     bool getExpandedState(QString name, bool &state);
     void addItemWithProperty(QtBrowserItem *item, QtProperty *prop);
 
