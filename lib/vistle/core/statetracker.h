@@ -77,6 +77,8 @@ public:
 
     virtual void message(const vistle::message::Message &msg, vistle::buffer *payload = nullptr);
 
+    virtual void uiLockChanged(bool locked) {}
+
 private:
     long m_modificationCount = 0;
 };

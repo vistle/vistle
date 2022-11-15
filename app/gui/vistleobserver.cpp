@@ -151,6 +151,12 @@ void VistleObserver::sessionUrlChanged(const std::string &url)
 {
     emit sessionUrlChanged_s(QString::fromStdString(url));
 }
+
+void VistleObserver::uiLockChanged(bool locked)
+{
+    emit uiLock_s(locked);
+}
+
 void VistleObserver::itemInfo(const std::string &text, vistle::message::ItemInfo::InfoType type, int senderId,
                               const std::string &port)
 {

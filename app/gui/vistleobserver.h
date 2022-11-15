@@ -39,6 +39,7 @@ signals:
     void loadedWorkflowChanged_s(QString file);
     void sessionUrlChanged_s(QString url);
 
+    void uiLock_s(bool);
     void quit_s();
 
     void screenshot_s(QString msg, bool quit);
@@ -74,6 +75,8 @@ public:
 
     void loadedWorkflowChanged(const std::string &filename) override;
     void sessionUrlChanged(const std::string &url) override;
+
+    void uiLockChanged(bool locked) override;
 
     void message(const vistle::message::Message &msg, vistle::buffer *payload) override;
 
