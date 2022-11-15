@@ -129,6 +129,20 @@ MainWindow::~MainWindow()
     /// scene; QDrag; mimeData;
 }
 
+void MainWindow::setInteractionEnabled(bool enable)
+{
+#ifdef HAVE_PYTHON
+    ui->actionSaveOnGui->setEnabled(enable);
+    ui->actionOpenOnGui->setEnabled(enable);
+#endif
+    ui->actionNew->setEnabled(enable);
+    ui->actionQuit->setEnabled(enable);
+    ui->actionOpen->setEnabled(enable);
+    ui->actionOpenOnHub->setEnabled(enable);
+    ui->actionSave->setEnabled(enable);
+    ui->actionSaveOnHub->setEnabled(enable);
+}
+
 QToolBar *MainWindow::toolBar() const
 {
     return ui->toolBar;

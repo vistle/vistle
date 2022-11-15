@@ -41,6 +41,7 @@ public:
     ModuleBrowser *moduleBrowser() const;
     void setQuitOnExit(bool qoe);
     bool isSnapToGrid() const;
+    void setInteractionEnabled(bool enable);
 
 public slots:
     void setFilename(const QString &filename);
