@@ -245,13 +245,20 @@ VistleConsole *VistleConsole::the()
 
 //QTcl console constructor (init the QTextEdit & the attributes)
 VistleConsole::VistleConsole(QWidget *parent)
-: QConsole(parent, "Type \"help(vistle)\" for help, \"help()\" for general help "), lines(0)
+#ifdef HAVE_PYTHON
+: QConsole(parent, "Type \"help(vistle)\" for help, \"help()\" for general help ")
+#else
+: QConsole(parent)
+#endif
+, lines(0)
 {
     assert(!s_instance);
     s_instance = this;
 
+#ifdef HAVE_PYTHON
     //set the Python Prompt
     setNormalPrompt(true);
+#endif
 }
 
 void VistleConsole::init()
