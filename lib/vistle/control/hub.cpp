@@ -3002,7 +3002,6 @@ bool Hub::handlePriv(const message::FileQuery &query, const buffer *payload)
     if (!payload)
         payload = &pl;
 
-    std::cerr << "FileQuery(" << query.command() << ") for " << query.moduleId() << ":" << query.path() << std::endl;
     FileInfoCrawler c(*this);
     return c.handle(query, *payload);
 }

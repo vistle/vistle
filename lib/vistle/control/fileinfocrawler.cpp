@@ -14,6 +14,11 @@
 
 #define CERR std::cerr << "FileInfoCrawler: "
 
+#ifndef FILEBROWSER_DEBUG
+//#define FILEBROWSER_DEBUG
+#endif
+
+
 namespace vistle {
 
 namespace fs = vistle::filesystem;
@@ -72,7 +77,7 @@ FileQueryResult::Status readEntry(const fs::path &path, FileInfo &info)
                 info.type = FileInfo::Directory;
                 break;
             case fs::symlink_file:
-                CERR << "symlink not fully followed" << std::endl;
+                CERR << "readEntry: symlink not fully followed: " << path.string() << std::endl;
                 info.type = FileInfo::System;
                 break;
             default:
@@ -86,7 +91,7 @@ FileQueryResult::Status readEntry(const fs::path &path, FileInfo &info)
         return FileQueryResult::Ok;
 
     } catch (fs::filesystem_error &ex) {
-        CERR << "exception " << ex.what() << std::endl;
+        CERR << "readEntry: exception " << ex.what() << ": " << path.string() << std::endl;
         info.status = false;
         return FileQueryResult::Error;
     }
@@ -141,6 +146,9 @@ FileInfoCrawler::FileInfoCrawler(Hub &hub): m_hub(hub)
 
 bool FileInfoCrawler::handle(const message::FileQuery &query, const buffer &payload)
 {
+#ifdef FILEBROWSER_DEBUG
+    CERR << "FileQuery(" << query.command() << ") for " << query.moduleId() << ":" << query.path() << std::endl;
+#endif
     using namespace message;
     FileQueryResult::Status status = FileQueryResult::Ok;
 
@@ -181,8 +189,10 @@ bool FileInfoCrawler::handle(const message::FileQuery &query, const buffer &payl
                         FileInfo fi;
                         auto s = readEntry(fs::path(fn), fi);
                         if (s != FileQueryResult::Ok) {
+#ifdef FILEBROWSER_DEBUG
                             CERR << "status not ok (" << vistle::message::FileQueryResult::toString(s) << ") for '"
                                  << fn << "'" << std::endl;
+#endif
                         }
                         std::lock_guard<std::mutex> guard(mtx);
                         results.push_back(fi);
