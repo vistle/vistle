@@ -1,6 +1,10 @@
 #ifndef VISIT_DATA_TYPES_H
 #define VISIT_DATA_TYPES_H
 
+#if __cplusplus >= 202002L
+#include <compare>
+#endif
+
 //typedef int visit_handle;
 
 class visit_handle {
@@ -8,9 +12,12 @@ public:
     visit_handle() = default;
     constexpr visit_handle(int val): i(val) {}
 
+#if __cplusplus < 202002L
     constexpr bool operator==(const visit_handle other) const noexcept { return i == other.i; }
     constexpr bool operator!=(const visit_handle other) const noexcept { return i != other.i; }
-
+#else
+    constexpr std::strong_ordering operator<=>(const visit_handle other) const noexcept { return i <=> other.i; }
+#endif
     constexpr operator int() const noexcept { return i; }
 
 

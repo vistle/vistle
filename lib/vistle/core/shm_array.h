@@ -43,7 +43,7 @@ public:
     unsigned type() const { return m_type; }
     bool check() const;
 
-    typedef typename allocator::pointer pointer;
+    typedef typename std::allocator_traits<allocator>::pointer pointer;
     typedef T *iterator;
     typedef const T *const_iterator;
 
