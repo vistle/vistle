@@ -34,9 +34,9 @@ public:
 
     static unsigned typeId();
 
-    shm_array(const allocator &alloc = allocator());
-    shm_array(const size_t size, const allocator &alloc = allocator());
-    shm_array(const size_t size, const T &value, const allocator &alloc = allocator());
+    shm_array(const allocator &alloc);
+    shm_array(const size_t size, const allocator &alloc);
+    shm_array(const size_t size, const T &value, const allocator &alloc);
     shm_array(shm_array &&other);
     ~shm_array();
 
