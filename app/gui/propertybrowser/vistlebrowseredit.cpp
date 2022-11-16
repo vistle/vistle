@@ -25,8 +25,6 @@ VistleBrowserEdit::VistleBrowserEdit(QWidget *parent): QWidget(parent)
     m_layout->addWidget(m_button);
     m_layout->addWidget(m_edit);
 
-    m_nameFilters << "All Files (*)";
-
     m_title = "Vistle File Browser";
 
     connect(m_button, &QToolButton::pressed, [this]() {
@@ -108,7 +106,6 @@ void VistleBrowserEdit::setFilters(const QString &filters)
 {
     if (filters.isEmpty()) {
         m_nameFilters.clear();
-        m_nameFilters << "All Files (*)";
     } else {
         m_nameFilters = filters.split("/");
     }
@@ -139,6 +136,7 @@ void VistleBrowserEdit::setFileMode(VistleBrowserEdit::FileMode fileMode)
 {
     m_fileMode = fileMode;
     applyFileMode();
+    applyNameFilters();
 }
 
 void VistleBrowserEdit::applyFileMode()
@@ -176,5 +174,15 @@ void VistleBrowserEdit::applyNameFilters()
     if (!m_browser)
         return;
 
-    m_browser->setNameFilters(m_nameFilters);
+    if (m_nameFilters.isEmpty()) {
+        QStringList filters;
+        if (m_fileMode == Directory || m_fileMode == ExistingDirectory) {
+            filters << "All Directories (*)";
+        } else {
+            filters << "All Files (*)";
+        }
+        m_browser->setNameFilters(filters);
+    } else {
+        m_browser->setNameFilters(m_nameFilters);
+    }
 }
