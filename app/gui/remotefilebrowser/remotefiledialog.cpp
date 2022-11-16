@@ -2508,17 +2508,19 @@ bool RemoteFileDialogPrivate::restoreFromSettings()
     headerData = settings.value(QLatin1String("treeViewHeader")).toByteArray();
     int sidebarWidth = settings.value(QLatin1String("sidebarWidth"), -1).toInt();
 
-    settings.beginGroup(QLatin1String("remote_") + model->identifier());
-    q->setDirectoryUrl(lastVisitedDir()->isEmpty() ? settings.value(QLatin1String("lastVisited")).toUrl()
-                                                   : *lastVisitedDir());
-    sidebarUrls = QUrl::fromStringList(settings.value(QLatin1String("shortcuts")).toStringList());
-
     QStringList history;
-    const auto urlStrings = settings.value(QLatin1String("history")).toStringList();
-    for (const QString &urlStr: urlStrings) {
-        QUrl url(urlStr);
-        if (url.isLocalFile())
-            history << url.toLocalFile();
+    if (settings.childGroups().contains(QLatin1String("remote_") + model->identifier())) {
+        settings.beginGroup(QLatin1String("remote_") + model->identifier());
+        q->setDirectoryUrl(lastVisitedDir()->isEmpty() ? settings.value(QLatin1String("lastVisited")).toUrl()
+                                                       : *lastVisitedDir());
+        sidebarUrls = QUrl::fromStringList(settings.value(QLatin1String("shortcuts")).toStringList());
+
+        const auto urlStrings = settings.value(QLatin1String("history")).toStringList();
+        for (const QString &urlStr: urlStrings) {
+            QUrl url(urlStr);
+            if (url.isLocalFile())
+                history << url.toLocalFile();
+        }
     }
 
     return restoreWidgetState(history, sidebarWidth);
