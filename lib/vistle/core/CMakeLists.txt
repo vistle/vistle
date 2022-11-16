@@ -1,6 +1,6 @@
 vistle_find_package(LZ4)
 vistle_find_package(SNAPPY)
-vistle_find_package(ZSTD)
+#vistle_find_package(ZSTD)
 
 set(core_SOURCES
     allobjects.cpp # just one file including all the others for faster compilation
