@@ -629,6 +629,8 @@ bool RemoteFileSystemModel::hasChildren(const QModelIndex &parent) const
 bool RemoteFileSystemModel::canFetchMore(const QModelIndex &parent) const
 {
     Q_D(const RemoteFileSystemModel);
+    if (!d->setRootPath)
+        return false;
     const RemoteFileSystemModelPrivate::RemoteFileSystemNode *indexNode = d->node(parent);
     return (!indexNode->populatedChildren);
 }
