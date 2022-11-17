@@ -394,10 +394,7 @@ public: \
     typedef std::shared_ptr<const ObjType> const_ptr; \
     typedef ObjType Class; \
     static Object::Type type(); \
-    static const char *typeName() \
-    { \
-        return #ObjType; \
-    } \
+    static const char *typeName() { return #ObjType; } \
     static std::shared_ptr<const ObjType> as(std::shared_ptr<const Object> ptr) \
     { \
         return std::dynamic_pointer_cast<const ObjType>(ptr); \
@@ -406,10 +403,7 @@ public: \
     { \
         return std::dynamic_pointer_cast<ObjType>(ptr); \
     } \
-    static Object *createFromData(Object::Data *data) \
-    { \
-        return new ObjType(static_cast<ObjType::Data *>(data)); \
-    } \
+    static Object *createFromData(Object::Data *data) { return new ObjType(static_cast<ObjType::Data *>(data)); } \
     std::shared_ptr<const Object> object() const override \
     { \
         return static_cast<const Object *>(this)->shared_from_this(); \
@@ -421,18 +415,9 @@ public: \
         publish(data); \
         return Object::ptr(createFromData(data)); \
     } \
-    ptr clone() const \
-    { \
-        return ObjType::as(cloneInternal()); \
-    } \
-    ptr cloneType() const \
-    { \
-        return ObjType::as(cloneTypeInternal()); \
-    } \
-    Object::ptr cloneTypeInternal() const override \
-    { \
-        return Object::ptr(new ObjType(Object::Initialized)); \
-    } \
+    ptr clone() const { return ObjType::as(cloneInternal()); } \
+    ptr cloneType() const { return ObjType::as(cloneTypeInternal()); } \
+    Object::ptr cloneTypeInternal() const override { return Object::ptr(new ObjType(Object::Initialized)); } \
     static Object *createEmpty(const std::string &name) \
     { \
         if (name.empty()) \
@@ -456,20 +441,14 @@ public: \
     { \
         return ObjType::clone<OtherType>(std::const_pointer_cast<OtherType>(other)); \
     } \
-    static void destroy(const std::string &name) \
-    { \
-        shm<ObjType::Data>::destroy(name); \
-    } \
+    static void destroy(const std::string &name) { shm<ObjType::Data>::destroy(name); } \
     void refresh() const override \
     { \
         Base::refresh(); \
         refreshImpl(); \
     } \
     void refreshImpl() const; \
-    explicit ObjType(Object::InitializedFlags): Base(ObjType::Data::create()) \
-    { \
-        refreshImpl(); \
-    } \
+    explicit ObjType(Object::InitializedFlags): Base(ObjType::Data::create()) { refreshImpl(); } \
     virtual bool isEmpty() override; \
     virtual bool isEmpty() const override; \
     bool check() const override \
@@ -488,14 +467,8 @@ public: \
         return true; \
     } \
     struct Data; \
-    const Data *d() const \
-    { \
-        return static_cast<Data *>(Object::m_data); \
-    } \
-    Data *d() \
-    { \
-        return static_cast<Data *>(Object::m_data); \
-    } \
+    const Data *d() const { return static_cast<Data *>(Object::m_data); } \
+    Data *d() { return static_cast<Data *>(Object::m_data); } \
     /* ARCHIVE_REGISTRATION(override) */ \
     ARCHIVE_REGISTRATION_INLINE \
 protected: \

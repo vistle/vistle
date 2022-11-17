@@ -188,8 +188,7 @@ private:
         std::deque<MessageWithPayload> incomingMessages; // not yet processed, because module takes part in a barrier
         std::vector<int> objectCount; // no. of available object tuples on each rank
 
-        Module(): ranksStarted(0), ranksFinished(0), prepared(false), reduced(true), busyCount(0), blocked(false)
-        {}
+        Module(): ranksStarted(0), ranksFinished(0), prepared(false), reduced(true), busyCount(0), blocked(false) {}
         ~Module();
 
         void block(const message::Message &msg) const;
