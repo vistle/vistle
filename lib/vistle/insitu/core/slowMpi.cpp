@@ -1,8 +1,6 @@
 #include "slowMpi.h"
 #include <vistle/util/sleep.h>
 #include <boost/mpi/communicator.hpp>
-#include <boost/mpi/exception.hpp>
-#include <boost/mpi/collectives.hpp>
 #include <mpi.h>
 #include <thread>
 #include <chrono>
