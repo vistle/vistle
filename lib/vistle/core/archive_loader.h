@@ -79,9 +79,13 @@ struct V_COREEXPORT ArrayLoader {
     const vistle::iarchive &m_ar;
 };
 
+class DeepArchiveFetcher;
+
+V_COREEXPORT std::ostream &operator<<(std::ostream &os, const DeepArchiveFetcher &daf);
+
 class V_COREEXPORT DeepArchiveFetcher: public Fetcher, public std::enable_shared_from_this<DeepArchiveFetcher> {
-public:
     friend std::ostream &operator<<(std::ostream &os, const DeepArchiveFetcher &daf);
+public:
     DeepArchiveFetcher(const std::map<std::string, buffer> &objects, const std::map<std::string, buffer> &arrays,
                        const std::map<std::string, message::CompressionMode> &compressions,
                        const std::map<std::string, size_t> &sizes);
@@ -114,9 +118,6 @@ private:
 
     std::set<std::shared_ptr<ArrayLoader::ArrayOwner>> m_ownedArrays;
 };
-#ifndef _MSC_VER //friends function declarations are automatically exported to nonclass scope
-V_COREEXPORT std::ostream &operator<<(std::ostream &os, const DeepArchiveFetcher &daf);
-#endif
 
 } // namespace vistle
 #endif
