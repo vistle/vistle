@@ -50,7 +50,7 @@ if(NOT WIN32)
 endif(NOT WIN32)
 
 target_link_libraries(
-    ${BOOST_MPI} #don't use vistle_target_link_libraries here because adding dependency for boost_mpi_HEADERS::serialization brings errors.
+    ${BOOST_MPI} #don't use vistle_target_link_libraries here because adding dependency for boost_mpi::serialization brings errors.
     PRIVATE Boost::system
     PUBLIC Boost::serialization
     PUBLIC MPI::MPI_C)
