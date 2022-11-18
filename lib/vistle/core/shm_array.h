@@ -25,7 +25,7 @@ std::ostream &operator<<(std::ostream &os, const shm_array<T, allocator> &arr);
 
 template<typename T, class allocator>
 class shm_array: public ShmData {
-    friend std::ostream &operator<<<T, allocator>(std::ostream &os, const shm_array<T, allocator> &arr);
+    friend std::ostream &operator<< <T, allocator>(std::ostream &os, const shm_array<T, allocator> &arr);
 
 public:
     typedef T value_type;
@@ -35,8 +35,8 @@ public:
     static unsigned typeId();
 
     shm_array(const allocator &alloc = allocator());
-    shm_array(const size_t size, const allocator &alloc = allocator());
-    shm_array(const size_t size, const T &value, const allocator &alloc = allocator());
+    shm_array(size_t size, const allocator &alloc = allocator());
+    shm_array(size_t size, const T &value, const allocator &alloc = allocator());
     shm_array(shm_array &&other);
     ~shm_array();
 
