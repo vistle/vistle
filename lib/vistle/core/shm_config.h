@@ -16,6 +16,8 @@ namespace vistle {
 
 #ifdef NO_SHMEM
 typedef ShmData *shm_handle_t;
+template<typename T>
+using shm_allocator = vistle::default_init_allocator<T>;
 #else
 #ifdef _WIN32
 typedef boost::interprocess::managed_windows_shared_memory managed_shm;
@@ -24,12 +26,6 @@ typedef boost::interprocess::managed_shared_memory managed_shm;
 #endif
 
 typedef managed_shm::handle_t shm_handle_t;
-#endif
-
-#ifdef NO_SHMEM
-template<typename T>
-using shm_allocator = vistle::default_init_allocator<T>;
-#else
 template<typename T>
 using shm_allocator = boost::interprocess::allocator<T, managed_shm::segment_manager>;
 #endif

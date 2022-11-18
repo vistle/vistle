@@ -95,10 +95,10 @@ struct ShmDebugInfo {
 template<typename T>
 struct shm {
     typedef vistle::shm_allocator<T> allocator;
+    typedef vistle::shm_array<T, allocator> array;
 #ifdef NO_SHMEM
     typedef std::basic_string<T> string;
     typedef std::vector<T> vector;
-    typedef vistle::shm_array<T, allocator> array;
     typedef array *array_ptr;
     struct Constructor {
         std::string name;
@@ -112,7 +112,6 @@ struct shm {
 #else
     typedef boost::interprocess::basic_string<T, std::char_traits<T>, allocator> string;
     typedef boost::interprocess::vector<T, allocator> vector;
-    typedef vistle::shm_array<T, allocator> array;
     typedef boost::interprocess::offset_ptr<array> array_ptr;
     static typename managed_shm::segment_manager::template construct_proxy<T>::type construct(const std::string &name);
 #endif
