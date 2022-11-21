@@ -250,7 +250,8 @@ bool ReadMPAS::prepareRead()
             bf::path dataDir(dataFilePath.parent_path());
             for (bf::directory_iterator it2(dataDir); it2 != bf::directory_iterator(); ++it2) { //all files in dir
                 if ((bf::extension(it2->path().filename()) == ".nc") &&
-                    (strncmp(dataFilePath.filename().c_str(), it2->path().filename().c_str(), 15) == 0)) {
+                    (strncmp(dataFilePath.filename().string().c_str(), it2->path().filename().string().c_str(), 15) ==
+                     0)) {
                     auto fn = it2->path().string();
 #ifdef USE_NETCDF
                     auto ncid = NcFile::open(fn, comm());
