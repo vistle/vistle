@@ -712,7 +712,7 @@ bool ClusterManager::handle(const message::Buffer &message, const MessagePayload
     case message::ADDHUB: {
         const auto &addhub = message.as<message::AddHub>();
         if (addhub.id() == hubId()) {
-            scanModules(Communicator::the().m_vistleRoot);
+            scanModules(Communicator::the().m_vistleRoot, Communicator::the().m_buildType);
         }
         break;
     }
@@ -2256,7 +2256,7 @@ bool ClusterManager::isReadyForExecute(int modId) const
     return false;
 }
 
-bool ClusterManager::scanModules(const std::string &dir)
+bool ClusterManager::scanModules(const std::string &prefix, const std::string &buildtype)
 {
     bool result = true;
 #if defined(MODULE_THREAD) && defined(MODULE_STATIC)
@@ -2266,7 +2266,7 @@ bool ClusterManager::scanModules(const std::string &dir)
     if (getRank() == 0) {
 #endif
         if (m_localModules.empty()) {
-            result = vistle::scanModules(dir, hubId(), m_localModules);
+            result = vistle::scanModules(prefix, buildtype, hubId(), m_localModules);
         }
 #if !defined(MODULE_THREAD)
     }

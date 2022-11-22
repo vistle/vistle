@@ -248,7 +248,7 @@ bool Hub::init(int argc, char *argv[])
         return false;
     }
 
-    m_prefix = dir::prefix(argc, argv);
+    m_dir = std::make_unique<Directory>(argc, argv);
 
     m_name = hostname();
 
@@ -269,6 +269,7 @@ bool Hub::init(int argc, char *argv[])
         ("libsim,l", po::value<std::string>(), "connect to a LibSim instrumented simulation by entering the path to the .sim2 file")
         ("exposed,gateway-host,gateway,gw", po::value<std::string>(), "ports are exposed externally on this host")
         ("root", po::value<std::string>(), "path to Vistle build directory")
+        ("buildtype", po::value<std::string>(), "build type suffix to binary in Vistle build directory")
         ("conference,conf", po::value<std::string>(), "URL of associated conference call")
         ("url", "Vistle URL, script to process, or slave name")
     ;
@@ -320,8 +321,11 @@ bool Hub::init(int argc, char *argv[])
     }
 
     if (vm.count("root")) {
-        m_prefix = vm["root"].as<std::string>();
-        std::cerr << "set prefix to " << m_prefix << std::endl;
+        std::string buildtype;
+        if (vm.count("buildtype"))
+            buildtype = vm["buildtype"].as<std::string>();
+        m_dir = std::make_unique<Directory>(vm["root"].as<std::string>(), buildtype);
+        std::cerr << "set prefix to " << m_dir->prefix() << std::endl;
     }
 
     std::string uiCmd = "vistle_gui";
@@ -372,7 +376,7 @@ bool Hub::init(int argc, char *argv[])
                 crypto::set_session_key(connectionData.hex_key);
             }
             if (connectionData.kind == "/ui" || connectionData.kind == "/gui") {
-                std::string uipath = dir::bin(m_prefix) + "/" + uiCmd;
+                std::string uipath = m_dir->bin() + "/" + uiCmd;
                 startUi(uipath, true);
             }
         } else {
@@ -466,7 +470,7 @@ bool Hub::init(int argc, char *argv[])
         // start UI
         if (!uiCmd.empty()) {
             m_hasUi = true;
-            std::string uipath = dir::bin(m_prefix) + "/" + uiCmd;
+            std::string uipath = m_dir->bin() + "/" + uiCmd;
             startUi(uipath);
         }
         if (pythonUi) {
@@ -479,7 +483,7 @@ bool Hub::init(int argc, char *argv[])
 
         if (!m_proxyOnly) {
             // start manager on cluster
-            std::string cmd = dir::bin(m_prefix) + "/vistle_manager";
+            std::string cmd = m_dir->bin() + "vistle_manager";
             std::vector<std::string> args;
             args.push_back(cmd);
             args.push_back("-from-vistle");
@@ -2190,7 +2194,7 @@ bool Hub::startCleaner()
     }
 
     // run clean_vistle on cluster
-    std::string cmd = dir::bin(m_prefix) + "/clean_vistle";
+    std::string cmd = m_dir->bin() + "clean_vistle";
     std::vector<std::string> args;
     args.push_back(cmd);
     std::string shmname = Shm::instanceName(hostname(), m_port);
@@ -2649,7 +2653,7 @@ bool Hub::processScript(const std::string &filename, bool barrierAfterLoad, bool
     assert(m_uiManager.isLocked());
 #ifdef HAVE_PYTHON
     setStatus("Loading " + filename + "...");
-    PythonInterpreter inter(filename, dir::share(m_prefix), barrierAfterLoad, executeModules);
+    PythonInterpreter inter(filename, m_dir->share(), barrierAfterLoad, executeModules);
     bool interrupt = false;
     while (!interrupt && inter.check()) {
         if (!dispatch())

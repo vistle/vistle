@@ -60,7 +60,7 @@ set(gui_name vistle_gui)
 if(APPLE)
     add_custom_target(
         gui_wrapper ALL
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/gui_wrapper.sh ${EXECUTABLE_OUTPUT_PATH}/${gui_name}
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/gui_wrapper.sh ${EXECUTABLE_OUTPUT_PATH}/$<CONFIG>/${gui_name}
         DEPENDS gui_wrapper.sh
         SOURCES gui_wrapper.sh)
     install(

@@ -148,7 +148,7 @@ private:
     bool handlePriv(const message::Ping &ping);
     bool handlePriv(const message::DataTransferState &state);
 
-    bool scanModules(const std::string &dir);
+    bool scanModules(const std::string &prefix, const std::string &buildtype);
 
     //! check whether objects are available for a module and compute() should be called
     bool checkExecuteObject(int modId);

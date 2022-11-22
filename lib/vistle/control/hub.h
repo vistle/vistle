@@ -17,6 +17,7 @@
 
 namespace vistle {
 
+class Directory;
 class Hub;
 class HubParameters: public ParameterManager {
 public:
@@ -132,7 +133,7 @@ private:
     std::map<std::shared_ptr<boost::process::child>, int> m_processMap;
     bool m_managerConnected;
 
-    std::string m_prefix;
+    std::unique_ptr<vistle::Directory> m_dir;
     std::string m_scriptPath;
     std::string m_snapshotFile;
     bool m_barrierAfterLoad = true;

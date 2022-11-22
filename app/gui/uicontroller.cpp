@@ -27,8 +27,6 @@
 
 #include "ui_about.h"
 
-namespace dir = vistle::directory;
-
 namespace gui {
 
 UiController::UiController(int argc, char *argv[], QObject *parent): QObject(parent), m_mainWindow(nullptr)
@@ -67,7 +65,8 @@ UiController::UiController(int argc, char *argv[], QObject *parent): QObject(par
 #ifdef HAVE_PYTHON
     m_pythonAccess.reset(new vistle::UiPythonStateAccessor(m_vistleConnection.get()));
     m_pythonMod.reset(new vistle::PythonModule(*m_pythonAccess));
-    m_pythonDir = dir::share(dir::prefix(argc, argv));
+    vistle::Directory dir(argc, argv);
+    m_pythonDir = dir.share();
 #endif
     m_thread.reset(new std::thread(std::ref(*m_vistleConnection)));
 

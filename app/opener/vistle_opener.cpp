@@ -94,10 +94,10 @@ int main(int argc, char *argv[])
 {
     std::cerr << "start" << std::endl;
 
-    auto prefix = vistle::directory::prefix(argc, argv);
-    if (!prefix.empty()) {
-        path_to_vistle = vistle::directory::bin(prefix) + "/vistle";
-        vistle::directory::setEnvironment(prefix);
+    auto dir = vistle::Directory(argc, argv);
+    if (!dir.prefix().empty()) {
+        path_to_vistle = dir.bin() + "vistle";
+        vistle::directory::setEnvironment(dir.prefix());
     }
 
     if (argc > 1) {

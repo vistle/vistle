@@ -124,17 +124,18 @@ endif()
 
 enable_testing()
 
-if(CMAKE_BUILD_TYPE STREQUAL "")
+if(CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_DEFAULT_BUILD_TYPE "RelWithDebInfo")
+elseif(CMAKE_BUILD_TYPE STREQUAL "")
     set(CMAKE_BUILD_TYPE
         "RelWithDebInfo"
         CACHE STRING "Choose the type of build, options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Debug Release RelWithDebInfo MinSizeRel." FORCE)
     message("Setting CMAKE_BUILD_TYPE to ${CMAKE_BUILD_TYPE}")
-endif()
+    if(CMAKE_BUILD_TYPE STREQUAL "Release" OR "${CMAKE_BUILD_TYPE}" STREQUAL "RelWithDebInfo")
 
-if(CMAKE_BUILD_TYPE STREQUAL "Release" OR "${CMAKE_BUILD_TYPE}" STREQUAL "RelWithDebInfo")
-
-else()
-    add_definitions(-DEIGEN_INITIALIZE_MATRICES_BY_NAN)
+    else()
+        add_definitions(-DEIGEN_INITIALIZE_MATRICES_BY_NAN)
+    endif()
 endif()
 
 #add_definitions(-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=short)

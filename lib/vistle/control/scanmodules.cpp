@@ -22,26 +22,26 @@ std::map<std::string, ModuleDescription> readModuleDescriptions(std::istream &st
         auto desc = line.substr(sep + 1);
         moduleDescriptions[mod].category = cat;
         moduleDescriptions[mod].description = desc;
-        std::cerr << "module: " << mod << " -> " << cat << ", description: " << cat << std::endl;
+        //std::cerr << "module: " << mod << " -> " << cat << ", description: " << cat << std::endl;
     }
     return moduleDescriptions;
 }
 
 
-bool scanModules(const std::string &prefix, int hub, AvailableMap &available)
+bool scanModules(const std::string &prefix, const std::string &buildtype, int hub, AvailableMap &available)
 {
     namespace bf = vistle::filesystem;
-    using vistle::directory::build_type;
+    auto dir = Directory(prefix, buildtype);
 
     std::map<std::string, ModuleDescription> moduleDescriptions;
 
-    auto share = directory::share(prefix);
+    auto share = dir.share();
     bf::path pshare(share);
     try {
         if (!bf::is_directory(pshare)) {
             std::cerr << "scanModules: " << share << " is not a directory" << std::endl;
         } else {
-            std::string file = share + "/moduledescriptions.txt";
+            std::string file = share + "moduledescriptions.txt";
             std::fstream f(file, std::ios_base::in);
 
             if (f.is_open()) {
@@ -54,15 +54,15 @@ bool scanModules(const std::string &prefix, int hub, AvailableMap &available)
         std::cerr << "scanModules: error in" << share << ": " << e.what() << std::endl;
     }
 
-    auto dir = directory::module(prefix);
-    bf::path p(dir);
+    auto moddir = dir.module();
+    bf::path p(moddir);
     try {
         if (!bf::is_directory(p)) {
-            std::cerr << "scanModules: " << dir << " is not a directory" << std::endl;
+            std::cerr << "scanModules: " << moddir << " is not a directory" << std::endl;
             return false;
         }
     } catch (const bf::filesystem_error &e) {
-        std::cerr << "scanModules: error in" << dir << ": " << e.what() << std::endl;
+        std::cerr << "scanModules: error in" << moddir << ": " << e.what() << std::endl;
         return false;
     }
 

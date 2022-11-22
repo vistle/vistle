@@ -8,17 +8,29 @@
 
 namespace vistle {
 
+class V_UTILEXPORT Directory {
+public:
+    Directory(int argc, char *argv[]);
+    Directory(const std::string &prefix, const std::string &buildtype);
+    std::string prefix() const;
+    std::string bin() const;
+    std::string module() const;
+    std::string share() const;
+    std::string buildType() const;
+
+private:
+    std::string m_prefix;
+    std::string m_buildType;
+    std::string m_buildTypeSuffix;
+};
+
 namespace directory {
 
 V_UTILEXPORT std::string build_type();
-V_UTILEXPORT std::string prefix(int argc, char *argv[]);
-V_UTILEXPORT std::string prefix(const std::string &bindir);
-V_UTILEXPORT std::string bin(const std::string &prefix);
-V_UTILEXPORT std::string module(const std::string &prefix);
 V_UTILEXPORT std::string share(const std::string &prefix);
 V_UTILEXPORT std::string configHome(); //config directory of the user
 
-V_UTILEXPORT bool setVistleRoot(const std::string &vistleRootDir);
+V_UTILEXPORT bool setVistleRoot(const std::string &vistleRootDir, const std::string &buildtype);
 V_UTILEXPORT bool setEnvironment(const std::string &prefix);
 
 } // namespace directory

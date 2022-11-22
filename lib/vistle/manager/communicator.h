@@ -33,7 +33,7 @@ public:
     ~Communicator();
     static Communicator &the();
 
-    void setVistleRoot(const std::string &dir);
+    void setVistleRoot(const std::string &dir, const std::string &buildtype);
     void run();
     bool dispatch(bool *work);
     bool handleMessage(const message::Buffer &message, const MessagePayload &payload = MessagePayload());
@@ -71,6 +71,7 @@ private:
     const int m_rank;
     const int m_size;
     std::string m_vistleRoot;
+    std::string m_buildType;
 
     unsigned m_recvSize;
     message::Buffer m_recvBufToRank, m_recvBufToAny;

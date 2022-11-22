@@ -76,8 +76,10 @@ public:
     bool config(int argc, char *argv[]) override
     {
         if (const char *VISTLE_ROOT = getenv("VISTLE_ROOT")) {
-            setVistleRoot(VISTLE_ROOT);
-            return true;
+            if (const char *VISTLE_BUILDTYPE = getenv("VISTLE_BUILDTYPE")) {
+                setVistleRoot(VISTLE_ROOT, VISTLE_BUILDTYPE);
+                return true;
+            }
         }
         return false;
     }
