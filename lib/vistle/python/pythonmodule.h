@@ -2,7 +2,7 @@
 #define PYTHON_MODULE_H
 
 #include <string>
-#include "export.h"
+#include "module_export.h"
 #include <vistle/util/buffer.h>
 #include "pythonstateaccessor.h"
 
