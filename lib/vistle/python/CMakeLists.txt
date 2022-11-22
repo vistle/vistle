@@ -34,6 +34,7 @@ if(Python_FOUND)
 
     pybind11_add_module(_vistle NO_EXTRAS ${python_SOURCES} ${python_HEADERS} ${pythonmodule_SOURCES} ${pythonmodule_HEADERS})
     target_compile_definitions(_vistle PRIVATE vistle_python_EXPORTS)
+    target_compile_definitions(_vistle PRIVATE vistle_pythonmodule_EXPORTS)
     target_link_libraries(
         _vistle
         PRIVATE Boost::system
