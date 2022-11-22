@@ -18,7 +18,6 @@
 
 #include <vistle/python/pythonmodule.h>
 #include <vistle/userinterface/vistleconnection.h>
-#include <vistle/util/directory.h>
 
 #include <boost/uuid/nil_generator.hpp>
 

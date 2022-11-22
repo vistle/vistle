@@ -2,6 +2,7 @@
 #define MESSAGEQUEUE_H
 
 #include <deque>
+#include <map>
 #include <mutex>
 #include <vistle/util/boost_interprocess_config.h>
 #define BOOST_INTERPROCESS_MSG_QUEUE_CIRCULAR_INDEX

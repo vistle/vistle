@@ -5,7 +5,6 @@
 #include <cassert>
 
 #include <vistle/util/enum.h>
-#include <vistle/util/directory.h> // ModuleNameLength
 #include <vistle/util/buffer.h>
 #include <vistle/util/exception.h>
 #include "uuid.h"

@@ -20,6 +20,7 @@
 #include "mainwindow.h"
 
 #include <vistle/core/statetracker.h>
+#include <vistle/util/directory.h>
 
 
 #include <QGraphicsView>
