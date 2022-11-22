@@ -140,7 +140,7 @@ int main(int argc, char *argv[])
     time_all<std::vector<DataType, vistle::default_init_allocator<DataType>>>("STL vector+default_init", size);
     time_all<bi::vector<DataType>>("Boost vector", size);
     //time_all<bi::vector<DataType, vistle::default_init_allocator,DataType>>>("Boost vector+default_init", size);
-    time_all<vistle::shm_array<DataType, std::allocator<DataType>>>("shm_array", size);
+    //time_all<vistle::shm_array<DataType, std::allocator<DataType>>>("shm_array", size);
     //time_all<vistle::shm_array<DataType, vistle::default_init_allocator<DataType>>>("shm_array+default_init", size);
 
 #if 0
