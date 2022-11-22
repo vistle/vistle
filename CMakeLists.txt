@@ -915,6 +915,12 @@ vistle_find_package(
 
 # do it here, so that we see the warnings just once
 vistle_find_package(Xdmf QUIET)
+if(WIN32 AND Xdmf_FOUND)
+    vistle_find_package(Iconv)
+    if(NOT Iconv_FOUND)
+        unset(Xdmf_FOUND)
+    endif()
+endif()
 
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
