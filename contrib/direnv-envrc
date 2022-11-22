@@ -40,7 +40,7 @@ fi
 
 if [ -z ${MANPATH} ]; then
 case $os in
-    freebsd)
+    darwin|freebsd)
         export MANPATH="$(manpath)"
         ;;
     *)
