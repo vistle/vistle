@@ -84,7 +84,7 @@ class DeepArchiveFetcher;
 V_COREEXPORT std::ostream &operator<<(std::ostream &os, const DeepArchiveFetcher &daf);
 
 class V_COREEXPORT DeepArchiveFetcher: public Fetcher, public std::enable_shared_from_this<DeepArchiveFetcher> {
-    friend std::ostream &operator<<(std::ostream &os, const DeepArchiveFetcher &daf);
+    friend V_COREEXPORT std::ostream &operator<<(std::ostream &os, const DeepArchiveFetcher &daf);
 public:
     DeepArchiveFetcher(const std::map<std::string, buffer> &objects, const std::map<std::string, buffer> &arrays,
                        const std::map<std::string, message::CompressionMode> &compressions,
