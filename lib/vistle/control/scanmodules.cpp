@@ -80,6 +80,14 @@ bool scanModules(const std::string &prefix, int hub, AvailableMap &available)
         if (stem.empty()) {
             continue;
         }
+        boost::system::error_code ec;
+        if (bf::is_directory(ent, ec)) {
+            continue;
+        }
+        if (ec) {
+            std::cerr << "scanModules: skipping " << stem << " - error: " << ec.message() << std::endl;
+            continue;
+        }
 
 #ifdef MODULE_THREAD
         std::string ext = ent.extension().string();
