@@ -2575,8 +2575,7 @@ bool Hub::startUi(const std::string &uipath, bool replace)
         return false;
     }
 
-    auto child = std::make_shared<process::child>(uipath, process::args(args), terminate_with_parent(), m_ioService,
-                                                  process::on_exit(exit_handler));
+    auto child = launchProcess(uipath, args);
     if (!child || !child->valid()) {
         CERR << "failed to spawn UI " << uipath << std::endl;
         return false;
