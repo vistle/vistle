@@ -114,7 +114,6 @@ protected:
 class V_MODULEEXPORT Module: public ParameterManager, public MessageSender {
     friend class Reader;
     friend class Renderer;
-    friend class Cache; // for passThroughObject
     friend class BlockTask;
 
 public:
