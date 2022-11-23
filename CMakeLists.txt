@@ -474,15 +474,15 @@ macro(vistle_install_library targetname)
                     NAMELINK_COMPONENT ${targetname}_Development
             ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT ${targetname}_Development)
     endif()
-
-    string(REPLACE ${PROJECT_BINARY_DIR}/lib/vistle "" directory ${CMAKE_CURRENT_BINARY_DIR})
-
+    if("${vistle_install_include_directory}" STREQUAL "")
+        string(REPLACE ${PROJECT_BINARY_DIR}/lib/vistle "" vistle_install_include_directory ${CMAKE_CURRENT_BINARY_DIR})
+    endif()
     set(header "${ARGN}")
     list(FILTER header INCLUDE REGEX "(\.(h|H|hpp|HPP)$)")
     if(VISTLE_INSTALL_HEADER)
         install(
             FILES ${header}
-            DESTINATION include/vistle/${directory}
+            DESTINATION include/vistle/${vistle_install_include_directory}
             COMPONENT Devel)
     endif()
 endmacro(vistle_install_library)
