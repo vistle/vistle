@@ -71,6 +71,8 @@ bool ResultCache<Result>::storeAndUnlock(ResultCache<Result>::Entry *entry, cons
     entry->mutex.unlock();
 
     std::unique_lock<std::mutex> guard(m_mutex);
+    assert(entry->generation - m_purgedGenerations >= 0);
+    assert(entry->generation - m_purgedGenerations < m_borrowCount.size());
     if (--m_borrowCount[entry->generation - m_purgedGenerations] == 0) {
         purgeOldGenerations();
     }
@@ -82,10 +84,12 @@ template<class Result>
 void ResultCache<Result>::clear()
 {
     std::unique_lock<std::mutex> guard(m_mutex);
-    ++m_generation;
-    m_cache.emplace_back();
-    m_borrowCount.emplace_back(0);
-    purgeOldGenerations();
+    if (!m_cache.empty()) {
+        ++m_generation;
+        m_cache.emplace_back();
+        m_borrowCount.emplace_back(0);
+        purgeOldGenerations();
+    }
 }
 
 template<class Result>
