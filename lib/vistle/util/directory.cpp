@@ -11,24 +11,9 @@ namespace directory {
 std::string build_type()
 {
 #ifdef CMAKE_INTDIR
-    const std::string btype = CMAKE_INTDIR;
-#else
-#ifdef _WIN32
-#ifdef CMAKE_BUILD_TYPE
-    const std::string btype = CMAKE_BUILD_TYPE;
-#else
-#ifdef _DEBUG
-    const std::string btype = "Debug";
-#else
-    const std::string btype = "Release";
+    return CMAKE_INTDIR;
 #endif
-#endif
-#else
-    const std::string btype = "";
-#endif
-#endif
-
-    return btype;
+    return "";
 }
 
 namespace {
