@@ -376,7 +376,7 @@ bool Hub::init(int argc, char *argv[])
                 crypto::set_session_key(connectionData.hex_key);
             }
             if (connectionData.kind == "/ui" || connectionData.kind == "/gui") {
-                std::string uipath = m_dir->bin() + "/" + uiCmd;
+                std::string uipath = m_dir->bin() + uiCmd;
                 startUi(uipath, true);
             }
         } else {
@@ -470,7 +470,7 @@ bool Hub::init(int argc, char *argv[])
         // start UI
         if (!uiCmd.empty()) {
             m_hasUi = true;
-            std::string uipath = m_dir->bin() + "/" + uiCmd;
+            std::string uipath = m_dir->bin() + uiCmd;
             startUi(uipath);
         }
         if (pythonUi) {
@@ -562,12 +562,16 @@ unsigned short Hub::dataPort() const
 
 std::shared_ptr<process::child> Hub::launchProcess(const std::string &prog, const std::vector<std::string> &args)
 {
-    auto path = process::search_path(prog);
-    if (path.empty()) {
-        std::stringstream info;
-        info << "Cannot launch " << prog << ": not found";
-        sendError(info.str());
-        return nullptr;
+    boost::system::error_code ec;
+    process::filesystem::path path = prog;
+    if (!filesystem::exists(prog, ec)) {
+        path = process::search_path(prog);
+        if (path.empty()) {
+            std::stringstream info;
+            info << "Cannot launch " << prog << ": not found";
+            sendError(info.str());
+            return nullptr;
+        }
     }
 
     try {
