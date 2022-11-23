@@ -163,7 +163,11 @@ public:
 
     void set_gui_output(bool enable) { m_gui = enable; }
 
-    void clear_backlog() { m_backlog.clear(); }
+    void clear_backlog()
+    {
+        std::unique_lock<std::recursive_mutex> scoped_lock(m_mutex);
+        m_backlog.clear();
+    }
 
 private:
     const size_t BacklogSize = 10;
