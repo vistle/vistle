@@ -7,6 +7,7 @@
 #include <vistle/core/archive_saver.h>
 #include <vistle/core/archive_loader.h>
 #include <vistle/core/shm.h>
+#include <vistle/util/fileio.h>
 
 using namespace vistle;
 
