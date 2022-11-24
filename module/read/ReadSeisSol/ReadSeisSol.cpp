@@ -233,60 +233,6 @@ void ReadSeisSol::releaseXdmfObjects()
     m_vugrid_ptr.reset();
 }
 
-/**
-  * @brief: Template for switching between XDMF and HDF5 mode. Calls given function with args according to current mode.
-  *
-  * @xdmfFunc: Function that will be called when in XDMF mode.
-  * @hdfFunc: Function that will be called when in HDF5 mode.
-  *
-  * return: seisFunc(args) -> return type.
-  */
-template<class Ret, class... Args>
-auto ReadSeisSol::switchSeisMode(std::function<Ret(Args...)> xdmfFunc, std::function<Ret(Args...)> hdfFunc,
-                                 Args... args)
-{
-    switch (m_seisMode->getValue()) {
-    case XDMF:
-        return xdmfFunc(args...);
-    case HDF5:
-        return hdfFunc(args...);
-    }
-    return false;
-}
-
-/**
-  * @brief: Wrapper function for easier call of seismode-function for selected seismode.
-  *
-  * @xdmfFunc: Function pointer to XdfmFunction.
-  * @hdfFunc: Function pointer to hdfFunction.
-  * @args: Arguments to pass.
-  *
-  * @return: Return val of called function.
-  */
-template<class Ret, class... Args>
-auto ReadSeisSol::callSeisModeFunction(Ret (ReadSeisSol::*xdmfFunc)(Args...), Ret (ReadSeisSol::*hdfFunc)(Args...),
-                                       Args... args)
-{
-    using funcType = Ret(ReadSeisSol *, Args...);
-    std::function<funcType> xFunc{xdmfFunc};
-    std::function<funcType> hFunc{hdfFunc};
-    return switchSeisMode<Ret, ReadSeisSol *, Args...>(xFunc, hFunc, this, args...);
-}
-
-/**
-  * @brief: Helper function to tell user that HDF5 mode is not implemented.
-  *
-  * @return: false.
-  */
-bool ReadSeisSol::hdfModeNotImplemented()
-{
-    sendInfo("HDF5 mode is not implemented.");
-    return false;
-}
-bool ReadSeisSol::hdfModeNotImplementedRead(Token &, int, int)
-{
-    return hdfModeNotImplemented();
-}
 
 /**
   * @brief: Clears attributes choice.
@@ -442,7 +388,7 @@ bool ReadSeisSol::examine(const vistle::Parameter *param)
         if (!boost::algorithm::ends_with(m_file->getValue(), ".xdmf"))
             return false;
 
-        callSeisModeFunction(&ReadSeisSol::inspectXdmf, &ReadSeisSol::hdfModeNotImplemented);
+        return ReadSeisSol::inspectXdmf();
     } else if (param == m_parallelMode) {
         switch (m_parallelMode->getValue()) {
         case BLOCKS: {
@@ -506,7 +452,7 @@ bool ReadSeisSol::checkGeoElemVolume(vistle::UnstructuredGrid::ptr unstr, XdmfAr
         for (int i = 0; i < 4; ++i)
             xdmfArrGeo->getValues(cl[i] * 3, arr.data() + i * 4, 3, 1, 1);
 
-        auto volume = calcTetrahedronVolume(arr.begin());
+        auto volume = calcTetrahedronVolume(arr.data());
         if (volume <= 0)
             return false;
         return true;
@@ -861,12 +807,7 @@ void ReadSeisSol::setGridCenter(const boost::shared_ptr<const XdmfAttributeCente
         sendInfo("other");
 }
 
-/**
-  * @brief: Initialize xdmf variables before read will be called.
-  *
-  * return: true if every xdmf variable could be initialized.
-  */
-bool ReadSeisSol::prepareReadXdmf()
+bool ReadSeisSol::prepareRead()
 {
     const std::string xfile = m_file->getValue();
     const auto xreader = XdmfReader::New();
@@ -886,16 +827,6 @@ bool ReadSeisSol::prepareReadXdmf()
         return false;
     }
     return true;
-}
-
-/**
-  * @brief: Call prepare function to chosen seismode.
-  *
-  * @return: true if everything went well in called prepare function.
-  */
-bool ReadSeisSol::prepareRead()
-{
-    return callSeisModeFunction(&ReadSeisSol::prepareReadXdmf, &ReadSeisSol::hdfModeNotImplemented);
 }
 
 /**
@@ -991,21 +922,9 @@ bool ReadSeisSol::read(Token &token, int timestep, int block)
         return true;
     }
 
-    return callSeisModeFunction<bool, Token &, int, int>(
-        &ReadSeisSol::readXdmfHDF5Data, &ReadSeisSol::hdfModeNotImplementedRead, token, timestep, block);
+    return readXdmfHDF5Data(token, timestep, block);
 }
 
-/**
-  * @brief: Delete xdmf element variables cached.
-  *
-  * @return: no proper error handling at the moment.
-  */
-bool ReadSeisSol::finishReadXdmf()
-{
-    releaseXdmfObjects();
-    sendInfo("Released reader objects rank: %d", rank());
-    return true;
-}
 
 /**
   * @brief: Called after final read call. Calls function according chosen seismode.
@@ -1014,7 +933,9 @@ bool ReadSeisSol::finishReadXdmf()
   */
 bool ReadSeisSol::finishRead()
 {
-    return callSeisModeFunction(&ReadSeisSol::finishReadXdmf, &ReadSeisSol::hdfModeNotImplemented);
+    releaseXdmfObjects();
+    sendInfo("Released reader objects rank: %d", rank());
+    return true;
 }
 
 /*************** DynamicPseudoEnum **************/
