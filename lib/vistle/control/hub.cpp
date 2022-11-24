@@ -2396,7 +2396,7 @@ bool Hub::startVrb()
     CERR << "started VRB process" << std::endl;
 
     std::string line;
-    while (child->running() && std::getline(*out, line) && !line.empty()) {
+    while (child->running() && std::getline(*out, line) && !line.empty() && m_vrbPort == 0) {
         m_vrbPort = std::atol(line.c_str());
     }
     if (m_vrbPort == 0) {
