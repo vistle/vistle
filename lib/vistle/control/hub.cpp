@@ -562,11 +562,18 @@ unsigned short Hub::dataPort() const
 
 std::shared_ptr<process::child> Hub::launchProcess(const std::string &prog, const std::vector<std::string> &args)
 {
-    boost::system::error_code ec;
-    process::filesystem::path path = prog;
-    if (!filesystem::exists(prog, ec)) {
-        path = process::search_path(prog);
-        if (path.empty()) {
+    auto path = process::search_path(prog);
+    if (path.empty()) {
+        boost::system::error_code ec;
+        if (filesystem::exists(prog, ec)) {
+            path = prog;
+#ifdef _WIN32
+        } else if (filesystem::exists(prog + ".exe")) {
+            path = prog + ".exe";
+        } else if (filesystem::exists(prog + ".bat")) {
+            path = prog + ".bat";
+#endif
+        } else {
             std::stringstream info;
             info << "Cannot launch " << prog << ": not found";
             sendError(info.str());
