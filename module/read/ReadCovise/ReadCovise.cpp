@@ -22,11 +22,8 @@
 
 #include <boost/algorithm/string/predicate.hpp>
 
-#ifdef _WIN32
-#include <io.h>
-#endif
-
 #include <vistle/util/filesystem.h>
+#include <vistle/util/fileio.h>
 
 #include <file/covReadFiles.h>
 

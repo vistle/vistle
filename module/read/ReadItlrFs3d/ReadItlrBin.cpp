@@ -80,12 +80,8 @@ struct File {
             return false;
 #endif
         } else {
-#ifdef _WIN32
             fp = fopen(name.c_str(), "rb");
-#else
-            fp = fopen(name.c_str(), "r");
-#endif
-            return fp;
+            return fp != nullptr;
         }
 
         return false;
