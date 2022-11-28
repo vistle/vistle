@@ -239,7 +239,7 @@ bool UserInterface::handleMessage(const vistle::message::Message *message, const
         }
         if (!m_locked) {
             for (auto &m: m_sendQueue) {
-                sendMessage(m.buf, m.payload.get());
+                message::send(socket(), m.buf, m.payload.get());
             }
             m_sendQueue.clear();
         }
