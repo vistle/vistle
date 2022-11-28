@@ -1205,13 +1205,11 @@ bool StateTracker::handlePriv(const message::AddParameter &addParam)
     }
 
     mutex_locker guard(m_stateMutex);
+    const Port *p = nullptr;
+    if (portTracker()) {
+        p = portTracker()->addPort(addParam.senderId(), addParam.getName(), addParam.description(), Port::PARAMETER);
+    }
     for (StateObserver *o: m_observers) {
-        const Port *p = nullptr;
-        if (portTracker()) {
-            p = portTracker()->addPort(addParam.senderId(), addParam.getName(), addParam.description(),
-                                       Port::PARAMETER);
-        }
-
         o->newParameter(addParam.senderId(), addParam.getName());
         if (p) {
             for (StateObserver *o: m_observers) {
