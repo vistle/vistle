@@ -1013,7 +1013,7 @@ std::shared_ptr<Parameter> AddParameter::getParameter() const
         p->setGroup(group());
         p->setGroupExpanded(isGroupExpanded());
     } else {
-        std::cerr << "AddParameter::getParameter (" << moduleName() << ":" << getName() << ": type "
+        std::cerr << "AddParameter::getParameter: " << moduleName() << ":" << getName() << ": type "
                   << getParameterType() << " not handled" << std::endl;
         assert("parameter type not supported" == 0);
     }
