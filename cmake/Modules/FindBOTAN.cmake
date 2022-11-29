@@ -23,11 +23,13 @@ find_path(
 find_library(
     BOTAN_LIBRARY
     NAMES ${BOTAN_NAMES}
+    PATH_SUFFIXES release/lib
     DOC "The Botan (release) library")
 if(MSVC)
     find_library(
         BOTAN_LIBRARY_DEBUG
         NAMES ${BOTAN_NAMES_DEBUG}
+        PATH_SUFFIXES debug/lib
         DOC "The Botan debug library")
     find_package_handle_standard_args(BOTAN REQUIRED_VARS BOTAN_LIBRARY BOTAN_LIBRARY_DEBUG BOTAN_INCLUDE_DIR)
 else()
