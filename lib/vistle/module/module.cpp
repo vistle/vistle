@@ -59,6 +59,36 @@
 
 namespace interprocess = ::boost::interprocess;
 
+namespace bigmpi {
+
+static const size_t chunk = 1 << 30;
+
+template<typename T>
+void broadcast(const mpi::communicator &comm, T *values, size_t count, int root)
+{
+    for (size_t off = 0; off < count; off += chunk) {
+        mpi::broadcast(comm, values + off, int(std::min(chunk, count - off)), root);
+    }
+}
+
+template<typename T>
+void send(const mpi::communicator &comm, int rank, int tag, const T *values, size_t count)
+{
+    for (size_t off = 0; off < count; off += chunk) {
+        comm.send(rank, tag, values + off, int(std::min(chunk, count - off)));
+    }
+}
+
+template<typename T>
+void recv(const mpi::communicator &comm, int rank, int tag, T *values, size_t count)
+{
+    for (size_t off = 0; off < count; off += chunk) {
+        comm.recv(rank, tag, values + off, int(std::min(chunk, count - off)));
+    }
+}
+
+} // namespace bigmpi
+
 namespace vistle {
 
 using message::Id;
@@ -606,7 +636,7 @@ bool Module::sendObject(const mpi::communicator &comm, Object::const_ptr obj, in
     auto dir = saver->getDirectory();
     comm.send(destRank, 0, dir);
     for (auto &ent: dir) {
-        comm.send(destRank, 0, ent.data, ent.size);
+        bigmpi::send(comm, destRank, 0, ent.data, ent.size);
     }
     return true;
 }
@@ -633,7 +663,7 @@ Object::const_ptr Module::receiveObject(const mpi::communicator &comm, int sourc
             objects[ent.name].resize(ent.size);
             ent.data = objects[ent.name].data();
         }
-        comm.recv(sourceRank, 0, ent.data, ent.size);
+        bigmpi::recv(comm, sourceRank, 0, ent.data, ent.size);
     }
     vecistreambuf<buffer> membuf(mem);
     vistle::iarchive memar(membuf);
@@ -665,7 +695,7 @@ bool Module::broadcastObject(const mpi::communicator &comm, Object::const_ptr &o
         auto dir = saver->getDirectory();
         mpi::broadcast(comm, dir, root);
         for (auto &ent: dir) {
-            mpi::broadcast(comm, ent.data, ent.size, root);
+            bigmpi::broadcast(comm, ent.data, ent.size, root);
         }
     } else {
         buffer mem;
@@ -683,7 +713,7 @@ bool Module::broadcastObject(const mpi::communicator &comm, Object::const_ptr &o
                 objects[ent.name].resize(ent.size);
                 ent.data = objects[ent.name].data();
             }
-            mpi::broadcast(comm, ent.data, ent.size, root);
+            bigmpi::broadcast(comm, ent.data, ent.size, root);
         }
         vecistreambuf<buffer> membuf(mem);
         vistle::iarchive memar(membuf);
