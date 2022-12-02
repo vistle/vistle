@@ -307,9 +307,13 @@ endif()
 
 #set (Boost_DEBUG ON)
 if(WIN32)
-    #otherwise Boost_INCLUDE_DIRS is not set and headers are not found
-    set(Boost_NO_BOOST_CMAKE ON)
+    #otherwise, in older versions Boost_INCLUDE_DIRS is not set and headers are not found
+    #set(Boost_NO_BOOST_CMAKE ON)
+
     set(Boost_USE_STATIC_RUNTIME OFF)
+    option(VISTLE_Boost_USE_STATIC_LIBS "use boost static libs" OFF)
+    set(Boost_USE_STATIC_LIBS ${VISTLE_Boost_USE_STATIC_LIBS})
+
 endif(WIN32)
 
 if(APPLE)
