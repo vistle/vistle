@@ -48,9 +48,12 @@
 namespace xml = tinyxml2;
 #endif
 
-MODULE_MAIN(ReadVtk)
+using vistle::Parameter;
 
-using namespace vistle;
+MODULE_MAIN(ReadVtk)
+using vistle::Reader;
+using vistle::DataBase;
+using vistle::Parameter;
 
 const std::string Invalid("(NONE)");
 
@@ -381,7 +384,7 @@ ReadVtk::ReadVtk(const std::string &name, int moduleID, mpi::communicator comm):
 ReadVtk::~ReadVtk()
 {}
 
-bool ReadVtk::examine(const Parameter *param)
+bool ReadVtk::examine(const vistle::Parameter *param)
 {
     bool readPieces = m_readPieces->getValue();
 
@@ -471,12 +474,12 @@ bool ReadVtk::finishRead()
     return true;
 }
 
-bool ReadVtk::read(Reader::Token &token, int timestep, int block)
+bool ReadVtk::read(Token &token, int timestep, int block)
 {
     const bool readPieces = m_readPieces->getValue();
     const bool ghostCells = m_ghostCells->getValue();
 
-    Meta m;
+    vistle::Meta m;
     m.setBlock(block);
     m.setNumBlocks(token.meta().numBlocks());
     m.setTimeStep(timestep);
@@ -522,7 +525,7 @@ bool ReadVtk::read(Reader::Token &token, int timestep, int block)
     return true;
 }
 
-bool ReadVtk::load(Token &token, const std::string &filename, const Meta &meta, int piece, bool ghost,
+bool ReadVtk::load(Token &token, const std::string &filename, const vistle::Meta &meta, int piece, bool ghost,
                    const std::string &part) const
 {
     auto ds_pieces = getDataSet(filename, piece, ghost);
@@ -552,7 +555,7 @@ bool ReadVtk::load(Token &token, const std::string &filename, const Meta &meta, 
             auto field = vistle::vtk::getField(cellData, m_cellDataChoice[i]->getValue(), grid);
             if (field) {
                 field->addAttribute("_species", m_cellDataChoice[i]->getValue());
-                field->setMapping(DataBase::Element);
+                field->setMapping(vistle::DataBase::Element);
                 if (!part.empty())
                     field->addAttribute("_part", part);
             }
@@ -567,7 +570,7 @@ bool ReadVtk::load(Token &token, const std::string &filename, const Meta &meta, 
             }
             if (field) {
                 field->addAttribute("_species", m_pointDataChoice[i]->getValue());
-                field->setMapping(DataBase::Vertex);
+                field->setMapping(vistle::DataBase::Vertex);
                 if (!part.empty())
                     field->addAttribute("_part", part);
             }
