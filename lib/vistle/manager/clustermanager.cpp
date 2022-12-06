@@ -2034,7 +2034,7 @@ bool ClusterManager::handlePriv(const message::BarrierReached &barrReached)
          << std::endl;
 #endif
 
-    if (barrReached.senderId() >= Id::ModuleBase) {
+    if (Id::isModule(barrReached.senderId())) {
         assert(isLocal(barrReached.senderId()));
         reachedSet.insert(barrReached.senderId());
         if (checkBarrier(m_barrierUuid)) {
