@@ -685,6 +685,7 @@ bool Module::broadcastObject(const mpi::communicator &comm, Object::const_ptr &o
         return true;
 
     if (comm.rank() == root) {
+        assert(obj->check());
         vecostreambuf<buffer> memstr;
         vistle::oarchive memar(memstr);
         auto saver = std::make_shared<DeepArchiveSaver>();
@@ -722,8 +723,8 @@ bool Module::broadcastObject(const mpi::communicator &comm, Object::const_ptr &o
         //std::cerr << "DeepArchiveFetcher: " << *fetcher << std::endl;
         obj.reset(Object::loadObject(memar));
         obj->refresh();
-        obj->check();
         //std::cerr << "broadcastObject recv " << obj->getName() << ": refcount=" << obj->refcount() << std::endl;
+        assert(obj->check());
         //obj->unref();
     }
 
@@ -732,12 +733,44 @@ bool Module::broadcastObject(const mpi::communicator &comm, Object::const_ptr &o
 
 bool Module::broadcastObject(Object::const_ptr &object, int root) const
 {
+#if 0
     return broadcastObject(comm(), object, root);
+#else
+    return broadcastObjectViaShm(object, root);
+#endif
+}
+
+bool Module::broadcastObjectViaShm(const mpi::communicator &comm, Object::const_ptr &object, const std::string &objName,
+                                   int root) const
+{
+    int leader = Shm::the().owningRank();
+    auto commShmGroup = boost::mpi::communicator(comm.split(leader));
+    auto commShmLeaders = boost::mpi::communicator(comm.split(leader == comm.rank() ? 1 : MPI_UNDEFINED));
+
+    if (rank() == shmLeader(root)) {
+        assert(object);
+    }
+    bool ok = true;
+    if (rank() == shmLeader(rank())) {
+        ok = broadcastObject(commShmLeaders, object, m_shmLeadersSubrank[root]);
+        assert(object);
+    }
+    if (shmLeader(rank()) != shmLeader(root)) {
+        commShmGroup.barrier(); // synchronize, so that object is available on leader
+    }
+    if (shmLeader(rank()) == rank()) {
+        assert(object);
+    } else {
+        object = Shm::the().getObjectFromName(objName);
+        assert(object);
+    }
+    commShmGroup.barrier(); // synchronize, so that leader keeps object around long enough
+    return ok;
 }
 
 bool Module::broadcastObjectViaShm(Object::const_ptr &object, const std::string &objName, int root) const
 {
-    if (shmLeader(rank()) == shmLeader(root)) {
+    if (rank() == shmLeader(root)) {
         assert(object);
     }
     bool ok = true;
@@ -756,6 +789,28 @@ bool Module::broadcastObjectViaShm(Object::const_ptr &object, const std::string 
     }
     m_commShmGroup.barrier(); // synchronize, so that leader keeps object around long enough
     return ok;
+}
+
+bool Module::broadcastObjectViaShm(const mpi::communicator &comm, Object::const_ptr &object, int root) const
+{
+    std::string objName;
+    if (comm.rank() == root) {
+        assert(object);
+        objName = object->getName();
+    }
+    mpi::broadcast(comm, objName, root);
+    return broadcastObjectViaShm(comm, object, objName, root);
+}
+
+bool Module::broadcastObjectViaShm(Object::const_ptr &object, int root) const
+{
+    std::string objName;
+    if (comm().rank() == root) {
+        assert(object);
+        objName = object->getName();
+    }
+    mpi::broadcast(comm(), objName, root);
+    return broadcastObjectViaShm(object, objName, root);
 }
 
 void Module::updateCacheMode()

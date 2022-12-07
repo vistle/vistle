@@ -156,6 +156,10 @@ public:
     bool broadcastObject(const mpi::communicator &comm, vistle::Object::const_ptr &object, int root) const;
     bool broadcastObject(vistle::Object::const_ptr &object, int root) const;
     bool broadcastObjectViaShm(vistle::Object::const_ptr &object, const std::string &objName, int root) const;
+    bool broadcastObjectViaShm(vistle::Object::const_ptr &object, int root) const;
+    bool broadcastObjectViaShm(const mpi::communicator &comm, vistle::Object::const_ptr &object, int root) const;
+    bool broadcastObjectViaShm(const mpi::communicator &comm, vistle::Object::const_ptr &object,
+                               const std::string &objName, int root) const;
 
     bool addObject(Port *port, vistle::Object::ptr object);
     bool addObject(const std::string &portName, vistle::Object::ptr object);
