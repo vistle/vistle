@@ -871,7 +871,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
 
             if (partsFile == nullptr) {
                 if (block == 0)
-                    sendInfo("Could not read parts file %s", partsPath.c_str());
+                    sendError("Could not read parts file %s", partsPath.c_str());
                 return false;
             }
 
@@ -891,6 +891,13 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
             if (partsFile) {
                 fclose(partsFile);
                 partsFile = nullptr;
+            }
+
+            if (partList.size() != numCells) {
+                if (block == 0)
+                    sendError("Wrong number of nodes in partition list %s: have %lu, expect %lu", partsPath.c_str(),
+                              (unsigned long)partList.size(), (unsigned long)numCells);
+                return false;
             }
 
             assert(partList.size() == numCells);
