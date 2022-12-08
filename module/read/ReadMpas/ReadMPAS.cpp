@@ -62,7 +62,6 @@ static std::mutex pnetcdf_mutex; // avoid simultaneous access to PnetCDF library
 #endif
 #endif
 
-#define MAX_VAL 100000000
 #define MAX_EDGES 6 // maximal edges on cell
 #define MSL 6371229.0 //sphere radius on mean sea level (earth radius)
 #define MAX_VERT 3 // vertex degree
@@ -879,9 +878,9 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
             char buffer[10];
             Index xBlockIdx = 0, idxp = 0;
             partList.reserve(numCells);
-            while ((fgets(buffer, sizeof(buffer), partsFile) != NULL) && (idxp < MAX_VAL)) {
-                unsigned x;
-                sscanf(buffer, "%u", &x);
+            while ((fgets(buffer, sizeof(buffer), partsFile) != NULL) && (idxp < numCells)) {
+                unsigned long x;
+                sscanf(buffer, "%lu", &x);
                 xBlockIdx = x / FileBlocksPerUserBlocks;
                 numCellsB[xBlockIdx]++;
                 numCornB[xBlockIdx] += eoc[idxp]; //TODO: std instead: more efficient?
