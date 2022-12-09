@@ -17,6 +17,7 @@
 
 namespace vistle {
 
+class PythonInterpreter;
 class Directory;
 class Hub;
 class HubParameters: public ParameterManager {
@@ -225,6 +226,8 @@ private:
 
     std::mutex m_outstandingDataConnectionMutex;
     std::map<vistle::message::AddHub, std::future<bool>> m_outstandingDataConnections;
+
+    std::unique_ptr<PythonInterpreter> m_python;
 };
 
 } // namespace vistle

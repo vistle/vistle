@@ -192,6 +192,8 @@ Hub::Hub(bool inManager)
 
 Hub::~Hub()
 {
+    m_python.reset();
+
     params.quit();
 
     stopVrb();
@@ -515,6 +517,8 @@ bool Hub::init(int argc, char *argv[])
             }
 #endif // MODULE_THREAD
         }
+
+        m_python.reset(new PythonInterpreter(m_dir->share()));
     }
 
     if (m_isMaster && !m_inManager && !m_interrupt && !m_quitting) {
@@ -2727,18 +2731,18 @@ bool Hub::processScript(const std::string &filename, bool barrierAfterLoad, bool
     assert(m_uiManager.isLocked());
 #ifdef HAVE_PYTHON
     setStatus("Loading " + filename + "...");
-    int flags = PythonInterpreter::LoadFile;
+    int flags = PythonExecutor::LoadFile;
     if (barrierAfterLoad)
-        flags |= PythonInterpreter::BarrierAfterLoad;
+        flags |= PythonExecutor::BarrierAfterLoad;
     if (executeModules)
-        flags |= PythonInterpreter::ExecuteModules;
-    PythonInterpreter inter(filename, m_dir->share(), flags);
+        flags |= PythonExecutor::ExecuteModules;
+    PythonExecutor exec(*m_python, flags, filename);
     bool interrupt = false;
-    while (!interrupt && inter.check()) {
+    while (!interrupt && !exec.done()) {
         if (!dispatch())
             interrupt = true;
     }
-    if (interrupt || inter.error()) {
+    if (interrupt || exec.state() != PythonExecutor::Success) {
         setStatus("Loading " + filename + " failed");
         return false;
     }
@@ -2754,19 +2758,20 @@ bool Hub::processCommand(const std::string &command)
     assert(m_uiManager.isLocked());
 #ifdef HAVE_PYTHON
     setStatus("Executing " + command + "...");
-    PythonInterpreter inter(command, m_dir->share(), PythonInterpreter::Command);
+    PythonExecutor exec(*m_python, command);
     bool interrupt = false;
-    while (!interrupt && inter.check()) {
+    while (!interrupt && !exec.done()) {
         if (!dispatch())
             interrupt = true;
     }
-    if (interrupt || inter.error()) {
+    if (interrupt || exec.state() != PythonExecutor::Success) {
         setStatus("Executing " + command + " failed");
         return false;
     }
     setStatus("Executing " + command + " done");
     return true;
 #else
+    setStatus("Cannot execute: " + command + " - no Python support");
     return false;
 #endif
 }
