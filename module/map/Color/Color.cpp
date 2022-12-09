@@ -53,6 +53,7 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(
     (Earth)
     (Topography)
     (RainbowPale)
+    (FromFile)
 )
 // clang-format on
 
@@ -184,6 +185,7 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm): Mod
     setParameterRange(m_opacity, 0., 1.);
 #ifndef COLOR_RANDOM
     m_mapPara = addIntParameter("map", "transfer function name", CoolWarmBrewer, Parameter::Choice);
+    m_rgbFile = addStringParameter("rgb file", " file containing pin rgb values", "", Parameter::ExistingFilename);
     V_ENUM_SET_CHOICES(m_mapPara, TransferFunction);
     m_stepsPara = addIntParameter("steps", "number of color map steps", 32);
     setParameterRange(m_stepsPara, (Integer)1, MaxSteps);
@@ -541,6 +543,45 @@ bool Color::changeParameter(const Parameter *p)
             std::set<const vistle::Parameter *> params{m_constrain, m_autoRangePara, m_centerAbsolute, m_minPara,
                                                        m_maxPara,   m_center,        m_stepsPara};
             changeParameters(params);
+        }
+    } else if (p == m_rgbFile) {
+        if (m_rgbFile->getValue() != "") {
+            std::map<vistle::Scalar, ColorMap::RGBA> pins;
+            std::vector<ColorMap::RGBA> rgbValues;
+            std::vector<float> line{0, 0, 0};
+
+            char buffer[100];
+            int linecount = 0, checksum = 0;
+
+            FILE *rgbFile = fopen(m_rgbFile->getValue().c_str(), "r");
+            if (rgbFile == NULL) {
+                printf("Failed to open rgb file. \n");
+            } else {
+                while (fgets(buffer, sizeof(buffer), rgbFile) != NULL) {
+                    checksum = sscanf(buffer, "%f %f %f", &line[0], &line[1], &line[2]);
+                    if (checksum < 3)
+                        continue;
+                    rgbValues.push_back(ColorMap::RGBA(line[0], line[1], line[2], 1.));
+                    linecount++;
+                }
+
+                fclose(rgbFile);
+
+                if (line[0] > 1) {
+                    for_each(rgbValues.begin(), rgbValues.end(), [](ColorMap::RGBA &elem) {
+                        elem[0] /= 255;
+                        elem[1] /= 255;
+                        elem[2] /= 255;
+                    });
+                }
+
+                for (int i = 0; i < linecount; ++i) {
+                    float idx = (float)i / (float)(linecount - 1);
+                    pins[idx] = rgbValues[i];
+                }
+
+                transferFunctions[FromFile] = pins;
+            }
         }
     } else
 #endif

@@ -50,6 +50,7 @@ private:
 
 #ifndef COLOR_RANDOM
     std::map<int, ColorMap::TF> transferFunctions;
+    vistle::StringParameter *m_rgbFile = nullptr;
 #endif
 
     std::shared_ptr<ColorMap> m_colors;
