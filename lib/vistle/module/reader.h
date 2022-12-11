@@ -201,6 +201,7 @@ private:
     int m_dimDomain = 3;
     int m_numPartitions = 0;
     bool m_readyForRead = true;
+    bool m_inhibitExamine = false; // in order to avoid multiple calls to examine() during changeParameters
 
     CollectiveIo m_collectiveIo = Individual;
     PartitionHandling m_handlePartitions = Partition;

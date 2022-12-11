@@ -420,7 +420,9 @@ void Reader::setPartitions(int number)
 
 bool Reader::changeParameters(std::set<const Parameter *> params)
 {
+    m_inhibitExamine = true;
     bool ret = Module::changeParameters(params);
+    m_inhibitExamine = false;
 
     for (auto &p: params) {
         auto it = m_observedParameters.find(p);
@@ -453,10 +455,12 @@ bool Reader::changeParameter(const Parameter *param)
 
     bool ret = Module::changeParameter(param);
 
-    auto it = m_observedParameters.find(param);
-    if (it != m_observedParameters.end()) {
-        m_readyForRead = examine(param);
-        ret &= m_readyForRead;
+    if (!m_inhibitExamine) {
+        auto it = m_observedParameters.find(param);
+        if (it != m_observedParameters.end()) {
+            m_readyForRead = examine(param);
+            ret &= m_readyForRead;
+        }
     }
 
     return ret;
