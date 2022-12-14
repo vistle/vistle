@@ -2,6 +2,7 @@
 set(VISTLE_MODULE_CATEGORY "Geometry")
 
 add_subdirectory(Chainmail)
+add_subdirectory(DelaunayTriangulator)
 add_subdirectory(FlattenTriangles)
 add_subdirectory(Thicken)
 add_subdirectory(ToPoints)
