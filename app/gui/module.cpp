@@ -809,19 +809,22 @@ void Module::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 {
     Base::mouseReleaseEvent(event);
     setCursor(Qt::OpenHandCursor);
-    projectToGrid();
-    for (auto *item: scene()->selectedItems()) {
-        if (auto *mod = dynamic_cast<Module *>(item))
-            mod->projectToGrid();
-    }
-    auto p = getParameter<vistle::ParamVector>("_position");
-    if (p) {
-        vistle::ParamVector v = p->getValue();
-        if (v[0] != pos().x() || v[1] != pos().y()) {
-            sendPosition();
-            scene()->setSceneRect(scene()->itemsBoundingRect());
+
+    auto items = scene()->selectedItems();
+    items.push_back(this);
+    for (auto *item: items) {
+        if (auto *mod = dynamic_cast<Module *>(item)) {
+            mod->setPositionValid();
+            auto p = mod->getParameter<vistle::ParamVector>("_position");
+            if (p) {
+                vistle::ParamVector v = p->getValue();
+                if (v[0] != pos().x() || v[1] != pos().y()) {
+                    mod->sendPosition();
+                }
+            }
         }
     }
+    scene()->setSceneRect(scene()->itemsBoundingRect());
 }
 
 void Module::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event)
