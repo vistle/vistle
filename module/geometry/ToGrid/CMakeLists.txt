@@ -1,0 +1,12 @@
+set(TET_GEN_HINTS $ENV{EXTERNLIBS}/tetgen1.6.0/build $ENV{EXTERNLIBS}/tetgen1.6.0/)
+find_library(TET_GEN_LIB tet HINTS ${TET_GEN_HINTS})
+find_path(TET_GET_INCLUDE_DIR tetgen.h HINTS ${TET_GEN_HINTS})
+if(NOT TET_GEN_LIB OR NOT TET_GET_INCLUDE_DIR)
+    message("Can not build ToGrid: TetGen not found")
+    return()
+endif()
+message("tet gen found " ${TET_GEN_LIB} " " ${TET_GET_INCLUDE_DIR})
+
+add_module(ToGrid "combine points to grid" ToGrid.cpp ToGrid.h)
+target_link_libraries(ToGrid ${TET_GEN_LIB})
+target_include_directories(ToGrid PRIVATE ${TET_GET_INCLUDE_DIR})
