@@ -243,6 +243,7 @@ void DataFlowNetwork::newConnection(int fromId, QString fromName, int toId, QStr
    m_console->appendDebug(text);
 #endif
 
+    std::lock_guard guard(m_state);
     const vistle::Port *portFrom = m_state.portTracker()->findPort(fromId, fromName.toStdString());
     const vistle::Port *portTo = m_state.portTracker()->findPort(toId, toName.toStdString());
 
@@ -260,6 +261,8 @@ void DataFlowNetwork::deleteConnection(int fromId, QString fromName, int toId, Q
    QString text = "Connection removed: " + QString::number(fromId) + ":" + fromName + " -> " + QString::number(toId) + ":" + toName;
    m_console->appendDebug(text);
 #endif
+
+    std::lock_guard guard(m_state);
 
     const vistle::Port *portFrom = m_state.portTracker()->findPort(fromId, fromName.toStdString());
     const vistle::Port *portTo = m_state.portTracker()->findPort(toId, toName.toStdString());
@@ -310,6 +313,7 @@ void DataFlowNetwork::itemInfoChanged(QString text, int type, int id, QString po
         if (port.isEmpty()) {
             m->setInfo(text);
         } else {
+            std::lock_guard guard(m_state);
             const vistle::Port *p = m_state.portTracker()->findPort(id, port.toStdString());
             if (auto *gp = m->getGuiPort(p)) {
                 gp->setInfo(text);
@@ -629,6 +633,7 @@ void DataFlowNetwork::wheelEvent(QGraphicsSceneWheelEvent *event)
 
 void DataFlowNetwork::selectConnected(int direction, int id, QString port)
 {
+    std::lock_guard guard(m_state);
     std::set<int> modules;
     switch (direction) {
     case SelectConnected:
@@ -732,6 +737,7 @@ void DataFlowNetwork::createModuleCompound()
             m->name().toStdString(), static_cast<float>(m->pos().x() - selectedModules[0]->pos().x()),
             static_cast<float>(m->pos().y() - selectedModules[0]->pos().y())});
 
+        std::lock_guard guard(m_state);
         for (const auto &fromPort: m_state.portTracker()->getConnectedOutputPorts(m->id())) {
             for (const auto &toPort: fromPort->connections()) {
                 vistle::ModuleCompound::Connection c;
