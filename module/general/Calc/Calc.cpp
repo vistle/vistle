@@ -436,12 +436,6 @@ bool Calc::compute(std::shared_ptr<BlockTask> task) const
         if (dout) {
             dout->setMapping(DataBase::Vertex);
             outdim = dout->dimension();
-
-            int indim[NumPorts];
-            for (int i = 0; i < NumPorts; ++i) {
-                indim[i] = din[i] ? din[i]->dimension() : 0;
-            }
-
             dataExpr = setUpExpr("data term", dterm, outdim);
         }
     }
@@ -458,7 +452,7 @@ bool Calc::compute(std::shared_ptr<BlockTask> task) const
             auto v = gridInterface->getVertex(i);
 
             for (unsigned p = 0; p < NumPorts; ++p) {
-                for (int d = 0; d < data[p].size(); ++d) {
+                for (unsigned d = 0; d < data[p].size(); ++d) {
                     data[p][d] = din[p]->value(i, d);
                 }
             }
@@ -477,7 +471,7 @@ bool Calc::compute(std::shared_ptr<BlockTask> task) const
 
                 if (e.e->evaluate()) {
                     auto outdim = e.o->dimension();
-                    for (int c = 0; c < outdim; ++c) {
+                    for (unsigned c = 0; c < outdim; ++c) {
                         if (e.e->result().size() > c)
                             e.o->setValue(i, c, e.e->result()[c]);
                         else
