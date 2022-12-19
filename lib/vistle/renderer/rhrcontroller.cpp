@@ -49,10 +49,13 @@ RhrController::RhrController(vistle::Module *module, int displayRank)
     m_rhrRemoteEndpoint =
         module->addStringParameter("rhr_remote_host", "address where renderer should connect to", "localhost");
     m_rhrAutoRemotePort = module->addIntParameter("_rhr_auto_remote_port", "port where renderer should connect to", 0);
+    module->setParameterReadOnly(m_rhrAutoRemotePort, true);
     module->setParameterRange(m_rhrAutoRemotePort, (Integer)0, (Integer)((1 << 16) - 1));
     m_rhrAutoRemoteEndpoint =
         module->addStringParameter("_rhr_auto_remote_host", "address where renderer should connect to", "localhost");
+    module->setParameterReadOnly(m_rhrAutoRemoteEndpoint, true);
 
+    module->setCurrentParameterGroup("Compression");
     m_sendTileSizeParam =
         module->addIntVectorParameter("send_tile_size", "edge lengths of tiles used during sending", m_sendTileSize);
     module->setParameterRange(m_sendTileSizeParam, IntParamVector(1, 1), IntParamVector(65536, 65536));
@@ -80,9 +83,12 @@ RhrController::RhrController(vistle::Module *module, int displayRank)
     choices.emplace_back("16 bit + 4 bits/pixel");
     choices.emplace_back("24 bit + 3 bits/pixel");
     module->setParameterChoices(m_depthPrec, choices);
+    module->setCurrentParameterGroup("");
 
+    module->setCurrentParameterGroup("Advanced", false);
     m_dumpImagesParam = module->addIntParameter("rhr_dump_images", "dump image data to disk", (Integer)m_dumpImages,
                                                 Parameter::Boolean);
+    module->setCurrentParameterGroup("");
 
     initializeServer();
 }
@@ -161,6 +167,33 @@ bool RhrController::handleParam(const vistle::Parameter *p)
         sendConfigObject();
         return ret;
     } else if (p == m_rhrConnectionMethod) {
+        {
+            bool lp = false, lh = false, rp = false, rh = false;
+            switch (m_rhrConnectionMethod->getValue()) {
+            case ViaVistle:
+                lp = rp = lh = rh = true;
+                break;
+            case AutomaticHostname:
+                rp = lh = rh = true;
+                break;
+            case UserHostname:
+                rp = rh = true;
+                break;
+            case ViaHub:
+                rp = lh = rh = true;
+                break;
+            case AutomaticReverse:
+                lp = rh = lh = true;
+                break;
+            case UserReverse:
+                lp = lh = true;
+                break;
+            }
+            m_module->setParameterReadOnly(m_rhrBasePort, lp);
+            m_module->setParameterReadOnly(m_rhrLocalEndpoint, lh);
+            m_module->setParameterReadOnly(m_rhrRemoteEndpoint, rh);
+            m_module->setParameterReadOnly(m_rhrRemotePort, rp);
+        }
         if ((m_rhrConnectionMethod->getValue() != ViaHub && m_forwardPort != 0) ||
             m_forwardPort != m_rhrBasePort->getValue()) {
             if (m_module->rank() == 0) {

@@ -533,6 +533,7 @@ OSGRenderer::OSGRenderer(const std::string &name, int moduleID, mpi::communicato
 #endif
     icetMutex = new OpenThreads::Mutex;
 
+    setCurrentParameterGroup("Advanced", false);
     m_debugLevel = addIntParameter("debug", "debug level", 1);
     m_visibleView = addIntParameter("visible_view", "no. of visible view (positive values will open window)", -1);
     setParameterRange(m_visibleView, (vistle::Integer)-1, (vistle::Integer)(m_renderManager.numViews()) - 1);
@@ -547,6 +548,7 @@ OSGRenderer::OSGRenderer(const std::string &name, int moduleID, mpi::communicato
     V_ENUM_SET_CHOICES(m_threading, OsgThreadingModel);
     m_async = addIntParameter("asynchronicity", "number of outstanding frames to tolerate", m_asyncFrames);
     setParameterRange(m_async, (vistle::Integer)0, (vistle::Integer)MaxAsyncFrames);
+    setCurrentParameterGroup("");
 
     setRealizeOperation(new EnableGLDebugOperation());
 
