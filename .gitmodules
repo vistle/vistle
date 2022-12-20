@@ -58,3 +58,6 @@
 [submodule "module/general/Calc/exprtk"]
 	path = module/general/Calc/exprtk
 	url = https://github.com/ArashPartow/exprtk.git
+[submodule "lib/vistle/covconfig"]
+	path = lib/3rdparty/covconfig
+	url = https://github.com/vistle/covconfig.git
