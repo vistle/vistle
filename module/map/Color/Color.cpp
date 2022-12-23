@@ -185,7 +185,7 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm): Mod
     setParameterRange(m_opacity, 0., 1.);
 #ifndef COLOR_RANDOM
     m_mapPara = addIntParameter("map", "transfer function name", CoolWarmBrewer, Parameter::Choice);
-    m_rgbFile = addStringParameter("rgb file", " file containing pin rgb values", "", Parameter::ExistingFilename);
+    m_rgbFile = addStringParameter("rgb_file", " file containing pin rgb values", "", Parameter::ExistingFilename);
     V_ENUM_SET_CHOICES(m_mapPara, TransferFunction);
     m_stepsPara = addIntParameter("steps", "number of color map steps", 32);
     setParameterRange(m_stepsPara, (Integer)1, MaxSteps);

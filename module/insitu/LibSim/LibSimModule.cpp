@@ -36,22 +36,22 @@ LibSimModule::LibSimModule(const string &name, int moduleID, mpi::communicator c
     m_filePath = addStringParameter("path", "path to a .sim2 file or directory containing these files", "",
                                     vistle::Parameter::ExistingFilename);
     setParameterFilters(m_filePath, "simulation Files (*.sim2)");
-    m_simName = addStringParameter("simulation name",
+    m_simName = addStringParameter("simulation_name",
                                    "the name of the simulation as used in the filename of the sim2 file ", "");
 #else
     initializeCommunication();
 #endif // !MODULE_THREAD
 
-    m_intOptions.push_back(addIntParameter("VTK variables",
+    m_intOptions.push_back(addIntParameter("vtk_variables",
                                            "sort the variable data on the grid from VTK ordering to Vistles", false,
                                            vistle::Parameter::Boolean));
-    m_intOptions.push_back(addIntParameter("constant grids", "are the grids the same for every timestep?", false,
+    m_intOptions.push_back(addIntParameter("constant_grids", "are the grids the same for every timestep?", false,
                                            vistle::Parameter::Boolean));
     m_intOptions.push_back(addIntParameter("frequency", "frequency in which data is retrieved from the simulation", 1));
-    m_intOptions.push_back(addIntParameter("combine grids",
+    m_intOptions.push_back(addIntParameter("combine_grids",
                                            "combine all structure grids on a rank to a single unstructured grid", true,
                                            vistle::Parameter::Boolean));
-    m_intOptions.push_back(addIntParameter("keep timesteps", "keep data of processed timestep of this execution", true,
+    m_intOptions.push_back(addIntParameter("keep_timesteps", "keep data of processed timestep of this execution", true,
                                            vistle::Parameter::Boolean));
 }
 

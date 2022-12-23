@@ -81,15 +81,15 @@ ReadTsunami::ReadTsunami(const string &name, int moduleID, mpi::communicator com
     /* m_fault_out = createOutputPort("Fault wall surface", "Faults (Polygons)"); */
 
     // block size
-    m_blocks[0] = addIntParameter("blocks latitude", "number of blocks in lat-direction", 2);
-    m_blocks[1] = addIntParameter("blocks longitude", "number of blocks in lon-direction", 2);
+    m_blocks[0] = addIntParameter("blocks_latitude", "number of blocks in lat-direction", 2);
+    m_blocks[1] = addIntParameter("blocks_longitude", "number of blocks in lon-direction", 2);
 
     //fillvalue
     addFloatParameter(fillValue, "ncFile fillValue offset for eta", -9999.f);
     addFloatParameter(fillValueNew, "set new fillValue offset for eta", 0.0f);
 
     //bathymetryname
-    m_bathy = addStringParameter("bathymetry ", "Select bathymetry stored in netCDF", "", Parameter::Choice);
+    m_bathy = addStringParameter("bathymetry", "Select bathymetry stored in netCDF", "", Parameter::Choice);
 
     //scalar
     initScalarParamReader();
@@ -119,8 +119,8 @@ ReadTsunami::~ReadTsunami()
  */
 void ReadTsunami::initScalarParamReader()
 {
-    constexpr auto scalar_name{"Scalar "};
-    constexpr auto scalarPort_name{"Scalar port "};
+    constexpr auto scalar_name{"scalar_"};
+    constexpr auto scalarPort_name{"scalar_port_"};
     constexpr auto scalarPort_descr{"Port for scalar number "};
 
     for (int i = 0; i < NUM_SCALARS; ++i) {

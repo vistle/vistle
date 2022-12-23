@@ -203,7 +203,7 @@ MapDrape::MapDrape(const std::string &name, int moduleID, mpi::communicator comm
 
     p_offset = addVectorParameter("offset", "", ParamVector(0, 0, 0));
 
-    p_permutation = addIntParameter("Axis Permutation", "permutation of the axis", XYZ, Parameter::Choice);
+    p_permutation = addIntParameter("axis_permutation", "permutation of the axis", XYZ, Parameter::Choice);
     V_ENUM_SET_CHOICES(p_permutation, PermutationOption);
 
     addResultCache(m_alreadyMapped);

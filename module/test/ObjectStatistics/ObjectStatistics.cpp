@@ -158,7 +158,7 @@ ObjectStatistics::ObjectStatistics(const std::string &name, int moduleID, mpi::c
 {
     setReducePolicy(message::ReducePolicy::OverAll);
     continuousOutput =
-        addIntParameter("continuous output", "additionally write info of received objects as they arrive", false,
+        addIntParameter("continuous_output", "additionally write info of received objects as they arrive", false,
                         vistle::Parameter::Boolean);
     createInputPort("data_in", "input data", Port::MULTI);
 }

@@ -242,11 +242,11 @@ ReadNek::ReadNek(const std::string &name, int moduleID, mpi::communicator comm):
     m_filePathParam = addStringParameter("filename", "Geometry file path", "", Parameter::Filename);
     m_geometryOnlyParam = addIntParameter("OnlyGeometry", "Reading only Geometry? yes|no", false, Parameter::Boolean);
     m_numGhostLayersParam = addIntParameter(
-        "numGhostLayers", "number of ghost layers around eeach partition, a layer consists of whole blocks", 1);
+        "num_ghost_layers", "number of ghost layers around eeach partition, a layer consists of whole blocks", 1);
     setParameterMinimum(m_numGhostLayersParam, Integer{0});
-    m_numBlocksParam = addIntParameter("number of blocks", "number of blocks to read from file, <= 0 to read all", 0);
+    m_numBlocksParam = addIntParameter("num_blocks", "number of blocks to read from file, <= 0 to read all", 0);
     m_numPartitionsParam = addIntParameter(
-        "numberOfPartitions", "number of parallel partitions to use for reading, 0 = one partition for each rank", 0);
+        "num_partitions", "number of parallel partitions to use for reading, 0 = one partition for each rank", 0);
     setParameterMinimum(m_numPartitionsParam, Integer{0});
     observeParameter(m_numGhostLayersParam);
     observeParameter(m_filePathParam);

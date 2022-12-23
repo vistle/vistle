@@ -144,7 +144,7 @@ ReadCFX::ReadCFX(const std::string &name, int moduleID, mpi::communicator comm):
         }
     }
     //m_readBoundary = addIntParameter("read_boundary", "load the boundary?", 0, Parameter::Boolean);
-    m_2dAreaSelection = addStringParameter("2D area", "select boundary or region numbers e.g. 1,4,6-10", "0");
+    m_2dAreaSelection = addStringParameter("2d_area", "select boundary or region numbers e.g. 1,4,6-10", "0");
 
     // 2d data ports and 2d data choice parameters
     for (int i = 0; i < Num2dPorts; ++i) {
@@ -165,7 +165,7 @@ ReadCFX::ReadCFX(const std::string &name, int moduleID, mpi::communicator comm):
     }
 
     //particle selection
-    m_particleSelection = addStringParameter("particle type", "select particle type e.g. 1,4,6-10", "0");
+    m_particleSelection = addStringParameter("particle_type", "select particle type e.g. 1,4,6-10", "0");
     m_particleTime = createOutputPort("particle_time", "particle time");
 
     // particle data ports and particle choice parameters
@@ -173,7 +173,7 @@ ReadCFX::ReadCFX(const std::string &name, int moduleID, mpi::communicator comm):
         { // particle data ports
             std::stringstream s;
             s << "data_particle_out" << i;
-            m_particleDataOut.push_back(createOutputPort(s.str(), "particle data"));
+            m_particleDataOut.push_back(createOutputPort(s.str(), "particle_data"));
         }
         { // particle choice parameters
             std::stringstream s;
