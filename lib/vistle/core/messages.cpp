@@ -1002,14 +1002,14 @@ const char *AddParameter::moduleName() const
     return module.data();
 }
 
-int AddParameter::getParameterType() const
+Parameter::Type AddParameter::getParameterType() const
 {
-    return paramtype;
+    return static_cast<Parameter::Type>(paramtype);
 }
 
-int AddParameter::getPresentation() const
+Parameter::Presentation AddParameter::getPresentation() const
 {
-    return presentation;
+    return static_cast<Parameter::Presentation>(presentation);
 }
 
 const char *AddParameter::description() const
@@ -1063,9 +1063,9 @@ const char *RemoveParameter::moduleName() const
     return module.data();
 }
 
-int RemoveParameter::getParameterType() const
+Parameter::Type RemoveParameter::getParameterType() const
 {
-    return paramtype;
+    return static_cast<Parameter::Type>(paramtype);
 }
 
 std::shared_ptr<Parameter> RemoveParameter::getParameter() const
@@ -1270,9 +1270,9 @@ const char *SetParameter::getName() const
     return name.data();
 }
 
-int SetParameter::getParameterType() const
+Parameter::Type SetParameter::getParameterType() const
 {
-    return paramtype;
+    return static_cast<Parameter::Type>(paramtype);
 }
 
 Integer SetParameter::getInteger() const
@@ -1931,6 +1931,7 @@ std::ostream &operator<<(std::ostream &s, const Message &m)
     case ADDPARAMETER: {
         auto &mm = static_cast<const AddParameter &>(m);
         s << ", name: " << mm.getName();
+        s << ", type: " << Parameter::toString(mm.getParameterType());
         break;
     }
     case REMOVEPARAMETER: {
@@ -1941,6 +1942,7 @@ std::ostream &operator<<(std::ostream &s, const Message &m)
     case SETPARAMETER: {
         auto &mm = static_cast<const SetParameter &>(m);
         s << ", name: " << mm.getName();
+        s << ", type: " << Parameter::toString(mm.getParameterType());
         if (mm.isInitialization())
             s << " (INIT)";
         break;

@@ -524,8 +524,8 @@ public:
     const char *description() const;
     const char *group() const;
     bool isGroupExpanded() const;
-    int getParameterType() const;
-    int getPresentation() const;
+    Parameter::Type getParameterType() const;
+    Parameter::Presentation getPresentation() const;
     std::shared_ptr<Parameter>
     getParameter() const; //< allocates a new Parameter object, caller is responsible for deletion
 
@@ -546,7 +546,7 @@ public:
 
     const char *getName() const;
     const char *moduleName() const;
-    int getParameterType() const;
+    Parameter::Type getParameterType() const;
     std::shared_ptr<Parameter>
     getParameter() const; //< allocates a new Parameter object, caller is responsible for deletion
 
@@ -580,7 +580,7 @@ public:
     int rangeType() const;
 
     const char *getName() const;
-    int getParameterType() const;
+    Parameter::Type getParameterType() const;
 
     Integer getInteger() const;
     std::string getString() const;
