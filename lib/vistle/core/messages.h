@@ -542,6 +542,7 @@ public:
     SetParameter(int module, const std::string &name, const Float value);
     SetParameter(int module, const std::string &name, const ParamVector &value);
     SetParameter(int module, const std::string &name, const IntParamVector &value);
+    SetParameter(int module, const std::string &name, const StringParamVector &value);
     SetParameter(int module, const std::string &name, const std::string &value);
 
     void setInit();
@@ -563,6 +564,7 @@ public:
     Float getFloat() const;
     ParamVector getVector() const;
     IntParamVector getIntVector() const;
+    StringParamVector getStringVector() const;
 
     void setReadOnly(bool readOnly);
     bool isReadOnly() const;

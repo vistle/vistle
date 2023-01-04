@@ -74,6 +74,9 @@ bool ParameterManager::handleMessage(const message::SetParameter &param)
     case Parameter::String:
         setStringParameter(param.getName(), param.getString(), &param);
         break;
+    case Parameter::StringVector:
+        setStringVectorParameter(param.getName(), param.getStringVector(), &param);
+        break;
     default:
         CERR << "handleMessage: unknown parameter type " << param.getParameterType() << std::endl;
         assert("unknown parameter type" == 0);
@@ -333,6 +336,26 @@ bool ParameterManager::setIntVectorParameter(const std::string &name, const IntP
 IntParamVector ParameterManager::getIntVectorParameter(const std::string &name) const
 {
     IntParamVector value;
+    getParameter(name, value);
+    return value;
+}
+
+StringVectorParameter *ParameterManager::addStringVectorParameter(const std::string &name,
+                                                                  const std::string &description,
+                                                                  StringParamVector value)
+{
+    return dynamic_cast<StringVectorParameter *>(addParameter(name, description, value));
+}
+
+bool ParameterManager::setStringVectorParameter(const std::string &name, const StringParamVector &value,
+                                                const message::SetParameter *inResponseTo)
+{
+    return setParameter(name, value, inResponseTo);
+}
+
+StringParamVector ParameterManager::getStringVectorParameter(const std::string &name) const
+{
+    StringParamVector value;
     getParameter(name, value);
     return value;
 }

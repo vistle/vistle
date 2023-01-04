@@ -34,7 +34,7 @@ class V_COREEXPORT Parameter {
 public:
     DEFINE_ENUM_WITH_STRING_CONVERSIONS(Type,
                                         (Unknown) // keep first
-                                        (Float)(Integer)(Vector)(IntVector)(String)(Invalid) // keep last
+                                        (Float)(Vector)(Integer)(IntVector)(String)(StringVector)(Invalid) // keep last
     )
 
     DEFINE_ENUM_WITH_STRING_CONVERSIONS(Presentation,
@@ -239,6 +239,15 @@ struct V_COREEXPORT ParameterType<IntParamVector> {
 };
 
 template<>
+struct V_COREEXPORT ParameterType<StringParamVector> {
+    typedef StringParamVector T;
+    static const Parameter::Type type = Parameter::StringVector;
+    static const bool isNumber = false;
+    static T min() { return StringParamVector(); }
+    static T max() { return StringParamVector(); }
+};
+
+template<>
 struct V_COREEXPORT ParameterType<std::string> {
     typedef std::string T;
     static const Parameter::Type type = Parameter::String;
@@ -285,6 +294,7 @@ struct ParameterCheck<std::string> {
     typedef ParameterBase<ValueType> Name;
 V_PARAM_TYPE(ParamVector, VectorParameter)
 V_PARAM_TYPE(IntParamVector, IntVectorParameter)
+V_PARAM_TYPE(StringParamVector, StringVectorParameter)
 V_PARAM_TYPE(Float, FloatParameter)
 V_PARAM_TYPE(Integer, IntParameter)
 V_PARAM_TYPE(std::string, StringParameter)

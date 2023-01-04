@@ -1063,6 +1063,9 @@ std::shared_ptr<Parameter> RemoveParameter::getParameter() const
     case Parameter::String:
         p.reset(new StringParameter(senderId(), getName()));
         break;
+    case Parameter::StringVector:
+        p.reset(new StringVectorParameter(senderId(), getName()));
+        break;
     case Parameter::Invalid:
     case Parameter::Unknown:
         break;
@@ -1119,6 +1122,13 @@ SetParameter::SetParameter(int module, const std::string &n, const std::shared_p
             v_ivector[i] = v[i];
     } else if (const auto pstring = dynamic_cast<const StringParameter *>(param)) {
         COPY_STRING(v_string, (initialize ? pstring->getDefaultValue() : pstring->getValue(rt)));
+    } else if (const auto spvec = dynamic_cast<const StringVectorParameter *>(param)) {
+        StringParamVector v = initialize ? spvec->getDefaultValue() : spvec->getValue(rt);
+        dim = v.dim;
+        for (int i = 0; i < MaxDimension; ++i) {
+            //FIXME
+            //v_svector[i] = v[i];
+        }
     } else {
         std::cerr << "SetParameter: type " << param->type() << " not handled" << std::endl;
         assert("invalid parameter type" == 0);
@@ -1197,6 +1207,21 @@ SetParameter::SetParameter(int module, const std::string &n, const std::string &
 {
     COPY_STRING(name, n);
     COPY_STRING(v_string, v);
+}
+
+SetParameter::SetParameter(int module, const std::string &n, const StringParamVector &v)
+: m_module(module)
+, paramtype(Parameter::String)
+, rangetype(Parameter::Value)
+, initialize(false)
+, reply(false)
+, delayed(false)
+, immediate_valid(false)
+, immediate(false)
+{
+    COPY_STRING(name, n);
+    //FIXME
+    //COPY_STRING(v_string, v);
 }
 
 void SetParameter::setInit()
@@ -1279,6 +1304,13 @@ std::string SetParameter::getString() const
 {
     assert(paramtype == Parameter::String);
     return v_string.data();
+}
+
+StringParamVector SetParameter::getStringVector() const
+{
+    assert(paramtype == Parameter::StringVector);
+    //FIXME
+    return StringParamVector();
 }
 
 void SetParameter::setReadOnly(bool readOnly)

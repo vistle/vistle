@@ -81,6 +81,12 @@ public:
                                const message::SetParameter *inResponseTo = NULL);
     IntParamVector getIntVectorParameter(const std::string &name) const;
 
+    StringVectorParameter *addStringVectorParameter(const std::string &name, const std::string &description,
+                                                    StringParamVector value);
+    bool setStringVectorParameter(const std::string &name, const StringParamVector &value,
+                                  const message::SetParameter *inResponseTo = NULL);
+    StringParamVector getStringVectorParameter(const std::string &name) const;
+
     bool removeParameter(const std::string &name);
     virtual bool removeParameter(Parameter *param);
 
