@@ -265,9 +265,9 @@ std::string ParameterManager::getStringParameter(const std::string &name) const
 }
 
 FloatParameter *ParameterManager::addFloatParameter(const std::string &name, const std::string &description,
-                                                    const Float value)
+                                                    const Float value, Parameter::Presentation p)
 {
-    return dynamic_cast<FloatParameter *>(addParameter(name, description, value));
+    return dynamic_cast<FloatParameter *>(addParameter(name, description, value, p));
 }
 
 bool ParameterManager::setFloatParameter(const std::string &name, const Float value,
@@ -303,9 +303,9 @@ Integer ParameterManager::getIntParameter(const std::string &name) const
 }
 
 VectorParameter *ParameterManager::addVectorParameter(const std::string &name, const std::string &description,
-                                                      const ParamVector &value)
+                                                      ParamVector value, Parameter::Presentation p)
 {
-    return dynamic_cast<VectorParameter *>(addParameter(name, description, value));
+    return dynamic_cast<VectorParameter *>(addParameter(name, description, value, p));
 }
 
 bool ParameterManager::setVectorParameter(const std::string &name, const ParamVector &value,
@@ -322,9 +322,9 @@ ParamVector ParameterManager::getVectorParameter(const std::string &name) const
 }
 
 IntVectorParameter *ParameterManager::addIntVectorParameter(const std::string &name, const std::string &description,
-                                                            const IntParamVector &value)
+                                                            IntParamVector value, Parameter::Presentation p)
 {
-    return dynamic_cast<IntVectorParameter *>(addParameter(name, description, value));
+    return dynamic_cast<IntVectorParameter *>(addParameter(name, description, value, p));
 }
 
 bool ParameterManager::setIntVectorParameter(const std::string &name, const IntParamVector &value,
@@ -342,9 +342,9 @@ IntParamVector ParameterManager::getIntVectorParameter(const std::string &name) 
 
 StringVectorParameter *ParameterManager::addStringVectorParameter(const std::string &name,
                                                                   const std::string &description,
-                                                                  StringParamVector value)
+                                                                  StringParamVector value, Parameter::Presentation p)
 {
-    return dynamic_cast<StringVectorParameter *>(addParameter(name, description, value));
+    return dynamic_cast<StringVectorParameter *>(addParameter(name, description, value, p));
 }
 
 bool ParameterManager::setStringVectorParameter(const std::string &name, const StringParamVector &value,

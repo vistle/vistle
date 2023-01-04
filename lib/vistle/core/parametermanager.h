@@ -58,7 +58,8 @@ public:
                             const message::SetParameter *inResponseTo = NULL);
     std::string getStringParameter(const std::string &name) const;
 
-    FloatParameter *addFloatParameter(const std::string &name, const std::string &description, const Float value);
+    FloatParameter *addFloatParameter(const std::string &name, const std::string &description, const Float value,
+                                      Parameter::Presentation p = Parameter::Generic);
     bool setFloatParameter(const std::string &name, const Float value,
                            const message::SetParameter *inResponseTo = NULL);
     Float getFloatParameter(const std::string &name) const;
@@ -69,20 +70,21 @@ public:
                          const message::SetParameter *inResponseTo = NULL);
     Integer getIntParameter(const std::string &name) const;
 
-    VectorParameter *addVectorParameter(const std::string &name, const std::string &description,
-                                        const ParamVector &value);
+    VectorParameter *addVectorParameter(const std::string &name, const std::string &description, ParamVector value,
+                                        Parameter::Presentation p = Parameter::Generic);
     bool setVectorParameter(const std::string &name, const ParamVector &value,
                             const message::SetParameter *inResponseTo = NULL);
     ParamVector getVectorParameter(const std::string &name) const;
 
     IntVectorParameter *addIntVectorParameter(const std::string &name, const std::string &description,
-                                              const IntParamVector &value);
+                                              IntParamVector value, Parameter::Presentation p = Parameter::Generic);
     bool setIntVectorParameter(const std::string &name, const IntParamVector &value,
                                const message::SetParameter *inResponseTo = NULL);
     IntParamVector getIntVectorParameter(const std::string &name) const;
 
     StringVectorParameter *addStringVectorParameter(const std::string &name, const std::string &description,
-                                                    StringParamVector value);
+                                                    StringParamVector value,
+                                                    Parameter::Presentation p = Parameter::Generic);
     bool setStringVectorParameter(const std::string &name, const StringParamVector &value,
                                   const message::SetParameter *inResponseTo = NULL);
     StringParamVector getStringVectorParameter(const std::string &name) const;
