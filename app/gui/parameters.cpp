@@ -67,7 +67,7 @@ Parameters::Parameters(QWidget *parent, Qt::WindowFlags f)
 , m_intVectorManager(nullptr)
 {
     if (layout())
-        layout()->setMargin(3);
+        layout()->setContentsMargins(3, 3, 3, 3);
 
     m_groupManager = new QtGroupPropertyManager(this); // no change notifications
 

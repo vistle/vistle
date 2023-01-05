@@ -141,7 +141,7 @@ RemoteFileInfoGatherer::RemoteFileInfoGatherer(QObject *parent)
 */
 RemoteFileInfoGatherer::~RemoteFileInfoGatherer()
 {
-    abort.store(true);
+    abort.storeRelaxed(true);
     QMutexLocker locker(&mutex);
     condition.wakeAll();
     locker.unlock();
@@ -286,7 +286,7 @@ FileInfo RemoteFileInfoGatherer::getInfo(const QString &path)
 #ifdef Q_OS_WIN
     if (m_resolveSymlinks && info.isSymLink(/* ignoreNtfsSymLinks = */ true)) {
         QFileInfo resolvedInfo(finfo.symLinkTarget());
-        resolvedInfo = resolvedInfo.canonicalFilePath();
+        resolvedInfo = QFileInfo(resolvedInfo.canonicalFilePath());
         if (resolvedInfo.exists()) {
             emit nameResolved(finfo.filePath(), resolvedInfo.fileName());
         }
@@ -353,7 +353,7 @@ void RemoteFileInfoGatherer::getFileInfos(const QString &path, const QStringList
     QStringList allFiles;
     if (files.isEmpty()) {
         QDirIterator dirIt(path, QDir::AllEntries | QDir::System | QDir::Hidden);
-        while (!abort.load() && dirIt.hasNext()) {
+        while (!abort.loadRelaxed() && dirIt.hasNext()) {
             dirIt.next();
             fileInfo = dirIt.fileInfo();
             allFiles.append(fileInfo.fileName());
@@ -364,7 +364,7 @@ void RemoteFileInfoGatherer::getFileInfos(const QString &path, const QStringList
         emit newListOfFiles(path, allFiles);
 
     QStringList::const_iterator filesIt = filesToCheck.constBegin();
-    while (!abort.load() && filesIt != filesToCheck.constEnd()) {
+    while (!abort.loadRelaxed() && filesIt != filesToCheck.constEnd()) {
         fileInfo.setFile(path + QDir::separator() + *filesIt);
         ++filesIt;
         fetch(fileInfo, base, firstTime, updatedFiles, path);
@@ -396,9 +396,9 @@ void RemoteFileInfoGatherer::run()
     forever
     {
         QMutexLocker locker(&mutex);
-        while (!abort.load() && path.isEmpty())
+        while (!abort.loadRelaxed() && path.isEmpty())
             condition.wait(&mutex);
-        if (abort.load())
+        if (abort.loadRelaxed())
             return;
         const QString thisPath = qAsConst(path).front();
         path.pop_front();

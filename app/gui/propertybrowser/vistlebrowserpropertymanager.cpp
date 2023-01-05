@@ -15,7 +15,7 @@ public:
         Data()
         : moduleId(vistle::message::Id::Invalid)
         , filters(QString(QLatin1Char('*')))
-        , regExp(QString(QLatin1Char('*')), Qt::CaseSensitive, QRegExp::Wildcard)
+        , regExp(QRegularExpression::wildcardToRegularExpression(QString(QLatin1Char('*'))))
         , echoMode(QLineEdit::Normal)
         , fileMode(RemoteFileDialog::AnyFile)
         , readOnly(false)
@@ -23,7 +23,7 @@ public:
         QString val;
         int moduleId;
         QString filters;
-        QRegExp regExp;
+        QRegularExpression regExp;
         int echoMode;
         int fileMode;
         bool readOnly;
@@ -65,7 +65,7 @@ public:
 */
 
 /*!
-    \fn void VistleBrowserPropertyManager::regExpChanged(QtProperty *property, const QRegExp &regExp)
+    \fn void VistleBrowserPropertyManager::regExpChanged(QtProperty *property, const QRegularExpression &regExp)
 
     This signal is emitted whenever a property created by this manager
     changes its currently set regular expression, passing a pointer to
@@ -130,9 +130,10 @@ QString VistleBrowserPropertyManager::filters(const QtProperty *property) const
 
     \sa setRegExp()
 */
-QRegExp VistleBrowserPropertyManager::regExp(const QtProperty *property) const
+QRegularExpression VistleBrowserPropertyManager::regExp(const QtProperty *property) const
 {
-    return getData<QRegExp>(d_ptr->m_values, &VistleBrowserPropertyManagerPrivate::Data::regExp, property, QRegExp());
+    return getData<QRegularExpression>(d_ptr->m_values, &VistleBrowserPropertyManagerPrivate::Data::regExp, property,
+                                       QRegularExpression());
 }
 
 /*!
@@ -210,7 +211,7 @@ void VistleBrowserPropertyManager::setValue(QtProperty *property, const QString 
     if (data.val == val)
         return;
 
-    if (data.regExp.isValid() && !data.regExp.exactMatch(val))
+    if (data.regExp.isValid() && !data.regExp.match(val).hasMatch())
         return;
 
     data.val = val;
@@ -281,7 +282,7 @@ void VistleBrowserPropertyManager::setFilters(QtProperty *property, const QStrin
 
     \sa regExp(), setValue(), regExpChanged()
 */
-void VistleBrowserPropertyManager::setRegExp(QtProperty *property, const QRegExp &regExp)
+void VistleBrowserPropertyManager::setRegExp(QtProperty *property, const QRegularExpression &regExp)
 {
     const VistleBrowserPropertyManagerPrivate::PropertyValueMap::iterator it = d_ptr->m_values.find(property);
     if (it == d_ptr->m_values.end())

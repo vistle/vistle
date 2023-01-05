@@ -14,7 +14,7 @@
 
 #include "vistleobserver.h"
 #include <vistle/core/messages.h>
-
+#include <iostream>
 namespace gui {
 
 
@@ -154,6 +154,7 @@ void VistleObserver::sessionUrlChanged(const std::string &url)
 
 void VistleObserver::uiLockChanged(bool locked)
 {
+    std::cerr << "uiLockChanged in thread  " << std::this_thread::get_id() << std::endl;
     emit uiLock_s(locked);
 }
 

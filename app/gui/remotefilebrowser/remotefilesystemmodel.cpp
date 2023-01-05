@@ -54,9 +54,9 @@ QString RemoteFileSystemModel::workingDirectory() const
 #include <qapplication.h>
 #include <qstyle.h>
 #include <QtCore/qcollator.h>
+#include <QRegularExpression>
 
 #include <algorithm>
-
 #ifdef Q_OS_WIN
 #include <QtCore/QVarLengthArray>
 #include <qt_windows.h>
@@ -352,7 +352,7 @@ RemoteFileSystemModelPrivate::RemoteFileSystemNode *RemoteFileSystemModelPrivate
         absolutePath = longPath;
 
     // ### TODO can we use bool QAbstractFileEngine::caseSensitive() const?
-    QStringList pathElements = absolutePath.split(QLatin1Char('/'), QString::SkipEmptyParts);
+    QStringList pathElements = absolutePath.split(QLatin1Char('/'), Qt::SkipEmptyParts);
     if (pathElements.isEmpty() && QDir::fromNativeSeparators(longPath) != QLatin1String("/"))
         return const_cast<RemoteFileSystemModelPrivate::RemoteFileSystemNode *>(&root);
     QModelIndex index = QModelIndex(); // start with "My Computer"
@@ -824,7 +824,7 @@ QString RemoteFileSystemModelPrivate::time(const QModelIndex &index) const
     if (!index.isValid())
         return QString();
 #ifndef QT_NO_DATESTRING
-    return node(index)->lastModified().toString(Qt::SystemLocaleDate);
+    return node(index)->lastModified().toString();
 #else
     Q_UNUSED(index);
     return QString();
@@ -1558,10 +1558,11 @@ void RemoteFileSystemModel::setNameFilters(const QStringList &filters)
     }
 
     d->nameFilters.clear();
-    const Qt::CaseSensitivity caseSensitive =
-        (filter() & QDir::CaseSensitive) ? Qt::CaseSensitive : Qt::CaseInsensitive;
+    const QRegularExpression::PatternOption caseSensitive = (filter() & QDir::CaseSensitive)
+                                                                ? QRegularExpression::NoPatternOption
+                                                                : QRegularExpression::CaseInsensitiveOption;
     for (const auto &filter: filters)
-        d->nameFilters << QRegExp(filter, caseSensitive, QRegExp::Wildcard);
+        d->nameFilters << QRegularExpression(QRegularExpression::wildcardToRegularExpression(filter), caseSensitive);
     d->forceSort = true;
     d->delayedSort();
 #endif
@@ -2005,8 +2006,8 @@ bool RemoteFileSystemModelPrivate::passNameFilters(const RemoteFileSystemNode *n
     // Check the name regularexpression filters
     if (!(node->isDir() && (filters & QDir::AllDirs))) {
         for (const auto &nameFilter: nameFilters) {
-            QRegExp copy = nameFilter;
-            if (copy.exactMatch(node->fileName))
+            QRegularExpression copy = nameFilter;
+            if (copy.match(node->fileName).hasMatch())
                 return true;
         }
         return false;
