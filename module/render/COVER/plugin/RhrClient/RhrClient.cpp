@@ -60,7 +60,7 @@ using message::RemoteRenderMessage;
 typedef std::lock_guard<std::recursive_mutex> lock_guard;
 
 static const unsigned short PortRange[] = {31000, 32000};
-static const std::string config("COVER.Plugin.RhrClient");
+static const std::string configKey("COVER.Plugin.RhrClient");
 
 std::pair<int, int> imageSizeForChannel(int channel)
 {
@@ -438,9 +438,9 @@ bool RhrClient::init()
    std::cout << "COVER continuing..." << std::endl;
 #endif
 
-    m_maxTilesPerFrame = covise::coCoviseConfig::getInt("maxTilesPerFrame", config, m_maxTilesPerFrame);
+    m_maxTilesPerFrame = covise::coCoviseConfig::getInt("maxTilesPerFrame", configKey, m_maxTilesPerFrame);
 
-    m_benchmark = covise::coCoviseConfig::isOn("benchmark", config, true);
+    m_benchmark = covise::coCoviseConfig::isOn("benchmark", configKey, true);
     m_lastStat = cover->currentTime();
     m_localFrames = 0;
 
@@ -539,7 +539,7 @@ bool RhrClient::init()
     m_menu = new ui::Menu("RHR", this);
     m_menu->setText("Hybrid rendering");
 
-    std::string confMode = covise::coCoviseConfig::getEntry("reprojectionMode", config);
+    std::string confMode = covise::coCoviseConfig::getEntry("reprojectionMode", configKey);
     if (!confMode.empty()) {
         std::transform(confMode.begin(), confMode.end(), confMode.begin(), ::tolower);
         if (confMode == "disable" || confMode == "asis")
