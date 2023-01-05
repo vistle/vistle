@@ -57,7 +57,6 @@ QString RemoteFileSystemModel::workingDirectory() const
 #include <QRegularExpression>
 
 #include <algorithm>
-
 #ifdef Q_OS_WIN
 #include <QtCore/QVarLengthArray>
 #include <qt_windows.h>
