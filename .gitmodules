@@ -4,7 +4,7 @@
 	branch = master
 [submodule "3rdparty/qt-solutions"]
 	path = lib/3rdparty/qt-solutions
-	url = https://github.com/qtproject/qt-solutions.git
+	url = https://github.com/hpcdgrie/qt-solutions.git
 	branch = master
 [submodule "3rdparty/thrust"]
 	path = lib/3rdparty/thrust
