@@ -1438,25 +1438,6 @@ bool Module::handleMessage(const vistle::message::Message *message, const Messag
     }
 
     switch (message->type()) {
-    case vistle::message::PING: {
-        const vistle::message::Ping *ping = static_cast<const vistle::message::Ping *>(message);
-
-        std::cerr << "    module [" << name() << "] [" << id() << "] [" << rank() << "/" << size() << "] ping ["
-                  << ping->getCharacter() << "]" << std::endl;
-        vistle::message::Pong m(*ping);
-        m.setDestId(ping->senderId());
-        sendMessage(m);
-        break;
-    }
-
-    case vistle::message::PONG: {
-        const vistle::message::Pong *pong = static_cast<const vistle::message::Pong *>(message);
-
-        std::cerr << "    module [" << name() << "] [" << id() << "] [" << rank() << "/" << size() << "] pong ["
-                  << pong->getCharacter() << "]" << std::endl;
-        break;
-    }
-
     case vistle::message::TRACE: {
         const Trace *trace = static_cast<const Trace *>(message);
         if (trace->on()) {

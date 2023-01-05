@@ -371,30 +371,6 @@ int RemoveHub::id() const
 }
 
 
-Ping::Ping(const char c): character(c)
-{}
-
-char Ping::getCharacter() const
-{
-    return character;
-}
-
-Pong::Pong(const Ping &ping): character(ping.getCharacter()), module(ping.senderId())
-{
-    setReferrer(ping.uuid());
-}
-
-char Pong::getCharacter() const
-{
-    return character;
-}
-
-int Pong::getDestination() const
-{
-    return module;
-}
-
-
 LoadWorkflow::LoadWorkflow(const std::string &pathname)
 {
     COPY_STRING(m_pathname, pathname);

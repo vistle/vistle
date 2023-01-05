@@ -842,12 +842,6 @@ bool ClusterManager::handle(const message::Buffer &message, const MessagePayload
         break;
     }
 
-    case message::PING: {
-        const message::Ping &m = message.as<Ping>();
-        result = handlePriv(m);
-        break;
-    }
-
     case message::DATATRANSFERSTATE: {
         const message::DataTransferState &m = message.as<DataTransferState>();
         result = handlePriv(m);
@@ -864,7 +858,6 @@ bool ClusterManager::handle(const message::Buffer &message, const MessagePayload
     case message::REDUCEPOLICY:
     case message::SCHEDULINGPOLICY:
     case message::OBJECTRECEIVEPOLICY:
-    case message::PONG:
     case message::UPDATESTATUS:
     case message::TRACE:
     case message::EXECUTIONDONE:
@@ -2108,16 +2101,6 @@ bool ClusterManager::handlePriv(const message::RequestTunnel &tunnel)
     }
 
     return sendHub(tun);
-}
-
-bool ClusterManager::handlePriv(const message::Ping &ping)
-{
-    if (getRank() == 0) {
-        message::Pong pong(ping);
-        pong.setDestId(ping.senderId());
-        sendHub(pong);
-    }
-    return true;
 }
 
 bool ClusterManager::handlePriv(const message::DataTransferState &state)

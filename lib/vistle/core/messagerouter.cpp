@@ -44,8 +44,6 @@ void Router::initRoutingTable()
     rt[CONNECT] = Special;
     rt[DISCONNECT] = Special;
     rt[SETPARAMETER] = Track | QueueIfUnhandled | DestManager | DestUi | DestModules | OnlyRank0 | HandleOnMaster;
-    rt[PING] = DestManager | DestModules | HandleOnDest;
-    rt[PONG] = DestUi | HandleOnDest;
     rt[BUSY] = DestUi | DestMasterHub;
     rt[IDLE] = DestUi | DestMasterHub;
     rt[LOCKUI] = DestUi;

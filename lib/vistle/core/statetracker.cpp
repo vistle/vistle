@@ -660,16 +660,6 @@ bool StateTracker::handle(const message::Message &msg, const char *payload, size
         handled = handlePriv(choice, pl);
         break;
     }
-    case PING: {
-        const auto &ping = msg.as<Ping>();
-        handled = handlePriv(ping);
-        break;
-    }
-    case PONG: {
-        const auto &pong = msg.as<Pong>();
-        handled = handlePriv(pong);
-        break;
-    }
     case TRACE: {
         const auto &trace = msg.as<Trace>();
         handled = handlePriv(trace);
@@ -909,18 +899,6 @@ bool StateTracker::handlePriv(const message::AddHub &slave)
     }
 
     m_slaveCondition.notify_all();
-    return true;
-}
-
-bool StateTracker::handlePriv(const message::Ping &ping)
-{
-    //CERR << "Ping [" << ping.senderId() << " " << ping.getCharacter() << "]" << std::endl;
-    return true;
-}
-
-bool StateTracker::handlePriv(const message::Pong &pong)
-{
-    CERR << "Pong [" << pong.senderId() << " " << pong.getCharacter() << "]" << std::endl;
     return true;
 }
 

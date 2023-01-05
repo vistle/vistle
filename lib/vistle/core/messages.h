@@ -149,30 +149,6 @@ private:
     int m_id;
 };
 
-//! debug: request a reply containing character 'c'
-class V_COREEXPORT Ping: public MessageBase<Ping, PING> {
-public:
-    explicit Ping(const char c);
-
-    char getCharacter() const;
-
-private:
-    const char character;
-};
-
-//! debug: reply to pong
-class V_COREEXPORT Pong: public MessageBase<Pong, PONG> {
-public:
-    explicit Pong(const Ping &ping);
-
-    char getCharacter() const;
-    int getDestination() const;
-
-private:
-    const char character;
-    int module;
-};
-
 //! request master hub to load a new workflow
 class V_COREEXPORT LoadWorkflow: public MessageBase<LoadWorkflow, LOADWORKFLOW> {
 public:

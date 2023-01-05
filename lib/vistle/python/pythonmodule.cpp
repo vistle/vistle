@@ -175,16 +175,6 @@ static void quit()
     //exit(0);
 }
 
-static void ping(int dest = message::Id::Broadcast, char c = '.')
-{
-#ifdef DEBUG
-    std::cerr << "Python: ping: " << c << std::endl;
-#endif
-    message::Ping m(c);
-    m.setDestId(dest);
-    sendMessage(m);
-}
-
 static void trace(int id = message::Id::Broadcast, message::Type type = message::ANY, bool onoff = true)
 {
 #ifdef DEBUG
@@ -1491,7 +1481,6 @@ PY_MODULE(_vistle, m)
     m.def("sendCoverMessage", &sendCoverGuiMessage, "send a coGRMsg to COVER", "msg"_a, "coverModuleId"_a);
     m.def("snapshotGui", &snapshotGui, "save a snapshot of the mapeditor workflow", "filename"_a);
     m.def("quit", quit, "quit vistle session");
-    m.def("ping", ping, "send first character of `arg2` to destination `arg1`", "id"_a, "data"_a = "p");
     m.def("trace", trace, "enable/disable message tracing for module `id`", "id"_a = message::Id::Broadcast,
           "type"_a = message::ANY, "enable"_a = true);
     m.def("debug", debug, "request a module to print its state", "id"_a = message::Id::Invalid);
