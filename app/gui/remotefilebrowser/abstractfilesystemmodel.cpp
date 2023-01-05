@@ -9,7 +9,7 @@ AbstractFileSystemModel::~AbstractFileSystemModel()
 QHash<int, QByteArray> AbstractFileSystemModel::roleNames() const
 {
     auto names = QAbstractItemModel::roleNames();
-    names.insertMulti(AbstractFileSystemModel::FileIconRole, QByteArrayLiteral("fileIcon")); // == Qt::decoration
+    names.insert(AbstractFileSystemModel::FileIconRole, QByteArrayLiteral("fileIcon")); // == Qt::decoration
     names.insert(AbstractFileSystemModel::FilePathRole, QByteArrayLiteral("filePath"));
     names.insert(AbstractFileSystemModel::FileNameRole, QByteArrayLiteral("fileName"));
     names.insert(AbstractFileSystemModel::FilePermissions, QByteArrayLiteral("filePermissions"));

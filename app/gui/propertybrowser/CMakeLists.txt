@@ -44,7 +44,7 @@ set(HEADERS
 
 set(FORMS)
 
-qt5_wrap_ui(UI_SRCS ${FORMS})
+qt_wrap_ui(UI_SRCS ${FORMS})
 
 add_library(vistle_propertybrowser STATIC ${SOURCES} ${UI_SRCS})
 
@@ -58,4 +58,5 @@ target_include_directories(
     PRIVATE ../..
     PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
-target_link_libraries(vistle_propertybrowser PRIVATE ${QT_LIBRARIES} vistle_core Qt5::Widgets)
+target_link_libraries(vistle_propertybrowser PRIVATE ${QT_LIBRARIES} vistle_core Qt::Widgets)
+qt_disable_unicode_defines(vistle_propertybrowser)

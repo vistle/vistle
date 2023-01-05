@@ -71,7 +71,11 @@ ModuleListWidget::ModuleListWidget(QWidget *parent): QTreeWidget(parent)
     });
 }
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+QMimeData *ModuleListWidget::mimeData(const QList<QTreeWidgetItem *> &dragList) const
+#else
 QMimeData *ModuleListWidget::mimeData(const QList<QTreeWidgetItem *> dragList) const
+#endif
 {
     if (dragList.empty())
         return nullptr;

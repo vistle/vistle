@@ -419,7 +419,7 @@ public:
     //we sort only what we see.
     bool disableRecursiveSort;
 #ifndef QT_NO_REGEXP
-    QList<QRegExp> nameFilters;
+    QList<QRegularExpression> nameFilters;
 #endif
     QHash<QString, QString> resolvedSymLinks;
 

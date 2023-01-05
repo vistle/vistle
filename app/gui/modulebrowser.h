@@ -31,7 +31,11 @@ signals:
     void showStatusTip(const QString &tip);
 
 protected:
-    QMimeData *mimeData(const QList<QTreeWidgetItem *> dragList) const;
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    QMimeData *mimeData(const QList<QTreeWidgetItem *> &dragList) const override;
+#else
+    QMimeData *mimeData(const QList<QTreeWidgetItem *> dragList) const override;
+#endif
 
     QString m_filter;
 };

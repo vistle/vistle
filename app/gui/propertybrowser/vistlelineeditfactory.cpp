@@ -17,7 +17,7 @@ class VistleLineEditFactoryPrivate: public EditorFactoryPrivate<QLineEdit> {
     Q_DECLARE_PUBLIC(VistleLineEditFactory)
 public:
     void slotPropertyChanged(QtProperty *property, const QString &value);
-    void slotRegExpChanged(QtProperty *property, const QRegExp &regExp);
+    void slotRegExpChanged(QtProperty *property, const QRegularExpression &regExp);
     void slotSetValue(const QString &value);
     void slotEchoModeChanged(QtProperty *, int);
     void slotReadOnlyChanged(QtProperty *, bool);
@@ -39,7 +39,7 @@ void VistleLineEditFactoryPrivate::slotPropertyChanged(QtProperty *property, con
     }
 }
 
-void VistleLineEditFactoryPrivate::slotRegExpChanged(QtProperty *property, const QRegExp &regExp)
+void VistleLineEditFactoryPrivate::slotRegExpChanged(QtProperty *property, const QRegularExpression &regExp)
 {
     if (!m_createdEditors.contains(property))
         return;
@@ -55,7 +55,7 @@ void VistleLineEditFactoryPrivate::slotRegExpChanged(QtProperty *property, const
         const QValidator *oldValidator = editor->validator();
         QValidator *newValidator = 0;
         if (regExp.isValid()) {
-            newValidator = new QRegExpValidator(regExp, editor);
+            newValidator = new QRegularExpressionValidator(regExp, editor);
         }
         editor->setValidator(newValidator);
         if (oldValidator)
@@ -153,8 +153,8 @@ void VistleLineEditFactory::connectPropertyManager(QtStringPropertyManager *mana
 {
     connect(manager, SIGNAL(valueChanged(QtProperty *, const QString &)), this,
             SLOT(slotPropertyChanged(QtProperty *, const QString &)));
-    connect(manager, SIGNAL(regExpChanged(QtProperty *, const QRegExp &)), this,
-            SLOT(slotRegExpChanged(QtProperty *, const QRegExp &)));
+    connect(manager, SIGNAL(regExpChanged(QtProperty *, const QRegularExpression &)), this,
+            SLOT(slotRegExpChanged(QtProperty *, const QRegularExpression &)));
     connect(manager, SIGNAL(echoModeChanged(QtProperty *, int)), this, SLOT(slotEchoModeChanged(QtProperty *, int)));
     connect(manager, SIGNAL(readOnlyChanged(QtProperty *, bool)), this, SLOT(slotReadOnlyChanged(QtProperty *, bool)));
 }
@@ -169,9 +169,9 @@ QWidget *VistleLineEditFactory::createEditor(QtStringPropertyManager *manager, Q
     QLineEdit *editor = d_ptr->createEditor(property, parent);
     editor->setEchoMode((EchoMode)manager->echoMode(property));
     editor->setReadOnly(manager->isReadOnly(property));
-    QRegExp regExp = manager->regExp(property);
+    QRegularExpression regExp = manager->regExp(property);
     if (regExp.isValid()) {
-        QValidator *validator = new QRegExpValidator(regExp, editor);
+        QValidator *validator = new QRegularExpressionValidator(regExp, editor);
         editor->setValidator(validator);
     }
     editor->setText(manager->value(property));
@@ -196,8 +196,8 @@ void VistleLineEditFactory::disconnectPropertyManager(QtStringPropertyManager *m
 {
     disconnect(manager, SIGNAL(valueChanged(QtProperty *, const QString &)), this,
                SLOT(slotPropertyChanged(QtProperty *, const QString &)));
-    disconnect(manager, SIGNAL(regExpChanged(QtProperty *, const QRegExp &)), this,
-               SLOT(slotRegExpChanged(QtProperty *, const QRegExp &)));
+    disconnect(manager, SIGNAL(regExpChanged(QtProperty *, const QRegularExpression &)), this,
+               SLOT(slotRegExpChanged(QtProperty *, const QRegularExpression &)));
     disconnect(manager, SIGNAL(echoModeChanged(QtProperty *, int)), this, SLOT(slotEchoModeChanged(QtProperty *, int)));
     disconnect(manager, SIGNAL(readOnlyChanged(QtProperty *, bool)), this,
                SLOT(slotReadOnlyChanged(QtProperty *, bool)));

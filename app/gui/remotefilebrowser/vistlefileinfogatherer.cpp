@@ -201,7 +201,7 @@ bool VistleFileInfoGatherer::handleMessage(const vistle::message::Message &msg, 
                 fi.m_type = FileInfo::Dir;
             if (f.type == vistle::FileInfo::File)
                 fi.m_type = FileInfo::File;
-            fi.m_lastModified = QDateTime::fromTime_t(f.lastmod);
+            fi.m_lastModified = QDateTime::fromSecsSinceEpoch(f.lastmod);
 
             fi.m_permissions = QFile::Permissions();
             if (f.permissions & 0400)

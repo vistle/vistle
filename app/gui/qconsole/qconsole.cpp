@@ -33,7 +33,6 @@
 #include <QVBoxLayout>
 #include <QApplication>
 #include <QScrollBar>
-#include <QDesktopWidget>
 #include <QTextBlock>
 #include <iostream>
 
@@ -189,8 +188,8 @@ QConsole::QConsole(QWidget *parent, const QString &welcomeText)
 
     //resets the console
     reset(welcomeText);
-    const int tabwidth = QFontMetrics(currentFont()).width('a') * 4;
-    setTabStopWidth(tabwidth);
+    const int tabwidth = QFontMetrics(currentFont()).horizontalAdvance('a') * 4;
+    setTabStopDistance(tabwidth);
 }
 
 //Sets the prompt and cache the prompt length to optimize the processing speed
@@ -610,7 +609,7 @@ void QConsole::insertFromMimeData(const QMimeData *source)
 void QConsole::mousePressEvent(QMouseEvent *event)
 {
     oldPosition = textCursor().position();
-    if (event->button() == Qt::MidButton) {
+    if (event->button() == Qt::MiddleButton) {
         copy();
         QTextCursor cursor = cursorForPosition(event->pos());
         setTextCursor(cursor);
