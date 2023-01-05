@@ -182,11 +182,7 @@ UiController::UiController(int argc, char *argv[], QObject *parent): QObject(par
             QDesktopServices::openUrl(link);
         }
     });
-    connect(&m_observer, &VistleObserver::uiLock_s, [this](bool locked) {
-        m_mainWindow->m_moduleBrowser->setEnabled(!locked);
-        m_mainWindow->moduleView()->setEnabled(!locked);
-        m_mainWindow->setInteractionEnabled(!locked);
-    });
+    connect(&m_observer, &VistleObserver::uiLock_s, this, &UiController::lockUi, Qt::ConnectionType::QueuedConnection);
 
     connect(m_mainWindow->m_moduleBrowser, &ModuleBrowser::requestRemoveHub, [this](int id) {
         vistle::message::Quit quit(id);
@@ -629,5 +625,12 @@ void UiController::screenshot(QString imageFile, bool quit)
         m_vistleConnection->sendMessage(q);
     }
 }
+void UiController::lockUi(bool locked)
+{
+    m_mainWindow->m_moduleBrowser->setEnabled(!locked);
+    m_mainWindow->moduleView()->setEnabled(!locked);
+    m_mainWindow->setInteractionEnabled(!locked);
+}
+
 
 } // namespace gui
