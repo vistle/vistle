@@ -384,8 +384,16 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
     if (auto ip = std::dynamic_pointer_cast<vistle::IntParameter>(p)) {
         if (ip->presentation() == vistle::Parameter::Boolean) {
             m_boolManager->setValue(prop, ip->getValue() != 0);
+            QString tip =
+                QString("%1 (default: %2)")
+                    .arg(QString::fromStdString(p->description()), (ip->getDefaultValue() ? "True" : "False"));
+            prop->setStatusTip(tip);
         } else if (ip->presentation() == vistle::Parameter::Choice) {
             m_intChoiceManager->setValue(prop, ip->getValue());
+            auto defInt = ip->getDefaultValue();
+            auto strings = m_intChoiceManager->enumNames(prop);
+            QString tip = QString("%1 (default: %2)").arg(QString::fromStdString(p->description()), strings[defInt]);
+            prop->setStatusTip(tip);
         } else {
             m_intManager->setValue(prop, ip->getValue());
             m_intManager->setRange(prop, ip->minimum(), ip->maximum());
