@@ -14,10 +14,10 @@ std::map<std::string, ModuleDescription> readModuleDescriptions(std::istream &st
 
     std::string line;
     while (std::getline(str, line)) {
-        auto sep = line.find_first_of(" ");
+        auto sep = line.find(' ');
         auto mod = line.substr(0, sep);
         line = line.substr(sep + 1);
-        sep = line.find_first_of(" ");
+        sep = line.find(' ');
         auto cat = line.substr(0, sep);
         auto desc = line.substr(sep + 1);
         moduleDescriptions[mod].category = cat;

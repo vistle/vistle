@@ -448,7 +448,7 @@ bool Reader::changeParameter(const Parameter *param)
         if (slash != std::string::npos) {
             val = val.substr(slash + 1);
         }
-        auto dot = val.find_first_of(".");
+        auto dot = val.find('.');
         val = val.substr(0, dot);
         setItemInfo(val);
     }
