@@ -103,6 +103,7 @@ signals:
     void createModuleCompound();
     void selectConnected(int direction, int id, QString port = QString());
     void visibleChanged(bool visible);
+    void callDoLayoutFromMainThread();
 
 protected:
     void mousePressEvent(QGraphicsSceneMouseEvent *event) override;
@@ -123,12 +124,12 @@ public slots:
     void attachDebugger();
     void projectToGrid();
     void setParameterDefaults();
+    void doLayout();
 
 private:
     void createGeometry();
     void createActions();
     void createMenus();
-    void doLayout();
     void updateText();
 
     QMenu *m_moduleMenu = nullptr;

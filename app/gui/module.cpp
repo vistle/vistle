@@ -67,6 +67,8 @@ Module::Module(QGraphicsItem *parent, QString name)
 
     setStatus(m_Status);
     setLayer(m_layer);
+
+    connect(this, &Module::callDoLayoutFromMainThread, this, &Module::doLayout);
 }
 
 Module::~Module()
@@ -961,7 +963,7 @@ void Module::moduleMessage(int type, QString message)
         if (!m_errorState) {
             m_errorState = true;
             setStatus(m_Status);
-            doLayout();
+            emit callDoLayoutFromMainThread();
         }
     }
 }
