@@ -4,7 +4,6 @@
 #include <vistle/core/message.h>
 
 #include <QDebug>
-
 // VistleBrowserPropertyManager
 
 class VistleBrowserPropertyManagerPrivate {
@@ -15,7 +14,7 @@ public:
         Data()
         : moduleId(vistle::message::Id::Invalid)
         , filters(QString(QLatin1Char('*')))
-        , regExp(QRegularExpression::wildcardToRegularExpression(QString(QLatin1Char('*'))))
+        , regExp(".*")
         , echoMode(QLineEdit::Normal)
         , fileMode(RemoteFileDialog::AnyFile)
         , readOnly(false)
