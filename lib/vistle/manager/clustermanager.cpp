@@ -1939,15 +1939,9 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam)
     }
 
     bool handled = true;
-    std::shared_ptr<Parameter> applied;
     if (message::Id::isModule(dest)) {
         // message to owning module
         if (setParam.wasBroadcast()) {
-            auto param = getParameter(dest, setParam.getName());
-            if (param) {
-                applied.reset(param->clone());
-                setParam.apply(applied);
-            }
             if (mod) {
                 mod->send(setParam);
             }
