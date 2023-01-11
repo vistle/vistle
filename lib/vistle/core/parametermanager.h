@@ -10,6 +10,7 @@
 #include <memory>
 #include <vector>
 #include <map>
+#include <deque>
 
 namespace vistle {
 
@@ -118,6 +119,8 @@ private:
     std::map<std::string, std::shared_ptr<Parameter>> parameters;
     bool m_inParameterChanged = false;
     std::vector<const Parameter *> m_delayedChanges;
+
+    std::deque<message::SetParameter> m_queue;
 };
 
 } // namespace vistle

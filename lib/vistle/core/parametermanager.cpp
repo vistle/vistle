@@ -54,36 +54,44 @@ void ParameterManager::quit()
 
 bool ParameterManager::handleMessage(const message::SetParameter &param)
 {
+    bool handled = false;
+
     // sent by controller
     switch (param.getParameterType()) {
     case Parameter::Invalid:
         applyDelayedChanges();
+        handled = true;
         break;
     case Parameter::Integer:
-        setIntParameter(param.getName(), param.getInteger(), &param);
+        handled = setIntParameter(param.getName(), param.getInteger(), &param);
         break;
     case Parameter::Float:
-        setFloatParameter(param.getName(), param.getFloat(), &param);
+        handled = setFloatParameter(param.getName(), param.getFloat(), &param);
         break;
     case Parameter::Vector:
-        setVectorParameter(param.getName(), param.getVector(), &param);
+        handled = setVectorParameter(param.getName(), param.getVector(), &param);
         break;
     case Parameter::IntVector:
-        setIntVectorParameter(param.getName(), param.getIntVector(), &param);
+        handled = setIntVectorParameter(param.getName(), param.getIntVector(), &param);
         break;
     case Parameter::String:
-        setStringParameter(param.getName(), param.getString(), &param);
+        handled = setStringParameter(param.getName(), param.getString(), &param);
         break;
     case Parameter::StringVector:
-        setStringVectorParameter(param.getName(), param.getStringVector(), &param);
+        handled = setStringVectorParameter(param.getName(), param.getStringVector(), &param);
         break;
     default:
         CERR << "handleMessage: unknown parameter type " << param.getParameterType() << std::endl;
         assert("unknown parameter type" == 0);
-        break;
+        return false;
     }
 
-    return true;
+    if (!handled) {
+        //CERR << "queuing " << param << std::endl;
+        m_queue.emplace_back(param);
+    }
+
+    return handled;
 }
 
 bool ParameterManager::changeParameters(std::set<const Parameter *> params)
@@ -232,7 +240,16 @@ Parameter *ParameterManager::addParameter(const std::string &name, const std::st
     p->setGroupExpanded(m_currentParameterGroupExpanded);
     p->setPresentation(pres);
 
-    return addParameterGeneric(name, p);
+    auto param = addParameterGeneric(name, p);
+
+    std::deque<message::SetParameter> q;
+    std::swap(m_queue, q);
+    for (auto &m: q) {
+        //CERR << "retrying " << m << std::endl;
+        handleMessage(m);
+    }
+
+    return param;
 }
 
 std::shared_ptr<Parameter> ParameterManager::findParameter(const std::string &name) const
