@@ -368,14 +368,14 @@ void UiController::saveDataFlowNetwork(const QString &filename, int hubId)
 #ifdef HAVE_PYTHON
         vistle::PythonInterface::the().exec(cmd);
         m_observer.resetModificationCount();
+        m_mainWindow->statusBar()->showMessage(QString("Saved to %1").arg(filename));
 #endif
-        setCurrentFile(filename, hubId);
     } else if (vistle::message::Id::isHub(hubId)) {
         vistle::message::SaveWorkflow save(filename.toStdString());
         save.setDestId(hubId);
         m_ui->sendMessage(save);
-        setCurrentFile(filename, hubId);
     }
+    setCurrentFile(filename, hubId);
 }
 
 void UiController::saveDataFlowNetworkOnGui(const QString &filename)
@@ -385,7 +385,7 @@ void UiController::saveDataFlowNetworkOnGui(const QString &filename)
                                                    tr("Vistle files (*.vsl);;Python files (*.py);;All files (*)"));
 
     if (!newFile.isEmpty()) {
-        saveDataFlowNetwork(newFile);
+        saveDataFlowNetwork(newFile, vistle::message::Id::UI);
     }
 }
 
