@@ -13,9 +13,9 @@ namespace gui {
 class Module;
 class DataFlowNetwork;
 
-class Connection: public QGraphicsLineItem {
+class Connection: public QGraphicsPathItem {
     Q_INTERFACES(QGraphicsItem)
-    typedef QGraphicsLineItem Base;
+    typedef QGraphicsPathItem Base;
 
 public:
     enum State {
@@ -35,11 +35,16 @@ public:
     bool isHighlighted() const;
     void setHighlight(bool highlight);
 
+    bool isEmphasized() const;
+    void setEmphasis(bool em);
+
     void setColor(const QColor &color);
     void updatePosition(); // re-implemented
     int connectionType() { return m_connectionType; }
 
     DataFlowNetwork *scene() const;
+
+    void updateVisibility(int layer);
 
 protected:
     void hoverEnterEvent(QGraphicsSceneHoverEvent *event);
@@ -50,7 +55,8 @@ protected:
                QWidget *widget); // re-implemented
 
 private:
-    bool m_highlight;
+    bool m_emphasized = false;
+    bool m_highlight = false;
     State m_state;
     QColor m_color; // color of the connection
     Port *m_source;

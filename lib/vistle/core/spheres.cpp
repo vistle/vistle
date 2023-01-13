@@ -27,6 +27,11 @@ bool Spheres::checkImpl() const
     return true;
 }
 
+void Spheres::print(std::ostream &os) const
+{
+    Base::print(os);
+}
+
 Index Spheres::getNumSpheres() const
 {
     return getNumCoords();

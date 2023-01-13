@@ -30,6 +30,7 @@ set(gui_SOURCES
     vistleobserver.cpp
     parameters.cpp
     modulebrowser.cpp
+    moduleview.cpp
     dataflowview.cpp
     vistleconsole.cpp
     modifieddialog.cpp
@@ -37,27 +38,29 @@ set(gui_SOURCES
     qconsole/qconsole.cpp)
 
 set(gui_HEADERS
-    mainwindow.h
     connection.h
-    module.h
     dataflownetwork.h
-    port.h
-    vistleobserver.h
-    parameters.h
-    modulebrowser.h
     dataflowview.h
-    vistleconsole.h
+    macosutils.h
+    mainwindow.h
     modifieddialog.h
+    module.h
+    modulebrowser.h
+    moduleview.h
+    parameters.h
+    port.h
     uicontroller.h
+    vistleconsole.h
+    vistleobserver.h
     qconsole/qconsole.h)
 
-set(gui_FORMS mainwindow.ui about.ui modulebrowser.ui modifieddialog.ui)
+set(gui_FORMS mainwindow.ui about.ui modulebrowser.ui moduleview.ui modifieddialog.ui)
 
 set(gui_name vistle_gui)
 if(APPLE)
     add_custom_target(
         gui_wrapper ALL
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/gui_wrapper.sh ${EXECUTABLE_OUTPUT_PATH}/${gui_name}
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/gui_wrapper.sh ${EXECUTABLE_OUTPUT_PATH}/$<CONFIG>/${gui_name}
         DEPENDS gui_wrapper.sh
         SOURCES gui_wrapper.sh)
     install(

@@ -18,7 +18,7 @@ typedef std::function<bool(const message::Message &msg, const MessagePayload &pa
 
 class V_COREEXPORT AvailableModuleBase {
 public:
-    struct Key {
+    struct V_COREEXPORT Key {
         int hub;
         std::string name;
         Key(int hub, const std::string &name);

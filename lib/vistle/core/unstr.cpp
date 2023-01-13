@@ -167,6 +167,12 @@ bool UnstructuredGrid::checkImpl() const
     return true;
 }
 
+void UnstructuredGrid::print(std::ostream &os) const
+{
+    Base::print(os);
+    os << " tl(" << *d()->tl << ")";
+}
+
 bool UnstructuredGrid::isConvex(const Index elem) const
 {
     if (elem == InvalidIndex)

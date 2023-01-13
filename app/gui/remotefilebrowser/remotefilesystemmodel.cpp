@@ -629,6 +629,8 @@ bool RemoteFileSystemModel::hasChildren(const QModelIndex &parent) const
 bool RemoteFileSystemModel::canFetchMore(const QModelIndex &parent) const
 {
     Q_D(const RemoteFileSystemModel);
+    if (!d->setRootPath)
+        return false;
     const RemoteFileSystemModelPrivate::RemoteFileSystemNode *indexNode = d->node(parent);
     return (!indexNode->populatedChildren);
 }
@@ -691,8 +693,13 @@ QVariant RemoteFileSystemModel::myComputer(int role) const
     Q_D(const RemoteFileSystemModel);
 #endif
     switch (role) {
-    case Qt::DisplayRole:
+    case Qt::DisplayRole: {
+        auto h = d->fileInfoGatherer->hostname();
+        if (!h.isEmpty()) {
+            return h;
+        }
         return RemoteFileSystemModelPrivate::myComputer();
+    }
 #ifndef QT_NO_FILESYSTEMWATCHER
     case Qt::DecorationRole:
         return d->fileInfoGatherer->iconProvider()->icon(RemoteFileIconProvider::Computer);
@@ -951,6 +958,11 @@ Qt::ItemFlags RemoteFileSystemModel::flags(const QModelIndex &index) const
     if (d->nameFilterDisables && !d->passNameFilters(indexNode)) {
         flags &= ~Qt::ItemIsEnabled;
         // ### TODO you shouldn't be able to set this as the current item, task 119433
+        return flags;
+    }
+    const bool hideFiles = !(d->filters & QDir::Files);
+    if (d->nameFilterDisables && hideFiles && !indexNode->isDir()) {
+        flags &= ~Qt::ItemIsEnabled;
         return flags;
     }
 
@@ -1959,7 +1971,7 @@ bool RemoteFileSystemModelPrivate::filtersAcceptsNode(const RemoteFileSystemNode
     const bool filterPermissions =
         ((filters & QDir::PermissionMask) && (filters & QDir::PermissionMask) != QDir::PermissionMask);
     const bool hideDirs = !(filters & (QDir::Dirs | QDir::AllDirs));
-    const bool hideFiles = !(filters & QDir::Files);
+    const bool hideFiles = !nameFilterDisables && !(filters & QDir::Files);
     const bool hideReadable = !(!filterPermissions || (filters & QDir::Readable));
     const bool hideWritable = !(!filterPermissions || (filters & QDir::Writable));
     const bool hideExecutable = !(!filterPermissions || (filters & QDir::Executable));

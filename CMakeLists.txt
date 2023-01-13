@@ -127,17 +127,18 @@ endif()
 
 enable_testing()
 
-if(CMAKE_BUILD_TYPE STREQUAL "")
+if(CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_DEFAULT_BUILD_TYPE "RelWithDebInfo")
+elseif(CMAKE_BUILD_TYPE STREQUAL "")
     set(CMAKE_BUILD_TYPE
         "RelWithDebInfo"
         CACHE STRING "Choose the type of build, options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Debug Release RelWithDebInfo MinSizeRel." FORCE)
     message("Setting CMAKE_BUILD_TYPE to ${CMAKE_BUILD_TYPE}")
-endif()
+    if(CMAKE_BUILD_TYPE STREQUAL "Release" OR "${CMAKE_BUILD_TYPE}" STREQUAL "RelWithDebInfo")
 
-if(CMAKE_BUILD_TYPE STREQUAL "Release" OR "${CMAKE_BUILD_TYPE}" STREQUAL "RelWithDebInfo")
-
-else()
-    add_definitions(-DEIGEN_INITIALIZE_MATRICES_BY_NAN)
+    else()
+        add_definitions(-DEIGEN_INITIALIZE_MATRICES_BY_NAN)
+    endif()
 endif()
 
 #add_definitions(-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=short)
@@ -332,6 +333,7 @@ vistle_find_package(
     chrono
     thread
     regex
+    timer
     ${BOOST_REQ}
     OPTIONAL_COMPONENTS
     ${BOOST_OPT})
@@ -475,15 +477,15 @@ macro(vistle_install_library targetname)
                     NAMELINK_COMPONENT ${targetname}_Development
             ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT ${targetname}_Development)
     endif()
-
-    string(REPLACE ${PROJECT_BINARY_DIR}/lib/vistle "" directory ${CMAKE_CURRENT_BINARY_DIR})
-
+    if("${vistle_install_include_directory}" STREQUAL "")
+        string(REPLACE ${PROJECT_BINARY_DIR}/lib/vistle "" vistle_install_include_directory ${CMAKE_CURRENT_BINARY_DIR})
+    endif()
     set(header "${ARGN}")
     list(FILTER header INCLUDE REGEX "(\.(h|H|hpp|HPP)$)")
     if(VISTLE_INSTALL_HEADER)
         install(
             FILES ${header}
-            DESTINATION include/vistle/${directory}
+            DESTINATION include/vistle/${vistle_install_include_directory}
             COMPONENT Devel)
     endif()
 endmacro(vistle_install_library)
@@ -867,8 +869,12 @@ set(ZFP_FOUND TRUE)
 add_definitions(-DHAVE_ZFP)
 include_directories(SYSTEM "${ZFP_INCLUDE_DIRS}")
 
+vistle_find_package(ZSTD)
 if(CMAKE_VERSION VERSION_LESS 3.18)
     message("Not building with SZ3 support: CMake older than 3.18")
+    set(USE_SZ3 FALSE)
+elseif(NOT ZSTD_FOUND)
+    message("Not building with SZ3 support: no ZSTD")
     set(USE_SZ3 FALSE)
 else()
     set(SZ3_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/lib/3rdparty/sz3/include;${PROJECT_BINARY_DIR}/lib/3rdparty/sz3/include")
@@ -917,6 +923,12 @@ vistle_find_package(
 
 # do it here, so that we see the warnings just once
 vistle_find_package(Xdmf QUIET)
+if(WIN32 AND Xdmf_FOUND)
+    vistle_find_package(Iconv)
+    if(NOT Iconv_FOUND)
+        unset(Xdmf_FOUND)
+    endif()
+endif()
 
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)

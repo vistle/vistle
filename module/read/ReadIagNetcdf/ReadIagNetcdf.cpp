@@ -4,13 +4,17 @@
 #include <boost/filesystem.hpp>
 #include <vistle/core/points.h>
 #include <vistle/netcdf/ncwrap.h>
+#include <sstream>
 
 
 using namespace vistle;
 namespace bf = boost::filesystem;
 
+//#define COLLECTIVE
+
 #if defined(MODULE_THREAD)
 static std::mutex netcdf_mutex; // avoid simultaneous access to NetCDF library
+#ifdef COLLECTIVE
 #define LOCK_NETCDF(comm) \
     std::unique_lock<std::mutex> netcdf_guard(netcdf_mutex, std::defer_lock); \
     if ((comm).rank() == 0) \
@@ -20,6 +24,14 @@ static std::mutex netcdf_mutex; // avoid simultaneous access to NetCDF library
     (comm).barrier(); \
     if (netcdf_guard) \
         netcdf_guard.unlock();
+#else
+#define LOCK_NETCDF(comm) \
+    std::unique_lock<std::mutex> netcdf_guard(netcdf_mutex, std::defer_lock); \
+    netcdf_guard.lock();
+#define UNLOCK_NETCDF(comm) \
+    if (netcdf_guard) \
+        netcdf_guard.unlock();
+#endif
 #else
 #define LOCK_NETCDF(comm)
 #define UNLOCK_NETCDF(comm)
@@ -74,7 +86,7 @@ ReadIagNetcdf::ReadIagNetcdf(const std::string &name, int moduleID, mpi::communi
 
     m_gridOut = createOutputPort("grid_out", "grid");
     std::vector<std::string> varChoices{"(NONE)"};
-    for (int i = 0; i < NUMPORTS; ++i) {
+    for (unsigned i = 0; i < NUMPORTS; ++i) {
         m_variables[i] = addStringParameter("Variable" + std::to_string(i), "Scalar Variables", "", Parameter::Choice);
         setParameterChoices(m_variables[i], varChoices);
         m_dataOut[i] = createOutputPort("data_out" + std::to_string(i), "volume data");
@@ -82,7 +94,7 @@ ReadIagNetcdf::ReadIagNetcdf(const std::string &name, int moduleID, mpi::communi
 
     m_boundaryOut = createOutputPort("boundary_out", "boundary with patch markers");
     m_boundaryVarOut = createOutputPort("boundary_var_out", "boundary with animated patch markers");
-    for (int i = 0; i < NUMPORTS; ++i) {
+    for (unsigned i = 0; i < NUMPORTS; ++i) {
         m_bvariables[i] =
             addStringParameter("boundary_variable" + std::to_string(i), "Variable on boundary", "", Parameter::Choice);
         setParameterChoices(m_variables[i], varChoices);
@@ -92,7 +104,11 @@ ReadIagNetcdf::ReadIagNetcdf(const std::string &name, int moduleID, mpi::communi
     observeParameter(m_ncFile);
     observeParameter(m_dataFile);
 
-    setParallelizationMode(ParallelizeBlocks);
+    setPartitions(1);
+    setHandlePartitions(PartitionTimesteps);
+    setCollectiveIo(CollectiveConstant);
+    setParallelizationMode(ParallelizeTimeAndBlocksAfterStatic);
+    setAllowTimestepDistribution(true);
 }
 
 ReadIagNetcdf::~ReadIagNetcdf()
@@ -208,7 +224,6 @@ bool ReadIagNetcdf::validateFile(std::string fullFileName, std::string &redFileN
 bool ReadIagNetcdf::examine(const vistle::Parameter *param)
 {
     std::cerr << "examine: " << (param ? param->getName() : "(no param)") << std::endl;
-    LOCK_NETCDF(comm());
     if (!param || param == m_ncFile) {
         if (!validateFile(m_ncFile->getValue(), m_gridFileName, GridFile))
             return false;
@@ -221,12 +236,10 @@ bool ReadIagNetcdf::examine(const vistle::Parameter *param)
     std::vector<std::string> choices{"(NONE)"};
     std::copy(m_dataVariables.begin(), m_dataVariables.end(), std::back_inserter(choices));
     //std::copy(m_gridVariables.begin(), m_gridVariables.end(), std::back_inserter(choices));
-    for (int i = 0; i < NUMPORTS; i++) {
+    for (unsigned i = 0; i < NUMPORTS; i++) {
         setParameterChoices(m_variables[i], choices);
         setParameterChoices(m_bvariables[i], choices);
     }
-    UNLOCK_NETCDF(comm());
-    setPartitions(1);
 
     m_dataFiles.clear();
     if (m_dataFileName.empty()) {
@@ -327,147 +340,203 @@ void ReadIagNetcdf::countElements(const std::string &elem, const int ncid, size_
 
 bool ReadIagNetcdf::read(Token &token, int timestep, int block)
 {
-    LOCK_NETCDF(comm());
     if (timestep == -1) {
-        NcFile ncGridId = NcFile::open(m_gridFileName);
-        if (!ncGridId) {
-            return false;
-        }
-        if (!hasDimension(ncGridId, DimNPoints) || !hasDimension(ncGridId, DimNElements)) {
-            sendError("dimension info missing: no %s or %s", DimNPoints, DimNElements);
-            return false;
-        }
-        m_numVertices = getDimension(ncGridId, DimNPoints);
-        size_t numElem = getDimension(ncGridId, DimNElements);
-
-        //sendInfo("COUNTED: %d points and %zu elementes in total", m_numVertices, numElem);
-        //COORDS
-
-        size_t numCorners = 0;
-        numElem = 0;
-        //MESH
-        //GET NUMBER OF ELEMENTS
-        for (auto elem: elemTypes) {
-            countElements(elem, ncGridId, numElem, numCorners);
-        }
-        m_grid.reset(new UnstructuredGrid(numElem, numCorners, m_numVertices));
-        Index *cl = m_grid->cl().data();
-        Index *el = m_grid->el().data();
-        Byte *tl = m_grid->tl().data();
-
-        // READ ELEMENT DATA
-        Index idx_cl = 0, idx_el = 0, typeIdx = 0;
-        for (auto elem: elemTypes) {
-            auto type = typeList[typeIdx];
-            readElemType(cl, el, elem, idx_cl, idx_el, ncGridId, tl, type);
-            std::cerr << "read " << elem << ": #el=" << idx_el << ", #cl=" << idx_cl << std::endl;
-            ++typeIdx;
-        }
-        el[idx_el] = idx_cl;
-        std::cerr << "read #el=" << numElem << ", idx_el=" << idx_el << ", #cl=" << numCorners << ", idx_cl=" << idx_cl
-                  << std::endl;
-        assert(idx_el == numElem);
-        assert(idx_cl == numCorners);
-        //sendInfo("Read of all types completed: idxEL=%lu, idxCL=%lu", (unsigned long)idx_el, (unsigned long)idx_cl);
-
-        auto *x = m_grid->x().data();
-        auto *y = m_grid->y().data();
-        auto *z = m_grid->z().data();
-        if (!getVariable<Scalar>(ncGridId, "points_xc", x, {0}, {m_numVertices})) {
-            sendError("could not read x coordinates: points_xc");
-            return false;
-        }
-        if (!getVariable<Scalar>(ncGridId, "points_yc", y, {0}, {m_numVertices})) {
-            sendError("could not read y coordinates: points_yc");
-            return false;
-        }
-        if (!getVariable<Scalar>(ncGridId, "points_zc", z, {0}, {m_numVertices})) {
-            sendError("could not read z coordinates: points_zc");
-            return false;
-        }
-
-        token.applyMeta(m_grid);
-        token.addObject(m_gridOut, m_grid);
-
-        for (Index dataIdx = 0; dataIdx < NUMPORTS; ++dataIdx) {
-            if (!emptyValue(m_variables[dataIdx])) {
-                continue;
+        assert(token.comm());
+        if (token.comm()->rank() == 0) {
+            LOCK_NETCDF(comm());
+            NcFile ncGridId = NcFile::open(m_gridFileName);
+            if (!ncGridId) {
+                return false;
             }
-            if (!m_dataOut[dataIdx]->isConnected()) {
-                continue;
+            if (!hasDimension(ncGridId, DimNPoints) || !hasDimension(ncGridId, DimNElements)) {
+                sendError("dimension info missing: no %s or %s", DimNPoints, DimNElements);
+                return false;
             }
-            token.addObject(m_dataOut[dataIdx], m_grid);
-        }
+            m_numVertices = getDimension(ncGridId, DimNPoints);
+            size_t numElem = getDimension(ncGridId, DimNElements);
 
-        bool needBoundary = m_boundaryOut->isConnected();
-        if (m_boundaryVarOut->isConnected())
-            needBoundary = true;
-        for (unsigned i = 0; i < NUMPORTS; ++i) {
-            if (m_boundaryDataOut[i]->isConnected())
-                needBoundary = true;
-        }
-        if (needBoundary) {
-            size_t numElem = getDimension(ncGridId, DimNSurface);
+            //sendInfo("COUNTED: %d points and %zu elementes in total", m_numVertices, numElem);
+            //COORDS
 
             size_t numCorners = 0;
             numElem = 0;
             //MESH
             //GET NUMBER OF ELEMENTS
-            for (auto elem: elemTypes2d) {
+            for (auto elem: elemTypes) {
                 countElements(elem, ncGridId, numElem, numCorners);
             }
-            m_boundary = std::make_shared<Polygons>(numElem, numCorners, 0);
-            Index *cl = m_boundary->cl().data();
-            Index *el = m_boundary->el().data();
-            m_boundary->d()->x[0] = m_grid->d()->x[0];
-            m_boundary->d()->x[1] = m_grid->d()->x[1];
-            m_boundary->d()->x[2] = m_grid->d()->x[2];
-            Index idx_cl = 0, idx_el = 0;
-            for (auto elem: elemTypes2d) {
-                readElemType(cl, el, elem, idx_cl, idx_el, ncGridId, nullptr, 0);
+            auto grid = std::make_shared<UnstructuredGrid>(numElem, numCorners, m_numVertices);
+            m_grid = grid;
+            Index *cl = grid->cl().data();
+            Index *el = grid->el().data();
+            Byte *tl = grid->tl().data();
+
+            // READ ELEMENT DATA
+            Index idx_cl = 0, idx_el = 0, typeIdx = 0;
+            for (auto elem: elemTypes) {
+                auto type = typeList[typeIdx];
+                readElemType(cl, el, elem, idx_cl, idx_el, ncGridId, tl, type);
                 std::cerr << "read " << elem << ": #el=" << idx_el << ", #cl=" << idx_cl << std::endl;
+                ++typeIdx;
             }
             el[idx_el] = idx_cl;
-            el[idx_el] = idx_cl;
-            //std::cerr << "read boundary #el=" << numElem << ", idx_el=" << idx_el << ", #cl=" << numCorners << ", idx_cl=" << idx_cl << std::endl;
+            std::cerr << "read #el=" << numElem << ", idx_el=" << idx_el << ", #cl=" << numCorners
+                      << ", idx_cl=" << idx_cl << std::endl;
             assert(idx_el == numElem);
             assert(idx_cl == numCorners);
-            token.applyMeta(m_boundary);
+            //sendInfo("Read of all types completed: idxEL=%lu, idxCL=%lu", (unsigned long)idx_el, (unsigned long)idx_cl);
+
+            auto *x = grid->x().data();
+            auto *y = grid->y().data();
+            auto *z = grid->z().data();
+            if (!getVariable<Scalar>(ncGridId, "points_xc", x, {0}, {m_numVertices})) {
+                sendError("could not read x coordinates: points_xc");
+                return false;
+            }
+            if (!getVariable<Scalar>(ncGridId, "points_yc", y, {0}, {m_numVertices})) {
+                sendError("could not read y coordinates: points_yc");
+                return false;
+            }
+            if (!getVariable<Scalar>(ncGridId, "points_zc", z, {0}, {m_numVertices})) {
+                sendError("could not read z coordinates: points_zc");
+                return false;
+            }
+            UNLOCK_NETCDF(comm());
+
+            token.applyMeta(grid);
+            token.addObject(m_gridOut, grid);
 
             for (Index dataIdx = 0; dataIdx < NUMPORTS; ++dataIdx) {
-                if (!emptyValue(m_bvariables[dataIdx])) {
+                if (!emptyValue(m_variables[dataIdx])) {
                     continue;
                 }
-                if (!m_boundaryDataOut[dataIdx]->isConnected()) {
+                if (!m_dataOut[dataIdx]->isConnected()) {
                     continue;
                 }
-                token.addObject(m_boundaryDataOut[dataIdx], m_boundary);
+                token.addObject(m_dataOut[dataIdx], grid);
             }
 
-            if (m_boundaryOut->isConnected() || m_boundaryVarOut->isConnected()) {
-                m_markerData = std::make_shared<Vec<Index>>(numElem);
-                if (!getVariable<Index>(ncGridId, "boundarymarker_of_surfaces", m_markerData->x().data(), {0},
-                                        {numElem})) {
-                    sendWarning("could not read surface markers");
-                }
-                m_markerData->addAttribute("_species", "marker");
-                m_markerData->setGrid(m_boundary);
-                token.applyMeta(m_markerData);
-                if (m_boundaryOut->isConnected())
-                    token.addObject(m_boundaryOut, m_markerData);
+            bool needBoundary = m_boundaryOut->isConnected();
+            if (m_boundaryVarOut->isConnected())
+                needBoundary = true;
+            for (unsigned i = 0; i < NUMPORTS; ++i) {
+                if (m_boundaryDataOut[i]->isConnected())
+                    needBoundary = true;
             }
+            if (needBoundary) {
+                LOCK_NETCDF(comm());
+                size_t numElem = getDimension(ncGridId, DimNSurface);
+
+                size_t numCorners = 0;
+                numElem = 0;
+                //MESH
+                //GET NUMBER OF ELEMENTS
+                for (auto elem: elemTypes2d) {
+                    countElements(elem, ncGridId, numElem, numCorners);
+                }
+                auto boundary = std::make_shared<Polygons>(numElem, numCorners, 0);
+                m_boundary = boundary;
+                Index *cl = boundary->cl().data();
+                Index *el = boundary->el().data();
+                boundary->d()->x[0] = m_grid->d()->x[0];
+                boundary->d()->x[1] = m_grid->d()->x[1];
+                boundary->d()->x[2] = m_grid->d()->x[2];
+                Index idx_cl = 0, idx_el = 0;
+                for (auto elem: elemTypes2d) {
+                    readElemType(cl, el, elem, idx_cl, idx_el, ncGridId, nullptr, 0);
+                    std::cerr << "read " << elem << ": #el=" << idx_el << ", #cl=" << idx_cl << std::endl;
+                }
+                UNLOCK_NETCDF(comm());
+                el[idx_el] = idx_cl;
+                el[idx_el] = idx_cl;
+                //std::cerr << "read boundary #el=" << numElem << ", idx_el=" << idx_el << ", #cl=" << numCorners << ", idx_cl=" << idx_cl << std::endl;
+                assert(idx_el == numElem);
+                assert(idx_cl == numCorners);
+                token.applyMeta(boundary);
+
+                for (Index dataIdx = 0; dataIdx < NUMPORTS; ++dataIdx) {
+                    if (!emptyValue(m_bvariables[dataIdx])) {
+                        continue;
+                    }
+                    if (!m_boundaryDataOut[dataIdx]->isConnected()) {
+                        continue;
+                    }
+                    token.addObject(m_boundaryDataOut[dataIdx], boundary);
+                }
+
+                if (m_boundaryOut->isConnected() || m_boundaryVarOut->isConnected()) {
+                    auto markerData = std::make_shared<Vec<Index>>(numElem);
+                    m_markerData = markerData;
+                    LOCK_NETCDF(comm());
+                    if (!getVariable<Index>(ncGridId, "boundarymarker_of_surfaces", markerData->x().data(), {0},
+                                            {numElem})) {
+                        sendWarning("could not read surface markers");
+                    }
+                    UNLOCK_NETCDF(comm());
+                    markerData->addAttribute("_species", "marker");
+                    markerData->setGrid(boundary);
+                    token.applyMeta(markerData);
+                    if (m_boundaryOut->isConnected())
+                        token.addObject(m_boundaryOut, markerData);
+                }
+            }
+        }
+
+        bool haveGrid = m_grid.get();
+        bool haveBoundary = m_boundary.get();
+
+        mpi::broadcast(*token.comm(), m_numVertices, 0);
+        mpi::broadcast(*token.comm(), haveGrid, 0);
+        mpi::broadcast(*token.comm(), haveBoundary, 0);
+
+        if (haveGrid) {
+            Object::const_ptr grid = m_grid;
+            broadcastObjectViaShm(*token.comm(), grid, 0);
+            m_grid = UnstructuredGrid::as(grid);
+            assert(m_grid);
+        }
+        if (haveBoundary) {
+            Object::const_ptr marker = m_markerData;
+            if (token.comm()->rank() == 0) {
+                assert(marker);
+                assert(m_markerData->grid());
+            }
+            broadcastObjectViaShm(*token.comm(), marker, 0);
+            assert(marker);
+            m_markerData = Vec<Index>::as(marker);
+            assert(m_markerData);
+            m_boundary = Polygons::as(m_markerData->grid());
+            assert(m_boundary);
         }
         return true;
     }
 
-    assert(m_grid);
+    assert(timestep >= 0);
+    assert(block == 0);
 
-    assert(m_dataFiles.size() > timestep);
+    assert(m_grid);
+    std::stringstream str;
+    str << "Grid: " << *m_grid;
+    std::string s = str.str();
+    sendInfo("%s", s.c_str());
+
+    if (m_boundary) {
+        assert(m_markerData);
+        std::stringstream str;
+        str << "Bound: " << *m_markerData;
+        std::string s = str.str();
+        sendInfo("%s", s.c_str());
+    }
+
+
+    LOCK_NETCDF(comm());
+    assert(m_dataFiles.size() > size_t(timestep));
     NcFile ncDataId = NcFile::open(m_dataFiles[timestep]);
     if (!ncDataId) {
         sendWarning("could not open data file %s", m_dataFiles[timestep].c_str());
         return false;
     }
+    UNLOCK_NETCDF(comm());
 
     auto readVariable = [&ncDataId, timestep, this](const std::string &varName) -> DataBase::ptr {
         DataBase::ptr dataObj;
@@ -504,7 +573,9 @@ bool ReadIagNetcdf::read(Token &token, int timestep, int block)
             continue;
         }
         std::string varName = m_variables[dataIdx]->getValue();
+        LOCK_NETCDF(comm());
         if (DataBase::ptr dataObj = readVariable(varName)) {
+            UNLOCK_NETCDF(comm());
             dataOut[dataIdx] = dataObj;
             dataObj->setGrid(m_grid);
 
@@ -515,7 +586,7 @@ bool ReadIagNetcdf::read(Token &token, int timestep, int block)
     }
 
     if (m_boundaryVarOut->isConnected()) {
-        token.addObject(m_boundaryVarOut, m_markerData);
+        token.addObject(m_boundaryVarOut, std::const_pointer_cast<Vec<Index>>(m_markerData));
     }
     for (Index bIdx = 0; bIdx < NUMPORTS; ++bIdx) {
         if (emptyValue(m_bvariables[bIdx])) {
@@ -533,6 +604,7 @@ bool ReadIagNetcdf::read(Token &token, int timestep, int block)
             }
         }
         if (!dataObj) {
+            LOCK_NETCDF(comm());
             dataObj = readVariable(varName);
             //sendInfo("Done reading boundary variable %s", varName.c_str());
         }

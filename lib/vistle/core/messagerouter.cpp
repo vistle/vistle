@@ -20,6 +20,8 @@ void Router::initRoutingTable()
     rt[REMOVEHUB] = Broadcast | Track | DestUi | TriggerQueue;
     rt[REPLAYFINISHED] = Special;
     rt[TRACE] = Broadcast | DestHub | DestManager | DestModules | Track;
+    rt[LOADWORKFLOW] = Track | HandleOnMaster;
+    rt[SAVEWORKFLOW] = Track | HandleOnMaster;
     rt[SPAWN] = Track | HandleOnMaster;
     rt[SPAWNPREPARED] = DestLocalHub | HandleOnHub;
     rt[STARTED] = Track | DestUi | DestManager | DestModules | OnlyRank0;

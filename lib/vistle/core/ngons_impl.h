@@ -11,5 +11,12 @@ void Ngons<N>::Data::serialize(Archive &ar)
     ar &V_NAME(ar, "connection_list", cl);
 }
 
+template<int N>
+void Ngons<N>::print(std::ostream &os) const
+{
+    Base::print(os);
+    os << " cl(" << *d()->cl << ")";
+}
+
 } // namespace vistle
 #endif

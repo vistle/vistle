@@ -12,6 +12,7 @@
 #include "ui_mainwindow.h"
 #include "parameters.h"
 #include "modulebrowser.h"
+#include "moduleview.h"
 #include "vistleconsole.h"
 
 #include <QString>
@@ -37,7 +38,7 @@ MainWindow::MainWindow(QWidget *parent)
     setCorner(Qt::TopRightCorner, Qt::RightDockWidgetArea);
     setCorner(Qt::BottomRightCorner, Qt::RightDockWidgetArea);
 
-    tabifyDockWidget(ui->modulesDock, ui->parameterDock);
+    tabifyDockWidget(ui->modulesDock, ui->moduleViewDock);
 
     m_console = ui->consoleWidget;
 
@@ -46,9 +47,9 @@ MainWindow::MainWindow(QWidget *parent)
     m_parameters->setSizePolicy(QSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred));
     m_parameters->adjustSize();
     m_parameters->show();
-    ui->parameterScroller->setWidgetResizable(true);
-    ui->parameterScroller->setWidget(m_parameters);
-    ui->parameterScroller->show();
+    ui->moduleView->parameterScroller()->setWidgetResizable(true);
+    ui->moduleView->parameterScroller()->setWidget(m_parameters);
+    ui->moduleView->parameterScroller()->show();
 
     m_moduleBrowser = ui->moduleBrowser;
 
@@ -59,11 +60,15 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->actionNew, SIGNAL(triggered()), SIGNAL(newDataFlow()));
     ui->actionNew->setShortcut(QKeySequence::StandardKey::New);
     connect(ui->actionOpen, SIGNAL(triggered()), SIGNAL(loadDataFlow()));
+    connect(ui->actionOpen, &QAction::triggered, [this]() { emit loadDataFlowOnHub(); });
     ui->actionOpen->setShortcut(QKeySequence::StandardKey::Open);
+    connect(ui->actionOpenOnGui, SIGNAL(triggered()), SIGNAL(loadDataFlowOnGui()));
+    connect(ui->actionOpenOnHub, SIGNAL(triggered()), SIGNAL(loadDataFlowOnHub()));
     connect(ui->actionSave, SIGNAL(triggered()), SIGNAL(saveDataFlow()));
     ui->actionSave->setShortcut(QKeySequence::StandardKey::Save);
-    connect(ui->actionSave_As, SIGNAL(triggered()), SIGNAL(saveDataFlowAs()));
-    ui->actionSave_As->setShortcut(QKeySequence::StandardKey::SaveAs);
+    connect(ui->actionSaveOnGui, SIGNAL(triggered()), SIGNAL(saveDataFlowOnGui()));
+    connect(ui->actionSaveOnHub, SIGNAL(triggered()), SIGNAL(saveDataFlowOnHub()));
+    ui->actionSaveOnHub->setShortcut(QKeySequence::StandardKey::SaveAs);
     connect(ui->actionExecute, SIGNAL(triggered()), SIGNAL(executeDataFlow()));
     ui->actionExecute->setShortcut(QKeySequence::StandardKey::Refresh);
     connect(ui->actionConnect, SIGNAL(triggered()), SIGNAL(connectVistle()));
@@ -80,6 +85,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->actionDelete->setShortcuts(deleteKeys);
     connect(ui->actionDelete, SIGNAL(triggered()), SIGNAL(deleteSelectedModules()));
     connect(ui->actionSelectClear, SIGNAL(triggered()), SIGNAL(selectClear()));
+    connect(ui->actionSnapToGrid, SIGNAL(triggered(bool)), SIGNAL(snapToGridChanged(bool)));
     connect(ui->actionViewAll, SIGNAL(triggered()), SIGNAL(zoomAll()));
     connect(ui->actionViewOrig, SIGNAL(triggered()), SIGNAL(zoomOrig()));
     connect(ui->actionSelectSinks, SIGNAL(triggered()), SIGNAL(selectSinkModules()));
@@ -103,6 +109,13 @@ MainWindow::MainWindow(QWidget *parent)
     ui->modulesDock->raise();
     ui->modulesDock->setFocus();
 
+#ifndef HAVE_PYTHON
+    ui->actionSaveOnGui->setEnabled(false);
+    ui->actionSaveOnGui->setVisible(false);
+    ui->actionOpenOnGui->setEnabled(false);
+    ui->actionOpenOnGui->setVisible(false);
+#endif
+
     readSettings();
 
     if (menuBar())
@@ -114,6 +127,30 @@ MainWindow::~MainWindow()
     delete ui;
     ///\todo Keep track of all things created with new:
     /// scene; QDrag; mimeData;
+}
+
+void MainWindow::setInteractionEnabled(bool enable)
+{
+#ifdef HAVE_PYTHON
+    ui->actionSaveOnGui->setEnabled(enable);
+    ui->actionOpenOnGui->setEnabled(enable);
+#endif
+    ui->actionNew->setEnabled(enable);
+    ui->actionQuit->setEnabled(enable);
+    ui->actionOpen->setEnabled(enable);
+    ui->actionOpenOnHub->setEnabled(enable);
+    ui->actionSave->setEnabled(enable);
+    ui->actionSaveOnHub->setEnabled(enable);
+}
+
+QToolBar *MainWindow::toolBar() const
+{
+    return ui->toolBar;
+}
+
+QAction *MainWindow::layerWidgetPosition() const
+{
+    return ui->actionArrange;
 }
 
 QMenu *MainWindow::createPopupMenu()
@@ -180,9 +217,9 @@ QDockWidget *MainWindow::consoleDock() const
     return ui->consoleDock;
 }
 
-QDockWidget *MainWindow::parameterDock() const
+QDockWidget *MainWindow::moduleViewDock() const
 {
-    return ui->parameterDock;
+    return ui->moduleViewDock;
 }
 
 QDockWidget *MainWindow::modulesDock() const
@@ -193,6 +230,11 @@ QDockWidget *MainWindow::modulesDock() const
 Parameters *MainWindow::parameters() const
 {
     return m_parameters;
+}
+
+ModuleView *MainWindow::moduleView() const
+{
+    return ui->moduleView;
 }
 
 DataFlowView *MainWindow::dataFlowView() const
@@ -240,6 +282,10 @@ void MainWindow::readSettings()
     if (menuBar())
         menuBar()->setNativeMenuBar(settings.value("nativeMenuBar", true).toBool());
 
+    bool snapToGrid = settings.value("snapToGrid", ui->actionSnapToGrid->isChecked()).toBool();
+    ui->actionSnapToGrid->setChecked(snapToGrid);
+    emit snapToGridChanged(snapToGrid);
+
     settings.endGroup();
 }
 
@@ -256,7 +302,19 @@ void MainWindow::writeSettings()
     if (menuBar())
         settings.setValue("nativeMenuBar", menuBar()->isNativeMenuBar());
 
+    settings.setValue("snapToGrid", ui->actionSnapToGrid->isChecked());
+
     settings.endGroup();
+}
+
+void MainWindow::enableSnapToGrid(bool snap)
+{
+    ui->actionSnapToGrid->setChecked(snap);
+}
+
+bool MainWindow::isSnapToGrid() const
+{
+    return ui->actionSnapToGrid->isChecked();
 }
 
 } //namespace gui

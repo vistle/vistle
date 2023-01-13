@@ -18,7 +18,9 @@ find_path(
     TBB_ROOT include/tbb/task_group.h
     DOC "Root of TBB installation"
     PATHS ${PROJECT_SOURCE_DIR}/tbb
+          $ENV{TBBROO}
           "C:/Program Files (x86)/Intel/Composer XE/tbb"
+          /opt/intel/oneapi/tbb/latest
           /opt/intel/composerxe/tbb
           /opt/homebrew/opt/tbb
           /usr/local/opt/tbb
@@ -154,11 +156,11 @@ else()
             NO_DEFAULT_PATH)
         find_library(
             TBB_LIBRARY tbb
-            PATHS ${TBB_ROOT}/lib ${TBB_ROOT}/lib64 ${TBB_ROOT}/lib/x86_64-linux-gnu ${TBB_ROOT}/lib/intel64/gcc4.4
+            PATHS ${TBB_ROOT}/lib ${TBB_ROOT}/lib64 ${TBB_ROOT}/lib/x86_64-linux-gnu ${TBB_ROOT}/lib/intel64/gcc4.8 ${TBB_ROOT}/lib/intel64/gcc4.4
             NO_DEFAULT_PATH)
         find_library(
             TBB_LIBRARY_MALLOC tbbmalloc
-            PATHS ${TBB_ROOT}/lib ${TBB_ROOT}/lib64 ${TBB_ROOT}/lib/x86_64-linux-gnu ${TBB_ROOT}/lib/intel64/gcc4.4
+            PATHS ${TBB_ROOT}/lib ${TBB_ROOT}/lib64 ${TBB_ROOT}/lib/x86_64-linux-gnu ${TBB_ROOT}/lib/intel64/gcc4.8 ${TBB_ROOT}/lib/intel64/gcc4.4
             NO_DEFAULT_PATH)
     endif()
 

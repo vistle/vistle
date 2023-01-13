@@ -13,6 +13,7 @@ add_definitions(-DHAS_MPI)
 add_definitions(-DCOVER_PLUGIN)
 
 set(visibility EXPORT)
+set(vistle_install_include_directory "module/render/COVER")
 if(NOT VISTLE_BUILD_SHARED)
     set(visibility INTERNAL)
 endif()

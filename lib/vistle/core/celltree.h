@@ -32,6 +32,14 @@ public:
     typedef ScalarVector<NumDimensions> CTVector;
     typedef CelltreeNode<sizeof(Index), NumDimensions> Node;
 
+    struct AABB {
+        Scalar mmin[NumDimensions];
+        Scalar mmax[NumDimensions];
+
+        Scalar min(int d) const { return mmin[d]; }
+        Scalar max(int d) const { return mmax[d]; }
+    };
+
     class VisitFunctor {
     public:
         enum Order {
@@ -80,8 +88,7 @@ public:
 
     Celltree(const size_t numCells, const Meta &meta = Meta());
 
-    void init(const CTVector *min, const CTVector *max, const CTVector &gmin, const CTVector &gmax);
-    void refine(const CTVector *min, const CTVector *max, Index nodeIdx, const CTVector &gmin, const CTVector &gmax);
+    void init(const AABB *bounds, const CTVector &gmin, const CTVector &gmax);
     template<class BoundsFunctor>
     bool validateTree(BoundsFunctor &func) const;
 
@@ -103,6 +110,10 @@ public:
     }
 
 private:
+    struct GlobalData;
+    struct NodeData;
+    void refine(const AABB *bounds, NodeData &node, GlobalData &data);
+
     template<class BoundsFunctor>
     bool validateNode(BoundsFunctor &func, Index nodenum, const CTVector &min, const CTVector &max) const;
     template<class InnerNodeFunctor, class ElementFunctor>

@@ -114,7 +114,6 @@ protected:
 class V_MODULEEXPORT Module: public ParameterManager, public MessageSender {
     friend class Reader;
     friend class Renderer;
-    friend class Cache; // for passThroughObject
     friend class BlockTask;
 
 public:
@@ -157,6 +156,10 @@ public:
     bool broadcastObject(const mpi::communicator &comm, vistle::Object::const_ptr &object, int root) const;
     bool broadcastObject(vistle::Object::const_ptr &object, int root) const;
     bool broadcastObjectViaShm(vistle::Object::const_ptr &object, const std::string &objName, int root) const;
+    bool broadcastObjectViaShm(vistle::Object::const_ptr &object, int root) const;
+    bool broadcastObjectViaShm(const mpi::communicator &comm, vistle::Object::const_ptr &object, int root) const;
+    bool broadcastObjectViaShm(const mpi::communicator &comm, vistle::Object::const_ptr &object,
+                               const std::string &objName, int root) const;
 
     bool addObject(Port *port, vistle::Object::ptr object);
     bool addObject(const std::string &portName, vistle::Object::ptr object);
@@ -261,6 +264,8 @@ public:
 protected:
     bool passThroughObject(Port *port, vistle::Object::const_ptr object);
     bool passThroughObject(const std::string &portName, vistle::Object::const_ptr object);
+
+    virtual void setInputSpecies(const std::string &species); //< _species attribute on input has changed
 
     void setObjectReceivePolicy(int pol);
     int objectReceivePolicy() const;
@@ -384,6 +389,7 @@ private:
     unsigned m_hardware_concurrency = 1;
 
     std::map<std::string, std::string> m_currentItemInfo;
+    std::string m_inputSpecies;
 };
 
 V_MODULEEXPORT int getTimestep(Object::const_ptr obj);

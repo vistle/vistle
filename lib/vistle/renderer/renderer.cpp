@@ -293,33 +293,33 @@ int Renderer::numTimesteps() const
 bool Renderer::addInputObject(int sender, const std::string &senderPort, const std::string &portName,
                               vistle::Object::const_ptr object)
 {
-    auto it = std::find_if(m_creatorMap.begin(), m_creatorMap.end(), [sender, senderPort](const Creator &c) {
+    auto it = std::find_if(m_sendPortMap.begin(), m_sendPortMap.end(), [sender, senderPort](const SendPort &c) {
         return c.module == sender && c.port == senderPort;
     });
-    if (it != m_creatorMap.end()) {
+    if (it != m_sendPortMap.end()) {
         if (it->age < object->getExecutionCounter()) {
-            //std::cerr << "removing all created by " << creatorId << ", age " << object->getExecutionCounter() << ", was " << it->second.age << std::endl;
+            //std::cerr << "removing all sent by " << sender << ", age " << object->getExecutionCounter() << ", was " << it->age << std::endl;
             removeAllSentBy(sender, senderPort);
         } else if (it->age == object->getExecutionCounter() && it->iteration < object->getIteration()) {
-            std::cerr << "removing all created by " << sender << ":" << senderPort << ", age "
+            std::cerr << "removing all sent by " << sender << ":" << senderPort << ", age "
                       << object->getExecutionCounter() << ": new iteration " << object->getIteration() << std::endl;
             removeAllSentBy(sender, senderPort);
         } else if (it->age > object->getExecutionCounter()) {
-            std::cerr << "received outdated object created by " << sender << ":" << senderPort << ", age "
+            std::cerr << "received outdated object sent by " << sender << ":" << senderPort << ", age "
                       << object->getExecutionCounter() << ", was " << it->age << std::endl;
             return false;
         } else if (it->age == object->getExecutionCounter() && it->iteration > object->getIteration()) {
-            std::cerr << "received outdated object created by " << sender << ":" << senderPort << ", age "
+            std::cerr << "received outdated object sent by " << sender << ":" << senderPort << ", age "
                       << object->getExecutionCounter() << ": old iteration " << object->getIteration() << std::endl;
             return false;
         }
     } else {
-        std::string name = getModuleName(object->getCreator());
-        it = m_creatorMap.insert(Creator(sender, senderPort, name)).first;
+        std::string name = getModuleName(sender);
+        it = m_sendPortMap.insert(SendPort(sender, senderPort, name)).first;
     }
-    auto &creator = *it;
-    creator.age = object->getExecutionCounter();
-    creator.iteration = object->getIteration();
+    auto &sendPort = *it;
+    sendPort.age = object->getExecutionCounter();
+    sendPort.iteration = object->getIteration();
 
     if (Empty::as(object))
         return true;
@@ -367,8 +367,7 @@ bool Renderer::addInputObject(int sender, const std::string &senderPort, const s
     }
     std::cerr << "++++++Renderer addInputObject " << object->getName() << " type " << object->getType() << " creator "
               << object->getCreator() << " exec " << object->getExecutionCounter() << " iter " << object->getIteration()
-              << " block " << object->getBlock() << " timestep " << object->getTimestep() << variant << noobject
-              << std::endl;
+              << variant << *object << noobject << std::endl;
 #endif
 
     return true;
@@ -407,7 +406,7 @@ void Renderer::removeObjectWrapper(std::shared_ptr<RenderObject> ro)
 
 void Renderer::connectionRemoved(const Port *from, const Port *to)
 {
-    m_geometryCaches.erase(Creator(from->getModuleID(), from->getName()));
+    m_geometryCaches.erase(SendPort(from->getModuleID(), from->getName()));
     removeAllSentBy(from->getModuleID(), from->getName());
 
     // connection cut: remove colormap
@@ -428,7 +427,7 @@ void Renderer::removeObject(std::shared_ptr<RenderObject> ro)
 
 void Renderer::removeAllSentBy(int sender, const std::string &senderPort)
 {
-    auto it = m_geometryCaches.find(Creator(sender, senderPort));
+    auto it = m_geometryCaches.find(SendPort(sender, senderPort));
     if (it != m_geometryCaches.end()) {
         it->second->clear();
     }

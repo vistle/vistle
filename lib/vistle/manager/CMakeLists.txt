@@ -7,7 +7,15 @@ set(LIB_SOURCES
     executor.cpp
     portmanager.cpp)
 
-set(LIB_HEADERS export.h clustermanager.h datamanager.h manager.h portmanager.h run_on_main_thread.h)
+set(LIB_HEADERS
+    clustermanager.h
+    communicator.h
+    datamanager.h
+    executor.h
+    export.h
+    manager.h
+    portmanager.h
+    run_on_main_thread.h)
 
 if(VISTLE_MULTI_PROCESS)
     vistle_add_library(vistle_clustermanager INTERNAL STATIC ${LIB_SOURCES} ${LIB_HEADERS})

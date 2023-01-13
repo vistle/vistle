@@ -8,7 +8,7 @@
 	branch = master
 [submodule "3rdparty/thrust"]
 	path = lib/3rdparty/thrust
-	url = https://github.com/thrust/thrust.git
+	url = https://github.com/nvidia/thrust.git
 	branch = main
 [submodule "3rdparty/boost-mpi"]
 	path = lib/3rdparty/boost-mpi
@@ -55,3 +55,6 @@
 [submodule "lib/3rdparty/sz3"]
 	path = lib/3rdparty/sz3
 	url = https://github.com/szcompressor/SZ3.git
+[submodule "module/general/Calc/exprtk"]
+	path = module/general/Calc/exprtk
+	url = https://github.com/ArashPartow/exprtk.git

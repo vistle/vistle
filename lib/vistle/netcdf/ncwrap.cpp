@@ -187,6 +187,45 @@ std::vector<T> getVariable(int ncid, std::string name, std::vector<size_t> start
 }
 
 template<typename T>
+bool getVariable(int ncid, std::string name, T *data, std::vector<size_t> dims)
+{
+    // std::vector<T> data;
+    int varid = -1;
+    int err = nc_inq_varid(ncid, name.c_str(), &varid);
+    if (err != NC_NOERR) {
+        std::cerr << "Nc: nc_inq_varid " << name << " error: " << nc_strerror(err) << std::endl;
+        return data;
+    }
+    std::vector<size_t> start(dims.size());
+    for (int i = 0; i < dims.size(); ++i) {
+        start[i] = 0;
+    }
+    size_t size = std::accumulate(dims.begin(), dims.end(), 1, [](size_t a, size_t b) { return a * b; });
+    size_t intmax = std::numeric_limits<int>::max();
+    size_t nreads = std::max(size_t(1), (size * sizeof(T) + intmax - 1) / intmax);
+    unsigned splitdim = 0;
+    while (splitdim < dims.size() - 1 && dims[splitdim] == 1)
+        ++splitdim;
+    size_t splitcount = (dims[splitdim] + nreads - 1) / nreads;
+    std::vector blockcount(dims);
+    blockcount[splitdim] = splitcount;
+    size_t nvalues = std::accumulate(blockcount.begin(), blockcount.end(), 1, [](size_t a, size_t b) { return a * b; });
+    for (size_t i = 0; i < nreads; ++i) {
+        std::vector<size_t> s(start), c(dims);
+        s[splitdim] = start[splitdim] + i * splitcount;
+        c[splitdim] = std::min(splitcount, dims[splitdim] - s[splitdim]);
+        if (s[splitdim] >= start[splitdim] + dims[splitdim])
+            continue;
+        int err = NcFuncMap<T>::get_vara(ncid, varid, s.data(), c.data(), data + i * nvalues);
+        if (err != NC_NOERR) {
+            std::cerr << "Nc: get_var " << name << " error: " << nc_strerror(err) << std::endl;
+            return false;
+        }
+    }
+    return true;
+}
+
+template<typename T>
 std::vector<T> getVariable(int ncid, std::string name)
 {
     std::vector<T> data;
@@ -216,15 +255,12 @@ std::vector<T> getVariable(int ncid, std::string name)
             return data;
         }
     }
-    size_t s = std::accumulate(dims.begin(), dims.end(), 1, [](size_t a, size_t b) { return a * b; });
-    data.resize(s);
-    err = NcFuncMap<T>::get_var(ncid, varid, data.data());
-    if (err != NC_NOERR) {
-        std::cerr << "Nc: get_var " << name << " error: " << nc_strerror(err) << std::endl;
+    size_t size = std::accumulate(dims.begin(), dims.end(), 1, [](size_t a, size_t b) { return a * b; });
+    data.resize(size);
+    if (!getVariable(ncid, name, data.data(), dims)) {
         data.clear();
-        return data;
+        data.shrink_to_fit();
     }
-
     return data;
 }
 

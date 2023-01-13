@@ -35,6 +35,12 @@ bool CoordsWithRadius::checkImpl() const
     return true;
 }
 
+void CoordsWithRadius::print(std::ostream &os) const
+{
+    Base::print(os);
+    os << " r(" << *d()->r << ")";
+}
+
 void CoordsWithRadius::resetArrays()
 {
     Base::resetArrays();

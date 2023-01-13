@@ -29,6 +29,7 @@ public:
     void finish();
 
 signals:
+    void visibleModuleMessage(int id, int type, QString message);
 
 public slots:
     void quitRequested(bool &allowed);
@@ -42,9 +43,11 @@ private slots:
     void setModified(bool mod);
     bool checkModified(const QString &reason);
     void clearDataFlowNetwork();
-    void loadDataFlowNetwork();
-    void saveDataFlowNetwork(const QString &filename = QString());
-    void saveDataFlowNetworkAs(const QString &filename = QString());
+    void loadDataFlowNetworkOnGui();
+    void loadDataFlowNetworkOnHub();
+    void saveDataFlowNetwork(const QString &filename = QString(), int hubId = vistle::message::Id::Invalid);
+    void saveDataFlowNetworkOnGui(const QString &filename = QString());
+    void saveDataFlowNetworkOnHub(const QString &filename = QString());
     void executeDataFlowNetwork();
     void connectVistle();
 
@@ -54,7 +57,7 @@ private slots:
     void parameterValueChanged(int moduleId, QString parameterName);
 
     void statusUpdated(int id, QString text, int prio);
-    void setCurrentFile(QString file);
+    void setCurrentFile(QString file, int loaderId);
     void setSessionUrl(QString url);
 
     void showConnectionInfo();
@@ -66,9 +69,11 @@ private:
 
     std::unique_ptr<vistle::VistleConnection> m_vistleConnection;
     std::unique_ptr<vistle::UserInterface> m_ui;
+#ifdef HAVE_PYTHON
     std::unique_ptr<vistle::PythonInterface> m_python;
     std::unique_ptr<vistle::PythonStateAccessor> m_pythonAccess;
     std::unique_ptr<vistle::PythonModule> m_pythonMod;
+#endif
     std::unique_ptr<std::thread> m_thread;
     DataFlowNetwork *m_scene = nullptr;
 
@@ -76,6 +81,7 @@ private:
     MainWindow *m_mainWindow = nullptr;
 
     QString m_currentFile;
+    int m_currentFileOnHub = vistle::message::Id::Invalid;
     bool m_modified = false;
     std::string m_pythonDir;
 

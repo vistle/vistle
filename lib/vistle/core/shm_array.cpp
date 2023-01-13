@@ -6,7 +6,10 @@
 
 namespace vistle {
 
-#define SHMARR(T) template class shm_array<T, shm_allocator<T>>;
+#define SHMARR(T) \
+    template class shm_array<T, shm_allocator<T>>; \
+    template std::ostream &operator<<<T, shm_allocator<T>>(std::ostream &, const shm_array<T, shm_allocator<T>> &);
+
 
 FOR_ALL_SCALARS(SHMARR)
 SHMARR(CelltreeNode1)

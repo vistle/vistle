@@ -116,6 +116,7 @@ bool VistleFileInfoGatherer::handleMessage(const vistle::message::Message &msg, 
         m_initialized = true;
         auto info = vistle::unpackSystemInfo(payload);
         m_isWindows = info.iswindows;
+        m_hostname = QString::fromStdString(info.hostname);
         m_homePath = QString::fromStdString(info.homepath);
         m_workingDirectory = QString::fromStdString(info.currentdir);
         m_userName = QString::fromStdString(info.username);
@@ -269,6 +270,12 @@ QString VistleFileInfoGatherer::identifier() const
 bool VistleFileInfoGatherer::isRootDir(const QString &path) const
 {
     return QDir(path).isRoot();
+}
+
+QString VistleFileInfoGatherer::hostname() const
+{
+    //Q_ASSERT(m_initialized);
+    return m_hostname;
 }
 
 QString VistleFileInfoGatherer::homePath() const

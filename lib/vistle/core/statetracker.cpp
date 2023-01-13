@@ -59,6 +59,16 @@ StateTracker::mutex &StateTracker::getMutex()
     return m_replyMutex;
 }
 
+void StateTracker::lock()
+{
+    return m_stateMutex.lock();
+}
+
+void StateTracker::unlock()
+{
+    return m_stateMutex.unlock();
+}
+
 void StateTracker::setId(int id)
 {
     m_id = id;
@@ -100,6 +110,17 @@ const std::string &StateTracker::hubName(int id) const
             return h.name;
     }
     return unknown;
+}
+
+int StateTracker::getNumRunning() const
+{
+    mutex_locker guard(m_stateMutex);
+    int num = 0;
+    for (RunningMap::const_iterator it = runningMap.begin(); it != runningMap.end(); ++it) {
+        if (Id::isModule(it->first))
+            ++num;
+    }
+    return num;
 }
 
 std::vector<int> StateTracker::getRunningList() const
@@ -403,7 +424,9 @@ StateTracker::VistleState StateTracker::getState() const
     }
 
     // loaded map
-    appendMessage(state, UpdateStatus(UpdateStatus::LoadedFile, m_loadedWorkflowFile));
+    UpdateStatus loaded(UpdateStatus::LoadedFile, m_loadedWorkflowFile);
+    loaded.setSenderId(workflowLoader());
+    appendMessage(state, loaded);
     if (!m_sessionUrl.empty())
         appendMessage(state, UpdateStatus(UpdateStatus::SessionUrl, m_sessionUrl));
 
@@ -435,6 +458,8 @@ StateTracker::VistleState StateTracker::getState() const
 
 void StateTracker::printModules(bool withConnections) const
 {
+    mutex_locker guard(m_stateMutex);
+
     for (auto &it: runningMap) {
         const int id = it.first;
         const Module &m = it.second;
@@ -543,6 +568,16 @@ bool StateTracker::handle(const message::Message &msg, const char *payload, size
     case REMOVEHUB: {
         const auto &rm = msg.as<RemoveHub>();
         handled = handlePriv(rm);
+        break;
+    }
+    case LOADWORKFLOW: {
+        const auto &load = msg.as<LoadWorkflow>();
+        handled = handlePriv(load);
+        break;
+    }
+    case SAVEWORKFLOW: {
+        const auto &save = msg.as<SaveWorkflow>();
+        handled = handlePriv(save);
         break;
     }
     case SPAWN: {
@@ -922,8 +957,19 @@ bool StateTracker::handlePriv(const message::Trace &trace)
     return true;
 }
 
+bool StateTracker::handlePriv(const message::LoadWorkflow &load)
+{
+    return true;
+}
+
+bool StateTracker::handlePriv(const message::SaveWorkflow &save)
+{
+    return true;
+}
+
 bool StateTracker::handlePriv(const message::Spawn &spawn)
 {
+    mutex_locker guard(m_stateMutex);
     ++m_graphChangeCount;
 
     int moduleId = spawn.spawnId();
@@ -947,7 +993,6 @@ bool StateTracker::handlePriv(const message::Spawn &spawn)
         it->second.mirrors.insert(moduleId);
     }
 
-    mutex_locker guard(m_stateMutex);
     for (StateObserver *o: m_observers) {
         o->incModificationCount();
         o->newModule(moduleId, spawn.uuid(), mod.name);
@@ -958,6 +1003,7 @@ bool StateTracker::handlePriv(const message::Spawn &spawn)
 
 bool StateTracker::handlePriv(const message::Started &started)
 {
+    mutex_locker guard(m_stateMutex);
     ++m_graphChangeCount;
 
     int moduleId = started.senderId();
@@ -978,7 +1024,6 @@ bool StateTracker::handlePriv(const message::Started &started)
     }
     mod.initialized = true;
 
-    mutex_locker guard(m_stateMutex);
     for (StateObserver *o: m_observers) {
         o->moduleStateChanged(moduleId, mod.state());
     }
@@ -988,6 +1033,8 @@ bool StateTracker::handlePriv(const message::Started &started)
 
 bool StateTracker::handlePriv(const message::Connect &connect)
 {
+    mutex_locker guard(m_stateMutex);
+
     if (isExecuting(connect.getModuleA()) || isExecuting(connect.getModuleB()))
         return false;
 
@@ -1017,6 +1064,8 @@ bool StateTracker::handlePriv(const message::Connect &connect)
 
 bool StateTracker::handlePriv(const message::Disconnect &disconnect)
 {
+    mutex_locker guard(m_stateMutex);
+
     if (isExecuting(disconnect.getModuleA()) || isExecuting(disconnect.getModuleB()))
         return false;
 
@@ -1036,18 +1085,17 @@ bool StateTracker::handlePriv(const message::Disconnect &disconnect)
 
 bool StateTracker::handlePriv(const message::ModuleExit &moduleExit)
 {
+    mutex_locker guard(m_stateMutex);
     const int mod = moduleExit.senderId();
     //CERR << " Module [" << mod << "] quit" << std::endl;
     ++m_graphChangeCount;
 
     portTracker()->removeModule(mod);
 
-    mutex_locker guard(m_stateMutex);
     for (StateObserver *o: m_observers) {
         o->incModificationCount();
         o->deleteModule(mod);
     }
-    guard.unlock();
 
     {
         RunningMap::iterator it = runningMap.find(mod);
@@ -1080,6 +1128,7 @@ bool StateTracker::handlePriv(const message::ModuleExit &moduleExit)
 
 bool StateTracker::handlePriv(const message::Execute &execute)
 {
+    mutex_locker guard(m_stateMutex);
     if (execute.destId() != message::Id::Broadcast)
         return true;
 
@@ -1093,7 +1142,6 @@ bool StateTracker::handlePriv(const message::Execute &execute)
         auto &mod = it->second;
         mod.executing = true;
 
-        mutex_locker guard(m_stateMutex);
         for (StateObserver *o: m_observers) {
             o->moduleStateChanged(id, mod.state());
         }
@@ -1127,6 +1175,7 @@ bool StateTracker::handlePriv(const message::ExecutionDone &done)
 
 bool StateTracker::handlePriv(const message::Busy &busy)
 {
+    mutex_locker guard(m_stateMutex);
     const int id = busy.senderId();
     if (busySet.find(id) != busySet.end()) {
         //CERR << "module " << id << " sent Busy twice" << std::endl;
@@ -1141,7 +1190,6 @@ bool StateTracker::handlePriv(const message::Busy &busy)
     auto &mod = it->second;
     mod.busy = true;
 
-    mutex_locker guard(m_stateMutex);
     for (StateObserver *o: m_observers) {
         o->moduleStateChanged(id, mod.state());
     }
@@ -1151,6 +1199,7 @@ bool StateTracker::handlePriv(const message::Busy &busy)
 
 bool StateTracker::handlePriv(const message::Idle &idle)
 {
+    mutex_locker guard(m_stateMutex);
     const int id = idle.senderId();
     ModuleSet::iterator it = busySet.find(id);
     if (it != busySet.end()) {
@@ -1166,7 +1215,6 @@ bool StateTracker::handlePriv(const message::Idle &idle)
     auto &mod = rit->second;
     mod.busy = false;
 
-    mutex_locker guard(m_stateMutex);
     for (StateObserver *o: m_observers) {
         o->moduleStateChanged(id, mod.state());
     }
@@ -1181,6 +1229,7 @@ bool StateTracker::handlePriv(const message::AddParameter &addParam)
          << "), name=" << addParam.getName() << std::endl;
 #endif
 
+    mutex_locker guard(m_stateMutex);
     auto mit = runningMap.find(addParam.senderId());
     if (mit == runningMap.end()) {
         CERR << addParam << ": did not find sending module" << std::endl;
@@ -1204,15 +1253,11 @@ bool StateTracker::handlePriv(const message::AddParameter &addParam)
         po[maxIdx + 1] = addParam.getName();
     }
 
-    mutex_locker guard(m_stateMutex);
+    const Port *p = nullptr;
+    if (portTracker()) {
+        p = portTracker()->addPort(addParam.senderId(), addParam.getName(), addParam.description(), Port::PARAMETER);
+    }
     for (StateObserver *o: m_observers) {
-        const Port *p = nullptr;
-        if (portTracker()) {
-            p = portTracker()->addPort(addParam.senderId(), addParam.getName(), addParam.description(),
-                                       Port::PARAMETER);
-        }
-
-        o->incModificationCount();
         o->newParameter(addParam.senderId(), addParam.getName());
         if (p) {
             for (StateObserver *o: m_observers) {
@@ -1234,10 +1279,8 @@ bool StateTracker::handlePriv(const message::RemoveParameter &removeParam)
     mutex_locker guard(m_stateMutex);
     for (StateObserver *o: m_observers) {
         o->deletePort(removeParam.senderId(), removeParam.getName());
-        o->incModificationCount();
         o->deleteParameter(removeParam.senderId(), removeParam.getName());
     }
-    guard.unlock();
 
     if (portTracker()) {
         portTracker()->removePort(Port(removeParam.senderId(), removeParam.getName(), Port::PARAMETER));
@@ -1277,6 +1320,7 @@ bool StateTracker::handlePriv(const message::SetParameter &setParam)
 
     bool handled = false;
 
+    mutex_locker guard(m_stateMutex);
     const int senderId = setParam.senderId();
     if (setParam.getModule() == senderId) {
         if (runningMap.find(senderId) != runningMap.end()) {
@@ -1290,9 +1334,11 @@ bool StateTracker::handlePriv(const message::SetParameter &setParam)
         return true; //this message has to processed by the module first, we do not have to do anything
 
     if (handled) {
-        mutex_locker guard(m_stateMutex);
         for (StateObserver *o: m_observers) {
-            o->incModificationCount();
+            if (!(setParam.isInitialization() || setParam.rangeType() == Parameter::Minimum ||
+                  setParam.rangeType() == Parameter::Maximum)) {
+                o->incModificationCount();
+            }
             o->parameterValueChanged(setParam.senderId(), setParam.getName());
         }
     }
@@ -1302,6 +1348,7 @@ bool StateTracker::handlePriv(const message::SetParameter &setParam)
 
 bool StateTracker::handlePriv(const message::SetParameterChoices &choices, const buffer &payload)
 {
+    mutex_locker guard(m_stateMutex);
     const int senderId = choices.senderId();
     if (runningMap.find(senderId) == runningMap.end())
         return false;
@@ -1316,9 +1363,7 @@ bool StateTracker::handlePriv(const message::SetParameterChoices &choices, const
 
     //CERR << "choices changed for " << choices.getModule() << ":" << choices.getName() << ": #" << p->choices().size() << std::endl;
 
-    mutex_locker guard(m_stateMutex);
     for (StateObserver *o: m_observers) {
-        o->incModificationCount();
         o->parameterChoicesChanged(choices.senderId(), choices.getName());
     }
 
@@ -1327,6 +1372,7 @@ bool StateTracker::handlePriv(const message::SetParameterChoices &choices, const
 
 bool StateTracker::handlePriv(const message::Quit &quit)
 {
+    mutex_locker guard(m_stateMutex);
     int id = quit.id();
     if (Id::isHub(id)) {
         auto *hub = getModifiableHubData(id);
@@ -1334,7 +1380,6 @@ bool StateTracker::handlePriv(const message::Quit &quit)
             hub->isQuitting = true;
         }
     }
-    mutex_locker guard(m_stateMutex);
     for (StateObserver *o: m_observers) {
         o->quitRequested();
     }
@@ -1344,6 +1389,7 @@ bool StateTracker::handlePriv(const message::Quit &quit)
 
 bool StateTracker::handlePriv(const message::Kill &kill)
 {
+    mutex_locker guard(m_stateMutex);
     const int destId = kill.getModule();
     std::set<int> ids;
     if (destId == message::Id::Broadcast) {
@@ -1367,7 +1413,6 @@ bool StateTracker::handlePriv(const message::Kill &kill)
         auto &mod = it->second;
         mod.killed = true;
 
-        mutex_locker guard(m_stateMutex);
         for (StateObserver *o: m_observers) {
             o->moduleStateChanged(id, mod.state());
         }
@@ -1402,7 +1447,6 @@ bool StateTracker::handlePriv(const message::AddPort &createPort)
 
         mutex_locker guard(m_stateMutex);
         for (StateObserver *o: m_observers) {
-            o->incModificationCount();
             o->newPort(p->getModuleID(), p->getName());
         }
     }
@@ -1412,15 +1456,14 @@ bool StateTracker::handlePriv(const message::AddPort &createPort)
 
 bool StateTracker::handlePriv(const message::RemovePort &destroyPort)
 {
+    mutex_locker guard(m_stateMutex);
     if (portTracker()) {
         Port p = destroyPort.getPort();
         int id = p.getModuleID();
         std::string name = p.getName();
 
         if (portTracker()->findPort(p)) {
-            mutex_locker guard(m_stateMutex);
             for (StateObserver *o: m_observers) {
-                o->incModificationCount();
                 o->deletePort(id, name);
             }
             portTracker()->removePort(p);
@@ -1463,11 +1506,15 @@ bool StateTracker::handlePriv(const message::SendText &info, const buffer &paylo
 
 bool StateTracker::handlePriv(const message::UpdateStatus &status)
 {
+    mutex_locker guard(m_stateMutex);
     if (status.statusType() == message::UpdateStatus::LoadedFile) {
+        m_workflowLoader = status.senderId();
         m_loadedWorkflowFile = status.text();
-        mutex_locker guard(m_stateMutex);
         for (StateObserver *o: m_observers) {
-            o->loadedWorkflowChanged(m_loadedWorkflowFile);
+            o->loadedWorkflowChanged(m_loadedWorkflowFile, m_workflowLoader);
+        }
+        for (StateObserver *o: m_observers) {
+            o->resetModificationCount();
         }
 
         return true;
@@ -1475,7 +1522,6 @@ bool StateTracker::handlePriv(const message::UpdateStatus &status)
 
     if (status.statusType() == message::UpdateStatus::SessionUrl) {
         m_sessionUrl = status.text();
-        mutex_locker guard(m_stateMutex);
         for (StateObserver *o: m_observers) {
             o->sessionUrlChanged(m_sessionUrl);
         }
@@ -1493,7 +1539,6 @@ bool StateTracker::handlePriv(const message::UpdateStatus &status)
     mod.statusTime = m_statusTime;
     ++m_statusTime;
 
-    mutex_locker guard(m_stateMutex);
     for (StateObserver *o: m_observers) {
         o->status(mod.id, mod.statusText, mod.statusImportance);
     }
@@ -1536,6 +1581,7 @@ bool StateTracker::handlePriv(const message::ModuleAvailable &avail, const buffe
 
 bool StateTracker::handlePriv(const message::ObjectReceivePolicy &receivePolicy)
 {
+    mutex_locker guard(m_stateMutex);
     const int id = receivePolicy.senderId();
     RunningMap::iterator it = runningMap.find(id);
     if (it == runningMap.end()) {
@@ -1549,6 +1595,7 @@ bool StateTracker::handlePriv(const message::ObjectReceivePolicy &receivePolicy)
 
 bool StateTracker::handlePriv(const message::SchedulingPolicy &schedulingPolicy)
 {
+    mutex_locker guard(m_stateMutex);
     const int id = schedulingPolicy.senderId();
     RunningMap::iterator it = runningMap.find(id);
     if (it == runningMap.end()) {
@@ -1562,6 +1609,7 @@ bool StateTracker::handlePriv(const message::SchedulingPolicy &schedulingPolicy)
 
 bool StateTracker::handlePriv(const message::ReducePolicy &reducePolicy)
 {
+    mutex_locker guard(m_stateMutex);
     const int id = reducePolicy.senderId();
     RunningMap::iterator it = runningMap.find(id);
     if (it == runningMap.end()) {
@@ -1831,6 +1879,7 @@ std::set<int> StateTracker::getUpstreamModules(int id, const std::string &port, 
 {
     std::set<int> result;
 
+    mutex_locker guard(m_stateMutex);
     auto inputsToCheck = portTracker()->getInputPorts(id);
     if (!port.empty()) {
         // find upstream modules for just the specified port
@@ -1867,6 +1916,7 @@ std::set<int> StateTracker::getDownstreamModules(int id, const std::string &port
 {
     std::set<int> result;
 
+    mutex_locker guard(m_stateMutex);
     auto outputsToCheck = portTracker()->getOutputPorts(id);
     if (!port.empty()) {
         // find downstream modules for just the specified port
@@ -1907,6 +1957,7 @@ std::set<int> StateTracker::getDownstreamModules(const message::Execute &execute
         return getDownstreamModules(execId, "", true, true);
     }
 
+    mutex_locker guard(m_stateMutex);
     std::set<int> executing;
     for (const auto &id_mod: runningMap) {
         const auto &id = id_mod.first;
@@ -1950,6 +2001,7 @@ std::set<int> StateTracker::getConnectedModules(StateTracker::ConnectionKind kin
 
 bool StateTracker::hasCombinePort(int id) const
 {
+    mutex_locker guard(m_stateMutex);
     auto inputs = portTracker()->getInputPorts(id);
     for (auto *in: inputs) {
         if (in->flags() & Port::COMBINE_BIT) {
@@ -1962,6 +2014,7 @@ bool StateTracker::hasCombinePort(int id) const
 
 bool StateTracker::isExecuting(int id) const
 {
+    mutex_locker guard(m_stateMutex);
     auto it = runningMap.find(id);
     if (it == runningMap.end())
         return false;
@@ -1972,6 +2025,11 @@ bool StateTracker::isExecuting(int id) const
 std::string StateTracker::loadedWorkflowFile() const
 {
     return m_loadedWorkflowFile;
+}
+
+int StateTracker::workflowLoader() const
+{
+    return m_workflowLoader;
 }
 
 std::string StateTracker::sessionUrl() const
@@ -2081,7 +2139,7 @@ long StateObserver::modificationCount() const
     return m_modificationCount;
 }
 
-void StateObserver::loadedWorkflowChanged(const std::string &filename)
+void StateObserver::loadedWorkflowChanged(const std::string &filename, int sender)
 {}
 
 void StateObserver::sessionUrlChanged(const std::string &url)

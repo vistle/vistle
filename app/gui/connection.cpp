@@ -9,7 +9,6 @@
  * \todo add license?
  */
 /**********************************************************************************/
-#define _USE_MATH_DEFINES // for M_PI on windows
 #include "connection.h"
 #include "module.h"
 #include "dataflownetwork.h"
@@ -17,8 +16,14 @@
 #include <QLine>
 #include <QPen>
 #include <QPoint>
+#include <QPainterPathStroker>
 
 namespace gui {
+
+namespace {
+float NormalZ = -10;
+float HighlightZ = 10;
+} // namespace
 
 Connection::Connection(Port *startPort, Port *endPort, State state, QGraphicsItem *parent)
 : Base(parent), m_highlight(false), m_state(state), m_color(Qt::black), m_source(startPort), m_destination(endPort)
@@ -28,10 +33,11 @@ Connection::Connection(Port *startPort, Port *endPort, State state, QGraphicsIte
     else
         m_connectionType = Port::Output;
 
-    setPen(QPen(m_color, 2, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+    setPen(QPen(m_color, 2.5f, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
     setFlag(QGraphicsItem::ItemIsSelectable, true);
     setCursor(Qt::CrossCursor);
     setState(m_state);
+    setHighlight(m_highlight);
 
     setAcceptHoverEvents(true);
 
@@ -57,19 +63,65 @@ void Connection::setState(Connection::State state)
 {
     m_state = state;
 
-    if (!isHighlighted()) {
-        switch (m_state) {
-        case ToEstablish:
-            setColor(QColor(140, 140, 140));
-            break;
-        case Established:
-            setColor(QColor(0, 0, 0));
-            break;
-        case ToRemove:
-            setColor(QColor(200, 50, 50));
-            break;
-        }
+    if (isHighlighted()) {
+        setZValue(HighlightZ);
+        setColor(scene()->highlightColor());
+        return;
     }
+
+    setZValue(NormalZ);
+
+    if (isEmphasized()) {
+        if (scene()->isDark()) {
+            setColor(scene()->highlightColor().darker());
+        } else {
+            setColor(scene()->highlightColor().darker(140));
+        }
+        return;
+    }
+
+    switch (m_state) {
+    case ToEstablish:
+        setColor(QColor(140, 140, 140));
+        break;
+    case Established:
+        setColor(QColor(0, 0, 0));
+        break;
+    case ToRemove:
+        setColor(QColor(200, 50, 50));
+        break;
+    }
+}
+
+void Connection::updateVisibility(int layer)
+{
+    auto *m1 = source()->module();
+    auto *m2 = destination()->module();
+    bool v1 = layer < 0 || m1->layer() < 0 || m1->layer() == layer;
+    bool v2 = layer < 0 || m2->layer() < 0 || m2->layer() == layer;
+
+    if (LayersAsOpacity) {
+        setEnabled(v1 & v2);
+        if (v1 && v2) {
+            setOpacity(1.0);
+        } else {
+            setOpacity(0.05);
+            setEnabled(false);
+        }
+    } else {
+        setVisible(v1 && v2);
+    }
+}
+
+bool Connection::isEmphasized() const
+{
+    return m_emphasized;
+}
+
+void Connection::setEmphasis(bool em)
+{
+    m_emphasized = em;
+    setState(m_state);
 }
 
 bool Connection::isHighlighted() const
@@ -80,10 +132,7 @@ bool Connection::isHighlighted() const
 void Connection::setHighlight(bool highlight)
 {
     m_highlight = highlight;
-    if (isHighlighted())
-        setColor(scene()->highlightColor());
-    else
-        setState(m_state);
+    setState(m_state);
 }
 
 void Connection::setColor(const QColor &color)
@@ -99,8 +148,25 @@ void Connection::setColor(const QColor &color)
  */
 void Connection::updatePosition()
 {
-    QLineF line(mapFromScene(m_source->scenePos()), mapFromScene(m_destination->scenePos()));
-    setLine(line);
+    auto f = mapFromScene(m_source->scenePos());
+    auto t = mapFromScene(m_destination->scenePos());
+    QPainterPath path;
+    path.moveTo(f);
+    float dy = t.y() - f.y();
+    float dx = t.x() - f.x();
+    const float MinDControl = 2. * Port::portSize;
+    float cdy = std::max(MinDControl, dy * .5f);
+    if (dy < 0) {
+        cdy = std::max(MinDControl, std::min(5.f * MinDControl, std::min(std::abs(dy * .5f), std::abs(dx))));
+    }
+    if (cdy <= 0) {
+        path.lineTo(t);
+    } else {
+        QPointF cd(0, cdy);
+        path.cubicTo(f + cd, t - cd, t);
+    }
+    QPainterPathStroker s;
+    setPath(s.createStroke(path));
 }
 
 DataFlowNetwork *Connection::scene() const
@@ -132,43 +198,15 @@ void Connection::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event)
  */
 void Connection::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
+    updatePosition();
+
     // Set the pen and the brush
     QPen m_Pen = pen();
     m_Pen.setColor(m_color);
     painter->setPen(m_Pen);
     painter->setBrush(m_color);
 
-    // find the position for drawing the connectionhead
-    QPointF startPoint = mapFromScene(m_source->scenePos());
-    QPointF endPoint = mapFromScene(m_destination->scenePos());
-    QLineF centerLine(endPoint, startPoint);
-
-    ///\todo re-implement collision calculations, incorporating proper positions
-    setLine(centerLine);
-    //setLine(QLineF(intersectPoint, m_StartItem->pos()));
-
-    // change the angle depending on the orientation of the two objects
-    double angle = ::acos(line().dx() / line().length());
-    if (line().dy() >= 0) {
-        angle = (M_PI * 2) - angle;
-    } else {
-        angle = (M_PI * 2) + angle;
-    }
-
-    painter->drawLine(line());
-
-    ///\todo fix selection mechanism in the scene, or don't use functionality.
-    /*
-    if (isSelected()) {
-        painter->setPen(QPen(m_Color, 1, Qt::DashLine));
-    }
-
-    QLineF m_Line = line();
-    m_Line.translate(0, 4.0);
-    painter->drawLine(m_Line);
-    m_Line.translate(0, -8.0);
-    painter->drawLine(m_Line);
-    */
+    painter->drawPath(path());
 }
 
 } //namespace gui

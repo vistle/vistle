@@ -3,11 +3,16 @@
 #include "dataflownetwork.h"
 #include "module.h"
 
+#include <QApplication>
 #include <QMenu>
 #include <QMimeData>
 #include <QDragEnterEvent>
 #include <QDragLeaveEvent>
 #include <QDragMoveEvent>
+#include <QSettings>
+#include <QComboBox>
+#include <QToolBar>
+#include <QDebug>
 
 namespace gui {
 
@@ -26,14 +31,18 @@ DataFlowView::DataFlowView(QWidget *parent): QGraphicsView(parent)
     setMouseTracking(true);
     setTransformationAnchor(QGraphicsView::NoAnchor);
 
-    if (scene())
+    if (scene()) {
         connect(scene(), SIGNAL(selectionChanged()), this, SLOT(enableActions()));
+        connect(scene(), SIGNAL(selectionChanged()), this, SLOT(changeConnectionEmphasis()));
+    }
 }
 
 DataFlowView::~DataFlowView()
 {
-    if (scene())
+    if (scene()) {
         disconnect(scene(), SIGNAL(selectionChanged()), this, SLOT(enableActions()));
+        disconnect(scene(), SIGNAL(selectionChanged()), this, SLOT(changeConnectionEmphasis()));
+    }
 }
 
 DataFlowView *DataFlowView::the()
@@ -44,6 +53,70 @@ DataFlowView *DataFlowView::the()
     return s_instance;
 }
 
+
+QAction *DataFlowView::addToToolBar(QToolBar *toolbar, QAction *before)
+{
+    if (m_visibleLayer)
+        return nullptr;
+
+    m_visibleLayer = new QComboBox(this);
+    m_visibleLayer->addItem("New Layer");
+    m_visibleLayer->addItem("All Layers");
+    for (int i = 0; i < m_numLayers; ++i) {
+        m_visibleLayer->addItem(QString("Layer %1").arg(i));
+    }
+    m_visibleLayer->setCurrentIndex(2);
+    emit visibleLayerChanged(0);
+
+    connect(m_visibleLayer, QOverload<int>::of(&QComboBox::activated), [this](int idx) {
+        if (idx < 0) {
+            emit visibleLayerChanged(-1);
+            return;
+        }
+        if (idx == 0) {
+            m_visibleLayer->addItem(QString("Layer %1").arg(m_numLayers));
+            int cur = m_numLayers;
+            ++m_numLayers;
+            m_visibleLayer->setCurrentIndex(cur + 2);
+            emit visibleLayerChanged(cur);
+            return;
+        }
+        emit visibleLayerChanged(idx - 2);
+    });
+
+    if (before)
+        return toolbar->insertWidget(before, m_visibleLayer);
+    return toolbar->addWidget(m_visibleLayer);
+}
+
+int DataFlowView::numLayers() const
+{
+    if (!m_visibleLayer)
+        return 1;
+    return m_visibleLayer->count() - 2;
+}
+
+void DataFlowView::setNumLayers(int num)
+{
+    if (num <= 0)
+        num = 0;
+    m_numLayers = num;
+    if (m_visibleLayer) {
+        if (m_visibleLayer->count() > m_numLayers + 2) {
+            m_visibleLayer->removeItem(m_visibleLayer->count() - 1);
+        }
+        for (int i = m_visibleLayer->count() - 2; i < m_numLayers; ++i) {
+            m_visibleLayer->addItem(QString("Layer %1").arg(i));
+        }
+    }
+}
+
+int DataFlowView::visibleLayer() const
+{
+    if (!m_visibleLayer)
+        return -1;
+    return m_visibleLayer->currentIndex() - 2;
+}
 
 DataFlowNetwork *DataFlowView::scene() const
 {
@@ -123,6 +196,24 @@ void DataFlowView::wheelEvent(QWheelEvent *event)
     }
 }
 
+namespace {
+void swapCtrlMeta(QMouseEvent *event)
+{
+    // in order to make additive selection work on macos
+    if (qApp->testAttribute(Qt::AA_MacDontSwapCtrlAndMeta)) {
+        bool meta = event->modifiers() & Qt::MetaModifier;
+        bool ctrl = event->modifiers() & Qt::ControlModifier;
+        auto mods = event->modifiers();
+        mods &= ~(Qt::MetaModifier | Qt::ControlModifier);
+        if (meta)
+            mods |= Qt::ControlModifier;
+        if (ctrl)
+            mods |= Qt::MetaModifier;
+        event->setModifiers(mods);
+    }
+}
+} // namespace
+
 void DataFlowView::mousePressEvent(QMouseEvent *event)
 {
     if (event->button() == Qt::MiddleButton) {
@@ -132,6 +223,7 @@ void DataFlowView::mousePressEvent(QMouseEvent *event)
         viewport()->setCursor(Qt::ClosedHandCursor);
         event->accept();
     } else {
+        swapCtrlMeta(event);
         QGraphicsView::mousePressEvent(event);
     }
 }
@@ -147,6 +239,7 @@ void DataFlowView::mouseMoveEvent(QMouseEvent *event)
 
         translate(translation.x(), translation.y());
     } else {
+        swapCtrlMeta(event);
         QGraphicsView::mouseMoveEvent(event);
     }
 }
@@ -158,6 +251,7 @@ void DataFlowView::mouseReleaseEvent(QMouseEvent *event)
         viewport()->setCursor(m_savedCursor);
         event->accept();
     } else {
+        swapCtrlMeta(event);
         QGraphicsView::mouseReleaseEvent(event);
     }
 }
@@ -196,6 +290,12 @@ void DataFlowView::enableActions()
     }
 }
 
+void DataFlowView::changeConnectionEmphasis()
+{
+    if (scene())
+        scene()->emphasizeConnections(selectedModules());
+}
+
 void DataFlowView::createMenu()
 {
     m_contextMenu = new QMenu();
@@ -210,9 +310,11 @@ void DataFlowView::createMenu()
 
 void DataFlowView::contextMenuEvent(QContextMenuEvent *event)
 {
-    if (itemAt(event->pos())) {
-        QGraphicsView::contextMenuEvent(event);
-        return;
+    if (auto item = itemAt(event->pos())) {
+        if (item->isEnabled()) {
+            QGraphicsView::contextMenuEvent(event);
+            return;
+        }
     }
 
     m_contextMenu->popup(event->globalPos());
@@ -232,12 +334,17 @@ QList<Module *> DataFlowView::selectedModules()
 
 void DataFlowView::setScene(QGraphicsScene *s)
 {
-    if (scene())
+    if (scene()) {
         disconnect(scene(), SIGNAL(selectionChanged()), this, SLOT(enableActions()));
+        disconnect(scene(), SIGNAL(selectionChanged()), this, SLOT(changeConnectionEmphasis()));
+    }
     QGraphicsView::setScene(s);
-    if (scene())
+    if (scene()) {
         connect(scene(), SIGNAL(selectionChanged()), this, SLOT(enableActions()));
+        connect(scene(), SIGNAL(selectionChanged()), this, SLOT(changeConnectionEmphasis()));
+    }
     enableActions();
+    changeConnectionEmphasis();
 }
 
 void DataFlowView::execModules()
@@ -286,7 +393,7 @@ void DataFlowView::selectSourceModules()
             bool select = true;
             for (auto *p: module->inputPorts()) {
                 auto *vp = module->getVistlePort(p);
-                if (vp->isConnected()) {
+                if (vp && vp->isConnected()) {
                     select = false;
                     break;
                 }
@@ -307,7 +414,7 @@ void DataFlowView::selectSinkModules()
             bool select = true;
             for (auto *p: module->outputPorts()) {
                 auto *vp = module->getVistlePort(p);
-                if (vp->isConnected()) {
+                if (vp && vp->isConnected()) {
                     select = false;
                     break;
                 }
@@ -349,8 +456,19 @@ void DataFlowView::zoomOrig()
 
 void DataFlowView::zoomAll()
 {
-    scene()->setSceneRect(scene()->itemsBoundingRect()); // Re-shrink the scene to it's bounding contents
-    fitInView(scene()->itemsBoundingRect(), Qt::KeepAspectRatio);
+    if (!scene())
+        return;
+
+    QRectF bounds = scene()->itemsBoundingRect();
+    bounds.adjust(-Port::portSize, -Port::portSize, +Port::portSize, +Port::portSize);
+    scene()->setSceneRect(bounds); // Re-shrink the scene to it's bounding contents
+    if (visibleLayer() != DataFlowNetwork::AllLayers) {
+        QRectF lbounds = scene()->computeBoundingRect(visibleLayer());
+        if (!lbounds.isEmpty()) {
+            bounds = lbounds.adjusted(-Port::portSize, -Port::portSize, +Port::portSize, +Port::portSize);
+        }
+    }
+    fitInView(bounds, Qt::KeepAspectRatio);
 }
 
 bool DataFlowView::snapshot(const QString &filename)
@@ -376,5 +494,16 @@ bool DataFlowView::snapshot(const QString &filename)
         return false;
     }
 }
+
+void DataFlowView::snapToGridChanged(bool snap)
+{
+    m_snapToGrid = snap;
+}
+
+bool DataFlowView::isSnapToGrid() const
+{
+    return m_snapToGrid;
+}
+
 
 } // namespace gui

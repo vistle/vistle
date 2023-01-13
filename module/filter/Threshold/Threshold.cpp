@@ -170,6 +170,17 @@ Threshold::Threshold(const std::string &name, int moduleID, mpi::communicator co
 Threshold::~Threshold()
 {}
 
+bool Threshold::changeParameter(const vistle::Parameter *p)
+{
+#ifndef CELLSELECT
+    auto val = p_threshold->getValue();
+    std::stringstream str;
+    str << std::setw(0) << std::setprecision(3) << val;
+    setItemInfo(str.str());
+#endif
+    return Module::changeParameter(p);
+}
+
 bool Threshold::prepare()
 {
 #ifdef CELLSELECT

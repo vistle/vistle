@@ -4,6 +4,8 @@
 #include <QGraphicsView>
 
 class QMenu;
+class QComboBox;
+class QToolBar;
 
 namespace gui {
 
@@ -25,11 +27,20 @@ public:
 
     bool snapshot(const QString &filename);
 
+    bool isSnapToGrid() const;
+
+    QAction *addToToolBar(QToolBar *toolbar, QAction *before = nullptr);
+    int visibleLayer() const;
+    int numLayers() const;
+    void setNumLayers(int num);
+
 signals:
     void executeDataFlow();
+    void visibleLayerChanged(int layer);
 
 public slots:
     void enableActions();
+    void changeConnectionEmphasis();
 
     void execModules();
     void cancelExecModules();
@@ -42,6 +53,8 @@ public slots:
 
     void zoomOrig();
     void zoomAll();
+
+    void snapToGridChanged(bool snap);
 
 protected:
     void wheelEvent(QWheelEvent *event);
@@ -66,7 +79,14 @@ protected:
     QAction *m_selectSinksAct = nullptr;
     QAction *m_selectInvertAct = nullptr;
 
+    QComboBox *m_visibleLayer = nullptr;
+    int m_numLayers = 1;
+
+    bool m_snapToGrid = true;
+
 private:
+    void readSettings();
+    void writeSettings();
     static DataFlowView *s_instance;
 };
 

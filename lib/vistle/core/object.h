@@ -2,11 +2,11 @@
 #define OBJECT_H
 
 #include <vector>
-#include <vistle/util/sysdep.h>
 #include <memory>
 #include <string>
 #include <atomic>
 #include <functional>
+#include <ostream>
 
 #ifdef NO_SHMEM
 #include <map>
@@ -18,6 +18,7 @@
 
 #include <boost/mpl/size.hpp>
 
+#include <vistle/util/sysdep.h>
 #include <vistle/util/enum.h>
 
 #include "export.h"
@@ -143,6 +144,7 @@ public:
 
     virtual void refresh() const; //!< refresh cached pointers from shm
     virtual bool check() const;
+    virtual void print(std::ostream &os) const;
     virtual void updateInternals();
 
     virtual bool isEmpty() const;
@@ -234,6 +236,7 @@ private:
     Object(const Object &) = delete;
     Object &operator=(const Object &) = delete;
 };
+V_COREEXPORT std::ostream &operator<<(std::ostream &os, const Object &);
 
 ARCHIVE_ASSUME_ABSTRACT(Object)
 
@@ -453,9 +456,15 @@ public: \
         refresh(); \
         if (isEmpty()) { \
         }; \
-        if (!Base::check()) \
+        if (!Base::check()) { \
+            std::cerr << *this << std::endl; \
             return false; \
-        return checkImpl(); \
+        } \
+        if (!checkImpl()) { \
+            std::cerr << *this << std::endl; \
+            return false; \
+        } \
+        return true; \
     } \
     struct Data; \
     const Data *d() const { return static_cast<Data *>(Object::m_data); } \
@@ -464,6 +473,7 @@ public: \
     ARCHIVE_REGISTRATION_INLINE \
 protected: \
     bool checkImpl() const; \
+    void print(std::ostream &os) const override; \
     explicit ObjType(Data *data); \
     ObjType(); \
 \

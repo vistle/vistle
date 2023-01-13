@@ -214,14 +214,14 @@ template void transform_unpredict<6, true, false>(unsigned char *output, const u
 
 // for color data
 
-static void rgb2yuv(uint8_t r, uint8_t g, uint8_t b, uint8_t &y, uint8_t &u, u_int8_t &v)
+static void rgb2yuv(uint8_t r, uint8_t g, uint8_t b, uint8_t &y, uint8_t &u, uint8_t &v)
 {
     y = b;
     u = g - b;
     v = g - r;
 }
 
-static void yuv2rgb(uint8_t y, uint8_t u, uint8_t v, uint8_t &r, uint8_t &g, u_int8_t &b)
+static void yuv2rgb(uint8_t y, uint8_t u, uint8_t v, uint8_t &r, uint8_t &g, uint8_t &b)
 {
     b = y;
     g = u + b;

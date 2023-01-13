@@ -47,6 +47,8 @@ template<typename T>
 std::vector<T> getVariable(int ncid, std::string name, std::vector<size_t> start, std::vector<size_t> count);
 template<typename T>
 std::vector<T> getVariable(int ncid, std::string name);
+template<typename T>
+bool getVariable(int ncid, std::string name, T *data, std::vector<size_t> dims);
 
 } // namespace vistle
 #endif

@@ -59,7 +59,7 @@ std::shared_ptr<Module> ModuleRegistry::newInstance(const std::string &name, int
 
 bool ModuleRegistry::availableModules(AvailableMap &available, int hub)
 {
-    std::map<std::string, std::string> moduleDescriptions;
+    std::map<std::string, ModuleDescription> moduleDescriptions;
     try {
         auto fs = cmrc::moduledescriptions::get_filesystem();
         auto data = fs.open("moduledescriptions.txt");
@@ -87,14 +87,16 @@ bool ModuleRegistry::availableModules(AvailableMap &available, int hub)
 
     for (const auto &m: m_modules) {
         std::string description;
+        std::string category;
         auto &name = m.first;
         auto it = moduleDescriptions.find(name);
         if (it != moduleDescriptions.end()) {
-            description = it->second;
+            category = it->second.category;
+            description = it->second.description;
         }
         AvailableModule::Key key(hub, name);
 
-        available.emplace(key, AvailableModule{hub, name, "", description});
+        available.emplace(key, AvailableModule{hub, name, "", category, description});
     }
 
     return true;

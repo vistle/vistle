@@ -25,6 +25,7 @@ UserInterface::UserInterface(const std::string &host, const unsigned short port,
 , m_remoteHost(host)
 , m_remotePort(port)
 , m_isConnected(false)
+, m_observer(observer)
 , m_stateTracker(message::Id::UI, "UI state")
 , m_socket(m_ioService)
 , m_locked(true)
@@ -33,8 +34,10 @@ UserInterface::UserInterface(const std::string &host, const unsigned short port,
 
     message::DefaultSender::init(message::Id::UI, 0);
 
-    if (observer)
-        m_stateTracker.registerObserver(observer);
+    if (m_observer) {
+        m_stateTracker.registerObserver(m_observer);
+        m_observer->uiLockChanged(m_locked);
+    }
 
     //m_stateTracker.handle(message::Trace(message::Id::Broadcast, message::ANY, true));
 
@@ -179,6 +182,7 @@ bool UserInterface::dispatch()
 
 bool UserInterface::sendMessage(const message::Message &message, const buffer *payload)
 {
+    std::lock_guard<std::mutex> lock(m_mutex);
     if (m_locked && message.type() != message::IDENTIFY) {
         m_sendQueue.emplace_back(message, payload);
         return true;
@@ -228,10 +232,14 @@ bool UserInterface::handleMessage(const vistle::message::Message *message, const
 
     case message::LOCKUI: {
         auto lock = static_cast<const message::LockUi *>(message);
+        std::lock_guard<std::mutex> guard(m_mutex);
         m_locked = lock->locked();
+        if (m_observer) {
+            m_observer->uiLockChanged(m_locked);
+        }
         if (!m_locked) {
             for (auto &m: m_sendQueue) {
-                sendMessage(m.buf, m.payload.get());
+                message::send(socket(), m.buf, m.payload.get());
             }
             m_sendQueue.clear();
         }

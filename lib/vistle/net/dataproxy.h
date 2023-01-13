@@ -5,6 +5,7 @@
 #include <boost/asio.hpp>
 #include <mutex>
 #include <thread>
+#include <map>
 #include <set>
 #include <functional>
 

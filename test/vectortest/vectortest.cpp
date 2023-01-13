@@ -190,12 +190,12 @@ int main(int argc, char *argv[])
     }
 
     {
-        vistle::shm_array<int, std::allocator<int>> v;
+        vistle::shm_array<int, std::allocator<int>> v(std::allocator<int>{});
         test_pb_int(v, "uninit array", size);
     }
 
     {
-        vistle::shm_array<int, std::allocator<int>> v;
+        vistle::shm_array<int, std::allocator<int>> v(std::allocator<int>{});
         v.reserve(size);
         test_pb_int(v, "uninit array reserve", size);
     }

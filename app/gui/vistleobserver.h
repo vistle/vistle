@@ -31,13 +31,15 @@ signals:
     void modified(bool state);
 
     void info_s(QString msg, int type);
+    void message_s(int senderId, int type, QString msg);
     void itemInfo_s(QString info, int type, int senderId, QString portName);
     void status_s(int id, QString msg, int prio);
     void moduleStatus_s(int id, QString msg, int prio);
 
-    void loadedWorkflowChanged_s(QString file);
+    void loadedWorkflowChanged_s(QString file, int sender);
     void sessionUrlChanged_s(QString url);
 
+    void uiLock_s(bool);
     void quit_s();
 
     void screenshot_s(QString msg, bool quit);
@@ -71,8 +73,10 @@ public:
     void incModificationCount() override;
     void resetModificationCount() override;
 
-    void loadedWorkflowChanged(const std::string &filename) override;
+    void loadedWorkflowChanged(const std::string &filename, int sender) override;
     void sessionUrlChanged(const std::string &url) override;
+
+    void uiLockChanged(bool locked) override;
 
     void message(const vistle::message::Message &msg, vistle::buffer *payload) override;
 

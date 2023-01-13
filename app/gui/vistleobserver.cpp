@@ -142,15 +142,21 @@ void VistleObserver::resetModificationCount()
         emit modified(false);
 }
 
-void VistleObserver::loadedWorkflowChanged(const std::string &filename)
+void VistleObserver::loadedWorkflowChanged(const std::string &filename, int sender)
 {
-    emit loadedWorkflowChanged_s(QString::fromStdString(filename));
+    emit loadedWorkflowChanged_s(QString::fromStdString(filename), sender);
 }
 
 void VistleObserver::sessionUrlChanged(const std::string &url)
 {
     emit sessionUrlChanged_s(QString::fromStdString(url));
 }
+
+void VistleObserver::uiLockChanged(bool locked)
+{
+    emit uiLock_s(locked);
+}
+
 void VistleObserver::itemInfo(const std::string &text, vistle::message::ItemInfo::InfoType type, int senderId,
                               const std::string &port)
 {
@@ -165,8 +171,8 @@ void gui::VistleObserver::info(const std::string &text, vistle::message::SendTex
         t.chop(1);
     QString sender;
     if (senderId >= vistle::message::Id::ModuleBase) {
-        sender =
-            QString("%1_%2(%3)").arg(m_moduleNames[senderId], QString::number(senderId), QString::number(senderRank));
+        sender = QString("<a href=\"%2\">%1_%2(%3)</a>")
+                     .arg(m_moduleNames[senderId], QString::number(senderId), QString::number(senderRank));
     } else {
         sender = m_moduleNames[senderId];
         if (sender.isEmpty())
@@ -174,6 +180,8 @@ void gui::VistleObserver::info(const std::string &text, vistle::message::SendTex
     }
     QString msg = QString("%1: %2").arg(sender, t);
     emit info_s(msg, textType);
+
+    emit message_s(senderId, textType, t);
 }
 
 void VistleObserver::updateStatus(int id, const std::string &text, vistle::message::UpdateStatus::Importance priority)

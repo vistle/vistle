@@ -1,11 +1,10 @@
-#ifndef MESSAGE_H
-#define MESSAGE_H
+#ifndef VISTLE_MESSAGE_H
+#define VISTLE_MESSAGE_H
 
 #include <array>
 #include <cassert>
 
 #include <vistle/util/enum.h>
-#include <vistle/util/directory.h> // ModuleNameLength
 #include <vistle/util/buffer.h>
 #include <vistle/util/exception.h>
 #include "uuid.h"
@@ -80,6 +79,8 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(
     (FILEQUERYRESULT)
     (COVER)
     (INSITU)
+    (LOADWORKFLOW)
+    (SAVEWORKFLOW)
     (NumMessageTypes) // keep last
 )
 V_ENUM_OUTPUT_OP(Type, ::vistle::message)

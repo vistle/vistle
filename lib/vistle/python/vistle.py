@@ -292,7 +292,7 @@ def save(filename = None):
    #f.write("checkMessageQueue()\n")
 
    f.close()
-   print("Data flow network saved to "+filename)
+   print("Workflow saved to "+filename)
 
 def reset():
    mods = _vistle.getRunning()

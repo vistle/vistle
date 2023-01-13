@@ -44,13 +44,13 @@ set(boost_mpi_HEADERS)
 
 vistle_add_library(${BOOST_MPI} EXPORT ${VISTLE_LIB_TYPE} ${boost_mpi_SOURCES} ${boost_mpi_HEADERS})
 
-target_compile_definitions(${BOOST_MPI} PUBLIC BOOST_MPI_SOURCE)
+target_compile_definitions(${BOOST_MPI} PRIVATE BOOST_MPI_SOURCE)
 if(NOT WIN32)
     target_compile_definitions(${BOOST_MPI} PUBLIC BOOST_MPI_DECL=__attribute__\ \(\(visibility\(\"default\"\)\)\))
 endif(NOT WIN32)
 
 target_link_libraries(
-    ${BOOST_MPI} #don't use vistle_target_link_libraries here because adding dependency for boost_mpi_HEADERS::serialization brings errors.
+    ${BOOST_MPI} #don't use vistle_target_link_libraries here because adding dependency for boost_mpi::serialization brings errors.
     PRIVATE Boost::system
     PUBLIC Boost::serialization
     PUBLIC MPI::MPI_C)

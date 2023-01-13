@@ -280,7 +280,7 @@ bool ShowGrid::compute()
             out->d()->x[1] = quad->d()->x[1];
             out->d()->x[2] = quad->d()->x[2];
         } else if (auto tri = Triangles::as(grid)) {
-            auto nelem = quad->getNumElements();
+            auto nelem = tri->getNumElements();
             if (nelem > 0) {
                 const Index *icl = &tri->cl()[0];
                 for (Index i = 0; i < nelem; ++i) {

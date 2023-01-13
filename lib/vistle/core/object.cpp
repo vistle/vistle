@@ -151,6 +151,34 @@ const char *Object::toString(Type v)
     return buf;
 }
 
+std::ostream &operator<<(std::ostream &os, const Object &obj)
+{
+    obj.print(os);
+    return os;
+}
+
+void Object::print(std::ostream &os) const
+{
+    os << toString(getType()) << ":" << getName() << "(#ref:" << d()->refcount();
+    if (!d()->isComplete()) {
+        os << " INCOMPLETE";
+    }
+    if (meta().block() >= 0 || meta().numBlocks() >= 0) {
+        os << " block=" << meta().block() << "/" << meta().numBlocks();
+    }
+    if (meta().timeStep() >= 0 || meta().numTimesteps() >= 0) {
+        os << " time=" << meta().timeStep() << "/" << meta().numTimesteps();
+    }
+    if (meta().iteration() >= 0) {
+        os << " iter=" << meta().iteration();
+    }
+    const auto attrs = getAttributeList();
+    for (const auto &att: attrs) {
+        os << " " << att << "=" << getAttribute(att);
+    }
+    os << ")";
+}
+
 Object *Object::create(Data *data)
 {
     if (!data)
@@ -321,6 +349,7 @@ void Object::refresh() const
 bool Object::check() const
 {
     V_CHECK(d()->refcount() > 0); // we are holding a reference
+    V_CHECK(d()->isComplete()); // we are holding a reference
 
     V_CHECK(d()->meta.creator() != -1);
 

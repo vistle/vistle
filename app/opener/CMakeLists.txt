@@ -3,7 +3,7 @@ set(NAME vistle_opener)
 if(APPLE)
     add_custom_target(
         opener_wrapper ALL
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/opener_wrapper.sh ${EXECUTABLE_OUTPUT_PATH}/${NAME}
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/opener_wrapper.sh ${EXECUTABLE_OUTPUT_PATH}/$<CONFIG>/${NAME}
         DEPENDS opener_wrapper.sh
         SOURCES opener_wrapper.sh)
     install(

@@ -4,6 +4,7 @@
 #include <vistle/core/points.h>
 #include <vistle/util/enum.h>
 #include <vistle/alg/objalg.h>
+#include <vistle/module/resultcache.h>
 
 using namespace vistle;
 
@@ -13,12 +14,15 @@ public:
     ~Transform();
 
 private:
-    virtual bool compute();
+    bool compute() override;
+    bool changeParameter(const Parameter *param) override;
 
     Port *data_in, *data_out;
 
     VectorParameter *p_rotation_axis_angle, *p_scale, *p_translate;
     IntParameter *p_keep_original, *p_repetitions, *p_animation, *p_mirror;
+
+    mutable vistle::ResultCache<vistle::Object::ptr> m_cache;
 };
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(MirrorMode, (Original)(Mirror_X)(Mirror_Y)(Mirror_Z))
@@ -43,10 +47,65 @@ Transform::Transform(const std::string &name, int moduleID, mpi::communicator co
 
     p_mirror = addIntParameter("mirror", "enable mirror", Original, Parameter::Choice);
     V_ENUM_SET_CHOICES(p_mirror, MirrorMode);
+
+    addResultCache(m_cache);
 }
 
 Transform::~Transform()
 {}
+
+bool Transform::changeParameter(const Parameter *param)
+{
+    int count = 0;
+    std::string kind = "";
+
+    if (p_rotation_axis_angle->getValue()[3] != 0) {
+        ++count;
+        kind = "Rotate";
+    }
+
+    auto scal = p_scale->getValue();
+    bool scale = false;
+    for (int c = 0; c < 3; ++c) {
+        if (scal[c] != 1) {
+            if (!scale)
+                ++count;
+            scale = true;
+            kind = "Scale";
+        }
+    }
+
+    bool translate = false;
+    auto trans = p_translate->getValue();
+    for (int c = 0; c < 3; ++c) {
+        if (trans[c] != 0) {
+            if (!translate)
+                ++count;
+            translate = true;
+            kind = "Translate";
+        }
+    }
+
+    auto mirr = p_mirror->getValue();
+    if (mirr != Original) {
+        ++count;
+        kind = "Mirror";
+    }
+
+    auto anim = p_animation->getValue();
+    if (anim != Keep) {
+        ++count;
+        kind = "Animate";
+    }
+
+    if (count == 1) {
+        setItemInfo(kind);
+    } else {
+        setItemInfo(std::string());
+    }
+
+    return Module::changeParameter(param);
+}
 
 bool Transform::compute()
 {
@@ -105,9 +164,13 @@ bool Transform::compute()
     int timestep = animation == Deanimate ? -1 : 0;
     if (keep_original) {
         if (animation != Keep) {
-            Object::ptr outGeo = geo->clone();
-            outGeo->setTimestep(timestep);
-            updateMeta(outGeo);
+            Object::ptr outGeo;
+            if (auto entry = m_cache.getOrLock(geo->getName(), outGeo)) {
+                outGeo = geo->clone();
+                outGeo->setTimestep(timestep);
+                updateMeta(outGeo);
+                m_cache.storeAndUnlock(entry, outGeo);
+            }
             if (data) {
                 auto dataOut = data->clone();
                 dataOut->setGrid(outGeo);
@@ -119,23 +182,32 @@ bool Transform::compute()
             if (animation != Deanimate)
                 ++timestep;
         } else {
-            auto nobj = obj->clone();
-            updateMeta(nobj);
+            Object::ptr nobj;
+            if (auto entry = m_cache.getOrLock(obj->getName(), nobj)) {
+                nobj = obj->clone();
+                updateMeta(nobj);
+                m_cache.storeAndUnlock(entry, nobj);
+            }
             addObject(data_out, nobj);
         }
     }
 
     Matrix4 t = geo->getTransform();
     for (int i = 0; i < repetitions; ++i) {
-        Object::ptr outGeo = geo->clone();
         t *= transform;
-        outGeo->setTransform(t);
-        if (animation != Keep) {
-            outGeo->setTimestep(timestep);
-            if (animation != Deanimate)
-                ++timestep;
+        std::string key = std::to_string(i) + ":" + geo->getName();
+        Object::ptr outGeo;
+        if (auto entry = m_cache.getOrLock(key, outGeo)) {
+            outGeo = geo->clone();
+            outGeo->setTransform(t);
+            if (animation != Keep) {
+                outGeo->setTimestep(timestep);
+                if (animation != Deanimate)
+                    ++timestep;
+            }
+            updateMeta(outGeo);
+            m_cache.storeAndUnlock(entry, outGeo);
         }
-        updateMeta(outGeo);
         if (data) {
             auto dataOut = data->clone();
             dataOut->setGrid(outGeo);

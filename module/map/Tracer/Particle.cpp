@@ -697,7 +697,8 @@ double Particle::Segment::interpolationError(Index i0, Index i1, Index i) const
     auto dir = (x1 - x0).normalized();
     auto xi = x0 + dir.dot(x - x0) * dir;
 
-    unsigned maxc = dir.maxCoeff();
+    int maxc = -1;
+    dir.maxCoeff(&maxc);
     double t = interpolation_weight<double>(x0[maxc], x1[maxc], xi[maxc]);
 
     double err = 0.;
@@ -706,7 +707,8 @@ double Particle::Segment::interpolationError(Index i0, Index i1, Index i) const
         auto v0 = m_vhist[i0], v1 = m_vhist[i1], v = m_vhist[i];
         auto vi = lerp(v0, v1, t);
         auto d = v - vi;
-        unsigned c = d.maxCoeff();
+        int c = -1;
+        d.maxCoeff(&c);
         double e = std::abs(d[c]) > eps ? 1. : 0.;
         if (std::abs(v[c]) > eps)
             e = std::abs(d[c] / v[c]);

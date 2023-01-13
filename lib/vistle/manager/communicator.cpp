@@ -75,9 +75,10 @@ Communicator &Communicator::the()
     return *s_singleton;
 }
 
-void Communicator::setVistleRoot(const std::string &dir)
+void Communicator::setVistleRoot(const std::string &dir, const std::string &buildtype)
 {
     m_vistleRoot = dir;
+    m_buildType = buildtype;
 }
 
 int Communicator::hubId() const

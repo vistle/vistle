@@ -131,11 +131,11 @@ public:
     QString getRawInput();
 
 private:
-    void dropEvent(QDropEvent *event);
-    void dragMoveEvent(QDragMoveEvent *event);
+    void dropEvent(QDropEvent *event) override;
+    void dragMoveEvent(QDragMoveEvent *event) override;
 
-    void keyPressEvent(QKeyEvent *e);
-    void contextMenuEvent(QContextMenuEvent *event);
+    void keyPressEvent(QKeyEvent *e) override;
+    void contextMenuEvent(QContextMenuEvent *event) override;
 
     //Return false if the command is incomplete (e.g. unmatched braces)
     virtual bool isCommandComplete(const QString &command);
@@ -147,7 +147,7 @@ private:
     //Test whether the selection is in the edition zone
     bool isSelectionInEditionZone();
     //Change paste behaviour
-    void insertFromMimeData(const QMimeData *);
+    void insertFromMimeData(const QMimeData *) override;
 
 
     //protected attributes
@@ -176,8 +176,10 @@ protected:
     //Replace current command with a new one
     virtual void replaceCurrentCommand(const QString &newCommand);
 
-    //Implement paste with middle mouse button
-    void mousePressEvent(QMouseEvent *);
+    //Implement paste with middle mouse button and clicking of links
+    void mousePressEvent(QMouseEvent *) override;
+    void mouseMoveEvent(QMouseEvent *) override;
+    void mouseReleaseEvent(QMouseEvent *) override;
 
     //execute a validated command (should be reimplemented and called at the end)
     //the return value of the function is the string result
@@ -201,6 +203,7 @@ public Q_SLOTS:
 Q_SIGNALS:
     //Signal emitted after that a command is executed
     void commandExecuted(const QString &command);
+    void anchorClicked(const QString &uri);
 
 private:
     void handleTabKeyPress();
@@ -211,6 +214,7 @@ private:
     void setHome(bool);
 
     QEventLoop rawEventLoop;
+    QString pressedLink;
 };
 
 #endif

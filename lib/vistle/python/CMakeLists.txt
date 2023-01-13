@@ -18,7 +18,10 @@ target_compile_definitions(vistle_python PRIVATE EMBED_PYTHON)
 if(Python_FOUND)
     target_link_libraries(vistle_python PRIVATE Python::Python)
 
-    vistle_add_library(vistle_pythonmodule EXPORT ${VISTLE_LIB_TYPE} pythonmodule.h pythonmodule.cpp)
+    set(pythonmodule_SOURCES pythonmodule.cpp)
+    set(pythonmodule_HEADERS module_export.h pythonmodule.h)
+
+    vistle_add_library(vistle_pythonmodule EXPORT ${VISTLE_LIB_TYPE} ${pythonmodule_SOURCES} ${pythonmodule_HEADERS})
     target_link_libraries(
         vistle_pythonmodule
         PRIVATE Boost::system
@@ -29,8 +32,9 @@ if(Python_FOUND)
         PRIVATE Python::Python)
     target_compile_definitions(vistle_pythonmodule PRIVATE EMBED_PYTHON)
 
-    pybind11_add_module(_vistle NO_EXTRAS ${python_SOURCES} ${python_HEADERS} pythonmodule.h pythonmodule.cpp)
+    pybind11_add_module(_vistle NO_EXTRAS ${python_SOURCES} ${python_HEADERS} ${pythonmodule_SOURCES} ${pythonmodule_HEADERS})
     target_compile_definitions(_vistle PRIVATE vistle_python_EXPORTS)
+    target_compile_definitions(_vistle PRIVATE vistle_pythonmodule_EXPORTS)
     target_link_libraries(
         _vistle
         PRIVATE Boost::system

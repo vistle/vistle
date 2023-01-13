@@ -22,6 +22,11 @@ bool Empty::checkImpl() const
     return true;
 }
 
+void Empty::print(std::ostream &os) const
+{
+    Base::print(os);
+}
+
 void Empty::Data::initData()
 {}
 

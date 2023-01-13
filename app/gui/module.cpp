@@ -18,7 +18,6 @@
 
 #include <vistle/python/pythonmodule.h>
 #include <vistle/userinterface/vistleconnection.h>
-#include <vistle/util/directory.h>
 
 #include <boost/uuid/nil_generator.hpp>
 
@@ -26,6 +25,7 @@
 #include "connection.h"
 #include "dataflownetwork.h"
 #include "mainwindow.h"
+#include "uicontroller.h"
 #include "dataflowview.h"
 #include "modulebrowser.h"
 
@@ -33,6 +33,8 @@ namespace gui {
 
 const double Module::portDistance = 3.;
 boost::uuids::nil_generator nil_uuid;
+bool Module::s_snapToGrid = true;
+const double Module::borderWidth = 4.;
 
 /*!
  * \brief Module::Module
@@ -56,6 +58,7 @@ Module::Module(QGraphicsItem *parent, QString name)
     setFlag(QGraphicsItem::ItemIsSelectable);
     //setFlag(QGraphicsItem::ItemIsFocusable);
     setFlag(QGraphicsItem::ItemSendsGeometryChanges);
+    setAcceptHoverEvents(true);
     setCursor(Qt::OpenHandCursor);
 
     createActions();
@@ -63,6 +66,7 @@ Module::Module(QGraphicsItem *parent, QString name)
     createGeometry();
 
     setStatus(m_Status);
+    setLayer(m_layer);
 }
 
 Module::~Module()
@@ -78,12 +82,52 @@ Module::~Module()
     delete m_createModuleGroup;
 }
 
+float Module::gridSpacingX()
+{
+    return portDistance + Port::portSize;
+}
+
+float Module::gridSpacingY()
+{
+    return gridSpacingX();
+}
+
+QPointF Module::gridSpacing()
+{
+    return QPointF(gridSpacingX(), gridSpacingY());
+}
+
+float Module::snapX(float x)
+{
+    return std::round(x / Module::gridSpacingX()) * Module::gridSpacingX();
+}
+
+float Module::snapY(float y)
+{
+    return std::round(y / Module::gridSpacingY()) * Module::gridSpacingY();
+}
+
 QVariant Module::itemChange(GraphicsItemChange change, const QVariant &value)
 {
     if (change == ItemPositionChange) {
         ensureVisible();
     }
+    if (change == ItemEnabledHasChanged) {
+        if (isEnabled()) {
+            setToolTip(m_tooltip);
+        } else {
+            setToolTip("");
+        }
+    }
     return QGraphicsItem::itemChange(change, value);
+}
+
+void Module::projectToGrid()
+{
+    if (DataFlowView::the()->isSnapToGrid()) {
+        auto p = QPointF(snapX(pos().x()), snapY(pos().y()));
+        setPos(p);
+    }
 }
 
 void Module::execModule()
@@ -132,6 +176,18 @@ void Module::deleteModule()
         vistle::message::Kill m(m_id);
         m.setDestId(m_id);
         vistle::VistleConnection::the().sendMessage(m);
+    }
+}
+
+void Module::setParameterDefaults()
+{
+    if (vistle::message::Id::isModule(m_id)) {
+        // module id already known
+#if 0
+        vistle::message::ResetParameters m(m_id);
+        m.setDestId(m_id);
+        vistle::VistleConnection::the().sendMessage(m);
+#endif
     }
 }
 
@@ -204,6 +260,8 @@ void Module::createMenus()
     m_moduleMenu->addAction(m_execAct);
     m_moduleMenu->addAction(m_cancelExecAct);
     m_moduleMenu->addSeparator();
+    m_layerMenu = m_moduleMenu->addMenu("To Layer...");
+    m_moduleMenu->addSeparator();
     m_moduleMenu->addAction(m_selectUpstreamAct);
     m_moduleMenu->addAction(m_selectConnectedAct);
     m_moduleMenu->addAction(m_selectDownstreamAct);
@@ -234,13 +292,22 @@ void Module::doLayout()
     QString id = " " + QString::number(m_id);
     QRect idRect = fm.boundingRect(id);
 
+    QRect infoRect;
+    if (m_inPorts.isEmpty()) {
+        QString t = m_info;
+        if (t.length() > 21) {
+            t = t.left(20) + "…";
+        }
+        infoRect = fm.boundingRect(t);
+    }
+
     {
         int idx = 0;
         for (Port *in: m_inPorts) {
             in->setPos(portDistance + idx * (portDistance + Port::portSize), 0.);
             ++idx;
         }
-        w = qMax(w, 2 * portDistance + idx * (portDistance + Port::portSize) + idRect.width());
+        w = qMax(w, 2 * portDistance + idx * (portDistance + Port::portSize) + infoRect.width() + idRect.width());
     }
 
     {
@@ -273,7 +340,11 @@ void Module::doLayout()
  */
 QRectF Module::boundingRect() const
 {
-    return rect().united(childrenBoundingRect());
+    const auto m = borderWidth / 2.;
+    auto r = rect();
+    r = r.marginsAdded(QMarginsF(m, m, m, m));
+
+    return r.united(childrenBoundingRect());
 }
 
 /*!
@@ -289,12 +360,12 @@ void Module::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QW
     QBrush brush(m_color, Qt::SolidPattern);
     painter->setBrush(brush);
 
-    QPen highlightPen(m_borderColor, 4, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+    QPen highlightPen(m_borderColor, borderWidth, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
     if (isSelected() && m_Status != BUSY) {
-        QPen pen(scene()->highlightColor(), 4, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+        QPen pen(scene()->highlightColor(), borderWidth, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
         painter->setPen(pen);
     } else {
-        if (m_Status == INITIALIZED) {
+        if (!m_errorState && m_Status == INITIALIZED) {
             painter->setPen(Qt::NoPen);
         } else {
             painter->setPen(highlightPen);
@@ -309,6 +380,15 @@ void Module::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QW
 
     QFont font;
     QFontMetrics fm(font);
+
+    if (m_inPorts.isEmpty()) {
+        QString t = m_info;
+        if (t.length() > 21) {
+            t = t.left(20) + "…";
+        }
+        painter->drawText(QPointF(portDistance, m_fontHeight / 2.), t);
+    }
+
     QString id = QString::number(m_id);
     QRect idRect = fm.boundingRect(id);
     painter->drawText(rect().x() + rect().width() - idRect.width() - portDistance, m_fontHeight / 2., id);
@@ -348,6 +428,7 @@ void Module::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
             {"COVER", "DisCOVERay", "OsgRenderer", "BlenderRenderer"},
             {"Thicken", "SpheresOld", "TubesOld"},
             {"Threshold", "CellSelect"},
+            {"Color", "ColorRandom"},
             {"AddAttribute", "AttachShader", "ColorAttribute", "EnableTransparency", "Variant"},
         };
         m_replaceWithMenu->clear();
@@ -433,6 +514,35 @@ void Module::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
             m_moveToAct->setVisible(false);
     }
     m_replaceWithMenu->menuAction()->setVisible(!m_replaceWithMenu->isEmpty());
+
+    m_layerMenu->clear();
+    auto act = m_layerMenu->addAction("All Layers");
+    act->setCheckable(true);
+    act->setChecked(layer() == DataFlowNetwork::AllLayers);
+    connect(act, &QAction::triggered, [this] {
+        if (isSelected() && DataFlowView::the()->selectedModules().size() > 1) {
+            for (auto *m: DataFlowView::the()->selectedModules()) {
+                m->setLayer(DataFlowNetwork::AllLayers);
+            }
+        } else {
+            setLayer(DataFlowNetwork::AllLayers);
+        }
+    });
+    for (int i = 0; i < DataFlowView::the()->numLayers(); ++i) {
+        auto act = m_layerMenu->addAction(QString("Layer %1").arg(i));
+        act->setCheckable(true);
+        act->setChecked(layer() == i);
+        connect(act, &QAction::triggered, [this, i] {
+            if (isSelected() && DataFlowView::the()->selectedModules().size() > 1) {
+                for (auto *m: DataFlowView::the()->selectedModules()) {
+                    m->setLayer(i);
+                }
+            } else {
+                setLayer(i);
+            }
+        });
+    }
+
     m_moduleMenu->popup(event->screenPos());
 }
 
@@ -454,10 +564,14 @@ void Module::addPort(const vistle::Port &port)
     case vistle::Port::ANY:
         std::cerr << "cannot handle port type ANY" << std::endl;
         break;
-    case vistle::Port::INPUT:
+    case vistle::Port::INPUT: {
         guiPort = new Port(&port, this);
+        bool update = m_inPorts.isEmpty();
         m_inPorts.push_back(guiPort);
+        if (update)
+            updateText();
         break;
+    }
     case vistle::Port::OUTPUT:
         guiPort = new Port(&port, this);
         m_outPorts.push_back(guiPort);
@@ -492,6 +606,8 @@ void Module::removePort(const vistle::Port &port)
         auto it = std::find(m_inPorts.begin(), m_inPorts.end(), gport);
         if (it != m_inPorts.end())
             m_inPorts.erase(it);
+        if (m_inPorts.isEmpty())
+            updateText();
         break;
     }
     case vistle::Port::OUTPUT: {
@@ -532,8 +648,37 @@ QString Module::name() const
 void Module::setName(QString name)
 {
     m_name = name;
+    updateText();
+}
+
+void Module::updateText()
+{
     //m_displayName = QString("%1_%2").arg(name, QString::number(m_id));
-    m_displayName = name;
+    m_displayName = m_name;
+    if (m_inPorts.isEmpty()) {
+    } else {
+        if (!m_info.isEmpty()) {
+            m_displayName = m_name;
+            if (m_name == "IndexManifolds")
+                m_displayName = "Index";
+            if (m_name.startsWith("IsoSurface"))
+                m_displayName = "Iso";
+            if (m_name.startsWith("CuttingSurface"))
+                m_displayName = "Cut";
+            if (m_name.startsWith("AddAttribute"))
+                m_displayName = "Attr";
+            if (m_name.startsWith("Variant"))
+                m_displayName = "Var";
+            if (m_name.startsWith("Transform"))
+                m_displayName = "X";
+            if (m_name.startsWith("Thicken"))
+                m_displayName = "Th";
+            m_displayName += ":" + m_info;
+            if (m_displayName.length() > 21) {
+                m_displayName = m_displayName.left(20) + "…";
+            }
+        }
+    }
 
     doLayout();
 }
@@ -571,6 +716,45 @@ void Module::setSpawnUuid(const boost::uuids::uuid &uuid)
     m_spawnUuid = uuid;
 }
 
+int Module::layer() const
+{
+    return m_layer;
+}
+
+void Module::setLayer(int layer)
+{
+    if (m_layer != layer) {
+        m_layer = layer;
+        setParameter("_layer", vistle::Integer(layer));
+    }
+    updateLayer();
+}
+
+void Module::updateLayer()
+{
+    bool oldVis = isVisible();
+    int activeLayer = DataFlowView::the()->visibleLayer();
+    bool newVis =
+        m_layer == DataFlowNetwork::AllLayers || m_layer == activeLayer || activeLayer == DataFlowNetwork::AllLayers;
+
+    if (LayersAsOpacity) {
+        setEnabled(newVis);
+        if (newVis) {
+            setOpacity(1.0);
+            setAcceptedMouseButtons(Qt::AllButtons);
+        } else {
+            setOpacity(0.05);
+            setAcceptedMouseButtons(Qt::NoButton);
+        }
+    } else {
+        setVisible(newVis);
+    }
+
+    if (oldVis != newVis) {
+        emit visibleChanged(newVis);
+    }
+}
+
 void Module::sendPosition() const
 {
     updatePosition(pos());
@@ -583,6 +767,7 @@ bool Module::isPositionValid() const
 
 void Module::setPositionValid()
 {
+    projectToGrid();
     m_validPosition = true;
 }
 
@@ -622,15 +807,24 @@ void Module::mousePressEvent(QGraphicsSceneMouseEvent *event)
 
 void Module::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 {
-    auto p = getParameter<vistle::ParamVector>("_position");
-    if (p) {
-        vistle::ParamVector v = p->getValue();
-        if (v[0] != pos().x() || v[1] != pos().y())
-            sendPosition();
-    }
     Base::mouseReleaseEvent(event);
-    scene()->setSceneRect(scene()->itemsBoundingRect());
     setCursor(Qt::OpenHandCursor);
+
+    auto items = scene()->selectedItems();
+    items.push_back(this);
+    for (auto *item: items) {
+        if (auto *mod = dynamic_cast<Module *>(item)) {
+            mod->setPositionValid();
+            auto p = mod->getParameter<vistle::ParamVector>("_position");
+            if (p) {
+                vistle::ParamVector v = p->getValue();
+                if (v[0] != pos().x() || v[1] != pos().y()) {
+                    mod->sendPosition();
+                }
+            }
+        }
+    }
+    scene()->setSceneRect(scene()->itemsBoundingRect());
 }
 
 void Module::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event)
@@ -707,6 +901,7 @@ void Module::setStatus(Module::Status status)
         break;
     case EXECUTING:
         toolTip = "Executing";
+        m_errorState = false;
         m_borderColor = QColor(120, 120, 30);
         break;
     case ERROR_STATUS:
@@ -715,10 +910,20 @@ void Module::setStatus(Module::Status status)
         break;
     }
 
+    if (m_errorState) {
+        m_borderColor = Qt::red;
+    }
+
+    if (!m_info.isEmpty()) {
+        toolTip += " - " + m_info;
+    }
+
     m_cancelExecAct->setEnabled(status == BUSY || status == EXECUTING);
 
     if (m_statusText.isEmpty()) {
-        setToolTip(toolTip);
+        if (isEnabled())
+            setToolTip(toolTip);
+        m_tooltip = toolTip;
     }
 
     update();
@@ -727,7 +932,9 @@ void Module::setStatus(Module::Status status)
 void Module::setStatusText(QString text, int prio)
 {
     m_statusText = text;
-    setToolTip(text);
+    if (isEnabled())
+        setToolTip(text);
+    m_tooltip = text;
     if (text.isEmpty()) {
         setStatus(m_Status);
     }
@@ -736,6 +943,42 @@ void Module::setStatusText(QString text, int prio)
 void Module::setInfo(QString text)
 {
     m_info = text;
+    updateText();
+}
+
+void Module::clearMessages()
+{
+    m_messages.clear();
+    m_errorState = false;
+    setStatus(m_Status);
+    doLayout();
+}
+
+void Module::moduleMessage(int type, QString message)
+{
+    m_messages.push_back({type, message});
+    if (type == vistle::message::SendText::Error) {
+        if (!m_errorState) {
+            m_errorState = true;
+            setStatus(m_Status);
+            doLayout();
+        }
+    }
+}
+
+QList<Module::Message> &Module::messages()
+{
+    return m_messages;
+}
+
+bool Module::messagesVisible() const
+{
+    return m_messagesVisible;
+}
+
+void Module::setMessagesVisibility(bool visible)
+{
+    m_messagesVisible = visible;
 }
 
 } //namespace gui

@@ -104,9 +104,11 @@
      <string>Fi&amp;le</string>
     </property>
     <addaction name="actionNew"/>
-    <addaction name="actionOpen"/>
+    <addaction name="actionOpenOnGui"/>
+    <addaction name="actionOpenOnHub"/>
     <addaction name="actionSave"/>
-    <addaction name="actionSave_As"/>
+    <addaction name="actionSaveOnGui"/>
+    <addaction name="actionSaveOnHub"/>
     <addaction name="separator"/>
     <addaction name="actionShow_Session_URL"/>
     <addaction name="actionCopy_Session_URL"/>
@@ -141,6 +143,7 @@
     </property>
     <addaction name="actionViewOrig"/>
     <addaction name="actionViewAll"/>
+    <addaction name="actionSnapToGrid"/>
     <addaction name="separator"/>
     <addaction name="actionSelectSources"/>
     <addaction name="actionSelectSinks"/>
@@ -190,45 +193,6 @@
    <widget class="gui::VistleConsole" name="consoleWidget">
     <layout class="QHBoxLayout" name="horizontalLayout_2"/>
    </widget>
-  </widget>
-  <widget class="QDockWidget" name="parameterDock">
-   <property name="enabled">
-    <bool>true</bool>
-   </property>
-   <property name="sizePolicy">
-    <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-     <horstretch>0</horstretch>
-     <verstretch>0</verstretch>
-    </sizepolicy>
-   </property>
-   <property name="minimumSize">
-    <size>
-     <width>104</width>
-     <height>131</height>
-    </size>
-   </property>
-   <property name="maximumSize">
-    <size>
-     <width>524287</width>
-     <height>524287</height>
-    </size>
-   </property>
-   <property name="focusPolicy">
-    <enum>Qt::StrongFocus</enum>
-   </property>
-   <property name="features">
-    <set>QDockWidget::DockWidgetFloatable|QDockWidget::DockWidgetMovable</set>
-   </property>
-   <property name="allowedAreas">
-    <set>Qt::LeftDockWidgetArea|Qt::RightDockWidgetArea</set>
-   </property>
-   <property name="windowTitle">
-    <string>Module Parameters</string>
-   </property>
-   <attribute name="dockWidgetArea">
-    <number>2</number>
-   </attribute>
-   <widget class="QScrollArea" name="parameterScroller"/>
   </widget>
   <widget class="QToolBar" name="toolBar">
    <property name="windowTitle">
@@ -284,6 +248,28 @@
     <number>2</number>
    </attribute>
    <widget class="gui::ModuleBrowser" name="moduleBrowser">
+    <property name="focusPolicy">
+     <enum>Qt::StrongFocus</enum>
+    </property>
+   </widget>
+  </widget>
+  <widget class="QDockWidget" name="moduleViewDock">
+   <property name="focusPolicy">
+    <enum>Qt::StrongFocus</enum>
+   </property>
+   <property name="features">
+    <set>QDockWidget::DockWidgetFloatable|QDockWidget::DockWidgetMovable</set>
+   </property>
+   <property name="allowedAreas">
+    <set>Qt::LeftDockWidgetArea|Qt::RightDockWidgetArea</set>
+   </property>
+   <property name="windowTitle">
+    <string>Module</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>2</number>
+   </attribute>
+   <widget class="gui::ModuleView" name="moduleView">
     <property name="focusPolicy">
      <enum>Qt::StrongFocus</enum>
     </property>
@@ -373,12 +359,12 @@
     <string>&amp;Undo</string>
    </property>
   </action>
-  <action name="actionSave_As">
+  <action name="actionSaveOnGui">
    <property name="text">
-    <string>Sa&amp;ve As...</string>
+    <string>Sa&amp;ve Locally...</string>
    </property>
    <property name="toolTip">
-    <string>Save workflow as a new file</string>
+    <string>Save workflow as a new file on GUI</string>
    </property>
   </action>
   <action name="actionSettings">
@@ -521,6 +507,49 @@
     <string>Deselect selected modules</string>
    </property>
   </action>
+  <action name="actionSnapToGrid">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Snap To Grid</string>
+   </property>
+   <property name="toolTip">
+    <string>snap modules to positions aligning ports</string>
+   </property>
+  </action>
+  <action name="actionSaveOnHub">
+   <property name="text">
+    <string>Sa&amp;ve On Hub...</string>
+   </property>
+   <property name="toolTip">
+    <string>Save workflow as a new file on hub</string>
+   </property>
+  </action>
+  <action name="actionOpenOnHub">
+   <property name="icon">
+    <iconset resource="gui.qrc">
+     <normaloff>:/icons/open.svg</normaloff>:/icons/open.svg</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Open On Hub...</string>
+   </property>
+   <property name="toolTip">
+    <string>Open existing workflow on hub</string>
+   </property>
+  </action>
+  <action name="actionOpenOnGui">
+   <property name="icon">
+    <iconset resource="gui.qrc">
+     <normaloff>:/icons/open.svg</normaloff>:/icons/open.svg</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Open Locally...</string>
+   </property>
+   <property name="toolTip">
+    <string>Open existing workflow on GUI</string>
+   </property>
+  </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <customwidgets>
@@ -539,6 +568,12 @@
    <class>gui::VistleConsole</class>
    <extends>QWidget</extends>
    <header>vistleconsole.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>gui::ModuleView</class>
+   <extends>QWidget</extends>
+   <header>moduleview.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

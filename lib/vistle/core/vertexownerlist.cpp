@@ -53,6 +53,13 @@ bool VertexOwnerList::isEmpty() const
     return getNumVertices() == 0;
 }
 
+void VertexOwnerList::print(std::ostream &os) const
+{
+    Base::print(os);
+    os << " vertexlist(" << *d()->vertexList << ")";
+    os << " celllist(" << *d()->cellList << ")";
+}
+
 Index VertexOwnerList::getNumVertices() const
 {
     return d()->vertexList->size() - 1;
@@ -65,39 +72,6 @@ std::pair<const Index *, Index> VertexOwnerList::getSurroundingCells(Index v) co
     const Index *ptr = &m_cellList[start];
     Index n = end - start;
     return std::make_pair(ptr, n);
-}
-
-Index VertexOwnerList::getNeighbor(Index cell, Index vertex1, Index vertex2, Index vertex3) const
-{
-    std::map<Index, Index> cellCount;
-    std::array<Index, 3> vertices;
-
-    if (vertex1 == vertex2 || vertex1 == vertex3 || vertex2 == vertex3) {
-        std::cerr << "WARNING: getNeighbor was not called with 3 unique vertices." << std::endl;
-        return InvalidIndex;
-    }
-    vertices[0] = vertex1;
-    vertices[1] = vertex2;
-    vertices[2] = vertex3;
-
-    for (Index i = 0; i < 3; ++i) {
-        const auto cells_num = getSurroundingCells(vertices[i]);
-        auto cells = cells_num.first;
-        auto num = cells_num.second;
-        for (Index j = 0; j < num; ++j) {
-            Index c = cells[j];
-            if (c != cell)
-                ++cellCount[c];
-        }
-    }
-
-    for (auto &c: cellCount) {
-        if (c.second == 3) {
-            return c.first;
-        }
-    }
-
-    return InvalidIndex;
 }
 
 bool VertexOwnerList::checkImpl() const

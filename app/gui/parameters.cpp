@@ -156,9 +156,11 @@ void Parameters::setModule(int id)
     m_moduleId = id;
 
     //std::cerr << "Parameters: showing for " << id << std::endl;
-    auto params = m_vistle->getParameters(id);
-    for (auto &p: params)
-        newParameter(id, QString::fromStdString(p));
+    if (m_vistle) {
+        auto params = m_vistle->getParameters(id);
+        for (auto &p: params)
+            newParameter(id, QString::fromStdString(p));
+    }
 }
 
 QString Parameters::propertyToName(QtProperty *prop) const
@@ -173,7 +175,7 @@ QString Parameters::propertyToName(QtProperty *prop) const
     return name;
 }
 
-void Parameters::setEnabled(QtProperty *prop, bool state)
+void Parameters::setParameterEnabled(QtProperty *prop, bool state)
 {
     if (!prop)
         return;
@@ -377,13 +379,21 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
     if (!prop)
         return;
 
-    setEnabled(prop, !p->isReadOnly());
+    setParameterEnabled(prop, !p->isReadOnly());
 
     if (auto ip = std::dynamic_pointer_cast<vistle::IntParameter>(p)) {
         if (ip->presentation() == vistle::Parameter::Boolean) {
             m_boolManager->setValue(prop, ip->getValue() != 0);
+            QString tip =
+                QString("%1 (default: %2)")
+                    .arg(QString::fromStdString(p->description()), (ip->getDefaultValue() ? "True" : "False"));
+            prop->setStatusTip(tip);
         } else if (ip->presentation() == vistle::Parameter::Choice) {
             m_intChoiceManager->setValue(prop, ip->getValue());
+            auto defInt = ip->getDefaultValue();
+            auto strings = m_intChoiceManager->enumNames(prop);
+            QString tip = QString("%1 (default: %2)").arg(QString::fromStdString(p->description()), strings[defInt]);
+            prop->setStatusTip(tip);
         } else {
             m_intManager->setValue(prop, ip->getValue());
             m_intManager->setRange(prop, ip->minimum(), ip->maximum());

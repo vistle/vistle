@@ -8,6 +8,10 @@ case $(uname -m) in
    *) arch=$(uname -m) ;;
 esac
 
+if [ "$CMAKE_GENERATOR" = "Ninja" ]; then
+    export CMAKE_GENERATOR="Ninja Multi-Config"
+fi
+
 system="${os}${arch}"
 case $os in
     freebsd) system="$os" ;;
@@ -40,7 +44,7 @@ fi
 
 if [ -z ${MANPATH} ]; then
 case $os in
-    freebsd)
+    darwin|freebsd)
         export MANPATH="$(manpath)"
         ;;
     *)
@@ -103,6 +107,8 @@ fi
 
 #builddir=build-mvapich
 
+export VISTLE_BUILD_TYPE=RelWithDebInfo
+
 case "$system" in
    darwin64|darwinarm64)
    if [ "$system" = "darwin64" ]; then
@@ -118,7 +124,7 @@ case "$system" in
        path_add DYLD_LIBRARY_PATH "$(${COVISEDIR}/bin/print_covise_env EXTERNLIBS)/ALL/lib"
        path_add DYLD_FRAMEWORK_PATH "$(${COVISEDIR}/bin/print_covise_env EXTERNLIBS)/ALL"
    fi
-   path_add DYLD_LIBRARY_PATH "$builddir/lib"
+   path_add DYLD_LIBRARY_PATH "$builddir/lib/$VISTLE_BUILD_TYPE"
    export DYLD_LIBRARY_PATH DYLD_FRAMEWORK_PATH
    export VISTLE_DYLD_LIBRARY_PATH="$DYLD_LIBRARY_PATH"
    export VISTLE_DYLD_FRAMEWORK_PATH="$DYLD_FRAMEWORK_PATH"
@@ -144,7 +150,7 @@ case "$system" in
         path_add LD_LIBRARY_PATH "$(${COVISEDIR}/bin/print_covise_env EXTERNLIBS)/ALL/lib"
     fi
    path_add LD_LIBRARY_PATH "${COVISEDIR}/$(${COVISEDIR}/bin/print_covise_env ARCHSUFFIX)/lib"
-   path_add LD_LIBRARY_PATH "${builddir}/lib"
+   path_add LD_LIBRARY_PATH "${builddir}/lib/$VISTLE_BUILD_TYPE"
    ;;
    freebsd*)
    if [ -z "$EXTERNLIBS" ]; then
@@ -159,7 +165,7 @@ case "$system" in
         path_add LD_LIBRARY_PATH "$(${COVISEDIR}/bin/print_covise_env EXTERNLIBS)/ALL/lib"
     fi
    path_add LD_LIBRARY_PATH "${COVISEDIR}/$(${COVISEDIR}/bin/print_covise_env ARCHSUFFIX)/lib"
-   path_add LD_LIBRARY_PATH "${builddir}/lib"
+   path_add LD_LIBRARY_PATH "${builddir}/lib/$VISTLE_BUILD_TYPE"
    ;;
 esac
 
@@ -168,7 +174,7 @@ echo Build: "$builddir"
 
 export COVISEDESTDIR="$(pwd -P)/${builddir}"
 export COVISE_PATH="$COVISEDESTDIR:$COVISEDIR"
-path_add PYTHONPATH "${builddir}/lib"
+path_add PYTHONPATH "${builddir}/lib/$VISTLE_BUILD_TYPE"
 path_add PYTHONPATH "${builddir}/share/vistle"
 path_add PYTHONPATH "${COVISEDIR}/Python"
 path_add PYTHONPATH "${COVISEDIR}/${ARCHSUFFIX}/lib"
@@ -176,3 +182,4 @@ path_add PYTHONPATH "${COVISEDIR}/${ARCHSUFFIX}/lib"
 export ACK_OPTIONS="--ignore-dir=doc"
 
 PATH_add "${builddir}/bin"
+PATH_add "${builddir}/bin/$VISTLE_BUILD_TYPE"

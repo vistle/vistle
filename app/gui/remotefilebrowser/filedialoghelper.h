@@ -18,7 +18,7 @@ public:
     enum ViewMode { Detail, List };
     Q_ENUM(ViewMode)
 
-    enum FileMode { AnyFile, ExistingFile, Directory, ExistingFiles, DirectoryOnly };
+    enum FileMode { AnyFile, ExistingFile, Directory, ExistingFiles };
     Q_ENUM(FileMode)
 
     enum AcceptMode { AcceptOpen, AcceptSave };

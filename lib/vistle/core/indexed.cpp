@@ -84,33 +84,37 @@ void Indexed::createCelltree(Index nelem, const Index *el, const Index *cl) cons
     if (hasCelltree())
         return;
 
-    const Scalar *coords[3] = {&x()[0], &y()[0], &z()[0]};
     const Scalar smax = std::numeric_limits<Scalar>::max();
     Vector3 vmin, vmax;
     vmin.fill(-smax);
     vmax.fill(smax);
 
-    std::vector<Vector3> min(nelem, vmax);
-    std::vector<Vector3> max(nelem, vmin);
+    std::vector<Celltree::AABB> bounds(nelem);
 
+    const Scalar *coords[3] = {&x()[0], &y()[0], &z()[0]};
     Vector3 gmin = vmax, gmax = vmin;
     for (Index i = 0; i < nelem; ++i) {
+        Scalar min[3]{smax, smax, smax};
+        Scalar max[3]{-smax, -smax, -smax};
         const Index start = el[i], end = el[i + 1];
         for (Index c = start; c < end; ++c) {
             const Index v = cl[c];
             for (int d = 0; d < 3; ++d) {
-                min[i][d] = std::min(min[i][d], coords[d][v]);
-                max[i][d] = std::max(max[i][d], coords[d][v]);
+                min[d] = std::min(min[d], coords[d][v]);
+                max[d] = std::max(max[d], coords[d][v]);
             }
         }
+        auto &b = bounds[i];
         for (int d = 0; d < 3; ++d) {
-            gmin[d] = std::min(gmin[d], min[i][d]);
-            gmax[d] = std::max(gmax[d], max[i][d]);
+            gmin[d] = std::min(gmin[d], min[d]);
+            gmax[d] = std::max(gmax[d], max[d]);
+            b.mmin[d] = min[d];
+            b.mmax[d] = max[d];
         }
     }
 
     typename Celltree::ptr ct(new Celltree(nelem));
-    ct->init(min.data(), max.data(), gmin, gmax);
+    ct->init(bounds.data(), gmin, gmax);
     addAttachment("celltree", ct);
 #ifndef NDEBUG
     if (!validateCelltree()) {
@@ -215,6 +219,13 @@ void Indexed::removeVertexOwnerList() const
     removeAttachment("vertexownerlist");
 }
 
+void Indexed::print(std::ostream &os) const
+{
+    Base::print(os);
+    os << " cl(" << *d()->cl << ")";
+    os << " el(" << *d()->el << ")";
+}
+
 Indexed::NeighborFinder::NeighborFinder(const Indexed *indexed): indexed(indexed)
 {
     auto ol = indexed->getVertexOwnerList();
@@ -229,7 +240,8 @@ Indexed::NeighborFinder::NeighborFinder(const Indexed *indexed): indexed(indexed
 Index Indexed::NeighborFinder::getNeighborElement(Index elem, Index v1, Index v2, Index v3) const
 {
     if (v1 == v2 || v1 == v3 || v2 == v3) {
-        std::cerr << "WARNING: getNeighborElement was not called with 3 unique vertices." << std::endl;
+        std::cerr << "WARNING: getNeighborElement was not called with 3 unique vertices: " << v1 << " " << v2 << " "
+                  << v3 << std::endl;
         return InvalidIndex;
     }
 

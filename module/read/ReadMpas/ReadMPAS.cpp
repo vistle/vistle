@@ -62,7 +62,6 @@ static std::mutex pnetcdf_mutex; // avoid simultaneous access to PnetCDF library
 #endif
 #endif
 
-#define MAX_VAL 100000000
 #define MAX_EDGES 6 // maximal edges on cell
 #define MSL 6371229.0 //sphere radius on mean sea level (earth radius)
 #define MAX_VERT 3 // vertex degree
@@ -136,7 +135,7 @@ ReadMPAS::ReadMPAS(const std::string &name, int moduleID, mpi::communicator comm
     V_ENUM_SET_CHOICES(m_cellMode, CellMode);
 
     setParallelizationMode(ParallelizeBlocks);
-    setCollectiveIo(true); // for MPI usage in NetCDF/PnetCDF
+    setCollectiveIo(Reader::Collective); // for MPI usage in NetCDF/PnetCDF
 
     observeParameter(m_gridFile);
     observeParameter(m_zGridFile);
@@ -250,7 +249,8 @@ bool ReadMPAS::prepareRead()
             bf::path dataDir(dataFilePath.parent_path());
             for (bf::directory_iterator it2(dataDir); it2 != bf::directory_iterator(); ++it2) { //all files in dir
                 if ((bf::extension(it2->path().filename()) == ".nc") &&
-                    (strncmp(dataFilePath.filename().c_str(), it2->path().filename().c_str(), 15) == 0)) {
+                    (strncmp(dataFilePath.filename().string().c_str(), it2->path().filename().string().c_str(), 15) ==
+                     0)) {
                     auto fn = it2->path().string();
 #ifdef USE_NETCDF
                     auto ncid = NcFile::open(fn, comm());
@@ -870,7 +870,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
 
             if (partsFile == nullptr) {
                 if (block == 0)
-                    sendInfo("Could not read parts file %s", partsPath.c_str());
+                    sendError("Could not read parts file %s", partsPath.c_str());
                 return false;
             }
 
@@ -878,9 +878,9 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
             char buffer[10];
             Index xBlockIdx = 0, idxp = 0;
             partList.reserve(numCells);
-            while ((fgets(buffer, sizeof(buffer), partsFile) != NULL) && (idxp < MAX_VAL)) {
-                unsigned x;
-                sscanf(buffer, "%u", &x);
+            while ((fgets(buffer, sizeof(buffer), partsFile) != NULL) && (idxp < numCells)) {
+                unsigned long x;
+                sscanf(buffer, "%lu", &x);
                 xBlockIdx = x / FileBlocksPerUserBlocks;
                 numCellsB[xBlockIdx]++;
                 numCornB[xBlockIdx] += eoc[idxp]; //TODO: std instead: more efficient?
@@ -890,6 +890,13 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
             if (partsFile) {
                 fclose(partsFile);
                 partsFile = nullptr;
+            }
+
+            if (partList.size() != numCells) {
+                if (block == 0)
+                    sendError("Wrong number of nodes in partition list %s: have %lu, expect %lu", partsPath.c_str(),
+                              (unsigned long)partList.size(), (unsigned long)numCells);
+                return false;
             }
 
             assert(partList.size() == numCells);

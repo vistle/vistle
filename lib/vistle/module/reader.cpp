@@ -30,6 +30,26 @@ Reader::Reader(const std::string &name, const int moduleID, mpi::communicator co
 Reader::~Reader()
 {}
 
+Parameter *Reader::addParameterGeneric(const std::string &name, std::shared_ptr<Parameter> parameter)
+{
+    auto param = std::dynamic_pointer_cast<StringParameter>(parameter);
+    if (!m_firstFileBrowser && param) {
+        auto pres = param->presentation();
+        if (pres == Parameter::ExistingFilename || pres == Parameter::ExistingDirectory) {
+            std::cerr << "add browser param: " << name << std::endl;
+            m_firstFileBrowser = param;
+        }
+    }
+    return Module::addParameterGeneric(name, parameter);
+}
+
+bool Reader::removeParameter(Parameter *param)
+{
+    if (param == m_firstFileBrowser.get())
+        m_firstFileBrowser.reset();
+    return Module::removeParameter(param);
+}
+
 void Reader::prepareQuit()
 {
     m_observedParameters.clear();
@@ -99,8 +119,10 @@ size_t Reader::waitForReaders(size_t maxRunning, bool &result)
 bool Reader::readTimestep(std::shared_ptr<Token> &prev, const ReaderProperties &prop, int timestep, int step)
 {
     bool result = true;
+    bool collective = m_collectiveIo == Collective || (timestep < 0 && m_collectiveIo == CollectiveConstant);
+    bool partitioned = m_handlePartitions == Partition || (timestep >= 0 && m_handlePartitions == PartitionTimesteps);
     std::shared_ptr<mpi::communicator> rest_comm, full_comm;
-    if (m_collectiveIo) {
+    if (collective) {
         bool have_rest = prop.numpart % size() != 0;
         if (have_rest) {
             int baseRank = (int)m_firstRank->getValue();
@@ -110,18 +132,18 @@ bool Reader::readTimestep(std::shared_ptr<Token> &prev, const ReaderProperties &
         full_comm = std::make_shared<mpi::communicator>(comm(), mpi::comm_duplicate);
     }
     for (int p = -1; p < prop.numpart; ++p) {
-        if (m_collectiveIo && p % size() == 0) {
+        if (collective && p % size() == 0) {
             full_comm = std::make_shared<mpi::communicator>(comm(), mpi::comm_duplicate);
         }
-        if (!m_handlePartitions || comm().rank() == rankForTimestepAndPartition(step, p)) {
+        if (!partitioned || comm().rank() == rankForTimestepAndPartition(step, p)) {
             auto token = std::make_shared<Token>(this, prev);
             ++m_tokenCount;
             token->m_id = m_tokenCount;
             token->m_meta = *prop.meta;
             token->m_meta.setBlock(p);
             token->m_meta.setTimeStep(step);
-            if (m_collectiveIo) {
-                if (!m_handlePartitions || (p < prop.numpart / size() * size())) {
+            if (collective) {
+                if (!partitioned || (p < prop.numpart / size() * size())) {
                     token->m_comm = full_comm;
                 } else {
                     token->m_comm = rest_comm;
@@ -228,7 +250,7 @@ bool Reader::prepare()
     auto rTime = ReaderTime(first, last, inc);
 
     int numpart = m_numPartitions;
-    if (!m_handlePartitions)
+    if (m_handlePartitions == Monolithic)
         numpart = 0;
 
     Meta meta;
@@ -257,11 +279,24 @@ bool Reader::prepare()
     std::shared_ptr<Token> prev;
     meta.setTimeStep(-1);
     ReaderProperties prop(&meta, rTime, numpart, concurrency);
+    if (m_handlePartitions == PartitionTimesteps) {
+        prop.numpart = 0;
+    }
     if (!readTimestep(prev, prop, -1, -1)) {
         sendError("error reading constant data");
+        prev.reset();
     } else {
+        prop.numpart = numpart;
+        bool result = true;
+        if (m_parallel == ParallelizeTimeAndBlocksAfterStatic) {
+            waitForReaders(0, result);
+            prev.reset();
+            if (!result) {
+                sendError("error waiting for reading static data");
+            }
+        }
         // read timesteps
-        if (!readTimesteps(prev, prop)) {
+        if (result && !readTimesteps(prev, prop)) {
             sendError("error reading varying data");
         }
     }
@@ -310,17 +345,17 @@ void Reader::setParallelizationMode(Reader::ParallelizationMode mode)
     m_parallel = mode;
 }
 
-void Reader::setCollectiveIo(bool enable)
+void Reader::setCollectiveIo(Reader::CollectiveIo collective)
 {
-    m_collectiveIo = enable;
-    if (m_collectiveIo) {
+    m_collectiveIo = collective;
+    if (m_collectiveIo != Individual) {
         setAllowTimestepDistribution(m_allowTimestepDistribution);
     }
 }
 
-void Reader::setHandlePartitions(bool enable)
+void Reader::setHandlePartitions(Reader::PartitionHandling part)
 {
-    m_handlePartitions = enable;
+    m_handlePartitions = part;
 }
 
 /**
@@ -331,11 +366,11 @@ void Reader::setHandlePartitions(bool enable)
 void Reader::setAllowTimestepDistribution(bool allow)
 {
     m_allowTimestepDistribution = allow;
-    if (m_allowTimestepDistribution && !m_collectiveIo) {
+    if (m_allowTimestepDistribution && m_collectiveIo != Collective) {
         if (!m_distributeTime) {
             setCurrentParameterGroup("Reader");
             m_distributeTime =
-                addIntParameter("distribute_time", "distribute timesteps across MPI ranks", false, Parameter::Boolean);
+                addIntParameter("distribute_time", "distribute timesteps across MPI ranks", true, Parameter::Boolean);
             setCurrentParameterGroup();
         }
     } else {
@@ -385,9 +420,9 @@ void Reader::setPartitions(int number)
 
 bool Reader::changeParameters(std::set<const Parameter *> params)
 {
-    bool ret = true;
-    for (auto &p: params)
-        ret &= Module::changeParameter(p);
+    m_inhibitExamine = true;
+    bool ret = Module::changeParameters(params);
+    m_inhibitExamine = false;
 
     for (auto &p: params) {
         auto it = m_observedParameters.find(p);
@@ -403,12 +438,29 @@ bool Reader::changeParameters(std::set<const Parameter *> params)
 
 bool Reader::changeParameter(const Parameter *param)
 {
+    if (m_firstFileBrowser && (m_firstFileBrowser.get() == param || !param)) {
+        auto val = m_firstFileBrowser->getValue();
+        auto slash = val.find_last_of("/");
+        while (!val.empty() && slash == val.length() - 1) {
+            val = val.substr(0, val.length() - 1);
+            slash = val.find_last_of("/");
+        }
+        if (slash != std::string::npos) {
+            val = val.substr(slash + 1);
+        }
+        auto dot = val.find('.');
+        val = val.substr(0, dot);
+        setItemInfo(val);
+    }
+
     bool ret = Module::changeParameter(param);
 
-    auto it = m_observedParameters.find(param);
-    if (it != m_observedParameters.end()) {
-        m_readyForRead = examine(param);
-        ret &= m_readyForRead;
+    if (!m_inhibitExamine) {
+        auto it = m_observedParameters.find(param);
+        if (it != m_observedParameters.end()) {
+            m_readyForRead = examine(param);
+            ret &= m_readyForRead;
+        }
     }
 
     return ret;
@@ -474,7 +526,7 @@ bool Reader::Token::result()
 bool Reader::Token::waitDone()
 {
     //#ifdef DEBUG
-    std::cerr << "Reader::Token: finishing " << id() << ", meta: " << m_meta << "..." << std::endl;
+    std::cerr << "Reader::Token: waiting to finish " << id() << ", meta: " << m_meta << "..." << std::endl;
     //#endif
     {
         std::lock_guard<std::mutex> locker(m_mutex);
@@ -482,7 +534,7 @@ bool Reader::Token::waitDone()
             return m_result;
 
         if (!m_future.valid()) {
-            std::cerr << "Reader::Token: finishing " << id() << ", but future not valid 1" << std::endl;
+            std::cerr << "Reader::Token: waiting to finish " << id() << ", but future not valid 1" << std::endl;
             m_finished = true;
             m_result = false;
         }
@@ -493,13 +545,14 @@ bool Reader::Token::waitDone()
             try {
                 m_future.wait();
             } catch (std::exception &ex) {
-                std::cerr << "Reader::Token: finishing " << id() << ", but future throws: " << ex.what() << std::endl;
+                std::cerr << "Reader::Token: waiting to finish " << id() << ", but future throws: " << ex.what()
+                          << std::endl;
                 std::lock_guard<std::mutex> locker(m_mutex);
                 m_finished = true;
                 m_result = false;
             }
         } else {
-            std::cerr << "Reader::Token: finishing " << id() << ", but future not valid 2" << std::endl;
+            std::cerr << "Reader::Token: waiting to finish " << id() << ", but future not valid 2" << std::endl;
             std::lock_guard<std::mutex> locker(m_mutex);
             m_finished = true;
             m_result = false;
@@ -508,7 +561,7 @@ bool Reader::Token::waitDone()
 
     std::lock_guard<std::mutex> locker(m_mutex);
     if (!m_finished && !m_future.valid()) {
-        std::cerr << "Reader::Token: finishing " << id() << ", but future not valid 3" << std::endl;
+        std::cerr << "Reader::Token: waiting to finish " << id() << ", but future not valid 3" << std::endl;
         m_finished = true;
         m_result = false;
     }
@@ -517,11 +570,13 @@ bool Reader::Token::waitDone()
         try {
             m_result = m_future.get();
         } catch (std::exception &ex) {
-            std::cerr << "Reader::Token: finishing " << id() << ", but future throws: " << ex.what() << std::endl;
+            std::cerr << "Reader::Token: waiting to finish " << id() << ", but future throws: " << ex.what()
+                      << std::endl;
             m_finished = true;
             m_result = false;
         } catch (...) {
-            std::cerr << "Reader::Token: finishing " << id() << ", but future throws unknown exception" << std::endl;
+            std::cerr << "Reader::Token: waiting to finish " << id() << ", but future throws unknown exception"
+                      << std::endl;
             m_finished = true;
             m_result = false;
         }

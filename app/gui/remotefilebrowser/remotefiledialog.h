@@ -79,7 +79,7 @@ class RemoteFileDialog: public QDialog {
 public:
     enum ViewMode { Detail, List };
     Q_ENUM(ViewMode)
-    enum FileMode { AnyFile, ExistingFile, Directory, ExistingFiles, DirectoryOnly };
+    enum FileMode { AnyFile, ExistingFile, Directory, ExistingFiles };
     Q_ENUM(FileMode)
     enum AcceptMode { AcceptOpen, AcceptSave };
     Q_ENUM(AcceptMode)
@@ -237,6 +237,7 @@ private:
     Q_PRIVATE_SLOT(d_func(), void _q_autoCompleteFileName(const QString &text))
     Q_PRIVATE_SLOT(d_func(), void _q_rowsInserted(const QModelIndex &parent))
     Q_PRIVATE_SLOT(d_func(), void _q_fileRenamed(const QString &path, const QString &oldName, const QString &newName))
+    QString fileFromPath(const QString &rootPath, QString path);
     friend class QPlatformDialogHelper;
     QScopedPointer<RemoteFileDialogPrivate> vd_ptr;
     AbstractFileSystemModel *m_model = nullptr;

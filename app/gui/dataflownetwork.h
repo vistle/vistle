@@ -38,6 +38,10 @@ public:
     DataFlowNetwork(vistle::VistleConnection *conn, MainWindow *mw, QObject *parent = 0);
     ~DataFlowNetwork();
 
+    enum Layers {
+        AllLayers = -1,
+    };
+
     ModuleBrowser *moduleBrowser() const;
 
     void addModule(int hub, QString modName, Qt::Key direction);
@@ -48,13 +52,17 @@ public:
     void removeConnections(Port *port, bool sendToController = false);
     void setConnectionHighlights(Port *port, bool highlight);
 
+    Module *newModule(QString modName);
     Module *findModule(int id) const;
-    bool moveModule(int moduleId, float x, float y);
-
     Module *findModule(const boost::uuids::uuid &spawnUuid) const;
 
+    bool moveModule(int moduleId, float x, float y);
+
     QColor highlightColor() const;
-    QRect calculateBoundingBox() const;
+    QRectF computeBoundingRect(int layer = AllLayers) const;
+    bool isDark() const;
+    vistle::StateTracker &state() const;
+
 public slots:
     void addModule(int moduleId, const boost::uuids::uuid &spawnUuid, QString name);
     void deleteModule(int moduleId);
@@ -65,11 +73,19 @@ public slots:
     void deleteConnection(int fromId, QString fromName, int toId, QString toName);
     void moduleStatus(int id, QString status, int prio);
     void itemInfoChanged(QString text, int type, int id, QString port);
+    void moduleMessage(int senderId, int type, QString message);
+    void clearMessages(int moduleId);
+    void messagesVisibilityChanged(int moduleId, bool visible);
+
+    void emphasizeConnections(QList<Module *> modules);
+    void visibleLayerChanged(int layer);
+    void updateConnectionVisibility();
 
 protected:
-    void mousePressEvent(QGraphicsSceneMouseEvent *event); //< re-implemented
-    void mouseMoveEvent(QGraphicsSceneMouseEvent *event); //< re-implemented
-    void mouseReleaseEvent(QGraphicsSceneMouseEvent *event); //< re-implemented
+    void mousePressEvent(QGraphicsSceneMouseEvent *event) override; //< re-implemented
+    void mouseMoveEvent(QGraphicsSceneMouseEvent *event) override; //< re-implemented
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent *event) override; //< re-implemented
+    void wheelEvent(QGraphicsSceneWheelEvent *event) override;
 
 private:
     QList<Module *> m_moduleList; //< list of modules

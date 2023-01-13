@@ -11,7 +11,8 @@ public:
     ~Variant();
 
 private:
-    virtual bool compute();
+    bool compute() override;
+    bool changeParameter(const Parameter *p) override;
 
     StringParameter *p_variant;
     IntParameter *p_visible;
@@ -46,6 +47,15 @@ Variant::Variant(const std::string &name, int moduleID, mpi::communicator comm):
 
 Variant::~Variant()
 {}
+
+bool Variant::changeParameter(const Parameter *p)
+{
+    if (p == p_variant) {
+        auto val = p_variant->getValue();
+        setItemInfo(val);
+    }
+    return Module::changeParameter(p);
+}
 
 bool Variant::compute()
 {

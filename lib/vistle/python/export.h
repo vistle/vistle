@@ -9,10 +9,4 @@
 #define V_PYEXPORT V_IMPORT
 #endif
 
-#if defined(vistle_pythonmodule_EXPORTS)
-#define V_PYMODEXPORT V_EXPORT
-#else
-#define V_PYMODEXPORT V_IMPORT
-#endif
-
 #endif

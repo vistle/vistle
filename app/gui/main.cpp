@@ -46,6 +46,7 @@ int main(int argc, char *argv[])
         QLocale::setDefault(QLocale::c());
 
         a.setAttribute(Qt::AA_MacDontSwapCtrlAndMeta);
+        a.setAttribute(Qt::AA_DontShowIconsInMenus);
         //DebugBreak();
 
         //std::cerr << "installing debug msg handler" << std::endl;

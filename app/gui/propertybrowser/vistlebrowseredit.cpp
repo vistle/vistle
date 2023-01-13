@@ -25,8 +25,6 @@ VistleBrowserEdit::VistleBrowserEdit(QWidget *parent): QWidget(parent)
     m_layout->addWidget(m_button);
     m_layout->addWidget(m_edit);
 
-    m_nameFilters << "All Files (*)";
-
     m_title = "Vistle File Browser";
 
     connect(m_button, &QToolButton::pressed, [this]() {
@@ -55,11 +53,7 @@ VistleBrowserEdit::VistleBrowserEdit(QWidget *parent): QWidget(parent)
         }
 
         if (m_browser->isHidden()) {
-            if (m_browser->fileMode() == RemoteFileDialog::Directory) {
-                m_browser->setDirectory(text());
-            } else {
-                m_browser->selectFile(text());
-            }
+            m_browser->selectFile(text());
             m_browser->show();
             m_button->setIcon(QIcon::fromTheme("folder-open", qApp->style()->standardIcon(QStyle::SP_DirOpenIcon)));
         } else {
@@ -112,7 +106,6 @@ void VistleBrowserEdit::setFilters(const QString &filters)
 {
     if (filters.isEmpty()) {
         m_nameFilters.clear();
-        m_nameFilters << "All Files (*)";
     } else {
         m_nameFilters = filters.split("/");
     }
@@ -143,6 +136,7 @@ void VistleBrowserEdit::setFileMode(VistleBrowserEdit::FileMode fileMode)
 {
     m_fileMode = fileMode;
     applyFileMode();
+    applyNameFilters();
 }
 
 void VistleBrowserEdit::applyFileMode()
@@ -168,13 +162,11 @@ void VistleBrowserEdit::applyFileMode()
         m_browser->setReadOnly(true);
         break;
     }
-#if 0
     if (m_fileMode == Directory || m_fileMode == ExistingDirectory) {
         m_browser->setOption(RemoteFileDialog::ShowDirsOnly);
     } else {
         m_browser->setOption(RemoteFileDialog::ShowDirsOnly, false);
     }
-#endif
 }
 
 void VistleBrowserEdit::applyNameFilters()
@@ -182,5 +174,15 @@ void VistleBrowserEdit::applyNameFilters()
     if (!m_browser)
         return;
 
-    m_browser->setNameFilters(m_nameFilters);
+    if (m_nameFilters.isEmpty()) {
+        QStringList filters;
+        if (m_fileMode == Directory || m_fileMode == ExistingDirectory) {
+            filters << "All Directories (*)";
+        } else {
+            filters << "All Files (*)";
+        }
+        m_browser->setNameFilters(filters);
+    } else {
+        m_browser->setNameFilters(m_nameFilters);
+    }
 }

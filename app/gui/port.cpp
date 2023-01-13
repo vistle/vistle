@@ -92,8 +92,27 @@ void Port::createMenus()
     m_portMenu->addAction(m_disconnectAct);
 }
 
+QVariant Port::itemChange(GraphicsItemChange change, const QVariant &value)
+{
+    if (change == ItemEnabledHasChanged) {
+        if (isEnabled()) {
+            setToolTip(m_tooltip);
+        } else {
+            setToolTip("");
+        }
+    }
+    return QGraphicsItem::itemChange(change, value);
+}
+
 void Port::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
 {
+    bool hasCon = !m_port->connections().empty();
+    m_disconnectAct->setEnabled(hasCon);
+    m_selectConnectedAct->setEnabled(hasCon);
+    if (m_selectDownstreamAct)
+        m_selectDownstreamAct->setEnabled(hasCon);
+    if (m_selectUpstreamAct)
+        m_selectUpstreamAct->setEnabled(hasCon);
     m_portMenu->popup(event->screenPos());
 }
 
@@ -109,7 +128,9 @@ bool Port::valid() const
 
 const vistle::Port *Port::vistlePort() const
 {
-    return m_port;
+    DataFlowNetwork *sc = dynamic_cast<DataFlowNetwork *>(scene());
+    auto p = sc->state().portTracker()->getPort(m_moduleId, m_name.toStdString());
+    return p;
 }
 
 bool Port::operator<(const Port &other) const
@@ -149,6 +170,16 @@ void Port::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWid
     gradient.setColorAt(1, m_color);
     painter->setBrush(gradient);
     painter->drawRect(0, 0, portSize, portSize);
+
+    if (m_portType == Port::Input) {
+        if (vistlePort() && vistlePort()->isConnected() && !(vistlePort()->flags() & vistle::Port::COMBINE_BIT)) {
+            painter->setPen(QPen(Qt::black, 2));
+            painter->setBrush(Qt::NoBrush);
+            auto s = .25 * portSize, b = .75 * portSize;
+            painter->drawLine(QPointF(s, s), QPointF(b, b));
+            painter->drawLine(QPointF(s, b), QPointF(b, s));
+        }
+    }
 }
 
 QPointF Port::scenePos() const
@@ -227,7 +258,9 @@ void Port::createTooltip()
         toolTip += m_info;
     }
 
-    setToolTip(toolTip);
+    if (isEnabled())
+        setToolTip(toolTip);
+    m_tooltip = toolTip;
 }
 
 void Port::createGeometry()

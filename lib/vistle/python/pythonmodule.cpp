@@ -1592,11 +1592,14 @@ bool PythonModule::import(py::object *ns, const std::string &path)
         std::cerr << "Python: loading " << path + "/vistle.py" << std::endl;
 #if PY_MAJOR_VERSION > 3 || (PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION >= 6)
         py::eval<py::eval_statements>(R"(
+         import sys
          import importlib
          import importlib.util
          spec = importlib.util.spec_from_file_location(modulename, path)
          if spec != None and spec.loader != None:
-             newmodule = spec.loader.load_module()
+             newmodule = importlib.util.module_from_spec(spec)
+             sys.modules[modulename] = newmodule
+             spec.loader.exec_module(newmodule)
          )",
                                       *ns, locals);
 #else

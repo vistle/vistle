@@ -48,10 +48,12 @@ ReadFOAM::ReadFOAM(const std::string &name, int moduleId, mpi::communicator comm
 : Reader(name, moduleId, comm), m_boundOut(nullptr)
 {
     // all ranks have to be scheduled simultaneously
-    Reader::setHandlePartitions(false);
+    Reader::setHandlePartitions(Reader::Monolithic);
+    Reader::setCollectiveIo(Reader::Collective);
 
     // file browser parameter
-    m_casedir = addStringParameter("casedir", "OpenFOAM case directory", "/data/OpenFOAM", Parameter::Directory);
+    m_casedir =
+        addStringParameter("casedir", "OpenFOAM case directory", "/data/OpenFOAM", Parameter::ExistingDirectory);
     //Time Parameters
     m_starttime = addFloatParameter("starttime", "start reading at the first step after this time", 0.);
     setParameterMinimum<Float>(m_starttime, 0.);

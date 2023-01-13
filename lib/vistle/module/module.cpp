@@ -59,6 +59,36 @@
 
 namespace interprocess = ::boost::interprocess;
 
+namespace bigmpi {
+
+static const size_t chunk = 1 << 30;
+
+template<typename T>
+void broadcast(const mpi::communicator &comm, T *values, size_t count, int root)
+{
+    for (size_t off = 0; off < count; off += chunk) {
+        mpi::broadcast(comm, values + off, int(std::min(chunk, count - off)), root);
+    }
+}
+
+template<typename T>
+void send(const mpi::communicator &comm, int rank, int tag, const T *values, size_t count)
+{
+    for (size_t off = 0; off < count; off += chunk) {
+        comm.send(rank, tag, values + off, int(std::min(chunk, count - off)));
+    }
+}
+
+template<typename T>
+void recv(const mpi::communicator &comm, int rank, int tag, T *values, size_t count)
+{
+    for (size_t off = 0; off < count; off += chunk) {
+        comm.recv(rank, tag, values + off, int(std::min(chunk, count - off)));
+    }
+}
+
+} // namespace bigmpi
+
 namespace vistle {
 
 using message::Id;
@@ -133,7 +163,11 @@ public:
 
     void set_gui_output(bool enable) { m_gui = enable; }
 
-    void clear_backlog() { m_backlog.clear(); }
+    void clear_backlog()
+    {
+        std::unique_lock<std::recursive_mutex> scoped_lock(m_mutex);
+        m_backlog.clear();
+    }
 
 private:
     const size_t BacklogSize = 10;
@@ -256,6 +290,8 @@ Module::Module(const std::string &moduleName, const int moduleId, mpi::communica
                     Parameter::Boolean);
 
     addVectorParameter("_position", "position in GUI", ParamVector(0., 0.));
+    auto layer = addIntParameter("_layer", "layer in GUI", Integer(0));
+    setParameterMinimum(layer, Integer(-1));
 
     auto em = addIntParameter("_error_output_mode", "where stderr is shown", size() == 1 ? 1 : 1, Parameter::Choice);
     std::vector<std::string> errmodes;
@@ -604,7 +640,7 @@ bool Module::sendObject(const mpi::communicator &comm, Object::const_ptr obj, in
     auto dir = saver->getDirectory();
     comm.send(destRank, 0, dir);
     for (auto &ent: dir) {
-        comm.send(destRank, 0, ent.data, ent.size);
+        bigmpi::send(comm, destRank, 0, ent.data, ent.size);
     }
     return true;
 }
@@ -631,7 +667,7 @@ Object::const_ptr Module::receiveObject(const mpi::communicator &comm, int sourc
             objects[ent.name].resize(ent.size);
             ent.data = objects[ent.name].data();
         }
-        comm.recv(sourceRank, 0, ent.data, ent.size);
+        bigmpi::recv(comm, sourceRank, 0, ent.data, ent.size);
     }
     vecistreambuf<buffer> membuf(mem);
     vistle::iarchive memar(membuf);
@@ -653,6 +689,7 @@ bool Module::broadcastObject(const mpi::communicator &comm, Object::const_ptr &o
         return true;
 
     if (comm.rank() == root) {
+        assert(obj->check());
         vecostreambuf<buffer> memstr;
         vistle::oarchive memar(memstr);
         auto saver = std::make_shared<DeepArchiveSaver>();
@@ -663,7 +700,7 @@ bool Module::broadcastObject(const mpi::communicator &comm, Object::const_ptr &o
         auto dir = saver->getDirectory();
         mpi::broadcast(comm, dir, root);
         for (auto &ent: dir) {
-            mpi::broadcast(comm, ent.data, ent.size, root);
+            bigmpi::broadcast(comm, ent.data, ent.size, root);
         }
     } else {
         buffer mem;
@@ -681,14 +718,17 @@ bool Module::broadcastObject(const mpi::communicator &comm, Object::const_ptr &o
                 objects[ent.name].resize(ent.size);
                 ent.data = objects[ent.name].data();
             }
-            mpi::broadcast(comm, ent.data, ent.size, root);
+            bigmpi::broadcast(comm, ent.data, ent.size, root);
         }
         vecistreambuf<buffer> membuf(mem);
         vistle::iarchive memar(membuf);
         auto fetcher = std::make_shared<DeepArchiveFetcher>(objects, arrays, comp, rawsizes);
         memar.setFetcher(fetcher);
+        //std::cerr << "DeepArchiveFetcher: " << *fetcher << std::endl;
         obj.reset(Object::loadObject(memar));
+        obj->refresh();
         //std::cerr << "broadcastObject recv " << obj->getName() << ": refcount=" << obj->refcount() << std::endl;
+        assert(obj->check());
         //obj->unref();
     }
 
@@ -697,12 +737,44 @@ bool Module::broadcastObject(const mpi::communicator &comm, Object::const_ptr &o
 
 bool Module::broadcastObject(Object::const_ptr &object, int root) const
 {
+#if 0
     return broadcastObject(comm(), object, root);
+#else
+    return broadcastObjectViaShm(object, root);
+#endif
+}
+
+bool Module::broadcastObjectViaShm(const mpi::communicator &comm, Object::const_ptr &object, const std::string &objName,
+                                   int root) const
+{
+    int leader = Shm::the().owningRank();
+    auto commShmGroup = boost::mpi::communicator(comm.split(leader));
+    auto commShmLeaders = boost::mpi::communicator(comm.split(leader == comm.rank() ? 1 : MPI_UNDEFINED));
+
+    if (rank() == shmLeader(root)) {
+        assert(object);
+    }
+    bool ok = true;
+    if (rank() == shmLeader(rank())) {
+        ok = broadcastObject(commShmLeaders, object, m_shmLeadersSubrank[root]);
+        assert(object);
+    }
+    if (shmLeader(rank()) != shmLeader(root)) {
+        commShmGroup.barrier(); // synchronize, so that object is available on leader
+    }
+    if (shmLeader(rank()) == rank()) {
+        assert(object);
+    } else {
+        object = Shm::the().getObjectFromName(objName);
+        assert(object);
+    }
+    commShmGroup.barrier(); // synchronize, so that leader keeps object around long enough
+    return ok;
 }
 
 bool Module::broadcastObjectViaShm(Object::const_ptr &object, const std::string &objName, int root) const
 {
-    if (shmLeader(rank()) == shmLeader(root)) {
+    if (rank() == shmLeader(root)) {
         assert(object);
     }
     bool ok = true;
@@ -721,6 +793,28 @@ bool Module::broadcastObjectViaShm(Object::const_ptr &object, const std::string 
     }
     m_commShmGroup.barrier(); // synchronize, so that leader keeps object around long enough
     return ok;
+}
+
+bool Module::broadcastObjectViaShm(const mpi::communicator &comm, Object::const_ptr &object, int root) const
+{
+    std::string objName;
+    if (comm.rank() == root) {
+        assert(object);
+        objName = object->getName();
+    }
+    mpi::broadcast(comm, objName, root);
+    return broadcastObjectViaShm(comm, object, objName, root);
+}
+
+bool Module::broadcastObjectViaShm(Object::const_ptr &object, int root) const
+{
+    std::string objName;
+    if (comm().rank() == root) {
+        assert(object);
+        objName = object->getName();
+    }
+    mpi::broadcast(comm(), objName, root);
+    return broadcastObjectViaShm(object, objName, root);
 }
 
 void Module::updateCacheMode()
@@ -779,8 +873,7 @@ void Module::updateMeta(vistle::Object::ptr obj) const
     if (obj) {
         obj->setCreator(id());
         obj->setExecutionCounter(m_executionCount);
-        if (obj->getIteration() < m_iteration)
-            obj->setIteration(m_iteration);
+        obj->setIteration(m_iteration);
 
         obj->updateInternals();
     }
@@ -985,6 +1078,8 @@ Object::const_ptr Module::expect<Object>(Port *port)
     return obj;
 }
 
+void Module::setInputSpecies(const std::string &species)
+{}
 
 bool Module::addInputObject(int sender, const std::string &senderPort, const std::string &portName,
                             Object::const_ptr object)
@@ -995,6 +1090,14 @@ bool Module::addInputObject(int sender, const std::string &senderPort, const std
     }
 
     assert(object->check());
+
+    if (object->hasAttribute("_species")) {
+        std::string species = object->getAttribute("_species");
+        if (m_inputSpecies != species) {
+            m_inputSpecies = species;
+            setInputSpecies(m_inputSpecies);
+        }
+    }
 
     if (m_executionCount < object->getExecutionCounter()) {
         m_executionCount = object->getExecutionCounter();
@@ -1649,10 +1752,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
     if (m_executionCount < exec->getExecutionCount()) {
         m_executionCount = exec->getExecutionCount();
         m_iteration = -1;
-    } else if (exec->what() == Execute::Prepare) {
-        ++m_iteration;
     }
-
 
     if (schedulingPolicy() == message::SchedulingPolicy::Ignore)
         return true;
@@ -1968,6 +2068,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
             if (oldExecCount < m_executionCount) {
                 m_iteration = -1;
             }
+            m_iteration = mpi::all_reduce(comm(), m_iteration, mpi::maximum<int>());
 #ifdef REDUCE_DEBUG
             CERR << "all_reduce for execCount finished " << m_executionCount << " with execCount=" << m_executionCount
                  << std::endl;
@@ -2395,6 +2496,7 @@ bool Module::prepareWrapper(const message::Execute *exec)
         if (oldExecCount < m_executionCount) {
             m_iteration = -1;
         }
+        m_iteration = mpi::all_reduce(comm(), m_iteration, mpi::maximum<int>());
     }
 
     if (m_benchmark) {

@@ -148,6 +148,7 @@ DisCOVERay::DisCOVERay(const std::string &name, int moduleId, mpi::communicator 
     _MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
 #endif
 
+    setCurrentParameterGroup("Advanced", false);
     m_useRayStreamsParam =
         addIntParameter("ray_streams", "use ray streams API", (Integer)m_useRayStreams, Parameter::Boolean);
     m_shading = addIntParameter("shading", "shade and light objects", (Integer)m_doShade, Parameter::Boolean);
@@ -155,6 +156,8 @@ DisCOVERay::DisCOVERay(const std::string &name, int moduleId, mpi::communicator 
     m_renderTileSizeParam =
         addIntParameter("render_tile_size", "edge length of square tiles used during rendering", m_tilesize);
     setParameterRange(m_renderTileSizeParam, (Integer)1, (Integer)TileSize);
+    setCurrentParameterGroup("");
+
     m_pointSizeParam = addFloatParameter("point_size", "size of points", RayRenderObject::pointSize);
     setParameterRange(m_pointSizeParam, (Float)0, (Float)1e6);
 

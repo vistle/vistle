@@ -57,7 +57,7 @@ struct Internals {
 } // namespace vistle
 
 Adapter::Adapter(bool paused, MPI_Comm Comm, MetaData &&meta, ObjectRetriever cbs, const std::string &vistleRoot,
-                 const std::string &options)
+                 const std::string &vistleBuildType, const std::string &options)
 : m_callbacks(std::move(cbs)), m_metaData(std::move(meta)), m_internals(new detail::Internals{detail::getRank(Comm)})
 {
     MPI_Comm_rank(Comm, &m_rank);
@@ -68,10 +68,11 @@ Adapter::Adapter(bool paused, MPI_Comm Comm, MetaData &&meta, ObjectRetriever cb
     dumpConnectionFile(comm);
 
 #ifdef MODULE_THREAD
-    vistle::directory::setVistleRoot(vistleRoot);
+    vistle::directory::setVistleRoot(vistleRoot, vistleBuildType);
     startVistle(comm, options);
 #else
     (void)vistleRoot;
+    (void)vistleBuildType;
 #endif
 }
 

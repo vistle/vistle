@@ -69,6 +69,12 @@ bool RectilinearGrid::isEmpty() const
     return (getNumDivisions(0) == 0 || getNumDivisions(1) == 0 || getNumDivisions(2) == 0);
 }
 
+void RectilinearGrid::print(std::ostream &os) const
+{
+    Base::print(os);
+    os << " " << m_size << "=" << getNumDivisions(0) << "x" << getNumDivisions(1) << "x" << getNumDivisions(2);
+}
+
 // GET FUNCTION - GHOST CELL LAYER
 //-------------------------------------------------------------------------
 Index RectilinearGrid::getNumGhostLayers(unsigned dim, GhostLayerPosition pos)

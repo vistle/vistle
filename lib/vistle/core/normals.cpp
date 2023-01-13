@@ -27,6 +27,11 @@ bool Normals::checkImpl() const
     return true;
 }
 
+void Normals::print(std::ostream &os) const
+{
+    Base::print(os);
+}
+
 Index Normals::getNumNormals() const
 {
     return getSize();

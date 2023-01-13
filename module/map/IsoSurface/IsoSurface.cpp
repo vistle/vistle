@@ -3,6 +3,7 @@
 //
 
 #include <iostream>
+#include <iomanip>
 #include <cmath>
 #include <ctime>
 #include <boost/mpi/collectives.hpp>
@@ -99,9 +100,42 @@ bool IsoSurface::changeParameter(const Parameter *param)
         else
             setReducePolicy(message::ReducePolicy::OverAll);
     }
-#endif
 
+    if (param == m_isovalue || param == m_pointOrValue) {
+        updateModuleInfo();
+    }
+#endif
     return Module::changeParameter(param) && ok;
+}
+
+void IsoSurface::setInputSpecies(const std::string &species)
+{
+    std::cerr << "Species: " << species << std::endl;
+    m_species = species;
+    Module::setInputSpecies(species);
+    updateModuleInfo();
+}
+
+void IsoSurface::updateModuleInfo()
+{
+#if !defined(CUTTINGSURFACE) && !defined(ISOHEIGHTSURFACE)
+    if (m_pointOrValue->getValue() == PointInFirstStep || m_pointOrValue->getValue() == PointPerTimestep) {
+        if (m_species.empty())
+            setItemInfo("Point");
+        else
+            setItemInfo(m_species);
+    } else {
+        auto val = m_isovalue->getValue();
+        std::stringstream str;
+        str << std::setw(0) << std::setprecision(3) << val;
+        if (m_species.empty())
+            setItemInfo(str.str());
+        else
+            setItemInfo(m_species + "=" + str.str());
+    }
+#else
+    setItemInfo(m_species);
+#endif
 }
 
 bool IsoSurface::prepare()

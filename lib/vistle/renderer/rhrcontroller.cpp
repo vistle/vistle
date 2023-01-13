@@ -49,10 +49,13 @@ RhrController::RhrController(vistle::Module *module, int displayRank)
     m_rhrRemoteEndpoint =
         module->addStringParameter("rhr_remote_host", "address where renderer should connect to", "localhost");
     m_rhrAutoRemotePort = module->addIntParameter("_rhr_auto_remote_port", "port where renderer should connect to", 0);
+    module->setParameterReadOnly(m_rhrAutoRemotePort, true);
     module->setParameterRange(m_rhrAutoRemotePort, (Integer)0, (Integer)((1 << 16) - 1));
     m_rhrAutoRemoteEndpoint =
         module->addStringParameter("_rhr_auto_remote_host", "address where renderer should connect to", "localhost");
+    module->setParameterReadOnly(m_rhrAutoRemoteEndpoint, true);
 
+    module->setCurrentParameterGroup("Compression");
     m_sendTileSizeParam =
         module->addIntVectorParameter("send_tile_size", "edge lengths of tiles used during sending", m_sendTileSize);
     module->setParameterRange(m_sendTileSizeParam, IntParamVector(1, 1), IntParamVector(65536, 65536));
@@ -80,9 +83,12 @@ RhrController::RhrController(vistle::Module *module, int displayRank)
     choices.emplace_back("16 bit + 4 bits/pixel");
     choices.emplace_back("24 bit + 3 bits/pixel");
     module->setParameterChoices(m_depthPrec, choices);
+    module->setCurrentParameterGroup("");
 
+    module->setCurrentParameterGroup("Advanced", false);
     m_dumpImagesParam = module->addIntParameter("rhr_dump_images", "dump image data to disk", (Integer)m_dumpImages,
                                                 Parameter::Boolean);
+    module->setCurrentParameterGroup("");
 
     initializeServer();
 }
@@ -119,14 +125,20 @@ bool RhrController::initializeServer()
             if (m_rhr->isConnecting() || m_rhr->port() != m_rhrBasePort->getValue())
                 m_rhr.reset();
         } else {
-            if (!m_rhr->isConnecting() ||
-                (m_rhrConnectionMethod->getValue() == UserReverse &&
-                 (m_rhrRemoteEndpoint->getValue() != m_rhr->destinationHost() ||
-                  m_rhrRemotePort->getValue() != m_rhr->destinationPort())) ||
-                (m_rhrConnectionMethod->getValue() == AutomaticReverse &&
-                 (m_rhrAutoRemoteEndpoint->getValue() != m_rhr->destinationHost() ||
-                  m_rhrAutoRemotePort->getValue() != m_rhr->destinationPort())))
+            if (!m_rhr->isConnecting()) {
+                CERR << "resetting server: not connecting" << std::endl;
                 m_rhr.reset();
+            } else if (m_rhrConnectionMethod->getValue() == UserReverse &&
+                       (m_rhrRemoteEndpoint->getValue() != m_rhr->destinationHost() ||
+                        m_rhrRemotePort->getValue() != m_rhr->destinationPort())) {
+                CERR << "resetting server: user reverse, settings mismatch" << std::endl;
+                m_rhr.reset();
+            } else if (m_rhrConnectionMethod->getValue() == AutomaticReverse &&
+                       (m_rhrAutoRemoteEndpoint->getValue() != m_rhr->destinationHost() ||
+                        m_rhrAutoRemotePort->getValue() != m_rhr->destinationPort())) {
+                CERR << "resetting server: automatic reverse, settings mismatch" << std::endl;
+                m_rhr.reset();
+            }
         }
     }
 
@@ -155,6 +167,33 @@ bool RhrController::handleParam(const vistle::Parameter *p)
         sendConfigObject();
         return ret;
     } else if (p == m_rhrConnectionMethod) {
+        {
+            bool lp = false, lh = false, rp = false, rh = false;
+            switch (m_rhrConnectionMethod->getValue()) {
+            case ViaVistle:
+                lp = rp = lh = rh = true;
+                break;
+            case AutomaticHostname:
+                rp = lh = rh = true;
+                break;
+            case UserHostname:
+                rp = rh = true;
+                break;
+            case ViaHub:
+                rp = lh = rh = true;
+                break;
+            case AutomaticReverse:
+                lp = rh = lh = true;
+                break;
+            case UserReverse:
+                lp = lh = true;
+                break;
+            }
+            m_module->setParameterReadOnly(m_rhrBasePort, lp);
+            m_module->setParameterReadOnly(m_rhrLocalEndpoint, lh);
+            m_module->setParameterReadOnly(m_rhrRemoteEndpoint, rh);
+            m_module->setParameterReadOnly(m_rhrRemotePort, rp);
+        }
         if ((m_rhrConnectionMethod->getValue() != ViaHub && m_forwardPort != 0) ||
             m_forwardPort != m_rhrBasePort->getValue()) {
             if (m_module->rank() == 0) {
@@ -275,17 +314,16 @@ void RhrController::tryConnect(double wait)
         m_rhr->setClientModuleId(message::Id::Invalid);
         int seconds = wait;
         if (m_rhr->numClients() < 1) {
-            std::string host = m_rhrRemoteEndpoint->getValue();
-            unsigned short port = m_rhrRemotePort->getValue();
-            if (m_rhrConnectionMethod->getValue() == AutomaticReverse) {
-                host = m_rhrAutoRemoteEndpoint->getValue();
-                port = m_rhrAutoRemotePort->getValue();
-            }
+            std::string host = connectHost();
+            unsigned short port = connectPort();
             if (port > 0) {
                 m_module->sendInfo("trying for %d seconds to connect to %s:%hu", seconds, host.c_str(), port);
                 if (!m_rhr->makeConnection(host, port, seconds)) {
                     m_module->sendWarning("connection attempt to %s:%hu failed", host.c_str(), port);
                 }
+            } else {
+                CERR << "no port specified for connecting to " << host << std::endl;
+                return;
             }
         }
         break;
@@ -367,6 +405,7 @@ bool RhrController::sendConfigObject() const
 void RhrController::addClient(const Port *client)
 {
     if (m_clients.empty()) {
+        CERR << "addClient: adding first client" << std::endl;
         m_currentClient = client;
 
         initializeServer();
@@ -405,6 +444,11 @@ void RhrController::removeClient(const Port *client)
         }
     } else {
         CERR << "removed inactive client, still have " << m_clients.size() << " clients" << std::endl;
+        if (m_clients.empty()) {
+            m_rhr.reset();
+            m_currentClient = nullptr;
+            m_clientModuleId = message::Id::Invalid;
+        }
     }
 }
 
@@ -458,6 +502,8 @@ unsigned short RhrController::connectPort() const
     switch (m_rhrConnectionMethod->getValue()) {
     case UserReverse:
         return m_rhrRemotePort->getValue();
+    case AutomaticReverse:
+        return m_rhrAutoRemotePort->getValue();
     default:
         break;
     }
@@ -470,6 +516,8 @@ std::string RhrController::connectHost() const
     switch (m_rhrConnectionMethod->getValue()) {
     case UserReverse:
         return m_rhrRemoteEndpoint->getValue();
+    case AutomaticReverse:
+        return m_rhrAutoRemoteEndpoint->getValue();
     case ViaVistle: {
         return "";
     }

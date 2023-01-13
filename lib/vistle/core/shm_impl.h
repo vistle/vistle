@@ -21,7 +21,7 @@ typedef boost::mpl::push_back<VectorTypes1, CelltreeNode<sizeof(Index), 2>>::typ
 typedef boost::mpl::push_back<VectorTypes2, CelltreeNode<sizeof(Index), 3>>::type VectorTypes;
 
 template<typename T, class allocator>
-int shm_array<T, allocator>::typeId()
+unsigned shm_array<T, allocator>::typeId()
 {
     const size_t pos = boost::mpl::find<VectorTypes, T>::type::pos::value;
     static_assert(pos < boost::mpl::size<VectorTypes>::value, "Scalar type not found");

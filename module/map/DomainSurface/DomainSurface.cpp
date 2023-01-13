@@ -9,12 +9,18 @@
 #include <vistle/core/structuredgrid.h>
 #include <vistle/module/resultcache.h>
 #include <vistle/alg/objalg.h>
+#include <vistle/util/enum.h>
 
 #include "DomainSurface.h"
 
-#define USE_SET
+//#define USE_SET
+#ifndef USE_SET
+#include <unordered_set>
+#endif
 
 using namespace vistle;
+
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(Algorithm, (IterateOverFaces)(IterateOverVertices)(IterateOverElements))
 
 DomainSurface::DomainSurface(const std::string &name, int moduleID, mpi::communicator comm)
 : Module(name, moduleID, comm)
@@ -33,7 +39,8 @@ DomainSurface::DomainSurface(const std::string &name, int moduleID, mpi::communi
     addIntParameter("quad", "Show quad", 0, Parameter::Boolean);
     addIntParameter("reuseCoordinates", "Re-use the unstructured grids coordinate list and data-object", 0,
                     Parameter::Boolean);
-    addIntParameter("save_memory", "Less memory intensive algorithm", 1, Parameter::Boolean);
+    auto algo = addIntParameter("algorithm", "algorithm to use", IterateOverElements, Parameter::Choice);
+    V_ENUM_SET_CHOICES(algo, Algorithm);
 
     addResultCache(m_cache);
 }
@@ -594,7 +601,10 @@ DomainSurface::Result<Polygons> DomainSurface::createSurface(vistle::Unstructure
     if (!createSurface && !createLines)
         return result;
 
-    const bool useVertexOwners = getIntParameter("save_memory") || createLines;
+    auto algo = static_cast<Algorithm>(getIntParameter("algorithm"));
+    if (createLines)
+        algo = IterateOverElements;
+
     const bool showgho = getIntParameter("ghost");
     const bool showtet = getIntParameter("tetrahedron");
     const bool showpyr = getIntParameter("pyramid");
@@ -685,11 +695,11 @@ DomainSurface::Result<Polygons> DomainSurface::createSurface(vistle::Unstructure
 
         std::map<Edge, unsigned int> edges;
 
-        for (auto f: currentCellFaces) {
-            auto elStart = el[i], elEnd = el[i + 1];
-            Byte t = tl[i] & UnstructuredGrid::TYPE_MASK;
-            switch (t) {
-            case UnstructuredGrid::POLYHEDRON: {
+        auto elStart = el[i], elEnd = el[i + 1];
+        Byte t = tl[i] & UnstructuredGrid::TYPE_MASK;
+        switch (t) {
+        case UnstructuredGrid::POLYHEDRON: {
+            for (auto f: currentCellFaces) {
                 Index faceNum = 0;
                 Index facestart = InvalidIndex;
                 Index term = 0;
@@ -711,14 +721,16 @@ DomainSurface::Result<Polygons> DomainSurface::createSurface(vistle::Unstructure
                         ++faceNum;
                     }
                 }
-                break;
             }
-            case UnstructuredGrid::PYRAMID:
-            case UnstructuredGrid::PRISM:
-            case UnstructuredGrid::TETRAHEDRON:
-            case UnstructuredGrid::HEXAHEDRON:
-            case UnstructuredGrid::TRIANGLE:
-            case UnstructuredGrid::QUAD: {
+            break;
+        }
+        case UnstructuredGrid::PYRAMID:
+        case UnstructuredGrid::PRISM:
+        case UnstructuredGrid::TETRAHEDRON:
+        case UnstructuredGrid::HEXAHEDRON:
+        case UnstructuredGrid::TRIANGLE:
+        case UnstructuredGrid::QUAD: {
+            for (auto f: currentCellFaces) {
                 auto verts = &cl[elStart];
                 const auto &faces = UnstructuredGrid::FaceVertices[t];
                 const auto facesize = UnstructuredGrid::FaceSizes[t][f];
@@ -727,9 +739,9 @@ DomainSurface::Result<Polygons> DomainSurface::createSurface(vistle::Unstructure
                     Edge e(verts[face[j]], verts[face[(j + 1) % facesize]]);
                     ++edges[e];
                 }
-                break;
             }
-            }
+            break;
+        }
         }
 
         for (const auto &e: edges) {
@@ -839,12 +851,90 @@ DomainSurface::Result<Polygons> DomainSurface::createSurface(vistle::Unstructure
         }
     };
 
-    if (!useVertexOwners) {
+    if (algo == IterateOverFaces) {
         FaceSet visibleFaces;
         for (Index i = 0; i < num_elem; ++i) {
             processElement(i, visibleFaces);
         }
         addToOutput(visibleFaces);
+    } else if (algo == IterateOverVertices) {
+        UnstructuredGrid::VertexOwnerList::const_ptr vol = m_grid_in->getVertexOwnerList();
+        const Index numVert = vol->getNumVertices();
+        for (Index v = 0; v < numVert; ++v) {
+            FaceSet visibleFaces;
+            const auto containingCells = vol->getSurroundingCells(v);
+            for (Index e = 0; e < containingCells.second; ++e) {
+                Index i = containingCells.first[e];
+
+                const Index elStart = el[i], elEnd = el[i + 1];
+                const Byte t = tl[i] & UnstructuredGrid::TYPE_MASK;
+                if (t == UnstructuredGrid::POLYHEDRON) {
+                    Index faceNum = 0;
+                    Index facestart = InvalidIndex;
+                    Index term = 0;
+                    for (Index j = elStart; j < elEnd; ++j) {
+                        if (facestart == InvalidIndex) {
+                            facestart = j;
+                            term = cl[j];
+                        } else if (cl[j] == term) {
+                            Index numVert = j - facestart;
+                            if (numVert >= 3) {
+                                auto face = &cl[facestart];
+                                bool containsVertex = false;
+                                bool owner = true;
+                                for (Index i = 0; i < numVert; ++i) {
+                                    const Index vv = face[i];
+                                    if (vv < v) {
+                                        owner = false;
+                                        break;
+                                    } else if (vv == v) {
+                                        containsVertex = true;
+                                    }
+                                }
+                                if (containsVertex && owner) {
+                                    auto it_ok = visibleFaces.emplace(i, faceNum, numVert, face);
+                                    if (!it_ok.second) {
+                                        // found duplicate, hence inner face: remove
+                                        visibleFaces.erase(it_ok.first);
+                                    }
+                                }
+                            }
+                            facestart = InvalidIndex;
+                            ++faceNum;
+                        }
+                    }
+                } else {
+                    const auto numFaces = UnstructuredGrid::NumFaces[t];
+                    const auto &faces = UnstructuredGrid::FaceVertices[t];
+                    for (int f = 0; f < numFaces; ++f) {
+                        const auto &face = faces[f];
+                        const auto facesize = UnstructuredGrid::FaceSizes[t][f];
+                        bool containsVertex = false;
+                        bool owner = true;
+                        for (Index i = 0; i < facesize; ++i) {
+                            const Index vv = cl[elStart + face[i]];
+                            if (vv < v) {
+                                owner = false;
+                                break;
+                            } else if (vv == v) {
+                                containsVertex = true;
+                            }
+                        }
+                        if (containsVertex && owner) {
+                            auto it_ok = visibleFaces.emplace(i, f, facesize, cl + elStart, face);
+                            //std::cerr << "v=" << v << ", el=" << i << ", Face: " << *it_ok.first << ", keep=" << it_ok.second << std::endl;
+                            if (!it_ok.second) {
+                                // found duplicate, hence inner face: remove
+                                visibleFaces.erase(it_ok.first);
+                            }
+                        }
+                    }
+                }
+            }
+
+            addToOutput(visibleFaces);
+            currentCellFaces.clear();
+        }
     } else {
         UnstructuredGrid::VertexOwnerList::const_ptr vol = m_grid_in->getVertexOwnerList();
         auto nf = m_grid_in->getNeighborFinder();

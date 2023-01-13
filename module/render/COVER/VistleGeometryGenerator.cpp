@@ -1,7 +1,3 @@
-#ifndef _USE_MATH_DEFINES
-#define _USE_MATH_DEFINES // for M_PI with MSVC
-#endif
-
 #include "VistleGeometryGenerator.h"
 
 #include <cmath>
@@ -48,9 +44,9 @@ using namespace vistle;
 namespace {
 const int NumPrimitives = 100000;
 const bool IndexGeo = true;
-const Index TileSize = 256;
 
 #ifdef COVER_PLUGIN
+const Index TileSize = 256;
 const int TfTexUnit = 1;
 #endif
 const int DataAttrib = 10;
@@ -323,7 +319,7 @@ struct DataAdapter<Geometry, osg::FloatArray, typename vistle::Vec<Scalar, 3>::c
     {}
     float getValue(Index idx) { return sqrt(x[idx] * x[idx] + y[idx] * y[idx] + z[idx] * z[idx]); }
     vistle::Index size = 0;
-    const Scalar *x, *y, *z;
+    const Scalar *x = nullptr, *y = nullptr, *z = nullptr;
     vistle::DataBase::Mapping mapping = vistle::DataBase::Unspecified;
 };
 
@@ -334,7 +330,7 @@ struct DataAdapter<Geometry, osg::FloatArray, typename vistle::Vec<Index>::const
     {}
     float getValue(Index idx) { return x[idx]; }
     vistle::Index size = 0;
-    const Index *x;
+    const Index *x = nullptr;
     vistle::DataBase::Mapping mapping = vistle::DataBase::Unspecified;
 };
 
@@ -345,7 +341,7 @@ struct DataAdapter<Geometry, osg::FloatArray, Mapped, normalize> {
     {}
     float getValue(Index idx) { return x[idx]; }
     vistle::Index size = 0;
-    const typename Mapped::Scalar *x;
+    const typename Mapped::Scalar *x = nullptr;
     vistle::DataBase::Mapping mapping = vistle::DataBase::Unspecified;
 };
 

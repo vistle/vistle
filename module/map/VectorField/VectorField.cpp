@@ -147,7 +147,7 @@ bool VectorField::compute()
         mapped->copyAttributes(data);
 
         mapped->setGrid(lines);
-        updateMeta(lines);
+        updateMeta(mapped);
         addObject("grid_out", mapped);
     } else {
         addObject("grid_out", lines);

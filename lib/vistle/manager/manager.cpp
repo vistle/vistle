@@ -75,11 +75,10 @@ public:
     Vistle(int argc, char *argv[], boost::mpi::communicator comm): Executor(argc, argv, comm) {}
     bool config(int argc, char *argv[]) override
     {
-        if (const char *VISTLE_ROOT = getenv("VISTLE_ROOT")) {
-            setVistleRoot(VISTLE_ROOT);
-            return true;
-        }
-        return false;
+        const char *VISTLE_ROOT = getenv("VISTLE_ROOT");
+        const char *VISTLE_BUILDTYPE = getenv("VISTLE_BUILDTYPE");
+        setVistleRoot(VISTLE_ROOT ? VISTLE_ROOT : "", VISTLE_BUILDTYPE ? VISTLE_BUILDTYPE : "");
+        return true;
     }
 };
 

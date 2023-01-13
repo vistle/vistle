@@ -102,10 +102,26 @@ public:
     int numPartitions() const;
 
 protected:
+    Parameter *addParameterGeneric(const std::string &name, std::shared_ptr<Parameter> parameter) override;
+    bool removeParameter(Parameter *param) override;
+
     enum ParallelizationMode {
         Serial, ///< only one operation at a time, all blocks of a timestep first, then other timesteps
-        ParallelizeTimeAndBlocks, ///< up to 'concurrency' operations at a time
         ParallelizeBlocks, ///< up to 'concurrency' operations at a time, all operations for one timestep have finished before operations for another timestep are started
+        ParallelizeTimeAndBlocksAfterStatic, ///< up to 'concurrency' operations at a time, but finish reading of static data first
+        ParallelizeTimeAndBlocks, ///< up to 'concurrency' operations at a time
+    };
+
+    enum PartitionHandling {
+        Monolithic, ///< call into read on all ranks and let module handle partitioning
+        PartitionTimesteps, ///< call into read on all ranks for constant data, and onto dedicated ranks for partitions of timesteps
+        Partition, ///< call into read once per partition and timestep (including "constant timestep")
+    };
+
+    enum CollectiveIo {
+        Individual, ///< never provide a common communicator for read calls
+        CollectiveConstant, ///< provide a common communicator in Token passed to read for constant timestep
+        Collective, ///< always provide a communicator spanning all participating ranks (timesteps and static data)
     };
 
     struct ReaderTime {
@@ -127,10 +143,10 @@ protected:
     /// control if read operations have to be called collectively
     /*! if read operations are to be called collectively, @ref Token
         will provide an MPI communicator */
-    void setCollectiveIo(bool enable);
+    void setCollectiveIo(CollectiveIo collective);
 
     /// whether partitions should be handled by the @ref Reader class
-    void setHandlePartitions(bool enable);
+    void setHandlePartitions(PartitionHandling part);
     /// whether timesteps may be distributed to different ranks
     void setAllowTimestepDistribution(bool allow);
     //! whenever an observed parameter changes, data set should be rescanned
@@ -185,13 +201,15 @@ private:
     int m_dimDomain = 3;
     int m_numPartitions = 0;
     bool m_readyForRead = true;
+    bool m_inhibitExamine = false; // in order to avoid multiple calls to examine() during changeParameters
 
-    bool m_collectiveIo = false;
-    bool m_handlePartitions = true;
+    CollectiveIo m_collectiveIo = Individual;
+    PartitionHandling m_handlePartitions = Partition;
     bool m_handleOwnDIYBlocks = false;
     bool m_allowTimestepDistribution = false;
 
     unsigned long m_tokenCount = 0;
+    std::shared_ptr<StringParameter> m_firstFileBrowser;
 
     /*
     * # files (api)

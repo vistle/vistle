@@ -35,8 +35,9 @@ ReadWRFChem::ReadWRFChem(const std::string &name, int moduleID, mpi::communicato
     ncFirstFile = NULL;
 
     m_gridOut = createOutputPort("grid_out", "grid");
-    m_filedir = addStringParameter("file_dir", "NC files directory",
-                                   "/mnt/raid/home/hpcleker/Desktop/test_files/NC/test_time", Parameter::Directory);
+    m_filedir =
+        addStringParameter("file_dir", "NC files directory", "/mnt/raid/home/hpcleker/Desktop/test_files/NC/test_time",
+                           Parameter::ExistingDirectory);
 
     m_numPartitionsLat = addIntParameter("num_partitions_lat", "number of partitions in lateral", 1);
     m_numPartitionsVer = addIntParameter("num_partitions_ver", "number of partitions in vertical", 1);

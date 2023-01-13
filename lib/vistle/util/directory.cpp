@@ -11,43 +11,34 @@ namespace directory {
 std::string build_type()
 {
 #ifdef CMAKE_INTDIR
-    const std::string btype = CMAKE_INTDIR;
-#else
-#ifdef _WIN32
-#ifdef CMAKE_BUILD_TYPE
-    const std::string btype = CMAKE_BUILD_TYPE;
-#else
-#ifdef _DEBUG
-    const std::string btype = "Debug";
-#else
-    const std::string btype = "Release";
+    return CMAKE_INTDIR;
 #endif
-#endif
-#else
-    const std::string btype = "";
-#endif
-#endif
+    return "";
+}
 
-    return btype;
+namespace {
+
+std::string prefix(const std::string &bindir, const std::string &buildtype)
+{
+    namespace bf = vistle::filesystem;
+    bf::path p(bindir);
+    p += "/..";
+    if (!buildtype.empty()) {
+        p += "/..";
+    }
+    p = bf::canonical(p);
+
+    return p.string();
+}
+
+std::string prefix(const std::string &bindir)
+{
+    return prefix(bindir, build_type());
 }
 
 std::string prefix(int argc, char *argv[])
 {
     return prefix(getbindir(argc, argv));
-}
-
-std::string prefix(const std::string &bindir)
-{
-    namespace bf = vistle::filesystem;
-    bf::path p(bindir);
-    if (build_type().empty()) {
-        p += "/..";
-    } else {
-        p += "/../..";
-    }
-    p = bf::canonical(p);
-
-    return p.string();
 }
 
 std::string bin(const std::string &prefix)
@@ -71,6 +62,8 @@ std::string module(const std::string &prefix)
     }
     return prefix + moduleDir + "/" + build_type();
 }
+
+} // namespace
 
 std::string share(const std::string &prefix)
 {
@@ -112,9 +105,9 @@ static bool setvar(const std::string &var, const std::string &val)
     return setvar(vv);
 }
 
-bool setVistleRoot(const std::string &vistleRootDir)
+bool setVistleRoot(const std::string &vistleRootDir, const std::string &buildtype)
 {
-    return setvar("VISTLE_ROOT", vistleRootDir);
+    return setvar("VISTLE_ROOT", vistleRootDir) && setvar("VISTLE_BUILDTYPE", buildtype);
 }
 
 bool setEnvironment(const std::string &prefix)
@@ -144,5 +137,60 @@ bool setEnvironment(const std::string &prefix)
 }
 
 } // namespace directory
+
+Directory::Directory(int argc, char *argv[])
+{
+    m_buildType = directory::build_type();
+
+    auto bindir = getbindir(argc, argv);
+    while (!bindir.empty() && bindir.back() == '/')
+        bindir.pop_back();
+    if (bindir.length() < m_buildType.length()) {
+        m_buildType.clear();
+    } else if (bindir.rfind(m_buildType) != bindir.length() - m_buildType.length()) {
+        m_buildType.clear();
+    }
+
+    m_prefix = directory::prefix(bindir, m_buildType) + "/";
+    if (!m_buildType.empty())
+        m_buildTypeSuffix = m_buildType + "/";
+}
+
+Directory::Directory(const std::string &prefix, const std::string &buildtype)
+: m_prefix(prefix), m_buildType(buildtype), m_buildTypeSuffix(buildtype.empty() ? "" : buildtype + "/")
+{
+    if (m_prefix.empty() || m_prefix.back() != '/')
+        m_prefix += "/";
+}
+
+std::string Directory::buildType() const
+{
+    return m_buildType;
+}
+
+std::string Directory::prefix() const
+{
+    return m_prefix;
+}
+
+std::string Directory::bin() const
+{
+    return m_prefix + "bin/" + m_buildTypeSuffix;
+}
+
+std::string Directory::module() const
+{
+#ifdef MODULE_THREAD
+    std::string moduleDir = "lib/module/";
+#else
+    std::string moduleDir = "libexec/module/";
+#endif
+    return m_prefix + moduleDir + m_buildTypeSuffix;
+}
+
+std::string Directory::share() const
+{
+    return m_prefix + "share/vistle/";
+}
 
 } // namespace vistle

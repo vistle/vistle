@@ -46,15 +46,21 @@ void DeepArchiveFetcher::requestArray(const std::string &arname, int type,
         }
     }
     vecistreambuf<buffer> vb(comp == message::CompressionNone ? it->second : raw);
-    iarchive ar(vb);
-    ar.setFetcher(shared_from_this());
-    ArrayLoader loader(arname, type, ar);
-    if (loader.load()) {
-        //std::cerr << "DeepArchiveFetcher: success array " << arname << std::endl;
-        m_ownedArrays.emplace(loader.owner());
-        completeCallback(ar.translateArrayName(arname));
-    } else {
-        std::cerr << "DeepArchiveFetcher: failed to load array " << arname << std::endl;
+    try {
+        iarchive ar(vb);
+        ar.setFetcher(shared_from_this());
+        ArrayLoader loader(arname, type, ar);
+        if (loader.load()) {
+            //std::cerr << "DeepArchiveFetcher: success array " << arname << std::endl;
+            m_ownedArrays.emplace(loader.owner());
+            completeCallback(ar.translateArrayName(arname));
+        } else {
+            std::cerr << "DeepArchiveFetcher: failed to load array " << arname << " of type " << type << std::endl;
+        }
+    } catch (std::exception &ex) {
+        std::cerr << "DeepArchiveFetcher: exception " << ex.what() << " while loading array " << arname << " of type "
+                  << type << std::endl;
+        throw ex;
     }
 }
 
@@ -176,6 +182,25 @@ void DeepArchiveFetcher::setArrayTranslations(const std::map<std::string, std::s
 void DeepArchiveFetcher::releaseArrays()
 {
     m_ownedArrays.clear();
+}
+
+std::ostream &operator<<(std::ostream &s, const DeepArchiveFetcher &daf)
+{
+    s << "Objects:";
+    for (const auto &o: daf.m_objects) {
+        s << " " << o.first << "("
+          << ")";
+    }
+    s << " ";
+    s << "Arrays:";
+    for (const auto &a: daf.m_arrays) {
+        auto it = daf.m_rawSize.find(a.first);
+        size_t unc = 0;
+        if (it != daf.m_rawSize.end())
+            unc = it->second;
+        s << " " << a.first << "(" << a.second.size() << "->" << unc << ")";
+    }
+    return s;
 }
 
 ArrayLoader::ArrayLoader(const std::string &name, int type, const iarchive &ar)

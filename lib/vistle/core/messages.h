@@ -173,6 +173,28 @@ private:
     int module;
 };
 
+//! request master hub to load a new workflow
+class V_COREEXPORT LoadWorkflow: public MessageBase<LoadWorkflow, LOADWORKFLOW> {
+public:
+    explicit LoadWorkflow(const std::string &pathname);
+
+    const char *pathname() const;
+
+private:
+    path_t m_pathname;
+};
+
+//! request master hub to save current workflow
+class V_COREEXPORT SaveWorkflow: public MessageBase<SaveWorkflow, SAVEWORKFLOW> {
+public:
+    explicit SaveWorkflow(const std::string &pathname);
+
+    const char *pathname() const;
+
+private:
+    path_t m_pathname;
+};
+
 //! spawn a module
 class V_COREEXPORT Spawn: public MessageBase<Spawn, SPAWN> {
 public:
@@ -502,8 +524,8 @@ public:
     const char *description() const;
     const char *group() const;
     bool isGroupExpanded() const;
-    int getParameterType() const;
-    int getPresentation() const;
+    Parameter::Type getParameterType() const;
+    Parameter::Presentation getPresentation() const;
     std::shared_ptr<Parameter>
     getParameter() const; //< allocates a new Parameter object, caller is responsible for deletion
 
@@ -524,7 +546,7 @@ public:
 
     const char *getName() const;
     const char *moduleName() const;
-    int getParameterType() const;
+    Parameter::Type getParameterType() const;
     std::shared_ptr<Parameter>
     getParameter() const; //< allocates a new Parameter object, caller is responsible for deletion
 
@@ -558,7 +580,7 @@ public:
     int rangeType() const;
 
     const char *getName() const;
-    int getParameterType() const;
+    Parameter::Type getParameterType() const;
 
     Integer getInteger() const;
     std::string getString() const;

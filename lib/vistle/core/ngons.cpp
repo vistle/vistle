@@ -133,49 +133,39 @@ void Ngons<N>::createCelltree(Index nelem, const Index *cl) const
     if (hasCelltree())
         return;
 
-    const Scalar *coords[3] = {&x()[0], &y()[0], &z()[0]};
     const Scalar smax = std::numeric_limits<Scalar>::max();
     Vector3 vmin, vmax;
     vmin.fill(-smax);
     vmax.fill(smax);
 
-    std::vector<Vector3> min(nelem, vmax);
-    std::vector<Vector3> max(nelem, vmin);
+    std::vector<Celltree::AABB> bounds(nelem);
 
+    const Scalar *coords[3] = {&x()[0], &y()[0], &z()[0]};
     Vector3 gmin = vmax, gmax = vmin;
     for (Index i = 0; i < nelem; ++i) {
+        Scalar min[3]{smax, smax, smax};
+        Scalar max[3]{-smax, -smax, -smax};
         const Index start = i * N, end = start + N;
         for (Index c = start; c < end; ++c) {
             Index v = c;
             if (cl)
                 v = cl[c];
             for (int d = 0; d < 3; ++d) {
-                min[i][d] = std::min(min[i][d], coords[d][v]);
-#if 0
-            if (min[i][d] > coords[d][v]) {
-               min[i][d] = coords[d][v];
-               if (gmin[d] > min[i][d])
-                  gmin[d] = min[i][d];
-            }
-#endif
-                max[i][d] = std::max(max[i][d], coords[d][v]);
-#if 0
-            if (max[i][d] < coords[d][v]) {
-               max[i][d] = coords[d][v];
-               if (gmax[d] < max[i][d])
-                  gmax[d] = max[i][d];
-            }
-#endif
+                min[d] = std::min(min[d], coords[d][v]);
+                max[d] = std::max(max[d], coords[d][v]);
             }
         }
+        auto &b = bounds[i];
         for (int d = 0; d < 3; ++d) {
-            gmin[d] = std::min(gmin[d], min[i][d]);
-            gmax[d] = std::max(gmax[d], max[i][d]);
+            gmin[d] = std::min(gmin[d], min[d]);
+            gmax[d] = std::max(gmax[d], max[d]);
+            b.mmin[d] = min[d];
+            b.mmax[d] = max[d];
         }
     }
 
     typename Celltree::ptr ct(new Celltree(nelem));
-    ct->init(min.data(), max.data(), gmin, gmax);
+    ct->init(bounds.data(), gmin, gmax);
     addAttachment("celltree", ct);
 #ifndef NDEBUG
     if (!validateCelltree()) {

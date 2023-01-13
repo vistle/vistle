@@ -28,6 +28,11 @@ bool Polygons::checkImpl() const
     return true;
 }
 
+void Polygons::print(std::ostream &os) const
+{
+    Base::print(os);
+}
+
 void Polygons::Data::initData()
 {}
 

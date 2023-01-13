@@ -14,7 +14,8 @@
 
 int main(int argc, char *argv[])
 {
-    vistle::directory::setVistleRoot(vistle::directory::prefix(argc, argv));
+    vistle::Directory dir(argc, argv);
+    vistle::directory::setVistleRoot(dir.prefix(), dir.buildType());
 #ifdef MODULE_THREAD
     int provided = MPI_THREAD_SINGLE;
     MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);

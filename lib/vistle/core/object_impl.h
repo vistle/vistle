@@ -105,11 +105,16 @@ Object *Object::loadObject(Archive &ar)
             } else {
                 auto funcs = ObjectTypeRegistry::getType(type);
                 obj = funcs.createEmpty(name);
+                objData = obj->d();
             }
+            assert(objData);
             Shm::the().unlockObjects();
             name = obj->getName();
             ar.registerObjectNameTranslation(arname, name);
-            obj->loadFromArchive(ar);
+            ObjectData::attachment_mutex_lock_type guard(obj->d()->attachment_mutex);
+            if (!objData->isComplete() || objData->meta.creator() == -1) {
+                obj->loadFromArchive(ar);
+            }
             assert(obj->refcount() >= 1);
         }
 #ifdef USE_BOOST_ARCHIVE
@@ -129,10 +134,10 @@ Object *Object::loadObject(Archive &ar)
     } catch (...) {
         throw;
     }
-    assert(ar.currentObject() == obj->d());
+    assert(obj->isComplete() || ar.currentObject() == obj->d());
     if (obj->d()->unresolvedReferences == 0) {
         obj->refresh();
-        obj->check();
+        assert(obj->check());
         if (ar.objectCompletionHandler())
             ar.objectCompletionHandler()();
     } else {

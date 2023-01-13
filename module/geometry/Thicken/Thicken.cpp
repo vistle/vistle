@@ -50,8 +50,29 @@ Thicken::~Thicken()
 
 bool Thicken::compute()
 {
+    auto updateOutput = [&](OutputGeometry og) {
+        if (m_output != og) {
+            m_output = og;
+            switch (m_output) {
+            case OGUnknown:
+                setItemInfo("");
+                break;
+            case OGError:
+                setItemInfo("Error");
+                break;
+            case OGSpheres:
+                setItemInfo("Spheres");
+                break;
+            case OGTubes:
+                setItemInfo("Tubes");
+                break;
+            }
+        }
+    };
+
     auto obj = expect<Object>("grid_in");
     if (!obj) {
+        updateOutput(OGError);
         sendError("no input data");
         return true;
     }
@@ -96,6 +117,7 @@ bool Thicken::compute()
     }
     if (!lines && !points) {
         sendError("no Lines and no Points object");
+        updateOutput(OGError);
         return true;
     }
 
@@ -119,6 +141,7 @@ bool Thicken::compute()
 
     const Index *cl = nullptr;
     if (lines) {
+        updateOutput(OGTubes);
         // set coordinates
         if (lines->getNumCorners() == 0) {
             tubes = Tubes::clone<Vec<Scalar, 3>>(lines);
@@ -148,6 +171,7 @@ bool Thicken::compute()
         tubes->setMeta(lines->meta());
         tubes->copyAttributes(lines);
     } else if (points) {
+        updateOutput(OGSpheres);
         spheres = Spheres::clone<Vec<Scalar, 3>>(points);
         cwr = spheres;
     }

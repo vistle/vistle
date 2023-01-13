@@ -25,6 +25,7 @@ set(util_HEADERS
     allocator.h
     boost_interprocess_config.h
     buffer.h
+    byteswap.h
     coRestraint.h
     crypto.h
     directory.h
@@ -33,6 +34,7 @@ set(util_HEADERS
     exception.h
     export.h
     fileio.h
+    filesystem.h
     findself.h
     hostname.h
     listenv4v6.h
@@ -64,6 +66,8 @@ vistle_target_link_libraries(
     Boost::system
     PUBLIC
     Boost::filesystem
+    PRIVATE
+    Boost::timer
     PRIVATE
     Threads::Threads
     PRIVATE

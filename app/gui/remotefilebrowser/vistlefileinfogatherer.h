@@ -88,6 +88,7 @@ public:
     QString homePath() const override;
     QString userName() const override;
     QString workingDirectory() const override;
+    QString hostname() const override;
 
     // only callable from this->thread():
     void removePath(const QString &path) override;
@@ -112,6 +113,7 @@ private:
     int m_moduleId = vistle::message::Id::Invalid;
     bool m_initialized = false;
     bool m_isWindows = false;
+    QString m_hostname;
     QString m_workingDirectory;
     QString m_userName;
     QString m_homePath;

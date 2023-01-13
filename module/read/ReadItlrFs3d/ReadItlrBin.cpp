@@ -80,12 +80,8 @@ struct File {
             return false;
 #endif
         } else {
-#ifdef _WIN32
             fp = fopen(name.c_str(), "rb");
-#else
-            fp = fopen(name.c_str(), "r");
-#endif
-            return fp;
+            return fp != nullptr;
         }
 
         return false;
@@ -281,6 +277,7 @@ bool readArray(File &file, const std::string &name, T *p, const size_t num)
         for (const auto &d: count)
             std::cerr << " " << d;
         std::cerr << std::endl;
+#ifndef NDEBUG
         size_t sz = count[file.numdims - 1];
         for (int d = 0; d < file.numdims - 1; ++d) {
             sz *= count[d];
@@ -288,6 +285,7 @@ bool readArray(File &file, const std::string &name, T *p, const size_t num)
             assert(count[d] == file.dims[d]);
         }
         assert(sz == num);
+#endif
         if (H5Sselect_hyperslab(file.dataspace, H5S_SELECT_SET, offset.data(), nullptr, count.data(), nullptr) < 0) {
             std::cerr << "H5Sselect_hyperslab from file failed for " << file.name << ":" << file.datasetName
                       << std::endl;

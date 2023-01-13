@@ -63,13 +63,6 @@ private:
         std::map<const T, unsigned> indices_map;
     };
 
-    //general
-    template<class Ret, class... Args>
-    auto switchSeisMode(std::function<Ret(Args...)> xdmfFunc, std::function<Ret(Args...)> hdfFunc, Args... args);
-    template<class Ret, class... Args>
-    auto callSeisModeFunction(Ret (ReadSeisSol::*xdmfFunc)(Args...), Ret (ReadSeisSol::*hdfFunc)(Args...),
-                              Args... args);
-
     void releaseXdmfObjects();
     bool checkGeoElemVolume(vistle::UnstructuredGrid::ptr unstr, XdmfArray *xdmfArrGeo);
     /* bool checkBlocks(); */
@@ -84,14 +77,8 @@ private:
     bool prepareRead() override;
     bool finishRead() override;
 
-    //hdf5
-    bool hdfModeNotImplemented();
-    bool hdfModeNotImplementedRead(Token &, int, int);
-
-    //xdmf
+     //xdmf
     vistle::UnstructuredGrid::ptr reuseGrid(XdmfUnstructuredGrid *xdmfUGrid, int block);
-    bool prepareReadXdmf();
-    bool finishReadXdmf();
     bool readXdmfUnstrParallel(XdmfArray *xmdfArrGeo, const XdmfHeavyDataController *defaultController,
                                const int block);
     bool readXdmfHDF5Data(Token &token, int timestep, int block);

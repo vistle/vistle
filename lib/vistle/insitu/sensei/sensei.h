@@ -23,7 +23,7 @@ class V_SENSEIEXPORT Adapter //: public SenseiInterface
 {
 public:
     Adapter(bool paused, MPI_Comm Comm, MetaData &&meta, ObjectRetriever cbs, const std::string &vistleRoot,
-            const std::string &options);
+            const std::string &vistleBuildType, const std::string &options);
     bool Execute(size_t timestep);
     bool Finalize();
 

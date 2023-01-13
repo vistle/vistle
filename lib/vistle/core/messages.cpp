@@ -394,6 +394,29 @@ int Pong::getDestination() const
     return module;
 }
 
+
+LoadWorkflow::LoadWorkflow(const std::string &pathname)
+{
+    COPY_STRING(m_pathname, pathname);
+}
+
+const char *LoadWorkflow::pathname() const
+{
+    return m_pathname.data();
+}
+
+
+SaveWorkflow::SaveWorkflow(const std::string &pathname)
+{
+    COPY_STRING(m_pathname, pathname);
+}
+
+const char *SaveWorkflow::pathname() const
+{
+    return m_pathname.data();
+}
+
+
 Spawn::Spawn(int hub, const std::string &n, int mpiSize, int baseRank, int rankSkip)
 : m_hub(hub), m_spawnId(Id::Invalid), mpiSize(mpiSize), baseRank(baseRank), rankSkip(rankSkip)
 {
@@ -979,14 +1002,14 @@ const char *AddParameter::moduleName() const
     return module.data();
 }
 
-int AddParameter::getParameterType() const
+Parameter::Type AddParameter::getParameterType() const
 {
-    return paramtype;
+    return static_cast<Parameter::Type>(paramtype);
 }
 
-int AddParameter::getPresentation() const
+Parameter::Presentation AddParameter::getPresentation() const
 {
-    return presentation;
+    return static_cast<Parameter::Presentation>(presentation);
 }
 
 const char *AddParameter::description() const
@@ -1013,7 +1036,7 @@ std::shared_ptr<Parameter> AddParameter::getParameter() const
         p->setGroup(group());
         p->setGroupExpanded(isGroupExpanded());
     } else {
-        std::cerr << "AddParameter::getParameter (" << moduleName() << ":" << getName() << ": type "
+        std::cerr << "AddParameter::getParameter: " << moduleName() << ":" << getName() << ": type "
                   << getParameterType() << " not handled" << std::endl;
         assert("parameter type not supported" == 0);
     }
@@ -1040,9 +1063,9 @@ const char *RemoveParameter::moduleName() const
     return module.data();
 }
 
-int RemoveParameter::getParameterType() const
+Parameter::Type RemoveParameter::getParameterType() const
 {
-    return paramtype;
+    return static_cast<Parameter::Type>(paramtype);
 }
 
 std::shared_ptr<Parameter> RemoveParameter::getParameter() const
@@ -1247,9 +1270,9 @@ const char *SetParameter::getName() const
     return name.data();
 }
 
-int SetParameter::getParameterType() const
+Parameter::Type SetParameter::getParameterType() const
 {
-    return paramtype;
+    return static_cast<Parameter::Type>(paramtype);
 }
 
 Integer SetParameter::getInteger() const
@@ -1908,6 +1931,7 @@ std::ostream &operator<<(std::ostream &s, const Message &m)
     case ADDPARAMETER: {
         auto &mm = static_cast<const AddParameter &>(m);
         s << ", name: " << mm.getName();
+        s << ", type: " << Parameter::toString(mm.getParameterType());
         break;
     }
     case REMOVEPARAMETER: {
@@ -1918,6 +1942,7 @@ std::ostream &operator<<(std::ostream &s, const Message &m)
     case SETPARAMETER: {
         auto &mm = static_cast<const SetParameter &>(m);
         s << ", name: " << mm.getName();
+        s << ", type: " << Parameter::toString(mm.getParameterType());
         if (mm.isInitialization())
             s << " (INIT)";
         break;

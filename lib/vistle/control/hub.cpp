@@ -192,6 +192,8 @@ Hub::Hub(bool inManager)
 
 Hub::~Hub()
 {
+    m_python.reset();
+
     params.quit();
 
     stopVrb();
@@ -248,7 +250,7 @@ bool Hub::init(int argc, char *argv[])
         return false;
     }
 
-    m_prefix = dir::prefix(argc, argv);
+    m_dir = std::make_unique<Directory>(argc, argv);
 
     m_name = hostname();
 
@@ -269,6 +271,7 @@ bool Hub::init(int argc, char *argv[])
         ("libsim,l", po::value<std::string>(), "connect to a LibSim instrumented simulation by entering the path to the .sim2 file")
         ("exposed,gateway-host,gateway,gw", po::value<std::string>(), "ports are exposed externally on this host")
         ("root", po::value<std::string>(), "path to Vistle build directory")
+        ("buildtype", po::value<std::string>(), "build type suffix to binary in Vistle build directory")
         ("conference,conf", po::value<std::string>(), "URL of associated conference call")
         ("url", "Vistle URL, script to process, or slave name")
     ;
@@ -320,8 +323,11 @@ bool Hub::init(int argc, char *argv[])
     }
 
     if (vm.count("root")) {
-        m_prefix = vm["root"].as<std::string>();
-        std::cerr << "set prefix to " << m_prefix << std::endl;
+        std::string buildtype;
+        if (vm.count("buildtype"))
+            buildtype = vm["buildtype"].as<std::string>();
+        m_dir = std::make_unique<Directory>(vm["root"].as<std::string>(), buildtype);
+        std::cerr << "set prefix to " << m_dir->prefix() << std::endl;
     }
 
     std::string uiCmd = "vistle_gui";
@@ -372,7 +378,7 @@ bool Hub::init(int argc, char *argv[])
                 crypto::set_session_key(connectionData.hex_key);
             }
             if (connectionData.kind == "/ui" || connectionData.kind == "/gui") {
-                std::string uipath = dir::bin(m_prefix) + "/" + uiCmd;
+                std::string uipath = m_dir->bin() + uiCmd;
                 startUi(uipath, true);
             }
         } else {
@@ -466,7 +472,7 @@ bool Hub::init(int argc, char *argv[])
         // start UI
         if (!uiCmd.empty()) {
             m_hasUi = true;
-            std::string uipath = dir::bin(m_prefix) + "/" + uiCmd;
+            std::string uipath = m_dir->bin() + uiCmd;
             startUi(uipath);
         }
         if (pythonUi) {
@@ -479,7 +485,7 @@ bool Hub::init(int argc, char *argv[])
 
         if (!m_proxyOnly) {
             // start manager on cluster
-            std::string cmd = dir::bin(m_prefix) + "/vistle_manager";
+            std::string cmd = m_dir->bin() + "vistle_manager";
             std::vector<std::string> args;
             args.push_back(cmd);
             args.push_back("-from-vistle");
@@ -511,6 +517,8 @@ bool Hub::init(int argc, char *argv[])
             }
 #endif // MODULE_THREAD
         }
+
+        m_python.reset(new PythonInterpreter(m_dir->share()));
     }
 
     if (m_isMaster && !m_inManager && !m_interrupt && !m_quitting) {
@@ -560,10 +568,21 @@ std::shared_ptr<process::child> Hub::launchProcess(const std::string &prog, cons
 {
     auto path = process::search_path(prog);
     if (path.empty()) {
-        std::stringstream info;
-        info << "Cannot launch " << prog << ": not found";
-        sendError(info.str());
-        return nullptr;
+        boost::system::error_code ec;
+        if (filesystem::exists(prog, ec)) {
+            path = prog;
+#ifdef _WIN32
+        } else if (filesystem::exists(prog + ".exe")) {
+            path = prog + ".exe";
+        } else if (filesystem::exists(prog + ".bat")) {
+            path = prog + ".bat";
+#endif
+        } else {
+            std::stringstream info;
+            info << "Cannot launch " << prog << ": not found";
+            sendError(info.str());
+            return nullptr;
+        }
     }
 
     try {
@@ -1346,6 +1365,21 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
 {
     using namespace vistle::message;
 
+    if (m_numRunningModules > 0 && m_stateTracker.getNumRunning() == 0) {
+        m_numRunningModules = 0;
+        if (m_lastModuleQuitAction) {
+            CERR << "executing lastModuleQuitAction... " << std::flush;
+            if (m_lastModuleQuitAction()) {
+                std::cerr << "ok";
+            } else {
+                std::cerr << "ERROR";
+            }
+            std::cerr << std::endl;
+            m_lastModuleQuitAction = nullptr;
+        }
+    }
+    m_numRunningModules = m_stateTracker.getNumRunning();
+
     message::Buffer buf(recv);
     Message &msg = buf;
     message::Identify::Identity senderType = message::Identify::UNKNOWN;
@@ -1650,6 +1684,18 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
 #endif
             comp.send(std::bind(&Hub::sendManager, this, std::placeholders::_1, message::Id::LocalHub,
                                 std::placeholders::_2));
+            break;
+        }
+
+        case message::LOADWORKFLOW: {
+            auto &load = msg.as<LoadWorkflow>();
+            handlePriv(load);
+            break;
+        }
+
+        case message::SAVEWORKFLOW: {
+            auto &save = msg.as<SaveWorkflow>();
+            handlePriv(save);
             break;
         }
 
@@ -2006,6 +2052,43 @@ bool Hub::spawnMirror(int hubId, const std::string &name, int mirroredId)
     return true;
 }
 
+bool Hub::handlePriv(const message::LoadWorkflow &load)
+{
+    std::cerr << "to load: " << load.pathname() << std::endl;
+    m_uiManager.lockUi(true);
+    auto mods = m_stateTracker.getRunningList();
+    for (auto id: mods) {
+        message::Kill m(id);
+        m.setDestId(id);
+        sendModule(m, id);
+    }
+    assert(!m_lastModuleQuitAction);
+    auto act = [this, load]() {
+        bool result = processScript(load.pathname(), true, false);
+        m_uiManager.lockUi(false);
+        return result;
+    };
+    if (m_stateTracker.getNumRunning() == 0) {
+        return act();
+    }
+
+    m_numRunningModules = m_stateTracker.getNumRunning();
+    m_lastModuleQuitAction = act;
+    return true;
+}
+
+bool Hub::handlePriv(const message::SaveWorkflow &save)
+{
+    std::cerr << "to save: " << save.pathname() << std::endl;
+    m_uiManager.lockUi(true);
+    std::string cmd = "save(\"";
+    cmd += save.pathname();
+    cmd += "\")";
+    bool result = processCommand(cmd);
+    m_uiManager.lockUi(false);
+    return result;
+}
+
 bool Hub::handlePriv(const message::Spawn &spawnRecv)
 {
     bool error = false;
@@ -2190,7 +2273,7 @@ bool Hub::startCleaner()
     }
 
     // run clean_vistle on cluster
-    std::string cmd = dir::bin(m_prefix) + "/clean_vistle";
+    std::string cmd = m_dir->bin() + "clean_vistle";
     std::vector<std::string> args;
     args.push_back(cmd);
     std::string shmname = Shm::instanceName(hostname(), m_port);
@@ -2388,11 +2471,11 @@ bool Hub::startVrb()
     CERR << "started VRB process" << std::endl;
 
     std::string line;
-    while (child->running() && std::getline(*out, line) && !line.empty()) {
+    while (child->running() && std::getline(*out, line) && !line.empty() && m_vrbPort == 0) {
         m_vrbPort = std::atol(line.c_str());
     }
     if (m_vrbPort == 0) {
-        CERR << "could not parse VRB port" << std::endl;
+        CERR << "could not parse VRB port \"" << line << "\"" << std::endl;
         child->terminate();
         return false;
     }
@@ -2571,8 +2654,7 @@ bool Hub::startUi(const std::string &uipath, bool replace)
         return false;
     }
 
-    auto child = std::make_shared<process::child>(uipath, process::args(args), terminate_with_parent(), m_ioService,
-                                                  process::on_exit(exit_handler));
+    auto child = launchProcess(uipath, args);
     if (!child || !child->valid()) {
         CERR << "failed to spawn UI " << uipath << std::endl;
         return false;
@@ -2649,19 +2731,47 @@ bool Hub::processScript(const std::string &filename, bool barrierAfterLoad, bool
     assert(m_uiManager.isLocked());
 #ifdef HAVE_PYTHON
     setStatus("Loading " + filename + "...");
-    PythonInterpreter inter(filename, dir::share(m_prefix), barrierAfterLoad, executeModules);
+    int flags = PythonExecutor::LoadFile;
+    if (barrierAfterLoad)
+        flags |= PythonExecutor::BarrierAfterLoad;
+    if (executeModules)
+        flags |= PythonExecutor::ExecuteModules;
+    PythonExecutor exec(*m_python, flags, filename);
     bool interrupt = false;
-    while (!interrupt && inter.check()) {
+    while (!interrupt && !exec.done()) {
         if (!dispatch())
             interrupt = true;
     }
-    if (interrupt || inter.error()) {
+    if (interrupt || exec.state() != PythonExecutor::Success) {
         setStatus("Loading " + filename + " failed");
         return false;
     }
     setStatus("Loading " + filename + " done");
     return true;
 #else
+    return false;
+#endif
+}
+
+bool Hub::processCommand(const std::string &command)
+{
+    assert(m_uiManager.isLocked());
+#ifdef HAVE_PYTHON
+    setStatus("Executing " + command + "...");
+    PythonExecutor exec(*m_python, command);
+    bool interrupt = false;
+    while (!interrupt && !exec.done()) {
+        if (!dispatch())
+            interrupt = true;
+    }
+    if (interrupt || exec.state() != PythonExecutor::Success) {
+        setStatus("Executing " + command + " failed");
+        return false;
+    }
+    setStatus("Executing " + command + " done");
+    return true;
+#else
+    setStatus("Cannot execute: " + command + " - no Python support");
     return false;
 #endif
 }
@@ -3002,7 +3112,6 @@ bool Hub::handlePriv(const message::FileQuery &query, const buffer *payload)
     if (!payload)
         payload = &pl;
 
-    std::cerr << "FileQuery(" << query.command() << ") for " << query.moduleId() << ":" << query.path() << std::endl;
     FileInfoCrawler c(*this);
     return c.handle(query, *payload);
 }
