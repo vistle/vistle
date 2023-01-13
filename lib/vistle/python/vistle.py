@@ -421,6 +421,7 @@ getParameters = _vistle.getParameters
 getParameterType = _vistle.getParameterType
 getParameterPresentation = _vistle.getParameterPresentation
 getParameterTooltip = _vistle.getParameterTooltip
+getParameterChoices = _vistle.getParameterChoices
 isParameterDefault = _vistle.isParameterDefault
 getIntParam = _vistle.getIntParam
 getFloatParam = _vistle.getFloatParam

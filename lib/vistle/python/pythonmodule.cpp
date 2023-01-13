@@ -565,6 +565,25 @@ static std::string getParameterTooltip(int id, const std::string &name)
     return desc;
 }
 
+static std::vector<std::string> getParameterChoices(int id, const std::string &name)
+{
+    std::unique_lock<PythonStateAccessor> guard(access());
+    std::vector<std::string> choices;
+    const auto param = state().getParameter(id, name);
+    if (!param) {
+        std::cerr << "Python: getParameterChoices: no such parameter" << std::endl;
+        return choices;
+    }
+    if (param->presentation() != Parameter::Choice) {
+        std::cerr << "Python: getParameterChoices: presantation is not Choice" << std::endl;
+        return choices;
+    }
+
+    for (const auto &c: param->choices())
+        choices.emplace_back(c);
+    return choices;
+}
+
 static std::string getEscapedStringParam(int id, const std::string &name)
 {
     std::string val = getParameterValue<std::string>(id, name);
@@ -1542,6 +1561,7 @@ PY_MODULE(_vistle, m)
     m.def("getEscapedStringParam", getEscapedStringParam,
           "get value of parameter named `arg2` of module with ID `arg1`");
     m.def("getParameterTooltip", getParameterTooltip, "get a short description of the parameter");
+    m.def("getParameterChoices", getParameterChoices, "get list of choices of the parameter");
 
 #ifndef EMBED_PYTHON
     m.def("sessionConnect", &sessionConnect, "connect to running Vistle instance", "host"_a = "localhost",
