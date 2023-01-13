@@ -30,6 +30,8 @@ show cell tree
 ## Parameters
 |name|description|type|
 |-|-|-|
+|validate_tree|check celltree for consistency|Int|
+|minimum_depth|minimum depth of nodes to show|Int|
 |maximum_depth|maximum depth of nodes to show|Int|
 |show_left|show left separator|Int|
 |show_right|show right separator|Int|

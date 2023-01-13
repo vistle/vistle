@@ -68,3 +68,4 @@ Read IAG data in NetCDF format
 |boundary_variable0|Variable on boundary)|String|
 |boundary_variable1|Variable on boundary)|String|
 |boundary_variable2|Variable on boundary)|String|
+|distribute_time|distribute timesteps across MPI ranks|Int|

@@ -33,7 +33,8 @@ map scalar and vector data to colors
 |center_absolute|absolute value for center|Int|
 |range_compression|compression of range towards center|Float|
 |opacity_factor|multiplier for opacity|Float|
-|map|transfer function name (COVISE, Plasma, Inferno, Magma, CoolWarmBrewer, CoolWarm, Frosty, Dolomiti, Parula, Viridis, Cividis, Turbo, Blue_Light, Grays, Gray20, ANSYS, Star, ITSM, Rainbow, Earth, Topography, RainbowPale)|Int|
+|map|transfer function name (COVISE, Plasma, Inferno, Magma, CoolWarmBrewer, CoolWarm, Frosty, Dolomiti, Parula, Viridis, Cividis, Turbo, Blue_Light, Grays, Gray20, ANSYS, Star, ITSM, Rainbow, Earth, Topography, RainbowPale, FromFile)|Int|
+|rgb file| file containing pin rgb values|String|
 |steps|number of color map steps|Int|
 |blend_with_material|use alpha for blending with diffuse material|Int|
 |auto_range|compute range automatically|Int|
@@ -43,7 +44,7 @@ map scalar and vector data to colors
 |inset_relative|width and center of inset are relative to range|Int|
 |inset_center|where to inset other color map (auto range: 0.5=middle)|Float|
 |inset_width|range covered by inset color map (auto range: relative)|Float|
-|inset_map|transfer function to inset (COVISE, Plasma, Inferno, Magma, CoolWarmBrewer, CoolWarm, Frosty, Dolomiti, Parula, Viridis, Cividis, Turbo, Blue_Light, Grays, Gray20, ANSYS, Star, ITSM, Rainbow, Earth, Topography, RainbowPale)|Int|
+|inset_map|transfer function to inset (COVISE, Plasma, Inferno, Magma, CoolWarmBrewer, CoolWarm, Frosty, Dolomiti, Parula, Viridis, Cividis, Turbo, Blue_Light, Grays, Gray20, ANSYS, Star, ITSM, Rainbow, Earth, Topography, RainbowPale, FromFile)|Int|
 |inset_steps|number of color map steps for inset (0: as outer map)|Int|
 |resolution|number of steps to compute|Int|
 |inset_opacity_factor|multiplier for opacity of inset color|Float|

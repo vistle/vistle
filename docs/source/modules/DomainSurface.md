@@ -34,4 +34,4 @@ show surface of grid
 |triangle|Show triangle|Int|
 |quad|Show quad|Int|
 |reuseCoordinates|Re-use the unstructured grids coordinate list and data-object|Int|
-|save_memory|Less memory intensive algorithm|Int|
+|algorithm|algorithm to use (IterateOverFaces, IterateOverVertices, IterateOverElements)|Int|

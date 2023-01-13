@@ -13,6 +13,7 @@ Modules
    BoundingBox.md
    COVER.md
    Cache.md
+   Calc.md
    CellSelect.md
    CellToVert.md
    Color.md
