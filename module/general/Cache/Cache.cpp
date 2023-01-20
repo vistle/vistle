@@ -110,7 +110,7 @@ message::CompressionMode Cache::archiveCompression() const
 
 int Cache::archiveCompressionSpeed() const
 {
-    return message::CompressionMode(m_archiveCompression->getValue());
+    return m_archiveCompressionSpeed->getValue();
 }
 
 #define CERR std::cerr << "Cache: "
