@@ -768,7 +768,7 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
         #target_compile_definitions(${targetname} PRIVATE MODULE_DESCRIPTION="${description}")
 
         set_target_properties(${targetname} PROPERTIES FOLDER "Modules")
-        target_link_libraries(${targetname} ${Boost_LIBRARIES} ${MPI_C_LIBRARIES} vistle_module ${BOOST_MPI})
+        target_link_libraries(${targetname} ${Boost_LIBRARIES} ${MPI_C_LIBRARIES} vistle_module ${BOOST_MPI} vistle_config)
         if(USE_LIBOMP AND LIBOMP)
             #message("Linking ${targetname} against libomp: ${LIBOMP}")
             target_link_libraries(${targetname} ${LIBOMP})

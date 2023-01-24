@@ -14,6 +14,7 @@
 #include "export.h"
 
 class VistleInteractor;
+class CoverConfigBridge;
 
 namespace gui {
 class Parameters;
@@ -28,7 +29,7 @@ inline std::string to_string(const string &s)
 
 namespace vistle {
 
-typedef boost::mpl::vector<Integer, Float, ParamVector, std::string> Parameters;
+typedef boost::mpl::vector<Integer, Float, ParamVector, IntParamVector, std::string> Parameters;
 
 class V_COREEXPORT Parameter {
 public:
@@ -124,6 +125,7 @@ class ParameterBase: public Parameter {
     friend class VistleConnection;
     friend class gui::Parameters;
     friend class ::VistleInteractor;
+    friend class ::CoverConfigBridge;
 
     virtual bool setValue(T value, bool init = false, bool delayed = false)
     {

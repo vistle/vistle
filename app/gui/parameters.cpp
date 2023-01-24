@@ -288,7 +288,9 @@ void Parameters::newParameter(int moduleId, QString parameterName)
         m_propToParam[prop] = parameterName;
         QString group = QString::fromStdString(p->group());
         bool expanded = false;
-        if (parameterName.startsWith("_")) {
+        if (parameterName.startsWith("_config:")) {
+            group = "Configuration Parameters";
+        } else if (parameterName.startsWith("_")) {
             group = "System Parameters";
         } else {
             expanded = p->isGroupExpanded();

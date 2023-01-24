@@ -398,6 +398,11 @@ static int getVistleSession()
     return vistle::message::Id::Vistle;
 }
 
+static int getWorkflowConfig()
+{
+    return vistle::message::Id::Config;
+}
+
 static std::vector<int> getAllHubs()
 {
     std::unique_lock<PythonStateAccessor> guard(access());
@@ -1375,6 +1380,7 @@ PY_MODULE(_vistle, m)
     py::enum_<message::Id::Reserved>(id, "Id")
         .value("Invalid", message::Id::Invalid)
         .value("Vistle", message::Id::Vistle)
+        .value("Config", message::Id::Config)
         .value("Broadcast", message::Id::Broadcast)
         .value("ForBroadcast", message::Id::ForBroadcast)
         .value("NextHop", message::Id::NextHop)
@@ -1530,6 +1536,7 @@ PY_MODULE(_vistle, m)
     m.def("waitForNamedHubs", waitForNamedHubs, "wait for named hubs to connect");
     m.def("getMasterHub", getMasterHub, "get ID of master hub");
     m.def("getVistleSession", getVistleSession, "get ID for Vistle session");
+    m.def("getWorkflowConfig", getWorkflowConfig, "get ID for workflow configuration");
     m.def("getAllHubs", getAllHubs, "get ID of all known hubs");
     m.def("getHub", getHub, "get ID of hub for module with ID `arg1`");
     m.def("getConnections", getConnections, "get connections to/from port `arg2` of module with ID `arg1`");

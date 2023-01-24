@@ -687,7 +687,7 @@ bool ClusterManager::handle(const message::Buffer &message, const MessagePayload
             return sendHub(message, payload);
         }
     }
-    if (message::Id::isHub(message.destId())) {
+    if (message::Id::isHub(message.destId()) || message.destId() == message::Id::Config) {
         if (destHub != hubId() || message.type() == message::EXECUTE || message.type() == message::CANCELEXECUTE ||
             message.type() == message::COVER) {
             return sendHub(message, payload);
@@ -1916,7 +1916,7 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam)
 #endif
 
     assert(setParam.getModule() >= Id::ModuleBase || setParam.getModule() == Id::Vistle ||
-           Id::isHub(setParam.getModule()));
+           setParam.getModule() == Id::Config || Id::isHub(setParam.getModule()));
     if (setParam.getModule() == Id::Vistle)
         m_compressionSettingsValid = false;
     int sender = setParam.senderId();
@@ -1924,7 +1924,7 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam)
     RunningMap::iterator i = runningMap.find(setParam.getModule());
     Module *mod = nullptr;
     if (i == runningMap.end()) {
-        if (isLocal(setParam.getModule())) {
+        if (isLocal(setParam.getModule()) && setParam.getModule() != message::Id::Config) {
             CERR << "did not find module for SetParameter: " << setParam.getModule() << ": " << setParam << std::endl;
         }
     } else {
@@ -1941,13 +1941,14 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam)
         } else {
             return Communicator::the().broadcastAndHandleMessage(setParam);
         }
-    } else if (message::Id::isModule(sender) && sender == setParam.getModule()) {
+    } else if (message::Id::isModule(sender) &&
+               (sender == setParam.getModule() || setParam.getModule() == message::Id::Config)) {
         // message from owning module
         auto param = getParameter(sender, setParam.getName());
         if (param) {
             setParam.apply(param);
         }
-        if (dest == Id::ForBroadcast) {
+        if (dest == Id::ForBroadcast || dest == Id::Config) {
             sendHub(setParam, MessagePayload(), dest);
             return true;
         } else if (!Communicator::the().isMaster()) {

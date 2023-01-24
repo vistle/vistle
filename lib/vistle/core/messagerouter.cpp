@@ -247,7 +247,8 @@ bool Router::toTracker(const Message &msg, Identify::Identity senderType)
 bool Router::toHandler(const Message &msg, Identify::Identity senderType)
 {
     const int t = msg.type();
-    if (msg.destId() == Id::NextHop || msg.destId() == Id::Broadcast || msg.destId() == m_hubId) {
+    if (msg.destId() == Id::NextHop || msg.destId() == Id::Broadcast || msg.destId() == m_hubId ||
+        msg.destId() == Id::Config) {
         return true;
     }
     if (m_identity == Identify::HUB) {

@@ -98,6 +98,8 @@ public:
     void init();
     void quit();
     bool handleMessage(const message::SetParameter &message);
+    bool handleMessage(const message::AddParameter &message);
+    bool handleMessage(const message::RemoveParameter &message);
     virtual void sendParameterMessage(const message::Message &message, const buffer *payload = nullptr) const = 0;
     template<class Payload>
     void sendParameterMessageWithPayload(message::Message &message, Payload &payload);
@@ -116,7 +118,13 @@ private:
     std::string m_name = std::string("ParameterManager");
     std::string m_currentParameterGroup;
     bool m_currentParameterGroupExpanded = true;
-    std::map<std::string, std::shared_ptr<Parameter>> parameters;
+    struct ParameterData {
+        ParameterData() = default;
+        ParameterData(std::shared_ptr<Parameter> &param): param(param) {}
+        std::shared_ptr<Parameter> param;
+        bool owner = true;
+    };
+    std::map<std::string, ParameterData> m_parameters;
     bool m_inParameterChanged = false;
     std::vector<const Parameter *> m_delayedChanges;
 

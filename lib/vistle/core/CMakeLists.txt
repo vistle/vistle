@@ -200,6 +200,7 @@ vistle_target_link_libraries(
     Boost::serialization
     PUBLIC
     Boost::system)
+target_link_libraries(vistle_core PRIVATE vistle_config)
 
 if(ZFP_FOUND)
     target_compile_definitions(vistle_core PRIVATE HAVE_ZFP)

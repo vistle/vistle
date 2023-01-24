@@ -44,6 +44,8 @@ std::string Id::toString(Reserved id)
         return "Invalid";
     case Vistle:
         return "Vistle session";
+    case Config:
+        return "Per-workflow settings";
     case Broadcast:
         return "Broadcast";
     case ForBroadcast:

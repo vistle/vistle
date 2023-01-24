@@ -52,6 +52,10 @@ StateTracker::StateTracker(int id, const std::string &name, std::shared_ptr<Port
     Module session(Id::Vistle, Id::MasterHub); // for session parameters
     session.name = "Vistle Session";
     runningMap.emplace(Id::Vistle, session);
+
+    Module config(Id::Config, Id::MasterHub); // for settings tied to currently loaded workflow
+    config.name = "Workflow Configuration";
+    runningMap.emplace(Id::Config, config);
 }
 
 StateTracker::mutex &StateTracker::getMutex()
@@ -149,6 +153,9 @@ int StateTracker::getHub(int id) const
     mutex_locker guard(m_stateMutex);
     if (Id::isHub(id)) {
         return id;
+    }
+    if (id == Id::Vistle || id == Id::Config) {
+        return Id::MasterHub;
     }
 
     RunningMap::const_iterator it = runningMap.find(id);
@@ -1219,7 +1226,7 @@ bool StateTracker::handlePriv(const message::AddParameter &addParam)
     ParameterOrder &po = mod.paramOrder;
     ParameterMap::iterator it = pm.find(addParam.getName());
     if (it != pm.end()) {
-        if (addParam.senderId() == Id::Vistle)
+        if (addParam.senderId() == Id::Vistle || addParam.senderId() == Id::Config)
             return true;
         CERR << "duplicate parameter " << addParam.moduleName() << ":" << addParam.getName() << std::endl;
     } else {

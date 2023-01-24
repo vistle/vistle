@@ -1409,12 +1409,14 @@ bool SetParameterChoices::apply(std::shared_ptr<vistle::Parameter> param,
                                 const SetParameterChoices::Payload &payload) const
 {
     if (param->type() != Parameter::Integer && param->type() != Parameter::String) {
-        std::cerr << "SetParameterChoices::apply(): parameter type not compatible with choice" << std::endl;
+        std::cerr << "SetParameterChoices::apply(): " << param->module() << ":" << param->getName()
+                  << ": type not compatible with choice" << std::endl;
         return false;
     }
 
     if (param->presentation() != Parameter::Choice) {
-        std::cerr << "SetParameterChoices::apply(): parameter presentation is not 'Choice'" << std::endl;
+        std::cerr << "SetParameterChoices::apply(): " << param->module() << ":" << param->getName()
+                  << ": parameter presentation is not 'Choice'" << std::endl;
         return false;
     }
 

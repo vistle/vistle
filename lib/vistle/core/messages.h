@@ -125,7 +125,7 @@ public:
 private:
     int m_id;
     address_t m_name;
-    address_t m_loginName;
+    module_name_t m_loginName;
     address_t m_realName;
 
     int m_numRanks;
@@ -135,8 +135,8 @@ private:
     address_t m_address;
     bool m_hasUserInterface;
     bool m_hasVrb;
-    port_name_t m_systemType;
-    port_name_t m_arch;
+    module_name_t m_systemType;
+    module_name_t m_arch;
 };
 
 //! request that a slave hub be deleted

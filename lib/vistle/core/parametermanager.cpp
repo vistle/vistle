@@ -19,8 +19,8 @@ ParameterManager::ParameterManager(const std::string &name, int id): m_id(id), m
 
 ParameterManager::~ParameterManager()
 {
-    if (!parameters.empty()) {
-        CERR << parameters.size() << " not yet removed and quitting" << std::endl;
+    if (!m_parameters.empty()) {
+        CERR << m_parameters.size() << " not yet removed and quitting" << std::endl;
     }
 }
 
@@ -32,11 +32,11 @@ void ParameterManager::setCurrentParameterGroup(const std::string &group, bool d
 
 void ParameterManager::init()
 {
-    for (auto &pair: parameters) {
+    for (auto &pair: m_parameters) {
 #if 0
-      parameterChangedWrapper(pair.second.get());
+        parameterChangedWrapper(pair.second.get());
 #else
-        m_delayedChanges.push_back(pair.second.get());
+        m_delayedChanges.push_back(pair.second.param.get());
 #endif
     }
 }
@@ -44,19 +44,90 @@ void ParameterManager::init()
 void ParameterManager::quit()
 {
     std::vector<vistle::Parameter *> toRemove;
-    for (auto &param: parameters) {
-        toRemove.push_back(param.second.get());
+    for (auto &param: m_parameters) {
+        if (param.second.owner)
+            toRemove.push_back(param.second.param.get());
     }
     for (auto &param: toRemove) {
         removeParameter(param);
     }
 }
 
+bool ParameterManager::handleMessage(const message::AddParameter &add)
+{
+    if (add.destId() != id())
+        return false;
+    if (id() != message::Id::Config)
+        return false;
+
+    const auto *name = add.getName();
+    const auto *desc = add.description();
+    const auto pres = static_cast<Parameter::Presentation>(add.getPresentation());
+    Parameter *param = nullptr;
+    switch (add.getParameterType()) {
+    case Parameter::Invalid:
+        break;
+    case Parameter::Integer:
+        param = addParameter<Integer>(name, desc, Integer(), pres);
+        std::cerr << "add int param: " << name << std::endl;
+        break;
+    case Parameter::Float:
+        param = addParameter<Float>(name, desc, Float(), pres);
+        break;
+    case Parameter::Vector:
+        param = addParameter(name, desc, ParamVector(), pres);
+        break;
+    case Parameter::IntVector:
+        param = addParameter(name, desc, IntParamVector(), pres);
+        break;
+    case Parameter::String:
+        param = addParameter(name, desc, std::string(), pres);
+        break;
+    case Parameter::StringVector:
+        param = addParameter(name, desc, StringParamVector(), pres);
+        break;
+    default:
+        CERR << "handleMessage: unknown parameter type " << add.getParameterType() << std::endl;
+        assert("unknown parameter type" == 0);
+        return false;
+        break;
+    }
+
+    if (param) {
+        auto it = m_parameters.find(name);
+        if (it != m_parameters.end()) {
+            it->second.owner = false;
+        }
+    }
+
+    return true;
+}
+
+bool ParameterManager::handleMessage(const message::RemoveParameter &remove)
+{
+    if (remove.destId() != id())
+        return false;
+    if (id() != message::Id::Config)
+        return false;
+
+    const auto *name = remove.getName();
+    auto it = m_parameters.find(name);
+    if (it == m_parameters.end())
+        return false;
+    if (it->second.owner)
+        // only we are allowed to remove this parameter
+        return false;
+
+    return removeParameter(it->second.param.get());
+}
+
 bool ParameterManager::handleMessage(const message::SetParameter &param)
 {
-    bool handled = false;
+    if (param.destId() != id())
+        return false;
 
     // sent by controller
+    bool handled = false;
     switch (param.getParameterType()) {
     case Parameter::Invalid:
         applyDelayedChanges();
@@ -135,7 +206,7 @@ void ParameterManager::applyDelayedChanges()
 
 Parameter *ParameterManager::addParameterGeneric(const std::string &name, std::shared_ptr<Parameter> param)
 {
-    parameters[name] = param;
+    m_parameters[name] = param;
 
     message::AddParameter add(*param, m_name);
     add.setDestId(message::Id::ForBroadcast);
@@ -151,17 +222,19 @@ Parameter *ParameterManager::addParameterGeneric(const std::string &name, std::s
 
 bool ParameterManager::removeParameter(Parameter *param)
 {
-    auto it = parameters.find(param->getName());
-    if (it == parameters.end()) {
+    auto it = m_parameters.find(param->getName());
+    if (it == m_parameters.end()) {
         CERR << "removeParameter: no parameter with name " << param->getName() << std::endl;
         return false;
     }
 
-    message::RemoveParameter remove(*param, m_name);
-    remove.setDestId(message::Id::ForBroadcast);
-    sendParameterMessage(remove);
+    if (it->second.owner) {
+        message::RemoveParameter remove(*param, m_name);
+        remove.setDestId(message::Id::ForBroadcast);
+        sendParameterMessage(remove);
+    }
 
-    parameters.erase(it);
+    m_parameters.erase(it);
 
     return true;
 }
@@ -169,29 +242,31 @@ bool ParameterManager::removeParameter(Parameter *param)
 bool ParameterManager::updateParameter(const std::string &name, const Parameter *param,
                                        const message::SetParameter *inResponseTo, Parameter::RangeType rt)
 {
-    auto i = parameters.find(name);
+    auto i = m_parameters.find(name);
 
-    if (i == parameters.end()) {
+    if (i == m_parameters.end()) {
         CERR << "setParameter: " << name << " not found" << std::endl;
         return false;
     }
 
-    if (i->second->type() != param->type()) {
-        CERR << "setParameter: type mismatch for " << name << " " << i->second->type() << " != " << param->type()
+    if (i->second.param->type() != param->type()) {
+        CERR << "setParameter: type mismatch for " << name << " " << i->second.param->type() << " != " << param->type()
              << std::endl;
         return false;
     }
 
-    if (i->second.get() != param) {
+    if (i->second.param.get() != param) {
         CERR << "setParameter: pointer mismatch for " << name << std::endl;
         return false;
     }
 
-    message::SetParameter set(m_id, name, i->second, rt);
+    message::SetParameter set(m_id, name, i->second.param, rt);
     if (inResponseTo) {
         set.setReferrer(inResponseTo->uuid());
         if (inResponseTo->isDelayed())
             set.setDelayed();
+        if (!i->second.owner)
+            return true;
     }
     set.setDestId(message::Id::ForBroadcast);
     sendParameterMessage(set);
@@ -254,13 +329,14 @@ Parameter *ParameterManager::addParameter(const std::string &name, const std::st
 
 std::shared_ptr<Parameter> ParameterManager::findParameter(const std::string &name) const
 {
-    auto i = parameters.find(name);
+    auto it = m_parameters.find(name);
 
-    if (i == parameters.end())
+    if (it == m_parameters.end())
         return std::shared_ptr<Parameter>();
 
-    return i->second;
+    return it->second.param;
 }
+
 
 StringParameter *ParameterManager::addStringParameter(const std::string &name, const std::string &description,
                                                       const std::string &value, Parameter::Presentation p)
