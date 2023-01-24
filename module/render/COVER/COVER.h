@@ -3,6 +3,7 @@
 
 #include <future>
 #include <string>
+#include <memory>
 
 #include <osg/Group>
 #include <osg/Sequence>
@@ -18,10 +19,16 @@
 #include "export.h"
 
 class VistleInteractor;
+class CoverConfigBridge;
 
 namespace opencover {
 class coVRPlugin;
+namespace config {
+class Access;
 }
+} // namespace opencover
+
+namespace vistle {} // namespace vistle
 
 class PluginRenderObject: public vistle::RenderObject {
 public:
@@ -37,6 +44,8 @@ public:
 };
 
 class V_COVEREXPORT COVER: public vistle::Renderer {
+    friend class CoverConfigBridge;
+
 public:
     COVER(const std::string &name, int moduleId, mpi::communicator comm);
     ~COVER() override;
@@ -70,6 +79,7 @@ public:
                           const vistle::message::SetParameter &msg) override;
     bool parameterRemoved(const int senderId, const std::string &name,
                           const vistle::message::RemoveParameter &msg) override;
+    bool changeParameter(const vistle::Parameter *p) override;
     void prepareQuit() override;
 
     bool executeAll() const;
@@ -139,6 +149,9 @@ protected:
     ColorMapMap m_colormaps;
 
     std::set<int> m_dataTypeWarnings; // set of unsupported data types for which a warning has already been printed
+
+    std::unique_ptr<opencover::config::Access> m_config;
+    std::unique_ptr<CoverConfigBridge> m_coverConfigBridge;
 };
 
 #endif

@@ -27,6 +27,7 @@
 #include <VistlePluginUtil/VistleInteractor.h>
 #include <VistlePluginUtil/VistleMessage.h>
 #include "VistleGeometryGenerator.h"
+#include "CoverConfigBridge.h"
 
 #include "COVER.h"
 
@@ -44,6 +45,10 @@
 
 #include <vistle/util/findself.h>
 #include <vistle/util/sysdep.h>
+#include <vistle/util/directory.h>
+
+#include <OpenConfig/config.h>
+#include <vistle/config/config.h>
 
 #include <vistle/manager/run_on_main_thread.h>
 
@@ -60,6 +65,7 @@ using namespace opencover;
 using namespace vistle;
 
 COVER *COVER::s_instance = nullptr;
+
 
 COVER::DelayedObject::DelayedObject(std::shared_ptr<PluginRenderObject> ro, VistleGeometryGenerator generator)
 : ro(ro)
@@ -197,6 +203,14 @@ COVER::COVER(const std::string &name, int moduleId, mpi::communicator comm): vis
     assert(!s_instance);
     s_instance = this;
 
+    int argc = 1;
+    char *argv[] = {strdup("COVER"), nullptr};
+    vistle::Directory dir(argc, argv);
+    vistle::config::Access vistleConfig;
+    m_config.reset(new opencover::config::Access(vistleConfig.hostname(), vistleConfig.cluster(), comm.rank()));
+    m_coverConfigBridge.reset(new CoverConfigBridge(this));
+    m_config->setWorkspaceBridge(m_coverConfigBridge.get());
+
     //createInputPort("data_in"); - already done by Renderer base class
 
     vistleRoot = new osg::Group;
@@ -311,12 +325,24 @@ bool COVER::parameterChanged(const int senderId, const std::string &name, const 
     return true;
 }
 
+bool COVER::changeParameter(const Parameter *p)
+{
+    if (m_coverConfigBridge) {
+        m_coverConfigBridge->changeParameter(p);
+    }
+
+    return Renderer::changeParameter(p);
+}
+
 void COVER::prepareQuit()
 {
     removeAllObjects();
     if (cover)
         cover->getObjectsRoot()->removeChild(vistleRoot);
     vistleRoot.release();
+
+    m_config->setWorkspaceBridge(nullptr);
+    m_coverConfigBridge.reset();
 
     Renderer::prepareQuit();
 }
@@ -722,6 +748,9 @@ std::string COVER::setupEnvAndGetLibDir(const std::string &bindir)
         envvars.push_back("LC_MEASUREMENT");
         envvars.push_back("LC_IDENTIFICATION");
         envvars.push_back("LC_ALL");
+
+        // covconfig
+        envvars.push_back("CONFIG_DEBUG");
 
         // covise config
         envvars.push_back("COCONFIG");
