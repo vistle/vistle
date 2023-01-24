@@ -179,7 +179,5 @@ path_add PYTHONPATH "${builddir}/share/vistle"
 path_add PYTHONPATH "${COVISEDIR}/Python"
 path_add PYTHONPATH "${COVISEDIR}/${ARCHSUFFIX}/lib"
 
-export ACK_OPTIONS="--ignore-dir=doc"
-
 PATH_add "${builddir}/bin"
 PATH_add "${builddir}/bin/$VISTLE_BUILD_TYPE"
