@@ -27,6 +27,7 @@
 #include <deque>
 #include <mutex>
 #include <future>
+#include <memory>
 
 #include <vistle/core/paramvector.h>
 #include <vistle/core/object.h>
@@ -37,6 +38,8 @@
 #include <vistle/core/parametermanager.h>
 #include <vistle/core/messagesender.h>
 #include <vistle/core/messagepayload.h>
+#include <vistle/config/config.h>
+#include <vistle/util/hostname.h>
 
 #include "objectcache.h"
 #define RESULTCACHE_SKIP_DEFINITION
@@ -60,6 +63,10 @@ class StateTracker;
 struct HubData;
 class Module;
 class Renderer;
+
+namespace config {
+class Access;
+}
 
 namespace message {
 class Message;
@@ -276,6 +283,8 @@ protected:
     int m_size;
     const int m_id;
 
+    std::unique_ptr<config::Access> m_config;
+
     int m_executionCount, m_iteration;
     std::set<Port *> m_withOutput;
 
@@ -427,15 +436,16 @@ V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);
 #define MODULE_MAIN_THREAD(X, THREAD_MODE) \
     int main(int argc, char **argv) \
     { \
-        if (argc != 4) { \
-            std::cerr << "module requires exactly 4 parameters" << std::endl; \
+        if (argc != 5) { \
+            std::cerr << "module requires exactly 5 parameters" << std::endl; \
             exit(1); \
         } \
         int rank = -1, size = -1; \
         try { \
-            std::string shmname = argv[1]; \
-            const std::string name = argv[2]; \
-            int moduleID = atoi(argv[3]); \
+            std::string cluster = argv[1]; \
+            std::string shmname = argv[2]; \
+            const std::string name = argv[3]; \
+            int moduleID = atoi(argv[4]); \
             mpi::environment mpi_environment(argc, argv, THREAD_MODE, true); \
             vistle::registerTypes(); \
             mpi::communicator comm_world; \
@@ -443,6 +453,7 @@ V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);
             size = comm_world.size(); \
             vistle::Module::setup(shmname, moduleID, rank); \
             { \
+                vistle::config::Access config(vistle::hostname(), cluster, rank); \
                 X module(name, moduleID, comm_world); \
                 module.eventLoop(); \
             } \

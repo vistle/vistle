@@ -23,6 +23,7 @@
 #include <vistle/util/shmconfig.h>
 #include <vistle/util/threadname.h>
 #include <vistle/util/affinity.h>
+#include <vistle/config/config.h>
 #include <vistle/core/object.h>
 #include <vistle/core/empty.h>
 #include <vistle/core/export.h>
