@@ -1,5 +1,8 @@
 #include "parametermanager.h"
 #include "messages.h"
+#include <vistle/config/config.h>
+#include <vistle/config/value.h>
+#include <vistle/config/array.h>
 
 #include <iostream>
 
@@ -305,11 +308,46 @@ void ParameterManager::setParameterFilters(StringParameter *param, const std::st
     updateParameter(param->getName(), param, nullptr, Parameter::Minimum);
 }
 
+template<class V>
+V getParameterDefault(const std::string &module, const std::string &name, const V &value)
+{
+    if (name.find("_config:") == 0) // avoid recursive default look-up for config parameters
+        return value;
+
+    config::Value<V> def("modules/default", module, name, value);
+    if (!def.exists()) {
+        def = config::Value<V>("modules/default", "ALL", name, value);
+    }
+    return def.value();
+}
+
+template<class V>
+ParameterVector<V> getParameterDefault(const std::string &module, const std::string &name,
+                                       const ParameterVector<V> &value)
+{
+    if (name.find("_config:") == 0)
+        return value;
+
+    config::Array<V> def("modules/default", module, name);
+    if (!def.exists()) {
+        def = config::Array<V>("modules/default", "ALL", name);
+    }
+    if (def.size() != value.size())
+        return value;
+
+    ParameterVector<V> val;
+    for (size_t i = 0; i < def.size(); ++i) {
+        val.push_back(def[i]);
+    }
+    return val;
+}
+
 template<class T>
 Parameter *ParameterManager::addParameter(const std::string &name, const std::string &description, const T &value,
                                           Parameter::Presentation pres)
 {
-    std::shared_ptr<Parameter> p(new ParameterBase<T>(id(), name, value));
+    auto def = getParameterDefault(m_name, name, value);
+    std::shared_ptr<Parameter> p(new ParameterBase<T>(id(), name, def));
     p->setDescription(description);
     p->setGroup(currentParameterGroup());
     p->setGroupExpanded(m_currentParameterGroupExpanded);

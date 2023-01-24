@@ -15,7 +15,7 @@ bool ParameterManager::setParameter(const std::string &name, const T &value, con
     }
     auto p = std::dynamic_pointer_cast<ParameterBase<T>>(param);
     if (!p) {
-        std::cerr << "ParameterManager: parameter " << name << " not of requested type" << std::endl;
+        std::cerr << "ParameterManager: parameter " << name << " not of requested type, value=" << value << std::endl;
         return false;
     }
 
