@@ -101,7 +101,6 @@ elif [ -f .debug ]; then
     fi
 fi
 if [ -n "${ARCHSUFFIX}" ]; then
-    echo ARCHSUFFIX=$ARCHSUFFIX
     export ARCHSUFFIX
 fi
 
@@ -170,7 +169,7 @@ case "$system" in
 esac
 
 export VMAKE_BUILD="$builddir"
-echo Build: "$builddir"
+echo Build: "$builddir, ${ARCHSUFFIX:-no ARCHSUFFIX}, type=$VISTLE_BUILD_TYPE"
 
 export COVISEDESTDIR="$(pwd -P)/${builddir}"
 export COVISE_PATH="$COVISEDESTDIR:$COVISEDIR"
