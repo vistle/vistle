@@ -426,4 +426,11 @@ bool ParameterManager::changeParameter(const Parameter *p)
     return true;
 }
 
+PARAM_TYPE_TEMPLATE(, Integer)
+PARAM_TYPE_TEMPLATE(, Float)
+PARAM_TYPE_TEMPLATE(, std::string)
+PARAM_TYPE_TEMPLATE(, ParameterVector<Integer>)
+PARAM_TYPE_TEMPLATE(, ParameterVector<Float>)
+PARAM_TYPE_TEMPLATE(, ParameterVector<std::string>)
+
 } // namespace vistle

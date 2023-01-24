@@ -123,6 +123,20 @@ private:
     std::deque<message::SetParameter> m_queue;
 };
 
+#define PARAM_TYPE_TEMPLATE(spec, Type) \
+    spec template V_COREEXPORT Parameter *ParameterManager::addParameter( \
+        const std::string &name, const std::string &description, const Type &value, \
+        Parameter::Presentation presentation); \
+    spec template V_COREEXPORT bool ParameterManager::setParameter<Type>(const std::string &name, const Type &value, \
+                                                                         const message::SetParameter *inResponseTo);
+
+PARAM_TYPE_TEMPLATE(extern, Integer)
+PARAM_TYPE_TEMPLATE(extern, Float)
+PARAM_TYPE_TEMPLATE(extern, std::string)
+PARAM_TYPE_TEMPLATE(extern, ParameterVector<Integer>)
+PARAM_TYPE_TEMPLATE(extern, ParameterVector<Float>)
+PARAM_TYPE_TEMPLATE(extern, ParameterVector<std::string>)
+
 } // namespace vistle
 
 #include "parametermanager_impl.h"
