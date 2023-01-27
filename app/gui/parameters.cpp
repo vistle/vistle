@@ -394,7 +394,10 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
             m_intChoiceManager->setValue(prop, ip->getValue());
             auto defInt = ip->getDefaultValue();
             auto strings = m_intChoiceManager->enumNames(prop);
-            QString tip = QString("%1 (default: %2)").arg(QString::fromStdString(p->description()), strings[defInt]);
+            QString defString;
+            if (defInt >= 0 && strings.size() > defInt)
+                defString = strings[defInt];
+            QString tip = QString("%1 (default: %2)").arg(QString::fromStdString(p->description()), defString);
             prop->setStatusTip(tip);
         } else {
             m_intManager->setValue(prop, ip->getValue());
