@@ -32,7 +32,7 @@ Chainmail::Chainmail(const std::string &name, int moduleID, mpi::communicator co
 {
     createInputPort("quads_in", "Unstructured grid with quads");
     createInputPort("data_in", "mapped data");
-    createOutputPort("circles_out", "circles");
+    m_circlesOut = createOutputPort("circles_out", "circles");
     createOutputPort("data_out", "tubes or spheres with mapped data");
 
     m_geoMode = addIntParameter("geo_mode", "geometry generation mode", Circle, Parameter::Choice);
@@ -40,8 +40,8 @@ Chainmail::Chainmail(const std::string &name, int moduleID, mpi::communicator co
 
     m_radius = addFloatParameter("radius", "radius of the rings (diameter = radius / 20)", -1.0);
     m_numXSegments =
-        addIntParameter("number of torus segments", "number of quads used to aproximate the torus in it's plane", 20);
-    m_numYSegments = addIntParameter("number of diameter segments",
+        addIntParameter("number_of_torus_segments", "number of quads used to aproximate the torus in it's plane", 20);
+    m_numYSegments = addIntParameter("number_of_diameter_segments",
                                      "number of quads used to aproximate the torus around its axis", 5);
 }
 
@@ -198,6 +198,9 @@ bool Chainmail::compute()
         sendError("no input grid");
         return true;
     }
+    if (!m_circlesOut->isConnected())
+        return true;
+    
     Index circlesPerTorus = m_numXSegments->getValue();
     Index vertsPerCircle = m_numYSegments->getValue();
     Index vertsPerTorus = circlesPerTorus * vertsPerCircle;
