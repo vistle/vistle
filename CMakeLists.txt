@@ -254,7 +254,11 @@ if(NOT VISTLE_GUI_ONLY)
     set(ICET_MPI_LIBS "IceTMPI")
     set(ICET_FOUND TRUE)
 
-    vistle_find_package(TBB)
+    #prefare a TBBConfig.cmake over FindTBB.cmake
+    vistle_find_package(TBB CONFIG NO_MODULE)
+    if(NOT ${TBB_FOUND})
+        vistle_find_package(TBB)
+    endif()
 endif(NOT VISTLE_GUI_ONLY)
 
 set(ASAN_COMPILE_FLAGS "")
