@@ -656,7 +656,7 @@ if(POLICY CMP0043)
 endif()
 
 if(WIN32)
-    option(VISTLE_PYTHON_DEBUG "for Debug builds, use expect Python built in Debug mode" OFF)
+    option(VISTLE_PYTHON_DEBUG "for Debug builds, use expect Python built in Debug mode" ON)
     if(VISTLE_PYTHON_DEBUG)
         add_compile_options("$<$<CONFIG:DEBUG>:-DPy_DEBUG>")
     endif()
