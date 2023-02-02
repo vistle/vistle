@@ -62,8 +62,8 @@ bool ShowGrid::compute()
     const bool showpgo = getIntParameter("polygon");
     const bool showqua = getIntParameter("quad");
     const bool showtri = getIntParameter("triangle");
-    const Integer cellnrmin = getIntParameter("Show Cells from Cell Nr. :");
-    const Integer cellnrmax = getIntParameter("Show Cells to Cell Nr. :");
+    const Integer cellnrmin = m_CellNrMin->getValue();
+    const Integer cellnrmax = m_CellNrMax->getValue();
 
 
     auto obj = expect<Object>("grid_in");
