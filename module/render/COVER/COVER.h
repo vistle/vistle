@@ -95,7 +95,8 @@ public:
         std::shared_ptr<PluginRenderObject> ro;
         std::string name;
         VistleGeometryGenerator generator;
-        std::shared_future<osg::MatrixTransform *> node_future;
+        std::shared_future<osg::Geode *> node_future;
+        osg::ref_ptr<osg::MatrixTransform> transform;
     };
     std::deque<DelayedObject> m_delayedObjects;
     size_t m_status = 0;

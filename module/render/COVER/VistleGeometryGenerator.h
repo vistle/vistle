@@ -18,7 +18,7 @@
 #endif
 
 namespace osg {
-class MatrixTransform;
+class Geode;
 }
 
 struct OsgColorMap {
@@ -69,7 +69,7 @@ public:
     void setColorMaps(const OsgColorMapMap *colormaps);
     void setGeometryCache(vistle::ResultCache<GeometryCache> &cache);
 
-    osg::MatrixTransform *operator()(osg::ref_ptr<osg::StateSet> state = NULL);
+    osg::Geode *operator()(osg::ref_ptr<osg::StateSet> state = NULL);
 
     static bool isSupported(vistle::Object::Type t);
 

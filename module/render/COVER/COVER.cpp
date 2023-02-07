@@ -522,6 +522,36 @@ std::shared_ptr<vistle::RenderObject> COVER::addObject(int senderId, const std::
     Creator &creator = getCreator(creatorId);
     if (pro->visibility != vistle::RenderObject::DontChange)
         creator.getVariant(variant, pro->visibility);
+    osg::MatrixTransform *transform = nullptr;
+    if (geometry) {
+        transform = new osg::MatrixTransform();
+        std::string nodename = geometry->getName();
+        transform->setName(nodename + ".transform");
+        osg::Matrix osgMat;
+        vistle::Matrix4 vistleMat = geometry->getTransform();
+        for (int i = 0; i < 4; ++i) {
+            for (int j = 0; j < 4; ++j) {
+                osgMat(i, j) = vistleMat.col(i)[j];
+            }
+        }
+        transform->setMatrix(osgMat);
+
+        const char *filename = pro->coverRenderObject->getAttribute("_model_file");
+        if (filename) {
+            osg::Node *filenode = nullptr;
+            if (!pro->coverRenderObject->isPlaceHolder()) {
+                filenode =
+                    coVRFileManager::instance()->loadFile(filename, NULL, transform, pro->coverRenderObject->getName());
+            }
+            if (!filenode) {
+                filenode = new osg::Node();
+                filenode->setName(filename);
+                transform->addChild(filenode);
+            }
+            m_fileAttachmentMap.emplace(pro->coverRenderObject->getName(), filename);
+        }
+    }
+
     if (VistleGeometryGenerator::isSupported(objType)) {
         auto vgr = VistleGeometryGenerator(pro, geometry, normals, texture);
         auto cache = getOrCreateGeometryCache<GeometryCache>(senderId, senderPort);
@@ -534,14 +564,15 @@ std::shared_ptr<vistle::RenderObject> COVER::addObject(int senderId, const std::
         }
         vgr.setColorMaps(&m_colormaps);
         m_delayedObjects.emplace_back(pro, vgr);
+        m_delayedObjects.back().transform = transform;
         //updateStatus();
     }
-    osg::ref_ptr<osg::Group> parent = getParent(cro.get());
     const int t = pro->timestep;
     if (t >= 0) {
         coVRAnimationManager::instance()->addSequence(creator.animated(variant));
     }
 
+    osg::ref_ptr<osg::Group> parent = getParent(cro.get());
     coVRPluginList::instance()->addObject(cro.get(), parent, cro->getGeometry(), cro->getNormals(), cro->getColors(),
                                           cro->getTexture());
     return pro;
@@ -581,40 +612,27 @@ bool COVER::render()
     for (int i = 0; i < numAdd; ++i) {
         auto &node_future = m_delayedObjects.front().node_future;
         auto &ro = m_delayedObjects.front().ro;
-        osg::MatrixTransform *transform = node_future.get();
-        if (ro->coverRenderObject && transform) {
+        osg::Geode *geode = node_future.get();
+        if (ro->coverRenderObject && geode) {
             int creatorId = ro->coverRenderObject->getCreator();
             Creator &creator = getCreator(creatorId);
 
-            ro->coverRenderObject->setNode(transform);
-            transform->setName(ro->coverRenderObject->getName());
+            auto tr = m_delayedObjects.front().transform;
+            geode->setNodeMask(~(opencover::Isect::Update | opencover::Isect::Intersection));
+            geode->setName(ro->coverRenderObject->getName());
+            tr->addChild(geode);
+            ro->coverRenderObject->setNode(tr);
             const std::string variant = ro->variant;
             const int t = ro->timestep;
             if (t >= 0) {
                 coVRAnimationManager::instance()->addSequence(creator.animated(variant));
             }
-            const char *filename = ro->coverRenderObject->getAttribute("_model_file");
-            if (filename) {
-                osg::Node *filenode = nullptr;
-                if (!ro->coverRenderObject->isPlaceHolder()) {
-                    filenode = coVRFileManager::instance()->loadFile(filename, NULL, transform,
-                                                                     ro->coverRenderObject->getName());
-                }
-                if (!filenode) {
-                    filenode = new osg::Node();
-                    filenode->setName(filename);
-                    transform->addChild(filenode);
-                }
-                m_fileAttachmentMap.emplace(ro->coverRenderObject->getName(), filename);
-            } else {
-                transform->setNodeMask(~(opencover::Isect::Update | opencover::Isect::Intersection));
-            }
             osg::ref_ptr<osg::Group> parent = getParent(ro->coverRenderObject.get());
-            parent->addChild(transform);
+            parent->addChild(tr);
         } else if (!ro->coverRenderObject) {
             std::cerr << rank() << ": discarding delayed object " << m_delayedObjects.front().name
                       << " - already deleted" << std::endl;
-        } else if (!transform) {
+        } else if (!geode) {
             //std::cerr << rank() << ": discarding delayed object " << ro->coverRenderObject->getName() << ": no node created" << std::endl;
         }
         m_delayedObjects.pop_front();
