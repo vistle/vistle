@@ -23,7 +23,16 @@ VistleRenderObject::VistleRenderObject(std::shared_ptr<const vistle::RenderObjec
 
 VistleRenderObject::VistleRenderObject(vistle::Object::const_ptr obj)
 : m_obj(obj), m_roGeo(NULL), m_roData(NULL), m_roNorm(NULL)
-{}
+{
+    osg::Matrix osgMat;
+    vistle::Matrix4 vistleMat = obj->getTransform();
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            osgMat(i, j) = vistleMat.col(i)[j];
+        }
+    }
+    transform = osgMat;
+}
 
 VistleRenderObject::~VistleRenderObject()
 {
