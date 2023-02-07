@@ -2081,12 +2081,12 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
             if (timestep >= 0) {
                 assert(numReductions < m_numTimesteps);
             }
-            if (cancelRequested(true))
-                return true;
             if (timestep >= 0) {
                 ++numReductions;
                 assert(numReductions <= m_numTimesteps);
             }
+            if (cancelRequested(true))
+                return true;
 #ifdef REDUCE_DEBUG
             CERR << "runReduce(t=" << timestep << "): exec count = " << m_executionCount << std::endl;
 #endif
