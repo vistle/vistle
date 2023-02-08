@@ -235,7 +235,7 @@ bool CaseInfo::checkFile(const char *filename)
     boost::uintmax_t fileSize;
     boost::system::error_code ec;
 
-    FILE *fi = fopen(filename, "r");
+    FILE *fi = fopen(filename, "rb");
 
     if (!fi) {
         std::cout << filename << strerror(errno) << std::endl;
