@@ -1799,35 +1799,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                 settings.handleMessage(setParam);
             }
 
-            // update linked parameters
-            if (message::Id::isModule(setParam.destId())) {
-                if (setParam.getModule() != setParam.senderId()) {
-                    const Port *port = m_stateTracker.portTracker()->findPort(setParam.destId(), setParam.getName());
-                    std::shared_ptr<Parameter> applied;
-
-                    auto param = m_stateTracker.getParameter(setParam.destId(), setParam.getName());
-                    if (param) {
-                        applied.reset(param->clone());
-                        setParam.apply(applied);
-                    }
-
-                    if (port && applied) {
-                        ParameterSet conn = m_stateTracker.getConnectedParameters(*applied);
-
-                        for (ParameterSet::iterator it = conn.begin(); it != conn.end(); ++it) {
-                            const auto p = *it;
-                            if (p->module() == setParam.destId() && p->getName() == setParam.getName()) {
-                                // don't update parameter which was set originally again
-                                continue;
-                            }
-                            message::SetParameter set(p->module(), p->getName(), applied);
-                            set.setDestId(p->module());
-                            set.setUuid(setParam.uuid());
-                            sendAll(set);
-                        }
-                    }
-                }
-            }
+            updateLinkedParameters(setParam);
             break;
         }
         case message::SPAWNPREPARED: {
@@ -3431,6 +3403,41 @@ void Hub::spawnModule(const std::string &path, const std::string &name, int spaw
         sendManager(ex);
     }
 }
+
+void Hub::updateLinkedParameters(const message::SetParameter &setParam)
+{
+    // the msg should have a referrer if it is in reaction to a connected parameter change
+    if (setParam.referrer()
+            .is_nil()) { //prevents msgs running in circles if e.g.: parameter bounds prevent them from beeing equal
+
+        //depends on wether the ui or the module request the parameter change
+        auto moduleID = message::Id::isModule(setParam.destId()) ? setParam.destId() : setParam.senderId();
+        const auto port = m_stateTracker.portTracker()->findPort(moduleID, setParam.getName());
+        const auto param = m_stateTracker.getParameter(moduleID, setParam.getName());
+        std::shared_ptr<Parameter> appliedParam;
+        if (param) {
+            appliedParam.reset(param->clone());
+            setParam.apply(appliedParam);
+        }
+
+        if (port && appliedParam) {
+            ParameterSet conn = m_stateTracker.getConnectedParameters(*appliedParam);
+
+            for (ParameterSet::iterator it = conn.begin(); it != conn.end(); ++it) {
+                const auto p = *it;
+                if (p->module() == moduleID && p->getName() == setParam.getName()) {
+                    // don't update parameter which was set originally again
+                    continue;
+                }
+                message::SetParameter set(p->module(), p->getName(), appliedParam);
+                set.setDestId(p->module());
+                set.setUuid(setParam.uuid());
+                sendAll(set);
+            }
+        }
+    }
+}
+
 
 void Hub::startIoThread()
 {

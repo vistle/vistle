@@ -223,7 +223,7 @@ private:
     void setSessionUrl(const std::string &url);
     void setStatus(const std::string &s, message::UpdateStatus::Importance prio = message::UpdateStatus::Low);
     void clearStatus();
-
+    void updateLinkedParameters(const message::SetParameter &setParam);
     std::map<int, std::vector<message::Buffer>> m_sendAfterExit, m_sendAfterSpawn;
 
 #if BOOST_VERSION >= 106600
