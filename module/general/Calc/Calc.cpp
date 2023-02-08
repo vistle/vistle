@@ -305,8 +305,11 @@ bool Calc::compute(std::shared_ptr<BlockTask> task) const
             grid = g;
             normals = split.normals;
             gridInterface = grid->getInterface<GridInterface>();
+            auto coord = Coords::as(grid);
             if (gridInterface) {
                 nvert = gridInterface->getNumVertices();
+            } else if (coord) {
+                nvert = coord->getNumVertices();
             }
         }
     }
@@ -315,7 +318,7 @@ bool Calc::compute(std::shared_ptr<BlockTask> task) const
         sendError("Could not determine number of input vertices");
         return true;
     }
-    assert(gridInterface);
+    //assert(gridInterface);
 
     typedef CalcExpression<Precision> CE;
     std::array<std::vector<Precision>, NumPorts> data;
@@ -449,7 +452,7 @@ bool Calc::compute(std::shared_ptr<BlockTask> task) const
     E en{normExpr.get(), normOut.get()};
     if (dataExpr || normExpr || gridExpr) {
         for (Index i = 0; i < nvert; ++i) {
-            auto v = gridInterface->getVertex(i);
+            auto v = gridInterface ? gridInterface->getVertex(i) : Coords::as(grid)->getVertex(i);
 
             for (unsigned p = 0; p < NumPorts; ++p) {
                 for (unsigned d = 0; d < data[p].size(); ++d) {
