@@ -52,7 +52,7 @@ typename Vec<T, Dim>::ptr remapData(typename Vec<T, Dim>::const_ptr in, const Sp
     return out;
 }
 
-bool SplitDimensions::compute(std::shared_ptr<BlockTask> task) const
+bool SplitDimensions::compute(const std::shared_ptr<BlockTask> &task) const
 {
     DataBase::const_ptr data;
     StructuredGridBase::const_ptr sgrid;

@@ -48,7 +48,7 @@ bool IndexManifolds::changeParameter(const vistle::Parameter *p)
     return Module::changeParameter(p);
 }
 
-bool IndexManifolds::compute(std::shared_ptr<BlockTask> task) const
+bool IndexManifolds::compute(const std::shared_ptr<BlockTask> &task) const
 {
     auto obj = task->expect<Object>("data_in0");
     if (!obj) {

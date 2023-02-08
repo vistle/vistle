@@ -361,7 +361,7 @@ private:
     virtual bool parameterRemoved(const int senderId, const std::string &name, const message::RemoveParameter &msg);
 
     virtual bool compute(); //< do processing - called on each rank individually
-    virtual bool compute(std::shared_ptr<BlockTask> task) const;
+    virtual bool compute(const std::shared_ptr<BlockTask> &task) const;
 
     std::map<std::string, Port> outputPorts;
     std::map<std::string, Port> inputPorts;

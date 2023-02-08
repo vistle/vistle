@@ -104,7 +104,7 @@ void createVertices(StructuredGridBase::const_ptr grid, typename Connected::ptr 
 
 } // namespace
 
-bool DomainSurface::compute(std::shared_ptr<BlockTask> task) const
+bool DomainSurface::compute(const std::shared_ptr<BlockTask> &task) const
 {
     //DomainSurface Polygon
     auto container = task->expect<Object>("data_in");

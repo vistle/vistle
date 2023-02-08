@@ -23,7 +23,7 @@ public:
 private:
     static const unsigned NUMPORTS = 3;
     bool changeParameter(const vistle::Parameter *p) override;
-    bool compute(std::shared_ptr<vistle::BlockTask> task) const override;
+    bool compute(const std::shared_ptr<vistle::BlockTask> &task) const override;
     bool prepare() override;
 
     void renumberVertices(vistle::Coords::const_ptr coords, vistle::Indexed::ptr poly, VerticesMapping &vm) const;

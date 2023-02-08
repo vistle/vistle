@@ -14,7 +14,7 @@ public:
     typedef std::vector<vistle::Index> DataMapping;
 
 private:
-    bool compute(std::shared_ptr<vistle::BlockTask> task) const override;
+    bool compute(const std::shared_ptr<vistle::BlockTask> &task) const override;
 
     vistle::Polygons::ptr createSurface(vistle::UnstructuredGrid::const_ptr m_grid_in, DataMapping &em,
                                         bool haveElementData) const;

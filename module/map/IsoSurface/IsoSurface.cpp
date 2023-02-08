@@ -331,7 +331,7 @@ Object::ptr IsoSurface::work(vistle::Object::const_ptr grid, vistle::Vec<vistle:
 }
 
 
-bool IsoSurface::compute(std::shared_ptr<BlockTask> task) const
+bool IsoSurface::compute(const std::shared_ptr<BlockTask> &task) const
 {
     auto container = task->accept<Object>(m_mapDataIn);
     auto split = splitContainerObject(container);

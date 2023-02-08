@@ -14,7 +14,7 @@ public:
     typedef std::map<vistle::Index, vistle::Index> VerticesMapping;
 
 private:
-    bool compute(std::shared_ptr<vistle::BlockTask> task) const override;
+    bool compute(const std::shared_ptr<vistle::BlockTask> &task) const override;
 
     vistle::Polygons::ptr createSurface(vistle::UnstructuredGrid::const_ptr m_grid_in) const;
     vistle::Quads::ptr createSurface(vistle::StructuredGridBase::const_ptr m_grid_in) const;

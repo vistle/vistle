@@ -14,7 +14,7 @@ private:
 
     std::vector<vistle::Port *> m_data_in, m_data_out;
 
-    bool compute(std::shared_ptr<vistle::BlockTask> task) const override;
+    bool compute(const std::shared_ptr<vistle::BlockTask> &task) const override;
 };
 
 #endif

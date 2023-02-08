@@ -13,7 +13,7 @@ public:
 private:
     static const int NumPorts = 3;
 
-    bool compute(std::shared_ptr<vistle::BlockTask> task) const override;
+    bool compute(const std::shared_ptr<vistle::BlockTask> &task) const override;
     bool prepare() override;
     bool reduce(int t) override;
 

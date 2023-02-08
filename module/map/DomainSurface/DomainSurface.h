@@ -14,7 +14,7 @@ public:
     typedef std::vector<vistle::Index> DataMapping;
 
 private:
-    bool compute(std::shared_ptr<vistle::BlockTask> task) const override;
+    bool compute(const std::shared_ptr<vistle::BlockTask> &task) const override;
 
     template<class Surface>
     struct Result {
