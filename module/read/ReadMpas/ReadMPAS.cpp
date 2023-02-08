@@ -99,6 +99,7 @@ ReadMPAS::ReadMPAS(const std::string &name, int moduleID, mpi::communicator comm
     m_numPartitions = addIntParameter("numParts", "Number of partitions (-1: automatic)", -1);
     m_numLevels = addIntParameter("numLevels", "Number of vertical cell layers to read (0: only 2D base level)", 0);
     setParameterMinimum<Integer>(m_numLevels, 0);
+    m_maxLevelOnly = addIntParameter("maxLevelOnly", "Read only the top most level", 0, Parameter::Boolean);
     m_altitudeScale = addFloatParameter("altitudeScale", "value to scale the grid altitude (zGrid)", 20.);
 
     m_gridOut = createOutputPort("grid_out", "grid");
@@ -645,7 +646,7 @@ bool ReadMPAS::addTri(Index &curElem, Index center, Index n1, Index n2, Index *c
 }
 
 #ifdef USE_NETCDF
-std::vector<Scalar> ReadMPAS::getData(int ncid, Index nLevels, Index dataIdx, bool velocity)
+std::vector<Scalar> ReadMPAS::getData(int ncid, Index startLevel, Index nLevels, Index dataIdx, bool velocity)
 {
     std::string varname = velocity ? m_velocityVar[dataIdx]->getValue() : m_variables[dataIdx]->getValue();
 
@@ -684,13 +685,15 @@ std::vector<Scalar> ReadMPAS::getData(int ncid, Index nLevels, Index dataIdx, bo
             return data;
         }
 
-        start.push_back(0);
         if (name == DimNCells) {
             count.push_back(dim);
+            start.push_back(0);
         } else if (name == DimNVertLevels || name == DimNVertLevelsP1) {
-            count.push_back(std::min(dim, size_t(nLevels)));
+            count.push_back(startLevel > 0 ? 1 : std::min(dim, size_t(nLevels)));
+            start.push_back(startLevel);
         } else {
             count.push_back(1);
+            start.push_back(0);
         }
     }
 
@@ -699,8 +702,8 @@ std::vector<Scalar> ReadMPAS::getData(int ncid, Index nLevels, Index dataIdx, bo
 #else
 // GET DATA
 // read 2D or 3D data from data or grid file into a vector
-bool ReadMPAS::getData(const NcmpiFile &filename, std::vector<float> *dataValues, const MPI_Offset &nLevels,
-                       const Index dataIdx, bool velocity)
+bool ReadMPAS::getData(const NcmpiFile &filename, std::vector<float> *dataValues, const MPI_Offset &startLevel,
+                       const MPI_Offset &nLevels, const Index dataIdx, bool velocity)
 {
     const NcmpiVar varData =
         filename.getVar(velocity ? m_velocityVar[dataIdx]->getValue() : m_variables[dataIdx]->getValue());
@@ -708,12 +711,14 @@ bool ReadMPAS::getData(const NcmpiFile &filename, std::vector<float> *dataValues
     for (auto elem: varData.getDims()) {
         if (elem.getName() == DimNCells) {
             numElem.push_back(elem.getSize());
+            startElem.push_back(0);
         } else if (elem.getName() == DimNVertLevels || elem.getName() == DimNVertLevelsP1) {
-            numElem.push_back(std::min(elem.getSize(), nLevels));
+            numElem.push_back(startLevel > 0 ? 1 : std::min(elem.getSize(), nLevels));
+            startElem.push_back(startLevel);
         } else {
             numElem.push_back(1);
+            startElem.push_back(0);
         }
-        startElem.push_back(0);
     }
 
     varData.getVar_all(startElem, numElem, dataValues->data());
@@ -768,6 +773,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
         }
 
         size_t numLevelsUser = m_numLevels->getValue();
+        bool maxLevelOnly = m_maxLevelOnly->getValue();
         size_t numMaxLevels = 1;
         //verify that dimensions in grid file and data file are matching
         if (hasDataFile) {
@@ -829,6 +835,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
         }
 
         size_t numLevelsUser = m_numLevels->getValue();
+        bool maxLevelOnly = m_maxLevelOnly->getValue();
         size_t numMaxLevels = 1;
         //verify that dimensions in grid file and data file are matching
         if (hasDataFile) {
@@ -906,7 +913,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
         // set coc (index of neighboring cells on each cell) to determine ghost cells
         if ((numLevels > 1 || (!m_voronoiCells && numLevels == 1)) && coc.empty()) {
             coc = getVariable<unsigned>(ncid, VarCellsOnCell);
-            ghosts = numLevels > 1;
+            ghosts = !maxLevelOnly && (numLevels > 1);
         }
 #else
         //READ VERTEX COORDINATES given for base level (a unit sphere)
@@ -934,7 +941,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
             NcmpiVar cellsOnCell = ncFirstFile.getVar(VarCellsOnCell);
             coc.resize(numCells * vPerC);
             cellsOnCell.getVar_all(coc.data());
-            ghosts = numLevels > 1;
+            ghosts = !maxLevelOnly && (numLevels > 1);
         }
 #endif
         guardPartList.unlock();
@@ -1114,17 +1121,17 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
         Coords::ptr grid;
         float altScale = m_altitudeScale->getValue();
         assert(numLevels >= 1);
-
+        numLevelsNr = numLevels;
         unsigned numZLevels = (m_voronoiCells || m_projectDown) ? numLevels : numLevels + 1;
+        unsigned trueZLevels = maxLevelOnly ? ((m_voronoiCells || m_projectDown) ? 1 : 2) : numZLevels;
         std::vector<float> zGrid;
         if (hasZData) {
 #ifdef USE_NETCDF
             if (m_voronoiCells) {
                 cov = getVariable<unsigned>(ncid, VarCellsOnVertex);
             }
-
-            std::vector<size_t> startZ{0, 0};
-            std::vector<size_t> stopZ{numCells, numZLevels};
+            std::vector<size_t> startZ{0, maxLevelOnly ? numZLevels - 1 : 0};
+            std::vector<size_t> stopZ{numCells, maxLevelOnly ? 1 : numZLevels};
             auto nczid = NcFile::open(zGridFileName, *token.comm());
             if (!nczid) {
                 return false;
@@ -1141,15 +1148,15 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
             }
             zGrid = getVariable<float>(nczid, VarZgrid, startZ, stopZ);
 #else
-            zGrid.resize(numCells * numZLevels);
+            zGrid.resize(numCells * trueZLevels);
             if (m_voronoiCells) {
                 NcmpiVar cellsOnVertex = ncFirstFile.getVar(VarCellsOnVertex);
                 cov.resize(numVert * MAX_VERT);
                 cellsOnVertex.getVar_all(cov.data());
             }
 
-            std::vector<MPI_Offset> startZ{0, 0};
-            std::vector<MPI_Offset> stopZ{MPI_Offset(numCells), numZLevels};
+            std::vector<MPI_Offset> startZ{0, maxLevelOnly ? numZLevels - 1 : 0};
+            std::vector<MPI_Offset> stopZ{MPI_Offset(numCells), maxLevelOnly ? 1 : numZLevels};
             NcmpiFile ncZGridFile(*token.comm(), zGridFileName.c_str(), NcmpiFile::read);
             if (!dimensionExists(DimNCells, ncZGridFile)) {
                 sendError("no nCells dimension in zGrid file %s", zGridFileName.c_str());
@@ -1168,7 +1175,9 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
                 // average z levels to Voronoi cell centers
                 float *z = zGrid.data();
                 for (Index i = 0; i < numCells; ++i) {
-                    for (Index l = 0; l < numZLevels; ++l) {
+                    Index min_l = 0; //maxLevelOnly ? numZLevels - 1 : 0;
+                    Index max_l = trueZLevels; //maxLevelOnly ? numZLevels - numLevels + 1 : numZLevels;
+                    for (Index l = min_l; l < max_l; ++l) {
                         if (l < numLevels)
                             *z = 0.5f * (*z + *(z + 1));
                         ++z;
@@ -1178,12 +1187,14 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
             }
         }
         UNLOCK_NETCDF(*token.comm());
-
+        if (maxLevelOnly) {
+            numLevels = 1;
+        }
         if (m_voronoiCells) {
             Index *cl = nullptr;
             Index *el = nullptr;
             Byte *tl = nullptr;
-            if (numLevels > 1) {
+            if (numLevels > 1 && !maxLevelOnly) {
                 UnstructuredGrid::ptr p(new UnstructuredGrid(
                     (numCellsB[block] + numGhosts) * (numLevels - 1),
                     ((numLevels - 1) * numCornPlusOne * 2 + (numCornB[block] + numCornGhost) * (numLevels - 1) * 5),
@@ -1221,8 +1232,8 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
                             Index i_v2 = cov[iVOC * MAX_VERT + 1] - 1;
                             Index i_v3 = cov[iVOC * MAX_VERT + 2] - 1;
                             float radius = altScale * (1. / 3.) *
-                                               (zGrid[(numZLevels)*i_v1 + iz] + zGrid[(numZLevels)*i_v2 + iz] +
-                                                zGrid[(numZLevels)*i_v3 + iz]) +
+                                               (zGrid[(trueZLevels)*i_v1 + iz] + zGrid[(trueZLevels)*i_v2 + iz] +
+                                                zGrid[(trueZLevels)*i_v3 + iz]) +
                                            MSL; //compute vertex z from average of neighbouring cells
                             ptrOnX[izVert + iv] = radius * xCoords[iVOC];
                             ptrOnY[izVert + iv] = radius * yCoords[iVOC];
@@ -1274,7 +1285,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
             Byte *tl = nullptr;
             Index *cl = nullptr;
             Index *el = nullptr;
-            if (numLevels > 1) {
+            if (numLevels > 1 && !maxLevelOnly) {
                 auto ntri = numTrianglesB[block];
                 ntri += numGhosts;
                 std::cerr << "block " << block << ": base triangles: " << ntri << "=" << numTrianglesB[block] << "+"
@@ -1301,7 +1312,9 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
                 Index i = idxCells[k];
                 for (Index iz = 0; iz < numLevels; ++iz) {
                     Index izVert = numVertB * iz;
-                    float radius = altScale * (hasZData ? zGrid[numZLevels * i + iz] : dH * iz) + MSL;
+                    float radius =
+                        altScale * (hasZData ? zGrid[trueZLevels * i + iz] : dH * (maxLevelOnly ? numLevelsNr : iz)) +
+                        MSL;
                     ptrOnX[izVert + k] = radius * xCoords[i];
                     ptrOnY[izVert + k] = radius * yCoords[i];
                     ptrOnZ[izVert + k] = radius * zCoords[i];
@@ -1393,6 +1406,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
 
     // Read data
     unsigned nLevels = m_voronoiCells ? std::max(1u, numLevels - 1) : numLevels;
+    unsigned startLevel = numLevels > 1 ? 0 : numLevelsNr - 1;
     for (Index dataIdx = 0; dataIdx < NUMPARAMS; ++dataIdx) {
         if (emptyValue(m_variables[dataIdx])) {
             continue;
@@ -1418,10 +1432,10 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
             if (!ncid) {
                 return true;
             }
-            dataValues = getData(ncid, nLevels, dataIdx);
+            dataValues = getData(ncid, startLevel, nLevels, dataIdx);
 #else
             NcmpiFile ncDataFile(*token.comm(), dataFileList.at(timestep).c_str(), NcmpiFile::read);
-            getData(ncDataFile, &dataValues, nLevels, dataIdx);
+            getData(ncDataFile, &dataValues, startLevel, nLevels, dataIdx);
 #endif
         } else if (ft == zgrid_type) {
             if (timestep >= 0)
@@ -1433,10 +1447,10 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
             if (!nczid) {
                 return true;
             }
-            dataValues = getData(nczid, nLevels, dataIdx);
+            dataValues = getData(nczid, startLevel, nLevels, dataIdx);
 #else
             NcmpiFile ncFirstFile2(*token.comm(), zGridFileName, NcmpiFile::read);
-            getData(ncFirstFile2, &dataValues, nLevels, dataIdx);
+            getData(ncFirstFile2, &dataValues, startLevel, nLevels, dataIdx);
 #endif
         } else {
             if (timestep >= 0)
@@ -1448,10 +1462,10 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
             if (!ncid) {
                 return true;
             }
-            dataValues = getData(ncid, nLevels, dataIdx);
+            dataValues = getData(ncid, startLevel, nLevels, dataIdx);
 #else
             NcmpiFile ncFirstFile2(*token.comm(), firstFileName, NcmpiFile::read);
-            getData(ncFirstFile2, &dataValues, nLevels, dataIdx);
+            getData(ncFirstFile2, &dataValues, startLevel, nLevels, dataIdx);
 #endif
         }
         if (dataValues.size() != numCells * nLevels) {
@@ -1506,11 +1520,11 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
             if (!ncid) {
                 return true;
             }
-            fields[dataIdx] = getData(ncid, nLevels, dataIdx, true);
+            fields[dataIdx] = getData(ncid, startLevel, nLevels, dataIdx, true);
 #else
             fields[dataIdx].resize(numCells * nLevels);
             NcmpiFile ncDataFile(*token.comm(), dataFileList.at(timestep).c_str(), NcmpiFile::read);
-            getData(ncDataFile, &fields[dataIdx], nLevels, dataIdx, true);
+            getData(ncDataFile, &fields[dataIdx], startLevel, nLevels, dataIdx, true);
 #endif
         } else if (ft == zgrid_type) {
             LOCK_NETCDF(*token.comm());
@@ -1519,10 +1533,10 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
             if (!nczid) {
                 return true;
             }
-            fields[dataIdx] = getData(nczid, nLevels, dataIdx, true);
+            fields[dataIdx] = getData(nczid, startLevel, nLevels, dataIdx, true);
 #else
             NcmpiFile ncFirstFile2(*token.comm(), zGridFileName, NcmpiFile::read);
-            getData(ncFirstFile2, &fields[dataIdx], nLevels, dataIdx, true);
+            getData(ncFirstFile2, &fields[dataIdx], startLevel, nLevels, dataIdx, true);
 #endif
         } else {
             LOCK_NETCDF(*token.comm());
@@ -1531,10 +1545,10 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
             if (!ncid) {
                 return true;
             }
-            fields[dataIdx] = getData(ncid, nLevels, dataIdx, true);
+            fields[dataIdx] = getData(ncid, startLevel, nLevels, dataIdx, true);
 #else
             NcmpiFile ncFirstFile2(*token.comm(), firstFileName, NcmpiFile::read);
-            getData(ncFirstFile2, &fields[dataIdx], nLevels, dataIdx, true);
+            getData(ncFirstFile2, &fields[dataIdx], startLevel, nLevels, dataIdx, true);
 #endif
         }
         if (fields[dataIdx].size() != numCells * nLevels) {
