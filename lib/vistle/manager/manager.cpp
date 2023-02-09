@@ -143,7 +143,11 @@ bool VistleManager::run(int argc, char *argv[])
         }));
     }
 
-    if (!fromVistle) {
+    if (fromVistle) {
+        if (args.size() > 1) {
+            rank0 = args[1];
+        }
+    } else {
         boost::mpi::broadcast(m_comm, rank0, 0);
         boost::mpi::broadcast(m_comm, hubPort, 0);
         boost::mpi::broadcast(m_comm, hubDataPort, 0);
@@ -152,6 +156,8 @@ bool VistleManager::run(int argc, char *argv[])
         args.push_back(std::to_string(hubPort));
         args.push_back(std::to_string(hubDataPort));
     }
+
+    setenv("VISTLE_CLUSTER", rank0.c_str(), 1);
 #else
     if (!fromVistle) {
         std::cerr << "should be called from vistle, expecting 1st argument to be -from-vistle" << std::endl;

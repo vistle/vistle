@@ -206,8 +206,7 @@ COVER::COVER(const std::string &name, int moduleId, mpi::communicator comm): vis
     int argc = 1;
     char *argv[] = {strdup("COVER"), nullptr};
     vistle::Directory dir(argc, argv);
-    vistle::config::Access vistleConfig;
-    m_config.reset(new opencover::config::Access(vistleConfig.hostname(), vistleConfig.cluster(), comm.rank()));
+    m_config.reset(new opencover::config::Access(configAccess()->hostname(), configAccess()->cluster(), comm.rank()));
     m_coverConfigBridge.reset(new CoverConfigBridge(this));
     m_config->setWorkspaceBridge(m_coverConfigBridge.get());
 

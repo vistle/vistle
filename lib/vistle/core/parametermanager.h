@@ -14,10 +14,16 @@
 
 namespace vistle {
 
+namespace config {
+class Access;
+}
+
 class V_COREEXPORT ParameterManager {
 public:
     ParameterManager(const std::string &name, int id);
     virtual ~ParameterManager();
+
+    void setConfig(config::Access *config);
 
     //! set group for all subsequently added parameters, reset with empty group
     void setCurrentParameterGroup(const std::string &group = std::string(), bool defaultExpanded = true);
@@ -129,6 +135,8 @@ private:
     std::vector<const Parameter *> m_delayedChanges;
 
     std::deque<message::SetParameter> m_queue;
+
+    config::Access *m_config = nullptr;
 };
 
 #define PARAM_TYPE_TEMPLATE(spec, Type) \
