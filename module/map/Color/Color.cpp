@@ -563,7 +563,6 @@ bool Color::changeParameter(const Parameter *p)
                 continue;
             } else if (numValues == 3) {
                 rgba.push_back(-1.f);
-                rgbValues.push_back(ColorMap::RGBA(rgba.data()));
             } else {
                 if (numValues > 4) {
                     std::cerr << "only using first four of " << numValues << " entries from " << line << std::endl;
@@ -573,6 +572,7 @@ bool Color::changeParameter(const Parameter *p)
                 if (val > 1.f)
                     normalized = false;
             }
+            rgbValues.push_back(ColorMap::RGBA(rgba.data()));
         }
 
         if (!normalized) {
