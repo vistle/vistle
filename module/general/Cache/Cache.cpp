@@ -195,8 +195,8 @@ bool Cache::prepare()
     if (m_toDisk) {
         m_saver.reset(new DeepArchiveSaver);
         m_saver->setCompressionSettings(m_compressionSettings);
-        m_fd =
-            open(file.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+        m_fd = open(file.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_BINARY,
+                    S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
     }
 
     if (!m_fromDisk)
@@ -209,7 +209,7 @@ bool Cache::prepare()
     bool reorder = p_reorder->getValue();
     bool renumber = p_renumber->getValue();
 
-    m_fd = open(file.c_str(), O_RDONLY);
+    m_fd = open(file.c_str(), O_RDONLY | O_BINARY);
     if (m_fd == -1) {
         sendError("Could not open %s: %s", file.c_str(), strerror(errno));
     }
