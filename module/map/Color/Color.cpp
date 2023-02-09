@@ -626,7 +626,7 @@ bool Color::changeParameter(const Parameter *p)
         m_max = m_maxPara->getValue();
         newMap = true;
     } else if (p == m_insetRelPara) {
-        if (m_insetRelPara) {
+        if (m_insetRelPara->getValue()) {
             setParameterRange(m_insetCenterPara, (Float)0, (Float)1);
             setParameterRange(m_insetWidthPara, (Float)0, (Float)1);
         } else {
