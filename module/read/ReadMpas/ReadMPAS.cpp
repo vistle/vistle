@@ -702,7 +702,7 @@ std::vector<Scalar> ReadMPAS::getData(int ncid, Index startLevel, Index nLevels,
 #else
 // GET DATA
 // read 2D or 3D data from data or grid file into a vector
-bool ReadMPAS::getData(const NcmpiFile &filename, std::vector<float> *dataValues, const MPI_Offset &startLevel,
+bool ReadMPAS::getData(const NcmpiFile &filename, std::vector<Scalar> *dataValues, const MPI_Offset &startLevel,
                        const MPI_Offset &nLevels, const Index dataIdx, bool velocity)
 {
     const NcmpiVar varData =
@@ -1419,7 +1419,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
 #ifdef USE_NETCDF
         std::vector<Scalar> dataValues;
 #else
-        std::vector<float> dataValues(numCells * nLevels, 0.);
+        std::vector<Scalar> dataValues(numCells * nLevels, 0.);
 #endif
         auto ft = m_varDim->getValue() == varDimList[0] ? m_2dChoices[pVar] : m_3dChoices[pVar];
         if (ft == data_type) {

@@ -4,6 +4,7 @@
 #include <cfloat>
 #include <limits>
 #include <random>
+#include <vistle/core/scalar.h>
 #include <vistle/core/vector.h>
 #include <vistle/core/object.h>
 #include <vistle/core/vec.h>
@@ -555,7 +556,7 @@ bool Color::changeParameter(const Parameter *p)
             std::string line;
             std::getline(file, line);
             std::stringstream str(line);
-            std::vector<float> rgba{std::istream_iterator<float>(str), std::istream_iterator<float>()};
+            std::vector<Scalar> rgba{std::istream_iterator<Scalar>(str), std::istream_iterator<Scalar>()};
             auto numValues = rgba.size();
             if (numValues < 3) {
                 std::cerr << "ignoring " << line << ": found only " << numValues << " entries" << std::endl;
