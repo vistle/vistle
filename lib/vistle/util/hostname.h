@@ -10,5 +10,5 @@ namespace vistle {
 V_UTILEXPORT std::string clustername();
 V_UTILEXPORT std::string hostname();
 
-}
+} // namespace vistle
 #endif

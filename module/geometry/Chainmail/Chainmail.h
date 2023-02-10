@@ -17,19 +17,24 @@ public:
 
 private:
     virtual bool compute();
-    std::vector<vistle::Vector3> toTorus(const std::vector<vistle::Vector3> &points, vistle::Index numTorusSegments, vistle::Index numDiameterSegments);
-    std::vector<vistle::Vector3> toTorusCircle(const std::vector<vistle::Vector3> &points, const vistle::Vector3& middle, vistle::Index numTorusSegments, vistle::Index numDiameterSegments);
-    std::vector<vistle::Vector3> toTorusSpline(const std::vector<vistle::Vector3> &points, const vistle::Vector3& middle, vistle::Index numTorusSegments, vistle::Index numDiameterSegments);
+    std::vector<vistle::Vector3> toTorus(const std::vector<vistle::Vector3> &points, vistle::Index numTorusSegments,
+                                         vistle::Index numDiameterSegments);
+    std::vector<vistle::Vector3> toTorusCircle(const std::vector<vistle::Vector3> &points,
+                                               const vistle::Vector3 &middle, vistle::Index numTorusSegments,
+                                               vistle::Index numDiameterSegments);
+    std::vector<vistle::Vector3> toTorusSpline(const std::vector<vistle::Vector3> &points,
+                                               const vistle::Vector3 &middle, vistle::Index numTorusSegments,
+                                               vistle::Index numDiameterSegments);
 
 
     //Extrapolation method
     //Circle: uses equally sized circles with radius m_radius
-    //Spline: Uses B-Splines to approximate a circloid through the vertices of the quad/triangle. m_radius stretches the result. 
-    vistle::IntParameter *m_geoMode; 
+    //Spline: Uses B-Splines to approximate a circloid through the vertices of the quad/triangle. m_radius stretches the result.
+    vistle::IntParameter *m_geoMode;
     vistle::FloatParameter *m_radius; //the radius of the rings in the qua
     vistle::IntParameter *m_numXSegments; //number of segemnts in the quad/triangle plane
-    vistle::IntParameter *m_numYSegments; //number of segments to crate a tube around the torus center line 
-    
+    vistle::IntParameter *m_numYSegments; //number of segments to crate a tube around the torus center line
+
     float m_radiusValue = 1.0;
 };
 

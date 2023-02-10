@@ -76,10 +76,22 @@ public:
     ~RemoteFileInfoGatherer() override;
 
 #if QT_CONFIG(filesystemwatcher) && defined(Q_OS_WIN)
-    QStringList watchedFiles() const { return watcher->files(); }
-    QStringList watchedDirectories() const { return watcher->directories(); }
-    void watchPaths(const QStringList &paths) { watcher->addPaths(paths); }
-    void unwatchPaths(const QStringList &paths) { watcher->removePaths(paths); }
+    QStringList watchedFiles() const
+    {
+        return watcher->files();
+    }
+    QStringList watchedDirectories() const
+    {
+        return watcher->directories();
+    }
+    void watchPaths(const QStringList &paths)
+    {
+        watcher->addPaths(paths);
+    }
+    void unwatchPaths(const QStringList &paths)
+    {
+        watcher->removePaths(paths);
+    }
 #endif // filesystemwatcher && Q_OS_WIN
 
     QString identifier() const override;

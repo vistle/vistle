@@ -406,11 +406,23 @@ public: \
     virtual void saveToArchive(boost_oarchive &ar) const override; \
     virtual void loadFromArchive(boost_iarchive &ar) override;
 #define ARCHIVE_REGISTRATION_BOOST_INLINE \
-    void saveToArchive(boost_oarchive &ar) const override { this->serialize(ar); } \
-    void loadFromArchive(boost_iarchive &ar) override { this->serialize(ar); }
+    void saveToArchive(boost_oarchive &ar) const override \
+    { \
+        this->serialize(ar); \
+    } \
+    void loadFromArchive(boost_iarchive &ar) override \
+    { \
+        this->serialize(ar); \
+    }
 #define ARCHIVE_REGISTRATION_BOOST_IMPL(ObjType, prefix) \
-    prefix void ObjType::saveToArchive(boost_oarchive &ar) const { this->serialize(ar); } \
-    prefix void ObjType::loadFromArchive(boost_iarchive &ar) { this->serialize(ar); }
+    prefix void ObjType::saveToArchive(boost_oarchive &ar) const \
+    { \
+        this->serialize(ar); \
+    } \
+    prefix void ObjType::loadFromArchive(boost_iarchive &ar) \
+    { \
+        this->serialize(ar); \
+    }
 #else
 #define ARCHIVE_REGISTRATION_BOOST(override)
 #define ARCHIVE_REGISTRATION_BOOST_INLINE
@@ -422,11 +434,23 @@ public: \
     virtual void saveToArchive(yas_oarchive &ar) const override; \
     virtual void loadFromArchive(yas_iarchive &ar) override;
 #define ARCHIVE_REGISTRATION_YAS_INLINE \
-    void saveToArchive(yas_oarchive &ar) const override { this->serialize(ar); } \
-    void loadFromArchive(yas_iarchive &ar) override { this->serialize(ar); }
+    void saveToArchive(yas_oarchive &ar) const override \
+    { \
+        this->serialize(ar); \
+    } \
+    void loadFromArchive(yas_iarchive &ar) override \
+    { \
+        this->serialize(ar); \
+    }
 #define ARCHIVE_REGISTRATION_YAS_IMPL(ObjType, prefix) \
-    prefix void ObjType::saveToArchive(yas_oarchive &ar) const { this->serialize(ar); } \
-    prefix void ObjType::loadFromArchive(yas_iarchive &ar) { this->serialize(ar); }
+    prefix void ObjType::saveToArchive(yas_oarchive &ar) const \
+    { \
+        this->serialize(ar); \
+    } \
+    prefix void ObjType::loadFromArchive(yas_iarchive &ar) \
+    { \
+        this->serialize(ar); \
+    }
 #else
 #define ARCHIVE_REGISTRATION_YAS(override)
 #define ARCHIVE_REGISTRATION_YAS_INLINE
@@ -434,7 +458,10 @@ public: \
 #endif
 #ifdef USE_INTROSPECTION_ARCHIVE
 #define ARCHIVE_REGISTRATION_INTROSPECT \
-    void save(FindObjectReferenceOArchive &ar) const override { const_cast<ObjType *>(this)->serialize(ar, 0); }
+    void save(FindObjectReferenceOArchive &ar) const override \
+    { \
+        const_cast<ObjType *>(this)->serialize(ar, 0); \
+    }
 #else
 #define ARCHIVE_REGISTRATION_INTROSPECT
 #endif
