@@ -33,9 +33,10 @@ jobs:
             large_index: ON
 
     steps:
-    - uses: actions/checkout@v2
+    - name: Sync and update submodules recursive
+      uses: actions/checkout@v2
       with:
-        submodules: 'true'
+        submodules: 'recursive'
 
     - name: Install Dependencies
       run: >
