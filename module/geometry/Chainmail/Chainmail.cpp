@@ -16,6 +16,7 @@
 #include <vistle/util/math.h>
 
 #include "Chainmail.h"
+#include "vistle/core/scalar.h"
 #include <eigen3/unsupported/Eigen/src/Splines/Spline.h>
 #include <eigen3/unsupported/Eigen/src/Splines/SplineFitting.h>
 
@@ -88,7 +89,7 @@ Vector3 center(const std::vector<Vector3> &points)
 }
 
 std::vector<Vector3> Chainmail::toTorus(const std::vector<Vector3> &points, Index numTorusSegments,
-                                      Index numDiameterSegments)
+                                        Index numDiameterSegments)
 {
     auto middle = center(points);
     m_radiusValue = (middle - points[0]).norm();
@@ -104,7 +105,7 @@ std::vector<Vector3> Chainmail::toTorus(const std::vector<Vector3> &points, Inde
 }
 
 std::vector<Vector3> Chainmail::toTorusCircle(const std::vector<Vector3> &points, const Vector3 &middle,
-                                            Index numTorusSegments, Index numDiameterSegments)
+                                              Index numTorusSegments, Index numDiameterSegments)
 {
     assert(points.size() >= 3 && "toCircle expected 3 or 4 points");
 
@@ -134,16 +135,15 @@ std::vector<Vector3> Chainmail::toTorusCircle(const std::vector<Vector3> &points
     return v;
 }
 
-std::vector<Eigen::Vector3f> toCircularSpline(const Eigen::MatrixXf &points, const Eigen::MatrixXf &derivatives,
-                                              const Eigen::VectorXi &derivativeIndices, Index precition)
+std::vector<Vector3> toCircularSpline(const Eigen::MatrixX<Scalar> &points, const Eigen::MatrixX<Scalar> &derivatives,
+                                      const Eigen::VectorX<Scalar> &derivativeIndices, Index precition)
 {
     using namespace Eigen;
     //const Spline3f spline = SplineFitting<Spline3f>::Interpolate(points, 2);
 
-
-    const Spline3f spline =
-        SplineFitting<Spline3f>::InterpolateWithDerivatives(points, derivatives, derivativeIndices, 2);
-    std::vector<Eigen::Vector3f> v(precition);
+    const Eigen::Spline<Scalar, 3> spline =
+        SplineFitting<Eigen::Spline<Scalar, 3>>::InterpolateWithDerivatives(points, derivatives, derivativeIndices, 2);
+    std::vector<vistle::Vector3> v(precition);
     for (vistle::Index i = 0; i < precition; i++) {
         v[i] = spline((float)i / precition);
     }
@@ -151,12 +151,12 @@ std::vector<Eigen::Vector3f> toCircularSpline(const Eigen::MatrixXf &points, con
 }
 
 std::vector<Vector3> Chainmail::toTorusSpline(const std::vector<Vector3> &points, const Vector3 &middle,
-                                            Index numTorusSegments, Index numDiameterSegments)
+                                              Index numTorusSegments, Index numDiameterSegments)
 {
     auto ps = points.size();
-    Eigen::MatrixXf pointMatrix(3, ps + 1);
-    Eigen::MatrixXf derivatives(3, ps + 1);
-    Eigen::VectorXi derivativeIndices(ps + 1);
+    Eigen::MatrixX<Scalar> pointMatrix(3, ps + 1);
+    Eigen::MatrixX<Scalar> derivatives(3, ps + 1);
+    Eigen::VectorX<Scalar> derivativeIndices(ps + 1);
     for (size_t i = 0; i < ps; i++) {
         auto &currentPoint = points[i];
         auto &nextPoint = points[(i + 1) % ps];

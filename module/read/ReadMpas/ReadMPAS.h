@@ -51,7 +51,7 @@ private:
                                         bool velocity = false);
     bool setVariableList(int ncid, FileType ft, bool setCOC);
 #else
-    bool getData(const PnetCDF::NcmpiFile &filename, std::vector<float> *dataValues, const MPI_Offset &startLevel,
+    bool getData(const PnetCDF::NcmpiFile &filename, std::vector<Scalar> *dataValues, const MPI_Offset &startLevel,
                  const MPI_Offset &nLevels, const Index dataIdx, bool velocity = false);
     bool setVariableList(const PnetCDF::NcmpiFile &filename, FileType ft, bool setCOC);
 #endif

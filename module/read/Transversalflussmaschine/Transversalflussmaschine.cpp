@@ -1,4 +1,5 @@
 #include "Transversalflussmaschine.h"
+#include "vistle/core/scalar.h"
 #include <vistle/core/points.h>
 #include <vistle/core/unstr.h>
 #include <boost/filesystem.hpp>
@@ -64,7 +65,7 @@ bool Transversalflussmaschine::read(Token &token, int timestep, int block)
         std::array<std::vector<float>, 3> dataVertices = {m_data->GetColumn<float>("x"), m_data->GetColumn<float>("y"),
                                                           m_data->GetColumn<float>("z")};
         size_t numVertices = dataVertices[0].size();
-        std::array<float *, 3> vertices;
+        std::array<Scalar *, 3> vertices;
         if (!m_connectivity) {
             auto points = make_ptr<Points>(numVertices);
             vertices = {points->x().begin(), points->y().begin(), points->z().begin()};
