@@ -38,6 +38,7 @@ ShowGrid::ShowGrid(const std::string &name, int moduleID, mpi::communicator comm
     addIntParameter("polygon", "Show polygon", 1, Parameter::Boolean);
     addIntParameter("quad", "Show quad", 1, Parameter::Boolean);
     addIntParameter("triangle", "Show triangle", 1, Parameter::Boolean);
+    addIntParameter("bar", "Show bar", 1, Parameter::Boolean);
     m_CellNrMin = addIntParameter("min_cell_index", "show cells starting from this index", -1);
     m_CellNrMax = addIntParameter("max_cell_index", "show cells up to this index", -1);
 
@@ -50,6 +51,7 @@ ShowGrid::~ShowGrid()
 bool ShowGrid::compute()
 {
     std::array<bool, UnstructuredGrid::NUM_TYPES> showTypes;
+    showTypes[UnstructuredGrid::BAR] = getIntParameter("bar");
     showTypes[UnstructuredGrid::TRIANGLE] = getIntParameter("triangle");
     showTypes[UnstructuredGrid::QUAD] = getIntParameter("quad");
     showTypes[UnstructuredGrid::TETRAHEDRON] = getIntParameter("tetrahedron");
@@ -102,7 +104,7 @@ bool ShowGrid::compute()
                     continue;
                 type &= vistle::UnstructuredGrid::TYPE_MASK;
                 if (!showTypes[type])
-                        continue;
+                    continue;
 
                 const Index begin = unstr->el()[index], end = unstr->el()[index + 1];
                 switch (type) {
@@ -136,6 +138,12 @@ bool ShowGrid::compute()
                             facestart = InvalidIndex;
                         }
                     }
+                    break;
+                }
+                case UnstructuredGrid::BAR: {
+                    ocl.push_back(icl[begin]);
+                    ocl.push_back(icl[begin + 1]);
+                    oel.push_back(ocl.size());
                     break;
                 }
                 }
