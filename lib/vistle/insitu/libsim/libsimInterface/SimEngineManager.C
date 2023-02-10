@@ -682,7 +682,10 @@ TimedCodeBlock("Writing data", {
         if (success)
             ReadDataObjectString(rdr, dos);
     }
-    CATCH(VisItException) { RETHROW; }
+    CATCH(VisItException)
+    {
+        RETHROW;
+    }
     ENDTRY
 
     // re-set the network if we exceeded the scalable threshold

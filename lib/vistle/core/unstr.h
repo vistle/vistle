@@ -137,7 +137,7 @@ public:
             { 4, 7, 3, 0 },
         }
         };
-        // clang-format on
+    // clang-format on
 
 
     UnstructuredGrid(const size_t numElements, const size_t numCorners, const size_t numVertices,

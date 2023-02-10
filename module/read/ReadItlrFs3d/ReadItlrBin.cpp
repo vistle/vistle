@@ -51,7 +51,10 @@ struct File {
 #endif
     }
 
-    bool isHdf5() { return boost::algorithm::ends_with(name, ".hdf"); }
+    bool isHdf5()
+    {
+        return boost::algorithm::ends_with(name, ".hdf");
+    }
 
     std::string format()
     {

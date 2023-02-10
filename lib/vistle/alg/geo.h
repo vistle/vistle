@@ -28,7 +28,7 @@ namespace vistle {
  *
  * @return Volume of tetrahedron.
  */
-float calcTetrahedronVolume(float* points)
+float calcTetrahedronVolume(float *points)
 {
     Eigen::MatrixXf mat = Eigen::Map<Eigen::Matrix<float, 4, 4>>(points);
     auto v_p = mat.determinant();

@@ -239,7 +239,10 @@ public:
         return true;
     }
 
-    Object::ptr result() { return m_outCoords; }
+    Object::ptr result()
+    {
+        return m_outCoords;
+    }
 
 private:
     void processCoordinates()

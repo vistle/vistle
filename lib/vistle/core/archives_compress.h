@@ -51,22 +51,27 @@ extern template bool V_COREEXPORT compressZfp<zfp_type_double>(buffer &compresse
                                                                Index typeSize, const ZfpParameters &param);
 
 
-extern template bool V_COREEXPORT decompressZfp<zfp_type_none>(void *dest, const buffer &compressed, const Index dim[3]);
-extern template bool V_COREEXPORT decompressZfp<zfp_type_int32>(void *dest, const buffer &compressed, const Index dim[3]);
-extern template bool V_COREEXPORT decompressZfp<zfp_type_int64>(void *dest, const buffer &compressed, const Index dim[3]);
-extern template bool V_COREEXPORT decompressZfp<zfp_type_float>(void *dest, const buffer &compressed, const Index dim[3]);
-extern template bool V_COREEXPORT decompressZfp<zfp_type_double>(void *dest, const buffer &compressed, const Index dim[3]);
+extern template bool V_COREEXPORT decompressZfp<zfp_type_none>(void *dest, const buffer &compressed,
+                                                               const Index dim[3]);
+extern template bool V_COREEXPORT decompressZfp<zfp_type_int32>(void *dest, const buffer &compressed,
+                                                                const Index dim[3]);
+extern template bool V_COREEXPORT decompressZfp<zfp_type_int64>(void *dest, const buffer &compressed,
+                                                                const Index dim[3]);
+extern template bool V_COREEXPORT decompressZfp<zfp_type_float>(void *dest, const buffer &compressed,
+                                                                const Index dim[3]);
+extern template bool V_COREEXPORT decompressZfp<zfp_type_double>(void *dest, const buffer &compressed,
+                                                                 const Index dim[3]);
 
 extern template bool V_COREEXPORT compressZfp<zfp_type_none>(buffer &compressed, const void *src, const Index dim[3],
-                                                const Index typeSize, const ZfpParameters &param);
+                                                             const Index typeSize, const ZfpParameters &param);
 extern template bool V_COREEXPORT compressZfp<zfp_type_int32>(buffer &compressed, const void *src, const Index dim[3],
-                                                 const Index typeSize, const ZfpParameters &param);
+                                                              const Index typeSize, const ZfpParameters &param);
 extern template bool V_COREEXPORT compressZfp<zfp_type_int64>(buffer &compressed, const void *src, const Index dim[3],
-                                                 const Index typeSize, const ZfpParameters &param);
+                                                              const Index typeSize, const ZfpParameters &param);
 extern template bool V_COREEXPORT compressZfp<zfp_type_float>(buffer &compressed, const void *src, const Index dim[3],
-                                                 const Index typeSize, const ZfpParameters &param);
+                                                              const Index typeSize, const ZfpParameters &param);
 extern template bool V_COREEXPORT compressZfp<zfp_type_double>(buffer &compressed, const void *src, const Index dim[3],
-                                                  const Index typeSize, const ZfpParameters &param);
+                                                               const Index typeSize, const ZfpParameters &param);
 
 } // namespace detail
 #endif

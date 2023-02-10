@@ -108,7 +108,10 @@ struct shm {
         template<typename... Args>
         T *operator()(Args &&...args);
     };
-    static Constructor construct(const std::string &name) { return Constructor(name); }
+    static Constructor construct(const std::string &name)
+    {
+        return Constructor(name);
+    }
 #else
     typedef boost::interprocess::basic_string<T, std::char_traits<T>, allocator> string;
     typedef boost::interprocess::vector<T, allocator> vector;
