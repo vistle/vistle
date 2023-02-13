@@ -60,7 +60,7 @@ private:
     Port *m_dataOut[NUMPARAMS];
     Port *m_velocityOut = nullptr;
 
-    IntParameter *m_numPartitions, *m_numLevels, *m_maxLevelOnly;
+    IntParameter *m_numPartitions, *m_numLevels, *m_bottomLevel;
     FloatParameter *m_altitudeScale;
     StringParameter *m_gridFile, *m_partFile, *m_dataFile, *m_zGridFile;
     StringParameter *m_variables[NUMPARAMS];
@@ -90,7 +90,6 @@ private:
 
     std::vector<int> partList;
     unsigned numLevels = 0;
-    unsigned numLevelsNr = 0;
     size_t numCells = 0;
 
     std::vector<unsigned> voc; // voc (Vertices on Cell)
