@@ -55,6 +55,8 @@ private:
                  const MPI_Offset &nLevels, const Index dataIdx, bool velocity = false);
     bool setVariableList(const PnetCDF::NcmpiFile &filename, FileType ft, bool setCOC);
 #endif
+    bool readVariable(Reader::Token &token, int timestep, int block, Index dataIdx, unsigned nLevels,
+                      std::vector<Scalar> *dataValues, bool velocity);
 
     Port *m_gridOut = nullptr;
     Port *m_dataOut[NUMPARAMS];
