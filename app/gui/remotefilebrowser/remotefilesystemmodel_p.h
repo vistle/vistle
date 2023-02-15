@@ -298,7 +298,7 @@ public:
         bool populatedChildren;
         bool exists = false;
         bool m_isVisible = false;
-        QHash<RemoteFileSystemModelNodePathKey, RemoteFileSystemNode *> children;
+        QHash<QString, RemoteFileSystemNode *> children;
         QList<QString> visibleChildren;
         int dirtyChildrenIndex;
         RemoteFileSystemNode *parent;
