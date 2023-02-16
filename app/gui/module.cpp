@@ -68,7 +68,7 @@ Module::Module(QGraphicsItem *parent, QString name)
     setStatus(m_Status);
     setLayer(m_layer);
 
-    connect(this, &Module::callDoLayoutFromMainThread, this, &Module::doLayout);
+    connect(this, &Module::callshowErrorInMainThread, this, &Module::showError);
 }
 
 Module::~Module()
@@ -192,6 +192,13 @@ void Module::setParameterDefaults()
 #endif
     }
 }
+
+void Module::showError()
+{
+    setStatus(m_Status);
+    doLayout();
+}
+
 
 void Module::attachDebugger()
 {
@@ -962,8 +969,7 @@ void Module::moduleMessage(int type, QString message)
     if (type == vistle::message::SendText::Error) {
         if (!m_errorState) {
             m_errorState = true;
-            setStatus(m_Status);
-            emit callDoLayoutFromMainThread();
+            emit callshowErrorInMainThread();
         }
     }
 }
