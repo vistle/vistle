@@ -459,6 +459,22 @@ void COVER::removeObject(std::shared_ptr<vistle::RenderObject> vro)
     pro->coverRenderObject.reset();
 }
 
+osg::ref_ptr<osg::MatrixTransform> getTransform(const vistle::Object::const_ptr &obj)
+{
+    osg::ref_ptr<osg::MatrixTransform> transform = new osg::MatrixTransform();
+    std::string nodename = obj->getName();
+    transform->setName(nodename + ".transform");
+    osg::Matrix osgMat;
+    vistle::Matrix4 vistleMat = obj->getTransform();
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            osgMat(i, j) = vistleMat.col(i)[j];
+        }
+    }
+    transform->setMatrix(osgMat);
+    return transform;
+}
+
 std::shared_ptr<vistle::RenderObject> COVER::addObject(int senderId, const std::string &senderPort,
                                                        vistle::Object::const_ptr container,
                                                        vistle::Object::const_ptr geometry,
@@ -521,19 +537,9 @@ std::shared_ptr<vistle::RenderObject> COVER::addObject(int senderId, const std::
     Creator &creator = getCreator(creatorId);
     if (pro->visibility != vistle::RenderObject::DontChange)
         creator.getVariant(variant, pro->visibility);
-    osg::MatrixTransform *transform = nullptr;
+    osg::ref_ptr<osg::MatrixTransform> transform;
     if (geometry) {
-        transform = new osg::MatrixTransform();
-        std::string nodename = geometry->getName();
-        transform->setName(nodename + ".transform");
-        osg::Matrix osgMat;
-        vistle::Matrix4 vistleMat = geometry->getTransform();
-        for (int i = 0; i < 4; ++i) {
-            for (int j = 0; j < 4; ++j) {
-                osgMat(i, j) = vistleMat.col(i)[j];
-            }
-        }
-        transform->setMatrix(osgMat);
+        transform = getTransform(geometry);
 
         const char *filename = pro->coverRenderObject->getAttribute("_model_file");
         if (filename) {
