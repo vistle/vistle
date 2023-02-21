@@ -1,5 +1,5 @@
 #include "Transversalflussmaschine.h"
-#include "vistle/core/scalar.h"
+#include <vistle/core/scalar.h>
 #include <vistle/core/points.h>
 #include <vistle/core/unstr.h>
 #include <boost/filesystem.hpp>

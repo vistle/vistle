@@ -55,12 +55,14 @@ private:
                  const MPI_Offset &nLevels, const Index dataIdx, bool velocity = false);
     bool setVariableList(const PnetCDF::NcmpiFile &filename, FileType ft, bool setCOC);
 #endif
+    bool readVariable(Reader::Token &token, int timestep, int block, Index dataIdx, unsigned nLevels,
+                      std::vector<Scalar> *dataValues, bool velocity);
 
     Port *m_gridOut = nullptr;
     Port *m_dataOut[NUMPARAMS];
     Port *m_velocityOut = nullptr;
 
-    IntParameter *m_numPartitions, *m_numLevels, *m_maxLevelOnly;
+    IntParameter *m_numPartitions, *m_numLevels, *m_bottomLevel;
     FloatParameter *m_altitudeScale;
     StringParameter *m_gridFile, *m_partFile, *m_dataFile, *m_zGridFile;
     StringParameter *m_variables[NUMPARAMS];
@@ -90,7 +92,6 @@ private:
 
     std::vector<int> partList;
     unsigned numLevels = 0;
-    unsigned numLevelsNr = 0;
     size_t numCells = 0;
 
     std::vector<unsigned> voc; // voc (Vertices on Cell)
