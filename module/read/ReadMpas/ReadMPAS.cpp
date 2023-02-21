@@ -196,6 +196,7 @@ bool ReadMPAS::prepareRead()
     }
 
     size_t numLevelsUser = m_numLevels->getValue();
+    numLevels = numLevelsUser + 1;
     // estimate no. of elements and vertices
     size_t numVert = 0, numElem = 0;
     if (m_voronoiCells) {
@@ -828,7 +829,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
 
         size_t numLevelsUser = m_numLevels->getValue();
         size_t bottomLevel = m_bottomLevel->getValue();
-        size_t numMaxLevels = 1;
+        size_t numMaxLevels = 0;
 
 #ifdef USE_NETCDF
         NcFile ncid = NcFile::open(firstFileName, *token.comm());
@@ -931,13 +932,12 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
 
 #endif
 
+        numLevels = std::min(numMaxLevels - bottomLevel, numLevelsUser + 1);
         if (numLevels + bottomLevel > numMaxLevels) {
             numLevels = numMaxLevels - bottomLevel;
             sendWarning("numLevels out of range: reducing to upper bound of %u", numLevels);
         }
 
-        if (numLevels == 0)
-            numLevels = std::min(numMaxLevels, numLevelsUser);
         if (numLevels < 1) {
             sendError("Number of Levels must be at least 1");
             return false;
