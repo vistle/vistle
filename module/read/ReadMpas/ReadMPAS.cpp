@@ -1473,6 +1473,10 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
     // Read data
     unsigned nLevels = m_voronoiCells ? std::max(1u, numLevels - 1) : numLevels;
     for (Index dataIdx = 0; dataIdx < NUMPARAMS; ++dataIdx) {
+        if (emptyValue(m_variables[dataIdx])) {
+            // avoid allocating shared memory (even though it would be released immediately)
+            continue;
+        }
         std::string pVar = m_variables[dataIdx]->getValue();
         Vec<Scalar>::ptr dataObj(new Vec<Scalar>(idxCells.size() * nLevels));
         Scalar *ptrOnScalarData = dataObj->x().data();
