@@ -153,7 +153,7 @@ bool getVariable(int ncid, std::string name, T *data, std::vector<size_t> start,
     for (size_t i = 0; i < nreads; ++i) {
         std::vector<size_t> s(start), c(count);
         s[splitdim] = start[splitdim] + i * splitcount;
-        c[splitdim] = std::min(splitcount, count[splitdim] - s[splitdim]);
+        c[splitdim] = std::min(splitcount, count[splitdim] - i * splitcount);
         if (s[splitdim] >= start[splitdim] + count[splitdim])
             continue;
         err = NcFuncMap<T>::get_vara(ncid, varid, s.data(), c.data(), data + i * nvalues);
@@ -213,7 +213,7 @@ bool getVariable(int ncid, std::string name, T *data, std::vector<size_t> dims)
     for (size_t i = 0; i < nreads; ++i) {
         std::vector<size_t> s(start), c(dims);
         s[splitdim] = start[splitdim] + i * splitcount;
-        c[splitdim] = std::min(splitcount, dims[splitdim] - s[splitdim]);
+        c[splitdim] = std::min(splitcount, dims[splitdim] - i * splitcount);
         if (s[splitdim] >= start[splitdim] + dims[splitdim])
             continue;
         int err = NcFuncMap<T>::get_vara(ncid, varid, s.data(), c.data(), data + i * nvalues);
