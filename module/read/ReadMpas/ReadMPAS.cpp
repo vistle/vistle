@@ -1475,7 +1475,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
         std::string pVar = m_variables[dataIdx]->getValue();
         Vec<Scalar>::ptr dataObj(new Vec<Scalar>(idxCells.size() * nLevels));
         Scalar *ptrOnScalarData = dataObj->x().data();
-        std::vector<Scalar> dataValues;   
+        std::vector<Scalar> dataValues;
         if (!readVariable(token, timestep, block, dataIdx, nLevels, &dataValues, false)) {
             continue;
         }
