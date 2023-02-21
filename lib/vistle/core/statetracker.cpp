@@ -994,9 +994,20 @@ bool StateTracker::handlePriv(const message::Started &started)
     int moduleId = started.senderId();
     auto it = runningMap.find(moduleId);
     if (it == runningMap.end()) {
+        if (quitMap.find(moduleId) != quitMap.end()) {
+            CERR << "module " << moduleId << " crashed during startup?" << std::endl;
+            return true;
+        }
         CERR << "did not find " << moduleId << " in runningMap, contents are: ";
         for (auto it = runningMap.begin(); it != runningMap.end(); ++it) {
             if (it != runningMap.begin())
+                std::cerr << ", ";
+            std::cerr << it->first;
+        }
+        std::cerr << std::endl;
+        CERR << "did not find " << moduleId << " in quitMap, contents are: ";
+        for (auto it = quitMap.begin(); it != quitMap.end(); ++it) {
+            if (it != quitMap.begin())
                 std::cerr << ", ";
             std::cerr << it->first;
         }
