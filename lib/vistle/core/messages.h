@@ -125,7 +125,7 @@ public:
 private:
     int m_id;
     address_t m_name;
-    address_t m_loginName;
+    module_name_t m_loginName;
     address_t m_realName;
 
     int m_numRanks;
@@ -135,8 +135,8 @@ private:
     address_t m_address;
     bool m_hasUserInterface;
     bool m_hasVrb;
-    port_name_t m_systemType;
-    port_name_t m_arch;
+    module_name_t m_systemType;
+    module_name_t m_arch;
 };
 
 //! request that a slave hub be deleted
@@ -147,30 +147,6 @@ public:
 
 private:
     int m_id;
-};
-
-//! debug: request a reply containing character 'c'
-class V_COREEXPORT Ping: public MessageBase<Ping, PING> {
-public:
-    explicit Ping(const char c);
-
-    char getCharacter() const;
-
-private:
-    const char character;
-};
-
-//! debug: reply to pong
-class V_COREEXPORT Pong: public MessageBase<Pong, PONG> {
-public:
-    explicit Pong(const Ping &ping);
-
-    char getCharacter() const;
-    int getDestination() const;
-
-private:
-    const char character;
-    int module;
 };
 
 //! request master hub to load a new workflow
@@ -566,6 +542,7 @@ public:
     SetParameter(int module, const std::string &name, const Float value);
     SetParameter(int module, const std::string &name, const ParamVector &value);
     SetParameter(int module, const std::string &name, const IntParamVector &value);
+    SetParameter(int module, const std::string &name, const StringParamVector &value);
     SetParameter(int module, const std::string &name, const std::string &value);
 
     void setInit();
@@ -587,6 +564,7 @@ public:
     Float getFloat() const;
     ParamVector getVector() const;
     IntParamVector getIntVector() const;
+    StringParamVector getStringVector() const;
 
     void setReadOnly(bool readOnly);
     bool isReadOnly() const;

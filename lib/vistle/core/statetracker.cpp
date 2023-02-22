@@ -52,6 +52,10 @@ StateTracker::StateTracker(int id, const std::string &name, std::shared_ptr<Port
     Module session(Id::Vistle, Id::MasterHub); // for session parameters
     session.name = "Vistle Session";
     runningMap.emplace(Id::Vistle, session);
+
+    Module config(Id::Config, Id::MasterHub); // for settings tied to currently loaded workflow
+    config.name = "Workflow Configuration";
+    runningMap.emplace(Id::Config, config);
 }
 
 StateTracker::mutex &StateTracker::getMutex()
@@ -149,6 +153,9 @@ int StateTracker::getHub(int id) const
     mutex_locker guard(m_stateMutex);
     if (Id::isHub(id)) {
         return id;
+    }
+    if (id == Id::Vistle || id == Id::Config) {
+        return Id::MasterHub;
     }
 
     RunningMap::const_iterator it = runningMap.find(id);
@@ -660,16 +667,6 @@ bool StateTracker::handle(const message::Message &msg, const char *payload, size
         handled = handlePriv(choice, pl);
         break;
     }
-    case PING: {
-        const auto &ping = msg.as<Ping>();
-        handled = handlePriv(ping);
-        break;
-    }
-    case PONG: {
-        const auto &pong = msg.as<Pong>();
-        handled = handlePriv(pong);
-        break;
-    }
     case TRACE: {
         const auto &trace = msg.as<Trace>();
         handled = handlePriv(trace);
@@ -912,18 +909,6 @@ bool StateTracker::handlePriv(const message::AddHub &slave)
     return true;
 }
 
-bool StateTracker::handlePriv(const message::Ping &ping)
-{
-    //CERR << "Ping [" << ping.senderId() << " " << ping.getCharacter() << "]" << std::endl;
-    return true;
-}
-
-bool StateTracker::handlePriv(const message::Pong &pong)
-{
-    CERR << "Pong [" << pong.senderId() << " " << pong.getCharacter() << "]" << std::endl;
-    return true;
-}
-
 bool StateTracker::handlePriv(const message::Debug &debug)
 {
     switch (debug.getRequest()) {
@@ -1009,9 +994,20 @@ bool StateTracker::handlePriv(const message::Started &started)
     int moduleId = started.senderId();
     auto it = runningMap.find(moduleId);
     if (it == runningMap.end()) {
+        if (quitMap.find(moduleId) != quitMap.end()) {
+            CERR << "module " << moduleId << " crashed during startup?" << std::endl;
+            return true;
+        }
         CERR << "did not find " << moduleId << " in runningMap, contents are: ";
         for (auto it = runningMap.begin(); it != runningMap.end(); ++it) {
             if (it != runningMap.begin())
+                std::cerr << ", ";
+            std::cerr << it->first;
+        }
+        std::cerr << std::endl;
+        CERR << "did not find " << moduleId << " in quitMap, contents are: ";
+        for (auto it = quitMap.begin(); it != quitMap.end(); ++it) {
+            if (it != quitMap.begin())
                 std::cerr << ", ";
             std::cerr << it->first;
         }
@@ -1241,7 +1237,7 @@ bool StateTracker::handlePriv(const message::AddParameter &addParam)
     ParameterOrder &po = mod.paramOrder;
     ParameterMap::iterator it = pm.find(addParam.getName());
     if (it != pm.end()) {
-        if (addParam.senderId() == Id::Vistle)
+        if (addParam.senderId() == Id::Vistle || addParam.senderId() == Id::Config)
             return true;
         CERR << "duplicate parameter " << addParam.moduleName() << ":" << addParam.getName() << std::endl;
     } else {

@@ -23,6 +23,7 @@
 #include <vistle/util/shmconfig.h>
 #include <vistle/util/threadname.h>
 #include <vistle/util/affinity.h>
+#include <vistle/config/config.h>
 #include <vistle/core/object.h>
 #include <vistle/core/empty.h>
 #include <vistle/core/export.h>
@@ -213,12 +214,13 @@ double getRealTime(Object::const_ptr obj)
     return obj->getRealTime();
 }
 
-bool Module::setup(const std::string &shmname, int moduleID, int rank)
+bool Module::setup(const std::string &shmname, int moduleID, const std::string &cluster, int rank)
 {
 #ifndef MODULE_THREAD
     bool perRank = shmPerRank();
     Shm::attach(shmname, moduleID, rank, perRank);
     vistle::apply_affinity_from_environment(Shm::the().nodeRank(rank), Shm::the().numRanksOnThisNode());
+    setenv("VISTLE_CLUSTER", cluster.c_str(), 1);
 #endif
     return Shm::isAttached();
 }
@@ -254,6 +256,9 @@ Module::Module(const std::string &moduleName, const int moduleId, mpi::communica
 {
     m_size = m_comm.size();
     m_rank = m_comm.rank();
+    m_configAccess = std::make_unique<config::Access>(vistle::hostname(), vistle::clustername(), m_rank);
+    ParameterManager::setConfig(m_configAccess.get());
+    m_configFile = m_configAccess->file("module/" + name());
 
 #ifndef MODULE_THREAD
     message::DefaultSender::init(m_id, m_rank);
@@ -322,6 +327,16 @@ Module::Module(const std::string &moduleName, const int moduleId, mpi::communica
     }
     mpi::broadcast(m_commShmGroup, leaderSubRank, 0);
     mpi::all_gather(m_comm, leaderSubRank, m_shmLeadersSubrank);
+}
+
+config::Access *Module::configAccess() const
+{
+    return m_configAccess.get();
+}
+
+config::File *Module::config() const
+{
+    return m_configFile.get();
 }
 
 StateTracker &Module::state()
@@ -1438,25 +1453,6 @@ bool Module::handleMessage(const vistle::message::Message *message, const Messag
     }
 
     switch (message->type()) {
-    case vistle::message::PING: {
-        const vistle::message::Ping *ping = static_cast<const vistle::message::Ping *>(message);
-
-        std::cerr << "    module [" << name() << "] [" << id() << "] [" << rank() << "/" << size() << "] ping ["
-                  << ping->getCharacter() << "]" << std::endl;
-        vistle::message::Pong m(*ping);
-        m.setDestId(ping->senderId());
-        sendMessage(m);
-        break;
-    }
-
-    case vistle::message::PONG: {
-        const vistle::message::Pong *pong = static_cast<const vistle::message::Pong *>(message);
-
-        std::cerr << "    module [" << name() << "] [" << id() << "] [" << rank() << "/" << size() << "] pong ["
-                  << pong->getCharacter() << "]" << std::endl;
-        break;
-    }
-
     case vistle::message::TRACE: {
         const Trace *trace = static_cast<const Trace *>(message);
         if (trace->on()) {
@@ -2099,12 +2095,12 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
             if (timestep >= 0) {
                 assert(numReductions < m_numTimesteps);
             }
-            if (cancelRequested(true))
-                return true;
             if (timestep >= 0) {
                 ++numReductions;
                 assert(numReductions <= m_numTimesteps);
             }
+            if (cancelRequested(true))
+                return true;
 #ifdef REDUCE_DEBUG
             CERR << "runReduce(t=" << timestep << "): exec count = " << m_executionCount << std::endl;
 #endif

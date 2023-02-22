@@ -371,30 +371,6 @@ int RemoveHub::id() const
 }
 
 
-Ping::Ping(const char c): character(c)
-{}
-
-char Ping::getCharacter() const
-{
-    return character;
-}
-
-Pong::Pong(const Ping &ping): character(ping.getCharacter()), module(ping.senderId())
-{
-    setReferrer(ping.uuid());
-}
-
-char Pong::getCharacter() const
-{
-    return character;
-}
-
-int Pong::getDestination() const
-{
-    return module;
-}
-
-
 LoadWorkflow::LoadWorkflow(const std::string &pathname)
 {
     COPY_STRING(m_pathname, pathname);
@@ -1087,6 +1063,9 @@ std::shared_ptr<Parameter> RemoveParameter::getParameter() const
     case Parameter::String:
         p.reset(new StringParameter(senderId(), getName()));
         break;
+    case Parameter::StringVector:
+        p.reset(new StringVectorParameter(senderId(), getName()));
+        break;
     case Parameter::Invalid:
     case Parameter::Unknown:
         break;
@@ -1143,6 +1122,13 @@ SetParameter::SetParameter(int module, const std::string &n, const std::shared_p
             v_ivector[i] = v[i];
     } else if (const auto pstring = dynamic_cast<const StringParameter *>(param)) {
         COPY_STRING(v_string, (initialize ? pstring->getDefaultValue() : pstring->getValue(rt)));
+    } else if (const auto spvec = dynamic_cast<const StringVectorParameter *>(param)) {
+        StringParamVector v = initialize ? spvec->getDefaultValue() : spvec->getValue(rt);
+        dim = v.dim;
+        for (int i = 0; i < MaxDimension; ++i) {
+            //FIXME
+            //v_svector[i] = v[i];
+        }
     } else {
         std::cerr << "SetParameter: type " << param->type() << " not handled" << std::endl;
         assert("invalid parameter type" == 0);
@@ -1221,6 +1207,21 @@ SetParameter::SetParameter(int module, const std::string &n, const std::string &
 {
     COPY_STRING(name, n);
     COPY_STRING(v_string, v);
+}
+
+SetParameter::SetParameter(int module, const std::string &n, const StringParamVector &v)
+: m_module(module)
+, paramtype(Parameter::String)
+, rangetype(Parameter::Value)
+, initialize(false)
+, reply(false)
+, delayed(false)
+, immediate_valid(false)
+, immediate(false)
+{
+    COPY_STRING(name, n);
+    //FIXME
+    //COPY_STRING(v_string, v);
 }
 
 void SetParameter::setInit()
@@ -1303,6 +1304,13 @@ std::string SetParameter::getString() const
 {
     assert(paramtype == Parameter::String);
     return v_string.data();
+}
+
+StringParamVector SetParameter::getStringVector() const
+{
+    assert(paramtype == Parameter::StringVector);
+    //FIXME
+    return StringParamVector();
 }
 
 void SetParameter::setReadOnly(bool readOnly)
@@ -1401,12 +1409,14 @@ bool SetParameterChoices::apply(std::shared_ptr<vistle::Parameter> param,
                                 const SetParameterChoices::Payload &payload) const
 {
     if (param->type() != Parameter::Integer && param->type() != Parameter::String) {
-        std::cerr << "SetParameterChoices::apply(): parameter type not compatible with choice" << std::endl;
+        std::cerr << "SetParameterChoices::apply(): " << param->module() << ":" << param->getName()
+                  << ": type not compatible with choice" << std::endl;
         return false;
     }
 
     if (param->presentation() != Parameter::Choice) {
-        std::cerr << "SetParameterChoices::apply(): parameter presentation is not 'Choice'" << std::endl;
+        std::cerr << "SetParameterChoices::apply(): " << param->module() << ":" << param->getName()
+                  << ": parameter presentation is not 'Choice'" << std::endl;
         return false;
     }
 

@@ -35,6 +35,7 @@ target_link_libraries(
 if(UNIX)
     target_link_libraries(vistle_control PRIVATE ${CMAKE_DL_LIBS})
 endif()
+target_link_libraries(vistle_control PRIVATE vistle_config)
 
 if(Python_FOUND)
     target_compile_definitions(vistle_control PRIVATE HAVE_PYTHON)

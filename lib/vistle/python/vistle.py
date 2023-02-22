@@ -155,6 +155,7 @@ def showParameters(id):
 def showAllParameters():
    mods = _vistle.getRunning()
    mods.insert(0, _vistle.Id.Vistle)
+   mods.insert(0, _vistle.Id.Config)
    print("id\tmodule\tname\ttype\tvalue")
    for m in mods:
       name = _vistle.getModuleName(m)
@@ -167,6 +168,8 @@ def modvar(id):
       return "m" + _vistle.getModuleName(id) + str(id)
    if (id == _vistle.getVistleSession()):
        return "VistleSession"
+   if (id == _vistle.getWorkflowConfig()):
+       return "WorkflowConfig"
    return "v"+str(-id)
 
 def hubVar(hub, numSlaves):
@@ -242,6 +245,7 @@ def saveWorkflow(f, mods, numSlaves, remote):
 def save2(file, moduleList):
    file.write("MasterHub=getMasterHub()\n")
    file.write("VistleSession=getVistleSession()\n")
+   file.write("WorkflowConfig=getWorkflowConfig()\n")
 
    master = getMasterHub()
    slavehubs = set()
@@ -254,6 +258,7 @@ def save2(file, moduleList):
    file.write("uuids = {}\n");
 
    saveParameters(file, getVistleSession())
+   saveParameters(file, getWorkflowConfig())
    saveWorkflow(file, moduleList, numSlaves, False)
 
    if numSlaves > 1:
@@ -410,6 +415,7 @@ waitForHubs = _vistle.waitForHubs
 waitForNamedHubs = _vistle.waitForNamedHubs
 getMasterHub = _vistle.getMasterHub
 getVistleSession = _vistle.getVistleSession
+getWorkflowConfig = _vistle.getWorkflowConfig
 getSessionUrl = _vistle.getSessionUrl
 getAllHubs = _vistle.getAllHubs
 getHub = _vistle.getHub
@@ -421,6 +427,7 @@ getParameters = _vistle.getParameters
 getParameterType = _vistle.getParameterType
 getParameterPresentation = _vistle.getParameterPresentation
 getParameterTooltip = _vistle.getParameterTooltip
+getParameterChoices = _vistle.getParameterChoices
 isParameterDefault = _vistle.isParameterDefault
 getIntParam = _vistle.getIntParam
 getFloatParam = _vistle.getFloatParam

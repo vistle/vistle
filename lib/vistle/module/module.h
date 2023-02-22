@@ -27,6 +27,7 @@
 #include <deque>
 #include <mutex>
 #include <future>
+#include <memory>
 
 #include <vistle/core/paramvector.h>
 #include <vistle/core/object.h>
@@ -37,6 +38,8 @@
 #include <vistle/core/parametermanager.h>
 #include <vistle/core/messagesender.h>
 #include <vistle/core/messagepayload.h>
+#include <vistle/config/config.h>
+#include <vistle/util/hostname.h>
 
 #include "objectcache.h"
 #define RESULTCACHE_SKIP_DEFINITION
@@ -60,6 +63,10 @@ class StateTracker;
 struct HubData;
 class Module;
 class Renderer;
+
+namespace config {
+class Access;
+}
 
 namespace message {
 class Message;
@@ -117,7 +124,7 @@ class V_MODULEEXPORT Module: public ParameterManager, public MessageSender {
     friend class BlockTask;
 
 public:
-    static bool setup(const std::string &shmname, int moduleID, int rank);
+    static bool setup(const std::string &shmname, int moduleID, const std::string &cluster, int rank);
 
     Module(const std::string &name, const int moduleID, mpi::communicator comm);
     virtual ~Module();
@@ -125,6 +132,9 @@ public:
     StateTracker &state();
     virtual void eventLoop(); // called from MODULE_MAIN
     void initDone(); // to be called from eventLoop after module ctor has run
+
+    config::Access *configAccess() const;
+    config::File *config() const;
 
     virtual bool dispatch(bool block = true, bool *messageReceived = nullptr, unsigned int minPrio = 0);
 
@@ -276,6 +286,9 @@ protected:
     int m_size;
     const int m_id;
 
+    std::unique_ptr<config::Access> m_configAccess;
+    std::unique_ptr<config::File> m_configFile;
+
     int m_executionCount, m_iteration;
     std::set<Port *> m_withOutput;
 
@@ -406,7 +419,7 @@ V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);
     static std::shared_ptr<vistle::Module> newModuleInstance(const std::string &name, int moduleId, \
                                                              mpi::communicator comm) \
     { \
-        vistle::Module::setup("dummy shm", moduleId, comm.rank()); \
+        vistle::Module::setup("dummy shm", moduleId, "dummy cluster", comm.rank()); \
         return std::shared_ptr<X>(new X(name, moduleId, comm)); \
     } \
     static vistle::ModuleRegistry::RegisterClass registerModule##X(VISTLE_MODULE_NAME, newModuleInstance);
@@ -415,7 +428,7 @@ V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);
     static std::shared_ptr<vistle::Module> newModuleInstance(const std::string &name, int moduleId, \
                                                              mpi::communicator comm) \
     { \
-        vistle::Module::setup("dummy shm", moduleId, comm.rank()); \
+        vistle::Module::setup("dummy shm", moduleId, "dummy cluster", comm.rank()); \
         return std::shared_ptr<X>(new X(name, moduleId, comm)); \
     } \
     BOOST_DLL_ALIAS(newModuleInstance, newModule)
@@ -427,21 +440,22 @@ V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);
 #define MODULE_MAIN_THREAD(X, THREAD_MODE) \
     int main(int argc, char **argv) \
     { \
-        if (argc != 4) { \
-            std::cerr << "module requires exactly 4 parameters" << std::endl; \
+        if (argc != 5) { \
+            std::cerr << "module requires exactly 5 parameters" << std::endl; \
             exit(1); \
         } \
         int rank = -1, size = -1; \
         try { \
-            std::string shmname = argv[1]; \
-            const std::string name = argv[2]; \
-            int moduleID = atoi(argv[3]); \
+            std::string cluster = argv[1]; \
+            std::string shmname = argv[2]; \
+            const std::string name = argv[3]; \
+            int moduleID = atoi(argv[4]); \
             mpi::environment mpi_environment(argc, argv, THREAD_MODE, true); \
             vistle::registerTypes(); \
             mpi::communicator comm_world; \
             rank = comm_world.rank(); \
             size = comm_world.size(); \
-            vistle::Module::setup(shmname, moduleID, rank); \
+            vistle::Module::setup(shmname, moduleID, cluster, rank); \
             { \
                 X module(name, moduleID, comm_world); \
                 module.eventLoop(); \

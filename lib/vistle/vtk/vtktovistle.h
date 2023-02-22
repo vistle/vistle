@@ -46,11 +46,4 @@ DataBase::ptr V_VTK_EXPORT vtkData2Vistle(vtkDataArray *varr, Object::const_ptr 
 } // namespace vtk
 } // namespace vistle
 
-class coVtk {
-public:
-    enum Attributes { Scalars = 0, Vectors = 1, Normals = 2, TexCoords = 3, Tensors = 4, Any = 5 };
-
-    enum Flags { None = 0, Normalize = 1, RequireDouble = 2 };
-};
-
 #endif

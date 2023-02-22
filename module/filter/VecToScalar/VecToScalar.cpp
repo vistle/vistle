@@ -15,7 +15,7 @@ VecToScalar::VecToScalar(const std::string &name, int moduleID, mpi::communicato
 {
     createInputPort("data_in", "vector to be split");
     createOutputPort("data_out", "extracted scalar data component");
-    m_caseParam = addIntParameter("Choose Scalar Value", "Choose Scalar Value", 3, Parameter::Choice);
+    m_caseParam = addIntParameter("choose_scalar_value", "Choose Scalar Value", 3, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_caseParam, Choices);
 }
 

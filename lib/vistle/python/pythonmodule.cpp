@@ -175,16 +175,6 @@ static void quit()
     //exit(0);
 }
 
-static void ping(int dest = message::Id::Broadcast, char c = '.')
-{
-#ifdef DEBUG
-    std::cerr << "Python: ping: " << c << std::endl;
-#endif
-    message::Ping m(c);
-    m.setDestId(dest);
-    sendMessage(m);
-}
-
 static void trace(int id = message::Id::Broadcast, message::Type type = message::ANY, bool onoff = true)
 {
 #ifdef DEBUG
@@ -408,6 +398,11 @@ static int getVistleSession()
     return vistle::message::Id::Vistle;
 }
 
+static int getWorkflowConfig()
+{
+    return vistle::message::Id::Config;
+}
+
 static std::vector<int> getAllHubs()
 {
     std::unique_lock<PythonStateAccessor> guard(access());
@@ -563,6 +558,25 @@ static std::string getParameterTooltip(int id, const std::string &name)
         desc += ")";
     }
     return desc;
+}
+
+static std::vector<std::string> getParameterChoices(int id, const std::string &name)
+{
+    std::unique_lock<PythonStateAccessor> guard(access());
+    std::vector<std::string> choices;
+    const auto param = state().getParameter(id, name);
+    if (!param) {
+        std::cerr << "Python: getParameterChoices: no such parameter" << std::endl;
+        return choices;
+    }
+    if (param->presentation() != Parameter::Choice) {
+        std::cerr << "Python: getParameterChoices: presantation is not Choice" << std::endl;
+        return choices;
+    }
+
+    for (const auto &c: param->choices())
+        choices.emplace_back(c);
+    return choices;
 }
 
 static std::string getEscapedStringParam(int id, const std::string &name)
@@ -1366,6 +1380,7 @@ PY_MODULE(_vistle, m)
     py::enum_<message::Id::Reserved>(id, "Id")
         .value("Invalid", message::Id::Invalid)
         .value("Vistle", message::Id::Vistle)
+        .value("Config", message::Id::Config)
         .value("Broadcast", message::Id::Broadcast)
         .value("ForBroadcast", message::Id::ForBroadcast)
         .value("NextHop", message::Id::NextHop)
@@ -1472,7 +1487,6 @@ PY_MODULE(_vistle, m)
     m.def("sendCoverMessage", &sendCoverGuiMessage, "send a coGRMsg to COVER", "msg"_a, "coverModuleId"_a);
     m.def("snapshotGui", &snapshotGui, "save a snapshot of the mapeditor workflow", "filename"_a);
     m.def("quit", quit, "quit vistle session");
-    m.def("ping", ping, "send first character of `arg2` to destination `arg1`", "id"_a, "data"_a = "p");
     m.def("trace", trace, "enable/disable message tracing for module `id`", "id"_a = message::Id::Broadcast,
           "type"_a = message::ANY, "enable"_a = true);
     m.def("debug", debug, "request a module to print its state", "id"_a = message::Id::Invalid);
@@ -1522,6 +1536,7 @@ PY_MODULE(_vistle, m)
     m.def("waitForNamedHubs", waitForNamedHubs, "wait for named hubs to connect");
     m.def("getMasterHub", getMasterHub, "get ID of master hub");
     m.def("getVistleSession", getVistleSession, "get ID for Vistle session");
+    m.def("getWorkflowConfig", getWorkflowConfig, "get ID for workflow configuration");
     m.def("getAllHubs", getAllHubs, "get ID of all known hubs");
     m.def("getHub", getHub, "get ID of hub for module with ID `arg1`");
     m.def("getConnections", getConnections, "get connections to/from port `arg2` of module with ID `arg1`");
@@ -1542,6 +1557,7 @@ PY_MODULE(_vistle, m)
     m.def("getEscapedStringParam", getEscapedStringParam,
           "get value of parameter named `arg2` of module with ID `arg1`");
     m.def("getParameterTooltip", getParameterTooltip, "get a short description of the parameter");
+    m.def("getParameterChoices", getParameterChoices, "get list of choices of the parameter");
 
 #ifndef EMBED_PYTHON
     m.def("sessionConnect", &sessionConnect, "connect to running Vistle instance", "host"_a = "localhost",

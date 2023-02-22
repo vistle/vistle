@@ -288,7 +288,9 @@ void Parameters::newParameter(int moduleId, QString parameterName)
         m_propToParam[prop] = parameterName;
         QString group = QString::fromStdString(p->group());
         bool expanded = false;
-        if (parameterName.startsWith("_")) {
+        if (parameterName.startsWith("_config:")) {
+            group = "Configuration Parameters";
+        } else if (parameterName.startsWith("_")) {
             group = "System Parameters";
         } else {
             expanded = p->isGroupExpanded();
@@ -392,7 +394,10 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
             m_intChoiceManager->setValue(prop, ip->getValue());
             auto defInt = ip->getDefaultValue();
             auto strings = m_intChoiceManager->enumNames(prop);
-            QString tip = QString("%1 (default: %2)").arg(QString::fromStdString(p->description()), strings[defInt]);
+            QString defString;
+            if (defInt >= 0 && strings.size() > defInt)
+                defString = strings[defInt];
+            QString tip = QString("%1 (default: %2)").arg(QString::fromStdString(p->description()), defString);
             prop->setStatusTip(tip);
         } else {
             m_intManager->setValue(prop, ip->getValue());

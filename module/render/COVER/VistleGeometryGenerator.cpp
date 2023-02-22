@@ -13,7 +13,6 @@
 #include <osg/TexEnv>
 #include <osg/Point>
 #include <osg/LineWidth>
-#include <osg/MatrixTransform>
 #include "HeightMap.h"
 
 #include <vistle/util/math.h>
@@ -753,7 +752,7 @@ bool fillTexture(std::stringstream &debug, S *tex, Index sx, Index sy, typename 
     return false;
 }
 
-osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defaultState)
+osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defaultState)
 {
     if (m_ro)
         m_ro->updateBounds();
@@ -762,17 +761,6 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
         return nullptr;
 
     std::string nodename = m_geo->getName();
-
-    osg::MatrixTransform *transform = new osg::MatrixTransform();
-    transform->setName(nodename + ".transform");
-    osg::Matrix osgMat;
-    vistle::Matrix4 vistleMat = m_geo->getTransform();
-    for (int i = 0; i < 4; ++i) {
-        for (int j = 0; j < 4; ++j) {
-            osgMat(i, j) = vistleMat.col(i)[j];
-        }
-    }
-    transform->setMatrix(osgMat);
 
     std::stringstream debug;
     debug << nodename << " ";
@@ -797,9 +785,8 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
     debug << "b " << b << ", t " << t << " ";
 
     bool lighted = true;
-    osg::ref_ptr<osg::Geode> geode = new osg::Geode();
+    osg::Geode *geode = new osg::Geode();
     geode->setName(nodename);
-    transform->addChild(geode);
 
     std::vector<osg::ref_ptr<osg::Drawable>> draw;
     osg::ref_ptr<osg::StateSet> state;
@@ -1569,7 +1556,7 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
 
     std::cerr << debug.str() << std::endl;
 
-    return transform;
+    return geode;
 }
 
 OsgColorMap::OsgColorMap(): texture(new osg::Texture1D), image(new osg::Image)

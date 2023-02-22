@@ -10,13 +10,20 @@
 #include <memory>
 #include <vector>
 #include <map>
+#include <deque>
 
 namespace vistle {
+
+namespace config {
+class Access;
+}
 
 class V_COREEXPORT ParameterManager {
 public:
     ParameterManager(const std::string &name, int id);
     virtual ~ParameterManager();
+
+    void setConfig(config::Access *config);
 
     //! set group for all subsequently added parameters, reset with empty group
     void setCurrentParameterGroup(const std::string &group = std::string(), bool defaultExpanded = true);
@@ -58,7 +65,8 @@ public:
                             const message::SetParameter *inResponseTo = NULL);
     std::string getStringParameter(const std::string &name) const;
 
-    FloatParameter *addFloatParameter(const std::string &name, const std::string &description, const Float value);
+    FloatParameter *addFloatParameter(const std::string &name, const std::string &description, const Float value,
+                                      Parameter::Presentation p = Parameter::Generic);
     bool setFloatParameter(const std::string &name, const Float value,
                            const message::SetParameter *inResponseTo = NULL);
     Float getFloatParameter(const std::string &name) const;
@@ -69,17 +77,24 @@ public:
                          const message::SetParameter *inResponseTo = NULL);
     Integer getIntParameter(const std::string &name) const;
 
-    VectorParameter *addVectorParameter(const std::string &name, const std::string &description,
-                                        const ParamVector &value);
+    VectorParameter *addVectorParameter(const std::string &name, const std::string &description, ParamVector value,
+                                        Parameter::Presentation p = Parameter::Generic);
     bool setVectorParameter(const std::string &name, const ParamVector &value,
                             const message::SetParameter *inResponseTo = NULL);
     ParamVector getVectorParameter(const std::string &name) const;
 
     IntVectorParameter *addIntVectorParameter(const std::string &name, const std::string &description,
-                                              const IntParamVector &value);
+                                              IntParamVector value, Parameter::Presentation p = Parameter::Generic);
     bool setIntVectorParameter(const std::string &name, const IntParamVector &value,
                                const message::SetParameter *inResponseTo = NULL);
     IntParamVector getIntVectorParameter(const std::string &name) const;
+
+    StringVectorParameter *addStringVectorParameter(const std::string &name, const std::string &description,
+                                                    StringParamVector value,
+                                                    Parameter::Presentation p = Parameter::Generic);
+    bool setStringVectorParameter(const std::string &name, const StringParamVector &value,
+                                  const message::SetParameter *inResponseTo = NULL);
+    StringParamVector getStringVectorParameter(const std::string &name) const;
 
     bool removeParameter(const std::string &name);
     virtual bool removeParameter(Parameter *param);
@@ -89,6 +104,8 @@ public:
     void init();
     void quit();
     bool handleMessage(const message::SetParameter &message);
+    bool handleMessage(const message::AddParameter &message);
+    bool handleMessage(const message::RemoveParameter &message);
     virtual void sendParameterMessage(const message::Message &message, const buffer *payload = nullptr) const = 0;
     template<class Payload>
     void sendParameterMessageWithPayload(message::Message &message, Payload &payload);
@@ -107,10 +124,34 @@ private:
     std::string m_name = std::string("ParameterManager");
     std::string m_currentParameterGroup;
     bool m_currentParameterGroupExpanded = true;
-    std::map<std::string, std::shared_ptr<Parameter>> parameters;
+    struct ParameterData {
+        ParameterData() = default;
+        ParameterData(std::shared_ptr<Parameter> &param): param(param) {}
+        std::shared_ptr<Parameter> param;
+        bool owner = true;
+    };
+    std::map<std::string, ParameterData> m_parameters;
     bool m_inParameterChanged = false;
     std::vector<const Parameter *> m_delayedChanges;
+
+    std::deque<message::SetParameter> m_queue;
+
+    config::Access *m_config = nullptr;
 };
+
+#define PARAM_TYPE_TEMPLATE(spec, Type) \
+    spec template V_COREEXPORT Parameter *ParameterManager::addParameter( \
+        const std::string &name, const std::string &description, const Type &value, \
+        Parameter::Presentation presentation); \
+    spec template V_COREEXPORT bool ParameterManager::setParameter<Type>(const std::string &name, const Type &value, \
+                                                                         const message::SetParameter *inResponseTo);
+
+PARAM_TYPE_TEMPLATE(extern, Integer)
+PARAM_TYPE_TEMPLATE(extern, Float)
+PARAM_TYPE_TEMPLATE(extern, std::string)
+PARAM_TYPE_TEMPLATE(extern, ParameterVector<Integer>)
+PARAM_TYPE_TEMPLATE(extern, ParameterVector<Float>)
+PARAM_TYPE_TEMPLATE(extern, ParameterVector<std::string>)
 
 } // namespace vistle
 

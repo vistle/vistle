@@ -57,13 +57,13 @@ PrintMetaData::PrintMetaData(const std::string &name, int moduleID, mpi::communi
 
     // add module parameters
     m_param_doPrintTotals = addIntParameter(
-        "Print Totals", "Print the Totals of incoming metadata (i.e. number of: blocks, cells, vertices, etc..)", 1,
+        "Print_Totals", "Print the Totals of incoming metadata (i.e. number of: blocks, cells, vertices, etc..)", 1,
         Parameter::Boolean);
     m_param_doPrintMinMax =
-        addIntParameter("Print Min/Max", "Print max/min rank wise values of incoming data", 1, Parameter::Boolean);
-    m_param_doPrintMPIInfo = addIntParameter("Print MPI Info", "Print each node MPI rank", 0, Parameter::Boolean);
+        addIntParameter("print_extrema", "Print max/min rank wise values of incoming data", 1, Parameter::Boolean);
+    m_param_doPrintMPIInfo = addIntParameter("print_mpi_info", "Print each node MPI rank", 0, Parameter::Boolean);
     m_param_doPrintVerbose =
-        addIntParameter("Print Verbose", "Prints all data elements on each node", 0, Parameter::Boolean);
+        addIntParameter("print_verbose", "Prints all data elements on each node", 0, Parameter::Boolean);
 
 
     // policies

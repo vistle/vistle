@@ -47,19 +47,22 @@ private:
                   Index *el, Byte *tl, Index *cl, Index &idx2);
     bool addTri(Index &curElem, Index center, Index n1, Index n2, Index *cl, Index &idx2);
 #ifdef USE_NETCDF
-    std::vector<vistle::Scalar> getData(int ncid, Index nLevels, Index dataIdx, bool velocity = false);
+    std::vector<vistle::Scalar> getData(int ncid, Index startLevel, Index nLevels, Index dataIdx,
+                                        bool velocity = false);
     bool setVariableList(int ncid, FileType ft, bool setCOC);
 #else
-    bool getData(const PnetCDF::NcmpiFile &filename, std::vector<float> *dataValues, const MPI_Offset &nLevels,
-                 const Index dataIdx, bool velocity = false);
+    bool getData(const PnetCDF::NcmpiFile &filename, std::vector<Scalar> *dataValues, const MPI_Offset &startLevel,
+                 const MPI_Offset &nLevels, const Index dataIdx, bool velocity = false);
     bool setVariableList(const PnetCDF::NcmpiFile &filename, FileType ft, bool setCOC);
 #endif
+    bool readVariable(Reader::Token &token, int timestep, int block, Index dataIdx, unsigned nLevels,
+                      std::vector<Scalar> *dataValues, bool velocity);
 
     Port *m_gridOut = nullptr;
     Port *m_dataOut[NUMPARAMS];
     Port *m_velocityOut = nullptr;
 
-    IntParameter *m_numPartitions, *m_numLevels;
+    IntParameter *m_numPartitions, *m_numLevels, *m_bottomLevel;
     FloatParameter *m_altitudeScale;
     StringParameter *m_gridFile, *m_partFile, *m_dataFile, *m_zGridFile;
     StringParameter *m_variables[NUMPARAMS];

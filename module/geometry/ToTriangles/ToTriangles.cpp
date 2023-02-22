@@ -393,9 +393,8 @@ bool ToTriangles::compute()
                     Vector3 next = k + 1 < end ? Vector3(x[k + 1], y[k + 1], z[k + 1]) : cur;
 
                     Vector3 l1 = next - cur;
-                    auto len1 = Scalar(), len2 = Scalar();
+                    auto len1 = l1.norm(), len2 = Scalar();
                     if (k == begin) {
-                        len1 = l1.norm();
                         dir = l1.normalized();
                     } else {
                         Vector3 l2(x[k] - x[k - 1], y[k] - y[k - 1], z[k] - z[k - 1]);
@@ -407,11 +406,11 @@ bool ToTriangles::compute()
                         } else if (len1 > 100 * len2) {
                             dir = l1.normalized();
                         } else {
-                            //dir = (l1.normalized() + l2.normalized()).normalized();
+                            dir = (l1.normalized() + l2.normalized()).normalized();
                         }
                     }
 
-                    if (k == begin) {
+                    if (k == begin || normal.norm() < Scalar(0.5)) {
                         normal = dir.cross(Vector3(0, 0, 1)).normalized();
                     } else if (len1 > 1e-4 || len2 > 1e-4) {
                         normal = (normal - dir.dot(normal) * dir).normalized();

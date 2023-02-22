@@ -159,6 +159,12 @@ bool FileInfoCrawler::handle(const message::FileQuery &query, const buffer &payl
             info.hostname = hostname();
 #ifdef WIN32
             info.iswindows = true;
+
+            if (const char *h = getenv("USERPROFILE"))
+                info.homepath = h;
+
+            if (const char *u = getenv("USERNAME"))
+                info.username = u;
 #else
             info.iswindows = false;
             if (const char *h = getenv("HOME"))
@@ -167,6 +173,8 @@ bool FileInfoCrawler::handle(const message::FileQuery &query, const buffer &payl
                 info.homepath = "/";
             if (const char *u = getenv("USER"))
                 info.username = u;
+
+
 #endif
             info.currentdir = fs::current_path().string();
             auto payload = createPayload(info);

@@ -1,8 +1,10 @@
+#include <fstream>
 #include <sstream>
 #include <iomanip>
 #include <cfloat>
 #include <limits>
 #include <random>
+#include <vistle/core/scalar.h>
 #include <vistle/core/vector.h>
 #include <vistle/core/object.h>
 #include <vistle/core/vec.h>
@@ -185,7 +187,7 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm): Mod
     setParameterRange(m_opacity, 0., 1.);
 #ifndef COLOR_RANDOM
     m_mapPara = addIntParameter("map", "transfer function name", CoolWarmBrewer, Parameter::Choice);
-    m_rgbFile = addStringParameter("rgb file", " file containing pin rgb values", "", Parameter::ExistingFilename);
+    m_rgbFile = addStringParameter("rgb_file", " file containing pin rgb values", "", Parameter::ExistingFilename);
     V_ENUM_SET_CHOICES(m_mapPara, TransferFunction);
     m_stepsPara = addIntParameter("steps", "number of color map steps", 32);
     setParameterRange(m_stepsPara, (Integer)1, MaxSteps);
@@ -544,44 +546,56 @@ bool Color::changeParameter(const Parameter *p)
                                                        m_maxPara,   m_center,        m_stepsPara};
             changeParameters(params);
         }
-    } else if (p == m_rgbFile) {
-        if (m_rgbFile->getValue() != "") {
-            std::map<vistle::Scalar, ColorMap::RGBA> pins;
-            std::vector<ColorMap::RGBA> rgbValues;
-            std::vector<float> line{0, 0, 0};
-
-            char buffer[100];
-            int linecount = 0, checksum = 0;
-
-            FILE *rgbFile = fopen(m_rgbFile->getValue().c_str(), "r");
-            if (rgbFile == NULL) {
-                printf("Failed to open rgb file. \n");
+    } else if (p == m_rgbFile && !m_rgbFile->getValue().empty()) {
+        auto filename = m_rgbFile->getValue();
+        std::fstream file(m_rgbFile->getValue());
+        std::map<vistle::Scalar, ColorMap::RGBA> pins;
+        std::vector<ColorMap::RGBA> rgbValues;
+        bool normalized = true;
+        while (file.good() && !file.eof()) {
+            std::string line;
+            std::getline(file, line);
+            std::stringstream str(line);
+            std::vector<Scalar> rgba{std::istream_iterator<Scalar>(str), std::istream_iterator<Scalar>()};
+            auto numValues = rgba.size();
+            if (numValues < 3) {
+                std::cerr << "ignoring " << line << ": found only " << numValues << " entries" << std::endl;
+                continue;
+            } else if (numValues == 3) {
+                rgba.push_back(-1.f);
             } else {
-                while (fgets(buffer, sizeof(buffer), rgbFile) != NULL) {
-                    checksum = sscanf(buffer, "%f %f %f", &line[0], &line[1], &line[2]);
-                    if (checksum < 3)
-                        continue;
-                    rgbValues.push_back(ColorMap::RGBA(line[0], line[1], line[2], 1.));
-                    linecount++;
+                if (numValues > 4) {
+                    std::cerr << "only using first four of " << numValues << " entries from " << line << std::endl;
                 }
-
-                fclose(rgbFile);
-
-                if (line[0] > 1) {
-                    for_each(rgbValues.begin(), rgbValues.end(), [](ColorMap::RGBA &elem) {
-                        elem[0] /= 255;
-                        elem[1] /= 255;
-                        elem[2] /= 255;
-                    });
-                }
-
-                for (int i = 0; i < linecount; ++i) {
-                    float idx = (float)i / (float)(linecount - 1);
-                    pins[idx] = rgbValues[i];
-                }
-
-                transferFunctions[FromFile] = pins;
             }
+            for (auto val: rgba) {
+                if (val > 1.f)
+                    normalized = false;
+            }
+            rgbValues.push_back(ColorMap::RGBA(rgba.data()));
+        }
+
+        if (!normalized) {
+            for_each(rgbValues.begin(), rgbValues.end(), [](ColorMap::RGBA &elem) {
+                elem[0] /= 255;
+                elem[1] /= 255;
+                elem[2] /= 255;
+                elem[3] /= 255;
+            });
+        }
+        for_each(rgbValues.begin(), rgbValues.end(), [](ColorMap::RGBA &elem) {
+            if (elem[3] < 0.f)
+                elem[3] = 1.f;
+        });
+        auto linecount = rgbValues.size();
+        for (unsigned i = 0; i < linecount; ++i) {
+            float idx = linecount > 1 ? (float)i / (float)(linecount - 1) : 0;
+            pins[idx] = rgbValues[i];
+        }
+
+        transferFunctions[FromFile] = pins;
+        if (m_mapPara->getValue() == FromFile) {
+            newMap = true;
         }
     } else
 #endif
@@ -614,7 +628,7 @@ bool Color::changeParameter(const Parameter *p)
         m_max = m_maxPara->getValue();
         newMap = true;
     } else if (p == m_insetRelPara) {
-        if (m_insetRelPara) {
+        if (m_insetRelPara->getValue()) {
             setParameterRange(m_insetCenterPara, (Float)0, (Float)1);
             setParameterRange(m_insetWidthPara, (Float)0, (Float)1);
         } else {

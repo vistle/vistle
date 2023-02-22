@@ -540,7 +540,8 @@ bool SimEngine::ExportDatabase(const std::string &filename, const std::string &f
         if (opt.FindIndex("EXPORT_GROUP_SIZE") != -1)
             groupSize = opt.GetInt("EXPORT_GROUP_SIZE");
     }
-    CATCHALL {}
+    CATCHALL
+    {}
     ENDTRY
 
     // The database options we'll put into the export.
@@ -649,7 +650,10 @@ bool SimEngine::RestoreSession(const std::string &filename)
             }
             retval = true;
         }
-        CATCHALL { retval = false; }
+        CATCHALL
+        {
+            retval = false;
+        }
         ENDTRY
     } else {
 #endif
@@ -758,7 +762,10 @@ bool SimEngine::SaveWindow(const std::string &filename, int w, int h, int format
         }
 #endif
     }
-    CATCHALL { retval = false; }
+    CATCHALL
+    {
+        retval = false;
+    }
     ENDTRY
 
     return retval;
@@ -832,7 +839,10 @@ bool SimEngine::AddPlot(const std::string &plotType, const std::string &var)
         }
 #endif
     }
-    CATCHALL { retval = false; }
+    CATCHALL
+    {
+        retval = false;
+    }
     ENDTRY
 
     return retval;
@@ -900,7 +910,10 @@ bool SimEngine::AddOperator(const std::string &operatorType, bool applyToAll)
         }
 #endif
     }
-    CATCHALL { retval = false; }
+    CATCHALL
+    {
+        retval = false;
+    }
     ENDTRY
 
     return retval;
@@ -959,7 +972,10 @@ bool SimEngine::DrawPlots()
         }
 #endif
     }
-    CATCHALL { retval = false; }
+    CATCHALL
+    {
+        retval = false;
+    }
     ENDTRY
 
     return retval;
@@ -1003,7 +1019,10 @@ bool SimEngine::DeleteActivePlots()
         }
 #endif
     }
-    CATCHALL { retval = false; }
+    CATCHALL
+    {
+        retval = false;
+    }
     ENDTRY
 
     return retval;
@@ -1060,7 +1079,10 @@ bool SimEngine::SetActivePlots(const int *ids, int nids)
         }
 #endif
     }
-    CATCHALL { retval = false; }
+    CATCHALL
+    {
+        retval = false;
+    }
     ENDTRY
 
     return retval;
@@ -1118,7 +1140,10 @@ bool SimEngine::ChangePlotVar(const char *var, int all)
         }
 #endif
     }
-    CATCHALL { retval = false; }
+    CATCHALL
+    {
+        retval = false;
+    }
     ENDTRY
 
     return retval;
@@ -1451,7 +1476,10 @@ bool SimEngine::SetPlotOptions(const std::string &fieldName, int fieldType, void
         }
 #endif
     }
-    CATCHALL { retval = false; }
+    CATCHALL
+    {
+        retval = false;
+    }
     ENDTRY
 
     return retval;
@@ -1543,7 +1571,10 @@ bool SimEngine::SetOperatorOptions(const std::string &fieldName, int fieldType, 
         }
 #endif
     }
-    CATCHALL { retval = false; }
+    CATCHALL
+    {
+        retval = false;
+    }
     ENDTRY
 
     return retval;
@@ -1598,7 +1629,10 @@ bool SimEngine::SetView2D(const View2DAttributes &view)
         }
 #endif
     }
-    CATCHALL { retval = false; }
+    CATCHALL
+    {
+        retval = false;
+    }
     ENDTRY
 
     return retval;
@@ -1627,7 +1661,10 @@ bool SimEngine::GetView2D(View2DAttributes &view)
         }
 #endif
     }
-    CATCHALL { retval = false; }
+    CATCHALL
+    {
+        retval = false;
+    }
     ENDTRY
 
     return retval;
@@ -1682,7 +1719,10 @@ bool SimEngine::SetView3D(const View3DAttributes &view)
         }
 #endif
     }
-    CATCHALL { retval = false; }
+    CATCHALL
+    {
+        retval = false;
+    }
     ENDTRY
 
     return retval;
@@ -1711,7 +1751,10 @@ bool SimEngine::GetView3D(View3DAttributes &view)
         }
 #endif
     }
-    CATCHALL { retval = false; }
+    CATCHALL
+    {
+        retval = false;
+    }
     ENDTRY
 
     return retval;

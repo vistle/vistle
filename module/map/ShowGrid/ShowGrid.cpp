@@ -38,8 +38,8 @@ ShowGrid::ShowGrid(const std::string &name, int moduleID, mpi::communicator comm
     addIntParameter("polygon", "Show polygon", 1, Parameter::Boolean);
     addIntParameter("quad", "Show quad", 1, Parameter::Boolean);
     addIntParameter("triangle", "Show triangle", 1, Parameter::Boolean);
-    m_CellNrMin = addIntParameter("Show Cells from Cell Nr. :", "Show Cell Nr.", -1);
-    m_CellNrMax = addIntParameter("Show Cells to Cell Nr. :", "Show Cell Nr.", -1);
+    m_CellNrMin = addIntParameter("min_cell_index", "show cells starting from this index", -1);
+    m_CellNrMax = addIntParameter("max_cell_index", "show cells up to this index", -1);
 
     addResultCache(m_cache);
 }
@@ -62,8 +62,8 @@ bool ShowGrid::compute()
     const bool showpgo = getIntParameter("polygon");
     const bool showqua = getIntParameter("quad");
     const bool showtri = getIntParameter("triangle");
-    const Integer cellnrmin = getIntParameter("Show Cells from Cell Nr. :");
-    const Integer cellnrmax = getIntParameter("Show Cells to Cell Nr. :");
+    const Integer cellnrmin = m_CellNrMin->getValue();
+    const Integer cellnrmax = m_CellNrMax->getValue();
 
 
     auto obj = expect<Object>("grid_in");

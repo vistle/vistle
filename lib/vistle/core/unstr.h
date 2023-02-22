@@ -34,14 +34,111 @@ public:
         NUM_TYPES = cell::NUM_TYPES,
     };
 
-    static const Index MaxNumVertices = 4;
-    static const Index MaxNumFaces = 6;
+    static constexpr Index MaxNumVertices = 4;
+    static constexpr Index MaxNumFaces = 6;
+    static constexpr int Dimensionality[NUM_TYPES] = {-1, 1, 2, 2, 3, 3, 3, 3, -1, -1, 0, 3};
+    static constexpr int NumVertices[NUM_TYPES] = {0, 2, 3, 4, 4, 5, 6, 8, -1, -1, 1, -1};
+    static constexpr int NumFaces[NUM_TYPES] = {0, 0, 1, 1, 4, 5, 5, 6, -1, -1, 0, -1};
+    static constexpr unsigned FaceSizes[NUM_TYPES][MaxNumFaces] = {
+        // none
+        {0, 0, 0, 0, 0, 0},
+        // bar
+        {0, 0, 0, 0, 0, 0},
+        // triangle
+        {3, 0, 0, 0, 0, 0},
+        // quad
+        {4, 0, 0, 0, 0, 0},
+        // tetrahedron
+        {3, 3, 3, 3, 0, 0},
+        // pyramid
+        {4, 3, 3, 3, 0, 0},
+        // prism
+        {3, 4, 4, 4, 3, 0},
+        // hexahedron
+        {4, 4, 4, 4, 4, 4},
+    };
+    static constexpr unsigned FaceVertices[NUM_TYPES][MaxNumFaces][MaxNumVertices] = {// clang-format off
+    
+        { // none
+        },
+        { // bar
+        },
+        { // triangle
+        { 2, 1, 0 },
+        },
+        { // quad
+        { 3, 2, 1, 0 },
+        },
+        { // tetrahedron
+            /*
+                    3
+                   /|\
+                  / | \
+                 /  |  \
+                /   2   \
+               /  /   \  \
+              / /       \ \
+             //           \\
+             0---------------1
+            */
+            { 2, 1, 0 },
+            { 0, 1, 3 },
+            { 1, 2, 3 },
+            { 2, 0, 3 },
+        },
+        { // pyramid
+            /*
+                        4
+                    / /  \    \
+                  0--/------\-------1
+                 / /          \    /
+                //              \ /
+               3-----------------2
+            */
+            { 3, 2, 1, 0 },
+            { 0, 1, 4 },
+            { 1, 2, 4 },
+            { 2, 3, 4 },
+            { 3, 0, 4 },
+        },
+        { // prism
+            /*
+                      5
+                    / | \
+                  /   |   \
+                3 -------- 4
+                |     2    |
+                |   /   \  |
+                | /       \|
+                0----------1
+            */
+            {2, 1, 0},
+            {0, 1, 4, 3},
+            {1, 2, 5, 4},
+            {2, 0, 3, 5},
+            {3, 4, 5}
+        },
+        { // hexahedron
+            /*
+                   7 -------- 6
+                  /|         /|
+                 / |        / |
+                4 -------- 5  |
+                |  3-------|--2
+                | /        | /
+                |/         |/
+                0----------1
+            */
+            { 3, 2, 1, 0 },
+            { 4, 5, 6, 7 },
+            { 0, 1, 5, 4 },
+            { 7, 6, 2, 3 },
+            { 1, 2, 6, 5 },
+            { 4, 7, 3, 0 },
+        }
+        };
+    // clang-format on
 
-    static const int Dimensionality[NUM_TYPES];
-    static const int NumVertices[NUM_TYPES];
-    static const int NumFaces[NUM_TYPES];
-    static const unsigned FaceSizes[NUM_TYPES][MaxNumFaces];
-    static const unsigned FaceVertices[NUM_TYPES][MaxNumFaces][MaxNumVertices];
 
     UnstructuredGrid(const size_t numElements, const size_t numCorners, const size_t numVertices,
                      const Meta &meta = Meta());

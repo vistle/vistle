@@ -26,11 +26,11 @@ TransformGrid::TransformGrid(const std::string &name, int moduleID, mpi::communi
     data_out = createOutputPort("data_out", "output data");
 
     for (size_t i = 0; i < 3; i++) {
-        m_reverse[i] = addIntParameter(std::string("reverse ") + axisNames[i] + "-axix", "", false,
+        m_reverse[i] = addIntParameter(std::string("reverse_") + axisNames[i] + "_axis", "", false,
                                        Parameter::Presentation::Boolean);
     }
 
-    m_order = addIntParameter("orderOfGridAxes", "", XYZ, Parameter::Presentation::Choice);
+    m_order = addIntParameter("order_of_grid_axes", "permutated axis order", XYZ, Parameter::Presentation::Choice);
     V_ENUM_SET_CHOICES(m_order, DimensionOrder);
 }
 

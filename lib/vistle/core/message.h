@@ -27,10 +27,10 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(
     (INVALID) // keep 1st
     (ANY) //< for Trace: enables tracing of all message types -- keep 2nd
     (IDENTIFY)
+    (SETID)
     (CLOSECONNECTION)
     (ADDHUB)
     (REMOVEHUB)
-    (SETID)
     (TRACE)
     (SPAWN)
     (SPAWNPREPARED)
@@ -48,6 +48,8 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(
     (CANCELEXECUTE)
     (ADDOBJECT)
     (ADDOBJECTCOMPLETED)
+    (REQUESTOBJECT)
+    (SENDOBJECT)
     (DATATRANSFERSTATE)
     (ADDPORT)
     (REMOVEPORT)
@@ -57,8 +59,6 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(
     (REMOVEPARAMETER)
     (SETPARAMETER)
     (SETPARAMETERCHOICES)
-    (PING)
-    (PONG)
     (BARRIER)
     (BARRIERREACHED)
     (SENDTEXT)
@@ -69,18 +69,16 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(
     (REDUCEPOLICY)
     (MODULEAVAILABLE)
     (CREATEMODULECOMPOUND)
-    (LOCKUI)
-    (REPLAYFINISHED)
-    (REQUESTTUNNEL)
-    (REQUESTOBJECT)
-    (SENDOBJECT)
-    (REMOTERENDERING)
-    (FILEQUERY)
-    (FILEQUERYRESULT)
-    (COVER)
-    (INSITU)
     (LOADWORKFLOW)
     (SAVEWORKFLOW)
+    (LOCKUI)
+    (REPLAYFINISHED)
+    (FILEQUERY)
+    (FILEQUERYRESULT)
+    (REQUESTTUNNEL)
+    (REMOTERENDERING)
+    (COVER)
+    (INSITU)
     (NumMessageTypes) // keep last
 )
 V_ENUM_OUTPUT_OP(Type, ::vistle::message)
@@ -91,13 +89,14 @@ struct V_COREEXPORT Id {
         ModuleBase = 1, //< >= ModuleBase: modules
         Invalid = 0,
         Vistle = -1, //< session parameters
-        Broadcast = -2, //< master is broadcasting to all modules/hubs
-        ForBroadcast = -3, //< to master for broadcasting
-        NextHop = -4,
-        UI = -5,
-        LocalManager = -6,
-        LocalHub = -7,
-        MasterHub = -8, //< < MasterHub: slave hubs
+        Config = -2, //< "configuration parameters" for per-workflow settings
+        Broadcast = -3, //< master is broadcasting to all modules/hubs
+        ForBroadcast = -4, //< to master for broadcasting
+        NextHop = -5,
+        UI = -6,
+        LocalManager = -7,
+        LocalHub = -8,
+        MasterHub = -10, //< smaller than MasterHub: slave hubs
     };
 
     static bool isHub(int id);
@@ -146,10 +145,9 @@ private:
 const int ModuleNameLength = 50;
 
 typedef std::array<char, ModuleNameLength> module_name_t;
-typedef std::array<char, 32> port_name_t;
-typedef std::array<char, 32> param_name_t;
+typedef std::array<char, 120> port_name_t;
+typedef std::array<char, 120> param_name_t;
 typedef std::array<char, 256> param_value_t;
-typedef std::array<char, 50> param_choice_t;
 typedef std::array<char, 300> shmsegname_t;
 typedef std::array<char, 350> description_t;
 typedef std::array<char, 200> address_t;

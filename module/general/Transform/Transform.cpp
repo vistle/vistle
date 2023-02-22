@@ -107,6 +107,18 @@ bool Transform::changeParameter(const Parameter *param)
     return Module::changeParameter(param);
 }
 
+template<class M>
+M pow(const M &m, unsigned e)
+{
+    assert(e >= 1);
+    if (e == 1)
+        return m;
+    if (e % 2 == 1)
+        return m * pow(m, e - 1);
+    M tmp_exp = pow(m, e / 2);
+    return tmp_exp * tmp_exp;
+}
+
 bool Transform::compute()
 {
     //std::cerr << "Transform: compute: execcount=" << m_executionCount << std::endl;
@@ -160,10 +172,17 @@ bool Transform::compute()
     bool keep_original = p_keep_original->getValue();
     int repetitions = p_repetitions->getValue();
     AnimationMode animation = (AnimationMode)p_animation->getValue();
-
     int timestep = animation == Deanimate ? -1 : 0;
+    if (animation == TimestepAsRepetitionCount) {
+        repetitions = 1;
+        if (split.timestep > 0) {
+            transform = pow(transform, split.timestep);
+        }
+        timestep = split.timestep;
+    }
+
     if (keep_original) {
-        if (animation != Keep) {
+        if (animation != Keep && animation != TimestepAsRepetitionCount) {
             Object::ptr outGeo;
             if (auto entry = m_cache.getOrLock(geo->getName(), outGeo)) {
                 outGeo = geo->clone();
@@ -200,7 +219,7 @@ bool Transform::compute()
         if (auto entry = m_cache.getOrLock(key, outGeo)) {
             outGeo = geo->clone();
             outGeo->setTransform(t);
-            if (animation != Keep) {
+            if (animation != Keep && animation != TimestepAsRepetitionCount) {
                 outGeo->setTimestep(timestep);
                 if (animation != Deanimate)
                     ++timestep;

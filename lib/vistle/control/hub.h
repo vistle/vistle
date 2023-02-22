@@ -17,12 +17,25 @@
 
 namespace vistle {
 
+namespace config {
+class Access;
+}
+
 class PythonInterpreter;
 class Directory;
 class Hub;
 class HubParameters: public ParameterManager {
 public:
     HubParameters(Hub &hub);
+    void sendParameterMessage(const message::Message &message, const buffer *payload = nullptr) const override;
+
+private:
+    Hub &m_hub;
+};
+
+class ConfigParameters: public ParameterManager {
+public:
+    ConfigParameters(Hub &hub);
     void sendParameterMessage(const message::Message &message, const buffer *payload = nullptr) const override;
 
 private:
@@ -71,6 +84,7 @@ public:
 
 private:
     struct Slave;
+    std::unique_ptr<config::Access> m_config;
 
     message::MessageFactory make;
 
@@ -223,6 +237,7 @@ private:
     void stopIoThreads();
 
     HubParameters params;
+    ConfigParameters settings;
 
     std::mutex m_outstandingDataConnectionMutex;
     std::map<vistle::message::AddHub, std::future<bool>> m_outstandingDataConnections;

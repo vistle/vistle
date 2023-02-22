@@ -5,6 +5,7 @@
 #include <vistle/util/exception.h>
 #include <ostream>
 #include <vector>
+#include <string>
 #include <cassert>
 #include <vistle/util/sysdep.h>
 #include "scalar.h"
@@ -21,6 +22,7 @@ public:
     static const int MaxDimension = vistle::MaxDimension;
 
     ParameterVector(const int dim, const S values[]);
+    ParameterVector(const std::vector<S> &values);
     template<int Dim>
     ParameterVector(const ScalarVector<Dim> &v);
     ParameterVector(const S x, const S y, const S z, const S w);
@@ -60,25 +62,36 @@ public:
         return dim > 0 ? v[0] : S();
     }
 
-    operator Vector1() const
+    operator std::vector<S>() const
+    {
+        std::vector<S> vec(dim);
+        std::copy(data(), data() + dim, vec.begin());
+        return vec;
+    }
+
+    template<typename Scalar = S>
+    operator VistleVector<Scalar, 1>() const
     {
         assert(dim == 1);
-        return dim >= 1 ? Vector1(v[0]) : Vector1(0.);
+        return dim >= 1 ? VistleVector<Scalar, 1>(v[0]) : VistleVector<Scalar, 1>(0.);
     }
-    operator Vector2() const
+    template<typename Scalar = S>
+    operator VistleVector<Scalar, 2>() const
     {
         assert(dim == 2);
-        return dim >= 2 ? Vector2(v[0], v[1]) : Vector2(0., 0.);
+        return dim >= 2 ? VistleVector<Scalar, 2>(v[0], v[1]) : VistleVector<Scalar, 2>(0., 0.);
     }
-    operator Vector3() const
+    template<typename Scalar = S>
+    operator VistleVector<Scalar, 3>() const
     {
         assert(dim == 3);
-        return dim >= 3 ? Vector3(v[0], v[1], v[2]) : Vector3(0., 0., 0.);
+        return dim >= 3 ? VistleVector<Scalar, 3>(v[0], v[1], v[2]) : VistleVector<Scalar, 3>(0., 0., 0.);
     }
-    operator Vector4() const
+    template<typename Scalar = S>
+    operator VistleVector<Scalar, 4>() const
     {
         assert(dim == 4);
-        return dim >= 4 ? Vector4(v[0], v[1], v[2], v[3]) : Vector4(0., 0., 0., 0.);
+        return dim >= 4 ? VistleVector<Scalar, 4>(v[0], v[1], v[2], v[3]) : VistleVector<Scalar, 4>(0., 0., 0., 0.);
     }
 
     std::string str() const;
@@ -184,8 +197,10 @@ std::ostream &operator<<(std::ostream &out, const ParameterVector<S> &v);
 
 V_DECLARE_PARAMVEC(Float)
 V_DECLARE_PARAMVEC(Integer)
+V_DECLARE_PARAMVEC(std::string)
 typedef ParameterVector<Float> ParamVector;
 typedef ParameterVector<Integer> IntParamVector;
+typedef ParameterVector<std::string> StringParamVector;
 
 } // namespace vistle
 

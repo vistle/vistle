@@ -27,6 +27,7 @@
 #include <VistlePluginUtil/VistleInteractor.h>
 #include <VistlePluginUtil/VistleMessage.h>
 #include "VistleGeometryGenerator.h"
+#include "CoverConfigBridge.h"
 
 #include "COVER.h"
 
@@ -44,6 +45,10 @@
 
 #include <vistle/util/findself.h>
 #include <vistle/util/sysdep.h>
+#include <vistle/util/directory.h>
+
+#include <OpenConfig/config.h>
+#include <vistle/config/config.h>
 
 #include <vistle/manager/run_on_main_thread.h>
 
@@ -60,6 +65,7 @@ using namespace opencover;
 using namespace vistle;
 
 COVER *COVER::s_instance = nullptr;
+
 
 COVER::DelayedObject::DelayedObject(std::shared_ptr<PluginRenderObject> ro, VistleGeometryGenerator generator)
 : ro(ro)
@@ -197,6 +203,13 @@ COVER::COVER(const std::string &name, int moduleId, mpi::communicator comm): vis
     assert(!s_instance);
     s_instance = this;
 
+    int argc = 1;
+    char *argv[] = {strdup("COVER"), nullptr};
+    vistle::Directory dir(argc, argv);
+    m_config.reset(new opencover::config::Access(configAccess()->hostname(), configAccess()->cluster(), comm.rank()));
+    m_coverConfigBridge.reset(new CoverConfigBridge(this));
+    m_config->setWorkspaceBridge(m_coverConfigBridge.get());
+
     //createInputPort("data_in"); - already done by Renderer base class
 
     vistleRoot = new osg::Group;
@@ -311,12 +324,24 @@ bool COVER::parameterChanged(const int senderId, const std::string &name, const 
     return true;
 }
 
+bool COVER::changeParameter(const Parameter *p)
+{
+    if (m_coverConfigBridge) {
+        m_coverConfigBridge->changeParameter(p);
+    }
+
+    return Renderer::changeParameter(p);
+}
+
 void COVER::prepareQuit()
 {
     removeAllObjects();
     if (cover)
         cover->getObjectsRoot()->removeChild(vistleRoot);
     vistleRoot.release();
+
+    m_config->setWorkspaceBridge(nullptr);
+    m_coverConfigBridge.reset();
 
     Renderer::prepareQuit();
 }
@@ -496,6 +521,36 @@ std::shared_ptr<vistle::RenderObject> COVER::addObject(int senderId, const std::
     Creator &creator = getCreator(creatorId);
     if (pro->visibility != vistle::RenderObject::DontChange)
         creator.getVariant(variant, pro->visibility);
+    osg::MatrixTransform *transform = nullptr;
+    if (geometry) {
+        transform = new osg::MatrixTransform();
+        std::string nodename = geometry->getName();
+        transform->setName(nodename + ".transform");
+        osg::Matrix osgMat;
+        vistle::Matrix4 vistleMat = geometry->getTransform();
+        for (int i = 0; i < 4; ++i) {
+            for (int j = 0; j < 4; ++j) {
+                osgMat(i, j) = vistleMat.col(i)[j];
+            }
+        }
+        transform->setMatrix(osgMat);
+
+        const char *filename = pro->coverRenderObject->getAttribute("_model_file");
+        if (filename) {
+            osg::Node *filenode = nullptr;
+            if (!pro->coverRenderObject->isPlaceHolder()) {
+                filenode =
+                    coVRFileManager::instance()->loadFile(filename, NULL, transform, pro->coverRenderObject->getName());
+            }
+            if (!filenode) {
+                filenode = new osg::Node();
+                filenode->setName(filename);
+                transform->addChild(filenode);
+            }
+            m_fileAttachmentMap.emplace(pro->coverRenderObject->getName(), filename);
+        }
+    }
+
     if (VistleGeometryGenerator::isSupported(objType)) {
         auto vgr = VistleGeometryGenerator(pro, geometry, normals, texture);
         auto cache = getOrCreateGeometryCache<GeometryCache>(senderId, senderPort);
@@ -508,14 +563,15 @@ std::shared_ptr<vistle::RenderObject> COVER::addObject(int senderId, const std::
         }
         vgr.setColorMaps(&m_colormaps);
         m_delayedObjects.emplace_back(pro, vgr);
+        m_delayedObjects.back().transform = transform;
         //updateStatus();
     }
-    osg::ref_ptr<osg::Group> parent = getParent(cro.get());
     const int t = pro->timestep;
     if (t >= 0) {
         coVRAnimationManager::instance()->addSequence(creator.animated(variant));
     }
 
+    osg::ref_ptr<osg::Group> parent = getParent(cro.get());
     coVRPluginList::instance()->addObject(cro.get(), parent, cro->getGeometry(), cro->getNormals(), cro->getColors(),
                                           cro->getTexture());
     return pro;
@@ -555,40 +611,27 @@ bool COVER::render()
     for (int i = 0; i < numAdd; ++i) {
         auto &node_future = m_delayedObjects.front().node_future;
         auto &ro = m_delayedObjects.front().ro;
-        osg::MatrixTransform *transform = node_future.get();
-        if (ro->coverRenderObject && transform) {
+        osg::Geode *geode = node_future.get();
+        if (ro->coverRenderObject && geode) {
             int creatorId = ro->coverRenderObject->getCreator();
             Creator &creator = getCreator(creatorId);
 
-            ro->coverRenderObject->setNode(transform);
-            transform->setName(ro->coverRenderObject->getName());
+            auto tr = m_delayedObjects.front().transform;
+            geode->setNodeMask(~(opencover::Isect::Update | opencover::Isect::Intersection));
+            geode->setName(ro->coverRenderObject->getName());
+            tr->addChild(geode);
+            ro->coverRenderObject->setNode(tr);
             const std::string variant = ro->variant;
             const int t = ro->timestep;
             if (t >= 0) {
                 coVRAnimationManager::instance()->addSequence(creator.animated(variant));
             }
-            const char *filename = ro->coverRenderObject->getAttribute("_model_file");
-            if (filename) {
-                osg::Node *filenode = nullptr;
-                if (!ro->coverRenderObject->isPlaceHolder()) {
-                    filenode = coVRFileManager::instance()->loadFile(filename, NULL, transform,
-                                                                     ro->coverRenderObject->getName());
-                }
-                if (!filenode) {
-                    filenode = new osg::Node();
-                    filenode->setName(filename);
-                    transform->addChild(filenode);
-                }
-                m_fileAttachmentMap.emplace(ro->coverRenderObject->getName(), filename);
-            } else {
-                transform->setNodeMask(~(opencover::Isect::Update | opencover::Isect::Intersection));
-            }
             osg::ref_ptr<osg::Group> parent = getParent(ro->coverRenderObject.get());
-            parent->addChild(transform);
+            parent->addChild(tr);
         } else if (!ro->coverRenderObject) {
             std::cerr << rank() << ": discarding delayed object " << m_delayedObjects.front().name
                       << " - already deleted" << std::endl;
-        } else if (!transform) {
+        } else if (!geode) {
             //std::cerr << rank() << ": discarding delayed object " << ro->coverRenderObject->getName() << ": no node created" << std::endl;
         }
         m_delayedObjects.pop_front();
@@ -722,6 +765,9 @@ std::string COVER::setupEnvAndGetLibDir(const std::string &bindir)
         envvars.push_back("LC_MEASUREMENT");
         envvars.push_back("LC_IDENTIFICATION");
         envvars.push_back("LC_ALL");
+
+        // covconfig
+        envvars.push_back("CONFIG_DEBUG");
 
         // covise config
         envvars.push_back("COCONFIG");

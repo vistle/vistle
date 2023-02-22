@@ -20,5 +20,6 @@ namespace vistle {
 
 V_INST_PARAMVEC(Float)
 V_INST_PARAMVEC(Integer)
+V_INST_PARAMVEC(std::string)
 
 } // namespace vistle

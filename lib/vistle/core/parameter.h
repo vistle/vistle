@@ -14,6 +14,7 @@
 #include "export.h"
 
 class VistleInteractor;
+class CoverConfigBridge;
 
 namespace gui {
 class Parameters;
@@ -28,13 +29,13 @@ inline std::string to_string(const string &s)
 
 namespace vistle {
 
-typedef boost::mpl::vector<Integer, Float, ParamVector, std::string> Parameters;
+typedef boost::mpl::vector<Integer, Float, ParamVector, IntParamVector, std::string> Parameters;
 
 class V_COREEXPORT Parameter {
 public:
     DEFINE_ENUM_WITH_STRING_CONVERSIONS(Type,
                                         (Unknown) // keep first
-                                        (Float)(Integer)(Vector)(IntVector)(String)(Invalid) // keep last
+                                        (Float)(Vector)(Integer)(IntVector)(String)(StringVector)(Invalid) // keep last
     )
 
     DEFINE_ENUM_WITH_STRING_CONVERSIONS(Presentation,
@@ -124,6 +125,7 @@ class ParameterBase: public Parameter {
     friend class VistleConnection;
     friend class gui::Parameters;
     friend class ::VistleInteractor;
+    friend class ::CoverConfigBridge;
 
     virtual bool setValue(T value, bool init = false, bool delayed = false)
     {
@@ -239,6 +241,15 @@ struct V_COREEXPORT ParameterType<IntParamVector> {
 };
 
 template<>
+struct V_COREEXPORT ParameterType<StringParamVector> {
+    typedef StringParamVector T;
+    static const Parameter::Type type = Parameter::StringVector;
+    static const bool isNumber = false;
+    static T min() { return StringParamVector(); }
+    static T max() { return StringParamVector(); }
+};
+
+template<>
 struct V_COREEXPORT ParameterType<std::string> {
     typedef std::string T;
     static const Parameter::Type type = Parameter::String;
@@ -285,6 +296,7 @@ struct ParameterCheck<std::string> {
     typedef ParameterBase<ValueType> Name;
 V_PARAM_TYPE(ParamVector, VectorParameter)
 V_PARAM_TYPE(IntParamVector, IntVectorParameter)
+V_PARAM_TYPE(StringParamVector, StringVectorParameter)
 V_PARAM_TYPE(Float, FloatParameter)
 V_PARAM_TYPE(Integer, IntParameter)
 V_PARAM_TYPE(std::string, StringParameter)

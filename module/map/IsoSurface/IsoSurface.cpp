@@ -57,7 +57,7 @@ IsoSurface::IsoSurface(const std::string &name, int moduleID, mpi::communicator 
     m_mapDataIn = createInputPort("data_in", "input grid or geometry with mapped data");
 #else
 #ifdef ISOHEIGHTSURFACE
-    m_isovalue = addFloatParameter("iso height", "height above ground", 0.0);
+    m_isovalue = addFloatParameter("iso_height", "height above ground", 0.0);
 #else
     m_isovalue = addFloatParameter("isovalue", "isovalue", 0.0);
     m_isopoint = addVectorParameter("isopoint", "isopoint", ParamVector(0.0, 0.0, 0.0));

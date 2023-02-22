@@ -21,6 +21,7 @@ if(NOT VISTLE_MODULES_SHARED)
     target_link_libraries(vistle_module PRIVATE vistle_module_descriptions)
     target_link_libraries(vistle_module PRIVATE vistle_control)
 endif()
+target_link_libraries(vistle_module PRIVATE vistle_config)
 
 if(UNIX AND NOT APPLE)
     vistle_target_link_libraries(vistle_module PRIVATE -lrt)

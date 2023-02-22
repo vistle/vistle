@@ -222,6 +222,7 @@ target_link_libraries(
     vistle_module
     vistle_renderer
     vistle_rhr
+    vistle_config
     ${ZLIB_LIBRARIES}
     ${EMBREE_LIBRARY}
     MPI::MPI_C)

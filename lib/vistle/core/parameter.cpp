@@ -9,6 +9,7 @@ namespace vistle {
 
 V_PARAM_TYPE_INST(ParamVector, VectorParameter)
 V_PARAM_TYPE_INST(IntParamVector, IntVectorParameter)
+V_PARAM_TYPE_INST(StringParamVector, StringVectorParameter)
 V_PARAM_TYPE_INST(Float, FloatParameter)
 V_PARAM_TYPE_INST(Integer, IntParameter)
 V_PARAM_TYPE_INST(std::string, StringParameter)
@@ -153,6 +154,9 @@ std::shared_ptr<Parameter> getParameter(int moduleId, const std::string &paramNa
         break;
     case Parameter::String:
         p.reset(new StringParameter(moduleId, paramName));
+        break;
+    case Parameter::StringVector:
+        p.reset(new StringVectorParameter(moduleId, paramName));
         break;
     case Parameter::Invalid:
     case Parameter::Unknown:

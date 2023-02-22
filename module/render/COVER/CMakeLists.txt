@@ -25,6 +25,8 @@ vistle_add_library(
     COVER.h
     VistleGeometryGenerator.h
     VistleGeometryGenerator.cpp
+    CoverConfigBridge.h
+    CoverConfigBridge.cpp
     HeightMap.h
     HeightMap.cpp)
 
@@ -46,6 +48,7 @@ target_link_libraries(
     PUBLIC ${COVER_PLUGINUTIL_LIBRARY}
     PRIVATE ${COVISE_NET_LIBRARY}
     PRIVATE ${OPENSCENEGRAPH_LIBRARIES})
+target_link_libraries(vistle_cover PRIVATE vistle_config)
 
 if(NOT VISTLE_MULTI_PROCESS)
     target_link_libraries(vistle_cover PRIVATE vistle_clustermanager)

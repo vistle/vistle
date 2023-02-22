@@ -6,6 +6,19 @@
 
 namespace vistle {
 
+static std::string cluster;
+
+std::string clustername()
+{
+    if (cluster.empty()) {
+        const char *cn = getenv("VISTLE_CLUSTER");
+        if (cn) {
+            cluster = cn;
+        }
+    }
+    return cluster;
+}
+
 std::string hostname()
 {
     static std::string hname;

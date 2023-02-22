@@ -145,7 +145,6 @@ private:
     bool handlePriv(const message::SendText &text, const MessagePayload &payload);
     bool handlePriv(const message::ItemInfo &info, const MessagePayload &payload);
     bool handlePriv(const message::RequestTunnel &tunnel);
-    bool handlePriv(const message::Ping &ping);
     bool handlePriv(const message::DataTransferState &state);
 
     bool scanModules(const std::string &prefix, const std::string &buildtype);
@@ -188,7 +187,8 @@ private:
         std::deque<MessageWithPayload> incomingMessages; // not yet processed, because module takes part in a barrier
         std::vector<int> objectCount; // no. of available object tuples on each rank
 
-        Module(): ranksStarted(0), ranksFinished(0), prepared(false), reduced(true), busyCount(0), blocked(false) {}
+        Module(): ranksStarted(0), ranksFinished(0), prepared(false), reduced(true), busyCount(0), blocked(false)
+        {}
         ~Module();
 
         void block(const message::Message &msg) const;

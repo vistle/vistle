@@ -44,8 +44,6 @@ void Router::initRoutingTable()
     rt[CONNECT] = Special;
     rt[DISCONNECT] = Special;
     rt[SETPARAMETER] = Track | QueueIfUnhandled | DestManager | DestUi | DestModules | OnlyRank0 | HandleOnMaster;
-    rt[PING] = DestManager | DestModules | HandleOnDest;
-    rt[PONG] = DestUi | HandleOnDest;
     rt[BUSY] = DestUi | DestMasterHub;
     rt[IDLE] = DestUi | DestMasterHub;
     rt[LOCKUI] = DestUi;
@@ -249,7 +247,8 @@ bool Router::toTracker(const Message &msg, Identify::Identity senderType)
 bool Router::toHandler(const Message &msg, Identify::Identity senderType)
 {
     const int t = msg.type();
-    if (msg.destId() == Id::NextHop || msg.destId() == Id::Broadcast || msg.destId() == m_hubId) {
+    if (msg.destId() == Id::NextHop || msg.destId() == Id::Broadcast || msg.destId() == m_hubId ||
+        msg.destId() == Id::Config) {
         return true;
     }
     if (m_identity == Identify::HUB) {

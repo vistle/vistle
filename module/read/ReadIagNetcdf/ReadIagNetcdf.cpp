@@ -81,7 +81,7 @@ const char *isComponent(const std::string &name)
 ReadIagNetcdf::ReadIagNetcdf(const std::string &name, int moduleID, mpi::communicator comm)
 : vistle::Reader(name, moduleID, comm)
 {
-    m_ncFile = addStringParameter("grid file", "File containing grid info", "", Parameter::ExistingFilename);
+    m_ncFile = addStringParameter("grid_file", "File containing grid info", "", Parameter::ExistingFilename);
     m_dataFile = addStringParameter("data_file", "File containing data", "", Parameter::ExistingFilename);
 
     m_gridOut = createOutputPort("grid_out", "grid");

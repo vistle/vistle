@@ -37,10 +37,10 @@ struct MiniSimModule::InternalsType {
 MiniSimModule::MiniSimModule(const std::string &name, int moduleID, mpi::communicator comm)
 : insitu::InSituReader(name, moduleID, comm)
 {
-    m_filePath = addStringParameter("Input params", "path to file with input parameters", "",
+    m_filePath = addStringParameter("input_params", "path to file with input parameters", "",
                                     vistle::Parameter::ExistingFilename);
     setParameterFilters(m_filePath, "input files (*.osc)");
-    m_numTimesteps = addIntParameter("numTimesteps", "maximum number of timesteps to execute", 10);
+    m_numTimesteps = addIntParameter("num_timesteps", "maximum number of timesteps to execute", 10);
     setParameterMinimum(m_numTimesteps, Integer{1});
     m_gridOut = createOutputPort("grid_out", "structured grid");
     m_dataOut = createOutputPort("data_out", "oscillators");

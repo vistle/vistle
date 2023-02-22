@@ -63,6 +63,7 @@ private slots:
     void showConnectionInfo();
     void copyConnectionInfo();
     void screenshot(QString imageefile, bool quit);
+    void lockUi(bool locked);
 
 private:
     void about(const char *title, const char *file);

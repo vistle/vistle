@@ -30,6 +30,9 @@
 #include <vistle/control/vistleurl.h>
 #include <vistle/util/byteswap.h>
 
+#include <vistle/config/value.h>
+#include <vistle/config/access.h>
+
 #ifdef MODULE_THREAD
 #include <vistle/insitu/libsim/connectLibsim/connect.h>
 #endif // MODULE_THREAD
@@ -121,6 +124,18 @@ void Hub::signalHandler(const boost::system::error_code &error, int signal_numbe
         break;
     }
 }
+
+ConfigParameters::ConfigParameters(Hub &hub): ParameterManager("Settings", message::Id::Config), m_hub(hub)
+{}
+
+void ConfigParameters::sendParameterMessage(const message::Message &message, const buffer *payload) const
+{
+    message::Buffer buf(message);
+    buf.setSenderId(id());
+    m_hub.stateTracker().handle(buf, payload ? payload->data() : nullptr, payload ? payload->size() : 0, true);
+    m_hub.sendAll(buf, payload);
+}
+
 HubParameters::HubParameters(Hub &hub): ParameterManager("Vistle", message::Id::Vistle), m_hub(hub)
 {}
 
@@ -134,6 +149,7 @@ void HubParameters::sendParameterMessage(const message::Message &message, const 
 
 Hub::Hub(bool inManager)
 : m_inManager(inManager)
+, m_basePort(31093)
 , m_port(0)
 , m_masterPort(m_basePort)
 , m_masterHost("localhost")
@@ -158,6 +174,7 @@ Hub::Hub(bool inManager)
 , m_workGuard(new asio::io_service::work(m_ioService))
 #endif
 , params(*this)
+, settings(*this)
 {
     assert(!hub_instance);
     hub_instance = this;
@@ -195,6 +212,7 @@ Hub::~Hub()
     m_python.reset();
 
     params.quit();
+    settings.quit();
 
     stopVrb();
 
@@ -214,6 +232,8 @@ Hub::~Hub()
     stopIoThreads();
 
     hub_instance = nullptr;
+
+    m_config.reset();
 }
 
 int Hub::run()
@@ -253,6 +273,11 @@ bool Hub::init(int argc, char *argv[])
     m_dir = std::make_unique<Directory>(argc, argv);
 
     m_name = hostname();
+
+    m_config.reset(new config::Access(m_name, m_name));
+    m_config->setPrefix(m_dir->prefix());
+
+    m_basePort = ConfigInt("system", "net", "controlport", m_basePort);
 
     namespace po = boost::program_options;
     po::options_description desc("usage");
@@ -1729,6 +1754,9 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                 // set up parameter connections on master hub
                 break;
             }
+            if (addParam.destId() == settings.id()) {
+                settings.handleMessage(addParam);
+            }
             int id = addParam.senderId();
             if (m_stateTracker.getMirrorId(id) != id) {
                 // connect parameters of mirrored instances to original parameter only
@@ -1744,6 +1772,19 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                 auto con = message::Connect(id, pn, m, pn);
                 handleMessage(con);
             }
+
+            break;
+        }
+
+        case message::REMOVEPARAMETER: {
+            auto removeParam = msg.as<message::RemoveParameter>();
+            if (!m_isMaster) {
+                // set up parameter connections on master hub
+                break;
+            }
+            if (removeParam.destId() == settings.id()) {
+                settings.handleMessage(removeParam);
+            }
             break;
         }
 
@@ -1752,6 +1793,10 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
 
             if (setParam.destId() == params.id()) {
                 params.handleMessage(setParam);
+            }
+
+            if (setParam.destId() == settings.id()) {
+                settings.handleMessage(setParam);
             }
 
             // update linked parameters
@@ -1783,7 +1828,8 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                     }
                 }
             }
-        } break;
+            break;
+        }
         case message::SPAWNPREPARED: {
             auto &spawn = static_cast<const SpawnPrepared &>(msg);
             if (spawn.isNotification()) {
@@ -3366,6 +3412,7 @@ void Hub::spawnModule(const std::string &path, const std::string &name, int spaw
 {
     std::vector<std::string> argv;
     argv.push_back(path);
+    argv.push_back(hostname());
     argv.push_back(Shm::instanceName(hostname(), m_port));
     argv.push_back(name);
     argv.push_back(std::to_string(spawnId));

@@ -107,8 +107,9 @@ void MiniSim::run(MiniSimModule &mod, size_t numTimesteps, const std::string &in
             if ((start + count) > param.numberOfParticles)
                 count = std::max(0, param.numberOfParticles - start);
             std::default_random_engine rng(static_cast<RandomSeedType>(seed));
-            for (int i = 0; i < world.rank(); ++i)
-                rng(); // different seed for each rank
+            for (int i = 0; i < world.rank(); ++i) {
+                (void)rng(); // different seed for each rank
+            }
             b->particles = GenerateRandomParticles<float>(rng, b->domain, b->bounds, b->origin, b->spacing, b->nghost,
                                                           start, count);
 

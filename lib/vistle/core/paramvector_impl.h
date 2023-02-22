@@ -5,6 +5,19 @@
 #include <cstring>
 #include <limits>
 
+namespace std {
+std::string to_string(const std::vector<std::string> &v)
+{
+    std::string str;
+    for (const auto &s: v) {
+        str += "<";
+        str += s;
+        str += ">";
+    }
+    return str;
+}
+} // namespace std
+
 namespace vistle {
 
 static_assert(MaxDimension >= 4, "ParameterVector does not support more than 4 arrays");
@@ -16,6 +29,16 @@ ParameterVector<S>::ParameterVector(const int dim, const S values[]): VINIT(dim)
 {
     assert(dim <= MaxDimension);
     for (int i = 0; i < dim; ++i)
+        v[i] = values[i];
+    for (int i = dim; i < MaxDimension; ++i)
+        v[i] = S();
+}
+
+template<typename S>
+ParameterVector<S>::ParameterVector(const std::vector<S> &values): VINIT(values.size())
+{
+    assert(values.size() <= MaxDimension);
+    for (int i = 0; i < values.size(); ++i)
         v[i] = values[i];
     for (int i = dim; i < MaxDimension; ++i)
         v[i] = S();
