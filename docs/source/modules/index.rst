@@ -16,6 +16,7 @@ Modules
    Calc.md
    CellSelect.md
    CellToVert.md
+   Chainmail.md
    Color.md
    ColorAttribute.md
    ColorMetapostPart.md
@@ -55,6 +56,7 @@ Modules
    ReadCovise.md
    ReadCoviseDirectory.md
    ReadDyna3D.md
+   ReadEwMatlabCsvExports.md
    ReadFoam.md
    ReadIagNetcdf.md
    ReadIagTecplot.md
@@ -65,6 +67,7 @@ Modules
    ReadNek5000.md
    ReadSeisSol.md
    ReadTsunami.md
+   ReadVtk.md
    ReadWrfChem.md
    Replicate.md
    Sample.md

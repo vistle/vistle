@@ -1,6 +1,8 @@
 MasterHub=getMasterHub()
 VistleSession=getVistleSession()
+WorkflowConfig=getWorkflowConfig()
 uuids = {}
+
 
 
 # spawn all local modules
@@ -14,16 +16,12 @@ setIntParam(mReadTsunami1, 'first_step', 200, True)
 setIntParam(mReadTsunami1, 'last_step', 400, True)
 setStringParam(mReadTsunami1, 'file_dir', '/data/ChEESE/tsunami/pelicula_eta.nc', True)
 setIntParam(mReadTsunami1, 'fill', 0, True)
-setStringParam(mReadTsunami1, 'bathymetry ', 'bathymetry', True)
-setStringParam(mReadTsunami1, 'Scalar 0', 'max_height', True)
-setStringParam(mReadTsunami1, 'Scalar 1', 'eta', True)
-setStringParam(mReadTsunami1, 'Scalar 2', 'eta', True)
-setStringParam(mReadTsunami1, 'Scalar 3', 'eta', True)
 applyParameters(mReadTsunami1)
 
 mColor2 = waitForSpawn(umColor2)
 setVectorParam(mColor2, '_position', 76.0, 0.0, True)
-setFloatParam(mColor2, 'max', 0.4830000102519989, True)
+setFloatParam(mColor2, 'min', 3.4028234663852886e+38, True)
+setFloatParam(mColor2, 'max', -3.4028234663852886e+38, True)
 applyParameters(mColor2)
 
 mCOVER3 = waitForSpawn(umCOVER3)
@@ -33,8 +31,8 @@ applyParameters(mCOVER3)
 
 # all local connections
 connect(mReadTsunami1,'Ground surface', mCOVER3,'data_in')
-connect(mReadTsunami1,'Scalar port 0', mColor2,'data_in')
-connect(mReadTsunami1,'Scalar port 0', mCOVER3,'data_in')
+connect(mReadTsunami1,'scalar_port_0', mColor2,'data_in')
+connect(mReadTsunami1,'scalar_port_0', mCOVER3,'data_in')
 connect(mColor2,'color_out', mCOVER3,'data_in')
 
 # spawn all remote modules
