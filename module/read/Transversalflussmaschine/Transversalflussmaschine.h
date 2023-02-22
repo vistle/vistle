@@ -2,11 +2,11 @@
 #define READCSV_H
 
 #include <vistle/module/reader.h>
-#include "rapidcsv.h"
-
 #include <vistle/core/structuredgrid.h>
-
 #include <memory>
+
+#include <rapidcsv.h>
+
 struct VtkFile;
 
 class Transversalflussmaschine: public vistle::Reader {
