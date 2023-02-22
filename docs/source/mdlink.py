@@ -103,14 +103,13 @@ def createLinkToMarkdownFile(md_linkdir, md_root, md_filename) -> str:
     return new_link_file_path.split("/")[-1]
 
 
-def searchFilesInDirs(root_path, dirs, predicate_func):
-    return [
-        Markdown(root=root, filename=file)
-        for path in dirs
-        for root, _, files in os.walk(root_path + "/" + path)
-        for file in files
-        if predicate_func(file)
-    ]
+def searchFilesInDirs(root_path, dir_list, predicate_func, exclude=[]):
+    for path in dir_list:
+        for root, dirs, files in os.walk(root_path + "/" + path, topdown=True):
+            dirs[:] = [d for d in dirs if d not in exclude]
+            for file in files:
+                if predicate_func(file):
+                    yield Markdown(root=root, filename=file)
 
 
 def createIndexFile(name):
@@ -136,8 +135,9 @@ def run(
     search_dir_list: list,
     link_docs_output_relpath: str,
     link_rst_only=False,
+    exclude_dirs:list = []
 ):
-    markdown_files = searchFilesInDirs(root_path, search_dir_list, endsWithExt)
+    markdown_files = searchFilesInDirs(root_path, search_dir_list, endsWithExt, exclude=exclude_dirs)
     root_link_output_path = BASE_DIR + "/" + link_docs_output_relpath
     file_link_output_path = createIndexFileIfNotExisting(root_link_output_path)
     if link_rst_only:

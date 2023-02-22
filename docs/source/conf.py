@@ -78,5 +78,5 @@ html_theme = 'sphinx_rtd_theme'
 autosectionlabel_prefix_document = True
 deleteDir("../build")
 run("../..", ["docs/source/modules"], "modules", link_rst_only=True)
-run("../..", ["lib/vistle"], "lib")
+run("../..", ["lib/vistle"], "lib", exclude_dirs=["toml"])
 run("../..", ["app"], "app")
