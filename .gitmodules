@@ -62,5 +62,5 @@
 	path = lib/vistle/config/covconfig
 	url = https://github.com/vistle/covconfig.git
 [submodule "module/read/Transversalflussmaschine/rapidcsv"]
-	path = module/read/Transversalflussmaschine/rapidcsv
+	path = module/read/ReadEwMatlabCsvExports/rapidcsv
 	url = https://github.com/d99kris/rapidcsv.git
