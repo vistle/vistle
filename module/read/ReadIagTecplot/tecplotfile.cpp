@@ -1531,6 +1531,7 @@ MeshBase *TecplotFile::ReadZone(size_t idx, const std::string &iZoneRindList)
     }
     double marker = pimpl->fetchFloat();
     assert(marker == pimpl->ZONEMARKER);
+    (void)marker;
     //std::cout << "Zone (" << i->getName() << ") "<< idx+1 <<":";
     return i->ReadData(&*pimpl, mNumVar, rind);
 }
@@ -1541,6 +1542,7 @@ void TecplotFile::SkipZone(size_t idx)
 
     double marker = pimpl->fetchFloat();
     assert(marker == pimpl->ZONEMARKER);
+    (void)marker;
     //std::cout << "Skipping Zone (" << i->getName() << ") "<< idx+1 << std::endl;
     return i->SkipData(&*pimpl, mNumVar);
 }
@@ -1700,6 +1702,7 @@ std::vector<MeshPts *> TecplotFile::ReadInnerPts()
     for (std::vector<TecplotFile::Zone>::iterator i = mZones.begin(); i != mZones.end(); ++i, ++j) {
         double marker = pimpl->fetchFloat();
         assert(marker == pimpl->ZONEMARKER);
+        (void)marker;
         std::cout << "Zone " << j << ":";
         mesh.push_back(i->ReadInnerPtsData(&*pimpl, mNumVar));
     }

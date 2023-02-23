@@ -673,6 +673,7 @@ bool OSGRenderer::composite(size_t maxQueued)
     for (size_t i = 0; i < m_viewData.size(); ++i) {
         const bool progress = m_viewData[i]->composite(maxQueued, m_previousTimesteps.front());
         assert(progress);
+        (void)progress;
         --m_numViewsToComposite;
     }
 

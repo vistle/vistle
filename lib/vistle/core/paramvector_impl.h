@@ -38,7 +38,7 @@ template<typename S>
 ParameterVector<S>::ParameterVector(const std::vector<S> &values): VINIT(values.size())
 {
     assert(values.size() <= MaxDimension);
-    for (int i = 0; i < values.size(); ++i)
+    for (unsigned i = 0; i < values.size(); ++i)
         v[i] = values[i];
     for (int i = dim; i < MaxDimension; ++i)
         v[i] = S();
@@ -104,7 +104,7 @@ ParameterVector<S>::ParameterVector(): VINIT(0)
 template<typename S>
 ParameterVector<S>::ParameterVector(const ParameterVector<S> &o): VINIT(o.dim)
 {
-    memcpy(&v[0], &o.v[0], sizeof(v[0]) * MaxDimension);
+    std::copy(o.v.begin(), o.v.begin() + MaxDimension, v.begin());
 }
 
 template<typename S>
@@ -112,7 +112,7 @@ ParameterVector<S> &ParameterVector<S>::operator=(const ParameterVector<S> &rhs)
 {
     if (this != &rhs) {
         dim = rhs.dim;
-        memcpy(&v[0], &rhs.v[0], sizeof(v[0]) * MaxDimension);
+        std::copy(rhs.v.begin(), rhs.v.begin() + MaxDimension, v.begin());
     }
 
     return *this;

@@ -17,6 +17,8 @@
 using vistle::Clock;
 using vistle::DepthFloat;
 
+//#define TOTALTIME
+
 void measure(vistle::DepthCompressionParameters depthParam, const std::string &name, const float *depth, size_t w,
              size_t h, int precision, int num_runs)
 {
@@ -66,7 +68,9 @@ void measure(vistle::DepthCompressionParameters depthParam, const std::string &n
     double slow = 0., dslow = 0.;
     double fast = std::numeric_limits<double>::max(), dfast = std::numeric_limits<double>::max();
     double lz4fast = std::numeric_limits<double>::max(), zfast = std::numeric_limits<double>::max();
+#ifdef TOTALTIME
     double total = 0., dtotal = 0.;
+#endif
 
     vistle::CompressionParameters param(depthParam);
 
@@ -93,7 +97,9 @@ void measure(vistle::DepthCompressionParameters depthParam, const std::string &n
         if (zdur < zfast)
             zfast = zdur;
 
+#ifdef TOTALTIME
         total += dur;
+#endif
         if (dur < fast)
             fast = dur;
         if (dur > slow)
@@ -107,7 +113,9 @@ void measure(vistle::DepthCompressionParameters depthParam, const std::string &n
         double ddur = Clock::time() - dstart;
         double psnr = depthcompare((const char *)depth, (const char *)&dequant[0], DepthFloat, 4, 0, 0, w, h, w, false);
 
+#ifdef TOTALTIME
         dtotal += ddur;
+#endif
         if (ddur < dfast)
             dfast = ddur;
         if (ddur > dslow)
@@ -140,18 +148,18 @@ void measure(vistle::DepthCompressionParameters depthParam, const std::string &n
 #ifdef EACH_RUN
     std::cout << "--" << std::endl;
 #endif
-#if 0
-   std::cout << "comp mean:   " << total/num_runs << " s, " << (mpix*num_runs)/total << " MPix/s" << std::endl;
-   std::cout << "comp slow:   " << slow << " s, " << mpix/slow << " MPix/s" << std::endl;
-   std::cout << "comp fast:   " << fast << " s, " << mpix/fast << " MPix/s" << std::endl;
+#ifdef TOTALTIME
+    std::cout << "comp mean:   " << total / num_runs << " s, " << (mpix * num_runs) / total << " MPix/s" << std::endl;
+    std::cout << "comp slow:   " << slow << " s, " << mpix / slow << " MPix/s" << std::endl;
+    std::cout << "comp fast:   " << fast << " s, " << mpix / fast << " MPix/s" << std::endl;
 #else
     std::cout << "comp:   " << fast << " s, " << mpix / fast << " MPix/s" << std::endl;
 #endif
 
-#if 0
-   std::cout << "decomp mean: " << dtotal/num_runs << " s, " << (mpix*num_runs)/dtotal << " MPix/s" << std::endl;
-   std::cout << "decomp slow: " << dslow << " s, " << mpix/dslow << " MPix/s" << std::endl;
-   std::cout << "decomp fast: " << dfast << " s, " << mpix/dfast << " MPix/s" << std::endl;
+#ifdef TOTALTIME
+    std::cout << "decomp mean: " << dtotal / num_runs << " s, " << (mpix * num_runs) / dtotal << " MPix/s" << std::endl;
+    std::cout << "decomp slow: " << dslow << " s, " << mpix / dslow << " MPix/s" << std::endl;
+    std::cout << "decomp fast: " << dfast << " s, " << mpix / dfast << " MPix/s" << std::endl;
 #else
     std::cout << "decomp: " << dfast << " s, " << mpix / dfast << " MPix/s" << std::endl;
 #endif

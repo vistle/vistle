@@ -131,7 +131,9 @@ bool IndexManifolds::compute(std::shared_ptr<BlockTask> task) const
             Index cc[3]{c[0], c[1], c[2]};
             cc[dir1] = bghost[dir1];
             Index vv = 0;
+#ifndef NDEBUG
             Index cell = 0;
+#endif
             for (Index i = 0; i < nvert1; ++i) {
                 cc[dir2] = bghost[dir2];
                 for (Index j = 0; j < nvert2; ++j) {

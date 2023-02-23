@@ -112,6 +112,8 @@ bool compressZfp(buffer &compressed, const void *src, const Index dim[3], const 
     size_t header = zfp_write_header(zfp, field, ZFP_HEADER_FULL);
 #ifdef COMP_DEBUG
     std::cerr << "compressZfp: wrote " << header << " header bytes" << std::endl;
+#else
+    (void)header;
 #endif
     size_t zfpsize = zfp_compress(zfp, field);
     zfp_field_free(field);
