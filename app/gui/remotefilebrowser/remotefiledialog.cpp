@@ -2639,7 +2639,7 @@ void RemoteFileDialogPrivate::createWidgets()
     QObject::connect(qFileDialogUi->buttonBox, SIGNAL(rejected()), q, SLOT(reject()));
 
     qFileDialogUi->lookInCombo->setFileDialogPrivate(this);
-    QObject::connect(qFileDialogUi->lookInCombo, SIGNAL(activated(QString)), q, SLOT(_q_goToDirectory(QString)));
+    QObject::connect(qFileDialogUi->lookInCombo, SIGNAL(textActivated(QString)), q, SLOT(_q_goToDirectory(QString)));
 
     qFileDialogUi->lookInCombo->setInsertPolicy(QComboBox::NoInsert);
     qFileDialogUi->lookInCombo->setDuplicatesEnabled(false);
