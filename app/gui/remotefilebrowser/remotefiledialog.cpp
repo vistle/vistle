@@ -1834,36 +1834,6 @@ void RemoteFileDialog::setLabelText(DialogLabel label, const QString &text)
     d->setLabelTextControl(label, text);
 }
 
-/*!
-    Returns the text shown in the filedialog in the specified \a label.
-*/
-QString RemoteFileDialog::labelText(DialogLabel label) const
-{
-    Q_D(const RemoteFileDialog);
-    QPushButton *button;
-    switch (label) {
-    case LookIn:
-        return d->qFileDialogUi->lookInLabel->text();
-    case FileName:
-        return d->qFileDialogUi->fileNameLabel->text();
-    case FileType:
-        return d->qFileDialogUi->fileTypeLabel->text();
-    case Accept:
-        if (acceptMode() == AcceptOpen)
-            button = d->qFileDialogUi->buttonBox->button(QDialogButtonBox::Open);
-        else
-            button = d->qFileDialogUi->buttonBox->button(QDialogButtonBox::Save);
-        if (button)
-            return button->text();
-        break;
-    case Reject:
-        button = d->qFileDialogUi->buttonBox->button(QDialogButtonBox::Cancel);
-        if (button)
-            return button->text();
-        break;
-    }
-    return QString();
-}
 
 #if 0
 /*!
