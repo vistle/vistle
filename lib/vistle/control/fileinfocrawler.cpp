@@ -162,6 +162,7 @@ bool FileInfoCrawler::handle(const message::FileQuery &query, const buffer &payl
 
             if (const char *h = getenv("USERPROFILE"))
                 info.homepath = h;
+            std::replace(info.homepath.begin(), info.homepath.end(), '\\', '/');
 
             if (const char *u = getenv("USERNAME"))
                 info.username = u;
