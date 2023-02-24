@@ -1,6 +1,5 @@
-vistle_find_package(Qt5Core)
 
-vistle_find_package(Qt5 5.15 REQUIRED COMPONENTS Widgets)
+vistle_find_package(Qt5 5.15 COMPONENTS Widgets)
 if(Qt5_FOUND)
     function(qt_disable_unicode_defines)
 
