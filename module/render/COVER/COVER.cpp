@@ -459,7 +459,7 @@ void COVER::removeObject(std::shared_ptr<vistle::RenderObject> vro)
     pro->coverRenderObject.reset();
 }
 
-osg::ref_ptr<osg::MatrixTransform> getTransform(const vistle::Object::const_ptr &obj)
+osg::ref_ptr<osg::MatrixTransform> makeTransform(const vistle::Object::const_ptr &obj)
 {
     osg::ref_ptr<osg::MatrixTransform> transform = new osg::MatrixTransform();
     std::string nodename = obj->getName();
@@ -539,7 +539,7 @@ std::shared_ptr<vistle::RenderObject> COVER::addObject(int senderId, const std::
         creator.getVariant(variant, pro->visibility);
     osg::ref_ptr<osg::MatrixTransform> transform;
     if (geometry) {
-        transform = getTransform(geometry);
+        transform = makeTransform(geometry);
 
         const char *filename = pro->coverRenderObject->getAttribute("_model_file");
         if (filename) {
