@@ -387,9 +387,11 @@ void UiController::saveDataFlowNetworkOnGui(const QString &filename)
 
 void UiController::saveDataFlowNetworkOnHub(const QString &pathname)
 {
-    auto m_fig = new VistleFileInfoGatherer(m_ui.get(), vistle::message::Id::MasterHub);
-    auto model = new RemoteFileSystemModel(m_fig);
+    auto fig = new VistleFileInfoGatherer(m_ui.get(), vistle::message::Id::MasterHub);
+    auto model = new RemoteFileSystemModel(fig);
     auto browser = new RemoteFileDialog(model);
+    model->setParent(browser);
+    fig->setParent(model);
     browser->setAttribute(Qt::WA_DeleteOnClose);
     if (pathname.isEmpty() && m_currentFileOnHub != vistle::message::Id::UI)
         browser->selectFile(m_currentFile);
