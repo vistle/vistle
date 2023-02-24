@@ -9,7 +9,7 @@
 typedef VistleBrowserEdit::FileMode FileMode;
 
 class VistleBrowserPropertyManagerPrivate;
-class QRegularExpression;
+
 class QT_QTPROPERTYBROWSER_EXPORT VistleBrowserPropertyManager: public QtAbstractPropertyManager {
     Q_OBJECT
 public:
