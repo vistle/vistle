@@ -1716,9 +1716,9 @@ void RemoteFileDialogComboBox::setHistory(const QStringList &paths)
     // Only populate the first item, showPopup will populate the rest if needed
     QList<QUrl> list;
     QModelIndex idx = d_ptr->model->fsIndex(d_ptr->rootPath());
-    //On windows the popup display the "C:\", convert to nativeSeparators
+    //On windows the popup display the "C:\", convert from nativeSeparators
     QUrl url =
-        QUrl::fromLocalFile(QDir::toNativeSeparators(idx.data(AbstractFileSystemModel::FilePathRole).toString()));
+        QUrl::fromLocalFile(QDir::fromNativeSeparators(idx.data(AbstractFileSystemModel::FilePathRole).toString()));
     if (url.isValid())
         list.append(url);
     urlModel->setUrls(list);
@@ -2934,12 +2934,11 @@ void RemoteFileDialogPrivate::_q_pathChanged(const QString &newPath)
     qFileDialogUi->sidebar->selectUrl(url);
     q->setHistory(qFileDialogUi->lookInCombo->history());
 
-    if (currentHistoryLocation < 0 ||
-        currentHistory.value(currentHistoryLocation) != QDir::toNativeSeparators(newPath)) {
+    if (currentHistoryLocation < 0 || currentHistory.value(currentHistoryLocation) != newPath) {
         while (currentHistoryLocation >= 0 && currentHistoryLocation + 1 < currentHistory.count()) {
             currentHistory.removeLast();
         }
-        currentHistory.append(QDir::toNativeSeparators(newPath));
+        currentHistory.append(newPath);
         ++currentHistoryLocation;
     }
     qFileDialogUi->forwardButton->setEnabled(currentHistory.size() - currentHistoryLocation > 1);

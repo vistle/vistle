@@ -231,8 +231,8 @@ void RemoteUrlModel::setUrl(const QModelIndex &index, const QUrl &url, const QMo
     } else {
         QString newName;
         if (showFullPath) {
-            //On windows the popup display the "C:\", convert to nativeSeparators
-            newName = QDir::toNativeSeparators(dirIndex.data(AbstractFileSystemModel::FilePathRole).toString());
+            //On windows the popup display the "C:\", convert from nativeSeparators
+            newName = QDir::fromNativeSeparators(dirIndex.data(AbstractFileSystemModel::FilePathRole).toString());
         } else {
             newName = dirIndex.data().toString();
         }
