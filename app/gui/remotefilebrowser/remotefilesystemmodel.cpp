@@ -1667,7 +1667,7 @@ RemoteFileSystemModelPrivate::addNode(RemoteFileSystemNode *parentNode, const QS
     Q_UNUSED(info)
 #endif
     Q_ASSERT(!parentNode->children.contains(fileName));
-    parentNode->children.insert(fileName, node);
+    parentNode->children.insert({fileName, info.isCaseSensitive() ? Qt::CaseSensitive : Qt::CaseInsensitive}, node);
     return node;
 }
 
