@@ -175,7 +175,7 @@ bool Chainmail::compute()
     }
     if (!m_circlesOut->isConnected())
         return true;
-    
+
     Index circlesPerTorus = m_numXSegments->getValue();
     Index vertsPerCircle = m_numYSegments->getValue();
     Index vertsPerTorus = circlesPerTorus * vertsPerCircle;

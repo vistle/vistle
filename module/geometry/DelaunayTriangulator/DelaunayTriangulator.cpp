@@ -108,7 +108,8 @@ Object::ptr DelaunayTriangulator::calculateGrid(Points::const_ptr points, typena
     }
 }
 
-DelaunayTriangulator::DelaunayTriangulator(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
+DelaunayTriangulator::DelaunayTriangulator(const std::string &name, int moduleID, mpi::communicator comm)
+: Module(name, moduleID, comm)
 {
     createInputPort("points_in", "unconnected points");
     createOutputPort("grid_out", "grid or data with grid");

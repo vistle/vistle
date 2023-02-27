@@ -125,6 +125,7 @@ public slots:
     void projectToGrid();
     void setParameterDefaults();
     void showError();
+
 private:
     void createGeometry();
     void createActions();

@@ -1040,7 +1040,8 @@ bool StateTracker::handlePriv(const message::Connect &connect)
     if (portTracker()) {
         auto destPort = Port(connect.getModuleB(), connect.getPortBName(), Port::INPUT);
         auto port = portTracker()->findPort(destPort);
-        if (port && port->getType() != Port::PARAMETER &&!(port->flags() & Port::COMBINE) && !portTracker()->getConnectionList(port)->empty()) {
+        if (port && port->getType() != Port::PARAMETER && !(port->flags() & Port::COMBINE) &&
+            !portTracker()->getConnectionList(port)->empty()) {
             auto &conns = *portTracker()->getConnectionList(port);
             assert(conns.size() == 1);
             auto old = portTracker()->findPort(**conns.begin());
