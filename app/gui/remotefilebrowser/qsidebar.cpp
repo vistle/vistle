@@ -172,14 +172,11 @@ bool RemoteUrlModel::setData(const QModelIndex &index, const QVariant &value, in
             QModelIndex dirIndex = fileSystemModel->fsIndex(path);
             if (showFullPath) {
                 QStandardItemModel::setData(
-                    index, QDir::toNativeSeparators(
-                               fileSystemModel->homePath(AbstractFileSystemModel::FilePathRole).toString()));
+                    index, fileSystemModel->homePath(AbstractFileSystemModel::FilePathRole).toString());
             } else {
-                QStandardItemModel::setData(
-                    index,
-                    QDir::toNativeSeparators(
-                        fileSystemModel->homePath(AbstractFileSystemModel::FilePathRole).toString()),
-                    Qt::ToolTipRole);
+                QStandardItemModel::setData(index,
+                                            fileSystemModel->homePath(AbstractFileSystemModel::FilePathRole).toString(),
+                                            Qt::ToolTipRole);
                 QStandardItemModel::setData(index, fileSystemModel->homePath().toString());
             }
             QStandardItemModel::setData(index, fileSystemModel->homePath(Qt::DecorationRole), Qt::DecorationRole);
@@ -189,13 +186,10 @@ bool RemoteUrlModel::setData(const QModelIndex &index, const QVariant &value, in
             //On windows the popup display the "C:\", convert to nativeSeparators
             if (showFullPath) {
                 QStandardItemModel::setData(
-                    index, QDir::toNativeSeparators(
-                               fileSystemModel->data(dirIndex, AbstractFileSystemModel::FilePathRole).toString()));
+                    index, fileSystemModel->data(dirIndex, AbstractFileSystemModel::FilePathRole).toString());
             } else {
                 QStandardItemModel::setData(
-                    index,
-                    QDir::toNativeSeparators(
-                        fileSystemModel->data(dirIndex, AbstractFileSystemModel::FilePathRole).toString()),
+                    index, fileSystemModel->data(dirIndex, AbstractFileSystemModel::FilePathRole).toString(),
                     Qt::ToolTipRole);
                 QStandardItemModel::setData(index, fileSystemModel->data(dirIndex).toString());
             }
@@ -214,8 +208,7 @@ void RemoteUrlModel::setUrl(const QModelIndex &index, const QUrl &url, const QMo
         QString newName;
         if (showFullPath) {
             //On windows the popup display the "C:\", convert to nativeSeparators
-            newName =
-                QDir::toNativeSeparators(fileSystemModel->homePath(AbstractFileSystemModel::FilePathRole).toString());
+            newName = fileSystemModel->homePath(AbstractFileSystemModel::FilePathRole).toString();
         } else {
             newName = fileSystemModel->homePath().toString();
         }
@@ -232,7 +225,7 @@ void RemoteUrlModel::setUrl(const QModelIndex &index, const QUrl &url, const QMo
         QString newName;
         if (showFullPath) {
             //On windows the popup display the "C:\", convert to nativeSeparators
-            newName = QDir::toNativeSeparators(dirIndex.data(AbstractFileSystemModel::FilePathRole).toString());
+            newName = dirIndex.data(AbstractFileSystemModel::FilePathRole).toString();
         } else {
             newName = dirIndex.data().toString();
         }

@@ -90,6 +90,10 @@ QT_BEGIN_NAMESPACE
 Q_GLOBAL_STATIC(QUrl, lastVisitedDir)
 
 namespace {
+
+QLatin1Char separator('/');
+
+
 static const char *remoteFilterRegExp = "^(.*)\\(([a-zA-Z0-9_.,*? +;#\\-\\[\\]@\\{\\}/!<>\\$%&=^~:\\|]*)\\)$";
 
 // Makes a list of filters from a normal filter string "Image Files (*.png *.jpg)"
@@ -882,7 +886,7 @@ QString RemoteFileDialog::fileFromPath(const QString &rootPath, QString path)
     if (path.isEmpty())
         return path;
 
-    if (path.at(0) == QDir::separator()
+    if (path.at(0) == separator
         //On Windows both cases can happen
         || (m_model->isWindows() && path.at(0) == QLatin1Char('/'))) {
         path.remove(0, 1);
@@ -949,7 +953,7 @@ Q_AUTOTEST_EXPORT QString qt_tildeExpansion(AbstractFileSystemModel *model, cons
 {
     if (!path.startsWith(QLatin1Char('~')))
         return path;
-    int separatorPosition = path.indexOf(QDir::separator());
+    int separatorPosition = path.indexOf(separator);
     if (separatorPosition < 0)
         separatorPosition = path.size();
     if (separatorPosition == 1) {
@@ -1717,8 +1721,7 @@ void RemoteFileDialogComboBox::setHistory(const QStringList &paths)
     QList<QUrl> list;
     QModelIndex idx = d_ptr->model->fsIndex(d_ptr->rootPath());
     //On windows the popup display the "C:\", convert to nativeSeparators
-    QUrl url =
-        QUrl::fromLocalFile(QDir::toNativeSeparators(idx.data(AbstractFileSystemModel::FilePathRole).toString()));
+    QUrl url = QUrl::fromLocalFile(idx.data(AbstractFileSystemModel::FilePathRole).toString());
     if (url.isValid())
         list.append(url);
     urlModel->setUrls(list);
@@ -1733,8 +1736,7 @@ QStringList RemoteFileDialog::history() const
     Q_D(const RemoteFileDialog);
     QStringList currentHistory = d->qFileDialogUi->lookInCombo->history();
     //On windows the popup display the "C:\", convert to nativeSeparators
-    QString newHistory =
-        QDir::toNativeSeparators(d->rootIndex().data(AbstractFileSystemModel::FilePathRole).toString());
+    QString newHistory = d->rootIndex().data(AbstractFileSystemModel::FilePathRole).toString();
     if (!currentHistory.contains(newHistory))
         currentHistory << newHistory;
     return currentHistory;
@@ -2934,12 +2936,11 @@ void RemoteFileDialogPrivate::_q_pathChanged(const QString &newPath)
     qFileDialogUi->sidebar->selectUrl(url);
     q->setHistory(qFileDialogUi->lookInCombo->history());
 
-    if (currentHistoryLocation < 0 ||
-        currentHistory.value(currentHistoryLocation) != QDir::toNativeSeparators(newPath)) {
+    if (currentHistoryLocation < 0 || currentHistory.value(currentHistoryLocation) != newPath) {
         while (currentHistoryLocation >= 0 && currentHistoryLocation + 1 < currentHistory.count()) {
             currentHistory.removeLast();
         }
-        currentHistory.append(QDir::toNativeSeparators(newPath));
+        currentHistory.append(newPath);
         ++currentHistoryLocation;
     }
     qFileDialogUi->forwardButton->setEnabled(currentHistory.size() - currentHistoryLocation > 1);
@@ -3017,7 +3018,7 @@ void RemoteFileDialogPrivate::_q_createDirectory()
 
     QString newFolderString = RemoteFileDialog::tr("New Folder");
     QString folderName = lineEdit()->text();
-    QString prefix = q->directory() + QDir::separator();
+    QString prefix = q->directory() + separator;
     if (folderName.isEmpty()) {
         folderName = newFolderString;
         qlonglong suffix = 2;
@@ -3708,10 +3709,8 @@ QString RemoteFSCompleter::pathFromIndex(const QModelIndex &index) const
     QString currentLocation = dirModel->rootPath();
     QString path = index.data(AbstractFileSystemModel::FilePathRole).toString();
     if (!currentLocation.isEmpty() && path.startsWith(currentLocation)) {
-#if defined(Q_OS_UNIX)
-        if (currentLocation == QDir::separator())
+        if (currentLocation == separator)
             return path.mid(currentLocation.length());
-#endif
         if (currentLocation.endsWith(QLatin1Char('/')))
             return path.mid(currentLocation.length());
         else
@@ -3731,8 +3730,8 @@ QStringList RemoteFSCompleter::splitPath(const QString &path) const
     else
         dirModel = sourceModel;
 
-    QString pathCopy = QDir::toNativeSeparators(path);
-    QString sep = QDir::separator();
+    QString pathCopy = path;
+    QString sep(separator);
     QString doubleSlash(QLatin1String("\\\\"));
     if (dirModel->isWindows()) {
         if (pathCopy == QLatin1String("\\") || pathCopy == QLatin1String("\\\\"))
@@ -3768,7 +3767,7 @@ QStringList RemoteFSCompleter::splitPath(const QString &path) const
     }
 
     if (parts.count() == 1 || (parts.count() > 1 && !startsFromRoot)) {
-        QString currentLocation = QDir::toNativeSeparators(dirModel->rootPath());
+        QString currentLocation = dirModel->rootPath();
         if (dirModel->isWindows()) {
             if (currentLocation.endsWith(QLatin1Char(':')))
                 currentLocation.append(sep);
