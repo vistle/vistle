@@ -2445,7 +2445,7 @@ void RemoteFileDialog::accept()
 void RemoteFileDialogPrivate::saveSettings()
 {
     Q_Q(RemoteFileDialog);
-    QSettings settings(QSettings::UserScope, QLatin1String("QtProject"));
+    QSettings settings;
     settings.beginGroup(QLatin1String("FileDialog"));
 
     settings.setValue(QLatin1String("sidebarWidth"), qFileDialogUi->splitter->sizes().constFirst());
@@ -2468,7 +2468,7 @@ void RemoteFileDialogPrivate::saveSettings()
 bool RemoteFileDialogPrivate::restoreFromSettings()
 {
     Q_Q(RemoteFileDialog);
-    QSettings settings(QSettings::UserScope, QLatin1String("QtProject"));
+    QSettings settings;
     if (!settings.childGroups().contains(QLatin1String("FileDialog")))
         return false;
     settings.beginGroup(QLatin1String("FileDialog"));
