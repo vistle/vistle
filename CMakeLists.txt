@@ -254,10 +254,18 @@ if(NOT VISTLE_GUI_ONLY)
     set(ICET_MPI_LIBS "IceTMPI")
     set(ICET_FOUND TRUE)
 
-    # prepare a TBBConfig.cmake over FindTBB.cmake
+    # prefer a TBBConfig.cmake over FindTBB.cmake
     vistle_find_package(TBB CONFIG NO_MODULE)
     if(NOT ${TBB_FOUND})
         vistle_find_package(TBB)
+        if(${TBB_FOUND})
+            add_library(TBB::tbb SHARED IMPORTED)
+            set_target_properties(
+                TBB::tbb
+                PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${TBB_INCLUDE_DIRS}"
+                           INTERFACE_LINK_LIBRARIES "${TBB_LIBRARIES}"
+                           IMPORTED_LOCATION "${TBB_LIBRARY}")
+        endif()
     endif()
 endif(NOT VISTLE_GUI_ONLY)
 
