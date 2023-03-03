@@ -70,6 +70,8 @@ void shm_obj_ref<T>::construct(const Args &...args)
 template<class T>
 const shm_obj_ref<T> &shm_obj_ref<T>::operator=(const shm_obj_ref<T> &rhs)
 {
+    if (&rhs == this)
+        return *this;
     unref();
     m_name = rhs.m_name;
     m_d = rhs.m_d;
@@ -97,6 +99,21 @@ const shm_obj_ref<T> &shm_obj_ref<T>::operator=(typename shm_obj_ref<T>::ObjType
 {
     // reuse operator fo ObjType::const_ptr
     *this = std::const_pointer_cast<const ObjType>(rhs);
+    return *this;
+}
+
+template<class T>
+const shm_obj_ref<T> &shm_obj_ref<T>::operator=(const typename shm_obj_ref<T>::ObjType::Data *rhs)
+{
+    unref();
+    if (rhs) {
+        m_name = rhs->name;
+        m_d = rhs;
+    } else {
+        m_name.clear();
+        m_d = nullptr;
+    }
+    ref();
     return *this;
 }
 

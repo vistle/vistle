@@ -34,6 +34,7 @@ public:
     const shm_obj_ref &operator=(const shm_obj_ref &rhs);
     const shm_obj_ref &operator=(typename ObjType::const_ptr rhs);
     const shm_obj_ref &operator=(typename ObjType::ptr rhs);
+    const shm_obj_ref &operator=(const typename ObjType::Data *rhs);
     bool valid() const;
     typename ObjType::const_ptr getObject() const;
     const typename ObjType::Data *getData() const;
