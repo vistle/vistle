@@ -202,15 +202,6 @@ else()
 
 endif()
 
-if(${TBB_FOUND})
-    add_library(TBB::tbb SHARED IMPORTED)
-    set_target_properties(TBB::tbb PROPERTIES
-        INTERFACE_INCLUDE_DIRECTORIES "${TBB_INCLUDE_DIRS}"
-        INTERFACE_LINK_LIBRARIES "${TBB_LIBRARIES}"
-        IMPORTED_LOCATION "${TBB_LIBRARY}"
-        )
-endif()
-
 ##############################################################
 # Install TBB
 ##############################################################
