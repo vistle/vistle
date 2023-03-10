@@ -20,8 +20,8 @@
 #include "linalg/vec.isph"
 #include "linalg/affinespace.isph"
 
-#include <embree3/rtcore.isph>
-#include <embree3/rtcore_ray.isph>
+#include <embree4/rtcore.isph>
+#include <embree4/rtcore_ray.isph>
 
 #include "render.isph"
 #include "spheres.isph"

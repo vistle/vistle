@@ -2,7 +2,7 @@
 
 #include "linalg/math.isph"
 #include "linalg/vec.isph"
-#include <embree3/rtcore.isph>
+#include <embree4/rtcore.isph>
 
 #include "spheres.isph"
 

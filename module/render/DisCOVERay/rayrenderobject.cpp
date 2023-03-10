@@ -9,8 +9,8 @@
 
 #include <cassert>
 
-#include <embree3/rtcore.h>
-#include <embree3/rtcore_device.h>
+#include <embree4/rtcore.h>
+#include <embree4/rtcore_device.h>
 
 #include "rayrenderobject.h"
 #include "spheres_ispc.h"
