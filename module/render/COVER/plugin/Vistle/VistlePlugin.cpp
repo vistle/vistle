@@ -220,6 +220,10 @@ bool VistlePlugin::update()
 void VistlePlugin::requestQuit(bool killSession)
 {
     if (m_module) {
+        if (killSession) {
+            message::Quit quit;
+            m_module->sendMessage(quit);
+        }
         m_module->comm().barrier();
         m_module->prepareQuit();
 #if 0
