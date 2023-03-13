@@ -11,25 +11,25 @@
 
 include(FindPackageHandleStandardArgs)
 
-set(BOTAN_NAMES botan botan-2 botan-1)
-set(BOTAN_NAMES_DEBUG botand botan-2d botan-1d)
+set(BOTAN_NAMES botan botan-3 botan-2 botan-1)
+set(BOTAN_NAMES_DEBUG botand botand-3 botand-2)
 
 find_path(
     BOTAN_INCLUDE_DIR
-    NAMES botan/botan.h botan-3/botan/botan.h
+    NAMES botan/botan.h botan-2/botan/botan.h botan-3/botan/botan.h
     PATH_SUFFIXES ${BOTAN_NAMES}
     DOC "The Botan include directory")
 
 find_library(
     BOTAN_LIBRARY
     NAMES ${BOTAN_NAMES}
-    PATH_SUFFIXES release/lib
+    PATH_SUFFIXES lib release/lib
     DOC "The Botan (release) library")
 if(MSVC)
     find_library(
         BOTAN_LIBRARY_DEBUG
         NAMES ${BOTAN_NAMES_DEBUG}
-        PATH_SUFFIXES debug/lib
+        PATH_SUFFIXES lib debug/lib
         DOC "The Botan debug library")
     find_package_handle_standard_args(BOTAN REQUIRED_VARS BOTAN_LIBRARY BOTAN_LIBRARY_DEBUG BOTAN_INCLUDE_DIR)
 else()

@@ -125,7 +125,10 @@ endif()
 enable_testing()
 
 if(CMAKE_CONFIGURATION_TYPES)
-    set(CMAKE_DEFAULT_BUILD_TYPE "RelWithDebInfo")
+    if(${CMAKE_GENERATOR} STREQUAL "Visual Studio 17 2022")
+	else()
+        set(CMAKE_DEFAULT_BUILD_TYPE "RelWithDebInfo")
+	endif()
 elseif(CMAKE_BUILD_TYPE STREQUAL "")
     set(CMAKE_BUILD_TYPE
         "RelWithDebInfo"
