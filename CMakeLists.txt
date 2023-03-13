@@ -126,9 +126,9 @@ enable_testing()
 
 if(CMAKE_CONFIGURATION_TYPES)
     if(${CMAKE_GENERATOR} STREQUAL "Visual Studio 17 2022")
-	else()
+    else()
         set(CMAKE_DEFAULT_BUILD_TYPE "RelWithDebInfo")
-	endif()
+    endif()
 elseif(CMAKE_BUILD_TYPE STREQUAL "")
     set(CMAKE_BUILD_TYPE
         "RelWithDebInfo"
@@ -261,14 +261,14 @@ if(NOT VISTLE_GUI_ONLY)
     vistle_find_package(TBB CONFIG NO_MODULE)
     if(NOT ${TBB_FOUND})
         vistle_find_package(TBB)
-        if(${TBB_FOUND})
-            add_library(TBB::tbb SHARED IMPORTED)
-            set_target_properties(
-                TBB::tbb
-                PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${TBB_INCLUDE_DIRS}"
-                           INTERFACE_LINK_LIBRARIES "${TBB_LIBRARIES}"
-                           IMPORTED_LOCATION "${TBB_LIBRARY}")
-        endif()
+        #if(${TBB_FOUND})
+        #    add_library(TBB::tbb SHARED IMPORTED)
+        #    set_target_properties(
+        #        TBB::tbb
+        #        PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${TBB_INCLUDE_DIRS}"
+        #                   INTERFACE_LINK_LIBRARIES "${TBB_LIBRARIES}"
+        #                   IMPORTED_LOCATION "${TBB_LIBRARY}")
+        #endif()
     endif()
 endif(NOT VISTLE_GUI_ONLY)
 
