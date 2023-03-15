@@ -1519,7 +1519,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
             if (m_hubId != Id::Invalid) {
                 auto set = make.message<message::SetId>(m_hubId);
                 sendMessage(sock, set);
-                if (m_hubId <= Id::MasterHub) {
+                if (message::Id::isHub(m_hubId)) {
                     auto state = m_stateTracker.getState();
                     for (auto &m: state) {
                         sendMessage(sock, m.message, m.payload.get());
