@@ -2243,9 +2243,7 @@ bool ClusterManager::scanModules(const std::string &prefix, const std::string &b
 #if !defined(MODULE_THREAD)
     if (getRank() == 0) {
 #endif
-        if (m_localModules.empty()) {
-            result = vistle::scanModules(prefix, buildtype, hubId(), m_localModules);
-        }
+        result = vistle::scanModules(prefix, buildtype, hubId(), m_localModules);
 #if !defined(MODULE_THREAD)
     }
 #endif

@@ -132,11 +132,13 @@ bool scanModules(const std::string &prefix, const std::string &buildtype, int hu
 
         AvailableModule::Key key(hub, name);
         auto prev = available.find(key);
-        if (prev != available.end()) {
+        if (prev == available.end()) {
+            available[key] = std::move(mod);
+        } else {
             std::cerr << "scanModules: overriding " << name << ", " << prev->second.path() << " -> " << mod.path()
                       << std::endl;
+            prev->second = std::move(mod);
         }
-        available[key] = std::move(mod);
     }
 
     return true;
