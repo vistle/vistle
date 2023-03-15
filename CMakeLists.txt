@@ -125,8 +125,7 @@ endif()
 enable_testing()
 
 if(CMAKE_CONFIGURATION_TYPES)
-    if(${CMAKE_GENERATOR} STREQUAL "Visual Studio 17 2022")
-    else()
+    if(${CMAKE_GENERATOR} STREQUAL "Ninja Multi-Config")
         set(CMAKE_DEFAULT_BUILD_TYPE "RelWithDebInfo")
     endif()
 elseif(CMAKE_BUILD_TYPE STREQUAL "")
@@ -134,15 +133,7 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "")
         "RelWithDebInfo"
         CACHE STRING "Choose the type of build, options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Debug Release RelWithDebInfo MinSizeRel." FORCE)
     message("Setting CMAKE_BUILD_TYPE to ${CMAKE_BUILD_TYPE}")
-    if(CMAKE_BUILD_TYPE STREQUAL "Release" OR "${CMAKE_BUILD_TYPE}" STREQUAL "RelWithDebInfo")
-
-    else()
-        add_definitions(-DEIGEN_INITIALIZE_MATRICES_BY_NAN)
-    endif()
 endif()
-
-#add_definitions(-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=short)
-add_definitions(-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=int)
 
 # use this instead of FIND_PACKAGE to prefer Package in $PACKAGE_HOME and $EXTERNLIBS/package
 
@@ -853,6 +844,8 @@ set(DIY_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/lib/3rdparty/diy/include")
 
 #vistle_find_package(Eigen3 REQUIRED)
 set(EIGEN3_INCLUDE_PATH "${PROJECT_SOURCE_DIR}/lib/3rdparty")
+#add_definitions(-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=short)
+add_definitions(-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=int)
 
 if(NOT VISTLE_GUI_ONLY)
     #Boost.MPI is compiled with Vistle - for easy switching of MPI versions
