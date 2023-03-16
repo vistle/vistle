@@ -151,7 +151,7 @@ std::vector<Vector3> Chainmail::toTorusSpline(const std::vector<Vector3> &points
     //extrapolate points for the 3D torus around the spline
     std::vector<Vector3> v2;
     auto theta = 2 * EIGEN_PI / numDiameterSegments;
-    for (int i = 0; i < v1.size(); i++) {
+    for (unsigned i = 0; i < v1.size(); i++) {
         auto currentPoint = v1[i] - (middle - v1[i]).normalized() * m_radius->getValue() / 1000;
         Vector3 s1 = middle - v1[i];
         Vector3 s2 = v1[(i - 1) % numTorusSegments] - v1[(i + 1) % numTorusSegments];
@@ -193,9 +193,9 @@ bool Chainmail::compute()
     for (Index elementIndex = 0; elementIndex < unstrIn->getNumElements(); elementIndex++) {
         if (unstrIn->tl()[elementIndex] == UnstructuredGrid::QUAD ||
             unstrIn->tl()[elementIndex] == UnstructuredGrid::TRIANGLE) {
-            auto numVerts = UnstructuredGrid::NumVertices[unstrIn->tl()[elementIndex]];
+            int numVerts = UnstructuredGrid::NumVertices[unstrIn->tl()[elementIndex]];
             std::vector<Vector3> points(numVerts);
-            for (Index p = 0; p < numVerts; p++) {
+            for (int p = 0; p < numVerts; p++) {
                 points[p] = vec(unstrIn, unstrIn->cl()[unstrIn->el()[elementIndex] + p]);
             }
             auto torusPoints = toTorus(points, circlesPerTorus, vertsPerCircle);
