@@ -40,7 +40,7 @@ auto convertToTetGen(Points::const_ptr points, typename Vec<Scalar, Dim>::const_
 template<unsigned Dim>
 auto convertFromTetGen(const tetgenio &out)
 {
-    std::pair<UnstructuredGrid::ptr, Vec<Scalar, Dim>::ptr> retval;
+    std::pair<UnstructuredGrid::ptr, typename Vec<Scalar, Dim>::ptr> retval;
 
     size_t numElements = out.numberoftetrahedra;
     size_t numCorners = numElements * out.numberofcorners;

@@ -64,3 +64,6 @@
 [submodule "module/read/Transversalflussmaschine/rapidcsv"]
 	path = module/read/ReadIewMatlabCsvExports/rapidcsv
 	url = https://github.com/d99kris/rapidcsv.git
+[submodule "module/geometry/DelaunayTriangulator/tetgen"]
+	path = module/geometry/DelaunayTriangulator/tetgen
+	url = https://github.com/vistle/tetgen.git
