@@ -49,7 +49,11 @@ include_directories(SYSTEM ${THRUST_INCLUDE_DIR} ${TBB_INCLUDE_DIRS})
 add_module(${NAME} ${DESCRIPTION} ${SOURCES} ${CUDA_OBJ})
 
 if(USE_TBB)
-    target_link_libraries(${NAME} TBB::tbb)
+    if(${CMAKE_GENERATOR} STREQUAL "Visual Studio 17 2022")
+        target_link_libraries(${NAME} ${TBB_LIBRARIES})
+    else()
+        target_link_libraries(${NAME} TBB::tbb)
+    endif()
 endif()
 
 if(CUDA_FOUND)
