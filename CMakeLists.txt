@@ -251,7 +251,7 @@ if(NOT VISTLE_GUI_ONLY)
     # prefer a TBBConfig.cmake over FindTBB.cmake
     vistle_find_package(TBB CONFIG NO_MODULE)
     if(NOT ${TBB_FOUND})
-        vistle_find_package(TBB)   
+        vistle_find_package(TBB)
         if(NOT (${CMAKE_GENERATOR} STREQUAL "Visual Studio 17 2022"))
             if(${TBB_FOUND})
                 add_library(TBB::tbb SHARED IMPORTED)
