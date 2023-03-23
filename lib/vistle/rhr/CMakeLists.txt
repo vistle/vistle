@@ -1,4 +1,5 @@
 vistle_find_package(OpenGL)
+vistle_find_package(GLEW)
 vistle_find_package(ZLIB)
 vistle_find_package(JPEGTURBO)
 #vistle_find_package(ZFP)
@@ -12,22 +13,16 @@ set(RHR_HEADERS compdecomp.h depthquant.h predict.h rfbext.h ReadBackCuda.h)
 set(RHR_SOURCES ${RHR_SOURCES} rhrserver.cpp)
 set(RHR_HEADERS ${RHR_HEADERS} rhrserver.h)
 
-set(RHR_CUDA_SOURCES ReadBackCuda.cu)
-
-if(CUDA_FOUND
-   AND GLEW_FOUND
+if(GLEW_FOUND
    AND OPENGL_FOUND
    AND VISTLE_USE_CUDA)
     set(USE_CUDA TRUE)
-
-    add_definitions(-DHAVE_CUDA)
-    include_directories(SYSTEM ${CUDA_INCLUDE_DIRS} ${GLEW_INCLUDES} ${OPENGL_INCLUDES})
-    cuda_compile(RHR_CUDA_OBJ ${RHR_CUDA_SOURCES} ${VISTLE_LIB_TYPE})
+    set(RHR_CUDA_SOURCES ReadBackCuda.cu)
 else()
-    add_custom_target(RHR_CUDA SOURCES ${RHR_CUDA_SOURCES})
+    set(RHR_CUDA_SOURCES ReadBackCuda.cpp)
 endif()
 
-vistle_add_library(vistle_rhr EXPORT ${VISTLE_LIB_TYPE} ${RHR_SOURCES} ${RHR_HEADERS} ${RHR_CUDA_OBJ})
+vistle_add_library(vistle_rhr EXPORT ${VISTLE_LIB_TYPE} ${RHR_SOURCES} ${RHR_HEADERS} ${RHR_CUDA_SOURCES})
 
 target_link_libraries(
     vistle_rhr
@@ -44,6 +39,11 @@ if(USE_CUDA)
         PRIVATE ${CUDA_LIBRARIES}
         PRIVATE ${GLEW_LIBRARIES}
         PRIVATE ${OPENGL_LIBRARIES})
+    target_compile_definitions(vistle_rhr PRIVATE HAVE_CUDA)
+    target_include_directories(vistle_rhr PRIVATE SYSTEM ${CUDA_INCLUDE_DIRS} ${GLEW_INCLUDES} ${OPENGL_INCLUDES})
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        target_compile_options(vistle_rhr PRIVATE "-Wno-pedantic")
+    endif()
 endif()
 
 if(JPEGTURBO_FOUND)

@@ -32,27 +32,6 @@ if("${CMAKE_SYSTEM_NAME}" STREQUAL "CrayLinuxEnvironment")
     # use faster multi-threaded MPI
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -craympich-mt")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -craympich-mt")
-
-    # work around broken FindCUDA
-    macro(find_host_program)
-        set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
-        set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY NEVER)
-        set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE NEVER)
-        if(CMAKE_HOST_WIN32)
-            set(WIN32 1)
-            set(UNIX)
-        elseif(CMAKE_HOST_APPLE)
-            set(APPLE 1)
-            set(UNIX)
-        endif()
-        find_program(${ARGN})
-        set(WIN32)
-        set(APPLE)
-        set(UNIX 1)
-        set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM ONLY)
-        set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
-        set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
-    endmacro()
 endif()
 
 if(POLICY CMP0042)
@@ -95,7 +74,7 @@ option(VISTLE_SANITIZE_ADDRESS "Build with -fsanitize=address" OFF)
 option(VISTLE_SANITIZE_THREAD "Build with -fsanitize=thread" OFF)
 option(VISTLE_TIME_BUILD "Gather build times (Clang/ISPC)" OFF)
 
-option(VISTLE_USE_CUDA "Build with CUDA support" OFF)
+option(VISTLE_ENABLE_CUDA "Build with CUDA support" OFF)
 
 option(VISTLE_COLOR_DIAGNOSTICS "Produce ANSI-colored build output (GNU/Clang)" ON)
 
@@ -385,14 +364,6 @@ if(NOT CRAY)
                 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=${VISTLE_CPU_ARCH}")
             endif()
         endif()
-
-        execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)
-        if(GCC_VERSION VERSION_GREATER 4.7 OR GCC_VERSION VERSION_EQUAL 4.7)
-            set(CUDA_HOST_COMPILER
-                ${CMAKE_SOURCE_DIR}/scripts/cuda-host-compiler
-                CACHE STRING "CUDA nvcc host compiler" FORCE)
-        endif()
-
     endif()
 
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
@@ -445,21 +416,6 @@ if(NOT WIN32 AND NOT APPLE)
         lib${LIBSUFFIX}
         CACHE PATH "Installation directory for libraries")
     mark_as_advanced(INSTALL_LIB_DIR)
-endif()
-
-if(VISTLE_USE_CUDA AND NOT VISTLE_GUI_ONLY)
-    vistle_find_package(CUDA)
-    if("${CUDA_VERSION}" VERSION_LESS 7.0)
-        set(CUDA_HOST_COMPILER
-            ${PROJECT_SOURCE_DIR}/scripts/cuda-host-compiler
-            CACHE STRING "CUDA nvcc host compiler" FORCE)
-    else()
-        set(CUDA_PROPAGATE_HOST_FLAGS OFF)
-        set(CUDA_NVCC_FLAGS "--std=c++11 ${CUDA_NVCC_FLAGS}")
-    endif()
-    if(APPLE)
-        set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} \"-DBOOST_NOINLINE=__attribute__ ((noinline))\"")
-    endif(APPLE)
 endif()
 
 include(GNUInstallDirs)
@@ -831,6 +787,22 @@ else(WIN32)
 endif(WIN32)
 
 #set(CMAKE_BUILD_TYPE Debug)
+
+set(VISTLE_USE_CUDA FALSE)
+if(VISTLE_ENABLE_CUDA)
+    include(CheckLanguage)
+    check_language(CUDA)
+    vistle_find_package(CUDAToolkit)
+    if(CMAKE_CUDA_COMPILER AND CUDAToolkit_FOUND)
+        enable_language(CUDA)
+        if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+            set(CMAKE_CUDA_ARCHITECTURES 60) # be compatible with P6000/GP100
+        endif()
+        add_definitions(-DVISTLE_USE_CUDA)
+        set(VISTLE_USE_CUDA TRUE)
+        message("Using CUDA")
+    endif()
+endif()
 
 option(VISTLE_SHM_DEBUG "Shared memory debugging" OFF)
 if(VISTLE_SHM_DEBUG)
