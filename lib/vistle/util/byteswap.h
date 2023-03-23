@@ -26,6 +26,8 @@
 #endif
 #include <stdexcept>
 
+//#define UNDEFINED_BEHAVIOR // might be faster
+
 namespace vistle {
 
 // Little-endian operating systems:
@@ -99,8 +101,19 @@ template<>
 struct swap_bytes<float, 4> {
     inline float operator()(float val)
     {
+#ifdef UNDEFINED_BEHAVIOR
         uint32_t mem = swap_bytes<uint32_t, sizeof(uint32_t)>()(*(uint32_t *)&val);
         return *(float *)&mem;
+#else
+        char *in = reinterpret_cast<char *>(&val);
+        char *out = in + 3;
+        while (in < out) {
+            std::swap(*in, *out);
+            ++in;
+            --out;
+        }
+        return val;
+#endif
     }
 };
 
@@ -124,8 +137,19 @@ template<>
 struct swap_bytes<double, 8> {
     inline double operator()(double val)
     {
+#ifdef UNDEFINED_BEHAVIOR
         uint64_t mem = swap_bytes<uint64_t, sizeof(uint64_t)>()(*(uint64_t *)&val);
         return *(double *)&mem;
+#else
+        char *in = reinterpret_cast<char *>(&val);
+        char *out = in + 7;
+        while (in < out) {
+            std::swap(*in, *out);
+            ++in;
+            --out;
+        }
+        return val;
+#endif
     }
 };
 
