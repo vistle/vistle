@@ -46,6 +46,7 @@ target_link_libraries(
     PRIVATE VistlePluginUtil
     PUBLIC ${COVER_LIBRARY}
     PUBLIC ${COVER_PLUGINUTIL_LIBRARY}
+    PUBLIC ${COVER_CONFIG_LIBRARY}
     PRIVATE ${COVISE_NET_LIBRARY}
     PRIVATE ${OPENSCENEGRAPH_LIBRARIES})
 target_link_libraries(vistle_cover PRIVATE vistle_config)
