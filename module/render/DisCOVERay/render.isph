@@ -1,7 +1,9 @@
 #ifndef RENDER_ISPC_H
 #define RENDER_ISPC_H
 
-#include <embree4/rtcore.isph>
+#include "common.h"
+
+#include EMBREE(rtcore.isph)
 
 #include "linalg/math.isph"
 #include "linalg/vec.isph"

@@ -14,7 +14,8 @@
 // limitations under the License.                                           //
 // ======================================================================== //
 
-#include <embree4/rtcore_ray.isph>
+#include "common.h"
+#include EMBREE(rtcore_ray.isph)
 
 inline bool sphereIntersectN(const uniform Sphere &sphere, uniform int N, uniform int i, RTCRayN *uniform ray,
                              RTCHitN *uniform hit)

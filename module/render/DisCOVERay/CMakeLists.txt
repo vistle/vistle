@@ -1,11 +1,17 @@
-include(FindPackageHandleStandardArgs)
-vistle_find_package(embree 4.0)
-find_package_handle_standard_args(EMBREE DEFAULT_MSG EMBREE_LIBRARY EMBREE_INCLUDE_DIRS)
-
 vistle_find_package(ZLIB)
 
+include(FindPackageHandleStandardArgs)
+set(EMBREE_MAJOR 4)
+vistle_find_package(embree 4.0)
+find_package_handle_standard_args(EMBREE DEFAULT_MSG EMBREE_LIBRARY EMBREE_INCLUDE_DIRS)
 if(NOT EMBREE_FOUND)
-    message("DisCOVERay: Embree not found")
+    set(EMBREE_MAJOR 3)
+    vistle_find_package(embree 3.0)
+    find_package_handle_standard_args(EMBREE DEFAULT_MSG EMBREE_LIBRARY EMBREE_INCLUDE_DIRS)
+endif()
+
+if(NOT EMBREE_FOUND)
+    message("DisCOVERay: neither Embree 4 nor 3 found")
     return()
 endif()
 
@@ -38,6 +44,7 @@ set(ISPC_HEADERS render.isph renderobjectdata.isph spheres_isect.isph spheres.is
 set(ISPC_SOURCES render.ispc renderobjectdata.ispc spheres.ispc tubes.ispc)
 set(description "Embree CPU ray casting remote renderer")
 
+add_compile_definitions(-DEMBREE_MAJOR=${EMBREE_MAJOR})
 if(VISTLE_DOUBLE_PRECISION)
     add_compile_definitions(-DVISTLE_SCALAR_DOUBLE)
 endif()

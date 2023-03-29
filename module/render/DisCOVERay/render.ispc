@@ -1,12 +1,12 @@
 #include "render.isph"
 
-#include <embree4/rtcore.isph>
-#include <embree4/rtcore_ray.isph>
+#include "common.h"
+
+#include EMBREE(rtcore.isph)
+#include EMBREE(rtcore_ray.isph)
 
 #include "linalg/math.isph"
 #include "linalg/vec.isph"
-
-#include "common.h"
 
 inline uniform float dot(const uniform Vec4f a, const uniform Vec4f b)
 {
@@ -284,7 +284,13 @@ export void ispcRenderTilePacket(uniform const SceneData *uniform scene, uniform
         ray.ray.flags = 0;
         setUpRay(tile, ray, x, y);
         {
+#if EMBREE_MAJOR >= 4
             rtcIntersectV(scene->scene, &ray);
+#else
+            uniform RTCIntersectContext context;
+            rtcInitIntersectContext(&context);
+            rtcIntersectV(scene->scene, &context, &ray);
+#endif
         }
         shadeRay(scene, tile, ray, x, y);
     }

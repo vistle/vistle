@@ -1,7 +1,9 @@
-#include <embree4/rtcore.h>
-#include <embree4/rtcore_ray.h>
-#include <embree4/rtcore_geometry.h>
-#include <embree4/rtcore_scene.h>
+#include "common.h"
+
+#include EMBREE(rtcore.h)
+#include EMBREE(rtcore_ray.h)
+#include EMBREE(rtcore_geometry.h)
+#include EMBREE(rtcore_scene.h)
 
 #include <boost/mpi.hpp>
 
@@ -14,7 +16,6 @@
 
 #include <vistle/renderer/parrendmgr.h>
 #include "rayrenderobject.h"
-#include "common.h"
 
 #include "render_ispc.h"
 
