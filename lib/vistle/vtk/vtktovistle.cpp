@@ -205,7 +205,10 @@ Object::ptr vtkPoly2Vistle(vtkPolyData *vpolydata)
 
             vtkIdType npts = 0;
             IDCONST vtkIdType *pts = nullptr;
-            polys->GetNextCell(npts, pts);
+            if (!polys->GetNextCell(npts, pts)) {
+                std::cerr << "polys terminated early" << std::endl;
+                break;
+            }
             for (int j = 0; j < npts; ++j) {
                 cornerlist[k] = pts[j];
                 ++k;
@@ -217,7 +220,10 @@ Object::ptr vtkPoly2Vistle(vtkPolyData *vpolydata)
             polylist[npolys + i] = k;
             vtkIdType npts = 0;
             IDCONST vtkIdType *pts = nullptr;
-            strips->GetNextCell(npts, pts);
+            if (!strips->GetNextCell(npts, pts)) {
+                std::cerr << "strips terminated early" << std::endl;
+                break;
+            }
             for (vtkIdType j = 0; j < npts - 2; ++j) {
                 if (j % 2) {
                     cornerlist[k++] = pts[j];
@@ -233,8 +239,8 @@ Object::ptr vtkPoly2Vistle(vtkPolyData *vpolydata)
         assert(k == ncorner);
     } else if (nlines > 0) {
         vtkCellArray *lines = vpolydata->GetLines();
-        Index ncorner = lines->GetNumberOfConnectivityEntries() - nlines;
-        Lines::ptr clines = make_ptr<Lines>(ncoord, ncorner, nlines);
+        Index ncorner = lines->GetNumberOfConnectivityEntries();
+        Lines::ptr clines = make_ptr<Lines>(nlines, ncorner, ncoord);
         coords = clines;
 
         Index *cornerlist = clines->cl().data();
@@ -247,13 +253,17 @@ Object::ptr vtkPoly2Vistle(vtkPolyData *vpolydata)
 
             vtkIdType npts = 0;
             IDCONST vtkIdType *pts = nullptr;
-            lines->GetNextCell(npts, pts);
+            if (!lines->GetNextCell(npts, pts)) {
+                std::cerr << "lines terminated early" << std::endl;
+                break;
+            }
             for (vtkIdType j = 0; j < npts; ++j) {
                 cornerlist[k] = pts[j];
                 ++k;
             }
         }
         linelist[nlines] = k;
+        assert(k == ncorner);
     } else if (nverts > 0) {
         if (nverts != ncoord)
             return coords;
