@@ -174,8 +174,11 @@ private:
 //! spawn a module
 class V_COREEXPORT Spawn: public MessageBase<Spawn, SPAWN> {
 public:
+    enum ReferenceType { None, Migrate, Mirror, Clone, LinkedClone };
     Spawn(int hubId, const std::string &name, int size = -1, int baserank = -1, int rankskip = -1);
-
+    void setReference(int id, ReferenceType type);
+    int getReference() const;
+    ReferenceType getReferenceType() const;
     void setMigrateId(int id);
     int migrateId() const;
     void setMirroringId(int id);
@@ -202,9 +205,9 @@ private:
     //! number of ranks to skip when spawning process
     int rankSkip;
     //! id of module to migrate
-    int m_migrateId = Id::Invalid;
+    int m_referenceId = Id::Invalid;
     //! id of module that is being mirrored (for replicating COVER renderer on clusters with UI)
-    int m_mirroringId = Id::Invalid;
+    int m_referenceType = (int)ReferenceType::None;
     //! name of module to be started
     module_name_t name;
 };

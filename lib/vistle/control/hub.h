@@ -111,7 +111,18 @@ private:
     bool processScript(const std::string &filename, bool barrierAfterLoad, bool executeModules);
     bool processStartupScripts();
     bool processCommand(const std::string &filename);
+
+    bool isCachable(int oldModuleId, int newModuleId);
+    void cachePortConnections(int oldModuleId, int newModuleId);
+    void cacheParamConnections(int oldModuleId, int newModuleId);
     bool cacheModuleValues(int oldModuleId, int newModuleId);
+    void applyAllDelayedParameters(int oldModuleId, int newModuleId);
+    bool copyModuleParams(int oldModuleId, int newModuleId);
+    void cacheParameters(int oldModuleId, int newModuleId);
+    bool linkModuleParams(int oldModuleId, int newModuleId);
+
+    bool handlePlainSpawn(message::Spawn &notify, bool doSpawn, bool error);
+
     void killOldModule(int migratedId);
     void sendInfo(const std::string &s);
     void sendError(const std::string &s);

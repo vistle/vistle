@@ -115,6 +115,8 @@ protected:
     QVariant itemChange(GraphicsItemChange change, const QVariant &value) override;
 
 public slots:
+    void cloneModule();
+    void cloneModuleLinked();
     void restartModule();
     void moveToHub(int hub);
     void replaceWith(QString moduleName);
@@ -132,6 +134,7 @@ private:
     void createMenus();
     void updateText();
     void doLayout();
+    void sendSpawn(int hub, const std::string &module, vistle::message::Spawn::ReferenceType type);
 
     QMenu *m_moduleMenu = nullptr;
     QAction *m_selectUpstreamAct = nullptr, *m_selectDownstreamAct = nullptr, *m_selectConnectedAct = nullptr;
@@ -144,11 +147,14 @@ private:
     QMenu *m_moveToMenu = nullptr;
     QMenu *m_replaceWithMenu = nullptr;
     QAction *m_createModuleGroup = nullptr;
+    QAction *m_CloneModule = nullptr;
+    QAction *m_CloneModuleLinked = nullptr;
     QMenu *m_layerMenu = nullptr;
 
 
     int m_hub;
     int m_id;
+    int m_clonedFromId = -1;
     boost::uuids::uuid m_spawnUuid;
 
     ///\todo add data structure for the module information

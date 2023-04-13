@@ -150,18 +150,31 @@ void Module::restartModule()
     moveToHub(m_hub);
 }
 
+void Module::sendSpawn(int hub, const std::string &module, vistle::message::Spawn::ReferenceType type)
+{
+    vistle::message::Spawn m(hub, module);
+    m.setReference(m_id, type);
+    vistle::VistleConnection::the().sendMessage(m);
+}
+
+void Module::cloneModule()
+{
+    sendSpawn(m_hub, m_name.toStdString(), vistle::message::Spawn::ReferenceType::Clone);
+}
+
+void Module::cloneModuleLinked()
+{
+    sendSpawn(m_hub, m_name.toStdString(), vistle::message::Spawn::ReferenceType::LinkedClone);
+}
+
 void Module::moveToHub(int hub)
 {
-    vistle::message::Spawn m(hub, m_name.toStdString());
-    m.setMigrateId(m_id);
-    vistle::VistleConnection::the().sendMessage(m);
+    sendSpawn(hub, m_name.toStdString(), vistle::message::Spawn::ReferenceType::Migrate);
 }
 
 void Module::replaceWith(QString mod)
 {
-    vistle::message::Spawn m(m_hub, mod.toStdString());
-    m.setMigrateId(m_id);
-    vistle::VistleConnection::the().sendMessage(m);
+    sendSpawn(m_hub, mod.toStdString(), vistle::message::Spawn::ReferenceType::Migrate);
 }
 
 /*!
@@ -258,6 +271,14 @@ void Module::createActions()
     m_restartAct = new QAction("Restart", this);
     m_restartAct->setStatusTip("Restart the module");
     connect(m_restartAct, SIGNAL(triggered()), this, SLOT(restartModule()));
+
+    m_CloneModule = new QAction("Clone", this);
+    m_CloneModule->setStatusTip("Clone this modul with all of it's parameters");
+    connect(m_CloneModule, &QAction::triggered, this, &Module::cloneModule);
+
+    m_CloneModuleLinked = new QAction("Linked clone", this);
+    m_CloneModuleLinked->setStatusTip("Clone this modul with all of it's parameters and keep them synced");
+    connect(m_CloneModuleLinked, &QAction::triggered, this, &Module::cloneModuleLinked);
 }
 
 /*!
@@ -275,6 +296,8 @@ void Module::createMenus()
     m_moduleMenu->addAction(m_selectConnectedAct);
     m_moduleMenu->addAction(m_selectDownstreamAct);
     m_moduleMenu->addSeparator();
+    m_moduleMenu->addAction(m_CloneModule);
+    m_moduleMenu->addAction(m_CloneModuleLinked);
     m_moduleMenu->addAction(m_createModuleGroup);
     m_moduleMenu->addAction(m_attachDebugger);
     m_moduleMenu->addAction(m_restartAct);
