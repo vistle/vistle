@@ -3,6 +3,7 @@
 
 #include <vistle/core/object.h>
 #include <vistle/core/points.h>
+#include <vistle/alg/objalg.h>
 
 #include "ToPoints.h"
 
@@ -14,6 +15,9 @@ ToPoints::ToPoints(const std::string &name, int moduleID, mpi::communicator comm
 {
     createInputPort("grid_in", "grid or geometry");
     createOutputPort("grid_out", "unconnected points");
+
+    addResultCache(m_gridCache);
+    addResultCache(m_resultCache);
 }
 
 ToPoints::~ToPoints()
@@ -21,22 +25,41 @@ ToPoints::~ToPoints()
 
 bool ToPoints::compute()
 {
-    auto d = accept<DataBase>("grid_in");
-    Coords::const_ptr grid;
-    if (d) {
-        grid = Coords::as(d->grid());
-    }
-    if (!grid) {
-        grid = Coords::as(d);
-    }
-    if (!grid) {
-        sendError("no coordinates");
+    auto o = expect<Object>("grid_in");
+    auto split = splitContainerObject(o);
+    auto coords = Coords::as(split.geometry);
+    if (!coords) {
+        sendError("no coordinates on input");
         return true;
     }
 
-    Points::ptr points = Points::clone<Vec<Scalar, 3>>(grid);
-    updateMeta(points);
-    addObject("grid_out", points);
+    Object::ptr out;
+    if (auto resultEntry = m_resultCache.getOrLock(o->getName(), out)) {
+        Object::ptr outGrid;
+        if (auto gridEntry = m_gridCache.getOrLock(coords->getName(), outGrid)) {
+            Points::ptr points = Points::clone<Vec<Scalar, 3>>(coords);
+            updateMeta(points);
+            outGrid = points;
+            m_gridCache.storeAndUnlock(gridEntry, outGrid);
+        }
+        if (split.mapped) {
+            auto mapping = split.mapped->guessMapping();
+            if (mapping != DataBase::Vertex) {
+                sendError("data has to be mapped per vertex");
+                out = outGrid;
+            } else {
+                auto data = split.mapped->clone();
+                data->setGrid(outGrid);
+                updateMeta(data);
+                out = data;
+            }
+        } else {
+            out = outGrid;
+        }
+        m_resultCache.storeAndUnlock(resultEntry, out);
+    }
+
+    addObject("grid_out", out);
 
     return true;
 }
