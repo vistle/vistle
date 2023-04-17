@@ -239,7 +239,7 @@ Object::ptr vtkPoly2Vistle(vtkPolyData *vpolydata)
         assert(k == ncorner);
     } else if (nlines > 0) {
         vtkCellArray *lines = vpolydata->GetLines();
-        Index ncorner = lines->GetNumberOfConnectivityEntries();
+        Index ncorner = lines->GetConnectivityArray()->GetSize();
         Lines::ptr clines = make_ptr<Lines>(nlines, ncorner, ncoord);
         coords = clines;
 
