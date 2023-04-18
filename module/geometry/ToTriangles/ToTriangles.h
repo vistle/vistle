@@ -2,6 +2,7 @@
 #define TOTRIANGLES_H
 
 #include <vistle/module/module.h>
+#include <vistle/module/resultcache.h>
 
 class ToTriangles: public vistle::Module {
 public:
@@ -12,6 +13,7 @@ private:
     virtual bool compute();
 
     vistle::IntParameter *p_transformSpheres = nullptr;
+    vistle::ResultCache<vistle::Object::ptr> m_resultCache;
 };
 
 #endif
