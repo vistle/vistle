@@ -63,6 +63,7 @@ struct ReplicateData {
         if (!in)
             return;
 
+        auto mapping = in->guessMapping();
         Index sz = in->getSize() * n + nElem * (nStart + nEnd);
         if (mult) {
             sz = nnElem;
@@ -81,19 +82,29 @@ struct ReplicateData {
                     ++din;
                 }
             } else if (el) {
-                for (Index e = 0; e < nElem; ++e) {
-                    const Index start = el[e], end = el[e + 1];
-                    for (Index k = 0; k < nStart; ++k) {
-                        *dout++ = *din;
+                if (mapping == DataBase::Vertex) {
+                    for (Index e = 0; e < nElem; ++e) {
+                        const Index start = el[e], end = el[e + 1];
+                        for (Index k = 0; k < nStart; ++k) {
+                            *dout++ = *din;
+                        }
+                        for (Index i = start; i < end; ++i) {
+                            for (Index k = 0; k < n; ++k) {
+                                *dout++ = *din;
+                            }
+                            ++din;
+                        }
+                        for (Index k = 0; k < nEnd; ++k) {
+                            *dout++ = *(din - 1);
+                        }
                     }
-                    for (Index i = start; i < end; ++i) {
-                        for (Index k = 0; k < n; ++k) {
+                } else if (mapping == DataBase::Element) {
+                    for (Index e = 0; e < nElem; ++e) {
+                        const Index start = el[e], end = el[e + 1];
+                        for (Index k = 0; k < nStart + end - start + nEnd; ++k) {
                             *dout++ = *din;
                         }
                         ++din;
-                    }
-                    for (Index k = 0; k < nEnd; ++k) {
-                        *dout++ = *(din - 1);
                     }
                 }
             } else {
