@@ -630,7 +630,6 @@ bool ToTriangles::compute()
         }
 
         if (tri) {
-            tri->setMeta(obj->meta());
             tri->copyAttributes(obj);
             updateMeta(tri);
 
@@ -641,7 +640,6 @@ bool ToTriangles::compute()
                 if (!ndata) {
                     ndata = data->clone();
                 }
-                ndata->setMeta(data->meta());
                 ndata->copyAttributes(data);
                 ndata->setGrid(tri);
                 ndata->setMapping(data->guessMapping());
