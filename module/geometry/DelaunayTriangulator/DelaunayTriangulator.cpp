@@ -2,10 +2,12 @@
 #include <iomanip>
 
 #include <vistle/core/object.h>
+#include <vistle/alg/objalg.h>
 
 
 #include "DelaunayTriangulator.h"
 #include <tetgen.h>
+
 MODULE_MAIN(DelaunayTriangulator)
 
 using namespace vistle;
@@ -84,16 +86,15 @@ Object::ptr DelaunayTriangulator::calculateGrid(Points::const_ptr points, typena
     tetrahedralize(&behaviour, in.get(), &out);
     if (out.numberofpoints == in->numberofpoints) //we can reuse the data object
     {
-        auto m_grid = convertFromTetGen<Dim>(out).first;
-        updateMeta(m_grid);
-        m_points = points;
+        auto grid = convertFromTetGen<Dim>(out).first;
+        updateMeta(grid);
         if (data) {
             auto clone = data->clone();
-            clone->setGrid(m_grid);
+            clone->setGrid(grid);
             updateMeta(clone);
             return clone;
         }
-        return m_grid;
+        return grid;
     } else {
         auto gridAndData = convertFromTetGen<Dim>(out);
         updateMeta(gridAndData.first);
@@ -120,21 +121,60 @@ DelaunayTriangulator::~DelaunayTriangulator()
 
 bool DelaunayTriangulator::compute()
 {
-    auto d = accept<DataBase>("points_in");
-    Points::const_ptr points;
-    if (auto points = Points::as(d)) {
-        addObject("grid_out", calculateGrid<1>(points, nullptr));
-    } else if (auto points = Points::as(d->grid())) {
-        if (m_grid && m_points && *m_points == *points) {
-            auto clone = d->clone();
-            clone->setGrid(m_grid);
-            updateMeta(clone);
-            addObject("grid_out", clone);
-        } else if (auto scalar = Vec<Scalar>::as(d)) {
-            addObject("grid_out", calculateGrid<1>(points, scalar));
-        } else if (auto vector = Vec<Scalar, 3>::as(d)) {
-            addObject("grid_out", calculateGrid<3>(points, vector));
+    auto obj = expect<Object>("points_in");
+    auto split = splitContainerObject(obj);
+    if (!split.geometry) {
+        sendError("no input geometry");
+        return true;
+    }
+
+    if (auto data = split.mapped) {
+        if (data->guessMapping() != DataBase::Vertex) {
+            sendError("data has to be mapped per vertex");
+            return true;
         }
     }
+
+    Points::const_ptr points = Points::as(split.geometry);
+    if (!points) {
+        sendError("cannot get underlying points");
+        return true;
+    }
+
+    vistle::Object::ptr grid, out;
+    if (auto scalar = Vec<Scalar>::as(split.mapped)) {
+        out = calculateGrid<1>(points, scalar);
+        updateMeta(out);
+        if (auto d = DataBase::as(out)) {
+            grid = std::const_pointer_cast<Object>(d->grid());
+        }
+    } else if (auto vector = Vec<Scalar, 3>::as(split.mapped)) {
+        out = calculateGrid<3>(points, vector);
+        if (auto d = DataBase::as(out)) {
+            grid = std::const_pointer_cast<Object>(d->grid());
+        }
+    } else if (split.mapped) {
+        sendError("unsupported mapped data type");
+        return true;
+    }
+
+    auto d = accept<DataBase>("points_in");
+    if (auto entry = m_results.getOrLock(split.geometry->getName(), grid)) {
+        if (!split.mapped) {
+            grid = calculateGrid<1>(points, nullptr);
+            out = grid;
+        }
+        m_results.storeAndUnlock(entry, grid);
+    } else {
+        if (auto d = DataBase::as(out)) {
+            // reuse grid from previous triangulation of identical input points
+            d->setGrid(grid);
+        } else {
+            out = grid;
+        }
+    }
+
+    addObject("grid_out", out);
+
     return true;
 }
