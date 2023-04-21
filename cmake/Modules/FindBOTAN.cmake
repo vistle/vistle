@@ -11,29 +11,46 @@
 
 include(FindPackageHandleStandardArgs)
 
-set(BOTAN_NAMES botan botan-3 botan-2 botan-1)
-set(BOTAN_NAMES_DEBUG botand botand-3 botand-2)
+set(BOTAN_VERSIONS botan-3 botan-2 botan-1.10 botan-1)
+set(BOTAN_NAMES botan-3 botan-2 botan-1 botan)
+set(BOTAN_NAMES_DEBUG botand-3 botand-2 botand-1 botand)
 
 find_path(
     BOTAN_INCLUDE_DIR
-    NAMES botan/botan.h botan-2/botan/botan.h botan-3/botan/botan.h
-    PATH_SUFFIXES ${BOTAN_NAMES}
+    NAMES botan/build.h
+    PATH_SUFFIXES ${BOTAN_VERSIONS}
     DOC "The Botan include directory")
+if(BOTAN_INCLUDE_DIR)
+    file(READ "${BOTAN_INCLUDE_DIR}/botan/build.h" build)
+    string(REGEX MATCH "BOTAN_VERSION_MAJOR ([0-9]*)" _ ${build})
+    set(BOTAN_VERSION_MAJOR ${CMAKE_MATCH_1})
+    string(REGEX MATCH "BOTAN_VERSION_MINOR ([0-9]*)" _ ${build})
+    set(BOTAN_VERSION_MINOR ${CMAKE_MATCH_1})
+    string(REGEX MATCH "BOTAN_VERSION_PATCH ([0-9]*)" _ ${build})
+    set(BOTAN_VERSION_PATCH ${CMAKE_MATCH_1})
+    set(BOTAN_VERSION "${BOTAN_VERSION_MAJOR}.${BOTAN_VERSION_MINOR}.${BOTAN_VERSION_PATCH}")
+endif()
 
 find_library(
     BOTAN_LIBRARY
     NAMES ${BOTAN_NAMES}
-    PATH_SUFFIXES lib release/lib
+    PATH_SUFFIXES release/lib lib
     DOC "The Botan (release) library")
 if(MSVC)
     find_library(
         BOTAN_LIBRARY_DEBUG
         NAMES ${BOTAN_NAMES_DEBUG}
-        PATH_SUFFIXES lib debug/lib
+        PATH_SUFFIXES debug/lib lib
         DOC "The Botan debug library")
-    find_package_handle_standard_args(BOTAN REQUIRED_VARS BOTAN_LIBRARY BOTAN_LIBRARY_DEBUG BOTAN_INCLUDE_DIR)
+    find_package_handle_standard_args(
+        BOTAN
+        REQUIRED_VARS BOTAN_LIBRARY BOTAN_LIBRARY_DEBUG BOTAN_INCLUDE_DIR
+        VERSION_VAR BOTAN_VERSION)
 else()
-    find_package_handle_standard_args(BOTAN REQUIRED_VARS BOTAN_LIBRARY BOTAN_INCLUDE_DIR)
+    find_package_handle_standard_args(
+        BOTAN
+        REQUIRED_VARS BOTAN_LIBRARY BOTAN_INCLUDE_DIR
+        VERSION_VAR BOTAN_VERSION)
 endif()
 
 if(BOTAN_FOUND)
