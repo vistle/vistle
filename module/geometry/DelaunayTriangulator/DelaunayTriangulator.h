@@ -19,10 +19,13 @@ public:
     ~DelaunayTriangulator();
 
 private:
-    virtual bool compute();
+    bool compute() override;
     template<unsigned Dim>
     vistle::Object::ptr calculateGrid(vistle::Points::const_ptr points,
-                                      typename vistle::Vec<vistle::Scalar, Dim>::const_ptr data);
+                                      typename vistle::Vec<vistle::Scalar, Dim>::const_ptr data) const;
+
+    vistle::IntParameter *m_methodChoice = nullptr;
+
     vistle::ResultCache<vistle::Object::ptr> m_results;
 };
 
