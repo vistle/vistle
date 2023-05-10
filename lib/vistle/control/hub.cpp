@@ -1773,6 +1773,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                 handleMessage(con);
             }
 
+            handleQueue();
             break;
         }
 
