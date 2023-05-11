@@ -147,8 +147,8 @@ private:
     QMenu *m_moveToMenu = nullptr;
     QMenu *m_replaceWithMenu = nullptr;
     QAction *m_createModuleGroup = nullptr;
-    QAction *m_CloneModule = nullptr;
-    QAction *m_CloneModuleLinked = nullptr;
+    QAction *m_cloneModule = nullptr;
+    QAction *m_cloneModuleLinked = nullptr;
     QMenu *m_layerMenu = nullptr;
 
 

@@ -269,16 +269,16 @@ void Module::createActions()
     connect(m_cancelExecAct, SIGNAL(triggered()), this, SLOT(cancelExecModule()));
 
     m_restartAct = new QAction("Restart", this);
-    m_restartAct->setStatusTip("Restart the module");
+    m_restartAct->setStatusTip("Restart the module and keep parameter values");
     connect(m_restartAct, SIGNAL(triggered()), this, SLOT(restartModule()));
 
-    m_CloneModule = new QAction("Clone", this);
-    m_CloneModule->setStatusTip("Clone this modul with all of it's parameters");
-    connect(m_CloneModule, &QAction::triggered, this, &Module::cloneModule);
+    m_cloneModule = new QAction("Clone", this);
+    m_cloneModule->setStatusTip("Copy the module with all its parameter values");
+    connect(m_cloneModule, &QAction::triggered, this, &Module::cloneModule);
 
-    m_CloneModuleLinked = new QAction("Linked clone", this);
-    m_CloneModuleLinked->setStatusTip("Clone this modul with all of it's parameters and keep them synced");
-    connect(m_CloneModuleLinked, &QAction::triggered, this, &Module::cloneModuleLinked);
+    m_cloneModuleLinked = new QAction("Clone Linked", this);
+    m_cloneModuleLinked->setStatusTip("Clone this module with all of its parameters and keep them synced");
+    connect(m_cloneModuleLinked, &QAction::triggered, this, &Module::cloneModuleLinked);
 }
 
 /*!
@@ -296,13 +296,13 @@ void Module::createMenus()
     m_moduleMenu->addAction(m_selectConnectedAct);
     m_moduleMenu->addAction(m_selectDownstreamAct);
     m_moduleMenu->addSeparator();
-    m_moduleMenu->addAction(m_CloneModule);
-    m_moduleMenu->addAction(m_CloneModuleLinked);
+    m_moduleMenu->addAction(m_cloneModule);
+    m_moduleMenu->addAction(m_cloneModuleLinked);
     m_moduleMenu->addAction(m_createModuleGroup);
     m_moduleMenu->addAction(m_attachDebugger);
     m_moduleMenu->addAction(m_restartAct);
-    m_moveToMenu = m_moduleMenu->addMenu("Move to...");
-    m_replaceWithMenu = m_moduleMenu->addMenu("Replace with...");
+    m_moveToMenu = m_moduleMenu->addMenu("Move To...");
+    m_replaceWithMenu = m_moduleMenu->addMenu("Replace With...");
     m_moduleMenu->addSeparator();
     m_moduleMenu->addAction(m_deleteThisAct);
     m_moduleMenu->addAction(m_deleteSelAct);
@@ -432,15 +432,15 @@ void Module::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QW
  */
 void Module::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
 {
-    if (isSelected() && DataFlowView::the()->selectedModules().size() > 1) {
-        m_deleteSelAct->setVisible(true);
-        m_createModuleGroup->setVisible(true);
-        m_deleteThisAct->setVisible(false);
-    } else {
-        m_deleteSelAct->setVisible(false);
-        m_createModuleGroup->setVisible(false);
-        m_deleteThisAct->setVisible(true);
-    }
+    bool multiSel = isSelected() && DataFlowView::the()->selectedModules().size() > 1;
+    m_deleteSelAct->setVisible(multiSel);
+    m_createModuleGroup->setVisible(multiSel);
+    m_deleteThisAct->setVisible(!multiSel);
+    m_cloneModule->setVisible(!multiSel);
+    m_cloneModuleLinked->setVisible(!multiSel);
+    m_restartAct->setVisible(!multiSel);
+    m_attachDebugger->setVisible(!multiSel);
+
     if (scene() && scene()->moduleBrowser()) {
         auto getModules = [this](int hubId) {
             auto *mb = scene()->moduleBrowser();
