@@ -32,6 +32,7 @@ public:
     VistlePlugin();
     ~VistlePlugin() override;
     bool init() override;
+    bool init2() override;
     bool destroy() override;
     void notify(NotificationLevel level, const char *text) override;
     bool update() override;
@@ -123,8 +124,6 @@ bool VistlePlugin::init()
     m_observer = std::make_unique<CoverVistleObserver>(this);
 
     if (m_module) {
-        m_module->setPlugin(this);
-
         m_module->state().registerObserver(m_observer.get());
         updateSessionUrl(m_module->state().sessionUrl());
 
@@ -142,6 +141,15 @@ bool VistlePlugin::init()
         return true;
     }
 
+    return false;
+}
+
+bool VistlePlugin::init2()
+{
+    if (m_module) {
+        m_module->setPlugin(this);
+        return true;
+    }
     return false;
 }
 

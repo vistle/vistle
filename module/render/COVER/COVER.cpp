@@ -86,7 +86,11 @@ COVER::Variant::Variant(const std::string &basename, const std::string &variant)
         s << "/" << variant;
     name = s.str();
 
-    root = new osg::Group;
+    if (variant.empty()) {
+        root = new osg::ClipNode;
+    } else {
+        root = new osg::Group;
+    }
     root->setName(name);
 
     constant = new osg::Group;
@@ -102,6 +106,7 @@ COVER::Creator::Creator(int id, const std::string &name, osg::ref_ptr<osg::Group
 : id(id), name(name), baseVariant(name)
 {
     parent->addChild(baseVariant.root);
+    coVRPluginList::instance()->addNode(baseVariant.root, nullptr, COVER::the()->m_plugin);
 }
 
 bool COVER::Creator::empty() const
@@ -212,8 +217,8 @@ COVER::COVER(const std::string &name, int moduleId, mpi::communicator comm): vis
 
     //createInputPort("data_in"); - already done by Renderer base class
 
-    vistleRoot = new osg::Group;
-    vistleRoot->setName("VistlePlugin");
+    vistleRoot = new osg::ClipNode;
+    vistleRoot->setName("Root");
 
     m_fastestObjectReceivePolicy = message::ObjectReceivePolicy::Distribute;
     setObjectReceivePolicy(m_fastestObjectReceivePolicy);
@@ -239,6 +244,7 @@ void COVER::setPlugin(coVRPlugin *plugin)
     m_plugin = plugin;
 
     cover->getObjectsRoot()->addChild(vistleRoot);
+    coVRPluginList::instance()->addNode(vistleRoot, nullptr, COVER::the()->m_plugin);
     initDone();
 }
 
@@ -336,6 +342,7 @@ bool COVER::changeParameter(const Parameter *p)
 void COVER::prepareQuit()
 {
     removeAllObjects();
+    coVRPluginList::instance()->removeNode(vistleRoot, true, vistleRoot);
     if (cover)
         cover->getObjectsRoot()->removeChild(vistleRoot);
     vistleRoot.release();
