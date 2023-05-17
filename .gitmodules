@@ -67,3 +67,5 @@
 [submodule "module/geometry/DelaunayTriangulator/tetgen"]
 	path = module/geometry/DelaunayTriangulator/tetgen
 	url = https://github.com/vistle/tetgen.git
+[submodule "sz3"]
+	url = https://github.com/aumuell/SZ3.git
