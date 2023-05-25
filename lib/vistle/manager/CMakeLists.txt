@@ -27,8 +27,8 @@ else()
         vistle_find_package(X11)
         #message("COVER found, using Qt5: ${COVISE_USE_QT5}")
         if(APPLE
-                OR WIN32
-                OR XCB_FOUND)
+           OR WIN32
+           OR XCB_FOUND)
             if(COVISE_USE_QT5)
                 vistle_find_package(Qt5 5.15 COMPONENTS Widgets)
                 if(Qt5_FOUND)
