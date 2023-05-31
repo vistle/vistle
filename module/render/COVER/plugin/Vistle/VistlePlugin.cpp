@@ -71,8 +71,7 @@ void VistlePlugin::updateSessionUrl(const std::string &url)
     }
 }
 
-
-VistlePlugin::VistlePlugin(): ui::Owner("Vistle", cover->ui), m_module(nullptr)
+VistlePlugin::VistlePlugin(): coVRPlugin("Vistle"), ui::Owner("Vistle", cover->ui), m_module(nullptr)
 {
 #if 0
     using opencover::coCommandLine;

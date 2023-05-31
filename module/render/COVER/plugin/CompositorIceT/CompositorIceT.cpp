@@ -34,7 +34,8 @@ bool checkGL(const char *desc)
 }
 
 CompositorIceT::CompositorIceT()
-: m_initialized(false)
+: coVRPlugin(COVER_PLUGIN_NAME)
+, m_initialized(false)
 , m_rank(-1)
 , m_size(-1)
 , m_useCuda(true)
