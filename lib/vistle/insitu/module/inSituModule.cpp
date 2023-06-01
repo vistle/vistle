@@ -155,7 +155,7 @@ bool InSituModule::prepare()
 {
     std::lock_guard<std::mutex> g{m_communicationMutex};
 
-    while (true) {
+    while (!m_cachedVistleObjects.empty()) {
         auto obj = std::move(m_cachedVistleObjects.front());
         m_cachedVistleObjects.pop_front();
         if (isPackageComplete(obj)) {
@@ -165,6 +165,7 @@ bool InSituModule::prepare()
             sendMessage(obj);
         }
     }
+    return true;
 }
 
 void InSituModule::updateMeta(const vistle::message::Buffer &obj)
