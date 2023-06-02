@@ -14,7 +14,7 @@ set(CMAKE_C_EXTENSIONS OFF)
 project(Vistle C CXX)
 
 if(APPLE AND ${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
-    set(CMAKE_PREFIX_PATH /opt/homebrew ${CMAKE_PREFIX_PATH})
+    set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} /opt/homebrew)
 endif()
 
 message("CMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}")
