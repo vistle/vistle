@@ -30,7 +30,6 @@
 #include <array>
 #include <iterator>
 #include <memory>
-#include <omp.h>
 #include <sstream>
 #include <string>
 #include <cstddef>
