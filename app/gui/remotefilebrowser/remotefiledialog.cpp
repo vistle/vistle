@@ -2667,7 +2667,12 @@ void RemoteFileDialogPrivate::createWidgets()
     qFileDialogUi->fileTypeCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
     qFileDialogUi->fileTypeCombo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     QObject::connect(qFileDialogUi->fileTypeCombo, SIGNAL(activated(int)), q, SLOT(_q_useNameFilter(int)));
+#if QT_VERSION >= 60000
+    QObject::connect(qFileDialogUi->fileTypeCombo, SIGNAL(currentTextChanged(QString)), q,
+                     SIGNAL(filterSelected(QString)));
+#else
     QObject::connect(qFileDialogUi->fileTypeCombo, SIGNAL(activated(QString)), q, SIGNAL(filterSelected(QString)));
+#endif
 
     qFileDialogUi->listView->setFileDialogPrivate(this);
     qFileDialogUi->listView->setModel(model);
