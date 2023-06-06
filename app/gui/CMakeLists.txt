@@ -70,22 +70,24 @@ if(APPLE)
     set(gui_HEADERS ${gui_SOURCES} macosutils.h)
 endif(APPLE)
 
-qt_wrap_ui(GUI_UI_SRCS ${gui_FORMS})
-qt_add_resources(GUI_QRC_SOURCES gui.qrc about.qrc)
-add_definitions(${QT_DEFINITIONS})
+if(VISTLE_USE_QT5)
+    qt5_wrap_ui(GUI_UI_SRCS ${gui_FORMS})
+    qt5_add_resources(GUI_QRC_SOURCES gui.qrc about.qrc)
+else()
+    qt6_wrap_ui(GUI_UI_SRCS ${gui_FORMS})
+    qt6_add_resources(GUI_QRC_SOURCES gui.qrc about.qrc)
+endif()
 vistle_add_executable(${gui_name} MACOSX_BUNDLE ${gui_SOURCES} ${GUI_UI_SRCS} ${GUI_QRC_SOURCES})
 qt_disable_unicode_defines(${gui_name})
-
 if(VISTLE_USE_QT5)
     target_link_libraries(${gui_name} PRIVATE Qt5::Widgets)
 else()
-    target_link_libraries(${gui_name} PRIVATE Qt::Widgets)
+    target_link_libraries(${gui_name} PRIVATE Qt6::Widgets)
 endif()
 target_link_libraries(${gui_name} PRIVATE Threads::Threads)
 target_link_libraries(
     ${gui_name}
-    PRIVATE ${QT_LIBRARIES}
-            Boost::boost
+    PRIVATE Boost::boost
             vistle_util
             vistle_core
             vistle_userinterface

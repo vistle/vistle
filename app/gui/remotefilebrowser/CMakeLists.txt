@@ -36,18 +36,19 @@ qt_wrap_ui(UI_SRCS ${FORMS})
 
 add_library(vistle_remotefiledialog STATIC ${SOURCES} ${UI_SRCS})
 
-target_compile_definitions(vistle_remotefiledialog PRIVATE ${QT_DEFINITIONS})
 target_compile_definitions(vistle_remotefiledialog PRIVATE QT_DISABLE_DEPRECATED_BEFORE=0x000000)
 
-target_include_directories(vistle_remotefiledialog SYSTEM #PRIVATE ${Boost_INCLUDE_DIRS}
-                           PRIVATE ../../../3rdparty/qt-solutions/qtpropertybrowser/src)
+target_include_directories(vistle_remotefiledialog SYSTEM PRIVATE ../../../3rdparty/qt-solutions/qtpropertybrowser/src)
 target_include_directories(
     vistle_remotefiledialog
     PRIVATE ../..
     PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
-target_link_libraries(vistle_remotefiledialog PRIVATE Qt::Widgets)
-
-target_link_libraries(vistle_remotefiledialog PRIVATE ${QT_LIBRARIES} vistle_core)
+target_link_libraries(vistle_remotefiledialog PRIVATE vistle_core)
+if(VISTLE_USE_QT5)
+    target_link_libraries(vistle_remotefiledialog PRIVATE Qt5::Widgets)
+else()
+    target_link_libraries(vistle_remotefiledialog PRIVATE Qt6::Widgets)
+endif()
 
 qt_disable_unicode_defines(vistle_remotefiledialog)

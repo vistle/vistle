@@ -48,7 +48,6 @@ qt_wrap_ui(UI_SRCS ${FORMS})
 
 add_library(vistle_propertybrowser STATIC ${SOURCES} ${UI_SRCS})
 
-target_compile_definitions(vistle_propertybrowser PRIVATE ${QT_DEFINITIONS})
 target_compile_definitions(vistle_propertybrowser PRIVATE QT_DISABLE_DEPRECATED_BEFORE=0x000000)
 
 target_include_directories(vistle_propertybrowser SYSTEM #PRIVATE ${Boost_INCLUDE_DIRS}
@@ -58,5 +57,9 @@ target_include_directories(
     PRIVATE ../..
     PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
-target_link_libraries(vistle_propertybrowser PRIVATE ${QT_LIBRARIES} vistle_core Qt::Widgets)
+if(VISTLE_USE_QT5)
+    target_link_libraries(vistle_propertybrowser PRIVATE ${QT_LIBRARIES} vistle_core Qt5::Widgets)
+else()
+    target_link_libraries(vistle_propertybrowser PRIVATE ${QT_LIBRARIES} vistle_core Qt6::Widgets)
+endif()
 qt_disable_unicode_defines(vistle_propertybrowser)
