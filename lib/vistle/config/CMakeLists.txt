@@ -11,7 +11,9 @@ vistle_add_library(
     ${CONFIG_SOURCES}
     ${CONFIG_HEADERS}
     ${COVCONFIG_SOURCES}
-    ${COVCONFIG_HEADERS})
+    ${COVCONFIG_HEADERS}
+    ${COVCONFIG_DETAIL_HEADERS})
 target_include_directories(vistle_config SYSTEM PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/lib/3rdparty>)
 target_compile_definitions(vistle_config PRIVATE CONFIG_NAMESPACE=vistle COVCONFIG_VISTLE)
 target_include_directories(vistle_config PRIVATE ${COVCONFIG_PRIVATE_INCLUDES})
+target_link_libraries(vistle_config PRIVATE ${COVCONFIG_PRIVATE_LIBRARIES})

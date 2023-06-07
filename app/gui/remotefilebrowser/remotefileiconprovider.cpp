@@ -57,7 +57,7 @@ QIcon RemoteFileIconProvider::icon(const FileInfo &info) const
             icon = QStyle::SP_FileLinkIcon;
         break;
     case FileInfo::System:
-        return s_qIconProvider->icon(QString("/dev"));
+        return s_qIconProvider->icon(QFileInfo("/dev"));
     }
 
     return qApp->style()->standardIcon(icon);

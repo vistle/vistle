@@ -20,10 +20,11 @@ private:
     vistle::Port *m_dataPort = nullptr;
     // Parameters
     vistle::StringParameter *m_filePathParam = nullptr;
+    vistle::IntParameter *m_format = nullptr;
     vistle::Object::ptr m_grid;
-    std::unique_ptr<rapidcsv::Document> m_data;
+    std::array<std::unique_ptr<rapidcsv::Document>, 3> m_data;
     std::unique_ptr<rapidcsv::Document> m_connectivity;
-
+    std::string m_species;
     virtual bool examine(const vistle::Parameter *param = nullptr) override;
     virtual bool read(Token &token, int timestep = -1, int block = -1) override;
 };

@@ -38,6 +38,7 @@ ShowGrid::ShowGrid(const std::string &name, int moduleID, mpi::communicator comm
     addIntParameter("polygon", "Show polygon", 1, Parameter::Boolean);
     addIntParameter("quad", "Show quad", 1, Parameter::Boolean);
     addIntParameter("triangle", "Show triangle", 1, Parameter::Boolean);
+    addIntParameter("bar", "Show bar", 1, Parameter::Boolean);
     m_CellNrMin = addIntParameter("min_cell_index", "show cells starting from this index", -1);
     m_CellNrMax = addIntParameter("max_cell_index", "show cells up to this index", -1);
 
@@ -49,19 +50,22 @@ ShowGrid::~ShowGrid()
 
 bool ShowGrid::compute()
 {
+    std::array<bool, UnstructuredGrid::NUM_TYPES> showTypes;
+    showTypes[UnstructuredGrid::BAR] = getIntParameter("bar");
+    showTypes[UnstructuredGrid::TRIANGLE] = getIntParameter("triangle");
+    showTypes[UnstructuredGrid::QUAD] = getIntParameter("quad");
+    showTypes[UnstructuredGrid::TETRAHEDRON] = getIntParameter("tetrahedron");
+    showTypes[UnstructuredGrid::PYRAMID] = getIntParameter("pyramid");
+    showTypes[UnstructuredGrid::PRISM] = getIntParameter("prism");
+    showTypes[UnstructuredGrid::HEXAHEDRON] = getIntParameter("hexahedron");
+    showTypes[UnstructuredGrid::POLYGON] = getIntParameter("polygon");
+    showTypes[UnstructuredGrid::POINT] = showTypes[UnstructuredGrid::POLYHEDRON] = getIntParameter("polyhedron");
     const bool shownor = getIntParameter("normalcells");
     const bool showgho = getIntParameter("ghostcells");
     const bool showconv = getIntParameter("convex");
     const bool shownonconv = getIntParameter("nonconvex");
 
-    const bool showtet = getIntParameter("tetrahedron");
-    const bool showpyr = getIntParameter("pyramid");
-    const bool showpri = getIntParameter("prism");
-    const bool showhex = getIntParameter("hexahedron");
-    const bool showphd = getIntParameter("polyhedron");
-    const bool showpgo = getIntParameter("polygon");
-    const bool showqua = getIntParameter("quad");
-    const bool showtri = getIntParameter("triangle");
+
     const Integer cellnrmin = m_CellNrMin->getValue();
     const Integer cellnrmax = m_CellNrMax->getValue();
 
@@ -99,43 +103,8 @@ bool ShowGrid::compute()
                 if (!show)
                     continue;
                 type &= vistle::UnstructuredGrid::TYPE_MASK;
-                switch (type) {
-                case UnstructuredGrid::TETRAHEDRON:
-                    if (!showtet) {
-                        continue;
-                    }
-                    break;
-                case UnstructuredGrid::PYRAMID:
-                    if (!showpyr) {
-                        continue;
-                    }
-                    break;
-                case UnstructuredGrid::PRISM:
-                    if (!showpri) {
-                        continue;
-                    }
-                    break;
-                case UnstructuredGrid::HEXAHEDRON:
-                    if (!showhex) {
-                        continue;
-                    }
-                    break;
-                case UnstructuredGrid::POLYHEDRON:
-                    if (!showphd) {
-                        continue;
-                    }
-                    break;
-                case UnstructuredGrid::QUAD:
-                    if (!showqua) {
-                        continue;
-                    }
-                    break;
-                case UnstructuredGrid::TRIANGLE:
-                    if (!showtri) {
-                        continue;
-                    }
-                    break;
-                }
+                if (!showTypes[type])
+                    continue;
 
                 const Index begin = unstr->el()[index], end = unstr->el()[index + 1];
                 switch (type) {
@@ -171,6 +140,12 @@ bool ShowGrid::compute()
                     }
                     break;
                 }
+                case UnstructuredGrid::BAR: {
+                    ocl.push_back(icl[begin]);
+                    ocl.push_back(icl[begin + 1]);
+                    oel.push_back(ocl.size());
+                    break;
+                }
                 }
             }
             out->d()->x[0] = unstr->d()->x[0];
@@ -191,9 +166,9 @@ bool ShowGrid::compute()
                                        : UnstructuredGrid::POINT;
 
             for (Index index = begin; index < end; ++index) {
-                if (type == UnstructuredGrid::HEXAHEDRON && !showhex)
+                if (type == UnstructuredGrid::HEXAHEDRON && !showTypes[UnstructuredGrid::HEXAHEDRON])
                     continue;
-                if (type == UnstructuredGrid::QUAD && !showqua)
+                if (type == UnstructuredGrid::QUAD && !showTypes[UnstructuredGrid::QUAD])
                     continue;
                 bool ghost = str->isGhostCell(index);
                 const bool show = ((showgho && ghost) || (shownor && !ghost));
@@ -239,8 +214,7 @@ bool ShowGrid::compute()
                 end = std::min(cellnrmax + 1, (Integer)end);
 
             for (Index index = begin; index < end; ++index) {
-                const bool show = shownor && showpgo;
-                if (!show)
+                if (!(shownor && showTypes[UnstructuredGrid::POLYGON]))
                     continue;
 
                 const Index begin = poly->el()[index], end = poly->el()[index + 1];

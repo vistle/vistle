@@ -49,7 +49,7 @@ private:
 
     vistle::Object::ptr work(vistle::Object::const_ptr grid, vistle::Vec<vistle::Scalar>::const_ptr data,
                              vistle::DataBase::const_ptr mapdata, vistle::Scalar isoValue = 0.) const;
-    bool compute(std::shared_ptr<vistle::BlockTask> task) const override;
+    bool compute(const std::shared_ptr<vistle::BlockTask> &task) const override;
     //bool compute() override;
     bool prepare() override;
     bool reduce(int timestep) override;

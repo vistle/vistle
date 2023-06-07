@@ -12,9 +12,11 @@
 #define S_IWUSR _S_IWRITE
 #define S_IWGRP _S_IWRITE
 #define S_IWOTH _S_IWRITE
+#define O_BINARY _O_BINARY
 
 
 #else
+#define O_BINARY 0
 #include <unistd.h>
 #endif
 

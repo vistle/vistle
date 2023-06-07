@@ -250,7 +250,7 @@ Calc::Calc(const std::string &name, int moduleID, mpi::communicator comm): Modul
 Calc::~Calc()
 {}
 
-bool Calc::compute(std::shared_ptr<BlockTask> task) const
+bool Calc::compute(const std::shared_ptr<BlockTask> &task) const
 {
     Object::const_ptr oin[NumPorts];
     DataBase::const_ptr din[NumPorts];

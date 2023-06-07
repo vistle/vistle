@@ -14,10 +14,15 @@
 #ifdef __APPLE__
 #include <OpenGL/gl.h>
 #else
+#ifdef _WIN32
+#include <windows.h>
+#endif
 #include <GL/gl.h>
 #endif
 
 #include "export.h"
+
+#include <cstdlib>
 
 struct cudaGraphicsResource;
 typedef unsigned char uchar;
@@ -52,36 +57,6 @@ private:
     size_t compSize; //!< size of output buffer
     bool m_initialized; //!< whether class is initialized
 };
-
-#ifndef HAVE_CUDA
-ReadBackCuda::ReadBackCuda()
-{}
-ReadBackCuda::~ReadBackCuda()
-{}
-bool ReadBackCuda::init()
-{
-    return false;
-}
-bool ReadBackCuda::isInitialized() const
-{
-    return false;
-}
-bool ReadBackCuda::readpixels(GLint x, GLint y, GLint w, GLint pitch, GLint h, GLenum format, int ps, GLubyte *bits,
-                              GLint buf, GLenum type)
-{
-    return false;
-}
-bool ReadBackCuda::readpixelsyuv(GLint x, GLint y, GLint w, GLint pitch, GLint h, GLenum format, int ps, GLubyte *bits,
-                                 GLint buf, int subx, int suby)
-{
-    return false;
-}
-bool ReadBackCuda::readdepthquant(GLint x, GLint y, GLint w, GLint pitch, GLint h, GLenum format, int ps, GLubyte *bits,
-                                  GLint buf, GLenum type)
-{
-    return false;
-}
-#endif
 
 } // namespace vistle
 #endif

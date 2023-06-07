@@ -26,7 +26,7 @@ public:
     void slotPropertyChanged(QtProperty *property, const QString &value);
     void slotModuleIdChanged(QtProperty *, int);
     void slotFiltersChanged(QtProperty *property, const QString &filters);
-    void slotRegExpChanged(QtProperty *property, const QRegExp &regExp);
+    void slotRegExpChanged(QtProperty *property, const QRegularExpression &regExp);
     void slotSetValue(const QString &value);
     void slotEchoModeChanged(QtProperty *, int);
     void slotReadOnlyChanged(QtProperty *, bool);
@@ -71,7 +71,7 @@ void VistleBrowserFactoryPrivate::slotFiltersChanged(QtProperty *property, const
     }
 }
 
-void VistleBrowserFactoryPrivate::slotRegExpChanged(QtProperty *property, const QRegExp &regExp)
+void VistleBrowserFactoryPrivate::slotRegExpChanged(QtProperty *property, const QRegularExpression &regExp)
 {
     if (!m_createdEditors.contains(property))
         return;
@@ -87,7 +87,7 @@ void VistleBrowserFactoryPrivate::slotRegExpChanged(QtProperty *property, const 
         const QValidator *oldValidator = editor->validator();
         QValidator *newValidator = 0;
         if (regExp.isValid()) {
-            newValidator = new QRegExpValidator(regExp, editor);
+            newValidator = new QRegularExpressionValidator(regExp, editor);
         }
         editor->setValidator(newValidator);
         if (oldValidator)
@@ -248,8 +248,8 @@ void VistleBrowserFactory::connectPropertyManager(VistleBrowserPropertyManager *
     connect(manager, SIGNAL(moduleIdChanged(QtProperty *, int)), this, SLOT(slotModuleIdChanged(QtProperty *, int)));
     connect(manager, SIGNAL(filtersChanged(QtProperty *, const QString &)), this,
             SLOT(slotFiltersChanged(QtProperty *, const QString &)));
-    connect(manager, SIGNAL(regExpChanged(QtProperty *, const QRegExp &)), this,
-            SLOT(slotRegExpChanged(QtProperty *, const QRegExp &)));
+    connect(manager, SIGNAL(regExpChanged(QtProperty *, const QRegularExpression &)), this,
+            SLOT(slotRegExpChanged(QtProperty *, const QRegularExpression &)));
     connect(manager, SIGNAL(echoModeChanged(QtProperty *, int)), this, SLOT(slotEchoModeChanged(QtProperty *, int)));
     connect(manager, SIGNAL(readOnlyChanged(QtProperty *, bool)), this, SLOT(slotReadOnlyChanged(QtProperty *, bool)));
     connect(manager, SIGNAL(fileModeChanged(QtProperty *, int)), this, SLOT(slotFileModeChanged(QtProperty *, int)));
@@ -273,9 +273,9 @@ QWidget *VistleBrowserFactory::createEditor(VistleBrowserPropertyManager *manage
     editor->setReadOnly(manager->isReadOnly(property));
     editor->setFileMode((FileMode)manager->fileMode(property));
     editor->setTitle(manager->title(property));
-    QRegExp regExp = manager->regExp(property);
+    QRegularExpression regExp = manager->regExp(property);
     if (regExp.isValid()) {
-        QValidator *validator = new QRegExpValidator(regExp, editor);
+        QValidator *validator = new QRegularExpressionValidator(regExp, editor);
         editor->setValidator(validator);
     }
     editor->setText(manager->value(property));
@@ -303,8 +303,8 @@ void VistleBrowserFactory::disconnectPropertyManager(VistleBrowserPropertyManage
     disconnect(manager, SIGNAL(moduleIdChanged(QtProperty *, int)), this, SLOT(slotModuleIdChanged(QtProperty *, int)));
     disconnect(manager, SIGNAL(filtersChanged(QtProperty *, const QString &)), this,
                SLOT(slotFiltersChanged(QtProperty *, const QString &)));
-    disconnect(manager, SIGNAL(regExpChanged(QtProperty *, const QRegExp &)), this,
-               SLOT(slotRegExpChanged(QtProperty *, const QRegExp &)));
+    disconnect(manager, SIGNAL(regExpChanged(QtProperty *, const QRegularExpression &)), this,
+               SLOT(slotRegExpChanged(QtProperty *, const QRegularExpression &)));
     disconnect(manager, SIGNAL(echoModeChanged(QtProperty *, int)), this, SLOT(slotEchoModeChanged(QtProperty *, int)));
     disconnect(manager, SIGNAL(readOnlyChanged(QtProperty *, bool)), this,
                SLOT(slotReadOnlyChanged(QtProperty *, bool)));

@@ -26,7 +26,8 @@ private:
 };
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(MirrorMode, (Original)(Mirror_X)(Mirror_Y)(Mirror_Z))
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(AnimationMode, (Keep)(Deanimate)(Animate)(TimestepAsRepetitionCount))
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(AnimationMode,
+                                    (Keep)(Deanimate)(Animate)(TimestepAsRepetitionCount)(TimestepAsPower))
 
 using namespace vistle;
 
@@ -174,11 +175,14 @@ bool Transform::compute()
     AnimationMode animation = (AnimationMode)p_animation->getValue();
     int timestep = animation == Deanimate ? -1 : 0;
     if (animation == TimestepAsRepetitionCount) {
-        repetitions = 1;
-        if (split.timestep > 0) {
-            transform = pow(transform, split.timestep);
-        }
         timestep = split.timestep;
+        repetitions = timestep;
+    }
+
+    if (animation == TimestepAsPower) {
+        timestep = split.timestep;
+        transform = pow(transform, timestep + 1);
+        repetitions = 1;
     }
 
     if (keep_original) {
@@ -210,11 +214,10 @@ bool Transform::compute()
             addObject(data_out, nobj);
         }
     }
-
     Matrix4 t = geo->getTransform();
     for (int i = 0; i < repetitions; ++i) {
         t *= transform;
-        std::string key = std::to_string(i) + ":" + geo->getName();
+        std::string key = std::to_string(animation == TimestepAsPower ? timestep : i) + ":" + geo->getName();
         Object::ptr outGeo;
         if (auto entry = m_cache.getOrLock(key, outGeo)) {
             outGeo = geo->clone();

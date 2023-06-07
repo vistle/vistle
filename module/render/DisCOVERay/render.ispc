@@ -1,12 +1,12 @@
 #include "render.isph"
 
-#include <embree3/rtcore.isph>
-#include <embree3/rtcore_ray.isph>
+#include "common.h"
+
+#include EMBREE(rtcore.isph)
+#include EMBREE(rtcore_ray.isph)
 
 #include "linalg/math.isph"
 #include "linalg/vec.isph"
-
-#include "common.h"
 
 inline uniform float dot(const uniform Vec4f a, const uniform Vec4f b)
 {
@@ -284,79 +284,14 @@ export void ispcRenderTilePacket(uniform const SceneData *uniform scene, uniform
         ray.ray.flags = 0;
         setUpRay(tile, ray, x, y);
         {
+#if EMBREE_MAJOR >= 4
+            rtcIntersectV(scene->scene, &ray);
+#else
             uniform RTCIntersectContext context;
             rtcInitIntersectContext(&context);
             rtcIntersectV(scene->scene, &context, &ray);
+#endif
         }
         shadeRay(scene, tile, ray, x, y);
     }
-}
-
-export void ispcRenderTileStream(uniform const SceneData *uniform scene, uniform const TileData *uniform tile)
-{
-#define TSX 8
-#define TSY 8
-
-    uniform const int tx0 = tile->x0, tx1 = tile->x1;
-    uniform const int ty0 = tile->y0, ty1 = tile->y1;
-
-    for (uniform int y0 = ty0; y0 < ty1; y0 += TSY) {
-        uniform int y1 = min(y0 + TSY, ty1);
-        for (uniform int x0 = tx0; x0 < tx1; x0 += TSX) {
-            uniform int x1 = min(x0 + TSX, tx1);
-
-            bool valid_stream[TSX * TSY];
-            RTCRayHit primary_stream[TSX * TSY];
-
-            int x, y;
-            /* set up rays */
-            uniform int i = 0;
-            foreach_tiled(y = y0... y1, x = x0... x1)
-            {
-                /* ISPC workaround for mask == 0 */
-                if (all(__mask == 0))
-                    continue;
-
-                bool mask = __mask;
-                unmasked { valid_stream[i] = mask; }
-                RTCRayHit &rayhit = primary_stream[i];
-                setUpRay(tile, rayhit, x, y);
-                mask = __mask;
-                unmasked
-                { // invalidates inactive rays
-                    rayhit.ray.tnear = mask ? 0.0f : (float)(pos_inf);
-                    rayhit.ray.tfar = mask ? (float)(inf) : (float)(neg_inf);
-                }
-
-                ++i;
-            }
-
-            /* shoot rays */
-            uniform RTCIntersectContext primary_context;
-            rtcInitIntersectContext(&primary_context);
-            primary_context.flags = RTC_INTERSECT_CONTEXT_FLAG_COHERENT;
-            //primary_context.userRayExt = &primary_stream;
-            rtcIntersectVM(scene->scene, &primary_context, &primary_stream[0], i, sizeof(RTCRayHit));
-
-            /* shade rays */
-            i = -1;
-            foreach_tiled(y = y0... y1, x = x0... x1)
-            {
-                /* ISPC workaround for mask == 0 */
-                if (all(__mask == 0))
-                    continue;
-
-                ++i;
-                /* ignore invalid rays */
-                if (valid_stream[i] == false)
-                    continue;
-
-                RTCRayHit &rayhit = primary_stream[i];
-                shadeRay(scene, tile, rayhit, x, y);
-            }
-        }
-    }
-
-#undef TSX
-#undef TSY
 }

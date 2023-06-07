@@ -1,12 +1,7 @@
-vistle_find_package(Qt5Core)
-# don't bother to continue if not even QtCore was found
-if(NOT Qt5Core_FOUND)
-    message("Not building GUI: Qt5 Core library not found")
+if(NOT Qt6_FOUND AND NOT Qt5_FOUND)
+    message("Not building GUI: neither Qt5 nor Qt6 Core library found")
     return()
 endif()
-vistle_find_package(Qt5Widgets)
-vistle_find_package(Qt5Gui)
-
 add_subdirectory(propertybrowser)
 add_subdirectory(remotefilebrowser)
 
@@ -75,14 +70,18 @@ if(APPLE)
     set(gui_HEADERS ${gui_SOURCES} macosutils.h)
 endif(APPLE)
 
-qt5_wrap_ui(GUI_UI_SRCS ${gui_FORMS})
-qt5_add_resources(GUI_QRC_SOURCES gui.qrc about.qrc)
+qt_wrap_ui(GUI_UI_SRCS ${gui_FORMS})
+qt_add_resources(GUI_QRC_SOURCES gui.qrc about.qrc)
 add_definitions(${QT_DEFINITIONS})
 vistle_add_executable(${gui_name} MACOSX_BUNDLE ${gui_SOURCES} ${GUI_UI_SRCS} ${GUI_QRC_SOURCES})
+qt_disable_unicode_defines(${gui_name})
 
-target_link_libraries(${gui_name} PRIVATE Qt5::Widgets)
+if(VISTLE_USE_QT5)
+    target_link_libraries(${gui_name} PRIVATE Qt5::Widgets)
+else()
+    target_link_libraries(${gui_name} PRIVATE Qt::Widgets)
+endif()
 target_link_libraries(${gui_name} PRIVATE Threads::Threads)
-
 target_link_libraries(
     ${gui_name}
     PRIVATE ${QT_LIBRARIES}

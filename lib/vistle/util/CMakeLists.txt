@@ -1,4 +1,4 @@
-vistle_find_package(BOTAN REQUIRED)
+vistle_find_package(BOTAN 1.10 REQUIRED)
 vistle_find_package(HWLOC)
 
 set(util_SOURCES
@@ -72,6 +72,10 @@ vistle_target_link_libraries(
     Threads::Threads
     PRIVATE
     ${BOTAN_LIBRARIES})
+
+if(BOTAN_VERSION VERSION_GREATER_EQUAL 3)
+    set_property(TARGET vistle_util PROPERTY CXX_STANDARD 20)
+endif()
 
 if(HWLOC_FOUND)
     target_compile_definitions(vistle_util PRIVATE HAVE_HWLOC)

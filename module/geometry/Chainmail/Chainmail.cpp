@@ -32,16 +32,17 @@ Chainmail::Chainmail(const std::string &name, int moduleID, mpi::communicator co
 {
     createInputPort("quads_in", "Unstructured grid with quads");
     createInputPort("data_in", "mapped data");
-    createOutputPort("circles_out", "circles");
+    m_circlesOut = createOutputPort("circles_out", "circles");
     createOutputPort("data_out", "tubes or spheres with mapped data");
 
     m_geoMode = addIntParameter("geo_mode", "geometry generation mode", Circle, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_geoMode, GeoMode);
 
-    m_radius = addFloatParameter("radius", "radius of the rings (diameter = radius / 20)", -1.0);
+    m_radius = addFloatParameter("radius", "radius of the rings in mm", 5.2);
+    setParameterMinimum(m_radius, Float(0));
     m_numXSegments =
-        addIntParameter("number of torus segments", "number of quads used to aproximate the torus in it's plane", 20);
-    m_numYSegments = addIntParameter("number of diameter segments",
+        addIntParameter("number_of_torus_segments", "number of quads used to aproximate the torus in it's plane", 20);
+    m_numYSegments = addIntParameter("number_of_diameter_segments",
                                      "number of quads used to aproximate the torus around its axis", 5);
 }
 
@@ -55,34 +56,6 @@ Vector3 vec(const T &t, Index i)
     return Vector3{t->x()[i], t->y()[i], t->z()[i]};
 }
 
-std::vector<Vector3> interpolateCirclePoints(const Vector3 &middle, const Vector3 &normale, Index precition,
-                                             float radius)
-{
-    static const Vector3 base1{0, 0, 1};
-    static const Vector3 base2{1, 0, 0};
-    auto v1 = base1.cross(normale);
-    if (v1 == Vector3{0, 0, 0})
-        v1 = base2.cross(normale);
-    auto v2 = v1.cross(normale);
-    v1.normalize();
-    v2.normalize();
-
-    std::vector<Vector3> v;
-    auto thetaBase = 2 * EIGEN_PI / precition / precition;
-    for (Index i = 0; i < precition; i++) {
-        auto tethaH = thetaBase * (i * precition);
-        auto d = v1 * sin(tethaH) + v2 * cos(tethaH);
-        for (Index j = 0; j < precition; j++) {
-            auto p = middle + radius * d;
-            auto tethaV = 2 * EIGEN_PI * j / precition;
-
-            auto pp = p + radius / 20 * (normale * sin(tethaV) + d * cos(tethaV));
-            v.push_back(pp);
-        }
-    }
-    return v;
-}
-
 Vector3 center(const std::vector<Vector3> &points)
 {
     return std::accumulate(points.begin(), points.end(), Vector3{0, 0, 0}) / points.size();
@@ -93,8 +66,6 @@ std::vector<Vector3> Chainmail::toTorus(const std::vector<Vector3> &points, Inde
 {
     auto middle = center(points);
     m_radiusValue = (middle - points[0]).norm();
-    if (m_radius->getValue() < 0)
-        setFloatParameter(m_radius->getName(), m_radiusValue);
     switch (m_geoMode->getValue()) {
     case Circle:
         return toTorusCircle(points, middle, numTorusSegments, numDiameterSegments);
@@ -112,8 +83,12 @@ std::vector<Vector3> Chainmail::toTorusCircle(const std::vector<Vector3> &points
 
     auto normale = (points[0] - points[1]).cross(points[0] - points[2]);
     normale.normalize();
-
-
+    float verticalRadius = m_radius->getValue() / 1000;
+    float horizontalRadius = 0;
+    for (const auto &p: points)
+        horizontalRadius += (middle - p).norm();
+    horizontalRadius /= points.size();
+    horizontalRadius += verticalRadius;
     Vector3 v1 = points[0] - points[1];
     Vector3 v2 = v1.cross(normale);
     v1.normalize();
@@ -124,11 +99,11 @@ std::vector<Vector3> Chainmail::toTorusCircle(const std::vector<Vector3> &points
     for (Index i = 0; i < numTorusSegments; i++) {
         auto tethaH = thetaBase * (i * numDiameterSegments);
         auto d = v1 * sin(tethaH) + v2 * cos(tethaH);
-        auto p = middle + m_radius->getValue() * d;
+        auto p = middle + horizontalRadius * d;
         for (Index j = 0; j < numDiameterSegments; j++) {
             auto tethaV = 2 * EIGEN_PI * j / numDiameterSegments;
 
-            auto pp = p + m_radius->getValue() / 20 * (normale * sin(tethaV) + d * cos(tethaV));
+            auto pp = p + verticalRadius * (normale * sin(tethaV) + d * cos(tethaV));
             v.push_back(pp);
         }
     }
@@ -176,15 +151,15 @@ std::vector<Vector3> Chainmail::toTorusSpline(const std::vector<Vector3> &points
     //extrapolate points for the 3D torus around the spline
     std::vector<Vector3> v2;
     auto theta = 2 * EIGEN_PI / numDiameterSegments;
-    for (int i = 0; i < v1.size(); i++) {
-        auto currentPoint = middle + (v1[i] - middle) * m_radius->getValue() / m_radiusValue;
-        Vector3 s1 = middle - currentPoint;
+    for (unsigned i = 0; i < v1.size(); i++) {
+        auto currentPoint = v1[i] - (middle - v1[i]).normalized() * m_radius->getValue() / 1000;
+        Vector3 s1 = middle - v1[i];
         Vector3 s2 = v1[(i - 1) % numTorusSegments] - v1[(i + 1) % numTorusSegments];
         s1.normalize();
         s2 = s1.cross(s2);
         s2.normalize();
         for (Index j = 0; j < numDiameterSegments; j++) {
-            v2.push_back(currentPoint + m_radius->getValue() / 20 * (s1 * sin(theta * j) + s2 * cos(theta * j)));
+            v2.push_back(currentPoint + m_radius->getValue() / 1000 * (s1 * sin(theta * j) + s2 * cos(theta * j)));
         }
     }
 
@@ -198,6 +173,9 @@ bool Chainmail::compute()
         sendError("no input grid");
         return true;
     }
+    if (!m_circlesOut->isConnected())
+        return true;
+
     Index circlesPerTorus = m_numXSegments->getValue();
     Index vertsPerCircle = m_numYSegments->getValue();
     Index vertsPerTorus = circlesPerTorus * vertsPerCircle;
@@ -215,9 +193,9 @@ bool Chainmail::compute()
     for (Index elementIndex = 0; elementIndex < unstrIn->getNumElements(); elementIndex++) {
         if (unstrIn->tl()[elementIndex] == UnstructuredGrid::QUAD ||
             unstrIn->tl()[elementIndex] == UnstructuredGrid::TRIANGLE) {
-            auto numVerts = UnstructuredGrid::NumVertices[unstrIn->tl()[elementIndex]];
+            int numVerts = UnstructuredGrid::NumVertices[unstrIn->tl()[elementIndex]];
             std::vector<Vector3> points(numVerts);
-            for (Index p = 0; p < numVerts; p++) {
+            for (int p = 0; p < numVerts; p++) {
                 points[p] = vec(unstrIn, unstrIn->cl()[unstrIn->el()[elementIndex] + p]);
             }
             auto torusPoints = toTorus(points, circlesPerTorus, vertsPerCircle);

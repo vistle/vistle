@@ -31,16 +31,6 @@ std::string prefix(const std::string &bindir, const std::string &buildtype)
     return p.string();
 }
 
-std::string prefix(const std::string &bindir)
-{
-    return prefix(bindir, build_type());
-}
-
-std::string prefix(int argc, char *argv[])
-{
-    return prefix(getbindir(argc, argv));
-}
-
 std::string bin(const std::string &prefix)
 {
     if (build_type().empty()) {
@@ -48,19 +38,6 @@ std::string bin(const std::string &prefix)
     }
 
     return prefix + "/bin/" + build_type();
-}
-
-std::string module(const std::string &prefix)
-{
-#ifdef MODULE_THREAD
-    std::string moduleDir = "/lib/module";
-#else
-    std::string moduleDir = "/libexec/module";
-#endif
-    if (build_type().empty()) {
-        return prefix + moduleDir;
-    }
-    return prefix + moduleDir + "/" + build_type();
 }
 
 } // namespace

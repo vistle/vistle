@@ -20,15 +20,15 @@
 #include "linalg/vec.isph"
 #include "linalg/affinespace.isph"
 
-#include <embree3/rtcore.isph>
-#include <embree3/rtcore_ray.isph>
+#include "common.h"
+
+#include EMBREE(rtcore.isph)
+#include EMBREE(rtcore_ray.isph)
 
 #include "render.isph"
 #include "tubes.isph"
 
 #include "spheres_isect.isph"
-
-#include "common.h"
 
 uniform const float Epsilon = 1e-6;
 uniform const float ArrowSize = 2.0f;

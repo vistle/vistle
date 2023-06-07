@@ -188,6 +188,7 @@ private:
 
     //  member functions
     void byteswap(WORD *buffer, INTEGER length);
+    void byteswap(REAL *buffer, INTEGER length);
 
     char InfoBuf[1000];
 

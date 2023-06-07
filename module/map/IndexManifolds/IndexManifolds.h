@@ -11,7 +11,7 @@ public:
 
 private:
     bool changeParameter(const vistle::Parameter *p) override;
-    bool compute(std::shared_ptr<vistle::BlockTask> task) const override;
+    bool compute(const std::shared_ptr<vistle::BlockTask> &task) const override;
 
     vistle::Port *p_data_in = nullptr;
     vistle::Port *p_surface_out = nullptr, *p_line_out = nullptr, *p_point_out = nullptr;

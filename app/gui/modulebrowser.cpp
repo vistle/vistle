@@ -71,7 +71,11 @@ ModuleListWidget::ModuleListWidget(QWidget *parent): QTreeWidget(parent)
     });
 }
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+QMimeData *ModuleListWidget::mimeData(const QList<QTreeWidgetItem *> &dragList) const
+#else
 QMimeData *ModuleListWidget::mimeData(const QList<QTreeWidgetItem *> dragList) const
+#endif
 {
     if (dragList.empty())
         return nullptr;
@@ -544,7 +548,7 @@ void ModuleBrowser::writeSettings()
 
     if (m_primaryHub != vistle::message::Id::Invalid) {
         auto hubItem = getHubItem(m_primaryHub);
-        for (unsigned i = 0; i < hubItem->childCount(); ++i) {
+        for (int i = 0; i < hubItem->childCount(); ++i) {
             auto *child = hubItem->child(i);
             auto cat = child->text(0).toStdString();
             m_categoryExpanded[cat] = child->isExpanded();

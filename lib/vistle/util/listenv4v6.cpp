@@ -2,7 +2,9 @@
 
 #include <boost/asio/ip/v6_only.hpp>
 
+#ifndef WIN32 // does not work on windows the same way as on linux
 #define REUSEADDR
+#endif
 
 namespace vistle {
 

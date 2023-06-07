@@ -169,7 +169,6 @@ public:
     RemoteFileIconProvider *iconProvider() const;
 
     void setLabelText(DialogLabel label, const QString &text);
-    QString labelText(DialogLabel label) const;
 
     void setSupportedSchemes(const QStringList &schemes);
     QStringList supportedSchemes() const;

@@ -36,7 +36,15 @@ FileQueryResult::Status readEntry(const fs::path &path, FileInfo &info)
         info.hidden = false;
 #else
         info.hidden = info.name.length() >= 1 && info.name[0] == '.';
+#ifdef __APPLE__
+        if (pathconf(path.c_str(), _PC_CASE_SENSITIVE)) {
+            info.casesensitive = true;
+        } else {
+            info.casesensitive = false;
+        }
+#else
         info.casesensitive = true;
+#endif
 #endif
 
         info.symlink = false;
@@ -162,6 +170,7 @@ bool FileInfoCrawler::handle(const message::FileQuery &query, const buffer &payl
 
             if (const char *h = getenv("USERPROFILE"))
                 info.homepath = h;
+            std::replace(info.homepath.begin(), info.homepath.end(), '\\', '/');
 
             if (const char *u = getenv("USERNAME"))
                 info.username = u;

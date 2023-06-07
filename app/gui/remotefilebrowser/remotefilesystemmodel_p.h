@@ -72,27 +72,33 @@ class ExtendedInformation;
 class RemoteFileSystemModelPrivate;
 class RemoteFileIconProvider;
 
-#if defined(Q_OS_WIN)
 class RemoteFileSystemModelNodePathKey: public QString {
 public:
     RemoteFileSystemModelNodePathKey() {}
-    RemoteFileSystemModelNodePathKey(const QString &other): QString(other) {}
-    RemoteFileSystemModelNodePathKey(const RemoteFileSystemModelNodePathKey &other): QString(other) {}
+    RemoteFileSystemModelNodePathKey(const QString &other, Qt::CaseSensitivity caseSensitivity = Qt::CaseSensitive)
+    : QString(other), caseSensitivity(caseSensitivity)
+    {}
+    RemoteFileSystemModelNodePathKey(const RemoteFileSystemModelNodePathKey &other)
+    : QString(other), caseSensitivity(other.caseSensitivity)
+    {}
     bool operator==(const RemoteFileSystemModelNodePathKey &other) const
     {
+        if (caseSensitivity == Qt::CaseSensitive && other.caseSensitivity == Qt::CaseSensitive)
+            return !compare(other, Qt::CaseSensitive);
         return !compare(other, Qt::CaseInsensitive);
     }
+
+    Qt::CaseSensitivity caseSensitivity = Qt::CaseSensitive;
 };
 
 Q_DECLARE_TYPEINFO(RemoteFileSystemModelNodePathKey, Q_MOVABLE_TYPE);
 
 inline uint qHash(const RemoteFileSystemModelNodePathKey &key)
 {
+    if (key.caseSensitivity == Qt::CaseSensitive)
+        return qHash(static_cast<QString>(key));
     return qHash(key.toCaseFolded());
 }
-#else // Q_OS_WIN
-typedef QString RemoteFileSystemModelNodePathKey;
-#endif
 
 class Q_AUTOTEST_EXPORT RemoteFileSystemModelPrivate // : public QAbstractItemModelPrivate
 {
@@ -419,7 +425,7 @@ public:
     //we sort only what we see.
     bool disableRecursiveSort;
 #ifndef QT_NO_REGEXP
-    QList<QRegExp> nameFilters;
+    QList<QRegularExpression> nameFilters;
 #endif
     QHash<QString, QString> resolvedSymLinks;
 

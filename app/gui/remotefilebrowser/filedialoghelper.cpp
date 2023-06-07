@@ -329,7 +329,7 @@ const char *QPlatformFileDialogHelper::filterRegExp =
 // Makes a list of filters from a normal filter string "Image Files (*.png *.jpg)"
 QStringList QPlatformFileDialogHelper::cleanFilterList(const QString &filter)
 {
-    QRegExp regexp(QString::fromLatin1(filterRegExp));
+    QRegularExpression regexp(QString::fromLatin1(filterRegExp));
     Q_ASSERT(regexp.isValid());
     QString f = filter;
     int i = regexp.indexIn(f);

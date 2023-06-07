@@ -2,6 +2,7 @@
 #define TOPOINTS_H
 
 #include <vistle/module/module.h>
+#include <vistle/module/resultcache.h>
 
 class ToPoints: public vistle::Module {
 public:
@@ -9,7 +10,9 @@ public:
     ~ToPoints();
 
 private:
-    virtual bool compute();
+    bool compute() override;
+
+    vistle::ResultCache<vistle::Object::ptr> m_gridCache, m_resultCache;
 };
 
 #endif

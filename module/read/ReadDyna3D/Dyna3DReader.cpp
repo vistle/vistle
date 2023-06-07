@@ -427,8 +427,7 @@ int Dyna3DReader<wordsize, INTEGER, REAL>::rdtaucntrl_()
                   << "assuming byteswap on (" << version << ")" << std::endl;
 
         byteswapFlag = On;
-        unsigned int *buffer = (WORD *)(void *)(tauio_1.tau);
-        byteswap(buffer, tauio_1.taulength);
+        byteswap(tauio_1.tau, tauio_1.taulength);
 
         if (rdrecr_(&version, &iznver, 1) < 0)
             return -1;
@@ -1490,7 +1489,7 @@ int Dyna3DReader<wordsize, INTEGER, REAL>::rdreci_(int *ival, const int *istart,
                     ival[i] = (INTEGER)(tauio_1.tau[iz - 1]);
                     break;
                 case Original:
-                    ival[i] = ((INTEGER *)(void *)(tauio_1.tau))[iz - 1];
+                    ival[i] = ((INTEGER *)(tauio_1.tau))[iz - 1];
                     break;
                 default:
                     std::cerr << "Dyna3DReader::rdreci_ info: Unknown format '" << format << "' selected" << std::endl;
@@ -1514,7 +1513,7 @@ int Dyna3DReader<wordsize, INTEGER, REAL>::rdreci_(int *ival, const int *istart,
                             ival[i] = static_cast<INTEGER>(tauio_1.tau[iz - 1]);
                             break;
                         case Original:
-                            ival[i] = *reinterpret_cast<INTEGER *>(&tauio_1.tau[iz - 1]);
+                            memcpy(&ival[i], &tauio_1.tau[iz - 1], sizeof(WORD));
                             break;
                         default:
                             std::cerr << "Dyna3DReader::rdreci_ info: Unknown format '" << format << "' selected"
@@ -1577,7 +1576,7 @@ int Dyna3DReader<wordsize, INTEGER, REAL>::grecaddr_(INTEGER i, INTEGER istart, 
 
                 tauio_1.taulength = *irdst + sizeof(tauio_1.tau) / sizeof(WORD);
                 if (byteswapFlag == On) {
-                    WORD *buffer = (WORD *)(void *)(tauio_1.tau);
+                    WORD *buffer = (WORD *)(tauio_1.tau);
                     byteswap(buffer, tauio_1.taulength);
                 }
             } else {
@@ -2781,6 +2780,14 @@ void Dyna3DReader<wordsize, INTEGER, REAL>::deleteStateData()
 
 template<int wordsize, class INTEGER, class REAL>
 void Dyna3DReader<wordsize, INTEGER, REAL>::byteswap(WORD *buffer, INTEGER length)
+{
+    for (INTEGER ctr = 0; ctr < length; ctr++) {
+        buffer[ctr] = vistle::byte_swap<vistle::little_endian, vistle::big_endian>(buffer[ctr]);
+    }
+}
+
+template<int wordsize, class INTEGER, class REAL>
+void Dyna3DReader<wordsize, INTEGER, REAL>::byteswap(REAL *buffer, INTEGER length)
 {
     for (INTEGER ctr = 0; ctr < length; ctr++) {
         buffer[ctr] = vistle::byte_swap<vistle::little_endian, vistle::big_endian>(buffer[ctr]);

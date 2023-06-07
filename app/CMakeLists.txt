@@ -1,4 +1,16 @@
 add_subdirectory(hub)
 add_subdirectory(manager)
+
+if(VISTLE_USE_QT5)
+    vistle_find_package(Qt5 5.15 COMPONENTS Widgets)
+    if(Qt5_FOUND)
+        function(qt_disable_unicode_defines)
+
+        endfunction()
+    endif()
+else()
+    vistle_find_package(Qt6 COMPONENTS Widgets)
+endif()
+
 add_subdirectory(gui)
 add_subdirectory(opener)

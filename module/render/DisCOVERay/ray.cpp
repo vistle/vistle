@@ -1,7 +1,9 @@
-#include <embree3/rtcore.h>
-#include <embree3/rtcore_ray.h>
-#include <embree3/rtcore_geometry.h>
-#include <embree3/rtcore_scene.h>
+#include "common.h"
+
+#include EMBREE(rtcore.h)
+#include EMBREE(rtcore_ray.h)
+#include EMBREE(rtcore_geometry.h)
+#include EMBREE(rtcore_scene.h)
 
 #include <boost/mpi.hpp>
 
@@ -14,7 +16,6 @@
 
 #include <vistle/renderer/parrendmgr.h>
 #include "rayrenderobject.h"
-#include "common.h"
 
 #include "render_ispc.h"
 
@@ -89,8 +90,6 @@ public:
     ParallelRemoteRenderManager m_renderManager;
 
     // parameters
-    IntParameter *m_useRayStreamsParam;
-    bool m_useRayStreams = true;
     IntParameter *m_renderTileSizeParam;
     int m_tilesize;
     IntParameter *m_shading;
@@ -149,8 +148,6 @@ DisCOVERay::DisCOVERay(const std::string &name, int moduleId, mpi::communicator 
 #endif
 
     setCurrentParameterGroup("Advanced", false);
-    m_useRayStreamsParam =
-        addIntParameter("ray_streams", "use ray streams API", (Integer)m_useRayStreams, Parameter::Boolean);
     m_shading = addIntParameter("shading", "shade and light objects", (Integer)m_doShade, Parameter::Boolean);
     m_uvVisParam = addIntParameter("uv_visualization", "show u/v coordinates", (Integer)m_uvVis, Parameter::Boolean);
     m_renderTileSizeParam =
@@ -250,8 +247,6 @@ bool DisCOVERay::changeParameter(const Parameter *p)
         RayRenderObject::pointSize = m_pointSizeParam->getValue();
     } else if (p == m_renderTileSizeParam) {
         m_tilesize = m_renderTileSizeParam->getValue();
-    } else if (p == m_useRayStreamsParam) {
-        m_useRayStreams = m_useRayStreamsParam->getValue();
     }
 
     return Renderer::changeParameter(p);
@@ -384,10 +379,7 @@ void TileTask::render(int tile) const
     data.depthTransform3.w = depthTransform3[3];
 
 
-    if (rc.m_useRayStreams)
-        ispcRenderTileStream(&sceneData, &data);
-    else
-        ispcRenderTilePacket(&sceneData, &data);
+    ispcRenderTilePacket(&sceneData, &data);
 }
 
 

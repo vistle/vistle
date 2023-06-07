@@ -70,6 +70,7 @@
 #include <qdebug.h>
 #include <qmimedatabase.h>
 #include <qapplication.h>
+#include <QActionGroup>
 #include <qstylepainter.h>
 #include "ui_remotefiledialog.h"
 #if defined(Q_OS_UNIX)
@@ -82,24 +83,30 @@
 #include "remotefileiconprovider.h"
 #include "qpushbutton.h"
 #include <memory>
+#include <QRegularExpression>
 
 QT_BEGIN_NAMESPACE
 
 Q_GLOBAL_STATIC(QUrl, lastVisitedDir)
 
 namespace {
+
+QLatin1Char separator('/');
+
+
 static const char *remoteFilterRegExp = "^(.*)\\(([a-zA-Z0-9_.,*? +;#\\-\\[\\]@\\{\\}/!<>\\$%&=^~:\\|]*)\\)$";
 
 // Makes a list of filters from a normal filter string "Image Files (*.png *.jpg)"
 QStringList cleanFilterList(const QString &filter)
 {
-    QRegExp regexp(QString::fromLatin1(remoteFilterRegExp));
+    QRegularExpression regexp(QString::fromLatin1(remoteFilterRegExp));
     Q_ASSERT(regexp.isValid());
     QString f = filter;
-    int i = regexp.indexIn(f);
+    auto m = regexp.match(f);
+    auto i = m.capturedStart();
     if (i >= 0)
-        f = regexp.cap(2);
-    return f.split(QLatin1Char(' '), QString::SkipEmptyParts);
+        f = m.captured(2);
+    return f.split(QLatin1Char(' '), Qt::SkipEmptyParts);
 }
 
 } // namespace
@@ -383,7 +390,7 @@ RemoteFileDialog::RemoteFileDialog(AbstractFileSystemModel *model, QWidget *pare
 */
 RemoteFileDialog::RemoteFileDialog(AbstractFileSystemModel *model, QWidget *parent, const QString &caption,
                                    const QString &directory, const QString &filter)
-: QDialog(parent, 0), vd_ptr(new RemoteFileDialogPrivate(this)), m_model(model)
+: QDialog(parent), vd_ptr(new RemoteFileDialogPrivate(this)), m_model(model)
 {
     Q_D(RemoteFileDialog);
     d->init(QUrl::fromLocalFile(directory), filter, caption);
@@ -393,7 +400,7 @@ RemoteFileDialog::RemoteFileDialog(AbstractFileSystemModel *model, QWidget *pare
     \internal
 */
 RemoteFileDialog::RemoteFileDialog(const RemoteFileDialogArgs &args)
-: QDialog(args.parent, 0), vd_ptr(new RemoteFileDialogPrivate(this))
+: QDialog(args.parent), vd_ptr(new RemoteFileDialogPrivate(this))
 {
     Q_D(RemoteFileDialog);
     d->init(args.directory, args.filter, args.caption);
@@ -608,7 +615,7 @@ void RemoteFileDialogPrivate::emitFilesSelected(const QStringList &files)
 bool RemoteFileDialogPrivate::usingWidgets() const
 {
     //return !nativeDialogInUse && qFileDialogUi;
-    return qFileDialogUi;
+    return qFileDialogUi != nullptr;
 }
 
 /*!
@@ -879,7 +886,7 @@ QString RemoteFileDialog::fileFromPath(const QString &rootPath, QString path)
     if (path.isEmpty())
         return path;
 
-    if (path.at(0) == QDir::separator()
+    if (path.at(0) == separator
         //On Windows both cases can happen
         || (m_model->isWindows() && path.at(0) == QLatin1Char('/'))) {
         path.remove(0, 1);
@@ -946,11 +953,11 @@ Q_AUTOTEST_EXPORT QString qt_tildeExpansion(AbstractFileSystemModel *model, cons
 {
     if (!path.startsWith(QLatin1Char('~')))
         return path;
-    int separatorPosition = path.indexOf(QDir::separator());
+    int separatorPosition = path.indexOf(separator);
     if (separatorPosition < 0)
         separatorPosition = path.size();
     if (separatorPosition == 1) {
-        return model->homePath().toString() + path.midRef(1);
+        return model->homePath().toString() + path.right(path.size() - 1);
     } else {
         return path;
     }
@@ -1182,14 +1189,14 @@ bool RemoteFileDialog::isNameFilterDetailsVisible() const
 QStringList rfb_strip_filters(const QStringList &filters)
 {
     QStringList strippedFilters;
-    QRegExp r(QString::fromLatin1(remoteFilterRegExp));
+    QRegularExpression r(QString::fromLatin1(remoteFilterRegExp));
     const int numFilters = filters.count();
     strippedFilters.reserve(numFilters);
     for (int i = 0; i < numFilters; ++i) {
         QString filterName;
-        int index = r.indexIn(filters[i]);
-        if (index >= 0)
-            filterName = r.cap(1);
+        auto m = r.match(filters[i]);
+        if (m.capturedStart() >= 0)
+            filterName = m.captured(1);
         strippedFilters.append(filterName.simplified());
     }
     return strippedFilters;
@@ -1714,8 +1721,7 @@ void RemoteFileDialogComboBox::setHistory(const QStringList &paths)
     QList<QUrl> list;
     QModelIndex idx = d_ptr->model->fsIndex(d_ptr->rootPath());
     //On windows the popup display the "C:\", convert to nativeSeparators
-    QUrl url =
-        QUrl::fromLocalFile(QDir::toNativeSeparators(idx.data(AbstractFileSystemModel::FilePathRole).toString()));
+    QUrl url = QUrl::fromLocalFile(idx.data(AbstractFileSystemModel::FilePathRole).toString());
     if (url.isValid())
         list.append(url);
     urlModel->setUrls(list);
@@ -1730,8 +1736,7 @@ QStringList RemoteFileDialog::history() const
     Q_D(const RemoteFileDialog);
     QStringList currentHistory = d->qFileDialogUi->lookInCombo->history();
     //On windows the popup display the "C:\", convert to nativeSeparators
-    QString newHistory =
-        QDir::toNativeSeparators(d->rootIndex().data(AbstractFileSystemModel::FilePathRole).toString());
+    QString newHistory = d->rootIndex().data(AbstractFileSystemModel::FilePathRole).toString();
     if (!currentHistory.contains(newHistory))
         currentHistory << newHistory;
     return currentHistory;
@@ -1831,36 +1836,6 @@ void RemoteFileDialog::setLabelText(DialogLabel label, const QString &text)
     d->setLabelTextControl(label, text);
 }
 
-/*!
-    Returns the text shown in the filedialog in the specified \a label.
-*/
-QString RemoteFileDialog::labelText(DialogLabel label) const
-{
-    Q_D(const RemoteFileDialog);
-    QPushButton *button;
-    switch (label) {
-    case LookIn:
-        return d->qFileDialogUi->lookInLabel->text();
-    case FileName:
-        return d->qFileDialogUi->fileNameLabel->text();
-    case FileType:
-        return d->qFileDialogUi->fileTypeLabel->text();
-    case Accept:
-        if (acceptMode() == AcceptOpen)
-            button = d->qFileDialogUi->buttonBox->button(QDialogButtonBox::Open);
-        else
-            button = d->qFileDialogUi->buttonBox->button(QDialogButtonBox::Save);
-        if (button)
-            return button->text();
-        break;
-    case Reject:
-        button = d->qFileDialogUi->buttonBox->button(QDialogButtonBox::Cancel);
-        if (button)
-            return button->text();
-        break;
-    }
-    return QString();
-}
 
 #if 0
 /*!
@@ -2470,7 +2445,7 @@ void RemoteFileDialog::accept()
 void RemoteFileDialogPrivate::saveSettings()
 {
     Q_Q(RemoteFileDialog);
-    QSettings settings(QSettings::UserScope, QLatin1String("QtProject"));
+    QSettings settings;
     settings.beginGroup(QLatin1String("FileDialog"));
 
     settings.setValue(QLatin1String("sidebarWidth"), qFileDialogUi->splitter->sizes().constFirst());
@@ -2493,7 +2468,7 @@ void RemoteFileDialogPrivate::saveSettings()
 bool RemoteFileDialogPrivate::restoreFromSettings()
 {
     Q_Q(RemoteFileDialog);
-    QSettings settings(QSettings::UserScope, QLatin1String("QtProject"));
+    QSettings settings;
     if (!settings.childGroups().contains(QLatin1String("FileDialog")))
         return false;
     settings.beginGroup(QLatin1String("FileDialog"));
@@ -2666,7 +2641,7 @@ void RemoteFileDialogPrivate::createWidgets()
     QObject::connect(qFileDialogUi->buttonBox, SIGNAL(rejected()), q, SLOT(reject()));
 
     qFileDialogUi->lookInCombo->setFileDialogPrivate(this);
-    QObject::connect(qFileDialogUi->lookInCombo, SIGNAL(activated(QString)), q, SLOT(_q_goToDirectory(QString)));
+    QObject::connect(qFileDialogUi->lookInCombo, SIGNAL(textActivated(QString)), q, SLOT(_q_goToDirectory(QString)));
 
     qFileDialogUi->lookInCombo->setInsertPolicy(QComboBox::NoInsert);
     qFileDialogUi->lookInCombo->setDuplicatesEnabled(false);
@@ -2689,7 +2664,7 @@ void RemoteFileDialogPrivate::createWidgets()
 
     // filetype
     qFileDialogUi->fileTypeCombo->setDuplicatesEnabled(false);
-    qFileDialogUi->fileTypeCombo->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLength);
+    qFileDialogUi->fileTypeCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
     qFileDialogUi->fileTypeCombo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     QObject::connect(qFileDialogUi->fileTypeCombo, SIGNAL(activated(int)), q, SLOT(_q_useNameFilter(int)));
     QObject::connect(qFileDialogUi->fileTypeCombo, SIGNAL(activated(QString)), q, SIGNAL(filterSelected(QString)));
@@ -2915,7 +2890,7 @@ void RemoteFileDialogPrivate::createMenuActions()
 
     QAction *goHomeAction = new QAction(q);
 #ifndef QT_NO_SHORTCUT
-    goHomeAction->setShortcut(Qt::CTRL + Qt::Key_H + Qt::SHIFT);
+    goHomeAction->setShortcut(Qt::CTRL | Qt::Key_H | Qt::SHIFT);
 #endif
     QObject::connect(goHomeAction, SIGNAL(triggered()), q, SLOT(_q_goHome()));
     q->addAction(goHomeAction);
@@ -2925,7 +2900,7 @@ void RemoteFileDialogPrivate::createMenuActions()
     QAction *goToParent = new QAction(q);
     goToParent->setObjectName(QLatin1String("qt_goto_parent_action"));
 #ifndef QT_NO_SHORTCUT
-    goToParent->setShortcut(Qt::CTRL + Qt::UpArrow);
+    goToParent->setShortcut(Qt::CTRL | Qt::Key_Up);
 #endif
     QObject::connect(goToParent, SIGNAL(triggered()), q, SLOT(_q_navigateToParent()));
     q->addAction(goToParent);
@@ -2961,12 +2936,11 @@ void RemoteFileDialogPrivate::_q_pathChanged(const QString &newPath)
     qFileDialogUi->sidebar->selectUrl(url);
     q->setHistory(qFileDialogUi->lookInCombo->history());
 
-    if (currentHistoryLocation < 0 ||
-        currentHistory.value(currentHistoryLocation) != QDir::toNativeSeparators(newPath)) {
+    if (currentHistoryLocation < 0 || currentHistory.value(currentHistoryLocation) != newPath) {
         while (currentHistoryLocation >= 0 && currentHistoryLocation + 1 < currentHistory.count()) {
             currentHistory.removeLast();
         }
-        currentHistory.append(QDir::toNativeSeparators(newPath));
+        currentHistory.append(newPath);
         ++currentHistoryLocation;
     }
     qFileDialogUi->forwardButton->setEnabled(currentHistory.size() - currentHistoryLocation > 1);
@@ -3044,7 +3018,7 @@ void RemoteFileDialogPrivate::_q_createDirectory()
 
     QString newFolderString = RemoteFileDialog::tr("New Folder");
     QString folderName = lineEdit()->text();
-    QString prefix = q->directory() + QDir::separator();
+    QString prefix = q->directory() + separator;
     if (folderName.isEmpty()) {
         folderName = newFolderString;
         qlonglong suffix = 2;
@@ -3735,10 +3709,8 @@ QString RemoteFSCompleter::pathFromIndex(const QModelIndex &index) const
     QString currentLocation = dirModel->rootPath();
     QString path = index.data(AbstractFileSystemModel::FilePathRole).toString();
     if (!currentLocation.isEmpty() && path.startsWith(currentLocation)) {
-#if defined(Q_OS_UNIX)
-        if (currentLocation == QDir::separator())
+        if (currentLocation == separator)
             return path.mid(currentLocation.length());
-#endif
         if (currentLocation.endsWith(QLatin1Char('/')))
             return path.mid(currentLocation.length());
         else
@@ -3758,8 +3730,8 @@ QStringList RemoteFSCompleter::splitPath(const QString &path) const
     else
         dirModel = sourceModel;
 
-    QString pathCopy = QDir::toNativeSeparators(path);
-    QString sep = QDir::separator();
+    QString pathCopy = path;
+    QString sep(separator);
     QString doubleSlash(QLatin1String("\\\\"));
     if (dirModel->isWindows()) {
         if (pathCopy == QLatin1String("\\") || pathCopy == QLatin1String("\\\\"))
@@ -3776,12 +3748,12 @@ QStringList RemoteFSCompleter::splitPath(const QString &path) const
         pathCopy = std::move(tildeExpanded);
     }
 
-    QRegExp re(QLatin1Char('[') + QRegExp::escape(sep) + QLatin1Char(']'));
+    QRegularExpression re(QLatin1Char('[') + QRegularExpression::escape(sep) + QLatin1Char(']'));
 
     bool startsFromRoot = false;
     QStringList parts;
     if (dirModel->isWindows()) {
-        parts = pathCopy.split(re, QString::SkipEmptyParts);
+        parts = pathCopy.split(re, Qt::SkipEmptyParts);
         if (!doubleSlash.isEmpty() && !parts.isEmpty())
             parts[0].prepend(doubleSlash);
         if (pathCopy.endsWith(sep))
@@ -3795,7 +3767,7 @@ QStringList RemoteFSCompleter::splitPath(const QString &path) const
     }
 
     if (parts.count() == 1 || (parts.count() > 1 && !startsFromRoot)) {
-        QString currentLocation = QDir::toNativeSeparators(dirModel->rootPath());
+        QString currentLocation = dirModel->rootPath();
         if (dirModel->isWindows()) {
             if (currentLocation.endsWith(QLatin1Char(':')))
                 currentLocation.append(sep);

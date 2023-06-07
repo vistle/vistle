@@ -28,6 +28,8 @@ void AddObjectMsq::addObject(const std::string &port, vistle::Object::const_ptr 
 #ifdef MODULE_THREAD
     buf.setSenderId(m_moduleInfo.id());
     buf.setRank(m_rank);
+#else
+    (void)m_rank;
 #endif
     m_cache.push_back(std::move(buf));
 }

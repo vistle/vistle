@@ -15,7 +15,7 @@ using namespace vistle;
 const vistle::Index M_NUM_CORNERS_HEXAHEDRON = 8;
 const vistle::Index M_NUM_CORNERS_QUAD = 4;
 const vistle::Index M_NUM_CORNERS_BAR = 2;
-const vistle::Index M_NUM_CORNERS_POINT = 1;
+//const vistle::Index M_NUM_CORNERS_POINT = 1;
 
 //-------------------------------------------------------------------------
 // MACROS

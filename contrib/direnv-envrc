@@ -106,7 +106,10 @@ fi
 
 #builddir=build-mvapich
 
-export VISTLE_BUILD_TYPE=RelWithDebInfo
+if [ -z "$VISTLE_BUILD_TYPE" ]; then
+    VISTLE_BUILD_TYPE=RelWithDebInfo
+fi
+export VISTLE_BUILD_TYPE
 
 case "$system" in
    darwin64|darwinarm64)

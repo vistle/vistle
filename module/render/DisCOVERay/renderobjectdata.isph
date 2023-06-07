@@ -1,7 +1,9 @@
 #pragma once
 
-#include <embree3/rtcore.isph>
-#include <embree3/rtcore_geometry.isph>
+#include "common.h"
+
+#include EMBREE(rtcore.isph)
+#include EMBREE(rtcore_geometry.isph)
 
 #include "linalg/math.isph"
 #include "linalg/vec.isph"

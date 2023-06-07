@@ -33,7 +33,7 @@ CellToVert::CellToVert(const std::string &name, int moduleID, mpi::communicator 
 CellToVert::~CellToVert()
 {}
 
-bool CellToVert::compute(std::shared_ptr<BlockTask> task) const
+bool CellToVert::compute(const std::shared_ptr<BlockTask> &task) const
 {
     coCellToVert algo;
 

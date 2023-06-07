@@ -32,6 +32,7 @@ public:
     VistlePlugin();
     ~VistlePlugin() override;
     bool init() override;
+    bool init2() override;
     bool destroy() override;
     void notify(NotificationLevel level, const char *text) override;
     bool update() override;
@@ -70,8 +71,7 @@ void VistlePlugin::updateSessionUrl(const std::string &url)
     }
 }
 
-
-VistlePlugin::VistlePlugin(): ui::Owner("Vistle", cover->ui), m_module(nullptr)
+VistlePlugin::VistlePlugin(): coVRPlugin("Vistle"), ui::Owner("Vistle", cover->ui), m_module(nullptr)
 {
 #if 0
     using opencover::coCommandLine;
@@ -123,8 +123,6 @@ bool VistlePlugin::init()
     m_observer = std::make_unique<CoverVistleObserver>(this);
 
     if (m_module) {
-        m_module->setPlugin(this);
-
         m_module->state().registerObserver(m_observer.get());
         updateSessionUrl(m_module->state().sessionUrl());
 
@@ -142,6 +140,15 @@ bool VistlePlugin::init()
         return true;
     }
 
+    return false;
+}
+
+bool VistlePlugin::init2()
+{
+    if (m_module) {
+        m_module->setPlugin(this);
+        return true;
+    }
     return false;
 }
 
@@ -220,6 +227,10 @@ bool VistlePlugin::update()
 void VistlePlugin::requestQuit(bool killSession)
 {
     if (m_module) {
+        if (killSession) {
+            message::Quit quit;
+            m_module->sendMessage(quit);
+        }
         m_module->comm().barrier();
         m_module->prepareQuit();
 #if 0

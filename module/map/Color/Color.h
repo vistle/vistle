@@ -62,13 +62,18 @@ private:
     vistle::IntParameter *m_constrain = nullptr;
     vistle::FloatParameter *m_center = nullptr;
     vistle::IntParameter *m_centerAbsolute = nullptr;
+#ifndef COLOR_RANDOM
     vistle::FloatParameter *m_compress = nullptr;
+#endif
     vistle::IntParameter *m_insetRelPara = nullptr;
     vistle::FloatParameter *m_insetCenterPara = nullptr, *m_insetWidthPara = nullptr;
     vistle::IntParameter *m_blendWithMaterialPara = nullptr;
-    vistle::FloatParameter *m_opacity = nullptr, *m_insetOpacity = nullptr;
+    vistle::FloatParameter *m_opacity = nullptr;
+#ifndef COLOR_RANDOM
+    vistle::FloatParameter *m_insetOpacity = nullptr;
     vistle::IntParameter *m_mapPara = nullptr;
     vistle::IntParameter *m_stepsPara = nullptr;
+#endif
     std::deque<vistle::DataBase::const_ptr> m_inputQueue;
 
     bool m_dataRangeValid = false;

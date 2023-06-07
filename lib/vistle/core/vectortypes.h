@@ -5,6 +5,9 @@
 #include <array>
 #include <string>
 #include <complex>
+#ifndef NDEBUG
+#define EIGEN_INITIALIZE_MATRICES_BY_NAN
+#endif
 #include <eigen3/Eigen/src/Core/util/Macros.h>
 #include <eigen3/Eigen/src/Core/util/ConfigureVectorization.h>
 #include <eigen3/Eigen/src/Core/util/Constants.h>

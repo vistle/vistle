@@ -32,7 +32,7 @@ set(HEADERS
 
 set(FORMS remotefiledialog.ui)
 
-qt5_wrap_ui(UI_SRCS ${FORMS})
+qt_wrap_ui(UI_SRCS ${FORMS})
 
 add_library(vistle_remotefiledialog STATIC ${SOURCES} ${UI_SRCS})
 
@@ -46,6 +46,8 @@ target_include_directories(
     PRIVATE ../..
     PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
-target_link_libraries(vistle_remotefiledialog PRIVATE Qt5::Widgets)
+target_link_libraries(vistle_remotefiledialog PRIVATE Qt::Widgets)
 
 target_link_libraries(vistle_remotefiledialog PRIVATE ${QT_LIBRARIES} vistle_core)
+
+qt_disable_unicode_defines(vistle_remotefiledialog)

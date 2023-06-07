@@ -97,9 +97,10 @@ ReadMPAS::ReadMPAS(const std::string &name, int moduleID, mpi::communicator comm
     setParameterFilters(m_partFile, "Partitioning Files (*.part.*)/All Files (*)");
 
     m_numPartitions = addIntParameter("numParts", "Number of partitions (-1: automatic)", -1);
-    m_numLevels = addIntParameter("numLevels", "Number of vertical cell layers to read (0: only 2D base level)", 0);
+    m_numLevels = addIntParameter("numLevels", "Number of vertical cell layers to read (0: only one 2D level)", 0);
     setParameterMinimum<Integer>(m_numLevels, 0);
     m_bottomLevel = addIntParameter("bottomLevel", "Lower bound for altitude levels", 0);
+    setParameterMinimum<Integer>(m_bottomLevel, 0);
     m_altitudeScale = addFloatParameter("altitudeScale", "value to scale the grid altitude (zGrid)", 20.);
 
     m_gridOut = createOutputPort("grid_out", "grid");
@@ -174,7 +175,7 @@ bool ReadMPAS::prepareRead()
     int numPartsUser = 1;
     std::string sPartFile = m_partFile->getValue();
     if (sPartFile.empty()) {
-        sendInfo("No partitioning file given: continue with single block");
+        sendWarning("No partitioning file given: continue with single block");
     } else {
         numPartsUser = m_numPartitions->getValue();
     }
@@ -195,6 +196,7 @@ bool ReadMPAS::prepareRead()
     }
 
     size_t numLevelsUser = m_numLevels->getValue();
+    numLevels = numLevelsUser + 1;
     // estimate no. of elements and vertices
     size_t numVert = 0, numElem = 0;
     if (m_voronoiCells) {
@@ -422,12 +424,12 @@ bool ReadMPAS::validateFile(std::string fullFileName, std::string &redFileName, 
                     auto ncid = NcFile::open(redFileName, comm());
                     if (!ncid) {
                         if (rank() == 0)
-                            sendInfo("Could not open %s", redFileName.c_str());
+                            sendError("Could not open %s", redFileName.c_str());
                         return false;
                     }
                     if (!hasDimension(ncid, DimNCells)) {
                         if (rank() == 0)
-                            sendInfo("File %s does not have dimension nCells, no MPAS file", redFileName.c_str());
+                            sendError("File %s does not have dimension nCells, no MPAS file", redFileName.c_str());
                         return false;
                     }
                     int dimid = -1;
@@ -447,7 +449,7 @@ bool ReadMPAS::validateFile(std::string fullFileName, std::string &redFileName, 
                         NcmpiFile newFile(comm(), redFileName, NcmpiFile::read);
                         if (!dimensionExists(DimNCells, newFile)) {
                             if (rank() == 0)
-                                sendInfo("File %s does not have dimension nCells, no MPAS file", redFileName.c_str());
+                                sendError("File %s does not have dimension nCells, no MPAS file", redFileName.c_str());
                             return false;
                         }
                         const NcmpiDim dimCells = newFile.getDim(DimNCells);
@@ -457,15 +459,15 @@ bool ReadMPAS::validateFile(std::string fullFileName, std::string &redFileName, 
                             Index nCells = dimCells.getSize();
                             if (numGridCells != nCells) {
                                 if (rank() == 0)
-                                    sendInfo("nCells=%lu from %s does not match nCells=%lu from grid file",
-                                             (unsigned long)nCells, redFileName.c_str(), (unsigned long)numGridCells);
+                                    sendError("nCells=%lu from %s does not match nCells=%lu from grid file",
+                                              (unsigned long)nCells, redFileName.c_str(), (unsigned long)numGridCells);
                                 return false;
                             }
                         }
                         setVariableList(newFile, type, type == grid_type);
                     } catch (std::exception &ex) {
                         if (rank() == 0)
-                            sendInfo("Exception during Pnetcdf call on %s: %s", redFileName.c_str(), ex.what());
+                            sendError("Exception during Pnetcdf call on %s: %s", redFileName.c_str(), ex.what());
                         return false;
                     }
 #endif
@@ -478,7 +480,7 @@ bool ReadMPAS::validateFile(std::string fullFileName, std::string &redFileName, 
         } catch (std::exception &ex) {
             std::cerr << "filesystem exception: " << ex.what() << std::endl;
             if (rank() == 0)
-                sendInfo("Filesystem exception for %s: %s", fullFileName.c_str(), ex.what());
+                sendError("Filesystem exception for %s: %s", fullFileName.c_str(), ex.what());
             return false;
         }
     }
@@ -495,7 +497,7 @@ bool ReadMPAS::validateFile(std::string fullFileName, std::string &redFileName, 
 #endif
     }
     if (rank() == 0)
-        sendInfo("%s file not found -> using grid file instead", typeString.c_str());
+        sendWarning("%s file not found -> using grid file instead", typeString.c_str());
 
     return false;
 }
@@ -827,7 +829,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
 
         size_t numLevelsUser = m_numLevels->getValue();
         size_t bottomLevel = m_bottomLevel->getValue();
-        size_t numMaxLevels = 1;
+        size_t numMaxLevels = 0;
 
 #ifdef USE_NETCDF
         NcFile ncid = NcFile::open(firstFileName, *token.comm());
@@ -870,7 +872,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
             } else {
                 hasDataFile = false;
                 if (block == 0)
-                    sendInfo("No vertical dimension found -> number of levels set to one");
+                    sendWarning("No vertical dimension found -> number of levels set to one");
             }
         }
 #else
@@ -924,21 +926,20 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
             } else {
                 hasDataFile = false;
                 if (block == 0)
-                    sendInfo("No vertical dimension found -> number of levels set to one");
+                    sendWarning("No vertical dimension found -> number of levels set to one");
             }
         }
 
 #endif
 
+        numLevels = std::min(numMaxLevels - bottomLevel, numLevelsUser + 1);
         if (numLevels + bottomLevel > numMaxLevels) {
             numLevels = numMaxLevels - bottomLevel;
-            sendInfo("numLevels out of range: reducing to upper bound of %u", numLevels);
+            sendWarning("numLevels out of range: reducing to upper bound of %u", numLevels);
         }
 
-        if (numLevels == 0)
-            numLevels = std::min(numMaxLevels, numLevelsUser);
         if (numLevels < 1) {
-            sendInfo("Number of Levels must be at least 1");
+            sendError("Number of Levels must be at least 1");
             return false;
         }
 
@@ -946,7 +947,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
         size_t numPartsUser = numPartitions();
 
         if (numPartsUser > 1 && numPartsFile == 1) {
-            sendInfo("please use a grid partition file");
+            sendError("please use a grid partition file");
             return false;
         }
         if (block == 0)
@@ -1472,6 +1473,10 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
     // Read data
     unsigned nLevels = m_voronoiCells ? std::max(1u, numLevels - 1) : numLevels;
     for (Index dataIdx = 0; dataIdx < NUMPARAMS; ++dataIdx) {
+        if (emptyValue(m_variables[dataIdx])) {
+            // avoid allocating shared memory (even though it would be released immediately)
+            continue;
+        }
         std::string pVar = m_variables[dataIdx]->getValue();
         Vec<Scalar>::ptr dataObj(new Vec<Scalar>(idxCells.size() * nLevels));
         Scalar *ptrOnScalarData = dataObj->x().data();
@@ -1515,7 +1520,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
     for (Index dataIdx = 0; dataIdx < 3; ++dataIdx) {
         std::string pVar = m_velocityVar[dataIdx]->getValue();
         if (!readVariable(token, timestep, block, dataIdx, nLevels, &fields[dataIdx], true)) {
-            sendInfo("Could not read all velocity components");
+            sendError("Could not read all velocity components");
             return false;
         }
     }

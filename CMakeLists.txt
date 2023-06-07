@@ -14,7 +14,7 @@ set(CMAKE_C_EXTENSIONS OFF)
 project(Vistle C CXX)
 
 if(APPLE AND ${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
-    set(CMAKE_PREFIX_PATH /opt/homebrew ${CMAKE_PREFIX_PATH})
+    set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} /opt/homebrew)
 endif()
 
 message("CMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}")
@@ -32,27 +32,6 @@ if("${CMAKE_SYSTEM_NAME}" STREQUAL "CrayLinuxEnvironment")
     # use faster multi-threaded MPI
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -craympich-mt")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -craympich-mt")
-
-    # work around broken FindCUDA
-    macro(find_host_program)
-        set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
-        set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY NEVER)
-        set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE NEVER)
-        if(CMAKE_HOST_WIN32)
-            set(WIN32 1)
-            set(UNIX)
-        elseif(CMAKE_HOST_APPLE)
-            set(APPLE 1)
-            set(UNIX)
-        endif()
-        find_program(${ARGN})
-        set(WIN32)
-        set(APPLE)
-        set(UNIX 1)
-        set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM ONLY)
-        set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
-        set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
-    endmacro()
 endif()
 
 add_custom_target(vistle_doc)
@@ -98,7 +77,9 @@ option(VISTLE_SANITIZE_ADDRESS "Build with -fsanitize=address" OFF)
 option(VISTLE_SANITIZE_THREAD "Build with -fsanitize=thread" OFF)
 option(VISTLE_TIME_BUILD "Gather build times (Clang/ISPC)" OFF)
 
-option(VISTLE_USE_CUDA "Build with CUDA support" OFF)
+option(VISTLE_ENABLE_CUDA "Build with CUDA support" OFF)
+
+option(VISTLE_USE_QT5 "Build GUI with Qt5 instead of Qt6" OFF)
 
 option(VISTLE_COLOR_DIAGNOSTICS "Produce ANSI-colored build output (GNU/Clang)" ON)
 
@@ -128,21 +109,15 @@ endif()
 enable_testing()
 
 if(CMAKE_CONFIGURATION_TYPES)
-    set(CMAKE_DEFAULT_BUILD_TYPE "RelWithDebInfo")
+    if(${CMAKE_GENERATOR} STREQUAL "Ninja Multi-Config")
+        set(CMAKE_DEFAULT_BUILD_TYPE "RelWithDebInfo")
+    endif()
 elseif(CMAKE_BUILD_TYPE STREQUAL "")
     set(CMAKE_BUILD_TYPE
         "RelWithDebInfo"
         CACHE STRING "Choose the type of build, options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Debug Release RelWithDebInfo MinSizeRel." FORCE)
     message("Setting CMAKE_BUILD_TYPE to ${CMAKE_BUILD_TYPE}")
-    if(CMAKE_BUILD_TYPE STREQUAL "Release" OR "${CMAKE_BUILD_TYPE}" STREQUAL "RelWithDebInfo")
-
-    else()
-        add_definitions(-DEIGEN_INITIALIZE_MATRICES_BY_NAN)
-    endif()
 endif()
-
-#add_definitions(-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=short)
-add_definitions(-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=int)
 
 # use this instead of FIND_PACKAGE to prefer Package in $PACKAGE_HOME and $EXTERNLIBS/package
 
@@ -160,9 +135,18 @@ macro(vistle_find_package package)
     if(pack MATCHES "^Qt5")
         set(pack "Qt5")
         if(APPLE)
-            set(CMAKE_PREFIX_PATH /usr/local/opt/qt5 ${CMAKE_PREFIX_PATH})
+            set(CMAKE_PREFIX_PATH /usr/local/opt/qt@5 ${CMAKE_PREFIX_PATH})
             if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
-                set(CMAKE_PREFIX_PATH /opt/homebrew/opt/qt5 ${CMAKE_PREFIX_PATH})
+                set(CMAKE_PREFIX_PATH /opt/homebrew/opt/qt@5 ${CMAKE_PREFIX_PATH})
+            endif()
+        endif()
+    endif()
+    if(pack MATCHES "^Qt6")
+        set(pack "Qt6")
+        if(APPLE)
+            set(CMAKE_PREFIX_PATH /usr/local/opt/qt@6 ${CMAKE_PREFIX_PATH})
+            if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
+                set(CMAKE_PREFIX_PATH /opt/homebrew/opt/qt@6 ${CMAKE_PREFIX_PATH})
             endif()
         endif()
     endif()
@@ -257,7 +241,21 @@ if(NOT VISTLE_GUI_ONLY)
     set(ICET_MPI_LIBS "IceTMPI")
     set(ICET_FOUND TRUE)
 
-    vistle_find_package(TBB)
+    # prefer a TBBConfig.cmake over FindTBB.cmake
+    vistle_find_package(TBB CONFIG NO_MODULE)
+    if(NOT ${TBB_FOUND})
+        vistle_find_package(TBB)
+        if(NOT (${CMAKE_GENERATOR} STREQUAL "Visual Studio 17 2022"))
+            if(${TBB_FOUND})
+                add_library(TBB::tbb SHARED IMPORTED)
+                set_target_properties(
+                    TBB::tbb
+                    PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${TBB_INCLUDE_DIRS}"
+                               INTERFACE_LINK_LIBRARIES "${TBB_LIBRARIES}"
+                               IMPORTED_LOCATION "${TBB_LIBRARY}")
+            endif()
+        endif()
+    endif()
 endif(NOT VISTLE_GUI_ONLY)
 
 set(ASAN_COMPILE_FLAGS "")
@@ -306,9 +304,13 @@ endif()
 
 #set (Boost_DEBUG ON)
 if(WIN32)
-    #otherwise Boost_INCLUDE_DIRS is not set and headers are not found
-    set(Boost_NO_BOOST_CMAKE ON)
+    #otherwise, in older versions Boost_INCLUDE_DIRS is not set and headers are not found
+    #set(Boost_NO_BOOST_CMAKE ON)
+
     set(Boost_USE_STATIC_RUNTIME OFF)
+    option(VISTLE_Boost_USE_STATIC_LIBS "use boost static libs" OFF)
+    set(Boost_USE_STATIC_LIBS ${VISTLE_Boost_USE_STATIC_LIBS})
+
 endif(WIN32)
 
 if(APPLE)
@@ -376,14 +378,6 @@ if(NOT CRAY)
                 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=${VISTLE_CPU_ARCH}")
             endif()
         endif()
-
-        execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)
-        if(GCC_VERSION VERSION_GREATER 4.7 OR GCC_VERSION VERSION_EQUAL 4.7)
-            set(CUDA_HOST_COMPILER
-                ${CMAKE_SOURCE_DIR}/scripts/cuda-host-compiler
-                CACHE STRING "CUDA nvcc host compiler" FORCE)
-        endif()
-
     endif()
 
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
@@ -436,21 +430,6 @@ if(NOT WIN32 AND NOT APPLE)
         lib${LIBSUFFIX}
         CACHE PATH "Installation directory for libraries")
     mark_as_advanced(INSTALL_LIB_DIR)
-endif()
-
-if(VISTLE_USE_CUDA AND NOT VISTLE_GUI_ONLY)
-    vistle_find_package(CUDA)
-    if("${CUDA_VERSION}" VERSION_LESS 7.0)
-        set(CUDA_HOST_COMPILER
-            ${PROJECT_SOURCE_DIR}/scripts/cuda-host-compiler
-            CACHE STRING "CUDA nvcc host compiler" FORCE)
-    else()
-        set(CUDA_PROPAGATE_HOST_FLAGS OFF)
-        set(CUDA_NVCC_FLAGS "--std=c++11 ${CUDA_NVCC_FLAGS}")
-    endif()
-    if(APPLE)
-        set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} \"-DBOOST_NOINLINE=__attribute__ ((noinline))\"")
-    endif(APPLE)
 endif()
 
 include(GNUInstallDirs)
@@ -659,7 +638,7 @@ if(POLICY CMP0043)
 endif()
 
 if(WIN32)
-    option(VISTLE_PYTHON_DEBUG "for Debug builds, use expect Python built in Debug mode" OFF)
+    option(VISTLE_PYTHON_DEBUG "for Debug builds, use expect Python built in Debug mode" ON)
     if(VISTLE_PYTHON_DEBUG)
         add_compile_options("$<$<CONFIG:DEBUG>:-DPy_DEBUG>")
     endif()
@@ -791,7 +770,8 @@ set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set(VISTLE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS}")
 if(${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
     if(VISTLE_COLOR_DIAGNOSTICS)
-        add_compile_options("-fcolor-diagnostics")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fcolor-diagnostics")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fcolor-diagnostics")
     endif()
     if(VISTLE_TIME_BUILD)
         add_compile_options("-ftime-trace")
@@ -829,6 +809,22 @@ endif(WIN32)
 
 #set(CMAKE_BUILD_TYPE Debug)
 
+set(VISTLE_USE_CUDA FALSE)
+if(VISTLE_ENABLE_CUDA)
+    include(CheckLanguage)
+    check_language(CUDA)
+    vistle_find_package(CUDAToolkit)
+    if(CMAKE_CUDA_COMPILER AND CUDAToolkit_FOUND)
+        enable_language(CUDA)
+        if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+            set(CMAKE_CUDA_ARCHITECTURES 60) # be compatible with P6000/GP100
+        endif()
+        add_definitions(-DVISTLE_USE_CUDA)
+        set(VISTLE_USE_CUDA TRUE)
+        message("Using CUDA")
+    endif()
+endif()
+
 option(VISTLE_SHM_DEBUG "Shared memory debugging" OFF)
 if(VISTLE_SHM_DEBUG)
     add_definitions(-DSHMDEBUG)
@@ -843,6 +839,8 @@ set(DIY_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/lib/3rdparty/diy/include")
 
 #vistle_find_package(Eigen3 REQUIRED)
 set(EIGEN3_INCLUDE_PATH "${PROJECT_SOURCE_DIR}/lib/3rdparty")
+#add_definitions(-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=short)
+add_definitions(-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=int)
 
 if(NOT VISTLE_GUI_ONLY)
     #Boost.MPI is compiled with Vistle - for easy switching of MPI versions

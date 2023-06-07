@@ -10,6 +10,7 @@
 #include <vistle/util/netpbmimage.h>
 
 //#define TIMING
+//#define TOTALBITS
 
 #ifdef TIMING
 #include "stopwatch.h"
@@ -70,7 +71,9 @@ double depthcompare_t(const T *ref, const T *check, int xx, int yy, int w, int h
     size_t numlow = 0, numhigh = 0;
     unsigned maxx = 0, maxy = 0;
     size_t numblack = 0, numblackwrong = 0;
+#ifdef TOTALBITS
     size_t totalvalidbits = 0;
+#endif
     int minvalidbits = 8 * sizeof(T), maxvalidbits = 0;
     double totalerror = 0.;
     double squarederror = 0.;
@@ -104,7 +107,9 @@ double depthcompare_t(const T *ref, const T *check, int xx, int yy, int w, int h
                     minvalidbits = validbits;
                 if (validbits > maxvalidbits)
                     maxvalidbits = validbits;
+#ifdef TOTALBITS
                 totalvalidbits += validbits;
+#endif
 
                 if (r < refminval)
                     refminval = r;
@@ -146,9 +151,9 @@ double depthcompare_t(const T *ref, const T *check, int xx, int yy, int w, int h
         fprintf(stderr, "ERROR: #high=%ld, #low=%ld, max=%lu (%u %u), total=%f, mean non-black=%f (%f %%)\n",
                 (long)numhigh, (long)numlow, (unsigned long)maxerr, maxx, maxy, totalerror, totalerror / nonblack,
                 totalerror / nonblack * 100. / (double)Max);
-#if 0
-      fprintf(stderr, "BITS: totalvalid=%lu, min=%d, max=%d, mean=%f\n",
-            totalvalidbits, minvalidbits, maxvalidbits, (double)totalvalidbits/(double)nonblack);
+#ifdef TOTALBITS
+        fprintf(stderr, "BITS: totalvalid=%lu, min=%d, max=%d, mean=%f\n", totalvalidbits, minvalidbits, maxvalidbits,
+                (double)totalvalidbits / (double)nonblack);
 #endif
 
         fprintf(stderr, "PSNR (2x%d+16x%d): %f dB (non-black: %f)\n", precision, bits_per_pixel, PSNR, PSNR_nonblack);

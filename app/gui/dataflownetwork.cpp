@@ -13,7 +13,6 @@
 #endif
 
 #include "dataflownetwork.h"
-#include "module.h"
 #include "connection.h"
 #include "vistleconsole.h"
 #include "dataflowview.h"

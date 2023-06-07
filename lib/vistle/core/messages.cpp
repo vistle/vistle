@@ -399,24 +399,40 @@ Spawn::Spawn(int hub, const std::string &n, int mpiSize, int baseRank, int rankS
     COPY_STRING(name, n);
 }
 
+void Spawn::setReference(int id, ReferenceType type)
+{
+    m_referenceId = id;
+    m_referenceType = (int)type;
+}
+
+int Spawn::getReference() const
+{
+    return m_referenceId;
+}
+
+Spawn::ReferenceType Spawn::getReferenceType() const
+{
+    return (ReferenceType)m_referenceType;
+}
+
 void Spawn::setMigrateId(int id)
 {
-    m_migrateId = id;
+    setReference(id, ReferenceType::Migrate);
 }
 
 int Spawn::migrateId() const
 {
-    return m_migrateId;
+    return m_referenceType == (int)ReferenceType::Migrate ? m_referenceId : Id::Invalid;
 }
 
 void Spawn::setMirroringId(int id)
 {
-    m_mirroringId = id;
+    setReference(id, ReferenceType::Mirror);
 }
 
 int Spawn::mirroringId() const
 {
-    return m_mirroringId;
+    return m_referenceType == (int)ReferenceType::Mirror ? m_referenceId : Id::Invalid;
 }
 
 int Spawn::hubId() const

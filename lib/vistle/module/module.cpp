@@ -2550,7 +2550,7 @@ bool Module::compute()
     return true;
 }
 
-bool Module::compute(std::shared_ptr<BlockTask> task) const
+bool Module::compute(const std::shared_ptr<BlockTask> &task) const
 {
     (void)task;
     CERR << "compute() or compute(std::shared_ptr<BlockTask>) should be reimplemented from vistle::Module" << std::endl;

@@ -1,7 +1,9 @@
 #ifndef RENDER_ISPC_H
 #define RENDER_ISPC_H
 
-#include <embree3/rtcore.isph>
+#include "common.h"
+
+#include EMBREE(rtcore.isph)
 
 #include "linalg/math.isph"
 #include "linalg/vec.isph"
@@ -46,7 +48,6 @@ struct TileData {
     Vec4f depthTransform2, depthTransform3;
 };
 
-export void ispcRenderTileStream(uniform const SceneData *uniform sceneData, uniform const TileData *uniform tile);
 export void ispcRenderTilePacket(uniform const SceneData *uniform sceneData, uniform const TileData *uniform tile);
 
 export void forceExportVertex(uniform Vertex *uniform vertex);

@@ -26,10 +26,7 @@ private:
                                                const vistle::Vector3 &middle, vistle::Index numTorusSegments,
                                                vistle::Index numDiameterSegments);
 
-
-    //Extrapolation method
-    //Circle: uses equally sized circles with radius m_radius
-    //Spline: Uses B-Splines to approximate a circloid through the vertices of the quad/triangle. m_radius stretches the result.
+    vistle::Port *m_circlesOut = nullptr;
     vistle::IntParameter *m_geoMode;
     vistle::FloatParameter *m_radius; //the radius of the rings in the qua
     vistle::IntParameter *m_numXSegments; //number of segemnts in the quad/triangle plane

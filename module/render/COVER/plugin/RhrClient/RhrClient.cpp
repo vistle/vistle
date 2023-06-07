@@ -410,7 +410,11 @@ lightsMsg RhrClient::buildLightsMessage()
 
 //! called when plugin is loaded
 RhrClient::RhrClient()
-: ui::Owner("RhrClient", cover->ui), m_requestedTimestep(-1), m_visibleTimestep(-1), m_numRemoteTimesteps(-1)
+: coVRPlugin(COVER_PLUGIN_NAME)
+, ui::Owner("RhrClient", cover->ui)
+, m_requestedTimestep(-1)
+, m_visibleTimestep(-1)
+, m_numRemoteTimesteps(-1)
 {
     //fprintf(stderr, "new RhrClient plugin\n");
 }

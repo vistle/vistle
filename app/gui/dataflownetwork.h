@@ -6,6 +6,7 @@
 #include <QGraphicsScene>
 
 #include "port.h"
+#include "module.h"
 #include <vistle/core/uuid.h>
 
 #include <cassert>
@@ -18,7 +19,6 @@ class StateTracker;
 
 namespace gui {
 
-class Module;
 class Connection;
 class MainWindow;
 class ModuleBrowser;

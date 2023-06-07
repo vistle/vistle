@@ -1,10 +1,16 @@
 #include "crypto.h"
 
+#include <botan/version.h>
+#include <botan/hex.h>
+#if BOTAN_VERSION_MAJOR <= 2
 #include <botan/botan.h>
 #include <botan/rng.h>
-#include <botan/hex.h>
 #include <botan/hmac.h>
 #include <botan/sha2_32.h>
+#else
+#include <botan/system_rng.h>
+#include <botan/mac.h>
+#endif
 
 #include <memory>
 #include <cassert>
@@ -25,8 +31,21 @@ static std::unique_ptr<Botan::LibraryInitializer> s_botan_lib;
 #endif
 static std::vector<uint8_t> s_key;
 static std::vector<uint8_t> s_session_data;
-static const char mac_algorithm[] = "HMAC(SHA-256)";
 static std::string s_temp_key;
+
+static std::unique_ptr<Botan::MessageAuthenticationCode> make_mac()
+{
+#if BOTAN_VERSION_MAJOR < 2
+    std::unique_ptr<Botan::MessageAuthenticationCode> mac_algo(new Botan::HMAC(new Botan::SHA_256));
+#else
+    static const char mac_algorithm[] = "HMAC(SHA-256)";
+    std::unique_ptr<Botan::MessageAuthenticationCode> mac_algo(Botan::MessageAuthenticationCode::create(mac_algorithm));
+#endif
+    if (!mac_algo) {
+        throw except::exception("failed to create message authentication code algorithm");
+    }
+    return mac_algo;
+}
 
 template<typename C, class Container>
 static std::vector<C> from_secure(const Container &secure)
@@ -49,19 +68,9 @@ bool initialize(size_t secret_size)
         throw except::exception("failed to initialize Botan library");
         return false;
     }
-
-    std::unique_ptr<Botan::MessageAuthenticationCode> mac_algo(new Botan::HMAC(new Botan::SHA_256));
-    if (!mac_algo) {
-        throw except::exception("failed to create message authentication code algorithm");
-        return false;
-    }
-#else
-    std::unique_ptr<Botan::MessageAuthenticationCode> mac_algo(Botan::MessageAuthenticationCode::create(mac_algorithm));
-    if (!mac_algo) {
-        throw except::exception("failed to create message authentication code algorithm");
-        return false;
-    }
 #endif
+
+    auto mac_algo = make_mac();
 
     s_initialized = true;
 
@@ -87,6 +96,7 @@ bool initialize(size_t secret_size)
 
 bool set_session_key(const std::string &hex_key)
 {
+    std::unique_lock<std::recursive_mutex> guard(s_mutex);
     assert(s_initialized);
 
     try {
@@ -111,11 +121,17 @@ std::vector<uint8_t> random_data(size_t length)
 {
     std::unique_lock<std::recursive_mutex> guard(s_mutex);
     assert(s_initialized);
-
-    auto rng = Botan::RandomNumberGenerator::make_rng();
     std::vector<uint8_t> data;
+
+#if BOTAN_VERSION_MAJOR <= 2
+    auto rng = Botan::RandomNumberGenerator::make_rng();
     auto sec = rng->random_vec(length);
     std::copy(sec.begin(), sec.end(), std::back_inserter(data));
+#else
+    data.resize(length);
+    auto rng = std::make_unique<Botan::System_RNG>();
+    rng->randomize(data);
+#endif
     return data;
 }
 
@@ -124,11 +140,7 @@ std::vector<uint8_t> compute_mac(const void *data, size_t length, const std::vec
     std::unique_lock<std::recursive_mutex> guard(s_mutex);
     assert(s_initialized);
 
-#if BOTAN_VERSION_MAJOR < 2
-    std::unique_ptr<Botan::MessageAuthenticationCode> mac_algo(new Botan::HMAC(new Botan::SHA_256));
-#else
-    std::unique_ptr<Botan::MessageAuthenticationCode> mac_algo(Botan::MessageAuthenticationCode::create(mac_algorithm));
-#endif
+    auto mac_algo = make_mac();
     if (!mac_algo)
         return std::vector<uint8_t>();
     mac_algo->set_key(key.data(), key.size());
@@ -145,11 +157,7 @@ bool verify_mac(const void *data, size_t length, const std::vector<uint8_t> &key
     std::unique_lock<std::recursive_mutex> guard(s_mutex);
     assert(s_initialized);
 
-#if BOTAN_VERSION_MAJOR < 2
-    std::unique_ptr<Botan::MessageAuthenticationCode> mac_algo(new Botan::HMAC(new Botan::SHA_256));
-#else
-    std::unique_ptr<Botan::MessageAuthenticationCode> mac_algo(Botan::MessageAuthenticationCode::create(mac_algorithm));
-#endif
+    auto mac_algo = make_mac();
     if (!mac_algo)
         return false;
     mac_algo->set_key(key.data(), key.size());

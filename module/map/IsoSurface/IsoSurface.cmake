@@ -4,14 +4,11 @@ set(PREFER_TBB TRUE)
 set(USE_TBB FALSE)
 
 set(SOURCES ${SOURCES} ../IsoSurface/IsoSurface.cpp ../IsoSurface/IsoSurface.h ../IsoSurface/IsoDataFunctor.cpp ../IsoSurface/IsoDataFunctor.h)
-set(CUDA_OBJ "")
-#vistle_find_package(CUDA)
-if(NOT APPLE
-   AND CUDA_FOUND
-   AND FALSE)
-    include_directories(SYSTEM ${CUDA_INCLUDE_DIRS})
+
+if(FALSE AND VISTLE_USE_CUDA)
+    set(USE_CUDA)
     add_definitions(-DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_CUDA)
-    cuda_compile(CUDA_OBJ "../IsoSurface/Leveller.cu")
+    set(SOURCES ${SOURCES} "../IsoSurface/Leveller.cu")
 else()
     set(SOURCES ${SOURCES} "../IsoSurface/Leveller.cpp")
     if(TBB_FOUND AND PREFER_TBB)
@@ -46,16 +43,16 @@ endif()
 
 include_directories(SYSTEM ${THRUST_INCLUDE_DIR} ${TBB_INCLUDE_DIRS})
 
-if(USE_TBB)
-    include_directories(SYSTEM ${TBB_INCLUDE_DIRS})
+add_module(${NAME} ${DESCRIPTION} ${SOURCES})
+
+if(USE_CUDA)
+    target_include_directories(${NAME} PRIVATE SYSTEM ${CUDAToolkit_INCLUDE_DIRS})
 endif()
 
-add_module(${NAME} ${DESCRIPTION} ${SOURCES} ${CUDA_OBJ})
-
 if(USE_TBB)
-    target_link_libraries(${NAME} ${TBB_LIBRARIES})
-endif()
-
-if(CUDA_FOUND)
-    target_link_libraries(${NAME} ${CUDA_LIBRARIES})
+    if(${CMAKE_GENERATOR} STREQUAL "Visual Studio 17 2022")
+        target_link_libraries(${NAME} ${TBB_LIBRARIES})
+    else()
+        target_link_libraries(${NAME} TBB::tbb)
+    endif()
 endif()

@@ -322,7 +322,8 @@ V getParameterDefault(config::Access *config, const std::string &module, const s
         return value;
 
     auto def = config->value<V>("modules/default", module, name, value);
-    if (!def->exists()) {
+    if (!def->exists() && !name.empty() && name[0] == '_') {
+        // look up common default for system parameters
         def = config->value<V>("modules/default", "ALL", name, value);
     }
     return def->value();

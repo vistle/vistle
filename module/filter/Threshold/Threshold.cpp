@@ -237,7 +237,7 @@ typename Vec<T, Dim>::ptr remapData(typename Vec<T, Dim>::const_ptr in, const Th
     return nullptr;
 }
 
-bool Threshold::compute(std::shared_ptr<BlockTask> task) const
+bool Threshold::compute(const std::shared_ptr<BlockTask> &task) const
 {
     auto obj = task->expect<Object>(p_in[0]);
     auto split = splitContainerObject(obj);

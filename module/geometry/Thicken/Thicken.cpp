@@ -1,7 +1,10 @@
 #include <sstream>
 #include <iomanip>
 
+#include <boost/mpl/for_each.hpp>
+
 #include <vistle/core/object.h>
+#include <vistle/core/texture1d.h>
 #include <vistle/core/coords.h>
 #include <vistle/core/points.h>
 #include <vistle/core/spheres.h>
@@ -47,6 +50,61 @@ Thicken::Thicken(const std::string &name, int moduleID, mpi::communicator comm):
 
 Thicken::~Thicken()
 {}
+
+template<int Dim>
+struct FlattenData {
+    DataBase::const_ptr object;
+    DataBase::ptr &result;
+    Index num = 0;
+    const Index *const cl = nullptr;
+    FlattenData(DataBase::const_ptr obj, DataBase::ptr &result, Index num, const Index *cl)
+    : object(obj), result(result), num(num), cl(cl)
+    {
+        assert(num == 0 || cl);
+    }
+    template<typename S>
+    void operator()(S)
+    {
+        typedef Vec<S, Dim> V;
+        typename V::const_ptr in(V::as(object));
+        if (!in)
+            return;
+
+        typename V::ptr out = std::make_shared<V>(num);
+        for (int d = 0; d < Dim; ++d) {
+            const auto *din = &in->x(d)[0];
+            auto *dout = out->x(d).data();
+
+            for (Index i = 0; i < num; ++i) {
+                *dout++ = din[cl[i]];
+            }
+        }
+        result = out;
+    }
+};
+
+DataBase::ptr flattenData(DataBase::const_ptr src, Index num, const Index *cl)
+{
+    assert(num == 0 || cl);
+    if (num == 0) {
+        return src->clone();
+    }
+    DataBase::ptr result;
+    boost::mpl::for_each<Scalars>(FlattenData<1>(src, result, num, cl));
+    boost::mpl::for_each<Scalars>(FlattenData<3>(src, result, num, cl));
+    if (result)
+        result->copyAttributes(src);
+    if (auto tex = Texture1D::as(src)) {
+        assert(result);
+        auto vec1 = Vec<Scalar, 1>::as(Object::ptr(result));
+        assert(vec1);
+        auto result2 = tex->clone();
+        result2->d()->x[0] = vec1->d()->x[0];
+        result = result2;
+    }
+    return result;
+}
+
 
 bool Thicken::compute()
 {
@@ -110,10 +168,16 @@ bool Thicken::compute()
 
     DataBase::ptr basedata;
     if (!points && !lines && basedatain) {
+        if (basedatain->guessMapping() != DataBase::Vertex) {
+            sendError("per-vertex mapped data required for radius");
+            updateOutput(OGError);
+            return true;
+        }
         lines = Lines::as(basedatain->grid());
         points = Points::as(basedatain->grid());
-        if (isConnected("grid_out"))
-            basedata = basedatain->clone();
+        if (isConnected("grid_out")) {
+            basedata = flattenData(basedatain, lines ? lines->getNumCorners() : 0, lines ? &lines->cl()[0] : nullptr);
+        }
     }
     if (!lines && !points) {
         sendError("no Lines and no Points object");
@@ -244,10 +308,27 @@ bool Thicken::compute()
 
     auto data = accept<DataBase>("data_in");
     if (data && isConnected("data_out")) {
-        auto ndata = data->clone();
-        ndata->setGrid(cwr);
-        updateMeta(ndata);
-        addObject("data_out", ndata);
+        auto mapping = data->guessMapping();
+        switch (mapping) {
+        case DataBase::Vertex: {
+            auto ndata = flattenData(data, lines ? lines->getNumCorners() : 0, lines ? &lines->cl()[0] : nullptr);
+            ndata->setGrid(cwr);
+            updateMeta(ndata);
+            addObject("data_out", ndata);
+            break;
+        }
+        case DataBase::Element: {
+            auto ndata = data->clone();
+            ndata->setGrid(cwr);
+            updateMeta(ndata);
+            addObject("data_out", ndata);
+            break;
+        }
+        default: {
+            sendError("unsupported data mapping");
+            break;
+        }
+        }
     }
 
     return true;

@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
         if (argc > 3 || (!deep && argc > 2)) {
             std::cout << filename << ":" << std::endl;
         }
-        auto fd = open(filename.c_str(), O_RDONLY);
+        auto fd = open(filename.c_str(), O_RDONLY | O_BINARY);
         if (fd == -1) {
             std::cerr << "could not open " << filename << ": " << strerror(errno) << std::endl;
             ++numError;

@@ -4,7 +4,7 @@
 #include <mpi.h>
 #include <thread>
 #include <chrono>
-constexpr auto interval = std::chrono::microseconds(500);
+
 namespace detail {
 template<typename T>
 void broadcast(const boost::mpi::communicator &c, T &t, int root, const T &defaultValue = T{},
@@ -90,7 +90,6 @@ void vistle::insitu::barrier(const boost::mpi::communicator &c, const std::atomi
     auto nextRank = c.rank() + 1;
     if (nextRank == c.size())
         nextRank = 0;
-    auto previousRank = c.rank() == 0 ? c.size() - 1 : c.rank() - 1;
 
     for (int i = 0; i < c.size(); i++) {
         if (i != c.rank())
