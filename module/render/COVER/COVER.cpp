@@ -764,6 +764,8 @@ std::string COVER::setupEnvAndGetLibDir(const std::string &bindir)
         envvars.push_back("LD_LIBRARY_PATH");
         envvars.push_back("DYLD_LIBRARY_PATH");
         envvars.push_back("DYLD_FRAMEWORK_PATH");
+        envvars.push_back("DYLD_FALLBACK_LIBRARY_PATH");
+        envvars.push_back("DYLD_FALLBACK_FRAMEWORK_PATH");
         envvars.push_back("LANG");
         envvars.push_back("LC_CTYPE");
         envvars.push_back("LC_NUMERIC");
