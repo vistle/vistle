@@ -7,6 +7,9 @@ if [ "$1" = "-g" ]; then
 fi
 
 export DYLD_LIBRARY_PATH="$VISTLE_DYLD_LIBRARY_PATH"
+export DYLD_FRAMEWORK_PATH="$VISTLE_DYLD_FRAMEWORK_PATH"
+export DYLD_FALLBACK_LIBRARY_PATH="$VISTLE_DYLD_FALLBACK_LIBRARY_PATH"
+export DYLD_FALLBACK_FRAMEWORK_PATH="$VISTLE_DYLD_FALLBACK_FRAMEWORK_PATH"
 grealpath=echo
 if which grealpath >/dev/null 2>&1; then
     grealpath=grealpath

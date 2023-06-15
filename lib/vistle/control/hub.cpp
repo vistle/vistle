@@ -181,6 +181,20 @@ Hub::Hub(bool inManager)
 
     if (!inManager) {
         message::DefaultSender::init(m_hubId, 0);
+#ifdef __APPLE__
+        for (const auto *var: {
+                 "DYLD_LIBRARY_PATH",
+                 "DYLD_FRAMEWORK_PATH",
+                 "DYLD_FALLBACK_LIBRARY_PATH",
+                 "DYLD_FALLBACK_FRAMEWORK_PATH",
+             }) {
+            if (const auto *path = getenv(var)) {
+                std::string vvar("VISTLE_");
+                vvar += var;
+                setenv(vvar.c_str(), path, 1);
+            }
+        }
+#endif
     }
     make.setId(m_hubId);
     make.setRank(0);

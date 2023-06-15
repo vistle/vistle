@@ -11,7 +11,14 @@
 #APRUN_FLAGS="-j2 -cc 0-11,24-35:12-23,36-47" # enable hyper-threading
 
 # environment variables to copy to all ranks
-envvars="PATH VISTLE_KEY VISTLE_SHM_SIZE VISTLE_SHM_PER_RANK VISTLE_AFFINITY LD_LIBRARY_PATH DYLD_LIBRRARY_PATH VISTLE_DYLD_LIBRARY_PATH DYLD_FRAMEWORK_PATH VISTLE_DYLD_FRAMEWORK_PATH COVISE_PATH COVISEDIR ARCHSUFFIX COCONFIG COCONFIG_DEBUG PYTHONHOME PYTHONPATH"
+envvars="PATH"
+envvars="$envvars PYTHONHOME PYTHONPATH"
+envvars="$envvars COVISE_PATH COVISEDIR ARCHSUFFIX COCONFIG COCONFIG_DEBUG"
+envvars="$envvars COVCONFIG COVCONFIG_HOST COVCONFIG_CLUSTER COVCONFIG_DEBUG COVCONFIG_IGNORE_ERRORS"
+envvars="$envvars VISTLE_KEY VISTLE_SHM_SIZE VISTLE_SHM_PER_RANK VISTLE_AFFINITY"
+envvars="$envvars LD_LIBRARY_PATH"
+envvars="$envvars DYLD_LIBRRARY_PATH VISTLE_DYLD_LIBRARY_PATH DYLD_FRAMEWORK_PATH VISTLE_DYLD_FRAMEWORK_PATH"
+envvars="$envvars DYLD_FALLBACK_LIBRRARY_PATH VISTLE_DYLD_FALLBACK_LIBRARY_PATH DYLD_FALLBACK_FRAMEWORK_PATH VISTLE_DYLD_FALLBACK_FRAMEWORK_PATH"
 
 if [ -n "$VISTLE_LAUNCH" ]; then
    case $VISTLE_LAUNCH in
@@ -66,12 +73,10 @@ fi
 echo "spawn_vistle.sh: $@" > "$LOGFILE"
 case $(uname) in
    Darwin)
-      libpath=DYLD_LIBRARY_PATH
       export DYLD_LIBRARY_PATH="$VISTLE_DYLD_LIBRARY_PATH"
       export DYLD_FRAMEWORK_PATH="$VISTLE_DYLD_FRAMEWORK_PATH"
-      ;;
-   *)
-      libpath=LD_LIBRARY_PATH
+      export DYLD_FALLBACK_LIBRARY_PATH="$VISTLE_DYLD_FALLBACK_LIBRARY_PATH"
+      export DYLD_FALLBACK_FRAMEWORK_PATH="$VISTLE_DYLD_FALLBACK_FRAMEWORK_PATH"
       ;;
 esac
 
@@ -198,14 +203,14 @@ case "$MPI_IMPL" in
         done
 
         if [ -n "$MPIHOSTFILE" ]; then
-            echo mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND --hostfile ${MPIHOSTFILE} $WRAPPER "$@" >> "$LOGFILE"
-            exec mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND --hostfile ${MPIHOSTFILE} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+            echo mpirun $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND --hostfile ${MPIHOSTFILE} $WRAPPER "$@" >> "$LOGFILE"
+            exec mpirun $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND --hostfile ${MPIHOSTFILE} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
         elif [ -n "$MPIHOSTS" ]; then
-            echo mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND -H ${MPIHOSTS} $WRAPPER "$@" >> "$LOGFILE"
-            exec mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND -H ${MPIHOSTS} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+            echo mpirun $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND -H ${MPIHOSTS} $WRAPPER "$@" >> "$LOGFILE"
+            exec mpirun $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND -H ${MPIHOSTS} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
         else
-            echo mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND $WRAPPER "$@" >> "$LOGFILE"
-            exec mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+            echo mpirun $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND $WRAPPER "$@" >> "$LOGFILE"
+            exec mpirun $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
         fi
         ;;
       mpt)
