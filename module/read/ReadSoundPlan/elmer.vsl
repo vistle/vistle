@@ -1,0 +1,43 @@
+MasterHub=getMasterHub()
+VistleSession=getVistleSession()
+WorkflowConfig=getWorkflowConfig()
+uuids = {}
+
+
+
+# spawn all local modules
+umReadSoundPlan1 = spawnAsync(MasterHub, 'ReadSoundPlan')
+umDelaunayTriangulator2 = spawnAsync(MasterHub, 'DelaunayTriangulator')
+umCOVER3 = spawnAsync(MasterHub, 'COVER')
+umColor4 = spawnAsync(MasterHub, 'Color')
+
+mReadSoundPlan1 = waitForSpawn(umReadSoundPlan1)
+setVectorParam(mReadSoundPlan1, '_position', -12.0, -255.0, True)
+setStringParam(mReadSoundPlan1, 'Filename', '/path/to/elmer', True)
+applyParameters(mReadSoundPlan1)
+
+mDelaunayTriangulator2 = waitForSpawn(umDelaunayTriangulator2)
+setVectorParam(mDelaunayTriangulator2, '_position', -139.76470588235293, -52.101604278074866, True)
+setIntParam(mDelaunayTriangulator2, 'method', 4, True)
+applyParameters(mDelaunayTriangulator2)
+
+mCOVER3 = waitForSpawn(umCOVER3)
+setVectorParam(mCOVER3, '_position', 22.15329768270945, 60.0, True)
+setIntParam(mCOVER3, 'render_mode', 4, True)
+applyParameters(mCOVER3)
+
+mColor4 = waitForSpawn(umColor4)
+setVectorParam(mColor4, '_position', 5.0, -159.0, True)
+setFloatParam(mColor4, 'min', 16.299999237060547, True)
+setFloatParam(mColor4, 'max', 43.29999923706055, True)
+applyParameters(mColor4)
+
+# all local connections
+connect(mReadSoundPlan1,'Daysound', mColor4,'data_in')
+connect(mDelaunayTriangulator2,'grid_out', mCOVER3,'data_in')
+connect(mColor4,'data_out', mDelaunayTriangulator2,'points_in')
+connect(mColor4,'color_out', mCOVER3,'data_in')
+
+# spawn all remote modules
+
+# connections between local and remote
