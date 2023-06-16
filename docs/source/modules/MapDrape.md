@@ -63,4 +63,4 @@ map coordinates and drape to height field
 |from|PROJ6 order of coordinates for EPSG geo coordinate ref system: 1. Latitude, 2. Longitude|String|
 |to||String|
 |offset||Vector|
-|Axis Permutation|permutation of the axis (XYZ, XZY, YXZ, YZX, ZXY, ZYX)|Int|
+|axis_permutation|permutation of the axis (XYZ, XZY, YXZ, YZX, ZXY, ZYX)|Int|

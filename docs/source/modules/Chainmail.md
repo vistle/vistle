@@ -31,6 +31,6 @@ transform 2D data(triangle and quads) to rings
 |name|description|type|
 |-|-|-|
 |geo_mode|geometry generation mode (Circle, Spline)|Int|
-|radius|radius of the rings (diameter = radius / 20)|Float|
-|number of torus segments|number of quads used to aproximate the torus in it's plane|Int|
-|number of diameter segments|number of quads used to aproximate the torus around its axis|Int|
+|radius|radius of the rings in mm|Float|
+|number_of_torus_segments|number of quads used to aproximate the torus in it's plane|Int|
+|number_of_diameter_segments|number of quads used to aproximate the torus around its axis|Int|

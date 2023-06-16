@@ -32,5 +32,6 @@ show outlines of grid cells
 |polygon|Show polygon|Int|
 |quad|Show quad|Int|
 |triangle|Show triangle|Int|
-|Show Cells from Cell Nr. :|Show Cell Nr.|Int|
-|Show Cells to Cell Nr. :|Show Cell Nr.|Int|
+|bar|Show bar|Int|
+|min_cell_index|show cells starting from this index|Int|
+|max_cell_index|show cells up to this index|Int|

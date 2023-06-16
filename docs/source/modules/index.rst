@@ -26,6 +26,7 @@ Modules
    CutGeometry.md
    CutGeometryOld.md
    CuttingSurface.md
+   DelaunayTriangulator.md
    Displace.md
    Distribute.md
    DomainSurface.md
@@ -60,12 +61,14 @@ Modules
    ReadFoam.md
    ReadIagNetcdf.md
    ReadIagTecplot.md
+   ReadIewMatlabCsvExports.md
    ReadItlrFs3d.md
    ReadModel.md
    ReadMpas.md
    ReadMpasPnetcdf.md
    ReadNek5000.md
    ReadSeisSol.md
+   ReadSoundPlan.md
    ReadTsunami.md
    ReadVtk.md
    ReadWrfChem.md

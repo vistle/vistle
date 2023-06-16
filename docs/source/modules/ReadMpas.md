@@ -58,7 +58,8 @@ For dynamic data, data for each timestep must be present in a separate file.
 |data_file|File containing data|String|
 |part_file|File containing the grid partitions|String|
 |numParts|Number of partitions (-1: automatic)|Int|
-|numLevels|Number of vertical cell layers to read (0: only 2D base level)|Int|
+|numLevels|Number of vertical cell layers to read (0: only one 2D level)|Int|
+|bottomLevel|Lower bound for altitude levels|Int|
 |altitudeScale|value to scale the grid altitude (zGrid)|Float|
 |var_dim|Dimension of variables (2D, 3D)|String|
 |Variable_0|Variable_0 ((NONE))|String|

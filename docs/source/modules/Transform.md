@@ -25,5 +25,5 @@ apply transformation matrix to grid
 |translate|translation vector|Vector|
 |keep_original|whether to keep input|Int|
 |repetitions|how often the transformation should be repeated|Int|
-|animation|animate repetitions (Keep, Deanimate, Animate, TimestepAsRepetitionCount)|Int|
+|animation|animate repetitions (Keep, Deanimate, Animate, TimestepAsRepetitionCount, TimestepAsPower)|Int|
 |mirror|enable mirror (Original, Mirror_X, Mirror_Y, Mirror_Z)|Int|

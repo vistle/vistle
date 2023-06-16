@@ -20,8 +20,8 @@ small simulation to compare performance with other in situ interfaces
 ## Parameters
 |name|description|type|
 |-|-|-|
-|Input params|path to file with input parameters|String|
-|numTimesteps|maximum number of timesteps to execute|Int|
+|input_params|path to file with input parameters|String|
+|num_timesteps|maximum number of timesteps to execute|Int|
 |numThreads|number of threads used by the sim|Int|
 |numGhost|number of ghost cells in each direction|Int|
 |numParticles|number of particles|Int|

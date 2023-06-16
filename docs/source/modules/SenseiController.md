@@ -37,7 +37,7 @@ is not processed by SENSEI and not passed to Vistle.
 |-|-|-|
 |path|path to the connection file written by the simulation|String|
 |frequency|the pipeline is processed for every nth simulation cycle|Int|
-|keep timesteps|if true timesteps are cached and processed as time series|Int|
+|keep_timesteps|if true timesteps are cached and processed as time series|Int|
 
 Depending on the connected ports and the frequency parameter the module requests data from the simulation.
 Once the simulation generates the requested data the module is automatically executed.

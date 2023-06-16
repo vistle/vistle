@@ -42,6 +42,6 @@ read .nek5000 files
 |check_convexity|whether to check convexity of grid cells|Int|
 |filename|Geometry file path|String|
 |OnlyGeometry|Reading only Geometry? yes|no|Int|
-|numGhostLayers|number of ghost layers around eeach partition, a layer consists of whole blocks|Int|
-|number of blocks|number of blocks to read from file, <= 0 to read all|Int|
-|numberOfPartitions|number of parallel partitions to use for reading, 0 = one partition for each rank|Int|
+|num_ghost_layers|number of ghost layers around eeach partition, a layer consists of whole blocks|Int|
+|num_blocks|number of blocks to read from file, <= 0 to read all|Int|
+|num_partitions|number of parallel partitions to use for reading, 0 = one partition for each rank|Int|

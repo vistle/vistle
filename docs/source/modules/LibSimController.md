@@ -25,12 +25,12 @@ is not requested from LibSim.
 |name|description|type|
 |-|-|-|
 |path|path to a .sim2 file or directory containing these files|String|
-|simulation name|the name of the simulation as used in the filename of the sim2 file |String|
-|VTK variables|sort the variable data on the grid from VTK ordering to Vistles|Int|
-|constant grids|are the grids the same for every timestep?|Int|
+|simulation_name|the name of the simulation as used in the filename of the sim2 file |String|
+|vtk_variables|sort the variable data on the grid from VTK ordering to Vistles|Int|
+|constant_grids|are the grids the same for every timestep?|Int|
 |frequency|frequency in which data is retrieved from the simulation|Int|
-|combine grids|combine all structure grids on a rank to a single unstructured grid|Int|
-|keep timesteps|keep data of processed timestep of this execution|Int|
+|combine_grids|combine all structure grids on a rank to a single unstructured grid|Int|
+|keep_timesteps|keep data of processed timestep of this execution|Int|
 
 Depending on the connected ports and the frequency parameter the module requests data from the simulation.
 Once the simulation generates the requested data the module is automatically executed.

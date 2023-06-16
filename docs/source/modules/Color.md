@@ -34,7 +34,7 @@ map scalar and vector data to colors
 |range_compression|compression of range towards center|Float|
 |opacity_factor|multiplier for opacity|Float|
 |map|transfer function name (COVISE, Plasma, Inferno, Magma, CoolWarmBrewer, CoolWarm, Frosty, Dolomiti, Parula, Viridis, Cividis, Turbo, Blue_Light, Grays, Gray20, ANSYS, Star, ITSM, Rainbow, Earth, Topography, RainbowPale, FromFile)|Int|
-|rgb file| file containing pin rgb values|String|
+|rgb_file| file containing pin rgb values|String|
 |steps|number of color map steps|Int|
 |blend_with_material|use alpha for blending with diffuse material|Int|
 |auto_range|compute range automatically|Int|
