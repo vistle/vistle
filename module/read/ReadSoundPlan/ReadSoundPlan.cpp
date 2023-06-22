@@ -1,7 +1,7 @@
 /**************************************************************************\
 **                                                           (C)2023 HLRS **
 **                                                                        **
-** Description: Read module Elmer data format         	                  **
+** Description: Read module for SoundPLAN data format (Port from COVISE)  **
 **                                                                        **
 **                                                                        **
 **                                                                        **
@@ -41,7 +41,7 @@ MODULE_MAIN(ReadSoundPlan)
 
 ReadSoundPlan::ReadSoundPlan(const string &name, int moduleID, mpi::communicator comm): Reader(name, moduleID, comm)
 {
-    m_file = addStringParameter("Filename", "Elmer data file path", "/home/pow/covise/data", Parameter::Filename);
+    m_file = addStringParameter("Filename", "SoundPLAN data file path", "/home/pow/covise/data", Parameter::Filename);
 
     m_meshOutPort = createOutputPort("Mesh", "Points (point data)");
     m_daySoundOutPort = createOutputPort("Daysound", "Float (daysound)");
@@ -55,7 +55,7 @@ bool ReadSoundPlan::examine(const vistle::Parameter *param)
     if (!param || param == m_file)
         if (!boost::algorithm::ends_with(m_file->getValue(), ".txt")) {
             if (rank() == 0)
-                sendInfo("Only Elmer data files with .txt extension are valid.");
+                sendInfo("Only SoundPLAN data files with .txt extension are valid.");
             return false;
         }
 
@@ -97,14 +97,14 @@ bool ReadSoundPlan::read(Token &token, int timestep, int block)
     /* MPI_File_close(&fileHandler); */
     /* return true; */
 
-    /* ifstream elmerFile(fileName); */
-    /* if (!elmerFile.is_open()) { */
+    /* ifstream soundPlanFile(fileName); */
+    /* if (!soundPlanFile.is_open()) { */
     /*     sendInfo(errorMsg); */
     /*     return false; */
     /* } */
 
-    /* while (elmerFile) { */
-    /*     getline(elmerFile,elmerContent); */
+    /* while (soundPlanFile) { */
+    /*     getline(soundPlanFile,soundPlanContent); */
     /* } */
 
 

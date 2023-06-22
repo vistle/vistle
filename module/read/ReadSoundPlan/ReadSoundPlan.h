@@ -1,7 +1,7 @@
 /**************************************************************************\
  **                                                                        **
  **                                                                        **
- ** Description: Read module Elmer data format        	                   **
+ ** Description: Read module for SoundPLAN data format (Port from COVISE)  **
  **                                                                        **
  **                                                                        **
  **                                                                        **
