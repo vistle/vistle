@@ -59,7 +59,6 @@ MainWindow::MainWindow(QWidget *parent)
     ui->actionQuit->setShortcut(QKeySequence::StandardKey::Quit);
     connect(ui->actionNew, SIGNAL(triggered()), SIGNAL(newDataFlow()));
     ui->actionNew->setShortcut(QKeySequence::StandardKey::New);
-    connect(ui->actionOpen, SIGNAL(triggered()), SIGNAL(loadDataFlow()));
     connect(ui->actionOpen, &QAction::triggered, [this]() { emit loadDataFlowOnHub(); });
     ui->actionOpen->setShortcut(QKeySequence::StandardKey::Open);
     connect(ui->actionOpenOnGui, SIGNAL(triggered()), SIGNAL(loadDataFlowOnGui()));

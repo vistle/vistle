@@ -57,7 +57,6 @@ public slots:
 signals:
     void quitRequested(bool &allowed);
     void newDataFlow();
-    void loadDataFlow();
     void loadDataFlowOnGui();
     void loadDataFlowOnHub();
     void saveDataFlow();
