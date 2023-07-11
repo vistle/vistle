@@ -13,13 +13,13 @@ set(RHR_HEADERS compdecomp.h depthquant.h predict.h rfbext.h ReadBackCuda.h)
 set(RHR_SOURCES ${RHR_SOURCES} rhrserver.cpp)
 set(RHR_HEADERS ${RHR_HEADERS} rhrserver.h)
 
-if(GLEW_FOUND
-   AND OPENGL_FOUND
-   AND VISTLE_USE_CUDA)
-    set(USE_CUDA TRUE)
-    set(RHR_CUDA_SOURCES ReadBackCuda.cu)
-else()
-    set(RHR_CUDA_SOURCES ReadBackCuda.cpp)
+if(GLEW_FOUND AND OPENGL_FOUND)
+    if(VISTLE_USE_CUDA)
+        set(USE_CUDA TRUE)
+        set(RHR_CUDA_SOURCES ReadBackCuda.cu)
+    else()
+        set(RHR_CUDA_SOURCES ReadBackCuda.cpp)
+    endif()
 endif()
 
 vistle_add_library(vistle_rhr EXPORT ${VISTLE_LIB_TYPE} ${RHR_SOURCES} ${RHR_HEADERS} ${RHR_CUDA_SOURCES})
