@@ -13,7 +13,17 @@ if(WIN32)
 endif()
 
 if(MSVC)
-vistle_target_link_libraries(vistle_xdmf ${XDMF_CMAKE_LIBRARY_PATH_FLAG}${XDMF_CMAKE_INSTALL_FULL_LIBDIR} debug XdmfCored optimized XdmfCore optimized ${XDMF_LIBNAME} debug ${XDMF_LIBNAME}d)
+    vistle_target_link_libraries(
+        vistle_xdmf
+        ${XDMF_CMAKE_LIBRARY_PATH_FLAG}${XDMF_CMAKE_INSTALL_FULL_LIBDIR}
+        debug
+        XdmfCored
+        optimized
+        XdmfCore
+        optimized
+        ${XDMF_LIBNAME}
+        debug
+        ${XDMF_LIBNAME}d)
 else()
-vistle_target_link_libraries(vistle_xdmf ${XDMF_CMAKE_LIBRARY_PATH_FLAG}${XDMF_CMAKE_INSTALL_FULL_LIBDIR} XdmfCore ${XDMF_LIBNAME})
+    vistle_target_link_libraries(vistle_xdmf ${XDMF_CMAKE_LIBRARY_PATH_FLAG}${XDMF_CMAKE_INSTALL_FULL_LIBDIR} XdmfCore ${XDMF_LIBNAME})
 endif()

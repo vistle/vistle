@@ -13,9 +13,21 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 add_module(ReadSeisSol "Read SeisSol data files (XDMF/HDF5)" ${SOURCES} ${HEADERS})
 if(MSVC)
-target_link_libraries(ReadSeisSol vistle_xdmf debug XdmfCored optimized XdmfCore optimized ${XDMF_LIBNAME} debug ${XDMF_LIBNAME}d ${HDF5_LIBRARIES} ${Iconv_LIBRARIES})
+    target_link_libraries(
+        ReadSeisSol
+        vistle_xdmf
+        debug
+        XdmfCored
+        optimized
+        XdmfCore
+        optimized
+        ${XDMF_LIBNAME}
+        debug
+        ${XDMF_LIBNAME}d
+        ${HDF5_LIBRARIES}
+        ${Iconv_LIBRARIES})
 else()
-target_link_libraries(ReadSeisSol vistle_xdmf XdmfCore ${XDMF_LIBNAME} ${HDF5_LIBRARIES})
+    target_link_libraries(ReadSeisSol vistle_xdmf XdmfCore ${XDMF_LIBNAME} ${HDF5_LIBRARIES})
 endif()
 target_include_directories(ReadSeisSol PRIVATE ${XDMF_XdmfCore_INCLUDE_DIRS} ${XDMF_INCLUDE_DIRS} ${XDMF_Iconv_INCLUDE_DIRS})
 
