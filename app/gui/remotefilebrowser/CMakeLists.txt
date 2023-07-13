@@ -49,6 +49,5 @@ if(VISTLE_USE_QT5)
     target_link_libraries(vistle_remotefiledialog PRIVATE Qt5::Widgets)
 else()
     target_link_libraries(vistle_remotefiledialog PRIVATE Qt6::Widgets)
+    qt_disable_unicode_defines(vistle_remotefiledialog)
 endif()
-
-qt_disable_unicode_defines(vistle_remotefiledialog)
