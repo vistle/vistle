@@ -113,15 +113,8 @@ export VISTLE_BUILD_TYPE
 
 case "$system" in
    darwin64|darwinarm64)
-   if [ "$system" = "darwin64" ]; then
-       path_add DYLD_LIBRARY_PATH "/usr/local/cuda/lib"
-   fi
    if [ -n "$COVISEDIR" ]; then
        export EXTERNLIBS="$($COVISEDIR/bin/print_covise_env EXTERNLIBS)"
-       #export OSGDIR="${EXTERNLIBS}/openscenegraph"
-       #path_add DYLD_LIBRARY_PATH "${OSGDIR}/lib"
-       #path_add DYLD_LIBRARY_PATH "${EXTERNLIBS}/xercesc/lib"
-       #path_add DYLD_LIBRARY_PATH "${EXTERNLIBS}/embree/lib"
        path_add DYLD_LIBRARY_PATH "${COVISEDIR}/$(${COVISEDIR}/bin/print_covise_env ARCHSUFFIX)/lib"
        path_add DYLD_LIBRARY_PATH "$(${COVISEDIR}/bin/print_covise_env EXTERNLIBS)/ALL/lib"
        path_add DYLD_FRAMEWORK_PATH "$(${COVISEDIR}/bin/print_covise_env EXTERNLIBS)/ALL"
