@@ -17,16 +17,6 @@ case $os in
     freebsd) system="$os" ;;
 esac
 
-if [ -n "$PREFIX" -a -d "${PREFIX}" ]; then
-    export CMAKE_PREFIX_PATH="${PREFIX}"
-    export LD_LIBRARY_PATH="$PREFIX/lib64:$PREFIX/lib:$LD_LIBRARY_PATH"
-    host="${PREFIX##*/}"
-
-    if [ -r $HOME/modules-$host.sh ]; then
-        . $HOME/modules-$host.sh
-    fi
-fi
-
 case $os in
     freebsd)
         PATH_add /usr/local/mpi/openmpi/bin
@@ -104,8 +94,6 @@ if [ -n "${ARCHSUFFIX}" ]; then
     export ARCHSUFFIX
 fi
 
-#builddir=build-mvapich
-
 if [ -z "$VISTLE_BUILD_TYPE" ]; then
     VISTLE_BUILD_TYPE=RelWithDebInfo
 fi
@@ -133,12 +121,6 @@ case "$system" in
          export EXTERNLIBS="/data/extern_libs/${ARCHSUFFIX%opt}"
       fi
    fi
-   if [ -n "$PREFIX" ]; then
-        builddir="build-${host}"
-        if [ -n "$COMPILER" ]; then
-            builddir="$builddir-$COMPILER"
-        fi
-    fi
 
     if [ -n "$EXTERNLIBS" ]; then
         path_add LD_LIBRARY_PATH "$(${COVISEDIR}/bin/print_covise_env EXTERNLIBS)/ALL/lib64"
