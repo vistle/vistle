@@ -88,7 +88,7 @@ option(VISTLE_TIME_BUILD "Gather build times (Clang/ISPC)" OFF)
 
 option(VISTLE_ENABLE_CUDA "Build with CUDA support" OFF)
 
-option(VISTLE_USE_QT5 "Build GUI with Qt5 instead of Qt6" OFF)
+option(VISTLE_USE_QT5 "Build GUI with Qt5 instead of Qt6" ON)
 
 option(VISTLE_COLOR_DIAGNOSTICS "Produce ANSI-colored build output (GNU/Clang)" ON)
 
