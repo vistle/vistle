@@ -46,7 +46,7 @@ set(ISPC_HEADERS render.isph renderobjectdata.isph spheres_isect.isph spheres.is
 set(ISPC_SOURCES render.ispc renderobjectdata.ispc spheres.ispc tubes.ispc)
 set(description "Embree CPU ray casting remote renderer")
 
-add_compile_definitions(-DEMBREE_MAJOR=${EMBREE_MAJOR})
+add_compile_definitions(EMBREE_MAJOR=${EMBREE_MAJOR})
 if(VISTLE_DOUBLE_PRECISION)
     add_compile_definitions(-DVISTLE_SCALAR_DOUBLE)
 endif()
