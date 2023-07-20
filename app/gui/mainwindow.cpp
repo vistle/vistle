@@ -272,10 +272,10 @@ void MainWindow::readSettings()
 {
     QSettings settings;
     settings.beginGroup("MainWindow");
-
-    resize(settings.value("size", size()).toSize());
-    move(settings.value("pos", pos()).toPoint());
-
+    auto geo = settings.value("geometry", size()).toByteArray();
+    restoreGeometry(geo);
+    // calling this twice somehow enables restoring the fullscreen window on a second monitor, restoring the non-maximized window on a second monitor still fails
+    restoreGeometry(geo);
     restoreState(settings.value("windowState").toByteArray());
 
     if (menuBar())
@@ -293,8 +293,7 @@ void MainWindow::writeSettings()
     QSettings settings;
     settings.beginGroup("MainWindow");
 
-    settings.setValue("size", size());
-    settings.setValue("pos", pos());
+    settings.setValue("geometry", saveGeometry());
 
     settings.setValue("windowState", saveState());
 
