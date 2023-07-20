@@ -17,14 +17,6 @@ project(
     HOMEPAGE_URL https://vistle.io
     LANGUAGES C CXX)
 
-include(CheckLanguage)
-check_language(ISPC)
-if(CMAKE_ISPC_COMPILER)
-    enable_language(ISPC)
-else()
-    #message(STATUS "No ISPC support")
-endif()
-
 if(APPLE AND ${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
     set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} /opt/homebrew)
 endif()

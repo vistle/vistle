@@ -10,6 +10,8 @@ if(NOT EMBREE_FOUND)
     find_package_handle_standard_args(EMBREE DEFAULT_MSG EMBREE_LIBRARY EMBREE_INCLUDE_DIRS)
 endif()
 
+include(CheckLanguage)
+check_language(ISPC)
 if(NOT EMBREE_FOUND)
     message("DisCOVERay: neither Embree 4 nor 3 found")
     return()
