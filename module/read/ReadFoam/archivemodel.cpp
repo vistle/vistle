@@ -316,22 +316,16 @@ Model::Model(const std::string &archiveOrDirectory, Format format)
             throw std::runtime_error("failed to open archive " + archiveOrDirectory);
         }
 
-#ifndef HAVE_LIBARCHIVE_READ_CURRENT_POSITION
         File *prev = nullptr;
-#endif
         struct archive_entry *entry = nullptr;
         while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
-#ifndef HAVE_LIBARCHIVE_READ_CURRENT_POSITION
             if (prev) {
                 prev->offset = (archive_read_header_position(a) - prev->size) & ~(int64_t)0x1ff;
                 //std::cerr << prev->path().string() << " OFFSET: " << prev->offset << std::endl;
             }
-#endif
             std::string pathname = archive_entry_pathname(entry);
             auto type = archive_entry_filetype(entry);
-#ifndef HAVE_LIBARCHIVE_READ_CURRENT_POSITION
             prev = nullptr;
-#endif
             if (type == AE_IFDIR) {
                 /* auto dir = dynamic_cast<Directory *>(addPath(pathname)); */
             } else if (type == AE_IFREG) {
@@ -339,26 +333,18 @@ Model::Model(const std::string &archiveOrDirectory, Format format)
                 if (file) {
                     size_t sz = archive_entry_size(entry);
                     file->size = sz;
-#ifdef HAVE_LIBARCHIVE_READ_CURRENT_POSITION
-                    int64_t off = archive_read_current_position(a);
-#else
                     int64_t off = archive_read_header_position(a);
-#endif
                     file->offset = off;
                     //std::cerr << file->path().string() << " OFFSET: " << file->offset  << "+" << file->size << std::endl;
                 }
-#ifndef HAVE_LIBARCHIVE_READ_CURRENT_POSITION
                 prev = file;
-#endif
             }
             //archive_read_data_skip(a); // not necessary, and might be detrimental to performance
         }
-#ifndef HAVE_LIBARCHIVE_READ_CURRENT_POSITION
         if (prev) {
             prev->offset = (archive_read_header_position(a) - prev->size) & ~(int64_t)0x1ff;
             //std::cerr << prev->path().string() << " OFFSET: " << prev->offset << std::endl;
         }
-#endif
 #endif
     }
 }
