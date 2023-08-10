@@ -27,6 +27,7 @@ Modules
    CutGeometryOld.md
    CuttingSurface.md
    DelaunayTriangulator.md
+   DisCOVERay.md
    Displace.md
    Distribute.md
    DomainSurface.md
