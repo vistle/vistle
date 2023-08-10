@@ -3,11 +3,7 @@ add_subdirectory(manager)
 
 if(VISTLE_USE_QT5)
     vistle_find_package(Qt5 5.15 COMPONENTS Widgets)
-    if(Qt5_FOUND)
-        function(qt_disable_unicode_defines)
-
-        endfunction()
-    else()
+    if(NOT Qt5_FOUND)
         return()
     endif()
 else()

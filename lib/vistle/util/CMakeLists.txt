@@ -52,7 +52,7 @@ set(util_HEADERS
     valgrind.h
     vecstreambuf.h)
 
-if(NOT CMAKE_BUILD_TYPE STREQUAL "")
+if(CMAKE_BUILD_TYPE AND NOT CMAKE_BUILD_TYPE STREQUAL "")
     message("CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}")
     add_definitions(-DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}")
 endif()

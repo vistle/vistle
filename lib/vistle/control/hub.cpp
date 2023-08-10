@@ -452,7 +452,10 @@ bool Hub::init(int argc, char *argv[])
     }
 
     try {
-        startServer();
+        if (!startServer()) {
+            CERR << "failed to initialise control server" << std::endl;
+            return false;
+        }
     } catch (std::exception &ex) {
         CERR << "failed to initialise control server on port " << m_port << ": " << ex.what() << std::endl;
         return false;

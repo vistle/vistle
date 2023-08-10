@@ -12,7 +12,8 @@ endif(CFX_INCLUDE_DIR)
 find_path(
     CFX_DIR
     NAMES "include/cfxExport.h"
-    PATHS $ENV{EXTERNLIBS}/CFX-19
+    PATHS $ENV{EXTERNLIBS}/CFX-221
+          $ENV{EXTERNLIBS}/CFX-19
           $ENV{EXTERNLIBS}/CFX-181
           $ENV{EXTERNLIBS}/CFX-18
           $ENV{EXTERNLIBS}/CFX-17

@@ -11,7 +11,11 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED 99)
 set(CMAKE_C_EXTENSIONS OFF)
 
-project(Vistle C CXX)
+project(
+    Vistle
+    DESCRIPTION "Parallel distributed scientific visualization in VR"
+    HOMEPAGE_URL https://vistle.io
+    LANGUAGES C CXX)
 
 if(APPLE AND ${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
     set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} /opt/homebrew)
@@ -79,7 +83,7 @@ option(VISTLE_TIME_BUILD "Gather build times (Clang/ISPC)" OFF)
 
 option(VISTLE_ENABLE_CUDA "Build with CUDA support" OFF)
 
-option(VISTLE_USE_QT5 "Build GUI with Qt5 instead of Qt6" OFF)
+option(VISTLE_USE_QT5 "Build GUI with Qt5 instead of Qt6" ON)
 
 option(VISTLE_COLOR_DIAGNOSTICS "Produce ANSI-colored build output (GNU/Clang)" ON)
 
@@ -343,13 +347,15 @@ vistle_find_package(
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-command-line-argument")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-command-line-argument")
+    if(NOT ${BUILD_SHARED_LIBS})
+        # for linking the libraries into plugins
+        set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
+    endif()
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
 
     if(NOT ${BUILD_SHARED_LIBS})
         # for linking the libraries into plugins
-        #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
-        #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
         set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
     endif()
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
@@ -392,7 +398,7 @@ if(NOT CRAY AND NOT VISTLE_GUI_ONLY)
     vistle_find_package(MPI REQUIRED COMPONENTS C CXX)
 
     include_directories(SYSTEM ${MPI_C_INCLUDE_PATH})
-    set(CMAKE_CXX_COMPILE_FLAGS "${CMAKE_CXX_COMPILE_FLAGS} ${MPI_C_COMPILE_FLAGS}")
+    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:${MPI_C_COMPILE_FLAGS}>)
     set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} ${MPI_C_LINK_FLAGS}")
 
     # for CMake config file version of boost this needs to be changed to version numbers such as 1.60.99 instead of 106099
@@ -780,7 +786,8 @@ if(${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-function")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations")
     if(VISTLE_PEDANTIC_ERRORS)
-        add_compile_options("-pedantic-errors")
+        add_compile_options($<$<COMPILE_LANGUAGE:C>:-pedantic-errors>)
+        add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-pedantic-errors>)
     endif()
     if(NOT APPLE)
         set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-undefined")
@@ -789,10 +796,12 @@ if(${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
     endif()
 elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
     if(VISTLE_COLOR_DIAGNOSTICS)
-        add_compile_options("-fdiagnostics-color=always")
+        add_compile_options($<$<COMPILE_LANGUAGE:C>:-fdiagnostics-color=always>)
+        add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fdiagnostics-color=always>)
     endif()
     if(VISTLE_PEDANTIC_ERRORS)
-        add_compile_options("-pedantic-errors")
+        add_compile_options($<$<COMPILE_LANGUAGE:C>:-pedantic-errors>)
+        add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-pedantic-errors>)
     endif()
     if(NOT APPLE)
         set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-undefined")

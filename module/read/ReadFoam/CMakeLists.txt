@@ -17,17 +17,6 @@ endif()
 
 if(LibArchive_FOUND)
     include_directories(SYSTEM ${LibArchive_INCLUDE_DIRS})
-    try_compile(
-        LIBARCHIVE_HAVE_READ_CURRENT_POSITION ${CMAKE_BINARY_DIR}/tmp
-        ${CMAKE_CURRENT_SOURCE_DIR}/test_archive_read_current_position.cpp
-        LINK_LIBRARIES ${LibArchive_LIBRARIES}
-        CMAKE_FLAGS "-DINCLUDE_DIRECTORIES=${LibArchive_INCLUDE_DIRS}")
-    add_definitions(-DHAVE_LIBARCHIVE)
-    if(LIBARCHIVE_HAVE_READ_CURRENT_POSITION)
-        add_definitions(-DHAVE_LIBARCHIVE_READ_CURRENT_POSITION)
-    else()
-        message("ReadFoam: no archive_read_current_position call, resorting to slow path")
-    endif()
 endif()
 
 if(LIBZIP_FOUND)
