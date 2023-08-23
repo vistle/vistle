@@ -87,6 +87,8 @@ option(VISTLE_USE_QT5 "Build GUI with Qt5 instead of Qt6" ON)
 
 option(VISTLE_COLOR_DIAGNOSTICS "Produce ANSI-colored build output (GNU/Clang)" ON)
 
+option(VISTLE_ISPC_PTHREAD_WORKAROUND "Work around problem -pthread flag being propagated to ispc" OFF)
+
 if(NOT "$ENV{VBUILD}" STREQUAL "")
     include("${PROJECT_SOURCE_DIR}/build/$ENV{VBUILD}.cmake")
 endif()
@@ -396,6 +398,10 @@ if(NOT CRAY AND NOT VISTLE_GUI_ONLY)
     add_definitions(-DOMPI_SKIP_MPICXX) # OpenMPI
     add_definitions(-DMPI_NO_CPPBIND) # HPE MPT
     vistle_find_package(MPI REQUIRED COMPONENTS C CXX)
+    # clear MPI_C_COMPILE_OPTIONS, as these will be passed to ispc and might contain -pthread, which ispc does not understand
+    if(VISTLE_ISPC_PTHREAD_WORKAROUND)
+        unset(MPI_C_COMPILE_OPTIONS CACHE)
+    endif()
 
     include_directories(SYSTEM ${MPI_C_INCLUDE_PATH})
     add_compile_options($<$<COMPILE_LANGUAGE:CXX>:${MPI_C_COMPILE_FLAGS}>)
@@ -913,6 +919,9 @@ endif()
 
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
+if(VISTLE_ISPC_PTHREAD_WORKAROUND)
+    set(THREADS_PREFER_PTHREAD_FLAG FALSE)
+endif()
 vistle_find_package(Threads REQUIRED)
 
 vistle_find_package(

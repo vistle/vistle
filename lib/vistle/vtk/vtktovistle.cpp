@@ -14,18 +14,19 @@
 #include <vtkIdTypeArray.h>
 
 #include <vtkAlgorithm.h>
+#include <vtkCellArray.h>
+#include <vtkCellData.h>
+#include <vtkImageData.h>
 #include <vtkInformation.h>
-#include <vtkUnstructuredGrid.h>
+#include <vtkLagrangeHexahedron.h>
+#include <vtkPointData.h>
+#include <vtkPolyData.h>
+#include <vtkRectilinearGrid.h>
 #include <vtkStructuredGrid.h>
 #include <vtkStructuredPoints.h>
-#include <vtkImageData.h>
-#include <vtkUniformGrid.h>
-#include <vtkRectilinearGrid.h>
 #include <vtkStructuredPoints.h>
-#include <vtkPolyData.h>
-#include <vtkPointData.h>
-#include <vtkCellData.h>
-#include <vtkCellArray.h>
+#include <vtkUniformGrid.h>
+#include <vtkUnstructuredGrid.h>
 
 #include <vtkCompositeDataSet.h>
 #if VTK_MAJOR_VERSION < 6
@@ -55,13 +56,88 @@ namespace vtk {
 
 namespace {
 
+//Given an integer specifying an approximating linear hex, compute its IJK coordinate-position in this cell.
+bool subCellCoordinatesFromId(int &i, int &j, int &k, int subId, const int order[])
+{
+    if (subId < 0) {
+        return false;
+    }
+
+    int layerSize = order[0] * order[1];
+    i = subId % order[0];
+    j = (subId / order[0]) % order[1];
+    k = subId / layerSize;
+    return true; // TODO: detect more invalid subId values
+}
+
+std::array<Index, UnstructuredGrid::NumVertices[UnstructuredGrid::HEXAHEDRON]> approximateSubHex(int subId,
+                                                                                                 const int order[])
+{
+    int i, j, k;
+    if (!subCellCoordinatesFromId(i, j, k, subId, order)) {
+        std::cerr << "subCellCoordinatesFromId failed" << std::endl;
+    }
+
+    // Get the point coordinates (and optionally scalars) for each of the 8 corners
+    // in the approximating hexahedron spanned by (i, i+1) x (j, j+1) x (k, k+1):
+    std::array<Index, UnstructuredGrid::NumVertices[UnstructuredGrid::HEXAHEDRON]> linearSubHex;
+    for (int ic = 0; ic < linearSubHex.size(); ++ic) {
+        int corner = vtkHigherOrderHexahedron::PointIndexFromIJK(
+            i + ((((ic + 1) / 2) % 2) ? 1 : 0), j + (((ic / 2) % 2) ? 1 : 0), k + ((ic / 4) ? 1 : 0), order);
+        linearSubHex[ic] = corner;
+    }
+    return linearSubHex;
+}
+
+Index lagrangeConnectivityToLinearHexahedron(const int order[], const vtkIdType *conectivityLagrange,
+                                             shm<Index>::array &connlist)
+{
+    auto numElements = order[0] * order[1] * order[2];
+    for (int subId = 0; subId < numElements; ++subId) {
+        auto subIndicees = approximateSubHex(subId, order);
+        for (int j = 0; j < UnstructuredGrid::NumVertices[UnstructuredGrid::HEXAHEDRON]; ++j) {
+            assert(conectivityLagrange[subIndicees[j]] >= 0);
+            connlist.emplace_back(conectivityLagrange[subIndicees[j]]);
+        }
+    }
+    std::cerr << std::endl;
+    return numElements;
+}
+
+struct GridSizes {
+    vistle::Index numElements = 0;
+    vistle::Index numConnectivities = 0;
+};
+
+GridSizes getGridSizesConsideringHighOrderCells(vtkUnstructuredGrid *vugrid)
+{
+    Index nelem = vugrid->GetNumberOfCells();
+    vistle::Index nconn = 0;
+    if (vtkCellArray *vcellarray = vugrid->GetCells()) {
+        nconn = vcellarray->GetNumberOfConnectivityEntries() - nelem;
+    }
+    auto nelemLagrange = nelem;
+    for (vistle::Index i = 0; i < nelem; i++) {
+        if (vugrid->GetCellType(i) == VTK_LAGRANGE_HEXAHEDRON) {
+            //replace one of the Lagrange hexahedrons with numSubHexes linear hexahedrons
+            auto lagrangeCell = dynamic_cast<vtkLagrangeHexahedron *>(vugrid->GetCell(i));
+            // lagrangeCell->PrintSelf(std::cerr, vtkIndent());
+            auto numSubHexes = lagrangeCell->GetOrder()[0] * lagrangeCell->GetOrder()[1] * lagrangeCell->GetOrder()[2];
+            vtkIdType npts = lagrangeCell->GetOrder()[3];
+            nconn = nconn - npts + numSubHexes * UnstructuredGrid::NumVertices[UnstructuredGrid::HEXAHEDRON];
+            nelemLagrange += numSubHexes - 1;
+        }
+    }
+    return GridSizes{nelemLagrange, nconn};
+}
 
 Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, bool checkConvex)
 {
-    Index ncoord = vugrid->GetNumberOfPoints();
-    Index nelem = vugrid->GetNumberOfCells();
+    auto sizes = getGridSizesConsideringHighOrderCells(vugrid);
+    Index ncoordVtk = vugrid->GetNumberOfPoints();
+    Index nelemVtk = vugrid->GetNumberOfCells();
 
-    UnstructuredGrid::ptr cugrid = make_ptr<UnstructuredGrid>(nelem, (Index)0, ncoord);
+    UnstructuredGrid::ptr cugrid = make_ptr<UnstructuredGrid>(sizes.numElements, (Index)0, ncoordVtk);
 
     Scalar *xc = cugrid->x().data();
     Scalar *yc = cugrid->y().data();
@@ -69,12 +145,13 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, bool checkConvex)
     Index *elems = cugrid->el().data();
     auto &connlist = cugrid->cl();
     if (vtkCellArray *vcellarray = vugrid->GetCells()) {
-        auto nconn = vcellarray->GetNumberOfConnectivityEntries() - nelem;
-        connlist.reserve(nconn);
+        connlist.reserve(sizes.numConnectivities);
+    } else {
+        return cugrid;
     }
     Byte *typelist = cugrid->tl().data();
 
-    for (Index i = 0; i < ncoord; ++i) {
+    for (Index i = 0; i < ncoordVtk; ++i) {
         xc[i] = vugrid->GetPoint(i)[0];
         yc[i] = vugrid->GetPoint(i)[1];
         zc[i] = vugrid->GetPoint(i)[2];
@@ -83,58 +160,67 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, bool checkConvex)
 #if VTK_MAJOR_VERSION >= 7
     const auto *ghostArray = vugrid->GetCellGhostArray();
 #endif
-
-    for (Index i = 0; i < nelem; ++i) {
-        elems[i] = connlist.size();
+    Index elemVistle = 0;
+    for (Index i = 0; i < nelemVtk; ++i) {
+        elems[elemVistle] = connlist.size();
 
         switch (vugrid->GetCellType(i)) {
         case VTK_VERTEX:
         case VTK_POLY_VERTEX:
-            typelist[i] = UnstructuredGrid::POINT;
+            typelist[elemVistle] = UnstructuredGrid::POINT;
             break;
         case VTK_LINE:
         case VTK_POLY_LINE:
-            typelist[i] = UnstructuredGrid::BAR;
+            typelist[elemVistle] = UnstructuredGrid::BAR;
             break;
         case VTK_TRIANGLE:
-            typelist[i] = UnstructuredGrid::TRIANGLE;
+            typelist[elemVistle] = UnstructuredGrid::TRIANGLE;
             break;
         case VTK_QUAD:
-            typelist[i] = UnstructuredGrid::QUAD;
+            typelist[elemVistle] = UnstructuredGrid::QUAD;
             break;
         case VTK_TETRA:
-            typelist[i] = UnstructuredGrid::TETRAHEDRON;
+            typelist[elemVistle] = UnstructuredGrid::TETRAHEDRON;
             break;
         case VTK_HEXAHEDRON:
-            typelist[i] = UnstructuredGrid::HEXAHEDRON;
+            typelist[elemVistle] = UnstructuredGrid::HEXAHEDRON;
             break;
+        case VTK_LAGRANGE_HEXAHEDRON: {
+            auto lagrangeCell = dynamic_cast<vtkLagrangeHexahedron *>(vugrid->GetCell(i));
+            for (size_t j = 0;
+                 j < lagrangeCell->GetOrder()[0] * lagrangeCell->GetOrder()[1] * lagrangeCell->GetOrder()[2]; j++) {
+                typelist[elemVistle] = UnstructuredGrid::HEXAHEDRON;
+                elems[elemVistle++] = connlist.size() + j * UnstructuredGrid::NumVertices[UnstructuredGrid::HEXAHEDRON];
+            }
+            --elemVistle; //counter the generat +1
+        } break;
         case VTK_WEDGE:
-            typelist[i] = UnstructuredGrid::PRISM;
+            typelist[elemVistle] = UnstructuredGrid::PRISM;
             break;
         case VTK_PYRAMID:
-            typelist[i] = UnstructuredGrid::PYRAMID;
+            typelist[elemVistle] = UnstructuredGrid::PYRAMID;
             break;
         case VTK_POLYHEDRON:
-            typelist[i] = UnstructuredGrid::POLYHEDRON;
+            typelist[elemVistle] = UnstructuredGrid::POLYHEDRON;
             break;
         default:
             std::cerr << "VTK cell type " << vugrid->GetCellType(i) << " not handled" << std::endl;
-            typelist[i] = UnstructuredGrid::NONE;
+            typelist[elemVistle] = UnstructuredGrid::NONE;
             break;
         }
 #if VTK_MAJOR_VERSION >= 7
         if (ghostArray &&
             const_cast<vtkUnsignedCharArray *>(ghostArray)->GetValue(i) & vtkDataSetAttributes::DUPLICATECELL) {
-            typelist[i] |= UnstructuredGrid::GHOST_BIT;
+            typelist[elemVistle] |= UnstructuredGrid::GHOST_BIT;
         }
 #endif
 
-        assert((typelist[i] & UnstructuredGrid::TYPE_MASK) < UnstructuredGrid::NUM_TYPES);
+        assert((typelist[elemVistle] & UnstructuredGrid::TYPE_MASK) < UnstructuredGrid::NUM_TYPES);
 
         vtkIdType npts = 0;
         IDCONST vtkIdType *pts = nullptr;
         vugrid->GetFaceStream(i, npts, pts);
-        if (typelist[i] == UnstructuredGrid::POLYHEDRON) {
+        if (typelist[elemVistle] == UnstructuredGrid::POLYHEDRON) {
             Index nface = npts;
 
             vtkIdType j = 0;
@@ -150,14 +236,19 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, bool checkConvex)
                 }
                 connlist.emplace_back(first);
             }
+        } else if (vugrid->GetCellType(i) == VTK_LAGRANGE_HEXAHEDRON) {
+            auto lagrangeCell = dynamic_cast<vtkLagrangeHexahedron *>(vugrid->GetCell(i));
+            lagrangeConnectivityToLinearHexahedron(lagrangeCell->GetOrder(), pts, connlist);
+            assert(connlist.size() == 8 * (elemVistle + 1));
         } else {
             for (vtkIdType j = 0; j < npts; ++j) {
                 assert(pts[j] >= 0);
                 connlist.emplace_back(pts[j]);
             }
         }
+        ++elemVistle;
     }
-    elems[nelem] = connlist.size();
+    elems[sizes.numElements] = connlist.size();
 
     if (checkConvex) {
         auto nonConvex = cugrid->checkConvexity();
@@ -166,7 +257,26 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, bool checkConvex)
                       << " cells are non-convex" << std::endl;
         }
     }
+    auto numCorners = cugrid->getNumCorners();
+    auto numVerticees = cugrid->getNumVertices();
 
+    if ((cugrid->d()->cl->size()) > size_t(InvalidIndex))
+        return nullptr;
+    if ((cugrid->d()->el->size()) > size_t(InvalidIndex))
+        return nullptr;
+    assert(cugrid->d()->el->check());
+    assert(cugrid->d()->cl->check());
+    assert(cugrid->d()->el->size() > 0);
+    assert(cugrid->el()[0] == 0);
+    if (cugrid->getNumElements() > 0) {
+        assert(cugrid->el()[cugrid->getNumElements() - 1] < cugrid->getNumCorners());
+        assert(cugrid->el()[cugrid->getNumElements()] == cugrid->getNumCorners());
+    }
+
+    if (cugrid->getNumCorners() > 0) {
+        assert(cugrid->cl()[0] < cugrid->getNumVertices());
+        assert(cugrid->cl()[cugrid->getNumCorners() - 1] < cugrid->getNumVertices());
+    }
     return cugrid;
 }
 
