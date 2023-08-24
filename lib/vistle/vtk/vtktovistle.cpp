@@ -257,26 +257,7 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, bool checkConvex)
                       << " cells are non-convex" << std::endl;
         }
     }
-    auto numCorners = cugrid->getNumCorners();
-    auto numVerticees = cugrid->getNumVertices();
 
-    if ((cugrid->d()->cl->size()) > size_t(InvalidIndex))
-        return nullptr;
-    if ((cugrid->d()->el->size()) > size_t(InvalidIndex))
-        return nullptr;
-    assert(cugrid->d()->el->check());
-    assert(cugrid->d()->cl->check());
-    assert(cugrid->d()->el->size() > 0);
-    assert(cugrid->el()[0] == 0);
-    if (cugrid->getNumElements() > 0) {
-        assert(cugrid->el()[cugrid->getNumElements() - 1] < cugrid->getNumCorners());
-        assert(cugrid->el()[cugrid->getNumElements()] == cugrid->getNumCorners());
-    }
-
-    if (cugrid->getNumCorners() > 0) {
-        assert(cugrid->cl()[0] < cugrid->getNumVertices());
-        assert(cugrid->cl()[cugrid->getNumCorners() - 1] < cugrid->getNumVertices());
-    }
     return cugrid;
 }
 
