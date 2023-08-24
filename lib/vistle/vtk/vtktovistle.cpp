@@ -16,19 +16,20 @@
 #include <vtkAlgorithm.h>
 #include <vtkCellArray.h>
 #include <vtkCellData.h>
+#include <vtkCompositeDataSet.h>
 #include <vtkImageData.h>
 #include <vtkInformation.h>
 #include <vtkLagrangeHexahedron.h>
 #include <vtkPointData.h>
 #include <vtkPolyData.h>
 #include <vtkRectilinearGrid.h>
+#include <vtkSOADataArrayTemplate.h>
 #include <vtkStructuredGrid.h>
 #include <vtkStructuredPoints.h>
 #include <vtkStructuredPoints.h>
 #include <vtkUniformGrid.h>
 #include <vtkUnstructuredGrid.h>
 
-#include <vtkCompositeDataSet.h>
 #if VTK_MAJOR_VERSION < 6
 #include <vtkTemporalDataSet.h>
 #define HAVE_VTK_TEMP
@@ -549,6 +550,7 @@ DataBase::ptr vtkArray2Vistle(vtkType *vd, Object::const_ptr grid)
 
     return nullptr;
 }
+
 #ifdef SENSEI
 } // anonymous namespace
 #endif
@@ -590,6 +592,10 @@ DataBase::ptr vtkData2Vistle(vtkDataArray *varr, Object::const_ptr grid)
         return vtkArray2Vistle<unsigned int, vtkUnsignedIntArray>(vd, grid);
     } else if (vtkUnsignedCharArray *vd = dynamic_cast<vtkUnsignedCharArray *>(varr)) {
         return vtkArray2Vistle<unsigned char, vtkUnsignedCharArray>(vd, grid);
+    } else if (vtkSOADataArrayTemplate<float> *vd = dynamic_cast<vtkSOADataArrayTemplate<float> *>(varr)) {
+        return vtkArray2Vistle<float, vtkSOADataArrayTemplate<float>>(vd, grid);
+    } else if (vtkSOADataArrayTemplate<double> *vd = dynamic_cast<vtkSOADataArrayTemplate<double> *>(varr)) {
+        return vtkArray2Vistle<double, vtkSOADataArrayTemplate<double>>(vd, grid);
     }
 
     return nullptr;
