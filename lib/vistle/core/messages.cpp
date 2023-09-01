@@ -123,12 +123,12 @@ int Identify::numRanks() const
     return m_numRanks;
 }
 
-unsigned long Identify::pid() const
+size_t Identify::pid() const
 {
     return m_pid;
 }
 
-void Identify::setPid(unsigned long pid)
+void Identify::setPid(size_t pid)
 {
     m_pid = pid;
 }
@@ -512,12 +512,12 @@ const char *Started::getName() const
     return name.data();
 }
 
-unsigned long Started::pid() const
+size_t Started::pid() const
 {
     return m_pid;
 }
 
-void Started::setPid(unsigned long pid)
+void Started::setPid(size_t pid)
 {
     m_pid = pid;
 }
