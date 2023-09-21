@@ -282,12 +282,12 @@ bool ReaderBase::parseMetaDataFile()
             //from the header
             string t;
             f >> t;
-            if (tag == "binary") {
+            if (t == "binary") {
                 m_isBinary = true;
-            } else if (tag == "binary6") {
+            } else if (t == "binary6") {
                 m_isBinary = true;
                 m_isParallelFormat = true;
-            } else if (tag == "ascii") {
+            } else if (t == "ascii") {
                 m_isBinary = false;
             } else {
                 sendError(".nek5000: Value following \"type\" must be \"ascii\" or \"binary\" or \"binary6\"");
@@ -610,7 +610,7 @@ void ReaderBase::ParseFieldTags(ifstream &f)
             break;
     }
     if (!foundCoordinates) {
-        sendError("Nek: The first time step in a Nek file must contain a grid");
+        sendError("Nek: The first time step in a Nek case must contain a grid");
     }
 }
 
