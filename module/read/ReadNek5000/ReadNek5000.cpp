@@ -239,7 +239,8 @@ ReadNek::ReadNek(const std::string &name, int moduleID, mpi::communicator comm):
     m_blockIndexPort = createOutputPort("blockNumber_out", "Nek internal block numbers");
 
     // Parameters
-    m_filePathParam = addStringParameter("filename", "Geometry file path", "", Parameter::Filename);
+    m_filePathParam = addStringParameter("filename", "Geometry file path", "", Parameter::ExistingFilename);
+    setParameterFilters(m_filePathParam, "Nek5000 geometry (*.nek5000)/All files (*)");
     m_geometryOnlyParam = addIntParameter("OnlyGeometry", "Reading only Geometry? yes|no", false, Parameter::Boolean);
     m_numGhostLayersParam = addIntParameter(
         "num_ghost_layers", "number of ghost layers around eeach partition, a layer consists of whole blocks", 1);
