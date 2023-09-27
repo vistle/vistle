@@ -1,0 +1,28 @@
+name: Make Release
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  generate:
+    name: Create release-artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync and update submodules recursively
+        uses: actions/checkout@master
+        with:
+          submodules: 'recursive'
+
+      - name: Package source code including submodules
+        uses: qmonnet/git-archive-all-action@v1
+        with:
+          output-files: srcs-full-${{ github.ref_name }}.tar.gz srcs-full-${{ github.ref_name }}.zip
+          base-repo: project
+          force-submodules: true
+
+      - name: Create draft release and add artifacts
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: true
+          files: srcs-full-*
