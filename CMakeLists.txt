@@ -17,10 +17,6 @@ project(
     HOMEPAGE_URL https://vistle.io
     LANGUAGES C CXX)
 
-if(APPLE AND ${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
-    set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} /opt/homebrew)
-endif()
-
 message("CMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}")
 if("${CMAKE_SYSTEM_NAME}" STREQUAL "CrayLinuxEnvironment")
     message("compiling for Cray")
