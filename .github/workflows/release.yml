@@ -1,9 +1,9 @@
 name: Make Release
 
 on:
+  workflow_dispatch:
   release:
     types: [created]
-  workflow_dispatch:
 
 jobs:
   generate:
@@ -17,7 +17,6 @@ jobs:
         uses: qmonnet/git-archive-all-action@v1
         with:
           output-files: vistle-${{ github.ref_name }}.tar.gz vistle-${{ github.ref_name }}.zip
-          base-repo: vistle
           force-submodules: true
 
       - name: Create draft release and add artifacts
