@@ -4,7 +4,7 @@ Vistle - A Modular Data-Parallel Visualization System
 =====================================================
 
 > **vistle**:
->	very smooth and elegant, nicely put together ([Urban Dictionary](http://www.urbandictionary.com/define.php?term=vistle))
+>	very smooth and elegant, nicely put together ([Urban Dictionary](https://www.urbandictionary.com/define.php?term=vistle))
 
 
 License
@@ -42,10 +42,9 @@ Installation
 - **C++ compiler**:
   support for C++14 (ISO/IEC 14882:2014) is required,
   known good compilers:
-
-      - GCC (8-13)
-      - Clang (Xcode 14, 15)
-      - Microsoft Visual Studio 2022
+    - GCC (8-13)
+    - Clang (Xcode 14, 15)
+    - Microsoft Visual Studio 2022
 
 - **CMake**:
   at least 3.10, on Windows 3.15
@@ -56,7 +55,6 @@ Installation
 - **Boost**:
   At least 1.59.00 is required.
      Notes:
-
      - in order to switch MPI implementations without requiring a recompilation of Boost, we compile Boost.MPI together with Vistle
 
 - Botan:
@@ -69,14 +67,10 @@ Installation
 - **COVISE/OpenCOVER**:
   OpenCOVER or a version of COVISE including OpenCOVER compiled by you is necessary, get it from
   [GitHub](https://github.com/hlrs-vis/covise), needed for the COVER module and COVER plug-ins
- 
-      You can shorten the build process and cut down on dependencies by [building only OpenCOVER](https://github.com/hlrs-vis/covise#building-only-opencover).
-
-      In addition you should set `COVISEDESTDIR` to a location where compiled COVER plug-ins
-      should go.
-
-      Hint: The COVISE repository contains further information on how to build dependencies
-      on Linux ([README-Building-deps-linux.txt](https://raw.githubusercontent.com/hlrs-vis/covise/master/README-Building-deps-linux.txt)) and Windows ([README-Building-deps.txt](https://raw.githubusercontent.com/hlrs-vis/covise/master/README-Building-deps.txt)).
+  You can shorten the build process and cut down on dependencies by [building only OpenCOVER](https://github.com/hlrs-vis/covise#building-only-opencover).
+  In addition you should set `COVISEDESTDIR` to a location where compiled COVER plug-ins should go.
+      Hints:
+      - The COVISE repository contains further information on how to build dependencies on Linux ([README-Building-deps-linux.txt](https://raw.githubusercontent.com/hlrs-vis/covise/master/README-Building-deps-linux.txt)) and Windows ([README-Building-deps.txt](https://raw.githubusercontent.com/hlrs-vis/covise/master/README-Building-deps.txt)).
 
 - **OpenSceneGraph**:
   the version of OpenSceneGraph that was used for compiling OpenCOVER
