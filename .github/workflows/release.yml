@@ -17,8 +17,8 @@ jobs:
       - name: Package source code including submodules
         uses: qmonnet/git-archive-all-action@v1
         with:
-          output-files: srcs-full-${{ github.ref_name }}.tar.gz srcs-full-${{ github.ref_name }}.zip
-          base-repo: project
+          output-files: vistle-${{ github.ref_name }}.tar.gz vistle-${{ github.ref_name }}.zip
+          base-repo: vistle
           force-submodules: true
 
       - name: Create draft release and add artifacts
