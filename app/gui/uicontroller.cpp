@@ -332,7 +332,7 @@ void UiController::loadDataFlowNetworkOnHub()
         const auto &files = browser->selectedFiles();
         if (!files.empty()) {
             QString filename = files[0];
-            qDebug() << "open" << filename;
+            //qDebug() << "open" << filename;
             vistle::message::LoadWorkflow load(filename.toStdString());
             m_ui->sendMessage(load);
             m_currentFileOnHub = vistle::message::Id::MasterHub;
@@ -407,7 +407,7 @@ void UiController::saveDataFlowNetworkOnHub(const QString &pathname)
         const auto &files = browser->selectedFiles();
         if (!files.empty()) {
             QString filename = files[0];
-            qDebug() << "save" << filename;
+            //qDebug() << "save" << filename;
             vistle::message::SaveWorkflow save(filename.toStdString());
             m_ui->sendMessage(save);
             m_currentFile = filename;
@@ -531,7 +531,7 @@ void UiController::setCurrentFile(QString file, int loaderId)
     m_currentFile = file;
     m_currentFileOnHub = loaderId;
     m_mainWindow->setFilename(m_currentFile);
-    qDebug() << "current" << m_currentFile << loaderId;
+    //qDebug() << "current" << m_currentFile << loaderId;
 }
 
 void UiController::setSessionUrl(QString url)
