@@ -828,11 +828,11 @@ void RemoteConnection::handleTileMeta(const RemoteRenderMessage &remote, const t
     }
 #endif
 #endif
-    if (currentFrame > msg.frameNumber) {
+    if (currentFrame >= 0 && currentFrame > msg.frameNumber) {
         CERR << "receiving tiles out of order: expectecd at least frame no. " << currentFrame << ", but got "
              << msg.frameNumber << std::endl;
     }
-    assert(msg.frameNumber >= currentFrame);
+    assert(currentFrame < 0 || msg.frameNumber >= currentFrame);
     if (expectNewFrame && msg.frameNumber == currentFrame) {
         CERR << "receiving tile after last tile for frame " << currentFrame << ", but got " << msg.frameNumber
              << std::endl;
