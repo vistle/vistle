@@ -12,25 +12,39 @@ if [ "$CMAKE_GENERATOR" = "Ninja" ]; then
     export CMAKE_GENERATOR="Ninja Multi-Config"
 fi
 
-system="${os}${arch}"
-case $os in
-    freebsd) system="$os" ;;
-esac
+if [ -z "$SPACK_ENV" ]; then
+    if [ -e .spack ]; then
+        env="$(cat .spack)"
+        eval $(spack env activate --sh "$env") && echo
+    fi
+fi
+if [ -n "$SPACK_ENV" ]; then
+    if [ -z "$ARCHSUFFIX" ]; then
+        env="${SPACK_ENV##*/}"
+        export ARCHSUFFIX="spack${env%default}"
+    fi
+    builddir="build-spack${env%default}"
+else
+    builddir="build-$os$arch"
+fi
 
+mpi=""
+libvar=LD_LIBRARY_PATH
 case $os in
     freebsd)
         PATH_add /usr/local/mpi/openmpi/bin
         ;;
-esac
-
-mpi=""
-if [ "$os" != "darwin" ]; then
-    if which mpirun >/dev/null 2>&1; then
-        if mpirun -version | grep open-mpi\.org > /dev/null; then
-             mpi="-ompi"
+    darwin)
+        libvar=DYLD_LIBRARY_PATH
+        ;;
+    *)
+        if which mpirun >/dev/null 2>&1; then
+            if mpirun -version | grep open-mpi\.org > /dev/null; then
+                 mpi="-ompi"
+            fi
         fi
-    fi
-fi
+        ;;
+esac
 
 if [ -z ${MANPATH} ]; then
 case $os in
@@ -44,30 +58,17 @@ esac
 fi
 path_add MANPATH "$(pwd -P)/3rdparty/IceT/doc/man"
 
-builddir="build-${system}${mpi}"
-if [ "$(which icc 2>/dev/null)" != "" ]; then
-   builddir="build-icc"
-   test -z "${COMPILER}" && COMPILER=intel
-fi
-
-if [ "$CRAY_PRGENVGNU" = "loaded" ]; then
-   COMPILER=gnu
-fi
-
 if [ -z "${COVISEDIR}" -a -d "../covise" ]; then
    export COVISEDIR="$(cd ../covise; pwd -P)"
 fi
-
 if [ -z "${COVISEDIR}" -a -d "${HOME}/covise" ]; then
    export COVISEDIR=${HOME}/covise
 fi
-
 if [ -z "${COVISEDIR}" ]; then
    if which print_covise_env >/dev/null 2>&1; then
        export COVISEDIR="$(print_covise_env COVISEDIR)" >/dev/null 2>&1
    fi
 fi
-
 if [ -n "${COVISEDIR}" ]; then
     . "${COVISEDIR}/.covise.sh"
 fi
@@ -80,77 +81,66 @@ elif [ -s .flavor ]; then
 fi
 
 if [ -f .release ]; then
-    builddir="${builddir}-release"
     if [ -n "${ARCHSUFFIX}" -a "${ARCHSUFFIX%opt}" = "${ARCHSUFFIX}" ]; then
         ARCHSUFFIX="${ARCHSUFFIX}opt"
     fi
+    VISTLE_BUILD_TYPE=Release
+    builddir="${builddir}-release"
 elif [ -f .debug ]; then
-    builddir="${builddir}-debug"
     if [ "${ARCHSUFFIX%opt}" != "${ARCHSUFFIX}" ]; then
         : ARCHSUFFIX="${ARCHSUFFIX%opt}"
     fi
-fi
-if [ -n "${ARCHSUFFIX}" ]; then
-    export ARCHSUFFIX
-fi
-
-if [ -z "$VISTLE_BUILD_TYPE" ]; then
+    VISTLE_BUILD_TYPE=Debug
+    builddir="${builddir}-debug"
+else
+    if [ -n "${ARCHSUFFIX}" -a "${ARCHSUFFIX%opt}" = "${ARCHSUFFIX}" ]; then
+        ARCHSUFFIX="${ARCHSUFFIX}opt"
+    fi
     VISTLE_BUILD_TYPE=RelWithDebInfo
 fi
 export VISTLE_BUILD_TYPE
 
-case "$system" in
-   darwin64|darwinarm64)
-   if [ -n "$COVISEDIR" ]; then
-       export EXTERNLIBS="$($COVISEDIR/bin/print_covise_env EXTERNLIBS)"
-       path_add DYLD_LIBRARY_PATH "${COVISEDIR}/$(${COVISEDIR}/bin/print_covise_env ARCHSUFFIX)/lib"
-       path_add DYLD_LIBRARY_PATH "$(${COVISEDIR}/bin/print_covise_env EXTERNLIBS)/ALL/lib"
-       path_add DYLD_FRAMEWORK_PATH "$(${COVISEDIR}/bin/print_covise_env EXTERNLIBS)/ALL"
-   fi
-   path_add DYLD_LIBRARY_PATH "$builddir/lib/$VISTLE_BUILD_TYPE"
-   export DYLD_LIBRARY_PATH DYLD_FRAMEWORK_PATH
-   export VISTLE_DYLD_LIBRARY_PATH="$DYLD_LIBRARY_PATH"
-   export VISTLE_DYLD_FRAMEWORK_PATH="$DYLD_FRAMEWORK_PATH"
-   ;;
-   linux64)
-   if [ -z "$EXTERNLIBS" ]; then
-      extlibs="$(${COVISEDIR}/bin/print_covise_env EXTERNLIBS)"
-      if [ -d "$extlibs" ]; then
-         export EXTERNLIBS="$extlibs"
-      elif [ -d /data/extern_libs ]; then
-         export EXTERNLIBS="/data/extern_libs/${ARCHSUFFIX%opt}"
-      fi
-   fi
+if [ -n "${ARCHSUFFIX}" ]; then
+    export ARCHSUFFIX
+fi
 
-    if [ -n "$EXTERNLIBS" ]; then
-        path_add LD_LIBRARY_PATH "$(${COVISEDIR}/bin/print_covise_env EXTERNLIBS)/ALL/lib64"
-        path_add LD_LIBRARY_PATH "$(${COVISEDIR}/bin/print_covise_env EXTERNLIBS)/ALL/lib"
-    fi
-   path_add LD_LIBRARY_PATH "${COVISEDIR}/$(${COVISEDIR}/bin/print_covise_env ARCHSUFFIX)/lib"
-   path_add LD_LIBRARY_PATH "${builddir}/lib/$VISTLE_BUILD_TYPE"
-   ;;
-   freebsd*)
-   if [ -z "$EXTERNLIBS" ]; then
-      extlibs="$(${COVISEDIR}/bin/print_covise_env EXTERNLIBS)"
-      if [ -d "$extlibs" ]; then
-         export EXTERNLIBS="$extlibs"
-      elif [ -d /data/extern_libs ]; then
-         export EXTERNLIBS="/data/extern_libs/${ARCHSUFFIX%opt}"
-      fi
-   fi
-    if [ -n "$EXTERNLIBS" ]; then
-        path_add LD_LIBRARY_PATH "$(${COVISEDIR}/bin/print_covise_env EXTERNLIBS)/ALL/lib"
-    fi
-   path_add LD_LIBRARY_PATH "${COVISEDIR}/$(${COVISEDIR}/bin/print_covise_env ARCHSUFFIX)/lib"
-   path_add LD_LIBRARY_PATH "${builddir}/lib/$VISTLE_BUILD_TYPE"
+if [ -n "$COVISEDIR" ]; then
+    case "$ARCHSUFFIX" in
+        spack*)
+        ;;
+        *)
+            extlibs="$($COVISEDIR/bin/print_covise_env EXTERNLIBS)"
+            if [ -n "$extlibs" -a -d "$extlibs" ]; then
+                export EXTERNLIBS="$extlibs"
+                path_add ${libvar} "${EXTERNLIBS}/ALL/lib"
+                if [ -d "${EXTERNLIBS}/ALL/lib64" ]; then
+                    path_add ${libvar} "${EXTERNLIBS}/ALL/lib64"
+                fi
+            fi
+        ;;
+    esac
+    path_add ${libvar} "${COVISEDIR}/${ARCHSUFFIX}/lib"
+    path_add ${libvar} "$builddir/lib/$VISTLE_BUILD_TYPE"
+
+    export COVISEDESTDIR="$(pwd -P)/${builddir}"
+    export COVISE_PATH="$COVISEDESTDIR:$COVISEDIR"
+fi
+export ${libvar}
+
+case "$os" in
+   darwin*)
+       if [ -n "$EXTERNLIBS" -a -d "$EXTERNLIBS"/ALL ]; then
+           path_add DYLD_FRAMEWORK_PATH "$(${COVISEDIR}/bin/print_covise_env EXTERNLIBS)/ALL"
+           export DYLD_FRAMEWORK_PATH
+           export VISTLE_DYLD_FRAMEWORK_PATH="$DYLD_FRAMEWORK_PATH"
+       fi
+       export VISTLE_DYLD_LIBRARY_PATH="$DYLD_LIBRARY_PATH"
    ;;
 esac
 
 export VMAKE_BUILD="$builddir"
 echo Build: "$builddir, ${ARCHSUFFIX:-no ARCHSUFFIX}, type=$VISTLE_BUILD_TYPE"
 
-export COVISEDESTDIR="$(pwd -P)/${builddir}"
-export COVISE_PATH="$COVISEDESTDIR:$COVISEDIR"
 path_add PYTHONPATH "${builddir}/lib/$VISTLE_BUILD_TYPE"
 path_add PYTHONPATH "${builddir}/share/vistle"
 path_add PYTHONPATH "${COVISEDIR}/Python"
