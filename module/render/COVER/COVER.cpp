@@ -342,11 +342,12 @@ bool COVER::changeParameter(const Parameter *p)
 void COVER::prepareQuit()
 {
     removeAllObjects();
-    coVRPluginList::instance()->removeNode(vistleRoot, true, vistleRoot);
-    if (cover)
-        cover->getObjectsRoot()->removeChild(vistleRoot);
-    vistleRoot.release();
-
+    if (vistleRoot) {
+        coVRPluginList::instance()->removeNode(vistleRoot, true, vistleRoot);
+        if (cover)
+            cover->getObjectsRoot()->removeChild(vistleRoot);
+        vistleRoot.release();
+    }
     m_config->setWorkspaceBridge(nullptr);
     m_coverConfigBridge.reset();
 

@@ -16,19 +16,20 @@
 #include <vtkAlgorithm.h>
 #include <vtkCellArray.h>
 #include <vtkCellData.h>
+#include <vtkCompositeDataSet.h>
 #include <vtkImageData.h>
 #include <vtkInformation.h>
 #include <vtkLagrangeHexahedron.h>
 #include <vtkPointData.h>
 #include <vtkPolyData.h>
 #include <vtkRectilinearGrid.h>
+#include <vtkSOADataArrayTemplate.h>
 #include <vtkStructuredGrid.h>
 #include <vtkStructuredPoints.h>
 #include <vtkStructuredPoints.h>
 #include <vtkUniformGrid.h>
 #include <vtkUnstructuredGrid.h>
 
-#include <vtkCompositeDataSet.h>
 #if VTK_MAJOR_VERSION < 6
 #include <vtkTemporalDataSet.h>
 #define HAVE_VTK_TEMP
@@ -257,26 +258,7 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, bool checkConvex)
                       << " cells are non-convex" << std::endl;
         }
     }
-    auto numCorners = cugrid->getNumCorners();
-    auto numVerticees = cugrid->getNumVertices();
 
-    if ((cugrid->d()->cl->size()) > size_t(InvalidIndex))
-        return nullptr;
-    if ((cugrid->d()->el->size()) > size_t(InvalidIndex))
-        return nullptr;
-    assert(cugrid->d()->el->check());
-    assert(cugrid->d()->cl->check());
-    assert(cugrid->d()->el->size() > 0);
-    assert(cugrid->el()[0] == 0);
-    if (cugrid->getNumElements() > 0) {
-        assert(cugrid->el()[cugrid->getNumElements() - 1] < cugrid->getNumCorners());
-        assert(cugrid->el()[cugrid->getNumElements()] == cugrid->getNumCorners());
-    }
-
-    if (cugrid->getNumCorners() > 0) {
-        assert(cugrid->cl()[0] < cugrid->getNumVertices());
-        assert(cugrid->cl()[cugrid->getNumCorners() - 1] < cugrid->getNumVertices());
-    }
     return cugrid;
 }
 
@@ -568,6 +550,7 @@ DataBase::ptr vtkArray2Vistle(vtkType *vd, Object::const_ptr grid)
 
     return nullptr;
 }
+
 #ifdef SENSEI
 } // anonymous namespace
 #endif
@@ -609,6 +592,10 @@ DataBase::ptr vtkData2Vistle(vtkDataArray *varr, Object::const_ptr grid)
         return vtkArray2Vistle<unsigned int, vtkUnsignedIntArray>(vd, grid);
     } else if (vtkUnsignedCharArray *vd = dynamic_cast<vtkUnsignedCharArray *>(varr)) {
         return vtkArray2Vistle<unsigned char, vtkUnsignedCharArray>(vd, grid);
+    } else if (vtkSOADataArrayTemplate<float> *vd = dynamic_cast<vtkSOADataArrayTemplate<float> *>(varr)) {
+        return vtkArray2Vistle<float, vtkSOADataArrayTemplate<float>>(vd, grid);
+    } else if (vtkSOADataArrayTemplate<double> *vd = dynamic_cast<vtkSOADataArrayTemplate<double> *>(varr)) {
+        return vtkArray2Vistle<double, vtkSOADataArrayTemplate<double>>(vd, grid);
     }
 
     return nullptr;

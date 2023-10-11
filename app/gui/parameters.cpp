@@ -400,8 +400,8 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
             QString tip = QString("%1 (default: %2)").arg(QString::fromStdString(p->description()), defString);
             prop->setStatusTip(tip);
         } else {
-            m_intManager->setValue(prop, ip->getValue());
             m_intManager->setRange(prop, ip->minimum(), ip->maximum());
+            m_intManager->setValue(prop, ip->getValue());
 
             QString tip = QString("%1 (default: %2, %3 – %4)")
                               .arg(QString::fromStdString(p->description()), QString::number(ip->getDefaultValue()),
@@ -409,8 +409,8 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
             prop->setStatusTip(tip);
         }
     } else if (auto fp = std::dynamic_pointer_cast<vistle::FloatParameter>(p)) {
-        m_floatManager->setValue(prop, fp->getValue());
         m_floatManager->setRange(prop, fp->minimum(), fp->maximum());
+        m_floatManager->setValue(prop, fp->getValue());
         m_floatManager->setDecimals(prop, NumDec);
         double range = fp->maximum() - fp->minimum();
         double step = 1.;
@@ -457,8 +457,8 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
             m_vectorManager->setDecimals(prop, NumDec);
             m_vectorManager->setDimension(prop, value.dim);
         }
-        m_vectorManager->setValue(prop, value);
         m_vectorManager->setRange(prop, vp->minimum(), vp->maximum());
+        m_vectorManager->setValue(prop, value);
         QString tip;
         switch (value.dim) {
         case 1:
@@ -487,8 +487,8 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
             prop = m_intVectorManager->addProperty(displayName(parameterName));
             m_intVectorManager->setDimension(prop, value.dim);
         }
-        m_intVectorManager->setValue(prop, value);
         m_intVectorManager->setRange(prop, vp->minimum(), vp->maximum());
+        m_intVectorManager->setValue(prop, value);
     } else {
         std::cerr << "parameter type not handled in Parameters::parameterValueChanged" << std::endl;
     }
@@ -605,7 +605,7 @@ void Parameters::propertyChanged(QtProperty *prop)
         return;
     }
     if (changed) {
-        std::cerr << "sending new value for " << paramName << std::endl;
+        //std::cerr << "sending new value for " << paramName << std::endl;
         m_vistle->sendParameter(p);
     }
 }

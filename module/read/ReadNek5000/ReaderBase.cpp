@@ -282,17 +282,15 @@ bool ReaderBase::parseMetaDataFile()
             //from the header
             string t;
             f >> t;
-            if (tag == "binary") {
+            if (t == "binary") {
                 m_isBinary = true;
-            } else if (tag == "binary6") {
+            } else if (t == "binary6") {
                 m_isBinary = true;
                 m_isParallelFormat = true;
-            } else if (tag == "ascii") {
+            } else if (t == "ascii") {
                 m_isBinary = false;
             } else {
                 sendError(".nek5000: Value following \"type\" must be \"ascii\" or \"binary\" or \"binary6\"");
-                if (f.is_open())
-                    f.close();
                 return false;
             }
         } else if (tag == "numoutputdirs:") {
@@ -316,30 +314,27 @@ bool ReaderBase::parseMetaDataFile()
             f >> version;
         } else {
             sendError(".nek5000: Error parsing file.  Unknown tag " + tag);
-            if (f.is_open())
-                f.close();
             return false;
         }
     }
 
     if (m_numberOfTimePeriods < 1) {
         sendError(".nek5000: The number of time periods must be 1 or more.");
+        return false;
     }
     if (m_numberOfTimePeriods > 1 && m_gapBetweenTimePeriods <= 0.0) {
         sendError(".nek5000: The gap between time periods must be non-zero.");
-        if (f.is_open())
-            f.close();
         return false;
     }
 
     //Do a little consistency checking before moving on
     if (fileTemplate == "") {
         sendError(".nek5000: A tag called filetemplate: must be specified");
-        if (f.is_open())
-            f.close();
         return false;
     }
-    f.close();
+
+    if (f.is_open())
+        f.close();
 
     // make the file template, which is normally relative to the file being opened,
     // into an absolute path
@@ -368,8 +363,6 @@ bool ReaderBase::parseMetaDataFile()
             fileTemplate[ii] = '\\';
     }
 #endif
-    if (f.is_open())
-        f.close();
     return true;
 }
 
@@ -505,9 +498,6 @@ bool ReaderBase::ParseNekFileHeader()
         f >> tag;
         if (tag != "#std") {
             sendError("Nek: Error reading the header.  Expected it to start with #std");
-            if (f.is_open()) {
-                f.close();
-            }
             return false;
         }
         f >> m_precision;
@@ -569,9 +559,6 @@ bool ReaderBase::ParseNekFileHeader()
                 m_swapEndian = true;
             else {
                 sendError("Nek: Error reading file, while trying to determine endianness.");
-                if (f.is_open()) {
-                    f.close();
-                }
                 return false;
             }
         }
@@ -623,7 +610,7 @@ void ReaderBase::ParseFieldTags(ifstream &f)
             break;
     }
     if (!foundCoordinates) {
-        sendError("Nek: The first time step in a Nek file must contain a grid");
+        sendError("Nek: The first time step in a Nek case must contain a grid");
     }
 }
 
