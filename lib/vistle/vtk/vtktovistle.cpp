@@ -86,7 +86,7 @@ std::array<Index, UnstructuredGrid::NumVertices[UnstructuredGrid::HEXAHEDRON]> a
     // Get the point coordinates (and optionally scalars) for each of the 8 corners
     // in the approximating hexahedron spanned by (i, i+1) x (j, j+1) x (k, k+1):
     std::array<Index, UnstructuredGrid::NumVertices[UnstructuredGrid::HEXAHEDRON]> linearSubHex;
-    for (int ic = 0; ic < linearSubHex.size(); ++ic) {
+    for (int ic = 0; ic < (int)linearSubHex.size(); ++ic) {
         int corner = vtkHigherOrderHexahedron::PointIndexFromIJK(
             i + ((((ic + 1) / 2) % 2) ? 1 : 0), j + (((ic / 2) % 2) ? 1 : 0), k + ((ic / 4) ? 1 : 0), order);
         linearSubHex[ic] = corner;
@@ -105,7 +105,6 @@ Index lagrangeConnectivityToLinearHexahedron(const int order[], const vtkIdType 
             connlist.emplace_back(conectivityLagrange[subIndicees[j]]);
         }
     }
-    std::cerr << std::endl;
     return numElements;
 }
 
@@ -149,7 +148,7 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, bool checkConvex)
     Scalar *zc = cugrid->z().data();
     Index *elems = cugrid->el().data();
     auto &connlist = cugrid->cl();
-    if (vtkCellArray *vcellarray = vugrid->GetCells()) {
+    if (vugrid->GetCells()) {
         connlist.reserve(sizes.numConnectivities);
     } else {
         return cugrid;
@@ -192,8 +191,8 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, bool checkConvex)
             break;
         case VTK_LAGRANGE_HEXAHEDRON: {
             auto lagrangeCell = dynamic_cast<vtkLagrangeHexahedron *>(vugrid->GetCell(i));
-            for (size_t j = 0;
-                 j < lagrangeCell->GetOrder()[0] * lagrangeCell->GetOrder()[1] * lagrangeCell->GetOrder()[2]; j++) {
+            for (int j = 0; j < lagrangeCell->GetOrder()[0] * lagrangeCell->GetOrder()[1] * lagrangeCell->GetOrder()[2];
+                 j++) {
                 typelist[elemVistle] = UnstructuredGrid::HEXAHEDRON;
                 elems[elemVistle++] = connlist.size() + j * UnstructuredGrid::NumVertices[UnstructuredGrid::HEXAHEDRON];
             }
