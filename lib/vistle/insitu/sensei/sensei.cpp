@@ -49,7 +49,7 @@ struct Internals {
 
     std::unique_ptr<message::InSituShmMessage> messageHandler;
     // options that can be set in the module
-    std::vector<message::IntParam> moduleParams{{"frequency", 1}, {"keep timesteps", true}};
+    std::vector<message::IntParam> moduleParams{{"frequency", 1}, {"keep_timesteps", true}};
 };
 } // namespace detail
 } // namespace sensei
@@ -188,7 +188,7 @@ void Adapter::processData()
     }
     m_internals->sendMessageQueue->sendObjects();
 
-    if (message::getIntParamValue(m_internals->moduleParams, "keep timesteps"))
+    if (message::getIntParamValue(m_internals->moduleParams, "keep_timesteps"))
         ++m_processedTimesteps;
     else
         ++m_iterations;
@@ -300,7 +300,7 @@ bool Adapter::recvAndHandeMessage(bool blocking)
     case InSituMessageType::IntOption: {
         auto option = msg.unpackOrCast<IntOption>().value;
         updateIntParam(m_internals->moduleParams, option);
-        if (option.name == "keep timesteps") {
+        if (option.name == "keep_timesteps") {
             m_processedTimesteps = 0;
             ++m_iterations;
         }
