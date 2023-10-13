@@ -101,8 +101,7 @@ bool ToUnstructured::compute()
                 Cartesian3<Index>(grid->getNumDivisions(0), grid->getNumDivisions(1), grid->getNumDivisions(2));
 
             auto structuredGrid = StructuredGrid::as(gridObj);
-            UnstructuredGrid::ptr unstrGridOut(
-                new UnstructuredGrid(numElements, numCorners, structuredGrid ? 0 : numVerticesTotal));
+            unstrGridOut.reset(new UnstructuredGrid(numElements, numCorners, structuredGrid ? 0 : numVerticesTotal));
 
             // construct type list and element list
             for (Index i = 0; i < numElements; i++) {
