@@ -1,16 +1,7 @@
-if(APPLE)
-    # find keg-only libarchive from homebrew
-    if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
-        set(LibArchive_ROOT /opt/homebrew/opt/libarchive)
-    else()
-        set(LibArchive_ROOT /usr/local/opt/libarchive)
-    endif()
-endif()
 vistle_find_package(LibArchive)
-
 vistle_find_package(LIBZIP)
-
 vistle_find_package(ZLIB)
+
 if(NOT Boost_FOUND)
     return()
 endif()

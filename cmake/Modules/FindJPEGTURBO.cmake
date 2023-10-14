@@ -30,8 +30,6 @@ find_path(
     $ENV{EXTERNLIBS}/libjpeg-turbo
     ~/Library/Frameworks
     /Library/Frameworks
-    /opt/homebrew/opt/jpeg-turbo # Homebrew on arm64
-    /usr/local/opt/jpeg-turbo # Homebrew
     /usr/local
     /usr
     /sw # Fink
@@ -48,8 +46,6 @@ find_path(
           $ENV{EXTERNLIBS}/libjpeg-turbo/include
           ~/Library/Frameworks/include
           /Library/Frameworks/include
-          /opt/homebrew/opt/jpeg-turbo/include
-          /usr/local/opt/jpeg-turbo/include
           /usr/local/include
           /usr/include
           /sw/include # Fink
@@ -76,8 +72,6 @@ find_library(
           ~/Library/Frameworks
           /Library/Frameworks
           /usr/local
-          /opt/homebrew/opt/jpeg-turbo
-          /usr/local/opt/jpeg-turbo
           /usr
           /sw
           /opt/local
@@ -97,8 +91,6 @@ if(MSVC)
               ~/Library/Frameworks
               /Library/Frameworks
               /usr/local
-              /opt/homebrew/opt/jpeg-turbo
-              /usr/local/opt/jpeg-turbo
               /usr
               /sw
               /opt/local
@@ -117,8 +109,6 @@ find_library(
           ~/Library/Frameworks
           /Library/Frameworks
           /usr/local
-          /opt/homebrew/opt/jpeg-turbo
-          /usr/local/opt/jpeg-turbo
           /usr
           /sw
           /opt/local
@@ -137,8 +127,6 @@ find_library(
           ~/Library/Frameworks
           /Library/Frameworks
           /usr/local
-          /opt/homebrew/opt/jpeg-turbo
-          /usr/local/opt/jpeg-turbo
           /usr
           /sw
           /opt/local
@@ -157,8 +145,6 @@ if(MSVC)
               ~/Library/Frameworks
               /Library/Frameworks
               /usr/local
-              /opt/homebrew/opt/jpeg-turbo
-              /usr/local/opt/jpeg-turbo
               /usr
               /sw
               /opt/local
