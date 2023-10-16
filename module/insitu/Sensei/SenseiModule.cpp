@@ -54,7 +54,7 @@ std::unique_ptr<insitu::message::MessageHandler> SenseiModule::connectToSim()
         }
     }
     try {
-        return std::make_unique<message::InSituShmMessage>(key, m_rank);
+        return std::make_unique<message::InSituShmMessage>(key, m_simulationCommandsComm);
     } catch (const insitu::InsituException &e) {
         std::cerr << e.what() << '\n';
         return nullptr;

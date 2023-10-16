@@ -24,6 +24,7 @@ public:
 protected:
     vistle::StringParameter *m_filePath = nullptr;
     std::vector<const vistle::IntParameter *> m_intOptions;
+    mpi::communicator m_simulationCommandsComm;
 
     virtual std::unique_ptr<insitu::message::MessageHandler> connectToSim() = 0;
     virtual bool changeParameter(const Parameter *p) override;
@@ -36,17 +37,20 @@ private:
     std::set<vistle::Parameter *> m_customCommandParameter; // string inputs to trigger simulation commands
 
     std::unique_ptr<vistle::message::MessageQueue>
-        m_receiveFromSimMessageQueue; // receives vistle messages that will be passed through to manager
+        m_vistleObjectsMessageQueue; // receives vistle messages that will be passed through to manager
 
     //...................................................................................
 
     int m_instanceNum = 0; //to get a unique shm name when connecting to a different simulation
-    //this thread receives and handles messages from the simulation (via m_messageHandler) and caches the produces data objects
-    //for prepare to forward them to the vistle pipeline
-    std::unique_ptr<std::thread> m_communicationThread;
-    std::mutex m_communicationMutex;
     std::atomic_bool m_terminateCommunication{false};
-    std::list<vistle::message::Buffer> m_cachedVistleObjects;
+    //this thread receives and handles messages from the simulation (via m_messageHandler)
+    std::unique_ptr<std::thread> m_simulationCommandsThread;
+    //this thread caches the produced data objects for prepare to forward them to the vistle pipeline
+    std::unique_ptr<std::thread> m_vistleObjectsThread;
+    std::mutex m_vistleObjectsMutex;
+    mpi::communicator m_vistleObjectsComm;
+    std::vector<std::vector<vistle::message::Buffer>> m_cachedVistleObjects;
+
 
     //..........................................................................
     // module functions
@@ -56,8 +60,8 @@ private:
     void connectionRemoved(const Port *from, const Port *to) override;
 
     //..........................................................................
-    void startCommunicationThread();
-    void terminateCommunicationThread();
+    void startCommunicationThreads();
+    void terminateCommunicationThreads();
 
     void communicateWithSim();
     void initRecvFromSimQueue();
@@ -67,7 +71,7 @@ private:
     void updateMeta(const vistle::message::Buffer &obj);
 
     bool recvAndhandleMessage();
-    bool recvVistleObjects();
+    void recvVistleObjects();
     bool cacheVistleObjects();
 
     bool handleInsituMessage(insitu::message::Message &msg);

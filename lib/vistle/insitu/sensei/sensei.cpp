@@ -43,7 +43,7 @@ int getRank(MPI_Comm Comm)
 }
 
 struct Internals {
-    Internals(int rank): messageHandler(std::make_unique<message::InSituShmMessage>(rank)) {}
+    Internals(MPI_Comm comm): messageHandler(std::make_unique<message::InSituShmMessage>(comm)) {}
     message::ModuleInfo moduleInfo;
     std::unique_ptr<message::AddObjectMsq> sendMessageQueue; // Queue to send addObject messages to module
 
@@ -58,7 +58,7 @@ struct Internals {
 
 Adapter::Adapter(bool paused, MPI_Comm Comm, MetaData &&meta, ObjectRetriever cbs, const std::string &vistleRoot,
                  const std::string &vistleBuildType, const std::string &options)
-: m_callbacks(std::move(cbs)), m_metaData(std::move(meta)), m_internals(new detail::Internals{detail::getRank(Comm)})
+: m_callbacks(std::move(cbs)), m_metaData(std::move(meta)), m_internals(new detail::Internals{Comm})
 {
     MPI_Comm_rank(Comm, &m_rank);
     MPI_Comm_size(Comm, &m_mpiSize);

@@ -5,6 +5,7 @@
 #include "export.h"
 #include <vistle/util/boost_interprocess_config.h>
 #include <boost/interprocess/ipc/message_queue.hpp>
+#include <mpi.h>
 namespace vistle {
 namespace insitu {
 namespace message {
@@ -18,8 +19,8 @@ struct ShmMsg {
 
 class V_INSITUMESSAGEEXPORT InSituShmMessage: public MessageHandler {
 public:
-    InSituShmMessage(int rank); // create a msq
-    InSituShmMessage(const std::string &msqName, int rank); // connect to a msq
+    InSituShmMessage(MPI_Comm Comm); // create a msq
+    InSituShmMessage(const std::string &msqName, MPI_Comm Comm); // connect to a msq
     ~InSituShmMessage();
     bool sendMessage(InSituMessageType type, const vistle::buffer &msg) const override;
 
@@ -39,6 +40,8 @@ private:
     const std::string m_sendSuffix =
         "_send_sensei"; // signature must contain _send_ for shm::cleanAll to remove these files
     size_t m_iteration = 0;
+    MPI_Comm m_comm;
+    int m_rank;
 };
 
 } // namespace message
