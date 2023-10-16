@@ -159,9 +159,9 @@ bool IndexManifolds::compute(const std::shared_ptr<BlockTask> &task) const
         } else {
             DataBase::ptr outdata = data->cloneType();
             outdata->copyAttributes(data);
+            outdata->setMapping(elementData ? DataBase::Element : DataBase::Vertex);
             outdata->setGrid(surface);
             outdata->setSize(elementData ? nquad : nvert);
-            outdata->setMapping(elementData ? DataBase::Element : DataBase::Vertex);
 
             Index cc[3]{c[0], c[1], c[2]};
             cc[dir1] = bghost[dir1];

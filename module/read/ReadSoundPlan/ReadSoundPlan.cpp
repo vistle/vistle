@@ -205,13 +205,13 @@ bool ReadSoundPlan::read(Token &token, int timestep, int block)
     meshObj->setTimestep(timestep);
     token.applyMeta(meshObj);
     token.addObject(m_meshOutPort, meshObj);
+    daySoundObj->setMapping(DataBase::Vertex);
     daySoundObj->setGrid(meshObj);
     daySoundObj->setBlock(block);
-    daySoundObj->setMapping(DataBase::Vertex);
     daySoundObj->setTimestep(timestep);
+    nightSoundObj->setMapping(DataBase::Vertex);
     nightSoundObj->setGrid(meshObj);
     nightSoundObj->setBlock(block);
-    nightSoundObj->setMapping(DataBase::Vertex);
     nightSoundObj->setTimestep(timestep);
     token.applyMeta(nightSoundObj);
     token.applyMeta(daySoundObj);

@@ -1438,6 +1438,7 @@ bool ReadCFX::loadFields(UnstructuredGrid::ptr grid, int area3d, int setMetaTime
         } else {
             auto index = std::distance(allParam.begin(), it);
             DataBase::ptr obj = loadField(area3d, allParam[index]);
+            obj->setMapping(DataBase::Vertex);
 
             if (std::find(trnVars.begin(), trnVars.end(), allParam[index].varName) == trnVars.end()) {
                 //variable exists only in resfile --> timestep = -1
@@ -1452,7 +1453,6 @@ bool ReadCFX::loadFields(UnstructuredGrid::ptr grid, int area3d, int setMetaTime
                 setMeta(obj, area3d, setMetaTimestep, timestep, numTimesteps, numSel3dArea, readTransientFile, t);
                 obj->setGrid(grid);
             }
-            obj->setMapping(DataBase::Vertex);
             obj->addAttribute("_species", field);
             m_currentVolumedata[i] = obj;
         }
@@ -1482,15 +1482,15 @@ bool ReadCFX::load2dFields(Polygons::ptr polyg, int area2d, int setMetaTimestep,
                 Matrix4 t = getTransformationMatrix(m_2dAreasSelected[area2d].idWithZone.zoneFlag, timestep,
                                                     ignoreZoneMotionForData);
                 setMeta(obj, area2d, setMetaTimestep, -1, numTimesteps, numSel2dArea, readTransientFile, t);
-                obj->setGrid(m_polygonsInTimestepForResfile[area2d]);
                 obj->setMapping(DataBase::Vertex);
+                obj->setGrid(m_polygonsInTimestepForResfile[area2d]);
             } else {
                 //variable exists in resfile and in transient files --> timestep = last
                 Matrix4 t = getTransformationMatrix(m_2dAreasSelected[area2d].idWithZone.zoneFlag, timestep,
                                                     ignoreZoneMotionForData);
                 setMeta(obj, area2d, setMetaTimestep, timestep, numTimesteps, numSel2dArea, readTransientFile, t);
-                obj->setGrid(polyg);
                 obj->setMapping(DataBase::Vertex);
+                obj->setGrid(polyg);
             }
             obj->addAttribute("_species", area2dField);
             m_current2dData[i] = obj;

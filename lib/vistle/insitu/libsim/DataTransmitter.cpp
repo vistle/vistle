@@ -284,8 +284,8 @@ vistle::Object::ptr DataTransmitter::makeVariable(const VariableInfo &varInfo, i
     } else {
         auto var = make_ptr<vistle::Vec<vistle::Scalar, 1>>((Index)varArray.size);
         transformArray(varArray, var->x().data());
-        var->setGrid(varInfo.meshInfo.grids[iteration]);
         var->setMapping(varInfo.mapping);
+        var->setGrid(varInfo.meshInfo.grids[iteration]);
         return var;
     }
 }

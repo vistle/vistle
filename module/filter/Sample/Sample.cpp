@@ -200,8 +200,8 @@ bool Sample::reduce(int timestep)
                 Object::const_ptr outGrid = objAtIdx;
                 outData->setTimestep(timestep);
                 outData->setBlock(blockIdx.at(n));
-                outData->setGrid(outGrid);
                 outData->setMapping(DataBase::Vertex);
+                outData->setGrid(outGrid);
                 outData->addAttribute("_species", "scalar");
                 updateMeta(outData);
                 addObject(m_out, outData);

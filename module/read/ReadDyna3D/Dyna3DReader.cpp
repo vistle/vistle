@@ -2738,8 +2738,8 @@ void Dyna3DReader<wordsize, INTEGER, REAL>::createStateObjects(vistle::Reader::T
             Vertex_out->setBlock(ID);
             Vertex_out->setTimestep(timestep);
             Vertex_out->setRealTime(m_currentTime);
-            Vertex_out->setGrid(grid_out);
             Vertex_out->setMapping(DataBase::Vertex);
+            Vertex_out->setGrid(grid_out);
             Vertex_out->addAttribute("_species", toString(nodalDataType));
             token.applyMeta(Vertex_out);
             token.addObject(vectorPort, Vertex_out);
@@ -2748,8 +2748,8 @@ void Dyna3DReader<wordsize, INTEGER, REAL>::createStateObjects(vistle::Reader::T
             Scalar_out->setBlock(ID);
             Scalar_out->setTimestep(timestep);
             Scalar_out->setRealTime(m_currentTime);
-            Scalar_out->setGrid(grid_out);
             Scalar_out->setMapping(DataBase::Element);
+            Scalar_out->setGrid(grid_out);
             Scalar_out->addAttribute("_species", toString(elementDataType));
             token.applyMeta(Scalar_out);
             token.addObject(scalarPort, Scalar_out);

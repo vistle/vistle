@@ -885,9 +885,9 @@ bool ReadSeisSol::readXdmfHDF5Data(Token &token, int timestep, int block)
         auto vatt_ptr = generateScalarFromXdmfAttribute(xatt.get(), timestep, block);
         if (checkObjectPtr(this, vatt_ptr, ERROR_ATT_GENERATION)) {
             /*************** Add attribute to port & set meta data **************/
+            vatt_ptr->setMapping(DataBase::Element);
             vatt_ptr->setGrid(vugrid_ptr);
             vatt_ptr->setBlock(block);
-            vatt_ptr->setMapping(DataBase::Element);
             vatt_ptr->addAttribute("_species", xatt->getName());
             vatt_ptr->setTimestep(timestep);
             token.applyMeta(vatt_ptr);

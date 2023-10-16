@@ -306,11 +306,11 @@ void MiniSimModule::execute(long step, float time)
         }
 
         //std::copy(data, data + grid->getNumVertices(), oscillation->x().begin());
+        oscillation->setMapping(DataBase::Mapping::Element);
         oscillation->setGrid(grid);
         oscillation->setTimestep(step);
         oscillation->setRealTime(time);
         oscillation->setBlock(block.first);
-        oscillation->setMapping(DataBase::Mapping::Element);
         oscillation->addAttribute("_species", "oscillation");
         Internals->sendMessageQueue->addObject(m_dataOut->getName(), oscillation);
     }

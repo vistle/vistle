@@ -107,8 +107,8 @@ struct VtkArray2VistleConverter {
                     }
                 }
             }
-            cv->setGrid(grid);
             cv->setMapping(m);
+            cv->setGrid(grid);
             return cv;
         } else {
             Vec<Scalar, 1>::ptr cf(new Vec<Scalar, 1>(n));
@@ -124,8 +124,8 @@ struct VtkArray2VistleConverter {
                     }
                 }
             }
-            cf->setGrid(grid);
             cf->setMapping(m);
+            cf->setGrid(grid);
             return cf;
         }
         std::cerr << "vtkArray2Vistle: something went wrong: [" << dim[0] << "*" << dim[1] << "*" << dim[2]

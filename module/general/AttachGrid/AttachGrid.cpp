@@ -59,13 +59,13 @@ bool AttachGrid::compute()
             assert(data[i]);
             auto out = data[i]->clone();
             out->copyAttributes(data[i]);
-            out->setGrid(grid);
             if (out->getSize() == numVert) {
                 out->setMapping(DataBase::Vertex);
             } else {
                 std::cerr << "cannot determine whether data is cell or vertex based: #vert grid=" << numVert
                           << ", #vert data=" << out->getSize() << std::endl;
             }
+            out->setGrid(grid);
             updateMeta(out);
             addObject(pout, out);
         }

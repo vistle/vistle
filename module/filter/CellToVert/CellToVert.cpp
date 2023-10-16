@@ -99,16 +99,16 @@ bool CellToVert::compute(const std::shared_ptr<BlockTask> &task) const
         auto mapping = data->guessMapping(grid);
         if (mapping == DataBase::Vertex) {
             auto ndata = data->clone();
-            ndata->setGrid(grid);
             ndata->setMapping(DataBase::Vertex);
+            ndata->setGrid(grid);
             updateMeta(ndata);
             task->addObject(data_out, ndata);
         } else {
             DataBase::ptr out = algo.interpolate(grid, data);
             if (out) {
                 out->copyAttributes(data);
-                out->setGrid(grid);
                 out->setMapping(DataBase::Vertex);
+                out->setGrid(grid);
                 updateMeta(out);
                 task->addObject(data_out, out);
             } else {
