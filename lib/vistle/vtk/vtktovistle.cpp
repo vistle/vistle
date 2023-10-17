@@ -11,6 +11,8 @@
 #include <vtkUnsignedShortArray.h>
 #include <vtkIntArray.h>
 #include <vtkUnsignedIntArray.h>
+#include <vtkLongArray.h>
+#include <vtkUnsignedLongArray.h>
 #include <vtkIdTypeArray.h>
 
 #include <vtkAlgorithm.h>
@@ -455,9 +457,10 @@ Object::ptr vtkRGrid2Vistle(vtkRectilinearGrid *vrgrid)
     return rgrid;
 }
 
-template<typename ValueType, class vtkType>
+template<typename ValueType, class vtkType, typename VistleScalar = vistle::Scalar>
 DataBase::ptr vtkArray2Vistle(vtkType *vd, Object::const_ptr grid)
 {
+    typedef VistleScalar S;
     bool perCell = false;
     const Index n = vd->GetNumberOfTuples();
     std::array<Index, 3> dim = {n, 1, 1};
@@ -475,8 +478,8 @@ DataBase::ptr vtkArray2Vistle(vtkType *vd, Object::const_ptr grid)
     }
     switch (vd->GetNumberOfComponents()) {
     case 1: {
-        Vec<Scalar, 1>::ptr cf = make_ptr<Vec<Scalar, 1>>(n);
-        Scalar *x = cf->x().data();
+        typename Vec<S, 1>::ptr cf = make_ptr<Vec<S, 1>>(n);
+        S *x = cf->x().data();
         Index l = 0;
         for (Index k = 0; k < dataDim[2]; ++k) {
             for (Index j = 0; j < dataDim[1]; ++j) {
@@ -492,9 +495,9 @@ DataBase::ptr vtkArray2Vistle(vtkType *vd, Object::const_ptr grid)
         return cf;
     } break;
     case 2: {
-        Vec<Scalar, 2>::ptr cv = make_ptr<Vec<Scalar, 2>>(n);
-        Scalar *x = cv->x().data();
-        Scalar *y = cv->y().data();
+        typename Vec<S, 2>::ptr cv = make_ptr<Vec<S, 2>>(n);
+        S *x = cv->x().data();
+        S *y = cv->y().data();
         Index l = 0;
         for (Index k = 0; k < dataDim[2]; ++k) {
             for (Index j = 0; j < dataDim[1]; ++j) {
@@ -518,10 +521,10 @@ DataBase::ptr vtkArray2Vistle(vtkType *vd, Object::const_ptr grid)
         return cv;
     }
     case 3: {
-        Vec<Scalar, 3>::ptr cv = make_ptr<Vec<Scalar, 3>>(n);
-        Scalar *x = cv->x().data();
-        Scalar *y = cv->y().data();
-        Scalar *z = cv->z().data();
+        typename Vec<S, 3>::ptr cv = make_ptr<Vec<S, 3>>(n);
+        S *x = cv->x().data();
+        S *y = cv->y().data();
+        S *z = cv->z().data();
         Index l = 0;
         for (Index k = 0; k < dataDim[2]; ++k) {
             for (Index j = 0; j < dataDim[1]; ++j) {
@@ -588,6 +591,10 @@ DataBase::ptr vtkData2Vistle(vtkDataArray *varr, Object::const_ptr grid)
         return vtkArray2Vistle<short, vtkShortArray>(vd, grid);
     } else if (vtkUnsignedShortArray *vd = dynamic_cast<vtkUnsignedShortArray *>(varr)) {
         return vtkArray2Vistle<unsigned short, vtkUnsignedShortArray>(vd, grid);
+    } else if (vtkLongArray *vd = dynamic_cast<vtkLongArray *>(varr)) {
+        return vtkArray2Vistle<long, vtkLongArray, vistle::Index>(vd, grid);
+    } else if (vtkUnsignedLongArray *vd = dynamic_cast<vtkUnsignedLongArray *>(varr)) {
+        return vtkArray2Vistle<unsigned long, vtkUnsignedLongArray, vistle::Index>(vd, grid);
     } else if (vtkUnsignedIntArray *vd = dynamic_cast<vtkUnsignedIntArray *>(varr)) {
         return vtkArray2Vistle<unsigned int, vtkUnsignedIntArray>(vd, grid);
     } else if (vtkUnsignedCharArray *vd = dynamic_cast<vtkUnsignedCharArray *>(varr)) {
