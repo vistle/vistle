@@ -13,6 +13,8 @@
 #include <vtkUnsignedIntArray.h>
 #include <vtkLongArray.h>
 #include <vtkUnsignedLongArray.h>
+#include <vtkLongLongArray.h>
+#include <vtkUnsignedLongLongArray.h>
 #include <vtkIdTypeArray.h>
 
 #include <vtkAlgorithm.h>
@@ -595,6 +597,10 @@ DataBase::ptr vtkData2Vistle(vtkDataArray *varr, Object::const_ptr grid)
         return vtkArray2Vistle<long, vtkLongArray, vistle::Index>(vd, grid);
     } else if (vtkUnsignedLongArray *vd = dynamic_cast<vtkUnsignedLongArray *>(varr)) {
         return vtkArray2Vistle<unsigned long, vtkUnsignedLongArray, vistle::Index>(vd, grid);
+    } else if (vtkLongLongArray *vd = dynamic_cast<vtkLongLongArray *>(varr)){
+        return vtkArray2Vistle<long long, vtkLongLongArray, vistle::Index>(vd, grid);
+    } else if (vtkUnsignedLongLongArray *vd = dynamic_cast<vtkUnsignedLongLongArray *>(varr) ){
+        return vtkArray2Vistle<unsigned long long, vtkUnsignedLongLongArray, vistle::Index>(vd, grid);
     } else if (vtkUnsignedIntArray *vd = dynamic_cast<vtkUnsignedIntArray *>(varr)) {
         return vtkArray2Vistle<unsigned int, vtkUnsignedIntArray>(vd, grid);
     } else if (vtkUnsignedCharArray *vd = dynamic_cast<vtkUnsignedCharArray *>(varr)) {
