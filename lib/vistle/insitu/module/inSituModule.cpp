@@ -16,12 +16,14 @@ using namespace vistle::insitu;
 
 InSituModule::InSituModule(const std::string &name, const int moduleID, mpi::communicator comm)
 : Module(name, moduleID, comm)
-, m_vistleObjectsComm(comm, boost::mpi::comm_duplicate)
 , m_simulationCommandsComm(comm, boost::mpi::comm_duplicate)
+, m_vistleObjectsComm(comm, boost::mpi::comm_duplicate)
 {}
 
 InSituModule::~InSituModule()
 {
+    if (m_messageHandler)
+        m_messageHandler->send(message::ConnectionClosed(true));
     terminateCommunicationThreads();
 }
 
@@ -67,7 +69,11 @@ void InSituModule::terminateCommunicationThreads()
 
 void InSituModule::communicateWithSim()
 {
-    while (!m_terminateCommunication) {
+    while (true) {
+        bool terminateCommunication = m_terminateCommunication;
+        boost::mpi::broadcast(m_simulationCommandsComm, terminateCommunication, 0);
+        if (terminateCommunication)
+            break;
         bool workDone = false;
         while (recvAndhandleMessage()) {
             workDone = true;
@@ -117,7 +123,7 @@ void InSituModule::initializeCommunication()
     if (m_messageHandler) {
         initRecvFromSimQueue();
         startCommunicationThreads();
-
+        comm().barrier(); //wait for all ranks to create msqs before sending the connection info
         m_messageHandler->send(message::ShmInfo{gatherModuleInfo()});
         sendIntOptions();
     }
@@ -132,10 +138,7 @@ bool InSituModule::changeParameter(const Parameter *param)
         initializeCommunication();
         return true;
     }
-    bool allHaveMessageHandler = false;
-    boost::mpi::reduce(comm(), (bool)m_messageHandler, allHaveMessageHandler, boost::mpi::minimum<bool>(), 0);
-    boost::mpi::broadcast(comm(), allHaveMessageHandler, 0);
-    if (!allHaveMessageHandler)
+    if (!m_messageHandler)
         return true;
     if (std::find(m_commandParameter.begin(), m_commandParameter.end(), param) != m_commandParameter.end()) {
         m_messageHandler->send(message::ExecuteCommand({param->getName(), ""}));
@@ -163,6 +166,7 @@ bool InSituModule::prepare()
             sendMessage(obj);
         }
     }
+    m_cachedVistleObjects.clear();
     return true;
 }
 
@@ -172,7 +176,6 @@ void InSituModule::updateMeta(const vistle::message::Buffer &obj)
         auto &objMsg = obj.as<vistle::message::AddObject>();
         m_iteration = objMsg.meta().iteration();
         m_executionCount = objMsg.meta().executionCounter();
-        CERR << "updateMeta: iteration = " << m_iteration << ", executionCount = " << m_executionCount << std::endl;
     }
 }
 
@@ -194,7 +197,7 @@ bool InSituModule::recvAndhandleMessage()
 {
     auto msg = m_messageHandler->tryRecv();
     if (msg.type() != message::InSituMessageType::Invalid) {
-        std::cerr << "received message of type " << static_cast<int>(msg.type()) << std::endl;
+        DEBUG_CERR << "received message of type " << static_cast<int>(msg.type()) << std::endl;
     }
     return handleInsituMessage(msg);
 }
@@ -217,7 +220,7 @@ bool InSituModule::cacheVistleObjects()
     if (!m_vistleObjectsMessageQueue)
         return false;
     std::vector<vistle::message::Buffer> vistleObjects;
-    while (true) {
+    while (!m_terminateCommunication) {
         vistle::message::Buffer buf;
         if (m_vistleObjectsMessageQueue->tryReceive(buf)) {
             if (isPackageComplete(buf)) {
@@ -299,6 +302,7 @@ bool InSituModule::handleInsituMessage(message::Message &msg)
         sendMessage(vistle::message::Quit());
 #else
         disconnectSim();
+        return false;
 #endif
     } break;
     default:

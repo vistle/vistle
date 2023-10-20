@@ -45,7 +45,7 @@ private:
     MetaData m_metaData;
     MetaData m_usedData;
     detail::Internals *m_internals = nullptr;
-
+    MPI_Comm m_comm;
     bool m_connected = false; // If we are connected to the module
     size_t m_processedTimesteps = 0;
     size_t m_iterations = 0;
@@ -61,8 +61,8 @@ private:
     bool startVistle(const MPI_Comm &comm, const std::string &options);
 #endif
     bool stillConnected();
-    bool quitRequested();
-    bool WaitedForModuleCommands();
+    void restart();
+    bool waitedForModuleCommands();
     bool haveToProcessTimestep(size_t timestep);
 
     void processData();

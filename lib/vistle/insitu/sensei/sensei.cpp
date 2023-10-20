@@ -49,7 +49,7 @@ struct Internals {
 
     std::unique_ptr<message::InSituShmMessage> messageHandler;
     // options that can be set in the module
-    std::vector<message::IntParam> moduleParams{{"frequency", 1}, {"keep_timesteps", true}};
+    std::vector<message::IntParam> moduleParams{{"frequency", 1}, {"keep_timesteps", false}};
 };
 } // namespace detail
 } // namespace sensei
@@ -58,13 +58,12 @@ struct Internals {
 
 Adapter::Adapter(bool paused, MPI_Comm Comm, MetaData &&meta, ObjectRetriever cbs, const std::string &vistleRoot,
                  const std::string &vistleBuildType, const std::string &options)
-: m_callbacks(std::move(cbs)), m_metaData(std::move(meta)), m_internals(new detail::Internals{Comm})
+: m_callbacks(std::move(cbs)), m_metaData(std::move(meta)), m_internals(new detail::Internals{Comm}), m_comm(Comm)
 {
     MPI_Comm_rank(Comm, &m_rank);
     MPI_Comm_size(Comm, &m_mpiSize);
     m_commands["run/paused"] = !paused; // if true run else wait
-    m_commands["exit"] = false; // let the simulation know that vistle wants to
-        // exit by returning false from execute
+    // exit by returning false from execute
     dumpConnectionFile(comm);
 
 #ifdef MODULE_THREAD
@@ -79,7 +78,7 @@ Adapter::Adapter(bool paused, MPI_Comm Comm, MetaData &&meta, ObjectRetriever cb
 bool Adapter::Execute(size_t timestep)
 {
     auto tStart = vistle::Clock::time();
-    if (stillConnected() && !quitRequested() && WaitedForModuleCommands()) {
+    if (stillConnected() && waitedForModuleCommands()) {
         if (haveToProcessTimestep(timestep)) {
             static bool first = true;
             if (first) {
@@ -89,11 +88,9 @@ bool Adapter::Execute(size_t timestep)
             }
             processData();
         }
-        m_timeSpendInExecute += vistle::Clock::time() - tStart;
-        return true;
     }
     m_timeSpendInExecute += vistle::Clock::time() - tStart;
-    return false;
+    return true;
 }
 
 #ifdef MODULE_THREAD
@@ -144,24 +141,23 @@ bool Adapter::stillConnected()
     return true;
 }
 
-bool Adapter::quitRequested()
+void Adapter::restart()
 {
-    if (m_commands["exit"]) {
-        m_internals->messageHandler->send(ConnectionClosed{true});
-        insitu::detachShm();
-        return true;
-    }
-    return false;
+    CERR << "connection closed" << endl;
+    insitu::detachShm();
+    delete m_internals;
+    m_internals = new detail::Internals{m_comm};
+    m_connected = false;
 }
 
-bool Adapter::WaitedForModuleCommands()
+bool Adapter::waitedForModuleCommands()
 {
     auto it = m_commands.find("run/paused");
     while (!it->second) // also let the simulation wait for the module if
     // initialized with paused
     {
         recvAndHandeMessage(true);
-        if (quitRequested() || !m_connected) {
+        if (!m_connected) {
             CERR << "sensei controller disconnected" << endl;
             return false;
         }
@@ -292,10 +288,7 @@ bool Adapter::recvAndHandeMessage(bool blocking)
         }
     } break;
     case InSituMessageType::ConnectionClosed: {
-        m_internals->sendMessageQueue.reset(nullptr);
-        m_connected = false;
-        insitu::detachShm();
-        CERR << "connection closed" << endl;
+        restart();
     } break;
     case InSituMessageType::IntOption: {
         auto option = msg.unpackOrCast<IntOption>().value;
