@@ -457,7 +457,7 @@ void Module::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
         };
 
         static std::vector<std::vector<QString>> replaceables{
-            {"COVER", "DisCOVERay", "OsgRenderer", "BlenderRenderer"},
+            {"COVER", "DisCOVERay", "OsgRenderer", "BlenderRenderer", "ANARemote"},
             {"Thicken", "SpheresOld", "TubesOld"},
             {"Threshold", "CellSelect"},
             {"Color", "ColorRandom"},
