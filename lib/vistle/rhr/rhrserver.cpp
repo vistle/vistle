@@ -1003,7 +1003,7 @@ void RhrServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const R
             }
             m_doneWorkers.emplace(std::this_thread::get_id());
             locker.unlock();
-            CERR << "processed " << num << " tasks" << std::endl;
+            //CERR << "processed " << num << " tasks" << std::endl;
         });
         m_workers.emplace(thr.get_id(), std::move(thr));
 
