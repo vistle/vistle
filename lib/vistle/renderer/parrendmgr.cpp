@@ -476,9 +476,13 @@ void ParallelRemoteRenderManager::compositeCurrentView(const unsigned char *rgba
     IceTInt viewport[4] = {vp[0], vp[1], vp[2], vp[3]};
     IceTFloat bg[4] = {0., 0., 0., 0.};
 
-    IceTImage img = icetCompositeImage(rgba, depth, viewport, proj, mv, bg);
+    if (rgba && depth) {
+        IceTImage img = icetCompositeImage(rgba, depth, viewport, proj, mv, bg);
 
-    finishCurrentView(&img, timestep, lastView);
+        finishCurrentView(&img, timestep, lastView);
+    } else {
+        finishCurrentView(nullptr, timestep, lastView);
+    }
 }
 
 void ParallelRemoteRenderManager::finishCurrentView(const IceTImagePtr imgp, int timestep)
@@ -489,7 +493,6 @@ void ParallelRemoteRenderManager::finishCurrentView(const IceTImagePtr imgp, int
 
 void ParallelRemoteRenderManager::finishCurrentView(const IceTImagePtr imgp, int timestep, bool lastView)
 {
-    const IceTImage &img = *static_cast<const IceTImage *>(imgp);
     checkIceTError("before finishCurrentView");
 
     assert(m_currentView >= 0);
@@ -500,11 +503,12 @@ void ParallelRemoteRenderManager::finishCurrentView(const IceTImagePtr imgp, int
     if (m_module->rank() == rootRank()) {
         if (auto rhr = m_rhrControl.server()) {
             assert(rhr);
-            if (i < rhr->numViews()) {
+            if (imgp && i < rhr->numViews()) {
                 // otherwise client just disconnected
                 const int bpp = 4;
                 const int w = rhr->width(i);
                 const int h = rhr->height(i);
+                const IceTImage &img = *static_cast<const IceTImage *>(imgp);
                 assert(std::max(0, w) == icetImageGetWidth(img));
                 assert(std::max(0, h) == icetImageGetHeight(img));
 
