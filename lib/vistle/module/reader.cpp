@@ -418,14 +418,14 @@ void Reader::setPartitions(int number)
     m_numPartitions = number;
 }
 
-bool Reader::changeParameters(std::set<const Parameter *> params)
+bool Reader::changeParameters(std::map<std::string, const Parameter *> params)
 {
     m_inhibitExamine = true;
     bool ret = Module::changeParameters(params);
     m_inhibitExamine = false;
 
     for (auto &p: params) {
-        auto it = m_observedParameters.find(p);
+        auto it = m_observedParameters.find(p.second);
         if (it != m_observedParameters.end()) {
             m_readyForRead = examine();
             ret &= m_readyForRead;

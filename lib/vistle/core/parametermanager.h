@@ -109,7 +109,8 @@ public:
     virtual void sendParameterMessage(const message::Message &message, const buffer *payload = nullptr) const = 0;
     template<class Payload>
     void sendParameterMessageWithPayload(message::Message &message, Payload &payload);
-    virtual bool changeParameters(std::set<const Parameter *> params); //< notify that some parameters have been changed
+    virtual bool
+    changeParameters(std::map<std::string, const Parameter *> params); //< notify that some parameters have been changed
     virtual bool changeParameter(const Parameter *p); //< notify that a parameter has been changed
     void setId(int id);
     int id() const;
@@ -132,7 +133,7 @@ private:
     };
     std::map<std::string, ParameterData> m_parameters;
     bool m_inParameterChanged = false;
-    std::vector<const Parameter *> m_delayedChanges;
+    std::map<std::string, const Parameter *> m_delayedChanges;
 
     std::deque<message::SetParameter> m_queue;
 
