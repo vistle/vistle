@@ -142,7 +142,8 @@ protected:
 
     void updateStatus();
 
-    std::string setupEnvAndGetLibDir(const std::string &bindir);
+    std::map<std::string, std::string> setupEnv(const std::string &bindir);
+    std::vector<std::string> getLibPath(const std::map<std::string, std::string> &env);
     int runMain(int argc, char *argv[]);
     bool m_requireUpdate = true;
 
