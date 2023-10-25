@@ -464,6 +464,11 @@ void ParallelRemoteRenderManager::setCurrentView(size_t i)
 void ParallelRemoteRenderManager::compositeCurrentView(const unsigned char *rgba, const float *depth, const int vp[4],
                                                        int timestep, bool lastView)
 {
+    if (!rgba || !depth) {
+        finishCurrentView(nullptr, timestep, lastView);
+        return;
+    }
+
     const auto &i = m_currentView;
 
     auto P = getProjMat(i);
@@ -475,14 +480,8 @@ void ParallelRemoteRenderManager::compositeCurrentView(const unsigned char *rgba
 
     IceTInt viewport[4] = {vp[0], vp[1], vp[2], vp[3]};
     IceTFloat bg[4] = {0., 0., 0., 0.};
-
-    if (rgba && depth) {
-        IceTImage img = icetCompositeImage(rgba, depth, viewport, proj, mv, bg);
-
-        finishCurrentView(&img, timestep, lastView);
-    } else {
-        finishCurrentView(nullptr, timestep, lastView);
-    }
+    IceTImage img = icetCompositeImage(rgba, depth, viewport, proj, mv, bg);
+    finishCurrentView(&img, timestep, lastView);
 }
 
 void ParallelRemoteRenderManager::finishCurrentView(const IceTImagePtr imgp, int timestep)
@@ -531,13 +530,15 @@ void ParallelRemoteRenderManager::finishCurrentView(const IceTImagePtr imgp, int
                     depth = icetImageGetDepthcf(img);
                     break;
                 case ICET_IMAGE_DEPTH_NONE:
-                    std::cerr << "expected byte color, got no color" << std::endl;
+                    std::cerr << "expected float depth, got none" << std::endl;
                     break;
                 }
 
                 if (color && depth && rhr->rgba(i) && rhr->depth(i)) {
                     for (int y = 0; y < h; ++y) {
                         memcpy(rhr->rgba(i) + w * bpp * y, color + w * (h - 1 - y) * bpp, bpp * w);
+                    }
+                    for (int y = 0; y < h; ++y) {
                         memcpy(rhr->depth(i) + w * y, depth + w * (h - 1 - y), sizeof(float) * w);
                     }
 
