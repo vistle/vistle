@@ -5,7 +5,7 @@ using namespace vistle::insitu::message;
 bool InSituShmMessage::sendMessage(InSituMessageType type, const vistle::buffer &vec) const
 { // not thread safe
 
-    if (!m_rank == 0)
+    if (m_rank != 0)
         return true;
     std::vector<ShmMsg> msgs;
     int i = 0;
