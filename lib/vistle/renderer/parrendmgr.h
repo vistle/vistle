@@ -54,6 +54,9 @@ public:
     void removeObject(std::shared_ptr<RenderObject> ro);
     bool checkIceTError(const char *msg) const;
 
+    void setLinearDepth(bool linear);
+    bool linearDepth() const;
+
     Renderer *m_module;
     int m_displayRank;
     RhrController m_rhrControl;

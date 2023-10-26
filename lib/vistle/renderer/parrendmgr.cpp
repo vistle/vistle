@@ -71,6 +71,16 @@ ParallelRemoteRenderManager::~ParallelRemoteRenderManager()
     }
 }
 
+void ParallelRemoteRenderManager::setLinearDepth(bool linear)
+{
+    m_rhrControl.setLinearDepth(linear);
+}
+
+bool ParallelRemoteRenderManager::linearDepth() const
+{
+    return m_rhrControl.linearDepth();
+}
+
 Port *ParallelRemoteRenderManager::outputPort() const
 {
     return m_rhrControl.outputPort();

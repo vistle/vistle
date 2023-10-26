@@ -19,6 +19,7 @@ struct CompressionParameters {
 
     struct DepthCompressionParameters {
         bool depthFloat = true; //!< whether depth should be retrieved as floating point
+        bool depthGL = true; //!< whether float depth is from GL frame buffer (true) or distance to viewer (ANARI)
         int depthPrecision = 24; //!< depth buffer read-back precision (bits) for integer formats
         DepthCodec depthCodec = DepthRaw;
         ZfpMode depthZfpMode = ZfpPrecision;

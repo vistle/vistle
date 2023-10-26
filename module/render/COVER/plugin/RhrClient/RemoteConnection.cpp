@@ -871,21 +871,31 @@ void RemoteConnection::handleTileMeta(const RemoteRenderMessage &remote, const t
         case rfbDepthFloat:
             format = GL_FLOAT;
             m_depthBpp = 4;
+            m_drawer->setLinearDepth(false);
+            break;
+        case rfbDepthViewer:
+            format = GL_FLOAT;
+            m_drawer->setLinearDepth(true);
+            m_depthBpp = 4;
             break;
         case rfbDepth8Bit:
             format = GL_UNSIGNED_BYTE;
+            m_drawer->setLinearDepth(false);
             m_depthBpp = 1;
             break;
         case rfbDepth16Bit:
             format = GL_UNSIGNED_SHORT;
+            m_drawer->setLinearDepth(false);
             m_depthBpp = 2;
             break;
         case rfbDepth24Bit:
             format = GL_FLOAT;
+            m_drawer->setLinearDepth(false);
             m_depthBpp = 4;
             break;
         case rfbDepth32Bit:
             format = GL_FLOAT;
+            m_drawer->setLinearDepth(false);
             m_depthBpp = 4;
             break;
         default:
