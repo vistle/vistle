@@ -330,7 +330,8 @@ ParameterVector<V> getParameterDefault(config::Access *config, const std::string
         return value;
 
     auto def = config->array<V>("modules/default", module, name);
-    if (!def->exists()) {
+    if (!def->exists() && !name.empty() && name[0] == '_') {
+        // look up common default for system parameters
         def = config->array<V>("modules/default", "ALL", name);
     }
     if (def->size() != value.size())
