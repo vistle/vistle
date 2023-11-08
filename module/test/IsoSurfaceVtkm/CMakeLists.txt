@@ -1,6 +1,6 @@
 vistle_find_package(VTKm 2.1)
 
-if(NOT VTKm_FOUND) 
+if(NOT VTKm_FOUND)
     return()
 endif()
 
