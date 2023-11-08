@@ -1,6 +1,6 @@
 vistle_find_package(VTKm 2.1)
 
-if (NOT VTKm_FOUND) 
+if(NOT VTKm_FOUND) 
     return()
 endif()
 
@@ -9,7 +9,7 @@ set(SOURCES IsoSurfaceVtkm.cpp VtkmUtils.cpp)
 
 # when using Cuda device backend for vtkm, make sure that nvcc
 # compiler is used, even if file does not end on .cu
-if (VTKm_ENABLE_CUDA)
+if(VTKm_ENABLE_CUDA)
     set_source_files_properties(${HEADER} ${SOURCES} PROPERTIES LANGUAGE CUDA)
 endif()
 
