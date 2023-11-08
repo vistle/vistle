@@ -78,7 +78,7 @@ bool IsoSurfaceVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task) con
     // transform result back into vistle format
     Object::ptr geoOut = vtkmIsosurfaceToVistleTriangles(isosurface);
     updateMeta(geoOut);
-    
+
     task->addObject(m_dataOut, geoOut);
 
     return true;
