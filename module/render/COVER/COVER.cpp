@@ -264,6 +264,8 @@ bool COVER::parameterAdded(const int senderId, const std::string &name, const me
     std::string plugin = moduleName;
     if (boost::algorithm::ends_with(plugin, "Old"))
         plugin = plugin.substr(0, plugin.size() - 3);
+    if (boost::algorithm::ends_with(plugin, "Vtkm"))
+        plugin = plugin.substr(0, plugin.size() - 4);
     if (plugin == "CutGeometry")
         plugin = "CuttingSurface";
     if (plugin == "DisCOVERay" || plugin == "OsgRenderer")
