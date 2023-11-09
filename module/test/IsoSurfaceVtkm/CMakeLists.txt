@@ -1,7 +1,10 @@
+# unfortunately, vistle_find_package(VTKm 2.0) does not accept VTK-m 2.1
 vistle_find_package(VTKm 2.1)
-
 if(NOT VTKm_FOUND)
-    return()
+    vistle_find_package(VTKm 2.0)
+    if(NOT VTKm_FOUND)
+        return()
+    endif()
 endif()
 
 set(HEADER IsoSurfaceVtkm.h VtkmUtils.h)
