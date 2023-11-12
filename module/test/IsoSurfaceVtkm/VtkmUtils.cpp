@@ -128,6 +128,8 @@ VTKM_TRANSFORM_STATUS vistleToVtkmDataSet(vistle::Object::const_ptr grid,
         vtkmDataset.AddCoordinateSystem(coordinateSystem);
         vtkmDataset.SetCellSet(cellSetExplicit);
 
+        vtkmDataset.AddPointField(scalarField->getName(),
+                                  vtkm::cont::make_ArrayHandle(&scalarField->x()[0], numPoints, vtkm::CopyFlag::Off));
     } else {
         // for the vertices' coordinates vistle uses structures of arrays, while vtkm
         // uses arrays of structures for the points' coordinates
@@ -155,10 +157,11 @@ VTKM_TRANSFORM_STATUS vistleToVtkmDataSet(vistle::Object::const_ptr grid,
         // create vtkm dataset
         vtkm::cont::DataSetBuilderExplicit unstructuredDatasetBuilder;
         vtkmDataset = unstructuredDatasetBuilder.Create(pointCoordinates, shapes, numIndices, connectivity);
+
+        // add scalar field
+        vtkmDataset.AddPointField(scalarField->getName(),
+                                  std::vector<float>(scalarField->x(), scalarField->x() + numPoints));
     }
-    // add scalar field
-    vtkmDataset.AddPointField(scalarField->getName(),
-                              std::vector<float>(scalarField->x(), scalarField->x() + numPoints));
 
     return VTKM_TRANSFORM_STATUS::SUCCESS;
 }
