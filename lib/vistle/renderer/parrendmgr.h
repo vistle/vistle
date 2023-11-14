@@ -3,6 +3,9 @@
 
 #include "rhrcontroller.h"
 #include "renderobject.h"
+#ifdef MODULE_THREAD
+#include <mutex>
+#endif
 
 // this is to avoid having to include IceT headers here
 struct IceTContextStruct;
@@ -158,6 +161,10 @@ public:
         IceTData(): ctxValid(false), width(0), height(0) { ctx = 0; }
     };
     std::vector<IceTData> m_icet; // managed locally
+#ifdef MODULE_THREAD
+    // protect against simultaneous calls to IceT from multiple modules in same process
+    static std::recursive_mutex s_icetMutex;
+#endif
 
     void updateVariants();
     RhrServer::VariantVisibilityMap m_clientVariants;
