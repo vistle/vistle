@@ -79,6 +79,7 @@ public:
     int m_updateScene;
     int m_doRender;
     size_t m_lightsUpdateCount;
+    bool m_sceneChanged = false;
 
     struct PerViewState {
         // synchronized across all ranks

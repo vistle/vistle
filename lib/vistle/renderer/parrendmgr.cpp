@@ -150,7 +150,7 @@ void ParallelRemoteRenderManager::setModified()
 
 bool ParallelRemoteRenderManager::sceneChanged() const
 {
-    return m_updateScene;
+    return m_sceneChanged;
 }
 
 bool ParallelRemoteRenderManager::isVariantVisible(const std::string &variant) const
@@ -259,6 +259,7 @@ void ParallelRemoteRenderManager::updateVariants()
 
 bool ParallelRemoteRenderManager::prepareFrame(size_t numTimesteps)
 {
+    m_sceneChanged = false;
     m_state.numTimesteps = numTimesteps;
     m_state.numTimesteps = mpi::all_reduce(m_module->comm(), m_state.numTimesteps, mpi::maximum<unsigned>());
 
@@ -276,6 +277,7 @@ bool ParallelRemoteRenderManager::prepareFrame(size_t numTimesteps)
 
     m_updateBounds = mpi::all_reduce(m_module->comm(), m_updateBounds, mpi::maximum<int>());
     if (m_updateBounds) {
+        m_sceneChanged = true;
         mpi::all_reduce(m_module->comm(), localBoundMin.data(), 3, m_state.bMin.data(), mpi::minimum<Scalar>());
         mpi::all_reduce(m_module->comm(), localBoundMax.data(), 3, m_state.bMax.data(), mpi::maximum<Scalar>());
     }
@@ -366,6 +368,7 @@ bool ParallelRemoteRenderManager::prepareFrame(size_t numTimesteps)
     if (m_updateVariants) {
         updateVariants();
         m_updateVariants = 0;
+        m_sceneChanged = true;
     }
 
     if (m_continuousRendering->getValue())
@@ -374,12 +377,14 @@ bool ParallelRemoteRenderManager::prepareFrame(size_t numTimesteps)
     m_updateScene = mpi::all_reduce(m_module->comm(), m_updateScene, mpi::maximum<int>());
     if (m_updateScene) {
         updateVariants();
+        m_sceneChanged = true;
         m_doRender = 1;
     }
     bool doRender = mpi::all_reduce(m_module->comm(), m_doRender, mpi::maximum<int>());
     m_doRender = 0;
 
     if (doRender) {
+        mpi::broadcast(m_module->comm(), m_sceneChanged, rootRank());
         mpi::broadcast(m_module->comm(), m_state, rootRank());
         mpi::broadcast(m_module->comm(), m_viewData, rootRank());
 
