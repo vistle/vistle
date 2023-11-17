@@ -551,8 +551,6 @@ void ParallelRemoteRenderManager::finishCurrentView(const IceTImagePtr imgp, int
                 const int w = rhr->width(i);
                 const int h = rhr->height(i);
                 const IceTImage &img = *static_cast<const IceTImage *>(imgp);
-                std::cerr << "w=" << w << ", h=" << h << ", img: w=" << icetImageGetWidth(img)
-                          << ", h=" << icetImageGetHeight(img) << std::endl;
 
                 const IceTUByte *color = nullptr;
                 switch (icetImageGetColorFormat(img)) {
