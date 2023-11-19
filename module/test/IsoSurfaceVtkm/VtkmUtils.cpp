@@ -70,25 +70,21 @@ VTKM_TRANSFORM_STATUS vistleToVtkmDataSet(vistle::Object::const_ptr grid,
                                             vtkm::cont::make_ArrayHandle(yCoords, numPoints, vtkm::CopyFlag::Off),
                                             vtkm::cont::make_ArrayHandle(zCoords, numPoints, vtkm::CopyFlag::Off)));
 
+        static_assert(sizeof(vistle::Index) == sizeof(vtkm::Id),
+                      "VTK-m has to be compiled with Id size matching Vistle's Index size");
+
         vtkm::cont::CellSetExplicit<> cellSetExplicit;
 
-        // connectivity list and element list only need type cast (vistle::Index -> vtkm::Id)
-        auto connectivityCast = vtkm::cont::make_ArrayHandleCast<vtkm::Id>(
-            vtkm::cont::make_ArrayHandle(connList, numConn, vtkm::CopyFlag::Off));
-        // cellSetExplicit.Fill does not accept array handles of type vtkm::cont::ArrayHandleCast
-        // so we need to copy here
-        vtkm::cont::ArrayHandle<vtkm::Id> connectivity;
-        vtkm::cont::ArrayCopyShallowIfPossible(connectivityCast, connectivity);
+        auto conn =
+            vtkm::cont::make_ArrayHandle(reinterpret_cast<const vtkm::Id *>(connList), numConn, vtkm::CopyFlag::Off);
 
-        auto offsetsCast = vtkm::cont::make_ArrayHandleCast<vtkm::Id>(
-            vtkm::cont::make_ArrayHandle(elementList, numElements + 1, vtkm::CopyFlag::Off));
-        vtkm::cont::ArrayHandle<vtkm::Id> offsets;
-        vtkm::cont::ArrayCopyShallowIfPossible(offsetsCast, offsets);
+        auto offs = vtkm::cont::make_ArrayHandle(reinterpret_cast<const vtkm::Id *>(elementList), numElements + 1,
+                                                 vtkm::CopyFlag::Off);
 
         auto shapes = vtkm::cont::make_ArrayHandle(reinterpret_cast<const vtkm::UInt8 *>(typeList), numElements,
                                                    vtkm::CopyFlag::Off);
 
-        cellSetExplicit.Fill(numPoints, shapes, connectivity, offsets);
+        cellSetExplicit.Fill(numPoints, shapes, conn, offs);
 
         // create vtkm dataset
         vtkmDataset.AddCoordinateSystem(coordinateSystem);
