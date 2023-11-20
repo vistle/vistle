@@ -74,6 +74,7 @@ bool IsoSurfaceVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task) con
     isosurfaceFilter.SetActiveField(scalarField->getName());
     isosurfaceFilter.SetIsoValue(m_isovalue->getValue());
     isosurfaceFilter.SetMergeDuplicatePoints(false);
+    isosurfaceFilter.SetGenerateNormals(false);
     auto isosurface = isosurfaceFilter.Execute(vtkmDataSet);
 
     // transform result back into vistle format
