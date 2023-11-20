@@ -26,10 +26,6 @@ IsoSurfaceVtkm::IsoSurfaceVtkm(const std::string &name, int moduleID, mpi::commu
     m_dataOut = createOutputPort("data_out", "surface with mapped data");
 
     m_isovalue = addFloatParameter("isovalue", "isovalue", 0.0);
-
-    m_useArrayHandles =
-        addIntParameter("use_array_handle", "specify wheter to use array handles to transform vistle to vtkm data",
-                        true, Parameter::Boolean);
 }
 
 IsoSurfaceVtkm::~IsoSurfaceVtkm()
@@ -58,7 +54,7 @@ bool IsoSurfaceVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task) con
 
     // transform vistle dataset to vtkm dataset
     vtkm::cont::DataSet vtkmDataSet;
-    auto status = vistleToVtkmDataSet(grid, scalarField, vtkmDataSet, m_useArrayHandles);
+    auto status = vistleToVtkmDataSet(grid, scalarField, vtkmDataSet);
 
     if (status == VTKM_TRANSFORM_STATUS::UNSUPPORTED_GRID_TYPE) {
         sendError("Currently only supporting unstructured grids");

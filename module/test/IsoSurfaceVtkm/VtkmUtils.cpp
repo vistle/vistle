@@ -42,40 +42,9 @@ vtkm::cont::ArrayHandle<vtkm::UInt8> vistleTypeListToVtkmShapes(Index numElement
     return shapes;
 }
 
-// for testing also version that returns std::vector instead of array handle
-std::vector<vtkm::UInt8> vistleTypeListToVtkmShapesVector(Index numElements, const Byte *typeList)
-{
-    std::vector<vtkm::UInt8> shapes(numElements);
-    for (unsigned int i = 0; i < shapes.size(); i++) {
-        if (typeList[i] == cell::POINT)
-            shapes[i] = vtkm::CELL_SHAPE_VERTEX;
-        else if (typeList[i] == cell::BAR)
-            shapes[i] = vtkm::CELL_SHAPE_LINE;
-        else if (typeList[i] == cell::TRIANGLE)
-            shapes[i] = vtkm::CELL_SHAPE_TRIANGLE;
-        else if (typeList[i] == cell::POLYGON)
-            shapes[i] = vtkm::CELL_SHAPE_POLYGON;
-        else if (typeList[i] == cell::QUAD)
-            shapes[i] = vtkm::CELL_SHAPE_QUAD;
-        else if (typeList[i] == cell::TETRAHEDRON)
-            shapes[i] = vtkm::CELL_SHAPE_TETRA;
-        else if (typeList[i] == cell::HEXAHEDRON)
-            shapes[i] = vtkm::CELL_SHAPE_HEXAHEDRON;
-        else if (typeList[i] == cell::PRISM)
-            shapes[i] = vtkm::CELL_SHAPE_WEDGE;
-        else if (typeList[i] == cell::PYRAMID)
-            shapes[i] = vtkm::CELL_SHAPE_PYRAMID;
-        else {
-            shapes.clear();
-            break;
-        }
-    }
-    return shapes;
-}
-
 VTKM_TRANSFORM_STATUS vistleToVtkmDataSet(vistle::Object::const_ptr grid,
                                           std::shared_ptr<const vistle::Vec<Scalar, 1U>> scalarField,
-                                          vtkm::cont::DataSet &vtkmDataset, bool useArrayHandles)
+                                          vtkm::cont::DataSet &vtkmDataset)
 {
     auto indexedGrid = Indexed::as(grid);
     auto unstructuredGrid = UnstructuredGrid::as(indexedGrid);
@@ -103,66 +72,34 @@ VTKM_TRANSFORM_STATUS vistleToVtkmDataSet(vistle::Object::const_ptr grid,
 
     auto typeList = &unstructuredGrid->tl()[0];
 
-    // two options for testing: using array handles or std::vectors to create vtkm dataset
-    if (useArrayHandles) {
-        auto coordinateSystem = vtkm::cont::CoordinateSystem(
-            "coordinate system",
-            vtkm::cont::make_ArrayHandleSOA(vtkm::cont::make_ArrayHandle(xCoords, numPoints, vtkm::CopyFlag::Off),
-                                            vtkm::cont::make_ArrayHandle(yCoords, numPoints, vtkm::CopyFlag::Off),
-                                            vtkm::cont::make_ArrayHandle(zCoords, numPoints, vtkm::CopyFlag::Off)));
+    // points are stored as structures of arrays in vistle, while vtk-m expects arrays of stuctures
+    auto coordinateSystem = vtkm::cont::CoordinateSystem(
+        "coordinate system",
+        vtkm::cont::make_ArrayHandleSOA(vtkm::cont::make_ArrayHandle(xCoords, numPoints, vtkm::CopyFlag::Off),
+                                        vtkm::cont::make_ArrayHandle(yCoords, numPoints, vtkm::CopyFlag::Off),
+                                        vtkm::cont::make_ArrayHandle(zCoords, numPoints, vtkm::CopyFlag::Off)));
 
-        vtkm::cont::CellSetExplicit<> cellSetExplicit;
+    vtkm::cont::CellSetExplicit<> cellSetExplicit;
 
-        // connectivity list and element list only need type cast (vistle::Index -> vtkm::Id)
-        auto connectivity =
-            vtkm::cont::make_ArrayHandle(reinterpret_cast<const vtkm::Id *>(connList), numConn, vtkm::CopyFlag::Off);
-        auto offsets = vtkm::cont::make_ArrayHandle(reinterpret_cast<const vtkm::Id *>(elementList), numElements + 1,
-                                                    vtkm::CopyFlag::Off);
+    // connectivity list and element list only need type cast (vistle::Index -> vtkm::Id)
+    auto connectivity =
+        vtkm::cont::make_ArrayHandle(reinterpret_cast<const vtkm::Id *>(connList), numConn, vtkm::CopyFlag::Off);
+    auto offsets = vtkm::cont::make_ArrayHandle(reinterpret_cast<const vtkm::Id *>(elementList), numElements + 1,
+                                                vtkm::CopyFlag::Off);
 
-        // vistle and vtkm both use their own enums for storing the different cell types
-        auto shapes = vistleTypeListToVtkmShapes(numElements, typeList);
-        if (shapes.GetNumberOfValues() == 0)
-            return VTKM_TRANSFORM_STATUS::UNSUPPORTED_CELL_TYPE;
+    // vistle and vtkm both use their own enums for storing the different cell types
+    auto shapes = vistleTypeListToVtkmShapes(numElements, typeList);
+    if (shapes.GetNumberOfValues() == 0)
+        return VTKM_TRANSFORM_STATUS::UNSUPPORTED_CELL_TYPE;
 
-        cellSetExplicit.Fill(numPoints, shapes, connectivity, offsets);
+    cellSetExplicit.Fill(numPoints, shapes, connectivity, offsets);
 
-        // create vtkm dataset
-        vtkmDataset.AddCoordinateSystem(coordinateSystem);
-        vtkmDataset.SetCellSet(cellSetExplicit);
+    // create vtkm dataset
+    vtkmDataset.AddCoordinateSystem(coordinateSystem);
+    vtkmDataset.SetCellSet(cellSetExplicit);
 
-        vtkmDataset.AddPointField(scalarField->getName(),
-                                  vtkm::cont::make_ArrayHandle(&scalarField->x()[0], numPoints, vtkm::CopyFlag::Off));
-    } else {
-        // for the vertices' coordinates vistle uses structures of arrays, while vtkm
-        // uses arrays of structures for the points' coordinates
-        std::vector<vtkm::Vec3f_32> pointCoordinates;
-        for (unsigned int i = 0; i < numPoints; i++)
-            pointCoordinates.push_back(vtkm::Vec3f_32(xCoords[i], yCoords[i], zCoords[i]));
-
-        std::vector<vtkm::Id> connectivity(numConn);
-        for (unsigned int i = 0; i < connectivity.size(); i++)
-            connectivity[i] = static_cast<vtkm::Id>(connList[i]);
-
-        // to make clear at which index of the connectivity list the description of a
-        // cell starts, vistle implicitly stores these start indices, while vtkm stores
-        // the number of vertices that make up each cell in a list instead
-        std::vector<vtkm::IdComponent> numIndices(numElements);
-        for (unsigned int i = 0; i < numElements - 1; i++)
-            numIndices[i] = elementList[i + 1] - elementList[i];
-        numIndices.back() = numConn - elementList[numElements - 1];
-
-        auto shapes = vistleTypeListToVtkmShapesVector(numElements, typeList);
-        if (shapes.empty()) {
-            return VTKM_TRANSFORM_STATUS::UNSUPPORTED_CELL_TYPE;
-        }
-        // create vtkm dataset
-        vtkm::cont::DataSetBuilderExplicit unstructuredDatasetBuilder;
-        vtkmDataset = unstructuredDatasetBuilder.Create(pointCoordinates, shapes, numIndices, connectivity);
-
-        // add scalar field
-        vtkmDataset.AddPointField(scalarField->getName(),
-                                  std::vector<float>(scalarField->x(), scalarField->x() + numPoints));
-    }
+    vtkmDataset.AddPointField(scalarField->getName(),
+                              vtkm::cont::make_ArrayHandle(&scalarField->x()[0], numPoints, vtkm::CopyFlag::Off));
 
     return VTKM_TRANSFORM_STATUS::SUCCESS;
 }

@@ -21,7 +21,7 @@ enum VTKM_TRANSFORM_STATUS {
 // so vtkm filters can be applied to it
 VTKM_TRANSFORM_STATUS vistleToVtkmDataSet(vistle::Object::const_ptr grid,
                                           std::shared_ptr<const vistle::Vec<vistle::Scalar, 1U>> scalarField,
-                                          vtkm::cont::DataSet &vtkmDataSet, bool useArrayHandles);
+                                          vtkm::cont::DataSet &vtkmDataSet);
 
 // transform a vtkm isosurface dataset into a vistle Triangles object, so it can
 // be rendered in COVER
