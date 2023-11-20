@@ -209,7 +209,15 @@ enum rfbTileFlags {
     rfbTileRequest = 4,
 };
 
-enum rfbTileFormats { rfbDepth8Bit, rfbDepth16Bit, rfbDepth24Bit, rfbDepth32Bit, rfbDepthFloat, rfbColorRGBA };
+enum rfbTileFormats {
+    rfbDepth8Bit,
+    rfbDepth16Bit,
+    rfbDepth24Bit,
+    rfbDepth32Bit,
+    rfbDepthFloat,
+    rfbColorRGBA,
+    rfbDepthViewer /* float distance from viewer */
+};
 
 enum rfbTileCompressions {
     rfbTileRaw = 0,

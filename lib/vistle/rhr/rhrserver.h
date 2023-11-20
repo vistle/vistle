@@ -84,6 +84,7 @@ public:
     void setDepthCompression(message::CompressionMode mode);
     void setTileSize(int w, int h);
     void setZfpMode(CompressionParameters::ZfpMode mode);
+    void setLinearDepth(bool linear);
     void setDumpImages(bool enable);
 
     int timestep() const;
@@ -184,34 +185,9 @@ public:
         double timestepRequestTime = -1.; // time for last animationMsg, for latency measurement
         int timestep = -1;
         DepthCompressionParameters depthParam;
-#if 0
-       bool depthFloat; //!< whether depth should be retrieved as floating point
-       int depthPrecision; //!< depth buffer read-back precision (bits) for integer formats
-       bool depthZfp; //!< whether depth should be compressed with floating point compressor zfp
-       bool depthQuant; //!< whether depth should be sent quantized
-       ZfpMode depthZfpMode;
-       message::CompressionMode depthCompress;
-#endif
         RgbaCompressionParameters rgbaParam;
-#if 0
-       bool rgbaJpeg;
-       bool rgbaChromaSubsamp;
-       message::CompressionMode rgbaCompress;
-#endif
 
-        ImageParameters(): timestep(-1)
-#if 0
-       , depthFloat(false)
-       , depthPrecision(24)
-       , depthZfp(false)
-       , depthQuant(false)
-       , depthZfpMode(ZfpAccuracy)
-       , depthCompress(message::CompressionNone)
-       , rgbaJpeg(false)
-       , rgbaChromaSubsamp(false)
-       , rgbaCompress(message::CompressionNone)
-#endif
-        {}
+        ImageParameters(): timestep(-1) {}
     };
 
     struct ViewParameters {
