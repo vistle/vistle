@@ -67,6 +67,10 @@ bool IsoSurfaceVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task) con
         sendError("Can only transform these cells from vistle to vtkm: point, bar, triangle, polygon, quad, tetra, "
                   "hexahedron, pyramid");
         return true;
+    } else if (status == VTKM_TRANSFORM_STATUS::EXCEEDING_VTKM_ID_LIMIT) {
+        sendError("The size of the provided connectivity list exceeds vtkm's integer maximum. Please recompile vtk-m "
+                  "with the CMake variable VTKm_USE_64BIT_IDS set to ON.");
+        return true;
     }
 
     // apply vtkm isosurface filter

@@ -10,7 +10,12 @@
 
 #include <vector>
 
-enum VTKM_TRANSFORM_STATUS { SUCCESS = 0, UNSUPPORTED_GRID_TYPE = 1, UNSUPPORTED_CELL_TYPE = 2 };
+enum VTKM_TRANSFORM_STATUS {
+    SUCCESS = 0,
+    UNSUPPORTED_GRID_TYPE = 1,
+    UNSUPPORTED_CELL_TYPE = 2,
+    EXCEEDING_VTKM_ID_LIMIT = 3
+};
 
 // transform a vistle dataset (grid and scalar data field) into a vtkm dataset
 // so vtkm filters can be applied to it

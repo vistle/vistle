@@ -1,3 +1,5 @@
+#include <limits>
+
 #include <vistle/core/unstr.h>
 
 #include <vtkm/cont/ArrayCopy.h>
@@ -82,12 +84,19 @@ VTKM_TRANSFORM_STATUS vistleToVtkmDataSet(vistle::Object::const_ptr grid,
 
     auto points = Vec<Scalar, 3>::as(grid);
     auto numPoints = indexedGrid->getNumCoords();
+
     auto xCoords = points->x();
     auto yCoords = points->y();
     auto zCoords = points->z();
 
     auto numConn = indexedGrid->getNumCorners();
     auto connList = &indexedGrid->cl()[0];
+
+    // For indexing, vistle uses unsigned integers, while vtk-m uses signed integers.
+    // Since in CMakeLists.txt we enforce that both programs use the same number of
+    // bits to represent integers, not all ints in vistle can be cast to ints in vtkm.
+    if (numConn > std::numeric_limits<vtkm::Id>::max())
+        return VTKM_TRANSFORM_STATUS::EXCEEDING_VTKM_ID_LIMIT;
 
     auto numElements = indexedGrid->getNumElements();
     auto elementList = &indexedGrid->el()[0];
@@ -105,17 +114,10 @@ VTKM_TRANSFORM_STATUS vistleToVtkmDataSet(vistle::Object::const_ptr grid,
         vtkm::cont::CellSetExplicit<> cellSetExplicit;
 
         // connectivity list and element list only need type cast (vistle::Index -> vtkm::Id)
-        auto connectivityCast = vtkm::cont::make_ArrayHandleCast<vtkm::Id>(
-            vtkm::cont::make_ArrayHandle(connList, numConn, vtkm::CopyFlag::Off));
-        // cellSetExplicit.Fill does not accept array handles of type vtkm::cont::ArrayHandleCast
-        // so we need to copy here
-        vtkm::cont::ArrayHandle<vtkm::Id> connectivity;
-        vtkm::cont::ArrayCopyShallowIfPossible(connectivityCast, connectivity);
-
-        auto offsetsCast = vtkm::cont::make_ArrayHandleCast<vtkm::Id>(
-            vtkm::cont::make_ArrayHandle(elementList, numElements + 1, vtkm::CopyFlag::Off));
-        vtkm::cont::ArrayHandle<vtkm::Id> offsets;
-        vtkm::cont::ArrayCopyShallowIfPossible(offsetsCast, offsets);
+        auto connectivity =
+            vtkm::cont::make_ArrayHandle(reinterpret_cast<const vtkm::Id *>(connList), numConn, vtkm::CopyFlag::Off);
+        auto offsets = vtkm::cont::make_ArrayHandle(reinterpret_cast<const vtkm::Id *>(elementList), numElements + 1,
+                                                    vtkm::CopyFlag::Off);
 
         // vistle and vtkm both use their own enums for storing the different cell types
         auto shapes = vistleTypeListToVtkmShapes(numElements, typeList);
@@ -153,7 +155,6 @@ VTKM_TRANSFORM_STATUS vistleToVtkmDataSet(vistle::Object::const_ptr grid,
         if (shapes.empty()) {
             return VTKM_TRANSFORM_STATUS::UNSUPPORTED_CELL_TYPE;
         }
-
         // create vtkm dataset
         vtkm::cont::DataSetBuilderExplicit unstructuredDatasetBuilder;
         vtkmDataset = unstructuredDatasetBuilder.Create(pointCoordinates, shapes, numIndices, connectivity);

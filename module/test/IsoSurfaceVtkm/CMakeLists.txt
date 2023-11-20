@@ -7,6 +7,8 @@ if(NOT VTKm_FOUND)
     endif()
 endif()
 
+add_subdirectory(compatibility)
+
 set(HEADER IsoSurfaceVtkm.h VtkmUtils.h)
 set(SOURCES IsoSurfaceVtkm.cpp VtkmUtils.cpp)
 
