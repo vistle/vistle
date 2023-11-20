@@ -75,6 +75,7 @@ option(VISTLE_SANITIZE_THREAD "Build with -fsanitize=thread" OFF)
 option(VISTLE_TIME_BUILD "Gather build times (Clang/ISPC)" OFF)
 
 option(VISTLE_ENABLE_CUDA "Build with CUDA support" OFF)
+option(VISTLE_ENABLE_KOKKOS "Build with Kokkos support" OFF)
 
 option(VISTLE_USE_QT5 "Build GUI with Qt5 instead of Qt6" ON)
 
