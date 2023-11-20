@@ -485,7 +485,8 @@ void ParallelRemoteRenderManager::setCurrentView(size_t i)
         checkIceTError("after reset tiles");
     }
 
-    icetBoundingBoxf(localBoundMin[0], localBoundMax[0], localBoundMin[1], localBoundMax[1], localBoundMin[2], localBoundMax[2]);
+    icetBoundingBoxf(localBoundMin[0], localBoundMax[0], localBoundMin[1], localBoundMax[1], localBoundMin[2],
+                     localBoundMax[2]);
     checkIceTError("exit setCurrentView");
 }
 
