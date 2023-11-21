@@ -20,51 +20,84 @@ public:
         CONVEX_BIT = cell::CONVEX_BIT,
         TYPE_MASK = cell::TYPE_MASK,
 
-        NONE = cell::NONE,
-        BAR = cell::BAR,
-        TRIANGLE = cell::TRIANGLE,
-        QUAD = cell::QUAD,
-        TETRAHEDRON = cell::TETRAHEDRON,
-        PYRAMID = cell::PYRAMID,
-        PRISM = cell::PRISM,
-        HEXAHEDRON = cell::HEXAHEDRON,
-        POLYGON = cell::POLYGON,
-        POINT = cell::POINT,
-        POLYHEDRON = cell::POLYHEDRON,
-        NUM_TYPES = cell::NUM_TYPES,
+        NONE = cell::NONE, // 0
+        POINT = cell::POINT, // 1
+        BAR = cell::BAR, // 3
+        TRIANGLE = cell::TRIANGLE, // 5
+        POLYGON = cell::POLYGON, // 7
+        QUAD = cell::QUAD, // 9
+        TETRAHEDRON = cell::TETRAHEDRON, // 10
+        POLYHEDRON = cell::POLYHEDRON, // 11
+        HEXAHEDRON = cell::HEXAHEDRON, // 12
+        PRISM = cell::PRISM, // 13
+        PYRAMID = cell::PYRAMID, // 14
+        NUM_TYPES = cell::NUM_TYPES, // 15
     };
 
     static constexpr Index MaxNumVertices = 4;
     static constexpr Index MaxNumFaces = 6;
-    static constexpr int Dimensionality[NUM_TYPES] = {-1, 1, 2, 2, 3, 3, 3, 3, -1, -1, 0, 3};
-    static constexpr int NumVertices[NUM_TYPES] = {0, 2, 3, 4, 4, 5, 6, 8, -1, -1, 1, -1};
-    static constexpr int NumFaces[NUM_TYPES] = {0, 0, 1, 1, 4, 5, 5, 6, -1, -1, 0, -1};
+    static constexpr int Dimensionality[NUM_TYPES] = {
+        -1, 0, -1, 1, -1, 2, -1, 2, 1, 2, 3, 3, 3, 3, 3,
+    };
+    static constexpr int NumVertices[NUM_TYPES] = {
+        0, 1, -1, 2, -1, 3, -1, -1, -1, 4, 4, -1, 8, 6, 5,
+    };
+    static constexpr int NumFaces[NUM_TYPES] = {
+        0, 0, -1, 0, -1, 1, -1, 1, -1, 1, 4, -1, 6, 5, 5,
+    };
     static constexpr unsigned FaceSizes[NUM_TYPES][MaxNumFaces] = {
         // none
         {0, 0, 0, 0, 0, 0},
+        // point
+        {0, 0, 0, 0, 0, 0},
+        // invalid
+        {0, 0, 0, 0, 0, 0},
         // bar
+        {0, 0, 0, 0, 0, 0},
+        // invalid
         {0, 0, 0, 0, 0, 0},
         // triangle
         {3, 0, 0, 0, 0, 0},
+        // invalid
+        {0, 0, 0, 0, 0, 0},
+        // polygon
+        {0, 0, 0, 0, 0, 0},
+        // invalid
+        {0, 0, 0, 0, 0, 0},
         // quad
         {4, 0, 0, 0, 0, 0},
         // tetrahedron
         {3, 3, 3, 3, 0, 0},
-        // pyramid
-        {4, 3, 3, 3, 3, 0},
-        // prism
-        {3, 4, 4, 4, 3, 0},
+        // polyhedron
+        {0, 0, 0, 0, 0, 0},
         // hexahedron
         {4, 4, 4, 4, 4, 4},
+        // prism
+        {3, 4, 4, 4, 3, 0},
+        // pyramid
+        {4, 3, 3, 3, 3, 0},
     };
-    static constexpr unsigned FaceVertices[NUM_TYPES][MaxNumFaces][MaxNumVertices] = {// clang-format off
+    static constexpr unsigned FaceVertices[NUM_TYPES][MaxNumFaces][MaxNumVertices] = {
+        // clang-format off
     
+        { // none
+        },
+        { // point
+        },
         { // none
         },
         { // bar
         },
+        { // none
+        },
         { // triangle
         { 2, 1, 0 },
+        },
+        { // none
+        },
+        { // polygon
+        },
+        { // none
         },
         { // quad
         { 3, 2, 1, 0 },
@@ -86,37 +119,7 @@ public:
             { 1, 2, 3 },
             { 2, 0, 3 },
         },
-        { // pyramid
-            /*
-                        4
-                    / /  \    \
-                  0--/------\-------1
-                 / /          \    /
-                //              \ /
-               3-----------------2
-            */
-            { 3, 2, 1, 0 },
-            { 0, 1, 4 },
-            { 1, 2, 4 },
-            { 2, 3, 4 },
-            { 3, 0, 4 },
-        },
-        { // prism
-            /*
-                      5
-                    / | \
-                  /   |   \
-                3 -------- 4
-                |     2    |
-                |   /   \  |
-                | /       \|
-                0----------1
-            */
-            {2, 1, 0},
-            {0, 1, 4, 3},
-            {1, 2, 5, 4},
-            {2, 0, 3, 5},
-            {3, 4, 5}
+        { // polyhedron
         },
         { // hexahedron
             /*
@@ -135,7 +138,39 @@ public:
             { 7, 6, 2, 3 },
             { 1, 2, 6, 5 },
             { 4, 7, 3, 0 },
-        }
+        },
+        { // prism
+            /*
+                      5
+                    / | \
+                  /   |   \
+                3 -------- 4
+                |     2    |
+                |   /   \  |
+                | /       \|
+                0----------1
+            */
+            {2, 1, 0},
+            {0, 1, 4, 3},
+            {1, 2, 5, 4},
+            {2, 0, 3, 5},
+            {3, 4, 5}
+        },
+        { // pyramid
+            /*
+                        4
+                    / /  \    \
+                  0--/------\-------1
+                 / /          \    /
+                //              \ /
+               3-----------------2
+            */
+            { 3, 2, 1, 0 },
+            { 0, 1, 4 },
+            { 1, 2, 4 },
+            { 2, 3, 4 },
+            { 3, 0, 4 },
+        },
         };
     // clang-format on
 

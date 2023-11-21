@@ -8,38 +8,6 @@
 
 using namespace vistle;
 
-// helper function to transform vistle cell types into vtkm cell types
-vtkm::cont::ArrayHandle<vtkm::UInt8> vistleTypeListToVtkmShapes(Index numElements, const Byte *typeList)
-{
-    vtkm::cont::ArrayHandle<vtkm::UInt8> shapes;
-    shapes.Allocate(numElements);
-    auto shapesPortal = shapes.WritePortal();
-    for (unsigned int i = 0; i < shapes.GetNumberOfValues(); i++) {
-        if (typeList[i] == cell::POINT)
-            shapesPortal.Set(i, vtkm::CELL_SHAPE_VERTEX);
-        else if (typeList[i] == cell::BAR)
-            shapesPortal.Set(i, vtkm::CELL_SHAPE_LINE);
-        else if (typeList[i] == cell::TRIANGLE)
-            shapesPortal.Set(i, vtkm::CELL_SHAPE_TRIANGLE);
-        else if (typeList[i] == cell::POLYGON)
-            shapesPortal.Set(i, vtkm::CELL_SHAPE_POLYGON);
-        else if (typeList[i] == cell::QUAD)
-            shapesPortal.Set(i, vtkm::CELL_SHAPE_QUAD);
-        else if (typeList[i] == cell::TETRAHEDRON)
-            shapesPortal.Set(i, vtkm::CELL_SHAPE_TETRA);
-        else if (typeList[i] == cell::HEXAHEDRON)
-            shapesPortal.Set(i, vtkm::CELL_SHAPE_HEXAHEDRON);
-        else if (typeList[i] == cell::PRISM)
-            shapesPortal.Set(i, vtkm::CELL_SHAPE_WEDGE);
-        else if (typeList[i] == cell::PYRAMID)
-            shapesPortal.Set(i, vtkm::CELL_SHAPE_PYRAMID);
-        else {
-            break;
-        }
-    }
-    return shapes;
-}
-
 // for testing also version that returns std::vector instead of array handle
 std::vector<vtkm::UInt8> vistleTypeListToVtkmShapesVector(Index numElements, const Byte *typeList)
 {
@@ -117,10 +85,8 @@ VTKM_TRANSFORM_STATUS vistleToVtkmDataSet(vistle::Object::const_ptr grid,
         vtkm::cont::ArrayHandle<vtkm::Id> offsets;
         vtkm::cont::ArrayCopyShallowIfPossible(offsetsCast, offsets);
 
-        // vistle and vtkm both use their own enums for storing the different cell types
-        auto shapes = vistleTypeListToVtkmShapes(numElements, typeList);
-        if (shapes.GetNumberOfValues() == 0)
-            return VTKM_TRANSFORM_STATUS::UNSUPPORTED_CELL_TYPE;
+        auto shapes = vtkm::cont::make_ArrayHandle(reinterpret_cast<const vtkm::UInt8 *>(typeList), numElements,
+                                                   vtkm::CopyFlag::Off);
 
         cellSetExplicit.Fill(numPoints, shapes, connectivity, offsets);
 
