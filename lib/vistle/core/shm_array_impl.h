@@ -193,6 +193,19 @@ void shm_array<T, allocator>::setExact(bool exact)
 template<typename T, class allocator>
 void shm_array<T, allocator>::reserve(const size_t new_capacity)
 {
+    if (new_capacity >= std::numeric_limits<Index>::max()) {
+        std::cerr << "shm_array: cannot allocate more than " << std::numeric_limits<Index>::max() - 1 << " elements"
+                  << std::endl;
+        std::cerr << "           recompile with -DVISTLE_INDEX_64BIT" << std::endl;
+        throw vistle::except::index_overflow("shm_array: " + std::to_string(new_capacity) +
+                                             " >= " + std::to_string(std::numeric_limits<Index>::max()));
+    }
+
+    if (new_capacity >= std::numeric_limits<vtkm::Id>::max()) {
+        std::cerr << "shm_array: size " << new_capacity << " exceeds vtkm::Id's range" << std::endl;
+        std::cerr << "           recompile with -DVISTLE_INDEX_64BIT" << std::endl;
+    }
+
     if (new_capacity > capacity())
         reserve_or_shrink(new_capacity);
 }
