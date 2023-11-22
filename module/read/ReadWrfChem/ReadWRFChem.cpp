@@ -532,9 +532,9 @@ bool ReadWRFChem::addDataToPort(Token &token, NcFile *ncDataFile, int vi, Object
     } else {
         varData.getVar(startCorner, numElem, ptrOnScalarData);
     }
+    obj->setMapping(DataBase::Vertex);
     obj->setGrid(outGrid);
     setMeta(obj, block, numBlocks, t);
-    obj->setMapping(DataBase::Vertex);
     std::string pVar = m_variables[vi]->getValue();
     obj->addAttribute("_species", pVar + " [" + unit + "]");
     token.applyMeta(obj);

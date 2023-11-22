@@ -867,8 +867,14 @@ void RemoteConnection::handleTileMeta(const RemoteRenderMessage &remote, const t
         m_drawer->resizeView(viewIdx, w, h);
     } else {
         GLenum format = GL_FLOAT;
+        // FIXME: not yet
+        //m_drawer->setLinearDepth(msg.format == rfbDepthViewer);
         switch (msg.format) {
         case rfbDepthFloat:
+            format = GL_FLOAT;
+            m_depthBpp = 4;
+            break;
+        case rfbDepthViewer:
             format = GL_FLOAT;
             m_depthBpp = 4;
             break;

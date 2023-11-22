@@ -652,8 +652,8 @@ bool ToTriangles::compute()
                     ndata = data->clone();
                 }
                 ndata->copyAttributes(data);
-                ndata->setGrid(tri);
                 ndata->setMapping(data->guessMapping());
+                ndata->setGrid(tri);
                 updateMeta(ndata);
                 result = ndata;
             } else {

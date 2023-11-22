@@ -5,6 +5,8 @@ using namespace vistle::insitu::message;
 bool InSituShmMessage::sendMessage(InSituMessageType type, const vistle::buffer &vec) const
 { // not thread safe
 
+    if (m_rank != 0)
+        return true;
     std::vector<ShmMsg> msgs;
     int i = 0;
     auto start = vec.begin();
@@ -32,14 +34,17 @@ bool InSituShmMessage::sendMessage(InSituMessageType type, const vistle::buffer 
     return true;
 }
 
-InSituShmMessage::InSituShmMessage(int rank)
+InSituShmMessage::InSituShmMessage(MPI_Comm comm): m_comm(comm)
 {
+    MPI_Comm_rank(comm, &m_rank);
+    if (m_rank != 0)
+        return;
     m_creator = true;
     bool error = false;
     std::string msqName;
     do {
         error = false;
-        msqName = m_msqName + std::to_string(++m_iteration) + "_r" + std::to_string(rank);
+        msqName = m_msqName + std::to_string(++m_iteration) + "_r" + std::to_string(m_rank);
         try {
             std::cerr << "creating msq " << (msqName + m_recvSuffix).c_str() << std::endl;
             m_msqs[0] = std::make_unique<boost::interprocess::message_queue>(boost::interprocess::create_only,
@@ -63,9 +68,12 @@ InSituShmMessage::InSituShmMessage(int rank)
     std::cerr << "ShmMessage " << msqName << " creation successful!" << std::endl;
 }
 
-InSituShmMessage::InSituShmMessage(const std::string &msqName, int rank)
+InSituShmMessage::InSituShmMessage(const std::string &msqName, MPI_Comm comm): m_comm(comm)
 {
-    auto msqRankName = msqName + "_r" + std::to_string(rank);
+    MPI_Comm_rank(comm, &m_rank);
+    if (m_rank != 0)
+        return;
+    auto msqRankName = msqName + "_r" + std::to_string(m_rank);
     try {
         std::cerr << "trying to open " << (msqRankName + m_sendSuffix).c_str() << std::endl;
         m_msqs[0] = std::make_unique<boost::interprocess::message_queue>(boost::interprocess::open_only,
@@ -98,36 +106,52 @@ std::string InSituShmMessage::name()
     return m_msqName;
 }
 
+void broadcastMessage(int &type, vistle::buffer &payload, MPI_Comm comm)
+{
+    MPI_Bcast(&type, 1, MPI_INT, 0, comm);
+    int payloadSize = (int)payload.size();
+    MPI_Bcast(&payloadSize, 1, MPI_INT, 0, comm);
+    payload.resize(payloadSize);
+    MPI_Bcast(payload.data(), payloadSize, MPI_CHAR, 0, comm);
+}
+
 Message InSituShmMessage::recv()
 {
     vistle::buffer payload;
     int type = 0;
-    vistle::buffer::iterator iter;
 
-    ShmMsg m;
-    size_t recvSize = 0;
-    unsigned int prio = 0;
+    if (m_rank == 0) {
+        vistle::buffer::iterator iter;
 
-    size_t left = ShmMessageMaxSize;
-    size_t i = 0;
-    while (left > 0) {
-        try {
-            m_msqs[0]->receive((void *)&m, sizeof(m), recvSize, prio);
-        } catch (const boost::interprocess::interprocess_exception &ex) {
-            std::cerr << "ShmMessage recv error: " << ex.what() << std::endl;
-            return Message::errorMessage();
+
+        ShmMsg m;
+        size_t recvSize = 0;
+        unsigned int prio = 0;
+
+        size_t left = ShmMessageMaxSize;
+        size_t i = 0;
+        while (left > 0) {
+            try {
+                m_msqs[0]->receive((void *)&m, sizeof(m), recvSize, prio);
+            } catch (const boost::interprocess::interprocess_exception &ex) {
+                std::cerr << "ShmMessage recv error: " << ex.what() << std::endl;
+                type = (int)InSituMessageType::Invalid;
+                break;
+            }
+            if (i == 0) {
+                payload.resize(m.size);
+                iter = payload.begin();
+                type = m.type;
+                left = m.size;
+            }
+            assert(type == m.type);
+            std::copy(m.buf.begin(), m.buf.begin() + std::min(left, ShmMessageMaxSize), iter + i * ShmMessageMaxSize);
+            left = left > ShmMessageMaxSize ? left - ShmMessageMaxSize : 0;
+            ++i;
         }
-        if (i == 0) {
-            payload.resize(m.size);
-            iter = payload.begin();
-            type = m.type;
-            left = m.size;
-        }
-        assert(type == m.type);
-        std::copy(m.buf.begin(), m.buf.begin() + std::min(left, ShmMessageMaxSize), iter + i * ShmMessageMaxSize);
-        left = left > ShmMessageMaxSize ? left - ShmMessageMaxSize : 0;
-        ++i;
     }
+    broadcastMessage(type, payload, m_comm);
+
     return Message{static_cast<InSituMessageType>(type), std::move(payload)};
 }
 
@@ -135,41 +159,47 @@ Message InSituShmMessage::tryRecv()
 {
     vistle::buffer payload;
     int type = 0;
-    auto iter = payload.begin();
-    unsigned int i = 1;
 
-    ShmMsg m;
-    size_t recvSize = 0;
-    unsigned int prio = 0;
-    size_t left = 0;
-    try {
-        if (!m_msqs[0]->try_receive((void *)&m, sizeof(m), recvSize, prio)) {
-            return Message::errorMessage();
-        }
-        payload.resize(m.size);
-        type = m.type;
-        iter = payload.begin();
-        left = m.size;
+    if (m_rank == 0) {
+        auto iter = payload.begin();
+        unsigned int i = 1;
 
-        std::copy(m.buf.begin(), m.buf.begin() + std::min(left, ShmMessageMaxSize), iter);
-        left = left > ShmMessageMaxSize ? left - ShmMessageMaxSize : 0;
-    } catch (const boost::interprocess::interprocess_exception &ex) {
-        std::cerr << "ShmMessage tryReceive error: " << ex.what() << std::endl;
-        return Message::errorMessage();
-    }
-    while (left > 0) {
+        ShmMsg m;
+        size_t recvSize = 0;
+        unsigned int prio = 0;
+        size_t left = 0;
         try {
-            m_msqs[0]->receive((void *)&m, sizeof(m), recvSize, prio);
-        } catch (const boost::interprocess::interprocess_exception &ex) {
-            std::cerr << "ShmMessage tryRecv error: " << ex.what() << std::endl;
-            return Message::errorMessage();
-        }
-        assert(type == m.type);
-        std::copy(m.buf.begin(), m.buf.begin() + std::min(left, ShmMessageMaxSize), iter + i * ShmMessageMaxSize);
-        left = left > ShmMessageMaxSize ? left - ShmMessageMaxSize : 0;
-        ++i;
-    }
+            if (!m_msqs[0]->try_receive((void *)&m, sizeof(m), recvSize, prio)) {
+                type = (int)InSituMessageType::Invalid;
+            } else {
+                payload.resize(m.size);
+                type = m.type;
+                iter = payload.begin();
+                left = m.size;
 
+                std::copy(m.buf.begin(), m.buf.begin() + std::min(left, ShmMessageMaxSize), iter);
+                left = left > ShmMessageMaxSize ? left - ShmMessageMaxSize : 0;
+            }
+        } catch (const boost::interprocess::interprocess_exception &ex) {
+            std::cerr << "ShmMessage tryReceive error: " << ex.what() << std::endl;
+            type = (int)InSituMessageType::Invalid;
+            left = 0;
+        }
+        while (left > 0) {
+            try {
+                m_msqs[0]->receive((void *)&m, sizeof(m), recvSize, prio);
+            } catch (const boost::interprocess::interprocess_exception &ex) {
+                std::cerr << "ShmMessage tryRecv error: " << ex.what() << std::endl;
+                type = (int)InSituMessageType::Invalid;
+                break;
+            }
+            assert(type == m.type);
+            std::copy(m.buf.begin(), m.buf.begin() + std::min(left, ShmMessageMaxSize), iter + i * ShmMessageMaxSize);
+            left = left > ShmMessageMaxSize ? left - ShmMessageMaxSize : 0;
+            ++i;
+        }
+    }
+    broadcastMessage(type, payload, m_comm);
     return Message{static_cast<InSituMessageType>(type), std::move(payload)};
 }
 
@@ -177,36 +207,41 @@ Message InSituShmMessage::timedRecv(size_t timeInSec)
 {
     vistle::buffer payload;
     int type = 0;
-    vistle::buffer::iterator iter;
 
-    ShmMsg m;
-    size_t recvSize = 0;
-    unsigned int prio = 0;
-    auto now = boost::posix_time::microsec_clock::universal_time();
-    auto endTime = now + boost::posix_time::seconds(timeInSec);
+    if (m_rank == 0) {
+        vistle::buffer::iterator iter;
 
-    size_t left = ShmMessageMaxSize;
-    size_t i = 0;
-    while (left > 0) {
-        try {
-            if (!m_msqs[0]->timed_receive((void *)&m, sizeof(m), recvSize, prio, endTime)) {
-                return Message::errorMessage();
+        ShmMsg m;
+        size_t recvSize = 0;
+        unsigned int prio = 0;
+        auto now = boost::posix_time::microsec_clock::universal_time();
+        auto endTime = now + boost::posix_time::seconds(timeInSec);
+
+        size_t left = ShmMessageMaxSize;
+        size_t i = 0;
+        while (left > 0) {
+            try {
+                if (!m_msqs[0]->timed_receive((void *)&m, sizeof(m), recvSize, prio, endTime)) {
+                    return Message::errorMessage();
+                }
+            } catch (const boost::interprocess::interprocess_exception &ex) {
+                std::cerr << "ShmMessage timedRecv error: " << ex.what() << std::endl;
+                type = (int)InSituMessageType::Invalid;
+                break;
             }
-        } catch (const boost::interprocess::interprocess_exception &ex) {
-            std::cerr << "ShmMessage timedRecv error: " << ex.what() << std::endl;
-            return Message::errorMessage();
+            if (i == 0) {
+                payload.resize(m.size);
+                iter = payload.begin();
+                type = m.type;
+                left = m.size;
+            }
+            assert(type == m.type);
+            std::copy(m.buf.begin(), m.buf.begin() + std::min(left, ShmMessageMaxSize), iter + i * ShmMessageMaxSize);
+            left = left > ShmMessageMaxSize ? left - ShmMessageMaxSize : 0;
+            ++i;
         }
-        if (i == 0) {
-            payload.resize(m.size);
-            iter = payload.begin();
-            type = m.type;
-            left = m.size;
-        }
-        assert(type == m.type);
-        std::copy(m.buf.begin(), m.buf.begin() + std::min(left, ShmMessageMaxSize), iter + i * ShmMessageMaxSize);
-        left = left > ShmMessageMaxSize ? left - ShmMessageMaxSize : 0;
-        ++i;
     }
+    broadcastMessage(type, payload, m_comm);
     return Message{static_cast<InSituMessageType>(type), std::move(payload)};
 }
 

@@ -257,7 +257,7 @@ bool Renderer::dispatch(bool block, bool *messageReceived, unsigned int minPrio)
         int numMessages = messageBacklog.size() + receiveMessageQueue->getNumMessages();
         maxNumMessages = boost::mpi::all_reduce(comm(), numMessages, boost::mpi::maximum<int>());
         ++numSync;
-    } while (!m_replayFinished || (maxNumMessages > 0 && numSync < m_numObjectsPerFrame));
+    } while (maxNumMessages > 0 && numSync < m_numObjectsPerFrame);
 
     double start = 0.;
     if (m_benchmark) {

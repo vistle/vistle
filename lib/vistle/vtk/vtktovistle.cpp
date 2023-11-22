@@ -11,6 +11,10 @@
 #include <vtkUnsignedShortArray.h>
 #include <vtkIntArray.h>
 #include <vtkUnsignedIntArray.h>
+#include <vtkLongArray.h>
+#include <vtkUnsignedLongArray.h>
+#include <vtkLongLongArray.h>
+#include <vtkUnsignedLongLongArray.h>
 #include <vtkIdTypeArray.h>
 
 #include <vtkAlgorithm.h>
@@ -82,7 +86,7 @@ std::array<Index, UnstructuredGrid::NumVertices[UnstructuredGrid::HEXAHEDRON]> a
     // Get the point coordinates (and optionally scalars) for each of the 8 corners
     // in the approximating hexahedron spanned by (i, i+1) x (j, j+1) x (k, k+1):
     std::array<Index, UnstructuredGrid::NumVertices[UnstructuredGrid::HEXAHEDRON]> linearSubHex;
-    for (int ic = 0; ic < linearSubHex.size(); ++ic) {
+    for (int ic = 0; ic < (int)linearSubHex.size(); ++ic) {
         int corner = vtkHigherOrderHexahedron::PointIndexFromIJK(
             i + ((((ic + 1) / 2) % 2) ? 1 : 0), j + (((ic / 2) % 2) ? 1 : 0), k + ((ic / 4) ? 1 : 0), order);
         linearSubHex[ic] = corner;
@@ -101,7 +105,6 @@ Index lagrangeConnectivityToLinearHexahedron(const int order[], const vtkIdType 
             connlist.emplace_back(conectivityLagrange[subIndicees[j]]);
         }
     }
-    std::cerr << std::endl;
     return numElements;
 }
 
@@ -145,7 +148,7 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, bool checkConvex)
     Scalar *zc = cugrid->z().data();
     Index *elems = cugrid->el().data();
     auto &connlist = cugrid->cl();
-    if (vtkCellArray *vcellarray = vugrid->GetCells()) {
+    if (vugrid->GetCells()) {
         connlist.reserve(sizes.numConnectivities);
     } else {
         return cugrid;
@@ -188,8 +191,8 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, bool checkConvex)
             break;
         case VTK_LAGRANGE_HEXAHEDRON: {
             auto lagrangeCell = dynamic_cast<vtkLagrangeHexahedron *>(vugrid->GetCell(i));
-            for (size_t j = 0;
-                 j < lagrangeCell->GetOrder()[0] * lagrangeCell->GetOrder()[1] * lagrangeCell->GetOrder()[2]; j++) {
+            for (int j = 0; j < lagrangeCell->GetOrder()[0] * lagrangeCell->GetOrder()[1] * lagrangeCell->GetOrder()[2];
+                 j++) {
                 typelist[elemVistle] = UnstructuredGrid::HEXAHEDRON;
                 elems[elemVistle++] = connlist.size() + j * UnstructuredGrid::NumVertices[UnstructuredGrid::HEXAHEDRON];
             }
@@ -455,9 +458,10 @@ Object::ptr vtkRGrid2Vistle(vtkRectilinearGrid *vrgrid)
     return rgrid;
 }
 
-template<typename ValueType, class vtkType>
+template<typename ValueType, class vtkType, typename VistleScalar = vistle::Scalar>
 DataBase::ptr vtkArray2Vistle(vtkType *vd, Object::const_ptr grid)
 {
+    typedef VistleScalar S;
     bool perCell = false;
     const Index n = vd->GetNumberOfTuples();
     std::array<Index, 3> dim = {n, 1, 1};
@@ -475,8 +479,8 @@ DataBase::ptr vtkArray2Vistle(vtkType *vd, Object::const_ptr grid)
     }
     switch (vd->GetNumberOfComponents()) {
     case 1: {
-        Vec<Scalar, 1>::ptr cf = make_ptr<Vec<Scalar, 1>>(n);
-        Scalar *x = cf->x().data();
+        typename Vec<S, 1>::ptr cf = make_ptr<Vec<S, 1>>(n);
+        S *x = cf->x().data();
         Index l = 0;
         for (Index k = 0; k < dataDim[2]; ++k) {
             for (Index j = 0; j < dataDim[1]; ++j) {
@@ -492,9 +496,9 @@ DataBase::ptr vtkArray2Vistle(vtkType *vd, Object::const_ptr grid)
         return cf;
     } break;
     case 2: {
-        Vec<Scalar, 2>::ptr cv = make_ptr<Vec<Scalar, 2>>(n);
-        Scalar *x = cv->x().data();
-        Scalar *y = cv->y().data();
+        typename Vec<S, 2>::ptr cv = make_ptr<Vec<S, 2>>(n);
+        S *x = cv->x().data();
+        S *y = cv->y().data();
         Index l = 0;
         for (Index k = 0; k < dataDim[2]; ++k) {
             for (Index j = 0; j < dataDim[1]; ++j) {
@@ -518,10 +522,10 @@ DataBase::ptr vtkArray2Vistle(vtkType *vd, Object::const_ptr grid)
         return cv;
     }
     case 3: {
-        Vec<Scalar, 3>::ptr cv = make_ptr<Vec<Scalar, 3>>(n);
-        Scalar *x = cv->x().data();
-        Scalar *y = cv->y().data();
-        Scalar *z = cv->z().data();
+        typename Vec<S, 3>::ptr cv = make_ptr<Vec<S, 3>>(n);
+        S *x = cv->x().data();
+        S *y = cv->y().data();
+        S *z = cv->z().data();
         Index l = 0;
         for (Index k = 0; k < dataDim[2]; ++k) {
             for (Index j = 0; j < dataDim[1]; ++j) {
@@ -588,6 +592,14 @@ DataBase::ptr vtkData2Vistle(vtkDataArray *varr, Object::const_ptr grid)
         return vtkArray2Vistle<short, vtkShortArray>(vd, grid);
     } else if (vtkUnsignedShortArray *vd = dynamic_cast<vtkUnsignedShortArray *>(varr)) {
         return vtkArray2Vistle<unsigned short, vtkUnsignedShortArray>(vd, grid);
+    } else if (vtkLongArray *vd = dynamic_cast<vtkLongArray *>(varr)) {
+        return vtkArray2Vistle<long, vtkLongArray, vistle::Index>(vd, grid);
+    } else if (vtkUnsignedLongArray *vd = dynamic_cast<vtkUnsignedLongArray *>(varr)) {
+        return vtkArray2Vistle<unsigned long, vtkUnsignedLongArray, vistle::Index>(vd, grid);
+    } else if (vtkLongLongArray *vd = dynamic_cast<vtkLongLongArray *>(varr)) {
+        return vtkArray2Vistle<long long, vtkLongLongArray, vistle::Index>(vd, grid);
+    } else if (vtkUnsignedLongLongArray *vd = dynamic_cast<vtkUnsignedLongLongArray *>(varr)) {
+        return vtkArray2Vistle<unsigned long long, vtkUnsignedLongLongArray, vistle::Index>(vd, grid);
     } else if (vtkUnsignedIntArray *vd = dynamic_cast<vtkUnsignedIntArray *>(varr)) {
         return vtkArray2Vistle<unsigned int, vtkUnsignedIntArray>(vd, grid);
     } else if (vtkUnsignedCharArray *vd = dynamic_cast<vtkUnsignedCharArray *>(varr)) {

@@ -135,6 +135,11 @@ void RhrServer::setDepthPrecision(int bits)
     m_imageParam.depthParam.depthPrecision = bits;
 }
 
+void RhrServer::setLinearDepth(bool linear)
+{
+    m_imageParam.depthParam.depthGL = !linear;
+}
+
 void RhrServer::setZfpMode(CompressionParameters::ZfpMode mode)
 {
     m_imageParam.depthParam.depthZfpMode = mode;
@@ -287,18 +292,13 @@ void RhrServer::init()
     m_boundCenter = vistle::Vector3(0., 0., 0.);
     m_boundRadius = 1.;
 
-#if 0
-   m_benchmark = false;
-   m_errormetric = false;
-   m_compressionrate = false;
-#endif
+    m_imageParam.rgbaParam.rgbaCompress = message::CompressionLz4;
 
-    m_imageParam.rgbaParam.rgbaCompress = message::CompressionNone;
     m_imageParam.depthParam.depthPrecision = 32;
     m_imageParam.depthParam.depthCodec = CompressionParameters::DepthRaw;
-    ;
     m_imageParam.depthParam.depthCompress = message::CompressionLz4;
     m_imageParam.depthParam.depthFloat = true;
+    m_imageParam.depthParam.depthGL = true;
     m_imageParam.depthParam.depthZfpMode = CompressionParameters::ZfpFixedRate;
 
     m_resizeBlocked = false;
@@ -311,6 +311,7 @@ void RhrServer::init()
 void RhrServer::resetClient()
 {
     finishTiles(RhrServer::ViewParameters(), true /* finish */, false /* send */);
+    joinWorkerThreads();
 
     ++m_updateCount;
     ++lightsUpdateCount;
@@ -816,7 +817,10 @@ struct EncodeTask {
 
         message->size = message->width * message->height;
         if (param.depthParam.depthFloat) {
-            message->format = rfbDepthFloat;
+            if (param.depthParam.depthGL)
+                message->format = rfbDepthFloat;
+            else
+                message->format = rfbDepthViewer;
             bpp = 4;
         } else {
             switch (param.depthParam.depthPrecision) {
@@ -841,9 +845,15 @@ struct EncodeTask {
 
         message->size = bpp * message->width * message->height;
 
+        if (param.depthParam.depthFloat) {
+            if (param.depthParam.depthGL)
+                message->format = rfbDepthFloat;
+            else
+                message->format = rfbDepthViewer;
+        }
+
 #ifdef HAVE_ZFP
         if (param.depthParam.depthCodec == CompressionParameters::DepthZfp) {
-            message->format = rfbDepthFloat;
             message->compression |= rfbTileDepthZfp;
         } else
 #endif
@@ -989,10 +999,8 @@ void RhrServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const R
         auto thr = std::thread([this]() {
             setThreadName("RHR:Encode");
             std::unique_lock locker(m_taskMutex);
-            unsigned num = 0;
             while (!m_queuedTasks.empty()) {
                 auto task = m_queuedTasks.front();
-                ++num;
                 m_queuedTasks.pop_front();
                 locker.unlock();
 
@@ -1003,7 +1011,6 @@ void RhrServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const R
             }
             m_doneWorkers.emplace(std::this_thread::get_id());
             locker.unlock();
-            CERR << "processed " << num << " tasks" << std::endl;
         });
         m_workers.emplace(thr.get_id(), std::move(thr));
 
@@ -1011,22 +1018,8 @@ void RhrServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const R
     }
     locker.unlock();
 
-    finishTiles(param, lastView);
-}
-
-bool RhrServer::joinWorkerThreads()
-{
-    std::unique_lock locker(m_taskMutex);
-    for (auto id: m_doneWorkers) {
-        auto it = m_workers.find(id);
-        if (it != m_workers.end()) {
-            auto &thr = it->second;
-            thr.join();
-            m_workers.erase(it);
-        }
-    }
-    m_doneWorkers.clear();
-    return m_workers.empty();
+    finishTiles(param, lastView || viewNum < 0);
+    joinWorkerThreads();
 }
 
 bool RhrServer::finishTiles(const RhrServer::ViewParameters &param, bool finish, bool sendTiles)
@@ -1072,8 +1065,6 @@ bool RhrServer::finishTiles(const RhrServer::ViewParameters &param, bool finish,
             usleep(100);
     } while (m_queuedTiles > 0 && (tileReady || finish));
 
-    joinWorkerThreads();
-
     if (finish) {
         assert(m_queuedTiles == 0);
         m_resizeBlocked = false;
@@ -1083,6 +1074,21 @@ bool RhrServer::finishTiles(const RhrServer::ViewParameters &param, bool finish,
     }
 
     return m_queuedTiles == 0;
+}
+
+bool RhrServer::joinWorkerThreads()
+{
+    std::unique_lock locker(m_taskMutex);
+    for (auto id: m_doneWorkers) {
+        auto it = m_workers.find(id);
+        if (it != m_workers.end()) {
+            auto &thr = it->second;
+            thr.join();
+            m_workers.erase(it);
+        }
+    }
+    m_doneWorkers.clear();
+    return m_workers.empty();
 }
 
 RhrServer::ViewParameters RhrServer::getViewParameters(int viewNum) const

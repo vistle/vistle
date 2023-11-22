@@ -1490,11 +1490,11 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
                 ptrOnScalarData[currentElem++] = dataValues[iz + idxCells[k] * nLevels];
             }
         }
-        dataObj->setGrid(gridList[block]);
         if (m_voronoiCells)
             dataObj->setMapping(DataBase::Element);
         else
             dataObj->setMapping(DataBase::Vertex);
+        dataObj->setGrid(gridList[block]);
         dataObj->setBlock(block);
         dataObj->addAttribute("_species", pVar);
         dataObj->setTimestep(timestep);
@@ -1552,11 +1552,11 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
     for (auto &f: fields)
         f.clear();
 
-    dataObj->setGrid(gridList[block]);
     if (m_voronoiCells)
         dataObj->setMapping(DataBase::Element);
     else
         dataObj->setMapping(DataBase::Vertex);
+    dataObj->setGrid(gridList[block]);
     dataObj->setBlock(block);
     dataObj->addAttribute("_species", "cartesian_velocity");
     dataObj->setTimestep(timestep);

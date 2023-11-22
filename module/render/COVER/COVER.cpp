@@ -264,20 +264,15 @@ bool COVER::parameterAdded(const int senderId, const std::string &name, const me
     std::string plugin = moduleName;
     if (boost::algorithm::ends_with(plugin, "Old"))
         plugin = plugin.substr(0, plugin.size() - 3);
+    if (boost::algorithm::ends_with(plugin, "Vtkm"))
+        plugin = plugin.substr(0, plugin.size() - 4);
     if (plugin == "CutGeometry")
         plugin = "CuttingSurface";
     if (plugin == "DisCOVERay" || plugin == "OsgRenderer")
         plugin = "RhrClient";
     if (plugin == "Color" || plugin == "ColorRandom")
         plugin = "ColorBars";
-        // std::cerr << "parameterAdded: sender=" <<  senderId << ", name=" << name << ", plugin=" << plugin << std::endl;
-
-#if 0
-   auto creator = creatorMap.find(senderId);
-   if (creator == creatorMap.end()) {
-       creatorMap.insert(std::make_pair(senderId, Creator(senderId, moduleName, vistleRoot)));
-   }
-#endif
+    // std::cerr << "parameterAdded: sender=" <<  senderId << ", name=" << name << ", plugin=" << plugin << std::endl;
 
     InteractorMap::iterator it = m_interactorMap.find(senderId);
     if (it == m_interactorMap.end()) {
@@ -343,9 +338,11 @@ void COVER::prepareQuit()
 {
     removeAllObjects();
     if (vistleRoot) {
-        coVRPluginList::instance()->removeNode(vistleRoot, true, vistleRoot);
-        if (cover)
-            cover->getObjectsRoot()->removeChild(vistleRoot);
+        if (m_plugin) {
+            coVRPluginList::instance()->removeNode(vistleRoot, true, vistleRoot);
+            if (cover)
+                cover->getObjectsRoot()->removeChild(vistleRoot);
+        }
         vistleRoot.release();
     }
     m_config->setWorkspaceBridge(nullptr);
@@ -752,7 +749,7 @@ void COVER::updateStatus()
 }
 
 
-std::string COVER::setupEnvAndGetLibDir(const std::string &bindir)
+std::map<std::string, std::string> COVER::setupEnv(const std::string &bindir)
 {
     int rank = comm().rank();
 
@@ -874,18 +871,6 @@ std::string COVER::setupEnvAndGetLibDir(const std::string &bindir)
         sync_string(name);
         sync_string(value);
 
-#if 0
-        if (name == "COVISE_PATH") {
-            // adapt in order to find VistlePlugin
-            covisepath = bindir + "/../..";
-            if (!value.empty()) {
-                covisepath += ":";
-                covisepath += value;
-            }
-            value = covisepath;
-        }
-#endif
-
         setenv(name.c_str(), value.c_str(), 1 /* overwrite */);
 
         if (rank == 0)
@@ -896,77 +881,81 @@ std::string COVER::setupEnvAndGetLibDir(const std::string &bindir)
         //std::cerr << name << " -> " << value << std::endl;
     }
 
-#if 0
-    std::string abslib = bindir + "/../../lib/" + libcover;
-#else
-    std::string coviselibdir = env["COVISEDIR"];
-    if (env["ARCHSUFFIX"] != "spack" && env["ARCHSUFFIX"] != "spackopt")
-        coviselibdir += "/" + env["ARCHSUFFIX"];
-    coviselibdir += "/lib/";
-    //std::string abslib = coviselibdir + libcover;
-#endif
+    return env;
+}
 
-    return coviselibdir;
+std::vector<std::string> COVER::getLibPath(const std::map<std::string, std::string> &env)
+{
+    const auto &cd = env.find("COVISEDIR")->second;
+    const auto &as = env.find("ARCHSUFFIX")->second;
+    const std::string lib{"/lib"};
+    std::vector<std::string> libpath{cd + "/" + as + lib, cd + lib};
+    return libpath;
 }
 
 int COVER::runMain(int argc, char *argv[])
 {
     std::string bindir = vistle::getbindir(argc, argv);
-    std::string abslib = setupEnvAndGetLibDir(bindir) + libcover;
-
-    int ret = 0;
-    const char mainname[] = "mpi_main";
+    auto env = setupEnv(bindir);
+    auto libpath = getLibPath(env);
+    void *handle = nullptr;
     mpi_main_t *mpi_main = NULL;
+
+    for (const auto &libdir: libpath) {
+        std::string abslib = libdir + "/" + libcover;
+        const char mainname[] = "mpi_main";
 #ifdef WIN32
-    void *handle = LoadLibraryA(abslib.c_str());
+        handle = LoadLibraryA(abslib.c_str());
 #else
-    void *handle = dlopen(abslib.c_str(), RTLD_LAZY);
+        handle = dlopen(abslib.c_str(), RTLD_LAZY);
 #endif
-    mpi::communicator c(comm(), mpi::comm_duplicate);
 
-    if (!handle) {
+        if (!handle) {
 #ifdef _WIN32
-        std::cerr << "failed to dlopen " << abslib << std::endl;
+            std::cerr << "failed to dlopen " << abslib << std::endl;
 #else
-        std::cerr << "failed to dlopen " << abslib << ": " << dlerror() << std::endl;
+            std::cerr << "failed to dlopen " << abslib << ": " << dlerror() << std::endl;
 #endif
-        ret = 1;
-        goto finish;
-    }
+            continue;
+        }
 
 #ifdef _WIN32
-    mpi_main = (mpi_main_t *)GetProcAddress((HINSTANCE)handle, mainname);
-    ;
+        mpi_main = (mpi_main_t *)GetProcAddress((HINSTANCE)handle, mainname);
+        ;
 #else
-    mpi_main = (mpi_main_t *)dlsym(handle, mainname);
+        mpi_main = (mpi_main_t *)dlsym(handle, mainname);
 #endif
-    if (!mpi_main) {
+        if (mpi_main) {
+            break;
+        }
+
         std::cerr << "could not find " << mainname << " in " << libcover << std::endl;
-        ret = 1;
-        goto finish;
     }
 
-    if (commShmGroup().size() == 1
+    int ret = 1;
+    if (mpi_main) {
+        mpi::communicator c(comm(), mpi::comm_duplicate);
+        if (commShmGroup().size() == 1
 #ifndef SHMBARRIER
-        || true
+            || true
 #endif
-    ) {
-        ret = mpi_main((MPI_Comm)c, shmLeader(rank()), nullptr, argc, argv);
+        ) {
+            ret = mpi_main((MPI_Comm)c, shmLeader(rank()), nullptr, argc, argv);
 #ifdef SHMBARRIER
-    } else {
-        const std::string barrierName = name() + std::to_string(id());
-        pthread_barrier_t *barrier = nullptr;
-        if (rank() == shmLeader())
-            barrier = Shm::the().newBarrier(barrierName, commShmGroup().size());
-        commShmGroup().barrier();
-        if (rank() != shmLeader())
-            barrier = Shm::the().newBarrier(barrierName, commShmGroup().size());
-        ret = mpi_main((MPI_Comm)c, shmLeader(rank()), barrier, argc, argv);
-        Shm::the().deleteBarrier(barrierName);
+        } else {
+            const std::string barrierName = name() + std::to_string(id());
+            pthread_barrier_t *barrier = nullptr;
+            if (rank() == shmLeader())
+                barrier = Shm::the().newBarrier(barrierName, commShmGroup().size());
+            commShmGroup().barrier();
+            if (rank() != shmLeader())
+                barrier = Shm::the().newBarrier(barrierName, commShmGroup().size());
+            ret = mpi_main((MPI_Comm)c, shmLeader(rank()), barrier, argc, argv);
+            Shm::the().deleteBarrier(barrierName);
 #endif
+        }
     }
 
-finish:
     if (handle) {
 #ifdef _WIN32
         FreeLibrary((HINSTANCE)handle);
@@ -974,6 +963,8 @@ finish:
         dlclose(handle);
 #endif
     }
+
+    m_plugin = nullptr;
 
     return ret;
 }

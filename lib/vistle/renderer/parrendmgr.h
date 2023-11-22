@@ -3,6 +3,9 @@
 
 #include "rhrcontroller.h"
 #include "renderobject.h"
+#ifdef MODULE_THREAD
+#include <mutex>
+#endif
 
 // this is to avoid having to include IceT headers here
 struct IceTContextStruct;
@@ -53,6 +56,9 @@ public:
     void addObject(std::shared_ptr<RenderObject> ro);
     void removeObject(std::shared_ptr<RenderObject> ro);
     bool checkIceTError(const char *msg) const;
+
+    void setLinearDepth(bool linear);
+    bool linearDepth() const;
 
     Renderer *m_module;
     int m_displayRank;
@@ -142,7 +148,8 @@ public:
     std::vector<PerViewState, Eigen::aligned_allocator<PerViewState>> m_viewData; // synchronized from rank 0 to slaves
     std::vector<std::vector<unsigned char>> m_rgba;
     std::vector<std::vector<float>> m_depth;
-    int m_currentView; //!< holds no. of view currently being rendered - not a problem as IceT is not reentrant anyway
+    int m_currentView =
+        -1; //!< holds no. of view currently being rendered - not a problem as IceT is not reentrant anyway
     bool m_frameComplete; //!< track whether frame has been flushed to clients
 
     //! per view IceT state
@@ -154,6 +161,10 @@ public:
         IceTData(): ctxValid(false), width(0), height(0) { ctx = 0; }
     };
     std::vector<IceTData> m_icet; // managed locally
+#ifdef MODULE_THREAD
+    // protect against simultaneous calls to IceT from multiple modules in same process
+    static std::recursive_mutex s_icetMutex;
+#endif
 
     void updateVariants();
     RhrServer::VariantVisibilityMap m_clientVariants;

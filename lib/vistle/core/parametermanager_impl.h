@@ -32,7 +32,7 @@ bool ParameterManager::setParameter(ParameterBase<T> *param, const T &value, con
     if (!inResponseTo || !inResponseTo->isDelayed())
         parameterChangedWrapper(param);
     else
-        m_delayedChanges.push_back(param);
+        m_delayedChanges.emplace(param->getName(), param);
     return updateParameter(param->getName(), param, inResponseTo);
 }
 

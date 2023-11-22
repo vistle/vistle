@@ -101,8 +101,7 @@ bool ToUnstructured::compute()
                 Cartesian3<Index>(grid->getNumDivisions(0), grid->getNumDivisions(1), grid->getNumDivisions(2));
 
             auto structuredGrid = StructuredGrid::as(gridObj);
-            UnstructuredGrid::ptr unstrGridOut(
-                new UnstructuredGrid(numElements, numCorners, structuredGrid ? 0 : numVerticesTotal));
+            unstrGridOut.reset(new UnstructuredGrid(numElements, numCorners, structuredGrid ? 0 : numVerticesTotal));
 
             // construct type list and element list
             for (Index i = 0; i < numElements; i++) {
@@ -116,27 +115,22 @@ bool ToUnstructured::compute()
             // construct connectivity list (all hexahedra)
             if (nz > 0) {
                 // 3-dim
+                auto *cl = unstrGridOut->cl().data();
                 Index el = 0;
                 for (Index ix = 0; ix < nx; ++ix) {
                     for (Index iy = 0; iy < ny; ++iy) {
                         for (Index iz = 0; iz < nz; ++iz) {
                             const Index baseInsertionIndex = el * M_NUM_CORNERS_HEXAHEDRON;
-                            unstrGridOut->cl()[baseInsertionIndex] =
-                                UniformGrid::vertexIndex(ix, iy, iz, dim); // 0       7 -------- 6
-                            unstrGridOut->cl()[baseInsertionIndex + 1] =
-                                UniformGrid::vertexIndex(ix + 1, iy, iz, dim); // 1      /|         /|
-                            unstrGridOut->cl()[baseInsertionIndex + 2] =
-                                UniformGrid::vertexIndex(ix + 1, iy + 1, iz, dim); // 2     / |        / |
-                            unstrGridOut->cl()[baseInsertionIndex + 3] =
-                                UniformGrid::vertexIndex(ix, iy + 1, iz, dim); // 3    4 -------- 5  |
-                            unstrGridOut->cl()[baseInsertionIndex + 4] =
-                                UniformGrid::vertexIndex(ix, iy, iz + 1, dim); // 4    |  3-------|--2
-                            unstrGridOut->cl()[baseInsertionIndex + 5] =
-                                UniformGrid::vertexIndex(ix + 1, iy, iz + 1, dim); // 5    | /        | /
-                            unstrGridOut->cl()[baseInsertionIndex + 6] =
-                                UniformGrid::vertexIndex(ix + 1, iy + 1, iz + 1, dim); // 6    |/         |/
-                            unstrGridOut->cl()[baseInsertionIndex + 7] =
-                                UniformGrid::vertexIndex(ix, iy + 1, iz + 1, dim); // 7    0----------1
+                            // clang-format off
+                            cl[baseInsertionIndex] = UniformGrid::vertexIndex(ix, iy, iz, dim);                 // 0       7 -------- 6
+                            cl[baseInsertionIndex + 1] = UniformGrid::vertexIndex(ix + 1, iy, iz, dim);         // 1      /|         /|
+                            cl[baseInsertionIndex + 2] = UniformGrid::vertexIndex(ix + 1, iy + 1, iz, dim);     // 2     / |        / |
+                            cl[baseInsertionIndex + 3] = UniformGrid::vertexIndex(ix, iy + 1, iz, dim);         // 3    4 -------- 5  |
+                            cl[baseInsertionIndex + 4] = UniformGrid::vertexIndex(ix, iy, iz + 1, dim);         // 4    |  3-------|--2
+                            cl[baseInsertionIndex + 5] = UniformGrid::vertexIndex(ix + 1, iy, iz + 1, dim);     // 5    | /        | /
+                            cl[baseInsertionIndex + 6] = UniformGrid::vertexIndex(ix + 1, iy + 1, iz + 1, dim); // 6    |/         |/
+                            cl[baseInsertionIndex + 7] = UniformGrid::vertexIndex(ix, iy + 1, iz + 1, dim);     // 7    0----------1
+                            // clang-format on
 
                             ++el;
                         }
@@ -144,25 +138,27 @@ bool ToUnstructured::compute()
                 }
             } else if (ny > 0) {
                 // 2-dim
+                auto *cl = unstrGridOut->cl().data();
                 Index el = 0;
                 for (Index ix = 0; ix < nx; ++ix) {
                     for (Index iy = 0; iy < ny; ++iy) {
                         const Index baseInsertionIndex = el * M_NUM_CORNERS_QUAD;
-                        unstrGridOut->cl()[baseInsertionIndex] = UniformGrid::vertexIndex(ix, iy, 0, dim);
-                        unstrGridOut->cl()[baseInsertionIndex + 1] = UniformGrid::vertexIndex(ix + 1, iy, 0, dim);
-                        unstrGridOut->cl()[baseInsertionIndex + 2] = UniformGrid::vertexIndex(ix + 1, iy + 1, 0, dim);
-                        unstrGridOut->cl()[baseInsertionIndex + 3] = UniformGrid::vertexIndex(ix, iy + 1, 0, dim);
+                        cl[baseInsertionIndex] = UniformGrid::vertexIndex(ix, iy, 0, dim);
+                        cl[baseInsertionIndex + 1] = UniformGrid::vertexIndex(ix + 1, iy, 0, dim);
+                        cl[baseInsertionIndex + 2] = UniformGrid::vertexIndex(ix + 1, iy + 1, 0, dim);
+                        cl[baseInsertionIndex + 3] = UniformGrid::vertexIndex(ix, iy + 1, 0, dim);
 
                         ++el;
                     }
                 }
             } else if (nx > 0) {
                 // 1-dim
+                auto *cl = unstrGridOut->cl().data();
                 Index el = 0;
                 for (Index ix = 0; ix < nx; ++ix) {
                     const Index baseInsertionIndex = el * M_NUM_CORNERS_BAR;
-                    unstrGridOut->cl()[baseInsertionIndex] = UniformGrid::vertexIndex(ix, 0, 0, dim);
-                    unstrGridOut->cl()[baseInsertionIndex + 1] = UniformGrid::vertexIndex(ix + 1, 0, 0, dim);
+                    cl[baseInsertionIndex] = UniformGrid::vertexIndex(ix, 0, 0, dim);
+                    cl[baseInsertionIndex + 1] = UniformGrid::vertexIndex(ix + 1, 0, 0, dim);
 
                     ++el;
                 }

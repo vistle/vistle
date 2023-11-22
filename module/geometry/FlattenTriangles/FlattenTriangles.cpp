@@ -129,10 +129,10 @@ bool FlattenTriangles::compute()
 
     if (data) {
         DataBase::ptr dout = data->clone();
-        dout->setGrid(outgrid);
         auto mapping = data->guessMapping();
         if (mapping == DataBase::Element) {
             dout->setMapping(DataBase::Element);
+            dout->setGrid(outgrid);
             updateMeta(dout);
             addObject("grid_out", dout);
         } else if (mapping == DataBase::Vertex) {
@@ -143,8 +143,8 @@ bool FlattenTriangles::compute()
                 flatten(intri, data, dout);
             } else if (inquad) {
                 flatten(inquad, data, dout);
-                dout->setGrid(outgrid);
             }
+            dout->setGrid(outgrid);
             updateMeta(dout);
             addObject("grid_out", dout);
         } else {

@@ -27,7 +27,6 @@ public:
     SenseiModule(const std::string &name, int moduleID, mpi::communicator comm);
 
 private:
-    message::InSituShmMessage *simCommunication();
     std::unique_ptr<insitu::message::MessageHandler> connectToSim() override;
 };
 } // namespace sensei

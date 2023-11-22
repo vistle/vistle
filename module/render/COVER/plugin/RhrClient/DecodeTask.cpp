@@ -68,8 +68,9 @@ bool DecodeTask::work()
     if (tile.compression & rfbTileDepthPredictPlanar) {
         dp.depthCodec = vistle::CompressionParameters::DepthPredictPlanar;
     }
-    if (tile.format == rfbDepthFloat) {
+    if (tile.format == rfbDepthFloat || tile.format == rfbDepthViewer) {
         dp.depthFloat = true;
+        dp.depthGL = tile.format == rfbDepthFloat;
     }
     if (tile.compression == rfbTileJpeg) {
         cp.rgbaCodec = vistle::CompressionParameters::Jpeg_YUV444;

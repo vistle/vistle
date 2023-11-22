@@ -156,7 +156,7 @@ protected:
     //! call during @ref examine to inform module nto how many the dataset will be split
     void setPartitions(int number);
 
-    bool changeParameters(std::set<const Parameter *> params) override;
+    bool changeParameters(std::map<std::string, const Parameter *> params) override;
     bool changeParameter(const Parameter *param) override;
     void prepareQuit() override;
 

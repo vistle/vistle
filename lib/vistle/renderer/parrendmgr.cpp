@@ -8,6 +8,17 @@
 #include <IceT.h>
 #include <IceTMPI.h>
 
+#ifdef MODULE_THREAD
+std::recursive_mutex vistle::ParallelRemoteRenderManager::s_icetMutex;
+#define LOCK_ICET(mtx) mtx.lock()
+#define UNLOCK_ICET(mtx) mtx.unlock()
+#define ICET_LOCKER std::unique_lock icet_lock(s_icetMutex)
+#else
+#define ICET_LOCKER
+#define LOCK_ICET(mtx)
+#define UNLOCK_ICET(mtx)
+#endif
+
 namespace mpi = boost::mpi;
 
 
@@ -65,10 +76,22 @@ ParallelRemoteRenderManager::ParallelRemoteRenderManager(Renderer *module)
 
 ParallelRemoteRenderManager::~ParallelRemoteRenderManager()
 {
+    ICET_LOCKER;
+
     for (auto &icet: m_icet) {
         if (icet.ctxValid)
             icetDestroyContext(icet.ctx);
     }
+}
+
+void ParallelRemoteRenderManager::setLinearDepth(bool linear)
+{
+    m_rhrControl.setLinearDepth(linear);
+}
+
+bool ParallelRemoteRenderManager::linearDepth() const
+{
+    return m_rhrControl.linearDepth();
 }
 
 Port *ParallelRemoteRenderManager::outputPort() const
@@ -88,6 +111,8 @@ void ParallelRemoteRenderManager::connectionRemoved(const Port *to)
 
 bool ParallelRemoteRenderManager::checkIceTError(const char *msg) const
 {
+    ICET_LOCKER;
+
     const char *err = "No error.";
     switch (icetGetError()) {
     case ICET_INVALID_VALUE:
@@ -387,6 +412,9 @@ size_t ParallelRemoteRenderManager::numViews() const
 
 void ParallelRemoteRenderManager::setCurrentView(size_t i)
 {
+    ICET_LOCKER;
+    LOCK_ICET(s_icetMutex);
+
     checkIceTError("setCurrentView");
 
     assert(m_currentView == -1);
@@ -459,11 +487,22 @@ void ParallelRemoteRenderManager::setCurrentView(size_t i)
 
     icetBoundingBoxf(localBoundMin[0], localBoundMax[0], localBoundMin[1], localBoundMax[1], localBoundMin[2],
                      localBoundMax[2]);
+    checkIceTError("exit setCurrentView");
 }
 
 void ParallelRemoteRenderManager::compositeCurrentView(const unsigned char *rgba, const float *depth, const int vp[4],
                                                        int timestep, bool lastView)
 {
+    ICET_LOCKER;
+
+    if (!rgba || !depth) {
+        finishCurrentView(nullptr, timestep, lastView);
+        UNLOCK_ICET(s_icetMutex);
+        return;
+    }
+
+    checkIceTError("compositeCurrentView");
+
     const auto &i = m_currentView;
 
     auto P = getProjMat(i);
@@ -475,10 +514,10 @@ void ParallelRemoteRenderManager::compositeCurrentView(const unsigned char *rgba
 
     IceTInt viewport[4] = {vp[0], vp[1], vp[2], vp[3]};
     IceTFloat bg[4] = {0., 0., 0., 0.};
-
     IceTImage img = icetCompositeImage(rgba, depth, viewport, proj, mv, bg);
-
     finishCurrentView(&img, timestep, lastView);
+
+    UNLOCK_ICET(s_icetMutex);
 }
 
 void ParallelRemoteRenderManager::finishCurrentView(const IceTImagePtr imgp, int timestep)
@@ -489,7 +528,8 @@ void ParallelRemoteRenderManager::finishCurrentView(const IceTImagePtr imgp, int
 
 void ParallelRemoteRenderManager::finishCurrentView(const IceTImagePtr imgp, int timestep, bool lastView)
 {
-    const IceTImage &img = *static_cast<const IceTImage *>(imgp);
+    ICET_LOCKER;
+
     checkIceTError("before finishCurrentView");
 
     assert(m_currentView >= 0);
@@ -500,14 +540,14 @@ void ParallelRemoteRenderManager::finishCurrentView(const IceTImagePtr imgp, int
     if (m_module->rank() == rootRank()) {
         if (auto rhr = m_rhrControl.server()) {
             assert(rhr);
-            if (i < rhr->numViews()) {
+            if (imgp && i < rhr->numViews()) {
                 // otherwise client just disconnected
                 const int bpp = 4;
                 const int w = rhr->width(i);
                 const int h = rhr->height(i);
-                assert(std::max(0, w) == icetImageGetWidth(img));
-                assert(std::max(0, h) == icetImageGetHeight(img));
-
+                const IceTImage &img = *static_cast<const IceTImage *>(imgp);
+                std::cerr << "w=" << w << ", h=" << h << ", img: w=" << icetImageGetWidth(img)
+                          << ", h=" << icetImageGetHeight(img) << std::endl;
 
                 const IceTUByte *color = nullptr;
                 switch (icetImageGetColorFormat(img)) {
@@ -527,13 +567,18 @@ void ParallelRemoteRenderManager::finishCurrentView(const IceTImagePtr imgp, int
                     depth = icetImageGetDepthcf(img);
                     break;
                 case ICET_IMAGE_DEPTH_NONE:
-                    std::cerr << "expected byte color, got no color" << std::endl;
+                    std::cerr << "expected float depth, got none" << std::endl;
                     break;
                 }
+
+                assert(std::max(0, w) == icetImageGetWidth(img));
+                assert(std::max(0, h) == icetImageGetHeight(img));
 
                 if (color && depth && rhr->rgba(i) && rhr->depth(i)) {
                     for (int y = 0; y < h; ++y) {
                         memcpy(rhr->rgba(i) + w * bpp * y, color + w * (h - 1 - y) * bpp, bpp * w);
+                    }
+                    for (int y = 0; y < h; ++y) {
                         memcpy(rhr->depth(i) + w * y, depth + w * (h - 1 - y), sizeof(float) * w);
                     }
 
@@ -545,6 +590,8 @@ void ParallelRemoteRenderManager::finishCurrentView(const IceTImagePtr imgp, int
     }
     m_currentView = -1;
     m_frameComplete = lastView;
+
+    checkIceTError("after finishCurrentView");
 }
 
 bool ParallelRemoteRenderManager::finishFrame(int timestep)

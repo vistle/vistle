@@ -156,8 +156,22 @@ bool RhrController::initializeServer()
     m_rhr->setColorCodec(m_rgbaCodec);
     m_rhr->setTileSize(m_sendTileSize[0], m_sendTileSize[1]);
     m_rhr->setColorCompression(m_rgbaCompress);
+    m_rhr->setLinearDepth(linearDepth());
 
     return true;
+}
+
+void RhrController::setLinearDepth(bool linear)
+{
+    m_linearDepth = linear;
+    if (m_rhr) {
+        m_rhr->setLinearDepth(linear);
+    }
+}
+
+bool RhrController::linearDepth() const
+{
+    return m_linearDepth;
 }
 
 bool RhrController::handleParam(const vistle::Parameter *p)

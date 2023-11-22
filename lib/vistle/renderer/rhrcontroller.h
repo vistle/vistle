@@ -38,6 +38,9 @@ public:
     unsigned short connectPort() const;
     std::string connectHost() const;
 
+    void setLinearDepth(bool linear);
+    bool linearDepth() const;
+
 private:
     bool initializeServer();
     Object::ptr getConfigObject() const;
@@ -73,6 +76,7 @@ private:
     CompressionParameters::ZfpMode m_zfpMode;
     IntParameter *m_depthCompressMode;
     message::CompressionMode m_depthCompress;
+    bool m_linearDepth = false;
 
     IntVectorParameter *m_sendTileSizeParam;
     IntParamVector m_sendTileSize;

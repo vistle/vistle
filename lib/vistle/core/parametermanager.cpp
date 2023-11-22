@@ -41,11 +41,7 @@ void ParameterManager::setCurrentParameterGroup(const std::string &group, bool d
 void ParameterManager::init()
 {
     for (auto &pair: m_parameters) {
-#if 0
-        parameterChangedWrapper(pair.second.get());
-#else
-        m_delayedChanges.push_back(pair.second.param.get());
-#endif
+        m_delayedChanges.emplace(pair.first, pair.second.param.get());
     }
 }
 
@@ -173,11 +169,11 @@ bool ParameterManager::handleMessage(const message::SetParameter &param)
     return handled;
 }
 
-bool ParameterManager::changeParameters(std::set<const Parameter *> params)
+bool ParameterManager::changeParameters(std::map<std::string, const Parameter *> params)
 {
     bool ret = true;
     for (auto p: params)
-        ret &= changeParameter(p);
+        ret &= changeParameter(p.second);
     return ret;
 }
 
@@ -203,13 +199,8 @@ void ParameterManager::setName(const std::string &name)
 
 void ParameterManager::applyDelayedChanges()
 {
-    std::set<const Parameter *> params;
-    for (auto p: m_delayedChanges) {
-        params.emplace(p);
-    }
+    changeParameters(m_delayedChanges);
     m_delayedChanges.clear();
-
-    changeParameters(params);
 }
 
 Parameter *ParameterManager::addParameterGeneric(const std::string &name, std::shared_ptr<Parameter> param)
@@ -339,7 +330,8 @@ ParameterVector<V> getParameterDefault(config::Access *config, const std::string
         return value;
 
     auto def = config->array<V>("modules/default", module, name);
-    if (!def->exists()) {
+    if (!def->exists() && !name.empty() && name[0] == '_') {
+        // look up common default for system parameters
         def = config->array<V>("modules/default", "ALL", name);
     }
     if (def->size() != value.size())

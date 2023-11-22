@@ -4,6 +4,8 @@
 #include <cfloat>
 #include <limits>
 #include <random>
+#include <map>
+#include <vector>
 #include <vistle/core/scalar.h>
 #include <vistle/core/vector.h>
 #include <vistle/core/object.h>
@@ -542,8 +544,13 @@ bool Color::changeParameter(const Parameter *p)
             if (steps % 2 == 0) {
                 setParameter<Integer>(m_stepsPara, steps < MaxSteps ? steps + 1 : steps - 1);
             }
-            std::set<const vistle::Parameter *> params{m_constrain, m_autoRangePara, m_centerAbsolute, m_minPara,
-                                                       m_maxPara,   m_center,        m_stepsPara};
+            // make sure that Topography color map applies to appropriate elevation
+            std::vector<const vistle::Parameter *> paramVec{m_constrain, m_autoRangePara, m_centerAbsolute, m_minPara,
+                                                            m_maxPara,   m_center,        m_stepsPara};
+            std::map<std::string, const vistle::Parameter *> params;
+            for (auto &p: paramVec) {
+                params.emplace(p->getName(), p);
+            }
             changeParameters(params);
         }
     } else if (p == m_rgbFile && !m_rgbFile->getValue().empty()) {
