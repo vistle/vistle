@@ -5,6 +5,7 @@ Modules
    :maxdepth: 1
 
    AddAttribute.md
+   ApplyTransform.md
    Assemble.md
    AttachGrid.md
    AttachNormals.md
