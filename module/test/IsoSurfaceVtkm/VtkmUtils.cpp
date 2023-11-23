@@ -2,15 +2,19 @@
 #include <vtkm/cont/DataSetBuilderExplicit.h>
 #include <vtkm/cont/CellSetExplicit.h>
 
+#include <vistle/core/scalars.h>
 #include <vistle/core/unstr.h>
 #include <vistle/core/structuredgridbase.h>
 #include <vistle/core/uniformgrid.h>
 #include <vistle/core/rectilineargrid.h>
 #include <vistle/core/structuredgrid.h>
 
+#include <boost/mpl/for_each.hpp>
+
 #include "VtkmUtils.h"
 
-using namespace vistle;
+
+namespace vistle {
 
 // for testing also version that returns std::vector instead of array handle
 std::vector<vtkm::UInt8> vistleTypeListToVtkmShapesVector(Index numElements, const Byte *typeList)
@@ -43,9 +47,7 @@ std::vector<vtkm::UInt8> vistleTypeListToVtkmShapesVector(Index numElements, con
     return shapes;
 }
 
-VTKM_TRANSFORM_STATUS vistleToVtkmDataSet(vistle::Object::const_ptr grid,
-                                          std::shared_ptr<const vistle::Vec<Scalar, 1U>> scalarField,
-                                          vtkm::cont::DataSet &vtkmDataset, bool useArrayHandles)
+VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object::const_ptr grid)
 {
     if (auto coords = Coords::as(grid)) {
         auto numPoints = coords->getNumCoords();
@@ -64,9 +66,9 @@ VTKM_TRANSFORM_STATUS vistleToVtkmDataSet(vistle::Object::const_ptr grid,
         auto nx = uni->getNumDivisions(0);
         auto ny = uni->getNumDivisions(1);
         auto nz = uni->getNumDivisions(2);
-        const auto *min = uni->min(), *max = uni->max();
+        const auto *min = uni->min(), *dist = uni->dist();
         vtkm::cont::ArrayHandleUniformPointCoordinates uniformCoordinates(
-            vtkm::Id3(nx, ny, nz), vtkm::Vec3f{min[0], min[1], min[2]}, vtkm::Vec3f{max[0], max[1], max[2]});
+            vtkm::Id3(nx, ny, nz), vtkm::Vec3f{min[0], min[1], min[2]}, vtkm::Vec3f{dist[0], dist[1], dist[2]});
         auto coordinateSystem = vtkm::cont::CoordinateSystem("uniform", uniformCoordinates);
         vtkmDataset.AddCoordinateSystem(coordinateSystem);
     } else if (auto rect = RectilinearGrid::as(grid)) {
@@ -77,19 +79,19 @@ VTKM_TRANSFORM_STATUS vistleToVtkmDataSet(vistle::Object::const_ptr grid,
         auto yc = vtkm::cont::make_ArrayHandle(&rect->coords(1)[0], ny, vtkm::CopyFlag::Off);
         auto zc = vtkm::cont::make_ArrayHandle(&rect->coords(2)[0], nz, vtkm::CopyFlag::Off);
 
-        vtkm::cont::ArrayHandleCartesianProduct rectilinearCoordinates(xc, yc, zc);
+        vtkm::cont::ArrayHandleCartesianProduct rectilinearCoordinates(zc, yc, xc);
         auto coordinateSystem = vtkm::cont::CoordinateSystem("rectilinear", rectilinearCoordinates);
         vtkmDataset.AddCoordinateSystem(coordinateSystem);
     } else {
-        return VTKM_TRANSFORM_STATUS::UNSUPPORTED_GRID_TYPE;
+        return VtkmTransformStatus::UNSUPPORTED_GRID_TYPE;
     }
 
     auto indexedGrid = Indexed::as(grid);
 
     if (auto str = grid->getInterface<StructuredGridBase>()) {
-        auto nx = str->getNumDivisions(0);
-        auto ny = str->getNumDivisions(1);
-        auto nz = str->getNumDivisions(2);
+        vtkm::Id nx = str->getNumDivisions(0);
+        vtkm::Id ny = str->getNumDivisions(1);
+        vtkm::Id nz = str->getNumDivisions(2);
         if (nz > 0) {
             vtkm::cont::CellSetStructured<3> str3;
             str3.SetPointDimensions({nx, ny, nz});
@@ -132,13 +134,62 @@ VTKM_TRANSFORM_STATUS vistleToVtkmDataSet(vistle::Object::const_ptr grid,
         // create vtkm dataset
         vtkmDataset.SetCellSet(cellSetExplicit);
     } else {
-        return VTKM_TRANSFORM_STATUS::UNSUPPORTED_GRID_TYPE;
+        return VtkmTransformStatus::UNSUPPORTED_GRID_TYPE;
     }
-    vtkmDataset.AddPointField(
-        scalarField->getName(),
-        vtkm::cont::make_ArrayHandle(&scalarField->x()[0], scalarField->getSize(), vtkm::CopyFlag::Off));
 
-    return VTKM_TRANSFORM_STATUS::SUCCESS;
+    return VtkmTransformStatus::SUCCESS;
+}
+
+struct AddField {
+    vtkm::cont::DataSet &dataset;
+    DataBase::const_ptr &object;
+    const std::string &name;
+    bool &handled;
+    AddField(vtkm::cont::DataSet &ds, DataBase::const_ptr obj, const std::string &name, bool &handled)
+    : dataset(ds), object(obj), name(name), handled(handled)
+    {}
+    template<typename S>
+    void operator()(S)
+    {
+        typedef Vec<S, 1> V1;
+        typedef Vec<S, 2> V2;
+        typedef Vec<S, 3> V3;
+        typedef Vec<S, 4> V4;
+
+        Index size = object->getSize();
+        auto mapping = object->guessMapping();
+        vtkm::cont::UnknownArrayHandle ah;
+        if (auto in = V1::as(object)) {
+            ah = vtkm::cont::make_ArrayHandle(&in->x()[0], size, vtkm::CopyFlag::Off);
+        } else if (auto in = V3::as(object)) {
+            auto ax = vtkm::cont::make_ArrayHandle(&in->x()[0], size, vtkm::CopyFlag::Off);
+            auto ay = vtkm::cont::make_ArrayHandle(&in->y()[0], size, vtkm::CopyFlag::Off);
+            auto az = vtkm::cont::make_ArrayHandle(&in->z()[0], size, vtkm::CopyFlag::Off);
+            ah = vtkm::cont::make_ArrayHandleSOA(ax, ay, az);
+        } else {
+            return;
+        }
+
+        if (mapping == vistle::DataBase::Vertex) {
+            dataset.AddPointField(name, ah);
+        } else {
+            dataset.AddCellField(name, ah);
+        }
+
+        handled = true;
+    }
+};
+
+
+VtkmTransformStatus vtkmAddField(vtkm::cont::DataSet &vtkmDataSet, const vistle::DataBase::const_ptr &field,
+                                 const std::string &name)
+{
+    bool handled = false;
+    boost::mpl::for_each<Scalars>(AddField(vtkmDataSet, field, name, handled));
+    if (handled)
+        return VtkmTransformStatus::SUCCESS;
+
+    return VtkmTransformStatus::UNSUPPORTED_FIELD_TYPE;
 }
 
 Triangles::ptr vtkmIsosurfaceToVistleTriangles(vtkm::cont::DataSet &isosurface)
@@ -179,3 +230,112 @@ Triangles::ptr vtkmIsosurfaceToVistleTriangles(vtkm::cont::DataSet &isosurface)
 
     return isoTriangles;
 }
+
+template<typename C>
+struct Vistle;
+
+#define MAP(vtkm_t, vistle_t) \
+    template<> \
+    struct Vistle<vtkm_t> { \
+        typedef vistle_t type; \
+    }
+
+MAP(vtkm::Int8, vistle::Byte);
+MAP(vtkm::UInt8, vistle::Index);
+MAP(vtkm::Int16, vistle::Index);
+MAP(vtkm::UInt16, vistle::Index);
+MAP(vtkm::Int32, vistle::Index);
+MAP(vtkm::UInt32, vistle::Index);
+MAP(vtkm::Int64, vistle::Index);
+MAP(vtkm::UInt64, vistle::Index);
+MAP(float, vistle::Scalar);
+MAP(double, vistle::Scalar);
+
+#undef MAP
+
+struct GetArrayContents {
+    vistle::DataBase::ptr &result;
+
+    GetArrayContents(vistle::DataBase::ptr &result): result(result) {}
+
+    template<typename T, typename S>
+    VTKM_CONT void operator()(const vtkm::cont::ArrayHandle<T, S> &array) const
+    {
+        this->GetArrayPortal(array.ReadPortal());
+    }
+
+    template<typename PortalType>
+    VTKM_CONT void GetArrayPortal(const PortalType &portal) const
+    {
+        using ValueType = typename PortalType::ValueType;
+        using VTraits = vtkm::VecTraits<ValueType>;
+        typedef typename Vistle<typename VTraits::ComponentType>::type V;
+        ValueType dummy{};
+        const vtkm::IdComponent numComponents = VTraits::GetNumberOfComponents(dummy);
+        assert(!result);
+        V *x[4] = {};
+        switch (numComponents) {
+        case 1: {
+            auto data = std::make_shared<vistle::Vec<V, 1>>(portal.GetNumberOfValues());
+            result = data;
+            for (int i = 0; i < numComponents; ++i) {
+                x[i] = &data->x(i)[0];
+            }
+            break;
+        }
+        case 2: {
+            auto data = std::make_shared<vistle::Vec<V, 2>>(portal.GetNumberOfValues());
+            result = data;
+            for (int i = 0; i < numComponents; ++i) {
+                x[i] = &data->x(i)[0];
+            }
+            break;
+        }
+        case 3: {
+            auto data = std::make_shared<vistle::Vec<V, 3>>(portal.GetNumberOfValues());
+            result = data;
+            for (int i = 0; i < numComponents; ++i) {
+                x[i] = &data->x(i)[0];
+            }
+            break;
+        }
+#if 0
+        case 4: {
+            auto data = std::make_shared<vistle::Vec<V, 4>>(portal.GetNumberOfValues());
+            result = data;
+            for (int i = 0; i < numComponents; ++i) {
+                x[i] = &data->x(i)[0];
+            }
+            break;
+        }
+#endif
+        }
+        for (vtkm::Id index = 0; index < portal.GetNumberOfValues(); index++) {
+            ValueType value = portal.Get(index);
+            for (vtkm::IdComponent componentIndex = 0; componentIndex < numComponents; componentIndex++) {
+                x[componentIndex][index] = VTraits::GetComponent(value, componentIndex);
+            }
+        }
+    }
+};
+
+
+vistle::DataBase::ptr vtkmGetField(const vtkm::cont::DataSet &vtkmDataSet, const std::string &name)
+{
+    vistle::DataBase::ptr result;
+    if (!vtkmDataSet.HasField(name))
+        return result;
+
+    auto field = vtkmDataSet.GetField(name);
+    if (field.IsCellField() && !field.IsPointField())
+        return result;
+    auto ah = field.GetData();
+    try {
+        ah.CastAndCallForTypes<vtkm::TypeListAll, vtkm::cont::StorageListCommon>(GetArrayContents{result});
+    } catch (vtkm::cont::ErrorBadType &err) {
+        std::cerr << "cast error: " << err.what() << std::endl;
+    }
+    return result;
+}
+
+} // namespace vistle

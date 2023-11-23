@@ -22,14 +22,16 @@ TODO:
 IsoSurfaceVtkm::IsoSurfaceVtkm(const std::string &name, int moduleID, mpi::communicator comm)
 : Module(name, moduleID, comm)
 {
-    createInputPort("data_in", "input grid or geometry with mapped data");
+    createInputPort("data_in", "input gird or geometry with scalar data");
+    m_mapDataIn = createInputPort("mapdata_in", "additional mapped field");
     m_dataOut = createOutputPort("data_out", "surface with mapped data");
 
     m_isovalue = addFloatParameter("isovalue", "isovalue", 0.0);
 
-    m_useArrayHandles =
-        addIntParameter("use_array_handle", "specify wheter to use array handles to transform vistle to vtkm data",
-                        true, Parameter::Boolean);
+    setReducePolicy(message::ReducePolicy::OverAll);
+
+    m_computeNormals =
+        addIntParameter("compute_normals", "compute normals (structured grids only)", false, Parameter::Boolean);
 }
 
 IsoSurfaceVtkm::~IsoSurfaceVtkm()
@@ -38,50 +40,113 @@ IsoSurfaceVtkm::~IsoSurfaceVtkm()
 bool IsoSurfaceVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task) const
 {
     // make sure input data is supported
-    auto scalarField = task->expect<Vec<Scalar>>("data_in");
-    if (!scalarField) {
+    auto isoData = task->expect<Vec<Scalar>>("data_in");
+    if (!isoData) {
         sendError("need scalar data on data_in");
         return true;
     }
-
-    if (scalarField->guessMapping() != DataBase::Vertex) {
-        sendError("need per-vertex mapping on data_in");
-        return true;
-    }
-
-    auto splitScalar = splitContainerObject(scalarField);
-    auto grid = splitScalar.geometry;
+    auto splitIso = splitContainerObject(isoData);
+    auto grid = splitIso.geometry;
     if (!grid) {
         sendError("no grid on scalar input data");
         return true;
     }
 
+    auto isoField = splitIso.mapped;
+    if (isoField->guessMapping() != DataBase::Vertex) {
+        sendError("need per-vertex mapping on data_in");
+        return true;
+    }
+
+
+    auto mapData = task->accept<Object>(m_mapDataIn);
+    auto splitMap = splitContainerObject(mapData);
+    auto mapField = splitMap.mapped;
+    if (mapField) {
+        auto &mg = splitMap.geometry;
+        if (!mg) {
+            sendError("no grid on mapped data");
+            return true;
+        }
+        if (mg->getHandle() != grid->getHandle()) {
+            sendError("grids on mapped data and iso-data do not match");
+            std::cerr << "grid mismatch: mapped: " << *mapField << ",\n    isodata: " << *isoField << std::endl;
+            return true;
+        }
+    }
+
     // transform vistle dataset to vtkm dataset
     vtkm::cont::DataSet vtkmDataSet;
-    auto status = vistleToVtkmDataSet(grid, scalarField, vtkmDataSet, m_useArrayHandles);
-
-    if (status == VTKM_TRANSFORM_STATUS::UNSUPPORTED_GRID_TYPE) {
+    auto status = vtkmSetGrid(vtkmDataSet, grid);
+    if (status == VtkmTransformStatus::UNSUPPORTED_GRID_TYPE) {
         sendError("Currently only supporting unstructured grids");
         return true;
-    } else if (status == VTKM_TRANSFORM_STATUS::UNSUPPORTED_CELL_TYPE) {
+    } else if (status == VtkmTransformStatus::UNSUPPORTED_CELL_TYPE) {
         sendError("Can only transform these cells from vistle to vtkm: point, bar, triangle, polygon, quad, tetra, "
                   "hexahedron, pyramid");
         return true;
     }
 
+    std::string isospecies = isoField->getAttribute("_species");
+    if (isospecies.empty())
+        isospecies = "isodata";
+    status = vtkmAddField(vtkmDataSet, isoField, isospecies);
+    if (status == VtkmTransformStatus::UNSUPPORTED_FIELD_TYPE) {
+        sendError("Unsupported iso field type");
+        return true;
+    }
+
+    std::string mapspecies;
+    if (mapField) {
+        mapspecies = mapField->getAttribute("_species");
+        if (mapspecies.empty())
+            mapspecies = "mapped";
+        status = vtkmAddField(vtkmDataSet, mapField, mapspecies);
+        if (status == VtkmTransformStatus::UNSUPPORTED_FIELD_TYPE) {
+            sendError("Unsupported mapped field type");
+            return true;
+        }
+    }
+
     // apply vtkm isosurface filter
     vtkm::filter::contour::Contour isosurfaceFilter;
-    isosurfaceFilter.SetActiveField(scalarField->getName());
+    isosurfaceFilter.SetActiveField(isospecies);
     isosurfaceFilter.SetIsoValue(m_isovalue->getValue());
     isosurfaceFilter.SetMergeDuplicatePoints(false);
-    isosurfaceFilter.SetGenerateNormals(false);
+    isosurfaceFilter.SetGenerateNormals(m_computeNormals->getValue() != 0);
     auto isosurface = isosurfaceFilter.Execute(vtkmDataSet);
 
     // transform result back into vistle format
     Object::ptr geoOut = vtkmIsosurfaceToVistleTriangles(isosurface);
-    updateMeta(geoOut);
+    if (geoOut) {
+        updateMeta(geoOut);
+        geoOut->copyAttributes(isoField);
+        geoOut->copyAttributes(grid, false);
+        geoOut->setTransform(grid->getTransform());
+        //geoOut->setNormals(normals);
+        if (geoOut->getTimestep() < 0) {
+            geoOut->setTimestep(grid->getTimestep());
+            geoOut->setNumTimesteps(grid->getNumTimesteps());
+        }
+        if (geoOut->getBlock() < 0) {
+            geoOut->setBlock(grid->getBlock());
+            geoOut->setNumBlocks(grid->getNumBlocks());
+        }
+    }
 
-    task->addObject(m_dataOut, geoOut);
+    DataBase::ptr mapped;
+    if (mapField) {
+        mapped = vtkmGetField(isosurface, mapspecies);
+    }
+    if (mapped) {
+        std::cerr << "mapped data: " << *mapped << std::endl;
+        mapped->copyAttributes(mapField);
+        mapped->setGrid(geoOut);
+        updateMeta(mapped);
+        task->addObject(m_dataOut, mapped);
+    } else {
+        task->addObject(m_dataOut, geoOut);
+    }
 
     return true;
 }
