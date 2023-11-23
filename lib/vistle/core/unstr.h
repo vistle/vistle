@@ -51,7 +51,7 @@ public:
         // tetrahedron
         {3, 3, 3, 3, 0, 0},
         // pyramid
-        {4, 3, 3, 3, 0, 0},
+        {4, 3, 3, 3, 3, 0},
         // prism
         {3, 4, 4, 4, 3, 0},
         // hexahedron
