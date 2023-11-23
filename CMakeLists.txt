@@ -63,11 +63,7 @@ set(VISTLE_CPU_ARCH
     ""
     CACHE STRING "CPU architecture to optimize for (native, corei7-avx, core-avx2, atom, ...)")
 
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    option(VISTLE_PEDANTIC_ERRORS "Be pedantic about C++ standard and emit errors" OFF) # for diy
-else()
-    option(VISTLE_PEDANTIC_ERRORS "Be pedantic about C++ standard and emit errors" ON)
-endif()
+option(VISTLE_PEDANTIC_ERRORS "Be pedantic about C++ standard and emit errors" OFF) # for diy, also included in vtk-m
 
 option(VISTLE_SANITIZE_UNDEFINED "Build with -fsanitize=undefined" OFF)
 option(VISTLE_SANITIZE_ADDRESS "Build with -fsanitize=address" OFF)
