@@ -270,7 +270,7 @@ if(NOT VISTLE_GUI_ONLY)
     if(NOT ${TBB_FOUND})
         vistle_find_package(TBB)
         if(NOT (${CMAKE_GENERATOR} STREQUAL "Visual Studio 17 2022"))
-            if(${TBB_FOUND})
+            if(${TBB_FOUND} AND NOT TARGET TBB::tbb)
                 add_library(TBB::tbb SHARED IMPORTED)
                 set_target_properties(
                     TBB::tbb
