@@ -1,8 +1,12 @@
-#include <vistle/core/unstr.h>
-
 #include <vtkm/cont/ArrayCopy.h>
 #include <vtkm/cont/DataSetBuilderExplicit.h>
 #include <vtkm/cont/CellSetExplicit.h>
+
+#include <vistle/core/unstr.h>
+#include <vistle/core/structuredgridbase.h>
+#include <vistle/core/uniformgrid.h>
+#include <vistle/core/rectilineargrid.h>
+#include <vistle/core/structuredgrid.h>
 
 #include "VtkmUtils.h"
 
@@ -43,37 +47,75 @@ VTKM_TRANSFORM_STATUS vistleToVtkmDataSet(vistle::Object::const_ptr grid,
                                           std::shared_ptr<const vistle::Vec<Scalar, 1U>> scalarField,
                                           vtkm::cont::DataSet &vtkmDataset, bool useArrayHandles)
 {
-    auto indexedGrid = Indexed::as(grid);
-    auto unstructuredGrid = UnstructuredGrid::as(indexedGrid);
-    if (!unstructuredGrid)
-        return VTKM_TRANSFORM_STATUS::UNSUPPORTED_GRID_TYPE;
+    if (auto coords = Coords::as(grid)) {
+        auto numPoints = coords->getNumCoords();
+        auto xCoords = coords->x();
+        auto yCoords = coords->y();
+        auto zCoords = coords->z();
 
-    auto points = Vec<Scalar, 3>::as(grid);
-    auto numPoints = indexedGrid->getNumCoords();
-    auto xCoords = points->x();
-    auto yCoords = points->y();
-    auto zCoords = points->z();
-
-    auto numConn = indexedGrid->getNumCorners();
-    auto connList = &indexedGrid->cl()[0];
-
-    auto numElements = indexedGrid->getNumElements();
-    auto elementList = &indexedGrid->el()[0];
-
-    auto typeList = &unstructuredGrid->tl()[0];
-
-    // two options for testing: using array handles or std::vectors to create vtkm dataset
-    if (useArrayHandles) {
         auto coordinateSystem = vtkm::cont::CoordinateSystem(
             "coordinate system",
             vtkm::cont::make_ArrayHandleSOA(vtkm::cont::make_ArrayHandle(xCoords, numPoints, vtkm::CopyFlag::Off),
                                             vtkm::cont::make_ArrayHandle(yCoords, numPoints, vtkm::CopyFlag::Off),
                                             vtkm::cont::make_ArrayHandle(zCoords, numPoints, vtkm::CopyFlag::Off)));
 
+        vtkmDataset.AddCoordinateSystem(coordinateSystem);
+    } else if (auto uni = UniformGrid::as(grid)) {
+        auto nx = uni->getNumDivisions(0);
+        auto ny = uni->getNumDivisions(1);
+        auto nz = uni->getNumDivisions(2);
+        const auto *min = uni->min(), *max = uni->max();
+        vtkm::cont::ArrayHandleUniformPointCoordinates uniformCoordinates(
+            vtkm::Id3(nx, ny, nz), vtkm::Vec3f{min[0], min[1], min[2]}, vtkm::Vec3f{max[0], max[1], max[2]});
+        auto coordinateSystem = vtkm::cont::CoordinateSystem("uniform", uniformCoordinates);
+        vtkmDataset.AddCoordinateSystem(coordinateSystem);
+    } else if (auto rect = RectilinearGrid::as(grid)) {
+        auto nx = rect->getNumDivisions(0);
+        auto ny = rect->getNumDivisions(1);
+        auto nz = rect->getNumDivisions(2);
+        auto xc = vtkm::cont::make_ArrayHandle(&rect->coords(0)[0], nx, vtkm::CopyFlag::Off);
+        auto yc = vtkm::cont::make_ArrayHandle(&rect->coords(1)[0], ny, vtkm::CopyFlag::Off);
+        auto zc = vtkm::cont::make_ArrayHandle(&rect->coords(2)[0], nz, vtkm::CopyFlag::Off);
+
+        vtkm::cont::ArrayHandleCartesianProduct rectilinearCoordinates(xc, yc, zc);
+        auto coordinateSystem = vtkm::cont::CoordinateSystem("rectilinear", rectilinearCoordinates);
+        vtkmDataset.AddCoordinateSystem(coordinateSystem);
+    } else {
+        return VTKM_TRANSFORM_STATUS::UNSUPPORTED_GRID_TYPE;
+    }
+
+    auto indexedGrid = Indexed::as(grid);
+
+    if (auto str = grid->getInterface<StructuredGridBase>()) {
+        auto nx = str->getNumDivisions(0);
+        auto ny = str->getNumDivisions(1);
+        auto nz = str->getNumDivisions(2);
+        if (nz > 0) {
+            vtkm::cont::CellSetStructured<3> str3;
+            str3.SetPointDimensions({nx, ny, nz});
+            vtkmDataset.SetCellSet(str3);
+        } else if (ny > 0) {
+            vtkm::cont::CellSetStructured<2> str2;
+            str2.SetPointDimensions({nx, ny});
+            vtkmDataset.SetCellSet(str2);
+        } else {
+            vtkm::cont::CellSetStructured<1> str1;
+            str1.SetPointDimensions(nx);
+            vtkmDataset.SetCellSet(str1);
+        }
+    } else if (auto unstructuredGrid = UnstructuredGrid::as(indexedGrid)) {
+        auto numPoints = indexedGrid->getNumCoords();
+        auto numConn = indexedGrid->getNumCorners();
+        auto connList = &indexedGrid->cl()[0];
+
+        auto numElements = indexedGrid->getNumElements();
+        auto elementList = &indexedGrid->el()[0];
+
+        auto typeList = &unstructuredGrid->tl()[0];
+
+        // two options for testing: using array handles or std::vectors to create vtkm dataset
         static_assert(sizeof(vistle::Index) == sizeof(vtkm::Id),
                       "VTK-m has to be compiled with Id size matching Vistle's Index size");
-
-        vtkm::cont::CellSetExplicit<> cellSetExplicit;
 
         auto conn =
             vtkm::cont::make_ArrayHandle(reinterpret_cast<const vtkm::Id *>(connList), numConn, vtkm::CopyFlag::Off);
@@ -84,46 +126,17 @@ VTKM_TRANSFORM_STATUS vistleToVtkmDataSet(vistle::Object::const_ptr grid,
         auto shapes = vtkm::cont::make_ArrayHandle(reinterpret_cast<const vtkm::UInt8 *>(typeList), numElements,
                                                    vtkm::CopyFlag::Off);
 
+        vtkm::cont::CellSetExplicit<> cellSetExplicit;
         cellSetExplicit.Fill(numPoints, shapes, conn, offs);
 
         // create vtkm dataset
-        vtkmDataset.AddCoordinateSystem(coordinateSystem);
         vtkmDataset.SetCellSet(cellSetExplicit);
-
-        vtkmDataset.AddPointField(scalarField->getName(),
-                                  vtkm::cont::make_ArrayHandle(&scalarField->x()[0], numPoints, vtkm::CopyFlag::Off));
     } else {
-        // for the vertices' coordinates vistle uses structures of arrays, while vtkm
-        // uses arrays of structures for the points' coordinates
-        std::vector<vtkm::Vec3f_32> pointCoordinates;
-        for (unsigned int i = 0; i < numPoints; i++)
-            pointCoordinates.push_back(vtkm::Vec3f_32(xCoords[i], yCoords[i], zCoords[i]));
-
-        std::vector<vtkm::Id> connectivity(numConn);
-        for (unsigned int i = 0; i < connectivity.size(); i++)
-            connectivity[i] = static_cast<vtkm::Id>(connList[i]);
-
-        // to make clear at which index of the connectivity list the description of a
-        // cell starts, vistle implicitly stores these start indices, while vtkm stores
-        // the number of vertices that make up each cell in a list instead
-        std::vector<vtkm::IdComponent> numIndices(numElements);
-        for (unsigned int i = 0; i < numElements - 1; i++)
-            numIndices[i] = elementList[i + 1] - elementList[i];
-        numIndices.back() = numConn - elementList[numElements - 1];
-
-        auto shapes = vistleTypeListToVtkmShapesVector(numElements, typeList);
-        if (shapes.empty()) {
-            return VTKM_TRANSFORM_STATUS::UNSUPPORTED_CELL_TYPE;
-        }
-
-        // create vtkm dataset
-        vtkm::cont::DataSetBuilderExplicit unstructuredDatasetBuilder;
-        vtkmDataset = unstructuredDatasetBuilder.Create(pointCoordinates, shapes, numIndices, connectivity);
-
-        // add scalar field
-        vtkmDataset.AddPointField(scalarField->getName(),
-                                  std::vector<float>(scalarField->x(), scalarField->x() + numPoints));
+        return VTKM_TRANSFORM_STATUS::UNSUPPORTED_GRID_TYPE;
     }
+    vtkmDataset.AddPointField(
+        scalarField->getName(),
+        vtkm::cont::make_ArrayHandle(&scalarField->x()[0], scalarField->getSize(), vtkm::CopyFlag::Off));
 
     return VTKM_TRANSFORM_STATUS::SUCCESS;
 }
