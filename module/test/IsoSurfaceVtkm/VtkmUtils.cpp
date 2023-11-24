@@ -49,6 +49,7 @@ std::vector<vtkm::UInt8> vistleTypeListToVtkmShapesVector(Index numElements, con
 
 VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object::const_ptr grid)
 {
+    // swap x and z coordinates to account for different indexing in structured data
     if (auto coords = Coords::as(grid)) {
         auto numPoints = coords->getNumCoords();
         auto xCoords = coords->x();
@@ -57,9 +58,9 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
 
         auto coordinateSystem = vtkm::cont::CoordinateSystem(
             "coordinate system",
-            vtkm::cont::make_ArrayHandleSOA(vtkm::cont::make_ArrayHandle(xCoords, numPoints, vtkm::CopyFlag::Off),
+            vtkm::cont::make_ArrayHandleSOA(vtkm::cont::make_ArrayHandle(zCoords, numPoints, vtkm::CopyFlag::Off),
                                             vtkm::cont::make_ArrayHandle(yCoords, numPoints, vtkm::CopyFlag::Off),
-                                            vtkm::cont::make_ArrayHandle(zCoords, numPoints, vtkm::CopyFlag::Off)));
+                                            vtkm::cont::make_ArrayHandle(xCoords, numPoints, vtkm::CopyFlag::Off)));
 
         vtkmDataset.AddCoordinateSystem(coordinateSystem);
     } else if (auto uni = UniformGrid::as(grid)) {
@@ -68,7 +69,7 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
         auto nz = uni->getNumDivisions(2);
         const auto *min = uni->min(), *dist = uni->dist();
         vtkm::cont::ArrayHandleUniformPointCoordinates uniformCoordinates(
-            vtkm::Id3(nx, ny, nz), vtkm::Vec3f{min[0], min[1], min[2]}, vtkm::Vec3f{dist[0], dist[1], dist[2]});
+            vtkm::Id3(nz, ny, nx), vtkm::Vec3f{min[2], min[1], min[0]}, vtkm::Vec3f{dist[2], dist[1], dist[0]});
         auto coordinateSystem = vtkm::cont::CoordinateSystem("uniform", uniformCoordinates);
         vtkmDataset.AddCoordinateSystem(coordinateSystem);
     } else if (auto rect = RectilinearGrid::as(grid)) {
@@ -94,11 +95,11 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
         vtkm::Id nz = str->getNumDivisions(2);
         if (nz > 0) {
             vtkm::cont::CellSetStructured<3> str3;
-            str3.SetPointDimensions({nx, ny, nz});
+            str3.SetPointDimensions({nz, ny, nx});
             vtkmDataset.SetCellSet(str3);
         } else if (ny > 0) {
             vtkm::cont::CellSetStructured<2> str2;
-            str2.SetPointDimensions({nx, ny});
+            str2.SetPointDimensions({ny, nx});
             vtkmDataset.SetCellSet(str2);
         } else {
             vtkm::cont::CellSetStructured<1> str1;
@@ -219,9 +220,10 @@ Triangles::ptr vtkmIsosurfaceToVistleTriangles(vtkm::cont::DataSet &isosurface)
 
     for (vtkm::Id index = 0; index < numPoints; index++) {
         vtkm::Vec3f point = pointsPortal.Get(index);
-        isoTriangles->x()[index] = point[0];
+        // account for coordinate axes swap
+        isoTriangles->x()[index] = point[2];
         isoTriangles->y()[index] = point[1];
-        isoTriangles->z()[index] = point[2];
+        isoTriangles->z()[index] = point[0];
     }
 
     for (vtkm::Id index = 0; index < numConn; index++) {
