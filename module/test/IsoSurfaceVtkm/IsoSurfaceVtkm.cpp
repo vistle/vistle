@@ -1,6 +1,8 @@
 #include <vistle/alg/objalg.h>
 #include <vistle/core/triangles.h>
 #include <vistle/core/unstr.h>
+#include <vistle/core/structuredgridbase.h>
+#include <vistle/util/stopwatch.h>
 
 #include <vtkm/cont/DataSetBuilderExplicit.h>
 #include <vtkm/filter/contour/Contour.h>
@@ -114,6 +116,8 @@ bool IsoSurfaceVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task) con
     isosurfaceFilter.SetIsoValue(m_isovalue->getValue());
     isosurfaceFilter.SetMergeDuplicatePoints(false);
     isosurfaceFilter.SetGenerateNormals(m_computeNormals->getValue() != 0);
+    std::string normalsName("_normals");
+    isosurfaceFilter.SetNormalArrayName(normalsName);
     auto isosurface = isosurfaceFilter.Execute(vtkmDataSet);
 
     // transform result back into vistle format
@@ -123,7 +127,6 @@ bool IsoSurfaceVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task) con
         geoOut->copyAttributes(isoField);
         geoOut->copyAttributes(grid, false);
         geoOut->setTransform(grid->getTransform());
-        //geoOut->setNormals(normals);
         if (geoOut->getTimestep() < 0) {
             geoOut->setTimestep(grid->getTimestep());
             geoOut->setNumTimesteps(grid->getNumTimesteps());
@@ -131,6 +134,22 @@ bool IsoSurfaceVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task) con
         if (geoOut->getBlock() < 0) {
             geoOut->setBlock(grid->getBlock());
             geoOut->setNumBlocks(grid->getNumBlocks());
+        }
+
+        if (m_computeNormals->getValue() != 0) {
+            Object::ptr nobj = vtkmGetField(isosurface, normalsName);
+            if (auto n = Vec<Scalar, 3>::as(nobj)) {
+                auto normals = std::make_shared<vistle::Normals>(0);
+                normals->d()->x[0] = n->d()->x[0];
+                normals->d()->x[1] = n->d()->x[1];
+                normals->d()->x[2] = n->d()->x[2];
+                updateMeta(normals);
+                if (auto coords = Coords::as(geoOut)) {
+                    coords->setNormals(normals);
+                } else if (auto str = StructuredGridBase::as(geoOut)) {
+                    str->setNormals(normals);
+                }
+            }
         }
     }
 
