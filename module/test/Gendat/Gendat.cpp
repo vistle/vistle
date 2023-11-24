@@ -577,22 +577,17 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
         if (scalar) {
             scalar->setMapping(elementData ? DataBase::Element : DataBase::Vertex);
             scalar->setGrid(geoOut);
+            scalar->addAttribute("_species", "scalar");
+            token.applyMeta(scalar);
+            token.addObject("data_out0", scalar);
         }
         if (vector) {
             vector->setMapping(elementData ? DataBase::Element : DataBase::Vertex);
             vector->setGrid(geoOut);
+            vector->addAttribute("_species", "vector");
+            token.applyMeta(vector);
+            token.addObject("data_out1", vector);
         }
-    }
-
-    if (scalar) {
-        scalar->addAttribute("_species", "scalar");
-        token.applyMeta(scalar);
-        token.addObject("data_out0", scalar);
-    }
-    if (vector) {
-        vector->addAttribute("_species", "vector");
-        token.applyMeta(vector);
-        token.addObject("data_out1", vector);
     }
 
     auto delay = m_delay->getValue();
