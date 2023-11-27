@@ -696,17 +696,6 @@ if(NOT VISTLE_MULTI_PROCESS)
     endif()
 endif()
 
-# configure data-type sizes
-option(VISTLE_64BIT_INDICES "use 64-bit integers for array indices" OFF)
-if(VISTLE_64BIT_INDICES)
-    add_definitions(-DVISTLE_INDEX_64BIT)
-endif()
-
-option(VISTLE_DOUBLE_PRECISION "use double instead of float for coordinates and data arrays" OFF)
-if(VISTLE_DOUBLE_PRECISION)
-    add_definitions(-DVISTLE_SCALAR_DOUBLE)
-endif()
-
 macro(USE_OPENMP)
     if(OPENMP_FOUND)
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
@@ -962,6 +951,30 @@ if(WIN32 AND Xdmf_FOUND)
     if(NOT Iconv_FOUND)
         unset(Xdmf_FOUND)
     endif()
+endif()
+
+option(VISTLE_INTERNAL_VTKM "Use internal copy of VTK-m" ON)
+if(NOT VISTLE_INTERNAL_VTKM)
+    # unfortunately, vistle_find_package(VTKm 2.0) does not accept VTK-m 2.1
+    vistle_find_package(VTKm 2.0)
+
+    if(NOT VTKm_FOUND)
+        vistle_find_package(VTKm 2.1 REQUIRED)
+        if(NOT VTKm_FOUND)
+            message(FATAL "VISTLE_INTERNAL_VTKM is unset, but neither VTK-m 2.0 nor 2.1 was found")
+        endif()
+    endif()
+endif()
+
+# configure data-type sizes
+option(VISTLE_64BIT_INDICES "use 64-bit integers for array indices" OFF)
+if(VISTLE_64BIT_INDICES)
+    add_definitions(-DVISTLE_INDEX_64BIT)
+endif()
+
+option(VISTLE_DOUBLE_PRECISION "use double instead of float for coordinates and data arrays" OFF)
+if(VISTLE_DOUBLE_PRECISION)
+    add_definitions(-DVISTLE_SCALAR_DOUBLE)
 endif()
 
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)

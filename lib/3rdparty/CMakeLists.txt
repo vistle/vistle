@@ -50,54 +50,56 @@ set(CMAKE_INSTALL_INCLUDEDIR include/vistle/3rdparty)
 add_subdirectory(zfp)
 
 if(NOT VISTLE_GUI_ONLY)
-    #
-    # VTK-m
-    #
-    #set(VTKm_NO_ASSERT ON)
-    set(VTKm_NO_DEPRECATED_VIRTUAL ON)
-    set(VTKm_ENABLE_MPI OFF)
-    #self.define_from_variant("VTKm_ENABLE_OPENMP", "openmp"),
-    set(VTKm_ENABLE_TBB ${TBB_FOUND})
-    set(VTKm_ENABLE_RENDERING OFF)
-    set(VTKm_ENABLE_TESTING OFF)
-    set(VTKm_ENABLE_TESTING_LIBRARY OFF)
-    set(VTKm_INSTALL_EXAMPLES OFF)
-    set(VTKm_ENABLE_BENCHMARKS OFF)
-    set(VTKm_ENABLE_DOCUMENTATION OFF)
-    set(VTKm_ENABLE_EXAMPLES OFF)
-    set(VTKm_ENABLE_CPACK OFF)
-    set(VTKm_USE_64BIT_IDS ${VISTLE_64BIT_INDICES})
-    #set(VTKm_USE_DEFAULT_TYPES_FOR_ASCENT", "ascent_types"),
-    set(VTKm_USE_DOUBLE_PRECISION ${VISTLE_DOUBLE_PRECISION})
+    if(VISTLE_INTERNAL_VTKM)
+        #
+        # VTK-m
+        #
+        #set(VTKm_NO_ASSERT ON)
+        set(VTKm_NO_DEPRECATED_VIRTUAL ON)
+        set(VTKm_ENABLE_MPI OFF)
+        #self.define_from_variant("VTKm_ENABLE_OPENMP", "openmp"),
+        set(VTKm_ENABLE_TBB ${TBB_FOUND})
+        set(VTKm_ENABLE_RENDERING OFF)
+        set(VTKm_ENABLE_TESTING OFF)
+        set(VTKm_ENABLE_TESTING_LIBRARY OFF)
+        set(VTKm_INSTALL_EXAMPLES OFF)
+        set(VTKm_ENABLE_BENCHMARKS OFF)
+        set(VTKm_ENABLE_DOCUMENTATION OFF)
+        set(VTKm_ENABLE_EXAMPLES OFF)
+        set(VTKm_ENABLE_CPACK OFF)
+        set(VTKm_USE_64BIT_IDS ${VISTLE_64BIT_INDICES})
+        #set(VTKm_USE_DEFAULT_TYPES_FOR_ASCENT", "ascent_types"),
+        set(VTKm_USE_DOUBLE_PRECISION ${VISTLE_DOUBLE_PRECISION})
 
-    set(VTKm_ENABLE_CUDA ${VISTLE_USE_CUDA})
-    set(VTKm_ENABLE_KOKKOS ${VISTLE_ENABLE_KOKKOS})
+        set(VTKm_ENABLE_CUDA ${VISTLE_USE_CUDA})
+        set(VTKm_ENABLE_KOKKOS ${VISTLE_ENABLE_KOKKOS})
 
-    #set(VTKm_INSTALL_LIB_DIR "${_vtk_build_LIBRARY_DESTINATION}")
-    #set(VTKm_INSTALL_INCLUDE_DIR "${_vtk_build_HEADERS_DESTINATION}/vtkvtkm/vtk-m")
-    #if (DEFINED _vtk_build_LIBRARY_NAME_SUFFIX)
-    #  set(VTKm_CUSTOM_LIBRARY_SUFFIX "-${_vtk_build_LIBRARY_NAME_SUFFIX}")
-    #endif ()
-    #set(VTKm_EXECUTABLE_OUTPUT_PATH "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
-    #set(VTKm_LIBRARY_OUTPUT_PATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
-    set(VTKm_BUILD_CMAKE_BASE_DIR "${CMAKE_BINARY_DIR}")
-    #set(VTKm_INSTALL_CONFIG_DIR "${_vtk_build_CMAKE_DESTINATION}/vtkm")
-    #set(VTKm_INSTALL_CMAKE_MODULE_DIR "${VTKm_INSTALL_CONFIG_DIR}/cmake")
-    # Currently VTK-m only installs its readme and license.
-    #set(VTKm_INSTALL_SHARE_DIR "${_vtk_build_LICENSE_DESTINATION}/vtkvtkm")
+        #set(VTKm_INSTALL_LIB_DIR "${_vtk_build_LIBRARY_DESTINATION}")
+        #set(VTKm_INSTALL_INCLUDE_DIR "${_vtk_build_HEADERS_DESTINATION}/vtkvtkm/vtk-m")
+        #if (DEFINED _vtk_build_LIBRARY_NAME_SUFFIX)
+        #  set(VTKm_CUSTOM_LIBRARY_SUFFIX "-${_vtk_build_LIBRARY_NAME_SUFFIX}")
+        #endif ()
+        #set(VTKm_EXECUTABLE_OUTPUT_PATH "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+        #set(VTKm_LIBRARY_OUTPUT_PATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
+        set(VTKm_BUILD_CMAKE_BASE_DIR "${CMAKE_BINARY_DIR}")
+        #set(VTKm_INSTALL_CONFIG_DIR "${_vtk_build_CMAKE_DESTINATION}/vtkm")
+        #set(VTKm_INSTALL_CMAKE_MODULE_DIR "${VTKm_INSTALL_CONFIG_DIR}/cmake")
+        # Currently VTK-m only installs its readme and license.
+        #set(VTKm_INSTALL_SHARE_DIR "${_vtk_build_LICENSE_DESTINATION}/vtkvtkm")
 
-    #set(VTKm_INSTALL_ONLY_LIBRARIES OFF)
+        #set(VTKm_INSTALL_ONLY_LIBRARIES OFF)
 
-    #set(VTKm_USE_DEFAULT_SYMBOL_VISIBILITY OFF)
-    set(VTKm_SKIP_LIBRARY_VERSIONS ON)
+        #set(VTKm_USE_DEFAULT_SYMBOL_VISIBILITY OFF)
+        set(VTKm_SKIP_LIBRARY_VERSIONS ON)
 
-    add_subdirectory(vtk-m)
-    add_library(vtkm::cont ALIAS vtkm_cont)
-    add_library(vtkm::filter ALIAS vtkm_filter)
-    #add_library(vtkm_io ALIAS vtkm::io)
-    #add_library(vtkm_rendering ALIAS vtkm::rendering)
-    #add_library(vtkm_source ALIAS vtkm::source)
-    #add_library(vtkm_worklet ALIAS vtkm::worklet)
+        add_subdirectory(vtk-m)
+        add_library(vtkm::cont ALIAS vtkm_cont)
+        add_library(vtkm::filter ALIAS vtkm_filter)
+        #add_library(vtkm_io ALIAS vtkm::io)
+        #add_library(vtkm_rendering ALIAS vtkm::rendering)
+        #add_library(vtkm_source ALIAS vtkm::source)
+        #add_library(vtkm_worklet ALIAS vtkm::worklet)
+    endif()
 
     #
     # IceT
