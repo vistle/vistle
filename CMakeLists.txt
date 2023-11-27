@@ -955,15 +955,20 @@ endif()
 
 option(VISTLE_INTERNAL_VTKM "Use internal copy of VTK-m" ON)
 if(NOT VISTLE_INTERNAL_VTKM)
+    set(VTKm_DIR_TMP "${VTKm_DIR}")
     # unfortunately, vistle_find_package(VTKm 2.0) does not accept VTK-m 2.1
     vistle_find_package(VTKm 2.0)
+    # VTKm_DIR is unset after find_package call
+    set(VTKm_DIR "${VTKm_DIR_TMP}")
 
     if(NOT VTKm_FOUND)
-        vistle_find_package(VTKm 2.1 REQUIRED)
+        vistle_find_package(VTKm 2.1)
+        set(VTKm_DIR "${VTKm_DIR_TMP}")
         if(NOT VTKm_FOUND)
-            message(FATAL "VISTLE_INTERNAL_VTKM is unset, but neither VTK-m 2.0 nor 2.1 was found")
+            message(FATAL_ERROR "VISTLE_INTERNAL_VTKM is unset, but neither VTK-m 2.0 nor 2.1 was found")
         endif()
     endif()
+    unset(VTKm_DIR_TMP)
 endif()
 
 # configure data-type sizes

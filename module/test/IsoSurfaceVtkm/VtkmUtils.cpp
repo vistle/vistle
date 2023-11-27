@@ -1,10 +1,3 @@
-<<<<<<< HEAD
-#include <limits>
-
-#include <vistle/core/unstr.h>
-
-=======
->>>>>>> upstream/master
 #include <vtkm/cont/ArrayCopy.h>
 #include <vtkm/cont/DataSetBuilderExplicit.h>
 #include <vtkm/cont/CellSetExplicit.h>
