@@ -498,6 +498,26 @@ Object::ptr ReadCovise::readUNSGRD(Token &token, const int port, int fd, const b
     } else {
         UnstructuredGrid::ptr usg(new UnstructuredGrid(numElements, numCorners, numVertices));
 
+        enum COVISE_ELEM_TYPE {
+            TYPE_NONE = 0,
+            TYPE_BAR = 1,
+            TYPE_TRIANGLE = 2,
+            TYPE_QUAD = 3,
+            TYPE_TETRAHEDER = 4,
+            TYPE_PYRAMID = 5,
+            TYPE_PRISM = 6,
+            TYPE_HEXAGON = 7,
+            TYPE_HEXAEDER = 7,
+            TYPE_POINT = 10,
+            TYPE_POLYHEDRON = 11
+        };
+
+        static uint8_t coviseToVtkm[] = {
+            vistle::cell::NONE,        vistle::cell::BAR,     vistle::cell::TRIANGLE, vistle::cell::QUAD,
+            vistle::cell::TETRAHEDRON, vistle::cell::PYRAMID, vistle::cell::PRISM,    vistle::cell::HEXAHEDRON,
+            vistle::cell::NONE,        vistle::cell::NONE,    vistle::cell::POINT,    vistle::cell::POLYHEDRON,
+        };
+
         std::vector<int> v_tl(numElements);
         std::vector<int> v_el(numElements);
         std::vector<int> v_cl(numCorners);
@@ -513,7 +533,8 @@ Object::ptr ReadCovise::readUNSGRD(Token &token, const int port, int fd, const b
         Byte *tl = &usg->tl()[0];
         for (int index = 0; index < numElements; index++) {
             el[index] = _el[index];
-            tl[index] = (UnstructuredGrid::Type)_tl[index];
+            assert(_tl[index] <= TYPE_POLYHEDRON);
+            tl[index] = coviseToVtkm[_tl[index]];
         }
         el[numElements] = numCorners;
 

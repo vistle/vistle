@@ -1,6 +1,8 @@
 #ifndef VISTLE_CELLTYPES_H
 #define VISTLE_CELLTYPES_H
 
+#include <vtkm/CellShape.h>
+
 #include "scalar.h"
 #include "index.h"
 
@@ -14,18 +16,18 @@ enum CellType {
     TYPE_MASK = 0x3f,
 
     // make sure that these types match those from COVISE: src/kernel/do/coDoUnstructuredGrid.h
-    NONE = 0,
-    BAR = 1,
-    TRIANGLE = 2,
-    QUAD = 3,
-    TETRAHEDRON = 4,
-    PYRAMID = 5,
-    PRISM = 6,
-    HEXAHEDRON = 7,
-    POLYGON = 9, // not in COVISE
-    POINT = 10,
-    POLYHEDRON = 11, // in COVISE
-    NUM_TYPES = 12, // keep last
+    NONE = vtkm::CELL_SHAPE_EMPTY,
+    BAR = vtkm::CELL_SHAPE_LINE,
+    TRIANGLE = vtkm::CELL_SHAPE_TRIANGLE,
+    QUAD = vtkm::CELL_SHAPE_QUAD,
+    TETRAHEDRON = vtkm::CELL_SHAPE_TETRA,
+    PYRAMID = vtkm::CELL_SHAPE_PYRAMID,
+    PRISM = vtkm::CELL_SHAPE_WEDGE,
+    HEXAHEDRON = vtkm::CELL_SHAPE_HEXAHEDRON,
+    POLYGON = vtkm::CELL_SHAPE_POLYGON,
+    POINT = vtkm::CELL_SHAPE_VERTEX,
+    POLYHEDRON = 11, // in COVISE, reserved for VOXEL in vtk-m
+    NUM_TYPES = vtkm::NUMBER_OF_CELL_SHAPES, // keep last
 };
 
 template<int type>
