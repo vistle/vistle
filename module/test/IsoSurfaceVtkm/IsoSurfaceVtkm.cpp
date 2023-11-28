@@ -18,7 +18,6 @@ MODULE_MAIN(IsoSurfaceVtkm)
 TODO:
     - support input other than per-vertex mapped data on unstructured grid
     - add second input port from original isosurface module (mapped data)
-    - remove use_arrayhandles bool after benchmarking module
 */
 
 IsoSurfaceVtkm::IsoSurfaceVtkm(const std::string &name, int moduleID, mpi::communicator comm)

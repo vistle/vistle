@@ -4,20 +4,20 @@
 
 #include <vtkm/Types.h>
 
-
 // We need to cast vistle indices (vistle::Index) to vtkm indices (vtkm::Id) and
 // vice-versa. So, in this program, we check if they are compatible.
-int main(int argc, char *argv[])
+int main(int argc, char **argv)
 {
-    // We expect this program to be called with one command line argument:
-    // 0 (vistle is using 32-bit integers) OR 1 (vistle is using 64-bit integers)
+    // We expect this program to be called with ${VISTLE_64BIT_INDICES}.
     assert(argc == 2);
-    auto vtkmLimit = std::numeric_limits<vtkm::Id>::max();
+    bool using64Bit = (std::string(argv[1]) == "ON");
 
-    if ((vtkmLimit == std::numeric_limits<int32_t>::max()) && (atoi(argv[1]) == 1))
+    auto vtkmIntSize = sizeof(vtkm::Id);
+
+    if ((vtkmIntSize == sizeof(int32_t)) && using64Bit)
         throw std::runtime_error("Vistle and vtk-m integer types are incompatible!");
 
-    if ((vtkmLimit == std::numeric_limits<int64_t>::max()) && (atoi(argv[1]) == 0))
+    if ((vtkmIntSize == sizeof(int64_t)) && !using64Bit)
         throw std::runtime_error("Vistle and vtk-m integer types are incompatible!");
 
     return 0;
