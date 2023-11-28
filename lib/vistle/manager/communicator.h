@@ -46,8 +46,6 @@ public:
     int getRank() const;
     int getSize() const;
 
-    unsigned short uiPort() const;
-
     ClusterManager &clusterManager() const;
     DataManager &dataManager() const;
     bool connectHub(std::string host, unsigned short port, unsigned short dataPort);
