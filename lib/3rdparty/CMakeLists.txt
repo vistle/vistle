@@ -58,7 +58,7 @@ if(NOT VISTLE_GUI_ONLY)
         set(VTKm_NO_DEPRECATED_VIRTUAL ON)
         set(VTKm_ENABLE_MPI OFF)
         #self.define_from_variant("VTKm_ENABLE_OPENMP", "openmp"),
-        set(VTKm_ENABLE_TBB ${TBB_FOUND})
+        set(VTKm_ENABLE_DEVELOPER_FLAGS OFF)
         set(VTKm_ENABLE_RENDERING OFF)
         set(VTKm_ENABLE_TESTING OFF)
         set(VTKm_ENABLE_TESTING_LIBRARY OFF)
@@ -71,6 +71,7 @@ if(NOT VISTLE_GUI_ONLY)
         #set(VTKm_USE_DEFAULT_TYPES_FOR_ASCENT", "ascent_types"),
         set(VTKm_USE_DOUBLE_PRECISION ${VISTLE_DOUBLE_PRECISION})
 
+        set(VTKm_ENABLE_TBB ${TBB_FOUND})
         set(VTKm_ENABLE_CUDA ${VISTLE_USE_CUDA})
         set(VTKm_ENABLE_KOKKOS ${VISTLE_ENABLE_KOKKOS})
 
