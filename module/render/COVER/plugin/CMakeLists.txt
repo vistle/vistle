@@ -8,5 +8,6 @@ message("Building COVER plugins for ARCHSUFFIX ${COVISE_ARCHSUFFIX}, destination
 include_directories(..)
 
 add_subdirectory(Vistle)
+add_subdirectory(VistleManager)
 add_subdirectory(CompositorIceT)
 add_subdirectory(RhrClient)

@@ -45,6 +45,7 @@ public:
     bool broadcastAndHandleMessage(const message::Message &message, const MessagePayload &payload = MessagePayload());
     bool sendMessage(int receiver, const message::Message &message, int rank = -1,
                      const MessagePayload &payload = MessagePayload());
+    bool sendHub(const message::Message &message, const MessagePayload &payload = MessagePayload());
 
     int hubId() const;
     int getRank() const;
@@ -59,7 +60,6 @@ public:
     void unlock();
 
 private:
-    bool sendHub(const message::Message &message, const MessagePayload &payload = MessagePayload());
     bool connectData();
 
 
