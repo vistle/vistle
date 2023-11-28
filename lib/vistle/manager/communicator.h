@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <set>
+#include <atomic>
 
 #include <boost/asio.hpp>
 #include <boost/mpi.hpp>
@@ -38,6 +39,7 @@ public:
     void setVistleRoot(const std::string &dir, const std::string &buildtype);
     void run();
     bool dispatch(bool *work);
+    void terminate();
     bool handleMessage(const message::Buffer &message, const MessagePayload &payload = MessagePayload());
     bool forwardToMaster(const message::Message &message, const vistle::MessagePayload &payload = MessagePayload());
     bool broadcastAndHandleMessage(const message::Message &message, const MessagePayload &payload = MessagePayload());
@@ -64,6 +66,7 @@ private:
     boost::mpi::communicator m_comm;
     ClusterManager *m_clusterManager;
     DataManager *m_dataManager;
+    std::atomic<bool> m_terminate = false;
 
     std::recursive_mutex m_mutex;
     bool isMaster() const;
