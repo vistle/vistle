@@ -923,10 +923,32 @@ if(WIN32 AND Xdmf_FOUND)
     endif()
 endif()
 
-option(VISTLE_INTERNAL_VTKM "Use internal copy of VTK-m" ON)
-if(NOT VISTLE_INTERNAL_VTKM)
-    # search without version argument, as it is not possible to search for all compatible versions (2.0 & 2.1) in one go
-    vistle_find_package(VTKm REQUIRED)
+vistle_find_package(
+    VTK
+    5.0
+    COMPONENTS
+    vtkCommonDataModel
+    vtkIOXML
+    vtkIOLegacy
+    #vtkCommonCore
+    #vtkFiltersCore
+    #vtkImagingCore
+    #vtkCommonExecutionModel
+    NO_MODULE
+    QUIET)
+
+if(VTK_FOUND AND VTK_HAS_VTKm)
+    if("9.3.0" VERSION_LESS "${VTK_VERSION}")
+        message(FATAL_ERROR "VTK provides VTK-m, but not VTK-m 2.0 or higher")
+    else()
+        message("Using VTK-m provide by VTK ${VTK_VERSION}")
+    endif()
+else()
+    option(VISTLE_INTERNAL_VTKM "Use internal copy of VTK-m" ON)
+    if(NOT VISTLE_INTERNAL_VTKM)
+        # search without version argument, as it is not possible to search for all compatible versions (2.0 & 2.1) in one go
+        vistle_find_package(VTKm REQUIRED)
+    endif()
 endif()
 
 # configure data-type sizes
