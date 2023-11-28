@@ -904,22 +904,8 @@ else()
     set(USE_SZ3 TRUE)
 endif()
 
-if(NOT VISTLE_GUI_ONLY)
-    vistle_find_package(
-        OpenSceneGraph
-        3.2.0
-        COMPONENTS
-        osgViewer
-        osgGA
-        osgDB
-        osgUtil
-        osgText
-        osgParticle
-        osgSim
-        osgFX)
-    set(OpenGL_GL_PREFERENCE LEGACY)
-    vistle_find_package(OpenGL)
-endif()
+set(OpenGL_GL_PREFERENCE LEGACY)
+vistle_find_package(OpenGL)
 
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
