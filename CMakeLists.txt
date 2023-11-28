@@ -919,8 +919,6 @@ if(NOT VISTLE_GUI_ONLY)
         osgFX)
     set(OpenGL_GL_PREFERENCE LEGACY)
     vistle_find_package(OpenGL)
-
-    vistle_find_package(COVER)
 endif()
 
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
@@ -929,20 +927,6 @@ if(VISTLE_ISPC_PTHREAD_WORKAROUND)
     set(THREADS_PREFER_PTHREAD_FLAG FALSE)
 endif()
 vistle_find_package(Threads REQUIRED)
-
-vistle_find_package(
-    VTK
-    5.0
-    COMPONENTS
-    vtkCommonDataModel
-    vtkIOXML
-    vtkIOLegacy
-    #vtkCommonCore
-    #vtkFiltersCore
-    #vtkImagingCore
-    #vtkCommonExecutionModel
-    NO_MODULE
-    QUIET)
 
 # do it here, so that we see the warnings just once
 vistle_find_package(Xdmf QUIET)

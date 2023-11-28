@@ -22,6 +22,7 @@ if(VISTLE_MULTI_PROCESS)
 else()
     vistle_add_library(vistle_clustermanager EXPORT ${LIB_SOURCES} ${LIB_HEADERS})
 
+    vistle_find_package(COVER)
     if(COVER_FOUND)
         vistle_find_package(XCB)
         vistle_find_package(X11)

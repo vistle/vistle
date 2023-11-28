@@ -1,3 +1,17 @@
+vistle_find_package(
+    VTK
+    5.0
+    COMPONENTS
+    vtkCommonDataModel
+    vtkIOXML
+    vtkIOLegacy
+    #vtkCommonCore
+    #vtkFiltersCore
+    #vtkImagingCore
+    #vtkCommonExecutionModel
+    NO_MODULE
+    QUIET)
+
 if(NOT VTK_FOUND)
     return()
 endif()
