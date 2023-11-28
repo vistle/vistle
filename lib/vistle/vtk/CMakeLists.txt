@@ -16,6 +16,12 @@ if(NOT VTK_FOUND)
     return()
 endif()
 
+if(VTK_HAS_VTKm)
+    if("9.3.0" VERSION_LESS "${VTK_VERSION}")
+        message(FATAL_ERROR "VTK provides VTK-m, but not VTK-m 2.0 or higher")
+    endif()
+endif()
+
 set(VTK_DEPENDENCIES
     "\nfind_dependency(
     VTK
