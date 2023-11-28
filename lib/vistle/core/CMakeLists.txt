@@ -201,7 +201,7 @@ vistle_target_link_libraries(
     PUBLIC
     Boost::system
     PUBLIC
-    vtkm::cont)
+    vistle_vtkm_cont)
 target_link_libraries(vistle_core PRIVATE vistle_config)
 
 if(ZFP_FOUND)
