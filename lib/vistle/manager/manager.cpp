@@ -32,6 +32,18 @@ static std::mutex main_thread_mutex;
 static std::condition_variable main_thread_cv;
 static std::deque<std::function<void()>> main_func;
 static bool main_done = false;
+static bool plugin_done = false;
+static bool manager_in_plugin = false;
+
+void set_manager_in_cover_plugin()
+{
+    manager_in_plugin = true;
+}
+
+bool manager_in_cover_plugin()
+{
+    return manager_in_plugin;
+}
 
 void run_on_main_thread(std::function<void()> &func)
 {
@@ -42,6 +54,25 @@ void run_on_main_thread(std::function<void()> &func)
     main_thread_cv.notify_all();
     std::unique_lock<std::mutex> lock(main_thread_mutex);
     main_thread_cv.wait(lock, [] { return main_done || main_func.empty(); });
+}
+
+void wait_for_cover_plugin()
+{
+    {
+        std::unique_lock<std::mutex> lock(main_thread_mutex);
+        plugin_done = false;
+    }
+    main_thread_cv.notify_all();
+    std::unique_lock<std::mutex> lock(main_thread_mutex);
+    main_thread_cv.wait(lock, [] { return plugin_done; });
+}
+
+void mark_cover_plugin_done()
+{
+    std::unique_lock<std::mutex> lock(main_thread_mutex);
+    plugin_done = true;
+    lock.unlock();
+    main_thread_cv.notify_all();
 }
 
 #if defined(HAVE_QT) && defined(MODULE_THREAD)

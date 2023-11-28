@@ -308,6 +308,7 @@ bool Hub::init(int argc, char *argv[])
         ("execute,e", "call compute() after workflow has been loaded")
         ("snapshot", po::value<std::string>(), "store screenshot of workflow to this location")
         ("libsim,l", po::value<std::string>(), "connect to a LibSim instrumented simulation by entering the path to the .sim2 file")
+        ("cover", "use OpenCOVER.mpi to manage Vistle session on cluster")
         ("exposed,gateway-host,gateway,gw", po::value<std::string>(), "ports are exposed externally on this host")
         ("root", po::value<std::string>(), "path to Vistle build directory")
         ("buildtype", po::value<std::string>(), "build type suffix to binary in Vistle build directory")
@@ -528,12 +529,24 @@ bool Hub::init(int argc, char *argv[])
         if (!m_proxyOnly) {
             // start manager on cluster
             std::string cmd = m_dir->bin() + "vistle_manager";
+            if (vm.count("cover") > 0) {
+                vistle::Directory dir(argc, argv);
+                vistle::directory::setVistleRoot(dir.prefix(), dir.buildType());
+                cmd = "OpenCOVER.mpi";
+                setenv("VISTLE_PLUGIN", "VistleManager", 1);
+                std::stringstream s;
+                s << hostname() << " " << port << " " << dataport;
+                std::string conn = s.str();
+                setenv("VISTLE_CONNECTION", conn.c_str(), 1);
+            }
             std::vector<std::string> args;
             args.push_back(cmd);
-            args.push_back("-from-vistle");
-            args.push_back(hostname());
-            args.push_back(port);
-            args.push_back(dataport);
+            if (vm.count("cover") == 0) {
+                args.push_back("-from-vistle");
+                args.push_back(hostname());
+                args.push_back(port);
+                args.push_back(dataport);
+            }
 #ifdef MODULE_THREAD
             if (vm.count("libsim") > 0) {
                 auto sim2FilePath = vm["libsim"].as<std::string>();
