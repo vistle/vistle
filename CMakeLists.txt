@@ -955,15 +955,8 @@ endif()
 
 option(VISTLE_INTERNAL_VTKM "Use internal copy of VTK-m" ON)
 if(NOT VISTLE_INTERNAL_VTKM)
-    # unfortunately, vistle_find_package(VTKm 2.0) does not accept VTK-m 2.1
-    vistle_find_package(VTKm 2.0)
-
-    if(NOT VTKm_FOUND)
-        vistle_find_package(VTKm 2.1 REQUIRED)
-        if(NOT VTKm_FOUND)
-            message(FATAL "VISTLE_INTERNAL_VTKM is unset, but neither VTK-m 2.0 nor 2.1 was found")
-        endif()
-    endif()
+    # search without version argument, as it is not possible to search for all compatible versions (2.0 & 2.1) in one go
+    vistle_find_package(VTKm REQUIRED)
 endif()
 
 # configure data-type sizes
