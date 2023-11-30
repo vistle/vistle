@@ -11,6 +11,8 @@
 #include <vistle/core/messagepayload.h>
 #include <vistle/core/availablemodule.h>
 
+#include "export.h"
+
 namespace vistle {
 
 class Parameter;
@@ -18,7 +20,7 @@ class ClusterManager;
 class DataManager;
 class Module;
 
-class Communicator {
+class V_MANAGEREXPORT Communicator {
     friend class ClusterManager;
     friend class DataManager;
 

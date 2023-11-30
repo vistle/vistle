@@ -6,6 +6,8 @@
 #include <vistle/core/scalar.h>
 #include <vistle/core/paramvector.h>
 
+#include "export.h"
+
 namespace vistle {
 
 class Communicator;
@@ -15,7 +17,7 @@ namespace message {
 class Message;
 }
 
-class Executor {
+class V_MANAGEREXPORT Executor {
 public:
     Executor(int argc, char *argv[], boost::mpi::communicator comm);
     virtual ~Executor();
