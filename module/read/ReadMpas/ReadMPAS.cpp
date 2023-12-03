@@ -219,7 +219,7 @@ bool ReadMPAS::prepareRead()
     }
     //sendInfo("computing #parts for %lu cells, %lu levels, %lu verts", (unsigned long)numGridCells, (unsigned long)numLevelsUser, (unsigned long)numVert);
 
-    size_t numPartsSuggested = std::max(size_t(1), (numVert + InvalidIndex / 3) / (InvalidIndex / 2));
+    size_t numPartsSuggested = std::max(size_t(1), size_t((numVert + InvalidIndex / 7) / (InvalidIndex / 4)));
     if (numPartsUser > 0 && numPartsSuggested > numPartsUser) {
         if (rank() == 0)
             sendInfo("Configured number of partitions (%u) probably not sufficient, suggested: %u",
