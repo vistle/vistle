@@ -214,7 +214,7 @@ void AnariRenderObject::create(anari::Device device)
                 auto end = begin + tri->getNumCorners() / 3;
                 const auto *cl = &tri->cl()[0];
                 for (auto it = begin; it != end; ++it) {
-                    *it = {*cl++, *cl++, *cl++};
+                    *it = {unsigned(*cl++), unsigned(*cl++), unsigned(*cl++)};
                 }
                 anari::unmapParameterArray(device, geom, "primitive.index");
             }
@@ -228,7 +228,7 @@ void AnariRenderObject::create(anari::Device device)
                 auto end = begin + quad->getNumCorners() / 4;
                 const auto *cl = &quad->cl()[0];
                 for (auto it = begin; it != end; ++it) {
-                    *it = {*cl++, *cl++, *cl++, *cl++};
+                    *it = {unsigned(*cl++), unsigned(*cl++), unsigned(*cl++), unsigned(*cl++)};
                 }
                 anari::unmapParameterArray(device, geom, "primitive.index");
             }
@@ -253,9 +253,9 @@ void AnariRenderObject::create(anari::Device device)
                 for (Index v = 0; v < nvert - 2; ++v) {
                     const Index v2 = v / 2;
                     if (v % 2) {
-                        *it = {cl[last - v2], cl[start + v2 + 1], cl[last - v2 - 1]};
+                        *it = {unsigned(cl[last - v2]), unsigned(cl[start + v2 + 1]), unsigned(cl[last - v2 - 1])};
                     } else {
-                        *it = {cl[start + v2], cl[start + v2 + 1], cl[last - v2]};
+                        *it = {unsigned(cl[start + v2]), unsigned(cl[start + v2 + 1]), unsigned(cl[last - v2])};
                     }
                     ++it;
                 }
