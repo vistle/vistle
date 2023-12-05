@@ -143,7 +143,7 @@ const char *Object::toString(Type v)
         if (std::string("int32_t") == scalstr)
             scalstr = "SIndex";
 #endif
-        if (std::string("unsigned char") == scalstr)
+        if (std::string("uint8_t") == scalstr)
             scalstr = "Byte";
         snprintf(buf, sizeof(buf), "%s%d", scalstr, dim);
     }
