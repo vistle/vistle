@@ -1,4 +1,3 @@
-
 if(WIN32)
     cmake_minimum_required(VERSION 3.15.2 FATAL_ERROR)
 else(WIN32)
