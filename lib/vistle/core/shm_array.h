@@ -15,10 +15,24 @@
 #include "scalars.h"
 #include "celltreenode_decl.h"
 
+#include <vtkm/cont/ArrayHandle.h>
+
 namespace vistle {
 
 template<typename T, class allocator>
 class shm_array;
+
+template<typename T>
+struct ArrayHandleTypeMap {
+    typedef T type;
+};
+
+// map from unsigned Index types to signed vtkm::Id's
+template<>
+struct ArrayHandleTypeMap<Index> {
+    typedef vtkm::Id type;
+    static_assert(sizeof(Index) == sizeof(vtkm::Id));
+};
 
 template<typename T, class allocator>
 std::ostream &operator<<(std::ostream &os, const shm_array<T, allocator> &arr);
@@ -29,6 +43,7 @@ class shm_array: public ShmData {
 
 public:
     typedef T value_type;
+    typedef typename ArrayHandleTypeMap<T>::type handle_type;
     typedef uint64_t size_type;
     typedef const value_type &const_reference;
 
@@ -42,6 +57,12 @@ public:
 
     unsigned type() const { return m_type; }
     bool check() const;
+
+#ifdef NO_SHMEM
+    const vtkm::cont::ArrayHandle<handle_type> &handle() const;
+#else
+    const vtkm::cont::ArrayHandle<handle_type> handle() const;
+#endif
 
     typedef typename std::allocator_traits<allocator>::pointer pointer;
     typedef T *iterator;
@@ -77,6 +98,7 @@ public:
     void resize(const size_t size);
     void resize(const size_t size, const T &value);
 
+    void updateArrayHandle();
     void clearDimensionHint();
     void setDimensionHint(const size_t sx, const size_t sy = 1, const size_t sz = 1);
     void setExact(bool exact);
@@ -112,6 +134,10 @@ private:
     value_type m_max = std::numeric_limits<value_type>::lowest();
     pointer m_data;
     allocator m_allocator;
+#ifdef NO_SHMEM
+    vtkm::cont::ArrayHandle<handle_type, VTKM_DEFAULT_STORAGE_TAG>
+        m_handle; // VTK-m ArrayHandle that is always kept up to date
+#endif
 
     ARCHIVE_ACCESS_SPLIT
     template<class Archive>

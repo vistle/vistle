@@ -126,6 +126,7 @@ void shm_array<T, allocator>::resize(const size_t size)
     assert(m_size <= m_capacity);
     clearDimensionHint();
     invalidate_bounds();
+    updateArrayHandle();
 }
 
 template<typename T, class allocator>
@@ -138,7 +139,32 @@ void shm_array<T, allocator>::resize(const size_t size, const T &value)
     assert(m_size <= m_capacity);
     clearDimensionHint();
     invalidate_bounds();
+    updateArrayHandle();
 }
+
+#ifdef NO_SHMEM
+template<typename T, class allocator>
+const vtkm::cont::ArrayHandle<typename shm_array<T, allocator>::handle_type> &shm_array<T, allocator>::handle() const
+{
+    return m_handle;
+}
+#else
+template<typename T, class allocator>
+const vtkm::cont::ArrayHandle<typename shm_array<T, allocator>::handle_type> shm_array<T, allocator>::handle() const
+{
+    return vtkm::cont::make_ArrayHandle(reinterpret_cast<const handle_type *>(m_data.get()), m_capacity,
+                                        vtkm::CopyFlag::Off);
+}
+#endif
+
+template<typename T, class allocator>
+void shm_array<T, allocator>::updateArrayHandle()
+{
+#ifdef NO_SHMEM
+    m_handle = vtkm::cont::make_ArrayHandle(reinterpret_cast<handle_type *>(m_data), m_capacity, vtkm::CopyFlag::Off);
+#endif
+}
+
 
 template<typename T, class allocator>
 void shm_array<T, allocator>::clearDimensionHint()
