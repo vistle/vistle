@@ -1781,13 +1781,13 @@ std::vector<int> StateTracker::waitForSlaveHubs(const std::vector<std::string> &
     return ids;
 }
 
-void StateTracker::registerObserver(StateObserver *observer)
+void StateTracker::registerObserver(StateObserver *observer) const
 {
     mutex_locker guard(m_stateMutex);
     m_observers.insert(observer);
 }
 
-void StateTracker::unregisterObserver(StateObserver *observer)
+void StateTracker::unregisterObserver(StateObserver *observer) const
 {
     mutex_locker guard(m_stateMutex);
     m_observers.erase(observer);

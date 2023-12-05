@@ -14,6 +14,11 @@
 #ifdef __linux__
 // not necessary, as child processes die with their parent
 #define NO_CHECK_FOR_DEAD_PARENT
+#else
+#ifdef MODULE_THREAD
+// checking in every thread is overkill
+#define NO_CHECK_FOR_DEAD_PARENT
+#endif
 #endif
 
 namespace interprocess = boost::interprocess;

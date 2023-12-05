@@ -20,4 +20,3 @@ endif()
 
 add_module(IsoSurfaceVtkm "extract surfaces with constant data level" ${HEADER} ${SOURCES})
 target_link_libraries(IsoSurfaceVtkm vtkm::cont vtkm::filter)
-#target_link_libraries(IsoSurfaceVtkm vtkm_cont vtkm_filter)

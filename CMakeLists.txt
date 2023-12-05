@@ -904,24 +904,8 @@ else()
     set(USE_SZ3 TRUE)
 endif()
 
-if(NOT VISTLE_GUI_ONLY)
-    vistle_find_package(
-        OpenSceneGraph
-        3.2.0
-        COMPONENTS
-        osgViewer
-        osgGA
-        osgDB
-        osgUtil
-        osgText
-        osgParticle
-        osgSim
-        osgFX)
-    set(OpenGL_GL_PREFERENCE LEGACY)
-    vistle_find_package(OpenGL)
-
-    vistle_find_package(COVER)
-endif()
+set(OpenGL_GL_PREFERENCE LEGACY)
+vistle_find_package(OpenGL)
 
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
@@ -929,6 +913,15 @@ if(VISTLE_ISPC_PTHREAD_WORKAROUND)
     set(THREADS_PREFER_PTHREAD_FLAG FALSE)
 endif()
 vistle_find_package(Threads REQUIRED)
+
+# do it here, so that we see the warnings just once
+vistle_find_package(Xdmf QUIET)
+if(WIN32 AND Xdmf_FOUND)
+    vistle_find_package(Iconv)
+    if(NOT Iconv_FOUND)
+        unset(Xdmf_FOUND)
+    endif()
+endif()
 
 vistle_find_package(
     VTK
@@ -944,29 +937,17 @@ vistle_find_package(
     NO_MODULE
     QUIET)
 
-# do it here, so that we see the warnings just once
-vistle_find_package(Xdmf QUIET)
-if(WIN32 AND Xdmf_FOUND)
-    vistle_find_package(Iconv)
-    if(NOT Iconv_FOUND)
-        unset(Xdmf_FOUND)
+if(VTK_FOUND AND VTK_HAS_VTKm)
+    if("9.3.0" VERSION_LESS "${VTK_VERSION}")
+        message(FATAL_ERROR "VTK provides VTK-m, but not VTK-m 2.0 or higher")
+    else()
+        message("Using VTK-m provide by VTK ${VTK_VERSION}")
     endif()
-endif()
-
-option(VISTLE_INTERNAL_VTKM "Use internal copy of VTK-m" ON)
-if(NOT VISTLE_INTERNAL_VTKM)
-    set(VTKm_DIR_TMP "${VTKm_DIR}")
-    # unfortunately, vistle_find_package(VTKm 2.0) does not accept VTK-m 2.1
-    vistle_find_package(VTKm 2.0)
-    # VTKm_DIR is unset after find_package call
-    set(VTKm_DIR "${VTKm_DIR_TMP}")
-
-    if(NOT VTKm_FOUND)
-        vistle_find_package(VTKm 2.1)
-        set(VTKm_DIR "${VTKm_DIR_TMP}")
-        if(NOT VTKm_FOUND)
-            message(FATAL_ERROR "VISTLE_INTERNAL_VTKM is unset, but neither VTK-m 2.0 nor 2.1 was found")
-        endif()
+else()
+    option(VISTLE_INTERNAL_VTKM "Use internal copy of VTK-m" ON)
+    if(NOT VISTLE_INTERNAL_VTKM)
+        # search without version argument, as it is not possible to search for all compatible versions (2.0 & 2.1) in one go
+        vistle_find_package(VTKm REQUIRED)
     endif()
     unset(VTKm_DIR_TMP)
 endif()
