@@ -58,7 +58,7 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
 
         auto coordinateSystem = vtkm::cont::CoordinateSystem(
             "coordinate system",
-            vtkm::cont::make_ArrayHandleSOA(coords->x().handle(), coords->y().handle(), coords->z().handle()));
+            vtkm::cont::make_ArrayHandleSOA(coords->z().handle(), coords->y().handle(), coords->x().handle()));
 
         vtkmDataset.AddCoordinateSystem(coordinateSystem);
     } else if (auto uni = UniformGrid::as(grid)) {
@@ -153,7 +153,7 @@ struct AddField {
             auto ax = in->x().handle();
             auto ay = in->y().handle();
             auto az = in->z().handle();
-            ah = vtkm::cont::make_ArrayHandleSOA(ax, ay, az);
+            ah = vtkm::cont::make_ArrayHandleSOA(az, ay, ax);
         } else {
             return;
         }
@@ -286,6 +286,7 @@ struct GetArrayContents {
             for (int i = 0; i < numComponents; ++i) {
                 x[i] = &data->x(i)[0];
             }
+            std::swap(x[0], x[2]);
             break;
         }
 #if 0
