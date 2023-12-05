@@ -1,7 +1,7 @@
 # make sure data types of the externally compiled vtk-m are compatible with vistle
-if(NOT VISTLE_INTERNAL_VTKM)
-    add_subdirectory(compatibility)
-endif()
+#if(NOT VISTLE_INTERNAL_VTKM)
+#    add_subdirectory(compatibility)
+#endif()
 
 set(HEADER IsoSurfaceVtkm.h VtkmUtils.h)
 set(SOURCES IsoSurfaceVtkm.cpp VtkmUtils.cpp)

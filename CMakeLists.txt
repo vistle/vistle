@@ -937,33 +937,37 @@ vistle_find_package(
     NO_MODULE
     QUIET)
 
+option(VISTLE_64BIT_INDICES "use 64-bit integers for array indices" OFF)
+option(VISTLE_DOUBLE_PRECISION "use double instead of float for coordinates and data arrays" OFF)
+
+option(VISTLE_INTERNAL_VTKM "Use internal copy of VTK-m" ON)
 if(VTK_FOUND AND VTK_HAS_VTKm)
-    if("9.3.0" VERSION_LESS "${VTK_VERSION}")
-        message(FATAL_ERROR "VTK provides VTK-m, but not VTK-m 2.0 or higher")
-    else()
-        message("Using VTK-m provide by VTK ${VTK_VERSION}")
+    message("Using VTK-m provided by VTK ${VTK_VERSION}")
+    if(VISTLE_INTERNAL_VTKM)
+        message(WARNING "Provided VTK already contains VTK-m, cannot build internal copy of VTK-m. Disabling VISTLE_INTERNAL_VTKM...")
+        set(VISTLE_INTERNAL_VTKM OFF)
     endif()
-else()
-    option(VISTLE_INTERNAL_VTKM "Use internal copy of VTK-m" ON)
-    if(NOT VISTLE_INTERNAL_VTKM)
-        # search without version argument, as it is not possible to search for all compatible versions (2.0 & 2.1) in one go
-        vistle_find_package(VTKm REQUIRED)
+endif()
 
-        if(NOT ("${VTKm_VERSION_MAJOR}" EQUAL 2))
-            message(FATAL_ERROR "Vtk-m version must be >= 2.0 and < 3.0 (but is ${VTKm_VERSION}).")
-        endif()
+if(NOT VISTLE_INTERNAL_VTKM)
+    message("GOT INTO IF")
+    # search without version argument, as it is not possible to search for all compatible versions (2.0 & 2.1) in one go
+    vistle_find_package(VTKm REQUIRED)
 
+    if(NOT ("${VTKm_VERSION_MAJOR}" EQUAL 2))
+        message(FATAL_ERROR "Vtk-m version must be >= 2.0 and < 3.0 (but is ${VTKm_VERSION}).")
     endif()
-    unset(VTKm_DIR_TMP)
+
+    # make sure vtk-m and vistle data types are compatible (if not, overwrite user flags, accordingly)
+    add_subdirectory(module/test/IsoSurfaceVtkm/compatibility)
+
 endif()
 
 # configure data-type sizes
-option(VISTLE_64BIT_INDICES "use 64-bit integers for array indices" OFF)
 if(VISTLE_64BIT_INDICES)
     add_definitions(-DVISTLE_INDEX_64BIT)
 endif()
 
-option(VISTLE_DOUBLE_PRECISION "use double instead of float for coordinates and data arrays" OFF)
 if(VISTLE_DOUBLE_PRECISION)
     add_definitions(-DVISTLE_SCALAR_DOUBLE)
 endif()
