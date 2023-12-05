@@ -58,9 +58,7 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
 
         auto coordinateSystem = vtkm::cont::CoordinateSystem(
             "coordinate system",
-            vtkm::cont::make_ArrayHandleSOA(vtkm::cont::make_ArrayHandle(zCoords, numPoints, vtkm::CopyFlag::Off),
-                                            vtkm::cont::make_ArrayHandle(yCoords, numPoints, vtkm::CopyFlag::Off),
-                                            vtkm::cont::make_ArrayHandle(xCoords, numPoints, vtkm::CopyFlag::Off)));
+            vtkm::cont::make_ArrayHandleSOA(coords->x().handle(), coords->y().handle(), coords->z().handle()));
 
         vtkmDataset.AddCoordinateSystem(coordinateSystem);
     } else if (auto uni = UniformGrid::as(grid)) {
@@ -76,9 +74,9 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
         auto nx = rect->getNumDivisions(0);
         auto ny = rect->getNumDivisions(1);
         auto nz = rect->getNumDivisions(2);
-        auto xc = vtkm::cont::make_ArrayHandle(&rect->coords(0)[0], nx, vtkm::CopyFlag::Off);
-        auto yc = vtkm::cont::make_ArrayHandle(&rect->coords(1)[0], ny, vtkm::CopyFlag::Off);
-        auto zc = vtkm::cont::make_ArrayHandle(&rect->coords(2)[0], nz, vtkm::CopyFlag::Off);
+        auto xc = rect->coords(0).handle();
+        auto yc = rect->coords(1).handle();
+        auto zc = rect->coords(2).handle();
 
         vtkm::cont::ArrayHandleCartesianProduct rectilinearCoordinates(zc, yc, xc);
         auto coordinateSystem = vtkm::cont::CoordinateSystem("rectilinear", rectilinearCoordinates);
@@ -109,25 +107,14 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
     } else if (auto unstructuredGrid = UnstructuredGrid::as(indexedGrid)) {
         auto numPoints = indexedGrid->getNumCoords();
         auto numConn = indexedGrid->getNumCorners();
-        auto connList = &indexedGrid->cl()[0];
 
         auto numElements = indexedGrid->getNumElements();
-        auto elementList = &indexedGrid->el()[0];
 
         auto typeList = &unstructuredGrid->tl()[0];
 
-        // two options for testing: using array handles or std::vectors to create vtkm dataset
-        static_assert(sizeof(vistle::Index) == sizeof(vtkm::Id),
-                      "VTK-m has to be compiled with Id size matching Vistle's Index size");
-
-        auto conn =
-            vtkm::cont::make_ArrayHandle(reinterpret_cast<const vtkm::Id *>(connList), numConn, vtkm::CopyFlag::Off);
-
-        auto offs = vtkm::cont::make_ArrayHandle(reinterpret_cast<const vtkm::Id *>(elementList), numElements + 1,
-                                                 vtkm::CopyFlag::Off);
-
-        auto shapes = vtkm::cont::make_ArrayHandle(reinterpret_cast<const vtkm::UInt8 *>(typeList), numElements,
-                                                   vtkm::CopyFlag::Off);
+        auto conn = indexedGrid->cl().handle();
+        auto offs = indexedGrid->el().handle();
+        auto shapes = unstructuredGrid->tl().handle();
 
         vtkm::cont::CellSetExplicit<> cellSetExplicit;
         cellSetExplicit.Fill(numPoints, shapes, conn, offs);
@@ -161,11 +148,11 @@ struct AddField {
         auto mapping = object->guessMapping();
         vtkm::cont::UnknownArrayHandle ah;
         if (auto in = V1::as(object)) {
-            ah = vtkm::cont::make_ArrayHandle(&in->x()[0], size, vtkm::CopyFlag::Off);
+            ah = in->x().handle();
         } else if (auto in = V3::as(object)) {
-            auto ax = vtkm::cont::make_ArrayHandle(&in->x()[0], size, vtkm::CopyFlag::Off);
-            auto ay = vtkm::cont::make_ArrayHandle(&in->y()[0], size, vtkm::CopyFlag::Off);
-            auto az = vtkm::cont::make_ArrayHandle(&in->z()[0], size, vtkm::CopyFlag::Off);
+            auto ax = in->x().handle();
+            auto ay = in->y().handle();
+            auto az = in->z().handle();
             ah = vtkm::cont::make_ArrayHandleSOA(ax, ay, az);
         } else {
             return;
