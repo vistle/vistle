@@ -29,7 +29,7 @@ void RectilinearGrid::refreshImpl() const
     for (int c = 0; c < 3; ++c) {
         if (d && d->coords[c].valid()) {
             m_numDivisions[c] = d->coords[c]->size();
-            m_coords[c] = d->coords[c]->data();
+            m_coords[c] = d->coords[c];
 
             m_ghostLayers[c][0] = d->ghostLayers[c][0];
             m_ghostLayers[c][1] = d->ghostLayers[c][1];

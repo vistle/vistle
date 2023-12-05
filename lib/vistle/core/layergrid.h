@@ -44,7 +44,7 @@ public:
     const Scalar *max() const { return m_max; }
     const Scalar *dist() const { return m_dist; }
     array &z() { return x(); }
-    const Scalar *z() const { return x(); }
+    const ShmArrayProxy<Scalar> &z() const { return x(); }
 
     // GridInterface
     Index getNumVertices() override;

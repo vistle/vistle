@@ -58,18 +58,18 @@ public:
         return Dim > 3 ? *d()->x[3] : x();
     }
 
-    const T *x(unsigned c = 0) const { return m_x[c]; }
-    const T *y() const
+    const ShmArrayProxy<T> &x(unsigned c = 0) const { return m_x[c]; }
+    const ShmArrayProxy<T> &y() const
     {
         assert(Dim > 1);
         return Dim > 1 ? m_x[1] : x();
     }
-    const T *z() const
+    const ShmArrayProxy<T> &z() const
     {
         assert(Dim > 2);
         return Dim > 2 ? m_x[2] : x();
     }
-    const T *w() const
+    const ShmArrayProxy<T> &w() const
     {
         assert(Dim > 3);
         return Dim > 3 ? m_x[3] : x();
@@ -79,7 +79,7 @@ public:
     std::pair<VecVector, VecVector> getMinMax() const;
 
 private:
-    mutable const T *m_x[MaxDim];
+    mutable ShmArrayProxy<T> m_x[MaxDim];
     mutable Index m_size;
 
 public:

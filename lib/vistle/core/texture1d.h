@@ -25,7 +25,7 @@ public:
     shm<unsigned char>::array &pixels() { return *d()->pixels; }
     const shm<unsigned char>::array &pixels() const { return *d()->pixels; }
     shm<Scalar>::array &coords() { return x(); }
-    const Scalar *coords() const { return x(); }
+    const ShmArrayProxy<Scalar> &coords() const { return x(); }
 
     V_DATA_BEGIN(Texture1D);
     Scalar range[2];

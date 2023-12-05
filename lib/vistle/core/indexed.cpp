@@ -371,8 +371,13 @@ Index Indexed::cellNumFaces(Index elem) const
 void Indexed::refreshImpl() const
 {
     const Data *d = static_cast<Data *>(m_data);
-    m_el = (d && d->el.valid()) ? d->el->data() : nullptr;
-    m_cl = (d && d->cl.valid()) ? d->cl->data() : nullptr;
+    if (d) {
+        m_el = d->el;
+        m_cl = d->cl;
+    } else {
+        m_el = nullptr;
+        m_cl = nullptr;
+    }
     m_numEl = (d && d->el.valid()) ? d->el->size() - 1 : 0;
     m_numCl = (d && d->cl.valid()) ? d->cl->size() : 0;
 }

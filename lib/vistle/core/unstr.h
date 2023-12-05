@@ -181,7 +181,7 @@ public:
     void resetElements() override;
 
     shm<Byte>::array &tl() { return *d()->tl; }
-    const Byte *tl() const { return m_tl; }
+    const ShmArrayProxy<Byte> &tl() const { return m_tl; }
 
     bool isConvex(Index elem) const;
     bool isGhostCell(Index elem) const override;
@@ -202,7 +202,7 @@ public:
     Index cellNumFaces(Index elem) const override;
 
 private:
-    mutable const Byte *m_tl;
+    mutable ShmArrayProxy<Byte> m_tl;
 
     V_DATA_BEGIN(UnstructuredGrid);
     ShmVector<Byte> tl;

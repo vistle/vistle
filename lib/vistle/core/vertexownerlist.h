@@ -20,15 +20,15 @@ public:
     VertexOwnerList(const size_t numVertices, const Meta &meta = Meta());
 
     shm<Index>::array &vertexList() { return *d()->vertexList; }
-    const Index *vertexList() const { return m_vertexList; }
+    const ShmArrayProxy<Index> &vertexList() const { return m_vertexList; }
     shm<Index>::array &cellList() { return *d()->cellList; }
-    const Index *cellList() const { return m_cellList; }
+    const ShmArrayProxy<Index> &cellList() const { return m_cellList; }
     Index getNumVertices() const;
     //! return surrounding cells and their number
     std::pair<const Index *, Index> getSurroundingCells(Index v) const;
 
 private:
-    mutable const Index *m_vertexList, *m_cellList;
+    mutable ShmArrayProxy<Index> m_vertexList, m_cellList;
 
     V_DATA_BEGIN(VertexOwnerList);
     // index into cellList with vertex number
