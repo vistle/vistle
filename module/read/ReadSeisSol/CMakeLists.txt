@@ -68,3 +68,4 @@ add_custom_command(
     COMMAND ${CMAKE_COMMAND} -E touch ${SEISSOL_RESAMPLE_BIN}
     DEPENDS ${SEISSOL_RESAMPLE_SOURCE}
     VERBATIM)
+use_openmp()
