@@ -1,13 +1,7 @@
-# unfortunately, vistle_find_package(VTKm 2.0) does not accept VTK-m 2.1
-#vistle_find_package(VTKm 2.1)
-#if(NOT VTKm_FOUND)
-#    vistle_find_package(VTKm 2.0)
-#    if(NOT VTKm_FOUND)
-#        return()
-#    endif()
-#endif()
-
-add_subdirectory(compatibility)
+# make sure data types of the externally compiled vtk-m are compatible with vistle
+if(NOT VISTLE_INTERNAL_VTKM)
+    add_subdirectory(compatibility)
+endif()
 
 set(HEADER IsoSurfaceVtkm.h VtkmUtils.h)
 set(SOURCES IsoSurfaceVtkm.cpp VtkmUtils.cpp)

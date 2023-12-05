@@ -948,6 +948,11 @@ else()
     if(NOT VISTLE_INTERNAL_VTKM)
         # search without version argument, as it is not possible to search for all compatible versions (2.0 & 2.1) in one go
         vistle_find_package(VTKm REQUIRED)
+
+        if(NOT ("${VTKm_VERSION_MAJOR}" EQUAL 2))
+            message(FATAL_ERROR "Vtk-m version must be >= 2.0 and < 3.0 (but is ${VTKm_VERSION}).")
+        endif()
+
     endif()
     unset(VTKm_DIR_TMP)
 endif()
