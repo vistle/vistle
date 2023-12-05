@@ -10,18 +10,13 @@ try_run(
     ARGS "${VISTLE_64BIT_INDICES}")
 
 if(RUN_REPORT STREQUAL "FAILED_TO_RUN")
+    get_property(helperString CACHE VISTLE_64BIT_INDICES PROPERTY HELPSTRING)
     if(VISTLE_64BIT_INDICES)
-        message(
-            FATAL_ERROR
-                "Incompatible integer types!\nVtk-m has been compiled with VTKm_USE_64BIT_IDS=OFF, "
-                "i.e., it uses 32-bit integers for indexing. But you are trying to compile vistle to "
-                "use 64-bit integers.\nPlease disable VISTLE_64BIT_INDICES.")
+        message(WARNING "To ensure compatibility with vtk-m VISTLE_64BIT_INDICES will be disabled.")
+        set(VISTLE_64BIT_INDICES OFF CACHE BOOL "${helperString}" FORCE)
     else()
-        message(
-            FATAL_ERROR
-                "Incompatible integer types!\nVtk-m has been compiled with VTKm_USE_64BIT_IDS=ON, "
-                "i.e., it uses 64-bit integers for indexing. But you are trying to compile vistle to "
-                "use 32-bit integers.\nPlease enable VISTLE_64BIT_INDICES.")
+        message(WARNING "To ensure compatibility with vtk-m VISTLE_64BIT_INDICES will be enabled.")
+        set(VISTLE_64BIT_INDICES ON CACHE BOOL "${helperString}" FORCE)
     endif()
 endif()
 
@@ -37,15 +32,12 @@ try_run(
     ARGS "${VISTLE_DOUBLE_PRECISION}")
 
 if(RUN_REPORT STREQUAL "FAILED_TO_RUN")
+    get_property(helperString CACHE VISTLE_DOUBLE_PRECISION PROPERTY HELPSTRING)
     if(VISTLE_DOUBLE_PRECISION)
-        message(
-            FATAL_ERROR
-                "Incompatible floating point types!\nVtk-m has been compiled with " "VTKm_USE_DOUBLE_PRECISION=OFF, i.e., it uses floats. But you are trying "
-                "to compile vistle to use double precision.\nPlease disable VISTLE_DOUBLE_PRECISION.")
+        message(WARNING "To ensure compatibility with vtk-m VISTLE_DOUBLE_PRECISION will be disabled.")
+        set(VISTLE_DOUBLE_PRECISION OFF CACHE BOOL "${helperString}" FORCE)
     else()
-        message(
-            FATAL_ERROR
-                "Incompatible floating point types!\nVtk-m has been compiled with " "VTKm_USE_DOUBLE_PRECISION=ON, i.e., it uses doubles. But you are trying "
-                "to compile vistle to using single precision.\nPlease enable VISTLE_DOUBLE_PRECISION.")
+        message(WARNING "To ensure compatibility with vtk-m VISTLE_DOUBLE_PRECISION will be enabled.")
+        set(VISTLE_DOUBLE_PRECISION ON CACHE BOOL "${helperString}" FORCE)
     endif()
 endif()
