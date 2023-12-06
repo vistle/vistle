@@ -237,7 +237,7 @@ public:
               : vtkm::cont::make_ArrayHandle<handle_type>(static_cast<handle_type *>(nullptr), 0, vtkm::CopyFlag::Off))
     {}
 
-    ShmArrayProxy &operator=(nullptr_t p)
+    ShmArrayProxy &operator=(std::nullptr_t p)
     {
         m_data = nullptr;
         m_handle =
