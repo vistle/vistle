@@ -68,12 +68,27 @@ public:
     typedef T *iterator;
     typedef const T *const_iterator;
 
-    iterator begin() const { return &*m_data; }
-    iterator end() const { return (&*m_data) + m_size; }
-    T *data() const { return &*m_data; }
+    iterator begin() const
+    {
+        return &*m_data;
+    }
+    iterator end() const
+    {
+        return (&*m_data) + m_size;
+    }
+    T *data() const
+    {
+        return &*m_data;
+    }
 
-    T &operator[](const size_t idx) { return m_data[idx]; }
-    T &operator[](const size_t idx) const { return m_data[idx]; }
+    T &operator[](const size_t idx)
+    {
+        return m_data[idx];
+    }
+    T &operator[](const size_t idx) const
+    {
+        return m_data[idx];
+    }
     T &at(const size_t idx);
     T &at(const size_t idx) const;
     void push_back(const T &v);
@@ -88,13 +103,25 @@ public:
         ++m_size;
     }
 
-    T &back() { return m_data[m_size - 1]; }
-    T &front() { return m_data[0]; }
+    T &back()
+    {
+        return m_data[m_size - 1];
+    }
+    T &front()
+    {
+        return m_data[0];
+    }
 
-    bool empty() const { return m_size == 0; }
+    bool empty() const
+    {
+        return m_size == 0;
+    }
     void clear();
 
-    size_t size() const { return m_size; }
+    size_t size() const
+    {
+        return m_size;
+    }
     void resize(const size_t size);
     void resize(const size_t size, const T &value);
 
@@ -103,12 +130,18 @@ public:
     void setDimensionHint(const size_t sx, const size_t sy = 1, const size_t sz = 1);
     void setExact(bool exact);
 
-    size_t capacity() const { return m_capacity; }
+    size_t capacity() const
+    {
+        return m_capacity;
+    }
     void reserve(const size_t new_capacity);
     void reserve_or_shrink(const size_t capacity);
     void shrink_to_fit();
 
-    bool bounds_valid() const { return m_max >= m_min; }
+    bool bounds_valid() const
+    {
+        return m_max >= m_min;
+    }
     void invalidate_bounds();
     void update_bounds();
 
