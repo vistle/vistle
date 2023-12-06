@@ -84,29 +84,23 @@ bool hasVariable(int ncid, std::string findName)
 }
 
 template<typename S>
-struct NcFuncMapBase {
-    typedef std::function<int(int, int, S *)> get_var_func();
-    //static const get_var_func get_var;
-};
-template<typename S>
 struct NcFuncMap;
 
-#define NCFUNCS(Type, getvar, getvara) \
+#define NCFUNCS(Type, NcType, getvara) \
     template<> \
     struct NcFuncMap<Type> { \
-        typedef std::function<int(int, int, Type *)> get_var_func; \
-        static get_var_func get_var; \
-        typedef std::function<int(int, int, const size_t *, const size_t *, Type *)> get_vara_func; \
+        static_assert(sizeof(Type) == sizeof(NcType)); \
+        typedef NcType nc_type; \
+        typedef std::function<int(int, int, const size_t *, const size_t *, NcType *)> get_vara_func; \
         static get_vara_func get_vara; \
     }; \
-    NcFuncMap<Type>::get_var_func NcFuncMap<Type>::get_var = getvar; \
     NcFuncMap<Type>::get_vara_func NcFuncMap<Type>::get_vara = getvara;
 
-NCFUNCS(unsigned char, nc_get_var_uchar, nc_get_vara_uchar)
-NCFUNCS(unsigned, nc_get_var_uint, nc_get_vara_uint)
-NCFUNCS(unsigned long long, nc_get_var_ulonglong, nc_get_vara_ulonglong)
-NCFUNCS(float, nc_get_var_float, nc_get_vara_float)
-NCFUNCS(double, nc_get_var_double, nc_get_vara_double)
+NCFUNCS(unsigned char, unsigned char, nc_get_vara_uchar)
+NCFUNCS(uint32_t, unsigned, nc_get_vara_uint)
+NCFUNCS(uint64_t, unsigned long long, nc_get_vara_ulonglong)
+NCFUNCS(float, float, nc_get_vara_float)
+NCFUNCS(double, double, nc_get_vara_double)
 
 template<typename T>
 bool getVariable(int ncid, std::string name, T *data, std::vector<size_t> start, std::vector<size_t> count)
@@ -156,7 +150,9 @@ bool getVariable(int ncid, std::string name, T *data, std::vector<size_t> start,
         c[splitdim] = std::min(splitcount, count[splitdim] - i * splitcount);
         if (s[splitdim] >= start[splitdim] + count[splitdim])
             continue;
-        err = NcFuncMap<T>::get_vara(ncid, varid, s.data(), c.data(), data + i * nvalues);
+        typedef typename NcFuncMap<T>::nc_type NcType;
+        static_assert(sizeof(T) == sizeof(NcType));
+        err = NcFuncMap<T>::get_vara(ncid, varid, s.data(), c.data(), reinterpret_cast<NcType *>(data) + i * nvalues);
         if (err != NC_NOERR) {
             std::cerr << "Nc: get_vara " << name << " error: " << nc_strerror(err) << std::endl;
             std::cerr << "i=" << i << ", start:";
@@ -234,18 +230,18 @@ std::vector<T> getVariable(int ncid, std::string name)
 
 template std::vector<unsigned char> getVariable(int ncid, std::string name, std::vector<size_t> start,
                                                 std::vector<size_t> count);
-template std::vector<unsigned> getVariable(int ncid, std::string name, std::vector<size_t> start,
+template std::vector<uint32_t> getVariable(int ncid, std::string name, std::vector<size_t> start,
                                            std::vector<size_t> count);
-template std::vector<unsigned long long> getVariable(int ncid, std::string name, std::vector<size_t> start,
-                                                     std::vector<size_t> count);
+template std::vector<uint64_t> getVariable(int ncid, std::string name, std::vector<size_t> start,
+                                           std::vector<size_t> count);
 template std::vector<float> getVariable(int ncid, std::string name, std::vector<size_t> start,
                                         std::vector<size_t> count);
 template std::vector<double> getVariable(int ncid, std::string name, std::vector<size_t> start,
                                          std::vector<size_t> count);
 
 template std::vector<unsigned char> getVariable(int ncid, std::string name);
-template std::vector<unsigned> getVariable(int ncid, std::string name);
-template std::vector<unsigned long long> getVariable(int ncid, std::string name);
+template std::vector<uint32_t> getVariable(int ncid, std::string name);
+template std::vector<uint64_t> getVariable(int ncid, std::string name);
 template std::vector<float> getVariable(int ncid, std::string name);
 template std::vector<double> getVariable(int ncid, std::string name);
 
