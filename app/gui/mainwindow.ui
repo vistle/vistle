@@ -222,6 +222,7 @@
    <addaction name="separator"/>
    <addaction name="actionViewOrig"/>
    <addaction name="actionViewAll"/>
+   <addaction name="actionArrange"/>
    <addaction name="separator"/>
    <addaction name="actionExecute"/>
   </widget>
@@ -373,6 +374,9 @@
    </property>
   </action>
   <action name="actionArrange">
+   <property name="visible">
+    <bool>false</bool>
+   </property>
    <property name="text">
     <string>&amp;Arrange</string>
    </property>
