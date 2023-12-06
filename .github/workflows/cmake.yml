@@ -79,7 +79,7 @@ jobs:
         libzip-dev
         libarchive-dev
         libbotan-2-dev
-        libvtk7-dev
+        libvtk9-dev
         libnetcdf-dev
 
     - name: Create Build Environment
