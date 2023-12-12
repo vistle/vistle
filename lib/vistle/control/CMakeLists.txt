@@ -43,3 +43,7 @@ if(Python_FOUND)
     target_link_libraries(vistle_control PRIVATE vistle_python)
     target_link_libraries(vistle_control PRIVATE vistle_pythonmodule)
 endif()
+
+if(VISTLE_USE_MPI)
+    target_compile_definitions(vistle_control PRIVATE VISTLE_USE_MPI)
+endif()

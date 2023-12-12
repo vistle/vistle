@@ -532,7 +532,11 @@ bool Hub::init(int argc, char *argv[])
             if (vm.count("cover") > 0) {
                 vistle::Directory dir(argc, argv);
                 vistle::directory::setVistleRoot(dir.prefix(), dir.buildType());
+#ifdef VISTLE_USE_MPI
                 cmd = "OpenCOVER.mpi";
+#else
+                cmd = "opencover";
+#endif
                 setenv("VISTLE_PLUGIN", "VistleManager", 1);
                 std::stringstream s;
                 s << hostname() << " " << port << " " << dataport;
@@ -658,6 +662,7 @@ std::shared_ptr<process::child> Hub::launchMpiProcess(const std::vector<std::str
 {
     assert(!m_proxyOnly);
     assert(!args.empty());
+#ifdef VISTLE_USE_MPI
 #ifdef _WIN32
     std::string spawn = "spawn_vistle.bat";
 #else
@@ -669,6 +674,11 @@ std::shared_ptr<process::child> Hub::launchMpiProcess(const std::vector<std::str
         std::cerr << "failed to execute " << args[0] << " via spawn_vistle.sh, retrying with mpirun" << std::endl;
         child = launchProcess("mpirun", args);
     }
+#endif
+#else
+    auto prog = args[0];
+    std::vector<std::string> nargs(args.begin() + 1, args.end());
+    auto child = launchProcess(args[0], nargs);
 #endif
     return child;
 }

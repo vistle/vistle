@@ -14,6 +14,42 @@ if(MSVC)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4996 /wd4267 /wd4800 /wd4244")
 endif()
 
+if(NOT VISTLE_USE_MPI)
+    vistle_add_library(
+        vistle_mpi
+        EXPORT
+        ${VISTLE_LIB_TYPE}
+        mpi-serial/mpi.c
+        mpi-serial/send.c
+        mpi-serial/recv.c
+        mpi-serial/collective.c
+        mpi-serial/req.c
+        mpi-serial/list.c
+        mpi-serial/handles.c
+        mpi-serial/comm.c
+        mpi-serial/error.c
+        mpi-serial/ic_merge.c
+        mpi-serial/group.c
+        mpi-serial/time.c
+        mpi-serial/pack.c
+        mpi-serial/type.c
+        mpi-serial/type_const.c
+        mpi-serial/copy.c
+        mpi-serial/op.c
+        mpi-serial/cart.c
+        mpi-serial/getcount.c
+        mpi-serial/probe.c
+        mpi-serial/message.c
+        mpi-serial/win.c
+        mpi-serial/io.c
+        mpi-serial/info.c)
+    target_compile_definitions(vistle_mpi PRIVATE FORTRAN_SAME)
+    target_compile_definitions(vistle_mpi PRIVATE MPI_NO_FORTRAN)
+    target_include_directories(vistle_mpi PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/mpi-serial> $<INSTALL_INTERFACE:include>)
+
+    add_library(MPI::MPI_C ALIAS vistle_mpi)
+endif()
+
 if(BOOST_MPI_DIR)
     include(boost-mpi.cmake)
 endif()
@@ -104,47 +140,49 @@ if(NOT VISTLE_GUI_ONLY)
         #add_library(vtkm_worklet ALIAS vtkm::worklet)
     endif()
 
-    #
-    # IceT
-    #
-    #set(BUILD_SHARED_LIBS ${VISTLE_BUILD_SHARED} CACHE INTERNAL "")
-    set(ICET_BUILD_TESTING
-        OFF
-        CACHE INTERNAL "")
-    set(ICET_USE_OPENGL
-        OFF
-        CACHE INTERNAL "")
-    set(ICET_USE_OPENGL3
-        OFF
-        CACHE INTERNAL "")
-    set(ICET_INSTALL_NO_RUNTIME
-        TRUE
-        CACHE INTERNAL "")
-    set(ICET_INSTALL_NO_DEVELOPMENT
-        TRUE
-        CACHE INTERNAL "")
-    set(LIBRARY_OUTPUT_PATH
-        ${PROJECT_BINARY_DIR}/lib
-        CACHE PATH "Output directory for building all libraries.")
-    set(EXECUTABLE_OUTPUT_PATH
-        ${PROJECT_BINARY_DIR}/lib
-        CACHE PATH "Output directory for building all binaries.")
-    set(ICET_LIBRARY_DIR
-        ${PROJECT_BINARY_DIR}/lib
-        CACHE PATH "Output directory for building all libraries.")
-    set(ICET_EXECUTABLE_DIR
-        ${PROJECT_BINARY_DIR}/bin
-        CACHE PATH "Output directory for building all executable.")
-    set(ICET_BINARY_DIR
-        ${PROJECT_BINARY_DIR}
-        CACHE PATH "Value overridden by Vistle")
-    set(ICET_INSTALL_LIB_DIR
-        ${INSTALL_LIB_DIR}
-        CACHE INTERNAL "")
-    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-        add_compile_options(-Wno-variadic-macros -Wno-pedantic)
+    if(VISTLE_USE_MPI)
+        #
+        # IceT
+        #
+        #set(BUILD_SHARED_LIBS ${VISTLE_BUILD_SHARED} CACHE INTERNAL "")
+        set(ICET_BUILD_TESTING
+            OFF
+            CACHE INTERNAL "")
+        set(ICET_USE_OPENGL
+            OFF
+            CACHE INTERNAL "")
+        set(ICET_USE_OPENGL3
+            OFF
+            CACHE INTERNAL "")
+        set(ICET_INSTALL_NO_RUNTIME
+            TRUE
+            CACHE INTERNAL "")
+        set(ICET_INSTALL_NO_DEVELOPMENT
+            TRUE
+            CACHE INTERNAL "")
+        set(LIBRARY_OUTPUT_PATH
+            ${PROJECT_BINARY_DIR}/lib
+            CACHE PATH "Output directory for building all libraries.")
+        set(EXECUTABLE_OUTPUT_PATH
+            ${PROJECT_BINARY_DIR}/lib
+            CACHE PATH "Output directory for building all binaries.")
+        set(ICET_LIBRARY_DIR
+            ${PROJECT_BINARY_DIR}/lib
+            CACHE PATH "Output directory for building all libraries.")
+        set(ICET_EXECUTABLE_DIR
+            ${PROJECT_BINARY_DIR}/bin
+            CACHE PATH "Output directory for building all executable.")
+        set(ICET_BINARY_DIR
+            ${PROJECT_BINARY_DIR}
+            CACHE PATH "Value overridden by Vistle")
+        set(ICET_INSTALL_LIB_DIR
+            ${INSTALL_LIB_DIR}
+            CACHE INTERNAL "")
+        if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+            add_compile_options(-Wno-variadic-macros -Wno-pedantic)
+        endif()
+        add_subdirectory(IceT)
     endif()
-    add_subdirectory(IceT)
 
     #
     # pybind11
@@ -160,6 +198,7 @@ if(VISTLE_INSTALL_3RDPARTY)
         DIRECTORY yas/include/yas
         DESTINATION include/vistle/3rdparty
         COMPONENT Devel)
+
     #eigen3
     install(
         DIRECTORY eigen3

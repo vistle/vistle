@@ -74,6 +74,7 @@ option(VISTLE_ENABLE_CUDA "Build with CUDA support" OFF)
 option(VISTLE_ENABLE_KOKKOS "Build with Kokkos support" OFF)
 
 option(VISTLE_USE_QT5 "Build GUI with Qt5 instead of Qt6" ON)
+option(VISTLE_USE_MPI "Build with MPI instead of dummy MPI library" ON)
 
 option(VISTLE_COLOR_DIAGNOSTICS "Produce ANSI-colored build output (GNU/Clang)" ON)
 
@@ -409,15 +410,17 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
 endif()
 
 if(NOT CRAY AND NOT VISTLE_GUI_ONLY)
-    set(MPI_SKIP_MPICXX TRUE)
-    #set(MPI_FIND_COMPONENTS "C CXX")
-    add_definitions(-DOMPI_SKIP_MPICXX) # OpenMPI
-    add_definitions(-DMPI_NO_CPPBIND) # HPE MPT
-    vistle_find_package(MPI REQUIRED COMPONENTS C CXX)
+    if(VISTLE_USE_MPI)
+        set(MPI_SKIP_MPICXX TRUE)
+        #set(MPI_FIND_COMPONENTS "C CXX")
+        add_definitions(-DOMPI_SKIP_MPICXX) # OpenMPI
+        add_definitions(-DMPI_NO_CPPBIND) # HPE MPT
+        vistle_find_package(MPI REQUIRED COMPONENTS C CXX)
 
-    include_directories(SYSTEM ${MPI_C_INCLUDE_PATH})
-    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:${MPI_C_COMPILE_FLAGS}>)
-    set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} ${MPI_C_LINK_FLAGS}")
+        include_directories(SYSTEM ${MPI_C_INCLUDE_PATH})
+        add_compile_options($<$<COMPILE_LANGUAGE:CXX>:${MPI_C_COMPILE_FLAGS}>)
+        set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} ${MPI_C_LINK_FLAGS}")
+    endif()
 
     # for CMake config file version of boost this needs to be changed to version numbers such as 1.60.99 instead of 106099
     if(NOT VISTLE_INTERNAL_BOOST_MPI)
