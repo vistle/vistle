@@ -205,9 +205,10 @@ void RenderObject::computeBounds()
             }
         }
         const auto nc = coords->getNumCoords();
+        const Scalar *x = coords->x(0), *y = coords->x(1), *z = coords->x(2), *radii = coords->r();
         for (Index i = 0; i < nc; ++i) {
-            Scalar r = coords->r()[i];
-            Vector3 p(coords->x(0)[i], coords->x(1)[i], coords->x(2)[i]);
+            Scalar r = radii[i];
+            Vector3 p(x[i], y[i], z[i]);
             if (!identity)
                 p = transformPoint(T, p);
             for (int c = 0; c < 3; ++c) {

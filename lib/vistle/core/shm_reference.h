@@ -223,7 +223,7 @@ private:
 FOR_ALL_SCALARS(V_DECLARE_SHMREF)
 
 template<typename T>
-class V_COREEXPORT ShmArrayProxy {
+class ShmArrayProxy {
 public:
     typedef typename ArrayHandleTypeMap<T>::type handle_type;
 
