@@ -19,7 +19,7 @@ from clear import deleteDir
 
 # -- Project information -----------------------------------------------------
 project = 'Vistle'
-copyright = '2022, Martin Aumueller, Dennis Grieger, Leyla Kern, Marko Djuric, Uwe Wössner'
+copyright = '2024, Martin Aumueller, Dennis Grieger, Leyla Kern, Marko Djuric, Uwe Wössner'
 author = 'Martin Aumueller, Dennis Grieger, Leyla Kern, Marko Djuric, Uwe Wössner'
 
 # -- General configuration ---------------------------------------------------
