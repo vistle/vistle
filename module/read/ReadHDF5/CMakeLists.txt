@@ -11,8 +11,7 @@ include_directories(SYSTEM ${HDF5_INCLUDE_DIRS})
 
 link_directories(${HDF5_LIBRARY_DIRS})
 
-add_module(ReadHDF5 "read Vistle data stored in HDF5 format" ReadHDF5.cpp)
-
 use_openmp()
+add_module(ReadHDF5 "read Vistle data stored in HDF5 format" ReadHDF5.cpp)
 
 target_link_libraries(ReadHDF5 ${HDF5_LIBRARIES})

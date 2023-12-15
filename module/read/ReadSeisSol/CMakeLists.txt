@@ -11,6 +11,7 @@ set(SOURCES ReadSeisSol.cpp surfacetools.cpp)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+use_openmp()
 add_module(ReadSeisSol "Read SeisSol data files (XDMF/HDF5)" ${SOURCES} ${HEADERS})
 if(MSVC)
     target_link_libraries(
@@ -68,4 +69,3 @@ add_custom_command(
     COMMAND ${CMAKE_COMMAND} -E touch ${SEISSOL_RESAMPLE_BIN}
     DEPENDS ${SEISSOL_RESAMPLE_SOURCE}
     VERBATIM)
-use_openmp()
