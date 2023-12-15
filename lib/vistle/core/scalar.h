@@ -6,7 +6,7 @@
 namespace vistle {
 
 // used for mapped data
-typedef unsigned char Byte;
+typedef uint8_t Byte;
 
 #ifdef VISTLE_SCALAR_DOUBLE
 typedef double Scalar; // also used for coordinates

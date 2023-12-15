@@ -425,12 +425,18 @@ bool GenIsoDat::prepare()
         z[i] += 2 * rank();
     }
 
-    std::cerr << "pre-add data refcount: " << data->refcount() << std::endl;
+    updateMeta(grid);
 
+    //std::cerr << "pre-add data refcount: " << data->refcount() << std::endl;
     data->setGrid(grid);
+    data->addAttribute("_species", "iso");
+    updateMeta(data);
     addObject("data_out", data);
-    std::cerr << "post-add data refcount: " << data->refcount() << std::endl;
+    //std::cerr << "post-add data refcount: " << data->refcount() << std::endl;
+
     mapdata->setGrid(grid);
+    updateMeta(mapdata);
+    mapdata->addAttribute("_species", "mapped");
     addObject("mapdata_out", mapdata);
 
     return true;

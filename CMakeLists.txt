@@ -66,11 +66,7 @@ set(VISTLE_CPU_ARCH
     ""
     CACHE STRING "CPU architecture to optimize for (native, corei7-avx, core-avx2, atom, ...)")
 
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    option(VISTLE_PEDANTIC_ERRORS "Be pedantic about C++ standard and emit errors" OFF) # for diy
-else()
-    option(VISTLE_PEDANTIC_ERRORS "Be pedantic about C++ standard and emit errors" ON)
-endif()
+option(VISTLE_PEDANTIC_ERRORS "Be pedantic about C++ standard and emit errors" OFF) # for diy, also included in vtk-m
 
 option(VISTLE_SANITIZE_UNDEFINED "Build with -fsanitize=undefined" OFF)
 option(VISTLE_SANITIZE_ADDRESS "Build with -fsanitize=address" OFF)
@@ -78,6 +74,7 @@ option(VISTLE_SANITIZE_THREAD "Build with -fsanitize=thread" OFF)
 option(VISTLE_TIME_BUILD "Gather build times (Clang/ISPC)" OFF)
 
 option(VISTLE_ENABLE_CUDA "Build with CUDA support" OFF)
+option(VISTLE_ENABLE_KOKKOS "Build with Kokkos support" OFF)
 
 option(VISTLE_USE_QT5 "Build GUI with Qt5 instead of Qt6" ON)
 
@@ -276,7 +273,7 @@ if(NOT VISTLE_GUI_ONLY)
     if(NOT ${TBB_FOUND})
         vistle_find_package(TBB)
         if(NOT (${CMAKE_GENERATOR} STREQUAL "Visual Studio 17 2022"))
-            if(${TBB_FOUND})
+            if(${TBB_FOUND} AND NOT TARGET TBB::tbb)
                 add_library(TBB::tbb SHARED IMPORTED)
                 set_target_properties(
                     TBB::tbb
@@ -702,17 +699,6 @@ if(NOT VISTLE_MULTI_PROCESS)
     endif()
 endif()
 
-# configure data-type sizes
-option(VISTLE_64BIT_INDICES "use 64-bit integers for array indices" OFF)
-if(VISTLE_64BIT_INDICES)
-    add_definitions(-DVISTLE_INDEX_64BIT)
-endif()
-
-option(VISTLE_DOUBLE_PRECISION "use double instead of float for coordinates and data arrays" OFF)
-if(VISTLE_DOUBLE_PRECISION)
-    add_definitions(-DVISTLE_SCALAR_DOUBLE)
-endif()
-
 macro(USE_OPENMP)
     if(OPENMP_FOUND)
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
@@ -927,24 +913,8 @@ else()
     set(USE_SZ3 TRUE)
 endif()
 
-if(NOT VISTLE_GUI_ONLY)
-    vistle_find_package(
-        OpenSceneGraph
-        3.2.0
-        COMPONENTS
-        osgViewer
-        osgGA
-        osgDB
-        osgUtil
-        osgText
-        osgParticle
-        osgSim
-        osgFX)
-    set(OpenGL_GL_PREFERENCE LEGACY)
-    vistle_find_package(OpenGL)
-
-    vistle_find_package(COVER)
-endif()
+set(OpenGL_GL_PREFERENCE LEGACY)
+vistle_find_package(OpenGL)
 
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
@@ -952,6 +922,15 @@ if(VISTLE_ISPC_PTHREAD_WORKAROUND)
     set(THREADS_PREFER_PTHREAD_FLAG FALSE)
 endif()
 vistle_find_package(Threads REQUIRED)
+
+# do it here, so that we see the warnings just once
+vistle_find_package(Xdmf QUIET)
+if(WIN32 AND Xdmf_FOUND)
+    vistle_find_package(Iconv)
+    if(NOT Iconv_FOUND)
+        unset(Xdmf_FOUND)
+    endif()
+endif()
 
 vistle_find_package(
     VTK
@@ -967,13 +946,39 @@ vistle_find_package(
     NO_MODULE
     QUIET)
 
-# do it here, so that we see the warnings just once
-vistle_find_package(Xdmf QUIET)
-if(WIN32 AND Xdmf_FOUND)
-    vistle_find_package(Iconv)
-    if(NOT Iconv_FOUND)
-        unset(Xdmf_FOUND)
+option(VISTLE_64BIT_INDICES "use 64-bit integers for array indices" OFF)
+option(VISTLE_DOUBLE_PRECISION "use double instead of float for coordinates and data arrays" OFF)
+
+option(VISTLE_INTERNAL_VTKM "Use internal copy of VTK-m" ON)
+if(VTK_FOUND AND VTK_HAS_VTKm)
+    message("Using VTK-m provided by VTK ${VTK_VERSION}")
+    if(VISTLE_INTERNAL_VTKM)
+        message(WARNING "Provided VTK already contains VTK-m, cannot build internal copy of VTK-m. Disabling VISTLE_INTERNAL_VTKM...")
+        set(VISTLE_INTERNAL_VTKM OFF)
     endif()
+endif()
+
+if(NOT VISTLE_INTERNAL_VTKM)
+    message("GOT INTO IF")
+    # search without version argument, as it is not possible to search for all compatible versions (2.0 & 2.1) in one go
+    vistle_find_package(VTKm REQUIRED)
+
+    if(NOT ("${VTKm_VERSION_MAJOR}" EQUAL 2))
+        message(FATAL_ERROR "Vtk-m version must be >= 2.0 and < 3.0 (but is ${VTKm_VERSION}).")
+    endif()
+
+    # make sure vtk-m and vistle data types are compatible (if not, overwrite user flags, accordingly)
+    add_subdirectory(module/test/IsoSurfaceVtkm/compatibility)
+
+endif()
+
+# configure data-type sizes
+if(VISTLE_64BIT_INDICES)
+    add_definitions(-DVISTLE_INDEX_64BIT)
+endif()
+
+if(VISTLE_DOUBLE_PRECISION)
+    add_definitions(-DVISTLE_SCALAR_DOUBLE)
 endif()
 
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)

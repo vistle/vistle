@@ -381,6 +381,8 @@ void DataFlowNetwork::addConnection(Port *portFrom, Port *portTo, bool sendToCon
     }
 
     c->updateVisibility(DataFlowView::the()->visibleLayer());
+    portFrom->update();
+    portTo->update();
 }
 
 void DataFlowNetwork::removeConnection(Port *portFrom, Port *portTo, bool sendToController)
@@ -409,6 +411,9 @@ void DataFlowNetwork::removeConnection(Port *portFrom, Port *portTo, bool sendTo
         m_connections.erase(it);
         removeItem(c);
     }
+
+    portFrom->update();
+    portTo->update();
 }
 
 void DataFlowNetwork::setConnectionHighlights(Port *port, bool highlight)

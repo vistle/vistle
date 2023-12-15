@@ -13,12 +13,12 @@ namespace vistle {
 typedef boost::mpl::vector<char, signed char, unsigned char, int32_t, uint32_t, int64_t, uint64_t, float, double>
     Scalars;
 const std::array<const char *, boost::mpl::size<Scalars>::value> ScalarTypeNames = {
-    {"char", "signed char", "unsigned char", "int32_t", "uint32_t", "int64_t", "uint64_t", "float", "double"}};
+    {"char", "int8_t", "uint8_t", "int32_t", "uint32_t", "int64_t", "uint64_t", "float", "double"}};
 
 #define FOR_ALL_SCALARS(MACRO) \
     MACRO(char) \
-    MACRO(signed char) \
-    MACRO(unsigned char) \
+    MACRO(int8_t) \
+    MACRO(uint8_t) \
     MACRO(int32_t) \
     MACRO(uint32_t) \
     MACRO(int64_t) \

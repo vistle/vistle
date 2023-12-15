@@ -15,10 +15,24 @@
 #include "scalars.h"
 #include "celltreenode_decl.h"
 
+#include <vtkm/cont/ArrayHandle.h>
+
 namespace vistle {
 
 template<typename T, class allocator>
 class shm_array;
+
+template<typename T>
+struct ArrayHandleTypeMap {
+    typedef T type;
+};
+
+// map from unsigned Index types to signed vtkm::Id's
+template<>
+struct ArrayHandleTypeMap<Index> {
+    typedef vtkm::Id type;
+    static_assert(sizeof(Index) == sizeof(vtkm::Id));
+};
 
 template<typename T, class allocator>
 std::ostream &operator<<(std::ostream &os, const shm_array<T, allocator> &arr);
@@ -29,6 +43,7 @@ class shm_array: public ShmData {
 
 public:
     typedef T value_type;
+    typedef typename ArrayHandleTypeMap<T>::type handle_type;
     typedef uint64_t size_type;
     typedef const value_type &const_reference;
 
@@ -43,16 +58,37 @@ public:
     unsigned type() const { return m_type; }
     bool check() const;
 
+#ifdef NO_SHMEM
+    const vtkm::cont::ArrayHandle<handle_type> &handle() const;
+#else
+    const vtkm::cont::ArrayHandle<handle_type> handle() const;
+#endif
+
     typedef typename std::allocator_traits<allocator>::pointer pointer;
     typedef T *iterator;
     typedef const T *const_iterator;
 
-    iterator begin() const { return &*m_data; }
-    iterator end() const { return (&*m_data) + m_size; }
-    T *data() const { return &*m_data; }
+    iterator begin() const
+    {
+        return &*m_data;
+    }
+    iterator end() const
+    {
+        return (&*m_data) + m_size;
+    }
+    T *data() const
+    {
+        return &*m_data;
+    }
 
-    T &operator[](const size_t idx) { return m_data[idx]; }
-    T &operator[](const size_t idx) const { return m_data[idx]; }
+    T &operator[](const size_t idx)
+    {
+        return m_data[idx];
+    }
+    T &operator[](const size_t idx) const
+    {
+        return m_data[idx];
+    }
     T &at(const size_t idx);
     T &at(const size_t idx) const;
     void push_back(const T &v);
@@ -67,26 +103,45 @@ public:
         ++m_size;
     }
 
-    T &back() { return m_data[m_size - 1]; }
-    T &front() { return m_data[0]; }
+    T &back()
+    {
+        return m_data[m_size - 1];
+    }
+    T &front()
+    {
+        return m_data[0];
+    }
 
-    bool empty() const { return m_size == 0; }
+    bool empty() const
+    {
+        return m_size == 0;
+    }
     void clear();
 
-    size_t size() const { return m_size; }
+    size_t size() const
+    {
+        return m_size;
+    }
     void resize(const size_t size);
     void resize(const size_t size, const T &value);
 
+    void updateArrayHandle();
     void clearDimensionHint();
     void setDimensionHint(const size_t sx, const size_t sy = 1, const size_t sz = 1);
     void setExact(bool exact);
 
-    size_t capacity() const { return m_capacity; }
+    size_t capacity() const
+    {
+        return m_capacity;
+    }
     void reserve(const size_t new_capacity);
     void reserve_or_shrink(const size_t capacity);
     void shrink_to_fit();
 
-    bool bounds_valid() const { return m_max >= m_min; }
+    bool bounds_valid() const
+    {
+        return m_max >= m_min;
+    }
     void invalidate_bounds();
     void update_bounds();
 
@@ -112,6 +167,10 @@ private:
     value_type m_max = std::numeric_limits<value_type>::lowest();
     pointer m_data;
     allocator m_allocator;
+#ifdef NO_SHMEM
+    vtkm::cont::ArrayHandle<handle_type, VTKM_DEFAULT_STORAGE_TAG>
+        m_handle; // VTK-m ArrayHandle that is always kept up to date
+#endif
 
     ARCHIVE_ACCESS_SPLIT
     template<class Archive>

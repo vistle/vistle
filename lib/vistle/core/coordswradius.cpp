@@ -13,7 +13,11 @@ CoordsWithRadius::CoordsWithRadius(const size_t numCoords, const Meta &meta)
 void CoordsWithRadius::refreshImpl() const
 {
     const Data *d = static_cast<Data *>(m_data);
-    m_r = (d && d->r.valid()) ? d->r->data() : nullptr;
+    if (d) {
+        m_r = d->r;
+    } else {
+        m_r = nullptr;
+    }
 }
 
 bool CoordsWithRadius::isEmpty()

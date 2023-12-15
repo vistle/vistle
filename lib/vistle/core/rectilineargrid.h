@@ -40,7 +40,7 @@ public:
 
     // get/set functions for shared memory members
     shm<Scalar>::array &coords(int c) { return *d()->coords[c]; }
-    const Scalar *coords(int c) const { return m_coords[c]; }
+    ShmArrayProxy<Scalar> &coords(int c) const { return m_coords[c]; }
 
     // GridInterface
     Index getNumVertices() override;
@@ -61,7 +61,7 @@ public:
 private:
     // mutable pointers to ShmVectors
     mutable Index m_numDivisions[3];
-    mutable const Scalar *m_coords[3];
+    mutable ShmArrayProxy<Scalar> m_coords[3];
     mutable Index m_ghostLayers[3][2];
     mutable Index m_size = 0;
 

@@ -129,7 +129,7 @@ bool WeldVertices::compute(const std::shared_ptr<BlockTask> &task) const
     std::map<Point, Index> indexMap;
     if (auto tri = Triangles::as(grid)) {
         Index num = tri->getNumCorners();
-        const Index *cl = num > 0 ? tri->cl() : nullptr;
+        const Index *cl = num > 0 ? tri->cl().data() : nullptr;
         if (!cl)
             num = tri->getNumCoords();
         remap.reserve(num);
@@ -170,7 +170,7 @@ bool WeldVertices::compute(const std::shared_ptr<BlockTask> &task) const
         ogrid = ntri;
     } else if (auto quad = Quads::as(grid)) {
         Index num = quad->getNumCorners();
-        const Index *cl = num > 0 ? quad->cl() : nullptr;
+        const Index *cl = num > 0 ? quad->cl().data() : nullptr;
         if (!cl)
             num = quad->getNumCoords();
         remap.reserve(num);
@@ -211,7 +211,7 @@ bool WeldVertices::compute(const std::shared_ptr<BlockTask> &task) const
         ogrid = nquad;
     } else if (auto idx = Indexed::as(grid)) {
         Index num = idx->getNumCorners();
-        const Index *cl = num > 0 ? idx->cl() : nullptr;
+        const Index *cl = num > 0 ? idx->cl().data() : nullptr;
         if (!cl)
             num = idx->getNumCoords();
         const Scalar *x = idx->x(), *y = idx->y(), *z = idx->z();

@@ -25,7 +25,12 @@ template<int N>
 void Ngons<N>::refreshImpl() const
 {
     const Data *d = static_cast<Data *>(m_data);
-    m_cl = (d && d->cl.valid()) ? d->cl->data() : nullptr;
+    if (d) {
+        m_cl = d->cl;
+
+    } else {
+        m_cl = nullptr;
+    }
     m_numCorners = (d && d->cl.valid()) ? d->cl->size() : 0;
 }
 

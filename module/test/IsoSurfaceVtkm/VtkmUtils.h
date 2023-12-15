@@ -10,16 +10,22 @@
 
 #include <vector>
 
-enum VTKM_TRANSFORM_STATUS { SUCCESS = 0, UNSUPPORTED_GRID_TYPE = 1, UNSUPPORTED_CELL_TYPE = 2 };
+namespace vistle {
+
+enum VtkmTransformStatus { SUCCESS = 0, UNSUPPORTED_GRID_TYPE = 1, UNSUPPORTED_CELL_TYPE = 2, UNSUPPORTED_FIELD_TYPE };
 
 // transform a vistle dataset (grid and scalar data field) into a vtkm dataset
 // so vtkm filters can be applied to it
-VTKM_TRANSFORM_STATUS vistleToVtkmDataSet(vistle::Object::const_ptr grid,
-                                          std::shared_ptr<const vistle::Vec<vistle::Scalar, 1U>> scalarField,
-                                          vtkm::cont::DataSet &vtkmDataSet, bool useArrayHandles);
+VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataSet, vistle::Object::const_ptr grid);
+
+VtkmTransformStatus vtkmAddField(vtkm::cont::DataSet &vtkmDataSet, const vistle::DataBase::const_ptr &field,
+                                 const std::string &name);
 
 // transform a vtkm isosurface dataset into a vistle Triangles object, so it can
 // be rendered in COVER
 vistle::Triangles::ptr vtkmIsosurfaceToVistleTriangles(vtkm::cont::DataSet &isosurface);
 
+vistle::DataBase::ptr vtkmGetField(const vtkm::cont::DataSet &vtkmDataSet, const std::string &name);
+
+} // namespace vistle
 #endif // VISTLE_VTKM_UTILS_H

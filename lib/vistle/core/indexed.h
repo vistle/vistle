@@ -30,8 +30,8 @@ public:
 
     typename shm<Index>::array &el() { return *d()->el; }
     typename shm<Index>::array &cl() { return *d()->cl; }
-    const Index *el() const { return m_el; }
-    const Index *cl() const { return m_cl; }
+    const ShmArrayProxy<Index> &el() const { return m_el; }
+    const ShmArrayProxy<Index> &cl() const { return m_cl; }
 
     std::pair<Vector3, Vector3> getBounds() const override;
 
@@ -68,8 +68,8 @@ public:
 
 private:
     mutable Index m_numEl = InvalidIndex, m_numCl = InvalidIndex;
-    mutable const Index *m_el = nullptr;
-    mutable const Index *m_cl = nullptr;
+    mutable ShmArrayProxy<Index> m_el;
+    mutable ShmArrayProxy<Index> m_cl;
     mutable Celltree::const_ptr m_celltree;
     mutable VertexOwnerList::const_ptr m_vertexOwnerList;
     mutable std::unique_ptr<const NeighborFinder> m_neighborfinder;

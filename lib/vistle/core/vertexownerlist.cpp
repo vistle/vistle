@@ -13,8 +13,13 @@ VertexOwnerList::VertexOwnerList(const size_t numVertices, const Meta &meta)
 void VertexOwnerList::refreshImpl() const
 {
     const Data *d = static_cast<Data *>(m_data);
-    m_vertexList = (d && d->vertexList.valid()) ? d->vertexList->data() : nullptr;
-    m_cellList = (d && d->cellList.valid()) ? d->cellList->data() : nullptr;
+    if (d) {
+        m_vertexList = d->vertexList;
+        m_cellList = d->cellList;
+    } else {
+        m_vertexList = nullptr;
+        m_cellList = nullptr;
+    }
 }
 
 void VertexOwnerList::Data::initData()

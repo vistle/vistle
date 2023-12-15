@@ -643,8 +643,6 @@ vistle::Object::ptr toGrid(vtkDataObject *vtk, bool checkConvex)
 
 vistle::DataBase::ptr getField(vtkDataSetAttributes *vtk, const std::string &name, Object::const_ptr grid)
 {
-    DataBase::ptr result;
-
     auto varr = vtk->GetScalars(name.c_str());
     if (!varr)
         varr = vtk->GetVectors(name.c_str());
@@ -660,7 +658,6 @@ vistle::DataBase::ptr getField(vtkDataSetAttributes *vtk, const std::string &nam
 
 vistle::DataBase::ptr getField(vtkFieldData *vtk, const std::string &name, Object::const_ptr grid)
 {
-    DataBase::ptr result;
     auto varr = vtk->GetArray(name.c_str());
     return vtkData2Vistle(varr, grid);
 }

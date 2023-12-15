@@ -1046,6 +1046,7 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn)
             // synthesize ModuleExit for module that has failed to start
             message::ModuleExit m;
             m.setSenderId(newId);
+            m_stateTracker.handle(m, nullptr);
             if (getRank() == 0)
                 sendHub(m);
             return true;

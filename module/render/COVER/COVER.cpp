@@ -268,7 +268,7 @@ bool COVER::parameterAdded(const int senderId, const std::string &name, const me
         plugin = plugin.substr(0, plugin.size() - 4);
     if (plugin == "CutGeometry")
         plugin = "CuttingSurface";
-    if (plugin == "DisCOVERay" || plugin == "OsgRenderer")
+    if (plugin == "DisCOVERay" || plugin == "OsgRenderer" || plugin == "ANARemote")
         plugin = "RhrClient";
     if (plugin == "Color" || plugin == "ColorRandom")
         plugin = "ColorBars";

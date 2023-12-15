@@ -876,7 +876,11 @@ std::vector<Index> UnstructuredGrid::cellVertices(Index elem) const
 void UnstructuredGrid::refreshImpl() const
 {
     const Data *d = static_cast<Data *>(m_data);
-    m_tl = (d && d->tl.valid()) ? d->tl->data() : nullptr;
+    if (d) {
+        m_tl = d->tl;
+    } else {
+        m_tl = nullptr;
+    }
 }
 
 void UnstructuredGrid::Data::initData()

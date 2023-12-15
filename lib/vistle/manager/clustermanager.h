@@ -26,6 +26,8 @@
 #include <boost/function.hpp>
 #endif
 
+#include "export.h"
+
 
 namespace vistle {
 
@@ -36,7 +38,7 @@ class MessageQueue;
 
 class Parameter;
 
-class ClusterManager {
+class V_MANAGEREXPORT ClusterManager {
     friend class Communicator;
     friend class DataManager;
 

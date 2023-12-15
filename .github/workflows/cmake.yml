@@ -79,7 +79,8 @@ jobs:
         libzip-dev
         libarchive-dev
         libbotan-2-dev
-        libvtk7-dev
+        libvtk9-dev
+        libnetcdf-dev
 
     - name: Create Build Environment
       # Some projects don't allow in-source building, so create a separate build directory

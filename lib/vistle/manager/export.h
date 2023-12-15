@@ -9,6 +9,8 @@
 #else
 #define V_MANAGEREXPORT V_IMPORT
 #endif
+#else
+#define V_MANAGEREXPORT
 #endif // MODULE_THREAD
 
 

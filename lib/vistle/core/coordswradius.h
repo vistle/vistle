@@ -15,12 +15,12 @@ public:
     CoordsWithRadius(const size_t numCoords, const Meta &meta = Meta());
 
     shm<Scalar>::array &r() { return *(d()->r); }
-    const Scalar *r() const { return m_r; }
+    const ShmArrayProxy<Scalar> &r() const { return m_r; }
     void resetArrays() override;
     void setSize(const size_t size) override;
 
 private:
-    mutable const Scalar *m_r;
+    mutable ShmArrayProxy<Scalar> m_r;
 
     V_DATA_BEGIN(CoordsWithRadius);
     ShmVector<Scalar> r;

@@ -265,7 +265,7 @@ bool Assemble::assemble(const Assemble::AssembleData &d)
         }
 
         if (auto tri = Triangles::as(grid)) {
-            const Index *cl = tri->getNumCorners() > 0 ? tri->cl() : nullptr;
+            const Index *cl = tri->getNumCorners() > 0 ? tri->cl().data() : nullptr;
             if (!cl) {
                 if (tri->getNumCoords() > 0)
                     flatGeometry = true;
@@ -285,7 +285,7 @@ bool Assemble::assemble(const Assemble::AssembleData &d)
                 assert(ogrid == ntri);
             }
         } else if (auto quad = Quads::as(grid)) {
-            const Index *cl = quad->getNumCorners() > 0 ? quad->cl() : nullptr;
+            const Index *cl = quad->getNumCorners() > 0 ? quad->cl().data() : nullptr;
             if (!cl) {
                 if (quad->getNumCoords() > 0)
                     flatGeometry = true;
@@ -306,7 +306,7 @@ bool Assemble::assemble(const Assemble::AssembleData &d)
             }
         } else if (auto idx = Indexed::as(grid)) {
             auto unstr = UnstructuredGrid::as(idx);
-            const Index *cl = idx->getNumCorners() > 0 ? idx->cl() : nullptr;
+            const Index *cl = idx->getNumCorners() > 0 ? idx->cl().data() : nullptr;
             if (!cl) {
                 if (idx->getNumCoords() > 0)
                     flatGeometry = true;
@@ -432,7 +432,7 @@ bool Assemble::assemble(const Assemble::AssembleData &d)
         }
 
         if (auto tri = Triangles::as(grid)) {
-            const Index *cl = tri->getNumCorners() > 0 ? tri->cl() : nullptr;
+            const Index *cl = tri->getNumCorners() > 0 ? tri->cl().data() : nullptr;
             if (!cl) {
                 if (tri->getNumCoords() > 0)
                     flatGeometry = true;
@@ -453,7 +453,7 @@ bool Assemble::assemble(const Assemble::AssembleData &d)
                 }
             }
         } else if (auto quad = Quads::as(grid)) {
-            const Index *cl = quad->getNumCorners() > 0 ? quad->cl() : nullptr;
+            const Index *cl = quad->getNumCorners() > 0 ? quad->cl().data() : nullptr;
             if (!cl) {
                 if (quad->getNumCoords() > 0)
                     flatGeometry = true;
@@ -475,7 +475,7 @@ bool Assemble::assemble(const Assemble::AssembleData &d)
             }
         } else if (auto idx = Indexed::as(grid)) {
             auto unstr = UnstructuredGrid::as(idx);
-            const Index *cl = idx->getNumCorners() > 0 ? idx->cl() : nullptr;
+            const Index *cl = idx->getNumCorners() > 0 ? idx->cl().data() : nullptr;
             if (!cl) {
                 if (idx->getNumCoords() > 0)
                     flatGeometry = true;

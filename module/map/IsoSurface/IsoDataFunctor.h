@@ -26,6 +26,7 @@ inline vistle::Index lerp(vistle::Index a, vistle::Index b, vistle::Scalar t)
 
 
 #ifdef CUTTINGSURFACE
+#define IsoDataFunctor CutDataFunctor
 
 //! generate data on the fly for creating cutting surfaces as isosurfaces
 struct IsoDataFunctor {

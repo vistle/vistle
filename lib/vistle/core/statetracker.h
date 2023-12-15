@@ -168,8 +168,8 @@ public:
 
     const std::map<AvailableModule::Key, AvailableModule> &availableModules() const;
 
-    void registerObserver(StateObserver *observer);
-    void unregisterObserver(StateObserver *observer);
+    void registerObserver(StateObserver *observer) const;
+    void unregisterObserver(StateObserver *observer) const;
 
     bool registerRequest(const message::uuid_t &uuid);
     std::shared_ptr<message::Buffer> waitForReply(const message::uuid_t &uuid);
@@ -257,7 +257,7 @@ protected:
 
     std::map<AvailableModule::Key, AvailableModule> m_availableModules;
 
-    std::set<StateObserver *> m_observers;
+    mutable std::set<StateObserver *> m_observers;
 
     VistleState m_queue;
     void processQueue();

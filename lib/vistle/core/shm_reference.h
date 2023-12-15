@@ -222,6 +222,68 @@ private:
 
 FOR_ALL_SCALARS(V_DECLARE_SHMREF)
 
+template<typename T>
+class ShmArrayProxy {
+public:
+    typedef typename ArrayHandleTypeMap<T>::type handle_type;
+
+    ShmArrayProxy() = default;
+
+    template<class allocator>
+    ShmArrayProxy(const shm_array<T, allocator> *arr)
+    : m_data(arr ? arr->data() : nullptr)
+    , m_handle(
+          arr ? arr->handle()
+              : vtkm::cont::make_ArrayHandle<handle_type>(static_cast<handle_type *>(nullptr), 0, vtkm::CopyFlag::Off))
+    {}
+
+    ShmArrayProxy &operator=(std::nullptr_t p)
+    {
+        m_data = nullptr;
+        m_handle =
+            vtkm::cont::make_ArrayHandle<handle_type>(static_cast<handle_type *>(nullptr), 0, vtkm::CopyFlag::Off);
+        return *this;
+    }
+
+    template<class allocator>
+    ShmArrayProxy &operator=(const shm_array<T, allocator> *arr)
+    {
+        if (arr) {
+            m_data = arr->data();
+            m_handle = arr->handle();
+        } else {
+            m_data = nullptr;
+            m_handle = vtkm::cont::make_ArrayHandle<T>(static_cast<handle_type *>(nullptr), 0, vtkm::CopyFlag::Off);
+        }
+        return *this;
+    }
+
+    template<class Arr>
+    ShmArrayProxy &operator=(const shm_array_ref<Arr> ref)
+    {
+        if (ref.valid()) {
+            m_data = ref->data();
+            m_handle = ref->handle();
+        } else {
+            m_data = nullptr;
+            m_handle =
+                vtkm::cont::make_ArrayHandle<handle_type>(static_cast<handle_type *>(nullptr), 0, vtkm::CopyFlag::Off);
+        }
+        return *this;
+    }
+
+    operator const T *() const { return m_data; }
+
+    const T &operator*() const { return m_data[0]; }
+    const T &operator[](size_t idx) const { return m_data[idx]; }
+    const T *data() const { return m_data; }
+    const vtkm::cont::ArrayHandle<handle_type> &handle() const { return m_handle; }
+
+private:
+    const T *m_data = nullptr;
+    vtkm::cont::ArrayHandle<handle_type> m_handle;
+};
+
 
 } // namespace vistle
 #endif

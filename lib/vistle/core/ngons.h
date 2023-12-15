@@ -25,7 +25,7 @@ public:
     Index getNumCorners() const;
 
     shm<Index>::array &cl() { return *d()->cl; }
-    const Index *cl() const { return m_cl; }
+    const ShmArrayProxy<Index> &cl() const { return m_cl; }
 
     bool hasCelltree() const override;
     Celltree::const_ptr getCelltree() const override;
@@ -39,7 +39,7 @@ public:
 private:
     void createCelltree(Index nelem, const Index *cl) const;
 
-    mutable const Index *m_cl;
+    mutable ShmArrayProxy<Index> m_cl;
     mutable Index m_numCorners = 0;
     mutable Celltree::const_ptr m_celltree;
 

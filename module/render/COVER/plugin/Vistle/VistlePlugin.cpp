@@ -72,45 +72,13 @@ void VistlePlugin::updateSessionUrl(const std::string &url)
 }
 
 VistlePlugin::VistlePlugin(): coVRPlugin("Vistle"), ui::Owner("Vistle", cover->ui), m_module(nullptr)
-{
-#if 0
-    using opencover::coCommandLine;
-
-   int initialized = 0;
-   MPI_Initialized(&initialized);
-   if (!initialized) {
-      std::cerr << "VistlePlugin: no MPI support - started from within Vistle?" << std::endl;
-      //throw(vistle::exception("no MPI support"));
-      return;
-   }
-
-   if (coCommandLine::argc() < 3) {
-      for (int i=0; i<coCommandLine::argc(); ++i) {
-         std::cout << i << ": " << coCommandLine::argv(i) << std::endl;
-      }
-      throw(vistle::exception("at least 2 command line arguments required"));
-   }
-
-   int rank, size;
-   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-   MPI_Comm_size(MPI_COMM_WORLD, &size);
-   const std::string &shmname = coCommandLine::argv(1);
-   const std::string &name = coCommandLine::argv(2);
-   int moduleID = atoi(coCommandLine::argv(3));
-
-   vistle::Module::setup(shmname, moduleID, rank);
-   m_module = new OsgRenderer(shmname, name, moduleID);
-#endif
-}
+{}
 
 VistlePlugin::~VistlePlugin()
 {
     if (m_module) {
         m_module->comm().barrier();
         m_module->prepareQuit();
-#if 0
-      delete m_module;
-#endif
         m_module = nullptr;
     }
 }
@@ -158,9 +126,6 @@ bool VistlePlugin::destroy()
         m_module->state().unregisterObserver(m_observer.get());
         m_module->comm().barrier();
         m_module->prepareQuit();
-#if 0
-      delete m_module;
-#endif
         m_module = nullptr;
     }
 
@@ -233,9 +198,6 @@ void VistlePlugin::requestQuit(bool killSession)
         }
         m_module->comm().barrier();
         m_module->prepareQuit();
-#if 0
-        delete m_module;
-#endif
         m_module = nullptr;
     }
 }

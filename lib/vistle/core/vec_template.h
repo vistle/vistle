@@ -117,8 +117,14 @@ void Vec<T, Dim>::refreshImpl() const
 {
     const Data *d = static_cast<Data *>(m_data);
 
-    for (unsigned c = 0; c < Dim; ++c) {
-        m_x[c] = (d && d->x[c].valid()) ? d->x[c]->data() : nullptr;
+    if (d) {
+        for (unsigned c = 0; c < Dim; ++c) {
+            m_x[c] = d->x[c];
+        }
+    } else {
+        for (unsigned c = 0; c < Dim; ++c) {
+            m_x[c] = nullptr;
+        }
     }
     for (unsigned c = Dim; c < MaxDim; ++c) {
         m_x[c] = nullptr;
