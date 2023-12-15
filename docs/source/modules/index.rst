@@ -46,6 +46,7 @@ Modules
    IndexManifolds.md
    IsoHeightSurface.md
    IsoSurface.md
+   IsoSurfaceVtkm.md
    LibSimController.md
    LoadCover.md
    MapDrape.md
@@ -84,6 +85,7 @@ Modules
    SortBlocks.md
    SpheresOld.md
    SplitDimensions.md
+   SplitPolyhedra.md
    Statistics.md
    TestCellSearch.md
    TestDynamicPorts.md
