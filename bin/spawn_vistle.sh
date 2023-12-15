@@ -144,7 +144,7 @@ case $(hostname) in
       ;;
    viscluster80)
       if [ -z "$MPIHOSTS" ]; then
-         MPIHOSTS=$(echo viscluster80 viscluster{70..79}|sed -e 's/ /,/g')
+         MPIHOSTS="viscluster80"
       fi
       ;;
    viscluster*)
