@@ -277,7 +277,7 @@ bool COVER::parameterAdded(const int senderId, const std::string &name, const me
     InteractorMap::iterator it = m_interactorMap.find(senderId);
     if (it == m_interactorMap.end()) {
         if (vistle::message::Id::isModule(senderId))
-            cover->addPlugin(plugin.c_str());
+            coVRPluginList::instance()->addPlugin(plugin.c_str(), coVRPluginList::Vis);
 
         m_interactorMap[senderId] = new VistleInteractor(this, moduleName, senderId);
         m_interactorMap[senderId]->setPluginName(plugin);
