@@ -631,16 +631,15 @@ Parameter *Module::addParameterGeneric(const std::string &name, std::shared_ptr<
     return ParameterManager::addParameterGeneric(name, param);
 }
 
-bool Module::removeParameter(Parameter *param)
+bool Module::removeParameter(const std::string &name)
 {
-    std::string name = param->getName();
     assert(havePort(name));
     if (!havePort(name)) {
         CERR << "removeParameter: no port with name " << name << std::endl;
         return false;
     }
 
-    return ParameterManager::removeParameter(param);
+    return ParameterManager::removeParameter(name);
 }
 
 bool Module::sendObject(const mpi::communicator &comm, Object::const_ptr obj, int destRank) const
