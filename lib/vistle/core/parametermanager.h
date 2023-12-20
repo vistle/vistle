@@ -96,8 +96,7 @@ public:
                                   const message::SetParameter *inResponseTo = NULL);
     StringParamVector getStringVectorParameter(const std::string &name) const;
 
-    bool removeParameter(const std::string &name);
-    virtual bool removeParameter(Parameter *param);
+    virtual bool removeParameter(const std::string &name);
 
     std::shared_ptr<Parameter> findParameter(const std::string &name) const;
 

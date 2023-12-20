@@ -103,7 +103,7 @@ public:
 
 protected:
     Parameter *addParameterGeneric(const std::string &name, std::shared_ptr<Parameter> parameter) override;
-    bool removeParameter(Parameter *param) override;
+    bool removeParameter(const std::string &name) override;
 
     enum ParallelizationMode {
         Serial, ///< only one operation at a time, all blocks of a timestep first, then other timesteps

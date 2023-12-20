@@ -139,7 +139,7 @@ public:
     virtual bool dispatch(bool block = true, bool *messageReceived = nullptr, unsigned int minPrio = 0);
 
     Parameter *addParameterGeneric(const std::string &name, std::shared_ptr<Parameter> parameter) override;
-    bool removeParameter(Parameter *param) override;
+    bool removeParameter(const std::string &name) override;
 
     const std::string &name() const;
     const mpi::communicator &comm() const;

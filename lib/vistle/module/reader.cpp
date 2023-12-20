@@ -43,11 +43,11 @@ Parameter *Reader::addParameterGeneric(const std::string &name, std::shared_ptr<
     return Module::addParameterGeneric(name, parameter);
 }
 
-bool Reader::removeParameter(Parameter *param)
+bool Reader::removeParameter(const std::string &name)
 {
-    if (param == m_firstFileBrowser.get())
+    if (m_firstFileBrowser && m_firstFileBrowser->getName() == m_firstFileBrowser->getName())
         m_firstFileBrowser.reset();
-    return Module::removeParameter(param);
+    return Module::removeParameter(name);
 }
 
 void Reader::prepareQuit()
@@ -375,7 +375,7 @@ void Reader::setAllowTimestepDistribution(bool allow)
         }
     } else {
         if (m_distributeTime)
-            removeParameter(m_distributeTime);
+            removeParameter(m_distributeTime->getName());
         m_distributeTime = nullptr;
     }
 }

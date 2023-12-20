@@ -271,8 +271,9 @@ bool InSituModule::handleInsituMessage(message::Message &msg)
         auto &params = msg.type() == InSituMessageType::SetCommands ? m_commandParameter : m_customCommandParameter;
 
         for (auto i = params.begin(); i != params.end(); ++i) {
-            if (std::find(commands.begin(), commands.end(), (*i)->getName()) == commands.end()) {
-                removeParameter(*i);
+            const auto &name = (*i)->getName();
+            if (std::find(commands.begin(), commands.end(), name) == commands.end()) {
+                removeParameter(name);
                 i = params.erase(i);
             }
         }
