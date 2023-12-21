@@ -180,6 +180,10 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, bool checkConvex)
         case VTK_TRIANGLE:
             typelist[elemVistle] = UnstructuredGrid::TRIANGLE;
             break;
+        case VTK_PIXEL:
+            // vistle does not support pixels, but they can be expressed as quads
+            typelist[elemVistle] = UnstructuredGrid::QUAD;
+            break;
         case VTK_QUAD:
             typelist[elemVistle] = UnstructuredGrid::QUAD;
             break;
@@ -187,6 +191,10 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, bool checkConvex)
             typelist[elemVistle] = UnstructuredGrid::TETRAHEDRON;
             break;
         case VTK_HEXAHEDRON:
+            typelist[elemVistle] = UnstructuredGrid::HEXAHEDRON;
+            break;
+        case VTK_VOXEL:
+            // vistle does not support voxels, but they can be expressed as hexahedra
             typelist[elemVistle] = UnstructuredGrid::HEXAHEDRON;
             break;
         case VTK_LAGRANGE_HEXAHEDRON: {
@@ -244,6 +252,20 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, bool checkConvex)
             auto lagrangeCell = dynamic_cast<vtkLagrangeHexahedron *>(vugrid->GetCell(i));
             lagrangeConnectivityToLinearHexahedron(lagrangeCell->GetOrder(), pts, connlist);
             assert(connlist.size() == 8 * (elemVistle + 1));
+        } else if (vugrid->GetCellType(i) == VTK_PIXEL) {
+            // account for different order
+            Index vtkPixelOrder[] = {0, 1, 3, 2};
+            for (vtkIdType j = 0; j < npts; ++j) {
+                assert(pts[j] >= 0);
+                connlist.emplace_back(pts[vtkPixelOrder[j]]);
+            }
+        } else if (vugrid->GetCellType(i) == VTK_VOXEL) {
+            // account for different order
+            Index vtkVoxelOrder[] = {0, 1, 3, 2, 4, 5, 7, 6};
+            for (vtkIdType j = 0; j < npts; ++j) {
+                assert(pts[j] >= 0);
+                connlist.emplace_back(pts[vtkVoxelOrder[j]]);
+            }
         } else {
             for (vtkIdType j = 0; j < npts; ++j) {
                 assert(pts[j] >= 0);
