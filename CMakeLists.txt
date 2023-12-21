@@ -950,7 +950,6 @@ if(VTK_FOUND AND VTK_HAS_VTKm)
 endif()
 
 if(NOT VISTLE_INTERNAL_VTKM)
-    message("GOT INTO IF")
     # search without version argument, as it is not possible to search for all compatible versions (2.0 & 2.1) in one go
     vistle_find_package(VTKm REQUIRED)
 
