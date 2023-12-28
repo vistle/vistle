@@ -68,8 +68,7 @@ target_link_libraries(
     vistle_rhr
     vistle_config
     ${ZLIB_LIBRARIES}
-    ${EMBREE_LIBRARY}
-    MPI::MPI_C)
+    ${EMBREE_LIBRARY})
 
 if(USE_LIBOMP AND LIBOMP)
     target_link_libraries(DisCOVERay ${LIBOMP})
