@@ -1255,11 +1255,11 @@ bool Module::getNextMessage(message::Buffer &buf, bool block, unsigned int minPr
             if (!messageBacklog.empty()) {
                 auto &front = messageBacklog.front();
                 if (buf.priority() <= front.priority()) {
-                    // keep bufferd messages sorted according to priority
+                    // keep buffered messages sorted according to priority
                     std::swap(buf, front);
                     auto it = messageBacklog.begin(), next = it + 1;
                     while (next != messageBacklog.end()) {
-                        if (it->priority() >= next->priority())
+                        if (it->priority() <= next->priority())
                             std::swap(*it, *next);
                         it = next;
                         ++next;
@@ -1273,8 +1273,9 @@ bool Module::getNextMessage(message::Buffer &buf, bool block, unsigned int minPr
 
             messageBacklog.push_front(buf);
         } else if (!messageBacklog.empty()) {
-            buf = messageBacklog.front();
-            if (buf.priority() >= minPrio) {
+            const auto &front = messageBacklog.front();
+            if (front.priority() >= minPrio) {
+                buf = front;
                 messageBacklog.pop_front();
                 return true;
             }
