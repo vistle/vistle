@@ -1,4 +1,4 @@
-find_package(HDF5 COMPONENTS C)
+vistle_find_package(HDF5 COMPONENTS C)
 
 #if (NOT HDF5_IS_PARALLEL)
 #    message("Parallel HDF5 is required for ReadHDF5")
