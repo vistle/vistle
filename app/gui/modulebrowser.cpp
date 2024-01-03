@@ -287,49 +287,51 @@ void ModuleBrowser::addHub(int hub, QString hubName, int nranks, QString address
         auto it = m_hubItems[idx].find(hub);
         if (it == m_hubItems[idx].end()) {
             it = m_hubItems[idx].emplace(hub, new QTreeWidgetItem({hubName}, Hub)).first;
-            auto &item = it->second;
-            m_moduleListWidget[idx]->addTopLevelItem(item);
-            item->setExpanded(m_hubItems[idx].size() <= 1);
-            item->setBackground(0, Module::hubColor(hub));
-            item->setForeground(0, QColor(0, 0, 0));
+            m_moduleListWidget[idx]->addTopLevelItem(it->second);
+        }
 
-            QString sysicon(systype);
-            if (systype != "windows" && systype != "linux" && systype != "freebsd" && systype != "apple")
-                sysicon = "question";
+        auto &item = it->second;
+        item->setData(0, Qt::DisplayRole, hubName);
+        item->setExpanded(m_hubItems[idx].size() <= 1);
+        item->setBackground(0, Module::hubColor(hub));
+        item->setForeground(0, QColor(0, 0, 0));
 
-            QString tt;
-            tt += "<b>" + QString::fromStdString(vistle::message::Id::toString(hub)).toHtmlEscaped() + "</b> " +
-                  QString("(" + QString::number(hub) + ")").toHtmlEscaped();
-            tt += QString("<table><tr><td><img height=\"48\" src=\":/icons/%0.svg\"/>&nbsp;</td><td><br>%1<br>%2 "
-                          "ranks</td></table><br>")
-                      .arg(sysicon)
-                      .arg(arch)
-                      .arg(nranks);
-            tt += QString(realname).toHtmlEscaped() + QString(" (%0)").arg(logname) + "<br>";
-            tt += QString(hubName).toHtmlEscaped() + QString(":%0").arg(port);
-            item->setData(0, Qt::ToolTipRole, tt);
+        QString sysicon(systype);
+        if (systype != "windows" && systype != "linux" && systype != "freebsd" && systype != "apple")
+            sysicon = "question";
 
-            QPixmap icon;
-            if (nranks == 0) {
-                icon = QPixmap(":/icons/proxy.svg");
-            } else if (nranks == 1) {
-                if (hasUi) {
-                    icon = QPixmap(":/icons/display.svg");
-                } else {
-                    icon = QPixmap(":/icons/server.svg");
-                }
+        QString tt;
+        tt += "<b>" + QString::fromStdString(vistle::message::Id::toString(hub)).toHtmlEscaped() + "</b> " +
+              QString("(" + QString::number(hub) + ")").toHtmlEscaped();
+        tt += QString("<table><tr><td><img height=\"48\" src=\":/icons/%0.svg\"/>&nbsp;</td><td><br>%1<br>%2 "
+                      "ranks</td></table><br>")
+                  .arg(sysicon)
+                  .arg(arch)
+                  .arg(nranks);
+        tt += QString(realname).toHtmlEscaped() + QString(" (%0)").arg(logname) + "<br>";
+        tt += QString(hubName).toHtmlEscaped() + QString(":%0").arg(port);
+        item->setData(0, Qt::ToolTipRole, tt);
+
+        QPixmap icon;
+        if (nranks == 0) {
+            icon = QPixmap(":/icons/proxy.svg");
+        } else if (nranks == 1) {
+            if (hasUi) {
+                icon = QPixmap(":/icons/display.svg");
             } else {
-                if (hasUi)
-                    icon = QPixmap(":/icons/cluster_ui.svg");
-                else
-                    icon = QPixmap(":/icons/cluster.svg");
+                icon = QPixmap(":/icons/server.svg");
             }
-            item->setIcon(0, icon);
+        } else {
+            if (hasUi)
+                icon = QPixmap(":/icons/cluster_ui.svg");
+            else
+                icon = QPixmap(":/icons/cluster.svg");
+        }
+        item->setIcon(0, icon);
 
-            if (idx == Main && hub == vistle::message::Id::MasterHub) {
-                m_moduleListWidget[idx]->setCurrentItem(item);
-                item->setSelected(true);
-            }
+        if (idx == Main && hub == vistle::message::Id::MasterHub) {
+            m_moduleListWidget[idx]->setCurrentItem(item);
+            item->setSelected(true);
         }
     }
 }
@@ -351,6 +353,12 @@ QTreeWidgetItem *ModuleBrowser::addCategory(int hub, QString category, QString d
                                             ModuleBrowser::WidgetIndex idx)
 {
     auto *hubItem = getHubItem(hub, idx);
+    if (!hubItem) {
+        assert(vistle::message::Id::isHub(hub));
+        auto it = m_hubItems[idx].emplace(hub, new QTreeWidgetItem({QString::number(hub)}, Hub)).first;
+        m_moduleListWidget[idx]->addTopLevelItem(it->second);
+        hubItem = it->second;
+    }
     assert(hubItem);
 
     auto item = new CategoryItem(hubItem, {category}, Category);
