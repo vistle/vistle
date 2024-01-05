@@ -150,8 +150,10 @@ UiController::UiController(int argc, char *argv[], QObject *parent): QObject(par
     connect(&m_observer, SIGNAL(newParameter_s(int, QString)), SLOT(newParameter(int, QString)));
     connect(&m_observer, SIGNAL(parameterValueChanged_s(int, QString)), SLOT(parameterValueChanged(int, QString)));
 
-    connect(&m_observer, SIGNAL(newHub_s(int, QString, int, QString, int, QString, QString, bool, QString, QString)),
-            m_mainWindow, SLOT(newHub(int, QString, int, QString, int, QString, QString, bool, QString, QString)));
+    connect(&m_observer,
+            SIGNAL(newHub_s(int, QString, int, QString, int, QString, QString, bool, QString, QString, QString)),
+            m_mainWindow,
+            SLOT(newHub(int, QString, int, QString, int, QString, QString, bool, QString, QString, QString)));
     connect(&m_observer, SIGNAL(deleteHub_s(int)), m_mainWindow, SLOT(deleteHub(int)));
     connect(&m_observer, SIGNAL(moduleAvailable_s(int, QString, QString, QString, QString)), m_mainWindow,
             SLOT(moduleAvailable(int, QString, QString, QString, QString)));

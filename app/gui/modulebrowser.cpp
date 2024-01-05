@@ -281,7 +281,7 @@ QTreeWidgetItem *ModuleBrowser::getCategoryItem(int hub, QString category, Modul
 }
 
 void ModuleBrowser::addHub(int hub, QString hubName, int nranks, QString address, int port, QString logname,
-                           QString realname, bool hasUi, QString systype, QString arch)
+                           QString realname, bool hasUi, QString systype, QString arch, QString info)
 {
     for (auto idx: ModuleLists) {
         auto it = m_hubItems[idx].find(hub);
@@ -291,7 +291,12 @@ void ModuleBrowser::addHub(int hub, QString hubName, int nranks, QString address
         }
 
         auto &item = it->second;
-        item->setData(0, Qt::DisplayRole, hubName);
+        if (hasUi) {
+            auto label = QString("%1 (%2)").arg(realname).arg(hubName);
+            item->setData(0, Qt::DisplayRole, label);
+        } else {
+            item->setData(0, Qt::DisplayRole, hubName);
+        }
         item->setExpanded(m_hubItems[idx].size() <= 1);
         item->setBackground(0, Module::hubColor(hub));
         item->setForeground(0, QColor(0, 0, 0));
@@ -308,6 +313,7 @@ void ModuleBrowser::addHub(int hub, QString hubName, int nranks, QString address
                   .arg(sysicon)
                   .arg(arch)
                   .arg(nranks);
+        tt += "<small>" + info + "</small><br>";
         tt += QString(realname).toHtmlEscaped() + QString(" (%0)").arg(logname) + "<br>";
         tt += QString(hubName).toHtmlEscaped() + QString(":%0").arg(port);
         item->setData(0, Qt::ToolTipRole, tt);

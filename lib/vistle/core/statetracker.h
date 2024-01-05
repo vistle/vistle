@@ -92,6 +92,7 @@ struct V_COREEXPORT HubData {
     std::string realName;
     std::string systemType;
     std::string arch;
+    std::string info;
     int numRanks = 0;
     unsigned short port;
     unsigned short dataPort;

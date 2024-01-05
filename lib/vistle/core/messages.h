@@ -121,6 +121,8 @@ public:
     void setSystemType(const std::string &os);
     std::string arch() const;
     void setArch(const std::string &arch);
+    std::string info() const;
+    void setInfo(const std::string &info);
 
 private:
     int m_id;
@@ -137,6 +139,7 @@ private:
     bool m_hasVrb;
     module_name_t m_systemType;
     module_name_t m_arch;
+    address_t m_info;
 };
 
 //! request that a slave hub be deleted

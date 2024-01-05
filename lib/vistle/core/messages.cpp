@@ -199,6 +199,7 @@ AddHub::AddHub(int id, const std::string &name)
     memset(m_loginName.data(), 0, m_loginName.size());
     memset(m_realName.data(), 0, m_realName.size());
     memset(m_address.data(), 0, m_address.size());
+    memset(m_info.data(), 0, m_info.size());
 }
 
 int AddHub::id() const
@@ -359,6 +360,16 @@ std::string AddHub::arch() const
 void AddHub::setArch(const std::string &arch)
 {
     COPY_STRING(m_arch, arch);
+}
+
+std::string AddHub::info() const
+{
+    return m_info.data();
+}
+
+void AddHub::setInfo(const std::string &info)
+{
+    COPY_STRING(m_info, info);
 }
 
 
