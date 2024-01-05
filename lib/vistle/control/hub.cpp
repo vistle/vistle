@@ -1309,6 +1309,37 @@ message::AddHub Hub::addHubForSelf() const
     hub.setArch("Unknown");
 #endif
 
+    std::stringstream info;
+    info
+#ifdef MODULE_THREAD
+        << "single-process"
+#else
+        << "multi-process"
+#endif
+
+#ifdef MODULE_STATIC
+        << " static"
+#endif
+#ifndef NO_SHMEM
+        << " shm"
+#endif
+
+#ifdef VISTLE_USE_CUDA
+        << " cuda"
+#endif
+#ifdef VISTLE_SCALAR_DOUBLE
+        << " double"
+#else
+        << " float"
+#endif
+#ifdef VISTLE_INDEX_64BIT
+        << " idx64"
+#else
+        << " idx32"
+#endif
+        ;
+    hub.setInfo(info.str());
+
     return hub;
 }
 

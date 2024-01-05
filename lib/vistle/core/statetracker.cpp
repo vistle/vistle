@@ -418,6 +418,7 @@ StateTracker::VistleState StateTracker::getState() const
         msg.setHasUserInterface(slave.hasUi);
         msg.setSystemType(slave.systemType);
         msg.setArch(slave.arch);
+        msg.setInfo(slave.info);
         appendMessage(state, msg);
     }
 
@@ -895,6 +896,7 @@ bool StateTracker::handlePriv(const message::AddHub &slave)
     m_hubs.back().hasUi = slave.hasUserInterface();
     m_hubs.back().systemType = slave.systemType();
     m_hubs.back().arch = slave.arch();
+    m_hubs.back().info = slave.info();
 
     // for per-hub parameters
     Module hub(slave.id(), slave.id());

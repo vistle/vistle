@@ -14,7 +14,7 @@ class VistleObserver: public QObject, public vistle::StateObserver {
 
 signals:
     void newHub_s(int hub, QString name, int nranks, QString address, int port, QString logname, QString realname,
-                  bool hasUi, QString systype, QString arch);
+                  bool hasUi, QString systype, QString arch, QString info);
     void deleteHub_s(int hub);
     void moduleAvailable_s(int hub, QString name, QString path, QString category, QString description);
     void newModule_s(int moduleId, const boost::uuids::uuid &spawnUuid, QString moduleName);
