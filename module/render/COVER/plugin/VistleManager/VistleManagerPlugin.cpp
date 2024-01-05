@@ -71,7 +71,6 @@ private:
     template<class Payload>
     bool sendVistle(const vistle::message::Message &msg, const Payload &payload);
     bool sendVistle(const vistle::message::Message &msg);
-    std::unique_ptr<vistle::StateObserver> m_observer;
     boost::mpi::communicator m_comm;
 
     COVER *m_module = nullptr;
@@ -135,9 +134,7 @@ VistleManagerPlugin::~VistleManagerPlugin()
 
 bool VistleManagerPlugin::init()
 {
-#ifdef MODULE_THREAD
     set_manager_in_cover_plugin();
-#endif
     m_comm = boost::mpi::communicator(coVRMSController::instance()->getAppCommunicator(), boost::mpi::comm_duplicate);
 
     auto conn = getenv("VISTLE_CONNECTION");
@@ -182,15 +179,16 @@ bool VistleManagerPlugin::init()
             for (auto &a: args) {
                 argv.push_back(const_cast<char *>(a.data()));
             }
-            auto executor = new Vistle(argv.size(), argv.data(), m_comm);
+            Vistle executor(argv.size(), argv.data(), m_comm);
 
-            m_observer = std::make_unique<CoverVistleObserver>(this);
+            auto observer = std::make_unique<CoverVistleObserver>(this);
             auto &state = Communicator::the().clusterManager().state();
-            state.registerObserver(m_observer.get());
+            state.registerObserver(observer.get());
             updateSessionUrl(state.sessionUrl());
 
             std::cerr << "created Vistle executor" << std::endl;
-            executor->run();
+            executor.run();
+            state.unregisterObserver(observer.get());
         } catch (vistle::exception &e) {
             std::cerr << "fatal exception: " << e.what() << std::endl << e.where() << std::endl;
             exit(1);
