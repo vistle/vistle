@@ -17,12 +17,8 @@ set(LIB_HEADERS
     portmanager.h
     run_on_main_thread.h)
 
-if(VISTLE_MULTI_PROCESS)
-    vistle_add_library(vistle_clustermanager INTERNAL STATIC ${LIB_SOURCES} ${LIB_HEADERS})
-    set_property(TARGET vistle_clustermanager PROPERTY POSITION_INDEPENDENT_CODE ON)
-else()
-    vistle_add_library(vistle_clustermanager EXPORT ${LIB_SOURCES} ${LIB_HEADERS})
-
+vistle_add_library(vistle_clustermanager EXPORT ${LIB_SOURCES} ${LIB_HEADERS})
+if(NOT VISTLE_MULTI_PROCESS)
     vistle_find_package(COVER)
     if(COVER_FOUND)
         vistle_find_package(XCB)

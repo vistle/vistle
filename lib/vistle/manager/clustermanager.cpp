@@ -34,7 +34,7 @@
 #include "communicator.h"
 #include "datamanager.h"
 
-#ifdef MODULE_THREAD
+//#ifdef MODULE_THREAD
 #include <vistle/module/module.h>
 #include <vistle/util/filesystem.h>
 #ifdef MODULE_STATIC
@@ -43,7 +43,7 @@
 #include <boost/dll/import.hpp>
 #endif
 #include <boost/function.hpp>
-#endif
+//#endif
 
 //#define QUEUE_DEBUG
 #define BARRIER_DEBUG
@@ -60,7 +60,6 @@ using message::Id;
 
 ClusterManager::Module::~Module()
 {
-#ifdef MODULE_THREAD
     try {
         if (thread.joinable()) {
             thread.join();
@@ -70,7 +69,7 @@ ClusterManager::Module::~Module()
     } catch (std::exception &e) {
         std::cerr << "ClusterManager: ~Module: joining thread for module failed: " << e.what() << std::endl;
     }
-#endif
+
     recvQueue->signal();
     try {
         if (messageThread.joinable()) {
@@ -985,78 +984,91 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn)
 
     message::SpawnPrepared prep(spawn);
 
+    std::string pluginpath;
+    bool loadModulePlugin = spawn.asPlugin();
+    if (loadModulePlugin) {
+        Directory dir(Communicator::the().m_vistleRoot, Communicator::the().m_buildType);
+        pluginpath = dir.moduleplugin() + "/lib" + name + ".so";
+    }
 #ifdef MODULE_THREAD
-    AvailableModule::Key key(hubId(), name);
-    //AvailableModule::Key key(0, name);
-    const auto &avail = m_localModules;
-    auto it = avail.find(key);
-    if (it == avail.end()) {
-        CERR << "did not find module " << name << std::endl;
-    } else {
-        auto &m = it->second;
-        try {
+    loadModulePlugin = true;
+#endif
+
+    if (loadModulePlugin) {
+        AvailableModule::Key key(hubId(), name);
+        //AvailableModule::Key key(0, name);
+        const auto &avail = m_localModules;
+        auto it = avail.find(key);
+        if (it == avail.end()) {
+            CERR << "did not find module " << name << std::endl;
+        } else {
+            auto &m = it->second;
+            if (pluginpath.empty())
+                pluginpath = m.path();
+            try {
 #ifdef MODULE_STATIC
-            mod.newModule = ModuleRegistry::the().moduleFactory(name);
+                mod.newModule = ModuleRegistry::the().moduleFactory(name);
 #else
-            mod.newModule = boost::dll::import_alias<Module::NewModuleFunc>(m.path(), "newModule",
-                                                                            boost::dll::load_mode::default_mode);
+                mod.newModule = boost::dll::import_alias<Module::NewModuleFunc>(pluginpath, "newModule",
+                                                                                boost::dll::load_mode::default_mode);
 #endif
-        } catch (const std::exception &e) {
-            CERR << "importing module " << name << "(" << m.path() << ") failed: " << e.what() << std::endl;
-            std::vector<const char *> vars;
+            } catch (const std::exception &e) {
+                CERR << "importing module " << name << "(" << pluginpath << ") failed: " << e.what() << std::endl;
+                std::vector<const char *> vars;
 #if defined(_WIN32)
-            vars.push_back("PATH");
+                vars.push_back("PATH");
 #elif defined(__APPLE__)
-            vars.push_back("DYLD_LIBRARY_PATH");
-            vars.push_back("DYLD_FRAMEWORK_PATH");
-            vars.push_back("DYLD_FALLBACK_LIBRARY_PATH");
-            vars.push_back("DYLD_FALLBACK_FRAMEWORK_PATH");
+                vars.push_back("DYLD_LIBRARY_PATH");
+                vars.push_back("DYLD_FRAMEWORK_PATH");
+                vars.push_back("DYLD_FALLBACK_LIBRARY_PATH");
+                vars.push_back("DYLD_FALLBACK_FRAMEWORK_PATH");
 #else
-            vars.push_back("LD_LIBRARY_PATH");
+                vars.push_back("LD_LIBRARY_PATH");
 #endif
-            for (auto v: vars) {
-                const char *val = getenv(v);
-                if (val) {
-                    CERR << "  " << v << ": " << val << std::endl;
-                } else {
-                    CERR << "  " << v << ": not set" << std::endl;
+                for (auto v: vars) {
+                    const char *val = getenv(v);
+                    if (val) {
+                        CERR << "  " << v << ": " << val << std::endl;
+                    } else {
+                        CERR << "  " << v << ": not set" << std::endl;
+                    }
                 }
             }
-        }
-        if (mod.newModule) {
-            boost::mpi::communicator ncomm(m_comm, boost::mpi::comm_duplicate);
-            std::thread t([newId, name, ncomm, &mod]() {
-                std::string mname = "vistle:" + name + ":" + std::to_string(newId);
-                setThreadName(mname);
-                //std::cerr << "thread for module " << name << ":" << newId << std::endl;
-                mod.instance = mod.newModule(name, newId, ncomm);
-                if (mod.instance)
-                    mod.instance->eventLoop();
+            if (mod.newModule) {
+                boost::mpi::communicator ncomm(m_comm, boost::mpi::comm_duplicate);
+                std::thread t([newId, name, ncomm, &mod]() {
+                    std::string mname = "vistle:" + name + ":" + std::to_string(newId);
+                    setThreadName(mname);
+                    //std::cerr << "thread for module " << name << ":" << newId << std::endl;
+                    mod.instance = mod.newModule(name, newId, ncomm);
+                    if (mod.instance)
+                        mod.instance->eventLoop();
 
-                mod.instance.reset();
-            });
-            mod.thread = std::move(t);
-        } else {
-            CERR << "no newModule method for module " << name << std::endl;
-            auto it = runningMap.find(newId);
-            if (it != runningMap.end()) {
-                runningMap.erase(it);
+                    mod.instance.reset();
+                });
+                mod.thread = std::move(t);
+                prep.setAsPlugin(true);
+            } else {
+                CERR << "no newModule method for module " << name << std::endl;
+                auto it = runningMap.find(newId);
+                if (it != runningMap.end()) {
+                    runningMap.erase(it);
+                }
+
+                // synthesize ModuleExit for module that has failed to start
+                message::ModuleExit m;
+                m.setSenderId(newId);
+                m_stateTracker.handle(m, nullptr);
+                if (getRank() == 0)
+                    sendHub(m);
+                return true;
             }
-
-            // synthesize ModuleExit for module that has failed to start
-            message::ModuleExit m;
-            m.setSenderId(newId);
-            m_stateTracker.handle(m, nullptr);
-            if (getRank() == 0)
-                sendHub(m);
-            return true;
         }
+    } else {
+        prep.setDestId(Id::LocalHub);
+        if (getRank() == 0)
+            sendHub(prep);
     }
-#else
-    prep.setDestId(Id::LocalHub);
-    if (getRank() == 0)
-        sendHub(prep);
-#endif
     prep.setDestId(Id::MasterHub);
     prep.setNotify(true);
     if (getRank() == 0)

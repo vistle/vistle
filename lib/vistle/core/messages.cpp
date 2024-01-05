@@ -394,7 +394,7 @@ const char *SaveWorkflow::pathname() const
 
 
 Spawn::Spawn(int hub, const std::string &n, int mpiSize, int baseRank, int rankSkip)
-: m_hub(hub), m_spawnId(Id::Invalid), mpiSize(mpiSize), baseRank(baseRank), rankSkip(rankSkip)
+: m_hub(hub), m_spawnId(Id::Invalid), m_asPlugin(0), mpiSize(mpiSize), baseRank(baseRank), rankSkip(rankSkip)
 {
     COPY_STRING(name, n);
 }
@@ -481,7 +481,17 @@ int Spawn::getRankSkip() const
     return rankSkip;
 }
 
-SpawnPrepared::SpawnPrepared(const Spawn &spawn): m_hub(spawn.hubId()), m_spawnId(spawn.spawnId())
+bool Spawn::asPlugin() const
+{
+    return m_asPlugin != 0;
+}
+
+void Spawn::setAsPlugin(bool enable)
+{
+    m_asPlugin = enable ? 1 : 0;
+}
+
+SpawnPrepared::SpawnPrepared(const Spawn &spawn): m_hub(spawn.hubId()), m_spawnId(spawn.spawnId()), m_asPlugin(0)
 {
     setReferrer(spawn.uuid());
     COPY_STRING(name, std::string(spawn.getName()));
@@ -500,6 +510,16 @@ int SpawnPrepared::spawnId() const
 const char *SpawnPrepared::getName() const
 {
     return name.data();
+}
+
+bool SpawnPrepared::asPlugin() const
+{
+    return m_asPlugin != 0;
+}
+
+void SpawnPrepared::setAsPlugin(bool enable)
+{
+    m_asPlugin = enable ? 1 : 0;
 }
 
 Started::Started(const std::string &n)

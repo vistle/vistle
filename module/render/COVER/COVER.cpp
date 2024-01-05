@@ -211,13 +211,10 @@ COVER::COVER(const std::string &name, int moduleId, mpi::communicator comm): vis
     int argc = 1;
     char *argv[] = {strdup("COVER"), nullptr};
     vistle::Directory dir(argc, argv);
-#ifdef MODULE_THREAD
     if (manager_in_cover_plugin()) {
         // use existing configuration manager
         m_config.reset(new opencover::config::Access());
-    } else
-#endif
-    {
+    } else {
         m_config.reset(
             new opencover::config::Access(configAccess()->hostname(), configAccess()->cluster(), comm.rank()));
     }
@@ -363,12 +360,9 @@ void COVER::prepareQuit()
         m_config->setWorkspaceBridge(nullptr);
     m_coverConfigBridge.reset();
 
-#ifdef MODULE_THREAD
     if (manager_in_cover_plugin()) {
         mark_cover_plugin_done();
-    } else
-#endif
-    {
+    } else {
         Renderer::prepareQuit();
     }
 }
@@ -992,13 +986,12 @@ int COVER::runMain(int argc, char *argv[])
 
 void COVER::eventLoop()
 {
-#ifdef MODULE_THREAD
     if (manager_in_cover_plugin()) {
-        std::cerr << "wating for Vistle plugin to unload" << std::endl;
+        std::cerr << "waiting for Vistle plugin to unload" << std::endl;
         wait_for_cover_plugin();
         std::cerr << "Vistle plugin unloaded" << std::endl;
-#ifdef COVER_ON_MAINTHREAD
     } else {
+#if defined(MODULE_THREAD) && defined(COVER_ON_MAINTHREAD)
         std::function<void()> f = [this]() {
             std::cerr << "running COVER on main thread" << std::endl;
             int argc = 1;
@@ -1007,13 +1000,12 @@ void COVER::eventLoop()
         };
         run_on_main_thread(f);
         std::cerr << "COVER on main thread terminated" << std::endl;
+#else
+        int argc = 1;
+        char *argv[] = {strdup("COVER"), nullptr};
+        runMain(argc, argv);
 #endif
     }
-#else
-    int argc = 1;
-    char *argv[] = {strdup("COVER"), nullptr};
-    runMain(argc, argv);
-#endif
 }
 
 bool COVER::handleMessage(const message::Message *message, const MessagePayload &payload)

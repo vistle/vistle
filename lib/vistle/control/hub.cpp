@@ -538,10 +538,12 @@ bool Hub::init(int argc, char *argv[])
                 s << hostname() << " " << port << " " << dataport;
                 std::string conn = s.str();
                 setenv("VISTLE_CONNECTION", conn.c_str(), 1);
+
+                m_coverIsManager = true;
             }
             std::vector<std::string> args;
             args.push_back(cmd);
-            if (vm.count("cover") == 0) {
+            if (!m_coverIsManager) {
                 args.push_back("-from-vistle");
                 args.push_back(hostname());
                 args.push_back(port);
@@ -1848,17 +1850,22 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                 assert(spawn.hubId() == m_hubId);
                 assert(m_ready);
 
-                if (const AvailableModule *mod = findModule({spawn.hubId(), spawn.getName()})) {
-                    spawnModule(mod->path(), spawn.getName(), spawn.spawnId());
+                bool isCover = spawn.getName() == std::string("COVER");
+                if (m_coverIsManager && isCover) {
+                    CERR << "assuming that COVER running cluster manager loads Vistle plugin" << std::endl;
                 } else {
-                    if (spawn.hubId() == m_hubId) {
-                        std::stringstream str;
-                        str << "refusing to spawn " << spawn.getName() << ":" << spawn.spawnId()
-                            << ": not in list of available modules";
-                        sendError(str.str());
-                        auto ex = make.message<message::ModuleExit>();
-                        ex.setSenderId(spawn.spawnId());
-                        sendManager(ex);
+                    if (const AvailableModule *mod = findModule({spawn.hubId(), spawn.getName()})) {
+                        spawnModule(mod->path(), spawn.getName(), spawn.spawnId());
+                    } else {
+                        if (spawn.hubId() == m_hubId) {
+                            std::stringstream str;
+                            str << "refusing to spawn " << spawn.getName() << ":" << spawn.spawnId()
+                                << ": not in list of available modules";
+                            sendError(str.str());
+                            auto ex = make.message<message::ModuleExit>();
+                            ex.setSenderId(spawn.spawnId());
+                            sendManager(ex);
+                        }
                     }
                 }
 #endif
@@ -2160,8 +2167,10 @@ bool Hub::handlePriv(const message::Spawn &spawnRecv)
 {
     bool error = false;
     message::Spawn spawn(spawnRecv);
+    std::string moduleName(spawn.getName());
+    bool isCover = moduleName == "COVER";
+
     if (m_isMaster) {
-        std::string moduleName(spawn.getName());
         if (moduleName == "Tubes") {
             spawn.setName("Thicken");
         } else if (moduleName == "Spheres") {
@@ -2169,9 +2178,8 @@ bool Hub::handlePriv(const message::Spawn &spawnRecv)
         }
         bool restart = spawn.getReferenceType() == message::Spawn::ReferenceType::Migrate;
         bool isMirror = spawn.getReferenceType() == message::Spawn::ReferenceType::Mirror;
-        bool shouldMirror =
-            (spawn.getReferenceType() == message::Spawn::ReferenceType::None && moduleName == "COVER") &&
-            m_stateTracker.getHubData(spawn.hubId()).hasUi;
+        bool shouldMirror = (spawn.getReferenceType() == message::Spawn::ReferenceType::None && isCover) &&
+                            m_stateTracker.getHubData(spawn.hubId()).hasUi;
         bool clone = spawn.getReferenceType() == message::Spawn::ReferenceType::Clone;
         bool cloneLinked = spawn.getReferenceType() == message::Spawn::ReferenceType::LinkedClone;
 
@@ -2187,6 +2195,12 @@ bool Hub::handlePriv(const message::Spawn &spawnRecv)
             mirroredId = Id::ModuleBase + m_moduleCount;
             ++m_moduleCount;
             doSpawn = true;
+            if (spawn.hubId() == m_hubId) {
+                if (isCover && m_coverIsManager) {
+                    spawn.setAsPlugin(true);
+                    notify.setAsPlugin(true);
+                }
+            }
         } else if (someFormOfCopy) {
             doSpawn = true;
             someFormOfCopy = false;
@@ -2252,6 +2266,11 @@ bool Hub::handlePriv(const message::Spawn &spawnRecv)
         if (spawn.spawnId() == Id::Invalid) {
             sendMaster(spawn);
         } else {
+            if (spawn.hubId() == m_hubId) {
+                if (isCover && m_coverIsManager) {
+                    spawn.setAsPlugin(true);
+                }
+            }
             m_stateTracker.handle(spawn, nullptr);
             sendManager(spawn);
             sendUi(spawn);

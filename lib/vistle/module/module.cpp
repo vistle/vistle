@@ -217,12 +217,23 @@ double getRealTime(Object::const_ptr obj)
 bool Module::setup(const std::string &shmname, int moduleID, const std::string &cluster, int rank)
 {
 #ifndef MODULE_THREAD
-    bool perRank = shmPerRank();
-    Shm::attach(shmname, moduleID, rank, perRank);
-    vistle::apply_affinity_from_environment(Shm::the().nodeRank(rank), Shm::the().numRanksOnThisNode());
-    setenv("VISTLE_CLUSTER", cluster.c_str(), 1);
+    if (!Shm::isAttached()) {
+        bool perRank = shmPerRank();
+        Shm::attach(shmname, moduleID, rank, perRank);
+        vistle::apply_affinity_from_environment(Shm::the().nodeRank(rank), Shm::the().numRanksOnThisNode());
+        setenv("VISTLE_CLUSTER", cluster.c_str(), 1);
+    }
 #endif
     return Shm::isAttached();
+}
+
+bool Module::cleanup(bool dedicated_process)
+{
+#ifndef MODULE_THREAD
+    if (dedicated_process) {
+        Shm::the().detach();
+    }
+#endif
 }
 
 Module::Module(const std::string &moduleName, const int moduleId, mpi::communicator comm)
@@ -2305,10 +2316,6 @@ Module::~Module()
     sendMessageQueue = nullptr;
     delete receiveMessageQueue;
     receiveMessageQueue = nullptr;
-
-#ifndef MODULE_THREAD
-    Shm::the().detach();
-#endif
 
     if (m_origStreambuf)
         std::cerr.rdbuf(m_origStreambuf);

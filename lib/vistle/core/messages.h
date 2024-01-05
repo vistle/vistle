@@ -192,12 +192,16 @@ public:
     int getMpiSize() const;
     int getBaseRank() const;
     int getRankSkip() const;
+    void setAsPlugin(bool enable);
+    bool asPlugin() const;
 
 private:
     //! id of hub where to spawn module
     int m_hub;
     //! ID of module to spawn
     int m_spawnId;
+    //! if module should be started as plugin in manager process or as a separate process
+    int m_asPlugin;
     //! number of ranks in communicator
     int mpiSize;
     //! first rank on which to spawn process
@@ -221,6 +225,8 @@ public:
     int spawnId() const;
     void setSpawnId(int id);
     const char *getName() const;
+    void setAsPlugin(bool enable);
+    bool asPlugin() const;
 
 private:
     //! id of hub where to spawn module
@@ -229,6 +235,8 @@ private:
     int m_spawnId;
     //! name of module to be started
     module_name_t name;
+    //! if module has been started as plugin in manager process
+    int m_asPlugin;
 };
 
 //! acknowledge that a module has been spawned
