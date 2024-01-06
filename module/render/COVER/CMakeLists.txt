@@ -50,10 +50,7 @@ target_link_libraries(
     PRIVATE ${COVISE_NET_LIBRARY}
     PRIVATE ${OPENSCENEGRAPH_LIBRARIES})
 target_link_libraries(vistle_cover PRIVATE vistle_config)
-
-if(NOT VISTLE_MULTI_PROCESS)
-    target_link_libraries(vistle_cover PRIVATE vistle_clustermanager)
-endif()
+target_link_libraries(vistle_cover PRIVATE vistle_clustermanager)
 
 add_module(COVER "VR renderer for immersive environments" coverwrapper.cpp)
 
@@ -65,6 +62,20 @@ target_include_directories(
     PRIVATE .
     PRIVATE ..)
 target_link_libraries(COVER vistle_cover)
+
+if(VISTLE_MULTI_PROCESS)
+    add_module2(COVER_plugin FALSE "VR renderer for immersive environments" coverwrapper.cpp)
+    target_compile_definitions(COVER_plugin PRIVATE MODULE_THREAD)
+    target_include_directories(COVER_plugin SYSTEM PRIVATE ${OPENSCENEGRAPH_INCLUDE_DIRS})
+    target_include_directories(
+        COVER_plugin
+        PRIVATE ${COVER_INCLUDE_DIRS}
+        PRIVATE plugin
+        PRIVATE .
+        PRIVATE ..)
+    target_link_libraries(COVER_plugin vistle_cover)
+    set_target_properties(COVER_plugin PROPERTIES OUTPUT_NAME "COVER")
+endif()
 
 if(NOT VISTLE_MULTI_PROCESS)
     if(APPLE)

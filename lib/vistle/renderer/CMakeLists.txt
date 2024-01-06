@@ -12,13 +12,7 @@ if(NOT VISTLE_BUILD_SHARED)
 endif()
 vistle_add_library(vistle_renderer ${visibility} ${VISTLE_LIB_TYPE} ${renderer_SOURCES} ${renderer_HEADERS})
 
-target_include_directories(vistle_renderer SYSTEM PRIVATE ${ICET_INCLUDE_DIRS})
-
-target_link_libraries(
-    vistle_renderer
-    PUBLIC vistle_rhr
-    PRIVATE ${ICET_CORE_LIBS}
-    PRIVATE ${ICET_MPI_LIBS})
+target_link_libraries(vistle_renderer PUBLIC vistle_rhr)
 
 if(UNIX AND NOT APPLE)
     target_link_libraries(vistle_renderer PUBLIC -lrt)
@@ -33,3 +27,12 @@ target_link_libraries(
     PUBLIC ${BOOST_MPI}
     PUBLIC Boost::boost
     PUBLIC MPI::MPI_C)
+
+if(VISTLE_USE_MPI)
+    target_include_directories(vistle_renderer SYSTEM PRIVATE ${ICET_INCLUDE_DIRS})
+    target_link_libraries(
+        vistle_renderer
+        PRIVATE ${ICET_CORE_LIBS}
+        PRIVATE ${ICET_MPI_LIBS})
+    target_compile_definitions(vistle_renderer PRIVATE VISTLE_USE_MPI)
+endif()

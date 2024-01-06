@@ -74,6 +74,7 @@ option(VISTLE_ENABLE_CUDA "Build with CUDA support" OFF)
 option(VISTLE_ENABLE_KOKKOS "Build with Kokkos support" OFF)
 
 option(VISTLE_USE_QT5 "Build GUI with Qt5 instead of Qt6" ON)
+option(VISTLE_USE_MPI "Build with MPI instead of dummy MPI library" ON)
 
 option(VISTLE_COLOR_DIAGNOSTICS "Produce ANSI-colored build output (GNU/Clang)" ON)
 
@@ -409,15 +410,17 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
 endif()
 
 if(NOT CRAY AND NOT VISTLE_GUI_ONLY)
-    set(MPI_SKIP_MPICXX TRUE)
-    #set(MPI_FIND_COMPONENTS "C CXX")
-    add_definitions(-DOMPI_SKIP_MPICXX) # OpenMPI
-    add_definitions(-DMPI_NO_CPPBIND) # HPE MPT
-    vistle_find_package(MPI REQUIRED COMPONENTS C CXX)
+    if(VISTLE_USE_MPI)
+        set(MPI_SKIP_MPICXX TRUE)
+        #set(MPI_FIND_COMPONENTS "C CXX")
+        add_definitions(-DOMPI_SKIP_MPICXX) # OpenMPI
+        add_definitions(-DMPI_NO_CPPBIND) # HPE MPT
+        vistle_find_package(MPI REQUIRED COMPONENTS C CXX)
 
-    include_directories(SYSTEM ${MPI_C_INCLUDE_PATH})
-    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:${MPI_C_COMPILE_FLAGS}>)
-    set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} ${MPI_C_LINK_FLAGS}")
+        include_directories(SYSTEM ${MPI_C_INCLUDE_PATH})
+        add_compile_options($<$<COMPILE_LANGUAGE:CXX>:${MPI_C_COMPILE_FLAGS}>)
+        set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} ${MPI_C_LINK_FLAGS}")
+    endif()
 
     # for CMake config file version of boost this needs to be changed to version numbers such as 1.60.99 instead of 106099
     if(NOT VISTLE_INTERNAL_BOOST_MPI)
@@ -727,7 +730,7 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
     file(REMOVE ${MODULE_DESCRIPTION_FILE})
     install(FILES ${MODULE_DESCRIPTION_FILE} DESTINATION ${CMAKE_INSTALL_PREFIX}/share/vistle/)
 
-    macro(add_module targetname description)
+    macro(add_module2 targetname executable description)
 
         if(NOT VISTLE_MODULE_CATEGORY)
             set(VISTLE_MODULE_CATEGORY "Unspecified")
@@ -736,7 +739,7 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
         set(ALL_MODULES
             ${ALL_MODULES} ${targetname}
             CACHE INTERNAL "")
-        if(VISTLE_MULTI_PROCESS)
+        if(${executable})
             add_executable(${targetname} ${ARGN})
             set_target_properties(${targetname} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/libexec/module)
             install(TARGETS ${targetname} RUNTIME DESTINATION libexec/module)
@@ -767,6 +770,14 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
         if(USE_LIBOMP AND LIBOMP)
             #message("Linking ${targetname} against libomp: ${LIBOMP}")
             target_link_libraries(${targetname} ${LIBOMP})
+        endif()
+    endmacro(add_module2)
+
+    macro(add_module targetname description)
+        if(VISTLE_MULTI_PROCESS)
+            add_module2(${targetname} TRUE ${description} ${ARGN})
+        else()
+            add_module2(${targetname} FALSE ${description} ${ARGN})
         endif()
     endmacro(add_module)
 endif()

@@ -165,6 +165,13 @@ std::string Directory::module() const
     return m_prefix + moduleDir + m_buildTypeSuffix;
 }
 
+std::string Directory::moduleplugin() const
+{
+    std::string moduleDir = "lib/module/";
+    return m_prefix + moduleDir + m_buildTypeSuffix;
+}
+
+
 std::string Directory::share() const
 {
     return m_prefix + "share/vistle/";

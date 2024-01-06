@@ -37,7 +37,6 @@ public:
     void notify(NotificationLevel level, const char *text) override;
     bool update() override;
     void requestQuit(bool killSession) override;
-    bool executeAll();
     void message(int toWhom, int type, int length, const void *data) override;
     bool sendVisMessage(const covise::Message *msg) override;
     std::string collaborativeSessionId() const override;
@@ -85,8 +84,6 @@ VistlePlugin::~VistlePlugin()
 
 bool VistlePlugin::init()
 {
-    assert(!cover->visMenu);
-
     m_module = COVER::the();
     m_observer = std::make_unique<CoverVistleObserver>(this);
 
@@ -94,14 +91,20 @@ bool VistlePlugin::init()
         m_module->state().registerObserver(m_observer.get());
         updateSessionUrl(m_module->state().sessionUrl());
 
-        cover->visMenu = new ui::Menu("Vistle", this);
+        if (!cover->visMenu) {
+            cover->visMenu = new ui::Menu("Vistle", this);
 
-        auto executeButton = new ui::Action("Execute", cover->visMenu);
-        cover->visMenu->add(executeButton, ui::Container::KeepFirst);
-        executeButton->setShortcut("e");
-        executeButton->setCallback([this]() { executeAll(); });
-        executeButton->setIcon("view-refresh");
-        executeButton->setPriority(ui::Element::Toolbar);
+            auto executeButton = new ui::Action("Execute", cover->visMenu);
+            cover->visMenu->add(executeButton, ui::Container::KeepFirst);
+            executeButton->setShortcut("e");
+            executeButton->setCallback([this]() {
+                if (m_module) {
+                    m_module->executeAll();
+                }
+            });
+            executeButton->setIcon("view-refresh");
+            executeButton->setPriority(ui::Element::Toolbar);
+        }
 
         update();
 
@@ -126,6 +129,7 @@ bool VistlePlugin::destroy()
         m_module->state().unregisterObserver(m_observer.get());
         m_module->comm().barrier();
         m_module->prepareQuit();
+        m_module->setPlugin(nullptr);
         m_module = nullptr;
     }
 
@@ -170,7 +174,13 @@ bool VistlePlugin::update()
     try {
         if (m_module && !m_module->dispatch(false, &messageReceived)) {
             std::cerr << "Vistle requested COVER to quit" << std::endl;
-            OpenCOVER::instance()->requestQuit();
+            if (cover->getPlugin("VistleManager")) {
+                auto mod = m_module;
+                m_module = nullptr;
+                mod->setPlugin(nullptr);
+            } else {
+                OpenCOVER::instance()->requestQuit();
+            }
         }
     } catch (boost::interprocess::interprocess_exception &e) {
         std::cerr << "Module::dispatch: interprocess_exception: " << e.what() << std::endl;
@@ -200,14 +210,6 @@ void VistlePlugin::requestQuit(bool killSession)
         m_module->prepareQuit();
         m_module = nullptr;
     }
-}
-
-bool VistlePlugin::executeAll()
-{
-    if (m_module) {
-        return m_module->executeAll();
-    }
-    return false;
 }
 
 void VistlePlugin::message(int toWhom, int type, int length, const void *data)

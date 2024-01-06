@@ -15,6 +15,7 @@ public:
     std::string prefix() const;
     std::string bin() const;
     std::string module() const;
+    std::string moduleplugin() const;
     std::string share() const;
     std::string buildType() const;
 
