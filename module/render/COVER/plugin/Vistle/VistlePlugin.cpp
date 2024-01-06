@@ -37,7 +37,7 @@ public:
     void notify(NotificationLevel level, const char *text) override;
     bool update() override;
     void requestQuit(bool killSession) override;
-    bool executeAll() override;
+    bool executeAll();
     void message(int toWhom, int type, int length, const void *data) override;
     bool sendVisMessage(const covise::Message *msg) override;
     std::string collaborativeSessionId() const override;
