@@ -135,7 +135,7 @@ GridSizes getGridSizesConsideringHighOrderCells(vtkUnstructuredGrid *vugrid)
     return GridSizes{nelemLagrange, nconn};
 }
 
-Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, bool checkConvex)
+Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, bool checkConvex, std::string &diagnostics)
 {
     auto sizes = getGridSizesConsideringHighOrderCells(vugrid);
     Index ncoordVtk = vugrid->GetNumberOfPoints();
@@ -160,6 +160,8 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, bool checkConvex)
         yc[i] = vugrid->GetPoint(i)[1];
         zc[i] = vugrid->GetPoint(i)[2];
     }
+
+    std::set<int> unhandledCellTypes;
 
 #if VTK_MAJOR_VERSION >= 7
     const auto *ghostArray = vugrid->GetCellGhostArray();
@@ -216,8 +218,13 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, bool checkConvex)
             typelist[elemVistle] = UnstructuredGrid::POLYHEDRON;
             break;
         default:
-            std::cerr << "VTK cell type " << vugrid->GetCellType(i) << " not handled" << std::endl;
             typelist[elemVistle] = UnstructuredGrid::NONE;
+            if (unhandledCellTypes.insert(vugrid->GetCellType(i)).second) {
+                std::stringstream str;
+                str << "VTK cell type " << vugrid->GetCellType(i) << " not handled" << std::endl;
+                std::cerr << str.str();
+                diagnostics.append(str.str());
+            }
             break;
         }
 #if VTK_MAJOR_VERSION >= 7
@@ -287,7 +294,7 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, bool checkConvex)
     return cugrid;
 }
 
-Object::ptr vtkPoly2Vistle(vtkPolyData *vpolydata)
+Object::ptr vtkPoly2Vistle(vtkPolyData *vpolydata, std::string &diag)
 {
     Index ncoord = vpolydata->GetNumberOfPoints();
     Index npolys = vpolydata->GetNumberOfPolys();
@@ -324,6 +331,7 @@ Object::ptr vtkPoly2Vistle(vtkPolyData *vpolydata)
             IDCONST vtkIdType *pts = nullptr;
             if (!polys->GetNextCell(npts, pts)) {
                 std::cerr << "polys terminated early" << std::endl;
+                diag = "element terminated early";
                 break;
             }
             for (int j = 0; j < npts; ++j) {
@@ -339,6 +347,7 @@ Object::ptr vtkPoly2Vistle(vtkPolyData *vpolydata)
             IDCONST vtkIdType *pts = nullptr;
             if (!strips->GetNextCell(npts, pts)) {
                 std::cerr << "strips terminated early" << std::endl;
+                diag = "element terminated early";
                 break;
             }
             for (vtkIdType j = 0; j < npts - 2; ++j) {
@@ -372,6 +381,7 @@ Object::ptr vtkPoly2Vistle(vtkPolyData *vpolydata)
             IDCONST vtkIdType *pts = nullptr;
             if (!lines->GetNextCell(npts, pts)) {
                 std::cerr << "lines terminated early" << std::endl;
+                diag = "element terminated early";
                 break;
             }
             for (vtkIdType j = 0; j < npts; ++j) {
@@ -580,7 +590,7 @@ DataBase::ptr vtkArray2Vistle(vtkType *vd, Object::const_ptr grid)
 #ifdef SENSEI
 } // anonymous namespace
 #endif
-DataBase::ptr vtkData2Vistle(vtkDataArray *varr, Object::const_ptr grid)
+DataBase::ptr vtkData2Vistle(vtkDataArray *varr, Object::const_ptr grid, std::string &diag)
 {
     DataBase::ptr data;
 
@@ -601,8 +611,11 @@ DataBase::ptr vtkData2Vistle(vtkDataArray *varr, Object::const_ptr grid)
                 --dim[c];
     }
     if (dim[0] * dim[1] * dim[2] != n) {
-        std::cerr << "coVtk::vtkData2Vistle: non-matching grid size: [" << dim[0] << "*" << dim[1] << "*" << dim[2]
-                  << "] != " << n << std::endl;
+        std::stringstream str;
+        str << "coVtk::vtkData2Vistle: non-matching grid size: [" << dim[0] << "*" << dim[1] << "*" << dim[2]
+            << "] != " << n << std::endl;
+        diag = str.str();
+        std::cerr << diag;
         return nullptr;
     }
 
@@ -640,13 +653,15 @@ DataBase::ptr vtkData2Vistle(vtkDataArray *varr, Object::const_ptr grid)
 } // anonymous namespace
 #endif
 
-vistle::Object::ptr toGrid(vtkDataObject *vtk, bool checkConvex)
+vistle::Object::ptr toGrid(vtkDataObject *vtk, bool checkConvex, std::string *diagnostics)
 {
+    std::string dummy;
+    std::string &diag = diagnostics ? *diagnostics : dummy;
     if (vtkUnstructuredGrid *vugrid = dynamic_cast<vtkUnstructuredGrid *>(vtk))
-        return vtkUGrid2Vistle(vugrid, checkConvex);
+        return vtkUGrid2Vistle(vugrid, checkConvex, diag);
 
     if (vtkPolyData *vpolydata = dynamic_cast<vtkPolyData *>(vtk))
-        return vtkPoly2Vistle(vpolydata);
+        return vtkPoly2Vistle(vpolydata, diag);
 
     if (vtkStructuredGrid *vsgrid = dynamic_cast<vtkStructuredGrid *>(vtk))
         return vtkSGrid2Vistle(vsgrid);
@@ -663,8 +678,12 @@ vistle::Object::ptr toGrid(vtkDataObject *vtk, bool checkConvex)
     return nullptr;
 }
 
-vistle::DataBase::ptr getField(vtkDataSetAttributes *vtk, const std::string &name, Object::const_ptr grid)
+vistle::DataBase::ptr getField(vtkDataSetAttributes *vtk, const std::string &name, Object::const_ptr grid,
+                               std::string *diagnostics)
 {
+    std::string dummy;
+    std::string &diag = diagnostics ? *diagnostics : dummy;
+
     auto varr = vtk->GetScalars(name.c_str());
     if (!varr)
         varr = vtk->GetVectors(name.c_str());
@@ -675,13 +694,17 @@ vistle::DataBase::ptr getField(vtkDataSetAttributes *vtk, const std::string &nam
     if (!varr)
         varr = vtk->GetTensors(name.c_str());
 
-    return vtkData2Vistle(varr, grid);
+    return vtkData2Vistle(varr, grid, diag);
 }
 
-vistle::DataBase::ptr getField(vtkFieldData *vtk, const std::string &name, Object::const_ptr grid)
+vistle::DataBase::ptr getField(vtkFieldData *vtk, const std::string &name, Object::const_ptr grid,
+                               std::string *diagnostics)
 {
+    std::string dummy;
+    std::string &diag = diagnostics ? *diagnostics : dummy;
+
     auto varr = vtk->GetArray(name.c_str());
-    return vtkData2Vistle(varr, grid);
+    return vtkData2Vistle(varr, grid, diag);
 }
 
 } // namespace vtk

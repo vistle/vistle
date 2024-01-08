@@ -1,4 +1,4 @@
-find_package(CFX)
+vistle_find_package(CFX)
 if(NOT CFX_FOUND)
     return()
 endif()

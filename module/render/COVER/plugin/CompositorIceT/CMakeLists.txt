@@ -1,3 +1,7 @@
+if(NOT VISTLE_USE_MPI)
+    return()
+endif()
+
 using(OpenGL)
 using(Boost)
 

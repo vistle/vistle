@@ -142,7 +142,7 @@ private:
     int m_rank = -1;
 };
 
-const int ModuleNameLength = 50;
+const int ModuleNameLength = 40;
 
 typedef std::array<char, ModuleNameLength> module_name_t;
 typedef std::array<char, 120> port_name_t;
@@ -150,7 +150,7 @@ typedef std::array<char, 120> param_name_t;
 typedef std::array<char, 256> param_value_t;
 typedef std::array<char, 300> shmsegname_t;
 typedef std::array<char, 350> description_t;
-typedef std::array<char, 200> address_t;
+typedef std::array<char, 190> address_t;
 typedef std::array<char, 500> path_t;
 
 typedef boost::uuids::uuid uuid_t;

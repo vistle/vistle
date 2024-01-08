@@ -535,13 +535,18 @@ bool ReadVtk::load(Token &token, const std::string &filename, const vistle::Meta
         return false;
     }
 
-    auto grid = vistle::vtk::toGrid(dobj, checkConvexity());
+    std::string diagnostics;
+    auto grid = vistle::vtk::toGrid(dobj, checkConvexity(), &diagnostics);
     if (grid) {
         if (!part.empty())
             grid->addAttribute("_part", part);
     }
     token.applyMeta(grid);
     token.addObject("grid_out", grid);
+    if (!diagnostics.empty()) {
+        sendWarning("grid: %s", diagnostics.c_str());
+        diagnostics.clear();
+    }
 
     vtkFieldData *fieldData = dobj->GetFieldData();
     vtkDataSetAttributes *pointData = nullptr;
@@ -552,9 +557,14 @@ bool ReadVtk::load(Token &token, const std::string &filename, const vistle::Meta
     }
     for (int i = 0; i < NumPorts; ++i) {
         if (cellData && m_cellDataChoice[i]->getValue() != Invalid) {
-            auto field = vistle::vtk::getField(cellData, m_cellDataChoice[i]->getValue(), grid);
+            std::string name = m_cellDataChoice[i]->getValue();
+            auto field = vistle::vtk::getField(cellData, name, grid, &diagnostics);
+            if (!diagnostics.empty()) {
+                sendWarning("field %s: %s", name.c_str(), diagnostics.c_str());
+                diagnostics.clear();
+            }
             if (field) {
-                field->addAttribute("_species", m_cellDataChoice[i]->getValue());
+                field->addAttribute("_species", name);
                 field->setMapping(vistle::DataBase::Element);
                 field->setGrid(grid);
                 if (!part.empty())
@@ -565,12 +575,21 @@ bool ReadVtk::load(Token &token, const std::string &filename, const vistle::Meta
         }
 
         if (pointData && m_pointDataChoice[i]->getValue() != Invalid) {
-            auto field = vistle::vtk::getField(pointData, m_pointDataChoice[i]->getValue(), grid);
+            std::string name = m_pointDataChoice[i]->getValue();
+            auto field = vistle::vtk::getField(pointData, name, grid, &diagnostics);
+            if (!diagnostics.empty()) {
+                sendWarning("field %s: %s", name.c_str(), diagnostics.c_str());
+                diagnostics.clear();
+            }
             if (!field) {
-                field = vistle::vtk::getField(fieldData, m_pointDataChoice[i]->getValue(), grid);
+                field = vistle::vtk::getField(fieldData, name, grid, &diagnostics);
+                if (!diagnostics.empty()) {
+                    sendWarning("field %s: %s", name.c_str(), diagnostics.c_str());
+                    diagnostics.clear();
+                }
             }
             if (field) {
-                field->addAttribute("_species", m_pointDataChoice[i]->getValue());
+                field->addAttribute("_species", name);
                 field->setMapping(vistle::DataBase::Vertex);
                 field->setGrid(grid);
                 if (!part.empty())

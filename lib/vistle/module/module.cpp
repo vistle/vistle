@@ -217,12 +217,23 @@ double getRealTime(Object::const_ptr obj)
 bool Module::setup(const std::string &shmname, int moduleID, const std::string &cluster, int rank)
 {
 #ifndef MODULE_THREAD
-    bool perRank = shmPerRank();
-    Shm::attach(shmname, moduleID, rank, perRank);
-    vistle::apply_affinity_from_environment(Shm::the().nodeRank(rank), Shm::the().numRanksOnThisNode());
-    setenv("VISTLE_CLUSTER", cluster.c_str(), 1);
+    if (!Shm::isAttached()) {
+        bool perRank = shmPerRank();
+        Shm::attach(shmname, moduleID, rank, perRank);
+        vistle::apply_affinity_from_environment(Shm::the().nodeRank(rank), Shm::the().numRanksOnThisNode());
+        setenv("VISTLE_CLUSTER", cluster.c_str(), 1);
+    }
 #endif
     return Shm::isAttached();
+}
+
+bool Module::cleanup(bool dedicated_process)
+{
+#ifndef MODULE_THREAD
+    if (dedicated_process) {
+        Shm::the().detach();
+    }
+#endif
 }
 
 Module::Module(const std::string &moduleName, const int moduleId, mpi::communicator comm)
@@ -1255,11 +1266,11 @@ bool Module::getNextMessage(message::Buffer &buf, bool block, unsigned int minPr
             if (!messageBacklog.empty()) {
                 auto &front = messageBacklog.front();
                 if (buf.priority() <= front.priority()) {
-                    // keep bufferd messages sorted according to priority
+                    // keep buffered messages sorted according to priority
                     std::swap(buf, front);
                     auto it = messageBacklog.begin(), next = it + 1;
                     while (next != messageBacklog.end()) {
-                        if (it->priority() >= next->priority())
+                        if (it->priority() <= next->priority())
                             std::swap(*it, *next);
                         it = next;
                         ++next;
@@ -1273,8 +1284,9 @@ bool Module::getNextMessage(message::Buffer &buf, bool block, unsigned int minPr
 
             messageBacklog.push_front(buf);
         } else if (!messageBacklog.empty()) {
-            buf = messageBacklog.front();
-            if (buf.priority() >= minPrio) {
+            const auto &front = messageBacklog.front();
+            if (front.priority() >= minPrio) {
+                buf = front;
                 messageBacklog.pop_front();
                 return true;
             }
@@ -2304,10 +2316,6 @@ Module::~Module()
     sendMessageQueue = nullptr;
     delete receiveMessageQueue;
     receiveMessageQueue = nullptr;
-
-#ifndef MODULE_THREAD
-    Shm::the().detach();
-#endif
 
     if (m_origStreambuf)
         std::cerr.rdbuf(m_origStreambuf);

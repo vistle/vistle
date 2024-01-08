@@ -56,10 +56,12 @@ include_directories(SYSTEM ${EMBREE_INCLUDE_DIRS})
 set(CMAKE_CXX_COMPILE_FLAGS "${CMAKE_CXX_COMPILE_FLAGS} ${MPI_C_COMPILE_FLAGS}")
 set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} ${MPI_C_LINK_FLAGS}")
 
-add_module(DisCOVERay ${description} ${RAY_HEADERS} ${RAY_SOURCES} ${ISPC_SOURCES})
+add_library(DisCOVERay_ispc OBJECT ${ISPC_HEADERS} ${ISPC_SOURCES})
+add_module(DisCOVERay ${description} ${RAY_HEADERS} ${RAY_SOURCES})
 
 target_link_libraries(
     DisCOVERay
+    DisCOVERay_ispc
     ${BOOST_MPI}
     vistle_module
     vistle_renderer

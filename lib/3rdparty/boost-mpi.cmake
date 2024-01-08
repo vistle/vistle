@@ -7,9 +7,7 @@ set(boost_mpi_SOURCES
     ${BOOST_MPI_DIR}/src/content_oarchive.cpp
     ${BOOST_MPI_DIR}/src/environment.cpp
     ${BOOST_MPI_DIR}/src/exception.cpp
-    ${BOOST_MPI_DIR}/src/graph_communicator.cpp
     ${BOOST_MPI_DIR}/src/group.cpp
-    ${BOOST_MPI_DIR}/src/intercommunicator.cpp
     ${BOOST_MPI_DIR}/src/mpi_datatype_cache.cpp
     ${BOOST_MPI_DIR}/src/mpi_datatype_oarchive.cpp
     ${BOOST_MPI_DIR}/src/packed_iarchive.cpp
@@ -20,6 +18,11 @@ set(boost_mpi_SOURCES
     ${BOOST_MPI_DIR}/src/request.cpp
     ${BOOST_MPI_DIR}/src/text_skeleton_oarchive.cpp
     ${BOOST_MPI_DIR}/src/timer.cpp)
+
+if(VISTLE_USE_MPI)
+    set(boost_mpi_SOURCES ${boost_mpi_SOURCES} ${BOOST_MPI_DIR}/src/graph_communicator.cpp)
+    set(boost_mpi_SOURCES ${boost_mpi_SOURCES} ${BOOST_MPI_DIR}/src/intercommunicator.cpp)
+endif()
 
 if(BOOST_MPI_DIR STREQUAL "boost-mpi")
     set(boost_mpi_SOURCES ${boost_mpi_SOURCES} ${BOOST_MPI_DIR}/src/offsets.cpp ${BOOST_MPI_DIR}/src/status.cpp)
