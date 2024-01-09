@@ -461,6 +461,7 @@ void Module::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
             {"Thicken", "SpheresOld", "TubesOld"},
             {"Threshold", "CellSelect"},
             {"Color", "ColorRandom"},
+            {"CutGeometry", "ClipVtkm"},
             {"AddAttribute", "AttachShader", "ColorAttribute", "EnableTransparency", "Variant"},
         };
         m_replaceWithMenu->clear();
