@@ -40,7 +40,7 @@ bool coneSectionIntersectN(const uniform TubeSection &section0, const uniform Tu
     uniform const float coneLength = length(coneDir);
     if (coneLength <= Epsilon)
         return false;
-    const uniform coneLengthInv = rcp(coneLength);
+    const uniform float coneLengthInv = rcp(coneLength);
     uniform const float AbsTan = abs(section1.r - section0.r) * coneLengthInv;
     uniform const float Tan2 = sqr(AbsTan);
     uniform bool cylinder = true;
