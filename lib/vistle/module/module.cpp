@@ -234,6 +234,7 @@ bool Module::cleanup(bool dedicated_process)
         Shm::the().detach();
     }
 #endif
+    return true;
 }
 
 Module::Module(const std::string &moduleName, const int moduleId, mpi::communicator comm)
