@@ -635,8 +635,12 @@ DataBase::ptr vtkData2Vistle(vtkDataArray *varr, Object::const_ptr grid, std::st
         return vtkArray2Vistle<long long, vtkLongLongArray, vistle::Index>(vd, grid);
     } else if (vtkUnsignedLongLongArray *vd = dynamic_cast<vtkUnsignedLongLongArray *>(varr)) {
         return vtkArray2Vistle<unsigned long long, vtkUnsignedLongLongArray, vistle::Index>(vd, grid);
+    } else if (vtkIntArray *vd = dynamic_cast<vtkIntArray *>(varr)) {
+        return vtkArray2Vistle<int, vtkIntArray>(vd, grid);
     } else if (vtkUnsignedIntArray *vd = dynamic_cast<vtkUnsignedIntArray *>(varr)) {
         return vtkArray2Vistle<unsigned int, vtkUnsignedIntArray>(vd, grid);
+    } else if (vtkCharArray *vd = dynamic_cast<vtkCharArray *>(varr)) {
+        return vtkArray2Vistle<char, vtkCharArray>(vd, grid);
     } else if (vtkUnsignedCharArray *vd = dynamic_cast<vtkUnsignedCharArray *>(varr)) {
         return vtkArray2Vistle<unsigned char, vtkUnsignedCharArray>(vd, grid);
     } else if (vtkSOADataArrayTemplate<float> *vd = dynamic_cast<vtkSOADataArrayTemplate<float> *>(varr)) {
