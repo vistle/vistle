@@ -276,13 +276,13 @@ bool COVER::parameterAdded(const int senderId, const std::string &name, const me
         plugin = plugin.substr(0, plugin.size() - 3);
     if (boost::algorithm::ends_with(plugin, "Vtkm"))
         plugin = plugin.substr(0, plugin.size() - 4);
-    if (plugin == "CutGeometry")
+    if (plugin == "CutGeometry" || plugin == "Clip")
         plugin = "CuttingSurface";
     if (plugin == "DisCOVERay" || plugin == "OsgRenderer" || plugin == "ANARemote")
         plugin = "RhrClient";
     if (plugin == "Color" || plugin == "ColorRandom")
         plugin = "ColorBars";
-    // std::cerr << "parameterAdded: sender=" <<  senderId << ", name=" << name << ", plugin=" << plugin << std::endl;
+    //std::cerr << "parameterAdded: sender=" << senderId << ", name=" << name << ", plugin=" << plugin << std::endl;
 
     InteractorMap::iterator it = m_interactorMap.find(senderId);
     if (it == m_interactorMap.end()) {
