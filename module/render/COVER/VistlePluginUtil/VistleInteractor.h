@@ -15,7 +15,7 @@ class Module;
 
 class V_PLUGINUTILEXPORT VistleInteractor: public opencover::coInteractor {
 public:
-    VistleInteractor(const vistle::Module *owner, const std::string &moduleName, int moduleId);
+    VistleInteractor(const vistle::MessageSender *sender, const std::string &moduleName, int moduleId);
     ~VistleInteractor();
     void setPluginName(const std::string &plugin);
 
@@ -123,7 +123,7 @@ public:
     const char *getString(unsigned int i) const override;
 
 private:
-    const vistle::MessageSender *m_owner;
+    const vistle::MessageSender *m_sender;
     std::string m_moduleName;
     std::string m_pluginName;
     std::string m_hubName;
