@@ -30,8 +30,10 @@ public:
 
     typename shm<Index>::array &el() { return *d()->el; }
     typename shm<Index>::array &cl() { return *d()->cl; }
+    typename shm<Byte>::array &isGhost() { return *d()->isGhost; }
     const ShmArrayProxy<Index> &el() const { return m_el; }
     const ShmArrayProxy<Index> &cl() const { return m_cl; }
+    const ShmArrayProxy<Byte> &isGhost() const { return m_isGhost; }
 
     std::pair<Vector3, Vector3> getBounds() const override;
 
@@ -70,6 +72,7 @@ private:
     mutable Index m_numEl = InvalidIndex, m_numCl = InvalidIndex;
     mutable ShmArrayProxy<Index> m_el;
     mutable ShmArrayProxy<Index> m_cl;
+    mutable ShmArrayProxy<Byte> m_isGhost;
     mutable Celltree::const_ptr m_celltree;
     mutable VertexOwnerList::const_ptr m_vertexOwnerList;
     mutable std::unique_ptr<const NeighborFinder> m_neighborfinder;
@@ -80,6 +83,7 @@ private:
     V_DATA_BEGIN(Indexed);
     ShmVector<Index> el; //< element list: index into connectivity list - last element: sentinel
     ShmVector<Index> cl; //< connectivity list: index into coordinates
+    ShmVector<Byte> isGhost; //< ghost bit list: indicate if cell is ghost bit
 
     Data(const size_t numElements = 0, const size_t numCorners = 0, const size_t numVertices = 0, Type id = UNKNOWN,
          const std::string &name = "", const Meta &meta = Meta());

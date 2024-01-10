@@ -1,5 +1,6 @@
 #include "indexed.h"
 #include "celltree_impl.h"
+#include "celltypes.h"
 #include "indexed_impl.h"
 #include "archives.h"
 #include <vistle/util/exception.h>
@@ -393,7 +394,11 @@ Indexed::Data::Data(const size_t numElements, const size_t numCorners, const siz
     CHECK_OVERFLOW(numCorners);
     el.construct(numElements + 1);
     cl.construct(numCorners);
+    isGhost.construct(numElements);
     (*el)[0] = 0;
+    // by default, cells are normal, i.e., not ghost cells
+    for (size_t i = 0; i < numElements; i++)
+        (*isGhost)[i] = cell::NORMAL;
 }
 
 Indexed::Data::Data(const Indexed::Data &o, const std::string &name): Indexed::Base::Data(o, name), el(o.el), cl(o.cl)
