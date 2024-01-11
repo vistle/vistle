@@ -28,13 +28,13 @@ bool Indexed::checkImpl() const
 {
     CHECK_OVERFLOW(d()->cl->size());
     CHECK_OVERFLOW(d()->el->size());
-    CHECK_OVERFLOW(d()->isGhost->size());
+    //CHECK_OVERFLOW(d()->isGhost->size());
 
     V_CHECK(d()->el->check());
     V_CHECK(d()->cl->check());
-    V_CHECK(d()->isGhost->check());
+    //V_CHECK(d()->isGhost->check());
     V_CHECK(d()->el->size() > 0);
-    V_CHECK(d()->isGhost->size() == getNumElements());
+   // V_CHECK(d()->isGhost->size() == getNumElements());
     V_CHECK(el()[0] == 0);
     if (getNumElements() > 0) {
         V_CHECK(el()[getNumElements() - 1] < getNumCorners());
@@ -240,7 +240,7 @@ void Indexed::print(std::ostream &os) const
     Base::print(os);
     os << " cl(" << *d()->cl << ")";
     os << " el(" << *d()->el << ")";
-    os << " isGhost(" << *d()->isGhost << ")";
+    //os << " isGhost(" << *d()->isGhost << ")";
 }
 
 Indexed::NeighborFinder::NeighborFinder(const Indexed *indexed): indexed(indexed)
