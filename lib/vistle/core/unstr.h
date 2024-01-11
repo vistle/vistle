@@ -181,6 +181,12 @@ public:
 
     shm<Byte>::array &tl() { return *d()->tl; }
     const ShmArrayProxy<Byte> &tl() const { return m_tl; }
+    shm<Byte>::array &isGhost() { return *d()->isGhost; }
+    const ShmArrayProxy<Byte> &isGhost() const { return m_isGhost; }
+
+    void setIsGhost(Index index, bool setTo);
+    bool getIsGhost(Index index) const;
+
 
     bool isConvex(Index elem) const;
     bool isGhostCell(Index elem) const override;
@@ -202,9 +208,11 @@ public:
 
 private:
     mutable ShmArrayProxy<Byte> m_tl;
+    mutable ShmArrayProxy<Byte> m_isGhost;
 
     V_DATA_BEGIN(UnstructuredGrid);
     ShmVector<Byte> tl;
+    ShmVector<Byte> isGhost;
 
     Data(const size_t numElements = 0, const size_t numCorners = 0, const size_t numVertices = 0,
          const std::string &name = "", const Meta &meta = Meta());

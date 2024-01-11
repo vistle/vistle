@@ -26,6 +26,9 @@ void UnstructuredGrid::resetElements()
 
     d()->tl = ShmVector<Byte>();
     d()->tl.construct(0);
+
+    d()->isGhost = ShmVector<Byte>();
+    d()->isGhost.construct(0);
 }
 
 bool UnstructuredGrid::isEmpty()
@@ -41,9 +44,12 @@ bool UnstructuredGrid::isEmpty() const
 bool UnstructuredGrid::checkImpl() const
 {
     CHECK_OVERFLOW(d()->tl->size());
+    CHECK_OVERFLOW(d()->isGhost->size());
 
     V_CHECK(d()->tl->check());
     V_CHECK(d()->tl->size() == getNumElements());
+    V_CHECK(d()->isGhost->check());
+    V_CHECK(d()->isGhost->size() == getNumElements());
     return true;
 }
 
@@ -51,6 +57,7 @@ void UnstructuredGrid::print(std::ostream &os) const
 {
     Base::print(os);
     os << " tl(" << *d()->tl << ")";
+    os << " isGhost(" << *d()->isGhost << ")";
 }
 
 bool UnstructuredGrid::isConvex(const Index elem) const
@@ -58,6 +65,18 @@ bool UnstructuredGrid::isConvex(const Index elem) const
     if (elem == InvalidIndex)
         return false;
     return tl()[elem] & CONVEX_BIT || (tl()[elem] & TYPE_MASK) == TETRAHEDRON;
+}
+
+void UnstructuredGrid::setIsGhost(Index index, bool setTo)
+{
+    assert(index < getNumElements());
+    (this->isGhost())[index] = setTo ? cell::GHOST : cell::NORMAL;
+}
+
+bool UnstructuredGrid::getIsGhost(Index index) const
+{
+    assert(index < getNumElements());
+    return (this->isGhost())[index] == cell::GHOST;
 }
 
 bool UnstructuredGrid::isGhostCell(const Index elem) const
@@ -878,8 +897,10 @@ void UnstructuredGrid::refreshImpl() const
     const Data *d = static_cast<Data *>(m_data);
     if (d) {
         m_tl = d->tl;
+        m_isGhost = d->isGhost;
     } else {
         m_tl = nullptr;
+        m_isGhost = nullptr;
     }
 }
 
@@ -898,6 +919,7 @@ UnstructuredGrid::Data::Data(const size_t numElements, const size_t numCorners, 
 {
     initData();
     tl.construct(numElements);
+    isGhost.construct(numElements);
 }
 
 UnstructuredGrid::Data *UnstructuredGrid::Data::create(const size_t numElements, const size_t numCorners,
