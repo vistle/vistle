@@ -48,7 +48,7 @@ set(description "Embree CPU ray casting remote renderer")
 
 add_compile_definitions(EMBREE_MAJOR=${EMBREE_MAJOR})
 if(VISTLE_DOUBLE_PRECISION)
-    add_compile_definitions(-DVISTLE_SCALAR_DOUBLE)
+    add_compile_definitions(VISTLE_SCALAR_DOUBLE)
 endif()
 
 include_directories(SYSTEM ${MPI_C_INCLUDE_PATH})

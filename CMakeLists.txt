@@ -970,7 +970,7 @@ if(VISTLE_64BIT_INDICES)
 endif()
 
 if(VISTLE_DOUBLE_PRECISION)
-    add_definitions(-DVISTLE_SCALAR_DOUBLE)
+    add_compile_definitions(VISTLE_SCALAR_DOUBLE)
 endif()
 
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
