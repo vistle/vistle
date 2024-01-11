@@ -16,7 +16,6 @@ class V_COREEXPORT UnstructuredGrid: public Indexed, virtual public GridInterfac
 public:
     typedef Indexed Base;
     enum Type {
-        GHOST_BIT = cell::GHOST_BIT,
         CONVEX_BIT = cell::CONVEX_BIT,
         TYPE_MASK = cell::TYPE_MASK,
 

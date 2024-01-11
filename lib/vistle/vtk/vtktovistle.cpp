@@ -230,7 +230,7 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, bool checkConvex, std::
 #if VTK_MAJOR_VERSION >= 7
         if (ghostArray &&
             const_cast<vtkUnsignedCharArray *>(ghostArray)->GetValue(i) & vtkDataSetAttributes::DUPLICATECELL) {
-            typelist[elemVistle] |= UnstructuredGrid::GHOST_BIT;
+            cugrid->setIsGhost(elemVistle, true);
         }
 #endif
 

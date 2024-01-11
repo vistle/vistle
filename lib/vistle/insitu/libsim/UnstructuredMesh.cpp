@@ -141,21 +141,23 @@ void fillTypeConnAndElemLists(const visit_handle &meshHandle, vistle::Unstructur
                       << libsim::getNumVertices(elemType) << " is outside of given elementList data!" << std::endl;
             break;
         }
-        vistle::Byte elemTypeWithGhost = elemType;
+
+        bool isGhostCell = false;
         if (ghost.mapping() == GhostData::Element && ghost[i])
-            elemTypeWithGhost |= vistle::UnstructuredGrid::Type::GHOST_BIT;
+            isGhostCell = true;
 
         for (size_t j = 0; j < libsim::getNumVertices(elemType); j++) {
             mesh->cl().push_back(static_cast<int *>(connListData.data.data)[idx]);
             ++idx;
             if (ghost.mapping() == GhostData::Vertex && ghost[static_cast<int *>(connListData.data.data)[idx]] &&
-                !(elemTypeWithGhost & vistle::UnstructuredGrid::Type::GHOST_BIT)) {
-                elemTypeWithGhost |= vistle::UnstructuredGrid::Type::GHOST_BIT;
+                !isGhostCell) {
+                isGhostCell = true;
             }
         }
 
         mesh->el().push_back(elemIndex);
-        mesh->tl().push_back(elemTypeWithGhost);
+        mesh->tl().push_back(elemType);
+        mesh->isGhost().push_back(isGhostCell ? cell::GHOST : cell::NORMAL);
     }
 }
 

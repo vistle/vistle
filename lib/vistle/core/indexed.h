@@ -34,6 +34,8 @@ public:
     const ShmArrayProxy<Index> &el() const { return m_el; }
     const ShmArrayProxy<Index> &cl() const { return m_cl; }
     const ShmArrayProxy<Byte> &isGhost() const { return m_isGhost; }
+    void setIsGhost(Index index, bool setTo);
+    bool getIsGhost(Index index) const;
 
     std::pair<Vector3, Vector3> getBounds() const override;
 

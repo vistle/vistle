@@ -101,11 +101,10 @@ Object::ptr ReadNek::readGrid(int timestep, nek5000::PartitionReader &partitionR
     UnstructuredGrid::ptr grid =
         UnstructuredGrid::ptr(new UnstructuredGrid(hexes, partitionReader.getNumConn(), partitionReader.getGridSize()));
     Byte elemType = partitionReader.getDim() == 2 ? UnstructuredGrid::QUAD : UnstructuredGrid::HEXAHEDRON;
-    Byte ghostType = partitionReader.getDim() == 2 ? UnstructuredGrid::QUAD | UnstructuredGrid::GHOST_BIT
-                                                   : UnstructuredGrid::HEXAHEDRON | UnstructuredGrid::GHOST_BIT;
+
     partitionReader.fillGrid({grid->x().data(), grid->y().data(), grid->z().data()});
     std::fill_n(grid->tl().data(), hexes - ghostHexes, elemType);
-    std::fill_n(grid->tl().data() + hexes - ghostHexes, ghostHexes, ghostType);
+    std::fill_n(grid->isGhost().data() + hexes - ghostHexes, ghostHexes, cell::GHOST);
     partitionReader.fillConnectivityList(grid->cl().data());
     int numCorners = partitionReader.getDim() == 2 ? 4 : 8;
     for (size_t i = 0; i < hexes + 1; i++) {

@@ -12,7 +12,6 @@ namespace vistle {
 namespace cell {
 
 enum CellType {
-    GHOST_BIT = 0x80,
     CONVEX_BIT = 0x40, //<! cell was checked to be convex
     TYPE_MASK = 0x3f,
 

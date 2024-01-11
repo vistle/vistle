@@ -95,7 +95,7 @@ bool ShowGrid::compute()
 
             for (Index index = begin; index < end; ++index) {
                 auto type = unstr->tl()[index];
-                const bool ghost = type & UnstructuredGrid::GHOST_BIT;
+                const bool ghost = unstr->getIsGhost(index);
                 const bool conv = type & UnstructuredGrid::CONVEX_BIT;
 
                 const bool show =

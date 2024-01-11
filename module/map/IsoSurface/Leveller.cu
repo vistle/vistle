@@ -41,6 +41,7 @@ struct HostData {
     const Index *m_el = nullptr;
     const Index *m_cl = nullptr;
     const Byte *m_tl = nullptr;
+    const Byte *m_isGhost = nullptr;
     std::vector<Index> m_caseNums;
     std::vector<Index> m_numVertices;
     std::vector<Index> m_LocationList;
@@ -70,13 +71,14 @@ struct HostData {
     typedef std::vector<Index>::iterator VectorIndexIterator;
 
     // for unstructured grids
-    HostData(Scalar isoValue, IsoDataFunctor isoFunc, const Index *el, const Byte *tl, const Index *cl, const Scalar *x,
-             const Scalar *y, const Scalar *z)
+    HostData(Scalar isoValue, IsoDataFunctor isoFunc, const Index *el, const Byte *tl, const Index *cl,
+             const Byte *isGhost, const Scalar *x, const Scalar *y, const Scalar *z)
     : m_isovalue(isoValue)
     , m_isoFunc(isoFunc)
     , m_el(el)
     , m_cl(cl)
     , m_tl(tl)
+    , m_isGhost(isGhost)
     , m_nvert{0, 0, 0}
     , m_nghost{{0, 0}, {0, 0}, {0, 0}}
     , m_isUnstructured(el)
@@ -706,7 +708,7 @@ struct SelectCells {
         Index Cell = iCell.get<0>();
         Index nextCell = iCell.get<1>();
         Byte cellType = iCell.get<2>();
-        if (cellType & UnstructuredGrid::GHOST_BIT)
+        if (cellType == cell::GHOST)
             return 0;
         // also for POLYHEDRON
         for (Index i = Cell; i < nextCell; i++) {
@@ -994,7 +996,7 @@ Index Leveller::calculateSurface(Data &data)
                                   typename Data::TypeIterator>
                 Iteratortuple;
             typedef thrust::zip_iterator<Iteratortuple> ZipIterator;
-            ZipIterator ElTupleVec(thrust::make_tuple(&data.m_el[0], &data.m_el[1], &data.m_tl[0]));
+            ZipIterator ElTupleVec(thrust::make_tuple(&data.m_el[0], &data.m_el[1], &data.m_isGhost[0]));
             end = thrust::copy_if(pol(), first, last, ElTupleVec, data.m_SelectedCellVector.begin(),
                                   SelectCells<Data>(data));
         } else if (m_poly) {
@@ -1118,7 +1120,7 @@ bool Leveller::process()
         std::unique_ptr<HostData> HD_ptr;
         if (m_unstr) {
             HD_ptr = std::make_unique<HostData>(m_isoValue, isofunc, m_unstr->el(), m_unstr->tl(), m_unstr->cl(),
-                                                m_unstr->x(), m_unstr->y(), m_unstr->z());
+                                                m_unstr->isGhost(), m_unstr->x(), m_unstr->y(), m_unstr->z());
 
         } else if (m_strbase) {
             HD_ptr = std::make_unique<HostData>(m_isoValue, isofunc, dims[0], dims[1], dims[2], coords[0], coords[1],

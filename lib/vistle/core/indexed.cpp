@@ -56,6 +56,16 @@ std::pair<Vector3, Vector3> Indexed::getBounds() const
     return Base::getMinMax();
 }
 
+void Indexed::setIsGhost(Index index, bool setTo)
+{
+    (this->isGhost())[index] = setTo ? cell::GHOST : cell::NORMAL;
+}
+
+bool Indexed::getIsGhost(Index index) const
+{
+    return (this->isGhost())[index] == cell::GHOST;
+}
+
 bool Indexed::hasCelltree() const
 {
     if (m_celltree)
