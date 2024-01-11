@@ -18,12 +18,15 @@ project(
     LANGUAGES C CXX)
 
 message("CMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}")
+
 if("${CMAKE_SYSTEM_NAME}" STREQUAL "CrayLinuxEnvironment")
     message("compiling for Cray")
     set(CRAY ON)
-    #set(Boost_DEBUG ON)
+
+    # set(Boost_DEBUG ON)
     set(Boost_NO_BOOST_CMAKE OFF)
     set(CRAYPE_LINK_TYPE "$ENV{CRAYPE_LINK_TYPE}")
+
     if(NOT "${CRAYPE_LINK_TYPE}" STREQUAL "dynamic")
         message("dynamic linking required: set CRAYPE_LINK_TYPE to \"dynamic\"")
         return()
@@ -94,6 +97,7 @@ else()
 endif()
 
 option(VISTLE_INTERNAL_BOOST_MPI "Use internal copy of Boost.MPI" ON)
+
 # allow for optimizations in Boost.MPI
 if(VISTLE_INTERNAL_BOOST_MPI)
     if(NOT WIN32)
@@ -115,7 +119,6 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "")
 endif()
 
 # use this instead of FIND_PACKAGE to prefer Package in $PACKAGE_HOME and $EXTERNLIBS/package
-
 macro(vistle_find_package package)
     set(SAVED_CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH})
     set(SAVED_CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH})
@@ -134,37 +137,47 @@ macro(vistle_find_package package)
         if(pack STREQUAL "PythonLibs")
             set(pack "Python")
         endif()
+
         if(pack STREQUAL "PythonInterp")
             set(pack "Python")
         endif()
+
         if(pack MATCHES "^Qt5")
             set(pack "Qt5")
             set(hbpack "qt@5")
         endif()
+
         if(pack MATCHES "^Qt6")
             set(pack "Qt6")
             set(hbpack "qt@6")
         endif()
+
         if(APPLE)
             if(pack MATCHES "^OpenMP")
                 set(hbpack "libomp")
             endif()
+
             if(pack STREQUAL "Python")
                 set(hbpack "python@3")
             endif()
+
             if(pack STREQUAL "OpenSceneGraph")
                 set(hbpack "open-scene-graph")
             endif()
+
             if(pack STREQUAL "TIFF")
                 set(hbpack "libtiff")
             endif()
+
             if(pack STREQUAL "JPEGTURBO")
                 set(hbpack "jpeg-turbo")
             endif()
+
             if(pack MATCHES "^Qt5")
                 set(pack "Qt5")
                 set(hbpack "qt@5")
             endif()
+
             if(pack MATCHES "^Qt6")
                 set(pack "Qt6")
                 set(hbpack "qt@6")
@@ -173,7 +186,9 @@ macro(vistle_find_package package)
             if(hbpack STREQUAL "")
                 set(hbpack "${pack}")
             endif()
+
             set(CMAKE_PREFIX_PATH /usr/local/opt/${hbpack} ${CMAKE_PREFIX_PATH})
+
             if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
                 set(CMAKE_PREFIX_PATH /opt/homebrew/opt/${hbpack} ${CMAKE_PREFIX_PATH})
             endif()
@@ -181,29 +196,37 @@ macro(vistle_find_package package)
 
         string(TOUPPER ${pack} UPPER)
         string(TOLOWER ${pack} LOWER)
+
         if(MINGW)
             set(CMAKE_PREFIX_PATH ${MINGW_SYSROOT} ${CMAKE_PREFIX_PATH})
         endif()
+
         if(NOT "$ENV{EXTERNLIBS}" STREQUAL "")
             set(CMAKE_PREFIX_PATH $ENV{EXTERNLIBS}/${LOWER}/bin ${CMAKE_PREFIX_PATH})
             set(CMAKE_PREFIX_PATH $ENV{EXTERNLIBS} ${CMAKE_PREFIX_PATH})
             set(CMAKE_PREFIX_PATH $ENV{EXTERNLIBS}/${LOWER} ${CMAKE_PREFIX_PATH})
         endif()
+
         if(NOT "$ENV{${UPPER}_HOME}" STREQUAL "")
             set(CMAKE_PREFIX_PATH $ENV{${UPPER}_HOME} ${CMAKE_PREFIX_PATH})
         endif()
+
         if(NOT "$ENV{${UPPER}_DIR}" STREQUAL "")
             set(CMAKE_PREFIX_PATH $ENV{${UPPER}_DIR} ${CMAKE_PREFIX_PATH})
         endif()
+
         if(NOT "$ENV{${UPPER}ROOT}" STREQUAL "")
             set(CMAKE_PREFIX_PATH $ENV{${UPPER}ROOT} ${CMAKE_PREFIX_PATH})
         endif()
+
         if(NOT "$ENV{${UPPER}_ROOT}" STREQUAL "")
             set(CMAKE_PREFIX_PATH $ENV{${UPPER}_ROOT} ${CMAKE_PREFIX_PATH})
         endif()
-        #message("looking for package ${ARGV}")
-        #message("CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}")
+
+        # message("looking for package ${ARGV}")
+        # message("CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}")
     endif()
+
     find_package(${ARGV})
 
     set(CMAKE_PREFIX_PATH ${SAVED_CMAKE_PREFIX_PATH})
@@ -211,17 +234,18 @@ macro(vistle_find_package package)
 endmacro(vistle_find_package PACKAGE)
 
 if(WIN32)
-    #set(BOOST_ROOT "$ENV{EXTERNLIBS}/boost")
-    #STRING(REGEX REPLACE "\\\\" "/" BOOST_ROOT ${BOOST_ROOT})
-    #set(MPI_HOME "$ENV{EXTERNLIBS}/OpenMPI")
+    # set(BOOST_ROOT "$ENV{EXTERNLIBS}/boost")
+    # STRING(REGEX REPLACE "\\\\" "/" BOOST_ROOT ${BOOST_ROOT})
+    # set(MPI_HOME "$ENV{EXTERNLIBS}/OpenMPI")
     set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/Modules/windows;${CMAKE_MODULE_PATH}")
-    #add_definitions(-DOMPI_IMPORTS)
 
+    # add_definitions(-DOMPI_IMPORTS)
     add_definitions(-DWIN32_LEAN_AND_MEAN)
     add_definitions(-DNOMINMAX)
 
     add_definitions(-DBOOST_ALL_NO_LIB)
-    #add_definitions(-DBOOST_ALL_DYN_LINK)
+
+    # add_definitions(-DBOOST_ALL_DYN_LINK)
     add_definitions(-DBOOST_MPI_DYN_LINK)
     add_definitions(-DBOOST_PROGRAM_OPTIONS_DYN_LINK)
     add_definitions(-DBOOST_ZLIB_DYN_LINK)
@@ -239,12 +263,14 @@ if(WIN32)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MSVC_WARNINGS} /EHsc")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${MSVC_WARNINGS} /EHsc")
 endif(WIN32)
+
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/Modules/;${CMAKE_MODULE_PATH}")
 
 include(ConfigureLinker)
 
 if(NOT VISTLE_GUI_ONLY)
     vistle_find_package(OpenMP)
+
     if(OPENMP_FOUND)
         find_library(LIBOMP omp)
     endif()
@@ -253,12 +279,13 @@ if(NOT VISTLE_GUI_ONLY)
         message(WARNING "CMake 3.12 or newer is required for compiling Python support")
     else()
         vistle_find_package(Python COMPONENTS Interpreter Development REQUIRED)
+
         if(Python_FOUND)
             message("Found Python version ${Python_VERSION}")
         endif()
     endif()
 
-    #vistle_find_package(IceT REQUIRED)
+    # vistle_find_package(IceT REQUIRED)
     set(ICET_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/lib/3rdparty/IceT/src/include;${CMAKE_BINARY_DIR}/lib/3rdparty/IceT/src/include)
     set(ICET_CORE_LIBS "IceTCore")
     set(ICET_MPI_LIBS "IceTMPI")
@@ -266,8 +293,10 @@ if(NOT VISTLE_GUI_ONLY)
 
     # prefer a TBBConfig.cmake over FindTBB.cmake
     vistle_find_package(TBB CONFIG NO_MODULE)
+
     if(NOT ${TBB_FOUND})
         vistle_find_package(TBB)
+
         if(NOT (${CMAKE_GENERATOR} STREQUAL "Visual Studio 17 2022"))
             if(${TBB_FOUND} AND NOT TARGET TBB::tbb)
                 add_library(TBB::tbb SHARED IMPORTED)
@@ -283,28 +312,35 @@ endif(NOT VISTLE_GUI_ONLY)
 
 set(ASAN_COMPILE_FLAGS "")
 set(ASAN_LINK_FLAGS "")
+
 if(VISTLE_SANITIZE_UNDEFINED)
     set(ASAN_LINK_FLAGS "${ASAN_LINK_FLAGS} -fsanitize=undefined")
     set(ASAN_COMPILE_FLAGS "${ASAN_COMPILE_FLAGS} -fsanitize=undefined")
 endif()
+
 if(VISTLE_SANITIZE_ADDRESS)
     set(ASAN_LINK_FLAGS "${ASAN_LINK_FLAGS} -fsanitize=address")
     set(ASAN_COMPILE_FLAGS "${ASAN_COMPILE_FLAGS} -fsanitize=address")
-    #set(ASAN_COMPILE_FLAGS "${ASAN_COMPILE_FLAGS} -fsanitize-address-use-after-scope")
+
+    # set(ASAN_COMPILE_FLAGS "${ASAN_COMPILE_FLAGS} -fsanitize-address-use-after-scope")
     set(ASAN_COMPILE_FLAGS "${ASAN_COMPILE_FLAGS} -fno-common")
 endif()
+
 if(VISTLE_SANITIZE_THREAD)
     set(ASAN_LINK_FLAGS "${ASAN_LINK_FLAGS} -fsanitize=thread")
     set(ASAN_COMPILE_FLAGS "${ASAN_COMPILE_FLAGS} -fsanitize=thread")
 endif()
+
 if(VISTLE_SANITIZE_THREAD
    OR VISTLE_SANITIZE_ADDRESS
    OR VISTLE_SANITIZE_UNDEFINED)
     set(ASAN_COMPILE_FLAGS "${ASAN_COMPILE_FLAGS} -fno-omit-frame-pointer")
     set(ASAN_COMPILE_FLAGS "${ASAN_COMPILE_FLAGS} -g3")
     set(ASAN_COMPILE_FLAGS "${ASAN_COMPILE_FLAGS} -fPIC")
-    #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pie")
+
+    # set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pie")
 endif()
+
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ASAN_COMPILE_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ASAN_COMPILE_FLAGS}")
 set(CMAKE_C_LINK_FLAGS "${CMAKE_C_LINK_FLAGS} ${ASAN_LINK_FLAGS}")
@@ -316,24 +352,24 @@ if(WIN32)
 else()
     set(BOOST_OPT)
 endif()
+
 if(NOT VISTLE_GUI_ONLY)
     set(BOOST_OPT ${BOOST_OPT} iostreams locale)
 endif()
+
 if(VISTLE_INTERNAL_BOOST_MPI)
     set(BOOST_REQ)
 else()
     set(BOOST_REQ mpi)
 endif()
 
-#set (Boost_DEBUG ON)
+# set (Boost_DEBUG ON)
 if(WIN32)
-    #otherwise, in older versions Boost_INCLUDE_DIRS is not set and headers are not found
-    #set(Boost_NO_BOOST_CMAKE ON)
-
+    # otherwise, in older versions Boost_INCLUDE_DIRS is not set and headers are not found
+    # set(Boost_NO_BOOST_CMAKE ON)
     set(Boost_USE_STATIC_RUNTIME OFF)
     option(VISTLE_Boost_USE_STATIC_LIBS "use boost static libs" OFF)
     set(Boost_USE_STATIC_LIBS ${VISTLE_Boost_USE_STATIC_LIBS})
-
 endif(WIN32)
 
 if(APPLE)
@@ -366,6 +402,7 @@ vistle_find_package(
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-command-line-argument")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-command-line-argument")
+
     if(NOT ${BUILD_SHARED_LIBS})
         # for linking the libraries into plugins
         set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
@@ -386,6 +423,7 @@ if(NOT CRAY)
         if(APPLE)
             set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++ -Wno-stdlibcxx-not-found")
         endif()
+
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftemplate-backtrace-limit=0")
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
@@ -397,6 +435,7 @@ if(NOT CRAY)
     elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
+
         if(NOT APPLE)
             if(DEFINED VISTLE_CPU_ARCH AND NOT VISTLE_CPU_ARCH STREQUAL "")
                 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=${VISTLE_CPU_ARCH}")
@@ -406,13 +445,14 @@ if(NOT CRAY)
     endif()
 
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
-    #elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    # elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 endif()
 
 if(NOT CRAY AND NOT VISTLE_GUI_ONLY)
     if(VISTLE_USE_MPI)
         set(MPI_SKIP_MPICXX TRUE)
-        #set(MPI_FIND_COMPONENTS "C CXX")
+
+        # set(MPI_FIND_COMPONENTS "C CXX")
         add_definitions(-DOMPI_SKIP_MPICXX) # OpenMPI
         add_definitions(-DMPI_NO_CPPBIND) # HPE MPT
         vistle_find_package(MPI REQUIRED COMPONENTS C CXX)
@@ -436,6 +476,7 @@ if(NOT CRAY AND NOT VISTLE_GUI_ONLY)
     else()
         set(BOOST_MPI_DIR "boost-mpi-1.60")
     endif()
+
     if(BOOST_MPI_DIR)
         message("Using Boost.MPI from ${BOOST_MPI_DIR} for Boost ${Boost_VERSION}")
         set(BOOST_MPI vistle_boost_mpi)
@@ -447,11 +488,13 @@ endif()
 add_definitions(-DBOOST_LIB_DIAGNOSTIC=1)
 
 get_property(LIB64 GLOBAL PROPERTY FIND_LIBRARY_USE_LIB64_PATHS)
+
 if(LIB64)
     set(LIBSUFFIX 64)
 else()
     set(LIBSUFFIX "")
 endif()
+
 if(NOT WIN32 AND NOT APPLE)
     set(INSTALL_LIB_DIR
         lib${LIBSUFFIX}
@@ -483,11 +526,14 @@ macro(vistle_install_library targetname)
                     NAMELINK_COMPONENT ${targetname}_Development
             ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT ${targetname}_Development)
     endif()
+
     if("${vistle_install_include_directory}" STREQUAL "")
         string(REPLACE ${PROJECT_BINARY_DIR}/lib/vistle "" vistle_install_include_directory ${CMAKE_CURRENT_BINARY_DIR})
     endif()
+
     set(header "${ARGN}")
     list(FILTER header INCLUDE REGEX "(\.(h|H|hpp|HPP)$)")
+
     if(VISTLE_INSTALL_HEADER)
         install(
             FILES ${header}
@@ -501,8 +547,8 @@ macro(vistle_export_library targetname)
 
     set(config_in_file ${CMAKE_CURRENT_BINARY_DIR}/cmake/${targetname}Config.cmake.in)
     file(WRITE ${config_in_file} "include(\"\${CMAKE_CURRENT_LIST_DIR}/${targetname}Targets.cmake\")")
-    #message("configuring file ${config_in_file} to ${buildPackageLocation}/${targetname}Config.cmake")
 
+    # message("configuring file ${config_in_file} to ${buildPackageLocation}/${targetname}Config.cmake")
     configure_file(${config_in_file} "${buildPackageLocation}/${targetname}Config.cmake" COPYONLY)
     include(CMakePackageConfigHelpers)
     write_basic_package_version_file(
@@ -521,9 +567,10 @@ macro(vistle_export_library targetname)
         NAMESPACE Vistle::
         DESTINATION ${installPackageLocation}
         COMPONENT ${targetname}_Development)
-    #	configure_package_config_file(${config_in_file}
-    #	"${CMAKE_CURRENT_BINARY_DIR}/${targetname}Config.cmake"
-    #	INSTALL_DESTINATION "${installPackageLocation}/${targetname}Config.cmake")
+
+    # configure_package_config_file(${config_in_file}
+    # "${CMAKE_CURRENT_BINARY_DIR}/${targetname}Config.cmake"
+    # INSTALL_DESTINATION "${installPackageLocation}/${targetname}Config.cmake")
     install(
         FILES "${buildPackageLocation}/${targetname}Config.cmake" "${buildPackageLocation}/${targetname}ConfigVersion.cmake"
         DESTINATION ${installPackageLocation}
@@ -534,13 +581,14 @@ macro(vistle_add_library targetname visibility)
     add_library(${targetname} ${ARGN})
     set_target_properties(${targetname} PROPERTIES FOLDER "Libraries")
     string(FIND ${targetname} "vistle_" vistle_prefix)
+
     if(NOT ${vistle_prefix} EQUAL 0)
         if(NOT "${targetname}" STREQUAL "VistlePluginUtil"
            AND NOT "${targetname}" STREQUAL "simV2runtime_par"
            AND NOT "${targetname}" STREQUAL "simV2runtime_ser")
             message(WARNING " missing prefix for " ${targetname}": vistle libraries must be prefixed with vistle_")
         endif()
-    elseif() #change the vistle_libname to vistle::libname in exported target
+    elseif() # change the vistle_libname to vistle::libname in exported target
         string(REPLACE "vistle_" "" target_suffix ${targetname})
         set_target_properties(${targetname} PROPERTIES EXPORT_NAME ${target_suffix})
         add_library(vistle::${target_suffix} ALIAS ${targetname})
@@ -577,15 +625,18 @@ function(prepend_file filename)
     endif()
 endfunction()
 
-function(getPublicBoostComponents PublicBoostComponents)
+function(getPublicComponents Name PublicComponents)
     set(addNext FALSE)
+
     foreach(Comp IN LISTS ARGN)
         if(addNext)
             string(REGEX REPLACE "::.*" "" TARGET_NAME ${Comp})
-            if(${TARGET_NAME} STREQUAL "Boost")
+
+            if(${TARGET_NAME} STREQUAL "${Name}")
                 string(REGEX REPLACE ".*::" "" COMPONENT_NAME ${Comp})
-                list(APPEND LocalPublicBoostComponents ${COMPONENT_NAME})
+                list(APPEND LocalPublicComponents ${COMPONENT_NAME})
             endif()
+
             set(addNext FALSE)
         else()
             if(${Comp} MATCHES "PUBLIC|INTERFACE")
@@ -593,12 +644,13 @@ function(getPublicBoostComponents PublicBoostComponents)
             endif()
         endif()
     endforeach()
-    set(${PublicBoostComponents}
-        ${LocalPublicBoostComponents}
+
+    set(${PublicComponents}
+        ${LocalPublicComponents}
         PARENT_SCOPE)
 endfunction()
 
-#additionally adds public and interface dependencies to Config.cmake file
+# additionally adds public and interface dependencies to Config.cmake file
 macro(vistle_target_link_libraries targetname)
     target_link_libraries(${targetname} ${ARGN})
     set(file_content "include(CMakeFindDependencyMacro)\n")
@@ -606,6 +658,7 @@ macro(vistle_target_link_libraries targetname)
     set(file_content ${file_content} "set(CMAKE_PREFIX_PATH \${CMAKE_CURRENT_LIST_DIR} \${CMAKE_PREFIX_PATH})\n")
     set(add_next_arg false)
     set(hasDependencies false)
+
     foreach(arg IN ITEMS ${ARGN})
         if(add_next_arg)
             if(${arg} MATCHES "vistle_.*")
@@ -621,17 +674,30 @@ macro(vistle_target_link_libraries targetname)
         endif()
     endforeach()
 
-    getpublicboostcomponents(public_boost_componets ${ARGN})
-    list(LENGTH public_boost_componets num_PUBLIC_Boost_componets)
-    if(num_PUBLIC_Boost_componets GREATER 0)
-        set(file_content ${file_content} "find_dependency( Boost " ${BOOST_MINIMUM_REQUIRED_VERSION} " REQUIRED COMPONENTS \n")
-        foreach(item IN LISTS public_boost_componets)
-            set(file_content ${file_content} "\t" ${item} "\n")
-        endforeach()
-        set(file_content ${file_content} ")\n")
-    endif()
+    set(DependencyList Boost vtkm) # Name when linking the package
+    set(DependencyListNames Boost VTKm) # Name when finding the package
+    set(CurrentDependencyList 0)
+
+    foreach(Dependency IN ITEMS ${DependencyList})
+        getpubliccomponents(${Dependency} public_componets ${ARGN})
+        list(LENGTH public_componets num_Public_componets)
+        list(GET DependencyListNames ${CurrentDependencyList} CurrentDependencyName)
+        math(EXPR CurrentDependencyList "${CurrentDependencyList}+1")
+
+        if(num_Public_componets GREATER 0)
+            set(file_content ${file_content} "find_dependency( ${CurrentDependencyName} " ${BOOST_MINIMUM_REQUIRED_VERSION} " REQUIRED COMPONENTS \n")
+
+            foreach(item IN LISTS public_componets)
+                set(file_content ${file_content} "\t" ${item} "\n")
+            endforeach()
+
+            set(file_content ${file_content} ")\n")
+        endif()
+    endforeach()
+
     set(file_content ${file_content} "set(CMAKE_PREFIX_PATH \${oldCMAKE_PREFIX_PATH})\n")
     set(file_content ${file_content} "find_dependency(MPI REQUIRED)\n")
+
     if(hasDependencies)
         prepend_file(${buildPackageLocation}/${targetname}Config.cmake ${file_content})
     endif()
@@ -646,11 +712,12 @@ macro(vistle_install_docs)
 endmacro(vistle_install_docs)
 
 vistle_install_docs(README.md)
+
 macro(vistle_install_headers directory)
     install(FILES ${ARGN} DESTINATION include/vistle/${directory})
 endmacro(vistle_install_headers)
 
-#install VistleConfig.cmake
+# install VistleConfig.cmake
 configure_file(${CMAKE_CURRENT_LIST_DIR}/cmake/VistleConfig.cmake ${PROJECT_BINARY_DIR}/lib/cmake/vistle/VistleConfig.cmake COPYONLY)
 install(FILES ${CMAKE_CURRENT_LIST_DIR}/cmake/VistleConfig.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/vistle)
 
@@ -666,6 +733,7 @@ endif()
 
 if(WIN32)
     option(VISTLE_PYTHON_DEBUG "for Debug builds, use expect Python built in Debug mode" ON)
+
     if(VISTLE_PYTHON_DEBUG)
         add_compile_options("$<$<CONFIG:DEBUG>:-DPy_DEBUG>")
     endif()
@@ -681,13 +749,17 @@ if(CRAY)
 else()
     option(VISTLE_MULTI_PROCESS "use multiple processes communicating via shared memory" ON)
 endif()
+
 option(VISTLE_MODULES_SHARED "use shared libraries for modules" ON)
 option(VISTLE_USE_SHARED_MEMORY "use shared memory even within a process" OFF)
+
 if(NOT VISTLE_MULTI_PROCESS)
     add_definitions(-DMODULE_THREAD)
+
     if(NOT VISTLE_MODULES_SHARED)
         add_definitions(-DMODULE_STATIC)
     endif()
+
     if(NOT VISTLE_USE_SHARED_MEMORY)
         add_definitions(-DNO_SHMEM)
     endif()
@@ -699,8 +771,10 @@ macro(USE_OPENMP)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_C_FLAGS}")
         set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${OpenMP_C_FLAGS}")
+
         if(${CMAKE_CXX_COMPILER_ID} STREQUAL "AppleClang")
             set(USE_LIBOMP TRUE)
+
             if(LIBOMP)
                 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${LIBOMP}")
                 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${LIBOMP}")
@@ -725,20 +799,21 @@ set(ALL_MODULES
     ""
     CACHE INTERNAL "")
 set(MODULE_DESCRIPTION_FILE ${PROJECT_BINARY_DIR}/share/vistle/moduledescriptions.txt)
-if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
 
+if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
     file(REMOVE ${MODULE_DESCRIPTION_FILE})
     install(FILES ${MODULE_DESCRIPTION_FILE} DESTINATION ${CMAKE_INSTALL_PREFIX}/share/vistle/)
 
     macro(add_module2 targetname executable description)
-
         if(NOT VISTLE_MODULE_CATEGORY)
             set(VISTLE_MODULE_CATEGORY "Unspecified")
         endif()
+
         file(APPEND ${MODULE_DESCRIPTION_FILE} "${targetname} ${VISTLE_MODULE_CATEGORY} ${description}\n")
         set(ALL_MODULES
             ${ALL_MODULES} ${targetname}
             CACHE INTERNAL "")
+
         if(${executable})
             add_executable(${targetname} ${ARGN})
             set_target_properties(${targetname} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/libexec/module)
@@ -750,6 +825,7 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
                 elseif(Boost_VERSION VERSION_LESS 106400)
                     message(FATAL_ERROR "At least Boost 1.64 is required for Boost.DLL")
                 endif()
+
                 add_library(${targetname} MODULE ${ARGN})
                 set_target_properties(${targetname} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib/module)
                 set_target_properties(${targetname} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib/module)
@@ -758,17 +834,19 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
                     RUNTIME DESTINATION lib/module
                     LIBRARY DESTINATION lib/module)
             else()
-                #add_library(${targetname} OBJECT ${ARGN})
+                # add_library(${targetname} OBJECT ${ARGN})
                 add_library(${targetname} STATIC ${ARGN})
             endif()
         endif()
-        target_compile_definitions(${targetname} PRIVATE VISTLE_MODULE_NAME="${targetname}")
-        #target_compile_definitions(${targetname} PRIVATE MODULE_DESCRIPTION="${description}")
 
+        target_compile_definitions(${targetname} PRIVATE VISTLE_MODULE_NAME="${targetname}")
+
+        # target_compile_definitions(${targetname} PRIVATE MODULE_DESCRIPTION="${description}")
         set_target_properties(${targetname} PROPERTIES FOLDER "Modules")
         target_link_libraries(${targetname} ${Boost_LIBRARIES} MPI::MPI_C vistle_module ${BOOST_MPI} vistle_config)
+
         if(USE_LIBOMP AND LIBOMP)
-            #message("Linking ${targetname} against libomp: ${LIBOMP}")
+            # message("Linking ${targetname} against libomp: ${LIBOMP}")
             target_link_libraries(${targetname} ${LIBOMP})
         endif()
     endmacro(add_module2)
@@ -786,36 +864,43 @@ set(CMAKE_C_VISIBILITY_PRESET hidden)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 
 set(VISTLE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS}")
+
 if(${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
     if(VISTLE_COLOR_DIAGNOSTICS)
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fcolor-diagnostics")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fcolor-diagnostics")
     endif()
+
     if(VISTLE_TIME_BUILD)
         add_compile_options("-ftime-trace")
     endif()
+
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftemplate-depth=512")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-function")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations")
+
     if(VISTLE_PEDANTIC_ERRORS)
         add_compile_options($<$<COMPILE_LANGUAGE:C>:-pedantic-errors>)
         add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-pedantic-errors>)
     endif()
+
     if(NOT APPLE)
         set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-undefined")
     else()
         # emits warning with Apple Clang 15
-        #set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-undefined,error")
+        # set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-undefined,error")
     endif()
 elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
     if(VISTLE_COLOR_DIAGNOSTICS)
         add_compile_options($<$<COMPILE_LANGUAGE:C>:-fdiagnostics-color=always>)
         add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fdiagnostics-color=always>)
     endif()
+
     if(VISTLE_PEDANTIC_ERRORS)
         add_compile_options($<$<COMPILE_LANGUAGE:C>:-pedantic-errors>)
         add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-pedantic-errors>)
     endif()
+
     if(NOT APPLE)
         set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-undefined")
     endif()
@@ -829,18 +914,21 @@ else(WIN32)
     set(CMAKE_CXX_COMPILE_FLAGS "${CMAKE_CXX_COMPILE_FLAGS} -Wall -Wno-unknown-pragmas")
 endif(WIN32)
 
-#set(CMAKE_BUILD_TYPE Debug)
-
+# set(CMAKE_BUILD_TYPE Debug)
 set(VISTLE_USE_CUDA FALSE)
+
 if(VISTLE_ENABLE_CUDA)
     include(CheckLanguage)
     check_language(CUDA)
     vistle_find_package(CUDAToolkit)
+
     if(CMAKE_CUDA_COMPILER AND CUDAToolkit_FOUND)
         enable_language(CUDA)
+
         if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
             set(CMAKE_CUDA_ARCHITECTURES 60) # be compatible with P6000/GP100
         endif()
+
         add_definitions(-DVISTLE_USE_CUDA)
         set(VISTLE_USE_CUDA TRUE)
         message("Using CUDA")
@@ -848,26 +936,30 @@ if(VISTLE_ENABLE_CUDA)
 endif()
 
 option(VISTLE_SHM_DEBUG "Shared memory debugging" OFF)
+
 if(VISTLE_SHM_DEBUG)
     add_definitions(-DSHMDEBUG)
 endif()
 
 set(ENABLE_INSTALLER TRUE)
-#vistle_find_package(Thrust REQUIRED)
+
+# vistle_find_package(Thrust REQUIRED)
 set(THRUST_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/lib/3rdparty/thrust")
 
-#new submodule for block distribution
+# new submodule for block distribution
 set(DIY_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/lib/3rdparty/diy/include")
 
-#vistle_find_package(Eigen3 REQUIRED)
+# vistle_find_package(Eigen3 REQUIRED)
 set(EIGEN3_INCLUDE_PATH "${PROJECT_SOURCE_DIR}/lib/3rdparty")
-#add_definitions(-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=short)
+
+# add_definitions(-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=short)
 add_definitions(-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=int)
 
 if(NOT VISTLE_GUI_ONLY)
-    #Boost.MPI is compiled with Vistle - for easy switching of MPI versions
+    # Boost.MPI is compiled with Vistle - for easy switching of MPI versions
     include_directories(BEFORE SYSTEM "${PROJECT_SOURCE_DIR}/lib/3rdparty/${BOOST_MPI_DIR}/include")
 endif()
+
 if(Boost_FOUND)
     include_directories(AFTER SYSTEM ${Boost_INCLUDE_DIRS})
 endif()
@@ -877,21 +969,24 @@ include_directories(SYSTEM "${PROJECT_SOURCE_DIR}/lib/3rdparty/pybind11/include"
 add_definitions(-DPYBIND11_DETAILED_ERROR_MESSAGES)
 
 # replacement for Boost.Serialization
-#include_directories(SYSTEM "${PROJECT_SOURCE_DIR}/lib/3rdparty/yas/include")
+# include_directories(SYSTEM "${PROJECT_SOURCE_DIR}/lib/3rdparty/yas/include")
 
 # lossy floating point compression
-#vistle_find_package(ZFP)
+# vistle_find_package(ZFP)
 set(ZFP_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/lib/3rdparty/zfp/include")
 set(ZFP_LIBRARIES zfp)
+
 if(OPENMP_FOUND)
     set(ZFP_LIBRARIES ${ZFP_LIBRARIES} ${OpenMP_CXX_LIBRARIES})
 endif()
+
 set(ZFP_FOUND TRUE)
 add_definitions(-DHAVE_ZFP)
 include_directories(SYSTEM "${ZFP_INCLUDE_DIRS}")
 
 vistle_find_package(PkgConfig)
 vistle_find_package(ZSTD)
+
 if(CMAKE_VERSION VERSION_LESS 3.18)
     message("Not building with SZ3 support: CMake older than 3.18")
     set(USE_SZ3 FALSE)
@@ -918,8 +1013,10 @@ vistle_find_package(Threads REQUIRED)
 
 # do it here, so that we see the warnings just once
 vistle_find_package(Xdmf QUIET)
+
 if(WIN32 AND Xdmf_FOUND)
     vistle_find_package(Iconv)
+
     if(NOT Iconv_FOUND)
         unset(Xdmf_FOUND)
     endif()
@@ -932,10 +1029,10 @@ vistle_find_package(
     vtkCommonDataModel
     vtkIOXML
     vtkIOLegacy
-    #vtkCommonCore
-    #vtkFiltersCore
-    #vtkImagingCore
-    #vtkCommonExecutionModel
+    # vtkCommonCore
+    # vtkFiltersCore
+    # vtkImagingCore
+    # vtkCommonExecutionModel
     NO_MODULE
     QUIET)
 
@@ -943,8 +1040,10 @@ option(VISTLE_64BIT_INDICES "use 64-bit integers for array indices" OFF)
 option(VISTLE_DOUBLE_PRECISION "use double instead of float for coordinates and data arrays" OFF)
 
 option(VISTLE_INTERNAL_VTKM "Use internal copy of VTK-m" ON)
+
 if(VTK_FOUND AND VTK_HAS_VTKm)
     message("Using VTK-m provided by VTK ${VTK_VERSION}")
+
     if(VISTLE_INTERNAL_VTKM)
         message(WARNING "Provided VTK already contains VTK-m, cannot build internal copy of VTK-m. Disabling VISTLE_INTERNAL_VTKM...")
         set(VISTLE_INTERNAL_VTKM OFF)
@@ -961,7 +1060,6 @@ if(NOT VISTLE_INTERNAL_VTKM)
 
     # make sure vtk-m and vistle data types are compatible (if not, overwrite user flags, accordingly)
     add_subdirectory(module/test/IsoSurfaceVtkm/compatibility)
-
 endif()
 
 # configure data-type sizes
