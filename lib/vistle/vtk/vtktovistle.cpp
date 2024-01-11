@@ -231,6 +231,8 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, bool checkConvex, std::
         if (ghostArray &&
             const_cast<vtkUnsignedCharArray *>(ghostArray)->GetValue(i) & vtkDataSetAttributes::DUPLICATECELL) {
             cugrid->setIsGhost(elemVistle, true);
+        } else {
+            cugrid->setIsGhost(elemVistle, false);
         }
 #endif
 

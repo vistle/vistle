@@ -251,6 +251,8 @@ void createGrid(MiniSimModule::InternalsType *Internals, int blockId, long step,
                     (iz < ghostWidth[2][0] || iz + ghostWidth[2][1] >= nz)) {
                     grid->setIsGhost(elem, true);
                     ++numGostElements;
+                } else {
+                    grid->setIsGhost(elem, false);
                 }
                 ++elem;
                 el[elem] = idx;

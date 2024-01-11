@@ -28,13 +28,10 @@ bool Indexed::checkImpl() const
 {
     CHECK_OVERFLOW(d()->cl->size());
     CHECK_OVERFLOW(d()->el->size());
-    //CHECK_OVERFLOW(d()->isGhost->size());
 
     V_CHECK(d()->el->check());
     V_CHECK(d()->cl->check());
-    //V_CHECK(d()->isGhost->check());
     V_CHECK(d()->el->size() > 0);
-   // V_CHECK(d()->isGhost->size() == getNumElements());
     V_CHECK(el()[0] == 0);
     if (getNumElements() > 0) {
         V_CHECK(el()[getNumElements() - 1] < getNumCorners());
@@ -414,9 +411,6 @@ Indexed::Data::Data(const size_t numElements, const size_t numCorners, const siz
     cl.construct(numCorners);
     isGhost.construct(numElements);
     (*el)[0] = 0;
-    // by default, cells are normal, i.e., not ghost cells
-    for (size_t i = 0; i < numElements; i++)
-        (*isGhost)[i] = cell::NORMAL;
 }
 
 Indexed::Data::Data(const Indexed::Data &o, const std::string &name): Indexed::Base::Data(o, name), el(o.el), cl(o.cl)
