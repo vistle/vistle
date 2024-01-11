@@ -444,6 +444,8 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
                             (iy < ghostWidth[1][0] || iy + ghostWidth[1][1] >= ny) ||
                             (iz < ghostWidth[2][0] || iz + ghostWidth[2][1] >= nz)) {
                             u->setIsGhost(elem, true);
+                        } else {
+                            u->setIsGhost(elem, false);
                         }
 
                         ++elem;

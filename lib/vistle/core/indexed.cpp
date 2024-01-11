@@ -28,10 +28,13 @@ bool Indexed::checkImpl() const
 {
     CHECK_OVERFLOW(d()->cl->size());
     CHECK_OVERFLOW(d()->el->size());
+    CHECK_OVERFLOW(d()->isGhost->size());
 
     V_CHECK(d()->el->check());
     V_CHECK(d()->cl->check());
+    V_CHECK(d()->isGhost->check());
     V_CHECK(d()->el->size() > 0);
+    V_CHECK(d()->isGhost->size() == getNumElements());
     V_CHECK(el()[0] == 0);
     if (getNumElements() > 0) {
         V_CHECK(el()[getNumElements() - 1] < getNumCorners());
@@ -58,11 +61,13 @@ std::pair<Vector3, Vector3> Indexed::getBounds() const
 
 void Indexed::setIsGhost(Index index, bool setTo)
 {
+    assert(index < getNumElements());
     (this->isGhost())[index] = setTo ? cell::GHOST : cell::NORMAL;
 }
 
 bool Indexed::getIsGhost(Index index) const
 {
+    assert(index < getNumElements());
     return (this->isGhost())[index] == cell::GHOST;
 }
 
@@ -235,6 +240,7 @@ void Indexed::print(std::ostream &os) const
     Base::print(os);
     os << " cl(" << *d()->cl << ")";
     os << " el(" << *d()->el << ")";
+    os << " isGhost(" << *d()->isGhost << ")";
 }
 
 Indexed::NeighborFinder::NeighborFinder(const Indexed *indexed): indexed(indexed)
@@ -385,9 +391,11 @@ void Indexed::refreshImpl() const
     if (d) {
         m_el = d->el;
         m_cl = d->cl;
+        m_isGhost = d->isGhost;
     } else {
         m_el = nullptr;
         m_cl = nullptr;
+        m_isGhost = nullptr;
     }
     m_numEl = (d && d->el.valid()) ? d->el->size() - 1 : 0;
     m_numCl = (d && d->cl.valid()) ? d->cl->size() : 0;
