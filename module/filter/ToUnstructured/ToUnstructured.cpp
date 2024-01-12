@@ -197,6 +197,7 @@ bool ToUnstructured::compute()
         outdata->copyAttributes(data);
         outdata->setGrid(unstrGridOut);
         updateMeta(unstrGridOut);
+        updateMeta(outdata);
         addObject("data_out", outdata);
     } else {
         addObject("data_out", unstrGridOut);
