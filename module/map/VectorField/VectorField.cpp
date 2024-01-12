@@ -63,18 +63,20 @@ bool VectorField::compute()
         return true;
     }
     DataBase::ptr mapped;
-    auto data = expect<DataBase>("data_in");
-    if (data) {
-        if (data->guessMapping() != DataBase::Vertex) {
-            sendError("no per-vertex mapping for data");
-            return true;
+    DataBase::const_ptr data;
+    if (isConnected("data_in")) {
+        if (data = expect<DataBase>("data_in")) {
+            if (data->guessMapping() != DataBase::Vertex) {
+                sendError("no per-vertex mapping for data");
+                return true;
+            }
+            if (data->getSize() != numPoints) {
+                sendError("geometry size does not match data array size: #points=%lu, but #vecs=%lu",
+                          (unsigned long)numPoints, (unsigned long)data->getSize());
+                return true;
+            }
+            mapped = data->cloneType();
         }
-        if (data->getSize() != numPoints) {
-            sendError("geometry size does not match data array size: #points=%lu, but #vecs=%lu",
-                      (unsigned long)numPoints, (unsigned long)data->getSize());
-            return true;
-        }
-        mapped = data->cloneType();
     }
 
     Scalar minLen = m_range->getValue()[0];
