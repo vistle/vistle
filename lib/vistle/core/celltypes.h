@@ -12,8 +12,6 @@ namespace vistle {
 namespace cell {
 
 enum CellType {
-    TYPE_MASK = 0x3f,
-
     // make sure that these types match those from COVISE: src/kernel/do/coDoUnstructuredGrid.h
     NONE = vtkm::CELL_SHAPE_EMPTY,
     BAR = vtkm::CELL_SHAPE_LINE,

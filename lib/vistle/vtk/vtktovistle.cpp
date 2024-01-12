@@ -236,7 +236,7 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, bool checkConvex, std::
         }
 #endif
 
-        assert((typelist[elemVistle] & UnstructuredGrid::TYPE_MASK) < UnstructuredGrid::NUM_TYPES);
+        assert(typelist[elemVistle] < UnstructuredGrid::NUM_TYPES);
 
         vtkIdType npts = 0;
         IDCONST vtkIdType *pts = nullptr;

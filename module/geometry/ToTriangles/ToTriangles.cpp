@@ -601,11 +601,11 @@ bool ToTriangles::compute()
             }
             Index ntri = 0;
             for (Index e = 0; e < nelem; ++e) {
-                if ((tl[e] & UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::TRIANGLE) {
+                if (tl[e] == UnstructuredGrid::TRIANGLE) {
                     ++ntri;
                     if (perElement)
                         mult.push_back(1);
-                } else if ((tl[e] & UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::QUAD) {
+                } else if (tl[e] == UnstructuredGrid::QUAD) {
                     ntri += 2;
                     if (perElement)
                         mult.push_back(2);
@@ -622,12 +622,12 @@ bool ToTriangles::compute()
             auto tcl = &tri->cl()[0];
             for (Index e = 0; e < nelem; ++e) {
                 const Index begin = el[e], end = el[e + 1];
-                if ((tl[e] & UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::TRIANGLE) {
+                if (tl[e] == UnstructuredGrid::TRIANGLE) {
                     assert(end - begin == 3);
                     for (Index v = begin; v < end; ++v) {
                         tcl[i++] = cl[v];
                     }
-                } else if ((tl[e] & UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::QUAD) {
+                } else if (tl[e] == UnstructuredGrid::QUAD) {
                     assert(end - begin == 4);
                     for (Index v = begin; v < begin + 3; ++v) {
                         tcl[i++] = cl[v];

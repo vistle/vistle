@@ -631,7 +631,7 @@ DomainSurface::Result<Polygons> DomainSurface::createSurface(vistle::Unstructure
 
     auto processElement = [&](Index i, FaceSet &visibleFaces) {
         const Index elStart = el[i], elEnd = el[i + 1];
-        const Byte t = tl[i] & UnstructuredGrid::TYPE_MASK;
+        const Byte t = tl[i];
         if (t == UnstructuredGrid::POLYHEDRON) {
             Index faceNum = 0;
             Index facestart = InvalidIndex;
@@ -696,7 +696,7 @@ DomainSurface::Result<Polygons> DomainSurface::createSurface(vistle::Unstructure
         std::map<Edge, unsigned int> edges;
 
         auto elStart = el[i], elEnd = el[i + 1];
-        Byte t = tl[i] & UnstructuredGrid::TYPE_MASK;
+        Byte t = tl[i];
         switch (t) {
         case UnstructuredGrid::POLYHEDRON: {
             for (auto f: currentCellFaces) {
@@ -761,7 +761,7 @@ DomainSurface::Result<Polygons> DomainSurface::createSurface(vistle::Unstructure
     auto addFace = [&](Index i, Index f) {
         currentCellFaces.push_back(f);
         auto elStart = el[i], elEnd = el[i + 1];
-        Byte t = tl[i] & UnstructuredGrid::TYPE_MASK;
+        Byte t = tl[i];
         switch (t) {
         case UnstructuredGrid::POLYHEDRON: {
             Index faceNum = 0;
@@ -818,7 +818,7 @@ DomainSurface::Result<Polygons> DomainSurface::createSurface(vistle::Unstructure
             if (!showgho && ghost)
                 continue;
 
-            Byte t = tl[i] & UnstructuredGrid::TYPE_MASK;
+            Byte t = tl[i];
             bool show = true;
             switch (t) {
             case UnstructuredGrid::POLYHEDRON:
@@ -866,7 +866,7 @@ DomainSurface::Result<Polygons> DomainSurface::createSurface(vistle::Unstructure
                 Index i = containingCells.first[e];
 
                 const Index elStart = el[i], elEnd = el[i + 1];
-                const Byte t = tl[i] & UnstructuredGrid::TYPE_MASK;
+                const Byte t = tl[i];
                 if (t == UnstructuredGrid::POLYHEDRON) {
                     Index faceNum = 0;
                     Index facestart = InvalidIndex;
@@ -943,7 +943,7 @@ DomainSurface::Result<Polygons> DomainSurface::createSurface(vistle::Unstructure
             if (!showgho && ghost)
                 continue;
             startCell(i);
-            Byte t = tl[i] & UnstructuredGrid::TYPE_MASK;
+            Byte t = tl[i];
             if (t == UnstructuredGrid::POLYHEDRON) {
                 if (showpol) {
                     Index faceNum = 0;

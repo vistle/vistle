@@ -65,7 +65,7 @@ bool UnstructuredGrid::isConvex(const Index elem) const
 {
     if (elem == InvalidIndex)
         return false;
-    return convexityList()[elem] || (tl()[elem] & TYPE_MASK) == TETRAHEDRON;
+    return convexityList()[elem] || tl()[elem] == TETRAHEDRON;
 }
 
 void UnstructuredGrid::setConvex(Index elem, bool isConvex)
@@ -94,7 +94,7 @@ Index UnstructuredGrid::checkConvexity()
 
     Index nonConvexCount = 0;
     for (Index elem = 0; elem < nelem; ++elem) {
-        auto type = tl[elem] & TYPE_MASK;
+        auto type = tl[elem];
         switch (type) {
         case NONE:
         case BAR:
@@ -197,7 +197,7 @@ Index UnstructuredGrid::checkConvexity()
             break;
         }
         default:
-            std::cerr << "invalid element type " << (tl[elem] & TYPE_MASK) << std::endl;
+            std::cerr << "invalid element type " << tl[elem] << std::endl;
             ++nonConvexCount;
             break;
         }
@@ -341,7 +341,7 @@ std::vector<Index> UnstructuredGrid::getNeighborElements(Index elem) const
 
 Index UnstructuredGrid::cellNumFaces(Index elem) const
 {
-    auto t = tl()[elem] & TYPE_MASK;
+    auto t = tl()[elem];
     switch (t) {
     case NONE:
     case BAR:
@@ -378,7 +378,7 @@ bool UnstructuredGrid::insideConvex(Index elem, const Vector3 &point) const
     const Scalar *y = &this->y()[0];
     const Scalar *z = &this->z()[0];
 
-    const auto type(tl()[elem] & TYPE_MASK);
+    const auto type(tl()[elem]);
     if (type == UnstructuredGrid::POLYHEDRON) {
         const Index begin = el[elem], end = el[elem + 1];
         const Index nvert = end - begin;
@@ -427,7 +427,7 @@ Scalar UnstructuredGrid::exitDistance(Index elem, const Vector3 &point, const Ve
     const Vector3 raydir(dir.normalized());
 
     Scalar exitDist = -1;
-    const auto type(tl()[elem] & TYPE_MASK);
+    const auto type(tl()[elem]);
     if (type == UnstructuredGrid::POLYHEDRON) {
         const Index nvert = end - begin;
         Index term = 0;
@@ -502,7 +502,7 @@ bool UnstructuredGrid::inside(Index elem, const Vector3 &point) const
     if (isConvex(elem))
         return insideConvex(elem, point);
 
-    const auto type = tl()[elem] & TYPE_MASK;
+    const auto type = tl()[elem];
     const Index begin = el()[elem];
     const Index end = el()[elem + 1];
     const Index *cl = &this->cl()[begin];
@@ -538,7 +538,7 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
     std::vector<Index> indices((mode == Linear || mode == Mean) ? nvert : 1);
 
     if (mode == Mean) {
-        if ((tl[elem] & TYPE_MASK) == POLYHEDRON) {
+        if (tl[elem] == POLYHEDRON) {
             indices = cellVertices(elem);
             const Index n = indices.size();
             Scalar w = Scalar(1) / n;
@@ -551,7 +551,7 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
             }
         }
     } else if (mode == Linear) {
-        switch (tl[elem] & TYPE_MASK) {
+        switch (tl[elem]) {
         case TETRAHEDRON: {
             assert(nvert == 4);
             Vector3 coord[4];
@@ -852,7 +852,7 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
 
 std::pair<Vector3, Vector3> UnstructuredGrid::elementBounds(Index elem) const
 {
-    const auto t = tl()[elem] & UnstructuredGrid::TYPE_MASK;
+    const auto t = tl()[elem];
     if (NumVertices[t] >= 0) {
         return Base::elementBounds(elem);
     }
@@ -866,7 +866,7 @@ std::pair<Vector3, Vector3> UnstructuredGrid::elementBounds(Index elem) const
 
 std::vector<Index> UnstructuredGrid::cellVertices(Index elem) const
 {
-    const auto t = tl()[elem] & UnstructuredGrid::TYPE_MASK;
+    const auto t = tl()[elem];
     if (NumVertices[t] >= 0) {
         return Base::cellVertices(elem);
     }

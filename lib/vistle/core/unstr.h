@@ -16,8 +16,6 @@ class V_COREEXPORT UnstructuredGrid: public Indexed, virtual public GridInterfac
 public:
     typedef Indexed Base;
     enum Type {
-        TYPE_MASK = cell::TYPE_MASK,
-
         NONE = cell::NONE, // 0
         POINT = cell::POINT, // 1
         BAR = cell::BAR, // 3

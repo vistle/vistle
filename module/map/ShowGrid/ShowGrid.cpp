@@ -102,7 +102,6 @@ bool ShowGrid::compute()
                     ((showgho && ghost) || (shownor && !ghost)) && ((showconv && conv) || (shownonconv && !conv));
                 if (!show)
                     continue;
-                type &= vistle::UnstructuredGrid::TYPE_MASK;
                 if (!showTypes[type])
                     continue;
 

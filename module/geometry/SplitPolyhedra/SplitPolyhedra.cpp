@@ -64,9 +64,10 @@ bool SplitPolyhedra::compute()
     auto &oel = simple->el();
     auto &otl = simple->tl();
     auto &ocl = simple->cl();
+    auto &oGhost = simple->isGhost();
+    auto &oConvex = simple->convexityList();
     for (Index elem = 0; elem < nelem; ++elem) {
-        Byte type = itl[elem] & UnstructuredGrid::TYPE_MASK;
-        Byte flags = itl[elem] & ~UnstructuredGrid::TYPE_MASK;
+        Byte type = itl[elem];
 
         if (type == UnstructuredGrid::POLYHEDRON) {
             const Index begin = iel[elem], end = iel[elem + 1];
@@ -105,7 +106,9 @@ bool SplitPolyhedra::compute()
             // try to recover simple cells
             Index ntri = tri.size(), nquad = quad.size();
             if (nvert == 4 && nface == 4 && ntri == 4 && nquad == 0) {
-                otl.push_back(UnstructuredGrid::TETRAHEDRON | flags);
+                otl.push_back(UnstructuredGrid::TETRAHEDRON);
+                oGhost.push_back(grid->getIsGhost(elem));
+                oConvex.push_back(grid->isConvex(elem));
                 const auto T = R(icl + tri[0], 3);
                 assert(T.size() == 3);
                 for (auto c: T)
@@ -118,7 +121,9 @@ bool SplitPolyhedra::compute()
                 }
                 oel.push_back(ocl.size());
             } else if (nvert == 5 && nface == 5 && ntri == 4 && nquad == 1) {
-                otl.push_back(UnstructuredGrid::PYRAMID | flags);
+                otl.push_back(UnstructuredGrid::PYRAMID);
+                oGhost.push_back(grid->getIsGhost(elem));
+                oConvex.push_back(grid->isConvex(elem));
                 const auto Q = R(icl + quad[0], 4);
                 assert(Q.size() == 4);
                 for (auto c: Q)
@@ -131,7 +136,9 @@ bool SplitPolyhedra::compute()
                 }
                 oel.push_back(ocl.size());
             } else if (nvert == 6 && nface == 5 && ntri == 2 && nquad == 3) {
-                otl.push_back(UnstructuredGrid::PRISM | flags);
+                otl.push_back(UnstructuredGrid::PRISM);
+                oGhost.push_back(grid->getIsGhost(elem));
+                oConvex.push_back(grid->isConvex(elem));
                 auto Tb = R(icl + tri[0], 3);
                 auto Tt = R(icl + tri[1], 3);
 
@@ -172,7 +179,9 @@ bool SplitPolyhedra::compute()
                     ocl.push_back(Tt[(offset + 3 - t) % 3]);
                 oel.push_back(ocl.size());
             } else if (nvert == 8 && nface == 6 && ntri == 0 && nquad == 6) {
-                otl.push_back(UnstructuredGrid::HEXAHEDRON | flags);
+                otl.push_back(UnstructuredGrid::HEXAHEDRON);
+                oGhost.push_back(grid->getIsGhost(elem));
+                oConvex.push_back(grid->isConvex(elem));
                 auto Qb = R(icl + quad[0], 4); // bottom face
                 // find top face
                 Index nt = 1;
@@ -239,12 +248,16 @@ bool SplitPolyhedra::compute()
 
                 for (auto &face: oppositeFaces) {
                     if (face.size() == 3) {
-                        otl.push_back(UnstructuredGrid::TETRAHEDRON | flags);
+                        otl.push_back(UnstructuredGrid::TETRAHEDRON);
+                        oGhost.push_back(grid->getIsGhost(elem));
+                        oConvex.push_back(grid->isConvex(elem));
                         std::copy(face.begin(), face.end(), std::back_inserter(ocl));
                         ocl.push_back(V);
                         oel.push_back(ocl.size());
                     } else if (face.size() == 4) {
-                        otl.push_back(UnstructuredGrid::PYRAMID | flags);
+                        otl.push_back(UnstructuredGrid::PYRAMID);
+                        oGhost.push_back(grid->getIsGhost(elem));
+                        oConvex.push_back(grid->isConvex(elem));
                         std::copy(face.begin(), face.end(), std::back_inserter(ocl));
                         ocl.push_back(V);
                         oel.push_back(ocl.size());
@@ -256,7 +269,9 @@ bool SplitPolyhedra::compute()
                         // split in same order as for face from neighboring cell
                         if (*prev > *next) {
                             while (next != prev) {
-                                otl.push_back(UnstructuredGrid::TETRAHEDRON | flags);
+                                otl.push_back(UnstructuredGrid::TETRAHEDRON);
+                                oGhost.push_back(grid->getIsGhost(elem));
+                                oConvex.push_back(grid->isConvex(elem));
                                 ocl.push_back(v);
                                 ocl.push_back(*next);
                                 ++next;
@@ -268,7 +283,9 @@ bool SplitPolyhedra::compute()
                             }
                         } else {
                             while (prev != next) {
-                                otl.push_back(UnstructuredGrid::TETRAHEDRON | flags);
+                                otl.push_back(UnstructuredGrid::TETRAHEDRON);
+                                oGhost.push_back(grid->getIsGhost(elem));
+                                oConvex.push_back(grid->isConvex(elem));
                                 ocl.push_back(v);
                                 ocl.push_back(*prev);
                                 if (prev == face.begin())
@@ -284,7 +301,9 @@ bool SplitPolyhedra::compute()
             }
         } else {
             // retain simple cells
-            otl.push_back(type | flags);
+            otl.push_back(type);
+            oGhost.push_back(grid->getIsGhost(elem));
+            oConvex.push_back(grid->isConvex(elem));
             const Index begin = iel[elem], end = iel[elem + 1];
             std::copy(icl + begin, icl + end, std::back_inserter(ocl));
             oel.push_back(ocl.size());
