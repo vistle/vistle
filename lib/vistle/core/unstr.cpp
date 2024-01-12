@@ -26,6 +26,9 @@ void UnstructuredGrid::resetElements()
 
     d()->tl = ShmVector<Byte>();
     d()->tl.construct(0);
+
+    d()->convexityList = ShmVector<Byte>();
+    d()->convexityList.construct(0);
 }
 
 bool UnstructuredGrid::isEmpty()
@@ -41,9 +44,12 @@ bool UnstructuredGrid::isEmpty() const
 bool UnstructuredGrid::checkImpl() const
 {
     CHECK_OVERFLOW(d()->tl->size());
+    CHECK_OVERFLOW(d()->convexityList->size());
 
     V_CHECK(d()->tl->check());
     V_CHECK(d()->tl->size() == getNumElements());
+    V_CHECK(d()->convexityList->check());
+    V_CHECK(d()->convexityList->size() == getNumElements());
 
     return true;
 }
@@ -52,13 +58,20 @@ void UnstructuredGrid::print(std::ostream &os) const
 {
     Base::print(os);
     os << " tl(" << *d()->tl << ")";
+    os << " convexityList(" << *d()->convexityList << ")";
 }
 
 bool UnstructuredGrid::isConvex(const Index elem) const
 {
     if (elem == InvalidIndex)
         return false;
-    return tl()[elem] & CONVEX_BIT || (tl()[elem] & TYPE_MASK) == TETRAHEDRON;
+    return convexityList()[elem] || (tl()[elem] & TYPE_MASK) == TETRAHEDRON;
+}
+
+void UnstructuredGrid::setConvex(Index elem, bool isConvex)
+{
+    assert(elem != InvalidIndex);
+    convexityList()[elem] = isConvex;
 }
 
 bool UnstructuredGrid::isGhostCell(const Index elem) const
@@ -87,13 +100,14 @@ Index UnstructuredGrid::checkConvexity()
         case BAR:
         case TRIANGLE:
         case POINT:
-            tl[elem] |= CONVEX_BIT;
+            setConvex(elem, true);
             break;
         case QUAD:
+            setConvex(elem, false);
             ++nonConvexCount;
             break;
         case TETRAHEDRON:
-            tl[elem] |= CONVEX_BIT;
+            setConvex(elem, true);
             break;
         case PRISM:
         case PYRAMID:
@@ -128,8 +142,9 @@ Index UnstructuredGrid::checkConvexity()
                     break;
             }
             if (conv) {
-                tl[elem] |= CONVEX_BIT;
+                setConvex(elem, true);
             } else {
+                setConvex(elem, false);
                 ++nonConvexCount;
             }
             break;
@@ -175,9 +190,9 @@ Index UnstructuredGrid::checkConvexity()
             }
 
             if (conv) {
-                tl[elem] |= CONVEX_BIT;
+                setConvex(elem, true);
             } else {
-                ++nonConvexCount;
+                setConvex(elem, false);
             }
             break;
         }
@@ -879,8 +894,10 @@ void UnstructuredGrid::refreshImpl() const
     const Data *d = static_cast<Data *>(m_data);
     if (d) {
         m_tl = d->tl;
+        m_convexityList = d->convexityList;
     } else {
         m_tl = nullptr;
+        m_convexityList = nullptr;
     }
 }
 
@@ -888,7 +905,7 @@ void UnstructuredGrid::Data::initData()
 {}
 
 UnstructuredGrid::Data::Data(const UnstructuredGrid::Data &o, const std::string &n)
-: UnstructuredGrid::Base::Data(o, n), tl(o.tl)
+: UnstructuredGrid::Base::Data(o, n), tl(o.tl), convexityList(o.convexityList)
 {
     initData();
 }
@@ -899,6 +916,7 @@ UnstructuredGrid::Data::Data(const size_t numElements, const size_t numCorners, 
 {
     initData();
     tl.construct(numElements);
+    convexityList.construct(numElements);
 }
 
 UnstructuredGrid::Data *UnstructuredGrid::Data::create(const size_t numElements, const size_t numCorners,

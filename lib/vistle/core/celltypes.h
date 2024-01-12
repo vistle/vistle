@@ -12,7 +12,6 @@ namespace vistle {
 namespace cell {
 
 enum CellType {
-    CONVEX_BIT = 0x40, //<! cell was checked to be convex
     TYPE_MASK = 0x3f,
 
     // make sure that these types match those from COVISE: src/kernel/do/coDoUnstructuredGrid.h

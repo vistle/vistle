@@ -362,7 +362,7 @@ struct ComputeOutput {
             lerp(m_data.m_inVertPtrB[j][cl[v1]], m_data.m_inVertPtrB[j][cl[v2]], t); \
     }
 
-            switch (m_data.m_tl[CellNr] & ~UnstructuredGrid::CONVEX_BIT) {
+            switch (m_data.m_tl[CellNr]) {
             case UnstructuredGrid::HEXAHEDRON: {
                 Scalar field[8];
                 for (int idx = 0; idx < 8; idx++) {
@@ -836,7 +836,7 @@ struct ComputeOutputSizes {
 
             Index begin = m_data.m_el[CellNr], end = m_data.m_el[CellNr + 1];
             Index nvert = end - begin;
-            Byte CellType = m_data.m_tl[CellNr] & ~UnstructuredGrid::CONVEX_BIT;
+            Byte CellType = m_data.m_tl[CellNr];
             if (CellType != UnstructuredGrid::POLYHEDRON) {
                 for (Index idx = 0; idx < nvert; idx++) {
                     tableIndex += (((int)(m_data.m_isoFunc(m_data.m_cl[begin + idx]) > m_data.m_isovalue)) << idx);

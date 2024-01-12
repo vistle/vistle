@@ -96,7 +96,7 @@ bool ShowGrid::compute()
             for (Index index = begin; index < end; ++index) {
                 auto type = unstr->tl()[index];
                 const bool ghost = unstr->getIsGhost(index);
-                const bool conv = type & UnstructuredGrid::CONVEX_BIT;
+                const bool conv = unstr->isConvex(index);
 
                 const bool show =
                     ((showgho && ghost) || (shownor && !ghost)) && ((showconv && conv) || (shownonconv && !conv));
