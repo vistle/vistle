@@ -454,9 +454,6 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
                 }
             }
 
-            if (checkConvexity())
-                u->checkConvexity();
-
             geoOut = u;
         } else if (geoMode == Point_Geometry) {
             Points::ptr p(new Points(numVert));

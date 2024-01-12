@@ -26,9 +26,6 @@ void UnstructuredGrid::resetElements()
 
     d()->tl = ShmVector<Byte>();
     d()->tl.construct(0);
-
-    d()->convexityList = ShmVector<Byte>();
-    d()->convexityList.construct(0);
 }
 
 bool UnstructuredGrid::isEmpty()
@@ -44,12 +41,9 @@ bool UnstructuredGrid::isEmpty() const
 bool UnstructuredGrid::checkImpl() const
 {
     CHECK_OVERFLOW(d()->tl->size());
-    CHECK_OVERFLOW(d()->convexityList->size());
 
     V_CHECK(d()->tl->check());
     V_CHECK(d()->tl->size() == getNumElements());
-    V_CHECK(d()->convexityList->check());
-    V_CHECK(d()->convexityList->size() == getNumElements());
 
     return true;
 }
@@ -58,20 +52,6 @@ void UnstructuredGrid::print(std::ostream &os) const
 {
     Base::print(os);
     os << " tl(" << *d()->tl << ")";
-    os << " convexityList(" << *d()->convexityList << ")";
-}
-
-bool UnstructuredGrid::isConvex(const Index elem) const
-{
-    if (elem == InvalidIndex)
-        return false;
-    return convexityList()[elem] || tl()[elem] == TETRAHEDRON;
-}
-
-void UnstructuredGrid::setConvex(Index elem, bool isConvex)
-{
-    assert(elem != InvalidIndex);
-    convexityList()[elem] = isConvex;
 }
 
 bool UnstructuredGrid::isGhostCell(const Index elem) const
@@ -79,131 +59,6 @@ bool UnstructuredGrid::isGhostCell(const Index elem) const
     if (elem == InvalidIndex)
         return false;
     return isGhost(elem);
-}
-
-Index UnstructuredGrid::checkConvexity()
-{
-    const Scalar Tolerance = 1e-3f;
-    const Index nelem = getNumElements();
-    auto tl = this->tl().data();
-    const auto cl = this->cl().data();
-    const auto el = this->el().data();
-    const auto x = this->x().data();
-    const auto y = this->y().data();
-    const auto z = this->z().data();
-
-    Index nonConvexCount = 0;
-    for (Index elem = 0; elem < nelem; ++elem) {
-        auto type = tl[elem];
-        switch (type) {
-        case NONE:
-        case BAR:
-        case TRIANGLE:
-        case POINT:
-            setConvex(elem, true);
-            break;
-        case QUAD:
-            setConvex(elem, false);
-            ++nonConvexCount;
-            break;
-        case TETRAHEDRON:
-            setConvex(elem, true);
-            break;
-        case PRISM:
-        case PYRAMID:
-        case HEXAHEDRON: {
-            bool conv = true;
-            const Index begin = el[elem], end = el[elem + 1];
-            const Index nvert = end - begin;
-            const auto numFaces = NumFaces[type];
-            for (int f = 0; f < numFaces; ++f) {
-                auto nc = faceNormalAndCenter(type, f, cl + begin, x, y, z);
-                auto normal = nc.first;
-                auto center = nc.second;
-                for (Index idx = 0; idx < nvert; ++idx) {
-                    bool check = true;
-                    for (Index i = 0; i < FaceSizes[type][f]; ++i) {
-                        if (idx == FaceVertices[type][f][i]) {
-                            check = false;
-                            break;
-                        }
-                    }
-
-                    if (check) {
-                        Index v = cl[begin + idx];
-                        const Vector3 p(x[v], y[v], z[v]);
-                        if (normal.dot(p - center) > Tolerance) {
-                            conv = false;
-                            break;
-                        }
-                    }
-                }
-                if (!conv)
-                    break;
-            }
-            if (conv) {
-                setConvex(elem, true);
-            } else {
-                setConvex(elem, false);
-                ++nonConvexCount;
-            }
-            break;
-        }
-        case POLYHEDRON: {
-            bool conv = true;
-            std::vector<Index> vert = cellVertices(elem);
-            const Index begin = el[elem], end = el[elem + 1];
-            const Index nvert = end - begin;
-            Index facestart = InvalidIndex;
-            Index term = 0;
-            for (Index i = 0; i < nvert; ++i) {
-                if (facestart == InvalidIndex) {
-                    facestart = i;
-                    term = cl[begin + i];
-                } else if (cl[begin + i] == term) {
-                    const Index N = i - facestart;
-                    const Index *fl = cl + begin + facestart;
-                    auto nc = faceNormalAndCenter(N, fl, x, y, z);
-                    auto normal = nc.first;
-                    auto center = nc.second;
-                    for (auto v: vert) {
-                        bool check = true;
-                        for (unsigned idx = 0; idx < N; ++idx) {
-                            if (v == fl[idx]) {
-                                check = false;
-                                break;
-                            }
-                        }
-
-                        if (check) {
-                            const Vector3 p(x[v], y[v], z[v]);
-                            if (normal.dot(p - center) > Tolerance) {
-                                conv = false;
-                                break;
-                            }
-                        }
-                    }
-                    if (!conv)
-                        break;
-                    facestart = InvalidIndex;
-                }
-            }
-
-            if (conv) {
-                setConvex(elem, true);
-            } else {
-                setConvex(elem, false);
-            }
-            break;
-        }
-        default:
-            std::cerr << "invalid element type " << tl[elem] << std::endl;
-            ++nonConvexCount;
-            break;
-        }
-    }
-
-    return nonConvexCount;
 }
 
 std::pair<Vector3, Vector3> UnstructuredGrid::cellBounds(Index elem) const
@@ -365,56 +220,6 @@ Index UnstructuredGrid::cellNumFaces(Index elem) const
     return -1;
 }
 
-
-bool UnstructuredGrid::insideConvex(Index elem, const Vector3 &point) const
-{
-    //const Scalar Tolerance = 1e-2*cellDiameter(elem); // too slow: halves particle tracing speed
-    //const Scalar Tolerance = 1e-5;
-    const Scalar Tolerance = 0;
-
-    const Index *el = &this->el()[0];
-    const Index *cl = &this->cl()[el[elem]];
-    const Scalar *x = &this->x()[0];
-    const Scalar *y = &this->y()[0];
-    const Scalar *z = &this->z()[0];
-
-    const auto type(tl()[elem]);
-    if (type == UnstructuredGrid::POLYHEDRON) {
-        const Index begin = el[elem], end = el[elem + 1];
-        const Index nvert = end - begin;
-        Index facestart = InvalidIndex;
-        Index term = 0;
-        for (Index i = 0; i < nvert; ++i) {
-            if (facestart == InvalidIndex) {
-                term = cl[i];
-            } else if (cl[i] == term) {
-                const auto nc = faceNormalAndCenter(i - facestart, &cl[facestart], x, y, z);
-                auto &normal = nc.first;
-                auto &center = nc.second;
-                if (normal.dot(point - center) > Tolerance)
-                    return false;
-                facestart = InvalidIndex;
-            }
-        }
-        return true;
-    } else {
-        const auto numFaces = NumFaces[type];
-        for (int f = 0; f < numFaces; ++f) {
-            const auto nc = faceNormalAndCenter(type, f, cl, x, y, z);
-            auto &normal = nc.first;
-            auto &center = nc.second;
-
-            //std::cerr << "normal: " << n.transpose() << ", v0: " << v0.transpose() << ", rel: " << (point-v0).transpose() << ", dot: " << n.dot(point-v0) << std::endl;
-
-            if (normal.dot(point - center) > Tolerance)
-                return false;
-        }
-        return true;
-    }
-
-    return false;
-}
-
 Scalar UnstructuredGrid::exitDistance(Index elem, const Vector3 &point, const Vector3 &dir) const
 {
     const Index *el = &this->el()[0];
@@ -498,9 +303,6 @@ bool UnstructuredGrid::inside(Index elem, const Vector3 &point) const
 {
     if (elem == InvalidIndex)
         return false;
-
-    if (isConvex(elem))
-        return insideConvex(elem, point);
 
     const auto type = tl()[elem];
     const Index begin = el()[elem];
@@ -894,10 +696,8 @@ void UnstructuredGrid::refreshImpl() const
     const Data *d = static_cast<Data *>(m_data);
     if (d) {
         m_tl = d->tl;
-        m_convexityList = d->convexityList;
     } else {
         m_tl = nullptr;
-        m_convexityList = nullptr;
     }
 }
 
@@ -905,7 +705,7 @@ void UnstructuredGrid::Data::initData()
 {}
 
 UnstructuredGrid::Data::Data(const UnstructuredGrid::Data &o, const std::string &n)
-: UnstructuredGrid::Base::Data(o, n), tl(o.tl), convexityList(o.convexityList)
+: UnstructuredGrid::Base::Data(o, n), tl(o.tl)
 {
     initData();
 }
@@ -916,7 +716,6 @@ UnstructuredGrid::Data::Data(const size_t numElements, const size_t numCorners, 
 {
     initData();
     tl.construct(numElements);
-    convexityList.construct(numElements);
 }
 
 UnstructuredGrid::Data *UnstructuredGrid::Data::create(const size_t numElements, const size_t numCorners,

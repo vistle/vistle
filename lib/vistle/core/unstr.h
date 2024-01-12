@@ -179,17 +179,10 @@ public:
     shm<Byte>::array &tl() { return *d()->tl; }
     const ShmArrayProxy<Byte> &tl() const { return m_tl; }
 
-    shm<Byte>::array &convexityList() { return *d()->convexityList; }
-    const ShmArrayProxy<Byte> &convexityList() const { return m_convexityList; }
-
-    bool isConvex(Index elem) const;
-    void setConvex(Index elem, bool isConvex);
     bool isGhostCell(Index elem) const override;
     std::pair<Vector3, Vector3> cellBounds(Index elem) const override;
     Index findCell(const Vector3 &point, Index hint = InvalidIndex, int flags = NoFlags) const override;
-    bool insideConvex(Index elem, const Vector3 &point) const;
     bool inside(Index elem, const Vector3 &point) const override;
-    Index checkConvexity(); //< return number of non-convex cells
     Scalar exitDistance(Index elem, const Vector3 &point, const Vector3 &dir) const override;
 
     Interpolator getInterpolator(Index elem, const Vector3 &point, Mapping mapping = Vertex,
@@ -203,11 +196,9 @@ public:
 
 private:
     mutable ShmArrayProxy<Byte> m_tl;
-    mutable ShmArrayProxy<Byte> m_convexityList;
 
     V_DATA_BEGIN(UnstructuredGrid);
     ShmVector<Byte> tl;
-    ShmVector<Byte> convexityList;
 
     Data(const size_t numElements = 0, const size_t numCorners = 0, const size_t numVertices = 0,
          const std::string &name = "", const Meta &meta = Meta());

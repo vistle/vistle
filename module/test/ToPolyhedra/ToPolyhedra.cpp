@@ -57,7 +57,6 @@ bool ToPolyhedra::compute()
         Byte t = itl[elem];
         otl[elem] = UnstructuredGrid::POLYHEDRON;
         poly->setGhost(elem, grid->isGhost(elem));
-        poly->setConvex(elem, grid->isConvex(elem));
         // create COVISE polyhedra (lists of faces, where each face is terminated by repeating its first vertex)
         if (t == UnstructuredGrid::POLYHEDRON) {
             const Index begin = iel[elem], end = iel[elem + 1];

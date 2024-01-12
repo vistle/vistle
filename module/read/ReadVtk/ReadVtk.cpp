@@ -536,7 +536,7 @@ bool ReadVtk::load(Token &token, const std::string &filename, const vistle::Meta
     }
 
     std::string diagnostics;
-    auto grid = vistle::vtk::toGrid(dobj, checkConvexity(), &diagnostics);
+    auto grid = vistle::vtk::toGrid(dobj, &diagnostics);
     if (grid) {
         if (!part.empty())
             grid->addAttribute("_part", part);
