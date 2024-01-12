@@ -56,7 +56,6 @@ std::pair<Vector3, Vector3> Indexed::getBounds() const
     return Base::getMinMax();
 }
 
-/*
 void Indexed::setIsGhost(Index index, bool setTo)
 {
     assert(index < getNumElements());
@@ -68,7 +67,6 @@ bool Indexed::getIsGhost(Index index) const
     assert(index < getNumElements());
     return (this->isGhost())[index] == cell::GHOST;
 }
-*/
 
 bool Indexed::hasCelltree() const
 {
@@ -390,11 +388,11 @@ void Indexed::refreshImpl() const
     if (d) {
         m_el = d->el;
         m_cl = d->cl;
-        //m_isGhost = d->isGhost;
+        m_isGhost = d->isGhost;
     } else {
         m_el = nullptr;
         m_cl = nullptr;
-        //m_isGhost = nullptr;
+        m_isGhost = nullptr;
     }
     m_numEl = (d && d->el.valid()) ? d->el->size() - 1 : 0;
     m_numCl = (d && d->cl.valid()) ? d->cl->size() : 0;
@@ -411,7 +409,7 @@ Indexed::Data::Data(const size_t numElements, const size_t numCorners, const siz
     CHECK_OVERFLOW(numCorners);
     el.construct(numElements + 1);
     cl.construct(numCorners);
-    //isGhost.construct(numElements);
+    isGhost.construct(numElements);
     (*el)[0] = 0;
 }
 
