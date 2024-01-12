@@ -230,9 +230,9 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, bool checkConvex, std::
 #if VTK_MAJOR_VERSION >= 7
         if (ghostArray &&
             const_cast<vtkUnsignedCharArray *>(ghostArray)->GetValue(i) & vtkDataSetAttributes::DUPLICATECELL) {
-            cugrid->setIsGhost(elemVistle, true);
+            cugrid->setGhost(elemVistle, true);
         } else {
-            cugrid->setIsGhost(elemVistle, false);
+            cugrid->setGhost(elemVistle, false);
         }
 #endif
 

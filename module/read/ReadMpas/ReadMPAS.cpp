@@ -603,7 +603,7 @@ bool ReadMPAS::addCell(Index elem, bool ghost, Index &curElem, UnstructuredGrid:
     cl[idx2++] = vocList[elemRow] - 1 + numVert + izVert;
     tl[curElem] = UnstructuredGrid::POLYHEDRON;
     
-    uGrid->setIsGhost(curElem, ghost);
+    uGrid->setGhost(curElem, ghost);
 
     ++curElem;
     return true;
@@ -642,7 +642,7 @@ bool ReadMPAS::addWedge(bool ghost, Index &curElem, Index center, Index n1, Inde
     cl[idx2++] = n2 + off;
     tl[curElem] = UnstructuredGrid::PRISM;
     if (ghost)
-        uGrid->setIsGhost(curElem, true);
+        uGrid->setGhost(curElem, true);
     ++curElem;
 
     return true;

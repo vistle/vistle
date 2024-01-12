@@ -814,7 +814,7 @@ DomainSurface::Result<Polygons> DomainSurface::createSurface(vistle::Unstructure
             const auto &i = f.elem;
             if (i == InvalidIndex)
                 continue;
-            bool ghost = m_grid_in->getIsGhost(i);
+            bool ghost = m_grid_in->isGhost(i);
             if (!showgho && ghost)
                 continue;
 
@@ -939,7 +939,7 @@ DomainSurface::Result<Polygons> DomainSurface::createSurface(vistle::Unstructure
         auto nf = m_grid_in->getNeighborFinder();
         for (Index i = 0; i < num_elem; ++i) {
             const Index elStart = el[i], elEnd = el[i + 1];
-            bool ghost = m_grid_in->getIsGhost(i);
+            bool ghost = m_grid_in->isGhost(i);
             if (!showgho && ghost)
                 continue;
             startCell(i);

@@ -249,10 +249,10 @@ void createGrid(MiniSimModule::InternalsType *Internals, int blockId, long step,
                 if ((ix < ghostWidth[0][0] || ix + ghostWidth[0][1] >= nx) ||
                     (iy < ghostWidth[1][0] || iy + ghostWidth[1][1] >= ny) ||
                     (iz < ghostWidth[2][0] || iz + ghostWidth[2][1] >= nz)) {
-                    grid->setIsGhost(elem, true);
+                    grid->setGhost(elem, true);
                     ++numGostElements;
                 } else {
-                    grid->setIsGhost(elem, false);
+                    grid->setGhost(elem, false);
                 }
                 ++elem;
                 el[elem] = idx;

@@ -1216,7 +1216,7 @@ void ReadFOAM::applyGhostCells(int processor, GhostMode mode)
     auto &el = grid->el();
     auto &cl = grid->cl();
     auto &tl = grid->tl();
-    auto &isGhost = grid->isGhost();
+    auto &ghost = grid->ghost();
     auto &x = grid->x();
     auto &y = grid->y();
     auto &z = grid->z();
@@ -1265,7 +1265,7 @@ void ReadFOAM::applyGhostCells(int processor, GhostMode mode)
                 }
                 el.push_back(cl.size());
                 tl.push_back(tlIn[cell]);
-                isGhost.push_back(cell::GHOST);
+                ghost.push_back(cell::GHOST);
             }
         }
 

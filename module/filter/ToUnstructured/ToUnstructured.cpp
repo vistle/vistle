@@ -106,7 +106,7 @@ bool ToUnstructured::compute()
             // construct type list and element list
             for (Index i = 0; i < numElements; i++) {
                 unstrGridOut->tl()[i] = CellType;
-                unstrGridOut->setIsGhost(i, grid->isGhostCell(i));
+                unstrGridOut->setGhost(i, grid->isGhostCell(i));
                 unstrGridOut->el()[i] = i * NumCellCorners;
             }
 

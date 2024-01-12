@@ -157,7 +157,7 @@ void fillTypeConnAndElemLists(const visit_handle &meshHandle, vistle::Unstructur
 
         mesh->el().push_back(elemIndex);
         mesh->tl().push_back(elemType);
-        mesh->isGhost().push_back(isGhostCell ? cell::GHOST : cell::NORMAL);
+        mesh->ghost().push_back(isGhostCell ? cell::GHOST : cell::NORMAL);
     }
 }
 

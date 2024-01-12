@@ -78,7 +78,7 @@ bool UnstructuredGrid::isGhostCell(const Index elem) const
 {
     if (elem == InvalidIndex)
         return false;
-    return getIsGhost(elem);
+    return isGhost(elem);
 }
 
 Index UnstructuredGrid::checkConvexity()

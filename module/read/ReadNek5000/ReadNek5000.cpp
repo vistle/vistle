@@ -104,7 +104,7 @@ Object::ptr ReadNek::readGrid(int timestep, nek5000::PartitionReader &partitionR
 
     partitionReader.fillGrid({grid->x().data(), grid->y().data(), grid->z().data()});
     std::fill_n(grid->tl().data(), hexes - ghostHexes, elemType);
-    std::fill_n(grid->isGhost().data() + hexes - ghostHexes, ghostHexes, cell::GHOST);
+    std::fill_n(grid->ghost().data() + hexes - ghostHexes, ghostHexes, cell::GHOST);
     partitionReader.fillConnectivityList(grid->cl().data());
     int numCorners = partitionReader.getDim() == 2 ? 4 : 8;
     for (size_t i = 0; i < hexes + 1; i++) {
