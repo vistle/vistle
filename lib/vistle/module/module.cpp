@@ -1084,6 +1084,12 @@ Object::const_ptr Module::expect<Object>(Port *port)
         sendError(str.str());
         return nullptr;
     }
+    if (!isConnected(*port)) {
+        std::stringstream str;
+        str << "port " << port->getName() << " is not connected" << std::endl;
+        sendError(str.str());
+        return nullptr;
+    }
     if (port->objects().empty()) {
         if (schedulingPolicy() == message::SchedulingPolicy::Single) {
             std::stringstream str;
