@@ -2218,7 +2218,6 @@ bool Hub::handlePriv(const message::Spawn &spawnRecv)
             spawn.setName("Thicken");
         }
         bool restart = spawn.getReferenceType() == message::Spawn::ReferenceType::Migrate;
-        bool isMirror = spawn.getReferenceType() == message::Spawn::ReferenceType::Mirror;
         bool shouldMirror = (spawn.getReferenceType() == message::Spawn::ReferenceType::None && isCover) &&
                             m_stateTracker.getHubData(spawn.hubId()).hasUi;
         bool clone = spawn.getReferenceType() == message::Spawn::ReferenceType::Clone;
