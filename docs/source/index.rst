@@ -11,9 +11,10 @@ The Vistle system is modular and can be extended easily with additional visualiz
 
 More infos about Architecture: https://vistle.io/architecture/
 
-* :ref:`build-docs`
-* :ref:`user-docs`
-* :ref:`dev-docs`
+..
+   * :ref:`build-docs`
+   * :ref:`user-docs`
+   * :ref:`dev-docs`
 
 .. _build-docs:
 
