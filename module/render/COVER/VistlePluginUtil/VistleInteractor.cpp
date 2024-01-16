@@ -7,15 +7,14 @@
 
 using namespace vistle;
 
-VistleInteractor::VistleInteractor(const Module *owner, const std::string &moduleName, int moduleId)
-: m_owner(owner)
+VistleInteractor::VistleInteractor(const MessageSender *sender, const std::string &moduleName, int moduleId)
+: m_sender(sender)
 , m_moduleName(moduleName)
 , m_pluginName(moduleName)
 , m_moduleId(moduleId)
 , m_object(new ModuleRenderObject(m_moduleName, m_moduleId))
 {
-    const auto &hub = owner->getHub();
-    m_hubName = hub.name;
+    m_hubName = "hub for " + std::to_string(moduleId);
 }
 
 VistleInteractor::~VistleInteractor()
@@ -336,7 +335,7 @@ int VistleInteractor::getFileBrowserParam(const std::string &paraName, char *&va
 
 void VistleInteractor::sendMessage(const message::Message &msg) const
 {
-    m_owner->sendMessage(msg);
+    m_sender->sendMessage(msg);
 }
 
 void VistleInteractor::sendParamMessage(const std::shared_ptr<Parameter> param) const

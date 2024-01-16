@@ -401,11 +401,13 @@ public: \
     { \
         return #ObjType; \
     } \
-    static std::shared_ptr<const ObjType> as(std::shared_ptr<const Object> ptr) \
+    template<typename ObjType2> \
+    static std::shared_ptr<const ObjType> as(std::shared_ptr<const ObjType2> ptr) \
     { \
         return std::dynamic_pointer_cast<const ObjType>(ptr); \
     } \
-    static std::shared_ptr<ObjType> as(std::shared_ptr<Object> ptr) \
+    template<typename ObjType2> \
+    static std::shared_ptr<ObjType> as(std::shared_ptr<ObjType2> ptr) \
     { \
         return std::dynamic_pointer_cast<ObjType>(ptr); \
     } \

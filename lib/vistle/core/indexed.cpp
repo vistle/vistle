@@ -1,5 +1,6 @@
 #include "indexed.h"
 #include "celltree_impl.h"
+#include "celltypes.h"
 #include "indexed_impl.h"
 #include "archives.h"
 #include <vistle/util/exception.h>
@@ -27,11 +28,16 @@ bool Indexed::checkImpl() const
 {
     CHECK_OVERFLOW(d()->cl->size());
     CHECK_OVERFLOW(d()->el->size());
+    CHECK_OVERFLOW(d()->ghost->size());
 
     V_CHECK(d()->el->check());
     V_CHECK(d()->cl->check());
+    V_CHECK(d()->ghost->check());
+
     V_CHECK(d()->el->size() > 0);
     V_CHECK(el()[0] == 0);
+    V_CHECK(d()->ghost->size() == 0 || d()->ghost->size() == getNumElements());
+
     if (getNumElements() > 0) {
         V_CHECK(el()[getNumElements() - 1] < getNumCorners());
         V_CHECK(el()[getNumElements()] == getNumCorners());
@@ -53,6 +59,18 @@ std::pair<Vector3, Vector3> Indexed::getBounds() const
     }
 
     return Base::getMinMax();
+}
+
+void Indexed::setGhost(Index index, bool isGhost)
+{
+    assert(index < getNumElements());
+    (this->ghost())[index] = isGhost ? cell::GHOST : cell::NORMAL;
+}
+
+bool Indexed::isGhost(Index index) const
+{
+    assert(index < getNumElements());
+    return (this->ghost())[index] == cell::GHOST;
 }
 
 bool Indexed::hasCelltree() const
@@ -224,6 +242,7 @@ void Indexed::print(std::ostream &os) const
     Base::print(os);
     os << " cl(" << *d()->cl << ")";
     os << " el(" << *d()->el << ")";
+    os << " ghost(" << *d()->ghost << ")";
 }
 
 Indexed::NeighborFinder::NeighborFinder(const Indexed *indexed): indexed(indexed)
@@ -374,9 +393,11 @@ void Indexed::refreshImpl() const
     if (d) {
         m_el = d->el;
         m_cl = d->cl;
+        m_ghost = d->ghost;
     } else {
         m_el = nullptr;
         m_cl = nullptr;
+        m_ghost = nullptr;
     }
     m_numEl = (d && d->el.valid()) ? d->el->size() - 1 : 0;
     m_numCl = (d && d->cl.valid()) ? d->cl->size() : 0;
@@ -393,10 +414,12 @@ Indexed::Data::Data(const size_t numElements, const size_t numCorners, const siz
     CHECK_OVERFLOW(numCorners);
     el.construct(numElements + 1);
     cl.construct(numCorners);
+    ghost.construct(numElements);
     (*el)[0] = 0;
 }
 
-Indexed::Data::Data(const Indexed::Data &o, const std::string &name): Indexed::Base::Data(o, name), el(o.el), cl(o.cl)
+Indexed::Data::Data(const Indexed::Data &o, const std::string &name)
+: Indexed::Base::Data(o, name), el(o.el), cl(o.cl), ghost(o.ghost)
 {
     initData();
 }
@@ -426,6 +449,9 @@ void Indexed::resetElements()
     d()->el = ShmVector<Index>();
     d()->el.construct(1);
     (*d()->el)[0] = 0;
+
+    d()->ghost = ShmVector<Byte>();
+    d()->ghost.construct();
 }
 
 Index Indexed::getNumCorners()

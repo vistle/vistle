@@ -8,8 +8,7 @@
 class RemoteFileDialogOptionsPrivate: public QSharedData {
 public:
     RemoteFileDialogOptionsPrivate()
-    : options(0)
-    , viewMode(RemoteFileDialogOptions::Detail)
+    : viewMode(RemoteFileDialogOptions::Detail)
     , fileMode(RemoteFileDialogOptions::AnyFile)
     , acceptMode(RemoteFileDialogOptions::AcceptOpen)
     , filters(QDir::AllEntries | QDir::NoDotAndDotDot | QDir::AllDirs)

@@ -95,14 +95,11 @@ bool ShowGrid::compute()
 
             for (Index index = begin; index < end; ++index) {
                 auto type = unstr->tl()[index];
-                const bool ghost = type & UnstructuredGrid::GHOST_BIT;
-                const bool conv = type & UnstructuredGrid::CONVEX_BIT;
+                const bool ghost = unstr->isGhost(index);
 
-                const bool show =
-                    ((showgho && ghost) || (shownor && !ghost)) && ((showconv && conv) || (shownonconv && !conv));
+                const bool show = ((showgho && ghost) || (shownor && !ghost));
                 if (!show)
                     continue;
-                type &= vistle::UnstructuredGrid::TYPE_MASK;
                 if (!showTypes[type])
                     continue;
 

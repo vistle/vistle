@@ -61,7 +61,7 @@ public:
                       message::Type refType, const message::uuid_t &refUuid);
     virtual void itemInfo(const std::string &text, message::ItemInfo::InfoType type, int senderId,
                           const std::string &port);
-    //! a module sends at status update
+    //! a module sends a status update
     virtual void status(int id, const std::string &text, message::UpdateStatus::Importance importance);
     //! the overall status has changed
     virtual void updateStatus(int id, const std::string &text, message::UpdateStatus::Importance importance);
