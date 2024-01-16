@@ -128,6 +128,7 @@ private:
     void sendError(const std::string &s);
     std::vector<int> getSubmoduleIds(int modId, const AvailableModule &av);
     bool m_inManager = false;
+    bool m_coverIsManager = false;
     bool m_proxyOnly = false;
     vistle::message::AddHub addHubForSelf() const;
 

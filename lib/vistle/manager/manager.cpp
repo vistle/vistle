@@ -22,16 +22,53 @@
 #include <thread>
 #endif
 
+#include <mutex>
+#include <condition_variable>
+
 #ifdef COVER_ON_MAINTHREAD
 #include <functional>
 #include <deque>
-#include <condition_variable>
-#include <mutex>
+
+static std::deque<std::function<void()>> main_func;
+static bool main_done = false;
+#endif
 
 static std::mutex main_thread_mutex;
 static std::condition_variable main_thread_cv;
-static std::deque<std::function<void()>> main_func;
-static bool main_done = false;
+
+static bool plugin_done = false;
+static bool manager_in_plugin = false;
+
+void set_manager_in_cover_plugin()
+{
+    manager_in_plugin = true;
+}
+
+bool manager_in_cover_plugin()
+{
+    return manager_in_plugin;
+}
+
+void wait_for_cover_plugin()
+{
+    {
+        std::unique_lock<std::mutex> lock(main_thread_mutex);
+        plugin_done = false;
+    }
+    main_thread_cv.notify_all();
+    std::unique_lock<std::mutex> lock(main_thread_mutex);
+    main_thread_cv.wait(lock, [] { return plugin_done; });
+}
+
+void mark_cover_plugin_done()
+{
+    std::unique_lock<std::mutex> lock(main_thread_mutex);
+    plugin_done = true;
+    lock.unlock();
+    main_thread_cv.notify_all();
+}
+
+#ifdef MODULE_THREAD
 
 void run_on_main_thread(std::function<void()> &func)
 {

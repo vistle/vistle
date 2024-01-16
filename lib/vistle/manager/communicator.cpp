@@ -197,7 +197,7 @@ bool Communicator::sendHub(const message::Message &message, const MessagePayload
 void Communicator::run()
 {
     bool work = false;
-    while (dispatch(&work)) {
+    while (dispatch(&work) && !m_terminate) {
         if (parentProcessDied())
             throw(except::parent_died());
 
@@ -372,6 +372,11 @@ bool Communicator::dispatch(bool *work)
     }
 
     return !done;
+}
+
+void Communicator::terminate()
+{
+    m_terminate = true;
 }
 
 bool Communicator::startSend(int destRank, const message::Message &message, const MessagePayload &payload)

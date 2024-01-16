@@ -21,10 +21,8 @@
 
 #include <boost/mpi.hpp>
 
-#ifdef MODULE_THREAD
 #include <vistle/module/module.h>
 #include <boost/function.hpp>
-#endif
 
 #include "export.h"
 
@@ -168,12 +166,12 @@ private:
     std::deque<MessageWithPayload> m_incomingMessages;
 
     struct Module {
-#ifdef MODULE_THREAD
+        //#ifdef MODULE_THREAD
         typedef std::shared_ptr<vistle::Module>(NewModuleFunc)(const std::string &name, int id, mpi::communicator comm);
         boost::function<NewModuleFunc> newModule;
         std::shared_ptr<vistle::Module> instance;
         std::thread thread;
-#endif
+        //#endif
         std::thread messageThread;
         std::shared_ptr<message::MessageQueue> sendQueue, recvQueue;
         int ranksStarted, ranksFinished;
@@ -189,8 +187,7 @@ private:
         std::deque<MessageWithPayload> incomingMessages; // not yet processed, because module takes part in a barrier
         std::vector<int> objectCount; // no. of available object tuples on each rank
 
-        Module(): ranksStarted(0), ranksFinished(0), prepared(false), reduced(true), busyCount(0), blocked(false)
-        {}
+        Module(): ranksStarted(0), ranksFinished(0), prepared(false), reduced(true), busyCount(0), blocked(false) {}
         ~Module();
 
         void block(const message::Message &msg) const;

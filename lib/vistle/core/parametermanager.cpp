@@ -47,14 +47,15 @@ void ParameterManager::init()
 
 void ParameterManager::quit()
 {
-    std::vector<vistle::Parameter *> toRemove;
+    std::vector<std::string> toRemove;
     for (auto &param: m_parameters) {
         if (param.second.owner)
-            toRemove.push_back(param.second.param.get());
+            toRemove.push_back(param.second.param->getName());
     }
     for (auto &param: toRemove) {
         removeParameter(param);
     }
+    m_parameters.clear();
 }
 
 bool ParameterManager::handleMessage(const message::AddParameter &add)
@@ -115,14 +116,7 @@ bool ParameterManager::handleMessage(const message::RemoveParameter &remove)
         return false;
 
     const auto *name = remove.getName();
-    auto it = m_parameters.find(name);
-    if (it == m_parameters.end())
-        return false;
-    if (it->second.owner)
-        // only we are allowed to remove this parameter
-        return false;
-
-    return removeParameter(it->second.param.get());
+    return removeParameter(name);
 }
 
 bool ParameterManager::handleMessage(const message::SetParameter &param)
@@ -219,20 +213,25 @@ Parameter *ParameterManager::addParameterGeneric(const std::string &name, std::s
     return param.get();
 }
 
-bool ParameterManager::removeParameter(Parameter *param)
+bool ParameterManager::removeParameter(const std::string &name)
 {
-    auto it = m_parameters.find(param->getName());
+    auto it = m_parameters.find(name);
     if (it == m_parameters.end()) {
-        CERR << "removeParameter: no parameter with name " << param->getName() << std::endl;
+        CERR << "removeParameter: no parameter with name " << name << std::endl;
         return false;
     }
 
     if (it->second.owner) {
-        message::RemoveParameter remove(*param, m_name);
+        message::RemoveParameter remove(*it->second.param, m_name);
         remove.setDestId(message::Id::ForBroadcast);
         sendParameterMessage(remove);
     }
 
+    it = m_parameters.find(name);
+    if (it == m_parameters.end()) {
+        CERR << "removeParameter: parameter with name " << name << " disappeared while being removed" << std::endl;
+        return false;
+    }
     m_parameters.erase(it);
 
     return true;

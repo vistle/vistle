@@ -211,7 +211,13 @@ COVER::COVER(const std::string &name, int moduleId, mpi::communicator comm): vis
     int argc = 1;
     char *argv[] = {strdup("COVER"), nullptr};
     vistle::Directory dir(argc, argv);
-    m_config.reset(new opencover::config::Access(configAccess()->hostname(), configAccess()->cluster(), comm.rank()));
+    if (manager_in_cover_plugin()) {
+        // use existing configuration manager
+        m_config.reset(new opencover::config::Access());
+    } else {
+        m_config.reset(
+            new opencover::config::Access(configAccess()->hostname(), configAccess()->cluster(), comm.rank()));
+    }
     m_coverConfigBridge.reset(new CoverConfigBridge(this));
     m_config->setWorkspaceBridge(m_coverConfigBridge.get());
 
@@ -241,11 +247,15 @@ COVER *COVER::the()
 
 void COVER::setPlugin(coVRPlugin *plugin)
 {
-    m_plugin = plugin;
+    if (plugin) {
+        cover->getObjectsRoot()->addChild(vistleRoot);
+        coVRPluginList::instance()->addNode(vistleRoot, nullptr, plugin);
+        initDone();
+    } else if (m_plugin) {
+        prepareQuit();
+    }
 
-    cover->getObjectsRoot()->addChild(vistleRoot);
-    coVRPluginList::instance()->addNode(vistleRoot, nullptr, COVER::the()->m_plugin);
-    initDone();
+    m_plugin = plugin;
 }
 
 bool COVER::updateRequired() const
@@ -277,7 +287,7 @@ bool COVER::parameterAdded(const int senderId, const std::string &name, const me
     InteractorMap::iterator it = m_interactorMap.find(senderId);
     if (it == m_interactorMap.end()) {
         if (vistle::message::Id::isModule(senderId))
-            cover->addPlugin(plugin.c_str());
+            coVRPluginList::instance()->addPlugin(plugin.c_str(), coVRPluginList::Vis);
 
         m_interactorMap[senderId] = new VistleInteractor(this, moduleName, senderId);
         m_interactorMap[senderId]->setPluginName(plugin);
@@ -336,6 +346,7 @@ bool COVER::changeParameter(const Parameter *p)
 
 void COVER::prepareQuit()
 {
+    std::cerr << "COVER::prepareQuit()" << std::endl;
     removeAllObjects();
     if (vistleRoot) {
         if (m_plugin) {
@@ -345,10 +356,15 @@ void COVER::prepareQuit()
         }
         vistleRoot.release();
     }
-    m_config->setWorkspaceBridge(nullptr);
+    if (m_config)
+        m_config->setWorkspaceBridge(nullptr);
     m_coverConfigBridge.reset();
 
-    Renderer::prepareQuit();
+    if (manager_in_cover_plugin()) {
+        mark_cover_plugin_done();
+    } else {
+        Renderer::prepareQuit();
+    }
 }
 
 bool COVER::executeAll() const
@@ -921,7 +937,6 @@ int COVER::runMain(int argc, char *argv[])
 
 #ifdef _WIN32
         mpi_main = (mpi_main_t *)GetProcAddress((HINSTANCE)handle, mainname);
-        ;
 #else
         mpi_main = (mpi_main_t *)dlsym(handle, mainname);
 #endif
@@ -971,20 +986,26 @@ int COVER::runMain(int argc, char *argv[])
 
 void COVER::eventLoop()
 {
-#if defined(COVER_ON_MAINTHREAD) && defined(MODULE_THREAD)
-    std::function<void()> f = [this]() {
-        std::cerr << "running COVER on main thread" << std::endl;
+    if (manager_in_cover_plugin()) {
+        std::cerr << "waiting for Vistle plugin to unload" << std::endl;
+        wait_for_cover_plugin();
+        std::cerr << "Vistle plugin unloaded" << std::endl;
+    } else {
+#if defined(MODULE_THREAD) && defined(COVER_ON_MAINTHREAD)
+        std::function<void()> f = [this]() {
+            std::cerr << "running COVER on main thread" << std::endl;
+            int argc = 1;
+            char *argv[] = {strdup("COVER"), nullptr};
+            runMain(argc, argv);
+        };
+        run_on_main_thread(f);
+        std::cerr << "COVER on main thread terminated" << std::endl;
+#else
         int argc = 1;
         char *argv[] = {strdup("COVER"), nullptr};
         runMain(argc, argv);
-    };
-    run_on_main_thread(f);
-    std::cerr << "COVER on main thread terminated" << std::endl;
-#else
-    int argc = 1;
-    char *argv[] = {strdup("COVER"), nullptr};
-    runMain(argc, argv);
 #endif
+    }
 }
 
 bool COVER::handleMessage(const message::Message *message, const MessagePayload &payload)

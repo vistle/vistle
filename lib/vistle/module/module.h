@@ -125,6 +125,7 @@ class V_MODULEEXPORT Module: public ParameterManager, public MessageSender {
 
 public:
     static bool setup(const std::string &shmname, int moduleID, const std::string &cluster, int rank);
+    static bool cleanup(bool dedicated_process);
 
     Module(const std::string &name, const int moduleID, mpi::communicator comm);
     virtual ~Module();
@@ -139,7 +140,7 @@ public:
     virtual bool dispatch(bool block = true, bool *messageReceived = nullptr, unsigned int minPrio = 0);
 
     Parameter *addParameterGeneric(const std::string &name, std::shared_ptr<Parameter> parameter) override;
-    bool removeParameter(Parameter *param) override;
+    bool removeParameter(const std::string &name) override;
 
     const std::string &name() const;
     const mpi::communicator &comm() const;
@@ -403,6 +404,8 @@ private:
 
     std::map<std::string, std::string> m_currentItemInfo;
     std::string m_inputSpecies;
+
+    static bool s_shouldDetachShm;
 };
 
 V_MODULEEXPORT int getTimestep(Object::const_ptr obj);
@@ -460,6 +463,7 @@ V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);
                 X module(name, moduleID, comm_world); \
                 module.eventLoop(); \
             } \
+            vistle::Module::cleanup(true /* process dedicated to module */); \
             comm_world.barrier(); \
         } catch (vistle::exception & e) { \
             std::cerr << "[" << rank << "/" << size << "]: fatal exception: " << e.what() << std::endl; \

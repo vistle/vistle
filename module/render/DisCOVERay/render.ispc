@@ -45,16 +45,16 @@ inline void setUpRay(uniform const TileData *uniform tile, varying RTCRayHit &ra
 }
 
 
-inline unsigned texIndex(const ColorMapData *cmap, float val)
+inline unsigned int texIndex(const ColorMapData *cmap, float val)
 {
     const float tc = clamp((val - cmap->min) / (cmap->max - cmap->min), 0.f, 1.f);
-    const unsigned idx = tc * cmap->texWidth;
+    const unsigned int idx = tc * cmap->texWidth;
     return min(idx, cmap->texWidth - 1);
 }
 
 inline Vec4f texColor(const ColorMapData *cmap, float val)
 {
-    const unsigned idx = texIndex(cmap, val);
+    const unsigned int idx = texIndex(cmap, val);
     const unsigned int8 *c = &cmap->texData[idx * 4];
     return make_Vec4f(c[0], c[1], c[2], c[3]);
 }
@@ -82,12 +82,12 @@ inline void shadeRay(uniform const SceneData *uniform scene, uniform const TileD
         const Vec3f rdir = make_Vec3f(ray.dir_x, ray.dir_y, ray.dir_z);
         const Vec3f pos = origin + ray.tfar * rdir;
         Vec3f dir = normalize(rdir);
-        const Vec4f pos4 = make_Vec4f(pos.x, pos.y, pos.z, 1);
+        const Vec4f pos4 = make_Vec4f(pos.x, pos.y, pos.z, 1.0f);
         const float win2 = dot(depthTransform2, pos4);
         const float win3 = dot(depthTransform3, pos4);
         zValue = (win2 / win3 + 1.f) * 0.5f;
 
-        cif(scene->doShade)
+        if(scene->doShade)
         {
             RenderObjectData *ro = scene->ro[hit.instID[0]];
             assert(ro->geomID == hit.geomID);
@@ -216,18 +216,18 @@ inline void shadeRay(uniform const SceneData *uniform scene, uniform const TileD
                     normal = neg(normal);
 
                 shaded = shaded + ambientColor * ambient;
-                cfor(uniform int l = 0; l < scene->numLights; ++l)
+                for(uniform int l = 0; l < scene->numLights; ++l)
                 {
                     const uniform Light &light = scene->lights[l];
-                    cif(light.enabled)
+                    if(light.enabled)
                     {
                         const Vec3f lv = normalize(light.isDirectional ? light.transformedPosition
                                                                        : light.transformedPosition - pos);
                         float atten = 1.f;
-                        cif(light.isDirectional)
+                        if(light.isDirectional)
                         {
                             atten = light.attenuation[0];
-                            cif(light.attenuation[1] > 0.f || light.attenuation[2] > 0.f)
+                            if(light.attenuation[1] > 0.f || light.attenuation[2] > 0.f)
                             {
                                 Vec4f ec = make_Vec4f(light.transformedPosition - pos);
                                 float d = 0.;
@@ -277,7 +277,6 @@ export void ispcRenderTilePacket(uniform const SceneData *uniform scene, uniform
     uniform const int x0 = tile->x0, x1 = tile->x1;
     uniform const int y0 = tile->y0, y1 = tile->y1;
 
-    int x, y;
     foreach_tiled(y = y0... y1, x = x0... x1)
     {
         varying RTCRayHit ray;

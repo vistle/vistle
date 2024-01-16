@@ -180,9 +180,9 @@ void MainWindow::setModified(bool state)
 
 void MainWindow::newHub(int hub, const QString &hubName, int nranks, const QString &address, int port,
                         const QString &logname, const QString &realname, bool hasUi, const QString &systype,
-                        const QString &arch)
+                        const QString &arch, const QString &info)
 {
-    m_moduleBrowser->addHub(hub, hubName, nranks, address, port, logname, realname, hasUi, systype, arch);
+    m_moduleBrowser->addHub(hub, hubName, nranks, address, port, logname, realname, hasUi, systype, arch, info);
 }
 
 void MainWindow::deleteHub(int hub)

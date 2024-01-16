@@ -2,8 +2,8 @@ if(NOT Xdmf_FOUND)
     return()
 endif()
 
-find_package(HDF5 COMPONENTS C)
-find_package(Iconv)
+vistle_find_package(HDF5 COMPONENTS C)
+vistle_find_package(Iconv)
 
 set(HEADERS ReadSeisSol.h surfacetools.h)
 set(SOURCES ReadSeisSol.cpp surfacetools.cpp)

@@ -199,6 +199,7 @@ AddHub::AddHub(int id, const std::string &name)
     memset(m_loginName.data(), 0, m_loginName.size());
     memset(m_realName.data(), 0, m_realName.size());
     memset(m_address.data(), 0, m_address.size());
+    memset(m_info.data(), 0, m_info.size());
 }
 
 int AddHub::id() const
@@ -361,6 +362,16 @@ void AddHub::setArch(const std::string &arch)
     COPY_STRING(m_arch, arch);
 }
 
+std::string AddHub::info() const
+{
+    return m_info.data();
+}
+
+void AddHub::setInfo(const std::string &info)
+{
+    COPY_STRING(m_info, info);
+}
+
 
 RemoveHub::RemoveHub(int id): m_id(id)
 {}
@@ -394,7 +405,7 @@ const char *SaveWorkflow::pathname() const
 
 
 Spawn::Spawn(int hub, const std::string &n, int mpiSize, int baseRank, int rankSkip)
-: m_hub(hub), m_spawnId(Id::Invalid), mpiSize(mpiSize), baseRank(baseRank), rankSkip(rankSkip)
+: m_hub(hub), m_spawnId(Id::Invalid), m_asPlugin(0), mpiSize(mpiSize), baseRank(baseRank), rankSkip(rankSkip)
 {
     COPY_STRING(name, n);
 }
@@ -481,7 +492,17 @@ int Spawn::getRankSkip() const
     return rankSkip;
 }
 
-SpawnPrepared::SpawnPrepared(const Spawn &spawn): m_hub(spawn.hubId()), m_spawnId(spawn.spawnId())
+bool Spawn::asPlugin() const
+{
+    return m_asPlugin != 0;
+}
+
+void Spawn::setAsPlugin(bool enable)
+{
+    m_asPlugin = enable ? 1 : 0;
+}
+
+SpawnPrepared::SpawnPrepared(const Spawn &spawn): m_hub(spawn.hubId()), m_spawnId(spawn.spawnId()), m_asPlugin(0)
 {
     setReferrer(spawn.uuid());
     COPY_STRING(name, std::string(spawn.getName()));
@@ -500,6 +521,16 @@ int SpawnPrepared::spawnId() const
 const char *SpawnPrepared::getName() const
 {
     return name.data();
+}
+
+bool SpawnPrepared::asPlugin() const
+{
+    return m_asPlugin != 0;
+}
+
+void SpawnPrepared::setAsPlugin(bool enable)
+{
+    m_asPlugin = enable ? 1 : 0;
 }
 
 Started::Started(const std::string &n)

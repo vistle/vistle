@@ -308,6 +308,7 @@ bool Hub::init(int argc, char *argv[])
         ("execute,e", "call compute() after workflow has been loaded")
         ("snapshot", po::value<std::string>(), "store screenshot of workflow to this location")
         ("libsim,l", po::value<std::string>(), "connect to a LibSim instrumented simulation by entering the path to the .sim2 file")
+        ("cover", "use OpenCOVER.mpi to manage Vistle session on cluster")
         ("exposed,gateway-host,gateway,gw", po::value<std::string>(), "ports are exposed externally on this host")
         ("root", po::value<std::string>(), "path to Vistle build directory")
         ("buildtype", po::value<std::string>(), "build type suffix to binary in Vistle build directory")
@@ -528,12 +529,30 @@ bool Hub::init(int argc, char *argv[])
         if (!m_proxyOnly) {
             // start manager on cluster
             std::string cmd = m_dir->bin() + "vistle_manager";
+            if (vm.count("cover") > 0) {
+                vistle::Directory dir(argc, argv);
+                vistle::directory::setVistleRoot(dir.prefix(), dir.buildType());
+#ifdef VISTLE_USE_MPI
+                cmd = "OpenCOVER.mpi";
+#else
+                cmd = "opencover";
+#endif
+                setenv("VISTLE_PLUGIN", "VistleManager", 1);
+                std::stringstream s;
+                s << hostname() << " " << port << " " << dataport;
+                std::string conn = s.str();
+                setenv("VISTLE_CONNECTION", conn.c_str(), 1);
+
+                m_coverIsManager = true;
+            }
             std::vector<std::string> args;
             args.push_back(cmd);
-            args.push_back("-from-vistle");
-            args.push_back(hostname());
-            args.push_back(port);
-            args.push_back(dataport);
+            if (!m_coverIsManager) {
+                args.push_back("-from-vistle");
+                args.push_back(hostname());
+                args.push_back(port);
+                args.push_back(dataport);
+            }
 #ifdef MODULE_THREAD
             if (vm.count("libsim") > 0) {
                 auto sim2FilePath = vm["libsim"].as<std::string>();
@@ -643,6 +662,7 @@ std::shared_ptr<process::child> Hub::launchMpiProcess(const std::vector<std::str
 {
     assert(!m_proxyOnly);
     assert(!args.empty());
+#ifdef VISTLE_USE_MPI
 #ifdef _WIN32
     std::string spawn = "spawn_vistle.bat";
 #else
@@ -654,6 +674,11 @@ std::shared_ptr<process::child> Hub::launchMpiProcess(const std::vector<std::str
         std::cerr << "failed to execute " << args[0] << " via spawn_vistle.sh, retrying with mpirun" << std::endl;
         child = launchProcess("mpirun", args);
     }
+#endif
+#else
+    auto prog = args[0];
+    std::vector<std::string> nargs(args.begin() + 1, args.end());
+    auto child = launchProcess(args[0], nargs);
 #endif
     return child;
 }
@@ -1284,6 +1309,37 @@ message::AddHub Hub::addHubForSelf() const
     hub.setArch("Unknown");
 #endif
 
+    std::stringstream info;
+    info
+#ifdef MODULE_THREAD
+        << "single-process"
+#else
+        << "multi-process"
+#endif
+
+#ifdef MODULE_STATIC
+        << " static"
+#endif
+#ifndef NO_SHMEM
+        << " shm"
+#endif
+
+#ifdef VISTLE_USE_CUDA
+        << " cuda"
+#endif
+#ifdef VISTLE_SCALAR_DOUBLE
+        << " double"
+#else
+        << " float"
+#endif
+#ifdef VISTLE_INDEX_64BIT
+        << " idx64"
+#else
+        << " idx32"
+#endif
+        ;
+    hub.setInfo(info.str());
+
     return hub;
 }
 
@@ -1835,17 +1891,22 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                 assert(spawn.hubId() == m_hubId);
                 assert(m_ready);
 
-                if (const AvailableModule *mod = findModule({spawn.hubId(), spawn.getName()})) {
-                    spawnModule(mod->path(), spawn.getName(), spawn.spawnId());
+                bool isCover = spawn.getName() == std::string("COVER");
+                if (m_coverIsManager && isCover) {
+                    CERR << "assuming that COVER running cluster manager loads Vistle plugin" << std::endl;
                 } else {
-                    if (spawn.hubId() == m_hubId) {
-                        std::stringstream str;
-                        str << "refusing to spawn " << spawn.getName() << ":" << spawn.spawnId()
-                            << ": not in list of available modules";
-                        sendError(str.str());
-                        auto ex = make.message<message::ModuleExit>();
-                        ex.setSenderId(spawn.spawnId());
-                        sendManager(ex);
+                    if (const AvailableModule *mod = findModule({spawn.hubId(), spawn.getName()})) {
+                        spawnModule(mod->path(), spawn.getName(), spawn.spawnId());
+                    } else {
+                        if (spawn.hubId() == m_hubId) {
+                            std::stringstream str;
+                            str << "refusing to spawn " << spawn.getName() << ":" << spawn.spawnId()
+                                << ": not in list of available modules";
+                            sendError(str.str());
+                            auto ex = make.message<message::ModuleExit>();
+                            ex.setSenderId(spawn.spawnId());
+                            sendManager(ex);
+                        }
                     }
                 }
 #endif
@@ -2147,18 +2208,18 @@ bool Hub::handlePriv(const message::Spawn &spawnRecv)
 {
     bool error = false;
     message::Spawn spawn(spawnRecv);
+    std::string moduleName(spawn.getName());
+    bool isCover = moduleName == "COVER";
+
     if (m_isMaster) {
-        std::string moduleName(spawn.getName());
         if (moduleName == "Tubes") {
             spawn.setName("Thicken");
         } else if (moduleName == "Spheres") {
             spawn.setName("Thicken");
         }
         bool restart = spawn.getReferenceType() == message::Spawn::ReferenceType::Migrate;
-        bool isMirror = spawn.getReferenceType() == message::Spawn::ReferenceType::Mirror;
-        bool shouldMirror =
-            (spawn.getReferenceType() == message::Spawn::ReferenceType::None && moduleName == "COVER") &&
-            m_stateTracker.getHubData(spawn.hubId()).hasUi;
+        bool shouldMirror = (spawn.getReferenceType() == message::Spawn::ReferenceType::None && isCover) &&
+                            m_stateTracker.getHubData(spawn.hubId()).hasUi;
         bool clone = spawn.getReferenceType() == message::Spawn::ReferenceType::Clone;
         bool cloneLinked = spawn.getReferenceType() == message::Spawn::ReferenceType::LinkedClone;
 
@@ -2174,6 +2235,12 @@ bool Hub::handlePriv(const message::Spawn &spawnRecv)
             mirroredId = Id::ModuleBase + m_moduleCount;
             ++m_moduleCount;
             doSpawn = true;
+            if (spawn.hubId() == m_hubId) {
+                if (isCover && m_coverIsManager) {
+                    spawn.setAsPlugin(true);
+                    notify.setAsPlugin(true);
+                }
+            }
         } else if (someFormOfCopy) {
             doSpawn = true;
             someFormOfCopy = false;
@@ -2239,6 +2306,11 @@ bool Hub::handlePriv(const message::Spawn &spawnRecv)
         if (spawn.spawnId() == Id::Invalid) {
             sendMaster(spawn);
         } else {
+            if (spawn.hubId() == m_hubId) {
+                if (isCover && m_coverIsManager) {
+                    spawn.setAsPlugin(true);
+                }
+            }
             m_stateTracker.handle(spawn, nullptr);
             sendManager(spawn);
             sendUi(spawn);
