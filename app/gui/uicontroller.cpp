@@ -220,7 +220,6 @@ void UiController::init()
 #ifdef HAVE_PYTHON
     m_python->init();
 #endif
-    Py_Initialize();
     m_mainWindow->m_console->init();
 #ifdef HAVE_PYTHON
     m_pythonMod->import(&vistle::PythonInterface::the().nameSpace(), m_pythonDir);

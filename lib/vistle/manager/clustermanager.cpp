@@ -63,8 +63,6 @@ ClusterManager::Module::~Module()
     try {
         if (thread.joinable()) {
             thread.join();
-        } else {
-            std::cerr << "ClusterManager: ~Module: thread for module not joinable" << std::endl;
         }
     } catch (std::exception &e) {
         std::cerr << "ClusterManager: ~Module: joining thread for module failed: " << e.what() << std::endl;

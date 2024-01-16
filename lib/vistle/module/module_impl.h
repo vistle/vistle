@@ -38,6 +38,18 @@ typename Type::const_ptr BlockTask::accept(const std::string &port)
 template<class Type>
 typename Type::const_ptr BlockTask::expect(const Port *port)
 {
+    if (!port) {
+        std::stringstream str;
+        str << "invalid port" << std::endl;
+        m_module->sendError(str.str());
+        return nullptr;
+    }
+    if (!m_module->isConnected(*port)) {
+        std::stringstream str;
+        str << "port " << port->getName() << " is not connected" << std::endl;
+        m_module->sendError(str.str());
+        return nullptr;
+    }
     auto it = m_input.find(port);
     assert(it != m_input.end());
     if (it == m_input.end()) {
@@ -53,7 +65,7 @@ typename Type::const_ptr BlockTask::expect(const Port *port)
     m_input.erase(it);
     if (!obj) {
         std::stringstream str;
-        str << "did not receive valid object at " << port->getName() << std::endl;
+        str << "did not receive object at " << port->getName() << std::endl;
         m_module->sendWarning(str.str());
         return nullptr;
     }
@@ -103,6 +115,12 @@ typename Type::const_ptr Module::expect(Port *port)
     if (!port) {
         std::stringstream str;
         str << "invalid port" << std::endl;
+        sendError(str.str());
+        return nullptr;
+    }
+    if (!isConnected(*port)) {
+        std::stringstream str;
+        str << "port " << port->getName() << " is not connected" << std::endl;
         sendError(str.str());
         return nullptr;
     }

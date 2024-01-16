@@ -83,14 +83,12 @@ vistle_target_link_libraries(
     PUBLIC
     vistle_core
     PRIVATE
-    Threads::Threads)
+    Threads::Threads
+    PRIVATE
+    vistle_module)
 
-if(NOT WIN32)
-    vistle_target_link_libraries(vistle_clustermanager PRIVATE dl)
-endif()
-
-if(NOT VISTLE_MULTI_PROCESS)
-    vistle_target_link_libraries(vistle_clustermanager PRIVATE ${CMAKE_DL_LIBS} PRIVATE vistle_module)
+if(NOT VISTLE_MODULE_SHARED)
+    vistle_target_link_libraries(vistle_clustermanager PRIVATE ${CMAKE_DL_LIBS})
 
     if(APPLE)
         set_target_properties(vistle_clustermanager PROPERTIES LINK_FLAGS -Wl,-export_dynamic)
