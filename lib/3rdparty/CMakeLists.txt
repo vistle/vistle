@@ -131,6 +131,8 @@ if(NOT VISTLE_GUI_ONLY)
         #set(VTKm_USE_DEFAULT_SYMBOL_VISIBILITY OFF)
         set(VTKm_SKIP_LIBRARY_VERSIONS ON)
 
+        set(VTKm_DEFAULT_TYPES_HEADER "../../../VtkmDefaultTypesVistle.h.in")
+
         add_subdirectory(vtk-m)
         add_library(vtkm::cont ALIAS vtkm_cont)
         add_library(vtkm::filter ALIAS vtkm_filter)
@@ -138,6 +140,7 @@ if(NOT VISTLE_GUI_ONLY)
         #add_library(vtkm_rendering ALIAS vtkm::rendering)
         #add_library(vtkm_source ALIAS vtkm::source)
         #add_library(vtkm_worklet ALIAS vtkm::worklet)
+
     endif()
 
     if(VISTLE_USE_MPI)

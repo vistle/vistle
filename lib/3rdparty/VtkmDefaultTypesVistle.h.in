@@ -1,0 +1,30 @@
+#ifndef VTKM_DEFAULT_TYPES_VISTLE_H
+#define VTKM_DEFAULT_TYPES_VISTLE_H
+
+#include <vtkm/TypeList.h>
+#include <vtkm/Types.h>
+#include <vtkm/cont/ArrayHandleConstant.h>
+#include <vtkm/cont/CellSetList.h>
+
+#define VISTLE_VTKM_TYPES
+
+
+namespace vtkm
+{
+namespace cont
+{
+
+using VistleCellSetListUnstructured = vtkm::List<
+    vtkm::cont::CellSetExplicit<>,
+    vtkm::cont::CellSetExplicit<typename vtkm::cont::ArrayHandleConstant<vtkm::UInt8>::StorageTag>,
+    vtkm::cont::CellSetSingleType<>,
+    vtkm::cont::CellSetSingleType<typename vtkm::cont::ArrayHandleConstant<vtkm::UInt8>::StorageTag>,
+    vtkm::cont::CellSetSingleType<typename vtkm::cont::ArrayHandleCounting<vtkm::Id>::StorageTag>
+        >;
+
+}
+}
+
+#define VTKM_DEFAULT_CELL_SET_LIST_UNSTRUCTURED ::vtkm::cont::VistleCellSetListUnstructured
+
+#endif
