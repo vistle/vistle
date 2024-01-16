@@ -855,7 +855,18 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
         endif()
 
         set_target_properties(${targetname} PROPERTIES FOLDER "Modules")
-        add_module_doc_target(${targetname} ${VISTLE_DOC_SKIP})
+
+        # some targets need to be ignored for documentation
+        set(IGNR_MODS "COVER_plugin")
+        set(SKIP_4_DOC FALSE)
+        foreach(elem ${IGNR_MODS})
+            if(${targetname} STREQUAL ${elem})
+                set(SKIP_4_DOC TRUE)
+            endif()
+        endforeach()
+        if(NOT SKIP_4_DOC)
+            add_module_doc_target(${targetname} ${VISTLE_DOC_SKIP})
+        endif()
     endmacro(add_module2)
 
     macro(add_module targetname description)
