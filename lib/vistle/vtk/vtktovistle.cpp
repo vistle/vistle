@@ -186,6 +186,9 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, std::string &diagnostic
             // vistle does not support pixels, but they can be expressed as quads
             typelist[elemVistle] = UnstructuredGrid::QUAD;
             break;
+        case VTK_POLYGON:
+            typelist[elemVistle] = UnstructuredGrid::POLYGON;
+            break;
         case VTK_QUAD:
             typelist[elemVistle] = UnstructuredGrid::QUAD;
             break;
