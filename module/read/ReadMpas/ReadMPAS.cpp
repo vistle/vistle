@@ -602,7 +602,7 @@ bool ReadMPAS::addCell(Index elem, bool ghost, Index &curElem, UnstructuredGrid:
     }
     cl[idx2++] = vocList[elemRow] - 1 + numVert + izVert;
     tl[curElem] = UnstructuredGrid::POLYHEDRON;
-    
+
     uGrid->setGhost(curElem, ghost);
 
     ++curElem;
