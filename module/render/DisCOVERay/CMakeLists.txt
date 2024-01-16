@@ -48,7 +48,7 @@ set(description "Embree CPU ray casting remote renderer")
 
 add_compile_definitions(EMBREE_MAJOR=${EMBREE_MAJOR})
 if(VISTLE_DOUBLE_PRECISION)
-    add_compile_definitions(-DVISTLE_SCALAR_DOUBLE)
+    add_compile_definitions(VISTLE_SCALAR_DOUBLE)
 endif()
 
 include_directories(SYSTEM ${MPI_C_INCLUDE_PATH})
@@ -68,8 +68,7 @@ target_link_libraries(
     vistle_rhr
     vistle_config
     ${ZLIB_LIBRARIES}
-    ${EMBREE_LIBRARY}
-    MPI::MPI_C)
+    ${EMBREE_LIBRARY})
 
 if(USE_LIBOMP AND LIBOMP)
     target_link_libraries(DisCOVERay ${LIBOMP})

@@ -40,7 +40,7 @@ auto convertToTetGen(Points::const_ptr points, typename Vec<vistle::Scalar, Dim>
     auto in = std::make_unique<tetgenio>();
     in->numberofpoints = points->getSize();
     in->pointlist = new REAL[in->numberofpoints * 3];
-    for (size_t i = 0; i < in->numberofpoints; ++i) {
+    for (size_t i = 0; i < (size_t)in->numberofpoints; ++i) {
         in->pointlist[3 * i] = points->x()[i];
         in->pointlist[3 * i + 1] = points->y()[i];
         in->pointlist[3 * i + 2] = points->z()[i];
@@ -48,7 +48,7 @@ auto convertToTetGen(Points::const_ptr points, typename Vec<vistle::Scalar, Dim>
     if (data) {
         in->numberofpointattributes = Dim;
         in->pointattributelist = new REAL[in->numberofpoints * Dim];
-        for (size_t i = 0; i < in->numberofpoints; ++i) {
+        for (size_t i = 0; i < (size_t)in->numberofpoints; ++i) {
             in->pointattributelist[i * Dim] = data->x()[i];
             if (Dim > 1)
                 in->pointattributelist[i * Dim + 1] = data->y()[i];
@@ -77,7 +77,7 @@ auto convertFromTetGen(const tetgenio &out)
     }
 
     for (size_t i = 0; i < numElements; ++i) {
-        for (size_t j = 0; j < out.numberofcorners; ++j) {
+        for (int j = 0; j < out.numberofcorners; ++j) {
             grid->cl().data()[i * out.numberofcorners + j] = out.tetrahedronlist[i * out.numberofcorners + j];
         }
         grid->tl().data()[i] = UnstructuredGrid::TETRAHEDRON;

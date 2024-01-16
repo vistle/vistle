@@ -144,7 +144,6 @@ struct AddField {
         typedef Vec<S, 3> V3;
         typedef Vec<S, 4> V4;
 
-        Index size = object->getSize();
         auto mapping = object->guessMapping();
         vtkm::cont::UnknownArrayHandle ah;
         if (auto in = V1::as(object)) {
