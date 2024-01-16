@@ -14,6 +14,7 @@
 #include <mpi.h>
 #define ReadMPAS ReadMpasPnetcdf
 #endif
+#include <vistle/core/unstr.h>
 
 #define NUMPARAMS 3
 
@@ -39,12 +40,12 @@ private:
 #endif
     bool validateFile(std::string fullFileName, std::string &redFileName, FileType type);
 
-    bool addCell(Index elem, bool ghost, Index &curElem, UnstructuredGrid::const_ptr uGrid, long vPerC, long numVert,
+    bool addCell(Index elem, bool ghost, Index &curElem, UnstructuredGrid::ptr uGrid, long vPerC, long numVert,
                  long izVert, Index &idx2, const std::vector<Index> &vocList);
     bool addPoly(Index elem, Index &curElem, Index *el, Index *cl, long vPerC, long numVert, long izVert, Index &idx2,
                  const std::vector<Index> &vocList);
     bool addWedge(bool ghost, Index &curElem, Index center, Index n1, Index n2, Index layer, Index nVertPerLayer,
-                  UnstructuredGrid::const_ptr uGrid, Index &idx2);
+                  UnstructuredGrid::ptr uGrid, Index &idx2);
     bool addTri(Index &curElem, Index center, Index n1, Index n2, Index *cl, Index &idx2);
 #ifdef USE_NETCDF
     std::vector<vistle::Scalar> getData(int ncid, Index startLevel, Index nLevels, Index dataIdx,
