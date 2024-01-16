@@ -297,7 +297,6 @@ bool insideCell(const Vector3 &point, Byte type, Index nverts, const Index *cl, 
 {
     const Vector3 zaxis(0, 0, 1);
 
-    type &= cell::TYPE_MASK;
     switch (type) {
     case cell::TETRAHEDRON:
     case cell::PYRAMID:

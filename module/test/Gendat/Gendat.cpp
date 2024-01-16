@@ -443,7 +443,9 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
                         if ((ix < ghostWidth[0][0] || ix + ghostWidth[0][1] >= nx) ||
                             (iy < ghostWidth[1][0] || iy + ghostWidth[1][1] >= ny) ||
                             (iz < ghostWidth[2][0] || iz + ghostWidth[2][1] >= nz)) {
-                            tl[elem] |= UnstructuredGrid::GHOST_BIT;
+                            u->setGhost(elem, true);
+                        } else {
+                            u->setGhost(elem, false);
                         }
 
                         ++elem;
@@ -451,9 +453,6 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
                     }
                 }
             }
-
-            if (checkConvexity())
-                u->checkConvexity();
 
             geoOut = u;
         } else if (geoMode == Point_Geometry) {

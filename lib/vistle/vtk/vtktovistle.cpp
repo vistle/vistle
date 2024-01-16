@@ -135,7 +135,7 @@ GridSizes getGridSizesConsideringHighOrderCells(vtkUnstructuredGrid *vugrid)
     return GridSizes{nelemLagrange, nconn};
 }
 
-Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, bool checkConvex, std::string &diagnostics)
+Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, std::string &diagnostics)
 {
     auto sizes = getGridSizesConsideringHighOrderCells(vugrid);
     Index ncoordVtk = vugrid->GetNumberOfPoints();
@@ -230,11 +230,13 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, bool checkConvex, std::
 #if VTK_MAJOR_VERSION >= 7
         if (ghostArray &&
             const_cast<vtkUnsignedCharArray *>(ghostArray)->GetValue(i) & vtkDataSetAttributes::DUPLICATECELL) {
-            typelist[elemVistle] |= UnstructuredGrid::GHOST_BIT;
+            cugrid->setGhost(elemVistle, true);
+        } else {
+            cugrid->setGhost(elemVistle, false);
         }
 #endif
 
-        assert((typelist[elemVistle] & UnstructuredGrid::TYPE_MASK) < UnstructuredGrid::NUM_TYPES);
+        assert(typelist[elemVistle] < UnstructuredGrid::NUM_TYPES);
 
         vtkIdType npts = 0;
         IDCONST vtkIdType *pts = nullptr;
@@ -282,14 +284,6 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, bool checkConvex, std::
         ++elemVistle;
     }
     elems[sizes.numElements] = connlist.size();
-
-    if (checkConvex) {
-        auto nonConvex = cugrid->checkConvexity();
-        if (nonConvex > 0) {
-            std::cerr << "coVtk::vtkUGrid2Vistle: " << nonConvex << " of " << cugrid->getNumElements()
-                      << " cells are non-convex" << std::endl;
-        }
-    }
 
     return cugrid;
 }
@@ -657,12 +651,12 @@ DataBase::ptr vtkData2Vistle(vtkDataArray *varr, Object::const_ptr grid, std::st
 } // anonymous namespace
 #endif
 
-vistle::Object::ptr toGrid(vtkDataObject *vtk, bool checkConvex, std::string *diagnostics)
+vistle::Object::ptr toGrid(vtkDataObject *vtk, std::string *diagnostics)
 {
     std::string dummy;
     std::string &diag = diagnostics ? *diagnostics : dummy;
     if (vtkUnstructuredGrid *vugrid = dynamic_cast<vtkUnstructuredGrid *>(vtk))
-        return vtkUGrid2Vistle(vugrid, checkConvex, diag);
+        return vtkUGrid2Vistle(vugrid, diag);
 
     if (vtkPolyData *vpolydata = dynamic_cast<vtkPolyData *>(vtk))
         return vtkPoly2Vistle(vpolydata, diag);

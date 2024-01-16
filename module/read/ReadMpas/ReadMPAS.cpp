@@ -569,9 +569,13 @@ bool ReadMPAS::variableExists(std::string findName, const NcmpiFile &filename)
 
 //ADD CELL
 //compute vertices of a cell and add the cells to the cell list
-bool ReadMPAS::addCell(Index elem, bool ghost, Index &curElem, Index *el, Byte *tl, Index *cl, long vPerC, long numVert,
-                       long izVert, Index &idx2, const std::vector<Index> &vocList)
+bool ReadMPAS::addCell(Index elem, bool ghost, Index &curElem, UnstructuredGrid::const_ptr uGrid, long vPerC,
+                       long numVert, long izVert, Index &idx2, const std::vector<Index> &vocList)
 {
+    auto cl = uGrid->cl().data();
+    auto el = uGrid->el().data();
+    auto tl = uGrid->tl().data();
+
     Index elemRow = elem * vPerC; //vPerC is set to MAX_EDGES if vocList is reducedVOC
     el[curElem] = idx2;
 
@@ -597,7 +601,10 @@ bool ReadMPAS::addCell(Index elem, bool ghost, Index &curElem, Index *el, Byte *
         cl[idx2++] = vocList[elemRow + d] - 1 + numVert + izVert;
     }
     cl[idx2++] = vocList[elemRow] - 1 + numVert + izVert;
-    tl[curElem] = ghost ? (UnstructuredGrid::POLYHEDRON | UnstructuredGrid::GHOST_BIT) : UnstructuredGrid::POLYHEDRON;
+    tl[curElem] = UnstructuredGrid::POLYHEDRON;
+
+    uGrid->setGhost(curElem, ghost);
+
     ++curElem;
     return true;
 }
@@ -618,8 +625,12 @@ bool ReadMPAS::addPoly(Index elem, Index &curElem, Index *el, Index *cl, long vP
 }
 
 bool ReadMPAS::addWedge(bool ghost, Index &curElem, Index center, Index n1, Index n2, Index layer, Index nVertPerLayer,
-                        Index *el, Byte *tl, Index *cl, Index &idx2)
+                        Unstructured::const_ptr uGrid, Index &idx2)
 {
+    auto cl = uGrid->cl().data();
+    auto el = uGrid->el().data();
+    auto tl = uGrid->tl().data();
+
     el[curElem] = idx2;
     Index off = layer * nVertPerLayer;
     cl[idx2++] = center + off;
@@ -631,7 +642,7 @@ bool ReadMPAS::addWedge(bool ghost, Index &curElem, Index center, Index n1, Inde
     cl[idx2++] = n2 + off;
     tl[curElem] = UnstructuredGrid::PRISM;
     if (ghost)
-        tl[curElem] |= UnstructuredGrid::GHOST_BIT;
+        uGrid->setGhost(curElem, true);
     ++curElem;
 
     return true;
@@ -1336,7 +1347,9 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
 
                     if (tl) {
                         if (iz < numLevels - 1) {
-                            addCell(i, isGhost[i] > 0, currentElem, el, tl, cl, MAX_EDGES, numVertB, izVert, idx2,
+                            auto uGrid = UnstructuredGrid::as(grid);
+                            assert(uGrid);
+                            addCell(i, isGhost[i] > 0, currentElem, uGrid, MAX_EDGES, numVertB, izVert, idx2,
                                     reducedVOC);
                         }
                     } else {
@@ -1443,7 +1456,9 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
                     assert(rn2 != InvalidIndex);
                     if (tl) {
                         for (Index iz = 0; iz < numLevels - 1; ++iz) {
-                            addWedge(ghost, currentElem, k, rn1, rn2, iz, numVertB, el, tl, cl, idx2);
+                            auto uGrid = UnstructuredGrid::as(grid);
+                            assert(uGrid);
+                            addWedge(ghost, currentElem, k, rn1, rn2, iz, numVertB, uGrid, idx2);
                         }
                     } else {
                         assert(!ghost);
