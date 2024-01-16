@@ -1,5 +1,5 @@
-Sphinx==5.0.1
+Sphinx
 sphinx-rtd-theme
 sphinxcontrib-mermaid
-myst-parser==0.17.0
+myst-parser
 attrs
