@@ -1389,6 +1389,15 @@ bool Module::dispatch(bool block, bool *messageReceived, unsigned int minPrio)
         // if parent died something is wrong - make sure that shm get cleaned up
         Shm::the().setRemoveOnDetach();
         throw(e);
+    } catch (vistle::exception &e) {
+        std::cerr << "Vistle exception in module " << name() << ": " << e.what() << e.where() << std::endl;
+        throw(e);
+    } catch (std::exception &e) {
+        std::cerr << "exception in module " << name() << ": " << e.what() << std::endl;
+        throw(e);
+    } catch (...) {
+        std::cerr << "unknown exception in module " << name() << std::endl;
+        throw;
     }
 
     return again;
