@@ -569,8 +569,8 @@ bool ReadMPAS::variableExists(std::string findName, const NcmpiFile &filename)
 
 //ADD CELL
 //compute vertices of a cell and add the cells to the cell list
-bool ReadMPAS::addCell(Index elem, bool ghost, Index &curElem, UnstructuredGrid::const_ptr uGrid, long vPerC,
-                       long numVert, long izVert, Index &idx2, const std::vector<Index> &vocList)
+bool ReadMPAS::addCell(Index elem, bool ghost, Index &curElem, UnstructuredGrid::ptr uGrid, long vPerC, long numVert,
+                       long izVert, Index &idx2, const std::vector<Index> &vocList)
 {
     auto cl = uGrid->cl().data();
     auto el = uGrid->el().data();
@@ -625,7 +625,7 @@ bool ReadMPAS::addPoly(Index elem, Index &curElem, Index *el, Index *cl, long vP
 }
 
 bool ReadMPAS::addWedge(bool ghost, Index &curElem, Index center, Index n1, Index n2, Index layer, Index nVertPerLayer,
-                        Unstructured::const_ptr uGrid, Index &idx2)
+                        UnstructuredGrid::ptr uGrid, Index &idx2)
 {
     auto cl = uGrid->cl().data();
     auto el = uGrid->el().data();
