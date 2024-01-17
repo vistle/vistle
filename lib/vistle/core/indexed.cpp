@@ -38,9 +38,9 @@ bool Indexed::checkImpl() const
     V_CHECK(el()[0] == 0);
     V_CHECK(d()->ghost->size() == 0 || d()->ghost->size() == getNumElements());
 
+    V_CHECK(el()[getNumElements()] == getNumCorners());
     if (getNumElements() > 0) {
         V_CHECK(el()[getNumElements() - 1] < getNumCorners());
-        V_CHECK(el()[getNumElements()] == getNumCorners());
     }
 
     if (getNumCorners() > 0) {
