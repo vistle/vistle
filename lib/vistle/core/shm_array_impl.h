@@ -152,7 +152,7 @@ const vtkm::cont::ArrayHandle<typename shm_array<T, allocator>::handle_type> &sh
 template<typename T, class allocator>
 const vtkm::cont::ArrayHandle<typename shm_array<T, allocator>::handle_type> shm_array<T, allocator>::handle() const
 {
-    return vtkm::cont::make_ArrayHandle(reinterpret_cast<const handle_type *>(m_data.get()), m_capacity,
+    return vtkm::cont::make_ArrayHandle(reinterpret_cast<const handle_type *>(m_data.get()), m_size,
                                         vtkm::CopyFlag::Off);
 }
 #endif

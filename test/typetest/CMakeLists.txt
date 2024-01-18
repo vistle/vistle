@@ -1,10 +1,10 @@
-add_executable(typetest typetest.cpp)
+add_executable(vistle_typetest typetest.cpp)
 target_link_libraries(
-    typetest
+    vistle_typetest
     PRIVATE Boost::boost
     PRIVATE Boost::serialization
     PRIVATE MPI::MPI_C
     PRIVATE vistle_core
     PRIVATE Threads::Threads)
 
-target_include_directories(typetest PRIVATE ../..)
+target_include_directories(vistle_typetest PRIVATE ../..)
