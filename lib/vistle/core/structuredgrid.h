@@ -68,7 +68,7 @@ private:
     mutable Index m_ghostLayers[3][2];
     mutable Celltree::const_ptr m_celltree;
 
-    void createCelltree(Index dims[]) const;
+    void createCelltree(Index dims[3]) const;
 
     // data object
     V_DATA_BEGIN(StructuredGrid);
