@@ -167,6 +167,7 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, std::string &diagnostic
     const auto *ghostArray = vugrid->GetCellGhostArray();
 #endif
     Index elemVistle = 0;
+    bool containsPolygons = false;
     for (Index i = 0; i < nelemVtk; ++i) {
         elems[elemVistle] = connlist.size();
 
@@ -188,6 +189,7 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, std::string &diagnostic
             break;
         case VTK_POLYGON:
             typelist[elemVistle] = UnstructuredGrid::POLYGON;
+            containsPolygons = true;
             break;
         case VTK_QUAD:
             typelist[elemVistle] = UnstructuredGrid::QUAD;
@@ -230,6 +232,7 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, std::string &diagnostic
             }
             break;
         }
+
 #if VTK_MAJOR_VERSION >= 7
         if (ghostArray &&
             const_cast<vtkUnsignedCharArray *>(ghostArray)->GetValue(i) & vtkDataSetAttributes::DUPLICATECELL) {
@@ -287,6 +290,14 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, std::string &diagnostic
         ++elemVistle;
     }
     elems[sizes.numElements] = connlist.size();
+
+    if (containsPolygons) {
+        std::stringstream str;
+        str << "Unstructured grid contains polygons: Note that you must first connect the 'SplitDimensions' module to "
+               "the output ports before you continue using its data.\n";
+        std::cerr << str.str();
+        diagnostics.append(str.str());
+    }
 
     return cugrid;
 }
