@@ -106,6 +106,7 @@ void shm_array<T, allocator>::push_back(const T &v)
     assert(m_size < m_capacity);
     new (&m_data[m_size]) T(v);
     ++m_size;
+    updateArrayHandle();
 }
 
 template<typename T, class allocator>
@@ -161,7 +162,8 @@ template<typename T, class allocator>
 void shm_array<T, allocator>::updateArrayHandle()
 {
 #ifdef NO_SHMEM
-    m_handle = vtkm::cont::make_ArrayHandle(reinterpret_cast<handle_type *>(m_data), m_capacity, vtkm::CopyFlag::Off);
+    // has to be updated whenever the location or the size of the array changes
+    m_handle = vtkm::cont::make_ArrayHandle(reinterpret_cast<handle_type *>(m_data), m_size, vtkm::CopyFlag::Off);
 #endif
 }
 
@@ -219,6 +221,7 @@ void shm_array<T, allocator>::reserve_or_shrink(const size_t capacity)
     }
     m_data = new_data;
     m_capacity = capacity;
+    updateArrayHandle();
 }
 
 template<typename T, class allocator>
