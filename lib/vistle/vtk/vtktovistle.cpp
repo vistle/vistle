@@ -167,44 +167,53 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, std::string &diagnostic
     const auto *ghostArray = vugrid->GetCellGhostArray();
 #endif
     Index elemVistle = 0;
-    bool containsPolygons = false;
+    bool haveDim[4] = {false, false, false, false};
     for (Index i = 0; i < nelemVtk; ++i) {
         elems[elemVistle] = connlist.size();
 
         switch (vugrid->GetCellType(i)) {
         case VTK_VERTEX:
         case VTK_POLY_VERTEX:
+            haveDim[0] = true;
             typelist[elemVistle] = UnstructuredGrid::POINT;
             break;
         case VTK_LINE:
         case VTK_POLY_LINE:
+            haveDim[1] = true;
             typelist[elemVistle] = UnstructuredGrid::BAR;
             break;
         case VTK_TRIANGLE:
+            haveDim[2] = true;
             typelist[elemVistle] = UnstructuredGrid::TRIANGLE;
             break;
         case VTK_PIXEL:
+            haveDim[2] = true;
             // vistle does not support pixels, but they can be expressed as quads
             typelist[elemVistle] = UnstructuredGrid::QUAD;
             break;
         case VTK_POLYGON:
+            haveDim[2] = true;
             typelist[elemVistle] = UnstructuredGrid::POLYGON;
-            containsPolygons = true;
             break;
         case VTK_QUAD:
+            haveDim[2] = true;
             typelist[elemVistle] = UnstructuredGrid::QUAD;
             break;
         case VTK_TETRA:
+            haveDim[3] = true;
             typelist[elemVistle] = UnstructuredGrid::TETRAHEDRON;
             break;
         case VTK_HEXAHEDRON:
+            haveDim[3] = true;
             typelist[elemVistle] = UnstructuredGrid::HEXAHEDRON;
             break;
         case VTK_VOXEL:
+            haveDim[3] = true;
             // vistle does not support voxels, but they can be expressed as hexahedra
             typelist[elemVistle] = UnstructuredGrid::HEXAHEDRON;
             break;
         case VTK_LAGRANGE_HEXAHEDRON: {
+            haveDim[3] = true;
             auto lagrangeCell = dynamic_cast<vtkLagrangeHexahedron *>(vugrid->GetCell(i));
             for (int j = 0; j < lagrangeCell->GetOrder()[0] * lagrangeCell->GetOrder()[1] * lagrangeCell->GetOrder()[2];
                  j++) {
@@ -214,12 +223,15 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, std::string &diagnostic
             --elemVistle; //counter the generat +1
         } break;
         case VTK_WEDGE:
+            haveDim[3] = true;
             typelist[elemVistle] = UnstructuredGrid::PRISM;
             break;
         case VTK_PYRAMID:
+            haveDim[3] = true;
             typelist[elemVistle] = UnstructuredGrid::PYRAMID;
             break;
         case VTK_POLYHEDRON:
+            haveDim[3] = true;
             typelist[elemVistle] = UnstructuredGrid::POLYHEDRON;
             break;
         default:
@@ -291,9 +303,10 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, std::string &diagnostic
     }
     elems[sizes.numElements] = connlist.size();
 
-    if (containsPolygons) {
+    if (haveDim[0] || haveDim[1] || haveDim[2]) {
         std::stringstream str;
-        str << "Unstructured grid contains polygons: Note that you must first connect the 'SplitDimensions' module to "
+        str << "Unstructured grid contains low-dimensional cells: Note that you must first connect the "
+               "'SplitDimensions' module to "
                "the output ports before you continue using its data.\n";
         std::cerr << str.str();
         diagnostics.append(str.str());
