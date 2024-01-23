@@ -707,9 +707,11 @@ struct SelectCells {
         int havehigher = 0;
         Index Cell = iCell.get<0>();
         Index nextCell = iCell.get<1>();
-        Byte cellType = iCell.get<2>();
-        if (cellType == cell::GHOST)
-            return 0;
+        if (m_data.m_ghost) {
+            Byte cellType = m_data.m_ghost[Cell];
+            if (cellType == cell::GHOST)
+                return 0;
+        }
         // also for POLYHEDRON
         for (Index i = Cell; i < nextCell; i++) {
             Scalar val = m_data.m_isoFunc(m_data.m_cl[i]);
@@ -1120,7 +1122,8 @@ bool Leveller::process()
         std::unique_ptr<HostData> HD_ptr;
         if (m_unstr) {
             HD_ptr = std::make_unique<HostData>(m_isoValue, isofunc, m_unstr->el(), m_unstr->tl(), m_unstr->cl(),
-                                                m_unstr->ghost(), m_unstr->x(), m_unstr->y(), m_unstr->z());
+                                                m_unstr->ghost().size() > 0 ? m_unstr->ghost() : nullptr, m_unstr->x(),
+                                                m_unstr->y(), m_unstr->z());
 
         } else if (m_strbase) {
             HD_ptr = std::make_unique<HostData>(m_isoValue, isofunc, dims[0], dims[1], dims[2], coords[0], coords[1],
