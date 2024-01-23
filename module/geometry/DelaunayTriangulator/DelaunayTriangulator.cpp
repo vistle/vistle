@@ -167,14 +167,14 @@ Triangles::ptr computeConvexHull(Points::const_ptr &points)
         const auto &ch = *cit;
         const auto idx = ch->index(inf);
         if (idx == 0 || idx == 2) {
-            for (unsigned i = 3; i < 4; --i) {
+            for (int i = 3; i < 4; --i) {
                 if (i == idx)
                     continue;
                 *cl = ch->vertex(i)->info();
                 ++cl;
             }
         } else {
-            for (unsigned i = 0; i < 4; ++i) {
+            for (int i = 0; i < 4; ++i) {
                 if (i == idx)
                     continue;
                 *cl = ch->vertex(i)->info();
