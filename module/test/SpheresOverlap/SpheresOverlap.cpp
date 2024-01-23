@@ -1,6 +1,7 @@
 
 #include <math.h>
 
+#include <vistle/alg/objalg.h>
 #include <vistle/core/lines.h>
 #include <vistle/core/spheres.h>
 
@@ -19,6 +20,8 @@ SpheresOverlap::SpheresOverlap(const std::string &name, int moduleID, mpi::commu
 {
     m_spheresIn = createInputPort("spheres_in", "spheres for which overlap will be calculated");
     m_linesOut = createOutputPort("lines_out", "lines between all overlapping spheres");
+
+    setReducePolicy(message::ReducePolicy::OverAll);
 }
 
 SpheresOverlap::~SpheresOverlap()
@@ -26,11 +29,15 @@ SpheresOverlap::~SpheresOverlap()
 
 bool SpheresOverlap::compute(const std::shared_ptr<BlockTask> &task) const
 {
-    auto spheres = task->expect<Spheres>("spheres_in");
-    if (!spheres) {
+    auto dataIn = task->expect<Object>("spheres_in");
+    auto splitDataIn = splitContainerObject(dataIn);
+
+    if (!Spheres::as(splitDataIn.geometry)) {
         sendError("input port expects spheres");
         return true;
     }
+    
+    auto spheres = Spheres::as(splitDataIn.geometry);
 
     auto xSpheres = spheres->x();
     auto ySpheres = spheres->y();
@@ -77,6 +84,7 @@ bool SpheresOverlap::compute(const std::shared_ptr<BlockTask> &task) const
     }
 
     if (numCoordsLines) {
+        lines->copyAttributes(spheres);
         updateMeta(lines);
         task->addObject(m_linesOut, lines);
     }
