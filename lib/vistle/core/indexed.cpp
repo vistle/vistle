@@ -64,12 +64,16 @@ std::pair<Vector3, Vector3> Indexed::getBounds() const
 void Indexed::setGhost(Index index, bool isGhost)
 {
     assert(index < getNumElements());
+    if (this->d()->ghost->size() < getNumElements())
+        this->d()->ghost->resize(getNumElements());
     (this->ghost())[index] = isGhost ? cell::GHOST : cell::NORMAL;
 }
 
 bool Indexed::isGhost(Index index) const
 {
     assert(index < getNumElements());
+    if (index >= this->d()->ghost->size())
+        return false;
     return (this->ghost())[index] == cell::GHOST;
 }
 
@@ -414,7 +418,7 @@ Indexed::Data::Data(const size_t numElements, const size_t numCorners, const siz
     CHECK_OVERFLOW(numCorners);
     el.construct(numElements + 1);
     cl.construct(numCorners);
-    ghost.construct(numElements);
+    ghost.construct(0);
     (*el)[0] = 0;
 }
 
