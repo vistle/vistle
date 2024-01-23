@@ -200,9 +200,7 @@ bool IsoSurface::reduce(int timestep)
     }
 
     if (m_foundPoint) {
-        int numProcessed = 0;
         for (const auto &b: blocks) {
-            ++numProcessed;
             auto obj = work(b.grid, b.datas, b.mapdata, value);
             addObject(m_dataOut, obj);
         }
