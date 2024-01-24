@@ -399,42 +399,42 @@ void archive_helper<yas_tag>::ArrayWrapper<T>::save(Archive &ar) const
             dims.push_back(m_dim[c]);
         while (dims.back() == 1 && dims.size() > 1)
             dims.pop_back();
-        SZ::Config conf;
+        SZ3::Config conf;
         if (dims.size() == 1)
-            conf = SZ::Config(dims[0]);
+            conf = SZ3::Config(dims[0]);
         else if (dims.size() == 2)
-            conf = SZ::Config(dims[0], dims[1]);
+            conf = SZ3::Config(dims[0], dims[1]);
         else if (dims.size() == 3)
-            conf = SZ::Config(dims[0], dims[1], dims[2]);
+            conf = SZ3::Config(dims[0], dims[1], dims[2]);
         switch (cs.szAlgo) {
         case SzInterp:
-            conf.cmprAlgo = SZ::ALGO_INTERP;
+            conf.cmprAlgo = SZ3::ALGO_INTERP;
             break;
         case SzInterpLorenzo:
-            conf.cmprAlgo = SZ::ALGO_INTERP_LORENZO;
+            conf.cmprAlgo = SZ3::ALGO_INTERP_LORENZO;
             break;
         case SzLorenzoReg:
-            conf.cmprAlgo = SZ::ALGO_LORENZO_REG;
+            conf.cmprAlgo = SZ3::ALGO_LORENZO_REG;
             break;
         }
         switch (cs.szError) {
         case SzAbs:
-            conf.errorBoundMode = SZ::EB_ABS;
+            conf.errorBoundMode = SZ3::EB_ABS;
             break;
         case SzRel:
-            conf.errorBoundMode = SZ::EB_REL;
+            conf.errorBoundMode = SZ3::EB_REL;
             break;
         case SzPsnr:
-            conf.errorBoundMode = SZ::EB_PSNR;
+            conf.errorBoundMode = SZ3::EB_PSNR;
             break;
         case SzL2:
-            conf.errorBoundMode = SZ::EB_L2NORM;
+            conf.errorBoundMode = SZ3::EB_L2NORM;
             break;
         case SzAbsAndRel:
-            conf.errorBoundMode = SZ::EB_ABS_AND_REL;
+            conf.errorBoundMode = SZ3::EB_ABS_AND_REL;
             break;
         case SzAbsOrRel:
-            conf.errorBoundMode = SZ::EB_ABS_OR_REL;
+            conf.errorBoundMode = SZ3::EB_ABS_OR_REL;
             break;
         }
         conf.absErrorBound = cs.szAbsError;
@@ -469,11 +469,11 @@ void archive_helper<yas_tag>::ArrayWrapper<T>::save(Archive &ar) const
 namespace detail {
 
 #ifdef HAVE_SZ3
-extern template char *compressSz3<void>(size_t &compressedSize, const void *src, const SZ::Config &conf);
-extern template char *compressSz3<float>(size_t &compressedSize, const float *src, const SZ::Config &conf);
-extern template char *compressSz3<double>(size_t &compressedSize, const double *src, const SZ::Config &conf);
-extern template char *compressSz3<int32_t>(size_t &compressedSize, const int32_t *src, const SZ::Config &conf);
-extern template char *compressSz3<int64_t>(size_t &compressedSize, const int64_t *src, const SZ::Config &conf);
+extern template char *compressSz3<void>(size_t &compressedSize, const void *src, const SZ3::Config &conf);
+extern template char *compressSz3<float>(size_t &compressedSize, const float *src, const SZ3::Config &conf);
+extern template char *compressSz3<double>(size_t &compressedSize, const double *src, const SZ3::Config &conf);
+extern template char *compressSz3<int32_t>(size_t &compressedSize, const int32_t *src, const SZ3::Config &conf);
+extern template char *compressSz3<int64_t>(size_t &compressedSize, const int64_t *src, const SZ3::Config &conf);
 
 extern template bool V_COREEXPORT decompressSz3<void>(void *dest, const buffer &compressed, const Index dim[3]);
 extern template bool V_COREEXPORT decompressSz3<float>(float *dest, const buffer &compressed, const Index dim[3]);
