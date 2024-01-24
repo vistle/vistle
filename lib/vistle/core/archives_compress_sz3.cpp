@@ -24,14 +24,14 @@ namespace vistle {
 namespace detail {
 
 template<>
-char *compressSz3<void>(size_t &compressedSize, const void *src, const SZ::Config &conf)
+char *compressSz3<void>(size_t &compressedSize, const void *src, const SZ3::Config &conf)
 {
     compressedSize = 0;
     return nullptr;
 }
 
 template<>
-char *compressSz3<float>(size_t &compressedSize, const float *src, const SZ::Config &conf)
+char *compressSz3<float>(size_t &compressedSize, const float *src, const SZ3::Config &conf)
 {
     compressedSize = 0;
     char *buf = SZ_compress(conf, src, compressedSize);
@@ -43,7 +43,7 @@ char *compressSz3<float>(size_t &compressedSize, const float *src, const SZ::Con
 }
 
 template<>
-char *compressSz3<double>(size_t &compressedSize, const double *src, const SZ::Config &conf)
+char *compressSz3<double>(size_t &compressedSize, const double *src, const SZ3::Config &conf)
 {
     compressedSize = 0;
     char *buf = SZ_compress(conf, src, compressedSize);
@@ -55,7 +55,7 @@ char *compressSz3<double>(size_t &compressedSize, const double *src, const SZ::C
 }
 
 template<>
-char *compressSz3<int32_t>(size_t &compressedSize, const int32_t *src, const SZ::Config &conf)
+char *compressSz3<int32_t>(size_t &compressedSize, const int32_t *src, const SZ3::Config &conf)
 {
     compressedSize = 0;
     char *buf = SZ_compress(conf, src, compressedSize);
@@ -67,7 +67,7 @@ char *compressSz3<int32_t>(size_t &compressedSize, const int32_t *src, const SZ:
 }
 
 template<>
-char *compressSz3<int64_t>(size_t &compressedSize, const int64_t *src, const SZ::Config &conf)
+char *compressSz3<int64_t>(size_t &compressedSize, const int64_t *src, const SZ3::Config &conf)
 {
     compressedSize = 0;
     char *buf = SZ_compress(conf, src, compressedSize);
@@ -87,7 +87,7 @@ bool decompressSz3<void>(void *dest, const buffer &compressed, const Index dim[3
 template<>
 bool decompressSz3<float>(float *dest, const buffer &compressed, const Index dim[3])
 {
-    SZ::Config conf;
+    SZ3::Config conf;
     SZ_decompress(conf, const_cast<char *>(compressed.data()), compressed.size(), dest);
     return true;
 }
@@ -95,7 +95,7 @@ bool decompressSz3<float>(float *dest, const buffer &compressed, const Index dim
 template<>
 bool decompressSz3<double>(double *dest, const buffer &compressed, const Index dim[3])
 {
-    SZ::Config conf;
+    SZ3::Config conf;
     SZ_decompress(conf, const_cast<char *>(compressed.data()), compressed.size(), dest);
     return true;
 }
@@ -103,7 +103,7 @@ bool decompressSz3<double>(double *dest, const buffer &compressed, const Index d
 template<>
 bool decompressSz3<int32_t>(int32_t *dest, const buffer &compressed, const Index dim[3])
 {
-    SZ::Config conf;
+    SZ3::Config conf;
     SZ_decompress(conf, const_cast<char *>(compressed.data()), compressed.size(), dest);
     return true;
 }
@@ -111,7 +111,7 @@ bool decompressSz3<int32_t>(int32_t *dest, const buffer &compressed, const Index
 template<>
 bool decompressSz3<int64_t>(int64_t *dest, const buffer &compressed, const Index dim[3])
 {
-    SZ::Config conf;
+    SZ3::Config conf;
     SZ_decompress(conf, const_cast<char *>(compressed.data()), compressed.size(), dest);
     return true;
 }
