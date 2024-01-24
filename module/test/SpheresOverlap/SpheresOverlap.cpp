@@ -14,13 +14,35 @@ using namespace vistle;
 
 MODULE_MAIN(SpheresOverlap)
 
-// TODO: check overlap between points in one cell!
+// TODO: - instead of checking sId < sId2, adjust for range accordingly!
+//       - leaving out sqrt might lead to overflow!
+//       - test map 2: not updating time steps correctly...
+void AddLine(Lines::ptr lines, std::array<Scalar, 3> startPoint, std::array<Scalar, 3> endPoint)
+{
+    auto &x = lines->x();
+    auto &y = lines->y();
+    auto &z = lines->z();
 
-/*
-    Implementing the Cell Lists Algorithm to solve the Fixed-Radius Nearest Neighbors Problem , see e.g., 
-    https://jaantollander.com/post/searching-for-fixed-radius-near-neighbors-with-cell-lists-algorithm-in-julia-language/
-*/
-Lines::ptr CellListAlgorithm(Spheres::const_ptr spheres, Scalar searchRadius)
+    auto &cl = lines->cl();
+    auto &el = lines->el();
+
+    cl.push_back(x.size());
+
+    x.push_back(startPoint[0]);
+    y.push_back(startPoint[1]);
+    z.push_back(startPoint[2]);
+
+    cl.push_back(x.size());
+
+    x.push_back(endPoint[0]);
+    y.push_back(endPoint[1]);
+    z.push_back(endPoint[2]);
+
+    el.push_back(x.size());
+}
+
+
+UniformGrid::ptr CreateCellListGrid(Spheres::const_ptr spheres, Scalar searchRadius)
 {
     // calculate grid size using bounds of spheres
     auto bounds = spheres->getBounds();
@@ -50,16 +72,36 @@ Lines::ptr CellListAlgorithm(Spheres::const_ptr spheres, Scalar searchRadius)
     }
 
     grid->refreshImpl();
+
+    return grid;
+}
+
+bool DetectCollision(std::array<Scalar, 3> start, std::array<Scalar, 3> end, Scalar threshold)
+{
+    auto distance = pow((start[0] - end[0]), 2) + pow((start[1] - end[1]), 2) + pow((start[2] - end[2]), 2);
+    // spheres overlap if euclidean distance between centers is <= sum of radii
+    return distance <= pow(threshold, 2);
+}
+
+
+/*
+    Implementing the Cell Lists Algorithm to solve the Fixed-Radius Nearest Neighbors Problem , see e.g., 
+    https://jaantollander.com/post/searching-for-fixed-radius-near-neighbors-with-cell-lists-algorithm-in-julia-language/
+*/
+Lines::ptr CellListAlgorithm(Spheres::const_ptr spheres, Scalar searchRadius)
+{
+    UniformGrid::ptr grid = CreateCellListGrid(spheres, searchRadius);
+
     // create cell list
     std::map<Index, std::vector<Index>> cellList;
 
-    auto xSpheres = spheres->x();
-    auto ySpheres = spheres->y();
-    auto zSpheres = spheres->z();
+    auto x = spheres->x();
+    auto y = spheres->y();
+    auto z = spheres->z();
 
     // cell list stores which sphere lies in which cell
     for (Index i = 0; i < spheres->getNumCoords(); i++) {
-        auto containingCell = grid->findCell({xSpheres[i], ySpheres[i], zSpheres[i]});
+        auto containingCell = grid->findCell({x[i], y[i], z[i]});
         assert(containingCell != InvalidIndex);
 
         if (auto cell = cellList.find(containingCell); cell != cellList.end()) {
@@ -69,64 +111,59 @@ Lines::ptr CellListAlgorithm(Spheres::const_ptr spheres, Scalar searchRadius)
         }
     }
 
-    /* go through each cell
-           go through each neighbor cell  but try not to test same pair TWICE 
-           (only test LARGER indices)
-               if spheres overlap:
-                    create connection between them
-    */
     auto radii = spheres->r();
 
     Lines::ptr lines(new Lines(0, 0, 0));
+    (lines->el()).push_back(0);
 
-    auto &xLines = lines->x();
-    auto &yLines = lines->y();
-    auto &zLines = lines->z();
-
-    auto &clLines = lines->cl();
-    auto &elLines = lines->el();
-    elLines.push_back(0);
-    Index numCoordsLines = 0;
-
-
+    // draw lines between colliding spheres
     for (const auto &[cell, sphereList]: cellList) {
         auto neighbors = grid->getNeighborElements(cell);
-        for (const auto neighborId: neighbors) {
-            // avoid testing the same two cells twice
-            if (cell < neighborId) {
-                // make sure neighbor cell contains spheres, too
-                if (auto neighbor = cellList.find(neighborId); neighbor != cellList.end()) {
-                    for (const auto sId: sphereList) {
-                        for (const auto nId: neighbor->second) {
-                            // no need to compute sqrt for euclidean distance
-                            auto distance = pow((xSpheres[sId] - xSpheres[nId]), 2) +
-                                            pow((ySpheres[sId] - ySpheres[nId]), 2) +
-                                            pow((zSpheres[sId] - zSpheres[nId]), 2);
-                            // spheres overlap if euclidean distance between centers is <= sum of radii
-                            if (distance <= pow(radii[sId] + radii[nId], 2)) {
-                                xLines.push_back(xSpheres[sId]);
-                                yLines.push_back(ySpheres[sId]);
-                                zLines.push_back(zSpheres[sId]);
-
-                                xLines.push_back(xSpheres[nId]);
-                                yLines.push_back(ySpheres[nId]);
-                                zLines.push_back(zSpheres[nId]);
-
-                                clLines.push_back(numCoordsLines++);
-                                clLines.push_back(numCoordsLines++);
-
-                                elLines.push_back(numCoordsLines);
-                            }
+        for (const auto sId: sphereList) {
+            std::array<Scalar, 3> point1 = {x[sId], y[sId], z[sId]};
+            // check for collisions with other spheres in current cell
+            for (const auto sId2: sphereList) {
+                if (sId < sId2) {
+                    std::array<Scalar, 3> point2 = {x[sId2], y[sId2], z[sId2]};
+                    if (DetectCollision(point1, point2, radii[sId] + radii[sId2])) {
+                        AddLine(lines, point1, point2);
+                    }
+                }
+            }
+            // check for collisions in neighbor cells
+            for (const auto neighborId: neighbors) {
+                if (auto neighbor = cellList.find(neighborId); (neighbor != cellList.end() && cell < neighborId)) {
+                    for (const auto nId: neighbor->second) {
+                        std::array<Scalar, 3> point2 = {x[nId], y[nId], z[nId]};
+                        if (DetectCollision(point1, point2, radii[sId] + radii[nId])) {
+                            AddLine(lines, point1, point2);
                         }
                     }
                 }
             }
         }
+
+        /*
+        // check for collisions in neighbor cells
+        auto neighbors = grid->getNeighborElements(cell);
+        for (const auto neighborId: neighbors) {
+            // check if neighbor contains spheres and avoid testing same pair of spheres twice
+            if (auto neighbor = cellList.find(neighborId); (neighbor != cellList.end() && cell < neighborId)) {
+                for (const auto sId: sphereList) {
+                    std::array<Scalar, 3> point1 = {x[sId], y[sId], z[sId]};
+                    for (const auto nId: neighbor->second) {
+                        std::array<Scalar, 3> point2 = {x[nId], y[nId], z[nId]};
+                        if (DetectCollision(point1, point2, radii[sId] + radii[nId])) {
+                            AddLine(lines, point1, point2);
+                        }
+                    }
+                }
+            }
+        }*/
     }
 
     return lines;
 }
-
 
 /*
     TODO: 
