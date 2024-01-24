@@ -902,6 +902,19 @@ void Module::updateMeta(vistle::Object::ptr obj) const
         obj->setIteration(m_iteration);
 
         obj->updateInternals();
+
+        // update referenced objects, if not yet valid
+        auto refs = obj->referencedObjects();
+        for (auto &ref: refs) {
+            if (ref->getCreator() == -1) {
+                auto o = std::const_pointer_cast<Object>(ref);
+                o->setCreator(id());
+                o->setExecutionCounter(m_executionCount);
+                o->setIteration(m_iteration);
+
+                o->updateInternals();
+            }
+        }
     }
 }
 
