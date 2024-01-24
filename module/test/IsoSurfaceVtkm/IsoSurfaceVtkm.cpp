@@ -235,8 +235,6 @@ Object::ptr IsoSurfaceVtkm::work(vistle::Object::const_ptr grid, vistle::DataBas
     isosurfaceFilter.SetIsoValue(isoValue);
     isosurfaceFilter.SetMergeDuplicatePoints(false);
     isosurfaceFilter.SetGenerateNormals(m_computeNormals->getValue() != 0);
-    std::string normalsName("_normals");
-    isosurfaceFilter.SetNormalArrayName(normalsName);
     auto isosurface = isosurfaceFilter.Execute(vtkmDataSet);
 
     // transform result back into vistle format
@@ -253,22 +251,6 @@ Object::ptr IsoSurfaceVtkm::work(vistle::Object::const_ptr grid, vistle::DataBas
         if (geoOut->getBlock() < 0) {
             geoOut->setBlock(grid->getBlock());
             geoOut->setNumBlocks(grid->getNumBlocks());
-        }
-
-        if (m_computeNormals->getValue() != 0) {
-            Object::ptr nobj = vtkmGetField(isosurface, normalsName);
-            if (auto n = Vec<Scalar, 3>::as(nobj)) {
-                auto normals = std::make_shared<vistle::Normals>(0);
-                normals->d()->x[0] = n->d()->x[0];
-                normals->d()->x[1] = n->d()->x[1];
-                normals->d()->x[2] = n->d()->x[2];
-                updateMeta(normals);
-                if (auto coords = Coords::as(geoOut)) {
-                    coords->setNormals(normals);
-                } else if (auto str = StructuredGridBase::as(geoOut)) {
-                    str->setNormals(normals);
-                }
-            }
         }
     }
     return geoOut;
