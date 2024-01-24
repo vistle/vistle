@@ -1122,8 +1122,8 @@ bool Leveller::process()
         std::unique_ptr<HostData> HD_ptr;
         if (m_unstr) {
             HD_ptr = std::make_unique<HostData>(m_isoValue, isofunc, m_unstr->el(), m_unstr->tl(), m_unstr->cl(),
-                                                m_unstr->ghost().size() > 0 ? m_unstr->ghost() : nullptr, m_unstr->x(),
-                                                m_unstr->y(), m_unstr->z());
+                                                m_unstr->ghost().size() > 0 ? m_unstr->ghost().data() : nullptr,
+                                                m_unstr->x(), m_unstr->y(), m_unstr->z());
 
         } else if (m_strbase) {
             HD_ptr = std::make_unique<HostData>(m_isoValue, isofunc, dims[0], dims[1], dims[2], coords[0], coords[1],
