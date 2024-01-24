@@ -8,7 +8,7 @@
 #include <vtkm/filter/contour/Contour.h>
 
 #include "IsoSurfaceVtkm.h"
-#include "VtkmUtils.h"
+#include <vistle/vtkm/convert.h>
 
 using namespace vistle;
 
@@ -240,7 +240,7 @@ Object::ptr IsoSurfaceVtkm::work(vistle::Object::const_ptr grid, vistle::DataBas
     auto isosurface = isosurfaceFilter.Execute(vtkmDataSet);
 
     // transform result back into vistle format
-    Object::ptr geoOut = vtkmIsosurfaceToVistleTriangles(isosurface);
+    Object::ptr geoOut = vtkmGetGeometry(isosurface);
     if (geoOut) {
         updateMeta(geoOut);
         geoOut->copyAttributes(isoField);
