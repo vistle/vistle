@@ -16,7 +16,6 @@ MODULE_MAIN(SpheresOverlap)
 
 // TODO: - instead of checking sId < sId2, adjust for range accordingly!
 //       - leaving out sqrt might lead to overflow!
-//       - test map 2: not updating time steps correctly...
 void AddLine(Lines::ptr lines, std::array<Scalar, 3> startPoint, std::array<Scalar, 3> endPoint)
 {
     auto &x = lines->x();
@@ -142,24 +141,6 @@ Lines::ptr CellListAlgorithm(Spheres::const_ptr spheres, Scalar searchRadius)
                 }
             }
         }
-
-        /*
-        // check for collisions in neighbor cells
-        auto neighbors = grid->getNeighborElements(cell);
-        for (const auto neighborId: neighbors) {
-            // check if neighbor contains spheres and avoid testing same pair of spheres twice
-            if (auto neighbor = cellList.find(neighborId); (neighbor != cellList.end() && cell < neighborId)) {
-                for (const auto sId: sphereList) {
-                    std::array<Scalar, 3> point1 = {x[sId], y[sId], z[sId]};
-                    for (const auto nId: neighbor->second) {
-                        std::array<Scalar, 3> point2 = {x[nId], y[nId], z[nId]};
-                        if (DetectCollision(point1, point2, radii[sId] + radii[nId])) {
-                            AddLine(lines, point1, point2);
-                        }
-                    }
-                }
-            }
-        }*/
     }
 
     return lines;
@@ -184,14 +165,17 @@ SpheresOverlap::~SpheresOverlap()
 bool SpheresOverlap::compute(const std::shared_ptr<BlockTask> &task) const
 {
     auto dataIn = task->expect<Object>("spheres_in");
-    auto splitDataIn = splitContainerObject(dataIn);
+    auto container = splitContainerObject(dataIn);
 
-    if (!Spheres::as(splitDataIn.geometry)) {
+    auto geo = container.geometry;
+    auto mappedData = container.mapped;
+
+    if (!Spheres::as(geo)) {
         sendError("input port expects spheres");
         return true;
     }
 
-    auto spheres = Spheres::as(splitDataIn.geometry);
+    auto spheres = Spheres::as(geo);
 
     auto radii = spheres->r();
     auto maxRadius = std::numeric_limits<std::remove_reference<decltype(radii[0])>::type>::min();
@@ -202,10 +186,14 @@ bool SpheresOverlap::compute(const std::shared_ptr<BlockTask> &task) const
     Lines::ptr lines = CellListAlgorithm(spheres, 3 * maxRadius);
 
     if (lines->getNumCoords()) {
-        lines->copyAttributes(spheres);
+        if (mappedData) {
+            lines->copyAttributes(mappedData);
+        } else {
+            lines->copyAttributes(geo);
+        }
+
         updateMeta(lines);
         task->addObject(m_linesOut, lines);
     }
-
     return true;
 }
