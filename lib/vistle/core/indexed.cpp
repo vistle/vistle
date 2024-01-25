@@ -65,7 +65,7 @@ void Indexed::setGhost(Index index, bool isGhost)
 {
     assert(index < getNumElements());
     if (this->d()->ghost->size() < getNumElements())
-        this->d()->ghost->resize(getNumElements());
+        this->d()->ghost->resize(getNumElements(), cell::NORMAL);
     (this->ghost())[index] = isGhost ? cell::GHOST : cell::NORMAL;
 }
 
