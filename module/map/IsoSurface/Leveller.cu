@@ -701,7 +701,7 @@ struct SelectCells {
     SelectCells(Data &data): m_data(data) {}
 
     // for unstructured grids
-    __host__ __device__ int operator()(const thrust::tuple<Index, Index, Byte> iCell) const
+    __host__ __device__ int operator()(const thrust::tuple<Index, Index> iCell) const
     {
         int havelower = 0;
         int havehigher = 0;
@@ -994,11 +994,9 @@ Index Leveller::calculateSurface(Data &data)
             end = thrust::copy_if(pol(), first, last, thrust::counting_iterator<Index>(0),
                                   data.m_SelectedCellVector.begin(), SelectCells<Data>(data));
         } else if (m_unstr) {
-            typedef thrust::tuple<typename Data::IndexIterator, typename Data::IndexIterator,
-                                  typename Data::TypeIterator>
-                Iteratortuple;
+            typedef thrust::tuple<typename Data::IndexIterator, typename Data::IndexIterator> Iteratortuple;
             typedef thrust::zip_iterator<Iteratortuple> ZipIterator;
-            ZipIterator ElTupleVec(thrust::make_tuple(&data.m_el[0], &data.m_el[1], &data.m_ghost[0]));
+            ZipIterator ElTupleVec(thrust::make_tuple(&data.m_el[0], &data.m_el[1]));
             end = thrust::copy_if(pol(), first, last, ElTupleVec, data.m_SelectedCellVector.begin(),
                                   SelectCells<Data>(data));
         } else if (m_poly) {
