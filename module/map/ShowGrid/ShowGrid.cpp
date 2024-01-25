@@ -197,73 +197,97 @@ bool ShowGrid::compute()
                 }
             }
         } else if (auto poly = Polygons::as(grid)) {
-            const Index *icl = &poly->cl()[0];
+            if (showTypes[UnstructuredGrid::QUAD]) {
+                const Index *icl = &poly->cl()[0];
 
-            Index begin = 0, end = poly->getNumElements();
-            if (cellnrmin >= 0)
-                begin = std::max(cellnrmin, (Integer)begin);
-            if (cellnrmax >= 0)
-                end = std::min(cellnrmax + 1, (Integer)end);
+                Index begin = 0, end = poly->getNumElements();
+                if (cellnrmin >= 0)
+                    begin = std::max(cellnrmin, (Integer)begin);
+                if (cellnrmax >= 0)
+                    end = std::min(cellnrmax + 1, (Integer)end);
 
-            for (Index index = begin; index < end; ++index) {
-                if (!(shownor && showTypes[UnstructuredGrid::POLYGON]))
-                    continue;
+                for (Index index = begin; index < end; ++index) {
+                    const bool ghost = poly->isGhost(index);
+                    const bool show = ((showgho && ghost) || (shownor && !ghost));
+                    if (!show)
+                        continue;
 
-                const Index begin = poly->el()[index], end = poly->el()[index + 1];
-                for (Index i = begin; i < end; ++i) {
-                    ocl.push_back(icl[i]);
+                    const Index begin = poly->el()[index], end = poly->el()[index + 1];
+                    for (Index i = begin; i < end; ++i) {
+                        ocl.push_back(icl[i]);
+                    }
+                    ocl.push_back(icl[begin]);
+                    oel.push_back(ocl.size());
                 }
-                ocl.push_back(icl[begin]);
-                oel.push_back(ocl.size());
             }
             out->d()->x[0] = poly->d()->x[0];
             out->d()->x[1] = poly->d()->x[1];
             out->d()->x[2] = poly->d()->x[2];
         } else if (auto quad = Quads::as(grid)) {
-            auto nelem = quad->getNumElements();
-            if (nelem > 0) {
-                const Index *icl = &quad->cl()[0];
-                for (Index i = 0; i < nelem; ++i) {
-                    ocl.push_back(icl[i * 4]);
-                    ocl.push_back(icl[i * 4 + 1]);
-                    ocl.push_back(icl[i * 4 + 2]);
-                    ocl.push_back(icl[i * 4 + 3]);
-                    ocl.push_back(icl[i * 4]);
-                    oel.push_back(ocl.size());
-                }
-            } else {
-                nelem = quad->getNumVertices() / 4;
-                for (Index i = 0; i < nelem; ++i) {
-                    ocl.push_back(i * 4);
-                    ocl.push_back(i * 4 + 1);
-                    ocl.push_back(i * 4 + 2);
-                    ocl.push_back(i * 4 + 3);
-                    ocl.push_back(i * 4);
-                    oel.push_back(ocl.size());
+            if (showTypes[UnstructuredGrid::QUAD]) {
+                auto nelem = quad->getNumElements();
+                if (quad->getNumCorners() > 0) {
+                    const Index *icl = &quad->cl()[0];
+                    for (Index i = 0; i < nelem; ++i) {
+                        const bool ghost = quad->isGhost(i);
+                        const bool show = ((showgho && ghost) || (shownor && !ghost));
+                        if (!show)
+                            continue;
+                        ocl.push_back(icl[i * 4]);
+                        ocl.push_back(icl[i * 4 + 1]);
+                        ocl.push_back(icl[i * 4 + 2]);
+                        ocl.push_back(icl[i * 4 + 3]);
+                        ocl.push_back(icl[i * 4]);
+                        oel.push_back(ocl.size());
+                    }
+                } else {
+                    nelem = quad->getNumVertices() / 4;
+                    for (Index i = 0; i < nelem; ++i) {
+                        const bool ghost = quad->isGhost(i);
+                        const bool show = ((showgho && ghost) || (shownor && !ghost));
+                        if (!show)
+                            continue;
+                        ocl.push_back(i * 4);
+                        ocl.push_back(i * 4 + 1);
+                        ocl.push_back(i * 4 + 2);
+                        ocl.push_back(i * 4 + 3);
+                        ocl.push_back(i * 4);
+                        oel.push_back(ocl.size());
+                    }
                 }
             }
             out->d()->x[0] = quad->d()->x[0];
             out->d()->x[1] = quad->d()->x[1];
             out->d()->x[2] = quad->d()->x[2];
         } else if (auto tri = Triangles::as(grid)) {
-            auto nelem = tri->getNumElements();
-            if (nelem > 0) {
-                const Index *icl = &tri->cl()[0];
-                for (Index i = 0; i < nelem; ++i) {
-                    ocl.push_back(icl[i * 3]);
-                    ocl.push_back(icl[i * 3 + 1]);
-                    ocl.push_back(icl[i * 3 + 2]);
-                    ocl.push_back(icl[i * 3]);
-                    oel.push_back(ocl.size());
-                }
-            } else {
-                nelem = tri->getNumVertices() / 3;
-                for (Index i = 0; i < nelem; ++i) {
-                    ocl.push_back(i * 3);
-                    ocl.push_back(i * 3 + 1);
-                    ocl.push_back(i * 3 + 2);
-                    ocl.push_back(i * 3);
-                    oel.push_back(ocl.size());
+            if (showTypes[UnstructuredGrid::TRIANGLE]) {
+                auto nelem = tri->getNumElements();
+                if (tri->getNumCorners() > 0) {
+                    const Index *icl = &tri->cl()[0];
+                    for (Index i = 0; i < nelem; ++i) {
+                        const bool ghost = tri->isGhost(i);
+                        const bool show = ((showgho && ghost) || (shownor && !ghost));
+                        if (!show)
+                            continue;
+                        ocl.push_back(icl[i * 3]);
+                        ocl.push_back(icl[i * 3 + 1]);
+                        ocl.push_back(icl[i * 3 + 2]);
+                        ocl.push_back(icl[i * 3]);
+                        oel.push_back(ocl.size());
+                    }
+                } else {
+                    nelem = tri->getNumVertices() / 3;
+                    for (Index i = 0; i < nelem; ++i) {
+                        const bool ghost = tri->isGhost(i);
+                        const bool show = ((showgho && ghost) || (shownor && !ghost));
+                        if (!show)
+                            continue;
+                        ocl.push_back(i * 3);
+                        ocl.push_back(i * 3 + 1);
+                        ocl.push_back(i * 3 + 2);
+                        ocl.push_back(i * 3);
+                        oel.push_back(ocl.size());
+                    }
                 }
             }
             out->d()->x[0] = tri->d()->x[0];
