@@ -41,7 +41,6 @@ struct HostData {
     const Index *m_el = nullptr;
     const Index *m_cl = nullptr;
     const Byte *m_tl = nullptr;
-    const Byte *m_ghost = nullptr;
     std::vector<Index> m_caseNums;
     std::vector<Index> m_numVertices;
     std::vector<Index> m_LocationList;
@@ -65,34 +64,38 @@ struct HostData {
     bool m_isQuad = false;
     bool m_haveCoords = false;
     bool m_computeNormals = false;
+    bool m_computeGhosts = false;
 
     typedef const Byte *TypeIterator;
     typedef const Index *IndexIterator;
     typedef std::vector<Index>::iterator VectorIndexIterator;
 
     // for unstructured grids
-    HostData(Scalar isoValue, IsoDataFunctor isoFunc, const Index *el, const Byte *tl, const Index *cl,
-             const Byte *ghost, const Scalar *x, const Scalar *y, const Scalar *z)
+    HostData(Scalar isoValue, IsoDataFunctor isoFunc, const Index *el, const Byte *tl, const Byte *ghost,
+             const Index *cl, const Scalar *x, const Scalar *y, const Scalar *z)
     : m_isovalue(isoValue)
     , m_isoFunc(isoFunc)
     , m_el(el)
     , m_cl(cl)
     , m_tl(tl)
-    , m_ghost(ghost)
     , m_nvert{0, 0, 0}
     , m_nghost{{0, 0}, {0, 0}, {0, 0}}
     , m_isUnstructured(el)
     , m_haveCoords(true)
     , m_computeNormals(false)
+    , m_computeGhosts(ghost != nullptr)
     {
         addmappeddata(x);
         addmappeddata(y);
         addmappeddata(z);
+
+        if (m_computeGhosts)
+            addcelldata(ghost);
     }
 
     // for structured grids
     HostData(Scalar isoValue, IsoDataFunctor isoFunc, Index nx, Index ny, Index nz, const Scalar *x, const Scalar *y,
-             const Scalar *z)
+             const Scalar *z, bool computeGhost)
     : m_isovalue(isoValue)
     , m_isoFunc(isoFunc)
     , m_el(nullptr)
@@ -103,6 +106,7 @@ struct HostData {
     , m_isUnstructured(false)
     , m_haveCoords(false)
     , m_computeNormals(false)
+    , m_computeGhosts(computeGhost)
     {
         // allocate storage for normals
         addmappeddata((Scalar *)nullptr);
@@ -112,6 +116,9 @@ struct HostData {
         addmappeddata(x);
         addmappeddata(y);
         addmappeddata(z);
+
+        if (m_computeGhosts)
+            addcelldata((Byte *)nullptr);
     }
 
     // for polygons
@@ -160,8 +167,9 @@ struct HostData {
     void setGhostLayers(Index ghost[3][2])
     {
         for (int c = 0; c < 3; ++c) {
-            for (int i = 0; i < 2; ++i)
+            for (int i = 0; i < 2; ++i) {
                 m_nghost[c][i] = ghost[c][i];
+            }
         }
     }
 
@@ -325,6 +333,18 @@ struct ComputeOutput {
     {
         const Index CellNr = m_data.m_SelectedCellVector[ValidCellIndex];
 
+        Byte ghost = cell::NORMAL;
+        bool computeGhosts = m_data.m_computeGhosts && !m_data.m_isUnstructured;
+        if (computeGhosts) {
+            auto cc = vistle::StructuredGridBase::cellCoordinates(CellNr, m_data.m_nvert);
+            for (int c = 0; c < 3; ++c) {
+                if (cc[c] < m_data.m_nghost[c][0])
+                    ghost = cell::GHOST;
+                if (cc[c] + m_data.m_nghost[c][1] + 1 >= m_data.m_nvert[c])
+                    ghost = cell::GHOST;
+            }
+        }
+
         for (Index idx = 0; idx < m_data.m_numVertices[ValidCellIndex] / 3; idx++) {
             Index outcellindex = m_data.m_LocationList[ValidCellIndex] / 3 + idx;
             for (int j = 0; j < m_data.m_numInCellData; j++) {
@@ -334,7 +354,11 @@ struct ComputeOutput {
                 m_data.m_outCellPtrI[j][outcellindex] = m_data.m_inCellPtrI[j][CellNr];
             }
             for (int j = 0; j < m_data.m_numInCellDataB; j++) {
-                m_data.m_outCellPtrB[j][outcellindex] = m_data.m_inCellPtrB[j][CellNr];
+                if (computeGhosts && j == 0) {
+                    m_data.m_outCellPtrB[j][outcellindex] = ghost;
+                } else {
+                    m_data.m_outCellPtrB[j][outcellindex] = m_data.m_inCellPtrB[j][CellNr];
+                }
             }
         }
 
@@ -629,6 +653,7 @@ struct ComputeOutput {
                 field[idx] = m_data.m_isoFunc(cl[idx]);
             }
 
+
             Scalar grad[8][3];
             if (m_data.m_computeNormals) {
                 const auto &H = StructuredGridBase::HexahedronIndices;
@@ -707,11 +732,6 @@ struct SelectCells {
         int havehigher = 0;
         Index Cell = iCell.get<0>();
         Index nextCell = iCell.get<1>();
-        if (m_data.m_ghost) {
-            Byte cellType = m_data.m_ghost[Cell];
-            if (cellType == cell::GHOST)
-                return 0;
-        }
         // also for POLYHEDRON
         for (Index i = Cell; i < nextCell; i++) {
             Scalar val = m_data.m_isoFunc(m_data.m_cl[i]);
@@ -731,14 +751,6 @@ struct SelectCells {
     // for all types of structured grids
     __host__ __device__ int operator()(const Index Cell) const
     {
-        auto cc = vistle::StructuredGridBase::cellCoordinates(Cell, m_data.m_nvert);
-        for (int c = 0; c < 3; ++c) {
-            if (cc[c] < m_data.m_nghost[c][0])
-                return 0;
-            if (cc[c] + m_data.m_nghost[c][1] + 1 >= m_data.m_nvert[c])
-                return 0;
-        }
-
         auto verts = vistle::StructuredGridBase::cellVertices(Cell, m_data.m_nvert);
         int havelower = 0;
         int havehigher = 0;
@@ -1119,13 +1131,27 @@ bool Leveller::process()
 
         std::unique_ptr<HostData> HD_ptr;
         if (m_unstr) {
-            HD_ptr = std::make_unique<HostData>(m_isoValue, isofunc, m_unstr->el(), m_unstr->tl(), m_unstr->cl(),
-                                                m_unstr->ghost().size() > 0 ? m_unstr->ghost().data() : nullptr,
+            const Byte *ghost = nullptr;
+            if (m_unstr->ghost().size() > 0) {
+                ghost = m_unstr->ghost().data();
+            }
+            HD_ptr = std::make_unique<HostData>(m_isoValue, isofunc, m_unstr->el(), m_unstr->tl(), ghost, m_unstr->cl(),
                                                 m_unstr->x(), m_unstr->y(), m_unstr->z());
 
         } else if (m_strbase) {
+            bool haveGhost = false;
+            Index ghost[3][2];
+            for (int c = 0; c < 3; ++c) {
+                ghost[c][0] = m_strbase->getNumGhostLayers(c, StructuredGridBase::Bottom);
+                if (ghost[c][0] > 0)
+                    haveGhost = true;
+                ghost[c][1] = m_strbase->getNumGhostLayers(c, StructuredGridBase::Top);
+                if (ghost[c][1] > 0)
+                    haveGhost = true;
+            }
             HD_ptr = std::make_unique<HostData>(m_isoValue, isofunc, dims[0], dims[1], dims[2], coords[0], coords[1],
-                                                coords[2]);
+                                                coords[2], haveGhost);
+            HD_ptr->setGhostLayers(ghost);
 
         } else if (m_poly) {
             HD_ptr = std::make_unique<HostData>(m_isoValue, isofunc, m_poly->el(), m_poly->cl(), m_poly->x(),
@@ -1143,14 +1169,6 @@ bool Leveller::process()
         }
         HostData &HD = *HD_ptr;
         HD.setHaveCoords(m_coord ? true : false);
-        if (m_strbase) {
-            Index ghost[3][2];
-            for (int c = 0; c < 3; ++c) {
-                ghost[c][0] = m_strbase->getNumGhostLayers(c, StructuredGridBase::Bottom);
-                ghost[c][1] = m_strbase->getNumGhostLayers(c, StructuredGridBase::Top);
-            }
-            HD.setGhostLayers(ghost);
-        }
         HD.setComputeNormals(m_computeNormals);
 #ifdef CUTTINGSURFACE
         if (m_candidateCells) {
@@ -1175,6 +1193,7 @@ bool Leveller::process()
                 HD.addmappeddata(byte->x());
             }
         }
+
         for (size_t i = 0; i < m_celldata.size(); ++i) {
             if (Vec<Scalar, 1>::const_ptr Scal = Vec<Scalar, 1>::as(m_celldata[i])) {
                 HD.addcelldata(Scal->x());
@@ -1264,6 +1283,11 @@ bool Leveller::process()
             size_t idx = 0;
             size_t idxI = 0;
             size_t idxB = 0;
+            if (HD.m_computeGhosts) {
+                assert(m_triangles);
+                assert(m_unstr || m_strbase);
+                m_triangles->d()->ghost = HD.m_outCellDataB[idxB++];
+            }
             for (size_t i = 0; i < m_celldata.size(); ++i) {
                 if (Vec<Scalar>::as(m_celldata[i])) {
                     Vec<Scalar, 1>::ptr out = Vec<Scalar, 1>::ptr(new Vec<Scalar, 1>(Object::Initialized));
