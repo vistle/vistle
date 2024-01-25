@@ -14,6 +14,7 @@ public:
 
 private:
     vistle::Port *m_spheresIn, *m_linesOut;
+    vistle::FloatParameter *m_radiusCoefficient;
 
     bool compute(const std::shared_ptr<vistle::BlockTask> &task) const override;
 };

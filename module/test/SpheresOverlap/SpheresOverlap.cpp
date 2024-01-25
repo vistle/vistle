@@ -156,6 +156,10 @@ SpheresOverlap::SpheresOverlap(const std::string &name, int moduleID, mpi::commu
     m_spheresIn = createInputPort("spheres_in", "spheres for which overlap will be calculated");
     m_linesOut = createOutputPort("lines_out", "lines between all overlapping spheres");
 
+    m_radiusCoefficient = addFloatParameter(
+        "multiply_search_radius_by",
+        "the search radius for the cell lists algorithm will be multiplied by this coefficient", 2.1);
+
     setReducePolicy(message::ReducePolicy::OverAll);
 }
 
@@ -183,7 +187,7 @@ bool SpheresOverlap::compute(const std::shared_ptr<BlockTask> &task) const
         if (radii[i] > maxRadius)
             maxRadius = radii[i];
     }
-    Lines::ptr lines = CellListAlgorithm(spheres, 3 * maxRadius);
+    Lines::ptr lines = CellListAlgorithm(spheres, m_radiusCoefficient->getValue() * maxRadius);
 
     if (lines->getNumCoords()) {
         if (mappedData) {
