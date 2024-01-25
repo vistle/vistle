@@ -4,6 +4,7 @@
 #include "celltree_impl.h"
 #include "ngons_impl.h"
 #include "archives.h"
+#include "celltypes.h"
 #include <cassert>
 #include <vistle/util/exception.h>
 
@@ -27,9 +28,11 @@ void Ngons<N>::refreshImpl() const
     const Data *d = static_cast<Data *>(m_data);
     if (d) {
         m_cl = d->cl;
+        m_ghost = d->ghost;
 
     } else {
         m_cl = nullptr;
+        m_ghost = nullptr;
     }
     m_numCorners = (d && d->cl.valid()) ? d->cl->size() : 0;
 }
@@ -50,8 +53,11 @@ template<int N>
 bool Ngons<N>::checkImpl() const
 {
     CHECK_OVERFLOW(d()->cl->size());
+    CHECK_OVERFLOW(d()->ghost->size());
 
     V_CHECK(d()->cl->check());
+    V_CHECK(d()->ghost->check());
+    V_CHECK(d()->ghost->size() == 0 || d()->ghost->size() == getNumElements());
     if (getNumCorners() > 0) {
         V_CHECK(cl()[0] < getNumVertices());
         V_CHECK(cl()[getNumCorners() - 1] < getNumVertices());
@@ -210,13 +216,31 @@ bool Ngons<N>::validateCelltree() const
     return true;
 }
 
+template<int N>
+void Ngons<N>::setGhost(Index index, bool isGhost)
+{
+    assert(index < getNumElements());
+    if (this->d()->ghost->size() < getNumElements())
+        this->d()->ghost->resize(getNumElements(), cell::NORMAL);
+    this->d()->ghost->at(index) = isGhost ? cell::GHOST : cell::NORMAL;
+}
+
+template<int N>
+bool Ngons<N>::isGhost(Index index) const
+{
+    assert(index < getNumElements());
+    if (index >= this->d()->ghost->size())
+        return false;
+    return (this->ghost())[index] == cell::GHOST;
+}
+
 
 template<int N>
 void Ngons<N>::Data::initData()
 {}
 
 template<int N>
-Ngons<N>::Data::Data(const Ngons::Data &o, const std::string &n): Ngons::Base::Data(o, n), cl(o.cl)
+Ngons<N>::Data::Data(const Ngons::Data &o, const std::string &n): Ngons::Base::Data(o, n), cl(o.cl), ghost(o.ghost)
 {
     initData();
 }
@@ -228,6 +252,7 @@ Ngons<N>::Data::Data(const size_t numCorners, const size_t numCoords, const std:
     CHECK_OVERFLOW(numCorners);
     initData();
     cl.construct(numCorners);
+    ghost.construct(0);
 }
 
 
