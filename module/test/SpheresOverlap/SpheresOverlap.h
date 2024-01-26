@@ -5,9 +5,9 @@
 #include <vistle/module/module.h>
 
 /*
-    Creates lines between all overlapping spheres.
+    Detects which spheres overlap and creates a line between them.
 */
-class SpheresOverlap: public vistle::Module{
+class SpheresOverlap: public vistle::Module {
 public:
     SpheresOverlap(const std::string &name, int moduleID, mpi::communicator comm);
     ~SpheresOverlap();
