@@ -239,20 +239,32 @@ Object::ptr IsoSurfaceVtkm::work(vistle::Object::const_ptr grid, vistle::DataBas
     isosurfaceFilter.SetGenerateNormals(m_computeNormals->getValue() != 0);
     auto isosurface = isosurfaceFilter.Execute(vtkmDataSet);
 
+
     // transform result back into vistle format
     Object::ptr geoOut = vtkmGetGeometry(isosurface);
-    if (geoOut) {
-        updateMeta(geoOut);
-        geoOut->copyAttributes(isoField);
-        geoOut->copyAttributes(grid, false);
-        geoOut->setTransform(grid->getTransform());
-        if (geoOut->getTimestep() < 0) {
-            geoOut->setTimestep(grid->getTimestep());
-            geoOut->setNumTimesteps(grid->getNumTimesteps());
-        }
-        if (geoOut->getBlock() < 0) {
-            geoOut->setBlock(grid->getBlock());
-            geoOut->setNumBlocks(grid->getNumBlocks());
+    if (!geoOut) {
+        return Object::ptr();
+    }
+
+    updateMeta(geoOut);
+    geoOut->copyAttributes(isoField);
+    geoOut->copyAttributes(grid, false);
+    geoOut->setTransform(grid->getTransform());
+    if (geoOut->getTimestep() < 0) {
+        geoOut->setTimestep(grid->getTimestep());
+        geoOut->setNumTimesteps(grid->getNumTimesteps());
+    }
+    if (geoOut->getBlock() < 0) {
+        geoOut->setBlock(grid->getBlock());
+        geoOut->setNumBlocks(grid->getNumBlocks());
+    }
+
+    if (mapField) {
+        if (auto mapOut = vtkmGetField(isosurface, mapspecies)) {
+            mapOut->copyAttributes(mapField);
+            mapOut->setGrid(geoOut);
+            updateMeta(mapOut);
+            return mapOut;
         }
     }
     return geoOut;
