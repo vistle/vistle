@@ -1,0 +1,4 @@
+["alias"]
+# when Tubes is requested, start Thicken
+Tubes = "Thicken"
+Spheres = "Thicken"
