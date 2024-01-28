@@ -291,7 +291,7 @@ bool Hub::init(int argc, char *argv[])
     m_config.reset(new config::Access(m_name, m_name));
     m_config->setPrefix(m_dir->prefix());
 
-    m_basePort = ConfigInt("system", "net", "controlport", m_basePort);
+    m_basePort = *m_config->value<int64_t>("system", "net", "controlport", m_basePort);
 
     namespace po = boost::program_options;
     po::options_description desc("usage");
@@ -2212,11 +2212,8 @@ bool Hub::handlePriv(const message::Spawn &spawnRecv)
     bool isCover = moduleName == "COVER";
 
     if (m_isMaster) {
-        if (moduleName == "Tubes") {
-            spawn.setName("Thicken");
-        } else if (moduleName == "Spheres") {
-            spawn.setName("Thicken");
-        }
+        moduleName = *m_config->value("modules", "alias", moduleName, moduleName);
+        spawn.setName(moduleName.c_str());
         bool restart = spawn.getReferenceType() == message::Spawn::ReferenceType::Migrate;
         bool shouldMirror = (spawn.getReferenceType() == message::Spawn::ReferenceType::None && isCover) &&
                             m_stateTracker.getHubData(spawn.hubId()).hasUi;
