@@ -3,9 +3,7 @@
 
 #include <vistle/control/scanmodules.h>
 #include <cmrc/cmrc.hpp>
-#include <fstream>
-#include <istream>
-#include <streambuf>
+#include <sstream>
 
 CMRC_DECLARE(moduledescriptions);
 
@@ -63,23 +61,8 @@ bool ModuleRegistry::availableModules(AvailableMap &available, int hub)
     try {
         auto fs = cmrc::moduledescriptions::get_filesystem();
         auto data = fs.open("moduledescriptions.txt");
-
-        struct membuf: std::streambuf {
-            membuf(const char *cbegin, const char *cend)
-            {
-                char *begin(const_cast<char *>(cbegin));
-                char *end(const_cast<char *>(cend));
-                this->setg(begin, begin, end);
-            }
-        };
-
-        struct imemstream: virtual membuf, std::istream {
-            imemstream(const char *begin, const char *end)
-            : membuf(begin, end), std::istream(static_cast<std::streambuf *>(this))
-            {}
-        };
-
-        imemstream str(data.begin(), data.end());
+        std::string desc(data.begin(), data.end());
+        std::stringstream str(desc);
         moduleDescriptions = readModuleDescriptions(str);
     } catch (std::exception &ex) {
         std::cerr << "ModuleRegistry::availableModules: exception: " << ex.what() << std::endl;
