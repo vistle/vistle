@@ -2212,8 +2212,6 @@ bool Hub::handlePriv(const message::Spawn &spawnRecv)
     bool isCover = moduleName == "COVER";
 
     if (m_isMaster) {
-        moduleName = *m_config->value("modules", "alias", moduleName, moduleName);
-        spawn.setName(moduleName.c_str());
         bool restart = spawn.getReferenceType() == message::Spawn::ReferenceType::Migrate;
         bool shouldMirror = (spawn.getReferenceType() == message::Spawn::ReferenceType::None && isCover) &&
                             m_stateTracker.getHubData(spawn.hubId()).hasUi;
