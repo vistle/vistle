@@ -16,6 +16,9 @@ MODULE_MAIN(SpheresOverlap)
 
 // TODO: - instead of checking sId < sId2, adjust for range accordingly!
 //       - leaving out sqrt might lead to overflow!
+//       - also store distance between spheres
+//       - map line width to data
+//       - CreateLine should belong in Lines class
 
 // creates a line between a start and an end point and adds it to lines
 void CreateLine(std::array<Scalar, 3> startPoint, std::array<Scalar, 3> endPoint, Lines::ptr lines)
@@ -46,7 +49,7 @@ void CreateLine(std::array<Scalar, 3> startPoint, std::array<Scalar, 3> endPoint
     Creates and returns a uniform grid which encases all points in `spheres`
     and which consists of cubic cells of length `searchRadius`.
 */
-UniformGrid::ptr CreateCellListGrid(Spheres::const_ptr spheres, Scalar searchRadius)
+UniformGrid::ptr CreateSearchGrid(Spheres::const_ptr spheres, Scalar searchRadius)
 {
     // calculate grid size using bounds of spheres
     auto bounds = spheres->getBounds();
@@ -97,12 +100,11 @@ bool DetectOverlap(std::array<Scalar, 3> start, std::array<Scalar, 3> end, Scala
     This algorithm solves the Fixed-Radius Nearest Neighbors Problem , see 
     https://jaantollander.com/post/searching-for-fixed-radius-near-neighbors-with-cell-lists-algorithm-in-julia-language/
 */
-Lines::ptr CellListAlgorithm(Spheres::const_ptr spheres, Scalar searchRadius)
+Lines::ptr CellListsAlgorithm(Spheres::const_ptr spheres, Scalar searchRadius)
 {
-    // 1.) create search grid
-    UniformGrid::ptr grid = CreateCellListGrid(spheres, searchRadius);
+    UniformGrid::ptr grid = CreateSearchGrid(spheres, searchRadius);
 
-    // 2.) keep track of which search grid cell contains which spheres
+    // keep track of which search grid cell contains which spheres
     std::map<Index, std::vector<Index>> cellList;
 
     auto x = spheres->x();
@@ -120,7 +122,7 @@ Lines::ptr CellListAlgorithm(Spheres::const_ptr spheres, Scalar searchRadius)
         }
     }
 
-    // 3.) detect overlapping spheres and create line between them
+    // detect overlapping spheres and create line between them
     auto radii = spheres->r();
 
     Lines::ptr lines(new Lines(0, 0, 0));
@@ -199,7 +201,7 @@ bool SpheresOverlap::compute(const std::shared_ptr<BlockTask> &task) const
     // We want to ensure that no pair of overlapping spheres is missed. As two spheres overlap when
     // the Euclidean distance between them is less than the sum of their radii, the minimum search
     // radius is two times the maximum sphere radius.
-    Lines::ptr lines = CellListAlgorithm(spheres, 2.1 * m_radiusCoefficient->getValue() * maxRadius);
+    Lines::ptr lines = CellListsAlgorithm(spheres, 2.1 * m_radiusCoefficient->getValue() * maxRadius);
 
     if (lines->getNumCoords()) {
         if (mappedData) {
