@@ -5,6 +5,7 @@
 #include <string>
 #include <memory>
 #include <mutex>
+#include <vistle/config/access.h>
 
 #include <boost/mpi.hpp>
 
@@ -13,6 +14,9 @@ namespace vistle {
 
 class Executor;
 class Module;
+namespace config {
+class Access;
+}
 
 class V_MANAGEREXPORT VistleManager {
 public:
@@ -24,6 +28,7 @@ public:
 private:
     boost::mpi::communicator m_comm;
     Executor *executer = nullptr;
+    std::unique_ptr<config::Access> m_configAccess;
 };
 } // namespace vistle
 

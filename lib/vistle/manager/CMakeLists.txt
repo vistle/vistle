@@ -76,6 +76,8 @@ vistle_target_link_libraries(
     MPI::MPI_C
     PRIVATE
     vistle_control
+    PRIVATE
+    vistle_config
     PUBLIC
     vistle_util
     PRIVATE
