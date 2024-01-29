@@ -11,6 +11,7 @@
 #include <vistle/util/directory.h>
 #include <vistle/core/objectmeta.h>
 #include <vistle/core/object.h>
+#include <vistle/config/access.h>
 #include "executor.h"
 #include "communicator.h"
 #include <vistle/util/hostname.h>
@@ -201,6 +202,8 @@ bool VistleManager::run(int argc, char *argv[])
         exit(1);
     }
 #endif
+
+    m_configAccess = std::make_unique<config::Access>(vistle::hostname(), vistle::clustername(), rank);
 
 #ifdef COVER_ON_MAINTHREAD
 #if defined(HAVE_QT) && defined(MODULE_THREAD)
