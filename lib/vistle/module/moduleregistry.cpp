@@ -79,7 +79,7 @@ bool ModuleRegistry::availableModules(AvailableMap &available, int hub)
         }
         AvailableModule::Key key(hub, name);
 
-        available.emplace(key, AvailableModule{hub, name, "", category, description});
+        available.emplace(key, AvailableModule{hub, name, name, category, description});
     }
 
     return true;
