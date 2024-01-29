@@ -16,6 +16,9 @@ public:
 
     Lines(const size_t numElements, const size_t numCorners, const size_t numVertices, const Meta &meta = Meta());
 
+    // creates a line between two points
+    void AddLine(std::array<Scalar, 3> point1, std::array<Scalar, 3> point2);
+
     V_DATA_BEGIN(Lines);
     Data(const size_t numElements = 0, const size_t numCorners = 0, const size_t numVertices = 0,
          const std::string &name = "", const Meta &meta = Meta());

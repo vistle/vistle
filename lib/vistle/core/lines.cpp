@@ -33,6 +33,32 @@ void Lines::print(std::ostream &os) const
     Base::print(os);
 }
 
+void Lines::AddLine(std::array<Scalar, 3> point1, std::array<Scalar, 3> point2)
+{
+    auto &x = this->x();
+    auto &y = this->y();
+    auto &z = this->z();
+
+    auto &cl = this->cl();
+    auto &el = this->el();
+
+    auto size = this->x().size();
+
+    this->cl().push_back(size++);
+
+    this->x().push_back(point1[0]);
+    this->y().push_back(point1[1]);
+    this->z().push_back(point1[2]);
+
+    this->cl().push_back(size++);
+
+    this->x().push_back(point2[0]);
+    this->y().push_back(point2[1]);
+    this->z().push_back(point2[2]);
+
+    this->el().push_back(size);
+}
+
 void Lines::Data::initData()
 {}
 

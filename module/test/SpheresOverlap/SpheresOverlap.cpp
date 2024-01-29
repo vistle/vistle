@@ -18,32 +18,6 @@ MODULE_MAIN(SpheresOverlap)
 //       - leaving out sqrt might lead to overflow!
 //       - also store distance between spheres
 //       - map line width to data
-//       - CreateLine should belong in Lines class
-
-// creates a line between a start and an end point and adds it to lines
-void CreateLine(std::array<Scalar, 3> startPoint, std::array<Scalar, 3> endPoint, Lines::ptr lines)
-{
-    auto &x = lines->x();
-    auto &y = lines->y();
-    auto &z = lines->z();
-
-    auto &cl = lines->cl();
-    auto &el = lines->el();
-
-    cl.push_back(x.size());
-
-    x.push_back(startPoint[0]);
-    y.push_back(startPoint[1]);
-    z.push_back(startPoint[2]);
-
-    cl.push_back(x.size());
-
-    x.push_back(endPoint[0]);
-    y.push_back(endPoint[1]);
-    z.push_back(endPoint[2]);
-
-    el.push_back(x.size());
-}
 
 /*
     Creates and returns a uniform grid which encases all points in `spheres`
@@ -139,7 +113,7 @@ Lines::ptr CellListsAlgorithm(Spheres::const_ptr spheres, Scalar searchRadius)
                     std::array<Scalar, 3> point2 = {x[sId2], y[sId2], z[sId2]};
                     // spheres overlap if distance between their centers is <= sum of radii
                     if (DetectOverlap(point1, point2, radii[sId] + radii[sId2])) {
-                        CreateLine(point1, point2, lines);
+                        lines->AddLine(point1, point2);
                     }
                 }
             }
@@ -149,7 +123,7 @@ Lines::ptr CellListsAlgorithm(Spheres::const_ptr spheres, Scalar searchRadius)
                     for (const auto nId: neighbor->second) {
                         std::array<Scalar, 3> point2 = {x[nId], y[nId], z[nId]};
                         if (DetectOverlap(point1, point2, radii[sId] + radii[nId])) {
-                            CreateLine(point1, point2, lines);
+                            lines->AddLine(point1, point2);
                         }
                     }
                 }
@@ -166,9 +140,8 @@ SpheresOverlap::SpheresOverlap(const std::string &name, int moduleID, mpi::commu
     m_spheresIn = createInputPort("spheres_in", "spheres or data mapped to spheres");
     m_linesOut = createOutputPort("lines_out", "lines between all overlapping spheres");
 
-    m_radiusCoefficient =
-        addFloatParameter("multiply_search_radius_by",
-                          "increase search radius for the Cell Lists algorithm by this factor", 1);
+    m_radiusCoefficient = addFloatParameter("multiply_search_radius_by",
+                                            "increase search radius for the Cell Lists algorithm by this factor", 1);
 
     setReducePolicy(message::ReducePolicy::OverAll);
 }
