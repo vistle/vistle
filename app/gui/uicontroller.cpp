@@ -37,6 +37,8 @@ UiController::UiController(int argc, char *argv[], QObject *parent): QObject(par
 {
     std::string hostname = vistle::hostname();
     m_config = std::make_unique<vistle::config::Access>(hostname, hostname);
+    vistle::Directory dir(argc, argv);
+    m_config->setPrefix(dir.prefix());
 
     std::string host = "localhost";
     unsigned short port = 31093;
@@ -72,7 +74,6 @@ UiController::UiController(int argc, char *argv[], QObject *parent): QObject(par
 #ifdef HAVE_PYTHON
     m_pythonAccess.reset(new vistle::UiPythonStateAccessor(m_vistleConnection.get()));
     m_pythonMod.reset(new vistle::PythonModule(*m_pythonAccess));
-    vistle::Directory dir(argc, argv);
     m_pythonDir = dir.share();
 #endif
     m_thread.reset(new std::thread(std::ref(*m_vistleConnection)));
