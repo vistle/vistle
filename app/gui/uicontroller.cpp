@@ -12,6 +12,7 @@
 #include "uicontroller.h"
 #include "vistleconsole.h"
 #include <vistle/util/directory.h>
+#include <vistle/util/hostname.h>
 #include "remotefilebrowser/remotefiledialog.h"
 #include "remotefilebrowser/vistlefileinfogatherer.h"
 #include "remotefilebrowser/remotefilesystemmodel.h"
@@ -34,6 +35,9 @@ namespace gui {
 
 UiController::UiController(int argc, char *argv[], QObject *parent): QObject(parent), m_mainWindow(nullptr)
 {
+    std::string hostname = vistle::hostname();
+    m_config = std::make_unique<vistle::config::Access>(hostname, hostname);
+
     std::string host = "localhost";
     unsigned short port = 31093;
 
