@@ -1,0 +1,4 @@
+vistle_add_executable(vistle_config_app vistle_config.cpp)
+target_link_libraries(vistle_config_app PRIVATE vistle_util)
+target_link_libraries(vistle_config_app PRIVATE vistle_config)
+set_target_properties(vistle_config_app PROPERTIES OUTPUT_NAME vistle_config)
