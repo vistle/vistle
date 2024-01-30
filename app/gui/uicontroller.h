@@ -6,6 +6,7 @@
 #include <vistle/userinterface/vistleconnection.h>
 #include "vistleobserver.h"
 #include "mainwindow.h"
+#include <vistle/config/access.h>
 
 #include <thread>
 
@@ -87,6 +88,7 @@ private:
     std::string m_pythonDir;
 
     QString m_sessionUrl;
+    std::unique_ptr<vistle::config::Access> m_config;
 };
 
 } // namespace gui
