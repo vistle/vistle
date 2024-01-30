@@ -90,6 +90,7 @@ target_link_libraries(
     PRIVATE Boost::boost
             vistle_util
             vistle_core
+            vistle_config
             vistle_userinterface
             vistle_pythonmodule
             vistle_propertybrowser

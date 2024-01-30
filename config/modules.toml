@@ -2,3 +2,11 @@
 # when Tubes is requested, start Thicken
 Tubes = "Thicken"
 Spheres = "Thicken"
+
+["replace"]
+renderer = [ "COVER", "BlenderRenderer", "ANARemote", "DisCOVERay", "OsgRenderer" ]
+thicken = [ "Thicken", "SpheresOld", "TubesOld" ]
+select = [ "Threshold", "CellSelect" ]
+color = [ "Color", "ColorRandom" ]
+clip = [ "CutGeometry", "ClipVtkm" ]
+attribute = [ "AddAttribute", "AttachShader", "ColorAttribute", "EnableTransparency", "Variant" ]
