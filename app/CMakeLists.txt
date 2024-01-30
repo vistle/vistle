@@ -15,3 +15,4 @@ endif()
 
 add_subdirectory(gui)
 add_subdirectory(opener)
+add_subdirectory(config)
