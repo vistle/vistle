@@ -8,6 +8,8 @@ file(
     LIST_DIRECTORIES false
     ${PROJECT_SOURCE_DIR}/config/*.toml)
 cmrc_add_resource_library(vistle_config_defaults NAMESPACE ${CONFIG_CMRC_NAMESPACE} WHENCE ${PROJECT_SOURCE_DIR}/config ${CONFIG_FILES})
+vistle_export_library(cmrc-base)
+vistle_export_library(vistle_config_defaults)
 
 set(CONFIG_SOURCES config.cpp)
 set(CONFIG_HEADERS array.h access.h file.h value.h config.h)
