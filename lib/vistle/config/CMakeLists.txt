@@ -1,5 +1,3 @@
-include(../../3rdparty/cmrc/CMakeRC.cmake)
-
 set(CONFIG_CMRC_NAMESPACE vistle)
 
 # recursively pick up all .toml files in vistle/config and bake them into binary
@@ -8,7 +6,6 @@ file(
     LIST_DIRECTORIES false
     ${PROJECT_SOURCE_DIR}/config/*.toml)
 cmrc_add_resource_library(vistle_config_defaults NAMESPACE ${CONFIG_CMRC_NAMESPACE} WHENCE ${PROJECT_SOURCE_DIR}/config ${CONFIG_FILES})
-vistle_export_library(cmrc-base)
 vistle_export_library(vistle_config_defaults)
 
 set(CONFIG_SOURCES config.cpp)

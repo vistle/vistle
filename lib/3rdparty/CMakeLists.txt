@@ -208,3 +208,6 @@ if(VISTLE_INSTALL_3RDPARTY)
         DESTINATION include/vistle/3rdparty
         COMPONENT Devel)
 endif()
+
+include(cmrc/CMakeRC.cmake)
+vistle_export_library(cmrc-base)
