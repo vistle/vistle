@@ -2329,6 +2329,7 @@ bool Hub::handleConnectOrDisconnect(const ConnMsg &mm)
             handlePriv(mm);
             return handleQueue();
         } else {
+            std::unique_lock guard(m_queueMutex);
             m_queue.emplace_back(mm);
             return true;
         }
@@ -2353,15 +2354,20 @@ bool Hub::handleQueue()
     bool again = true;
     while (again) {
         again = false;
+        std::unique_lock guard(m_queueMutex);
         decltype(m_queue) queue;
-        for (auto &m: m_queue) {
+        std::swap(queue, m_queue);
+        guard.unlock();
+        for (auto &m: queue) {
             if (m.type() == message::CONNECT) {
                 auto &mm = m.as<Connect>();
                 if (m_stateTracker.handleConnectOrDisconnect(mm)) {
                     again = true;
                     handlePriv(mm);
                 } else {
-                    queue.push_back(m);
+                    guard.lock();
+                    m_queue.push_back(m);
+                    guard.unlock();
                 }
             } else if (m.type() == message::DISCONNECT) {
                 auto &mm = m.as<Disconnect>();
@@ -2369,14 +2375,17 @@ bool Hub::handleQueue()
                     again = true;
                     handlePriv(mm);
                 } else {
-                    queue.push_back(m);
+                    guard.lock();
+                    m_queue.push_back(m);
+                    guard.unlock();
                 }
             } else {
                 std::cerr << "message other than Connect/Disconnect in queue: " << m << std::endl;
-                queue.push_back(m);
+                guard.lock();
+                m_queue.push_back(m);
+                guard.unlock();
             }
         }
-        std::swap(m_queue, queue);
     }
 
     return true;
