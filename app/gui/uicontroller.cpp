@@ -13,6 +13,7 @@
 #include "vistleconsole.h"
 #include <vistle/util/directory.h>
 #include <vistle/util/hostname.h>
+#include <vistle/config/value.h>
 #include "remotefilebrowser/remotefiledialog.h"
 #include "remotefilebrowser/vistlefileinfogatherer.h"
 #include "remotefilebrowser/remotefilesystemmodel.h"
@@ -41,7 +42,7 @@ UiController::UiController(int argc, char *argv[], QObject *parent): QObject(par
     m_config->setPrefix(dir.prefix());
 
     std::string host = "localhost";
-    unsigned short port = 31093;
+    unsigned short port = *m_config->value<int64_t>("system", "net", "controlport", 31093);
 
     bool quitOnExit = false;
     if (argc > 1 && argv[1] == std::string("-from-vistle")) {
