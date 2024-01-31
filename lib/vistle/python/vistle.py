@@ -1,11 +1,6 @@
 import _vistle
 
 coGRMsgLoaded = False
-try:
-   from coGRMsg import *
-   coGRMsgLoaded = True
-except ImportError:
-    print("import of coGRMsg failed")
 
 def findFirstModule(moduleName):
    return _vistle.findFirstModule(moduleName)
@@ -323,12 +318,20 @@ def load(filename = None):
    _vistle.setStatus("Workflow loaded: "+filename)
 
 def snapshotCover(modId, file):
+    global coGRMsgLoaded
+    global coGRMsg
+    if (not coGRMsgLoaded):
+        try:
+            import coGRMsg
+            coGRMsgLoaded = True
+        except ImportError:
+            print("import of coGRMsg failed")
     if (coGRMsgLoaded):
-        msg = coGRPluginMsg("PBufferSnapShot", "load")
+        msg = coGRMsg.coGRPluginMsg("PBufferSnapShot", "load")
         sendCoverMessage(msg, modId)
         if not file.endswith(".png"):
          printWarning("snapshotCover: file should end with \".png\"")
-        msg = coGRSnapshotMsg(file, "snapOnce")
+        msg = coGRMsg.coGRSnapshotMsg(file, "snapOnce")
         sendCoverMessage(msg, modId)
 
 def snapshotGui(file):
