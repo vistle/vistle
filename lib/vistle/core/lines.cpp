@@ -35,12 +35,8 @@ void Lines::print(std::ostream &os) const
 
 void Lines::AddLine(std::array<Scalar, 3> point1, std::array<Scalar, 3> point2)
 {
-    auto &x = this->x();
-    auto &y = this->y();
-    auto &z = this->z();
-
-    auto &cl = this->cl();
-    auto &el = this->el();
+    if (this->el().size() == 0)
+        this->el().push_back(0);
 
     auto size = this->x().size();
 

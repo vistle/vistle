@@ -15,9 +15,8 @@ using namespace vistle;
 MODULE_MAIN(SpheresOverlap)
 
 // TODO: - instead of checking sId < sId2, adjust for range accordingly!
-//       - leaving out sqrt might lead to overflow!
-//       - also store distance between spheres
-//       - map line width to data
+//       - map line width to data --> maybe better use relative values (0-100% ?)
+//       - debug map with Gendat data is missing connections when rendered as tubes (as opposed to lines)
 
 /*
     Creates and returns a uniform grid which encases all points in `spheres`
@@ -99,7 +98,6 @@ std::pair<Lines::ptr, Vec<Scalar, 1>::ptr> CellListsAlgorithm(Spheres::const_ptr
     auto radii = spheres->r();
 
     Lines::ptr lines(new Lines(0, 0, 0));
-    (lines->el()).push_back(0);
     Vec<Scalar, 1>::ptr distances(new Vec<Scalar, 1>(0, 0));
 
     for (const auto &[cell, sphereList]: cellList) {
@@ -195,7 +193,7 @@ bool SpheresOverlap::compute(const std::shared_ptr<BlockTask> &task) const
         distances->copyAttributes(lines);
         distances->setMapping(DataBase::Element);
         distances->setGrid(lines);
-        distances->addAttribute("_species", "scalar");
+        distances->addAttribute("_species", "distance");
         updateMeta(distances);
         task->addObject(m_dataOut, distances);
     }
