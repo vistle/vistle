@@ -101,7 +101,6 @@ std::pair<Lines::ptr, Vec<Scalar, 1>::ptr> CellListsAlgorithm(Spheres::const_ptr
     Lines::ptr lines(new Lines(0, 0, 0));
     (lines->el()).push_back(0);
     Vec<Scalar, 1>::ptr distances(new Vec<Scalar, 1>(0, 0));
-    distances->x().push_back(0);
 
     for (const auto &[cell, sphereList]: cellList) {
         auto neighbors = grid->getNeighborElements(cell);
@@ -194,7 +193,7 @@ bool SpheresOverlap::compute(const std::shared_ptr<BlockTask> &task) const
         task->addObject(m_linesOut, lines);
 
         distances->copyAttributes(lines);
-        distances->setMapping(DataBase::Vertex);
+        distances->setMapping(DataBase::Element);
         distances->setGrid(lines);
         distances->addAttribute("_species", "scalar");
         updateMeta(distances);
