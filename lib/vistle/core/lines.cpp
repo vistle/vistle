@@ -35,9 +35,6 @@ void Lines::print(std::ostream &os) const
 
 void Lines::AddLine(std::array<Scalar, 3> point1, std::array<Scalar, 3> point2)
 {
-    if (this->el().size() == 0)
-        this->el().push_back(0);
-
     auto size = this->x().size();
 
     this->cl().push_back(size++);
