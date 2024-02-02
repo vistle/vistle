@@ -67,32 +67,29 @@ Scalar EuclideanDistance(std::array<Scalar, 3> start, std::array<Scalar, 3> end)
     return sqrt(pow((start[0] - end[0]), 2) + pow((start[1] - end[1]), 2) + pow((start[2] - end[2]), 2));
 }
 
-/*
-    Checks if the two spheres defined by `point1` + `radius1` and `point2` + `radius2` overlap. 
-    If so, a line connecting them is added to `lines` and its line thickness is calculated using
-    the method selected with `determiner`.
-*/
-void AddLineOnOverlap(std::array<Scalar, 3> point1, std::array<Scalar, 3> point2, Scalar radius1, Scalar radius2,
-                      ThicknessDeterminer determiner, Lines::ptr lines, Vec<Scalar, 1>::ptr lineThicknesses)
-{
-    // spheres overlap if distance between their centers is <= sum of radii
-    if (auto distance = EuclideanDistance(point1, point2); distance <= radius1 + radius2) {
-        lines->AddLine(point1, point2);
+struct OverlapLineInfo {
+    Index i, j;
+    Scalar thickness;
+
+    OverlapLineInfo(Index sphereId1, Index sphereId2, Scalar distance, Scalar radius1, Scalar radius2,
+                    ThicknessDeterminer determiner)
+    : i(sphereId1), j(sphereId2)
+    {
         switch (determiner) {
         case Overlap:
-            lineThicknesses->x().push_back(abs(radius1 + radius2 - distance));
+            thickness = abs(radius1 + radius2 - distance);
             break;
         case OverlapRatio:
-            lineThicknesses->x().push_back(abs(radius1 + radius2 - distance) / distance);
+            thickness = abs(radius1 + radius2 - distance) / distance;
             break;
         case Distance:
-            lineThicknesses->x().push_back(distance);
+            thickness = distance;
             break;
         default:
             throw std::invalid_argument("Unknown thickness determiner!");
         }
     }
-}
+};
 
 /*
     Uses the Cell Lists Algorithm to efficiently detect which spheres are overlapping, and creates
@@ -102,8 +99,8 @@ void AddLineOnOverlap(std::array<Scalar, 3> point1, std::array<Scalar, 3> point2
     This algorithm solves the Fixed-Radius Nearest Neighbors Problem , see 
     https://jaantollander.com/post/searching-for-fixed-radius-near-neighbors-with-cell-lists-algorithm-in-julia-language/
 */
-std::pair<Lines::ptr, Vec<Scalar, 1>::ptr> CellListsAlgorithm(Spheres::const_ptr spheres, Scalar searchRadius,
-                                                              ThicknessDeterminer determiner)
+std::vector<OverlapLineInfo> CellListsAlgorithm(Spheres::const_ptr spheres, Scalar searchRadius,
+                                                ThicknessDeterminer determiner)
 {
     UniformGrid::ptr grid = CreateSearchGrid(spheres, searchRadius);
 
@@ -128,8 +125,7 @@ std::pair<Lines::ptr, Vec<Scalar, 1>::ptr> CellListsAlgorithm(Spheres::const_ptr
     // detect overlapping spheres and create line between them
     auto radii = spheres->r();
 
-    Lines::ptr overlapLines(new Lines(0, 0, 0));
-    Vec<Scalar, 1>::ptr lineThicknesses(new Vec<Scalar, 1>(0, 0));
+    std::vector<OverlapLineInfo> overlaps;
 
     for (const auto &[cell, sphereList]: cellList) {
         for (const auto sId: sphereList) {
@@ -140,23 +136,28 @@ std::pair<Lines::ptr, Vec<Scalar, 1>::ptr> CellListsAlgorithm(Spheres::const_ptr
             for (const auto sId2: sphereList) {
                 // make sure the same pair of spheres is only checked once
                 if (sId < sId2) {
-                    AddLineOnOverlap(point1, {x[sId2], y[sId2], z[sId2]}, radius1, radii[sId2], determiner,
-                                     overlapLines, lineThicknesses);
+                    std::array<Scalar, 3> point2 = {x[sId2], y[sId2], z[sId2]};
+                    Scalar radius2 = radii[sId2];
+                    // spheres overlap if distance between their centers is <= sum of radii
+                    if (auto distance = EuclideanDistance(point1, point2); distance <= radius1 + radius2)
+                        overlaps.push_back({sId, sId2, distance, radius1, radius2, determiner});
                 }
             }
             // check for collisions in neighbor cells
             for (const auto neighborId: grid->getNeighborElements(cell)) {
                 if (auto neighbor = cellList.find(neighborId); (neighbor != cellList.end() && cell < neighborId)) {
                     for (const auto nId: neighbor->second) {
-                        AddLineOnOverlap(point1, {x[nId], y[nId], z[nId]}, radius1, radii[nId], determiner,
-                                         overlapLines, lineThicknesses);
+                        std::array<Scalar, 3> point2 = {x[nId], y[nId], z[nId]};
+                        Scalar radius2 = radii[nId];
+                        if (auto distance = EuclideanDistance(point1, point2); distance <= radius1 + radius2)
+                            overlaps.push_back({sId, nId, distance, radius1, radius2, determiner});
                     }
                 }
             }
         }
     }
 
-    return {overlapLines, lineThicknesses};
+    return overlaps;
 }
 
 SpheresOverlap::SpheresOverlap(const std::string &name, int moduleID, mpi::communicator comm)
@@ -204,11 +205,31 @@ bool SpheresOverlap::compute(const std::shared_ptr<BlockTask> &task) const
     // We want to ensure that no pair of overlapping spheres is missed. As two spheres overlap when
     // the Euclidean distance between them is less than the sum of their radii, the minimum search
     // radius is two times the maximum sphere radius.
-    auto result = CellListsAlgorithm(spheres, 2.1 * m_radiusCoefficient->getValue() * maxRadius,
-                                     (ThicknessDeterminer)m_thicknessDeterminer->getValue());
+    auto overlaps = CellListsAlgorithm(spheres, 2.1 * m_radiusCoefficient->getValue() * maxRadius,
+                                       (ThicknessDeterminer)m_thicknessDeterminer->getValue());
 
-    auto lines = result.first;
-    auto lineThicknesses = result.second;
+    auto nrOverlaps = overlaps.size();
+
+    Lines::ptr lines(new Lines(nrOverlaps, 2 * nrOverlaps, 2 * nrOverlaps));
+    Vec<Scalar, 1>::ptr lineThicknesses(new Vec<Scalar, 1>(nrOverlaps));
+
+    lines->el().data()[0] = 0;
+    for (int i = 0; i < nrOverlaps; i++) {
+        (lines->x().data())[2 * i] = (spheres->x().data())[overlaps[i].i];
+        (lines->y().data())[2 * i] = (spheres->y().data())[overlaps[i].i];
+        (lines->z().data())[2 * i] = (spheres->z().data())[overlaps[i].i];
+
+        (lines->x().data())[2 * i + 1] = (spheres->x().data())[overlaps[i].j];
+        (lines->y().data())[2 * i + 1] = (spheres->y().data())[overlaps[i].j];
+        (lines->z().data())[2 * i + 1] = (spheres->z().data())[overlaps[i].j];
+
+        (lines->cl().data())[2 * i] = 2 * i;
+        (lines->cl().data())[2 * i + 1] = 2 * i + 1;
+
+        (lines->el().data())[i + 1] = 2 * (i + 1);
+
+        (lineThicknesses->x().data())[i] = overlaps[i].thickness;
+    }
 
     if (lines->getNumCoords()) {
         if (mappedData) {
