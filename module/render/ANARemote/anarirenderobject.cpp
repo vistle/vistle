@@ -265,12 +265,10 @@ void AnariRenderObject::create(anari::Device device)
             anari::unmapParameterArray(device, geom, "primitive.index");
         }
     } else if (auto sph = Spheres::as(geometry)) {
-        Index nsph = sph->getNumSpheres();
         geom = anari::newObject<anari::Geometry>(device, "sphere");
         ArrayAccess<float, vistle::CoordsWithRadius> rad(sph);
         copy<float>(device, geom, "vertex.radius", rad);
     } else if (auto point = Points::as(geometry)) {
-        Index np = point->getNumPoints();
         geom = anari::newObject<anari::Geometry>(device, "sphere");
         anari::setParameter(device, geom, "radius", pointSize);
     } else if (auto tube = Tubes::as(geometry)) {
