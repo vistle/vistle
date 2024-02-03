@@ -22,18 +22,23 @@ if(MSVC)
         PATH_SUFFIXES lib64 lib libs64 libs libs/Win32 libs/Win64
         DOC "NETCDF - Library (Debug)")
 
-    find_package_handle_standard_args(NETCDF DEFAULT_MSG NETCDF_C++_LIBRARY NETCDF_C++_LIBRARY_DEBUG NETCDF_INCLUDE_DIR NETCDF_C++_INCLUDE_DIR)
+    find_package_handle_standard_args(NETCDF DEFAULT_MSG NETCDF_C_LIBRARY NETCDF_C_LIBRARY_DEBUG NETCDF_INCLUDE_DIR)
     if(NETCDF_FOUND)
-        set(NETCDF_LIBRARIES
-            optimized
-            ${NETCDF_LIBRARY}
-            debug
-            ${NETCDF_LIBRARY_DEBUG}
-            optimized
-            ${NETCDF_C++_LIBRARY}
-            debug
-            ${NETCDF_C++_LIBRARY_DEBUG})
-        set(NETCDF_C++_LIBRARIES optimized ${NETCDF_C++_LIBRARY} debug ${NETCDF_C++_LIBRARY_DEBUG})
+        set(NETCDF_LIBRARIES optimized ${NETCDF_LIBRARY} debug ${NETCDF_LIBRARY_DEBUG})
+
+        find_package_handle_standard_args(NETCDF_C++ DEFAULT_MSG NETCDF_C++_LIBRARY NETCDF_C++_LIBRARY_DEBUG NETCDF_INCLUDE_DIR NETCDF_C++_INCLUDE_DIR)
+        if(NETCDF_C++_FOUND)
+            set(NETCDF_C++_LIBRARIES
+                optimized
+                ${NETCDF_LIBRARY}
+                debug
+                ${NETCDF_LIBRARY_DEBUG}
+                optimized
+                ${NETCDF_C++_LIBRARY}
+                debug
+                ${NETCDF_C++_LIBRARY_DEBUG})
+            set(NETCDF_C++_LIBRARIES optimized ${NETCDF_C++_LIBRARY} debug ${NETCDF_C++_LIBRARY_DEBUG})
+        endif()
     endif()
 
     mark_as_advanced(NETCDF_C++_LIBRARY NETCDF_C++_LIBRARY_DEBUG NETCDF_LIBRARY NETCDF_LIBRARY_DEBUG NETCDF_INCLUDE_DIR NETCDF_C++_INCLUDE_DIR)
@@ -41,12 +46,20 @@ else(MSVC)
     find_package_handle_standard_args(NETCDF DEFAULT_MSG NETCDF_LIBRARY NETCDF_C++_LIBRARY NETCDF_INCLUDE_DIR NETCDF_C++_INCLUDE_DIR)
     if(NETCDF_FOUND)
         set(NETCDF_LIBRARIES ${NETCDF_LIBRARY} ${NETCDF_C++_LIBRARY})
+
+        find_package_handle_standard_args(NETCDF_C++ DEFAULT_MSG NETCDF_C++_LIBRARY NETCDF_C++_INCLUDE_DIR)
+        if(NETCDF_C++_FOUND)
+            set(NETCDF_C++_LIBRARIES ${NETCDF_LIBRARY} ${NETCDF_C++_LIBRARY})
+        endif()
     endif()
 endif(MSVC)
 
 if(NETCDF_FOUND)
-    set(NETCDF_INCLUDE_DIRS ${NETCDF_INCLUDE_DIR} ${NETCDF_C++_INCLUDE_DIR})
+    set(NETCDF_INCLUDE_DIRS ${NETCDF_INCLUDE_DIR})
     if(NETCDF_INCLUDE_DIR STREQUAL NETCDF_PAR_INCLUDE_DIR)
         set(NETCDF_PARALLEL TRUE)
+    endif()
+    if(NETCDF_C++_FOUND)
+        set(NETCDF_C++_INCLUDE_DIRS ${NETCDF_INCLUDE_DIR} ${NETCDF_C++_INCLUDE_DIR})
     endif()
 endif()
