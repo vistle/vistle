@@ -466,7 +466,6 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
 #endif
 
             std::vector<Vector3> coord(nvert);
-            Index nfaces = 0;
             Index n = 0;
             Index facestart = InvalidIndex;
             Index term = 0;
@@ -476,7 +475,6 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
                     term = cl[i];
                 } else if (cl[i] == term) {
                     const Index N = i - facestart;
-                    ++nfaces;
                     for (Index k = facestart; k < facestart + N; ++k) {
                         indices[n] = cl[k];
                         for (int c = 0; c < 3; ++c) {

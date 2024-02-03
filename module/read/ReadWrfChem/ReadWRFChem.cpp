@@ -52,13 +52,10 @@ ReadWRFChem::ReadWRFChem(const std::string &name, int moduleID, mpi::communicato
     m_PHB = addStringParameter("base_gp", "base-state geopotential", "", Parameter::Choice);
     m_gridZ = addStringParameter("GridZ", "grid Bottom-Top axis", "", Parameter::Choice);
 
-    char namebuf[50];
     std::vector<std::string> varChoices;
     varChoices.push_back("(NONE)");
 
     for (Index i = 0; i < NUMPARAMS - 3; ++i) {
-        sprintf(namebuf, "Variable%d", i);
-
         std::stringstream s_var;
         s_var << "Variable" << i;
         m_variables[i] = addStringParameter(s_var.str(), s_var.str(), "", Parameter::Choice);
@@ -222,9 +219,6 @@ bool ReadWRFChem::examine(const vistle::Parameter *param)
             AxisChoices.clear();
             Axis2dChoices.clear();
 
-            int num3dVars = 0;
-            int num2dVars = 0;
-
             std::string newEntry = "";
             bool is_fav = false;
             std::vector<std::string> favVars = {"co", "no2", "PM10", "o3", "U", "V", "W"};
@@ -245,7 +239,6 @@ bool ReadWRFChem::examine(const vistle::Parameter *param)
                     }
                     if (is_fav == false)
                         AxisChoices.push_back(newEntry);
-                    num3dVars++;
                     is_fav = false;
                 } else if (var.getDimCount() > 2) {
                     for (std::string fav: favVars) {
@@ -256,7 +249,6 @@ bool ReadWRFChem::examine(const vistle::Parameter *param)
                     }
                     if (is_fav == false)
                         Axis2dChoices.push_back(newEntry);
-                    num2dVars++;
                     is_fav = false;
                 }
             }

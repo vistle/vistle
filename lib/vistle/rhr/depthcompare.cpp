@@ -99,7 +99,8 @@ double depthcompare_t(const T *ref, const T *check, int xx, int yy, int w, int h
                 if (c != r) {
                     ++numblackwrong;
                     if (print)
-                        fprintf(stderr, "!B: %u %u (%lu)\n", x, y, (unsigned long)c);
+                        fprintf(stderr, "!B: %u %u (%lu) (#total: %lu)\n", x, y, (unsigned long)c,
+                                (unsigned long)numblackwrong);
                 }
             } else {
                 int validbits = clz<T>(r ^ c);
@@ -205,7 +206,8 @@ double depthcompare_t(const float *ref, const float *check, int xx, int yy, int 
                 if (c != r) {
                     ++numblackwrong;
                     if (print)
-                        fprintf(stderr, "!B f: %u %u (%lu)\n", x, y, (unsigned long)c);
+                        fprintf(stderr, "!B f: %u %u (%lu) (#total: %lu)\n", x, y, (unsigned long)c,
+                                (unsigned long)numblackwrong);
                 }
             } else {
                 if (r < refminval)
