@@ -17,7 +17,7 @@ UniformGrid::ptr CreateSearchGrid(Spheres::const_ptr spheres, Scalar searchRadiu
 
     // divide bounding box into cubes with side length = searchRadius
     for (Index i = 0; i < dim; i++) {
-        gridSize[i] = ceil(maxBounds[i] / searchRadius);
+        gridSize[i] = ceil((maxBounds[i] - minBounds[i]) / searchRadius);
 
         // if gridSize = 1, vistle can't create cells (since #cells = gridSize - 1),
         // To make algorithm work anyways, add second cell that does not contain any spheres
