@@ -3,7 +3,7 @@ name: Make Release
 on:
   workflow_dispatch:
   release:
-    types: [created]
+    types: [created, unpublished]
 
 jobs:
   generate:
