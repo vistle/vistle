@@ -6,6 +6,7 @@ file(
     LIST_DIRECTORIES false
     ${PROJECT_SOURCE_DIR}/config/*.toml)
 cmrc_add_resource_library(vistle_config_defaults NAMESPACE ${CONFIG_CMRC_NAMESPACE} WHENCE ${PROJECT_SOURCE_DIR}/config ${CONFIG_FILES})
+set_target_properties(vistle_config_defaults PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 vistle_export_library(vistle_config_defaults)
 
 set(CONFIG_SOURCES config.cpp)
