@@ -1,9 +1,14 @@
 name: Make Release
 
 on:
-  workflow_dispatch:
+  push:
+    tags:
+      - v*
   release:
-    types: [created, unpublished]
+    types:
+    - created
+    - published
+    - unpublished
 
 jobs:
   generate:
