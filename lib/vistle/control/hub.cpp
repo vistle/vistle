@@ -2515,7 +2515,7 @@ void Hub::killOldModule(int migratedId)
     assert(Id::isModule(migratedId));
     message::Kill kill(migratedId);
     kill.setDestId(migratedId);
-    handleMessage(kill);
+    sendModule(kill, migratedId);
 }
 
 
