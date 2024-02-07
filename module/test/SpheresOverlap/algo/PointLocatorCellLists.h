@@ -8,43 +8,36 @@
 class PointLocatorOverlap;
 
 /*
-    While vtkm::cont::PointLocatorSparseGrid builds a unifrom search grid than can be
-    used to implement the Cell Lists Algorithm, it uses the grid to find a point's nearest
-    neighbor in parallel (vtkm::exec::PointLocatorSparseGrid).
-    We, however, want to use to efficiently detect all overlapping spheres in a dataset.
-    To avoid making changes in vtk-m, we thus copied vtkm::cont::PointLocatorSparseGrid
-    and vtkm::exec::PointLocatorSparseGrid and slightly modified them for our needs.
+    TODO: - pass radius
+          - store line thickness
 */
 class PointLocatorCellLists: public vtkm::cont::internal::PointLocatorBase<PointLocatorCellLists> {
     using Superclass = vtkm::cont::internal::PointLocatorBase<PointLocatorCellLists>;
 
 public:
-    void SetBounds(const vtkm::Bounds &bounds)
+    void SetSearchRadius(const vtkm::FloatDefault searchRadius)
     {
-        if (this->Bounds != bounds) {
-            assert((bounds.X.Min < bounds.X.Max || bounds.Y.Min < bounds.Y.Max || bounds.Z.Min < bounds.Z.Max));
-            this->Bounds = bounds;
+        if (this->SearchRadius != searchRadius) {
+            assert(SearchRadius > 0);
+            this->SearchRadius = searchRadius;
             this->SetModified();
         }
     }
 
-    void SetNumberOfBins(const vtkm::Id3 &nrBins)
-    {
-        if (this->NrBins != nrBins) {
-            this->NrBins = nrBins;
-            this->SetModified();
-        }
-    }
+    //const RangeType &GetRange() const { return this->Range; }
+    const vtkm::Vec3f &GetMinPoint() const { return this->Min; }
+    const vtkm::Vec3f &GetMaxPoint() const { return this->Max; }
 
-    const vtkm::Bounds &GetBounds() const { return this->Bounds; }
-    const vtkm::Id3 &GetNumberOfBins() const { return this->NrBins; }
+    const vtkm::Id3 &GetNumberOfBins() const { return this->Dims; }
+    const vtkm::FloatDefault &GetSearchRadius() const { return this->SearchRadius; }
 
     VTKM_CONT
     PointLocatorOverlap PrepareForExecution(vtkm::cont::DeviceAdapterId device, vtkm::cont::Token &token) const;
 
 private:
-    vtkm::Bounds Bounds;
-    vtkm::Id3 NrBins;
+    vtkm::Vec3f Min, Max;
+    vtkm::Id3 Dims;
+    vtkm::FloatDefault SearchRadius;
 
     // a list of all point ids (grouped by the cells that contain them)
     vtkm::cont::ArrayHandle<vtkm::Id> PointIds;

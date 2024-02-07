@@ -101,14 +101,20 @@ private:
 
 void PointLocatorCellLists::Build()
 {
+    vtkm::Bounds test;
     VTKM_LOG_SCOPE(vtkm::cont::LogLevel::Perf, "PointLocatorCellLists::Build");
 
-    auto rmin = vtkm::make_Vec(static_cast<vtkm::FloatDefault>(this->Bounds.X.Min),
-                               static_cast<vtkm::FloatDefault>(this->Bounds.Y.Min),
-                               static_cast<vtkm::FloatDefault>(this->Bounds.Z.Min));
-    auto rmax = vtkm::make_Vec(static_cast<vtkm::FloatDefault>(this->Bounds.X.Max),
-                               static_cast<vtkm::FloatDefault>(this->Bounds.Y.Max),
-                               static_cast<vtkm::FloatDefault>(this->Bounds.Z.Max));
+    auto bounds = this->GetCoordinates().GetBounds();
+
+    this->Dims = vtkm::Id3(vtkm::Ceil((bounds.X.Max - bounds.X.Min) / this->SearchRadius),
+                           vtkm::Ceil((bounds.Y.Max - bounds.Y.Min) / this->SearchRadius),
+                           vtkm::Ceil((bounds.Z.Max - bounds.Z.Min) / this->SearchRadius));
+
+    this->Min = vtkm::make_Vec(bounds.X.Min, bounds.Y.Min, bounds.Z);
+
+    this->Max = vtkm::make_Vec(bounds.X.Min + this->Dims[0] * this->SearchRadius,
+                               bounds.Y.Min + this->Dims[1] * this->SearchRadius,
+                               bounds.Z.Min + this->Dims[2] * this->SearchRadius);
 
     // generate unique id for each input point
     vtkm::cont::ArrayHandleIndex pointIndex(this->GetCoordinates().GetNumberOfValues());
@@ -116,7 +122,7 @@ void PointLocatorCellLists::Build()
 
     // bin points into cells and give each of them the cell id.
     vtkm::cont::ArrayHandle<vtkm::Id> cellIds;
-    BinPointsWorklet cellIdWorklet(rmin, rmax, this->NrBins);
+    BinPointsWorklet cellIdWorklet(this->Min, this->Max, this->Dims);
     vtkm::cont::Invoker invoke;
     invoke(cellIdWorklet, this->GetCoordinates(), cellIds);
 
@@ -124,8 +130,7 @@ void PointLocatorCellLists::Build()
     vtkm::cont::Algorithm::SortByKey(cellIds, this->PointIds);
 
     // for each cell, find the lower and upper bound of indices to the sorted point ids.
-    vtkm::cont::ArrayHandleCounting<vtkm::Id> cell_ids_counting(0, 1,
-                                                                this->NrBins[0] * this->NrBins[1] * this->NrBins[2]);
+    vtkm::cont::ArrayHandleCounting<vtkm::Id> cell_ids_counting(0, 1, this->Dims[0] * this->Dims[1] * this->Dims[2]);
     vtkm::cont::Algorithm::UpperBounds(cellIds, cell_ids_counting, this->CellUpperBounds);
     vtkm::cont::Algorithm::LowerBounds(cellIds, cell_ids_counting, this->CellLowerBounds);
 }
@@ -133,14 +138,8 @@ void PointLocatorCellLists::Build()
 PointLocatorOverlap PointLocatorCellLists::PrepareForExecution(vtkm::cont::DeviceAdapterId device,
                                                                vtkm::cont::Token &token) const
 {
-    auto rmin = vtkm::make_Vec(static_cast<vtkm::FloatDefault>(this->Bounds.X.Min),
-                               static_cast<vtkm::FloatDefault>(this->Bounds.Y.Min),
-                               static_cast<vtkm::FloatDefault>(this->Bounds.Z.Min));
-    auto rmax = vtkm::make_Vec(static_cast<vtkm::FloatDefault>(this->Bounds.X.Max),
-                               static_cast<vtkm::FloatDefault>(this->Bounds.Y.Max),
-                               static_cast<vtkm::FloatDefault>(this->Bounds.Z.Max));
     return PointLocatorOverlap(
-        rmin, rmax, this->NrBins, this->GetCoordinates().GetDataAsMultiplexer().PrepareForInput(device, token),
+        this->Min, this->Max, this->Dims, this->GetCoordinates().GetDataAsMultiplexer().PrepareForInput(device, token),
         this->PointIds.PrepareForInput(device, token), this->CellLowerBounds.PrepareForInput(device, token),
         this->CellUpperBounds.PrepareForInput(device, token));
 }

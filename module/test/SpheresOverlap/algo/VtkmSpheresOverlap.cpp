@@ -26,7 +26,6 @@
 #include <vtkm/cont/CellLocatorUniformGrid.h>
 #include <vtkm/cont/CellSetSingleType.h>
 #include <vtkm/cont/DataSetBuilderUniform.h>
-#include <vtkm/cont/PointLocatorSparseGrid.h>
 
 #include <vtkm/exec/CellEdge.h>
 
@@ -36,6 +35,7 @@
 #include <vtkm/worklet/WorkletMapField.h>
 #include <vtkm/worklet/WorkletMapTopology.h>
 
+#include "PointLocatorCellLists.h"
 #include "VtkmSpheresOverlap.h"
 
 using namespace vistle;
@@ -124,22 +124,12 @@ VTKM_CONT vtkm::cont::DataSet VtkmSpheresOverlap::DoExecute(const vtkm::cont::Da
     */
 
     // create search grid
-    vtkm::cont::PointLocatorSparseGrid pointLocator;
+    PointLocatorCellLists pointLocator;
     pointLocator.SetCoordinates(inputSpheres.GetCoordinateSystem());
 
     // make search radius at least twice as large as maximum sphere radius
-    auto searchRadius = 2.1 * radii.GetRange().ReadPortal().Get(0).Max;
-    auto bounds = coords.GetBounds();
-    vtkm::Id3 binSizes{vtkm::Ceil((bounds.X.Max - bounds.X.Min) / searchRadius),
-                       vtkm::Ceil((bounds.Y.Max - bounds.Y.Min) / searchRadius),
-                       vtkm::Ceil((bounds.Z.Max - bounds.Z.Min) / searchRadius)};
-    pointLocator.SetNumberOfBins(binSizes);
-
-    pointLocator.SetRange({vtkm::Range(bounds.X.Min, bounds.X.Min + binSizes[0] * searchRadius),
-                           vtkm::Range(bounds.Y.Min, bounds.Y.Min + binSizes[1] * searchRadius),
-                           vtkm::Range(bounds.Z.Min, bounds.Z.Min + binSizes[2] * searchRadius)});
+    pointLocator.SetSearchRadius(2.1 * radii.GetRange().ReadPortal().Get(0).Max);
 
     // build search grid in parallel
     pointLocator.Update();
-
 }
