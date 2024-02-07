@@ -141,4 +141,5 @@ VTKM_CONT vtkm::cont::DataSet VtkmSpheresOverlap::DoExecute(const vtkm::cont::Da
 
     // build search grid in parallel
     pointLocator.Update();
+
 }
