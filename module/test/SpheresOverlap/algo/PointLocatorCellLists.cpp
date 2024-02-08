@@ -10,6 +10,8 @@
 
 using namespace vistle;
 
+// TODO: better to avoid duplicate checks (to avoid duplicate lines) or
+//       unbalanced thread loads (lower ids have more comparisons than higher ids)
 class OverlapDetector {
 public:
     // TODO: do we need that? or is arrayhandle<vec> enough?
@@ -19,8 +21,8 @@ public:
 
 
     OverlapDetector(const vtkm::Vec3f &min, const vtkm::Vec3f &max, const vtkm::Id3 &nrBins,
-                        const CoordPortalType &coords, const FloatPortalType &radii, const IdPortalType &pointIds,
-                        const IdPortalType &cellLowerBounds, const IdPortalType &cellUpperBounds)
+                    const CoordPortalType &coords, const FloatPortalType &radii, const IdPortalType &pointIds,
+                    const IdPortalType &cellLowerBounds, const IdPortalType &cellUpperBounds)
     : Min(min)
     , Dims(nrBins)
     , Dxdydz((max - Min) / Dims)
@@ -31,8 +33,8 @@ public:
     , UpperBounds(cellUpperBounds)
     {}
 
-    VTKM_EXEC void DetectOverlap(const vtkm::Vec3f &queryPoint, vtkm::Id &nearestNeighborId,
-                                 vtkm::FloatDefault &distance2) const
+    VTKM_EXEC void DetectOverlap(const vtkm::Id pointId, const vtkm::Vec3f &queryPoint, vtkm::Id &nearestNeighborId,
+                                 vtkm::FloatDefault &someResult) const
     {
         vtkm::Id3 ijk = (queryPoint - this->Min) / this->Dxdydz;
         ijk = vtkm::Max(ijk, vtkm::Id3(0));
@@ -45,15 +47,15 @@ public:
             for (int j = ijk[1]; j <= ijk[1] + 1; j++) {
                 for (int k = ijk[2]; k <= ijk[2]; k++) {
                     auto cellToCheck = i + (j * this->Dims[0]) + (k * this->Dims[0] * this->Dims[1]);
-                    if (cellToCheck == cellId)
-                        continue;
                     for (auto p = this->LowerBounds.Get(cellToCheck); p < this->UpperBounds.Get(cellToCheck); p++) {
-                        auto toCheck = this->PointIds.Get(p);
-                        auto pointToCheck = this->Coords.Get(toCheck);
+                        if (pointId < p) {
+                            auto toCheck = this->PointIds.Get(p);
+                            auto pointToCheck = this->Coords.Get(toCheck);
 
-                        if (auto distance = vtkm::Magnitude(queryPoint - pointToCheck);
-                            (distance < this->Radii.Get(cellId) + this->Radii.Get(toCheck))) {
-                            // draw line (or save indices + thickness)
+                            if (auto distance = vtkm::Magnitude(queryPoint - pointToCheck);
+                                (distance < this->Radii.Get(cellId) + this->Radii.Get(toCheck))) {
+                                // draw line (or save indices + thickness)
+                            }
                         }
                     }
                 }
@@ -136,10 +138,10 @@ void PointLocatorCellLists::Build()
 }
 
 OverlapDetector PointLocatorCellLists::PrepareForExecution(vtkm::cont::DeviceAdapterId device,
-                                                               vtkm::cont::Token &token) const
+                                                           vtkm::cont::Token &token) const
 {
     return OverlapDetector(
         this->Min, this->Max, this->Dims, this->GetCoordinates().GetDataAsMultiplexer().PrepareForInput(device, token),
-        this->Radii.PrepareForInput(device, token), this->PointIds.PrepareForInput(device, token), this->CellLowerBounds.PrepareForInput(device, token),
-        this->CellUpperBounds.PrepareForInput(device, token));
+        this->Radii.PrepareForInput(device, token), this->PointIds.PrepareForInput(device, token),
+        this->CellLowerBounds.PrepareForInput(device, token), this->CellUpperBounds.PrepareForInput(device, token));
 }
