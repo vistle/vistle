@@ -109,10 +109,12 @@ std::vector<OverlapLineInfo> CellListsAlgorithm(Spheres::const_ptr spheres, Scal
             for (const auto neighborId: grid->getNeighborElements(cell)) {
                 if (auto neighbor = cellList.find(neighborId); (neighbor != cellList.end() && cell < neighborId)) {
                     for (const auto nId: neighbor->second) {
-                        std::array<Scalar, 3> point2 = {x[nId], y[nId], z[nId]};
-                        Scalar radius2 = radii[nId];
-                        if (auto distance = EuclideanDistance(point1, point2); distance <= radius1 + radius2)
-                            overlaps.push_back({sId, nId, distance, radius1, radius2, determiner});
+                        if (sId < nId) {
+                            std::array<Scalar, 3> point2 = {x[nId], y[nId], z[nId]};
+                            Scalar radius2 = radii[nId];
+                            if (auto distance = EuclideanDistance(point1, point2); distance <= radius1 + radius2)
+                                overlaps.push_back({sId, nId, distance, radius1, radius2, determiner});
+                        }
                     }
                 }
             }
