@@ -33,8 +33,8 @@ public:
     , UpperBounds(cellUpperBounds)
     {}
 
-    VTKM_EXEC void DetectOverlap(const vtkm::Id pointId, const vtkm::Vec3f &queryPoint, vtkm::Id &nearestNeighborId,
-                                 vtkm::FloatDefault &someResult) const
+    VTKM_EXEC void CountOverlaps(const vtkm::Id pointId, const vtkm::Vec3f &queryPoint,
+                                 vtkm::cont::ArrayHandle<vtkm::Vec2i> &overlaps) const
     {
         vtkm::Id3 ijk = (queryPoint - this->Min) / this->Dxdydz;
         ijk = vtkm::Max(ijk, vtkm::Id3(0));
@@ -42,19 +42,23 @@ public:
 
         vtkm::Id cellId = ijk[0] + (ijk[1] * this->Dims[0]) + (ijk[2] * this->Dims[0] * this->Dims[1]);
 
-        // get all cells of interest
+
+        // cells of interest
         for (int i = ijk[0]; i <= ijk[0] + 1; i++) {
             for (int j = ijk[1]; j <= ijk[1] + 1; j++) {
                 for (int k = ijk[2]; k <= ijk[2]; k++) {
                     auto cellToCheck = i + (j * this->Dims[0]) + (k * this->Dims[0] * this->Dims[1]);
-                    for (auto p = this->LowerBounds.Get(cellToCheck); p < this->UpperBounds.Get(cellToCheck); p++) {
-                        if (pointId < p) {
-                            auto toCheck = this->PointIds.Get(p);
-                            auto pointToCheck = this->Coords.Get(toCheck);
-
-                            if (auto distance = vtkm::Magnitude(queryPoint - pointToCheck);
-                                (distance < this->Radii.Get(cellId) + this->Radii.Get(toCheck))) {
-                                // draw line (or save indices + thickness)
+                    if (cellId < cellToCheck) {
+                        for (auto p = this->LowerBounds.Get(cellToCheck); p < this->UpperBounds.Get(cellToCheck); p++) {
+                            if (pointId < p) {
+                                auto toCheck = this->PointIds.Get(p);
+                                auto pointToCheck = this->Coords.Get(toCheck);
+                                if (auto distance = vtkm::Magnitude(queryPoint - pointToCheck);
+                                    (distance < this->Radii.Get(cellId) + this->Radii.Get(toCheck))) {
+                                    // TODO: allocating everytime is not nice ...
+                                    overlaps.Allocate(overlaps.GetNumberOfValues() + 1, vtkm::CopyFlag::On);
+                                    overlaps.WritePortal().Set(overlaps.GetNumberOfValues() - 1, {pointId, p});
+                                }
                             }
                         }
                     }
@@ -112,7 +116,7 @@ void PointLocatorCellLists::Build()
                            vtkm::Ceil((bounds.Y.Max - bounds.Y.Min) / this->SearchRadius),
                            vtkm::Ceil((bounds.Z.Max - bounds.Z.Min) / this->SearchRadius));
 
-    this->Min = vtkm::make_Vec(bounds.X.Min, bounds.Y.Min, bounds.Z);
+    this->Min = vtkm::make_Vec(bounds.X.Min, bounds.Y.Min, bounds.Z.Min);
 
     this->Max = vtkm::make_Vec(bounds.X.Min + this->Dims[0] * this->SearchRadius,
                                bounds.Y.Min + this->Dims[1] * this->SearchRadius,

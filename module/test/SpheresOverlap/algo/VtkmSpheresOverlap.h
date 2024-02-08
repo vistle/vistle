@@ -6,7 +6,6 @@
 class VtkmSpheresOverlap: public vtkm::filter::FilterField {
 public:
     VtkmSpheresOverlap() = default;
-    
 
 private:
     VTKM_CONT vtkm::cont::DataSet DoExecute(const vtkm::cont::DataSet &input) override;
