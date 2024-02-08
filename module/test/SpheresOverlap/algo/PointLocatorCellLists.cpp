@@ -10,7 +10,7 @@
 
 using namespace vistle;
 
-class PointLocatorOverlap {
+class OverlapDetector {
 public:
     // TODO: do we need that? or is arrayhandle<vec> enough?
     using CoordPortalType = typename vtkm::cont::CoordinateSystem::MultiplexerArrayType::ReadPortalType;
@@ -18,13 +18,14 @@ public:
     using FloatPortalType = typename vtkm::cont::ArrayHandle<vtkm::FloatDefault>::ReadPortalType;
 
 
-    PointLocatorOverlap(const vtkm::Vec3f &min, const vtkm::Vec3f &max, const vtkm::Id3 &nrBins,
-                        const CoordPortalType &coords, const IdPortalType &pointIds,
+    OverlapDetector(const vtkm::Vec3f &min, const vtkm::Vec3f &max, const vtkm::Id3 &nrBins,
+                        const CoordPortalType &coords, const FloatPortalType &radii, const IdPortalType &pointIds,
                         const IdPortalType &cellLowerBounds, const IdPortalType &cellUpperBounds)
     : Min(min)
     , Dims(nrBins)
     , Dxdydz((max - Min) / Dims)
     , Coords(coords)
+    , Radii(radii)
     , PointIds(pointIds)
     , LowerBounds(cellLowerBounds)
     , UpperBounds(cellUpperBounds)
@@ -66,12 +67,11 @@ private:
     vtkm::Vec3f Dxdydz;
 
     CoordPortalType Coords;
+    FloatPortalType Radii;
 
     IdPortalType PointIds;
     IdPortalType LowerBounds;
     IdPortalType UpperBounds;
-
-    FloatPortalType Radii;
 };
 
 class BinPointsWorklet: public vtkm::worklet::WorkletMapField {
@@ -135,11 +135,11 @@ void PointLocatorCellLists::Build()
     vtkm::cont::Algorithm::LowerBounds(cellIds, cell_ids_counting, this->CellLowerBounds);
 }
 
-PointLocatorOverlap PointLocatorCellLists::PrepareForExecution(vtkm::cont::DeviceAdapterId device,
+OverlapDetector PointLocatorCellLists::PrepareForExecution(vtkm::cont::DeviceAdapterId device,
                                                                vtkm::cont::Token &token) const
 {
-    return PointLocatorOverlap(
+    return OverlapDetector(
         this->Min, this->Max, this->Dims, this->GetCoordinates().GetDataAsMultiplexer().PrepareForInput(device, token),
-        this->PointIds.PrepareForInput(device, token), this->CellLowerBounds.PrepareForInput(device, token),
+        this->Radii.PrepareForInput(device, token), this->PointIds.PrepareForInput(device, token), this->CellLowerBounds.PrepareForInput(device, token),
         this->CellUpperBounds.PrepareForInput(device, token));
 }

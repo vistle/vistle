@@ -130,6 +130,8 @@ VTKM_CONT vtkm::cont::DataSet VtkmSpheresOverlap::DoExecute(const vtkm::cont::Da
     // make search radius at least twice as large as maximum sphere radius
     pointLocator.SetSearchRadius(2.1 * radii.GetRange().ReadPortal().Get(0).Max);
 
+    pointLocator.SetRadii(radii.GetData());
+
     // build search grid in parallel
     pointLocator.Update();
 }
