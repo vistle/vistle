@@ -11,6 +11,7 @@
 
 #include <vistle/core/points.h>
 #include <vistle/core/lines.h>
+#include <vistle/core/spheres.h>
 #include <vistle/core/triangles.h>
 #include <vistle/core/quads.h>
 #include <vistle/core/polygons.h>
@@ -21,37 +22,6 @@
 
 
 namespace vistle {
-
-// for testing also version that returns std::vector instead of array handle
-std::vector<vtkm::UInt8> vistleTypeListToVtkmShapesVector(Index numElements, const Byte *typeList)
-{
-    std::vector<vtkm::UInt8> shapes(numElements);
-    for (unsigned int i = 0; i < shapes.size(); i++) {
-        if (typeList[i] == cell::POINT)
-            shapes[i] = vtkm::CELL_SHAPE_VERTEX;
-        else if (typeList[i] == cell::BAR)
-            shapes[i] = vtkm::CELL_SHAPE_LINE;
-        else if (typeList[i] == cell::TRIANGLE)
-            shapes[i] = vtkm::CELL_SHAPE_TRIANGLE;
-        else if (typeList[i] == cell::POLYGON)
-            shapes[i] = vtkm::CELL_SHAPE_POLYGON;
-        else if (typeList[i] == cell::QUAD)
-            shapes[i] = vtkm::CELL_SHAPE_QUAD;
-        else if (typeList[i] == cell::TETRAHEDRON)
-            shapes[i] = vtkm::CELL_SHAPE_TETRA;
-        else if (typeList[i] == cell::HEXAHEDRON)
-            shapes[i] = vtkm::CELL_SHAPE_HEXAHEDRON;
-        else if (typeList[i] == cell::PRISM)
-            shapes[i] = vtkm::CELL_SHAPE_WEDGE;
-        else if (typeList[i] == cell::PYRAMID)
-            shapes[i] = vtkm::CELL_SHAPE_PYRAMID;
-        else {
-            shapes.clear();
-            break;
-        }
-    }
-    return shapes;
-}
 
 VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object::const_ptr grid)
 {
@@ -220,6 +190,10 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
         auto conn = vtkm::cont::make_ArrayHandleIndex(numPoints);
         cellSet.Fill(numPoints, vtkm::CELL_SHAPE_VERTEX, 1, conn);
         vtkmDataset.SetCellSet(cellSet);
+    } else if (Spheres::as(grid)) {
+        // vtkm does not have a specific cell set for spheres. For spheres it is enough to store
+        // the coordinate system and add a point field with the radius to the vtkm dataset, so
+        // the cell set will be ignored
     } else {
         return VtkmTransformStatus::UNSUPPORTED_GRID_TYPE;
     }
