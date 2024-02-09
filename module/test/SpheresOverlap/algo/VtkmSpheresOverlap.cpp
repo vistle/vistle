@@ -1,13 +1,13 @@
-/*
-    TODO: add Spheres to vistle/vtkm/convert
-*/
-
 #include <vistle/core/spheres.h>
 #include <vistle/core/uniformgrid.h>
 
 #include <vtkm/cont/ArrayHandle.h>
-#include <vtkm/cont/PointLocatorSparseGrid.h> //TODO: delete
+#include <vtkm/cont/ArrayHandleCounting.h>
+#include <vtkm/cont/ArrayHandleGroupVec.h>
+#include <vtkm/cont/CellSetSingleType.h>
+
 #include <vtkm/worklet/WorkletMapField.h>
+#include <vtkm/worklet/ScatterCounting.h>
 
 #include "worklet/PointLocatorCellLists.h"
 #include "VtkmSpheresOverlap.h"
@@ -21,7 +21,7 @@ using namespace vistle;
                 - as AtomicArray (like  vtkm::filter::density_estimate::ParticleDensityNearestGridPoint)
                 - with ScatterCount (see User Guide, Chapter 32: generating cell sets)
 */
-struct CreateOverlapLines: public vtkm::worklet::WorkletMapField {
+struct CountOverlaps: public vtkm::worklet::WorkletMapField {
     using ControlSignature = void(FieldIn coords, ExecObject locator, FieldOut overlaps);
     using ExecutionSignature = void(InputIndex, _1, _2, _3);
 
@@ -30,6 +30,29 @@ struct CreateOverlapLines: public vtkm::worklet::WorkletMapField {
                               vtkm::Id &nrOverlaps) const
     {
         locator.CountOverlaps(id, point, nrOverlaps);
+    }
+};
+
+struct CreateOverlapLines: public vtkm::worklet::WorkletMapField {
+    using ControlSignature = void(FieldIn coords, ExecObject locator, FieldOut linesConnectivity,
+                                  FieldOut linesThickness);
+    using ExecutionSignature = void(InputIndex, _1, _2, VisitIndex, _3, _4);
+
+    using ScatterType = vtkm::worklet::ScatterCounting;
+
+    template<typename CountArrayType>
+    VTKM_CONT static ScatterType MakeScatter(const CountArrayType &countArray)
+    {
+        VTKM_IS_ARRAY_HANDLE(CountArrayType);
+        return ScatterType(countArray);
+    }
+
+    template<typename Point, typename PointLocatorExecObject>
+    VTKM_EXEC void operator()(const vtkm::Id id, const Point &point, const PointLocatorExecObject &locator,
+                              const vtkm::IdComponent visitId, vtkm::Id2 &connectivity,
+                              vtkm::FloatDefault &thickness) const
+    {
+        //locator.CountOverlaps(id, point, connectivity, thickness);
     }
 };
 
@@ -51,12 +74,27 @@ VTKM_CONT vtkm::cont::DataSet VtkmSpheresOverlap::DoExecute(const vtkm::cont::Da
     // build search grid in parallel
     pointLocator.Update();
 
-    // indices of the two overlapping spheres and thickness
+    // first count the overlaps per point
     vtkm::cont::ArrayHandle<vtkm::Id> overlapsPerPoint;
 
-    vtkm::cont::PointLocatorSparseGrid loc;
-    loc.SetCoordinates(inputSpheres.GetCoordinateSystem());
-    this->Invoke(CreateOverlapLines{}, pointLocator.GetCoordinates(), &pointLocator, overlapsPerPoint);
+    this->Invoke(CountOverlaps{}, pointLocator.GetCoordinates(), &pointLocator, overlapsPerPoint);
 
-    return inputSpheres; // TODO: change to lines dataset
+    // then create lines between all overlapping spheres
+    // mapping is not 1-to-1 since a sphere can overlap with arbitrarily many other spheres (including none)
+    auto spheresToLinesMapping = CreateOverlapLines::MakeScatter(overlapsPerPoint);
+
+    vtkm::cont::ArrayHandle<vtkm::Id> linesConnectivity;
+    vtkm::cont::ArrayHandle<vtkm::FloatDefault> lineThicknesses;
+
+    this->Invoke(CreateOverlapLines{}, spheresToLinesMapping, pointLocator.GetCoordinates(), &pointLocator,
+                 vtkm::cont::make_ArrayHandleGroupVec<2>(linesConnectivity), lineThicknesses);
+
+    vtkm::cont::CellSetSingleType<> linesCellSet;
+    linesCellSet.Fill(linesConnectivity.GetNumberOfValues(), vtkm::CELL_SHAPE_LINE, 2, linesConnectivity);
+
+    vtkm::cont::DataSet overlapLines;
+    overlapLines.SetCellSet(linesCellSet);
+    overlapLines.AddCellField("lineThickness", lineThicknesses);
+
+    return overlapLines;
 }
