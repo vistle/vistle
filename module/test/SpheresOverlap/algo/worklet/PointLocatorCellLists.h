@@ -5,7 +5,7 @@
 
 #include <vistle/core/scalar.h>
 
-class OverlapDetector;
+#include "OverlapDetector.h"
 
 /*
     TODO: - pass radius
@@ -15,7 +15,8 @@ class PointLocatorCellLists: public vtkm::cont::internal::PointLocatorBase<Point
     using Superclass = vtkm::cont::internal::PointLocatorBase<PointLocatorCellLists>;
 
 public:
-    void SetRadii(const vtkm::cont::UnknownArrayHandle& radii){
+    void SetRadii(const vtkm::cont::UnknownArrayHandle &radii)
+    {
         assert(radii.CanConvert<vtkm::cont::ArrayHandle<vtkm::FloatDefault>>());
         this->Radii = radii.AsArrayHandle<vtkm::cont::ArrayHandle<vtkm::FloatDefault>>();
     }

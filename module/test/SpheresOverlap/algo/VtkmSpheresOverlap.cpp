@@ -9,7 +9,7 @@
 #include <vtkm/cont/PointLocatorSparseGrid.h>
 #include <vtkm/worklet/WorkletMapField.h>
 
-#include "PointLocatorCellLists.h"
+#include "worklet/PointLocatorCellLists.h"
 #include "VtkmSpheresOverlap.h"
 
 using namespace vistle;
@@ -27,9 +27,9 @@ struct CreateOverlapLines: public vtkm::worklet::WorkletMapField {
 
     template<typename Point, typename PointLocatorExecObject>
     VTKM_EXEC void operator()(const vtkm::Id id, const Point &point, const PointLocatorExecObject &locator,
-                              vtkm::cont::ArrayHandle<vtkm::Vec2i>& overlaps) const
+                              vtkm::cont::ArrayHandle<vtkm::Vec2i> &overlaps) const
     {
-        //locator.CountOverlaps(id, point, overlaps);
+        locator.DetectOverlaps(id, point, overlaps);
     }
 };
 
@@ -75,5 +75,7 @@ VTKM_CONT vtkm::cont::DataSet VtkmSpheresOverlap::DoExecute(const vtkm::cont::Da
 
     vtkm::cont::PointLocatorSparseGrid loc;
     loc.SetCoordinates(inputSpheres.GetCoordinateSystem());
-    this->Invoke(CreateOverlapLines{}, loc.GetCoordinates(), &loc, overlaps);
+    this->Invoke(CreateOverlapLines{}, pointLocator.GetCoordinates(), &pointLocator, overlaps);
+
+    return inputSpheres; // TODO: change to lines dataset
 }
