@@ -24,8 +24,8 @@ struct OverlapLineInfo {
     vistle::Index id1, id2;
     vistle::Scalar thickness;
 
-    OverlapLineInfo(vistle::Index sphereId1, vistle::Index sphereId2, vistle::Scalar distance, vistle::Scalar radius1, vistle::Scalar radius2,
-                    ThicknessDeterminer determiner);
+    OverlapLineInfo(vistle::Index sphereId1, vistle::Index sphereId2, vistle::Scalar distance, vistle::Scalar radius1,
+                    vistle::Scalar radius2, ThicknessDeterminer determiner);
 };
 
 /*
@@ -45,7 +45,7 @@ std::vector<OverlapLineInfo> CellListsAlgorithm(vistle::Spheres::const_ptr spher
 
     Note: Assumes that `spheres` was used to create `overlap`.
 */
-std::pair<vistle::Lines::ptr, vistle::Vec<vistle::Scalar, 1>::ptr> CreateConnectionLines(std::vector<OverlapLineInfo> overlaps,
-                                                                 vistle::Spheres::const_ptr spheres);
+std::pair<vistle::Lines::ptr, vistle::Vec<vistle::Scalar, 1>::ptr>
+CreateConnectionLines(std::vector<OverlapLineInfo> overlaps, vistle::Spheres::const_ptr spheres);
 
 #endif // CELL_LISTS_ALGORITHM_H

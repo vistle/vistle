@@ -10,72 +10,6 @@
 
 using namespace vistle;
 
-// TODO: better to avoid duplicate checks (to avoid duplicate lines) or
-//       unbalanced thread loads (lower ids have more comparisons than higher ids)
-class OverlapDetector {
-public:
-    // TODO: do we need that? or is arrayhandle<vec> enough?
-    using CoordPortalType = typename vtkm::cont::CoordinateSystem::MultiplexerArrayType::ReadPortalType;
-    using IdPortalType = typename vtkm::cont::ArrayHandle<vtkm::Id>::ReadPortalType;
-    using FloatPortalType = typename vtkm::cont::ArrayHandle<vtkm::FloatDefault>::ReadPortalType;
-
-
-    OverlapDetector(const vtkm::Vec3f &min, const vtkm::Vec3f &max, const vtkm::Id3 &nrBins,
-                    const CoordPortalType &coords, const FloatPortalType &radii, const IdPortalType &pointIds,
-                    const IdPortalType &cellLowerBounds, const IdPortalType &cellUpperBounds)
-    : Min(min)
-    , Dims(nrBins)
-    , Dxdydz((max - Min) / Dims)
-    , Coords(coords)
-    , Radii(radii)
-    , PointIds(pointIds)
-    , LowerBounds(cellLowerBounds)
-    , UpperBounds(cellUpperBounds)
-    {}
-
-    VTKM_EXEC void DetectOverlap(const vtkm::Id pointId, const vtkm::Vec3f &queryPoint, vtkm::Id &nearestNeighborId,
-                                 vtkm::FloatDefault &someResult) const
-    {
-        vtkm::Id3 ijk = (queryPoint - this->Min) / this->Dxdydz;
-        ijk = vtkm::Max(ijk, vtkm::Id3(0));
-        ijk = vtkm::Min(ijk, this->Dims - vtkm::Id3(1));
-
-        vtkm::Id cellId = ijk[0] + (ijk[1] * this->Dims[0]) + (ijk[2] * this->Dims[0] * this->Dims[1]);
-
-        // get all cells of interest
-        for (int i = ijk[0]; i <= ijk[0] + 1; i++) {
-            for (int j = ijk[1]; j <= ijk[1] + 1; j++) {
-                for (int k = ijk[2]; k <= ijk[2]; k++) {
-                    auto cellToCheck = i + (j * this->Dims[0]) + (k * this->Dims[0] * this->Dims[1]);
-                    for (auto p = this->LowerBounds.Get(cellToCheck); p < this->UpperBounds.Get(cellToCheck); p++) {
-                        if (pointId < p) {
-                            auto toCheck = this->PointIds.Get(p);
-                            auto pointToCheck = this->Coords.Get(toCheck);
-
-                            if (auto distance = vtkm::Magnitude(queryPoint - pointToCheck);
-                                (distance < this->Radii.Get(cellId) + this->Radii.Get(toCheck))) {
-                                // draw line (or save indices + thickness)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-private:
-    vtkm::Vec3f Min;
-    vtkm::Id3 Dims;
-    vtkm::Vec3f Dxdydz;
-
-    CoordPortalType Coords;
-    FloatPortalType Radii;
-
-    IdPortalType PointIds;
-    IdPortalType LowerBounds;
-    IdPortalType UpperBounds;
-};
-
 class BinPointsWorklet: public vtkm::worklet::WorkletMapField {
 public:
     using ControlSignature = void(FieldIn coord, FieldOut label);
@@ -112,7 +46,7 @@ void PointLocatorCellLists::Build()
                            vtkm::Ceil((bounds.Y.Max - bounds.Y.Min) / this->SearchRadius),
                            vtkm::Ceil((bounds.Z.Max - bounds.Z.Min) / this->SearchRadius));
 
-    this->Min = vtkm::make_Vec(bounds.X.Min, bounds.Y.Min, bounds.Z);
+    this->Min = vtkm::make_Vec(bounds.X.Min, bounds.Y.Min, bounds.Z.Min);
 
     this->Max = vtkm::make_Vec(bounds.X.Min + this->Dims[0] * this->SearchRadius,
                                bounds.Y.Min + this->Dims[1] * this->SearchRadius,
