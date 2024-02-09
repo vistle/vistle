@@ -15,11 +15,8 @@
 using namespace vistle;
 
 /*
-    TODO: 1-to-X mapping: 1 point can have 0..X overlaps (that is a (potentially empty) vector of Vec2i)
-          --> how to do that in vtk-m?
-          --> how to create a Lines object? 
-                - as AtomicArray (like  vtkm::filter::density_estimate::ParticleDensityNearestGridPoint)
-                - with ScatterCount (see User Guide, Chapter 32: generating cell sets)
+    TODO: - let user choose what metric is used for the line thickness
+          - convert vtkm overlsp lines to vistle Lines::ptr
 */
 struct CountOverlaps: public vtkm::worklet::WorkletMapField {
     using ControlSignature = void(FieldIn coords, ExecObject locator, FieldOut overlaps);
@@ -52,7 +49,7 @@ struct CreateOverlapLines: public vtkm::worklet::WorkletMapField {
                               const vtkm::IdComponent visitId, vtkm::Id2 &connectivity,
                               vtkm::FloatDefault &thickness) const
     {
-        //locator.CountOverlaps(id, point, connectivity, thickness);
+        locator.CreateOverlapLines(id, point, visitId, connectivity, thickness);
     }
 };
 

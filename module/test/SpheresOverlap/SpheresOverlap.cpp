@@ -77,7 +77,7 @@ bool SpheresOverlap::compute(const std::shared_ptr<BlockTask> &task) const
         vtkmSpheres.AddPointField("radius", radii.handle());
         
         VtkmSpheresOverlap overlapFilter;
-        overlapFilter.Execute(vtkmSpheres);
+        auto vtkmOverlapLines = overlapFilter.Execute(vtkmSpheres);
 
     } else {
         auto maxRadius = std::numeric_limits<std::remove_reference<decltype(radii[0])>::type>::min();

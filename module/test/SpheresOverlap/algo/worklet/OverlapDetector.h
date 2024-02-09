@@ -5,7 +5,7 @@
 #include <vtkm/cont/CoordinateSystem.h>
 
 // TODO: better to avoid duplicate checks (to avoid duplicate lines) or
-//       unbalanced thread loads (lower ids have more comparisons than higher ids)
+//       unbalanced thread loads (lower ids have more comparisons than higher ids)?
 class OverlapDetector {
 public:
     using CoordPortalType = typename vtkm::cont::CoordinateSystem::MultiplexerArrayType::ReadPortalType;
@@ -26,7 +26,9 @@ public:
     , UpperBounds(cellUpperBounds)
     {}
 
-    VTKM_EXEC void CountOverlaps(const vtkm::Id pointId, const vtkm::Vec3f &queryPoint, vtkm::Id &nrOverlaps) const;
+    VTKM_EXEC void CountOverlaps(const vtkm::Id pointId, const vtkm::Vec3f &point, vtkm::Id &nrOverlaps) const;
+    VTKM_EXEC void CreateOverlapLines(const vtkm::Id pointId, const vtkm::Vec3f &point, const vtkm::IdComponent visitId,
+                                      vtkm::Id2 &connectivity, vtkm::FloatDefault &thickness) const;
 
 private:
     vtkm::Vec3f Min;
