@@ -64,7 +64,7 @@ bool SpheresOverlap::compute(const std::shared_ptr<BlockTask> &task) const
     if (m_useVtkm->getValue()) {
         // create vtk-m dataset from vistle data
         vtkm::cont::DataSet vtkmSpheres;
-        auto status = vtkmSetGrid(vtkmSpheres, geo);
+        auto status = vtkmSetGrid(vtkmSpheres, spheres);
         if (status == VtkmTransformStatus::UNSUPPORTED_GRID_TYPE) {
             sendError("Currently only supporting unstructured grids");
             return true;

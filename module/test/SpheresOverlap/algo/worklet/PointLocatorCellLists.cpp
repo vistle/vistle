@@ -35,9 +35,8 @@ private:
     vtkm::Vec3f Dxdydz;
 };
 
-void PointLocatorCellLists::Build()
+VTKM_CONT void PointLocatorCellLists::Build()
 {
-    vtkm::Bounds test;
     VTKM_LOG_SCOPE(vtkm::cont::LogLevel::Perf, "PointLocatorCellLists::Build");
 
     auto bounds = this->GetCoordinates().GetBounds();

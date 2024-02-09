@@ -8,7 +8,6 @@
 //       unbalanced thread loads (lower ids have more comparisons than higher ids)
 class OverlapDetector {
 public:
-    // TODO: do we need that? or is arrayhandle<vec> enough?
     using CoordPortalType = typename vtkm::cont::CoordinateSystem::MultiplexerArrayType::ReadPortalType;
     using IdPortalType = typename vtkm::cont::ArrayHandle<vtkm::Id>::ReadPortalType;
     using FloatPortalType = typename vtkm::cont::ArrayHandle<vtkm::FloatDefault>::ReadPortalType;
@@ -27,8 +26,7 @@ public:
     , UpperBounds(cellUpperBounds)
     {}
 
-    VTKM_EXEC void DetectOverlaps(const vtkm::Id pointId, const vtkm::Vec3f &queryPoint,
-                                  vtkm::cont::ArrayHandle<vtkm::Vec2i> &overlaps) const;
+    VTKM_EXEC void CountOverlaps(const vtkm::Id pointId, const vtkm::Vec3f &queryPoint, vtkm::Id &nrOverlaps) const;
 
 private:
     vtkm::Vec3f Min;

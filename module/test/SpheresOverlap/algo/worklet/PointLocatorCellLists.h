@@ -24,7 +24,7 @@ public:
     void SetSearchRadius(const vtkm::FloatDefault searchRadius)
     {
         if (this->SearchRadius != searchRadius) {
-            assert(SearchRadius > 0);
+            assert(searchRadius > 0);
             this->SearchRadius = searchRadius;
             this->SetModified();
         }

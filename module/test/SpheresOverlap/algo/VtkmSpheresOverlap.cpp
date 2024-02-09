@@ -6,7 +6,7 @@
 #include <vistle/core/uniformgrid.h>
 
 #include <vtkm/cont/ArrayHandle.h>
-#include <vtkm/cont/PointLocatorSparseGrid.h>
+#include <vtkm/cont/PointLocatorSparseGrid.h> //TODO: delete
 #include <vtkm/worklet/WorkletMapField.h>
 
 #include "worklet/PointLocatorCellLists.h"
@@ -27,9 +27,9 @@ struct CreateOverlapLines: public vtkm::worklet::WorkletMapField {
 
     template<typename Point, typename PointLocatorExecObject>
     VTKM_EXEC void operator()(const vtkm::Id id, const Point &point, const PointLocatorExecObject &locator,
-                              vtkm::cont::ArrayHandle<vtkm::Vec2i> &overlaps) const
+                              vtkm::Id &nrOverlaps) const
     {
-        locator.DetectOverlaps(id, point, overlaps);
+        locator.CountOverlaps(id, point, nrOverlaps);
     }
 };
 
@@ -52,30 +52,11 @@ VTKM_CONT vtkm::cont::DataSet VtkmSpheresOverlap::DoExecute(const vtkm::cont::Da
     pointLocator.Update();
 
     // indices of the two overlapping spheres and thickness
-    vtkm::cont::ArrayHandle<vtkm::cont::ArrayHandle<vtkm::Vec2i>> overlaps;
-
-    // this is how to add an element to overlaps:
-    /*
-    vtkm::Vec2i test = {0, 0};
-    vtkm::cont::ArrayHandle<vtkm::Vec2i> testAh;
-    testAh.Allocate(2);
-    testAh.WritePortal().Set(0, test);
-    testAh.WritePortal().Set(1, test);
-    
-    vtkm::cont::ArrayHandle<vtkm::Vec2i> testAh2;
-    testAh2.Allocate(3);
-    testAh2.WritePortal().Set(0, test);
-    testAh2.WritePortal().Set(1, test);
-    testAh2.WritePortal().Set(2, test);
-
-    overlaps.Allocate(2);
-    overlaps.WritePortal().Set(0, testAh);
-    overlaps.WritePortal().Set(1, testAh2);
-    */
+    vtkm::cont::ArrayHandle<vtkm::Id> overlapsPerPoint;
 
     vtkm::cont::PointLocatorSparseGrid loc;
     loc.SetCoordinates(inputSpheres.GetCoordinateSystem());
-    this->Invoke(CreateOverlapLines{}, pointLocator.GetCoordinates(), &pointLocator, overlaps);
+    this->Invoke(CreateOverlapLines{}, pointLocator.GetCoordinates(), &pointLocator, overlapsPerPoint);
 
     return inputSpheres; // TODO: change to lines dataset
 }
