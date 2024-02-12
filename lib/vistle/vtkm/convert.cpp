@@ -18,6 +18,8 @@
 
 #include <boost/mpl/for_each.hpp>
 
+#include <stdexcept>
+
 #include "convert.h"
 
 
@@ -271,20 +273,43 @@ VtkmTransformStatus vtkmAddField(vtkm::cont::DataSet &vtkmDataSet, const vistle:
     return VtkmTransformStatus::UNSUPPORTED_FIELD_TYPE;
 }
 
+template<typename ArrayHandlePortal>
+void fillVistleCoords(ArrayHandlePortal coordsPortal, Coords::ptr coords, vtkm::Vec3i order = {0, 1, 2})
+{
+    auto x = coords->x().data();
+    auto y = coords->y().data();
+    auto z = coords->z().data();
+
+    for (vtkm::Id index = 0; index < coordsPortal.GetNumberOfValues(); index++) {
+        vtkm::Vec3f point = coordsPortal.Get(index);
+        // account for coordinate axes swap
+        x[index] = point[order[0]];
+        y[index] = point[order[1]];
+        z[index] = point[order[2]];
+    }
+}
+
+void vtkmToVistleCoordinateSystem(const vtkm::cont::CoordinateSystem &coordinateSystem, Coords::ptr coords)
+{
+    auto vtkmCoords = coordinateSystem.GetData();
+
+    if (vtkmCoords.CanConvert<vtkm::cont::ArrayHandle<vtkm::Vec3f>>()) {
+        auto coordsPortal = vtkmCoords.AsArrayHandle<vtkm::cont::ArrayHandle<vtkm::Vec3f>>().ReadPortal();
+        // TODO: find better way to handle coordinate axes swap
+        // must account for coordinate axes swap
+        fillVistleCoords(coordsPortal, coords, {2, 1, 0});
+    } else if (vtkmCoords.CanConvert<vtkm::cont::ArrayHandleSOA<vtkm::Vec3f>>()) {
+        auto coordsPortal = vtkmCoords.AsArrayHandle<vtkm::cont::ArrayHandleSOA<vtkm::Vec3f>>().ReadPortal();
+        fillVistleCoords(coordsPortal, coords);
+    } else {
+        throw std::invalid_argument("VTKm coordinate system uses unsupported array handle storage.");
+    }
+}
 
 Object::ptr vtkmGetGeometry(vtkm::cont::DataSet &dataset)
 {
     Object::ptr result;
 
-    // get vertices that make up the dataset grid
-    auto uPointCoordinates = dataset.GetCoordinateSystem().GetData();
-
-    // we expect point coordinates to be stored as vtkm::Vec3 array handle
-    assert((uPointCoordinates.CanConvert<vtkm::cont::ArrayHandle<vtkm::Vec<vtkm::FloatDefault, 3>>>() == true));
-
-    auto pointCoordinates =
-        uPointCoordinates.AsArrayHandle<vtkm::cont::ArrayHandle<vtkm::Vec<vtkm::FloatDefault, 3>>>();
-    auto pointsPortal = pointCoordinates.ReadPortal();
     auto numPoints = dataset.GetNumberOfPoints();
 
     auto cellset = dataset.GetCellSet();
@@ -436,16 +461,7 @@ Object::ptr vtkmGetGeometry(vtkm::cont::DataSet &dataset)
     }
 
     if (auto coords = Coords::as(result)) {
-        auto x = coords->x().data();
-        auto y = coords->y().data();
-        auto z = coords->z().data();
-        for (vtkm::Id index = 0; index < numPoints; index++) {
-            vtkm::Vec3f point = pointsPortal.Get(index);
-            // account for coordinate axes swap
-            x[index] = point[2];
-            y[index] = point[1];
-            z[index] = point[0];
-        }
+        vtkmToVistleCoordinateSystem(dataset.GetCoordinateSystem(), coords);
 
         if (auto normals = vtkmGetField(dataset, "normals")) {
             if (auto nvec = vistle::Vec<vistle::Scalar, 3>::as(normals)) {

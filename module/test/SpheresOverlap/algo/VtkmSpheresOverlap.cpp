@@ -92,6 +92,8 @@ VTKM_CONT vtkm::cont::DataSet VtkmSpheresOverlap::DoExecute(const vtkm::cont::Da
     linesCellSet.Fill(linesConnectivity.GetNumberOfValues(), vtkm::CELL_SHAPE_LINE, 2, linesConnectivity);
 
     vtkm::cont::DataSet overlapLines;
+
+    overlapLines.AddCoordinateSystem(coords);
     overlapLines.SetCellSet(linesCellSet);
     overlapLines.AddCellField("lineThickness", lineThicknesses);
 

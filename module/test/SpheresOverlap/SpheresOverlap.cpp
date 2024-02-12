@@ -22,6 +22,8 @@ MODULE_MAIN(SpheresOverlap)
 // TODO: - instead of checking sId < sId2, adjust for range accordingly!
 //       - debug map with Gendat data is missing connections when rendered as tubes (as opposed to lines)
 
+// BUG: - currently SpheresOverlap fails with indexed.cpp: "CONSISTENCY CHECK FAILURE [...]: el()[getNumElements()] == getNumCorners()"
+//      (see log file for more), probably something missing for Spheres in lib/vistle/vtkm/convert.cpp
 
 SpheresOverlap::SpheresOverlap(const std::string &name, int moduleID, mpi::communicator comm)
 : Module(name, moduleID, comm)
@@ -61,6 +63,10 @@ bool SpheresOverlap::compute(const std::shared_ptr<BlockTask> &task) const
     auto spheres = Spheres::as(geo);
     auto radii = spheres->r();
 
+
+    Lines::ptr lines;
+    Vec<Scalar, 1>::ptr lineThicknesses;
+
     if (m_useVtkm->getValue()) {
         // create vtk-m dataset from vistle data
         vtkm::cont::DataSet vtkmSpheres;
@@ -75,9 +81,13 @@ bool SpheresOverlap::compute(const std::shared_ptr<BlockTask> &task) const
         }
 
         vtkmSpheres.AddPointField("radius", radii.handle());
-        
+
         VtkmSpheresOverlap overlapFilter;
-        auto vtkmOverlapLines = overlapFilter.Execute(vtkmSpheres);
+        auto vtkmLines = overlapFilter.Execute(vtkmSpheres);
+
+        lines = Lines::as(vtkmGetGeometry(vtkmLines));
+        lineThicknesses = Vec<Scalar, 1>::as(vtkmGetField(vtkmLines, "lineThickness"));
+
 
     } else {
         auto maxRadius = std::numeric_limits<std::remove_reference<decltype(radii[0])>::type>::min();
@@ -94,26 +104,26 @@ bool SpheresOverlap::compute(const std::shared_ptr<BlockTask> &task) const
 
         auto result = CreateConnectionLines(overlaps, spheres);
 
-        auto lines = result.first;
-        auto lineThicknesses = result.second;
+        lines = result.first;
+        lineThicknesses = result.second;
+    }
 
-        if (lines->getNumCoords()) {
-            if (mappedData) {
-                lines->copyAttributes(mappedData);
-            } else {
-                lines->copyAttributes(geo);
-            }
-
-            updateMeta(lines);
-            task->addObject(m_linesOut, lines);
-
-            lineThicknesses->copyAttributes(lines);
-            lineThicknesses->setMapping(DataBase::Element);
-            lineThicknesses->setGrid(lines);
-            lineThicknesses->addAttribute("_species", "line thickness");
-            updateMeta(lineThicknesses);
-            task->addObject(m_dataOut, lineThicknesses);
+    if (lines->getNumCoords()) {
+        if (mappedData) {
+            lines->copyAttributes(mappedData);
+        } else {
+            lines->copyAttributes(geo);
         }
+
+        updateMeta(lines);
+        task->addObject(m_linesOut, lines);
+
+        lineThicknesses->copyAttributes(lines);
+        lineThicknesses->setMapping(DataBase::Element);
+        lineThicknesses->setGrid(lines);
+        lineThicknesses->addAttribute("_species", "line thickness");
+        updateMeta(lineThicknesses);
+        task->addObject(m_dataOut, lineThicknesses);
     }
 
     return true;
