@@ -16,9 +16,8 @@
 using namespace vistle;
 
 /*
-    TODO: - find out why assertion fails!
-          - let user choose what metric is used for the line thickness
-          - convert vtkm overlsp lines to vistle Lines::ptr
+    TODO: - let user choose what metric is used for the line thickness
+          - convert vtkm overlap lines to vistle Lines::ptr
 */
 struct CountOverlaps: public vtkm::worklet::WorkletMapField {
     using ControlSignature = void(FieldIn coords, ExecObject locator, FieldOut overlaps);
@@ -88,7 +87,7 @@ VTKM_CONT vtkm::cont::DataSet VtkmSpheresOverlap::DoExecute(const vtkm::cont::Da
     this->Invoke(CreateOverlapLines{}, spheresToLinesMapping, pointLocator.GetCoordinates(), &pointLocator,
                  vtkm::cont::make_ArrayHandleGroupVec<2>(linesConnectivity), lineThicknesses);
 
-    assert(linesConnectivity.GetNumberOfValues() == vtkm::cont::Algorithm::Reduce(overlapsPerPoint, 0));
+    assert(linesConnectivity.GetNumberOfValues() == 2 * vtkm::cont::Algorithm::Reduce(overlapsPerPoint, 0));
     vtkm::cont::CellSetSingleType<> linesCellSet;
     linesCellSet.Fill(linesConnectivity.GetNumberOfValues(), vtkm::CELL_SHAPE_LINE, 2, linesConnectivity);
 
