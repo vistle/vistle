@@ -625,7 +625,6 @@ osg::PrimitiveSet *buildTriangles(const PrimitiveBin &bin, const Index *el, bool
 #endif
         return corners;
     } else if (ghost) {
-        const Index *cl = bin.ncl.data();
         auto corners = new osg::DrawElementsUInt(osg::PrimitiveSet::TRIANGLES, 0);
         corners->reserve(numTri * 3);
         Index begin = 0;

@@ -216,6 +216,8 @@
    <addaction name="actionOpen"/>
    <addaction name="actionSave"/>
    <addaction name="separator"/>
+   <addaction name="actionExecute"/>
+   <addaction name="separator"/>
    <addaction name="actionSelectInvert"/>
    <addaction name="actionSelect_All"/>
    <addaction name="actionDelete"/>
@@ -223,8 +225,6 @@
    <addaction name="actionViewOrig"/>
    <addaction name="actionViewAll"/>
    <addaction name="actionArrange"/>
-   <addaction name="separator"/>
-   <addaction name="actionExecute"/>
   </widget>
   <widget class="QDockWidget" name="modulesDock">
    <property name="sizePolicy">

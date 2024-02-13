@@ -29,7 +29,6 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
 {
     // swap x and z coordinates to account for different indexing in structured data
     if (auto coords = Coords::as(grid)) {
-        auto numPoints = coords->getNumCoords();
         auto xCoords = coords->x();
         auto yCoords = coords->y();
         auto zCoords = coords->z();
@@ -54,9 +53,6 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
         auto coordinateSystem = vtkm::cont::CoordinateSystem("uniform", uniformCoordinates);
         vtkmDataset.AddCoordinateSystem(coordinateSystem);
     } else if (auto rect = RectilinearGrid::as(grid)) {
-        auto nx = rect->getNumDivisions(0);
-        auto ny = rect->getNumDivisions(1);
-        auto nz = rect->getNumDivisions(2);
         auto xc = rect->coords(0).handle();
         auto yc = rect->coords(1).handle();
         auto zc = rect->coords(2).handle();
@@ -89,11 +85,6 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
         }
     } else if (auto unstructuredGrid = UnstructuredGrid::as(indexedGrid)) {
         auto numPoints = indexedGrid->getNumCoords();
-        auto numConn = indexedGrid->getNumCorners();
-
-        auto numElements = indexedGrid->getNumElements();
-
-        auto typeList = &unstructuredGrid->tl()[0];
 
         auto conn = indexedGrid->cl().handle();
         auto offs = indexedGrid->el().handle();
@@ -139,7 +130,6 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
     } else if (auto poly = Polygons::as(grid)) {
         poly->check();
         auto numPoints = poly->getNumCoords();
-        auto numConn = poly->getNumCorners();
         auto numCells = poly->getNumElements();
         auto conn = poly->cl().handle();
         auto offs = poly->el().handle();
@@ -164,7 +154,6 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
     } else if (auto line = Lines::as(grid)) {
         line->check();
         auto numPoints = line->getNumCoords();
-        auto numConn = line->getNumCorners();
         auto numCells = line->getNumElements();
         auto conn = line->cl().handle();
         auto offs = line->el().handle();
@@ -224,21 +213,20 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
 
 struct AddField {
     vtkm::cont::DataSet &dataset;
-    DataBase::const_ptr &object;
+    const DataBase::const_ptr &object;
     const std::string &name;
     bool &handled;
-    AddField(vtkm::cont::DataSet &ds, DataBase::const_ptr obj, const std::string &name, bool &handled)
+    AddField(vtkm::cont::DataSet &ds, const DataBase::const_ptr &obj, const std::string &name, bool &handled)
     : dataset(ds), object(obj), name(name), handled(handled)
     {}
     template<typename S>
     void operator()(S)
     {
         typedef Vec<S, 1> V1;
-        typedef Vec<S, 2> V2;
+        //typedef Vec<S, 2> V2;
         typedef Vec<S, 3> V3;
-        typedef Vec<S, 4> V4;
+        //typedef Vec<S, 4> V4;
 
-        auto mapping = object->guessMapping();
         vtkm::cont::UnknownArrayHandle ah;
         if (auto in = V1::as(object)) {
             ah = in->x().handle();
@@ -251,6 +239,7 @@ struct AddField {
             return;
         }
 
+        auto mapping = object->guessMapping();
         if (mapping == vistle::DataBase::Vertex) {
             dataset.AddPointField(name, ah);
         } else {

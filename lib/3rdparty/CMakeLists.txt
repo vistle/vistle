@@ -72,18 +72,20 @@ if(USE_SZ3)
     add_subdirectory(sz3)
 endif()
 
-set(BUILD_TESTING
-    OFF
-    CACHE INTERNAL "")
-set(BUILD_UTILITIES
-    OFF
-    CACHE INTERNAL "")
-set(ZFP_LIBRARY_PREFIX
-    "vistle_"
-    CACHE STRING "Prefix to prepend to the output library name")
-mark_as_advanced(ZFP_LIBRARY_PREFIX)
-set(CMAKE_INSTALL_INCLUDEDIR include/vistle/3rdparty)
-add_subdirectory(zfp)
+if(VISTLE_INTERNAL_ZFP)
+    set(BUILD_TESTING
+        OFF
+        CACHE INTERNAL "")
+    set(BUILD_UTILITIES
+        OFF
+        CACHE INTERNAL "")
+    set(ZFP_LIBRARY_PREFIX
+        "vistle_"
+        CACHE STRING "Prefix to prepend to the output library name")
+    mark_as_advanced(ZFP_LIBRARY_PREFIX)
+    set(CMAKE_INSTALL_INCLUDEDIR include/vistle/3rdparty)
+    add_subdirectory(zfp)
+endif()
 
 set(BUILD_SHARED_LIBS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
