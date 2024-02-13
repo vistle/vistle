@@ -22,9 +22,6 @@ MODULE_MAIN(SpheresOverlap)
 // TODO: - instead of checking sId < sId2, adjust for range accordingly!
 //       - debug map with Gendat data is missing connections when rendered as tubes (as opposed to lines)
 
-// BUG: - currently SpheresOverlap fails with indexed.cpp: "CONSISTENCY CHECK FAILURE [...]: el()[getNumElements()] == getNumCorners()"
-//      (see log file for more), probably something missing for Spheres in lib/vistle/vtkm/convert.cpp
-
 SpheresOverlap::SpheresOverlap(const std::string &name, int moduleID, mpi::communicator comm)
 : Module(name, moduleID, comm)
 {

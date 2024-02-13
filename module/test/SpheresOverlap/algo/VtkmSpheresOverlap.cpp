@@ -93,7 +93,10 @@ VTKM_CONT vtkm::cont::DataSet VtkmSpheresOverlap::DoExecute(const vtkm::cont::Da
 
     vtkm::cont::DataSet overlapLines;
 
-    overlapLines.AddCoordinateSystem(coords);
+    // make sure vtkms understands that this dataset is empty, if no overlaps are found
+    if (linesConnectivity.GetNumberOfValues() > 0)
+        overlapLines.AddCoordinateSystem(coords);
+
     overlapLines.SetCellSet(linesCellSet);
     overlapLines.AddCellField("lineThickness", lineThicknesses);
 
