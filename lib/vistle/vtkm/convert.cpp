@@ -451,7 +451,8 @@ Object::ptr vtkmGetGeometry(vtkm::cont::DataSet &dataset)
     }
 
     if (auto coords = Coords::as(result)) {
-        vtkmToVistleCoordinateSystem(dataset.GetCoordinateSystem(), coords);
+        if (dataset.GetNumberOfCoordinateSystems() > 0)
+            vtkmToVistleCoordinateSystem(dataset.GetCoordinateSystem(), coords);
 
         if (auto normals = vtkmGetField(dataset, "normals")) {
             if (auto nvec = vistle::Vec<vistle::Scalar, 3>::as(normals)) {
