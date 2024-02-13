@@ -336,6 +336,7 @@ Object::ptr vtkmGetGeometry(vtkm::cont::DataSet &dataset)
             for (vtkm::Id index = 0; index < numElem; index++) {
                 lines->el()[index] = 2 * index;
             }
+            lines->el()[numElem] = numConn;
             result = lines;
         } else if (cellset.GetCellShape(0) == vtkm::CELL_SHAPE_POLY_LINE) {
             auto elements = isoGrid.GetOffsetsArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
