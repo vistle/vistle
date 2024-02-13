@@ -65,7 +65,7 @@ VTKM_CONT vtkm::cont::DataSet VtkmSpheresOverlap::DoExecute(const vtkm::cont::Da
     pointLocator.SetCoordinates(inputSpheres.GetCoordinateSystem());
 
     // make search radius at least twice as large as maximum sphere radius
-    pointLocator.SetSearchRadius(2.1 * radii.GetRange().ReadPortal().Get(0).Max);
+    pointLocator.SetSearchRadius(this->RadiusFactor * 2 * radii.GetRange().ReadPortal().Get(0).Max);
 
     pointLocator.SetRadii(radii.GetData());
 

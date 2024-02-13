@@ -83,6 +83,7 @@ bool SpheresOverlap::compute(const std::shared_ptr<BlockTask> &task) const
         vtkmSpheres.AddPointField("radius", radii.handle());
 
         VtkmSpheresOverlap overlapFilter;
+        overlapFilter.SetRadiusFactor(m_radiusCoefficient->getValue());
         auto vtkmLines = overlapFilter.Execute(vtkmSpheres);
 
         lines = Lines::as(vtkmGetGeometry(vtkmLines));
@@ -99,7 +100,7 @@ bool SpheresOverlap::compute(const std::shared_ptr<BlockTask> &task) const
         // We want to ensure that no pair of overlapping spheres is missed. As two spheres overlap when
         // the Euclidean distance between them is less than the sum of their radii, the minimum search
         // radius is two times the maximum sphere radius.
-        auto overlaps = CellListsAlgorithm(spheres, 2.1 * m_radiusCoefficient->getValue() * maxRadius,
+        auto overlaps = CellListsAlgorithm(spheres, 2 * m_radiusCoefficient->getValue() * maxRadius,
                                            (ThicknessDeterminer)m_thicknessDeterminer->getValue());
 
         auto result = CreateConnectionLines(overlaps, spheres);
