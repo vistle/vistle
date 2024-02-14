@@ -26,12 +26,13 @@ public:
     , UpperBounds(cellUpperBounds)
     {}
 
-    VTKM_EXEC vtkm::Id3 GetCellId(const vtkm::Vec3f &point) const;
-    VTKM_EXEC vtkm::Id FlattenId(const vtkm::Id3 &cellId) const;
-    VTKM_EXEC bool cellExists(const vtkm::Id3 &cellId) const;
     VTKM_EXEC void CountOverlaps(const vtkm::Id pointId, const vtkm::Vec3f &point, vtkm::Id &nrOverlaps) const;
     VTKM_EXEC void CreateOverlapLines(const vtkm::Id pointId, const vtkm::Vec3f &point, const vtkm::IdComponent visitId,
                                       vtkm::Id2 &connectivity, vtkm::FloatDefault &thickness) const;
+
+    VTKM_EXEC vtkm::Id3 GetCellId(const vtkm::Vec3f &point) const;
+    VTKM_EXEC vtkm::Id FlattenId(const vtkm::Id3 &cellId) const;
+    VTKM_EXEC bool CellExists(const vtkm::Id3 &cellId) const;
 
 private:
     vtkm::Vec3f Min;

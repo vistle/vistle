@@ -2,8 +2,10 @@
 
 #include "OverlapDetector.h"
 
-// TODO:  - make these helper fuctions friends...
+// TODO:  - make thickness variable chosen by user!!!
 //        - make sure lib/vistle/vtkm/convert.cpp still works the same!
+
+// BUG: - crash if Grid Size > 1x1x1
 
 VTKM_EXEC vtkm::Id3 OverlapDetector::GetCellId(const vtkm::Vec3f &point) const
 {
@@ -14,7 +16,7 @@ VTKM_EXEC vtkm::Id3 OverlapDetector::GetCellId(const vtkm::Vec3f &point) const
     return ijk;
 }
 
-VTKM_EXEC bool OverlapDetector::cellExists(const vtkm::Id3 &id) const
+VTKM_EXEC bool OverlapDetector::CellExists(const vtkm::Id3 &id) const
 {
     return id[0] >= 0 && id[0] < this->Dims[0] && id[1] >= 0 && id[1] < this->Dims[1] && id[2] >= 0 &&
            id[0] < this->Dims[2];
@@ -22,27 +24,37 @@ VTKM_EXEC bool OverlapDetector::cellExists(const vtkm::Id3 &id) const
 
 VTKM_EXEC vtkm::Id OverlapDetector::FlattenId(const vtkm::Id3 &id) const
 {
-    if (!cellExists(id))
+    if (!CellExists(id))
         return -1;
     return id[0] + (id[1] * this->Dims[0]) + (id[2] * this->Dims[0] * this->Dims[1]);
 }
 
+/*
+    Returns the number of points in the dataset that overlap with the point `point` at the index `pointId`.
+*/
 VTKM_EXEC void OverlapDetector::CountOverlaps(const vtkm::Id pointId, const vtkm::Vec3f &point,
                                               vtkm::Id &nrOverlaps) const
 {
-    auto cellId = this->GetCellId(point);
+    auto cellId3 = this->GetCellId(point);
+    auto cellId = FlattenId(cellId3);
 
     nrOverlaps = 0;
-    for (int i = cellId[0] - 1; i <= cellId[0] + 1; i++) {
-        for (int j = cellId[1] - 1; j <= cellId[1] + 1; j++) {
-            for (int k = cellId[2] - 1; k <= cellId[2] + 1; k++) {
+    // loop through the cell the current point lies in as well as its neighbor cells
+    for (int i = cellId3[0] - 1; i <= cellId3[0] + 1; i++) {
+        for (int j = cellId3[1] - 1; j <= cellId3[1] + 1; j++) {
+            for (int k = cellId3[2] - 1; k <= cellId3[2] + 1; k++) {
                 auto cellToCheck = FlattenId({i, j, k});
-                if (cellToCheck != -1 && FlattenId(cellId) <= cellToCheck) {
+
+                if (cellToCheck != -1 && cellId <= cellToCheck) { // avoid checking the same pair of cells twice
+                    // get the ids of all points in the cell
                     for (auto boundId = this->LowerBounds.Get(cellToCheck);
                          boundId < this->UpperBounds.Get(cellToCheck); boundId++) {
                         auto idToCheck = this->PointIds.Get(boundId);
-                        if (pointId < idToCheck) {
+
+                        if (pointId < idToCheck) { // avoid checking the same pair of points twice
                             auto pointToCheck = this->Coords.Get(idToCheck);
+
+                            // check if spheres overlap
                             if (auto distance = vtkm::Magnitude(point - pointToCheck);
                                 (distance <= this->Radii.Get(pointId) + this->Radii.Get(idToCheck))) {
                                 nrOverlaps++;
@@ -55,23 +67,34 @@ VTKM_EXEC void OverlapDetector::CountOverlaps(const vtkm::Id pointId, const vtkm
     }
 }
 
+/*
+    Determines which points overlap with the point `point` at the index `pointId` and for each overlap
+    saves the indices of the two points into `connectivity`. and a scalar value into `thickness`. 
+*/
 VTKM_EXEC void OverlapDetector::CreateOverlapLines(const vtkm::Id pointId, const vtkm::Vec3f &point,
                                                    const vtkm::IdComponent visitId, vtkm::Id2 &connectivity,
                                                    vtkm::FloatDefault &thickness) const
 {
-    auto cellId = this->GetCellId(point);
+    auto cellId3 = this->GetCellId(point);
+    auto cellId = FlattenId(cellId3);
 
     vtkm::Id nrOverlaps = 0;
-    for (int i = cellId[0] - 1; i <= cellId[0] + 1; i++) {
-        for (int j = cellId[1] - 1; j <= cellId[1] + 1; j++) {
-            for (int k = cellId[2] - 1; k <= cellId[2] + 1; k++) {
+    // loop through the cell the current point lies in as well as its neighbor cells
+    for (int i = cellId3[0] - 1; i <= cellId3[0] + 1; i++) {
+        for (int j = cellId3[1] - 1; j <= cellId3[1] + 1; j++) {
+            for (int k = cellId3[2] - 1; k <= cellId3[2] + 1; k++) {
                 auto cellToCheck = FlattenId({i, j, k});
-                if (cellToCheck != -1 && FlattenId(cellId) <= cellToCheck) {
+
+                if (cellToCheck != -1 && cellId <= cellToCheck) { // avoid checking the same pair of cells twice
+                    // get the ids of all points in the cell
                     for (auto boundId = this->LowerBounds.Get(cellToCheck);
                          boundId < this->UpperBounds.Get(cellToCheck); boundId++) {
                         auto idToCheck = this->PointIds.Get(boundId);
-                        if (pointId < idToCheck) {
+
+                        if (pointId < idToCheck) { // avoid checking the same pair of points twice
                             auto pointToCheck = this->Coords.Get(idToCheck);
+
+                            // check if spheres overlap
                             if (auto distance = vtkm::Magnitude(point - pointToCheck);
                                 (distance <= this->Radii.Get(pointId) + this->Radii.Get(idToCheck))) {
                                 if (nrOverlaps == visitId) {
