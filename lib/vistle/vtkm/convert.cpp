@@ -300,6 +300,8 @@ Object::ptr vtkmGetGeometry(vtkm::cont::DataSet &dataset)
     Object::ptr result;
 
     auto numPoints = dataset.GetNumberOfPoints();
+    if (dataset.GetNumberOfCoordinateSystems() > 0)
+        numPoints = dataset.GetCoordinateSystem().GetNumberOfPoints();
 
     auto cellset = dataset.GetCellSet();
 
