@@ -7,10 +7,6 @@
 
 #include "OverlapDetector.h"
 
-/*
-    TODO: - pass radius
-          - store line thickness
-*/
 class PointLocatorCellLists: public vtkm::cont::internal::PointLocatorBase<PointLocatorCellLists> {
     using Superclass = vtkm::cont::internal::PointLocatorBase<PointLocatorCellLists>;
 
