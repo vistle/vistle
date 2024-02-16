@@ -3,9 +3,7 @@
 import os
 import argparse
 import time
-
-binaryDir = os.getenv("VISTLE_DOC_BINARY_DIR")
-
+import coGRMsg
 
 def createGUISnapshot(imageName, sourceDir):
     snapshotGui(sourceDir + "/" + imageName + "_workflow.png")
@@ -19,12 +17,12 @@ def initVistle(imageName, sourceDir):
     compute()
     time.sleep(5) #needed until we can wait for cover to finish rendering
     
-    sendCoverMessage(coGRSetViewpointFile(sourceDir + "/" + imageName + ".vwp", 0))
-    sendCoverMessage(coGRShowViewpointMsg(0))
+    sendCoverMessage(coGRMsg.coGRSetViewpointFile(sourceDir + "/" + imageName + ".vwp", 0))
+    sendCoverMessage(coGRMsg.coGRShowViewpointMsg(0))
     time.sleep(3) #needed until we can wait for cover to finish rendering
 
 if __name__ == '__main__':
-    default_src_dir = os.getenv("VISTLE_SOURCE_DIR")
+    default_src_dir = os.path.dirname(os.path.realpath(__file__))
     parser = argparse.ArgumentParser(
         description="Create vistle snapshot."
     )
@@ -32,7 +30,7 @@ if __name__ == '__main__':
         "-name",
         nargs=1,
         metavar=("name"),
-        default=os.getenv("VISTLE_IMAGE_NAME"),
+        default="module",
         help="Vsl name.",
     )
     parser.add_argument(
@@ -56,7 +54,6 @@ if __name__ == '__main__':
         help="Create gui snapshot.",
     )
     args = parser.parse_args(os.getenv("SNAPSHOT_ARGS").split())
-    # print(os.getenv("SNAPSHOT_ARGS").split("-"))
 
     if args.name != None:
         name = args.name[0]
