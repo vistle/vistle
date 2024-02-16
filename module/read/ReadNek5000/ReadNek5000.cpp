@@ -101,11 +101,10 @@ Object::ptr ReadNek::readGrid(int timestep, nek5000::PartitionReader &partitionR
     UnstructuredGrid::ptr grid =
         UnstructuredGrid::ptr(new UnstructuredGrid(hexes, partitionReader.getNumConn(), partitionReader.getGridSize()));
     Byte elemType = partitionReader.getDim() == 2 ? UnstructuredGrid::QUAD : UnstructuredGrid::HEXAHEDRON;
-    Byte ghostType = partitionReader.getDim() == 2 ? UnstructuredGrid::QUAD | UnstructuredGrid::GHOST_BIT
-                                                   : UnstructuredGrid::HEXAHEDRON | UnstructuredGrid::GHOST_BIT;
+
     partitionReader.fillGrid({grid->x().data(), grid->y().data(), grid->z().data()});
     std::fill_n(grid->tl().data(), hexes - ghostHexes, elemType);
-    std::fill_n(grid->tl().data() + hexes - ghostHexes, ghostHexes, ghostType);
+    std::fill_n(grid->ghost().data() + hexes - ghostHexes, ghostHexes, cell::GHOST);
     partitionReader.fillConnectivityList(grid->cl().data());
     int numCorners = partitionReader.getDim() == 2 ? 4 : 8;
     for (size_t i = 0; i < hexes + 1; i++) {
@@ -144,27 +143,40 @@ bool ReadNek::addGridAndBlockNumbers(Token &token, int timestep, nek5000::Partit
 
 bool ReadNek::examine(const vistle::Parameter *param)
 {
-    (void)param;
-    if (!fs::exists(m_filePathParam->getValue())) {
-        cerr << "file " << m_filePathParam->getValue() << " does not exist" << endl;
-        return false;
+    if (param && param != m_filePathParam && param != m_numPartitionsParam && param != m_numBlocksParam) {
+        // nothing changed
+        return true;
     }
+
+    if (!param || param == m_filePathParam) {
+        if (!fs::exists(m_filePathParam->getValue())) {
+            cerr << "file " << m_filePathParam->getValue() << " does not exist" << endl;
+            return false;
+        }
+    }
+
     vistle::Integer numPartitions = m_numPartitionsParam->getValue() == 0 ? size() : m_numPartitionsParam->getValue();
     m_staticData.reset(
         new nek5000::ReaderBase(m_filePathParam->getValue(), numPartitions, m_numBlocksParam->getValue()));
-    if (!m_staticData->init())
+    if (!m_staticData->init()) {
+        for (auto p: m_miscPorts)
+            destroyPort(p);
+        m_miscPorts.clear();
+        m_grids.clear();
         return false;
-    size_t oldNumSFields = m_miscPorts.size();
-
-    setTimesteps(m_staticData->getNumTimesteps());
+    }
     setPartitions(numPartitions);
     m_grids.resize(numPartitions);
-    for (size_t i = oldNumSFields; i < m_staticData->getNumScalarFields(); i++) {
+    setTimesteps(m_staticData->getNumTimesteps());
+
+    while (m_miscPorts.size() < m_staticData->getNumScalarFields()) {
+        auto i = m_miscPorts.size();
         m_miscPorts.push_back(
-            createOutputPort("scalarFiled" + std::to_string(i + 1), "scalar data " + std::to_string(i + 1)));
+            createOutputPort("scalarField" + std::to_string(i + 1), "scalar data " + std::to_string(i + 1)));
     }
-    for (size_t i = oldNumSFields; i > m_staticData->getNumScalarFields(); --i) {
-        destroyPort(m_miscPorts[i]);
+    while (m_miscPorts.size() > m_staticData->getNumScalarFields()) {
+        destroyPort(m_miscPorts.back());
+        m_miscPorts.pop_back();
     }
     return true;
 }

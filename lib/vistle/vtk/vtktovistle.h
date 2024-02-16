@@ -35,7 +35,7 @@ class SenseiAdapter;
 #endif
 namespace vtk {
 
-Object::ptr V_VTK_EXPORT toGrid(vtkDataObject *ds, bool checkConvex = false, std::string *diagnostics = nullptr);
+Object::ptr V_VTK_EXPORT toGrid(vtkDataObject *ds, std::string *diagnostics = nullptr);
 DataBase::ptr V_VTK_EXPORT getField(vtkDataSetAttributes *ds, const std::string &name,
                                     Object::const_ptr grid = Object::const_ptr(), std::string *diagnostics = nullptr);
 DataBase::ptr V_VTK_EXPORT getField(vtkFieldData *ds, const std::string &name,

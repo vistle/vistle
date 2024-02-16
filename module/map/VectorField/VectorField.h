@@ -14,6 +14,7 @@ private:
     vistle::FloatParameter *m_scale;
     vistle::VectorParameter *m_range;
     vistle::IntParameter *m_attachmentPoint;
+    vistle::IntParameter *m_allCoordinates = nullptr;
 };
 
 #endif

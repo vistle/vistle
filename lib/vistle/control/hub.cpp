@@ -291,7 +291,7 @@ bool Hub::init(int argc, char *argv[])
     m_config.reset(new config::Access(m_name, m_name));
     m_config->setPrefix(m_dir->prefix());
 
-    m_basePort = ConfigInt("system", "net", "controlport", m_basePort);
+    m_basePort = *m_config->value<int64_t>("system", "net", "controlport", m_basePort);
 
     namespace po = boost::program_options;
     po::options_description desc("usage");
@@ -2212,11 +2212,6 @@ bool Hub::handlePriv(const message::Spawn &spawnRecv)
     bool isCover = moduleName == "COVER";
 
     if (m_isMaster) {
-        if (moduleName == "Tubes") {
-            spawn.setName("Thicken");
-        } else if (moduleName == "Spheres") {
-            spawn.setName("Thicken");
-        }
         bool restart = spawn.getReferenceType() == message::Spawn::ReferenceType::Migrate;
         bool shouldMirror = (spawn.getReferenceType() == message::Spawn::ReferenceType::None && isCover) &&
                             m_stateTracker.getHubData(spawn.hubId()).hasUi;
@@ -2334,6 +2329,7 @@ bool Hub::handleConnectOrDisconnect(const ConnMsg &mm)
             handlePriv(mm);
             return handleQueue();
         } else {
+            std::unique_lock guard(m_queueMutex);
             m_queue.emplace_back(mm);
             return true;
         }
@@ -2358,15 +2354,20 @@ bool Hub::handleQueue()
     bool again = true;
     while (again) {
         again = false;
+        std::unique_lock guard(m_queueMutex);
         decltype(m_queue) queue;
-        for (auto &m: m_queue) {
+        std::swap(queue, m_queue);
+        guard.unlock();
+        for (auto &m: queue) {
             if (m.type() == message::CONNECT) {
                 auto &mm = m.as<Connect>();
                 if (m_stateTracker.handleConnectOrDisconnect(mm)) {
                     again = true;
                     handlePriv(mm);
                 } else {
-                    queue.push_back(m);
+                    guard.lock();
+                    m_queue.push_back(m);
+                    guard.unlock();
                 }
             } else if (m.type() == message::DISCONNECT) {
                 auto &mm = m.as<Disconnect>();
@@ -2374,14 +2375,17 @@ bool Hub::handleQueue()
                     again = true;
                     handlePriv(mm);
                 } else {
-                    queue.push_back(m);
+                    guard.lock();
+                    m_queue.push_back(m);
+                    guard.unlock();
                 }
             } else {
                 std::cerr << "message other than Connect/Disconnect in queue: " << m << std::endl;
-                queue.push_back(m);
+                guard.lock();
+                m_queue.push_back(m);
+                guard.unlock();
             }
         }
-        std::swap(m_queue, queue);
     }
 
     return true;
@@ -2511,7 +2515,7 @@ void Hub::killOldModule(int migratedId)
     assert(Id::isModule(migratedId));
     message::Kill kill(migratedId);
     kill.setDestId(migratedId);
-    handleMessage(kill);
+    sendModule(kill, migratedId);
 }
 
 

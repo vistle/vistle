@@ -72,18 +72,20 @@ if(USE_SZ3)
     add_subdirectory(sz3)
 endif()
 
-set(BUILD_TESTING
-    OFF
-    CACHE INTERNAL "")
-set(BUILD_UTILITIES
-    OFF
-    CACHE INTERNAL "")
-set(ZFP_LIBRARY_PREFIX
-    "vistle_"
-    CACHE STRING "Prefix to prepend to the output library name")
-mark_as_advanced(ZFP_LIBRARY_PREFIX)
-set(CMAKE_INSTALL_INCLUDEDIR include/vistle/3rdparty)
-add_subdirectory(zfp)
+if(VISTLE_INTERNAL_ZFP)
+    set(BUILD_TESTING
+        OFF
+        CACHE INTERNAL "")
+    set(BUILD_UTILITIES
+        OFF
+        CACHE INTERNAL "")
+    set(ZFP_LIBRARY_PREFIX
+        "vistle_"
+        CACHE STRING "Prefix to prepend to the output library name")
+    mark_as_advanced(ZFP_LIBRARY_PREFIX)
+    set(CMAKE_INSTALL_INCLUDEDIR include/vistle/3rdparty)
+    add_subdirectory(zfp)
+endif()
 
 set(BUILD_SHARED_LIBS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
@@ -131,6 +133,8 @@ if(NOT VISTLE_GUI_ONLY)
         #set(VTKm_USE_DEFAULT_SYMBOL_VISIBILITY OFF)
         set(VTKm_SKIP_LIBRARY_VERSIONS ON)
 
+        set(VTKm_DEFAULT_TYPES_HEADER "../../../VtkmDefaultTypesVistle.h.in")
+
         add_subdirectory(vtk-m)
         add_library(vtkm::cont ALIAS vtkm_cont)
         add_library(vtkm::filter ALIAS vtkm_filter)
@@ -138,6 +142,7 @@ if(NOT VISTLE_GUI_ONLY)
         #add_library(vtkm_rendering ALIAS vtkm::rendering)
         #add_library(vtkm_source ALIAS vtkm::source)
         #add_library(vtkm_worklet ALIAS vtkm::worklet)
+
     endif()
 
     if(VISTLE_USE_MPI)
@@ -205,3 +210,6 @@ if(VISTLE_INSTALL_3RDPARTY)
         DESTINATION include/vistle/3rdparty
         COMPONENT Devel)
 endif()
+
+include(cmrc/CMakeRC.cmake)
+vistle_export_library(cmrc-base)

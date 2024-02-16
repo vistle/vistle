@@ -31,9 +31,15 @@
 
 #include "archives_config.h"
 
+#include <vtkm/Types.h>
+
 #define CHECK_OVERFLOW(expr) \
     do { \
-        if ((expr) > size_t(InvalidIndex)) { \
+        if ((expr) >= size_t(InvalidIndex)) { \
+            throw vistle::except::index_overflow(#expr " = " + std::to_string(expr) + \
+                                                 ", recompile with 64 bit indices"); \
+        } \
+        if ((expr) > size_t(std::numeric_limits<vtkm::Id>::max())) { \
             throw vistle::except::index_overflow(#expr " = " + std::to_string(expr) + \
                                                  ", recompile with 64 bit indices"); \
         } \
@@ -132,6 +138,8 @@ public:
     bool operator!=(const Object &other) const;
 
     bool isComplete() const; //! check whether all references have been resolved
+
+    virtual std::set<Object::const_ptr> referencedObjects() const;
 
     static const char *typeName() { return "Object"; }
     Object::ptr clone() const;
@@ -401,11 +409,13 @@ public: \
     { \
         return #ObjType; \
     } \
-    static std::shared_ptr<const ObjType> as(std::shared_ptr<const Object> ptr) \
+    template<typename ObjType2> \
+    static std::shared_ptr<const ObjType> as(std::shared_ptr<const ObjType2> ptr) \
     { \
         return std::dynamic_pointer_cast<const ObjType>(ptr); \
     } \
-    static std::shared_ptr<ObjType> as(std::shared_ptr<Object> ptr) \
+    template<typename ObjType2> \
+    static std::shared_ptr<ObjType> as(std::shared_ptr<ObjType2> ptr) \
     { \
         return std::dynamic_pointer_cast<ObjType>(ptr); \
     } \

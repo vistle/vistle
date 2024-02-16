@@ -106,6 +106,7 @@ void shm_array<T, allocator>::push_back(const T &v)
     assert(m_size < m_capacity);
     new (&m_data[m_size]) T(v);
     ++m_size;
+    updateArrayHandle();
 }
 
 template<typename T, class allocator>
@@ -152,7 +153,7 @@ const vtkm::cont::ArrayHandle<typename shm_array<T, allocator>::handle_type> &sh
 template<typename T, class allocator>
 const vtkm::cont::ArrayHandle<typename shm_array<T, allocator>::handle_type> shm_array<T, allocator>::handle() const
 {
-    return vtkm::cont::make_ArrayHandle(reinterpret_cast<const handle_type *>(m_data.get()), m_capacity,
+    return vtkm::cont::make_ArrayHandle(reinterpret_cast<const handle_type *>(m_data.get()), m_size,
                                         vtkm::CopyFlag::Off);
 }
 #endif
@@ -161,7 +162,8 @@ template<typename T, class allocator>
 void shm_array<T, allocator>::updateArrayHandle()
 {
 #ifdef NO_SHMEM
-    m_handle = vtkm::cont::make_ArrayHandle(reinterpret_cast<handle_type *>(m_data), m_capacity, vtkm::CopyFlag::Off);
+    // has to be updated whenever the location or the size of the array changes
+    m_handle = vtkm::cont::make_ArrayHandle(reinterpret_cast<handle_type *>(m_data), m_size, vtkm::CopyFlag::Off);
 #endif
 }
 
@@ -191,6 +193,19 @@ void shm_array<T, allocator>::setExact(bool exact)
 template<typename T, class allocator>
 void shm_array<T, allocator>::reserve(const size_t new_capacity)
 {
+    if (new_capacity >= std::numeric_limits<Index>::max()) {
+        std::cerr << "shm_array: cannot allocate more than " << std::numeric_limits<Index>::max() - 1 << " elements"
+                  << std::endl;
+        std::cerr << "           recompile with -DVISTLE_INDEX_64BIT" << std::endl;
+        throw vistle::except::index_overflow("shm_array: " + std::to_string(new_capacity) +
+                                             " >= " + std::to_string(std::numeric_limits<Index>::max()));
+    }
+
+    if (new_capacity >= std::numeric_limits<vtkm::Id>::max()) {
+        std::cerr << "shm_array: size " << new_capacity << " exceeds vtkm::Id's range" << std::endl;
+        std::cerr << "           recompile with -DVISTLE_INDEX_64BIT" << std::endl;
+    }
+
     if (new_capacity > capacity())
         reserve_or_shrink(new_capacity);
 }
@@ -219,6 +234,7 @@ void shm_array<T, allocator>::reserve_or_shrink(const size_t capacity)
     }
     m_data = new_data;
     m_capacity = capacity;
+    updateArrayHandle();
 }
 
 template<typename T, class allocator>

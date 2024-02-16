@@ -49,7 +49,6 @@ class Leveller {
     std::vector<vistle::Object::const_ptr> m_vertexdata;
     std::vector<vistle::DataBase::const_ptr> m_celldata;
     vistle::Scalar m_isoValue;
-    vistle::Index m_processortype;
     vistle::Triangles::ptr m_triangles;
     vistle::Lines::ptr m_lines;
     vistle::Normals::ptr m_normals;
@@ -63,8 +62,7 @@ class Leveller {
     vistle::Index calculateSurface(Data &data);
 
 public:
-    Leveller(const IsoController &isocontrol, vistle::Object::const_ptr grid, const vistle::Scalar isovalue,
-             vistle::Index processortype);
+    Leveller(const IsoController &isocontrol, vistle::Object::const_ptr grid, const vistle::Scalar isovalue);
     void setComputeNormals(bool value);
     void addMappedData(vistle::DataBase::const_ptr mapobj);
 

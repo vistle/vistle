@@ -1,6 +1,7 @@
 # modules mainly suitable for testing and developing
 set(VISTLE_MODULE_CATEGORY "Test")
 
+add_subdirectory(ClipVtkm)
 add_subdirectory(CreateCelltree)
 add_subdirectory(CreateVertexOwnerList)
 add_subdirectory(CutGeometryOld)
@@ -9,6 +10,7 @@ add_subdirectory(FilterNode)
 add_subdirectory(GenIsoDat)
 add_subdirectory(Gendat)
 add_subdirectory(IsoSurfaceVtkm)
+add_subdirectory(ManipulateGhosts)
 add_subdirectory(MiniSim)
 add_subdirectory(MpiInfo)
 add_subdirectory(ObjectStatistics)

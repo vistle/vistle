@@ -10,7 +10,7 @@ void addSurfaceFaces(const Polygons::ptr poly, const UnstructuredGrid::ptr &ugri
     auto &pl = poly->el();
     auto &pcl = poly->cl();
     for (Index i = 0; i < ugrid->getSize(); ++i) {
-        Byte t = tl[i] & UnstructuredGrid::TYPE_MASK;
+        Byte t = tl[i];
         const Index elStart = el[i];
         const auto numFaces = UnstructuredGrid::NumFaces[t];
         const auto &faces = UnstructuredGrid::FaceVertices[t];

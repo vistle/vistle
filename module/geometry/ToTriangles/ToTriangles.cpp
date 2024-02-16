@@ -358,19 +358,26 @@ bool ToTriangles::compute()
             static_assert(NumSect >= 3, "too few sectors");
             Index TriPerSection = NumSect * 2;
 
-            Index n = tube->getNumTubes();
-            Index s = tube->getNumCoords();
+            Index numEl = tube->getNumTubes();
+            Index numPoint = tube->getNumCoords();
             auto x = &tube->x()[0];
             auto y = &tube->y()[0];
             auto z = &tube->z()[0];
             auto r = &tube->r()[0];
             auto el = tube->components().data();
-            const auto startStyle = tube->startStyle();
-            const auto endStyle = tube->endStyle();
+            // we ignore connection style altogether and simplify start and end style
+            auto startStyle = tube->startStyle();
+            if (startStyle != Tubes::Open) {
+                startStyle = Tubes::Flat;
+            }
+            auto endStyle = tube->endStyle();
+            if (endStyle != Tubes::Arrow && endStyle != Tubes::Open) {
+                endStyle = Tubes::Flat;
+            }
 
             Index numCoordStart = 0, numCoordEnd = 0;
             Index numIndStart = 0, numIndEnd = 0;
-            if (startStyle != Tubes::Open) {
+            if (startStyle == Tubes::Flat) {
                 numCoordStart = 1 + NumSect;
                 numIndStart = 3 * NumSect;
             }
@@ -382,9 +389,10 @@ bool ToTriangles::compute()
                 numIndEnd = 3 * NumSect;
             }
 
-            const Index numSeg = (s - n) * 3 * TriPerSection + n * (numIndStart + numIndEnd);
-            const Index numCoord = numSeg > 0 ? s * NumSect + n * (numCoordStart + numCoordEnd) : 0;
-            tri.reset(new Triangles(numSeg, numCoord));
+            const Index numSeg = (numPoint - numEl);
+            const Index numVert = numSeg * 3 * TriPerSection + numEl * (numIndStart + numIndEnd);
+            const Index numCoord = numVert > 0 ? numPoint * NumSect + numEl * (numCoordStart + numCoordEnd) : 0;
+            tri.reset(new Triangles(numVert, numCoord));
             auto tx = tri->x().data();
             auto ty = tri->y().data();
             auto tz = tri->z().data();
@@ -399,7 +407,7 @@ bool ToTriangles::compute()
             Index ci = 0; // coord index
             Index ii = 0; // index index
             if (numCoord > 0) {
-                for (Index i = 0; i < n; ++i) {
+                for (Index i = 0; i < numEl; ++i) {
                     const Index begin = el[i], end = el[i + 1];
 
                     Vector3 normal, dir;
@@ -409,14 +417,17 @@ bool ToTriangles::compute()
 
                         Vector3 l1 = next - cur;
                         auto len1 = l1.norm(), len2 = Scalar();
+                        bool first = false, last = false;
                         if (k == begin) {
+                            first = true;
                             dir = l1.normalized();
+                        } else if (k + 1 == end) {
+                            last = true;
+                            // keep previous direction for final segment
                         } else {
                             Vector3 l2(x[k] - x[k - 1], y[k] - y[k - 1], z[k] - z[k - 1]);
                             len2 = l2.norm();
-                            if (k + 1 == end) {
-                                dir = l2.normalized();
-                            } else if (len2 > 100 * len1) {
+                            if (len2 > 100 * len1) {
                                 dir = l2.normalized();
                             } else if (len1 > 100 * len2) {
                                 dir = l1.normalized();
@@ -425,8 +436,12 @@ bool ToTriangles::compute()
                             }
                         }
 
-                        if (k == begin || normal.norm() < Scalar(0.5)) {
+                        if (first || normal.norm() < Scalar(0.5)) {
                             normal = dir.cross(Vector3(0, 0, 1)).normalized();
+                            if (normal.norm() < Scalar(0.5)) {
+                                // try another direction
+                                normal = dir.cross(Vector3(0, 1, 0)).normalized();
+                            }
                         } else if (len1 > 1e-4 || len2 > 1e-4) {
                             normal = (normal - dir.dot(normal) * dir).normalized();
                         }
@@ -436,7 +451,7 @@ bool ToTriangles::compute()
                         const auto rot2 = Quaternion(AngleAxis(M_PI / NumSect, dir)).toRotationMatrix();
 
                         // start cap
-                        if (k == begin && startStyle != Tubes::Open) {
+                        if (first && startStyle == Tubes::Flat) {
                             tx[ci] = cur[0];
                             ty[ci] = cur[1];
                             tz[ci] = cur[2];
@@ -466,7 +481,7 @@ bool ToTriangles::compute()
                         }
 
                         // indices
-                        if (k + 1 < end) {
+                        if (!last) {
                             for (Index l = 0; l < NumSect; ++l) {
                                 ti[ii++] = ci + l;
                                 ti[ii++] = ci + (l + 1) % NumSect;
@@ -492,7 +507,7 @@ bool ToTriangles::compute()
                         }
 
                         // end cap/arrow
-                        if (k + 1 == end) {
+                        if (last && endStyle != Tubes::Open) {
                             if (endStyle == Tubes::Arrow) {
                                 Index tipStart = ci;
                                 for (Index l = 0; l < NumSect; ++l) {
@@ -579,14 +594,14 @@ bool ToTriangles::compute()
                 }
             }
             assert(ci == numCoord);
-            assert(ii == numSeg);
+            assert(ii == numVert);
 
             norm->setMeta(obj->meta());
             updateMeta(norm);
             tri->setNormals(norm);
 
             if (data) {
-                ndata = replicateData(data, NumSect, n, el, numCoordStart, numCoordEnd);
+                ndata = replicateData(data, NumSect, numEl, el, numCoordStart, numCoordEnd);
             }
         } else if (auto unstr = UnstructuredGrid::as(obj)) {
             Index nelem = unstr->getNumElements();
@@ -601,11 +616,11 @@ bool ToTriangles::compute()
             }
             Index ntri = 0;
             for (Index e = 0; e < nelem; ++e) {
-                if ((tl[e] & UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::TRIANGLE) {
+                if (tl[e] == UnstructuredGrid::TRIANGLE) {
                     ++ntri;
                     if (perElement)
                         mult.push_back(1);
-                } else if ((tl[e] & UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::QUAD) {
+                } else if (tl[e] == UnstructuredGrid::QUAD) {
                     ntri += 2;
                     if (perElement)
                         mult.push_back(2);
@@ -622,12 +637,12 @@ bool ToTriangles::compute()
             auto tcl = &tri->cl()[0];
             for (Index e = 0; e < nelem; ++e) {
                 const Index begin = el[e], end = el[e + 1];
-                if ((tl[e] & UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::TRIANGLE) {
+                if (tl[e] == UnstructuredGrid::TRIANGLE) {
                     assert(end - begin == 3);
                     for (Index v = begin; v < end; ++v) {
                         tcl[i++] = cl[v];
                     }
-                } else if ((tl[e] & UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::QUAD) {
+                } else if (tl[e] == UnstructuredGrid::QUAD) {
                     assert(end - begin == 4);
                     for (Index v = begin; v < begin + 3; ++v) {
                         tcl[i++] = cl[v];

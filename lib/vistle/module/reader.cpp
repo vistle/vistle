@@ -18,9 +18,6 @@ Reader::Reader(const std::string &name, const int moduleID, mpi::communicator co
     m_firstRank = addIntParameter("first_rank", "rank for first partition of first timestep", 0);
     setParameterRange(m_firstRank, Integer(0), Integer(comm.size() - 1));
 
-    m_checkConvexity =
-        addIntParameter("check_convexity", "whether to check convexity of grid cells", 0, Parameter::Boolean);
-
     setCurrentParameterGroup();
 
     assert(m_concurrency);
@@ -54,11 +51,6 @@ void Reader::prepareQuit()
 {
     m_observedParameters.clear();
     Module::prepareQuit();
-}
-
-bool Reader::checkConvexity() const
-{
-    return m_checkConvexity->getValue();
 }
 
 int Reader::rankForTimestepAndPartition(int t, int p) const

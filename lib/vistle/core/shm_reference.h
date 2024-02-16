@@ -232,6 +232,7 @@ public:
     template<class allocator>
     ShmArrayProxy(const shm_array<T, allocator> *arr)
     : m_data(arr ? arr->data() : nullptr)
+    , m_size(arr ? arr->size() : nullptr)
     , m_handle(
           arr ? arr->handle()
               : vtkm::cont::make_ArrayHandle<handle_type>(static_cast<handle_type *>(nullptr), 0, vtkm::CopyFlag::Off))
@@ -240,6 +241,7 @@ public:
     ShmArrayProxy &operator=(std::nullptr_t p)
     {
         m_data = nullptr;
+        m_size = 0;
         m_handle =
             vtkm::cont::make_ArrayHandle<handle_type>(static_cast<handle_type *>(nullptr), 0, vtkm::CopyFlag::Off);
         return *this;
@@ -250,9 +252,11 @@ public:
     {
         if (arr) {
             m_data = arr->data();
+            m_size = arr->size();
             m_handle = arr->handle();
         } else {
             m_data = nullptr;
+            m_size = 0;
             m_handle = vtkm::cont::make_ArrayHandle<T>(static_cast<handle_type *>(nullptr), 0, vtkm::CopyFlag::Off);
         }
         return *this;
@@ -263,9 +267,11 @@ public:
     {
         if (ref.valid()) {
             m_data = ref->data();
+            m_size = ref->size();
             m_handle = ref->handle();
         } else {
             m_data = nullptr;
+            m_size = 0;
             m_handle =
                 vtkm::cont::make_ArrayHandle<handle_type>(static_cast<handle_type *>(nullptr), 0, vtkm::CopyFlag::Off);
         }
@@ -277,10 +283,12 @@ public:
     const T &operator*() const { return m_data[0]; }
     const T &operator[](size_t idx) const { return m_data[idx]; }
     const T *data() const { return m_data; }
+    const size_t size() const { return m_size; }
     const vtkm::cont::ArrayHandle<handle_type> &handle() const { return m_handle; }
 
 private:
     const T *m_data = nullptr;
+    size_t m_size = 0;
     vtkm::cont::ArrayHandle<handle_type> m_handle;
 };
 

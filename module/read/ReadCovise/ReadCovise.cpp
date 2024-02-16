@@ -549,8 +549,6 @@ Object::ptr ReadCovise::readUNSGRD(Token &token, const int port, int fd, const b
             z[index] = _z[index];
         }
 
-        if (checkConvexity())
-            usg->checkConvexity();
         return usg;
     }
 

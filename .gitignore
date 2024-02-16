@@ -1,9 +1,11 @@
 /.envrc
+/scratch
 /build
 /build-*
 /CMakeLists.txt.user*
 /compile_commands.json
 /.release
+/.debug
 /test
 /*.log
 /*.vsl

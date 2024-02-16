@@ -70,9 +70,6 @@ IsoSurface::IsoSurface(const std::string &name, int moduleID, mpi::communicator 
 #endif
     m_dataOut = createOutputPort("data_out", "surface with mapped data");
 
-    m_processortype = addIntParameter("processortype", "processortype", 0, Parameter::Choice);
-    V_ENUM_SET_CHOICES(m_processortype, ThrustBackend);
-
     m_computeNormals =
         addIntParameter("compute_normals", "compute normals (structured grids only)", 1, Parameter::Boolean);
 #ifdef ISOHEIGHTSURFACE
@@ -200,9 +197,7 @@ bool IsoSurface::reduce(int timestep)
     }
 
     if (m_foundPoint) {
-        int numProcessed = 0;
         for (const auto &b: blocks) {
-            ++numProcessed;
             auto obj = work(b.grid, b.datas, b.mapdata, value);
             addObject(m_dataOut, obj);
         }
@@ -259,9 +254,7 @@ Object::ptr IsoSurface::createHeightCut(vistle::Object::const_ptr grid, vistle::
 Object::ptr IsoSurface::work(vistle::Object::const_ptr grid, vistle::Vec<vistle::Scalar>::const_ptr dataS,
                              vistle::DataBase::const_ptr mapdata, Scalar isoValue) const
 {
-    const int processorType = getIntParameter("processortype");
-
-    Leveller l(isocontrol, grid, isoValue, processorType);
+    Leveller l(isocontrol, grid, isoValue);
     l.setComputeNormals(m_computeNormals->getValue());
 
 #ifdef CUTTINGSURFACE

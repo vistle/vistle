@@ -29,6 +29,9 @@
 #include "dataflowview.h"
 #include "modulebrowser.h"
 
+#include <vistle/config/file.h>
+#include <vistle/config/array.h>
+
 namespace gui {
 
 const double Module::portDistance = 3.;
@@ -456,13 +459,19 @@ void Module::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
             return modules;
         };
 
-        static std::vector<std::vector<QString>> replaceables{
-            {"COVER", "DisCOVERay", "OsgRenderer", "BlenderRenderer", "ANARemote"},
-            {"Thicken", "SpheresOld", "TubesOld"},
-            {"Threshold", "CellSelect"},
-            {"Color", "ColorRandom"},
-            {"AddAttribute", "AttachShader", "ColorAttribute", "EnableTransparency", "Variant"},
-        };
+        static std::vector<std::vector<QString>> replaceables;
+        if (replaceables.empty()) {
+            // module aliases
+            vistle::config::File modules("modules");
+            for (auto &group: modules.entries("replace")) {
+                if (auto list = modules.array<std::string>("replace", group)) {
+                    replaceables.emplace_back();
+                    for (auto e: list->value()) {
+                        replaceables.back().emplace_back(QString::fromStdString(e));
+                    }
+                }
+            }
+        }
         m_replaceWithMenu->clear();
         auto *mb = scene()->moduleBrowser();
         auto hub = mb->getHubItem(m_hub);

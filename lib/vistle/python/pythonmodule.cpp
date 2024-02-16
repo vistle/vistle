@@ -22,6 +22,10 @@
 #include "pythonmodule.h"
 #ifdef EMBED_PYTHON
 #include "pythoninterface.h"
+#else
+#include <vistle/config/access.h>
+#include <vistle/config/value.h>
+#include <vistle/util/hostname.h>
 #endif
 
 //#define DEBUG
@@ -1278,6 +1282,12 @@ static bool sessionConnectWithObserver(StateObserver *o, const std::string &host
         return false;
     }
 
+    if (port == 0) {
+        auto hostname = vistle::hostname();
+        auto config = vistle::config::Access(hostname, hostname);
+        port = *config.value<int64_t>("system", "net", "controlport", 31093);
+    }
+
     userinterface.reset(new UserInterface(host, port, o));
     if (!userinterface)
         return false;
@@ -1561,7 +1571,7 @@ PY_MODULE(_vistle, m)
 
 #ifndef EMBED_PYTHON
     m.def("sessionConnect", &sessionConnect, "connect to running Vistle instance", "host"_a = "localhost",
-          "port"_a = 31093);
+          "port"_a = 0);
     m.def("sessionConnect", &sessionConnectWithObserver, "connect to running Vistle instance", "observer"_a, "host"_a,
           "port"_a);
     m.def("sessionDisconnect", &sessionDisconnect, "disconnect from Vistle");

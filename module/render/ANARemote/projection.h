@@ -126,7 +126,7 @@ static void offaxisStereoCameraFromTransform(mat4 projInv, mat4 viewInv, vec3 &e
     vec3 v101 = unprojectNDC(projInv, viewInv, vec3(1, -1, 1));
 
     vec3 v110 = unprojectNDC(projInv, viewInv, vec3(1, 1, -1));
-    vec3 v111 = unprojectNDC(projInv, viewInv, vec3(1, 1, 1));
+    //vec3 v111 = unprojectNDC(projInv, viewInv, vec3(1, 1, 1));
 
     vec3 v010 = unprojectNDC(projInv, viewInv, vec3(-1, 1, -1));
     vec3 v011 = unprojectNDC(projInv, viewInv, vec3(-1, 1, 1));
@@ -134,20 +134,20 @@ static void offaxisStereoCameraFromTransform(mat4 projInv, mat4 viewInv, vec3 &e
     // edges from -z to +z
     vec3 ez00 = (v001 - v000).normalized();
     vec3 ez10 = (v101 - v100).normalized();
-    vec3 ez11 = (v111 - v110).normalized();
+    //vec3 ez11 = (v111 - v110).normalized();
     vec3 ez01 = (v011 - v010).normalized();
 
     // edges from -y to +y
     vec3 ey00 = (v010 - v000).normalized();
     vec3 ey10 = (v110 - v100).normalized();
-    vec3 ey11 = (v111 - v101).normalized();
-    vec3 ey01 = (v011 - v001).normalized();
+    //vec3 ey11 = (v111 - v101).normalized();
+    //vec3 ey01 = (v011 - v001).normalized();
 
     // edges from -x to +x
     vec3 ex00 = (v100 - v000).normalized();
     vec3 ex10 = (v110 - v010).normalized();
-    vec3 ex11 = (v111 - v011).normalized();
-    vec3 ex01 = (v101 - v001).normalized();
+    //vec3 ex11 = (v111 - v011).normalized();
+    //vec3 ex01 = (v101 - v001).normalized();
 
     vec3 nL = (ey00.cross(ez00)).normalized();
     vec3 nR = (ez10.cross(ey10)).normalized();
@@ -156,11 +156,11 @@ static void offaxisStereoCameraFromTransform(mat4 projInv, mat4 viewInv, vec3 &e
 
     // Line of intersection between left/right planes
     vec3 pLR, nLR;
-    bool isectLR = intersectPlanePlane(nL, v000, nR, v100, nLR, pLR);
+    intersectPlanePlane(nL, v000, nR, v100, nLR, pLR);
 
     // Line of intersection between bottom/top planes
     vec3 pBT, nBT;
-    bool isectBT = intersectPlanePlane(nB, v000, nT, v010, nBT, pBT);
+    intersectPlanePlane(nB, v000, nT, v010, nBT, pBT);
 
     // Line segment connecting the two intersecint lines
     vec3 p1, p2;

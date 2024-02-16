@@ -1,7 +1,7 @@
 if(WIN32)
     cmake_minimum_required(VERSION 3.15.2 FATAL_ERROR)
 else(WIN32)
-    cmake_minimum_required(VERSION 3.10.0 FATAL_ERROR)
+    cmake_minimum_required(VERSION 3.12.0 FATAL_ERROR)
 endif()
 
 set(CMAKE_CXX_STANDARD 17)
@@ -991,18 +991,22 @@ add_definitions(-DPYBIND11_DETAILED_ERROR_MESSAGES)
 # replacement for Boost.Serialization
 # include_directories(SYSTEM "${PROJECT_SOURCE_DIR}/lib/3rdparty/yas/include")
 
-# lossy floating point compression
-# vistle_find_package(ZFP)
-set(ZFP_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/lib/3rdparty/zfp/include")
-set(ZFP_LIBRARIES zfp)
+option(VISTLE_INTERNAL_ZFP "Use own copy of zfp lossy floating point compressor" ON)
+if(VISTLE_INTERNAL_ZFP)
+    # lossy floating point compression
+    set(ZFP_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/lib/3rdparty/zfp/include")
 
-if(OPENMP_FOUND)
-    set(ZFP_LIBRARIES ${ZFP_LIBRARIES} ${OpenMP_CXX_LIBRARIES})
+    set(ZFP_LIBRARIES zfp)
+    if(OPENMP_FOUND)
+        set(ZFP_LIBRARIES ${ZFP_LIBRARIES} ${OpenMP_CXX_LIBRARIES})
+    endif()
+
+    set(ZFP_FOUND TRUE)
+    #add_definitions(-DHAVE_ZFP)
+    #include_directories(SYSTEM "${ZFP_INCLUDE_DIRS}")
+else()
+    vistle_find_package(ZFP REQUIRED)
 endif()
-
-set(ZFP_FOUND TRUE)
-add_definitions(-DHAVE_ZFP)
-include_directories(SYSTEM "${ZFP_INCLUDE_DIRS}")
 
 vistle_find_package(PkgConfig)
 vistle_find_package(ZSTD)

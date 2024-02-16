@@ -160,15 +160,11 @@ protected:
     bool changeParameter(const Parameter *param) override;
     void prepareQuit() override;
 
-
-    bool checkConvexity() const;
-
     IntParameter *m_first = nullptr;
     IntParameter *m_last = nullptr;
     IntParameter *m_increment = nullptr;
     IntParameter *m_distributeTime = nullptr;
     IntParameter *m_firstRank = nullptr;
-    IntParameter *m_checkConvexity = nullptr;
 
 private:
     struct ReaderProperties {

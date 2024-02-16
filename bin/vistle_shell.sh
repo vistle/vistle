@@ -1,6 +1,6 @@
 #! /bin/sh
 
-port=31093
+port=$(vistle_config int system net controlport 31093)
 host=localhost
 
 if [ -n "$1" ]; then

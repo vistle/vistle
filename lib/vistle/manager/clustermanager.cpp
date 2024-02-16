@@ -63,8 +63,6 @@ ClusterManager::Module::~Module()
     try {
         if (thread.joinable()) {
             thread.join();
-        } else {
-            std::cerr << "ClusterManager: ~Module: thread for module not joinable" << std::endl;
         }
     } catch (std::exception &e) {
         std::cerr << "ClusterManager: ~Module: joining thread for module failed: " << e.what() << std::endl;
@@ -1007,7 +1005,7 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn)
                 pluginpath = m.path();
             try {
 #ifdef MODULE_STATIC
-                mod.newModule = ModuleRegistry::the().moduleFactory(name);
+                mod.newModule = ModuleRegistry::the().moduleFactory(m.path());
 #else
                 mod.newModule = boost::dll::import_alias<Module::NewModuleFunc>(pluginpath, "newModule",
                                                                                 boost::dll::load_mode::default_mode);
@@ -2263,12 +2261,30 @@ bool ClusterManager::scanModules(const std::string &prefix, const std::string &b
     }
 #endif
 #endif
+
+    // module aliases
+    config::File modules("modules");
+    for (auto &alias: modules.entries("alias")) {
+        auto e = modules.value<std::string>("alias", alias)->value();
+        AvailableModule::Key key(hubId(), e);
+        auto it = m_localModules.find(key);
+        if (it == m_localModules.end()) {
+            std::cerr << "alias " << alias << " -> " << e << " not found" << std::endl;
+            continue;
+        }
+
+        AvailableModule::Key keya(hubId(), alias);
+        m_localModules.emplace(
+            keya, AvailableModule{hubId(), alias, it->second.path(), it->second.category(), it->second.description()});
+    }
+
     if (getRank() == 0) {
         for (auto &p: m_localModules) {
             p.second.send(
                 std::bind(&Communicator::sendHub, &Communicator::the(), std::placeholders::_1, std::placeholders::_2));
         }
     }
+
     return result;
 }
 

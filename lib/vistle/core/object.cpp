@@ -192,6 +192,11 @@ bool Object::isComplete() const
     return d()->isComplete();
 }
 
+std::set<Object::const_ptr> Object::referencedObjects() const
+{
+    return std::set<Object::const_ptr>();
+}
+
 void Object::publish(const Object::Data *d)
 {
 #if defined(SHMDEBUG) || defined(SHMPUBLISH)

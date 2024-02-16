@@ -902,6 +902,19 @@ void Module::updateMeta(vistle::Object::ptr obj) const
         obj->setIteration(m_iteration);
 
         obj->updateInternals();
+
+        // update referenced objects, if not yet valid
+        auto refs = obj->referencedObjects();
+        for (auto &ref: refs) {
+            if (ref->getCreator() == -1) {
+                auto o = std::const_pointer_cast<Object>(ref);
+                o->setCreator(id());
+                o->setExecutionCounter(m_executionCount);
+                o->setIteration(m_iteration);
+
+                o->updateInternals();
+            }
+        }
     }
 }
 
@@ -1081,6 +1094,12 @@ Object::const_ptr Module::expect<Object>(Port *port)
     if (!port) {
         std::stringstream str;
         str << "invalid port" << std::endl;
+        sendError(str.str());
+        return nullptr;
+    }
+    if (!isConnected(*port)) {
+        std::stringstream str;
+        str << "port " << port->getName() << " is not connected" << std::endl;
         sendError(str.str());
         return nullptr;
     }
@@ -1383,6 +1402,15 @@ bool Module::dispatch(bool block, bool *messageReceived, unsigned int minPrio)
         // if parent died something is wrong - make sure that shm get cleaned up
         Shm::the().setRemoveOnDetach();
         throw(e);
+    } catch (vistle::exception &e) {
+        std::cerr << "Vistle exception in module " << name() << ": " << e.what() << e.where() << std::endl;
+        throw(e);
+    } catch (std::exception &e) {
+        std::cerr << "exception in module " << name() << ": " << e.what() << std::endl;
+        throw(e);
+    } catch (...) {
+        std::cerr << "unknown exception in module " << name() << std::endl;
+        throw;
     }
 
     return again;
