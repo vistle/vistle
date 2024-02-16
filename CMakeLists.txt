@@ -877,6 +877,7 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
         endif()
     endmacro(add_module)
 
+    include(cmake/VistleUtils.cmake)
     include(cmake/Documentation.cmake)
 endif()
 
