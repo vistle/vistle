@@ -12,9 +12,9 @@ find_package(Python REQUIRED)
 enable_testing()
 
 #TODO:
-# 1. generate module result images and compare them with the reference images
-# 1.1 use generateCoverSnapshot to generate the images
-# 2.
+# 1. generate module result images
+# 1.1 use generateCoverSnapshot from Documentation.cmake to generate the images
+# 2. pass modulepath + refimgpath to test.py for each module with result img (to note: only for modules with result img)
 
 # define tests
 add_test(blub ${Python_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test.py)
