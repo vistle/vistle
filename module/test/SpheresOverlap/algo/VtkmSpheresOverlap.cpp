@@ -15,10 +15,6 @@
 
 using namespace vistle;
 
-/*
-    TODO: - let user choose what metric is used for the line thickness
-          - convert vtkm overlap lines to vistle Lines::ptr
-*/
 struct CountOverlaps: public vtkm::worklet::WorkletMapField {
     using ControlSignature = void(FieldIn coords, ExecObject locator, FieldOut overlaps);
     using ExecutionSignature = void(InputIndex, _1, _2, _3);
@@ -68,6 +64,8 @@ VTKM_CONT vtkm::cont::DataSet VtkmSpheresOverlap::DoExecute(const vtkm::cont::Da
     pointLocator.SetSearchRadius(this->RadiusFactor * 2 * radii.GetRange().ReadPortal().Get(0).Max);
 
     pointLocator.SetRadii(radii.GetData());
+
+    pointLocator.SetThicknessDeterminer(this->Determiner);
 
     // build search grid in parallel
     pointLocator.Update();

@@ -3,6 +3,8 @@
 
 #include <vtkm/filter/FilterField.h>
 
+#include "ThicknessDeterminer.h"
+
 class VtkmSpheresOverlap: public vtkm::filter::FilterField {
 public:
     VtkmSpheresOverlap() = default;
@@ -17,10 +19,13 @@ public:
         this->RadiusFactor = factor;
     }
 
+    void SetThicknessDeterminer(ThicknessDeterminer determiner) { this->Determiner = determiner; }
+
 private:
     VTKM_CONT vtkm::cont::DataSet DoExecute(const vtkm::cont::DataSet &input) override;
 
     vtkm::FloatDefault RadiusFactor = 1;
+    ThicknessDeterminer Determiner = OverlapRatio;
 };
 
 #endif //VTKM_SPHERES_OVERLAP_H

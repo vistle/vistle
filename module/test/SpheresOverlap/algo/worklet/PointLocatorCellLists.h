@@ -6,6 +6,7 @@
 #include <vistle/core/scalar.h>
 
 #include "OverlapDetector.h"
+#include "../ThicknessDeterminer.h"
 
 class PointLocatorCellLists: public vtkm::cont::internal::PointLocatorBase<PointLocatorCellLists> {
     using Superclass = vtkm::cont::internal::PointLocatorBase<PointLocatorCellLists>;
@@ -24,6 +25,10 @@ public:
             this->SearchRadius = searchRadius;
             this->SetModified();
         }
+    }
+
+    void SetThicknessDeterminer(ThicknessDeterminer determiner){
+        this->Determiner = determiner;
     }
 
     const vtkm::Vec3f &GetMinPoint() const { return this->Min; }
@@ -50,6 +55,8 @@ private:
 
     // point field containing sphere radii
     vtkm::cont::ArrayHandle<vtkm::FloatDefault> Radii;
+
+    ThicknessDeterminer Determiner = OverlapRatio;
 
     // create the search grid
     VTKM_CONT void Build();

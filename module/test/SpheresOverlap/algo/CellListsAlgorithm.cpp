@@ -47,19 +47,7 @@ OverlapLineInfo::OverlapLineInfo(Index sphereId1, Index sphereId2, Scalar distan
                                  ThicknessDeterminer determiner)
 : id1(sphereId1), id2(sphereId2)
 {
-    switch (determiner) {
-    case Overlap:
-        thickness = abs(radius1 + radius2 - distance);
-        break;
-    case OverlapRatio:
-        thickness = abs(radius1 + radius2 - distance) / distance;
-        break;
-    case Distance:
-        thickness = distance;
-        break;
-    default:
-        throw std::invalid_argument("Unknown thickness determiner!");
-    }
+    thickness = CalculateThickness(determiner, distance, radius1, radius2);
 }
 
 std::vector<OverlapLineInfo> CellListsAlgorithm(Spheres::const_ptr spheres, Scalar searchRadius,

@@ -73,8 +73,9 @@ VTKM_CONT void PointLocatorCellLists::Build()
 OverlapDetector PointLocatorCellLists::PrepareForExecution(vtkm::cont::DeviceAdapterId device,
                                                            vtkm::cont::Token &token) const
 {
-    return OverlapDetector(
-        this->Min, this->Max, this->Dims, this->GetCoordinates().GetDataAsMultiplexer().PrepareForInput(device, token),
-        this->Radii.PrepareForInput(device, token), this->PointIds.PrepareForInput(device, token),
-        this->CellLowerBounds.PrepareForInput(device, token), this->CellUpperBounds.PrepareForInput(device, token));
+    return OverlapDetector(this->Min, this->Max, this->Dims,
+                           this->GetCoordinates().GetDataAsMultiplexer().PrepareForInput(device, token),
+                           this->Radii.PrepareForInput(device, token), this->PointIds.PrepareForInput(device, token),
+                           this->CellLowerBounds.PrepareForInput(device, token),
+                           this->CellUpperBounds.PrepareForInput(device, token), this->Determiner);
 }

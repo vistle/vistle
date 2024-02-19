@@ -5,7 +5,7 @@
 #include <vistle/core/uniformgrid.h>
 #include <vistle/core/spheres.h>
 
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(ThicknessDeterminer, (Overlap)(OverlapRatio)(Distance));
+#include "ThicknessDeterminer.h"
 
 /*
     Creates and returns a uniform grid which encases all points in `spheres`

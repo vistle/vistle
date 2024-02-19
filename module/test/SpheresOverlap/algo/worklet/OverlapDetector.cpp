@@ -2,8 +2,8 @@
 
 #include "OverlapDetector.h"
 
-// TODO:  - make thickness variable chosen by user!!!
-//        - make sure lib/vistle/vtkm/convert.cpp still works the same!
+// TODO:  - make sure lib/vistle/vtkm/convert.cpp still works the same!
+//        - find out why overlapRatio is zero for 2x2x2 grid on (0, 0, 0) -> (1,1,1)
 
 VTKM_EXEC vtkm::Id3 OverlapDetector::GetCellId(const vtkm::Vec3f &point) const
 {
@@ -93,12 +93,14 @@ VTKM_EXEC void OverlapDetector::CreateOverlapLines(const vtkm::Id pointId, const
                             auto pointToCheck = this->Coords.Get(idToCheck);
 
                             // check if spheres overlap
+                            auto radius1 = this->Radii.Get(pointId);
+                            auto radius2 = this->Radii.Get(idToCheck);
                             if (auto distance = vtkm::Magnitude(point - pointToCheck);
-                                (distance <= this->Radii.Get(pointId) + this->Radii.Get(idToCheck))) {
+                                (distance <= radius1 + radius2)) {
                                 if (nrOverlaps == visitId) {
                                     connectivity[0] = pointId;
                                     connectivity[1] = idToCheck;
-                                    thickness = distance;
+                                    thickness = CalculateThickness(this->Determiner, distance, radius1, radius2);
                                 }
                                 nrOverlaps++;
                             }

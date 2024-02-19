@@ -12,6 +12,7 @@
 
 #include "algo/CellListsAlgorithm.h"
 #include "algo/VtkmSpheresOverlap.h"
+#include "algo/ThicknessDeterminer.h"
 
 #include "SpheresOverlap.h"
 
@@ -81,6 +82,7 @@ bool SpheresOverlap::compute(const std::shared_ptr<BlockTask> &task) const
 
         VtkmSpheresOverlap overlapFilter;
         overlapFilter.SetRadiusFactor(m_radiusCoefficient->getValue());
+        overlapFilter.SetThicknessDeterminer((ThicknessDeterminer)m_thicknessDeterminer->getValue());
         auto vtkmLines = overlapFilter.Execute(vtkmSpheres);
 
         lines = Lines::as(vtkmGetGeometry(vtkmLines));
