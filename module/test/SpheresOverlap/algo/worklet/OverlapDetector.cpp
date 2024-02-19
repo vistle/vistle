@@ -2,8 +2,8 @@
 
 #include "OverlapDetector.h"
 
-// TODO:  - make sure lib/vistle/vtkm/convert.cpp still works the same!
-//        - find out why overlapRatio is zero for 2x2x2 grid on (0, 0, 0) -> (1,1,1)
+// TODO:  - refactor lib/vistle/vtkm/convert.cpp!!
+//        - find out why some connections seem to be missing from 10x10x10 grid(both CPU + GPU)
 
 VTKM_EXEC vtkm::Id3 OverlapDetector::GetCellId(const vtkm::Vec3f &point) const
 {

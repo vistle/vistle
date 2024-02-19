@@ -21,7 +21,6 @@ using namespace vistle;
 MODULE_MAIN(SpheresOverlap)
 
 // TODO: - instead of checking sId < sId2, adjust for range accordingly!
-//       - debug map with Gendat data is missing connections when rendered as tubes (as opposed to lines)
 
 SpheresOverlap::SpheresOverlap(const std::string &name, int moduleID, mpi::communicator comm)
 : Module(name, moduleID, comm)
@@ -87,7 +86,6 @@ bool SpheresOverlap::compute(const std::shared_ptr<BlockTask> &task) const
 
         lines = Lines::as(vtkmGetGeometry(vtkmLines));
         lineThicknesses = Vec<Scalar, 1>::as(vtkmGetField(vtkmLines, "lineThickness"));
-
 
     } else {
         auto maxRadius = std::numeric_limits<std::remove_reference<decltype(radii[0])>::type>::min();

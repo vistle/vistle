@@ -320,12 +320,40 @@ Object::ptr vtkmGetGeometry(vtkm::cont::DataSet &dataset)
             result = points;
         } else if (cellset.GetCellShape(0) == vtkm::CELL_SHAPE_LINE) {
             auto numElem = numConn > 0 ? numConn / 2 : numPoints / 2;
-            Lines::ptr lines(new Lines(numElem, numConn, numPoints));
+            //Lines::ptr lines(new Lines(numElem, numConn, numPoints));
+            Lines::ptr lines(new Lines(numElem, numConn, numConn));
             for (vtkm::Id index = 0; index < numConn; index++) {
                 lines->cl()[index] = connPortal.Get(index);
             }
+            if (dataset.GetNumberOfCoordinateSystems() > 0) {
+                auto vtkmCoords = dataset.GetCoordinateSystem().GetData();
+
+                if (vtkmCoords.CanConvert<vtkm::cont::ArrayHandle<vtkm::Vec3f>>()) {
+                    auto coordsPortal = vtkmCoords.AsArrayHandle<vtkm::cont::ArrayHandle<vtkm::Vec3f>>().ReadPortal();
+                    for (vtkm::Id index = 0; index < numConn; index++) {
+                        auto point = coordsPortal.Get(connPortal.Get(index));
+                        (lines->x().data())[index] = point[2];
+                        (lines->y().data())[index] = point[1];
+                        (lines->z().data())[index] = point[0];
+                    }
+                } else if (vtkmCoords.CanConvert<vtkm::cont::ArrayHandleSOA<vtkm::Vec3f>>()) {
+                    auto coordsPortal =
+                        vtkmCoords.AsArrayHandle<vtkm::cont::ArrayHandleSOA<vtkm::Vec3f>>().ReadPortal();
+                    for (vtkm::Id index = 0; index < numConn; index++) {
+                        auto point = coordsPortal.Get(connPortal.Get(index));
+                        (lines->x().data())[index] = point[0];
+                        (lines->y().data())[index] = point[1];
+                        (lines->z().data())[index] = point[2];
+                    }
+                } else {
+                    throw std::invalid_argument("VTKm coordinate system uses unsupported array handle storage.");
+                }
+            }
+
             for (vtkm::Id index = 0; index < numElem; index++) {
                 lines->el()[index] = 2 * index;
+                lines->cl()[2 * index] = 2 * index;
+                lines->cl()[2 * index + 1] = 2 * index + 1;
             }
             lines->el()[numElem] = numConn;
             result = lines;
@@ -453,7 +481,7 @@ Object::ptr vtkmGetGeometry(vtkm::cont::DataSet &dataset)
     }
 
     if (auto coords = Coords::as(result)) {
-        if (dataset.GetNumberOfCoordinateSystems() > 0)
+        if (!Lines::as(result) && dataset.GetNumberOfCoordinateSystems() > 0)
             vtkmToVistleCoordinateSystem(dataset.GetCoordinateSystem(), coords);
 
         if (auto normals = vtkmGetField(dataset, "normals")) {
