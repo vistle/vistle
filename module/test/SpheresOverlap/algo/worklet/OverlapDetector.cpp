@@ -5,8 +5,6 @@
 // TODO:  - make thickness variable chosen by user!!!
 //        - make sure lib/vistle/vtkm/convert.cpp still works the same!
 
-// BUG: - crash if Grid Size > 1x1x1
-
 VTKM_EXEC vtkm::Id3 OverlapDetector::GetCellId(const vtkm::Vec3f &point) const
 {
     vtkm::Id3 ijk = (point - this->Min) / this->Dxdydz;
@@ -19,7 +17,7 @@ VTKM_EXEC vtkm::Id3 OverlapDetector::GetCellId(const vtkm::Vec3f &point) const
 VTKM_EXEC bool OverlapDetector::CellExists(const vtkm::Id3 &id) const
 {
     return id[0] >= 0 && id[0] < this->Dims[0] && id[1] >= 0 && id[1] < this->Dims[1] && id[2] >= 0 &&
-           id[0] < this->Dims[2];
+           id[2] < this->Dims[2];
 }
 
 VTKM_EXEC vtkm::Id OverlapDetector::FlattenId(const vtkm::Id3 &id) const
