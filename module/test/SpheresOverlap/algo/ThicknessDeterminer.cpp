@@ -1,7 +1,6 @@
 #include <cmath>
-#include <stdexcept>
 
-#include <vtkm/internal/ExportMacros.h>
+#include <vtkm/Types.h>
 
 #include "ThicknessDeterminer.h"
 
@@ -17,6 +16,8 @@ vistle::Scalar CalculateThickness(ThicknessDeterminer determiner, vistle::Scalar
     case Distance:
         return distance;
     default:
-        throw std::invalid_argument("Unknown thickness determiner!");
+        // unknown thickness determiner
+        // can't throw exception because device code doesn't support it
+        VTKM_ASSERT(false);
     }
 }
