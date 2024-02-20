@@ -52,9 +52,9 @@ VTKM_EXEC void OverlapDetector::CountOverlaps(const vtkm::Id pointId, const vtkm
                         if (pointId < idToCheck) { // avoid checking the same pair of points twice
                             auto pointToCheck = this->Coords.Get(idToCheck);
 
-                            // check if spheres overlap
-                            if (auto distance = vtkm::Magnitude(point - pointToCheck);
-                                (distance <= this->Radii.Get(pointId) + this->Radii.Get(idToCheck))) {
+                            // check if spheres overlap (here it's enough to calculate the squared distance)
+                            if (auto distance = vtkm::MagnitudeSquared(point - pointToCheck);
+                                (distance <= vtkm::Pow(this->Radii.Get(pointId) + this->Radii.Get(idToCheck), 2))) {
                                 nrOverlaps++;
                             }
                         }

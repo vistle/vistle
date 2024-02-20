@@ -1,5 +1,4 @@
-#include <cmath>
-
+#include <vtkm/Math.h>
 #include <vtkm/Types.h>
 
 #include "ThicknessDeterminer.h"
@@ -10,9 +9,9 @@ vistle::Scalar CalculateThickness(ThicknessDeterminer determiner, vistle::Scalar
 {
     switch (determiner) {
     case Overlap:
-        return std::abs(radius1 + radius2 - distance);
+        return vtkm::Abs(radius1 + radius2 - distance);
     case OverlapRatio:
-        return std::abs(radius1 + radius2 - distance) / distance;
+        return vtkm::Abs(radius1 + radius2 - distance) / distance;
     case Distance:
         return distance;
     default:
