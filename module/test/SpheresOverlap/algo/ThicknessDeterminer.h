@@ -6,6 +6,7 @@
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(ThicknessDeterminer, (Overlap)(OverlapRatio)(Distance));
 
+VTKM_EXEC_CONT
 vistle::Scalar CalculateThickness(ThicknessDeterminer determiner, vistle::Scalar distance, vistle::Scalar radius1,
                                   vistle::Scalar radius2);
 
