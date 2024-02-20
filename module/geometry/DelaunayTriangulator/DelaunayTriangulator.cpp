@@ -11,6 +11,7 @@
 #include <tetgen.h>
 
 #ifdef HAVE_CGAL
+#include <boost/next_prior.hpp>
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 
 #include <CGAL/Delaunay_triangulation_3.h>

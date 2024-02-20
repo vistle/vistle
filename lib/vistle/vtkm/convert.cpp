@@ -364,7 +364,7 @@ Object::ptr vtkmGetGeometry(vtkm::cont::DataSet &dataset)
             for (vtkm::Id index = 0; index < numConn; index++) {
                 lines->cl()[index] = connPortal.Get(index);
             }
-            for (vtkm::Id index = 0; index < numElem; index++) {
+            for (vtkm::Id index = 0; index < numElem + 1; index++) {
                 lines->el()[index] = elemPortal.Get(index);
             }
             result = lines;
@@ -389,7 +389,7 @@ Object::ptr vtkmGetGeometry(vtkm::cont::DataSet &dataset)
             for (vtkm::Id index = 0; index < numConn; index++) {
                 polys->cl()[index] = connPortal.Get(index);
             }
-            for (vtkm::Id index = 0; index < numElem; index++) {
+            for (vtkm::Id index = 0; index < numElem + 1; index++) {
                 polys->el()[index] = elemPortal.Get(index);
             }
             result = polys;
