@@ -1,7 +1,6 @@
 #include <vistle/core/spheres.h>
 #include <vistle/core/uniformgrid.h>
 
-#include <vtkm/cont/Algorithm.h> // TODO: delete (only used for reduce in assert)
 #include <vtkm/cont/ArrayHandle.h>
 #include <vtkm/cont/ArrayHandleCounting.h>
 #include <vtkm/cont/ArrayHandleGroupVec.h>
@@ -85,7 +84,6 @@ VTKM_CONT vtkm::cont::DataSet VtkmSpheresOverlap::DoExecute(const vtkm::cont::Da
     this->Invoke(CreateOverlapLines{}, spheresToLinesMapping, pointLocator.GetCoordinates(), &pointLocator,
                  vtkm::cont::make_ArrayHandleGroupVec<2>(linesConnectivity), lineThicknesses);
 
-    assert(linesConnectivity.GetNumberOfValues() == 2 * vtkm::cont::Algorithm::Reduce(overlapsPerPoint, 0));
     vtkm::cont::CellSetSingleType<> linesCellSet;
     linesCellSet.Fill(linesConnectivity.GetNumberOfValues(), vtkm::CELL_SHAPE_LINE, 2, linesConnectivity);
 
