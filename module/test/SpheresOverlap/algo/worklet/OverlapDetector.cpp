@@ -2,10 +2,7 @@
 
 #include "OverlapDetector.h"
 
-// TODO:  - refactor lib/vistle/vtkm/convert.cpp!!
-//        - find out why some connections seem to be missing from 10x10x10 grid(both CPU + GPU)
-
-VTKM_EXEC vtkm::Id3 OverlapDetector::GetCellId(const vtkm::Vec3f &point) const
+VTKM_EXEC vtkm::Id3 OverlapDetector::DetermineCellId(const vtkm::Vec3f &point) const
 {
     vtkm::Id3 ijk = (point - this->Min) / this->Dxdydz;
     ijk = vtkm::Max(ijk, vtkm::Id3(0));
@@ -20,7 +17,7 @@ VTKM_EXEC bool OverlapDetector::CellExists(const vtkm::Id3 &id) const
            id[2] < this->Dims[2];
 }
 
-VTKM_EXEC vtkm::Id OverlapDetector::FlattenId(const vtkm::Id3 &id) const
+VTKM_EXEC vtkm::Id OverlapDetector::FlattenCellId(const vtkm::Id3 &id) const
 {
     if (!CellExists(id))
         return -1;
@@ -33,15 +30,15 @@ VTKM_EXEC vtkm::Id OverlapDetector::FlattenId(const vtkm::Id3 &id) const
 VTKM_EXEC void OverlapDetector::CountOverlaps(const vtkm::Id pointId, const vtkm::Vec3f &point,
                                               vtkm::Id &nrOverlaps) const
 {
-    auto cellId3 = this->GetCellId(point);
-    auto cellId = FlattenId(cellId3);
+    auto cellId3 = this->DetermineCellId(point);
+    auto cellId = FlattenCellId(cellId3);
 
     nrOverlaps = 0;
     // loop through the cell the current point lies in as well as its neighbor cells
     for (int i = cellId3[0] - 1; i <= cellId3[0] + 1; i++) {
         for (int j = cellId3[1] - 1; j <= cellId3[1] + 1; j++) {
             for (int k = cellId3[2] - 1; k <= cellId3[2] + 1; k++) {
-                auto cellToCheck = FlattenId({i, j, k});
+                auto cellToCheck = FlattenCellId({i, j, k});
 
                 if (cellToCheck != -1 && cellId <= cellToCheck) { // avoid checking the same pair of cells twice
                     // get the ids of all points in the cell
@@ -69,19 +66,19 @@ VTKM_EXEC void OverlapDetector::CountOverlaps(const vtkm::Id pointId, const vtkm
     Determines which points overlap with the point `point` at the index `pointId` and for each overlap
     saves the indices of the two points into `connectivity`. and a scalar value into `thickness`. 
 */
-VTKM_EXEC void OverlapDetector::CreateOverlapLines(const vtkm::Id pointId, const vtkm::Vec3f &point,
+VTKM_EXEC void OverlapDetector::CreateConnectionLines(const vtkm::Id pointId, const vtkm::Vec3f &point,
                                                    const vtkm::IdComponent visitId, vtkm::Id2 &connectivity,
                                                    vtkm::FloatDefault &thickness) const
 {
-    auto cellId3 = this->GetCellId(point);
-    auto cellId = FlattenId(cellId3);
+    auto cellId3 = this->DetermineCellId(point);
+    auto cellId = FlattenCellId(cellId3);
 
     vtkm::Id nrOverlaps = 0;
     // loop through the cell the current point lies in as well as its neighbor cells
     for (int i = cellId3[0] - 1; i <= cellId3[0] + 1; i++) {
         for (int j = cellId3[1] - 1; j <= cellId3[1] + 1; j++) {
             for (int k = cellId3[2] - 1; k <= cellId3[2] + 1; k++) {
-                auto cellToCheck = FlattenId({i, j, k});
+                auto cellToCheck = FlattenCellId({i, j, k});
 
                 if (cellToCheck != -1 && cellId <= cellToCheck) { // avoid checking the same pair of cells twice
                     // get the ids of all points in the cell
