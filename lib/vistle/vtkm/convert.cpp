@@ -22,6 +22,8 @@
 
 #include "convert.h"
 
+// TODO:    - find out why we need to account for different coordinate indices
+//          - better: make Vistle lines work, s.t., coords do not have to be same size as el
 
 namespace vistle {
 
@@ -263,7 +265,7 @@ VtkmTransformStatus vtkmAddField(vtkm::cont::DataSet &vtkmDataSet, const vistle:
 }
 
 template<typename ArrayHandlePortal>
-void fillVistleCoords(ArrayHandlePortal coordsPortal, Coords::ptr coords, vtkm::Vec3i order = {0, 1, 2})
+void fillVistleCoords(ArrayHandlePortal coordsPortal, Coords::ptr coords)
 {
     auto x = coords->x().data();
     auto y = coords->y().data();
@@ -272,9 +274,9 @@ void fillVistleCoords(ArrayHandlePortal coordsPortal, Coords::ptr coords, vtkm::
     for (vtkm::Id index = 0; index < coordsPortal.GetNumberOfValues(); index++) {
         vtkm::Vec3f point = coordsPortal.Get(index);
         // account for coordinate axes swap
-        x[index] = point[order[0]];
-        y[index] = point[order[1]];
-        z[index] = point[order[2]];
+        x[index] = point[2];
+        y[index] = point[1];
+        z[index] = point[0];
     }
 }
 
@@ -284,9 +286,7 @@ void vtkmToVistleCoordinateSystem(const vtkm::cont::CoordinateSystem &coordinate
 
     if (vtkmCoords.CanConvert<vtkm::cont::ArrayHandle<vtkm::Vec3f>>()) {
         auto coordsPortal = vtkmCoords.AsArrayHandle<vtkm::cont::ArrayHandle<vtkm::Vec3f>>().ReadPortal();
-        // TODO: find better way to handle coordinate axes swap
-        // must account for coordinate axes swap
-        fillVistleCoords(coordsPortal, coords, {2, 1, 0});
+        fillVistleCoords(coordsPortal, coords);
     } else if (vtkmCoords.CanConvert<vtkm::cont::ArrayHandleSOA<vtkm::Vec3f>>()) {
         auto coordsPortal = vtkmCoords.AsArrayHandle<vtkm::cont::ArrayHandleSOA<vtkm::Vec3f>>().ReadPortal();
         fillVistleCoords(coordsPortal, coords);
