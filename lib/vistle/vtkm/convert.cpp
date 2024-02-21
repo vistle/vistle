@@ -22,7 +22,7 @@
 
 #include "convert.h"
 
-// TODO:    - find out why we need to account for different coordinate indices
+// TODO:    - axis swap does not apply to spheres (but seems to apply to uniform grids), how to combine?
 //          - better: make Vistle lines work, s.t., coords do not have to be same size as el
 
 namespace vistle {
@@ -37,7 +37,7 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
 
         auto coordinateSystem = vtkm::cont::CoordinateSystem(
             "coordinate system",
-            vtkm::cont::make_ArrayHandleSOA(coords->z().handle(), coords->y().handle(), coords->x().handle()));
+            vtkm::cont::make_ArrayHandleSOA(coords->x().handle(), coords->y().handle(), coords->z().handle()));
 
         vtkmDataset.AddCoordinateSystem(coordinateSystem);
 
@@ -273,10 +273,9 @@ void fillVistleCoords(ArrayHandlePortal coordsPortal, Coords::ptr coords)
 
     for (vtkm::Id index = 0; index < coordsPortal.GetNumberOfValues(); index++) {
         vtkm::Vec3f point = coordsPortal.Get(index);
-        // account for coordinate axes swap
-        x[index] = point[2];
+        x[index] = point[0];
         y[index] = point[1];
-        z[index] = point[0];
+        z[index] = point[2];
     }
 }
 
