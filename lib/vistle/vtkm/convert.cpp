@@ -24,14 +24,14 @@
 
 // TODO: - better: make Vistle lines work, s.t., coords do not have to be same size as el
 
-// BUG: - (IsoSurface, PointPerTimestep, isopoint): when "moving" the grid (changing x in Gendat), 
+// BUG: - (IsoSurface, PointPerTimestep, isopoint): when "moving" the grid (changing x in Gendat),
 //         isopoints still work outside the new bounding box (where old bounding box was)
 
 namespace vistle {
 
 VtkmTransformStatus coordinatesToVtkm(vtkm::cont::DataSet &vtkmDataset, vistle::Object::const_ptr grid)
 {
-    // 1a) Coords: use SOA ArrayHandle to create COORDINATE system & store NORMALs in normals field  (NO MORE AXES SWAP)
+    // 1a) Coords: use SOA ArrayHandle to create COORDINATE system & store NORMALs in normals field  (AXES SWAP)
     if (auto coords = Coords::as(grid)) {
         auto xCoords = coords->x();
         auto yCoords = coords->y();
@@ -54,7 +54,7 @@ VtkmTransformStatus coordinatesToVtkm(vtkm::cont::DataSet &vtkmDataset, vistle::
         auto ny = uni->getNumDivisions(1);
         auto nz = uni->getNumDivisions(2);
         const auto *min = uni->min(), *dist = uni->dist();
-        // swap x and z coordinates to account for different indexing in structured data
+        // x and z are swapped in vtkm
         vtkm::cont::ArrayHandleUniformPointCoordinates uniformCoordinates(
             vtkm::Id3(nz, ny, nx), vtkm::Vec3f{min[2], min[1], min[0]}, vtkm::Vec3f{dist[2], dist[1], dist[0]});
         auto coordinateSystem = vtkm::cont::CoordinateSystem("uniform", uniformCoordinates);
@@ -311,48 +311,11 @@ VtkmTransformStatus vtkmAddField(vtkm::cont::DataSet &vtkmDataSet, const vistle:
     return VtkmTransformStatus::UNSUPPORTED_FIELD_TYPE;
 }
 
-template<typename ArrayHandlePortal>
-void fillVistleCoords(ArrayHandlePortal coordsPortal, Coords::ptr coords)
-{
-    auto x = coords->x().data();
-    auto y = coords->y().data();
-    auto z = coords->z().data();
-
-    for (vtkm::Id index = 0; index < coordsPortal.GetNumberOfValues(); index++) {
-        vtkm::Vec3f point = coordsPortal.Get(index);
-        x[index] = point[2];
-        y[index] = point[1];
-        z[index] = point[0];
-    }
-}
-
-void vtkmToVistleCoordinateSystem(const vtkm::cont::CoordinateSystem &coordinateSystem, Coords::ptr coords)
-{
-    auto vtkmCoords = coordinateSystem.GetData();
-
-    if (vtkmCoords.CanConvert<vtkm::cont::ArrayHandle<vtkm::Vec3f>>()) {
-        auto coordsPortal = vtkmCoords.AsArrayHandle<vtkm::cont::ArrayHandle<vtkm::Vec3f>>().ReadPortal();
-        fillVistleCoords(coordsPortal, coords);
-    } else if (vtkmCoords.CanConvert<vtkm::cont::ArrayHandleSOA<vtkm::Vec3f>>()) {
-        auto coordsPortal = vtkmCoords.AsArrayHandle<vtkm::cont::ArrayHandleSOA<vtkm::Vec3f>>().ReadPortal();
-        fillVistleCoords(coordsPortal, coords);
-    } else {
-        throw std::invalid_argument("VTKm coordinate system uses unsupported array handle storage.");
-    }
-}
-
-// ----- VTKm to VISTLE -----
-Object::ptr vtkmGetGeometry(vtkm::cont::DataSet &dataset)
+Object::ptr cellSetSingleTypeToVistle(vtkm::cont::DataSet &dataset, vtkm::Id numPoints)
 {
     Object::ptr result;
 
-    auto numPoints = dataset.GetNumberOfPoints();
-    if (dataset.GetNumberOfCoordinateSystems() > 0) // TODO: check if this breaks anything
-        numPoints = dataset.GetCoordinateSystem().GetNumberOfPoints();
-
     auto cellset = dataset.GetCellSet();
-
-    // ----- 1.) CONVERT CELL SET -----
 
     // 1a) convert CellSetSingleType cell sets (can take VERTEX, LINE, POLY_LINE, TRIANGLE, QUAD, POLYGON)
     //     --> all cell are of the same type
@@ -460,93 +423,155 @@ Object::ptr vtkmGetGeometry(vtkm::cont::DataSet &dataset)
             result = polys;
         }
     }
+    return result;
+}
+
+Object::ptr cellsetExplicitToVistle(vtkm::cont::DataSet &dataset, vtkm::Id numPoints)
+{
+    Object::ptr result;
+
+    auto cellset = dataset.GetCellSet();
+
+    auto ecellset = cellset.AsCellSet<vtkm::cont::CellSetExplicit<>>();
+    auto elements = ecellset.GetOffsetsArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
+    auto elemPortal = elements.ReadPortal();
+    auto numElem = ecellset.GetNumberOfCells();
+    int mindim = 5, maxdim = -1;
+    auto eshapes = ecellset.GetShapesArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
+    auto eshapePortal = eshapes.ReadPortal();
+    auto econn = ecellset.GetConnectivityArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
+    auto econnPortal = econn.ReadPortal();
+    auto numConn = econn.GetNumberOfValues();
+    for (vtkm::Id idx = 0; idx < numElem; ++idx) {
+        auto shape = eshapePortal.Get(idx);
+        int dim = -1;
+        switch (shape) {
+        case vtkm::CELL_SHAPE_VERTEX:
+            dim = 0;
+            break;
+        case vtkm::CELL_SHAPE_LINE:
+        case vtkm::CELL_SHAPE_POLY_LINE:
+            dim = 1;
+            break;
+        case vtkm::CELL_SHAPE_TRIANGLE:
+        case vtkm::CELL_SHAPE_QUAD:
+        case vtkm::CELL_SHAPE_POLYGON:
+            dim = 2;
+            break;
+        case vtkm::CELL_SHAPE_TETRA:
+        case vtkm::CELL_SHAPE_HEXAHEDRON:
+        case vtkm::CELL_SHAPE_WEDGE:
+        case vtkm::CELL_SHAPE_PYRAMID:
+            dim = 3;
+            break;
+        default:
+            dim = -1;
+            break;
+        }
+
+        mindim = std::min(dim, mindim);
+        maxdim = std::max(dim, maxdim);
+    }
+
+    if (mindim > maxdim) {
+        // empty
+    } else if (mindim == -1) {
+        // unhanded cell type
+    } else if (mindim != maxdim || maxdim == 3) {
+        // require UnstructuredGrid for mixed cells
+        UnstructuredGrid::ptr unstr(new UnstructuredGrid(numElem, numConn, numPoints));
+        for (vtkm::Id index = 0; index < numConn; index++) {
+            unstr->cl()[index] = econnPortal.Get(index);
+        }
+        for (vtkm::Id index = 0; index < numElem + 1; index++) {
+            unstr->el()[index] = elemPortal.Get(index);
+        }
+        for (vtkm::Id index = 0; index < numElem; index++) {
+            unstr->tl()[index] = eshapePortal.Get(index);
+        }
+        result = unstr;
+    } else if (mindim == 0) {
+        Points::ptr points(new Points(numPoints));
+        result = points;
+    } else if (mindim == 1) {
+        Lines::ptr lines(new Lines(numElem, numConn, numPoints));
+        for (vtkm::Id index = 0; index < numConn; index++) {
+            lines->cl()[index] = econnPortal.Get(index);
+        }
+        for (vtkm::Id index = 0; index < numElem + 1; index++) {
+            lines->el()[index] = elemPortal.Get(index);
+        }
+        result = lines;
+    } else if (mindim == 2) {
+        // all 2D cells representable as Polygons
+        Polygons::ptr polys(new Polygons(numElem, numConn, numPoints));
+        for (vtkm::Id index = 0; index < numConn; index++) {
+            polys->cl()[index] = econnPortal.Get(index);
+        }
+        for (vtkm::Id index = 0; index < numElem + 1; index++) {
+            polys->el()[index] = elemPortal.Get(index);
+        }
+        result = polys;
+    }
+    return result;
+}
+
+// ----- VTKm to VISTLE -----
+Object::ptr cellsetToVistle(vtkm::cont::DataSet &dataset)
+{
+    auto cellset = dataset.GetCellSet();
+
+    Object::ptr result;
+
+    auto numPoints = dataset.GetNumberOfPoints();
+    if (dataset.GetNumberOfCoordinateSystems() > 0) // TODO: check if this breaks anything
+        numPoints = dataset.GetCoordinateSystem().GetNumberOfPoints();
+
+    // try conversion for uniform cell types first
+    if (cellset.CanConvert<vtkm::cont::CellSetSingleType<>>()) {
+        result = cellSetSingleTypeToVistle(dataset, numPoints);
+    }
 
     // 1b) Convert CellSetExplicit: cells can be of different types
     if (!result && cellset.CanConvert<vtkm::cont::CellSetExplicit<>>()) {
-        auto ecellset = cellset.AsCellSet<vtkm::cont::CellSetExplicit<>>();
-        auto elements = ecellset.GetOffsetsArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
-        auto elemPortal = elements.ReadPortal();
-        auto numElem = ecellset.GetNumberOfCells();
-        int mindim = 5, maxdim = -1;
-        auto eshapes = ecellset.GetShapesArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
-        auto eshapePortal = eshapes.ReadPortal();
-        auto econn = ecellset.GetConnectivityArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
-        auto econnPortal = econn.ReadPortal();
-        auto numConn = econn.GetNumberOfValues();
-        for (vtkm::Id idx = 0; idx < numElem; ++idx) {
-            auto shape = eshapePortal.Get(idx);
-            int dim = -1;
-            switch (shape) {
-            case vtkm::CELL_SHAPE_VERTEX:
-                dim = 0;
-                break;
-            case vtkm::CELL_SHAPE_LINE:
-            case vtkm::CELL_SHAPE_POLY_LINE:
-                dim = 1;
-                break;
-            case vtkm::CELL_SHAPE_TRIANGLE:
-            case vtkm::CELL_SHAPE_QUAD:
-            case vtkm::CELL_SHAPE_POLYGON:
-                dim = 2;
-                break;
-            case vtkm::CELL_SHAPE_TETRA:
-            case vtkm::CELL_SHAPE_HEXAHEDRON:
-            case vtkm::CELL_SHAPE_WEDGE:
-            case vtkm::CELL_SHAPE_PYRAMID:
-                dim = 3;
-                break;
-            default:
-                dim = -1;
-                break;
-            }
-
-            mindim = std::min(dim, mindim);
-            maxdim = std::max(dim, maxdim);
-        }
-
-        if (mindim > maxdim) {
-            // empty
-        } else if (mindim == -1) {
-            // unhanded cell type
-        } else if (mindim != maxdim || maxdim == 3) {
-            // require UnstructuredGrid for mixed cells
-            UnstructuredGrid::ptr unstr(new UnstructuredGrid(numElem, numConn, numPoints));
-            for (vtkm::Id index = 0; index < numConn; index++) {
-                unstr->cl()[index] = econnPortal.Get(index);
-            }
-            for (vtkm::Id index = 0; index < numElem + 1; index++) {
-                unstr->el()[index] = elemPortal.Get(index);
-            }
-            for (vtkm::Id index = 0; index < numElem; index++) {
-                unstr->tl()[index] = eshapePortal.Get(index);
-            }
-            result = unstr;
-        } else if (mindim == 0) {
-            Points::ptr points(new Points(numPoints));
-            result = points;
-        } else if (mindim == 1) {
-            Lines::ptr lines(new Lines(numElem, numConn, numPoints));
-            for (vtkm::Id index = 0; index < numConn; index++) {
-                lines->cl()[index] = econnPortal.Get(index);
-            }
-            for (vtkm::Id index = 0; index < numElem + 1; index++) {
-                lines->el()[index] = elemPortal.Get(index);
-            }
-            result = lines;
-        } else if (mindim == 2) {
-            // all 2D cells representable as Polygons
-            Polygons::ptr polys(new Polygons(numElem, numConn, numPoints));
-            for (vtkm::Id index = 0; index < numConn; index++) {
-                polys->cl()[index] = econnPortal.Get(index);
-            }
-            for (vtkm::Id index = 0; index < numElem + 1; index++) {
-                polys->el()[index] = elemPortal.Get(index);
-            }
-            result = polys;
-        }
+        result = cellsetExplicitToVistle(dataset, numPoints);
     }
 
-    // ----- 2.) CONVERT COORDINATE SYSTEM (aka POINTS) -----
+    return result;
+}
+
+template<typename ArrayHandlePortal>
+void fillVistleCoords(ArrayHandlePortal coordsPortal, Coords::ptr coords)
+{
+    auto x = coords->x().data();
+    auto y = coords->y().data();
+    auto z = coords->z().data();
+
+    for (vtkm::Id index = 0; index < coordsPortal.GetNumberOfValues(); index++) {
+        vtkm::Vec3f point = coordsPortal.Get(index);
+        x[index] = point[2];
+        y[index] = point[1];
+        z[index] = point[0];
+    }
+}
+
+void vtkmToVistleCoordinateSystem(const vtkm::cont::CoordinateSystem &coordinateSystem, Coords::ptr coords)
+{
+    auto vtkmCoords = coordinateSystem.GetData();
+
+    if (vtkmCoords.CanConvert<vtkm::cont::ArrayHandle<vtkm::Vec3f>>()) {
+        auto coordsPortal = vtkmCoords.AsArrayHandle<vtkm::cont::ArrayHandle<vtkm::Vec3f>>().ReadPortal();
+        fillVistleCoords(coordsPortal, coords);
+    } else if (vtkmCoords.CanConvert<vtkm::cont::ArrayHandleSOA<vtkm::Vec3f>>()) {
+        auto coordsPortal = vtkmCoords.AsArrayHandle<vtkm::cont::ArrayHandleSOA<vtkm::Vec3f>>().ReadPortal();
+        fillVistleCoords(coordsPortal, coords);
+    } else {
+        throw std::invalid_argument("VTKm coordinate system uses unsupported array handle storage.");
+    }
+}
+
+void addVtkmCoordinatesToVistle(vtkm::cont::DataSet &dataset, Object::ptr result)
+{
     if (auto coords = Coords::as(result)) {
         if (!Lines::as(result) && dataset.GetNumberOfCoordinateSystems() > 0)
             vtkmToVistleCoordinateSystem(dataset.GetCoordinateSystem(), coords);
@@ -564,9 +589,10 @@ Object::ptr vtkmGetGeometry(vtkm::cont::DataSet &dataset)
             }
         }
     }
+}
 
-    // ----- 3.) CONVERT GHOST CELLS INFO -----
-    //       --> supports Indexed, Triangles, Quads
+void addVtkmGhostInfoToVistle(vtkm::cont::DataSet &dataset, Object::ptr result)
+{
     if (dataset.HasGhostCellField()) {
         auto ghostname = dataset.GetGhostCellFieldName();
         std::cerr << "vtkm: has ghost cells: " << ghostname << std::endl;
@@ -587,6 +613,15 @@ Object::ptr vtkmGetGeometry(vtkm::cont::DataSet &dataset)
             }
         }
     }
+}
+
+Object::ptr vtkmGetGeometry(vtkm::cont::DataSet &dataset)
+{
+    auto result = cellsetToVistle(dataset);
+
+    addVtkmCoordinatesToVistle(dataset, result);
+
+    addVtkmGhostInfoToVistle(dataset, result);
 
     return result;
 }
