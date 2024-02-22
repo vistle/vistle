@@ -22,17 +22,15 @@
 
 #include "convert.h"
 
-// TODO:    - axis swap does not apply to spheres (but seems to apply to uniform grids), how to combine?
-//          - better: make Vistle lines work, s.t., coords do not have to be same size as el
+// TODO: - better: make Vistle lines work, s.t., coords do not have to be same size as el
+
+// BUG: - (IsoSurface, PointPerTimestep, isopoint): when "moving" the grid (changing x in Gendat), 
+//         isopoints still work outside the new bounding box (where old bounding box was)
 
 namespace vistle {
 
-// ----- VISTLE TO VTKm -----
-VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object::const_ptr grid)
+VtkmTransformStatus coordinatesToVtkm(vtkm::cont::DataSet &vtkmDataset, vistle::Object::const_ptr grid)
 {
-    // ----- 1.) CREATE VTKM POINT COORDINATES AND NORMALS -----
-    //       --> input must be either COORDS, UNIFORMGRID or RECTILINEARGRID (otherwise error)
-    
     // 1a) Coords: use SOA ArrayHandle to create COORDINATE system & store NORMALs in normals field  (NO MORE AXES SWAP)
     if (auto coords = Coords::as(grid)) {
         auto xCoords = coords->x();
@@ -41,7 +39,7 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
 
         auto coordinateSystem = vtkm::cont::CoordinateSystem(
             "coordinate system",
-            vtkm::cont::make_ArrayHandleSOA(coords->x().handle(), coords->y().handle(), coords->z().handle()));
+            vtkm::cont::make_ArrayHandleSOA(coords->z().handle(), coords->y().handle(), coords->x().handle()));
 
         vtkmDataset.AddCoordinateSystem(coordinateSystem);
 
@@ -49,8 +47,8 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
             auto normals = coords->normals();
             vtkmAddField(vtkmDataset, normals, "normals");
         }
-    
-    // 1b) Uniform: create uniform point COORDINATEs (account for AXES SWAP here, NO NORMALS)
+
+        // 1b) Uniform: create uniform point COORDINATEs (account for AXES SWAP here, NO NORMALS)
     } else if (auto uni = UniformGrid::as(grid)) {
         auto nx = uni->getNumDivisions(0);
         auto ny = uni->getNumDivisions(1);
@@ -61,8 +59,8 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
             vtkm::Id3(nz, ny, nx), vtkm::Vec3f{min[2], min[1], min[0]}, vtkm::Vec3f{dist[2], dist[1], dist[0]});
         auto coordinateSystem = vtkm::cont::CoordinateSystem("uniform", uniformCoordinates);
         vtkmDataset.AddCoordinateSystem(coordinateSystem);
-    
-    // 1c) Rectilinear: create cartesian point COORDINATES (acconut for AXES SWAP here, NO NORMALS)
+
+        // 1c) Rectilinear: create cartesian point COORDINATES (acconut for AXES SWAP here, NO NORMALS)
     } else if (auto rect = RectilinearGrid::as(grid)) {
         auto xc = rect->coords(0).handle();
         auto yc = rect->coords(1).handle();
@@ -75,10 +73,12 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
         return VtkmTransformStatus::UNSUPPORTED_GRID_TYPE;
     }
 
-    // ----- 2.) CREATE CELL SETS -----
-    //       --> input can be StructuredGridBase, UnstructuredGrid, Triangles, Quads, Polygons, Lines, Points, Spheres
+    return VtkmTransformStatus::SUCCESS;
+}
 
-    auto indexedGrid = Indexed::as(grid); //TODO: this is only used in 2b, and at the very end of the method (ghost cells)...
+VtkmTransformStatus cellsetToVtkm(vtkm::cont::DataSet &vtkmDataset, vistle::Object::const_ptr grid)
+{
+    auto indexedGrid = Indexed::as(grid);
 
     // 2a) StructuredGridBase: create CellSetStructured (account for AXES SWAP)
     if (auto str = grid->getInterface<StructuredGridBase>()) {
@@ -98,8 +98,8 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
             str1.SetPointDimensions(nx);
             vtkmDataset.SetCellSet(str1);
         }
-    
-    // 2b) UnstructuredGrid: create CellSetExplicit (NO AXES SWAP)
+
+        // 2b) UnstructuredGrid: create CellSetExplicit (NO AXES SWAP)
     } else if (auto unstructuredGrid = UnstructuredGrid::as(indexedGrid)) {
         auto numPoints = indexedGrid->getNumCoords();
 
@@ -112,8 +112,8 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
 
         // create vtkm dataset
         vtkmDataset.SetCellSet(cellSetExplicit);
-    
-    // 2c) Triangles: using CellSetSingleType (NO AXES SWAP)
+
+        // 2c) Triangles: using CellSetSingleType (NO AXES SWAP)
     } else if (auto tri = Triangles::as(grid)) {
         auto numPoints = tri->getNumCoords();
         auto numConn = tri->getNumCorners();
@@ -131,7 +131,7 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
             vtkmDataset.SetCellSet(cellSet);
         }
 
-    // 2d) Quads: using CellSetSingleType (NO AXES SWAP)
+        // 2d) Quads: using CellSetSingleType (NO AXES SWAP)
     } else if (auto quads = Quads::as(grid)) {
         auto numPoints = quads->getNumCoords();
         auto numConn = quads->getNumCorners();
@@ -149,7 +149,7 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
             vtkmDataset.SetCellSet(cellSet);
         }
 
-    // 2e) Polygons: using CellSetExplicit (NO AXES SWAP)
+        // 2e) Polygons: using CellSetExplicit (NO AXES SWAP)
     } else if (auto poly = Polygons::as(grid)) {
         poly->check();
         auto numPoints = poly->getNumCoords();
@@ -174,8 +174,8 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
 #endif
         cellSet.Fill(numPoints, shapes, conn, offs);
         vtkmDataset.SetCellSet(cellSet);
-    
-    // 2f) Lines: using CellSetExplicit (CELL_SHAPE_POLY_LINE)
+
+        // 2f) Lines: using CellSetExplicit (CELL_SHAPE_POLY_LINE)
     } else if (auto line = Lines::as(grid)) {
         line->check();
         auto numPoints = line->getNumCoords();
@@ -200,16 +200,16 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
 #endif
         cellSet.Fill(numPoints, shapes, conn, offs);
         vtkmDataset.SetCellSet(cellSet);
-    
-    // 2g) Points: using CellSetSingleType (TODO: how does this differ from Spheres (where Coords is enough?))
+
+        // 2g) Points: using CellSetSingleType (TODO: how does this differ from Spheres (where Coords is enough?))
     } else if (auto point = Points::as(grid)) {
         auto numPoints = point->getNumPoints();
         vtkm::cont::CellSetSingleType<vtkm::cont::StorageTagIndex> cellSet;
         auto conn = vtkm::cont::make_ArrayHandleIndex(numPoints);
         cellSet.Fill(numPoints, vtkm::CELL_SHAPE_VERTEX, 1, conn);
         vtkmDataset.SetCellSet(cellSet);
-    
-    // 2h) Spheres: do nothing...
+
+        // 2h) Spheres: do nothing...
     } else if (Spheres::as(grid)) {
         // vtkm does not have a specific cell set for spheres. For spheres it is enough to store
         // the coordinate system and add a point field with the radius to the vtkm dataset, so
@@ -218,9 +218,13 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
         return VtkmTransformStatus::UNSUPPORTED_GRID_TYPE;
     }
 
-    // ----- 3.) CREATE GHOST CELLS FIELD -----
-    //       --> input can be INDEXED, TRIANGLES, QUAD
+    return VtkmTransformStatus::SUCCESS;
+}
+
+void ghostToVtkm(vtkm::cont::DataSet &vtkmDataset, vistle::Object::const_ptr grid)
+{
     vtkmDataset.SetGhostCellFieldName("ghost");
+    auto indexedGrid = Indexed::as(grid);
     if (indexedGrid) {
         if (indexedGrid->ghost().size() > 0) {
             std::cerr << "indexed: have ghost cells" << std::endl;
@@ -238,10 +242,24 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
             vtkmDataset.SetGhostCellField("ghost", ghost);
         }
     }
+}
+
+VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object::const_ptr grid)
+{
+    auto status = coordinatesToVtkm(vtkmDataset, grid);
+    if (status != VtkmTransformStatus::SUCCESS)
+        return status;
+
+    status = cellsetToVtkm(vtkmDataset, grid);
+    if (status != VtkmTransformStatus::SUCCESS)
+        return status;
+
+    ghostToVtkm(vtkmDataset, grid);
 
     return VtkmTransformStatus::SUCCESS;
 }
 
+// CONVERT DATA FIELD (VISTLE TO VTKM)
 struct AddField {
     vtkm::cont::DataSet &dataset;
     const DataBase::const_ptr &object;
@@ -302,9 +320,9 @@ void fillVistleCoords(ArrayHandlePortal coordsPortal, Coords::ptr coords)
 
     for (vtkm::Id index = 0; index < coordsPortal.GetNumberOfValues(); index++) {
         vtkm::Vec3f point = coordsPortal.Get(index);
-        x[index] = point[0];
+        x[index] = point[2];
         y[index] = point[1];
-        z[index] = point[2];
+        z[index] = point[0];
     }
 }
 
@@ -337,6 +355,8 @@ Object::ptr vtkmGetGeometry(vtkm::cont::DataSet &dataset)
     // ----- 1.) CONVERT CELL SET -----
 
     // 1a) convert CellSetSingleType cell sets (can take VERTEX, LINE, POLY_LINE, TRIANGLE, QUAD, POLYGON)
+    //     --> all cell are of the same type
+
     // try conversion for uniform cell types first
     if (cellset.CanConvert<vtkm::cont::CellSetSingleType<>>()) {
         auto isoGrid = cellset.AsCellSet<vtkm::cont::CellSetSingleType<>>();
@@ -351,8 +371,8 @@ Object::ptr vtkmGetGeometry(vtkm::cont::DataSet &dataset)
         if (cellset.GetCellShape(0) == vtkm::CELL_SHAPE_VERTEX) {
             Points::ptr points(new Points(numPoints));
             result = points;
-        
-        // 1a2) LINE --> Lines::ptr
+
+            // 1a2) LINE --> Lines::ptr
         } else if (cellset.GetCellShape(0) == vtkm::CELL_SHAPE_LINE) {
             auto numElem = numConn > 0 ? numConn / 2 : numPoints / 2;
             //Lines::ptr lines(new Lines(numElem, numConn, numPoints));
@@ -377,9 +397,9 @@ Object::ptr vtkmGetGeometry(vtkm::cont::DataSet &dataset)
                         vtkmCoords.AsArrayHandle<vtkm::cont::ArrayHandleSOA<vtkm::Vec3f>>().ReadPortal();
                     for (vtkm::Id index = 0; index < numConn; index++) {
                         auto point = coordsPortal.Get(connPortal.Get(index));
-                        (lines->x().data())[index] = point[0];
+                        (lines->x().data())[index] = point[2];
                         (lines->y().data())[index] = point[1];
-                        (lines->z().data())[index] = point[2];
+                        (lines->z().data())[index] = point[0];
                     }
                 } else {
                     throw std::invalid_argument("VTKm coordinate system uses unsupported array handle storage.");
@@ -394,8 +414,8 @@ Object::ptr vtkmGetGeometry(vtkm::cont::DataSet &dataset)
             }
             lines->el()[numElem] = numConn;
             result = lines;
-        
-        // 1a3) POLY_LINE --> Lines::ptr 
+
+            // 1a3) POLY_LINE --> Lines::ptr
         } else if (cellset.GetCellShape(0) == vtkm::CELL_SHAPE_POLY_LINE) {
             auto elements = isoGrid.GetOffsetsArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
             auto elemPortal = elements.ReadPortal();
@@ -407,24 +427,24 @@ Object::ptr vtkmGetGeometry(vtkm::cont::DataSet &dataset)
                 lines->el()[index] = elemPortal.Get(index);
             }
             result = lines;
-        
-        // 1a4) TRIANGLE --> Triangles::ptr
+
+            // 1a4) TRIANGLE --> Triangles::ptr
         } else if (cellset.GetCellShape(0) == vtkm::CELL_SHAPE_TRIANGLE) {
             Triangles::ptr triangles(new Triangles(numConn, numPoints));
             for (vtkm::Id index = 0; index < numConn; index++) {
                 triangles->cl()[index] = connPortal.Get(index);
             }
             result = triangles;
-        
-        // 1a5) QUAD --> Quads::ptr
+
+            // 1a5) QUAD --> Quads::ptr
         } else if (cellset.GetCellShape(0) == vtkm::CELL_SHAPE_QUAD) {
             Quads::ptr quads(new Quads(numConn, numPoints));
             for (vtkm::Id index = 0; index < numConn; index++) {
                 quads->cl()[index] = connPortal.Get(index);
             }
             result = quads;
-        
-        // 1a6) POLYGON --> Polygons::ptr
+
+            // 1a6) POLYGON --> Polygons::ptr
         } else if (cellset.GetCellShape(0) == vtkm::CELL_SHAPE_POLYGON) {
             auto elements = isoGrid.GetOffsetsArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
             auto elemPortal = elements.ReadPortal();
@@ -441,7 +461,7 @@ Object::ptr vtkmGetGeometry(vtkm::cont::DataSet &dataset)
         }
     }
 
-    // 1b) Convert CellSetExplicit
+    // 1b) Convert CellSetExplicit: cells can be of different types
     if (!result && cellset.CanConvert<vtkm::cont::CellSetExplicit<>>()) {
         auto ecellset = cellset.AsCellSet<vtkm::cont::CellSetExplicit<>>();
         auto elements = ecellset.GetOffsetsArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
@@ -546,6 +566,7 @@ Object::ptr vtkmGetGeometry(vtkm::cont::DataSet &dataset)
     }
 
     // ----- 3.) CONVERT GHOST CELLS INFO -----
+    //       --> supports Indexed, Triangles, Quads
     if (dataset.HasGhostCellField()) {
         auto ghostname = dataset.GetGhostCellFieldName();
         std::cerr << "vtkm: has ghost cells: " << ghostname << std::endl;
@@ -593,6 +614,7 @@ MAP(double, vistle::Scalar);
 
 #undef MAP
 
+// CONVERT DATA FIELD (VTKm to VISTLE)
 struct GetArrayContents {
     vistle::DataBase::ptr &result;
 
