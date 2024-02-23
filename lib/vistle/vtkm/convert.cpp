@@ -23,52 +23,43 @@
 #include "convert.h"
 
 // TODO: - better: make Vistle lines work, s.t., coords do not have to be same size as el
+//       - doesn't the axes swap affect the normals, too?
 
 // BUG: - (IsoSurface, PointPerTimestep, isopoint): when "moving" the grid (changing x in Gendat),
 //         isopoints still work outside the new bounding box (where old bounding box was)
+
+// x and y coordinates are swapped in VTKm (compared to vistle)
+enum AxesSwap { xId = 2, yId = 1, zId = 0 };
 
 namespace vistle {
 
 VtkmTransformStatus coordinatesToVtkm(vtkm::cont::DataSet &vtkmDataset, vistle::Object::const_ptr grid)
 {
-    // 1a) Coords: use SOA ArrayHandle to create COORDINATE system & store NORMALs in normals field  (AXES SWAP)
-    if (auto coords = Coords::as(grid)) {
-        auto xCoords = coords->x();
-        auto yCoords = coords->y();
-        auto zCoords = coords->z();
-
+    if (auto coordinates = Coords::as(grid)) {
         auto coordinateSystem = vtkm::cont::CoordinateSystem(
             "coordinate system",
-            vtkm::cont::make_ArrayHandleSOA(coords->z().handle(), coords->y().handle(), coords->x().handle()));
+            vtkm::cont::make_ArrayHandleSOA(coordinates->x(xId).handle(), coordinates->x(yId).handle(),
+                                            coordinates->x(zId).handle()));
 
         vtkmDataset.AddCoordinateSystem(coordinateSystem);
 
-        if (coords->normals()) {
-            auto normals = coords->normals();
-            vtkmAddField(vtkmDataset, normals, "normals");
+        if (coordinates->normals()) {
+            vtkmAddField(vtkmDataset, coordinates->normals(), "normals");
         }
-
-        // 1b) Uniform: create uniform point COORDINATEs (account for AXES SWAP here, NO NORMALS)
     } else if (auto uni = UniformGrid::as(grid)) {
-        auto nx = uni->getNumDivisions(0);
-        auto ny = uni->getNumDivisions(1);
-        auto nz = uni->getNumDivisions(2);
-        const auto *min = uni->min(), *dist = uni->dist();
-        // x and z are swapped in vtkm
-        vtkm::cont::ArrayHandleUniformPointCoordinates uniformCoordinates(
-            vtkm::Id3(nz, ny, nx), vtkm::Vec3f{min[2], min[1], min[0]}, vtkm::Vec3f{dist[2], dist[1], dist[0]});
-        auto coordinateSystem = vtkm::cont::CoordinateSystem("uniform", uniformCoordinates);
-        vtkmDataset.AddCoordinateSystem(coordinateSystem);
+        //const auto *min = uni->min(), *dist = uni->dist();
+        auto axesDivisions = vtkm::Id3(uni->getNumDivisions(xId), uni->getNumDivisions(yId), uni->getNumDivisions(zId));
+        auto gridOrigin = vtkm::Vec3f{uni->min()[xId], uni->min()[yId], uni->min()[zId]};
+        auto cellSizes = vtkm::Vec3f{uni->dist()[xId], uni->dist()[yId], uni->dist()[zId]};
 
-        // 1c) Rectilinear: create cartesian point COORDINATES (acconut for AXES SWAP here, NO NORMALS)
+        vtkm::cont::ArrayHandleUniformPointCoordinates implicitCoordinates(axesDivisions, gridOrigin, cellSizes);
+
+        vtkmDataset.AddCoordinateSystem(vtkm::cont::CoordinateSystem("uniform", implicitCoordinates));
+
     } else if (auto rect = RectilinearGrid::as(grid)) {
-        auto xc = rect->coords(0).handle();
-        auto yc = rect->coords(1).handle();
-        auto zc = rect->coords(2).handle();
-
-        vtkm::cont::ArrayHandleCartesianProduct rectilinearCoordinates(zc, yc, xc);
-        auto coordinateSystem = vtkm::cont::CoordinateSystem("rectilinear", rectilinearCoordinates);
-        vtkmDataset.AddCoordinateSystem(coordinateSystem);
+        vtkm::cont::ArrayHandleCartesianProduct implicitCoordinates(
+            rect->coords(xId).handle(), rect->coords(yId).handle(), rect->coords(zId).handle());
+        vtkmDataset.AddCoordinateSystem(vtkm::cont::CoordinateSystem("rectilinear", implicitCoordinates));
     } else {
         return VtkmTransformStatus::UNSUPPORTED_GRID_TYPE;
     }
@@ -82,16 +73,16 @@ VtkmTransformStatus cellsetToVtkm(vtkm::cont::DataSet &vtkmDataset, vistle::Obje
 
     // 2a) StructuredGridBase: create CellSetStructured (account for AXES SWAP)
     if (auto str = grid->getInterface<StructuredGridBase>()) {
-        vtkm::Id nx = str->getNumDivisions(0);
-        vtkm::Id ny = str->getNumDivisions(1);
-        vtkm::Id nz = str->getNumDivisions(2);
+        vtkm::Id nx = str->getNumDivisions(xId);
+        vtkm::Id ny = str->getNumDivisions(yId);
+        vtkm::Id nz = str->getNumDivisions(zId);
         if (nz > 0) {
             vtkm::cont::CellSetStructured<3> str3;
-            str3.SetPointDimensions({nz, ny, nx});
+            str3.SetPointDimensions({nx, ny, nz});
             vtkmDataset.SetCellSet(str3);
         } else if (ny > 0) {
             vtkm::cont::CellSetStructured<2> str2;
-            str2.SetPointDimensions({ny, nx});
+            str2.SetPointDimensions({nx, ny});
             vtkmDataset.SetCellSet(str2);
         } else {
             vtkm::cont::CellSetStructured<1> str1;
@@ -280,10 +271,10 @@ struct AddField {
         if (auto in = V1::as(object)) {
             ah = in->x().handle();
         } else if (auto in = V3::as(object)) {
-            auto ax = in->x().handle();
-            auto ay = in->y().handle();
-            auto az = in->z().handle();
-            ah = vtkm::cont::make_ArrayHandleSOA(az, ay, ax);
+            auto ax = in->x(xId).handle();
+            auto ay = in->x(yId).handle();
+            auto az = in->x(zId).handle();
+            ah = vtkm::cont::make_ArrayHandleSOA(ax, ay, az);
         } else {
             return;
         }
@@ -345,17 +336,17 @@ Object::ptr cellSetSingleTypeToVistle(vtkm::cont::DataSet &dataset, vtkm::Id num
                 auto coordsPortal = vtkmCoords.AsArrayHandle<vtkm::cont::ArrayHandle<vtkm::Vec3f>>().ReadPortal();
                 for (vtkm::Id index = 0; index < numConn; index++) {
                     auto point = coordsPortal.Get(connPortal.Get(index));
-                    (lines->x().data())[index] = point[2];
-                    (lines->y().data())[index] = point[1];
-                    (lines->z().data())[index] = point[0];
+                    (lines->x().data())[index] = point[xId];
+                    (lines->y().data())[index] = point[yId];
+                    (lines->z().data())[index] = point[zId];
                 }
             } else if (vtkmCoords.CanConvert<vtkm::cont::ArrayHandleSOA<vtkm::Vec3f>>()) {
                 auto coordsPortal = vtkmCoords.AsArrayHandle<vtkm::cont::ArrayHandleSOA<vtkm::Vec3f>>().ReadPortal();
                 for (vtkm::Id index = 0; index < numConn; index++) {
                     auto point = coordsPortal.Get(connPortal.Get(index));
-                    (lines->x().data())[index] = point[2];
-                    (lines->y().data())[index] = point[1];
-                    (lines->z().data())[index] = point[0];
+                    (lines->x().data())[index] = point[xId];
+                    (lines->y().data())[index] = point[yId];
+                    (lines->z().data())[index] = point[zId];
                 }
             } else {
                 throw std::invalid_argument("VTKm coordinate system uses unsupported array handle storage.");
@@ -541,9 +532,9 @@ void fillVistleCoords(ArrayHandlePortal coordsPortal, Coords::ptr coords)
 
     for (vtkm::Id index = 0; index < coordsPortal.GetNumberOfValues(); index++) {
         vtkm::Vec3f point = coordsPortal.Get(index);
-        x[index] = point[2];
-        y[index] = point[1];
-        z[index] = point[0];
+        x[index] = point[xId];
+        y[index] = point[yId];
+        z[index] = point[zId];
     }
 }
 
