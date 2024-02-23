@@ -217,7 +217,7 @@ bool apply_affinity_from_environment(int nodeRank, int ranksOnThisNode)
               << ")" << std::endl;
     if (depth == -1) {
         std::cerr << "affinity: possible values for VISTLE_AFFINITY are "
-                  << "pu, core, chip, numa, machinee" << std::endl;
+                  << "pu, core, chip, numa, machine" << std::endl;
         return false;
     }
 
