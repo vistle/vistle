@@ -16,7 +16,7 @@ enum VtkmTransformStatus { SUCCESS = 0, UNSUPPORTED_GRID_TYPE = 1, UNSUPPORTED_C
 
 // transform a vistle dataset (grid and scalar data field) into a vtkm dataset
 // so vtkm filters can be applied to it
-VtkmTransformStatus V_VTKM_EXPORT vtkmSetGrid(vtkm::cont::DataSet &vtkmDataSet, vistle::Object::const_ptr grid);
+VtkmTransformStatus V_VTKM_EXPORT gridToVtkm(vistle::Object::const_ptr grid, vtkm::cont::DataSet &vtkmDataSet);
 
 VtkmTransformStatus V_VTKM_EXPORT vtkmAddField(vtkm::cont::DataSet &vtkmDataSet,
                                                const vistle::DataBase::const_ptr &field, const std::string &name);

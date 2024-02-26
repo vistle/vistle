@@ -33,7 +33,7 @@ enum AxesSwap { xId = 2, yId = 1, zId = 0 };
 
 namespace vistle {
 
-VtkmTransformStatus coordinatesToVtkm(vtkm::cont::DataSet &vtkmDataset, vistle::Object::const_ptr grid)
+VtkmTransformStatus coordinatesToVtkm(vistle::Object::const_ptr grid, vtkm::cont::DataSet &vtkmDataset)
 {
     if (auto coordinates = Coords::as(grid)) {
         auto coordinateSystem = vtkm::cont::CoordinateSystem(
@@ -131,7 +131,7 @@ template<typename IndexedPtr>
 VtkmTransformStatus addIndexedCellsetToVtkm(IndexedPtr indexed, vtkm::UInt8 vtkmShape, vtkm::cont::DataSet &vtkmDataset)
 {
     indexed->check();
-    
+
     auto shapesc = vtkm::cont::make_ArrayHandleConstant(vtkmShape, indexed->getNumElements());
 #ifdef VISTLE_VTKM_TYPES
     vtkm::cont::CellSetExplicit<typename vtkm::cont::ArrayHandleConstant<vtkm::UInt8>::StorageTag> cellSet;
@@ -156,7 +156,7 @@ VtkmTransformStatus addIndexedCellsetToVtkm(IndexedPtr indexed, vtkm::UInt8 vtkm
     return VtkmTransformStatus::SUCCESS;
 }
 
-VtkmTransformStatus cellsetToVtkm(vtkm::cont::DataSet &vtkmDataset, vistle::Object::const_ptr grid)
+VtkmTransformStatus cellsetToVtkm(vistle::Object::const_ptr grid, vtkm::cont::DataSet &vtkmDataset)
 {
     if (auto structuredGrid = grid->getInterface<StructuredGridBase>()) {
         addStructuredCellsetToVtkm(structuredGrid, vtkmDataset);
@@ -194,7 +194,7 @@ VtkmTransformStatus cellsetToVtkm(vtkm::cont::DataSet &vtkmDataset, vistle::Obje
     return VtkmTransformStatus::SUCCESS;
 }
 
-void ghostToVtkm(vtkm::cont::DataSet &vtkmDataset, vistle::Object::const_ptr grid)
+void ghostToVtkm(vistle::Object::const_ptr grid, vtkm::cont::DataSet &vtkmDataset)
 {
     vtkmDataset.SetGhostCellFieldName("ghost");
 
@@ -217,18 +217,17 @@ void ghostToVtkm(vtkm::cont::DataSet &vtkmDataset, vistle::Object::const_ptr gri
     }
 }
 
-// TODO: would be nice if result is right and input left
-VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object::const_ptr grid)
+VtkmTransformStatus gridToVtkm(vistle::Object::const_ptr grid, vtkm::cont::DataSet &vtkmDataset)
 {
-    auto status = coordinatesToVtkm(vtkmDataset, grid);
+    auto status = coordinatesToVtkm(grid, vtkmDataset);
     if (status != VtkmTransformStatus::SUCCESS)
         return status;
 
-    status = cellsetToVtkm(vtkmDataset, grid);
+    status = cellsetToVtkm(grid, vtkmDataset);
     if (status != VtkmTransformStatus::SUCCESS)
         return status;
 
-    ghostToVtkm(vtkmDataset, grid);
+    ghostToVtkm(grid, vtkmDataset);
 
     return VtkmTransformStatus::SUCCESS;
 }

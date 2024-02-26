@@ -182,7 +182,7 @@ bool ClipVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task) const
 
     // transform vistle dataset to vtkm dataset
     vtkm::cont::DataSet vtkmDataSet;
-    auto status = vtkmSetGrid(vtkmDataSet, grid);
+    auto status = gridToVtkm(grid, vtkmDataSet);
     if (status == VtkmTransformStatus::UNSUPPORTED_GRID_TYPE) {
         sendError("Currently only supporting unstructured grids");
         return true;

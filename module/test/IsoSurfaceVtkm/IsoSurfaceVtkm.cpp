@@ -200,7 +200,7 @@ Object::ptr IsoSurfaceVtkm::work(vistle::Object::const_ptr grid, vistle::DataBas
 
     // transform vistle dataset to vtkm dataset
     vtkm::cont::DataSet vtkmDataSet;
-    auto status = vtkmSetGrid(vtkmDataSet, grid);
+    auto status = gridToVtkm(grid, vtkmDataSet);
     if (status == VtkmTransformStatus::UNSUPPORTED_GRID_TYPE) {
         sendError("Currently only supporting unstructured grids");
         return Object::ptr();
