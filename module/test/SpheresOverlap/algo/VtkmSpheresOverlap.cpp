@@ -6,8 +6,8 @@
 #include <vtkm/cont/ArrayHandleGroupVec.h>
 #include <vtkm/cont/CellSetSingleType.h>
 
-#include <vtkm/worklet/WorkletMapField.h>
 #include <vtkm/worklet/ScatterCounting.h>
+#include <vtkm/worklet/WorkletMapField.h>
 
 #include "VtkmSpheresOverlap.h"
 

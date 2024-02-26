@@ -2,8 +2,8 @@
 #define CELL_LISTS_ALGORITHM_H
 
 #include <vistle/core/lines.h>
-#include <vistle/core/uniformgrid.h>
 #include <vistle/core/spheres.h>
+#include <vistle/core/uniformgrid.h>
 
 #include "ThicknessDeterminer.h"
 

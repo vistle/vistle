@@ -2,6 +2,7 @@
 #define SPHERES_OVERLAP_H
 
 #include <string>
+
 #include <vistle/module/module.h>
 
 /*

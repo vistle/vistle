@@ -1,4 +1,4 @@
-set(SOURCES convert.cpp)
+set(SOURCES cellsetToVtkm.cpp convert.cpp)
 
 set(HEADERS export.h transformEnums.h cellsetToVtkm.h convert.h)
 

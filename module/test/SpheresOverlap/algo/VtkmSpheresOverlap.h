@@ -3,8 +3,9 @@
 
 #include <vtkm/filter/FilterField.h>
 
-#include "worklet/PointLocatorCellLists.h"
 #include "ThicknessDeterminer.h"
+
+#include "worklet/PointLocatorCellLists.h"
 
 /*
     Detects overlapping spheres and creates connections lines between them.

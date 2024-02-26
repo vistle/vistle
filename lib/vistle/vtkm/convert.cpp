@@ -1,24 +1,22 @@
-#include <vtkm/cont/ArrayCopy.h>
-#include <vtkm/cont/DataSetBuilderExplicit.h>
-#include <vtkm/cont/CellSetExplicit.h>
-
-#include <vistle/core/scalars.h>
-#include <vistle/core/unstr.h>
-#include <vistle/core/structuredgridbase.h>
-#include <vistle/core/uniformgrid.h>
-#include <vistle/core/rectilineargrid.h>
-#include <vistle/core/structuredgrid.h>
-
-#include <vistle/core/points.h>
-#include <vistle/core/lines.h>
-#include <vistle/core/spheres.h>
-#include <vistle/core/triangles.h>
-#include <vistle/core/quads.h>
-#include <vistle/core/polygons.h>
-
 #include <boost/mpl/for_each.hpp>
-
 #include <stdexcept>
+
+#include <vtkm/cont/ArrayCopy.h>
+#include <vtkm/cont/CellSetExplicit.h>
+#include <vtkm/cont/DataSetBuilderExplicit.h>
+
+#include <vistle/core/lines.h>
+#include <vistle/core/points.h>
+#include <vistle/core/polygons.h>
+#include <vistle/core/quads.h>
+#include <vistle/core/rectilineargrid.h>
+#include <vistle/core/scalars.h>
+#include <vistle/core/spheres.h>
+#include <vistle/core/structuredgrid.h>
+#include <vistle/core/structuredgridbase.h>
+#include <vistle/core/triangles.h>
+#include <vistle/core/uniformgrid.h>
+#include <vistle/core/unstr.h>
 
 #include "convert.h"
 #include "cellsetToVtkm.h"
@@ -144,11 +142,11 @@ struct AddField {
     }
 };
 
-VtkmTransformStatus vtkmAddField(vtkm::cont::DataSet &vtkmDataSet, const vistle::DataBase::const_ptr &field,
+VtkmTransformStatus vtkmAddField(vtkm::cont::DataSet &vtkmDataset, const vistle::DataBase::const_ptr &field,
                                  const std::string &name)
 {
     bool handled = false;
-    boost::mpl::for_each<Scalars>(AddField(vtkmDataSet, field, name, handled));
+    boost::mpl::for_each<Scalars>(AddField(vtkmDataset, field, name, handled));
     if (handled)
         return VtkmTransformStatus::SUCCESS;
 
@@ -555,13 +553,13 @@ struct GetArrayContents {
 };
 
 
-vistle::DataBase::ptr vtkmGetField(const vtkm::cont::DataSet &vtkmDataSet, const std::string &name)
+vistle::DataBase::ptr vtkmGetField(const vtkm::cont::DataSet &vtkmDataset, const std::string &name)
 {
     vistle::DataBase::ptr result;
-    if (!vtkmDataSet.HasField(name))
+    if (!vtkmDataset.HasField(name))
         return result;
 
-    auto field = vtkmDataSet.GetField(name);
+    auto field = vtkmDataset.GetField(name);
     if (!field.IsCellField() && !field.IsPointField())
         return result;
     auto ah = field.GetData();

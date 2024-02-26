@@ -6,13 +6,13 @@
 
 #include <vistle/alg/objalg.h>
 #include <vistle/core/lines.h>
-#include <vistle/core/uniformgrid.h>
 #include <vistle/core/spheres.h>
+#include <vistle/core/uniformgrid.h>
 #include <vistle/vtkm/convert.h>
 
 #include "algo/CellListsAlgorithm.h"
-#include "algo/VtkmSpheresOverlap.h"
 #include "algo/ThicknessDeterminer.h"
+#include "algo/VtkmSpheresOverlap.h"
 
 #include "SpheresOverlap.h"
 
