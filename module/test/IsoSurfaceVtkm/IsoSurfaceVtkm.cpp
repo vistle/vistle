@@ -213,7 +213,7 @@ Object::ptr IsoSurfaceVtkm::work(vistle::Object::const_ptr grid, vistle::DataBas
     std::string isospecies = isoField->getAttribute("_species");
     if (isospecies.empty())
         isospecies = "isodata";
-    status = vtkmAddField(vtkmDataSet, isoField, isospecies);
+    status = fieldToVtkm(isoField, vtkmDataSet, isospecies);
     if (status == VtkmTransformStatus::UNSUPPORTED_FIELD_TYPE) {
         sendError("Unsupported iso field type");
         return Object::ptr();
@@ -224,7 +224,7 @@ Object::ptr IsoSurfaceVtkm::work(vistle::Object::const_ptr grid, vistle::DataBas
         mapspecies = mapField->getAttribute("_species");
         if (mapspecies.empty())
             mapspecies = "mapped";
-        status = vtkmAddField(vtkmDataSet, mapField, mapspecies);
+        status = fieldToVtkm(mapField, vtkmDataSet, mapspecies);
         if (status == VtkmTransformStatus::UNSUPPORTED_FIELD_TYPE) {
             sendError("Unsupported mapped field type");
             return Object::ptr();

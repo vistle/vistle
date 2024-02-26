@@ -41,7 +41,7 @@ VtkmTransformStatus coordinatesToVtkm(vistle::Object::const_ptr grid, vtkm::cont
         vtkmDataset.AddCoordinateSystem(coordinateSystem);
 
         if (coordinates->normals())
-            vtkmAddField(vtkmDataset, coordinates->normals(), "normals");
+            fieldToVtkm(coordinates->normals(), vtkmDataset, "normals");
 
     } else if (auto uni = UniformGrid::as(grid)) {
         auto axesDivisions = vtkm::Id3(uni->getNumDivisions(xId), uni->getNumDivisions(yId), uni->getNumDivisions(zId));
@@ -102,55 +102,53 @@ VtkmTransformStatus gridToVtkm(vistle::Object::const_ptr grid, vtkm::cont::DataS
     return VtkmTransformStatus::SUCCESS;
 }
 
-// CONVERT DATA FIELD (VISTLE TO VTKM)
-struct AddField {
-    vtkm::cont::DataSet &dataset;
-    const DataBase::const_ptr &object;
-    const std::string &name;
-    bool &handled;
-    AddField(vtkm::cont::DataSet &ds, const DataBase::const_ptr &obj, const std::string &name, bool &handled)
-    : dataset(ds), object(obj), name(name), handled(handled)
+struct FieldToVtkm {
+    const DataBase::const_ptr &m_field;
+    vtkm::cont::DataSet &m_dataset;
+    const std::string &m_name;
+    VtkmTransformStatus &m_status;
+
+    FieldToVtkm(const DataBase::const_ptr &field, vtkm::cont::DataSet &dataset, const std::string &name,
+                VtkmTransformStatus &status)
+    : m_field(field), m_dataset(dataset), m_name(name), m_status(status)
     {}
-    template<typename S>
-    void operator()(S)
+
+    template<typename ScalarType>
+    void operator()(ScalarType)
     {
-        typedef Vec<S, 1> V1;
-        //typedef Vec<S, 2> V2;
-        typedef Vec<S, 3> V3;
-        //typedef Vec<S, 4> V4;
+        typedef Vec<ScalarType, 1> V1;
+        typedef Vec<ScalarType, 3> V3;
 
         vtkm::cont::UnknownArrayHandle ah;
-        if (auto in = V1::as(object)) {
+        if (auto in = V1::as(m_field)) {
             ah = in->x().handle();
-        } else if (auto in = V3::as(object)) {
-            auto ax = in->x(xId).handle();
-            auto ay = in->x(yId).handle();
-            auto az = in->x(zId).handle();
-            ah = vtkm::cont::make_ArrayHandleSOA(ax, ay, az);
+
+        } else if (auto in = V3::as(m_field)) {
+            ah = vtkm::cont::make_ArrayHandleSOA(in->x(xId).handle(), in->x(yId).handle(), in->x(zId).handle());
+
         } else {
             return;
         }
 
-        auto mapping = object->guessMapping();
+        auto mapping = m_field->guessMapping();
         if (mapping == vistle::DataBase::Vertex) {
-            dataset.AddPointField(name, ah);
+            m_dataset.AddPointField(m_name, ah);
+
         } else {
-            dataset.AddCellField(name, ah);
+            m_dataset.AddCellField(m_name, ah);
         }
 
-        handled = true;
+        m_status = VtkmTransformStatus::SUCCESS;
     }
 };
 
-VtkmTransformStatus vtkmAddField(vtkm::cont::DataSet &vtkmDataset, const vistle::DataBase::const_ptr &field,
-                                 const std::string &name)
+VtkmTransformStatus fieldToVtkm(const vistle::DataBase::const_ptr &field, vtkm::cont::DataSet &vtkmDataset,
+                                const std::string &fieldName)
 {
-    bool handled = false;
-    boost::mpl::for_each<Scalars>(AddField(vtkmDataset, field, name, handled));
-    if (handled)
-        return VtkmTransformStatus::SUCCESS;
+    VtkmTransformStatus status = VtkmTransformStatus::UNSUPPORTED_FIELD_TYPE;
+    boost::mpl::for_each<Scalars>(FieldToVtkm(field, vtkmDataset, fieldName, status));
 
-    return VtkmTransformStatus::UNSUPPORTED_FIELD_TYPE;
+    return status;
 }
 
 Object::ptr cellSetSingleTypeToVistle(vtkm::cont::DataSet &dataset, vtkm::Id numPoints)

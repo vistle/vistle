@@ -13,11 +13,12 @@
 
 namespace vistle {
 
-// transform a vistle grid (i.e., its cellset and coordinates) into a vtkm dataset
+// convert a vistle grid (i.e., its cellset and coordinates) into a vtkm dataset
 VtkmTransformStatus V_VTKM_EXPORT gridToVtkm(vistle::Object::const_ptr grid, vtkm::cont::DataSet &vtkmDataset);
 
-VtkmTransformStatus V_VTKM_EXPORT vtkmAddField(vtkm::cont::DataSet &vtkmDataset,
-                                               const vistle::DataBase::const_ptr &field, const std::string &name);
+// convert a vistle data field to a vtkm field which will be added to `vtkmDataset` with the field name `fieldName`
+VtkmTransformStatus V_VTKM_EXPORT fieldToVtkm(const vistle::DataBase::const_ptr &field,
+                                              vtkm::cont::DataSet &vtkmDataset, const std::string &fieldName);
 
 // transform a vtkm isosurface dataset into a vistle Triangles object, so it can
 // be rendered in COVER
