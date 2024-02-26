@@ -9,10 +9,9 @@
 #include <vtkm/cont/DataSet.h>
 
 #include "export.h"
+#include "transformEnums.h"
 
 namespace vistle {
-
-enum VtkmTransformStatus { SUCCESS = 0, UNSUPPORTED_GRID_TYPE = 1, UNSUPPORTED_CELL_TYPE = 2, UNSUPPORTED_FIELD_TYPE };
 
 // transform a vistle dataset (grid and scalar data field) into a vtkm dataset
 // so vtkm filters can be applied to it

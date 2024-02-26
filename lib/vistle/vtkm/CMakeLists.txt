@@ -1,6 +1,6 @@
 set(SOURCES convert.cpp)
 
-set(HEADERS export.h convert.h)
+set(HEADERS export.h transformEnums.h cellsetToVtkm.h convert.h)
 
 vistle_add_library(vistle_vtkm EXPORT ${SOURCES} ${HEADERS})
 target_include_directories(vistle_vtkm SYSTEM PUBLIC ${VTKM_INCLUDE_DIRS})
