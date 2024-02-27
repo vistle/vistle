@@ -151,13 +151,47 @@ VtkmTransformStatus fieldToVtkm(const vistle::DataBase::const_ptr &field, vtkm::
     return status;
 }
 
+template<typename IndexedType>
+Object::ptr indexedSingleTypeToVistle(vtkm::cont::CellSetSingleType<> cellset, vtkm::Id numPoints)
+{
+    auto connectivity = cellset.GetConnectivityArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
+    auto connPortal = connectivity.ReadPortal();
+    auto numConn = connPortal.GetNumberOfValues();
+
+    auto elements = cellset.GetOffsetsArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
+    auto elemPortal = elements.ReadPortal();
+    auto numElem = elemPortal.GetNumberOfValues();
+
+    typename IndexedType::ptr result(new IndexedType(numElem, numConn, numPoints));
+    for (vtkm::Id index = 0; index < numConn; index++) {
+        result->cl()[index] = connPortal.Get(index);
+    }
+    for (vtkm::Id index = 0; index < numElem + 1; index++) {
+        result->el()[index] = elemPortal.Get(index);
+    }
+    return result;
+}
+
+template<typename NgonsType>
+Object::ptr ngonsSingleTypeToVistle(vtkm::cont::CellSetSingleType<> cellset, vtkm::Id numPoints)
+{
+    auto connectivity = cellset.GetConnectivityArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
+    auto connPortal = connectivity.ReadPortal();
+    auto numConn = connPortal.GetNumberOfValues();
+
+    typename NgonsType::ptr result(new NgonsType(numConn, numPoints));
+    for (vtkm::Id index = 0; index < numConn; index++) {
+        result->cl()[index] = connPortal.Get(index);
+    }
+    return result;
+}
+
 Object::ptr cellSetSingleTypeToVistle(vtkm::cont::DataSet &dataset, vtkm::Id numPoints)
 {
     Object::ptr result;
 
     auto cellset = dataset.GetCellSet();
 
-    // try conversion for uniform cell types first
     auto isoGrid = cellset.AsCellSet<vtkm::cont::CellSetSingleType<>>();
     // get connectivity array of the dataset
     auto connectivity = isoGrid.GetConnectivityArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
@@ -212,49 +246,17 @@ Object::ptr cellSetSingleTypeToVistle(vtkm::cont::DataSet &dataset, vtkm::Id num
         lines->el()[numElem] = numConn;
         result = lines;
 
-        // 1a3) POLY_LINE --> Lines::ptr
     } else if (cellset.GetCellShape(0) == vtkm::CELL_SHAPE_POLY_LINE) {
-        auto elements = isoGrid.GetOffsetsArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
-        auto elemPortal = elements.ReadPortal();
-        Lines::ptr lines(new Lines(numElem, numConn, numPoints));
-        for (vtkm::Id index = 0; index < numConn; index++) {
-            lines->cl()[index] = connPortal.Get(index);
-        }
-        for (vtkm::Id index = 0; index < numElem + 1; index++) {
-            lines->el()[index] = elemPortal.Get(index);
-        }
-        result = lines;
+        result = indexedSingleTypeToVistle<Lines>(isoGrid, numPoints);
 
-        // 1a4) TRIANGLE --> Triangles::ptr
     } else if (cellset.GetCellShape(0) == vtkm::CELL_SHAPE_TRIANGLE) {
-        Triangles::ptr triangles(new Triangles(numConn, numPoints));
-        for (vtkm::Id index = 0; index < numConn; index++) {
-            triangles->cl()[index] = connPortal.Get(index);
-        }
-        result = triangles;
+        result = ngonsSingleTypeToVistle<Triangles>(isoGrid, numPoints);
 
-        // 1a5) QUAD --> Quads::ptr
     } else if (cellset.GetCellShape(0) == vtkm::CELL_SHAPE_QUAD) {
-        Quads::ptr quads(new Quads(numConn, numPoints));
-        for (vtkm::Id index = 0; index < numConn; index++) {
-            quads->cl()[index] = connPortal.Get(index);
-        }
-        result = quads;
+        result = ngonsSingleTypeToVistle<Quads>(isoGrid, numPoints);
 
-        // 1a6) POLYGON --> Polygons::ptr
     } else if (cellset.GetCellShape(0) == vtkm::CELL_SHAPE_POLYGON) {
-        auto elements = isoGrid.GetOffsetsArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
-        auto elemPortal = elements.ReadPortal();
-
-        Polygons::ptr polys(new Polygons(numElem, numConn, numPoints));
-
-        for (vtkm::Id index = 0; index < numConn; index++) {
-            polys->cl()[index] = connPortal.Get(index);
-        }
-        for (vtkm::Id index = 0; index < numElem + 1; index++) {
-            polys->el()[index] = elemPortal.Get(index);
-        }
-        result = polys;
+        result = indexedSingleTypeToVistle<Polygons>(isoGrid, numPoints);
     }
     return result;
 }
