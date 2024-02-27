@@ -87,7 +87,7 @@ void ghostToVtkm(vistle::Object::const_ptr grid, vtkm::cont::DataSet &vtkmDatase
     }
 }
 
-VtkmTransformStatus gridToVtkm(vistle::Object::const_ptr grid, vtkm::cont::DataSet &vtkmDataset)
+VtkmTransformStatus geometryToVtkm(vistle::Object::const_ptr grid, vtkm::cont::DataSet &vtkmDataset)
 {
     auto status = coordinatesToVtkm(grid, vtkmDataset);
     if (status != VtkmTransformStatus::SUCCESS)
@@ -409,7 +409,7 @@ void addVtkmCoordinatesToVistle(vtkm::cont::DataSet &dataset, Object::ptr result
         if (!Lines::as(result) && dataset.GetNumberOfCoordinateSystems() > 0)
             vtkmToVistleCoordinateSystem(dataset.GetCoordinateSystem(), coords);
 
-        if (auto normals = vtkmGetField(dataset, "normals")) {
+        if (auto normals = vtkmFieldToVistle(dataset, "normals")) {
             if (auto nvec = vistle::Vec<vistle::Scalar, 3>::as(normals)) {
                 auto n = std::make_shared<vistle::Normals>(0);
                 n->d()->x[0] = nvec->d()->x[0];
@@ -429,7 +429,7 @@ void addVtkmGhostInfoToVistle(vtkm::cont::DataSet &dataset, Object::ptr result)
     if (dataset.HasGhostCellField()) {
         auto ghostname = dataset.GetGhostCellFieldName();
         std::cerr << "vtkm: has ghost cells: " << ghostname << std::endl;
-        if (auto ghosts = vtkmGetField(dataset, ghostname)) {
+        if (auto ghosts = vtkmFieldToVistle(dataset, ghostname)) {
             std::cerr << "vtkm: got ghost cells: #" << ghosts->getSize() << std::endl;
             if (auto bvec = vistle::Vec<vistle::Byte>::as(ghosts)) {
                 if (auto indexed = Indexed::as(result)) {
@@ -448,7 +448,7 @@ void addVtkmGhostInfoToVistle(vtkm::cont::DataSet &dataset, Object::ptr result)
     }
 }
 
-Object::ptr vtkmGetGeometry(vtkm::cont::DataSet &dataset)
+Object::ptr vtkmGeometryToVistle(vtkm::cont::DataSet &dataset)
 {
     auto result = cellsetToVistle(dataset);
 
@@ -551,13 +551,13 @@ struct GetArrayContents {
 };
 
 
-vistle::DataBase::ptr vtkmGetField(const vtkm::cont::DataSet &vtkmDataset, const std::string &name)
+vistle::DataBase::ptr vtkmFieldToVistle(const vtkm::cont::DataSet &vtkmDataset, const std::string &fieldName)
 {
     vistle::DataBase::ptr result;
-    if (!vtkmDataset.HasField(name))
+    if (!vtkmDataset.HasField(fieldName))
         return result;
 
-    auto field = vtkmDataset.GetField(name);
+    auto field = vtkmDataset.GetField(fieldName);
     if (!field.IsCellField() && !field.IsPointField())
         return result;
     auto ah = field.GetData();

@@ -182,7 +182,7 @@ bool ClipVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task) const
 
     // transform vistle dataset to vtkm dataset
     vtkm::cont::DataSet vtkmDataSet;
-    auto status = gridToVtkm(grid, vtkmDataSet);
+    auto status = geometryToVtkm(grid, vtkmDataSet);
     if (status == VtkmTransformStatus::UNSUPPORTED_GRID_TYPE) {
         sendError("Currently only supporting unstructured grids");
         return true;
@@ -211,7 +211,7 @@ bool ClipVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task) const
     auto isosurface = isosurfaceFilter.Execute(vtkmDataSet);
 
     // transform result back into vistle format
-    Object::ptr geoOut = vtkmGetGeometry(isosurface);
+    Object::ptr geoOut = vtkmGeometryToVistle(isosurface);
     if (geoOut) {
         updateMeta(geoOut);
         geoOut->copyAttributes(isoField);
@@ -228,7 +228,7 @@ bool ClipVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task) const
     }
 
     if (isoField) {
-        if (auto mapped = vtkmGetField(isosurface, isospecies)) {
+        if (auto mapped = vtkmFieldToVistle(isosurface, isospecies)) {
             std::cerr << "mapped data: " << *mapped << std::endl;
             mapped->copyAttributes(isoField);
             mapped->setGrid(geoOut);

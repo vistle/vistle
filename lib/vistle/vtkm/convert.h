@@ -13,18 +13,18 @@
 
 namespace vistle {
 
-// convert a vistle grid (i.e., its cellset and coordinates) into a vtkm dataset
-VtkmTransformStatus V_VTKM_EXPORT gridToVtkm(vistle::Object::const_ptr grid, vtkm::cont::DataSet &vtkmDataset);
+// converts a vistle geometry (i.e., its cellset and coordinates) into a vtkm dataset
+VtkmTransformStatus V_VTKM_EXPORT geometryToVtkm(vistle::Object::const_ptr grid, vtkm::cont::DataSet &vtkmDataset);
 
-// convert a vistle data field to a vtkm field which will be added to `vtkmDataset` with the field name `fieldName`
+// converts a vistle data field to a vtkm field which will be added to `vtkmDataset` with the field name `fieldName`
 VtkmTransformStatus V_VTKM_EXPORT fieldToVtkm(const vistle::DataBase::const_ptr &field,
                                               vtkm::cont::DataSet &vtkmDataset, const std::string &fieldName);
 
-// transform a vtkm isosurface dataset into a vistle Triangles object, so it can
-// be rendered in COVER
-vistle::Object::ptr V_VTKM_EXPORT vtkmGetGeometry(vtkm::cont::DataSet &dataset);
+// converts a vtkm geometry (i.e., its cellset and coordinates) into a vistle geometry
+vistle::Object::ptr V_VTKM_EXPORT vtkmGeometryToVistle(vtkm::cont::DataSet &dataset);
 
-vistle::DataBase::ptr V_VTKM_EXPORT vtkmGetField(const vtkm::cont::DataSet &vtkmDataset, const std::string &name);
+// converts a vtkm field in `vtkmDataset` with the name `fieldName` into a vistle field that can be added to a vistle geometry
+vistle::DataBase::ptr V_VTKM_EXPORT vtkmFieldToVistle(const vtkm::cont::DataSet &vtkmDataset, const std::string &fieldName);
 
 } // namespace vistle
 

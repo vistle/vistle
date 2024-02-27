@@ -67,7 +67,7 @@ bool SpheresOverlap::compute(const std::shared_ptr<BlockTask> &task) const
     if (m_useVtkm->getValue()) {
         // create vtk-m dataset from vistle data
         vtkm::cont::DataSet vtkmSpheres;
-        auto status = gridToVtkm(spheres, vtkmSpheres);
+        auto status = geometryToVtkm(spheres, vtkmSpheres);
         if (status == VtkmTransformStatus::UNSUPPORTED_GRID_TYPE) {
             sendError("Currently only supporting unstructured grids");
             return true;
@@ -84,8 +84,8 @@ bool SpheresOverlap::compute(const std::shared_ptr<BlockTask> &task) const
         overlapFilter.SetThicknessDeterminer((ThicknessDeterminer)m_thicknessDeterminer->getValue());
         auto vtkmLines = overlapFilter.Execute(vtkmSpheres);
 
-        lines = Lines::as(vtkmGetGeometry(vtkmLines));
-        lineThicknesses = Vec<Scalar, 1>::as(vtkmGetField(vtkmLines, "lineThickness"));
+        lines = Lines::as(vtkmGeometryToVistle(vtkmLines));
+        lineThicknesses = Vec<Scalar, 1>::as(vtkmFieldToVistle(vtkmLines, "lineThickness"));
 
     } else {
         auto maxRadius = std::numeric_limits<std::remove_reference<decltype(radii[0])>::type>::min();

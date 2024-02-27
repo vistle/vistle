@@ -200,7 +200,7 @@ Object::ptr IsoSurfaceVtkm::work(vistle::Object::const_ptr grid, vistle::DataBas
 
     // transform vistle dataset to vtkm dataset
     vtkm::cont::DataSet vtkmDataSet;
-    auto status = gridToVtkm(grid, vtkmDataSet);
+    auto status = geometryToVtkm(grid, vtkmDataSet);
     if (status == VtkmTransformStatus::UNSUPPORTED_GRID_TYPE) {
         sendError("Currently only supporting unstructured grids");
         return Object::ptr();
@@ -241,7 +241,7 @@ Object::ptr IsoSurfaceVtkm::work(vistle::Object::const_ptr grid, vistle::DataBas
 
 
     // transform result back into vistle format
-    Object::ptr geoOut = vtkmGetGeometry(isosurface);
+    Object::ptr geoOut = vtkmGeometryToVistle(isosurface);
     if (!geoOut) {
         return Object::ptr();
     }
@@ -260,7 +260,7 @@ Object::ptr IsoSurfaceVtkm::work(vistle::Object::const_ptr grid, vistle::DataBas
     }
 
     if (mapField) {
-        if (auto mapOut = vtkmGetField(isosurface, mapspecies)) {
+        if (auto mapOut = vtkmFieldToVistle(isosurface, mapspecies)) {
             mapOut->copyAttributes(mapField);
             mapOut->setGrid(geoOut);
             updateMeta(mapOut);
