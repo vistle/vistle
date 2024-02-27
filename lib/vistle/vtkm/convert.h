@@ -21,7 +21,7 @@ VtkmTransformStatus V_VTKM_EXPORT fieldToVtkm(const vistle::DataBase::const_ptr 
                                               vtkm::cont::DataSet &vtkmDataset, const std::string &fieldName);
 
 // converts a vtkm geometry (i.e., its cellset and coordinates) into a vistle geometry
-vistle::Object::ptr V_VTKM_EXPORT vtkmGeometryToVistle(vtkm::cont::DataSet &dataset);
+vistle::Object::ptr V_VTKM_EXPORT vtkmGeometryToVistle(vtkm::cont::DataSet &vtkmDataset);
 
 // converts a vtkm field in `vtkmDataset` with the name `fieldName` into a vistle field that can be added to a vistle geometry
 vistle::DataBase::ptr V_VTKM_EXPORT vtkmFieldToVistle(const vtkm::cont::DataSet &vtkmDataset, const std::string &fieldName);
