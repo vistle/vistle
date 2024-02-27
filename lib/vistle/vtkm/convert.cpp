@@ -243,6 +243,7 @@ Object::ptr linesSingleTypeToVistle(const vtkm::cont::DataSet &dataset, const vt
     return lines;
 }
 
+//TODO: instead of exception use VtkmTransformStatus
 Object::ptr cellSetSingleTypeToVistle(const vtkm::cont::DataSet &dataset, vtkm::Id numPoints)
 {
     auto cellset = dataset.GetCellSet().AsCellSet<vtkm::cont::CellSetSingleType<>>();
@@ -265,31 +266,18 @@ Object::ptr cellSetSingleTypeToVistle(const vtkm::cont::DataSet &dataset, vtkm::
 
     } else if (cellset.GetCellShape(0) == vtkm::CELL_SHAPE_POLYGON) {
         return indexedSingleTypeToVistle<Polygons>(cellset, numPoints);
+
     } else {
         throw std::invalid_argument("Unsupported cell type.");
     }
 }
 
-Object::ptr cellSetExplicitToVistle(const vtkm::cont::DataSet &dataset, vtkm::Id numPoints)
+std::pair<int, int> getCellShapeDimensions(const vtkm::cont::ArrayHandle<vtkm::UInt8>::ReadPortalType shapePortal)
 {
-    Object::ptr result;
+    int mindim = 5, maxdim = -1, dim = -1;
 
-    auto cellset = dataset.GetCellSet();
-
-    auto ecellset = cellset.AsCellSet<vtkm::cont::CellSetExplicit<>>();
-    auto elements = ecellset.GetOffsetsArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
-    auto elemPortal = elements.ReadPortal();
-    auto numElem = ecellset.GetNumberOfCells();
-    int mindim = 5, maxdim = -1;
-    auto eshapes = ecellset.GetShapesArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
-    auto eshapePortal = eshapes.ReadPortal();
-    auto econn = ecellset.GetConnectivityArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
-    auto econnPortal = econn.ReadPortal();
-    auto numConn = econn.GetNumberOfValues();
-    for (vtkm::Id idx = 0; idx < numElem; ++idx) {
-        auto shape = eshapePortal.Get(idx);
-        int dim = -1;
-        switch (shape) {
+    for (vtkm::Id idx = 0; idx < shapePortal.GetNumberOfValues(); ++idx) {
+        switch (shapePortal.Get(idx)) {
         case vtkm::CELL_SHAPE_VERTEX:
             dim = 0;
             break;
@@ -309,54 +297,79 @@ Object::ptr cellSetExplicitToVistle(const vtkm::cont::DataSet &dataset, vtkm::Id
             dim = 3;
             break;
         default:
-            dim = -1;
+            throw std::invalid_argument("Unsupported cell type!");
             break;
         }
 
         mindim = std::min(dim, mindim);
         maxdim = std::max(dim, maxdim);
     }
+    return {mindim, maxdim};
+}
 
-    if (mindim > maxdim) {
-        // empty
-    } else if (mindim == -1) {
-        // unhanded cell type
-    } else if (mindim != maxdim || maxdim == 3) {
+Object::ptr cellSetExplicitToVistle(const vtkm::cont::DataSet &dataset, vtkm::Id numPoints)
+{
+    Object::ptr result;
+
+    auto cellset = dataset.GetCellSet().AsCellSet<vtkm::cont::CellSetExplicit<>>();
+
+    auto shapePortal =
+        cellset.GetShapesArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint()).ReadPortal();
+
+    if (shapePortal.GetNumberOfValues() == 0)
+        return result;
+
+    auto connPortal =
+        cellset.GetConnectivityArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint()).ReadPortal();
+    auto numConn = connPortal.GetNumberOfValues();
+
+    auto elemPortal =
+        cellset.GetOffsetsArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint()).ReadPortal();
+    auto numElem = cellset.GetNumberOfCells();
+
+    int mindim, maxdim;
+    std::tie(mindim, maxdim) = getCellShapeDimensions(shapePortal);
+
+    if (mindim < maxdim || maxdim == 3) {
         // require UnstructuredGrid for mixed cells
         UnstructuredGrid::ptr unstr(new UnstructuredGrid(numElem, numConn, numPoints));
         for (vtkm::Id index = 0; index < numConn; index++) {
-            unstr->cl()[index] = econnPortal.Get(index);
+            unstr->cl()[index] = connPortal.Get(index);
         }
         for (vtkm::Id index = 0; index < numElem + 1; index++) {
             unstr->el()[index] = elemPortal.Get(index);
         }
         for (vtkm::Id index = 0; index < numElem; index++) {
-            unstr->tl()[index] = eshapePortal.Get(index);
+            unstr->tl()[index] = shapePortal.Get(index);
         }
         result = unstr;
+
     } else if (mindim == 0) {
         Points::ptr points(new Points(numPoints));
         result = points;
+
     } else if (mindim == 1) {
         Lines::ptr lines(new Lines(numElem, numConn, numPoints));
         for (vtkm::Id index = 0; index < numConn; index++) {
-            lines->cl()[index] = econnPortal.Get(index);
+            lines->cl()[index] = connPortal.Get(index);
         }
         for (vtkm::Id index = 0; index < numElem + 1; index++) {
             lines->el()[index] = elemPortal.Get(index);
         }
         result = lines;
+
     } else if (mindim == 2) {
         // all 2D cells representable as Polygons
         Polygons::ptr polys(new Polygons(numElem, numConn, numPoints));
         for (vtkm::Id index = 0; index < numConn; index++) {
-            polys->cl()[index] = econnPortal.Get(index);
+            polys->cl()[index] = connPortal.Get(index);
         }
         for (vtkm::Id index = 0; index < numElem + 1; index++) {
             polys->el()[index] = elemPortal.Get(index);
         }
         result = polys;
     }
+
     return result;
 }
 
@@ -399,6 +412,7 @@ void copyCoordinates(ArrayHandlePortal coordsPortal, Coords::ptr coords)
     }
 }
 
+//TODO: instead of exception use VtkmTransformStatus
 void coordinatesToVistle(const vtkm::cont::CoordinateSystem &coordinateSystem, Coords::ptr coords)
 {
     auto vtkmCoords = coordinateSystem.GetData();
@@ -406,9 +420,11 @@ void coordinatesToVistle(const vtkm::cont::CoordinateSystem &coordinateSystem, C
     if (vtkmCoords.CanConvert<vtkm::cont::ArrayHandle<vtkm::Vec3f>>()) {
         auto coordsPortal = vtkmCoords.AsArrayHandle<vtkm::cont::ArrayHandle<vtkm::Vec3f>>().ReadPortal();
         copyCoordinates(coordsPortal, coords);
+
     } else if (vtkmCoords.CanConvert<vtkm::cont::ArrayHandleSOA<vtkm::Vec3f>>()) {
         auto coordsPortal = vtkmCoords.AsArrayHandle<vtkm::cont::ArrayHandleSOA<vtkm::Vec3f>>().ReadPortal();
         copyCoordinates(coordsPortal, coords);
+
     } else {
         throw std::invalid_argument("VTKm coordinate system uses unsupported array handle storage.");
     }
