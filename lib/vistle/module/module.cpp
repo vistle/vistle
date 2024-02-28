@@ -1801,6 +1801,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
     busy.setDestId(Id::LocalManager);
     sendMessage(busy);
 #endif
+
     if (exec->what() == Execute::ComputeExecute || exec->what() == Execute::Prepare) {
         if (m_lastTask) {
             CERR << "prepare: waiting for previous tasks..." << std::endl;
@@ -1808,7 +1809,11 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
         }
 
         applyDelayedChanges();
-
+    }
+    if (exec->what() == Execute::Prepare) {
+        m_cache.clear();
+    }
+    if (exec->what() == Execute::ComputeExecute || exec->what() == Execute::Prepare) {
         ret &= prepareWrapper(exec);
     }
 
