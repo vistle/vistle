@@ -23,7 +23,6 @@
 
 
 // TODO: - better: make Vistle lines work, s.t., coords do not have to be same size as el
-//       - doesn't the axes swap affect the normals, too?
 
 // BUG: - (IsoSurface, PointPerTimestep, isopoint): when "moving" the grid (changing x in Gendat),
 //         isopoints still work outside the new bounding box (where old bounding box was)
@@ -383,15 +382,11 @@ Object::ptr cellsetToVistle(const vtkm::cont::DataSet &dataset)
     if (dataset.GetNumberOfCoordinateSystems() > 0)
         numPoints = dataset.GetCoordinateSystem().GetNumberOfPoints();
 
-    // try conversion for uniform cell types first
-    if (cellset.CanConvert<vtkm::cont::CellSetSingleType<>>()) {
+    if (cellset.CanConvert<vtkm::cont::CellSetSingleType<>>())
         result = cellSetSingleTypeToVistle(dataset, numPoints);
-    }
 
-    // 1b) Convert CellSetExplicit: cells can be of different types
-    if (!result && cellset.CanConvert<vtkm::cont::CellSetExplicit<>>()) {
+    if (!result && cellset.CanConvert<vtkm::cont::CellSetExplicit<>>())
         result = cellSetExplicitToVistle(dataset, numPoints);
-    }
 
     return result;
 }
@@ -512,7 +507,6 @@ MAP(double, vistle::Scalar);
 
 #undef MAP
 
-// CONVERT DATA FIELD (VTKm to VISTLE)
 struct GetArrayContents {
     DataBase::ptr &result;
 
@@ -554,10 +548,9 @@ struct GetArrayContents {
         case 3: {
             auto data = std::make_shared<Vec<V, 3>>(portal.GetNumberOfValues());
             result = data;
-            for (int i = 0; i < numComponents; ++i) {
-                x[i] = &data->x(i)[0];
-            }
-            std::swap(x[0], x[2]); // axes swap
+            x[xId] = &data->x(0)[0];
+            x[yId] = &data->x(1)[0];
+            x[zId] = &data->x(2)[0];
             break;
         }
 #if 0
@@ -590,6 +583,7 @@ DataBase::ptr vtkmFieldToVistle(const vtkm::cont::DataSet &vtkmDataset, const st
     auto field = vtkmDataset.GetField(fieldName);
     if (!field.IsCellField() && !field.IsPointField())
         return result;
+
     auto ah = field.GetData();
     try {
         ah.CastAndCallForTypes<vtkm::TypeListAll, vtkm::cont::StorageListCommon>(GetArrayContents{result});
