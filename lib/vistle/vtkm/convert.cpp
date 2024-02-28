@@ -243,7 +243,6 @@ Object::ptr linesSingleTypeToVistle(const vtkm::cont::DataSet &dataset, const vt
     return lines;
 }
 
-//TODO: instead of exception use VtkmTransformStatus
 Object::ptr cellSetSingleTypeToVistle(const vtkm::cont::DataSet &dataset, vtkm::Id numPoints)
 {
     auto cellset = dataset.GetCellSet().AsCellSet<vtkm::cont::CellSetSingleType<>>();
@@ -381,7 +380,7 @@ Object::ptr cellsetToVistle(const vtkm::cont::DataSet &dataset)
     Object::ptr result;
 
     auto numPoints = dataset.GetNumberOfPoints();
-    if (dataset.GetNumberOfCoordinateSystems() > 0) // TODO: check if this breaks anything
+    if (dataset.GetNumberOfCoordinateSystems() > 0)
         numPoints = dataset.GetCoordinateSystem().GetNumberOfPoints();
 
     // try conversion for uniform cell types first
@@ -412,7 +411,6 @@ void copyCoordinates(ArrayHandlePortal coordsPortal, Coords::ptr coords)
     }
 }
 
-//TODO: instead of exception use VtkmTransformStatus
 void coordinatesToVistle(const vtkm::cont::CoordinateSystem &coordinateSystem, Coords::ptr coords)
 {
     auto vtkmCoords = coordinateSystem.GetData();
