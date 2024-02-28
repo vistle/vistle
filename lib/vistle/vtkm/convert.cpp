@@ -31,7 +31,7 @@
 namespace vistle {
 
 // ----- VISTLE to VTKm -----
-VtkmTransformStatus coordinatesAndNormalsToVtkm(vistle::Object::const_ptr grid, vtkm::cont::DataSet &vtkmDataset)
+VtkmTransformStatus coordinatesAndNormalsToVtkm(Object::const_ptr grid, vtkm::cont::DataSet &vtkmDataset)
 {
     if (auto coordinates = Coords::as(grid)) {
         auto coordinateSystem = vtkm::cont::CoordinateSystem(
@@ -65,7 +65,7 @@ VtkmTransformStatus coordinatesAndNormalsToVtkm(vistle::Object::const_ptr grid, 
     return VtkmTransformStatus::SUCCESS;
 }
 
-void ghostToVtkm(vistle::Object::const_ptr grid, vtkm::cont::DataSet &vtkmDataset)
+void ghostToVtkm(Object::const_ptr grid, vtkm::cont::DataSet &vtkmDataset)
 {
     vtkmDataset.SetGhostCellFieldName("ghost");
 
@@ -88,7 +88,7 @@ void ghostToVtkm(vistle::Object::const_ptr grid, vtkm::cont::DataSet &vtkmDatase
     }
 }
 
-VtkmTransformStatus geometryToVtkm(vistle::Object::const_ptr grid, vtkm::cont::DataSet &vtkmDataset)
+VtkmTransformStatus geometryToVtkm(Object::const_ptr grid, vtkm::cont::DataSet &vtkmDataset)
 {
     auto status = coordinatesAndNormalsToVtkm(grid, vtkmDataset);
     if (status != VtkmTransformStatus::SUCCESS)
@@ -132,7 +132,7 @@ struct FieldToVtkm {
         }
 
         auto mapping = m_field->guessMapping();
-        if (mapping == vistle::DataBase::Vertex) {
+        if (mapping == DataBase::Vertex) {
             m_dataset.AddPointField(m_name, ah);
 
         } else {
@@ -143,7 +143,7 @@ struct FieldToVtkm {
     }
 };
 
-VtkmTransformStatus fieldToVtkm(const vistle::DataBase::const_ptr &field, vtkm::cont::DataSet &vtkmDataset,
+VtkmTransformStatus fieldToVtkm(const DataBase::const_ptr &field, vtkm::cont::DataSet &vtkmDataset,
                                 const std::string &fieldName)
 {
     VtkmTransformStatus status = VtkmTransformStatus::UNSUPPORTED_FIELD_TYPE;
@@ -440,8 +440,8 @@ void coordinatesAndNormalsToVistle(vtkm::cont::DataSet &dataset, Object::ptr res
             coordinatesToVistle(dataset.GetCoordinateSystem(), coords);
 
         if (auto normals = vtkmFieldToVistle(dataset, "normals")) {
-            if (auto nvec = vistle::Vec<vistle::Scalar, 3>::as(normals)) {
-                auto n = std::make_shared<vistle::Normals>(0);
+            if (auto nvec = Vec<Scalar, 3>::as(normals)) {
+                auto n = std::make_shared<Normals>(0);
                 n->d()->x[0] = nvec->d()->x[0];
                 n->d()->x[1] = nvec->d()->x[1];
                 n->d()->x[2] = nvec->d()->x[2];
@@ -461,7 +461,7 @@ void ghostToVistle(vtkm::cont::DataSet &dataset, Object::ptr result)
         std::cerr << "vtkm: has ghost cells: " << ghostname << std::endl;
         if (auto ghosts = vtkmFieldToVistle(dataset, ghostname)) {
             std::cerr << "vtkm: got ghost cells: #" << ghosts->getSize() << std::endl;
-            if (auto bvec = vistle::Vec<vistle::Byte>::as(ghosts)) {
+            if (auto bvec = Vec<Byte>::as(ghosts)) {
                 if (auto indexed = Indexed::as(result)) {
                     indexed->d()->ghost = bvec->d()->x[0];
                 } else if (auto tri = Triangles::as(result)) {
@@ -514,9 +514,9 @@ MAP(double, vistle::Scalar);
 
 // CONVERT DATA FIELD (VTKm to VISTLE)
 struct GetArrayContents {
-    vistle::DataBase::ptr &result;
+    DataBase::ptr &result;
 
-    GetArrayContents(vistle::DataBase::ptr &result): result(result) {}
+    GetArrayContents(DataBase::ptr &result): result(result) {}
 
     template<typename T, typename S>
     VTKM_CONT void operator()(const vtkm::cont::ArrayHandle<T, S> &array) const
@@ -536,7 +536,7 @@ struct GetArrayContents {
         V *x[4] = {};
         switch (numComponents) {
         case 1: {
-            auto data = std::make_shared<vistle::Vec<V, 1>>(portal.GetNumberOfValues());
+            auto data = std::make_shared<Vec<V, 1>>(portal.GetNumberOfValues());
             result = data;
             for (int i = 0; i < numComponents; ++i) {
                 x[i] = &data->x(i)[0];
@@ -544,7 +544,7 @@ struct GetArrayContents {
             break;
         }
         case 2: {
-            auto data = std::make_shared<vistle::Vec<V, 2>>(portal.GetNumberOfValues());
+            auto data = std::make_shared<Vec<V, 2>>(portal.GetNumberOfValues());
             result = data;
             for (int i = 0; i < numComponents; ++i) {
                 x[i] = &data->x(i)[0];
@@ -552,7 +552,7 @@ struct GetArrayContents {
             break;
         }
         case 3: {
-            auto data = std::make_shared<vistle::Vec<V, 3>>(portal.GetNumberOfValues());
+            auto data = std::make_shared<Vec<V, 3>>(portal.GetNumberOfValues());
             result = data;
             for (int i = 0; i < numComponents; ++i) {
                 x[i] = &data->x(i)[0];
@@ -562,7 +562,7 @@ struct GetArrayContents {
         }
 #if 0
         case 4: {
-            auto data = std::make_shared<vistle::Vec<V, 4>>(portal.GetNumberOfValues());
+            auto data = std::make_shared<Vec<V, 4>>(portal.GetNumberOfValues());
             result = data;
             for (int i = 0; i < numComponents; ++i) {
                 x[i] = &data->x(i)[0];
@@ -581,9 +581,9 @@ struct GetArrayContents {
 };
 
 
-vistle::DataBase::ptr vtkmFieldToVistle(const vtkm::cont::DataSet &vtkmDataset, const std::string &fieldName)
+DataBase::ptr vtkmFieldToVistle(const vtkm::cont::DataSet &vtkmDataset, const std::string &fieldName)
 {
-    vistle::DataBase::ptr result;
+    DataBase::ptr result;
     if (!vtkmDataset.HasField(fieldName))
         return result;
 
