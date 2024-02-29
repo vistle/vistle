@@ -46,7 +46,7 @@ VTKM_EXEC void OverlapDetector::CountOverlaps(const vtkm::Id pointId, const vtkm
                          boundId < this->UpperBounds.Get(cellToCheck); boundId++) {
                         auto idToCheck = this->PointIds.Get(boundId);
 
-                        if (pointId < idToCheck) { // avoid checking the same pair of points twice
+                        if (pointId != idToCheck) {
                             auto pointToCheck = this->Coords.Get(idToCheck);
 
                             // check if spheres overlap (here it's enough to calculate the squared distance)
@@ -67,8 +67,8 @@ VTKM_EXEC void OverlapDetector::CountOverlaps(const vtkm::Id pointId, const vtkm
     saves the indices of the two points into `connectivity`. and a scalar value into `thickness`. 
 */
 VTKM_EXEC void OverlapDetector::CreateConnectionLines(const vtkm::Id pointId, const vtkm::Vec3f &point,
-                                                   const vtkm::IdComponent visitId, vtkm::Id2 &connectivity,
-                                                   vtkm::FloatDefault &thickness) const
+                                                      const vtkm::IdComponent visitId, vtkm::Id2 &connectivity,
+                                                      vtkm::FloatDefault &thickness) const
 {
     auto cellId3 = this->DetermineCellId(point);
     auto cellId = FlattenCellId(cellId3);
@@ -86,7 +86,7 @@ VTKM_EXEC void OverlapDetector::CreateConnectionLines(const vtkm::Id pointId, co
                          boundId < this->UpperBounds.Get(cellToCheck); boundId++) {
                         auto idToCheck = this->PointIds.Get(boundId);
 
-                        if (pointId < idToCheck) { // avoid checking the same pair of points twice
+                        if (pointId != idToCheck) {
                             auto pointToCheck = this->Coords.Get(idToCheck);
 
                             // check if spheres overlap
