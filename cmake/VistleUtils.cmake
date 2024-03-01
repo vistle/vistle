@@ -1,4 +1,4 @@
-macro(generate_network_snapshot targetname network_file)
+macro(generate_snapshots_and_workflow targetname network_file)
     add_custom_command(
         #create a snapshot of the pipeline
         OUTPUT ${CMAKE_CURRENT_LIST_DIR}/${network_file}_workflow.png
@@ -12,7 +12,7 @@ macro(generate_network_snapshot targetname network_file)
 endmacro()
 
 option(VISTLE_DOC_WORKFLOW "Generate workflow snapshots (GUI + COVER) for documentation" ON)
-macro(generate_snapshots_and_workflow targetname network_file output_src_dir)
+macro(generate_cover_snapshot targetname network_file output_src_dir)
     set(SNAPSHOT_ARGS "-name ${network_file} -o ${output_src_dir} -sdir ${CMAKE_CURRENT_LIST_DIR}")
     if(VISTLE_DOC_WORKFLOW)
         set(SNAPSHOT_ARGS "${SNAPSHOT_ARGS} -gui")
@@ -28,7 +28,7 @@ macro(generate_snapshots_and_workflow targetname network_file output_src_dir)
                     ${PROJECT_SOURCE_DIR}/doc/resultSnapShot.py
             COMMENT "Generating result snapshot for " ${network_file}.vsl)
         add_custom_target(${targetname}_${network_file}_result DEPENDS ${CMAKE_CURRENT_LIST_DIR}/${network_file}_result.png)
-        add_dependencies(${targetname}_doc ${targetname}_${network_file}_result)
+        add_dependencies(${targetname}_hash ${targetname}_${network_file}_result)
     else()
         message(
             WARNING "can not generate snapshots for "

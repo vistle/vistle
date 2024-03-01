@@ -3,6 +3,8 @@
 import os
 import argparse
 import time
+import vistle
+
 import coGRMsg
 
 def createGUISnapshot(imageName, sourceDir):

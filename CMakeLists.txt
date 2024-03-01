@@ -39,6 +39,8 @@ endif()
 
 add_custom_target(vistle_doc)
 add_custom_target(vistle_doc_skip)
+add_custom_target(vistle_hash)
+add_custom_target(vistle_hash_skip)
 
 if(POLICY CMP0042)
     # default to finding shlibs relative to @rpath on MacOS
@@ -804,11 +806,15 @@ set(ALL_MODULES
 set(MODULE_DESCRIPTION_FILE ${PROJECT_BINARY_DIR}/share/vistle/moduledescriptions.txt)
 
 set(VISTLE_DOC_SKIP FALSE)
+set(MODULE_CAN_CREATE_HASH FALSE)
 if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
     file(REMOVE ${MODULE_DESCRIPTION_FILE})
     install(FILES ${MODULE_DESCRIPTION_FILE} DESTINATION ${CMAKE_INSTALL_PREFIX}/share/vistle/)
 
     macro(add_module2 targetname executable description)
+        if (MODULE_CAN_CREATE_HASH)
+            message("----------------------------------------HASH----------------------------------------")
+        endif()
         if(NOT VISTLE_MODULE_CATEGORY)
             set(VISTLE_MODULE_CATEGORY "Unspecified")
         endif()
@@ -859,6 +865,7 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
         # some targets need to be ignored for documentation
         set(IGNR_MODS "COVER_plugin")
         set(SKIP_4_DOC FALSE)
+        set(CREATE_IMAGE_HASH TRUE)
         foreach(elem ${IGNR_MODS})
             if(${targetname} STREQUAL ${elem})
                 set(SKIP_4_DOC TRUE)
@@ -866,6 +873,9 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
         endforeach()
         if(NOT SKIP_4_DOC)
             add_module_doc_target(${targetname} ${VISTLE_DOC_SKIP})
+        endif()
+        if(CREATE_IMAGE_HASH)
+            add_image_hash(${targetname} ${MODULE_CAN_CREATE_HASH})
         endif()
     endmacro(add_module2)
 
@@ -879,6 +889,7 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
 
     include(cmake/VistleUtils.cmake)
     include(cmake/Documentation.cmake)
+    include(cmake/Test.cmake)
 endif()
 
 set(CMAKE_C_VISIBILITY_PRESET hidden)
