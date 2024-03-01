@@ -40,3 +40,28 @@ macro(generate_cover_snapshot targetname network_file output_src_dir)
                     ".vwp\" exists!")
     endif()
 endmacro()
+
+#BUG: create_image_hash is called before generate_snapshot is finished (probably????)
+#     at least it prints warning "can not create image hash for " (seems like macro is called during configure
+#     -> should be called POST_BUILD! (like the snapshot!)
+macro(create_image_hash targetname network_file)
+    message("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAaaa")
+    set(HASH_ARGS
+        -name ${network_file} -sdir ${CMAKE_CURRENT_LIST_DIR}/${network_file}_result.png -jdir ${PROJECT_SOURCE_DIR}/test/moduleTest/utils/refImageHash.json    )
+    #message(Python_EXECUTABLE ${Python_EXECUTABLE})
+    #execute_process(COMMAND ${Python_EXECUTABLE} ${PROJECT_SOURCE_DIR}/test/moduleTest/utils/createImageHash.py -name ${network_file})
+
+    # message("HASH_ARGS: " ${HASH_ARGS})
+    # #if we have a viewpoint file we can generate a result image, only first viewpoint is considered, only first cover is considered
+    if(EXISTS ${CMAKE_CURRENT_LIST_DIR}/${network_file}_result.png)
+        add_custom_command(
+            OUTPUT ${PROJECT_SOURCE_DIR}/test/moduleTest/utils/refImageHash.json
+            COMMAND ${Python_EXECUTABLE} ${PROJECT_SOURCE_DIR}/test/moduleTest/utils/createImageHash.py ${HASH_ARGS}
+            DEPENDS ${PROJECT_SOURCE_DIR}/test/moduleTest/utils/createImageHash.py
+            COMMENT "Create image hash for: " ${network_file}_result.png)
+        add_custom_target(${targetname}_${network_file}_resultHash DEPENDS ${PROJECT_SOURCE_DIR}/test/moduleTest/utils/refImageHash.json)
+        add_dependencies(${targetname}_hash ${targetname}_${network_file}_resultHash)
+    else()
+        message(WARNING "can not create image hash for " ${targetname})
+    endif()
+endmacro()

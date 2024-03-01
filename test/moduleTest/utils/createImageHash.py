@@ -42,6 +42,7 @@ if __name__ == "__main__":
         help="Path to json.",
     )
     args = parser.parse_args()
+    print(args)
 
     if args.name != None:
         name = args.name[0]
