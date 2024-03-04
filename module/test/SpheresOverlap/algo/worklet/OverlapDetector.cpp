@@ -48,7 +48,8 @@ VTKM_EXEC void OverlapDetector::CountOverlaps(const vtkm::Id pointId, const vtkm
 
                         // if two overlapping spheres lie in the same cell, we can avoid checking the same pair twice
                         // by only checking the point with the "smaller" id for overlap (note that the points are not sorted)
-                        if (pointId != idToCheck || (cellId == cellToCheck && pointId < idToCheck)) {
+                        if ((cellId != cellToCheck && pointId != idToCheck) ||
+                            (cellId == cellToCheck && pointId < idToCheck)) {
                             auto pointToCheck = this->Coords.Get(idToCheck);
 
                             // check if spheres overlap (here it's enough to calculate the squared distance)
@@ -90,7 +91,8 @@ VTKM_EXEC void OverlapDetector::CreateConnectionLines(const vtkm::Id pointId, co
 
                         // if two overlapping spheres lie in the same cell, we can avoid checking the same pair twice
                         // by only checking the point with the "smaller" id for overlap (note that the points are not sorted)
-                        if (pointId != idToCheck || (cellId == cellToCheck && pointId < idToCheck)) {
+                        if ((cellId != cellToCheck && pointId != idToCheck) ||
+                            (cellId == cellToCheck && pointId < idToCheck)) {
                             auto pointToCheck = this->Coords.Get(idToCheck);
 
                             // check if spheres overlap

@@ -107,12 +107,14 @@ std::vector<OverlapLineInfo> CellListsAlgorithm(Spheres::const_ptr spheres, Scal
         for (const auto sId: sphereList) {
             std::array<Scalar, 3> point1 = {x[sId], y[sId], z[sId]};
             auto radius1 = radii[sId];
-            // check for collisions in neighbor cells
+            // check for collisions in current and neighbor cells
             for (const auto cellToCheck: getCellsToCheck(grid, cell)) {
                 if (auto idsToCheck = cellList.find(cellToCheck);
                     (idsToCheck != cellList.end() && cell <= cellToCheck)) {
                     for (const auto toCheck: idsToCheck->second) {
-                        if (sId != toCheck) {
+                        // if two overlapping spheres lie in the same cell, we can avoid checking the same pair twice
+                        // by only checking the point with the "smaller" id for overlap (note that the points are not sorted)
+                        if ((cell != cellToCheck && sId != toCheck) || (cell == cellToCheck && sId < toCheck)) {
                             std::array<Scalar, 3> point2 = {x[toCheck], y[toCheck], z[toCheck]};
                             Scalar radius2 = radii[toCheck];
                             if (auto distance = EuclideanDistance(point1, point2); distance <= radius1 + radius2)
