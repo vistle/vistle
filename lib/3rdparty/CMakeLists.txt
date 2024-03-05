@@ -141,7 +141,7 @@ if(NOT VISTLE_GUI_ONLY)
         #add_library(vtkm_io ALIAS vtkm::io)
         #add_library(vtkm_rendering ALIAS vtkm::rendering)
         #add_library(vtkm_source ALIAS vtkm::source)
-        #add_library(vtkm_worklet ALIAS vtkm::worklet)
+        add_library(vtkm::worklet ALIAS vtkm_worklet)
 
     endif()
 
