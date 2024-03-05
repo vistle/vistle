@@ -56,8 +56,9 @@ if __name__ == "__main__":
     hash = createImageHash(srcDir)
     addJson(name, jsonDir, hash)
 
-    print(hash)
-    print(type(hash))
-    print(str(hash))
-    print(type(str(hash)))
-    print(json.dumps(str(hash)))
+    # for debugging 
+    # print(hash)
+    # print(type(hash))
+    # print(str(hash))
+    # print(type(str(hash)))
+    # print(json.dumps(str(hash)))
