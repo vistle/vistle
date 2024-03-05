@@ -41,7 +41,10 @@ macro(generate_cover_snapshot targetname network_file output_src_dir)
 endmacro()
 
 macro(create_image_hash targetname network_file)
-    set(HASH_ARGS -name ${targetname} -sdir ${CMAKE_CURRENT_LIST_DIR}/${network_file}_result.png -jdir
+    file(RELATIVE_PATH mod_path ${CMAKE_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
+    message("mod_path: ${mod_path}")
+    # set(HASH_ARGS -name ${targetname} -sdir ${CMAKE_CURRENT_LIST_DIR}/${network_file}_result.png -jdir
+    set(HASH_ARGS -name ${mod_path} -sdir ${CMAKE_CURRENT_LIST_DIR}/${network_file}_result.png -jdir
                   ${PROJECT_SOURCE_DIR}/test/moduleTest/utils/refImageHash.json)
 
     # #if we have a viewpoint file we can generate a result image, only first viewpoint is considered, only first cover is considered
@@ -53,7 +56,7 @@ macro(create_image_hash targetname network_file)
             DEPENDS ${PROJECT_SOURCE_DIR}/test/moduleTest/utils/createImageHash.py ${targetname} ${CMAKE_CURRENT_LIST_DIR}/${network_file}_result.png
             COMMENT "Create image hash for: " ${network_file}_result.png)
         add_custom_target(${targetname}_${network_file}_resultHash DEPENDS ${CMAKE_CURRENT_LIST_DIR}/${network_file}_hash_out)
-        add_dependencies(${targetname}_hash ${targetname}_${network_file}_resultHash ${targetname}_${network_file}_result)
+        add_dependencies(${targetname}_hash ${targetname}_${network_file}_resultHash)
     else()
         message(WARNING "cannot create image hash for " ${targetname})
     endif()

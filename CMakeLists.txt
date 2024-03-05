@@ -39,8 +39,8 @@ endif()
 
 add_custom_target(vistle_doc)
 add_custom_target(vistle_doc_skip)
-add_custom_target(vistle_hash)
-add_custom_target(vistle_hash_skip)
+add_custom_target(vistle_ref_hash)
+add_custom_target(vistle_ref_hash_skip)
 
 if(POLICY CMP0042)
     # default to finding shlibs relative to @rpath on MacOS
@@ -812,7 +812,7 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
     install(FILES ${MODULE_DESCRIPTION_FILE} DESTINATION ${CMAKE_INSTALL_PREFIX}/share/vistle/)
 
     macro(add_module2 targetname executable description)
-        if (MODULE_CAN_CREATE_HASH)
+        if(MODULE_CAN_CREATE_HASH)
             message("----------------------------------------HASH----------------------------------------")
         endif()
         if(NOT VISTLE_MODULE_CATEGORY)
