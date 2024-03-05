@@ -1,0 +1,32 @@
+MasterHub=getMasterHub()
+VistleSession=getVistleSession()
+WorkflowConfig=getWorkflowConfig()
+uuids = {}
+
+
+
+# spawn all local modules
+umCOVER6 = spawnAsync(MasterHub, 'COVER')
+umGendat7 = spawnAsync(MasterHub, 'Gendat')
+umDomainSurface8 = spawnAsync(MasterHub, 'DomainSurface')
+
+mCOVER6 = waitForSpawn(umCOVER6)
+setVectorParam(mCOVER6, '_position', 23.153297424316406, 140.0, True)
+setIntParam(mCOVER6, 'render_mode', 4, True)
+applyParameters(mCOVER6)
+
+mGendat7 = waitForSpawn(umGendat7)
+setVectorParam(mGendat7, '_position', -10.846702575683594, -133.0, True)
+applyParameters(mGendat7)
+
+mDomainSurface8 = waitForSpawn(umDomainSurface8)
+setVectorParam(mDomainSurface8, '_position', -30.846702575683594, -11.0, True)
+applyParameters(mDomainSurface8)
+
+# all local connections
+connect(mGendat7,'grid_out', mDomainSurface8,'data_in')
+connect(mDomainSurface8,'data_out', mCOVER6,'data_in')
+
+# spawn all remote modules
+
+# connections between local and remote
