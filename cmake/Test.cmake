@@ -1,11 +1,10 @@
 macro(add_image_hash targetname)
-    add_custom_target(${targetname}_hash DEPENDS ${OUTPUT_FILE})
-    
+    add_custom_target(${targetname}_hash)
+
     if(MODULE_CAN_CREATE_HASH)
         add_dependencies(vistle_hash ${targetname}_hash)
     else()
         message("Skipping ${targetname}_hash")
-        #add_dependencies(vistle_hash_skip ${targetname}_hash)
     endif()
 
     file(
