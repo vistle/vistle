@@ -12,8 +12,6 @@ find_package(Python REQUIRED)
 enable_testing()
 
 #TODO:
-# 1. generate module result images
-# 1.1 use generateCoverSnapshot from Documentation.cmake to generate the images
 # 2. pass modulepath + refimgpath to test.py for each module with result img (to note: only for modules with result img)
 
 # define tests
