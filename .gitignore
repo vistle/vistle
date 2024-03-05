@@ -6,7 +6,8 @@
 /compile_commands.json
 /.release
 /.debug
-/test
+/test/*
+!/test/moduleTest
 /*.log
 /*.vsl
 **/*.autosave
