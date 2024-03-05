@@ -21,3 +21,8 @@ In COVER:
 ## Cmake Pipeline
 - CM=CMakeLists.txt 
 add_module (ROOT_CM) > add_module2 (ROOT_CM) > add_image_hash (Test.cmake) > create_image_hash (VistleUtils.cmake)
+
+
+## Todo:
+
+[ ] test if hashes are the same on different operating systems
