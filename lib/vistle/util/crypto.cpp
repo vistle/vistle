@@ -7,6 +7,7 @@
 #include <botan/hex.h>
 #include <botan/system_rng.h>
 #include <botan/mac.h>
+#include <botan/hash.h>
 
 #include <memory>
 #include <cassert>
@@ -25,6 +26,7 @@ static bool s_initialized = false;
 static std::vector<uint8_t> s_key;
 static std::vector<uint8_t> s_session_data;
 static std::string s_temp_key;
+std::unique_ptr<Botan::HashFunction> s_hash_algo;
 
 static std::unique_ptr<Botan::MessageAuthenticationCode> make_mac()
 {
@@ -34,6 +36,16 @@ static std::unique_ptr<Botan::MessageAuthenticationCode> make_mac()
         throw except::exception("failed to create message authentication code algorithm");
     }
     return mac_algo;
+}
+
+static std::unique_ptr<Botan::HashFunction> make_hash()
+{
+    static const char hash_algorithm[] = "SHA-256";
+    std::unique_ptr<Botan::HashFunction> hash_algo(Botan::HashFunction::create(hash_algorithm));
+    if (!hash_algo) {
+        throw except::exception("failed to create hash algorithm");
+    }
+    return hash_algo;
 }
 
 template<typename C, class Container>
@@ -167,6 +179,36 @@ const std::vector<uint8_t> &session_key()
     assert(s_initialized);
 
     return s_key;
+}
+
+HashFunction::HashFunction(std::unique_ptr<Botan::HashFunction> &&hash): hash(std::move(hash))
+{}
+
+HashFunction::HashFunction(HashFunction &&other): hash(std::move(other.hash))
+{}
+
+HashFunction::~HashFunction() = default;
+
+HashFunction hash_new()
+{
+    std::unique_lock<std::recursive_mutex> guard(s_mutex);
+
+    if (!s_hash_algo)
+        s_hash_algo = make_hash();
+
+    HashFunction hash(s_hash_algo->new_object());
+    return hash;
+}
+
+void hash_update(HashFunction &hash, const void *data, size_t length)
+{
+    hash.hash->update(static_cast<const uint8_t *>(data), length);
+}
+
+std::vector<uint8_t> hash_final(HashFunction &hash)
+{
+    auto result = from_secure<uint8_t>(hash.hash->final());
+    return result;
 }
 
 } // namespace crypto
