@@ -26,6 +26,7 @@ private:
     bool finishRead() override;
    
     bool cellIsWater(const std::vector<double> &h, int i, int j,int dimX, int dimY) const;
+    bool getDimensions(const PnetCDF::NcmpiFile &ncFile, int &dimX, int &dimY)const ;
 
     Object::ptr generateTriangleGrid(const PnetCDF::NcmpiFile &ncFile, int timestep, int block) const;
     // Object::ptr generateLayerGrid(const PnetCDF::NcmpiFile &ncFile, int timestep, int block) const;

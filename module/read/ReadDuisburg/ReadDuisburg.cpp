@@ -70,20 +70,31 @@ bool ReadDuisburg::examine(const vistle::Parameter *param)
 
 //cellIsWater: checks if vertex and neighbor vertices are also water e.g. if z-coord is varying
 bool ReadDuisburg::cellIsWater(const std::vector<double> &h, int i, int j, int dimX, int dimY) const {
-    if ( (h[j*dimX + i] > 0.) && ( h[ (j+1)*dimX + (i+1) ] > 0.) && ( h[ (j+1)*dimX + i ] > 0. ) && (h[ j*dimX + (i+1) ] > 0.) )
+    if ((h[j * dimX + i] > 0.) \
+        && (h[(j + 1) * dimX + (i + 1) ] > 0.) \
+        && (h[(j + 1) * dimX + i] > 0.) \
+        && (h[j * dimX + (i + 1)] > 0.) ) {
         return true;
+    }
     return false;
 }
 
-Object::ptr ReadDuisburg::generateTriangleGrid(const NcmpiFile &ncFile, int timestep, int block) const {  
+bool ReadDuisburg::getDimensions(const NcmpiFile &ncFile, int &dimX, int &dimY) const{
     const NcmpiDim &dimXname = ncFile.getDim("x");
     if (dimXname.isNull()) {
         sendError("Dimension not found in file");
-        return nullptr;
+        return false;
     }
-    int dimX = 7000;//dimXname.getSize(); 
+    dimX = 2000;//dimXname.getSize(); 
     const NcmpiDim &dimYname = ncFile.getDim("y");
-    int dimY = 7000;//dimYname.getSize();
+    dimY = 2000;//dimYname.getSize();
+    return true;
+}
+
+Object::ptr ReadDuisburg::generateTriangleGrid(const NcmpiFile &ncFile, int timestep, int block) const {  
+    int dimX, dimY;
+    if (!getDimensions(ncFile,dimX,dimY))
+        return Object::ptr();
 
     std::vector<MPI_Offset> start = {0};
     std::vector<MPI_Offset> stopX{dimX};
@@ -117,7 +128,7 @@ Object::ptr ReadDuisburg::generateTriangleGrid(const NcmpiFile &ncFile, int time
 
     int nonZero = std::count_if(h.begin(),h.end(),[](double i) { return i > 0.; });
     int nonZeroCorners = nonZero*6;
-    int nonZeroVertices = nVertices;
+    int nonZeroVertices = nonZero;
 
     // Polygons::ptr polygons(new Polygons(nFaces,nCorners,nVertices));
     Triangles::ptr polygons(new Triangles(nonZeroCorners,nonZeroVertices));
@@ -142,15 +153,22 @@ Object::ptr ReadDuisburg::generateTriangleGrid(const NcmpiFile &ncFile, int time
     polygons->setBlock(block);
     polygons->setNumTimesteps(numTimesteps());
 
-    int idxAll = 0;//, count = 0;
+    std::vector<int> localIdx(dimX*dimY);
+    std::fill(localIdx.begin(),localIdx.end(),0);
+
+    //fill coordinates, but only for vertices with water
+    int idxAll = 0, count = 0;
     float h_idx = 0;
     for (int j = 0; j < dimY; ++j) {
         for (int i = 0; i < dimX; ++i) {
             idxAll = j*dimX + i;
             h_idx = z_coord[idxAll];
-            ptrOnXcoords[idxAll] = x_coord[i];
-            ptrOnYcoords[idxAll] = y_coord[j];
-            ptrOnZcoords[idxAll] = h_idx; 
+            if (h[idxAll]>0) {
+                ptrOnXcoords[count] = x_coord[i];
+                ptrOnYcoords[count] = y_coord[j];
+                ptrOnZcoords[count] = h_idx; 
+                localIdx[idxAll] = count ;
+                count++;
             //ptrOnScalarData[idxAll] = h_idx ;
             // if (h > 0) {
             //     ptrOnXcoords[count] = x_coord[i];
@@ -159,27 +177,26 @@ Object::ptr ReadDuisburg::generateTriangleGrid(const NcmpiFile &ncFile, int time
             //     ptrOnScalarData[count] = h_idx ;
             //     count++;
             // }
+            }
         }
     }
 
-    //create triangle faces
+    //create triangle faces for water cells
     // Index currentFace = 0;
     int currentConnection = 0, currentElem = 0;
     for (int j = 0; j<(dimY-1); ++j) {
         for (int i = 0; i<(dimX-1); ++i) {
-            
             if (cellIsWater(h,i,j,dimX,dimY)) {
                 // ptrOnEl[currentFace++] = currentConnection;
-
-                ptrOnCl[currentConnection++] = i+(dimX*j);
-                ptrOnCl[currentConnection++] = (i+1)+(dimX*j);
-                ptrOnCl[currentConnection++] = (i+1)+((j+1)*dimX);
+                ptrOnCl[currentConnection++] = localIdx[i+(dimX*j)];
+                ptrOnCl[currentConnection++] = localIdx[(i+1)+(dimX*j)];
+                ptrOnCl[currentConnection++] = localIdx[(i+1)+((j+1)*dimX)];
                 // ptrOnScalarData[currentElem++] = z_coord[j*dimX + i];
 
                 // ptrOnEl[currentFace++] = currentConnection;
-                ptrOnCl[currentConnection++] = i+(dimX*j);
-                ptrOnCl[currentConnection++] = (i+1)+(((j+1)*dimX));
-                ptrOnCl[currentConnection++] = i+((j+1)*dimX);
+                ptrOnCl[currentConnection++] = localIdx[i+(dimX*j)];
+                ptrOnCl[currentConnection++] = localIdx[(i+1)+(((j+1)*dimX))];
+                ptrOnCl[currentConnection++] = localIdx[i+((j+1)*dimX)];
                 // ptrOnScalarData[currentElem++] = z_coord[j*dimX + i];
             }
         }
@@ -193,14 +210,9 @@ Object::ptr ReadDuisburg::generateTriangleGrid(const NcmpiFile &ncFile, int time
 // Object::ptr ReadDuisburg::generateLayerGrid(const NcmpiFile &ncFile, int timestep, int block) const {  
 
 //     //initialize and get dimensions
-//     const NcmpiDim &dimXname = ncFile.getDim("x");
-//     if (dimXname.isNull()) {
-//         sendError("Dimension not found in file");
-//         return nullptr;
-//     }
-//     size_t dimX =  3000;//dimXname.getSize(); is "getSize" broken? -> causes crash
-//     const NcmpiDim &dimYname = ncFile.getDim("y");
-//     size_t dimY =  3000;//dimYname.getSize();
+    // int dimX, dimY;
+    // if (!getDimensions(ncFile,dimX,dimY))
+    //     return Object::ptr();
 
 //     std::vector<MPI_Offset> start = {0};
 //     std::vector<MPI_Offset> stopX{dimX};
