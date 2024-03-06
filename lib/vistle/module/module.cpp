@@ -47,6 +47,7 @@
 #include <vistle/core/archive_saver.h>
 #include <vistle/core/archive_loader.h>
 
+#define MPI_DEBUG
 //#define DEBUG
 //#define REDUCE_DEBUG
 #define DETAILED_PROGRESS
@@ -54,6 +55,10 @@
 
 #ifdef DEBUG
 #include <vistle/util/hostname.h>
+#endif
+
+#ifdef MPI_DEBUG
+#include <vistle/util/crypto.h>
 #endif
 
 #define CERR std::cerr << m_name << "_" << id() << " [" << rank() << "/" << size() << "] "
@@ -67,25 +72,67 @@ static const size_t chunk = 1 << 30;
 template<typename T>
 void broadcast(const mpi::communicator &comm, T *values, size_t count, int root)
 {
+#ifdef MPI_DEBUG
+    auto hash = vistle::crypto::hash_new();
+#endif
     for (size_t off = 0; off < count; off += chunk) {
         mpi::broadcast(comm, values + off, int(std::min(chunk, count - off)), root);
+#ifdef MPI_DEBUG
+        vistle::crypto::hash_update(hash, values + off, std::min(chunk, count - off) * sizeof(T));
+#endif
     }
+#ifdef MPI_DEBUG
+    auto hashval = vistle::crypto::hash_final(hash);
+    auto hashref = hashval;
+    mpi::broadcast(comm, hashref, root);
+    if (hashval != hashref) {
+        std::cerr << "vistle::bigmpi::broadcast: hash mismatch on rank " << comm.rank() << " after transfering "
+                  << count << " items of size " << sizeof(T) << std::endl;
+        abort();
+    }
+#endif
 }
 
 template<typename T>
 void send(const mpi::communicator &comm, int rank, int tag, const T *values, size_t count)
 {
+#ifdef MPI_DEBUG
+    auto hash = vistle::crypto::hash_new();
+#endif
     for (size_t off = 0; off < count; off += chunk) {
         comm.send(rank, tag, values + off, int(std::min(chunk, count - off)));
+#ifdef MPI_DEBUG
+        vistle::crypto::hash_update(hash, values + off, std::min(chunk, count - off) * sizeof(T));
+#endif
     }
+#ifdef MPI_DEBUG
+    auto hashref = vistle::crypto::hash_final(hash);
+    comm.send(rank, tag, hashref);
+#endif
 }
 
 template<typename T>
 void recv(const mpi::communicator &comm, int rank, int tag, T *values, size_t count)
 {
+#ifdef MPI_DEBUG
+    auto hash = vistle::crypto::hash_new();
+#endif
     for (size_t off = 0; off < count; off += chunk) {
         comm.recv(rank, tag, values + off, int(std::min(chunk, count - off)));
+#ifdef MPI_DEBUG
+        vistle::crypto::hash_update(hash, values + off, std::min(chunk, count - off) * sizeof(T));
+#endif
     }
+#ifdef MPI_DEBUG
+    auto hashval = vistle::crypto::hash_final(hash);
+    auto hashref = hashval;
+    comm.recv(rank, tag, hashref);
+    if (hashval != hashref) {
+        std::cerr << "vistle::bigmpi::recv: hash mismatch on rank " << comm.rank() << " after transfering " << count
+                  << " items of size " << sizeof(T) << std::endl;
+        abort();
+    }
+#endif
 }
 
 } // namespace bigmpi
