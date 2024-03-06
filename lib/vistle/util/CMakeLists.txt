@@ -1,4 +1,4 @@
-vistle_find_package(BOTAN 1.10 REQUIRED)
+vistle_find_package(BOTAN 2 REQUIRED)
 vistle_find_package(HWLOC)
 
 set(util_SOURCES
