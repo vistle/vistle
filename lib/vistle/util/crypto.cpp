@@ -1,16 +1,12 @@
 #include "crypto.h"
 
 #include <botan/version.h>
+#if BOTAN_VERSION_MAJOR < 2
+#error "Botan 1.x is not supported"
+#endif
 #include <botan/hex.h>
-#if BOTAN_VERSION_MAJOR <= 2
-#include <botan/botan.h>
-#include <botan/rng.h>
-#include <botan/hmac.h>
-#include <botan/sha2_32.h>
-#else
 #include <botan/system_rng.h>
 #include <botan/mac.h>
-#endif
 
 #include <memory>
 #include <cassert>
@@ -26,21 +22,14 @@ namespace crypto {
 static std::recursive_mutex s_mutex;
 
 static bool s_initialized = false;
-#if BOTAN_VERSION_MAJOR < 2
-static std::unique_ptr<Botan::LibraryInitializer> s_botan_lib;
-#endif
 static std::vector<uint8_t> s_key;
 static std::vector<uint8_t> s_session_data;
 static std::string s_temp_key;
 
 static std::unique_ptr<Botan::MessageAuthenticationCode> make_mac()
 {
-#if BOTAN_VERSION_MAJOR < 2
-    std::unique_ptr<Botan::MessageAuthenticationCode> mac_algo(new Botan::HMAC(new Botan::SHA_256));
-#else
     static const char mac_algorithm[] = "HMAC(SHA-256)";
     std::unique_ptr<Botan::MessageAuthenticationCode> mac_algo(Botan::MessageAuthenticationCode::create(mac_algorithm));
-#endif
     if (!mac_algo) {
         throw except::exception("failed to create message authentication code algorithm");
     }
@@ -61,14 +50,6 @@ bool initialize(size_t secret_size)
     std::unique_lock<std::recursive_mutex> guard(s_mutex);
     if (s_initialized)
         return true;
-
-#if BOTAN_VERSION_MAJOR < 2
-    s_botan_lib.reset(new Botan::LibraryInitializer);
-    if (!s_botan_lib) {
-        throw except::exception("failed to initialize Botan library");
-        return false;
-    }
-#endif
 
     auto mac_algo = make_mac();
 
@@ -123,7 +104,7 @@ std::vector<uint8_t> random_data(size_t length)
     assert(s_initialized);
     std::vector<uint8_t> data;
 
-#if BOTAN_VERSION_MAJOR <= 2
+#if BOTAN_VERSION_MAJOR == 2
     auto rng = Botan::RandomNumberGenerator::make_rng();
     auto sec = rng->random_vec(length);
     std::copy(sec.begin(), sec.end(), std::back_inserter(data));
@@ -144,9 +125,7 @@ std::vector<uint8_t> compute_mac(const void *data, size_t length, const std::vec
     if (!mac_algo)
         return std::vector<uint8_t>();
     mac_algo->set_key(key.data(), key.size());
-#if BOTAN_VERSION_MAJOR >= 2
     mac_algo->start();
-#endif
     mac_algo->update(static_cast<const char *>(data));
     auto tag = mac_algo->final();
     return from_secure<uint8_t>(tag);
@@ -161,9 +140,7 @@ bool verify_mac(const void *data, size_t length, const std::vector<uint8_t> &key
     if (!mac_algo)
         return false;
     mac_algo->set_key(key.data(), key.size());
-#if BOTAN_VERSION_MAJOR >= 2
     mac_algo->start();
-#endif
     mac_algo->update(static_cast<const char *>(data));
     return mac_algo->verify_mac(mac.data(), mac.size());
 }
