@@ -47,7 +47,7 @@
 #include <vistle/core/archive_saver.h>
 #include <vistle/core/archive_loader.h>
 
-#define MPI_DEBUG
+//#define MPI_DEBUG
 //#define DEBUG
 //#define REDUCE_DEBUG
 #define DETAILED_PROGRESS
