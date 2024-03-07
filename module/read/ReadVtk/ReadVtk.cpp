@@ -67,6 +67,20 @@ bool isCollectionFile(const std::string &fn)
     return false;
 }
 
+template<class VO>
+std::vector<std::string> getFields(VO *dsa)
+{
+    std::vector<std::string> fields;
+    if (!dsa)
+        return fields;
+    int na = dsa->GetNumberOfArrays();
+    for (int i = 0; i < na; ++i) {
+        fields.push_back(dsa->GetArrayName(i));
+        //cerr << "field " << i << ": " << fields[i] << endl;
+    }
+    return fields;
+}
+
 template<class Reader>
 VtkFile readFile(const std::string &filename, int piece = -1, bool ghost = false, bool onlyMeta = false)
 {
@@ -123,7 +137,19 @@ VtkFile readFile(const std::string &filename, int piece = -1, bool ghost = false
     if (onlyMeta) {
         if (reader->GetOutput()) {
             reader->GetOutput()->Register(reader);
-            result.dataset = reader->GetOutput();
+
+            if (result.pointfields.empty() && result.cellfields.empty()) {
+                reader->Update();
+                result.dataset = reader->GetOutput();
+                if (auto ds = vtkDataSet::SafeDownCast(result.dataset)) {
+                    result.pointfields = getFields<vtkFieldData>(ds->GetPointData());
+                    if (result.pointfields.empty())
+                        result.pointfields = getFields<vtkFieldData>(ds->GetFieldData());
+                    result.cellfields = getFields<vtkFieldData>(ds->GetCellData());
+                }
+            } else {
+                result.dataset = reader->GetOutput();
+            }
         }
         return result;
     }
@@ -305,20 +331,6 @@ std::map<double, std::vector<VtkFile>> ReadVtk::readXmlCollection(const std::str
               << ", num blocks: " << timesteps.begin()->second.size() << std::endl;
 
     return timesteps;
-}
-
-template<class VO>
-std::vector<std::string> getFields(VO *dsa)
-{
-    std::vector<std::string> fields;
-    if (!dsa)
-        return fields;
-    int na = dsa->GetNumberOfArrays();
-    for (int i = 0; i < na; ++i) {
-        fields.push_back(dsa->GetArrayName(i));
-        //cerr << "field " << i << ": " << fields[i] << endl;
-    }
-    return fields;
 }
 
 void ReadVtk::setChoices(const VtkFile &fileinfo)
