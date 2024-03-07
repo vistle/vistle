@@ -57,20 +57,6 @@ using vistle::Parameter;
 
 const std::string Invalid("(NONE)");
 
-const double ConstantTime = -std::numeric_limits<double>::max();
-
-struct VtkFile {
-    std::string filename;
-    std::string part;
-    std::string index;
-    int partNum = -1;
-    int pieces = 1;
-    double realtime = ConstantTime;
-    vtkDataObject *dataset = nullptr;
-    std::vector<std::string> pointfields;
-    std::vector<std::string> cellfields;
-};
-
 bool isCollectionFile(const std::string &fn)
 {
     constexpr const char *collectionEndings[3] = {".pvd", ".vtm", ".pvtu"};
@@ -195,12 +181,16 @@ VtkFile getDataSet(const std::string &filename, int piece = -1, bool ghost = fal
     return fileinfo;
 }
 
-VtkFile getDataSetMeta(const std::string &filename)
+VtkFile ReadVtk::getDataSetMeta(const std::string &filename)
 {
-    return getDataSet(filename, -1, false, true);
+    auto &fileinfo = m_files[filename];
+    if (!fileinfo.dataset) {
+        fileinfo = getDataSet(filename, -1, false, true);
+    }
+    return fileinfo;
 }
 
-int getNumPieces(const std::string &filename)
+int ReadVtk::getNumPieces(const std::string &filename)
 {
     return getDataSetMeta(filename).pieces;
 }
@@ -211,7 +201,7 @@ struct ReadVtkData {
 };
 
 
-std::map<double, std::vector<VtkFile>> readXmlCollection(const std::string &filename, bool piecesAsBlocks = false)
+std::map<double, std::vector<VtkFile>> ReadVtk::readXmlCollection(const std::string &filename, bool piecesAsBlocks)
 {
     std::map<double, std::vector<VtkFile>> timesteps;
     const std::array<std::string, 3> types{"Collection", "vtkMultiBlockDataSet", "PUnstructuredGrid"};
@@ -352,7 +342,7 @@ ReadVtk::ReadVtk(const std::string &name, int moduleID, mpi::communicator comm):
     setParameterFilters(m_filename,
                         "PVD Files (*.pvd)/XML VTK Files (*.vti *.vtp *.vtr *.vts *.vtu *.pvtu)/Legacy VTK Files "
                         "(*.vtk)/XML VTK Multiblock Data (*.vtm)/All Files (*)");
-    m_readPieces = addIntParameter("read_pieces", "create block for every piece in an unstructured grid", true,
+    m_readPieces = addIntParameter("read_pieces", "create block for every piece in an unstructured grid", false,
                                    Parameter::Boolean);
     m_ghostCells = addIntParameter("create_ghost_cells", "create ghost cells for multi-piece unstructured grids", true,
                                    Parameter::Boolean);
@@ -386,6 +376,10 @@ ReadVtk::~ReadVtk()
 
 bool ReadVtk::examine(const vistle::Parameter *param)
 {
+    if (param == nullptr || param == m_filename || param == m_readPieces) {
+        m_files.clear();
+    }
+
     bool readPieces = m_readPieces->getValue();
 
     int maxNumPieces = 0;
