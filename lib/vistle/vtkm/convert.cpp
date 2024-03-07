@@ -196,46 +196,14 @@ Object::ptr linesSingleTypeToVistle(const vtkm::cont::DataSet &dataset, const vt
 
     auto numElem = numConn > 0 ? numConn / 2 : numPoints / 2;
 
-    /*
-        Lines::ptr lines(new Lines(numElem, numConn, numPoints));
 
-        for (vtkm::Id index = 0; index < numConn; index++)
-            lines->cl()[index] = connPortal.Get(index);
-    */
+    Lines::ptr lines(new Lines(numElem, numConn, numPoints));
 
-    Lines::ptr lines(new Lines(numElem, numConn, numConn));
-
-    // TODO: move this to coordinatesAndNormalsToVistle (currently not possible)
-    // -------------------------------------------------------------------------------------------------------
-    if (dataset.GetNumberOfCoordinateSystems() > 0) {
-        auto vtkmCoords = dataset.GetCoordinateSystem().GetData();
-
-        if (vtkmCoords.CanConvert<vtkm::cont::ArrayHandle<vtkm::Vec3f>>()) {
-            auto coordsPortal = vtkmCoords.AsArrayHandle<vtkm::cont::ArrayHandle<vtkm::Vec3f>>().ReadPortal();
-            for (vtkm::Id index = 0; index < numConn; index++) {
-                auto point = coordsPortal.Get(connPortal.Get(index));
-                (lines->x().data())[index] = point[xId];
-                (lines->y().data())[index] = point[yId];
-                (lines->z().data())[index] = point[zId];
-            }
-        } else if (vtkmCoords.CanConvert<vtkm::cont::ArrayHandleSOA<vtkm::Vec3f>>()) {
-            auto coordsPortal = vtkmCoords.AsArrayHandle<vtkm::cont::ArrayHandleSOA<vtkm::Vec3f>>().ReadPortal();
-            for (vtkm::Id index = 0; index < numConn; index++) {
-                auto point = coordsPortal.Get(connPortal.Get(index));
-                (lines->x().data())[index] = point[xId];
-                (lines->y().data())[index] = point[yId];
-                (lines->z().data())[index] = point[zId];
-            }
-        } else {
-            throw std::invalid_argument("VTKm coordinate system uses unsupported array handle storage.");
-        }
-    }
-    // -------------------------------------------------------------------------------------------------------
+    for (vtkm::Id index = 0; index < numConn; index++)
+        lines->cl()[index] = connPortal.Get(index);
 
     for (vtkm::Id index = 0; index < numElem; index++) {
         lines->el()[index] = 2 * index;
-        lines->cl()[2 * index] = 2 * index;
-        lines->cl()[2 * index + 1] = 2 * index + 1;
     }
     lines->el()[numElem] = numConn;
 
@@ -426,12 +394,7 @@ void coordinatesToVistle(const vtkm::cont::CoordinateSystem &coordinateSystem, C
 void coordinatesAndNormalsToVistle(vtkm::cont::DataSet &dataset, Object::ptr result)
 {
     if (auto coords = Coords::as(result)) {
-        // BUG: this is a temporary solution to make SpheresOverlap work (as the connection lines
-        //      are converted from a vtkm dataset made of a single type cellset where the type
-        //      is CELL_SHAPE_LINE).
-        //      However, this breaks conversion for single type cell sets of type CELL_SHAPE_POLY_LINE
-        //      which are both converted to Lines::ptr.
-        if (!Lines::as(result) && dataset.GetNumberOfCoordinateSystems() > 0)
+        if (dataset.GetNumberOfCoordinateSystems() > 0)
             coordinatesToVistle(dataset.GetCoordinateSystem(), coords);
 
         if (auto normals = vtkmFieldToVistle(dataset, "normals")) {
