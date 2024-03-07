@@ -129,12 +129,29 @@ Object::ptr ReadDuisburg::generateTriangleGrid(const NcmpiFile &ncFile, int time
     size_t nFaces = (dimX-1)*(dimY-1)*2;
     size_t nCorners = nFaces*6;
 
-    int nonZero = std::count_if(h.begin(),h.end(),[](double i) { return i > 0.; });
+    int nonZero = 0;
+    int nonZeroVertices = 0;
+    std::vector<int> nonZeroVerticesVec(dimX * dimY, -1);
+    for (int j = 0; j<(dimY-1); ++j) {
+        for (int i = 0; i<(dimX-1); ++i) {
+            if (cellIsWater(h,i,j,dimX,dimY)) {
+                ++nonZero;
+                for (int i: {j * dimX + i, (j+1) * dimX + i, j * dimX + i + 1, (j + 1) * dimX + i + 1}) {
+                    if (nonZeroVerticesVec[i] == -1) {
+                        nonZeroVerticesVec[i] = nonZeroVertices;
+                        ++nonZeroVertices;
+                    }
+                }
+            }
+        }
+    }
+
+    //int nonZero = std::count_if(h.begin(),h.end(),[](double i) { return i > 0.; });
+    /* int nonZeroVertices = nonZero; */
     int nonZeroCorners = nonZero*6;
-    int nonZeroVertices = nonZero;
 
     // Polygons::ptr polygons(new Polygons(nFaces,nCorners,nVertices));
-    Triangles::ptr polygons(new Triangles(nonZeroCorners,nonZeroVertices));
+    Triangles::ptr polygons(new Triangles(nonZeroCorners, nonZeroVertices));
     // Triangles::ptr polygons(new Triangles(nCorners,nVertices));
     auto ptrOnXcoords = polygons->x().data();
     auto ptrOnYcoords = polygons->y().data();
@@ -162,27 +179,39 @@ Object::ptr ReadDuisburg::generateTriangleGrid(const NcmpiFile &ncFile, int time
     //fill coordinates, but only for vertices with water
     int idxAll = 0, count = 0;
     float h_idx = 0;
-    for (int j = 0; j < dimY; ++j) {
-        for (int i = 0; i < dimX; ++i) {
-            idxAll = j*dimX + i;
-            h_idx = z_coord[idxAll];
-            if (h[idxAll]>0) {
-                ptrOnXcoords[count] = x_coord[i];
-                ptrOnYcoords[count] = y_coord[j];
-                ptrOnZcoords[count] = h_idx; 
-                localIdx[idxAll] = count ;
-                count++;
-            //ptrOnScalarData[idxAll] = h_idx ;
-            // if (h > 0) {
-            //     ptrOnXcoords[count] = x_coord[i];
-            //     ptrOnYcoords[count] = y_coord[j];
-            //     ptrOnZcoords[count] = h_idx; 
-            //     ptrOnScalarData[count] = h_idx ;
-            //     count++;
-            // }
-            }
+    for (int i = 0; i < nonZeroVerticesVec.size(); ++i) {
+        int idx = nonZeroVerticesVec[i];
+        if (idx >= 0) {
+            auto x = i % dimX;
+            auto y = i / dimX;
+
+            ptrOnXcoords[idx] = x_coord[x];
+            ptrOnYcoords[idx] = y_coord[y];
+            ptrOnZcoords[idx] = z_coord[i]; 
         }
     }
+
+    /* for (int j = 0; j < dimY; ++j) { */
+    /*     for (int i = 0; i < dimX; ++i) { */
+    /*         idxAll = j*dimX + i; */
+    /*         h_idx = z_coord[idxAll]; */
+    /*         if (h[idxAll]>0) { */
+    /*             ptrOnXcoords[count] = x_coord[i]; */
+    /*             ptrOnYcoords[count] = y_coord[j]; */
+    /*             ptrOnZcoords[count] = h_idx; */ 
+    /*             localIdx[idxAll] = count ; */
+    /*             count++; */
+    /*         //ptrOnScalarData[idxAll] = h_idx ; */
+    /*         // if (h > 0) { */
+    /*         //     ptrOnXcoords[count] = x_coord[i]; */
+    /*         //     ptrOnYcoords[count] = y_coord[j]; */
+    /*         //     ptrOnZcoords[count] = h_idx; */ 
+    /*         //     ptrOnScalarData[count] = h_idx ; */
+    /*         //     count++; */
+    /*         // } */
+    /*         } */
+    /*     } */
+    /* } */
 
     //create triangle faces for water cells
     // Index currentFace = 0;
@@ -190,17 +219,25 @@ Object::ptr ReadDuisburg::generateTriangleGrid(const NcmpiFile &ncFile, int time
     for (int j = 0; j<(dimY-1); ++j) {
         for (int i = 0; i<(dimX-1); ++i) {
             if (cellIsWater(h,i,j,dimX,dimY)) {
-                // ptrOnEl[currentFace++] = currentConnection;
-                ptrOnCl[currentConnection++] = localIdx[i+(dimX*j)];
-                ptrOnCl[currentConnection++] = localIdx[(i+1)+(dimX*j)];
-                ptrOnCl[currentConnection++] = localIdx[(i+1)+((j+1)*dimX)];
-                // ptrOnScalarData[currentElem++] = z_coord[j*dimX + i];
+                ptrOnCl[currentConnection++] = nonZeroVerticesVec[i+(dimX*j)];
+                ptrOnCl[currentConnection++] = nonZeroVerticesVec[(i+1)+(dimX*j)];
+                ptrOnCl[currentConnection++] = nonZeroVerticesVec[(i+1)+((j+1)*dimX)];
 
-                // ptrOnEl[currentFace++] = currentConnection;
-                ptrOnCl[currentConnection++] = localIdx[i+(dimX*j)];
-                ptrOnCl[currentConnection++] = localIdx[(i+1)+(((j+1)*dimX))];
-                ptrOnCl[currentConnection++] = localIdx[i+((j+1)*dimX)];
-                // ptrOnScalarData[currentElem++] = z_coord[j*dimX + i];
+                ptrOnCl[currentConnection++] = nonZeroVerticesVec[i+(dimX*j)];
+                ptrOnCl[currentConnection++] = nonZeroVerticesVec[(i+1)+(((j+1)*dimX))];
+                ptrOnCl[currentConnection++] = nonZeroVerticesVec[i+((j+1)*dimX)];
+
+                /* // ptrOnEl[currentFace++] = currentConnection; */
+                /* ptrOnCl[currentConnection++] = localIdx[i+(dimX*j)]; */
+                /* ptrOnCl[currentConnection++] = localIdx[(i+1)+(dimX*j)]; */
+                /* ptrOnCl[currentConnection++] = localIdx[(i+1)+((j+1)*dimX)]; */
+                /* // ptrOnScalarData[currentElem++] = z_coord[j*dimX + i]; */
+
+                /* // ptrOnEl[currentFace++] = currentConnection; */
+                /* ptrOnCl[currentConnection++] = localIdx[i+(dimX*j)]; */
+                /* ptrOnCl[currentConnection++] = localIdx[(i+1)+(((j+1)*dimX))]; */
+                /* ptrOnCl[currentConnection++] = localIdx[i+((j+1)*dimX)]; */
+                /* // ptrOnScalarData[currentElem++] = z_coord[j*dimX + i]; */
             }
         }
     }
