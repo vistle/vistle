@@ -26,7 +26,9 @@ static bool s_initialized = false;
 static std::vector<uint8_t> s_key;
 static std::vector<uint8_t> s_session_data;
 static std::string s_temp_key;
+#if BOTAN_VERSION_MAJOR >= 3
 std::unique_ptr<Botan::HashFunction> s_hash_algo;
+#endif
 
 static std::unique_ptr<Botan::MessageAuthenticationCode> make_mac()
 {
@@ -193,10 +195,14 @@ HashFunction hash_new()
 {
     std::unique_lock<std::recursive_mutex> guard(s_mutex);
 
+#if BOTAN_VERSION_MAJOR == 2
+    HashFunction hash(make_hash());
+#else
     if (!s_hash_algo)
         s_hash_algo = make_hash();
 
     HashFunction hash(s_hash_algo->new_object());
+#endif
     return hash;
 }
 
