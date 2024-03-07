@@ -34,8 +34,6 @@ private:
     Port *m_gridOut = nullptr;
     StringParameter *m_gridFile;
 
-    std::mutex mtxPartList;
-
 };
 
 #endif
