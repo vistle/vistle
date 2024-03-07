@@ -50,21 +50,24 @@ ReadDuisburg::~ReadDuisburg()
 
 bool ReadDuisburg::prepareRead()
 {
-    LOCK_NETCDF(comm());
-    //extract number of timesteps from file
-    NcmpiFile ncFile(comm(), m_gridFile->getValue().c_str(), NcmpiFile::read);
-    const NcmpiDim timesDim = ncFile.getDim("t");
-    size_t nTimes = timesDim.getSize();
-    UNLOCK_NETCDF(comm());
 
-    setTimesteps(nTimes);
-    setPartitions(1);
 
     return true;
 }
 
 bool ReadDuisburg::examine(const vistle::Parameter *param)
 {
+	if (!param || param == m_gridFile) {
+	    LOCK_NETCDF(comm());
+	    //extract number of timesteps from file
+	    NcmpiFile ncFile(comm(), m_gridFile->getValue().c_str(), NcmpiFile::read);
+	    const NcmpiDim timesDim = ncFile.getDim("t");
+	    size_t nTimes = timesDim.getSize();
+	    UNLOCK_NETCDF(comm());
+
+	    setTimesteps(nTimes);
+	    setPartitions(1);
+	}
     return true;
 }
 
@@ -85,9 +88,9 @@ bool ReadDuisburg::getDimensions(const NcmpiFile &ncFile, int &dimX, int &dimY) 
         sendError("Dimension not found in file");
         return false;
     }
-    dimX = 2000;//dimXname.getSize(); 
+    dimX = 7000;//dimXname.getSize(); 
     const NcmpiDim &dimYname = ncFile.getDim("y");
-    dimY = 2000;//dimYname.getSize();
+    dimY = 7000;//dimYname.getSize();
     return true;
 }
 
@@ -279,9 +282,10 @@ Object::ptr ReadDuisburg::generateTriangleGrid(const NcmpiFile &ncFile, int time
 bool ReadDuisburg::read(Reader::Token &token, int timestep, int block)
 {
     Object::ptr grid;
-    if (timestep < 0) return true;
+     if (timestep < 0) return true;
     try{
         LOCK_NETCDF(*token.comm());
+        printf("I am rank %i  at block %i at time %i", rank(), block,timestep);
 
         NcmpiFile ncGridFile(*token.comm(), m_gridFile->getValue().c_str(), NcmpiFile::read);
 
