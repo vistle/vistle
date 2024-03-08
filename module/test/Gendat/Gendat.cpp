@@ -468,7 +468,7 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
             for (Index i = 0; i < dim[0]; ++i) {
                 for (Index j = 0; j < dim[1]; ++j) {
                     for (Index k = 0; k < dim[2]; ++k) {
-                        Index idx = StructuredGrid::vertexIndex(i, j, k, dim);
+                        Index idx = LayerGrid::vertexIndex(i, j, k, dim);
                         z[idx] = min[2] + k * dist[2];
                     }
                 }
