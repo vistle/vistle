@@ -647,7 +647,7 @@ void Reader::Token::applyMeta(Object::ptr obj) const
     reader()->updateMeta(obj);
 
     obj->setTimestep(m_meta.timeStep());
-    obj->setNumTimesteps(m_meta.numTimesteps());
+    obj->setNumTimesteps(m_meta.timeStep() < 0 ? -1 : m_meta.numTimesteps());
     obj->setBlock(m_meta.block());
     obj->setNumBlocks(m_meta.numBlocks());
 }
