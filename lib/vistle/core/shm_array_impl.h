@@ -63,20 +63,20 @@ shm_array<T, allocator>::~shm_array()
 }
 
 template<typename T, class allocator>
-bool shm_array<T, allocator>::check() const
+bool shm_array<T, allocator>::check(std::ostream &os) const
 {
     assert(refcount() >= 0);
     assert(m_size <= m_capacity);
     if (refcount() < 0) {
-        std::cerr << "shm_array: INCONSISTENCY: refcount() < 0" << std::endl;
+        os << "shm_array: INCONSISTENCY: refcount() < 0" << std::endl;
         return false;
     }
     if (m_size > m_capacity) {
-        std::cerr << "shm_array: INCONSISTENCY: m_size > m_capacity" << std::endl;
+        os << "shm_array: INCONSISTENCY: m_size > m_capacity" << std::endl;
         return false;
     }
     if (m_dim[0] != 0 && m_size != m_dim[0] * m_dim[1] * m_dim[2]) {
-        std::cerr << "shm_array: INCONSISTENCY: dimensions" << std::endl;
+        os << "shm_array: INCONSISTENCY: dimensions" << std::endl;
         return false;
     }
     return true;
@@ -305,11 +305,25 @@ void shm_array<T, allocator>::load(Archive &ar)
 }
 
 template<typename T, class allocator>
+void shm_array<T, allocator>::print(std::ostream &os, bool verbose) const
+{
+    //os << name << " ";
+    os << ScalarTypeNames[typeId()] << "[" << size();
+    if (verbose) {
+        os << ":";
+        for (size_t i = 0; i < size(); ++i) {
+            os << " " << m_data[i];
+        }
+    }
+    os << "]";
+    os << " #ref:" << refcount();
+}
+
+
+template<typename T, class allocator>
 std::ostream &operator<<(std::ostream &os, const shm_array<T, allocator> &arr)
 {
-    //os << arr.name << " ";
-    os << ScalarTypeNames[arr.typeId()] << "[" << arr.size() << "]";
-    os << " #ref:" << arr.refcount();
+    arr.print(os);
     return os;
 }
 

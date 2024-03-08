@@ -1,6 +1,7 @@
 #include "spheres.h"
 #include "spheres_impl.h"
 #include "archives.h"
+#include "validate.h"
 
 namespace vistle {
 
@@ -22,14 +23,14 @@ bool Spheres::isEmpty() const
     return Base::isEmpty();
 }
 
-bool Spheres::checkImpl() const
+bool Spheres::checkImpl(std::ostream &os, bool quick) const
 {
     return true;
 }
 
-void Spheres::print(std::ostream &os) const
+void Spheres::print(std::ostream &os, bool verbose) const
 {
-    Base::print(os);
+    Base::print(os, verbose);
 }
 
 Index Spheres::getNumSpheres() const

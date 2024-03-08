@@ -365,6 +365,9 @@ Module::Module(const std::string &moduleName, const int moduleId, mpi::communica
     errmodes.push_back("Console & GUI");
     setParameterChoices(em, errmodes);
 
+    addIntParameter("_validate_objects", "validate data objects before sending to port", m_validateObjects,
+                    Parameter::Boolean);
+
     auto outrank = addIntParameter("_error_output_rank", "rank from which to show stderr (-1: all ranks)", -1);
     setParameterRange<Integer>(outrank, -1, size() - 1);
 
@@ -762,7 +765,7 @@ bool Module::broadcastObject(const mpi::communicator &comm, Object::const_ptr &o
         return true;
 
     if (comm.rank() == root) {
-        assert(obj->check());
+        assert(obj->check(std::cerr));
         vecostreambuf<buffer> memstr;
         vistle::oarchive memar(memstr);
         auto saver = std::make_shared<DeepArchiveSaver>();
@@ -801,7 +804,7 @@ bool Module::broadcastObject(const mpi::communicator &comm, Object::const_ptr &o
         obj.reset(Object::loadObject(memar));
         obj->refresh();
         //std::cerr << "broadcastObject recv " << obj->getName() << ": refcount=" << obj->refcount() << std::endl;
-        assert(obj->check());
+        assert(obj->check(std::cerr));
         //obj->unref();
     }
 
@@ -1015,7 +1018,16 @@ bool Module::passThroughObject(Port *port, vistle::Object::const_ptr object)
     m_withOutput.insert(port);
 
     object->refresh();
-    assert(object->check());
+    std::stringstream str;
+    bool ok = object->check(str, m_validateObjects);
+    if (!ok) {
+        std::stringstream str2;
+        str2 << "validation failed for object " << object->getName() << " on port " << port->getName() << std::endl;
+        str2 << "   " << *object << std::endl;
+        str2 << "   " << str.str();
+        sendError(str2.str());
+        return false;
+    }
 
     message::AddObject message(port->getName(), object);
     sendMessage(message);
@@ -1050,7 +1062,7 @@ ObjectList Module::getObjects(const std::string &portName)
     for (ObjectList::const_iterator it = olist.begin(); it != olist.end(); it++) {
         Object::const_ptr object = *it;
         if (object.get()) {
-            assert(object->check());
+            assert(object->check(std::cerr));
         }
         objects.push_back(object);
     }
@@ -1126,7 +1138,7 @@ vistle::Object::const_ptr Module::takeFirstObject(Port *port)
 {
     if (!port->objects().empty()) {
         Object::const_ptr obj = port->objects().front();
-        assert(obj->check());
+        assert(obj->check(std::cerr));
         port->objects().pop_front();
         return obj;
     }
@@ -1166,7 +1178,7 @@ Object::const_ptr Module::expect<Object>(Port *port)
         sendError(str.str());
         return obj;
     }
-    assert(obj->check());
+    assert(obj->check(std::cerr));
     return obj;
 }
 
@@ -1181,7 +1193,7 @@ bool Module::addInputObject(int sender, const std::string &senderPort, const std
         return false;
     }
 
-    assert(object->check());
+    assert(object->check(std::cerr));
 
     if (object->hasAttribute("_species")) {
         std::string species = object->getAttribute("_species");
@@ -1248,6 +1260,8 @@ bool Module::changeParameter(const Parameter *p)
             m_prioritizeVisible = getIntParameter("_prioritize_visible");
         } else if (name == "_use_result_cache") {
             enableResultCaches(getIntParameter(name));
+        } else if (name == "_validate_objects") {
+            m_validateObjects = getIntParameter(name);
         }
     }
 

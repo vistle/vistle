@@ -1,6 +1,7 @@
 #include "coordswradius.h"
 #include "coordswradius_impl.h"
 #include "archives.h"
+#include "validate.h"
 
 namespace vistle {
 
@@ -30,20 +31,33 @@ bool CoordsWithRadius::isEmpty() const
     return Base::isEmpty();
 }
 
-bool CoordsWithRadius::checkImpl() const
+bool CoordsWithRadius::checkImpl(std::ostream &os, bool quick) const
 {
-    CHECK_OVERFLOW(d()->r->size());
+    VALIDATE_INDEX(d()->r->size());
 
-    V_CHECK(d()->r->check());
-    V_CHECK(getNumVertices() == d()->r->size());
+    VALIDATE(d()->r->check(os));
+    VALIDATE(getNumVertices() == d()->r->size());
+
+    VALIDATE_SUB(normals());
+    VALIDATE_SUBSIZE(normals(), getSize());
+
+    if (quick)
+        return true;
+
+    VALIDATE_GEQ_P(d()->r, 0);
+
     return true;
 }
 
-void CoordsWithRadius::print(std::ostream &os) const
+
+void CoordsWithRadius::print(std::ostream &os, bool verbose) const
 {
     Base::print(os);
-    os << " r(" << *d()->r << ")";
+    os << " r(";
+    d()->r->print(os, verbose);
+    os << ")";
 }
+
 
 void CoordsWithRadius::resetArrays()
 {

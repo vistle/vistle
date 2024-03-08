@@ -1,6 +1,8 @@
 #include "tubes.h"
 #include "tubes_impl.h"
 #include "archives.h"
+#include "validate.h"
+#include "validate.h"
 
 namespace vistle {
 
@@ -23,22 +25,30 @@ bool Tubes::isEmpty() const
     return Base::isEmpty();
 }
 
-bool Tubes::checkImpl() const
+bool Tubes::checkImpl(std::ostream &os, bool quick) const
 {
-    CHECK_OVERFLOW(d()->components->size());
+    VALIDATE_INDEX(d()->components->size());
 
-    V_CHECK(components().size() > 0);
-    V_CHECK(components()[0] == 0);
-    V_CHECK(getNumTubes() >= 0);
-    V_CHECK(components()[getNumTubes()] <= getNumVertices());
-    V_CHECK(getNumVertices() >= getNumTubes());
+    VALIDATE(components().size() > 0);
+    VALIDATE(components()[0] == 0);
+    VALIDATE(getNumTubes() >= 0);
+    VALIDATE(components()[getNumTubes()] <= getNumVertices());
+    VALIDATE(getNumVertices() >= getNumTubes());
+
+    if (quick)
+        return true;
+
+    VALIDATE_RANGE(components(), 0, getNumVertices());
     return true;
 }
 
-void Tubes::print(std::ostream &os) const
+
+void Tubes::print(std::ostream &os, bool verbose) const
 {
     Base::print(os);
-    os << " components(" << *d()->components << ")";
+    os << " components(";
+    d()->components->print(os, verbose);
+    os << ")";
 }
 
 Index Tubes::getNumTubes() const

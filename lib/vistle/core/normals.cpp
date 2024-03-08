@@ -1,6 +1,7 @@
 #include "normals.h"
 #include "normals_impl.h"
 #include "archives.h"
+#include "validate.h"
 
 namespace vistle {
 
@@ -22,14 +23,14 @@ bool Normals::isEmpty() const
     return Base::isEmpty();
 }
 
-bool Normals::checkImpl() const
+bool Normals::checkImpl(std::ostream &os, bool quick) const
 {
     return true;
 }
 
-void Normals::print(std::ostream &os) const
+void Normals::print(std::ostream &os, bool verbose) const
 {
-    Base::print(os);
+    Base::print(os, verbose);
 }
 
 Index Normals::getNumNormals() const

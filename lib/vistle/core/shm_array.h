@@ -56,7 +56,7 @@ public:
     ~shm_array();
 
     unsigned type() const { return m_type; }
-    bool check() const;
+    bool check(std::ostream &os) const;
 
 #ifdef NO_SHMEM
     const vtkm::cont::ArrayHandle<handle_type> &handle() const;
@@ -156,6 +156,8 @@ public:
         assert(bounds_valid());
         return m_max;
     }
+
+    void print(std::ostream &os, bool verbose = false) const;
 
 private:
     const uint32_t m_type;

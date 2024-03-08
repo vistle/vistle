@@ -406,6 +406,7 @@ private:
     std::string m_inputSpecies;
 
     static bool s_shouldDetachShm;
+    bool m_validateObjects = false;
 };
 
 V_MODULEEXPORT int getTimestep(Object::const_ptr obj);
