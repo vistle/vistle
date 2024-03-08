@@ -6,6 +6,7 @@
 #include <cassert>
 
 #include "archives.h"
+#include "validate.h"
 #include <iostream>
 #include <iomanip>
 #include <climits>
@@ -157,7 +158,7 @@ std::ostream &operator<<(std::ostream &os, const Object &obj)
     return os;
 }
 
-void Object::print(std::ostream &os) const
+void Object::print(std::ostream &os, bool verbose) const
 {
     os << toString(getType()) << ":" << getName() << "(#ref:" << d()->refcount();
     if (!d()->isComplete()) {
@@ -351,12 +352,12 @@ Object::ptr Object::cloneType() const
 void Object::refresh() const
 {}
 
-bool Object::check() const
+bool Object::check(std::ostream &os, bool quick) const
 {
-    V_CHECK(d()->refcount() > 0); // we are holding a reference
-    V_CHECK(d()->isComplete()); // we are holding a reference
+    VALIDATE(d()->refcount() > 0); // we are holding a reference
+    VALIDATE(d()->isComplete()); // we are holding a reference
 
-    V_CHECK(d()->meta.creator() != -1);
+    VALIDATE(d()->meta.creator() != -1);
 
     bool terminated = false;
     for (size_t i = 0; i < sizeof(shm_name_t); ++i) {
@@ -365,18 +366,30 @@ bool Object::check() const
             break;
         }
     }
-    V_CHECK(terminated);
+    VALIDATE(terminated, "name has terminator");
 
-    V_CHECK(d()->type > UNKNOWN);
+    VALIDATE(d()->type > UNKNOWN);
 
-    V_CHECK(d()->meta.timeStep() >= -1);
-    V_CHECK(d()->meta.timeStep() < d()->meta.numTimesteps() || d()->meta.numTimesteps() == -1);
-    V_CHECK(d()->meta.animationStep() >= -1);
-    V_CHECK(d()->meta.animationStep() < d()->meta.numAnimationSteps() || d()->meta.numAnimationSteps() == -1);
-    V_CHECK(d()->meta.iteration() >= -1);
-    V_CHECK(d()->meta.block() >= -1);
-    V_CHECK(d()->meta.block() < d()->meta.numBlocks() || d()->meta.numBlocks() == -1);
-    V_CHECK(d()->meta.executionCounter() >= -1);
+    VALIDATE(d()->meta.numTimesteps() >= -1);
+    VALIDATE(d()->meta.timeStep() >= -1);
+    VALIDATE(d()->meta.numTimesteps() == -1 ||
+             (d()->meta.timeStep() >= 0 && d()->meta.timeStep() < d()->meta.numTimesteps()));
+
+    VALIDATE(d()->meta.animationStep() >= -1);
+    VALIDATE(d()->meta.animationStep() < d()->meta.numAnimationSteps() || d()->meta.numAnimationSteps() == -1);
+
+    VALIDATE(d()->meta.iteration() >= -1);
+
+    VALIDATE(d()->meta.numBlocks() >= -1);
+    VALIDATE(d()->meta.block() >= -1);
+    VALIDATE(d()->meta.numBlocks() == -1 || (d()->meta.block() >= 0 && d()->meta.block() < d()->meta.numBlocks()));
+
+    VALIDATE(d()->meta.executionCounter() >= -1);
+
+    if (quick)
+        return true;
+
+    VALIDATE(strstr(toString(getType()), "invalid") == nullptr);
 
     return true;
 }

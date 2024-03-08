@@ -31,20 +31,6 @@
 
 #include "archives_config.h"
 
-#include <vtkm/Types.h>
-
-#define CHECK_OVERFLOW(expr) \
-    do { \
-        if ((expr) >= size_t(InvalidIndex)) { \
-            throw vistle::except::index_overflow(#expr " = " + std::to_string(expr) + \
-                                                 ", recompile with 64 bit indices"); \
-        } \
-        if ((expr) > size_t(std::numeric_limits<vtkm::Id>::max())) { \
-            throw vistle::except::index_overflow(#expr " = " + std::to_string(expr) + \
-                                                 ", recompile with 64 bit indices"); \
-        } \
-    } while (false)
-
 
 namespace vistle {
 
@@ -151,8 +137,8 @@ public:
     static Object *createEmpty(const std::string &name = std::string());
 
     virtual void refresh() const; //!< refresh cached pointers from shm
-    virtual bool check() const;
-    virtual void print(std::ostream &os) const;
+    virtual bool check(std::ostream &os, bool quick = true) const;
+    virtual void print(std::ostream &os, bool verbose = false) const;
     virtual void updateInternals();
 
     virtual bool isEmpty() const;
@@ -385,19 +371,6 @@ private:
     static TypeMap &typeMap();
 };
 
-//! use in checkImpl
-#define V_CHECK(true_expr) \
-    if (!(true_expr)) { \
-        std::cerr << __FILE__ << ":" << __LINE__ << ": " \
-                  << "CONSISTENCY CHECK FAILURE on " << this->getName() << " " << this->meta() << ": " << #true_expr \
-                  << std::endl; \
-        std::stringstream str; \
-        str << __FILE__ << ":" << __LINE__ << ": consistency check failure: " << #true_expr; \
-        throw(vistle::except::consistency_error(str.str())); \
-        sleep(30); \
-        return false; \
-    }
-
 //! declare a new Object type
 #define V_OBJECT(ObjType) \
 public: \
@@ -485,21 +458,22 @@ public: \
     } \
     virtual bool isEmpty() override; \
     virtual bool isEmpty() const override; \
-    bool check() const override \
+    bool check(std::ostream &os, bool quick = true) const override \
     { \
         refresh(); \
         if (isEmpty()) { \
         }; \
-        if (!Base::check()) { \
+        if (!Base::check(os, quick)) { \
             std::cerr << *this << std::endl; \
             return false; \
         } \
-        if (!checkImpl()) { \
+        if (!checkImpl(os, quick)) { \
             std::cerr << *this << std::endl; \
             return false; \
         } \
         return true; \
     } \
+    void print(std::ostream &os, bool verbose = false) const override; \
     struct Data; \
     const Data *d() const \
     { \
@@ -512,8 +486,7 @@ public: \
     /* ARCHIVE_REGISTRATION(override) */ \
     ARCHIVE_REGISTRATION_INLINE \
 protected: \
-    bool checkImpl() const; \
-    void print(std::ostream &os) const override; \
+    bool checkImpl(std::ostream &os, bool quick) const; \
     explicit ObjType(Data *data); \
     ObjType(); \
 \

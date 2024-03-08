@@ -1,6 +1,7 @@
 #include "points.h"
 #include "points_impl.h"
 #include "archives.h"
+#include "validate.h"
 
 namespace vistle {
 
@@ -22,14 +23,14 @@ bool Points::isEmpty() const
 void Points::refreshImpl() const
 {}
 
-bool Points::checkImpl() const
+bool Points::checkImpl(std::ostream &os, bool quick) const
 {
     return true;
 }
 
-void Points::print(std::ostream &os) const
+void Points::print(std::ostream &os, bool verbose) const
 {
-    Base::print(os);
+    Base::print(os, verbose);
 }
 
 Index Points::getNumPoints()

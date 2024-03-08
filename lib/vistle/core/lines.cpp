@@ -1,6 +1,7 @@
 #include "lines.h"
 #include "lines_impl.h"
 #include "archives.h"
+#include "validate.h"
 
 namespace vistle {
 
@@ -23,14 +24,14 @@ bool Lines::isEmpty() const
     return Base::isEmpty();
 }
 
-bool Lines::checkImpl() const
+bool Lines::checkImpl(std::ostream &os, bool quick) const
 {
     return true;
 }
 
-void Lines::print(std::ostream &os) const
+void Lines::print(std::ostream &os, bool verbose) const
 {
-    Base::print(os);
+    Base::print(os, verbose);
 }
 
 void Lines::Data::initData()
