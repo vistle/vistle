@@ -246,7 +246,10 @@ bool Reader::prepare()
         numpart = 0;
 
     Meta meta;
-    meta.setNumBlocks(m_numPartitions);
+    if (m_numPartitions > 0)
+        meta.setNumBlocks(m_numPartitions);
+    else
+        meta.setNumBlocks(-1);
     auto numtime = rTime.calc_numtime();
     meta.setNumTimesteps(numtime);
 
