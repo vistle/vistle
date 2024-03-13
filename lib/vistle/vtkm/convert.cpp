@@ -156,7 +156,6 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
             vtkmDataset.SetCellSet(cellSet);
         }
     } else if (auto poly = Polygons::as(grid)) {
-        poly->check();
         auto numPoints = poly->getNumCoords();
         auto numCells = poly->getNumElements();
         auto conn = poly->cl().handle();
@@ -180,7 +179,6 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
         cellSet.Fill(numPoints, shapes, conn, offs);
         vtkmDataset.SetCellSet(cellSet);
     } else if (auto line = Lines::as(grid)) {
-        line->check();
         auto numPoints = line->getNumCoords();
         auto numCells = line->getNumElements();
         auto conn = line->cl().handle();
