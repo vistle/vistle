@@ -106,6 +106,31 @@ bool SpheresOverlap::compute(const std::shared_ptr<BlockTask> &task) const
         lineThicknesses = result.second;
     }
 
+    std::cout << "Duplicate lines with different thicknesses: " << std::endl;
+    for (auto i = 0; i < lines->cl().size(); i += 2) {
+        for (auto j = i + 1; j < lines->cl().size(); j += 2) {
+            auto i1 = lines->cl()[i];
+            auto i2 = lines->cl()[i + 1];
+
+            auto j1 = lines->cl()[j];
+            auto j2 = lines->cl()[j + 1];
+
+            // find identical pairs of points (minus the order)
+            if ((i1 == j1 && i2 == j2) || (i1 == j2 && i2 == j1)) {
+                // check if the line thickness for the identical lines is different
+                if (lineThicknesses->x()[i / 2] != lineThicknesses->x()[j / 2])
+                    std::cout << i << " + " << j << ":\n    " << i1 << " + " << i2 << " -> "
+                              << lineThicknesses->x()[i / 2] << "\n    " << j1 << " + " << j2 << " -> "
+                              << lineThicknesses->x()[j / 2] << std::endl;
+            }
+        }
+    }
+
+    auto myMin = *std::min_element(lineThicknesses->x().data(), lineThicknesses->x().data() + lineThicknesses->x().size() - 1);
+    auto myMax = *std::max_element(lineThicknesses->x().data(), lineThicknesses->x().data() + lineThicknesses->x().size() - 1);
+    
+    std::cout << "Thickness min: " << myMin << ", max: " << myMax << std::endl;
+
     if (lines->getNumCoords()) {
         if (mappedData) {
             lines->copyAttributes(mappedData);
