@@ -44,8 +44,9 @@ void VistleObserver::newHub(int hubId, const vistle::message::AddHub &hub)
     QString qsystype = QString::fromStdString(hub.systemType());
     QString qarch = QString::fromStdString(hub.arch());
     QString qinfo = QString::fromStdString(hub.info());
+    QString qversion = QString::fromStdString(hub.version());
     emit newHub_s(hubId, qname, hub.numRanks(), qaddress, hub.port(), qlogname, qrealname, hub.hasUserInterface(),
-                  qsystype, qarch, qinfo);
+                  qsystype, qarch, qinfo, qversion);
 }
 
 void VistleObserver::deleteHub(int hub)

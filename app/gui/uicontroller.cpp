@@ -13,10 +13,12 @@
 #include "vistleconsole.h"
 #include <vistle/util/directory.h>
 #include <vistle/util/hostname.h>
+#include <vistle/util/version.h>
 #include <vistle/config/value.h>
 #include "remotefilebrowser/remotefiledialog.h"
 #include "remotefilebrowser/vistlefileinfogatherer.h"
 #include "remotefilebrowser/remotefilesystemmodel.h"
+#include <boost/program_options.hpp>
 
 #include <thread>
 
@@ -44,19 +46,51 @@ UiController::UiController(int argc, char *argv[], QObject *parent): QObject(par
     std::string host = "localhost";
     unsigned short port = *m_config->value<int64_t>("system", "net", "controlport", 31093);
 
-    bool quitOnExit = false;
-    if (argc > 1 && argv[1] == std::string("-from-vistle")) {
-        quitOnExit = true;
-        argv[1] = argv[0];
-        --argc;
-        ++argv;
+    namespace po = boost::program_options;
+    po::options_description desc("usage");
+    // clang-format off
+    desc.add_options()
+        ("help,h", "show this message")
+        ("version,v", "print version")
+        ("from-vistle", "invoked by Vistle hub")
+        ("host", po::value<std::string>()->default_value(host), "host of Hub to connect to")
+        ("port", po::value<unsigned short>()->default_value(port), "port of Hub to connect to")
+        ;
+    // clang-format on
+
+    po::variables_map vm;
+    try {
+        po::positional_options_description popt;
+        popt.add("host", 1);
+        popt.add("port", 1);
+        po::store(po::command_line_parser(argc, argv).options(desc).positional(popt).run(), vm);
+        po::notify(vm);
+    } catch (std::exception &e) {
+        std::cerr << e.what() << std::endl;
+        std::cerr << desc << std::endl;
+        return;
     }
 
-    if (argc > 2) {
-        host = argv[1];
-        port = atoi(argv[2]);
-    } else if (argc > 1) {
-        auto url = QUrl::fromUserInput(QString::fromLocal8Bit(argv[1]));
+    if (vm.count("help")) {
+        std::cout << argv[0] << " " << desc << std::endl;
+        return;
+    }
+
+    if (vm.count("version")) {
+        std::cout << vistle::version::banner() << std::endl;
+        return;
+    }
+
+    bool quitOnExit = vm.count("from-vistle") > 0;
+
+    if (vm.count("host")) {
+        host = vm["host"].as<std::string>();
+    }
+    if (vm.count("port")) {
+        port = vm["port"].as<unsigned short>();
+    } else if (vm.count("host")) {
+        auto urlString = vm["host"].as<std::string>();
+        auto url = QUrl::fromUserInput(QString::fromStdString(urlString));
         host = url.host().toStdString();
         port = url.port(port);
     }
@@ -156,10 +190,11 @@ UiController::UiController(int argc, char *argv[], QObject *parent): QObject(par
     connect(&m_observer, SIGNAL(newParameter_s(int, QString)), SLOT(newParameter(int, QString)));
     connect(&m_observer, SIGNAL(parameterValueChanged_s(int, QString)), SLOT(parameterValueChanged(int, QString)));
 
-    connect(&m_observer,
-            SIGNAL(newHub_s(int, QString, int, QString, int, QString, QString, bool, QString, QString, QString)),
-            m_mainWindow,
-            SLOT(newHub(int, QString, int, QString, int, QString, QString, bool, QString, QString, QString)));
+    connect(
+        &m_observer,
+        SIGNAL(newHub_s(int, QString, int, QString, int, QString, QString, bool, QString, QString, QString, QString)),
+        m_mainWindow,
+        SLOT(newHub(int, QString, int, QString, int, QString, QString, bool, QString, QString, QString, QString)));
     connect(&m_observer, SIGNAL(deleteHub_s(int)), m_mainWindow, SLOT(deleteHub(int)));
     connect(&m_observer, SIGNAL(moduleAvailable_s(int, QString, QString, QString, QString)), m_mainWindow,
             SLOT(moduleAvailable(int, QString, QString, QString, QString)));
@@ -219,10 +254,15 @@ UiController::UiController(int argc, char *argv[], QObject *parent): QObject(par
     });
 
     m_mainWindow->show();
+
+    m_initialized = true;
 }
 
-void UiController::init()
+bool UiController::init()
 {
+    if (!m_initialized)
+        return false;
+
 #ifdef HAVE_PYTHON
     m_python->init();
 #endif
@@ -234,6 +274,8 @@ void UiController::init()
     m_mainWindow->dataFlowView()->snapToGridChanged(m_mainWindow->isSnapToGrid());
 
     moduleSelectionChanged();
+
+    return true;
 }
 
 UiController::~UiController()
@@ -582,7 +624,9 @@ void UiController::about(const char *title, const char *filename)
     });
 #endif
 
-    QString text("Welcome to scientific visualization with <a href='https://vistle.io/'>Vistle</a>!");
+    QString text =
+        QString("Welcome to scientific visualization with <a href='https://vistle.io/'>Vistle</a> version %1!")
+            .arg(vistle::version::string().c_str());
     text.append("<br>You can follow Vistle development on <a href='https://github.com/vistle/vistle'>GitHub</a>.");
 
     ui->label->setText(text);

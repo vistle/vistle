@@ -123,6 +123,8 @@ public:
     void setArch(const std::string &arch);
     std::string info() const;
     void setInfo(const std::string &info);
+    std::string version() const;
+    void setVersion(const std::string &version);
 
 private:
     int m_id;
@@ -137,8 +139,9 @@ private:
     address_t m_address;
     bool m_hasUserInterface;
     bool m_hasVrb;
-    module_name_t m_systemType;
-    module_name_t m_arch;
+    tag_t m_systemType;
+    tag_t m_arch;
+    tag_t m_version;
     address_t m_info;
 };
 

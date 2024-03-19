@@ -422,6 +422,7 @@ StateTracker::VistleState StateTracker::getState() const
         msg.setSystemType(slave.systemType);
         msg.setArch(slave.arch);
         msg.setInfo(slave.info);
+        msg.setVersion(slave.version);
         appendMessage(state, msg);
     }
 
@@ -900,6 +901,7 @@ bool StateTracker::handlePriv(const message::AddHub &slave)
     m_hubs.back().systemType = slave.systemType();
     m_hubs.back().arch = slave.arch();
     m_hubs.back().info = slave.info();
+    m_hubs.back().version = slave.version();
 
     // for per-hub parameters
     Module hub(slave.id(), slave.id());

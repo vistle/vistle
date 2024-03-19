@@ -281,7 +281,7 @@ QTreeWidgetItem *ModuleBrowser::getCategoryItem(int hub, QString category, Modul
 }
 
 void ModuleBrowser::addHub(int hub, QString hubName, int nranks, QString address, int port, QString logname,
-                           QString realname, bool hasUi, QString systype, QString arch, QString info)
+                           QString realname, bool hasUi, QString systype, QString arch, QString info, QString version)
 {
     for (auto idx: ModuleLists) {
         auto it = m_hubItems[idx].find(hub);
@@ -313,6 +313,7 @@ void ModuleBrowser::addHub(int hub, QString hubName, int nranks, QString address
                   .arg(sysicon)
                   .arg(arch)
                   .arg(nranks);
+        tt += "<small>" + version + "</small><br>";
         tt += "<small>" + info + "</small><br>";
         tt += QString(realname).toHtmlEscaped() + QString(" (%0)").arg(logname) + "<br>";
         tt += QString(hubName).toHtmlEscaped() + QString(":%0").arg(port);
