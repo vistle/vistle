@@ -14,8 +14,8 @@ def addJson(name:str, jsonDir:str, hash):
     data[name] = str(hash)
 
     with open(jsonDir, "w") as file:
-        json.dump(data, file)
-
+        file.write(json.dumps(data, indent=4))
+        
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Create imagehash."
@@ -42,7 +42,6 @@ if __name__ == "__main__":
         help="Path to json.",
     )
     args = parser.parse_args()
-    print(args)
 
     if args.name != None:
         name = args.name[0]
