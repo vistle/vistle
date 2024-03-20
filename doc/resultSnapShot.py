@@ -67,6 +67,9 @@ if __name__ == '__main__':
     else:
         print("No search dirs specified!")
 
+    if not os.path.exists(outputDir):
+        os.makedirs(outputDir)
+
     initVistle(name, srcDir)
     createCOVERSnapshot(name, outputDir)
     if args.gui:
