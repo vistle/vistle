@@ -80,7 +80,6 @@ const char *Object::toString(Type v)
         return #str;
     switch (v) {
         V_OBJECT_CASE(COORD, Coords)
-        V_OBJECT_CASE(COORDWRADIUS, CoordWRadius)
         V_OBJECT_CASE(DATABASE, Data)
 
         V_OBJECT_CASE(UNKNOWN, Unknown)
@@ -90,9 +89,7 @@ const char *Object::toString(Type v)
         V_OBJECT_CASE(TEXTURE1D, Texture1D)
 
         V_OBJECT_CASE(POINTS, Points)
-        V_OBJECT_CASE(SPHERES, Spheres)
         V_OBJECT_CASE(LINES, Lines)
-        V_OBJECT_CASE(TUBES, Tubes)
         V_OBJECT_CASE(TRIANGLES, Triangles)
         V_OBJECT_CASE(QUADS, Quads)
         V_OBJECT_CASE(POLYGONS, Polygons)

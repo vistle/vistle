@@ -14,8 +14,6 @@
 #include <vistle/core/structuredgrid.h>
 #include <vistle/core/unstr.h>
 #include <vistle/core/points.h>
-#include <vistle/core/spheres.h>
-#include <vistle/core/coordswradius.h>
 #include <vistle/util/enum.h>
 
 #include "Gendat.h"
@@ -459,7 +457,18 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
             Points::ptr p(new Points(numVert));
             geoOut = p;
         } else if (geoMode == Sphere_Geometry) {
-            Spheres::ptr s(new Spheres(numVert));
+            Points::ptr s(new Points(numVert));
+            auto rad = std::make_shared<Vec<Scalar>>(numVert);
+            Scalar *r = rad->x().data();
+            for (Index i = 0; i < dim[0]; ++i) {
+                for (Index j = 0; j < dim[1]; ++j) {
+                    for (Index k = 0; k < dim[2]; ++k) {
+                        Index idx = StructuredGrid::vertexIndex(i, j, k, dim);
+                        r[idx] = dist[0] * 0.2;
+                    }
+                }
+            }
+            s->setRadius(rad);
             geoOut = s;
         }
 
@@ -486,18 +495,6 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
                         x[idx] = min[0] + i * dist[0];
                         y[idx] = min[1] + j * dist[1];
                         z[idx] = min[2] + k * dist[2];
-                    }
-                }
-            }
-        }
-
-        if (auto rad = CoordsWithRadius::as(geoOut)) {
-            Scalar *r = rad->r().data();
-            for (Index i = 0; i < dim[0]; ++i) {
-                for (Index j = 0; j < dim[1]; ++j) {
-                    for (Index k = 0; k < dim[2]; ++k) {
-                        Index idx = StructuredGrid::vertexIndex(i, j, k, dim);
-                        r[idx] = dist[0] * 0.2;
                     }
                 }
             }

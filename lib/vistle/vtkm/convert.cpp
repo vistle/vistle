@@ -71,6 +71,16 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
             auto normals = coords->normals();
             vtkmAddField(vtkmDataset, normals, "normals");
         }
+
+        vistle::Vec<Scalar>::const_ptr radius;
+        if (auto lines = Lines::as(grid)) {
+            radius = lines->radius();
+        } else if (auto points = Points::as(grid)) {
+            radius = points->radius();
+        }
+        if (radius) {
+            vtkmAddField(vtkmDataset, radius, "_radius");
+        }
     } else if (auto uni = UniformGrid::as(grid)) {
         auto nx = uni->getNumDivisions(0);
         auto ny = uni->getNumDivisions(1);
@@ -471,6 +481,22 @@ Object::ptr vtkmGetGeometry(vtkm::cont::DataSet &dataset)
                 coords->d()->normals = n;
             } else {
                 std::cerr << "cannot convert normals" << std::endl;
+            }
+        }
+
+        if (auto radius = vtkmGetField(dataset, "_radius")) {
+            if (auto rvec = vistle::Vec<vistle::Scalar>::as(radius)) {
+                auto r = std::make_shared<vistle::Vec<Scalar>>(0);
+                r->d()->x[0] = rvec->d()->x[0];
+                // don't use setNormals() in order to bypass check() on object before updateMeta()
+                if (auto lines = Lines::as(result)) {
+                    lines->d()->radius = r;
+                }
+                if (auto points = Points::as(result)) {
+                    points->d()->radius = r;
+                }
+            } else {
+                std::cerr << "cannot apply radius to anything but Points and Lines" << std::endl;
             }
         }
     }
