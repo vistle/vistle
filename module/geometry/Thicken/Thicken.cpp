@@ -50,61 +50,6 @@ Thicken::Thicken(const std::string &name, int moduleID, mpi::communicator comm):
 Thicken::~Thicken()
 {}
 
-template<int Dim>
-struct FlattenData {
-    DataBase::const_ptr object;
-    DataBase::ptr &result;
-    Index num = 0;
-    const Index *const cl = nullptr;
-    FlattenData(DataBase::const_ptr obj, DataBase::ptr &result, Index num, const Index *cl)
-    : object(obj), result(result), num(num), cl(cl)
-    {
-        assert(num == 0 || cl);
-    }
-    template<typename S>
-    void operator()(S)
-    {
-        typedef Vec<S, Dim> V;
-        typename V::const_ptr in(V::as(object));
-        if (!in)
-            return;
-
-        typename V::ptr out = std::make_shared<V>(num);
-        for (int d = 0; d < Dim; ++d) {
-            const auto *din = &in->x(d)[0];
-            auto *dout = out->x(d).data();
-
-            for (Index i = 0; i < num; ++i) {
-                *dout++ = din[cl[i]];
-            }
-        }
-        result = out;
-    }
-};
-
-DataBase::ptr flattenData(DataBase::const_ptr src, Index num, const Index *cl)
-{
-    assert(num == 0 || cl);
-    if (num == 0) {
-        return src->clone();
-    }
-    DataBase::ptr result;
-    boost::mpl::for_each<Scalars>(FlattenData<1>(src, result, num, cl));
-    boost::mpl::for_each<Scalars>(FlattenData<3>(src, result, num, cl));
-    if (result)
-        result->copyAttributes(src);
-    if (auto tex = Texture1D::as(src)) {
-        assert(result);
-        auto vec1 = Vec<Scalar, 1>::as(Object::ptr(result));
-        assert(vec1);
-        auto result2 = tex->clone();
-        result2->d()->x[0] = vec1->d()->x[0];
-        result = result2;
-    }
-    return result;
-}
-
-
 bool Thicken::compute()
 {
     auto updateOutput = [&](OutputGeometry og) {
@@ -167,22 +112,12 @@ bool Thicken::compute()
         return true;
     }
 
-    auto &basedatain = split.mapped;
+    auto &basedata = split.mapped;
     auto radius1 = Vec<Scalar, 1>::as(split.mapped);
     auto radius3 = Vec<Scalar, 3>::as(split.mapped);
     auto iradius = Vec<Index>::as(split.mapped);
 
-    DataBase::ptr basedata;
-    if (basedatain) {
-        if (basedatain->guessMapping() != DataBase::Vertex) {
-            sendInfo("vertex mapping required for varying radius");
-            updateOutput(OGError);
-            return true;
-        }
-        if (basedatain->guessMapping() == DataBase::Vertex && isConnected("grid_out")) {
-            basedata = flattenData(basedatain, lines ? lines->getNumCorners() : 0, lines ? &lines->cl()[0] : nullptr);
-        }
-    } else {
+    if (!basedata) {
         if (mode != Fixed && !radius1 && !radius3 && !iradius) {
             sendInfo("data input required for varying radius");
         }
@@ -221,8 +156,8 @@ bool Thicken::compute()
     assert(cwr);
 
     // set radii
-    if (basedatain) {
-        numRad = basedatain->getSize();
+    if (basedata) {
+        numRad = basedata->getSize();
     }
     auto radius = std::make_shared<Vec<Scalar>>(numRad);
     auto r = radius->x().data();
@@ -285,36 +220,20 @@ bool Thicken::compute()
 
     updateMeta(cwr);
     if (basedata) {
-        basedata->setGrid(cwr);
-        updateMeta(basedata);
-        addObject("grid_out", basedata);
+        auto data = basedata->clone();
+        data->setGrid(cwr);
+        updateMeta(data);
+        addObject("grid_out", data);
     } else {
         addObject("grid_out", cwr);
     }
 
     auto data = accept<DataBase>("data_in");
     if (data && isConnected("data_out")) {
-        auto mapping = data->guessMapping();
-        switch (mapping) {
-        case DataBase::Vertex: {
-            auto ndata = flattenData(data, lines ? lines->getNumCorners() : 0, lines ? &lines->cl()[0] : nullptr);
-            ndata->setGrid(cwr);
-            updateMeta(ndata);
-            addObject("data_out", ndata);
-            break;
-        }
-        case DataBase::Element: {
-            auto ndata = data->clone();
-            ndata->setGrid(cwr);
-            updateMeta(ndata);
-            addObject("data_out", ndata);
-            break;
-        }
-        default: {
-            sendError("unsupported data mapping");
-            break;
-        }
-        }
+        auto ndata = data->clone();
+        ndata->setGrid(cwr);
+        updateMeta(ndata);
+        addObject("data_out", ndata);
     }
 
     return true;
