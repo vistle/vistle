@@ -77,10 +77,11 @@ std::set<Object::const_ptr> DataBase::referencedObjects() const
 {
     auto objs = Base::referencedObjects();
 
-    if (grid()) {
-        auto go = grid()->referencedObjects();
+    auto gr = grid();
+    if (gr && objs.emplace(gr).second) {
+        auto go = gr->referencedObjects();
         std::copy(go.begin(), go.end(), std::inserter(objs, objs.begin()));
-        objs.emplace(grid());
+        objs.emplace(gr);
     }
 
     return objs;
