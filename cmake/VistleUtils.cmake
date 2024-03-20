@@ -44,7 +44,7 @@ macro(create_image_hash targetname network_file)
     file(RELATIVE_PATH mod_path ${CMAKE_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
     message("mod_path: ${mod_path}")
     # set(HASH_ARGS -name ${targetname} -sdir ${CMAKE_CURRENT_LIST_DIR}/${network_file}_result.png -jdir
-    set(HASH_ARGS -name ${mod_path} -sdir ${CMAKE_CURRENT_LIST_DIR}/${network_file}_result.png -jdir
+    set(HASH_ARGS -name ${mod_path}/${network_file}.vsl -sdir ${CMAKE_CURRENT_LIST_DIR}/${network_file}_result.png -jdir
                   ${PROJECT_SOURCE_DIR}/test/moduleTest/utils/refImageHash.json)
 
     # #if we have a viewpoint file we can generate a result image, only first viewpoint is considered, only first cover is considered
