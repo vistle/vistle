@@ -11,6 +11,7 @@
 #include <vistle/core/lines.h>
 #include <vistle/core/tubes.h>
 #include <vistle/util/math.h>
+#include <vistle/alg/objalg.h>
 
 #include "Thicken.h"
 
@@ -159,34 +160,34 @@ bool Thicken::compute()
         return true;
     }
 
-    auto lines = Lines::as(obj);
-    auto points = Points::as(obj);
-    auto radius = Vec<Scalar, 1>::as(obj);
-    auto radius3 = Vec<Scalar, 3>::as(obj);
-    auto iradius = Vec<Index>::as(obj);
-    auto basedatain = DataBase::as(obj);
-
-    DataBase::ptr basedata;
-    if (!points && !lines && basedatain) {
-        if (basedatain->guessMapping() != DataBase::Vertex) {
-            sendError("per-vertex mapped data required for radius");
-            updateOutput(OGError);
-            return true;
-        }
-        lines = Lines::as(basedatain->grid());
-        points = Points::as(basedatain->grid());
-        if (isConnected("grid_out")) {
-            basedata = flattenData(basedatain, lines ? lines->getNumCorners() : 0, lines ? &lines->cl()[0] : nullptr);
-        }
-    }
-    if (!lines && !points) {
+    auto split = splitContainerObject(obj);
+    auto lines = Lines::as(split.geometry);
+    auto points = Points::as(split.geometry);
+    if (!points && !lines) {
         sendError("no Lines and no Points object");
         updateOutput(OGError);
         return true;
     }
 
-    if (mode != Fixed && !radius && !radius3 && !iradius) {
-        sendInfo("data input required for varying radius");
+    auto &basedatain = split.mapped;
+    auto radius = Vec<Scalar, 1>::as(split.mapped);
+    auto radius3 = Vec<Scalar, 3>::as(split.mapped);
+    auto iradius = Vec<Index>::as(split.mapped);
+
+    DataBase::ptr basedata;
+    if (basedatain) {
+        if (basedatain->guessMapping() != DataBase::Vertex) {
+            sendInfo("vertex mapping required for varying radius");
+            updateOutput(OGError);
+            return true;
+        }
+        if (basedatain->guessMapping() == DataBase::Vertex && isConnected("grid_out")) {
+            basedata = flattenData(basedatain, lines ? lines->getNumCorners() : 0, lines ? &lines->cl()[0] : nullptr);
+        }
+    } else {
+        if (mode != Fixed && !radius && !radius3 && !iradius) {
+            sendInfo("data input required for varying radius");
+        }
     }
 
     if (lines && mode == InvVolume) {
