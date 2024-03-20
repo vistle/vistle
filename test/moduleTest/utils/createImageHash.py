@@ -53,7 +53,8 @@ if __name__ == "__main__":
         jsonDir = args.jdir[0]
 
     hash = createImageHash(srcDir)
-    addJson(name, jsonDir, hash)
+    if jsonDir != "":
+        addJson(name, jsonDir, hash)
 
     # for debugging 
     # print(hash)
