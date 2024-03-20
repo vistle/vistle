@@ -239,7 +239,7 @@ void AnariRenderObject::create(anari::Device device)
 
         geom = anari::newObject<anari::Geometry>(device, "triangle");
         useNormals =
-            normals && normals->guessMapping() == vistle::DataBase::Vertex; // FIXME: remap per-primitive normals
+            normals && normals->guessMapping(poly) == vistle::DataBase::Vertex; // FIXME: remap per-primitive normals
         if (auto begin = anari::mapParameterArray<anari::std_types::uvec3>(device, geom, "primitive.index", ntri)) {
             const auto *cl = &poly->cl()[0];
             const auto *el = &poly->el()[0];
