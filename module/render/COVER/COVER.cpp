@@ -532,9 +532,7 @@ std::shared_ptr<vistle::RenderObject> COVER::addObject(int senderId, const std::
         cover->addPlugin("Volume");
     } else if (!VistleGeometryGenerator::isSupported(objType)) {
         std::stringstream str;
-        if (objType == vistle::Object::TUBES) {
-            str << "Tubes input unsupported - use ToTriangle module";
-        } else if (objType != vistle::Object::EMPTY) {
+        if (objType != vistle::Object::EMPTY) {
             str << "Unsupported input data: " << Object::toString(objType);
         }
         std::cerr << "COVER::addObject: " << str.str() << std::endl;

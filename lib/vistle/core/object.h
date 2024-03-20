@@ -84,7 +84,6 @@ public:
 
     enum Type {
         COORD = -9,
-        COORDWRADIUS = -8,
         DATABASE = -7,
 
         UNKNOWN = -1,
@@ -95,9 +94,7 @@ public:
         TEXTURE1D = 16,
 
         POINTS = 18,
-        SPHERES = 19,
         LINES = 20,
-        TUBES = 21,
         TRIANGLES = 22,
         POLYGONS = 23,
         UNSTRUCTUREDGRID = 24,

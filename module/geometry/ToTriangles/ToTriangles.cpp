@@ -10,10 +10,10 @@
 #include <vistle/core/normals.h>
 #include <vistle/core/polygons.h>
 #include <vistle/core/quads.h>
-#include <vistle/core/spheres.h>
-#include <vistle/core/tubes.h>
 #include <vistle/core/texture1d.h>
 #include <vistle/core/unstr.h>
+#include <vistle/core/points.h>
+#include <vistle/core/lines.h>
 #include <vistle/alg/objalg.h>
 
 #include "ToTriangles.h"
@@ -46,7 +46,7 @@ struct ReplicateData {
     Index nnElem = 0;
     const Index *const mult = nullptr;
     Index nStart = 0, nEnd = 0;
-    ReplicateData(DataBase::const_ptr obj, DataBase::ptr &result, Index n, Index nElem, Index *el, Index nStart,
+    ReplicateData(DataBase::const_ptr obj, DataBase::ptr &result, Index n, Index nElem, const Index *el, Index nStart,
                   Index nEnd)
     : object(obj), result(result), n(n), nElem(nElem), el(el), nStart(nStart), nEnd(nEnd)
     {
@@ -120,8 +120,8 @@ struct ReplicateData {
     }
 };
 
-DataBase::ptr replicateData(DataBase::const_ptr src, Index n, Index nElem = 0, Index *el = nullptr, Index nStart = 0,
-                            Index nEnd = 0)
+DataBase::ptr replicateData(DataBase::const_ptr src, Index n, Index nElem = 0, const Index *el = nullptr,
+                            Index nStart = 0, Index nEnd = 0)
 {
     DataBase::ptr result;
     boost::mpl::for_each<Scalars>(ReplicateData<1>(src, result, n, nElem, el, nStart, nEnd));
@@ -165,7 +165,13 @@ bool ToTriangles::compute()
     if (auto entry = m_resultCache.getOrLock(container->getName(), result)) {
         bool perElement = data && data->guessMapping() == DataBase::Element;
 
-        auto sphere = Spheres::as(obj);
+        vistle::Vec<Scalar>::const_ptr radius;
+        auto lines = Lines::as(obj);
+        if (lines)
+            radius = lines->radius();
+        auto points = Points::as(obj);
+        if (points)
+            radius = points->radius();
 
         // transform the rest, if possible
         Triangles::ptr tri;
@@ -244,7 +250,7 @@ bool ToTriangles::compute()
             if (data && data->guessMapping() == DataBase::Element) {
                 ndata = replicateData(data, 2);
             }
-        } else if (sphere && p_transformSpheres->getValue()) {
+        } else if (points && radius && p_transformSpheres->getValue()) {
             const int NumLat = 8;
             const int NumLong = 13;
             static_assert(NumLat >= 3, "too few vertices");
@@ -252,11 +258,11 @@ bool ToTriangles::compute()
             Index TriPerSphere = NumLong * (NumLat - 2) * 2;
             Index CoordPerSphere = NumLong * (NumLat - 2) + 2;
 
-            Index n = sphere->getNumSpheres();
-            auto x = &sphere->x()[0];
-            auto y = &sphere->y()[0];
-            auto z = &sphere->z()[0];
-            auto r = &sphere->r()[0];
+            Index n = points->getNumPoints();
+            auto x = &points->x()[0];
+            auto y = &points->y()[0];
+            auto z = &points->z()[0];
+            auto r = &radius->x()[0];
 
             tri.reset(new Triangles(n * 3 * TriPerSphere, n * CoordPerSphere));
             auto tx = tri->x().data();
@@ -353,38 +359,38 @@ bool ToTriangles::compute()
             if (data) {
                 ndata = replicateData(data, CoordPerSphere);
             }
-        } else if (auto tube = Tubes::as(obj)) {
+        } else if (lines && radius) {
             const int NumSect = 7;
             static_assert(NumSect >= 3, "too few sectors");
             Index TriPerSection = NumSect * 2;
 
-            Index numEl = tube->getNumTubes();
-            Index numPoint = tube->getNumCoords();
-            auto x = &tube->x()[0];
-            auto y = &tube->y()[0];
-            auto z = &tube->z()[0];
-            auto r = &tube->r()[0];
-            auto el = tube->components().data();
+            Index numEl = lines->getNumElements();
+            Index numPoint = lines->getNumCoords();
+            auto x = &lines->x()[0];
+            auto y = &lines->y()[0];
+            auto z = &lines->z()[0];
+            auto r = &radius->x()[0];
+            auto el = &lines->el()[0];
             // we ignore connection style altogether and simplify start and end style
-            auto startStyle = tube->startStyle();
-            if (startStyle != Tubes::Open) {
-                startStyle = Tubes::Flat;
+            auto startStyle = lines->startStyle();
+            if (startStyle != Lines::Open) {
+                startStyle = Lines::Flat;
             }
-            auto endStyle = tube->endStyle();
-            if (endStyle != Tubes::Arrow && endStyle != Tubes::Open) {
-                endStyle = Tubes::Flat;
+            auto endStyle = lines->endStyle();
+            if (endStyle != Lines::Arrow && endStyle != Lines::Open) {
+                endStyle = Lines::Flat;
             }
 
             Index numCoordStart = 0, numCoordEnd = 0;
             Index numIndStart = 0, numIndEnd = 0;
-            if (startStyle == Tubes::Flat) {
+            if (startStyle == Lines::Flat) {
                 numCoordStart = 1 + NumSect;
                 numIndStart = 3 * NumSect;
             }
-            if (endStyle == Tubes::Arrow) {
+            if (endStyle == Lines::Arrow) {
                 numCoordEnd = 3 * NumSect;
                 numIndEnd = 3 * 3 * NumSect;
-            } else if (endStyle == Tubes::Flat) {
+            } else if (endStyle == Lines::Flat) {
                 numCoordEnd = 1 + NumSect;
                 numIndEnd = 3 * NumSect;
             }
@@ -451,7 +457,7 @@ bool ToTriangles::compute()
                         const auto rot2 = Quaternion(AngleAxis(M_PI / NumSect, dir)).toRotationMatrix();
 
                         // start cap
-                        if (first && startStyle == Tubes::Flat) {
+                        if (first && startStyle == Lines::Flat) {
                             tx[ci] = cur[0];
                             ty[ci] = cur[1];
                             tz[ci] = cur[2];
@@ -507,8 +513,8 @@ bool ToTriangles::compute()
                         }
 
                         // end cap/arrow
-                        if (last && endStyle != Tubes::Open) {
-                            if (endStyle == Tubes::Arrow) {
+                        if (last && endStyle != Lines::Open) {
+                            if (endStyle == Lines::Arrow) {
                                 Index tipStart = ci;
                                 for (Index l = 0; l < NumSect; ++l) {
                                     tx[ci] = tx[ci - NumSect];
@@ -565,7 +571,7 @@ bool ToTriangles::compute()
                                     ti[ii++] = tipStart + NumSect + (l + 1) % NumSect;
                                     ti[ii++] = tipStart + 2 * NumSect + l;
                                 }
-                            } else if (endStyle == Tubes::Flat) {
+                            } else if (endStyle == Lines::Flat) {
                                 for (Index l = 0; l < NumSect; ++l) {
                                     tx[ci] = tx[ci - NumSect];
                                     ty[ci] = ty[ci - NumSect];

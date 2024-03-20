@@ -4,11 +4,8 @@
 #include "archives.h"
 #include "vec.h"
 #include "coords.h"
-#include "coordswradius.h"
 #include "normals.h"
 #include "points.h"
-#include "spheres.h"
-#include "tubes.h"
 #include "indexed.h"
 #include "lines.h"
 #include "triangles.h"
@@ -49,9 +46,7 @@ void registerTypes()
     REGISTER_TYPE(PlaceHolder, Object::PLACEHOLDER);
     REGISTER_TYPE(Texture1D, Object::TEXTURE1D);
     REGISTER_TYPE(Points, Object::POINTS);
-    REGISTER_TYPE(Spheres, Object::SPHERES);
     REGISTER_TYPE(Lines, Object::LINES);
-    REGISTER_TYPE(Tubes, Object::TUBES);
     REGISTER_TYPE(Triangles, Object::TRIANGLES);
     REGISTER_TYPE(Quads, Object::QUADS);
     REGISTER_TYPE(Polygons, Object::POLYGONS);

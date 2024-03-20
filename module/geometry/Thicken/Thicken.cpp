@@ -7,9 +7,7 @@
 #include <vistle/core/texture1d.h>
 #include <vistle/core/coords.h>
 #include <vistle/core/points.h>
-#include <vistle/core/spheres.h>
 #include <vistle/core/lines.h>
-#include <vistle/core/tubes.h>
 #include <vistle/util/math.h>
 #include <vistle/alg/objalg.h>
 
@@ -39,14 +37,14 @@ Thicken::Thicken(const std::string &name, int moduleID, mpi::communicator comm):
     setParameterMinimum(m_range, ParamVector(0., 0.));
 
     m_startStyle =
-        addIntParameter("start_style", "cap style for initial tube segments", (Integer)Tubes::Open, Parameter::Choice);
-    V_ENUM_SET_CHOICES_SCOPE(m_startStyle, CapStyle, Tubes);
-    m_jointStyle = addIntParameter("connection_style", "cap style for tube segment connections", (Integer)Tubes::Round,
+        addIntParameter("start_style", "cap style for initial tube segments", (Integer)Lines::Open, Parameter::Choice);
+    V_ENUM_SET_CHOICES_SCOPE(m_startStyle, CapStyle, Lines);
+    m_jointStyle = addIntParameter("connection_style", "cap style for tube segment connections", (Integer)Lines::Round,
                                    Parameter::Choice);
-    V_ENUM_SET_CHOICES_SCOPE(m_jointStyle, CapStyle, Tubes);
+    V_ENUM_SET_CHOICES_SCOPE(m_jointStyle, CapStyle, Lines);
     m_endStyle =
-        addIntParameter("end_style", "cap style for final tube segments", (Integer)Tubes::Open, Parameter::Choice);
-    V_ENUM_SET_CHOICES_SCOPE(m_endStyle, CapStyle, Tubes);
+        addIntParameter("end_style", "cap style for final tube segments", (Integer)Lines::Open, Parameter::Choice);
+    V_ENUM_SET_CHOICES_SCOPE(m_endStyle, CapStyle, Lines);
 }
 
 Thicken::~Thicken()
@@ -170,7 +168,7 @@ bool Thicken::compute()
     }
 
     auto &basedatain = split.mapped;
-    auto radius = Vec<Scalar, 1>::as(split.mapped);
+    auto radius1 = Vec<Scalar, 1>::as(split.mapped);
     auto radius3 = Vec<Scalar, 3>::as(split.mapped);
     auto iradius = Vec<Index>::as(split.mapped);
 
@@ -185,7 +183,7 @@ bool Thicken::compute()
             basedata = flattenData(basedatain, lines ? lines->getNumCorners() : 0, lines ? &lines->cl()[0] : nullptr);
         }
     } else {
-        if (mode != Fixed && !radius && !radius3 && !iradius) {
+        if (mode != Fixed && !radius1 && !radius3 && !iradius) {
             sendInfo("data input required for varying radius");
         }
     }
@@ -200,52 +198,35 @@ bool Thicken::compute()
         mode = Surface;
     }
 
-    Tubes::ptr tubes;
-    Spheres::ptr spheres;
-    CoordsWithRadius::ptr cwr;
+    Lines::ptr tubes;
+    Points::ptr spheres;
+    Coords::ptr cwr;
 
     const Index *cl = nullptr;
+    Index numRad = 0;
     if (lines) {
         updateOutput(OGTubes);
-        // set coordinates
-        if (lines->getNumCorners() == 0) {
-            tubes = Tubes::clone<Vec<Scalar, 3>>(lines);
-        } else {
-            cl = &lines->cl()[0];
-            tubes.reset(new Tubes(lines->getNumElements(), lines->getNumCorners()));
-            auto lx = &lines->x()[0];
-            auto ly = &lines->y()[0];
-            auto lz = &lines->z()[0];
-            auto tx = tubes->x().data();
-            auto ty = tubes->y().data();
-            auto tz = tubes->z().data();
-            for (Index i = 0; i < lines->getNumCorners(); ++i) {
-                Index l = cl[i];
-                tx[i] = lx[l];
-                ty[i] = ly[l];
-                tz[i] = lz[l];
-            }
-        }
+        tubes = lines->clone();
+        tubes->setCapStyles((Lines::CapStyle)m_startStyle->getValue(), (Lines::CapStyle)m_jointStyle->getValue(),
+                            (Lines::CapStyle)m_endStyle->getValue());
+        numRad = lines->getNumCoords();
         cwr = tubes;
-
-        // set tube lengths
-        tubes->d()->components = lines->d()->el;
-
-        tubes->setCapStyles((Tubes::CapStyle)m_startStyle->getValue(), (Tubes::CapStyle)m_jointStyle->getValue(),
-                            (Tubes::CapStyle)m_endStyle->getValue());
-        tubes->setMeta(lines->meta());
-        tubes->copyAttributes(lines);
     } else if (points) {
         updateOutput(OGSpheres);
-        spheres = Spheres::clone<Vec<Scalar, 3>>(points);
+        spheres = points->clone();
+        numRad = spheres->getNumCoords();
         cwr = spheres;
     }
 
     assert(cwr);
 
     // set radii
-    auto r = cwr->r().data();
-    auto radx = radius3 ? &radius3->x()[0] : radius ? &radius->x()[0] : nullptr;
+    if (basedatain) {
+        numRad = basedatain->getSize();
+    }
+    auto radius = std::make_shared<Vec<Scalar>>(numRad);
+    auto r = radius->x().data();
+    auto radx = radius3 ? &radius3->x()[0] : radius1 ? &radius1->x()[0] : nullptr;
     auto rady = radius3 ? &radius3->y()[0] : nullptr;
     auto radz = radius3 ? &radius3->z()[0] : nullptr;
     auto irad = iradius ? &iradius->x()[0] : nullptr;
@@ -297,6 +278,10 @@ bool Thicken::compute()
 
         r[i] = clamp(r[i], rmin, rmax);
     }
+    if (tubes)
+        tubes->setRadius(radius);
+    if (spheres)
+        spheres->setRadius(radius);
 
     updateMeta(cwr);
     if (basedata) {
