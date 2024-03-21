@@ -213,14 +213,11 @@ bool Thicken::compute()
 
         r[i] = clamp(r[i], rmin, rmax);
     }
-    if (tubes) {
-        updateMeta(radius);
+    updateMeta(radius);
+    if (tubes) 
         tubes->setRadius(radius);
-    }
-    if (spheres) {
-        updateMeta(radius);
+    if (spheres) 
         spheres->setRadius(radius);
-    }
 
     updateMeta(cwr);
     if (basedata) {
