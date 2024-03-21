@@ -1,11 +1,12 @@
 ["alias"]
 # when Tubes is requested, start Thicken
 Tubes = "Thicken"
+TubesOld = "Thicken"
 Spheres = "Thicken"
+SpheresOld = "Thicken"
 
 ["replace"]
 renderer = [ "COVER", "BlenderRenderer", "ANARemote", "DisCOVERay", "OsgRenderer" ]
-thicken = [ "Thicken", "SpheresOld", "TubesOld" ]
 select = [ "Threshold", "CellSelect" ]
 color = [ "Color", "ColorRandom" ]
 clip = [ "CutGeometry", "ClipVtkm" ]

@@ -69,7 +69,7 @@ public:
 
 public slots:
     void addHub(int hub, QString hubName, int nranks, QString address, int port, QString logname, QString realname,
-                bool hasUi, QString systype, QString arch, QString info);
+                bool hasUi, QString systype, QString arch, QString info, QString version);
     void removeHub(int hub);
     void addModule(int hub, QString module, QString path, QString category, QString description);
     void setFilter(QString filter);

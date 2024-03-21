@@ -86,10 +86,11 @@ struct DisplaceImpl {
     Coords::ptr &out;
     DisplaceComponent comp;
     DisplaceOperation op;
+    Scalar scale = Scalar(1.);
 
     DisplaceImpl(typename Grid::const_ptr &grid, DataBase::const_ptr &database, Coords::ptr &out,
-                 DisplaceComponent comp, DisplaceOperation op)
-    : grid(grid), database(database), out(out), comp(comp), op(op)
+                 DisplaceComponent comp, DisplaceOperation op, Scalar scale)
+    : grid(grid), database(database), out(out), comp(comp), op(op), scale(scale)
     {}
 
     template<typename S>
@@ -114,26 +115,26 @@ struct DisplaceImpl {
                     for (unsigned c = 0; c < 3; ++c) {
                         switch (op) {
                         case Set:
-                            v[c] = d;
+                            v[c] = d * scale;
                             break;
                         case Add:
-                            v[c] += d;
+                            v[c] += d * scale;
                             break;
                         case Multiply:
-                            v[c] *= d;
+                            v[c] *= d * scale;
                             break;
                         }
                     }
                 } else {
                     switch (op) {
                     case Set:
-                        v[comp] = d;
+                        v[comp] = d * scale;
                         break;
                     case Add:
-                        v[comp] += d;
+                        v[comp] += d * scale;
                         break;
                     case Multiply:
-                        v[comp] *= d;
+                        v[comp] *= d * scale;
                         break;
                     }
                 }
@@ -143,13 +144,13 @@ struct DisplaceImpl {
                 Vector3 d(data->x()[i], data->y()[i], data->z()[i]);
                 switch (op) {
                 case Set:
-                    v = d;
+                    v = d * scale;
                     break;
                 case Add:
-                    v += d;
+                    v += d * scale;
                     break;
                 case Multiply:
-                    v = v.cwiseProduct(d);
+                    v = v.cwiseProduct(d * scale);
                     break;
                 }
             }
@@ -161,24 +162,24 @@ struct DisplaceImpl {
 };
 
 bool displace(Object::const_ptr &src, DataBase::const_ptr &data, Coords::ptr &coords, DisplaceComponent comp,
-              DisplaceOperation op)
+              DisplaceOperation op, Scalar scale)
 {
     if (data->getSize() != coords->getSize())
         return false;
     if (auto scoords = Coords::as(src)) {
         if (scoords->getSize() != coords->getSize())
             return false;
-        DisplaceImpl<Coords, 1> d1(scoords, data, coords, comp, op);
+        DisplaceImpl<Coords, 1> d1(scoords, data, coords, comp, op, scale);
         boost::mpl::for_each<Scalars>(d1);
-        DisplaceImpl<Coords, 3> d3(scoords, data, coords, comp, op);
+        DisplaceImpl<Coords, 3> d3(scoords, data, coords, comp, op, scale);
         boost::mpl::for_each<Scalars>(d3);
         return true;
     } else if (auto sstr = StructuredGridBase::as(src)) {
         if (sstr->getNumVertices() != coords->getSize())
             return false;
-        DisplaceImpl<StructuredGridBase, 1> d1(sstr, data, coords, comp, op);
+        DisplaceImpl<StructuredGridBase, 1> d1(sstr, data, coords, comp, op, scale);
         boost::mpl::for_each<Scalars>(d1);
-        DisplaceImpl<StructuredGridBase, 3> d3(sstr, data, coords, comp, op);
+        DisplaceImpl<StructuredGridBase, 3> d3(sstr, data, coords, comp, op, scale);
         boost::mpl::for_each<Scalars>(d3);
         return true;
     }
@@ -215,6 +216,7 @@ MapDrape::MapDrape(const std::string &name, int moduleID, mpi::communicator comm
                                   Add, Parameter::Choice);
     V_ENUM_SET_CHOICES(p_operation, DisplaceOperation);
 
+    p_scale = addFloatParameter("scale", "scaling factor for displacement", 1.);
 #endif
 }
 
@@ -415,7 +417,7 @@ bool MapDrape::compute()
 
 #ifdef DISPLACE
             if (!displace(geo, data, outCoords, DisplaceComponent(p_component->getValue()),
-                          DisplaceOperation(p_operation->getValue()))) {
+                          DisplaceOperation(p_operation->getValue()), p_scale->getValue())) {
                 outCoords.reset();
                 sendInfo("computing displaced grid failed");
                 return true;

@@ -11,7 +11,6 @@
 #include <vistle/core/quads.h>
 #include <vistle/core/rectilineargrid.h>
 #include <vistle/core/scalars.h>
-#include <vistle/core/spheres.h>
 #include <vistle/core/structuredgrid.h>
 #include <vistle/core/structuredgridbase.h>
 #include <vistle/core/triangles.h>
@@ -43,6 +42,15 @@ VtkmTransformStatus coordinatesAndNormalsToVtkm(Object::const_ptr grid, vtkm::co
         if (coordinates->normals())
             fieldToVtkm(coordinates->normals(), vtkmDataset, "normals");
 
+        vistle::Vec<Scalar>::const_ptr radius;
+        if (auto lines = Lines::as(grid)) {
+            radius = lines->radius();
+        } else if (auto points = Points::as(grid)) {
+            radius = points->radius();
+        }
+        if (radius) {
+            fieldToVtkm(radius, vtkmDataset, "_radius");
+        }
     } else if (auto uni = UniformGrid::as(grid)) {
         auto axesDivisions = vtkm::Id3(uni->getNumDivisions(xId), uni->getNumDivisions(yId), uni->getNumDivisions(zId));
         auto gridOrigin = vtkm::Vec3f{uni->min()[xId], uni->min()[yId], uni->min()[zId]};
@@ -407,6 +415,22 @@ void coordinatesAndNormalsToVistle(vtkm::cont::DataSet &dataset, Object::ptr res
                 coords->d()->normals = n;
             } else {
                 std::cerr << "cannot convert normals" << std::endl;
+            }
+        }
+
+        if (auto radius = vtkmFieldToVistle(dataset, "_radius")) {
+            if (auto rvec = vistle::Vec<vistle::Scalar>::as(radius)) {
+                auto r = std::make_shared<vistle::Vec<Scalar>>(0);
+                r->d()->x[0] = rvec->d()->x[0];
+                // don't use setNormals() in order to bypass check() on object before updateMeta()
+                if (auto lines = Lines::as(result)) {
+                    lines->d()->radius = r;
+                }
+                if (auto points = Points::as(result)) {
+                    points->d()->radius = r;
+                }
+            } else {
+                std::cerr << "cannot apply radius to anything but Points and Lines" << std::endl;
             }
         }
     }

@@ -7,6 +7,7 @@
 #include "celltypes.h"
 #include <cassert>
 #include <vistle/util/exception.h>
+#include "validate.h"
 
 namespace vistle {
 
@@ -50,21 +51,33 @@ bool Ngons<N>::isEmpty() const
 }
 
 template<int N>
-bool Ngons<N>::checkImpl() const
+bool Ngons<N>::checkImpl(std::ostream &os, bool quick) const
 {
-    CHECK_OVERFLOW(d()->cl->size());
-    CHECK_OVERFLOW(d()->ghost->size());
+    VALIDATE_INDEX(d()->cl->size());
+    VALIDATE_INDEX(d()->ghost->size());
 
-    V_CHECK(d()->cl->check());
-    V_CHECK(d()->ghost->check());
-    V_CHECK(d()->ghost->size() == 0 || d()->ghost->size() == getNumElements());
+    VALIDATE(d()->cl->check(os));
+    VALIDATE(d()->ghost->check(os));
+    VALIDATE(d()->ghost->size() == 0 || d()->ghost->size() == getNumElements());
     if (getNumCorners() > 0) {
-        V_CHECK(cl()[0] < getNumVertices());
-        V_CHECK(cl()[getNumCorners() - 1] < getNumVertices());
-        V_CHECK(getNumCorners() % N == 0);
+        VALIDATE(cl()[0] < getNumVertices());
+        VALIDATE(cl()[getNumCorners() - 1] < getNumVertices());
+        VALIDATE(getNumCorners() % N == 0);
     } else {
-        V_CHECK(getNumCoords() % N == 0);
+        VALIDATE(getNumCoords() % N == 0);
     }
+
+    if (quick)
+        return true;
+
+    if (getNumCorners() > 0) {
+        VALIDATE_RANGE(cl(), 0, getNumVertices() - 1);
+    }
+
+    if (hasCelltree()) {
+        VALIDATE(validateCelltree());
+    }
+
     return true;
 }
 

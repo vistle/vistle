@@ -22,7 +22,7 @@ namespace gui {
 const double Port::portSize = 14.;
 
 static QColor InColor(200, 30, 30);
-static QColor OutColor(200, 200, 30);
+static QColor OutColor(200, 30, 30);
 static QColor ParamColor(30, 30, 200);
 
 Port::Port(const vistle::Port *port, Module *parent)

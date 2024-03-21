@@ -200,6 +200,7 @@ AddHub::AddHub(int id, const std::string &name)
     memset(m_realName.data(), 0, m_realName.size());
     memset(m_address.data(), 0, m_address.size());
     memset(m_info.data(), 0, m_info.size());
+    memset(m_version.data(), 0, m_version.size());
 }
 
 int AddHub::id() const
@@ -370,6 +371,16 @@ std::string AddHub::info() const
 void AddHub::setInfo(const std::string &info)
 {
     COPY_STRING(m_info, info);
+}
+
+std::string AddHub::version() const
+{
+    return m_version.data();
+}
+
+void AddHub::setVersion(const std::string &version)
+{
+    COPY_STRING(m_version, version);
 }
 
 

@@ -47,6 +47,7 @@
 #include <vistle/core/archive_saver.h>
 #include <vistle/core/archive_loader.h>
 
+//#define MPI_DEBUG
 //#define DEBUG
 //#define REDUCE_DEBUG
 #define DETAILED_PROGRESS
@@ -54,6 +55,10 @@
 
 #ifdef DEBUG
 #include <vistle/util/hostname.h>
+#endif
+
+#ifdef MPI_DEBUG
+#include <vistle/util/crypto.h>
 #endif
 
 #define CERR std::cerr << m_name << "_" << id() << " [" << rank() << "/" << size() << "] "
@@ -67,25 +72,67 @@ static const size_t chunk = 1 << 30;
 template<typename T>
 void broadcast(const mpi::communicator &comm, T *values, size_t count, int root)
 {
+#ifdef MPI_DEBUG
+    auto hash = vistle::crypto::hash_new();
+#endif
     for (size_t off = 0; off < count; off += chunk) {
         mpi::broadcast(comm, values + off, int(std::min(chunk, count - off)), root);
+#ifdef MPI_DEBUG
+        vistle::crypto::hash_update(hash, values + off, std::min(chunk, count - off) * sizeof(T));
+#endif
     }
+#ifdef MPI_DEBUG
+    auto hashval = vistle::crypto::hash_final(hash);
+    auto hashref = hashval;
+    mpi::broadcast(comm, hashref, root);
+    if (hashval != hashref) {
+        std::cerr << "vistle::bigmpi::broadcast: hash mismatch on rank " << comm.rank() << " after transfering "
+                  << count << " items of size " << sizeof(T) << std::endl;
+        abort();
+    }
+#endif
 }
 
 template<typename T>
 void send(const mpi::communicator &comm, int rank, int tag, const T *values, size_t count)
 {
+#ifdef MPI_DEBUG
+    auto hash = vistle::crypto::hash_new();
+#endif
     for (size_t off = 0; off < count; off += chunk) {
         comm.send(rank, tag, values + off, int(std::min(chunk, count - off)));
+#ifdef MPI_DEBUG
+        vistle::crypto::hash_update(hash, values + off, std::min(chunk, count - off) * sizeof(T));
+#endif
     }
+#ifdef MPI_DEBUG
+    auto hashref = vistle::crypto::hash_final(hash);
+    comm.send(rank, tag, hashref);
+#endif
 }
 
 template<typename T>
 void recv(const mpi::communicator &comm, int rank, int tag, T *values, size_t count)
 {
+#ifdef MPI_DEBUG
+    auto hash = vistle::crypto::hash_new();
+#endif
     for (size_t off = 0; off < count; off += chunk) {
         comm.recv(rank, tag, values + off, int(std::min(chunk, count - off)));
+#ifdef MPI_DEBUG
+        vistle::crypto::hash_update(hash, values + off, std::min(chunk, count - off) * sizeof(T));
+#endif
     }
+#ifdef MPI_DEBUG
+    auto hashval = vistle::crypto::hash_final(hash);
+    auto hashref = hashval;
+    comm.recv(rank, tag, hashref);
+    if (hashval != hashref) {
+        std::cerr << "vistle::bigmpi::recv: hash mismatch on rank " << comm.rank() << " after transfering " << count
+                  << " items of size " << sizeof(T) << std::endl;
+        abort();
+    }
+#endif
 }
 
 } // namespace bigmpi
@@ -317,6 +364,9 @@ Module::Module(const std::string &moduleName, const int moduleId, mpi::communica
     errmodes.push_back("GUI");
     errmodes.push_back("Console & GUI");
     setParameterChoices(em, errmodes);
+
+    addIntParameter("_validate_objects", "validate data objects before sending to port", m_validateObjects,
+                    Parameter::Boolean);
 
     auto outrank = addIntParameter("_error_output_rank", "rank from which to show stderr (-1: all ranks)", -1);
     setParameterRange<Integer>(outrank, -1, size() - 1);
@@ -715,7 +765,7 @@ bool Module::broadcastObject(const mpi::communicator &comm, Object::const_ptr &o
         return true;
 
     if (comm.rank() == root) {
-        assert(obj->check());
+        assert(obj->check(std::cerr));
         vecostreambuf<buffer> memstr;
         vistle::oarchive memar(memstr);
         auto saver = std::make_shared<DeepArchiveSaver>();
@@ -754,7 +804,7 @@ bool Module::broadcastObject(const mpi::communicator &comm, Object::const_ptr &o
         obj.reset(Object::loadObject(memar));
         obj->refresh();
         //std::cerr << "broadcastObject recv " << obj->getName() << ": refcount=" << obj->refcount() << std::endl;
-        assert(obj->check());
+        assert(obj->check(std::cerr));
         //obj->unref();
     }
 
@@ -968,7 +1018,16 @@ bool Module::passThroughObject(Port *port, vistle::Object::const_ptr object)
     m_withOutput.insert(port);
 
     object->refresh();
-    assert(object->check());
+    std::stringstream str;
+    bool ok = object->check(str, m_validateObjects);
+    if (!ok) {
+        std::stringstream str2;
+        str2 << "validation failed for object " << object->getName() << " on port " << port->getName() << std::endl;
+        str2 << "   " << *object << std::endl;
+        str2 << "   " << str.str();
+        sendError(str2.str());
+        return false;
+    }
 
     message::AddObject message(port->getName(), object);
     sendMessage(message);
@@ -1003,7 +1062,7 @@ ObjectList Module::getObjects(const std::string &portName)
     for (ObjectList::const_iterator it = olist.begin(); it != olist.end(); it++) {
         Object::const_ptr object = *it;
         if (object.get()) {
-            assert(object->check());
+            assert(object->check(std::cerr));
         }
         objects.push_back(object);
     }
@@ -1079,7 +1138,7 @@ vistle::Object::const_ptr Module::takeFirstObject(Port *port)
 {
     if (!port->objects().empty()) {
         Object::const_ptr obj = port->objects().front();
-        assert(obj->check());
+        assert(obj->check(std::cerr));
         port->objects().pop_front();
         return obj;
     }
@@ -1119,7 +1178,7 @@ Object::const_ptr Module::expect<Object>(Port *port)
         sendError(str.str());
         return obj;
     }
-    assert(obj->check());
+    assert(obj->check(std::cerr));
     return obj;
 }
 
@@ -1134,7 +1193,7 @@ bool Module::addInputObject(int sender, const std::string &senderPort, const std
         return false;
     }
 
-    assert(object->check());
+    assert(object->check(std::cerr));
 
     if (object->hasAttribute("_species")) {
         std::string species = object->getAttribute("_species");
@@ -1201,6 +1260,8 @@ bool Module::changeParameter(const Parameter *p)
             m_prioritizeVisible = getIntParameter("_prioritize_visible");
         } else if (name == "_use_result_cache") {
             enableResultCaches(getIntParameter(name));
+        } else if (name == "_validate_objects") {
+            m_validateObjects = getIntParameter(name);
         }
     }
 
@@ -1801,6 +1862,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
     busy.setDestId(Id::LocalManager);
     sendMessage(busy);
 #endif
+
     if (exec->what() == Execute::ComputeExecute || exec->what() == Execute::Prepare) {
         if (m_lastTask) {
             CERR << "prepare: waiting for previous tasks..." << std::endl;
@@ -1808,7 +1870,11 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
         }
 
         applyDelayedChanges();
-
+    }
+    if (exec->what() == Execute::Prepare) {
+        m_cache.clear();
+    }
+    if (exec->what() == Execute::ComputeExecute || exec->what() == Execute::Prepare) {
         ret &= prepareWrapper(exec);
     }
 

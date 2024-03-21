@@ -11,8 +11,8 @@ ObjectCache::~ObjectCache()
 
 void ObjectCache::clear()
 {
+    m_oldCache.clear();
     if (m_cacheMode == CacheDeleteLate) {
-        m_oldCache.clear();
         std::swap(m_cache, m_oldCache);
     } else {
         m_cache.clear();

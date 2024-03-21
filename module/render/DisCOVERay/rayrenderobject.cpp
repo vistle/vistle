@@ -2,8 +2,6 @@
 #include <vistle/core/triangles.h>
 #include <vistle/core/quads.h>
 #include <vistle/core/lines.h>
-#include <vistle/core/tubes.h>
-#include <vistle/core/spheres.h>
 #include <vistle/core/points.h>
 #include <vistle/core/vec.h>
 #include <vistle/core/celltypes.h>
@@ -281,26 +279,12 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
         }
         assert(ghost || t == ntri);
 
-    } else if (auto sph = Spheres::as(geometry)) {
-        useNormals = false;
-
-        Index nsph = sph->getNumSpheres();
-        //std::cerr << "Spheres: #sph: " << nsph << std::endl;
-        data->spheres = new ispc::Sphere[nsph];
-        auto x = &sph->x()[0];
-        auto y = &sph->y()[0];
-        auto z = &sph->z()[0];
-        auto r = &sph->r()[0];
-        auto s = data->spheres;
-        for (Index i = 0; i < nsph; ++i) {
-            s[i].p.x = x[i];
-            s[i].p.y = y[i];
-            s[i].p.z = z[i];
-            s[i].r = r[i];
-        }
-        geom = newSpheres(data.get(), nsph);
     } else if (auto point = Points::as(geometry)) {
         Index np = point->getNumPoints();
+        const Scalar *r = nullptr;
+        if (point->radius()) {
+            r = point->radius()->x().data();
+        }
         //std::cerr << "Points: #sph: " << np << std::endl;
         data->spheres = new ispc::Sphere[np];
         auto x = &point->x()[0];
@@ -311,13 +295,25 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
             s[i].p.x = x[i];
             s[i].p.y = y[i];
             s[i].p.z = z[i];
-            s[i].r = pointSize;
+            s[i].r = r ? r[i] : pointSize;
         }
-        data->lighted = 0;
+        if (r) {
+            useNormals = false;
+        } else {
+            data->lighted = 0;
+        }
         geom = newSpheres(data.get(), np);
     } else if (auto line = Lines::as(geometry)) {
         Index nStrips = line->getNumElements();
         Index nPoints = line->getNumCorners();
+        const Scalar *r = nullptr;
+        Lines::CapStyle startStyle = Lines::Flat, jointStyle = Lines::Flat, endStyle = Lines::Flat;
+        if (line->radius()) {
+            r = line->radius()->x().data();
+            startStyle = line->startStyle();
+            jointStyle = line->jointStyle();
+            endStyle = line->endStyle();
+        }
         std::cerr << "Lines: #strips: " << nStrips << ", #corners: " << nPoints << std::endl;
         data->primitiveFlags = new unsigned int[nPoints];
         data->spheres = new ispc::Sphere[nPoints];
@@ -339,59 +335,22 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
                 s[idx].p.x = x[i];
                 s[idx].p.y = y[i];
                 s[idx].p.z = z[i];
-                s[idx].r = pointSize;
-                p[idx] = ispc::PFNone;
-                if (c + 1 != end)
-                    p[idx] |= ispc::PFCone;
-                p[idx] |= ispc::PFStartSphere;
-                ++idx;
-            }
-        }
-        assert(idx == nPoints);
-        data->lighted = 0;
-        geom = newTubes(data.get(), nPoints - 1);
-    } else if (auto tube = Tubes::as(geometry)) {
-        useNormals = false;
-
-        Index nStrips = tube->getNumTubes();
-        Index nPoints = tube->getNumCoords();
-        std::cerr << "Tubes: #strips: " << nStrips << ", #corners: " << nPoints << std::endl;
-        data->primitiveFlags = new unsigned int[nPoints];
-        data->spheres = new ispc::Sphere[nPoints];
-        const Tubes::CapStyle startStyle = tube->startStyle(), jointStyle = tube->jointStyle(),
-                              endStyle = tube->endStyle();
-
-        auto el = tube->components().data();
-        auto x = &tube->x()[0];
-        auto y = &tube->y()[0];
-        auto z = &tube->z()[0];
-        auto r = &tube->r()[0];
-        auto s = data->spheres;
-        auto p = data->primitiveFlags;
-        Index idx = 0;
-        for (Index strip = 0; strip < nStrips; ++strip) {
-            const Index begin = el[strip], end = el[strip + 1];
-            assert(idx == begin);
-            for (Index i = begin; i < end; ++i) {
-                s[idx].p.x = x[i];
-                s[idx].p.y = y[i];
-                s[idx].p.z = z[i];
-                s[idx].r = r[i];
+                s[idx].r = r ? r[i] : pointSize;
 
                 p[idx] = ispc::PFNone;
                 if (i == begin) {
                     switch (startStyle) {
-                    case Tubes::Flat:
+                    case Lines::Flat:
                         p[idx] |= ispc::PFStartDisc;
                         break;
-                    case Tubes::Round:
+                    case Lines::Round:
                         p[idx] |= ispc::PFStartSphere;
                         break;
                     default:
                         break;
                     }
                 } else if (i + 1 != end) {
-                    if (jointStyle == Tubes::Flat) {
+                    if (jointStyle == Lines::Flat) {
                         p[idx] |= ispc::PFStartDisc;
                     }
                 }
@@ -400,15 +359,15 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
                     p[idx] |= ispc::PFCone;
 
                     switch ((i + 2 == end) ? endStyle : jointStyle) {
-                    case Tubes::Open:
+                    case Lines::Open:
                         break;
-                    case Tubes::Flat:
+                    case Lines::Flat:
                         p[idx] |= ispc::PFEndDisc;
                         break;
-                    case Tubes::Round:
+                    case Lines::Round:
                         p[idx] |= i + 2 == end ? ispc::PFEndSphere : ispc::PFEndSphereSect;
                         break;
-                    case Tubes::Arrow:
+                    case Lines::Arrow:
                         p[idx] |= ispc::PFArrow;
                         break;
                     }
@@ -416,10 +375,14 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
 
                 ++idx;
             }
-            assert(idx == end);
         }
         assert(idx == nPoints);
-        geom = newTubes(data.get(), nPoints > 0 ? nPoints - 1 : 0);
+        if (r) {
+            useNormals = false;
+        } else {
+            data->lighted = 0;
+        }
+        geom = newTubes(data.get(), nPoints - 1);
     }
 
     if (geom) {

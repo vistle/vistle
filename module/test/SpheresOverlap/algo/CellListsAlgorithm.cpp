@@ -2,7 +2,7 @@
 
 using namespace vistle;
 
-UniformGrid::ptr CreateSearchGrid(Spheres::const_ptr spheres, Scalar searchRadius)
+UniformGrid::ptr CreateSearchGrid(Points::const_ptr spheres, Scalar searchRadius)
 {
     // calculate grid size using bounds of spheres
     auto bounds = spheres->getBounds();
@@ -76,7 +76,7 @@ std::vector<Index> getCellsToCheck(UniformGrid::const_ptr grid, Index elem)
     return elems;
 }
 
-std::vector<OverlapLineInfo> CellListsAlgorithm(Spheres::const_ptr spheres, Scalar searchRadius,
+std::vector<OverlapLineInfo> CellListsAlgorithm(Points::const_ptr spheres, Scalar searchRadius,
                                                 ThicknessDeterminer determiner)
 {
     UniformGrid::ptr grid = CreateSearchGrid(spheres, searchRadius);
@@ -100,7 +100,7 @@ std::vector<OverlapLineInfo> CellListsAlgorithm(Spheres::const_ptr spheres, Scal
     }
 
     // detect overlapping spheres and save overlap info
-    auto radii = spheres->r();
+    auto radii = spheres->radius()->x();
     std::vector<OverlapLineInfo> overlaps;
 
     for (const auto &[cell, sphereList]: cellList) {
@@ -130,7 +130,7 @@ std::vector<OverlapLineInfo> CellListsAlgorithm(Spheres::const_ptr spheres, Scal
 }
 
 std::pair<Lines::ptr, Vec<Scalar, 1>::ptr> CreateConnectionLines(std::vector<OverlapLineInfo> overlaps,
-                                                                 Spheres::const_ptr spheres)
+                                                                 Points::const_ptr spheres)
 {
     auto nrOverlaps = overlaps.size();
 

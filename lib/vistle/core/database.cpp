@@ -5,6 +5,7 @@
 #include "geometry.h"
 #include "coords.h"
 #include "archives.h"
+#include "validate.h"
 
 #include <boost/mpl/vector.hpp>
 #include <boost/mpl/vector_c.hpp>
@@ -26,13 +27,11 @@ bool DataBase::isEmpty() const
 void DataBase::refreshImpl() const
 {}
 
-bool DataBase::checkImpl() const
+bool DataBase::checkImpl(std::ostream &os, bool quick) const
 {
-    if (grid()) {
-        V_CHECK(grid()->check());
-    }
+    VALIDATE_ENUM(mapping());
+    VALIDATE_SUB(grid());
 
-    V_CHECK(mapping() == Unspecified || mapping() == Vertex || mapping() == Element);
     return true;
 }
 
@@ -78,10 +77,11 @@ std::set<Object::const_ptr> DataBase::referencedObjects() const
 {
     auto objs = Base::referencedObjects();
 
-    if (grid()) {
-        auto go = grid()->referencedObjects();
+    auto gr = grid();
+    if (gr && objs.emplace(gr).second) {
+        auto go = gr->referencedObjects();
         std::copy(go.begin(), go.end(), std::inserter(objs, objs.begin()));
-        objs.emplace(grid());
+        objs.emplace(gr);
     }
 
     return objs;
@@ -121,7 +121,7 @@ Object::const_ptr DataBase::grid() const
 
 void DataBase::setGrid(Object::const_ptr grid)
 {
-    assert(!grid || grid->check());
+    assert(!grid || grid->check(std::cerr));
     d()->grid = grid;
     applyDimensionHint(grid);
 }
@@ -180,14 +180,14 @@ double DataBase::value(Index idx, unsigned component) const
     return 0;
 }
 
-void DataBase::print(std::ostream &os) const
+void DataBase::print(std::ostream &os, bool verbose) const
 {
-    Base::print(os);
+    Base::print(os, verbose);
     if (!getInterface<GeometryInterface>()) {
         os << " map:" << toString(mapping());
         os << " grid(";
         if (grid()) {
-            os << *grid();
+            grid()->print(os, verbose);
         }
         os << ")";
     }

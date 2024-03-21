@@ -26,7 +26,7 @@ class UiController: public QObject {
 public:
     explicit UiController(int argc, char *argv[], QObject *parent = nullptr);
     ~UiController();
-    void init();
+    bool init();
     void finish();
 
 signals:
@@ -89,6 +89,7 @@ private:
 
     QString m_sessionUrl;
     std::unique_ptr<vistle::config::Access> m_config;
+    bool m_initialized = false;
 };
 
 } // namespace gui

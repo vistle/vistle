@@ -47,7 +47,8 @@ public slots:
     void setFilename(const QString &filename);
     void setModified(bool state);
     void newHub(int hub, const QString &hubName, int nranks, const QString &address, int port, const QString &logname,
-                const QString &realname, bool hasUi, const QString &systype, const QString &arch, const QString &info);
+                const QString &realname, bool hasUi, const QString &systype, const QString &arch, const QString &info,
+                const QString &version);
     void deleteHub(int hub);
     void moduleAvailable(int hub, const QString &module, const QString &path, const QString &category,
                          const QString &description);

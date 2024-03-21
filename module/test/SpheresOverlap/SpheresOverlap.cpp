@@ -6,7 +6,7 @@
 
 #include <vistle/alg/objalg.h>
 #include <vistle/core/lines.h>
-#include <vistle/core/spheres.h>
+#include <vistle/core/points.h>
 #include <vistle/core/uniformgrid.h>
 #include <vistle/vtkm/convert.h>
 
@@ -52,13 +52,13 @@ bool SpheresOverlap::compute(const std::shared_ptr<BlockTask> &task) const
     auto geo = container.geometry;
     auto mappedData = container.mapped;
 
-    if (!Spheres::as(geo)) {
+    if (!Points::as(geo)) {
         sendError("input port expects spheres");
         return true;
     }
 
-    auto spheres = Spheres::as(geo);
-    auto radii = spheres->r();
+    auto spheres = Points::as(geo);
+    auto radii = spheres->radius()->x();
 
 
     Lines::ptr lines;

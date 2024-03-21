@@ -7,10 +7,9 @@
 #include <vistle/core/texture1d.h>
 #include <vistle/core/coords.h>
 #include <vistle/core/points.h>
-#include <vistle/core/spheres.h>
 #include <vistle/core/lines.h>
-#include <vistle/core/tubes.h>
 #include <vistle/util/math.h>
+#include <vistle/alg/objalg.h>
 
 #include "Thicken.h"
 
@@ -38,73 +37,18 @@ Thicken::Thicken(const std::string &name, int moduleID, mpi::communicator comm):
     setParameterMinimum(m_range, ParamVector(0., 0.));
 
     m_startStyle =
-        addIntParameter("start_style", "cap style for initial tube segments", (Integer)Tubes::Open, Parameter::Choice);
-    V_ENUM_SET_CHOICES_SCOPE(m_startStyle, CapStyle, Tubes);
-    m_jointStyle = addIntParameter("connection_style", "cap style for tube segment connections", (Integer)Tubes::Round,
+        addIntParameter("start_style", "cap style for initial tube segments", (Integer)Lines::Open, Parameter::Choice);
+    V_ENUM_SET_CHOICES_SCOPE(m_startStyle, CapStyle, Lines);
+    m_jointStyle = addIntParameter("connection_style", "cap style for tube segment connections", (Integer)Lines::Round,
                                    Parameter::Choice);
-    V_ENUM_SET_CHOICES_SCOPE(m_jointStyle, CapStyle, Tubes);
+    V_ENUM_SET_CHOICES_SCOPE(m_jointStyle, CapStyle, Lines);
     m_endStyle =
-        addIntParameter("end_style", "cap style for final tube segments", (Integer)Tubes::Open, Parameter::Choice);
-    V_ENUM_SET_CHOICES_SCOPE(m_endStyle, CapStyle, Tubes);
+        addIntParameter("end_style", "cap style for final tube segments", (Integer)Lines::Open, Parameter::Choice);
+    V_ENUM_SET_CHOICES_SCOPE(m_endStyle, CapStyle, Lines);
 }
 
 Thicken::~Thicken()
 {}
-
-template<int Dim>
-struct FlattenData {
-    DataBase::const_ptr object;
-    DataBase::ptr &result;
-    Index num = 0;
-    const Index *const cl = nullptr;
-    FlattenData(DataBase::const_ptr obj, DataBase::ptr &result, Index num, const Index *cl)
-    : object(obj), result(result), num(num), cl(cl)
-    {
-        assert(num == 0 || cl);
-    }
-    template<typename S>
-    void operator()(S)
-    {
-        typedef Vec<S, Dim> V;
-        typename V::const_ptr in(V::as(object));
-        if (!in)
-            return;
-
-        typename V::ptr out = std::make_shared<V>(num);
-        for (int d = 0; d < Dim; ++d) {
-            const auto *din = &in->x(d)[0];
-            auto *dout = out->x(d).data();
-
-            for (Index i = 0; i < num; ++i) {
-                *dout++ = din[cl[i]];
-            }
-        }
-        result = out;
-    }
-};
-
-DataBase::ptr flattenData(DataBase::const_ptr src, Index num, const Index *cl)
-{
-    assert(num == 0 || cl);
-    if (num == 0) {
-        return src->clone();
-    }
-    DataBase::ptr result;
-    boost::mpl::for_each<Scalars>(FlattenData<1>(src, result, num, cl));
-    boost::mpl::for_each<Scalars>(FlattenData<3>(src, result, num, cl));
-    if (result)
-        result->copyAttributes(src);
-    if (auto tex = Texture1D::as(src)) {
-        assert(result);
-        auto vec1 = Vec<Scalar, 1>::as(Object::ptr(result));
-        assert(vec1);
-        auto result2 = tex->clone();
-        result2->d()->x[0] = vec1->d()->x[0];
-        result = result2;
-    }
-    return result;
-}
-
 
 bool Thicken::compute()
 {
@@ -159,34 +103,24 @@ bool Thicken::compute()
         return true;
     }
 
-    auto lines = Lines::as(obj);
-    auto points = Points::as(obj);
-    auto radius = Vec<Scalar, 1>::as(obj);
-    auto radius3 = Vec<Scalar, 3>::as(obj);
-    auto iradius = Vec<Index>::as(obj);
-    auto basedatain = DataBase::as(obj);
-
-    DataBase::ptr basedata;
-    if (!points && !lines && basedatain) {
-        if (basedatain->guessMapping() != DataBase::Vertex) {
-            sendError("per-vertex mapped data required for radius");
-            updateOutput(OGError);
-            return true;
-        }
-        lines = Lines::as(basedatain->grid());
-        points = Points::as(basedatain->grid());
-        if (isConnected("grid_out")) {
-            basedata = flattenData(basedatain, lines ? lines->getNumCorners() : 0, lines ? &lines->cl()[0] : nullptr);
-        }
-    }
-    if (!lines && !points) {
+    auto split = splitContainerObject(obj);
+    auto lines = Lines::as(split.geometry);
+    auto points = Points::as(split.geometry);
+    if (!points && !lines) {
         sendError("no Lines and no Points object");
         updateOutput(OGError);
         return true;
     }
 
-    if (mode != Fixed && !radius && !radius3 && !iradius) {
-        sendInfo("data input required for varying radius");
+    auto &basedata = split.mapped;
+    auto radius1 = Vec<Scalar, 1>::as(split.mapped);
+    auto radius3 = Vec<Scalar, 3>::as(split.mapped);
+    auto iradius = Vec<Index>::as(split.mapped);
+
+    if (!basedata) {
+        if (mode != Fixed && !radius1 && !radius3 && !iradius) {
+            sendInfo("data input required for varying radius");
+        }
     }
 
     if (lines && mode == InvVolume) {
@@ -199,52 +133,35 @@ bool Thicken::compute()
         mode = Surface;
     }
 
-    Tubes::ptr tubes;
-    Spheres::ptr spheres;
-    CoordsWithRadius::ptr cwr;
+    Lines::ptr tubes;
+    Points::ptr spheres;
+    Coords::ptr cwr;
 
     const Index *cl = nullptr;
+    Index numRad = 0;
     if (lines) {
         updateOutput(OGTubes);
-        // set coordinates
-        if (lines->getNumCorners() == 0) {
-            tubes = Tubes::clone<Vec<Scalar, 3>>(lines);
-        } else {
-            cl = &lines->cl()[0];
-            tubes.reset(new Tubes(lines->getNumElements(), lines->getNumCorners()));
-            auto lx = &lines->x()[0];
-            auto ly = &lines->y()[0];
-            auto lz = &lines->z()[0];
-            auto tx = tubes->x().data();
-            auto ty = tubes->y().data();
-            auto tz = tubes->z().data();
-            for (Index i = 0; i < lines->getNumCorners(); ++i) {
-                Index l = cl[i];
-                tx[i] = lx[l];
-                ty[i] = ly[l];
-                tz[i] = lz[l];
-            }
-        }
+        tubes = lines->clone();
+        tubes->setCapStyles((Lines::CapStyle)m_startStyle->getValue(), (Lines::CapStyle)m_jointStyle->getValue(),
+                            (Lines::CapStyle)m_endStyle->getValue());
+        numRad = lines->getNumCoords();
         cwr = tubes;
-
-        // set tube lengths
-        tubes->d()->components = lines->d()->el;
-
-        tubes->setCapStyles((Tubes::CapStyle)m_startStyle->getValue(), (Tubes::CapStyle)m_jointStyle->getValue(),
-                            (Tubes::CapStyle)m_endStyle->getValue());
-        tubes->setMeta(lines->meta());
-        tubes->copyAttributes(lines);
     } else if (points) {
         updateOutput(OGSpheres);
-        spheres = Spheres::clone<Vec<Scalar, 3>>(points);
+        spheres = points->clone();
+        numRad = spheres->getNumCoords();
         cwr = spheres;
     }
 
     assert(cwr);
 
     // set radii
-    auto r = cwr->r().data();
-    auto radx = radius3 ? &radius3->x()[0] : radius ? &radius->x()[0] : nullptr;
+    if (basedata) {
+        numRad = basedata->getSize();
+    }
+    auto radius = std::make_shared<Vec<Scalar>>(numRad);
+    auto r = radius->x().data();
+    auto radx = radius3 ? &radius3->x()[0] : radius1 ? &radius1->x()[0] : nullptr;
     auto rady = radius3 ? &radius3->y()[0] : nullptr;
     auto radz = radius3 ? &radius3->z()[0] : nullptr;
     auto irad = iradius ? &iradius->x()[0] : nullptr;
@@ -296,39 +213,27 @@ bool Thicken::compute()
 
         r[i] = clamp(r[i], rmin, rmax);
     }
+    if (tubes)
+        tubes->setRadius(radius);
+    if (spheres)
+        spheres->setRadius(radius);
 
     updateMeta(cwr);
     if (basedata) {
-        basedata->setGrid(cwr);
-        updateMeta(basedata);
-        addObject("grid_out", basedata);
+        auto data = basedata->clone();
+        data->setGrid(cwr);
+        updateMeta(data);
+        addObject("grid_out", data);
     } else {
         addObject("grid_out", cwr);
     }
 
     auto data = accept<DataBase>("data_in");
     if (data && isConnected("data_out")) {
-        auto mapping = data->guessMapping();
-        switch (mapping) {
-        case DataBase::Vertex: {
-            auto ndata = flattenData(data, lines ? lines->getNumCorners() : 0, lines ? &lines->cl()[0] : nullptr);
-            ndata->setGrid(cwr);
-            updateMeta(ndata);
-            addObject("data_out", ndata);
-            break;
-        }
-        case DataBase::Element: {
-            auto ndata = data->clone();
-            ndata->setGrid(cwr);
-            updateMeta(ndata);
-            addObject("data_out", ndata);
-            break;
-        }
-        default: {
-            sendError("unsupported data mapping");
-            break;
-        }
-        }
+        auto ndata = data->clone();
+        ndata->setGrid(cwr);
+        updateMeta(ndata);
+        addObject("data_out", ndata);
     }
 
     return true;

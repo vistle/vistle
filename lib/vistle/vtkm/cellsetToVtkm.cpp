@@ -1,7 +1,6 @@
 #include <vistle/core/lines.h>
 #include <vistle/core/polygons.h>
 #include <vistle/core/quads.h>
-#include <vistle/core/spheres.h>
 #include <vistle/core/triangles.h>
 
 #include <vtkm/cont/ArrayHandleIndex.h>
@@ -34,13 +33,8 @@ CellsetConverter *getCellsetConverter(Object::const_ptr grid)
     } else if (auto points = Points::as(grid)) {
         return new PointsCellsetConverter(points);
 
-    } else if (Spheres::as(grid)) {
-        // vtkm does not have a specific cell set for spheres. For spheres it is enough to store
-        // the coordinate system and add a point field with the radius to the vtkm dataset, so
-        // the cell set is simply ignored
-        return new SkipConversion(VtkmTransformStatus::SUCCESS);
-
-    } else {
+    }
+    else {
         return new SkipConversion(VtkmTransformStatus::UNSUPPORTED_GRID_TYPE);
     }
 }
@@ -110,8 +104,6 @@ VtkmTransformStatus NgonsCellsetConverter<NgonsPtr>::toVtkm(vtkm::cont::DataSet 
 template<typename IndexedPtr>
 VtkmTransformStatus IndexedCellsetConverter<IndexedPtr>::toVtkm(vtkm::cont::DataSet &vtkmDataset)
 {
-    m_grid->check();
-
     auto shapesc = vtkm::cont::make_ArrayHandleConstant(m_cellType, m_grid->getNumElements());
 #ifdef VISTLE_VTKM_TYPES
     vtkm::cont::CellSetExplicit<typename vtkm::cont::ArrayHandleConstant<vtkm::UInt8>::StorageTag> cellSet;

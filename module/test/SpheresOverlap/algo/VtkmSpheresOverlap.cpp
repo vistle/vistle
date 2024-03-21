@@ -1,4 +1,3 @@
-#include <vistle/core/spheres.h>
 #include <vistle/core/uniformgrid.h>
 
 #include <vtkm/cont/ArrayHandle.h>
