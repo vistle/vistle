@@ -40,20 +40,31 @@ template<int Dim>
 struct ReplicateData {
     DataBase::const_ptr object;
     DataBase::ptr &result;
-    Index n = 0;
+    Index multiplicity = 0;
+    Index nConn = 0;
+    const Index *const cl = nullptr;
     Index nElem = 0;
     const Index *const el = nullptr;
-    Index nnElem = 0;
+    Index numMult = 0;
     const Index *const mult = nullptr;
+    Index numTri = 0;
     Index nStart = 0, nEnd = 0;
-    ReplicateData(DataBase::const_ptr obj, DataBase::ptr &result, Index n, Index nElem, const Index *el, Index nStart,
-                  Index nEnd)
-    : object(obj), result(result), n(n), nElem(nElem), el(el), nStart(nStart), nEnd(nEnd)
+    ReplicateData(DataBase::const_ptr obj, DataBase::ptr &result, Index mult, Index nConn, const Index *cl, Index nElem,
+                  const Index *el, Index nStart, Index nEnd)
+    : object(obj)
+    , result(result)
+    , multiplicity(mult)
+    , nConn(nConn)
+    , cl(cl)
+    , nElem(nElem)
+    , el(el)
+    , nStart(nStart)
+    , nEnd(nEnd)
     {
         assert(nElem == 0 || el);
     }
-    ReplicateData(DataBase::const_ptr obj, DataBase::ptr &result, Index nnElem, Index *mult)
-    : object(obj), result(result), mult(mult)
+    ReplicateData(DataBase::const_ptr obj, DataBase::ptr &result, Index numMult, const Index *mult, Index numTri)
+    : object(obj), result(result), numMult(numMult), mult(mult), numTri(numTri)
     {}
     template<typename S>
     void operator()(S)
@@ -64,55 +75,71 @@ struct ReplicateData {
             return;
 
         auto mapping = in->guessMapping();
-        Index sz = in->getSize() * n + nElem * (nStart + nEnd);
+        Index numIn = cl ? nConn : in->getSize();
+        Index sz = numIn * multiplicity + nElem * (nStart + nEnd);
         if (mult) {
-            sz = nnElem;
+            if (mapping == DataBase::Element)
+                sz = numTri;
+            else
+                sz = numMult;
         }
         typename V::ptr out(new V(sz));
         for (int i = 0; i < Dim; ++i) {
             auto din = &in->x(i)[0];
             auto dout = out->x(i).data();
 
-            const Index N = in->getSize();
             if (mult) {
-                for (Index j = 0; j < N; ++j) {
-                    for (Index k = 0; k < mult[j]; ++k) {
-                        *dout++ = *din;
+                if (mapping == DataBase::Vertex) {
+                    assert(nElem <= in->getSize());
+                    for (Index j = 0; j < nElem; ++j) {
+                        Index idx = j;
+                        for (Index k = 0; k < mult[j]; ++k) {
+                            assert(dout - out->x(i).data() < out->getSize());
+                            *dout++ = din[idx];
+                        }
                     }
-                    ++din;
+                } else if (mapping == DataBase::Element) {
+                    for (Index e = 0; e < numMult; ++e) {
+                        Index idx = e;
+                        for (Index k = 0; k < mult[e]; ++k) {
+                            assert(dout - out->x(i).data() < out->getSize());
+                            *dout++ = din[idx];
+                        }
+                    }
                 }
             } else if (el) {
                 if (mapping == DataBase::Vertex) {
                     for (Index e = 0; e < nElem; ++e) {
                         const Index start = el[e], end = el[e + 1];
+                        Index idx = cl ? cl[start] : start;
                         for (Index k = 0; k < nStart; ++k) {
-                            *dout++ = *din;
+                            *dout++ = din[idx];
                         }
                         for (Index i = start; i < end; ++i) {
-                            for (Index k = 0; k < n; ++k) {
-                                *dout++ = *din;
+                            idx = cl ? cl[i] : i;
+                            for (Index k = 0; k < multiplicity; ++k) {
+                                *dout++ = din[idx];
                             }
-                            ++din;
                         }
+                        // reuse idx
                         for (Index k = 0; k < nEnd; ++k) {
-                            *dout++ = *(din - 1);
+                            *dout++ = din[idx];
                         }
                     }
                 } else if (mapping == DataBase::Element) {
                     for (Index e = 0; e < nElem; ++e) {
                         const Index start = el[e], end = el[e + 1];
                         for (Index k = 0; k < nStart + end - start + nEnd; ++k) {
-                            *dout++ = *din;
+                            *dout++ = din[e];
                         }
-                        ++din;
                     }
                 }
             } else {
-                for (Index j = 0; j < N; ++j) {
-                    for (Index k = 0; k < n; ++k) {
-                        *dout++ = *din;
+                for (Index j = 0; j < numIn; ++j) {
+                    Index idx = cl ? cl[j] : j;
+                    for (Index k = 0; k < multiplicity; ++k) {
+                        *dout++ = din[idx];
                     }
-                    ++din;
                 }
             }
         }
@@ -120,12 +147,12 @@ struct ReplicateData {
     }
 };
 
-DataBase::ptr replicateData(DataBase::const_ptr src, Index n, Index nElem = 0, const Index *el = nullptr,
-                            Index nStart = 0, Index nEnd = 0)
+DataBase::ptr replicateData(DataBase::const_ptr src, Index mult, Index nConn = 0, const Index *cl = nullptr,
+                            Index nElem = 0, const Index *el = nullptr, Index nStart = 0, Index nEnd = 0)
 {
     DataBase::ptr result;
-    boost::mpl::for_each<Scalars>(ReplicateData<1>(src, result, n, nElem, el, nStart, nEnd));
-    boost::mpl::for_each<Scalars>(ReplicateData<3>(src, result, n, nElem, el, nStart, nEnd));
+    boost::mpl::for_each<Scalars>(ReplicateData<1>(src, result, mult, nConn, cl, nElem, el, nStart, nEnd));
+    boost::mpl::for_each<Scalars>(ReplicateData<3>(src, result, mult, nConn, cl, nElem, el, nStart, nEnd));
     if (auto tex = Texture1D::as(src)) {
         auto vec1 = Vec<Scalar, 1>::as(Object::ptr(result));
         assert(vec1);
@@ -136,11 +163,11 @@ DataBase::ptr replicateData(DataBase::const_ptr src, Index n, Index nElem = 0, c
     return result;
 }
 
-DataBase::ptr replicateData(DataBase::const_ptr src, Index nnelem, Index *mult)
+DataBase::ptr replicateData(DataBase::const_ptr src, Index nnelem, const Index *mult, Index numTri)
 {
     DataBase::ptr result;
-    boost::mpl::for_each<Scalars>(ReplicateData<1>(src, result, nnelem, mult));
-    boost::mpl::for_each<Scalars>(ReplicateData<3>(src, result, nnelem, mult));
+    boost::mpl::for_each<Scalars>(ReplicateData<1>(src, result, nnelem, mult, numTri));
+    boost::mpl::for_each<Scalars>(ReplicateData<3>(src, result, nnelem, mult, numTri));
     if (auto tex = Texture1D::as(src)) {
         auto vec1 = Vec<Scalar, 1>::as(Object::ptr(result));
         assert(vec1);
@@ -164,7 +191,10 @@ bool ToTriangles::compute()
     vistle::Object::ptr result;
     if (auto entry = m_resultCache.getOrLock(container->getName(), result)) {
         bool perElement = data && data->guessMapping() == DataBase::Element;
+        bool perVertex = data && data->guessMapping() == DataBase::Vertex;
+        assert(!data || perElement || perVertex);
 
+        bool radiusPerElement = false;
         vistle::Vec<Scalar>::const_ptr radius;
         auto lines = Lines::as(obj);
         if (lines)
@@ -172,6 +202,9 @@ bool ToTriangles::compute()
         auto points = Points::as(obj);
         if (points)
             radius = points->radius();
+        if (radius) {
+            radiusPerElement = radius->guessMapping(obj) == DataBase::Element;
+        }
 
         // transform the rest, if possible
         Triangles::ptr tri;
@@ -364,8 +397,15 @@ bool ToTriangles::compute()
             static_assert(NumSect >= 3, "too few sectors");
             Index TriPerSection = NumSect * 2;
 
+            const Index *cl = nullptr;
             Index numEl = lines->getNumElements();
             Index numPoint = lines->getNumCoords();
+            Index numConn = lines->getNumCorners();
+            if (numConn == 0) {
+                numConn = numPoint;
+            } else {
+                cl = &lines->cl()[0];
+            }
             auto x = &lines->x()[0];
             auto y = &lines->y()[0];
             auto z = &lines->z()[0];
@@ -395,9 +435,15 @@ bool ToTriangles::compute()
                 numIndEnd = 3 * NumSect;
             }
 
-            const Index numSeg = (numPoint - numEl);
+            const Index numSeg = (numConn - numEl);
             const Index numVert = numSeg * 3 * TriPerSection + numEl * (numIndStart + numIndEnd);
-            const Index numCoord = numVert > 0 ? numPoint * NumSect + numEl * (numCoordStart + numCoordEnd) : 0;
+            const Index numCoord = numVert > 0 ? numConn * NumSect + numEl * (numCoordStart + numCoordEnd) : 0;
+
+            if (perElement) {
+                mult.reserve(numEl);
+                useMultiplicity = true;
+            }
+
             tri.reset(new Triangles(numVert, numCoord));
             auto tx = tri->x().data();
             auto ty = tri->y().data();
@@ -415,11 +461,19 @@ bool ToTriangles::compute()
             if (numCoord > 0) {
                 for (Index i = 0; i < numEl; ++i) {
                     const Index begin = el[i], end = el[i + 1];
+                    if (perElement) {
+                        Index ntri = numIndStart / 3 + (end - begin - 1) * TriPerSection + numIndEnd / 3;
+                        mult.push_back(ntri);
+                    }
 
                     Vector3 normal, dir;
                     for (Index k = begin; k < end; ++k) {
-                        Vector3 cur(x[k], y[k], z[k]);
-                        Vector3 next = k + 1 < end ? Vector3(x[k + 1], y[k + 1], z[k + 1]) : cur;
+                        Index idx = cl ? cl[k] : k;
+                        Index nidx = (cl && k + 1 < end) ? cl[k + 1] : k + 1;
+                        Index pidx = (cl && k > 0) ? cl[k - 1] : k - 1;
+                        auto curRad = radiusPerElement ? r[i] : r[idx];
+                        Vector3 cur(x[idx], y[idx], z[idx]);
+                        Vector3 next = k + 1 < end ? Vector3(x[nidx], y[nidx], z[nidx]) : cur;
 
                         Vector3 l1 = next - cur;
                         auto len1 = l1.norm(), len2 = Scalar();
@@ -431,7 +485,7 @@ bool ToTriangles::compute()
                             last = true;
                             // keep previous direction for final segment
                         } else {
-                            Vector3 l2(x[k] - x[k - 1], y[k] - y[k - 1], z[k] - z[k - 1]);
+                            Vector3 l2(x[idx] - x[pidx], y[idx] - y[pidx], z[idx] - z[pidx]);
                             len2 = l2.norm();
                             if (len2 > 100 * len1) {
                                 dir = l2.normalized();
@@ -477,7 +531,7 @@ bool ToTriangles::compute()
                                 nx[ci] = dir[0];
                                 ny[ci] = dir[1];
                                 nz[ci] = dir[2];
-                                Vector3 p = cur + r[k] * rad;
+                                Vector3 p = cur + curRad * rad;
                                 rad = rot * rad;
                                 tx[ci] = p[0];
                                 ty[ci] = p[1];
@@ -504,7 +558,7 @@ bool ToTriangles::compute()
                             nx[ci] = n[0];
                             ny[ci] = n[1];
                             nz[ci] = n[2];
-                            Vector3 p = cur + r[k] * n;
+                            Vector3 p = cur + curRad * n;
                             n = rot * n;
                             tx[ci] = p[0];
                             ty[ci] = p[1];
@@ -529,10 +583,10 @@ bool ToTriangles::compute()
                                 Scalar tipSize = 2.0;
 
                                 Vector3 n = normal;
-                                Vector3 tip = cur + tipSize * dir * r[k];
+                                Vector3 tip = cur + tipSize * dir * curRad;
                                 for (Index l = 0; l < NumSect; ++l) {
                                     Vector3 norm = (n + dir).normalized();
-                                    Vector3 p = cur + tipSize * r[k] * n;
+                                    Vector3 p = cur + tipSize * curRad * n;
                                     n = rot * n;
 
                                     nx[ci] = norm[0];
@@ -606,8 +660,8 @@ bool ToTriangles::compute()
             updateMeta(norm);
             tri->setNormals(norm);
 
-            if (data) {
-                ndata = replicateData(data, NumSect, numEl, el, numCoordStart, numCoordEnd);
+            if (data && !useMultiplicity) {
+                ndata = replicateData(data, NumSect, numConn, cl, numEl, el, numCoordStart, numCoordEnd);
             }
         } else if (auto unstr = UnstructuredGrid::as(obj)) {
             Index nelem = unstr->getNumElements();
@@ -615,7 +669,6 @@ bool ToTriangles::compute()
             auto cl = &unstr->cl()[0];
             auto tl = &unstr->tl()[0];
 
-            std::vector<Index> mult;
             if (perElement) {
                 mult.reserve(nelem);
                 useMultiplicity = true;
@@ -666,8 +719,8 @@ bool ToTriangles::compute()
             updateMeta(tri);
 
             if (data) {
-                if (data && useMultiplicity) {
-                    ndata = replicateData(data, tri->getNumElements(), mult.data());
+                if (useMultiplicity) {
+                    ndata = replicateData(data, mult.size(), mult.data(), tri->getNumElements());
                 }
                 if (!ndata) {
                     ndata = data->clone();
