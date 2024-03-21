@@ -137,7 +137,6 @@ bool Thicken::compute()
     Points::ptr spheres;
     Coords::ptr cwr;
 
-    const Index *cl = nullptr;
     Index numRad = 0;
     if (lines) {
         updateOutput(OGTubes);
@@ -169,12 +168,10 @@ bool Thicken::compute()
     const Scalar scale = m_radius->getValue() * extraScale;
     const Scalar rmin = m_range->getValue()[0] * extraScale;
     const Scalar rmax = m_range->getValue()[1] * extraScale;
-    Index nv = lines ? lines->getNumCorners() : points->getNumPoints();
-    for (Index i = 0; i < nv; ++i) {
-        Index l = cl ? cl[i] : i;
-        const Scalar rad = (radx && rady && radz) ? Vector3(radx[l], rady[l], radz[l]).norm()
-                           : radx                 ? radx[l]
-                           : irad                 ? Scalar(irad[l])
+    for (Index i = 0; i < numRad; ++i) {
+        const Scalar rad = (radx && rady && radz) ? Vector3(radx[i], rady[i], radz[i]).norm()
+                           : radx                 ? radx[i]
+                           : irad                 ? Scalar(irad[i])
                                                   : Scalar(1.);
         switch (mode) {
         case DoNothing:
