@@ -20,12 +20,6 @@
 #include "convert.h"
 #include "cellsetToVtkm.h"
 
-
-// TODO: - better: make Vistle lines work, s.t., coords do not have to be same size as el
-
-// BUG: - (IsoSurface, PointPerTimestep, isopoint): when "moving" the grid (changing x in Gendat),
-//         isopoints still work outside the new bounding box (where old bounding box was)
-
 namespace vistle {
 
 // ----- VISTLE to VTKm -----
@@ -51,6 +45,7 @@ VtkmTransformStatus coordinatesAndNormalsToVtkm(Object::const_ptr grid, vtkm::co
         if (radius) {
             fieldToVtkm(radius, vtkmDataset, "_radius");
         }
+
     } else if (auto uni = UniformGrid::as(grid)) {
         auto axesDivisions = vtkm::Id3(uni->getNumDivisions(xId), uni->getNumDivisions(yId), uni->getNumDivisions(zId));
         auto gridOrigin = vtkm::Vec3f{uni->min()[xId], uni->min()[yId], uni->min()[zId]};

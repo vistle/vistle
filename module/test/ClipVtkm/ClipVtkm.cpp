@@ -173,13 +173,6 @@ bool ClipVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task) const
         return true;
     }
 
-    auto isoField = splitIso.mapped;
-    if (isoField && isoField->guessMapping() != DataBase::Vertex) {
-        sendError("need per-vertex mapping on grid_in");
-        return true;
-    }
-
-
     // transform vistle dataset to vtkm dataset
     vtkm::cont::DataSet vtkmDataSet;
     auto status = geometryToVtkm(grid, vtkmDataSet);
@@ -195,6 +188,7 @@ bool ClipVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task) const
     // apply vtkm isosurface filter
     std::string isospecies;
     vtkm::filter::contour::ClipWithImplicitFunction isosurfaceFilter;
+    auto isoField = splitIso.mapped;
     if (isoField) {
         isospecies = isoField->getAttribute("_species");
         if (isospecies.empty())
