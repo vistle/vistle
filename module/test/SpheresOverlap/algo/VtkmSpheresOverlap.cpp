@@ -12,10 +12,6 @@
 
 using namespace vistle;
 
-//TODO: (2 * maxRadius) seems to be too small as grid size --> look for a better default
-
-//BUG: the vtkm version does not work for grids where at least one dimension is 0 (e.g., 1x1x0)
-
 struct CountOverlapsWorklet: public vtkm::worklet::WorkletMapField {
     using ControlSignature = void(FieldIn coords, ExecObject locator, FieldOut overlaps);
     using ExecutionSignature = void(InputIndex, _1, _2, _3);
