@@ -193,7 +193,7 @@ bool ClipVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task) const
         isospecies = isoField->getAttribute("_species");
         if (isospecies.empty())
             isospecies = "isodata";
-        status = fieldToVtkm(isoField, vtkmDataSet,  isospecies);
+        status = fieldToVtkm(isoField, vtkmDataSet, isospecies);
         if (status == VtkmTransformStatus::UNSUPPORTED_FIELD_TYPE) {
             sendError("Unsupported iso field type");
             return true;

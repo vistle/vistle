@@ -118,11 +118,11 @@ bool SpheresOverlap::compute(const std::shared_ptr<BlockTask> &task) const
         if (p1 < p2) {
             std::cout << "(" << p1[0] << " | " << p1[1] << " | " << p1[2] << ") and "
                       << "(" << p2[0] << " | " << p2[1] << " | " << p2[2] << ") --> " << lineThicknesses->x()[i / 2]
-                      << ", indices: " << i1 << " "  << i2 << std::endl;
+                      << ", indices: " << i1 << " " << i2 << std::endl;
         } else {
             std::cout << "(" << p2[0] << " | " << p2[1] << " | " << p2[2] << ") and "
                       << "(" << p1[0] << " | " << p1[1] << " | " << p1[2] << ") --> " << lineThicknesses->x()[i / 2]
-                      << ", indices: " << i1 << " "  << i2 << std::endl;
+                      << ", indices: " << i1 << " " << i2 << std::endl;
         }
     }
     /*for (auto i = 0; i < lines->cl().size(); i += 2) {

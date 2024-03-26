@@ -17,8 +17,8 @@ namespace vistle {
 VtkmTransformStatus V_VTKM_EXPORT geometryToVtkm(Object::const_ptr grid, vtkm::cont::DataSet &vtkmDataset);
 
 // converts a vistle data field to a vtkm field which will be added to `vtkmDataset` with the field name `fieldName`
-VtkmTransformStatus V_VTKM_EXPORT fieldToVtkm(const DataBase::const_ptr &field,
-                                              vtkm::cont::DataSet &vtkmDataset, const std::string &fieldName);
+VtkmTransformStatus V_VTKM_EXPORT fieldToVtkm(const DataBase::const_ptr &field, vtkm::cont::DataSet &vtkmDataset,
+                                              const std::string &fieldName);
 
 // converts a vtkm geometry (i.e., its cellset and coordinates) into a vistle geometry
 Object::ptr V_VTKM_EXPORT vtkmGeometryToVistle(vtkm::cont::DataSet &vtkmDataset);

@@ -44,7 +44,7 @@ VTKM_CONT void PointLocatorCellLists::Build()
     auto bounds = this->GetCoordinates().GetBounds();
 
     auto vtkmMax = vtkm::Maximum();
-    
+
     // to make sure overlaps can be found for spheres defined on 1D or 2D grids, too, dimensions have to be at least 1
     this->Dims = vtkm::Id3(vtkmMax(1.0, vtkm::Ceil((bounds.X.Max - bounds.X.Min) / this->SearchRadius)),
                            vtkmMax(1.0, vtkm::Ceil((bounds.Y.Max - bounds.Y.Min) / this->SearchRadius)),

@@ -27,9 +27,7 @@ public:
         }
     }
 
-    void SetThicknessDeterminer(ThicknessDeterminer determiner){
-        this->Determiner = determiner;
-    }
+    void SetThicknessDeterminer(ThicknessDeterminer determiner) { this->Determiner = determiner; }
 
     const vtkm::Vec3f &GetMinPoint() const { return this->Min; }
     const vtkm::Vec3f &GetMaxPoint() const { return this->Max; }

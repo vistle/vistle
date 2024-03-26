@@ -33,8 +33,7 @@ CellsetConverter *getCellsetConverter(Object::const_ptr grid)
     } else if (auto points = Points::as(grid)) {
         return new PointsCellsetConverter(points);
 
-    }
-    else {
+    } else {
         return new SkipConversion(VtkmTransformStatus::UNSUPPORTED_GRID_TYPE);
     }
 }
