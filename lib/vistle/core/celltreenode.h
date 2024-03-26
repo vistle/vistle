@@ -84,6 +84,13 @@ bool operator>=(const CelltreeNode<IndexSize, NumDimensions> &n0, const Celltree
     return n0.start >= n1.start;
 }
 
+template<size_t IndexSize, int NumDimensions>
+std::ostream &operator<<(std::ostream &os, const CelltreeNode<IndexSize, NumDimensions> &n)
+{
+    os << "(" << n.start << "+" << n.size << "/" << n.dim << " -> " << n.child << ")";
+    return os;
+}
+
 } // namespace vistle
 
 #endif

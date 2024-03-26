@@ -7,6 +7,11 @@
 #include <cstdlib>
 #include <vector>
 #include <string>
+#include <memory>
+
+namespace Botan {
+class HashFunction;
+}
 
 namespace vistle {
 namespace crypto {
@@ -23,6 +28,25 @@ V_UTILEXPORT std::vector<uint8_t> compute_mac(const void *data, size_t length, c
 V_UTILEXPORT bool verify_mac(const void *data, size_t length, const std::vector<uint8_t> &key,
                              const std::vector<uint8_t> &mac);
 V_UTILEXPORT std::string hex_encode(const std::vector<uint8_t> &data);
+
+class HashFunction;
+V_UTILEXPORT HashFunction hash_new();
+V_UTILEXPORT void hash_update(HashFunction &hash, const void *data, size_t length);
+V_UTILEXPORT std::vector<uint8_t> hash_final(HashFunction &hash);
+
+class V_UTILEXPORT HashFunction {
+    friend HashFunction hash_new();
+    friend void hash_update(HashFunction &hash, const void *data, size_t length);
+    friend std::vector<uint8_t> hash_final(HashFunction &hash);
+
+public:
+    HashFunction(std::unique_ptr<Botan::HashFunction> &&hash);
+    HashFunction(HashFunction &&other);
+    ~HashFunction();
+
+private:
+    std::unique_ptr<Botan::HashFunction> hash;
+};
 
 } // namespace crypto
 } // namespace vistle

@@ -20,7 +20,7 @@ typename Type::const_ptr BlockTask::accept(const Port *port)
         m_module->sendWarning(str.str());
         return nullptr;
     }
-    assert(obj->check());
+    assert(obj->check(std::cerr));
     auto ret = Type::as(obj);
     if (ret)
         m_input.erase(it);
@@ -69,7 +69,7 @@ typename Type::const_ptr BlockTask::expect(const Port *port)
         m_module->sendWarning(str.str());
         return nullptr;
     }
-    assert(obj->check());
+    assert(obj->check(std::cerr));
     return Type::as(obj);
 }
 template<class Type>
@@ -95,7 +95,7 @@ typename Type::const_ptr Module::accept(Port *port)
         sendWarning(str.str());
         return nullptr;
     }
-    assert(obj->check());
+    assert(obj->check(std::cerr));
     typename Type::const_ptr ret = Type::as(obj);
     if (ret)
         port->objects().pop_front();
@@ -143,7 +143,7 @@ typename Type::const_ptr Module::expect(Port *port)
         sendError(str.str());
         return ret;
     }
-    assert(obj->check());
+    assert(obj->check(std::cerr));
     if (!ret) {
         std::stringstream str;
         str << "received " << Object::toString(obj->getType()) << " at " << port->getName() << ", but "

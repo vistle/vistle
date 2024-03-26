@@ -54,10 +54,12 @@ int main(int argc, char *argv[])
         QIcon icon(":/icons/vistle.png");
         a.setWindowIcon(icon);
         UiController control(argc, argv, &a);
-        control.init();
-        int val = a.exec();
-        control.finish();
-        return val;
+        if (control.init()) {
+            int val = a.exec();
+            control.finish();
+            return val;
+        }
+        return 1;
     } catch (vistle::except::exception &ex) {
         std::cerr << "GUI: fatal exception: " << ex.what() << std::endl << ex.where() << std::endl;
         return 1;

@@ -19,8 +19,6 @@
 #include <vistle/core/points.h>
 #include <vistle/core/normals.h>
 #include <vistle/core/texture1d.h>
-#include <vistle/core/spheres.h>
-#include <vistle/core/tubes.h>
 #include <vistle/core/triangles.h>
 #include <vistle/core/quads.h>
 #include <vistle/core/polygons.h>

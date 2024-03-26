@@ -173,16 +173,9 @@ bool ClipVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task) const
         return true;
     }
 
-    auto isoField = splitIso.mapped;
-    if (isoField && isoField->guessMapping() != DataBase::Vertex) {
-        sendError("need per-vertex mapping on grid_in");
-        return true;
-    }
-
-
     // transform vistle dataset to vtkm dataset
     vtkm::cont::DataSet vtkmDataSet;
-    auto status = vtkmSetGrid(vtkmDataSet, grid);
+    auto status = geometryToVtkm(grid, vtkmDataSet);
     if (status == VtkmTransformStatus::UNSUPPORTED_GRID_TYPE) {
         sendError("Currently only supporting unstructured grids");
         return true;
@@ -195,11 +188,12 @@ bool ClipVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task) const
     // apply vtkm isosurface filter
     std::string isospecies;
     vtkm::filter::contour::ClipWithImplicitFunction isosurfaceFilter;
+    auto isoField = splitIso.mapped;
     if (isoField) {
         isospecies = isoField->getAttribute("_species");
         if (isospecies.empty())
             isospecies = "isodata";
-        status = vtkmAddField(vtkmDataSet, isoField, isospecies);
+        status = fieldToVtkm(isoField, vtkmDataSet, isospecies);
         if (status == VtkmTransformStatus::UNSUPPORTED_FIELD_TYPE) {
             sendError("Unsupported iso field type");
             return true;
@@ -211,7 +205,7 @@ bool ClipVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task) const
     auto isosurface = isosurfaceFilter.Execute(vtkmDataSet);
 
     // transform result back into vistle format
-    Object::ptr geoOut = vtkmGetGeometry(isosurface);
+    Object::ptr geoOut = vtkmGeometryToVistle(isosurface);
     if (geoOut) {
         updateMeta(geoOut);
         geoOut->copyAttributes(isoField);
@@ -228,7 +222,7 @@ bool ClipVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task) const
     }
 
     if (isoField) {
-        if (auto mapped = vtkmGetField(isosurface, isospecies)) {
+        if (auto mapped = vtkmFieldToVistle(isosurface, isospecies)) {
             std::cerr << "mapped data: " << *mapped << std::endl;
             mapped->copyAttributes(isoField);
             mapped->setGrid(geoOut);

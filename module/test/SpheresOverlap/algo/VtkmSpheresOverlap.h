@@ -3,8 +3,9 @@
 
 #include <vtkm/filter/FilterField.h>
 
-#include "worklet/PointLocatorCellLists.h"
 #include "ThicknessDeterminer.h"
+
+#include "worklet/PointLocatorCellLists.h"
 
 /*
     Detects overlapping spheres and creates connections lines between them.
@@ -29,7 +30,7 @@ public:
 private:
     vtkm::FloatDefault RadiusFactor = 1;
     ThicknessDeterminer Determiner = OverlapRatio;
-    
+
     VTKM_CONT PointLocatorCellLists CreateSearchGrid(const vtkm::cont::CoordinateSystem &spheresCoords,
                                                      const vtkm::cont::Field &radii);
     VTKM_CONT vtkm::cont::ArrayHandle<vtkm::Id> CountOverlapsPerPoint(const PointLocatorCellLists &pointLocator);

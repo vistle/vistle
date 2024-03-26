@@ -22,7 +22,7 @@ public:
                     ThicknessDeterminer determiner)
     : Min(min)
     , Dims(nrBins)
-    , Dxdydz((max - Min) / Dims)
+    , Dxdydz((max - min) / Dims)
     , Coords(coords)
     , Radii(radii)
     , PointIds(pointIds)

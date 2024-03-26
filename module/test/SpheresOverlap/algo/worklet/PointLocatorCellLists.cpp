@@ -1,3 +1,5 @@
+#include <algorithm> // for std::max
+
 #include <vtkm/cont/Algorithm.h>
 
 #include <vtkm/cont/ArrayCopy.h>
@@ -41,9 +43,12 @@ VTKM_CONT void PointLocatorCellLists::Build()
 
     auto bounds = this->GetCoordinates().GetBounds();
 
-    this->Dims = vtkm::Id3(vtkm::Ceil((bounds.X.Max - bounds.X.Min) / this->SearchRadius),
-                           vtkm::Ceil((bounds.Y.Max - bounds.Y.Min) / this->SearchRadius),
-                           vtkm::Ceil((bounds.Z.Max - bounds.Z.Min) / this->SearchRadius));
+    auto vtkmMax = vtkm::Maximum();
+
+    // to make sure overlaps can be found for spheres defined on 1D or 2D grids, too, dimensions have to be at least 1
+    this->Dims = vtkm::Id3(vtkmMax(1.0, vtkm::Ceil((bounds.X.Max - bounds.X.Min) / this->SearchRadius)),
+                           vtkmMax(1.0, vtkm::Ceil((bounds.Y.Max - bounds.Y.Min) / this->SearchRadius)),
+                           vtkmMax(1.0, vtkm::Ceil((bounds.Z.Max - bounds.Z.Min) / this->SearchRadius)));
 
     this->Min = vtkm::make_Vec(bounds.X.Min, bounds.Y.Min, bounds.Z.Min);
 

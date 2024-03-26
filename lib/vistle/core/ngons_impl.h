@@ -13,11 +13,15 @@ void Ngons<N>::Data::serialize(Archive &ar)
 }
 
 template<int N>
-void Ngons<N>::print(std::ostream &os) const
+void Ngons<N>::print(std::ostream &os, bool verbose) const
 {
-    Base::print(os);
-    os << " cl(" << *d()->cl << ")";
-    os << " ghost(" << *d()->ghost << ")";
+    Base::print(os, verbose);
+    os << " cl(";
+    d()->cl->print(os, verbose);
+    os << ")";
+    os << " ghost(";
+    d()->ghost->print(os, verbose);
+    os << ")";
 }
 
 } // namespace vistle

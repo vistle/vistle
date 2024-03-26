@@ -85,6 +85,7 @@ bool Adapter::Execute(size_t timestep)
                 first = false;
                 m_timeSpendInExecute = 0;
                 m_startTime = vistle::Clock::time();
+                tStart = m_startTime;
             }
             processData();
         }

@@ -9,23 +9,22 @@
 #include <vtkm/cont/DataSet.h>
 
 #include "export.h"
+#include "transformEnums.h"
 
 namespace vistle {
 
-enum VtkmTransformStatus { SUCCESS = 0, UNSUPPORTED_GRID_TYPE = 1, UNSUPPORTED_CELL_TYPE = 2, UNSUPPORTED_FIELD_TYPE };
+// converts a vistle geometry (i.e., its cellset and coordinates) into a vtkm dataset
+VtkmTransformStatus V_VTKM_EXPORT geometryToVtkm(Object::const_ptr grid, vtkm::cont::DataSet &vtkmDataset);
 
-// transform a vistle dataset (grid and scalar data field) into a vtkm dataset
-// so vtkm filters can be applied to it
-VtkmTransformStatus V_VTKM_EXPORT vtkmSetGrid(vtkm::cont::DataSet &vtkmDataSet, vistle::Object::const_ptr grid);
+// converts a vistle data field to a vtkm field which will be added to `vtkmDataset` with the field name `fieldName`
+VtkmTransformStatus V_VTKM_EXPORT fieldToVtkm(const DataBase::const_ptr &field, vtkm::cont::DataSet &vtkmDataset,
+                                              const std::string &fieldName);
 
-VtkmTransformStatus V_VTKM_EXPORT vtkmAddField(vtkm::cont::DataSet &vtkmDataSet,
-                                               const vistle::DataBase::const_ptr &field, const std::string &name);
+// converts a vtkm geometry (i.e., its cellset and coordinates) into a vistle geometry
+Object::ptr V_VTKM_EXPORT vtkmGeometryToVistle(vtkm::cont::DataSet &vtkmDataset);
 
-// transform a vtkm isosurface dataset into a vistle Triangles object, so it can
-// be rendered in COVER
-vistle::Object::ptr V_VTKM_EXPORT vtkmGetGeometry(vtkm::cont::DataSet &dataset);
-
-vistle::DataBase::ptr V_VTKM_EXPORT vtkmGetField(const vtkm::cont::DataSet &vtkmDataSet, const std::string &name);
+// converts a vtkm field in `vtkmDataset` with the name `fieldName` into a vistle field that can be added to a vistle geometry
+DataBase::ptr V_VTKM_EXPORT vtkmFieldToVistle(const vtkm::cont::DataSet &vtkmDataset, const std::string &fieldName);
 
 } // namespace vistle
 

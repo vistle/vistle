@@ -1,4 +1,4 @@
-vistle_find_package(BOTAN 1.10 REQUIRED)
+vistle_find_package(BOTAN 2 REQUIRED)
 vistle_find_package(HWLOC)
 
 set(util_SOURCES
@@ -18,7 +18,8 @@ set(util_SOURCES
     threadname.cpp
     tools.cpp
     url.cpp
-    userinfo.cpp)
+    userinfo.cpp
+    version.cpp)
 
 set(util_HEADERS
     affinity.h
@@ -50,12 +51,15 @@ set(util_HEADERS
     url.h
     userinfo.h
     valgrind.h
-    vecstreambuf.h)
+    vecstreambuf.h
+    version.h)
 
 if(CMAKE_BUILD_TYPE AND NOT CMAKE_BUILD_TYPE STREQUAL "")
     message("CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}")
     add_definitions(-DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}")
 endif()
+
+set_property(SOURCE version.cpp PROPERTY COMPILE_DEFINITIONS VISTLE_VERSION_TAG=${VISTLE_VERSION_TAG} VISTLE_VERSION_HASH=${VISTLE_VERSION_HASH})
 
 vistle_add_library(vistle_util EXPORT ${VISTLE_LIB_TYPE} ${util_SOURCES} ${util_HEADERS})
 

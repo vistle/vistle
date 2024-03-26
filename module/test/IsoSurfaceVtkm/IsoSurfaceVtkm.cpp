@@ -200,7 +200,7 @@ Object::ptr IsoSurfaceVtkm::work(vistle::Object::const_ptr grid, vistle::DataBas
 
     // transform vistle dataset to vtkm dataset
     vtkm::cont::DataSet vtkmDataSet;
-    auto status = vtkmSetGrid(vtkmDataSet, grid);
+    auto status = geometryToVtkm(grid, vtkmDataSet);
     if (status == VtkmTransformStatus::UNSUPPORTED_GRID_TYPE) {
         sendError("Currently only supporting unstructured grids");
         return Object::ptr();
@@ -213,7 +213,7 @@ Object::ptr IsoSurfaceVtkm::work(vistle::Object::const_ptr grid, vistle::DataBas
     std::string isospecies = isoField->getAttribute("_species");
     if (isospecies.empty())
         isospecies = "isodata";
-    status = vtkmAddField(vtkmDataSet, isoField, isospecies);
+    status = fieldToVtkm(isoField, vtkmDataSet, isospecies);
     if (status == VtkmTransformStatus::UNSUPPORTED_FIELD_TYPE) {
         sendError("Unsupported iso field type");
         return Object::ptr();
@@ -224,7 +224,7 @@ Object::ptr IsoSurfaceVtkm::work(vistle::Object::const_ptr grid, vistle::DataBas
         mapspecies = mapField->getAttribute("_species");
         if (mapspecies.empty())
             mapspecies = "mapped";
-        status = vtkmAddField(vtkmDataSet, mapField, mapspecies);
+        status = fieldToVtkm(mapField, vtkmDataSet, mapspecies);
         if (status == VtkmTransformStatus::UNSUPPORTED_FIELD_TYPE) {
             sendError("Unsupported mapped field type");
             return Object::ptr();
@@ -241,7 +241,7 @@ Object::ptr IsoSurfaceVtkm::work(vistle::Object::const_ptr grid, vistle::DataBas
 
 
     // transform result back into vistle format
-    Object::ptr geoOut = vtkmGetGeometry(isosurface);
+    Object::ptr geoOut = vtkmGeometryToVistle(isosurface);
     if (!geoOut) {
         return Object::ptr();
     }
@@ -260,7 +260,7 @@ Object::ptr IsoSurfaceVtkm::work(vistle::Object::const_ptr grid, vistle::DataBas
     }
 
     if (mapField) {
-        if (auto mapOut = vtkmGetField(isosurface, mapspecies)) {
+        if (auto mapOut = vtkmFieldToVistle(isosurface, mapspecies)) {
             mapOut->copyAttributes(mapField);
             mapOut->setGrid(geoOut);
             updateMeta(mapOut);

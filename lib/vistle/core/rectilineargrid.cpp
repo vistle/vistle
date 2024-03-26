@@ -9,6 +9,7 @@
 #include "archives.h"
 #include "cellalgorithm.h"
 #include "unstr.h"
+#include "validate.h"
 #include <cassert>
 
 namespace vistle {
@@ -25,10 +26,11 @@ std::set<Object::const_ptr> RectilinearGrid::referencedObjects() const
 {
     auto objs = Base::referencedObjects();
 
-    if (normals()) {
-        auto no = normals()->referencedObjects();
+    auto norm = normals();
+    if (norm && objs.emplace(norm).second) {
+        auto no = norm->referencedObjects();
         std::copy(no.begin(), no.end(), std::inserter(objs, objs.begin()));
-        objs.emplace(normals());
+        objs.emplace(norm);
     }
 
     return objs;
@@ -59,16 +61,27 @@ void RectilinearGrid::refreshImpl() const
 
 // CHECK IMPL
 //-------------------------------------------------------------------------
-bool RectilinearGrid::checkImpl() const
+bool RectilinearGrid::checkImpl(std::ostream &os, bool quick) const
 {
     for (int c = 0; c < 3; ++c) {
-        V_CHECK(d()->coords[c]->check());
-        V_CHECK(d()->ghostLayers[c][0] + d()->ghostLayers[c][1] < getNumDivisions(c));
+        VALIDATE_INDEX(getNumDivisions(c));
+        VALIDATE(d()->coords[c]->check(os));
+        VALIDATE(d()->ghostLayers[c][0] + d()->ghostLayers[c][1] < getNumDivisions(c));
     }
 
+    VALIDATE_SUB(normals());
+    VALIDATE_SUBSIZE(normals(), getNumVertices());
+
+    if (quick)
+        return true;
+
+    for (int c = 0; c < 3; ++c) {
+        VALIDATE_MONOTONIC_P(d()->coords[c]);
+    }
 
     return true;
 }
+
 
 // IS EMPTY
 //-------------------------------------------------------------------------
@@ -82,10 +95,23 @@ bool RectilinearGrid::isEmpty() const
     return (getNumDivisions(0) == 0 || getNumDivisions(1) == 0 || getNumDivisions(2) == 0);
 }
 
-void RectilinearGrid::print(std::ostream &os) const
+void RectilinearGrid::print(std::ostream &os, bool verbose) const
 {
-    Base::print(os);
+    Base::print(os, verbose);
     os << " " << m_size << "=" << getNumDivisions(0) << "x" << getNumDivisions(1) << "x" << getNumDivisions(2);
+    if (verbose) {
+        os << " x=(";
+        d()->coords[0]->print(os, verbose);
+        os << ")";
+        os << " x ";
+        os << " y=(";
+        d()->coords[1]->print(os, verbose);
+        os << ")";
+        os << " x ";
+        os << " z=(";
+        d()->coords[2]->print(os, verbose);
+        os << ")";
+    }
 }
 
 // GET FUNCTION - GHOST CELL LAYER
@@ -149,7 +175,7 @@ Normals::const_ptr RectilinearGrid::normals() const
 
 void RectilinearGrid::setNormals(Normals::const_ptr normals)
 {
-    assert(!normals || normals->check());
+    assert(!normals || normals->check(std::cerr));
     d()->normals = normals;
 }
 

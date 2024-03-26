@@ -2,7 +2,7 @@
 
 using namespace vistle;
 
-UniformGrid::ptr CreateSearchGrid(Spheres::const_ptr spheres, Scalar searchRadius)
+UniformGrid::ptr CreateSearchGrid(Points::const_ptr spheres, Scalar searchRadius)
 {
     // calculate grid size using bounds of spheres
     auto bounds = spheres->getBounds();
@@ -24,7 +24,7 @@ UniformGrid::ptr CreateSearchGrid(Spheres::const_ptr spheres, Scalar searchRadiu
         gridSize[i] = gridSize[i] == 1 ? 2 : gridSize[i];
     }
 
-    UniformGrid::ptr grid(new UniformGrid(gridSize[0], gridSize[1], gridSize[2]));
+    UniformGrid::ptr grid(new UniformGrid(gridSize[0] + 1, gridSize[1] + 1, gridSize[2] + 1));
 
     // calculate grid starting and end point
     for (Index i = 0; i < dim; i++) {
@@ -50,7 +50,33 @@ OverlapLineInfo::OverlapLineInfo(Index sphereId1, Index sphereId2, Scalar distan
     thickness = CalculateThickness(determiner, distance, radius1, radius2);
 }
 
-std::vector<OverlapLineInfo> CellListsAlgorithm(Spheres::const_ptr spheres, Scalar searchRadius,
+// returns a vector containing the current cell's id as well as the ids of all
+// neighbor cells (including diagonal neighbors)
+std::vector<Index> getCellsToCheck(UniformGrid::const_ptr grid, Index elem)
+{
+    std::vector<Index> elems;
+    if (elem == InvalidIndex)
+        return elems;
+
+    const Index dims[3] = {grid->getNumDivisions(0), grid->getNumDivisions(1), grid->getNumDivisions(2)};
+    const auto coords = grid->cellCoordinates(elem, dims);
+
+    auto c = coords;
+    for (int i = -1; i <= 1; ++i) {
+        for (int j = -1; j <= 1; ++j) {
+            for (int k = -1; k <= 1; ++k) {
+                c = {coords[0] + i, coords[1] + j, coords[2] + k};
+
+                if ((c[0] >= 0 && c[0] < dims[0] - 1) && (c[1] >= 0 && c[1] < dims[1] - 1) &&
+                    (c[2] >= 0 && c[2] < dims[2] - 1))
+                    elems.push_back(grid->cellIndex(c[0], c[1], c[2], dims));
+            }
+        }
+    }
+    return elems;
+}
+
+std::vector<OverlapLineInfo> CellListsAlgorithm(Points::const_ptr spheres, Scalar searchRadius,
                                                 ThicknessDeterminer determiner)
 {
     UniformGrid::ptr grid = CreateSearchGrid(spheres, searchRadius);
@@ -74,34 +100,25 @@ std::vector<OverlapLineInfo> CellListsAlgorithm(Spheres::const_ptr spheres, Scal
     }
 
     // detect overlapping spheres and save overlap info
-    auto radii = spheres->r();
+    auto radii = spheres->radius()->x();
     std::vector<OverlapLineInfo> overlaps;
 
     for (const auto &[cell, sphereList]: cellList) {
         for (const auto sId: sphereList) {
             std::array<Scalar, 3> point1 = {x[sId], y[sId], z[sId]};
             auto radius1 = radii[sId];
-
-            // check for collisions with other spheres in current cell
-            for (const auto sId2: sphereList) {
-                // make sure the same pair of spheres is only checked once
-                if (sId < sId2) {
-                    std::array<Scalar, 3> point2 = {x[sId2], y[sId2], z[sId2]};
-                    Scalar radius2 = radii[sId2];
-                    // spheres overlap if distance between their centers is <= sum of radii
-                    if (auto distance = EuclideanDistance(point1, point2); distance <= radius1 + radius2)
-                        overlaps.push_back({sId, sId2, distance, radius1, radius2, determiner});
-                }
-            }
-            // check for collisions in neighbor cells
-            for (const auto neighborId: grid->getNeighborElements(cell)) {
-                if (auto neighbor = cellList.find(neighborId); (neighbor != cellList.end() && cell < neighborId)) {
-                    for (const auto nId: neighbor->second) {
-                        if (sId < nId) {
-                            std::array<Scalar, 3> point2 = {x[nId], y[nId], z[nId]};
-                            Scalar radius2 = radii[nId];
+            // check for collisions in current and neighbor cells
+            for (const auto cellToCheck: getCellsToCheck(grid, cell)) {
+                if (auto idsToCheck = cellList.find(cellToCheck);
+                    (idsToCheck != cellList.end() && cell <= cellToCheck)) {
+                    for (const auto toCheck: idsToCheck->second) {
+                        // if two overlapping spheres lie in the same cell, we can avoid checking the same pair twice
+                        // by only checking the point with the "smaller" id for overlap (note that the points are not sorted)
+                        if ((cell != cellToCheck && sId != toCheck) || (cell == cellToCheck && sId < toCheck)) {
+                            std::array<Scalar, 3> point2 = {x[toCheck], y[toCheck], z[toCheck]};
+                            Scalar radius2 = radii[toCheck];
                             if (auto distance = EuclideanDistance(point1, point2); distance <= radius1 + radius2)
-                                overlaps.push_back({sId, nId, distance, radius1, radius2, determiner});
+                                overlaps.push_back({sId, toCheck, distance, radius1, radius2, determiner});
                         }
                     }
                 }
@@ -113,7 +130,7 @@ std::vector<OverlapLineInfo> CellListsAlgorithm(Spheres::const_ptr spheres, Scal
 }
 
 std::pair<Lines::ptr, Vec<Scalar, 1>::ptr> CreateConnectionLines(std::vector<OverlapLineInfo> overlaps,
-                                                                 Spheres::const_ptr spheres)
+                                                                 Points::const_ptr spheres)
 {
     auto nrOverlaps = overlaps.size();
 
