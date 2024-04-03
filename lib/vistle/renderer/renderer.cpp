@@ -48,14 +48,23 @@ bool Renderer::needsSync(const message::Message &m) const
 {
     using namespace vistle::message;
 
+    if (Module::needsSync(m)) {
+        return true;
+    }
+
     switch (m.type()) {
     case CANCELEXECUTE:
     case QUIT:
     case KILL:
+    case BARRIER:
+    case CONNECT:
+    case DISCONNECT:
     case ADDPARAMETER:
     case SETPARAMETER:
+    case SETPARAMETERCHOICES:
     case REMOVEPARAMETER:
     case REPLAYFINISHED:
+    case COVER:
         return true;
     case ADDOBJECT:
         return objectReceivePolicy() != ObjectReceivePolicy::Local;
@@ -206,8 +215,8 @@ bool Renderer::dispatch(bool block, bool *messageReceived, unsigned int minPrio)
         int needSync = 0;
         if (haveMessage) {
             if (needsSync(message)) {
-                needSync = 1;
                 needSync = message.type();
+                assert(needSync != 0);
             }
         }
         int anyMessage = boost::mpi::all_reduce(comm(), haveMessage ? 1 : 0, boost::mpi::maximum<int>());
@@ -216,7 +225,7 @@ bool Renderer::dispatch(bool block, bool *messageReceived, unsigned int minPrio)
             wasAnyMessage = true;
             anySync = boost::mpi::all_reduce(comm(), needSync, boost::mpi::maximum<int>());
             if (needSync != 0 && anySync != needSync) {
-                std::cerr << "message types requiring collective processing do not agree: local=" << needSync
+                std::cerr << "message types requiring collective processing do not agree (initial): local=" << needSync
                           << ", other=" << anySync << std::endl;
             }
             assert(needSync == 0 || needSync == anySync);
@@ -227,8 +236,15 @@ bool Renderer::dispatch(bool block, bool *messageReceived, unsigned int minPrio)
                 if (messageReceived)
                     *messageReceived = true;
 
-                if (needsSync(message))
-                    needSync = 1;
+                if (needsSync(message)) {
+                    needSync = message.type();
+                    assert(needSync != 0);
+                    if (anySync != needSync) {
+                        std::cerr << "message types requiring collective processing do not agree (continued): local="
+                                  << needSync << ", other=" << anySync << std::endl;
+                    }
+                    assert(needSync == anySync);
+                }
 
                 MessagePayload pl;
                 if (buf.payloadSize() > 0) {
