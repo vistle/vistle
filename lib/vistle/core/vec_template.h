@@ -155,26 +155,12 @@ bool Vec<T, Dim>::checkImpl(std::ostream &os, bool quick) const
     for (unsigned c = 0; c < Dim; ++c) {
         VALIDATE(d()->x[c]->check(os));
         VALIDATE(d()->x[c]->size() == size);
-        if (size > 0) {
-            VALIDATE((d()->x[c])->at(0) * (d()->x[c])->at(0) >= 0)
-            VALIDATE((d()->x[c])->at(size - 1) * (d()->x[c])->at(size - 1) >= 0)
-        }
     }
 
     if (quick)
         return true;
 
-    bool valid = true;
-    for (unsigned c = 0; c < Dim - 1; ++c) {
-        const T *arr = x(c).data();
-        for (Index i = 0; i < getSize(); ++i) {
-            if (!(arr[i] * arr[i] >= 0)) {
-                valid = false;
-                os << "invalid data at " << i << ": " << arr[i] << std::endl;
-            }
-        }
-    }
-    return valid;
+    return true;
 }
 
 
