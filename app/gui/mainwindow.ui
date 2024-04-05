@@ -298,7 +298,7 @@
   </action>
   <action name="actionSave">
    <property name="icon">
-    <iconset theme="document-save" resource="gui.qrc">
+    <iconset resource="gui.qrc">
      <normaloff>:/icons/save.svg</normaloff>:/icons/save.svg</iconset>
    </property>
    <property name="text">
@@ -333,7 +333,7 @@
   </action>
   <action name="actionSelect_All">
    <property name="icon">
-    <iconset theme="edit-select-all" resource="gui.qrc">
+    <iconset resource="gui.qrc">
      <normaloff>:/icons/select.svg</normaloff>:/icons/select.svg</iconset>
    </property>
    <property name="text">
@@ -345,7 +345,7 @@
   </action>
   <action name="actionDelete">
    <property name="icon">
-    <iconset theme="edit-delete" resource="gui.qrc">
+    <iconset resource="gui.qrc">
      <normaloff>:/icons/delete.svg</normaloff>:/icons/delete.svg</iconset>
    </property>
    <property name="text">
