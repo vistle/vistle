@@ -8,6 +8,9 @@ add_module(DelaunayTriangulator "combine points to structured grid based on 3D D
 target_link_libraries(DelaunayTriangulator vistle_tetgen)
 target_include_directories(DelaunayTriangulator PRIVATE tetgen)
 
+if(POLICY CMP0144)
+    set(CMAKE_POLICY_DEFAULT_CMP0144 NEW)
+endif()
 vistle_find_package(CGAL)
 if(CGAL_FOUND)
     target_compile_definitions(DelaunayTriangulator PRIVATE HAVE_CGAL)
