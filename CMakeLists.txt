@@ -49,6 +49,10 @@ if(POLICY CMP0074)
     # make find_include/find_library search in <PackageName>_ROOT prefix
     cmake_policy(SET CMP0074 NEW)
 endif()
+if(POLICY CMP0144)
+    # make find_include/find_library search in uppercased <PackageName>_ROOT prefix
+    cmake_policy(SET CMP0144 NEW)
+endif()
 
 # vim's YouCompleteMe can make use of this
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
