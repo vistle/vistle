@@ -55,7 +55,6 @@ std::vector<vtkm::UInt8> vistleTypeListToVtkmShapesVector(Index numElements, con
 
 VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object::const_ptr grid)
 {
-    // swap x and z coordinates to account for different indexing in structured data
     if (auto coords = Coords::as(grid)) {
         auto xCoords = coords->x();
         auto yCoords = coords->y();
@@ -63,7 +62,7 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
 
         auto coordinateSystem = vtkm::cont::CoordinateSystem(
             "coordinate system",
-            vtkm::cont::make_ArrayHandleSOA(coords->z().handle(), coords->y().handle(), coords->x().handle()));
+            vtkm::cont::make_ArrayHandleSOA(coords->x().handle(), coords->y().handle(), coords->z().handle()));
 
         vtkmDataset.AddCoordinateSystem(coordinateSystem);
 
@@ -87,7 +86,7 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
         auto nz = uni->getNumDivisions(2);
         const auto *min = uni->min(), *dist = uni->dist();
         vtkm::cont::ArrayHandleUniformPointCoordinates uniformCoordinates(
-            vtkm::Id3(nz, ny, nx), vtkm::Vec3f{min[2], min[1], min[0]}, vtkm::Vec3f{dist[2], dist[1], dist[0]});
+            vtkm::Id3(nx, ny, nz), vtkm::Vec3f{min[0], min[1], min[2]}, vtkm::Vec3f{dist[0], dist[1], dist[2]});
         auto coordinateSystem = vtkm::cont::CoordinateSystem("uniform", uniformCoordinates);
         vtkmDataset.AddCoordinateSystem(coordinateSystem);
     } else if (auto rect = RectilinearGrid::as(grid)) {
@@ -95,7 +94,7 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
         auto yc = rect->coords(1).handle();
         auto zc = rect->coords(2).handle();
 
-        vtkm::cont::ArrayHandleCartesianProduct rectilinearCoordinates(zc, yc, xc);
+        vtkm::cont::ArrayHandleCartesianProduct rectilinearCoordinates(xc, yc, zc);
         auto coordinateSystem = vtkm::cont::CoordinateSystem("rectilinear", rectilinearCoordinates);
         vtkmDataset.AddCoordinateSystem(coordinateSystem);
     } else {
@@ -110,7 +109,7 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
         vtkm::Id nz = str->getNumDivisions(2);
         if (nz > 0) {
             vtkm::cont::CellSetStructured<3> str3;
-            str3.SetPointDimensions({nz, ny, nx});
+            str3.SetPointDimensions({nx, ny, nz});
             vtkmDataset.SetCellSet(str3);
         } else if (ny > 0) {
             vtkm::cont::CellSetStructured<2> str2;
@@ -266,7 +265,7 @@ struct AddField {
             auto ax = in->x().handle();
             auto ay = in->y().handle();
             auto az = in->z().handle();
-            ah = vtkm::cont::make_ArrayHandleSOA(az, ay, ax);
+            ah = vtkm::cont::make_ArrayHandleSOA(ax, ay, az);
         } else {
             return;
         }
@@ -465,10 +464,9 @@ Object::ptr vtkmGetGeometry(vtkm::cont::DataSet &dataset)
         auto z = coords->z().data();
         for (vtkm::Id index = 0; index < numPoints; index++) {
             vtkm::Vec3f point = pointsPortal.Get(index);
-            // account for coordinate axes swap
-            x[index] = point[2];
+            x[index] = point[0];
             y[index] = point[1];
-            z[index] = point[0];
+            z[index] = point[2];
         }
 
         if (auto normals = vtkmGetField(dataset, "normals")) {
@@ -592,7 +590,6 @@ struct GetArrayContents {
             for (int i = 0; i < numComponents; ++i) {
                 x[i] = &data->x(i)[0];
             }
-            std::swap(x[0], x[2]);
             break;
         }
 #if 0
