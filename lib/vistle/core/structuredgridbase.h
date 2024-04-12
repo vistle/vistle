@@ -50,7 +50,7 @@ public:
         assert(ix < dims[0]);
         assert(iy < dims[1]);
         assert(iz < dims[2]);
-        return (ix * dims[1] + iy) * dims[2] + iz;
+        return (iz * dims[1] + iy) * dims[0] + ix;
     }
     static inline Index vertexIndex(const Index i[3], const Index dims[3])
     {
@@ -59,11 +59,11 @@ public:
     static inline std::array<Index, 3> vertexCoordinates(Index v, const Index dims[3])
     {
         std::array<Index, 3> coords;
-        coords[2] = v % dims[2];
-        v /= dims[2];
+        coords[0] = v % dims[0];
+        v /= dims[0];
         coords[1] = v % dims[1];
         v /= dims[1];
-        coords[0] = v;
+        coords[2] = v;
         assert(coords[0] < dims[0]);
         assert(coords[1] < dims[1]);
         assert(coords[2] < dims[2]);
@@ -75,19 +75,19 @@ public:
         assert(ix < dims[0] - 1 || ix == 0);
         assert(iy < dims[1] - 1 || iy == 0);
         assert(iz < dims[2] - 1 || iz == 0);
-        return (ix * std::max(dims[1] - 1, Index(1)) + iy) * std::max(dims[2] - 1, Index(1)) + iz;
+        return (iz * std::max(dims[1] - 1, Index(1)) + iy) * std::max(dims[0] - 1, Index(1)) + ix;
     }
     static inline Index cellIndex(const Index i[3], const Index dims[3]) { return cellIndex(i[0], i[1], i[2], dims); }
     static inline std::array<Index, 3> cellCoordinates(Index el, const Index dims[3])
     {
         std::array<Index, 3> coords;
-        Index div2 = std::max(dims[2] - 1, Index(1));
-        coords[2] = el % div2;
-        el /= div2;
+        Index div0 = std::max(dims[0] - 1, Index(1));
+        coords[0] = el % div0;
+        el /= div0;
         Index div1 = std::max(dims[1] - 1, Index(1));
         coords[1] = el % div1;
         el /= div1;
-        coords[0] = el;
+        coords[2] = el;
         assert(coords[0] < dims[0] - 1 || coords[0] == 0);
         assert(coords[1] < dims[1] - 1 || coords[1] == 0);
         assert(coords[2] < dims[2] - 1 || coords[2] == 0);

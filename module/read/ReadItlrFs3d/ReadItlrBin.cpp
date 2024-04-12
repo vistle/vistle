@@ -665,9 +665,9 @@ std::vector<RectilinearGrid::ptr> ReadItlrBin::readGridBlocks(const std::string 
     const std::string axis[3]{"xval", "yval", "zval"};
 
     if (file.isHdf5()) {
-        SplitDim = 2;
-    } else {
         SplitDim = 0;
+    } else {
+        SplitDim = 2;
     }
 
     // read coordinates and prepare for transformation avoiding transposition
@@ -688,12 +688,9 @@ std::vector<RectilinearGrid::ptr> ReadItlrBin::readGridBlocks(const std::string 
                 coords[i][j] *= 0.5;
             }
             coords[i].resize(dims[i]);
-        } else if (i == 2) {
-            std::transform(coords[i].begin(), coords[i].end(), coords[i].begin(), [](Scalar z) { return -z; });
-            std::reverse(coords[i].begin(), coords[i].end());
         }
     }
-    if (!file.isHdf5()) {
+    if (file.isHdf5()) {
         std::swap(coords[0], coords[2]);
     }
     for (int i = 0; i < 3; ++i) {
@@ -706,7 +703,6 @@ std::vector<RectilinearGrid::ptr> ReadItlrBin::readGridBlocks(const std::string 
         auto b = computeBlock(part);
         std::cerr << "reading block " << part << ", slices " << b.begin << " to " << b.end << std::endl;
 
-        //RectilinearGrid::ptr grid(new RectilinearGrid(b.end-b.begin, coords[1].size(), coords[2].size()));
         RectilinearGrid::ptr grid(new RectilinearGrid(SplitDim == 0 ? b.end - b.begin : coords[0].size(),
                                                       SplitDim == 1 ? b.end - b.begin : coords[1].size(),
                                                       SplitDim == 2 ? b.end - b.begin : coords[2].size()));
@@ -721,7 +717,7 @@ std::vector<RectilinearGrid::ptr> ReadItlrBin::readGridBlocks(const std::string 
             }
         }
 
-        if (!file.isHdf5()) {
+        if (file.isHdf5()) {
             Matrix4 t;
             t << Vector4(0, 0, -1, 0), Vector4(0, 1, 0, 0), Vector4(1, 0, 0, 0), Vector4(0, 0, 0, 1);
             grid->setTransform(t);
@@ -748,7 +744,7 @@ DataBase::ptr ReadItlrBin::readFieldBlock(const std::string &filename, int part)
         sendError("failed to read grid dimensions from %s", filename.c_str());
         return DataBase::ptr();
     }
-    if (dims[0] != m_dims[2] || dims[1] != m_dims[1] || dims[2] != m_dims[0]) {
+    if (dims[0] != m_dims[0] || dims[1] != m_dims[1] || dims[2] != m_dims[2]) {
         sendInfo("data with dimensions: %d %d %d", (int)dims[0], (int)dims[1], (int)dims[2]);
         sendError("data set dimensions from %s don't match grid dimensions", filename.c_str());
         return DataBase::ptr();
