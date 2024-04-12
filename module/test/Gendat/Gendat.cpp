@@ -62,9 +62,9 @@ Gendat::Gendat(const std::string &name, int moduleID, mpi::communicator comm): R
     V_ENUM_SET_CHOICES(m_dataMode[2], DataMode);
     m_dataScale[2] = addFloatParameter("data_scale_vec_z", "data scale factor", 1.);
 
-    m_size[0] = addIntParameter("size_x", "number of cells per block in x-direction", 10);
+    m_size[0] = addIntParameter("size_x", "number of cells per block in x-direction", 11);
     m_size[1] = addIntParameter("size_y", "number of cells per block in y-direction", 10);
-    m_size[2] = addIntParameter("size_z", "number of cells per block in z-direction", 10);
+    m_size[2] = addIntParameter("size_z", "number of cells per block in z-direction", 9);
 
     m_blocks[0] = addIntParameter("blocks_x", "number of blocks in x-direction", 3);
     m_blocks[1] = addIntParameter("blocks_y", "number of blocks in y-direction", 3);
