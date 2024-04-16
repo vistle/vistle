@@ -68,7 +68,8 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
 
         if (coords->normals()) {
             auto normals = coords->normals();
-            vtkmAddField(vtkmDataset, normals, "normals");
+            auto mapping = normals->guessMapping(coords);
+            vtkmAddField(vtkmDataset, normals, "normals", mapping);
         }
 
         vistle::Vec<Scalar>::const_ptr radius;
@@ -245,10 +246,12 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
 struct AddField {
     vtkm::cont::DataSet &dataset;
     const DataBase::const_ptr &object;
+    DataBase::Mapping mapping;
     const std::string &name;
     bool &handled;
-    AddField(vtkm::cont::DataSet &ds, const DataBase::const_ptr &obj, const std::string &name, bool &handled)
-    : dataset(ds), object(obj), name(name), handled(handled)
+    AddField(vtkm::cont::DataSet &ds, const DataBase::const_ptr &obj, const std::string &name,
+             DataBase::Mapping mapping, bool &handled)
+    : dataset(ds), object(obj), mapping(mapping), name(name), handled(handled)
     {}
     template<typename S>
     void operator()(S)
@@ -270,7 +273,10 @@ struct AddField {
             return;
         }
 
-        auto mapping = object->guessMapping();
+        auto mapping = this->mapping;
+        if (mapping == DataBase::Unspecified) {
+            mapping = object->guessMapping();
+        }
         if (mapping == vistle::DataBase::Vertex) {
             dataset.AddPointField(name, ah);
         } else {
@@ -283,10 +289,10 @@ struct AddField {
 
 
 VtkmTransformStatus vtkmAddField(vtkm::cont::DataSet &vtkmDataSet, const vistle::DataBase::const_ptr &field,
-                                 const std::string &name)
+                                 const std::string &name, vistle::DataBase::Mapping mapping)
 {
     bool handled = false;
-    boost::mpl::for_each<Scalars>(AddField(vtkmDataSet, field, name, handled));
+    boost::mpl::for_each<Scalars>(AddField(vtkmDataSet, field, name, mapping, handled));
     if (handled)
         return VtkmTransformStatus::SUCCESS;
 
