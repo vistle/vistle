@@ -19,7 +19,8 @@ enum VtkmTransformStatus { SUCCESS = 0, UNSUPPORTED_GRID_TYPE = 1, UNSUPPORTED_C
 VtkmTransformStatus V_VTKM_EXPORT vtkmSetGrid(vtkm::cont::DataSet &vtkmDataSet, vistle::Object::const_ptr grid);
 
 VtkmTransformStatus V_VTKM_EXPORT vtkmAddField(vtkm::cont::DataSet &vtkmDataSet,
-                                               const vistle::DataBase::const_ptr &field, const std::string &name);
+                                               const vistle::DataBase::const_ptr &field, const std::string &name,
+                                               vistle::DataBase::Mapping mapping = vistle::DataBase::Unspecified);
 
 // transform a vtkm isosurface dataset into a vistle Triangles object, so it can
 // be rendered in COVER
