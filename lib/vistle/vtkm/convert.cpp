@@ -492,7 +492,7 @@ Object::ptr vtkmGetGeometry(vtkm::cont::DataSet &dataset)
             if (auto rvec = vistle::Vec<vistle::Scalar>::as(radius)) {
                 auto r = std::make_shared<vistle::Vec<Scalar>>(0);
                 r->d()->x[0] = rvec->d()->x[0];
-                // don't use setNormals() in order to bypass check() on object before updateMeta()
+                // don't use setRadius() in order to bypass check() on object before updateMeta()
                 if (auto lines = Lines::as(result)) {
                     lines->d()->radius = r;
                 }
