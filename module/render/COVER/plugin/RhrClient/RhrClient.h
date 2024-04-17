@@ -76,6 +76,9 @@ private:
 
     std::shared_ptr<RemoteConnection> connectClient(const std::string &serverKey, const std::string &connectionName,
                                                     const std::string &address, unsigned short port);
+    std::shared_ptr<RemoteConnection> connectTunnel(const std::string &serverKey, const std::string &connectionName,
+                                                    const std::string &address, unsigned short port,
+                                                    const std::string &tunnelId);
     std::shared_ptr<RemoteConnection> startListen(const std::string &serverKey, const std::string &connectionName,
                                                   int moduleId, unsigned short port, unsigned short portLast = 0);
     std::shared_ptr<RemoteConnection> startClient(const std::string &serverKey, const std::string &connectionName,

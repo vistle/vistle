@@ -64,6 +64,7 @@ void Router::initRoutingTable()
     rt[BARRIERREACHED] = HandleOnDest;
 
     rt[REQUESTTUNNEL] = HandleOnNode | HandleOnHub;
+    rt[TUNNELESTABLISHED] = Special;
 
     rt[REQUESTOBJECT] = Special;
     rt[SENDOBJECT] = Special;

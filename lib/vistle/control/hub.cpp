@@ -240,6 +240,7 @@ Hub::~Hub()
         removeSocket(m_sockets.begin()->first);
     }
 
+    m_tunnelManager.cleanUp();
     m_dataProxy.reset();
 
     message::clear_request_queue();
@@ -1004,6 +1005,8 @@ bool Hub::dispatch()
             }
 #endif
         }
+
+        m_tunnelManager.cleanUp();
     }
 
     std::unique_lock<std::mutex> dataConnGuard(m_outstandingDataConnectionMutex);
@@ -1596,7 +1599,12 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
         case Identify::LOCALBULKDATA:
         case Identify::REMOTEBULKDATA: {
             m_dataProxy->addSocket(id, sock);
-            removeClient(sock);
+            removeSocket(sock, false);
+            break;
+        }
+        case Identify::TUNNEL: {
+            m_tunnelManager.addSocket(id, sock);
+            removeSocket(sock, false);
             break;
         }
         default: {
@@ -3475,6 +3483,7 @@ void Hub::emergencyQuit()
         usleep(100000);
     }
 
+    m_tunnelManager.cleanUp();
     m_dataProxy.reset();
 
     if (!m_quitting) {
@@ -3569,6 +3578,8 @@ void Hub::updateLinkedParameters(const message::SetParameter &setParam)
 void Hub::startIoThread()
 {
     auto num = m_ioThreads.size();
+    if (num > std::thread::hardware_concurrency())
+        return;
     m_ioThreads.emplace_back([this, num]() {
         setThreadName("vistle:io:" + std::to_string(num));
         m_ioService.run();

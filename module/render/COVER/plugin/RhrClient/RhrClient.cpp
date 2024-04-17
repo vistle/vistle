@@ -43,9 +43,12 @@
 #include <vistle/rhr/rfbext.h>
 #include <vistle/util/crypto.h>
 #include <vistle/util/hostname.h>
+#include <vistle/module/module.h>
+#include <vistle/core/statetracker.h>
 
 #include <VistlePluginUtil/VistleInteractor.h>
 #include <VistlePluginUtil/VistleMessage.h>
+#include <VistlePluginUtil/VistleInfo.h>
 
 
 #include "RemoteConnection.h"
@@ -706,6 +709,21 @@ void RhrClient::addObject(const opencover::RenderObject *baseObj, osg::Group *pa
             cover->notify(Notify::Error) << "RhrClient: no attempt to start server for " << connectionName
                                          << ": invalid port: " << port << std::endl;
         }
+    } else if (method == "tunnel") {
+        auto tunnelId = address;
+        auto streamId = port;
+        auto mod = VistleInfo::getModule();
+        if (mod) {
+            auto master = mod->state().getHubData(message::Id::MasterHub);
+            auto addr = master.address.to_string();
+            if (master.address.is_unspecified()) {
+                addr = "localhost";
+            }
+            remote = connectTunnel(serverKey, connectionName, addr, master.port, tunnelId);
+        } else {
+            cover->notify(Notify::Error) << "RhrClient: cannot initiate tunnel for " << connectionName << ": no module"
+                                         << std::endl;
+        }
     }
 }
 
@@ -1117,6 +1135,23 @@ std::shared_ptr<RemoteConnection> RhrClient::connectClient(const std::string &se
     return r;
 }
 
+std::shared_ptr<RemoteConnection> RhrClient::connectTunnel(const std::string &serverKey,
+                                                           const std::string &connectionName,
+                                                           const std::string &address, unsigned short port,
+                                                           const std::string &tunnelId)
+{
+    removeRemoteConnection(serverKey);
+
+    cover->notify(Notify::Info) << "initiating new tunneling RemoteConnection via " << address << ":" << port
+                                << std::endl;
+    std::shared_ptr<RemoteConnection> r(
+        new RemoteConnection(this, address, port, coVRMSController::instance()->isMaster(), tunnelId));
+
+    addRemoteConnection(serverKey, connectionName, r);
+
+    return r;
+}
+
 std::shared_ptr<RemoteConnection> RhrClient::startListen(const std::string &serverKey,
                                                          const std::string &connectionName, int moduleId,
                                                          unsigned short port, unsigned short portLast)
@@ -1136,7 +1171,11 @@ std::shared_ptr<RemoteConnection> RhrClient::startListen(const std::string &serv
 void RhrClient::addRemoteConnection(const std::string &serverKey, const std::string &name,
                                     std::shared_ptr<RemoteConnection> remote, int moduleId)
 {
-    CERR << "addRemoteConnection: have " << m_remotes.size() << " connections, adding client " << name << std::endl;
+    CERR << "addRemoteConnection: have " << m_remotes.size() << " connections, adding client " << name;
+    if (!remote->isConnected()) {
+        std::cerr << " waiting for connection...";
+    }
+    std::cerr << std::endl;
 
     m_remoteNames.insert(name);
 
@@ -1144,28 +1183,6 @@ void RhrClient::addRemoteConnection(const std::string &serverKey, const std::str
     remote->setName(name);
     m_clientsChanged = true;
 
-    remote->setMaxTilesPerFrame(m_maxTilesPerFrame);
-    remote->setNodeConfigs(m_nodeConfig);
-    remote->setNumLocalViews(m_numLocalViews);
-    remote->setNumClusterViews(m_numClusterViews);
-    remote->setFirstView(m_channelBase);
-    remote->setVisibleTimestep(m_visibleTimestep);
-    if (m_requestedTimestep != -1) {
-        remote->requestTimestep(m_requestedTimestep);
-    }
-    lightsMsg lm = buildLightsMessage();
-    remote->setLights(lm);
-
-    auto matrices = gatherAllMatrices();
-    remote->setMatrices(matrices);
-
-    remote->setReprojectionMode(m_mode);
-    remote->setViewsToRender(m_visibleViews);
-    remote->setGeometryMode(m_geoMode);
-
-    for (auto &var: m_coverVariants) {
-        remote->setVariantVisibility(var.first, var.second);
-    }
     cover->getObjectsRoot()->addChild(remote->scene());
 
     bool running = coVRMSController::instance()->syncBool(remote->isRunning());
@@ -1186,6 +1203,10 @@ void RhrClient::addRemoteConnection(const std::string &serverKey, const std::str
         }
 
         port = remote->m_port;
+    } else {
+        while (!remote->isListening() && !remote->isConnected()) {
+            usleep(1000);
+        }
     }
 
     coVRMSController::instance()->syncData(&port, sizeof(port));
@@ -1197,6 +1218,30 @@ void RhrClient::addRemoteConnection(const std::string &serverKey, const std::str
 
     m_remoteStatus[serverKey] = new ui::Label(m_remoteGroup, name);
     updateStatus(serverKey);
+    remote->setMaxTilesPerFrame(m_maxTilesPerFrame);
+    remote->setNodeConfigs(m_nodeConfig);
+    remote->setNumLocalViews(m_numLocalViews);
+    remote->setNumClusterViews(m_numClusterViews);
+    remote->setFirstView(m_channelBase);
+
+
+    remote->setVisibleTimestep(m_visibleTimestep);
+    if (m_requestedTimestep != -1) {
+        remote->requestTimestep(m_requestedTimestep);
+    }
+    lightsMsg lm = buildLightsMessage();
+    remote->setLights(lm);
+
+    auto matrices = gatherAllMatrices();
+    remote->setMatrices(matrices);
+
+    remote->setReprojectionMode(m_mode);
+    remote->setViewsToRender(m_visibleViews);
+    remote->setGeometryMode(m_geoMode);
+
+    for (auto &var: m_coverVariants) {
+        remote->setVariantVisibility(var.first, var.second);
+    }
 }
 
 RhrClient::RemotesMap::iterator RhrClient::removeRemoteConnection(const std::string &name)
