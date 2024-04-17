@@ -385,11 +385,16 @@ void RhrServer::handleAccept(asio::ip::tcp::acceptor &a, std::shared_ptr<asio::i
     startAccept(a);
 }
 
-bool RhrServer::makeConnection(const std::string &host, unsigned short port, int secondsToTry)
+bool RhrServer::makeConnection(const std::string &host, unsigned short port, int secondsToTry,
+                               const std::string &tunnelId)
 {
     m_listen = false;
 
-    CERR << "connecting to " << host << ":" << port << "..." << std::endl;
+    if (tunnelId.empty()) {
+        CERR << "connecting to " << host << ":" << port << "..." << std::endl;
+    } else {
+        CERR << "connecting tunnel via " << host << ":" << port << "..." << std::endl;
+    }
 
     asio::ip::tcp::resolver resolver(m_io);
     asio::ip::tcp::resolver::query query(host, std::to_string(port), asio::ip::tcp::resolver::query::numeric_service);
@@ -425,9 +430,15 @@ bool RhrServer::makeConnection(const std::string &host, unsigned short port, int
 
     m_destHost = host;
     m_destPort = port;
+    m_tunnelId = tunnelId;
 
-    CERR << "connected to " << host << ":" << port << std::endl;
-
+    if (tunnelId.empty()) {
+        CERR << "connected to " << host << ":" << port << std::endl;
+        m_tunnelEstablished = true;
+    } else {
+        CERR << "connected to tunnel at " << host << ":" << port << std::endl;
+        m_tunnelEstablished = false;
+    }
     send(message::Identify());
 
     return true;
@@ -697,13 +708,27 @@ void RhrServer::preFrame()
         }
 
         switch (msg.type()) {
+        case message::TUNNELESTABLISHED: {
+            auto &m = msg.as<message::TunnelEstablished>();
+            CERR << "tunnel established: " << m << std::endl;
+            m_tunnelEstablished = true;
+            if (m.role() == message::TunnelEstablished::Server) {
+                send(message::Identify());
+            }
+            break;
+        }
         case message::IDENTIFY: {
             auto &m = msg.as<message::Identify>();
+            CERR << "client identity: " << m << std::endl;
             using message::Identify;
             switch (m.identity()) {
             case Identify::REQUEST: {
-                Identify id(m, Identify::RENDERSERVER);
-                send(id);
+                if (m_tunnelEstablished) {
+                    Identify id(m, Identify::RENDERSERVER);
+                    send(id);
+                } else {
+                    send(message::Identify(m, m_tunnelId, Identify::Server));
+                }
                 break;
             }
             case Identify::RENDERCLIENT: {
@@ -718,6 +743,9 @@ void RhrServer::preFrame()
                     msg.visible = var.second;
                     send(msg);
                 }
+                break;
+            }
+            case Identify::HUB: {
                 break;
             }
             default: {

@@ -68,7 +68,8 @@ public:
 
     void init();
     bool startServer(unsigned short port);
-    bool makeConnection(const std::string &host, unsigned short port, int secondsToTry = -1);
+    bool makeConnection(const std::string &host, unsigned short port, int secondsToTry = -1,
+                        const std::string &tunnelId = std::string());
     bool initializeConnection();
     void preFrame();
 
@@ -251,6 +252,8 @@ private:
     unsigned short m_destPort = 0;
     std::string m_destHost;
     int m_clientModuleId = 0;
+    std::string m_tunnelId;
+    bool m_tunnelEstablished = false;
 
     bool startAccept(asio::ip::tcp::acceptor &a);
     void handleAccept(asio::ip::tcp::acceptor &a, std::shared_ptr<boost::asio::ip::tcp::socket> sock,

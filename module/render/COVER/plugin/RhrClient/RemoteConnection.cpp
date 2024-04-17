@@ -87,8 +87,9 @@ RemoteConnection::RemoteConnection(RhrClient *plugin, int moduleId, bool isMaste
     init();
 }
 
-RemoteConnection::RemoteConnection(RhrClient *plugin, std::string host, unsigned short port, bool isMaster)
-: plugin(plugin), m_host(host), m_port(port), m_sock(plugin->m_io), m_isMaster(isMaster)
+RemoteConnection::RemoteConnection(RhrClient *plugin, std::string host, unsigned short port, bool isMaster,
+                                   const std::string &tunnelId)
+: plugin(plugin), m_host(host), m_port(port), m_tunnelId(tunnelId), m_sock(plugin->m_io), m_isMaster(isMaster)
 {
     init();
 }
@@ -136,6 +137,14 @@ void RemoteConnection::init()
     bool useMpi = covise::coCoviseConfig::isOn("mpi", conf, false, &exists);
     m_handleTilesAsync = useMpi && covise::coCoviseConfig::isOn("thread", conf, m_handleTilesAsync, &exists);
 
+    CERR << "new " << (m_listen ? "listening" : "client") << " RemoteConnection ";
+    if (m_moduleId != message::Id::Invalid) {
+        std::cerr << "to module " << m_moduleId;
+    }
+    if (!m_tunnelId.empty()) {
+        std::cerr << " with tunnelId " << m_tunnelId;
+    }
+    std::cerr << std::endl;
 #ifdef CONNDEBUG
     CERR << "init: mpi=" << useMpi << ", thread=" << m_handleTilesAsync << std::endl;
 #endif
@@ -168,6 +177,8 @@ void RemoteConnection::init()
     m_status = "initialized";
 
     m_initialized = true;
+
+    m_tunnelEstablished = m_tunnelId.empty();
 }
 
 void RemoteConnection::startThread()
@@ -363,6 +374,13 @@ void RemoteConnection::operator()()
         m_connected = true;
         m_status = "connected";
     }
+#if 0
+    if (m_moduleId == message::Id::Invalid && !m_listen) {
+        if (!m_tunnelId.empty()) {
+            sendMessage(message::Identify());
+        }
+    }
+#endif
 
     for (;;) {
         if (m_moduleId != message::Id::Invalid) {
@@ -398,16 +416,33 @@ void RemoteConnection::operator()()
             continue;
         }
 
-        if (buf.type() == message::IDENTIFY) {
+        if (buf.type() == message::TUNNELESTABLISHED) {
+            auto &msg = buf.as<message::TunnelEstablished>();
+            CERR << "tunnel established: " << msg << std::endl;
+            lock_guard locker(*m_mutex);
+            m_tunnelEstablished = true;
+            m_status = "tunnel established";
+            if (msg.role() == message::TunnelEstablished::Server) {
+                sendMessage(message::Identify());
+            }
+        } else if (buf.type() == message::IDENTIFY) {
             auto &msg = buf.as<message::Identify>();
+            CERR << "received identify: " << msg << std::endl;
             using message::Identify;
             switch (msg.identity()) {
             case Identify::REQUEST: {
-                message::Identify id(msg, message::Identify::RENDERCLIENT);
-                lock_guard locker(*m_mutex);
-                sendMessage(id);
-                connectionEstablished();
-                m_status = "connected";
+                if (m_tunnelEstablished) {
+                    message::Identify id(msg, message::Identify::RENDERCLIENT);
+                    lock_guard locker(*m_mutex);
+                    sendMessage(id);
+                    connectionEstablished();
+                    m_status = "connected";
+                } else {
+                    message::Identify id(msg, m_tunnelId, Identify::Client);
+                    lock_guard locker(*m_mutex);
+                    sendMessage(id);
+                    m_status = "tunnel establishment";
+                }
                 break;
             }
             case Identify::RENDERSERVER: {
@@ -486,6 +521,11 @@ bool RemoteConnection::handleRemoteRenderMessage(message::RemoteRenderMessage &m
 
 void RemoteConnection::connectionEstablished()
 {
+    setVisibleTimestep(m_visibleTimestep);
+    if (m_requestedTimestep != -1) {
+        requestTimestep(m_requestedTimestep);
+    }
+
     for (const auto &var: m_variantVisibility) {
         variantMsg msg;
         strncpy(msg.name, var.first.c_str(), sizeof(msg.name) - 1);
@@ -1624,7 +1664,10 @@ void RemoteConnection::skipFrames()
 std::string RemoteConnection::status() const
 {
     lock_guard locker(*m_mutex);
-    return m_status;
+    if (m_fps.empty())
+        return m_status;
+    else
+        return m_status + " - " + m_fps;
 }
 
 void RemoteConnection::setVisibleTimestep(int t)
@@ -1677,7 +1720,9 @@ void RemoteConnection::updateStats(bool print, int localFrames)
     }
 
     std::stringstream str;
-    str << std::fixed << std::setprecision(1) << "F/s: " << (m_remoteFrames + m_remoteSkipped) / diff;
+    if (m_remoteFrames + m_remoteSkipped > 0) {
+        str << std::fixed << std::setprecision(1) << "F/s: " << (m_remoteFrames + m_remoteSkipped) / diff;
+    }
     auto status = str.str();
 
     m_remoteSkipped = 0;
@@ -1690,7 +1735,7 @@ void RemoteConnection::updateStats(bool print, int localFrames)
     m_rgbBytesS = 0;
 
     lock_guard locker(*m_mutex);
-    m_status = status;
+    m_fps = status;
 }
 
 const osg::Matrix &RemoteConnection::getHeadMat() const
