@@ -379,6 +379,7 @@ ReadItlrBin::ReadItlrBin(const std::string &name, int moduleID, mpi::communicato
             m_filename[i] = addStringParameter("filename" + std::to_string(i), ".lst or .bin file for data", "",
                                                Parameter::ExistingFilename);
         setParameterFilters(m_filename[i], "List Files (*.lst)/Binary Files (*.bin)/HDF5 Files (*.hdf)/All Files (*)");
+        observeParameter(m_filename[i]);
     }
 
     m_numPartitions = addIntParameter("num_partitions", "number of partitions (-1: MPI ranks)", -1);
@@ -404,6 +405,18 @@ bool ReadItlrBin::examine(const Parameter *param)
             npart = size();
         m_nparts = npart;
         setPartitions(npart);
+    }
+
+    for (int i = 0; i < NumPorts; ++i) {
+        if (!param || param == m_filename[i]) {
+            auto file = m_filename[i]->getValue();
+            if (file.empty())
+                continue;
+            if (boost::algorithm::ends_with(file, ".lst")) {
+                auto files = readListFile(file);
+                setTimesteps(files.size());
+            }
+        }
     }
 
     return true;
