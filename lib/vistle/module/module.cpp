@@ -1826,7 +1826,7 @@ bool Module::handleMessage(const vistle::message::Message *message, const Messag
         break;
 
     default:
-        CERR << "unknown message type [" << message->type() << "]" << std::endl;
+        CERR << "unknown message type [" << message->type() << "]: " << *message << std::endl;
 
         break;
     }
