@@ -81,12 +81,6 @@ const osg::BoundingSphere &RemoteConnection::getBounds() const
     return m_boundsNode->getBound();
 }
 
-RemoteConnection::RemoteConnection(RhrClient *plugin, int moduleId, bool isMaster)
-: plugin(plugin), m_sock(plugin->m_io), m_isMaster(isMaster), m_moduleId(moduleId)
-{
-    init();
-}
-
 RemoteConnection::RemoteConnection(RhrClient *plugin, std::string host, unsigned short port, bool isMaster,
                                    const std::string &tunnelId)
 : plugin(plugin), m_host(host), m_port(port), m_tunnelId(tunnelId), m_sock(plugin->m_io), m_isMaster(isMaster)
@@ -138,9 +132,6 @@ void RemoteConnection::init()
     m_handleTilesAsync = useMpi && covise::coCoviseConfig::isOn("thread", conf, m_handleTilesAsync, &exists);
 
     CERR << "new " << (m_listen ? "listening" : "client") << " RemoteConnection ";
-    if (m_moduleId != message::Id::Invalid) {
-        std::cerr << "to module " << m_moduleId;
-    }
     if (!m_tunnelId.empty()) {
         std::cerr << " with tunnelId " << m_tunnelId;
     }
@@ -274,9 +265,7 @@ void RemoteConnection::operator()()
     m_status = s; \
     return;
 
-    if (m_moduleId != message::Id::Invalid) {
-        connectionEstablished();
-    } else if (m_listen) {
+    if (m_listen) {
         boost::system::error_code ec;
         asio::ip::tcp::acceptor acceptorv4(plugin->m_io), acceptorv6(plugin->m_io);
         int first = m_port, last = m_port;
@@ -374,17 +363,9 @@ void RemoteConnection::operator()()
         m_connected = true;
         m_status = "connected";
     }
-#if 0
-    if (m_moduleId == message::Id::Invalid && !m_listen) {
-        if (!m_tunnelId.empty()) {
-            sendMessage(message::Identify());
-        }
-    }
-#endif
 
     for (;;) {
-        if (m_moduleId != message::Id::Invalid) {
-        } else if (!m_sock.is_open()) {
+        if (!m_sock.is_open()) {
             lock_guard locker(*m_mutex);
             m_connected = false;
             m_status = "disconnected";
@@ -395,15 +376,12 @@ void RemoteConnection::operator()()
         message::Buffer buf;
         auto payload = std::make_shared<buffer>();
         message::error_code ec;
-        bool received = false;
-        if (m_moduleId == message::Id::Invalid) {
-            received = message::recv(m_sock, buf, ec, false, payload.get());
-            if (ec) {
-                NOTIFY_ERROR << "message receive: " << ec.message() << std::endl;
-                lock_guard locker(*m_mutex);
-                m_status = "receive error";
-                break;
-            }
+        bool received = message::recv(m_sock, buf, ec, false, payload.get());
+        if (ec) {
+            NOTIFY_ERROR << "message receive: " << ec.message() << std::endl;
+            lock_guard locker(*m_mutex);
+            m_status = "receive error";
+            break;
         }
         {
             lock_guard locker(*m_mutex);
@@ -974,9 +952,6 @@ bool RemoteConnection::isConnecting() const
 bool RemoteConnection::isConnected() const
 {
     lock_guard locker(*m_mutex);
-    if (m_moduleId != message::Id::Invalid) {
-        return true;
-    }
     return m_running && m_connected && m_sock.is_open();
 }
 
@@ -994,12 +969,6 @@ bool RemoteConnection::sendMessage(const message::Message &msg, const buffer *pa
     lock_guard locker(*m_sendMutex);
     if (!isConnected())
         return false;
-
-    if (m_moduleId != message::Id::Invalid) {
-        message::Buffer buf(msg);
-        buf.setDestId(m_moduleId);
-        return plugin->sendMessage(buf, payload);
-    }
 
     if (!message::send(m_sock, msg, payload)) {
         if (m_sock.is_open()) {
@@ -1853,9 +1822,4 @@ bool RemoteConnection::distributeAndHandleTileMpi(std::shared_ptr<RemoteRenderMe
 void RemoteConnection::setMaxTilesPerFrame(unsigned ntiles)
 {
     m_maxTilesPerFrame = ntiles;
-}
-
-int RemoteConnection::moduleId() const
-{
-    return m_moduleId;
 }
