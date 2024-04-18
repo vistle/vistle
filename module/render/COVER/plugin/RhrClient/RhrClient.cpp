@@ -688,9 +688,7 @@ void RhrClient::addObject(const opencover::RenderObject *baseObj, osg::Group *pa
          << ", config: method=" << method << ", address=" << address << ", port=" << port << std::endl;
 
     std::shared_ptr<RemoteConnection> remote;
-    if (method == "vistle") {
-        remote = startClient(serverKey, connectionName, moduleId);
-    } else if (method == "connect") {
+    if (method == "connect") {
         if (address.empty()) {
             cover->notify(Notify::Error) << "RhrClient: no connection attempt for " << connectionName
                                          << ": invalid dest address: " << address << std::endl;
@@ -711,7 +709,7 @@ void RhrClient::addObject(const opencover::RenderObject *baseObj, osg::Group *pa
         }
     } else if (method == "tunnel") {
         auto tunnelId = address;
-        auto streamId = port;
+        //auto streamId = port;
         auto mod = VistleInfo::getModule();
         if (mod) {
             auto master = mod->state().getHubData(message::Id::MasterHub);
@@ -1058,26 +1056,6 @@ void RhrClient::requestTimestep(int t)
 void RhrClient::message(int toWhom, int type, int len, const void *msg)
 {
     switch (type) {
-    case PluginMessageTypes::VistleMessageIn: {
-        const auto *wrap = static_cast<const VistleMessage *>(msg);
-        auto payload = wrap->payload;
-        auto vm = wrap->buf;
-        if (vm.type() == vistle::message::REMOTERENDERING) {
-            for (auto &r: m_remotes) {
-                if (r.second->moduleId() == vm.senderId()) {
-                    if (payload) {
-                        auto pl = std::make_shared<vistle::buffer>(payload->begin(), payload->end());
-                        r.second->handleRemoteRenderMessage(vm.as<RemoteRenderMessage>(), pl);
-                    } else {
-                        r.second->handleRemoteRenderMessage(vm.as<RemoteRenderMessage>());
-                    }
-                    break;
-                }
-            }
-        }
-        break;
-    }
-
     case PluginMessageTypes::VariantHide:
     case PluginMessageTypes::VariantShow: {
         covise::TokenBuffer tb((char *)msg, len);
@@ -1106,18 +1084,6 @@ bool RhrClient::updateViewer()
         }
     }
     return false;
-}
-
-std::shared_ptr<RemoteConnection> RhrClient::startClient(const std::string &serverKey, const string &connectionName,
-                                                         int moduleId)
-{
-    removeRemoteConnection(serverKey);
-
-    cover->notify(Notify::Info) << "starting new RemoteConnection to module " << moduleId << std::endl;
-    std::shared_ptr<RemoteConnection> r(new RemoteConnection(this, moduleId, coVRMSController::instance()->isMaster()));
-
-    addRemoteConnection(serverKey, connectionName, r);
-    return r;
 }
 
 std::shared_ptr<RemoteConnection> RhrClient::connectClient(const std::string &serverKey,

@@ -98,8 +98,6 @@ public:
     RemoteConnection() = delete;
     RemoteConnection(const RemoteConnection &other) = delete;
     RemoteConnection &operator=(RemoteConnection &other) = delete;
-    //! connect via Vistle message to module with moduleId
-    RemoteConnection(RhrClient *plugin, int moduleId, bool isMaster);
     //! connect via TCP to host:port
     RemoteConnection(RhrClient *plugin, std::string host, unsigned short port, bool isMaster,
                      const std::string &tunnelId = std::string());
@@ -229,7 +227,6 @@ public:
     std::string status() const;
 
 private:
-    int m_moduleId = vistle::message::Id::Invalid;
     void init();
 };
 

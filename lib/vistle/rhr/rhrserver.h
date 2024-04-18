@@ -55,8 +55,6 @@ public:
     unsigned short destinationPort() const;
     const std::string &destinationHost() const;
 
-    void setClientModuleId(int roduleId);
-
     int width(size_t viewNum) const;
     int height(size_t viewNum) const;
     unsigned char *rgba(size_t viewNum);
@@ -251,7 +249,6 @@ private:
     unsigned short m_port = 0;
     unsigned short m_destPort = 0;
     std::string m_destHost;
-    int m_clientModuleId = 0;
     std::string m_tunnelId;
     bool m_tunnelEstablished = false;
 

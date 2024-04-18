@@ -41,11 +41,6 @@ bool RhrServer::send(const RemoteRenderMessage &msg, const buffer *payload)
 
 bool RhrServer::send(message::Buffer msg, const buffer *payload)
 {
-    if (m_clientModuleId != message::Id::Invalid) {
-        msg.setDestId(m_clientModuleId);
-        return m_module->sendMessage(msg, payload);
-    }
-
     if (m_clientSocket && !m_clientSocket->is_open()) {
         resetClient();
         CERR << "client disconnected" << std::endl;
@@ -104,9 +99,6 @@ bool RhrServer::isConnecting() const
 
 bool RhrServer::isConnected() const
 {
-    if (m_clientModuleId != message::Id::Invalid)
-        return true;
-
     return m_clientSocket.get();
 }
 
@@ -148,11 +140,6 @@ void RhrServer::setZfpMode(CompressionParameters::ZfpMode mode)
 void RhrServer::setDumpImages(bool enable)
 {
     m_dumpImages = enable;
-}
-
-void RhrServer::setClientModuleId(int moduleId)
-{
-    m_clientModuleId = moduleId;
 }
 
 unsigned short RhrServer::port() const
@@ -321,7 +308,6 @@ void RhrServer::resetClient()
     lightsUpdateCount = 0;
     m_clientVariants.clear();
     m_viewData.clear();
-    m_clientModuleId = message::Id::Invalid;
 }
 
 bool RhrServer::startServer(unsigned short port)
@@ -667,9 +653,6 @@ bool RhrServer::handleVariant(std::shared_ptr<RhrServer::socket> sock, const var
 //! this is called before every frame, used for polling for RFB messages
 void RhrServer::preFrame()
 {
-    if (m_clientModuleId != vistle::message::Id::Invalid)
-        return;
-
     m_io.poll();
     if (!isConnected())
         return;

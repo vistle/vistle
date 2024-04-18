@@ -23,7 +23,6 @@ public:
     void removeClient(const Port *client);
 
     enum ConnectionDirection {
-        None, // no dedicated connection necessary
         Connect, // client connects to server
         Listen, // server connects to client
         Tunnel, // both server and client connect to rendezvous point
