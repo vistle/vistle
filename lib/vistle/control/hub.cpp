@@ -1634,6 +1634,13 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
         m_outstandingDataConnections[add] =
             std::async(std::launch::async, [this, add]() { return m_dataProxy->connectRemoteData(add); });
         guard.unlock();
+
+        m_stateTracker.handle(add, nullptr, true);
+        sendManager(add, Id::LocalHub);
+        sendUi(add);
+        if (m_isMaster) {
+            sendSlaves(add);
+        }
         break;
     }
     case message::CONNECT: {
