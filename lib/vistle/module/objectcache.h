@@ -31,9 +31,18 @@ public:
 
 private:
     CacheMode m_cacheMode;
-    typedef std::deque<std::string> NameList;
-    std::map<std::string, ObjectList> m_cache, m_oldCache;
-    std::map<std::string, NameList> m_nameCache;
+
+    struct Entry {
+        Entry(Object::const_ptr object);
+        std::string name;
+        Object::const_ptr object;
+        int block;
+        int timestep;
+        int iteration;
+    };
+    typedef std::vector<Entry> EntryList;
+    std::map<std::string, EntryList> m_cache, m_oldCache;
+
     std::map<std::string, Meta> m_meta;
     ObjectList m_emptyList;
 };
