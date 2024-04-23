@@ -1638,9 +1638,13 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
             }
         }
         std::unique_lock<std::mutex> guard(m_outstandingDataConnectionMutex);
-        assert(m_outstandingDataConnections.find(add) == m_outstandingDataConnections.end());
-        m_outstandingDataConnections[add] =
-            std::async(std::launch::async, [this, add]() { return m_dataProxy->connectRemoteData(add); });
+        auto it = m_outstandingDataConnections.find(add);
+        if (it == m_outstandingDataConnections.end()) {
+            m_outstandingDataConnections[add] =
+                std::async(std::launch::async, [this, add]() { return m_dataProxy->connectRemoteData(add); });
+        } else {
+            CERR << "already connecting to hub " << add.id() << ":" << add << std::endl;
+        }
         guard.unlock();
 
         m_stateTracker.handle(add, nullptr, true);
