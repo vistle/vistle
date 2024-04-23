@@ -1871,9 +1871,6 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
 
         applyDelayedChanges();
     }
-    if (exec->what() == Execute::Prepare) {
-        m_cache.clear();
-    }
     if (exec->what() == Execute::ComputeExecute || exec->what() == Execute::Prepare) {
         ret &= prepareWrapper(exec);
     }
