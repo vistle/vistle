@@ -1954,8 +1954,8 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
                 if (numObject == 0) {
                     numObject = port.second.objects().size();
                 } else if (numObject != port.second.objects().size()) {
-                    CERR << "::compute(): input mismatch - expected " << numObject << " objects, have "
-                         << port.second.objects().size() << std::endl;
+                    CERR << "::compute(): input mismatch - expected " << numObject << " objects on port "
+                         << port.second.getName() << ", have " << port.second.objects().size() << std::endl;
                     throw vistle::except::exception("input object mismatch");
                     return false;
                 }
