@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 #include <list>
+#include <queue>
 
 #include <vistle/insitu/message/MessageHandler.h>
 
@@ -49,7 +50,7 @@ private:
     std::unique_ptr<std::thread> m_vistleObjectsThread;
     std::mutex m_vistleObjectsMutex;
     mpi::communicator m_vistleObjectsComm;
-    std::vector<std::vector<vistle::message::Buffer>> m_cachedVistleObjects;
+    std::queue<std::vector<vistle::message::Buffer>> m_cachedVistleObjects;
 
 
     //..........................................................................
