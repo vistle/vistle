@@ -56,20 +56,16 @@ void ObjectCache::addObject(const std::string &portname, Object::const_ptr objec
         return;
 
     NameList &names = m_nameCache[portname];
+    auto &cache = m_cache[portname];
     if (!names.empty()) {
-        const Meta &oldmeta = m_meta;
+        const Meta &oldmeta = m_meta[portname];
         const Meta &newmeta = object->meta();
-        if (oldmeta.creator() != newmeta.creator() || oldmeta.executionCounter() != newmeta.executionCounter() ||
-            oldmeta.iteration() != newmeta.iteration()) {
+        if (oldmeta.creator() != newmeta.creator() || oldmeta.executionCounter() != newmeta.executionCounter()) {
             names.clear();
-            auto it = m_cache.find(object->getName());
-            if (it != m_cache.end()) {
-                auto &objs = it->second;
-                objs.clear();
-            }
+            cache.clear();
         }
     }
-    m_meta = object->meta();
+    m_meta[portname] = object->meta();
     names.push_back(object->getName());
     if (m_cacheMode == CacheByName)
         return;

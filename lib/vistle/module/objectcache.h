@@ -31,10 +31,10 @@ public:
 
 private:
     CacheMode m_cacheMode;
-    Meta m_meta;
     typedef std::deque<std::string> NameList;
     std::map<std::string, ObjectList> m_cache, m_oldCache;
     std::map<std::string, NameList> m_nameCache;
+    std::map<std::string, Meta> m_meta;
     ObjectList m_emptyList;
 };
 
