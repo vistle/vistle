@@ -228,6 +228,23 @@ private:
 #endif
 
 
+int getBlock(Object::const_ptr obj)
+{
+    if (!obj)
+        return -1;
+
+    int b = obj->getTimestep();
+    if (b < 0) {
+        if (auto data = DataBase::as(obj)) {
+            if (auto grid = data->grid()) {
+                b = grid->getTimestep();
+            }
+        }
+    }
+
+    return b;
+}
+
 int getTimestep(Object::const_ptr obj)
 {
     if (!obj)
@@ -243,6 +260,23 @@ int getTimestep(Object::const_ptr obj)
     }
 
     return t;
+}
+
+int getIteration(Object::const_ptr obj)
+{
+    if (!obj)
+        return -1;
+
+    int i = obj->getIteration();
+    if (i < 0) {
+        if (auto data = DataBase::as(obj)) {
+            if (auto grid = data->grid()) {
+                i = grid->getIteration();
+            }
+        }
+    }
+
+    return i;
 }
 
 double getRealTime(Object::const_ptr obj)

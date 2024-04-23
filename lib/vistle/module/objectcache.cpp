@@ -1,4 +1,5 @@
 #include "objectcache.h"
+#include "module.h"
 #include <vistle/core/shm.h>
 
 namespace vistle {
@@ -17,7 +18,6 @@ void ObjectCache::clear()
     } else {
         m_cache.clear();
     }
-    m_nameCache.clear();
 }
 
 void ObjectCache::clearOld()
@@ -29,7 +29,6 @@ void ObjectCache::clear(const std::string &portname)
 {
     m_cache.erase(portname);
     m_oldCache.erase(portname);
-    m_nameCache.erase(portname);
 }
 
 ObjectCache::CacheMode ObjectCache::cacheMode() const
@@ -50,44 +49,69 @@ void ObjectCache::setCacheMode(ObjectCache::CacheMode mode)
     m_cacheMode = mode;
 }
 
+ObjectCache::Entry::Entry(Object::const_ptr object)
+: name(object->getName())
+, object(object)
+, block(getBlock(object))
+, timestep(getTimestep(object))
+, iteration(getIteration(object))
+{}
+
 void ObjectCache::addObject(const std::string &portname, Object::const_ptr object)
 {
     if (m_cacheMode == CacheNone)
         return;
 
-    NameList &names = m_nameCache[portname];
     auto &cache = m_cache[portname];
-    if (!names.empty()) {
-        const Meta &oldmeta = m_meta[portname];
-        const Meta &newmeta = object->meta();
-        if (oldmeta.creator() != newmeta.creator() || oldmeta.executionCounter() != newmeta.executionCounter()) {
-            names.clear();
-            cache.clear();
+    auto time = getTimestep(object);
+    assert(time >= -1);
+    auto block = getBlock(object);
+    assert(block >= -1);
+    auto iter = getIteration(object);
+    assert(iter >= -1);
+
+    Meta &meta = m_meta[portname];
+    const Meta oldmeta = meta;
+    meta = object->meta();
+    if (oldmeta.creator() != meta.creator() || oldmeta.executionCounter() != meta.executionCounter()) {
+        cache.clear();
+    } else if (iter >= 0) {
+        for (auto &entry: cache) {
+            if (entry.block == block && entry.timestep == time) {
+                auto olditer = entry.iteration;
+                if (iter >= olditer) {
+                    entry = Entry(object);
+                    if (m_cacheMode == CacheByName) {
+                        entry.object.reset();
+                    }
+                } else {
+                    std::cerr << "ignoring object with iteration " << iter << " for port " << portname
+                              << " (old: " << olditer << "): " << *object << std::endl;
+                }
+                return;
+            }
         }
     }
-    m_meta[portname] = object->meta();
-    names.push_back(object->getName());
-    if (m_cacheMode == CacheByName)
-        return;
 
-    ObjectList &objs = m_cache[portname];
-    objs.push_back(object);
+    cache.emplace_back(object);
+    if (m_cacheMode == CacheByName) {
+        cache.back().object.reset();
+    }
 }
 
 std::pair<ObjectList, bool> ObjectCache::getObjects(const std::string &portname) const
 {
-    std::map<std::string, ObjectList>::const_iterator it = m_cache.find(portname);
-    if (it != m_cache.end())
-        return std::make_pair(it->second, true);
-    auto nit = m_nameCache.find(portname);
-    if (nit == m_nameCache.end())
+    auto it = m_cache.find(portname);
+    if (it == m_cache.end()) {
         return std::make_pair(m_emptyList, false);
+    }
+    const auto &cache = it->second;
 
     ObjectList objs;
-    const auto &names = nit->second;
-    for (auto &n: names) {
-        auto o = Shm::the().getObjectFromName(n);
-        if (o) {
+    for (const auto &e: cache) {
+        if (e.object) {
+            objs.push_back(e.object);
+        } else if (auto o = Shm::the().getObjectFromName(e.name)) {
             objs.push_back(o);
         } else {
             return std::make_pair(m_emptyList, false);
