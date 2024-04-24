@@ -33,10 +33,23 @@ jobs:
             large_index: ON
 
     steps:
+    - name: Show info
+      if: runner.os == 'Linux'
+      run: |
+        cat /etc/apt/apt.conf || true
+        cat /etc/apt/apt.conf.d/* || true
+        cat /etc/apt/sources.list || true
+        cat /etc/apt/sources.list.d/* || true
+
+    - name: Clean apt
+      if: runner.os == 'Linux'
+      run: >
+        sudo apt-get clean && sudo rm -rf /var/lib/apt/lists/* && sudo rm -f /etc/apt/sources.list.d/archive_uri-* && sudo apt-get clean
+
     - name: Install Linux Dependencies
       if: runner.os == 'Linux'
       run: >
-        cat /etc/apt/apt.conf && sudo apt-get clean && sudo rm -rf /var/lib/apt/lists/* && sudo rm -f /etc/apt/sources.list.d/archive_uri-* && sudo apt-get clean && sudo apt-get update && sudo apt-get install
+        sudo apt-get update && sudo apt-get install
         ninja-build
         libglew-dev
         qttools5-dev
