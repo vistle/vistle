@@ -95,7 +95,7 @@ jobs:
     - name: Install ISPC
       if: runner.os == 'Linux'
       run: >
-        cd /tmp && wget https://github.com/ispc/ispc/releases/download/v1.23.0/ispc-v1.23.0-linux.tar.gz && tar xf ispc-v1.23.0-linux.tar.gz && sudo mv ispc-v1.23.0-linux/bin/ispc /usr/local/bin
+        wget https://github.com/ispc/ispc/releases/download/v1.23.0/ispc-v1.23.0-linux.tar.gz -O - | sudo tar --strip-components=2 -C /usr/local/bin/ -x -z -v -f - ispc-v1.23.0-linux/bin/ispc
 
     - name: Free disk space
       uses: jlumbroso/free-disk-space@main
