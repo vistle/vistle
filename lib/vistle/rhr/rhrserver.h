@@ -241,7 +241,6 @@ public:
                    const std::vector<std::string> &removed);
 
 private:
-    vistle::Module *m_module;
     asio::io_service m_io;
     asio::ip::tcp::acceptor m_acceptorv4, m_acceptorv6;
     bool m_listen = false;
