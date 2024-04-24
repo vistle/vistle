@@ -49,9 +49,9 @@ void ObjectCache::setCacheMode(ObjectCache::CacheMode mode)
     m_cacheMode = mode;
 }
 
-ObjectCache::Entry::Entry(Object::const_ptr object)
+ObjectCache::Entry::Entry(Object::const_ptr object, bool cacheByNameOnly)
 : name(object->getName())
-, object(object)
+, object(cacheByNameOnly ? nullptr : object)
 , block(getBlock(object))
 , timestep(getTimestep(object))
 , iteration(getIteration(object))
@@ -80,10 +80,7 @@ void ObjectCache::addObject(const std::string &portname, Object::const_ptr objec
             if (entry.block == block && entry.timestep == time) {
                 auto olditer = entry.iteration;
                 if (iter >= olditer) {
-                    entry = Entry(object);
-                    if (m_cacheMode == CacheByName) {
-                        entry.object.reset();
-                    }
+                    entry = Entry(object, m_cacheMode == CacheByName);
                 } else {
                     std::cerr << "ignoring object with iteration " << iter << " for port " << portname
                               << " (old: " << olditer << "): " << *object << std::endl;
@@ -93,10 +90,7 @@ void ObjectCache::addObject(const std::string &portname, Object::const_ptr objec
         }
     }
 
-    cache.emplace_back(object);
-    if (m_cacheMode == CacheByName) {
-        cache.back().object.reset();
-    }
+    cache.emplace_back(object, m_cacheMode == CacheByName);
 }
 
 std::pair<ObjectList, bool> ObjectCache::getObjects(const std::string &portname) const
