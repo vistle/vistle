@@ -33,7 +33,7 @@ private:
     CacheMode m_cacheMode;
 
     struct Entry {
-        Entry(Object::const_ptr object);
+        Entry(Object::const_ptr object, bool cacheByNameOnly);
         std::string name;
         Object::const_ptr object;
         int block;
