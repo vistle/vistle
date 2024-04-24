@@ -65,7 +65,7 @@ bool RhrServer::send(message::Buffer msg, const buffer *payload)
 
 //! called when plugin is loaded
 RhrServer::RhrServer(vistle::Module *module)
-: m_module(module), m_acceptorv4(m_io), m_acceptorv6(m_io), m_listen(true), m_port(0), m_destPort(0)
+: m_acceptorv4(m_io), m_acceptorv6(m_io), m_listen(true), m_port(0), m_destPort(0)
 {
     init();
 }
