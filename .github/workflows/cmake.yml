@@ -12,7 +12,7 @@ jobs:
     # well on Windows or Mac.  You can convert this to a matrix build if you need
     # cross-platform coverage.
     # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
-    runs-on: ubuntu-latest
+    runs-on: [ubuntu-latest, macos-latest]
 
     strategy:
       matrix:
@@ -97,6 +97,14 @@ jobs:
       run: >
         wget https://github.com/ispc/ispc/releases/download/v1.23.0/ispc-v1.23.0-linux.tar.gz -O - | sudo tar --strip-components=2 -C /usr/local/bin/ -x -z -v -f - ispc-v1.23.0-linux/bin/ispc
 
+    - name: Install macOS Dependencies
+      if: runner.os == 'macOS'
+      run: |
+        brew update
+        # workaround for https://github.com/actions/setup-python/issues/577
+        #brew list -1 | grep python | while read formula; do brew unlink $formula; brew link --overwrite $formula; done
+        brew install botan boost assimp ispc embree coreutils jpeg-turbo open-mpi zstd lz4 qt tbb glew open-scene-graph libzip libarchive vtk tinyxml2 python hdf5 netcdf pnetcdf
+
     - name: Free disk space
       uses: jlumbroso/free-disk-space@main
       with:
@@ -118,7 +126,7 @@ jobs:
     - name: ccache
       uses: hendrikmuhs/ccache-action@v1.2.11
       with:
-        key: ${{ matrix.os }}-${{ matrix.build_type }}
+        key: ${{ runner.os }}-${{ matrix.build_type }}
 
     - name: Create Build Environment
       # Some projects don't allow in-source building, so create a separate build directory
