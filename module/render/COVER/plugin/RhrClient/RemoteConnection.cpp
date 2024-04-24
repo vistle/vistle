@@ -846,16 +846,16 @@ void RemoteConnection::handleTileMeta(const RemoteRenderMessage &remote, const t
     }
 #endif
 #endif
-    if (currentFrame >= 0 && currentFrame > msg.frameNumber) {
+    if (currentFrame >= 0 && currentFrame > static_cast<long>(msg.frameNumber)) {
         CERR << "receiving tiles out of order: expectecd at least frame no. " << currentFrame << ", but got "
              << msg.frameNumber << std::endl;
     }
-    assert(currentFrame < 0 || msg.frameNumber >= currentFrame);
+    assert(currentFrame < 0 || static_cast<long>(msg.frameNumber) >= currentFrame);
     if (expectNewFrame && msg.frameNumber == currentFrame) {
         CERR << "receiving tile after last tile for frame " << currentFrame << ", but got " << msg.frameNumber
              << std::endl;
     }
-    assert(!expectNewFrame || msg.frameNumber > currentFrame);
+    assert(!expectNewFrame || static_cast<long>(msg.frameNumber) > currentFrame);
     expectNewFrame = msg.flags & rfbTileLast;
     currentFrame = msg.frameNumber;
     osg::Matrix model, view, proj, head;
