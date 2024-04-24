@@ -33,25 +33,8 @@ jobs:
             large_index: ON
 
     steps:
-    - name: Sync and update submodules recursive
-      uses: actions/checkout@v2
-      with:
-        submodules: 'recursive'
-
-    - name: Free disk space
-      uses: jlumbroso/free-disk-space@main
-      with:
-        # this might remove tools that are actually needed, but frees about 6 GB
-        tool-cache: false
-        # all of these default to true, but feel free to set to "false" if necessary for your workflow
-        android: true
-        dotnet: true
-        haskell: true
-        large-packages: false
-        docker-images: true
-        swap-storage: true
-
-    - name: Install Dependencies
+    - name: Install Linux Dependencies
+      if: runner.os == 'Linux'
       run: >
         sudo apt-get update && sudo apt-get install
         ninja-build
@@ -96,6 +79,29 @@ jobs:
         libnetcdf-dev
         libembree-dev
 
+    - name: Free disk space
+      uses: jlumbroso/free-disk-space@main
+      with:
+        # this might remove tools that are actually needed, but frees about 6 GB
+        tool-cache: false
+        # all of these default to true, but feel free to set to "false" if necessary for your workflow
+        android: true
+        dotnet: true
+        haskell: true
+        large-packages: false
+        docker-images: true
+        swap-storage: true
+
+    - name: Sync and update submodules recursive
+      uses: actions/checkout@v2
+      with:
+        submodules: 'recursive'
+
+    - name: ccache
+      uses: hendrikmuhs/ccache-action@v1.2.11
+      with:
+        key: ${{ matrix.os }}-${{ matrix.build_type }}
+
     - name: Create Build Environment
       # Some projects don't allow in-source building, so create a separate build directory
       # We'll use this as our working directory for all subsequent commands
@@ -112,6 +118,7 @@ jobs:
       run: >
         cmake -G Ninja
         $GITHUB_WORKSPACE
+        -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache'
         -DCMAKE_BUILD_TYPE=${{matrix.build_type}}
         -DVISTLE_BUILD_SHARED=${{matrix.static_link}}
         -DVISTLE_MODULES_SHARED=${{matrix.modules_shared}}
