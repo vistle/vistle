@@ -62,7 +62,6 @@ jobs:
         libopenscenegraph-dev
         libtbb-dev
         libjpeg-dev
-        #libsnappy-dev # lz4 and zstd are better
         zlib1g-dev
         libassimp-dev
         libboost-atomic-dev
@@ -91,6 +90,7 @@ jobs:
         libvtk9-dev
         libnetcdf-mpi-dev
         libembree-dev
+        #libsnappy-dev # lz4 and zstd are better
 
     - name: Install ISPC
       if: runner.os == 'Linux'
