@@ -62,7 +62,7 @@ jobs:
         libopenscenegraph-dev
         libtbb-dev
         libjpeg-dev
-        libsnappy-dev
+        #libsnappy-dev # lz4 and zstd are better
         zlib1g-dev
         libassimp-dev
         libboost-atomic-dev
@@ -89,8 +89,13 @@ jobs:
         libarchive-dev
         libbotan-2-dev
         libvtk9-dev
-        libnetcdf-dev
+        libnetcdf-mpi-dev
         libembree-dev
+
+    - name: Install ISPC
+      if: runner.os == 'Linux'
+      run: >
+        cd /tmp && wget https://github.com/ispc/ispc/releases/download/v1.23.0/ispc-v1.23.0-linux.tar.gz && tar xf ispc-v1.23.0-linux.tar.gz && sudo mv ispc-v1.23.0-linux/bin/ispc /usr/local/bin
 
     - name: Free disk space
       uses: jlumbroso/free-disk-space@main
