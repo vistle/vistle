@@ -36,7 +36,7 @@ jobs:
     - name: Install Linux Dependencies
       if: runner.os == 'Linux'
       run: >
-        sudo apt-get clean && sudo rm -rf /var/lib/apt/lists/* && sudo apt-get clean && sudo apt-get update && sudo apt-get install
+        sudo apt-get clean && sudo rm -rf /var/lib/apt/lists/* && sudo rm -f /etc/apt/sources.list.d/archive_uri-* && sudo apt-get clean && sudo apt-get update && sudo apt-get install
         ninja-build
         libglew-dev
         qttools5-dev
