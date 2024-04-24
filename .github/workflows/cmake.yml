@@ -131,7 +131,7 @@ jobs:
       run: >
         cmake -G Ninja
         $GITHUB_WORKSPACE
-        -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache'
+        -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
         -DCMAKE_BUILD_TYPE=${{matrix.build_type}}
         -DVISTLE_BUILD_SHARED=${{matrix.static_link}}
         -DVISTLE_MODULES_SHARED=${{matrix.modules_shared}}
