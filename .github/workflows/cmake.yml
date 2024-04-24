@@ -106,7 +106,7 @@ jobs:
         brew update
         # workaround for https://github.com/actions/setup-python/issues/577
         #brew list -1 | grep python | while read formula; do brew unlink $formula; brew link --overwrite $formula; done
-        brew install ninja botan boost assimp ispc embree coreutils jpeg-turbo open-mpi zstd lz4 qt tbb glew open-scene-graph libzip libarchive vtk tinyxml2 python hdf5 netcdf pnetcdf
+        brew install ninja botan boost assimp ispc embree coreutils jpeg-turbo open-mpi zstd lz4 qt tbb glew open-scene-graph libzip libarchive vtk tinyxml2 python hdf5 netcdf pnetcdf cgal proj gdal
 
     - name: Free disk space
       if: runner.os == 'Linux'
