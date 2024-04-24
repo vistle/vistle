@@ -13,10 +13,11 @@ jobs:
     # cross-platform coverage.
     # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
     runs-on: ${{ matrix.os }}
+    name: ${{matrix.build_type}} on ${{matrix.os}}
 
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: ['ubuntu-latest', 'macos-latest']
         variant: [All]
         build_type: [Debug]
         static_link: [OFF]
@@ -25,7 +26,8 @@ jobs:
         double_precision: [OFF]
         large_index: [OFF]
         include:
-          - variant: All
+          - os: 'ubuntu-latest'
+            variant: All
             build_type: Release
             static_link: ON
             modules_shared: OFF
