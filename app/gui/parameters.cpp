@@ -535,14 +535,16 @@ void Parameters::propertyChanged(QtProperty *prop)
 
     auto it = m_propToParam.find(prop);
     if (it == m_propToParam.end()) {
-        std::cerr << "parameter for property not found: " << prop->propertyName().toStdString() << std::endl;
+        std::cerr << "parameter for property not found: " << prop->propertyName().toStdString()
+                  << ", module=" << m_moduleId << std::endl;
         return;
     }
     std::string paramName = it->second.toStdString();
     auto p = m_vistle->getParameter(m_moduleId, paramName);
-    assert(p);
-    if (!p)
+    if (!p) {
+        std::cerr << "parameter not found for " << paramName << ", module=" << m_moduleId << std::endl;
         return;
+    }
 
     bool changed = false;
     if (auto ip = std::dynamic_pointer_cast<vistle::IntParameter>(p)) {
