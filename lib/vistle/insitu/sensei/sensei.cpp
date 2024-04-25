@@ -179,16 +179,15 @@ void Adapter::processData()
              << endl;
         return;
     }
+    if (message::getIntParamValue(m_internals->moduleParams, "keep_timesteps"))
+        ++m_processedTimesteps;
+    else
+        ++m_iterations;
     auto dataObjects = m_callbacks.getData(m_usedData);
     for (const auto &dataObject: dataObjects) {
         m_internals->sendMessageQueue->addObject(dataObject.portName(), dataObject.object());
     }
     m_internals->sendMessageQueue->sendObjects();
-
-    if (message::getIntParamValue(m_internals->moduleParams, "keep_timesteps"))
-        ++m_processedTimesteps;
-    else
-        ++m_iterations;
 }
 
 Adapter::~Adapter()
@@ -295,8 +294,8 @@ bool Adapter::recvAndHandeMessage(bool blocking)
         auto option = msg.unpackOrCast<IntOption>().value;
         updateIntParam(m_internals->moduleParams, option);
         if (option.name == "keep_timesteps") {
-            m_processedTimesteps = 0;
-            ++m_iterations;
+            m_processedTimesteps = -1;
+            m_iterations = 0;
         }
         ++m_executionCount;
 
@@ -414,4 +413,9 @@ void Adapter::updateMeta(vistle::Object::ptr obj) const
         obj->setIteration(m_iterations);
         obj->updateInternals();
     }
+}
+
+bool Adapter::paused() const
+{
+    return !m_commands.at("run/paused");
 }
