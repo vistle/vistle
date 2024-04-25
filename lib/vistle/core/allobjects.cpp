@@ -41,6 +41,10 @@ namespace vistle {
 
 void registerTypes()
 {
+    static bool registered = false;
+    if (registered)
+        return;
+    registered = true;
     using namespace vistle;
     REGISTER_TYPE(Empty, Object::EMPTY);
     REGISTER_TYPE(PlaceHolder, Object::PLACEHOLDER);
