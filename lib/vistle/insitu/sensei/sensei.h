@@ -39,6 +39,7 @@ public:
         return typename T::ptr(new T(args...));
     }
     void updateMeta(vistle::Object::ptr obj) const;
+    bool paused() const;
 
 private:
     ObjectRetriever m_callbacks;
@@ -47,7 +48,7 @@ private:
     detail::Internals *m_internals = nullptr;
     MPI_Comm m_comm;
     bool m_connected = false; // If we are connected to the module
-    size_t m_processedTimesteps = 0;
+    size_t m_processedTimesteps = -1;
     size_t m_iterations = 0;
     size_t m_executionCount = 0;
     // mpi info
@@ -85,6 +86,7 @@ private:
     void addPorts();
 };
 } // namespace sensei
+
 } // namespace insitu
 } // namespace vistle
 
