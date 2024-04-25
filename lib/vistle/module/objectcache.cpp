@@ -82,7 +82,7 @@ void ObjectCache::addObject(const std::string &portname, Object::const_ptr objec
                 if (iter >= olditer) {
                     entry = Entry(object, m_cacheMode == CacheByName);
                 } else {
-                    std::cerr << "ignoring object with iteration " << iter << " for port " << portname
+                    std::cerr << "ObjectCache: ignoring object with iteration " << iter << " for port " << portname
                               << " (old: " << olditer << "): " << *object << std::endl;
                 }
                 return;
