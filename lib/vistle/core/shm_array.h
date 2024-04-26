@@ -16,6 +16,10 @@
 #include "celltreenode_decl.h"
 
 #include <vtkm/cont/ArrayHandle.h>
+#include <vtkm/cont/ArrayHandleBasic.h>
+#include <vtkm/cont/UnknownArrayHandle.h>
+#include <vtkm/cont/ArrayPortalToIterators.h>
+#include <vtkm/cont/ArrayCopy.h>
 
 namespace vistle {
 
@@ -58,11 +62,14 @@ public:
     unsigned type() const { return m_type; }
     bool check(std::ostream &os) const;
 
+    void setHandle(const vtkm::cont::UnknownArrayHandle &handle);
+
 #ifdef NO_SHMEM
     const vtkm::cont::ArrayHandle<handle_type> &handle() const;
 #else
     const vtkm::cont::ArrayHandle<handle_type> handle() const;
 #endif
+    void updateFromHandle() const;
 
     typedef typename std::allocator_traits<allocator>::pointer pointer;
     typedef T *iterator;
@@ -70,32 +77,40 @@ public:
 
     iterator begin() const
     {
+        updateFromHandle();
         return &*m_data;
     }
     iterator end() const
     {
+        updateFromHandle();
         return (&*m_data) + m_size;
     }
     T *data() const
     {
+        updateFromHandle();
         return &*m_data;
     }
 
     T &operator[](const size_t idx)
     {
+        updateFromHandle();
         return m_data[idx];
     }
     T &operator[](const size_t idx) const
     {
+        updateFromHandle();
         return m_data[idx];
     }
+
     T &at(const size_t idx);
     T &at(const size_t idx) const;
+
     void push_back(const T &v);
 
     template<class... Args>
     void emplace_back(Args &&...args)
     {
+        updateFromHandle();
         if (m_size >= m_capacity)
             reserve(m_capacity == 0 ? 1 : m_capacity * 2);
         assert(m_size < m_capacity);
@@ -105,10 +120,12 @@ public:
 
     T &back()
     {
+        updateFromHandle();
         return m_data[m_size - 1];
     }
     T &front()
     {
+        updateFromHandle();
         return m_data[0];
     }
 
@@ -125,7 +142,6 @@ public:
     void resize(const size_t size);
     void resize(const size_t size, const T &value);
 
-    void updateArrayHandle();
     void clearDimensionHint();
     void setDimensionHint(const size_t sx, const size_t sy = 1, const size_t sz = 1);
     void setExact(bool exact);
@@ -167,11 +183,15 @@ private:
     bool m_exact = std::is_integral<T>::value;
     value_type m_min = std::numeric_limits<value_type>::max();
     value_type m_max = std::numeric_limits<value_type>::lowest();
-    pointer m_data;
-    allocator m_allocator;
 #ifdef NO_SHMEM
-    vtkm::cont::ArrayHandle<handle_type, VTKM_DEFAULT_STORAGE_TAG>
-        m_handle; // VTK-m ArrayHandle that is always kept up to date
+    mutable pointer m_data = nullptr;
+    mutable std::atomic<bool> m_memoryValid = true;
+    mutable std::mutex m_mutex;
+    vtkm::cont::UnknownArrayHandle m_unknown;
+    mutable vtkm::cont::ArrayHandleBasic<handle_type> m_handle; // VTK-m ArrayHandle that is always kept up to date
+#else
+    pointer m_data = nullptr;
+    allocator m_allocator;
 #endif
 
     ARCHIVE_ACCESS_SPLIT
@@ -185,18 +205,39 @@ private:
     shm_array &operator=(const shm_array &rhs) = delete;
 };
 
+template<typename T, class allocator>
+void shm_array<T, allocator>::updateFromHandle() const
+{
+#ifdef NO_SHMEM
+    if (m_memoryValid)
+        return;
+    std::lock_guard<std::mutex> lock(m_mutex);
+    if (m_memoryValid)
+        return;
+    m_memoryValid = true;
+
+    if (m_unknown.CanConvert<vtkm::cont::ArrayHandleBasic<handle_type>>()) {
+        m_handle = m_unknown.AsArrayHandle<vtkm::cont::ArrayHandleBasic<handle_type>>();
+    } else {
+        vtkm::cont::ArrayCopy(m_unknown, m_handle);
+    }
+    m_data = reinterpret_cast<T *>(m_handle.GetWritePointer());
+#endif
+}
+
 #define SHMARR_EXPORT(T) \
     extern template class V_COREEXPORT shm_array<T, shm_allocator<T>>; \
     extern template V_COREEXPORT std::ostream &operator<< <T, shm_allocator<T>>( \
         std::ostream &, const shm_array<T, shm_allocator<T>> &);
 
 FOR_ALL_SCALARS(SHMARR_EXPORT)
-#if 0
+} // namespace vistle
+
+#include "celltreenode.h"
+namespace vistle {
 SHMARR_EXPORT(CelltreeNode1)
 SHMARR_EXPORT(CelltreeNode2)
 SHMARR_EXPORT(CelltreeNode3)
-#endif
-
 #undef SHMARR_EXPORT
 
 } // namespace vistle
