@@ -62,7 +62,7 @@ MiniSimModule::MiniSimModule(const std::string &name, int moduleID, mpi::communi
                 break;
             }
             // if (!m_adapter->paused())
-            //     m_simulationMessageQueue->send(insitu::message::ExecuteCommand{std::make_pair("run/paused", "")});
+            //     m_simulationMessageQueue->send(insitu::message::ExecuteCommand{std::make_pair("run_simulation", "")});
         }
         m_adapter->Finalize();
     }});
