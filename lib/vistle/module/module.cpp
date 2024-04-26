@@ -233,11 +233,11 @@ int getBlock(Object::const_ptr obj)
     if (!obj)
         return -1;
 
-    int b = obj->getTimestep();
-    if (b < 0) {
+    int b = obj->getBlock();
+    if (b == -1) {
         if (auto data = DataBase::as(obj)) {
             if (auto grid = data->grid()) {
-                b = grid->getTimestep();
+                b = grid->getBlock();
             }
         }
     }
@@ -285,14 +285,19 @@ double getRealTime(Object::const_ptr obj)
         return -1;
 
     int t = obj->getTimestep();
-    if (t < 0) {
+    double rt = obj->getRealTime();
+    if (rt < 0) {
         if (auto data = DataBase::as(obj)) {
             if (auto grid = data->grid()) {
-                return grid->getRealTime();
+                rt = grid->getRealTime();
+                if (t < 0)
+                    t = grid->getTimestep();
             }
         }
     }
-    return obj->getRealTime();
+    if (rt >= 0)
+        return rt;
+    return double(t);
 }
 
 bool Module::setup(const std::string &shmname, int moduleID, const std::string &cluster, int rank)
