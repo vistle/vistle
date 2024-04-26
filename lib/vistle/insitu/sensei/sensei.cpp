@@ -62,7 +62,7 @@ Adapter::Adapter(bool paused, MPI_Comm Comm, MetaData &&meta, ObjectRetriever cb
 {
     MPI_Comm_rank(Comm, &m_rank);
     MPI_Comm_size(Comm, &m_mpiSize);
-    m_commands["run/paused"] = !paused; // if true run else wait
+    m_commands["run_simulation"] = !paused; // if true run else wait
     // exit by returning false from execute
     dumpConnectionFile(comm);
 
@@ -153,7 +153,7 @@ void Adapter::restart()
 
 bool Adapter::waitedForModuleCommands()
 {
-    auto it = m_commands.find("run/paused");
+    auto it = m_commands.find("run_simulation");
     while (!it->second) // also let the simulation wait for the module if
     // initialized with paused
     {
@@ -417,5 +417,5 @@ void Adapter::updateMeta(vistle::Object::ptr obj) const
 
 bool Adapter::paused() const
 {
-    return !m_commands.at("run/paused");
+    return !m_commands.at("run_simulation");
 }
