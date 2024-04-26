@@ -12,6 +12,7 @@ ObjectCache::~ObjectCache()
 
 void ObjectCache::clear()
 {
+    m_meta.clear();
     m_oldCache.clear();
     if (m_cacheMode == CacheDeleteLate) {
         std::swap(m_cache, m_oldCache);
@@ -27,6 +28,7 @@ void ObjectCache::clearOld()
 
 void ObjectCache::clear(const std::string &portname)
 {
+    m_meta.erase(portname);
     m_cache.erase(portname);
     m_oldCache.erase(portname);
 }
