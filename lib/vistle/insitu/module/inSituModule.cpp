@@ -78,7 +78,7 @@ void InSituModule::communicateWithSim()
         while (recvAndhandleMessage()) {
             workDone = true;
         }
-        vistle::adaptive_wait(workDone);
+        vistle::adaptive_wait(workDone, &m_simulationCommandsComm);
     }
     if (m_messageHandler) {
         m_messageHandler->send(message::ConnectionClosed{true});
@@ -164,8 +164,11 @@ bool InSituModule::prepare()
         return true;
     auto &objSet = m_cachedVistleObjects.front();
     for (auto &obj: objSet) {
-        updateMeta(obj);
-        sendMessage(obj);
+        if (obj.type() == vistle::message::ADDOBJECT) {
+            auto &addObj = obj.as<vistle::message::AddObject>();
+            updateMeta(obj);
+            passThroughObject(addObj.getSenderPort(), addObj.takeObject());
+        }
     }
     m_cachedVistleObjects.pop();
     return true;
@@ -223,7 +226,9 @@ bool InSituModule::cacheVistleObjects()
     std::vector<vistle::message::Buffer> vistleObjects;
     while (!m_terminateCommunication) {
         vistle::message::Buffer buf;
+        bool workDone = false;
         if (m_vistleObjectsMessageQueue->tryReceive(buf)) {
+            workDone = true;
             if (isPackageComplete(buf)) {
                 vistle::insitu::barrier(m_vistleObjectsComm, m_terminateCommunication);
                 std::lock_guard<std::mutex> g{m_vistleObjectsMutex};
@@ -232,6 +237,7 @@ bool InSituModule::cacheVistleObjects()
             }
             vistleObjects.emplace_back(std::move(buf));
         }
+        vistle::adaptive_wait(workDone, &m_vistleObjectsMutex);
     }
     return false;
 }

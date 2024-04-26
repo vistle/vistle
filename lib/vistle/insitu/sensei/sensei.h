@@ -49,7 +49,7 @@ private:
     MPI_Comm m_comm;
     bool m_connected = false; // If we are connected to the module
     size_t m_processedTimesteps = -1;
-    size_t m_iterations = 0;
+    size_t m_iteration = 0;
     size_t m_executionCount = 0;
     // mpi info
     int m_rank = -1, m_mpiSize = 0;

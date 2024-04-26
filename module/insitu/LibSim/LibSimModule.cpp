@@ -29,7 +29,6 @@ using vistle::insitu::message::InSituMessageType;
 #define CERR cerr << "LibSimModule[" << rank() << "/" << size() << "] "
 #define DEBUG_CERR vistle::DoNotPrintInstance
 
-
 LibSimModule::LibSimModule(const string &name, int moduleID, mpi::communicator comm): InSituModule(name, moduleID, comm)
 {
 #ifndef MODULE_THREAD

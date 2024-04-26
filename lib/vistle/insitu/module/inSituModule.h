@@ -14,7 +14,7 @@
 
 namespace vistle {
 namespace insitu {
-
+//Base class for in situ modules (SENSEI LibSim and MiniSim)
 class V_INSITUMODULEEXPORT InSituModule: public vistle::Module {
 public:
     InSituModule(const std::string &name, const int moduleID, mpi::communicator comm);
@@ -23,11 +23,16 @@ public:
     bool isConnectedToSim() const;
 
 protected:
-    vistle::StringParameter *m_filePath = nullptr;
-    std::vector<const vistle::IntParameter *> m_intOptions;
-    mpi::communicator m_simulationCommandsComm;
+    vistle::StringParameter *m_filePath =
+        nullptr; //file with connection information -> triggers connectToSim() when changed
+    std::vector<const vistle::IntParameter *>
+        m_intOptions; //set of int parameters that are synchronized with the simulation
+    mpi::communicator m_simulationCommandsComm; //mpi communicator for the simulation commands
 
+    //use connection information from m_filePath to connect to the simulation
+    //use m_simulationCommandsComm to synchronize the resutls from reading m_filePath
     virtual std::unique_ptr<insitu::message::MessageHandler> connectToSim() = 0;
+
     virtual bool changeParameter(const Parameter *p) override;
     void initializeCommunication();
 
