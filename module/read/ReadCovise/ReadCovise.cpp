@@ -1055,7 +1055,7 @@ void transposeArray(S *d, const S *s, const Index dim[3])
     Index idx = 0;
     for (Index k = 0; k < dim[0]; ++k) {
         for (Index j = 0; j < dim[1]; ++j) {
-            for (Index i = 0; i < dim[3]; ++i) {
+            for (Index i = 0; i < dim[2]; ++i) {
                 auto vidx = StructuredGrid::vertexIndex(k, j, i, dim);
                 d[vidx] = s[idx];
                 ++idx;
@@ -1070,11 +1070,11 @@ void transposeData(typename V::ptr data, vistle::StructuredGridBase::ptr str)
     const Index dim[3] = {str->getNumDivisions(0), str->getNumDivisions(1), str->getNumDivisions(2)};
 
     ShmVector<typename V::Scalar> x[V::Dimension];
-    for (int d = 0; d < V::Dimension; ++d) {
+    for (unsigned d = 0; d < V::Dimension; ++d) {
         x[d] = data->d()->x[d];
     }
     data->resetArrays();
-    for (int d = 0; d < V::Dimension; ++d) {
+    for (unsigned d = 0; d < V::Dimension; ++d) {
         transposeArray(data->x(d).data(), x[d]->data(), dim);
     }
 }
