@@ -182,9 +182,12 @@ void Adapter::processData()
     if (message::getIntParamValue(m_internals->moduleParams, "keep_timesteps"))
         ++m_processedTimesteps;
     else
-        ++m_iterations;
+        ++m_iteration;
     auto dataObjects = m_callbacks.getData(m_usedData);
     for (const auto &dataObject: dataObjects) {
+        assert(dataObject.object()->getTimestep() == m_processedTimesteps &&
+               dataObject.object()->getIteration() == m_iteration &&
+               dataObject.object()->getExecutionCounter() == m_executionCount);
         m_internals->sendMessageQueue->addObject(dataObject.portName(), dataObject.object());
     }
     m_internals->sendMessageQueue->sendObjects();
@@ -295,7 +298,7 @@ bool Adapter::recvAndHandeMessage(bool blocking)
         updateIntParam(m_internals->moduleParams, option);
         if (option.name == "keep_timesteps") {
             m_processedTimesteps = -1;
-            m_iterations = 0;
+            m_iteration = -1;
         }
         ++m_executionCount;
 
@@ -410,7 +413,7 @@ void Adapter::updateMeta(vistle::Object::ptr obj) const
         obj->setCreator(m_internals->moduleInfo.id());
         obj->setExecutionCounter(m_executionCount);
         obj->setTimestep(m_processedTimesteps);
-        obj->setIteration(m_iterations);
+        obj->setIteration(m_iteration);
         obj->updateInternals();
     }
 }
