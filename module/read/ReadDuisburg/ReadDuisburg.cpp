@@ -126,7 +126,7 @@ Object::ptr ReadDuisburg::generateTriangleGrid(const NcmpiFile &ncFile, int time
     // size_t nVertices = dimX * dimY;
     // size_t nFaces = (dimX-1)*(dimY-1);
     // size_t nCorners = nFaces*4;
-    size_t nFaces = (dimX - 1) * (dimY - 1) * 2;
+    // size_t nFaces = (dimX - 1) * (dimY - 1) * 2;
     // size_t nCorners = nFaces * 6;
 
     int nonZero = 0;
