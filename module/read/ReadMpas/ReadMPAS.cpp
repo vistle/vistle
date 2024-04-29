@@ -24,7 +24,7 @@
 #endif
 
 using namespace vistle;
-namespace bf = vistle::filesystem;
+namespace fs = vistle::filesystem;
 
 #ifdef USE_NETCDF
 #if defined(MODULE_THREAD)
@@ -182,11 +182,11 @@ bool ReadMPAS::prepareRead()
 
     partsPath = "";
     numPartsFile = 1;
-    bf::path path;
+    fs::path path;
     try {
-        path = bf::path(sPartFile);
-        if (bf::is_regular_file(path)) {
-            std::string fEnd = bf::extension(path.filename());
+        path = fs::path(sPartFile);
+        if (fs::is_regular_file(path)) {
+            std::string fEnd = path.extension().string();
             boost::erase_all(fEnd, ".");
             numPartsFile = atoi(fEnd.c_str());
         }
@@ -248,12 +248,11 @@ bool ReadMPAS::prepareRead()
     if (hasDataFile) {
         unsigned nIgnored = 0;
         try {
-            bf::path dataFilePath(dataFileName);
-            bf::path dataDir(dataFilePath.parent_path());
-            for (bf::directory_iterator it2(dataDir); it2 != bf::directory_iterator(); ++it2) { //all files in dir
-                if ((bf::extension(it2->path().filename()) == ".nc") &&
-                    (strncmp(dataFilePath.filename().string().c_str(), it2->path().filename().string().c_str(), 15) ==
-                     0)) {
+            fs::path dataFilePath(dataFileName);
+            fs::path dataDir(dataFilePath.parent_path());
+            for (fs::directory_iterator it2(dataDir); it2 != fs::directory_iterator(); ++it2) { //all files in dir
+                if ((it2->path().extension() == ".nc") && (strncmp(dataFilePath.filename().string().c_str(),
+                                                                   it2->path().filename().string().c_str(), 15) == 0)) {
                     auto fn = it2->path().string();
 #ifdef USE_NETCDF
                     auto ncid = NcFile::open(fn, comm());
@@ -416,9 +415,9 @@ bool ReadMPAS::validateFile(std::string fullFileName, std::string &redFileName, 
     redFileName = "";
     if (!fullFileName.empty()) {
         try {
-            bf::path dPath(fullFileName);
-            if (bf::is_regular_file(dPath)) {
-                if (bf::extension(dPath.filename()) == ".nc") {
+            fs::path dPath(fullFileName);
+            if (fs::is_regular_file(dPath)) {
+                if (dPath.extension() == ".nc") {
                     redFileName = dPath.string();
 #ifdef USE_NETCDF
                     auto ncid = NcFile::open(redFileName, comm());

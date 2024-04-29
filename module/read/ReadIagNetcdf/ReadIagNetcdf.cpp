@@ -1,14 +1,14 @@
 #include "ReadIagNetcdf.h"
 #include <cstddef>
 #include <vector>
-#include <boost/filesystem.hpp>
+#include <vistle/util/filesystem.h>
 #include <vistle/core/points.h>
 #include <vistle/netcdf/ncwrap.h>
 #include <sstream>
 
 
 using namespace vistle;
-namespace bf = boost::filesystem;
+namespace fs = vistle::filesystem;
 
 //#define COLLECTIVE
 
@@ -167,8 +167,8 @@ bool ReadIagNetcdf::validateFile(std::string fullFileName, std::string &redFileN
 
     try {
         LOCK_NETCDF(comm());
-        bf::path dPath(fullFileName);
-        if (!bf::is_regular_file(dPath)) {
+        fs::path dPath(fullFileName);
+        if (!fs::is_regular_file(dPath)) {
             if (rank() == 0)
                 sendWarning("validation error: File %s is not regular", fullFileName.c_str());
             return false;
@@ -250,12 +250,12 @@ bool ReadIagNetcdf::examine(const vistle::Parameter *param)
 
     unsigned nIgnored = 0;
     try {
-        bf::path dataFilePath(m_dataFileName);
+        fs::path dataFilePath(m_dataFileName);
         std::string common = dataFilePath.filename().string();
         auto pos = common.find("_i=");
         common = common.substr(0, pos);
-        bf::path dataDir(dataFilePath.parent_path());
-        for (bf::directory_iterator it2(dataDir); it2 != bf::directory_iterator(); ++it2) { //all files in dir
+        fs::path dataDir(dataFilePath.parent_path());
+        for (fs::directory_iterator it2(dataDir); it2 != fs::directory_iterator(); ++it2) { //all files in dir
             if (it2->path().filename().string().find(common) == 0) {
                 auto fn = it2->path().string();
                 auto ncid = NcFile::open(fn, comm());

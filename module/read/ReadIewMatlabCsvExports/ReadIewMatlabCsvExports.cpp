@@ -2,9 +2,11 @@
 #include <vistle/core/scalar.h>
 #include <vistle/core/points.h>
 #include <vistle/core/unstr.h>
-#include <boost/filesystem.hpp>
+#include <vistle/util/filesystem.h>
+
 
 using namespace vistle;
+namespace fs = vistle::filesystem;
 
 MODULE_MAIN(Transversalflussmaschine)
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(Format, (ScalarFile)(VectorFiles))
@@ -47,7 +49,7 @@ bool Transversalflussmaschine::examine(const Parameter *param)
 
     if (!filepath.empty()) {
         std::vector<std::string> filepaths;
-        boost::filesystem::path fp{filepath};
+        fs::path fp{filepath};
         auto ext = fp.extension().string();
         auto stem = filepath.substr(0, filepath.size() - ext.size());
         m_species = fp.filename().string();
@@ -70,7 +72,7 @@ bool Transversalflussmaschine::examine(const Parameter *param)
         rapidcsv::LineReaderParams lrp(false, '#', true);
 
         for (size_t i = 0; i < filepaths.size(); i++) {
-            if (!boost::filesystem::exists(filepaths[i])) {
+            if (!fs::exists(filepaths[i])) {
                 if (i == 0) {
                     sendError("file " + filepaths[i] + " does not exist");
                     return false;
@@ -83,7 +85,7 @@ bool Transversalflussmaschine::examine(const Parameter *param)
         }
         auto connectivityFileName = stem + "_connectivity" + ext;
 
-        if (boost::filesystem::exists(connectivityFileName)) {
+        if (fs::exists(connectivityFileName)) {
             rapidcsv::LabelParams lp2(-1, -1);
             m_connectivity = std::make_unique<rapidcsv::Document>(connectivityFileName, lp2, sp, cp, lrp);
         } else

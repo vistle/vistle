@@ -15,6 +15,7 @@
 
 #include <vistle/util/enum.h>
 #include <vistle/util/byteswap.h>
+#include <vistle/util/filesystem.h>
 
 #include "ReadNek5000.h"
 #include "PartitionReader.h"
@@ -24,13 +25,9 @@
 #include <vistle/core/vec.h>
 #include <vistle/core/parameter.h>
 
-#include <boost/filesystem/path.hpp>
-#include <boost/filesystem/operations.hpp>
-
-
 using namespace vistle;
 using namespace std;
-namespace fs = boost::filesystem;
+namespace fs = vistle::filesystem;
 
 bool ReadNek::read(Token &token, int timestep, int partition)
 {

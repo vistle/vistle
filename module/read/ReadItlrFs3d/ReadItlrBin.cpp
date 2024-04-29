@@ -456,7 +456,7 @@ bool ReadItlrBin::prepareRead()
             numFiles = std::min<int>(numFiles, m_fileList[port].size());
         }
 
-        auto species = listFilePath.leaf().string();
+        auto species = listFilePath.filename().string();
         auto pos = species.find_last_of('.');
         if (pos != species.npos) {
             species = species.substr(0, pos);
