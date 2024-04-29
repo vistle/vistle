@@ -227,77 +227,44 @@ private:
 };
 #endif
 
-
-int getBlock(Object::const_ptr obj)
+template<typename Retval>
+Retval get(Object::const_ptr obj, Retval (vistle::Object::*func)() const)
 {
     if (!obj)
         return -1;
 
-    int b = obj->getBlock();
-    if (b == -1) {
+    auto ret = (obj.get()->*func)();
+    if (ret < 0) {
         if (auto data = DataBase::as(obj)) {
             if (auto grid = data->grid()) {
-                b = grid->getBlock();
+                ret = (grid.get()->*func)();
             }
         }
     }
+    return ret;
+}
 
-    return b;
+int getBlock(Object::const_ptr obj)
+{
+    return get<int>(obj, &vistle::Object::getBlock);
 }
 
 int getTimestep(Object::const_ptr obj)
 {
-    if (!obj)
-        return -1;
-
-    int t = obj->getTimestep();
-    if (t < 0) {
-        if (auto data = DataBase::as(obj)) {
-            if (auto grid = data->grid()) {
-                t = grid->getTimestep();
-            }
-        }
-    }
-
-    return t;
+    return get<int>(obj, &vistle::Object::getTimestep);
 }
 
 int getIteration(Object::const_ptr obj)
 {
-    if (!obj)
-        return -1;
-
-    int i = obj->getIteration();
-    if (i < 0) {
-        if (auto data = DataBase::as(obj)) {
-            if (auto grid = data->grid()) {
-                i = grid->getIteration();
-            }
-        }
-    }
-
-    return i;
+    return get<int>(obj, &vistle::Object::getIteration);
 }
 
 double getRealTime(Object::const_ptr obj)
 {
-    if (!obj)
-        return -1;
-
-    int t = obj->getTimestep();
-    double rt = obj->getRealTime();
-    if (rt < 0) {
-        if (auto data = DataBase::as(obj)) {
-            if (auto grid = data->grid()) {
-                rt = grid->getRealTime();
-                if (t < 0)
-                    t = grid->getTimestep();
-            }
-        }
-    }
-    if (rt >= 0)
-        return rt;
-    return double(t);
+    auto ret = get<double>(obj, &vistle::Object::getRealTime);
+    if (ret < 0)
+        return getTimestep(obj);
+    return ret;
 }
 
 bool Module::setup(const std::string &shmname, int moduleID, const std::string &cluster, int rank)
