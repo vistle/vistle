@@ -22,11 +22,11 @@
 #include <vistle/core/structuredgrid.h>
 #include <vistle/core/uniformgrid.h>
 
-#include <boost/filesystem.hpp>
+#include <vistle/util/filesystem.h>
 /* #include <netcdfcpp.h> */
 
 using namespace vistle;
-namespace bf = boost::filesystem;
+namespace fs = vistle::filesystem;
 
 
 ReadWRFChem::ReadWRFChem(const std::string &name, int moduleID, mpi::communicator comm)
@@ -115,22 +115,22 @@ bool ReadWRFChem::inspectDir()
     }
 
     try {
-        bf::path dir(sFileDir);
+        fs::path dir(sFileDir);
         fileList.clear();
         numFiles = 0;
 
-        if (bf::is_directory(dir)) {
+        if (fs::is_directory(dir)) {
             sendInfo("Locating files in %s", dir.string().c_str());
-            for (bf::directory_iterator it(dir); it != bf::directory_iterator(); ++it) {
-                if (bf::is_regular_file(it->path()) && (bf::extension(it->path().filename()) == ".nc")) {
+            for (fs::directory_iterator it(dir); it != fs::directory_iterator(); ++it) {
+                if (fs::is_regular_file(it->path()) && (it->path().extension() == ".nc")) {
                     // std::string fName = it->path().filename().string();
                     std::string fPath = it->path().string();
                     fileList.push_back(fPath);
                     ++numFiles;
                 }
             }
-        } else if (bf::is_regular_file(dir)) {
-            if (bf::extension(dir.filename()) == ".nc") {
+        } else if (fs::is_regular_file(dir)) {
+            if (dir.extension() == ".nc") {
                 std::string fName = dir.string();
                 sendInfo("Loading file %s", fName.c_str());
                 fileList.push_back(fName);
