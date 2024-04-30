@@ -19,10 +19,46 @@ In COVER:
 - then still in "Viewpoints" tab -> "Edit viewpoints" -> "save viewpoints"
 
 ## Cmake Pipeline
+### vistle_ref_hash
 - CM=CMakeLists.txt 
 add_module (ROOT_CM) > add_module2 (ROOT_CM) > add_image_hash (Test.cmake) > create_image_hash (VistleUtils.cmake)
 
+### ctest
+moduleTest/CM > utils/createAndCompareHash.sh > CMAKE_SOURCE_DIR/doc/resultSnapShot.py + utils/createImageHash.py
+
+## Module tests
+Compile Vistle:
+
+```
+cd build
+cmake -G Ninja ..
+ninja
+```
+### How to create ref hashes
+The reference screenshots are stored in the root directories of each module, e.g., ```module/map/DomainSurface```, with the suffix ```_result.png```.
+```
+cd build
+ninja vistle_ref_hash
+```
+
+Hashes will be stored in moduleTest/utils/refImagHash.json, e.g.:
+
+```JSON
+{
+    "module/map/DomainSurface/domain.vsl": "003e7e7e7e7e3c00",
+    "module/test/Gendat/Isosurface.vsl": "001c3e3e3e3c0000"
+}
+```
+
+### How to run tests
+```
+cd build
+ctest
+```
+
+In case a test fails, you can check the screenshot in ```build/test/module_tmp```.
 
 ## Todo:
+[ ] refactor
 
-[ ] test if hashes are the same on different operating systems
+[ ] create more reference maps
