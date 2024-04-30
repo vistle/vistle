@@ -39,7 +39,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "-jdir",
-        nargs='?',
+        nargs=1,
         metavar=("jdir"),
         default=None,
         help="Path to json.",
@@ -56,7 +56,7 @@ if __name__ == "__main__":
         "-refHashString",
         nargs=1,
         metavar=("refHashString"),
-        default="",
+        default=None,
         help="hash to compare",
     )
     args = parser.parse_args()
@@ -66,8 +66,6 @@ if __name__ == "__main__":
     
     if args.sdir != None:
         srcDir = args.sdir[0]
-
-
 
     if args.cmp != None:
         cmp = args.cmp
@@ -82,4 +80,4 @@ if __name__ == "__main__":
 
     if cmp:
         if not compareHash(hash, imagehash.hex_to_hash(refHashString)):
-            raise Exception("Hashes are not the same for " + name)
+            raise Exception("Hashes are not the same for " + name + ": " + str(hash) + " != " + refHashString)
