@@ -11,13 +11,18 @@ class V_COREEXPORT Points: public Coords {
 
 public:
     typedef Coords Base;
+    std::set<Object::const_ptr> referencedObjects() const override;
 
     Points(const size_t numPoints, const Meta &meta = Meta());
 
     Index getNumPoints();
     Index getNumPoints() const;
 
+    Vec<Scalar>::const_ptr radius() const;
+    void setRadius(Vec<Scalar>::const_ptr radius);
+
     V_DATA_BEGIN(Points);
+    shm_obj_ref<Vec<Scalar>> radius;
 
     Data(const size_t numPoints = 0, const std::string &name = "", const Meta &meta = Meta());
     Data(const Vec<Scalar, 3>::Data &o, const std::string &n);

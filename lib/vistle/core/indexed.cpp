@@ -5,6 +5,7 @@
 #include "archives.h"
 #include <vistle/util/exception.h>
 #include <cassert>
+#include "validate.h"
 
 namespace vistle {
 
@@ -24,28 +25,47 @@ bool Indexed::isEmpty() const
     return getNumElements() == 0 || getNumCorners() == 0;
 }
 
-bool Indexed::checkImpl() const
+bool Indexed::checkImpl(std::ostream &os, bool quick) const
 {
-    CHECK_OVERFLOW(d()->cl->size());
-    CHECK_OVERFLOW(d()->el->size());
-    CHECK_OVERFLOW(d()->ghost->size());
+    VALIDATE_INDEX(d()->cl->size());
+    VALIDATE_INDEX(d()->el->size());
+    VALIDATE_INDEX(d()->ghost->size());
 
-    V_CHECK(d()->el->check());
-    V_CHECK(d()->cl->check());
-    V_CHECK(d()->ghost->check());
 
-    V_CHECK(d()->el->size() > 0);
-    V_CHECK(el()[0] == 0);
-    V_CHECK(d()->ghost->size() == 0 || d()->ghost->size() == getNumElements());
+    VALIDATE(d()->el->check(os));
+    VALIDATE(d()->cl->check(os));
+    VALIDATE(d()->ghost->check(os));
 
-    V_CHECK(el()[getNumElements()] == getNumCorners());
+    VALIDATE(d()->el->size() > 0);
+    VALIDATE(el()[0] == 0);
+    VALIDATE(d()->ghost->size() == 0 || d()->ghost->size() == getNumElements());
+
+    VALIDATE(el()[getNumElements()] == getNumCorners());
     if (getNumElements() > 0) {
-        V_CHECK(el()[getNumElements() - 1] < getNumCorners());
+        VALIDATE(el()[getNumElements() - 1] < getNumCorners());
     }
 
     if (getNumCorners() > 0) {
-        V_CHECK(cl()[0] < getNumVertices());
-        V_CHECK(cl()[getNumCorners() - 1] < getNumVertices());
+        VALIDATE(cl()[0] < getNumVertices());
+        VALIDATE(cl()[getNumCorners() - 1] < getNumVertices());
+    }
+
+    if (quick)
+        return true;
+
+
+    VALIDATE_RANGE_P(d()->cl, 0, getSize() - 1);
+    VALIDATE_MONOTONIC_P(d()->el);
+    if (d()->cl->size() > 0) {
+        VALIDATE_RANGE_P(d()->el, 0, d()->cl->size());
+    }
+
+    if (hasCelltree()) {
+        VALIDATE(validateCelltree());
+    }
+
+    if (hasVertexOwnerList()) {
+        VALIDATE(getVertexOwnerList()->check(os));
     }
 
     return true;
@@ -241,12 +261,21 @@ void Indexed::removeVertexOwnerList() const
     removeAttachment("vertexownerlist");
 }
 
-void Indexed::print(std::ostream &os) const
+void Indexed::print(std::ostream &os, bool verbose) const
 {
     Base::print(os);
-    os << " cl(" << *d()->cl << ")";
-    os << " el(" << *d()->el << ")";
-    os << " ghost(" << *d()->ghost << ")";
+
+    os << " cl(";
+    d()->cl->print(os, verbose);
+    os << ")";
+
+    os << " el(";
+    d()->el->print(os, verbose);
+    os << ")";
+
+    os << " ghost(";
+    d()->ghost->print(os, verbose);
+    os << ")";
 }
 
 Indexed::NeighborFinder::NeighborFinder(const Indexed *indexed): indexed(indexed)

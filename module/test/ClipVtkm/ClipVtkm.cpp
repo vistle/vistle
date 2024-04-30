@@ -20,8 +20,8 @@ ImplFuncController::ImplFuncController(vistle::Module *module): m_module(module)
 
 void ImplFuncController::init()
 {
-    m_module->addVectorParameter("point", "point on plane", ParamVector(0.0, 1.0, 0.0));
-    m_module->addVectorParameter("vertex", "normal on plane", ParamVector(0.0, 0.0, 0.0));
+    m_module->addVectorParameter("point", "point on plane", ParamVector(0.0, 0.0, 0.0));
+    m_module->addVectorParameter("vertex", "normal on plane", ParamVector(0.0, 1.0, 0.0));
     m_module->addFloatParameter("scalar", "distance to origin of ordinates", 0.0);
     m_option = m_module->addIntParameter("option", "option", Plane, Parameter::Choice);
     m_module->setParameterChoices(m_option, valueList((ImplFuncOption)0));
@@ -33,7 +33,7 @@ bool ImplFuncController::changeParameter(const vistle::Parameter *param)
 {
     switch (m_option->getValue()) {
     case Plane: {
-        if (param->getName() == "point") {
+        if (param->getName() == "option" || param->getName() == "point") {
             Vector3 vertex = m_module->getVectorParameter("vertex");
             Vector3 point = m_module->getVectorParameter("point");
             m_module->setFloatParameter("scalar", point.dot(vertex));
@@ -41,7 +41,7 @@ bool ImplFuncController::changeParameter(const vistle::Parameter *param)
         return true;
     }
     case Sphere: {
-        if (param->getName() == "point") {
+        if (param->getName() == "option" || param->getName() == "point") {
             Vector3 vertex = m_module->getVectorParameter("vertex");
             Vector3 point = m_module->getVectorParameter("point");
             Vector3 diff = vertex - point;
@@ -50,7 +50,7 @@ bool ImplFuncController::changeParameter(const vistle::Parameter *param)
         return true;
     }
     case Box: {
-        if (param->getName() == "point") {
+        if (param->getName() == "option" || param->getName() == "point") {
             Vector3 vertex = m_module->getVectorParameter("vertex");
             Vector3 point = m_module->getVectorParameter("point");
             Vector3 diff = vertex - point;
@@ -59,20 +59,18 @@ bool ImplFuncController::changeParameter(const vistle::Parameter *param)
         return true;
     }
     default: /*cylinders*/ {
-        if (param->getName() == "option") {
-            switch (m_option->getValue()) {
-            case CylinderX:
-                m_module->setVectorParameter("direction", ParamVector(1, 0, 0));
-                break;
-            case CylinderY:
-                m_module->setVectorParameter("direction", ParamVector(0, 1, 0));
-                break;
-            case CylinderZ:
-                m_module->setVectorParameter("direction", ParamVector(0, 0, 1));
-                break;
-            }
+        switch (m_option->getValue()) {
+        case CylinderX:
+            m_module->setVectorParameter("direction", ParamVector(1, 0, 0));
+            break;
+        case CylinderY:
+            m_module->setVectorParameter("direction", ParamVector(0, 1, 0));
+            break;
+        case CylinderZ:
+            m_module->setVectorParameter("direction", ParamVector(0, 0, 1));
+            break;
         }
-        if (param->getName() == "point") {
+        if (param->getName() == "option" || param->getName() == "point") {
             std::cerr << "point" << std::endl;
             Vector3 vertex = m_module->getVectorParameter("vertex");
             Vector3 point = m_module->getVectorParameter("point");
@@ -110,9 +108,9 @@ vtkm::ImplicitFunctionGeneral ImplFuncController::func() const
     Vector3 direction = m_module->getVectorParameter("direction");
     direction.normalize();
 
-    auto vertex = vtkm::make_Vec(pvertex[2], pvertex[1], pvertex[0]);
-    auto point = vtkm::make_Vec(ppoint[2], ppoint[1], ppoint[0]);
-    auto axis = vtkm::make_Vec(direction[2], direction[1], direction[0]);
+    auto vertex = vtkm::make_Vec(pvertex[0], pvertex[1], pvertex[2]);
+    auto point = vtkm::make_Vec(ppoint[0], ppoint[1], ppoint[2]);
+    auto axis = vtkm::make_Vec(direction[0], direction[1], direction[2]);
 
     auto pmin =
         vtkm::make_Vec(std::min(vertex[0], point[0]), std::min(vertex[1], point[1]), std::min(vertex[2], point[2]));
@@ -173,13 +171,6 @@ bool ClipVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task) const
         return true;
     }
 
-    auto isoField = splitIso.mapped;
-    if (isoField && isoField->guessMapping() != DataBase::Vertex) {
-        sendError("need per-vertex mapping on grid_in");
-        return true;
-    }
-
-
     // transform vistle dataset to vtkm dataset
     vtkm::cont::DataSet vtkmDataSet;
     auto status = vtkmSetGrid(vtkmDataSet, grid);
@@ -195,6 +186,7 @@ bool ClipVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task) const
     // apply vtkm isosurface filter
     std::string isospecies;
     vtkm::filter::contour::ClipWithImplicitFunction isosurfaceFilter;
+    auto isoField = splitIso.mapped;
     if (isoField) {
         isospecies = isoField->getAttribute("_species");
         if (isospecies.empty())

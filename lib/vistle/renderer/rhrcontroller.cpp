@@ -10,8 +10,8 @@
 
 namespace vistle {
 
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(ConnectionMethod,
-                                    (ViaVistle)(AutomaticHostname)(UserHostname)(ViaHub)(AutomaticReverse)(UserReverse))
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(
+    ConnectionMethod, (RendezvousOnHub)(AutomaticHostname)(UserHostname)(ViaHub)(AutomaticReverse)(UserReverse))
 
 RhrController::RhrController(vistle::Module *module, int displayRank)
 : m_module(module)
@@ -36,9 +36,8 @@ RhrController::RhrController(vistle::Module *module, int displayRank)
 {
     m_imageOutPort = m_module->createOutputPort("image_out", "connect to COVER");
 
-    m_rhrConnectionMethod =
-        module->addIntParameter("rhr_connection_method", "how local/remote endpoint should be determined",
-                                AutomaticHostname, Parameter::Choice);
+    m_rhrConnectionMethod = module->addIntParameter(
+        "rhr_connection_method", "how local/remote endpoint should be determined", RendezvousOnHub, Parameter::Choice);
     module->V_ENUM_SET_CHOICES(m_rhrConnectionMethod, ConnectionMethod);
     m_rhrBasePort = module->addIntParameter("rhr_base_port", "listen port for RHR server", 31590);
     module->setParameterRange(m_rhrBasePort, (Integer)1, (Integer)((1 << 16) - 1));
@@ -110,7 +109,7 @@ bool RhrController::initializeServer()
 
     bool requireServer = true;
     switch (m_rhrConnectionMethod->getValue()) {
-    case ViaVistle:
+    case RendezvousOnHub:
         requireServer = false;
         break;
     case UserReverse:
@@ -184,7 +183,7 @@ bool RhrController::handleParam(const vistle::Parameter *p)
         {
             bool lp = false, lh = false, rp = false, rh = false;
             switch (m_rhrConnectionMethod->getValue()) {
-            case ViaVistle:
+            case RendezvousOnHub:
                 lp = rp = lh = rh = true;
                 break;
             case AutomaticHostname:
@@ -217,7 +216,7 @@ bool RhrController::handleParam(const vistle::Parameter *p)
             m_forwardPort = 0;
         }
         switch (m_rhrConnectionMethod->getValue()) {
-        case ViaVistle: {
+        case RendezvousOnHub: {
             break;
         }
         case AutomaticHostname: {
@@ -318,14 +317,12 @@ void RhrController::tryConnect(double wait)
         return;
 
     if (!outputPort() || !outputPort()->isConnected()) {
-        m_rhr->setClientModuleId(message::Id::Invalid);
         return;
     }
 
     switch (m_rhrConnectionMethod->getValue()) {
     case AutomaticReverse:
     case UserReverse: {
-        m_rhr->setClientModuleId(message::Id::Invalid);
         int seconds = wait;
         if (m_rhr->numClients() < 1) {
             std::string host = connectHost();
@@ -342,16 +339,28 @@ void RhrController::tryConnect(double wait)
         }
         break;
     }
-    case ViaVistle: {
-        m_rhr->setClientModuleId(m_clientModuleId);
+    case RendezvousOnHub: {
+        auto master = m_module->state().getHubData(message::Id::MasterHub);
+        int seconds = wait;
+        auto addr = master.address.to_string();
+        if (master.address.is_unspecified()) {
+            addr = "localhost";
+        }
+        if (!m_rhr->makeConnection(addr, master.port, seconds, tunnelId())) {
+            m_module->sendWarning("connection attempt to hub at %s:%hu failed", addr.c_str(), master.port);
+        }
         break;
     }
     default:
-        m_rhr->setClientModuleId(message::Id::Invalid);
         return;
     }
 
     m_rhr->initializeConnection();
+}
+
+std::string RhrController::tunnelId() const
+{
+    return "rhr" + std::to_string(m_module->id()) + "-" + std::to_string(m_clientModuleId);
 }
 
 Object::ptr RhrController::getConfigObject() const
@@ -379,9 +388,8 @@ Object::ptr RhrController::getConfigObject() const
                    << " "
                    << ":" << id;
         }
-    } else if (connectionMethod() == RhrController::None) {
-        int id = m_module->id();
-        config << "vistle module :" << id;
+    } else if (connectionMethod() == RhrController::Tunnel) {
+        config << "tunnel " << tunnelId();
     }
 
     auto conf = config.str();
@@ -469,8 +477,8 @@ void RhrController::removeClient(const Port *client)
 RhrController::ConnectionDirection RhrController::connectionMethod() const
 {
     switch (m_rhrConnectionMethod->getValue()) {
-    case ViaVistle:
-        return None;
+    case RendezvousOnHub:
+        return Tunnel;
     case AutomaticReverse:
     case UserReverse:
         return Listen;
@@ -501,7 +509,7 @@ std::string RhrController::listenHost() const
         auto hubdata = m_module->getHub();
         return hubdata.address.to_string();
     }
-    case ViaVistle: {
+    case RendezvousOnHub: {
         return "";
     }
     default: {
@@ -518,6 +526,10 @@ unsigned short RhrController::connectPort() const
         return m_rhrRemotePort->getValue();
     case AutomaticReverse:
         return m_rhrAutoRemotePort->getValue();
+    case RendezvousOnHub: {
+        auto master = m_module->state().getHubData(message::Id::MasterHub);
+        return master.port;
+    }
     default:
         break;
     }
@@ -532,8 +544,9 @@ std::string RhrController::connectHost() const
         return m_rhrRemoteEndpoint->getValue();
     case AutomaticReverse:
         return m_rhrAutoRemoteEndpoint->getValue();
-    case ViaVistle: {
-        return "";
+    case RendezvousOnHub: {
+        auto master = m_module->state().getHubData(message::Id::MasterHub);
+        return master.address.to_string();
     }
     default:
         break;

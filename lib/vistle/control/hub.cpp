@@ -21,6 +21,7 @@
 #include <vistle/util/crypto.h>
 #include <vistle/util/threadname.h>
 #include <vistle/util/url.h>
+#include <vistle/util/version.h>
 #include <vistle/core/message.h>
 #include <vistle/core/tcpmessage.h>
 #include <vistle/core/messagerouter.h>
@@ -239,6 +240,7 @@ Hub::~Hub()
         removeSocket(m_sockets.begin()->first);
     }
 
+    m_tunnelManager.cleanUp();
     m_dataProxy.reset();
 
     message::clear_request_queue();
@@ -298,6 +300,7 @@ bool Hub::init(int argc, char *argv[])
     // clang-format off
     desc.add_options()
         ("help,h", "show this message")
+        ("version,v", "print version")
         ("hub,c", po::value<std::string>(), "connect to hub")
         ("batch,b", "do not start user interface")
         ("proxy", "run master hub acting only as a proxy, does not require MPI")
@@ -329,7 +332,12 @@ bool Hub::init(int argc, char *argv[])
     }
 
     if (vm.count("help")) {
-        CERR << desc << std::endl;
+        std::cout << argv[0] << " " << desc << std::endl;
+        return false;
+    }
+
+    if (vm.count("version")) {
+        std::cout << vistle::version::banner() << std::endl;
         return false;
     }
 
@@ -548,7 +556,7 @@ bool Hub::init(int argc, char *argv[])
             std::vector<std::string> args;
             args.push_back(cmd);
             if (!m_coverIsManager) {
-                args.push_back("-from-vistle");
+                args.push_back("--from-vistle");
                 args.push_back(hostname());
                 args.push_back(port);
                 args.push_back(dataport);
@@ -997,6 +1005,8 @@ bool Hub::dispatch()
             }
 #endif
         }
+
+        m_tunnelManager.cleanUp();
     }
 
     std::unique_lock<std::mutex> dataConnGuard(m_outstandingDataConnectionMutex);
@@ -1285,60 +1295,10 @@ message::AddHub Hub::addHubForSelf() const
         //CERR << "AddHub: exposed host: " << m_exposedHostAddr << std::endl;
     }
 
-#if defined(_WIN32)
-    hub.setSystemType("windows");
-#elif defined(__APPLE__)
-    hub.setSystemType("apple");
-#elif defined(__linux__)
-    hub.setSystemType("linux");
-#elif defined(__FreeBSD__)
-    hub.setSystemType("freebsd");
-#else
-    hub.setSystemType("other");
-#endif
-
-#if defined(__aarch64__)
-    hub.setArch("ARM64");
-#elif defined(__arm__)
-    hub.setArch("ARM");
-#elif defined(__x86_64)
-    hub.setArch("AMD64");
-#elif defined(__i386__)
-    hub.setArch("x86");
-#else
-    hub.setArch("Unknown");
-#endif
-
-    std::stringstream info;
-    info
-#ifdef MODULE_THREAD
-        << "single-process"
-#else
-        << "multi-process"
-#endif
-
-#ifdef MODULE_STATIC
-        << " static"
-#endif
-#ifndef NO_SHMEM
-        << " shm"
-#endif
-
-#ifdef VISTLE_USE_CUDA
-        << " cuda"
-#endif
-#ifdef VISTLE_SCALAR_DOUBLE
-        << " double"
-#else
-        << " float"
-#endif
-#ifdef VISTLE_INDEX_64BIT
-        << " idx64"
-#else
-        << " idx32"
-#endif
-        ;
-    hub.setInfo(info.str());
+    hub.setSystemType(vistle::version::os());
+    hub.setArch(vistle::version::arch());
+    hub.setVersion(vistle::version::string());
+    hub.setInfo(vistle::version::flags());
 
     return hub;
 }
@@ -1639,7 +1599,12 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
         case Identify::LOCALBULKDATA:
         case Identify::REMOTEBULKDATA: {
             m_dataProxy->addSocket(id, sock);
-            removeClient(sock);
+            removeSocket(sock, false);
+            break;
+        }
+        case Identify::TUNNEL: {
+            m_tunnelManager.addSocket(id, sock);
+            removeSocket(sock, false);
             break;
         }
         default: {
@@ -1673,10 +1638,21 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
             }
         }
         std::unique_lock<std::mutex> guard(m_outstandingDataConnectionMutex);
-        assert(m_outstandingDataConnections.find(add) == m_outstandingDataConnections.end());
-        m_outstandingDataConnections[add] =
-            std::async(std::launch::async, [this, add]() { return m_dataProxy->connectRemoteData(add); });
+        auto it = m_outstandingDataConnections.find(add);
+        if (it == m_outstandingDataConnections.end()) {
+            m_outstandingDataConnections[add] =
+                std::async(std::launch::async, [this, add]() { return m_dataProxy->connectRemoteData(add); });
+        } else {
+            CERR << "already connecting to hub " << add.id() << ":" << add << std::endl;
+        }
         guard.unlock();
+
+        m_stateTracker.handle(add, nullptr, true);
+        sendManager(add, Id::LocalHub);
+        sendUi(add);
+        if (m_isMaster) {
+            sendSlaves(add);
+        }
         break;
     }
     case message::CONNECT: {
@@ -2826,7 +2802,7 @@ bool Hub::startUi(const std::string &uipath, bool replace)
 
     std::vector<std::string> args;
     if (!replace)
-        args.push_back("-from-vistle");
+        args.push_back("--from-vistle");
     args.push_back(m_masterHost);
     args.push_back(port);
     if (replace) {
@@ -3511,6 +3487,7 @@ void Hub::emergencyQuit()
         usleep(100000);
     }
 
+    m_tunnelManager.cleanUp();
     m_dataProxy.reset();
 
     if (!m_quitting) {
@@ -3605,6 +3582,8 @@ void Hub::updateLinkedParameters(const message::SetParameter &setParam)
 void Hub::startIoThread()
 {
     auto num = m_ioThreads.size();
+    if (num > std::thread::hardware_concurrency())
+        return;
     m_ioThreads.emplace_back([this, num]() {
         setThreadName("vistle:io:" + std::to_string(num));
         m_ioService.run();

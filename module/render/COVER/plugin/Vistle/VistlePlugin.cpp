@@ -9,6 +9,7 @@
 #include <PluginUtil/PluginMessageTypes.h>
 
 #include <VistlePluginUtil/VistleMessage.h>
+#include <VistlePluginUtil/VistleInfo.h>
 
 #include <COVER.h>
 
@@ -75,6 +76,7 @@ VistlePlugin::VistlePlugin(): coVRPlugin("Vistle"), ui::Owner("Vistle", cover->u
 
 VistlePlugin::~VistlePlugin()
 {
+    VistleInfo::setModule(nullptr);
     if (m_module) {
         m_module->comm().barrier();
         m_module->prepareQuit();
@@ -85,6 +87,7 @@ VistlePlugin::~VistlePlugin()
 bool VistlePlugin::init()
 {
     m_module = COVER::the();
+    VistleInfo::setModule(m_module);
     m_observer = std::make_unique<CoverVistleObserver>(this);
 
     if (m_module) {

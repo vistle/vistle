@@ -55,7 +55,6 @@ std::vector<vtkm::UInt8> vistleTypeListToVtkmShapesVector(Index numElements, con
 
 VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object::const_ptr grid)
 {
-    // swap x and z coordinates to account for different indexing in structured data
     if (auto coords = Coords::as(grid)) {
         auto xCoords = coords->x();
         auto yCoords = coords->y();
@@ -63,13 +62,24 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
 
         auto coordinateSystem = vtkm::cont::CoordinateSystem(
             "coordinate system",
-            vtkm::cont::make_ArrayHandleSOA(coords->z().handle(), coords->y().handle(), coords->x().handle()));
+            vtkm::cont::make_ArrayHandleSOA(coords->x().handle(), coords->y().handle(), coords->z().handle()));
 
         vtkmDataset.AddCoordinateSystem(coordinateSystem);
 
         if (coords->normals()) {
             auto normals = coords->normals();
-            vtkmAddField(vtkmDataset, normals, "normals");
+            auto mapping = normals->guessMapping(coords);
+            vtkmAddField(vtkmDataset, normals, "normals", mapping);
+        }
+
+        vistle::Vec<Scalar>::const_ptr radius;
+        if (auto lines = Lines::as(grid)) {
+            radius = lines->radius();
+        } else if (auto points = Points::as(grid)) {
+            radius = points->radius();
+        }
+        if (radius) {
+            vtkmAddField(vtkmDataset, radius, "_radius");
         }
     } else if (auto uni = UniformGrid::as(grid)) {
         auto nx = uni->getNumDivisions(0);
@@ -77,7 +87,7 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
         auto nz = uni->getNumDivisions(2);
         const auto *min = uni->min(), *dist = uni->dist();
         vtkm::cont::ArrayHandleUniformPointCoordinates uniformCoordinates(
-            vtkm::Id3(nz, ny, nx), vtkm::Vec3f{min[2], min[1], min[0]}, vtkm::Vec3f{dist[2], dist[1], dist[0]});
+            vtkm::Id3(nx, ny, nz), vtkm::Vec3f{min[0], min[1], min[2]}, vtkm::Vec3f{dist[0], dist[1], dist[2]});
         auto coordinateSystem = vtkm::cont::CoordinateSystem("uniform", uniformCoordinates);
         vtkmDataset.AddCoordinateSystem(coordinateSystem);
     } else if (auto rect = RectilinearGrid::as(grid)) {
@@ -85,7 +95,7 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
         auto yc = rect->coords(1).handle();
         auto zc = rect->coords(2).handle();
 
-        vtkm::cont::ArrayHandleCartesianProduct rectilinearCoordinates(zc, yc, xc);
+        vtkm::cont::ArrayHandleCartesianProduct rectilinearCoordinates(xc, yc, zc);
         auto coordinateSystem = vtkm::cont::CoordinateSystem("rectilinear", rectilinearCoordinates);
         vtkmDataset.AddCoordinateSystem(coordinateSystem);
     } else {
@@ -100,7 +110,7 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
         vtkm::Id nz = str->getNumDivisions(2);
         if (nz > 0) {
             vtkm::cont::CellSetStructured<3> str3;
-            str3.SetPointDimensions({nz, ny, nx});
+            str3.SetPointDimensions({nx, ny, nz});
             vtkmDataset.SetCellSet(str3);
         } else if (ny > 0) {
             vtkm::cont::CellSetStructured<2> str2;
@@ -156,7 +166,6 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
             vtkmDataset.SetCellSet(cellSet);
         }
     } else if (auto poly = Polygons::as(grid)) {
-        poly->check();
         auto numPoints = poly->getNumCoords();
         auto numCells = poly->getNumElements();
         auto conn = poly->cl().handle();
@@ -180,7 +189,6 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
         cellSet.Fill(numPoints, shapes, conn, offs);
         vtkmDataset.SetCellSet(cellSet);
     } else if (auto line = Lines::as(grid)) {
-        line->check();
         auto numPoints = line->getNumCoords();
         auto numCells = line->getNumElements();
         auto conn = line->cl().handle();
@@ -238,10 +246,12 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
 struct AddField {
     vtkm::cont::DataSet &dataset;
     const DataBase::const_ptr &object;
+    DataBase::Mapping mapping;
     const std::string &name;
     bool &handled;
-    AddField(vtkm::cont::DataSet &ds, const DataBase::const_ptr &obj, const std::string &name, bool &handled)
-    : dataset(ds), object(obj), name(name), handled(handled)
+    AddField(vtkm::cont::DataSet &ds, const DataBase::const_ptr &obj, const std::string &name,
+             DataBase::Mapping mapping, bool &handled)
+    : dataset(ds), object(obj), mapping(mapping), name(name), handled(handled)
     {}
     template<typename S>
     void operator()(S)
@@ -258,12 +268,15 @@ struct AddField {
             auto ax = in->x().handle();
             auto ay = in->y().handle();
             auto az = in->z().handle();
-            ah = vtkm::cont::make_ArrayHandleSOA(az, ay, ax);
+            ah = vtkm::cont::make_ArrayHandleSOA(ax, ay, az);
         } else {
             return;
         }
 
-        auto mapping = object->guessMapping();
+        auto mapping = this->mapping;
+        if (mapping == DataBase::Unspecified) {
+            mapping = object->guessMapping();
+        }
         if (mapping == vistle::DataBase::Vertex) {
             dataset.AddPointField(name, ah);
         } else {
@@ -276,10 +289,10 @@ struct AddField {
 
 
 VtkmTransformStatus vtkmAddField(vtkm::cont::DataSet &vtkmDataSet, const vistle::DataBase::const_ptr &field,
-                                 const std::string &name)
+                                 const std::string &name, vistle::DataBase::Mapping mapping)
 {
     bool handled = false;
-    boost::mpl::for_each<Scalars>(AddField(vtkmDataSet, field, name, handled));
+    boost::mpl::for_each<Scalars>(AddField(vtkmDataSet, field, name, mapping, handled));
     if (handled)
         return VtkmTransformStatus::SUCCESS;
 
@@ -326,6 +339,7 @@ Object::ptr vtkmGetGeometry(vtkm::cont::DataSet &dataset)
             for (vtkm::Id index = 0; index < numElem; index++) {
                 lines->el()[index] = 2 * index;
             }
+            lines->el()[numElem] = numConn;
             result = lines;
         } else if (cellset.GetCellShape(0) == vtkm::CELL_SHAPE_POLY_LINE) {
             auto elements = isoGrid.GetOffsetsArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
@@ -334,7 +348,7 @@ Object::ptr vtkmGetGeometry(vtkm::cont::DataSet &dataset)
             for (vtkm::Id index = 0; index < numConn; index++) {
                 lines->cl()[index] = connPortal.Get(index);
             }
-            for (vtkm::Id index = 0; index < numElem; index++) {
+            for (vtkm::Id index = 0; index < numElem + 1; index++) {
                 lines->el()[index] = elemPortal.Get(index);
             }
             result = lines;
@@ -359,7 +373,7 @@ Object::ptr vtkmGetGeometry(vtkm::cont::DataSet &dataset)
             for (vtkm::Id index = 0; index < numConn; index++) {
                 polys->cl()[index] = connPortal.Get(index);
             }
-            for (vtkm::Id index = 0; index < numElem; index++) {
+            for (vtkm::Id index = 0; index < numElem + 1; index++) {
                 polys->el()[index] = elemPortal.Get(index);
             }
             result = polys;
@@ -456,10 +470,9 @@ Object::ptr vtkmGetGeometry(vtkm::cont::DataSet &dataset)
         auto z = coords->z().data();
         for (vtkm::Id index = 0; index < numPoints; index++) {
             vtkm::Vec3f point = pointsPortal.Get(index);
-            // account for coordinate axes swap
-            x[index] = point[2];
+            x[index] = point[0];
             y[index] = point[1];
-            z[index] = point[0];
+            z[index] = point[2];
         }
 
         if (auto normals = vtkmGetField(dataset, "normals")) {
@@ -472,6 +485,22 @@ Object::ptr vtkmGetGeometry(vtkm::cont::DataSet &dataset)
                 coords->d()->normals = n;
             } else {
                 std::cerr << "cannot convert normals" << std::endl;
+            }
+        }
+
+        if (auto radius = vtkmGetField(dataset, "_radius")) {
+            if (auto rvec = vistle::Vec<vistle::Scalar>::as(radius)) {
+                auto r = std::make_shared<vistle::Vec<Scalar>>(0);
+                r->d()->x[0] = rvec->d()->x[0];
+                // don't use setRadius() in order to bypass check() on object before updateMeta()
+                if (auto lines = Lines::as(result)) {
+                    lines->d()->radius = r;
+                }
+                if (auto points = Points::as(result)) {
+                    points->d()->radius = r;
+                }
+            } else {
+                std::cerr << "cannot apply radius to anything but Points and Lines" << std::endl;
             }
         }
     }
@@ -567,7 +596,6 @@ struct GetArrayContents {
             for (int i = 0; i < numComponents; ++i) {
                 x[i] = &data->x(i)[0];
             }
-            std::swap(x[0], x[2]);
             break;
         }
 #if 0

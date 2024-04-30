@@ -1,6 +1,7 @@
 #include "placeholder.h"
 #include "placeholder_impl.h"
 #include "archives.h"
+#include "validate.h"
 
 namespace vistle {
 
@@ -93,14 +94,19 @@ bool PlaceHolder::isEmpty() const
     return true;
 }
 
-bool PlaceHolder::checkImpl() const
+bool PlaceHolder::checkImpl(std::ostream &os, bool quick) const
 {
     return true;
+
+    VALIDATE_SUB(real());
+    VALIDATE_SUB(geometry());
+    VALIDATE_SUB(normals());
+    VALIDATE_SUB(texture());
 }
 
-void PlaceHolder::print(std::ostream &os) const
+void PlaceHolder::print(std::ostream &os, bool verbose) const
 {
-    Base::print(os);
+    Base::print(os, verbose);
     os << " orig(" << *d()->originalName << ")";
 }
 

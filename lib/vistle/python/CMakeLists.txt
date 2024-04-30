@@ -41,7 +41,8 @@ if(Python_FOUND)
         PRIVATE Python::Python
         PRIVATE vistle_core
         PRIVATE vistle_util
-        PRIVATE vistle_userinterface)
+        PRIVATE vistle_userinterface
+        PRIVATE vistle_config)
 
     add_custom_target(
         vistle_python_py ALL

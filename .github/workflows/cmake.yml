@@ -12,10 +12,12 @@ jobs:
     # well on Windows or Mac.  You can convert this to a matrix build if you need
     # cross-platform coverage.
     # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    name: ${{matrix.build_type}} on ${{matrix.os}}
 
     strategy:
       matrix:
+        os: ['ubuntu-latest', 'macos-latest']
         variant: [All]
         build_type: [Debug]
         static_link: [OFF]
@@ -24,7 +26,8 @@ jobs:
         double_precision: [OFF]
         large_index: [OFF]
         include:
-          - variant: All
+          - os: 'ubuntu-latest'
+            variant: All
             build_type: Release
             static_link: ON
             modules_shared: OFF
@@ -33,25 +36,21 @@ jobs:
             large_index: ON
 
     steps:
-    - name: Sync and update submodules recursive
-      uses: actions/checkout@v2
-      with:
-        submodules: 'recursive'
+    - name: Show info
+      if: runner.os == 'Linux'
+      run: |
+        cat /etc/apt/apt.conf || true
+        cat /etc/apt/apt.conf.d/* || true
+        ls -l /etc/apt/sources.list && cat /etc/apt/sources.list || true
+        ls -l /etc/apt/sources.list.d/* && cat /etc/apt/sources.list.d/* || true
 
-    - name: Free disk space
-      uses: jlumbroso/free-disk-space@main
-      with:
-        # this might remove tools that are actually needed, but frees about 6 GB
-        tool-cache: false
-        # all of these default to true, but feel free to set to "false" if necessary for your workflow
-        android: true
-        dotnet: true
-        haskell: true
-        large-packages: false
-        docker-images: true
-        swap-storage: true
+    - name: Clean apt
+      if: runner.os == 'Linux'
+      run: >
+        sudo apt-get clean && sudo rm -rf /etc/apt/sources.list.d/microsoft-prod.list && sudo rm -rf /var/lib/apt/lists/* && sudo rm -f /etc/apt/sources.list.d/archive_uri-* && sudo apt-get clean
 
-    - name: Install Dependencies
+    - name: Install Linux Dependencies
+      if: runner.os == 'Linux'
       run: >
         sudo apt-get update && sudo apt-get install
         ninja-build
@@ -66,7 +65,6 @@ jobs:
         libopenscenegraph-dev
         libtbb-dev
         libjpeg-dev
-        libsnappy-dev
         zlib1g-dev
         libassimp-dev
         libboost-atomic-dev
@@ -93,8 +91,47 @@ jobs:
         libarchive-dev
         libbotan-2-dev
         libvtk9-dev
-        libnetcdf-dev
+        libnetcdf-mpi-dev
         libembree-dev
+        #libsnappy-dev # lz4 and zstd are better
+
+    - name: Install ISPC
+      if: runner.os == 'Linux'
+      run: >
+        wget https://github.com/ispc/ispc/releases/download/v1.23.0/ispc-v1.23.0-linux.tar.gz -O - | sudo tar --strip-components=2 -C /usr/local/bin/ -x -z -v -f - ispc-v1.23.0-linux/bin/ispc
+
+    - name: Install macOS Dependencies
+      if: runner.os == 'macOS'
+      run: |
+        brew update
+        # workaround for https://github.com/actions/setup-python/issues/577
+        #brew list -1 | grep python | while read formula; do brew unlink $formula; brew link --overwrite $formula; done
+        brew install ninja botan boost assimp ispc embree coreutils jpeg-turbo open-mpi zstd lz4 qt tbb glew open-scene-graph libzip libarchive vtk tinyxml2 python hdf5 netcdf pnetcdf cgal proj gdal
+
+    - name: Free disk space
+      if: runner.os == 'Linux'
+      uses: jlumbroso/free-disk-space@main
+      with:
+        # this might remove tools that are actually needed, but frees about 6 GB
+        tool-cache: false
+        # all of these default to true, but feel free to set to "false" if necessary for your workflow
+        android: true
+        dotnet: true
+        haskell: true
+        large-packages: false
+        docker-images: true
+        swap-storage: true
+
+    - name: Sync and update submodules recursive
+      uses: actions/checkout@v2
+      with:
+        submodules: 'recursive'
+
+    - name: ccache
+      uses: hendrikmuhs/ccache-action@v1.2.11
+      with:
+        key: ${{ runner.os }}-${{ matrix.build_type }}
+        max-size: "1000M"
 
     - name: Create Build Environment
       # Some projects don't allow in-source building, so create a separate build directory
@@ -112,6 +149,7 @@ jobs:
       run: >
         cmake -G Ninja
         $GITHUB_WORKSPACE
+        -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
         -DCMAKE_BUILD_TYPE=${{matrix.build_type}}
         -DVISTLE_BUILD_SHARED=${{matrix.static_link}}
         -DVISTLE_MODULES_SHARED=${{matrix.modules_shared}}

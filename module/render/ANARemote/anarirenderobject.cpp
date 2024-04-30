@@ -2,8 +2,6 @@
 #include <vistle/core/triangles.h>
 #include <vistle/core/quads.h>
 #include <vistle/core/lines.h>
-#include <vistle/core/tubes.h>
-#include <vistle/core/spheres.h>
 #include <vistle/core/points.h>
 #include <vistle/core/vec.h>
 
@@ -141,16 +139,6 @@ struct ArrayAccess<float, vistle::Vec<Scalar, 3>> {
     float operator[](vistle::Index i) const { return sqrtf(x[i] * x[i] + y[i] * y[i] + z[i] * z[i]); }
 };
 
-template<typename D>
-struct ArrayAccess<D, vistle::CoordsWithRadius> {
-    vistle::Index sz = vistle::InvalidIndex;
-    const vistle::Scalar *r = nullptr;
-
-    ArrayAccess(const vistle::CoordsWithRadius::const_ptr &src): sz(src->getSize()), r(&src->r()[0]) {}
-    vistle::Index size() const { return sz; }
-    D operator[](vistle::Index i) const { return D(r[i]); }
-};
-
 template<typename D, typename S>
 struct ArrayAccess<D, vistle::Vec<S>> {
     vistle::Index sz = vistle::InvalidIndex;
@@ -239,7 +227,7 @@ void AnariRenderObject::create(anari::Device device)
 
         geom = anari::newObject<anari::Geometry>(device, "triangle");
         useNormals =
-            normals && normals->guessMapping() == vistle::DataBase::Vertex; // FIXME: remap per-primitive normals
+            normals && normals->guessMapping(poly) == vistle::DataBase::Vertex; // FIXME: remap per-primitive normals
         if (auto begin = anari::mapParameterArray<anari::std_types::uvec3>(device, geom, "primitive.index", ntri)) {
             const auto *cl = &poly->cl()[0];
             const auto *el = &poly->el()[0];
@@ -264,35 +252,14 @@ void AnariRenderObject::create(anari::Device device)
 
             anari::unmapParameterArray(device, geom, "primitive.index");
         }
-    } else if (auto sph = Spheres::as(geometry)) {
-        geom = anari::newObject<anari::Geometry>(device, "sphere");
-        ArrayAccess<float, vistle::CoordsWithRadius> rad(sph);
-        copy<float>(device, geom, "vertex.radius", rad);
     } else if (auto point = Points::as(geometry)) {
         geom = anari::newObject<anari::Geometry>(device, "sphere");
-        anari::setParameter(device, geom, "radius", pointSize);
-    } else if (auto tube = Tubes::as(geometry)) {
-        Index nStrips = tube->getNumTubes();
-        Index nPoints = tube->getNumCoords();
-        geom = anari::newObject<anari::Geometry>(device, "curve");
-
-        // FIXME: handle this
-        // const Tubes::CapStyle startStyle = tube->startStyle(), jointStyle = tube->jointStyle(), endStyle = tube->endStyle();
-
-        if (auto begin = anari::mapParameterArray<Index>(device, geom, "primitive.index", nPoints - nStrips)) {
-            const auto *el = &tube->components()[0];
-            auto it = begin;
-            for (Index e = 0; e < nStrips; ++e) {
-                for (Index idx = el[e]; idx < el[e + 1] - 1; ++idx) {
-                    *it = idx;
-                    ++it;
-                }
-            }
-            anari::unmapParameterArray(device, geom, "primitive.index");
+        if (auto radius = point->radius()) {
+            ArrayAccess<float, vistle::Vec<Scalar>> rad(radius);
+            copy<float>(device, geom, "vertex.radius", rad);
+        } else {
+            anari::setParameter(device, geom, "radius", pointSize);
         }
-
-        ArrayAccess<float, vistle::CoordsWithRadius> rad(tube);
-        copy<float>(device, geom, "vertex.radius", rad);
     } else if (auto line = Lines::as(geometry)) {
         Index nStrips = line->getNumElements();
         Index nPoints = line->getNumCorners();
@@ -317,7 +284,15 @@ void AnariRenderObject::create(anari::Device device)
             anari::unmapParameterArray(device, geom, "primitive.index");
         }
 
-        anari::setParameter(device, geom, "radius", pointSize);
+        if (auto radius = line->radius()) {
+            ArrayAccess<float, vistle::Vec<Scalar>> rad(radius);
+            copy<float>(device, geom, "vertex.radius", rad);
+
+            // FIXME: handle this
+            // const Lines::CapStyle startStyle = line->startStyle(), jointStyle = line->jointStyle(), endStyle = line->endStyle();
+        } else {
+            anari::setParameter(device, geom, "radius", pointSize);
+        }
     }
 
     if (!geom)

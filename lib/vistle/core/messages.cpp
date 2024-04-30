@@ -103,6 +103,22 @@ Identify::Identify(const Identify &request, Identity id, int rank)
     computeMac();
 }
 
+Identify::Identify(const Identify &request, const std::string &tunnelName, Identify::TunnelRole role, int streamNumber)
+: m_identity(Identify::TUNNEL)
+, m_numRanks(-1)
+, m_rank(role == Identify::Client ? streamNumber : -streamNumber - 1)
+, m_boost_archive_version(boost::archive::BOOST_ARCHIVE_VERSION())
+, m_indexSize(sizeof(vistle::Index))
+, m_scalarSize(sizeof(vistle::Scalar))
+{
+    setReferrer(request.uuid());
+    m_session_data = request.m_session_data;
+
+    COPY_STRING(m_name, tunnelName);
+
+    computeMac();
+}
+
 Identify::Identity Identify::identity() const
 {
     return m_identity;
@@ -192,6 +208,27 @@ bool Identify::verifyMac(bool compareSessionData) const
     return true;
 }
 
+const char *Identify::tunnelId() const
+{
+    return m_name.data();
+}
+
+Identify::TunnelRole Identify::tunnelRole() const
+{
+    if (m_rank < 0)
+        return Identify::Server;
+    else
+        return Identify::Client;
+}
+
+int Identify::tunnelStreamNumber() const
+{
+    if (m_rank < 0)
+        return -(m_rank + 1);
+    else
+        return m_rank;
+}
+
 AddHub::AddHub(int id, const std::string &name)
 : m_id(id), m_port(0), m_dataPort(0), m_addrType(AddHub::Unspecified), m_hasUserInterface(false), m_hasVrb(false)
 {
@@ -200,6 +237,7 @@ AddHub::AddHub(int id, const std::string &name)
     memset(m_realName.data(), 0, m_realName.size());
     memset(m_address.data(), 0, m_address.size());
     memset(m_info.data(), 0, m_info.size());
+    memset(m_version.data(), 0, m_version.size());
 }
 
 int AddHub::id() const
@@ -370,6 +408,16 @@ std::string AddHub::info() const
 void AddHub::setInfo(const std::string &info)
 {
     COPY_STRING(m_info, info);
+}
+
+std::string AddHub::version() const
+{
+    return m_version.data();
+}
+
+void AddHub::setVersion(const std::string &version)
+{
+    COPY_STRING(m_version, version);
 }
 
 
@@ -1764,6 +1812,14 @@ std::string RequestTunnel::destHost() const
 bool RequestTunnel::remove() const
 {
     return m_remove;
+}
+
+TunnelEstablished::TunnelEstablished(TunnelEstablished::Role role): m_role(role)
+{}
+
+TunnelEstablished::Role TunnelEstablished::role() const
+{
+    return m_role;
 }
 
 RequestObject::RequestObject(const AddObject &add, const std::string &objId, const std::string &referrer)

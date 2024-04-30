@@ -1,6 +1,5 @@
 #include "MiniSim.h"
-#include <diy/master.hpp>
-#include <diy/decomposition.hpp>
+
 #include <vistle/core/unstr.h>
 #include <vistle/core/uniformgrid.h>
 #include <vistle/util/shmconfig.h>
@@ -8,76 +7,127 @@
 #include <vistle/insitu/message/addObjectMsq.h>
 #include <vistle/core/structuredgrid.h>
 #include <vistle/util/stopwatch.h>
+#include <vistle/util/directory.h>
+#include <vistle/insitu/core/exception.h>
+
 using namespace vistle;
+namespace sensei = vistle::insitu::sensei;
+
 MODULE_MAIN(MiniSimModule)
-
-
-struct MiniSimModule::InternalsType {
-    InternalsType(): NumBlocks(0), DomainExtent(3), Origin{}, Spacing{1, 1, 1}, Shape{}, NumGhostCells(0) {}
-
-    long NumBlocks; // total number of blocks on all ranks
-    diy::DiscreteBounds DomainExtent; // global index space
-    std::map<int, diy::DiscreteBounds> BlockExtents; // local block extents, indexed by global block id
-    std::map<int, float *> BlockData; // local data array, indexed by block id
-    std::map<int, const std::vector<Particle> *> ParticleData;
-
-    double Origin[3]; // lower left corner of simulation domain
-    double Spacing[3]; // mesh spacing
-
-    int Shape[3];
-    int NumGhostCells; // number of ghost cells
-
-    std::unique_ptr<vistle::insitu::message::AddObjectMsq> sendMessageQueue =
-        nullptr; // Queue to send addObject messages to module
-
-    insitu::message::SyncShmIDs shmIDs;
-    std::map<int, UnstructuredGrid::ptr> grids;
-};
-
+#define CERR std::cerr << "MiniSimModule[" << rank() << "/" << size() << "] "
+const char *meshName = "structured mesh";
+const char *varName = "oscillation";
 MiniSimModule::MiniSimModule(const std::string &name, int moduleID, mpi::communicator comm)
-: insitu::InSituReader(name, moduleID, comm)
+: insitu::InSituModule(name, moduleID, comm)
 {
-    m_filePath = addStringParameter("input_params", "path to file with input parameters", "",
-                                    vistle::Parameter::ExistingFilename);
-    setParameterFilters(m_filePath, "input files (*.osc)");
+    // std::this_thread::sleep_for(std::chrono::seconds(10));
+
+    m_inputFilePath = addStringParameter("input_params", "path to file with input parameters", "",
+                                         vistle::Parameter::ExistingFilename);
+    setParameterFilters(m_inputFilePath, "input files (*.osc)");
     m_numTimesteps = addIntParameter("num_timesteps", "maximum number of timesteps to execute", 10);
     setParameterMinimum(m_numTimesteps, Integer{1});
-    m_gridOut = createOutputPort("grid_out", "structured grid");
-    m_dataOut = createOutputPort("data_out", "oscillators");
-    reconnect();
     createSimParams();
 
+    m_intOptions.push_back(addIntParameter("frequency", "the pipeline is processed for every nth simulation cycle", 1));
+    m_intOptions.push_back(addIntParameter("keep_timesteps",
+                                           "if true timesteps are cached and processed as time series", true,
+                                           vistle::Parameter::Boolean));
+
+    m_filePath = addStringParameter("path", "path to the connection file written by the simulation",
+                                    directory::configHome() + "/sensei.vistle", vistle::Parameter::ExistingFilename);
     m_simThread.reset(new std::thread{[this]() {
-        Internals = new InternalsType();
-        insitu::message::ModuleInfo modInfo;
-        modInfo.update(gatherModuleInfo());
-        Internals->shmIDs.initialize(id(), rank(), std::to_string(instanceNum()),
-                                     insitu::message::SyncShmIDs::Mode::Attach);
-        Internals->sendMessageQueue = std::make_unique<insitu::message::AddObjectMsq>(modInfo, rank());
+        constexpr bool pause = true;
+        sensei::MetaData metaData;
+        sensei::MetaMesh metaMesh(meshName);
+        metaMesh.addVar(varName);
+        metaData.addMesh(metaMesh);
+
+        auto getDataFunc = std::bind(&MiniSimModule::getData, this, std::placeholders::_1);
+        m_adapter.reset(new sensei::Adapter(pause, this->comm(), std::move(metaData),
+                                            sensei::ObjectRetriever{getDataFunc}, VISTLE_ROOT, VISTLE_BUILD_TYPE, ""));
+
 
         while (!m_terminate) {
-            std::unique_lock<std::mutex> lk{m_waitForBeginExecuteMutex};
-            m_waitForBeginExecute.wait(lk);
-
-            m_simRunning = true;
+            while (!m_terminate && m_adapter->paused()) {
+                m_adapter->Execute(0);
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
             try {
                 StopWatch w{"simulation took "};
-                m_sim.run(*this, (size_t)m_numTimesteps->getValue(), m_filePath->getValue(), this->comm(), m_param);
+                m_sim.run(*this, (size_t)m_numTimesteps->getValue(), m_inputFilePath->getValue(), this->comm(),
+                          m_param);
             } catch (const std::runtime_error &e) {
                 std::cerr << "Failed to create simulation: " << e.what() << std::endl;
                 break;
             }
-            m_waitForEndSim.notify_all();
-            m_simRunning = false;
+            // if (!m_adapter->paused())
+            //     m_simulationMessageQueue->send(insitu::message::ExecuteCommand{std::make_pair("run_simulation", "")});
         }
+        m_adapter->Finalize();
     }});
+}
+
+sensei::ObjectRetriever::PortAssignedObjectList MiniSimModule::getData(const sensei::MetaData &meta)
+{
+    std::vector<sensei::ObjectRetriever::PortAssignedObject> outputData;
+    for (const auto &meshIter: meta) {
+        if (meshName == meshIter.name()) {
+            for (const auto &block: m_blockExtents) {
+                if (!m_grids[block.first]) {
+                    createGrid(block.first, block.second);
+                    outputData.push_back(sensei::ObjectRetriever::PortAssignedObject{meshName, m_grids[block.first]});
+                }
+                std::cerr << "oscillation size = " << m_grids[block.first]->getNumElements() << std::endl;
+                auto oscillation =
+                    m_adapter->createVistleObject<Vec<Scalar, 1>>(m_grids[block.first]->getNumElements());
+                auto data = m_blockData[block.first];
+                for (size_t i = 0; i < oscillation->getSize(); i++) {
+                    oscillation->x()[i] = data[i];
+                }
+
+                //std::copy(data, data + grid->getNumVertices(), oscillation->x().begin());
+                oscillation->setMapping(DataBase::Mapping::Element);
+                oscillation->setGrid(m_grids[block.first]);
+                oscillation->setBlock(block.first);
+                oscillation->addAttribute("_species", "oscillation");
+                m_adapter->updateMeta(oscillation);
+                outputData.push_back(sensei::ObjectRetriever::PortAssignedObject{meshName, varName, oscillation});
+            }
+        }
+    }
+    return outputData;
+}
+
+std::unique_ptr<insitu::message::MessageHandler> MiniSimModule::connectToSim()
+{
+    CERR << "trying to connect to sim with file " << m_filePath->getValue() << std::endl;
+    std::ifstream infile(m_filePath->getValue());
+    if (infile.fail()) {
+        CERR << "failed to open file " << m_filePath->getValue() << std::endl;
+        return nullptr;
+    }
+    std::string key, rankStr;
+    while (rankStr != std::to_string(rank())) {
+        infile >> rankStr;
+        infile >> key;
+        if (infile.eof()) {
+            CERR << "missing connection key for rank " << rank() << std::endl;
+            return nullptr;
+        }
+    }
+    try {
+        return std::make_unique<vistle::insitu::message::InSituShmMessage>(key, m_simulationCommandsComm);
+    } catch (const insitu::InsituException &e) {
+        std::cerr << e.what() << '\n';
+        return nullptr;
+    }
 }
 
 MiniSimModule::~MiniSimModule()
 {
     m_terminate = true;
     if (m_simThread->joinable()) {
-        m_waitForBeginExecute.notify_all();
         m_simThread->join();
     }
 }
@@ -86,22 +136,23 @@ void MiniSimModule::initialize(size_t nblocks, size_t n_local_blocks, float *ori
                                int domain_shape_y, int domain_shape_z, int *gid, int *from_x, int *from_y, int *from_z,
                                int *to_x, int *to_y, int *to_z, int *shape, int ghostLevels)
 {
-    Internals->BlockExtents.clear();
-    Internals->BlockData.clear();
-    Internals->ParticleData.clear();
-    Internals->grids.clear();
+    m_blockExtents.clear();
+    m_blockData.clear();
+    m_particleData.clear();
+    m_grids.clear();
 
-    Internals->NumBlocks = nblocks;
-    for (int i = 0; i < 3; ++i)
-        Internals->Origin[i] = origin[i];
+    setParameter(m_numBlocks, (vistle::Integer)nblocks);
 
     for (int i = 0; i < 3; ++i)
-        Internals->Spacing[i] = spacing[i];
+        m_origin[i] = origin[i];
 
     for (int i = 0; i < 3; ++i)
-        Internals->Shape[i] = shape[i];
+        m_spacing[i] = spacing[i];
 
-    Internals->NumGhostCells = ghostLevels;
+    for (int i = 0; i < 3; ++i)
+        m_shape[i] = shape[i];
+
+    m_numGhostCells = ghostLevels;
 
     SetDomainExtent(0, domain_shape_x - 1, 0, domain_shape_y - 1, 0, domain_shape_z - 1);
 
@@ -110,45 +161,27 @@ void MiniSimModule::initialize(size_t nblocks, size_t n_local_blocks, float *ori
     }
 }
 
-
-bool MiniSimModule::beginExecute()
-{
-    m_waitForBeginExecute.notify_all();
-    return true;
-}
-
-bool MiniSimModule::endExecute()
-{
-    if (m_simRunning) {
-        m_sim.terminate(); //terminate the sim
-        std::unique_lock<std::mutex> lk{m_waitForEndSimMutex};
-        m_waitForEndSim.wait(lk);
-    }
-
-    return true;
-}
-
 bool MiniSimModule::changeParameter(const Parameter *param)
 {
     updateSimParams(param);
-    return Module::changeParameter(param);
+    return InSituModule::changeParameter(param);
 }
 
 void MiniSimModule::SetBlockExtent(int gid, int xmin, int xmax, int ymin, int ymax, int zmin, int zmax)
 {
-    Internals->BlockExtents.insert_or_assign(gid, diy::DiscreteBounds{diy::DiscreteBounds::Point{xmin, ymin, zmin},
-                                                                      diy::DiscreteBounds::Point{xmax, ymax, zmax}});
+    m_blockExtents.insert_or_assign(gid, diy::DiscreteBounds{diy::DiscreteBounds::Point{xmin, ymin, zmin},
+                                                             diy::DiscreteBounds::Point{xmax, ymax, zmax}});
 }
 
 void MiniSimModule::SetDomainExtent(int xmin, int xmax, int ymin, int ymax, int zmin, int zmax)
 {
-    Internals->DomainExtent.min[0] = xmin;
-    Internals->DomainExtent.min[1] = ymin;
-    Internals->DomainExtent.min[2] = zmin;
+    m_domainExtent.min[0] = xmin;
+    m_domainExtent.min[1] = ymin;
+    m_domainExtent.min[2] = zmin;
 
-    Internals->DomainExtent.max[0] = xmax;
-    Internals->DomainExtent.max[1] = ymax;
-    Internals->DomainExtent.max[2] = zmax;
+    m_domainExtent.max[0] = xmax;
+    m_domainExtent.max[1] = ymax;
+    m_domainExtent.max[2] = zmax;
 }
 
 void MiniSimModule::createSimParams()
@@ -192,16 +225,15 @@ void MiniSimModule::updateSimParams(const Parameter *param)
 
 void MiniSimModule::SetBlockData(int gid, float *data)
 {
-    Internals->BlockData[gid] = data;
+    m_blockData[gid] = data;
 }
 
 void MiniSimModule::SetParticleData(int gid, const std::vector<Particle> &particles)
 {
-    Internals->ParticleData[gid] = &particles;
+    m_particleData[gid] = &particles;
 }
 
-void createGrid(MiniSimModule::InternalsType *Internals, int blockId, long step, float time,
-                const diy::DiscreteBounds cellExts)
+void MiniSimModule::createGrid(int blockId, const diy::DiscreteBounds cellExts)
 {
     Index nx = cellExts.max[0] - cellExts.min[0] + 1 + 1;
     Index ny = cellExts.max[1] - cellExts.min[1] + 1 + 1;
@@ -214,17 +246,15 @@ void createGrid(MiniSimModule::InternalsType *Internals, int blockId, long step,
     const Index numElements = ncx * ncy * ncz;
     const Index numCorners = numElements * 8;
     const Index numVertices = nx * ny * nz;
-    auto &grid = Internals->grids[blockId];
-    grid = Internals->shmIDs.createVistleObject<UnstructuredGrid>(numElements, numCorners, numVertices);
+    auto &grid = m_grids[blockId];
+    grid = m_adapter->createVistleObject<UnstructuredGrid>(numElements, numCorners, numVertices);
     auto nxny = nx * ny;
 
     Index ghostWidth[3][2];
 
     for (unsigned i = 0; i < 3; i++) {
-        ghostWidth[i][0] =
-            cellExts.min[i] + Internals->NumGhostCells == Internals->DomainExtent.min[i] ? 0 : Internals->NumGhostCells;
-        ghostWidth[i][1] =
-            cellExts.max[i] - Internals->NumGhostCells == Internals->DomainExtent.max[i] ? 0 : Internals->NumGhostCells;
+        ghostWidth[i][0] = cellExts.min[i] + m_numGhostCells == m_domainExtent.min[i] ? 0 : m_numGhostCells;
+        ghostWidth[i][1] = cellExts.max[i] - m_numGhostCells == m_domainExtent.max[i] ? 0 : m_numGhostCells;
     }
 
     Index numGostElements = 0;
@@ -262,11 +292,11 @@ void createGrid(MiniSimModule::InternalsType *Internals, int blockId, long step,
     std::cerr << " numGostElements = " << numGostElements << std::endl;
     idx = 0;
     for (int k = cellExts.min[2]; k <= cellExts.max[2] + 1; ++k) {
-        double z = Internals->Origin[2] + Internals->Spacing[2] * k;
+        double z = m_origin[2] + m_spacing[2] * k;
         for (int j = cellExts.min[1]; j <= cellExts.max[1] + 1; ++j) {
-            double y = Internals->Origin[1] + Internals->Spacing[1] * j;
+            double y = m_origin[1] + m_spacing[1] * j;
             for (int i = cellExts.min[0]; i <= cellExts.max[0] + 1; ++i) {
-                double x = Internals->Origin[0] + Internals->Spacing[0] * i;
+                double x = m_origin[0] + m_spacing[0] * i;
                 grid->x().data()[idx] = x;
                 grid->y().data()[idx] = y;
                 grid->z().data()[idx] = z;
@@ -282,41 +312,21 @@ void createGrid(MiniSimModule::InternalsType *Internals, int blockId, long step,
     //    for (Index j = 0; j < dim[1]; ++j) {
     //        for (Index k = 0; k < dim[2]; ++k) {
     //            Index idx = StructuredGrid::vertexIndex(i, j, k, dim.data());
-    //            x[idx] = cellExts.min[0] + i * Internals->Spacing[0];
-    //            y[idx] = cellExts.min[1] + j * Internals->Spacing[1];
-    //            z[idx] = cellExts.min[2] + k * Internals->Spacing[2];
+    //            x[idx] = cellExts.min[0] + i * m_Spacing[0];
+    //            y[idx] = cellExts.min[1] + j * m_Spacing[1];
+    //            z[idx] = cellExts.min[2] + k * m_Spacing[2];
     //        }
     //    }
     //}
+    m_adapter->updateMeta(grid);
     grid->setTimestep(-1);
+
     assert(el[numElements] == numCorners);
 }
 
 void MiniSimModule::execute(long step, float time)
 {
-    for (const auto &block: Internals->BlockExtents) {
-        auto &grid = Internals->grids[block.first];
-        if (!grid) {
-            createGrid(Internals, block.first, step, time, block.second);
-            Internals->sendMessageQueue->addObject(m_gridOut->getName(), grid);
-        }
-        std::cerr << "oscillation size = " << grid->getNumElements() << std::endl;
-        auto oscillation = Internals->shmIDs.createVistleObject<Vec<Scalar, 1>>(grid->getNumElements());
-        auto data = Internals->BlockData[block.first];
-        for (size_t i = 0; i < oscillation->getSize(); i++) {
-            oscillation->x()[i] = data[i];
-        }
-
-        //std::copy(data, data + grid->getNumVertices(), oscillation->x().begin());
-        oscillation->setMapping(DataBase::Mapping::Element);
-        oscillation->setGrid(grid);
-        oscillation->setTimestep(step);
-        oscillation->setRealTime(time);
-        oscillation->setBlock(block.first);
-        oscillation->addAttribute("_species", "oscillation");
-        Internals->sendMessageQueue->addObject(m_dataOut->getName(), oscillation);
-    }
-    Internals->sendMessageQueue->sendObjects();
+    m_adapter->Execute(step);
 }
 
 

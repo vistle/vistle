@@ -30,12 +30,11 @@
 #include <iostream>
 //#include <unistd.h>
 
-//#include <boost/filesystem.hpp>
 #include <boost/format.hpp>
-#include <boost/filesystem/operations.hpp>
 #include <boost/cstdint.hpp>
 
 #include <vistle/util/stopwatch.h>
+#include <vistle/util/filesystem.h>
 
 
 #include "ReadCFX.h"
@@ -44,7 +43,7 @@
 #define PARALLEL_ZONES
 
 
-namespace bf = boost::filesystem;
+namespace fs = vistle::filesystem;
 
 MODULE_MAIN(ReadCFX)
 

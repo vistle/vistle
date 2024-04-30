@@ -2,8 +2,10 @@
 #include <thread>
 #include <boost/system/error_code.hpp>
 #include <vistle/util/listenv4v6.h>
+#include <vistle/util/threadname.h>
 
 #include <vistle/core/messages.h>
+#include <vistle/core/tcpmessage.h>
 #include <cassert>
 
 
@@ -25,18 +27,17 @@ namespace vistle {
 using message::RequestTunnel;
 
 TunnelManager::TunnelManager()
+#if BOOST_VERSION >= 106600
+: m_workGuard(asio::make_work_guard(m_io))
+#else
+: m_workGuard(new asio::io_service::work(m_io))
+#endif
 {}
 
 TunnelManager::~TunnelManager()
 {
+    m_workGuard.reset();
     m_io.stop();
-}
-
-void TunnelManager::cleanUp()
-{
-    for (auto &tun: m_tunnels)
-        tun.second->cleanUp();
-
     if (io().stopped()) {
         for (auto &t: m_threads)
             t.join();
@@ -45,10 +46,36 @@ void TunnelManager::cleanUp()
     }
 }
 
+void TunnelManager::cleanUp()
+{
+    for (auto &tun: m_tunnels)
+        tun.second->cleanUp();
+#if 0
+    m_tunnels.clear();
+
+    for (auto &rend: m_rendezvousTunnels) {
+        auto &data = rend.second;
+        if (data.stream) {
+            data.stream->destroy();
+            if (data.sock[0] && data.sock[0]->is_open())
+                data.sock[0]->close();
+            if (data.sock[1] && data.sock[1]->is_open())
+                data.sock[1]->close();
+            data.stream.reset();
+        }
+    }
+    m_rendezvousTunnels.clear();
+#endif
+}
+
 void TunnelManager::startThread()
 {
     auto &io = m_io;
-    m_threads.emplace_back([&io]() { io.run(); });
+    auto num = m_threads.size();
+    m_threads.emplace_back([&io, num]() {
+        setThreadName("tunnel:" + std::to_string(num));
+        io.run();
+    });
     CERR << "now " << m_threads.size() << " threads in pool" << std::endl;
 }
 
@@ -68,6 +95,72 @@ bool TunnelManager::processRequest(const message::RequestTunnel &msg)
     }
     cleanUp();
     return ret;
+}
+
+bool TunnelManager::addSocket(const message::Identify &id, std::shared_ptr<socket> sock0)
+{
+    assert(id.identity() == message::Identify::TUNNEL);
+
+    // transfer socket to DataProxy's io service
+    auto sock = std::make_shared<tcp_socket>(m_io);
+    if (sock0->local_endpoint().protocol() == boost::asio::ip::tcp::v4()) {
+        sock->assign(boost::asio::ip::tcp::v4(), sock0->release());
+    } else if (sock0->local_endpoint().protocol() == boost::asio::ip::tcp::v6()) {
+        sock->assign(boost::asio::ip::tcp::v6(), sock0->release());
+    } else {
+        CERR << "could not transfer socket to io service" << std::endl;
+        return false;
+    }
+
+    auto tunnelId = id.tunnelId();
+    auto streamNo = id.tunnelStreamNumber();
+    auto role = id.tunnelRole();
+    RendezvousTunnelKey key = {tunnelId, streamNo};
+    auto it = m_rendezvousTunnels.find(key);
+    if (it == m_rendezvousTunnels.end()) {
+        auto &data = m_rendezvousTunnels[key];
+        if (role == message::Identify::Server) {
+            data.sock[0] = sock;
+            CERR << "waiting for client for rendezvous stream " << tunnelId << std::endl;
+        } else {
+            data.sock[1] = sock;
+            CERR << "waiting for server for rendezvous stream " << tunnelId << std::endl;
+        }
+    } else {
+        auto &data = it->second;
+        if (data.stream && !data.stream->good()) {
+            CERR << "rendezvous tunnel " << tunnelId << ", cleaning up" << std::endl;
+            data.stream.reset();
+            data.sock[0].reset();
+            data.sock[1].reset();
+        }
+        if (role == message::Identify::Server) {
+            if (data.sock[0]) {
+                CERR << "rendezvous tunnel " << tunnelId << ", stream " << streamNo << " already have server"
+                     << std::endl;
+                return false;
+            }
+            data.sock[0] = sock;
+        } else {
+            if (data.sock[1]) {
+                CERR << "rendezvous tunnel " << tunnelId << ", stream " << streamNo << " already have client"
+                     << std::endl;
+                return false;
+            }
+            data.sock[1] = sock;
+        }
+        if (data.sock[0] && data.sock[1]) {
+            CERR << "connected rendezvous stream " << tunnelId << std::endl;
+            send(*data.sock[0], message::TunnelEstablished(message::TunnelEstablished::Server));
+            send(*data.sock[1], message::TunnelEstablished(message::TunnelEstablished::Client));
+            auto stream = std::make_shared<TunnelStream>(data.sock[0], data.sock[1]);
+            data.stream = stream;
+            stream->start(stream);
+            if (m_threads.size() < std::thread::hardware_concurrency())
+                startThread();
+        }
+    }
+    return true;
 }
 
 bool TunnelManager::addTunnel(const message::RequestTunnel &msg)
@@ -304,6 +397,13 @@ void TunnelStream::close()
             CERR << "caught exception while closing socket: " << ex.what() << std::endl;
         }
     }
+
+    m_good = false;
+}
+
+bool TunnelStream::good() const
+{
+    return m_good;
 }
 
 void TunnelStream::destroy()

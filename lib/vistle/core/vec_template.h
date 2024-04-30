@@ -4,6 +4,7 @@
 #include "scalars.h"
 #include "structuredgridbase.h"
 #include <vistle/util/exception.h>
+#include "validate.h"
 
 #include <limits>
 #include <type_traits>
@@ -145,21 +146,23 @@ bool Vec<T, Dim>::isEmpty()
 }
 
 template<class T, unsigned Dim>
-bool Vec<T, Dim>::checkImpl() const
+bool Vec<T, Dim>::checkImpl(std::ostream &os, bool quick) const
 {
-    size_t size = d()->x[0]->size();
-    CHECK_OVERFLOW(size);
     for (unsigned c = 0; c < Dim; ++c) {
-        V_CHECK(d()->x[c]->check());
-        V_CHECK(d()->x[c]->size() == size);
-        if (size > 0) {
-            V_CHECK((d()->x[c])->at(0) * (d()->x[c])->at(0) >= 0)
-            V_CHECK((d()->x[c])->at(size - 1) * (d()->x[c])->at(size - 1) >= 0)
-        }
+        VALIDATE_INDEX(x(c).size());
     }
+    size_t size = d()->x[0]->size();
+    for (unsigned c = 0; c < Dim; ++c) {
+        VALIDATE(d()->x[c]->check(os));
+        VALIDATE(d()->x[c]->size() == size);
+    }
+
+    if (quick)
+        return true;
 
     return true;
 }
+
 
 template<class T, unsigned Dim>
 void Vec<T, Dim>::updateInternals()
@@ -310,9 +313,9 @@ typename Vec<T, Dim>::Data *Vec<T, Dim>::Data::createNamed(Object::Type id, cons
 #endif
 
 template<class T, unsigned Dim>
-void Vec<T, Dim>::print(std::ostream &os) const
+void Vec<T, Dim>::print(std::ostream &os, bool verbose) const
 {
-    Base::print(os);
+    Base::print(os, verbose);
     for (unsigned c = 0; c < Dim; ++c) {
         os << " ";
         switch (c) {
@@ -332,10 +335,11 @@ void Vec<T, Dim>::print(std::ostream &os) const
             os << "x" << c;
             break;
         }
-        os << "(" << *d()->x[c] << ")";
+        os << "(";
+        d()->x[c]->print(os, verbose);
+        os << ")";
     }
 }
 
 } // namespace vistle
-
 #endif

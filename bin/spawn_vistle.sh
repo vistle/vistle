@@ -71,6 +71,12 @@ if [ -n "$4" ]; then
    LOGFILE="${LOGPREFIX}/$(basename $1)"-$4-$$.log
 fi
 
+function doexec() {
+    echo "$@"
+    echo "$@" >> $LOGFILE
+    exec "$@" >> "$LOGFILE" 2>&1 < /dev/null
+}
+
 echo "spawn_vistle.sh: $@" > "$LOGFILE"
 case $(uname) in
    Darwin)
@@ -115,7 +121,7 @@ if [ -n "$PBS_ENVIRONMENT" ]; then
       echo "PBS: mpiexec $@"
       mpiexec -genvall hostname
       mpiexec -genvall printenv
-      exec mpirun -genvall ${PREPENDRANK} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+      doexec mpirun -genvall ${PREPENDRANK} $LAUNCH $WRAPPER "$@"
       exec mpiexec -genvall \
          "$@"
 
@@ -123,7 +129,7 @@ if [ -n "$PBS_ENVIRONMENT" ]; then
          #-genv KMP_AFFINITY=verbose,none \
          #-genv I_MPI_DEBUG=5 \
    else
-      exec mpirun  ${PREPENDRANK} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+       doexec mpirun  ${PREPENDRANK} $LAUNCH $WRAPPER "$@"
    fi
 elif [ -n "$SLURM_JOB_ID" ]; then
    exec mpiexec --bind-to none $WRAPPER "$@"
@@ -204,26 +210,23 @@ case "$MPI_IMPL" in
         done
 
         if [ -n "$MPIHOSTFILE" ]; then
-            echo mpirun $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND --hostfile ${MPIHOSTFILE} $WRAPPER "$@" >> "$LOGFILE"
-            exec mpirun $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND --hostfile ${MPIHOSTFILE} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+            doexec mpirun $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND --hostfile ${MPIHOSTFILE} $WRAPPER "$@"
         elif [ -n "$MPIHOSTS" ]; then
-            echo mpirun $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND -H ${MPIHOSTS} $WRAPPER "$@" >> "$LOGFILE"
-            exec mpirun $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND -H ${MPIHOSTS} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+            doexec mpirun $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND -H ${MPIHOSTS} $WRAPPER "$@"
         else
-            echo mpirun $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND $WRAPPER "$@" >> "$LOGFILE"
-            exec mpirun $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+            doexec mpirun $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND $WRAPPER "$@"
         fi
         ;;
       mpt)
-            exec mpirun -np ${MPISIZE} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+          doexec mpirun -np ${MPISIZE} $LAUNCH $WRAPPER "$@"
       ;;
     *)
         if [ -n "$MPIHOSTFILE" ]; then	
-            exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} -f ${MPIHOSTFILE} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+            doexec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} -f ${MPIHOSTFILE} $LAUNCH $WRAPPER "$@"
         elif [ -n "$MPIHOSTS" ]; then
-            exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} -hosts ${MPIHOSTS} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+            doexec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} -hosts ${MPIHOSTS} $LAUNCH $WRAPPER "$@"
         else
-            exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+            doexec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} $LAUNCH $WRAPPER "$@"
         fi
         ;;
 esac

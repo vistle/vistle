@@ -63,6 +63,8 @@ public:
     unsigned short m_port = 0;
     unsigned short m_portFirst = 0, m_portLast = 0;
     bool m_findPort = false;
+    std::string m_tunnelId;
+    bool m_tunnelEstablished = false;
     boost::asio::ip::tcp::socket m_sock;
     std::unique_ptr<std::recursive_mutex> m_mutex, m_sendMutex;
     std::unique_ptr<std::mutex> m_taskMutex;
@@ -96,10 +98,9 @@ public:
     RemoteConnection() = delete;
     RemoteConnection(const RemoteConnection &other) = delete;
     RemoteConnection &operator=(RemoteConnection &other) = delete;
-    //! connect via Vistle message to module with moduleId
-    RemoteConnection(RhrClient *plugin, int moduleId, bool isMaster);
     //! connect via TCP to host:port
-    RemoteConnection(RhrClient *plugin, std::string host, unsigned short port, bool isMaster);
+    RemoteConnection(RhrClient *plugin, std::string host, unsigned short port, bool isMaster,
+                     const std::string &tunnelId = std::string());
     //! choose a port between portFirst and portLast to listen on
     RemoteConnection(RhrClient *plugin, unsigned short portFirst, unsigned short portLast, bool isMaster);
     ~RemoteConnection();
@@ -180,6 +181,7 @@ public:
     int m_remoteSkipped = 0, m_remoteSkippedPerFrame = 0;
     std::string m_name;
     std::string m_status; // user-readable status of this connection
+    std::string m_fps;
 
     bool canEnqueue() const;
     void enqueueTask(std::shared_ptr<DecodeTask> task);
@@ -225,7 +227,6 @@ public:
     std::string status() const;
 
 private:
-    int m_moduleId = vistle::message::Id::Invalid;
     void init();
 };
 

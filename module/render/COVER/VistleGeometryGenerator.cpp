@@ -18,7 +18,6 @@
 #include <vistle/util/math.h>
 #include <vistle/core/polygons.h>
 #include <vistle/core/points.h>
-#include <vistle/core/spheres.h>
 #include <vistle/core/lines.h>
 #include <vistle/core/triangles.h>
 #include <vistle/core/quads.h>
@@ -264,9 +263,6 @@ bool VistleGeometryGenerator::isSupported(vistle::Object::Type t)
     case vistle::Object::QUADS:
     case vistle::Object::POLYGONS:
     case vistle::Object::LAYERGRID:
-#ifdef COVER_PLUGIN
-    case vistle::Object::SPHERES:
-#endif
         return true;
 
     default:
@@ -861,6 +857,7 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
         auto np = m_geo->getAttribute("_bin_num_primitives");
         numPrimitives = atol(np.c_str());
     }
+    vistle::Points::const_ptr points = vistle::Points::as(m_geo);
 
     osg::Material *mat = nullptr;
     if (m_ro && m_ro->hasSolidColor) {
@@ -970,38 +967,55 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
     case vistle::Object::POINTS: {
         indexGeom = false;
 
-        vistle::Points::const_ptr points = vistle::Points::as(m_geo);
+        assert(points);
         const Index numVertices = points->getNumPoints();
 
-        debug << "Points: [ #v " << numVertices << " ]";
+        auto radius = points->radius();
 
-        auto geom = new osg::Geometry();
-        draw.push_back(geom);
+        debug << "Points: [ #v " << numVertices << (radius ? " with radius" : "") << " ]";
+        const vistle::Scalar *x = &points->x()[0];
+        const vistle::Scalar *y = &points->y()[0];
+        const vistle::Scalar *z = &points->z()[0];
 
-        if (numVertices > 0) {
-            if (cached) {
-                std::unique_lock<GeometryCache> guard(cache);
-                geom->setVertexArray(cache.vertices.front());
-                geom->addPrimitiveSet(cache.primitives.front());
-            } else {
-                const vistle::Scalar *x = &points->x()[0];
-                const vistle::Scalar *y = &points->y()[0];
-                const vistle::Scalar *z = &points->z()[0];
-                osg::ref_ptr<osg::Vec3Array> vertices = new osg::Vec3Array();
-                for (Index v = 0; v < numVertices; v++)
-                    vertices->push_back(osg::Vec3(x[v], y[v], z[v]));
+#ifdef COVER_PLUGIN
+        if (radius) {
+            indexGeom = false;
 
-                geom->setVertexArray(vertices.get());
-                auto ps = new osg::DrawArrays(osg::PrimitiveSet::POINTS, 0, numVertices);
-                geom->addPrimitiveSet(ps);
-                if (m_cache) {
-                    cache.vertices.push_back(vertices);
-                    cache.primitives.push_back(ps);
+            sphere = new opencover::coSphere();
+            draw.push_back(sphere);
+
+            const vistle::Scalar *r = &radius->x()[0];
+            sphere->setCoords(numVertices, x, y, z, r);
+
+            colormap = nullptr; // has to use its own shader
+        } else
+#endif
+        {
+            auto geom = new osg::Geometry();
+            draw.push_back(geom);
+
+            if (numVertices > 0) {
+                if (cached) {
+                    std::unique_lock<GeometryCache> guard(cache);
+                    geom->setVertexArray(cache.vertices.front());
+                    geom->addPrimitiveSet(cache.primitives.front());
+                } else {
+                    osg::ref_ptr<osg::Vec3Array> vertices = new osg::Vec3Array();
+                    for (Index v = 0; v < numVertices; v++)
+                        vertices->push_back(osg::Vec3(x[v], y[v], z[v]));
+
+                    geom->setVertexArray(vertices.get());
+                    auto ps = new osg::DrawArrays(osg::PrimitiveSet::POINTS, 0, numVertices);
+                    geom->addPrimitiveSet(ps);
+                    if (m_cache) {
+                        cache.vertices.push_back(vertices);
+                        cache.primitives.push_back(ps);
+                    }
                 }
-            }
 
-            state->setAttribute(new osg::Point(2.0f), osg::StateAttribute::ON);
-            lighted = false;
+                state->setAttribute(new osg::Point(2.0f), osg::StateAttribute::ON);
+                lighted = false;
+            }
         }
         break;
     }
@@ -1086,30 +1100,6 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
             }
         }
         indexGeom = false;
-        break;
-    }
-#endif
-
-#ifdef COVER_PLUGIN
-    case vistle::Object::SPHERES: {
-        indexGeom = false;
-
-        vistle::Spheres::const_ptr spheres = vistle::Spheres::as(m_geo);
-        const Index numVertices = spheres->getNumSpheres();
-
-        debug << "Spheres: [ #v " << numVertices << " ]";
-
-        sphere = new opencover::coSphere();
-        draw.push_back(sphere);
-
-        const vistle::Scalar *x = &spheres->x()[0];
-        const vistle::Scalar *y = &spheres->y()[0];
-        const vistle::Scalar *z = &spheres->z()[0];
-        const vistle::Scalar *r = &spheres->r()[0];
-        sphere->setCoords(numVertices, x, y, z, r);
-
-        colormap = nullptr; // has to use its own shader
-
         break;
     }
 #endif
@@ -1453,7 +1443,6 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
     vistle::Triangles::const_ptr triangles = vistle::Triangles::as(m_geo);
     vistle::Quads::const_ptr quads = vistle::Quads::as(m_geo);
     vistle::Polygons::const_ptr polygons = vistle::Polygons::as(m_geo);
-    vistle::Spheres::const_ptr spheres = vistle::Spheres::as(m_geo);
     vistle::LayerGrid::const_ptr lg = vistle::LayerGrid::as(m_geo);
 
     state->setMode(GL_CULL_FACE, osg::StateAttribute::OFF);
@@ -1527,9 +1516,9 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
     }
 
 #ifdef COVER_PLUGIN
-    if (spheres && sphere && tex) {
+    if (points && sphere && tex) {
         if (mapping == vistle::DataBase::Vertex) {
-            const auto numCoords = spheres->getNumCoords();
+            const auto numCoords = points->getNumCoords();
             auto pix = tex->pixels().data();
             auto width = tex->getWidth();
             std::vector<float> rgba[4];

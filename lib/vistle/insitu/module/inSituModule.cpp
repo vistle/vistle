@@ -160,13 +160,14 @@ bool isPackageComplete(const vistle::message::Buffer &buf)
 bool InSituModule::prepare()
 {
     std::lock_guard<std::mutex> g{m_vistleObjectsMutex};
-    for (auto &objSet: m_cachedVistleObjects) {
-        for (auto &obj: objSet) {
-            updateMeta(obj);
-            sendMessage(obj);
-        }
+    if (m_cachedVistleObjects.empty())
+        return true;
+    auto &objSet = m_cachedVistleObjects.front();
+    for (auto &obj: objSet) {
+        updateMeta(obj);
+        sendMessage(obj);
     }
-    m_cachedVistleObjects.clear();
+    m_cachedVistleObjects.pop();
     return true;
 }
 
@@ -226,7 +227,7 @@ bool InSituModule::cacheVistleObjects()
             if (isPackageComplete(buf)) {
                 vistle::insitu::barrier(m_vistleObjectsComm, m_terminateCommunication);
                 std::lock_guard<std::mutex> g{m_vistleObjectsMutex};
-                m_cachedVistleObjects.emplace_back(std::move(vistleObjects));
+                m_cachedVistleObjects.emplace(std::move(vistleObjects));
                 return true;
             }
             vistleObjects.emplace_back(std::move(buf));

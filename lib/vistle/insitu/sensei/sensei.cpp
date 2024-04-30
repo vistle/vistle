@@ -62,7 +62,7 @@ Adapter::Adapter(bool paused, MPI_Comm Comm, MetaData &&meta, ObjectRetriever cb
 {
     MPI_Comm_rank(Comm, &m_rank);
     MPI_Comm_size(Comm, &m_mpiSize);
-    m_commands["run/paused"] = !paused; // if true run else wait
+    m_commands["run_simulation"] = !paused; // if true run else wait
     // exit by returning false from execute
     dumpConnectionFile(comm);
 
@@ -85,6 +85,7 @@ bool Adapter::Execute(size_t timestep)
                 first = false;
                 m_timeSpendInExecute = 0;
                 m_startTime = vistle::Clock::time();
+                tStart = m_startTime;
             }
             processData();
         }
@@ -152,7 +153,7 @@ void Adapter::restart()
 
 bool Adapter::waitedForModuleCommands()
 {
-    auto it = m_commands.find("run/paused");
+    auto it = m_commands.find("run_simulation");
     while (!it->second) // also let the simulation wait for the module if
     // initialized with paused
     {
@@ -178,16 +179,15 @@ void Adapter::processData()
              << endl;
         return;
     }
+    if (message::getIntParamValue(m_internals->moduleParams, "keep_timesteps"))
+        ++m_processedTimesteps;
+    else
+        ++m_iterations;
     auto dataObjects = m_callbacks.getData(m_usedData);
     for (const auto &dataObject: dataObjects) {
         m_internals->sendMessageQueue->addObject(dataObject.portName(), dataObject.object());
     }
     m_internals->sendMessageQueue->sendObjects();
-
-    if (message::getIntParamValue(m_internals->moduleParams, "keep_timesteps"))
-        ++m_processedTimesteps;
-    else
-        ++m_iterations;
 }
 
 Adapter::~Adapter()
@@ -294,8 +294,8 @@ bool Adapter::recvAndHandeMessage(bool blocking)
         auto option = msg.unpackOrCast<IntOption>().value;
         updateIntParam(m_internals->moduleParams, option);
         if (option.name == "keep_timesteps") {
-            m_processedTimesteps = 0;
-            ++m_iterations;
+            m_processedTimesteps = -1;
+            m_iterations = 0;
         }
         ++m_executionCount;
 
@@ -413,4 +413,9 @@ void Adapter::updateMeta(vistle::Object::ptr obj) const
         obj->setIteration(m_iterations);
         obj->updateInternals();
     }
+}
+
+bool Adapter::paused() const
+{
+    return !m_commands.at("run_simulation");
 }

@@ -108,6 +108,9 @@ bool DomainSurface::compute(const std::shared_ptr<BlockTask> &task) const
 {
     //DomainSurface Polygon
     auto container = task->expect<Object>("data_in");
+    if (container->isEmpty()) {
+        return true;
+    }
     auto split = splitContainerObject(container);
     DataBase::const_ptr data = split.mapped;
     StructuredGridBase::const_ptr sgrid = StructuredGridBase::as(split.geometry);

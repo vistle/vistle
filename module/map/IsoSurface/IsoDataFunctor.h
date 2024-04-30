@@ -2,7 +2,6 @@
 #define ISODATAFUNCTOR_H
 
 #include <algorithm>
-#include <thrust/execution_policy.h>
 #include <vistle/util/enum.h>
 #include <vistle/util/math.h>
 #include <vistle/core/scalar.h>
@@ -64,7 +63,7 @@ struct IsoDataFunctor {
     , m_coords(false)
     {}
 
-    __host__ __device__ vistle::Scalar operator()(vistle::Index i)
+    vistle::Scalar operator()(vistle::Index i)
     {
         if (m_coords) {
             vistle::Vector3 coordinates(m_x[i], m_y[i], m_z[i]);
@@ -115,7 +114,7 @@ struct IsoDataFunctor {
 //! fetch data from scalar field for generating isosurface
 struct IsoDataFunctor {
     IsoDataFunctor(const vistle::Scalar *data): m_volumedata(data) {}
-    __host__ __device__ vistle::Scalar operator()(vistle::Index i) { return m_volumedata[i]; }
+    vistle::Scalar operator()(vistle::Index i) { return m_volumedata[i]; }
 
     const vistle::Scalar *m_volumedata;
 };

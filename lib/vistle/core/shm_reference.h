@@ -233,17 +233,14 @@ public:
     ShmArrayProxy(const shm_array<T, allocator> *arr)
     : m_data(arr ? arr->data() : nullptr)
     , m_size(arr ? arr->size() : nullptr)
-    , m_handle(
-          arr ? arr->handle()
-              : vtkm::cont::make_ArrayHandle<handle_type>(static_cast<handle_type *>(nullptr), 0, vtkm::CopyFlag::Off))
+    , m_handle(arr ? arr->handle() : s_nullHandle)
     {}
 
     ShmArrayProxy &operator=(std::nullptr_t p)
     {
         m_data = nullptr;
         m_size = 0;
-        m_handle =
-            vtkm::cont::make_ArrayHandle<handle_type>(static_cast<handle_type *>(nullptr), 0, vtkm::CopyFlag::Off);
+        m_handle = s_nullHandle;
         return *this;
     }
 
@@ -257,7 +254,7 @@ public:
         } else {
             m_data = nullptr;
             m_size = 0;
-            m_handle = vtkm::cont::make_ArrayHandle<T>(static_cast<handle_type *>(nullptr), 0, vtkm::CopyFlag::Off);
+            m_handle = s_nullHandle;
         }
         return *this;
     }
@@ -272,8 +269,7 @@ public:
         } else {
             m_data = nullptr;
             m_size = 0;
-            m_handle =
-                vtkm::cont::make_ArrayHandle<handle_type>(static_cast<handle_type *>(nullptr), 0, vtkm::CopyFlag::Off);
+            m_handle = s_nullHandle;
         }
         return *this;
     }
@@ -290,6 +286,8 @@ private:
     const T *m_data = nullptr;
     size_t m_size = 0;
     vtkm::cont::ArrayHandle<handle_type> m_handle;
+    static inline vtkm::cont::ArrayHandle<handle_type> s_nullHandle =
+        vtkm::cont::make_ArrayHandle<handle_type>(static_cast<handle_type *>(nullptr), 0, vtkm::CopyFlag::Off);
 };
 
 

@@ -187,11 +187,21 @@ bool ReadSoundPlan::read(Token &token, int timestep, int block)
                     *c = '.';
                 c++;
             }
-            float W;
-            if (haveW)
+#ifdef VISTLE_SCALAR_DOUBLE
+            if (haveW) {
+                double W;
+                sscanf(buf, "%lf%lf%lf%lf%lf%lf", x_coord, y_coord, z_coord, &W, dBDay, dBNight);
+            } else {
+                sscanf(buf, "%lf%lf%lf%lf%lf", x_coord, y_coord, z_coord, dBDay, dBNight);
+            }
+#else
+            if (haveW) {
+                float W;
                 sscanf(buf, "%f%f%f%f%f%f", x_coord, y_coord, z_coord, &W, dBDay, dBNight);
-            else
+            } else {
                 sscanf(buf, "%f%f%f%f%f", x_coord, y_coord, z_coord, dBDay, dBNight);
+            }
+#endif
             x_coord++;
             y_coord++;
             z_coord++;

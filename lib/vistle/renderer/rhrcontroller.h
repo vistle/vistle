@@ -23,9 +23,9 @@ public:
     void removeClient(const Port *client);
 
     enum ConnectionDirection {
-        None, // no dedicated connection necessary
         Connect, // client connects to server
         Listen, // server connects to client
+        Tunnel, // both server and client connect to rendezvous point
     };
 
     ConnectionDirection connectionMethod() const; // for the client
@@ -45,6 +45,7 @@ private:
     bool initializeServer();
     Object::ptr getConfigObject() const;
     bool sendConfigObject() const;
+    std::string tunnelId() const;
 
     vistle::Module *m_module;
     Port *m_imageOutPort;

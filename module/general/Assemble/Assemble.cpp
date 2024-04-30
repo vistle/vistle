@@ -7,7 +7,8 @@
 #include <vistle/core/database.h>
 #include <vistle/core/unstr.h>
 #include <vistle/core/coords.h>
-#include <vistle/core/coordswradius.h>
+#include <vistle/core/points.h>
+#include <vistle/core/lines.h>
 #include <vistle/alg/objalg.h>
 
 // FIXME: throw out unnecessary ghost cells
@@ -226,6 +227,7 @@ bool Assemble::assemble(const Assemble::AssembleData &d)
     Indexed::ptr nidx;
     Coords::ptr ncoords;
     Object::ptr ogrid;
+    Vec<Scalar>::ptr nrad;
     Normals::ptr nnormals;
     DataBase::ptr dout[NumPorts];
 
@@ -383,9 +385,15 @@ bool Assemble::assemble(const Assemble::AssembleData &d)
         ncoords->x().resize(coordOff[numobj]);
         ncoords->y().resize(coordOff[numobj]);
         ncoords->z().resize(coordOff[numobj]);
-        auto nrad = CoordsWithRadius::as(ogrid);
         if (nrad) {
-            nrad->r().resize(coordOff[numobj]);
+            nrad->x().resize(coordOff[numobj]);
+            updateMeta(nrad);
+        }
+        if (auto nlines = Lines::as(ogrid)) {
+            nlines->setRadius(nrad);
+        }
+        if (auto npoints = Points::as(ogrid)) {
+            npoints->setRadius(nrad);
         }
     }
     if (nnormals) {
@@ -526,11 +534,22 @@ bool Assemble::assemble(const Assemble::AssembleData &d)
             memcpy(&nx[off], x, num * sizeof(*x));
             memcpy(&ny[off], y, num * sizeof(*y));
             memcpy(&nz[off], z, num * sizeof(*z));
-            auto nrad = CoordsWithRadius::as(ogrid);
-            auto rad = CoordsWithRadius::as(grid);
+            Vec<Scalar>::const_ptr rad;
+            if (auto lines = Lines::as(grid)) {
+                if (lines->radius())
+                    rad = lines->radius();
+            }
+            if (auto points = Points::as(grid)) {
+                if (points->radius())
+                    rad = points->radius();
+            }
+            if (rad && !nrad) {
+                nrad = rad->clone();
+                nrad->resetArrays();
+            }
             if (rad && nrad) {
-                const Scalar *r = rad->r();
-                auto &nr = nrad->r();
+                const Scalar *r = rad->x();
+                auto &nr = nrad->x();
                 memcpy(&nr[off], r, num * sizeof(*r));
             }
         }
