@@ -7,6 +7,9 @@ def createImageHash(imagePath):
     hash = imagehash.average_hash(Image.open(imagePath))
     return hash
 
+def compareHash(hash1, hash2):
+    return hash1 == hash2
+
 def addJson(name:str, jsonDir:str, hash):
     with open(jsonDir, "r+") as file:
         data = json.load(file)
@@ -36,10 +39,25 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "-jdir",
-        nargs=1,
-        metavar=("jsonDir"),
-        default="",
+        nargs='?',
+        metavar=("jdir"),
+        default=None,
         help="Path to json.",
+    )
+    parser.add_argument(
+        "-cmp",
+        action=argparse.BooleanOptionalAction,
+        metavar=("cmp"),
+        default=False,
+        help="if true compares with hash in json",
+    )
+
+    parser.add_argument(
+        "-refHashString",
+        nargs=1,
+        metavar=("refHashString"),
+        default="",
+        help="hash to compare",
     )
     args = parser.parse_args()
 
@@ -49,16 +67,19 @@ if __name__ == "__main__":
     if args.sdir != None:
         srcDir = args.sdir[0]
 
-    if args.jdir != None:
-        jsonDir = args.jdir[0]
+
+
+    if args.cmp != None:
+        cmp = args.cmp
+
+    if args.refHashString != None:
+        refHashString = args.refHashString[0]
 
     hash = createImageHash(srcDir)
-    if jsonDir != "":
-        addJson(name, jsonDir, hash)
+    if args.jdir != None:
+        jdir = args.jdir[0]
+        addJson(name, jdir, hash)
 
-    # for debugging 
-    # print(hash)
-    # print(type(hash))
-    # print(str(hash))
-    # print(type(str(hash)))
-    # print(json.dumps(str(hash)))
+    if cmp:
+        if not compareHash(hash, imagehash.hex_to_hash(refHashString)):
+            raise Exception("Hashes are not the same for " + name)
