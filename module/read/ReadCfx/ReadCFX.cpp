@@ -240,7 +240,7 @@ bool CaseInfo::checkFile(const char *filename)
         std::cout << filename << strerror(errno) << std::endl;
         return false;
     } else {
-        fileSize = bf::file_size(filename, ec);
+        fileSize = fs::file_size(filename, ec);
         if (ec)
             std::cout << "error code: " << ec << std::endl;
     }
