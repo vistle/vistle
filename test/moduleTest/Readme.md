@@ -62,3 +62,5 @@ In case a test fails, you can check the screenshot in ```build/test/module_tmp``
 [ ] refactor
 
 [ ] create more reference maps
+
+[ ] allow multiple screenshots per module
