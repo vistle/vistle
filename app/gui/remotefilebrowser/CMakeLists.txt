@@ -44,7 +44,7 @@ target_include_directories(
     PRIVATE ../..
     PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
-target_link_libraries(vistle_remotefiledialog PRIVATE vistle_core)
+target_link_libraries(vistle_remotefiledialog PRIVATE vistle_util vistle_core)
 if(VISTLE_USE_QT5)
     target_link_libraries(vistle_remotefiledialog PRIVATE Qt5::Widgets)
 else()

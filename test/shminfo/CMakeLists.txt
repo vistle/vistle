@@ -1,4 +1,4 @@
 add_executable(vistle_shminfo vistle_shminfo.cpp)
-target_link_libraries(vistle_shminfo Boost::boost MPI::MPI_C vistle_util_mpi vistle_core)
+target_link_libraries(vistle_shminfo Boost::boost MPI::MPI_C vistle_util_mpi vistle_core vistle_util)
 
 target_include_directories(vistle_shminfo PRIVATE ../..)
