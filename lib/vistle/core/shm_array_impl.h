@@ -99,10 +99,11 @@ void shm_array<T, allocator>::setHandle(const vtkm::cont::UnknownArrayHandle &h)
     m_memoryValid = false;
     m_size = h.GetNumberOfValues();
 #else
-    reserve_or_shrink(h.GetNumberOfValues());
-    auto hnd = handle();
-    vtkm::cont::ArrayCopy(h, hnd);
-    (void)hnd.ReadPortal(); // FIXME: required for some unknown reason
+    resize(h.GetNumberOfValues());
+    vtkm::cont::ArrayHandleBasic<handle_type> handle(reinterpret_cast<handle_type *>(m_data.get()), m_size,
+                                                     [](void *) {});
+    vtkm::cont::ArrayCopy(h, handle);
+    handle.SyncControlArray();
 #endif
 }
 
