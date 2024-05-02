@@ -253,6 +253,7 @@ void shm_array<T, allocator>::reserve(const size_t new_capacity)
 template<typename T, class allocator>
 void shm_array<T, allocator>::reserve_or_shrink(const size_t capacity)
 {
+    PROF_SCOPE("shm_array::reserve_or_shrink()");
 #ifdef NO_SHMEM
     updateFromHandle(true);
     m_handle.Allocate(capacity, vtkm::CopyFlag::On);
@@ -300,6 +301,7 @@ void shm_array<T, allocator>::invalidate_bounds()
 template<typename T, class allocator>
 void shm_array<T, allocator>::update_bounds()
 {
+    PROF_SCOPE("shm_array::update_bounds()");
     invalidate_bounds();
 #ifdef NO_SHMEM
     vtkm::cont::ArrayHandle<vtkm::Range> rangeArray = vtkm::cont::ArrayRangeCompute(handle());

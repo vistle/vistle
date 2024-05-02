@@ -21,6 +21,8 @@
 #include <vtkm/cont/ArrayPortalToIterators.h>
 #include <vtkm/cont/ArrayCopy.h>
 
+#include <vistle/util/profile.h>
+
 namespace vistle {
 
 template<typename T, class allocator>
@@ -239,6 +241,7 @@ void shm_array<T, allocator>::updateFromHandle(bool invalidate)
     if (invalidate) {
         std::lock_guard<std::mutex> lock(m_mutex);
         if (!m_memoryValid) {
+            PROF_SCOPE("shm_array::updateFromHandle(invalidate)");
             m_memoryValid = true;
 
             if (m_unknown.CanConvert<vtkm::cont::ArrayHandleBasic<handle_type>>()) {
@@ -257,6 +260,7 @@ void shm_array<T, allocator>::updateFromHandle(bool invalidate)
             return;
         m_memoryValid = true;
 
+        PROF_SCOPE("shm_array::updateFromHandle()");
         if (m_unknown.CanConvert<vtkm::cont::ArrayHandleBasic<handle_type>>()) {
             m_handle = m_unknown.AsArrayHandle<vtkm::cont::ArrayHandleBasic<handle_type>>();
         } else {
@@ -279,6 +283,7 @@ void shm_array<T, allocator>::updateFromHandle(bool invalidate) const
         return;
     m_memoryValid = true;
 
+    PROF_SCOPE("shm_array::updateFromHandle()");
     if (m_unknown.CanConvert<vtkm::cont::ArrayHandleBasic<handle_type>>()) {
         m_handle = m_unknown.AsArrayHandle<vtkm::cont::ArrayHandleBasic<handle_type>>();
     } else {

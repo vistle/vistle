@@ -25,6 +25,7 @@
 #include <vistle/util/shmconfig.h>
 #include <vistle/util/threadname.h>
 #include <vistle/util/affinity.h>
+#include <vistle/util/profile.h>
 #include <vistle/config/config.h>
 #include <vistle/core/object.h>
 #include <vistle/core/empty.h>
@@ -2261,6 +2262,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
                     }
                     computeOk = true;
                 } else {
+                    PROF_SCOPE("Module::compute");
                     computeOk = compute();
                 }
 
@@ -2617,6 +2619,7 @@ bool Module::prepareWrapper(const message::Execute *exec)
     if (reducePolicy() == message::ReducePolicy::Never)
         return true;
 
+    PROF_SCOPE("Module::prepare");
     return prepare();
 }
 
@@ -2652,6 +2655,7 @@ bool Module::compute()
     std::unique_lock<std::mutex> guard(task->m_mutex);
     auto tname = name() + ":Block:" + std::to_string(m_tasks.size());
     task->m_future = std::async(std::launch::async, [this, tname, task] {
+        PROF_FUNC();
         setThreadName(tname);
         return compute(task);
     });
@@ -2701,6 +2705,7 @@ bool Module::reduceWrapper(const message::Execute *exec, bool reordered)
             if (!reordered) {
                 for (int t = 0; t < m_numTimesteps; ++t) {
                     if (!cancelRequested(sync)) {
+                        PROF_SCOPE("Module::reduce(timestep)");
                         //CERR << "run reduce(t=" << t << "): exec count = " << m_executionCount << std::endl;
                         ret &= reduce(t);
                     }
@@ -2711,6 +2716,7 @@ bool Module::reduceWrapper(const message::Execute *exec, bool reordered)
         case message::ReducePolicy::Locally:
         case message::ReducePolicy::OverAll: {
             if (!cancelRequested(sync)) {
+                PROF_SCOPE("Module::reduce:overall");
                 //CERR << "run reduce(t=" << -1 << "): exec count = " << m_executionCount << std::endl;
                 ret = reduce(-1);
             }
