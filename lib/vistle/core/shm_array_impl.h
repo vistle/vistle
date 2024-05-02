@@ -13,6 +13,7 @@
 #include "index.h"
 #include "archives_config.h"
 #include "shmdata.h"
+#include <vtkm/cont/ArrayRangeCompute.h>
 
 namespace vistle {
 
@@ -300,6 +301,14 @@ template<typename T, class allocator>
 void shm_array<T, allocator>::update_bounds()
 {
     invalidate_bounds();
+#ifdef NO_SHMEM
+    vtkm::cont::ArrayHandle<vtkm::Range> rangeArray = vtkm::cont::ArrayRangeCompute(handle());
+    auto rangePortal = rangeArray.ReadPortal();
+    assert(rangePortal.GetNumberOfValues() == 1); // 1 component
+    vtkm::Range componentRange = rangePortal.Get(0);
+    m_min = componentRange.Min;
+    m_max = componentRange.Max;
+#else
     updateFromHandle();
 
     if (!m_data)
@@ -309,6 +318,7 @@ void shm_array<T, allocator>::update_bounds()
         m_min = std::min(m_min, *it);
         m_max = std::max(m_max, *it);
     }
+#endif
 }
 
 template<typename T, class allocator>
