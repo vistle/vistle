@@ -185,9 +185,6 @@ void Adapter::processData()
         ++m_iteration;
     auto dataObjects = m_callbacks.getData(m_usedData);
     for (const auto &dataObject: dataObjects) {
-        assert(dataObject.object()->getTimestep() == m_processedTimesteps &&
-               dataObject.object()->getIteration() == m_iteration &&
-               dataObject.object()->getExecutionCounter() == m_executionCount);
         m_internals->sendMessageQueue->addObject(dataObject.portName(), dataObject.object());
     }
     m_internals->sendMessageQueue->sendObjects();
