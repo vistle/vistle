@@ -24,37 +24,6 @@
 
 namespace vistle {
 
-// for testing also version that returns std::vector instead of array handle
-std::vector<vtkm::UInt8> vistleTypeListToVtkmShapesVector(Index numElements, const Byte *typeList)
-{
-    std::vector<vtkm::UInt8> shapes(numElements);
-    for (unsigned int i = 0; i < shapes.size(); i++) {
-        if (typeList[i] == cell::POINT)
-            shapes[i] = vtkm::CELL_SHAPE_VERTEX;
-        else if (typeList[i] == cell::BAR)
-            shapes[i] = vtkm::CELL_SHAPE_LINE;
-        else if (typeList[i] == cell::TRIANGLE)
-            shapes[i] = vtkm::CELL_SHAPE_TRIANGLE;
-        else if (typeList[i] == cell::POLYGON)
-            shapes[i] = vtkm::CELL_SHAPE_POLYGON;
-        else if (typeList[i] == cell::QUAD)
-            shapes[i] = vtkm::CELL_SHAPE_QUAD;
-        else if (typeList[i] == cell::TETRAHEDRON)
-            shapes[i] = vtkm::CELL_SHAPE_TETRA;
-        else if (typeList[i] == cell::HEXAHEDRON)
-            shapes[i] = vtkm::CELL_SHAPE_HEXAHEDRON;
-        else if (typeList[i] == cell::PRISM)
-            shapes[i] = vtkm::CELL_SHAPE_WEDGE;
-        else if (typeList[i] == cell::PYRAMID)
-            shapes[i] = vtkm::CELL_SHAPE_PYRAMID;
-        else {
-            shapes.clear();
-            break;
-        }
-    }
-    return shapes;
-}
-
 VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object::const_ptr grid)
 {
     if (auto coords = Coords::as(grid)) {
@@ -245,6 +214,7 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
     return VtkmTransformStatus::SUCCESS;
 }
 
+namespace {
 struct AddField {
     vtkm::cont::DataSet &dataset;
     const DataBase::const_ptr &object;
@@ -288,6 +258,7 @@ struct AddField {
         handled = true;
     }
 };
+} // namespace
 
 
 VtkmTransformStatus vtkmAddField(vtkm::cont::DataSet &vtkmDataSet, const vistle::DataBase::const_ptr &field,
@@ -495,6 +466,7 @@ Object::ptr vtkmGetGeometry(vtkm::cont::DataSet &dataset)
 }
 
 
+namespace {
 template<typename C>
 struct Vistle;
 
@@ -572,6 +544,7 @@ struct GetArrayContents {
         }
     }
 };
+} // namespace
 
 vistle::DataBase::ptr vtkmGetField(const vtkm::cont::DataSet &vtkmDataSet, const std::string &name)
 {
