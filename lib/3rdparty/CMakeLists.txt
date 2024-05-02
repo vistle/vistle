@@ -68,6 +68,12 @@ if(NOT BUILD_SHARED_LIBS)
     set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 endif()
 
+if(VISTLE_PROFILE_NVTX)
+    add_subdirectory(profile_nvtx/c)
+    vistle_export_library(nvtx3-c)
+    vistle_export_library(nvtx3-cpp)
+endif()
+
 if(USE_SZ3)
     add_subdirectory(sz3)
 endif()

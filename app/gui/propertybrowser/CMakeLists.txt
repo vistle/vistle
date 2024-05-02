@@ -58,8 +58,8 @@ target_include_directories(
     PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
 if(VISTLE_USE_QT5)
-    target_link_libraries(vistle_propertybrowser PRIVATE ${QT_LIBRARIES} vistle_core Qt5::Widgets)
+    target_link_libraries(vistle_propertybrowser PRIVATE ${QT_LIBRARIES} vistle_util vistle_core Qt5::Widgets)
 else()
-    target_link_libraries(vistle_propertybrowser PRIVATE ${QT_LIBRARIES} vistle_core Qt6::Widgets)
+    target_link_libraries(vistle_propertybrowser PRIVATE ${QT_LIBRARIES} vistle_util vistle_core Qt6::Widgets)
     qt_disable_unicode_defines(vistle_propertybrowser)
 endif()

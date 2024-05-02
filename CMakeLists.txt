@@ -77,6 +77,9 @@ option(VISTLE_SANITIZE_ADDRESS "Build with -fsanitize=address" OFF)
 option(VISTLE_SANITIZE_THREAD "Build with -fsanitize=thread" OFF)
 option(VISTLE_TIME_BUILD "Gather build times (Clang/ISPC)" OFF)
 
+option(VISTLE_PROFILE_NVTX "Annotate for Nsight profiler" OFF)
+option(VISTLE_PROFILE_CHROME "Annotate for showing timings in Chrome browser" OFF)
+
 option(VISTLE_ENABLE_CUDA "Build with CUDA support" OFF)
 option(VISTLE_ENABLE_KOKKOS "Build with Kokkos support" OFF)
 
