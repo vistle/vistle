@@ -48,9 +48,9 @@ private:
     detail::Internals *m_internals = nullptr;
     MPI_Comm m_comm;
     bool m_connected = false; // If we are connected to the module
-    size_t m_processedTimesteps = -1;
-    size_t m_iteration = 0;
-    size_t m_executionCount = 0;
+    int m_processedTimesteps = -1;
+    int m_iteration = 0;
+    int m_executionCount = 0;
     // mpi info
     int m_rank = -1, m_mpiSize = 0;
     MPI_Comm comm = MPI_COMM_WORLD;
