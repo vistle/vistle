@@ -35,7 +35,7 @@ ShowCelltree::ShowCelltree(const std::string &name, int moduleID, mpi::communica
 ShowCelltree::~ShowCelltree()
 {}
 
-void visit(Celltree3::Node *nodes, Celltree3::Node &cur, Vector3 min, Vector3 max, Lines::ptr lines,
+void visit(const Celltree3::Node *nodes, const Celltree3::Node &cur, Vector3 min, Vector3 max, Lines::ptr lines,
            Vec<Scalar>::ptr data, int depth, int mindepth, int maxdepth, int show)
 {
     if (cur.isLeaf())

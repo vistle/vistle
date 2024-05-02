@@ -93,6 +93,7 @@ shm_array<T, allocator>::~shm_array()
 template<typename T, class allocator>
 void shm_array<T, allocator>::setHandle(const vtkm::cont::UnknownArrayHandle &h)
 {
+    assert(h.GetValueTypeName() == vtkm::cont::TypeToString(handle_type()));
 #ifdef NO_SHMEM
     m_unknown = h;
     m_memoryValid = false;
@@ -132,14 +133,14 @@ bool shm_array<T, allocator>::check(std::ostream &os) const
 template<typename T, class allocator>
 T &shm_array<T, allocator>::at(const size_t idx)
 {
-    updateFromHandle();
+    updateFromHandle(true);
     if (idx >= m_size)
         throw(std::out_of_range("shm_array"));
     return m_data[idx];
 }
 
 template<typename T, class allocator>
-T &shm_array<T, allocator>::at(const size_t idx) const
+const T &shm_array<T, allocator>::at(const size_t idx) const
 {
     updateFromHandle();
     if (idx >= m_size)
@@ -150,7 +151,7 @@ T &shm_array<T, allocator>::at(const size_t idx) const
 template<typename T, class allocator>
 void shm_array<T, allocator>::push_back(const T &v)
 {
-    updateFromHandle();
+    updateFromHandle(true);
     if (m_size >= m_capacity)
         reserve(m_capacity == 0 ? 1 : m_capacity * 2);
     assert(m_size < m_capacity);
@@ -167,7 +168,7 @@ void shm_array<T, allocator>::clear()
 template<typename T, class allocator>
 void shm_array<T, allocator>::resize(const size_t size)
 {
-    updateFromHandle();
+    updateFromHandle(true);
     reserve(size);
     if (!std::is_trivially_copyable<T>::value) {
         for (size_t i = m_size; i < size; ++i)
@@ -181,7 +182,7 @@ void shm_array<T, allocator>::resize(const size_t size)
 template<typename T, class allocator>
 void shm_array<T, allocator>::resize(const size_t size, const T &value)
 {
-    updateFromHandle();
+    updateFromHandle(true);
     reserve(size);
     for (size_t i = m_size; i < size; ++i)
         new (&m_data[i]) T(value);
@@ -252,13 +253,11 @@ template<typename T, class allocator>
 void shm_array<T, allocator>::reserve_or_shrink(const size_t capacity)
 {
 #ifdef NO_SHMEM
+    updateFromHandle(true);
     m_handle.Allocate(capacity, vtkm::CopyFlag::On);
     m_data = reinterpret_cast<T *>(m_handle.GetWritePointer());
     m_capacity = capacity;
 #else
-    if (!std::is_trivially_copyable<T>::value) {
-        updateFromHandle();
-    }
     pointer new_data = capacity > 0 ? m_allocator.allocate(capacity) : nullptr;
     const size_t n = capacity < m_size ? capacity : m_size;
     if (m_data && new_data) {
@@ -309,8 +308,6 @@ void shm_array<T, allocator>::update_bounds()
     m_min = componentRange.Min;
     m_max = componentRange.Max;
 #else
-    updateFromHandle();
-
     if (!m_data)
         return;
 

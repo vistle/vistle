@@ -1561,8 +1561,8 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
 
                 osg::ref_ptr<osg::Image> image = new osg::Image();
                 image->setName(nodename + ".img");
-                image->setImage(tex->getWidth(), 1, 1, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, &tex->pixels()[0],
-                                osg::Image::NO_DELETE);
+                image->setImage(tex->getWidth(), 1, 1, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE,
+                                const_cast<unsigned char *>(&tex->pixels()[0]), osg::Image::NO_DELETE);
                 osgTex->setImage(image);
 
                 state->setTextureAttributeAndModes(0, osgTex, osg::StateAttribute::ON);
