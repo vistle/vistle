@@ -69,23 +69,40 @@ public:
 #else
     const vtkm::cont::ArrayHandle<handle_type> handle() const;
 #endif
-    void updateFromHandle() const;
+    void updateFromHandle(bool invalidate = false);
+    void updateFromHandle(bool invalidate = false) const;
 
     typedef typename std::allocator_traits<allocator>::pointer pointer;
     typedef T *iterator;
     typedef const T *const_iterator;
 
-    iterator begin() const
+    const iterator begin() const
     {
         updateFromHandle();
         return &*m_data;
     }
-    iterator end() const
+    const iterator end() const
     {
         updateFromHandle();
         return (&*m_data) + m_size;
     }
-    T *data() const
+    iterator begin()
+    {
+        updateFromHandle(true);
+        return &*m_data;
+    }
+    iterator end()
+    {
+        updateFromHandle(true);
+        return (&*m_data) + m_size;
+    }
+
+    T *data()
+    {
+        updateFromHandle(true);
+        return &*m_data;
+    }
+    const T *data() const
     {
         updateFromHandle();
         return &*m_data;
@@ -93,24 +110,24 @@ public:
 
     T &operator[](const size_t idx)
     {
-        updateFromHandle();
+        updateFromHandle(true);
         return m_data[idx];
     }
-    T &operator[](const size_t idx) const
+    const T &operator[](const size_t idx) const
     {
         updateFromHandle();
         return m_data[idx];
     }
 
     T &at(const size_t idx);
-    T &at(const size_t idx) const;
+    const T &at(const size_t idx) const;
 
     void push_back(const T &v);
 
     template<class... Args>
     void emplace_back(Args &&...args)
     {
-        updateFromHandle();
+        updateFromHandle(true);
         if (m_size >= m_capacity)
             reserve(m_capacity == 0 ? 1 : m_capacity * 2);
         assert(m_size < m_capacity);
@@ -120,15 +137,25 @@ public:
 
     T &back()
     {
-        updateFromHandle();
+        updateFromHandle(true);
         return m_data[m_size - 1];
     }
     T &front()
     {
-        updateFromHandle();
+        updateFromHandle(true);
         return m_data[0];
     }
 
+    const T &back() const
+    {
+        updateFromHandle();
+        return m_data[m_size - 1];
+    }
+    const T &front() const
+    {
+        updateFromHandle();
+        return m_data[0];
+    }
     bool empty() const
     {
         return m_size == 0;
@@ -206,9 +233,45 @@ private:
 };
 
 template<typename T, class allocator>
-void shm_array<T, allocator>::updateFromHandle() const
+void shm_array<T, allocator>::updateFromHandle(bool invalidate)
 {
 #ifdef NO_SHMEM
+    if (invalidate) {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (!m_memoryValid) {
+            m_memoryValid = true;
+
+            if (m_unknown.CanConvert<vtkm::cont::ArrayHandleBasic<handle_type>>()) {
+                m_handle = m_unknown.AsArrayHandle<vtkm::cont::ArrayHandleBasic<handle_type>>();
+            } else {
+                vtkm::cont::ArrayCopy(m_unknown, m_handle);
+            }
+            m_data = reinterpret_cast<T *>(m_handle.GetWritePointer());
+        }
+        m_unknown = vtkm::cont::UnknownArrayHandle();
+    } else {
+        if (m_memoryValid)
+            return;
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (m_memoryValid)
+            return;
+        m_memoryValid = true;
+
+        if (m_unknown.CanConvert<vtkm::cont::ArrayHandleBasic<handle_type>>()) {
+            m_handle = m_unknown.AsArrayHandle<vtkm::cont::ArrayHandleBasic<handle_type>>();
+        } else {
+            vtkm::cont::ArrayCopy(m_unknown, m_handle);
+        }
+        m_data = reinterpret_cast<T *>(m_handle.GetWritePointer());
+    }
+#endif
+}
+
+template<typename T, class allocator>
+void shm_array<T, allocator>::updateFromHandle(bool invalidate) const
+{
+#ifdef NO_SHMEM
+    assert(!invalidate);
     if (m_memoryValid)
         return;
     std::lock_guard<std::mutex> lock(m_mutex);
