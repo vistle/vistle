@@ -1852,11 +1852,6 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
         m_upstreamIsExecuting = true;
     }
 
-    if (m_executionCount < exec->getExecutionCount()) {
-        m_executionCount = exec->getExecutionCount();
-        m_iteration = -1;
-    }
-
     if (schedulingPolicy() == message::SchedulingPolicy::Ignore)
         return true;
 
@@ -1874,10 +1869,11 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
             CERR << "prepare: waiting for previous tasks..." << std::endl;
             waitAllTasks();
         }
-
         applyDelayedChanges();
-    }
-    if (exec->what() == Execute::ComputeExecute || exec->what() == Execute::Prepare) {
+        if (exec->what() == Execute::ComputeExecute) {
+            m_executionCount++;
+            m_iteration = -1;
+        }
         ret &= prepareWrapper(exec);
     }
 
