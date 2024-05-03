@@ -16,7 +16,9 @@
 
 #include <boost/asio.hpp>
 
+#include <vistle/util/enum.h>
 #include <vistle/util/sysdep.h>
+#include <vistle/util/hostname.h>
 #include <vistle/util/tools.h>
 #include <vistle/util/stopwatch.h>
 #include <vistle/util/exception.h>
@@ -140,6 +142,8 @@ void recv(const mpi::communicator &comm, int rank, int tag, T *values, size_t co
 namespace vistle {
 
 using message::Id;
+
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(ObjectValidation, (Disable)(Quick)(Thorough))
 
 #ifdef REDIRECT_OUTPUT
 template<typename CharT, typename TraitsT = std::char_traits<CharT>>
@@ -371,8 +375,10 @@ Module::Module(const std::string &moduleName, const int moduleId, mpi::communica
     errmodes.push_back("Console & GUI");
     setParameterChoices(em, errmodes);
 
-    addIntParameter("_validate_objects", "validate data objects before sending to port", m_validateObjects,
-                    Parameter::Boolean);
+    auto validate = addIntParameter("_validate_objects", "validate data objects before sending to port",
+                                    m_validateObjects, Parameter::Choice);
+    V_ENUM_SET_CHOICES(validate, ObjectValidation);
+
 
     auto outrank = addIntParameter("_error_output_rank", "rank from which to show stderr (-1: all ranks)", -1);
     setParameterRange<Integer>(outrank, -1, size() - 1);
@@ -1023,18 +1029,19 @@ bool Module::passThroughObject(Port *port, vistle::Object::const_ptr object)
 
     m_withOutput.insert(port);
 
-    object->refresh();
-    std::stringstream str;
-    bool ok = object->check(str, m_validateObjects);
-    if (!ok) {
-        std::stringstream str2;
-        str2 << "validation failed for object " << object->getName() << " on port " << port->getName() << std::endl;
-        str2 << "   " << *object << std::endl;
-        str2 << "   " << str.str();
-        sendError(str2.str());
-        return false;
+    if (m_validateObjects != ObjectValidation::Disable) {
+        object->refresh();
+        std::stringstream str;
+        bool ok = object->check(str, m_validateObjects == ObjectValidation::Quick);
+        if (!ok) {
+            std::stringstream str2;
+            str2 << "validation failed for object " << object->getName() << " on port " << port->getName() << std::endl;
+            str2 << "   " << *object << std::endl;
+            str2 << "   " << str.str();
+            sendError(str2.str());
+            return false;
+        }
     }
-
     message::AddObject message(port->getName(), object);
     sendMessage(message);
 
@@ -1253,7 +1260,7 @@ bool Module::isConnected(const Port &port) const
 bool Module::changeParameter(const Parameter *p)
 {
     std::string name = p->getName();
-    if (name[0] == '_') {
+    if (!name.empty() && name[0] == '_') {
         if (name == "_error_output_mode" || name == "_error_output_rank") {
             updateOutputMode();
         } else if (name == "_cache_mode") {
