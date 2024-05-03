@@ -288,7 +288,11 @@ bool Adapter::recvAndHandeMessage(bool blocking)
         }
     } break;
     case InSituMessageType::ConnectionClosed: {
-        restart();
+        auto state = msg.unpackOrCast<ConnectionClosed>();
+        if (state.value == message::DisconnectState::ShutdownNoRestart)
+            Finalize();
+        else
+            restart();
     } break;
     case InSituMessageType::IntOption: {
         auto option = msg.unpackOrCast<IntOption>().value;

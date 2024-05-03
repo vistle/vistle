@@ -126,7 +126,11 @@ std::unique_ptr<insitu::message::MessageHandler> MiniSimModule::connectToSim()
 
 MiniSimModule::~MiniSimModule()
 {
+    m_sim.terminate();
     m_terminate = true;
+    if (getMessageHandler())
+        getMessageHandler()->send(
+            insitu::message::ConnectionClosed(insitu::message::DisconnectState::ShutdownNoRestart));
     if (m_simThread->joinable()) {
         m_simThread->join();
     }
@@ -320,6 +324,7 @@ void MiniSimModule::createGrid(int blockId, const diy::DiscreteBounds cellExts)
     //}
     m_adapter->updateMeta(grid);
     grid->setTimestep(-1);
+    grid->setIteration(-1);
 
     assert(el[numElements] == numCorners);
 }
