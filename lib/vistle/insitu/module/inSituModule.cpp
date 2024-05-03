@@ -129,11 +129,17 @@ void InSituModule::initializeCommunication()
     }
 }
 
+const insitu::message::MessageHandler *InSituModule::getMessageHandler() const
+{
+    return m_messageHandler.get();
+}
+
 bool InSituModule::changeParameter(const Parameter *param)
 {
     if (!param) {
         return true;
     }
+    CERR << "changeParameter " << param->getName() << std::endl;
     if (m_filePath && param == m_filePath) {
         initializeCommunication();
         return true;
@@ -168,6 +174,9 @@ bool InSituModule::prepare()
             auto &addObj = obj.as<vistle::message::AddObject>();
             updateMeta(obj);
             passThroughObject(addObj.getSenderPort(), addObj.takeObject());
+            CERR << "passed through object: timestep = " << addObj.meta().timeStep()
+                 << " iteration = " << addObj.meta().iteration()
+                 << " executionCounter = " << addObj.meta().executionCounter() << std::endl;
         }
     }
     m_cachedVistleObjects.pop();

@@ -35,6 +35,7 @@ protected:
 
     virtual bool changeParameter(const Parameter *p) override;
     void initializeCommunication();
+    const insitu::message::MessageHandler *getMessageHandler() const;
 
 private:
     std::unique_ptr<insitu::message::MessageHandler> m_messageHandler;
@@ -87,6 +88,7 @@ private:
 
     void disconnectSim();
 };
+
 
 } // namespace insitu
 } // namespace vistle
