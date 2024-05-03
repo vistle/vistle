@@ -239,35 +239,22 @@ template<typename T, class allocator>
 void shm_array<T, allocator>::updateFromHandle(bool invalidate)
 {
 #ifdef NO_SHMEM
-    if (invalidate) {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        if (!m_memoryValid) {
-            PROF_SCOPE("shm_array::updateFromHandle(invalidate)");
-            m_memoryValid = true;
-
-            if (m_unknown.CanConvert<vtkm::cont::ArrayHandleBasic<handle_type>>()) {
-                m_handle = m_unknown.AsArrayHandle<vtkm::cont::ArrayHandleBasic<handle_type>>();
-            } else {
-                vtkm::cont::ArrayCopy(m_unknown, m_handle);
-            }
-            m_data = reinterpret_cast<T *>(m_handle.GetWritePointer());
-        }
-        m_unknown = vtkm::cont::UnknownArrayHandle();
-    } else {
-        if (m_memoryValid)
-            return;
-        std::lock_guard<std::mutex> lock(m_mutex);
-        if (m_memoryValid)
-            return;
+    if (m_memoryValid && !invalidate)
+        return;
+    std::lock_guard<std::mutex> lock(m_mutex);
+    if (!m_memoryValid) {
+        PROF_SCOPE("shm_array::updateFromHandle()");
         m_memoryValid = true;
 
-        PROF_SCOPE("shm_array::updateFromHandle()");
         if (m_unknown.CanConvert<vtkm::cont::ArrayHandleBasic<handle_type>>()) {
             m_handle = m_unknown.AsArrayHandle<vtkm::cont::ArrayHandleBasic<handle_type>>();
         } else {
             vtkm::cont::ArrayCopy(m_unknown, m_handle);
         }
         m_data = reinterpret_cast<T *>(m_handle.GetWritePointer());
+    }
+    if (invalidate) {
+        m_unknown = vtkm::cont::UnknownArrayHandle();
     }
 #endif
 }
@@ -284,7 +271,7 @@ void shm_array<T, allocator>::updateFromHandle(bool invalidate) const
         return;
     m_memoryValid = true;
 
-    PROF_SCOPE("shm_array::updateFromHandle()");
+    PROF_SCOPE("shm_array::updateFromHandle()const");
     if (m_unknown.CanConvert<vtkm::cont::ArrayHandleBasic<handle_type>>()) {
         m_handle = m_unknown.AsArrayHandle<vtkm::cont::ArrayHandleBasic<handle_type>>();
     } else {

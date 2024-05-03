@@ -179,6 +179,9 @@ void shm_array<T, allocator>::clear()
 template<typename T, class allocator>
 void shm_array<T, allocator>::resize(const size_t size)
 {
+    if (size == m_size)
+        return;
+
     updateFromHandle(true);
     reserve(size);
     if (!std::is_trivially_copyable<T>::value) {
@@ -187,19 +190,20 @@ void shm_array<T, allocator>::resize(const size_t size)
     }
     m_size = size;
     clearDimensionHint();
-    invalidate_bounds();
 }
 
 template<typename T, class allocator>
 void shm_array<T, allocator>::resize(const size_t size, const T &value)
 {
+    if (size == m_size)
+        return;
+
     updateFromHandle(true);
     reserve(size);
     for (size_t i = m_size; i < size; ++i)
         new (&m_data[i]) T(value);
     m_size = size;
     clearDimensionHint();
-    invalidate_bounds();
 }
 
 #ifdef NO_SHMEM
@@ -311,16 +315,12 @@ void shm_array<T, allocator>::invalidate_bounds()
 template<typename T, class allocator>
 void shm_array<T, allocator>::update_bounds()
 {
+    if (bounds_valid())
+        return;
+
     PROF_SCOPE("shm_array::update_bounds()");
-    invalidate_bounds();
-#ifdef NO_SHMEM
-    vtkm::cont::ArrayHandle<vtkm::Range> rangeArray = vtkm::cont::ArrayRangeCompute(handle());
-    auto rangePortal = rangeArray.ReadPortal();
-    assert(rangePortal.GetNumberOfValues() == 1); // 1 component
-    vtkm::Range componentRange = rangePortal.Get(0);
-    m_min = componentRange.Min;
-    m_max = componentRange.Max;
-#else
+    updateFromHandle();
+
     if (!m_data)
         return;
 
@@ -328,7 +328,6 @@ void shm_array<T, allocator>::update_bounds()
         m_min = std::min(m_min, *it);
         m_max = std::max(m_max, *it);
     }
-#endif
 }
 
 template<typename T, class allocator>
