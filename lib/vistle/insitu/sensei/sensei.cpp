@@ -75,7 +75,7 @@ Adapter::Adapter(bool paused, MPI_Comm Comm, MetaData &&meta, ObjectRetriever cb
 #endif
 }
 
-bool Adapter::Execute(size_t timestep)
+bool Adapter::execute(size_t timestep)
 {
     auto tStart = vistle::Clock::time();
     if (stillConnected() && waitedForModuleCommands()) {
@@ -179,24 +179,25 @@ void Adapter::processData()
              << endl;
         return;
     }
-    if (message::getIntParamValue(m_internals->moduleParams, "keep_timesteps"))
-        ++m_processedTimesteps;
-    else
-        ++m_iteration;
+
     auto dataObjects = m_callbacks.getData(m_usedData);
     for (const auto &dataObject: dataObjects) {
         m_internals->sendMessageQueue->addObject(dataObject.portName(), dataObject.object());
     }
     m_internals->sendMessageQueue->sendObjects();
+    if (message::getIntParamValue(m_internals->moduleParams, "keep_timesteps"))
+        ++m_processedTimesteps;
+    else
+        ++m_iteration;
 }
 
 Adapter::~Adapter()
 {
     if (m_internals)
-        Finalize();
+        finalize();
 }
 
-bool Adapter::Finalize()
+bool Adapter::finalize()
 {
     CERR << "Finalizing" << endl;
     double averageTimeSpendInExecute = 0;
@@ -290,7 +291,7 @@ bool Adapter::recvAndHandeMessage(bool blocking)
     case InSituMessageType::ConnectionClosed: {
         auto state = msg.unpackOrCast<ConnectionClosed>();
         if (state.value == message::DisconnectState::ShutdownNoRestart)
-            Finalize();
+            finalize();
         else
             restart();
     } break;
