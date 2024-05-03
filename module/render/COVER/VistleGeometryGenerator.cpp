@@ -34,9 +34,9 @@
 #include <cover/coVRPluginSupport.h>
 #include <PluginUtil/coSphere.h>
 #include <PluginUtil/Tipsify.h>
-#endif
 
 //#define BUILD_KDTREES
+#endif
 
 using namespace vistle;
 
@@ -54,8 +54,10 @@ const int DataAttrib = 10;
 std::mutex VistleGeometryGenerator::s_coverMutex;
 
 namespace {
+#ifdef BUILD_KDTREES
 std::mutex kdTreeMutex;
 std::vector<osg::ref_ptr<osg::KdTreeBuilder>> kdTreeBuilders;
+#endif
 
 std::map<std::string, std::string> get_shader_parameters()
 {
