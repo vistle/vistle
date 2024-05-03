@@ -19,6 +19,8 @@
 
 #include <boost/mpl/for_each.hpp>
 
+#include <vistle/core/shm_array_impl.h>
+
 #include "convert.h"
 
 

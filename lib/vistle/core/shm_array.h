@@ -64,7 +64,8 @@ public:
     unsigned type() const { return m_type; }
     bool check(std::ostream &os) const;
 
-    void setHandle(const vtkm::cont::UnknownArrayHandle &handle);
+    template<class ArrayHandle>
+    void setHandle(const ArrayHandle &handle);
 
 #ifdef NO_SHMEM
     const vtkm::cont::ArrayHandle<handle_type> &handle() const;

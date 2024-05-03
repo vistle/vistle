@@ -91,13 +91,23 @@ shm_array<T, allocator>::~shm_array()
 }
 
 template<typename T, class allocator>
-void shm_array<T, allocator>::setHandle(const vtkm::cont::UnknownArrayHandle &h)
+template<class ArrayHandle>
+void shm_array<T, allocator>::setHandle(const ArrayHandle &h)
 {
-    assert(h.GetValueTypeName() == vtkm::cont::TypeToString(handle_type()));
+    //assert(h.GetValueTypeName() == vtkm::cont::TypeToString(handle_type()));
 #ifdef NO_SHMEM
+    PROF_SCOPE("shm_array::setHandle()");
     m_unknown = h;
     m_memoryValid = false;
     m_size = h.GetNumberOfValues();
+
+    vtkm::cont::ArrayHandle<vtkm::Range> rangeArray = vtkm::cont::ArrayRangeCompute(h);
+    auto rangePortal = rangeArray.ReadPortal();
+    assert(rangePortal.GetNumberOfValues() == 1); // 1 component
+    vtkm::Range componentRange = rangePortal.Get(0);
+    m_min = componentRange.Min;
+    m_max = componentRange.Max;
+    assert(m_size == 0 || bounds_valid());
 #else
     resize(h.GetNumberOfValues());
     vtkm::cont::ArrayHandleBasic<handle_type> handle(reinterpret_cast<handle_type *>(m_data.get()), m_size,
