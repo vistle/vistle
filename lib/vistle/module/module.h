@@ -39,7 +39,6 @@
 #include <vistle/core/messagesender.h>
 #include <vistle/core/messagepayload.h>
 #include <vistle/config/config.h>
-#include <vistle/util/hostname.h>
 
 #include "objectcache.h"
 #define RESULTCACHE_SKIP_DEFINITION
@@ -405,8 +404,13 @@ private:
     std::map<std::string, std::string> m_currentItemInfo;
     std::string m_inputSpecies;
 
+#ifdef NDEBUG
+    int m_validateObjects = 0; // Disable
+#else
+    int m_validateObjects = 1; // Quick
+#endif
+
     static bool s_shouldDetachShm;
-    bool m_validateObjects = false;
 };
 
 V_MODULEEXPORT int getBlock(Object::const_ptr obj);
