@@ -439,6 +439,7 @@ bool Hub::init(int argc, char *argv[])
 
     if (m_isMaster && vm.count("hub") > 0) {
         m_isMaster = false;
+        ++m_basePort;
         m_masterHost = vm["hub"].as<std::string>();
         auto colon = m_masterHost.find(':');
         if (colon != std::string::npos) {
