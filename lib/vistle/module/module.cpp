@@ -1217,15 +1217,6 @@ bool Module::addInputObject(int sender, const std::string &senderPort, const std
         }
     }
 
-    if (m_executionCount < object->getExecutionCounter()) {
-        m_executionCount = object->getExecutionCounter();
-        m_iteration = object->getIteration();
-    }
-    if (m_executionCount == object->getExecutionCounter()) {
-        if (m_iteration < object->getIteration())
-            m_iteration = object->getIteration();
-    }
-
     Port *p = findInputPort(portName);
 
     if (p) {
@@ -1863,7 +1854,18 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
     if (schedulingPolicy() == message::SchedulingPolicy::Ignore)
         return true;
 
-    bool ret = true;
+    if (exec->what() == Execute::ComputeExecute || exec->what() == Execute::Prepare) {
+        if (m_lastTask) {
+            CERR << "prepare: waiting for previous tasks..." << std::endl;
+            waitAllTasks();
+        }
+        applyDelayedChanges();
+    }
+
+    if (exec->what() == Execute::ComputeExecute) {
+        m_executionCount++;
+        m_iteration = -1;
+    }
 
 #ifdef DETAILED_PROGRESS
     Busy busy;
@@ -1872,16 +1874,8 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
     sendMessage(busy);
 #endif
 
+    bool ret = true;
     if (exec->what() == Execute::ComputeExecute || exec->what() == Execute::Prepare) {
-        if (m_lastTask) {
-            CERR << "prepare: waiting for previous tasks..." << std::endl;
-            waitAllTasks();
-        }
-        applyDelayedChanges();
-        if (exec->what() == Execute::ComputeExecute) {
-            m_executionCount++;
-            m_iteration = -1;
-        }
         ret &= prepareWrapper(exec);
     }
 
@@ -2397,7 +2391,7 @@ std::set<int> Module::getMirrors() const
 
 void Module::execute() const
 {
-    message::Execute exec{message::Execute::ComputeExecute, m_id, m_executionCount};
+    message::Execute exec{message::Execute::ComputeExecute, m_id};
     exec.setDestId(message::Id::MasterHub);
     sendMessage(exec);
 }
@@ -2591,7 +2585,7 @@ bool Module::prepareWrapper(const message::Execute *exec)
     }
 #endif
 
-    message::ExecutionProgress start(message::ExecutionProgress::Start, m_executionCount);
+    message::ExecutionProgress start(message::ExecutionProgress::Start);
     start.setReferrer(exec->uuid());
     start.setDestId(Id::LocalManager);
     sendMessage(start);
@@ -2756,7 +2750,7 @@ bool Module::reduceWrapper(const message::Execute *exec, bool reordered)
         }
     }
 
-    message::ExecutionProgress fin(message::ExecutionProgress::Finish, m_executionCount);
+    message::ExecutionProgress fin(message::ExecutionProgress::Finish);
     fin.setReferrer(exec->uuid());
     fin.setDestId(Id::LocalManager);
     sendMessage(fin);
