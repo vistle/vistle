@@ -301,6 +301,11 @@ bool Adapter::recvAndHandeMessage(bool blocking)
         if (option.name == "keep_timesteps") {
             m_processedTimesteps = -1;
             m_iteration = -1;
+            if (option.value == 0) {
+                m_iteration = 0;
+            } else {
+                m_processedTimesteps = 0;
+            }
         }
         ++m_executionCount;
 
