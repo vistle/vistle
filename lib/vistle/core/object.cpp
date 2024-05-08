@@ -161,7 +161,7 @@ void Object::print(std::ostream &os, bool verbose) const
     if (!d()->isComplete()) {
         os << " INCOMPLETE";
     }
-    os << "ctor=" << meta().creator() << " gen=" << meta().executionCounter();
+    os << "ctor=" << meta().creator() << " gen=" << meta().generation();
     if (meta().block() >= 0 || meta().numBlocks() >= 0) {
         os << " block=" << meta().block() << "/" << meta().numBlocks();
     }
@@ -382,7 +382,7 @@ bool Object::check(std::ostream &os, bool quick) const
     VALIDATE(d()->meta.block() >= -1);
     VALIDATE(d()->meta.numBlocks() == -1 || (d()->meta.block() >= 0 && d()->meta.block() < d()->meta.numBlocks()));
 
-    VALIDATE(d()->meta.executionCounter() >= -1);
+    VALIDATE(d()->meta.generation() >= -1);
 
     if (quick)
         return true;
@@ -496,9 +496,9 @@ void Object::setIteration(const int num)
     d()->meta.setIteration(num);
 }
 
-int Object::getExecutionCounter() const
+int Object::getGeneration() const
 {
-    return d()->meta.executionCounter();
+    return d()->meta.generation();
 }
 
 int Object::getCreator() const
@@ -536,9 +536,9 @@ void Object::setNumBlocks(const int num)
     d()->meta.setNumBlocks(num);
 }
 
-void Object::setExecutionCounter(const int count)
+void Object::setGeneration(const int count)
 {
-    d()->meta.setExecutionCounter(count);
+    d()->meta.setGeneration(count);
 }
 
 void Object::setCreator(const int id)

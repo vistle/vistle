@@ -50,7 +50,7 @@ private:
     bool m_connected = false; // If we are connected to the module
     int m_processedTimesteps = -1;
     int m_iteration = 0;
-    int m_executionCount = 0;
+    int m_generation = 0;
     // mpi info
     int m_rank = -1, m_mpiSize = 0;
     MPI_Comm comm = MPI_COMM_WORLD;

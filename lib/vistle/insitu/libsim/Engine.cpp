@@ -219,7 +219,7 @@ bool Engine::fetchNewModuleState()
             ++m_iterations;
         }
         m_dataTransmitter->resetCache();
-        m_dataTransmitter->updateExecutionCount();
+        m_dataTransmitter->updateGeneration();
     } break;
     case InSituMessageType::ConnectPort:
     case InSituMessageType::DisconnectPort: {

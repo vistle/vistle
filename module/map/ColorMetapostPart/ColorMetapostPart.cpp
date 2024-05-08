@@ -55,7 +55,7 @@ ColorMetapostPart::~ColorMetapostPart()
 
 bool ColorMetapostPart::prepare()
 {
-    //std::cerr << "ColorMetapostPart: compute: execcount=" << m_executionCount << std::endl;
+    //std::cerr << "ColorMetapostPart: compute: generation=" << m_generation << std::endl;
 
     auto filename = p_colorfile->getValue();
     std::ifstream f(filename, std::ifstream::in);
@@ -98,7 +98,7 @@ bool ColorMetapostPart::prepare()
 
 bool ColorMetapostPart::compute()
 {
-    //std::cerr << "ColorMetapostPart: compute: execcount=" << m_executionCount << std::endl;
+    //std::cerr << "ColorMetapostPart: compute: generation=" << m_generation << std::endl;
 
     Object::const_ptr obj = expect<Object>("data_in");
     if (!obj)

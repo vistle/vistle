@@ -1354,15 +1354,15 @@ bool ClusterManager::addObjectSource(const message::AddObject &addObj)
 
     if (!resendAfterConnect) {
         PortKey key(port);
-        auto ec = addObj.meta().executionCounter();
+        auto gen = addObj.meta().generation();
         auto iter = addObj.meta().iteration();
         auto &cache = m_outputObjects[key];
-        if (cache.execCount != ec || cache.iteration != iter) {
+        if (cache.generation != gen || cache.iteration != iter) {
             CERR << "clearing cache for " << addObj.senderId() << ":" << addObj.getSenderPort() << std::endl;
             cache.objects.clear();
         }
         cache.objects.emplace_back(addObj.objectName());
-        cache.execCount = ec;
+        cache.generation = gen;
         cache.iteration = iter;
         CERR << "caching " << addObj.objectName() << " for " << addObj.senderId() << ":" << addObj.getSenderPort()
              << ", port=" << port << std::endl;

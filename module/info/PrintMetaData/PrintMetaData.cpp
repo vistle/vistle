@@ -161,7 +161,7 @@ void PrintMetaData::compute_acquireGenericData(vistle::Object::const_ptr data)
     m_dataType = Object::toString(data->getType());
 
     m_creator = data->meta().creator();
-    m_executionCounter = data->meta().executionCounter();
+    m_generation = data->meta().generation();
     m_iterationCounter = data->meta().iteration();
     m_numAnimationSteps = data->meta().numAnimationSteps();
     m_numBlocks = data->meta().numBlocks();
@@ -299,7 +299,7 @@ void PrintMetaData::reduce_printData()
 
         message += "\n\nObjectData:";
         message += "\n   Creator: " + std::to_string(m_creator);
-        message += "\n   Execution Counter: " + std::to_string(m_executionCounter);
+        message += "\n   Generation: " + std::to_string(m_generation);
         message += "\n   Iteration: " + std::to_string(m_iterationCounter);
         message += "\n   Number of Animation Steps: " + std::to_string(m_numAnimationSteps);
         message += "\n   Number of Blocks: " + std::to_string(m_numBlocks);

@@ -73,7 +73,7 @@ void ObjectCache::addObject(const std::string &portname, Object::const_ptr objec
     Meta &meta = m_meta[portname];
     const Meta oldmeta = meta;
     meta = object->meta();
-    if (oldmeta.creator() != meta.creator() || oldmeta.executionCounter() != meta.executionCounter()) {
+    if (oldmeta.creator() != meta.creator() || oldmeta.generation() != meta.generation()) {
         ++m_generation;
     }
 
@@ -88,7 +88,7 @@ void ObjectCache::addObject(const std::string &portname, Object::const_ptr objec
     auto iter = getIteration(object);
     assert(iter >= -1);
 
-    if (oldmeta.creator() != meta.creator() || oldmeta.executionCounter() != meta.executionCounter()) {
+    if (oldmeta.creator() != meta.creator() || oldmeta.generation() != meta.generation()) {
         cache.clear();
     } else if (iter >= 0) {
         for (auto &entry: cache) {

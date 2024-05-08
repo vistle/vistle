@@ -175,8 +175,8 @@ bool InSituModule::prepare()
             updateMeta(obj);
             passThroughObject(addObj.getSenderPort(), addObj.takeObject());
             CERR << "passed through object: timestep = " << addObj.meta().timeStep()
-                 << " iteration = " << addObj.meta().iteration()
-                 << " executionCounter = " << addObj.meta().executionCounter() << std::endl;
+                 << " iteration = " << addObj.meta().iteration() << " generation = " << addObj.meta().generation()
+                 << std::endl;
         }
     }
     m_cachedVistleObjects.pop();
@@ -188,7 +188,7 @@ void InSituModule::updateMeta(const vistle::message::Buffer &obj)
     if (obj.type() == vistle::message::ADDOBJECT) {
         auto &objMsg = obj.as<vistle::message::AddObject>();
         m_iteration = objMsg.meta().iteration();
-        m_executionCount = objMsg.meta().executionCounter();
+        m_generation = objMsg.meta().generation();
     }
 }
 

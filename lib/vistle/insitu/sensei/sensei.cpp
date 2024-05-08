@@ -307,7 +307,7 @@ bool Adapter::recvAndHandeMessage(bool blocking)
                 m_processedTimesteps = 0;
             }
         }
-        ++m_executionCount;
+        ++m_generation;
 
     } break;
     default:
@@ -418,7 +418,7 @@ void Adapter::updateMeta(vistle::Object::ptr obj) const
 {
     if (obj) {
         obj->setCreator(m_internals->moduleInfo.id());
-        obj->setExecutionCounter(m_executionCount);
+        obj->setGeneration(m_generation);
         obj->setTimestep(m_processedTimesteps);
         obj->setIteration(m_iteration);
         obj->updateInternals();
