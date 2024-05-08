@@ -193,8 +193,6 @@ private:
     int m_moduleCount;
     message::Type m_traceMessages;
 
-    int m_execCount;
-
     bool m_barrierActive;
     unsigned m_barrierReached;
     message::uuid_t m_barrierUuid;

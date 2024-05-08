@@ -166,7 +166,6 @@ Hub::Hub(bool inManager)
 , m_hubId(Id::Invalid)
 , m_moduleCount(0)
 , m_traceMessages(message::INVALID)
-, m_execCount(0)
 , m_barrierActive(false)
 , m_barrierReached(0)
 #if BOOST_VERSION >= 106600
@@ -3062,10 +3061,6 @@ bool Hub::handlePriv(const message::Execute &exec)
         return true;
 
     auto toSend = make.message<message::Execute>(exec);
-    if (exec.getExecutionCount() > m_execCount)
-        m_execCount = exec.getExecutionCount();
-    if (exec.getExecutionCount() < 0)
-        toSend.setExecutionCount(++m_execCount);
 
     bool onlySources = false;
     bool isCompound = false;
