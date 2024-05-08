@@ -118,7 +118,7 @@ private:
     };
     struct PortObjectCache {
         int iteration = 0;
-        int execCount = 0;
+        int generation = 0;
         std::vector<std::string> objects;
     };
     std::map<PortKey, PortObjectCache> m_outputObjects; // current objects at local output ports

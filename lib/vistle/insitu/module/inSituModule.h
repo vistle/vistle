@@ -74,7 +74,7 @@ private:
     void initRecvFromSimQueue();
     vistle::insitu::message::ModuleInfo::ShmInfo gatherModuleInfo() const;
     //sync this modules meta data with sim's data objects
-    //this sim interface decides on when to update the iteration and execution counter
+    //this sim interface decides on when to update the iteration and generation
     void updateMeta(const vistle::message::Buffer &obj);
 
     bool recvAndhandleMessage();

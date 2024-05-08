@@ -301,7 +301,7 @@ Module::Module(const std::string &moduleName, const int moduleId, mpi::communica
 , m_rank(-1)
 , m_size(-1)
 , m_id(moduleId)
-, m_executionCount(0)
+, m_generation(0)
 , m_iteration(-1)
 , m_stateTracker(new StateTracker(moduleId, m_name))
 , m_receivePolicy(message::ObjectReceivePolicy::Local)
@@ -961,7 +961,7 @@ void Module::updateMeta(vistle::Object::ptr obj) const
 {
     if (obj) {
         obj->setCreator(id());
-        obj->setExecutionCounter(m_executionCount + m_cache.generation());
+        obj->setGeneration(m_generation + m_cache.generation());
         if (m_iteration >= 0) {
             auto iter = obj->getIteration();
             obj->setIteration(iter + m_iteration);
@@ -975,7 +975,7 @@ void Module::updateMeta(vistle::Object::ptr obj) const
             if (ref->getCreator() == -1) {
                 auto o = std::const_pointer_cast<Object>(ref);
                 o->setCreator(id());
-                o->setExecutionCounter(m_executionCount + m_cache.generation());
+                o->setGeneration(m_generation + m_cache.generation());
                 if (m_iteration >= 0) {
                     auto iter = o->getIteration();
                     o->setIteration(iter + m_iteration);
@@ -1874,7 +1874,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
     }
 
     if (exec->what() == Execute::ComputeExecute) {
-        m_executionCount++;
+        m_generation++;
         m_iteration = -1;
     }
 
@@ -2174,18 +2174,17 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
 
         if (exec->allRanks() || gang || exec->what() == Execute::ComputeExecute) {
 #ifdef REDUCE_DEBUG
-            CERR << "all_reduce for execCount " << m_executionCount << " with #objects=" << numObject
+            CERR << "all_reduce for generation " << m_generation << " with #objects=" << numObject
                  << ", #timesteps=" << m_numTimesteps << std::endl;
 #endif
-            int oldExecCount = m_executionCount;
-            m_executionCount = mpi::all_reduce(comm(), m_executionCount, mpi::maximum<int>());
-            if (oldExecCount < m_executionCount) {
+            int oldGeneration = m_generation;
+            m_generation = mpi::all_reduce(comm(), m_generation, mpi::maximum<int>());
+            if (oldGeneration < m_generation) {
                 m_iteration = -1;
             }
             m_iteration = mpi::all_reduce(comm(), m_iteration, mpi::maximum<int>());
 #ifdef REDUCE_DEBUG
-            CERR << "all_reduce for execCount finished " << m_executionCount << " with execCount=" << m_executionCount
-                 << std::endl;
+            CERR << "all_reduce for generation " << m_generation << " finished" << std::endl;
 #endif
         }
 
@@ -2220,7 +2219,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
             if (cancelRequested(true))
                 return true;
 #ifdef REDUCE_DEBUG
-            CERR << "runReduce(t=" << timestep << "): exec count = " << m_executionCount << std::endl;
+            CERR << "runReduce(t=" << timestep << "): generation = " << m_generation << std::endl;
 #endif
             waitAllTasks();
             return reduce(timestep);
@@ -2377,7 +2376,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
 #endif
 
 #ifdef REDUCE_DEBUG
-    CERR << "EXEC FINISHED: count=" << m_executionCount << std::endl;
+    CERR << "EXEC FINISHED: generation=" << m_generation << std::endl;
 #endif
 
     return ret;
@@ -2602,9 +2601,9 @@ bool Module::prepareWrapper(const message::Execute *exec)
     sendMessage(start);
 
     if (collective) {
-        int oldExecCount = m_executionCount;
-        m_executionCount = boost::mpi::all_reduce(comm(), m_executionCount, boost::mpi::maximum<int>());
-        if (oldExecCount < m_executionCount) {
+        int oldGeneration = m_generation;
+        m_generation = boost::mpi::all_reduce(comm(), m_generation, boost::mpi::maximum<int>());
+        if (oldGeneration < m_generation) {
             m_iteration = -1;
         }
         m_iteration = mpi::all_reduce(comm(), m_iteration, mpi::maximum<int>());
@@ -2676,7 +2675,7 @@ bool Module::compute(const std::shared_ptr<BlockTask> &task) const
 
 bool Module::reduceWrapper(const message::Execute *exec, bool reordered)
 {
-    //CERR << "reduceWrapper: prepared=" << m_prepared << ", exec count = " << m_executionCount << std::endl;
+    //CERR << "reduceWrapper: prepared=" << m_prepared << ", generation = " << m_generation << std::endl;
 
     assert(m_prepared);
     if (reducePolicy() != message::ReducePolicy::Never) {
@@ -2711,7 +2710,7 @@ bool Module::reduceWrapper(const message::Execute *exec, bool reordered)
                 for (int t = 0; t < m_numTimesteps; ++t) {
                     if (!cancelRequested(sync)) {
                         PROF_SCOPE("Module::reduce(timestep)");
-                        //CERR << "run reduce(t=" << t << "): exec count = " << m_executionCount << std::endl;
+                        //CERR << "run reduce(t=" << t << "): generation = " << m_generation << std::endl;
                         ret &= reduce(t);
                     }
                 }
@@ -2722,7 +2721,7 @@ bool Module::reduceWrapper(const message::Execute *exec, bool reordered)
         case message::ReducePolicy::OverAll: {
             if (!cancelRequested(sync)) {
                 PROF_SCOPE("Module::reduce:overall");
-                //CERR << "run reduce(t=" << -1 << "): exec count = " << m_executionCount << std::endl;
+                //CERR << "run reduce(t=" << -1 << "): generation = " << m_generation << std::endl;
                 ret = reduce(-1);
             }
             break;

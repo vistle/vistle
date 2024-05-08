@@ -102,7 +102,7 @@ private:
 
     std::vector<std::string> m_attributesVector;
     std::string m_dataType;
-    int m_executionCounter;
+    int m_generation;
     int m_iterationCounter;
     int m_creator;
     int m_numBlocks;

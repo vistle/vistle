@@ -1853,7 +1853,7 @@ SendObject::SendObject(const RequestObject &request, Object::const_ptr obj, size
     m_animationstep = meta.animationStep();
     m_numAnimationsteps = meta.numAnimationSteps();
     m_iteration = meta.iteration();
-    m_executionCount = meta.executionCounter();
+    m_generation = meta.generation();
     m_creator = meta.creator();
     m_realtime = meta.realTime();
 }
@@ -1888,7 +1888,7 @@ Object::Type SendObject::objectType() const
 
 Meta SendObject::objectMeta() const
 {
-    Meta meta(m_block, m_timestep, m_animationstep, m_iteration, m_executionCount, m_creator);
+    Meta meta(m_block, m_timestep, m_animationstep, m_iteration, m_generation, m_creator);
     meta.setNumBlocks(m_numBlocks);
     meta.setNumTimesteps(m_numTimesteps);
     meta.setNumAnimationSteps(m_numAnimationsteps);

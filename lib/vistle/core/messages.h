@@ -981,7 +981,7 @@ private:
     int32_t m_timestep, m_numTimesteps;
     int32_t m_animationstep, m_numAnimationsteps;
     int32_t m_iteration;
-    int32_t m_executionCount;
+    int32_t m_generation;
     int32_t m_creator;
     double m_realtime;
 };

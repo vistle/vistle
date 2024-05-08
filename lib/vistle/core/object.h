@@ -155,7 +155,7 @@ public:
     int getTimestep() const;
     int getNumTimesteps() const;
     int getIteration() const;
-    int getExecutionCounter() const;
+    int getGeneration() const;
     int getCreator() const;
     Matrix4 getTransform() const;
 
@@ -165,7 +165,7 @@ public:
     void setTimestep(const int timestep);
     void setNumTimesteps(const int num);
     void setIteration(const int num);
-    void setExecutionCounter(const int count);
+    void setGeneration(const int count);
     void setCreator(const int id);
     void setTransform(const Matrix4 &transform);
 
