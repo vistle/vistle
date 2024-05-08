@@ -72,9 +72,10 @@ public:
 
 private:
     // overridden functions
-    virtual bool prepare() override;
-    virtual bool compute() override;
-    virtual bool reduce(int timestep) override;
+    bool prepare() override;
+    bool compute() override;
+    bool reduce(int timestep) override;
+    bool changeParameter(const vistle::Parameter *p) override;
 
     // helper functions
     void compute_acquireGenericData(vistle::Object::const_ptr data);
