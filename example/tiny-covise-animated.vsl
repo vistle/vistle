@@ -1,3 +1,7 @@
+import os
+
+covisedir = os.getenv("COVISEDIR")
+
 MasterHub=getMasterHub()
 VistleSession=getVistleSession()
 WorkflowConfig=getWorkflowConfig()
@@ -24,7 +28,7 @@ umToTriangles26 = spawnAsync(MasterHub, 'ToTriangles')
 
 mReadCoviseDirectory14 = waitForSpawn(umReadCoviseDirectory14)
 setVectorParam(mReadCoviseDirectory14, '_position', -357.0, -325.0, True)
-setStringParam(mReadCoviseDirectory14, 'directory', '/share/covise/example-data/tutorial', True)
+setStringParam(mReadCoviseDirectory14, 'directory', covisedir + '/share/covise/example-data/tutorial', True)
 setStringParam(mReadCoviseDirectory14, 'grid', 'tiny_geo', True)
 setStringParam(mReadCoviseDirectory14, 'field0', 'tiny_p', True)
 setStringParam(mReadCoviseDirectory14, 'field1', 'tiny_velocity', True)
