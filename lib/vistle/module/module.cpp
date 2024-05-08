@@ -1847,6 +1847,11 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
         return true;
     }
 
+    if (m_cacheGeneration != m_cache.generation()) {
+        m_cacheGeneration = m_cache.generation();
+        m_iteration = -1;
+    }
+
     using namespace vistle::message;
 
     if (exec->what() == Execute::Upstream) {

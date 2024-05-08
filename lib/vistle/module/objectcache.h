@@ -20,6 +20,8 @@ public:
     ObjectCache();
     ~ObjectCache();
 
+    int generation() const;
+
     void clear();
     void clearOld();
     void clear(const std::string &portname);
@@ -31,6 +33,8 @@ public:
 
 private:
     CacheMode m_cacheMode;
+
+    int m_generation = 0;
 
     struct Entry {
         Entry(Object::const_ptr object, bool cacheByNameOnly);

@@ -290,6 +290,7 @@ protected:
     std::unique_ptr<config::File> m_configFile;
 
     int m_executionCount, m_iteration;
+    int m_cacheGeneration = 0;
     std::set<Port *> m_withOutput;
 
     void setDefaultCacheMode(ObjectCache::CacheMode mode);

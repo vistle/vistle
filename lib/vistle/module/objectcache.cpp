@@ -10,8 +10,15 @@ ObjectCache::ObjectCache(): m_cacheMode(ObjectCache::CacheByName)
 ObjectCache::~ObjectCache()
 {}
 
+int ObjectCache::generation() const
+{
+    return m_generation;
+}
+
 void ObjectCache::clear()
 {
+    ++m_generation;
+
     m_meta.clear();
     m_oldCache.clear();
     if (m_cacheMode == CacheDeleteLate) {
@@ -28,6 +35,8 @@ void ObjectCache::clearOld()
 
 void ObjectCache::clear(const std::string &portname)
 {
+    ++m_generation;
+
     m_meta.erase(portname);
     m_cache.erase(portname);
     m_oldCache.erase(portname);
@@ -61,6 +70,13 @@ ObjectCache::Entry::Entry(Object::const_ptr object, bool cacheByNameOnly)
 
 void ObjectCache::addObject(const std::string &portname, Object::const_ptr object)
 {
+    Meta &meta = m_meta[portname];
+    const Meta oldmeta = meta;
+    meta = object->meta();
+    if (oldmeta.creator() != meta.creator() || oldmeta.executionCounter() != meta.executionCounter()) {
+        ++m_generation;
+    }
+
     if (m_cacheMode == CacheNone)
         return;
 
@@ -72,9 +88,6 @@ void ObjectCache::addObject(const std::string &portname, Object::const_ptr objec
     auto iter = getIteration(object);
     assert(iter >= -1);
 
-    Meta &meta = m_meta[portname];
-    const Meta oldmeta = meta;
-    meta = object->meta();
     if (oldmeta.creator() != meta.creator() || oldmeta.executionCounter() != meta.executionCounter()) {
         cache.clear();
     } else if (iter >= 0) {
