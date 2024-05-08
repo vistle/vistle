@@ -962,7 +962,8 @@ void Module::updateMeta(vistle::Object::ptr obj) const
     if (obj) {
         obj->setCreator(id());
         obj->setExecutionCounter(m_executionCount);
-        obj->setIteration(m_iteration);
+        if (m_iteration >= 0)
+            obj->setIteration(m_iteration);
 
         obj->updateInternals();
 
@@ -973,7 +974,8 @@ void Module::updateMeta(vistle::Object::ptr obj) const
                 auto o = std::const_pointer_cast<Object>(ref);
                 o->setCreator(id());
                 o->setExecutionCounter(m_executionCount);
-                o->setIteration(m_iteration);
+                if (m_iteration >= 0)
+                    o->setIteration(m_iteration);
 
                 o->updateInternals();
             }
