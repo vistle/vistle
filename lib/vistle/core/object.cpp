@@ -161,6 +161,7 @@ void Object::print(std::ostream &os, bool verbose) const
     if (!d()->isComplete()) {
         os << " INCOMPLETE";
     }
+    os << "ctor=" << meta().creator() << " gen=" << meta().executionCounter();
     if (meta().block() >= 0 || meta().numBlocks() >= 0) {
         os << " block=" << meta().block() << "/" << meta().numBlocks();
     }
