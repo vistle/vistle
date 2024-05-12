@@ -959,7 +959,11 @@ void Module::waitAllTasks()
 
 void Module::updateMeta(vistle::Object::ptr obj) const
 {
-    if (obj) {
+    if (!obj)
+        return;
+
+    {
+        std::lock_guard guard(obj->mutex());
         obj->setCreator(id());
         obj->setGeneration(m_generation + m_cache.generation());
         if (m_iteration >= 0) {
@@ -968,21 +972,22 @@ void Module::updateMeta(vistle::Object::ptr obj) const
         }
 
         obj->updateInternals();
+    }
 
-        // update referenced objects, if not yet valid
-        auto refs = obj->referencedObjects();
-        for (auto &ref: refs) {
-            if (ref->getCreator() == -1) {
-                auto o = std::const_pointer_cast<Object>(ref);
-                o->setCreator(id());
-                o->setGeneration(m_generation + m_cache.generation());
-                if (m_iteration >= 0) {
-                    auto iter = o->getIteration();
-                    o->setIteration(iter + m_iteration);
-                }
-
-                o->updateInternals();
+    // update referenced objects, if not yet valid
+    auto refs = obj->referencedObjects();
+    for (auto &ref: refs) {
+        std::lock_guard guard(ref->mutex());
+        if (ref->getCreator() == -1) {
+            auto o = std::const_pointer_cast<Object>(ref);
+            o->setCreator(id());
+            o->setGeneration(m_generation + m_cache.generation());
+            if (m_iteration >= 0) {
+                auto iter = o->getIteration();
+                o->setIteration(iter + m_iteration);
             }
+
+            o->updateInternals();
         }
     }
 }

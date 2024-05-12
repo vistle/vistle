@@ -176,7 +176,7 @@ LayerGrid::Celltree::const_ptr LayerGrid::getCelltree() const
 {
     if (m_celltree)
         return m_celltree;
-    Data::attachment_mutex_lock_type lock(d()->attachment_mutex);
+    Data::mutex_lock_type lock(d()->mutex);
     if (!hasAttachment("celltree")) {
         refresh();
         createCelltree(m_numDivisions);
