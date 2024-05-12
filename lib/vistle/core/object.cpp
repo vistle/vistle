@@ -691,6 +691,15 @@ std::vector<std::string> Object::Data::getAttributeList() const
     return result;
 }
 
+#ifdef NO_SHMEM
+std::recursive_mutex &Object::mutex() const
+#else
+boost::interprocess::interprocess_recursive_mutex &Object::mutex() const
+#endif
+{
+    return d()->mutex;
+}
+
 bool Object::addAttachment(const std::string &key, Object::const_ptr obj) const
 {
     return d()->addAttachment(key, obj);
@@ -718,7 +727,7 @@ bool Object::removeAttachment(const std::string &key) const
 
 bool Object::Data::hasAttachment(const std::string &key) const
 {
-    attachment_mutex_lock_type lock(attachment_mutex);
+    mutex_lock_type lock(mutex);
     const Key skey(key.c_str(), Shm::the().allocator());
     AttachmentMap::const_iterator it = attachments.find(skey);
     return it != attachments.end();
@@ -726,7 +735,7 @@ bool Object::Data::hasAttachment(const std::string &key) const
 
 Object::const_ptr ObjectData::getAttachment(const std::string &key) const
 {
-    attachment_mutex_lock_type lock(attachment_mutex);
+    mutex_lock_type lock(mutex);
     const Key skey(key.c_str(), Shm::the().allocator());
     AttachmentMap::const_iterator it = attachments.find(skey);
     if (it == attachments.end()) {
@@ -738,7 +747,7 @@ Object::const_ptr ObjectData::getAttachment(const std::string &key) const
 bool Object::Data::addAttachment(const std::string &key, Object::const_ptr obj)
 {
     {
-        attachment_mutex_lock_type lock(attachment_mutex);
+        mutex_lock_type lock(mutex);
         const Key skey(key.c_str(), Shm::the().allocator());
         AttachmentMap::const_iterator it = attachments.find(skey);
         if (it != attachments.end()) {
@@ -754,7 +763,7 @@ bool Object::Data::addAttachment(const std::string &key, Object::const_ptr obj)
 
 void Object::Data::copyAttachments(const ObjectData *src, bool replace)
 {
-    attachment_mutex_lock_type lock(attachment_mutex);
+    mutex_lock_type lock(mutex);
     const AttachmentMap &a = src->attachments;
 
     for (AttachmentMap::const_iterator it = a.begin(); it != a.end(); ++it) {
@@ -776,7 +785,7 @@ void Object::Data::copyAttachments(const ObjectData *src, bool replace)
 
 bool Object::Data::removeAttachment(const std::string &key)
 {
-    attachment_mutex_lock_type lock(attachment_mutex);
+    mutex_lock_type lock(mutex);
     const Key skey(key.c_str(), Shm::the().allocator());
     AttachmentMap::iterator it = attachments.find(skey);
     if (it == attachments.end()) {
