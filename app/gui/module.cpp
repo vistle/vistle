@@ -255,7 +255,7 @@ void Module::createActions()
     m_deleteSelAct->setStatusTip("Delete the selected modules and all their connections");
     connect(m_deleteSelAct, SIGNAL(triggered()), DataFlowView::the(), SLOT(deleteModules()));
 
-    m_createModuleGroup = new QAction("Save as module group", this);
+    m_createModuleGroup = new QAction("Save As Module Group...", this);
     m_createModuleGroup->setStatusTip("Save a named preset of the selected modules");
     connect(m_createModuleGroup, &QAction::triggered, this, &Module::createModuleCompound);
 
@@ -301,11 +301,11 @@ void Module::createMenus()
     m_moduleMenu->addSeparator();
     m_moduleMenu->addAction(m_cloneModule);
     m_moduleMenu->addAction(m_cloneModuleLinked);
-    m_moduleMenu->addAction(m_createModuleGroup);
-    m_moduleMenu->addAction(m_attachDebugger);
     m_moduleMenu->addAction(m_restartAct);
     m_moveToMenu = m_moduleMenu->addMenu("Move To...");
     m_replaceWithMenu = m_moduleMenu->addMenu("Replace With...");
+    m_moduleMenu->addAction(m_attachDebugger);
+    m_moduleMenu->addAction(m_createModuleGroup);
     m_moduleMenu->addSeparator();
     m_moduleMenu->addAction(m_deleteThisAct);
     m_moduleMenu->addAction(m_deleteSelAct);
@@ -435,7 +435,10 @@ void Module::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QW
  */
 void Module::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
 {
-    bool multiSel = isSelected() && DataFlowView::the()->selectedModules().size() > 1;
+    auto selected = DataFlowView::the()->selectedModules();
+    bool multiSel = isSelected() && selected.size() > 1;
+    if (selected.empty())
+        selected.push_back(this);
     m_deleteSelAct->setVisible(multiSel);
     m_createModuleGroup->setVisible(multiSel);
     m_deleteThisAct->setVisible(!multiSel);
@@ -472,10 +475,11 @@ void Module::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
                 }
             }
         }
+
         m_replaceWithMenu->clear();
         auto *mb = scene()->moduleBrowser();
         auto hub = mb->getHubItem(m_hub);
-        if (hub) {
+        if (hub && selected.size() == 1) {
             QString baseName = m_name;
             unsigned ncaps = 0;
             for (int i = 0; i < baseName.size(); ++i) {
@@ -518,23 +522,51 @@ void Module::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
         m_moveToMenu->clear();
         delete m_moveToAct;
         m_moveToAct = nullptr;
-        auto hubs = scene()->moduleBrowser()->getHubs();
+        auto hubs = mb->getHubs();
         unsigned nact = 0;
         int otherHubId = vistle::message::Id::Invalid;
         QString otherHubName;
         for (auto it = hubs.rbegin(); it != hubs.rend(); ++it) {
             const auto &h = *it;
-            if (h.first == m_hub)
+            bool allOnThisHub = true;
+            for (auto *m: selected) {
+                if (m->hub() != h.first) {
+                    allOnThisHub = false;
+                    break;
+                }
+            }
+            if (allOnThisHub)
                 continue;
             auto modules = getModules(h.first);
-            if (std::find(modules.begin(), modules.end(), m_name) != modules.end()) {
+            bool allFound = true;
+            for (auto *m: selected) {
+                if (std::find(modules.begin(), modules.end(), m->name()) == modules.end()) {
+                    allFound = false;
+                    break;
+                }
+            }
+            std::string what = "module";
+            if (selected.size() > 1)
+                what = std::to_string(selected.size()) + " modules";
+            if (allFound) {
                 auto act = new QAction(h.second, this);
-                act->setStatusTip(QString("Migrate module to %1 (Id %2)").arg(h.second).arg(h.first));
+                act->setStatusTip(
+                    QString("Migrate %3 to %1 (Id %2)").arg(h.second).arg(h.first).arg(QString::fromStdString(what)));
                 int hubId = h.first;
                 otherHubId = hubId;
                 otherHubName = h.second;
-                connect(act, &QAction::triggered, this, [this, hubId] { moveToHub(hubId); });
+                connect(act, &QAction::triggered, this, [this, selected, hubId] {
+                    if (isSelected() && selected.size() > 1) {
+                        for (auto *m: selected) {
+                            if (m->hub() != hubId)
+                                m->moveToHub(hubId);
+                        }
+                    } else {
+                        moveToHub(hubId);
+                    }
+                });
                 m_moveToMenu->addAction(act);
+                m_moveToAct = act;
                 ++nact;
             }
         }
@@ -543,9 +575,8 @@ void Module::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
         } else {
             m_moveToMenu->menuAction()->setVisible(false);
             if (otherHubId != vistle::message::Id::Invalid) {
-                m_moveToAct = new QAction(QString("Move to %1").arg(otherHubName), this);
-                m_moveToAct->setStatusTip(QString("Migrate module to %1 (Id %2)").arg(otherHubName).arg(otherHubId));
-                connect(m_moveToAct, &QAction::triggered, this, [this, otherHubId] { moveToHub(otherHubId); });
+                m_moveToAct->setText(
+                    QString("Move%2 to %3").arg(selected.size() <= 1 ? "" : " Selected").arg(otherHubName));
                 m_moduleMenu->insertAction(m_moveToMenu->menuAction(), m_moveToAct);
             }
         }

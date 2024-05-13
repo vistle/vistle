@@ -2266,9 +2266,13 @@ bool Hub::handlePriv(const message::Spawn &spawnRecv)
                         sendError("cannot migrate module with id " + std::to_string(spawn.getReference()));
                         return handlePlainSpawn(notify, doSpawn, true);
                     }
+                    if (!editDelayedConnects(spawn.migrateId(), notify.spawnId())) {
+                        sendError("cannot migrate module with id " + std::to_string(spawn.getReference()));
+                        return handlePlainSpawn(notify, doSpawn, true);
+                    }
                 }
-                killOldModule(spawn.migrateId());
                 m_sendAfterExit[spawn.migrateId()].push_back(spawn);
+                killOldModule(spawn.migrateId());
                 return true;
             } else if (clone) {
                 if (doSpawn) {
@@ -2354,6 +2358,37 @@ bool Hub::handleConnectOrDisconnect(const ConnMsg &mm)
     }
 }
 
+namespace {
+template<typename Msg>
+void updateSourceOrDestinationId(Msg &m, int oldId, int newId)
+{
+    if (m.getModuleA() == oldId) {
+        m.setModuleA(newId);
+    }
+    if (m.getModuleB() == oldId) {
+        m.setModuleB(newId);
+    }
+}
+} // namespace
+
+bool Hub::updateQueue(int oldId, int newId)
+{
+    using namespace message;
+
+    std::unique_lock guard(m_queueMutex);
+    for (auto &m: m_queue) {
+        if (m.type() == message::CONNECT) {
+            auto &mm = m.as<Connect>();
+            updateSourceOrDestinationId(mm, oldId, newId);
+        } else if (m.type() == message::DISCONNECT) {
+            auto &mm = m.as<Disconnect>();
+            updateSourceOrDestinationId(mm, oldId, newId);
+        }
+    }
+
+    return true;
+}
+
 bool Hub::handleQueue()
 {
     using namespace message;
@@ -2373,17 +2408,21 @@ bool Hub::handleQueue()
                 if (m_stateTracker.handleConnectOrDisconnect(mm)) {
                     again = true;
                     handlePriv(mm);
+                    //CERR << "handleQueue: CONNECT now: " << mm << std::endl;
                 } else {
                     guard.lock();
                     m_queue.push_back(m);
                     guard.unlock();
+                    //CERR << "handleQueue: CONNECT later: " << mm << std::endl;
                 }
             } else if (m.type() == message::DISCONNECT) {
                 auto &mm = m.as<Disconnect>();
                 if (m_stateTracker.handleConnectOrDisconnect(mm)) {
                     again = true;
                     handlePriv(mm);
+                    //CERR << "handleQueue: DISCONNECT now: " << mm << std::endl;
                 } else {
+                    //CERR << "handleQueue: DISCONNECT later: " << m << std::endl;
                     guard.lock();
                     m_queue.push_back(m);
                     guard.unlock();
@@ -2502,6 +2541,20 @@ void Hub::applyAllDelayedParameters(int oldModuleId, int newModuleId)
     auto pm = message::SetParameter(newModuleId);
     pm.setDestId(newModuleId);
     m_sendAfterSpawn[newModuleId].emplace_back(pm);
+}
+
+bool Hub::editDelayedConnects(int oldModuleId, int newModuleId)
+{
+    CERR << "updating connects: " << oldModuleId << " -> " << newModuleId << std::endl;
+    for (auto &m: m_sendAfterSpawn) {
+        for (auto &msg: m.second) {
+            if (msg.type() == message::CONNECT) {
+                auto &cm = msg.as<message::Connect>();
+                updateSourceOrDestinationId(cm, oldModuleId, newModuleId);
+            }
+        }
+    }
+    return updateQueue(oldModuleId, newModuleId);
 }
 
 bool Hub::cacheModuleValues(int oldModuleId, int newModuleId)

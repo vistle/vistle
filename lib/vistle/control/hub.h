@@ -116,6 +116,7 @@ private:
     void cachePortConnections(int oldModuleId, int newModuleId);
     void cacheParamConnections(int oldModuleId, int newModuleId);
     bool cacheModuleValues(int oldModuleId, int newModuleId);
+    bool editDelayedConnects(int oldModuleId, int newModuleId);
     void applyAllDelayedParameters(int oldModuleId, int newModuleId);
     bool copyModuleParams(int oldModuleId, int newModuleId);
     void cacheParameters(int oldModuleId, int newModuleId);
@@ -229,6 +230,7 @@ private:
     std::mutex m_queueMutex; // protect access to m_queue
     std::vector<message::Buffer> m_queue;
     bool handleQueue();
+    bool updateQueue(int oldId, int newId);
 
     void setLoadedFile(const std::string &file);
     void setSessionUrl(const std::string &url);
