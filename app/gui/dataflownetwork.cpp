@@ -26,6 +26,10 @@
 #include <QGraphicsSceneMouseEvent>
 #include <QDebug>
 #include <QtMath>
+#if 0
+#include <QGuiApplication>
+#include <QStyleHints>
+#endif
 
 namespace gui {
 
@@ -44,7 +48,11 @@ DataFlowNetwork::DataFlowNetwork(vistle::VistleConnection *conn, MainWindow *mw,
 , m_mainWindow(mw)
 {
     // Initialize starting scene information.
-    m_LineColor = Qt::black;
+    if (isDark()) {
+        m_LineColor = Qt::darkGray;
+    } else {
+        m_LineColor = Qt::black;
+    }
     m_mousePressed = false;
 
     m_highlightColor = QColor(200, 50, 200);
@@ -488,10 +496,14 @@ Module *DataFlowNetwork::findModule(const boost::uuids::uuid &spawnUuid) const
 
 bool DataFlowNetwork::isDark() const
 {
+#if 0
+    return qApp->styleHints()->colorScheme() == Qt::ColorScheme::Dark;
+#else
     const auto &palette = DataFlowView::the()->palette();
     auto &fg = palette.color(QPalette::Text);
     auto &bg = palette.color(QPalette::Base);
     return fg.value() > bg.value();
+#endif
 }
 
 QColor DataFlowNetwork::highlightColor() const
@@ -538,7 +550,7 @@ void DataFlowNetwork::mousePressEvent(QGraphicsSceneMouseEvent *event)
         case Port::Output:
         case Port::Parameter:
             m_Line = new QGraphicsLineItem(QLineF(event->scenePos(), event->scenePos()));
-            m_Line->setPen(QPen(m_LineColor, 2));
+            m_Line->setPen(QPen(m_LineColor, 3));
             addItem(m_Line);
             startModule = dynamic_cast<Module *>(startPort->parentItem());
             break;

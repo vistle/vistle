@@ -82,10 +82,18 @@ void Connection::setState(Connection::State state)
 
     switch (m_state) {
     case ToEstablish:
-        setColor(QColor(140, 140, 140));
+        if (scene()->isDark()) {
+            setColor(Qt::black);
+        } else {
+            setColor(QColor(140, 140, 140));
+        }
         break;
     case Established:
-        setColor(QColor(0, 0, 0));
+        if (scene()->isDark()) {
+            setColor(Qt::darkGray);
+        } else {
+            setColor(Qt::black);
+        }
         break;
     case ToRemove:
         setColor(QColor(200, 50, 50));
