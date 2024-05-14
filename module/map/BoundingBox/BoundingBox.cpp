@@ -202,7 +202,7 @@ Lines::ptr makeBox(Vector3 min, Vector3 max)
 
 bool Extrema::compute()
 {
-    //std::cerr << "Extrema: compute: execcount=" << m_executionCount << std::endl;
+    //std::cerr << "Extrema: compute: generation=" << m_generation << std::endl;
 
     dim = -1;
 

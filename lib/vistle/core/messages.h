@@ -338,13 +338,11 @@ public:
                                         (Reduce) // call reduce()
     )
 
-    explicit Execute(What what = Execute::ComputeExecute, int module = Id::Broadcast, int count = -1);
+    explicit Execute(What what = Execute::ComputeExecute, int module = Id::Broadcast);
     Execute(int module, double realtime, double step = 0.);
 
     void setModule(int);
     int getModule() const;
-    void setExecutionCount(int count);
-    int getExecutionCount() const;
 
     bool allRanks() const;
     void setAllRanks(bool allRanks);
@@ -358,7 +356,6 @@ public:
 private:
     bool m_allRanks; //!< whether execute should be broadcasted across all MPI ranks
     int module; //!< destination module, -1: all sources
-    int executionCount; //!< count of execution which triggered this execute
     What m_what; //!< reason why this message was generated
     double m_realtime; //!< realtime/timestep currently displayed
     double m_animationStepDuration; //!< duration of a single timestep
@@ -368,11 +365,7 @@ V_ENUM_OUTPUT_OP(What, Execute)
 //! notify that module is done executing
 class V_COREEXPORT ExecutionDone: public MessageBase<ExecutionDone, EXECUTIONDONE> {
 public:
-    explicit ExecutionDone(int executionCount);
-    int getExecutionCount() const;
-
-private:
-    int m_executionCount; //!< count of execution after which this message was issued
+    ExecutionDone();
 };
 
 //! trigger execution of a module function
@@ -844,15 +837,12 @@ public:
                                         (Start) //< execution starts - if applicable, prepare() will be invoked
                                         (Finish) //< execution finishes - if applicable, reduce() has finished
     )
-    ExecutionProgress(Progress stage, int count);
+    explicit ExecutionProgress(Progress stage);
     Progress stage() const;
     void setStage(Progress stage);
-    void setExecutionCount(int count);
-    int getExecutionCount() const;
 
 private:
     Progress m_stage;
-    int m_executionCount; //!< count of execution which triggered this message
 };
 V_ENUM_OUTPUT_OP(Progress, ExecutionProgress)
 
@@ -991,7 +981,7 @@ private:
     int32_t m_timestep, m_numTimesteps;
     int32_t m_animationstep, m_numAnimationsteps;
     int32_t m_iteration;
-    int32_t m_executionCount;
+    int32_t m_generation;
     int32_t m_creator;
     double m_realtime;
 };

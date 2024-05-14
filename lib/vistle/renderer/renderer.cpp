@@ -297,20 +297,20 @@ bool Renderer::addInputObject(int sender, const std::string &senderPort, const s
         return c.module == sender && c.port == senderPort;
     });
     if (it != m_sendPortMap.end()) {
-        if (it->age < object->getExecutionCounter()) {
-            //std::cerr << "removing all sent by " << sender << ", age " << object->getExecutionCounter() << ", was " << it->age << std::endl;
+        if (it->age < object->getGeneration()) {
+            //std::cerr << "removing all sent by " << sender << ", age " << object->getGeneration() << ", was " << it->age << std::endl;
             removeAllSentBy(sender, senderPort);
-        } else if (it->age == object->getExecutionCounter() && it->iteration < object->getIteration()) {
-            std::cerr << "removing all sent by " << sender << ":" << senderPort << ", age "
-                      << object->getExecutionCounter() << ": new iteration " << object->getIteration() << std::endl;
+        } else if (it->age == object->getGeneration() && it->iteration < object->getIteration()) {
+            std::cerr << "removing all sent by " << sender << ":" << senderPort << ", age " << object->getGeneration()
+                      << ": new iteration " << object->getIteration() << std::endl;
             removeAllSentBy(sender, senderPort);
-        } else if (it->age > object->getExecutionCounter()) {
+        } else if (it->age > object->getGeneration()) {
             std::cerr << "received outdated object sent by " << sender << ":" << senderPort << ", age "
-                      << object->getExecutionCounter() << ", was " << it->age << std::endl;
+                      << object->getGeneration() << ", was " << it->age << std::endl;
             return false;
-        } else if (it->age == object->getExecutionCounter() && it->iteration > object->getIteration()) {
+        } else if (it->age == object->getGeneration() && it->iteration > object->getIteration()) {
             std::cerr << "received outdated object sent by " << sender << ":" << senderPort << ", age "
-                      << object->getExecutionCounter() << ": old iteration " << object->getIteration() << std::endl;
+                      << object->getGeneration() << ": old iteration " << object->getIteration() << std::endl;
             return false;
         }
     } else {
@@ -318,7 +318,7 @@ bool Renderer::addInputObject(int sender, const std::string &senderPort, const s
         it = m_sendPortMap.insert(SendPort(sender, senderPort, name)).first;
     }
     auto &sendPort = *it;
-    sendPort.age = object->getExecutionCounter();
+    sendPort.age = object->getGeneration();
     sendPort.iteration = object->getIteration();
 
     if (Empty::as(object))
@@ -366,7 +366,7 @@ bool Renderer::addInputObject(int sender, const std::string &senderPort, const s
         noobject = " NO OBJECT generated";
     }
     std::cerr << "++++++Renderer addInputObject " << object->getName() << " type " << object->getType() << " creator "
-              << object->getCreator() << " exec " << object->getExecutionCounter() << " iter " << object->getIteration()
+              << object->getCreator() << " generation " << object->getGeneration() << " iter " << object->getIteration()
               << variant << *object << noobject << std::endl;
 #endif
 

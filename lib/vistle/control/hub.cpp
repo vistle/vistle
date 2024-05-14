@@ -166,7 +166,6 @@ Hub::Hub(bool inManager)
 , m_hubId(Id::Invalid)
 , m_moduleCount(0)
 , m_traceMessages(message::INVALID)
-, m_execCount(0)
 , m_barrierActive(false)
 , m_barrierReached(0)
 #if BOOST_VERSION >= 106600
@@ -439,11 +438,45 @@ bool Hub::init(int argc, char *argv[])
 
     if (m_isMaster && vm.count("hub") > 0) {
         m_isMaster = false;
+        ++m_basePort;
         m_masterHost = vm["hub"].as<std::string>();
-        auto colon = m_masterHost.find(':');
-        if (colon != std::string::npos) {
-            m_masterPort = boost::lexical_cast<unsigned short>(m_masterHost.substr(colon + 1));
-            m_masterHost = m_masterHost.substr(0, colon);
+
+        // parse port from host string, if given
+        // possible cases:
+        // - hostname
+        // - hostname:port
+        // - v4address
+        // - v4address:port
+        // - v6address
+        // - [v6address]
+        // - [v6address]:port
+        auto brace = m_masterHost.find('[');
+        if (brace != std::string::npos) {
+            // IPv6 address within braces
+            if (brace != 0) {
+                CERR << "invalid IPv6 address for master host, [ has to be first character: " << m_masterHost
+                     << std::endl;
+                return false;
+            }
+            auto endbrace = m_masterHost.find(']', brace);
+            if (endbrace == std::string::npos) {
+                CERR << "invalid IPv6 address for master host, ] is required" << m_masterHost << std::endl;
+                return false;
+            }
+            auto colon = m_masterHost.find(':', endbrace);
+            if (colon != std::string::npos) {
+                m_masterPort = boost::lexical_cast<unsigned short>(m_masterHost.substr(colon + 1));
+                m_masterHost = m_masterHost.substr(0, colon);
+            }
+        } else {
+            auto colon = m_masterHost.find(':');
+            auto colon2 = m_masterHost.find(':', colon + 1);
+            if (colon != std::string::npos && colon2 == std::string::npos) {
+                m_masterPort = boost::lexical_cast<unsigned short>(m_masterHost.substr(colon + 1));
+                m_masterHost = m_masterHost.substr(0, colon);
+            } else {
+                // IPv6 address without port, not within braces
+            }
         }
     }
 
@@ -3028,10 +3061,6 @@ bool Hub::handlePriv(const message::Execute &exec)
         return true;
 
     auto toSend = make.message<message::Execute>(exec);
-    if (exec.getExecutionCount() > m_execCount)
-        m_execCount = exec.getExecutionCount();
-    if (exec.getExecutionCount() < 0)
-        toSend.setExecutionCount(++m_execCount);
 
     bool onlySources = false;
     bool isCompound = false;

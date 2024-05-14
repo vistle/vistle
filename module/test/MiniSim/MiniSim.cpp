@@ -50,7 +50,7 @@ MiniSimModule::MiniSimModule(const std::string &name, int moduleID, mpi::communi
 
         while (!m_terminate) {
             while (!m_terminate && m_adapter->paused()) {
-                m_adapter->Execute(0);
+                m_adapter->execute(0);
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
             try {
@@ -64,7 +64,7 @@ MiniSimModule::MiniSimModule(const std::string &name, int moduleID, mpi::communi
             // if (!m_adapter->paused())
             //     m_simulationMessageQueue->send(insitu::message::ExecuteCommand{std::make_pair("run_simulation", "")});
         }
-        m_adapter->Finalize();
+        m_adapter->finalize();
     }});
 }
 
@@ -126,7 +126,11 @@ std::unique_ptr<insitu::message::MessageHandler> MiniSimModule::connectToSim()
 
 MiniSimModule::~MiniSimModule()
 {
+    m_sim.terminate();
     m_terminate = true;
+    if (getMessageHandler())
+        getMessageHandler()->send(
+            insitu::message::ConnectionClosed(insitu::message::DisconnectState::ShutdownNoRestart));
     if (m_simThread->joinable()) {
         m_simThread->join();
     }
@@ -320,13 +324,14 @@ void MiniSimModule::createGrid(int blockId, const diy::DiscreteBounds cellExts)
     //}
     m_adapter->updateMeta(grid);
     grid->setTimestep(-1);
+    grid->setIteration(-1);
 
     assert(el[numElements] == numCorners);
 }
 
 void MiniSimModule::execute(long step, float time)
 {
-    m_adapter->Execute(step);
+    m_adapter->execute(step);
 }
 
 

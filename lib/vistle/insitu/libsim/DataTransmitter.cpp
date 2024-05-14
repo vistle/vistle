@@ -73,9 +73,9 @@ void DataTransmitter::updateRequestedObjets(const message::ModuleInfo &connected
     }
 }
 
-void DataTransmitter::updateExecutionCount()
+void DataTransmitter::updateGeneration()
 {
-    ++m_executionCount;
+    ++m_generation;
 }
 
 
@@ -325,7 +325,7 @@ void DataTransmitter::updateMeta(vistle::Object::ptr obj, const message::ModuleI
 {
     if (obj) {
         obj->setCreator(moduleInfo.id());
-        obj->setExecutionCounter(m_executionCount);
+        obj->setGeneration(m_generation);
         obj->setTimestep(m_currTimestep);
         obj->setIteration(m_currIteration);
         obj->updateInternals();

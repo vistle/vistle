@@ -678,8 +678,8 @@ bool COVER::addColorMap(const std::string &species, Object::const_ptr colormap)
         cmap.setRange(texture->getMin(), texture->getMax());
 
         cmap.image->setPixelFormat(GL_RGBA);
-        cmap.image->setImage(texture->getWidth(), 1, 1, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, &texture->pixels()[0],
-                             osg::Image::NO_DELETE);
+        cmap.image->setImage(texture->getWidth(), 1, 1, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE,
+                             const_cast<unsigned char *>(&texture->pixels()[0]), osg::Image::NO_DELETE);
         cmap.image->dirty();
 
         cmap.setBlendWithMaterial(texture->hasAttribute("_blend_with_material"));
@@ -1016,7 +1016,7 @@ bool COVER::handleMessage(const message::Message *message, const MessagePayload 
     }
     case vistle::message::COVER: {
         auto &cmsg = message->as<const message::Cover>();
-        covise::DataHandle dh(payload->data(), payload->size(), false /* do not delete */);
+        covise::DataHandle dh(const_cast<char *>(payload->data()), payload->size(), false /* do not delete */);
         covise::Message msg(cmsg.subType(), dh);
         msg.sender = cmsg.sender();
         msg.send_type = cmsg.senderType();

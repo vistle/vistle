@@ -59,7 +59,7 @@ bool Variant::changeParameter(const Parameter *p)
 
 bool Variant::compute()
 {
-    //std::cerr << "Variant: compute: execcount=" << m_executionCount << std::endl;
+    //std::cerr << "Variant: compute: generation=" << m_generation << std::endl;
 
     Object::const_ptr obj = expect<Object>("data_in");
     if (!obj)

@@ -167,9 +167,7 @@ bool Vec<T, Dim>::checkImpl(std::ostream &os, bool quick) const
 template<class T, unsigned Dim>
 void Vec<T, Dim>::updateInternals()
 {
-    if (!d()->boundsValid()) {
-        d()->updateBounds();
-    }
+    d()->updateBounds();
     Base::updateInternals();
 }
 
@@ -229,7 +227,6 @@ void Vec<T, Dim>::Data::invalidateBounds()
 template<class T, unsigned Dim>
 void Vec<T, Dim>::Data::updateBounds()
 {
-    invalidateBounds();
     for (unsigned c = 0; c < Dim; ++c) {
         if (x[c])
             x[c]->update_bounds();

@@ -24,8 +24,8 @@ class V_SENSEIEXPORT Adapter //: public SenseiInterface
 public:
     Adapter(bool paused, MPI_Comm Comm, MetaData &&meta, ObjectRetriever cbs, const std::string &vistleRoot,
             const std::string &vistleBuildType, const std::string &options);
-    bool Execute(size_t timestep);
-    bool Finalize();
+    bool execute(size_t timestep);
+    bool finalize();
 
     Adapter &operator=(Adapter &&other) = delete;
     Adapter &operator=(Adapter &other) = delete;
@@ -48,9 +48,9 @@ private:
     detail::Internals *m_internals = nullptr;
     MPI_Comm m_comm;
     bool m_connected = false; // If we are connected to the module
-    size_t m_processedTimesteps = -1;
-    size_t m_iterations = 0;
-    size_t m_executionCount = 0;
+    int m_processedTimesteps = -1;
+    int m_iteration = 0;
+    int m_generation = 0;
     // mpi info
     int m_rank = -1, m_mpiSize = 0;
     MPI_Comm comm = MPI_COMM_WORLD;

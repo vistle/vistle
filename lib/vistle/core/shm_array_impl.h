@@ -13,26 +13,48 @@
 #include "index.h"
 #include "archives_config.h"
 #include "shmdata.h"
+#include <vtkm/cont/ArrayRangeCompute.h>
 
 namespace vistle {
 
 template<typename T, class allocator>
 shm_array<T, allocator>::shm_array(const allocator &alloc)
-: ShmData(ShmData::ARRAY), m_type(typeId()), m_size(0), m_capacity(0), m_data(nullptr), m_allocator(alloc)
+: ShmData(ShmData::ARRAY)
+, m_type(typeId())
+, m_size(0)
+, m_capacity(0)
+, m_data(nullptr)
+#ifndef NO_SHMEM
+, m_allocator(alloc)
+#endif
 {
     resize(0);
 }
 
 template<typename T, class allocator>
 shm_array<T, allocator>::shm_array(const size_t size, const allocator &alloc)
-: ShmData(ShmData::ARRAY), m_type(typeId()), m_size(0), m_capacity(0), m_data(nullptr), m_allocator(alloc)
+: ShmData(ShmData::ARRAY)
+, m_type(typeId())
+, m_size(0)
+, m_capacity(0)
+, m_data(nullptr)
+#ifndef NO_SHMEM
+, m_allocator(alloc)
+#endif
 {
     resize(size);
 }
 
 template<typename T, class allocator>
 shm_array<T, allocator>::shm_array(const size_t size, const T &value, const allocator &alloc)
-: ShmData(ShmData::ARRAY), m_type(typeId()), m_size(0), m_capacity(0), m_data(nullptr), m_allocator(alloc)
+: ShmData(ShmData::ARRAY)
+, m_type(typeId())
+, m_size(0)
+, m_capacity(0)
+, m_data(nullptr)
+#ifndef NO_SHMEM
+, m_allocator(alloc)
+#endif
 {
     resize(size, value);
 }
@@ -46,7 +68,13 @@ shm_array<T, allocator>::shm_array(shm_array &&other)
 , m_min(other.m_min)
 , m_max(other.m_max)
 , m_data(other.m_data)
+#ifdef NO_SHMEM
+, m_memoryValid(other.m_memoryValid.load(std::memory_order_seq_cst))
+, m_unknown(other.m_unknown)
+, m_handle(other.m_handle)
+#else
 , m_allocator(other.m_allocator)
+#endif
 {
     other.m_data = nullptr;
     other.m_size = 0;
@@ -63,18 +91,49 @@ shm_array<T, allocator>::~shm_array()
 }
 
 template<typename T, class allocator>
+template<class ArrayHandle>
+void shm_array<T, allocator>::setHandle(const ArrayHandle &h)
+{
+    //assert(h.GetValueTypeName() == vtkm::cont::TypeToString(handle_type()));
+#ifdef NO_SHMEM
+    PROF_SCOPE("shm_array::setHandle()");
+    m_unknown = h;
+    m_memoryValid = false;
+    m_size = h.GetNumberOfValues();
+
+    vtkm::cont::ArrayHandle<vtkm::Range> rangeArray = vtkm::cont::ArrayRangeCompute(h);
+    auto rangePortal = rangeArray.ReadPortal();
+    assert(rangePortal.GetNumberOfValues() == 1); // 1 component
+    vtkm::Range componentRange = rangePortal.Get(0);
+    m_min = componentRange.Min;
+    m_max = componentRange.Max;
+    assert(m_size == 0 || bounds_valid());
+#else
+    resize(h.GetNumberOfValues());
+    vtkm::cont::ArrayHandleBasic<handle_type> handle(reinterpret_cast<handle_type *>(m_data.get()), m_size,
+                                                     [](void *) {});
+    vtkm::cont::ArrayCopy(h, handle);
+    handle.SyncControlArray();
+#endif
+}
+
+template<typename T, class allocator>
 bool shm_array<T, allocator>::check(std::ostream &os) const
 {
     assert(refcount() >= 0);
+#ifndef NO_SHMEM
     assert(m_size <= m_capacity);
+#endif
     if (refcount() < 0) {
         os << "shm_array: INCONSISTENCY: refcount() < 0" << std::endl;
         return false;
     }
+#ifndef NO_SHMEM
     if (m_size > m_capacity) {
         os << "shm_array: INCONSISTENCY: m_size > m_capacity" << std::endl;
         return false;
     }
+#endif
     if (m_dim[0] != 0 && m_size != m_dim[0] * m_dim[1] * m_dim[2]) {
         os << "shm_array: INCONSISTENCY: dimensions" << std::endl;
         return false;
@@ -85,14 +144,16 @@ bool shm_array<T, allocator>::check(std::ostream &os) const
 template<typename T, class allocator>
 T &shm_array<T, allocator>::at(const size_t idx)
 {
+    updateFromHandle(true);
     if (idx >= m_size)
         throw(std::out_of_range("shm_array"));
     return m_data[idx];
 }
 
 template<typename T, class allocator>
-T &shm_array<T, allocator>::at(const size_t idx) const
+const T &shm_array<T, allocator>::at(const size_t idx) const
 {
+    updateFromHandle();
     if (idx >= m_size)
         throw(std::out_of_range("shm_array"));
     return m_data[idx];
@@ -101,12 +162,12 @@ T &shm_array<T, allocator>::at(const size_t idx) const
 template<typename T, class allocator>
 void shm_array<T, allocator>::push_back(const T &v)
 {
+    updateFromHandle(true);
     if (m_size >= m_capacity)
         reserve(m_capacity == 0 ? 1 : m_capacity * 2);
     assert(m_size < m_capacity);
     new (&m_data[m_size]) T(v);
     ++m_size;
-    updateArrayHandle();
 }
 
 template<typename T, class allocator>
@@ -118,29 +179,31 @@ void shm_array<T, allocator>::clear()
 template<typename T, class allocator>
 void shm_array<T, allocator>::resize(const size_t size)
 {
+    if (size == m_size)
+        return;
+
+    updateFromHandle(true);
     reserve(size);
     if (!std::is_trivially_copyable<T>::value) {
         for (size_t i = m_size; i < size; ++i)
             new (&m_data[i]) T();
     }
     m_size = size;
-    assert(m_size <= m_capacity);
     clearDimensionHint();
-    invalidate_bounds();
-    updateArrayHandle();
 }
 
 template<typename T, class allocator>
 void shm_array<T, allocator>::resize(const size_t size, const T &value)
 {
+    if (size == m_size)
+        return;
+
+    updateFromHandle(true);
     reserve(size);
     for (size_t i = m_size; i < size; ++i)
         new (&m_data[i]) T(value);
     m_size = size;
-    assert(m_size <= m_capacity);
     clearDimensionHint();
-    invalidate_bounds();
-    updateArrayHandle();
 }
 
 #ifdef NO_SHMEM
@@ -157,15 +220,6 @@ const vtkm::cont::ArrayHandle<typename shm_array<T, allocator>::handle_type> shm
                                         vtkm::CopyFlag::Off);
 }
 #endif
-
-template<typename T, class allocator>
-void shm_array<T, allocator>::updateArrayHandle()
-{
-#ifdef NO_SHMEM
-    // has to be updated whenever the location or the size of the array changes
-    m_handle = vtkm::cont::make_ArrayHandle(reinterpret_cast<handle_type *>(m_data), m_size, vtkm::CopyFlag::Off);
-#endif
-}
 
 
 template<typename T, class allocator>
@@ -213,6 +267,13 @@ void shm_array<T, allocator>::reserve(const size_t new_capacity)
 template<typename T, class allocator>
 void shm_array<T, allocator>::reserve_or_shrink(const size_t capacity)
 {
+    PROF_SCOPE("shm_array::reserve_or_shrink()");
+#ifdef NO_SHMEM
+    updateFromHandle(true);
+    m_handle.Allocate(capacity, vtkm::CopyFlag::On);
+    m_data = reinterpret_cast<T *>(m_handle.GetWritePointer());
+    m_capacity = capacity;
+#else
     pointer new_data = capacity > 0 ? m_allocator.allocate(capacity) : nullptr;
     const size_t n = capacity < m_size ? capacity : m_size;
     if (m_data && new_data) {
@@ -234,7 +295,7 @@ void shm_array<T, allocator>::reserve_or_shrink(const size_t capacity)
     }
     m_data = new_data;
     m_capacity = capacity;
-    updateArrayHandle();
+#endif
 }
 
 template<typename T, class allocator>
@@ -254,7 +315,11 @@ void shm_array<T, allocator>::invalidate_bounds()
 template<typename T, class allocator>
 void shm_array<T, allocator>::update_bounds()
 {
-    invalidate_bounds();
+    if (bounds_valid())
+        return;
+
+    PROF_SCOPE("shm_array::update_bounds()");
+    updateFromHandle();
 
     if (!m_data)
         return;
@@ -269,6 +334,7 @@ template<typename T, class allocator>
 template<class Archive>
 void shm_array<T, allocator>::save(Archive &ar) const
 {
+    updateFromHandle();
     ar &V_NAME(ar, "type", m_type);
     ar &V_NAME(ar, "size", size_type(m_size));
     ar &V_NAME(ar, "exact", m_exact);
@@ -318,7 +384,6 @@ void shm_array<T, allocator>::print(std::ostream &os, bool verbose) const
     os << "]";
     os << " #ref:" << refcount();
 }
-
 
 template<typename T, class allocator>
 std::ostream &operator<<(std::ostream &os, const shm_array<T, allocator> &arr)

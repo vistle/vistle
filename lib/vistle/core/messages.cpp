@@ -676,17 +676,12 @@ bool Screenshot::quit() const
     return m_quit;
 }
 
-Execute::Execute(Execute::What what, const int module, const int count)
-: m_allRanks(false), module(module), executionCount(count), m_what(what), m_realtime(0.), m_animationStepDuration(0.)
+Execute::Execute(Execute::What what, const int module)
+: m_allRanks(false), module(module), m_what(what), m_realtime(0.), m_animationStepDuration(0.)
 {}
 
 Execute::Execute(const int module, double realtime, double stepsize)
-: m_allRanks(false)
-, module(module)
-, executionCount(-1)
-, m_what(ComputeExecute)
-, m_realtime(realtime)
-, m_animationStepDuration(stepsize)
+: m_allRanks(false), module(module), m_what(ComputeExecute), m_realtime(realtime), m_animationStepDuration(stepsize)
 {}
 
 void Execute::setModule(int m)
@@ -697,16 +692,6 @@ void Execute::setModule(int m)
 int Execute::getModule() const
 {
     return module;
-}
-
-void Execute::setExecutionCount(int count)
-{
-    executionCount = count;
-}
-
-int Execute::getExecutionCount() const
-{
-    return executionCount;
 }
 
 bool Execute::allRanks() const
@@ -739,13 +724,7 @@ double Execute::animationStepDuration() const
     return m_animationStepDuration;
 }
 
-ExecutionDone::ExecutionDone(int executionCount): m_executionCount(executionCount)
-{}
-
-int ExecutionDone::getExecutionCount() const
-{
-    return m_executionCount;
-}
+ExecutionDone::ExecutionDone() = default;
 
 
 CancelExecute::CancelExecute(const int module): m_module(module)
@@ -1636,7 +1615,7 @@ ReducePolicy::Reduce ReducePolicy::policy() const
     return m_reduce;
 }
 
-ExecutionProgress::ExecutionProgress(Progress stage, int count): m_stage(stage), m_executionCount(count)
+ExecutionProgress::ExecutionProgress(Progress stage): m_stage(stage)
 {}
 
 ExecutionProgress::Progress ExecutionProgress::stage() const
@@ -1647,16 +1626,6 @@ ExecutionProgress::Progress ExecutionProgress::stage() const
 void ExecutionProgress::setStage(ExecutionProgress::Progress stage)
 {
     m_stage = stage;
-}
-
-void ExecutionProgress::setExecutionCount(int count)
-{
-    m_executionCount = count;
-}
-
-int ExecutionProgress::getExecutionCount() const
-{
-    return m_executionCount;
 }
 
 Trace::Trace(int module, Type messageType, bool onoff): m_module(module), m_messageType(messageType), m_on(onoff)
@@ -1884,7 +1853,7 @@ SendObject::SendObject(const RequestObject &request, Object::const_ptr obj, size
     m_animationstep = meta.animationStep();
     m_numAnimationsteps = meta.numAnimationSteps();
     m_iteration = meta.iteration();
-    m_executionCount = meta.executionCounter();
+    m_generation = meta.generation();
     m_creator = meta.creator();
     m_realtime = meta.realTime();
 }
@@ -1919,7 +1888,7 @@ Object::Type SendObject::objectType() const
 
 Meta SendObject::objectMeta() const
 {
-    Meta meta(m_block, m_timestep, m_animationstep, m_iteration, m_executionCount, m_creator);
+    Meta meta(m_block, m_timestep, m_animationstep, m_iteration, m_generation, m_creator);
     meta.setNumBlocks(m_numBlocks);
     meta.setNumTimesteps(m_numTimesteps);
     meta.setNumAnimationSteps(m_numAnimationsteps);
@@ -2033,12 +2002,12 @@ std::ostream &operator<<(std::ostream &s, const Message &m)
     }
     case EXECUTE: {
         auto &mm = static_cast<const Execute &>(m);
-        s << ", module: " << mm.getModule() << ", what: " << mm.what() << ", execcount: " << mm.getExecutionCount();
+        s << ", module: " << mm.getModule() << ", what: " << mm.what();
         break;
     }
     case EXECUTIONPROGRESS: {
         auto &mm = static_cast<const ExecutionProgress &>(m);
-        s << ", stage: " << ExecutionProgress::toString(mm.stage()) << ", execcount: " << mm.getExecutionCount();
+        s << ", stage: " << ExecutionProgress::toString(mm.stage());
         break;
     }
     case ADDPARAMETER: {

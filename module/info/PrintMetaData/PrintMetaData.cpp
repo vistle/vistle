@@ -14,6 +14,7 @@
 #include <vector>
 
 #include <vistle/util/hostname.h>
+#include <vistle/util/enum.h>
 
 #include <vistle/core/unstr.h>
 #include <vistle/core/points.h>
@@ -40,6 +41,7 @@ using namespace vistle;
 //-------------------------------------------------------------------------
 MODULE_MAIN(PrintMetaData)
 
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(SummaryMode, (NoSummary)(Overall)(PerTimestep))
 
 //-------------------------------------------------------------------------
 // METHOD DEFINITIONS
@@ -55,8 +57,9 @@ PrintMetaData::PrintMetaData(const std::string &name, int moduleID, mpi::communi
 
     // add module parameters
     m_param_doPrintTotals = addIntParameter(
-        "Print_Totals", "Print the Totals of incoming metadata (i.e. number of: blocks, cells, vertices, etc..)", 1,
-        Parameter::Boolean);
+        "Print_Totals", "Print the Totals of incoming metadata (i.e. number of: blocks, cells, vertices, etc..)",
+        Overall, Parameter::Choice);
+    V_ENUM_SET_CHOICES(m_param_doPrintTotals, SummaryMode);
     m_param_doPrintMinMax =
         addIntParameter("print_extrema", "Print max/min rank wise values of incoming data", 1, Parameter::Boolean);
     m_param_doPrintMPIInfo = addIntParameter("print_mpi_info", "Print each node MPI rank", 0, Parameter::Boolean);
@@ -76,6 +79,21 @@ PrintMetaData::PrintMetaData(const std::string &name, int moduleID, mpi::communi
 //-------------------------------------------------------------------------
 PrintMetaData::~PrintMetaData()
 {}
+
+bool PrintMetaData::changeParameter(const Parameter *p)
+{
+    if (p == m_param_doPrintTotals || p == m_param_doPrintMinMax) {
+        if (m_param_doPrintMinMax->getValue() == 0 && m_param_doPrintTotals->getValue() == SummaryMode::NoSummary) {
+            setReducePolicy(message::ReducePolicy::Locally);
+        } else if (m_param_doPrintTotals->getValue() == SummaryMode::PerTimestep) {
+            setReducePolicy(message::ReducePolicy::PerTimestep);
+        } else {
+            setReducePolicy(message::ReducePolicy::OverAll);
+        }
+    }
+
+    return Module::changeParameter(p);
+}
 
 // PREPARE FUNCTION
 //-------------------------------------------------------------------------
@@ -143,7 +161,7 @@ void PrintMetaData::compute_acquireGenericData(vistle::Object::const_ptr data)
     m_dataType = Object::toString(data->getType());
 
     m_creator = data->meta().creator();
-    m_executionCounter = data->meta().executionCounter();
+    m_generation = data->meta().generation();
     m_iterationCounter = data->meta().iteration();
     m_numAnimationSteps = data->meta().numAnimationSteps();
     m_numBlocks = data->meta().numBlocks();
@@ -257,43 +275,9 @@ void PrintMetaData::compute_acquireGridData(vistle::Object::const_ptr data)
 //-------------------------------------------------------------------------
 void PrintMetaData::compute_printVerbose(vistle::Object::const_ptr data)
 {
-    std::string message;
-
-    // verbose print for indexed data types
-    if (auto indexed = Indexed::as(data)) {
-        message += "\nel: ";
-        for (unsigned i = 0; i < indexed->getNumElements(); i++) {
-            message += std::to_string(indexed->el()[i]) + ", ";
-        }
-        sendInfo(message);
-        message.clear();
-
-        message += "\ncl: ";
-        for (unsigned i = 0; i < indexed->getNumCorners(); i++) {
-            message += std::to_string(indexed->cl()[i]) + ", ";
-        }
-        sendInfo(message);
-        message.clear();
-    }
-
-
-    // verbose print for vec data types
-    if (auto vec = Vec<Scalar, 1>::as(data)) {
-        message += "\nvec: ";
-        for (unsigned i = 0; i < vec->getSize(); i++) {
-            message += std::to_string(vec->x()[i]) + ", ";
-        }
-
-    } else if (auto vec = Vec<Scalar, 3>::as(data)) {
-        message += "\nvecs: ";
-        for (unsigned i = 0; i < vec->getSize(); i++) {
-            message += "(" + std::to_string(vec->x()[i]) + ",";
-            message += std::to_string(vec->y()[i]) + ",";
-            message += std::to_string(vec->z()[i]) + "), ";
-        }
-    }
-
-    sendInfo(message);
+    std::stringstream str;
+    str << "compute: " << *data;
+    sendInfo(str.str());
 }
 
 // REDUCE HELPER FUNCTION - PRINT DATA
@@ -315,7 +299,7 @@ void PrintMetaData::reduce_printData()
 
         message += "\n\nObjectData:";
         message += "\n   Creator: " + std::to_string(m_creator);
-        message += "\n   Execution Counter: " + std::to_string(m_executionCounter);
+        message += "\n   Generation: " + std::to_string(m_generation);
         message += "\n   Iteration: " + std::to_string(m_iterationCounter);
         message += "\n   Number of Animation Steps: " + std::to_string(m_numAnimationSteps);
         message += "\n   Number of Blocks: " + std::to_string(m_numBlocks);

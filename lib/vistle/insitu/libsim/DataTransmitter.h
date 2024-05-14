@@ -32,7 +32,7 @@ public:
     void resetCache();
 
     void updateRequestedObjets(const message::ModuleInfo &connectedPorts);
-    void updateExecutionCount();
+    void updateGeneration();
 
 private:
     typedef std::function<vistle::Object::ptr(const visit_handle &, vistle::insitu::message::SyncShmIDs &)>
@@ -69,7 +69,7 @@ private:
 
     size_t m_currTimestep = 0;
     size_t m_currIteration = 0;
-    size_t m_executionCount = 0;
+    size_t m_generation = 0;
     Rules m_rules;
     //the data objects that need to be procces according to the modules conneted ports
     std::set<std::string> m_requestedObjects;

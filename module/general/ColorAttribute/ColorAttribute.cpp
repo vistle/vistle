@@ -35,7 +35,7 @@ ColorAttribute::~ColorAttribute()
 
 bool ColorAttribute::compute()
 {
-    //std::cerr << "ColorAttribute: compute: execcount=" << m_executionCount << std::endl;
+    //std::cerr << "ColorAttribute: compute: generation=" << m_generation << std::endl;
 
     auto color = p_color->getValue();
     Object::const_ptr obj = expect<Object>("data_in");

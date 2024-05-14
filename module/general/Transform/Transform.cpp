@@ -122,7 +122,7 @@ M pow(const M &m, unsigned e)
 
 bool Transform::compute()
 {
-    //std::cerr << "Transform: compute: execcount=" << m_executionCount << std::endl;
+    //std::cerr << "Transform: compute: generation=" << m_generation << std::endl;
 
     Object::const_ptr obj = expect<Object>(data_in);
     if (!obj)

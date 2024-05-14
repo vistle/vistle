@@ -34,9 +34,9 @@
 #include <cover/coVRPluginSupport.h>
 #include <PluginUtil/coSphere.h>
 #include <PluginUtil/Tipsify.h>
-#endif
 
 //#define BUILD_KDTREES
+#endif
 
 using namespace vistle;
 
@@ -54,8 +54,10 @@ const int DataAttrib = 10;
 std::mutex VistleGeometryGenerator::s_coverMutex;
 
 namespace {
+#ifdef BUILD_KDTREES
 std::mutex kdTreeMutex;
 std::vector<osg::ref_ptr<osg::KdTreeBuilder>> kdTreeBuilders;
+#endif
 
 std::map<std::string, std::string> get_shader_parameters()
 {
@@ -1561,8 +1563,8 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
 
                 osg::ref_ptr<osg::Image> image = new osg::Image();
                 image->setName(nodename + ".img");
-                image->setImage(tex->getWidth(), 1, 1, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, &tex->pixels()[0],
-                                osg::Image::NO_DELETE);
+                image->setImage(tex->getWidth(), 1, 1, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE,
+                                const_cast<unsigned char *>(&tex->pixels()[0]), osg::Image::NO_DELETE);
                 osgTex->setImage(image);
 
                 state->setTextureAttributeAndModes(0, osgTex, osg::StateAttribute::ON);

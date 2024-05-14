@@ -16,7 +16,7 @@ namespace vistle {
 
 class V_COREEXPORT Meta {
 public:
-    Meta(int block = -1, int timestep = -1, int animationstep = -1, int iteration = -1, int execcount = -1,
+    Meta(int block = -1, int timestep = -1, int animationstep = -1, int iteration = -1, int generation = -1,
          int creator = -1);
     int block() const { return m_block; }
     void setBlock(int block) { m_block = block; }
@@ -34,8 +34,8 @@ public:
     int numAnimationSteps() const { return m_numAnimationsteps; }
     int iteration() const { return m_iteration; }
     void setIteration(int iteration) { m_iteration = iteration; }
-    int executionCounter() const { return m_executionCount; }
-    void setExecutionCounter(int count) { m_executionCount = count; }
+    int generation() const { return m_generation; }
+    void setGeneration(int count) { m_generation = count; }
     int creator() const { return m_creator; }
     void setCreator(int id) { m_creator = id; }
     Matrix4 transform() const;
@@ -43,7 +43,7 @@ public:
 
 private:
     int m_block, m_numBlocks, m_timestep, m_numTimesteps, m_animationstep, m_numAnimationsteps, m_iteration,
-        m_executionCount, m_creator;
+        m_generation, m_creator;
     double m_realtime;
     std::array<double, 16> m_transform;
 

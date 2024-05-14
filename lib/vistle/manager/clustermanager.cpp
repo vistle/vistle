@@ -1354,15 +1354,15 @@ bool ClusterManager::addObjectSource(const message::AddObject &addObj)
 
     if (!resendAfterConnect) {
         PortKey key(port);
-        auto ec = addObj.meta().executionCounter();
+        auto gen = addObj.meta().generation();
         auto iter = addObj.meta().iteration();
         auto &cache = m_outputObjects[key];
-        if (cache.execCount != ec || cache.iteration != iter) {
+        if (cache.generation != gen || cache.iteration != iter) {
             CERR << "clearing cache for " << addObj.senderId() << ":" << addObj.getSenderPort() << std::endl;
             cache.objects.clear();
         }
         cache.objects.emplace_back(addObj.objectName());
-        cache.execCount = ec;
+        cache.generation = gen;
         cache.iteration = iter;
         CERR << "caching " << addObj.objectName() << " for " << addObj.senderId() << ":" << addObj.getSenderPort()
              << ", port=" << port << std::endl;
@@ -1796,7 +1796,6 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog)
                         if (isLocal(destId)) {
                             //CERR << "Exec prepare 2" << std::endl;
                             auto exec = message::Execute(message::Execute::Prepare, destId);
-                            exec.setExecutionCount(prog.getExecutionCount());
                             exec.setDestId(destId);
                             if (broadcast) {
                                 //CERR << "Exec prepare 3" << std::endl;
@@ -1839,7 +1838,6 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog)
                                     }
                                     for (int i = 0; i < maxNumObject; ++i) {
                                         message::Execute exec(message::Execute::ComputeObject, destId);
-                                        exec.setExecutionCount(prog.getExecutionCount());
                                         if (!Communicator::the().broadcastAndHandleMessage(exec))
                                             return false;
                                     }
@@ -1853,7 +1851,6 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog)
                         }
                         if (isLocal(destId)) {
                             auto exec = message::Execute(message::Execute::Reduce, destId);
-                            exec.setExecutionCount(prog.getExecutionCount());
                             exec.setDestId(destId);
                             if (broadcast) {
                                 if (m_rank == 0)
@@ -1879,7 +1876,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog)
 
     if (execDone) {
         if (m_rank == 0) {
-            auto done = message::ExecutionDone(prog.getExecutionCount());
+            auto done = message::ExecutionDone();
             done.setSenderId(prog.senderId());
             sendHub(done, MessagePayload(), message::Id::MasterHub);
         }
