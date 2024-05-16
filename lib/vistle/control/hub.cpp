@@ -2389,11 +2389,40 @@ bool Hub::updateQueue(int oldId, int newId)
     return true;
 }
 
+bool Hub::cleanQueue(int id)
+{
+    using namespace message;
+
+    std::unique_lock guard(m_queueMutex);
+    decltype(m_queue) queue;
+    std::swap(queue, m_queue);
+    guard.unlock();
+
+    for (auto &m: m_queue) {
+        if (m.type() == message::CONNECT) {
+            auto &mm = m.as<Connect>();
+            if (mm.getModuleA() == id || mm.getModuleB() == id) {
+                continue;
+            }
+        } else if (m.type() == message::DISCONNECT) {
+            auto &mm = m.as<Disconnect>();
+            if (mm.getModuleA() == id || mm.getModuleB() == id) {
+                continue;
+            }
+        }
+
+        guard.lock();
+        m_queue.push_back(m);
+        guard.unlock();
+    }
+    return true;
+}
+
 bool Hub::handleQueue()
 {
     using namespace message;
 
-    //CERR << "unqueuing " << m_queue.size() << " messages" << std::endl;;
+    //CERR << "unqueuing " << m_queue.size() << " messages" << std::endl;
 
     bool again = true;
     while (again) {
@@ -3423,6 +3452,8 @@ bool Hub::handlePriv(const message::ModuleExit &exit)
             }
         }
     }
+
+    cleanQueue(id);
 
     return true;
 }

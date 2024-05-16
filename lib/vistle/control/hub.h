@@ -231,6 +231,7 @@ private:
     std::vector<message::Buffer> m_queue;
     bool handleQueue();
     bool updateQueue(int oldId, int newId);
+    bool cleanQueue(int exitedId);
 
     void setLoadedFile(const std::string &file);
     void setSessionUrl(const std::string &url);
