@@ -231,9 +231,7 @@ public:
 
     template<class allocator>
     ShmArrayProxy(const shm_array<T, allocator> *arr)
-    : m_data(arr ? arr->data() : nullptr)
-    , m_size(arr ? arr->size() : nullptr)
-    , m_handle(arr ? arr->handle() : s_nullHandle)
+    : m_data(arr ? arr->data() : nullptr), m_size(arr ? arr->size() : 0), m_handle(arr ? arr->handle() : s_nullHandle)
     {}
 
     ShmArrayProxy &operator=(std::nullptr_t p)
