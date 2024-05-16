@@ -2450,10 +2450,12 @@ void Hub::cacheParameters(int oldModuleId, int newModuleId)
     auto paramNames = m_stateTracker.getParameters(oldModuleId);
     for (const auto &pn: paramNames) {
         auto p = m_stateTracker.getParameter(oldModuleId, pn);
-        auto pm = message::SetParameter(newModuleId, p->getName(), p);
-        pm.setDelayed();
-        pm.setDestId(newModuleId);
-        m_sendAfterSpawn[newModuleId].emplace_back(pm);
+        if (!p->isDefault()) {
+            auto pm = message::SetParameter(newModuleId, p->getName(), p);
+            pm.setDelayed();
+            pm.setDestId(newModuleId);
+            m_sendAfterSpawn[newModuleId].emplace_back(pm);
+        }
     }
 }
 
