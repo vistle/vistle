@@ -2474,6 +2474,14 @@ void Hub::cachePortConnections(int oldModuleId, int newModuleId)
             m_sendAfterSpawn[newModuleId].emplace_back(cm);
         }
     }
+
+    auto params = m_stateTracker.portTracker()->getConnectedParameters(oldModuleId);
+    for (const auto &par: params) {
+        for (const auto &to: par->connections()) {
+            auto cm = message::Connect(newModuleId, par->getName(), to->getModuleID(), to->getName());
+            m_sendAfterSpawn[newModuleId].emplace_back(cm);
+        }
+    }
 }
 
 void Hub::cacheParamConnections(int oldModuleId, int newModuleId)
