@@ -16,9 +16,9 @@ class Option(TypedDict):
 
 
 Options = [
-    Option(name="-name", metavar="name", help="Vsl network filename.", nargs=1),
-    Option(name="-sdir", metavar="srcDir", help="Image path.", nargs=1),
-    Option(name="-jdir", metavar="jsondir", help="Path to json.", nargs=1),
+    Option(name="-name", metavar="name", help="Vsl network filename.", nargs="?"),
+    Option(name="-sdir", metavar="srcDir", help="Image path.", nargs="?"),
+    Option(name="-jdir", metavar="jsondir", help="Path to json.", nargs="?"),
     Option(
         name="-cmp",
         metavar="compare",
@@ -41,8 +41,10 @@ def createImageHash(imagePath):
     print(hash)
     return hash
 
+
 def compareHash(hash1, hash2) -> bool:
     return hash1 == hash2
+
 
 def addModuleImagehashToJson(pathToModuleRoot: str, jsonDir: str, hash) -> None:
     with open(jsonDir, "r+") as file:
@@ -70,31 +72,17 @@ def getArgs():
 if __name__ == "__main__":
     args = getArgs()
 
-    if args.name != None:
-        name = args.name[0]
-
-    if args.sdir != None:
-        srcDir = args.sdir[0]
-
-    if args.cmp != None:
-        cmp = args.cmp
-
-    if args.refHashString != None:
-        refHashString = args.refHashString
-        cmp = True
-
-    hash = createImageHash(srcDir)
+    hash = createImageHash(args.sdir)
     if args.jdir != None:
-        jdir = args.jdir[0]
-        addModuleImagehashToJson(name, jdir, hash)
+        addModuleImagehashToJson(args.name, args.jdir, hash)
 
-    if cmp:
-        if not compareHash(hash, imagehash.hex_to_hash(refHashString)):
+    if args.cmp:
+        if not compareHash(hash, imagehash.hex_to_hash(args.refHashString)):
             raise Exception(
                 "Hashes are not the same for "
-                + name
+                + args.name
                 + ": "
                 + str(hash)
                 + " != "
-                + refHashString
+                + args.refHashString
             )
