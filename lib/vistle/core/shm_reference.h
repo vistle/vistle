@@ -228,14 +228,40 @@ public:
     typedef typename ArrayHandleTypeMap<T>::type handle_type;
 
     ShmArrayProxy() = default;
+    ShmArrayProxy(const ShmArrayProxy &other)
+#ifdef NO_SHMEM
+    : m_arr(other.m_arr)
+    , m_data(nullptr)
+#else
+    : m_data(other.m_data)
+#endif
+    , m_size(other.m_size)
+    , m_handle(other.m_handle)
+    {
+#ifdef NO_SHMEM
+        if (other.m_data) {
+            m_data = other.m_data.load();
+        }
+#endif
+    }
 
     template<class allocator>
     ShmArrayProxy(const shm_array<T, allocator> *arr)
-    : m_data(arr ? arr->data() : nullptr), m_size(arr ? arr->size() : 0), m_handle(arr ? arr->handle() : s_nullHandle)
+#ifdef NO_SHMEM
+    : m_arr(arr)
+    , m_data(nullptr)
+#else
+    : m_data(arr ? arr->data() : nullptr)
+#endif
+    , m_size(arr ? arr->size() : 0)
+    , m_handle(arr ? arr->handle() : s_nullHandle)
     {}
 
     ShmArrayProxy &operator=(std::nullptr_t p)
     {
+#ifdef NO_SHMEM
+        m_arr = nullptr;
+#endif
         m_data = nullptr;
         m_size = 0;
         m_handle = s_nullHandle;
@@ -245,8 +271,15 @@ public:
     template<class allocator>
     ShmArrayProxy &operator=(const shm_array<T, allocator> *arr)
     {
+#ifdef NO_SHMEM
+        m_arr = arr;
+#endif
         if (arr) {
+#ifdef NO_SHMEM
+            m_data = nullptr;
+#else
             m_data = arr->data();
+#endif
             m_size = arr->size();
             m_handle = arr->handle();
         } else {
@@ -261,10 +294,18 @@ public:
     ShmArrayProxy &operator=(const shm_array_ref<Arr> ref)
     {
         if (ref.valid()) {
+#ifdef NO_SHMEM
+            m_arr = &*ref;
+            m_data = nullptr;
+#else
             m_data = ref->data();
+#endif
             m_size = ref->size();
             m_handle = ref->handle();
         } else {
+#ifdef NO_SHMEM
+            m_arr = nullptr;
+#endif
             m_data = nullptr;
             m_size = 0;
             m_handle = s_nullHandle;
@@ -272,16 +313,57 @@ public:
         return *this;
     }
 
-    operator const T *() const { return m_data; }
+    operator const T *() const
+    {
+        updateFromHandle();
+        return m_data;
+    }
 
-    const T &operator*() const { return m_data[0]; }
-    const T &operator[](size_t idx) const { return m_data[idx]; }
-    const T *data() const { return m_data; }
-    const size_t size() const { return m_size; }
-    const vtkm::cont::ArrayHandle<handle_type> &handle() const { return m_handle; }
+    const T &operator*() const
+    {
+        updateFromHandle();
+        return m_data[0];
+    }
+    const T &operator[](size_t idx) const
+    {
+        updateFromHandle();
+        return m_data[idx];
+    }
+    const T *data() const
+    {
+        updateFromHandle();
+        return m_data;
+    }
+    const size_t size() const
+    {
+        return m_size;
+    }
+    const vtkm::cont::ArrayHandle<handle_type> &handle() const
+    {
+        return m_handle;
+    }
 
 private:
+#ifdef NO_SHMEM
+    mutable std::atomic<const T *> m_data;
+    mutable std::mutex m_mutex;
+    const shm_array<T, shm_allocator<T>> *m_arr = nullptr;
+#else
     const T *m_data = nullptr;
+#endif
+    void updateFromHandle() const
+    {
+#ifdef NO_SHMEM
+        if (m_data) {
+            return;
+        }
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (m_data) {
+            return;
+        }
+        m_data = m_arr->data();
+#endif
+    }
     size_t m_size = 0;
     vtkm::cont::ArrayHandle<handle_type> m_handle;
     static inline vtkm::cont::ArrayHandle<handle_type> s_nullHandle =
