@@ -209,7 +209,11 @@ private:
     const uint32_t m_type;
     size_t m_size = 0;
     size_t m_dim[3] = {0, 1, 1};
+#ifdef NO_SHMEM
+    mutable size_t m_capacity = 0;
+#else
     size_t m_capacity = 0;
+#endif
     bool m_exact = std::is_integral<T>::value;
     value_type m_min = std::numeric_limits<value_type>::max();
     value_type m_max = std::numeric_limits<value_type>::lowest();
