@@ -210,6 +210,7 @@ void shm_array<T, allocator>::resize(const size_t size, const T &value)
 template<typename T, class allocator>
 const vtkm::cont::ArrayHandle<typename shm_array<T, allocator>::handle_type> &shm_array<T, allocator>::handle() const
 {
+    updateFromHandle(); // required in order to be compatible with ArrayHandleBasic
     return m_handle;
 }
 #else
