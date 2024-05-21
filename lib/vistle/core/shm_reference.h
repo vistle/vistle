@@ -345,9 +345,9 @@ public:
 
 private:
 #ifdef NO_SHMEM
+    const shm_array<T, shm_allocator<T>> *m_arr = nullptr;
     mutable std::atomic<const T *> m_data;
     mutable std::mutex m_mutex;
-    const shm_array<T, shm_allocator<T>> *m_arr = nullptr;
 #else
     const T *m_data = nullptr;
 #endif
