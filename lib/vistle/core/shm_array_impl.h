@@ -211,6 +211,12 @@ template<typename T, class allocator>
 const vtkm::cont::ArrayHandle<typename shm_array<T, allocator>::handle_type> &shm_array<T, allocator>::handle() const
 {
     updateFromHandle(); // required in order to be compatible with ArrayHandleBasic
+    if (m_size != m_capacity) {
+        // many vtk-m algorithms check that array sizes are exact
+        m_handle.Allocate(m_size, vtkm::CopyFlag::On);
+        m_data = reinterpret_cast<T *>(m_handle.GetWritePointer());
+        m_capacity = m_size;
+    }
     return m_handle;
 }
 #else
@@ -268,6 +274,9 @@ void shm_array<T, allocator>::reserve(const size_t new_capacity)
 template<typename T, class allocator>
 void shm_array<T, allocator>::reserve_or_shrink(const size_t capacity)
 {
+    if (m_capacity == capacity)
+        return;
+
     PROF_SCOPE("shm_array::reserve_or_shrink()");
 #ifdef NO_SHMEM
     updateFromHandle(true);
