@@ -2271,8 +2271,8 @@ bool ClusterManager::scanModules(const std::string &prefix, const std::string &b
         }
 
         AvailableModule::Key keya(hubId(), alias);
-        m_localModules.emplace(
-            keya, AvailableModule{hubId(), alias, it->second.path(), it->second.category(), it->second.description()});
+        m_localModules[keya] =
+            AvailableModule{hubId(), alias, it->second.path(), it->second.category(), it->second.description()};
     }
 
     if (getRank() == 0) {
