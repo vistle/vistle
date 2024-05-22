@@ -588,7 +588,7 @@ bool ClusterManager::sendMessage(const int moduleId, const message::Message &mes
     if (payload)
         buf.setPayloadName(payload.name());
     if (hub == hubId()) {
-        //std::cerr << "local send to " << moduleId << ": " << buf << std::endl;
+        //CERR << "local send to " << moduleId << ": " << buf << std::endl;
         if (destRank == -1 || destRank == getRank()) {
             RunningMap::const_iterator it = runningMap.find(moduleId);
             if (it == runningMap.end()) {
@@ -613,7 +613,7 @@ bool ClusterManager::sendMessage(const int moduleId, const message::Message &mes
             Communicator::the().sendMessage(moduleId, message, destRank, payload);
         }
     } else {
-        std::cerr << "remote send to " << moduleId << ": " << message << std::endl;
+        CERR << "remote send to " << moduleId << ": " << message << std::endl;
         buf.setDestId(moduleId);
         buf.setDestRank(destRank);
         sendHub(buf, payload);
@@ -1037,7 +1037,7 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn)
                 std::thread t([newId, name, ncomm, &mod]() {
                     std::string mname = "vistle:" + name + ":" + std::to_string(newId);
                     setThreadName(mname);
-                    //std::cerr << "thread for module " << name << ":" << newId << std::endl;
+                    //CERR << "thread for module " << name << ":" << newId << std::endl;
                     mod.instance = mod.newModule(name, newId, ncomm);
                     if (mod.instance)
                         mod.instance->eventLoop();
@@ -2217,30 +2217,30 @@ bool ClusterManager::isReadyForExecute(int modId) const
 
     auto i = runningMap.find(modId);
     if (i == runningMap.end()) {
-        //std::cerr << "module " << modId << " not found" << std::endl;
+        //CERR << "module " << modId << " not found" << std::endl;
         return false;
     }
     auto &mod = i->second;
 
     auto i2 = m_stateTracker.runningMap.find(modId);
     if (i2 == m_stateTracker.runningMap.end()) {
-        //std::cerr << "module " << modId << " not found by state tracker" << std::endl;
+        //CERR << "module " << modId << " not found by state tracker" << std::endl;
         return false;
     }
     auto &modState = i2->second;
 
     if (modState.reducePolicy == message::ReducePolicy::Never) {
-        //std::cerr << "reduce policy Never" << std::endl;
+        //CERR << "reduce policy Never" << std::endl;
         return true;
     }
 
     if (!mod.reduced && mod.prepared) {
         assert(mod.ranksFinished <= m_size);
-        //std::cerr << "prepared & not reduced" << std::endl;
+        //CERR << "prepared & not reduced" << std::endl;
         return true;
     }
 
-    //std::cerr << "prepared: " << mod.prepared << ", reduced: " << mod.reduced << std::endl;
+    //CERR << "prepared: " << mod.prepared << ", reduced: " << mod.reduced << std::endl;
     return false;
 }
 
@@ -2266,7 +2266,7 @@ bool ClusterManager::scanModules(const std::string &prefix, const std::string &b
         AvailableModule::Key key(hubId(), e);
         auto it = m_localModules.find(key);
         if (it == m_localModules.end()) {
-            std::cerr << "alias " << alias << " -> " << e << " not found" << std::endl;
+            CERR << "alias " << alias << " -> " << e << " not found" << std::endl;
             continue;
         }
 
