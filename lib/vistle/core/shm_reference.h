@@ -254,7 +254,11 @@ public:
     : m_data(arr ? arr->data() : nullptr)
 #endif
     , m_size(arr ? arr->size() : 0)
+#ifdef NO_SHMEM
+    , m_handle(s_nullHandle)
+#else
     , m_handle(arr ? arr->handle() : s_nullHandle)
+#endif
     {}
 
     ShmArrayProxy &operator=(std::nullptr_t p)
@@ -297,11 +301,12 @@ public:
 #ifdef NO_SHMEM
             m_arr = &*ref;
             m_data = nullptr;
+            m_handle = s_nullHandle;
 #else
             m_data = ref->data();
+            m_handle = ref->handle();
 #endif
             m_size = ref->size();
-            m_handle = ref->handle();
         } else {
 #ifdef NO_SHMEM
             m_arr = nullptr;
@@ -340,6 +345,7 @@ public:
     }
     const vtkm::cont::ArrayHandle<handle_type> &handle() const
     {
+        updateFromHandle();
         return m_handle;
     }
 
@@ -361,11 +367,22 @@ private:
         if (m_data) {
             return;
         }
-        m_data = m_arr->data();
+        if (m_arr) {
+            // order is important: handle() may shrink_to_fit
+            m_handle = m_arr->handle();
+            m_data = m_arr->data();
+        } else {
+            m_handle = s_nullHandle;
+            m_data = nullptr;
+        }
 #endif
     }
     size_t m_size = 0;
+#ifdef NO_SHMEM
+    mutable vtkm::cont::ArrayHandle<handle_type> m_handle;
+#else
     vtkm::cont::ArrayHandle<handle_type> m_handle;
+#endif
     static inline vtkm::cont::ArrayHandle<handle_type> s_nullHandle =
         vtkm::cont::make_ArrayHandle<handle_type>(static_cast<handle_type *>(nullptr), 0, vtkm::CopyFlag::Off);
 };
