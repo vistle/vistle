@@ -5,6 +5,7 @@
 #include <atomic>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/process.hpp>
+#include <boost/program_options.hpp>
 #include <vistle/core/statetracker.h>
 #include <vistle/util/buffer.h>
 #include "uimanager.h"
@@ -49,6 +50,7 @@ public:
     typedef std::shared_ptr<socket> socket_ptr;
 
     static Hub &the();
+    static boost::program_options::options_description &options();
 
     Hub(bool inManager = false);
     ~Hub();
