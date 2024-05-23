@@ -19,6 +19,7 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(TraceType,
                                     (Streamlines)(MovingPoints)(Pathlines)(Streaklines))
 
 class BlockData;
+class Tracer;
 
 class GlobalData {
     friend class Particle;
@@ -64,6 +65,8 @@ private:
     std::vector<vistle::Vec<vistle::Index>::ptr> blockField, cellField;
     std::vector<vistle::Vec<vistle::Scalar>::ptr> timeField, distField, stepWidthField;
     std::mutex mutex;
+
+    Tracer *module = nullptr;
 };
 
 class Tracer: public vistle::Module {

@@ -248,19 +248,20 @@ bool Tracer::compute()
     }
 
     if (useCelltree) {
+        std::string tname = std::to_string(id()) + "ct:" + name();
         if (unstr) {
-            celltree[t + 1].emplace_back(std::async(std::launch::async, [unstr]() -> Celltree3::const_ptr {
-                setThreadName("Tracer:Celltree");
+            celltree[t + 1].emplace_back(std::async(std::launch::async, [tname, unstr]() -> Celltree3::const_ptr {
+                setThreadName(tname);
                 return unstr->getCelltree();
             }));
         } else if (auto str = StructuredGrid::as(grid)) {
-            celltree[t + 1].emplace_back(std::async(std::launch::async, [str]() -> Celltree3::const_ptr {
-                setThreadName("Tracer:Celltree");
+            celltree[t + 1].emplace_back(std::async(std::launch::async, [tname, str]() -> Celltree3::const_ptr {
+                setThreadName(tname);
                 return str->getCelltree();
             }));
         } else if (auto lg = LayerGrid::as(grid)) {
-            celltree[t + 1].emplace_back(std::async(std::launch::async, [lg]() -> Celltree3::const_ptr {
-                setThreadName("Tracer:Celltree");
+            celltree[t + 1].emplace_back(std::async(std::launch::async, [tname, lg]() -> Celltree3::const_ptr {
+                setThreadName(tname);
                 return lg->getCelltree();
             }));
         }
@@ -462,6 +463,7 @@ bool Tracer::reduce(int timestep)
 
 
     GlobalData global;
+    global.module = this;
     global.int_mode = (IntegrationMethod)getIntParameter("integration");
     global.task_type = (TraceType)getIntParameter("taskType");
     global.dt_step = getFloatParameter("dt_step");

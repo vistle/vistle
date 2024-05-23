@@ -155,7 +155,7 @@ bool Reader::readTimestep(std::shared_ptr<Token> &prev, const ReaderProperties &
                 }
                 m_tokens.emplace_back(token);
                 prev = token;
-                auto tname = name() + ":Read:" + std::to_string(m_tokenCount);
+                auto tname = std::to_string(id()) + "r" + std::to_string(m_tokenCount) + ":" + name();
                 token->m_future = std::async(std::launch::async, [this, tname, token, timestep, p]() {
                     setThreadName(tname);
                     if (!read(*token, timestep, p)) {
