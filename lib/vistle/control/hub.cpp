@@ -272,6 +272,41 @@ Hub &Hub::the()
     return *hub_instance;
 }
 
+boost::program_options::options_description &Hub::options()
+{
+    namespace po = boost::program_options;
+
+    static po::options_description desc("usage");
+    if (!desc.options().empty()) {
+        return desc;
+    }
+
+    // clang-format off
+    desc.add_options()
+        ("help,h", "show this message")
+        ("version,v", "print version")
+        ("hub,c", po::value<std::string>(), "connect to hub")
+        ("batch,b", "do not start user interface")
+        ("proxy", "run master hub acting only as a proxy, does not require MPI")
+        ("gui,g", "start graphical user interface")
+        ("shell,s", "start interactive Python shell (requires ipython or python)")
+        ("port,p", po::value<unsigned short>(), "control port")
+        ("dataport", po::value<unsigned short>(), "data port")
+        ("execute,e", "call compute() after workflow has been loaded")
+        ("snapshot", po::value<std::string>(), "store screenshot of workflow to this location")
+        ("libsim,l", po::value<std::string>(), "connect to a LibSim instrumented simulation by entering the path to the .sim2 file")
+        ("cover", "use OpenCOVER.mpi to manage Vistle session on cluster")
+        ("exposed,gateway-host,gateway,gw", po::value<std::string>(), "ports are exposed externally on this host")
+        ("root", po::value<std::string>(), "path to Vistle build directory")
+        ("buildtype", po::value<std::string>(), "build type suffix to binary in Vistle build directory")
+        ("conference,conf", po::value<std::string>(), "URL of associated conference call")
+        ("url", "Vistle URL, script to process, or slave name")
+    ;
+    // clang-format on
+
+    return desc;
+}
+
 bool Hub::init(int argc, char *argv[])
 {
     try {
@@ -295,29 +330,7 @@ bool Hub::init(int argc, char *argv[])
     m_basePort = *m_config->value<int64_t>("system", "net", "controlport", m_basePort);
 
     namespace po = boost::program_options;
-    po::options_description desc("usage");
-    // clang-format off
-    desc.add_options()
-        ("help,h", "show this message")
-        ("version,v", "print version")
-        ("hub,c", po::value<std::string>(), "connect to hub")
-        ("batch,b", "do not start user interface")
-        ("proxy", "run master hub acting only as a proxy, does not require MPI")
-        ("gui,g", "start graphical user interface")
-        ("shell,s", "start interactive Python shell (requires ipython or python)")
-        ("port,p", po::value<unsigned short>(), "control port")
-        ("dataport", po::value<unsigned short>(), "data port")
-        ("execute,e", "call compute() after workflow has been loaded")
-        ("snapshot", po::value<std::string>(), "store screenshot of workflow to this location")
-        ("libsim,l", po::value<std::string>(), "connect to a LibSim instrumented simulation by entering the path to the .sim2 file")
-        ("cover", "use OpenCOVER.mpi to manage Vistle session on cluster")
-        ("exposed,gateway-host,gateway,gw", po::value<std::string>(), "ports are exposed externally on this host")
-        ("root", po::value<std::string>(), "path to Vistle build directory")
-        ("buildtype", po::value<std::string>(), "build type suffix to binary in Vistle build directory")
-        ("conference,conf", po::value<std::string>(), "URL of associated conference call")
-        ("url", "Vistle URL, script to process, or slave name")
-    ;
-    // clang-format on
+    auto desc = options();
     po::variables_map vm;
     try {
         po::positional_options_description popt;
