@@ -1,6 +1,6 @@
-set(SOURCES convert.cpp)
+set(SOURCES convert.cpp convert_worklets.cpp)
 
-set(HEADERS export.h convert.h)
+set(HEADERS export.h convert.h convert_worklets.h)
 
 vistle_add_library(vistle_vtkm EXPORT ${SOURCES} ${HEADERS})
 target_include_directories(vistle_vtkm SYSTEM PUBLIC ${VTKM_INCLUDE_DIRS})
