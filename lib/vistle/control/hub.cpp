@@ -3004,7 +3004,9 @@ bool Hub::processScript()
     }
 
     auto retval = processScript(m_scriptPath, m_barrierAfterLoad, m_executeModules);
-    setLoadedFile(m_scriptPath);
+    if (retval) {
+        setLoadedFile(m_scriptPath);
+    }
     return retval;
 }
 
