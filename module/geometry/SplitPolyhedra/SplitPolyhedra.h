@@ -9,7 +9,13 @@ public:
     ~SplitPolyhedra();
 
 private:
-    virtual bool compute();
+    bool prepare() override;
+    bool compute() override;
+    vistle::IntParameter *m_mode = nullptr;
+    static const unsigned NumPorts = 3;
+    std::array<vistle::Port *, NumPorts> m_inPorts;
+    std::array<vistle::Port *, NumPorts> m_outPorts;
+    vistle::ResultCache<vistle::UnstructuredGrid::ptr> m_grids;
 };
 
 #endif
