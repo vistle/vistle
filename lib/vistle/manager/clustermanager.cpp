@@ -952,8 +952,8 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn)
     mod.sendQueue->makeNonBlocking();
 
     std::thread mt([this, newId, name, &mod]() {
-        std::string mname = "vistle:mq" + std::to_string(newId);
-        setThreadName(mname);
+        std::string tname = std::to_string(newId) + "mq:" + name;
+        setThreadName(tname);
 
         for (;;) {
             message::Buffer buf;
@@ -1035,8 +1035,8 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn)
             if (mod.newModule) {
                 boost::mpi::communicator ncomm(m_comm, boost::mpi::comm_duplicate);
                 std::thread t([newId, name, ncomm, &mod]() {
-                    std::string mname = "vistle:" + name + ":" + std::to_string(newId);
-                    setThreadName(mname);
+                    std::string tname = std::to_string(newId) + "mn:" + name;
+                    setThreadName(tname);
                     //CERR << "thread for module " << name << ":" << newId << std::endl;
                     mod.instance = mod.newModule(name, newId, ncomm);
                     if (mod.instance)
