@@ -118,7 +118,7 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
         } else {
             vtkm::cont::CellSetSingleType<vtkm::cont::StorageTagCounting> cellSet;
             auto conn =
-                vtkm::cont::make_ArrayHandleCounting(static_cast<vtkm::Id>(0), static_cast<vtkm::Id>(3), numCells);
+                vtkm::cont::make_ArrayHandleCounting(static_cast<vtkm::Id>(0), static_cast<vtkm::Id>(1), numPoints);
             cellSet.Fill(numPoints, vtkm::CELL_SHAPE_TRIANGLE, 3, conn);
             vtkmDataset.SetCellSet(cellSet);
         }
@@ -134,7 +134,7 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
         } else {
             vtkm::cont::CellSetSingleType<vtkm::cont::StorageTagCounting> cellSet;
             auto conn =
-                vtkm::cont::make_ArrayHandleCounting(static_cast<vtkm::Id>(0), static_cast<vtkm::Id>(4), numCells);
+                vtkm::cont::make_ArrayHandleCounting(static_cast<vtkm::Id>(0), static_cast<vtkm::Id>(1), numPoints);
             cellSet.Fill(numPoints, vtkm::CELL_SHAPE_QUAD, 4, conn);
             vtkmDataset.SetCellSet(cellSet);
         }
