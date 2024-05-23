@@ -3012,6 +3012,10 @@ bool Hub::processScript(const std::string &filename, bool barrierAfterLoad, bool
 {
     assert(m_uiManager.isLocked());
 #ifdef HAVE_PYTHON
+    if (!m_python) {
+        setStatus("Cannot load " + filename + " - no Python interpreter");
+        return false;
+    }
     setStatus("Loading " + filename + "...");
     int flags = PythonExecutor::LoadFile;
     if (barrierAfterLoad)
@@ -3031,6 +3035,7 @@ bool Hub::processScript(const std::string &filename, bool barrierAfterLoad, bool
     setStatus("Loading " + filename + " done");
     return true;
 #else
+    setStatus("Cannot load " + filename + " - no Python support");
     return false;
 #endif
 }
@@ -3039,6 +3044,10 @@ bool Hub::processCommand(const std::string &command)
 {
     assert(m_uiManager.isLocked());
 #ifdef HAVE_PYTHON
+    if (!m_python) {
+        setStatus("Cannot execute: " + command + " - no Python interpreter");
+        return false;
+    }
     setStatus("Executing " + command + "...");
     PythonExecutor exec(*m_python, command);
     bool interrupt = false;
