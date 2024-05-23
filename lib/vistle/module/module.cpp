@@ -2662,7 +2662,7 @@ bool Module::compute()
     m_tasks.push_back(task);
 
     std::unique_lock<std::mutex> guard(task->m_mutex);
-    auto tname = name() + ":Block:" + std::to_string(m_tasks.size());
+    auto tname = std::to_string(id()) + "b" + std::to_string(m_tasks.size()) + ":" + name();
     task->m_future = std::async(std::launch::async, [this, tname, task] {
         PROF_FUNC();
         setThreadName(tname);

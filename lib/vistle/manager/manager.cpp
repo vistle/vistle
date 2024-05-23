@@ -133,6 +133,7 @@ bool VistleManager::run(int argc, char *argv[])
         ("from-vistle", "invoked by Vistle hub")
         ;
     // clang-format on
+    desc.add(Hub::options()); // also accept hub options, for being able to pass them on
 
     po::variables_map vm;
     try {

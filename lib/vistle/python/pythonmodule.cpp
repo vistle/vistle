@@ -670,6 +670,7 @@ static void connect(int sid, const char *sport, int did, const char *dport)
     std::cerr << "Python: connect " << sid << ":" << sport << " -> " << did << ":" << dport << std::endl;
 #endif
     message::Connect m(sid, sport, did, dport);
+    m.setDestId(message::Id::MasterHub);
     sendMessage(m);
 }
 
@@ -679,6 +680,7 @@ static void disconnect(int sid, const char *sport, int did, const char *dport)
     std::cerr << "Python: disconnect " << sid << ":" << sport << " -> " << did << ":" << dport << std::endl;
 #endif
     message::Disconnect m(sid, sport, did, dport);
+    m.setDestId(message::Id::MasterHub);
     sendMessage(m);
 }
 

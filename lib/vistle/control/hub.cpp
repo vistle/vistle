@@ -272,6 +272,41 @@ Hub &Hub::the()
     return *hub_instance;
 }
 
+boost::program_options::options_description &Hub::options()
+{
+    namespace po = boost::program_options;
+
+    static po::options_description desc("usage");
+    if (!desc.options().empty()) {
+        return desc;
+    }
+
+    // clang-format off
+    desc.add_options()
+        ("help,h", "show this message")
+        ("version,v", "print version")
+        ("hub,c", po::value<std::string>(), "connect to hub")
+        ("batch,b", "do not start user interface")
+        ("proxy", "run master hub acting only as a proxy, does not require MPI")
+        ("gui,g", "start graphical user interface")
+        ("shell,s", "start interactive Python shell (requires ipython or python)")
+        ("port,p", po::value<unsigned short>(), "control port")
+        ("dataport", po::value<unsigned short>(), "data port")
+        ("execute,e", "call compute() after workflow has been loaded")
+        ("snapshot", po::value<std::string>(), "store screenshot of workflow to this location")
+        ("libsim,l", po::value<std::string>(), "connect to a LibSim instrumented simulation by entering the path to the .sim2 file")
+        ("cover", "use OpenCOVER.mpi to manage Vistle session on cluster")
+        ("exposed,gateway-host,gateway,gw", po::value<std::string>(), "ports are exposed externally on this host")
+        ("root", po::value<std::string>(), "path to Vistle build directory")
+        ("buildtype", po::value<std::string>(), "build type suffix to binary in Vistle build directory")
+        ("conference,conf", po::value<std::string>(), "URL of associated conference call")
+        ("url", "Vistle URL, script to process, or slave name")
+    ;
+    // clang-format on
+
+    return desc;
+}
+
 bool Hub::init(int argc, char *argv[])
 {
     try {
@@ -295,29 +330,7 @@ bool Hub::init(int argc, char *argv[])
     m_basePort = *m_config->value<int64_t>("system", "net", "controlport", m_basePort);
 
     namespace po = boost::program_options;
-    po::options_description desc("usage");
-    // clang-format off
-    desc.add_options()
-        ("help,h", "show this message")
-        ("version,v", "print version")
-        ("hub,c", po::value<std::string>(), "connect to hub")
-        ("batch,b", "do not start user interface")
-        ("proxy", "run master hub acting only as a proxy, does not require MPI")
-        ("gui,g", "start graphical user interface")
-        ("shell,s", "start interactive Python shell (requires ipython or python)")
-        ("port,p", po::value<unsigned short>(), "control port")
-        ("dataport", po::value<unsigned short>(), "data port")
-        ("execute,e", "call compute() after workflow has been loaded")
-        ("snapshot", po::value<std::string>(), "store screenshot of workflow to this location")
-        ("libsim,l", po::value<std::string>(), "connect to a LibSim instrumented simulation by entering the path to the .sim2 file")
-        ("cover", "use OpenCOVER.mpi to manage Vistle session on cluster")
-        ("exposed,gateway-host,gateway,gw", po::value<std::string>(), "ports are exposed externally on this host")
-        ("root", po::value<std::string>(), "path to Vistle build directory")
-        ("buildtype", po::value<std::string>(), "build type suffix to binary in Vistle build directory")
-        ("conference,conf", po::value<std::string>(), "URL of associated conference call")
-        ("url", "Vistle URL, script to process, or slave name")
-    ;
-    // clang-format on
+    auto desc = options();
     po::variables_map vm;
     try {
         po::positional_options_description popt;
@@ -619,7 +632,8 @@ bool Hub::init(int argc, char *argv[])
             }
 #endif // MODULE_THREAD
         }
-
+    }
+    if (!m_interrupt && !m_quitting) {
         m_python.reset(new PythonInterpreter(m_dir->share()));
     }
 
@@ -2266,9 +2280,13 @@ bool Hub::handlePriv(const message::Spawn &spawnRecv)
                         sendError("cannot migrate module with id " + std::to_string(spawn.getReference()));
                         return handlePlainSpawn(notify, doSpawn, true);
                     }
+                    if (!editDelayedConnects(spawn.migrateId(), notify.spawnId())) {
+                        sendError("cannot migrate module with id " + std::to_string(spawn.getReference()));
+                        return handlePlainSpawn(notify, doSpawn, true);
+                    }
                 }
-                killOldModule(spawn.migrateId());
                 m_sendAfterExit[spawn.migrateId()].push_back(spawn);
+                killOldModule(spawn.migrateId());
                 return true;
             } else if (clone) {
                 if (doSpawn) {
@@ -2354,11 +2372,71 @@ bool Hub::handleConnectOrDisconnect(const ConnMsg &mm)
     }
 }
 
+namespace {
+template<typename Msg>
+void updateSourceOrDestinationId(Msg &m, int oldId, int newId)
+{
+    if (m.getModuleA() == oldId) {
+        m.setModuleA(newId);
+    }
+    if (m.getModuleB() == oldId) {
+        m.setModuleB(newId);
+    }
+}
+} // namespace
+
+bool Hub::updateQueue(int oldId, int newId)
+{
+    using namespace message;
+
+    std::unique_lock guard(m_queueMutex);
+    for (auto &m: m_queue) {
+        if (m.type() == message::CONNECT) {
+            auto &mm = m.as<Connect>();
+            updateSourceOrDestinationId(mm, oldId, newId);
+        } else if (m.type() == message::DISCONNECT) {
+            auto &mm = m.as<Disconnect>();
+            updateSourceOrDestinationId(mm, oldId, newId);
+        }
+    }
+
+    return true;
+}
+
+bool Hub::cleanQueue(int id)
+{
+    using namespace message;
+
+    std::unique_lock guard(m_queueMutex);
+    decltype(m_queue) queue;
+    std::swap(queue, m_queue);
+    guard.unlock();
+
+    for (auto &m: m_queue) {
+        if (m.type() == message::CONNECT) {
+            auto &mm = m.as<Connect>();
+            if (mm.getModuleA() == id || mm.getModuleB() == id) {
+                continue;
+            }
+        } else if (m.type() == message::DISCONNECT) {
+            auto &mm = m.as<Disconnect>();
+            if (mm.getModuleA() == id || mm.getModuleB() == id) {
+                continue;
+            }
+        }
+
+        guard.lock();
+        m_queue.push_back(m);
+        guard.unlock();
+    }
+    return true;
+}
+
 bool Hub::handleQueue()
 {
     using namespace message;
 
-    //CERR << "unqueuing " << m_queue.size() << " messages" << std::endl;;
+    //CERR << "unqueuing " << m_queue.size() << " messages" << std::endl;
 
     bool again = true;
     while (again) {
@@ -2373,17 +2451,21 @@ bool Hub::handleQueue()
                 if (m_stateTracker.handleConnectOrDisconnect(mm)) {
                     again = true;
                     handlePriv(mm);
+                    //CERR << "handleQueue: CONNECT now: " << mm << std::endl;
                 } else {
                     guard.lock();
                     m_queue.push_back(m);
                     guard.unlock();
+                    //CERR << "handleQueue: CONNECT later: " << mm << std::endl;
                 }
             } else if (m.type() == message::DISCONNECT) {
                 auto &mm = m.as<Disconnect>();
                 if (m_stateTracker.handleConnectOrDisconnect(mm)) {
                     again = true;
                     handlePriv(mm);
+                    //CERR << "handleQueue: DISCONNECT now: " << mm << std::endl;
                 } else {
+                    //CERR << "handleQueue: DISCONNECT later: " << m << std::endl;
                     guard.lock();
                     m_queue.push_back(m);
                     guard.unlock();
@@ -2502,6 +2584,20 @@ void Hub::applyAllDelayedParameters(int oldModuleId, int newModuleId)
     auto pm = message::SetParameter(newModuleId);
     pm.setDestId(newModuleId);
     m_sendAfterSpawn[newModuleId].emplace_back(pm);
+}
+
+bool Hub::editDelayedConnects(int oldModuleId, int newModuleId)
+{
+    CERR << "updating connects: " << oldModuleId << " -> " << newModuleId << std::endl;
+    for (auto &m: m_sendAfterSpawn) {
+        for (auto &msg: m.second) {
+            if (msg.type() == message::CONNECT) {
+                auto &cm = msg.as<message::Connect>();
+                updateSourceOrDestinationId(cm, oldModuleId, newModuleId);
+            }
+        }
+    }
+    return updateQueue(oldModuleId, newModuleId);
 }
 
 bool Hub::cacheModuleValues(int oldModuleId, int newModuleId)
@@ -2922,7 +3018,9 @@ bool Hub::processScript()
     }
 
     auto retval = processScript(m_scriptPath, m_barrierAfterLoad, m_executeModules);
-    setLoadedFile(m_scriptPath);
+    if (retval) {
+        setLoadedFile(m_scriptPath);
+    }
     return retval;
 }
 
@@ -2930,6 +3028,10 @@ bool Hub::processScript(const std::string &filename, bool barrierAfterLoad, bool
 {
     assert(m_uiManager.isLocked());
 #ifdef HAVE_PYTHON
+    if (!m_python) {
+        setStatus("Cannot load " + filename + " - no Python interpreter");
+        return false;
+    }
     setStatus("Loading " + filename + "...");
     int flags = PythonExecutor::LoadFile;
     if (barrierAfterLoad)
@@ -2949,6 +3051,7 @@ bool Hub::processScript(const std::string &filename, bool barrierAfterLoad, bool
     setStatus("Loading " + filename + " done");
     return true;
 #else
+    setStatus("Cannot load " + filename + " - no Python support");
     return false;
 #endif
 }
@@ -2957,6 +3060,10 @@ bool Hub::processCommand(const std::string &command)
 {
     assert(m_uiManager.isLocked());
 #ifdef HAVE_PYTHON
+    if (!m_python) {
+        setStatus("Cannot execute: " + command + " - no Python interpreter");
+        return false;
+    }
     setStatus("Executing " + command + "...");
     PythonExecutor exec(*m_python, command);
     bool interrupt = false;
@@ -3370,6 +3477,8 @@ bool Hub::handlePriv(const message::ModuleExit &exit)
             }
         }
     }
+
+    cleanQueue(id);
 
     return true;
 }
