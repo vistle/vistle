@@ -619,7 +619,8 @@ bool Hub::init(int argc, char *argv[])
             }
 #endif // MODULE_THREAD
         }
-
+    }
+    if (!m_interrupt && !m_quitting) {
         m_python.reset(new PythonInterpreter(m_dir->share()));
     }
 
