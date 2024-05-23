@@ -1,8 +1,11 @@
+#include <vtkm/cont/Algorithm.h>
 #include <vtkm/cont/ArrayCopy.h>
 #include <vtkm/cont/ArrayExtractComponent.h>
 #include <vtkm/cont/ArrayHandleExtractComponent.h>
 #include <vtkm/cont/DataSetBuilderExplicit.h>
 #include <vtkm/cont/CellSetExplicit.h>
+
+#include <vtkm/worklet/WorkletMapField.h>
 
 #include <vistle/core/scalars.h>
 #include <vistle/core/unstr.h>
@@ -274,6 +277,50 @@ VtkmTransformStatus vtkmAddField(vtkm::cont::DataSet &vtkmDataSet, const vistle:
     return VtkmTransformStatus::UNSUPPORTED_FIELD_TYPE;
 }
 
+struct ShapeToDimensionWorklet : vtkm::worklet::WorkletMapField
+{
+    using ControlSignature = void(FieldIn shapes, FieldOut dimensions);
+    using ExecutionSignature = void(_1, _2);
+    using InputDomain = _1;
+
+    template <typename InputType, typename OutputType>
+    VTKM_EXEC void operator()(const InputType &shape, OutputType &dim) const
+    {
+        dim = shape;
+        switch (shape)
+        {
+        case vtkm::CELL_SHAPE_VERTEX:
+            dim = 0;
+            break;
+        case vtkm::CELL_SHAPE_LINE:
+        case vtkm::CELL_SHAPE_POLY_LINE:
+            dim = 1;
+            break;
+        case vtkm::CELL_SHAPE_TRIANGLE:
+        case vtkm::CELL_SHAPE_QUAD:
+        case vtkm::CELL_SHAPE_POLYGON:
+            dim = 2;
+            break;
+        case vtkm::CELL_SHAPE_TETRA:
+        case vtkm::CELL_SHAPE_HEXAHEDRON:
+        case vtkm::CELL_SHAPE_WEDGE:
+        case vtkm::CELL_SHAPE_PYRAMID:
+            dim = 3;
+            break;
+        default:
+            dim = -1;
+            break;
+        }
+    }
+};
+
+std::tuple<int, int> getMinMaxDims(vtkm::cont::ArrayHandle<vtkm::UInt8>& shapes)
+{
+    vtkm::cont::Invoker invoke;
+    vtkm::cont::ArrayHandle<vtkm::Int8> dims;
+    invoke(ShapeToDimensionWorklet{}, shapes, dims);
+    return {vtkm::cont::Algorithm::Reduce(dims, 10, vtkm::Minimum()), vtkm::cont::Algorithm::Reduce(dims, -1, vtkm::Maximum())};
+}
 
 Object::ptr vtkmGetGeometry(vtkm::cont::DataSet &dataset)
 {
@@ -338,40 +385,10 @@ Object::ptr vtkmGetGeometry(vtkm::cont::DataSet &dataset)
         auto ecellset = cellset.AsCellSet<vtkm::cont::CellSetExplicit<>>();
         auto elements = ecellset.GetOffsetsArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
         auto numElem = ecellset.GetNumberOfCells();
-        int mindim = 5, maxdim = -1;
         auto eshapes = ecellset.GetShapesArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
-        auto eshapePortal = eshapes.ReadPortal();
         auto econn = ecellset.GetConnectivityArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
-        for (vtkm::Id idx = 0; idx < numElem; ++idx) {
-            auto shape = eshapePortal.Get(idx);
-            int dim = -1;
-            switch (shape) {
-            case vtkm::CELL_SHAPE_VERTEX:
-                dim = 0;
-                break;
-            case vtkm::CELL_SHAPE_LINE:
-            case vtkm::CELL_SHAPE_POLY_LINE:
-                dim = 1;
-                break;
-            case vtkm::CELL_SHAPE_TRIANGLE:
-            case vtkm::CELL_SHAPE_QUAD:
-            case vtkm::CELL_SHAPE_POLYGON:
-                dim = 2;
-                break;
-            case vtkm::CELL_SHAPE_TETRA:
-            case vtkm::CELL_SHAPE_HEXAHEDRON:
-            case vtkm::CELL_SHAPE_WEDGE:
-            case vtkm::CELL_SHAPE_PYRAMID:
-                dim = 3;
-                break;
-            default:
-                dim = -1;
-                break;
-            }
 
-            mindim = std::min(dim, mindim);
-            maxdim = std::max(dim, maxdim);
-        }
+        const auto [mindim, maxdim] = getMinMaxDims(eshapes);
 
         if (mindim > maxdim) {
             // empty
