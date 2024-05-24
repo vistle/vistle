@@ -334,6 +334,7 @@ void shm_array<T, allocator>::update_bounds()
 
     PROF_SCOPE("shm_array::update_bounds()");
     updateFromHandle();
+    invalidate_bounds();
 
     if (!m_data)
         return;
