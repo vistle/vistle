@@ -17,6 +17,7 @@
 #include <vistle/core/message.h>
 #include <vistle/core/parameter.h>
 #include <vistle/core/port.h>
+#include <vistle/util/version.h>
 
 #include <vistle/userinterface/vistleconnection.h>
 #include "pythonmodule.h"
@@ -136,6 +137,11 @@ static std::shared_ptr<message::Buffer> waitForReply(const message::uuid_t &uuid
 {
     py::gil_scoped_release release;
     return state().waitForReply(uuid);
+}
+
+static std::string vistle_version()
+{
+    return vistle::version::string();
 }
 
 static bool source(const std::string &filename)
@@ -1439,6 +1445,7 @@ PY_MODULE(_vistle, m)
         .def("status", &TSO::status)
         .def("updateStatus", &TSO::updateStatus);
 
+    m.def("version", &vistle_version, "version of Vistle");
     m.def("source", &source, "execute commands from `file`", "file"_a);
     m.def("removeHub", &removeHub, "remove hub `id` from session", "id"_a);
 
