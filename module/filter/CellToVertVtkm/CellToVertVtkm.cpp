@@ -142,6 +142,11 @@ bool CellToVertVtkm::compute(const std::shared_ptr<BlockTask> &task) const
             if (auto mapped = vtkmGetField(avg, mapSpecies)) {
                 std::cerr << "mapped data: " << *mapped << std::endl;
                 mapped->copyAttributes(data);
+#ifdef VERTTOCELL
+                mapped->setMapping(DataBase::Element);
+#else
+                mapped->setMapping(DataBase::Vertex);
+#endif
                 mapped->setGrid(grid);
                 updateMeta(mapped);
                 task->addObject(data_out, mapped);
