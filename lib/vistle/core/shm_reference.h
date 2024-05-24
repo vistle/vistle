@@ -342,11 +342,13 @@ public:
     const size_t size() const { return m_size; }
     const vtkm::cont::ArrayHandle<handle_type> &handle() const
     {
+#ifdef NO_SHMEM
         if (m_arr) {
             m_handle = m_arr->handle();
         } else {
             m_handle = s_nullHandle;
         }
+#endif
         return m_handle;
     }
 
