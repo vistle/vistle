@@ -33,7 +33,7 @@ private:
     bool compute(const std::shared_ptr<vistle::BlockTask> &task) const override;
     bool changeParameter(const vistle::Parameter *param) override;
 
-    ImplFuncController isocontrol;
+    ImplFuncController m_implFuncControl;
 };
 
 #endif // VISTLE_VTKM_ISOSURFACE_H

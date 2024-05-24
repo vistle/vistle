@@ -136,14 +136,14 @@ vtkm::ImplicitFunctionGeneral ImplFuncController::func() const
 
 
 ClipVtkm::ClipVtkm(const std::string &name, int moduleID, mpi::communicator comm)
-: Module(name, moduleID, comm), isocontrol(this)
+: Module(name, moduleID, comm), m_implFuncControl(this)
 {
     setDefaultCacheMode(ObjectCache::CacheDeleteLate);
 
     createInputPort("grid_in", "input grid or geometry with optional data");
     m_dataOut = createOutputPort("grid_out", "surface with mapped data");
 
-    isocontrol.init();
+    m_implFuncControl.init();
 }
 
 ClipVtkm::~ClipVtkm()
@@ -151,7 +151,7 @@ ClipVtkm::~ClipVtkm()
 
 bool ClipVtkm::changeParameter(const Parameter *param)
 {
-    bool ok = isocontrol.changeParameter(param);
+    bool ok = m_implFuncControl.changeParameter(param);
     return Module::changeParameter(param) && ok;
 }
 
@@ -159,13 +159,13 @@ bool ClipVtkm::changeParameter(const Parameter *param)
 bool ClipVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task) const
 {
     // make sure input data is supported
-    auto isoData = task->expect<Object>("grid_in");
-    if (!isoData) {
+    auto inObj = task->expect<Object>("grid_in");
+    if (!inObj) {
         sendError("need geometry on grid_in");
         return true;
     }
-    auto splitIso = splitContainerObject(isoData);
-    auto grid = splitIso.geometry;
+    auto inSplit = splitContainerObject(inObj);
+    auto grid = inSplit.geometry;
     if (!grid) {
         sendError("no grid on scalar input data");
         return true;
@@ -183,30 +183,30 @@ bool ClipVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task) const
         return true;
     }
 
-    // apply vtkm isosurface filter
-    std::string isospecies;
-    vtkm::filter::contour::ClipWithImplicitFunction isosurfaceFilter;
-    auto isoField = splitIso.mapped;
-    if (isoField) {
-        isospecies = isoField->getAttribute("_species");
-        if (isospecies.empty())
-            isospecies = "isodata";
-        status = vtkmAddField(vtkmDataSet, isoField, isospecies);
+    // apply vtkm clip filter
+    std::string mapSpecies;
+    vtkm::filter::contour::ClipWithImplicitFunction clipFilter;
+    auto mapField = inSplit.mapped;
+    if (mapField) {
+        mapSpecies = mapField->getAttribute("_species");
+        if (mapSpecies.empty())
+            mapSpecies = "mapdata";
+        status = vtkmAddField(vtkmDataSet, mapField, mapSpecies);
         if (status == VtkmTransformStatus::UNSUPPORTED_FIELD_TYPE) {
-            sendError("Unsupported iso field type");
+            sendError("Unsupported mapped field type");
             return true;
         }
-        isosurfaceFilter.SetActiveField(isospecies);
+        clipFilter.SetActiveField(mapSpecies);
     }
-    isosurfaceFilter.SetImplicitFunction(isocontrol.func());
-    isosurfaceFilter.SetInvertClip(isocontrol.flip());
-    auto isosurface = isosurfaceFilter.Execute(vtkmDataSet);
+    clipFilter.SetImplicitFunction(m_implFuncControl.func());
+    clipFilter.SetInvertClip(m_implFuncControl.flip());
+    auto clipped = clipFilter.Execute(vtkmDataSet);
 
     // transform result back into vistle format
-    Object::ptr geoOut = vtkmGetGeometry(isosurface);
+    Object::ptr geoOut = vtkmGetGeometry(clipped);
     if (geoOut) {
         updateMeta(geoOut);
-        geoOut->copyAttributes(isoField);
+        geoOut->copyAttributes(mapField);
         geoOut->copyAttributes(grid, false);
         geoOut->setTransform(grid->getTransform());
         if (geoOut->getTimestep() < 0) {
@@ -219,10 +219,10 @@ bool ClipVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task) const
         }
     }
 
-    if (isoField) {
-        if (auto mapped = vtkmGetField(isosurface, isospecies)) {
+    if (mapField) {
+        if (auto mapped = vtkmGetField(clipped, mapSpecies)) {
             std::cerr << "mapped data: " << *mapped << std::endl;
-            mapped->copyAttributes(isoField);
+            mapped->copyAttributes(mapField);
             mapped->setGrid(geoOut);
             updateMeta(mapped);
             task->addObject(m_dataOut, mapped);
