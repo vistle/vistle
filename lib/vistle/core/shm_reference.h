@@ -339,7 +339,10 @@ public:
         updateFromHandle();
         return m_data;
     }
-    const size_t size() const { return m_size; }
+    const size_t size() const
+    {
+        return m_size;
+    }
     const vtkm::cont::ArrayHandle<handle_type> &handle() const
     {
 #ifdef NO_SHMEM
