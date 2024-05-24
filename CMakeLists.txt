@@ -940,6 +940,17 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
             add_module2(${targetname} FALSE ${description} ${ARGN})
         endif()
     endmacro(add_module)
+
+    macro(add_vtkm_module targetname description)
+        add_module(${targetname} ${description} ${ARGN})
+
+        # when using Cuda device backend for vtkm, make sure that nvcc
+        # compiler is used, even if file does not end on .cu
+        if(VTKm_ENABLE_CUDA)
+            set_source_files_properties(${ARGN} PROPERTIES LANGUAGE CUDA)
+        endif()
+        target_link_libraries(${targetname} vistle_vtkm vtkm::cont vtkm::filter)
+    endmacro(add_vtkm_module)
 endif()
 
 set(CMAKE_C_VISIBILITY_PRESET hidden)
