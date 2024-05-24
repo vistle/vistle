@@ -112,7 +112,6 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
     } else if (auto tri = Triangles::as(grid)) {
         auto numPoints = tri->getNumCoords();
         auto numConn = tri->getNumCorners();
-        auto numCells = tri->getNumElements();
         if (numConn > 0) {
             vtkm::cont::CellSetSingleType<> cellSet;
             auto conn = tri->cl().handle();
@@ -128,7 +127,6 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
     } else if (auto quads = Quads::as(grid)) {
         auto numPoints = quads->getNumCoords();
         auto numConn = quads->getNumCorners();
-        auto numCells = quads->getNumElements();
         if (numConn > 0) {
             vtkm::cont::CellSetSingleType<> cellSet;
             auto conn = quads->cl().handle();
@@ -339,7 +337,6 @@ Object::ptr vtkmGetGeometry(vtkm::cont::DataSet &dataset)
     if (!result && cellset.CanConvert<vtkm::cont::CellSetExplicit<>>()) {
         auto ecellset = cellset.AsCellSet<vtkm::cont::CellSetExplicit<>>();
         auto elements = ecellset.GetOffsetsArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
-        auto numElem = ecellset.GetNumberOfCells();
         auto eshapes = ecellset.GetShapesArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
         auto econn = ecellset.GetConnectivityArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
 
