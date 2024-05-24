@@ -250,11 +250,11 @@ void shm_array<T, allocator>::updateFromHandle(bool invalidate)
         PROF_SCOPE("shm_array::updateFromHandle()");
         m_memoryValid = true;
 
-        if (m_unknown.CanConvert<vtkm::cont::ArrayHandleBasic<handle_type>>()) {
+        /*if (m_unknown.CanConvert<vtkm::cont::ArrayHandleBasic<handle_type>>()) {
             m_handle = m_unknown.AsArrayHandle<vtkm::cont::ArrayHandleBasic<handle_type>>();
         } else {
             vtkm::cont::ArrayCopy(m_unknown, m_handle);
-        }
+        }*/
         m_data = reinterpret_cast<T *>(m_handle.GetWritePointer());
     }
     if (invalidate) {
@@ -276,11 +276,11 @@ void shm_array<T, allocator>::updateFromHandle(bool invalidate) const
     m_memoryValid = true;
 
     PROF_SCOPE("shm_array::updateFromHandle()const");
-    if (m_unknown.CanConvert<vtkm::cont::ArrayHandleBasic<handle_type>>()) {
+    /*if (m_unknown.CanConvert<vtkm::cont::ArrayHandleBasic<handle_type>>()) {
         m_handle = m_unknown.AsArrayHandle<vtkm::cont::ArrayHandleBasic<handle_type>>();
     } else {
         vtkm::cont::ArrayCopy(m_unknown, m_handle);
-    }
+    }*/
     m_data = reinterpret_cast<T *>(m_handle.GetWritePointer());
 #endif
 }
