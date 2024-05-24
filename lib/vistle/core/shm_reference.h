@@ -342,14 +342,10 @@ public:
     const size_t size() const { return m_size; }
     const vtkm::cont::ArrayHandle<handle_type> &handle() const
     {
-        //updateFromHandle();
         if (m_arr) {
-            // order is important: handle() may shrink_to_fit
             m_handle = m_arr->handle();
-            //m_data = m_arr->data();
         } else {
             m_handle = s_nullHandle;
-            //m_data = nullptr;
         }
         return m_handle;
     }
@@ -373,11 +369,8 @@ private:
             return;
         }
         if (m_arr) {
-            // order is important: handle() may shrink_to_fit
-            //m_handle = m_arr->handle();
             m_data = m_arr->data();
         } else {
-            //m_handle = s_nullHandle;
             m_data = nullptr;
         }
 #endif

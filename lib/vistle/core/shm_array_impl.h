@@ -106,6 +106,12 @@ void shm_array<T, allocator>::setHandle(const ArrayHandle &h)
         vtkm::cont::ArrayCopy(m_unknown, m_handle);
     }
 
+    if (m_size != m_capacity) {
+        // many vtk-m algorithms check that array sizes are exact
+        m_handle.Allocate(m_size, vtkm::CopyFlag::On);
+        m_capacity = m_size;
+    }
+
     vtkm::cont::ArrayHandle<vtkm::Range> rangeArray = vtkm::cont::ArrayRangeCompute(h);
     auto rangePortal = rangeArray.ReadPortal();
     assert(rangePortal.GetNumberOfValues() == 1); // 1 component
@@ -215,13 +221,6 @@ void shm_array<T, allocator>::resize(const size_t size, const T &value)
 template<typename T, class allocator>
 const vtkm::cont::ArrayHandle<typename shm_array<T, allocator>::handle_type> &shm_array<T, allocator>::handle() const
 {
-    //updateFromHandle(); // required in order to be compatible with ArrayHandleBasic
-    if (m_size != m_capacity) {
-        // many vtk-m algorithms check that array sizes are exact
-        m_handle.Allocate(m_size, vtkm::CopyFlag::On);
-        m_data = reinterpret_cast<T *>(m_handle.GetWritePointer());
-        m_capacity = m_size;
-    }
     return m_handle;
 }
 #else
