@@ -128,8 +128,11 @@ bool VistleManager::run(int argc, char *argv[])
     po::options_description desc("usage");
     // clang-format off
     desc.add_options()
+    #if 0
+        // this are added by hub as well
         ("help,h", "show this message")
         ("version,v", "print version")
+    #endif
         ("from-vistle", "invoked by Vistle hub")
         ;
     // clang-format on
