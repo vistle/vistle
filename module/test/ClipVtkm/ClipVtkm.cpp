@@ -206,8 +206,7 @@ bool ClipVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task) const
     Object::ptr geoOut = vtkmGetGeometry(clipped);
     if (geoOut) {
         updateMeta(geoOut);
-        geoOut->copyAttributes(mapField);
-        geoOut->copyAttributes(grid, false);
+        geoOut->copyAttributes(grid);
         geoOut->setTransform(grid->getTransform());
         if (geoOut->getTimestep() < 0) {
             geoOut->setTimestep(grid->getTimestep());
