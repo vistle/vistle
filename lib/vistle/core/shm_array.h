@@ -250,7 +250,11 @@ void shm_array<T, allocator>::updateFromHandle(bool invalidate)
         PROF_SCOPE("shm_array::updateFromHandle()");
         m_memoryValid = true;
 
-        m_data = reinterpret_cast<T *>(m_handle.GetWritePointer());
+        if (m_capacity > 0) {
+            m_data = reinterpret_cast<T *>(m_handle.GetWritePointer());
+        } else {
+            m_data = nullptr;
+        }
     }
     if (invalidate) {
         m_unknown = vtkm::cont::UnknownArrayHandle();
@@ -272,7 +276,11 @@ void shm_array<T, allocator>::updateFromHandle(bool invalidate) const
 
     PROF_SCOPE("shm_array::updateFromHandle()const");
 
-    m_data = reinterpret_cast<T *>(m_handle.GetWritePointer());
+    if (m_capacity > 0) {
+        m_data = reinterpret_cast<T *>(m_handle.GetWritePointer());
+    } else {
+        m_data = nullptr;
+    }
 #endif
 }
 
