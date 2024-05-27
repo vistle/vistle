@@ -946,7 +946,7 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
 
         # when using Cuda device backend for vtkm, make sure that nvcc
         # compiler is used, even if file does not end on .cu
-        if(VTKm_ENABLE_CUDA)
+        if(VISTLE_USE_CUDA)
             set_source_files_properties(${ARGN} PROPERTIES LANGUAGE CUDA)
         endif()
         target_link_libraries(${targetname} vistle_vtkm vtkm::cont vtkm::filter)
