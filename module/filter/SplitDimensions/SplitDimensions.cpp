@@ -141,6 +141,7 @@ bool SplitDimensions::compute(const std::shared_ptr<BlockTask> &task) const
                 }
                 break;
             case cell::BAR:
+            case cell::POLYLINE:
                 if (oel1 && !ugrid->isGhost(e)) {
                     for (Index i = begin; i < end; ++i) {
                         ocl1->push_back(icl[i]);
