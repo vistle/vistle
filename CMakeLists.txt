@@ -80,8 +80,8 @@ option(VISTLE_TIME_BUILD "Gather build times (Clang/ISPC)" OFF)
 option(VISTLE_PROFILE_NVTX "Annotate for Nsight profiler" OFF)
 option(VISTLE_PROFILE_CHROME "Annotate for showing timings in Chrome browser" OFF)
 
-option(VISTLE_ENABLE_CUDA "Build with CUDA support" OFF)
-option(VISTLE_ENABLE_KOKKOS "Build with Kokkos support" OFF)
+option(VISTLE_USE_CUDA "Build with CUDA support" OFF)
+option(VISTLE_USE_KOKKOS "Build with Kokkos support" OFF)
 
 if(APPLE)
     option(VISTLE_USE_QT5 "Build GUI with Qt5 instead of Qt6" OFF)
@@ -946,7 +946,7 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
 
         # when using Cuda device backend for vtkm, make sure that nvcc
         # compiler is used, even if file does not end on .cu
-        if(VISTLE_USE_CUDA)
+        if(VISTLE_CUDA_ENABLED)
             set_source_files_properties(${ARGN} PROPERTIES LANGUAGE CUDA)
         endif()
         target_link_libraries(${targetname} vistle_vtkm vtkm::cont vtkm::filter)
@@ -1008,9 +1008,9 @@ else(WIN32)
 endif(WIN32)
 
 # set(CMAKE_BUILD_TYPE Debug)
-set(VISTLE_USE_CUDA FALSE)
 
-if(VISTLE_ENABLE_CUDA)
+set(VISTLE_CUDA_ENABLED FALSE)
+if(VISTLE_USE_CUDA)
     include(CheckLanguage)
     check_language(CUDA)
     vistle_find_package(CUDAToolkit)
@@ -1023,7 +1023,7 @@ if(VISTLE_ENABLE_CUDA)
         endif()
 
         add_definitions(-DVISTLE_USE_CUDA)
-        set(VISTLE_USE_CUDA TRUE)
+        set(VISTLE_CUDA_ENABLED TRUE)
         message("Using CUDA")
     endif()
 endif()
