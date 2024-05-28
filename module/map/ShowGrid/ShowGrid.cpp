@@ -34,6 +34,7 @@ ShowGrid::ShowGrid(const std::string &name, int moduleID, mpi::communicator comm
     addIntParameter("hexahedron", "Show hexahedron", 1, Parameter::Boolean);
     addIntParameter("polyhedron", "Show polyhedron", 1, Parameter::Boolean);
     addIntParameter("polygon", "Show polygon", 1, Parameter::Boolean);
+    addIntParameter("polyline", "Show polylines/line strips", 1, Parameter::Boolean);
     addIntParameter("quad", "Show quad", 1, Parameter::Boolean);
     addIntParameter("triangle", "Show triangle", 1, Parameter::Boolean);
     addIntParameter("bar", "Show bar", 1, Parameter::Boolean);
@@ -50,6 +51,7 @@ bool ShowGrid::compute()
 {
     std::array<bool, UnstructuredGrid::NUM_TYPES> showTypes;
     showTypes[UnstructuredGrid::BAR] = getIntParameter("bar");
+    showTypes[UnstructuredGrid::POLYLINE] = getIntParameter("polyline");
     showTypes[UnstructuredGrid::TRIANGLE] = getIntParameter("triangle");
     showTypes[UnstructuredGrid::QUAD] = getIntParameter("quad");
     showTypes[UnstructuredGrid::TETRAHEDRON] = getIntParameter("tetrahedron");
@@ -135,6 +137,11 @@ bool ShowGrid::compute()
                 case UnstructuredGrid::BAR: {
                     ocl.push_back(icl[begin]);
                     ocl.push_back(icl[begin + 1]);
+                    oel.push_back(ocl.size());
+                    break;
+                }
+                case UnstructuredGrid::POLYLINE: {
+                    std::copy(icl + begin, icl + end, std::back_inserter(ocl));
                     oel.push_back(ocl.size());
                     break;
                 }

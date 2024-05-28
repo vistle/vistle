@@ -19,6 +19,7 @@ public:
         NONE = cell::NONE, // 0
         POINT = cell::POINT, // 1
         BAR = cell::BAR, // 3
+        POLYLINE = cell::POLYLINE, // 4
         TRIANGLE = cell::TRIANGLE, // 5
         POLYGON = cell::POLYGON, // 7
         QUAD = cell::QUAD, // 9
@@ -33,7 +34,7 @@ public:
     static constexpr Index MaxNumVertices = 4;
     static constexpr Index MaxNumFaces = 6;
     static constexpr int Dimensionality[NUM_TYPES] = {
-        -1, 0, -1, 1, -1, 2, -1, 2, 1, 2, 3, 3, 3, 3, 3,
+        -1, 0, -1, 1, 1, 2, -1, 2, 1, 2, 3, 3, 3, 3, 3,
     };
     static constexpr int NumVertices[NUM_TYPES] = {
         0, 1, -1, 2, -1, 3, -1, -1, -1, 4, 4, -1, 8, 6, 5,
@@ -50,7 +51,7 @@ public:
         {0, 0, 0, 0, 0, 0},
         // bar
         {0, 0, 0, 0, 0, 0},
-        // invalid
+        // polyline
         {0, 0, 0, 0, 0, 0},
         // triangle
         {3, 0, 0, 0, 0, 0},
