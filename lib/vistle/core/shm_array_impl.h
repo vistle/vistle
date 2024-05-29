@@ -14,6 +14,7 @@
 #include "archives_config.h"
 #include "shmdata.h"
 #include <vtkm/cont/ArrayRangeCompute.h>
+#include <boost/mpl/for_each.hpp>
 
 namespace vistle {
 
@@ -256,6 +257,18 @@ void shm_array<T, allocator>::setExact(bool exact)
 }
 
 template<typename T, class allocator>
+bool shm_array<T, allocator>::exact() const
+{
+    return m_exact;
+}
+
+template<typename T, class allocator>
+size_t shm_array<T, allocator>::dimensionHint(int d) const
+{
+    return m_dim[d];
+}
+
+template<typename T, class allocator>
 void shm_array<T, allocator>::reserve(const size_t new_capacity)
 {
     if (new_capacity >= std::numeric_limits<Index>::max()) {
@@ -351,6 +364,13 @@ void shm_array<T, allocator>::update_bounds()
 }
 
 template<typename T, class allocator>
+void shm_array<T, allocator>::set_bounds(T min, T max)
+{
+    m_min = min;
+    m_max = max;
+}
+
+template<typename T, class allocator>
 template<class Archive>
 void shm_array<T, allocator>::save(Archive &ar) const
 {
@@ -369,25 +389,78 @@ void shm_array<T, allocator>::save(Archive &ar) const
     ar &V_NAME(ar, "max", m_max);
 }
 
+template<class Archive, class Array>
+struct load_compat {
+    Archive &m_archive;
+    Array &m_array;
+    typedef typename Array::value_type T;
+
+    int m_type = -1;
+    T m_min, m_max;
+    bool m_ok = false;
+
+    load_compat(Archive &ar, Array &arr, int type): m_archive(ar), m_array(arr), m_type(type) {}
+
+    template<typename S>
+    void operator()(S dummy)
+    {
+        if (m_type != vistle::scalarTypeId<S>())
+            return;
+
+        if (m_array.size() > 0) {
+            std::vector<S> vec(m_array.size());
+            size_t d[3];
+            for (int i = 0; i < 3; ++i)
+                d[i] = m_array.dimensionHint(i);
+            if (d[0] * d[1] * d[2] == m_array.size())
+                m_archive &V_NAME(ar, "elements",
+                                  detail::wrap_array<Archive>(vec.data(), m_array.exact(), d[0], d[1], d[2]));
+            else
+                m_archive &V_NAME(ar, "elements",
+                                  detail::wrap_array<Archive>(vec.data(), m_array.exact(), m_array.size()));
+            std::copy(vec.begin(), vec.end(), m_array.begin());
+        }
+
+        S min, max;
+        m_archive &V_NAME(ar, "min", min);
+        m_archive &V_NAME(ar, "max", max);
+        m_array.set_bounds(min, max);
+        m_ok = true;
+    }
+
+    bool load()
+    {
+        boost::mpl::for_each<typename can_load<T>::list>(boost::reference_wrapper<load_compat>(*this));
+        return m_ok;
+    }
+};
+
 template<typename T, class allocator>
 template<class Archive>
 void shm_array<T, allocator>::load(Archive &ar)
 {
     uint32_t type = 0;
     ar &V_NAME(ar, "type", type);
-    assert(m_type == type);
     size_type size = 0;
     ar &V_NAME(ar, "size", size);
     resize(size);
     ar &V_NAME(ar, "exact", m_exact);
-    if (m_size > 0) {
-        if (m_dim[0] * m_dim[1] * m_dim[2] == m_size)
-            ar &V_NAME(ar, "elements", detail::wrap_array<Archive>(&m_data[0], m_exact, m_dim[0], m_dim[1], m_dim[2]));
-        else
-            ar &V_NAME(ar, "elements", detail::wrap_array<Archive>(&m_data[0], m_exact, m_size));
+    if (m_type == type) {
+        if (m_size > 0) {
+            if (m_dim[0] * m_dim[1] * m_dim[2] == m_size)
+                ar &V_NAME(ar, "elements",
+                           detail::wrap_array<Archive>(&m_data[0], m_exact, m_dim[0], m_dim[1], m_dim[2]));
+            else
+                ar &V_NAME(ar, "elements", detail::wrap_array<Archive>(&m_data[0], m_exact, m_size));
+        }
+        ar &V_NAME(ar, "min", m_min);
+        ar &V_NAME(ar, "max", m_max);
+    } else {
+        load_compat<Archive, shm_array<T, allocator>> loader(ar, *this, type);
+        if (!loader.load()) {
+            std::cerr << "failed to restore from compatible data type" << std::endl;
+        }
     }
-    ar &V_NAME(ar, "min", m_min);
-    ar &V_NAME(ar, "max", m_max);
 }
 
 template<typename T, class allocator>
