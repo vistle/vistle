@@ -175,6 +175,8 @@ public:
     void clearDimensionHint();
     void setDimensionHint(const size_t sx, const size_t sy = 1, const size_t sz = 1);
     void setExact(bool exact);
+    bool exact() const;
+    size_t dimensionHint(int d) const;
 
     size_t capacity() const
     {
@@ -190,6 +192,7 @@ public:
     }
     void invalidate_bounds();
     void update_bounds();
+    void set_bounds(value_type min, value_type max);
 
     value_type min() const
     {
