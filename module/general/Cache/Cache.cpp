@@ -284,12 +284,10 @@ bool Cache::prepare()
         Object::ptr obj(Object::loadObject(memar));
         updateMeta(obj);
         renumberObject(obj);
-        if (auto db = DataBase::as(obj)) {
-            if (auto cgrid = db->grid()) {
-                auto grid = std::const_pointer_cast<Object>(cgrid);
-                renumberObject(grid);
-            }
+        for (auto &o: obj->referencedObjects()) {
+            renumberObject(std::const_pointer_cast<Object>(o));
         }
+        //std::cerr << "restored object on port " << port << ": " << *obj << std::endl;
         passThroughObject(m_outPort[port], obj);
         fetcher->releaseArrays();
     };
