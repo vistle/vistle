@@ -29,8 +29,13 @@ int main(int argc, char *argv[])
             deep = true;
             ++filenum;
 
-            vistle::Shm::remove("vistle_ls", 1, 0, false);
-            vistle::Shm::create("vistle_ls", 1, 0, false);
+#ifdef NO_SHMEM
+            int id = -1;
+#else
+            int id = 1;
+#endif
+            vistle::Shm::remove("vistle_ls", id, 0, false);
+            vistle::Shm::create("vistle_ls", id, 0, false);
             vistle::registerTypes();
         }
     }
