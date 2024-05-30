@@ -108,10 +108,10 @@ Object *Object::loadObject(Archive &ar)
                 objData = obj->d();
             }
             assert(objData);
-            Shm::the().unlockObjects();
             name = obj->getName();
             ar.registerObjectNameTranslation(arname, name);
             ObjectData::mutex_lock_type guard(obj->d()->mutex);
+            Shm::the().unlockObjects();
             if (!objData->isComplete() || objData->meta.creator() == -1) {
                 obj->loadFromArchive(ar);
             }
