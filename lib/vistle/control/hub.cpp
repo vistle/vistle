@@ -2718,6 +2718,9 @@ bool Hub::connectToMaster(const std::string &host, unsigned short port)
             break;
         }
         asio::connect(*m_masterSocket, endpoint_iterator, ec);
+        if (m_interrupt) {
+            break;
+        }
         if (!ec) {
             connected = true;
         } else if (ec == boost::system::errc::connection_refused) {
@@ -2837,6 +2840,10 @@ Hub::socket_ptr Hub::connectToVrb(unsigned short port)
         boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string("127.0.0.1"), port);
         sock = std::make_shared<socket>(m_ioService);
         sock->connect(endpoint, ec);
+        if (m_interrupt) {
+            sock.reset();
+            return sock;
+        }
         if (!ec) {
             connected = true;
         } else if (ec == boost::system::errc::connection_refused) {
@@ -2844,6 +2851,7 @@ Hub::socket_ptr Hub::connectToVrb(unsigned short port)
             sleep(1);
         } else {
             std::cerr << ": connect failed: " << ec.message() << std::endl;
+            sock.reset();
             return sock;
         }
     }
