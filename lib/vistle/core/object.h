@@ -609,6 +609,7 @@ private: \
         ar &V_NAME(ar, "type", type); \
         if (!ar.currentObject()) \
             ar.setCurrentObject(Object::m_data); \
+        ar.registerObjectNameTranslation(name, getName()); \
         d()->template serialize<Archive>(ar); \
         assert(type == Object::getType()); \
     }
