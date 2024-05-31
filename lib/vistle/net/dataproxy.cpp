@@ -218,6 +218,11 @@ bool DataProxy::answerRemoteIdentify(std::shared_ptr<DataProxy::tcp_socket> sock
         });
         return true;
     } else if (ident.identity() == Identify::REMOTEBULKDATA) {
+        if (!ident.verifyMac()) {
+            shutdownSocket(sock, "MAC verification failed");
+            removeSocket(sock);
+            return false;
+        }
         if (ident.boost_archive_version() != m_boost_archive_version) {
 #ifndef USE_YAS
             std::cerr << "Boost.Archive version on hub " << m_hubId << " is " << m_boost_archive_version << ", but hub "
@@ -231,22 +236,12 @@ bool DataProxy::answerRemoteIdentify(std::shared_ptr<DataProxy::tcp_socket> sock
         }
         if (ident.indexSize() != m_indexSize) {
             std::cerr << "Index size on hub " << m_hubId << " is " << m_indexSize << ", but hub " << ident.senderId()
-                      << " uses Index size " << ident.indexSize() << std::endl;
-            shutdownSocket(sock, "Index size mismatch");
-            removeSocket(sock);
-            return false;
+                      << " uses Index size " << ident.indexSize()
+                      << ", transfer is only possible from smaller to larger index size" << std::endl;
         }
         if (ident.scalarSize() != m_scalarSize) {
             std::cerr << "Scalar size on hub " << m_hubId << " is " << m_scalarSize << ", but hub " << ident.senderId()
-                      << " uses Scalar size " << ident.scalarSize() << std::endl;
-            shutdownSocket(sock, "Scalar size mismatch");
-            removeSocket(sock);
-            return false;
-        }
-        if (!ident.verifyMac()) {
-            shutdownSocket(sock, "MAC verification failed");
-            removeSocket(sock);
-            return false;
+                      << " uses Scalar size " << ident.scalarSize() << ", expect precision loss" << std::endl;
         }
         return true;
     } else {
