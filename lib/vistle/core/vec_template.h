@@ -332,9 +332,8 @@ void Vec<T, Dim>::print(std::ostream &os, bool verbose) const
             os << "x" << c;
             break;
         }
-        os << "(";
-        d()->x[c]->print(os, verbose);
-        os << ")";
+        os << ":";
+        d()->x[c].print(os, verbose);
     }
 }
 

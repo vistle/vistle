@@ -62,12 +62,10 @@ bool VertexOwnerList::isEmpty() const
 void VertexOwnerList::print(std::ostream &os, bool verbose) const
 {
     Base::print(os, verbose);
-    os << " vertexlist(";
-    d()->vertexList->print(os, verbose);
-    os << ")";
-    os << " celllist(";
-    d()->cellList->print(os, verbose);
-    os << ")";
+    os << " vertexlist:";
+    d()->vertexList.print(os, verbose);
+    os << " celllist:";
+    d()->cellList.print(os, verbose);
 }
 
 Index VertexOwnerList::getNumVertices() const

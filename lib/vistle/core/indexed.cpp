@@ -265,17 +265,14 @@ void Indexed::print(std::ostream &os, bool verbose) const
 {
     Base::print(os);
 
-    os << " cl(";
-    d()->cl->print(os, verbose);
-    os << ")";
+    os << " cl:";
+    d()->cl.print(os, verbose);
 
-    os << " el(";
-    d()->el->print(os, verbose);
-    os << ")";
+    os << " el:";
+    d()->el.print(os, verbose);
 
-    os << " ghost(";
-    d()->ghost->print(os, verbose);
-    os << ")";
+    os << " ghost:";
+    d()->ghost.print(os, verbose);
 }
 
 Indexed::NeighborFinder::NeighborFinder(const Indexed *indexed): indexed(indexed)
