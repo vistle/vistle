@@ -142,6 +142,8 @@ public:
         }
     }
 
+    void print(std::ostream &os, bool verbose = false) const;
+
 private:
     shm_name_t m_name;
 #ifdef NO_SHMEM

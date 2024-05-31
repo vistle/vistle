@@ -57,9 +57,8 @@ bool UnstructuredGrid::checkImpl(std::ostream &os, bool quick) const
 void UnstructuredGrid::print(std::ostream &os, bool verbose) const
 {
     Base::print(os, verbose);
-    os << " tl(";
-    d()->tl->print(os, verbose);
-    os << ")";
+    os << " tl:";
+    d()->tl.print(os, verbose);
 }
 
 bool UnstructuredGrid::isGhostCell(const Index elem) const

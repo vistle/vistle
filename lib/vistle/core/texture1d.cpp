@@ -38,9 +38,8 @@ bool Texture1D::checkImpl(std::ostream &os, bool quick) const
 void Texture1D::print(std::ostream &os, bool verbose) const
 {
     Base::print(os);
-    os << " pixels(";
-    d()->pixels->print(os, verbose);
-    os << ")";
+    os << " pixels:";
+    d()->pixels.print(os, verbose);
 }
 
 void Texture1D::Data::initData()

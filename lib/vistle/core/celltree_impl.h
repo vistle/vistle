@@ -60,13 +60,11 @@ template<typename Scalar, typename Index, int NumDimensions>
 V_COREEXPORT void Celltree<Scalar, Index, NumDimensions>::print(std::ostream &os, bool verbose) const
 {
     Base::print(os);
-    os << " cells(";
-    cells().print(os, verbose);
-    os << ")";
+    os << " cells:";
+    d()->m_cells.print(os, verbose);
 
-    os << " nodes(";
-    nodes().print(os, verbose);
-    os << ")";
+    os << " nodes:";
+    d()->m_nodes.print(os, verbose);
 }
 
 template<typename Scalar, typename Index, int NumDimensions>
