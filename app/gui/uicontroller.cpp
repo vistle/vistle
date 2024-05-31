@@ -21,6 +21,7 @@
 #include <boost/program_options.hpp>
 
 #include <thread>
+#include <csignal>
 
 #include <QClipboard>
 #include <QDir>
@@ -274,6 +275,9 @@ bool UiController::init()
     m_mainWindow->dataFlowView()->snapToGridChanged(m_mainWindow->isSnapToGrid());
 
     moduleSelectionChanged();
+
+    // restore default handler for Ctrl-C
+    signal(SIGINT, SIG_DFL);
 
     return true;
 }
