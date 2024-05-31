@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
         std::map<std::string, std::string> objectTranslations, arrayTranslations;
 
         auto fetcher = std::make_shared<DeepArchiveFetcher>(objects, arrays, compression, size);
-        fetcher->setRenameObjects(true);
+        fetcher->setRenameObjects(false);
         fetcher->setObjectTranslations(objectTranslations);
         fetcher->setArrayTranslations(arrayTranslations);
 
