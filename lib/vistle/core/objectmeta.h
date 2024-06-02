@@ -42,7 +42,7 @@ public:
     void setTransform(const Matrix4 &transform);
 
 private:
-    int m_block, m_numBlocks, m_timestep, m_numTimesteps, m_animationstep, m_numAnimationsteps, m_iteration,
+    int32_t m_block, m_numBlocks, m_timestep, m_numTimesteps, m_animationstep, m_numAnimationsteps, m_iteration,
         m_generation, m_creator;
     double m_realtime;
     std::array<double, 16> m_transform;

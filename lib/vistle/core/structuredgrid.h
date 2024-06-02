@@ -75,9 +75,9 @@ private:
     V_DATA_BEGIN(StructuredGrid);
 
     shm_obj_ref<Normals> normals;
-    Index indexOffset[3]; //< global index offset
-    Index numDivisions[3]; //< number of divisions on each axis (1 more than number of cells)
-    Index ghostLayers[3][2]; //< number of ghost cell layers in each of x, y, z directions
+    Index64 indexOffset[3]; //< global index offset
+    Index64 numDivisions[3]; //< number of divisions on each axis (1 more than number of cells)
+    Index64 ghostLayers[3][2]; //< number of ghost cell layers in each of x, y, z directions
 
     Data(const size_t numVert_x, const size_t numVert_y, const size_t numVert_z, const std::string &name,
          const Meta &meta = Meta());
