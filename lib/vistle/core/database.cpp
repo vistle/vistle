@@ -136,7 +136,7 @@ void DataBase::setExact(bool enable)
 
 DataBase::Mapping DataBase::mapping() const
 {
-    return d()->mapping;
+    return static_cast<Mapping>(d()->mapping);
 }
 
 DataBase::Mapping DataBase::guessMapping(Object::const_ptr g) const

@@ -15,7 +15,7 @@ template<class Archive>
 void Vec<T, Dim>::Data::serialize(Archive &ar)
 {
     ar &V_NAME(ar, "base_object", serialize_base<Base::Data>(ar, *this));
-    unsigned dim = Dim;
+    uint32_t dim = Dim;
     ar &V_NAME(ar, "dim", dim);
     assert(dim == Dim);
     for (unsigned c = 0; c < Dim; ++c) {
