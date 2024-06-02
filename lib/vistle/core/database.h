@@ -41,7 +41,7 @@ public:
 private:
     V_DATA_BEGIN(DataBase);
     shm_obj_ref<Object> grid;
-    Mapping mapping;
+    Byte mapping;
 
     Data(const Data &o, const std::string &name, Type id);
     ~Data();
