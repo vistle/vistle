@@ -1228,9 +1228,31 @@ void RemoteFileDialog::setNameFilters(const QStringList &filters)
     QStringList cleanedFilters;
     const int numFilters = filters.count();
     cleanedFilters.reserve(numFilters);
+
+    if (filters.size() > 1) {
+        QString allSupported;
+        QRegularExpression rex(R"(\((.*)\))");
+        for (auto &filter: filters) {
+            QRegularExpressionMatch match = rex.match(filter);
+            if (match.hasMatch()) {
+                QString glob = match.captured(1);
+                if (glob == "*")
+                    continue;
+                if (allSupported.isEmpty())
+                    allSupported = match.captured(1);
+                else
+                    allSupported += " " + match.captured(1);
+            }
+        }
+        allSupported.prepend(QLatin1String("All Supported ("));
+        allSupported.append(QLatin1String(")"));
+        cleanedFilters << allSupported.simplified();
+    }
+
     for (int i = 0; i < numFilters; ++i) {
         cleanedFilters << filters[i].simplified();
     }
+
     d->options->setNameFilters(cleanedFilters);
 
     d->qFileDialogUi->fileTypeCombo->clear();
