@@ -24,7 +24,6 @@
 #include <vistle/core/messages.h>
 #include <vistle/util/listenv4v6.h>
 #include <vistle/util/threadname.h>
-#include <vistle/module/module.h>
 
 
 #define CERR std::cerr << "RHR: "
@@ -64,8 +63,7 @@ bool RhrServer::send(message::Buffer msg, const buffer *payload)
 }
 
 //! called when plugin is loaded
-RhrServer::RhrServer(vistle::Module *module)
-: m_acceptorv4(m_io), m_acceptorv6(m_io), m_listen(true), m_port(0), m_destPort(0)
+RhrServer::RhrServer(): m_acceptorv4(m_io), m_acceptorv6(m_io), m_listen(true), m_port(0), m_destPort(0)
 {
     init();
 }

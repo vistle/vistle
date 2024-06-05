@@ -28,7 +28,6 @@ target_link_libraries(
     vistle_rhr
     PUBLIC vistle_util
     PUBLIC vistle_core
-    PRIVATE vistle_module
     PRIVATE Boost::boost
     PRIVATE Boost::serialization
     PRIVATE ${JPEG_LIBRARIES})
