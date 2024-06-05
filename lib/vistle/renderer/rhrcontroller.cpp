@@ -142,7 +142,7 @@ bool RhrController::initializeServer()
     }
 
     if (!m_rhr) {
-        m_rhr.reset(new RhrServer(m_module));
+        m_rhr.reset(new RhrServer());
         if (requireServer) {
             m_rhr->startServer(m_rhrBasePort->getValue());
         }
