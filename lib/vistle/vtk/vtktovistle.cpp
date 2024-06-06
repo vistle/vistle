@@ -78,7 +78,7 @@ bool subCellCoordinatesFromId(int &i, int &j, int &k, int subId, const int order
 std::array<Index, UnstructuredGrid::NumVertices[UnstructuredGrid::HEXAHEDRON]> approximateSubHex(int subId,
                                                                                                  const int order[])
 {
-    int i, j, k;
+    int i = 0, j = 0, k = 0;
     if (!subCellCoordinatesFromId(i, j, k, subId, order)) {
         std::cerr << "subCellCoordinatesFromId failed" << std::endl;
     }
