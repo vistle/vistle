@@ -1232,12 +1232,14 @@ void RemoteFileDialog::setNameFilters(const QStringList &filters)
     if (filters.size() > 1) {
         QString allSupported;
         QRegularExpression rex(R"(\((.*)\))");
+        int numCombined = 0;
         for (auto &filter: filters) {
             QRegularExpressionMatch match = rex.match(filter);
             if (match.hasMatch()) {
                 QString glob = match.captured(1);
                 if (glob == "*")
                     continue;
+                ++numCombined;
                 if (allSupported.isEmpty())
                     allSupported = match.captured(1);
                 else
@@ -1246,7 +1248,8 @@ void RemoteFileDialog::setNameFilters(const QStringList &filters)
         }
         allSupported.prepend(QLatin1String("All Supported ("));
         allSupported.append(QLatin1String(")"));
-        cleanedFilters << allSupported.simplified();
+        if (numCombined > 1)
+            cleanedFilters << allSupported.simplified();
     }
 
     for (int i = 0; i < numFilters; ++i) {
