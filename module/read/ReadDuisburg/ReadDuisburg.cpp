@@ -182,7 +182,7 @@ Object::ptr ReadDuisburg::generateTriangleGrid(const NcmpiFile &ncFile, int time
     std::fill(localIdx.begin(), localIdx.end(), 0);
 
     //fill coordinates, but only for vertices with water
-    for (int i = 0; i < nonZeroVerticesVec.size(); ++i) {
+    for (Index i = 0; i < nonZeroVerticesVec.size(); ++i) {
         int idx = nonZeroVerticesVec[i];
         if (idx >= 0) {
             auto x = i % dimX;
