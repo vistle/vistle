@@ -359,7 +359,7 @@ Module::Module(const std::string &moduleName, const int moduleId, mpi::communica
               << hostname() << ":" << get_process_handle() << std::endl;
 #endif
 
-    auto cm = addIntParameter("_cache_mode", "input object caching", ObjectCache::CacheDefault, Parameter::Choice);
+    auto cm = addIntParameter("_cache_mode", "input object caching", ObjectCache::CacheByName, Parameter::Choice);
     V_ENUM_SET_CHOICES_SCOPE(cm, CacheMode, ObjectCache);
     addIntParameter("_prioritize_visible", "prioritize currently visible timestep", m_prioritizeVisible,
                     Parameter::Boolean);
@@ -549,22 +549,12 @@ void Module::setSyncMessageProcessing(bool sync)
 
 ObjectCache::CacheMode Module::setCacheMode(ObjectCache::CacheMode mode, bool updateParam)
 {
-    if (mode == ObjectCache::CacheDefault)
-        m_cache.setCacheMode(m_defaultCacheMode);
-    else
-        m_cache.setCacheMode(mode);
+    m_cache.setCacheMode(mode);
 
     if (updateParam)
         setIntParameter("_cache_mode", mode);
 
     return m_cache.cacheMode();
-}
-
-void Module::setDefaultCacheMode(ObjectCache::CacheMode mode)
-{
-    assert(mode != ObjectCache::CacheDefault);
-    m_defaultCacheMode = mode;
-    setCacheMode(m_defaultCacheMode, false);
 }
 
 
@@ -911,12 +901,12 @@ void Module::updateCacheMode()
     Integer value = getIntParameter("_cache_mode");
     switch (value) {
     case ObjectCache::CacheNone:
+    case ObjectCache::CacheByName:
     case ObjectCache::CacheDeleteEarly:
     case ObjectCache::CacheDeleteLate:
-    case ObjectCache::CacheDefault:
         break;
     default:
-        value = ObjectCache::CacheDefault;
+        value = ObjectCache::CacheByName;
         break;
     }
 

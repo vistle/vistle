@@ -66,7 +66,6 @@ bool agree(const boost::mpi::communicator &comm, const Value &value)
 
 Tracer::Tracer(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
-    setDefaultCacheMode(ObjectCache::CacheDeleteLate);
     setReducePolicy(message::ReducePolicy::PerTimestep);
 
     createInputPort("data_in0", "vector field");

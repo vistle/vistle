@@ -138,8 +138,6 @@ vtkm::ImplicitFunctionGeneral ImplFuncController::func() const
 ClipVtkm::ClipVtkm(const std::string &name, int moduleID, mpi::communicator comm)
 : Module(name, moduleID, comm), m_implFuncControl(this)
 {
-    setDefaultCacheMode(ObjectCache::CacheDeleteLate);
-
     createInputPort("grid_in", "input grid or geometry with optional data");
     m_dataOut = createOutputPort("grid_out", "surface with mapped data");
 

@@ -243,8 +243,6 @@ Calc::Calc(const std::string &name, int moduleID, mpi::communicator comm): Modul
     m_outputType = addIntParameter("output_type", "type of output", AsInput, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_outputType, OutputType);
     m_species = addStringParameter("species", "species of output data", "computed");
-
-    setDefaultCacheMode(ObjectCache::CacheDeleteEarly);
 }
 
 Calc::~Calc()

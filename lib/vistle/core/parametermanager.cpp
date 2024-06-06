@@ -311,10 +311,20 @@ V getParameterDefault(config::Access *config, const std::string &module, const s
     if (name.find("_config:") == 0) // avoid recursive default look-up for config parameters
         return value;
 
-    auto def = config->value<V>("modules/default", module, name, value);
-    if (!def->exists() && !name.empty() && name[0] == '_') {
-        // look up common default for system parameters
-        def = config->value<V>("modules/default", "ALL", name, value);
+    auto def = config->value<V>("modules/parameters", module, name, value);
+    if (!name.empty() && name[0] == '_') {
+        if (!def->exists()) {
+            // look up defaults for system parameters
+            def = config->value<V>("modules/default", module, name, value);
+        }
+        if (!def->exists()) {
+            // global user overrides for system parameters
+            def = config->value<V>("modules/parameters", "ALL", name, value);
+        }
+        if (!def->exists()) {
+            // look up common default for system parameters
+            def = config->value<V>("modules/default", "ALL", name, value);
+        }
     }
     return def->value();
 }

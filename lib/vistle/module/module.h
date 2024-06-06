@@ -293,8 +293,6 @@ protected:
     int m_cacheGeneration = 0;
     std::set<Port *> m_withOutput;
 
-    void setDefaultCacheMode(ObjectCache::CacheMode mode);
-
     message::MessageQueue *sendMessageQueue;
     message::MessageQueue *receiveMessageQueue;
     std::deque<message::Buffer> messageBacklog;

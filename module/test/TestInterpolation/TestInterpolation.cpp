@@ -16,8 +16,6 @@ using namespace vistle;
 TestInterpolation::TestInterpolation(const std::string &name, int moduleID, mpi::communicator comm)
 : Module(name, moduleID, comm)
 {
-    setDefaultCacheMode(ObjectCache::CacheDeleteLate);
-
     createInputPort("data_in", "grid");
 
     m_count = addIntParameter("count", "number of random points to generate per block", 100);
