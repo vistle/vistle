@@ -476,9 +476,9 @@ Object::ptr ReadCovise::readSTRGRD(Token &token, const int port, int fd, const b
         Scalar *x = str->x().data(), *y = str->y().data(), *z = str->z().data();
         size_t idx = 0;
         const Index vdim[3] = {static_cast<Index>(dim[0]), static_cast<Index>(dim[1]), static_cast<Index>(dim[2])};
-        for (Index k = 0; k < dim[0]; ++k) {
-            for (Index j = 0; j < dim[1]; ++j) {
-                for (Index i = 0; i < dim[2]; ++i) {
+        for (Index k = 0; k < vdim[0]; ++k) {
+            for (Index j = 0; j < vdim[1]; ++j) {
+                for (Index i = 0; i < vdim[2]; ++i) {
                     auto vidx = StructuredGrid::vertexIndex(k, j, i, vdim);
                     x[vidx] = _x[idx];
                     y[vidx] = _y[idx];
@@ -677,9 +677,9 @@ Object::ptr ReadCovise::readSTRSDT(Token &token, const int port, int fd, const b
         auto x = array->x().data();
         const Index vdim[3] = {static_cast<Index>(sx), static_cast<Index>(sy), static_cast<Index>(sz)};
         Index idx = 0;
-        for (Index k = 0; k < sx; ++k) {
-            for (Index j = 0; j < sy; ++j) {
-                for (Index i = 0; i < sz; ++i) {
+        for (Index k = 0; k < vdim[0]; ++k) {
+            for (Index j = 0; j < vdim[1]; ++j) {
+                for (Index i = 0; i < vdim[2]; ++i) {
                     auto vidx = StructuredGrid::vertexIndex(k, j, i, vdim);
                     x[vidx] = _x[idx];
                     ++idx;
@@ -716,9 +716,9 @@ Object::ptr ReadCovise::readSTRVDT(Token &token, const int port, int fd, const b
         auto z = array->z().data();
         const Index vdim[3] = {static_cast<Index>(sx), static_cast<Index>(sy), static_cast<Index>(sz)};
         Index idx = 0;
-        for (Index k = 0; k < sx; ++k) {
-            for (Index j = 0; j < sy; ++j) {
-                for (Index i = 0; i < sz; ++i) {
+        for (Index k = 0; k < vdim[0]; ++k) {
+            for (Index j = 0; j < vdim[1]; ++j) {
+                for (Index i = 0; i < vdim[2]; ++i) {
                     auto vidx = StructuredGrid::vertexIndex(k, j, i, vdim);
                     x[vidx] = _x[idx];
                     y[vidx] = _y[idx];
