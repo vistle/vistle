@@ -65,10 +65,10 @@ fi
 
 LOGPREFIX=
 mkdir -p "/var/tmp/${USER}" && LOGPREFIX="/var/tmp/${USER}"
-LOGFILE="${LOGPREFIX}/$(basename $1)"-$$.log
-if [ -n "$4" ]; then
+LOGFILE="${LOGPREFIX}/$(basename $1)-$$.log"
+if [ -n "$5" ]; then
    # include module ID
-   LOGFILE="${LOGPREFIX}/$(basename $1)"-$4-$$.log
+   LOGFILE="${LOGPREFIX}/$(basename $1)_$5-$$.log"
 fi
 
 function doexec() {
