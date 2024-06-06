@@ -559,7 +559,7 @@ bool ReadWRFChem::read(Token &token, int timestep, int block)
     if (!ncFirstFile->isNull()) {
         NcVar var;
         std::vector<NcDim> edges;
-        size_t numdims = 0;
+        int numdims = 0;
 
         //TODO: number of dimensions can be set by any variable, when check in prepareRead is used to ensure matching dimensions of all variables
         for (Index vi = 0; vi < NUMPARAMS; vi++) {
