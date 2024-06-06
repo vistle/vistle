@@ -172,12 +172,12 @@ bool ReadMPAS::prepareRead()
     }
 
     //set partitions
-    int numPartsUser = 1;
+    size_t numPartsUser = 1;
     std::string sPartFile = m_partFile->getValue();
     if (sPartFile.empty()) {
         sendWarning("No partitioning file given: continue with single block");
     } else {
-        numPartsUser = m_numPartitions->getValue();
+        numPartsUser = std::max<int>(0, m_numPartitions->getValue());
     }
 
     partsPath = "";
@@ -188,7 +188,7 @@ bool ReadMPAS::prepareRead()
         if (fs::is_regular_file(path)) {
             std::string fEnd = path.extension().string();
             boost::erase_all(fEnd, ".");
-            numPartsFile = atoi(fEnd.c_str());
+            numPartsFile = std::max<int>(0, atoi(fEnd.c_str()));
         }
     } catch (std::exception &ex) {
         std::cerr << "exception: " << ex.what();

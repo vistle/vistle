@@ -81,7 +81,7 @@ private:
     bool hasZData = false;
     std::string partsPath = "";
 
-    int numPartsFile = 1;
+    size_t numPartsFile = 1;
     std::vector<std::string> dataFileList;
     Index numGridCells = 0;
 
