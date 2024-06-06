@@ -32,7 +32,7 @@ ReadDuisburg::ReadDuisburg(const std::string &name, int moduleID, mpi::communica
     //initialize ports
     m_gridFile = addStringParameter("grid_file", "File containing grid and data",
                                     "/home/hpcleker/Desktop/duisburg_5t.nc", Parameter::ExistingFilename);
-    setParameterFilters(m_gridFile, "NetCDF Grid Files (*.grid.nc)/NetCDF Files (*.nc)/All Files (*)");
+    setParameterFilters(m_gridFile, "NetCDF Grid Files (*.grid.nc)/NetCDF Files (*.nc)");
 
     m_gridOut = createOutputPort("grid_out", "grid");
 

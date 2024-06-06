@@ -37,7 +37,7 @@
 
 namespace gui {
 
-QStringList fileNameFilters{"Vistle Files (*.vsl)", "Python Files (*.py)", "All Files (*)"};
+QStringList fileNameFilters{"Vistle Files (*.vsl)", "Python Files (*.py)"};
 
 UiController::UiController(int argc, char *argv[], QObject *parent): QObject(parent), m_mainWindow(nullptr)
 {

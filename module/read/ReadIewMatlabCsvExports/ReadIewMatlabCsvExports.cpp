@@ -16,7 +16,7 @@ Transversalflussmaschine::Transversalflussmaschine(const std::string &name, int 
     setParallelizationMode(Reader::ParallelizationMode::Serial);
     m_filePathParam = addStringParameter("filename", "csv file path", "", Parameter::ExistingFilename);
     observeParameter(m_filePathParam);
-    setParameterFilters("filename", "csv Files (*.csv)/All Files (*)");
+    setParameterFilters("filename", "csv Files (*.csv)");
     m_gridPort = createOutputPort("grid_out", "grid");
     m_dataPort = createOutputPort("data_out", "scalar data");
     m_format = addIntParameter("format", "Scalar expects single file, Vector expects 3 files ending with _x.csv, ...",

@@ -69,7 +69,7 @@ Cache::Cache(const std::string &name, int moduleID, mpi::communicator comm): Mod
     p_mode = addIntParameter("mode", "operation mode", m_mode, Parameter::Choice);
     V_ENUM_SET_CHOICES(p_mode, OperationMode);
     p_file = addStringParameter("file", "filename where cache should be created", "/scratch/", Parameter::Filename);
-    setParameterFilters(p_file, "Vistle Data (*.vsld)/All Files (*)");
+    setParameterFilters(p_file, "Vistle Data (*.vsld)");
 
     p_step = addIntParameter("step", "step width when reading from disk", 1);
     setParameterMinimum(p_step, Integer(1));
