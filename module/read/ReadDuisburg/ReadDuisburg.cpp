@@ -59,9 +59,14 @@ bool ReadDuisburg::examine(const vistle::Parameter *param)
     if (!param || param == m_gridFile) {
         LOCK_NETCDF(comm());
         //extract number of timesteps from file
-        NcmpiFile ncFile(comm(), m_gridFile->getValue().c_str(), NcmpiFile::read);
-        const NcmpiDim timesDim = ncFile.getDim("t");
-        size_t nTimes = timesDim.getSize();
+        size_t nTimes = 0;
+        try {
+            NcmpiFile ncFile(comm(), m_gridFile->getValue().c_str(), NcmpiFile::read);
+            const NcmpiDim timesDim = ncFile.getDim("t");
+            nTimes = timesDim.getSize();
+        } catch (std::exception &ex) {
+            sendError("Error opening file: " + std::string(ex.what()));
+        }
         UNLOCK_NETCDF(comm());
 
         setTimesteps(nTimes);
