@@ -249,7 +249,7 @@ ReadNek::ReadNek(const std::string &name, int moduleID, mpi::communicator comm):
 
     // Parameters
     m_filePathParam = addStringParameter("filename", "Geometry file path", "", Parameter::ExistingFilename);
-    setParameterFilters(m_filePathParam, "Nek5000 geometry (*.nek5000)/All files (*)");
+    setParameterFilters(m_filePathParam, "Nek5000 geometry (*.nek5000)");
     m_geometryOnlyParam = addIntParameter("OnlyGeometry", "Reading only Geometry? yes|no", false, Parameter::Boolean);
     m_numGhostLayersParam = addIntParameter(
         "num_ghost_layers", "number of ghost layers around eeach partition, a layer consists of whole blocks", 1);

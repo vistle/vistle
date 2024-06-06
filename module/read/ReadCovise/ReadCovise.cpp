@@ -50,7 +50,7 @@ ReadCovise::ReadCovise(const std::string &name, int moduleID, mpi::communicator 
     m_fieldFile[0] = addStringParameter("grid", "filename for grid", NONE, Parameter::Choice);
 #else
     m_gridFile = addStringParameter("filename", "name of COVISE file", "", Parameter::ExistingFilename);
-    setParameterFilters(m_gridFile, "COVISE Files (*.covise)/All Files (*)");
+    setParameterFilters(m_gridFile, "COVISE Files (*.covise)");
     m_fieldFile[0] = m_gridFile;
 #endif
     m_out[0] = createOutputPort("grid_out", "grid or geometry");
@@ -59,7 +59,7 @@ ReadCovise::ReadCovise(const std::string &name, int moduleID, mpi::communicator 
     m_fieldFile[1] = addStringParameter("normals", "name of COVISE file for normals", NONE, Parameter::Choice);
 #else
     m_fieldFile[1] = addStringParameter("normals", "name of COVISE file for normals", "", Parameter::ExistingFilename);
-    setParameterFilters(m_fieldFile[1], "COVISE Files (*.covise)/All Files (*)");
+    setParameterFilters(m_fieldFile[1], "COVISE Files (*.covise)");
 #endif
     m_out[1] = nullptr;
     for (unsigned i = 2; i < NumPorts; ++i) {
@@ -71,7 +71,7 @@ ReadCovise::ReadCovise(const std::string &name, int moduleID, mpi::communicator 
         m_fieldFile[i] =
             addStringParameter("field" + std::to_string(i - 2), "name of COVISE file for field " + std::to_string(i),
                                "", Parameter::ExistingFilename);
-        setParameterFilters(m_fieldFile[i], "COVISE Files (*.covise)/All Files (*)");
+        setParameterFilters(m_fieldFile[i], "COVISE Files (*.covise)");
 #endif
         m_out[i] = createOutputPort("field" + std::to_string(i - 2) + "_out", "data mapped to geometry");
     }

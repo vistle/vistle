@@ -47,7 +47,7 @@ ColorMetapostPart::ColorMetapostPart(const std::string &name, int moduleID, mpi:
     din->link(dout);
 
     p_colorfile = addStringParameter("metapost", "filename of metapost file", "", Parameter::ExistingFilename);
-    setParameterFilters(p_colorfile, "METApost (*.ses)/All Files (*)");
+    setParameterFilters(p_colorfile, "METApost (*.ses)");
 }
 
 ColorMetapostPart::~ColorMetapostPart()

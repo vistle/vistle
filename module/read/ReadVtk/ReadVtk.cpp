@@ -353,7 +353,7 @@ ReadVtk::ReadVtk(const std::string &name, int moduleID, mpi::communicator comm):
     m_filename = addStringParameter("filename", "name of VTK file", "", Parameter::ExistingFilename);
     setParameterFilters(m_filename, "PVD Files (*.pvd)/XML VTK Files (*.vti *.vtp *.vtr *.vts *.vtu)/Parallel XML VTK "
                                     "Files(*.pvti *.pvtp *.pvtr *.pvts *.pvtu)/Legacy VTK Files "
-                                    "(*.vtk)/XML VTK Multiblock Data (*.vtm)/All Files (*)");
+                                    "(*.vtk)/XML VTK Multiblock Data (*.vtm)");
     m_readPieces = addIntParameter("read_pieces", "create block for every piece in an unstructured grid", false,
                                    Parameter::Boolean);
     m_ghostCells = addIntParameter("create_ghost_cells", "create ghost cells for multi-piece unstructured grids", true,

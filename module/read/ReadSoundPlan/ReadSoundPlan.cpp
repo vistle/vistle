@@ -41,7 +41,8 @@ MODULE_MAIN(ReadSoundPlan)
 
 ReadSoundPlan::ReadSoundPlan(const string &name, int moduleID, mpi::communicator comm): Reader(name, moduleID, comm)
 {
-    m_file = addStringParameter("Filename", "SoundPLAN data file path", "/home/pow/covise/data", Parameter::Filename);
+    m_file = addStringParameter("Filename", "SoundPLAN data file path", "/home/pow/covise/data",
+                                Parameter::ExistingFilename);
 
     m_meshOutPort = createOutputPort("Mesh", "Points (point data)");
     m_daySoundOutPort = createOutputPort("Daysound", "Float (daysound)");

@@ -369,7 +369,7 @@ ReadItlrBin::ReadItlrBin(const std::string &name, int moduleID, mpi::communicato
 
     m_gridFilename = addStringParameter("grid_filename", ".bin file for grid",
                                         "/data/itlr/itlmer-Case11114_VISUS/netz_xyz.bin", Parameter::ExistingFilename);
-    setParameterFilters(m_gridFilename, "FS3D Binary Files (*.bin)/FS3D HDF5 Files (*.hdf)/All Files (*)");
+    setParameterFilters(m_gridFilename, "FS3D Binary Files (*.bin)/FS3D HDF5 Files (*.hdf)");
     for (int i = 0; i < NumPorts; ++i) {
         if (i == 0)
             m_filename[i] =
@@ -378,7 +378,7 @@ ReadItlrBin::ReadItlrBin(const std::string &name, int moduleID, mpi::communicato
         else
             m_filename[i] = addStringParameter("filename" + std::to_string(i), ".lst or .bin file for data", "",
                                                Parameter::ExistingFilename);
-        setParameterFilters(m_filename[i], "List Files (*.lst)/Binary Files (*.bin)/HDF5 Files (*.hdf)/All Files (*)");
+        setParameterFilters(m_filename[i], "List Files (*.lst)/Binary Files (*.bin)/HDF5 Files (*.hdf)");
         observeParameter(m_filename[i]);
     }
 
