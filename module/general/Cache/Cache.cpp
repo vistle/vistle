@@ -59,8 +59,6 @@ private:
 
 Cache::Cache(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
-    setDefaultCacheMode(ObjectCache::CacheDeleteLate);
-
     for (int i = 0; i < NumPorts; ++i) {
         std::string suffix = std::to_string(i);
 

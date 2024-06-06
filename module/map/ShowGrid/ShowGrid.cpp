@@ -20,8 +20,6 @@ using namespace vistle;
 
 ShowGrid::ShowGrid(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
-    setDefaultCacheMode(ObjectCache::CacheDeleteLate);
-
     createInputPort("grid_in", "grid or data mapped to grid");
     createOutputPort("grid_out", "edges of grid cells");
 
