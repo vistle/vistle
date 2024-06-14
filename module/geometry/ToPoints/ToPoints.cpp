@@ -82,6 +82,7 @@ bool ToPoints::compute()
                     z[i] = iz[ii];
                 }
                 outGrid = points;
+                outGrid->copyAttributes(coords);
             } else {
                 Points::ptr points = Points::clone<Vec<Scalar, 3>>(coords);
                 outGrid = points;
@@ -100,6 +101,7 @@ bool ToPoints::compute()
                     const Index *cl = verts.data();
                     size_t nconn = verts.size();
                     auto odata = split.mapped->cloneType();
+                    odata->copyAttributes(split.mapped);
                     data = odata;
                     odata->setSize(nconn);
                     for (Index i = 0; i < nconn; ++i) {
