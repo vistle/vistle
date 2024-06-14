@@ -1,16 +1,17 @@
-macro(generate_snapshots_and_workflow targetname network_file)
+# creates a screenshot of the GUI, i.e., the Vistle network and stores it in the module's build file
+macro(generate_network_snapshot targetname network_file)
+    # create a screenshot if .vsl has changed
     add_custom_command(
-        #create a snapshot of the pipeline
         OUTPUT ${CMAKE_CURRENT_LIST_DIR}/${network_file}_workflow.png
         COMMAND vistle --snapshot ${CMAKE_CURRENT_LIST_DIR}/${network_file}_workflow.png ${CMAKE_CURRENT_LIST_DIR}/${network_file}.vsl
-        DEPENDS ${CMAKE_CURRENT_LIST_DIR}/${VISTLE_UMENTATION_WORKFLOW}.vsl targetname
+        DEPENDS ${CMAKE_CURRENT_LIST_DIR}/${network_file}.vsl
         COMMENT "Generating network snapshot for " ${network_file}.vsl)
 
-    # add_custom_target(${targetname}_${network_file}_workflow DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${network_file}_workflow.png)
     add_custom_target(${targetname}_${network_file}_workflow DEPENDS ${CMAKE_CURRENT_LIST_DIR}/${network_file}_workflow.png)
     add_dependencies(${targetname}_doc ${targetname}_${network_file}_workflow)
 endmacro()
 
+# TODO: I think user shouldn't have to set this, rather this should only be true if we are adding dependencies to ${targetname}_doc
 option(VISTLE_DOC_WORKFLOW "Generate workflow snapshots (GUI + COVER) for documentation" ON)
 macro(generate_cover_snapshot targetname network_file output_src_dir)
     set(SNAPSHOT_ARGS "-name ${network_file} -o ${output_src_dir} -sdir ${CMAKE_CURRENT_LIST_DIR}")

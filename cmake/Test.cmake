@@ -15,7 +15,5 @@ macro(add_image_hash targetname)
         
         generate_cover_snapshot(${targetname} ${workflow} ${CMAKE_CURRENT_SOURCE_DIR})
         create_image_hash(${targetname} ${workflow})
-        # TODO: uncomment later
-        #generate_snapshots_and_workflow(${targetname} ${workflow} ${CMAKE_CURRENT_SOURCE_DIR})
     endforeach()
 endmacro()
