@@ -16,6 +16,7 @@ private:
     vistle::IntParameter *m_mapMode;
     vistle::VectorParameter *m_range;
     vistle::IntParameter *m_startStyle, *m_jointStyle, *m_endStyle;
+    vistle::IntParameter *m_correctDepth;
 
     enum OutputGeometry { OGUnknown, OGSpheres, OGTubes, OGError };
     OutputGeometry m_output = OGUnknown;
