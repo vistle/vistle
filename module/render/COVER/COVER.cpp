@@ -250,6 +250,7 @@ void COVER::setPlugin(coVRPlugin *plugin)
     if (plugin) {
         cover->getObjectsRoot()->addChild(vistleRoot);
         coVRPluginList::instance()->addNode(vistleRoot, nullptr, plugin);
+        m_colormaps[""] = OsgColorMap(false); // fake colormap for objects without mapped data for using shaders
         initDone();
     } else if (m_plugin) {
         prepareQuit();

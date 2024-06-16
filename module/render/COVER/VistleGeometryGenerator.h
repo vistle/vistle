@@ -23,6 +23,7 @@ class Geode;
 
 struct OsgColorMap {
     OsgColorMap();
+    explicit OsgColorMap(bool withData);
     void setName(const std::string &species);
     void setRange(float min, float max);
     void setBlendWithMaterial(bool enable);
@@ -77,6 +78,7 @@ public:
     static void unlock();
 
 private:
+    const OsgColorMap *getColorMap(const std::string &species) const;
     std::shared_ptr<vistle::RenderObject> m_ro;
     vistle::Object::const_ptr m_geo;
     vistle::Object::const_ptr m_normal;
