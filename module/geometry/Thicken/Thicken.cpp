@@ -45,6 +45,9 @@ Thicken::Thicken(const std::string &name, int moduleID, mpi::communicator comm):
     m_endStyle =
         addIntParameter("end_style", "cap style for final tube segments", (Integer)Lines::Open, Parameter::Choice);
     V_ENUM_SET_CHOICES_SCOPE(m_endStyle, CapStyle, Lines);
+
+    m_correctDepth = addIntParameter("correct_depth", "correct per-fragment depth for impostor spheres (slow)", true,
+                                     Parameter::Boolean);
 }
 
 Thicken::~Thicken()
@@ -150,6 +153,7 @@ bool Thicken::compute()
         spheres = points->clone();
         numRad = spheres->getNumCoords();
         cwr = spheres;
+        spheres->addAttribute("_approximate_depth", m_correctDepth->getValue() ? "false" : "true");
     }
 
     assert(cwr);

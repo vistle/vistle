@@ -32,6 +32,7 @@ struct OsgColorMap {
     std::shared_ptr<opencover::coVRShader> shaderUnlit;
     std::shared_ptr<opencover::coVRShader> shaderHeightMap;
     std::shared_ptr<opencover::coVRShader> shaderSpheres;
+    std::shared_ptr<opencover::coVRShader> shaderSpheresCorrectDepth;
     std::vector<std::shared_ptr<opencover::coVRShader>> allShaders;
 #endif
     bool blendWithMaterial = false;

@@ -923,6 +923,10 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
 #ifdef COVER_PLUGIN
     const OsgColorMap *colormap = nullptr;
     bool haveSpheres = false;
+    bool correctDepth = true;
+    if (m_geo && m_geo->hasAttribute("_approximate_depth")) {
+        correctDepth = m_geo->getAttribute("_approximate_depth") != "true";
+    }
 #endif
     vistle::DataBase::const_ptr database = vistle::DataBase::as(m_mapped);
     vistle::DataBase::Mapping mapping = vistle::DataBase::Unspecified;
@@ -1551,7 +1555,9 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
         }
         s_coverMutex.lock();
         if (haveSpheres) {
-            if (colormap->shaderSpheres)
+            if (correctDepth && colormap->shaderSpheresCorrectDepth)
+                colormap->shaderSpheresCorrectDepth->apply(state);
+            else if (colormap->shaderSpheres)
                 colormap->shaderSpheres->apply(state);
         } else if (lg) {
             if (colormap->shaderHeightMap)
@@ -1654,7 +1660,9 @@ OsgColorMap::OsgColorMap(bool withData): texture(new osg::Texture1D), image(new 
     shaderUnlit.reset(opencover::coVRShaderList::instance()->getUnique("MapColorsAttribUnlit", &parammap));
     shaderHeightMap.reset(opencover::coVRShaderList::instance()->getUnique("MapColorsHeightmap", &parammap));
     shaderSpheres.reset(opencover::coVRShaderList::instance()->getUnique("MapColorsSpheres", &parammap));
-    for (auto s: {shader, shaderUnlit, shaderHeightMap, shaderSpheres}) {
+    shaderSpheresCorrectDepth.reset(
+        opencover::coVRShaderList::instance()->getUnique("MapColorsSpheres", &parammap, "#define CORRECT_DEPTH\n"));
+    for (auto s: {shader, shaderUnlit, shaderHeightMap, shaderSpheres, shaderSpheresCorrectDepth}) {
         if (s)
             allShaders.push_back(s);
     }
