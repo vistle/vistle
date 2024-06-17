@@ -28,7 +28,14 @@ if(${LEN_JSON} GREATER_EQUAL 0)
         message("tmp_dir: ${tmp_dir}")
 
         # 2. Create new image create new imagehash for module
-        add_test(${network_file} bash ${CMAKE_CURRENT_SOURCE_DIR}/utils/createAndCompareHash.sh 
-                 ${network_file} ${tmp_dir} ${CMAKE_SOURCE_DIR}/${srcDir} ${VAL} ${CMAKE_SOURCE_DIR})
+        add_test(
+            ${network_file}
+            bash
+            ${CMAKE_CURRENT_SOURCE_DIR}/utils/createAndCompareHash.sh
+            ${network_file}
+            ${tmp_dir}
+            ${CMAKE_SOURCE_DIR}/${srcDir}
+            ${VAL}
+            ${CMAKE_SOURCE_DIR})
     endforeach()
 endif()

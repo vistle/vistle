@@ -1,8 +1,8 @@
 ## Create ref image hashes
 
 - vistle_ref_hash new command to create ref images
-- add MODULE_CAN_CREATE_HASH to CMakeLists.txt of the desired module (others are skipped, shown in cmake config output)
-  **important:** set(MODULE_CAN_CREATE_HASH True) must appear **before** add_module
+- add CREATE_IMAGE_HASH to CMakeLists.txt of the desired module (others are skipped, shown in cmake config output)
+  **important:** `set(CREATE_IMAGE_HASH True)` must appear **before** `add_module`
 
 ## Requirements:
 - covise (swig must be installed, to avoid '"NameError: name 'coGRMsg' is not defined")
@@ -21,7 +21,7 @@ In COVER:
 ## Cmake Pipeline
 ### vistle_ref_hash
 - CM=CMakeLists.txt 
-add_module (ROOT_CM) > add_module2 (ROOT_CM) > add_image_hash (Test.cmake) > create_image_hash (VistleUtils.cmake)
+add_module (ROOT_CM) > add_module2 (ROOT_CM) > add_image_hash (Test.cmake) > create_image_hash (Test.cmake)
 
 ### ctest
 moduleTest/CM > utils/createAndCompareHash.sh > CMAKE_SOURCE_DIR/doc/resultSnapShot.py + utils/createImageHash.py
@@ -58,9 +58,29 @@ ctest
 
 In case a test fails, you can check the screenshot in ```build/test/module_tmp```.
 
+**Known errors:**
+
+If you get the error `No tests were found!!!`, try the following:
+
+```
+cd build
+ninja vistle_ref_hash # populate refImageHash.json
+cmake -G Ninja ..
+ctest
+```
+ Typically, you get this error when you configure the project while the refImageHash.json file is still empty. This is because CMake create a test for each entry in the reference file.
+ 
+ This issue will be resolved in the future once the official reference JSON file is pushed to git.
+
 ## Todo:
-[ ] refactor
+[x] refactor .cmake files in `cmake`-folder (only those concerning docs/testing)
+
+[ ] refactor `test/moduleTest`
+
+[ ] refactor root `CMakeLists.txt` (only those concerning docs/testing)
 
 [ ] create more reference maps
+
+[ ] push refImageHash.json to git (serves as reference point for the tests)
 
 [ ] allow multiple screenshots per module

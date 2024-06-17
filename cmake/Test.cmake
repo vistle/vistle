@@ -1,4 +1,4 @@
-# generates a screenshot of the COVER output of the module's .vsl file, calculates the 
+# generates a screenshot of the COVER output of the module's .vsl file, calculates the
 # corresponding image hash and adds it to a .json file
 macro(add_image_hash targetname)
     add_custom_target(${targetname}_hash)
@@ -9,11 +9,11 @@ macro(add_image_hash targetname)
         GLOB WORKFLOWS
         LIST_DIRECTORIES FALSE
         ${CMAKE_CURRENT_SOURCE_DIR}/*.vsl)
-        
+
     foreach(file ${WORKFLOWS})
         # remove directory and extension from .vsl file
         get_filename_component(workflow ${file} NAME_WLE)
-        
+
         generate_cover_snapshot(${targetname} ${workflow} FALSE ${CMAKE_CURRENT_SOURCE_DIR} ${targetname}_hash)
         create_image_hash(${targetname} ${workflow})
     endforeach()
@@ -33,8 +33,8 @@ macro(create_image_hash targetname network_file)
             COMMAND ${Python_EXECUTABLE} ${PROJECT_SOURCE_DIR}/test/moduleTest/utils/createImageHash.py ${HASH_ARGS}
             DEPENDS ${PROJECT_SOURCE_DIR}/test/moduleTest/utils/createImageHash.py ${targetname} ${CMAKE_CURRENT_LIST_DIR}/${network_file}_result.png
             COMMENT "Create image hash for: " ${network_file}_result.png)
-        
-        set(custom_targetname image_hash_${target_dependant}_${network_file}) 
+
+        set(custom_targetname image_hash_${target_dependant}_${network_file})
         add_custom_target(${custom_targetname} DEPENDS ${custom_command_output})
         add_dependencies(${targetname}_hash ${custom_targetname})
     else()

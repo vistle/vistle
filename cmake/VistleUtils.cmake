@@ -10,9 +10,9 @@ macro(generate_cover_snapshot targetname network_file add_workflow_snapshot outp
         #       both call generate_cover_snapshot and (2) resultSnapShot.py in both cases creates the same two .png files (i.e., ${network_file}_result.png
         #       and ${network_file}_workflow.png}, we pass ${network_file}_workflow.png to OUTPUT (instead of ${network_file}_result.png) if the GUI screen-
         #       shots are created.
-        #       While this works as workaround for our two different targets, it does not work with 3 or more targets, so if generate_cover_snapshot is to 
+        #       While this works as workaround for our two different targets, it does not work with 3 or more targets, so if generate_cover_snapshot is to
         #       be called by another CMake macro, this still needs to get resolved. E.g., by letting the user choose the name of the output images result-
-        #       SnapShot.py creates (however, first we need to determine all places in the code which assume that the screenshots are saved under 
+        #       SnapShot.py creates (however, first we need to determine all places in the code which assume that the screenshots are saved under
         #       ${network_file}_result.png and ${network_file}_workflow.png and adjust them).
         set(custom_command_output ${output_dir}/${network_file}_workflow.png)
     endif()
@@ -26,12 +26,12 @@ macro(generate_cover_snapshot targetname network_file add_workflow_snapshot outp
             DEPENDS ${CMAKE_CURRENT_LIST_DIR}/${network_file}.vsl ${CMAKE_CURRENT_LIST_DIR}/${network_file}.vwp ${targetname}
                     ${PROJECT_SOURCE_DIR}/doc/resultSnapShot.py
             COMMENT "Generating result snapshot for " ${network_file}.vsl)
-        
+
         # to execute the custom command, it must depend on a target (in this case the one passed as parameter)
-        set(custom_targetname screenshot_${target_dependant}_${network_file}) 
+        set(custom_targetname screenshot_${target_dependant}_${network_file})
         add_custom_target(${custom_targetname} DEPENDS ${custom_command_output})
         add_dependencies(${target_dependant} ${custom_targetname})
-        
+
     else()
         message(
             WARNING "cannot generate snapshots for "

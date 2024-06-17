@@ -888,7 +888,7 @@ set(ALL_MODULES
 set(MODULE_DESCRIPTION_FILE ${PROJECT_BINARY_DIR}/share/vistle/moduledescriptions.txt)
 
 set(VISTLE_DOC_SKIP FALSE)
-set(MODULE_CAN_CREATE_HASH FALSE)
+set(CREATE_IMAGE_HASH FALSE)
 if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
     file(REMOVE ${MODULE_DESCRIPTION_FILE})
     install(FILES ${MODULE_DESCRIPTION_FILE} DESTINATION ${CMAKE_INSTALL_PREFIX}/share/vistle/)
@@ -952,8 +952,8 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
         if(NOT SKIP_4_DOC)
             add_module_doc_target(${targetname} ${VISTLE_DOC_SKIP})
         endif()
-        
-        if (MODULE_CAN_CREATE_HASH)
+
+        if(CREATE_IMAGE_HASH)
             add_image_hash(${targetname})
         endif()
     endmacro(add_module2)
