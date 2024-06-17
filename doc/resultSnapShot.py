@@ -8,7 +8,7 @@ import vistle
 import coGRMsg
 
 def createGUISnapshot(imageName, sourceDir):
-    snapshotGui(sourceDir + "/" + imageName + "_workflow.png")
+    snapshotGui(outputDir + "/" + imageName + "_workflow.png")
 
 def createCOVERSnapshot(imageName, outputDir):
     snapshotCover(findFirstModule("COVER"), outputDir + "/" + imageName +  "_result.png")
