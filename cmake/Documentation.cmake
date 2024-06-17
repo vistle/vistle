@@ -35,9 +35,6 @@ macro(add_module_doc_target targetname)
     foreach(file ${WORKFLOWS})
         get_filename_component(workflow ${file} NAME_WLE)
         message("Workflow: ${targetname} ${workflow} ${file}")
-        generate_network_snapshot(${targetname} ${workflow})
-        # BUG: cannot yet create COVER snapshots because the macro adds ${targetname}_hash (and not _doc) as dependency...
-        # BUG: GUI snapshots are created twice (once through generate_network_snapshot, once through generate_cover_snapshot with the -gui flag)...
-        #generate_cover_snapshot(${targetname} ${workflow} ${CMAKE_CURRENT_SOURCE_DIR})
+        generate_cover_snapshot(${targetname} ${workflow} TRUE ${CMAKE_CURRENT_SOURCE_DIR} ${targetname}_doc)
     endforeach()
 endmacro()

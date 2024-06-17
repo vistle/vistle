@@ -13,7 +13,7 @@ macro(add_image_hash targetname)
         # remove directory and extension from .vsl file
         get_filename_component(workflow ${file} NAME_WLE)
         
-        generate_cover_snapshot(${targetname} ${workflow} ${CMAKE_CURRENT_SOURCE_DIR})
+        generate_cover_snapshot(${targetname} ${workflow} FALSE ${CMAKE_CURRENT_SOURCE_DIR} ${targetname}_hash)
         create_image_hash(${targetname} ${workflow})
     endforeach()
 endmacro()
