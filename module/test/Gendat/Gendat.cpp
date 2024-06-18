@@ -256,12 +256,14 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
         bmin[c] = gmin[c] + currBlock[c] * bdist[c];
         if (m_size[c]->getValue() > 0) {
             dist[c] = bdist[c] / m_size[c]->getValue();
+            min[c] = bmin[c];
+            max[c] = bmin[c] + bdist[c];
         } else {
+            min[c] = bmin[c] + 0.5 * bdist[c];
+            max[c] = min[c];
             bdist[c] = 0.;
             dist[c] = 0.;
         }
-        min[c] = bmin[c];
-        max[c] = bmin[c] + bdist[c];
     }
     GeoMode geoMode = (GeoMode)m_geoMode->getValue();
     Index numVert = dim[0] * dim[1] * dim[2];
