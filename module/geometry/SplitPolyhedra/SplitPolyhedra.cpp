@@ -113,7 +113,7 @@ bool SplitPolyhedra::compute()
         const Index *icl = &grid->cl()[0];
         const Byte *itl = &grid->tl()[0];
         const Index nelem = grid->getNumElements();
-        auto simple = std::make_shared<UnstructuredGrid>(0, 0, 0);
+        simple = std::make_shared<UnstructuredGrid>(0, 0, 0);
         simple->d()->x[0] = grid->d()->x[0];
         simple->d()->x[1] = grid->d()->x[1];
         simple->d()->x[2] = grid->d()->x[2];
@@ -124,7 +124,6 @@ bool SplitPolyhedra::compute()
         if (perElement) {
             elementMapping.reserve(nelem);
         }
-        simple = std::make_shared<UnstructuredGrid>(0, 0, 0);
 
         auto addElem = [&grid, &otl, &oGhost, &ocl, &oel, &elementMapping,
                         perElement](Index elem, Byte type = UnstructuredGrid::TETRAHEDRON) {
