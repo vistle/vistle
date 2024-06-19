@@ -894,8 +894,8 @@ bool Color::reduce(int timestep)
         setParameter<Float>(m_maxPara, m_dataMax);
     }
 
-    m_min = getFloatParameter("min");
-    m_max = getFloatParameter("max");
+    m_min = m_minPara->getValue();
+    m_max = m_maxPara->getValue();
     if (m_min == m_max)
         m_max = m_min + 1.;
     m_reverse = m_min > m_max;
