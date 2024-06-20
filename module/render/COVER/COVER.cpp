@@ -131,11 +131,11 @@ const COVER::Variant &COVER::Creator::getVariant(const std::string &variantName,
     auto it = variants.find(variantName);
     if (it == variants.end()) {
         it = variants.emplace(std::make_pair(variantName, Variant(name, variantName))).first;
+        if (vis != vistle::RenderObject::DontChange)
+            it->second.ro.setInitialVisibility(vis);
+        baseVariant.constant->addChild(it->second.root);
+        coVRPluginList::instance()->addNode(it->second.root, &it->second.ro, COVER::the()->m_plugin);
     }
-    if (vis != vistle::RenderObject::DontChange)
-        it->second.ro.setInitialVisibility(vis);
-    baseVariant.constant->addChild(it->second.root);
-    coVRPluginList::instance()->addNode(it->second.root, &it->second.ro, COVER::the()->m_plugin);
     return it->second;
 }
 
