@@ -397,7 +397,7 @@ void Renderer::removeObjectWrapper(std::shared_ptr<RenderObject> ro)
         variant = ro->variant;
     removeObject(ro);
     if (!variant.empty()) {
-        auto it = m_variants.find(ro->variant);
+        auto it = m_variants.find(variant);
         if (it != m_variants.end()) {
             --it->second.objectCount;
         }
