@@ -29,8 +29,13 @@ int main(int argc, char *argv[])
             deep = true;
             ++filenum;
 
-            vistle::Shm::remove("vistle_ls", 1, 0, false);
-            vistle::Shm::create("vistle_ls", 1, 0, false);
+#ifdef NO_SHMEM
+            int id = -1;
+#else
+            int id = 1;
+#endif
+            vistle::Shm::remove("vistle_ls", id, 0, false);
+            vistle::Shm::create("vistle_ls", id, 0, false);
             vistle::registerTypes();
         }
     }
@@ -65,7 +70,7 @@ int main(int argc, char *argv[])
         std::map<std::string, std::string> objectTranslations, arrayTranslations;
 
         auto fetcher = std::make_shared<DeepArchiveFetcher>(objects, arrays, compression, size);
-        fetcher->setRenameObjects(true);
+        fetcher->setRenameObjects(false);
         fetcher->setObjectTranslations(objectTranslations);
         fetcher->setArrayTranslations(arrayTranslations);
 

@@ -30,12 +30,11 @@
 #include <iostream>
 //#include <unistd.h>
 
-//#include <boost/filesystem.hpp>
 #include <boost/format.hpp>
-#include <boost/filesystem/operations.hpp>
 #include <boost/cstdint.hpp>
 
 #include <vistle/util/stopwatch.h>
+#include <vistle/util/filesystem.h>
 
 
 #include "ReadCFX.h"
@@ -44,7 +43,7 @@
 #define PARALLEL_ZONES
 
 
-namespace bf = boost::filesystem;
+namespace fs = vistle::filesystem;
 
 MODULE_MAIN(ReadCFX)
 
@@ -93,7 +92,7 @@ ReadCFX::ReadCFX(const std::string &name, int moduleID, mpi::communicator comm):
                            "/mnt/raid/data/IET/AXIALZYKLON/120929_ML_AXIALZYKLON_P160_OPT_SSG_AB_V2_STATIONAER/"
                            "Steady_grob_V44_P_test_160_5percent_001.res",
                            Parameter::ExistingFilename);
-    setParameterFilters(m_resultfiledir, "Result Files (*.res)/All Files (*)");
+    setParameterFilters(m_resultfiledir, "Result Files (*.res)");
 
     //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::ExistingDirectory);
     //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/home/jwinterstein/data/cfx/rohr/hlrs_inst_002.res", Parameter::ExistingDirectory);
@@ -241,7 +240,7 @@ bool CaseInfo::checkFile(const char *filename)
         std::cout << filename << strerror(errno) << std::endl;
         return false;
     } else {
-        fileSize = bf::file_size(filename, ec);
+        fileSize = fs::file_size(filename, ec);
         if (ec)
             std::cout << "error code: " << ec << std::endl;
     }

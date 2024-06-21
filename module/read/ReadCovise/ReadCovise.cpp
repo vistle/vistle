@@ -50,7 +50,7 @@ ReadCovise::ReadCovise(const std::string &name, int moduleID, mpi::communicator 
     m_fieldFile[0] = addStringParameter("grid", "filename for grid", NONE, Parameter::Choice);
 #else
     m_gridFile = addStringParameter("filename", "name of COVISE file", "", Parameter::ExistingFilename);
-    setParameterFilters(m_gridFile, "COVISE Files (*.covise)/All Files (*)");
+    setParameterFilters(m_gridFile, "COVISE Files (*.covise)");
     m_fieldFile[0] = m_gridFile;
 #endif
     m_out[0] = createOutputPort("grid_out", "grid or geometry");
@@ -59,7 +59,7 @@ ReadCovise::ReadCovise(const std::string &name, int moduleID, mpi::communicator 
     m_fieldFile[1] = addStringParameter("normals", "name of COVISE file for normals", NONE, Parameter::Choice);
 #else
     m_fieldFile[1] = addStringParameter("normals", "name of COVISE file for normals", "", Parameter::ExistingFilename);
-    setParameterFilters(m_fieldFile[1], "COVISE Files (*.covise)/All Files (*)");
+    setParameterFilters(m_fieldFile[1], "COVISE Files (*.covise)");
 #endif
     m_out[1] = nullptr;
     for (unsigned i = 2; i < NumPorts; ++i) {
@@ -71,7 +71,7 @@ ReadCovise::ReadCovise(const std::string &name, int moduleID, mpi::communicator 
         m_fieldFile[i] =
             addStringParameter("field" + std::to_string(i - 2), "name of COVISE file for field " + std::to_string(i),
                                "", Parameter::ExistingFilename);
-        setParameterFilters(m_fieldFile[i], "COVISE Files (*.covise)/All Files (*)");
+        setParameterFilters(m_fieldFile[i], "COVISE Files (*.covise)");
 #endif
         m_out[i] = createOutputPort("field" + std::to_string(i - 2) + "_out", "data mapped to geometry");
     }
@@ -166,6 +166,7 @@ bool ReadCovise::examine(const Parameter *param)
 
 bool ReadCovise::prepareRead()
 {
+    m_transposed.clear();
 #ifdef READ_DIRECTORY
     auto dir = filesystem::path(m_directory->getValue());
 #endif
@@ -273,6 +274,7 @@ bool ReadCovise::read(Reader::Token &token, int timestep, int block)
 
 bool ReadCovise::finishRead()
 {
+    m_transposed.clear();
     for (unsigned port = 0; port < NumPorts; ++port) {
         if (m_fd[port]) {
             covCloseInFile(m_fd[port]);
@@ -472,10 +474,18 @@ Object::ptr ReadCovise::readSTRGRD(Token &token, const int port, int fd, const b
         covReadSTRGRD(fd, dim[0], dim[1], dim[2], _x, _y, _z);
         StructuredGrid::ptr str(new StructuredGrid(dim[0], dim[1], dim[2]));
         Scalar *x = str->x().data(), *y = str->y().data(), *z = str->z().data();
-        for (Index i = 0; i < numVertices; ++i) {
-            x[i] = _x[i];
-            y[i] = _y[i];
-            z[i] = _z[i];
+        size_t idx = 0;
+        const Index vdim[3] = {static_cast<Index>(dim[0]), static_cast<Index>(dim[1]), static_cast<Index>(dim[2])};
+        for (Index k = 0; k < vdim[0]; ++k) {
+            for (Index j = 0; j < vdim[1]; ++j) {
+                for (Index i = 0; i < vdim[2]; ++i) {
+                    auto vidx = StructuredGrid::vertexIndex(k, j, i, vdim);
+                    x[vidx] = _x[idx];
+                    y[vidx] = _y[idx];
+                    z[vidx] = _z[idx];
+                    ++idx;
+                }
+            }
         }
         return str;
     }
@@ -555,6 +565,50 @@ Object::ptr ReadCovise::readUNSGRD(Token &token, const int port, int fd, const b
     return Object::ptr();
 }
 
+Object::ptr ReadCovise::readBYTEDT(Token &token, const int port, int fd, const bool skeleton)
+{
+    int numElements = -1;
+    covReadSizeBYTEDT(fd, &numElements);
+    assert(numElements >= 0);
+
+    if (skeleton) {
+        covSkipBYTEDT(fd, numElements);
+    } else {
+        Vec<Byte>::ptr array(new Vec<Byte>(numElements));
+        std::vector<Byte> _x(numElements);
+        covReadBYTEDT(fd, numElements, &_x[0]);
+        auto x = array->x().data();
+        for (int i = 0; i < numElements; ++i)
+            x[i] = _x[i];
+
+        return array;
+    }
+
+    return Object::ptr();
+}
+
+Object::ptr ReadCovise::readINTDT(Token &token, const int port, int fd, const bool skeleton)
+{
+    int numElements = -1;
+    covReadSizeINTDT(fd, &numElements);
+    assert(numElements >= 0);
+
+    if (skeleton) {
+        covSkipINTDT(fd, numElements);
+    } else {
+        Vec<Index>::ptr array(new Vec<Index>(numElements));
+        std::vector<int> _x(numElements);
+        covReadINTDT(fd, numElements, &_x[0]);
+        auto x = array->x().data();
+        for (int i = 0; i < numElements; ++i)
+            x[i] = _x[i];
+
+        return array;
+    }
+
+    return Object::ptr();
+}
+
 Object::ptr ReadCovise::readUSTSDT(Token &token, const int port, int fd, const bool skeleton)
 {
     int numElements = -1;
@@ -621,8 +675,19 @@ Object::ptr ReadCovise::readSTRSDT(Token &token, const int port, int fd, const b
         std::vector<float> _x(n);
         covReadSTRSDT(fd, n, &_x[0], sx, sy, sz);
         auto x = array->x().data();
-        for (size_t i = 0; i < n; ++i)
-            x[i] = _x[i];
+        const Index vdim[3] = {static_cast<Index>(sx), static_cast<Index>(sy), static_cast<Index>(sz)};
+        Index idx = 0;
+        for (Index k = 0; k < vdim[0]; ++k) {
+            for (Index j = 0; j < vdim[1]; ++j) {
+                for (Index i = 0; i < vdim[2]; ++i) {
+                    auto vidx = StructuredGrid::vertexIndex(k, j, i, vdim);
+                    x[vidx] = _x[idx];
+                    ++idx;
+                }
+            }
+        }
+
+        m_transposed.insert(array);
 
         return array;
     }
@@ -649,11 +714,21 @@ Object::ptr ReadCovise::readSTRVDT(Token &token, const int port, int fd, const b
         auto x = array->x().data();
         auto y = array->y().data();
         auto z = array->z().data();
-        for (size_t i = 0; i < n; ++i) {
-            x[i] = _x[i];
-            y[i] = _y[i];
-            z[i] = _z[i];
+        const Index vdim[3] = {static_cast<Index>(sx), static_cast<Index>(sy), static_cast<Index>(sz)};
+        Index idx = 0;
+        for (Index k = 0; k < vdim[0]; ++k) {
+            for (Index j = 0; j < vdim[1]; ++j) {
+                for (Index i = 0; i < vdim[2]; ++i) {
+                    auto vidx = StructuredGrid::vertexIndex(k, j, i, vdim);
+                    x[vidx] = _x[idx];
+                    y[vidx] = _y[idx];
+                    z[vidx] = _z[idx];
+                    ++idx;
+                }
+            }
         }
+
+        m_transposed.insert(array);
 
         return array;
     }
@@ -903,6 +978,8 @@ Object::ptr ReadCovise::readObjectIntern(Token &token, const int port, int fd, c
     HANDLE(UNSGRD);
     HANDLE(USTSDT);
     HANDLE(USTVDT);
+    HANDLE(BYTEDT);
+    HANDLE(INTDT);
     HANDLE(STRSDT);
     HANDLE(STRVDT);
     HANDLE(POLYGN);
@@ -968,6 +1045,59 @@ bool ReadCovise::readSkeleton(const int port, Element *elem)
     Token invalid(this, std::shared_ptr<Token>());
     readObjectIntern(invalid, port, m_fd[port], true, elem, -1);
     return true;
+}
+
+namespace {
+
+template<typename S>
+void transposeArray(S *d, const S *s, const Index dim[3])
+{
+    Index idx = 0;
+    for (Index k = 0; k < dim[0]; ++k) {
+        for (Index j = 0; j < dim[1]; ++j) {
+            for (Index i = 0; i < dim[2]; ++i) {
+                auto vidx = StructuredGrid::vertexIndex(k, j, i, dim);
+                d[vidx] = s[idx];
+                ++idx;
+            }
+        }
+    }
+}
+
+template<class V>
+void transposeData(typename V::ptr data, vistle::StructuredGridBase::ptr str)
+{
+    const Index dim[3] = {str->getNumDivisions(0), str->getNumDivisions(1), str->getNumDivisions(2)};
+
+    ShmVector<typename V::Scalar> x[V::Dimension];
+    for (unsigned d = 0; d < V::Dimension; ++d) {
+        x[d] = data->d()->x[d];
+    }
+    data->resetArrays();
+    for (unsigned d = 0; d < V::Dimension; ++d) {
+        transposeArray(data->x(d).data(), x[d]->data(), dim);
+    }
+}
+
+} // namespace
+
+// transpose arrays attached to structured grids from COVISE indexing to Vistle/VTK indexing
+void ReadCovise::transpose(vistle::DataBase::ptr data, vistle::StructuredGridBase::ptr str)
+{
+    if (m_transposed.find(data) != m_transposed.end())
+        return;
+    if (auto s1 = Vec<Scalar>::as(data)) {
+        transposeData<Vec<Scalar>>(s1, str);
+    } else if (auto s2 = Vec<Scalar, 2>::as(data)) {
+        transposeData<Vec<Scalar, 2>>(s2, str);
+    } else if (auto s3 = Vec<Scalar, 3>::as(data)) {
+        transposeData<Vec<Scalar, 3>>(s3, str);
+    } else if (auto b1 = Vec<Byte>::as(data)) {
+        transposeData<Vec<Byte>>(b1, str);
+    } else if (auto i1 = Vec<Index>::as(data)) {
+        transposeData<Vec<Index>>(i1, str);
+    }
+    m_transposed.insert(data);
 }
 
 bool ReadCovise::readRecursive(Token &token, int fd[], Element *elem[], int timestep, int targetTimestep)
@@ -1037,6 +1167,9 @@ bool ReadCovise::readRecursive(Token &token, int fd[], Element *elem[], int time
                 }
             } else if (port == 1) {
                 if (auto normals = Normals::as(obj[port])) {
+                    if (auto str = StructuredGridBase::as(grid)) {
+                        transpose(normals, str);
+                    }
                     if (auto coords = Coords::as(grid)) {
                         coords->setNormals(normals);
                     } else if (auto str = StructuredGridBase::as(grid)) {
@@ -1045,6 +1178,9 @@ bool ReadCovise::readRecursive(Token &token, int fd[], Element *elem[], int time
                 }
             } else {
                 if (auto data = DataBase::as(obj[port])) {
+                    if (auto str = StructuredGridBase::as(grid)) {
+                        transpose(data, str);
+                    }
                     data->setGrid(grid);
                 }
             }

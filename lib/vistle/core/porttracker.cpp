@@ -458,6 +458,11 @@ std::vector<Port *> PortTracker::getConnectedOutputPorts(const int moduleID) con
     return getPorts(moduleID, Port::OUTPUT, true);
 }
 
+std::vector<Port *> PortTracker::getConnectedParameters(const int moduleID) const
+{
+    return getPorts(moduleID, Port::PARAMETER, true);
+}
+
 std::vector<message::Buffer> PortTracker::removeModule(int moduleId)
 {
     //CERR << "removing all connections from/to " << moduleId << std::endl;

@@ -1,9 +1,14 @@
 #include <boost/mpl/for_each.hpp>
 #include <stdexcept>
 
+#include <vtkm/cont/Algorithm.h>
 #include <vtkm/cont/ArrayCopy.h>
+#include <vtkm/cont/ArrayExtractComponent.h>
+#include <vtkm/cont/ArrayHandleExtractComponent.h>
 #include <vtkm/cont/CellSetExplicit.h>
 #include <vtkm/cont/DataSetBuilderExplicit.h>
+
+#include <vtkm/worklet/WorkletMapField.h>
 
 #include <vistle/core/lines.h>
 #include <vistle/core/points.h>
@@ -11,6 +16,7 @@
 #include <vistle/core/quads.h>
 #include <vistle/core/rectilineargrid.h>
 #include <vistle/core/scalars.h>
+#include <vistle/core/shm_array_impl.h>
 #include <vistle/core/structuredgrid.h>
 #include <vistle/core/structuredgridbase.h>
 #include <vistle/core/triangles.h>
@@ -18,6 +24,7 @@
 #include <vistle/core/unstr.h>
 
 #include "convert.h"
+#include "convert_worklets.h"
 #include "cellsetToVtkm.h"
 
 namespace vistle {
@@ -34,7 +41,11 @@ VtkmTransformStatus coordinatesAndNormalsToVtkm(Object::const_ptr grid, vtkm::co
         vtkmDataset.AddCoordinateSystem(coordinateSystem);
 
         if (coordinates->normals())
-            fieldToVtkm(coordinates->normals(), vtkmDataset, "normals");
+        {
+            auto normals = coordinates->normals();
+            auto mapping = normals->guessMapping(coordinates);
+            fieldToVtkm(normals, vtkmDataset, "normals", mapping);
+        }
 
         vistle::Vec<Scalar>::const_ptr radius;
         if (auto lines = Lines::as(grid)) {
@@ -105,16 +116,17 @@ VtkmTransformStatus geometryToVtkm(Object::const_ptr grid, vtkm::cont::DataSet &
     return VtkmTransformStatus::SUCCESS;
 }
 
+namespace{
 struct FieldToVtkm {
     const DataBase::const_ptr &m_field;
     vtkm::cont::DataSet &m_dataset;
     const std::string &m_name;
+    DataBase::Mapping m_mapping;
     VtkmTransformStatus &m_status;
 
-    FieldToVtkm(const DataBase::const_ptr &field, vtkm::cont::DataSet &dataset, const std::string &name,
+    FieldToVtkm(const DataBase::const_ptr &field, vtkm::cont::DataSet &dataset, const std::string &name, DataBase::Mapping mapping,
                 VtkmTransformStatus &status)
-    : m_field(field), m_dataset(dataset), m_name(name), m_status(status)
-    {}
+    : m_field(field), m_dataset(dataset), m_name(name), m_mapping(mapping), m_status(status){}
 
     template<typename ScalarType>
     void operator()(ScalarType)
@@ -133,10 +145,11 @@ struct FieldToVtkm {
             return;
         }
 
-        auto mapping = m_field->guessMapping();
-        if (mapping == DataBase::Vertex) {
+        if (m_mapping == DataBase::Unspecified) {
+            m_mapping = m_field->guessMapping();
+        }
+        if (m_mapping == vistle::DataBase::Vertex) {
             m_dataset.AddPointField(m_name, ah);
-
         } else {
             m_dataset.AddCellField(m_name, ah);
         }
@@ -144,265 +157,128 @@ struct FieldToVtkm {
         m_status = VtkmTransformStatus::SUCCESS;
     }
 };
+} // namespace
 
 VtkmTransformStatus fieldToVtkm(const DataBase::const_ptr &field, vtkm::cont::DataSet &vtkmDataset,
-                                const std::string &fieldName)
+                                const std::string &fieldName, DataBase::Mapping mapping)
 {
     VtkmTransformStatus status = VtkmTransformStatus::UNSUPPORTED_FIELD_TYPE;
-    boost::mpl::for_each<Scalars>(FieldToVtkm(field, vtkmDataset, fieldName, status));
+    boost::mpl::for_each<Scalars>(FieldToVtkm(field, vtkmDataset, fieldName, mapping, status));
 
     return status;
 }
 
-// ----- VTKm to VISTLE -----
-template<typename IndexedType>
-Object::ptr indexedSingleTypeToVistle(const vtkm::cont::CellSetSingleType<> &cellset, vtkm::Id numPoints)
-{
-    auto connectivity = cellset.GetConnectivityArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
-    auto connPortal = connectivity.ReadPortal();
-    auto numConn = connPortal.GetNumberOfValues();
-
-    auto elements = cellset.GetOffsetsArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
-    auto elemPortal = elements.ReadPortal();
-    auto numElem = elemPortal.GetNumberOfValues();
-
-    typename IndexedType::ptr result(new IndexedType(numElem, numConn, numPoints));
-    for (vtkm::Id index = 0; index < numConn; index++) {
-        result->cl()[index] = connPortal.Get(index);
-    }
-    for (vtkm::Id index = 0; index < numElem + 1; index++) {
-        result->el()[index] = elemPortal.Get(index);
-    }
-    return result;
-}
-
-template<typename NgonsType>
-Object::ptr ngonsSingleTypeToVistle(const vtkm::cont::CellSetSingleType<> &cellset, vtkm::Id numPoints)
-{
-    auto connectivity = cellset.GetConnectivityArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
-    auto connPortal = connectivity.ReadPortal();
-    auto numConn = connPortal.GetNumberOfValues();
-
-    typename NgonsType::ptr result(new NgonsType(numConn, numPoints));
-    for (vtkm::Id index = 0; index < numConn; index++) {
-        result->cl()[index] = connPortal.Get(index);
-    }
-    return result;
-}
-
-Object::ptr linesSingleTypeToVistle(const vtkm::cont::DataSet &dataset, const vtkm::cont::CellSetSingleType<> &cellset,
-                                    vtkm::Id numPoints)
-{
-    auto connectivity = cellset.GetConnectivityArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
-    auto connPortal = connectivity.ReadPortal();
-    auto numConn = connPortal.GetNumberOfValues();
-
-    auto numElem = numConn > 0 ? numConn / 2 : numPoints / 2;
-
-
-    Lines::ptr lines(new Lines(numElem, numConn, numPoints));
-
-    for (vtkm::Id index = 0; index < numConn; index++)
-        lines->cl()[index] = connPortal.Get(index);
-
-    for (vtkm::Id index = 0; index < numElem; index++) {
-        lines->el()[index] = 2 * index;
-    }
-    lines->el()[numElem] = numConn;
-
-    return lines;
-}
-
-Object::ptr cellSetSingleTypeToVistle(const vtkm::cont::DataSet &dataset, vtkm::Id numPoints)
-{
-    auto cellset = dataset.GetCellSet().AsCellSet<vtkm::cont::CellSetSingleType<>>();
-
-    if (cellset.GetCellShape(0) == vtkm::CELL_SHAPE_VERTEX) {
-        Points::ptr points(new Points(numPoints));
-        return points;
-
-    } else if (cellset.GetCellShape(0) == vtkm::CELL_SHAPE_LINE) {
-        return linesSingleTypeToVistle(dataset, cellset, numPoints);
-
-    } else if (cellset.GetCellShape(0) == vtkm::CELL_SHAPE_POLY_LINE) {
-        return indexedSingleTypeToVistle<Lines>(cellset, numPoints);
-
-    } else if (cellset.GetCellShape(0) == vtkm::CELL_SHAPE_TRIANGLE) {
-        return ngonsSingleTypeToVistle<Triangles>(cellset, numPoints);
-
-    } else if (cellset.GetCellShape(0) == vtkm::CELL_SHAPE_QUAD) {
-        return ngonsSingleTypeToVistle<Quads>(cellset, numPoints);
-
-    } else if (cellset.GetCellShape(0) == vtkm::CELL_SHAPE_POLYGON) {
-        return indexedSingleTypeToVistle<Polygons>(cellset, numPoints);
-
-    } else {
-        throw std::invalid_argument("Unsupported cell type.");
-    }
-}
-
-std::pair<int, int> getCellShapeDimensions(const vtkm::cont::ArrayHandle<vtkm::UInt8>::ReadPortalType shapePortal)
-{
-    int mindim = 5, maxdim = -1, dim = -1;
-
-    for (vtkm::Id idx = 0; idx < shapePortal.GetNumberOfValues(); ++idx) {
-        switch (shapePortal.Get(idx)) {
-        case vtkm::CELL_SHAPE_VERTEX:
-            dim = 0;
-            break;
-        case vtkm::CELL_SHAPE_LINE:
-        case vtkm::CELL_SHAPE_POLY_LINE:
-            dim = 1;
-            break;
-        case vtkm::CELL_SHAPE_TRIANGLE:
-        case vtkm::CELL_SHAPE_QUAD:
-        case vtkm::CELL_SHAPE_POLYGON:
-            dim = 2;
-            break;
-        case vtkm::CELL_SHAPE_TETRA:
-        case vtkm::CELL_SHAPE_HEXAHEDRON:
-        case vtkm::CELL_SHAPE_WEDGE:
-        case vtkm::CELL_SHAPE_PYRAMID:
-            dim = 3;
-            break;
-        default:
-            throw std::invalid_argument("Unsupported cell type!");
-            break;
-        }
-
-        mindim = std::min(dim, mindim);
-        maxdim = std::max(dim, maxdim);
-    }
-    return {mindim, maxdim};
-}
-
-Object::ptr cellSetExplicitToVistle(const vtkm::cont::DataSet &dataset, vtkm::Id numPoints)
+// TODO: compare this with spheresOverlap version!
+Object::ptr vtkmGeometryToVistle(vtkm::cont::DataSet &dataset)
 {
     Object::ptr result;
 
-    auto cellset = dataset.GetCellSet().AsCellSet<vtkm::cont::CellSetExplicit<>>();
+    // get vertices that make up the dataset grid
+    auto uPointCoordinates = dataset.GetCoordinateSystem().GetData();
 
-    auto shapePortal =
-        cellset.GetShapesArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint()).ReadPortal();
+    // we expect point coordinates to be stored as vtkm::Vec3 array handle
+    assert((uPointCoordinates.CanConvert<vtkm::cont::ArrayHandle<vtkm::Vec<vtkm::FloatDefault, 3>>>() == true));
 
-    if (shapePortal.GetNumberOfValues() == 0)
-        return result;
+    auto pointCoordinates =
+        uPointCoordinates.AsArrayHandle<vtkm::cont::ArrayHandle<vtkm::Vec<vtkm::FloatDefault, 3>>>();
+    auto numPoints = dataset.GetNumberOfPoints();
 
-    auto connPortal =
-        cellset.GetConnectivityArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint()).ReadPortal();
-    auto numConn = connPortal.GetNumberOfValues();
-
-    auto elemPortal =
-        cellset.GetOffsetsArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint()).ReadPortal();
-    auto numElem = cellset.GetNumberOfCells();
-
-    int mindim, maxdim;
-    std::tie(mindim, maxdim) = getCellShapeDimensions(shapePortal);
-
-    if (mindim < maxdim || maxdim == 3) {
-        // require UnstructuredGrid for mixed cells
-        UnstructuredGrid::ptr unstr(new UnstructuredGrid(numElem, numConn, numPoints));
-        for (vtkm::Id index = 0; index < numConn; index++) {
-            unstr->cl()[index] = connPortal.Get(index);
-        }
-        for (vtkm::Id index = 0; index < numElem + 1; index++) {
-            unstr->el()[index] = elemPortal.Get(index);
-        }
-        for (vtkm::Id index = 0; index < numElem; index++) {
-            unstr->tl()[index] = shapePortal.Get(index);
-        }
-        result = unstr;
-
-    } else if (mindim == 0) {
-        Points::ptr points(new Points(numPoints));
-        result = points;
-
-    } else if (mindim == 1) {
-        Lines::ptr lines(new Lines(numElem, numConn, numPoints));
-        for (vtkm::Id index = 0; index < numConn; index++) {
-            lines->cl()[index] = connPortal.Get(index);
-        }
-        for (vtkm::Id index = 0; index < numElem + 1; index++) {
-            lines->el()[index] = elemPortal.Get(index);
-        }
-        result = lines;
-
-    } else if (mindim == 2) {
-        // all 2D cells representable as Polygons
-        Polygons::ptr polys(new Polygons(numElem, numConn, numPoints));
-        for (vtkm::Id index = 0; index < numConn; index++) {
-            polys->cl()[index] = connPortal.Get(index);
-        }
-        for (vtkm::Id index = 0; index < numElem + 1; index++) {
-            polys->el()[index] = elemPortal.Get(index);
-        }
-        result = polys;
-    }
-
-    return result;
-}
-
-
-Object::ptr cellsetToVistle(const vtkm::cont::DataSet &dataset)
-{
     auto cellset = dataset.GetCellSet();
 
-    Object::ptr result;
+    // try conversion for uniform cell types first
+    if (cellset.CanConvert<vtkm::cont::CellSetSingleType<>>()) {
+        auto isoGrid = cellset.AsCellSet<vtkm::cont::CellSetSingleType<>>();
+        // get connectivity array of the dataset
+        auto connectivity =
+            isoGrid.GetConnectivityArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
+        auto numConn = connectivity.GetNumberOfValues();
 
-    auto numPoints = dataset.GetNumberOfPoints();
-    if (dataset.GetNumberOfCoordinateSystems() > 0)
-        numPoints = dataset.GetCoordinateSystem().GetNumberOfPoints();
-
-    if (cellset.CanConvert<vtkm::cont::CellSetSingleType<>>())
-        result = cellSetSingleTypeToVistle(dataset, numPoints);
-
-    if (!result && cellset.CanConvert<vtkm::cont::CellSetExplicit<>>())
-        result = cellSetExplicitToVistle(dataset, numPoints);
-
-    return result;
-}
-
-template<typename ArrayHandlePortal>
-void copyCoordinates(ArrayHandlePortal coordsPortal, Coords::ptr coords)
-{
-    auto x = coords->x().data();
-    auto y = coords->y().data();
-    auto z = coords->z().data();
-
-    for (vtkm::Id index = 0; index < coordsPortal.GetNumberOfValues(); index++) {
-        vtkm::Vec3f point = coordsPortal.Get(index);
-        x[index] = point[xId];
-        y[index] = point[yId];
-        z[index] = point[zId];
+        if (cellset.GetCellShape(0) == vtkm::CELL_SHAPE_VERTEX) {
+            Points::ptr points(new Points(Object::Initialized));
+            result = points;
+        } else if (cellset.GetCellShape(0) == vtkm::CELL_SHAPE_LINE) {
+            auto numElem = numConn > 0 ? numConn / 2 : numPoints / 2;
+            Lines::ptr lines(new Lines(numElem, 0, 0));
+            lines->d()->cl->setHandle(connectivity);
+            for (vtkm::Id index = 0; index < numElem; index++) {
+                lines->el()[index] = 2 * index;
+            }
+            lines->el()[numElem] = numConn;
+            result = lines;
+        } else if (cellset.GetCellShape(0) == vtkm::CELL_SHAPE_POLY_LINE) {
+            auto elements = isoGrid.GetOffsetsArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
+            Lines::ptr lines(new Lines(0, 0, 0));
+            lines->d()->cl->setHandle(connectivity);
+            lines->d()->el->setHandle(elements);
+            result = lines;
+        } else if (cellset.GetCellShape(0) == vtkm::CELL_SHAPE_TRIANGLE) {
+            Triangles::ptr triangles(new Triangles(0, 0));
+            triangles->d()->cl->setHandle(connectivity);
+            result = triangles;
+        } else if (cellset.GetCellShape(0) == vtkm::CELL_SHAPE_QUAD) {
+            Quads::ptr quads(new Quads(0, 0));
+            quads->d()->cl->setHandle(connectivity);
+            result = quads;
+        } else if (cellset.GetCellShape(0) == vtkm::CELL_SHAPE_POLYGON) {
+            auto elements = isoGrid.GetOffsetsArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
+            Polygons::ptr polys(new Polygons(0, 0, 0));
+            polys->d()->cl->setHandle(connectivity);
+            polys->d()->el->setHandle(elements);
+            result = polys;
+        }
     }
-}
 
-void coordinatesToVistle(const vtkm::cont::CoordinateSystem &coordinateSystem, Coords::ptr coords)
-{
-    auto vtkmCoords = coordinateSystem.GetData();
+    if (!result && cellset.CanConvert<vtkm::cont::CellSetExplicit<>>()) {
+        auto ecellset = cellset.AsCellSet<vtkm::cont::CellSetExplicit<>>();
+        auto elements = ecellset.GetOffsetsArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
+        auto eshapes = ecellset.GetShapesArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
+        auto econn = ecellset.GetConnectivityArray(vtkm::TopologyElementTagCell(), vtkm::TopologyElementTagPoint());
 
-    if (vtkmCoords.CanConvert<vtkm::cont::ArrayHandle<vtkm::Vec3f>>()) {
-        auto coordsPortal = vtkmCoords.AsArrayHandle<vtkm::cont::ArrayHandle<vtkm::Vec3f>>().ReadPortal();
-        copyCoordinates(coordsPortal, coords);
+        const auto [mindim, maxdim] = getMinMaxDims(eshapes);
 
-    } else if (vtkmCoords.CanConvert<vtkm::cont::ArrayHandleSOA<vtkm::Vec3f>>()) {
-        auto coordsPortal = vtkmCoords.AsArrayHandle<vtkm::cont::ArrayHandleSOA<vtkm::Vec3f>>().ReadPortal();
-        copyCoordinates(coordsPortal, coords);
-
-    } else {
-        throw std::invalid_argument("VTKm coordinate system uses unsupported array handle storage.");
+        if (mindim > maxdim) {
+            // empty
+        } else if (mindim == -1) {
+            // unhanded cell type
+        } else if (mindim != maxdim || maxdim == 3) {
+            // require UnstructuredGrid for mixed cells
+            UnstructuredGrid::ptr unstr(new UnstructuredGrid(0, 0, 0));
+            unstr->d()->cl->setHandle(econn);
+            unstr->d()->el->setHandle(elements);
+            unstr->d()->tl->setHandle(eshapes);
+            result = unstr;
+        } else if (mindim == 0) {
+            Points::ptr points(new Points(Object::Initialized));
+            result = points;
+        } else if (mindim == 1) {
+            Lines::ptr lines(new Lines(0, 0, 0));
+            lines->d()->cl->setHandle(econn);
+            lines->d()->el->setHandle(elements);
+            result = lines;
+        } else if (mindim == 2) {
+            // all 2D cells representable as Polygons
+            Polygons::ptr polys(new Polygons(0, 0, 0));
+            polys->d()->cl->setHandle(econn);
+            polys->d()->el->setHandle(elements);
+            result = polys;
+        }
     }
-}
 
-void coordinatesAndNormalsToVistle(vtkm::cont::DataSet &dataset, Object::ptr result)
-{
     if (auto coords = Coords::as(result)) {
-        if (dataset.GetNumberOfCoordinateSystems() > 0)
-            coordinatesToVistle(dataset.GetCoordinateSystem(), coords);
+        vtkm::cont::UnknownArrayHandle unknown(pointCoordinates);
+        if (unknown.CanConvert<vtkm::cont::ArrayHandle<vtkm::Vec<Scalar, 3>>>()) {
+            auto vtkmCoord = unknown.AsArrayHandle<vtkm::cont::ArrayHandle<vtkm::Vec<Scalar, 3>>>();
+            for (int d = 0; d < 3; ++d) {
+                auto x = make_ArrayHandleExtractComponent(vtkmCoord, d);
+                coords->d()->x[d]->setHandle(x);
+            }
+        } else {
+            std::cerr << "cannot convert point coordinates" << std::endl;
+        }
 
         if (auto normals = vtkmFieldToVistle(dataset, "normals")) {
-            if (auto nvec = Vec<Scalar, 3>::as(normals)) {
-                auto n = std::make_shared<Normals>(0);
+            if (auto nvec = vistle::Vec<vistle::Scalar, 3>::as(normals)) {
+                auto n = std::make_shared<vistle::Normals>(0);
                 n->d()->x[0] = nvec->d()->x[0];
                 n->d()->x[1] = nvec->d()->x[1];
                 n->d()->x[2] = nvec->d()->x[2];
@@ -417,7 +293,7 @@ void coordinatesAndNormalsToVistle(vtkm::cont::DataSet &dataset, Object::ptr res
             if (auto rvec = vistle::Vec<vistle::Scalar>::as(radius)) {
                 auto r = std::make_shared<vistle::Vec<Scalar>>(0);
                 r->d()->x[0] = rvec->d()->x[0];
-                // don't use setNormals() in order to bypass check() on object before updateMeta()
+                // don't use setRadius() in order to bypass check() on object before updateMeta()
                 if (auto lines = Lines::as(result)) {
                     lines->d()->radius = r;
                 }
@@ -429,16 +305,13 @@ void coordinatesAndNormalsToVistle(vtkm::cont::DataSet &dataset, Object::ptr res
             }
         }
     }
-}
 
-void ghostToVistle(vtkm::cont::DataSet &dataset, Object::ptr result)
-{
     if (dataset.HasGhostCellField()) {
         auto ghostname = dataset.GetGhostCellFieldName();
         std::cerr << "vtkm: has ghost cells: " << ghostname << std::endl;
         if (auto ghosts = vtkmFieldToVistle(dataset, ghostname)) {
             std::cerr << "vtkm: got ghost cells: #" << ghosts->getSize() << std::endl;
-            if (auto bvec = Vec<Byte>::as(ghosts)) {
+            if (auto bvec = vistle::Vec<vistle::Byte>::as(ghosts)) {
                 if (auto indexed = Indexed::as(result)) {
                     indexed->d()->ghost = bvec->d()->x[0];
                 } else if (auto tri = Triangles::as(result)) {
@@ -453,20 +326,12 @@ void ghostToVistle(vtkm::cont::DataSet &dataset, Object::ptr result)
             }
         }
     }
-}
-
-Object::ptr vtkmGeometryToVistle(vtkm::cont::DataSet &vtkmDataset)
-{
-    auto result = cellsetToVistle(vtkmDataset);
-
-    coordinatesAndNormalsToVistle(vtkmDataset, result);
-
-    ghostToVistle(vtkmDataset, result);
 
     return result;
 }
 
 
+namespace {
 template<typename C>
 struct Vistle;
 
@@ -497,64 +362,54 @@ struct GetArrayContents {
     template<typename T, typename S>
     VTKM_CONT void operator()(const vtkm::cont::ArrayHandle<T, S> &array) const
     {
-        this->GetArrayPortal(array.ReadPortal());
-    }
-
-    template<typename PortalType>
-    VTKM_CONT void GetArrayPortal(const PortalType &portal) const
-    {
-        using ValueType = typename PortalType::ValueType;
+        using ValueType = T;
         using VTraits = vtkm::VecTraits<ValueType>;
         typedef typename Vistle<typename VTraits::ComponentType>::type V;
         ValueType dummy{};
         const vtkm::IdComponent numComponents = VTraits::GetNumberOfComponents(dummy);
         assert(!result);
-        V *x[4] = {};
         switch (numComponents) {
         case 1: {
-            auto data = std::make_shared<Vec<V, 1>>(portal.GetNumberOfValues());
+            auto data = std::make_shared<vistle::Vec<V, 1>>(array.GetNumberOfValues());
             result = data;
             for (int i = 0; i < numComponents; ++i) {
-                x[i] = &data->x(i)[0];
+                data->d()->x[i]->setHandle(array);
             }
             break;
         }
         case 2: {
-            auto data = std::make_shared<Vec<V, 2>>(portal.GetNumberOfValues());
+            auto data = std::make_shared<vistle::Vec<V, 2>>(array.GetNumberOfValues());
             result = data;
             for (int i = 0; i < numComponents; ++i) {
-                x[i] = &data->x(i)[0];
+                auto x = make_ArrayHandleExtractComponent(array, i);
+                data->d()->x[i]->setHandle(x);
             }
             break;
         }
         case 3: {
-            auto data = std::make_shared<Vec<V, 3>>(portal.GetNumberOfValues());
+            auto data = std::make_shared<vistle::Vec<V, 3>>(array.GetNumberOfValues());
             result = data;
-            x[xId] = &data->x(0)[0];
-            x[yId] = &data->x(1)[0];
-            x[zId] = &data->x(2)[0];
+            for (int i = 0; i < numComponents; ++i) {
+                auto x = make_ArrayHandleExtractComponent(array, i);
+                data->d()->x[i]->setHandle(x);
+            }
             break;
         }
 #if 0
         case 4: {
-            auto data = std::make_shared<Vec<V, 4>>(portal.GetNumberOfValues());
+            auto data = std::make_shared<vistle::Vec<V, 4>>(array.GetNumberOfValues());
             result = data;
             for (int i = 0; i < numComponents; ++i) {
-                x[i] = &data->x(i)[0];
+                auto x = make_ArrayHandleExtractComponent(array, i);
+                data->d()->x[i]->setHandle(x);
             }
             break;
         }
 #endif
         }
-        for (vtkm::Id index = 0; index < portal.GetNumberOfValues(); index++) {
-            ValueType value = portal.Get(index);
-            for (vtkm::IdComponent componentIndex = 0; componentIndex < numComponents; componentIndex++) {
-                x[componentIndex][index] = VTraits::GetComponent(value, componentIndex);
-            }
-        }
     }
 };
-
+} // namespace
 
 DataBase::ptr vtkmFieldToVistle(const vtkm::cont::DataSet &vtkmDataset, const std::string &fieldName)
 {

@@ -428,7 +428,7 @@ StateTracker::VistleState StateTracker::getState() const
 
     // available modules
     for (const auto &keymod: availableModules()) {
-        keymod.second.send([this, &state](const message::Message &avail, const buffer *payload) {
+        keymod.second.send([&state](const message::Message &avail, const buffer *payload) {
             auto shpl = std::make_shared<buffer>(*payload);
             appendMessage(state, avail, shpl);
             return true;

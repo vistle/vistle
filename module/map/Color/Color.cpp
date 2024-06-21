@@ -364,91 +364,29 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm): Mod
 Color::~Color()
 {}
 
+namespace {
+template<class V>
+void updateMinMax(typename V::const_ptr &v, Scalar &min, Scalar &max)
+{
+    auto mmv = v->getMinMax();
+    std::tuple<Scalar, Scalar> mm{mmv.first[0], mmv.second[0]};
+    if (min > std::get<0>(mm))
+        min = std::get<0>(mm);
+    if (max < std::get<1>(mm))
+        max = std::get<1>(mm);
+}
+} // namespace
+
 void Color::getMinMax(vistle::DataBase::const_ptr object, vistle::Scalar &min, vistle::Scalar &max)
 {
     const ssize_t numElements = object->getSize();
 
     if (Vec<Byte>::const_ptr scal = Vec<Byte>::as(object)) {
-        const vistle::Byte *x = &scal->x()[0];
-#ifdef USE_OPENMP
-#pragma omp parallel
-#endif
-        {
-            Byte tmin = std::numeric_limits<Byte>::max();
-            Byte tmax = std::numeric_limits<Byte>::min();
-#ifdef USE_OPENMP
-#pragma omp for
-#endif
-            for (ssize_t index = 0; index < numElements; index++) {
-                if (x[index] < tmin)
-                    tmin = x[index];
-                if (x[index] > tmax)
-                    tmax = x[index];
-            }
-#ifdef USE_OPENMP
-#pragma omp critical
-#endif
-            {
-                if (tmin < min)
-                    min = tmin;
-                if (tmax > max)
-                    max = tmax;
-            }
-        }
+        updateMinMax<Vec<Byte>>(scal, min, max);
     } else if (Vec<Index>::const_ptr scal = Vec<Index>::as(object)) {
-        const vistle::Index *x = &scal->x()[0];
-#ifdef USE_OPENMP
-#pragma omp parallel
-#endif
-        {
-            Index tmin = std::numeric_limits<Index>::max();
-            Index tmax = std::numeric_limits<Index>::min();
-#ifdef USE_OPENMP
-#pragma omp for
-#endif
-            for (ssize_t index = 0; index < numElements; index++) {
-                if (x[index] < tmin)
-                    tmin = x[index];
-                if (x[index] > tmax)
-                    tmax = x[index];
-            }
-#ifdef USE_OPENMP
-#pragma omp critical
-#endif
-            {
-                if (tmin < min)
-                    min = tmin;
-                if (tmax > max)
-                    max = tmax;
-            }
-        }
+        updateMinMax<Vec<Index>>(scal, min, max);
     } else if (Vec<Scalar>::const_ptr scal = Vec<Scalar>::as(object)) {
-        const vistle::Scalar *x = &scal->x()[0];
-#ifdef USE_OPENMP
-#pragma omp parallel
-#endif
-        {
-            Scalar tmin = std::numeric_limits<Scalar>::max();
-            Scalar tmax = -std::numeric_limits<Scalar>::max();
-#ifdef USE_OPENMP
-#pragma omp for
-#endif
-            for (ssize_t index = 0; index < numElements; index++) {
-                if (x[index] < tmin)
-                    tmin = x[index];
-                if (x[index] > tmax)
-                    tmax = x[index];
-            }
-#ifdef USE_OPENMP
-#pragma omp critical
-#endif
-            {
-                if (tmin < min)
-                    min = tmin;
-                if (tmax > max)
-                    max = tmax;
-            }
-        }
+        updateMinMax<Vec<Scalar>>(scal, min, max);
     } else if (Vec<Scalar, 3>::const_ptr vec = Vec<Scalar, 3>::as(object)) {
         const vistle::Scalar *x = &vec->x()[0];
         const vistle::Scalar *y = &vec->y()[0];

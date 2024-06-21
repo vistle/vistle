@@ -166,7 +166,6 @@ Hub::Hub(bool inManager)
 , m_hubId(Id::Invalid)
 , m_moduleCount(0)
 , m_traceMessages(message::INVALID)
-, m_execCount(0)
 , m_barrierActive(false)
 , m_barrierReached(0)
 #if BOOST_VERSION >= 106600
@@ -240,6 +239,7 @@ Hub::~Hub()
         removeSocket(m_sockets.begin()->first);
     }
 
+    m_tunnelManager.cleanUp();
     m_dataProxy.reset();
 
     message::clear_request_queue();
@@ -272,6 +272,41 @@ Hub &Hub::the()
     return *hub_instance;
 }
 
+boost::program_options::options_description &Hub::options()
+{
+    namespace po = boost::program_options;
+
+    static po::options_description desc("usage");
+    if (!desc.options().empty()) {
+        return desc;
+    }
+
+    // clang-format off
+    desc.add_options()
+        ("help,h", "show this message")
+        ("version,v", "print version")
+        ("hub,c", po::value<std::string>(), "connect to hub")
+        ("batch,b", "do not start user interface")
+        ("proxy", "run master hub acting only as a proxy, does not require MPI")
+        ("gui,g", "start graphical user interface")
+        ("shell,s", "start interactive Python shell (requires ipython or python)")
+        ("port,p", po::value<unsigned short>(), "control port")
+        ("dataport", po::value<unsigned short>(), "data port")
+        ("execute,e", "call compute() after workflow has been loaded")
+        ("snapshot", po::value<std::string>(), "store screenshot of workflow to this location")
+        ("libsim,l", po::value<std::string>(), "connect to a LibSim instrumented simulation by entering the path to the .sim2 file")
+        ("cover", "use OpenCOVER.mpi to manage Vistle session on cluster")
+        ("exposed,gateway-host,gateway,gw", po::value<std::string>(), "ports are exposed externally on this host")
+        ("root", po::value<std::string>(), "path to Vistle build directory")
+        ("buildtype", po::value<std::string>(), "build type suffix to binary in Vistle build directory")
+        ("conference,conf", po::value<std::string>(), "URL of associated conference call")
+        ("url", "Vistle URL, script to process, or slave name")
+    ;
+    // clang-format on
+
+    return desc;
+}
+
 bool Hub::init(int argc, char *argv[])
 {
     try {
@@ -295,29 +330,7 @@ bool Hub::init(int argc, char *argv[])
     m_basePort = *m_config->value<int64_t>("system", "net", "controlport", m_basePort);
 
     namespace po = boost::program_options;
-    po::options_description desc("usage");
-    // clang-format off
-    desc.add_options()
-        ("help,h", "show this message")
-        ("version,v", "print version")
-        ("hub,c", po::value<std::string>(), "connect to hub")
-        ("batch,b", "do not start user interface")
-        ("proxy", "run master hub acting only as a proxy, does not require MPI")
-        ("gui,g", "start graphical user interface")
-        ("shell,s", "start interactive Python shell (requires ipython or python)")
-        ("port,p", po::value<unsigned short>(), "control port")
-        ("dataport", po::value<unsigned short>(), "data port")
-        ("execute,e", "call compute() after workflow has been loaded")
-        ("snapshot", po::value<std::string>(), "store screenshot of workflow to this location")
-        ("libsim,l", po::value<std::string>(), "connect to a LibSim instrumented simulation by entering the path to the .sim2 file")
-        ("cover", "use OpenCOVER.mpi to manage Vistle session on cluster")
-        ("exposed,gateway-host,gateway,gw", po::value<std::string>(), "ports are exposed externally on this host")
-        ("root", po::value<std::string>(), "path to Vistle build directory")
-        ("buildtype", po::value<std::string>(), "build type suffix to binary in Vistle build directory")
-        ("conference,conf", po::value<std::string>(), "URL of associated conference call")
-        ("url", "Vistle URL, script to process, or slave name")
-    ;
-    // clang-format on
+    auto desc = options();
     po::variables_map vm;
     try {
         po::positional_options_description popt;
@@ -438,11 +451,45 @@ bool Hub::init(int argc, char *argv[])
 
     if (m_isMaster && vm.count("hub") > 0) {
         m_isMaster = false;
+        ++m_basePort;
         m_masterHost = vm["hub"].as<std::string>();
-        auto colon = m_masterHost.find(':');
-        if (colon != std::string::npos) {
-            m_masterPort = boost::lexical_cast<unsigned short>(m_masterHost.substr(colon + 1));
-            m_masterHost = m_masterHost.substr(0, colon);
+
+        // parse port from host string, if given
+        // possible cases:
+        // - hostname
+        // - hostname:port
+        // - v4address
+        // - v4address:port
+        // - v6address
+        // - [v6address]
+        // - [v6address]:port
+        auto brace = m_masterHost.find('[');
+        if (brace != std::string::npos) {
+            // IPv6 address within braces
+            if (brace != 0) {
+                CERR << "invalid IPv6 address for master host, [ has to be first character: " << m_masterHost
+                     << std::endl;
+                return false;
+            }
+            auto endbrace = m_masterHost.find(']', brace);
+            if (endbrace == std::string::npos) {
+                CERR << "invalid IPv6 address for master host, ] is required" << m_masterHost << std::endl;
+                return false;
+            }
+            auto colon = m_masterHost.find(':', endbrace);
+            if (colon != std::string::npos) {
+                m_masterPort = boost::lexical_cast<unsigned short>(m_masterHost.substr(colon + 1));
+                m_masterHost = m_masterHost.substr(0, colon);
+            }
+        } else {
+            auto colon = m_masterHost.find(':');
+            auto colon2 = m_masterHost.find(':', colon + 1);
+            if (colon != std::string::npos && colon2 == std::string::npos) {
+                m_masterPort = boost::lexical_cast<unsigned short>(m_masterHost.substr(colon + 1));
+                m_masterHost = m_masterHost.substr(0, colon);
+            } else {
+                // IPv6 address without port, not within braces
+            }
         }
     }
 
@@ -585,7 +632,8 @@ bool Hub::init(int argc, char *argv[])
             }
 #endif // MODULE_THREAD
         }
-
+    }
+    if (!m_interrupt && !m_quitting) {
         m_python.reset(new PythonInterpreter(m_dir->share()));
     }
 
@@ -1004,6 +1052,8 @@ bool Hub::dispatch()
             }
 #endif
         }
+
+        m_tunnelManager.cleanUp();
     }
 
     std::unique_lock<std::mutex> dataConnGuard(m_outstandingDataConnectionMutex);
@@ -1596,7 +1646,12 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
         case Identify::LOCALBULKDATA:
         case Identify::REMOTEBULKDATA: {
             m_dataProxy->addSocket(id, sock);
-            removeClient(sock);
+            removeSocket(sock, false);
+            break;
+        }
+        case Identify::TUNNEL: {
+            m_tunnelManager.addSocket(id, sock);
+            removeSocket(sock, false);
             break;
         }
         default: {
@@ -1630,10 +1685,21 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
             }
         }
         std::unique_lock<std::mutex> guard(m_outstandingDataConnectionMutex);
-        assert(m_outstandingDataConnections.find(add) == m_outstandingDataConnections.end());
-        m_outstandingDataConnections[add] =
-            std::async(std::launch::async, [this, add]() { return m_dataProxy->connectRemoteData(add); });
+        auto it = m_outstandingDataConnections.find(add);
+        if (it == m_outstandingDataConnections.end()) {
+            m_outstandingDataConnections[add] =
+                std::async(std::launch::async, [this, add]() { return m_dataProxy->connectRemoteData(add); });
+        } else {
+            CERR << "already connecting to hub " << add.id() << ":" << add << std::endl;
+        }
         guard.unlock();
+
+        m_stateTracker.handle(add, nullptr, true);
+        sendManager(add, Id::LocalHub);
+        sendUi(add);
+        if (m_isMaster) {
+            sendSlaves(add);
+        }
         break;
     }
     case message::CONNECT: {
@@ -2214,9 +2280,13 @@ bool Hub::handlePriv(const message::Spawn &spawnRecv)
                         sendError("cannot migrate module with id " + std::to_string(spawn.getReference()));
                         return handlePlainSpawn(notify, doSpawn, true);
                     }
+                    if (!editDelayedConnects(spawn.migrateId(), notify.spawnId())) {
+                        sendError("cannot migrate module with id " + std::to_string(spawn.getReference()));
+                        return handlePlainSpawn(notify, doSpawn, true);
+                    }
                 }
-                killOldModule(spawn.migrateId());
                 m_sendAfterExit[spawn.migrateId()].push_back(spawn);
+                killOldModule(spawn.migrateId());
                 return true;
             } else if (clone) {
                 if (doSpawn) {
@@ -2302,11 +2372,71 @@ bool Hub::handleConnectOrDisconnect(const ConnMsg &mm)
     }
 }
 
+namespace {
+template<typename Msg>
+void updateSourceOrDestinationId(Msg &m, int oldId, int newId)
+{
+    if (m.getModuleA() == oldId) {
+        m.setModuleA(newId);
+    }
+    if (m.getModuleB() == oldId) {
+        m.setModuleB(newId);
+    }
+}
+} // namespace
+
+bool Hub::updateQueue(int oldId, int newId)
+{
+    using namespace message;
+
+    std::unique_lock guard(m_queueMutex);
+    for (auto &m: m_queue) {
+        if (m.type() == message::CONNECT) {
+            auto &mm = m.as<Connect>();
+            updateSourceOrDestinationId(mm, oldId, newId);
+        } else if (m.type() == message::DISCONNECT) {
+            auto &mm = m.as<Disconnect>();
+            updateSourceOrDestinationId(mm, oldId, newId);
+        }
+    }
+
+    return true;
+}
+
+bool Hub::cleanQueue(int id)
+{
+    using namespace message;
+
+    std::unique_lock guard(m_queueMutex);
+    decltype(m_queue) queue;
+    std::swap(queue, m_queue);
+    guard.unlock();
+
+    for (auto &m: m_queue) {
+        if (m.type() == message::CONNECT) {
+            auto &mm = m.as<Connect>();
+            if (mm.getModuleA() == id || mm.getModuleB() == id) {
+                continue;
+            }
+        } else if (m.type() == message::DISCONNECT) {
+            auto &mm = m.as<Disconnect>();
+            if (mm.getModuleA() == id || mm.getModuleB() == id) {
+                continue;
+            }
+        }
+
+        guard.lock();
+        m_queue.push_back(m);
+        guard.unlock();
+    }
+    return true;
+}
+
 bool Hub::handleQueue()
 {
     using namespace message;
 
-    //CERR << "unqueuing " << m_queue.size() << " messages" << std::endl;;
+    //CERR << "unqueuing " << m_queue.size() << " messages" << std::endl;
 
     bool again = true;
     while (again) {
@@ -2321,17 +2451,21 @@ bool Hub::handleQueue()
                 if (m_stateTracker.handleConnectOrDisconnect(mm)) {
                     again = true;
                     handlePriv(mm);
+                    //CERR << "handleQueue: CONNECT now: " << mm << std::endl;
                 } else {
                     guard.lock();
                     m_queue.push_back(m);
                     guard.unlock();
+                    //CERR << "handleQueue: CONNECT later: " << mm << std::endl;
                 }
             } else if (m.type() == message::DISCONNECT) {
                 auto &mm = m.as<Disconnect>();
                 if (m_stateTracker.handleConnectOrDisconnect(mm)) {
                     again = true;
                     handlePriv(mm);
+                    //CERR << "handleQueue: DISCONNECT now: " << mm << std::endl;
                 } else {
+                    //CERR << "handleQueue: DISCONNECT later: " << m << std::endl;
                     guard.lock();
                     m_queue.push_back(m);
                     guard.unlock();
@@ -2398,10 +2532,12 @@ void Hub::cacheParameters(int oldModuleId, int newModuleId)
     auto paramNames = m_stateTracker.getParameters(oldModuleId);
     for (const auto &pn: paramNames) {
         auto p = m_stateTracker.getParameter(oldModuleId, pn);
-        auto pm = message::SetParameter(newModuleId, p->getName(), p);
-        pm.setDelayed();
-        pm.setDestId(newModuleId);
-        m_sendAfterSpawn[newModuleId].emplace_back(pm);
+        if (!p->isDefault()) {
+            auto pm = message::SetParameter(newModuleId, p->getName(), p);
+            pm.setDelayed();
+            pm.setDestId(newModuleId);
+            m_sendAfterSpawn[newModuleId].emplace_back(pm);
+        }
     }
 }
 
@@ -2419,6 +2555,14 @@ void Hub::cachePortConnections(int oldModuleId, int newModuleId)
     for (const auto &out: outputs) {
         for (const auto &to: out->connections()) {
             auto cm = message::Connect(newModuleId, out->getName(), to->getModuleID(), to->getName());
+            m_sendAfterSpawn[newModuleId].emplace_back(cm);
+        }
+    }
+
+    auto params = m_stateTracker.portTracker()->getConnectedParameters(oldModuleId);
+    for (const auto &par: params) {
+        for (const auto &to: par->connections()) {
+            auto cm = message::Connect(newModuleId, par->getName(), to->getModuleID(), to->getName());
             m_sendAfterSpawn[newModuleId].emplace_back(cm);
         }
     }
@@ -2440,6 +2584,20 @@ void Hub::applyAllDelayedParameters(int oldModuleId, int newModuleId)
     auto pm = message::SetParameter(newModuleId);
     pm.setDestId(newModuleId);
     m_sendAfterSpawn[newModuleId].emplace_back(pm);
+}
+
+bool Hub::editDelayedConnects(int oldModuleId, int newModuleId)
+{
+    CERR << "updating connects: " << oldModuleId << " -> " << newModuleId << std::endl;
+    for (auto &m: m_sendAfterSpawn) {
+        for (auto &msg: m.second) {
+            if (msg.type() == message::CONNECT) {
+                auto &cm = msg.as<message::Connect>();
+                updateSourceOrDestinationId(cm, oldModuleId, newModuleId);
+            }
+        }
+    }
+    return updateQueue(oldModuleId, newModuleId);
 }
 
 bool Hub::cacheModuleValues(int oldModuleId, int newModuleId)
@@ -2560,6 +2718,9 @@ bool Hub::connectToMaster(const std::string &host, unsigned short port)
             break;
         }
         asio::connect(*m_masterSocket, endpoint_iterator, ec);
+        if (m_interrupt) {
+            break;
+        }
         if (!ec) {
             connected = true;
         } else if (ec == boost::system::errc::connection_refused) {
@@ -2679,6 +2840,10 @@ Hub::socket_ptr Hub::connectToVrb(unsigned short port)
         boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string("127.0.0.1"), port);
         sock = std::make_shared<socket>(m_ioService);
         sock->connect(endpoint, ec);
+        if (m_interrupt) {
+            sock.reset();
+            return sock;
+        }
         if (!ec) {
             connected = true;
         } else if (ec == boost::system::errc::connection_refused) {
@@ -2686,6 +2851,7 @@ Hub::socket_ptr Hub::connectToVrb(unsigned short port)
             sleep(1);
         } else {
             std::cerr << ": connect failed: " << ec.message() << std::endl;
+            sock.reset();
             return sock;
         }
     }
@@ -2860,7 +3026,9 @@ bool Hub::processScript()
     }
 
     auto retval = processScript(m_scriptPath, m_barrierAfterLoad, m_executeModules);
-    setLoadedFile(m_scriptPath);
+    if (retval) {
+        setLoadedFile(m_scriptPath);
+    }
     return retval;
 }
 
@@ -2868,6 +3036,10 @@ bool Hub::processScript(const std::string &filename, bool barrierAfterLoad, bool
 {
     assert(m_uiManager.isLocked());
 #ifdef HAVE_PYTHON
+    if (!m_python) {
+        setStatus("Cannot load " + filename + " - no Python interpreter");
+        return false;
+    }
     setStatus("Loading " + filename + "...");
     int flags = PythonExecutor::LoadFile;
     if (barrierAfterLoad)
@@ -2887,6 +3059,7 @@ bool Hub::processScript(const std::string &filename, bool barrierAfterLoad, bool
     setStatus("Loading " + filename + " done");
     return true;
 #else
+    setStatus("Cannot load " + filename + " - no Python support");
     return false;
 #endif
 }
@@ -2895,6 +3068,10 @@ bool Hub::processCommand(const std::string &command)
 {
     assert(m_uiManager.isLocked());
 #ifdef HAVE_PYTHON
+    if (!m_python) {
+        setStatus("Cannot execute: " + command + " - no Python interpreter");
+        return false;
+    }
     setStatus("Executing " + command + "...");
     PythonExecutor exec(*m_python, command);
     bool interrupt = false;
@@ -3009,10 +3186,6 @@ bool Hub::handlePriv(const message::Execute &exec)
         return true;
 
     auto toSend = make.message<message::Execute>(exec);
-    if (exec.getExecutionCount() > m_execCount)
-        m_execCount = exec.getExecutionCount();
-    if (exec.getExecutionCount() < 0)
-        toSend.setExecutionCount(++m_execCount);
 
     bool onlySources = false;
     bool isCompound = false;
@@ -3313,6 +3486,8 @@ bool Hub::handlePriv(const message::ModuleExit &exit)
         }
     }
 
+    cleanQueue(id);
+
     return true;
 }
 
@@ -3468,6 +3643,7 @@ void Hub::emergencyQuit()
         usleep(100000);
     }
 
+    m_tunnelManager.cleanUp();
     m_dataProxy.reset();
 
     if (!m_quitting) {
@@ -3562,6 +3738,8 @@ void Hub::updateLinkedParameters(const message::SetParameter &setParam)
 void Hub::startIoThread()
 {
     auto num = m_ioThreads.size();
+    if (num > std::thread::hardware_concurrency())
+        return;
     m_ioThreads.emplace_back([this, num]() {
         setThreadName("vistle:io:" + std::to_string(num));
         m_ioService.run();

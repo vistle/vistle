@@ -27,8 +27,6 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(PointOrValue, (PointPerTimestep)(Value)(Poin
 IsoSurfaceVtkm::IsoSurfaceVtkm(const std::string &name, int moduleID, mpi::communicator comm)
 : Module(name, moduleID, comm)
 {
-    setDefaultCacheMode(ObjectCache::CacheDeleteLate);
-
     createInputPort("data_in", "input gird or geometry with scalar data");
     m_mapDataIn = createInputPort("mapdata_in", "additional mapped field");
     m_dataOut = createOutputPort("data_out", "surface with mapped data");

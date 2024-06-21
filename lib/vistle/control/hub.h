@@ -5,6 +5,7 @@
 #include <atomic>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/process.hpp>
+#include <boost/program_options.hpp>
 #include <vistle/core/statetracker.h>
 #include <vistle/util/buffer.h>
 #include "uimanager.h"
@@ -49,6 +50,7 @@ public:
     typedef std::shared_ptr<socket> socket_ptr;
 
     static Hub &the();
+    static boost::program_options::options_description &options();
 
     Hub(bool inManager = false);
     ~Hub();
@@ -116,6 +118,7 @@ private:
     void cachePortConnections(int oldModuleId, int newModuleId);
     void cacheParamConnections(int oldModuleId, int newModuleId);
     bool cacheModuleValues(int oldModuleId, int newModuleId);
+    bool editDelayedConnects(int oldModuleId, int newModuleId);
     void applyAllDelayedParameters(int oldModuleId, int newModuleId);
     bool copyModuleParams(int oldModuleId, int newModuleId);
     void cacheParameters(int oldModuleId, int newModuleId);
@@ -193,8 +196,6 @@ private:
     int m_moduleCount;
     message::Type m_traceMessages;
 
-    int m_execCount;
-
     bool m_barrierActive;
     unsigned m_barrierReached;
     message::uuid_t m_barrierUuid;
@@ -231,6 +232,8 @@ private:
     std::mutex m_queueMutex; // protect access to m_queue
     std::vector<message::Buffer> m_queue;
     bool handleQueue();
+    bool updateQueue(int oldId, int newId);
+    bool cleanQueue(int exitedId);
 
     void setLoadedFile(const std::string &file);
     void setSessionUrl(const std::string &url);

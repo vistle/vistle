@@ -124,7 +124,10 @@ struct ArrayAccess<D, vistle::Vec<Scalar, 3>> {
     : sz(src->getSize()), x(&src->x()[0]), y(&src->y()[0]), z(&src->z()[0])
     {}
     vistle::Index size() const { return sz; }
-    D operator[](vistle::Index i) const { return D{x[i], y[i], z[i]}; }
+    D operator[](vistle::Index i) const
+    {
+        return D{static_cast<float>(x[i]), static_cast<float>(y[i]), static_cast<float>(z[i])};
+    }
 };
 
 template<>
@@ -377,7 +380,9 @@ void AnariRenderObject::create(anari::Device device)
             anari::unsetParameter(device, mat, "color");
     } else if (hasSolidColor) {
         anari::setParameter(device, mat, "color",
-                            anari::std_types::vec4{solidColor[0], solidColor[1], solidColor[2], solidColor[3]});
+                            anari::std_types::vec4{static_cast<float>(solidColor[0]), static_cast<float>(solidColor[1]),
+                                                   static_cast<float>(solidColor[2]),
+                                                   static_cast<float>(solidColor[3])});
     }
     anari::commitParameters(device, mat);
     anari::setAndReleaseParameter(device, surface, "material", mat);
@@ -420,12 +425,14 @@ void AnariColorMap::create(anari::Device dev)
                 anari::unmapParameterArray(device, sampler, "image");
             }
             auto range = tex->getMax() - tex->getMin();
-            if (range > 0.f) {
-                anari::std_types::mat4 smat{
-                    {{1.f / range, 0.f, 0.f, 0.f}, {0.f, 1.f, 0.f, 0.f}, {0.f, 0.f, 1.f, 0.f}, {0.f, 0.f, 0.f, 1.f}}};
+            if (range > 0.) {
+                anari::std_types::mat4 smat{{{1.f / static_cast<float>(range), 0.f, 0.f, 0.f},
+                                             {0.f, 1.f, 0.f, 0.f},
+                                             {0.f, 0.f, 1.f, 0.f},
+                                             {0.f, 0.f, 0.f, 1.f}}};
                 anari::setParameter(device, sampler, "inTransform", smat);
                 anari::setParameter(device, sampler, "inOffset",
-                                    anari::std_types::vec4{-tex->getMin() / range, 0.f, 0.f, 0.f});
+                                    anari::std_types::vec4{-static_cast<float>(tex->getMin() / range), 0.f, 0.f, 0.f});
             }
         } else {
             if (auto begin = anari::mapParameterArray<anari::std_types::bvec4>(device, sampler, "image", 2)) {

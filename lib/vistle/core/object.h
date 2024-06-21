@@ -63,6 +63,7 @@ class V_COREEXPORT Object: public std::enable_shared_from_this<Object>, virtual 
     template<class ObjType>
     friend class shm_obj_ref;
     friend void Shm::markAsRemoved(const std::string &name);
+    friend class Module;
 
 public:
     typedef std::shared_ptr<Object> ptr;
@@ -155,7 +156,7 @@ public:
     int getTimestep() const;
     int getNumTimesteps() const;
     int getIteration() const;
-    int getExecutionCounter() const;
+    int getGeneration() const;
     int getCreator() const;
     Matrix4 getTransform() const;
 
@@ -165,7 +166,7 @@ public:
     void setTimestep(const int timestep);
     void setNumTimesteps(const int num);
     void setIteration(const int num);
-    void setExecutionCounter(const int count);
+    void setGeneration(const int count);
     void setCreator(const int id);
     void setTransform(const Matrix4 &transform);
 
@@ -229,6 +230,12 @@ private:
     // not implemented
     Object(const Object &) = delete;
     Object &operator=(const Object &) = delete;
+
+#ifdef NO_SHMEM
+    std::recursive_mutex &mutex() const;
+#else
+    boost::interprocess::interprocess_recursive_mutex &mutex() const;
+#endif
 };
 V_COREEXPORT std::ostream &operator<<(std::ostream &os, const Object &);
 
@@ -262,13 +269,12 @@ struct ObjectData: public ShmData {
     V_COREEXPORT std::vector<std::string> getAttributeList() const;
 
 #ifdef NO_SHMEM
-    mutable std::recursive_mutex attachment_mutex;
-    typedef std::lock_guard<std::recursive_mutex> attachment_mutex_lock_type;
+    mutable std::recursive_mutex mutex;
+    typedef std::lock_guard<std::recursive_mutex> mutex_lock_type;
     typedef const ObjectData *Attachment;
 #else
-    mutable boost::interprocess::interprocess_recursive_mutex attachment_mutex; //< protects attachments
-    typedef boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex>
-        attachment_mutex_lock_type;
+    mutable boost::interprocess::interprocess_recursive_mutex mutex; //< protects attachments
+    typedef boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> mutex_lock_type;
     typedef interprocess::offset_ptr<const ObjectData> Attachment;
 #endif
     typedef std::pair<const Key, Attachment> AttachmentMapValueType;
@@ -603,6 +609,7 @@ private: \
         ar &V_NAME(ar, "type", type); \
         if (!ar.currentObject()) \
             ar.setCurrentObject(Object::m_data); \
+        ar.registerObjectNameTranslation(name, getName()); \
         d()->template serialize<Archive>(ar); \
         assert(type == Object::getType()); \
     }

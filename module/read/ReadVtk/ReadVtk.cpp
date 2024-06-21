@@ -59,7 +59,7 @@ const std::string Invalid("(NONE)");
 
 bool isCollectionFile(const std::string &fn)
 {
-    constexpr const char *collectionEndings[3] = {".pvd", ".vtm", ".pvtu"};
+    constexpr const char *collectionEndings[] = {".pvd", ".vtm", ".pvti", ".pvtp", ".pvtr", ".pvts", ".pvtu"};
     for (const auto ending: collectionEndings)
         if (boost::algorithm::ends_with(fn, ending))
             return true;
@@ -351,9 +351,9 @@ ReadVtk::ReadVtk(const std::string &name, int moduleID, mpi::communicator comm):
 {
     createOutputPort("grid_out", "grid or geometry");
     m_filename = addStringParameter("filename", "name of VTK file", "", Parameter::ExistingFilename);
-    setParameterFilters(m_filename,
-                        "PVD Files (*.pvd)/XML VTK Files (*.vti *.vtp *.vtr *.vts *.vtu *.pvtu)/Legacy VTK Files "
-                        "(*.vtk)/XML VTK Multiblock Data (*.vtm)/All Files (*)");
+    setParameterFilters(m_filename, "PVD Files (*.pvd)/XML VTK Files (*.vti *.vtp *.vtr *.vts *.vtu)/Parallel XML VTK "
+                                    "Files(*.pvti *.pvtp *.pvtr *.pvts *.pvtu)/Legacy VTK Files "
+                                    "(*.vtk)/XML VTK Multiblock Data (*.vtm)");
     m_readPieces = addIntParameter("read_pieces", "create block for every piece in an unstructured grid", false,
                                    Parameter::Boolean);
     m_ghostCells = addIntParameter("create_ghost_cells", "create ghost cells for multi-piece unstructured grids", true,

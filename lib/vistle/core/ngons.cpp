@@ -137,7 +137,7 @@ Ngons<N>::Celltree::const_ptr Ngons<N>::getCelltree() const
     if (m_celltree)
         return m_celltree;
 
-    typename Data::attachment_mutex_lock_type lock(d()->attachment_mutex);
+    typename Data::mutex_lock_type lock(d()->mutex);
     if (!hasAttachment("celltree")) {
         refresh();
         const Index *corners = nullptr;

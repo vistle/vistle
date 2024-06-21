@@ -79,8 +79,7 @@ bool CoverConfigBridge::trySetParam(const opencover::config::ConfigBase *entry, 
         auto pp = dynamic_cast<ValueParam *>(param);
         assert(!param || pp);
         if (!pp) {
-            std::cerr << "adding config value param " << pname << ", default=" << ValueType(value->defaultValue())
-                      << std::endl;
+            //std::cerr << "adding config value param " << pname << ", default=" << ValueType(value->defaultValue()) << std::endl;
             pp = dynamic_cast<ValueParam *>(
                 m_cover->addParameter(pname, pname, ValueType(value->defaultValue()), presentation));
             m_params[key] = pp;
@@ -89,7 +88,7 @@ bool CoverConfigBridge::trySetParam(const opencover::config::ConfigBase *entry, 
                 pp = nullptr;
         }
         if (pp) {
-            std::cerr << "storing config param " << pname << ", value=" << ValueType(value->value()) << std::endl;
+            //std::cerr << "storing config param " << pname << ", value=" << ValueType(value->value()) << std::endl;
             m_cover->setParameter(pname, ValueType(value->value()));
         }
         return true;
@@ -102,7 +101,7 @@ bool CoverConfigBridge::trySetParam(const opencover::config::ConfigBase *entry, 
             std::vector<ValueType> vvec(vec.size());
             std::copy(vec.begin(), vec.end(), vvec.begin());
             ParameterVector<ValueType> def(vvec);
-            std::cerr << "adding config array param " << pname << ", default=" << def << std::endl;
+            //std::cerr << "adding config array param " << pname << ", default=" << def << std::endl;
             pp = dynamic_cast<ArrayParam *>(m_cover->addParameter(pname, pname, def, presentation));
             m_params[key] = pp;
             m_values[pname] = key;
@@ -114,7 +113,7 @@ bool CoverConfigBridge::trySetParam(const opencover::config::ConfigBase *entry, 
             std::vector<ValueType> vvec(vec.size());
             std::copy(vec.begin(), vec.end(), vvec.begin());
             ParameterVector<ValueType> val(vvec);
-            std::cerr << "storing config param " << pname << ", array=" << val << std::endl;
+            //std::cerr << "storing config param " << pname << ", array=" << val << std::endl;
             m_cover->setParameter(pname, val);
         }
         return true;
@@ -128,12 +127,12 @@ bool CoverConfigBridge::wasChanged(const opencover::config::ConfigBase *entry)
     auto section = entry->section();
     auto name = entry->name();
     Key key(entry);
-    std::cerr << "have to store " << key << std::endl;
+    //std::cerr << "have to store " << key << std::endl;
     std::string pname = key.paramName();
     Parameter *param = nullptr;
     auto it = m_params.find(key);
     if (it != m_params.end()) {
-        std::cerr << "already have param " << pname << std::endl;
+        //std::cerr << "already have param " << pname << std::endl;
         param = it->second;
     }
 
@@ -157,7 +156,7 @@ bool CoverConfigBridge::trySetValueOrArray(const Key &key, const Parameter *para
         if (vparam->presentation() == presentation) {
             if (auto val = m_cover->m_config->value<V>(key.path, key.section, key.name)) {
                 *val = vparam->getValue();
-                std::cerr << "config value from Vistle: " << pname << " to " << val->value() << std::endl;
+                //std::cerr << "config value from Vistle: " << pname << " to " << val->value() << std::endl;
                 return true;
             }
         }
@@ -169,7 +168,7 @@ bool CoverConfigBridge::trySetValueOrArray(const Key &key, const Parameter *para
                 std::vector<V> vec(vp.size());
                 std::copy(vp.begin(), vp.end(), vec.begin());
                 *arr = vec;
-                std::cerr << "config array from Vistle: " << pname << " to " << arr->value() << std::endl;
+                //std::cerr << "config array from Vistle: " << pname << " to " << arr->value() << std::endl;
                 return true;
             }
         }
@@ -184,7 +183,7 @@ bool CoverConfigBridge::changeParameter(const Parameter *param)
     if (it == m_values.end()) {
         return false;
     }
-    std::cerr << "setting config param " << pname << std::endl;
+    //std::cerr << "setting config param " << pname << std::endl;
     const auto &key = it->second;
     trySetValueOrArray<bool>(key, param);
     trySetValueOrArray<int64_t>(key, param);

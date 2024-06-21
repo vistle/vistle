@@ -52,7 +52,6 @@ IsoSurface::IsoSurface(const std::string &name, int moduleID, mpi::communicator 
 {
     isocontrol.init();
 
-    setDefaultCacheMode(ObjectCache::CacheDeleteLate);
 #ifdef CUTTINGSURFACE
     m_mapDataIn = createInputPort("data_in", "input grid or geometry with mapped data");
 #else

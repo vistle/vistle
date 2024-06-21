@@ -49,6 +49,7 @@ enum class InSituMessageType {
     ShmInfo
 };
 
+
 class Message;
 struct V_INSITUMESSAGEEXPORT InSituMessageBase {
     InSituMessageBase(InSituMessageType t): m_type(t){};
@@ -98,7 +99,8 @@ DEFINE_IN_SITU_MESSAGE_NO_PARAM(Invalid)
 DEFINE_IN_SITU_MESSAGE_NO_PARAM(GoOn)
 
 DEFINE_IN_SITU_MESSAGE(ConnectPort, std::string)
-DEFINE_IN_SITU_MESSAGE(ConnectionClosed, bool) // true -> disconnected on purpose
+enum DisconnectState { Crash = 0, Shutdown = 1, ShutdownNoRestart = 2 };
+DEFINE_IN_SITU_MESSAGE(ConnectionClosed, int) // compare to DisconnectState
 DEFINE_IN_SITU_MESSAGE(DisconnectPort, std::string)
 //command name + empty string for generic or + value for custom
 DEFINE_IN_SITU_MESSAGE(ExecuteCommand, std::pair<std::string COMMA std::string>)

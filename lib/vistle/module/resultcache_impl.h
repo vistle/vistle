@@ -3,33 +3,20 @@
 
 #include "resultcache.h"
 
+#include <cassert>
+
 namespace vistle {
 
 template<class Result>
-bool ResultCache<Result>::tryGet(const std::string &key, Result &result)
+void ResultCache<Result>::modifyBorrowCount(size_t generation, int delta)
 {
-    if (!m_enabled)
-        return false;
+    assert(generation >= m_purgedGenerations);
+    assert(generation < m_purgedGenerations + m_borrowCount.size());
 
-    std::unique_lock<std::mutex> guard(m_mutex);
-    if (m_cache.empty()) {
-        return false;
+    m_borrowCount[generation - m_purgedGenerations] += delta;
+    if (m_borrowCount[generation - m_purgedGenerations] == 0) {
+        purgeOldGenerations();
     }
-    const auto &cache = m_cache.back();
-    auto it = cache.find(key);
-    if (it == cache.end()) {
-        return false;
-    }
-
-    auto &ent = it->second;
-    guard.unlock();
-    if (!ent.mutex.try_lock()) {
-        return false;
-    }
-
-    result = ent.data;
-    ent.mutex.unlock();
-    return true;
 }
 
 template<class Result>
@@ -49,14 +36,22 @@ typename ResultCache<Result>::Entry *ResultCache<Result>::getOrLock(const std::s
         auto &ent = cache[key];
         ent.generation = m_generation;
         ent.mutex.lock();
-        ++m_borrowCount.back();
+        modifyBorrowCount(m_generation, 1);
         return &ent;
     }
 
     auto &ent = it->second;
+    auto generation = ent.generation;
+    modifyBorrowCount(generation, 1);
     guard.unlock();
+
     std::unique_lock<std::mutex> member_guard(ent.mutex);
     result = ent.data;
+    member_guard.unlock();
+
+    guard.lock();
+    modifyBorrowCount(generation, -1);
+
     return nullptr;
 }
 
@@ -68,14 +63,11 @@ bool ResultCache<Result>::storeAndUnlock(ResultCache<Result>::Entry *entry, cons
     if (entry == &m_empty)
         return false;
     entry->data = data;
+    auto generation = entry->generation;
     entry->mutex.unlock();
 
     std::unique_lock<std::mutex> guard(m_mutex);
-    assert(entry->generation - m_purgedGenerations >= 0);
-    assert(entry->generation - m_purgedGenerations < m_borrowCount.size());
-    if (--m_borrowCount[entry->generation - m_purgedGenerations] == 0) {
-        purgeOldGenerations();
-    }
+    modifyBorrowCount(generation, -1);
 
     return true;
 }

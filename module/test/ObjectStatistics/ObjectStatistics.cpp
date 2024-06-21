@@ -168,7 +168,7 @@ ObjectStatistics::~ObjectStatistics()
 
 bool ObjectStatistics::compute()
 {
-    //std::cerr << "ObjectStatistics: compute: execcount=" << m_executionCount << std::endl;
+    //std::cerr << "ObjectStatistics: compute: generation=" << m_generation << std::endl;
 
     Object::const_ptr obj = expect<Object>("data_in");
     if (!obj)

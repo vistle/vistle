@@ -118,7 +118,7 @@ private:
     };
     struct PortObjectCache {
         int iteration = 0;
-        int execCount = 0;
+        int generation = 0;
         std::vector<std::string> objects;
     };
     std::map<PortKey, PortObjectCache> m_outputObjects; // current objects at local output ports
@@ -199,7 +199,7 @@ private:
         bool haveDelayed() const;
     };
     typedef std::unordered_map<int, Module> RunningMap;
-    RunningMap runningMap;
+    RunningMap m_runningMap;
     int numRunning() const;
     bool isReadyForExecute(int modId) const;
     int m_numExecuting = 0;
@@ -211,7 +211,7 @@ private:
     message::uuid_t m_barrierUuid;
     int m_reachedBarriers;
     typedef std::set<int> ModuleSet;
-    ModuleSet reachedSet;
+    ModuleSet m_reachedSet;
 
     std::vector<int> m_numTransfering;
     long m_totalNumTransferring = 0;

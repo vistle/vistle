@@ -9,7 +9,7 @@
 #endif
 
 #ifndef VISTLE_VERSION_HASH
-#error "VISTLE_VERSION_HASH not defined
+#error "VISTLE_VERSION_HASH not defined"
 #endif
 
 namespace vistle {

@@ -1,0 +1,91 @@
+MasterHub=getMasterHub()
+VistleSession=getVistleSession()
+WorkflowConfig=getWorkflowConfig()
+uuids = {}
+
+
+
+# spawn all local modules
+umMiniSim1 = spawnAsync(MasterHub, 'MiniSim')
+umBoundingBox2 = spawnAsync(MasterHub, 'BoundingBox')
+umIsoSurface3 = spawnAsync(MasterHub, 'IsoSurface')
+umCOVER4 = spawnAsync(MasterHub, 'COVER')
+umCuttingSurface5 = spawnAsync(MasterHub, 'CuttingSurface')
+umColor6 = spawnAsync(MasterHub, 'Color')
+umCellToVert7 = spawnAsync(MasterHub, 'CellToVert')
+umPrintMetaData8 = spawnAsync(MasterHub, 'PrintMetaData')
+umPrintMetaData9 = spawnAsync(MasterHub, 'PrintMetaData')
+
+mMiniSim1 = waitForSpawn(umMiniSim1)
+setVectorParam(mMiniSim1, '_position', 368.0, -177.0, True)
+setStringParam(mMiniSim1, 'input_params', 'module/test/MiniSim/minisim/inputs/sample.osc', True)
+setIntParam(mMiniSim1, 'numBlocks', 1, True)
+setIntParam(mMiniSim1, 'frequency', 10, True)
+setIntParam(mMiniSim1, 'keep_timesteps', 0, True)
+applyParameters(mMiniSim1)
+
+mBoundingBox2 = waitForSpawn(umBoundingBox2)
+setVectorParam(mBoundingBox2, '_position', 142.0, 81.0, True)
+setIntParam(mBoundingBox2, 'per_block', 1, True)
+setVectorParam(mBoundingBox2, 'min', -1.0, -1.0, -1.0, True)
+setVectorParam(mBoundingBox2, 'max', 65.0, 65.0, 65.0, True)
+setIntVectorParam(mBoundingBox2, 'min_index', 0, 0, 0, True)
+setIntVectorParam(mBoundingBox2, 'max_index', 66, 4422, 296274, True)
+applyParameters(mBoundingBox2)
+
+mIsoSurface3 = waitForSpawn(umIsoSurface3)
+setVectorParam(mIsoSurface3, '_position', 250.0, 104.0, True)
+setFloatParam(mIsoSurface3, 'isovalue', 0.00024017934629227966, True)
+setVectorParam(mIsoSurface3, 'isopoint', 49.78059768676758, 26.203638076782227, 32.196712493896484, True)
+setIntParam(mIsoSurface3, 'point_or_value', 0, True)
+applyParameters(mIsoSurface3)
+
+mCOVER4 = waitForSpawn(umCOVER4)
+setVectorParam(mCOVER4, '_position', 373.0, 341.0, True)
+setIntParam(mCOVER4, 'render_mode', 4, True)
+applyParameters(mCOVER4)
+
+mCuttingSurface5 = waitForSpawn(umCuttingSurface5)
+setIntParam(mCuttingSurface5, '_cache_mode', 4, True)
+setVectorParam(mCuttingSurface5, '_position', 634.0, -12.0, True)
+setVectorParam(mCuttingSurface5, 'point', 29.96261978149414, 37.61335754394531, 31.15563201904297, True)
+setVectorParam(mCuttingSurface5, 'vertex', 24.159542083740234, 15.225507736206055, 39.85896682739258, True)
+setFloatParam(mCuttingSurface5, 'scalar', 24.711122512817383, True)
+setIntParam(mCuttingSurface5, 'option', 1, True)
+applyParameters(mCuttingSurface5)
+
+mColor6 = waitForSpawn(umColor6)
+setVectorParam(mColor6, '_position', 368.0, 104.0, True)
+setStringParam(mColor6, 'species', 'oscillation', True)
+setFloatParam(mColor6, 'min', -0.3952166736125946, True)
+setFloatParam(mColor6, 'max', 1.0388853549957275, True)
+applyParameters(mColor6)
+
+mCellToVert7 = waitForSpawn(umCellToVert7)
+setVectorParam(mCellToVert7, '_position', 338.0, -26.0, True)
+applyParameters(mCellToVert7)
+
+mPrintMetaData8 = waitForSpawn(umPrintMetaData8)
+setVectorParam(mPrintMetaData8, '_position', 475.0, 102.0, True)
+applyParameters(mPrintMetaData8)
+
+mPrintMetaData9 = waitForSpawn(umPrintMetaData9)
+setVectorParam(mPrintMetaData9, '_position', 728.0, -12.0, True)
+applyParameters(mPrintMetaData9)
+
+# all local connections
+connect(mMiniSim1,'structured mesh_oscillation', mBoundingBox2,'grid_in')
+connect(mMiniSim1,'structured mesh_oscillation', mCuttingSurface5,'data_in')
+connect(mMiniSim1,'structured mesh_oscillation', mCellToVert7,'data_in')
+connect(mMiniSim1,'structured mesh_oscillation', mPrintMetaData9,'data_in')
+connect(mBoundingBox2,'grid_out', mCOVER4,'data_in')
+connect(mIsoSurface3,'data_out', mCOVER4,'data_in')
+connect(mCuttingSurface5,'data_out', mCOVER4,'data_in')
+connect(mColor6,'color_out', mCOVER4,'data_in')
+connect(mCellToVert7,'data_out', mIsoSurface3,'data_in')
+connect(mCellToVert7,'data_out', mColor6,'data_in')
+connect(mCellToVert7,'data_out', mPrintMetaData8,'data_in')
+
+# spawn all remote modules
+
+# connections between local and remote

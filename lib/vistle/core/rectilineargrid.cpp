@@ -100,17 +100,14 @@ void RectilinearGrid::print(std::ostream &os, bool verbose) const
     Base::print(os, verbose);
     os << " " << m_size << "=" << getNumDivisions(0) << "x" << getNumDivisions(1) << "x" << getNumDivisions(2);
     if (verbose) {
-        os << " x=(";
-        d()->coords[0]->print(os, verbose);
-        os << ")";
+        os << " x:";
+        d()->coords[0].print(os, verbose);
         os << " x ";
-        os << " y=(";
-        d()->coords[1]->print(os, verbose);
-        os << ")";
+        os << " y:";
+        d()->coords[1].print(os, verbose);
         os << " x ";
-        os << " z=(";
-        d()->coords[2]->print(os, verbose);
-        os << ")";
+        os << " z:";
+        d()->coords[2].print(os, verbose);
     }
 }
 

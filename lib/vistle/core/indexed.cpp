@@ -110,7 +110,7 @@ Indexed::Celltree::const_ptr Indexed::getCelltree() const
     if (m_celltree)
         return m_celltree;
 
-    Data::attachment_mutex_lock_type lock(d()->attachment_mutex);
+    Data::mutex_lock_type lock(d()->mutex);
     if (!hasAttachment("celltree")) {
         refresh();
         createCelltree(getNumElements(), &el()[0], &cl()[0]);
@@ -179,7 +179,7 @@ Indexed::VertexOwnerList::const_ptr Indexed::getVertexOwnerList() const
     if (m_vertexOwnerList)
         return m_vertexOwnerList;
 
-    Data::attachment_mutex_lock_type lock(d()->attachment_mutex);
+    Data::mutex_lock_type lock(d()->mutex);
     if (!hasAttachment("vertexownerlist")) {
         refresh();
         createVertexOwnerList();
@@ -265,17 +265,14 @@ void Indexed::print(std::ostream &os, bool verbose) const
 {
     Base::print(os);
 
-    os << " cl(";
-    d()->cl->print(os, verbose);
-    os << ")";
+    os << " cl:";
+    d()->cl.print(os, verbose);
 
-    os << " el(";
-    d()->el->print(os, verbose);
-    os << ")";
+    os << " el:";
+    d()->el.print(os, verbose);
 
-    os << " ghost(";
-    d()->ghost->print(os, verbose);
-    os << ")";
+    os << " ghost:";
+    d()->ghost.print(os, verbose);
 }
 
 Indexed::NeighborFinder::NeighborFinder(const Indexed *indexed): indexed(indexed)

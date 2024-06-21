@@ -59,8 +59,6 @@ private:
 
 Cache::Cache(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
-    setDefaultCacheMode(ObjectCache::CacheDeleteLate);
-
     for (int i = 0; i < NumPorts; ++i) {
         std::string suffix = std::to_string(i);
 
@@ -71,7 +69,7 @@ Cache::Cache(const std::string &name, int moduleID, mpi::communicator comm): Mod
     p_mode = addIntParameter("mode", "operation mode", m_mode, Parameter::Choice);
     V_ENUM_SET_CHOICES(p_mode, OperationMode);
     p_file = addStringParameter("file", "filename where cache should be created", "/scratch/", Parameter::Filename);
-    setParameterFilters(p_file, "Vistle Data (*.vsld)/All Files (*)");
+    setParameterFilters(p_file, "Vistle Data (*.vsld)");
 
     p_step = addIntParameter("step", "step width when reading from disk", 1);
     setParameterMinimum(p_step, Integer(1));
@@ -286,12 +284,10 @@ bool Cache::prepare()
         Object::ptr obj(Object::loadObject(memar));
         updateMeta(obj);
         renumberObject(obj);
-        if (auto db = DataBase::as(obj)) {
-            if (auto cgrid = db->grid()) {
-                auto grid = std::const_pointer_cast<Object>(cgrid);
-                renumberObject(grid);
-            }
+        for (auto &o: obj->referencedObjects()) {
+            renumberObject(std::const_pointer_cast<Object>(o));
         }
+        //std::cerr << "restored object on port " << port << ": " << *obj << std::endl;
         passThroughObject(m_outPort[port], obj);
         fetcher->releaseArrays();
     };

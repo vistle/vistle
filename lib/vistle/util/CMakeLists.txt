@@ -76,6 +76,15 @@ vistle_target_link_libraries(
     Threads::Threads
     PRIVATE
     ${BOTAN_LIBRARIES})
+if(VISTLE_PROFILE_NVTX)
+    target_include_directories(vistle_util SYSTEM PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/lib/3rdparty/profile_nvtx/c/include>
+                                                         $<INSTALL_INTERFACE:include>)
+    vistle_target_link_libraries(vistle_util PUBLIC nvtx3-cpp)
+    target_compile_definitions(vistle_util PUBLIC VISTLE_PROFILE_NVTX)
+elseif(VISTLE_PROFILE_CHROME)
+    target_compile_definitions(vistle_util PUBLIC VISTLE_PROFILE_CHROME)
+    target_include_directories(vistle_util SYSTEM PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/lib/3rdparty/profile_chrome> $<INSTALL_INTERFACE:include>)
+endif()
 
 if(BOTAN_VERSION VERSION_GREATER_EQUAL 3)
     set_property(TARGET vistle_util PROPERTY CXX_STANDARD 20)

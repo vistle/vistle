@@ -33,8 +33,6 @@ public:
         Result data;
     };
 
-    //! if available, retrieve value for key and store to result, return false otherwise
-    bool tryGet(const std::string &key, Result &result);
     //! if available, retrieve value for key, store to result, and return nullptr;
     //! otherwise the entry corresponding to key is locked and has to be updated with storeAndUnlock via the returned Entry
     Entry *getOrLock(const std::string &key, Result &result);
@@ -50,6 +48,7 @@ protected:
     std::deque<std::map<std::string, Entry>> m_cache;
     std::deque<size_t> m_borrowCount;
 
+    void modifyBorrowCount(size_t generation, int delta); // assumes that m_mutex is already locked
     void purgeOldGenerations(); // assumes that m_mutex is already locked
 };
 

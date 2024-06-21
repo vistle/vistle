@@ -49,6 +49,10 @@ if(POLICY CMP0074)
     # make find_include/find_library search in <PackageName>_ROOT prefix
     cmake_policy(SET CMP0074 NEW)
 endif()
+if(POLICY CMP0144)
+    # make find_include/find_library search in uppercased <PackageName>_ROOT prefix
+    cmake_policy(SET CMP0144 NEW)
+endif()
 
 # vim's YouCompleteMe can make use of this
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
@@ -73,8 +77,11 @@ option(VISTLE_SANITIZE_ADDRESS "Build with -fsanitize=address" OFF)
 option(VISTLE_SANITIZE_THREAD "Build with -fsanitize=thread" OFF)
 option(VISTLE_TIME_BUILD "Gather build times (Clang/ISPC)" OFF)
 
-option(VISTLE_ENABLE_CUDA "Build with CUDA support" OFF)
-option(VISTLE_ENABLE_KOKKOS "Build with Kokkos support" OFF)
+option(VISTLE_PROFILE_NVTX "Annotate for Nsight profiler" OFF)
+option(VISTLE_PROFILE_CHROME "Annotate for showing timings in Chrome browser" OFF)
+
+option(VISTLE_USE_CUDA "Build with CUDA support" OFF)
+option(VISTLE_USE_KOKKOS "Build with Kokkos support" OFF)
 
 if(APPLE)
     option(VISTLE_USE_QT5 "Build GUI with Qt5 instead of Qt6" OFF)
@@ -933,6 +940,17 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
             add_module2(${targetname} FALSE ${description} ${ARGN})
         endif()
     endmacro(add_module)
+
+    macro(add_vtkm_module targetname description)
+        add_module(${targetname} ${description} ${ARGN})
+
+        # when using Cuda device backend for vtkm, make sure that nvcc
+        # compiler is used, even if file does not end on .cu
+        if(VISTLE_CUDA_ENABLED)
+            set_source_files_properties(${ARGN} PROPERTIES LANGUAGE CUDA)
+        endif()
+        target_link_libraries(${targetname} vistle_vtkm vtkm::cont vtkm::filter)
+    endmacro(add_vtkm_module)
 endif()
 
 set(CMAKE_C_VISIBILITY_PRESET hidden)
@@ -990,9 +1008,9 @@ else(WIN32)
 endif(WIN32)
 
 # set(CMAKE_BUILD_TYPE Debug)
-set(VISTLE_USE_CUDA FALSE)
 
-if(VISTLE_ENABLE_CUDA)
+set(VISTLE_CUDA_ENABLED FALSE)
+if(VISTLE_USE_CUDA)
     include(CheckLanguage)
     check_language(CUDA)
     vistle_find_package(CUDAToolkit)
@@ -1005,7 +1023,7 @@ if(VISTLE_ENABLE_CUDA)
         endif()
 
         add_definitions(-DVISTLE_USE_CUDA)
-        set(VISTLE_USE_CUDA TRUE)
+        set(VISTLE_CUDA_ENABLED TRUE)
         message("Using CUDA")
     endif()
 endif()
