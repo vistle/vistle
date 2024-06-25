@@ -16,7 +16,7 @@
 #endif
 #include <vistle/core/unstr.h>
 
-#define NUMPARAMS 3
+#define NUMPARAMS 4
 
 using namespace vistle;
 
