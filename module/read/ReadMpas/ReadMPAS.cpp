@@ -63,7 +63,7 @@ static std::mutex pnetcdf_mutex; // avoid simultaneous access to PnetCDF library
 #endif
 
 #define MAX_EDGES 6 // maximal edges on cell
-#define MSL 6371229.0 //sphere radius on mean sea level (earth radius)
+#define MSL 6378137 //6371229.0 //sphere radius on mean sea level (earth radius)
 #define MAX_VERT 3 // vertex degree
 
 static const char *DimNCells = "nCells";
@@ -252,7 +252,7 @@ bool ReadMPAS::prepareRead()
             fs::path dataDir(dataFilePath.parent_path());
             for (fs::directory_iterator it2(dataDir); it2 != fs::directory_iterator(); ++it2) { //all files in dir
                 if ((it2->path().extension() == ".nc") && (strncmp(dataFilePath.filename().string().c_str(),
-                                                                   it2->path().filename().string().c_str(), 15) == 0)) {
+                                                                   it2->path().filename().string().c_str(), 10) == 0)) {
                     auto fn = it2->path().string();
 #ifdef USE_NETCDF
                     auto ncid = NcFile::open(fn, comm());
@@ -759,7 +759,7 @@ bool ReadMPAS::readVariable(Reader::Token &token, int timestep, int block, Index
 
 #ifdef USE_NETCDF
 #else
-    dataValues->reserve(numCells * nLevels);
+    dataValues->resize(numCells * nLevels);
 #endif
     auto ft =
         velocity ? m_3dChoices[pVar] : (m_varDim->getValue() == varDimList[0] ? m_2dChoices[pVar] : m_3dChoices[pVar]);
@@ -839,7 +839,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
 
         size_t numLevelsUser = m_numLevels->getValue();
         size_t bottomLevel = m_bottomLevel->getValue();
-        size_t numMaxLevels = 0;
+        size_t numMaxLevels = 1;
 
 #ifdef USE_NETCDF
         NcFile ncid = NcFile::open(firstFileName, *token.comm());
