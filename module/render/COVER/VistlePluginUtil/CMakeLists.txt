@@ -1,6 +1,6 @@
-set(pluginutil_SOURCES VistleInteractor.cpp VistleRenderObject.cpp)
+set(pluginutil_SOURCES VistleInteractor.cpp VistleRenderObject.cpp VistleInfo.cpp)
 
-set(pluginutil_HEADERS export.h VistleInteractor.h VistleMessage.h VistleRenderObject.h)
+set(pluginutil_HEADERS export.h VistleInteractor.h VistleMessage.h VistleRenderObject.h VistleInfo.h)
 
 set(visibility EXPORT)
 if(NOT VISTLE_BUILD_SHARED)
@@ -25,6 +25,6 @@ target_link_libraries(
     PRIVATE ${OPENSCENEGRAPH_LIBRARIES}
     PRIVATE ${COVER_LIBRARY}
     PRIVATE ${OPENGL_LIBRARIES}
-    PRIVATE vistle_core
-    PRIVATE vistle_module
+    PUBLIC vistle_core
+    PUBLIC vistle_module
     PRIVATE vistle_renderer)

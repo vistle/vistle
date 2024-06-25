@@ -3,9 +3,27 @@
 
 #include <vistle/module/reader.h>
 
+#include <vector>
+#include <string>
+
 class vtkDataSet;
+class vtkDataObject;
+
 struct ReadVtkData;
-struct VtkFile;
+
+const double ConstantTime = -std::numeric_limits<double>::max();
+
+struct VtkFile {
+    std::string filename;
+    std::string part;
+    std::string index;
+    int partNum = -1;
+    int pieces = 1;
+    double realtime = ConstantTime;
+    vtkDataObject *dataset = nullptr;
+    std::vector<std::string> pointfields;
+    std::vector<std::string> cellfields;
+};
 
 class ReadVtk: public vistle::Reader {
 public:
@@ -28,12 +46,17 @@ private:
               bool ghost = false, const std::string &part = std::string()) const;
     void setChoices(const VtkFile &fileinfo);
 
+    VtkFile getDataSetMeta(const std::string &filename);
+    int getNumPieces(const std::string &filename);
+    std::map<double, std::vector<VtkFile>> readXmlCollection(const std::string &filename, bool piecesAsBlocks = false);
+
     vistle::StringParameter *m_filename;
     vistle::StringParameter *m_cellDataChoice[NumPorts], *m_pointDataChoice[NumPorts];
     vistle::Port *m_cellPort[NumPorts], *m_pointPort[NumPorts];
     vistle::IntParameter *m_readPieces, *m_ghostCells;
 
     ReadVtkData *m_d = nullptr;
+    std::map<std::string, VtkFile> m_files;
 };
 
 #endif

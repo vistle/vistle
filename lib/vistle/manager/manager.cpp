@@ -16,8 +16,10 @@
 #include "communicator.h"
 #include <vistle/util/hostname.h>
 #include <vistle/util/threadname.h>
+#include <vistle/util/version.h>
 #include <vistle/control/hub.h>
 #include <boost/mpi.hpp>
+#include <boost/program_options.hpp>
 
 #ifdef MODULE_THREAD
 #include <thread>
@@ -122,6 +124,42 @@ public:
 
 bool VistleManager::run(int argc, char *argv[])
 {
+    namespace po = boost::program_options;
+    po::options_description desc("usage");
+    // clang-format off
+    desc.add_options()
+    #if 0
+        // this are added by hub as well
+        ("help,h", "show this message")
+        ("version,v", "print version")
+    #endif
+        ("from-vistle", "invoked by Vistle hub")
+        ;
+    // clang-format on
+    desc.add(Hub::options()); // also accept hub options, for being able to pass them on
+
+    po::variables_map vm;
+    try {
+        po::store(po::command_line_parser(argc, argv).options(desc).run(), vm);
+        po::notify(vm);
+    } catch (std::exception &e) {
+        std::cerr << e.what() << std::endl;
+        std::cerr << desc << std::endl;
+        return false;
+    }
+
+    if (vm.count("help")) {
+        std::cout << argv[0] << " " << desc << std::endl;
+        return false;
+    }
+
+    if (vm.count("version")) {
+        std::cout << vistle::version::banner() << std::endl;
+        return false;
+    }
+
+    bool fromVistle = vm.count("from-vistle") > 0;
+
     int rank = -1;
     int flag = 0;
     MPI_Initialized(&flag);
@@ -146,16 +184,10 @@ bool VistleManager::run(int argc, char *argv[])
 
     std::cerr << "VistleManager: my rank is " << rank << std::endl;
 
-    bool fromVistle = false;
-    if (argc > 1) {
-        std::string arg1(argv[1]);
-        fromVistle = arg1 == "-from-vistle";
-    }
-
     std::vector<std::string> args;
     args.push_back(argv[0]);
     if (fromVistle) {
-        // skip -from-vistle
+        // skip --from-vistle
         for (int c = 2; c < argc; ++c) {
             args.push_back(argv[c]);
         }
@@ -198,7 +230,7 @@ bool VistleManager::run(int argc, char *argv[])
     setenv("VISTLE_CLUSTER", rank0.c_str(), 1);
 #else
     if (!fromVistle) {
-        std::cerr << "should be called from vistle, expecting 1st argument to be -from-vistle" << std::endl;
+        std::cerr << "should be called from vistle, expecting 1st argument to be --from-vistle" << std::endl;
         exit(1);
     }
 #endif

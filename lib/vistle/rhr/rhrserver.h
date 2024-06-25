@@ -21,7 +21,7 @@
 #include <vistle/core/vector.h>
 #include <vistle/core/message.h>
 #include <vistle/core/messagesender.h>
-#include <vistle/renderer/renderobject.h>
+#include <vistle/renderer/renderobject.h> // just for the definition of an enum
 
 #include "export.h"
 #include "compdecomp.h"
@@ -32,7 +32,6 @@ namespace vistle {
 namespace asio = boost::asio;
 using message::RemoteRenderMessage;
 class MessageSender;
-class Module;
 struct EncodeTask;
 
 //! Implement remote hybrid rendering server
@@ -42,7 +41,7 @@ public:
     typedef asio::ip::tcp::acceptor acceptor;
     typedef asio::ip::address address;
 
-    explicit RhrServer(vistle::Module *module);
+    RhrServer();
     ~RhrServer();
 
     int numClients() const;
@@ -55,8 +54,6 @@ public:
     unsigned short destinationPort() const;
     const std::string &destinationHost() const;
 
-    void setClientModuleId(int roduleId);
-
     int width(size_t viewNum) const;
     int height(size_t viewNum) const;
     unsigned char *rgba(size_t viewNum);
@@ -68,7 +65,8 @@ public:
 
     void init();
     bool startServer(unsigned short port);
-    bool makeConnection(const std::string &host, unsigned short port, int secondsToTry = -1);
+    bool makeConnection(const std::string &host, unsigned short port, int secondsToTry = -1,
+                        const std::string &tunnelId = std::string());
     bool initializeConnection();
     void preFrame();
 
@@ -242,7 +240,6 @@ public:
                    const std::vector<std::string> &removed);
 
 private:
-    vistle::Module *m_module;
     asio::io_service m_io;
     asio::ip::tcp::acceptor m_acceptorv4, m_acceptorv6;
     bool m_listen = false;
@@ -250,7 +247,8 @@ private:
     unsigned short m_port = 0;
     unsigned short m_destPort = 0;
     std::string m_destHost;
-    int m_clientModuleId = 0;
+    std::string m_tunnelId;
+    bool m_tunnelEstablished = false;
 
     bool startAccept(asio::ip::tcp::acceptor &a);
     void handleAccept(asio::ip::tcp::acceptor &a, std::shared_ptr<boost::asio::ip::tcp::socket> sock,

@@ -1,6 +1,7 @@
 #include "empty.h"
 #include "empty_impl.h"
 #include "archives.h"
+#include "validate.h"
 
 namespace vistle {
 
@@ -17,14 +18,14 @@ bool Empty::isEmpty() const
     return true;
 }
 
-bool Empty::checkImpl() const
+bool Empty::checkImpl(std::ostream &os, bool quick) const
 {
     return true;
 }
 
-void Empty::print(std::ostream &os) const
+void Empty::print(std::ostream &os, bool verbose) const
 {
-    Base::print(os);
+    Base::print(os, verbose);
 }
 
 void Empty::Data::initData()

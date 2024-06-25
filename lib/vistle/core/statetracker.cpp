@@ -422,12 +422,13 @@ StateTracker::VistleState StateTracker::getState() const
         msg.setSystemType(slave.systemType);
         msg.setArch(slave.arch);
         msg.setInfo(slave.info);
+        msg.setVersion(slave.version);
         appendMessage(state, msg);
     }
 
     // available modules
     for (const auto &keymod: availableModules()) {
-        keymod.second.send([this, &state](const message::Message &avail, const buffer *payload) {
+        keymod.second.send([&state](const message::Message &avail, const buffer *payload) {
             auto shpl = std::make_shared<buffer>(*payload);
             appendMessage(state, avail, shpl);
             return true;
@@ -900,6 +901,7 @@ bool StateTracker::handlePriv(const message::AddHub &slave)
     m_hubs.back().systemType = slave.systemType();
     m_hubs.back().arch = slave.arch();
     m_hubs.back().info = slave.info();
+    m_hubs.back().version = slave.version();
 
     // for per-hub parameters
     Module hub(slave.id(), slave.id());

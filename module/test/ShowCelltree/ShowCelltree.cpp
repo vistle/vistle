@@ -18,8 +18,6 @@ enum ShowWhat {
 
 ShowCelltree::ShowCelltree(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
-    setDefaultCacheMode(ObjectCache::CacheDeleteLate);
-
     m_validate = addIntParameter("validate_tree", "check celltree for consistency", false, Parameter::Boolean);
     m_minDepth = addIntParameter("minimum_depth", "minimum depth of nodes to show", 9);
     m_maxDepth = addIntParameter("maximum_depth", "maximum depth of nodes to show", 10);
@@ -35,7 +33,7 @@ ShowCelltree::ShowCelltree(const std::string &name, int moduleID, mpi::communica
 ShowCelltree::~ShowCelltree()
 {}
 
-void visit(Celltree3::Node *nodes, Celltree3::Node &cur, Vector3 min, Vector3 max, Lines::ptr lines,
+void visit(const Celltree3::Node *nodes, const Celltree3::Node &cur, Vector3 min, Vector3 max, Lines::ptr lines,
            Vec<Scalar>::ptr data, int depth, int mindepth, int maxdepth, int show)
 {
     if (cur.isLeaf())

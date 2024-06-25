@@ -57,28 +57,28 @@ using vistle::Parameter;
 
 const std::string Invalid("(NONE)");
 
-const double ConstantTime = -std::numeric_limits<double>::max();
-
-struct VtkFile {
-    std::string filename;
-    std::string part;
-    std::string index;
-    int partNum = -1;
-    int pieces = 1;
-    double realtime = ConstantTime;
-    vtkDataObject *dataset = nullptr;
-    std::vector<std::string> pointfields;
-    std::vector<std::string> cellfields;
-};
-
 bool isCollectionFile(const std::string &fn)
 {
-    constexpr const char *collectionEndings[3] = {".pvd", ".vtm", ".pvtu"};
+    constexpr const char *collectionEndings[] = {".pvd", ".vtm", ".pvti", ".pvtp", ".pvtr", ".pvts", ".pvtu"};
     for (const auto ending: collectionEndings)
         if (boost::algorithm::ends_with(fn, ending))
             return true;
 
     return false;
+}
+
+template<class VO>
+std::vector<std::string> getFields(VO *dsa)
+{
+    std::vector<std::string> fields;
+    if (!dsa)
+        return fields;
+    int na = dsa->GetNumberOfArrays();
+    for (int i = 0; i < na; ++i) {
+        fields.push_back(dsa->GetArrayName(i));
+        //cerr << "field " << i << ": " << fields[i] << endl;
+    }
+    return fields;
 }
 
 template<class Reader>
@@ -137,7 +137,19 @@ VtkFile readFile(const std::string &filename, int piece = -1, bool ghost = false
     if (onlyMeta) {
         if (reader->GetOutput()) {
             reader->GetOutput()->Register(reader);
-            result.dataset = reader->GetOutput();
+
+            if (result.pointfields.empty() && result.cellfields.empty()) {
+                reader->Update();
+                result.dataset = reader->GetOutput();
+                if (auto ds = vtkDataSet::SafeDownCast(result.dataset)) {
+                    result.pointfields = getFields<vtkFieldData>(ds->GetPointData());
+                    if (result.pointfields.empty())
+                        result.pointfields = getFields<vtkFieldData>(ds->GetFieldData());
+                    result.cellfields = getFields<vtkFieldData>(ds->GetCellData());
+                }
+            } else {
+                result.dataset = reader->GetOutput();
+            }
         }
         return result;
     }
@@ -195,12 +207,16 @@ VtkFile getDataSet(const std::string &filename, int piece = -1, bool ghost = fal
     return fileinfo;
 }
 
-VtkFile getDataSetMeta(const std::string &filename)
+VtkFile ReadVtk::getDataSetMeta(const std::string &filename)
 {
-    return getDataSet(filename, -1, false, true);
+    auto &fileinfo = m_files[filename];
+    if (!fileinfo.dataset) {
+        fileinfo = getDataSet(filename, -1, false, true);
+    }
+    return fileinfo;
 }
 
-int getNumPieces(const std::string &filename)
+int ReadVtk::getNumPieces(const std::string &filename)
 {
     return getDataSetMeta(filename).pieces;
 }
@@ -211,7 +227,7 @@ struct ReadVtkData {
 };
 
 
-std::map<double, std::vector<VtkFile>> readXmlCollection(const std::string &filename, bool piecesAsBlocks = false)
+std::map<double, std::vector<VtkFile>> ReadVtk::readXmlCollection(const std::string &filename, bool piecesAsBlocks)
 {
     std::map<double, std::vector<VtkFile>> timesteps;
     const std::array<std::string, 3> types{"Collection", "vtkMultiBlockDataSet", "PUnstructuredGrid"};
@@ -317,20 +333,6 @@ std::map<double, std::vector<VtkFile>> readXmlCollection(const std::string &file
     return timesteps;
 }
 
-template<class VO>
-std::vector<std::string> getFields(VO *dsa)
-{
-    std::vector<std::string> fields;
-    if (!dsa)
-        return fields;
-    int na = dsa->GetNumberOfArrays();
-    for (int i = 0; i < na; ++i) {
-        fields.push_back(dsa->GetArrayName(i));
-        //cerr << "field " << i << ": " << fields[i] << endl;
-    }
-    return fields;
-}
-
 void ReadVtk::setChoices(const VtkFile &fileinfo)
 {
     std::vector<std::string> cellFields({Invalid});
@@ -349,10 +351,10 @@ ReadVtk::ReadVtk(const std::string &name, int moduleID, mpi::communicator comm):
 {
     createOutputPort("grid_out", "grid or geometry");
     m_filename = addStringParameter("filename", "name of VTK file", "", Parameter::ExistingFilename);
-    setParameterFilters(m_filename,
-                        "PVD Files (*.pvd)/XML VTK Files (*.vti *.vtp *.vtr *.vts *.vtu *.pvtu)/Legacy VTK Files "
-                        "(*.vtk)/XML VTK Multiblock Data (*.vtm)/All Files (*)");
-    m_readPieces = addIntParameter("read_pieces", "create block for every piece in an unstructured grid", true,
+    setParameterFilters(m_filename, "PVD Files (*.pvd)/XML VTK Files (*.vti *.vtp *.vtr *.vts *.vtu)/Parallel XML VTK "
+                                    "Files(*.pvti *.pvtp *.pvtr *.pvts *.pvtu)/Legacy VTK Files "
+                                    "(*.vtk)/XML VTK Multiblock Data (*.vtm)");
+    m_readPieces = addIntParameter("read_pieces", "create block for every piece in an unstructured grid", false,
                                    Parameter::Boolean);
     m_ghostCells = addIntParameter("create_ghost_cells", "create ghost cells for multi-piece unstructured grids", true,
                                    Parameter::Boolean);
@@ -386,6 +388,10 @@ ReadVtk::~ReadVtk()
 
 bool ReadVtk::examine(const vistle::Parameter *param)
 {
+    if (param == nullptr || param == m_filename || param == m_readPieces) {
+        m_files.clear();
+    }
+
     bool readPieces = m_readPieces->getValue();
 
     int maxNumPieces = 0;

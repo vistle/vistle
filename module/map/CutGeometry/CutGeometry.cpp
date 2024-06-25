@@ -19,8 +19,6 @@ CutGeometry::CutGeometry(const std::string &name, int moduleID, mpi::communicato
 {
     isocontrol.init();
 
-    setDefaultCacheMode(ObjectCache::CacheDeleteLate);
-
     createInputPort("grid_in", "bare input grid without mapped data");
     createOutputPort("grid_out", "clipped grid");
 }

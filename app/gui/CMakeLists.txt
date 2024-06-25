@@ -88,6 +88,7 @@ target_link_libraries(${gui_name} PRIVATE Threads::Threads)
 target_link_libraries(
     ${gui_name}
     PRIVATE Boost::boost
+            Boost::program_options
             vistle_util
             vistle_core
             vistle_config

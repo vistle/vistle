@@ -183,7 +183,7 @@ std::shared_ptr<vistle::RenderObject> BlenderRenderer::addObject(int senderId, c
 
 
     std::cerr << "++++++Info " << container->getName() << " type " << container->getType() << " creator "
-              << container->getCreator() << " exec " << container->getExecutionCounter() << " iter "
+              << container->getCreator() << " generation " << container->getGeneration() << " iter "
               << container->getIteration() << " block " << container->getBlock() << " timestep "
               << container->getTimestep() << std::endl;
 

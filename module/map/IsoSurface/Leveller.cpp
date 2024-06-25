@@ -32,6 +32,7 @@ using namespace vistle;
 const int MaxNumData = 6;
 const Scalar EPSILON(1e-10);
 
+namespace {
 
 struct HostData {
     Scalar m_isovalue;
@@ -869,6 +870,8 @@ struct ComputeOutputSizes {
         return thrust::make_tuple<Index, Index>(tableIndex, numVerts);
     }
 };
+
+} // namespace
 
 Leveller::Leveller(const IsoController &isocontrol, Object::const_ptr grid, const Scalar isovalue)
 : m_isocontrol(isocontrol)

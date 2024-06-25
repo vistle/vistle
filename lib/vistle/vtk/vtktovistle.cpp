@@ -78,7 +78,7 @@ bool subCellCoordinatesFromId(int &i, int &j, int &k, int subId, const int order
 std::array<Index, UnstructuredGrid::NumVertices[UnstructuredGrid::HEXAHEDRON]> approximateSubHex(int subId,
                                                                                                  const int order[])
 {
-    int i, j, k;
+    int i = 0, j = 0, k = 0;
     if (!subCellCoordinatesFromId(i, j, k, subId, order)) {
         std::cerr << "subCellCoordinatesFromId failed" << std::endl;
     }
@@ -178,9 +178,12 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, std::string &diagnostic
             typelist[elemVistle] = UnstructuredGrid::POINT;
             break;
         case VTK_LINE:
-        case VTK_POLY_LINE:
             haveDim[1] = true;
             typelist[elemVistle] = UnstructuredGrid::BAR;
+            break;
+        case VTK_POLY_LINE:
+            haveDim[1] = true;
+            typelist[elemVistle] = UnstructuredGrid::POLYLINE;
             break;
         case VTK_TRIANGLE:
             haveDim[2] = true;

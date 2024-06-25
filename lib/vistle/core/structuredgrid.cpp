@@ -11,6 +11,7 @@
 #include "unstr.h" // for hexahedron topology
 #include <cassert>
 #include "cellalgorithm.h"
+#include "validate.h"
 
 //#define INTERPOL_DEBUG
 
@@ -49,12 +50,24 @@ void StructuredGrid::refreshImpl() const
 
 // CHECK IMPL
 //-------------------------------------------------------------------------
-bool StructuredGrid::checkImpl() const
+bool StructuredGrid::checkImpl(std::ostream &os, bool quick) const
 {
-    V_CHECK(getSize() == getNumDivisions(0) * getNumDivisions(1) * getNumDivisions(2));
+    VALIDATE_INDEX(getSize());
+    VALIDATE(getSize() == getNumDivisions(0) * getNumDivisions(1) * getNumDivisions(2));
 
     for (int c = 0; c < 3; c++) {
-        V_CHECK(d()->ghostLayers[c][0] + d()->ghostLayers[c][1] < getNumDivisions(c));
+        VALIDATE_INDEX(getNumDivisions(c));
+        VALIDATE(d()->ghostLayers[c][0] + d()->ghostLayers[c][1] < getNumDivisions(c));
+    }
+
+    VALIDATE_SUB(normals());
+    VALIDATE_SUBSIZE(normals(), getNumVertices());
+
+    if (quick)
+        return true;
+
+    if (hasCelltree()) {
+        VALIDATE(validateCelltree());
     }
 
     return true;
@@ -91,9 +104,9 @@ std::set<Object::const_ptr> StructuredGrid::referencedObjects() const
     return objs;
 }
 
-void StructuredGrid::print(std::ostream &os) const
+void StructuredGrid::print(std::ostream &os, bool verbose) const
 {
-    Base::print(os);
+    Base::print(os, verbose);
     os << " " << getSize() << "=" << getNumDivisions(0) << "x" << getNumDivisions(1) << "x" << getNumDivisions(2);
 }
 
@@ -148,7 +161,7 @@ StructuredGrid::Celltree::const_ptr StructuredGrid::getCelltree() const
 {
     if (m_celltree)
         return m_celltree;
-    Data::attachment_mutex_lock_type lock(d()->attachment_mutex);
+    Data::mutex_lock_type lock(d()->mutex);
     if (!hasAttachment("celltree")) {
         refresh();
         createCelltree(m_numDivisions);
@@ -246,7 +259,7 @@ Normals::const_ptr StructuredGrid::normals() const
 
 void StructuredGrid::setNormals(Normals::const_ptr normals)
 {
-    assert(!normals || normals->check());
+    assert(!normals || normals->check(std::cerr));
     d()->normals = normals;
 }
 

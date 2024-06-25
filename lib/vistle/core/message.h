@@ -76,6 +76,7 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(
     (FILEQUERY)
     (FILEQUERYRESULT)
     (REQUESTTUNNEL)
+    (TUNNELESTABLISHED)
     (REMOTERENDERING)
     (COVER)
     (INSITU)
@@ -144,6 +145,7 @@ private:
 
 const int ModuleNameLength = 40;
 
+typedef std::array<char, 25> tag_t;
 typedef std::array<char, ModuleNameLength> module_name_t;
 typedef std::array<char, 120> port_name_t;
 typedef std::array<char, 120> param_name_t;

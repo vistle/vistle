@@ -22,11 +22,11 @@
 #include <vistle/core/structuredgrid.h>
 #include <vistle/core/uniformgrid.h>
 
-#include <boost/filesystem.hpp>
+#include <vistle/util/filesystem.h>
 /* #include <netcdfcpp.h> */
 
 using namespace vistle;
-namespace bf = boost::filesystem;
+namespace fs = vistle::filesystem;
 
 
 ReadWRFChem::ReadWRFChem(const std::string &name, int moduleID, mpi::communicator comm)
@@ -115,22 +115,22 @@ bool ReadWRFChem::inspectDir()
     }
 
     try {
-        bf::path dir(sFileDir);
+        fs::path dir(sFileDir);
         fileList.clear();
         numFiles = 0;
 
-        if (bf::is_directory(dir)) {
+        if (fs::is_directory(dir)) {
             sendInfo("Locating files in %s", dir.string().c_str());
-            for (bf::directory_iterator it(dir); it != bf::directory_iterator(); ++it) {
-                if (bf::is_regular_file(it->path()) && (bf::extension(it->path().filename()) == ".nc")) {
+            for (fs::directory_iterator it(dir); it != fs::directory_iterator(); ++it) {
+                if (fs::is_regular_file(it->path()) && (it->path().extension() == ".nc")) {
                     // std::string fName = it->path().filename().string();
                     std::string fPath = it->path().string();
                     fileList.push_back(fPath);
                     ++numFiles;
                 }
             }
-        } else if (bf::is_regular_file(dir)) {
-            if (bf::extension(dir.filename()) == ".nc") {
+        } else if (fs::is_regular_file(dir)) {
+            if (dir.extension() == ".nc") {
                 std::string fName = dir.string();
                 sendInfo("Loading file %s", fName.c_str());
                 fileList.push_back(fName);
@@ -374,15 +374,15 @@ Object::ptr ReadWRFChem::generateGrid(Block *b) const
             varZ.getVar(startCorner, numElem, z.data());
 
             Index n = 0;
-            Index tmpIdxY = 0, tmpIdxX1 = 0;
-            for (Index i = 0; i < bSizeX; i++) {
-                tmpIdxX1 = (i + 1) * bSizeY * bSizeZ;
+            for (Index k = 0; k < bSizeZ; k++) {
                 for (Index j = 0; j < bSizeY; j++) {
-                    tmpIdxY = j * bSizeZ;
-                    for (Index k = 0; k < bSizeZ; k++, n++) {
+                    for (Index i = 0; i < bSizeX; i++) {
+                        Index tmpIdxX1 = (i + 1) * bSizeY * bSizeZ;
+                        Index tmpIdxY = j * bSizeZ;
                         ptrOnXcoords[n] = z[tmpIdxX1 + tmpIdxY + k];
                         ptrOnYcoords[n] = lat[tmpIdxY + k];
                         ptrOnZcoords[n] = lon[tmpIdxY + k];
+                        ++n;
                     }
                 }
             }
@@ -405,18 +405,17 @@ Object::ptr ReadWRFChem::generateGrid(Block *b) const
             //geopotential height is defined on stagged grid -> one additional layer
             //thus it is evaluated (vertically) inbetween vertices to match lat/lon grid
             Index n = 0;
-            Index idx = 0, idx1 = 0;
-            Index tmpIdxX = 0, tmpIdxY = 0;
-            for (Index i = 0; i < bSizeX; i++) {
-                tmpIdxX = i * bSizeY * bSizeZ;
+            for (Index k = 0; k < bSizeZ; k++) {
                 for (Index j = 0; j < bSizeY; j++) {
-                    tmpIdxY = j * bSizeZ;
-                    for (Index k = 0; k < bSizeZ; k++, n++) {
-                        idx = tmpIdxX + tmpIdxY + k;
-                        idx1 = (i + 1) * bSizeY * bSizeZ + tmpIdxY + k;
+                    for (Index i = 0; i < bSizeX; i++) {
+                        Index tmpIdxX = i * bSizeY * bSizeZ;
+                        Index tmpIdxY = j * bSizeZ;
+                        Index idx = tmpIdxX + tmpIdxY + k;
+                        Index idx1 = (i + 1) * bSizeY * bSizeZ + tmpIdxY + k;
                         ptrOnXcoords[n] = (ph[idx] + phb[idx] + ph[idx1] + phb[idx1]) / (2 * 9.81);
                         ptrOnYcoords[n] = lat[tmpIdxY + k];
                         ptrOnZcoords[n] = lon[tmpIdxY + k];
+                        ++n;
                     }
                 }
             }
@@ -444,14 +443,14 @@ Object::ptr ReadWRFChem::generateGrid(Block *b) const
         varHGT.getVar(startCorner, count, hgt.data());
 
         Index n = 0;
-        Index tmpIdxY = 0;
-        for (Index i = 0; i < bSizeX; i++) {
+        for (Index k = 0; k < bSizeZ; k++) {
             for (Index j = 0; j < bSizeY; j++) {
-                tmpIdxY = j + b[1].begin;
-                for (Index k = 0; k < bSizeZ; k++, n++) {
+                for (Index i = 0; i < bSizeX; i++) {
+                    Index tmpIdxY = j + b[1].begin;
                     ptrOnXcoords[n] = (i + b[0].begin + hgt[k + bSizeZ * j] / 50); //divide by 50m (=dx of grid cell)
                     ptrOnYcoords[n] = tmpIdxY;
                     ptrOnZcoords[n] = k + b[2].begin;
+                    ++n;
                 }
             }
         }
@@ -510,19 +509,30 @@ bool ReadWRFChem::addDataToPort(Token &token, NcFile *ncDataFile, int vi, Object
 
         varData.getVar(startCorner, numElem, longdata.data());
         Index n = 0;
-        Index tmpIdxX = 0;
-        Index tmpIdxXY = 0;
-        for (Index i = 1; i < bSizeX + 1; i++) {
-            tmpIdxX = (i)*bSizeY * bSizeZ;
+        for (Index k = 0; k < bSizeZ; k++) {
             for (Index j = 0; j < bSizeY; j++) {
-                tmpIdxXY = tmpIdxX + j * bSizeZ;
-                for (Index k = 0; k < bSizeZ; k++, n++) {
+                for (Index i = 1; i < bSizeX + 1; i++) {
+                    Index tmpIdxX = (i)*bSizeY * bSizeZ;
+                    Index tmpIdxXY = tmpIdxX + j * bSizeZ;
                     ptrOnScalarData[n] = longdata[tmpIdxXY + k];
+                    ++n;
                 }
             }
         }
     } else {
-        varData.getVar(startCorner, numElem, ptrOnScalarData);
+        std::vector<float> longdata(bSizeX * bSizeY * bSizeZ);
+        varData.getVar(startCorner, numElem, longdata.data());
+        Index n = 0;
+        for (Index k = 0; k < bSizeZ; k++) {
+            for (Index j = 0; j < bSizeY; j++) {
+                for (Index i = 0; i < bSizeX; i++) {
+                    Index tmpIdxX = (i)*bSizeY * bSizeZ;
+                    Index tmpIdxXY = tmpIdxX + j * bSizeZ;
+                    ptrOnScalarData[n] = longdata[tmpIdxXY + k];
+                    ++n;
+                }
+            }
+        }
     }
     obj->setMapping(DataBase::Vertex);
     obj->setGrid(outGrid);
@@ -549,7 +559,7 @@ bool ReadWRFChem::read(Token &token, int timestep, int block)
     if (!ncFirstFile->isNull()) {
         NcVar var;
         std::vector<NcDim> edges;
-        size_t numdims = 0;
+        int numdims = 0;
 
         //TODO: number of dimensions can be set by any variable, when check in prepareRead is used to ensure matching dimensions of all variables
         for (Index vi = 0; vi < NUMPARAMS; vi++) {

@@ -24,7 +24,7 @@ void Meta::serialize(Archive &ar)
     ar &V_NAME(ar, "numanimationsteps", m_numAnimationsteps);
     ar &V_NAME(ar, "iteration", m_iteration);
     ar &V_NAME(ar, "creator", m_creator);
-    ar &V_NAME(ar, "executioncount", m_executionCount);
+    ar &V_NAME(ar, "generation", m_generation);
     ar &V_NAME(ar, "realtime", m_realtime);
     for (unsigned i = 0; i < m_transform.size(); ++i)
         ar &V_NAME(ar, "transform", m_transform[i]);

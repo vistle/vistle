@@ -50,7 +50,7 @@ if(NOT VISTLE_MULTI_PROCESS)
 
             if(X11_ICE_FOUND)
                 target_compile_definitions(vistle_clustermanager PRIVATE HAVE_X11_ICE)
-                target_include_directories(vistle_clustermanager PRIVATE X11_ICE_INCLUDE_PATH)
+                target_include_directories(vistle_clustermanager PRIVATE ${X11_ICE_INCLUDE_PATH})
             endif()
         endif()
     endif()
@@ -72,6 +72,8 @@ vistle_target_link_libraries(
     ${BOOST_MPI}
     PRIVATE
     Boost::system
+    PRIVATE
+    Boost::program_options
     PRIVATE
     MPI::MPI_C
     PRIVATE

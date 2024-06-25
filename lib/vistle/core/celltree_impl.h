@@ -14,6 +14,8 @@
 #include <thread>
 #endif
 
+#include "validate.h"
+
 namespace vistle {
 
 namespace {
@@ -55,11 +57,14 @@ V_COREEXPORT void Celltree<Scalar, Index, NumDimensions>::refreshImpl() const
 {}
 
 template<typename Scalar, typename Index, int NumDimensions>
-V_COREEXPORT void Celltree<Scalar, Index, NumDimensions>::print(std::ostream &os) const
+V_COREEXPORT void Celltree<Scalar, Index, NumDimensions>::print(std::ostream &os, bool verbose) const
 {
     Base::print(os);
-    os << " cells(" << cells() << ")";
-    os << " nodes(" << nodes() << ")";
+    os << " cells:";
+    d()->m_cells.print(os, verbose);
+
+    os << " nodes:";
+    d()->m_nodes.print(os, verbose);
 }
 
 template<typename Scalar, typename Index, int NumDimensions>
@@ -437,17 +442,17 @@ bool Celltree<Scalar, Index, NumDimensions>::isEmpty()
 }
 
 template<typename Scalar, typename Index, int NumDimensions>
-bool Celltree<Scalar, Index, NumDimensions>::checkImpl() const
+bool Celltree<Scalar, Index, NumDimensions>::checkImpl(std::ostream &os, bool quick) const
 {
-    CHECK_OVERFLOW(d()->m_nodes->size());
-    CHECK_OVERFLOW(d()->m_cells->size());
+    VALIDATE_INDEX(d()->m_nodes->size());
+    VALIDATE_INDEX(d()->m_cells->size());
 
-    V_CHECK(d()->m_nodes->size() >= 1);
-    V_CHECK(d()->m_nodes->size() <= d()->m_cells->size());
+    VALIDATE(d()->m_nodes->size() >= 1);
+    VALIDATE(d()->m_nodes->size() <= d()->m_cells->size());
     if ((*d()->m_nodes)[0].isLeaf()) {
-        V_CHECK((*d()->m_nodes)[0].size <= d()->m_cells->size());
+        VALIDATE((*d()->m_nodes)[0].size <= d()->m_cells->size());
     } else {
-        V_CHECK((*d()->m_nodes)[0].Lmax >= (*d()->m_nodes)[0].Rmin);
+        VALIDATE((*d()->m_nodes)[0].Lmax >= (*d()->m_nodes)[0].Rmin);
     }
     return true;
 }

@@ -369,7 +369,7 @@ ReadItlrBin::ReadItlrBin(const std::string &name, int moduleID, mpi::communicato
 
     m_gridFilename = addStringParameter("grid_filename", ".bin file for grid",
                                         "/data/itlr/itlmer-Case11114_VISUS/netz_xyz.bin", Parameter::ExistingFilename);
-    setParameterFilters(m_gridFilename, "FS3D Binary Files (*.bin)/FS3D HDF5 Files (*.hdf)/All Files (*)");
+    setParameterFilters(m_gridFilename, "FS3D Binary Files (*.bin)/FS3D HDF5 Files (*.hdf)");
     for (int i = 0; i < NumPorts; ++i) {
         if (i == 0)
             m_filename[i] =
@@ -378,7 +378,8 @@ ReadItlrBin::ReadItlrBin(const std::string &name, int moduleID, mpi::communicato
         else
             m_filename[i] = addStringParameter("filename" + std::to_string(i), ".lst or .bin file for data", "",
                                                Parameter::ExistingFilename);
-        setParameterFilters(m_filename[i], "List Files (*.lst)/Binary Files (*.bin)/HDF5 Files (*.hdf)/All Files (*)");
+        setParameterFilters(m_filename[i], "List Files (*.lst)/Binary Files (*.bin)/HDF5 Files (*.hdf)");
+        observeParameter(m_filename[i]);
     }
 
     m_numPartitions = addIntParameter("num_partitions", "number of partitions (-1: MPI ranks)", -1);
@@ -404,6 +405,18 @@ bool ReadItlrBin::examine(const Parameter *param)
             npart = size();
         m_nparts = npart;
         setPartitions(npart);
+    }
+
+    for (int i = 0; i < NumPorts; ++i) {
+        if (!param || param == m_filename[i]) {
+            auto file = m_filename[i]->getValue();
+            if (file.empty())
+                continue;
+            if (boost::algorithm::ends_with(file, ".lst")) {
+                auto files = readListFile(file);
+                setTimesteps(files.size());
+            }
+        }
     }
 
     return true;
@@ -443,7 +456,7 @@ bool ReadItlrBin::prepareRead()
             numFiles = std::min<int>(numFiles, m_fileList[port].size());
         }
 
-        auto species = listFilePath.leaf().string();
+        auto species = listFilePath.filename().string();
         auto pos = species.find_last_of('.');
         if (pos != species.npos) {
             species = species.substr(0, pos);
@@ -665,9 +678,9 @@ std::vector<RectilinearGrid::ptr> ReadItlrBin::readGridBlocks(const std::string 
     const std::string axis[3]{"xval", "yval", "zval"};
 
     if (file.isHdf5()) {
-        SplitDim = 2;
-    } else {
         SplitDim = 0;
+    } else {
+        SplitDim = 2;
     }
 
     // read coordinates and prepare for transformation avoiding transposition
@@ -688,12 +701,9 @@ std::vector<RectilinearGrid::ptr> ReadItlrBin::readGridBlocks(const std::string 
                 coords[i][j] *= 0.5;
             }
             coords[i].resize(dims[i]);
-        } else if (i == 2) {
-            std::transform(coords[i].begin(), coords[i].end(), coords[i].begin(), [](Scalar z) { return -z; });
-            std::reverse(coords[i].begin(), coords[i].end());
         }
     }
-    if (!file.isHdf5()) {
+    if (file.isHdf5()) {
         std::swap(coords[0], coords[2]);
     }
     for (int i = 0; i < 3; ++i) {
@@ -706,7 +716,6 @@ std::vector<RectilinearGrid::ptr> ReadItlrBin::readGridBlocks(const std::string 
         auto b = computeBlock(part);
         std::cerr << "reading block " << part << ", slices " << b.begin << " to " << b.end << std::endl;
 
-        //RectilinearGrid::ptr grid(new RectilinearGrid(b.end-b.begin, coords[1].size(), coords[2].size()));
         RectilinearGrid::ptr grid(new RectilinearGrid(SplitDim == 0 ? b.end - b.begin : coords[0].size(),
                                                       SplitDim == 1 ? b.end - b.begin : coords[1].size(),
                                                       SplitDim == 2 ? b.end - b.begin : coords[2].size()));
@@ -721,7 +730,7 @@ std::vector<RectilinearGrid::ptr> ReadItlrBin::readGridBlocks(const std::string 
             }
         }
 
-        if (!file.isHdf5()) {
+        if (file.isHdf5()) {
             Matrix4 t;
             t << Vector4(0, 0, -1, 0), Vector4(0, 1, 0, 0), Vector4(1, 0, 0, 0), Vector4(0, 0, 0, 1);
             grid->setTransform(t);
@@ -748,7 +757,7 @@ DataBase::ptr ReadItlrBin::readFieldBlock(const std::string &filename, int part)
         sendError("failed to read grid dimensions from %s", filename.c_str());
         return DataBase::ptr();
     }
-    if (dims[0] != m_dims[2] || dims[1] != m_dims[1] || dims[2] != m_dims[0]) {
+    if (dims[0] != m_dims[0] || dims[1] != m_dims[1] || dims[2] != m_dims[2]) {
         sendInfo("data with dimensions: %d %d %d", (int)dims[0], (int)dims[1], (int)dims[2]);
         sendError("data set dimensions from %s don't match grid dimensions", filename.c_str());
         return DataBase::ptr();

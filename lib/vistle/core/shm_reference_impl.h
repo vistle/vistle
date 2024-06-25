@@ -131,5 +131,15 @@ const shm_name_t &shm_array_ref<T>::name() const
     return m_name;
 }
 
+template<class T>
+void shm_array_ref<T>::print(std::ostream &os, bool verbose) const
+{
+    os << m_name << "(";
+    if (m_p) {
+        m_p->print(os, verbose);
+    }
+    os << ")";
+}
+
 } // namespace vistle
 #endif

@@ -6,7 +6,7 @@
 
 namespace vistle {
 
-Meta::Meta(int block, int timestep, int animstep, int iteration, int execcount, int creator)
+Meta::Meta(int block, int timestep, int animstep, int iteration, int generation, int creator)
 : m_block(block)
 , m_numBlocks(-1)
 , m_timestep(timestep)
@@ -14,7 +14,7 @@ Meta::Meta(int block, int timestep, int animstep, int iteration, int execcount, 
 , m_animationstep(animstep)
 , m_numAnimationsteps(-1)
 , m_iteration(iteration)
-, m_executionCount(execcount)
+, m_generation(generation)
 , m_creator(creator)
 , m_realtime(0.0)
 {
@@ -45,7 +45,7 @@ void Meta::setTransform(const Matrix4 &transform)
 
 std::ostream &operator<<(std::ostream &out, const Meta &meta)
 {
-    out << "creator: " << meta.creator() << ", exec: " << meta.executionCounter() << ", block: " << meta.block() << "/"
+    out << "creator: " << meta.creator() << ", gen: " << meta.generation() << ", block: " << meta.block() << "/"
         << meta.numBlocks() << ", time: " << meta.timeStep() << "/" << meta.numTimesteps();
     return out;
 }

@@ -6,6 +6,7 @@
 #include <cassert>
 
 #include "archives.h"
+#include "validate.h"
 #include <iostream>
 #include <iomanip>
 #include <climits>
@@ -79,7 +80,6 @@ const char *Object::toString(Type v)
         return #str;
     switch (v) {
         V_OBJECT_CASE(COORD, Coords)
-        V_OBJECT_CASE(COORDWRADIUS, CoordWRadius)
         V_OBJECT_CASE(DATABASE, Data)
 
         V_OBJECT_CASE(UNKNOWN, Unknown)
@@ -89,9 +89,7 @@ const char *Object::toString(Type v)
         V_OBJECT_CASE(TEXTURE1D, Texture1D)
 
         V_OBJECT_CASE(POINTS, Points)
-        V_OBJECT_CASE(SPHERES, Spheres)
         V_OBJECT_CASE(LINES, Lines)
-        V_OBJECT_CASE(TUBES, Tubes)
         V_OBJECT_CASE(TRIANGLES, Triangles)
         V_OBJECT_CASE(QUADS, Quads)
         V_OBJECT_CASE(POLYGONS, Polygons)
@@ -157,12 +155,13 @@ std::ostream &operator<<(std::ostream &os, const Object &obj)
     return os;
 }
 
-void Object::print(std::ostream &os) const
+void Object::print(std::ostream &os, bool verbose) const
 {
     os << toString(getType()) << ":" << getName() << "(#ref:" << d()->refcount();
     if (!d()->isComplete()) {
         os << " INCOMPLETE";
     }
+    os << " ctor=" << meta().creator() << " gen=" << meta().generation();
     if (meta().block() >= 0 || meta().numBlocks() >= 0) {
         os << " block=" << meta().block() << "/" << meta().numBlocks();
     }
@@ -351,12 +350,12 @@ Object::ptr Object::cloneType() const
 void Object::refresh() const
 {}
 
-bool Object::check() const
+bool Object::check(std::ostream &os, bool quick) const
 {
-    V_CHECK(d()->refcount() > 0); // we are holding a reference
-    V_CHECK(d()->isComplete()); // we are holding a reference
+    VALIDATE(d()->refcount() > 0); // we are holding a reference
+    VALIDATE(d()->isComplete()); // we are holding a reference
 
-    V_CHECK(d()->meta.creator() != -1);
+    VALIDATE(d()->meta.creator() != -1);
 
     bool terminated = false;
     for (size_t i = 0; i < sizeof(shm_name_t); ++i) {
@@ -365,18 +364,30 @@ bool Object::check() const
             break;
         }
     }
-    V_CHECK(terminated);
+    VALIDATE(terminated, "name has terminator");
 
-    V_CHECK(d()->type > UNKNOWN);
+    VALIDATE(d()->type > UNKNOWN);
 
-    V_CHECK(d()->meta.timeStep() >= -1);
-    V_CHECK(d()->meta.timeStep() < d()->meta.numTimesteps() || d()->meta.numTimesteps() == -1);
-    V_CHECK(d()->meta.animationStep() >= -1);
-    V_CHECK(d()->meta.animationStep() < d()->meta.numAnimationSteps() || d()->meta.numAnimationSteps() == -1);
-    V_CHECK(d()->meta.iteration() >= -1);
-    V_CHECK(d()->meta.block() >= -1);
-    V_CHECK(d()->meta.block() < d()->meta.numBlocks() || d()->meta.numBlocks() == -1);
-    V_CHECK(d()->meta.executionCounter() >= -1);
+    VALIDATE(d()->meta.numTimesteps() >= -1);
+    VALIDATE(d()->meta.timeStep() >= -1);
+    VALIDATE(d()->meta.numTimesteps() == -1 ||
+             (d()->meta.timeStep() >= 0 && d()->meta.timeStep() < d()->meta.numTimesteps()));
+
+    VALIDATE(d()->meta.animationStep() >= -1);
+    VALIDATE(d()->meta.animationStep() < d()->meta.numAnimationSteps() || d()->meta.numAnimationSteps() == -1);
+
+    VALIDATE(d()->meta.iteration() >= -1);
+
+    VALIDATE(d()->meta.numBlocks() >= -1);
+    VALIDATE(d()->meta.block() >= -1);
+    VALIDATE(d()->meta.numBlocks() == -1 || (d()->meta.block() >= 0 && d()->meta.block() < d()->meta.numBlocks()));
+
+    VALIDATE(d()->meta.generation() >= -1);
+
+    if (quick)
+        return true;
+
+    VALIDATE(strstr(toString(getType()), "invalid") == nullptr);
 
     return true;
 }
@@ -485,9 +496,9 @@ void Object::setIteration(const int num)
     d()->meta.setIteration(num);
 }
 
-int Object::getExecutionCounter() const
+int Object::getGeneration() const
 {
-    return d()->meta.executionCounter();
+    return d()->meta.generation();
 }
 
 int Object::getCreator() const
@@ -525,9 +536,9 @@ void Object::setNumBlocks(const int num)
     d()->meta.setNumBlocks(num);
 }
 
-void Object::setExecutionCounter(const int count)
+void Object::setGeneration(const int count)
 {
-    d()->meta.setExecutionCounter(count);
+    d()->meta.setGeneration(count);
 }
 
 void Object::setCreator(const int id)
@@ -680,6 +691,15 @@ std::vector<std::string> Object::Data::getAttributeList() const
     return result;
 }
 
+#ifdef NO_SHMEM
+std::recursive_mutex &Object::mutex() const
+#else
+boost::interprocess::interprocess_recursive_mutex &Object::mutex() const
+#endif
+{
+    return d()->mutex;
+}
+
 bool Object::addAttachment(const std::string &key, Object::const_ptr obj) const
 {
     return d()->addAttachment(key, obj);
@@ -707,7 +727,7 @@ bool Object::removeAttachment(const std::string &key) const
 
 bool Object::Data::hasAttachment(const std::string &key) const
 {
-    attachment_mutex_lock_type lock(attachment_mutex);
+    mutex_lock_type lock(mutex);
     const Key skey(key.c_str(), Shm::the().allocator());
     AttachmentMap::const_iterator it = attachments.find(skey);
     return it != attachments.end();
@@ -715,7 +735,7 @@ bool Object::Data::hasAttachment(const std::string &key) const
 
 Object::const_ptr ObjectData::getAttachment(const std::string &key) const
 {
-    attachment_mutex_lock_type lock(attachment_mutex);
+    mutex_lock_type lock(mutex);
     const Key skey(key.c_str(), Shm::the().allocator());
     AttachmentMap::const_iterator it = attachments.find(skey);
     if (it == attachments.end()) {
@@ -727,7 +747,7 @@ Object::const_ptr ObjectData::getAttachment(const std::string &key) const
 bool Object::Data::addAttachment(const std::string &key, Object::const_ptr obj)
 {
     {
-        attachment_mutex_lock_type lock(attachment_mutex);
+        mutex_lock_type lock(mutex);
         const Key skey(key.c_str(), Shm::the().allocator());
         AttachmentMap::const_iterator it = attachments.find(skey);
         if (it != attachments.end()) {
@@ -743,7 +763,7 @@ bool Object::Data::addAttachment(const std::string &key, Object::const_ptr obj)
 
 void Object::Data::copyAttachments(const ObjectData *src, bool replace)
 {
-    attachment_mutex_lock_type lock(attachment_mutex);
+    mutex_lock_type lock(mutex);
     const AttachmentMap &a = src->attachments;
 
     for (AttachmentMap::const_iterator it = a.begin(); it != a.end(); ++it) {
@@ -765,7 +785,7 @@ void Object::Data::copyAttachments(const ObjectData *src, bool replace)
 
 bool Object::Data::removeAttachment(const std::string &key)
 {
-    attachment_mutex_lock_type lock(attachment_mutex);
+    mutex_lock_type lock(mutex);
     const Key skey(key.c_str(), Shm::the().allocator());
     AttachmentMap::iterator it = attachments.find(skey);
     if (it == attachments.end()) {

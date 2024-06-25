@@ -85,6 +85,8 @@ private:
     vistle::Object::ptr readRCTGRD(Token &token, const int port, int fd, bool skeleton);
     vistle::Object::ptr readSTRGRD(Token &token, const int port, int fd, bool skeleton);
     vistle::Object::ptr readUNSGRD(Token &token, const int port, int fd, bool skeleton);
+    vistle::Object::ptr readBYTEDT(Token &token, const int port, int fd, bool skeleton);
+    vistle::Object::ptr readINTDT(Token &token, const int port, int fd, bool skeleton);
     vistle::Object::ptr readUSTSDT(Token &token, const int port, int fd, bool skeleton);
     vistle::Object::ptr readSTRSDT(Token &token, const int port, int fd, bool skeleton);
     vistle::Object::ptr readPOLYGN(Token &token, const int port, int fd, bool skeleton);
@@ -102,10 +104,6 @@ private:
 
     //bool load(const std::string & filename);
 
-#if 0
-   virtual bool compute();
-#endif
-
 #ifdef READ_DIRECTORY
     vistle::StringParameter *m_directory = nullptr;
 #else
@@ -121,6 +119,8 @@ private:
     size_t m_numObj[NumPorts];
     int m_numTime[NumPorts];
     std::vector<Element *> m_objects[NumPorts];
+    std::set<vistle::DataBase::ptr> m_transposed; // data arrays already shuffled for structured grids
+    void transpose(vistle::DataBase::ptr data, vistle::StructuredGridBase::ptr str);
 };
 
 #endif

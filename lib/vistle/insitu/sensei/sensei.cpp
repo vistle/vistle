@@ -62,7 +62,7 @@ Adapter::Adapter(bool paused, MPI_Comm Comm, MetaData &&meta, ObjectRetriever cb
 {
     MPI_Comm_rank(Comm, &m_rank);
     MPI_Comm_size(Comm, &m_mpiSize);
-    m_commands["run/paused"] = !paused; // if true run else wait
+    m_commands["run_simulation"] = !paused; // if true run else wait
     // exit by returning false from execute
     dumpConnectionFile(comm);
 
@@ -75,7 +75,7 @@ Adapter::Adapter(bool paused, MPI_Comm Comm, MetaData &&meta, ObjectRetriever cb
 #endif
 }
 
-bool Adapter::Execute(size_t timestep)
+bool Adapter::execute(size_t timestep)
 {
     auto tStart = vistle::Clock::time();
     if (stillConnected() && waitedForModuleCommands()) {
@@ -85,6 +85,7 @@ bool Adapter::Execute(size_t timestep)
                 first = false;
                 m_timeSpendInExecute = 0;
                 m_startTime = vistle::Clock::time();
+                tStart = m_startTime;
             }
             processData();
         }
@@ -152,7 +153,7 @@ void Adapter::restart()
 
 bool Adapter::waitedForModuleCommands()
 {
-    auto it = m_commands.find("run/paused");
+    auto it = m_commands.find("run_simulation");
     while (!it->second) // also let the simulation wait for the module if
     // initialized with paused
     {
@@ -178,25 +179,25 @@ void Adapter::processData()
              << endl;
         return;
     }
+
     auto dataObjects = m_callbacks.getData(m_usedData);
     for (const auto &dataObject: dataObjects) {
         m_internals->sendMessageQueue->addObject(dataObject.portName(), dataObject.object());
     }
     m_internals->sendMessageQueue->sendObjects();
-
     if (message::getIntParamValue(m_internals->moduleParams, "keep_timesteps"))
         ++m_processedTimesteps;
     else
-        ++m_iterations;
+        ++m_iteration;
 }
 
 Adapter::~Adapter()
 {
     if (m_internals)
-        Finalize();
+        finalize();
 }
 
-bool Adapter::Finalize()
+bool Adapter::finalize()
 {
     CERR << "Finalizing" << endl;
     double averageTimeSpendInExecute = 0;
@@ -288,16 +289,25 @@ bool Adapter::recvAndHandeMessage(bool blocking)
         }
     } break;
     case InSituMessageType::ConnectionClosed: {
-        restart();
+        auto state = msg.unpackOrCast<ConnectionClosed>();
+        if (state.value == message::DisconnectState::ShutdownNoRestart)
+            finalize();
+        else
+            restart();
     } break;
     case InSituMessageType::IntOption: {
         auto option = msg.unpackOrCast<IntOption>().value;
         updateIntParam(m_internals->moduleParams, option);
         if (option.name == "keep_timesteps") {
-            m_processedTimesteps = 0;
-            ++m_iterations;
+            m_processedTimesteps = -1;
+            m_iteration = -1;
+            if (option.value == 0) {
+                m_iteration = 0;
+            } else {
+                m_processedTimesteps = 0;
+            }
         }
-        ++m_executionCount;
+        ++m_generation;
 
     } break;
     default:
@@ -408,9 +418,14 @@ void Adapter::updateMeta(vistle::Object::ptr obj) const
 {
     if (obj) {
         obj->setCreator(m_internals->moduleInfo.id());
-        obj->setExecutionCounter(m_executionCount);
+        obj->setGeneration(m_generation);
         obj->setTimestep(m_processedTimesteps);
-        obj->setIteration(m_iterations);
+        obj->setIteration(m_iteration);
         obj->updateInternals();
     }
+}
+
+bool Adapter::paused() const
+{
+    return !m_commands.at("run_simulation");
 }

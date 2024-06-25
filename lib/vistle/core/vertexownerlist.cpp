@@ -1,6 +1,7 @@
 #include "vertexownerlist.h"
 #include "vertexownerlist_impl.h"
 #include "archives.h"
+#include "validate.h"
 
 namespace vistle {
 
@@ -58,11 +59,13 @@ bool VertexOwnerList::isEmpty() const
     return getNumVertices() == 0;
 }
 
-void VertexOwnerList::print(std::ostream &os) const
+void VertexOwnerList::print(std::ostream &os, bool verbose) const
 {
-    Base::print(os);
-    os << " vertexlist(" << *d()->vertexList << ")";
-    os << " celllist(" << *d()->cellList << ")";
+    Base::print(os, verbose);
+    os << " vertexlist:";
+    d()->vertexList.print(os, verbose);
+    os << " celllist:";
+    d()->cellList.print(os, verbose);
 }
 
 Index VertexOwnerList::getNumVertices() const
@@ -79,18 +82,27 @@ std::pair<const Index *, Index> VertexOwnerList::getSurroundingCells(Index v) co
     return std::make_pair(ptr, n);
 }
 
-bool VertexOwnerList::checkImpl() const
+bool VertexOwnerList::checkImpl(std::ostream &os, bool quick) const
 {
-    CHECK_OVERFLOW(d()->vertexList->size());
+    VALIDATE_INDEX(d()->vertexList->size());
 
-    V_CHECK(!d()->vertexList->empty());
-    V_CHECK(d()->vertexList->at(0) == 0);
+    VALIDATE(!d()->vertexList->empty());
+    VALIDATE(d()->vertexList->at(0) == 0);
+
     if (getNumVertices() > 0) {
-        V_CHECK(d()->vertexList->at(getNumVertices() - 1) < d()->cellList->size());
-        V_CHECK(d()->vertexList->at(getNumVertices()) == d()->cellList->size());
+        VALIDATE(d()->vertexList->at(getNumVertices() - 1) < d()->cellList->size());
+        VALIDATE(d()->vertexList->at(getNumVertices()) == d()->cellList->size());
+    }
+
+    if (quick)
+        return true;
+
+    if (getNumVertices() > 0) {
+        VALIDATE_RANGE_P(d()->vertexList, 0, d()->cellList->size());
     }
     return true;
 }
+
 
 V_OBJECT_TYPE(VertexOwnerList, Object::VERTEXOWNERLIST)
 V_OBJECT_CTOR(VertexOwnerList)

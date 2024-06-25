@@ -108,6 +108,9 @@ bool DomainSurface::compute(const std::shared_ptr<BlockTask> &task) const
 {
     //DomainSurface Polygon
     auto container = task->expect<Object>("data_in");
+    if (container->isEmpty()) {
+        return true;
+    }
     auto split = splitContainerObject(container);
     DataBase::const_ptr data = split.mapped;
     StructuredGridBase::const_ptr sgrid = StructuredGridBase::as(split.geometry);
@@ -492,6 +495,7 @@ void DomainSurface::renumberVertices(Coords::const_ptr coords, Quads::ptr quad, 
     }
 }
 
+namespace {
 struct Face {
     Index elem = InvalidIndex;
     Index face = InvalidIndex;
@@ -592,6 +596,7 @@ struct FaceHash {
 
 typedef std::unordered_set<Face, FaceHash> FaceSet;
 #endif
+} // namespace
 
 DomainSurface::Result<Polygons> DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m_grid_in,
                                                              bool haveElementData, bool createSurface,

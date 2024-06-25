@@ -49,6 +49,10 @@ if(POLICY CMP0074)
     # make find_include/find_library search in <PackageName>_ROOT prefix
     cmake_policy(SET CMP0074 NEW)
 endif()
+if(POLICY CMP0144)
+    # make find_include/find_library search in uppercased <PackageName>_ROOT prefix
+    cmake_policy(SET CMP0144 NEW)
+endif()
 
 # vim's YouCompleteMe can make use of this
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
@@ -73,10 +77,19 @@ option(VISTLE_SANITIZE_ADDRESS "Build with -fsanitize=address" OFF)
 option(VISTLE_SANITIZE_THREAD "Build with -fsanitize=thread" OFF)
 option(VISTLE_TIME_BUILD "Gather build times (Clang/ISPC)" OFF)
 
-option(VISTLE_ENABLE_CUDA "Build with CUDA support" OFF)
-option(VISTLE_ENABLE_KOKKOS "Build with Kokkos support" OFF)
+option(VISTLE_PROFILE_NVTX "Annotate for Nsight profiler" OFF)
+option(VISTLE_PROFILE_CHROME "Annotate for showing timings in Chrome browser" OFF)
 
-option(VISTLE_USE_QT5 "Build GUI with Qt5 instead of Qt6" ON)
+option(VISTLE_USE_CUDA "Build with CUDA support" OFF)
+option(VISTLE_USE_KOKKOS "Build with Kokkos support" OFF)
+
+if(APPLE)
+    option(VISTLE_USE_QT5 "Build GUI with Qt5 instead of Qt6" OFF)
+elseif(WIN32)
+    option(VISTLE_USE_QT5 "Build GUI with Qt5 instead of Qt6" OFF)
+else()
+    option(VISTLE_USE_QT5 "Build GUI with Qt5 instead of Qt6" ON)
+endif()
 option(VISTLE_USE_MPI "Build with MPI instead of dummy MPI library" ON)
 
 option(VISTLE_COLOR_DIAGNOSTICS "Produce ANSI-colored build output (GNU/Clang)" ON)
@@ -265,6 +278,75 @@ if(WIN32)
 endif(WIN32)
 
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/Modules/;${CMAKE_MODULE_PATH}")
+
+# figure out version
+vistle_find_package(Git)
+
+set(VISTLE_VERSION_TAG "unknown")
+set(VISTLE_VERSION_HASH "unknown")
+if(GIT_FOUND)
+    # for hash
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} log -n1 --format=%h/%ci
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        OUTPUT_VARIABLE GIT_LOG_OUT
+        ERROR_VARIABLE GIT_LOG_ERROR
+        RESULT_VARIABLE GIT_LOG_RESULT
+        OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+    # for latest tag contained by hash
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} tag --sort=v:refname --merged
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        OUTPUT_VARIABLE GIT_TAG_OUT
+        ERROR_VARIABLE GIT_TAG_ERROR
+        RESULT_VARIABLE GIT_TAG_RESULT
+        OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+    # working copy clean/dirty?
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} status --untracked-files=no --porcelain
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        OUTPUT_VARIABLE GIT_STATUS_OUT
+        ERROR_VARIABLE GIT_STATUS_ERROR
+        RESULT_VARIABLE GIT_STATUS_RESULT
+        OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+    if(${GIT_LOG_RESULT} EQUAL 0
+       AND ${GIT_TAG_RESULT} EQUAL 0
+       AND ${GIT_STATUS_RESULT} EQUAL 0)
+        string(REGEX REPLACE "^([a-z0-9]*)/(....)-(..)-(..).*" "\\1" VISTLE_VERSION_HASH "${GIT_LOG_OUT}")
+        if(NOT "" STREQUAL "${GIT_STATUS_OUT}")
+            # append + to hash, if dirty
+            set(VISTLE_VERSION_HASH "${VISTLE_VERSION_HASH}+")
+        endif()
+
+        set(VISTLE_VERSION_TAG "${GIT_TAG_OUT}")
+        # ensure that every tag is surrounded by \n
+        string(PREPEND VISTLE_VERSION_TAG "\n")
+        string(APPEND VISTLE_VERSION_TAG "\n")
+
+        # throw out everything that does not start with v20
+        string(REGEX REPLACE "\n([^v]|.[^2]|..[^0])[^\n]*" "\n" VISTLE_VERSION_TAG "${VISTLE_VERSION_TAG}")
+        # remove empty lines
+        string(REGEX REPLACE "\n+" "\n" VISTLE_VERSION_TAG "${VISTLE_VERSION_TAG}")
+        # remove final \n
+        string(REGEX REPLACE "\n$" "" VISTLE_VERSION_TAG "${VISTLE_VERSION_TAG}")
+        # remove everything up to and including last \n
+        string(REGEX REPLACE "^.*\n" "" VISTLE_VERSION_TAG "${VISTLE_VERSION_TAG}")
+        # chop off leading v
+        string(REGEX REPLACE "^v" "" VISTLE_VERSION_TAG "${VISTLE_VERSION_TAG}")
+        #message("VISTLE_VERSION_TAG: ${VISTLE_VERSION_TAG}")
+    else()
+        if(NOT ${GIT_LOG_RESULT} EQUAL 0)
+            message("Command \"${GIT_EXECUTABLE} log -n1 --format=%H/%ci ${dir}\" failed with output:\n${GIT_LOG_ERROR}")
+        endif()
+        if(NOT ${GIT_TAG_RESULT} EQUAL 0)
+            message("Command \"${GIT_EXECUTABLE} tag --merged ${dir}\" failed with output:\n${GIT_TAG_ERROR}")
+        endif()
+    endif()
+endif()
+message("VISTLE_VERSION: ${VISTLE_VERSION_TAG}-${VISTLE_VERSION_HASH}")
 
 include(ConfigureLinker)
 
@@ -858,6 +940,17 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
             add_module2(${targetname} FALSE ${description} ${ARGN})
         endif()
     endmacro(add_module)
+
+    macro(add_vtkm_module targetname description)
+        add_module(${targetname} ${description} ${ARGN})
+
+        # when using Cuda device backend for vtkm, make sure that nvcc
+        # compiler is used, even if file does not end on .cu
+        if(VISTLE_CUDA_ENABLED)
+            set_source_files_properties(${ARGN} PROPERTIES LANGUAGE CUDA)
+        endif()
+        target_link_libraries(${targetname} vistle_vtkm vtkm::cont vtkm::filter)
+    endmacro(add_vtkm_module)
 endif()
 
 set(CMAKE_C_VISIBILITY_PRESET hidden)
@@ -915,9 +1008,9 @@ else(WIN32)
 endif(WIN32)
 
 # set(CMAKE_BUILD_TYPE Debug)
-set(VISTLE_USE_CUDA FALSE)
 
-if(VISTLE_ENABLE_CUDA)
+set(VISTLE_CUDA_ENABLED FALSE)
+if(VISTLE_USE_CUDA)
     include(CheckLanguage)
     check_language(CUDA)
     vistle_find_package(CUDAToolkit)
@@ -930,7 +1023,7 @@ if(VISTLE_ENABLE_CUDA)
         endif()
 
         add_definitions(-DVISTLE_USE_CUDA)
-        set(VISTLE_USE_CUDA TRUE)
+        set(VISTLE_CUDA_ENABLED TRUE)
         message("Using CUDA")
     endif()
 endif()

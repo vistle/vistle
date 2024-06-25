@@ -111,7 +111,7 @@ Object *Object::loadObject(Archive &ar)
             Shm::the().unlockObjects();
             name = obj->getName();
             ar.registerObjectNameTranslation(arname, name);
-            ObjectData::attachment_mutex_lock_type guard(obj->d()->attachment_mutex);
+            ObjectData::mutex_lock_type guard(obj->d()->mutex);
             if (!objData->isComplete() || objData->meta.creator() == -1) {
                 obj->loadFromArchive(ar);
             }
@@ -137,7 +137,7 @@ Object *Object::loadObject(Archive &ar)
     assert(obj->isComplete() || ar.currentObject() == obj->d());
     if (obj->d()->unresolvedReferences == 0) {
         obj->refresh();
-        assert(obj->check());
+        assert(obj->check(std::cerr));
         if (ar.objectCompletionHandler())
             ar.objectCompletionHandler()();
     } else {

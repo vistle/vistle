@@ -10,8 +10,6 @@
 #include <vistle/core/points.h>
 #include <vistle/core/polygons.h>
 #include <vistle/core/quads.h>
-#include <vistle/core/spheres.h>
-#include <vistle/core/tubes.h>
 #include <vistle/core/unstr.h>
 #include <vistle/util/math.h>
 

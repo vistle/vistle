@@ -1,6 +1,7 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <vistle/core/coords.h>
-#include <vistle/core/coordswradius.h>
+#include <vistle/core/points.h>
+#include <vistle/core/lines.h>
 #include <vistle/core/vec.h>
 #include <cassert>
 
@@ -178,61 +179,72 @@ void RenderObject::computeBounds()
 
     Matrix4 T = geometry->getTransform();
     bool identity = T.isIdentity();
-    if (auto coords = CoordsWithRadius::as(geometry)) {
-        Vector3 rMin(smax, smax, smax), rMax(-smax, -smax, -smax);
-        for (int i = 0; i < 8; ++i) {
-            Vector3 v(0, 0, 0);
-            if (i % 2) {
-                v += Vector3(1, 0, 0);
-            } else {
-                v -= Vector3(1, 0, 0);
-            }
-            if ((i / 2) % 2) {
-                v += Vector3(0, 1, 0);
-            } else {
-                v -= Vector3(0, 1, 0);
-            }
-            if ((i / 4) % 2) {
-                v += Vector3(0, 0, 1);
-            } else {
-                v -= Vector3(0, 0, 1);
-            }
-            if (!identity)
-                v = transformPoint(T, v);
-            for (int c = 0; c < 3; ++c) {
-                rMin[c] = std::min(rMin[c], v[c]);
-                rMax[c] = std::max(rMax[c], v[c]);
-            }
+    if (auto coords = Coords::as(geometry)) {
+        const Scalar *radii = nullptr;
+        if (auto lines = Lines::as(geometry)) {
+            if (lines->radius())
+                radii = lines->radius()->x().data();
+        } else if (auto points = Points::as(geometry)) {
+            if (points->radius())
+                radii = points->radius()->x().data();
         }
-        const auto nc = coords->getNumCoords();
-        const Scalar *x = coords->x(0), *y = coords->x(1), *z = coords->x(2), *radii = coords->r();
-        for (Index i = 0; i < nc; ++i) {
-            Scalar r = radii[i];
-            Vector3 p(x[i], y[i], z[i]);
-            if (!identity)
-                p = transformPoint(T, p);
-            for (int c = 0; c < 3; ++c) {
-                bMin[c] = std::min(bMin[c], p[c] + r * rMin[c]);
-                bMax[c] = std::max(bMax[c], p[c] + r * rMax[c]);
+        if (radii) {
+            Vector3 rMin(smax, smax, smax), rMax(-smax, -smax, -smax);
+            for (int i = 0; i < 8; ++i) {
+                Vector3 v(0, 0, 0);
+                if (i % 2) {
+                    v += Vector3(1, 0, 0);
+                } else {
+                    v -= Vector3(1, 0, 0);
+                }
+                if ((i / 2) % 2) {
+                    v += Vector3(0, 1, 0);
+                } else {
+                    v -= Vector3(0, 1, 0);
+                }
+                if ((i / 4) % 2) {
+                    v += Vector3(0, 0, 1);
+                } else {
+                    v -= Vector3(0, 0, 1);
+                }
+                if (!identity)
+                    v = transformPoint(T, v);
+                for (int c = 0; c < 3; ++c) {
+                    rMin[c] = std::min(rMin[c], v[c]);
+                    rMax[c] = std::max(rMax[c], v[c]);
+                }
             }
-        }
-    } else if (auto coords = Coords::as(geometry)) {
-        if (identity) {
-            auto b = coords->getBounds();
-            bMin = b.first;
-            bMax = b.second;
-        } else {
             const auto nc = coords->getNumCoords();
             const Scalar *x = coords->x(0), *y = coords->x(1), *z = coords->x(2);
             for (Index i = 0; i < nc; ++i) {
+                Scalar r = radii[i];
                 Vector3 p(x[i], y[i], z[i]);
                 if (!identity)
                     p = transformPoint(T, p);
                 for (int c = 0; c < 3; ++c) {
-                    if (p[c] < bMin[c])
-                        bMin[c] = p[c];
-                    if (p[c] > bMax[c])
-                        bMax[c] = p[c];
+                    bMin[c] = std::min(bMin[c], p[c] + r * rMin[c]);
+                    bMax[c] = std::max(bMax[c], p[c] + r * rMax[c]);
+                }
+            }
+
+        } else {
+            if (identity) {
+                auto b = coords->getBounds();
+                bMin = b.first;
+                bMax = b.second;
+            } else {
+                const auto nc = coords->getNumCoords();
+                const Scalar *x = coords->x(0), *y = coords->x(1), *z = coords->x(2);
+                for (Index i = 0; i < nc; ++i) {
+                    Vector3 p(x[i], y[i], z[i]);
+                    if (!identity)
+                        p = transformPoint(T, p);
+                    for (int c = 0; c < 3; ++c) {
+                        if (p[c] < bMin[c])
+                            bMin[c] = p[c];
+                        if (p[c] > bMax[c])
+                            bMax[c] = p[c];
+                    }
                 }
             }
         }

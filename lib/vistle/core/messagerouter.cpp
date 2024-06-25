@@ -16,7 +16,7 @@ void Router::initRoutingTable()
     rt[INVALID] = 0;
     rt[IDENTIFY] = Special;
     rt[SETID] = Special;
-    rt[ADDHUB] = Broadcast | Track | DestUi | TriggerQueue;
+    rt[ADDHUB] = Special;
     rt[REMOVEHUB] = Broadcast | Track | DestUi | TriggerQueue;
     rt[REPLAYFINISHED] = Special;
     rt[TRACE] = Broadcast | DestHub | DestManager | DestModules | Track;
@@ -64,6 +64,7 @@ void Router::initRoutingTable()
     rt[BARRIERREACHED] = HandleOnDest;
 
     rt[REQUESTTUNNEL] = HandleOnNode | HandleOnHub;
+    rt[TUNNELESTABLISHED] = Special;
 
     rt[REQUESTOBJECT] = Special;
     rt[SENDOBJECT] = Special;

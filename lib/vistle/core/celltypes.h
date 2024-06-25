@@ -15,6 +15,7 @@ enum CellType {
     // make sure that these types match those from COVISE: src/kernel/do/coDoUnstructuredGrid.h
     NONE = vtkm::CELL_SHAPE_EMPTY,
     BAR = vtkm::CELL_SHAPE_LINE,
+    POLYLINE = vtkm::CELL_SHAPE_POLY_LINE,
     TRIANGLE = vtkm::CELL_SHAPE_TRIANGLE,
     QUAD = vtkm::CELL_SHAPE_QUAD,
     TETRAHEDRON = vtkm::CELL_SHAPE_TETRA,
@@ -108,11 +109,18 @@ struct TypeData<HEXAHEDRON> {
 };
 
 template<>
+struct TypeData<POLYLINE> {
+    const int Dimension = 1;
+    const CellType type = POLYLINE;
+};
+
+template<>
 struct TypeData<POLYGON> {
     const int Dimension = 2;
     const CellType type = POLYGON;
     const int NumFaces = 1;
 };
+
 
 template<>
 struct TypeData<POLYHEDRON> {

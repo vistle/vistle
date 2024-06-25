@@ -1,5 +1,6 @@
 add_subdirectory(hub)
 add_subdirectory(manager)
+add_subdirectory(config)
 
 if(VISTLE_USE_QT5)
     vistle_find_package(Qt5 5.15 COMPONENTS Core Widgets)
@@ -15,4 +16,3 @@ endif()
 
 add_subdirectory(gui)
 add_subdirectory(opener)
-add_subdirectory(config)

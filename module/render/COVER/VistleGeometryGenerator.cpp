@@ -18,7 +18,6 @@
 #include <vistle/util/math.h>
 #include <vistle/core/polygons.h>
 #include <vistle/core/points.h>
-#include <vistle/core/spheres.h>
 #include <vistle/core/lines.h>
 #include <vistle/core/triangles.h>
 #include <vistle/core/quads.h>
@@ -33,11 +32,10 @@
 #include <cover/VRSceneGraph.h>
 #include <cover/coVRShader.h>
 #include <cover/coVRPluginSupport.h>
-#include <PluginUtil/coSphere.h>
 #include <PluginUtil/Tipsify.h>
-#endif
 
 //#define BUILD_KDTREES
+#endif
 
 using namespace vistle;
 
@@ -47,16 +45,19 @@ const bool IndexGeo = true;
 
 #ifdef COVER_PLUGIN
 const Index TileSize = 256;
-const int TfTexUnit = 1;
+const int RadiusAttrib = 11; // nvidia: gl_MultiTexCoord3
 #endif
-const int DataAttrib = 10;
+const int TfTexUnit = 0;
+const int DataAttrib = 10; // nvidia: gl_MultiTexCoord2
 } // namespace
 
 std::mutex VistleGeometryGenerator::s_coverMutex;
 
 namespace {
+#ifdef BUILD_KDTREES
 std::mutex kdTreeMutex;
 std::vector<osg::ref_ptr<osg::KdTreeBuilder>> kdTreeBuilders;
+#endif
 
 std::map<std::string, std::string> get_shader_parameters()
 {
@@ -64,6 +65,7 @@ std::map<std::string, std::string> get_shader_parameters()
     parammap["dataAttrib"] = std::to_string(DataAttrib);
 #ifdef COVER_PLUGIN
     parammap["texUnit1"] = std::to_string(TfTexUnit);
+    parammap["radiusAttrib"] = std::to_string(RadiusAttrib);
 #endif
     return parammap;
 }
@@ -264,9 +266,6 @@ bool VistleGeometryGenerator::isSupported(vistle::Object::Type t)
     case vistle::Object::QUADS:
     case vistle::Object::POLYGONS:
     case vistle::Object::LAYERGRID:
-#ifdef COVER_PLUGIN
-    case vistle::Object::SPHERES:
-#endif
         return true;
 
     default:
@@ -809,6 +808,20 @@ bool fillTexture(std::stringstream &debug, S *tex, Index sx, Index sy, typename 
     return false;
 }
 
+const OsgColorMap *VistleGeometryGenerator::getColorMap(const std::string &species) const
+{
+#ifdef COVER_PLUGIN
+    std::lock_guard<std::mutex> lock(s_coverMutex);
+    if (m_colormaps && !m_species.empty()) {
+        auto it = m_colormaps->find(m_species);
+        if (it != m_colormaps->end()) {
+            return &it->second;
+        }
+    }
+#endif
+    return nullptr;
+}
+
 osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defaultState)
 {
     if (m_ro)
@@ -847,9 +860,6 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
 
     std::vector<osg::ref_ptr<osg::Drawable>> draw;
     osg::ref_ptr<osg::StateSet> state;
-#ifdef COVER_PLUGIN
-    opencover::coSphere *sphere = nullptr;
-#endif
 
     bool transparent = false;
     if (m_geo && m_geo->hasAttribute("_transparent")) {
@@ -861,6 +871,7 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
         auto np = m_geo->getAttribute("_bin_num_primitives");
         numPrimitives = atol(np.c_str());
     }
+    vistle::Points::const_ptr points = vistle::Points::as(m_geo);
 
     osg::Material *mat = nullptr;
     if (m_ro && m_ro->hasSolidColor) {
@@ -877,7 +888,6 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
 
     if (defaultState) {
         state = new osg::StateSet(*defaultState);
-        state->setName(nodename + ".state");
     } else {
 #ifdef COVER_PLUGIN
         if (transparent) {
@@ -885,17 +895,17 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
         } else {
             state = opencover::VRSceneGraph::instance()->loadDefaultGeostate();
         }
-#else
+#endif
+    }
+    if (!state) {
         state = new osg::StateSet;
-        state->setName(nodename + ".state");
         if (transparent) {
             state->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
             state->setMode(GL_BLEND, osg::StateAttribute::ON);
         }
-#endif
     }
-
-    if (state && mat)
+    state->setName(nodename + ".state");
+    if (mat)
         state->setAttribute(mat);
 
     bool indexGeom = IndexGeo;
@@ -908,8 +918,15 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
         }
     }
 
+    bool dataValid = false;
+    bool textureValid = false;
 #ifdef COVER_PLUGIN
     const OsgColorMap *colormap = nullptr;
+    bool haveSpheres = false;
+    bool correctDepth = true;
+    if (m_geo && m_geo->hasAttribute("_approximate_depth")) {
+        correctDepth = m_geo->getAttribute("_approximate_depth") != "true";
+    }
 #endif
     vistle::DataBase::const_ptr database = vistle::DataBase::as(m_mapped);
     vistle::DataBase::Mapping mapping = vistle::DataBase::Unspecified;
@@ -930,14 +947,7 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
         sdata.reset();
     } else if (sdata || vdata || idata || bdata) {
 #ifdef COVER_PLUGIN
-        s_coverMutex.lock();
-        if (m_colormaps && !m_species.empty()) {
-            auto it = m_colormaps->find(m_species);
-            if (it != m_colormaps->end()) {
-                colormap = &it->second;
-            }
-        }
-        s_coverMutex.unlock();
+        colormap = getColorMap(m_species);
 #endif
     } else if (database) {
         debug << "Unsupported mapped data: type=" << Object::toString(database->getType()) << " ("
@@ -970,10 +980,17 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
     case vistle::Object::POINTS: {
         indexGeom = false;
 
-        vistle::Points::const_ptr points = vistle::Points::as(m_geo);
+        assert(points);
         const Index numVertices = points->getNumPoints();
 
-        debug << "Points: [ #v " << numVertices << " ]";
+        auto radius = points->radius();
+
+        debug << "Points: [ #v " << numVertices << (radius ? " with radius" : "") << " ]";
+        const vistle::Scalar *x = &points->x()[0];
+        const vistle::Scalar *y = &points->y()[0];
+        const vistle::Scalar *z = &points->z()[0];
+
+        state->setAttribute(new osg::Point(2.0f), osg::StateAttribute::ON);
 
         auto geom = new osg::Geometry();
         draw.push_back(geom);
@@ -984,9 +1001,6 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
                 geom->setVertexArray(cache.vertices.front());
                 geom->addPrimitiveSet(cache.primitives.front());
             } else {
-                const vistle::Scalar *x = &points->x()[0];
-                const vistle::Scalar *y = &points->y()[0];
-                const vistle::Scalar *z = &points->z()[0];
                 osg::ref_ptr<osg::Vec3Array> vertices = new osg::Vec3Array();
                 for (Index v = 0; v < numVertices; v++)
                     vertices->push_back(osg::Vec3(x[v], y[v], z[v]));
@@ -1000,8 +1014,30 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
                 }
             }
 
-            state->setAttribute(new osg::Point(2.0f), osg::StateAttribute::ON);
-            lighted = false;
+#ifdef COVER_PLUGIN
+            if (radius) {
+                haveSpheres = true;
+                const vistle::Scalar *r = &radius->x()[0];
+
+                osg::ref_ptr<osg::FloatArray> rad = new osg::FloatArray();
+                rad->reserve(numVertices);
+                for (Index v = 0; v < numVertices; v++)
+                    rad->push_back(r[v]);
+                geom->setVertexAttribArray(RadiusAttrib, rad, osg::Array::BIND_PER_VERTEX);
+
+                geom->setUseDisplayList(false);
+                geom->setSupportsDisplayList(false);
+                geom->setUseVertexBufferObjects(true);
+
+                if (!colormap) {
+                    // required for applying shader
+                    colormap = getColorMap("");
+                }
+            } else
+#endif
+            {
+                lighted = false;
+            }
         }
         break;
     }
@@ -1028,11 +1064,9 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
             dmode = HeightMap::CellData;
 
         if (dmode == HeightMap::NoData) {
-            s_coverMutex.lock();
-            auto parammap = get_shader_parameters();
-            auto shader = opencover::coVRShaderList::instance()->getUnique("MapColorsHeightmap", &parammap);
-            shader->apply(state);
-            s_coverMutex.unlock();
+            colormap = getColorMap("");
+        } else {
+            dataValid = true;
         }
 
         const auto dx = lg->dist()[0];
@@ -1090,30 +1124,6 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
     }
 #endif
 
-#ifdef COVER_PLUGIN
-    case vistle::Object::SPHERES: {
-        indexGeom = false;
-
-        vistle::Spheres::const_ptr spheres = vistle::Spheres::as(m_geo);
-        const Index numVertices = spheres->getNumSpheres();
-
-        debug << "Spheres: [ #v " << numVertices << " ]";
-
-        sphere = new opencover::coSphere();
-        draw.push_back(sphere);
-
-        const vistle::Scalar *x = &spheres->x()[0];
-        const vistle::Scalar *y = &spheres->y()[0];
-        const vistle::Scalar *z = &spheres->z()[0];
-        const vistle::Scalar *r = &spheres->r()[0];
-        sphere->setCoords(numVertices, x, y, z, r);
-
-        colormap = nullptr; // has to use its own shader
-
-        break;
-    }
-#endif
-
     case vistle::Object::TRIANGLES: {
         vistle::Triangles::const_ptr triangles = vistle::Triangles::as(m_geo);
 
@@ -1167,7 +1177,8 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
             auto tc = applyTriangle<Triangles, vistle::Texture1D::const_ptr, osg::FloatArray, false>(triangles, tex,
                                                                                                      indexGeom, bin);
             if (tc) {
-                geom->setTexCoordArray(0, tc);
+                geom->setTexCoordArray(TfTexUnit, tc);
+                textureValid = true;
             } else if (sdata) {
                 fl = applyTriangle<Triangles, vistle::Vec<Scalar>::const_ptr, osg::FloatArray, false>(triangles, sdata,
                                                                                                       indexGeom, bin);
@@ -1181,8 +1192,10 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
                 fl = applyTriangle<Triangles, vistle::Vec<Byte>::const_ptr, osg::FloatArray, false>(triangles, bdata,
                                                                                                     indexGeom, bin);
             }
-            if (fl)
+            if (fl) {
                 geom->setVertexAttribArray(DataAttrib, fl);
+                dataValid = true;
+            }
 
             bin.clear();
             ++nbin;
@@ -1244,7 +1257,8 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
             auto tc =
                 applyTriangle<Quads, vistle::Texture1D::const_ptr, osg::FloatArray, false>(quads, tex, indexGeom, bin);
             if (tc) {
-                geom->setTexCoordArray(0, tc);
+                geom->setTexCoordArray(TfTexUnit, tc);
+                textureValid = true;
             } else if (sdata) {
                 fl = applyTriangle<Quads, vistle::Vec<Scalar>::const_ptr, osg::FloatArray, false>(quads, sdata,
                                                                                                   indexGeom, bin);
@@ -1255,8 +1269,10 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
                 fl = applyTriangle<Quads, vistle::Vec<Index>::const_ptr, osg::FloatArray, false>(quads, idata,
                                                                                                  indexGeom, bin);
             }
-            if (fl)
+            if (fl) {
                 geom->setVertexAttribArray(DataAttrib, fl);
+                dataValid = true;
+            }
 
             bin.clear();
             ++nbin;
@@ -1322,7 +1338,8 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
             auto tc = applyTriangle<Indexed, vistle::Texture1D::const_ptr, osg::FloatArray, false>(polygons, tex,
                                                                                                    indexGeom, bin);
             if (tc) {
-                geom->setTexCoordArray(0, tc);
+                geom->setTexCoordArray(TfTexUnit, tc);
+                textureValid = true;
             } else if (sdata) {
                 fl = applyTriangle<Indexed, vistle::Vec<Scalar>::const_ptr, osg::FloatArray, false>(polygons, sdata,
                                                                                                     indexGeom, bin);
@@ -1333,8 +1350,10 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
                 fl = applyTriangle<Indexed, vistle::Vec<Index>::const_ptr, osg::FloatArray, false>(polygons, idata,
                                                                                                    indexGeom, bin);
             }
-            if (fl)
+            if (fl) {
                 geom->setVertexAttribArray(DataAttrib, fl);
+                dataValid = true;
+            }
 
             bin.clear();
             ++nbin;
@@ -1453,28 +1472,102 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
     vistle::Triangles::const_ptr triangles = vistle::Triangles::as(m_geo);
     vistle::Quads::const_ptr quads = vistle::Quads::as(m_geo);
     vistle::Polygons::const_ptr polygons = vistle::Polygons::as(m_geo);
-    vistle::Spheres::const_ptr spheres = vistle::Spheres::as(m_geo);
     vistle::LayerGrid::const_ptr lg = vistle::LayerGrid::as(m_geo);
 
     state->setMode(GL_CULL_FACE, osg::StateAttribute::OFF);
     state->setMode(GL_LIGHTING, lighted ? osg::StateAttribute::ON : osg::StateAttribute::OFF);
+
+#ifdef COVER_PLUGIN
+    if (lg) {
+    } else
+#endif
+        if (coords) {
+        osg::Geometry *geom = nullptr;
+        if (!draw.empty())
+            geom = draw[0]->asGeometry();
+        if (tex) {
+            osg::ref_ptr<osg::FloatArray> tc;
+            if (!triangles && !polygons && !quads) {
+                tc = buildArray<vistle::Texture1D>(tex, coords, debug, indexGeom);
+                if (tc && !tc->empty() && geom) {
+                    geom->setTexCoordArray(TfTexUnit, tc);
+                    textureValid = true;
+                }
+            }
+            if (tc || (tex && triangles) || (tex && polygons) || (tex && quads)) {
+                osg::ref_ptr<osg::Texture1D> osgTex = new osg::Texture1D;
+                osgTex->setName(nodename + ".tex");
+                osgTex->setDataVariance(osg::Object::DYNAMIC);
+                osgTex->setResizeNonPowerOfTwoHint(false);
+
+                osg::ref_ptr<osg::Image> image = new osg::Image();
+                image->setName(nodename + ".img");
+                image->setImage(tex->getWidth(), 1, 1, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE,
+                                const_cast<unsigned char *>(&tex->pixels()[0]), osg::Image::NO_DELETE);
+                osgTex->setImage(image);
+
+                state->setTextureAttributeAndModes(TfTexUnit, osgTex, osg::StateAttribute::ON);
+                osgTex->setFilter(osg::Texture1D::MIN_FILTER, osg::Texture1D::NEAREST);
+                osgTex->setFilter(osg::Texture1D::MAG_FILTER, osg::Texture1D::NEAREST);
+#if 0
+               osg::TexEnv * texEnv = new osg::TexEnv();
+               texEnv->setMode(osg::TexEnv::MODULATE);
+               state->setTextureAttributeAndModes(TfTexUnit, texEnv);
+#endif
+            }
+        } else if (triangles || polygons || quads) {
+            // objects split and mapped data already applied accordingly
+        } else if (vistle::Vec<Scalar>::const_ptr data = vistle::Vec<Scalar>::as(m_mapped)) {
+            osg::ref_ptr<osg::FloatArray> fl = buildArray<vistle::Vec<Scalar>>(data, coords, debug, indexGeom);
+            if (fl && !fl->empty() && geom) {
+                //std::cerr << "VistleGeometryGenerator: setting VertexAttribArray for Vec<Scalar> of size " << fl->size() << std::endl;
+                geom->setVertexAttribArray(DataAttrib, fl, osg::Array::BIND_PER_VERTEX);
+                dataValid = true;
+            }
+        } else if (vistle::Vec<Scalar, 3>::const_ptr data = vistle::Vec<Scalar, 3>::as(m_mapped)) {
+            osg::ref_ptr<osg::FloatArray> fl = buildArray<vistle::Vec<Scalar, 3>>(data, coords, debug, indexGeom);
+            if (fl && !fl->empty() && geom) {
+                //std::cerr << "VistleGeometryGenerator: setting VertexAttribArray for Vec<Scalar,3> of size " << fl->size() << std::endl;
+                geom->setVertexAttribArray(DataAttrib, fl, osg::Array::BIND_PER_VERTEX);
+                dataValid = true;
+            }
+        } else if (vistle::Vec<Index>::const_ptr data = vistle::Vec<Index>::as(m_mapped)) {
+            osg::ref_ptr<osg::FloatArray> fl = buildArray<vistle::Vec<Index>>(data, coords, debug, indexGeom);
+            if (fl && !fl->empty() && geom) {
+                //std::cerr << "VistleGeometryGenerator: setting VertexAttribArray for Vec<Index> of size " << fl->size() << std::endl;
+                geom->setVertexAttribArray(DataAttrib, fl, osg::Array::BIND_PER_VERTEX);
+                dataValid = true;
+            }
+        } else if (vistle::Vec<Byte>::const_ptr data = vistle::Vec<Byte>::as(m_mapped)) {
+            osg::ref_ptr<osg::FloatArray> fl = buildArray<vistle::Vec<Byte>>(data, coords, debug, indexGeom);
+            if (fl && !fl->empty() && geom) {
+                //std::cerr << "VistleGeometryGenerator: setting VertexAttribArray for Vec<Byte> of size " << fl->size() << std::endl;
+                geom->setVertexAttribArray(DataAttrib, fl, osg::Array::BIND_PER_VERTEX);
+                dataValid = true;
+            }
+        }
+    }
+
 #ifdef COVER_PLUGIN
     if (colormap) {
-        state->setTextureAttribute(TfTexUnit, colormap->texture, osg::StateAttribute::ON);
+        if (!textureValid && dataValid) {
+            state->setTextureAttributeAndModes(TfTexUnit, colormap->texture, osg::StateAttribute::ON);
+        }
         s_coverMutex.lock();
-        if (lg) {
-            if (lighted) {
+        if (haveSpheres) {
+            if (correctDepth && colormap->shaderSpheresCorrectDepth)
+                colormap->shaderSpheresCorrectDepth->apply(state);
+            else if (colormap->shaderSpheres)
+                colormap->shaderSpheres->apply(state);
+        } else if (lg) {
+            if (colormap->shaderHeightMap)
                 colormap->shaderHeightMap->apply(state);
-            } else {
-                colormap->shaderHeightMapUnlit->apply(state);
-            }
-
-        } else {
-            if (lighted) {
+        } else if (lighted) {
+            if (colormap->shader)
                 colormap->shader->apply(state);
-            } else {
+        } else {
+            if (colormap->shaderUnlit)
                 colormap->shaderUnlit->apply(state);
-            }
         }
         s_coverMutex.unlock();
     } else if (!shadername.empty()) {
@@ -1484,6 +1577,12 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
         }
         s_coverMutex.unlock();
     }
+
+    state->addUniform(new osg::Uniform("dataValid", dataValid));
+    state->addUniform(new osg::Uniform("textureValid", textureValid));
+#else
+    (void)dataValid;
+    (void)textureValid;
 #endif
 
     int count = 0;
@@ -1494,7 +1593,6 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
         if (draw.size() > 1)
             name += std::to_string(count);
         d->setName(name);
-        //d->setStateSet(state.get());
 
 #ifdef COVER_PLUGIN
         opencover::cover->setRenderStrategy(d.get());
@@ -1526,104 +1624,12 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
         ++count;
     }
 
-#ifdef COVER_PLUGIN
-    if (spheres && sphere && tex) {
-        if (mapping == vistle::DataBase::Vertex) {
-            const auto numCoords = spheres->getNumCoords();
-            auto pix = tex->pixels().data();
-            auto width = tex->getWidth();
-            std::vector<float> rgba[4];
-            for (int c = 0; c < 4; ++c)
-                rgba[c].resize(numCoords);
-            for (Index index = 0; index < numCoords; ++index) {
-                auto tc = clamp<Scalar>(tex->coords()[index], 0, 1);
-                Index idx = clamp<Index>(tc * width, 0, width - 1);
-                Vector4 col(pix[idx * 4], pix[idx * 4 + 1], pix[idx * 4 + 2], pix[idx * 4 + 3]);
-                for (int c = 0; c < 4; ++c)
-                    rgba[c][index] = clamp<float>(col[c] / 255.f, 0., 1.);
-            }
-            sphere->setColorBinding(opencover::Bind::PerVertex);
-            sphere->updateColors(rgba[0].data(), rgba[1].data(), rgba[2].data(), rgba[3].data());
-        } else {
-            std::cerr << "VistleGeometryGenerator: Spheres: texture size mismatch, expected: " << coords->getNumCoords()
-                      << ", have: " << tex->getNumCoords() << std::endl;
-            debug << "VistleGeometryGenerator: Spheres: texture size mismatch, expected: " << coords->getNumCoords()
-                  << ", have: " << tex->getNumCoords() << std::endl;
-        }
-    } else if (lg) {
-    } else
-#endif
-        if (coords) {
-        osg::Geometry *geom = nullptr;
-        if (!draw.empty())
-            geom = draw[0]->asGeometry();
-        if (tex) {
-            osg::ref_ptr<osg::FloatArray> tc;
-            if (!triangles && !polygons && !quads) {
-                tc = buildArray<vistle::Texture1D>(tex, coords, debug, indexGeom);
-                if (tc && !tc->empty() && geom)
-                    geom->setTexCoordArray(0, tc);
-            }
-            if (tc || (tex && triangles) || (tex && polygons) || (tex && quads)) {
-                osg::ref_ptr<osg::Texture1D> osgTex = new osg::Texture1D;
-                osgTex->setName(nodename + ".tex");
-                osgTex->setDataVariance(osg::Object::DYNAMIC);
-                osgTex->setResizeNonPowerOfTwoHint(false);
-
-                osg::ref_ptr<osg::Image> image = new osg::Image();
-                image->setName(nodename + ".img");
-                image->setImage(tex->getWidth(), 1, 1, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, &tex->pixels()[0],
-                                osg::Image::NO_DELETE);
-                osgTex->setImage(image);
-
-                state->setTextureAttributeAndModes(0, osgTex, osg::StateAttribute::ON);
-                osgTex->setFilter(osg::Texture1D::MIN_FILTER, osg::Texture1D::NEAREST);
-                osgTex->setFilter(osg::Texture1D::MAG_FILTER, osg::Texture1D::NEAREST);
-#if 0
-               osg::TexEnv * texEnv = new osg::TexEnv();
-               texEnv->setMode(osg::TexEnv::MODULATE);
-               state->setTextureAttribute(0, texEnv);
-#endif
-            }
-        } else if (triangles || polygons || quads) {
-            // objects split and mapped data already applied accordingly
-        } else if (vistle::Vec<Scalar>::const_ptr data = vistle::Vec<Scalar>::as(m_mapped)) {
-            osg::ref_ptr<osg::FloatArray> fl = buildArray<vistle::Vec<Scalar>>(data, coords, debug, indexGeom);
-            if (fl && !fl->empty() && geom) {
-                std::cerr << "VistleGeometryGenerator: setting VertexAttribArray for Vec<Scalar> of size " << fl->size()
-                          << std::endl;
-                geom->setVertexAttribArray(DataAttrib, fl, osg::Array::BIND_PER_VERTEX);
-            }
-        } else if (vistle::Vec<Scalar, 3>::const_ptr data = vistle::Vec<Scalar, 3>::as(m_mapped)) {
-            osg::ref_ptr<osg::FloatArray> fl = buildArray<vistle::Vec<Scalar, 3>>(data, coords, debug, indexGeom);
-            if (fl && !fl->empty() && geom) {
-                std::cerr << "VistleGeometryGenerator: setting VertexAttribArray for Vec<Scalar,3> of size "
-                          << fl->size() << std::endl;
-                geom->setVertexAttribArray(DataAttrib, fl, osg::Array::BIND_PER_VERTEX);
-            }
-        } else if (vistle::Vec<Index>::const_ptr data = vistle::Vec<Index>::as(m_mapped)) {
-            osg::ref_ptr<osg::FloatArray> fl = buildArray<vistle::Vec<Index>>(data, coords, debug, indexGeom);
-            if (fl && !fl->empty() && geom) {
-                std::cerr << "VistleGeometryGenerator: setting VertexAttribArray for Vec<Index> of size " << fl->size()
-                          << std::endl;
-                geom->setVertexAttribArray(DataAttrib, fl, osg::Array::BIND_PER_VERTEX);
-            }
-        } else if (vistle::Vec<Byte>::const_ptr data = vistle::Vec<Byte>::as(m_mapped)) {
-            osg::ref_ptr<osg::FloatArray> fl = buildArray<vistle::Vec<Byte>>(data, coords, debug, indexGeom);
-            if (fl && !fl->empty() && geom) {
-                std::cerr << "VistleGeometryGenerator: setting VertexAttribArray for Vec<Byte> of size " << fl->size()
-                          << std::endl;
-                geom->setVertexAttribArray(DataAttrib, fl, osg::Array::BIND_PER_VERTEX);
-            }
-        }
-    }
-
     std::cerr << debug.str() << std::endl;
 
     return geode;
 }
 
-OsgColorMap::OsgColorMap(): texture(new osg::Texture1D), image(new osg::Image)
+OsgColorMap::OsgColorMap(bool withData): texture(new osg::Texture1D), image(new osg::Image)
 {
     texture->setInternalFormat(GL_RGBA8);
 
@@ -1653,8 +1659,10 @@ OsgColorMap::OsgColorMap(): texture(new osg::Texture1D), image(new osg::Image)
     shader.reset(opencover::coVRShaderList::instance()->getUnique("MapColorsAttrib", &parammap));
     shaderUnlit.reset(opencover::coVRShaderList::instance()->getUnique("MapColorsAttribUnlit", &parammap));
     shaderHeightMap.reset(opencover::coVRShaderList::instance()->getUnique("MapColorsHeightmap", &parammap));
-    shaderHeightMapUnlit.reset(opencover::coVRShaderList::instance()->getUnique("MapColorsHeightmapUnlit", &parammap));
-    for (auto s: {shader, shaderUnlit, shaderHeightMap, shaderHeightMapUnlit}) {
+    shaderSpheres.reset(opencover::coVRShaderList::instance()->getUnique("MapColorsSpheres", &parammap));
+    shaderSpheresCorrectDepth.reset(
+        opencover::coVRShaderList::instance()->getUnique("MapColorsSpheres", &parammap, "#define CORRECT_DEPTH\n"));
+    for (auto s: {shader, shaderUnlit, shaderHeightMap, shaderSpheres, shaderSpheresCorrectDepth}) {
         if (s)
             allShaders.push_back(s);
     }
@@ -1667,6 +1675,9 @@ OsgColorMap::OsgColorMap(): texture(new osg::Texture1D), image(new osg::Image)
     //s_coverMutex.unlock();
 #endif
 }
+
+OsgColorMap::OsgColorMap(): OsgColorMap(true)
+{}
 
 void OsgColorMap::setName(const std::string &species)
 {

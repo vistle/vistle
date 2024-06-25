@@ -155,7 +155,7 @@ bool Reader::readTimestep(std::shared_ptr<Token> &prev, const ReaderProperties &
                 }
                 m_tokens.emplace_back(token);
                 prev = token;
-                auto tname = name() + ":Read:" + std::to_string(m_tokenCount);
+                auto tname = std::to_string(id()) + "r" + std::to_string(m_tokenCount) + ":" + name();
                 token->m_future = std::async(std::launch::async, [this, tname, token, timestep, p]() {
                     setThreadName(tname);
                     if (!read(*token, timestep, p)) {
@@ -246,7 +246,10 @@ bool Reader::prepare()
         numpart = 0;
 
     Meta meta;
-    meta.setNumBlocks(m_numPartitions);
+    if (m_numPartitions > 0)
+        meta.setNumBlocks(m_numPartitions);
+    else
+        meta.setNumBlocks(-1);
     auto numtime = rTime.calc_numtime();
     meta.setNumTimesteps(numtime);
 
@@ -644,7 +647,7 @@ void Reader::Token::applyMeta(Object::ptr obj) const
     reader()->updateMeta(obj);
 
     obj->setTimestep(m_meta.timeStep());
-    obj->setNumTimesteps(m_meta.numTimesteps());
+    obj->setNumTimesteps(m_meta.timeStep() < 0 ? -1 : m_meta.numTimesteps());
     obj->setBlock(m_meta.block());
     obj->setNumBlocks(m_meta.numBlocks());
 }

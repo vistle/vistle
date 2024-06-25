@@ -1,4 +1,4 @@
-vistle_find_package(BOTAN 1.10 REQUIRED)
+vistle_find_package(BOTAN 2 REQUIRED)
 vistle_find_package(HWLOC)
 
 set(util_SOURCES
@@ -18,7 +18,8 @@ set(util_SOURCES
     threadname.cpp
     tools.cpp
     url.cpp
-    userinfo.cpp)
+    userinfo.cpp
+    version.cpp)
 
 set(util_HEADERS
     affinity.h
@@ -50,12 +51,15 @@ set(util_HEADERS
     url.h
     userinfo.h
     valgrind.h
-    vecstreambuf.h)
+    vecstreambuf.h
+    version.h)
 
 if(CMAKE_BUILD_TYPE AND NOT CMAKE_BUILD_TYPE STREQUAL "")
     message("CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}")
     add_definitions(-DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}")
 endif()
+
+set_property(SOURCE version.cpp PROPERTY COMPILE_DEFINITIONS VISTLE_VERSION_TAG=${VISTLE_VERSION_TAG} VISTLE_VERSION_HASH=${VISTLE_VERSION_HASH})
 
 vistle_add_library(vistle_util EXPORT ${VISTLE_LIB_TYPE} ${util_SOURCES} ${util_HEADERS})
 
@@ -72,6 +76,15 @@ vistle_target_link_libraries(
     Threads::Threads
     PRIVATE
     ${BOTAN_LIBRARIES})
+if(VISTLE_PROFILE_NVTX)
+    target_include_directories(vistle_util SYSTEM PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/lib/3rdparty/profile_nvtx/c/include>
+                                                         $<INSTALL_INTERFACE:include>)
+    vistle_target_link_libraries(vistle_util PUBLIC nvtx3-cpp)
+    target_compile_definitions(vistle_util PUBLIC VISTLE_PROFILE_NVTX)
+elseif(VISTLE_PROFILE_CHROME)
+    target_compile_definitions(vistle_util PUBLIC VISTLE_PROFILE_CHROME)
+    target_include_directories(vistle_util SYSTEM PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/lib/3rdparty/profile_chrome> $<INSTALL_INTERFACE:include>)
+endif()
 
 if(BOTAN_VERSION VERSION_GREATER_EQUAL 3)
     set_property(TARGET vistle_util PROPERTY CXX_STANDARD 20)

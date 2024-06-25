@@ -39,7 +39,6 @@
 #include <vistle/core/messagesender.h>
 #include <vistle/core/messagepayload.h>
 #include <vistle/config/config.h>
-#include <vistle/util/hostname.h>
 
 #include "objectcache.h"
 #define RESULTCACHE_SKIP_DEFINITION
@@ -290,10 +289,9 @@ protected:
     std::unique_ptr<config::Access> m_configAccess;
     std::unique_ptr<config::File> m_configFile;
 
-    int m_executionCount, m_iteration;
+    int m_generation, m_iteration;
+    int m_cacheGeneration = 0;
     std::set<Port *> m_withOutput;
-
-    void setDefaultCacheMode(ObjectCache::CacheMode mode);
 
     message::MessageQueue *sendMessageQueue;
     message::MessageQueue *receiveMessageQueue;
@@ -405,10 +403,18 @@ private:
     std::map<std::string, std::string> m_currentItemInfo;
     std::string m_inputSpecies;
 
+#ifdef NDEBUG
+    int m_validateObjects = 0; // Disable
+#else
+    int m_validateObjects = 1; // Quick
+#endif
+
     static bool s_shouldDetachShm;
 };
 
+V_MODULEEXPORT int getBlock(Object::const_ptr obj);
 V_MODULEEXPORT int getTimestep(Object::const_ptr obj);
+V_MODULEEXPORT int getIteration(Object::const_ptr obj);
 V_MODULEEXPORT double getRealTime(Object::const_ptr obj);
 
 template<>

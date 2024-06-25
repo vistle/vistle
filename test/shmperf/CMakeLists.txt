@@ -10,5 +10,6 @@ target_link_libraries(
     PRIVATE Boost::boost
     PRIVATE Boost::serialization
     PRIVATE MPI::MPI_C
+    PRIVATE vistle_util
     PRIVATE vistle_core
     PRIVATE Threads::Threads)
