@@ -303,17 +303,16 @@ bool Read<ArchiveHeader>(int fd, ArchiveHeader &h)
     }
     if (!Read(fd, h.indexSize))
         return false;
-    if (hgood.indexSize != h.indexSize) {
-        CERR << "Archive header Index size mismatch: expecting " << hgood.indexSize << ", found " << h.indexSize
+    if (hgood.indexSize < h.indexSize) {
+        CERR << "Archive header Index size too large: expecting " << hgood.indexSize << ", found " << h.indexSize
              << std::endl;
         return false;
     }
     if (!Read(fd, h.scalarSize))
         return false;
-    if (hgood.scalarSize != h.scalarSize) {
-        CERR << "Archive header Scalar size mismatch: expecting " << hgood.scalarSize << ", found " << h.scalarSize
-             << std::endl;
-        return false;
+    if (hgood.scalarSize < h.scalarSize) {
+        CERR << "Archive header Scalar size larger: have " << hgood.scalarSize << ", found " << h.scalarSize
+             << " - will loose precision" << std::endl;
     }
     if (!Read(fd, h.object)) {
         CERR << "Archive header: failed to read entity name" << std::endl;
