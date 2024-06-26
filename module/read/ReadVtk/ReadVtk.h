@@ -20,7 +20,7 @@ struct VtkFile {
     int partNum = -1;
     int pieces = 1;
     double realtime = ConstantTime;
-    vtkDataObject *dataset = nullptr;
+    vtkSmartPointer<vtkDataObject> dataset;
     std::vector<std::string> pointfields;
     std::vector<std::string> cellfields;
 };
