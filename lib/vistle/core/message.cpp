@@ -11,10 +11,6 @@
 
 #include <algorithm>
 
-#ifdef HAVE_SNAPPY
-#include <snappy.h>
-#endif
-
 #ifdef HAVE_ZSTD
 #include <zstd.h>
 #endif
@@ -82,10 +78,6 @@ std::string Id::toString(int id)
 codec_error::codec_error(const std::string &what): vistle::exception(what)
 {
     std::string codecs;
-#ifdef HAVE_SNAPPY
-    codecs += " ";
-    codecs += "Snappy";
-#endif
 #ifdef HAVE_ZSTD
     codecs += " ";
     codecs += "Zstd";
@@ -346,19 +338,6 @@ buffer compressPayload(CompressionMode &mode, const char *raw, size_t size, int 
     mode = message::CompressionNone;
     buffer compressed;
     switch (m) {
-#ifdef HAVE_SNAPPY
-    case CompressionSnappy: {
-        size_t maxsize = snappy::MaxCompressedLength(size);
-        compressed.resize(maxsize);
-        size_t compressedSize = 0;
-        snappy::RawCompress(raw, size, compressed.data(), &compressedSize);
-        if (compressedSize < size) {
-            compressed.resize(compressedSize);
-            mode = CompressionSnappy;
-        }
-        break;
-    }
-#endif
 #ifdef HAVE_ZSTD
     case CompressionZstd: {
         size_t maxsize = ZSTD_compressBound(size);
@@ -432,14 +411,6 @@ buffer decompressPayload(CompressionMode mode, size_t size, size_t rawsize, cons
     buffer decompressed(rawsize);
 
     switch (mode) {
-    case CompressionSnappy: {
-#ifdef HAVE_SNAPPY
-        snappy::RawUncompress(compressed, size, decompressed.data());
-#else
-        throw codec_error("cannot decompress Snappy");
-#endif
-        break;
-    }
     case CompressionZstd: {
 #ifdef HAVE_ZSTD
         size_t n = ZSTD_decompress(decompressed.data(), decompressed.size(), compressed, size);
@@ -478,6 +449,14 @@ buffer decompressPayload(CompressionMode mode, size_t size, size_t rawsize, cons
         break;
     }
     case CompressionNone: {
+        break;
+    }
+    default: {
+        if (int(mode) == CompressionSnappy) {
+            throw codec_error("cannot decompress Snappy: no longer supported");
+        } else {
+            throw codec_error("cannot decompress: unknown format tag");
+        }
         break;
     }
     }
