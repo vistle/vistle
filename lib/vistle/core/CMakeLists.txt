@@ -1,5 +1,4 @@
 vistle_find_package(LZ4)
-vistle_find_package(SNAPPY)
 #vistle_find_package(ZSTD)
 
 set(core_SOURCES
@@ -217,12 +216,6 @@ if(LZ4_FOUND)
     target_compile_definitions(vistle_core PRIVATE HAVE_LZ4)
     target_include_directories(vistle_core SYSTEM PRIVATE ${LZ4_INCLUDE_DIRS})
     vistle_target_link_libraries(vistle_core PRIVATE ${LZ4_LIBRARIES})
-endif()
-
-if(SNAPPY_FOUND)
-    target_compile_definitions(vistle_core PRIVATE HAVE_SNAPPY)
-    target_include_directories(vistle_core SYSTEM PRIVATE ${SNAPPY_INCLUDE_DIRS})
-    vistle_target_link_libraries(vistle_core PRIVATE ${SNAPPY_LIBRARIES})
 endif()
 
 target_include_directories(vistle_core SYSTEM PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/lib/3rdparty>)
