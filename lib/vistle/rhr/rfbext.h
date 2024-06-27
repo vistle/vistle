@@ -275,7 +275,7 @@ struct V_RHREXPORT tileMsg: public rfbMsg {
     uint16_t totalwidth; //!< total width of image
     uint16_t totalheight; //!< total height of image
     int32_t timestep; //! number of rendered timestep
-    int32_t unzippedsize; //! payload size before snappy compression
+    int32_t unzippedsize; //! payload size before lossless compression
     double head[16]; //!< head matrix from request
     double view[16]; //!< view matrix from request
     double proj[16]; //!< projection matrix from request

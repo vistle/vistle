@@ -18,8 +18,10 @@ namespace vistle {
 
 namespace message {
 
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(CompressionMode,
-                                    (CompressionNone)(CompressionLz4)(CompressionZstd)(CompressionSnappy))
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(CompressionMode, (CompressionNone)(CompressionLz4)(CompressionZstd))
+enum CompressionModeUnsupported {
+    CompressionSnappy = CompressionZstd + 1,
+};
 
 // clang-format off
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(

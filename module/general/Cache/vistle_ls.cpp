@@ -18,8 +18,8 @@ int main(int argc, char *argv[])
     std::map<int, std::string> comp;
     comp[message::CompressionNone] = "raw";
     comp[message::CompressionZstd] = "zstd";
-    comp[message::CompressionSnappy] = "snappy";
     comp[message::CompressionLz4] = "lz4";
+    comp[message::CompressionSnappy] = "snappy - unsupported";
 
     bool deep = false;
     int filenum = 1;
