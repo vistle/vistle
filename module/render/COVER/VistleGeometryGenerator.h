@@ -70,6 +70,13 @@ public:
     const std::string &species() const;
     void setColorMaps(const OsgColorMapMap *colormaps);
     void setGeometryCache(vistle::ResultCache<GeometryCache> &cache);
+    struct Options {
+        bool indexedGeometry = true; // use indexed geometry, if useful
+        bool optimizeIndices = false; // optimize index order for better GPU vertex cache utilization
+        size_t numPrimitives = 100000; // number of primitives to process before splitting into multiple geodes
+        bool buildKdTree = false; // build a kd-tree for faster intersection tests
+    };
+    void setOptions(const Options &options);
 
     osg::Geode *operator()(osg::ref_ptr<osg::StateSet> state = NULL);
 
@@ -89,6 +96,7 @@ private:
 
     const OsgColorMapMap *m_colormaps = nullptr;
     vistle::ResultCache<GeometryCache> *m_cache = nullptr;
+    Options m_options;
 
     static std::mutex s_coverMutex;
 };
