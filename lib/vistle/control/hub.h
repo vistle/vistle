@@ -199,6 +199,8 @@ private:
     bool m_barrierActive;
     unsigned m_barrierReached;
     message::uuid_t m_barrierUuid;
+    typedef std::set<int> ModuleSet;
+    ModuleSet m_reachedSet;
 
     std::string m_statusText;
 

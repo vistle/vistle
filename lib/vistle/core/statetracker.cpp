@@ -158,6 +158,9 @@ int StateTracker::getHub(int id) const
         return Id::MasterHub;
     }
 
+    if (id == Id::LocalManager)
+        return Id::LocalHub;
+
     RunningMap::const_iterator it = runningMap.find(id);
     if (it == runningMap.end()) {
         it = quitMap.find(id);
