@@ -231,6 +231,16 @@ COVER::COVER(const std::string &name, int moduleId, mpi::communicator comm): vis
 
     setIntParameter("render_mode", AllShmLeaders);
 
+    m_optimizeIndices =
+        addIntParameter("optimize_indices", "optimize geometry indices for better GPU vertex cache utilization",
+                        m_options.optimizeIndices, Parameter::Boolean);
+    m_indexedGeometry = addIntParameter("indexed_geometry", "build indexed geometry, if useful",
+                                        m_options.indexedGeometry, Parameter::Boolean);
+    m_numPrimitives =
+        addIntParameter("num_primitives", "number of primitives to process before splitting into multiple geodes",
+                        m_options.numPrimitives);
+    setParameterMinimum<Integer>(m_numPrimitives, 1);
+
     m_maySleep = false;
 }
 
@@ -340,6 +350,14 @@ bool COVER::changeParameter(const Parameter *p)
 {
     if (m_coverConfigBridge) {
         m_coverConfigBridge->changeParameter(p);
+    }
+
+    if (p == m_optimizeIndices) {
+        m_options.optimizeIndices = m_optimizeIndices->getValue();
+    } else if (p == m_numPrimitives) {
+        m_options.numPrimitives = m_numPrimitives->getValue();
+    } else if (p == m_indexedGeometry) {
+        m_options.indexedGeometry = m_indexedGeometry->getValue();
     }
 
     return Renderer::changeParameter(p);
