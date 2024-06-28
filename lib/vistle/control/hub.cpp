@@ -167,7 +167,6 @@ Hub::Hub(bool inManager)
 , m_moduleCount(0)
 , m_traceMessages(message::INVALID)
 , m_barrierActive(false)
-, m_barrierReached(0)
 #if BOOST_VERSION >= 106600
 , m_workGuard(asio::make_work_guard(m_ioService))
 #else
@@ -3275,7 +3274,7 @@ bool Hub::handlePriv(const message::Barrier &barrier)
 {
     CERR << "Barrier request: " << barrier.uuid() << " by " << barrier.senderId() << std::endl;
     assert(!m_barrierActive);
-    assert(m_barrierReached == 0);
+    assert(m_reachedSet.empty());
     m_barrierActive = true;
     m_barrierUuid = barrier.uuid();
     message::Buffer buf(barrier);
@@ -3288,16 +3287,16 @@ bool Hub::handlePriv(const message::Barrier &barrier)
 
 bool Hub::handlePriv(const message::BarrierReached &reached)
 {
-    ++m_barrierReached;
-    CERR << "Barrier " << reached.uuid() << " reached by " << reached.senderId() << " (now " << m_barrierReached << ")"
-         << std::endl;
+    CERR << "Barrier " << reached.uuid() << " reached by " << reached.senderId() << " (now " << m_reachedSet.size()
+         << " of " << m_stateTracker.getNumRunning() << " modules)" << std::endl;
     assert(m_barrierActive);
     assert(m_barrierUuid == reached.uuid());
     // message must be received from local manager and each slave
     if (m_isMaster) {
-        if (m_barrierReached == m_slaves.size() + 1) {
+        m_reachedSet.insert(reached.senderId());
+        if (m_reachedSet.size() == m_stateTracker.getNumRunning()) {
             m_barrierActive = false;
-            m_barrierReached = 0;
+            m_reachedSet.clear();
             auto r = make.message<message::BarrierReached>(reached.uuid());
             r.setDestId(Id::NextHop);
             m_stateTracker.handle(r, nullptr);
@@ -3308,7 +3307,6 @@ bool Hub::handlePriv(const message::BarrierReached &reached)
     } else {
         if (reached.senderId() == Id::MasterHub) {
             m_barrierActive = false;
-            m_barrierReached = 0;
             sendUi(reached);
             sendManager(reached);
         }

@@ -351,36 +351,6 @@ bool ClusterManager::isLocal(int id) const
     return hub == hubId();
 }
 
-bool ClusterManager::checkBarrier(const message::uuid_t &uuid) const
-{
-    assert(m_barrierActive);
-    size_t numLocal = 0;
-    for (const auto &m: m_stateTracker.runningMap) {
-        if (m.second.hub == hubId() && Id::isModule(m.second.id)) {
-#ifdef BARRIER_DEBUG
-            CERR << "checkBarrier " << uuid << ": local: " << m.second.id << ":" << m.second.name << std::endl;
-#endif
-            ++numLocal;
-        }
-    }
-#ifdef BARRIER_DEBUG
-    CERR << "checkBarrier " << uuid << ": #local=" << numLocal << ", #reached=" << m_reachedSet.size() << std::endl;
-#endif
-    return m_reachedSet.size() == numLocal;
-}
-
-void ClusterManager::barrierReached(const message::uuid_t &uuid)
-{
-    assert(m_barrierActive);
-    m_comm.barrier();
-    m_reachedSet.clear();
-    CERR << "Barrier [" << uuid << "] reached" << std::endl;
-    message::BarrierReached m(uuid);
-    m.setDestId(message::Id::MasterHub);
-    if (getRank() == 0)
-        sendHub(m, MessagePayload(), Id::MasterHub);
-}
-
 std::string ClusterManager::getModuleName(int id) const
 {
     return m_stateTracker.getModuleName(id);
@@ -587,7 +557,7 @@ bool ClusterManager::sendMessage(const int moduleId, const message::Message &mes
     message::Buffer buf(message);
     if (payload)
         buf.setPayloadName(payload.name());
-    if (hub == hubId()) {
+    if (Id::isModule(moduleId) && (hub == hubId() || hub == Id::LocalHub || hub == Id::LocalManager)) {
         //CERR << "local send to " << moduleId << ": " << buf << std::endl;
         if (destRank == -1 || destRank == getRank()) {
             RunningMap::const_iterator it = m_runningMap.find(moduleId);
@@ -1203,9 +1173,6 @@ bool ClusterManager::handlePriv(const message::ModuleExit &moduleExit)
         ModuleSet::iterator it = m_reachedSet.find(mod);
         if (it != m_reachedSet.end()) {
             m_reachedSet.erase(it);
-        } else {
-            if (m_barrierActive && checkBarrier(m_barrierUuid))
-                barrierReached(m_barrierUuid);
         }
     }
 
@@ -2016,12 +1983,7 @@ bool ClusterManager::handlePriv(const message::Barrier &barrier)
     //sendHub(barrier);
     CERR << "Barrier [" << barrier.uuid() << "]" << std::endl;
     m_barrierUuid = barrier.uuid();
-    if (checkBarrier(m_barrierUuid)) {
-        barrierReached(m_barrierUuid);
-    } else {
-        sendAllLocal(barrier);
-    }
-    return true;
+    return sendAllLocal(barrier);
 }
 
 bool ClusterManager::handlePriv(const message::BarrierReached &barrReached)
@@ -2031,18 +1993,23 @@ bool ClusterManager::handlePriv(const message::BarrierReached &barrReached)
     CERR << "BarrierReached [barrier " << barrReached.uuid() << ", module " << barrReached.senderId() << "]"
          << std::endl;
 #endif
+    if (barrReached.uuid() != m_barrierUuid) {
+        CERR << "BARRIER: BarrierReached message " << barrReached << "  with wrong uuid, expected " << m_barrierUuid
+             << std::endl;
+        return true;
+    }
 
     if (Id::isModule(barrReached.senderId())) {
         assert(isLocal(barrReached.senderId()));
         m_reachedSet.insert(barrReached.senderId());
-        if (checkBarrier(m_barrierUuid)) {
-            barrierReached(m_barrierUuid);
-#ifdef BARRIER_DEBUG
-        } else {
-            CERR << "BARRIER: reached by " << m_reachedSet.size() << "/" << numRunning() << std::endl;
-#endif
+        if (getRank() == 0) {
+            message::BarrierReached m(barrReached.uuid());
+            m.setSenderId(barrReached.senderId());
+            m.setDestId(Id::MasterHub);
+            sendMessage(Id::MasterHub, m);
         }
     } else if (barrReached.senderId() == Id::MasterHub) {
+        m_reachedSet.clear();
         m_barrierActive = false;
     } else {
         CERR << "BARRIER: BarrierReached message from invalid sender " << barrReached.senderId() << std::endl;
