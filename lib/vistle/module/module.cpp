@@ -816,11 +816,39 @@ bool Module::broadcastObject(const mpi::communicator &comm, Object::const_ptr &o
 
 bool Module::broadcastObject(Object::const_ptr &object, int root) const
 {
+    bool ret = true;
+    if (m_validateObjects != ObjectValidation::Disable && m_rank == root) {
+        object->refresh();
+        std::stringstream str;
+        bool ok = object->check(str, m_validateObjects == ObjectValidation::Quick);
+        if (!ok) {
+            std::stringstream str2;
+            str2 << "validation failed for object " << object->getName() << " before broadcast" << std::endl;
+            str2 << "   " << *object << std::endl;
+            str2 << "   " << str.str();
+            sendError(str2.str());
+            ret = false;
+        }
+    }
 #if 0
-    return broadcastObject(comm(), object, root);
+    ret &= broadcastObject(comm(), object, root);
 #else
-    return broadcastObjectViaShm(object, root);
+    ret &= broadcastObjectViaShm(object, root);
 #endif
+    if (m_validateObjects != ObjectValidation::Disable && m_rank != root) {
+        object->refresh();
+        std::stringstream str;
+        bool ok = object->check(str, m_validateObjects == ObjectValidation::Quick);
+        if (!ok) {
+            std::stringstream str2;
+            str2 << "validation failed for object " << object->getName() << " after broadcast" << std::endl;
+            str2 << "   " << *object << std::endl;
+            str2 << "   " << str.str();
+            sendError(str2.str());
+            ret = false;
+        }
+    }
+    return ret;
 }
 
 bool Module::broadcastObjectViaShm(const mpi::communicator &comm, Object::const_ptr &object, const std::string &objName,
