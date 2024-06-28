@@ -205,11 +205,8 @@ private:
     int m_numExecuting = 0;
 
     // barrier related stuff
-    bool checkBarrier(const message::uuid_t &uuid) const;
-    void barrierReached(const message::uuid_t &uuid);
     bool m_barrierActive;
     message::uuid_t m_barrierUuid;
-    int m_reachedBarriers;
     typedef std::set<int> ModuleSet;
     ModuleSet m_reachedSet;
 
