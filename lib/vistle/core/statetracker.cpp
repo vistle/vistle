@@ -537,7 +537,18 @@ bool StateTracker::handle(const message::Message &msg, const char *payload, size
     m_aggregatedPayload += msg.payloadSize();
 
 #ifndef NDEBUG
-    if (msg.type() != message::ADDOBJECT && msg.uuid() != msg.referrer()) {
+    switch (msg.type()) {
+    case message::BARRIER:
+    case message::BARRIERREACHED:
+    case message::SPAWN:
+    case message::SPAWNPREPARED:
+        break;
+    case message::ADDOBJECT:
+        if (msg.uuid() != msg.referrer()) {
+            break;
+        }
+        // fall through
+    default:
         if (m_alreadySeen.find(msg.uuid()) != m_alreadySeen.end()) {
             CERR << "duplicate message: " << msg << std::endl;
         }
