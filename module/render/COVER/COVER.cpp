@@ -606,6 +606,7 @@ std::shared_ptr<vistle::RenderObject> COVER::addObject(int senderId, const std::
             VistleGeometryGenerator::unlock();
         }
         vgr.setColorMaps(&m_colormaps);
+        vgr.setOptions(m_options);
         m_delayedObjects.emplace_back(pro, vgr);
         m_delayedObjects.back().transform = transform;
         //updateStatus();
