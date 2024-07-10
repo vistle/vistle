@@ -242,6 +242,11 @@ VistleGeometryGenerator::VistleGeometryGenerator(std::shared_ptr<vistle::RenderO
     }
 }
 
+void VistleGeometryGenerator::setOptions(const Options &options)
+{
+    m_options = options;
+}
+
 const std::string &VistleGeometryGenerator::species() const
 {
     return m_species;
