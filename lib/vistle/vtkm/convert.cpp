@@ -40,8 +40,7 @@ VtkmTransformStatus coordinatesAndNormalsToVtkm(Object::const_ptr grid, vtkm::co
 
         vtkmDataset.AddCoordinateSystem(coordinateSystem);
 
-        if (coordinates->normals())
-        {
+        if (coordinates->normals()) {
             auto normals = coordinates->normals();
             auto mapping = normals->guessMapping(coordinates);
             fieldToVtkm(normals, vtkmDataset, "normals", mapping);
@@ -116,7 +115,7 @@ VtkmTransformStatus geometryToVtkm(Object::const_ptr grid, vtkm::cont::DataSet &
     return VtkmTransformStatus::SUCCESS;
 }
 
-namespace{
+namespace {
 struct FieldToVtkm {
     const DataBase::const_ptr &m_field;
     vtkm::cont::DataSet &m_dataset;
@@ -124,9 +123,10 @@ struct FieldToVtkm {
     DataBase::Mapping m_mapping;
     VtkmTransformStatus &m_status;
 
-    FieldToVtkm(const DataBase::const_ptr &field, vtkm::cont::DataSet &dataset, const std::string &name, DataBase::Mapping mapping,
-                VtkmTransformStatus &status)
-    : m_field(field), m_dataset(dataset), m_name(name), m_mapping(mapping), m_status(status){}
+    FieldToVtkm(const DataBase::const_ptr &field, vtkm::cont::DataSet &dataset, const std::string &name,
+                DataBase::Mapping mapping, VtkmTransformStatus &status)
+    : m_field(field), m_dataset(dataset), m_name(name), m_mapping(mapping), m_status(status)
+    {}
 
     template<typename ScalarType>
     void operator()(ScalarType)
@@ -168,19 +168,89 @@ VtkmTransformStatus fieldToVtkm(const DataBase::const_ptr &field, vtkm::cont::Da
     return status;
 }
 
-// TODO: compare this with spheresOverlap version!
+// ------------ VTKM TO VISTLE -------------
+void ghostToVistle(vtkm::cont::DataSet &dataset, Object::ptr result)
+{
+    if (dataset.HasGhostCellField()) {
+        auto ghostname = dataset.GetGhostCellFieldName();
+        std::cerr << "vtkm: has ghost cells: " << ghostname << std::endl;
+        if (auto ghosts = vtkmFieldToVistle(dataset, ghostname)) {
+            std::cerr << "vtkm: got ghost cells: #" << ghosts->getSize() << std::endl;
+            if (auto bvec = vistle::Vec<vistle::Byte>::as(ghosts)) {
+                if (auto indexed = Indexed::as(result)) {
+                    indexed->d()->ghost = bvec->d()->x[0];
+                } else if (auto tri = Triangles::as(result)) {
+                    tri->d()->ghost = bvec->d()->x[0];
+                } else if (auto quad = Quads::as(result)) {
+                    quad->d()->ghost = bvec->d()->x[0];
+                } else {
+                    std::cerr << "cannot apply ghosts" << std::endl;
+                }
+            } else {
+                std::cerr << "cannot convert ghosts" << std::endl;
+            }
+        }
+    }
+}
+
+void coordinatesAndNormalsToVistle(vtkm::cont::DataSet &dataset, Object::ptr result)
+{
+    if (auto coords = Coords::as(result)) {
+        if (dataset.GetNumberOfCoordinateSystems() > 0) {
+            auto unknown = dataset.GetCoordinateSystem().GetData();
+            if (unknown.CanConvert<vtkm::cont::ArrayHandle<vtkm::Vec<Scalar, 3>>>()) {
+                auto vtkmCoord = unknown.AsArrayHandle<vtkm::cont::ArrayHandle<vtkm::Vec<Scalar, 3>>>();
+                for (int d = 0; d < 3; ++d) {
+                    auto x = make_ArrayHandleExtractComponent(vtkmCoord, d);
+                    coords->d()->x[d]->setHandle(x);
+                }
+            } else if (unknown.CanConvert<vtkm::cont::ArrayHandleSOA<vtkm::Vec3f>>()) {
+                auto vtkmCoord = unknown.AsArrayHandle<vtkm::cont::ArrayHandleSOA<vtkm::Vec3f>>();
+                for (int d = 0; d < 3; ++d) {
+                    auto x = vtkmCoord.GetArray(d);
+                    coords->d()->x[d]->setHandle(x);
+                }
+
+            } else {
+                std::cerr << "cannot convert point coordinates" << std::endl;
+            }
+        }
+
+        if (auto normals = vtkmFieldToVistle(dataset, "normals")) {
+            if (auto nvec = vistle::Vec<vistle::Scalar, 3>::as(normals)) {
+                auto n = std::make_shared<vistle::Normals>(0);
+                n->d()->x[0] = nvec->d()->x[0];
+                n->d()->x[1] = nvec->d()->x[1];
+                n->d()->x[2] = nvec->d()->x[2];
+                // don't use setNormals() in order to bypass check() on object before updateMeta()
+                coords->d()->normals = n;
+            } else {
+                std::cerr << "cannot convert normals" << std::endl;
+            }
+        }
+
+        if (auto radius = vtkmFieldToVistle(dataset, "_radius")) {
+            if (auto rvec = vistle::Vec<vistle::Scalar>::as(radius)) {
+                auto r = std::make_shared<vistle::Vec<Scalar>>(0);
+                r->d()->x[0] = rvec->d()->x[0];
+                // don't use setRadius() in order to bypass check() on object before updateMeta()
+                if (auto lines = Lines::as(result)) {
+                    lines->d()->radius = r;
+                }
+                if (auto points = Points::as(result)) {
+                    points->d()->radius = r;
+                }
+            } else {
+                std::cerr << "cannot apply radius to anything but Points and Lines" << std::endl;
+            }
+        }
+    }
+}
+
 Object::ptr vtkmGeometryToVistle(vtkm::cont::DataSet &dataset)
 {
     Object::ptr result;
 
-    // get vertices that make up the dataset grid
-    auto uPointCoordinates = dataset.GetCoordinateSystem().GetData();
-
-    // we expect point coordinates to be stored as vtkm::Vec3 array handle
-    assert((uPointCoordinates.CanConvert<vtkm::cont::ArrayHandle<vtkm::Vec<vtkm::FloatDefault, 3>>>() == true));
-
-    auto pointCoordinates =
-        uPointCoordinates.AsArrayHandle<vtkm::cont::ArrayHandle<vtkm::Vec<vtkm::FloatDefault, 3>>>();
     auto numPoints = dataset.GetNumberOfPoints();
 
     auto cellset = dataset.GetCellSet();
@@ -264,68 +334,9 @@ Object::ptr vtkmGeometryToVistle(vtkm::cont::DataSet &dataset)
         }
     }
 
-    if (auto coords = Coords::as(result)) {
-        vtkm::cont::UnknownArrayHandle unknown(pointCoordinates);
-        if (unknown.CanConvert<vtkm::cont::ArrayHandle<vtkm::Vec<Scalar, 3>>>()) {
-            auto vtkmCoord = unknown.AsArrayHandle<vtkm::cont::ArrayHandle<vtkm::Vec<Scalar, 3>>>();
-            for (int d = 0; d < 3; ++d) {
-                auto x = make_ArrayHandleExtractComponent(vtkmCoord, d);
-                coords->d()->x[d]->setHandle(x);
-            }
-        } else {
-            std::cerr << "cannot convert point coordinates" << std::endl;
-        }
+    coordinatesAndNormalsToVistle(dataset, result);
 
-        if (auto normals = vtkmFieldToVistle(dataset, "normals")) {
-            if (auto nvec = vistle::Vec<vistle::Scalar, 3>::as(normals)) {
-                auto n = std::make_shared<vistle::Normals>(0);
-                n->d()->x[0] = nvec->d()->x[0];
-                n->d()->x[1] = nvec->d()->x[1];
-                n->d()->x[2] = nvec->d()->x[2];
-                // don't use setNormals() in order to bypass check() on object before updateMeta()
-                coords->d()->normals = n;
-            } else {
-                std::cerr << "cannot convert normals" << std::endl;
-            }
-        }
-
-        if (auto radius = vtkmFieldToVistle(dataset, "_radius")) {
-            if (auto rvec = vistle::Vec<vistle::Scalar>::as(radius)) {
-                auto r = std::make_shared<vistle::Vec<Scalar>>(0);
-                r->d()->x[0] = rvec->d()->x[0];
-                // don't use setRadius() in order to bypass check() on object before updateMeta()
-                if (auto lines = Lines::as(result)) {
-                    lines->d()->radius = r;
-                }
-                if (auto points = Points::as(result)) {
-                    points->d()->radius = r;
-                }
-            } else {
-                std::cerr << "cannot apply radius to anything but Points and Lines" << std::endl;
-            }
-        }
-    }
-
-    if (dataset.HasGhostCellField()) {
-        auto ghostname = dataset.GetGhostCellFieldName();
-        std::cerr << "vtkm: has ghost cells: " << ghostname << std::endl;
-        if (auto ghosts = vtkmFieldToVistle(dataset, ghostname)) {
-            std::cerr << "vtkm: got ghost cells: #" << ghosts->getSize() << std::endl;
-            if (auto bvec = vistle::Vec<vistle::Byte>::as(ghosts)) {
-                if (auto indexed = Indexed::as(result)) {
-                    indexed->d()->ghost = bvec->d()->x[0];
-                } else if (auto tri = Triangles::as(result)) {
-                    tri->d()->ghost = bvec->d()->x[0];
-                } else if (auto quad = Quads::as(result)) {
-                    quad->d()->ghost = bvec->d()->x[0];
-                } else {
-                    std::cerr << "cannot apply ghosts" << std::endl;
-                }
-            } else {
-                std::cerr << "cannot convert ghosts" << std::endl;
-            }
-        }
-    }
+    ghostToVistle(dataset, result);
 
     return result;
 }
