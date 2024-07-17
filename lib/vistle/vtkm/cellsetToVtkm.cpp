@@ -46,9 +46,9 @@ VtkmTransformStatus cellsetToVtkm(vistle::Object::const_ptr grid, vtkm::cont::Da
 
 VtkmTransformStatus StructuredCellsetConverter::toVtkm(vtkm::cont::DataSet &vtkmDataset)
 {
-    vtkm::Id xDim = m_grid->getNumDivisions(xId);
-    vtkm::Id yDim = m_grid->getNumDivisions(yId);
-    vtkm::Id zDim = m_grid->getNumDivisions(zId);
+    vtkm::Id xDim = m_grid->getNumDivisions(0);
+    vtkm::Id yDim = m_grid->getNumDivisions(1);
+    vtkm::Id zDim = m_grid->getNumDivisions(2);
 
     if (zDim > 0) {
         vtkm::cont::CellSetStructured<3> str3;
@@ -91,8 +91,8 @@ VtkmTransformStatus NgonsCellsetConverter<NgonsPtr>::toVtkm(vtkm::cont::DataSet 
 
     } else {
         vtkm::cont::CellSetSingleType<vtkm::cont::StorageTagCounting> cellSet;
-        auto connectivity = vtkm::cont::make_ArrayHandleCounting(
-            static_cast<vtkm::Id>(0), static_cast<vtkm::Id>(1), numPoints);
+        auto connectivity =
+            vtkm::cont::make_ArrayHandleCounting(static_cast<vtkm::Id>(0), static_cast<vtkm::Id>(1), numPoints);
         cellSet.Fill(numPoints, m_cellType, m_pointsPerCell, connectivity);
         vtkmDataset.SetCellSet(cellSet);
     }

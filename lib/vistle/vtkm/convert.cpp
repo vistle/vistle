@@ -34,9 +34,8 @@ VtkmTransformStatus coordinatesAndNormalsToVtkm(Object::const_ptr grid, vtkm::co
 {
     if (auto coordinates = Coords::as(grid)) {
         auto coordinateSystem = vtkm::cont::CoordinateSystem(
-            "coordinate system",
-            vtkm::cont::make_ArrayHandleSOA(coordinates->x(xId).handle(), coordinates->x(yId).handle(),
-                                            coordinates->x(zId).handle()));
+            "coordinate system", vtkm::cont::make_ArrayHandleSOA(coordinates->x().handle(), coordinates->y().handle(),
+                                                                 coordinates->z().handle()));
 
         vtkmDataset.AddCoordinateSystem(coordinateSystem);
 
@@ -57,17 +56,17 @@ VtkmTransformStatus coordinatesAndNormalsToVtkm(Object::const_ptr grid, vtkm::co
         }
 
     } else if (auto uni = UniformGrid::as(grid)) {
-        auto axesDivisions = vtkm::Id3(uni->getNumDivisions(xId), uni->getNumDivisions(yId), uni->getNumDivisions(zId));
-        auto gridOrigin = vtkm::Vec3f{uni->min()[xId], uni->min()[yId], uni->min()[zId]};
-        auto cellSizes = vtkm::Vec3f{uni->dist()[xId], uni->dist()[yId], uni->dist()[zId]};
+        auto axesDivisions = vtkm::Id3(uni->getNumDivisions(0), uni->getNumDivisions(1), uni->getNumDivisions(2));
+        auto gridOrigin = vtkm::Vec3f{uni->min()[0], uni->min()[1], uni->min()[2]};
+        auto cellSizes = vtkm::Vec3f{uni->dist()[0], uni->dist()[1], uni->dist()[2]};
 
         vtkm::cont::ArrayHandleUniformPointCoordinates implicitCoordinates(axesDivisions, gridOrigin, cellSizes);
 
         vtkmDataset.AddCoordinateSystem(vtkm::cont::CoordinateSystem("uniform", implicitCoordinates));
 
     } else if (auto rect = RectilinearGrid::as(grid)) {
-        vtkm::cont::ArrayHandleCartesianProduct implicitCoordinates(
-            rect->coords(xId).handle(), rect->coords(yId).handle(), rect->coords(zId).handle());
+        vtkm::cont::ArrayHandleCartesianProduct implicitCoordinates(rect->coords(0).handle(), rect->coords(1).handle(),
+                                                                    rect->coords(2).handle());
         vtkmDataset.AddCoordinateSystem(vtkm::cont::CoordinateSystem("rectilinear", implicitCoordinates));
 
     } else {
@@ -139,7 +138,7 @@ struct FieldToVtkm {
             ah = in->x().handle();
 
         } else if (auto in = V3::as(m_field)) {
-            ah = vtkm::cont::make_ArrayHandleSOA(in->x(xId).handle(), in->x(yId).handle(), in->x(zId).handle());
+            ah = vtkm::cont::make_ArrayHandleSOA(in->x().handle(), in->y().handle(), in->z().handle());
 
         } else {
             return;
