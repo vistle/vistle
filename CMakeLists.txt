@@ -346,9 +346,9 @@ include(ConfigureLinker)
 
 if(NOT VISTLE_GUI_ONLY)
     vistle_find_package(OpenMP)
-
     if(OPENMP_FOUND)
         find_library(LIBOMP omp)
+        include_directories(${OpenMP_C_INCLUDE_DIR})
     endif()
 
     if(CMAKE_VERSION VERSION_LESS 3.12)
