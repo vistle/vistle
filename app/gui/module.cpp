@@ -712,6 +712,21 @@ QList<Port *> Module::outputPorts() const
     return m_outPorts;
 }
 
+QList<Port *> Module::ports(PortKind kind) const
+{
+    switch (kind) {
+    case Input:
+        return m_inPorts;
+    case Output:
+        return m_outPorts;
+    case Parameter:
+        return QList<Port *>();
+    }
+
+    return QList<Port *>();
+}
+
+
 QString Module::name() const
 {
     return m_name;
