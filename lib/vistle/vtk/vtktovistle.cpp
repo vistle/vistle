@@ -282,19 +282,12 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, std::string &diagnostic
             auto lagrangeCell = dynamic_cast<vtkLagrangeHexahedron *>(vugrid->GetCell(i));
             lagrangeConnectivityToLinearHexahedron(lagrangeCell->GetOrder(), pts, connlist);
             assert(connlist.size() == 8 * (elemVistle + 1));
-        } else if (vugrid->GetCellType(i) == VTK_PIXEL) {
+        } else if (vugrid->GetCellType(i) == VTK_PIXEL || vugrid->GetCellType(i) == VTK_VOXEL) {
             // account for different order
-            Index vtkPixelOrder[] = {0, 1, 3, 2};
+            constexpr Index vtkOrder[] = {0, 1, 3, 2, 4, 5, 7, 6};
             for (vtkIdType j = 0; j < npts; ++j) {
                 assert(pts[j] >= 0);
-                connlist.emplace_back(pts[vtkPixelOrder[j]]);
-            }
-        } else if (vugrid->GetCellType(i) == VTK_VOXEL) {
-            // account for different order
-            Index vtkVoxelOrder[] = {0, 1, 3, 2, 4, 5, 7, 6};
-            for (vtkIdType j = 0; j < npts; ++j) {
-                assert(pts[j] >= 0);
-                connlist.emplace_back(pts[vtkVoxelOrder[j]]);
+                connlist.emplace_back(pts[vtkOrder[j]]);
             }
         } else {
             for (vtkIdType j = 0; j < npts; ++j) {
