@@ -281,12 +281,6 @@ Object::ptr vtkmGetGeometry(vtkm::cont::DataSet &dataset)
 
     // get vertices that make up the dataset grid
     auto uPointCoordinates = dataset.GetCoordinateSystem().GetData();
-
-    // we expect point coordinates to be stored as vtkm::Vec3 array handle
-    assert((uPointCoordinates.CanConvert<vtkm::cont::ArrayHandle<vtkm::Vec<vtkm::FloatDefault, 3>>>() == true));
-
-    auto pointCoordinates =
-        uPointCoordinates.AsArrayHandle<vtkm::cont::ArrayHandle<vtkm::Vec<vtkm::FloatDefault, 3>>>();
     auto numPoints = dataset.GetNumberOfPoints();
 
     auto cellset = dataset.GetCellSet();
@@ -371,11 +365,17 @@ Object::ptr vtkmGetGeometry(vtkm::cont::DataSet &dataset)
     }
 
     if (auto coords = Coords::as(result)) {
-        vtkm::cont::UnknownArrayHandle unknown(pointCoordinates);
+        vtkm::cont::UnknownArrayHandle unknown(uPointCoordinates);
         if (unknown.CanConvert<vtkm::cont::ArrayHandle<vtkm::Vec<Scalar, 3>>>()) {
             auto vtkmCoord = unknown.AsArrayHandle<vtkm::cont::ArrayHandle<vtkm::Vec<Scalar, 3>>>();
             for (int d = 0; d < 3; ++d) {
                 auto x = make_ArrayHandleExtractComponent(vtkmCoord, d);
+                coords->d()->x[d]->setHandle(x);
+            }
+        } else if (unknown.CanConvert<vtkm::cont::ArrayHandleSOA<vtkm::Vec3f>>()) {
+            auto vtkmCoord = unknown.AsArrayHandle<vtkm::cont::ArrayHandleSOA<vtkm::Vec3f>>();
+            for (int d = 0; d < 3; ++d) {
+                auto x = vtkmCoord.GetArray(d);
                 coords->d()->x[d]->setHandle(x);
             }
         } else {
