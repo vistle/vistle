@@ -211,7 +211,7 @@ void coordinatesAndNormalsToVistle(vtkm::cont::DataSet &dataset, Object::ptr res
                 }
 
             } else {
-                std::cerr << "cannot convert point coordinates" << std::endl;
+                std::cerr << "VTKm coordinate system uses unsupported array handle storage." << std::endl;
             }
         }
 

@@ -55,41 +55,45 @@ std::tuple<int, int> getMinMaxDims(vtkm::cont::ArrayHandle<vtkm::UInt8> &shapes)
             vtkm::cont::Algorithm::Reduce(dims, -1, vtkm::Maximum())};
 }
 
-struct LinesCoordinatesToVistle: vtkm::worklet::WorkletMapField {
-    using ControlSignature = void(FieldIn connectivity, WholeArrayIn coordIn, FieldOut coordOut);
+// TODO: check if it makes sense to change this to ScatterPermutation
+struct ReorderArray: vtkm::worklet::WorkletMapField {
+    using ControlSignature = void(FieldIn order, WholeArrayIn arrayToReorder, FieldOut reordered);
     using ExecutionSignature = void(_1, _2, _3);
 
-    template<typename ConnType, typename CoordPortal, typename OutputType>
-    VTKM_EXEC void operator()(const ConnType &index, CoordPortal inputCoords, OutputType &outputCoord) const
+    template<typename PortalType, typename OutputType>
+    VTKM_EXEC void operator()(const vtkm::Id &newIndex, PortalType toReorder, OutputType &output) const
     {
-        outputCoord = inputCoords.Get(index);
+        output = toReorder.Get(newIndex);
     }
 };
 
-void linesCoordinatesToVistle(const vtkm::cont::UnknownArrayHandle &unknown,
+/*
+    Vistle and vtk-m store the point cordinates which make up a cellset consisting solely of lines
+    differently: Vtk-m creates a list containing each point once, while Vistle stores all pairs which
+    make up each line in a list (this leads to duplicates in the coordinates).
+
+    TODO: Find out if we can avoid this permutation?
+*/
+void linesCoordinatesToVistle(const vtkm::cont::UnknownArrayHandle &coordinates,
                               vtkm::cont::ArrayHandle<vtkm::Id> connectivity, vistle::Lines::ptr lines)
 {
     vtkm::cont::Invoker invoke;
 
-    //auto unknown = dataset.GetCoordinateSystem().GetData();
-    if (unknown.CanConvert<vtkm::cont::ArrayHandle<vtkm::Vec<vistle::Scalar, 3>>>()) {
-        auto vtkmCoord = unknown.AsArrayHandle<vtkm::cont::ArrayHandle<vtkm::Vec<vistle::Scalar, 3>>>();
+    if (coordinates.CanConvert<vtkm::cont::ArrayHandle<vtkm::Vec<vistle::Scalar, 3>>>()) {
+        auto typedCoordinates = coordinates.AsArrayHandle<vtkm::cont::ArrayHandle<vtkm::Vec<vistle::Scalar, 3>>>();
         for (int d = 0; d < 3; ++d) {
-            vtkm::cont::ArrayHandle<vtkm::FloatDefault> lineCoord;
-            auto coordComponent = make_ArrayHandleExtractComponent(vtkmCoord, d);
-            invoke(LinesCoordinatesToVistle{}, connectivity, coordComponent, lineCoord);
-            lines->d()->x[d]->setHandle(lineCoord);
+            vtkm::cont::ArrayHandle<vtkm::FloatDefault> vistleCoordinates;
+            invoke(ReorderArray{}, connectivity, make_ArrayHandleExtractComponent(typedCoordinates, d),
+                   vistleCoordinates);
+            lines->d()->x[d]->setHandle(vistleCoordinates);
         }
 
-    } else if (unknown.CanConvert<vtkm::cont::ArrayHandleSOA<vtkm::Vec3f>>()) {
-        auto vtkmCoord = unknown.AsArrayHandle<vtkm::cont::ArrayHandleSOA<vtkm::Vec3f>>();
+    } else if (coordinates.CanConvert<vtkm::cont::ArrayHandleSOA<vtkm::Vec3f>>()) {
+        auto typedCoordinates = coordinates.AsArrayHandle<vtkm::cont::ArrayHandleSOA<vtkm::Vec3f>>();
         for (int d = 0; d < 3; ++d) {
-            vtkm::cont::ArrayHandle<vtkm::FloatDefault> lineCoord;
-            auto coordComponent = vtkmCoord.GetArray(d);
-
-            invoke(LinesCoordinatesToVistle{}, connectivity, coordComponent, lineCoord);
-            auto myPortal = lineCoord.ReadPortal();
-            lines->d()->x[d]->setHandle(lineCoord);
+            vtkm::cont::ArrayHandle<vtkm::FloatDefault> vistleCoordinates;
+            invoke(ReorderArray{}, connectivity, typedCoordinates.GetArray(d), vistleCoordinates);
+            lines->d()->x[d]->setHandle(vistleCoordinates);
         }
 
     } else {
