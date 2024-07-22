@@ -195,7 +195,7 @@ void ghostToVistle(vtkm::cont::DataSet &dataset, Object::ptr result)
 void coordinatesAndNormalsToVistle(vtkm::cont::DataSet &dataset, Object::ptr result)
 {
     if (auto coords = Coords::as(result)) {
-        if (dataset.GetNumberOfCoordinateSystems() > 0) {
+        if (!Lines::as(result) && dataset.GetNumberOfCoordinateSystems() > 0) {
             auto unknown = dataset.GetCoordinateSystem().GetData();
             if (unknown.CanConvert<vtkm::cont::ArrayHandle<vtkm::Vec<Scalar, 3>>>()) {
                 auto vtkmCoord = unknown.AsArrayHandle<vtkm::cont::ArrayHandle<vtkm::Vec<Scalar, 3>>>();
@@ -259,10 +259,46 @@ Object::ptr cellSetSingleTypeToVistle(const vtkm::cont::DataSet &dataset, vtkm::
         return points;
     } else if (cellset.GetCellShape(0) == vtkm::CELL_SHAPE_LINE) {
         auto numElem = numConn > 0 ? numConn / 2 : numPoints / 2;
-        Lines::ptr lines(new Lines(numElem, 0, 0));
+        /*Lines::ptr lines(new Lines(numElem, 0, 0));
         lines->d()->cl->setHandle(connectivity);
         for (vtkm::Id index = 0; index < numElem; index++) {
             lines->el()[index] = 2 * index;
+        }*/
+
+        Lines::ptr lines(new Lines(numElem, numConn, numConn));
+
+        // TODO: move this to coordinatesAndNormalsToVistle (currently not possible)
+        // -------------------------------------------------------------------------------------------------------
+        auto connPortal = connectivity.ReadPortal();
+        if (dataset.GetNumberOfCoordinateSystems() > 0) {
+            auto vtkmCoords = dataset.GetCoordinateSystem().GetData();
+
+            if (vtkmCoords.CanConvert<vtkm::cont::ArrayHandle<vtkm::Vec3f>>()) {
+                auto coordsPortal = vtkmCoords.AsArrayHandle<vtkm::cont::ArrayHandle<vtkm::Vec3f>>().ReadPortal();
+                for (vtkm::Id index = 0; index < numConn; index++) {
+                    auto point = coordsPortal.Get(connPortal.Get(index));
+                    (lines->x().data())[index] = point[0];
+                    (lines->y().data())[index] = point[1];
+                    (lines->z().data())[index] = point[2];
+                }
+            } else if (vtkmCoords.CanConvert<vtkm::cont::ArrayHandleSOA<vtkm::Vec3f>>()) {
+                auto coordsPortal = vtkmCoords.AsArrayHandle<vtkm::cont::ArrayHandleSOA<vtkm::Vec3f>>().ReadPortal();
+                for (vtkm::Id index = 0; index < numConn; index++) {
+                    auto point = coordsPortal.Get(connPortal.Get(index));
+                    (lines->x().data())[index] = point[0];
+                    (lines->y().data())[index] = point[1];
+                    (lines->z().data())[index] = point[2];
+                }
+            } else {
+                throw std::invalid_argument("VTKm coordinate system uses unsupported array handle storage.");
+            }
+        }
+        // -------------------------------------------------------------------------------------------------------
+
+        for (vtkm::Id index = 0; index < numElem; index++) {
+            lines->el()[index] = 2 * index;
+            lines->cl()[2 * index] = 2 * index;
+            lines->cl()[2 * index + 1] = 2 * index + 1;
         }
         lines->el()[numElem] = numConn;
         return lines;
