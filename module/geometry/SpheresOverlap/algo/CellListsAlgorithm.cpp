@@ -13,7 +13,7 @@ UniformGrid::ptr CreateSearchGrid(Points::const_ptr spheres, Scalar searchRadius
     // we expect getBounds() to return a pair of Vector3s
     assert(dim == 3);
 
-    Index gridSize[dim];
+    std::vector<Index> gridSize(dim);
 
     // divide bounding box into cubes with side length = searchRadius
     for (Index i = 0; i < dim; i++) {
