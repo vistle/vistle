@@ -55,7 +55,6 @@ std::tuple<int, int> getMinMaxDims(vtkm::cont::ArrayHandle<vtkm::UInt8> &shapes)
             vtkm::cont::Algorithm::Reduce(dims, -1, vtkm::Maximum())};
 }
 
-// TODO: check if it makes sense to change this to ScatterPermutation
 struct ReorderArray: vtkm::worklet::WorkletMapField {
     using ControlSignature = void(FieldIn order, WholeArrayIn arrayToReorder, FieldOut reordered);
     using ExecutionSignature = void(_1, _2, _3);
@@ -72,7 +71,7 @@ struct ReorderArray: vtkm::worklet::WorkletMapField {
     differently: Vtk-m creates a list containing each point once, while Vistle stores all pairs which
     make up each line in a list (this leads to duplicates in the coordinates).
 
-    TODO: Find out if we can avoid this permutation?
+    TODO: Find out if we can avoid this?
 */
 void linesCoordinatesToVistle(const vtkm::cont::UnknownArrayHandle &coordinates,
                               vtkm::cont::ArrayHandle<vtkm::Id> connectivity, vistle::Lines::ptr lines)
