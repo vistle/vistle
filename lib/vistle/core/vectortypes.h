@@ -8,7 +8,11 @@
 #ifndef NDEBUG
 #define EIGEN_INITIALIZE_MATRICES_BY_NAN
 #endif
-#include <eigen3/Eigen/Core>
+#include <eigen3/Eigen/src/Core/util/Macros.h>
+#include <eigen3/Eigen/src/Core/util/ConfigureVectorization.h>
+#include <eigen3/Eigen/src/Core/util/Constants.h>
+#include <eigen3/Eigen/src/Core/util/Meta.h>
+#include <eigen3/Eigen/src/Core/util/ForwardDeclarations.h>
 
 namespace vistle {
 

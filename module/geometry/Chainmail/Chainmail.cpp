@@ -15,7 +15,9 @@
 
 #include "Chainmail.h"
 #include <vistle/core/scalar.h>
-#include <eigen3/unsupported/Eigen/Splines>
+#include <eigen3/unsupported/Eigen/src/Splines/Spline.h>
+#include <eigen3/unsupported/Eigen/src/Splines/SplineFitting.h>
+
 
 MODULE_MAIN(Chainmail)
 
