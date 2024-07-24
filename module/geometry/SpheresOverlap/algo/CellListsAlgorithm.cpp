@@ -14,7 +14,7 @@ UniformGrid::ptr CreateSearchGrid(Points::const_ptr spheres, Scalar searchRadius
     assert(dim == 3);
 
     // FIXME: Check if this is supported by all compilers once eigen v3.5 is released
-    //        (currently it's not supported by MSVC-) 
+    //        (currently it's not supported by MSVC)
     //Index gridSize[dim];
     Index gridSize[3];
 
