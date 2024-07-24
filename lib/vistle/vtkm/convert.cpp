@@ -32,10 +32,6 @@ namespace vistle {
 VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object::const_ptr grid)
 {
     if (auto coords = Coords::as(grid)) {
-        auto xCoords = coords->x();
-        auto yCoords = coords->y();
-        auto zCoords = coords->z();
-
         auto coordinateSystem = vtkm::cont::CoordinateSystem(
             "coordinate system",
             vtkm::cont::make_ArrayHandleSOA(coords->x().handle(), coords->y().handle(), coords->z().handle()));
@@ -78,7 +74,6 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
         return VtkmTransformStatus::UNSUPPORTED_GRID_TYPE;
     }
 
-    auto indexedGrid = Indexed::as(grid);
 
     if (auto str = grid->getInterface<StructuredGridBase>()) {
         vtkm::Id nx = str->getNumDivisions(0);
@@ -97,11 +92,11 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
             str1.SetPointDimensions(nx);
             vtkmDataset.SetCellSet(str1);
         }
-    } else if (auto unstructuredGrid = UnstructuredGrid::as(indexedGrid)) {
-        auto numPoints = indexedGrid->getNumCoords();
+    } else if (auto unstructuredGrid = UnstructuredGrid::as(grid)) {
+        auto numPoints = unstructuredGrid->getNumCoords();
 
-        auto conn = indexedGrid->cl().handle();
-        auto offs = indexedGrid->el().handle();
+        auto conn = unstructuredGrid->cl().handle();
+        auto offs = unstructuredGrid->el().handle();
         auto shapes = unstructuredGrid->tl().handle();
 
         vtkm::cont::CellSetExplicit<> cellSetExplicit;
@@ -196,7 +191,7 @@ VtkmTransformStatus vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object
     }
 
     vtkmDataset.SetGhostCellFieldName("ghost");
-    if (indexedGrid) {
+    if (auto indexedGrid = Indexed::as(grid)) {
         if (indexedGrid->ghost().size() > 0) {
             std::cerr << "indexed: have ghost cells" << std::endl;
             auto ghost = indexedGrid->ghost().handle();
