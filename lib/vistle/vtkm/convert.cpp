@@ -519,13 +519,22 @@ vistle::DataBase::ptr vtkmGetField(const vtkm::cont::DataSet &vtkmDataSet, const
         return result;
 
     auto field = vtkmDataSet.GetField(name);
-    if (!field.IsCellField() && !field.IsPointField())
+    if (!field.IsCellField() && !field.IsPointField()) {
+        std::cerr << "VTK-m field " << name << " is neither point nor cell field" << std::endl;
         return result;
+    }
     auto ah = field.GetData();
     try {
         ah.CastAndCallForTypes<vtkm::TypeListAll, vtkm::cont::StorageListCommon>(GetArrayContents{result});
     } catch (vtkm::cont::ErrorBadType &err) {
         std::cerr << "cast error: " << err.what() << std::endl;
+    }
+    if (result) {
+        if (field.IsCellField()) {
+            result->setMapping(vistle::DataBase::Element);
+        } else {
+            result->setMapping(vistle::DataBase::Vertex);
+        }
     }
     return result;
 }
