@@ -265,16 +265,6 @@ void VistleConsole::init()
 {
 #ifdef HAVE_PYTHON
 
-#if 0
-#if PY_VERSION_HEX >= 0x03000000
-    PyImport_AppendInittab("_redirector", PyInit__redirector);
-    PyImport_AppendInittab("_console", PyInit__console);
-#else
-    PyImport_AppendInittab("_redirector", init_redirector);
-    PyImport_AppendInittab("_console", init_console);
-#endif
-#endif
-
     /* NOTE: In previous implementation, local name and global name
              were allocated separately.  And it causes a problem that
              a function declared in this console cannot be called.  By
@@ -299,32 +289,17 @@ void VistleConsole::init()
                            "import _console\n"
                            "import rlcompleter\n"
 
-                           "if sys.version_info >= (3,0):\n"
-                           "    import builtins\n"
-                           "    builtins.clear=_console.clear\n"
-                           "    builtins.reset=_console.reset\n"
-                           "    builtins.save=_console.save\n"
-                           "    builtins.load=_console.load\n"
-                           "    builtins.history=_console.history\n"
-                           //"    builtins.quit=_console.quit\n"
-                           //"    builtins.exit=_console.quit\n"
-                           "    builtins.input=_console.raw_input\n"
+                           "import builtins\n"
+                           "builtins.clear=_console.clear\n"
+                           "builtins.reset=_console.reset\n"
+                           "builtins.save=_console.save\n"
+                           "builtins.load=_console.load\n"
+                           "builtins.history=_console.history\n"
+                           //"builtins.quit=_console.quit\n"
+                           //"builtins.exit=_console.quit\n"
+                           "builtins.input=_console.raw_input\n"
 
-                           "    builtins.completer=rlcompleter.Completer()\n"
-                           "else:\n"
-                           "    import __builtin__\n"
-                           "    __builtin__.clear=_console.clear\n"
-                           "    __builtin__.reset=_console.reset\n"
-                           "    __builtin__.save=_console.save\n"
-                           "    __builtin__.load=_console.load\n"
-                           "    __builtin__.history=_console.history\n"
-                           //"    __builtin__.quit=_console.quit\n"
-                           //"    __builtin__.exit=_console.quit\n"
-                           "    __builtin__.raw_input=_console.raw_input\n"
-
-                           "    __builtin__.completer=rlcompleter.Completer()\n"
-
-        );
+                           "builtins.completer=rlcompleter.Completer()\n");
     } catch (...) {
         std::cerr << "error running Python initialisation" << std::endl;
     }
