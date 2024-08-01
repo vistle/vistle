@@ -73,14 +73,21 @@ VTKM_CONT void PointLocatorCellLists::Build()
     vtkm::cont::ArrayHandleCounting<vtkm::Id> cell_ids_counting(0, 1, this->Dims[0] * this->Dims[1] * this->Dims[2]);
     vtkm::cont::Algorithm::UpperBounds(cellIds, cell_ids_counting, this->CellUpperBounds);
     vtkm::cont::Algorithm::LowerBounds(cellIds, cell_ids_counting, this->CellLowerBounds);
+
+    this->OffsetsToNeighbors = vtkm::cont::make_ArrayHandle<vtkm::Int8>({
+        -1, -1, -1, -1, -1, 0, -1, -1, 1, -1, 0, -1, -1, 0, 0, -1, 0, 1, -1, 1, -1, -1, 1, 0, -1, 1, 1,
+        0,  -1, -1, 0,  -1, 0, 0,  -1, 1, 0,  0, -1, 0,  0, 0, 0,  0, 1, 0,  1, -1, 0,  1, 0, 0,  1, 1,
+        1,  -1, -1, 1,  -1, 0, 1,  -1, 1, 1,  0, -1, 1,  0, 0, 1,  0, 1, 1,  1, -1, 1,  1, 0, 1,  1, 1,
+
+    });
 }
 
 OverlapDetector PointLocatorCellLists::PrepareForExecution(vtkm::cont::DeviceAdapterId device,
                                                            vtkm::cont::Token &token) const
 {
-    return OverlapDetector(this->Min, this->Max, this->Dims,
-                           this->GetCoordinates().GetDataAsMultiplexer().PrepareForInput(device, token),
-                           this->Radii.PrepareForInput(device, token), this->PointIds.PrepareForInput(device, token),
-                           this->CellLowerBounds.PrepareForInput(device, token),
-                           this->CellUpperBounds.PrepareForInput(device, token), this->Determiner);
+    return OverlapDetector(
+        this->Min, this->Max, this->Dims, this->GetCoordinates().GetDataAsMultiplexer().PrepareForInput(device, token),
+        this->Radii.PrepareForInput(device, token), this->PointIds.PrepareForInput(device, token),
+        this->CellLowerBounds.PrepareForInput(device, token), this->CellUpperBounds.PrepareForInput(device, token),
+        this->Determiner, this->OffsetsToNeighbors.PrepareForInput(device, token));
 }

@@ -34,30 +34,28 @@ VTKM_EXEC void OverlapDetector::CountOverlaps(const vtkm::Id pointId, const vtkm
     auto cellId = FlattenCellId(cellId3);
 
     nrOverlaps = 0;
+
     // loop through the cell the current point lies in as well as its neighbor cells
-    for (int i = cellId3[0] - 1; i <= cellId3[0] + 1; i++) {
-        for (int j = cellId3[1] - 1; j <= cellId3[1] + 1; j++) {
-            for (int k = cellId3[2] - 1; k <= cellId3[2] + 1; k++) {
-                auto cellToCheck = FlattenCellId({i, j, k});
+    for (int i = 0; i < this->OffsetsToNeighbors.GetNumberOfValues(); i += 3) {
+        auto cellToCheck = FlattenCellId({cellId3[0] + this->OffsetsToNeighbors.Get(i),
+                                          cellId3[1] + this->OffsetsToNeighbors.Get(i + 1),
+                                          cellId3[2] + this->OffsetsToNeighbors.Get(i + 2)});
 
-                if (cellToCheck != -1 && cellId <= cellToCheck) { // avoid checking the same pair of cells twice
-                    // get the ids of all points in the cell
-                    for (auto boundId = this->LowerBounds.Get(cellToCheck);
-                         boundId < this->UpperBounds.Get(cellToCheck); boundId++) {
-                        auto idToCheck = this->PointIds.Get(boundId);
+        if (cellToCheck != -1 && cellId <= cellToCheck) { // avoid checking the same pair of cells twice
+            // get the ids of all points in the cell
+            for (auto boundId = this->LowerBounds.Get(cellToCheck); boundId < this->UpperBounds.Get(cellToCheck);
+                 boundId++) {
+                auto idToCheck = this->PointIds.Get(boundId);
 
-                        // if two overlapping spheres lie in the same cell, we can avoid checking the same pair twice
-                        // by only checking the point with the "smaller" id for overlap (note that the points are not sorted)
-                        if ((cellId != cellToCheck && pointId != idToCheck) ||
-                            (cellId == cellToCheck && pointId < idToCheck)) {
-                            auto pointToCheck = this->Coords.Get(idToCheck);
+                // if two overlapping spheres lie in the same cell, we can avoid checking the same pair twice
+                // by only checking the point with the "smaller" id for overlap (note that the points are not sorted)
+                if ((cellId != cellToCheck && pointId != idToCheck) || (cellId == cellToCheck && pointId < idToCheck)) {
+                    auto pointToCheck = this->Coords.Get(idToCheck);
 
-                            // check if spheres overlap (here it's enough to calculate the squared distance)
-                            if (auto distance = vtkm::MagnitudeSquared(point - pointToCheck);
-                                (distance <= vtkm::Pow(this->Radii.Get(pointId) + this->Radii.Get(idToCheck), 2))) {
-                                nrOverlaps++;
-                            }
-                        }
+                    // check if spheres overlap (here it's enough to calculate the squared distance)
+                    if (auto distance = vtkm::MagnitudeSquared(point - pointToCheck);
+                        (distance <= vtkm::Pow(this->Radii.Get(pointId) + this->Radii.Get(idToCheck), 2))) {
+                        nrOverlaps++;
                     }
                 }
             }
@@ -77,42 +75,41 @@ VTKM_EXEC void OverlapDetector::CreateConnectionLines(const vtkm::Id pointId, co
     auto cellId = FlattenCellId(cellId3);
 
     vtkm::Id nrOverlaps = 0;
-    // loop through the cell the current point lies in as well as its neighbor cells
-    for (int i = cellId3[0] - 1; i <= cellId3[0] + 1; i++) {
-        for (int j = cellId3[1] - 1; j <= cellId3[1] + 1; j++) {
-            for (int k = cellId3[2] - 1; k <= cellId3[2] + 1; k++) {
-                auto cellToCheck = FlattenCellId({i, j, k});
 
-                if (cellToCheck != -1 && cellId <= cellToCheck) { // avoid checking the same pair of cells twice
-                    // get the ids of all points in the cell
-                    for (auto boundId = this->LowerBounds.Get(cellToCheck);
-                         boundId < this->UpperBounds.Get(cellToCheck); boundId++) {
-                        auto idToCheck = this->PointIds.Get(boundId);
+    bool foundOverlap = false;
+    int i = 0;
 
-                        // if two overlapping spheres lie in the same cell, we can avoid checking the same pair twice
-                        // by only checking the point with the "smaller" id for overlap (note that the points are not sorted)
-                        if ((cellId != cellToCheck && pointId != idToCheck) ||
-                            (cellId == cellToCheck && pointId < idToCheck)) {
-                            auto pointToCheck = this->Coords.Get(idToCheck);
+    while (!foundOverlap) {
+        auto cellToCheck = FlattenCellId({cellId3[0] + this->OffsetsToNeighbors.Get(i),
+                                          cellId3[1] + this->OffsetsToNeighbors.Get(i + 1),
+                                          cellId3[2] + this->OffsetsToNeighbors.Get(i + 2)});
+        if (cellToCheck != -1 && cellId <= cellToCheck) { // avoid checking the same pair of cells twice
+            // get the ids of all points in the cell
+            for (auto boundId = this->LowerBounds.Get(cellToCheck); boundId < this->UpperBounds.Get(cellToCheck);
+                 boundId++) {
+                auto idToCheck = this->PointIds.Get(boundId);
 
-                            // check if spheres overlap
-                            auto radius1 = this->Radii.Get(pointId);
-                            auto radius2 = this->Radii.Get(idToCheck);
-                            if (auto distance = vtkm::Magnitude(point - pointToCheck);
-                                (distance <= radius1 + radius2)) {
-                                if (nrOverlaps == visitId) {
-                                    connectivity[0] = pointId;
-                                    connectivity[1] = idToCheck;
-                                    thickness = CalculateThickness(this->Determiner, distance, radius1, radius2);
-                                    goto outOfLoop;
-                                }
-                                nrOverlaps++;
-                            }
+                // if two overlapping spheres lie in the same cell, we can avoid checking the same pair twice
+                // by only checking the point with the "smaller" id for overlap (note that the points are not sorted)
+                if ((cellId != cellToCheck && pointId != idToCheck) || (cellId == cellToCheck && pointId < idToCheck)) {
+                    auto pointToCheck = this->Coords.Get(idToCheck);
+
+                    // check if spheres overlap
+                    auto radius1 = this->Radii.Get(pointId);
+                    auto radius2 = this->Radii.Get(idToCheck);
+                    if (auto distance = vtkm::Magnitude(point - pointToCheck); (distance <= radius1 + radius2)) {
+                        if (nrOverlaps == visitId) {
+                            connectivity[0] = pointId;
+                            connectivity[1] = idToCheck;
+                            thickness = CalculateThickness(this->Determiner, distance, radius1, radius2);
+                            foundOverlap = true;
+                            break;
                         }
+                        nrOverlaps++;
                     }
                 }
             }
         }
+        i += 3;
     }
-outOfLoop:
 }
