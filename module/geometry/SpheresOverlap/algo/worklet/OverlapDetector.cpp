@@ -104,6 +104,7 @@ VTKM_EXEC void OverlapDetector::CreateConnectionLines(const vtkm::Id pointId, co
                                     connectivity[0] = pointId;
                                     connectivity[1] = idToCheck;
                                     thickness = CalculateThickness(this->Determiner, distance, radius1, radius2);
+                                    goto outOfLoop;
                                 }
                                 nrOverlaps++;
                             }
@@ -113,4 +114,5 @@ VTKM_EXEC void OverlapDetector::CreateConnectionLines(const vtkm::Id pointId, co
             }
         }
     }
+    outOfLoop:
 }
