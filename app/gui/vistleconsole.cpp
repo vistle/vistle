@@ -47,6 +47,7 @@
 
 #ifdef HAVE_PYTHON
 namespace py = pybind11;
+#define USE_RLCOMPLETER
 #endif
 
 namespace gui {
@@ -271,11 +272,13 @@ void VistleConsole::init()
              unifying global and local name with __main__.__dict__, we
              can get more natural python console.
     */
+#ifdef USE_RLCOMPLETER
     try {
         py::module::import("rlcompleter");
     } catch (...) {
         std::cerr << "error importing rlcompleter" << std::endl;
     }
+#endif
 
     try {
         PyRun_SimpleString("import sys\n"
@@ -287,7 +290,6 @@ void VistleConsole::init()
                            "sys.path.insert(0, \".\")\n" // add current path
 
                            "import _console\n"
-                           "import rlcompleter\n"
 
                            "import builtins\n"
                            "builtins.clear=_console.clear\n"
@@ -299,7 +301,11 @@ void VistleConsole::init()
                            //"builtins.exit=_console.quit\n"
                            "builtins.input=_console.raw_input\n"
 
-                           "builtins.completer=rlcompleter.Completer()\n");
+#ifdef USE_RLCOMPLETER
+                           "import rlcompleter\n"
+                           "builtins.completer=rlcompleter.Completer()\n"
+#endif
+        );
     } catch (...) {
         std::cerr << "error running Python initialisation" << std::endl;
     }
