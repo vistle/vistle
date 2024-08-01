@@ -86,6 +86,8 @@ ReadMaiaNetcdf::ReadMaiaNetcdf(const std::string &name, int moduleID, mpi::commu
     }
     
     observeParameter(m_filename);
+    setHandlePartitions(Reader::PartitionHandling::Monolithic);
+    setCollectiveIo(Reader::CollectiveIo::Collective);
 }
 
 bool ReadMaiaNetcdf::examine(const vistle::Parameter *param)
@@ -147,7 +149,7 @@ bool ReadMaiaNetcdf::examine(const vistle::Parameter *param)
     //close file
     status = ncmpi_close(fileId);
     //build an instance of the reader to retrieve further information from file 
-    auto reader = createReader(0);
+    auto reader = createReader(comm());
     
     //get the number of solvers in the file
     m_noSolvers = reader->requestNumberOfSolvers();
@@ -234,7 +236,7 @@ bool ReadMaiaNetcdf::read(Token &token, int timestep, int block)
       datasets.push_back(*dataset); 
     }
   }
-  auto reader = createReader(block);
+  auto reader = createReader(*token.comm());
   if(m_isParticleFile){
     // reader->readParticleData(token.grid(), datasets);
     return true;
@@ -275,16 +277,16 @@ void ReadMaiaNetcdf::setChoices(const std::vector<maiapv::Dataset> &fileinfo)
     }
 }
 
-std::unique_ptr<maiapv::ReaderBase> ReadMaiaNetcdf::createReader(int block)
+std::unique_ptr<maiapv::ReaderBase> ReadMaiaNetcdf::createReader(int mpiComm) const
 {
 std::unique_ptr<maiapv::ReaderBase> reader;
     switch (m_nDim) {
     case 2:
-      reader.reset(new maiapv::Reader<2>(m_gridFileName,m_dataFileName, block, comm()));
+      reader.reset(new maiapv::Reader<2>(m_gridFileName,m_dataFileName, comm()));
       break;
 
     case 3:
-      reader.reset(new maiapv::Reader<3>(m_gridFileName,m_dataFileName, block, comm()));
+      reader.reset(new maiapv::Reader<3>(m_gridFileName,m_dataFileName, comm()));
       break;
 
     default:

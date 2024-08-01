@@ -118,7 +118,7 @@ template <MInt nDim>
 template <MInt nDim> class Reader : public ReaderBase {
 public:
   //constructor
-  Reader(const MString& gridFileName, const MString& dataFileName, int block, const MPI_Comm comm);
+  Reader(const MString& gridFileName, const MString& dataFileName, const MPI_Comm comm);
 
   //member funcitons
   //function to dermine the filetype and other important information (,e.g., dimensions, number of cells, bounding box)
@@ -182,24 +182,24 @@ public:
                     const MBool solverLocalData = false);
 
   private:
-   long m_noCells =-1;
-   vector<long>m_noCellsBySolver{};
-   MString m_gridFileName{};
-   MString m_dataFileName{};
-   MBool m_isParticleFile = false;
-   MBool m_isDataFile = false;
-   MBool m_isDgFile = false;
-   MFloat m_boundingBox[2*nDim];
-   MPI_Comm m_mpiComm = MPI_COMM_NULL;
-   int m_mpiRank=-1;
-   int m_mpiSize=-1;
-   MLong m_32BitOffset=0;
-  int m_block = -1;
-   //solver related
-   MInt m_noSolvers=-1;
-   MInt m_solverId=-1;
-   maiapv::SolverPV m_solver;
-   maiapv::VisBlock<nDim> m_visBlock;
+    long m_noCells =-1;
+    vector<long>m_noCellsBySolver{};
+    MString m_gridFileName{};
+    MString m_dataFileName{};
+    MBool m_isParticleFile = false;
+    MBool m_isDataFile = false;
+    MBool m_isDgFile = false;
+    MFloat m_boundingBox[2*nDim];
+    MPI_Comm m_mpiComm = MPI_COMM_NULL;
+    int m_mpiRank=-1;
+    int m_mpiSize=-1;
+    MLong m_32BitOffset=0;
+    //solver related
+    MInt m_noSolvers=-1;
+    MInt m_solverId=-1;
+    maiapv::SolverPV m_solver{};
+    maiapv::VisBlock<nDim> m_visBlock{};
+
    // cell-related
    vector<MInt> m_visCellIndices{};
    const MInt* const m_binaryId = (nDim == 2) ? binaryId2D : binaryId3D;
@@ -235,7 +235,7 @@ public:
    MInt m_visLevels[2]={-1,0};
    MBool m_leafCellsOn = true;
    vector<vector<MFloat>> m_vandermonde{};
-   std::unique_ptr<maia::grid::Proxy<nDim>>m_maiaproxy;
+   std::vector<std::unique_ptr<maia::grid::Proxy<nDim>>> m_maiaproxys;
    vector<Point<nDim>> m_vertices;
   void resetTimers();
 
@@ -248,13 +248,11 @@ public:
  *  
  */
 template <MInt nDim>
-  Reader<nDim>::Reader(const MString& gridFileName, const MString& dataFileName, int block, const MPI_Comm comm)
+  Reader<nDim>::Reader(const MString& gridFileName, const MString& dataFileName, const MPI_Comm comm)
   : m_noCells(0),
-    m_mpiComm(comm),
-    m_block(block),
-    m_solver({"Solver" + std::to_string(block + 1), true, false, block}),
-    m_visBlock({m_solver.solverName, m_solver.solverId, m_solver.isDgOnly, true, -1})
-  {
+    m_mpiComm(comm)
+    {
+
     
     TRACE();
     m_useVisualizationBox =false;
@@ -264,6 +262,8 @@ template <MInt nDim>
     m_useHaloCells = (noDomains() > 1) ? true : false;
     if(m_useHaloCells){m_noHaloLevels=1;}
     determineFileType(gridFileName, dataFileName);
+    m_solver = maiapv::SolverPV{"Solver" + std::to_string(m_solverId + 1), true, false, m_solverId};
+    m_visBlock = maiapv::VisBlock<nDim>{m_solver.solverName, m_solver.solverId, m_solver.isDgOnly, true, -1};
     
 
   }
@@ -642,28 +642,28 @@ template <MInt nDim>
     // Exchange polyDegs of halo/window cells --> Ansgar Niemoeller
     // Note: this function should only be called by the active ranks for this solver!
     std::cerr << "exchange polynomial degrees of window/halo cells" << std::endl;
-    m_maiaproxy->exchangeHaloCellsForVisualization(&m_polyDeg[0]);
+   m_maiaproxys[m_solverId]->exchangeHaloCellsForVisualization(&m_polyDeg[0]);
 
     if(m_visualizeSbpData){
       std::cerr << "exchange number of nodes of window/halo cells" << std::endl;
-      m_maiaproxy->exchangeHaloCellsForVisualization(&m_noNodes1D[0]);
+     m_maiaproxys[m_solverId]->exchangeHaloCellsForVisualization(&m_noNodes1D[0]);
     }
 
     m_dofDg[0] = 0;
-    for (MInt i = 0; i < m_maiaproxy->noInternalCells(); i++) {
+    for (MInt i = 0; i <m_maiaproxys[m_solverId]->noInternalCells(); i++) {
       const MInt noNodes1D = m_visualizeSbpData ? m_noNodes1D[i] : m_polyDeg[i]+1; 
       m_dofDg[0] += ipow(noNodes1D, nDim);
     }
     m_dofDg[1] = m_dofDg[0];
-    for (MInt i = m_maiaproxy->noInternalCells(); i < m_maiaproxy->noCells();
+    for (MInt i =m_maiaproxys[m_solverId]->noInternalCells(); i <m_maiaproxys[m_solverId]->noCells();
          i++) {
       const MInt noNodes1D = m_visualizeSbpData ? m_noNodes1D[i] : m_polyDeg[i]+1;
       m_dofDg[1] += ipow(noNodes1D, nDim);
     }
     // Calculate offset for DOFs
     MPI_Exscan(&m_dofDg[0], &m_offsetLocalDG, 1, maia::type_traits<MInt>::mpiType(), MPI_SUM,
-               m_maiaproxy->mpiComm());
-    if (m_maiaproxy->domainId() == 0) {
+              m_maiaproxys[m_solverId]->mpiComm());
+    if (m_maiaproxys[m_solverId]->domainId() == 0) {
       m_offsetLocalDG = 0;
     }
     // Calculate DOFs of visualized cells // unused
@@ -769,9 +769,11 @@ template <MInt nDim> vistle::UnstructuredGrid::ptr Reader<nDim>::readGrid() {
 
   //create a cartesian grid instance
   m_maiagrid = std::make_unique<CartesianGrid<nDim>>((MInt)m_noCells, m_boundingBox, mpiComm(), m_gridFileName);
-
-  m_maiaproxy = std::make_unique<maia::grid::Proxy<nDim>>(m_solverId, *m_maiagrid);
-
+  m_maiaproxys.clear();
+  for(MInt b=0; b<m_noSolvers; b++){
+    m_maiaproxys.emplace_back(std::make_unique<maia::grid::Proxy<nDim>>(b, *m_maiagrid));
+  }
+  m_visBlock.isActive = m_maiaproxys[m_solverId]->isActive();
   //m_cells_ = m_maiagrid->tree(); //original tree should be replaced by proxy
   timers.stop(m_timers.at(TimerNames::readGridFile));
 
@@ -784,11 +786,11 @@ template <MInt nDim> vistle::UnstructuredGrid::ptr Reader<nDim>::readGrid() {
     datafile.getAttribute(&m_intMethod, "dgIntegrationMethod", "polyDegs");
     datafile.getAttribute(&m_polyType, "dgPolynomialType", "polyDegs");
 
-    const MInt isActive = m_maiaproxy->isActive();
-    const MInt noCells = (isActive) ? m_maiaproxy->noCells() : 0;
-    const MInt noInternalCells = (isActive) ? m_maiaproxy->noInternalCells() : 0;
-    const MInt solverDomainId = (isActive) ? m_maiaproxy->domainId() : -1;
-    const MInt offset = (isActive) ? m_maiaproxy->domainOffset(solverDomainId) : 0;
+    const MInt isActive = m_maiaproxys[m_solverId]->isActive();
+    const MInt noCells = (isActive) ?m_maiaproxys[m_solverId]->noCells() : 0;
+    const MInt noInternalCells = (isActive) ?m_maiaproxys[m_solverId]->noInternalCells() : 0;
+    const MInt solverDomainId = (isActive) ?m_maiaproxys[m_solverId]->domainId() : -1;
+    const MInt offset = (isActive) ?m_maiaproxys[m_solverId]->domainOffset(solverDomainId) : 0;
 
     mAlloc(m_polyDeg, std::max(noCells, 1), "dgPolynomialDeg", -1, AT_);
     datafile.setOffset(noInternalCells, offset);
@@ -832,9 +834,6 @@ template <MInt nDim> vistle::DataBase::ptr Reader<nDim>::readData(const maiapv::
 template <MInt nDim> vistle::UnstructuredGrid::ptr Reader<nDim>::buildVistleGrid() {
   TRACE();
 
-  //reset the visualization flag in the solver if only one solver is present
-  //just safety
-  m_solver.status = true;
   
   //MOVE THIS FUNCTION TO other part 
 
@@ -850,13 +849,13 @@ template <MInt nDim> vistle::UnstructuredGrid::ptr Reader<nDim>::buildVistleGrid
 
     // Determine the maximum (local) polynomial degree (including halo cells) for interpolation
     const MInt maxPolyDeg = *max_element(
-        &m_polyDeg[0], &m_polyDeg[0] + m_maiaproxy->noCells());
+        &m_polyDeg[0], &m_polyDeg[0] + m_maiaproxys[m_solverId]->noCells());
     // Set for DG case
     MInt maxNoNodes1D = maxPolyDeg + 1;
     // Correct for SBP mode
     if(m_visualizeSbpData){
       maxNoNodes1D = *max_element(
-        &m_noNodes1D[0], &m_noNodes1D[0] + m_maiaproxy->noCells());
+        &m_noNodes1D[0], &m_noNodes1D[0] + m_maiaproxys[m_solverId]->noCells());
     }
     initInterpolation(maxNoNodes1D);
 
@@ -866,11 +865,7 @@ template <MInt nDim> vistle::UnstructuredGrid::ptr Reader<nDim>::buildVistleGrid
   // building the vtkGrid
   // Calculate the vertices (cell corner points) and vertex ids
   calcVertices();//vertices, vertexIds);
-
-  //============== Build the vtkGrid ===================
-  // 1) set the number of solvers
-
-  //get the number of vertices
+  
   const MInt noVertices = m_visBlock.vertices.size();
 
   //calculate numCorners
@@ -919,7 +914,7 @@ template <MInt nDim> vistle::UnstructuredGrid::ptr Reader<nDim>::buildVistleGrid
   if (m_useHaloCells) {
     for (MInt i = 0; i < (MInt)m_visBlock.visCellIndices.size(); i++) {
       const MInt cellId = m_visBlock.visCellIndices.at(i);
-      if (m_maiaproxy->tree().hasProperty(cellId, GridCell::IsHalo)) {
+      if (m_maiaproxys[m_solverId]->tree().hasProperty(cellId, GridCell::IsHalo)) {
         localUnstructuredGrid->ghost()[cellId] =  vistle::cell::GHOST;
       }
     }
@@ -929,7 +924,7 @@ template <MInt nDim> vistle::UnstructuredGrid::ptr Reader<nDim>::buildVistleGrid
   
   timers.start(m_timers.at(TimerNames::loadGridData));
   // Add all grid-specific data to VTK grid
-  loadGridAuxillaryData(localUnstructuredGrid, m_block);
+  loadGridAuxillaryData(localUnstructuredGrid, m_solverId);
   timers.stop(m_timers.at(TimerNames::loadGridData));
     
   return localUnstructuredGrid;
@@ -947,7 +942,7 @@ template <MInt nDim> void Reader<nDim>::determineVisualizationLevelIndex(MInt* v
   TRACE();
 
   
-  m_visBlock.visCellIndices.reserve(m_maiaproxy->noCells());
+  m_visBlock.visCellIndices.reserve(m_maiaproxys[m_solverId]->noCells());
 
   //set the min and max visualization levels
   const MInt minVisLevel = visLevels[0];
@@ -974,82 +969,85 @@ template <MInt nDim> void Reader<nDim>::determineVisualizationLevelIndex(MInt* v
   MBool onlyVisGridLeafCells = false;
   if ( !m_isDataFile ) onlyVisGridLeafCells = true;
 
-  std::vector<MInt> isVisCell(m_maiaproxy->noCells(), 0);
+  std::vector<MInt> isVisCell(m_maiaproxys[m_solverId]->noCells(), 0);
+  for(MInt b=0; b<m_noSolvers;b++){
+    MInt solverId = b;
 
-  for (MInt i = 0; i < m_maiaproxy->noInternalCells(); i++) {
-    MBool vis = true;
+    for (MInt i = 0; i <m_maiaproxys[solverId]->noInternalCells(); i++) {
+      MBool vis = true;
 
-    // Check for visualization box
-    if (m_useVisualizationBox) {
-      Point<nDim> p;
-      for (MInt d = 0; d < nDim; d++) {
-        p.at(d) = m_maiaproxy->tree().coordinate(i, d);
+      // Check for visualization box
+      if (m_useVisualizationBox) {
+        Point<nDim> p;
+        for (MInt d = 0; d < nDim; d++) {
+          p.at(d) =m_maiaproxys[solverId]->tree().coordinate(i, d);
+        }
+
+        // Cell is outside the visualization box
+        if (!visualizationBox.isPointInBox(p)) {
+          vis = false;
+        }
       }
 
-      // Cell is outside the visualization box
-      if (!visualizationBox.isPointInBox(p)) {
-        vis = false;
+      // Check for visualization level range
+      if (minVisLevel != -1) {
+        const MInt level =m_maiaproxys[solverId]->tree().level(i);
+
+        // Check if cell is outside the level range
+        if (level < minVisLevel || level > maxVisLevel) {
+          vis = false;
+        }
+
+        // Only show non-leaf cells on the maximum visualization level
+        if (m_leafCellsOn &&m_maiaproxys[solverId]->tree().hasChildren(i) && level != maxVisLevel) {
+          vis = false;
+        }
+      } else {
+        // Default: visualize all leaf cells
+        if (m_leafCellsOn &&m_maiaproxys[solverId]->tree().hasChildren(i)) {
+          vis = false;
+        }
+      }
+
+      // // Check if cell is not leaf cell on other solver
+      if ( onlyVisGridLeafCells && vis == true ) {
+        MInt gridId = m_maiaproxys[solverId]->tree().solver2grid(i);
+
+        for(MInt solverId_2=0; solverId_2<m_noSolvers;solverId_2++){
+          if (solverId_2 == m_solverId) continue;
+          if (!m_maiaproxys[solverId_2]->solverFlag(gridId, solverId_2)) continue;
+
+          MInt solverCellId = m_maiaproxys[solverId_2]->tree().grid2solver(gridId);
+          // Only show non-leaf cells on the maximum visualization level
+          if (m_leafCellsOn && (m_maiaproxys[solverId_2]->tree().noChildren(solverCellId) == m_maiaproxys[solverId_2]->m_maxNoChilds)) {
+
+            vis = false;
+          }
+        }
+      }
+
+      // Add cell if it needs to be visualized
+      if (vis){
+        m_visBlock.visCellIndices.push_back(i);
+        isVisCell.at(i) = 1;
       }
     }
 
-    // Check for visualization level range
-    if (minVisLevel != -1) {
-      const MInt level = m_maiaproxy->tree().level(i);
+    const MInt visCellHaloOffset = m_visBlock.visCellIndices.size();
+    m_visBlock.visCellHaloOffset = visCellHaloOffset;
 
-      // Check if cell is outside the level range
-      if (level < minVisLevel || level > maxVisLevel) {
-        vis = false;
+    // TODO fix this for 'visualizing' inactive ranks
+    const MInt tmpSolverId = solverId;
+
+    // Exchange information which halo cells need to be 'visualized' (i.e. the corresponding
+    // internal cell is visualized on another domain)
+    m_maiaproxys[tmpSolverId]->exchangeHaloCellsForVisualization(&isVisCell[0]);
+
+    // Add halo cells to be 'visualized'
+    for (MInt i =m_maiaproxys[tmpSolverId]->noInternalCells(); i <m_maiaproxys[tmpSolverId]->noCells(); i++) {
+      if (isVisCell.at(i)) {
+        m_visBlock.visCellIndices.push_back(i);
       }
-
-      // Only show non-leaf cells on the maximum visualization level
-      if (m_leafCellsOn && m_maiaproxy->tree().hasChildren(i) && level != maxVisLevel) {
-        vis = false;
-      }
-    } else {
-      // Default: visualize all leaf cells
-      if (m_leafCellsOn && m_maiaproxy->tree().hasChildren(i)) {
-        vis = false;
-      }
-    }
-
-    // // Check if cell is not leaf cell on other solver
-    // if ( onlyVisGridLeafCells && vis == true ) {
-    //   MInt gridId = m_maiaproxy->tree().solver2grid(i);
-
-    //   MInt solverId_2 = m_visBlock.solverId;
-
-    //   if (solverId_2 == solverId) continue;
-    //   if (!isActive[b2]) continue;
-    //   if (!m_maiaproxy[solverId_2]->solverFlag(gridId, solverId_2)) continue;
-
-    //   MInt solverCellId = m_maiaproxy[solverId_2]->tree().grid2solver(gridId);
-    //   // Only show non-leaf cells on the maximum visualization level
-    //   if (m_leafCellsOn && (m_maiaproxy[solverId_2]->tree().noChildren(solverCellId) == m_maiaproxy[solverId_2]->m_maxNoChilds)) {
-
-    //     vis = false;
-    //   }
-    // }
-
-    // Add cell if it needs to be visualized
-    if (vis){
-      m_visBlock.visCellIndices.push_back(i);
-      isVisCell.at(i) = 1;
-    }
-  }
-
-  const MInt visCellHaloOffset = m_visBlock.visCellIndices.size();
-  m_visBlock.visCellHaloOffset = visCellHaloOffset;
-
-  // TODO fix this for 'visualizing' inactive ranks
-
-  // Exchange information which halo cells need to be 'visualized' (i.e. the corresponding
-  // internal cell is visualized on another domain)
-  m_maiaproxy->exchangeHaloCellsForVisualization(&isVisCell[0]);
-
-  // Add halo cells to be 'visualized'
-  for (MInt i = m_maiaproxy->noInternalCells(); i < m_maiaproxy->noCells(); i++) {
-    if (isVisCell.at(i)) {
-      m_visBlock.visCellIndices.push_back(i);
     }
   }
 }
@@ -1111,14 +1109,14 @@ void Reader<nDim>::calcVertices() {
   case VisType::ClassicCells: {
     // Loop over all cells that should be visualized
     for (const MInt cellId : m_visBlock.visCellIndices) {
-      const MFloat cellLength = m_maiaproxy->cellLengthAtLevel(m_maiaproxy->tree().level(cellId));//m_maiagrid->cellLengthAtLevel(m_cells_.level(cellId));
+      const MFloat cellLength =m_maiaproxys[m_solverId]->cellLengthAtLevel(m_maiaproxys[m_solverId]->tree().level(cellId));//m_maiagrid->cellLengthAtLevel(m_cells_.level(cellId));
 
       // Calculate the location of the 4 (2D) or 8 (3D) corner points of the
       // cell, and save them to the box
       for (MInt i = 0; i < IPOW2(nDim); i++) {
         Point<nDim> vertex;
         for (MInt d = 0; d < nDim; d++) {
-          vertex.at(d) = m_maiaproxy->tree().coordinate(cellId, d)
+          vertex.at(d) =m_maiaproxys[m_solverId]->tree().coordinate(cellId, d)
             + 0.5 * m_binaryId[(3 * i) + d] * cellLength;
         }
 
@@ -1134,13 +1132,13 @@ void Reader<nDim>::calcVertices() {
     for (const MInt cellId : m_visBlock.visCellIndices) {
       const MInt noNodes1D = (m_visualizeSbpData ? m_noNodes1D[cellId] : (m_polyDeg[cellId]+1)) + m_noVisNodes;
       const MInt noNodes1D3 = (nDim == 3) ? noNodes1D : 1;
-      const MFloat cellLength = m_maiaproxy->cellLengthAtLevel(m_maiaproxy->tree().level(cellId));     
+      const MFloat cellLength =m_maiaproxys[m_solverId]->cellLengthAtLevel(m_maiaproxys[m_solverId]->tree().level(cellId));     
       const MFloat nodeLength = cellLength / noNodes1D;
       // Calculate the node center at the -ve corner (i.e. most negative node
       // in x,y,z-directions)
       Point<nDim> node0;
       for (MInt d = 0; d < nDim; d++) {
-        node0.at(d) = m_maiaproxy->tree().coordinate(cellId, d)
+        node0.at(d) =m_maiaproxys[m_solverId]->tree().coordinate(cellId, d)
                     + 0.5 * (-cellLength + nodeLength);
       }
 
@@ -1242,19 +1240,19 @@ void Reader<nDim>::determineDomainExtent(Point<nDim>& min, Point<nDim>& max) {
   // Determine minimum and maximum extent (on a global scale the orginial grid
   // is taken to evaluate the maximumn box extent) 
   for (MInt d = 0; d < nDim; d++) {
-    min.at(d) = m_maiaproxy->raw().treeb().coordinate(0, d);
-    max.at(d) = m_maiaproxy->raw().treeb().coordinate(0, d);  
+    min.at(d) =m_maiaproxys[0]->raw().treeb().coordinate(0, d);
+    max.at(d) =m_maiaproxys[0]->raw().treeb().coordinate(0, d);  
   }
   
-  for (MInt i = 0; i < (MInt)m_maiaproxy->raw().treeb().size(); i++) {
-    const MFloat cellLength = m_maiaproxy->raw().cellLengthAtLevel(
-                                m_maiaproxy->raw().a_level(i));
+  for (MInt i = 0; i < (MInt)m_maiaproxys[0]->raw().treeb().size(); i++) {
+    const MFloat cellLength =m_maiaproxys[0]->raw().cellLengthAtLevel(
+                               m_maiaproxys[0]->raw().a_level(i));
     const MFloat cellLengthB2 = cellLength/2.0;
     for (MInt d = 0; d < nDim; d++) {
       min.at(d) = std::min(min.at(d), 
-                  m_maiaproxy->raw().treeb().coordinate(i, d)-cellLengthB2);
+                 m_maiaproxys[0]->raw().treeb().coordinate(i, d)-cellLengthB2);
       max.at(d) = std::max(max.at(d), 
-                  m_maiaproxy->raw().treeb().coordinate(i, d)+cellLengthB2);
+                 m_maiaproxys[0]->raw().treeb().coordinate(i, d)+cellLengthB2);
     }
   }
 
@@ -1297,7 +1295,7 @@ template <typename T>
       for (size_t i = 0; i < m_visBlock.visCellIndices.size(); i++) {
         // Visualization of global data on a solver, convert solver cell ids to grid ids
         const MInt cellId = m_visBlock.visCellIndices.at(i);
-        const MInt gridCellId = m_maiaproxy->tree().solver2grid(cellId);
+        const MInt gridCellId =m_maiaproxys[m_solverId]->tree().solver2grid(cellId);
         vistleArray->x().data()[i] = data[gridCellId];
       }
     } else {
@@ -1315,7 +1313,7 @@ template <typename T>
       for (size_t i = 0; i < m_visBlock.visCellIndices.size(); i++) {
         // Visualization of global data on a solver, convert solver cell ids to grid ids
         const MInt cellId = m_visBlock.visCellIndices.at(i);
-        const MInt gridCellId = m_maiaproxy->tree().solver2grid(cellId);
+        const MInt gridCellId =m_maiaproxys[m_solverId]->tree().solver2grid(cellId);
         const MInt noNodes1D = (m_visualizeSbpData ? m_noNodes1D[cellId] : (m_polyDeg[cellId]+1)) + m_noVisNodes;
         const MInt noNodesXD = ipow(noNodes1D, nDim);
         for (MInt j = 0; j < noNodesXD; j++) {
@@ -1371,13 +1369,13 @@ void Reader<nDim>::loadGridAuxillaryData(vistle::UnstructuredGrid::ptr &grid, co
     }
 
     if (dataset.variableName == "globalId") {
-      addCellData(dataset.realName, &m_maiaproxy->raw().treeb().globalId(0), grid, b);
+      addCellData(dataset.realName, &m_maiaproxys[m_solverId]->raw().treeb().globalId(0), grid, b);
       //m_vtkGrid->GetCellData()->SetActiveScalars(dataset.realName.c_str());
       continue;
     }
 
     if (dataset.variableName == "level") {
-      addCellData(dataset.realName, &m_maiaproxy->raw().treeb().level(0), grid, b);
+      addCellData(dataset.realName, &m_maiaproxys[m_solverId]->raw().treeb().level(0), grid, b);
       continue;
     }
 
@@ -1447,8 +1445,8 @@ void Reader<nDim>::loadGridAuxillaryData(vistle::UnstructuredGrid::ptr &grid, co
 template <MInt nDim> vistle::DataBase::ptr Reader<nDim>::loadSolutionData(ParallelIo& datafile, const maiapv::Dataset& dataset) {
   TRACE();
 
-  const MBool isActive = m_maiaproxy->isActive();
-  const MInt solverDomainId = m_maiaproxy->domainId();
+  const MBool isActive =m_maiaproxys[m_solverId]->isActive();
+  const MInt solverDomainId =m_maiaproxys[m_solverId]->domainId();
 
   //if (!isActive) {
   //  std::cerr << "inactive rank " << domainId() << " "
@@ -1461,7 +1459,7 @@ template <MInt nDim> vistle::DataBase::ptr Reader<nDim>::loadSolutionData(Parall
   //}
 
   //copy the offsets so that we can use one call independent of dg/fv/lb
-  MInt cellOffsets[2]={m_maiaproxy->noInternalCells(), m_maiaproxy->noCells()};
+  MInt cellOffsets[2]={m_maiaproxys[m_solverId]->noInternalCells(),m_maiaproxys[m_solverId]->noCells()};
   if(m_isDgFile){
     cellOffsets[0]=m_dofDg[0];
     cellOffsets[1]=m_dofDg[1];
@@ -1475,14 +1473,14 @@ template <MInt nDim> vistle::DataBase::ptr Reader<nDim>::loadSolutionData(Parall
   } else if (m_isDgFile) {
     datafile.setOffset(m_dofDg[0], m_offsetLocalDG);
   } else {
-    datafile.setOffset(m_maiaproxy->noInternalCells(),
-                       m_maiaproxy->domainOffset(solverDomainId));
+    datafile.setOffset(m_maiaproxys[m_solverId]->noInternalCells(),
+                      m_maiaproxys[m_solverId]->domainOffset(solverDomainId));
     //datafile.setOffset(m_maiagrid->noInternalCells(), m_maiagrid->domainOffset(domainId())-m_32BitOffset);
   }
 
   // Calculate the offsets for the cell data based on the polynomial degree (DG)
   // or trivially based on the number of cells (FV/LB)
-  const MInt noOffsets = (isActive) ? m_maiaproxy->noCells() + 1 : 1;
+  const MInt noOffsets = (isActive) ?m_maiaproxys[m_solverId]->noCells() + 1 : 1;
   vector<MInt> dataOffsets(noOffsets);
 
   if (m_isDgFile) {
@@ -1509,16 +1507,16 @@ template <MInt nDim> vistle::DataBase::ptr Reader<nDim>::loadSolutionData(Parall
   // MPI communication
   if (noDomains() > 1 && isActive) {
     if(!m_isDgFile) { //needs to be implemented for DG style
-      m_maiaproxy->exchangeHaloCellsForVisualization(&rawdata[0]);
+     m_maiaproxys[m_solverId]->exchangeHaloCellsForVisualization(&rawdata[0]);
       // exchangeHaloDataset(scalars, dataOffsets);
     } else {
       if(m_visualizeSbpData){
         std::cerr << "exchange SBP window/halo cell data" << std::endl;
-        m_maiaproxy->exchangeHaloCellsForVisualizationSBP(&rawdata[0], &m_noNodes1D[0],
+       m_maiaproxys[m_solverId]->exchangeHaloCellsForVisualizationSBP(&rawdata[0], &m_noNodes1D[0],
                                                                     &dataOffsets[0]);
       } else {
         std::cerr << "exchange DG window/halo cell data" << std::endl;
-        m_maiaproxy->exchangeHaloCellsForVisualizationDG(&rawdata[0], &m_polyDeg[0],
+       m_maiaproxys[m_solverId]->exchangeHaloCellsForVisualizationDG(&rawdata[0], &m_polyDeg[0],
                                                                     &dataOffsets[0]);
       }
     }
