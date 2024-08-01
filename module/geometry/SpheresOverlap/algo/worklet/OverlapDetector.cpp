@@ -114,5 +114,5 @@ VTKM_EXEC void OverlapDetector::CreateConnectionLines(const vtkm::Id pointId, co
             }
         }
     }
-    outOfLoop:
+outOfLoop:
 }
