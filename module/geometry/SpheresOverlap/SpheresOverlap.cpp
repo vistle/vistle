@@ -105,51 +105,6 @@ bool SpheresOverlap::compute(const std::shared_ptr<BlockTask> &task) const
         lines = result.first;
         lineThicknesses = result.second;
     }
-    auto lCoords = Coords::as(lines);
-
-    std::cout << "Duplicate lines with different thicknesses: " << std::endl;
-
-    for (auto i = 0; i < lines->cl().size(); i += 2) {
-        auto i1 = lines->cl()[i];
-        auto i2 = lines->cl()[i + 1];
-
-        auto p1 = vtkm::Vec3f(lCoords->x()[i1], lCoords->y()[i1], lCoords->z()[i1]);
-        auto p2 = vtkm::Vec3f(lCoords->x()[i2], lCoords->y()[i2], lCoords->z()[i2]);
-        if (p1 < p2) {
-            std::cout << "(" << p1[0] << " | " << p1[1] << " | " << p1[2] << ") and "
-                      << "(" << p2[0] << " | " << p2[1] << " | " << p2[2] << ") --> " << lineThicknesses->x()[i / 2]
-                      << ", indices: " << i1 << " " << i2 << std::endl;
-        } else {
-            std::cout << "(" << p2[0] << " | " << p2[1] << " | " << p2[2] << ") and "
-                      << "(" << p1[0] << " | " << p1[1] << " | " << p1[2] << ") --> " << lineThicknesses->x()[i / 2]
-                      << ", indices: " << i1 << " " << i2 << std::endl;
-        }
-    }
-    /*for (auto i = 0; i < lines->cl().size(); i += 2) {
-        for (auto j = i + 1; j < lines->cl().size(); j += 2) {
-            auto i1 = lines->cl()[i];
-            auto i2 = lines->cl()[i + 1];
-
-            auto j1 = lines->cl()[j];
-            auto j2 = lines->cl()[j + 1];
-
-            // find identical pairs of points (minus the order)
-            if ((i1 == j1 && i2 == j2) || (i1 == j2 && i2 == j1)) {
-                // check if the line thickness for the identical lines is different
-                if (lineThicknesses->x()[i / 2] != lineThicknesses->x()[j / 2])
-                    std::cout << i << " + " << j << ":\n    " << i1 << " + " << i2 << " -> "
-                              << lineThicknesses->x()[i / 2] << "\n    " << j1 << " + " << j2 << " -> "
-                              << lineThicknesses->x()[j / 2] << std::endl;
-            }
-        }
-    }*/
-
-    auto myMin =
-        *std::min_element(lineThicknesses->x().data(), lineThicknesses->x().data() + lineThicknesses->x().size() - 1);
-    auto myMax =
-        *std::max_element(lineThicknesses->x().data(), lineThicknesses->x().data() + lineThicknesses->x().size() - 1);
-
-    std::cout << "Thickness min: " << myMin << ", max: " << myMax << std::endl;
 
     if (lines->getNumCoords()) {
         if (mappedData) {

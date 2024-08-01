@@ -56,6 +56,8 @@ private:
 
     ThicknessDeterminer Determiner = OverlapRatio;
 
+    vtkm::cont::ArrayHandle<vtkm::Int8> OffsetsToNeighbors;
+
     // create the search grid
     VTKM_CONT void Build();
 

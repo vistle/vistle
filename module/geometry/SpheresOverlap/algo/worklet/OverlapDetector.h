@@ -19,7 +19,7 @@ public:
     OverlapDetector(const vtkm::Vec3f &min, const vtkm::Vec3f &max, const vtkm::Id3 &nrBins,
                     const CoordPortalType &coords, const FloatPortalType &radii, const IdPortalType &pointIds,
                     const IdPortalType &cellLowerBounds, const IdPortalType &cellUpperBounds,
-                    ThicknessDeterminer determiner)
+                    ThicknessDeterminer determiner, const vtkm::cont::ArrayHandle<vtkm::Int8>::ReadPortalType &offsets)
     : Min(min)
     , Dims(nrBins)
     , Dxdydz((max - min) / Dims)
@@ -29,6 +29,7 @@ public:
     , LowerBounds(cellLowerBounds)
     , UpperBounds(cellUpperBounds)
     , Determiner(determiner)
+    , OffsetsToNeighbors(offsets)
     {}
 
     VTKM_EXEC void CountOverlaps(const vtkm::Id pointId, const vtkm::Vec3f &point, vtkm::Id &nrOverlaps) const;
@@ -53,6 +54,8 @@ private:
     IdPortalType UpperBounds;
 
     ThicknessDeterminer Determiner = OverlapRatio;
+
+    vtkm::cont::ArrayHandle<vtkm::Int8>::ReadPortalType OffsetsToNeighbors;
 };
 
 #endif // OVERLAP_DETECTOR_H
