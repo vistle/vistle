@@ -83,13 +83,7 @@ option(VISTLE_PROFILE_CHROME "Annotate for showing timings in Chrome browser" OF
 option(VISTLE_USE_CUDA "Build with CUDA support" OFF)
 option(VISTLE_USE_KOKKOS "Build with Kokkos support" OFF)
 
-if(APPLE)
-    option(VISTLE_USE_QT5 "Build GUI with Qt5 instead of Qt6" OFF)
-elseif(WIN32)
-    option(VISTLE_USE_QT5 "Build GUI with Qt5 instead of Qt6" OFF)
-else()
-    option(VISTLE_USE_QT5 "Build GUI with Qt5 instead of Qt6" ON)
-endif()
+option(VISTLE_USE_QT5 "Build GUI with Qt5 instead of Qt6" OFF)
 option(VISTLE_USE_MPI "Build with MPI instead of dummy MPI library" ON)
 
 option(VISTLE_COLOR_DIAGNOSTICS "Produce ANSI-colored build output (GNU/Clang)" ON)
