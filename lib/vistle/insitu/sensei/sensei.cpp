@@ -56,12 +56,12 @@ struct Internals {
 } // namespace insitu
 } // namespace vistle
 
-Adapter::Adapter(bool paused, MPI_Comm Comm, MetaData &&meta, ObjectRetriever cbs, const std::string &vistleRoot,
+Adapter::Adapter(bool paused, MPI_Comm comm, MetaData &&meta, ObjectRetriever cbs, const std::string &vistleRoot,
                  const std::string &vistleBuildType, const std::string &options)
-: m_callbacks(std::move(cbs)), m_metaData(std::move(meta)), m_internals(new detail::Internals{Comm}), m_comm(Comm)
+: m_callbacks(std::move(cbs)), m_metaData(std::move(meta)), m_internals(new detail::Internals{comm}), m_comm(comm)
 {
-    MPI_Comm_rank(Comm, &m_rank);
-    MPI_Comm_size(Comm, &m_mpiSize);
+    MPI_Comm_rank(comm, &m_rank);
+    MPI_Comm_size(comm, &m_mpiSize);
     m_commands["run_simulation"] = !paused; // if true run else wait
     // exit by returning false from execute
     dumpConnectionFile(comm);
@@ -201,10 +201,10 @@ bool Adapter::finalize()
 {
     CERR << "Finalizing" << endl;
     double averageTimeSpendInExecute = 0;
-    MPI_Reduce(&m_timeSpendInExecute, &averageTimeSpendInExecute, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
+    MPI_Reduce(&m_timeSpendInExecute, &averageTimeSpendInExecute, 1, MPI_DOUBLE, MPI_SUM, 0, m_comm);
     auto simulationTime = Clock::time() - m_startTime;
     double averageSimTime = 0;
-    MPI_Reduce(&simulationTime, &averageSimTime, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
+    MPI_Reduce(&simulationTime, &averageSimTime, 1, MPI_DOUBLE, MPI_SUM, 0, m_comm);
     if (m_rank == 0) {
         std::cerr << "simulation took " << averageSimTime / m_mpiSize << "s" << std::endl;
         std::cerr << "avarage time spend in execute: " << averageTimeSpendInExecute / m_mpiSize << "s" << std::endl;
@@ -247,7 +247,7 @@ bool Adapter::objectRequested(const std::string &name, const std::string &meshNa
            m_internals->moduleInfo.isPortConnected(portName(meshName, name));
 }
 
-void Adapter::dumpConnectionFile(MPI_Comm Comm)
+void Adapter::dumpConnectionFile(MPI_Comm comm)
 {
     std::vector<std::string> names;
     boost::mpi::gather(boost::mpi::communicator(comm, boost::mpi::comm_attach), m_internals->messageHandler->name(),
