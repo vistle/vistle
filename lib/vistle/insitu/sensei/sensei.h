@@ -53,7 +53,6 @@ private:
     int m_generation = 0;
     // mpi info
     int m_rank = -1, m_mpiSize = 0;
-    MPI_Comm comm = MPI_COMM_WORLD;
     double m_timeSpendInExecute = 0;
     double m_startTime = 0;
     std::map<std::string, bool> m_commands; // commands and their current state
