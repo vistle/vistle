@@ -118,6 +118,7 @@ public:
     mutex &getMutex();
     void lock();
     void unlock();
+    bool quitting() const;
 
     void setId(int id);
 
@@ -196,6 +197,8 @@ public:
     };
 
     std::set<int> getConnectedModules(ConnectionKind kind, int id, const std::string &port = std::string()) const;
+
+    std::string barrierInfo(const message::uuid_t &uuid) const;
 
 protected:
     std::shared_ptr<message::Buffer> removeRequest(const message::uuid_t &uuid);
@@ -342,6 +345,9 @@ private:
     int m_workflowLoader = message::Id::Invalid;
     std::string m_loadedWorkflowFile;
     std::string m_sessionUrl;
+
+    std::map<message::uuid_t, std::string> m_barriers;
+    bool m_quitting = false;
 };
 
 } // namespace vistle

@@ -22,6 +22,7 @@ public:
     bool init();
 
     bool error() const;
+    bool quitting() const;
 
     bool executeFile(const std::string &filename);
     bool executeCommand(const std::string &cmd);

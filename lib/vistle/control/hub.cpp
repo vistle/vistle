@@ -556,6 +556,7 @@ bool Hub::init(int argc, char *argv[])
     }
 
     if (vm.count("execute") > 0) {
+        m_barrierAfterLoad = true;
         m_executeModules = true;
     }
 
@@ -913,7 +914,7 @@ bool Hub::removeSocket(Hub::socket_ptr sock, bool close)
     }
 
     if (removeClient(sock)) {
-        CERR << "removed client" << std::endl;
+        //CERR << "removed client" << std::endl;
     }
 
     std::unique_lock<std::mutex> lock(m_socketMutex);
@@ -1020,8 +1021,10 @@ bool Hub::dispatch()
 
     if (m_interrupt) {
         if (m_isMaster) {
-            sendSlaves(make.message<message::Quit>());
+            auto quit = make.message<message::Quit>();
+            sendSlaves(quit);
             sendSlaves(make.message<message::CloseConnection>("user interrupt"));
+            handleMessage(quit);
         }
         m_workGuard.reset();
         for (unsigned count = 0; count < 300; ++count) {
@@ -1413,9 +1416,10 @@ bool Hub::hubReady()
         m_slavesToConnect.clear();
 
         if (!processStartupScripts() || !processScript()) {
-            auto q = message::Quit();
+            auto q = make.message<message::Quit>();
             sendSlaves(q);
             sendManager(q);
+            handleMessage(q);
             m_quitting = true;
             return false;
         }
@@ -3048,8 +3052,10 @@ bool Hub::processScript(const std::string &filename, bool barrierAfterLoad, bool
     PythonExecutor exec(*m_python, flags, filename);
     bool interrupt = false;
     while (!interrupt && !exec.done()) {
-        if (!dispatch())
+        if (!dispatch()) {
+            CERR << "interrupting script execution of " << filename << std::endl;
             interrupt = true;
+        }
     }
     if (interrupt || exec.state() != PythonExecutor::Success) {
         setStatus("Loading " + filename + " failed");
@@ -3111,6 +3117,7 @@ bool Hub::handlePriv(const message::Quit &quit, message::Identify::Identity send
                 sendSlaves(quit);
             sendManager(quit);
             m_quitting = true;
+            return true;
         } else if (senderType == message::Identify::MANAGER) {
             if (m_isMaster)
                 sendSlaves(quit);
@@ -3272,7 +3279,8 @@ bool Hub::handlePriv(const message::CancelExecute &cancel)
 
 bool Hub::handlePriv(const message::Barrier &barrier)
 {
-    CERR << "Barrier request: " << barrier.uuid() << " by " << barrier.senderId() << std::endl;
+    CERR << "Barrier request: " << barrier.uuid() << " by " << barrier.senderId() << ": " << barrier.info()
+         << std::endl;
     assert(!m_barrierActive);
     assert(m_reachedSet.empty());
     m_barrierActive = true;
@@ -3287,8 +3295,9 @@ bool Hub::handlePriv(const message::Barrier &barrier)
 
 bool Hub::handlePriv(const message::BarrierReached &reached)
 {
-    CERR << "Barrier " << reached.uuid() << " reached by " << reached.senderId() << " (now " << m_reachedSet.size()
-         << " of " << m_stateTracker.getNumRunning() << " modules)" << std::endl;
+    CERR << "Barrier " << reached.uuid() << " (" << m_stateTracker.barrierInfo(reached.uuid()) << ") reached by "
+         << reached.senderId() << " (now " << m_reachedSet.size() << " of " << m_stateTracker.getNumRunning()
+         << " modules)" << std::endl;
     assert(m_barrierActive);
     assert(m_barrierUuid == reached.uuid());
     // message must be received from local manager and each slave

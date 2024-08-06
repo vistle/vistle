@@ -11,8 +11,8 @@
 namespace vistle {
 
 struct HubPythonStateAccessor: public vistle::PythonStateAccessor {
-    void lock() override { state().getMutex().lock(); };
-    void unlock() override { state().getMutex().unlock(); };
+    void lock() override { state().getMutex().lock(); }
+    void unlock() override { state().getMutex().unlock(); }
     vistle::StateTracker &state() override { return vistle::Hub::the().stateTracker(); }
     bool sendMessage(const vistle::message::Message &m, const vistle::buffer *payload = nullptr) override
     {
@@ -72,6 +72,12 @@ bool PythonInterpreter::error() const
     return m_error;
 }
 
+bool PythonInterpreter::quitting() const
+{
+    std::lock_guard stateLocker(*m_access);
+    return m_access->state().quitting();
+}
+
 PythonExecutor::PythonExecutor(PythonInterpreter &inter, const std::string &command)
 : m_interpreter(inter), m_command(command), m_thread([this]() { run(); })
 {}
@@ -101,10 +107,14 @@ void PythonExecutor::run()
             ok = m_interpreter.executeCommand(m_command);
         }
         if (ok && (m_flags & BarrierAfterLoad)) {
-            ok = m_interpreter.executeCommand("barrier()");
+            if (!m_interpreter.quitting()) {
+                ok = m_interpreter.executeCommand("barrier(\"after load, automatic\")");
+            }
         }
         if (ok && (m_flags & ExecuteModules)) {
-            ok = m_interpreter.executeCommand("compute()");
+            if (!m_interpreter.quitting()) {
+                ok = m_interpreter.executeCommand("compute()");
+            }
         }
     }
 

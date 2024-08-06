@@ -213,15 +213,15 @@ static void debug(int id = message::Id::Invalid)
     sendMessage(m);
 }
 
-static bool barrier()
+static bool barrier(const std::string &info)
 {
-    message::Barrier m;
+    message::Barrier m(info);
     m.setDestId(message::Id::MasterHub);
     state().registerRequest(m.uuid());
     if (!sendMessage(m))
         return false;
     auto buf = waitForReply(m.uuid());
-    if (buf->type() == message::BARRIERREACHED) {
+    if (buf && buf->type() == message::BARRIERREACHED) {
         return true;
     }
     return false;
@@ -1509,7 +1509,7 @@ PY_MODULE(_vistle, m)
     m.def("trace", trace, "enable/disable message tracing for module `id`", "id"_a = message::Id::Broadcast,
           "type"_a = message::ANY, "enable"_a = true);
     m.def("debug", debug, "request a module to print its state", "id"_a = message::Id::Invalid);
-    m.def("barrier", barrier, "wait until all modules reply");
+    m.def("barrier", barrier, "wait until all modules reply", "info"_a = "anon Python barrier");
     m.def("requestTunnel", requestTunnel,
           "start TCP tunnel listening on port `arg1` on hub forwarding incoming connections to `arg2`:`arg3`",
           "listen port"_a, "dest port"_a, "dest addr"_a);
