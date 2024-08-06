@@ -302,7 +302,7 @@ def reset():
    mods = _vistle.getRunning()
    for m in mods:
       _vistle.kill(m)
-   _vistle.barrier()
+   _vistle.barrier("reset, automatic")
    #_vistle._resetModuleCounter()
    _vistle.setLoadedFile("")
    _vistle.setStatus("Workflow cleared")

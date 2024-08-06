@@ -1498,8 +1498,15 @@ bool SetParameterChoices::apply(std::shared_ptr<vistle::Parameter> param,
     return true;
 }
 
-Barrier::Barrier()
-{}
+Barrier::Barrier(const std::string &i)
+{
+    COPY_STRING(m_info, i);
+}
+
+const char *Barrier::info() const
+{
+    return m_info.data();
+}
 
 BarrierReached::BarrierReached(const vistle::message::uuid_t &uuid)
 {
@@ -2069,6 +2076,16 @@ std::ostream &operator<<(std::ostream &s, const Message &m)
     case KILL: {
         auto &mm = static_cast<const Kill &>(m);
         s << ", id: " << mm.getModule();
+        break;
+    }
+    case QUIT: {
+        auto &mm = m.as<Quit>();
+        s << ", id: " << mm.id();
+        break;
+    }
+    case BARRIER: {
+        auto &mm = m.as<Barrier>();
+        s << ", info: " << mm.info();
         break;
     }
     case DEBUG: {

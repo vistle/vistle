@@ -1981,7 +1981,7 @@ bool ClusterManager::handlePriv(const message::Barrier &barrier)
 {
     m_barrierActive = true;
     //sendHub(barrier);
-    CERR << "Barrier [" << barrier.uuid() << "]" << std::endl;
+    CERR << "Barrier [" << barrier.uuid() << ": " << barrier.info() << "]" << std::endl;
     m_barrierUuid = barrier.uuid();
     return sendAllLocal(barrier);
 }
@@ -1990,12 +1990,14 @@ bool ClusterManager::handlePriv(const message::BarrierReached &barrReached)
 {
     assert(m_barrierActive);
 #ifdef BARRIER_DEBUG
-    CERR << "BarrierReached [barrier " << barrReached.uuid() << ", module " << barrReached.senderId() << "]"
-         << std::endl;
+    auto info = m_stateTracker.barrierInfo(barrReached.uuid());
+    CERR << "BarrierReached [barrier " << barrReached.uuid() << ", module " << barrReached.senderId() << ":, " << info
+         << "]" << std::endl;
 #endif
     if (barrReached.uuid() != m_barrierUuid) {
-        CERR << "BARRIER: BarrierReached message " << barrReached << "  with wrong uuid, expected " << m_barrierUuid
-             << std::endl;
+        CERR << "BARRIER: BarrierReached message " << barrReached << " ("
+             << m_stateTracker.barrierInfo(barrReached.uuid()) << ") with wrong uuid, expected " << m_barrierUuid
+             << " (" << m_stateTracker.barrierInfo(m_barrierUuid) << ")" << std::endl;
         return true;
     }
 

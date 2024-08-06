@@ -73,6 +73,11 @@ void StateTracker::unlock()
     return m_stateMutex.unlock();
 }
 
+bool StateTracker::quitting() const
+{
+    return m_quitting;
+}
+
 void StateTracker::setId(int id)
 {
     m_id = id;
@@ -1392,7 +1397,9 @@ bool StateTracker::handlePriv(const message::Quit &quit)
 {
     mutex_locker guard(m_stateMutex);
     int id = quit.id();
-    if (Id::isHub(id)) {
+    if (id == Id::Broadcast) {
+        m_quitting = true;
+    } else if (Id::isHub(id)) {
         auto *hub = getModifiableHubData(id);
         if (hub) {
             hub->isQuitting = true;
@@ -1447,12 +1454,21 @@ bool StateTracker::handlePriv(const message::AddObject &addObj)
 
 bool StateTracker::handlePriv(const message::Barrier &barrier)
 {
+    m_barriers[barrier.uuid()] = barrier.info();
     return true;
 }
 
 bool StateTracker::handlePriv(const message::BarrierReached &barrReached)
 {
     return true;
+}
+
+std::string StateTracker::barrierInfo(const message::uuid_t &uuid) const
+{
+    auto it = m_barriers.find(uuid);
+    if (it == m_barriers.end())
+        return std::string("NO INFO");
+    return it->second;
 }
 
 bool StateTracker::handlePriv(const message::AddPort &createPort)
@@ -1716,7 +1732,7 @@ std::shared_ptr<message::Buffer> StateTracker::waitForReply(const message::uuid_
 {
     std::unique_lock<mutex> locker(m_replyMutex);
     std::shared_ptr<message::Buffer> ret = removeRequest(uuid);
-    while (!ret) {
+    while (!ret && !m_quitting) {
         m_replyCondition.wait(locker);
         ret = removeRequest(uuid);
     }
@@ -1744,7 +1760,7 @@ bool StateTracker::registerReply(const message::uuid_t &uuid, const message::Mes
         return false;
     }
     if (it->second) {
-        CERR << "attempt to register duplicate reply for " << uuid << std::endl;
+        CERR << "attempt to register duplicate reply for " << uuid << ": " << msg << std::endl;
         assert(!it->second);
         return false;
     }

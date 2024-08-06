@@ -645,7 +645,11 @@ private:
 
 class V_COREEXPORT Barrier: public MessageBase<Barrier, BARRIER> {
 public:
-    Barrier();
+    Barrier(const std::string &info);
+    const char *info() const;
+
+private:
+    description_t m_info;
 };
 
 class V_COREEXPORT BarrierReached: public MessageBase<BarrierReached, BARRIERREACHED> {
