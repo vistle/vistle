@@ -1044,6 +1044,7 @@ template <MInt nDim> void Reader<nDim>::determineVisualizationLevelIndex(MInt* v
     m_maiaproxys[tmpSolverId]->exchangeHaloCellsForVisualization(&isVisCell[0]);
 
     // Add halo cells to be 'visualized'
+    if(tmpSolverId == m_solverId) continue;
     for (MInt i =m_maiaproxys[tmpSolverId]->noInternalCells(); i <m_maiaproxys[tmpSolverId]->noCells(); i++) {
       if (isVisCell.at(i)) {
         m_visBlock.visCellIndices.push_back(i);
