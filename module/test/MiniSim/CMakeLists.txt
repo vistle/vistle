@@ -22,5 +22,5 @@ if(DIY_INCLUDE_DIR)
         target_compile_options(MiniSim PRIVATE -Wno-sign-compare)
     endif()
 
-    target_compile_definitions(MiniSim PRIVATE VISTLE_ROOT="${PROJECT_SOURCE_DIR}" VISTLE_BUILD_TYPE="")
+    target_compile_definitions(MiniSim PRIVATE VISTLE_ROOT="${CMAKE_BINARY_DIR}" VISTLE_BUILD_TYPE="")
 endif()
