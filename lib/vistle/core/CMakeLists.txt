@@ -218,6 +218,10 @@ if(LZ4_FOUND)
     vistle_target_link_libraries(vistle_core PRIVATE ${LZ4_LIBRARIES})
 endif()
 
+if(OpenMP_CXX_FOUND)
+    vistle_target_link_libraries(vistle_core PUBLIC OpenMP::OpenMP_CXX)
+endif()
+
 target_include_directories(vistle_core SYSTEM PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/lib/3rdparty>)
 target_include_directories(vistle_core SYSTEM PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/lib/3rdparty/yas/include>)
 if(VISTLE_INSTALL_3RDPARTY)
