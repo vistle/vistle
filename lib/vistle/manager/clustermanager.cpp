@@ -992,6 +992,7 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn)
                 vars.push_back("DYLD_FALLBACK_FRAMEWORK_PATH");
 #else
                 vars.push_back("LD_LIBRARY_PATH");
+                vars.push_back("LD_PRELOAD");
 #endif
                 for (auto v: vars) {
                     const char *val = getenv(v);
