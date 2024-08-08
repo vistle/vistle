@@ -5,6 +5,7 @@
 #include <vistle/core/vec.h>
 #include <vistle/core/unstr.h>
 #include <vistle/core/polygons.h>
+#include <vistle/core/lines.h>
 #include <vistle/util/coRestraint.h>
 #include <vistle/util/enum.h>
 #include <vistle/alg/objalg.h>
@@ -26,7 +27,7 @@ public:
         }
     }
 
-    bool operator()(Index element) { return m_restraint(m_marker[element]); }
+    bool operator()(Index element) { return m_restraint(m_marker ? m_marker[element] : element); }
 
 private:
     coRestraint m_restraint;
@@ -245,21 +246,42 @@ bool Threshold::compute(const std::shared_ptr<BlockTask> &task) const
     auto &mapped = split.mapped;
     auto ugrid = UnstructuredGrid::as(grid);
     auto poly = Polygons::as(grid);
+    auto line = Lines::as(grid);
 
-    DataBase::const_ptr data = mapped;
-    if (!ugrid && !poly) {
-        sendError("no valid grid received on data_in");
+    if (!ugrid && !poly && !line) {
+        sendError("no valid grid received on threshold_in");
         return true;
     }
-    Indexed::const_ptr grid_in = ugrid ? Indexed::as(ugrid) : Indexed::as(poly);
+    Indexed::const_ptr grid_in = ugrid ? Indexed::as(ugrid) : poly ? Indexed::as(poly) : Indexed::as(line);
     assert(grid_in);
+
+    Object::const_ptr data = mapped;
+#ifdef CELLSELECT
+    if (mapped) {
+        if (!Vec<Index>::as(mapped)) {
+            sendError("only Index data supported on threshold_in");
+            return true;
+        }
+        if (mapped->guessMapping() != DataBase::Element) {
+            sendError("per-element mapping required on threshold_in");
+            return true;
+        }
+    } else {
+        data = grid;
+    }
+#else
+    if (!mapped) {
+        sendError("no mapped data received on threshold_in");
+        return true;
+    }
+#endif
 
     CachedResult cachedResult;
     if (auto cacheEntry = m_gridCache.getOrLock(data->getName(), cachedResult)) {
 #ifdef CELLSELECT
-        CellSelector select(m_restraint, data);
+        CellSelector select(m_restraint, mapped);
 #else
-        CellSelector select((Operation)p_operation->getValue(), p_threshold->getValue(), data);
+        CellSelector select((Operation)p_operation->getValue(), p_threshold->getValue(), mapped);
 #endif
 
         auto outgrid = grid_in->cloneType();
