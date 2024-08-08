@@ -221,5 +221,23 @@ if(VISTLE_INSTALL_3RDPARTY)
         COMPONENT Devel)
 endif()
 
+# vistle_find_package(Eigen3 REQUIRED)
+add_library(eigen INTERFACE)
+add_library(Eigen3::Eigen ALIAS eigen)
+set(EIGEN_DEFINITIONS "-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=int")
+target_compile_definitions(eigen INTERFACE ${EIGEN_DEFINITIONS})
+#set(EIGEN3_INCLUDE_PATH "${PROJECT_SOURCE_DIR}/lib/3rdparty")
+target_include_directories(eigen INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}> $<INSTALL_INTERFACE:${INCLUDE_INSTALL_DIR}>)
+if(OpenMP_CXX_FOUND)
+    vistle_target_link_libraries(eigen INTERFACE OpenMP::OpenMP_CXX)
+endif()
+# Export as title case Eigen
+set_target_properties(eigen PROPERTIES EXPORT_NAME Eigen)
+vistle_export_library(eigen)
+
+#install (TARGETS eigen EXPORT Eigen3Targets)
+
+# add_definitions(-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=short)
+
 include(cmrc/CMakeRC.cmake)
 vistle_export_library(cmrc-base)
