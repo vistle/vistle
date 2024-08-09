@@ -12,12 +12,14 @@
 #endif
 
 #include "tools.h"
+#include "threadname.h"
 
 namespace vistle {
 
 std::string backtrace()
 {
     std::stringstream str;
+    str << "thread " << getThreadName() << "\n";
 
 #ifdef HAVE_EXECINFO
     const int MaxFrames = 32;
