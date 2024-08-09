@@ -250,6 +250,12 @@ Hub::~Hub()
     m_config.reset();
 }
 
+void Hub::initiateQuit()
+{
+    m_quitting = true;
+    vistle::message::prepare_shutdown();
+}
+
 int Hub::run()
 {
     try {
@@ -780,21 +786,24 @@ bool Hub::sendMessage(Hub::socket_ptr sock, const message::Message &msg, const b
                                 lk.unlock();
                                 closecv->notify_one();
                             } else if (ec) {
-#if 0
-                                if (ec.code() == boost::system::errc::broken_pipe) {
-                                    CERR << "send error, socket closed: " << ec.message() << std::endl;
-                                    removeSocket(sock);
-                                }
-#endif
                                 if (ec.value() == boost::asio::error::eof) {
-                                    CERR << "send error, socket closed: " << ec.message() << std::endl;
+                                    if (!m_quitting)
+                                        CERR << "send error, socket closed: " << ec.message() << std::endl;
                                     removeSocket(sock);
-                                }
-                                if (ec.value() == boost::asio::error::broken_pipe) {
-                                    CERR << "send error, broken pipe: " << ec.message() << std::endl;
+                                } else if (ec.value() == boost::asio::error::broken_pipe) {
+                                    if (!m_quitting)
+                                        CERR << "send error, broken pipe: " << ec.message() << std::endl;
                                     removeSocket(sock);
+#if 0
+                                } else if (ec.code() == boost::system::errc::broken_pipe) {
+                                    if (!m_quitting)
+                                        CERR << "send error, socket closed: " << ec.message() << std::endl;
+                                    removeSocket(sock);
+#endif
+                                } else {
+                                    if (!m_quitting)
+                                        CERR << "send error: " << ec.message() << std::endl;
                                 }
-                                CERR << "send error: " << ec.message() << std::endl;
                             }
                         });
 #endif
@@ -884,11 +893,17 @@ void Hub::addSocket(Hub::socket_ptr sock, message::Identify::Identity ident)
 bool Hub::removeSocket(Hub::socket_ptr sock, bool close)
 {
     if (close) {
+        bool open = sock->is_open();
         try {
             sock->shutdown(asio::ip::tcp::socket::shutdown_both);
+        } catch (std::exception &ex) {
+        }
+        try {
             sock->close();
         } catch (std::exception &ex) {
-            CERR << "closing socket failed: " << ex.what() << std::endl;
+            if (open) {
+                CERR << "closing socket failed: " << ex.what() << std::endl;
+            }
         }
     }
 
@@ -1142,13 +1157,13 @@ void Hub::handleWrite(Hub::socket_ptr sock, const boost::system::error_code &err
             ok = handleMessage(msg, sock, &payload);
         }
         if (!ok) {
-            m_quitting = true;
+            initiateQuit();
             //break;
         }
     } else if (ec) {
         CERR << "error during read from socket: " << ec.message() << std::endl;
         removeSocket(sock);
-        //m_quitting = true;
+        //initiateQuit();
     }
 }
 
@@ -1416,15 +1431,15 @@ bool Hub::hubReady()
         m_slavesToConnect.clear();
 
         if (!processStartupScripts() || !processScript()) {
+            initiateQuit();
             auto q = make.message<message::Quit>();
             sendSlaves(q);
             sendManager(q);
             handleMessage(q);
-            m_quitting = true;
             return false;
         }
 
-        if (!m_snapshotFile.empty()) {
+        if (!m_quitting && !m_snapshotFile.empty()) {
             std::cerr << "requesting screenshot to " << m_snapshotFile << std::endl;
             auto msg = make.message<message::Screenshot>(m_snapshotFile, true);
             msg.setDestId(message::Id::Broadcast);
@@ -1524,7 +1539,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
         if (senderType == Identify::HUB || senderType == Identify::MANAGER) {
             CERR << "terminating." << std::endl;
             emergencyQuit();
-            m_quitting = true;
+            initiateQuit();
             return false;
         }
         return true;
@@ -3116,12 +3131,12 @@ bool Hub::handlePriv(const message::Quit &quit, message::Identify::Identity send
             if (m_isMaster)
                 sendSlaves(quit);
             sendManager(quit);
-            m_quitting = true;
+            initiateQuit();
             return true;
         } else if (senderType == message::Identify::MANAGER) {
             if (m_isMaster)
                 sendSlaves(quit);
-            m_quitting = true;
+            initiateQuit();
         } else if (senderType == message::Identify::HUB) {
             sendManager(quit);
         } else if (senderType == message::Identify::UI) {
@@ -3130,7 +3145,7 @@ bool Hub::handlePriv(const message::Quit &quit, message::Identify::Identity send
             else
                 sendMaster(quit);
             sendManager(quit);
-            m_quitting = true;
+            initiateQuit();
         } else {
             sendSlaves(quit);
             sendManager(quit);
@@ -3143,7 +3158,7 @@ bool Hub::handlePriv(const message::Quit &quit, message::Identify::Identity send
             CERR << "removal of hub requested by " << senderType << std::endl;
             m_uiManager.requestQuit();
             if (senderType == message::Identify::MANAGER) {
-                m_quitting = true;
+                initiateQuit();
             } else {
                 sendManager(quit);
             }
@@ -3660,7 +3675,7 @@ void Hub::emergencyQuit()
             m_processMap.clear();
         }
         if (startCleaner()) {
-            m_quitting = true;
+            initiateQuit();
             while (hasChildProcesses()) {
                 if (!checkChildProcesses(true)) {
                     usleep(100000);

@@ -261,6 +261,8 @@ private:
     std::map<vistle::message::AddHub, std::future<bool>> m_outstandingDataConnections;
 
     std::unique_ptr<PythonInterpreter> m_python;
+
+    void initiateQuit();
 };
 
 } // namespace vistle
