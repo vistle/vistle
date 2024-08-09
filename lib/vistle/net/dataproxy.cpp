@@ -682,9 +682,12 @@ bool DataProxy::connectRemoteData(const message::AddHub &remote)
             if (ec) {
                 CERR << "cancelling operations on socket failed: " << ec.message() << std::endl;
             } else {
+                bool open = s->is_open();
                 s->close(ec);
                 if (ec) {
-                    CERR << "closing socket failed: " << ec.message() << std::endl;
+                    if (open) {
+                        CERR << "closing socket failed: " << ec.message() << std::endl;
+                    }
                 }
             }
         }
