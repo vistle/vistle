@@ -1041,12 +1041,6 @@ set(THRUST_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/lib/3rdparty/thrust")
 # new submodule for block distribution
 set(DIY_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/lib/3rdparty/diy/include")
 
-# vistle_find_package(Eigen3 REQUIRED)
-set(EIGEN3_INCLUDE_PATH "${PROJECT_SOURCE_DIR}/lib/3rdparty")
-
-# add_definitions(-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=short)
-add_definitions(-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=int)
-
 if(NOT VISTLE_GUI_ONLY)
     # Boost.MPI is compiled with Vistle - for easy switching of MPI versions
     include_directories(BEFORE SYSTEM "${PROJECT_SOURCE_DIR}/lib/3rdparty/${BOOST_MPI_DIR}/include")
