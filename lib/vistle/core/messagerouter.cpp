@@ -61,7 +61,7 @@ void Router::initRoutingTable()
     rt[ADDOBJECTCOMPLETED] = DestManager | HandleOnNode;
 
     rt[BARRIER] = Track | HandleOnDest;
-    rt[BARRIERREACHED] = Track | HandleOnDest;
+    rt[BARRIERREACHED] = HandleOnDest;
 
     rt[REQUESTTUNNEL] = HandleOnNode | HandleOnHub;
     rt[TUNNELESTABLISHED] = Special;
