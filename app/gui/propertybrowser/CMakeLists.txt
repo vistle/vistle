@@ -1,5 +1,4 @@
 set(CMAKE_AUTOMOC TRUE)
-set(CMAKE_INCLUDE_CURRENT_DIR TRUE)
 
 set(SOURCES
     ../../../lib/3rdparty/qt-solutions/qtpropertybrowser/src/qtbuttonpropertybrowser.cpp
@@ -45,26 +44,20 @@ set(HEADERS
 
 set(FORMS)
 
+add_library(vistle_propertybrowser STATIC ${SOURCES} ${HEADERS})
 if(VISTLE_USE_QT5)
     qt5_wrap_ui(UI_SRCS ${FORMS})
+    target_link_libraries(vistle_propertybrowser PRIVATE Qt5::Widgets)
 else()
     qt6_wrap_ui(UI_SRCS ${FORMS})
+    qt_disable_unicode_defines(vistle_propertybrowser)
+    target_link_libraries(vistle_propertybrowser PRIVATE Qt6::Widgets)
 endif()
-
-add_library(vistle_propertybrowser STATIC ${SOURCES} ${UI_SRCS})
+target_sources(vistle_propertybrowser PRIVATE ${UI_SRCS})
 
 target_compile_definitions(vistle_propertybrowser PRIVATE QT_DISABLE_DEPRECATED_BEFORE=0x000000)
 
-target_include_directories(vistle_propertybrowser SYSTEM #PRIVATE ${Boost_INCLUDE_DIRS}
-                           PRIVATE ../../../lib/3rdparty/qt-solutions/qtpropertybrowser/src)
-target_include_directories(
-    vistle_propertybrowser
-    PRIVATE ../..
-    PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(vistle_propertybrowser SYSTEM PUBLIC ../../../lib/3rdparty/qt-solutions/qtpropertybrowser/src)
+target_include_directories(vistle_propertybrowser PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
-if(VISTLE_USE_QT5)
-    target_link_libraries(vistle_propertybrowser PRIVATE ${QT_LIBRARIES} vistle_util vistle_core Qt5::Widgets)
-else()
-    target_link_libraries(vistle_propertybrowser PRIVATE ${QT_LIBRARIES} vistle_util vistle_core Qt6::Widgets)
-    qt_disable_unicode_defines(vistle_propertybrowser)
-endif()
+target_link_libraries(vistle_propertybrowser PRIVATE vistle_util vistle_core)
