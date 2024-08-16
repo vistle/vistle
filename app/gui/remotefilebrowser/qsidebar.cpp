@@ -48,8 +48,8 @@
 #include <qevent.h>
 #include <qdebug.h>
 #include "remotefileiconprovider.h"
-#include <remotefiledialog.h>
-#include <abstractfilesystemmodel.h>
+#include "remotefiledialog.h"
+#include "abstractfilesystemmodel.h"
 
 QT_BEGIN_NAMESPACE
 

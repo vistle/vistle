@@ -1,7 +1,4 @@
 set(CMAKE_AUTOMOC ON)
-#set(CMAKE_AUTOUIC ON)
-
-set(CMAKE_INCLUDE_CURRENT_DIR TRUE)
 
 set(SOURCES
     remotefiledialog.cpp
@@ -32,26 +29,23 @@ set(HEADERS
 
 set(FORMS remotefiledialog.ui)
 
+add_library(vistle_remotefiledialog STATIC ${SOURCES} ${HEADERS})
+
 if(VISTLE_USE_QT5)
     qt5_wrap_ui(UI_SRCS ${FORMS})
-else()
-    qt6_wrap_ui(UI_SRCS ${FORMS})
-endif()
-
-add_library(vistle_remotefiledialog STATIC ${SOURCES} ${UI_SRCS})
-
-target_compile_definitions(vistle_remotefiledialog PRIVATE QT_DISABLE_DEPRECATED_BEFORE=0x000000)
-
-target_include_directories(vistle_remotefiledialog SYSTEM PRIVATE ../../../3rdparty/qt-solutions/qtpropertybrowser/src)
-target_include_directories(
-    vistle_remotefiledialog
-    PRIVATE ../..
-    PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-
-target_link_libraries(vistle_remotefiledialog PRIVATE vistle_util vistle_core)
-if(VISTLE_USE_QT5)
     target_link_libraries(vistle_remotefiledialog PRIVATE Qt5::Widgets)
 else()
+    qt6_wrap_ui(UI_SRCS ${FORMS})
     target_link_libraries(vistle_remotefiledialog PRIVATE Qt6::Widgets)
     qt_disable_unicode_defines(vistle_remotefiledialog)
 endif()
+target_sources(vistle_remotefiledialog PRIVATE ${UI_SRCS})
+
+target_compile_definitions(vistle_remotefiledialog PRIVATE QT_DISABLE_DEPRECATED_BEFORE=0x000000)
+
+target_include_directories(
+    vistle_remotefiledialog
+    PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
+target_link_libraries(vistle_remotefiledialog PRIVATE vistle_util vistle_core)
