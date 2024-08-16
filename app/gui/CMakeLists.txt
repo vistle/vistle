@@ -2,17 +2,19 @@ if(NOT Qt6_FOUND AND NOT Qt5_FOUND)
     message("Not building GUI: neither Qt5 nor Qt6 Core library found")
     return()
 endif()
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
 add_subdirectory(propertybrowser)
 add_subdirectory(remotefilebrowser)
 
 set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTOUIC ON)
+set(CMAKE_INCLUDE_CURRENT_DIR TRUE)
+#set(CMAKE_AUTOUIC ON)
 
 if(Python_FOUND)
     add_definitions(-DHAVE_PYTHON)
 endif()
 
-include_directories(${CMAKE_CURRENT_BINARY_DIR} .)
+#include_directories(${CMAKE_CURRENT_BINARY_DIR} .)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/lib/3rdparty/qt-solutions/qtpropertybrowser/src)
 
 set(gui_SOURCES

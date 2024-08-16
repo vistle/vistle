@@ -1,4 +1,5 @@
-set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTOMOC TRUE)
+set(CMAKE_INCLUDE_CURRENT_DIR TRUE)
 
 set(SOURCES
     ../../../lib/3rdparty/qt-solutions/qtpropertybrowser/src/qtbuttonpropertybrowser.cpp
@@ -44,7 +45,11 @@ set(HEADERS
 
 set(FORMS)
 
-qt_wrap_ui(UI_SRCS ${FORMS})
+if(VISTLE_USE_QT5)
+    qt5_wrap_ui(UI_SRCS ${FORMS})
+else()
+    qt6_wrap_ui(UI_SRCS ${FORMS})
+endif()
 
 add_library(vistle_propertybrowser STATIC ${SOURCES} ${UI_SRCS})
 
