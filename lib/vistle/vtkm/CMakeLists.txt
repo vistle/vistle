@@ -9,11 +9,4 @@ if(VISTLE_CUDA_ENABLED)
     set_source_files_properties(${SOURCES} PROPERTIES LANGUAGE CUDA)
 endif()
 
-vistle_target_link_libraries(
-    vistle_vtkm
-    PUBLIC
-    ${VTK_LIBRARIES}
-    PUBLIC
-    vistle_core
-    vtkm::cont
-    vtkm::filter)
+vistle_target_link_libraries(vistle_vtkm PRIVATE vistle_core vtkm::cont)
