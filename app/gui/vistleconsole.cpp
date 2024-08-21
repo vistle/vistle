@@ -281,6 +281,29 @@ void VistleConsole::init()
 #endif
 
     try {
+#ifdef USE_RLCOMPLETER
+        PyRun_SimpleString("import sys\n"
+
+                           "import _redirector\n"
+                           "sys.stdout = _redirector.redirector()\n"
+                           "sys.stderr = _redirector.redirector(True)\n"
+
+                           "sys.path.insert(0, \".\")\n" // add current path
+
+                           "import _console\n"
+
+                           "import builtins\n"
+                           "builtins.clear=_console.clear\n"
+                           "builtins.reset=_console.reset\n"
+                           "builtins.save=_console.save\n"
+                           "builtins.load=_console.load\n"
+                           "builtins.history=_console.history\n"
+                           //"builtins.quit=_console.quit\n"
+                           //"builtins.exit=_console.quit\n"
+                           "builtins.input=_console.raw_input\n"
+                           "import rlcompleter\n"
+                           "builtins.completer=rlcompleter.Completer()\n");
+#else
         PyRun_SimpleString("import sys\n"
 
                            "import _redirector\n"
@@ -301,11 +324,8 @@ void VistleConsole::init()
                            //"builtins.exit=_console.quit\n"
                            "builtins.input=_console.raw_input\n"
 
-#ifdef USE_RLCOMPLETER
-                           "import rlcompleter\n"
-                           "builtins.completer=rlcompleter.Completer()\n"
-#endif
         );
+#endif
     } catch (...) {
         std::cerr << "error running Python initialisation" << std::endl;
     }
