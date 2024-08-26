@@ -193,7 +193,7 @@ vistle_target_link_libraries(
     PUBLIC
     vtkm::cont)
 target_link_libraries(vistle_core PRIVATE vistle_config)
-target_link_libraries(vistle_core PUBLIC Eigen3::Eigen)
+target_link_libraries(vistle_core PRIVATE Eigen3::Eigen)
 
 if(ZFP_FOUND)
     target_compile_definitions(vistle_core PRIVATE HAVE_ZFP)
