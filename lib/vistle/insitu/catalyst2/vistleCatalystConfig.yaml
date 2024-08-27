@@ -1,0 +1,9 @@
+
+catalyst_load: 
+  implementation: "vistle"
+  search_paths: 
+    vistle: "../vistle/build/lib/catalyst" #path to directory with libcatalyst-vistle.so
+vistle: 
+  paused: 1 # 1: wait for vistle controller module to connect and for user to manually start the simulation
+  options: "--batch -c hostname::port" #optional arguments for vistle single process
+  dynamic_grid: 0 # 0: the grid is not changing, 1: the grid is updated in every iteration
