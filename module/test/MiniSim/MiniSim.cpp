@@ -11,14 +11,14 @@
 #include <vistle/insitu/core/exception.h>
 
 using namespace vistle;
-namespace sensei = vistle::insitu::sensei;
+namespace sensei = vistle::insitu;
 
 MODULE_MAIN(MiniSimModule)
 #define CERR std::cerr << "MiniSimModule[" << rank() << "/" << size() << "] "
 const char *meshName = "structured mesh";
 const char *varName = "oscillation";
 MiniSimModule::MiniSimModule(const std::string &name, int moduleID, mpi::communicator comm)
-: insitu::InSituModule(name, moduleID, comm)
+: insitu::InSituModuleBase(name, moduleID, comm)
 {
     // std::this_thread::sleep_for(std::chrono::seconds(10));
 
@@ -35,17 +35,17 @@ MiniSimModule::MiniSimModule(const std::string &name, int moduleID, mpi::communi
                                            vistle::Parameter::Boolean));
 
     m_filePath = addStringParameter("path", "path to the connection file written by the simulation",
-                                    directory::configHome() + "/sensei.vistle", vistle::Parameter::ExistingFilename);
+                                    directory::configHome() + "/insitu.vistle", vistle::Parameter::ExistingFilename);
     m_simThread.reset(new std::thread{[this]() {
         constexpr bool pause = true;
-        sensei::MetaData metaData;
-        sensei::MetaMesh metaMesh(meshName);
+        insitu::MetaData metaData;
+        insitu::MetaMesh metaMesh(meshName);
         metaMesh.addVar(varName);
         metaData.addMesh(metaMesh);
 
         auto getDataFunc = std::bind(&MiniSimModule::getData, this, std::placeholders::_1);
-        m_adapter.reset(new sensei::Adapter(pause, this->comm(), std::move(metaData),
-                                            sensei::ObjectRetriever{getDataFunc}, VISTLE_ROOT, VISTLE_BUILD_TYPE, ""));
+        m_adapter.reset(new insitu::Adapter(pause, this->comm(), std::move(metaData),
+                                            insitu::ObjectRetriever{getDataFunc}, VISTLE_ROOT, VISTLE_BUILD_TYPE, ""));
 
 
         while (!m_terminate) {
@@ -68,15 +68,15 @@ MiniSimModule::MiniSimModule(const std::string &name, int moduleID, mpi::communi
     }});
 }
 
-sensei::ObjectRetriever::PortAssignedObjectList MiniSimModule::getData(const sensei::MetaData &meta)
+insitu::ObjectRetriever::PortAssignedObjectList MiniSimModule::getData(const insitu::MetaData &meta)
 {
-    std::vector<sensei::ObjectRetriever::PortAssignedObject> outputData;
+    std::vector<insitu::ObjectRetriever::PortAssignedObject> outputData;
     for (const auto &meshIter: meta) {
         if (meshName == meshIter.name()) {
             for (const auto &block: m_blockExtents) {
                 if (!m_grids[block.first]) {
                     createGrid(block.first, block.second);
-                    outputData.push_back(sensei::ObjectRetriever::PortAssignedObject{meshName, m_grids[block.first]});
+                    outputData.push_back(insitu::ObjectRetriever::PortAssignedObject{meshName, m_grids[block.first]});
                 }
                 std::cerr << "oscillation size = " << m_grids[block.first]->getNumElements() << std::endl;
                 auto oscillation =
@@ -92,7 +92,7 @@ sensei::ObjectRetriever::PortAssignedObjectList MiniSimModule::getData(const sen
                 oscillation->setBlock(block.first);
                 oscillation->addAttribute("_species", "oscillation");
                 m_adapter->updateMeta(oscillation);
-                outputData.push_back(sensei::ObjectRetriever::PortAssignedObject{meshName, varName, oscillation});
+                outputData.push_back(insitu::ObjectRetriever::PortAssignedObject{meshName, varName, oscillation});
             }
         }
     }
@@ -168,7 +168,7 @@ void MiniSimModule::initialize(size_t nblocks, size_t n_local_blocks, float *ori
 bool MiniSimModule::changeParameter(const Parameter *param)
 {
     updateSimParams(param);
-    return InSituModule::changeParameter(param);
+    return InSituModuleBase::changeParameter(param);
 }
 
 void MiniSimModule::SetBlockExtent(int gid, int xmin, int xmax, int ymin, int ymax, int zmin, int zmax)

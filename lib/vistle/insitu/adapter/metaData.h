@@ -1,5 +1,5 @@
-#ifndef VISTLE_INSITU_SENSEI_METADATA_H
-#define VISTLE_INSITU_SENSEI_METADATA_H
+#ifndef VISTLE_INSITU_ADAPTER_METADATA_H
+#define VISTLE_INSITU_ADAPTER_METADATA_H
 
 #include "export.h"
 
@@ -9,9 +9,8 @@
 
 namespace vistle {
 namespace insitu {
-namespace sensei {
 
-class V_SENSEIEXPORT MetaMesh {
+class V_INSITUADAPTEREXPORT MetaMesh {
 public:
     typedef std::set<std::string>::const_iterator Iter;
     MetaMesh(const std::string &name);
@@ -28,7 +27,7 @@ private:
     std::set<std::string> m_variables;
 };
 
-class V_SENSEIEXPORT
+class V_INSITUADAPTEREXPORT
     MetaData { // This contains the names of all meshes and their linked data fields and must be provided before the connection to
     // Vistle
 public:
@@ -44,7 +43,6 @@ private:
     std::set<MetaMesh> m_meshes;
 };
 
-} // namespace sensei
 } // namespace insitu
 } // namespace vistle
 #endif

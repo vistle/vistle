@@ -5,7 +5,7 @@
 #include <cassert>
 #include <iostream>
 
-using namespace vistle::insitu::sensei;
+using namespace vistle::insitu;
 
 MetaMesh::MetaMesh(const std::string &name): m_name(name)
 {}

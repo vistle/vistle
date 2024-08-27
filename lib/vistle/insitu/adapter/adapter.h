@@ -1,5 +1,5 @@
-#ifndef VISTLE_SENSEI_H
-#define VISTLE_SENSEI_H
+#ifndef VISTLE_INSITU_ADAPTER_H
+#define VISTLE_INSITU_ADAPTER_H
 
 #include "export.h"
 #include "metaData.h"
@@ -15,12 +15,10 @@ namespace insitu {
 namespace message {
 class Message;
 } // namespace message
-namespace sensei {
 namespace detail {
 struct Internals;
 }
-class V_SENSEIEXPORT Adapter //: public SenseiInterface
-{
+class V_INSITUADAPTEREXPORT Adapter {
 public:
     Adapter(bool paused, MPI_Comm Comm, MetaData &&meta, ObjectRetriever cbs, const std::string &vistleRoot,
             const std::string &vistleBuildType, const std::string &options);
@@ -70,7 +68,7 @@ private:
     void calculateUsedData();
     bool objectRequested(const std::string &name, const std::string &meshName = "");
 
-    void dumpConnectionFile(MPI_Comm Comm); // create a file in which the sensei
+    void dumpConnectionFile(MPI_Comm Comm); // create a file in which the in situ
         // module can find the connection info
     bool recvAndHandeMessage(bool blocking = false);
     bool initModule(const vistle::insitu::message::Message &msg);
@@ -84,9 +82,8 @@ private:
     void addCommands();
     void addPorts();
 };
-} // namespace sensei
 
 } // namespace insitu
 } // namespace vistle
 
-#endif // !VISTLE_SENSEI_H
+#endif // !VISTLE_INSITU_ADAPTER_H

@@ -1,2 +1,2 @@
-vistle_add_library(vistle_insitu_module EXPORT export.h inSituModule.h inSituModule.cpp)
+vistle_add_library(vistle_insitu_module EXPORT export.h inSituModuleBase.h inSituModuleBase.cpp)
 vistle_target_link_libraries(vistle_insitu_module PRIVATE vistle_module vistle_insitu_core PUBLIC vistle_insitu_message)
