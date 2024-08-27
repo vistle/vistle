@@ -1,4 +1,4 @@
-#include "inSituModule.h"
+#include "inSituModuleBase.h"
 #include <chrono>
 #include <iostream>
 #include <thread>
@@ -14,20 +14,20 @@ using namespace vistle::insitu;
 #define CERR std::cerr << "InSituModule[" << rank() << "/" << size() << "] "
 #define DEBUG_CERR vistle::DoNotPrintInstance
 
-InSituModule::InSituModule(const std::string &name, const int moduleID, mpi::communicator comm)
+InSituModuleBase::InSituModuleBase(const std::string &name, const int moduleID, mpi::communicator comm)
 : Module(name, moduleID, comm)
 , m_simulationCommandsComm(comm, boost::mpi::comm_duplicate)
 , m_vistleObjectsComm(comm, boost::mpi::comm_duplicate)
 {}
 
-InSituModule::~InSituModule()
+InSituModuleBase::~InSituModuleBase()
 {
     if (m_messageHandler)
         m_messageHandler->send(message::ConnectionClosed(true));
     terminateCommunicationThreads();
 }
 
-bool InSituModule::isConnectedToSim() const
+bool InSituModuleBase::isConnectedToSim() const
 {
     return m_messageHandler != nullptr;
 }
@@ -35,27 +35,27 @@ bool InSituModule::isConnectedToSim() const
 
 //private
 
-void InSituModule::sendIntOptions()
+void InSituModuleBase::sendIntOptions()
 {
     for (const auto &option: m_intOptions) {
         m_messageHandler->send(message::IntOption{{option->getName(), option->getValue()}});
     }
 }
 
-void InSituModule::disconnectSim()
+void InSituModuleBase::disconnectSim()
 {
     m_messageHandler.reset();
     m_terminateCommunication = true;
 }
 
-void InSituModule::startCommunicationThreads()
+void InSituModuleBase::startCommunicationThreads()
 {
     m_terminateCommunication = false;
-    m_simulationCommandsThread = std::make_unique<std::thread>(std::bind(&InSituModule::communicateWithSim, this));
-    m_vistleObjectsThread = std::make_unique<std::thread>(std::bind(&InSituModule::recvVistleObjects, this));
+    m_simulationCommandsThread = std::make_unique<std::thread>(std::bind(&InSituModuleBase::communicateWithSim, this));
+    m_vistleObjectsThread = std::make_unique<std::thread>(std::bind(&InSituModuleBase::recvVistleObjects, this));
 }
 
-void InSituModule::terminateCommunicationThreads()
+void InSituModuleBase::terminateCommunicationThreads()
 {
     m_messageHandler = nullptr;
     m_terminateCommunication = true;
@@ -67,7 +67,7 @@ void InSituModule::terminateCommunicationThreads()
     }
 }
 
-void InSituModule::communicateWithSim()
+void InSituModuleBase::communicateWithSim()
 {
     while (true) {
         bool terminateCommunication = m_terminateCommunication;
@@ -85,7 +85,7 @@ void InSituModule::communicateWithSim()
     }
 }
 
-void InSituModule::initRecvFromSimQueue()
+void InSituModuleBase::initRecvFromSimQueue()
 {
     std::string msqName = vistle::message::MessageQueue::createName(
         ("recvFromSim" + std::to_string(++m_instanceNum)).c_str(), id(), rank());
@@ -99,7 +99,7 @@ void InSituModule::initRecvFromSimQueue()
     }
 }
 
-vistle::insitu::message::ModuleInfo::ShmInfo InSituModule::gatherModuleInfo() const
+vistle::insitu::message::ModuleInfo::ShmInfo InSituModuleBase::gatherModuleInfo() const
 {
     message::ModuleInfo::ShmInfo shmInfo;
     shmInfo.hostname = vistle::hostname();
@@ -113,7 +113,7 @@ vistle::insitu::message::ModuleInfo::ShmInfo InSituModule::gatherModuleInfo() co
     return shmInfo;
 }
 
-void InSituModule::initializeCommunication()
+void InSituModuleBase::initializeCommunication()
 {
     if (m_messageHandler) {
         CERR << "can not connect to a new simulation before the old simulation is disconnected." << std::endl;
@@ -129,12 +129,12 @@ void InSituModule::initializeCommunication()
     }
 }
 
-const insitu::message::MessageHandler *InSituModule::getMessageHandler() const
+const insitu::message::MessageHandler *InSituModuleBase::getMessageHandler() const
 {
     return m_messageHandler.get();
 }
 
-bool InSituModule::changeParameter(const Parameter *param)
+bool InSituModuleBase::changeParameter(const Parameter *param)
 {
     if (!param) {
         return true;
@@ -163,7 +163,7 @@ bool isPackageComplete(const vistle::message::Buffer &buf)
                                                         vistle::insitu::message::InSituMessageType::PackageComplete;
 }
 
-bool InSituModule::prepare()
+bool InSituModuleBase::prepare()
 {
     std::lock_guard<std::mutex> g{m_vistleObjectsMutex};
     if (m_cachedVistleObjects.empty())
@@ -183,7 +183,7 @@ bool InSituModule::prepare()
     return true;
 }
 
-void InSituModule::updateMeta(const vistle::message::Buffer &obj)
+void InSituModuleBase::updateMeta(const vistle::message::Buffer &obj)
 {
     if (obj.type() == vistle::message::ADDOBJECT) {
         auto &objMsg = obj.as<vistle::message::AddObject>();
@@ -192,7 +192,7 @@ void InSituModule::updateMeta(const vistle::message::Buffer &obj)
     }
 }
 
-void InSituModule::connectionAdded(const Port *from, const Port *to)
+void InSituModuleBase::connectionAdded(const Port *from, const Port *to)
 {
     if (m_messageHandler && from->connections().size() < 2) // assumes the port got added before this call
     {
@@ -200,13 +200,13 @@ void InSituModule::connectionAdded(const Port *from, const Port *to)
     }
 }
 
-void InSituModule::connectionRemoved(const Port *from, const Port *to)
+void InSituModuleBase::connectionRemoved(const Port *from, const Port *to)
 {
     if (m_messageHandler && from->connections().size() == 1) // assumes the port gets removed after this call
         m_messageHandler->send(message::DisconnectPort{from->getName()});
 }
 
-bool InSituModule::recvAndhandleMessage()
+bool InSituModuleBase::recvAndhandleMessage()
 {
     auto msg = m_messageHandler->tryRecv();
     if (msg.type() != message::InSituMessageType::Invalid) {
@@ -215,7 +215,7 @@ bool InSituModule::recvAndhandleMessage()
     return handleInsituMessage(msg);
 }
 
-void InSituModule::recvVistleObjects()
+void InSituModuleBase::recvVistleObjects()
 {
     while (!m_terminateCommunication) {
         if (cacheVistleObjects()) {
@@ -228,7 +228,7 @@ void InSituModule::recvVistleObjects()
 }
 
 
-bool InSituModule::cacheVistleObjects()
+bool InSituModuleBase::cacheVistleObjects()
 {
     if (!m_vistleObjectsMessageQueue)
         return false;
@@ -251,7 +251,7 @@ bool InSituModule::cacheVistleObjects()
     return false;
 }
 
-bool InSituModule::handleInsituMessage(message::Message &msg)
+bool InSituModuleBase::handleInsituMessage(message::Message &msg)
 {
     using namespace vistle::insitu::message;
     DEBUG_CERR << "handleInsituMessage " << (int)msg.type() << std::endl;

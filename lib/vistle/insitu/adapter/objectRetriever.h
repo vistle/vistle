@@ -9,12 +9,11 @@
 
 namespace vistle {
 namespace insitu {
-namespace sensei {
 
-class V_SENSEIEXPORT ObjectRetriever { // callbacks to retrieve Grids
+class V_INSITUADAPTEREXPORT ObjectRetriever { // callbacks to retrieve Grids
     // and Arrays from sensei
 public:
-    struct V_SENSEIEXPORT PortAssignedObject {
+    struct V_INSITUADAPTEREXPORT PortAssignedObject {
         PortAssignedObject() = default;
         PortAssignedObject(const std::string &gridName, vistle::Object::const_ptr obj);
         PortAssignedObject(const std::string &gridName, const std::string &varName, vistle::Object::const_ptr obj);
@@ -34,7 +33,6 @@ private:
     std::function<PortAssignedObjectList(const MetaData &usedData)> m_getData;
 };
 
-} // namespace sensei
 } // namespace insitu
 } // namespace vistle
 

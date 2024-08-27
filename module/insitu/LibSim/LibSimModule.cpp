@@ -29,7 +29,7 @@ using vistle::insitu::message::InSituMessageType;
 #define CERR cerr << "LibSimModule[" << rank() << "/" << size() << "] "
 #define DEBUG_CERR vistle::DoNotPrintInstance
 
-LibSimModule::LibSimModule(const string &name, int moduleID, mpi::communicator comm): InSituModule(name, moduleID, comm)
+LibSimModule::LibSimModule(const string &name, int moduleID, mpi::communicator comm): InSituModuleBase(name, moduleID, comm)
 {
 #ifndef MODULE_THREAD
     m_filePath = addStringParameter("path", "path to a .sim2 file or directory containing these files", "",

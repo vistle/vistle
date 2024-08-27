@@ -1,17 +1,17 @@
 #ifndef VISTLE_MINI_SIM_H
 #define VISTLE_MINI_SIM_H
 #include "minisim/minisim.h"
-#include <vistle/insitu/module/inSituModule.h>
+#include <vistle/insitu/module/inSituModuleBase.h>
 #include <vistle/insitu/message/ShmMessage.h>
-#include <vistle/insitu/sensei/sensei.h>
-#include <vistle/insitu/sensei/metaData.h>
+#include <vistle/insitu/adapter/adapter.h>
+#include <vistle/insitu/adapter/metaData.h>
 #include <vistle/core/unstr.h>
 #include <diy/master.hpp>
 #include <diy/decomposition.hpp>
 #include <memory>
 #include <thread>
 struct Particle;
-class MiniSimModule: public vistle::insitu::InSituModule {
+class MiniSimModule: public vistle::insitu::InSituModuleBase {
 public:
     MiniSimModule(const std::string &name, int moduleID, mpi::communicator comm);
     ~MiniSimModule();
@@ -33,8 +33,8 @@ private:
     bool changeParameter(const vistle::Parameter *param) override;
     void createGrid(int blockId, const diy::DiscreteBounds cellExts);
 
-    vistle::insitu::sensei::ObjectRetriever::PortAssignedObjectList
-    getData(const vistle::insitu::sensei::MetaData &meta);
+    vistle::insitu::ObjectRetriever::PortAssignedObjectList
+    getData(const vistle::insitu::MetaData &meta);
 
     std::mutex m_waitForBeginExecuteMutex, m_waitForEndSimMutex;
     std::atomic_bool m_terminate{false};
@@ -62,7 +62,7 @@ private:
 
     std::map<int, vistle::UnstructuredGrid::ptr> m_grids;
 
-    std::unique_ptr<vistle::insitu::sensei::Adapter> m_adapter;
+    std::unique_ptr<vistle::insitu::Adapter> m_adapter;
 };
 
 
