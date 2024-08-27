@@ -5,4 +5,4 @@ add_subdirectory(module) #depends on core and message
 add_subdirectory(libsim)
 
 add_subdirectory(adapter)
-
+add_subdirectory(catalyst2)
