@@ -604,9 +604,6 @@ DataBase::ptr vtkArray2Vistle(vtkType *vd, Object::const_ptr grid)
     return nullptr;
 }
 
-#ifdef SENSEI
-} // anonymous namespace
-#endif
 DataBase::ptr vtkData2Vistle(vtkDataArray *varr, Object::const_ptr grid, std::string &diag)
 {
     DataBase::ptr data;
@@ -669,10 +666,7 @@ DataBase::ptr vtkData2Vistle(vtkDataArray *varr, Object::const_ptr grid, std::st
     return nullptr;
 }
 
-
-#ifndef SENSEI
 } // anonymous namespace
-#endif
 
 vistle::Object::ptr toGrid(vtkDataObject *vtk, std::string *diagnostics)
 {
