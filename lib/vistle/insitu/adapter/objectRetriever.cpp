@@ -1,7 +1,6 @@
 #include "objectRetriever.h"
 
 using namespace vistle::insitu;
-using namespace vistle::insitu::sensei;
 
 ObjectRetriever::ObjectRetriever(std::function<PortAssignedObjectList(const MetaData &usedData)> getData)
 : m_getData(getData)

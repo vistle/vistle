@@ -1,4 +1,4 @@
-#include "sensei.h"
+#include "adapter.h"
 #include "exception.h"
 
 #include <vistle/insitu/core/attachVistleShm.h>
@@ -24,15 +24,13 @@
 #include <vistle/manager/manager.h>
 #endif // MODULE_THREAD
 
-#define CERR std::cerr << "[" << m_rank << "/" << m_mpiSize << " ] SenseiAdapter: "
+#define CERR std::cerr << "[" << m_rank << "/" << m_mpiSize << " ] InSituAdapter: "
 using std::endl;
 using namespace vistle::insitu;
-using namespace vistle::insitu::sensei;
 using namespace vistle::insitu::message;
 
 namespace vistle {
 namespace insitu {
-namespace sensei {
 namespace detail {
 
 int getRank(MPI_Comm Comm)
@@ -52,7 +50,6 @@ struct Internals {
     std::vector<message::IntParam> moduleParams{{"frequency", 1}, {"keep_timesteps", false}};
 };
 } // namespace detail
-} // namespace sensei
 } // namespace insitu
 } // namespace vistle
 
@@ -136,7 +133,7 @@ bool Adapter::stillConnected()
     while (recvAndHandeMessage()) {
     } // catch newest state
     if (wasConnected && !m_connected) {
-        CERR << "sensei controller disconnected" << endl;
+        CERR << "in situ module disconnected" << endl;
         return false;
     }
     return true;
@@ -159,7 +156,7 @@ bool Adapter::waitedForModuleCommands()
     {
         recvAndHandeMessage(true);
         if (!m_connected) {
-            CERR << "sensei controller disconnected" << endl;
+            CERR << "in situ module disconnected" << endl;
             return false;
         }
     }
@@ -174,7 +171,7 @@ bool Adapter::haveToProcessTimestep(size_t timestep)
 void Adapter::processData()
 {
     if (!m_internals->sendMessageQueue) {
-        CERR << "VistleSenseiAdapter can not add vistle object: sendMessageQueue = "
+        CERR << "in situ adapter can not add vistle object: sendMessageQueue = "
                 "null"
              << endl;
         return;
@@ -256,7 +253,7 @@ void Adapter::dumpConnectionFile(MPI_Comm comm)
         if (!vistle::filesystem::exists(vistle::directory::configHome())) {
             vistle::filesystem::create_directory(vistle::directory::configHome());
         }
-        std::ofstream outfile(directory::configHome() + "/sensei.vistle");
+        std::ofstream outfile(directory::configHome() + "/insitu.vistle");
         for (int i = 0; i < m_mpiSize; i++) {
             outfile << std::to_string(i) << " " << names[i] << endl;
         }

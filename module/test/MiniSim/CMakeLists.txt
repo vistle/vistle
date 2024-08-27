@@ -15,7 +15,7 @@ if(DIY_INCLUDE_DIR)
         vistle_insitu_module
         vistle_libsim_connect
         vistle_module
-        vistle_sensei
+        vistle_insitu_adapter
         vistle_util)
 
     if(NOT WIN32)

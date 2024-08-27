@@ -1,5 +1,5 @@
 #Use this to find vistle components
-#e.g. with: find_package(Vistle REQUIRED COMPONENTS sensei sensei_vtk boost_mpi)
+#e.g. with: find_package(Vistle REQUIRED COMPONENTS insitu_adapter vtk boost_mpi)
 macro(vistle_find_component comp req)
 
     set(_VISTLE_REQUIRED)

@@ -14,11 +14,11 @@
 
 namespace vistle {
 namespace insitu {
-//Base class for in situ modules (SENSEI LibSim and MiniSim)
-class V_INSITUMODULEEXPORT InSituModule: public vistle::Module {
+//Base class for in situ modules (InSituModule for SENSEI and Catalyst II, LibSim and MiniSim)
+class V_INSITUMODULEEXPORT InSituModuleBase: public vistle::Module {
 public:
-    InSituModule(const std::string &name, const int moduleID, mpi::communicator comm);
-    ~InSituModule();
+    InSituModuleBase(const std::string &name, const int moduleID, mpi::communicator comm);
+    ~InSituModuleBase();
 
     bool isConnectedToSim() const;
 

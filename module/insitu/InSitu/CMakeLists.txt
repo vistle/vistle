@@ -1,6 +1,6 @@
-add_module(SenseiController "acquire data from SENSEI instrumented simulations" SenseiModule.h SenseiModule.cpp)
+add_module(InSituModule "acquire data from SENSEI or Catalyst II instrumented simulations" InSituModule.h InSituModule.cpp)
 target_link_libraries(
-    SenseiController
+    InSituModule
     vistle_module
     vistle_util
     vistle_insitu_message

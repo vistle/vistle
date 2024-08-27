@@ -1,4 +1,4 @@
-#include "SenseiModule.h"
+#include "InSituModule.h"
 
 #include <vistle/core/rectilineargrid.h>
 #include <vistle/insitu/core/exception.h>
@@ -16,17 +16,17 @@
 
 using namespace std;
 using namespace vistle;
-using namespace vistle::insitu::sensei;
+using namespace vistle::insitu;
 using namespace vistle::insitu::message;
 
-#define CERR cerr << "SenseiModule[" << rank() << "/" << size() << "] "
+#define CERR cerr << "InSituModule[" << rank() << "/" << size() << "] "
 #define DEBUG_CERR vistle::DoNotPrintInstance
 
-SenseiModule::SenseiModule(const string &name, int moduleID, mpi::communicator comm)
-: insitu::InSituModule(name, moduleID, comm)
+InSituModule::InSituModule(const string &name, int moduleID, mpi::communicator comm)
+: insitu::InSituModuleBase(name, moduleID, comm)
 {
     m_filePath = addStringParameter("path", "path to the connection file written by the simulation",
-                                    directory::configHome() + "/sensei.vistle", vistle::Parameter::ExistingFilename);
+                                    directory::configHome() + "/insitu.vistle", vistle::Parameter::ExistingFilename);
     setParameterFilters(m_filePath, "simulation Files (*.vistle)");
 
     m_intOptions.push_back(addIntParameter("frequency", "the pipeline is processed for every nth simulation cycle", 1));
@@ -35,7 +35,7 @@ SenseiModule::SenseiModule(const string &name, int moduleID, mpi::communicator c
                                            vistle::Parameter::Boolean));
 }
 
-std::unique_ptr<insitu::message::MessageHandler> SenseiModule::connectToSim()
+std::unique_ptr<insitu::message::MessageHandler> InSituModule::connectToSim()
 {
     CERR << "trying to connect to sim with file " << m_filePath->getValue() << endl;
     std::ifstream infile(m_filePath->getValue());
@@ -60,4 +60,4 @@ std::unique_ptr<insitu::message::MessageHandler> SenseiModule::connectToSim()
     }
 }
 
-MODULE_MAIN_THREAD(SenseiModule, boost::mpi::threading::multiple)
+MODULE_MAIN_THREAD(InSituModule, boost::mpi::threading::multiple)
