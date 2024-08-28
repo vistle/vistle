@@ -394,58 +394,9 @@ void archive_helper<yas_tag>::ArrayWrapper<T>::save(Archive &ar) const
         assert(!compPredict);
         assert(!compZfp);
 #ifdef HAVE_SZ3
-        std::vector<size_t> dims;
-        for (int c = 0; c < 3; ++c)
-            dims.push_back(m_dim[c]);
-        while (dims.back() == 1 && dims.size() > 1)
-            dims.pop_back();
-        SZ3::Config conf;
-        if (dims.size() == 1)
-            conf = SZ3::Config(dims[0]);
-        else if (dims.size() == 2)
-            conf = SZ3::Config(dims[0], dims[1]);
-        else if (dims.size() == 3)
-            conf = SZ3::Config(dims[0], dims[1], dims[2]);
-        switch (cs.szAlgo) {
-        case SzInterp:
-            conf.cmprAlgo = SZ3::ALGO_INTERP;
-            break;
-        case SzInterpLorenzo:
-            conf.cmprAlgo = SZ3::ALGO_INTERP_LORENZO;
-            break;
-        case SzLorenzoReg:
-            conf.cmprAlgo = SZ3::ALGO_LORENZO_REG;
-            break;
-        }
-        switch (cs.szError) {
-        case SzAbs:
-            conf.errorBoundMode = SZ3::EB_ABS;
-            break;
-        case SzRel:
-            conf.errorBoundMode = SZ3::EB_REL;
-            break;
-        case SzPsnr:
-            conf.errorBoundMode = SZ3::EB_PSNR;
-            break;
-        case SzL2:
-            conf.errorBoundMode = SZ3::EB_L2NORM;
-            break;
-        case SzAbsAndRel:
-            conf.errorBoundMode = SZ3::EB_ABS_AND_REL;
-            break;
-        case SzAbsOrRel:
-            conf.errorBoundMode = SZ3::EB_ABS_OR_REL;
-            break;
-        }
-        conf.absErrorBound = cs.szAbsError;
-        conf.relErrorBound = cs.szRelError;
-        conf.psnrErrorBound = cs.szPsnrError;
-        conf.l2normErrorBound = cs.szL2Error;
-        conf.encoder = 0;
-        conf.lossless = 0;
         size_t outSize = 0;
         std::vector<T> input(m_begin, m_end);
-        char *compressedData = compressSz3<typename lossy_type_map<T>::sz3type>(outSize, input.data(), conf);
+        char *compressedData = compressSz3<typename lossy_type_map<T>::sz3type>(outSize, input.data(), m_dim, cs);
         buffer compressed(compressedData, compressedData + outSize);
         delete[] compressedData;
         ar &compress;
