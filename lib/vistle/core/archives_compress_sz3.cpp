@@ -1,14 +1,3 @@
-/////////1/////////2/////////3/////////4/////////5/////////6/////////7/////////8
-// binary_oarchive.cpp:
-// binary_iarchive.cpp:
-
-// (C) Copyright 2002 Robert Ramey - http://www.rrsd.com .
-// Use, modification and distribution is subject to the Boost Software
-// License, Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
-// http://www.boost.org/LICENSE_1_0.txt)
-
-//  See http://www.boost.org for updates, documentation, and revision history.
-
 #ifdef HAVE_SZ3
 #include <SZ3/utils/Config.hpp>
 #include <SZ3/api/sz.hpp>
@@ -22,8 +11,22 @@
 
 namespace vistle {
 
-#ifdef HAVE_SZ3
 namespace detail {
+
+template<>
+char *compressSz3<void>(size_t &compressedSize, const void *src, const Index dim[3], const CompressionSettings &conf)
+{
+    compressedSize = 0;
+    return nullptr;
+}
+
+template<>
+bool decompressSz3<void>(void *dest, const buffer &compressed, const Index dim[3])
+{
+    return false;
+}
+
+#ifdef HAVE_SZ3
 
 SZ3::Config getConfig(const CompressionSettings &cs, const Index dim[3])
 {
@@ -82,15 +85,8 @@ SZ3::Config getConfig(const CompressionSettings &cs, const Index dim[3])
     return conf;
 }
 
-template<>
-char *compressSz3<void>(size_t &compressedSize, const void *src, const Index dim[3], const CompressionSettings &conf)
-{
-    compressedSize = 0;
-    return nullptr;
-}
-
-template<>
-char *compressSz3<float>(size_t &compressedSize, const float *src, const Index dim[3], const CompressionSettings &conf)
+template<typename T>
+char *compressSz3(size_t &compressedSize, const T *src, const Index dim[3], const CompressionSettings &conf)
 {
     SZ3::Config szconf = getConfig(conf, dim);
     compressedSize = 0;
@@ -102,87 +98,42 @@ char *compressSz3<float>(size_t &compressedSize, const float *src, const Index d
     return buf;
 }
 
-template<>
-char *compressSz3<double>(size_t &compressedSize, const double *src, const Index dim[3],
-                          const CompressionSettings &conf)
+
+template<typename T>
+bool decompressSz3(T *dest, const buffer &compressed, const Index dim[3])
 {
-    SZ3::Config szconf = getConfig(conf, dim);
+    SZ3::Config conf;
+    SZ_decompress(conf, const_cast<char *>(compressed.data()), compressed.size(), dest);
+    return true;
+}
+#else
+template<typename T>
+char *compressSz3(size_t &compressedSize, const T *src, const Index dim[3], const CompressionSettings &conf)
+{
     compressedSize = 0;
-    char *buf = SZ_compress(szconf, src, compressedSize);
-#ifdef COMP_DEBUG
-    std::cerr << "compressSz3: compressed " << conf.num << " elements (dim " << int(conf.N) << "), size "
-              << conf.num * sizeof(double) << " to " << compressedSize << " bytes" << std::endl;
-#endif
-    return buf;
+    return nullptr;
 }
 
-template<>
-char *compressSz3<int32_t>(size_t &compressedSize, const int32_t *src, const Index dim[3],
-                           const CompressionSettings &conf)
-{
-    SZ3::Config szconf = getConfig(conf, dim);
-    compressedSize = 0;
-    char *buf = SZ_compress(szconf, src, compressedSize);
-#ifdef COMP_DEBUG
-    std::cerr << "compressSz3: compressed " << conf.num << " elements (dim " << int(conf.N) << "), size "
-              << conf.num * sizeof(int32_t) << " to " << compressedSize << " bytes" << std::endl;
-#endif
-    return buf;
-}
-
-template<>
-char *compressSz3<int64_t>(size_t &compressedSize, const int64_t *src, const Index dim[3],
-                           const CompressionSettings &conf)
-{
-    SZ3::Config szconf = getConfig(conf, dim);
-    compressedSize = 0;
-    char *buf = SZ_compress(szconf, src, compressedSize);
-#ifdef COMP_DEBUG
-    std::cerr << "compressSz3: compressed " << conf.num << " elements (dim " << int(conf.N) << "), size "
-              << conf.num * sizeof(int64_t) << " to " << compressedSize << " bytes" << std::endl;
-#endif
-    return buf;
-}
-
-template<>
-bool decompressSz3<void>(void *dest, const buffer &compressed, const Index dim[3])
+template<typename T>
+bool decompressSz3(T *dest, const buffer &compressed, const Index dim[3])
 {
     return false;
 }
-
-template<>
-bool decompressSz3<float>(float *dest, const buffer &compressed, const Index dim[3])
-{
-    SZ3::Config conf;
-    SZ_decompress(conf, const_cast<char *>(compressed.data()), compressed.size(), dest);
-    return true;
-}
-
-template<>
-bool decompressSz3<double>(double *dest, const buffer &compressed, const Index dim[3])
-{
-    SZ3::Config conf;
-    SZ_decompress(conf, const_cast<char *>(compressed.data()), compressed.size(), dest);
-    return true;
-}
-
-template<>
-bool decompressSz3<int32_t>(int32_t *dest, const buffer &compressed, const Index dim[3])
-{
-    SZ3::Config conf;
-    SZ_decompress(conf, const_cast<char *>(compressed.data()), compressed.size(), dest);
-    return true;
-}
-
-template<>
-bool decompressSz3<int64_t>(int64_t *dest, const buffer &compressed, const Index dim[3])
-{
-    SZ3::Config conf;
-    SZ_decompress(conf, const_cast<char *>(compressed.data()), compressed.size(), dest);
-    return true;
-}
-
-} // namespace detail
 #endif // HAVE_SZ3
+
+template char *compressSz3<float>(size_t &compressedSize, const float *src, const Index dim[3],
+                                  const CompressionSettings &conf);
+template char *compressSz3<double>(size_t &compressedSize, const double *src, const Index dim[3],
+                                   const CompressionSettings &conf);
+template char *compressSz3<int32_t>(size_t &compressedSize, const int32_t *src, const Index dim[3],
+                                    const CompressionSettings &conf);
+template char *compressSz3<int64_t>(size_t &compressedSize, const int64_t *src, const Index dim[3],
+                                    const CompressionSettings &conf);
+
+template bool decompressSz3<float>(float *dest, const buffer &compressed, const Index dim[3]);
+template bool decompressSz3<double>(double *dest, const buffer &compressed, const Index dim[3]);
+template bool decompressSz3<int32_t>(int32_t *dest, const buffer &compressed, const Index dim[3]);
+template bool decompressSz3<int64_t>(int64_t *dest, const buffer &compressed, const Index dim[3]);
+} // namespace detail
 
 } // namespace vistle
