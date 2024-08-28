@@ -797,10 +797,6 @@ endmacro(vistle_install_headers)
 configure_file(${CMAKE_CURRENT_LIST_DIR}/cmake/VistleConfig.cmake ${PROJECT_BINARY_DIR}/lib/cmake/vistle/VistleConfig.cmake COPYONLY)
 install(FILES ${CMAKE_CURRENT_LIST_DIR}/cmake/VistleConfig.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/vistle)
 
-if(APPLE)
-    add_definitions(-DGL_SILENCE_DEPRECATION)
-endif()
-
 if(POLICY CMP0043)
     # configuration (RelWithDebInfo, Debug, ...) dependent COMPILE_DEFINITIONS are not used
     # - default to new behavior
@@ -1093,6 +1089,9 @@ endif()
 
 set(OpenGL_GL_PREFERENCE LEGACY)
 vistle_find_package(OpenGL)
+if(APPLE)
+    target_compile_definitions(OpenGL::GL INTERFACE -DGL_SILENCE_DEPRECATION)
+endif()
 
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
