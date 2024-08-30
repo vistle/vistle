@@ -2,8 +2,12 @@
 # it to invoke Catalyst, one must use the component
 # ``SDK`` in ``find_package`` call. This ensures that all necessary
 # libraries etc. are available.
-find_package(catalyst COMPONENTS SDK)
+vistle_find_package(catalyst COMPONENTS SDK)
+vistle_find_package(conduit)
 if(NOT catalyst_FOUND)
+    return()
+endif()
+if(NOT conduit_FOUND)
     return()
 endif()
 
@@ -19,4 +23,5 @@ catalyst_implementation(
     conduitToVistle.h)
 
 target_link_libraries(catalyst-vistle PRIVATE vistle_insitu_adapter)
+target_link_libraries(catalyst-vistle PRIVATE conduit::conduit)
 target_compile_definitions(catalyst-vistle PRIVATE VISTLE_ROOT="${CMAKE_BINARY_DIR}" VISTLE_BUILD_TYPE="")
