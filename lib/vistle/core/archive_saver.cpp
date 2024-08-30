@@ -38,6 +38,7 @@ void vistle::DeepArchiveSaver::saveObject(const std::string &name, Object::const
 SubArchiveDirectory DeepArchiveSaver::getDirectory()
 {
     SubArchiveDirectory dir;
+    dir.reserve(m_objects.size() + m_arrays.size());
     for (auto &obj: m_objects) {
         dir.emplace_back(obj.first, false, obj.second.size(), obj.second.data());
     }

@@ -619,6 +619,7 @@ void Object::Data::setAttributeList(const std::string &key, const std::vector<st
         attributes.insert(AttributeMapValueType(skey, AttributeList(Shm::the().allocator())));
     AttributeList &a = res.first->second;
     a.clear();
+    a.reserve(values.size());
     for (size_t i = 0; i < values.size(); ++i) {
         a.emplace_back(values[i].c_str(), Shm::the().allocator());
     }
@@ -639,6 +640,7 @@ void Object::Data::copyAttributes(const ObjectData *src, bool replace)
                 AttributeList &dest = res.first->second;
                 if (replace)
                     dest.clear();
+                dest.reserve(dest.size() + values.size());
                 for (AttributeList::const_iterator ait = values.begin(); ait != values.end(); ++ait) {
                     dest.emplace_back(*ait);
                 }
@@ -675,6 +677,7 @@ std::vector<std::string> Object::Data::getAttributes(const std::string &key) con
     const AttributeList &a = it->second;
 
     std::vector<std::string> attrs;
+    attrs.reserve(a.size());
     for (AttributeList::const_iterator i = a.begin(); i != a.end(); ++i) {
         attrs.push_back(i->c_str());
     }
@@ -684,6 +687,7 @@ std::vector<std::string> Object::Data::getAttributes(const std::string &key) con
 std::vector<std::string> Object::Data::getAttributeList() const
 {
     std::vector<std::string> result;
+    result.reserve(attributes.size());
     for (AttributeMap::const_iterator it = attributes.begin(); it != attributes.end(); ++it) {
         auto key = it->first;
         result.push_back(key.c_str());

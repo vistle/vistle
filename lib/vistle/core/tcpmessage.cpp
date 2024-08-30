@@ -459,6 +459,7 @@ bool send(socket_t &sock, const message::Message &msg, error_code &ec, const cha
 {
     const SizeType sz = htonl(msg.size());
     std::vector<boost::asio::const_buffer> buffers;
+    buffers.reserve(payload && size > 0 ? 3 : 2);
     //buffers.push_back(boost::asio::buffer(&InitialMark, sizeof(InitialMark)));
     buffers.push_back(boost::asio::buffer(&sz, sizeof(sz)));
 #ifdef DEBUG
