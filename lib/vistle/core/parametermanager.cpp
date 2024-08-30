@@ -48,6 +48,7 @@ void ParameterManager::init()
 void ParameterManager::quit()
 {
     std::vector<std::string> toRemove;
+    toRemove.reserve(m_parameters.size());
     for (auto &param: m_parameters) {
         if (param.second.owner)
             toRemove.push_back(param.second.param->getName());
@@ -347,6 +348,7 @@ ParameterVector<V> getParameterDefault(config::Access *config, const std::string
         return value;
 
     ParameterVector<V> val;
+    val.reserve(def->size());
     for (size_t i = 0; i < def->size(); ++i) {
         val.push_back((*def)[i]);
     }

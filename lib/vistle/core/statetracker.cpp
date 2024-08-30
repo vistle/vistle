@@ -92,6 +92,7 @@ std::vector<int> StateTracker::getHubs() const
 {
     mutex_locker guard(m_stateMutex);
     std::vector<int> hubs;
+    hubs.reserve(m_hubs.size());
     for (auto it = m_hubs.rbegin(); it != m_hubs.rend(); ++it) {
         const auto &h = *it;
         hubs.push_back(h.id);
@@ -103,6 +104,7 @@ std::vector<int> StateTracker::getSlaveHubs() const
 {
     mutex_locker guard(m_stateMutex);
     std::vector<int> hubs;
+    hubs.reserve(m_hubs.size());
     for (auto it = m_hubs.rbegin(); it != m_hubs.rend(); ++it) {
         const auto &h = *it;
         if (h.id != Id::MasterHub)
@@ -136,6 +138,7 @@ std::vector<int> StateTracker::getRunningList() const
 {
     mutex_locker guard(m_stateMutex);
     std::vector<int> result;
+    result.reserve(runningMap.size());
     for (RunningMap::const_iterator it = runningMap.begin(); it != runningMap.end(); ++it) {
         if (Id::isModule(it->first))
             result.push_back(it->first);
@@ -147,6 +150,7 @@ std::vector<int> StateTracker::getBusyList() const
 {
     mutex_locker guard(m_stateMutex);
     std::vector<int> result;
+    result.reserve(busySet.size());
     for (ModuleSet::const_iterator it = busySet.begin(); it != busySet.end(); ++it) {
         result.push_back(*it);
     }
@@ -853,6 +857,7 @@ void StateTracker::cleanQueue(int id)
 
     VistleState queue;
     std::swap(m_queue, queue);
+    m_queue.reserve(queue.size());
 
     for (auto &m: queue) {
         auto &msg = m.message;
@@ -1690,6 +1695,7 @@ std::vector<std::string> StateTracker::getParameters(int id) const
         return result;
 
     const ParameterOrder &po = rit->second.paramOrder;
+    result.reserve(po.size());
     BOOST_FOREACH (ParameterOrder::value_type val, po) {
         const auto &name = val.second;
         result.push_back(name);
@@ -1790,10 +1796,12 @@ std::vector<int> StateTracker::waitForSlaveHubs(const std::vector<std::string> &
     auto findAll = [this](const std::vector<std::string> &names, std::vector<int> &ids) -> bool {
         const auto hubIds = getSlaveHubs();
         std::vector<std::string> available;
+        available.reserve(hubIds.size());
         for (int id: hubIds)
             available.push_back(hubName(id));
 
         ids.clear();
+        ids.reserve(names.size());
         size_t found = 0;
         for (const auto &name: names) {
             for (const auto &slave: m_hubs) {

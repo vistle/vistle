@@ -89,6 +89,8 @@ Port *Port::child(size_t idx, bool link)
         return m_children[idx];
 
     const size_t first = m_children.size();
+    if (idx > first)
+        m_children.reserve(idx - first);
     for (size_t i = first; i <= idx; ++i) {
         m_children.push_back(new Port(getModuleID(), getName(), getType(), flags() & ~Port::MULTI));
     }

@@ -373,6 +373,7 @@ bool ClusterManager::dispatch(bool &received)
             pq.emplace(mod);
         }
 
+        m_modulePriorityChange.reserve(pq.size());
         while (!pq.empty()) {
             m_modulePriority.emplace_back(pq.top());
             pq.pop();
@@ -1088,6 +1089,7 @@ bool ClusterManager::handlePriv(const message::Connect &connect)
                 PortKey key(from);
                 auto it = m_outputObjects.find(key);
                 if (numAvailable >= 0 && it != m_outputObjects.end()) {
+                    objs.reserve(it->second.objects.size());
                     for (auto &name: it->second.objects) {
                         auto obj = Shm::the().getObjectFromName(name);
                         if (!obj) {
