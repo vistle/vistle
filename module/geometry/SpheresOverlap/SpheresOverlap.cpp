@@ -1,8 +1,6 @@
-#include <map>
 #include <math.h>
 #include <type_traits>
 #include <utility>
-#include <vector>
 
 #include <vistle/alg/objalg.h>
 #include <vistle/core/lines.h>
