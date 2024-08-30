@@ -3126,13 +3126,17 @@ const AvailableModule &getStaticModuleInfo(int modId, StateTracker &state)
 
 bool Hub::handlePriv(const message::Quit &quit, message::Identify::Identity senderType)
 {
+    auto sendQuitToManager = [this, &quit]() {
+        if (m_managerConnected)
+            sendManager(quit);
+    };
     if (quit.id() == Id::Broadcast) {
         CERR << "quit requested by " << senderType << std::endl;
         m_uiManager.requestQuit();
         if (senderType == message::Identify::UNKNOWN /* script */) {
             if (m_isMaster)
                 sendSlaves(quit);
-            sendManager(quit);
+            sendQuitToManager();
             initiateQuit();
             return true;
         } else if (senderType == message::Identify::MANAGER) {
@@ -3140,17 +3144,17 @@ bool Hub::handlePriv(const message::Quit &quit, message::Identify::Identity send
                 sendSlaves(quit);
             initiateQuit();
         } else if (senderType == message::Identify::HUB) {
-            sendManager(quit);
+            sendQuitToManager();
         } else if (senderType == message::Identify::UI) {
             if (m_isMaster)
                 sendSlaves(quit);
             else
                 sendMaster(quit);
-            sendManager(quit);
+            sendQuitToManager();
             initiateQuit();
         } else {
             sendSlaves(quit);
-            sendManager(quit);
+            sendQuitToManager();
         }
         return false;
     } else if (quit.id() == m_hubId) {
@@ -3162,7 +3166,7 @@ bool Hub::handlePriv(const message::Quit &quit, message::Identify::Identity send
             if (senderType == message::Identify::MANAGER) {
                 initiateQuit();
             } else {
-                sendManager(quit);
+                sendQuitToManager();
             }
             return true;
         }
