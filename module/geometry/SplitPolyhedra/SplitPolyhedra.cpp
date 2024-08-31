@@ -404,9 +404,9 @@ bool SplitPolyhedra::compute()
                 auto V = verts[0]; // pick smallest vertex
                 std::vector<std::vector<Index>> oppositeFaces;
                 auto nface = UnstructuredGrid::NumFaces[type];
-                for (Index k = 0; k < nface; ++k) {
+                for (int k = 0; k < nface; ++k) {
                     std::vector<Index> f;
-                    for (int i = 0; i < UnstructuredGrid::FaceSizes[type][k]; ++i) {
+                    for (unsigned i = 0; i < UnstructuredGrid::FaceSizes[type][k]; ++i) {
                         f.push_back(*(icl + begin + UnstructuredGrid::FaceVertices[type][k][i]));
                     }
                     if (std::find(f.begin(), f.end(), V) == f.end())
