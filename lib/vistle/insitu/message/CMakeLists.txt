@@ -25,7 +25,7 @@ vistle_target_link_libraries(
     PRIVATE
     ${BOOST_MPI}
     Boost::boost
-    MPI::MPI_C
+    MPI::MPI_CXX
     Threads::Threads
     vistle_insitu_core
     vistle_util

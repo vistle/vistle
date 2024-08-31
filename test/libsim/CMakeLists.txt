@@ -2,7 +2,7 @@ add_executable(libsimbcast mpibcast.cpp)
 target_link_libraries(
     libsimbcast
     PRIVATE Boost::boost
-    PRIVATE MPI::MPI_C
+    PRIVATE MPI::MPI_CXX
     PRIVATE ${BOOST_MPI}
     PRIVATE vistle_insitu_core)
 

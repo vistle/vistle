@@ -15,7 +15,7 @@ vistle_target_link_libraries(
     PRIVATE
     Boost::boost
     Boost::serialization
-    MPI::MPI_C
+    MPI::MPI_CXX
     ${BOOST_MPI}
     vistle_util
     vistle_util_mpi

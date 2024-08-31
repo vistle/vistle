@@ -75,7 +75,7 @@ vistle_target_link_libraries(
     PRIVATE
     Boost::program_options
     PRIVATE
-    MPI::MPI_C
+    MPI::MPI_CXX
     PRIVATE
     vistle_control
     PRIVATE

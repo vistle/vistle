@@ -1,6 +1,6 @@
 # Vistle cleaner
 vistle_add_executable(clean_vistle clean_vistle.cpp)
-target_link_libraries(clean_vistle PRIVATE Boost::system MPI::MPI_C vistle_core vistle_util_mpi ${BOOST_MPI})
+target_link_libraries(clean_vistle PRIVATE Boost::system MPI::MPI_CXX vistle_core vistle_util_mpi ${BOOST_MPI})
 
 # Vistle manager
 set(SOURCES vistle_manager.cpp)
@@ -11,7 +11,7 @@ target_link_libraries(
     vistle_manager
     PRIVATE ${BOOST_MPI}
             Boost::system
-            MPI::MPI_C
+            MPI::MPI_CXX
             vistle_control
             vistle_util
             vistle_util_mpi

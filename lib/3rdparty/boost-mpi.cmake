@@ -56,7 +56,7 @@ target_link_libraries(
     ${BOOST_MPI} #don't use vistle_target_link_libraries here because adding dependency for boost_mpi::serialization brings errors.
     PRIVATE Boost::system
     PUBLIC Boost::serialization
-    PUBLIC MPI::MPI_C)
+    PUBLIC MPI::MPI_CXX)
 
 get_target_property(BOOST_SERIALIZATION_INCLUDES Boost::serialization INTERFACE_INCLUDE_DIRECTORIES)
 target_include_directories(${BOOST_MPI} SYSTEM INTERFACE ${BOOST_SERIALIZATION_INCLUDES})
