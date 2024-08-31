@@ -20,8 +20,6 @@
 
 using namespace vistle;
 
-using namespace vistle;
-
 int main(int argc, char *argv[])
 {
     vistle::registerTypes();

@@ -527,15 +527,7 @@ endif()
 if(NOT CRAY AND NOT VISTLE_GUI_ONLY)
     if(VISTLE_USE_MPI)
         set(MPI_SKIP_MPICXX TRUE)
-
-        # set(MPI_FIND_COMPONENTS "C CXX")
-        add_definitions(-DOMPI_SKIP_MPICXX) # OpenMPI
-        add_definitions(-DMPI_NO_CPPBIND) # HPE MPT
         vistle_find_package(MPI REQUIRED COMPONENTS C CXX)
-
-        include_directories(SYSTEM ${MPI_C_INCLUDE_PATH})
-        add_compile_options($<$<COMPILE_LANGUAGE:CXX>:${MPI_C_COMPILE_FLAGS}>)
-        set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} ${MPI_C_LINK_FLAGS}")
     endif()
 
     # for CMake config file version of boost this needs to be changed to version numbers such as 1.60.99 instead of 106099
@@ -915,7 +907,7 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
 
         # target_compile_definitions(${targetname} PRIVATE MODULE_DESCRIPTION="${description}")
         set_target_properties(${targetname} PROPERTIES FOLDER "Modules")
-        target_link_libraries(${targetname} ${Boost_LIBRARIES} MPI::MPI_C vistle_module ${BOOST_MPI} vistle_config)
+        target_link_libraries(${targetname} ${Boost_LIBRARIES} MPI::MPI_CXX vistle_module ${BOOST_MPI} vistle_config)
 
         if(USE_LIBOMP AND LIBOMP)
             # message("Linking ${targetname} against libomp: ${LIBOMP}")

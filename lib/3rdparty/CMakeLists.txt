@@ -48,6 +48,7 @@ if(NOT VISTLE_USE_MPI)
     target_include_directories(vistle_mpi PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/mpi-serial> $<INSTALL_INTERFACE:include>)
 
     add_library(MPI::MPI_C ALIAS vistle_mpi)
+    add_library(MPI::MPI_CXX ALIAS vistle_mpi)
 endif()
 
 if(BOOST_MPI_DIR)

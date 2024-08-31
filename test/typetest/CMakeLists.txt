@@ -3,7 +3,7 @@ target_link_libraries(
     vistle_typetest
     PRIVATE Boost::boost
     PRIVATE Boost::serialization
-    PRIVATE MPI::MPI_C
+    PRIVATE MPI::MPI_CXX
     PRIVATE vistle_util
     PRIVATE vistle_core
     PRIVATE Threads::Threads)

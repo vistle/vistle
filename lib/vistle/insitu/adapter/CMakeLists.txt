@@ -24,7 +24,7 @@ vistle_target_link_libraries(
     PUBLIC
     vistle_insitu_message
     PUBLIC
-    MPI::MPI_C)
+    MPI::MPI_CXX)
 if(NOT VISTLE_MULTI_PROCESS)
     vistle_target_link_libraries(vistle_insitu_adapter PRIVATE vistle_clustermanager)
     target_compile_definitions(vistle_insitu_adapter INTERFACE VISTLE_SINGLE_PROCESS)
