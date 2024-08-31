@@ -108,16 +108,17 @@ std::vector<Vector3> Chainmail::toTorusCircle(const std::vector<Vector3> &points
 }
 
 std::vector<Vector3> toCircularSpline(const Eigen::MatrixX<Scalar> &points, const Eigen::MatrixX<Scalar> &derivatives,
-                                      const Eigen::VectorX<Scalar> &derivativeIndices, Index precition)
+                                      const Eigen::VectorX<Scalar> &derivativeIndices, Index precision)
 {
     using namespace Eigen;
     //const Spline3f spline = SplineFitting<Spline3f>::Interpolate(points, 2);
 
     const Eigen::Spline<Scalar, 3> spline =
         SplineFitting<Eigen::Spline<Scalar, 3>>::InterpolateWithDerivatives(points, derivatives, derivativeIndices, 2);
-    std::vector<vistle::Vector3> v(precition);
-    for (vistle::Index i = 0; i < precition; i++) {
-        v[i] = spline((float)i / precition);
+    std::vector<vistle::Vector3> v;
+    v.reserve(precision);
+    for (vistle::Index i = 0; i < precision; i++) {
+        v.emplace_back(spline(Scalar(i) / precision));
     }
     return v;
 }
@@ -147,6 +148,7 @@ std::vector<Vector3> Chainmail::toTorusSpline(const std::vector<Vector3> &points
     auto v1 = toCircularSpline(pointMatrix, derivatives, derivativeIndices, numTorusSegments);
     //extrapolate points for the 3D torus around the spline
     std::vector<Vector3> v2;
+    v2.reserve(v1.size());
     auto theta = 2 * EIGEN_PI / numDiameterSegments;
     for (unsigned i = 0; i < v1.size(); i++) {
         auto currentPoint = v1[i] - (middle - v1[i]).normalized() * m_radius->getValue() / 1000;
@@ -191,9 +193,10 @@ bool Chainmail::compute()
         if (unstrIn->tl()[elementIndex] == UnstructuredGrid::QUAD ||
             unstrIn->tl()[elementIndex] == UnstructuredGrid::TRIANGLE) {
             int numVerts = UnstructuredGrid::NumVertices[unstrIn->tl()[elementIndex]];
-            std::vector<Vector3> points(numVerts);
+            std::vector<Vector3> points;
+            points.reserve(numVerts);
             for (int p = 0; p < numVerts; p++) {
-                points[p] = vec(unstrIn, unstrIn->cl()[unstrIn->el()[elementIndex] + p]);
+                points.push_back(vec(unstrIn, unstrIn->cl()[unstrIn->el()[elementIndex] + p]));
             }
             auto torusPoints = toTorus(points, circlesPerTorus, vertsPerCircle);
             assert(torusPoints.size() == vertsPerTorus);

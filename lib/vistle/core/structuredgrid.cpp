@@ -433,11 +433,11 @@ GridInterface::Interpolator StructuredGrid::getInterpolator(Index elem, const Ve
     Index nvert = cl.size();
 
     const Scalar *x[3] = {&this->x()[0], &this->y()[0], &this->z()[0]};
-    std::vector<Vector3> corners(nvert);
+    std::vector<Vector3> corners;
+    corners.reserve(nvert);
     for (Index i = 0; i < nvert; ++i) {
-        corners[i][0] = x[0][cl[i]];
-        corners[i][1] = x[1][cl[i]];
-        corners[i][2] = x[2][cl[i]];
+        const auto c = cl[i];
+        corners.emplace_back(x[0][c], x[1][c], x[2][c]);
     }
 
     std::vector<Index> indices((mode == Linear || mode == Mean) ? nvert : 1);

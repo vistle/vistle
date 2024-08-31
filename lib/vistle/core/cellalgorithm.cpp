@@ -69,10 +69,10 @@ bool insideConvexPolygon(const Vector3 &point, const Vector3 *corners, Index nCo
     }
     Vector2 point2;
     point2 << point[c1], point[c2];
-    std::vector<Vector2> corners2(nCorners);
+    std::vector<Vector2> corners2;
+    corners2.reserve(nCorners);
     for (Index i = 0; i < nCorners; ++i) {
-        corners2[i] << corners[i][c1], corners[i][c2];
-        corners2[i] -= point2;
+        corners2.emplace_back(Vector2(corners[i][c1], corners[i][c2]) - point2);
     }
 
     // check whether edges pass the origin at the same side
@@ -176,9 +176,10 @@ bool insidePolygon(const Vector3 &point, const Vector3 *corners, Index nCorners,
             }
         }
     } else {
-        std::vector<Vector2> corners2(nCorners);
+        std::vector<Vector2> corners2;
+        corners2.reserve(nCorners);
         for (Index i = 0; i < nCorners; ++i) {
-            corners2[i] = Vector2(corners[i][c1], corners[i][c2]) - point2;
+            corners2.emplace_back(Vector2(corners[i][c1], corners[i][c2]) - point2);
         }
 
         // count intersections of edges with positive x-axis
