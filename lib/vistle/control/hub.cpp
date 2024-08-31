@@ -640,7 +640,9 @@ bool Hub::init(int argc, char *argv[])
         }
     }
     if (!m_interrupt && !m_quitting) {
+#ifdef HAVE_PYTHON
         m_python.reset(new PythonInterpreter(m_dir->share()));
+#endif
     }
 
     if (m_isMaster && !m_inManager && !m_interrupt && !m_quitting) {
