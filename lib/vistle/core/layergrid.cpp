@@ -320,11 +320,11 @@ std::vector<Vector3> LayerGrid::cellCorners(Index elem) const
     const Scalar *z = &this->z()[0];
     auto n = cellCoordinates(elem, m_numDivisions);
     auto cl = cellVertices(elem, m_numDivisions);
-    std::vector<Vector3> corners(cl.size());
+    std::vector<Vector3> corners;
+    corners.reserve(cl.size());
     for (unsigned i = 0; i < cl.size(); ++i) {
-        corners[i][0] = m_min[0] + (n[0] + i % 2) * m_dist[0];
-        corners[i][1] = m_min[1] + (n[1] + ((i + 1) / 2) % 2) * m_dist[1];
-        corners[i][2] = z[cl[i]];
+        corners.emplace_back(m_min[0] + (n[0] + i % 2) * m_dist[0], m_min[1] + (n[1] + ((i + 1) / 2) % 2) * m_dist[1],
+                             z[cl[i]]);
     }
 
     return corners;

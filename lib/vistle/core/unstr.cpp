@@ -262,10 +262,11 @@ Scalar UnstructuredGrid::exitDistance(Index elem, const Vector3 &point, const Ve
                 if (t < 0) {
                     continue;
                 }
-                std::vector<Vector3> corners(nCorners);
+                std::vector<Vector3> corners;
+                corners.reserve(nCorners);
                 for (Index k = 0; k < nCorners; ++k) {
                     const Index v = cl[facestart + k];
-                    corners[k] = Vector3(x[v], y[v], z[v]);
+                    corners.emplace_back(x[v], y[v], z[v]);
                 }
                 const auto isect = point + t * raydir;
                 if (insidePolygon(isect, corners.data(), nCorners, normal)) {
@@ -472,7 +473,8 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
             assert(inside(elem, center));
 #endif
 
-            std::vector<Vector3> coord(nvert);
+            std::vector<Vector3> coord;
+            coord.reserve(nvert);
             Index n = 0;
             Index facestart = InvalidIndex;
             Index term = 0;
@@ -483,17 +485,15 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
                 } else if (cl[i] == term) {
                     const Index N = i - facestart;
                     for (Index k = facestart; k < facestart + N; ++k) {
-                        indices[n] = cl[k];
-                        for (int c = 0; c < 3; ++c) {
-                            coord[n][c] = x[c][cl[k]];
-                        }
+                        const auto clk = cl[k];
+                        indices[n] = clk;
+                        coord.emplace_back(x[0][clk], x[1][clk], x[2][clk]);
                         ++n;
                     }
                     facestart = InvalidIndex;
                 }
             }
             Index ncoord = n;
-            coord.resize(ncoord);
             weights.resize(ncoord);
 
             // find face that is hit by ray from polyhedron center through query point
