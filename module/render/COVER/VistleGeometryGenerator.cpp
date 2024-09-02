@@ -59,16 +59,16 @@ std::mutex kdTreeMutex;
 std::vector<osg::ref_ptr<osg::KdTreeBuilder>> kdTreeBuilders;
 #endif
 
+#ifdef COVER_PLUGIN
 std::map<std::string, std::string> get_shader_parameters()
 {
     std::map<std::string, std::string> parammap;
     parammap["dataAttrib"] = std::to_string(DataAttrib);
-#ifdef COVER_PLUGIN
     parammap["texUnit1"] = std::to_string(TfTexUnit);
     parammap["radiusAttrib"] = std::to_string(RadiusAttrib);
-#endif
     return parammap;
 }
+#endif
 
 } // namespace
 

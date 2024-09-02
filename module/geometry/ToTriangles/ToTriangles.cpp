@@ -191,8 +191,7 @@ bool ToTriangles::compute()
     vistle::Object::ptr result;
     if (auto entry = m_resultCache.getOrLock(container->getName(), result)) {
         bool perElement = data && data->guessMapping() == DataBase::Element;
-        bool perVertex = data && data->guessMapping() == DataBase::Vertex;
-        assert(!data || perElement || perVertex);
+        assert(!data || perElement || data->guessMapping() == DataBase::Vertex);
 
         bool radiusPerElement = false;
         vistle::Vec<Scalar>::const_ptr radius;

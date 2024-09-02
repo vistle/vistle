@@ -129,7 +129,7 @@ public:
     std::vector<int> getSlaveHubs() const;
     const std::string &hubName(int id) const;
     std::vector<int> getRunningList() const;
-    int getNumRunning() const;
+    unsigned getNumRunning() const;
     std::vector<int> getBusyList() const;
     int getHub(int id) const;
     const HubData &getHubData(int id) const;
