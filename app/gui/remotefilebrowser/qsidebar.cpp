@@ -169,7 +169,6 @@ bool RemoteUrlModel::setData(const QModelIndex &index, const QVariant &value, in
         QString path;
         if (url.scheme() == HomeScheme) {
             path = fileSystemModel->homePath().toString();
-            QModelIndex dirIndex = fileSystemModel->fsIndex(path);
             if (showFullPath) {
                 QStandardItemModel::setData(
                     index, fileSystemModel->homePath(AbstractFileSystemModel::FilePathRole).toString());

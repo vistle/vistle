@@ -121,10 +121,10 @@ const std::string &StateTracker::hubName(int id) const
     return unknown;
 }
 
-int StateTracker::getNumRunning() const
+unsigned StateTracker::getNumRunning() const
 {
     mutex_locker guard(m_stateMutex);
-    int num = 0;
+    unsigned num = 0;
     for (RunningMap::const_iterator it = runningMap.begin(); it != runningMap.end(); ++it) {
         if (Id::isModule(it->first))
             ++num;
