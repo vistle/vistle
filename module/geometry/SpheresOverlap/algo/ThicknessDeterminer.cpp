@@ -18,5 +18,6 @@ vistle::Scalar CalculateThickness(ThicknessDeterminer determiner, vistle::Scalar
         // unknown thickness determiner
         // can't throw exception because device code doesn't support it
         VTKM_ASSERT(false);
+        return 0;
     }
 }
