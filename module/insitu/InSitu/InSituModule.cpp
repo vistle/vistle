@@ -11,7 +11,6 @@
 #include <sstream>
 #include <fstream>
 
-#include <boost/bind.hpp>
 #include <boost/mpi.hpp>
 
 using namespace std;
