@@ -2,8 +2,8 @@
                           mesh.cpp  -  description
                              -------------------
     begin                : Wed Jul 26 2006
-	copyright			: (C) 2006-2014 IAG, University of Stuttgart
-	email				: acco@iag.uni-stuttgart.de
+    copyright			: (C) 2006-2014 IAG, University of Stuttgart
+    email				: acco@iag.uni-stuttgart.de
  ***************************************************************************/
 
 #ifndef MESH_H
@@ -41,7 +41,9 @@ public:
     virtual TopoState &getState(int n) = 0;
     virtual PointState &getPointState(int n) = 0;
 
+#ifndef DISABLE_UNUSED
     virtual AcousticLineSources getLineSource(int iLine, Position const &iObserver, double iTime);
+#endif
     virtual AcousticSurfaceSources getSurfaceSource(int iCell, Position const &iObserver, double iTime);
     virtual AcousticVolumeSources getVolumeSource(int iCell, Position const &iObserver, double iTime);
 
@@ -97,7 +99,9 @@ public:
     LineMesh(int iNumCells, int iNumPoints, TOPO *iCells, PointState *iPoints);
     virtual ~LineMesh();
     virtual void SetupLine();
+#ifndef DISABLE_UNUSED
     virtual AcousticLineSources getLineSource(int iCell, Position const &iObserver, double iTime);
+#endif
     virtual void dump(std::ostream &out);
 
 protected:
