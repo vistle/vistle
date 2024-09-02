@@ -143,12 +143,6 @@ static std::string get_stem(const Path &path)
     return stem + ext;
 }
 
-static std::string get_stem(const fs::Entry &entry)
-{
-    fs::Path path(entry);
-    return get_stem(path);
-}
-
 template<class Path>
 static std::string get_extension(const Path &path)
 {
@@ -159,12 +153,6 @@ static std::string get_extension(const Path &path)
         return ext;
 
     return std::string();
-}
-
-static std::string get_extension(const fs::Entry &entry)
-{
-    fs::Path path(entry);
-    return get_extension(path);
 }
 
 class FilteringStreamDeleter
