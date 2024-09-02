@@ -566,6 +566,7 @@ struct Face {
     }
 };
 
+#if 0
 std::ostream &operator<<(std::ostream &os, const Face &f)
 {
     os << f.verts.size() << "(";
@@ -577,6 +578,7 @@ std::ostream &operator<<(std::ostream &os, const Face &f)
     os << ")" << std::endl;
     return os;
 }
+#endif
 
 #ifdef USE_SET
 typedef std::set<Face> FaceSet;
