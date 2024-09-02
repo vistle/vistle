@@ -116,17 +116,11 @@ std::vector<uint8_t> random_data(size_t length)
 {
     std::unique_lock<std::recursive_mutex> guard(s_mutex);
     assert(s_initialized);
-    std::vector<uint8_t> data;
 
-#if BOTAN_VERSION_MAJOR == 2
-    auto rng = Botan::RandomNumberGenerator::make_rng();
-    auto sec = rng->random_vec(length);
-    std::copy(sec.begin(), sec.end(), std::back_inserter(data));
-#else
-    data.resize(length);
+    std::vector<uint8_t> data(length);
     auto rng = std::make_unique<Botan::System_RNG>();
-    rng->randomize(data);
-#endif
+    rng->randomize(data.data(), data.size());
+
     return data;
 }
 
