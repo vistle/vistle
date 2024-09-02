@@ -10,7 +10,6 @@
 #include <sstream>
 #include <vistle/core/rectilineargrid.h>
 
-#include <boost/bind.hpp>
 #include <boost/mpi.hpp>
 #include <boost/range/iterator_range_core.hpp>
 
