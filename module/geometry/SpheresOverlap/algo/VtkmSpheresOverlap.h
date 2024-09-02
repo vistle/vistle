@@ -1,7 +1,7 @@
 #ifndef VTKM_SPHERES_OVERLAP_H
 #define VTKM_SPHERES_OVERLAP_H
 
-#include <vtkm/filter/FilterField.h>
+#include <vtkm/filter/Filter.h>
 
 #include "ThicknessDeterminer.h"
 
@@ -11,7 +11,7 @@
     Detects overlapping spheres and creates connections lines between them.
     To efficiently compare all spheres with each other, the Cell Lists Algorithm is used.
 */
-class VtkmSpheresOverlap: public vtkm::filter::FilterField {
+class VtkmSpheresOverlap: public vtkm::filter::Filter {
 public:
     VtkmSpheresOverlap() = default;
 
