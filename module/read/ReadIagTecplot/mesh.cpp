@@ -55,11 +55,13 @@ void MeshBase::ReverseNormals()
     throw "Pointless MeshBase::ReverseNormals";
 }
 
+#ifndef DISABLE_UNUSED
 AcousticLineSources MeshBase::getLineSource(int /*iCell*/, Position const & /*iObserver*/, double /*iTime*/)
 {
     assert(0 == "Pointless MeshBase::getLineSource");
     throw "Pointless MeshBase::getLineSource";
 }
+#endif
 
 AcousticSurfaceSources MeshBase::getSurfaceSource(int /*iCell*/, Position const & /*iObserver*/, double /*iTime*/)
 {
@@ -353,6 +355,7 @@ void VolumeMesh<TOPO>::SetupVolume()
     }
 }
 
+#ifndef DISABLE_UNUSED
 template<typename SOURCE>
 void MeshBase::transport(SOURCE const &iSource, Position const &iObserver, double iTime, Transport &oTransport)
 {
@@ -410,6 +413,7 @@ AcousticLineSources LineMesh<TOPO>::getLineSource(int iCell, Position const &iOb
 {
     return observe(mCells[iCell], iObserver, iTime);
 }
+#endif
 
 template<class TOPO>
 void LineMesh<TOPO>::getMechanics(int iCell, double *oSpace, Vector *oX, Vector *oF, Vector *oV) const
