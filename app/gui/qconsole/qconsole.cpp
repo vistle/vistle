@@ -611,7 +611,7 @@ void QConsole::mousePressEvent(QMouseEvent *event)
     oldPosition = textCursor().position();
     if (event->button() == Qt::MiddleButton) {
         copy();
-        QTextCursor cursor = cursorForPosition(event->pos());
+        QTextCursor cursor = cursorForPosition(event->position().toPoint());
         setTextCursor(cursor);
         paste();
         QTextEdit::mousePressEvent(event);
@@ -619,7 +619,7 @@ void QConsole::mousePressEvent(QMouseEvent *event)
     }
 
     if (event->button() == Qt::LeftButton) {
-        auto anchor = anchorAt(event->pos());
+        auto anchor = anchorAt(event->position().toPoint());
         pressedLink = anchor;
         if (!anchor.isEmpty()) {
             qApp->setOverrideCursor(Qt::PointingHandCursor);
@@ -634,7 +634,7 @@ void QConsole::mousePressEvent(QMouseEvent *event)
 void QConsole::mouseMoveEvent(QMouseEvent *event)
 {
     QTextEdit::mouseMoveEvent(event);
-    auto anchor = anchorAt(event->pos());
+    auto anchor = anchorAt(event->position().toPoint());
     if (!anchor.isEmpty()) {
         viewport()->setCursor(Qt::PointingHandCursor);
     } else {
@@ -644,7 +644,7 @@ void QConsole::mouseMoveEvent(QMouseEvent *event)
 
 void QConsole::mouseReleaseEvent(QMouseEvent *event)
 {
-    auto anchor = anchorAt(event->pos());
+    auto anchor = anchorAt(event->position().toPoint());
     if (!anchor.isEmpty() && pressedLink == anchor) {
         emit anchorClicked(anchor);
         qApp->restoreOverrideCursor();
@@ -675,9 +675,9 @@ void QConsole::dragMoveEvent(QDragMoveEvent *event)
 {
     //Get a cursor for the actual mouse position
     QTextCursor cur = textCursor();
-    cur.setPosition(cursorForPosition(event->pos()).position());
+    cur.setPosition(cursorForPosition(event->position().toPoint()).position());
 
-    if (!isInEditionZone(cursorForPosition(event->pos()).position())) {
+    if (!isInEditionZone(cursorForPosition(event->position().toPoint()).position())) {
         //Ignore the event if out of the editable zone
         event->ignore(cursorRect(cur));
     } else {
