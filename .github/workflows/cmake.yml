@@ -19,7 +19,7 @@ jobs:
       matrix:
         os: ['ubuntu-latest', 'macos-latest']
         variant: [All]
-        build_type: [Debug]
+        build_type: [Release]
         static_link: [OFF]
         modules_shared: [ON]
         multi_process: [ON]
@@ -28,7 +28,7 @@ jobs:
         include:
           - os: 'ubuntu-latest'
             variant: All
-            build_type: Release
+            build_type: Debug
             static_link: ON
             modules_shared: OFF
             multi_process: OFF
