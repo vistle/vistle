@@ -490,6 +490,11 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         # for linking the libraries into plugins
         set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
     endif()
+
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64" AND CMAKE_CXX_COMPILER_VERSION MATCHES "^11")
+        # silence "note: parameter passing for argument of type ‘vtkm::Vec<double, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1"
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-psabi")
+    endif()
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
 
 endif()
