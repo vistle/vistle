@@ -110,7 +110,7 @@ Object *Object::loadObject(Archive &ar)
             assert(objData);
             name = obj->getName();
             ar.registerObjectNameTranslation(arname, name);
-            ObjectData::mutex_lock_type guard(obj->d()->mutex);
+            ObjectData::mutex_lock_type guard(obj->d()->attachment_mutex);
             Shm::the().unlockObjects();
             if (!objData->isComplete() || objData->meta.creator() == -1) {
                 obj->loadFromArchive(ar);
