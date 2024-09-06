@@ -117,7 +117,10 @@ struct shm {
     typedef boost::interprocess::vector<T, allocator> vector;
     typedef boost::interprocess::offset_ptr<array> array_ptr;
     static typename managed_shm::segment_manager::template construct_proxy<T>::type construct(const std::string &name);
+
 #endif
+    template<class Func>
+    static void atomic_func(Func &f);
     static T *find(const std::string &name);
     static bool destroy(const std::string &name);
     static T *find_and_ref(const std::string &name); // as find, but reference array
@@ -148,6 +151,9 @@ public:
     void detach();
     void setRemoveOnDetach();
 
+    template<class Func>
+    static void atomicFunc(Func &f);
+
     std::string name() const;
     const std::string &instanceName() const;
     int owningRank() const;
@@ -167,11 +173,6 @@ public:
 
     std::string createArrayId(const std::string &name = "");
     std::string createObjectId(const std::string &name = "");
-
-    void lockObjects() const;
-    void unlockObjects() const;
-    void lockDictionary() const;
-    void unlockDictionary() const;
 
     int objectID() const;
     int arrayID() const;
@@ -227,16 +228,13 @@ private:
     std::atomic<int> m_objectId, m_arrayId;
     static Shm *s_singleton;
 #ifdef NO_SHMEM
-    mutable std::recursive_mutex *m_shmDeletionMutex;
     mutable std::recursive_mutex *m_objectDictionaryMutex;
     std::map<std::string, shm_handle_t> m_objectDictionary;
 #else
     static bool s_perRank;
-    mutable boost::interprocess::interprocess_recursive_mutex *m_shmDeletionMutex;
     mutable boost::interprocess::interprocess_recursive_mutex *m_objectDictionaryMutex;
     managed_shm *m_shm;
 #endif
-    mutable std::atomic<int> m_lockCount;
 #ifdef SHMBARRIER
 #ifndef NO_SHMEM
     std::map<std::string, boost::interprocess::ipcdetail::barrier_initializer> m_barriers;
@@ -244,19 +242,38 @@ private:
 #endif
 };
 
+template<class Func>
+void Shm::atomicFunc(Func &f)
+{
+#ifdef NO_SHMEM
+    std::unique_lock<std::recursive_mutex> lock(*Shm::the().m_objectDictionaryMutex);
+    f();
+#else
+    Shm::the().shm().get_segment_manager()->atomic_func(f);
+#endif
+}
+
+template<typename T>
+template<class Func>
+void shm<T>::atomic_func(Func &f)
+{
+    Shm::the().atomicFunc(f);
+}
+
 template<typename T>
 T *shm<T>::find(const std::string &name)
 {
 #ifdef NO_SHMEM
-    Shm::the().lockDictionary();
-    auto &dict = Shm::the().m_objectDictionary;
-    auto it = dict.find(name);
-    if (it == dict.end()) {
-        Shm::the().unlockDictionary();
-        return nullptr;
-    }
-    Shm::the().unlockDictionary();
-    return static_cast<T *>(it->second);
+    T *ret = nullptr;
+    auto lambda = [&name, &ret]() {
+        auto &dict = Shm::the().m_objectDictionary;
+        auto it = dict.find(name);
+        if (it != dict.end()) {
+            ret = static_cast<T *>(it->second);
+        }
+    };
+    atomic_func(lambda);
+    return ret;
 #else
     return Shm::the().shm().find<T>(name.c_str()).first;
 #endif
@@ -266,21 +283,30 @@ template<typename T>
 T *shm<T>::find_and_ref(const std::string &name)
 {
 #ifdef NO_SHMEM
-    Shm::the().lockDictionary();
-    T *t = shm<T>::find(name);
-    if (t)
-        t->ref();
-    Shm::the().unlockDictionary();
-    return t;
+    T *ret = nullptr;
+    auto lambda = [&name, &ret]() {
+        auto &dict = Shm::the().m_objectDictionary;
+        auto it = dict.find(name);
+        if (it != dict.end()) {
+            ret = static_cast<T *>(it->second);
+            if (ret) {
+                ret->ref();
+                assert(ret->refcount() > 0);
+            }
+        }
+    };
+    atomic_func(lambda);
+    return ret;
 #else
-    Shm::the().lockObjects();
-    // this detour to char is required because of differing object sizes caused by polymorphism of vistle::Objects
-    T *t = static_cast<T *>(static_cast<void *>(shm<char>::find(name)));
-    if (t) {
-        t->ref();
-        assert(t->refcount() > 0);
-    }
-    Shm::the().unlockObjects();
+    T *t = nullptr;
+    auto lambda = [&name, &t]() {
+        t = static_cast<T *>(static_cast<void *>(shm<char>::find(name)));
+        if (t) {
+            t->ref();
+            assert(t->refcount() > 0);
+        }
+    };
+    atomic_func(lambda);
     return t;
 #endif
 }
@@ -289,79 +315,73 @@ template<typename T>
 bool shm<T>::destroy(const std::string &name)
 {
 #ifdef NO_SHMEM
-    Shm::the().lockDictionary();
-    auto &dict = Shm::the().m_objectDictionary;
-    auto it = dict.find(name);
-    bool ret = true;
-    if (it == dict.end()) {
-        Shm::the().unlockDictionary();
-        std::cerr << "WARNING: shm: did not find object " << name << " to be deleted" << std::endl;
-        ret = false;
-    } else {
-        T *t = static_cast<T *>(it->second);
-        dict.erase(it);
-        Shm::the().unlockDictionary();
-        delete t;
+    T *toDelete = nullptr;
+    auto lambda = [&name, &toDelete]() {
+        auto &dict = Shm::the().m_objectDictionary;
+        auto it = dict.find(name);
+        if (it != dict.end()) {
+            toDelete = static_cast<T *>(it->second);
+            dict.erase(it);
+        }
+    };
+    atomic_func(lambda);
+    if (toDelete) {
+        delete toDelete;
+        Shm::the().markAsRemoved(name);
+        return true;
     }
+    std::cerr << "WARNING: shm: did not find object " << name << " to be deleted" << std::endl;
+    return false;
 #else
     const bool ret = Shm::the().shm().destroy<T>(name.c_str());
-#endif
     Shm::the().markAsRemoved(name);
     return ret;
+#endif
 }
 
 template<typename T>
 bool shm<T>::destroy_array(const std::string &name, shm<T>::array_ptr arr)
 {
-#ifdef NO_SHMEM
-    Shm::the().lockDictionary();
-    if (arr->refcount() > 0) {
-        Shm::the().unlockDictionary();
-        return true;
-    }
-    bool ret = shm<shm<T>::array>::destroy(name);
-    Shm::the().unlockDictionary();
+    bool ret = false;
+    auto lambda = [&name, &arr, &ret]() {
+        if (arr->refcount() > 0) {
+            ret = true;
+            return;
+        }
+        assert(arr->refcount() == 0);
+        ret = shm<shm<T>::array>::destroy(name);
+    };
+    atomic_func(lambda);
     return ret;
-#else
-    Shm::the().lockObjects();
-    if (arr->refcount() > 0) {
-        Shm::the().unlockObjects();
-        return true;
-    }
-    assert(arr->refcount() == 0);
-    bool ret = shm<shm<T>::array>::destroy(name);
-    Shm::the().unlockObjects();
-    return ret;
-#endif
 }
 
 #ifdef NO_SHMEM
 template<typename T>
 shm<T>::Constructor::Constructor(const std::string &name): name(name)
-{
-    Shm::the().lockDictionary();
-}
+{}
 
 template<typename T>
 shm<T>::Constructor::~Constructor()
-{
-    Shm::the().unlockDictionary();
-}
+{}
 
 template<typename T>
 template<typename... Args>
 T *shm<T>::Constructor::operator()(Args &&...args)
 {
-    auto &dict = Shm::the().m_objectDictionary;
-    auto it = dict.find(name);
-    if (it != dict.end()) {
-        std::cerr << "WARNING: shm: already have " << name << std::endl;
-        return reinterpret_cast<T *>(it->second);
-    }
-
-    T *t = new T(std::forward<Args>(args)...);
-    dict[name] = t;
-    return t;
+    T *ret = nullptr;
+    auto lambda = [this, &args..., &ret]() {
+        auto &dict = Shm::the().m_objectDictionary;
+        auto it = dict.find(name);
+        if (it == dict.end()) {
+            ret = new T(std::forward<Args>(args)...);
+            dict[name] = ret;
+        } else {
+            std::cerr << "WARNING: shm: already have " << name << std::endl;
+            ret = reinterpret_cast<T *>(it->second);
+        }
+    };
+    atomic_func(lambda);
+    return ret;
 }
 #endif
 
