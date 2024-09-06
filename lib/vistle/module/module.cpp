@@ -981,7 +981,7 @@ void Module::updateMeta(vistle::Object::ptr obj) const
         return;
 
     {
-        std::lock_guard guard(obj->mutex());
+        std::lock_guard guard(obj->attachmentMutex());
         obj->setCreator(id());
         obj->setGeneration(m_generation + m_cache.generation());
         if (m_iteration >= 0) {
@@ -995,7 +995,7 @@ void Module::updateMeta(vistle::Object::ptr obj) const
     // update referenced objects, if not yet valid
     auto refs = obj->referencedObjects();
     for (auto &ref: refs) {
-        std::lock_guard guard(ref->mutex());
+        std::lock_guard guard(ref->attachmentMutex());
         if (ref->getCreator() == -1) {
             auto o = std::const_pointer_cast<Object>(ref);
             o->setCreator(id());

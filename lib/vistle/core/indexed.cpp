@@ -110,7 +110,7 @@ Indexed::Celltree::const_ptr Indexed::getCelltree() const
     if (m_celltree)
         return m_celltree;
 
-    Data::mutex_lock_type lock(d()->mutex);
+    Data::mutex_lock_type lock(d()->attachment_mutex);
     if (!hasAttachment("celltree")) {
         refresh();
         createCelltree(getNumElements(), &el()[0], &cl()[0]);
@@ -179,7 +179,7 @@ Indexed::VertexOwnerList::const_ptr Indexed::getVertexOwnerList() const
     if (m_vertexOwnerList)
         return m_vertexOwnerList;
 
-    Data::mutex_lock_type lock(d()->mutex);
+    Data::mutex_lock_type lock(d()->attachment_mutex);
     if (!hasAttachment("vertexownerlist")) {
         refresh();
         createVertexOwnerList();
