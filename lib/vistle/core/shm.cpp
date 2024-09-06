@@ -83,7 +83,6 @@ Shm::Shm(const std::string &instanceName, const int m, const int r, size_t size)
 , m_rank(r)
 , m_objectId(0)
 , m_arrayId(0)
-, m_shmDeletionMutex(nullptr)
 , m_objectDictionaryMutex(nullptr)
 #ifndef NO_SHMEM
 , m_shm(nullptr)
@@ -99,7 +98,6 @@ Shm::Shm(const std::string &instanceName, const int m, const int r, size_t size)
 #ifdef NO_SHMEM
     (void)size;
     m_allocator = new void_allocator();
-    m_shmDeletionMutex = new std::recursive_mutex;
     m_objectDictionaryMutex = new std::recursive_mutex;
 #else
     if (size > 0) {
@@ -110,7 +108,6 @@ Shm::Shm(const std::string &instanceName, const int m, const int r, size_t size)
 
     m_allocator = new void_allocator(shm().get_segment_manager());
 
-    m_shmDeletionMutex = m_shm->find_or_construct<interprocess::interprocess_recursive_mutex>("shmdelete_mutex")();
     m_objectDictionaryMutex =
         m_shm->find_or_construct<interprocess::interprocess_recursive_mutex>("shm_dictionary_mutex")();
 
@@ -120,8 +117,6 @@ Shm::Shm(const std::string &instanceName, const int m, const int r, size_t size)
         m_shm->find_or_construct<vistle::shm<ShmDebugInfo>::vector>("shmdebug")(0, ShmDebugInfo(), allocator());
 #endif
 #endif
-
-    m_lockCount = 0;
 }
 
 Shm::~Shm()
@@ -184,46 +179,6 @@ std::string Shm::shmIdFilename()
     name << "/tmp/vistle_shmids_" << getuid() << ".txt";
 #endif
     return name.str();
-}
-
-void Shm::lockObjects() const
-{
-#ifndef NO_SHMEM
-    if (m_lockCount != 0) {
-        //std::cerr << "Shm::lockObjects(): lockCount=" << m_lockCount << std::endl;
-    }
-    //assert(m_lockCount==0);
-    ++m_lockCount;
-    assert(m_shmDeletionMutex);
-    m_shmDeletionMutex->lock();
-#endif
-}
-
-void Shm::unlockObjects() const
-{
-#ifndef NO_SHMEM
-    assert(m_shmDeletionMutex);
-    m_shmDeletionMutex->unlock();
-    --m_lockCount;
-    //assert(m_lockCount==0);
-    if (m_lockCount != 0) {
-        //std::cerr << "Shm::unlockObjects(): lockCount=" << m_lockCount << std::endl;
-    }
-#endif
-}
-
-void Shm::lockDictionary() const
-{
-#ifdef NO_SHMEM
-    m_objectDictionaryMutex->lock();
-#endif
-}
-
-void Shm::unlockDictionary() const
-{
-#ifdef NO_SHMEM
-    m_objectDictionaryMutex->unlock();
-#endif
 }
 
 int Shm::objectID() const
@@ -569,16 +524,13 @@ shm_handle_t Shm::getHandleFromArray(const ShmData *array) const
 Object::const_ptr Shm::getObjectFromHandle(const shm_handle_t &handle) const
 {
     Object::const_ptr ret;
-    lockObjects();
-    Object::Data *od = getObjectDataFromHandle(handle);
-    if (od) {
-        od->ref();
-        unlockObjects();
-        ret.reset(Object::create(od));
-        od->unref();
-    } else {
-        unlockObjects();
-    }
+    auto lambda = [this, &ret, &handle]() {
+        Object::Data *od = getObjectDataFromHandle(handle);
+        if (od) {
+            ret.reset(Object::create(od));
+        }
+    };
+    atomicFunc(lambda);
     return ret;
 }
 
@@ -615,27 +567,20 @@ Object::const_ptr Shm::getObjectFromName(const std::string &name, bool onlyCompl
     if (name.empty())
         return Object::const_ptr();
 
-    lockObjects();
-    auto *od = getObjectDataFromName(name);
-    if (od) {
-        if (od->isComplete() || !onlyComplete) {
-            //std::cerr << "Shm::getObjectFromName: " << name << " is complete, refcount=" << od->refcount() << std::endl;
-            od->ref();
-            unlockObjects();
-            Object::const_ptr obj(Object::create(od));
-            assert(obj->refcount() > 1);
-            od->unref();
-            assert(obj->refcount() > 0); // reference still held by obj
-            return obj;
+    Object::const_ptr ret;
+    auto lambda = [this, &ret, onlyComplete, &name]() {
+        if (auto od = getObjectDataFromName(name)) {
+            if (od->isComplete() || !onlyComplete) {
+                //std::cerr << "Shm::getObjectFromName: " << name << " is complete, refcount=" << od->refcount() << std::endl;
+                ret.reset(Object::create(od));
+                assert(ret->refcount() > 0);
+                return;
+            }
+            std::cerr << "Shm::getObjectFromName: " << name << " not complete" << std::endl;
         }
-        unlockObjects();
-        std::cerr << "Shm::getObjectFromName: " << name << " not complete" << std::endl;
-    } else {
-        unlockObjects();
-        //std::cerr << "Shm::getObjectFromName: did not find " << name << std::endl;
-    }
-
-    return Object::const_ptr();
+    };
+    Shm::the().atomicFunc(lambda);
+    return ret;
 }
 
 int Shm::owningRank() const

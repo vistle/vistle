@@ -427,12 +427,14 @@ int ObjectData::ref() const
 
 int ObjectData::unref() const
 {
-    Shm::the().lockObjects();
-    int ref = ShmData::unref();
-    if (ref == 0) {
-        ObjectTypeRegistry::getDestroyer(type)(name);
-    }
-    Shm::the().unlockObjects();
+    int ref = 0;
+    auto lambda = [this, &ref]() {
+        ref = ShmData::unref();
+        if (ref == 0) {
+            ObjectTypeRegistry::getDestroyer(type)(name);
+        }
+    };
+    Shm::the().atomicFunc(lambda);
     return ref;
 }
 
