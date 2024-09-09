@@ -1498,7 +1498,7 @@ bool Module::dispatch(bool block, bool *messageReceived, unsigned int minPrio)
         Shm::the().setRemoveOnDetach();
         throw(e);
     } catch (vistle::exception &e) {
-        std::cerr << "Vistle exception in module " << name() << ": " << e.what() << e.where() << std::endl;
+        std::cerr << "Vistle exception in module " << name() << ": " << e.what() << "\n" << e.where() << std::endl;
         throw(e);
     } catch (std::exception &e) {
         std::cerr << "exception in module " << name() << ": " << e.what() << std::endl;
