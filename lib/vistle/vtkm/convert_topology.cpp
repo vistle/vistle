@@ -179,7 +179,6 @@ void fromIndexed(vtkm::cont::DataSet &vtkmDataset, typename Idx::const_ptr &idx)
     vtkm::cont::ArrayHandleBasic<vtkm::UInt8> shapes;
     if (!shapesu.CanConvert<vtkm::cont::ArrayHandleBasic<vtkm::UInt8>>()) {
         std::cerr << "cannot convert to basic array handle" << std::endl;
-        return VtkmTransformStatus::UNSUPPORTED_GRID_TYPE;
     }
     shapes = shapesu.AsArrayHandle<vtkm::cont::ArrayHandleBasic<vtkm::UInt8>>();
     vtkm::cont::CellSetExplicit<> cellSet;
