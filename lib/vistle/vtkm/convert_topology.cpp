@@ -142,7 +142,7 @@ struct ToShapeId<Polygons> {
 };
 
 template<class Ngons>
-void fromNgons(vtkm::cont::DataSet &vtkmDataset, typename Ngons::const_ptr &ngon)
+VtkmTransformStatus fromNgons(vtkm::cont::DataSet &vtkmDataset, typename Ngons::const_ptr &ngon)
 {
     auto numPoints = ngon->getNumCoords();
     auto numConn = ngon->getNumCorners();
@@ -159,10 +159,12 @@ void fromNgons(vtkm::cont::DataSet &vtkmDataset, typename Ngons::const_ptr &ngon
         cellSet.Fill(numPoints, shape, N, conn);
         vtkmDataset.SetCellSet(cellSet);
     }
+
+    return VtkmTransformStatus::SUCCESS;
 };
 
 template<class Idx>
-void fromIndexed(vtkm::cont::DataSet &vtkmDataset, typename Idx::const_ptr &idx)
+VtkmTransformStatus fromIndexed(vtkm::cont::DataSet &vtkmDataset, typename Idx::const_ptr &idx)
 {
     auto numPoints = idx->getNumCoords();
     auto numCells = idx->getNumElements();
@@ -179,12 +181,15 @@ void fromIndexed(vtkm::cont::DataSet &vtkmDataset, typename Idx::const_ptr &idx)
     vtkm::cont::ArrayHandleBasic<vtkm::UInt8> shapes;
     if (!shapesu.CanConvert<vtkm::cont::ArrayHandleBasic<vtkm::UInt8>>()) {
         std::cerr << "cannot convert to basic array handle" << std::endl;
+        return VtkmTransformStatus::UNSUPPORTED_FIELD_TYPE;
     }
     shapes = shapesu.AsArrayHandle<vtkm::cont::ArrayHandleBasic<vtkm::UInt8>>();
     vtkm::cont::CellSetExplicit<> cellSet;
 #endif
     cellSet.Fill(numPoints, shapes, conn, offs);
     vtkmDataset.SetCellSet(cellSet);
+
+    return VtkmTransformStatus::SUCCESS;
 }
 
 } // namespace
@@ -221,13 +226,13 @@ VtkmTransformStatus vtkmSetTopology(vtkm::cont::DataSet &vtkmDataset, vistle::Ob
         // create vtkm dataset
         vtkmDataset.SetCellSet(cellSetExplicit);
     } else if (auto tri = Triangles::as(grid)) {
-        fromNgons<Triangles>(vtkmDataset, tri);
+        return fromNgons<Triangles>(vtkmDataset, tri);
     } else if (auto quads = Quads::as(grid)) {
-        fromNgons<Quads>(vtkmDataset, quads);
+        return fromNgons<Quads>(vtkmDataset, quads);
     } else if (auto poly = Polygons::as(grid)) {
-        fromIndexed<Polygons>(vtkmDataset, poly);
+        return fromIndexed<Polygons>(vtkmDataset, poly);
     } else if (auto line = Lines::as(grid)) {
-        fromIndexed<Lines>(vtkmDataset, line);
+        return fromIndexed<Lines>(vtkmDataset, line);
     } else if (auto point = Points::as(grid)) {
         auto numPoints = point->getNumPoints();
         vtkm::cont::CellSetSingleType<vtkm::cont::StorageTagIndex> cellSet;
