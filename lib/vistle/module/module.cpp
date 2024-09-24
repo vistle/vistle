@@ -1499,11 +1499,14 @@ bool Module::dispatch(bool block, bool *messageReceived, unsigned int minPrio)
         throw(e);
     } catch (vistle::exception &e) {
         std::cerr << "Vistle exception in module " << name() << ": " << e.what() << "\n" << e.where() << std::endl;
+        sendError("terminating with Vistle exception: %s", e.what());
         throw(e);
     } catch (std::exception &e) {
         std::cerr << "exception in module " << name() << ": " << e.what() << std::endl;
+        sendError("terminating with exception: %s", e.what());
         throw(e);
     } catch (...) {
+        sendError("terminating with unknown exception");
         std::cerr << "unknown exception in module " << name() << std::endl;
         throw;
     }
