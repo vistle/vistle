@@ -893,15 +893,15 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
     }
     vistle::Points::const_ptr points = vistle::Points::as(m_geo);
 
-    osg::Material *mat = nullptr;
+    osg::Material *material = nullptr;
     if (m_ro && m_ro->hasSolidColor) {
         const auto &c = m_ro->solidColor;
-        mat = new osg::Material;
-        mat->setName(nodename + ".material");
-        mat->setAmbient(osg::Material::FRONT_AND_BACK, osg::Vec4(c[0], c[1], c[2], c[3]));
-        mat->setDiffuse(osg::Material::FRONT_AND_BACK, osg::Vec4(c[0], c[1], c[2], c[3]));
-        mat->setSpecular(osg::Material::FRONT_AND_BACK, osg::Vec4(0.2, 0.2, 0.2, c[3]));
-        mat->setColorMode(osg::Material::AMBIENT_AND_DIFFUSE);
+        material = new osg::Material;
+        material->setName(nodename + ".material");
+        material->setAmbient(osg::Material::FRONT_AND_BACK, osg::Vec4(c[0], c[1], c[2], c[3]));
+        material->setDiffuse(osg::Material::FRONT_AND_BACK, osg::Vec4(c[0], c[1], c[2], c[3]));
+        material->setSpecular(osg::Material::FRONT_AND_BACK, osg::Vec4(0.2, 0.2, 0.2, c[3]));
+        material->setColorMode(osg::Material::AMBIENT_AND_DIFFUSE);
         if (c[3] > 0.f && c[3] < 1.f)
             transparent = true;
     }
@@ -925,8 +925,8 @@ osg::Geode *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defa
         }
     }
     state->setName(nodename + ".state");
-    if (mat)
-        state->setAttribute(mat);
+    if (material)
+        state->setAttribute(material);
 
     vistle::Normals::const_ptr normals = vistle::Normals::as(m_normal);
     if (normals) {
