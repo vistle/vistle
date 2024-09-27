@@ -9,7 +9,7 @@ public:
     ~CreateCuboid();
 
 private:
-    virtual bool compute();
+    bool compute(const std::shared_ptr<vistle::BlockTask> &task) const override;
 };
 
 #endif // CREATECUBOID_H
