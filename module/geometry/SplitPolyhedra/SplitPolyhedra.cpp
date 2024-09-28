@@ -118,9 +118,13 @@ bool SplitPolyhedra::compute()
         simple->d()->x[1] = grid->d()->x[1];
         simple->d()->x[2] = grid->d()->x[2];
         auto &oel = simple->el();
+        oel.reserve(nelem);
         auto &otl = simple->tl();
+        otl.reserve(nelem);
         auto &ocl = simple->cl();
+        ocl.reserve(grid->getNumCorners());
         auto &oGhost = simple->ghost();
+        oGhost.reserve(nelem);
         if (perElement) {
             elementMapping.reserve(nelem);
         }
