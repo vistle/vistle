@@ -28,15 +28,13 @@
 #include <vistle/core/celltypes.h>
 
 #ifdef COVER_PLUGIN
-//#define BUILD_KDTREES // for faster osg intersection tests
-//#define REINDEX // optimize index order for better GPU vertex cache usage
-
 #include <cover/RenderObject.h>
 #include <cover/VRSceneGraph.h>
 #include <cover/coVRShader.h>
 #include <cover/coVRPluginSupport.h>
 #include <PluginUtil/Tipsify.h>
 
+//#define BUILD_KDTREES // for faster osg intersection tests
 #endif
 
 using namespace vistle;
