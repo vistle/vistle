@@ -3,10 +3,10 @@
 
 #include <vistle/module/module.h>
 
-class CreateCuboid: public vistle::Module {
+class CreateCuboids: public vistle::Module {
 public:
-    CreateCuboid(const std::string &name, int moduleID, mpi::communicator comm);
-    ~CreateCuboid();
+    CreateCuboids(const std::string &name, int moduleID, mpi::communicator comm);
+    ~CreateCuboids();
 
 private:
     bool compute(const std::shared_ptr<vistle::BlockTask> &task) const override;
