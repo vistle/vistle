@@ -7,7 +7,8 @@ MODULE_MAIN(CreateCuboids)
 
 using namespace vistle;
 
-CreateCuboids::CreateCuboids(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
+CreateCuboids::CreateCuboids(const std::string &name, int moduleID, mpi::communicator comm)
+: Module(name, moduleID, comm)
 {
     createInputPort("grid_in", "grid containing cuboid definitions (positions and edge lengths)");
     createOutputPort("grid_out", "cuboids");
@@ -19,15 +20,35 @@ CreateCuboids::~CreateCuboids()
 UnstructuredGrid::ptr createCuboidGrid(UnstructuredGrid::const_ptr midpoints, Vec<Scalar, 3>::const_ptr edgeLengths)
 {
     // clang-format off
-    std::array<int, 24> cornerOffsets = {  1, -1, -1, 
-                                           1,  1, -1,
-                                          -1,  1, -1,
-                                          -1, -1, -1,
-                                           1, -1,  1,
-                                           1,  1,  1,
-                                          -1,  1,  1,
-                                          -1, -1,  1
-                                        };
+    /*
+        The signs stored in this array are used to calculate the eight corner points
+        of the cuboid according to vistle's hexahedron definition:
+                    
+                   7 -------- 6
+                  /|         /|
+                 / |        / |
+                4 -------- 5  |        
+                |  3-------|--2
+                | /        | /
+                |/         |/
+                0----------1
+        
+        If mP = (mX | mY | mZ) is the midpoint of the cuboid and lX, lY, lZ are 
+        the edge length along the x-, y- and z-axis, the corners are calculated 
+        as follows:
+        corner 0 = ( mX + lX | mY - lY | mZ - lZ), 
+        corner 1 = ( mX + lX | mY + lY | mZ - lZ), ...
+    */
+    
+    std::array<int, 24> signs = {  1, -1, -1, // corner 0
+                                   1,  1, -1, // corner 1
+                                  -1,  1, -1, // ...
+                                  -1, -1, -1, 
+                                   1, -1,  1, 
+                                   1,  1,  1, 
+                                  -1,  1,  1, 
+                                  -1, -1,  1  
+                                };
     // clang-format on
 
     auto numMidpoints = midpoints->getNumCoords();
@@ -46,9 +67,9 @@ UnstructuredGrid::ptr createCuboidGrid(UnstructuredGrid::const_ptr midpoints, Ve
         auto lengthZ = edgeLengths->z()[i];
 
         for (auto j = 0; j < cornersPerCuboid; j++) {
-            cuboids->x()[cornersPerCuboid * i + j] = x + lengthX * cornerOffsets[3 * j];
-            cuboids->y()[cornersPerCuboid * i + j] = y + lengthY * cornerOffsets[3 * j + 1];
-            cuboids->z()[cornersPerCuboid * i + j] = z + lengthZ * cornerOffsets[3 * j + 2];
+            cuboids->x()[cornersPerCuboid * i + j] = x + lengthX * signs[3 * j];
+            cuboids->y()[cornersPerCuboid * i + j] = y + lengthY * signs[3 * j + 1];
+            cuboids->z()[cornersPerCuboid * i + j] = z + lengthZ * signs[3 * j + 2];
 
             cuboids->cl()[cornersPerCuboid * i + j] = cornersPerCuboid * i + j;
         }
@@ -63,20 +84,20 @@ UnstructuredGrid::ptr createCuboidGrid(UnstructuredGrid::const_ptr midpoints, Ve
 
 bool CreateCuboids::compute(const std::shared_ptr<vistle::BlockTask> &task) const
 {
-    auto cuboidDef = task->expect<Vec<Scalar, 3>>("grid_in");
-    if (!cuboidDef) {
+    auto definition = task->expect<Vec<Scalar, 3>>("grid_in");
+    if (!definition) {
         sendError("Mapped data must be three-dimensional!");
         return true;
     }
 
-    auto defContainer = splitContainerObject(cuboidDef);
-    auto geo = defContainer.geometry;
+    auto container = splitContainerObject(definition);
+    auto geo = container.geometry;
     if (!UnstructuredGrid::as(geo)) {
         sendError("The input grid must be unstructured!");
         return true;
     }
     auto centers = UnstructuredGrid::as(geo);
-    auto lengths = Vec<Scalar, 3>::as(defContainer.mapped);
+    auto lengths = Vec<Scalar, 3>::as(container.mapped);
 
     auto cuboids = createCuboidGrid(centers, lengths);
 
