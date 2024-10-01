@@ -62,9 +62,9 @@ UnstructuredGrid::ptr createCuboidGrid(UnstructuredGrid::const_ptr midpoints, Ve
         auto y = midpoints->y()[i];
         auto z = midpoints->z()[i];
 
-        auto lengthX = edgeLengths->x()[i];
-        auto lengthY = edgeLengths->y()[i];
-        auto lengthZ = edgeLengths->z()[i];
+        auto lengthX = 0.5 * edgeLengths->x()[i];
+        auto lengthY = 0.5 * edgeLengths->y()[i];
+        auto lengthZ = 0.5 * edgeLengths->z()[i];
 
         for (auto j = 0; j < cornersPerCuboid; j++) {
             cuboids->x()[cornersPerCuboid * i + j] = x + lengthX * signs[3 * j];
