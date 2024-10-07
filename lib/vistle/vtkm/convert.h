@@ -11,6 +11,10 @@
 
 #include "export.h"
 
+#ifdef _WIN32
+#undef ERROR
+#endif
+
 namespace vistle {
 
 enum VtkmTransformStatus {
