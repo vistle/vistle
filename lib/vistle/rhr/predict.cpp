@@ -16,7 +16,7 @@ void transform_predict(unsigned char *output, const float *input, unsigned width
 #ifdef _OPENMP
 #pragma omp parallel for
 #endif
-    for (unsigned y = 0; y < height; ++y) {
+    for (int y = 0; y < height; ++y) {
         const float *in = input + y * stride;
         unsigned char *out = output + y * width * 3;
 
@@ -45,7 +45,7 @@ void transform_unpredict(float *output, const unsigned char *input, unsigned wid
 #ifdef _OPENMP
 #pragma omp parallel for
 #endif
-    for (unsigned y = 0; y < height; ++y) {
+    for (int y = 0; y < height; ++y) {
         float *out = output + y * stride;
         const unsigned char *in = input + y * width * 3;
 
@@ -73,7 +73,7 @@ void transform_predict_planar(unsigned char *output, const float *input, unsigne
 #ifdef _OPENMP
 #pragma omp parallel for
 #endif
-    for (unsigned y = 0; y < height; ++y) {
+    for (int y = 0; y < height; ++y) {
         const float *in = input + y * stride;
         unsigned char *out[3] = {output + y * width, output + plane_size + y * width,
                                  output + 2 * plane_size + y * width};
@@ -106,7 +106,7 @@ void transform_unpredict_planar(float *output, const unsigned char *input, unsig
 #ifdef _OPENMP
 #pragma omp parallel for
 #endif
-    for (unsigned y = 0; y < height; ++y) {
+    for (int y = 0; y < height; ++y) {
         float *out = output + y * stride;
         const unsigned char *in[3] = {input + y * width, input + plane_size + y * width,
                                       input + 2 * plane_size + y * width};
@@ -136,7 +136,7 @@ void transform_predict(unsigned char *output, const unsigned char *input, unsign
 #ifdef _OPENMP
 #pragma omp parallel for
 #endif
-    for (unsigned y = 0; y < height; ++y) {
+    for (int y = 0; y < height; ++y) {
         const unsigned char *in = input + y * stride * planes;
         unsigned char *out[planes];
         for (int i = 0; i < planes; ++i) {
@@ -165,7 +165,7 @@ void transform_unpredict(unsigned char *output, const unsigned char *input, unsi
 #ifdef _OPENMP
 #pragma omp parallel for
 #endif
-    for (unsigned y = 0; y < height; ++y) {
+    for (int y = 0; y < height; ++y) {
         unsigned char *out = output + y * stride * planes;
         const unsigned char *in[planes];
         for (int i = 0; i < planes; ++i) {
@@ -238,7 +238,7 @@ void transform_predict<3, true, true>(unsigned char *output, const unsigned char
 #ifdef _OPENMP
 #pragma omp parallel for
 #endif
-    for (unsigned y = 0; y < height; ++y) {
+    for (int y = 0; y < height; ++y) {
         const unsigned char *in = input + y * stride * 4;
         unsigned char *out[planes];
         for (int i = 0; i < planes; ++i) {
@@ -277,7 +277,7 @@ void transform_unpredict<3, true, true>(unsigned char *output, const unsigned ch
 #ifdef _OPENMP
 #pragma omp parallel for
 #endif
-    for (unsigned y = 0; y < height; ++y) {
+    for (int y = 0; y < height; ++y) {
         unsigned char *out = output + y * stride * 4;
         const unsigned char *in[planes];
         for (int i = 0; i < planes; ++i) {
@@ -314,7 +314,7 @@ void transform_predict<4, true, true>(unsigned char *output, const unsigned char
 #ifdef _OPENMP
 #pragma omp parallel for
 #endif
-    for (unsigned y = 0; y < height; ++y) {
+    for (int y = 0; y < height; ++y) {
         const unsigned char *in = input + y * stride * planes;
         unsigned char *out[planes];
         for (int i = 0; i < planes; ++i) {
@@ -354,7 +354,7 @@ void transform_unpredict<4, true, true>(unsigned char *output, const unsigned ch
 #ifdef _OPENMP
 #pragma omp parallel for
 #endif
-    for (unsigned y = 0; y < height; ++y) {
+    for (int y = 0; y < height; ++y) {
         unsigned char *out = output + y * stride * planes;
         const unsigned char *in[planes];
         for (int i = 0; i < planes; ++i) {
