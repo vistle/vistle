@@ -22,6 +22,11 @@ set(CMAKE_AUTOUIC ON)
 include_directories(${CMAKE_CURRENT_BINARY_DIR} .)
 
 vistle_add_executable(${NAME} MACOSX_BUNDLE vistle_opener.cpp vistle_opener.h)
+set_target_properties(
+    ${NAME}
+    PROPERTIES MACOSX_BUNDLE_BUNDLE_NAME vistle_opener
+               MACOSX_BUNDLE_GUI_IDENTIFIER io.vistle.vistle_opener
+               MACOSX_BUNDLE_ICON_FILE ../gui/vistle.icns)
 target_link_libraries(${NAME} PRIVATE vistle_util)
 target_link_libraries(${NAME} PRIVATE Boost::system Boost::filesystem Boost::program_options Threads::Threads)
 if(VISTLE_USE_QT5)
