@@ -65,6 +65,11 @@ if(APPLE)
 endif(APPLE)
 
 vistle_add_executable(${gui_name} MACOSX_BUNDLE ${gui_SOURCES})
+set_target_properties(
+    ${gui_name}
+    PROPERTIES MACOSX_BUNDLE_BUNDLE_NAME Vistle
+               MACOSX_BUNDLE_GUI_IDENTIFIER io.vistle.Vistle
+               MACOSX_BUNDLE_ICON_FILE vistle.icns)
 if(VISTLE_USE_QT5)
     qt5_wrap_ui(GUI_UI_SRCS ${gui_FORMS})
     qt5_add_resources(GUI_QRC_SOURCES gui.qrc about.qrc)
