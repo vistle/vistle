@@ -72,12 +72,20 @@ bool ShowGrid::compute()
         sendError("did not receive an input object");
         return true;
     }
+    Object::const_ptr input = grid;
+    DataBase::ptr data;
+    auto mapped = split.mapped;
+    if (mapped && mapped->guessMapping() == DataBase::Vertex) {
+        input = mapped;
+        data = mapped->clone();
+    }
 
-    vistle::Lines::ptr out;
-    if (auto *entry = m_cache.getOrLock(grid->getName(), out)) {
-        out.reset(new vistle::Lines(Object::Initialized));
-        auto &ocl = out->cl();
-        auto &oel = out->el();
+    vistle::Object::ptr out;
+    vistle::Lines::ptr lines;
+    if (auto *entry = m_cache.getOrLock(input->getName(), out)) {
+        lines.reset(new vistle::Lines(Object::Initialized));
+        auto &ocl = lines->cl();
+        auto &oel = lines->el();
 
         if (auto unstr = UnstructuredGrid::as(grid)) {
             const Index *icl = &unstr->cl()[0];
@@ -145,9 +153,12 @@ bool ShowGrid::compute()
                 }
                 }
             }
-            out->d()->x[0] = unstr->d()->x[0];
-            out->d()->x[1] = unstr->d()->x[1];
-            out->d()->x[2] = unstr->d()->x[2];
+            lines->d()->x[0] = unstr->d()->x[0];
+            lines->d()->x[1] = unstr->d()->x[1];
+            lines->d()->x[2] = unstr->d()->x[2];
+            if (mapped) {
+                data = mapped->clone();
+            }
         } else if (auto str = StructuredGridBase::as(grid)) {
             const Index dims[3] = {str->getNumDivisions(0), str->getNumDivisions(1), str->getNumDivisions(2)};
             Index begin = 0, end = str->getNumElements();
@@ -184,15 +195,15 @@ bool ShowGrid::compute()
             }
 
             if (auto s = StructuredGrid::as(grid)) {
-                out->d()->x[0] = s->d()->x[0];
-                out->d()->x[1] = s->d()->x[1];
-                out->d()->x[2] = s->d()->x[2];
+                lines->d()->x[0] = s->d()->x[0];
+                lines->d()->x[1] = s->d()->x[1];
+                lines->d()->x[2] = s->d()->x[2];
             } else {
                 const Index numVert = str->getNumVertices();
-                out->setSize(numVert);
-                auto x = &out->x()[0];
-                auto y = &out->y()[0];
-                auto z = &out->z()[0];
+                lines->setSize(numVert);
+                auto x = &lines->x()[0];
+                auto y = &lines->y()[0];
+                auto z = &lines->z()[0];
 
                 for (Index i = 0; i < numVert; ++i) {
                     auto v = str->getVertex(i);
@@ -225,9 +236,12 @@ bool ShowGrid::compute()
                     oel.push_back(ocl.size());
                 }
             }
-            out->d()->x[0] = poly->d()->x[0];
-            out->d()->x[1] = poly->d()->x[1];
-            out->d()->x[2] = poly->d()->x[2];
+            lines->d()->x[0] = poly->d()->x[0];
+            lines->d()->x[1] = poly->d()->x[1];
+            lines->d()->x[2] = poly->d()->x[2];
+            if (mapped) {
+                data = mapped->clone();
+            }
         } else if (auto quad = Quads::as(grid)) {
             if (showTypes[UnstructuredGrid::QUAD]) {
                 auto nelem = quad->getNumElements();
@@ -261,9 +275,9 @@ bool ShowGrid::compute()
                     }
                 }
             }
-            out->d()->x[0] = quad->d()->x[0];
-            out->d()->x[1] = quad->d()->x[1];
-            out->d()->x[2] = quad->d()->x[2];
+            lines->d()->x[0] = quad->d()->x[0];
+            lines->d()->x[1] = quad->d()->x[1];
+            lines->d()->x[2] = quad->d()->x[2];
         } else if (auto tri = Triangles::as(grid)) {
             if (showTypes[UnstructuredGrid::TRIANGLE]) {
                 auto nelem = tri->getNumElements();
@@ -295,13 +309,24 @@ bool ShowGrid::compute()
                     }
                 }
             }
-            out->d()->x[0] = tri->d()->x[0];
-            out->d()->x[1] = tri->d()->x[1];
-            out->d()->x[2] = tri->d()->x[2];
+            lines->d()->x[0] = tri->d()->x[0];
+            lines->d()->x[1] = tri->d()->x[1];
+            lines->d()->x[2] = tri->d()->x[2];
+            if (mapped) {
+                data = mapped->clone();
+            }
         }
 
-        out->copyAttributes(grid);
-        updateMeta(out);
+        lines->copyAttributes(grid);
+        updateMeta(lines);
+
+        if (data) {
+            updateMeta(data);
+            data->setGrid(lines);
+            out = data;
+        } else {
+            out = lines;
+        }
         m_cache.storeAndUnlock(entry, out);
     }
     addObject("grid_out", out);
