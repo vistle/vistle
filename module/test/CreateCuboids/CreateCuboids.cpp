@@ -34,10 +34,10 @@ UnstructuredGrid::ptr createCuboidGrid(UnstructuredGrid::const_ptr cuboidCenters
                 |/         |/
                 0----------1
         
-        If cP = (cX | cY | cZ) is the center of the cuboid and lX, lY, lZ are the edge length along 
-        the x-, y- and z-axis, the corners are calculated as follows:
-        corner 0 = ( cX + lX | cY - lY | cZ - lZ), 
-        corner 1 = ( cX + lX | cY + lY | cZ - lZ), ...
+        If cP = (cX | cY | cZ) is one of the given cuboid centers and lX, lY, lZ are the corresponding edge lengths 
+        along the x-, y- and z-axis, the corners are calculated as follows:
+        corner 0 = ( cX + 0.5 * lX | cY - 0.5 * lY | cZ - 0.5 * lZ), 
+        corner 1 = ( cX + 0.5 * lX | cY + 0.5 * lY | cZ - 0.5 * lZ), ...
 
         The following is the complete list of signs in front of the edge lengths for each corner:
     */
