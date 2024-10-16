@@ -10,7 +10,7 @@ using namespace vistle;
 CreateCuboids::CreateCuboids(const std::string &name, int moduleID, mpi::communicator comm)
 : Module(name, moduleID, comm)
 {
-    createInputPort("grid_in", "unstructured grid containing cuboid definitions");
+    createInputPort("grid_in", "grid containing cuboid definitions");
     createOutputPort("grid_out", "grid containing cuboids");
 }
 
@@ -18,7 +18,7 @@ CreateCuboids::~CreateCuboids()
 {}
 
 // returns an unstructured hexahedral grid containing the cuboids defined by `cuboidCenters` and `edgeLengths`
-UnstructuredGrid::ptr createCuboidGrid(UnstructuredGrid::const_ptr cuboidCenters, Vec<Scalar, 3>::const_ptr edgeLengths)
+UnstructuredGrid::ptr createCuboidGrid(Coords::const_ptr cuboidCenters, Vec<Scalar, 3>::const_ptr edgeLengths)
 {
     // clang-format off
     /*
@@ -93,11 +93,11 @@ bool CreateCuboids::compute(const std::shared_ptr<vistle::BlockTask> &task) cons
 
     auto container = splitContainerObject(definition);
     auto geo = container.geometry;
-    if (!UnstructuredGrid::as(geo)) {
-        sendError("This module only supports unstructured grids!");
+    if (!Coords::as(geo)) {
+        sendError("The input grid does not contain point coordinates (i.e., cuboid centers), cannot create cuboids!");
         return true;
     }
-    auto centers = UnstructuredGrid::as(geo);
+    auto centers = Coords::as(geo);
     auto lengths = Vec<Scalar, 3>::as(container.mapped);
 
     auto cuboids = createCuboidGrid(centers, lengths);
