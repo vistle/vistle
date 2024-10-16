@@ -89,7 +89,7 @@ bool VertexOwnerList::checkImpl(std::ostream &os, bool quick) const
     VALIDATE(!d()->vertexList->empty());
     VALIDATE(d()->vertexList->at(0) == 0);
 
-    if (getNumVertices() > 0) {
+    if (getNumVertices() > 0 && !d()->cellList->empty()) {
         VALIDATE(d()->vertexList->at(getNumVertices() - 1) < d()->cellList->size());
         VALIDATE(d()->vertexList->at(getNumVertices()) == d()->cellList->size());
     }
