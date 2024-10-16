@@ -350,12 +350,25 @@ Object::ptr Object::cloneType() const
 void Object::refresh() const
 {}
 
+namespace {
+bool isAttachment(Object::Type type)
+{
+    switch (type) {
+    case Object::VERTEXOWNERLIST:
+    case Object::CELLTREE1:
+    case Object::CELLTREE2:
+    case Object::CELLTREE3:
+        return true;
+    default:
+        return false;
+    }
+}
+} // namespace
+
 bool Object::check(std::ostream &os, bool quick) const
 {
     VALIDATE(d()->refcount() > 0); // we are holding a reference
     VALIDATE(d()->isComplete()); // we are holding a reference
-
-    VALIDATE(d()->meta.creator() != -1);
 
     bool terminated = false;
     for (size_t i = 0; i < sizeof(shm_name_t); ++i) {
@@ -368,21 +381,25 @@ bool Object::check(std::ostream &os, bool quick) const
 
     VALIDATE(d()->type > UNKNOWN);
 
-    VALIDATE(d()->meta.numTimesteps() >= -1);
-    VALIDATE(d()->meta.timeStep() >= -1);
-    VALIDATE(d()->meta.numTimesteps() == -1 ||
-             (d()->meta.timeStep() >= 0 && d()->meta.timeStep() < d()->meta.numTimesteps()));
+    if (!isAttachment(getType())) {
+        VALIDATE(d()->meta.creator() != -1);
 
-    VALIDATE(d()->meta.animationStep() >= -1);
-    VALIDATE(d()->meta.animationStep() < d()->meta.numAnimationSteps() || d()->meta.numAnimationSteps() == -1);
+        VALIDATE(d()->meta.numTimesteps() >= -1);
+        VALIDATE(d()->meta.timeStep() >= -1);
+        VALIDATE(d()->meta.numTimesteps() == -1 ||
+                 (d()->meta.timeStep() >= 0 && d()->meta.timeStep() < d()->meta.numTimesteps()));
 
-    VALIDATE(d()->meta.iteration() >= -1);
+        VALIDATE(d()->meta.animationStep() >= -1);
+        VALIDATE(d()->meta.animationStep() < d()->meta.numAnimationSteps() || d()->meta.numAnimationSteps() == -1);
 
-    VALIDATE(d()->meta.numBlocks() >= -1);
-    VALIDATE(d()->meta.block() >= -1);
-    VALIDATE(d()->meta.numBlocks() == -1 || (d()->meta.block() >= 0 && d()->meta.block() < d()->meta.numBlocks()));
+        VALIDATE(d()->meta.iteration() >= -1);
 
-    VALIDATE(d()->meta.generation() >= -1);
+        VALIDATE(d()->meta.numBlocks() >= -1);
+        VALIDATE(d()->meta.block() >= -1);
+        VALIDATE(d()->meta.numBlocks() == -1 || (d()->meta.block() >= 0 && d()->meta.block() < d()->meta.numBlocks()));
+
+        VALIDATE(d()->meta.generation() >= -1);
+    }
 
     if (quick)
         return true;
