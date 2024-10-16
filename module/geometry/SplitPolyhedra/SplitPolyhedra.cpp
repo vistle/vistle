@@ -118,12 +118,17 @@ bool SplitPolyhedra::compute()
         simple->d()->x[1] = grid->d()->x[1];
         simple->d()->x[2] = grid->d()->x[2];
         auto &oel = simple->el();
+        oel.reserve(nelem);
         auto &otl = simple->tl();
+        otl.reserve(nelem);
         auto &ocl = simple->cl();
+        ocl.reserve(grid->getNumCorners());
         auto &oGhost = simple->ghost();
+        oGhost.reserve(nelem);
         if (perElement) {
             elementMapping.reserve(nelem);
         }
+        Index nPolySplit = 0, nSimpleCreated = 0, nBadSplit = 0, nSimpleRetained = 0;
 
         auto addElem = [&grid, &otl, &oGhost, &ocl, &oel, &elementMapping,
                         perElement](Index elem, Byte type = UnstructuredGrid::TETRAHEDRON) {
@@ -135,7 +140,7 @@ bool SplitPolyhedra::compute()
             }
         };
 
-        auto addTetrasForFaceAndVertex = [&addElem, &ocl](const auto &face, Index V, Index elem) {
+        auto addTetrasForFaceAndVertex = [&nSimpleCreated, &addElem, &ocl](const auto &face, Index V, Index elem) {
             auto minit = std::min_element(face.begin(), face.end());
             auto next = minit + 1 == face.end() ? face.begin() : minit + 1;
             auto prev = minit == face.begin() ? face.end() - 1 : minit - 1;
@@ -148,11 +153,10 @@ bool SplitPolyhedra::compute()
                     next = face.begin();
                 ocl.push_back(*next);
                 ocl.push_back(V);
+                ++nSimpleCreated;
                 addElem(elem);
             }
         };
-
-        Index nBadSplit = 0;
 
         for (Index elem = 0; elem < nelem; ++elem) {
             const Byte type = itl[elem];
@@ -163,9 +167,14 @@ bool SplitPolyhedra::compute()
             assert(!perElement || elementMapping.size() == otl.size());
 
             if (type == UnstructuredGrid::POLYHEDRON) {
+                ++nPolySplit;
                 std::vector<Index> verts; // vertices in cell
+                verts.reserve(end - begin);
                 std::vector<Index> fl; // face list (start indices)
+                fl.reserve((end - begin) / 3);
                 std::vector<Index> tri, quad; // list of triangle and quad faces
+                tri.reserve((end - begin) / 3);
+                quad.reserve((end - begin) / 4);
                 Index first = InvalidIndex;
                 Index facebegin = InvalidIndex;
                 for (Index i = begin; i < end; ++i) {
@@ -208,6 +217,7 @@ bool SplitPolyhedra::compute()
                             break;
                         }
                     }
+                    ++nSimpleCreated;
                     addElem(elem);
                     continue;
                 } else if (mode == RecoverSimple || mode == SplitToSimple) {
@@ -222,6 +232,7 @@ bool SplitPolyhedra::compute()
                                 break;
                             }
                         }
+                        ++nSimpleCreated;
                         addElem(elem, UnstructuredGrid::PYRAMID);
                         continue;
                     } else if (nvert == 6 && nface == 5 && ntri == 2 && nquad == 3) {
@@ -263,6 +274,7 @@ bool SplitPolyhedra::compute()
                             ocl.push_back(Tb[b]);
                         for (Index t = 0; t < 3; ++t)
                             ocl.push_back(Tt[(offset + 3 - t) % 3]);
+                        ++nSimpleCreated;
                         addElem(elem, UnstructuredGrid::PRISM);
                         continue;
                     } else if (nvert == 8 && nface == 6 && ntri == 0 && nquad == 6) {
@@ -319,10 +331,12 @@ bool SplitPolyhedra::compute()
                             ocl.push_back(Qb[b]);
                         for (Index t = 0; t < 4; ++t)
                             ocl.push_back(Qt[(offset + 4 - t) % 4]);
+                        ++nSimpleCreated;
                         addElem(elem, UnstructuredGrid::HEXAHEDRON);
                         continue;
                     }
-                } else if (mode == SplitToSimple || mode == SplitToTetrahedra) {
+                }
+                if (mode == SplitToSimple || mode == SplitToTetrahedra) {
                     // try not to split quad faces, so that neighboring simple cells do not have be split
 
                     auto V = InvalidIndex;
@@ -384,10 +398,12 @@ bool SplitPolyhedra::compute()
                         if (face.size() == 3) {
                             std::copy(face.begin(), face.end(), std::back_inserter(ocl));
                             ocl.push_back(V);
+                            ++nSimpleCreated;
                             addElem(elem);
                         } else if (mode == SplitToSimple && face.size() == 4) {
                             std::copy(face.begin(), face.end(), std::back_inserter(ocl));
                             ocl.push_back(V);
+                            ++nSimpleCreated;
                             addElem(elem, UnstructuredGrid::PYRAMID);
                         } else if (face.size() >= 3) {
                             addTetrasForFaceAndVertex(face, V, elem);
@@ -421,8 +437,14 @@ bool SplitPolyhedra::compute()
 
             // retain cell unmodified
             std::copy(icl + begin, icl + end, std::back_inserter(ocl));
+            ++nSimpleRetained;
             addElem(elem, type);
         }
+
+        std::ostringstream oss;
+        oss << "split " << nPolySplit << " polyhedra into " << nSimpleCreated << " simple cells with " << nBadSplit
+            << " bad splits, retained " << nSimpleRetained << " simple cells";
+        sendInfo(oss.str());
 
         if (nBadSplit > 0) {
             std::ostringstream oss;

@@ -73,7 +73,7 @@ VtkmTransformStatus vtkmGetGhosts(const vtkm::cont::DataSet &dataset, Object::pt
         return VtkmTransformStatus::UNSUPPORTED_FIELD_TYPE;
     }
     std::cerr << "did not find ghosts" << std::endl;
-    return VtkmTransformStatus::ERROR;
+    return VtkmTransformStatus::OTHER_ERROR;
 }
 
 VtkmTransformStatus vtkmApplyRadius(vtkm::cont::DataSet &vtkmDataset, Object::const_ptr &grid)

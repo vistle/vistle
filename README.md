@@ -179,8 +179,8 @@ Source Code Organization
         - `module/render/DisCOVERay`: a parallel remote hybrid rendering server based on [Embree](https://www.embree.org) (CPU ray-casting)
         - `module/render/OsgRenderer`: a parallel remote hybrid rendering server based on OpenSceneGraph (OpenGL)
         - `module/render/COVER`: wrap OpenCOVER as a render module
-            - `module/render/COVER/plugins`: plugins for OpenCOVER, e.g. for connecting to Vistle
-                - `module/render/COVER/plugins/RhrClient`: OpenCOVER remote hybrid rendering client plugin
+            - `module/render/COVER/plugin`: plug-ins for OpenCOVER, e.g. for connecting to Vistle
+                - `module/render/COVER/plugin/RhrClient`: OpenCOVER remote hybrid rendering client plugin
 
 Documentation
 -------------

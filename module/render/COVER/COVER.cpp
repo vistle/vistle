@@ -217,6 +217,9 @@ COVER::COVER(const std::string &name, int moduleId, mpi::communicator comm): vis
     } else {
         m_config.reset(
             new opencover::config::Access(configAccess()->hostname(), configAccess()->cluster(), comm.rank()));
+        if (auto covisedir = getenv("COVISEDIR")) {
+            m_config->setPrefix(covisedir);
+        }
     }
     m_coverConfigBridge.reset(new CoverConfigBridge(this));
     m_config->setWorkspaceBridge(m_coverConfigBridge.get());

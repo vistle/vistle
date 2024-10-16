@@ -18,7 +18,7 @@ enum VtkmTransformStatus {
     UNSUPPORTED_GRID_TYPE = 1,
     UNSUPPORTED_CELL_TYPE = 2,
     UNSUPPORTED_FIELD_TYPE,
-    ERROR
+    OTHER_ERROR
 };
 
 // transform a vistle grid object and transfer it a vtkm dataset
