@@ -10,19 +10,20 @@ using namespace vistle;
 CreateCuboids::CreateCuboids(const std::string &name, int moduleID, mpi::communicator comm)
 : Module(name, moduleID, comm)
 {
-    createInputPort("grid_in", "grid containing cuboid definitions (positions and edge lengths)");
-    createOutputPort("grid_out", "cuboids");
+    createInputPort("grid_in", "unstructured grid containing cuboid definitions");
+    createOutputPort("grid_out", "grid containing cuboids");
 }
 
 CreateCuboids::~CreateCuboids()
 {}
 
-UnstructuredGrid::ptr createCuboidGrid(UnstructuredGrid::const_ptr midpoints, Vec<Scalar, 3>::const_ptr edgeLengths)
+// returns an unstructured hexahedral grid containing the cuboids defined by `cuboidCenters` and `edgeLengths`
+UnstructuredGrid::ptr createCuboidGrid(UnstructuredGrid::const_ptr cuboidCenters, Vec<Scalar, 3>::const_ptr edgeLengths)
 {
     // clang-format off
     /*
-        The signs stored in this array are used to calculate the eight corner points
-        of the cuboid according to vistle's hexahedron definition:
+        This function creates cuboids from the given centers and edge lengths following vistle's
+        hexahedron definition (see lib/vistle/core/unstr.h):
                     
                    7 -------- 6
                   /|         /|
@@ -33,13 +34,13 @@ UnstructuredGrid::ptr createCuboidGrid(UnstructuredGrid::const_ptr midpoints, Ve
                 |/         |/
                 0----------1
         
-        If mP = (mX | mY | mZ) is the midpoint of the cuboid and lX, lY, lZ are 
-        the edge length along the x-, y- and z-axis, the corners are calculated 
-        as follows:
-        corner 0 = ( mX + lX | mY - lY | mZ - lZ), 
-        corner 1 = ( mX + lX | mY + lY | mZ - lZ), ...
+        If cP = (cX | cY | cZ) is the center of the cuboid and lX, lY, lZ are the edge length along 
+        the x-, y- and z-axis, the corners are calculated as follows:
+        corner 0 = ( cX + lX | cY - lY | cZ - lZ), 
+        corner 1 = ( cX + lX | cY + lY | cZ - lZ), ...
+
+        The following is the complete list of signs in front of the edge lengths for each corner:
     */
-    
     std::array<int, 24> signs = {  1, -1, -1, // corner 0
                                    1,  1, -1, // corner 1
                                   -1,  1, -1, // ...
@@ -51,16 +52,16 @@ UnstructuredGrid::ptr createCuboidGrid(UnstructuredGrid::const_ptr midpoints, Ve
                                 };
     // clang-format on
 
-    auto numMidpoints = midpoints->getNumCoords();
+    auto numCenters = cuboidCenters->getNumCoords();
     auto cornersPerCuboid = 8;
 
     UnstructuredGrid::ptr cuboids(
-        new UnstructuredGrid(numMidpoints, cornersPerCuboid * numMidpoints, cornersPerCuboid * numMidpoints));
+        new UnstructuredGrid(numCenters, cornersPerCuboid * numCenters, cornersPerCuboid * numCenters));
 
-    for (Index i = 0; i < midpoints->getNumCoords(); i++) {
-        auto x = midpoints->x()[i];
-        auto y = midpoints->y()[i];
-        auto z = midpoints->z()[i];
+    for (Index i = 0; i < cuboidCenters->getNumCoords(); i++) {
+        auto x = cuboidCenters->x()[i];
+        auto y = cuboidCenters->y()[i];
+        auto z = cuboidCenters->z()[i];
 
         auto lengthX = 0.5 * edgeLengths->x()[i];
         auto lengthY = 0.5 * edgeLengths->y()[i];
@@ -77,7 +78,7 @@ UnstructuredGrid::ptr createCuboidGrid(UnstructuredGrid::const_ptr midpoints, Ve
         cuboids->tl()[i] = UnstructuredGrid::HEXAHEDRON;
         cuboids->el()[i] = cornersPerCuboid * i;
     }
-    cuboids->el()[numMidpoints] = cornersPerCuboid * numMidpoints;
+    cuboids->el()[numCenters] = cornersPerCuboid * numCenters;
 
     return cuboids;
 }
@@ -86,14 +87,14 @@ bool CreateCuboids::compute(const std::shared_ptr<vistle::BlockTask> &task) cons
 {
     auto definition = task->expect<Vec<Scalar, 3>>("grid_in");
     if (!definition) {
-        sendError("Mapped data must be three-dimensional!");
+        sendError("The mapped data, i.e., the edge lengths (in x, y, z) for each cuboid, must be three-dimensional!");
         return true;
     }
 
     auto container = splitContainerObject(definition);
     auto geo = container.geometry;
     if (!UnstructuredGrid::as(geo)) {
-        sendError("The input grid must be unstructured!");
+        sendError("This module only supports unstructured grids!");
         return true;
     }
     auto centers = UnstructuredGrid::as(geo);

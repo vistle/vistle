@@ -1,1 +1,5 @@
-add_module(CreateCuboids "Creates a grid of cuboids given an unstructured grid containing the mid points and edge lengths" CreateCuboids.h CreateCuboids.cpp)
+add_module(
+    CreateCuboids
+    "creates cuboids out of an unstructured grid with (3D vector) mapped data where the grid coordinates are the cuboid centers and the mapped data the edge lengths in x, y, z"
+    CreateCuboids.h
+    CreateCuboids.cpp)
