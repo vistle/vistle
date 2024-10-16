@@ -3,7 +3,6 @@ set(VISTLE_MODULE_CATEGORY "Test")
 
 add_subdirectory(ClipVtkm)
 add_subdirectory(CreateCelltree)
-add_subdirectory(CreateCuboids)
 add_subdirectory(CreateVertexOwnerList)
 add_subdirectory(CutGeometryOld)
 add_subdirectory(Dropbear)
