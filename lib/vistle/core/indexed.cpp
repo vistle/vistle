@@ -256,11 +256,6 @@ void Indexed::createVertexOwnerList() const
     addAttachment("vertexownerlist", vol);
 }
 
-void Indexed::removeVertexOwnerList() const
-{
-    removeAttachment("vertexownerlist");
-}
-
 void Indexed::print(std::ostream &os, bool verbose) const
 {
     Base::print(os);

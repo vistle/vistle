@@ -45,7 +45,6 @@ public:
 
     bool hasVertexOwnerList() const;
     VertexOwnerList::const_ptr getVertexOwnerList() const;
-    void removeVertexOwnerList() const;
     class V_COREEXPORT NeighborFinder {
         friend class Indexed;
 
