@@ -1,7 +1,7 @@
 if(WIN32)
     cmake_minimum_required(VERSION 3.15.2 FATAL_ERROR)
 else(WIN32)
-    cmake_minimum_required(VERSION 3.10.0 FATAL_ERROR)
+    cmake_minimum_required(VERSION 3.12.0 FATAL_ERROR)
 endif()
 
 set(CMAKE_CXX_STANDARD 17)
@@ -52,6 +52,10 @@ if(POLICY CMP0074)
     # make find_include/find_library search in <PackageName>_ROOT prefix
     cmake_policy(SET CMP0074 NEW)
 endif()
+if(POLICY CMP0144)
+    # make find_include/find_library search in uppercased <PackageName>_ROOT prefix
+    cmake_policy(SET CMP0144 NEW)
+endif()
 
 # vim's YouCompleteMe can make use of this
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
@@ -76,10 +80,13 @@ option(VISTLE_SANITIZE_ADDRESS "Build with -fsanitize=address" OFF)
 option(VISTLE_SANITIZE_THREAD "Build with -fsanitize=thread" OFF)
 option(VISTLE_TIME_BUILD "Gather build times (Clang/ISPC)" OFF)
 
-option(VISTLE_ENABLE_CUDA "Build with CUDA support" OFF)
-option(VISTLE_ENABLE_KOKKOS "Build with Kokkos support" OFF)
+option(VISTLE_PROFILE_NVTX "Annotate for Nsight profiler" OFF)
+option(VISTLE_PROFILE_CHROME "Annotate for showing timings in Chrome browser" OFF)
 
-option(VISTLE_USE_QT5 "Build GUI with Qt5 instead of Qt6" ON)
+option(VISTLE_USE_CUDA "Build with CUDA support" OFF)
+option(VISTLE_USE_KOKKOS "Build with Kokkos support" OFF)
+
+option(VISTLE_USE_QT5 "Build GUI with Qt5 instead of Qt6" OFF)
 option(VISTLE_USE_MPI "Build with MPI instead of dummy MPI library" ON)
 
 option(VISTLE_COLOR_DIAGNOSTICS "Produce ANSI-colored build output (GNU/Clang)" ON)
@@ -269,6 +276,75 @@ endif(WIN32)
 
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/Modules/;${CMAKE_MODULE_PATH}")
 
+# figure out version
+vistle_find_package(Git)
+
+set(VISTLE_VERSION_TAG "unknown")
+set(VISTLE_VERSION_HASH "unknown")
+if(GIT_FOUND)
+    # for hash
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} log -n1 --format=%h/%ci
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        OUTPUT_VARIABLE GIT_LOG_OUT
+        ERROR_VARIABLE GIT_LOG_ERROR
+        RESULT_VARIABLE GIT_LOG_RESULT
+        OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+    # for latest tag contained by hash
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} tag --sort=v:refname --merged
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        OUTPUT_VARIABLE GIT_TAG_OUT
+        ERROR_VARIABLE GIT_TAG_ERROR
+        RESULT_VARIABLE GIT_TAG_RESULT
+        OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+    # working copy clean/dirty?
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} status --untracked-files=no --porcelain
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        OUTPUT_VARIABLE GIT_STATUS_OUT
+        ERROR_VARIABLE GIT_STATUS_ERROR
+        RESULT_VARIABLE GIT_STATUS_RESULT
+        OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+    if(${GIT_LOG_RESULT} EQUAL 0
+       AND ${GIT_TAG_RESULT} EQUAL 0
+       AND ${GIT_STATUS_RESULT} EQUAL 0)
+        string(REGEX REPLACE "^([a-z0-9]*)/(....)-(..)-(..).*" "\\1" VISTLE_VERSION_HASH "${GIT_LOG_OUT}")
+        if(NOT "" STREQUAL "${GIT_STATUS_OUT}")
+            # append + to hash, if dirty
+            set(VISTLE_VERSION_HASH "${VISTLE_VERSION_HASH}+")
+        endif()
+
+        set(VISTLE_VERSION_TAG "${GIT_TAG_OUT}")
+        # ensure that every tag is surrounded by \n
+        string(PREPEND VISTLE_VERSION_TAG "\n")
+        string(APPEND VISTLE_VERSION_TAG "\n")
+
+        # throw out everything that does not start with v20
+        string(REGEX REPLACE "\n([^v]|.[^2]|..[^0])[^\n]*" "\n" VISTLE_VERSION_TAG "${VISTLE_VERSION_TAG}")
+        # remove empty lines
+        string(REGEX REPLACE "\n+" "\n" VISTLE_VERSION_TAG "${VISTLE_VERSION_TAG}")
+        # remove final \n
+        string(REGEX REPLACE "\n$" "" VISTLE_VERSION_TAG "${VISTLE_VERSION_TAG}")
+        # remove everything up to and including last \n
+        string(REGEX REPLACE "^.*\n" "" VISTLE_VERSION_TAG "${VISTLE_VERSION_TAG}")
+        # chop off leading v
+        string(REGEX REPLACE "^v" "" VISTLE_VERSION_TAG "${VISTLE_VERSION_TAG}")
+        #message("VISTLE_VERSION_TAG: ${VISTLE_VERSION_TAG}")
+    else()
+        if(NOT ${GIT_LOG_RESULT} EQUAL 0)
+            message("Command \"${GIT_EXECUTABLE} log -n1 --format=%H/%ci ${dir}\" failed with output:\n${GIT_LOG_ERROR}")
+        endif()
+        if(NOT ${GIT_TAG_RESULT} EQUAL 0)
+            message("Command \"${GIT_EXECUTABLE} tag --merged ${dir}\" failed with output:\n${GIT_TAG_ERROR}")
+        endif()
+    endif()
+endif()
+message("VISTLE_VERSION: ${VISTLE_VERSION_TAG}-${VISTLE_VERSION_HASH}")
+
 include(ConfigureLinker)
 
 if(NOT VISTLE_GUI_ONLY)
@@ -417,6 +493,11 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         # for linking the libraries into plugins
         set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
     endif()
+
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64" AND CMAKE_CXX_COMPILER_VERSION MATCHES "^11")
+        # silence "note: parameter passing for argument of type ‘vtkm::Vec<double, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1"
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-psabi")
+    endif()
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
 
 endif()
@@ -454,15 +535,7 @@ endif()
 if(NOT CRAY AND NOT VISTLE_GUI_ONLY)
     if(VISTLE_USE_MPI)
         set(MPI_SKIP_MPICXX TRUE)
-
-        # set(MPI_FIND_COMPONENTS "C CXX")
-        add_definitions(-DOMPI_SKIP_MPICXX) # OpenMPI
-        add_definitions(-DMPI_NO_CPPBIND) # HPE MPT
         vistle_find_package(MPI REQUIRED COMPONENTS C CXX)
-
-        include_directories(SYSTEM ${MPI_C_INCLUDE_PATH})
-        add_compile_options($<$<COMPILE_LANGUAGE:CXX>:${MPI_C_COMPILE_FLAGS}>)
-        set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} ${MPI_C_LINK_FLAGS}")
     endif()
 
     # for CMake config file version of boost this needs to be changed to version numbers such as 1.60.99 instead of 106099
@@ -724,10 +797,6 @@ endmacro(vistle_install_headers)
 configure_file(${CMAKE_CURRENT_LIST_DIR}/cmake/VistleConfig.cmake ${PROJECT_BINARY_DIR}/lib/cmake/vistle/VistleConfig.cmake COPYONLY)
 install(FILES ${CMAKE_CURRENT_LIST_DIR}/cmake/VistleConfig.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/vistle)
 
-if(APPLE)
-    add_definitions(-DGL_SILENCE_DEPRECATION)
-endif()
-
 if(POLICY CMP0043)
     # configuration (RelWithDebInfo, Debug, ...) dependent COMPILE_DEFINITIONS are not used
     # - default to new behavior
@@ -847,7 +916,7 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
 
         # target_compile_definitions(${targetname} PRIVATE MODULE_DESCRIPTION="${description}")
         set_target_properties(${targetname} PROPERTIES FOLDER "Modules")
-        target_link_libraries(${targetname} ${Boost_LIBRARIES} MPI::MPI_C vistle_module ${BOOST_MPI} vistle_config)
+        target_link_libraries(${targetname} ${Boost_LIBRARIES} MPI::MPI_CXX vistle_module ${BOOST_MPI} vistle_config)
 
         if(USE_LIBOMP AND LIBOMP)
             # message("Linking ${targetname} against libomp: ${LIBOMP}")
@@ -878,6 +947,22 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
     endmacro(add_module)
 
     include(cmake/Documentation.cmake)
+    
+    macro(add_vtkm_module targetname description)
+        add_module(${targetname} ${description} ${ARGN})
+
+        # when using Cuda device backend for vtkm, make sure that nvcc
+        # compiler is used, even if file does not end on .cu
+        if(VISTLE_CUDA_ENABLED)
+            # make sure nvcc compiler is used for the .cpp files
+            set_source_files_properties(${ARGN} PROPERTIES LANGUAGE CUDA)
+
+            # device code might be split into multiple header/source code files,
+            # so we need to enable seperate compilation to avoid linking errors
+            set_property(TARGET ${targetname} PROPERTY CUDA_SEPARABLE_COMPILATION ON)
+        endif()
+        target_link_libraries(${targetname} vistle_vtkm vtkm::cont vtkm::filter)
+    endmacro(add_vtkm_module)
 endif()
 
 set(CMAKE_C_VISIBILITY_PRESET hidden)
@@ -935,9 +1020,9 @@ else(WIN32)
 endif(WIN32)
 
 # set(CMAKE_BUILD_TYPE Debug)
-set(VISTLE_USE_CUDA FALSE)
 
-if(VISTLE_ENABLE_CUDA)
+set(VISTLE_CUDA_ENABLED FALSE)
+if(VISTLE_USE_CUDA)
     include(CheckLanguage)
     check_language(CUDA)
     vistle_find_package(CUDAToolkit)
@@ -950,7 +1035,7 @@ if(VISTLE_ENABLE_CUDA)
         endif()
 
         add_definitions(-DVISTLE_USE_CUDA)
-        set(VISTLE_USE_CUDA TRUE)
+        set(VISTLE_CUDA_ENABLED TRUE)
         message("Using CUDA")
     endif()
 endif()
@@ -969,12 +1054,6 @@ set(THRUST_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/lib/3rdparty/thrust")
 # new submodule for block distribution
 set(DIY_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/lib/3rdparty/diy/include")
 
-# vistle_find_package(Eigen3 REQUIRED)
-set(EIGEN3_INCLUDE_PATH "${PROJECT_SOURCE_DIR}/lib/3rdparty")
-
-# add_definitions(-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=short)
-add_definitions(-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=int)
-
 if(NOT VISTLE_GUI_ONLY)
     # Boost.MPI is compiled with Vistle - for easy switching of MPI versions
     include_directories(BEFORE SYSTEM "${PROJECT_SOURCE_DIR}/lib/3rdparty/${BOOST_MPI_DIR}/include")
@@ -991,41 +1070,45 @@ add_definitions(-DPYBIND11_DETAILED_ERROR_MESSAGES)
 # replacement for Boost.Serialization
 # include_directories(SYSTEM "${PROJECT_SOURCE_DIR}/lib/3rdparty/yas/include")
 
-# lossy floating point compression
-# vistle_find_package(ZFP)
-set(ZFP_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/lib/3rdparty/zfp/include")
-set(ZFP_LIBRARIES zfp)
+option(VISTLE_INTERNAL_ZFP "Use own copy of zfp lossy floating point compressor" ON)
+if(VISTLE_INTERNAL_ZFP)
+    # lossy floating point compression
+    set(ZFP_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/lib/3rdparty/zfp/include")
 
-if(OPENMP_FOUND)
-    set(ZFP_LIBRARIES ${ZFP_LIBRARIES} ${OpenMP_CXX_LIBRARIES})
+    set(ZFP_LIBRARIES zfp)
+    if(OPENMP_FOUND)
+        set(ZFP_LIBRARIES ${ZFP_LIBRARIES} ${OpenMP_CXX_LIBRARIES})
+    endif()
+
+    set(ZFP_FOUND TRUE)
+    #add_definitions(-DHAVE_ZFP)
+    #include_directories(SYSTEM "${ZFP_INCLUDE_DIRS}")
+else()
+    vistle_find_package(ZFP REQUIRED)
 endif()
-
-set(ZFP_FOUND TRUE)
-add_definitions(-DHAVE_ZFP)
-include_directories(SYSTEM "${ZFP_INCLUDE_DIRS}")
 
 vistle_find_package(PkgConfig)
 vistle_find_package(ZSTD)
 
+set(SZ3_FOUND FALSE)
+set(USE_SZ3 FALSE)
 if(CMAKE_VERSION VERSION_LESS 3.18)
     message("Not building with SZ3 support: CMake older than 3.18")
-    set(USE_SZ3 FALSE)
 elseif(NOT ZSTD_FOUND)
     message("Not building with SZ3 support: no ZSTD")
-    set(USE_SZ3 FALSE)
 elseif(NOT PkgConfig_FOUND)
     message("Not building with SZ3 support: no PkgConfig")
-    set(USE_SZ3 FALSE)
 else()
     set(SZ3_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/lib/3rdparty/sz3/include;${PROJECT_BINARY_DIR}/lib/3rdparty/sz3/include")
     set(SZ3_FOUND TRUE)
-    add_definitions(-DHAVE_SZ3)
-    include_directories(SYSTEM "${SZ3_INCLUDE_DIRS}")
     set(USE_SZ3 TRUE)
 endif()
 
 set(OpenGL_GL_PREFERENCE LEGACY)
 vistle_find_package(OpenGL)
+if(APPLE)
+    target_compile_definitions(OpenGL::GL INTERFACE -DGL_SILENCE_DEPRECATION)
+endif()
 
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)

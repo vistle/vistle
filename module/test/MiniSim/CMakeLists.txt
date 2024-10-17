@@ -15,8 +15,12 @@ if(DIY_INCLUDE_DIR)
         vistle_insitu_module
         vistle_libsim_connect
         vistle_module
+        vistle_insitu_adapter
         vistle_util)
+
     if(NOT WIN32)
         target_compile_options(MiniSim PRIVATE -Wno-sign-compare)
     endif()
+
+    target_compile_definitions(MiniSim PRIVATE VISTLE_ROOT="${CMAKE_BINARY_DIR}" VISTLE_BUILD_TYPE="")
 endif()

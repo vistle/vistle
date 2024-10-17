@@ -69,6 +69,8 @@ public:
     void removePort(const vistle::Port &port);
     QList<Port *> inputPorts() const;
     QList<Port *> outputPorts() const;
+    enum PortKind { Input, Output, Parameter };
+    QList<Port *> ports(PortKind kind) const;
 
     // vistle methods
     QString name() const;

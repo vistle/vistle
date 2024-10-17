@@ -27,6 +27,13 @@ typedef uint32_t SizeType;
 
 static const size_t buffersize = 16384;
 
+static bool silentErrors = false;
+
+void prepare_shutdown()
+{
+    silentErrors = true;
+}
+
 #ifndef NDEBUG
 namespace {
 
@@ -452,6 +459,7 @@ bool send(socket_t &sock, const message::Message &msg, error_code &ec, const cha
 {
     const SizeType sz = htonl(msg.size());
     std::vector<boost::asio::const_buffer> buffers;
+    buffers.reserve(payload && size > 0 ? 3 : 2);
     //buffers.push_back(boost::asio::buffer(&InitialMark, sizeof(InitialMark)));
     buffers.push_back(boost::asio::buffer(&sz, sizeof(sz)));
 #ifdef DEBUG
@@ -466,9 +474,11 @@ bool send(socket_t &sock, const message::Message &msg, error_code &ec, const cha
 
     asio::write(sock, buffers, ec);
     if (ec) {
-        std::cerr << "message::send: error: " << ec.message() << std::endl;
-        if (ec != boost::system::errc::connection_reset)
-            std::cerr << backtrace() << std::endl;
+        if (!silentErrors) {
+            std::cerr << "message::send: " << msg << ", error: " << ec.message() << std::endl;
+            if (ec != boost::system::errc::connection_reset)
+                std::cerr << backtrace() << std::endl;
+        }
         return false;
     }
 

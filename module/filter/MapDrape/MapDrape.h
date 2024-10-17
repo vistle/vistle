@@ -40,6 +40,7 @@ private:
 #ifdef DISPLACE
     IntParameter *p_operation = nullptr;
     IntParameter *p_component = nullptr;
+    FloatParameter *p_scale = nullptr;
 #endif
 };
 

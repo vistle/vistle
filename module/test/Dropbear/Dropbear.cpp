@@ -51,7 +51,7 @@ Dropbear::Dropbear(const std::string &name, int moduleID, mpi::communicator comm
     for (auto type: keytypes) {
         auto param =
             addStringParameter("hostkey_" + type, "path to " + type + " host key (~/.ssh/vistle_dropbear_" + type + ")",
-                               "", Parameter::Filename);
+                               "", Parameter::ExistingFilename);
         m_dbKey.push_back(param);
     }
 

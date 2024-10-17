@@ -3,6 +3,7 @@
 #include "vector.h"
 
 #include "coords_impl.h"
+#include "validate.h"
 
 namespace vistle {
 
@@ -19,6 +20,19 @@ void Coords::resetCoords()
 void Coords::refreshImpl() const
 {}
 
+std::set<Object::const_ptr> Coords::referencedObjects() const
+{
+    auto objs = Base::referencedObjects();
+
+    auto norm = normals();
+    if (norm && objs.emplace(norm).second) {
+        auto no = norm->referencedObjects();
+        std::copy(no.begin(), no.end(), std::inserter(objs, objs.begin()));
+    }
+
+    return objs;
+}
+
 bool Coords::isEmpty()
 {
     return Base::isEmpty();
@@ -29,21 +43,21 @@ bool Coords::isEmpty() const
     return Base::isEmpty();
 }
 
-bool Coords::checkImpl() const
+bool Coords::checkImpl(std::ostream &os, bool quick) const
 {
-    V_CHECK(!normals() || normals()->getNumNormals() == getSize());
+    VALIDATE_SUB(normals());
     if (normals()) {
-        V_CHECK(normals()->check());
+        VALIDATE_SUBSIZE(normals(), getSize());
     }
     return true;
 }
 
-void Coords::print(std::ostream &os) const
+void Coords::print(std::ostream &os, bool verbose) const
 {
     Base::print(os);
     os << " norm(";
     if (normals()) {
-        os << normals();
+        normals()->print(os, verbose);
     }
     os << ")";
 }
@@ -109,7 +123,7 @@ Normals::const_ptr Coords::normals() const
 
 void Coords::setNormals(Normals::const_ptr normals)
 {
-    assert(!normals || normals->check());
+    assert(!normals || normals->check(std::cerr));
     d()->normals = normals;
 }
 

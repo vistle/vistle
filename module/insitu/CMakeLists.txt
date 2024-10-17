@@ -2,4 +2,4 @@
 set(VISTLE_MODULE_CATEGORY "Simulation")
 
 add_subdirectory(LibSim)
-add_subdirectory(Sensei)
+add_subdirectory(InSitu)

@@ -14,7 +14,7 @@ set(RHR_SOURCES ${RHR_SOURCES} rhrserver.cpp)
 set(RHR_HEADERS ${RHR_HEADERS} rhrserver.h)
 
 if(GLEW_FOUND AND OPENGL_FOUND)
-    if(VISTLE_USE_CUDA)
+    if(VISTLE_CUDA_ENABLED)
         set(USE_CUDA TRUE)
         set(RHR_CUDA_SOURCES ReadBackCuda.cu)
     else()
@@ -28,7 +28,6 @@ target_link_libraries(
     vistle_rhr
     PUBLIC vistle_util
     PUBLIC vistle_core
-    PRIVATE vistle_module
     PRIVATE Boost::boost
     PRIVATE Boost::serialization
     PRIVATE ${JPEG_LIBRARIES})

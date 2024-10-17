@@ -47,7 +47,7 @@ ColorMetapostPart::ColorMetapostPart(const std::string &name, int moduleID, mpi:
     din->link(dout);
 
     p_colorfile = addStringParameter("metapost", "filename of metapost file", "", Parameter::ExistingFilename);
-    setParameterFilters(p_colorfile, "METApost (*.ses)/All Files (*)");
+    setParameterFilters(p_colorfile, "METApost (*.ses)");
 }
 
 ColorMetapostPart::~ColorMetapostPart()
@@ -55,7 +55,7 @@ ColorMetapostPart::~ColorMetapostPart()
 
 bool ColorMetapostPart::prepare()
 {
-    //std::cerr << "ColorMetapostPart: compute: execcount=" << m_executionCount << std::endl;
+    //std::cerr << "ColorMetapostPart: compute: generation=" << m_generation << std::endl;
 
     auto filename = p_colorfile->getValue();
     std::ifstream f(filename, std::ifstream::in);
@@ -98,7 +98,7 @@ bool ColorMetapostPart::prepare()
 
 bool ColorMetapostPart::compute()
 {
-    //std::cerr << "ColorMetapostPart: compute: execcount=" << m_executionCount << std::endl;
+    //std::cerr << "ColorMetapostPart: compute: generation=" << m_generation << std::endl;
 
     Object::const_ptr obj = expect<Object>("data_in");
     if (!obj)

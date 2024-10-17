@@ -95,7 +95,9 @@ void Particle::startTracing()
     assert(inGrid());
     m_tracing = true;
     m_progressFuture = std::async(std::launch::async, [this]() -> bool {
-        setThreadName("Tracer:Particle:" + std::to_string(id()));
+        std::string tname =
+            std::to_string(m_global.module->id()) + "p" + std::to_string(id()) + ":" + m_global.module->name();
+        setThreadName(tname);
         return trace();
     });
 }

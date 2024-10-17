@@ -47,6 +47,7 @@
 
 #ifdef HAVE_PYTHON
 namespace py = pybind11;
+#define USE_RLCOMPLETER
 #endif
 
 namespace gui {
@@ -265,66 +266,48 @@ void VistleConsole::init()
 {
 #ifdef HAVE_PYTHON
 
-#if 0
-#if PY_VERSION_HEX >= 0x03000000
-    PyImport_AppendInittab("_redirector", PyInit__redirector);
-    PyImport_AppendInittab("_console", PyInit__console);
-#else
-    PyImport_AppendInittab("_redirector", init_redirector);
-    PyImport_AppendInittab("_console", init_console);
-#endif
-#endif
-
     /* NOTE: In previous implementation, local name and global name
              were allocated separately.  And it causes a problem that
              a function declared in this console cannot be called.  By
              unifying global and local name with __main__.__dict__, we
              can get more natural python console.
     */
+#ifdef USE_RLCOMPLETER
     try {
         py::module::import("rlcompleter");
     } catch (...) {
         std::cerr << "error importing rlcompleter" << std::endl;
     }
+#endif
 
     try {
-        PyRun_SimpleString("import sys\n"
+        std::string pyCode = "import sys\n"
 
-                           "import _redirector\n"
-                           "sys.stdout = _redirector.redirector()\n"
-                           "sys.stderr = _redirector.redirector(True)\n"
+                             "import _redirector\n"
+                             "sys.stdout = _redirector.redirector()\n"
+                             "sys.stderr = _redirector.redirector(True)\n"
 
-                           "sys.path.insert(0, \".\")\n" // add current path
+                             "sys.path.insert(0, \".\")\n" // add current path
 
-                           "import _console\n"
-                           "import rlcompleter\n"
+                             "import _console\n"
 
-                           "if sys.version_info >= (3,0):\n"
-                           "    import builtins\n"
-                           "    builtins.clear=_console.clear\n"
-                           "    builtins.reset=_console.reset\n"
-                           "    builtins.save=_console.save\n"
-                           "    builtins.load=_console.load\n"
-                           "    builtins.history=_console.history\n"
-                           //"    builtins.quit=_console.quit\n"
-                           //"    builtins.exit=_console.quit\n"
-                           "    builtins.input=_console.raw_input\n"
+                             "import builtins\n"
+                             "builtins.clear=_console.clear\n"
+                             "builtins.reset=_console.reset\n"
+                             "builtins.save=_console.save\n"
+                             "builtins.load=_console.load\n"
+                             "builtins.history=_console.history\n"
+                             //"builtins.quit=_console.quit\n"
+                             //"builtins.exit=_console.quit\n"
+                             "builtins.input=_console.raw_input\n"
 
-                           "    builtins.completer=rlcompleter.Completer()\n"
-                           "else:\n"
-                           "    import __builtin__\n"
-                           "    __builtin__.clear=_console.clear\n"
-                           "    __builtin__.reset=_console.reset\n"
-                           "    __builtin__.save=_console.save\n"
-                           "    __builtin__.load=_console.load\n"
-                           "    __builtin__.history=_console.history\n"
-                           //"    __builtin__.quit=_console.quit\n"
-                           //"    __builtin__.exit=_console.quit\n"
-                           "    __builtin__.raw_input=_console.raw_input\n"
+#ifdef USE_RLCOMPLETER
+                             "import rlcompleter\n"
+                             "builtins.completer=rlcompleter.Completer()\n"
+#endif
+            ;
+        PyRun_SimpleString(pyCode.c_str());
 
-                           "    __builtin__.completer=rlcompleter.Completer()\n"
-
-        );
     } catch (...) {
         std::cerr << "error running Python initialisation" << std::endl;
     }

@@ -1,5 +1,4 @@
 vistle_find_package(LZ4)
-vistle_find_package(SNAPPY)
 #vistle_find_package(ZSTD)
 
 set(core_SOURCES
@@ -41,7 +40,6 @@ set(core_SOURCES
     ${core_SOURCES}
     celltree.cpp
     coords.cpp
-    coordswradius.cpp
     database.cpp
     empty.cpp
     grid.cpp
@@ -54,11 +52,9 @@ set(core_SOURCES
     points.cpp
     polygons.cpp
     rectilineargrid.cpp
-    spheres.cpp
     structuredgrid.cpp
     structuredgridbase.cpp
     texture1d.cpp
-    tubes.cpp
     uniformgrid.cpp
     unstr.cpp
     vec.cpp
@@ -81,8 +77,6 @@ set(core_HEADERS
     celltypes.h
     coords.h
     coords_impl.h
-    coordswradius.h
-    coordswradius_impl.h
     database.h
     database_impl.h
     dimensions.h
@@ -146,8 +140,6 @@ set(core_HEADERS
     shmdata.h
     shmname.h
     shmvector.h
-    spheres.h
-    spheres_impl.h
     statetracker.h
     structuredgrid.h
     structuredgrid_impl.h
@@ -157,8 +149,6 @@ set(core_HEADERS
     texture1d.h
     texture1d_impl.h
     triangles.h
-    tubes.h
-    tubes_impl.h
     uniformgrid.h
     uniformgrid_impl.h
     unstr.h
@@ -203,6 +193,7 @@ vistle_target_link_libraries(
     PUBLIC
     vtkm::cont)
 target_link_libraries(vistle_core PRIVATE vistle_config)
+target_link_libraries(vistle_core PUBLIC Eigen3::Eigen)
 
 if(ZFP_FOUND)
     target_compile_definitions(vistle_core PRIVATE HAVE_ZFP)
@@ -226,12 +217,6 @@ if(LZ4_FOUND)
     target_compile_definitions(vistle_core PRIVATE HAVE_LZ4)
     target_include_directories(vistle_core SYSTEM PRIVATE ${LZ4_INCLUDE_DIRS})
     vistle_target_link_libraries(vistle_core PRIVATE ${LZ4_LIBRARIES})
-endif()
-
-if(SNAPPY_FOUND)
-    target_compile_definitions(vistle_core PRIVATE HAVE_SNAPPY)
-    target_include_directories(vistle_core SYSTEM PRIVATE ${SNAPPY_INCLUDE_DIRS})
-    vistle_target_link_libraries(vistle_core PRIVATE ${SNAPPY_LIBRARIES})
 endif()
 
 target_include_directories(vistle_core SYSTEM PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/lib/3rdparty>)

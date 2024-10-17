@@ -41,6 +41,7 @@ void V_COREEXPORT return_buffer(std::shared_ptr<buffer> &buf);
 std::shared_ptr<buffer> V_COREEXPORT get_buffer(size_t size = 0);
 
 bool V_COREEXPORT clear_request_queue();
+void V_COREEXPORT prepare_shutdown();
 
 } // namespace message
 } // namespace vistle

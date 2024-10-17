@@ -100,7 +100,7 @@ void VistleInteractor::executeModule()
     cancel.setDestId(message::Id::MasterHub);
     sendMessage(cancel);
 
-    message::Execute exec(m_moduleId, t, dt); // Communicator will update execution count
+    message::Execute exec(m_moduleId, t, dt);
     exec.setDestId(message::Id::MasterHub);
     sendMessage(exec);
 }

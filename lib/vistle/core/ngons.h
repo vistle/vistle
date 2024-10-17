@@ -27,6 +27,10 @@ public:
     shm<Index>::array &cl() { return *d()->cl; }
     const ShmArrayProxy<Index> &cl() const { return m_cl; }
 
+    const ShmArrayProxy<Byte> &ghost() const { return m_ghost; }
+    void setGhost(Index index, bool isGhost);
+    bool isGhost(Index index) const;
+
     bool hasCelltree() const override;
     Celltree::const_ptr getCelltree() const override;
     bool validateCelltree() const override;
@@ -40,11 +44,13 @@ private:
     void createCelltree(Index nelem, const Index *cl) const;
 
     mutable ShmArrayProxy<Index> m_cl;
+    mutable ShmArrayProxy<Byte> m_ghost;
     mutable Index m_numCorners = 0;
     mutable Celltree::const_ptr m_celltree;
 
     V_DATA_BEGIN(Ngons);
     ShmVector<Index> cl;
+    ShmVector<Byte> ghost; //< ghost bit list: indicate if cell is ghost bit
 
     Data(const size_t numCorners = 0, const size_t numCoords = 0, const std::string &name = "",
          const Meta &meta = Meta());

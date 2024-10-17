@@ -10,10 +10,10 @@
 #include <vistle/core/normals.h>
 #include <vistle/core/polygons.h>
 #include <vistle/core/quads.h>
-#include <vistle/core/spheres.h>
-#include <vistle/core/tubes.h>
 #include <vistle/core/texture1d.h>
 #include <vistle/core/unstr.h>
+#include <vistle/core/points.h>
+#include <vistle/core/lines.h>
 #include <vistle/alg/objalg.h>
 
 #include "ToTriangles.h"
@@ -40,20 +40,31 @@ template<int Dim>
 struct ReplicateData {
     DataBase::const_ptr object;
     DataBase::ptr &result;
-    Index n = 0;
+    Index multiplicity = 0;
+    Index nConn = 0;
+    const Index *const cl = nullptr;
     Index nElem = 0;
     const Index *const el = nullptr;
-    Index nnElem = 0;
+    Index numMult = 0;
     const Index *const mult = nullptr;
+    Index numTri = 0;
     Index nStart = 0, nEnd = 0;
-    ReplicateData(DataBase::const_ptr obj, DataBase::ptr &result, Index n, Index nElem, Index *el, Index nStart,
-                  Index nEnd)
-    : object(obj), result(result), n(n), nElem(nElem), el(el), nStart(nStart), nEnd(nEnd)
+    ReplicateData(DataBase::const_ptr obj, DataBase::ptr &result, Index mult, Index nConn, const Index *cl, Index nElem,
+                  const Index *el, Index nStart, Index nEnd)
+    : object(obj)
+    , result(result)
+    , multiplicity(mult)
+    , nConn(nConn)
+    , cl(cl)
+    , nElem(nElem)
+    , el(el)
+    , nStart(nStart)
+    , nEnd(nEnd)
     {
         assert(nElem == 0 || el);
     }
-    ReplicateData(DataBase::const_ptr obj, DataBase::ptr &result, Index nnElem, Index *mult)
-    : object(obj), result(result), mult(mult)
+    ReplicateData(DataBase::const_ptr obj, DataBase::ptr &result, Index numMult, const Index *mult, Index numTri)
+    : object(obj), result(result), numMult(numMult), mult(mult), numTri(numTri)
     {}
     template<typename S>
     void operator()(S)
@@ -64,55 +75,71 @@ struct ReplicateData {
             return;
 
         auto mapping = in->guessMapping();
-        Index sz = in->getSize() * n + nElem * (nStart + nEnd);
+        Index numIn = cl ? nConn : in->getSize();
+        Index sz = numIn * multiplicity + nElem * (nStart + nEnd);
         if (mult) {
-            sz = nnElem;
+            if (mapping == DataBase::Element)
+                sz = numTri;
+            else
+                sz = numMult;
         }
         typename V::ptr out(new V(sz));
         for (int i = 0; i < Dim; ++i) {
             auto din = &in->x(i)[0];
             auto dout = out->x(i).data();
 
-            const Index N = in->getSize();
             if (mult) {
-                for (Index j = 0; j < N; ++j) {
-                    for (Index k = 0; k < mult[j]; ++k) {
-                        *dout++ = *din;
+                if (mapping == DataBase::Vertex) {
+                    assert(nElem <= in->getSize());
+                    for (Index j = 0; j < nElem; ++j) {
+                        Index idx = j;
+                        for (Index k = 0; k < mult[j]; ++k) {
+                            assert(dout - out->x(i).data() < out->getSize());
+                            *dout++ = din[idx];
+                        }
                     }
-                    ++din;
+                } else if (mapping == DataBase::Element) {
+                    for (Index e = 0; e < numMult; ++e) {
+                        Index idx = e;
+                        for (Index k = 0; k < mult[e]; ++k) {
+                            assert(dout - out->x(i).data() < out->getSize());
+                            *dout++ = din[idx];
+                        }
+                    }
                 }
             } else if (el) {
                 if (mapping == DataBase::Vertex) {
                     for (Index e = 0; e < nElem; ++e) {
                         const Index start = el[e], end = el[e + 1];
+                        Index idx = cl ? cl[start] : start;
                         for (Index k = 0; k < nStart; ++k) {
-                            *dout++ = *din;
+                            *dout++ = din[idx];
                         }
                         for (Index i = start; i < end; ++i) {
-                            for (Index k = 0; k < n; ++k) {
-                                *dout++ = *din;
+                            idx = cl ? cl[i] : i;
+                            for (Index k = 0; k < multiplicity; ++k) {
+                                *dout++ = din[idx];
                             }
-                            ++din;
                         }
+                        // reuse idx
                         for (Index k = 0; k < nEnd; ++k) {
-                            *dout++ = *(din - 1);
+                            *dout++ = din[idx];
                         }
                     }
                 } else if (mapping == DataBase::Element) {
                     for (Index e = 0; e < nElem; ++e) {
                         const Index start = el[e], end = el[e + 1];
                         for (Index k = 0; k < nStart + end - start + nEnd; ++k) {
-                            *dout++ = *din;
+                            *dout++ = din[e];
                         }
-                        ++din;
                     }
                 }
             } else {
-                for (Index j = 0; j < N; ++j) {
-                    for (Index k = 0; k < n; ++k) {
-                        *dout++ = *din;
+                for (Index j = 0; j < numIn; ++j) {
+                    Index idx = cl ? cl[j] : j;
+                    for (Index k = 0; k < multiplicity; ++k) {
+                        *dout++ = din[idx];
                     }
-                    ++din;
                 }
             }
         }
@@ -120,12 +147,12 @@ struct ReplicateData {
     }
 };
 
-DataBase::ptr replicateData(DataBase::const_ptr src, Index n, Index nElem = 0, Index *el = nullptr, Index nStart = 0,
-                            Index nEnd = 0)
+DataBase::ptr replicateData(DataBase::const_ptr src, Index mult, Index nConn = 0, const Index *cl = nullptr,
+                            Index nElem = 0, const Index *el = nullptr, Index nStart = 0, Index nEnd = 0)
 {
     DataBase::ptr result;
-    boost::mpl::for_each<Scalars>(ReplicateData<1>(src, result, n, nElem, el, nStart, nEnd));
-    boost::mpl::for_each<Scalars>(ReplicateData<3>(src, result, n, nElem, el, nStart, nEnd));
+    boost::mpl::for_each<Scalars>(ReplicateData<1>(src, result, mult, nConn, cl, nElem, el, nStart, nEnd));
+    boost::mpl::for_each<Scalars>(ReplicateData<3>(src, result, mult, nConn, cl, nElem, el, nStart, nEnd));
     if (auto tex = Texture1D::as(src)) {
         auto vec1 = Vec<Scalar, 1>::as(Object::ptr(result));
         assert(vec1);
@@ -136,11 +163,11 @@ DataBase::ptr replicateData(DataBase::const_ptr src, Index n, Index nElem = 0, I
     return result;
 }
 
-DataBase::ptr replicateData(DataBase::const_ptr src, Index nnelem, Index *mult)
+DataBase::ptr replicateData(DataBase::const_ptr src, Index nnelem, const Index *mult, Index numTri)
 {
     DataBase::ptr result;
-    boost::mpl::for_each<Scalars>(ReplicateData<1>(src, result, nnelem, mult));
-    boost::mpl::for_each<Scalars>(ReplicateData<3>(src, result, nnelem, mult));
+    boost::mpl::for_each<Scalars>(ReplicateData<1>(src, result, nnelem, mult, numTri));
+    boost::mpl::for_each<Scalars>(ReplicateData<3>(src, result, nnelem, mult, numTri));
     if (auto tex = Texture1D::as(src)) {
         auto vec1 = Vec<Scalar, 1>::as(Object::ptr(result));
         assert(vec1);
@@ -164,8 +191,19 @@ bool ToTriangles::compute()
     vistle::Object::ptr result;
     if (auto entry = m_resultCache.getOrLock(container->getName(), result)) {
         bool perElement = data && data->guessMapping() == DataBase::Element;
+        assert(!data || perElement || data->guessMapping() == DataBase::Vertex);
 
-        auto sphere = Spheres::as(obj);
+        bool radiusPerElement = false;
+        vistle::Vec<Scalar>::const_ptr radius;
+        auto lines = Lines::as(obj);
+        if (lines)
+            radius = lines->radius();
+        auto points = Points::as(obj);
+        if (points)
+            radius = points->radius();
+        if (radius) {
+            radiusPerElement = radius->guessMapping(obj) == DataBase::Element;
+        }
 
         // transform the rest, if possible
         Triangles::ptr tri;
@@ -244,7 +282,7 @@ bool ToTriangles::compute()
             if (data && data->guessMapping() == DataBase::Element) {
                 ndata = replicateData(data, 2);
             }
-        } else if (sphere && p_transformSpheres->getValue()) {
+        } else if (points && radius && p_transformSpheres->getValue()) {
             const int NumLat = 8;
             const int NumLong = 13;
             static_assert(NumLat >= 3, "too few vertices");
@@ -252,11 +290,11 @@ bool ToTriangles::compute()
             Index TriPerSphere = NumLong * (NumLat - 2) * 2;
             Index CoordPerSphere = NumLong * (NumLat - 2) + 2;
 
-            Index n = sphere->getNumSpheres();
-            auto x = &sphere->x()[0];
-            auto y = &sphere->y()[0];
-            auto z = &sphere->z()[0];
-            auto r = &sphere->r()[0];
+            Index n = points->getNumPoints();
+            auto x = &points->x()[0];
+            auto y = &points->y()[0];
+            auto z = &points->z()[0];
+            auto r = &radius->x()[0];
 
             tri.reset(new Triangles(n * 3 * TriPerSphere, n * CoordPerSphere));
             auto tx = tri->x().data();
@@ -353,38 +391,59 @@ bool ToTriangles::compute()
             if (data) {
                 ndata = replicateData(data, CoordPerSphere);
             }
-        } else if (auto tube = Tubes::as(obj)) {
+        } else if (lines && radius) {
             const int NumSect = 7;
             static_assert(NumSect >= 3, "too few sectors");
             Index TriPerSection = NumSect * 2;
 
-            Index n = tube->getNumTubes();
-            Index s = tube->getNumCoords();
-            auto x = &tube->x()[0];
-            auto y = &tube->y()[0];
-            auto z = &tube->z()[0];
-            auto r = &tube->r()[0];
-            auto el = tube->components().data();
-            const auto startStyle = tube->startStyle();
-            const auto endStyle = tube->endStyle();
+            const Index *cl = nullptr;
+            Index numEl = lines->getNumElements();
+            Index numPoint = lines->getNumCoords();
+            Index numConn = lines->getNumCorners();
+            if (numConn == 0) {
+                numConn = numPoint;
+            } else {
+                cl = &lines->cl()[0];
+            }
+            auto x = &lines->x()[0];
+            auto y = &lines->y()[0];
+            auto z = &lines->z()[0];
+            auto r = &radius->x()[0];
+            auto el = &lines->el()[0];
+            // we ignore connection style altogether and simplify start and end style
+            auto startStyle = lines->startStyle();
+            if (startStyle != Lines::Open) {
+                startStyle = Lines::Flat;
+            }
+            auto endStyle = lines->endStyle();
+            if (endStyle != Lines::Arrow && endStyle != Lines::Open) {
+                endStyle = Lines::Flat;
+            }
 
             Index numCoordStart = 0, numCoordEnd = 0;
             Index numIndStart = 0, numIndEnd = 0;
-            if (startStyle != Tubes::Open) {
+            if (startStyle == Lines::Flat) {
                 numCoordStart = 1 + NumSect;
                 numIndStart = 3 * NumSect;
             }
-            if (endStyle == Tubes::Arrow) {
+            if (endStyle == Lines::Arrow) {
                 numCoordEnd = 3 * NumSect;
                 numIndEnd = 3 * 3 * NumSect;
-            } else if (endStyle == Tubes::Flat) {
+            } else if (endStyle == Lines::Flat) {
                 numCoordEnd = 1 + NumSect;
                 numIndEnd = 3 * NumSect;
             }
 
-            const Index numSeg = (s - n) * 3 * TriPerSection + n * (numIndStart + numIndEnd);
-            const Index numCoord = numSeg > 0 ? s * NumSect + n * (numCoordStart + numCoordEnd) : 0;
-            tri.reset(new Triangles(numSeg, numCoord));
+            const Index numSeg = (numConn - numEl);
+            const Index numVert = numSeg * 3 * TriPerSection + numEl * (numIndStart + numIndEnd);
+            const Index numCoord = numVert > 0 ? numConn * NumSect + numEl * (numCoordStart + numCoordEnd) : 0;
+
+            if (perElement) {
+                mult.reserve(numEl);
+                useMultiplicity = true;
+            }
+
+            tri.reset(new Triangles(numVert, numCoord));
             auto tx = tri->x().data();
             auto ty = tri->y().data();
             auto tz = tri->z().data();
@@ -399,24 +458,35 @@ bool ToTriangles::compute()
             Index ci = 0; // coord index
             Index ii = 0; // index index
             if (numCoord > 0) {
-                for (Index i = 0; i < n; ++i) {
+                for (Index i = 0; i < numEl; ++i) {
                     const Index begin = el[i], end = el[i + 1];
+                    if (perElement) {
+                        Index ntri = numIndStart / 3 + (end - begin - 1) * TriPerSection + numIndEnd / 3;
+                        mult.push_back(ntri);
+                    }
 
                     Vector3 normal, dir;
                     for (Index k = begin; k < end; ++k) {
-                        Vector3 cur(x[k], y[k], z[k]);
-                        Vector3 next = k + 1 < end ? Vector3(x[k + 1], y[k + 1], z[k + 1]) : cur;
+                        Index idx = cl ? cl[k] : k;
+                        Index nidx = (cl && k + 1 < end) ? cl[k + 1] : k + 1;
+                        Index pidx = (cl && k > 0) ? cl[k - 1] : k - 1;
+                        auto curRad = radiusPerElement ? r[i] : r[idx];
+                        Vector3 cur(x[idx], y[idx], z[idx]);
+                        Vector3 next = k + 1 < end ? Vector3(x[nidx], y[nidx], z[nidx]) : cur;
 
                         Vector3 l1 = next - cur;
                         auto len1 = l1.norm(), len2 = Scalar();
+                        bool first = false, last = false;
                         if (k == begin) {
+                            first = true;
                             dir = l1.normalized();
+                        } else if (k + 1 == end) {
+                            last = true;
+                            // keep previous direction for final segment
                         } else {
-                            Vector3 l2(x[k] - x[k - 1], y[k] - y[k - 1], z[k] - z[k - 1]);
+                            Vector3 l2(x[idx] - x[pidx], y[idx] - y[pidx], z[idx] - z[pidx]);
                             len2 = l2.norm();
-                            if (k + 1 == end) {
-                                dir = l2.normalized();
-                            } else if (len2 > 100 * len1) {
+                            if (len2 > 100 * len1) {
                                 dir = l2.normalized();
                             } else if (len1 > 100 * len2) {
                                 dir = l1.normalized();
@@ -425,8 +495,12 @@ bool ToTriangles::compute()
                             }
                         }
 
-                        if (k == begin || normal.norm() < Scalar(0.5)) {
+                        if (first || normal.norm() < Scalar(0.5)) {
                             normal = dir.cross(Vector3(0, 0, 1)).normalized();
+                            if (normal.norm() < Scalar(0.5)) {
+                                // try another direction
+                                normal = dir.cross(Vector3(0, 1, 0)).normalized();
+                            }
                         } else if (len1 > 1e-4 || len2 > 1e-4) {
                             normal = (normal - dir.dot(normal) * dir).normalized();
                         }
@@ -436,7 +510,7 @@ bool ToTriangles::compute()
                         const auto rot2 = Quaternion(AngleAxis(M_PI / NumSect, dir)).toRotationMatrix();
 
                         // start cap
-                        if (k == begin && startStyle != Tubes::Open) {
+                        if (first && startStyle == Lines::Flat) {
                             tx[ci] = cur[0];
                             ty[ci] = cur[1];
                             tz[ci] = cur[2];
@@ -456,7 +530,7 @@ bool ToTriangles::compute()
                                 nx[ci] = dir[0];
                                 ny[ci] = dir[1];
                                 nz[ci] = dir[2];
-                                Vector3 p = cur + r[k] * rad;
+                                Vector3 p = cur + curRad * rad;
                                 rad = rot * rad;
                                 tx[ci] = p[0];
                                 ty[ci] = p[1];
@@ -466,7 +540,7 @@ bool ToTriangles::compute()
                         }
 
                         // indices
-                        if (k + 1 < end) {
+                        if (!last) {
                             for (Index l = 0; l < NumSect; ++l) {
                                 ti[ii++] = ci + l;
                                 ti[ii++] = ci + (l + 1) % NumSect;
@@ -483,7 +557,7 @@ bool ToTriangles::compute()
                             nx[ci] = n[0];
                             ny[ci] = n[1];
                             nz[ci] = n[2];
-                            Vector3 p = cur + r[k] * n;
+                            Vector3 p = cur + curRad * n;
                             n = rot * n;
                             tx[ci] = p[0];
                             ty[ci] = p[1];
@@ -492,8 +566,8 @@ bool ToTriangles::compute()
                         }
 
                         // end cap/arrow
-                        if (k + 1 == end) {
-                            if (endStyle == Tubes::Arrow) {
+                        if (last && endStyle != Lines::Open) {
+                            if (endStyle == Lines::Arrow) {
                                 Index tipStart = ci;
                                 for (Index l = 0; l < NumSect; ++l) {
                                     tx[ci] = tx[ci - NumSect];
@@ -508,10 +582,10 @@ bool ToTriangles::compute()
                                 Scalar tipSize = 2.0;
 
                                 Vector3 n = normal;
-                                Vector3 tip = cur + tipSize * dir * r[k];
+                                Vector3 tip = cur + tipSize * dir * curRad;
                                 for (Index l = 0; l < NumSect; ++l) {
                                     Vector3 norm = (n + dir).normalized();
-                                    Vector3 p = cur + tipSize * r[k] * n;
+                                    Vector3 p = cur + tipSize * curRad * n;
                                     n = rot * n;
 
                                     nx[ci] = norm[0];
@@ -550,7 +624,7 @@ bool ToTriangles::compute()
                                     ti[ii++] = tipStart + NumSect + (l + 1) % NumSect;
                                     ti[ii++] = tipStart + 2 * NumSect + l;
                                 }
-                            } else if (endStyle == Tubes::Flat) {
+                            } else if (endStyle == Lines::Flat) {
                                 for (Index l = 0; l < NumSect; ++l) {
                                     tx[ci] = tx[ci - NumSect];
                                     ty[ci] = ty[ci - NumSect];
@@ -579,14 +653,14 @@ bool ToTriangles::compute()
                 }
             }
             assert(ci == numCoord);
-            assert(ii == numSeg);
+            assert(ii == numVert);
 
             norm->setMeta(obj->meta());
             updateMeta(norm);
             tri->setNormals(norm);
 
-            if (data) {
-                ndata = replicateData(data, NumSect, n, el, numCoordStart, numCoordEnd);
+            if (data && !useMultiplicity) {
+                ndata = replicateData(data, NumSect, numConn, cl, numEl, el, numCoordStart, numCoordEnd);
             }
         } else if (auto unstr = UnstructuredGrid::as(obj)) {
             Index nelem = unstr->getNumElements();
@@ -594,18 +668,17 @@ bool ToTriangles::compute()
             auto cl = &unstr->cl()[0];
             auto tl = &unstr->tl()[0];
 
-            std::vector<Index> mult;
             if (perElement) {
                 mult.reserve(nelem);
                 useMultiplicity = true;
             }
             Index ntri = 0;
             for (Index e = 0; e < nelem; ++e) {
-                if ((tl[e] & UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::TRIANGLE) {
+                if (tl[e] == UnstructuredGrid::TRIANGLE) {
                     ++ntri;
                     if (perElement)
                         mult.push_back(1);
-                } else if ((tl[e] & UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::QUAD) {
+                } else if (tl[e] == UnstructuredGrid::QUAD) {
                     ntri += 2;
                     if (perElement)
                         mult.push_back(2);
@@ -622,12 +695,12 @@ bool ToTriangles::compute()
             auto tcl = &tri->cl()[0];
             for (Index e = 0; e < nelem; ++e) {
                 const Index begin = el[e], end = el[e + 1];
-                if ((tl[e] & UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::TRIANGLE) {
+                if (tl[e] == UnstructuredGrid::TRIANGLE) {
                     assert(end - begin == 3);
                     for (Index v = begin; v < end; ++v) {
                         tcl[i++] = cl[v];
                     }
-                } else if ((tl[e] & UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::QUAD) {
+                } else if (tl[e] == UnstructuredGrid::QUAD) {
                     assert(end - begin == 4);
                     for (Index v = begin; v < begin + 3; ++v) {
                         tcl[i++] = cl[v];
@@ -645,8 +718,8 @@ bool ToTriangles::compute()
             updateMeta(tri);
 
             if (data) {
-                if (data && useMultiplicity) {
-                    ndata = replicateData(data, tri->getNumElements(), mult.data());
+                if (useMultiplicity) {
+                    ndata = replicateData(data, mult.size(), mult.data(), tri->getNumElements());
                 }
                 if (!ndata) {
                     ndata = data->clone();

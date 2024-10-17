@@ -9,11 +9,33 @@
 #include <iostream>
 #endif
 
+#include <array>
+
 #ifdef __APPLE__
 #include <pthread.h>
 #endif
 
 namespace vistle {
+
+std::string getThreadName()
+{
+    std::array<char, 100> name;
+#ifdef __linux
+#if __GLIBC__ >= 2 && __GLIBC_MINOR__ >= 12
+
+    int err = pthread_getname_np(pthread_self(), name.data(), name.size());
+    if (err == 0) {
+        return name.data();
+    }
+    std::cerr << "getThreadName failed: " << strerror(err) << std::endl;
+#endif
+#endif
+
+#ifdef __APPLE__
+    pthread_getname_np(pthread_self(), name.data(), name.size());
+#endif
+    return name.data();
+}
 
 bool setThreadName(std::string name)
 {

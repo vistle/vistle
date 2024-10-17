@@ -9,8 +9,6 @@ using namespace vistle;
 
 AttachShader::AttachShader(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
-    setDefaultCacheMode(ObjectCache::CacheDeleteLate);
-
     createInputPort("data_in", "input data or geometry");
 
     createOutputPort("data_out", "data or geometry with attribute requesting COVER to apply shader");

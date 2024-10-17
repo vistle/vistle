@@ -52,6 +52,7 @@ public:
     std::vector<Port *> getConnectedInputPorts(const int moduleID) const;
     std::vector<Port *> getOutputPorts(const int moduleID) const;
     std::vector<Port *> getConnectedOutputPorts(const int moduleID) const;
+    std::vector<Port *> getConnectedParameters(const int moduleID) const;
 
     virtual std::vector<message::Buffer> removeModule(int moduleId);
 

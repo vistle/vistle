@@ -26,7 +26,7 @@ target_link_libraries(
     PUBLIC vistle_module
     PUBLIC ${BOOST_MPI}
     PUBLIC Boost::boost
-    PUBLIC MPI::MPI_C)
+    PUBLIC MPI::MPI_CXX)
 
 if(VISTLE_USE_MPI)
     target_include_directories(vistle_renderer SYSTEM PRIVATE ${ICET_INCLUDE_DIRS})

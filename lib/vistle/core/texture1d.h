@@ -28,7 +28,7 @@ public:
     const ShmArrayProxy<Scalar> &coords() const { return x(); }
 
     V_DATA_BEGIN(Texture1D);
-    Scalar range[2];
+    Scalar64 range[2];
 
     ShmVector<unsigned char> pixels;
 

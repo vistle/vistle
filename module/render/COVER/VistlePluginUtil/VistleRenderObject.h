@@ -43,6 +43,8 @@ public:
     const float *getFloat(opencover::Field::Id idx) const override { return NULL; }
 
     bool isUnstructuredGrid() const override { return false; }
+
+    bool fromCovise() const override { return false; }
 };
 
 

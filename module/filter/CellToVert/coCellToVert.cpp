@@ -91,7 +91,7 @@ bool coCellToVert::simpleAlgo(Index num_elem, Index num_conn, Index num_point, c
         }
     } else if (elem_list) {
         for (Index i = 0; i < num_elem; i++) {
-            if (type_list && (type_list[i] & UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::POLYHEDRON) {
+            if (type_list && (type_list[i] == UnstructuredGrid::POLYHEDRON)) {
                 Index begin = elem_list[i], end = elem_list[i + 1];
                 std::vector<Index> verts;
                 verts.reserve(end - begin);
@@ -183,7 +183,7 @@ bool coCellToVert::simpleAlgo<Scalar>(Index num_elem, Index num_conn, Index num_
     } else if (elem_list) {
         // unstructured grid
         for (Index i = 0; i < num_elem; i++) {
-            if (type_list && (type_list[i] & UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::POLYHEDRON) {
+            if (type_list && (type_list[i] == UnstructuredGrid::POLYHEDRON)) {
                 Index begin = elem_list[i], end = elem_list[i + 1];
                 std::vector<Index> verts;
                 verts.reserve(end - begin);

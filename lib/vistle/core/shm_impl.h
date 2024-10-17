@@ -20,12 +20,18 @@ typedef boost::mpl::push_back<Scalars, CelltreeNode<sizeof(Index), 1>>::type Vec
 typedef boost::mpl::push_back<VectorTypes1, CelltreeNode<sizeof(Index), 2>>::type VectorTypes2;
 typedef boost::mpl::push_back<VectorTypes2, CelltreeNode<sizeof(Index), 3>>::type VectorTypes;
 
+template<typename S>
+unsigned scalarTypeId()
+{
+    const size_t pos = boost::mpl::find<VectorTypes, S>::type::pos::value;
+    static_assert(pos < boost::mpl::size<VectorTypes>::value, "Scalar type not found");
+    return pos;
+}
+
 template<typename T, class allocator>
 unsigned shm_array<T, allocator>::typeId()
 {
-    const size_t pos = boost::mpl::find<VectorTypes, T>::type::pos::value;
-    static_assert(pos < boost::mpl::size<VectorTypes>::value, "Scalar type not found");
-    return pos;
+    return vistle::scalarTypeId<T>();
 }
 
 template<typename T>

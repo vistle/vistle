@@ -31,14 +31,6 @@
 
 #include "archives_config.h"
 
-#define CHECK_OVERFLOW(expr) \
-    do { \
-        if ((expr) > size_t(InvalidIndex)) { \
-            throw vistle::except::index_overflow(#expr " = " + std::to_string(expr) + \
-                                                 ", recompile with 64 bit indices"); \
-        } \
-    } while (false)
-
 
 namespace vistle {
 
@@ -71,6 +63,7 @@ class V_COREEXPORT Object: public std::enable_shared_from_this<Object>, virtual 
     template<class ObjType>
     friend class shm_obj_ref;
     friend void Shm::markAsRemoved(const std::string &name);
+    friend class Module;
 
 public:
     typedef std::shared_ptr<Object> ptr;
@@ -92,7 +85,6 @@ public:
 
     enum Type {
         COORD = -9,
-        COORDWRADIUS = -8,
         DATABASE = -7,
 
         UNKNOWN = -1,
@@ -103,9 +95,7 @@ public:
         TEXTURE1D = 16,
 
         POINTS = 18,
-        SPHERES = 19,
         LINES = 20,
-        TUBES = 21,
         TRIANGLES = 22,
         POLYGONS = 23,
         UNSTRUCTUREDGRID = 24,
@@ -133,6 +123,8 @@ public:
 
     bool isComplete() const; //! check whether all references have been resolved
 
+    virtual std::set<Object::const_ptr> referencedObjects() const;
+
     static const char *typeName() { return "Object"; }
     Object::ptr clone() const;
     virtual Object::ptr cloneInternal() const = 0;
@@ -143,8 +135,8 @@ public:
     static Object *createEmpty(const std::string &name = std::string());
 
     virtual void refresh() const; //!< refresh cached pointers from shm
-    virtual bool check() const;
-    virtual void print(std::ostream &os) const;
+    virtual bool check(std::ostream &os, bool quick = true) const;
+    virtual void print(std::ostream &os, bool verbose = false) const;
     virtual void updateInternals();
 
     virtual bool isEmpty() const;
@@ -164,7 +156,7 @@ public:
     int getTimestep() const;
     int getNumTimesteps() const;
     int getIteration() const;
-    int getExecutionCounter() const;
+    int getGeneration() const;
     int getCreator() const;
     Matrix4 getTransform() const;
 
@@ -174,7 +166,7 @@ public:
     void setTimestep(const int timestep);
     void setNumTimesteps(const int num);
     void setIteration(const int num);
-    void setExecutionCounter(const int count);
+    void setGeneration(const int count);
     void setCreator(const int id);
     void setTransform(const Matrix4 &transform);
 
@@ -238,6 +230,12 @@ private:
     // not implemented
     Object(const Object &) = delete;
     Object &operator=(const Object &) = delete;
+
+#ifdef NO_SHMEM
+    std::recursive_mutex &attachmentMutex() const;
+#else
+    boost::interprocess::interprocess_recursive_mutex &attachmentMutex() const;
+#endif
 };
 V_COREEXPORT std::ostream &operator<<(std::ostream &os, const Object &);
 
@@ -272,12 +270,11 @@ struct ObjectData: public ShmData {
 
 #ifdef NO_SHMEM
     mutable std::recursive_mutex attachment_mutex;
-    typedef std::lock_guard<std::recursive_mutex> attachment_mutex_lock_type;
+    typedef std::lock_guard<std::recursive_mutex> mutex_lock_type;
     typedef const ObjectData *Attachment;
 #else
     mutable boost::interprocess::interprocess_recursive_mutex attachment_mutex; //< protects attachments
-    typedef boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex>
-        attachment_mutex_lock_type;
+    typedef boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> mutex_lock_type;
     typedef interprocess::offset_ptr<const ObjectData> Attachment;
 #endif
     typedef std::pair<const Key, Attachment> AttachmentMapValueType;
@@ -377,19 +374,6 @@ private:
     static TypeMap &typeMap();
 };
 
-//! use in checkImpl
-#define V_CHECK(true_expr) \
-    if (!(true_expr)) { \
-        std::cerr << __FILE__ << ":" << __LINE__ << ": " \
-                  << "CONSISTENCY CHECK FAILURE on " << this->getName() << " " << this->meta() << ": " << #true_expr \
-                  << std::endl; \
-        std::stringstream str; \
-        str << __FILE__ << ":" << __LINE__ << ": consistency check failure: " << #true_expr; \
-        throw(vistle::except::consistency_error(str.str())); \
-        sleep(30); \
-        return false; \
-    }
-
 //! declare a new Object type
 #define V_OBJECT(ObjType) \
 public: \
@@ -401,11 +385,13 @@ public: \
     { \
         return #ObjType; \
     } \
-    static std::shared_ptr<const ObjType> as(std::shared_ptr<const Object> ptr) \
+    template<typename ObjType2> \
+    static std::shared_ptr<const ObjType> as(std::shared_ptr<const ObjType2> ptr) \
     { \
         return std::dynamic_pointer_cast<const ObjType>(ptr); \
     } \
-    static std::shared_ptr<ObjType> as(std::shared_ptr<Object> ptr) \
+    template<typename ObjType2> \
+    static std::shared_ptr<ObjType> as(std::shared_ptr<ObjType2> ptr) \
     { \
         return std::dynamic_pointer_cast<ObjType>(ptr); \
     } \
@@ -475,21 +461,22 @@ public: \
     } \
     virtual bool isEmpty() override; \
     virtual bool isEmpty() const override; \
-    bool check() const override \
+    bool check(std::ostream &os, bool quick = true) const override \
     { \
         refresh(); \
         if (isEmpty()) { \
         }; \
-        if (!Base::check()) { \
+        if (!Base::check(os, quick)) { \
             std::cerr << *this << std::endl; \
             return false; \
         } \
-        if (!checkImpl()) { \
+        if (!checkImpl(os, quick)) { \
             std::cerr << *this << std::endl; \
             return false; \
         } \
         return true; \
     } \
+    void print(std::ostream &os, bool verbose = false) const override; \
     struct Data; \
     const Data *d() const \
     { \
@@ -502,8 +489,7 @@ public: \
     /* ARCHIVE_REGISTRATION(override) */ \
     ARCHIVE_REGISTRATION_INLINE \
 protected: \
-    bool checkImpl() const; \
-    void print(std::ostream &os) const override; \
+    bool checkImpl(std::ostream &os, bool quick) const; \
     explicit ObjType(Data *data); \
     ObjType(); \
 \
@@ -623,6 +609,7 @@ private: \
         ar &V_NAME(ar, "type", type); \
         if (!ar.currentObject()) \
             ar.setCurrentObject(Object::m_data); \
+        ar.registerObjectNameTranslation(name, getName()); \
         d()->template serialize<Archive>(ar); \
         assert(type == Object::getType()); \
     }

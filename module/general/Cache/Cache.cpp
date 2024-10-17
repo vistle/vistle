@@ -48,6 +48,7 @@ private:
     IntParameter *p_reorder = nullptr;
     IntParameter *p_renumber = nullptr;
 
+    std::string m_file;
     int m_fd = -1;
     std::shared_ptr<DeepArchiveSaver> m_saver;
 
@@ -59,8 +60,6 @@ private:
 
 Cache::Cache(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
-    setDefaultCacheMode(ObjectCache::CacheDeleteLate);
-
     for (int i = 0; i < NumPorts; ++i) {
         std::string suffix = std::to_string(i);
 
@@ -71,7 +70,7 @@ Cache::Cache(const std::string &name, int moduleID, mpi::communicator comm): Mod
     p_mode = addIntParameter("mode", "operation mode", m_mode, Parameter::Choice);
     V_ENUM_SET_CHOICES(p_mode, OperationMode);
     p_file = addStringParameter("file", "filename where cache should be created", "/scratch/", Parameter::Filename);
-    setParameterFilters(p_file, "Vistle Data (*.vsld)/All Files (*)");
+    setParameterFilters(p_file, "Vistle Data (*.vsld)");
 
     p_step = addIntParameter("step", "step width when reading from disk", 1);
     setParameterMinimum(p_step, Integer(1));
@@ -113,7 +112,7 @@ int Cache::archiveCompressionSpeed() const
     return m_archiveCompressionSpeed->getValue();
 }
 
-#define CERR std::cerr << "Cache: "
+#define CERR std::cerr << "Cache(" << rank() << "): "
 
 
 bool Cache::compute()
@@ -126,9 +125,13 @@ bool Cache::compute()
     }
 
     for (int i = 0; i < NumPorts; ++i) {
-        Object::const_ptr obj = accept<Object>(m_inPort[i]);
+        if (!isConnected(*m_inPort[i]))
+            continue;
+        Object::const_ptr obj = expect<Object>(m_inPort[i]);
         if (obj) {
-            passThroughObject(m_outPort[i], obj);
+            auto cloned = obj->clone();
+            updateMeta(cloned);
+            addObject(m_outPort[i], cloned);
 
             if (m_toDisk) {
                 assert(m_fd != -1);
@@ -151,13 +154,17 @@ bool Cache::compute()
                 // copy serialized object to disk
                 const buffer &mem = memstr.get_vector();
                 SubArchiveDirectoryEntry ent{obj->getName(), false, mem.size(), const_cast<char *>(mem.data())};
-                if (!WriteChunk(this, m_fd, ent))
+                if (!WriteChunk(this, m_fd, ent)) {
+                    sendError("saving object data to %s failed", m_file.c_str());
                     return false;
+                }
 
                 // add reference to object to port
                 PortObjectHeader pheader(i, obj->getTimestep(), obj->getBlock(), obj->getName());
-                if (!WriteChunk(this, m_fd, pheader))
+                if (!WriteChunk(this, m_fd, pheader)) {
+                    sendError("saving meta data to %s failed", m_file.c_str());
                     return false;
+                }
             }
         }
     }
@@ -191,12 +198,14 @@ bool Cache::prepare()
     file += ".";
     file += std::to_string(rank());
     file += ".vsld";
+    m_file = file;
 
     if (m_toDisk) {
         m_saver.reset(new DeepArchiveSaver);
         m_saver->setCompressionSettings(m_compressionSettings);
-        m_fd = open(file.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_BINARY,
+        m_fd = open(m_file.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_BINARY,
                     S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+        return true;
     }
 
     if (!m_fromDisk)
@@ -209,9 +218,9 @@ bool Cache::prepare()
     bool reorder = p_reorder->getValue();
     bool renumber = p_renumber->getValue();
 
-    m_fd = open(file.c_str(), O_RDONLY | O_BINARY);
+    m_fd = open(m_file.c_str(), O_RDONLY | O_BINARY);
     if (m_fd == -1) {
-        sendError("Could not open %s: %s", file.c_str(), strerror(errno));
+        sendError("Could not open %s: %s", m_file.c_str(), strerror(errno));
     }
     int errorfd = mpi::all_reduce(comm(), m_fd, mpi::minimum<int>());
     if (errorfd == -1) {
@@ -286,12 +295,10 @@ bool Cache::prepare()
         Object::ptr obj(Object::loadObject(memar));
         updateMeta(obj);
         renumberObject(obj);
-        if (auto db = DataBase::as(obj)) {
-            if (auto cgrid = db->grid()) {
-                auto grid = std::const_pointer_cast<Object>(cgrid);
-                renumberObject(grid);
-            }
+        for (auto &o: obj->referencedObjects()) {
+            renumberObject(std::const_pointer_cast<Object>(o));
         }
+        //std::cerr << "restored object on port " << port << ": " << *obj << std::endl;
         passThroughObject(m_outPort[port], obj);
         fetcher->releaseArrays();
     };

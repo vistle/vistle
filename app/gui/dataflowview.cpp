@@ -155,7 +155,7 @@ void DataFlowView::dragMoveEvent(QDragMoveEvent *event)
  */
 void DataFlowView::dropEvent(QDropEvent *event)
 {
-    QPointF newPos = mapToScene(event->pos());
+    QPointF newPos = mapToScene(event->position().toPoint());
 
     if (event->mimeData()->formats().contains(ModuleBrowser::mimeFormat())) {
         QByteArray encoded = event->mimeData()->data(ModuleBrowser::mimeFormat());

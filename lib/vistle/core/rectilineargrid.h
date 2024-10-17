@@ -27,6 +27,8 @@ public:
     // constructor
     RectilinearGrid(const size_t numDivX, const size_t numDivY, const size_t numDivZ, const Meta &meta = Meta());
 
+    std::set<Object::const_ptr> referencedObjects() const override;
+
     // get functions for metadata
     Index getNumDivisions(int c) override { return d()->coords[c]->size(); }
     Index getNumDivisions(int c) const override { return m_numDivisions[c]; }
@@ -69,9 +71,9 @@ private:
     V_DATA_BEGIN(RectilinearGrid);
 
     shm_obj_ref<Normals> normals;
-    Index indexOffset[3]; //< global index offset
+    Index64 indexOffset[3]; //< global index offset
     ShmVector<Scalar> coords[3]; //< coordinates of divisions in x, y, and z
-    Index ghostLayers[3][2]; //< number of ghost cell layers in each x, y, z directions
+    Index64 ghostLayers[3][2]; //< number of ghost cell layers in each x, y, z directions
 
     Data(const size_t numDivX, const size_t numDivY, const size_t numDivZ, const std::string &name,
          const Meta &meta = Meta());

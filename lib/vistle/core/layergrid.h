@@ -38,8 +38,8 @@ public:
     void setNumGhostLayers(unsigned dim, GhostLayerPosition pos, unsigned value) override;
 
     // get/set functions for shared memory members
-    Scalar *min() { return d()->min; }
-    Scalar *max() { return d()->max; }
+    Scalar64 *min() { return d()->min; }
+    Scalar64 *max() { return d()->max; }
     const Scalar *min() const { return m_min; }
     const Scalar *max() const { return m_max; }
     const Scalar *dist() const { return m_dist; }
@@ -68,6 +68,7 @@ public:
     void copyAttributes(Object::const_ptr src, bool replace = true) override;
 
     void updateInternals() override;
+    std::set<Object::const_ptr> referencedObjects() const override;
 
 private:
     // mutable pointers to ShmVectors
@@ -78,17 +79,17 @@ private:
     mutable Index m_ghostLayers[3][2];
     mutable Celltree::const_ptr m_celltree;
 
-    void createCelltree(Index dims[]) const;
+    void createCelltree(Index dims[3]) const;
 
     // data object
     V_DATA_BEGIN(LayerGrid);
 
     shm_obj_ref<Normals> normals;
-    Scalar min[2]; //< coordinates of minimum grid point
-    Scalar max[2]; //< coordinates of maximum grid point
-    Index indexOffset[3]; //< global index offset
-    Index numDivisions[3]; //< number of divisions on each axis (1 more than number of cells)
-    Index ghostLayers[3][2]; //< number of ghost cell layers in each of x, y, z directions
+    Scalar64 min[2]; //< coordinates of minimum grid point
+    Scalar64 max[2]; //< coordinates of maximum grid point
+    Index64 indexOffset[3]; //< global index offset
+    Index64 numDivisions[3]; //< number of divisions on each axis (1 more than number of cells)
+    Index64 ghostLayers[3][2]; //< number of ghost cell layers in each of x, y, z directions
 
     Data(const size_t numVert_x, const size_t numVert_y, const size_t numVert_z, const std::string &name,
          const Meta &meta = Meta());

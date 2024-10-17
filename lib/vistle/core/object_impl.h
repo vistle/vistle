@@ -79,19 +79,17 @@ template<class Archive>
 Object *Object::loadObject(Archive &ar)
 {
     Object *obj = nullptr;
-    try {
+    Object::Data *objData = nullptr;
+    auto lambda = [&obj, &objData, &ar]() {
         std::string arname;
         ar &V_NAME(ar, "object_name", arname);
         std::string name = ar.translateObjectName(arname);
         int type;
         ar &V_NAME(ar, "object_type", type);
-        Shm::the().lockObjects();
-        Object::Data *objData = nullptr;
         if (!name.empty())
             objData = Shm::the().getObjectDataFromName(name);
         if (objData && objData->isComplete()) {
             objData->ref();
-            Shm::the().unlockObjects();
             obj = Object::create(objData);
             if (!ar.currentObject())
                 ar.setCurrentObject(objData);
@@ -108,14 +106,17 @@ Object *Object::loadObject(Archive &ar)
                 objData = obj->d();
             }
             assert(objData);
-            Shm::the().unlockObjects();
             name = obj->getName();
             ar.registerObjectNameTranslation(arname, name);
-            ObjectData::attachment_mutex_lock_type guard(obj->d()->attachment_mutex);
-            if (!objData->isComplete() || objData->meta.creator() == -1) {
-                obj->loadFromArchive(ar);
-            }
             assert(obj->refcount() >= 1);
+        }
+    };
+    try {
+        Shm::the().atomicFunc(lambda);
+        // lock so that only one thread restores object from archive
+        ObjectData::mutex_lock_type guard(obj->d()->attachment_mutex);
+        if (!objData->isComplete() || objData->meta.creator() == -1) {
+            obj->loadFromArchive(ar);
         }
 #ifdef USE_BOOST_ARCHIVE
     } catch (const boost::archive::archive_exception &ex) {
@@ -126,22 +127,22 @@ Object *Object::loadObject(Archive &ar)
                       << boost::archive::BOOST_ARCHIVE_VERSION() << std::endl;
             std::cerr << "***" << std::endl;
         }
-        return obj;
 #endif
     } catch (std::exception &ex) {
         std::cerr << "exception during object loading: " << ex.what() << std::endl;
-        return obj;
     } catch (...) {
         throw;
     }
-    assert(obj->isComplete() || ar.currentObject() == obj->d());
-    if (obj->d()->unresolvedReferences == 0) {
-        obj->refresh();
-        assert(obj->check());
-        if (ar.objectCompletionHandler())
-            ar.objectCompletionHandler()();
-    } else {
-        //std::cerr << "LOADED " << obj->d()->name << " (" << obj->d()->type << "): " << obj->d()->unresolvedReferences << " unresolved references" << std::endl;
+    if (obj) {
+        assert(obj->isComplete() || ar.currentObject() == obj->d());
+        if (obj->d()->unresolvedReferences == 0) {
+            obj->refresh();
+            assert(obj->check(std::cerr));
+            if (ar.objectCompletionHandler())
+                ar.objectCompletionHandler()();
+        } else {
+            //std::cerr << "LOADED " << obj->d()->name << " (" << obj->d()->type << "): " << obj->d()->unresolvedReferences << " unresolved references" << std::endl;
+        }
     }
     return obj;
 }

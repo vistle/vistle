@@ -10,7 +10,6 @@
 #include "vistle/core/polygons.h"
 #include "vistle/core/points.h"
 #include "vistle/core/scalar.h"
-#include "vistle/core/spheres.h"
 #include "vistle/core/vec.h"
 #include "vistle/module/module.h"
 #include <vistle/alg/ghost.h>

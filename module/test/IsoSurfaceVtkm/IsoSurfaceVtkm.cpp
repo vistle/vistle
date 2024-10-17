@@ -3,12 +3,14 @@
 #include <vistle/core/unstr.h>
 #include <vistle/core/structuredgridbase.h>
 #include <vistle/util/stopwatch.h>
+#include <vistle/vtkm/convert.h>
 
 #include <vtkm/cont/DataSetBuilderExplicit.h>
 #include <vtkm/filter/contour/Contour.h>
 
+#include <iomanip>
+
 #include "IsoSurfaceVtkm.h"
-#include "VtkmUtils.h"
 
 using namespace vistle;
 
@@ -20,6 +22,8 @@ TODO:
     - add second input port from original isosurface module (mapped data)
 */
 
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(PointOrValue, (PointPerTimestep)(Value)(PointInFirstStep))
+
 IsoSurfaceVtkm::IsoSurfaceVtkm(const std::string &name, int moduleID, mpi::communicator comm)
 : Module(name, moduleID, comm)
 {
@@ -28,6 +32,9 @@ IsoSurfaceVtkm::IsoSurfaceVtkm(const std::string &name, int moduleID, mpi::commu
     m_dataOut = createOutputPort("data_out", "surface with mapped data");
 
     m_isovalue = addFloatParameter("isovalue", "isovalue", 0.0);
+    m_isopoint = addVectorParameter("isopoint", "isopoint", ParamVector(0.0, 0.0, 0.0));
+    m_pointOrValue = addIntParameter("point_or_value", "point or value interaction", Value, Parameter::Choice);
+    V_ENUM_SET_CHOICES(m_pointOrValue, PointOrValue);
 
     setReducePolicy(message::ReducePolicy::OverAll);
 
@@ -37,6 +44,229 @@ IsoSurfaceVtkm::IsoSurfaceVtkm(const std::string &name, int moduleID, mpi::commu
 
 IsoSurfaceVtkm::~IsoSurfaceVtkm()
 {}
+
+bool IsoSurfaceVtkm::changeParameter(const Parameter *param)
+{
+    if (param == m_pointOrValue) {
+        if (m_pointOrValue->getValue() == PointInFirstStep)
+            setReducePolicy(message::ReducePolicy::PerTimestepZeroFirst);
+        else if (m_pointOrValue->getValue() == PointPerTimestep)
+            setReducePolicy(message::ReducePolicy::PerTimestep);
+        else
+            setReducePolicy(message::ReducePolicy::OverAll);
+    }
+
+    if (param == m_isovalue || param == m_pointOrValue) {
+        updateModuleInfo();
+    }
+
+    return Module::changeParameter(param);
+}
+
+void IsoSurfaceVtkm::setInputSpecies(const std::string &species)
+{
+    m_species = species;
+    Module::setInputSpecies(species);
+    updateModuleInfo();
+}
+
+void IsoSurfaceVtkm::updateModuleInfo()
+{
+    if (m_pointOrValue->getValue() == PointInFirstStep || m_pointOrValue->getValue() == PointPerTimestep) {
+        if (m_species.empty())
+            setItemInfo("Point");
+        else
+            setItemInfo(m_species);
+    } else {
+        auto val = m_isovalue->getValue();
+        std::stringstream str;
+        str << std::setw(0) << std::setprecision(3) << val;
+        if (m_species.empty())
+            setItemInfo(str.str());
+        else
+            setItemInfo(m_species + "=" + str.str());
+    }
+}
+
+bool IsoSurfaceVtkm::prepare()
+{
+    m_blocksForTime.clear();
+
+    m_min = std::numeric_limits<Scalar>::max();
+    m_max = -std::numeric_limits<Scalar>::max();
+
+    m_performedPointSearch = false;
+    m_foundPoint = false;
+
+    return Module::prepare();
+}
+
+bool IsoSurfaceVtkm::reduce(int timestep)
+{
+    if (rank() == 0)
+        std::cerr << "IsoSurface::reduce(" << timestep << ")" << std::endl;
+    Scalar value = m_isovalue->getValue();
+    Vector3 point = m_isopoint->getValue();
+
+    std::unique_lock<std::mutex> lock(m_mutex);
+    std::vector<BlockData> &blocks = m_blocksForTime[timestep];
+    lock.unlock();
+    if ((m_pointOrValue->getValue() == PointInFirstStep && !m_performedPointSearch && timestep <= 0) ||
+        m_pointOrValue->getValue() == PointPerTimestep) {
+        int found = 0;
+        const int numBlocks = blocks.size();
+#pragma omp parallel for
+        for (int i = 0; i < numBlocks; ++i) {
+            const auto &b = blocks[i];
+            auto gi = b.grid->getInterface<GridInterface>();
+            Index cell = gi->findCell(point, InvalidIndex, GridInterface::ForceCelltree);
+            if (cell != InvalidIndex) {
+                if (auto scal = Vec<Scalar>::as(b.datas)) {
+                    ++found;
+                    auto interpol = gi->getInterpolator(cell, point);
+                    value = interpol(scal->x());
+                }
+            }
+        }
+
+        int numFound = boost::mpi::all_reduce(comm(), found, std::plus<int>());
+        m_foundPoint = numFound > 0;
+        if (m_rank == 0) {
+            if (numFound == 0) {
+                if (m_pointOrValue->getValue() != PointPerTimestep || (m_performedPointSearch && timestep != -1)) {
+                    sendInfo("iso-value point out of domain for timestep %d", timestep);
+                }
+            } else if (numFound > 1) {
+                sendWarning("found isopoint in %d blocks", numFound);
+            }
+        }
+        int valRank = found ? m_rank : m_size;
+        valRank = boost::mpi::all_reduce(comm(), valRank, boost::mpi::minimum<int>());
+        if (valRank < m_size) {
+            boost::mpi::broadcast(comm(), value, valRank);
+            if (m_pointOrValue->getValue() == PointInFirstStep)
+                setParameter(m_isovalue, (Float)value);
+        }
+        m_performedPointSearch = true;
+    }
+
+    if (m_foundPoint) {
+        for (const auto &b: blocks) {
+            auto obj = work(b.grid, b.datas, b.mapdata, value);
+            addObject(m_dataOut, obj);
+        }
+    }
+
+    if (timestep == -1) {
+        Scalar min, max;
+        boost::mpi::all_reduce(comm(), m_min, min, boost::mpi::minimum<Scalar>());
+        boost::mpi::all_reduce(comm(), m_max, max, boost::mpi::maximum<Scalar>());
+
+        if (max >= min) {
+            if (m_paraMin != (Float)min || m_paraMax != (Float)max)
+                setParameterRange(m_isovalue, (Float)min, (Float)max);
+
+            m_paraMax = max;
+            m_paraMin = min;
+        }
+    }
+
+    return Module::reduce(timestep);
+}
+
+int IsoSurfaceVtkm::BlockData::getTimestep() const
+{
+    int t = vistle::getTimestep(datas);
+    if (t < 0)
+        t = vistle::getTimestep(grid);
+    if (t < 0)
+        t = vistle::getTimestep(mapdata);
+    return t;
+}
+
+Object::ptr IsoSurfaceVtkm::work(vistle::Object::const_ptr grid, vistle::DataBase::const_ptr isoField,
+                                 vistle::DataBase::const_ptr mapField, Scalar isoValue) const
+{
+    if (auto scal = Vec<Scalar>::as(isoField)) {
+        auto minmax = scal->getMinMax();
+        std::lock_guard<std::mutex> guard(m_mutex);
+        if (minmax.first[0] < m_min)
+            m_min = minmax.first[0];
+        if (minmax.second[0] > m_max)
+            m_max = minmax.second[0];
+    }
+
+    // transform vistle dataset to vtkm dataset
+    vtkm::cont::DataSet vtkmDataSet;
+    auto status = vtkmSetGrid(vtkmDataSet, grid);
+    if (status == VtkmTransformStatus::UNSUPPORTED_GRID_TYPE) {
+        sendError("Currently only supporting unstructured grids");
+        return Object::ptr();
+    } else if (status == VtkmTransformStatus::UNSUPPORTED_CELL_TYPE) {
+        sendError("Can only transform these cells from vistle to vtkm: point, bar, triangle, polygon, quad, tetra, "
+                  "hexahedron, pyramid");
+        return Object::ptr();
+    }
+
+    std::string isospecies = isoField->getAttribute("_species");
+    if (isospecies.empty())
+        isospecies = "isodata";
+    status = vtkmAddField(vtkmDataSet, isoField, isospecies);
+    if (status == VtkmTransformStatus::UNSUPPORTED_FIELD_TYPE) {
+        sendError("Unsupported iso field type");
+        return Object::ptr();
+    }
+
+    std::string mapspecies;
+    if (mapField) {
+        mapspecies = mapField->getAttribute("_species");
+        if (mapspecies.empty())
+            mapspecies = "mapped";
+        status = vtkmAddField(vtkmDataSet, mapField, mapspecies);
+        if (status == VtkmTransformStatus::UNSUPPORTED_FIELD_TYPE) {
+            sendError("Unsupported mapped field type");
+            return Object::ptr();
+        }
+    }
+
+    // apply vtkm isosurface filter
+    vtkm::filter::contour::Contour isosurfaceFilter;
+    isosurfaceFilter.SetActiveField(isospecies);
+    isosurfaceFilter.SetIsoValue(isoValue);
+    isosurfaceFilter.SetMergeDuplicatePoints(false);
+    isosurfaceFilter.SetGenerateNormals(m_computeNormals->getValue() != 0);
+    auto isosurface = isosurfaceFilter.Execute(vtkmDataSet);
+
+
+    // transform result back into vistle format
+    Object::ptr geoOut = vtkmGetGeometry(isosurface);
+    if (!geoOut) {
+        return Object::ptr();
+    }
+
+    updateMeta(geoOut);
+    geoOut->copyAttributes(isoField);
+    geoOut->copyAttributes(grid, false);
+    geoOut->setTransform(grid->getTransform());
+    if (geoOut->getTimestep() < 0) {
+        geoOut->setTimestep(grid->getTimestep());
+        geoOut->setNumTimesteps(grid->getNumTimesteps());
+    }
+    if (geoOut->getBlock() < 0) {
+        geoOut->setBlock(grid->getBlock());
+        geoOut->setNumBlocks(grid->getNumBlocks());
+    }
+
+    if (mapField) {
+        if (auto mapOut = vtkmGetField(isosurface, mapspecies)) {
+            mapOut->copyAttributes(mapField);
+            mapOut->setGrid(geoOut);
+            updateMeta(mapOut);
+            return mapOut;
+        }
+    }
+    return geoOut;
+}
 
 bool IsoSurfaceVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task) const
 {
@@ -59,7 +289,6 @@ bool IsoSurfaceVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task) con
         return true;
     }
 
-
     auto mapData = task->accept<Object>(m_mapDataIn);
     auto splitMap = splitContainerObject(mapData);
     auto mapField = splitMap.mapped;
@@ -76,94 +305,16 @@ bool IsoSurfaceVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task) con
         }
     }
 
-    // transform vistle dataset to vtkm dataset
-    vtkm::cont::DataSet vtkmDataSet;
-    auto status = vtkmSetGrid(vtkmDataSet, grid);
-    if (status == VtkmTransformStatus::UNSUPPORTED_GRID_TYPE) {
-        sendError("Currently only supporting unstructured grids");
+    if (m_pointOrValue->getValue() == Value) {
+        auto obj = work(grid, isoField, mapField, m_isovalue->getValue());
+        task->addObject(m_dataOut, obj);
         return true;
-    } else if (status == VtkmTransformStatus::UNSUPPORTED_CELL_TYPE) {
-        sendError("Can only transform these cells from vistle to vtkm: point, bar, triangle, polygon, quad, tetra, "
-                  "hexahedron, pyramid");
-        return true;
-    }
-
-    std::string isospecies = isoField->getAttribute("_species");
-    if (isospecies.empty())
-        isospecies = "isodata";
-    status = vtkmAddField(vtkmDataSet, isoField, isospecies);
-    if (status == VtkmTransformStatus::UNSUPPORTED_FIELD_TYPE) {
-        sendError("Unsupported iso field type");
-        return true;
-    }
-
-    std::string mapspecies;
-    if (mapField) {
-        mapspecies = mapField->getAttribute("_species");
-        if (mapspecies.empty())
-            mapspecies = "mapped";
-        status = vtkmAddField(vtkmDataSet, mapField, mapspecies);
-        if (status == VtkmTransformStatus::UNSUPPORTED_FIELD_TYPE) {
-            sendError("Unsupported mapped field type");
-            return true;
-        }
-    }
-
-    // apply vtkm isosurface filter
-    vtkm::filter::contour::Contour isosurfaceFilter;
-    isosurfaceFilter.SetActiveField(isospecies);
-    isosurfaceFilter.SetIsoValue(m_isovalue->getValue());
-    isosurfaceFilter.SetMergeDuplicatePoints(false);
-    isosurfaceFilter.SetGenerateNormals(m_computeNormals->getValue() != 0);
-    std::string normalsName("_normals");
-    isosurfaceFilter.SetNormalArrayName(normalsName);
-    auto isosurface = isosurfaceFilter.Execute(vtkmDataSet);
-
-    // transform result back into vistle format
-    Object::ptr geoOut = vtkmIsosurfaceToVistleTriangles(isosurface);
-    if (geoOut) {
-        updateMeta(geoOut);
-        geoOut->copyAttributes(isoField);
-        geoOut->copyAttributes(grid, false);
-        geoOut->setTransform(grid->getTransform());
-        if (geoOut->getTimestep() < 0) {
-            geoOut->setTimestep(grid->getTimestep());
-            geoOut->setNumTimesteps(grid->getNumTimesteps());
-        }
-        if (geoOut->getBlock() < 0) {
-            geoOut->setBlock(grid->getBlock());
-            geoOut->setNumBlocks(grid->getNumBlocks());
-        }
-
-        if (m_computeNormals->getValue() != 0) {
-            Object::ptr nobj = vtkmGetField(isosurface, normalsName);
-            if (auto n = Vec<Scalar, 3>::as(nobj)) {
-                auto normals = std::make_shared<vistle::Normals>(0);
-                normals->d()->x[0] = n->d()->x[0];
-                normals->d()->x[1] = n->d()->x[1];
-                normals->d()->x[2] = n->d()->x[2];
-                updateMeta(normals);
-                if (auto coords = Coords::as(geoOut)) {
-                    coords->setNormals(normals);
-                } else if (auto str = StructuredGridBase::as(geoOut)) {
-                    str->setNormals(normals);
-                }
-            }
-        }
-    }
-
-    DataBase::ptr mapped;
-    if (mapField) {
-        mapped = vtkmGetField(isosurface, mapspecies);
-    }
-    if (mapped) {
-        std::cerr << "mapped data: " << *mapped << std::endl;
-        mapped->copyAttributes(mapField);
-        mapped->setGrid(geoOut);
-        updateMeta(mapped);
-        task->addObject(m_dataOut, mapped);
     } else {
-        task->addObject(m_dataOut, geoOut);
+        std::lock_guard<std::mutex> guard(m_mutex);
+        BlockData b(grid, isoField, mapField);
+        int t = b.getTimestep();
+        m_blocksForTime[t].emplace_back(b);
+        return true;
     }
 
     return true;

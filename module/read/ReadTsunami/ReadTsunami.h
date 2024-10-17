@@ -21,7 +21,6 @@
 #define _READTSUNAMI_H
 
 #include "vistle/core/index.h"
-/* #include "vistle/core/spheres.h" */
 /* #include "vistle/core/polygons.h" */
 #include "vistle/core/points.h"
 #include <atomic>
@@ -92,7 +91,6 @@ private:
     typedef vistle::Vec<vistle::Scalar>::ptr VisVecScalarPtr;
     /* typedef vistle::Polygons::ptr PolyPtr; */
     typedef vistle::Points::ptr PointsPtr;
-    /* typedef vistle::Spheres::ptr SpheresPtr; */
     typedef array<VisVecScalarPtr, NUM_SCALARS> ArrVecScalarPtrs;
     typedef vector<ArrVecScalarPtrs> VecArrVecScalarPtrs;
     typedef vector<array<float, 2>> VecLatLon;

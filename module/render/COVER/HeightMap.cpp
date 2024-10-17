@@ -7,7 +7,7 @@ using namespace osg;
 
 namespace {
 
-const int DataTexUnit = 0;
+const int DataTexUnit = 1;
 const int HeightTexUnit = 2;
 
 const unsigned PatchSize[] = {3, 3};

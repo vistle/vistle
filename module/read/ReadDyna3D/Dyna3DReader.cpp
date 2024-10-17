@@ -1157,7 +1157,8 @@ int Dyna3DReader<wordsize, INTEGER, REAL>::rdstate_(vistle::Reader::Token &token
             shlock.unlock();
             if (!needToRead)
                 break;
-            ulock.try_lock_for(10 * std::chrono::milliseconds());
+            if (ulock.try_lock_for(10 * std::chrono::milliseconds()))
+                break;
         }
 
         if (ulock.owns_lock()) {

@@ -36,9 +36,9 @@ private:
     bool m_creator = false; // if true we created shm objects which we have to remove
     const std::string m_msqName = "vistle_shmMessage_";
     const std::string m_recvSuffix =
-        "_recv_sensei"; // signature must contain _recv_ for shm::cleanAll to remove these files
+        "_recv_insitu"; // signature must contain _recv_ for shm::cleanAll to remove these files
     const std::string m_sendSuffix =
-        "_send_sensei"; // signature must contain _send_ for shm::cleanAll to remove these files
+        "_send_insitu"; // signature must contain _send_ for shm::cleanAll to remove these files
     size_t m_iteration = 0;
     MPI_Comm m_comm;
     int m_rank;

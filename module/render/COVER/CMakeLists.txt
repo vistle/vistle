@@ -4,11 +4,6 @@ if(NOT COVER_FOUND)
     return()
 endif()
 
-#include_directories(SYSTEM ${MPI_C_INCLUDE_PATH})
-#set(CMAKE_CXX_COMPILE_FLAGS "${CMAKE_CXX_COMPILE_FLAGS} ${MPI_C_COMPILE_FLAGS}")
-#set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} ${MPI_C_LINK_FLAGS}")
-
-#SET(EXTRA_LIBS ${EXTRA_LIBS} MPI::MPI_C)
 add_definitions(-DHAS_MPI)
 add_definitions(-DCOVER_PLUGIN)
 

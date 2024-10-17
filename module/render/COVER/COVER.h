@@ -154,6 +154,11 @@ protected:
 
     std::unique_ptr<opencover::config::Access> m_config;
     std::unique_ptr<CoverConfigBridge> m_coverConfigBridge;
+    VistleGeometryGenerator::Options m_options;
+
+    vistle::IntParameter *m_optimizeIndices = nullptr;
+    vistle::IntParameter *m_numPrimitives = nullptr;
+    vistle::IntParameter *m_indexedGeometry = nullptr;
 };
 
 #endif

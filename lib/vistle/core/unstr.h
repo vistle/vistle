@@ -16,13 +16,10 @@ class V_COREEXPORT UnstructuredGrid: public Indexed, virtual public GridInterfac
 public:
     typedef Indexed Base;
     enum Type {
-        GHOST_BIT = cell::GHOST_BIT,
-        CONVEX_BIT = cell::CONVEX_BIT,
-        TYPE_MASK = cell::TYPE_MASK,
-
         NONE = cell::NONE, // 0
         POINT = cell::POINT, // 1
         BAR = cell::BAR, // 3
+        POLYLINE = cell::POLYLINE, // 4
         TRIANGLE = cell::TRIANGLE, // 5
         POLYGON = cell::POLYGON, // 7
         QUAD = cell::QUAD, // 9
@@ -37,7 +34,7 @@ public:
     static constexpr Index MaxNumVertices = 4;
     static constexpr Index MaxNumFaces = 6;
     static constexpr int Dimensionality[NUM_TYPES] = {
-        -1, 0, -1, 1, -1, 2, -1, 2, 1, 2, 3, 3, 3, 3, 3,
+        -1, 0, -1, 1, 1, 2, -1, 2, 1, 2, 3, 3, 3, 3, 3,
     };
     static constexpr int NumVertices[NUM_TYPES] = {
         0, 1, -1, 2, -1, 3, -1, -1, -1, 4, 4, -1, 8, 6, 5,
@@ -54,7 +51,7 @@ public:
         {0, 0, 0, 0, 0, 0},
         // bar
         {0, 0, 0, 0, 0, 0},
-        // invalid
+        // polyline
         {0, 0, 0, 0, 0, 0},
         // triangle
         {3, 0, 0, 0, 0, 0},
@@ -183,13 +180,10 @@ public:
     shm<Byte>::array &tl() { return *d()->tl; }
     const ShmArrayProxy<Byte> &tl() const { return m_tl; }
 
-    bool isConvex(Index elem) const;
     bool isGhostCell(Index elem) const override;
     std::pair<Vector3, Vector3> cellBounds(Index elem) const override;
     Index findCell(const Vector3 &point, Index hint = InvalidIndex, int flags = NoFlags) const override;
-    bool insideConvex(Index elem, const Vector3 &point) const;
     bool inside(Index elem, const Vector3 &point) const override;
-    Index checkConvexity(); //< return number of non-convex cells
     Scalar exitDistance(Index elem, const Vector3 &point, const Vector3 &dir) const override;
 
     Interpolator getInterpolator(Index elem, const Vector3 &point, Mapping mapping = Vertex,

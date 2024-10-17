@@ -50,7 +50,7 @@ if(NOT VISTLE_MULTI_PROCESS)
 
             if(X11_ICE_FOUND)
                 target_compile_definitions(vistle_clustermanager PRIVATE HAVE_X11_ICE)
-                target_include_directories(vistle_clustermanager PRIVATE X11_ICE_INCLUDE_PATH)
+                target_include_directories(vistle_clustermanager PRIVATE ${X11_ICE_INCLUDE_PATH})
             endif()
         endif()
     endif()
@@ -73,9 +73,13 @@ vistle_target_link_libraries(
     PRIVATE
     Boost::system
     PRIVATE
-    MPI::MPI_C
+    Boost::program_options
+    PRIVATE
+    MPI::MPI_CXX
     PRIVATE
     vistle_control
+    PRIVATE
+    vistle_config
     PUBLIC
     vistle_util
     PRIVATE
@@ -83,14 +87,12 @@ vistle_target_link_libraries(
     PUBLIC
     vistle_core
     PRIVATE
-    Threads::Threads)
+    Threads::Threads
+    PRIVATE
+    vistle_module)
 
-if(NOT WIN32)
-    vistle_target_link_libraries(vistle_clustermanager PRIVATE dl)
-endif()
-
-if(NOT VISTLE_MULTI_PROCESS)
-    vistle_target_link_libraries(vistle_clustermanager PRIVATE ${CMAKE_DL_LIBS} PRIVATE vistle_module)
+if(NOT VISTLE_MODULE_SHARED)
+    vistle_target_link_libraries(vistle_clustermanager PRIVATE ${CMAKE_DL_LIBS})
 
     if(APPLE)
         set_target_properties(vistle_clustermanager PROPERTIES LINK_FLAGS -Wl,-export_dynamic)

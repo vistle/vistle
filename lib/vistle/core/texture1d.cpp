@@ -1,6 +1,7 @@
 #include "texture1d.h"
 #include "texture1d_impl.h"
 #include "archives.h"
+#include "validate.h"
 
 namespace vistle {
 
@@ -23,19 +24,22 @@ bool Texture1D::isEmpty() const
     return getWidth() == 0;
 }
 
-bool Texture1D::checkImpl() const
+bool Texture1D::checkImpl(std::ostream &os, bool quick) const
 {
-    CHECK_OVERFLOW(d()->pixels->size());
+    VALIDATE_INDEX(d()->pixels->size());
 
-    V_CHECK(d()->pixels);
-    //V_CHECK (d()->min <= d()->max);
+    VALIDATE(d()->pixels);
+    VALIDATE(d()->pixels->check(os));
+    //VALIDATE (d()->min <= d()->max);
+
     return true;
 }
 
-void Texture1D::print(std::ostream &os) const
+void Texture1D::print(std::ostream &os, bool verbose) const
 {
     Base::print(os);
-    os << " pixels(" << *d()->pixels << ")";
+    os << " pixels:";
+    d()->pixels.print(os, verbose);
 }
 
 void Texture1D::Data::initData()

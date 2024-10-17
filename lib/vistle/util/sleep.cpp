@@ -15,33 +15,38 @@ bool adaptive_wait(bool work, const void *client)
 {
     static std::mutex protect;
     static std::map<const void *, long> idleMap;
+
     const long Sec = 1000000; // 1 s
     const long MinDelay = Sec / 10000;
     const long MaxDelay = Sec / 100;
 
-    protect.lock();
-    auto it = idleMap.find(client);
-    if (it == idleMap.end())
-        it = idleMap.insert(std::make_pair(client, 0)).first;
+    long delay = 0, idletime = 0;
+    try {
+        std::unique_lock<std::mutex> lock(protect);
+        auto it = idleMap.find(client);
+        if (it == idleMap.end())
+            it = idleMap.insert(std::make_pair(client, 0)).first;
 
-    auto &idle = it->second;
+        auto &idle = it->second;
 
-    if (work) {
-        idle = 0;
-        protect.unlock();
+        if (work) {
+            idle = 0;
+            return false;
+        }
+
+
+        delay = (long)((float(idle) / Sec) * Sec * 0.1f);
+        if (delay < MinDelay)
+            delay = MinDelay;
+        if (delay > MaxDelay)
+            delay = MaxDelay;
+
+        idle += delay;
+        idletime = idle;
+    } catch (std::exception &e) {
+        std::cerr << "adaptive_wait: " << e.what() << std::endl;
         return false;
     }
-
-
-    long delay = (long)((float(idle) / Sec) * Sec * 0.1f);
-    if (delay < MinDelay)
-        delay = MinDelay;
-    if (delay > MaxDelay)
-        delay = MaxDelay;
-
-    idle += delay;
-    auto idletime = idle;
-    protect.unlock();
 
     if (idletime > delay) {
 #if 0
