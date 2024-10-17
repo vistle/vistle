@@ -100,7 +100,11 @@ bool CellToVertVtkm::compute(const std::shared_ptr<BlockTask> &task) const
         auto &data = data_vec[i];
         assert(data);
         auto mapping = data->guessMapping(grid);
+#ifdef VERTTOCELL
+        if (mapping == DataBase::Element) {
+#else
         if (mapping == DataBase::Vertex) {
+#endif
             auto ndata = data->clone();
             ndata->setMapping(DataBase::Vertex);
             ndata->setGrid(grid);
