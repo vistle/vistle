@@ -53,7 +53,7 @@ export COVISE_PATH=$VISTLE_ROOT:$COVISEDIR
 
 ![](OscillatorNet.png)
 
-- click on the run/paused parameter of this module to start/pause the simulation. The rusults should look like the following image:
+- click on the run/paused parameter of this module to start/pause the simulation. The results should look like the following image:
 
 <img src="OscillatorResult.png" alt="dice" style="width:300px;"/>
 
