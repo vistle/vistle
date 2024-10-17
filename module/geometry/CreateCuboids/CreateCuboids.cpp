@@ -53,7 +53,7 @@ UnstructuredGrid::ptr createCuboidGrid(Coords::const_ptr cuboidCenters, Vec<Scal
     // clang-format on
 
     auto numCenters = cuboidCenters->getNumCoords();
-    auto cornersPerCuboid = 8;
+    Index cornersPerCuboid = 8;
 
     UnstructuredGrid::ptr cuboids(
         new UnstructuredGrid(numCenters, cornersPerCuboid * numCenters, cornersPerCuboid * numCenters));
@@ -67,7 +67,7 @@ UnstructuredGrid::ptr createCuboidGrid(Coords::const_ptr cuboidCenters, Vec<Scal
         auto lengthY = 0.5 * edgeLengths->y()[i];
         auto lengthZ = 0.5 * edgeLengths->z()[i];
 
-        for (auto j = 0; j < cornersPerCuboid; j++) {
+        for (Index j = 0; j < cornersPerCuboid; j++) {
             cuboids->x()[cornersPerCuboid * i + j] = x + lengthX * signs[3 * j];
             cuboids->y()[cornersPerCuboid * i + j] = y + lengthY * signs[3 * j + 1];
             cuboids->z()[cornersPerCuboid * i + j] = z + lengthZ * signs[3 * j + 2];
