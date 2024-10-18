@@ -11,6 +11,10 @@
 #include <future>
 #include <condition_variable>
 #include <signal.h>
+#ifdef VISTLE_USE_FMT
+#include <fmt/format.h>
+#include <fmt/args.h>
+#endif
 
 #include <vistle/util/hostname.h>
 #include <vistle/util/userinfo.h>
@@ -32,6 +36,7 @@
 #include <vistle/util/byteswap.h>
 
 #include <vistle/config/value.h>
+#include <vistle/config/array.h>
 #include <vistle/config/access.h>
 
 #ifdef MODULE_THREAD
@@ -85,6 +90,24 @@ enum Id {
     VRB = -4,
 };
 }
+
+namespace {
+const std::string windows = "windows";
+const std::string unix = "unix";
+const std::string darwin = "darwin";
+const std::string linux = "linux";
+#ifdef _WIN32
+const std::string platform = windows;
+const std::string platform_fallback;
+#else
+const std::string platform_fallback = unix;
+#ifdef __APPLE__
+const std::string platform = darwin;
+#else
+const std::string platform = linux;
+#endif
+#endif
+} // namespace
 
 struct terminate_with_parent: process::extend::handler {
 #ifdef BOOST_POSIX_API
@@ -1959,94 +1982,114 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
 
         case message::DEBUG: {
             auto &debug = msg.as<message::Debug>();
-            int id = debug.getModule();
+            int modId = debug.getModule();
             auto req = debug.getRequest();
-            if (idToHub(id) != m_hubId) {
+            if (idToHub(modId) != m_hubId) {
+                std::stringstream str;
+                str << "Not trying to debug non-local module id " << modId;
+                sendError(str.str());
                 break;
             }
             switch (req) {
             case Debug::AttachDebugger: {
-#if defined(__APPLE__)
-                unsigned long pid = 0;
-                if (id == m_hubId) {
-                    pid = m_localManagerRank0Pid;
-                } else {
-                    auto it = m_stateTracker.runningMap.find(id);
-                    if (it != m_stateTracker.runningMap.end()) {
-                        const auto &mod = it->second;
-                        pid = mod.rank0Pid;
+#ifdef VISTLE_USE_FMT
+                fmt::dynamic_format_arg_store<fmt::format_context> nargs;
+                {
+                    unsigned long rank0pid = 0;
+                    if (modId == m_hubId) {
+                        rank0pid = m_localManagerRank0Pid;
+                    } else {
+                        auto it = m_stateTracker.runningMap.find(modId);
+                        if (it != m_stateTracker.runningMap.end()) {
+                            const auto &mod = it->second;
+                            rank0pid = mod.rank0Pid;
+                        }
                     }
+                    if (rank0pid == 0) {
+                        std::stringstream str;
+                        str << "Did not find PID of process to attach to for id " << modId;
+                        sendError(str.str());
+                        break;
+                    }
+                    nargs.push_back(fmt::arg("rank0pid", rank0pid));
                 }
-                if (pid == 0) {
-                    std::stringstream str;
-                    str << "Did not find PID of process to attach to for id " << id;
-                    sendError(str.str());
+                {
+#ifdef MODULE_THREAD
+                    modId = 0;
+#endif
+                    long mpipid = 0;
+                    bool found = false;
+                    std::lock_guard<std::mutex> guard(m_processMutex);
+                    for (auto &p: m_processMap) {
+                        if (p.second == modId) {
+                            found = true;
+                            mpipid = p.first->id();
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        std::stringstream str;
+                        str << "Did not find launcher PID to debug module id " << modId << " on " << m_name;
+#ifdef MODULE_THREAD
+                        str << " -> " << modId;
+#endif
+                        sendError(str.str());
+                        break;
+                    }
+                    nargs.push_back(fmt::arg("mpipid", mpipid));
+                }
+                if (auto home = getenv("HOME")) {
+                    nargs.push_back(fmt::arg("home", home));
+                } else {
+                    sendError("HOME environment variable not set");
                     break;
                 }
-                std::stringstream str;
-                std::vector<std::string> args;
-                args.push_back("-l");
-                args.push_back("JavaScript");
-                args.push_back("-e");
-                args.push_back("var Xcode = Application('Xcode');\n");
-                args.push_back("-e");
-                args.push_back("Xcode.activate();\n");
-                args.push_back("-e");
-                std::stringstream proj;
-                proj << "Xcode.open(\"/Users/ma/vistle/contrib/DebugWithXcode.xcodeproj\");\n";
-                args.push_back(proj.str());
-                args.push_back("-e");
-                args.push_back("var workspace = Xcode.activeWorkspaceDocument();\n");
-                args.push_back("-e");
-                std::stringstream att;
-                att << "workspace.attach({\"toProcessIdentifier\": " << pid << ", \"suspended\": false});\n";
-                args.push_back(att.str());
+                if (auto user = getenv("USER")) {
+                    nargs.push_back(fmt::arg("user", user));
+                } else {
+                    sendError("USER environment variable not set");
+                    break;
+                }
 
+                decltype(m_config->array<std::string>("", "", "")) arr;
+                if (!m_hasUi) {
+                    std::string suffix = "_batch";
+                    arr = m_config->array<std::string>("system", "debugger", platform + suffix);
+                    if (arr->size() == 0 && !platform_fallback.empty()) {
+                        arr = m_config->array<std::string>("system", "debugger", platform_fallback + suffix);
+                    }
+                }
+                if (m_hasUi || arr->size() == 0) {
+                    arr.reset();
+                    arr = m_config->array<std::string>("system", "debugger", platform);
+                    if (arr->size() == 0 && !platform_fallback.empty()) {
+                        arr = m_config->array<std::string>("system", "debugger", platform_fallback);
+                    }
+                }
+                if (arr->size() == 0) {
+                    std::stringstream info;
+                    info << "no debugger configured in \"system: [debugger]\"";
+                    sendInfo(info.str());
+                    break;
+                }
+                std::vector<std::string> cmd_args;
+                for (auto &arg: arr->value()) {
+                    cmd_args.push_back(fmt::vformat(arg, nargs));
+                }
+                auto cmd = cmd_args[0];
+                auto args = std::vector<std::string>(cmd_args.begin() + 1, cmd_args.end());
                 std::lock_guard<std::mutex> guard(m_processMutex);
-                auto child = launchProcess("osascript", args);
+                auto child = launchProcess(cmd, args);
                 if (child && child->valid()) {
                     std::stringstream info;
-                    info << "Launched osacript as PID " << child->id() << ", attaching to " << pid;
+                    info << "Debugging " << debug.getModule() << " with " << cmd << " as PID " << child->id();
                     sendInfo(info.str());
                     m_processMap[child] = Process::Debugger;
                 }
-#elif defined(__linux__)
-#ifdef MODULE_THREAD
-                id = 0;
-#endif
-                bool found = false;
-                std::lock_guard<std::mutex> guard(m_processMutex);
-                for (auto &p: m_processMap) {
-                    if (p.second == id) {
-                        found = true;
-                        std::vector<std::string> args;
-                        std::stringstream str;
-                        str << "-attach-mpi=" << p.first->id();
-                        args.push_back(str.str());
-                        if (!m_hasUi) {
-                            args.push_back("--connect");
-                        }
-                        auto child = launchProcess("ddt", args);
-                        if (child && child->valid()) {
-                            std::stringstream info;
-                            info << "Launched ddt as PID " << child->id() << ", attaching to " << p.first->id();
-                            if (!m_hasUi) {
-                                info << ", waiting for ddt remote client to connect";
-                            }
-                            sendInfo(info.str());
-                            m_processMap[child] = Process::Debugger;
-                        }
-                        break;
-                    }
-                }
-                if (!found) {
-                    std::stringstream str;
-                    str << "Did not find launcher PID to debug module id " << debug.getModule() << " on " << m_name;
-#ifdef MODULE_THREAD
-                    str << " -> " << id;
-#endif
-                    sendError(str.str());
-                }
+#else
+                std::stringstream info;
+                info << "fmt library not available, no support for reading debugger configuration";
+                sendInfo(info.str());
 #endif
                 break;
             }
