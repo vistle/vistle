@@ -24,6 +24,5 @@ read a line or row from a csv file
 |last_step|last timestep to read (-1: last)|Int|
 |step_increment|number of steps to increment|Int|
 |first_rank|rank for first partition of first timestep|Int|
-|check_convexity|whether to check convexity of grid cells|Int|
 |filename|csv file path|String|
 |format|Scalar expects single file, Vector expects 3 files ending with _x.csv, ... (ScalarFile, VectorFiles)|Int|

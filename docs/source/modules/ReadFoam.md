@@ -49,7 +49,6 @@ read OpenFOAM data
 |last_step|last timestep to read (-1: last)|Int|
 |step_increment|number of steps to increment|Int|
 |first_rank|rank for first partition of first timestep|Int|
-|check_convexity|whether to check convexity of grid cells|Int|
 |casedir|OpenFOAM case directory|String|
 |starttime|start reading at the first step after this time|Float|
 |stoptime|stop reading at the last step before this time|Float|

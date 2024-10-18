@@ -29,7 +29,6 @@ read ITLR FS3D (Free Surface 3D) binary data
 |last_step|last timestep to read (-1: last)|Int|
 |step_increment|number of steps to increment|Int|
 |first_rank|rank for first partition of first timestep|Int|
-|check_convexity|whether to check convexity of grid cells|Int|
 |increment_filename|replace digits in filename with timestep|Int|
 |grid_filename|.bin file for grid|String|
 |filename0|.lst or .bin file for data|String|

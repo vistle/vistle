@@ -59,7 +59,6 @@ Read IAG data in NetCDF format
 |last_step|last timestep to read (-1: last)|Int|
 |step_increment|number of steps to increment|Int|
 |first_rank|rank for first partition of first timestep|Int|
-|check_convexity|whether to check convexity of grid cells|Int|
 |grid_file|File containing grid info|String|
 |data_file|File containing data|String|
 |Variable0|Scalar Variables ((NONE))|String|

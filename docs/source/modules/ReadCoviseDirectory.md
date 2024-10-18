@@ -34,7 +34,6 @@ read COVISE data in a directory
 |last_step|last timestep to read (-1: last)|Int|
 |step_increment|number of steps to increment|Int|
 |first_rank|rank for first partition of first timestep|Int|
-|check_convexity|whether to check convexity of grid cells|Int|
 |directory|directory to scan for .covise files|String|
 |grid|filename for grid ((none))|String|
 |normals|name of COVISE file for normals ((none))|String|

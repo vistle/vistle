@@ -36,6 +36,7 @@ The **Thicken** module can be used to expand lines into tubes or points into sph
 The first input port `grid_in` is required and expects lines or points which the module will expand to tubes or spheres. The module automatically detects whether lines or spheres are provided.
     The second input port `data_in` is optional and takes a data field that can be used to calculate the radii of these tubes/spheres.
 
+
 ## Parameters
 |name|description|type|
 |-|-|-|
@@ -46,6 +47,7 @@ The first input port `grid_in` is required and expects lines or points which the
 |start_style|cap style for initial tube segments (Open, Flat, Round, Arrow)|Int|
 |connection_style|cap style for tube segment connections (Open, Flat, Round, Arrow)|Int|
 |end_style|cap style for final tube segments (Open, Flat, Round, Arrow)|Int|
+|correct_depth|correct per-fragment depth for impostor spheres (slow)|Int|
 
 There are different modes for setting the radius of the resulting geometric bodies which can be selected with `map_mode` in the parameter window. Additionally, the `radius` and `sphere scale` parameters can be altered, to fine-tune the resulting radius and a `range` can be given for clipping the values of the radii.
 

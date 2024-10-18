@@ -28,3 +28,4 @@ create lines from mapped vector data
 |scale|scale factor for vector length|Float|
 |attachment_point|where to attach line to carrying point (Bottom, Middle, Top)|Int|
 |range|allowed length range (before scaling)|Vector|
+|all_coordinates|include all or only referenced coordinates|Int|
