@@ -63,11 +63,11 @@ export COVISE_PATH=$VISTLE_ROOT:$COVISEDIR
 -start vistle or, for single process Vistle, start vistle_gui and connect it to the simulation's hub
 -load oscillatorExample.vsl
 
-![](../../../module/insitu/Sensei/OscillatorNet.png)
+![](../../../module/insitu/InSitu/OscillatorNet.png)
 
-- click on the run/paused parameter of this module to start/pause the simulation. The rusults should look like the following image:
+- click on the run/paused parameter of this module to start/pause the simulation. The results should look like the following image:
 
-<img src="../../../../module/insitu/Sensei/OscillatorResult.png" alt="dice" style="width:300px;"/>
+<img src="../../../../module/insitu/InSitu/OscillatorResult.png" alt="dice" style="width:300px;"/>
 
 ## Related Modules
 LibSimController
