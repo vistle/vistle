@@ -2,16 +2,21 @@
 #include <iomanip>
 
 #include <vistle/core/object.h>
+#include <vistle/core/points.h>
 #include <vistle/core/triangles.h>
+#include <vistle/core/quads.h>
+#include <vistle/core/polygons.h>
 #include <vistle/core/geometry.h>
 #include <vistle/core/vec.h>
 #include <vistle/core/unstr.h>
+#include <vistle/core/structuredgridbase.h>
 #include <vistle/util/math.h>
 
 #include "MetaData.h"
 
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(MetaAttribute,
-                                    (MpiRank)(BlockNumber)(TimestepNumber)(VertexIndex)(ElementIndex)(ElementType))
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(
+    MetaAttribute,
+    (MpiRank)(BlockNumber)(TimestepNumber)(VertexIndex)(ElementIndex)(ElementType)(ElementSize)(ElementNumFaces)(NumVertices)(NumElements))
 
 using namespace vistle;
 
@@ -56,13 +61,44 @@ bool MetaData::compute()
         }
     }
 
+    Index cellSize = 0;
+    Index numFaces = 0;
     auto indexed = Indexed::as(grid);
     auto unstr = UnstructuredGrid::as(grid);
+    auto str = StructuredGridBase::as(grid);
+    auto tri = Triangles::as(grid);
+    auto poly = Polygons::as(grid);
+    auto quad = Quads::as(grid);
+    auto points = Points::as(grid);
     auto geoif = grid->getInterface<GeometryInterface>();
+    auto elemif = grid->getInterface<ElementInterface>();
     assert(geoif);
+
+    if (points) {
+        cellSize = 1;
+    }
+    if (str) {
+        cellSize = 8;
+        numFaces = 6;
+    }
+    if (tri) {
+        cellSize = 3;
+        numFaces = 1;
+    }
+    if (quad) {
+        cellSize = 4;
+        numFaces = 1;
+    }
+    if (poly) {
+        numFaces = 1;
+    }
 
     std::string species;
     const Byte *tl = nullptr;
+    const Index *el = nullptr;
+    if (indexed) {
+        el = indexed->el().data();
+    }
     const Index kind = m_kind->getValue();
     DataBase::Mapping mapping = DataBase::Vertex;
     switch (kind) {
@@ -77,6 +113,12 @@ bool MetaData::compute()
         break;
     case VertexIndex:
         species = "vertex";
+        break;
+    case NumVertices:
+        species = "block_vertices";
+        break;
+    case NumElements:
+        species = "block_elements";
         break;
     case ElementIndex:
         species = "elem_index";
@@ -97,18 +139,35 @@ bool MetaData::compute()
             return true;
         }
         break;
+    case ElementSize:
+        species = "elem_vertices";
+        mapping = DataBase::Element;
+        break;
+    case ElementNumFaces:
+        species = "elem_num_faces";
+        mapping = DataBase::Element;
+        if (unstr) {
+            tl = &unstr->tl()[0];
+        }
+        break;
     default:
         species = "zero";
         break;
     }
+    if (mapping == DataBase::Element && !elemif) {
+        sendError("ElementInterface required for mapping to elements");
+        return true;
+    }
 
-    Index N = mapping == DataBase::Element ? indexed->getNumElements() : geoif->getNumVertices();
+    Index N = mapping == DataBase::Element ? elemif->getNumElements() : geoif->getNumVertices();
 
     Vec<Index>::ptr out(new Vec<Index>(N));
     auto val = out->x().data();
 
     const Index block = data ? data->getBlock() : grid->getBlock();
     const Index timestep = getTimestep(obj);
+    const Index numvert = geoif->getNumVertices();
+    const Index numelem = elemif ? elemif->getNumElements() : 0;
 
     const Index min = m_range->getValue()[0];
     const Index max = m_range->getValue()[1];
@@ -127,13 +186,32 @@ bool MetaData::compute()
         case VertexIndex:
             val[i] = i;
             break;
+        case NumVertices:
+            val[i] = numvert;
+            break;
+        case NumElements:
+            val[i] = numelem;
+            break;
         case ElementIndex:
             val[i] = i;
             break;
         case ElementType:
             val[i] = tl[i];
             break;
-
+        case ElementSize:
+            if (el) {
+                val[i] = el[i + 1] - el[i];
+            } else {
+                val[i] = cellSize;
+            }
+            break;
+        case ElementNumFaces:
+            if (unstr) {
+                val[i] = unstr->cellNumFaces(i);
+            } else {
+                val[i] = numFaces;
+            }
+            break;
         default:
             val[i] = 0;
             break;
