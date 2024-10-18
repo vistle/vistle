@@ -11,6 +11,7 @@
 #include <tetgen.h>
 
 #ifdef HAVE_CGAL
+#include <boost/next_prior.hpp>
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 
 #include <CGAL/Delaunay_triangulation_3.h>
@@ -163,25 +164,42 @@ Triangles::ptr computeConvexHull(Points::const_ptr &points)
     tri->d()->x[2] = points->d()->x[2];
     auto *cl = tri->cl().data();
 
+    Index nelem = 0;
     for (typename std::vector<Cell_handle3>::iterator cit = cells.begin(); cit != cells.end(); ++cit) {
         const auto &ch = *cit;
         const auto idx = ch->index(inf);
+        int nvert = 0;
+        Index verts[3];
         if (idx == 0 || idx == 2) {
-            for (unsigned i = 3; i < 4; --i) {
+            for (int i = 3; i >= 0; --i) {
                 if (i == idx)
                     continue;
-                *cl = ch->vertex(i)->info();
-                ++cl;
+                auto v = ch->vertex(i);
+                if (v == Vertex_handle3())
+                    break;
+                verts[nvert++] = v->info();
             }
         } else {
-            for (unsigned i = 0; i < 4; ++i) {
+            for (int i = 0; i < 4; ++i) {
                 if (i == idx)
                     continue;
-                *cl = ch->vertex(i)->info();
-                ++cl;
+                auto v = ch->vertex(i);
+                if (v == Vertex_handle3())
+                    break;
+                verts[nvert++] = v->info();
             }
         }
+        if (nvert != 3)
+            continue;
+        ++nelem;
+        for (int i = 0; i < 3; ++i) {
+            *cl = verts[i];
+            ++cl;
+        }
     }
+    tri->cl().resize(nelem * 3);
+    if (nelem == 0)
+        tri->resetCoords();
     return tri;
 }
 
@@ -227,19 +245,21 @@ Triangles::ptr computeTri(Points::const_ptr &points, Method projAxis)
     }
 
     auto tri = std::make_shared<Triangles>(nfaces * 3, 0);
-    tri->resetCoords();
-    tri->d()->x[0] = points->d()->x[0];
-    tri->d()->x[1] = points->d()->x[1];
-    tri->d()->x[2] = points->d()->x[2];
-    auto *cl = tri->cl().data();
+    if (nfaces > 0) {
+        tri->resetCoords();
+        tri->d()->x[0] = points->d()->x[0];
+        tri->d()->x[1] = points->d()->x[1];
+        tri->d()->x[2] = points->d()->x[2];
+        auto *cl = tri->cl().data();
 
-    for (auto fit = begin; fit != end; ++fit) {
-        const auto &fh = *fit;
-        if (fh.has_vertex(inf))
-            continue;
-        for (unsigned i = 0; i < 3; ++i) {
-            *cl = fh.vertex(i)->info();
-            ++cl;
+        for (auto fit = begin; fit != end; ++fit) {
+            const auto &fh = *fit;
+            if (fh.has_vertex(inf))
+                continue;
+            for (unsigned i = 0; i < 3; ++i) {
+                *cl = fh.vertex(i)->info();
+                ++cl;
+            }
         }
     }
 
@@ -266,7 +286,43 @@ Object::ptr DelaunayTriangulator::calculateGrid(Points::const_ptr points,
         auto in = convertToTetGen<Dim>(points, data);
         tetgenio out;
         tetgenbehavior behaviour;
-        tetrahedralize(&behaviour, in.get(), &out);
+        try {
+            tetrahedralize(&behaviour, in.get(), &out);
+        } catch (int &e) {
+            const char *err = "unknown error";
+            switch (e) {
+                // copied from tetgen.h: terminatetetgen(...) and adapted
+            case 1: // Out of memory.
+                err = "Error:  Out of memory.";
+                break;
+            case 2: // Encounter an internal error.
+                err = "Please report this bug to Hang.Si@wias-berlin.de. Include\n"
+                      "  the message above, your input data set, and the exact\n"
+                      "  command line you used to run this program, thank you.";
+                break;
+            case 3:
+                err = "The input surface mesh contain self-intersections. Program stopped.";
+                break;
+            case 4:
+                err = "A very small input feature size was detected. Program stopped.";
+                break;
+            case 5:
+                err = "Two very close input facets were detected. Program stopped.\n"
+                      "Hint: use -Y option to avoid adding Steiner points in boundary.";
+                break;
+            case 10:
+                err = "An input error was detected. Program stopped.";
+                break;
+            case 200:
+                err = "Boundary contains Steiner points (-YY option). Program stopped.";
+                break;
+            }
+
+            std::stringstream ss;
+            ss << "tetrahedralize failed: error code " << e << ": " << err;
+            sendError(ss.str());
+            return Object::ptr();
+        }
         if (out.numberofpoints == in->numberofpoints) //we can reuse the data object
         {
             auto grid = convertFromTetGen<Dim>(out).first;

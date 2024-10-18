@@ -4,6 +4,7 @@
 #include <sstream>
 #include <iomanip>
 #include <set>
+#include <locale>
 
 namespace vistle {
 
@@ -62,13 +63,14 @@ Url::Url(const std::string &url)
     if (url.empty())
         return;
 
+    std::locale C("C");
     auto it = url.begin();
     // must contain scheme and must begin with an alphabet character
-    if (!isalpha(*it))
+    if (!isalpha(*it, C))
         return;
 
     for (; it != url.end(); ++it) {
-        if (std::isalnum(*it))
+        if (std::isalnum(*it, C))
             continue;
         if (*it == '+')
             continue;

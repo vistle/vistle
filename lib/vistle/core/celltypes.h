@@ -2,6 +2,7 @@
 #define VISTLE_CELLTYPES_H
 
 #include <vtkm/CellShape.h>
+#include <vtkm/CellClassification.h>
 
 #include "scalar.h"
 #include "index.h"
@@ -11,13 +12,10 @@ namespace vistle {
 namespace cell {
 
 enum CellType {
-    GHOST_BIT = 0x80,
-    CONVEX_BIT = 0x40, //<! cell was checked to be convex
-    TYPE_MASK = 0x3f,
-
     // make sure that these types match those from COVISE: src/kernel/do/coDoUnstructuredGrid.h
     NONE = vtkm::CELL_SHAPE_EMPTY,
     BAR = vtkm::CELL_SHAPE_LINE,
+    POLYLINE = vtkm::CELL_SHAPE_POLY_LINE,
     TRIANGLE = vtkm::CELL_SHAPE_TRIANGLE,
     QUAD = vtkm::CELL_SHAPE_QUAD,
     TETRAHEDRON = vtkm::CELL_SHAPE_TETRA,
@@ -29,6 +27,8 @@ enum CellType {
     POLYHEDRON = 11, // in COVISE, reserved for VOXEL in vtk-m
     NUM_TYPES = vtkm::NUMBER_OF_CELL_SHAPES, // keep last
 };
+
+enum CellClassification { NORMAL = vtkm::CellClassification::Normal, GHOST = vtkm::CellClassification::Ghost };
 
 template<int type>
 struct TypeData;
@@ -109,11 +109,18 @@ struct TypeData<HEXAHEDRON> {
 };
 
 template<>
+struct TypeData<POLYLINE> {
+    const int Dimension = 1;
+    const CellType type = POLYLINE;
+};
+
+template<>
 struct TypeData<POLYGON> {
     const int Dimension = 2;
     const CellType type = POLYGON;
     const int NumFaces = 1;
 };
+
 
 template<>
 struct TypeData<POLYHEDRON> {

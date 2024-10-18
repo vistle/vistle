@@ -49,7 +49,7 @@ ReadDyna3D::ReadDyna3D(const std::string &name, int moduleID, mpi::communicator 
 
     // Parameters
     p_data_path = addStringParameter("filename", "Geometry file path", "/data/general/examples/Dyna3d/aplot",
-                                     Parameter::Filename);
+                                     Parameter::ExistingFilename);
     p_nodalDataType =
         addIntParameter("nodalDataType", "Nodal results data to be read", No_Node_Data, Parameter::Choice);
     V_ENUM_SET_CHOICES(p_nodalDataType, NodalDataType);

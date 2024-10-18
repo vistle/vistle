@@ -14,8 +14,6 @@
 #include <vistle/core/structuredgrid.h>
 #include <vistle/core/unstr.h>
 #include <vistle/core/points.h>
-#include <vistle/core/spheres.h>
-#include <vistle/core/coordswradius.h>
 #include <vistle/util/enum.h>
 
 #include "Gendat.h"
@@ -64,9 +62,9 @@ Gendat::Gendat(const std::string &name, int moduleID, mpi::communicator comm): R
     V_ENUM_SET_CHOICES(m_dataMode[2], DataMode);
     m_dataScale[2] = addFloatParameter("data_scale_vec_z", "data scale factor", 1.);
 
-    m_size[0] = addIntParameter("size_x", "number of cells per block in x-direction", 10);
+    m_size[0] = addIntParameter("size_x", "number of cells per block in x-direction", 11);
     m_size[1] = addIntParameter("size_y", "number of cells per block in y-direction", 10);
-    m_size[2] = addIntParameter("size_z", "number of cells per block in z-direction", 10);
+    m_size[2] = addIntParameter("size_z", "number of cells per block in z-direction", 9);
 
     m_blocks[0] = addIntParameter("blocks_x", "number of blocks in x-direction", 3);
     m_blocks[1] = addIntParameter("blocks_y", "number of blocks in y-direction", 3);
@@ -258,12 +256,14 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
         bmin[c] = gmin[c] + currBlock[c] * bdist[c];
         if (m_size[c]->getValue() > 0) {
             dist[c] = bdist[c] / m_size[c]->getValue();
+            min[c] = bmin[c];
+            max[c] = bmin[c] + bdist[c];
         } else {
+            min[c] = bmin[c] + 0.5 * bdist[c];
+            max[c] = min[c];
             bdist[c] = 0.;
             dist[c] = 0.;
         }
-        min[c] = bmin[c];
-        max[c] = bmin[c] + bdist[c];
     }
     GeoMode geoMode = (GeoMode)m_geoMode->getValue();
     Index numVert = dim[0] * dim[1] * dim[2];
@@ -443,7 +443,9 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
                         if ((ix < ghostWidth[0][0] || ix + ghostWidth[0][1] >= nx) ||
                             (iy < ghostWidth[1][0] || iy + ghostWidth[1][1] >= ny) ||
                             (iz < ghostWidth[2][0] || iz + ghostWidth[2][1] >= nz)) {
-                            tl[elem] |= UnstructuredGrid::GHOST_BIT;
+                            u->setGhost(elem, true);
+                        } else {
+                            u->setGhost(elem, false);
                         }
 
                         ++elem;
@@ -452,15 +454,23 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
                 }
             }
 
-            if (checkConvexity())
-                u->checkConvexity();
-
             geoOut = u;
         } else if (geoMode == Point_Geometry) {
             Points::ptr p(new Points(numVert));
             geoOut = p;
         } else if (geoMode == Sphere_Geometry) {
-            Spheres::ptr s(new Spheres(numVert));
+            Points::ptr s(new Points(numVert));
+            auto rad = std::make_shared<Vec<Scalar>>(numVert);
+            Scalar *r = rad->x().data();
+            for (Index i = 0; i < dim[0]; ++i) {
+                for (Index j = 0; j < dim[1]; ++j) {
+                    for (Index k = 0; k < dim[2]; ++k) {
+                        Index idx = StructuredGrid::vertexIndex(i, j, k, dim);
+                        r[idx] = dist[0] * 0.2;
+                    }
+                }
+            }
+            s->setRadius(rad);
             geoOut = s;
         }
 
@@ -469,7 +479,7 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
             for (Index i = 0; i < dim[0]; ++i) {
                 for (Index j = 0; j < dim[1]; ++j) {
                     for (Index k = 0; k < dim[2]; ++k) {
-                        Index idx = StructuredGrid::vertexIndex(i, j, k, dim);
+                        Index idx = LayerGrid::vertexIndex(i, j, k, dim);
                         z[idx] = min[2] + k * dist[2];
                     }
                 }
@@ -487,18 +497,6 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
                         x[idx] = min[0] + i * dist[0];
                         y[idx] = min[1] + j * dist[1];
                         z[idx] = min[2] + k * dist[2];
-                    }
-                }
-            }
-        }
-
-        if (auto rad = CoordsWithRadius::as(geoOut)) {
-            Scalar *r = rad->r().data();
-            for (Index i = 0; i < dim[0]; ++i) {
-                for (Index j = 0; j < dim[1]; ++j) {
-                    for (Index k = 0; k < dim[2]; ++k) {
-                        Index idx = StructuredGrid::vertexIndex(i, j, k, dim);
-                        r[idx] = dist[0] * 0.2;
                     }
                 }
             }

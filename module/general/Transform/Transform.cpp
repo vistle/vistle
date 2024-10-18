@@ -122,7 +122,7 @@ M pow(const M &m, unsigned e)
 
 bool Transform::compute()
 {
-    //std::cerr << "Transform: compute: execcount=" << m_executionCount << std::endl;
+    //std::cerr << "Transform: compute: generation=" << m_generation << std::endl;
 
     Object::const_ptr obj = expect<Object>(data_in);
     if (!obj)
@@ -170,27 +170,32 @@ bool Transform::compute()
     transform *= rotMat;
     transform *= translateMat;
 
-    bool keep_original = p_keep_original->getValue();
     int repetitions = p_repetitions->getValue();
     AnimationMode animation = (AnimationMode)p_animation->getValue();
-    int timestep = animation == Deanimate ? -1 : 0;
-    if (animation == TimestepAsRepetitionCount) {
+    int timestep = 0;
+    if (animation == Deanimate) {
+        timestep = -1;
+    } else if (animation == TimestepAsRepetitionCount) {
         timestep = split.timestep;
         repetitions = timestep;
-    }
-
-    if (animation == TimestepAsPower) {
+    } else if (animation == TimestepAsPower) {
         timestep = split.timestep;
-        transform = pow(transform, timestep + 1);
         repetitions = 1;
+        if (timestep > 0)
+            transform = pow(transform, timestep);
+        else
+            transform = Matrix4::Identity();
     }
 
+    bool keep_original = p_keep_original->getValue();
     if (keep_original) {
         if (animation != Keep && animation != TimestepAsRepetitionCount) {
             Object::ptr outGeo;
             if (auto entry = m_cache.getOrLock(geo->getName(), outGeo)) {
                 outGeo = geo->clone();
                 outGeo->setTimestep(timestep);
+                if (animation == Deanimate)
+                    outGeo->setNumTimesteps(-1);
                 updateMeta(outGeo);
                 m_cache.storeAndUnlock(entry, outGeo);
             }
@@ -202,8 +207,6 @@ bool Transform::compute()
             } else {
                 addObject(data_out, outGeo);
             }
-            if (animation != Deanimate)
-                ++timestep;
         } else {
             Object::ptr nobj;
             if (auto entry = m_cache.getOrLock(obj->getName(), nobj)) {
@@ -214,6 +217,7 @@ bool Transform::compute()
             addObject(data_out, nobj);
         }
     }
+
     Matrix4 t = geo->getTransform();
     for (int i = 0; i < repetitions; ++i) {
         t *= transform;
@@ -222,11 +226,9 @@ bool Transform::compute()
         if (auto entry = m_cache.getOrLock(key, outGeo)) {
             outGeo = geo->clone();
             outGeo->setTransform(t);
-            if (animation != Keep && animation != TimestepAsRepetitionCount) {
-                outGeo->setTimestep(timestep);
-                if (animation != Deanimate)
-                    ++timestep;
-            }
+            outGeo->setTimestep(timestep);
+            if (animation == Deanimate)
+                outGeo->setNumTimesteps(-1);
             updateMeta(outGeo);
             m_cache.storeAndUnlock(entry, outGeo);
         }
@@ -237,6 +239,10 @@ bool Transform::compute()
             addObject(data_out, dataOut);
         } else {
             addObject(data_out, outGeo);
+        }
+        if (animation != Keep && animation != TimestepAsRepetitionCount) {
+            if (animation != Deanimate)
+                ++timestep;
         }
     }
 

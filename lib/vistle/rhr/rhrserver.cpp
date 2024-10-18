@@ -24,7 +24,6 @@
 #include <vistle/core/messages.h>
 #include <vistle/util/listenv4v6.h>
 #include <vistle/util/threadname.h>
-#include <vistle/module/module.h>
 
 
 #define CERR std::cerr << "RHR: "
@@ -41,11 +40,6 @@ bool RhrServer::send(const RemoteRenderMessage &msg, const buffer *payload)
 
 bool RhrServer::send(message::Buffer msg, const buffer *payload)
 {
-    if (m_clientModuleId != message::Id::Invalid) {
-        msg.setDestId(m_clientModuleId);
-        return m_module->sendMessage(msg, payload);
-    }
-
     if (m_clientSocket && !m_clientSocket->is_open()) {
         resetClient();
         CERR << "client disconnected" << std::endl;
@@ -69,8 +63,7 @@ bool RhrServer::send(message::Buffer msg, const buffer *payload)
 }
 
 //! called when plugin is loaded
-RhrServer::RhrServer(vistle::Module *module)
-: m_module(module), m_acceptorv4(m_io), m_acceptorv6(m_io), m_listen(true), m_port(0), m_destPort(0)
+RhrServer::RhrServer(): m_acceptorv4(m_io), m_acceptorv6(m_io), m_listen(true), m_port(0), m_destPort(0)
 {
     init();
 }
@@ -104,9 +97,6 @@ bool RhrServer::isConnecting() const
 
 bool RhrServer::isConnected() const
 {
-    if (m_clientModuleId != message::Id::Invalid)
-        return true;
-
     return m_clientSocket.get();
 }
 
@@ -148,11 +138,6 @@ void RhrServer::setZfpMode(CompressionParameters::ZfpMode mode)
 void RhrServer::setDumpImages(bool enable)
 {
     m_dumpImages = enable;
-}
-
-void RhrServer::setClientModuleId(int moduleId)
-{
-    m_clientModuleId = moduleId;
 }
 
 unsigned short RhrServer::port() const
@@ -321,7 +306,6 @@ void RhrServer::resetClient()
     lightsUpdateCount = 0;
     m_clientVariants.clear();
     m_viewData.clear();
-    m_clientModuleId = message::Id::Invalid;
 }
 
 bool RhrServer::startServer(unsigned short port)
@@ -385,11 +369,16 @@ void RhrServer::handleAccept(asio::ip::tcp::acceptor &a, std::shared_ptr<asio::i
     startAccept(a);
 }
 
-bool RhrServer::makeConnection(const std::string &host, unsigned short port, int secondsToTry)
+bool RhrServer::makeConnection(const std::string &host, unsigned short port, int secondsToTry,
+                               const std::string &tunnelId)
 {
     m_listen = false;
 
-    CERR << "connecting to " << host << ":" << port << "..." << std::endl;
+    if (tunnelId.empty()) {
+        CERR << "connecting to " << host << ":" << port << "..." << std::endl;
+    } else {
+        CERR << "connecting tunnel via " << host << ":" << port << "..." << std::endl;
+    }
 
     asio::ip::tcp::resolver resolver(m_io);
     asio::ip::tcp::resolver::query query(host, std::to_string(port), asio::ip::tcp::resolver::query::numeric_service);
@@ -425,9 +414,15 @@ bool RhrServer::makeConnection(const std::string &host, unsigned short port, int
 
     m_destHost = host;
     m_destPort = port;
+    m_tunnelId = tunnelId;
 
-    CERR << "connected to " << host << ":" << port << std::endl;
-
+    if (tunnelId.empty()) {
+        CERR << "connected to " << host << ":" << port << std::endl;
+        m_tunnelEstablished = true;
+    } else {
+        CERR << "connected to tunnel at " << host << ":" << port << std::endl;
+        m_tunnelEstablished = false;
+    }
     send(message::Identify());
 
     return true;
@@ -656,9 +651,6 @@ bool RhrServer::handleVariant(std::shared_ptr<RhrServer::socket> sock, const var
 //! this is called before every frame, used for polling for RFB messages
 void RhrServer::preFrame()
 {
-    if (m_clientModuleId != vistle::message::Id::Invalid)
-        return;
-
     m_io.poll();
     if (!isConnected())
         return;
@@ -697,13 +689,27 @@ void RhrServer::preFrame()
         }
 
         switch (msg.type()) {
+        case message::TUNNELESTABLISHED: {
+            auto &m = msg.as<message::TunnelEstablished>();
+            CERR << "tunnel established: " << m << std::endl;
+            m_tunnelEstablished = true;
+            if (m.role() == message::TunnelEstablished::Server) {
+                send(message::Identify());
+            }
+            break;
+        }
         case message::IDENTIFY: {
             auto &m = msg.as<message::Identify>();
+            CERR << "client identity: " << m << std::endl;
             using message::Identify;
             switch (m.identity()) {
             case Identify::REQUEST: {
-                Identify id(m, Identify::RENDERSERVER);
-                send(id);
+                if (m_tunnelEstablished) {
+                    Identify id(m, Identify::RENDERSERVER);
+                    send(id);
+                } else {
+                    send(message::Identify(m, m_tunnelId, Identify::Server));
+                }
                 break;
             }
             case Identify::RENDERCLIENT: {
@@ -718,6 +724,9 @@ void RhrServer::preFrame()
                     msg.visible = var.second;
                     send(msg);
                 }
+                break;
+            }
+            case Identify::HUB: {
                 break;
             }
             default: {

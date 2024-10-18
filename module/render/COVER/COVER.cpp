@@ -131,11 +131,11 @@ const COVER::Variant &COVER::Creator::getVariant(const std::string &variantName,
     auto it = variants.find(variantName);
     if (it == variants.end()) {
         it = variants.emplace(std::make_pair(variantName, Variant(name, variantName))).first;
+        if (vis != vistle::RenderObject::DontChange)
+            it->second.ro.setInitialVisibility(vis);
+        baseVariant.constant->addChild(it->second.root);
+        coVRPluginList::instance()->addNode(it->second.root, &it->second.ro, COVER::the()->m_plugin);
     }
-    if (vis != vistle::RenderObject::DontChange)
-        it->second.ro.setInitialVisibility(vis);
-    baseVariant.constant->addChild(it->second.root);
-    coVRPluginList::instance()->addNode(it->second.root, &it->second.ro, COVER::the()->m_plugin);
     return it->second;
 }
 
@@ -217,6 +217,9 @@ COVER::COVER(const std::string &name, int moduleId, mpi::communicator comm): vis
     } else {
         m_config.reset(
             new opencover::config::Access(configAccess()->hostname(), configAccess()->cluster(), comm.rank()));
+        if (auto covisedir = getenv("COVISEDIR")) {
+            m_config->setPrefix(covisedir);
+        }
     }
     m_coverConfigBridge.reset(new CoverConfigBridge(this));
     m_config->setWorkspaceBridge(m_coverConfigBridge.get());
@@ -230,6 +233,16 @@ COVER::COVER(const std::string &name, int moduleId, mpi::communicator comm): vis
     setObjectReceivePolicy(m_fastestObjectReceivePolicy);
 
     setIntParameter("render_mode", AllShmLeaders);
+
+    m_optimizeIndices =
+        addIntParameter("optimize_indices", "optimize geometry indices for better GPU vertex cache utilization",
+                        m_options.optimizeIndices, Parameter::Boolean);
+    m_indexedGeometry = addIntParameter("indexed_geometry", "build indexed geometry, if useful",
+                                        m_options.indexedGeometry, Parameter::Boolean);
+    m_numPrimitives =
+        addIntParameter("num_primitives", "number of primitives to process before splitting into multiple geodes",
+                        m_options.numPrimitives);
+    setParameterMinimum<Integer>(m_numPrimitives, 1);
 
     m_maySleep = false;
 }
@@ -250,6 +263,7 @@ void COVER::setPlugin(coVRPlugin *plugin)
     if (plugin) {
         cover->getObjectsRoot()->addChild(vistleRoot);
         coVRPluginList::instance()->addNode(vistleRoot, nullptr, plugin);
+        m_colormaps[""] = OsgColorMap(false); // fake colormap for objects without mapped data for using shaders
         initDone();
     } else if (m_plugin) {
         prepareQuit();
@@ -276,13 +290,13 @@ bool COVER::parameterAdded(const int senderId, const std::string &name, const me
         plugin = plugin.substr(0, plugin.size() - 3);
     if (boost::algorithm::ends_with(plugin, "Vtkm"))
         plugin = plugin.substr(0, plugin.size() - 4);
-    if (plugin == "CutGeometry")
+    if (plugin == "CutGeometry" || plugin == "Clip")
         plugin = "CuttingSurface";
     if (plugin == "DisCOVERay" || plugin == "OsgRenderer" || plugin == "ANARemote")
         plugin = "RhrClient";
     if (plugin == "Color" || plugin == "ColorRandom")
         plugin = "ColorBars";
-    // std::cerr << "parameterAdded: sender=" <<  senderId << ", name=" << name << ", plugin=" << plugin << std::endl;
+    //std::cerr << "parameterAdded: sender=" << senderId << ", name=" << name << ", plugin=" << plugin << std::endl;
 
     InteractorMap::iterator it = m_interactorMap.find(senderId);
     if (it == m_interactorMap.end()) {
@@ -339,6 +353,14 @@ bool COVER::changeParameter(const Parameter *p)
 {
     if (m_coverConfigBridge) {
         m_coverConfigBridge->changeParameter(p);
+    }
+
+    if (p == m_optimizeIndices) {
+        m_options.optimizeIndices = m_optimizeIndices->getValue();
+    } else if (p == m_numPrimitives) {
+        m_options.numPrimitives = m_numPrimitives->getValue();
+    } else if (p == m_indexedGeometry) {
+        m_options.indexedGeometry = m_indexedGeometry->getValue();
     }
 
     return Renderer::changeParameter(p);
@@ -532,9 +554,7 @@ std::shared_ptr<vistle::RenderObject> COVER::addObject(int senderId, const std::
         cover->addPlugin("Volume");
     } else if (!VistleGeometryGenerator::isSupported(objType)) {
         std::stringstream str;
-        if (objType == vistle::Object::TUBES) {
-            str << "Tubes input unsupported - use ToTriangle module";
-        } else if (objType != vistle::Object::EMPTY) {
+        if (objType != vistle::Object::EMPTY) {
             str << "Unsupported input data: " << Object::toString(objType);
         }
         std::cerr << "COVER::addObject: " << str.str() << std::endl;
@@ -589,6 +609,7 @@ std::shared_ptr<vistle::RenderObject> COVER::addObject(int senderId, const std::
             VistleGeometryGenerator::unlock();
         }
         vgr.setColorMaps(&m_colormaps);
+        vgr.setOptions(m_options);
         m_delayedObjects.emplace_back(pro, vgr);
         m_delayedObjects.back().transform = transform;
         //updateStatus();
@@ -680,8 +701,8 @@ bool COVER::addColorMap(const std::string &species, Object::const_ptr colormap)
         cmap.setRange(texture->getMin(), texture->getMax());
 
         cmap.image->setPixelFormat(GL_RGBA);
-        cmap.image->setImage(texture->getWidth(), 1, 1, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, &texture->pixels()[0],
-                             osg::Image::NO_DELETE);
+        cmap.image->setImage(texture->getWidth(), 1, 1, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE,
+                             const_cast<unsigned char *>(&texture->pixels()[0]), osg::Image::NO_DELETE);
         cmap.image->dirty();
 
         cmap.setBlendWithMaterial(texture->hasAttribute("_blend_with_material"));
@@ -776,6 +797,7 @@ std::map<std::string, std::string> COVER::setupEnv(const std::string &bindir)
         // system
         envvars.push_back("PATH");
         envvars.push_back("LD_LIBRARY_PATH");
+        envvars.push_back("LD_PRELOAD");
         envvars.push_back("DYLD_LIBRARY_PATH");
         envvars.push_back("DYLD_FRAMEWORK_PATH");
         envvars.push_back("DYLD_FALLBACK_LIBRARY_PATH");
@@ -1018,7 +1040,7 @@ bool COVER::handleMessage(const message::Message *message, const MessagePayload 
     }
     case vistle::message::COVER: {
         auto &cmsg = message->as<const message::Cover>();
-        covise::DataHandle dh(payload->data(), payload->size(), false /* do not delete */);
+        covise::DataHandle dh(const_cast<char *>(payload->data()), payload->size(), false /* do not delete */);
         covise::Message msg(cmsg.subType(), dh);
         msg.sender = cmsg.sender();
         msg.send_type = cmsg.senderType();

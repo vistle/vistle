@@ -105,7 +105,8 @@ bool ToUnstructured::compute()
 
             // construct type list and element list
             for (Index i = 0; i < numElements; i++) {
-                unstrGridOut->tl()[i] = grid->isGhostCell(i) ? (CellType | UnstructuredGrid::GHOST_BIT) : CellType;
+                unstrGridOut->tl()[i] = CellType;
+                unstrGridOut->setGhost(i, grid->isGhostCell(i));
                 unstrGridOut->el()[i] = i * NumCellCorners;
             }
 
@@ -196,6 +197,7 @@ bool ToUnstructured::compute()
         outdata->copyAttributes(data);
         outdata->setGrid(unstrGridOut);
         updateMeta(unstrGridOut);
+        updateMeta(outdata);
         addObject("data_out", outdata);
     } else {
         addObject("data_out", unstrGridOut);

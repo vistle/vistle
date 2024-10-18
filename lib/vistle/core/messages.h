@@ -45,7 +45,9 @@ public:
                                         (RENDERSERVER) //< remote render server
                                         (RENDERCLIENT) //< remote render client
                                         (VRB) //< COVISE/OpenCOVER request broker for collaborative VR
+                                        (TUNNEL) //< initiate rendezvous tunnel connection
     )
+    DEFINE_ENUM_WITH_STRING_CONVERSIONS(TunnelRole, (Client)(Server))
 
     typedef std::array<char, 32> mac_t;
     typedef std::array<char, 64> session_data_t;
@@ -53,6 +55,8 @@ public:
     explicit Identify(const std::string &name = ""); //< request identity
     Identify(const Identify &request, Identity id, const std::string &name = ""); //< answer identification request
     Identify(const Identify &request, Identity id, int rank);
+    Identify(const Identify &request, const std::string &tunnelName, TunnelRole role,
+             int streamNumber = 0); //< provide one end of a tunnel connection
     Identity identity() const;
     const char *name() const;
     int rank() const;
@@ -64,6 +68,10 @@ public:
     void setNumRanks(int size);
     size_t pid() const;
     void setPid(size_t pid);
+
+    const char *tunnelId() const;
+    TunnelRole tunnelRole() const;
+    int tunnelStreamNumber() const;
 
     void computeMac();
     bool verifyMac(bool compareSessionData = true) const;
@@ -123,6 +131,8 @@ public:
     void setArch(const std::string &arch);
     std::string info() const;
     void setInfo(const std::string &info);
+    std::string version() const;
+    void setVersion(const std::string &version);
 
 private:
     int m_id;
@@ -137,8 +147,9 @@ private:
     address_t m_address;
     bool m_hasUserInterface;
     bool m_hasVrb;
-    module_name_t m_systemType;
-    module_name_t m_arch;
+    tag_t m_systemType;
+    tag_t m_arch;
+    tag_t m_version;
     address_t m_info;
 };
 
@@ -327,13 +338,11 @@ public:
                                         (Reduce) // call reduce()
     )
 
-    explicit Execute(What what = Execute::ComputeExecute, int module = Id::Broadcast, int count = -1);
+    explicit Execute(What what = Execute::ComputeExecute, int module = Id::Broadcast);
     Execute(int module, double realtime, double step = 0.);
 
     void setModule(int);
     int getModule() const;
-    void setExecutionCount(int count);
-    int getExecutionCount() const;
 
     bool allRanks() const;
     void setAllRanks(bool allRanks);
@@ -347,7 +356,6 @@ public:
 private:
     bool m_allRanks; //!< whether execute should be broadcasted across all MPI ranks
     int module; //!< destination module, -1: all sources
-    int executionCount; //!< count of execution which triggered this execute
     What m_what; //!< reason why this message was generated
     double m_realtime; //!< realtime/timestep currently displayed
     double m_animationStepDuration; //!< duration of a single timestep
@@ -357,11 +365,7 @@ V_ENUM_OUTPUT_OP(What, Execute)
 //! notify that module is done executing
 class V_COREEXPORT ExecutionDone: public MessageBase<ExecutionDone, EXECUTIONDONE> {
 public:
-    explicit ExecutionDone(int executionCount);
-    int getExecutionCount() const;
-
-private:
-    int m_executionCount; //!< count of execution after which this message was issued
+    ExecutionDone();
 };
 
 //! trigger execution of a module function
@@ -641,7 +645,11 @@ private:
 
 class V_COREEXPORT Barrier: public MessageBase<Barrier, BARRIER> {
 public:
-    Barrier();
+    Barrier(const std::string &info);
+    const char *info() const;
+
+private:
+    description_t m_info;
 };
 
 class V_COREEXPORT BarrierReached: public MessageBase<BarrierReached, BARRIERREACHED> {
@@ -833,15 +841,12 @@ public:
                                         (Start) //< execution starts - if applicable, prepare() will be invoked
                                         (Finish) //< execution finishes - if applicable, reduce() has finished
     )
-    ExecutionProgress(Progress stage, int count);
+    explicit ExecutionProgress(Progress stage);
     Progress stage() const;
     void setStage(Progress stage);
-    void setExecutionCount(int count);
-    int getExecutionCount() const;
 
 private:
     Progress m_stage;
-    int m_executionCount; //!< count of execution which triggered this message
 };
 V_ENUM_OUTPUT_OP(Progress, ExecutionProgress)
 
@@ -904,6 +909,8 @@ public:
     RequestTunnel(unsigned short srcPort, const boost::asio::ip::address_v6 destHost, unsigned short destPort);
     //! establish tunnel - let hub forward incoming connections to srcPort to destPort on local interface, address will be filled in by rank 0 of cluster manager
     RequestTunnel(unsigned short srcPort, unsigned short destPort);
+    //! establish tunnel - let both partners connect to hub on hubPort, which forwards the data to the other partner providing matchId
+    RequestTunnel(const std::string &matchId, int streamNumber);
     //! remove tunnel
     explicit RequestTunnel(unsigned short srcPort);
 
@@ -926,6 +933,17 @@ private:
     unsigned short m_destPort;
     bool m_remove;
 };
+
+class V_COREEXPORT TunnelEstablished: public MessageBase<TunnelEstablished, TUNNELESTABLISHED> {
+public:
+    DEFINE_ENUM_WITH_STRING_CONVERSIONS(Role, (Server)(Client))
+    TunnelEstablished(Role role);
+    Role role() const;
+
+private:
+    Role m_role;
+};
+
 
 //! request remote data object
 class V_COREEXPORT RequestObject: public MessageBase<RequestObject, REQUESTOBJECT> {
@@ -967,7 +985,7 @@ private:
     int32_t m_timestep, m_numTimesteps;
     int32_t m_animationstep, m_numAnimationsteps;
     int32_t m_iteration;
-    int32_t m_executionCount;
+    int32_t m_generation;
     int32_t m_creator;
     double m_realtime;
 };

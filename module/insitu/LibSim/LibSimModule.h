@@ -6,10 +6,10 @@
 #include <vistle/insitu/message/MessageHandler.h>
 #include <vistle/insitu/message/SyncShmIDs.h>
 #include <vistle/insitu/message/TcpMessage.h>
-#include <vistle/insitu/module/inSituModule.h>
+#include <vistle/insitu/module/inSituModuleBase.h>
 #include <vistle/module/module.h>
 
-class LibSimModule: public vistle::insitu::InSituModule {
+class LibSimModule: public vistle::insitu::InSituModuleBase {
 public:
     LibSimModule(const std::string &name, int moduleID, mpi::communicator comm);
     ~LibSimModule();

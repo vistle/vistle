@@ -20,15 +20,11 @@ using namespace vistle;
 
 ShowGrid::ShowGrid(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
-    setDefaultCacheMode(ObjectCache::CacheDeleteLate);
-
     createInputPort("grid_in", "grid or data mapped to grid");
     createOutputPort("grid_out", "edges of grid cells");
 
     addIntParameter("normalcells", "Show normal (non ghost) cells", 1, Parameter::Boolean);
     addIntParameter("ghostcells", "Show ghost cells", 0, Parameter::Boolean);
-    addIntParameter("convex", "Show convex cells", 1, Parameter::Boolean);
-    addIntParameter("nonconvex", "Show non-convex cells", 1, Parameter::Boolean);
 
     addIntParameter("tetrahedron", "Show tetrahedron", 1, Parameter::Boolean);
     addIntParameter("pyramid", "Show pyramid", 1, Parameter::Boolean);
@@ -36,6 +32,7 @@ ShowGrid::ShowGrid(const std::string &name, int moduleID, mpi::communicator comm
     addIntParameter("hexahedron", "Show hexahedron", 1, Parameter::Boolean);
     addIntParameter("polyhedron", "Show polyhedron", 1, Parameter::Boolean);
     addIntParameter("polygon", "Show polygon", 1, Parameter::Boolean);
+    addIntParameter("polyline", "Show polylines/line strips", 1, Parameter::Boolean);
     addIntParameter("quad", "Show quad", 1, Parameter::Boolean);
     addIntParameter("triangle", "Show triangle", 1, Parameter::Boolean);
     addIntParameter("bar", "Show bar", 1, Parameter::Boolean);
@@ -52,6 +49,7 @@ bool ShowGrid::compute()
 {
     std::array<bool, UnstructuredGrid::NUM_TYPES> showTypes;
     showTypes[UnstructuredGrid::BAR] = getIntParameter("bar");
+    showTypes[UnstructuredGrid::POLYLINE] = getIntParameter("polyline");
     showTypes[UnstructuredGrid::TRIANGLE] = getIntParameter("triangle");
     showTypes[UnstructuredGrid::QUAD] = getIntParameter("quad");
     showTypes[UnstructuredGrid::TETRAHEDRON] = getIntParameter("tetrahedron");
@@ -62,9 +60,6 @@ bool ShowGrid::compute()
     showTypes[UnstructuredGrid::POINT] = showTypes[UnstructuredGrid::POLYHEDRON] = getIntParameter("polyhedron");
     const bool shownor = getIntParameter("normalcells");
     const bool showgho = getIntParameter("ghostcells");
-    const bool showconv = getIntParameter("convex");
-    const bool shownonconv = getIntParameter("nonconvex");
-
 
     const Integer cellnrmin = m_CellNrMin->getValue();
     const Integer cellnrmax = m_CellNrMax->getValue();
@@ -77,12 +72,20 @@ bool ShowGrid::compute()
         sendError("did not receive an input object");
         return true;
     }
+    Object::const_ptr input = grid;
+    DataBase::ptr data;
+    auto mapped = split.mapped;
+    if (mapped && mapped->guessMapping() == DataBase::Vertex) {
+        input = mapped;
+        data = mapped->clone();
+    }
 
-    vistle::Lines::ptr out;
-    if (auto *entry = m_cache.getOrLock(grid->getName(), out)) {
-        out.reset(new vistle::Lines(Object::Initialized));
-        auto &ocl = out->cl();
-        auto &oel = out->el();
+    vistle::Object::ptr out;
+    vistle::Lines::ptr lines;
+    if (auto *entry = m_cache.getOrLock(input->getName(), out)) {
+        lines.reset(new vistle::Lines(Object::Initialized));
+        auto &ocl = lines->cl();
+        auto &oel = lines->el();
 
         if (auto unstr = UnstructuredGrid::as(grid)) {
             const Index *icl = &unstr->cl()[0];
@@ -95,14 +98,11 @@ bool ShowGrid::compute()
 
             for (Index index = begin; index < end; ++index) {
                 auto type = unstr->tl()[index];
-                const bool ghost = type & UnstructuredGrid::GHOST_BIT;
-                const bool conv = type & UnstructuredGrid::CONVEX_BIT;
+                const bool ghost = unstr->isGhost(index);
 
-                const bool show =
-                    ((showgho && ghost) || (shownor && !ghost)) && ((showconv && conv) || (shownonconv && !conv));
+                const bool show = ((showgho && ghost) || (shownor && !ghost));
                 if (!show)
                     continue;
-                type &= vistle::UnstructuredGrid::TYPE_MASK;
                 if (!showTypes[type])
                     continue;
 
@@ -146,11 +146,19 @@ bool ShowGrid::compute()
                     oel.push_back(ocl.size());
                     break;
                 }
+                case UnstructuredGrid::POLYLINE: {
+                    std::copy(icl + begin, icl + end, std::back_inserter(ocl));
+                    oel.push_back(ocl.size());
+                    break;
+                }
                 }
             }
-            out->d()->x[0] = unstr->d()->x[0];
-            out->d()->x[1] = unstr->d()->x[1];
-            out->d()->x[2] = unstr->d()->x[2];
+            lines->d()->x[0] = unstr->d()->x[0];
+            lines->d()->x[1] = unstr->d()->x[1];
+            lines->d()->x[2] = unstr->d()->x[2];
+            if (mapped) {
+                data = mapped->clone();
+            }
         } else if (auto str = StructuredGridBase::as(grid)) {
             const Index dims[3] = {str->getNumDivisions(0), str->getNumDivisions(1), str->getNumDivisions(2)};
             Index begin = 0, end = str->getNumElements();
@@ -187,15 +195,15 @@ bool ShowGrid::compute()
             }
 
             if (auto s = StructuredGrid::as(grid)) {
-                out->d()->x[0] = s->d()->x[0];
-                out->d()->x[1] = s->d()->x[1];
-                out->d()->x[2] = s->d()->x[2];
+                lines->d()->x[0] = s->d()->x[0];
+                lines->d()->x[1] = s->d()->x[1];
+                lines->d()->x[2] = s->d()->x[2];
             } else {
                 const Index numVert = str->getNumVertices();
-                out->setSize(numVert);
-                auto x = &out->x()[0];
-                auto y = &out->y()[0];
-                auto z = &out->z()[0];
+                lines->setSize(numVert);
+                auto x = &lines->x()[0];
+                auto y = &lines->y()[0];
+                auto z = &lines->z()[0];
 
                 for (Index i = 0; i < numVert; ++i) {
                     auto v = str->getVertex(i);
@@ -205,82 +213,120 @@ bool ShowGrid::compute()
                 }
             }
         } else if (auto poly = Polygons::as(grid)) {
-            const Index *icl = &poly->cl()[0];
+            if (showTypes[UnstructuredGrid::QUAD]) {
+                const Index *icl = &poly->cl()[0];
 
-            Index begin = 0, end = poly->getNumElements();
-            if (cellnrmin >= 0)
-                begin = std::max(cellnrmin, (Integer)begin);
-            if (cellnrmax >= 0)
-                end = std::min(cellnrmax + 1, (Integer)end);
+                Index begin = 0, end = poly->getNumElements();
+                if (cellnrmin >= 0)
+                    begin = std::max(cellnrmin, (Integer)begin);
+                if (cellnrmax >= 0)
+                    end = std::min(cellnrmax + 1, (Integer)end);
 
-            for (Index index = begin; index < end; ++index) {
-                if (!(shownor && showTypes[UnstructuredGrid::POLYGON]))
-                    continue;
+                for (Index index = begin; index < end; ++index) {
+                    const bool ghost = poly->isGhost(index);
+                    const bool show = ((showgho && ghost) || (shownor && !ghost));
+                    if (!show)
+                        continue;
 
-                const Index begin = poly->el()[index], end = poly->el()[index + 1];
-                for (Index i = begin; i < end; ++i) {
-                    ocl.push_back(icl[i]);
+                    const Index begin = poly->el()[index], end = poly->el()[index + 1];
+                    for (Index i = begin; i < end; ++i) {
+                        ocl.push_back(icl[i]);
+                    }
+                    ocl.push_back(icl[begin]);
+                    oel.push_back(ocl.size());
                 }
-                ocl.push_back(icl[begin]);
-                oel.push_back(ocl.size());
             }
-            out->d()->x[0] = poly->d()->x[0];
-            out->d()->x[1] = poly->d()->x[1];
-            out->d()->x[2] = poly->d()->x[2];
+            lines->d()->x[0] = poly->d()->x[0];
+            lines->d()->x[1] = poly->d()->x[1];
+            lines->d()->x[2] = poly->d()->x[2];
+            if (mapped) {
+                data = mapped->clone();
+            }
         } else if (auto quad = Quads::as(grid)) {
-            auto nelem = quad->getNumElements();
-            if (nelem > 0) {
-                const Index *icl = &quad->cl()[0];
-                for (Index i = 0; i < nelem; ++i) {
-                    ocl.push_back(icl[i * 4]);
-                    ocl.push_back(icl[i * 4 + 1]);
-                    ocl.push_back(icl[i * 4 + 2]);
-                    ocl.push_back(icl[i * 4 + 3]);
-                    ocl.push_back(icl[i * 4]);
-                    oel.push_back(ocl.size());
-                }
-            } else {
-                nelem = quad->getNumVertices() / 4;
-                for (Index i = 0; i < nelem; ++i) {
-                    ocl.push_back(i * 4);
-                    ocl.push_back(i * 4 + 1);
-                    ocl.push_back(i * 4 + 2);
-                    ocl.push_back(i * 4 + 3);
-                    ocl.push_back(i * 4);
-                    oel.push_back(ocl.size());
+            if (showTypes[UnstructuredGrid::QUAD]) {
+                auto nelem = quad->getNumElements();
+                if (quad->getNumCorners() > 0) {
+                    const Index *icl = &quad->cl()[0];
+                    for (Index i = 0; i < nelem; ++i) {
+                        const bool ghost = quad->isGhost(i);
+                        const bool show = ((showgho && ghost) || (shownor && !ghost));
+                        if (!show)
+                            continue;
+                        ocl.push_back(icl[i * 4]);
+                        ocl.push_back(icl[i * 4 + 1]);
+                        ocl.push_back(icl[i * 4 + 2]);
+                        ocl.push_back(icl[i * 4 + 3]);
+                        ocl.push_back(icl[i * 4]);
+                        oel.push_back(ocl.size());
+                    }
+                } else {
+                    nelem = quad->getNumVertices() / 4;
+                    for (Index i = 0; i < nelem; ++i) {
+                        const bool ghost = quad->isGhost(i);
+                        const bool show = ((showgho && ghost) || (shownor && !ghost));
+                        if (!show)
+                            continue;
+                        ocl.push_back(i * 4);
+                        ocl.push_back(i * 4 + 1);
+                        ocl.push_back(i * 4 + 2);
+                        ocl.push_back(i * 4 + 3);
+                        ocl.push_back(i * 4);
+                        oel.push_back(ocl.size());
+                    }
                 }
             }
-            out->d()->x[0] = quad->d()->x[0];
-            out->d()->x[1] = quad->d()->x[1];
-            out->d()->x[2] = quad->d()->x[2];
+            lines->d()->x[0] = quad->d()->x[0];
+            lines->d()->x[1] = quad->d()->x[1];
+            lines->d()->x[2] = quad->d()->x[2];
         } else if (auto tri = Triangles::as(grid)) {
-            auto nelem = tri->getNumElements();
-            if (nelem > 0) {
-                const Index *icl = &tri->cl()[0];
-                for (Index i = 0; i < nelem; ++i) {
-                    ocl.push_back(icl[i * 3]);
-                    ocl.push_back(icl[i * 3 + 1]);
-                    ocl.push_back(icl[i * 3 + 2]);
-                    ocl.push_back(icl[i * 3]);
-                    oel.push_back(ocl.size());
-                }
-            } else {
-                nelem = tri->getNumVertices() / 3;
-                for (Index i = 0; i < nelem; ++i) {
-                    ocl.push_back(i * 3);
-                    ocl.push_back(i * 3 + 1);
-                    ocl.push_back(i * 3 + 2);
-                    ocl.push_back(i * 3);
-                    oel.push_back(ocl.size());
+            if (showTypes[UnstructuredGrid::TRIANGLE]) {
+                auto nelem = tri->getNumElements();
+                if (tri->getNumCorners() > 0) {
+                    const Index *icl = &tri->cl()[0];
+                    for (Index i = 0; i < nelem; ++i) {
+                        const bool ghost = tri->isGhost(i);
+                        const bool show = ((showgho && ghost) || (shownor && !ghost));
+                        if (!show)
+                            continue;
+                        ocl.push_back(icl[i * 3]);
+                        ocl.push_back(icl[i * 3 + 1]);
+                        ocl.push_back(icl[i * 3 + 2]);
+                        ocl.push_back(icl[i * 3]);
+                        oel.push_back(ocl.size());
+                    }
+                } else {
+                    nelem = tri->getNumVertices() / 3;
+                    for (Index i = 0; i < nelem; ++i) {
+                        const bool ghost = tri->isGhost(i);
+                        const bool show = ((showgho && ghost) || (shownor && !ghost));
+                        if (!show)
+                            continue;
+                        ocl.push_back(i * 3);
+                        ocl.push_back(i * 3 + 1);
+                        ocl.push_back(i * 3 + 2);
+                        ocl.push_back(i * 3);
+                        oel.push_back(ocl.size());
+                    }
                 }
             }
-            out->d()->x[0] = tri->d()->x[0];
-            out->d()->x[1] = tri->d()->x[1];
-            out->d()->x[2] = tri->d()->x[2];
+            lines->d()->x[0] = tri->d()->x[0];
+            lines->d()->x[1] = tri->d()->x[1];
+            lines->d()->x[2] = tri->d()->x[2];
+            if (mapped) {
+                data = mapped->clone();
+            }
         }
 
-        out->copyAttributes(grid);
-        updateMeta(out);
+        lines->copyAttributes(grid);
+        updateMeta(lines);
+
+        if (data) {
+            updateMeta(data);
+            data->setGrid(lines);
+            out = data;
+        } else {
+            out = lines;
+        }
         m_cache.storeAndUnlock(entry, out);
     }
     addObject("grid_out", out);

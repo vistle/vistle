@@ -1,9 +1,11 @@
 #include "indexed.h"
 #include "celltree_impl.h"
+#include "celltypes.h"
 #include "indexed_impl.h"
 #include "archives.h"
 #include <vistle/util/exception.h>
 #include <cassert>
+#include "validate.h"
 
 namespace vistle {
 
@@ -23,23 +25,47 @@ bool Indexed::isEmpty() const
     return getNumElements() == 0 || getNumCorners() == 0;
 }
 
-bool Indexed::checkImpl() const
+bool Indexed::checkImpl(std::ostream &os, bool quick) const
 {
-    CHECK_OVERFLOW(d()->cl->size());
-    CHECK_OVERFLOW(d()->el->size());
+    VALIDATE_INDEX(d()->cl->size());
+    VALIDATE_INDEX(d()->el->size());
+    VALIDATE_INDEX(d()->ghost->size());
 
-    V_CHECK(d()->el->check());
-    V_CHECK(d()->cl->check());
-    V_CHECK(d()->el->size() > 0);
-    V_CHECK(el()[0] == 0);
+
+    VALIDATE(d()->el->check(os));
+    VALIDATE(d()->cl->check(os));
+    VALIDATE(d()->ghost->check(os));
+
+    VALIDATE(d()->el->size() > 0);
+    VALIDATE(el()[0] == 0);
+    VALIDATE(d()->ghost->size() == 0 || d()->ghost->size() == getNumElements());
+
+    VALIDATE(el()[getNumElements()] == getNumCorners());
     if (getNumElements() > 0) {
-        V_CHECK(el()[getNumElements() - 1] < getNumCorners());
-        V_CHECK(el()[getNumElements()] == getNumCorners());
+        VALIDATE(el()[getNumElements() - 1] < getNumCorners());
     }
 
     if (getNumCorners() > 0) {
-        V_CHECK(cl()[0] < getNumVertices());
-        V_CHECK(cl()[getNumCorners() - 1] < getNumVertices());
+        VALIDATE(cl()[0] < getNumVertices());
+        VALIDATE(cl()[getNumCorners() - 1] < getNumVertices());
+    }
+
+    if (quick)
+        return true;
+
+
+    VALIDATE_RANGE_P(d()->cl, 0, getSize() - 1);
+    VALIDATE_MONOTONIC_P(d()->el);
+    if (d()->cl->size() > 0) {
+        VALIDATE_RANGE_P(d()->el, 0, d()->cl->size());
+    }
+
+    if (hasCelltree()) {
+        VALIDATE(validateCelltree());
+    }
+
+    if (hasVertexOwnerList()) {
+        VALIDATE(getVertexOwnerList()->check(os));
     }
 
     return true;
@@ -55,6 +81,22 @@ std::pair<Vector3, Vector3> Indexed::getBounds() const
     return Base::getMinMax();
 }
 
+void Indexed::setGhost(Index index, bool isGhost)
+{
+    assert(index < getNumElements());
+    if (this->d()->ghost->size() < getNumElements())
+        this->d()->ghost->resize(getNumElements(), cell::NORMAL);
+    (this->ghost())[index] = isGhost ? cell::GHOST : cell::NORMAL;
+}
+
+bool Indexed::isGhost(Index index) const
+{
+    assert(index < getNumElements());
+    if (index >= this->d()->ghost->size())
+        return false;
+    return (this->ghost())[index] == cell::GHOST;
+}
+
 bool Indexed::hasCelltree() const
 {
     if (m_celltree)
@@ -68,7 +110,7 @@ Indexed::Celltree::const_ptr Indexed::getCelltree() const
     if (m_celltree)
         return m_celltree;
 
-    Data::attachment_mutex_lock_type lock(d()->attachment_mutex);
+    Data::mutex_lock_type lock(d()->attachment_mutex);
     if (!hasAttachment("celltree")) {
         refresh();
         createCelltree(getNumElements(), &el()[0], &cl()[0]);
@@ -137,7 +179,7 @@ Indexed::VertexOwnerList::const_ptr Indexed::getVertexOwnerList() const
     if (m_vertexOwnerList)
         return m_vertexOwnerList;
 
-    Data::attachment_mutex_lock_type lock(d()->attachment_mutex);
+    Data::mutex_lock_type lock(d()->attachment_mutex);
     if (!hasAttachment("vertexownerlist")) {
         refresh();
         createVertexOwnerList();
@@ -214,16 +256,18 @@ void Indexed::createVertexOwnerList() const
     addAttachment("vertexownerlist", vol);
 }
 
-void Indexed::removeVertexOwnerList() const
-{
-    removeAttachment("vertexownerlist");
-}
-
-void Indexed::print(std::ostream &os) const
+void Indexed::print(std::ostream &os, bool verbose) const
 {
     Base::print(os);
-    os << " cl(" << *d()->cl << ")";
-    os << " el(" << *d()->el << ")";
+
+    os << " cl:";
+    d()->cl.print(os, verbose);
+
+    os << " el:";
+    d()->el.print(os, verbose);
+
+    os << " ghost:";
+    d()->ghost.print(os, verbose);
 }
 
 Indexed::NeighborFinder::NeighborFinder(const Indexed *indexed): indexed(indexed)
@@ -374,9 +418,11 @@ void Indexed::refreshImpl() const
     if (d) {
         m_el = d->el;
         m_cl = d->cl;
+        m_ghost = d->ghost;
     } else {
         m_el = nullptr;
         m_cl = nullptr;
+        m_ghost = nullptr;
     }
     m_numEl = (d && d->el.valid()) ? d->el->size() - 1 : 0;
     m_numCl = (d && d->cl.valid()) ? d->cl->size() : 0;
@@ -393,10 +439,12 @@ Indexed::Data::Data(const size_t numElements, const size_t numCorners, const siz
     CHECK_OVERFLOW(numCorners);
     el.construct(numElements + 1);
     cl.construct(numCorners);
+    ghost.construct(0);
     (*el)[0] = 0;
 }
 
-Indexed::Data::Data(const Indexed::Data &o, const std::string &name): Indexed::Base::Data(o, name), el(o.el), cl(o.cl)
+Indexed::Data::Data(const Indexed::Data &o, const std::string &name)
+: Indexed::Base::Data(o, name), el(o.el), cl(o.cl), ghost(o.ghost)
 {
     initData();
 }
@@ -426,6 +474,9 @@ void Indexed::resetElements()
     d()->el = ShmVector<Index>();
     d()->el.construct(1);
     (*d()->el)[0] = 0;
+
+    d()->ghost = ShmVector<Byte>();
+    d()->ghost.construct();
 }
 
 Index Indexed::getNumCorners()

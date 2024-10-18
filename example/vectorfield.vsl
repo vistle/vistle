@@ -5,7 +5,7 @@ uuids = {}
 
 # spawn all local modules
 umGendat1 = spawnAsync(MasterHub, 'Gendat')
-umTubes2 = spawnAsync(MasterHub, 'Tubes')
+umTubes2 = spawnAsync(MasterHub, 'Thicken')
 umToTriangles3 = spawnAsync(MasterHub, 'ToTriangles')
 umCOVER4 = spawnAsync(MasterHub, 'COVER')
 umColor5 = spawnAsync(MasterHub, 'Color')

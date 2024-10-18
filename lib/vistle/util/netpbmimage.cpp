@@ -4,6 +4,11 @@
 
 namespace vistle {
 
+#define CHECK(expect, func) \
+    if (expect != func) { \
+        throw vistle::exception("fscanf parse error"); \
+    }
+
 NetpbmImage::NetpbmImage(const std::string &name)
 {
     FILE *m_fp = fopen(name.c_str(), "r");
@@ -12,7 +17,7 @@ NetpbmImage::NetpbmImage(const std::string &name)
     }
 
     int level = 0;
-    fscanf(m_fp, "P%d", &level);
+    CHECK(1, fscanf(m_fp, "P%d", &level));
     switch (level) {
     case 1:
         m_format = PBM;
@@ -29,9 +34,9 @@ NetpbmImage::NetpbmImage(const std::string &name)
         throw vistle::exception("unsupported format");
     }
 
-    fscanf(m_fp, "%u %u", &m_width, &m_height);
+    CHECK(2, fscanf(m_fp, "%u %u", &m_width, &m_height));
     if (m_format != PBM) {
-        fscanf(m_fp, "%u", &m_highest);
+        CHECK(1, fscanf(m_fp, "%u", &m_highest));
     }
 
     size_t numpix = m_width * m_height;
@@ -41,7 +46,7 @@ NetpbmImage::NetpbmImage(const std::string &name)
     for (size_t i = 0; i < numpix; ++i) {
         if (m_format == PPM) {
             unsigned r = 0, g = 0, b = 0;
-            fscanf(m_fp, "%u %u %u", &r, &g, &b);
+            CHECK(3, fscanf(m_fp, "%u %u %u", &r, &g, &b));
             increaseRange(r);
             increaseRange(g);
             increaseRange(b);
@@ -54,7 +59,7 @@ NetpbmImage::NetpbmImage(const std::string &name)
             m_rgba[i * 4 + 2] = int(bb * 255.99f);
         } else {
             unsigned gray = 0;
-            fscanf(m_fp, "%u", &gray);
+            CHECK(1, fscanf(m_fp, "%u", &gray));
             increaseRange(gray);
             m_gray[i] = float(gray) / float(m_highest);
             unsigned g = m_gray[i] * 255.99f;

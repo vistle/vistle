@@ -2,18 +2,12 @@ if(NOT Qt6_FOUND AND NOT Qt5_FOUND)
     message("Not building GUI: neither Qt5 nor Qt6 Core library found")
     return()
 endif()
+
 add_subdirectory(propertybrowser)
 add_subdirectory(remotefilebrowser)
 
 set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTOUIC ON)
-
-if(Python_FOUND)
-    add_definitions(-DHAVE_PYTHON)
-endif()
-
-include_directories(${CMAKE_CURRENT_BINARY_DIR} .)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/lib/3rdparty/qt-solutions/qtpropertybrowser/src)
+set(CMAKE_INCLUDE_CURRENT_DIR TRUE)
 
 set(gui_SOURCES
     main.cpp
@@ -70,32 +64,38 @@ if(APPLE)
     set(gui_HEADERS ${gui_SOURCES} macosutils.h)
 endif(APPLE)
 
+vistle_add_executable(${gui_name} MACOSX_BUNDLE ${gui_SOURCES})
+set_target_properties(
+    ${gui_name}
+    PROPERTIES MACOSX_BUNDLE_BUNDLE_NAME Vistle
+               MACOSX_BUNDLE_GUI_IDENTIFIER io.vistle.Vistle
+               MACOSX_BUNDLE_ICON_FILE vistle.icns)
 if(VISTLE_USE_QT5)
     qt5_wrap_ui(GUI_UI_SRCS ${gui_FORMS})
     qt5_add_resources(GUI_QRC_SOURCES gui.qrc about.qrc)
+    target_link_libraries(${gui_name} PRIVATE Qt5::Widgets)
 else()
     qt6_wrap_ui(GUI_UI_SRCS ${gui_FORMS})
     qt6_add_resources(GUI_QRC_SOURCES gui.qrc about.qrc)
-endif()
-vistle_add_executable(${gui_name} MACOSX_BUNDLE ${gui_SOURCES} ${GUI_UI_SRCS} ${GUI_QRC_SOURCES})
-if(VISTLE_USE_QT5)
-    target_link_libraries(${gui_name} PRIVATE Qt5::Widgets)
-else()
     target_link_libraries(${gui_name} PRIVATE Qt6::Widgets)
     qt_disable_unicode_defines(${gui_name})
 endif()
+target_sources(${gui_name} PRIVATE ${GUI_UI_SRCS} ${GUI_QRC_SOURCES})
 target_link_libraries(${gui_name} PRIVATE Threads::Threads)
 target_link_libraries(
     ${gui_name}
     PRIVATE Boost::boost
+            Boost::program_options
             vistle_util
             vistle_core
+            vistle_config
             vistle_userinterface
             vistle_pythonmodule
             vistle_propertybrowser
             vistle_remotefiledialog)
 
 if(Python_FOUND)
+    target_compile_definitions(${gui_name} PRIVATE -DHAVE_PYTHON)
     target_link_libraries(${gui_name} PRIVATE Python::Python vistle_python)
 endif()
 

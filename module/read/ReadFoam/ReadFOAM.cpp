@@ -624,12 +624,6 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
 
     if (readGrid) {
         loadCoords(meshdir, grid);
-        if (checkConvexity()) {
-            auto nonConvex = grid->checkConvexity();
-            if (nonConvex > 0) {
-                std::cerr << nonConvex << " of " << grid->getNumElements() << " are non-convex" << std::endl;
-            }
-        }
 
         if (readBoundary) {
             //if grid has been read already and boundary polygons are read also -> re-use coordinate lists for the boundary-plygon
@@ -1216,6 +1210,7 @@ void ReadFOAM::applyGhostCells(int processor, GhostMode mode)
     auto &el = grid->el();
     auto &cl = grid->cl();
     auto &tl = grid->tl();
+    auto &ghost = grid->ghost();
     auto &x = grid->x();
     auto &y = grid->y();
     auto &z = grid->z();
@@ -1263,7 +1258,8 @@ void ReadFOAM::applyGhostCells(int processor, GhostMode mode)
                     cl.push_back(mapIndex(clIn[i]));
                 }
                 el.push_back(cl.size());
-                tl.push_back(tlIn[cell] | UnstructuredGrid::GHOST_BIT);
+                tl.push_back(tlIn[cell]);
+                ghost.push_back(cell::GHOST);
             }
         }
 

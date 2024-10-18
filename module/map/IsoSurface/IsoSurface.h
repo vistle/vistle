@@ -61,7 +61,6 @@ private:
     vistle::FloatParameter *m_isovalue;
     vistle::VectorParameter *m_isopoint;
     vistle::IntParameter *m_pointOrValue;
-    vistle::IntParameter *m_processortype;
     vistle::IntParameter *m_computeNormals;
 
     vistle::StringParameter *m_heightmap;

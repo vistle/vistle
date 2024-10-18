@@ -1,11 +1,6 @@
 import _vistle
 
 coGRMsgLoaded = False
-try:
-   from coGRMsg import *
-   coGRMsgLoaded = True
-except ImportError:
-    print("import of coGRMsg failed")
 
 def findFirstModule(moduleName):
    return _vistle.findFirstModule(moduleName)
@@ -243,6 +238,10 @@ def saveWorkflow(f, mods, numSlaves, remote):
 
          
 def save2(file, moduleList):
+   file.write("# /usr/bin/env vistle\n")
+   file.write(f"# this is a Python workflow from Vistle {_vistle.version()}\n")
+   file.write("\n")
+
    file.write("MasterHub=getMasterHub()\n")
    file.write("VistleSession=getVistleSession()\n")
    file.write("WorkflowConfig=getWorkflowConfig()\n")
@@ -303,7 +302,7 @@ def reset():
    mods = _vistle.getRunning()
    for m in mods:
       _vistle.kill(m)
-   _vistle.barrier()
+   _vistle.barrier("reset, automatic")
    #_vistle._resetModuleCounter()
    _vistle.setLoadedFile("")
    _vistle.setStatus("Workflow cleared")
@@ -323,12 +322,20 @@ def load(filename = None):
    _vistle.setStatus("Workflow loaded: "+filename)
 
 def snapshotCover(modId, file):
+    global coGRMsgLoaded
+    global coGRMsg
+    if (not coGRMsgLoaded):
+        try:
+            import coGRMsg
+            coGRMsgLoaded = True
+        except ImportError:
+            print("import of coGRMsg failed")
     if (coGRMsgLoaded):
-        msg = coGRPluginMsg("PBufferSnapShot", "load")
+        msg = coGRMsg.coGRPluginMsg("PBufferSnapShot", "load")
         sendCoverMessage(msg, modId)
         if not file.endswith(".png"):
          printWarning("snapshotCover: file should end with \".png\"")
-        msg = coGRSnapshotMsg(file, "snapOnce")
+        msg = coGRMsg.coGRSnapshotMsg(file, "snapOnce")
         sendCoverMessage(msg, modId)
 
 def snapshotGui(file):
@@ -370,6 +377,7 @@ class PythonStateObserver(_vistle.StateObserver):
 
 
 # re-export functions from _vistle
+version = _vistle.version
 source = _vistle.source
 removeHub = _vistle.removeHub
 spawn = _vistle.spawn

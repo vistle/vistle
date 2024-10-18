@@ -4,8 +4,10 @@
 #include "celltree_impl.h"
 #include "ngons_impl.h"
 #include "archives.h"
+#include "celltypes.h"
 #include <cassert>
 #include <vistle/util/exception.h>
+#include "validate.h"
 
 namespace vistle {
 
@@ -27,9 +29,11 @@ void Ngons<N>::refreshImpl() const
     const Data *d = static_cast<Data *>(m_data);
     if (d) {
         m_cl = d->cl;
+        m_ghost = d->ghost;
 
     } else {
         m_cl = nullptr;
+        m_ghost = nullptr;
     }
     m_numCorners = (d && d->cl.valid()) ? d->cl->size() : 0;
 }
@@ -47,18 +51,33 @@ bool Ngons<N>::isEmpty() const
 }
 
 template<int N>
-bool Ngons<N>::checkImpl() const
+bool Ngons<N>::checkImpl(std::ostream &os, bool quick) const
 {
-    CHECK_OVERFLOW(d()->cl->size());
+    VALIDATE_INDEX(d()->cl->size());
+    VALIDATE_INDEX(d()->ghost->size());
 
-    V_CHECK(d()->cl->check());
+    VALIDATE(d()->cl->check(os));
+    VALIDATE(d()->ghost->check(os));
+    VALIDATE(d()->ghost->size() == 0 || d()->ghost->size() == getNumElements());
     if (getNumCorners() > 0) {
-        V_CHECK(cl()[0] < getNumVertices());
-        V_CHECK(cl()[getNumCorners() - 1] < getNumVertices());
-        V_CHECK(getNumCorners() % N == 0);
+        VALIDATE(cl()[0] < getNumVertices());
+        VALIDATE(cl()[getNumCorners() - 1] < getNumVertices());
+        VALIDATE(getNumCorners() % N == 0);
     } else {
-        V_CHECK(getNumCoords() % N == 0);
+        VALIDATE(getNumCoords() % N == 0);
     }
+
+    if (quick)
+        return true;
+
+    if (getNumCorners() > 0) {
+        VALIDATE_RANGE(cl(), 0, getNumVertices() - 1);
+    }
+
+    if (hasCelltree()) {
+        VALIDATE(validateCelltree());
+    }
+
     return true;
 }
 
@@ -118,7 +137,7 @@ Ngons<N>::Celltree::const_ptr Ngons<N>::getCelltree() const
     if (m_celltree)
         return m_celltree;
 
-    typename Data::attachment_mutex_lock_type lock(d()->attachment_mutex);
+    typename Data::mutex_lock_type lock(d()->attachment_mutex);
     if (!hasAttachment("celltree")) {
         refresh();
         const Index *corners = nullptr;
@@ -210,13 +229,31 @@ bool Ngons<N>::validateCelltree() const
     return true;
 }
 
+template<int N>
+void Ngons<N>::setGhost(Index index, bool isGhost)
+{
+    assert(index < getNumElements());
+    if (this->d()->ghost->size() < getNumElements())
+        this->d()->ghost->resize(getNumElements(), cell::NORMAL);
+    this->d()->ghost->at(index) = isGhost ? cell::GHOST : cell::NORMAL;
+}
+
+template<int N>
+bool Ngons<N>::isGhost(Index index) const
+{
+    assert(index < getNumElements());
+    if (index >= this->d()->ghost->size())
+        return false;
+    return (this->ghost())[index] == cell::GHOST;
+}
+
 
 template<int N>
 void Ngons<N>::Data::initData()
 {}
 
 template<int N>
-Ngons<N>::Data::Data(const Ngons::Data &o, const std::string &n): Ngons::Base::Data(o, n), cl(o.cl)
+Ngons<N>::Data::Data(const Ngons::Data &o, const std::string &n): Ngons::Base::Data(o, n), cl(o.cl), ghost(o.ghost)
 {
     initData();
 }
@@ -228,6 +265,7 @@ Ngons<N>::Data::Data(const size_t numCorners, const size_t numCoords, const std:
     CHECK_OVERFLOW(numCorners);
     initData();
     cl.construct(numCorners);
+    ghost.construct(0);
 }
 
 

@@ -20,7 +20,7 @@ typename Type::const_ptr BlockTask::accept(const Port *port)
         m_module->sendWarning(str.str());
         return nullptr;
     }
-    assert(obj->check());
+    assert(obj->check(std::cerr));
     auto ret = Type::as(obj);
     if (ret)
         m_input.erase(it);
@@ -38,6 +38,18 @@ typename Type::const_ptr BlockTask::accept(const std::string &port)
 template<class Type>
 typename Type::const_ptr BlockTask::expect(const Port *port)
 {
+    if (!port) {
+        std::stringstream str;
+        str << "invalid port" << std::endl;
+        m_module->sendError(str.str());
+        return nullptr;
+    }
+    if (!m_module->isConnected(*port)) {
+        std::stringstream str;
+        str << "port " << port->getName() << " is not connected" << std::endl;
+        m_module->sendError(str.str());
+        return nullptr;
+    }
     auto it = m_input.find(port);
     assert(it != m_input.end());
     if (it == m_input.end()) {
@@ -53,11 +65,11 @@ typename Type::const_ptr BlockTask::expect(const Port *port)
     m_input.erase(it);
     if (!obj) {
         std::stringstream str;
-        str << "did not receive valid object at " << port->getName() << std::endl;
+        str << "did not receive object at " << port->getName() << std::endl;
         m_module->sendWarning(str.str());
         return nullptr;
     }
-    assert(obj->check());
+    assert(obj->check(std::cerr));
     return Type::as(obj);
 }
 template<class Type>
@@ -83,7 +95,7 @@ typename Type::const_ptr Module::accept(Port *port)
         sendWarning(str.str());
         return nullptr;
     }
-    assert(obj->check());
+    assert(obj->check(std::cerr));
     typename Type::const_ptr ret = Type::as(obj);
     if (ret)
         port->objects().pop_front();
@@ -106,6 +118,12 @@ typename Type::const_ptr Module::expect(Port *port)
         sendError(str.str());
         return nullptr;
     }
+    if (!isConnected(*port)) {
+        std::stringstream str;
+        str << "port " << port->getName() << " is not connected" << std::endl;
+        sendError(str.str());
+        return nullptr;
+    }
     if (port->objects().empty()) {
         if (schedulingPolicy() == message::SchedulingPolicy::Single) {
             std::stringstream str;
@@ -125,7 +143,7 @@ typename Type::const_ptr Module::expect(Port *port)
         sendError(str.str());
         return ret;
     }
-    assert(obj->check());
+    assert(obj->check(std::cerr));
     if (!ret) {
         std::stringstream str;
         str << "received " << Object::toString(obj->getType()) << " at " << port->getName() << ", but "

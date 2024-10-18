@@ -189,6 +189,7 @@ int main(int argc, char *argv[])
         test_pb_int(v, "B:I vector", size);
     }
 
+#if 0
     {
         vistle::shm_array<int, std::allocator<int>> v(std::allocator<int>{});
         test_pb_int(v, "uninit array", size);
@@ -199,6 +200,7 @@ int main(int argc, char *argv[])
         v.reserve(size);
         test_pb_int(v, "uninit array reserve", size);
     }
+#endif
 
 #if 0
    {

@@ -2,10 +2,9 @@
 #include <vistle/core/triangles.h>
 #include <vistle/core/quads.h>
 #include <vistle/core/lines.h>
-#include <vistle/core/tubes.h>
-#include <vistle/core/spheres.h>
 #include <vistle/core/points.h>
 #include <vistle/core/vec.h>
+#include <vistle/core/celltypes.h>
 
 #include <cassert>
 
@@ -24,6 +23,25 @@ using ispc::Vertex;
 using ispc::Quad;
 
 float RayRenderObject::pointSize = 0.001f;
+
+namespace {
+template<typename Geo>
+Index getGhost(typename Geo::const_ptr &geo, const vistle::Byte *&ghost)
+{
+    Index numGhost = 0;
+    if (geo->ghost().size() > 0) {
+        ghost = geo->ghost().data();
+        for (Index i = 0; i < geo->getNumElements(); ++i) {
+            if (ghost[i] == vistle::cell::GHOST)
+                ++numGhost;
+        }
+    } else {
+        ghost = nullptr;
+    }
+    return numGhost;
+}
+} // namespace
+
 
 RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::string &senderPort,
                                  Object::const_ptr container, Object::const_ptr geometry, Object::const_ptr normals,
@@ -110,8 +128,11 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
 
     RTCGeometry geom = 0;
     bool useNormals = true;
+    const vistle::Byte *ghost = nullptr;
+
     if (auto quads = Quads::as(geometry)) {
         Index numElem = quads->getNumElements();
+        Index numGhost = getGhost<Quads>(quads, ghost);
         geom = rtcNewGeometry(data->device, RTC_GEOMETRY_TYPE_QUAD);
         rtcSetGeometryBuildQuality(geom, RTC_BUILD_QUALITY_MEDIUM);
         rtcSetGeometryTimeStepCount(geom, 1);
@@ -129,29 +150,38 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
 
         //data->indexBuffer = new Triangle[numElem];
         //rtcSetSharedGeometryBuffer(geom_0,RTC_BUFFER_TYPE_INDEX,0,RTC_FORMAT_UINT3,data->indexBuffer,0,sizeof(Triangle),numElem);
-        Quad *quad =
-            (Quad *)rtcSetNewGeometryBuffer(geom, RTC_BUFFER_TYPE_INDEX, 0, RTC_FORMAT_UINT4, sizeof(Quad), numElem);
+        Quad *quad = (Quad *)rtcSetNewGeometryBuffer(geom, RTC_BUFFER_TYPE_INDEX, 0, RTC_FORMAT_UINT4, sizeof(Quad),
+                                                     numElem - numGhost);
         data->indexBuffer = quad;
         data->triangles = 0;
         if (quads->getNumCorners() == 0) {
+            Index ii = 0;
             for (Index i = 0; i < numElem; ++i) {
-                quad[i].v0 = i * 4;
-                quad[i].v1 = i * 4 + 1;
-                quad[i].v2 = i * 4 + 2;
-                quad[i].v3 = i * 4 + 3;
+                if (ghost && ghost[i] == vistle::cell::GHOST)
+                    continue;
+                quad[ii].v0 = i * 4;
+                quad[ii].v1 = i * 4 + 1;
+                quad[ii].v2 = i * 4 + 2;
+                quad[ii].v3 = i * 4 + 3;
+                ++ii;
             }
         } else {
             const auto *cl = &quads->cl()[0];
+            Index ii = 0;
             for (Index i = 0; i < numElem; ++i) {
-                quad[i].v0 = cl[i * 4];
-                quad[i].v1 = cl[i * 4 + 1];
-                quad[i].v2 = cl[i * 4 + 2];
-                quad[i].v3 = cl[i * 4 + 3];
+                if (ghost && ghost[i] == vistle::cell::GHOST)
+                    continue;
+                quad[ii].v0 = cl[i * 4];
+                quad[ii].v1 = cl[i * 4 + 1];
+                quad[ii].v2 = cl[i * 4 + 2];
+                quad[ii].v3 = cl[i * 4 + 3];
+                ++ii;
             }
         }
 
     } else if (auto tri = Triangles::as(geometry)) {
         Index numElem = tri->getNumElements();
+        Index numGhost = getGhost<Triangles>(tri, ghost);
         geom = rtcNewGeometry(data->device, RTC_GEOMETRY_TYPE_TRIANGLE);
         rtcSetGeometryBuildQuality(geom, RTC_BUILD_QUALITY_MEDIUM);
         rtcSetGeometryTimeStepCount(geom, 1);
@@ -169,29 +199,35 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
 
         //data->indexBuffer = new Triangle[numElem];
         //rtcSetSharedGeometryBuffer(geom_0,RTC_BUFFER_TYPE_INDEX,0,RTC_FORMAT_UINT3,data->indexBuffer,0,sizeof(Triangle),numElem);
-        Quad *quad =
-            (Quad *)rtcSetNewGeometryBuffer(geom, RTC_BUFFER_TYPE_INDEX, 0, RTC_FORMAT_UINT3, sizeof(Quad), numElem);
+        Quad *quad = (Quad *)rtcSetNewGeometryBuffer(geom, RTC_BUFFER_TYPE_INDEX, 0, RTC_FORMAT_UINT3, sizeof(Quad),
+                                                     numElem - numGhost);
         data->indexBuffer = quad;
         if (tri->getNumCorners() == 0) {
+            Index ii = 0;
             for (Index i = 0; i < numElem; ++i) {
-                quad[i].v0 = i * 3;
-                quad[i].v1 = i * 3 + 1;
-                quad[i].v2 = i * 3 + 2;
-                quad[i].v3 = i; // element id
+                if (ghost && ghost[i] == vistle::cell::GHOST)
+                    continue;
+                quad[ii].v0 = i * 3;
+                quad[ii].v1 = i * 3 + 1;
+                quad[ii].v2 = i * 3 + 2;
+                quad[ii].v3 = i; // element id
+                ++ii;
             }
         } else {
+            Index ii = 0;
             for (Index i = 0; i < numElem; ++i) {
-                quad[i].v0 = tri->cl()[i * 3];
-                quad[i].v1 = tri->cl()[i * 3 + 1];
-                quad[i].v2 = tri->cl()[i * 3 + 2];
-                quad[i].v3 = i; // element id
+                if (ghost && ghost[i] == vistle::cell::GHOST)
+                    continue;
+                quad[ii].v0 = tri->cl()[i * 3];
+                quad[ii].v1 = tri->cl()[i * 3 + 1];
+                quad[ii].v2 = tri->cl()[i * 3 + 2];
+                quad[ii].v3 = i; // element id
+                ++ii;
             }
         }
 
     } else if (auto poly = Polygons::as(geometry)) {
-        Index ntri = poly->getNumCorners() - 2 * poly->getNumElements();
-        assert(ntri >= 0);
-
+        getGhost<Polygons>(poly, ghost);
         geom = rtcNewGeometry(data->device, RTC_GEOMETRY_TYPE_TRIANGLE);
         rtcSetGeometryBuildQuality(geom, RTC_BUILD_QUALITY_MEDIUM);
         rtcSetGeometryTimeStepCount(geom, 1);
@@ -205,14 +241,23 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
             vertices[i].z = poly->z()[i];
         }
 
+        Index ntri = 0;
+        for (Index i = 0; i < poly->getNumElements(); ++i) {
+            if (ghost && ghost[i] == vistle::cell::GHOST)
+                continue;
+            const Index start = poly->el()[i];
+            const Index end = poly->el()[i + 1];
+            const Index nvert = end - start;
+            ntri += nvert - 2;
+        }
 
-        //data->indexBuffer = new Triangle[ntri];
-        //rtcSetSharedGeometryBuffer(geom,RTC_BUFFER_TYPE_INDEX,0,RTC_FORMAT_UINT3,data->indexBuffer,0,sizeof(Triangle),ntri);
         Quad *triangles =
             (Quad *)rtcSetNewGeometryBuffer(geom, RTC_BUFFER_TYPE_INDEX, 0, RTC_FORMAT_UINT3, sizeof(Quad), ntri);
         data->indexBuffer = triangles;
         Index t = 0;
         for (Index i = 0; i < poly->getNumElements(); ++i) {
+            if (ghost && ghost[i] == vistle::cell::GHOST)
+                continue;
             const Index start = poly->el()[i];
             const Index end = poly->el()[i + 1];
             const Index nvert = end - start;
@@ -232,28 +277,14 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
                 ++t;
             }
         }
-        assert(t == ntri);
+        assert(ghost || t == ntri);
 
-    } else if (auto sph = Spheres::as(geometry)) {
-        useNormals = false;
-
-        Index nsph = sph->getNumSpheres();
-        //std::cerr << "Spheres: #sph: " << nsph << std::endl;
-        data->spheres = new ispc::Sphere[nsph];
-        auto x = &sph->x()[0];
-        auto y = &sph->y()[0];
-        auto z = &sph->z()[0];
-        auto r = &sph->r()[0];
-        auto s = data->spheres;
-        for (Index i = 0; i < nsph; ++i) {
-            s[i].p.x = x[i];
-            s[i].p.y = y[i];
-            s[i].p.z = z[i];
-            s[i].r = r[i];
-        }
-        geom = newSpheres(data.get(), nsph);
     } else if (auto point = Points::as(geometry)) {
         Index np = point->getNumPoints();
+        const Scalar *r = nullptr;
+        if (point->radius()) {
+            r = point->radius()->x().data();
+        }
         //std::cerr << "Points: #sph: " << np << std::endl;
         data->spheres = new ispc::Sphere[np];
         auto x = &point->x()[0];
@@ -264,13 +295,25 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
             s[i].p.x = x[i];
             s[i].p.y = y[i];
             s[i].p.z = z[i];
-            s[i].r = pointSize;
+            s[i].r = r ? r[i] : pointSize;
         }
-        data->lighted = 0;
+        if (r) {
+            useNormals = false;
+        } else {
+            data->lighted = 0;
+        }
         geom = newSpheres(data.get(), np);
     } else if (auto line = Lines::as(geometry)) {
         Index nStrips = line->getNumElements();
         Index nPoints = line->getNumCorners();
+        const Scalar *r = nullptr;
+        Lines::CapStyle startStyle = Lines::Flat, jointStyle = Lines::Flat, endStyle = Lines::Flat;
+        if (line->radius()) {
+            r = line->radius()->x().data();
+            startStyle = line->startStyle();
+            jointStyle = line->jointStyle();
+            endStyle = line->endStyle();
+        }
         std::cerr << "Lines: #strips: " << nStrips << ", #corners: " << nPoints << std::endl;
         data->primitiveFlags = new unsigned int[nPoints];
         data->spheres = new ispc::Sphere[nPoints];
@@ -292,59 +335,22 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
                 s[idx].p.x = x[i];
                 s[idx].p.y = y[i];
                 s[idx].p.z = z[i];
-                s[idx].r = pointSize;
-                p[idx] = ispc::PFNone;
-                if (c + 1 != end)
-                    p[idx] |= ispc::PFCone;
-                p[idx] |= ispc::PFStartSphere;
-                ++idx;
-            }
-        }
-        assert(idx == nPoints);
-        data->lighted = 0;
-        geom = newTubes(data.get(), nPoints - 1);
-    } else if (auto tube = Tubes::as(geometry)) {
-        useNormals = false;
-
-        Index nStrips = tube->getNumTubes();
-        Index nPoints = tube->getNumCoords();
-        std::cerr << "Tubes: #strips: " << nStrips << ", #corners: " << nPoints << std::endl;
-        data->primitiveFlags = new unsigned int[nPoints];
-        data->spheres = new ispc::Sphere[nPoints];
-        const Tubes::CapStyle startStyle = tube->startStyle(), jointStyle = tube->jointStyle(),
-                              endStyle = tube->endStyle();
-
-        auto el = tube->components().data();
-        auto x = &tube->x()[0];
-        auto y = &tube->y()[0];
-        auto z = &tube->z()[0];
-        auto r = &tube->r()[0];
-        auto s = data->spheres;
-        auto p = data->primitiveFlags;
-        Index idx = 0;
-        for (Index strip = 0; strip < nStrips; ++strip) {
-            const Index begin = el[strip], end = el[strip + 1];
-            assert(idx == begin);
-            for (Index i = begin; i < end; ++i) {
-                s[idx].p.x = x[i];
-                s[idx].p.y = y[i];
-                s[idx].p.z = z[i];
-                s[idx].r = r[i];
+                s[idx].r = r ? r[i] : pointSize;
 
                 p[idx] = ispc::PFNone;
                 if (i == begin) {
                     switch (startStyle) {
-                    case Tubes::Flat:
+                    case Lines::Flat:
                         p[idx] |= ispc::PFStartDisc;
                         break;
-                    case Tubes::Round:
+                    case Lines::Round:
                         p[idx] |= ispc::PFStartSphere;
                         break;
                     default:
                         break;
                     }
                 } else if (i + 1 != end) {
-                    if (jointStyle == Tubes::Flat) {
+                    if (jointStyle == Lines::Flat) {
                         p[idx] |= ispc::PFStartDisc;
                     }
                 }
@@ -353,15 +359,15 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
                     p[idx] |= ispc::PFCone;
 
                     switch ((i + 2 == end) ? endStyle : jointStyle) {
-                    case Tubes::Open:
+                    case Lines::Open:
                         break;
-                    case Tubes::Flat:
+                    case Lines::Flat:
                         p[idx] |= ispc::PFEndDisc;
                         break;
-                    case Tubes::Round:
+                    case Lines::Round:
                         p[idx] |= i + 2 == end ? ispc::PFEndSphere : ispc::PFEndSphereSect;
                         break;
-                    case Tubes::Arrow:
+                    case Lines::Arrow:
                         p[idx] |= ispc::PFArrow;
                         break;
                     }
@@ -369,10 +375,14 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
 
                 ++idx;
             }
-            assert(idx == end);
         }
         assert(idx == nPoints);
-        geom = newTubes(data.get(), nPoints > 0 ? nPoints - 1 : 0);
+        if (r) {
+            useNormals = false;
+        } else {
+            data->lighted = 0;
+        }
+        geom = newTubes(data.get(), nPoints - 1);
     }
 
     if (geom) {

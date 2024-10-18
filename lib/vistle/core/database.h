@@ -17,6 +17,7 @@ public:
     DEFINE_ENUM_WITH_STRING_CONVERSIONS(Mapping, (Unspecified)(Vertex)(Element));
 
     typedef Object Base;
+    std::set<Object::const_ptr> referencedObjects() const override;
     virtual void resetArrays(); //< remove reference to data arrays and create empty ones
     virtual Index getSize();
     virtual Index getSize() const;
@@ -40,7 +41,7 @@ public:
 private:
     V_DATA_BEGIN(DataBase);
     shm_obj_ref<Object> grid;
-    Mapping mapping;
+    Byte mapping;
 
     Data(const Data &o, const std::string &name, Type id);
     ~Data();

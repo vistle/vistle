@@ -7,5 +7,6 @@
 namespace vistle {
 
 V_UTILEXPORT bool setThreadName(std::string name);
-}
+V_UTILEXPORT std::string getThreadName();
+} // namespace vistle
 #endif

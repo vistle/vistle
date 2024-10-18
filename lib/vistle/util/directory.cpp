@@ -65,14 +65,13 @@ std::string configHome()
 static bool setvar(const std::string &varval)
 {
     char *cvv = strdup(varval.c_str());
-    //std::cerr << "setting VISTLE_ROOT to " << vr << std::endl;
     int retval = putenv(cvv);
     if (retval != 0) {
         std::cerr << "failed to set " << varval << ": " << strerror(errno) << std::endl;
         free(cvv);
         return false;
     }
-    std::cerr << varval << std::endl;
+    //std::cerr << varval << std::endl;
     return true;
 }
 

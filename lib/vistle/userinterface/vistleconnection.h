@@ -35,7 +35,7 @@ public:
     bool connect(const Port *from, const Port *to) const;
     bool disconnect(const Port *from, const Port *to) const;
 
-    bool barrier() const;
+    bool barrier(const std::string &info) const;
     bool resetDataFlowNetwork() const;
     bool executeSources() const;
 

@@ -74,7 +74,7 @@ function(createSimV2Lib libName)
         PRIVATE
         vistle_util_mpi
         PRIVATE
-        MPI::MPI_C
+        MPI::MPI_CXX
         PRIVATE
         Threads::Threads
         PRIVATE

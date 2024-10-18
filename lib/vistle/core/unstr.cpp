@@ -5,6 +5,7 @@
 #include <algorithm>
 #include "cellalgorithm.h"
 #include <set>
+#include "validate.h"
 
 //#define INTERPOL_DEBUG
 //#define INSIDE_DEBUG
@@ -38,156 +39,33 @@ bool UnstructuredGrid::isEmpty() const
     return Base::isEmpty();
 }
 
-bool UnstructuredGrid::checkImpl() const
+bool UnstructuredGrid::checkImpl(std::ostream &os, bool quick) const
 {
-    CHECK_OVERFLOW(d()->tl->size());
+    VALIDATE_INDEX(d()->tl->size());
 
-    V_CHECK(d()->tl->check());
-    V_CHECK(d()->tl->size() == getNumElements());
+    VALIDATE(d()->tl->check(os));
+    VALIDATE(d()->tl->size() == getNumElements());
+
+    if (quick)
+        return true;
+
+    VALIDATE_RANGE_P(d()->tl, 0, cell::NUM_TYPES - 1);
+
     return true;
 }
 
-void UnstructuredGrid::print(std::ostream &os) const
+void UnstructuredGrid::print(std::ostream &os, bool verbose) const
 {
-    Base::print(os);
-    os << " tl(" << *d()->tl << ")";
-}
-
-bool UnstructuredGrid::isConvex(const Index elem) const
-{
-    if (elem == InvalidIndex)
-        return false;
-    return tl()[elem] & CONVEX_BIT || (tl()[elem] & TYPE_MASK) == TETRAHEDRON;
+    Base::print(os, verbose);
+    os << " tl:";
+    d()->tl.print(os, verbose);
 }
 
 bool UnstructuredGrid::isGhostCell(const Index elem) const
 {
     if (elem == InvalidIndex)
         return false;
-    return tl()[elem] & GHOST_BIT;
-}
-
-Index UnstructuredGrid::checkConvexity()
-{
-    const Scalar Tolerance = 1e-3f;
-    const Index nelem = getNumElements();
-    auto tl = this->tl().data();
-    const auto cl = this->cl().data();
-    const auto el = this->el().data();
-    const auto x = this->x().data();
-    const auto y = this->y().data();
-    const auto z = this->z().data();
-
-    Index nonConvexCount = 0;
-    for (Index elem = 0; elem < nelem; ++elem) {
-        auto type = tl[elem] & TYPE_MASK;
-        switch (type) {
-        case NONE:
-        case BAR:
-        case TRIANGLE:
-        case POINT:
-            tl[elem] |= CONVEX_BIT;
-            break;
-        case QUAD:
-            ++nonConvexCount;
-            break;
-        case TETRAHEDRON:
-            tl[elem] |= CONVEX_BIT;
-            break;
-        case PRISM:
-        case PYRAMID:
-        case HEXAHEDRON: {
-            bool conv = true;
-            const Index begin = el[elem], end = el[elem + 1];
-            const Index nvert = end - begin;
-            const auto numFaces = NumFaces[type];
-            for (int f = 0; f < numFaces; ++f) {
-                auto nc = faceNormalAndCenter(type, f, cl + begin, x, y, z);
-                auto normal = nc.first;
-                auto center = nc.second;
-                for (Index idx = 0; idx < nvert; ++idx) {
-                    bool check = true;
-                    for (Index i = 0; i < FaceSizes[type][f]; ++i) {
-                        if (idx == FaceVertices[type][f][i]) {
-                            check = false;
-                            break;
-                        }
-                    }
-
-                    if (check) {
-                        Index v = cl[begin + idx];
-                        const Vector3 p(x[v], y[v], z[v]);
-                        if (normal.dot(p - center) > Tolerance) {
-                            conv = false;
-                            break;
-                        }
-                    }
-                }
-                if (!conv)
-                    break;
-            }
-            if (conv) {
-                tl[elem] |= CONVEX_BIT;
-            } else {
-                ++nonConvexCount;
-            }
-            break;
-        }
-        case POLYHEDRON: {
-            bool conv = true;
-            std::vector<Index> vert = cellVertices(elem);
-            const Index begin = el[elem], end = el[elem + 1];
-            const Index nvert = end - begin;
-            Index facestart = InvalidIndex;
-            Index term = 0;
-            for (Index i = 0; i < nvert; ++i) {
-                if (facestart == InvalidIndex) {
-                    facestart = i;
-                    term = cl[begin + i];
-                } else if (cl[begin + i] == term) {
-                    const Index N = i - facestart;
-                    const Index *fl = cl + begin + facestart;
-                    auto nc = faceNormalAndCenter(N, fl, x, y, z);
-                    auto normal = nc.first;
-                    auto center = nc.second;
-                    for (auto v: vert) {
-                        bool check = true;
-                        for (unsigned idx = 0; idx < N; ++idx) {
-                            if (v == fl[idx]) {
-                                check = false;
-                                break;
-                            }
-                        }
-
-                        if (check) {
-                            const Vector3 p(x[v], y[v], z[v]);
-                            if (normal.dot(p - center) > Tolerance) {
-                                conv = false;
-                                break;
-                            }
-                        }
-                    }
-                    if (!conv)
-                        break;
-                    facestart = InvalidIndex;
-                }
-            }
-
-            if (conv) {
-                tl[elem] |= CONVEX_BIT;
-            } else {
-                ++nonConvexCount;
-            }
-            break;
-        }
-        default:
-            std::cerr << "invalid element type " << (tl[elem] & TYPE_MASK) << std::endl;
-            ++nonConvexCount;
-            break;
-        }
-    }
-
-    return nonConvexCount;
+    return isGhost(elem);
 }
 
 std::pair<Vector3, Vector3> UnstructuredGrid::cellBounds(Index elem) const
@@ -325,7 +203,7 @@ std::vector<Index> UnstructuredGrid::getNeighborElements(Index elem) const
 
 Index UnstructuredGrid::cellNumFaces(Index elem) const
 {
-    auto t = tl()[elem] & TYPE_MASK;
+    auto t = tl()[elem];
     switch (t) {
     case NONE:
     case BAR:
@@ -349,56 +227,6 @@ Index UnstructuredGrid::cellNumFaces(Index elem) const
     return -1;
 }
 
-
-bool UnstructuredGrid::insideConvex(Index elem, const Vector3 &point) const
-{
-    //const Scalar Tolerance = 1e-2*cellDiameter(elem); // too slow: halves particle tracing speed
-    //const Scalar Tolerance = 1e-5;
-    const Scalar Tolerance = 0;
-
-    const Index *el = &this->el()[0];
-    const Index *cl = &this->cl()[el[elem]];
-    const Scalar *x = &this->x()[0];
-    const Scalar *y = &this->y()[0];
-    const Scalar *z = &this->z()[0];
-
-    const auto type(tl()[elem] & TYPE_MASK);
-    if (type == UnstructuredGrid::POLYHEDRON) {
-        const Index begin = el[elem], end = el[elem + 1];
-        const Index nvert = end - begin;
-        Index facestart = InvalidIndex;
-        Index term = 0;
-        for (Index i = 0; i < nvert; ++i) {
-            if (facestart == InvalidIndex) {
-                term = cl[i];
-            } else if (cl[i] == term) {
-                const auto nc = faceNormalAndCenter(i - facestart, &cl[facestart], x, y, z);
-                auto &normal = nc.first;
-                auto &center = nc.second;
-                if (normal.dot(point - center) > Tolerance)
-                    return false;
-                facestart = InvalidIndex;
-            }
-        }
-        return true;
-    } else {
-        const auto numFaces = NumFaces[type];
-        for (int f = 0; f < numFaces; ++f) {
-            const auto nc = faceNormalAndCenter(type, f, cl, x, y, z);
-            auto &normal = nc.first;
-            auto &center = nc.second;
-
-            //std::cerr << "normal: " << n.transpose() << ", v0: " << v0.transpose() << ", rel: " << (point-v0).transpose() << ", dot: " << n.dot(point-v0) << std::endl;
-
-            if (normal.dot(point - center) > Tolerance)
-                return false;
-        }
-        return true;
-    }
-
-    return false;
-}
-
 Scalar UnstructuredGrid::exitDistance(Index elem, const Vector3 &point, const Vector3 &dir) const
 {
     const Index *el = &this->el()[0];
@@ -411,7 +239,7 @@ Scalar UnstructuredGrid::exitDistance(Index elem, const Vector3 &point, const Ve
     const Vector3 raydir(dir.normalized());
 
     Scalar exitDist = -1;
-    const auto type(tl()[elem] & TYPE_MASK);
+    const auto type(tl()[elem]);
     if (type == UnstructuredGrid::POLYHEDRON) {
         const Index nvert = end - begin;
         Index term = 0;
@@ -434,10 +262,11 @@ Scalar UnstructuredGrid::exitDistance(Index elem, const Vector3 &point, const Ve
                 if (t < 0) {
                     continue;
                 }
-                std::vector<Vector3> corners(nCorners);
+                std::vector<Vector3> corners;
+                corners.reserve(nCorners);
                 for (Index k = 0; k < nCorners; ++k) {
                     const Index v = cl[facestart + k];
-                    corners[k] = Vector3(x[v], y[v], z[v]);
+                    corners.emplace_back(x[v], y[v], z[v]);
                 }
                 const auto isect = point + t * raydir;
                 if (insidePolygon(isect, corners.data(), nCorners, normal)) {
@@ -483,10 +312,7 @@ bool UnstructuredGrid::inside(Index elem, const Vector3 &point) const
     if (elem == InvalidIndex)
         return false;
 
-    if (isConvex(elem))
-        return insideConvex(elem, point);
-
-    const auto type = tl()[elem] & TYPE_MASK;
+    const auto type = tl()[elem];
     const Index begin = el()[elem];
     const Index end = el()[elem + 1];
     const Index *cl = &this->cl()[begin];
@@ -522,7 +348,7 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
     std::vector<Index> indices((mode == Linear || mode == Mean) ? nvert : 1);
 
     if (mode == Mean) {
-        if ((tl[elem] & TYPE_MASK) == POLYHEDRON) {
+        if (tl[elem] == POLYHEDRON) {
             indices = cellVertices(elem);
             const Index n = indices.size();
             Scalar w = Scalar(1) / n;
@@ -535,7 +361,7 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
             }
         }
     } else if (mode == Linear) {
-        switch (tl[elem] & TYPE_MASK) {
+        switch (tl[elem]) {
         case TETRAHEDRON: {
             assert(nvert == 4);
             Vector3 coord[4];
@@ -647,8 +473,8 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
             assert(inside(elem, center));
 #endif
 
-            std::vector<Vector3> coord(nvert);
-            Index nfaces = 0;
+            std::vector<Vector3> coord;
+            coord.reserve(nvert);
             Index n = 0;
             Index facestart = InvalidIndex;
             Index term = 0;
@@ -658,19 +484,16 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
                     term = cl[i];
                 } else if (cl[i] == term) {
                     const Index N = i - facestart;
-                    ++nfaces;
                     for (Index k = facestart; k < facestart + N; ++k) {
-                        indices[n] = cl[k];
-                        for (int c = 0; c < 3; ++c) {
-                            coord[n][c] = x[c][cl[k]];
-                        }
+                        const auto clk = cl[k];
+                        indices[n] = clk;
+                        coord.emplace_back(x[0][clk], x[1][clk], x[2][clk]);
                         ++n;
                     }
                     facestart = InvalidIndex;
                 }
             }
             Index ncoord = n;
-            coord.resize(ncoord);
             weights.resize(ncoord);
 
             // find face that is hit by ray from polyhedron center through query point
@@ -836,7 +659,7 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
 
 std::pair<Vector3, Vector3> UnstructuredGrid::elementBounds(Index elem) const
 {
-    const auto t = tl()[elem] & UnstructuredGrid::TYPE_MASK;
+    const auto t = tl()[elem];
     if (NumVertices[t] >= 0) {
         return Base::elementBounds(elem);
     }
@@ -850,7 +673,7 @@ std::pair<Vector3, Vector3> UnstructuredGrid::elementBounds(Index elem) const
 
 std::vector<Index> UnstructuredGrid::cellVertices(Index elem) const
 {
-    const auto t = tl()[elem] & UnstructuredGrid::TYPE_MASK;
+    const auto t = tl()[elem];
     if (NumVertices[t] >= 0) {
         return Base::cellVertices(elem);
     }

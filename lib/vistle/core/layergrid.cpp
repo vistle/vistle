@@ -6,6 +6,7 @@
 #include "layergrid.h"
 #include "layergrid_impl.h"
 #include "celltree_impl.h"
+#include "validate.h"
 
 //#define INTERPOL_DEBUG
 
@@ -40,20 +41,53 @@ void LayerGrid::refreshImpl() const
 
 // CHECK IMPL
 //-------------------------------------------------------------------------
-bool LayerGrid::checkImpl() const
+bool LayerGrid::checkImpl(std::ostream &os, bool quick) const
 {
-    V_CHECK(getSize() == getNumDivisions(0) * getNumDivisions(1) * getNumDivisions(2));
+    VALIDATE_INDEX(getSize());
+    for (int c = 0; c < 3; c++) {
+        VALIDATE_INDEX(getNumDivisions(c));
+        VALIDATE(d()->ghostLayers[c][0] + d()->ghostLayers[c][1] < getNumDivisions(c));
+    }
+    VALIDATE(getSize() == getNumDivisions(0) * getNumDivisions(1) * getNumDivisions(2));
 
     for (int c = 0; c < 3; c++) {
-        V_CHECK(d()->ghostLayers[c][0] + d()->ghostLayers[c][1] < getNumDivisions(c));
+        VALIDATE(d()->ghostLayers[c][0] + d()->ghostLayers[c][1] < getNumDivisions(c));
     }
 
     for (int c = 0; c < 2; c++) {
-        V_CHECK(d()->min[c] <= d()->max[c]);
+        VALIDATE(d()->min[c] <= d()->max[c]);
     }
 
-    return true;
+    VALIDATE_SUB(normals());
+    VALIDATE_SUBSIZE(normals(), getSize());
+
+    if (quick)
+        return true;
+
+    Index dim[] = {getNumDivisions(0), getNumDivisions(1), getNumDivisions(2)};
+    const Scalar *height = d()->x[0]->data();
+    bool valid = true;
+    for (Index y = 0; y < getNumDivisions(1); ++y) {
+        for (Index x = 0; x < getNumDivisions(0); ++x) {
+            for (Index z = 0; z < getNumDivisions(2) - 1; ++z) {
+                auto h = height[vertexIndex(x, y, z, dim)];
+                auto upper = height[vertexIndex(x, y, z + 1, dim)];
+                if (h > upper) {
+                    os << "height at (" << x << " " << y << "): " << h << " on layer " << z << " is larger than upper "
+                       << upper << std::endl;
+                    valid = false;
+                }
+            }
+        }
+    }
+
+    if (hasCelltree()) {
+        VALIDATE(validateCelltree());
+    }
+
+    return valid;
 }
+
 
 void LayerGrid::updateInternals()
 {
@@ -73,9 +107,22 @@ bool LayerGrid::isEmpty() const
     return Base::isEmpty();
 }
 
-void LayerGrid::print(std::ostream &os) const
+std::set<Object::const_ptr> LayerGrid::referencedObjects() const
 {
-    Base::print(os);
+    auto objs = Base::referencedObjects();
+
+    auto norm = normals();
+    if (norm && objs.emplace(norm).second) {
+        auto no = norm->referencedObjects();
+        std::copy(no.begin(), no.end(), std::inserter(objs, objs.begin()));
+    }
+
+    return objs;
+}
+
+void LayerGrid::print(std::ostream &os, bool verbose) const
+{
+    Base::print(os, verbose);
     os << " " << getSize() << "=" << getNumDivisions(0) << "x" << getNumDivisions(1) << "x" << getNumDivisions(2);
 }
 
@@ -129,7 +176,7 @@ LayerGrid::Celltree::const_ptr LayerGrid::getCelltree() const
 {
     if (m_celltree)
         return m_celltree;
-    Data::attachment_mutex_lock_type lock(d()->attachment_mutex);
+    Data::mutex_lock_type lock(d()->attachment_mutex);
     if (!hasAttachment("celltree")) {
         refresh();
         createCelltree(m_numDivisions);
@@ -247,7 +294,7 @@ Normals::const_ptr LayerGrid::normals() const
 
 void LayerGrid::setNormals(Normals::const_ptr normals)
 {
-    assert(!normals || normals->check());
+    assert(!normals || normals->check(std::cerr));
     d()->normals = normals;
 }
 
@@ -273,11 +320,11 @@ std::vector<Vector3> LayerGrid::cellCorners(Index elem) const
     const Scalar *z = &this->z()[0];
     auto n = cellCoordinates(elem, m_numDivisions);
     auto cl = cellVertices(elem, m_numDivisions);
-    std::vector<Vector3> corners(cl.size());
+    std::vector<Vector3> corners;
+    corners.reserve(cl.size());
     for (unsigned i = 0; i < cl.size(); ++i) {
-        corners[i][0] = m_min[0] + (n[0] + i % 2) * m_dist[0];
-        corners[i][1] = m_min[1] + (n[1] + ((i + 1) / 2) % 2) * m_dist[1];
-        corners[i][2] = z[cl[i]];
+        corners.emplace_back(m_min[0] + (n[0] + i % 2) * m_dist[0], m_min[1] + (n[1] + ((i + 1) / 2) % 2) * m_dist[1],
+                             z[cl[i]]);
     }
 
     return corners;

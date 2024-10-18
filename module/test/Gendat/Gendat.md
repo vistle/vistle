@@ -7,4 +7,3 @@ To set this up create the pipeline as described in the following picture and cha
 [example]:<Isosurface>
 
 Alternatively load vistle/examples/gendat-isosurface.vsl.
-

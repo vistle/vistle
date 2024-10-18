@@ -6,6 +6,7 @@
 #include <vistle/userinterface/vistleconnection.h>
 #include "vistleobserver.h"
 #include "mainwindow.h"
+#include <vistle/config/access.h>
 
 #include <thread>
 
@@ -25,7 +26,7 @@ class UiController: public QObject {
 public:
     explicit UiController(int argc, char *argv[], QObject *parent = nullptr);
     ~UiController();
-    void init();
+    bool init();
     void finish();
 
 signals:
@@ -87,6 +88,8 @@ private:
     std::string m_pythonDir;
 
     QString m_sessionUrl;
+    std::unique_ptr<vistle::config::Access> m_config;
+    bool m_initialized = false;
 };
 
 } // namespace gui

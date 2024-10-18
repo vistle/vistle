@@ -219,7 +219,7 @@ bool Engine::fetchNewModuleState()
             ++m_iterations;
         }
         m_dataTransmitter->resetCache();
-        m_dataTransmitter->updateExecutionCount();
+        m_dataTransmitter->updateGeneration();
     } break;
     case InSituMessageType::ConnectPort:
     case InSituMessageType::DisconnectPort: {
@@ -299,7 +299,7 @@ bool Engine::launchManager(int argC, char **argV)
         return false;
     }
 
-    m_managerThread = std::thread([this, argC, argV, VISTLE_ROOT]() {
+    m_managerThread = std::thread([argC, argV, VISTLE_ROOT]() {
         string cmd{VISTLE_ROOT};
         cmd += "/bin/vistle_manager";
         vector<char *> args;

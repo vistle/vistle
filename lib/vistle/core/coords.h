@@ -21,6 +21,7 @@ public:
     Coords(const size_t numVertices, const Meta &meta = Meta());
 
     void resetCoords(); //< remove reference to coordinates and create empty ones
+    std::set<Object::const_ptr> referencedObjects() const override;
 
     std::pair<Vector3, Vector3> getBounds() const override;
     Index getNumCoords();

@@ -17,11 +17,16 @@
 #include <vistle/core/message.h>
 #include <vistle/core/parameter.h>
 #include <vistle/core/port.h>
+#include <vistle/util/version.h>
 
 #include <vistle/userinterface/vistleconnection.h>
 #include "pythonmodule.h"
 #ifdef EMBED_PYTHON
 #include "pythoninterface.h"
+#else
+#include <vistle/config/access.h>
+#include <vistle/config/value.h>
+#include <vistle/util/hostname.h>
 #endif
 
 //#define DEBUG
@@ -134,6 +139,11 @@ static std::shared_ptr<message::Buffer> waitForReply(const message::uuid_t &uuid
     return state().waitForReply(uuid);
 }
 
+static std::string vistle_version()
+{
+    return vistle::version::string();
+}
+
 static bool source(const std::string &filename)
 {
 #ifdef EMBED_PYTHON
@@ -203,15 +213,15 @@ static void debug(int id = message::Id::Invalid)
     sendMessage(m);
 }
 
-static bool barrier()
+static bool barrier(const std::string &info)
 {
-    message::Barrier m;
+    message::Barrier m(info);
     m.setDestId(message::Id::MasterHub);
     state().registerRequest(m.uuid());
     if (!sendMessage(m))
         return false;
     auto buf = waitForReply(m.uuid());
-    if (buf->type() == message::BARRIERREACHED) {
+    if (buf && buf->type() == message::BARRIERREACHED) {
         return true;
     }
     return false;
@@ -666,6 +676,7 @@ static void connect(int sid, const char *sport, int did, const char *dport)
     std::cerr << "Python: connect " << sid << ":" << sport << " -> " << did << ":" << dport << std::endl;
 #endif
     message::Connect m(sid, sport, did, dport);
+    m.setDestId(message::Id::MasterHub);
     sendMessage(m);
 }
 
@@ -675,6 +686,7 @@ static void disconnect(int sid, const char *sport, int did, const char *dport)
     std::cerr << "Python: disconnect " << sid << ":" << sport << " -> " << did << ":" << dport << std::endl;
 #endif
     message::Disconnect m(sid, sport, did, dport);
+    m.setDestId(message::Id::MasterHub);
     sendMessage(m);
 }
 
@@ -1278,6 +1290,12 @@ static bool sessionConnectWithObserver(StateObserver *o, const std::string &host
         return false;
     }
 
+    if (port == 0) {
+        auto hostname = vistle::hostname();
+        auto config = vistle::config::Access(hostname, hostname);
+        port = *config.value<int64_t>("system", "net", "controlport", 31093);
+    }
+
     userinterface.reset(new UserInterface(host, port, o));
     if (!userinterface)
         return false;
@@ -1427,6 +1445,7 @@ PY_MODULE(_vistle, m)
         .def("status", &TSO::status)
         .def("updateStatus", &TSO::updateStatus);
 
+    m.def("version", &vistle_version, "version of Vistle");
     m.def("source", &source, "execute commands from `file`", "file"_a);
     m.def("removeHub", &removeHub, "remove hub `id` from session", "id"_a);
 
@@ -1490,7 +1509,7 @@ PY_MODULE(_vistle, m)
     m.def("trace", trace, "enable/disable message tracing for module `id`", "id"_a = message::Id::Broadcast,
           "type"_a = message::ANY, "enable"_a = true);
     m.def("debug", debug, "request a module to print its state", "id"_a = message::Id::Invalid);
-    m.def("barrier", barrier, "wait until all modules reply");
+    m.def("barrier", barrier, "wait until all modules reply", "info"_a = "anon Python barrier");
     m.def("requestTunnel", requestTunnel,
           "start TCP tunnel listening on port `arg1` on hub forwarding incoming connections to `arg2`:`arg3`",
           "listen port"_a, "dest port"_a, "dest addr"_a);
@@ -1561,7 +1580,7 @@ PY_MODULE(_vistle, m)
 
 #ifndef EMBED_PYTHON
     m.def("sessionConnect", &sessionConnect, "connect to running Vistle instance", "host"_a = "localhost",
-          "port"_a = 31093);
+          "port"_a = 0);
     m.def("sessionConnect", &sessionConnectWithObserver, "connect to running Vistle instance", "observer"_a, "host"_a,
           "port"_a);
     m.def("sessionDisconnect", &sessionDisconnect, "disconnect from Vistle");

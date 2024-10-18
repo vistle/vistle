@@ -75,3 +75,9 @@
 [submodule "lib/3rdparty/mpi-serial"]
 	path = lib/3rdparty/mpi-serial
 	url = https://github.com/vistle/mpi-serial.git
+[submodule "lib/3rdparty/profile_chrome"]
+	path = lib/3rdparty/profile_chrome
+	url = https://github.com/CyberKoalaStudios/ProfilerLibrary
+[submodule "lib/3rdparty/profile_nvtx"]
+	path = lib/3rdparty/profile_nvtx
+	url = https://github.com/NVIDIA/NVTX

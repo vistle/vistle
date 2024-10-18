@@ -8,6 +8,7 @@
 #include "uniformgrid_impl.h"
 #include "archives.h"
 #include <cassert>
+#include "validate.h"
 
 namespace vistle {
 
@@ -42,14 +43,32 @@ void UniformGrid::refreshImpl() const
 
 // CHECK IMPL
 //-------------------------------------------------------------------------
-bool UniformGrid::checkImpl() const
+bool UniformGrid::checkImpl(std::ostream &os, bool quick) const
 {
     for (int c = 0; c < 3; c++) {
-        V_CHECK(d()->ghostLayers[c][0] + d()->ghostLayers[c][1] < getNumDivisions(c));
-        V_CHECK(d()->min[c] <= d()->max[c]);
+        VALIDATE(d()->ghostLayers[c][0] + d()->ghostLayers[c][1] < getNumDivisions(c));
+        VALIDATE(d()->min[c] <= d()->max[c]);
     }
 
+    VALIDATE_SUB(normals());
+    VALIDATE_SUBSIZE(normals(), getNumVertices());
+
     return true;
+}
+
+
+std::set<Object::const_ptr> UniformGrid::referencedObjects() const
+{
+    auto objs = Base::referencedObjects();
+
+    auto norm = normals();
+    if (norm && objs.emplace(norm).second) {
+        auto no = norm->referencedObjects();
+        std::copy(no.begin(), no.end(), std::inserter(objs, objs.begin()));
+        objs.emplace(norm);
+    }
+
+    return objs;
 }
 
 // IS EMPTY
@@ -64,9 +83,9 @@ bool UniformGrid::isEmpty() const
     return Base::isEmpty();
 }
 
-void UniformGrid::print(std::ostream &os) const
+void UniformGrid::print(std::ostream &os, bool verbose) const
 {
-    Base::print(os);
+    Base::print(os, verbose);
     os << " " << m_size << "=" << getNumDivisions(0) << "x" << getNumDivisions(1) << "x" << getNumDivisions(2);
 }
 
@@ -129,7 +148,7 @@ Normals::const_ptr UniformGrid::normals() const
 
 void UniformGrid::setNormals(Normals::const_ptr normals)
 {
-    assert(!normals || normals->check());
+    assert(!normals || normals->check(std::cerr));
     d()->normals = normals;
 }
 

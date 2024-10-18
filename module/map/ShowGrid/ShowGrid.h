@@ -2,7 +2,7 @@
 #define SHOWUSG_H
 
 #include <vistle/module/module.h>
-#include <vistle/core/lines.h>
+#include <vistle/core/object.h>
 
 class ShowGrid: public vistle::Module {
 public:
@@ -15,7 +15,7 @@ private:
     vistle::IntParameter *m_CellNrMin;
     vistle::IntParameter *m_CellNrMax;
 
-    vistle::ResultCache<vistle::Lines::ptr> m_cache;
+    vistle::ResultCache<vistle::Object::ptr> m_cache;
 };
 
 #endif

@@ -193,31 +193,32 @@ bool apply_affinity_from_environment(int nodeRank, int ranksOnThisNode)
         std::cerr << "affinity: excluding CPUs/PUs " << cpuset_to_string(excludeset) << std::endl;
         affinity = "cpu";
     }
-    if (env.find("pu") != std::string::npos) {
-        affinity = "pu";
-        depth = hwloc_get_type_depth(topology, HWLOC_OBJ_PU);
-    }
-    if (env.find("cpu") != std::string::npos || env.find("core") != std::string::npos) {
-        affinity = "core";
-        depth = hwloc_get_type_depth(topology, HWLOC_OBJ_CORE);
-    }
-    if (env.find("package") != std::string::npos || env.find("chip") != std::string::npos) {
-        affinity = "package";
-        depth = hwloc_get_type_depth(topology, HWLOC_OBJ_PACKAGE);
-    }
-    if (env.find("numa") != std::string::npos) {
-        affinity = "numanode";
-        depth = hwloc_get_type_depth(topology, HWLOC_OBJ_NUMANODE);
-    }
-    if (env.find("machine") != std::string::npos) {
-        affinity = "machine";
-        depth = hwloc_get_type_depth(topology, HWLOC_OBJ_MACHINE);
+    struct Affinity {
+        const char *desc;
+        hwloc_obj_type_t hwloc;
+        const char *alternative = nullptr;
+    };
+    constexpr Affinity affinities[] = {{"pu", HWLOC_OBJ_PU},
+                                       {"core", HWLOC_OBJ_CORE, "cpu"},
+                                       {"package", HWLOC_OBJ_PACKAGE, "chip"},
+                                       {"numa", HWLOC_OBJ_NUMANODE},
+                                       {"machine", HWLOC_OBJ_MACHINE}};
+    std::stringstream supportedAffinities;
+    for (const auto &a: affinities) {
+        if (env.find(a.desc) != std::string::npos || (a.alternative && env.find(a.alternative) != std::string::npos)) {
+            affinity = a.desc;
+            depth = hwloc_get_type_depth(topology, a.hwloc);
+        }
+        if (!supportedAffinities.str().empty())
+            supportedAffinities << ", ";
+        supportedAffinities << a.desc;
+        if (a.alternative)
+            supportedAffinities << ", " << a.alternative;
     }
     std::cerr << "affinity: VISTLE_AFFINITY=" << env << ", setting affinity to " << affinity << " (depth " << depth
               << ")" << std::endl;
     if (depth == -1) {
-        std::cerr << "affinity: possible values for VISTLE_AFFINITY are "
-                  << "pu, core, chip, numa, machinee" << std::endl;
+        std::cerr << "affinity: possible values for VISTLE_AFFINITY are " << supportedAffinities.str() << std::endl;
         return false;
     }
 

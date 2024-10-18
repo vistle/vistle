@@ -13,6 +13,7 @@ private:
     bool compute() override;
 
     vistle::ResultCache<vistle::Object::ptr> m_gridCache, m_resultCache;
+    vistle::IntParameter *m_allCoordinates = nullptr;
 };
 
 #endif

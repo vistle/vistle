@@ -17,7 +17,7 @@ envvars="$envvars COVISE_PATH COVISEDIR ARCHSUFFIX COCONFIG COCONFIG_DEBUG"
 envvars="$envvars COVCONFIG COVCONFIG_HOST COVCONFIG_CLUSTER COVCONFIG_DEBUG COVCONFIG_IGNORE_ERRORS"
 envvars="$envvars VISTLE_KEY VISTLE_SHM_SIZE VISTLE_SHM_PER_RANK VISTLE_AFFINITY"
 envvars="$envvars VISTLE_ROOT VISTLE_BUILDTYPE"
-envvars="$envvars LD_LIBRARY_PATH"
+envvars="$envvars LD_LIBRARY_PATH LD_PRELOAD"
 envvars="$envvars DYLD_LIBRRARY_PATH VISTLE_DYLD_LIBRARY_PATH DYLD_FRAMEWORK_PATH VISTLE_DYLD_FRAMEWORK_PATH"
 envvars="$envvars DYLD_FALLBACK_LIBRRARY_PATH VISTLE_DYLD_FALLBACK_LIBRARY_PATH DYLD_FALLBACK_FRAMEWORK_PATH VISTLE_DYLD_FALLBACK_FRAMEWORK_PATH"
 
@@ -65,11 +65,17 @@ fi
 
 LOGPREFIX=
 mkdir -p "/var/tmp/${USER}" && LOGPREFIX="/var/tmp/${USER}"
-LOGFILE="${LOGPREFIX}/$(basename $1)"-$$.log
-if [ -n "$4" ]; then
+LOGFILE="${LOGPREFIX}/$(basename $1)-$$.log"
+if [ -n "$5" ]; then
    # include module ID
-   LOGFILE="${LOGPREFIX}/$(basename $1)"-$4-$$.log
+   LOGFILE="${LOGPREFIX}/$(basename $1)_$5-$$.log"
 fi
+
+function doexec() {
+    echo "$@"
+    echo "$@" >> $LOGFILE
+    exec "$@" >> "$LOGFILE" 2>&1 < /dev/null
+}
 
 echo "spawn_vistle.sh: $@" > "$LOGFILE"
 case $(uname) in
@@ -115,7 +121,7 @@ if [ -n "$PBS_ENVIRONMENT" ]; then
       echo "PBS: mpiexec $@"
       mpiexec -genvall hostname
       mpiexec -genvall printenv
-      exec mpirun -genvall ${PREPENDRANK} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+      doexec mpirun -genvall ${PREPENDRANK} $LAUNCH $WRAPPER "$@"
       exec mpiexec -genvall \
          "$@"
 
@@ -123,7 +129,7 @@ if [ -n "$PBS_ENVIRONMENT" ]; then
          #-genv KMP_AFFINITY=verbose,none \
          #-genv I_MPI_DEBUG=5 \
    else
-      exec mpirun  ${PREPENDRANK} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+       doexec mpirun  ${PREPENDRANK} $LAUNCH $WRAPPER "$@"
    fi
 elif [ -n "$SLURM_JOB_ID" ]; then
    exec mpiexec --bind-to none $WRAPPER "$@"
@@ -204,26 +210,23 @@ case "$MPI_IMPL" in
         done
 
         if [ -n "$MPIHOSTFILE" ]; then
-            echo mpirun $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND --hostfile ${MPIHOSTFILE} $WRAPPER "$@" >> "$LOGFILE"
-            exec mpirun $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND --hostfile ${MPIHOSTFILE} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+            doexec mpirun $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND --hostfile ${MPIHOSTFILE} $WRAPPER "$@"
         elif [ -n "$MPIHOSTS" ]; then
-            echo mpirun $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND -H ${MPIHOSTS} $WRAPPER "$@" >> "$LOGFILE"
-            exec mpirun $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND -H ${MPIHOSTS} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+            doexec mpirun $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND -H ${MPIHOSTS} $WRAPPER "$@"
         else
-            echo mpirun $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND $WRAPPER "$@" >> "$LOGFILE"
-            exec mpirun $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+            doexec mpirun $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND $WRAPPER "$@"
         fi
         ;;
       mpt)
-            exec mpirun -np ${MPISIZE} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+          doexec mpirun -np ${MPISIZE} $LAUNCH $WRAPPER "$@"
       ;;
     *)
         if [ -n "$MPIHOSTFILE" ]; then	
-            exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} -f ${MPIHOSTFILE} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+            doexec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} -f ${MPIHOSTFILE} $LAUNCH $WRAPPER "$@"
         elif [ -n "$MPIHOSTS" ]; then
-            exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} -hosts ${MPIHOSTS} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+            doexec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} -hosts ${MPIHOSTS} $LAUNCH $WRAPPER "$@"
         else
-            exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+            doexec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} $LAUNCH $WRAPPER "$@"
         fi
         ;;
 esac

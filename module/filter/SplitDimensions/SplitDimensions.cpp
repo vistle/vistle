@@ -133,7 +133,7 @@ bool SplitDimensions::compute(const std::shared_ptr<BlockTask> &task) const
 
             const Index begin = iel[e], end = iel[e + 1];
 
-            switch (type & cell::TYPE_MASK) {
+            switch (type) {
             case cell::POINT:
                 if (out0d) {
                     Index v = icl[begin];
@@ -141,7 +141,8 @@ bool SplitDimensions::compute(const std::shared_ptr<BlockTask> &task) const
                 }
                 break;
             case cell::BAR:
-                if (oel1 && (type & cell::TYPE_MASK) == type) {
+            case cell::POLYLINE:
+                if (oel1 && !ugrid->isGhost(e)) {
                     for (Index i = begin; i < end; ++i) {
                         ocl1->push_back(icl[i]);
                     }
@@ -151,7 +152,7 @@ bool SplitDimensions::compute(const std::shared_ptr<BlockTask> &task) const
             case cell::TRIANGLE:
             case cell::QUAD:
             case cell::POLYGON:
-                if (oel2 && (type & cell::TYPE_MASK) == type) {
+                if (oel2 && !ugrid->isGhost(e)) {
                     for (Index i = begin; i < end; ++i) {
                         ocl2->push_back(icl[i]);
                     }

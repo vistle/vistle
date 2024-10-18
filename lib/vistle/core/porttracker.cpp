@@ -16,6 +16,7 @@ PortTracker::PortTracker(): m_stateTracker(nullptr)
 PortTracker::~PortTracker()
 {
     std::vector<int> modules;
+    modules.reserve(m_ports.size());
     for (auto &m: m_ports) {
         modules.emplace_back(m.first);
     }
@@ -149,6 +150,7 @@ std::vector<message::Buffer> PortTracker::removePort(const Port &p)
 
     check();
     const Port::ConstPortSet &cl = port->connections();
+    ret.reserve(cl.size());
     while (!cl.empty()) {
         size_t oldsize = cl.size();
         const Port *other = *cl.begin();
@@ -377,6 +379,7 @@ std::vector<std::string> PortTracker::getPortNames(const int moduleID, Port::Typ
 {
     std::vector<std::string> result;
     const auto ports = getPorts(moduleID, type);
+    result.reserve(ports.size());
     for (const auto &port: ports)
         result.push_back(port->getName());
     return result;
@@ -418,6 +421,7 @@ std::vector<Port *> PortTracker::getPorts(const int moduleID, Port::Type type, b
 
     const PortMap &portmap = *mports->second;
     const PortOrder &portorder = *portOrderIt->second;
+    result.reserve(portorder.size());
     for (PortOrder::const_iterator it = portorder.begin(); it != portorder.end(); ++it) {
         const std::string &name = it->second;
         auto it2 = portmap.find(name);
@@ -458,6 +462,11 @@ std::vector<Port *> PortTracker::getConnectedOutputPorts(const int moduleID) con
     return getPorts(moduleID, Port::OUTPUT, true);
 }
 
+std::vector<Port *> PortTracker::getConnectedParameters(const int moduleID) const
+{
+    return getPorts(moduleID, Port::PARAMETER, true);
+}
+
 std::vector<message::Buffer> PortTracker::removeModule(int moduleId)
 {
     //CERR << "removing all connections from/to " << moduleId << std::endl;
@@ -469,6 +478,7 @@ std::vector<message::Buffer> PortTracker::removeModule(int moduleId)
     if (modulePortsIt != m_ports.end()) {
         std::vector<Port *> toRemove;
         const auto &modulePorts = *modulePortsIt->second;
+        toRemove.reserve(modulePorts.size());
         for (const auto &port: modulePorts) {
             toRemove.push_back(port.second);
         }

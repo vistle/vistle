@@ -18,9 +18,6 @@ Reader::Reader(const std::string &name, const int moduleID, mpi::communicator co
     m_firstRank = addIntParameter("first_rank", "rank for first partition of first timestep", 0);
     setParameterRange(m_firstRank, Integer(0), Integer(comm.size() - 1));
 
-    m_checkConvexity =
-        addIntParameter("check_convexity", "whether to check convexity of grid cells", 0, Parameter::Boolean);
-
     setCurrentParameterGroup();
 
     assert(m_concurrency);
@@ -54,11 +51,6 @@ void Reader::prepareQuit()
 {
     m_observedParameters.clear();
     Module::prepareQuit();
-}
-
-bool Reader::checkConvexity() const
-{
-    return m_checkConvexity->getValue();
 }
 
 int Reader::rankForTimestepAndPartition(int t, int p) const
@@ -118,6 +110,11 @@ size_t Reader::waitForReaders(size_t maxRunning, bool &result)
  */
 bool Reader::readTimestep(std::shared_ptr<Token> &prev, const ReaderProperties &prop, int timestep, int step)
 {
+    if (!prepareTimestep(timestep)) {
+        sendInfo("error preparing timestep %d", timestep);
+        return false;
+    }
+
     bool result = true;
     bool collective = m_collectiveIo == Collective || (timestep < 0 && m_collectiveIo == CollectiveConstant);
     bool partitioned = m_handlePartitions == Partition || (timestep >= 0 && m_handlePartitions == PartitionTimesteps);
@@ -163,7 +160,7 @@ bool Reader::readTimestep(std::shared_ptr<Token> &prev, const ReaderProperties &
                 }
                 m_tokens.emplace_back(token);
                 prev = token;
-                auto tname = name() + ":Read:" + std::to_string(m_tokenCount);
+                auto tname = std::to_string(id()) + "r" + std::to_string(m_tokenCount) + ":" + name();
                 token->m_future = std::async(std::launch::async, [this, tname, token, timestep, p]() {
                     setThreadName(tname);
                     if (!read(*token, timestep, p)) {
@@ -205,23 +202,24 @@ bool Reader::readTimestep(std::shared_ptr<Token> &prev, const ReaderProperties &
  */
 bool Reader::readTimesteps(std::shared_ptr<Token> &prev, const ReaderProperties &prop)
 {
-    bool result = true;
-    if (prop.time.inc() != 0) {
-        int step = 0;
-        for (int t = prop.time.first(); prop.time.inc() < 0 ? t >= prop.time.last() : t <= prop.time.last();
-             t += prop.time.inc()) {
-            if (!readTimestep(prev, prop, t, step)) {
-                result = false;
-                break;
-            }
-            ++step;
-            if (!result)
-                break;
-        }
-
-        waitForReaders(0, result);
-        prev.reset();
+    if (prop.time.inc() == 0) {
+        sendError("timestep increment must not be zero");
+        return false;
     }
+
+    bool result = true;
+    int timestep = prop.time.first();
+    const int nsteps = prop.time.calc_numtime();
+    for (int step = 0; step < nsteps; ++step) {
+        if (!readTimestep(prev, prop, timestep, step)) {
+            result = false;
+            break;
+        }
+        timestep += prop.time.inc();
+    }
+
+    waitForReaders(0, result);
+    prev.reset();
     return result;
 }
 
@@ -254,7 +252,10 @@ bool Reader::prepare()
         numpart = 0;
 
     Meta meta;
-    meta.setNumBlocks(m_numPartitions);
+    if (m_numPartitions > 0)
+        meta.setNumBlocks(m_numPartitions);
+    else
+        meta.setNumBlocks(-1);
     auto numtime = rTime.calc_numtime();
     meta.setNumTimesteps(numtime);
 
@@ -321,6 +322,11 @@ bool Reader::examine(const Parameter *param)
 }
 
 bool Reader::prepareRead()
+{
+    return true;
+}
+
+bool Reader::prepareTimestep(int timestep)
 {
     return true;
 }
@@ -652,7 +658,7 @@ void Reader::Token::applyMeta(Object::ptr obj) const
     reader()->updateMeta(obj);
 
     obj->setTimestep(m_meta.timeStep());
-    obj->setNumTimesteps(m_meta.numTimesteps());
+    obj->setNumTimesteps(m_meta.timeStep() < 0 ? -1 : m_meta.numTimesteps());
     obj->setBlock(m_meta.block());
     obj->setNumBlocks(m_meta.numBlocks());
 }

@@ -16,7 +16,7 @@ void Router::initRoutingTable()
     rt[INVALID] = 0;
     rt[IDENTIFY] = Special;
     rt[SETID] = Special;
-    rt[ADDHUB] = Broadcast | Track | DestUi | TriggerQueue;
+    rt[ADDHUB] = Special;
     rt[REMOVEHUB] = Broadcast | Track | DestUi | TriggerQueue;
     rt[REPLAYFINISHED] = Special;
     rt[TRACE] = Broadcast | DestHub | DestManager | DestModules | Track;
@@ -60,10 +60,11 @@ void Router::initRoutingTable()
     rt[ADDOBJECT] = DestManager | HandleOnNode;
     rt[ADDOBJECTCOMPLETED] = DestManager | HandleOnNode;
 
-    rt[BARRIER] = HandleOnDest;
+    rt[BARRIER] = Track | HandleOnDest;
     rt[BARRIERREACHED] = HandleOnDest;
 
     rt[REQUESTTUNNEL] = HandleOnNode | HandleOnHub;
+    rt[TUNNELESTABLISHED] = Special;
 
     rt[REQUESTOBJECT] = Special;
     rt[SENDOBJECT] = Special;
@@ -232,12 +233,18 @@ bool Router::toTracker(const Message &msg, Identify::Identity senderType)
         return false;
 
     const int t = msg.type();
+    if (t == BARRIER || t == QUIT) {
+        return rt[t] & Track;
+    }
+
     if (rt[t] & Track) {
         if (m_identity == Identify::HUB) {
-            return senderType == Identify::SLAVEHUB || senderType == Identify::MANAGER || senderType == Identify::UI;
+            return senderType == Identify::HUB || senderType == Identify::SLAVEHUB || senderType == Identify::MANAGER ||
+                   senderType == Identify::UI;
         }
         if (m_identity == Identify::SLAVEHUB) {
-            return senderType == Identify::HUB || senderType == Identify::MANAGER || senderType == Identify::UI;
+            return senderType == Identify::HUB || senderType == Identify::SLAVEHUB || senderType == Identify::MANAGER ||
+                   senderType == Identify::UI;
         }
     }
 

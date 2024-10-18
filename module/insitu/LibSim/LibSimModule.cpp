@@ -3,14 +3,13 @@
 #include <vistle/util/hostname.h>
 #include <vistle/util/listenv4v6.h>
 #include <vistle/util/sleep.h>
+#include <vistle/util/filesystem.h>
 
 #include <vistle/insitu/libsim/connectLibsim/connect.h>
 
 #include <sstream>
 #include <vistle/core/rectilineargrid.h>
 
-#include <boost/bind.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/mpi.hpp>
 #include <boost/range/iterator_range_core.hpp>
 
@@ -29,8 +28,8 @@ using vistle::insitu::message::InSituMessageType;
 #define CERR cerr << "LibSimModule[" << rank() << "/" << size() << "] "
 #define DEBUG_CERR vistle::DoNotPrintInstance
 
-
-LibSimModule::LibSimModule(const string &name, int moduleID, mpi::communicator comm): InSituModule(name, moduleID, comm)
+LibSimModule::LibSimModule(const string &name, int moduleID, mpi::communicator comm)
+: InSituModuleBase(name, moduleID, comm)
 {
 #ifndef MODULE_THREAD
     m_filePath = addStringParameter("path", "path to a .sim2 file or directory containing these files", "",
@@ -71,13 +70,13 @@ std::unique_ptr<vistle::insitu::message::MessageHandler> LibSimModule::connectTo
     auto handler = std::make_unique<vistle::insitu::message::InSituTcp>(comm());
     bool simInitSent = false;
     if (rank() == 0) {
-        using namespace boost::filesystem;
+        using namespace vistle::filesystem;
         path p{m_filePath->getValue()};
         if (is_directory(p)) {
             auto simName = m_simName->getValue();
             path lastEditedFile;
             std::time_t lastEdit{};
-            for (auto &entry: boost::make_iterator_range(boost::filesystem::directory_iterator(p), {})) {
+            for (auto &entry: boost::make_iterator_range(vistle::filesystem::directory_iterator(p), {})) {
                 if (simName.size() == 0 ||
                     entry.path().filename().generic_string().find(simName + ".sim2") != std::string::npos) {
                     auto editTime = last_write_time(entry.path());

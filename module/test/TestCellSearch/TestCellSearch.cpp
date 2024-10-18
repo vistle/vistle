@@ -12,8 +12,6 @@ using namespace vistle;
 TestCellSearch::TestCellSearch(const std::string &name, int moduleID, mpi::communicator comm)
 : Module(name, moduleID, comm)
 {
-    setDefaultCacheMode(ObjectCache::CacheDeleteLate);
-
     createInputPort("data_in", "grid");
 
     m_point = addVectorParameter("point", "search point", ParamVector(0., 0., 0.));

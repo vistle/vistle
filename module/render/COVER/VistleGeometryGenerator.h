@@ -23,6 +23,7 @@ class Geode;
 
 struct OsgColorMap {
     OsgColorMap();
+    explicit OsgColorMap(bool withData);
     void setName(const std::string &species);
     void setRange(float min, float max);
     void setBlendWithMaterial(bool enable);
@@ -30,7 +31,8 @@ struct OsgColorMap {
     std::shared_ptr<opencover::coVRShader> shader;
     std::shared_ptr<opencover::coVRShader> shaderUnlit;
     std::shared_ptr<opencover::coVRShader> shaderHeightMap;
-    std::shared_ptr<opencover::coVRShader> shaderHeightMapUnlit;
+    std::shared_ptr<opencover::coVRShader> shaderSpheres;
+    std::shared_ptr<opencover::coVRShader> shaderSpheresCorrectDepth;
     std::vector<std::shared_ptr<opencover::coVRShader>> allShaders;
 #endif
     bool blendWithMaterial = false;
@@ -68,6 +70,13 @@ public:
     const std::string &species() const;
     void setColorMaps(const OsgColorMapMap *colormaps);
     void setGeometryCache(vistle::ResultCache<GeometryCache> &cache);
+    struct Options {
+        bool indexedGeometry = true; // use indexed geometry, if useful
+        bool optimizeIndices = false; // optimize index order for better GPU vertex cache utilization
+        size_t numPrimitives = 100000; // number of primitives to process before splitting into multiple geodes
+        bool buildKdTree = false; // build a kd-tree for faster intersection tests
+    };
+    void setOptions(const Options &options);
 
     osg::Geode *operator()(osg::ref_ptr<osg::StateSet> state = NULL);
 
@@ -77,6 +86,7 @@ public:
     static void unlock();
 
 private:
+    const OsgColorMap *getColorMap(const std::string &species) const;
     std::shared_ptr<vistle::RenderObject> m_ro;
     vistle::Object::const_ptr m_geo;
     vistle::Object::const_ptr m_normal;
@@ -86,6 +96,7 @@ private:
 
     const OsgColorMapMap *m_colormaps = nullptr;
     vistle::ResultCache<GeometryCache> *m_cache = nullptr;
+    Options m_options;
 
     static std::mutex s_coverMutex;
 };

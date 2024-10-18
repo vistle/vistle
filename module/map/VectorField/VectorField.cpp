@@ -3,6 +3,9 @@
 
 #include <vistle/core/object.h>
 #include <vistle/core/lines.h>
+#include <vistle/core/triangles.h>
+#include <vistle/core/quads.h>
+#include <vistle/core/indexed.h>
 #include <vistle/core/coords.h>
 #include <vistle/util/math.h>
 #include <vistle/alg/objalg.h>
@@ -30,6 +33,8 @@ VectorField::VectorField(const std::string &name, int moduleID, mpi::communicato
     V_ENUM_SET_CHOICES(m_attachmentPoint, AttachmentPoint);
     m_range = addVectorParameter("range", "allowed length range (before scaling)", ParamVector(0., MaxLength));
     setParameterMinimum(m_range, ParamVector(0., 0.));
+    m_allCoordinates =
+        addIntParameter("all_coordinates", "include all or only referenced coordinates", false, Parameter::Boolean);
 }
 
 VectorField::~VectorField() = default;
@@ -56,25 +61,57 @@ bool VectorField::compute()
         sendError("no per-vertex mapping");
         return true;
     }
-    Index numPoints = coords->getNumCoords();
-    if (vecs->getSize() != numPoints) {
-        sendError("geometry size does not match array size: #points=%lu, but #vecs=%lu", (unsigned long)numPoints,
+    Index numCoords = coords->getNumCoords();
+    if (vecs->getSize() != numCoords) {
+        sendError("geometry size does not match array size: #points=%lu, but #vecs=%lu", (unsigned long)numCoords,
                   (unsigned long)vecs->getSize());
         return true;
     }
+
+    bool indexed = false;
+    Index numPoints = numCoords;
+    std::vector<Index> verts;
+    if (!m_allCoordinates->getValue()) {
+        Index nconn = 0;
+        const Index *cl = nullptr;
+        if (auto tri = Triangles::as(split.geometry)) {
+            cl = tri->cl().data();
+            nconn = tri->cl().size();
+        } else if (auto quads = Quads::as(split.geometry)) {
+            cl = quads->cl().data();
+            nconn = quads->cl().size();
+        } else if (auto indexed = Indexed::as(split.geometry)) {
+            cl = indexed->cl().data();
+            nconn = indexed->cl().size();
+        }
+
+        if (cl && nconn > 0) {
+            indexed = true;
+            verts.reserve(nconn);
+            std::copy(cl, cl + nconn, std::back_inserter(verts));
+            std::sort(verts.begin(), verts.end());
+            auto end = std::unique(verts.begin(), verts.end());
+            verts.resize(end - verts.begin());
+            numPoints = verts.size();
+        }
+    }
+
     DataBase::ptr mapped;
-    auto data = expect<DataBase>("data_in");
-    if (data) {
-        if (data->guessMapping() != DataBase::Vertex) {
-            sendError("no per-vertex mapping for data");
-            return true;
+    DataBase::const_ptr data;
+    if (isConnected("data_in")) {
+        data = expect<DataBase>("data_in");
+        if (data) {
+            if (data->guessMapping() != DataBase::Vertex) {
+                sendError("no per-vertex mapping for data");
+                return true;
+            }
+            if (data->getSize() != numCoords) {
+                sendError("geometry size does not match data array size: #points=%lu, but #vecs=%lu",
+                          (unsigned long)numCoords, (unsigned long)data->getSize());
+                return true;
+            }
+            mapped = data->cloneType();
         }
-        if (data->getSize() != numPoints) {
-            sendError("geometry size does not match data array size: #points=%lu, but #vecs=%lu",
-                      (unsigned long)numPoints, (unsigned long)data->getSize());
-            return true;
-        }
-        mapped = data->cloneType();
     }
 
     Scalar minLen = m_range->getValue()[0];
@@ -91,7 +128,8 @@ bool VectorField::compute()
 
     el[0] = 0;
     for (Index i = 0; i < numPoints; ++i) {
-        Vector3 v(vx[i], vy[i], vz[i]);
+        Index ii = indexed ? verts[i] : i;
+        Vector3 v(vx[ii], vy[ii], vz[ii]);
         Scalar l = v.norm();
         if (l < minLen && l > 0) {
             v *= minLen / l;
@@ -100,7 +138,7 @@ bool VectorField::compute()
         }
         v *= scale;
 
-        Vector3 p(px[i], py[i], pz[i]);
+        Vector3 p(px[ii], py[ii], pz[ii]);
         Vector3 p0, p1;
         switch (att) {
         case Bottom:
@@ -139,8 +177,9 @@ bool VectorField::compute()
     if (mapped) {
         mapped->setSize(numPoints * 2);
         for (Index i = 0; i < numPoints; ++i) {
-            mapped->copyEntry(i * 2, data, i);
-            mapped->copyEntry(i * 2 + 1, data, i);
+            Index ii = indexed ? verts[i] : i;
+            mapped->copyEntry(i * 2, data, ii);
+            mapped->copyEntry(i * 2 + 1, data, ii);
         }
         mapped->setMeta(data->meta());
         mapped->copyAttributes(coords);

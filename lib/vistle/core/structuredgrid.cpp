@@ -11,6 +11,7 @@
 #include "unstr.h" // for hexahedron topology
 #include <cassert>
 #include "cellalgorithm.h"
+#include "validate.h"
 
 //#define INTERPOL_DEBUG
 
@@ -49,12 +50,24 @@ void StructuredGrid::refreshImpl() const
 
 // CHECK IMPL
 //-------------------------------------------------------------------------
-bool StructuredGrid::checkImpl() const
+bool StructuredGrid::checkImpl(std::ostream &os, bool quick) const
 {
-    V_CHECK(getSize() == getNumDivisions(0) * getNumDivisions(1) * getNumDivisions(2));
+    VALIDATE_INDEX(getSize());
+    VALIDATE(getSize() == getNumDivisions(0) * getNumDivisions(1) * getNumDivisions(2));
 
     for (int c = 0; c < 3; c++) {
-        V_CHECK(d()->ghostLayers[c][0] + d()->ghostLayers[c][1] < getNumDivisions(c));
+        VALIDATE_INDEX(getNumDivisions(c));
+        VALIDATE(d()->ghostLayers[c][0] + d()->ghostLayers[c][1] < getNumDivisions(c));
+    }
+
+    VALIDATE_SUB(normals());
+    VALIDATE_SUBSIZE(normals(), getNumVertices());
+
+    if (quick)
+        return true;
+
+    if (hasCelltree()) {
+        VALIDATE(validateCelltree());
     }
 
     return true;
@@ -78,9 +91,22 @@ bool StructuredGrid::isEmpty() const
     return Base::isEmpty();
 }
 
-void StructuredGrid::print(std::ostream &os) const
+std::set<Object::const_ptr> StructuredGrid::referencedObjects() const
 {
-    Base::print(os);
+    auto objs = Base::referencedObjects();
+
+    auto norm = normals();
+    if (norm && objs.emplace(norm).second) {
+        auto no = norm->referencedObjects();
+        std::copy(no.begin(), no.end(), std::inserter(objs, objs.begin()));
+    }
+
+    return objs;
+}
+
+void StructuredGrid::print(std::ostream &os, bool verbose) const
+{
+    Base::print(os, verbose);
     os << " " << getSize() << "=" << getNumDivisions(0) << "x" << getNumDivisions(1) << "x" << getNumDivisions(2);
 }
 
@@ -135,7 +161,7 @@ StructuredGrid::Celltree::const_ptr StructuredGrid::getCelltree() const
 {
     if (m_celltree)
         return m_celltree;
-    Data::attachment_mutex_lock_type lock(d()->attachment_mutex);
+    Data::mutex_lock_type lock(d()->attachment_mutex);
     if (!hasAttachment("celltree")) {
         refresh();
         createCelltree(m_numDivisions);
@@ -233,7 +259,7 @@ Normals::const_ptr StructuredGrid::normals() const
 
 void StructuredGrid::setNormals(Normals::const_ptr normals)
 {
-    assert(!normals || normals->check());
+    assert(!normals || normals->check(std::cerr));
     d()->normals = normals;
 }
 
@@ -407,11 +433,11 @@ GridInterface::Interpolator StructuredGrid::getInterpolator(Index elem, const Ve
     Index nvert = cl.size();
 
     const Scalar *x[3] = {&this->x()[0], &this->y()[0], &this->z()[0]};
-    std::vector<Vector3> corners(nvert);
+    std::vector<Vector3> corners;
+    corners.reserve(nvert);
     for (Index i = 0; i < nvert; ++i) {
-        corners[i][0] = x[0][cl[i]];
-        corners[i][1] = x[1][cl[i]];
-        corners[i][2] = x[2][cl[i]];
+        const auto c = cl[i];
+        corners.emplace_back(x[0][c], x[1][c], x[2][c]);
     }
 
     std::vector<Index> indices((mode == Linear || mode == Mean) ? nvert : 1);

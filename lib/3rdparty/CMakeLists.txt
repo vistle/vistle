@@ -48,6 +48,7 @@ if(NOT VISTLE_USE_MPI)
     target_include_directories(vistle_mpi PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/mpi-serial> $<INSTALL_INTERFACE:include>)
 
     add_library(MPI::MPI_C ALIAS vistle_mpi)
+    add_library(MPI::MPI_CXX ALIAS vistle_mpi)
 endif()
 
 if(BOOST_MPI_DIR)
@@ -68,22 +69,30 @@ if(NOT BUILD_SHARED_LIBS)
     set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 endif()
 
+if(VISTLE_PROFILE_NVTX)
+    add_subdirectory(profile_nvtx/c)
+    vistle_export_library(nvtx3-c)
+    vistle_export_library(nvtx3-cpp)
+endif()
+
 if(USE_SZ3)
     add_subdirectory(sz3)
 endif()
 
-set(BUILD_TESTING
-    OFF
-    CACHE INTERNAL "")
-set(BUILD_UTILITIES
-    OFF
-    CACHE INTERNAL "")
-set(ZFP_LIBRARY_PREFIX
-    "vistle_"
-    CACHE STRING "Prefix to prepend to the output library name")
-mark_as_advanced(ZFP_LIBRARY_PREFIX)
-set(CMAKE_INSTALL_INCLUDEDIR include/vistle/3rdparty)
-add_subdirectory(zfp)
+if(VISTLE_INTERNAL_ZFP)
+    set(BUILD_TESTING
+        OFF
+        CACHE INTERNAL "")
+    set(BUILD_UTILITIES
+        OFF
+        CACHE INTERNAL "")
+    set(ZFP_LIBRARY_PREFIX
+        "vistle_"
+        CACHE STRING "Prefix to prepend to the output library name")
+    mark_as_advanced(ZFP_LIBRARY_PREFIX)
+    set(CMAKE_INSTALL_INCLUDEDIR include/vistle/3rdparty)
+    add_subdirectory(zfp)
+endif()
 
 set(BUILD_SHARED_LIBS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
@@ -110,8 +119,8 @@ if(NOT VISTLE_GUI_ONLY)
         set(VTKm_USE_DOUBLE_PRECISION ${VISTLE_DOUBLE_PRECISION})
 
         set(VTKm_ENABLE_TBB ${TBB_FOUND})
-        set(VTKm_ENABLE_CUDA ${VISTLE_USE_CUDA})
-        set(VTKm_ENABLE_KOKKOS ${VISTLE_ENABLE_KOKKOS})
+        set(VTKm_ENABLE_CUDA ${VISTLE_CUDA_ENABLED})
+        set(VTKm_ENABLE_KOKKOS ${VISTLE_USE_KOKKOS})
 
         #set(VTKm_INSTALL_LIB_DIR "${_vtk_build_LIBRARY_DESTINATION}")
         #set(VTKm_INSTALL_INCLUDE_DIR "${_vtk_build_HEADERS_DESTINATION}/vtkvtkm/vtk-m")
@@ -131,13 +140,42 @@ if(NOT VISTLE_GUI_ONLY)
         #set(VTKm_USE_DEFAULT_SYMBOL_VISIBILITY OFF)
         set(VTKm_SKIP_LIBRARY_VERSIONS ON)
 
+        set(VTKm_DEFAULT_TYPES_HEADER "../../../VtkmDefaultTypesVistle.h.in")
+
+        set(VTKm_MODULE_ENABLE_vtkm_io "NO")
+        set(VTKm_MODULE_ENABLE_vtkm_source "NO")
+
+        set(VTKm_GROUP_ENABLE_Filters "DONT_WANT")
+        set(VTKm_GROUP_ENABLE_FiltersCommon "DONT_WANT")
+        set(VTKm_MODULE_ENABLE_vtkm_filter_contour "YES")
+        set(VTKm_MODULE_ENABLE_vtkm_filter_field_conversion "YES")
+
+        set(VTKm_MODULE_ENABLE_vtkm_filter_clean_grid "NO")
+        set(VTKm_MODULE_ENABLE_vtkm_filter_connected_components "NO")
+        set(VTKm_MODULE_ENABLE_vtkm_filter_density_esimate "NO")
+        set(VTKm_MODULE_ENABLE_vtkm_filter_entity_extraction "NO")
+        set(VTKm_MODULE_ENABLE_vtkm_filter_field_transform "NO")
+        set(VTKm_MODULE_ENABLE_vtkm_filter_flow "NO")
+        set(VTKm_MODULE_ENABLE_vtkm_filter_geometry_refinement "NO")
+        set(VTKm_MODULE_ENABLE_vtkm_filter_image_processing "NO")
+        #set(VTKm_MODULE_ENABLE_vtkm_filter_mesh_info "NO")
+        set(VTKm_MODULE_ENABLE_vtkm_filter_multiblock "NO")
+        set(VTKm_MODULE_ENABLE_vtkm_filter_resampling "NO")
+        set(VTKm_MODULE_ENABLE_vtkm_filter_scalar_topology "NO")
+        set(VTKm_MODULE_ENABLE_vtkm_filter_testing "NO")
+        set(VTKm_MODULE_ENABLE_vtkm_filter_uncertainty "NO")
+        #set(VTKm_MODULE_ENABLE_vtkm_filter_vector_analysis "NO")
+        set(VTKm_MODULE_ENABLE_vtkm_filter_zfp "NO")
+
         add_subdirectory(vtk-m)
         add_library(vtkm::cont ALIAS vtkm_cont)
         add_library(vtkm::filter ALIAS vtkm_filter)
+        add_library(vtkm::worklet ALIAS vtkm_worklet)
         #add_library(vtkm_io ALIAS vtkm::io)
         #add_library(vtkm_rendering ALIAS vtkm::rendering)
         #add_library(vtkm_source ALIAS vtkm::source)
         #add_library(vtkm_worklet ALIAS vtkm::worklet)
+
     endif()
 
     if(VISTLE_USE_MPI)
@@ -181,6 +219,9 @@ if(NOT VISTLE_GUI_ONLY)
         if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
             add_compile_options(-Wno-variadic-macros -Wno-pedantic)
         endif()
+        if(POLICY CMP0145)
+            set(CMAKE_POLICY_DEFAULT_CMP0145 OLD) # don't fail on include(Dart)
+        endif()
         add_subdirectory(IceT)
     endif()
 
@@ -205,3 +246,21 @@ if(VISTLE_INSTALL_3RDPARTY)
         DESTINATION include/vistle/3rdparty
         COMPONENT Devel)
 endif()
+
+# vistle_find_package(Eigen3 REQUIRED)
+add_library(eigen INTERFACE)
+add_library(Eigen3::Eigen ALIAS eigen)
+set(EIGEN_DEFINITIONS "-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=int" "-DEIGEN_DONT_PARALLELIZE") # also disable OpenMP for eigen
+target_compile_definitions(eigen INTERFACE ${EIGEN_DEFINITIONS})
+#set(EIGEN3_INCLUDE_PATH "${PROJECT_SOURCE_DIR}/lib/3rdparty")
+target_include_directories(eigen INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}> $<INSTALL_INTERFACE:${INCLUDE_INSTALL_DIR}>)
+# Export as title case Eigen
+set_target_properties(eigen PROPERTIES EXPORT_NAME Eigen)
+vistle_export_library(eigen)
+
+#install (TARGETS eigen EXPORT Eigen3Targets)
+
+# add_definitions(-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=short)
+
+include(cmrc/CMakeRC.cmake)
+vistle_export_library(cmrc-base)

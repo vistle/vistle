@@ -157,10 +157,10 @@ std::vector<std::string> vistle::VistleConnection::getParameters(int id) const
     return ui().state().getParameters(id);
 }
 
-bool vistle::VistleConnection::barrier() const
+bool vistle::VistleConnection::barrier(const std::string &info) const
 {
     message::Buffer buf;
-    message::Barrier m;
+    message::Barrier m(info);
     for (;;) {
         if (!waitForReply(m, buf)) {
             return false;
