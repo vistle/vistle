@@ -749,19 +749,22 @@ std::shared_ptr<process::child> Hub::launchMpiProcess(const std::vector<std::str
     assert(!m_proxyOnly);
     assert(!args.empty());
 #ifdef VISTLE_USE_MPI
-#ifdef _WIN32
-    std::string spawn = "spawn_vistle.bat";
-#else
-    std::string spawn = "spawn_vistle.sh";
-#endif
+    std::string spawn_cmd = "";
+    std::string spawn = *m_config->value<std::string>("system", "mpirun", platform, spawn_cmd);
+    if (spawn.empty() && !platform_fallback.empty()) {
+        spawn = *m_config->value<std::string>("system", "mpirun", platform_fallback, spawn_cmd);
+    }
+    std::cerr << "SPAWN: " << spawn << std::endl;
+
     auto child = launchProcess(spawn, args);
 #ifndef _WIN32
-    if (!child || !child->valid()) {
-        std::cerr << "failed to execute " << args[0] << " via spawn_vistle.sh, retrying with mpirun" << std::endl;
+    if ((!child || !child->valid()) && spawn != "mpirun") {
+        std::cerr << "failed to execute " << args[0] << " via " << spawn << ", retrying with mpirun" << std::endl;
         child = launchProcess("mpirun", args);
     }
 #endif
-#else
+
+#else // VISTLE_USE_MPI
     auto prog = args[0];
     std::vector<std::string> nargs(args.begin() + 1, args.end());
     auto child = launchProcess(args[0], nargs);
