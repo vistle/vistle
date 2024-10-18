@@ -61,4 +61,3 @@ attach underlying grid to mappable data
 <rect x="5.5em" y="10.8em" width="1.0em" height="0.03333333333333333em" rx="0.0em" ry="0.0em" style="fill:#000000;" />
 <text x="6.7em" y="10.9em" class="text" >data with input grid attached<tspan> (data_out4)</tspan></text>
 </svg>
-

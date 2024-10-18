@@ -947,7 +947,7 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
     endmacro(add_module)
 
     include(cmake/Documentation.cmake)
-    
+
     macro(add_vtkm_module targetname description)
         add_module(${targetname} ${description} ${ARGN})
 

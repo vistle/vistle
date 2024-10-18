@@ -21,4 +21,3 @@ extract the grid a data object is mapped to
 <rect x="1.9em" y="5.8em" width="1.0em" height="0.03333333333333333em" rx="0.0em" ry="0.0em" style="fill:#000000;" />
 <text x="3.0999999999999996em" y="5.8999999999999995em" class="text" >normals mapped to grid<tspan> (normals_out)</tspan></text>
 </svg>
-

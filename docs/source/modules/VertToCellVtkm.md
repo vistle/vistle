@@ -36,4 +36,3 @@ convert vertex mapped data to cell mapped
 <rect x="3.0999999999999996em" y="7.8em" width="1.0em" height="0.03333333333333333em" rx="0.0em" ry="0.0em" style="fill:#000000;" />
 <text x="4.3em" y="7.8999999999999995em" class="text" >converted data<tspan> (data_out2)</tspan></text>
 </svg>
-

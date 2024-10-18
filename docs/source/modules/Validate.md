@@ -11,4 +11,3 @@ validate data object integrity
 <rect x="0.7em" y="0.8em" width="1.0em" height="0.03333333333333333em" rx="0.0em" ry="0.0em" style="fill:#000000;" />
 <text x="1.9em" y="0.9em" class="text" >data<tspan> (data_in)</tspan></text>
 <text x="0.2em" y="3.6500000000000004em" class="moduleName" >Validate</text></svg>
-
