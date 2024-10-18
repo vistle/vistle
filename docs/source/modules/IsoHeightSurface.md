@@ -26,6 +26,5 @@ extract surface at constant height
 |name|description|type|
 |-|-|-|
 |iso_height|height above ground|Float|
-|processortype|processortype (Host, Device)|Int|
 |compute_normals|compute normals (structured grids only)|Int|
 |heightmap|height map as geotif|String|

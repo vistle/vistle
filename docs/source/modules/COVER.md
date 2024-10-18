@@ -17,3 +17,6 @@ VR renderer for immersive environments
 |-|-|-|
 |render_mode|Render on which nodes? (LocalOnly, MasterOnly, AllRanks, LocalShmLeader, AllShmLeaders)|Int|
 |objects_per_frame|Max. no. of objects to load between calls to render|Int|
+|optimize_indices|optimize geometry indices for better GPU vertex cache utilization|Int|
+|indexed_geometry|build indexed geometry, if useful|Int|
+|num_primitives|number of primitives to process before splitting into multiple geodes|Int|

@@ -29,7 +29,6 @@ read LS-Dyna3D ptf files
 |last_step|last timestep to read (-1: last)|Int|
 |step_increment|number of steps to increment|Int|
 |first_rank|rank for first partition of first timestep|Int|
-|check_convexity|whether to check convexity of grid cells|Int|
 |filename|Geometry file path|String|
 |nodalDataType|Nodal results data to be read (No_Node_Data, Displacements, Velocities, Accelerations)|Int|
 |elementDataType|Element results data to be read (No_Element_Data, Stress_Tensor, Plastic_Strain, Thickness)|Int|

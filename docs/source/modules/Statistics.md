@@ -21,3 +21,4 @@ statistics
 <rect x="3.0999999999999996em" y="2.8em" width="1.0em" height="0.03333333333333333em" rx="0.0em" ry="0.0em" style="fill:#000000;" />
 <text x="4.3em" y="2.9em" class="text" >Scalar Data<tspan> (scalar)</tspan></text>
 <text x="0.2em" y="5.65em" class="moduleName" >Statistics</text></svg>
+

@@ -1,6 +1,6 @@
 
 # Displace
-move vertices according to mapped data
+move vertices according to mapped data of first input
 
 <svg width="70.0em" height="14.600000000000001em" >
 <style>.text { font: normal 1.0em sans-serif;}tspan{ font: italic 1.0em sans-serif;}.moduleName{ font: bold 1.0em sans-serif;}</style>
@@ -62,3 +62,4 @@ move vertices according to mapped data
 |-|-|-|
 |component|component to displace for scalar input (X, Y, Z, All)|Int|
 |operation|displacement operation to apply to selected component or element-wise (Set, Add, Multiply)|Int|
+|scale|scaling factor for displacement|Float|

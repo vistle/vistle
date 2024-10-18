@@ -26,3 +26,4 @@ combine up to three scalar fields to a vector field
 <rect x="0.7em" y="7.8em" width="1.0em" height="0.03333333333333333em" rx="0.0em" ry="0.0em" style="fill:#000000;" />
 <text x="1.9em" y="7.8999999999999995em" class="text" >combined vector output<tspan> (data_out)</tspan></text>
 </svg>
+

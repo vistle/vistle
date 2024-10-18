@@ -28,5 +28,4 @@ extract surfaces with constant data level
 |isovalue|isovalue|Float|
 |isopoint|isopoint|Vector|
 |point_or_value|point or value interaction (PointPerTimestep, Value, PointInFirstStep)|Int|
-|processortype|processortype (Host, Device)|Int|
 |compute_normals|compute normals (structured grids only)|Int|

@@ -19,7 +19,6 @@ read polygonal geometry models with Assimp (STL, OBJ, 3DS, Collada, DXF, PLY, X3
 |last_step|last timestep to read (-1: last)|Int|
 |step_increment|number of steps to increment|Int|
 |first_rank|rank for first partition of first timestep|Int|
-|check_convexity|whether to check convexity of grid cells|Int|
 |filename|name of file (%1%: block, %2%: timestep)|String|
 |indexed_geometry|create indexed geometry?|Int|
 |triangulate|only create triangles|Int|

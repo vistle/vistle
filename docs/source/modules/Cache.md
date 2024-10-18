@@ -69,7 +69,7 @@ cache input objects
 |zfp_rate|ZFP fixed compression rate|Float|
 |zfp_precision|ZFP fixed precision|Int|
 |zfp_accuracy|ZFP compression error tolerance|Float|
-|archive_compression|compression mode for archives (CompressionNone, CompressionLz4, CompressionZstd, CompressionSnappy)|Int|
+|archive_compression|compression mode for archives (CompressionNone, CompressionLz4, CompressionZstd)|Int|
 |archive_compression_speed|speed parameter of compression algorithm|Int|
 |reorder|reorder timesteps|Int|
 |renumber|renumber timesteps consecutively|Int|

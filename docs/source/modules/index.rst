@@ -17,12 +17,15 @@ Modules
    Calc.md
    CellSelect.md
    CellToVert.md
+   CellToVertVtkm.md
    Chainmail.md
+   ClipVtkm.md
    Color.md
    ColorAttribute.md
    ColorMetapostPart.md
    ColorRandom.md
    CreateCelltree.md
+   CreateCuboids.md
    CreateVertexOwnerList.md
    CutGeometry.md
    CutGeometryOld.md
@@ -43,15 +46,16 @@ Modules
    GenIsoDat.md
    Gendat.md
    GhostCellGenerator.md
+   InSituModule.md
    IndexManifolds.md
    IsoHeightSurface.md
    IsoSurface.md
    IsoSurfaceVtkm.md
    LibSimController.md
    LoadCover.md
+   ManipulateGhosts.md
    MapDrape.md
    MetaData.md
-   MiniSim.md
    MpiInfo.md
    ObjectStatistics.md
    OsgRenderer.md
@@ -84,6 +88,7 @@ Modules
    ShowGridIndex.md
    SortBlocks.md
    SpheresOld.md
+   SpheresOverlap.md
    SplitDimensions.md
    SplitPolyhedra.md
    Statistics.md
@@ -100,9 +105,11 @@ Modules
    Transform.md
    TransformGrid.md
    TubesOld.md
+   Validate.md
    Variant.md
    VecToScalar.md
    VectorField.md
+   VertToCellVtkm.md
    VortexCores.md
    VortexCriteria.md
    WeldVertices.md

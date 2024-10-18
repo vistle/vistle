@@ -49,7 +49,6 @@ read VTK data
 |last_step|last timestep to read (-1: last)|Int|
 |step_increment|number of steps to increment|Int|
 |first_rank|rank for first partition of first timestep|Int|
-|check_convexity|whether to check convexity of grid cells|Int|
 |filename|name of VTK file|String|
 |read_pieces|create block for every piece in an unstructured grid|Int|
 |create_ghost_cells|create ghost cells for multi-piece unstructured grids|Int|
