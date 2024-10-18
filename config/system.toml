@@ -1,6 +1,10 @@
 [net]
 controlport = 31093
 
+[mpirun]
+unix = "spawn_vistle.sh"
+windows = "spawn_vistle.bat"
+
 [debugger]
 linux = [ "ddt", "-attach-mpi={mpipid}" ]
 linux_batch = [ "ddt", "-attach-mpi={mpipid}", "--connect" ]
