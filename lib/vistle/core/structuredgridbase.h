@@ -93,6 +93,7 @@ public:
         assert(coords[2] < dims[2] - 1 || coords[2] == 0);
         return coords;
     }
+
     static inline std::array<Index, 8> cellVertices(Index el, const Index dims[3])
     {
         auto &H = HexahedronIndices;
@@ -115,6 +116,8 @@ public:
         }
         return cl;
     }
+
+    inline Index cellNumVertices(Index elem) const override { return 8; }
 
     virtual bool isGhostCell(Index elem) const override;
 

@@ -25,6 +25,7 @@ public:
     virtual Index getNumElements() = 0;
     virtual Index getNumElements() const = 0;
     virtual Index cellNumFaces(Index elem) const = 0;
+    virtual Index cellNumVertices(Index elem) const = 0;
     virtual std::vector<Index> cellVertices(Index elem) const = 0;
 };
 

@@ -399,6 +399,13 @@ std::pair<Vector3, Vector3> Indexed::elementBounds(Index elem) const
     return std::make_pair(min, max);
 }
 
+Index Indexed::cellNumVertices(Index elem) const
+{
+    const Index *el = &this->el()[0];
+    const Index begin = el[elem], end = el[elem + 1];
+    return end - begin;
+}
+
 std::vector<Index> Indexed::cellVertices(Index elem) const
 {
     const Index *el = &this->el()[0];
@@ -409,7 +416,8 @@ std::vector<Index> Indexed::cellVertices(Index elem) const
 
 Index Indexed::cellNumFaces(Index elem) const
 {
-    return 1;
+    assert("should not be called" == 0);
+    return InvalidIndex;
 }
 
 void Indexed::refreshImpl() const
