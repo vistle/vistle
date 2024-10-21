@@ -34,6 +34,11 @@ void Polygons::print(std::ostream &os, bool verbose) const
     Base::print(os, verbose);
 }
 
+Index Polygons::cellNumFaces(Index elem) const
+{
+    return 1;
+}
+
 void Polygons::Data::initData()
 {}
 

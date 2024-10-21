@@ -21,6 +21,8 @@ public:
     static Data *create(const size_t numElements = 0, const size_t numCorners = 0, const size_t numVertices = 0,
                         const Meta &meta = Meta());
     V_DATA_END(Polygons);
+
+    Index cellNumFaces(Index elem) const override;
 };
 
 } // namespace vistle
