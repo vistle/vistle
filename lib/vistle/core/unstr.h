@@ -194,6 +194,7 @@ public:
     Vector3 cellCenter(Index elem) const override;
     std::vector<Index> getNeighborElements(Index elem) const override;
     Index cellNumFaces(Index elem) const override;
+    Index cellNumVertices(Index elem) const override;
 
 private:
     mutable ShmArrayProxy<Byte> m_tl;

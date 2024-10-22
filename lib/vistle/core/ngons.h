@@ -38,6 +38,7 @@ public:
     virtual std::pair<Vector3, Vector3> elementBounds(Index elem) const;
 
     Index cellNumFaces(Index elem) const override { return 1; }
+    Index cellNumVertices(Index elem) const override { return N; }
     std::vector<Index> cellVertices(Index elem) const override;
 
 private:

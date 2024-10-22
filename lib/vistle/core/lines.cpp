@@ -87,6 +87,11 @@ void Lines::setCapStyles(Lines::CapStyle start, Lines::CapStyle joint, Lines::Ca
     d()->style[2] = end;
 }
 
+Index Lines::cellNumFaces(Index elem) const
+{
+    return 0;
+}
+
 void Lines::Data::initData()
 {
     style[0] = style[1] = style[2] = Lines::Open;

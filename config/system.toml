@@ -1,2 +1,18 @@
 [net]
 controlport = 31093
+
+[mpirun]
+unix = "spawn_vistle.sh"
+windows = "spawn_vistle.bat"
+
+[debugger]
+linux = [ "ddt", "-attach-mpi={mpipid}" ]
+linux_batch = [ "ddt", "-attach-mpi={mpipid}", "--connect" ]
+darwin = [ "osascript",
+    "-l", "JavaScript",
+    "-e", "var Xcode = Application('Xcode');\n",
+    "-e", "Xcode.activate();\n",
+    "-e", "Xcode.open(\"{home}/vistle/contrib/DebugWithXcode.xcodeproj\");\n",
+    "-e", "var workspace = Xcode.activeWorkspaceDocument();\n",
+    "-e", "workspace.attach({{\"toProcessIdentifier\": {rank0pid}, \"suspended\": false}});\n"
+]

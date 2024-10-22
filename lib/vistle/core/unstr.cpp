@@ -201,30 +201,49 @@ std::vector<Index> UnstructuredGrid::getNeighborElements(Index elem) const
     return getNeighborFinder().getNeighborElements(elem);
 }
 
+Index UnstructuredGrid::cellNumVertices(Index elem) const
+{
+    auto t = tl()[elem];
+    if (t == POLYHEDRON) {
+        const Index *el = &this->el()[0];
+        const Index *cl = &this->cl()[0];
+        const Index begin = el[elem], end = el[elem + 1];
+        std::vector<Index> verts(&cl[begin], &cl[end]);
+        std::sort(verts.begin(), verts.end());
+        auto last = std::unique(verts.begin(), verts.end());
+        return last - verts.begin();
+    } else if (t < NUM_TYPES) {
+        return NumVertices[t] >= 0 ? NumVertices[t] : 0;
+    }
+    return 0;
+}
+
 Index UnstructuredGrid::cellNumFaces(Index elem) const
 {
     auto t = tl()[elem];
-    switch (t) {
-    case NONE:
-    case BAR:
-        return 0;
-    case TRIANGLE:
-    case QUAD:
-    case POLYGON:
-        return 1;
-    case TETRAHEDRON:
-        return 4;
-    case PYRAMID:
-        return 5;
-    case PRISM:
-        return 5;
-    case HEXAHEDRON:
-        return 6;
-    case POLYHEDRON:
-        return 0;
-    }
+    if (t == POLYHEDRON) {
+        const Index *el = &this->el()[0];
+        const Index begin = el[elem], end = el[elem + 1];
+        const Index *cl = &this->cl()[begin];
+        const Index nverts = end - begin;
 
-    return -1;
+        Index numFaces = 0;
+        Index term = InvalidIndex;
+        for (Index i = 0; i < nverts; ++i) {
+            if (term == InvalidIndex) {
+                term = cl[i];
+            } else if (cl[i] == term) {
+                ++numFaces;
+                term = InvalidIndex;
+            }
+        }
+        assert(term == InvalidIndex);
+
+        return numFaces;
+    } else if (t < NUM_TYPES) {
+        return NumFaces[t] >= 0 ? NumFaces[t] : 0;
+    }
+    return 0;
 }
 
 Scalar UnstructuredGrid::exitDistance(Index elem, const Vector3 &point, const Vector3 &dir) const
@@ -674,23 +693,20 @@ std::pair<Vector3, Vector3> UnstructuredGrid::elementBounds(Index elem) const
 std::vector<Index> UnstructuredGrid::cellVertices(Index elem) const
 {
     const auto t = tl()[elem];
-    if (NumVertices[t] >= 0) {
-        return Base::cellVertices(elem);
-    }
 
     if (t == UnstructuredGrid::POLYHEDRON) {
         const Index *el = &this->el()[0];
         const Index *cl = &this->cl()[0];
         const Index begin = el[elem], end = el[elem + 1];
-        std::vector<Index> verts;
-        verts.reserve(end - begin);
-        for (Index j = begin; j < end; ++j) {
-            verts.push_back(cl[j]);
-        }
+        std::vector<Index> verts(&cl[begin], &cl[end]);
         std::sort(verts.begin(), verts.end());
         auto last = std::unique(verts.begin(), verts.end());
         verts.resize(last - verts.begin());
         return verts;
+    }
+
+    if (NumVertices[t] >= 0) {
+        return Base::cellVertices(elem);
     }
 
     return std::vector<Index>();

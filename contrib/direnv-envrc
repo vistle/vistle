@@ -12,22 +12,6 @@ if [ "$CMAKE_GENERATOR" = "Ninja" ]; then
     export CMAKE_GENERATOR="Ninja Multi-Config"
 fi
 
-if [ -z "$SPACK_ENV" ]; then
-    if [ -e .spack ]; then
-        env="$(cat .spack)"
-        eval $(spack env activate --sh "$env") && echo
-    fi
-fi
-if [ -n "$SPACK_ENV" ]; then
-    if [ -z "$ARCHSUFFIX" ]; then
-        env="${SPACK_ENV##*/}"
-        export ARCHSUFFIX="spack${env%default}"
-    fi
-    builddir="build-spack${env%default}"
-else
-    builddir="build-$os$arch"
-fi
-
 mpi=""
 libvar=LD_LIBRARY_PATH
 case $os in
@@ -57,6 +41,22 @@ case $os in
 esac
 fi
 path_add MANPATH "$(pwd -P)/3rdparty/IceT/doc/man"
+
+if [ -z "$SPACK_ENV" ]; then
+    if [ -e .spack ]; then
+        env="$(cat .spack)"
+        eval $(spack env activate --sh "$env") && echo
+    fi
+fi
+if [ -n "$SPACK_ENV" ]; then
+    if [ -z "$ARCHSUFFIX" ]; then
+        env="${SPACK_ENV##*/}"
+        export ARCHSUFFIX="spack${env%default}"
+    fi
+    builddir="build-spack${env%default}"
+else
+    builddir="build-$os$arch$mpi"
+fi
 
 if [ -z "${COVISEDIR}" -a -d "../covise" ]; then
    export COVISEDIR="$(cd ../covise; pwd -P)"
@@ -139,7 +139,7 @@ case "$os" in
 esac
 
 export VMAKE_BUILD="$builddir"
-echo Build: "$builddir, ${ARCHSUFFIX:-no ARCHSUFFIX}, type=$VISTLE_BUILD_TYPE"
+echo Build: dir="$builddir, ${ARCHSUFFIX:-no ARCHSUFFIX}, type=$VISTLE_BUILD_TYPE"
 
 path_add PYTHONPATH "${builddir}/lib/$VISTLE_BUILD_TYPE"
 path_add PYTHONPATH "${builddir}/share/vistle"

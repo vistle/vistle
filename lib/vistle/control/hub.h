@@ -233,6 +233,7 @@ private:
     bool spawnMirror(int hubId, const std::string &name, int mirroredId);
     std::mutex m_queueMutex; // protect access to m_queue
     std::vector<message::Buffer> m_queue;
+    void queueMessage(const message::Buffer &msg);
     bool handleQueue();
     bool updateQueue(int oldId, int newId);
     bool cleanQueue(int exitedId);
