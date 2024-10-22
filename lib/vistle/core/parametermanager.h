@@ -115,7 +115,7 @@ public:
     int id() const;
     void setName(const std::string &name);
 
-    void applyDelayedChanges();
+    bool applyDelayedChanges();
 
 private:
     bool parameterChangedWrapper(const Parameter *p); //< wrapper to prevent recursive calls to parameterChanged
@@ -132,6 +132,7 @@ private:
     };
     std::map<std::string, ParameterData> m_parameters;
     bool m_inParameterChanged = false;
+    bool m_inApplyDelayedChanges = false;
     std::map<std::string, const Parameter *> m_delayedChanges;
 
     std::deque<message::SetParameter> m_queue;
