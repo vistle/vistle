@@ -2437,7 +2437,7 @@ bool Hub::cleanQueue(int id)
     std::swap(queue, m_queue);
     guard.unlock();
 
-    for (auto &m: m_queue) {
+    for (auto &m: queue) {
         if (m.type() == message::CONNECT) {
             auto &mm = m.as<Connect>();
             if (mm.getModuleA() == id || mm.getModuleB() == id) {
