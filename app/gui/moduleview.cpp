@@ -1,6 +1,7 @@
 #include "moduleview.h"
 #include "ui_moduleview.h"
 #include <QPushButton>
+#include <QRegularExpression>
 #include <vistle/core/message.h>
 
 namespace gui {
@@ -139,7 +140,7 @@ void ModuleView::appendMessage(int senderId, int type, QString text)
     m_messages.push_back({type, text});
 
     setColor(type);
-    ui->messages->append(text);
+    ui->messages->insertHtml(text);
 
     ui->messages->setVisible(true);
     updateMessageButton();
@@ -152,7 +153,7 @@ void ModuleView::setMessages(QList<Module::Message> &messages, bool visible)
     ui->messages->clear();
     for (auto &m: m_messages) {
         setColor(m.type);
-        ui->messages->append(m.text);
+        ui->messages->insertHtml(m.text);
     }
     if (m_messages.empty()) {
         ui->messages->setVisible(false);
