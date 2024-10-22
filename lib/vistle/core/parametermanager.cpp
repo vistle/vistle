@@ -192,10 +192,21 @@ void ParameterManager::setName(const std::string &name)
     m_name = name;
 }
 
-void ParameterManager::applyDelayedChanges()
+bool ParameterManager::applyDelayedChanges()
 {
-    changeParameters(m_delayedChanges);
-    m_delayedChanges.clear();
+    decltype(m_delayedChanges) delayedChanges;
+    std::swap(m_delayedChanges, delayedChanges);
+    if (m_inApplyDelayedChanges) {
+        if (delayedChanges.empty()) {
+            return true;
+        }
+        return changeParameters(delayedChanges);
+    }
+
+    m_inApplyDelayedChanges = true;
+    bool ret = changeParameters(delayedChanges);
+    m_inApplyDelayedChanges = false;
+    return ret;
 }
 
 Parameter *ParameterManager::addParameterGeneric(const std::string &name, std::shared_ptr<Parameter> param)
@@ -540,8 +551,6 @@ bool ParameterManager::parameterChangedWrapper(const Parameter *p)
         return true;
     }
     m_inParameterChanged = true;
-
-    applyDelayedChanges();
 
     bool ret = changeParameter(p);
     m_inParameterChanged = false;
