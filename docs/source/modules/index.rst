@@ -4,6 +4,7 @@ Modules
 .. toctree::
    :maxdepth: 1
 
+   ANARemote.md
    AddAttribute.md
    ApplyTransform.md
    Assemble.md
@@ -63,6 +64,7 @@ Modules
    PrintMetaData.md
    ReadCovise.md
    ReadCoviseDirectory.md
+   ReadDuisburg.md
    ReadDyna3D.md
    ReadEwMatlabCsvExports.md
    ReadFoam.md
