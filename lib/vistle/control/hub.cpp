@@ -2376,8 +2376,7 @@ bool Hub::handleConnectOrDisconnect(const ConnMsg &mm)
             handlePriv(mm);
             return handleQueue();
         } else {
-            std::unique_lock guard(m_queueMutex);
-            m_queue.emplace_back(mm);
+            queueMessage(mm);
             return true;
         }
     } else {
@@ -2421,6 +2420,12 @@ bool Hub::updateQueue(int oldId, int newId)
     }
 
     return true;
+}
+
+void Hub::queueMessage(const message::Buffer &msg)
+{
+    std::unique_lock guard(m_queueMutex);
+    m_queue.push_back(msg);
 }
 
 bool Hub::cleanQueue(int id)
