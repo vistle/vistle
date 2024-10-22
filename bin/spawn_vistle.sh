@@ -21,6 +21,17 @@ envvars="$envvars LD_LIBRARY_PATH LD_PRELOAD"
 envvars="$envvars DYLD_LIBRRARY_PATH VISTLE_DYLD_LIBRARY_PATH DYLD_FRAMEWORK_PATH VISTLE_DYLD_FRAMEWORK_PATH"
 envvars="$envvars DYLD_FALLBACK_LIBRRARY_PATH VISTLE_DYLD_FALLBACK_LIBRARY_PATH DYLD_FALLBACK_FRAMEWORK_PATH VISTLE_DYLD_FALLBACK_FRAMEWORK_PATH"
 
+if [ -n "$VISTLE_LOGFILE" ]; then
+    mkdir -p $(dirname "$VISTLE_LOGFILE") || echo "Could not create directory for $VISTLE_LOGFILE" && exit 1
+    exec > $VISTLE_LOGFILE 2>&1
+fi
+
+function doexec() {
+    echo "$@"
+    exec "$@" < /dev/null
+}
+
+
 if [ -n "$VISTLE_LAUNCH" ]; then
    case $VISTLE_LAUNCH in
       *aprun*)
@@ -63,21 +74,7 @@ fi
 
 #echo SPAWN "$@"
 
-LOGPREFIX=
-mkdir -p "/var/tmp/${USER}" && LOGPREFIX="/var/tmp/${USER}"
-LOGFILE="${LOGPREFIX}/$(basename $1)-$$.log"
-if [ -n "$5" ]; then
-   # include module ID
-   LOGFILE="${LOGPREFIX}/$(basename $1)_$5-$$.log"
-fi
-
-function doexec() {
-    echo "$@"
-    echo "$@" >> $LOGFILE
-    exec "$@" >> "$LOGFILE" 2>&1 < /dev/null
-}
-
-echo "spawn_vistle.sh: $@" > "$LOGFILE"
+#echo "spawn_vistle.sh: $@"
 case $(uname) in
    Darwin)
       export DYLD_LIBRARY_PATH="$VISTLE_DYLD_LIBRARY_PATH"
@@ -104,7 +101,7 @@ MPI_IMPL="mpich"
  
 if mpirun -version 2>&1| grep -q open-mpi\.org; then
    MPI_IMPL="ompi"
-   echo "OpenMPI spawn: $@"
+   #echo "OpenMPI spawn: $@"
    #LAUNCH="--launch-agent $(which orted)"
    export OMPI_MCA_btl_openib_allow_ib=1 # Open MPI 4.0.1 seems to require this
    #export OMPI_MCA_btl_openib_if_include="mlx4_0:1"
@@ -112,13 +109,13 @@ if mpirun -version 2>&1| grep -q open-mpi\.org; then
    #export OMPI_MCA_mpi_yield_when_idle=1
 elif mpirun -version 2>&1| grep -q MPT; then
    MPI_IMPL="mpt"
-   echo "HPE MPT spawn: $@"
+   #echo "HPE MPT spawn: $@"
 fi
 
 if [ -n "$PBS_ENVIRONMENT" ]; then
    if [ "$MPI_IMPL" = "mpich" ]; then
     
-      echo "PBS: mpiexec $@"
+      #echo "PBS: mpiexec $@"
       mpiexec -genvall hostname
       mpiexec -genvall printenv
       doexec mpirun -genvall ${PREPENDRANK} $LAUNCH $WRAPPER "$@"
@@ -231,5 +228,4 @@ case "$MPI_IMPL" in
         ;;
 esac
 
-echo "default: $@"
-exec $WRAPPER "$@"
+doexec $WRAPPER "$@"
