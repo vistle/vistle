@@ -176,7 +176,14 @@ std::string Shm::shmIdFilename()
     }
     name << szTempFileName;
 #else
-    name << "/tmp/vistle_shmids_" << getuid() << ".txt";
+    auto tmp = getenv("TMPDIR");
+    if (!tmp) {
+        tmp = getenv("XDG_RUNTIME_DIR");
+    }
+    if (!tmp) {
+        tmp = "/tmp";
+    }
+    name << tmp << "/vistle_shmids_" << getuid() << ".txt";
 #endif
     return name.str();
 }
