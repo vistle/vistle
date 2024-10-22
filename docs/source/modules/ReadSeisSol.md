@@ -93,7 +93,6 @@ The first port outputs the raw geometry specified by the **Topology** and **Geom
 |last_step|last timestep to read (-1: last)|Int|
 |step_increment|number of steps to increment|Int|
 |first_rank|rank for first partition of first timestep|Int|
-|check_convexity|whether to check convexity of grid cells|Int|
 |file|XDMF File|String|
 |SeisSolMode|Select file format (XDMF, HDF5)|Int|
 |ParallelMode|Select ParallelMode (Block or Serial (with and without timestepdistribution)) (BLOCKS, SERIAL)|Int|

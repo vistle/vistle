@@ -62,7 +62,6 @@ For dynamic data, data for each timestep must be present in a separate file.
 |last_step|last timestep to read (-1: last)|Int|
 |step_increment|number of steps to increment|Int|
 |first_rank|rank for first partition of first timestep|Int|
-|check_convexity|whether to check convexity of grid cells|Int|
 |file_dir|NC files directory|String|
 |num_partitions_lat|number of partitions in lateral|Int|
 |num_partitions_ver|number of partitions in vertical|Int|
