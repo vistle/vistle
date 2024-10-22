@@ -1,6 +1,11 @@
 # /usr/bin/env vistle
 # this is a Python workflow from Vistle 2024.2-d40e4a11
 
+import os
+
+# this map uses sample data from covise
+covisedir = os.getenv("COVISEDIR")
+
 MasterHub=getMasterHub()
 VistleSession=getVistleSession()
 WorkflowConfig=getWorkflowConfig()
@@ -123,7 +128,7 @@ applyParameters(mThicken12)
 
 mReadCoviseDirectory13 = waitForSpawn(umReadCoviseDirectory13)
 setVectorParam(mReadCoviseDirectory13, '_position', -386.06313522218716, -1322.5070800781252, True)
-setStringParam(mReadCoviseDirectory13, 'directory', '/home/hpcsmalh/Software/covise/share/covise/example-data/tutorial', True)
+setStringParam(mReadCoviseDirectory13, 'directory', covisedir + '/share/covise/example-data/tutorial', True)
 setStringParam(mReadCoviseDirectory13, 'grid', 'tiny_geo', True)
 setStringParam(mReadCoviseDirectory13, 'field0', 'tiny_p', True)
 setStringParam(mReadCoviseDirectory13, 'field1', 'tiny_velocity', True)
@@ -176,7 +181,7 @@ applyParameters(mFlattenTriangles21)
 
 mReadVtk22 = waitForSpawn(umReadVtk22)
 setVectorParam(mReadVtk22, '_position', 273.3315271092212, -1312.2627665602317, True)
-setStringParam(mReadVtk22, 'filename', '/home/hpcsmalh/Software/covise/share/covise/example-data/ReadVTK/unstructuredGrid.pvd', True)
+setStringParam(mReadVtk22, 'filename', covisedir + '/share/covise/example-data/ReadVTK/unstructuredGrid.pvd', True)
 setStringParam(mReadVtk22, 'point_field_0', 'pointData', True)
 setStringParam(mReadVtk22, 'point_field_1', '(NONE)', True)
 setStringParam(mReadVtk22, 'point_field_2', '(NONE)', True)
