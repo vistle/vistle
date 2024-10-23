@@ -121,6 +121,18 @@ struct terminate_with_parent: process::extend::handler {
 
 static std::function<void(int, const std::error_code &)> exit_handler;
 
+Hub::ObservedChild::ObservedChild(std::shared_ptr<boost::process::child> child, const std::string &name, int id)
+: child(child), name(name), id(id)
+{}
+Hub::ObservedChild::ObservedChild(ObservedChild &&other) = default;
+Hub::ObservedChild::~ObservedChild()
+{
+    if (outThread && outThread->joinable())
+        outThread->join();
+    if (errThread && errThread->joinable())
+        errThread->join();
+}
+
 #define CERR std::cerr << "Hub " << m_hubId << ": "
 
 static Hub *hub_instance = nullptr;
@@ -723,16 +735,43 @@ std::shared_ptr<process::child> Hub::launchProcess(const std::string &prog, cons
         }
     }
 
+    std::shared_ptr<process::child> child;
+    auto out = std::make_shared<process::ipstream>();
+    auto err = std::make_shared<process::ipstream>();
     try {
-        return std::make_shared<process::child>(path, process::args(args), terminate_with_parent(), m_ioContext,
-                                                process::on_exit(exit_handler));
+        child = std::make_shared<process::child>(path, process::args(args), terminate_with_parent(),
+                                                 process::std_out > *out, process::std_err > *err, m_ioContext,
+                                                 process::on_exit(exit_handler));
     } catch (std::exception &ex) {
         std::stringstream info;
         info << "Failed to launch: " << path << ": " << ex.what();
         sendError(info.str());
+        return nullptr;
     }
 
-    return nullptr;
+    auto consumeStream = [this, child](process::ipstream &str, std::deque<std::string> &buf) mutable {
+        std::string line;
+        while (child->running() && std::getline(str, line) && !line.empty()) {
+            buf.emplace_back(line);
+            if (m_verbose > 1)
+                std::cerr << line << std::endl;
+            while (buf.size() > 100)
+                buf.pop_front();
+        }
+    };
+
+    ObservedChild ochild(child, prog, child->id());
+    auto &obs = m_observedChildren.emplace(child->id(), std::move(ochild)).first->second;
+    obs.outThread = std::make_unique<std::thread>([consumeStream, out, prog, &obs]() mutable {
+        setThreadName("cout:" + prog);
+        consumeStream(*out, obs.outBuffer);
+    });
+    obs.errThread = std::make_unique<std::thread>([consumeStream, err, prog, &obs]() mutable {
+        setThreadName("cerr:" + prog);
+        consumeStream(*err, obs.errBuffer);
+    });
+
+    return child;
 }
 
 std::shared_ptr<process::child> Hub::launchMpiProcess(const std::vector<std::string> &args)
@@ -2709,19 +2748,25 @@ void Hub::killOldModule(int migratedId)
 }
 
 
-void Hub::sendInfo(const std::string &s)
+void Hub::sendInfo(const std::string &s, int senderId)
 {
     CERR << s << std::endl;
     auto t = make.message<message::SendText>(message::SendText::Info);
+    if (senderId != Id::Invalid) {
+        t.setSenderId(senderId);
+    }
     message::SendText::Payload pl(s);
     auto payload = addPayload(t, pl);
     sendUi(t, Id::Broadcast, &payload);
 }
 
-void Hub::sendError(const std::string &s)
+void Hub::sendError(const std::string &s, int senderId)
 {
     CERR << "Error: " << s << std::endl;
     auto t = make.message<message::SendText>(message::SendText::Error);
+    if (senderId != Id::Invalid) {
+        t.setSenderId(senderId);
+    }
     message::SendText::Payload pl(s);
     auto payload = addPayload(t, pl);
     sendUi(t, Id::Broadcast, &payload);
@@ -3723,7 +3768,36 @@ bool Hub::checkChildProcesses(bool emergency, bool onMainThread)
             }
         }
 
-        CERR << "process with id " << idstring << " (PID " << it->first->id() << ") exited" << std::endl;
+        const ObservedChild *obs = nullptr;
+        auto obsit = m_observedChildren.find(it->first->id());
+        if (obsit != m_observedChildren.end()) {
+            obs = &obsit->second;
+        }
+        if (it->first->exit_code() != 0) {
+            std::stringstream str;
+            str << "process with id " << idstring << " (PID " << it->first->id() << ") exited with code "
+                << it->first->exit_code() << std::endl;
+            sendError(str.str(), id);
+            str.str().clear();
+            if (obs) {
+                for (auto &msg: obs->outBuffer) {
+                    str << msg << std::endl;
+                    sendError(str.str(), id);
+                    str.str().clear();
+                }
+                for (auto &msg: obs->errBuffer) {
+                    str << msg << std::endl;
+                    sendError(str.str(), id);
+                    str.str().clear();
+                }
+            }
+            //sendError(str.str(), id);
+        } else {
+            CERR << "process with id " << idstring << " (PID " << it->first->id() << ") exited" << std::endl;
+        }
+        if (obsit != m_observedChildren.end()) {
+            m_observedChildren.erase(obsit);
+        }
         next = m_processMap.erase(it);
     }
     guard.unlock();

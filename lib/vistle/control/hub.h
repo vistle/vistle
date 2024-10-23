@@ -127,8 +127,8 @@ private:
     bool handlePlainSpawn(message::Spawn &notify, bool doSpawn, bool error);
 
     void killOldModule(int migratedId);
-    void sendInfo(const std::string &s);
-    void sendError(const std::string &s);
+    void sendInfo(const std::string &s, int senderId = message::Id::Invalid);
+    void sendError(const std::string &s, int senderId = message::Id::Invalid);
     std::vector<int> getSubmoduleIds(int modId, const AvailableModule &av);
     bool m_inManager = false;
     bool m_coverIsManager = false;
@@ -152,6 +152,19 @@ private:
     unsigned short m_vrbPort = 0;
     std::map<int, socket_ptr> m_vrbSockets;
     std::shared_ptr<boost::process::child> m_vrb;
+
+    struct ObservedChild {
+        ObservedChild(std::shared_ptr<boost::process::child> child, const std::string &name, int id);
+        ObservedChild(ObservedChild &&other);
+        ~ObservedChild();
+
+        std::shared_ptr<boost::process::child> child;
+        std::string name;
+        int id;
+        std::deque<std::string> outBuffer, errBuffer;
+        std::unique_ptr<std::thread> outThread, errThread;
+    };
+    std::map<boost::process::pid_t, ObservedChild> m_observedChildren;
 
     std::shared_ptr<DataProxy> m_dataProxy;
     TunnelManager m_tunnelManager;
