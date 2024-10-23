@@ -174,11 +174,11 @@ private:
         //#endif
         std::thread messageThread;
         std::shared_ptr<message::MessageQueue> sendQueue, recvQueue;
-        int ranksStarted, ranksFinished;
-        bool prepared, reduced;
-        int busyCount;
+        int ranksStarted = 0, ranksFinished = 0;
+        bool prepared = false, reduced = true;
+        int busyCount = 0;
         // handling of outgoing messages
-        mutable bool blocked; // any message is blocking and cannot be sent right away
+        mutable bool blocked = false; // any message is blocking and cannot be sent right away
         mutable std::deque<message::Buffer> blockers; // queue of blocking messages
         mutable std::deque<MessageWithPayload> blockedMessages; // again, but with payload
         std::deque<MessageWithPayload>
@@ -199,7 +199,7 @@ private:
         bool haveDelayed() const;
     };
     typedef std::unordered_map<int, Module> RunningMap;
-    RunningMap m_runningMap;
+    RunningMap m_runningMap, m_crashedMap;
     int numRunning() const;
     bool isReadyForExecute(int modId) const;
     int m_numExecuting = 0;

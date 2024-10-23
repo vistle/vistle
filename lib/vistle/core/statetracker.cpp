@@ -38,6 +38,8 @@ int StateTracker::Module::state() const
         s |= StateObserver::Killed;
     if (executing)
         s |= StateObserver::Executing;
+    if (crashed)
+        s |= StateObserver::Crashed;
     return s;
 }
 
@@ -323,6 +325,12 @@ void StateTracker::appendModuleState(VistleState &state, const StateTracker::Mod
     if (m.killed) {
         Kill k(m.id);
         appendMessage(state, k);
+    }
+
+    if (m.crashed) {
+        ModuleExit crash(true);
+        crash.setSenderId(m.id);
+        appendMessage(state, crash);
     }
 }
 
@@ -1115,17 +1123,26 @@ bool StateTracker::handlePriv(const message::ModuleExit &moduleExit)
 {
     mutex_locker guard(m_stateMutex);
     const int mod = moduleExit.senderId();
+    const bool crashed = moduleExit.isCrashed();
     //CERR << " Module [" << mod << "] quit" << std::endl;
     ++m_graphChangeCount;
 
-    portTracker()->removeModule(mod);
+    if (crashed) {
+        RunningMap::iterator it = runningMap.find(mod);
+        if (it != runningMap.end()) {
+            it->second.crashed = true;
+            for (StateObserver *o: m_observers) {
+                o->moduleStateChanged(mod, it->second.state());
+            }
+        }
+    } else {
+        portTracker()->removeModule(mod);
 
-    for (StateObserver *o: m_observers) {
-        o->incModificationCount();
-        o->deleteModule(mod);
-    }
+        for (StateObserver *o: m_observers) {
+            o->incModificationCount();
+            o->deleteModule(mod);
+        }
 
-    {
         RunningMap::iterator it = runningMap.find(mod);
         if (it != runningMap.end()) {
             int mid = it->second.mirrorOfId;

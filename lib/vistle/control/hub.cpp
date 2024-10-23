@@ -1761,6 +1761,11 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
         handlePriv(exit);
         break;
     }
+    case KILL: {
+        auto &kill = msg.as<Kill>();
+        handlePriv(kill);
+        break;
+    }
     default:
         break;
     }
@@ -2699,9 +2704,17 @@ bool Hub::linkModuleParams(int oldModuleId, int newModuleId)
 void Hub::killOldModule(int migratedId)
 {
     assert(Id::isModule(migratedId));
-    message::Kill kill(migratedId);
-    kill.setDestId(migratedId);
-    sendModule(kill, migratedId);
+    auto state = m_stateTracker.getModuleState(migratedId);
+    CERR << "restart requested for " << migratedId << ", state=" << state << std::endl;
+    if (state & StateObserver::Crashed) {
+        auto m = make.message<message::ModuleExit>();
+        m.setSenderId(migratedId);
+        sendManager(m); // will be returned and forwarded to master hub
+    } else {
+        message::Kill kill(migratedId);
+        kill.setDestId(migratedId);
+        sendModule(kill, migratedId);
+    }
 }
 
 
@@ -3516,57 +3529,74 @@ bool Hub::handlePriv(const message::FileQueryResult &result, const buffer *paylo
 
 bool Hub::handlePriv(const message::ModuleExit &exit)
 {
+    bool crashed = exit.isCrashed();
     int id = exit.senderId();
     auto it = m_vrbSockets.find(id);
     if (it != m_vrbSockets.end()) {
         removeSocket(it->second);
     }
 
-    std::vector<message::Disconnect> disconnects;
-    auto inputs = m_stateTracker.portTracker()->getConnectedInputPorts(id);
-    for (const auto &in: inputs) {
-        for (const auto &from: in->connections()) {
-            disconnects.emplace_back(from->getModuleID(), from->getName(), id, in->getName());
+    if (!crashed) {
+        std::vector<message::Disconnect> disconnects;
+        auto inputs = m_stateTracker.portTracker()->getConnectedInputPorts(id);
+        for (const auto &in: inputs) {
+            for (const auto &from: in->connections()) {
+                disconnects.emplace_back(from->getModuleID(), from->getName(), id, in->getName());
+            }
         }
-    }
 
-    auto outputs = m_stateTracker.portTracker()->getConnectedOutputPorts(id);
-    for (const auto &out: outputs) {
-        for (const auto &to: out->connections()) {
-            disconnects.emplace_back(id, out->getName(), to->getModuleID(), to->getName());
+        auto outputs = m_stateTracker.portTracker()->getConnectedOutputPorts(id);
+        for (const auto &out: outputs) {
+            for (const auto &to: out->connections()) {
+                disconnects.emplace_back(id, out->getName(), to->getModuleID(), to->getName());
+            }
         }
-    }
-    for (auto &dm: disconnects)
-        handleMessage(dm);
+        for (auto &dm: disconnects)
+            handleMessage(dm);
 
-    auto removePorts = m_stateTracker.portTracker()->removeModule(exit.senderId());
-    for (auto &rm: removePorts)
-        handleMessage(rm);
+        auto removePorts = m_stateTracker.portTracker()->removeModule(exit.senderId());
+        for (auto &rm: removePorts)
+            handleMessage(rm);
 
-    auto it2 = m_sendAfterExit.find(exit.senderId());
-    if (it2 != m_sendAfterExit.end()) {
-        for (auto &m: it2->second) {
-            handleMessage(m);
+        auto it2 = m_sendAfterExit.find(exit.senderId());
+        if (it2 != m_sendAfterExit.end()) {
+            for (auto &m: it2->second) {
+                handleMessage(m);
+            }
+            m_sendAfterExit.erase(it2);
         }
-        m_sendAfterExit.erase(it2);
-    }
 
-    if (m_isMaster) {
-        const auto &hub = m_stateTracker.getHubData(idToHub(id));
-        if (!hub.isQuitting) {
-            auto mirrors = m_stateTracker.getMirrors(id);
-            for (auto m: mirrors) {
-                if (m == id)
-                    continue;
-                auto kill = message::Kill(m);
-                kill.setDestId(m);
-                handleMessage(kill);
+        if (m_isMaster) {
+            const auto &hub = m_stateTracker.getHubData(idToHub(id));
+            if (!hub.isQuitting) {
+                auto mirrors = m_stateTracker.getMirrors(id);
+                for (auto m: mirrors) {
+                    if (m == id)
+                        continue;
+                    auto kill = message::Kill(m);
+                    kill.setDestId(m);
+                    handleMessage(kill);
+                }
             }
         }
     }
 
     cleanQueue(id);
 
+    return true;
+}
+
+bool Hub::handlePriv(const message::Kill &kill)
+{
+    if (m_isMaster) {
+        auto id = kill.destId();
+        auto state = m_stateTracker.getModuleState(id);
+        if (state & StateObserver::Crashed) {
+            auto m = make.message<message::ModuleExit>();
+            m.setSenderId(id);
+            sendManager(m); // will be returned and forwarded to master hub
+        }
+    }
     return true;
 }
 
@@ -3690,7 +3720,7 @@ bool Hub::checkChildProcesses(bool emergency, bool onMainThread)
             } else if (message::Id::isModule(id) && m_stateTracker.getModuleState(id) != StateObserver::Unknown &&
                        m_stateTracker.getModuleState(id) != StateObserver::Quit) {
                 // synthesize ModuleExit message for crashed modules
-                auto m = make.message<message::ModuleExit>();
+                auto m = make.message<message::ModuleExit>(true /* crashed*/);
                 m.setSenderId(id);
                 sendManager(m); // will be returned and forwarded to master hub
             }
