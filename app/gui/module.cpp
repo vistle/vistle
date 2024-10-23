@@ -995,9 +995,14 @@ void Module::setStatus(Module::Status status)
         toolTip = "Error";
         m_borderColor = Qt::red;
         break;
+    case CRASHED:
+        toolTip = "Crashed";
+        m_color = Qt::darkGray;
+        m_borderColor = Qt::black;
+        break;
     }
 
-    if (m_errorState) {
+    if (m_errorState && m_Status != CRASHED) {
         m_borderColor = Qt::red;
     }
 

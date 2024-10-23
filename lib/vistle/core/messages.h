@@ -309,12 +309,14 @@ private:
 //! notify that a module has quit
 class V_COREEXPORT ModuleExit: public MessageBase<ModuleExit, MODULEEXIT> {
 public:
-    ModuleExit();
+    ModuleExit(bool crashed = false);
     void setForwarded();
     bool isForwarded() const;
+    bool isCrashed() const;
 
 private:
-    bool forwarded;
+    bool forwarded = false;
+    bool crashed = false;
 };
 
 //! instruct GUI to store a snapshot of the rendered workflow

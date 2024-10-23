@@ -68,7 +68,9 @@ ClusterManager::Module::~Module()
         std::cerr << "ClusterManager: ~Module: joining thread for module failed: " << e.what() << std::endl;
     }
 
-    recvQueue->signal();
+    if (recvQueue) {
+        recvQueue->signal();
+    }
     try {
         if (messageThread.joinable()) {
             messageThread.join();
@@ -1145,6 +1147,7 @@ bool ClusterManager::handlePriv(const message::Disconnect &disconnect)
 bool ClusterManager::handlePriv(const message::ModuleExit &moduleExit)
 {
     const int mod = moduleExit.senderId();
+    const bool crashed = moduleExit.isCrashed();
 
     //CERR << " Module [" << mod << "] quit" << std::endl;
 
@@ -1153,17 +1156,22 @@ bool ClusterManager::handlePriv(const message::ModuleExit &moduleExit)
 
         RunningMap::iterator it = m_runningMap.find(mod);
         if (it != m_runningMap.end()) {
+            if (crashed) {
+                (void)m_crashedMap[mod];
+            }
             m_runningMap.erase(it);
-        } else {
-            //CERR << " Module [" << mod << "] not found in map" << std::endl;
+        } else if (!crashed) {
+            it = m_crashedMap.find(mod);
+            if (it != m_crashedMap.end()) {
+                m_crashedMap.erase(it);
+            }
         }
-
         return true;
     }
 
     const bool local = isLocal(mod);
     if (local) {
-        if (m_runningMap.find(mod) == m_runningMap.end()) {
+        if (m_runningMap.find(mod) == m_runningMap.end() && m_crashedMap.find(mod) == m_crashedMap.end()) {
             CERR << " Module [" << mod << "] quit, but not found in running map" << std::endl;
             return true;
         }

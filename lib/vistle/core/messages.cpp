@@ -648,7 +648,7 @@ const char *CloseConnection::reason() const
     return m_reason.data();
 }
 
-ModuleExit::ModuleExit(): forwarded(false)
+ModuleExit::ModuleExit(bool crashed): forwarded(false), crashed(crashed)
 {}
 
 void ModuleExit::setForwarded()
@@ -659,6 +659,11 @@ void ModuleExit::setForwarded()
 bool ModuleExit::isForwarded() const
 {
     return forwarded;
+}
+
+bool ModuleExit::isCrashed() const
+{
+    return crashed;
 }
 
 Screenshot::Screenshot(const std::string &filename, bool quit): m_quit(quit)
@@ -2076,6 +2081,11 @@ std::ostream &operator<<(std::ostream &s, const Message &m)
     case KILL: {
         auto &mm = static_cast<const Kill &>(m);
         s << ", id: " << mm.getModule();
+        break;
+    }
+    case MODULEEXIT: {
+        auto &mm = static_cast<const ModuleExit &>(m);
+        s << ", forwarded: " << mm.isForwarded() << ", crashed: " << mm.isCrashed();
         break;
     }
     case QUIT: {

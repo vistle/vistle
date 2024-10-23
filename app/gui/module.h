@@ -35,7 +35,7 @@ class Module: public QObject, public QGraphicsRectItem {
     static bool s_snapToGrid;
 
 public:
-    enum Status { SPAWNING, INITIALIZED, KILLED, BUSY, EXECUTING, ERROR_STATUS };
+    enum Status { SPAWNING, INITIALIZED, KILLED, BUSY, EXECUTING, ERROR_STATUS, CRASHED };
 
     struct Message {
         int type;
