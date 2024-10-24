@@ -61,10 +61,12 @@ public:
     bool processScript();
     bool dispatch();
     bool sendMessage(socket_ptr sock, const message::Message &msg, const buffer *payload = nullptr);
+    bool isPrincipal() const;
     unsigned short port() const;
     unsigned short dataPort() const;
     std::shared_ptr<boost::process::child> launchProcess(int type, const std::string &prog,
-                                                         const std::vector<std::string> &argv);
+                                                         const std::vector<std::string> &argv,
+                                                         std::string name = std::string());
     std::shared_ptr<boost::process::child> launchMpiProcess(int type, const std::vector<std::string> &argv);
     const std::string &name() const;
 
@@ -168,14 +170,28 @@ private:
     std::shared_ptr<boost::process::child> m_vrb;
 
     struct ObservedChild {
-        ObservedChild(std::shared_ptr<boost::process::child> child, const std::string &name, int id);
-        ObservedChild(ObservedChild &&other);
+        ObservedChild();
         ~ObservedChild();
+        void sendTextToUi(message::SendText::TextType type, size_t num, const std::string &line, int moduleId) const;
+        void sendOutputToUi() const;
+        void setOutputStreaming(bool enable);
+        bool isOutputStreaming() const;
 
         std::shared_ptr<boost::process::child> child;
+        Hub *hub = nullptr;
         std::string name;
-        int id;
-        std::deque<std::string> outBuffer, errBuffer;
+        boost::process::pid_t childId = 0;
+        int moduleId = message::Id::Invalid;
+        mutable std::mutex mutex; // protect access to variables below
+        size_t numDiscarded = 0;
+        bool streamOutput = false;
+        struct TaggedLine {
+            TaggedLine(message::SendText::TextType type, const std::string &line): type(type), line(line) {}
+
+            message::SendText::TextType type;
+            std::string line;
+        };
+        std::deque<TaggedLine> buffer;
         std::unique_ptr<std::thread> outThread, errThread;
     };
     std::map<boost::process::pid_t, ObservedChild> m_observedChildren;
@@ -187,8 +203,11 @@ private:
     bool m_hasUi = false;
     bool m_hasVrb = false;
 
+    int m_messageBacklog = 10000;
+
     std::mutex m_processMutex; // protect access to m_processMap
-    std::map<std::shared_ptr<boost::process::child>, int> m_processMap;
+    typedef std::map<std::shared_ptr<boost::process::child>, int> ProcessMap;
+    ProcessMap m_processMap;
     bool m_managerConnected;
 
     std::unique_ptr<vistle::Directory> m_dir;

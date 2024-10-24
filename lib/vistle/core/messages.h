@@ -293,17 +293,20 @@ private:
 //! request to attach a debugger to a module
 class V_COREEXPORT Debug: public MessageBase<Debug, DEBUG> {
 public:
-    DEFINE_ENUM_WITH_STRING_CONVERSIONS(Request, (AttachDebugger)(PrintState))
+    DEFINE_ENUM_WITH_STRING_CONVERSIONS(Request, (AttachDebugger)(PrintState)(ReplayOutput)(SwitchOutputStreaming))
+    DEFINE_ENUM_WITH_STRING_CONVERSIONS(SwitchAction, (SwitchOn)(SwitchOff)) //< for SwitchOutputStreaming
 
-    explicit Debug(const int module, Request req = AttachDebugger);
+    explicit Debug(const int module, Request req = AttachDebugger, SwitchAction action = SwitchOn);
 
     int getModule() const;
     Request getRequest() const;
+    SwitchAction getSwitchAction() const;
 
 private:
     //! ID of module to debug
     const int m_module;
-    const int m_request; //< action to perform
+    const int m_request = AttachDebugger;
+    int m_switchAction = SwitchOn;
 };
 
 //! notify that a module has quit
@@ -696,11 +699,12 @@ public:
 
     //! Error message in response to a Message
     explicit SendText(const Message &inResponseTo);
-    explicit SendText(TextType type);
+    explicit SendText(TextType type, size_t lineNumber = 0);
 
     TextType textType() const;
     Type referenceType() const;
     uuid_t referenceUuid() const;
+    size_t lineNumber() const;
 
 private:
     //! type of text
@@ -709,6 +713,8 @@ private:
     uuid_t m_referenceUuid;
     //! Type of Message this message is a response to
     Type m_referenceType;
+    //! number of line sent from this stream (for cout/cerr)
+    uint64_t m_lineNumber;
 };
 V_ENUM_OUTPUT_OP(TextType, SendText)
 

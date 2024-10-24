@@ -129,6 +129,8 @@ Module *DataFlowNetwork::newModule(QString modName)
     connect(module, &Module::createModuleCompound, this, &DataFlowNetwork::createModuleCompound);
     connect(module, &Module::selectConnected, this, &DataFlowNetwork::selectConnected);
     connect(module, &Module::visibleChanged, this, &DataFlowNetwork::updateConnectionVisibility);
+    connect(module, &Module::outputStreamingChanged,
+            [this, module](bool enable) { emit toggleOutputStreaming(module->id(), enable); });
     return module;
 }
 
@@ -355,6 +357,13 @@ void DataFlowNetwork::messagesVisibilityChanged(int moduleId, bool visible)
 {
     if (Module *m = findModule(moduleId)) {
         m->setMessagesVisibility(visible);
+    }
+}
+
+void DataFlowNetwork::outputStreamingChanged(int moduleId, bool enable)
+{
+    if (Module *m = findModule(moduleId)) {
+        m->setOutputStreaming(enable);
     }
 }
 

@@ -123,16 +123,87 @@ struct terminate_with_parent: process::extend::handler {
 
 static std::function<void(int, const std::error_code &)> exit_handler;
 
-Hub::ObservedChild::ObservedChild(std::shared_ptr<boost::process::child> child, const std::string &name, int id)
-: child(child), name(name), id(id)
-{}
-Hub::ObservedChild::ObservedChild(ObservedChild &&other) = default;
+namespace {
+
+std::istream &getline_multi_delim(std::istream &is, std::string &str, std::string delim,
+                                  size_t max_length = std::string().max_size(), bool includeDelimiter = true)
+{
+    char ch;
+    str.clear();
+    size_t length = 0;
+    while (is.get(ch) && delim.find(ch) == std::string::npos) {
+        str.push_back(ch);
+        ++length;
+        if (length >= max_length)
+            return is;
+    }
+    if (is && includeDelimiter)
+        str.push_back(ch);
+    return is;
+}
+
+} // namespace
+
+Hub::ObservedChild::ObservedChild() = default;
 Hub::ObservedChild::~ObservedChild()
 {
     if (outThread && outThread->joinable())
         outThread->join();
     if (errThread && errThread->joinable())
         errThread->join();
+}
+void Hub::ObservedChild::sendTextToUi(message::SendText::TextType stream, size_t num, const std::string &line,
+                                      int moduleId) const
+{
+    auto t = hub->make.message<message::SendText>(stream, num);
+    t.setSenderId(moduleId);
+    message::SendText::Payload pl(line);
+    auto payload = addPayload(t, pl);
+    if (hub->isPrincipal()) {
+        hub->sendUi(t, message::Id::Broadcast, &payload);
+    } else {
+        t.setDestId(Id::MasterHub);
+        t.setDestUiId(message::Id::Broadcast);
+        hub->sendMaster(t, &payload);
+    }
+}
+void Hub::ObservedChild::sendOutputToUi() const
+{
+    using message::SendText;
+    auto lock = std::unique_lock(mutex);
+    if (numDiscarded > 0) {
+        std::ostringstream str;
+        str << "[" << numDiscarded << " lines of output discarded]";
+        hub->sendInfo(str.str(), moduleId);
+    }
+    size_t count = numDiscarded, startLine = count;
+    std::string text;
+    SendText::TextType type = SendText::Cout;
+    for (const auto &line: buffer) {
+        if (text.empty() || type == line.type) {
+            text += line.line;
+        } else {
+            lock.unlock();
+            sendTextToUi(type, startLine, text, moduleId);
+            startLine = count;
+            type = line.type;
+            text = line.line;
+            lock.lock();
+        }
+        ++count;
+    }
+    lock.unlock();
+    sendTextToUi(type, startLine, text, moduleId);
+}
+bool Hub::ObservedChild::isOutputStreaming() const
+{
+    auto lock = std::unique_lock(mutex);
+    return streamOutput;
+}
+void Hub::ObservedChild::setOutputStreaming(bool enable)
+{
+    auto lock = std::unique_lock(mutex);
+    streamOutput = enable;
 }
 
 #define CERR \
@@ -281,6 +352,11 @@ Hub::~Hub()
     m_config.reset();
 }
 
+bool Hub::isPrincipal() const
+{
+    return m_isMaster;
+}
+
 void Hub::initiateQuit()
 {
     m_quitting = true;
@@ -389,6 +465,8 @@ bool Hub::init(int argc, char *argv[])
     m_config->setPrefix(m_dir->prefix());
 
     m_basePort = *m_config->value<int64_t>("system", "net", "controlport", m_basePort);
+
+    m_messageBacklog = *m_config->value<int64_t>("system", "hub", "messagebacklog", m_messageBacklog);
 
     namespace po = boost::program_options;
     auto desc = options();
@@ -758,8 +836,18 @@ unsigned short Hub::dataPort() const
 }
 
 std::shared_ptr<process::child> Hub::launchProcess(int type, const std::string &prog,
-                                                   const std::vector<std::string> &args)
+                                                   const std::vector<std::string> &args, std::string name)
 {
+    if (name.empty()) {
+        name = prog;
+    }
+    {
+        auto pos = name.find_last_of('/');
+        if (pos != std::string::npos) {
+            name = name.substr(pos + 1);
+        }
+    }
+
     auto path = process::search_path(prog);
     if (path.empty()) {
         boost::system::error_code ec;
@@ -793,37 +881,77 @@ std::shared_ptr<process::child> Hub::launchProcess(int type, const std::string &
         return nullptr;
     }
 
-    auto consumeStream = [this, type, child](process::ipstream &str, std::deque<std::string> &buf) mutable {
+    auto consumeStream = [this, type, child](process::ipstream &str, message::SendText::TextType stream,
+                                             ObservedChild &obs, std::deque<ObservedChild::TaggedLine> &buf,
+                                             size_t &discardCount, std::mutex &mutex) mutable {
         std::string line;
-        while (child->running() && std::getline(str, line) && !line.empty()) {
+        while (child->running() && getline_multi_delim(str, line, "\n\r")) {
+            std::string prefix;
+            switch (type) {
+            case Process::Manager:
+                prefix = "[Mgr] ";
+                break;
+            case Process::Cleaner:
+                prefix = "[Cln] ";
+                break;
+            case Process::GUI:
+                prefix = "[UI] ";
+                break;
+            case Process::VRB:
+                prefix = "[VRB] ";
+                break;
+            default:
+                prefix = "[" + std::to_string(obs.moduleId) + "] ";
+                break;
+            }
+
             switch (type) {
             case Process::Manager:
             case Process::Cleaner:
             case Process::GUI:
             case Process::VRB:
-                if (m_verbose >= Verbosity::Manager)
-                    std::cerr << line << std::endl;
+                if (m_verbose >= Verbosity::Manager) {
+                    if (stream == message::SendText::Cout)
+                        std::cout << prefix + line << std::flush;
+                    else
+                        std::cerr << prefix + line << std::flush;
+                }
                 break;
             default:
-                if (m_verbose >= Verbosity::Modules)
-                    std::cerr << line << std::endl;
+                if (m_verbose >= Verbosity::Modules) {
+                    if (stream == message::SendText::Cout)
+                        std::cout << prefix + line << std::flush;
+                    else
+                        std::cerr << prefix + line << std::flush;
+                }
                 break;
             }
-            buf.emplace_back(line);
-            while (buf.size() > 100)
+            std::lock_guard<std::mutex> lock(mutex);
+            if (obs.streamOutput) {
+                obs.sendTextToUi(stream, discardCount + buf.size(), line, obs.moduleId);
+            }
+            buf.emplace_back(stream, line);
+            while (buf.size() > m_messageBacklog) {
+                ++discardCount;
                 buf.pop_front();
+            }
         }
     };
 
-    ObservedChild ochild(child, prog, child->id());
-    auto &obs = m_observedChildren.emplace(child->id(), std::move(ochild)).first->second;
-    obs.outThread = std::make_unique<std::thread>([consumeStream, out, prog, &obs]() mutable {
-        setThreadName("cout:" + prog);
-        consumeStream(*out, obs.outBuffer);
+    int moduleId = message::Id::isModule(type) ? type : message::Id::Invalid;
+    auto &obs = m_observedChildren[child->id()];
+    obs.hub = this;
+    obs.child = child;
+    obs.name = name;
+    obs.childId = child->id();
+    obs.moduleId = moduleId;
+    obs.outThread = std::make_unique<std::thread>([consumeStream, out, &obs]() mutable {
+        setThreadName("cout:" + obs.name);
+        consumeStream(*out, message::SendText::Cout, obs, obs.buffer, obs.numDiscarded, obs.mutex);
     });
-    obs.errThread = std::make_unique<std::thread>([consumeStream, err, prog, &obs]() mutable {
-        setThreadName("cerr:" + prog);
-        consumeStream(*err, obs.errBuffer);
+    obs.errThread = std::make_unique<std::thread>([consumeStream, err, &obs]() mutable {
+        setThreadName("cerr:" + obs.name);
+        consumeStream(*err, message::SendText::Cerr, obs, obs.buffer, obs.numDiscarded, obs.mutex);
     });
 
     return child;
@@ -833,6 +961,7 @@ std::shared_ptr<process::child> Hub::launchMpiProcess(int type, const std::vecto
 {
     assert(!m_proxyOnly);
     assert(!args.empty());
+    auto prog = args[0];
 #ifdef VISTLE_USE_MPI
     std::string spawn_cmd = "";
     std::string spawn = *m_config->value<std::string>("system", "mpirun", platform, spawn_cmd);
@@ -843,18 +972,17 @@ std::shared_ptr<process::child> Hub::launchMpiProcess(int type, const std::vecto
         CERR << "SPAWN: " << spawn << std::endl;
     }
 
-    auto child = launchProcess(type, spawn, args);
+    auto child = launchProcess(type, spawn, args, prog);
 #ifndef _WIN32
     if ((!child || !child->valid()) && spawn != "mpirun") {
         CERR << "failed to execute " << args[0] << " via " << spawn << ", retrying with mpirun" << std::endl;
-        child = launchProcess(type, "mpirun", args);
+        auto child = launchProcess(type, spawn, args, prog);
     }
 #endif
 
 #else // VISTLE_USE_MPI
-    auto prog = args[0];
     std::vector<std::string> nargs(args.begin() + 1, args.end());
-    auto child = launchProcess(type, args[0], nargs);
+    auto child = launchProcess(type, prog, nargs, prog);
 #endif
     return child;
 }
@@ -2105,14 +2233,14 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
             auto &debug = msg.as<message::Debug>();
             int modId = debug.getModule();
             auto req = debug.getRequest();
-            if (idToHub(modId) != m_hubId) {
-                std::stringstream str;
-                str << "Not trying to debug non-local module id " << modId;
-                sendError(str.str());
-                break;
-            }
             switch (req) {
             case Debug::AttachDebugger: {
+                if (idToHub(modId) != m_hubId) {
+                    std::stringstream str;
+                    str << "Not trying to debug non-local module id " << modId;
+                    sendError(str.str());
+                    break;
+                }
 #ifdef VISTLE_USE_FMT
                 fmt::dynamic_format_arg_store<fmt::format_context> nargs;
                 {
@@ -2140,7 +2268,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
 #endif
                     long mpipid = 0;
                     bool found = false;
-                    std::lock_guard<std::mutex> guard(m_processMutex);
+                    std::unique_lock<std::mutex> guard(m_processMutex);
                     for (auto &p: m_processMap) {
                         if (p.second == modId) {
                             found = true;
@@ -2148,6 +2276,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                             break;
                         }
                     }
+                    guard.unlock();
                     if (!found) {
                         std::stringstream str;
                         str << "Did not find launcher PID to debug module id " << modId << " on " << m_name;
@@ -2199,12 +2328,12 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                 }
                 auto cmd = cmd_args[0];
                 auto args = std::vector<std::string>(cmd_args.begin() + 1, cmd_args.end());
-                std::lock_guard<std::mutex> guard(m_processMutex);
                 auto child = launchProcess(Process::Debugger, cmd, args);
                 if (child && child->valid()) {
                     std::stringstream info;
                     info << "Debugging " << debug.getModule() << " with " << cmd << " as PID " << child->id();
                     sendInfo(info.str());
+                    std::lock_guard<std::mutex> guard(m_processMutex);
                     m_processMap[child] = Process::Debugger;
                 }
 #else
@@ -2214,8 +2343,44 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
 #endif
                 break;
             }
-            case Debug::PrintState:
+            case Debug::PrintState: {
                 break;
+            }
+            case Debug::ReplayOutput: {
+                const ObservedChild *obs = nullptr;
+                for (auto &ch: m_observedChildren) {
+                    if (ch.second.moduleId == modId) {
+                        obs = &ch.second;
+                        break;
+                    }
+                }
+                if (obs) {
+                    obs->sendOutputToUi();
+                }
+                break;
+            }
+            case Debug::SwitchOutputStreaming: {
+                ObservedChild *obs = nullptr;
+                for (auto &ch: m_observedChildren) {
+                    if (ch.second.moduleId == modId) {
+                        obs = &ch.second;
+                        break;
+                    }
+                }
+                if (obs) {
+                    switch (debug.getSwitchAction()) {
+                    case Debug::SwitchAction::SwitchOn: {
+                        obs->setOutputStreaming(true);
+                        break;
+                    }
+                    case Debug::SwitchAction::SwitchOff: {
+                        obs->setOutputStreaming(false);
+                        break;
+                    }
+                    }
+                }
+                break;
+            }
             }
             break;
         }
@@ -3002,7 +3167,7 @@ bool Hub::startVrb()
 
     auto consumeStream = [this, child](process::ipstream &str) mutable {
         std::string line;
-        while (child->running() && std::getline(str, line) && !line.empty()) {
+        while (child->running() && std::getline(str, line)) {
             if (m_verbose >= Verbosity::Manager) {
                 std::cerr << "VRB: " << line << std::endl;
             }
@@ -3838,6 +4003,7 @@ bool Hub::hasChildProcesses(bool ignoreGui)
 bool Hub::checkChildProcesses(bool emergency, bool onMainThread)
 {
     bool hasToQuit = false;
+    ProcessMap exited;
     std::unique_lock<std::mutex> guard(m_processMutex);
     bool oneDead = false;
     for (auto it = m_processMap.begin(), next = it; it != m_processMap.end(); it = next) {
@@ -3848,6 +4014,13 @@ bool Hub::checkChildProcesses(bool emergency, bool onMainThread)
             continue;
 
         oneDead = true;
+        exited.emplace(*it);
+        next = m_processMap.erase(it);
+    }
+    guard.unlock();
+
+    while (!exited.empty()) {
+        auto it = exited.begin();
 
         const int id = it->second;
         std::string idstring;
@@ -3880,7 +4053,7 @@ bool Hub::checkChildProcesses(bool emergency, bool onMainThread)
                     CERR << "VRB on port " << m_vrbPort << " has exited" << std::endl;
                 }
                 m_vrbPort = 0;
-                continue;
+                //continue; // FIXME
             }
         } else if (!emergency) {
             if (id == Process::Manager) {
@@ -3905,23 +4078,18 @@ bool Hub::checkChildProcesses(bool emergency, bool onMainThread)
         }
         if (it->first->exit_code() != 0) {
             std::stringstream str;
-            str << "process with id " << idstring << " (PID " << it->first->id() << ") exited with code "
-                << it->first->exit_code() << std::endl;
-            sendError(str.str(), id);
-            str.str().clear();
             if (obs) {
-                for (auto &msg: obs->outBuffer) {
-                    str << msg << std::endl;
-                    sendError(str.str(), id);
-                    str.str().clear();
-                }
-                for (auto &msg: obs->errBuffer) {
-                    str << msg << std::endl;
-                    sendError(str.str(), id);
-                    str.str().clear();
-                }
+                str << "process " << obs->name << "_" << id << " (PID " << it->first->id() << ") exited with code "
+                    << it->first->exit_code();
+                sendError(str.str(), id);
+                str << std::endl;
+                obs->sendOutputToUi();
+            } else {
+                str << "process with id " << idstring << " (PID " << it->first->id() << ") exited with code "
+                    << it->first->exit_code();
+                sendError(str.str(), id);
             }
-            //sendError(str.str(), id);
+            str.str().clear();
         } else {
             if (m_verbose >= Verbosity::Manager) {
                 CERR << "process with id " << idstring << " (PID " << it->first->id() << ") exited" << std::endl;
@@ -3930,9 +4098,9 @@ bool Hub::checkChildProcesses(bool emergency, bool onMainThread)
         if (obsit != m_observedChildren.end()) {
             m_observedChildren.erase(obsit);
         }
-        next = m_processMap.erase(it);
+
+        exited.erase(it);
     }
-    guard.unlock();
 
     if (hasToQuit) {
         emergencyQuit();
@@ -3999,7 +4167,7 @@ void Hub::spawnModule(const std::string &path, const std::string &name, int spaw
     if (m_verbose >= Verbosity::Modules) {
         CERR << "starting module " << name << std::endl;
     }
-    auto child = launchMpiProcess(Process::Module, argv);
+    auto child = launchMpiProcess(message::Id::isModule(spawnId) ? spawnId : Process::Module, argv);
     if (child && child->valid()) {
         //CERR << "started " << mod->path() << " with PID " << pid << std::endl;
         std::lock_guard<std::mutex> guard(m_processMutex);

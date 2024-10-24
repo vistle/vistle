@@ -79,6 +79,8 @@ Module::~Module()
     delete m_moduleMenu;
     delete m_execAct;
     delete m_attachDebugger;
+    delete m_replayOutput;
+    delete m_toggleOutputStreaming;
     delete m_cancelExecAct;
     delete m_deleteThisAct;
     delete m_deleteSelAct;
@@ -218,9 +220,34 @@ void Module::showError()
 
 void Module::attachDebugger()
 {
-    vistle::message::Debug m(m_id);
+    vistle::message::Debug m(m_id, vistle::message::Debug::AttachDebugger);
     m.setDestId(m_hub);
     vistle::VistleConnection::the().sendMessage(m);
+}
+
+void Module::replayOutput()
+{
+    vistle::message::Debug m(m_id, vistle::message::Debug::ReplayOutput);
+    m.setDestId(m_hub);
+    vistle::VistleConnection::the().sendMessage(m);
+}
+
+void Module::setOutputStreaming(bool enable)
+{
+    using vistle::message::Debug;
+
+    vistle::message::Debug m(m_id, Debug::SwitchOutputStreaming,
+                             enable ? Debug::SwitchAction::SwitchOn : Debug::SwitchAction::SwitchOff);
+    m.setDestId(m_hub);
+    vistle::VistleConnection::the().sendMessage(m);
+
+    m_toggleOutputStreaming->setChecked(enable);
+    emit outputStreamingChanged(enable);
+}
+
+bool Module::isOutputStreaming() const
+{
+    return m_toggleOutputStreaming->isChecked();
 }
 
 void Module::createGeometry()
@@ -267,6 +294,15 @@ void Module::createActions()
     m_attachDebugger->setStatusTip("Debug running module");
     connect(m_attachDebugger, SIGNAL(triggered(bool)), this, SLOT(attachDebugger()));
 
+    m_replayOutput = new QAction("Replay Output", this);
+    m_replayOutput->setStatusTip("Send last lines of console output to GUI");
+    connect(m_replayOutput, SIGNAL(triggered(bool)), this, SLOT(replayOutput()));
+
+    m_toggleOutputStreaming = new QAction("Stream Output", this);
+    m_toggleOutputStreaming->setCheckable(true);
+    m_toggleOutputStreaming->setStatusTip("Switch streaming of console output on or off");
+    connect(m_toggleOutputStreaming, SIGNAL(triggered(bool)), this, SLOT(setOutputStreaming(bool)));
+
     m_cancelExecAct = new QAction("Cancel Execution", this);
     m_cancelExecAct->setStatusTip("Interrupt execution of module");
     connect(m_cancelExecAct, SIGNAL(triggered()), this, SLOT(cancelExecModule()));
@@ -301,10 +337,13 @@ void Module::createMenus()
     m_moduleMenu->addSeparator();
     m_moduleMenu->addAction(m_cloneModule);
     m_moduleMenu->addAction(m_cloneModuleLinked);
-    m_moduleMenu->addAction(m_restartAct);
     m_moveToMenu = m_moduleMenu->addMenu("Move To...");
     m_replaceWithMenu = m_moduleMenu->addMenu("Replace With...");
-    m_moduleMenu->addAction(m_attachDebugger);
+    m_advancedMenu = m_moduleMenu->addMenu("Advanced...");
+    m_advancedMenu->addAction(m_replayOutput);
+    m_advancedMenu->addAction(m_toggleOutputStreaming);
+    m_advancedMenu->addAction(m_restartAct);
+    m_advancedMenu->addAction(m_attachDebugger);
     m_moduleMenu->addAction(m_createModuleGroup);
     m_moduleMenu->addSeparator();
     m_moduleMenu->addAction(m_deleteThisAct);
@@ -446,6 +485,7 @@ void Module::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
     m_cloneModuleLinked->setVisible(!multiSel);
     m_restartAct->setVisible(!multiSel);
     m_attachDebugger->setVisible(!multiSel);
+    m_replayOutput->setVisible(!multiSel);
 
     if (scene() && scene()->moduleBrowser()) {
         auto getModules = [this](int hubId) {
@@ -1016,6 +1056,9 @@ void Module::setStatus(Module::Status status)
     }
 
     m_cancelExecAct->setEnabled(status == BUSY || status == EXECUTING);
+    for (auto *a: {m_toggleOutputStreaming, m_attachDebugger, m_execAct}) {
+        a->setEnabled(status != SPAWNING && status != CRASHED);
+    }
 
     if (m_statusText.isEmpty()) {
         if (isEnabled())

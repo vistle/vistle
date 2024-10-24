@@ -611,7 +611,7 @@ int Kill::getModule() const
     return module;
 }
 
-Debug::Debug(const int m, Debug::Request req): m_module(m), m_request(req)
+Debug::Debug(const int m, Debug::Request req, Debug::SwitchAction act): m_module(m), m_request(req), m_switchAction(act)
 {
     if (req == AttachDebugger) {
         assert(message::Id::isHub(m) || message::Id::isModule(m));
@@ -626,6 +626,12 @@ int Debug::getModule() const
 Debug::Request Debug::getRequest() const
 {
     return static_cast<Request>(m_request);
+}
+
+Debug::SwitchAction Debug::getSwitchAction() const
+{
+    assert(m_request == SwitchOutputStreaming);
+    return static_cast<SwitchAction>(m_switchAction);
 }
 
 
@@ -1538,7 +1544,7 @@ SendText::SendText(const Message &inResponseTo)
 : m_textType(TextType::Error), m_referenceUuid(inResponseTo.uuid()), m_referenceType(inResponseTo.type())
 {}
 
-SendText::SendText(SendText::TextType type): m_textType(type), m_referenceType(INVALID)
+SendText::SendText(SendText::TextType type, size_t line): m_textType(type), m_referenceType(INVALID), m_lineNumber(line)
 {}
 
 SendText::TextType SendText::textType() const
@@ -1554,6 +1560,11 @@ Type SendText::referenceType() const
 uuid_t SendText::referenceUuid() const
 {
     return m_referenceUuid;
+}
+
+size_t SendText::lineNumber() const
+{
+    return m_lineNumber;
 }
 
 SendText::Payload::Payload() = default;
@@ -2122,7 +2133,7 @@ std::ostream &operator<<(std::ostream &s, const Message &m)
     }
     case SENDTEXT: {
         auto &mm = static_cast<const SendText &>(m);
-        s << ", type: " << mm.textType();
+        s << ", type: " << mm.textType() << ", line#: " << mm.lineNumber();
         break;
     }
     case ITEMINFO: {

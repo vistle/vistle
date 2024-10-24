@@ -220,6 +220,7 @@ protected:
         bool busy = false;
         bool executing = false;
         bool crashed = false;
+        bool outputStreaming = false;
         std::string name;
         ParameterMap parameters;
         ParameterOrder paramOrder;

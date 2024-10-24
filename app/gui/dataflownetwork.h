@@ -65,6 +65,9 @@ public:
     bool isDark() const;
     vistle::StateTracker &state() const;
 
+signals:
+    void toggleOutputStreaming(int moduleId, bool enable);
+
 public slots:
     void addModule(int moduleId, const boost::uuids::uuid &spawnUuid, QString name);
     void deleteModule(int moduleId);
@@ -78,6 +81,7 @@ public slots:
     void moduleMessage(int senderId, int type, QString message);
     void clearMessages(int moduleId);
     void messagesVisibilityChanged(int moduleId, bool visible);
+    void outputStreamingChanged(int moduleId, bool enable);
 
     void emphasizeConnections(QList<Module *> modules);
     void visibleLayerChanged(int layer);
