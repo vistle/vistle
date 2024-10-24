@@ -34,7 +34,9 @@ bool UiManager::handleMessage(std::shared_ptr<boost::asio::ip::tcp::socket> sock
     std::shared_ptr<UiClient> sender;
     auto it = m_clients.find(sock);
     if (it == m_clients.end()) {
-        std::cerr << "UiManager: message from unknown UI" << std::endl;
+        if (m_hub.verbosity() >= Hub::Verbosity::Manager) {
+            std::cerr << "UiManager: message from unknown UI" << std::endl;
+        }
     } else {
         sender = it->second;
     }
@@ -43,7 +45,9 @@ bool UiManager::handleMessage(std::shared_ptr<boost::asio::ip::tcp::socket> sock
     case MODULEEXIT: {
         if (!sender) {
             auto &exit = msg.as<ModuleExit>();
-            std::cerr << "UiManager: unknown UI on hub " << exit.senderId() << " quit" << std::endl;
+            if (m_hub.verbosity() >= Hub::Verbosity::Manager) {
+                std::cerr << "UiManager: unknown UI on hub " << exit.senderId() << " quit" << std::endl;
+            }
         } else {
             sender->cancel();
             removeClient(sender);
@@ -127,8 +131,10 @@ void UiManager::addClient(std::shared_ptr<boost::asio::ip::tcp::socket> sock)
 
     m_clients.insert(std::make_pair(sock, c));
 
-    std::cerr << "UiManager: new UI " << m_uiCount << " connected, now have " << m_clients.size() << " connections"
-              << std::endl;
+    if (m_hub.verbosity() >= Hub::Verbosity::Manager) {
+        std::cerr << "UiManager: new UI " << m_uiCount << " connected, now have " << m_clients.size() << " connections"
+                  << std::endl;
+    }
     ++m_uiCount;
 
     if (m_requestQuit) {
@@ -149,7 +155,9 @@ void UiManager::addClient(std::shared_ptr<boost::asio::ip::tcp::socket> sock)
 
 bool UiManager::removeClient(std::shared_ptr<UiClient> c) const
 {
-    std::cerr << "UiManager: removing client " << c->id() << std::endl;
+    if (m_hub.verbosity() >= Hub::Verbosity::Manager) {
+        std::cerr << "UiManager: removing client " << c->id() << std::endl;
+    }
 
     for (auto &ent: m_clients) {
         if (ent.second == c) {

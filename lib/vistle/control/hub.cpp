@@ -83,11 +83,13 @@ bool operator<(const message::AddHub &a1, const message::AddHub &a2)
 
 namespace Process {
 enum Id {
-    Manager = 0,
-    Cleaner = -1,
-    GUI = -2,
-    Debugger = -3,
-    VRB = -4,
+    Unknown = 0,
+    Module = -1,
+    Manager = -2,
+    Cleaner = -3,
+    GUI = -4,
+    Debugger = -5,
+    VRB = -6,
 };
 }
 
@@ -133,7 +135,9 @@ Hub::ObservedChild::~ObservedChild()
         errThread->join();
 }
 
-#define CERR std::cerr << "Hub " << m_hubId << ": "
+#define CERR \
+    std::cerr << "Hub" << (message::Id::isHub(m_hubId) ? " " + std::to_string(message::Id::MasterHub - m_hubId) : "") \
+              << ": "
 
 static Hub *hub_instance = nullptr;
 volatile std::atomic<bool> Hub::m_interrupt(false);
@@ -304,6 +308,31 @@ Hub &Hub::the()
     return *hub_instance;
 }
 
+// from https://stackoverflow.com/questions/59761124/use-boostprogram-options-to-specify-multiple-flags?cmdf=boost+program_options+verbose+multiple+times
+
+class CountValue: public boost::program_options::typed_value<int> {
+public:
+    CountValue(): CountValue(nullptr) {}
+
+    CountValue(int *store): boost::program_options::typed_value<int>(store)
+    {
+        // Ensure that no tokens may be passed as a value.
+        default_value(*store);
+        zero_tokens();
+    }
+
+    virtual ~CountValue() {}
+
+    virtual void xparse(boost::any &store, const std::vector<std::string> & /*tokens*/) const
+    {
+        // Replace the stored value with the access count.
+        store = boost::any(++count_);
+    }
+
+private:
+    mutable int count_{0};
+};
+
 boost::program_options::options_description &Hub::options()
 {
     namespace po = boost::program_options;
@@ -316,7 +345,7 @@ boost::program_options::options_description &Hub::options()
     // clang-format off
     desc.add_options()
         ("help,h", "show this message")
-        ("version,v", "print version")
+        ("version,V", "print version")
         ("hub,c", po::value<std::string>(), "connect to hub")
         ("batch,b", "do not start user interface")
         ("proxy", "run master hub acting only as a proxy, does not require MPI")
@@ -363,6 +392,8 @@ bool Hub::init(int argc, char *argv[])
 
     namespace po = boost::program_options;
     auto desc = options();
+    desc.add_options()("quiet,q", "run quietly")("verbose,v", new CountValue(&m_verbose),
+                                                 "increase verbosity (use multiple times for more output)");
     po::variables_map vm;
     try {
         po::positional_options_description popt;
@@ -373,6 +404,10 @@ bool Hub::init(int argc, char *argv[])
         CERR << e.what() << std::endl;
         CERR << desc << std::endl;
         return false;
+    }
+
+    if (vm.count("quiet") > 0) {
+        m_verbose = Verbosity::Quiet;
     }
 
     if (vm.count("help")) {
@@ -395,6 +430,12 @@ bool Hub::init(int argc, char *argv[])
     }
     if (vm.count("dataport") > 0) {
         m_dataPort = vm["dataport"].as<unsigned short>();
+    }
+    if (m_verbose >= Verbosity::DuplicateMessages) {
+        m_stateTracker.setVerbose(true);
+    }
+    if (m_verbose >= Verbosity::Messages) {
+        m_traceMessages = message::ANY;
     }
 
     if (vm.count("exposed") > 0) {
@@ -653,7 +694,7 @@ bool Hub::init(int argc, char *argv[])
 
             } else {
 #endif // MODULE_THREAD
-                auto child = launchMpiProcess(args);
+                auto child = launchMpiProcess(Process::Manager, args);
                 if (!child || !child->valid()) {
                     CERR << "failed to spawn Vistle manager " << std::endl;
                     exit(1);
@@ -677,7 +718,9 @@ bool Hub::init(int argc, char *argv[])
 
     if (m_proxyOnly) {
         auto master = addHubForSelf();
-        CERR << "MASTER HUB: " << master << std::endl;
+        if (m_verbose >= Verbosity::Normal) {
+            CERR << "principal hub: " << master << std::endl;
+        }
         m_stateTracker.handle(master, nullptr);
         sendUi(master);
 
@@ -714,7 +757,8 @@ unsigned short Hub::dataPort() const
     return m_dataProxy->port();
 }
 
-std::shared_ptr<process::child> Hub::launchProcess(const std::string &prog, const std::vector<std::string> &args)
+std::shared_ptr<process::child> Hub::launchProcess(int type, const std::string &prog,
+                                                   const std::vector<std::string> &args)
 {
     auto path = process::search_path(prog);
     if (path.empty()) {
@@ -749,12 +793,23 @@ std::shared_ptr<process::child> Hub::launchProcess(const std::string &prog, cons
         return nullptr;
     }
 
-    auto consumeStream = [this, child](process::ipstream &str, std::deque<std::string> &buf) mutable {
+    auto consumeStream = [this, type, child](process::ipstream &str, std::deque<std::string> &buf) mutable {
         std::string line;
         while (child->running() && std::getline(str, line) && !line.empty()) {
+            switch (type) {
+            case Process::Manager:
+            case Process::Cleaner:
+            case Process::GUI:
+            case Process::VRB:
+                if (m_verbose >= Verbosity::Manager)
+                    std::cerr << line << std::endl;
+                break;
+            default:
+                if (m_verbose >= Verbosity::Modules)
+                    std::cerr << line << std::endl;
+                break;
+            }
             buf.emplace_back(line);
-            if (m_verbose > 1)
-                std::cerr << line << std::endl;
             while (buf.size() > 100)
                 buf.pop_front();
         }
@@ -774,7 +829,7 @@ std::shared_ptr<process::child> Hub::launchProcess(const std::string &prog, cons
     return child;
 }
 
-std::shared_ptr<process::child> Hub::launchMpiProcess(const std::vector<std::string> &args)
+std::shared_ptr<process::child> Hub::launchMpiProcess(int type, const std::vector<std::string> &args)
 {
     assert(!m_proxyOnly);
     assert(!args.empty());
@@ -784,20 +839,22 @@ std::shared_ptr<process::child> Hub::launchMpiProcess(const std::vector<std::str
     if (spawn.empty() && !platform_fallback.empty()) {
         spawn = *m_config->value<std::string>("system", "mpirun", platform_fallback, spawn_cmd);
     }
-    std::cerr << "SPAWN: " << spawn << std::endl;
+    if (m_verbose >= Verbosity::Modules) {
+        CERR << "SPAWN: " << spawn << std::endl;
+    }
 
-    auto child = launchProcess(spawn, args);
+    auto child = launchProcess(type, spawn, args);
 #ifndef _WIN32
     if ((!child || !child->valid()) && spawn != "mpirun") {
-        std::cerr << "failed to execute " << args[0] << " via " << spawn << ", retrying with mpirun" << std::endl;
-        child = launchProcess("mpirun", args);
+        CERR << "failed to execute " << args[0] << " via " << spawn << ", retrying with mpirun" << std::endl;
+        child = launchProcess(type, "mpirun", args);
     }
 #endif
 
 #else // VISTLE_USE_MPI
     auto prog = args[0];
     std::vector<std::string> nargs(args.begin() + 1, args.end());
-    auto child = launchProcess(args[0], nargs);
+    auto child = launchProcess(type, args[0], nargs);
 #endif
     return child;
 }
@@ -905,7 +962,9 @@ bool Hub::startServer()
         cd.conference_url = m_conferenceUrl;
         setSessionUrl(VistleUrl::create(cd));
 
-        CERR << "listening for connections on port " << m_port << std::endl;
+        if (m_verbose >= Verbosity::Normal) {
+            CERR << "listening for connections on port " << m_port << std::endl;
+        }
     }
 
     startAccept(m_acceptorv4);
@@ -974,7 +1033,9 @@ bool Hub::removeSocket(Hub::socket_ptr sock, bool close)
         }
         for (auto &s: m_vrbSockets) {
             if (s.second == sock) {
-                CERR << "lost connection to VRB for module " << s.first << std::endl;
+                if (m_verbose >= Verbosity::Manager) {
+                    CERR << "lost connection to VRB for module " << s.first << std::endl;
+                }
                 m_vrbSockets.erase(s.first);
                 break;
             }
@@ -1119,13 +1180,13 @@ bool Hub::dispatch()
         if (!hasChildProcesses(true)) {
             ret = false;
         } else {
-#if 0
-            std::lock_guard<std::mutex> guard(m_processMutex);
-            CERR << "still " << m_processMap.size() << " processes running" << std::endl;
-            for (const auto &process: m_processMap) {
-                std::cerr << "   id: " << process.second << ", pid: " << process.first->id() << std::endl;
+            if (m_verbose >= Verbosity::Manager) {
+                std::lock_guard<std::mutex> guard(m_processMutex);
+                CERR << "still " << m_processMap.size() << " processes running" << std::endl;
+                for (const auto &process: m_processMap) {
+                    std::cerr << "   id: " << process.second << ", pid: " << process.first->id() << std::endl;
+                }
             }
-#endif
         }
 
         m_tunnelManager.cleanUp();
@@ -1168,7 +1229,9 @@ bool Hub::dispatch()
     vistle::adaptive_wait(work);
 
     if (ret == false) {
-        CERR << "dispatch: returning false for Quit" << std::endl;
+        if (m_verbose >= Verbosity::Manager) {
+            CERR << "dispatch: returning false for Quit" << std::endl;
+        }
     }
 
     return ret;
@@ -1400,6 +1463,15 @@ int Hub::id() const
     return m_hubId;
 }
 
+Hub::Verbosity Hub::verbosity() const
+{
+    if (m_verbose < 0)
+        return Verbosity::Quiet;
+    if (m_verbose >= static_cast<int>(Verbosity::AllMessages))
+        return Verbosity::AllMessages;
+    return static_cast<Verbosity>(m_verbose);
+}
+
 message::AddHub Hub::addHubForSelf() const
 {
     auto hub = make.message<message::AddHub>(m_hubId, m_name);
@@ -1619,7 +1691,9 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
     switch (msg.type()) {
     case message::IDENTIFY: {
         auto &id = static_cast<const Identify &>(msg);
-        CERR << "ident msg: " << id.identity() << std::endl;
+        if (m_verbose >= Verbosity::Manager) {
+            CERR << "ident msg: " << id.identity() << std::endl;
+        }
         if (id.identity() == Identify::REQUEST) {
             if (senderType == Identify::REMOTEBULKDATA) {
                 Identify reply(id, Identify::REMOTEBULKDATA, m_hubId);
@@ -1663,11 +1737,19 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
             m_dataProxy->setBoostArchiveVersion(id.boost_archive_version());
             m_dataProxy->setIndexSize(id.indexSize());
             m_dataProxy->setScalarSize(id.scalarSize());
-            CERR << "manager connected with " << m_localRanks << " ranks" << std::endl;
+            if (m_verbose >= Verbosity::Normal) {
+                CERR << "manager connected with " << m_localRanks << " ranks" << std::endl;
+            }
+
+            if (m_verbose >= Verbosity::ManagerMessages) {
+                sendMessage(sock, make.message<message::Trace>(message::Id::Broadcast, message::ANY, true));
+            }
 
             if (m_hubId == Id::MasterHub) {
                 auto master = addHubForSelf();
-                CERR << "MASTER HUB: " << master << std::endl;
+                if (m_verbose >= Verbosity::Manager) {
+                    CERR << "principal hub: " << master << std::endl;
+                }
                 m_stateTracker.handle(master, nullptr);
                 sendUi(master);
             }
@@ -1846,7 +1928,8 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
             }
         }
 
-        if (m_traceMessages == message::ANY || msg.type() == m_traceMessages || msg.type() == message::SPAWN
+        if (m_traceMessages == message::ANY || msg.type() == m_traceMessages ||
+            (msg.type() == message::SPAWN && m_verbose >= Verbosity::Manager)
 #ifdef DEBUG_DISTRIBUTED
             || msg.type() == message::ADDOBJECT || msg.type() == message::ADDOBJECTCOMPLETED
 #endif
@@ -2117,7 +2200,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                 auto cmd = cmd_args[0];
                 auto args = std::vector<std::string>(cmd_args.begin() + 1, cmd_args.end());
                 std::lock_guard<std::mutex> guard(m_processMutex);
-                auto child = launchProcess(cmd, args);
+                auto child = launchProcess(Process::Debugger, cmd, args);
                 if (child && child->valid()) {
                     std::stringstream info;
                     info << "Debugging " << debug.getModule() << " with " << cmd << " as PID " << child->id();
@@ -2316,13 +2399,17 @@ bool Hub::handlePlainSpawn(message::Spawn &notify, bool doSpawn, bool error)
     if (error) {
         notify.setSpawnId(Id::Invalid);
     }
-    CERR << "sendManager: " << notify << std::endl;
+    if (m_verbose >= Verbosity::Modules) {
+        CERR << "sendManager: " << notify << std::endl;
+    }
     notify.setDestId(Id::Broadcast);
     m_stateTracker.handle(notify, nullptr);
     sendAll(notify);
     if (!error && doSpawn) {
         notify.setDestId(notify.hubId());
-        CERR << "doSpawn: sendManager: " << notify << std::endl;
+        if (m_verbose >= Verbosity::Modules) {
+            CERR << "doSpawn: sendManager: " << notify << std::endl;
+        }
         sendManager(notify, notify.hubId());
     }
     return true;
@@ -2425,7 +2512,9 @@ bool Hub::handlePriv(const message::Spawn &spawnRecv)
             }
         }
     } else {
-        CERR << "SLAVE: handle spawn: " << spawn << std::endl;
+        if (m_verbose >= Verbosity::Normal) {
+            CERR << "SLAVE: handle spawn: " << spawn << std::endl;
+        }
         if (spawn.spawnId() == Id::Invalid) {
             sendMaster(spawn);
         } else {
@@ -2612,7 +2701,7 @@ bool Hub::startCleaner()
     args.push_back(cmd);
     std::string shmname = Shm::instanceName(hostname(), m_port);
     args.push_back(shmname);
-    auto child = launchMpiProcess(args);
+    auto child = launchMpiProcess(Process::Cleaner, args);
     if (!child || !child->valid()) {
         CERR << "failed to spawn clean_vistle" << std::endl;
         return false;
@@ -2694,7 +2783,9 @@ void Hub::applyAllDelayedParameters(int oldModuleId, int newModuleId)
 
 bool Hub::editDelayedConnects(int oldModuleId, int newModuleId)
 {
-    CERR << "updating connects: " << oldModuleId << " -> " << newModuleId << std::endl;
+    if (m_verbose >= Verbosity::Manager) {
+        CERR << "updating connects: " << oldModuleId << " -> " << newModuleId << std::endl;
+    }
     for (auto &m: m_sendAfterSpawn) {
         for (auto &msg: m.second) {
             if (msg.type() == message::CONNECT) {
@@ -2735,7 +2826,9 @@ void Hub::killOldModule(int migratedId)
 {
     assert(Id::isModule(migratedId));
     auto state = m_stateTracker.getModuleState(migratedId);
-    CERR << "restart requested for " << migratedId << ", state=" << state << std::endl;
+    if (m_verbose >= Verbosity::Modules) {
+        CERR << "restart requested for " << migratedId << ", state=" << state << std::endl;
+    }
     if (state & StateObserver::Crashed) {
         auto m = make.message<message::ModuleExit>();
         m.setSenderId(migratedId);
@@ -2750,7 +2843,9 @@ void Hub::killOldModule(int migratedId)
 
 void Hub::sendInfo(const std::string &s, int senderId)
 {
-    CERR << s << std::endl;
+    if (m_verbose >= Verbosity::Modules) {
+        CERR << s << std::endl;
+    }
     auto t = make.message<message::SendText>(message::SendText::Info);
     if (senderId != Id::Invalid) {
         t.setSenderId(senderId);
@@ -2762,7 +2857,9 @@ void Hub::sendInfo(const std::string &s, int senderId)
 
 void Hub::sendError(const std::string &s, int senderId)
 {
-    CERR << "Error: " << s << std::endl;
+    if (m_verbose >= Verbosity::Normal) {
+        CERR << "Error: " << s << std::endl;
+    }
     auto t = make.message<message::SendText>(message::SendText::Error);
     if (senderId != Id::Invalid) {
         t.setSenderId(senderId);
@@ -2787,7 +2884,9 @@ std::vector<int> Hub::getSubmoduleIds(int modId, const AvailableModule &av)
 
 void Hub::setLoadedFile(const std::string &file)
 {
-    CERR << "Loaded file: " << file << std::endl;
+    if (m_verbose >= Verbosity::Modules) {
+        CERR << "Loaded file: " << file << std::endl;
+    }
     auto t = make.message<message::UpdateStatus>(message::UpdateStatus::LoadedFile, file);
     m_stateTracker.handle(t, nullptr);
     sendUi(t);
@@ -2811,7 +2910,9 @@ void Hub::setSessionUrl(const std::string &url)
 
 void Hub::setStatus(const std::string &s, message::UpdateStatus::Importance prio)
 {
-    CERR << "Status: " << s << std::endl;
+    if (m_verbose >= Verbosity::Normal) {
+        CERR << "Status: " << s << std::endl;
+    }
     auto t = make.message<message::UpdateStatus>(s, prio);
     m_stateTracker.handle(t, nullptr);
     sendUi(t);
@@ -2826,7 +2927,7 @@ bool Hub::connectToMaster(const std::string &host, unsigned short port)
 {
     assert(!m_isMaster);
 
-    CERR << "connecting to master at " << host << ":" << port << std::flush;
+    CERR << "connecting to principal hub at " << host << ":" << port << std::flush;
     bool connected = false;
     boost::system::error_code ec;
     while (!connected) {
@@ -2886,23 +2987,25 @@ bool Hub::startVrb()
         return false;
     }
 
-    CERR << "started VRB process" << std::endl;
-
     std::string line;
     while (child->running() && std::getline(*out, line) && !line.empty() && m_vrbPort == 0) {
         m_vrbPort = std::atol(line.c_str());
     }
     if (m_vrbPort == 0) {
-        CERR << "could not parse VRB port \"" << line << "\"" << std::endl;
+        CERR << "started VRB process, but could not parse VRB port \"" << line << "\"" << std::endl;
         child->terminate();
         return false;
     }
-    CERR << "VRB process running on port " << m_vrbPort << ", running=" << child->running() << std::endl;
+    if (m_verbose >= Verbosity::Manager) {
+        CERR << "VRB process running on port " << m_vrbPort << ", running=" << child->running() << std::endl;
+    }
 
-    auto consumeStream = [child](process::ipstream &str) mutable {
+    auto consumeStream = [this, child](process::ipstream &str) mutable {
         std::string line;
         while (child->running() && std::getline(str, line) && !line.empty()) {
-            std::cerr << "VRB: " << line << std::endl;
+            if (m_verbose >= Verbosity::Manager) {
+                std::cerr << "VRB: " << line << std::endl;
+            }
         }
     };
 
@@ -2952,7 +3055,9 @@ Hub::socket_ptr Hub::connectToVrb(unsigned short port)
         return sock;
     }
 
-    CERR << "connecting to local VRB at port " << port << std::flush;
+    if (m_verbose >= Verbosity::Manager) {
+        CERR << "connecting to local VRB at port " << port << std::flush;
+    }
     bool connected = false;
     boost::system::error_code ec;
     while (!connected) {
@@ -2966,16 +3071,24 @@ Hub::socket_ptr Hub::connectToVrb(unsigned short port)
         if (!ec) {
             connected = true;
         } else if (ec == boost::system::errc::connection_refused) {
-            std::cerr << "." << std::flush;
+            if (m_verbose >= Verbosity::Manager) {
+                std::cerr << "." << std::flush;
+            }
             sleep(1);
         } else {
-            std::cerr << ": connect failed: " << ec.message() << std::endl;
+            if (m_verbose < Verbosity::Manager) {
+                CERR << "failed to connect to local VRB at port " << port << ": " << ec.message() << std::endl;
+            } else {
+                std::cerr << ": connect failed: " << ec.message() << std::endl;
+            }
             sock.reset();
             return sock;
         }
     }
 
-    std::cerr << ": done." << std::endl;
+    if (m_verbose >= Verbosity::Manager) {
+        std::cerr << ": done." << std::endl;
+    }
 
     const char DF_IEEE = 1;
     char df = 0;
@@ -2985,14 +3098,18 @@ Hub::socket_ptr Hub::connectToVrb(unsigned short port)
         sock.reset();
         return sock;
     }
-    CERR << "reading VRB data format" << std::flush;
+    if (m_verbose >= Verbosity::Manager) {
+        CERR << "reading VRB data format" << std::flush;
+    }
     asio::read(*sock, asio::mutable_buffer(&df, 1), ec);
     if (ec) {
         CERR << "failed to read data format, resetting socket" << std::endl;
         sock.reset();
         return sock;
     }
-    std::cerr << ": done." << std::endl;
+    if (m_verbose >= Verbosity::Manager) {
+        std::cerr << ": done." << std::endl;
+    }
     if (df != DF_IEEE) {
         CERR << "incompatible data format " << static_cast<int>(df) << ", resetting socket" << std::endl;
         sock.reset();
@@ -3077,7 +3194,7 @@ bool Hub::startUi(const std::string &uipath, bool replace)
         return false;
     }
 
-    auto child = launchProcess(uipath, args);
+    auto child = launchProcess(Process::GUI, uipath, args);
     if (!child || !child->valid()) {
         CERR << "failed to spawn UI " << uipath << std::endl;
         return false;
@@ -3105,7 +3222,7 @@ bool Hub::startPythonUi()
     args.push_back("--");
     std::shared_ptr<process::child> child;
     for (const auto &shell: python_shells) {
-        auto child = launchProcess(shell, args);
+        auto child = launchProcess(Process::GUI, shell, args);
         if (child && child->valid()) {
             std::lock_guard<std::mutex> guard(m_processMutex);
             m_processMap[child] = Process::GUI;
@@ -3230,7 +3347,9 @@ bool Hub::handlePriv(const message::Quit &quit, message::Identify::Identity send
             sendManager(quit);
     };
     if (quit.id() == Id::Broadcast) {
-        CERR << "quit requested by " << senderType << std::endl;
+        if (m_verbose >= Verbosity::Normal) {
+            CERR << "quit requested by " << senderType << std::endl;
+        }
         m_uiManager.requestQuit();
         if (senderType == message::Identify::UNKNOWN /* script */) {
             if (m_isMaster)
@@ -3399,8 +3518,10 @@ bool Hub::handlePriv(const message::CancelExecute &cancel)
 
 bool Hub::handlePriv(const message::Barrier &barrier)
 {
-    CERR << "Barrier request: " << barrier.uuid() << " by " << barrier.senderId() << ": " << barrier.info()
-         << std::endl;
+    if (m_verbose >= Verbosity::Manager) {
+        CERR << "Barrier request: " << barrier.uuid() << " by " << barrier.senderId() << ": " << barrier.info()
+             << std::endl;
+    }
     assert(!m_barrierActive);
     assert(m_reachedSet.empty());
     m_barrierActive = true;
@@ -3415,9 +3536,11 @@ bool Hub::handlePriv(const message::Barrier &barrier)
 
 bool Hub::handlePriv(const message::BarrierReached &reached)
 {
-    CERR << "Barrier " << reached.uuid() << " (" << m_stateTracker.barrierInfo(reached.uuid()) << ") reached by "
-         << reached.senderId() << " (now " << m_reachedSet.size() << " of " << m_stateTracker.getNumRunning()
-         << " modules)" << std::endl;
+    if (m_verbose >= Verbosity::Modules) {
+        CERR << "Barrier " << reached.uuid() << " (" << m_stateTracker.barrierInfo(reached.uuid()) << ") reached by "
+             << reached.senderId() << " (now " << m_reachedSet.size() << " of " << m_stateTracker.getNumRunning()
+             << " modules)" << std::endl;
+    }
     assert(m_barrierActive);
     assert(m_barrierUuid == reached.uuid());
     // message must be received from local manager and each slave
@@ -3572,6 +3695,9 @@ bool Hub::handlePriv(const message::ModuleExit &exit)
     }
 
     if (m_barrierActive) {
+        if (m_verbose >= Verbosity::Manager) {
+            CERR << "module " << id << " exited while barrier active" << std::endl;
+        }
         auto r = make.message<message::BarrierReached>(m_barrierUuid);
         r.setSenderId(id);
         r.setDestId(Id::MasterHub);
@@ -3660,7 +3786,9 @@ bool Hub::handlePriv(const message::Cover &cover, const buffer *payload)
             CERR << "cannot connect to VRB on unknown port on behalf of " << cover.senderId() << std::endl;
             return false;
         }
-        CERR << "connecting to VRB on port " << m_vrbPort << " on behalf of " << cover.senderId() << std::endl;
+        if (m_verbose >= Verbosity::Manager) {
+            CERR << "connecting to VRB on port " << m_vrbPort << " on behalf of " << cover.senderId() << std::endl;
+        }
 
         sock = connectToVrb(m_vrbPort);
         if (sock) {
@@ -3748,7 +3876,9 @@ bool Hub::checkChildProcesses(bool emergency, bool onMainThread)
             if (onMainThread) {
                 stopVrb();
             } else {
-                CERR << "VRB on port " << m_vrbPort << " has exited" << std::endl;
+                if (m_verbose >= Verbosity::Manager) {
+                    CERR << "VRB on port " << m_vrbPort << " has exited" << std::endl;
+                }
                 m_vrbPort = 0;
                 continue;
             }
@@ -3793,7 +3923,9 @@ bool Hub::checkChildProcesses(bool emergency, bool onMainThread)
             }
             //sendError(str.str(), id);
         } else {
-            CERR << "process with id " << idstring << " (PID " << it->first->id() << ") exited" << std::endl;
+            if (m_verbose >= Verbosity::Manager) {
+                CERR << "process with id " << idstring << " (PID " << it->first->id() << ") exited" << std::endl;
+            }
         }
         if (obsit != m_observedChildren.end()) {
             m_observedChildren.erase(obsit);
@@ -3864,8 +3996,10 @@ void Hub::spawnModule(const std::string &path, const std::string &name, int spaw
     argv.push_back(Shm::instanceName(hostname(), m_port));
     argv.push_back(name);
     argv.push_back(std::to_string(spawnId));
-    std::cerr << "starting module " << name << std::endl;
-    auto child = launchMpiProcess(argv);
+    if (m_verbose >= Verbosity::Modules) {
+        CERR << "starting module " << name << std::endl;
+    }
+    auto child = launchMpiProcess(Process::Module, argv);
     if (child && child->valid()) {
         //CERR << "started " << mod->path() << " with PID " << pid << std::endl;
         std::lock_guard<std::mutex> guard(m_processMutex);
