@@ -64,6 +64,7 @@ public:
     QList<Message> &messages();
     void setMessagesVisibility(bool visible);
     bool messagesVisible() const;
+    bool isOutputStreaming() const;
 
     void addPort(const vistle::Port &port);
     void removePort(const vistle::Port &port);
@@ -106,6 +107,7 @@ signals:
     void selectConnected(int direction, int id, QString port = QString());
     void visibleChanged(bool visible);
     void callshowErrorInMainThread();
+    void outputStreamingChanged(bool enable);
 
 protected:
     void mousePressEvent(QGraphicsSceneMouseEvent *event) override;
@@ -126,6 +128,8 @@ public slots:
     void cancelExecModule();
     void deleteModule();
     void attachDebugger();
+    void replayOutput();
+    void setOutputStreaming(bool enable);
     void projectToGrid();
     void setParameterDefaults();
     void showError();
@@ -143,6 +147,8 @@ private:
     QAction *m_selectUpstreamAct = nullptr, *m_selectDownstreamAct = nullptr, *m_selectConnectedAct = nullptr;
     QAction *m_deleteThisAct = nullptr, *m_deleteSelAct = nullptr;
     QAction *m_attachDebugger = nullptr;
+    QAction *m_replayOutput = nullptr;
+    QAction *m_toggleOutputStreaming = nullptr;
     QAction *m_execAct = nullptr;
     QAction *m_cancelExecAct = nullptr;
     QAction *m_restartAct = nullptr;
@@ -153,6 +159,7 @@ private:
     QAction *m_cloneModule = nullptr;
     QAction *m_cloneModuleLinked = nullptr;
     QMenu *m_layerMenu = nullptr;
+    QMenu *m_advancedMenu = nullptr;
 
 
     int m_hub;

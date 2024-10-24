@@ -179,10 +179,12 @@ bool isHtml(const QString &text)
 void gui::VistleObserver::info(const std::string &text, vistle::message::SendText::TextType textType, int senderId,
                                int senderRank, vistle::message::Type refType, const vistle::message::uuid_t &refUuid)
 {
+    using vistle::message::SendText;
+
     QString t = QString::fromStdString(text);
     while (t.endsWith('\n'))
         t.chop(1);
-    if (!isHtml(t)) {
+    if (textType == SendText::Cerr || textType == SendText::Cout || textType == SendText::Clog || !isHtml(t)) {
         auto lines = t.split("\n");
         for (auto &l: lines) {
             l = l.toHtmlEscaped();

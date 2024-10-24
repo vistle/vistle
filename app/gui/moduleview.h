@@ -32,10 +32,13 @@ signals:
     void setDefaultValues(int id);
     void deleteModule(int id);
     void clearMessages(int id);
+    void toggleOutputStreaming(int id, bool enable);
+    void replayOutput(int id);
     void messagesVisibilityChanged(int id, bool visible);
 
 public slots:
     void appendMessage(int senderId, int type, QString text);
+    void setOutputStreaming(int id, bool enable);
 private slots:
     void buttonClicked(QAbstractButton *button);
 
@@ -49,6 +52,8 @@ private:
     QPushButton *m_defaultsButton = nullptr;
     QPushButton *m_deleteButton = nullptr;
     QPushButton *m_clearButton = nullptr;
+    QPushButton *m_streamOutput = nullptr;
+    QPushButton *m_replayOutput = nullptr;
     int m_id = 0;
 
     QList<Module::Message> m_messages;

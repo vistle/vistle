@@ -157,6 +157,10 @@ void VistleConsole::printHistory()
 void VistleConsole::appendHtml(const QString &text, int type)
 {
     using namespace vistle::message;
+    if (type == SendText::Cerr || type == SendText::Clog || type == SendText::Cout) {
+        // don't spam console, show only in module view
+        return;
+    }
 
     // save the current command
     QTextCursor cursor = textCursor();
@@ -193,6 +197,11 @@ void VistleConsole::appendHtml(const QString &text, int type)
 void VistleConsole::appendInfo(const QString &text, int type)
 {
     using namespace vistle::message;
+
+    if (type == SendText::Cerr || type == SendText::Clog || type == SendText::Cout) {
+        // don't spam console, show only in module view
+        return;
+    }
 
     // save the current command
     QTextCursor cursor = textCursor();

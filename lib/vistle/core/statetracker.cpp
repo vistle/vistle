@@ -337,6 +337,11 @@ void StateTracker::appendModuleState(VistleState &state, const StateTracker::Mod
         crash.setSenderId(m.id);
         appendMessage(state, crash);
     }
+
+    if (m.outputStreaming) {
+        Debug d(m.id, Debug::SwitchOutputStreaming, Debug::SwitchOn);
+        appendMessage(state, d);
+    }
 }
 
 void StateTracker::appendModuleParameter(VistleState &state, const Module &m) const
@@ -957,15 +962,33 @@ bool StateTracker::handlePriv(const message::AddHub &hub)
 
 bool StateTracker::handlePriv(const message::Debug &debug)
 {
+    int id = debug.getModule();
     switch (debug.getRequest()) {
     case message::Debug::PrintState: {
-        int id = debug.getModule();
         if (id == m_id || id == message::Id::Invalid) {
             printModules(true);
         }
         break;
     }
     case message::Debug::AttachDebugger: {
+        break;
+    }
+    case message::Debug::ReplayOutput: {
+        break;
+    }
+    case message::Debug::SwitchOutputStreaming: {
+        auto it = runningMap.find(id);
+        if (it != runningMap.end()) {
+            auto &mod = it->second;
+            switch (debug.getSwitchAction()) {
+            case message::Debug::SwitchAction::SwitchOff: {
+                mod.outputStreaming = false;
+            } break;
+            case message::Debug::SwitchAction::SwitchOn: {
+                mod.outputStreaming = true;
+            } break;
+            }
+        }
         break;
     }
     }

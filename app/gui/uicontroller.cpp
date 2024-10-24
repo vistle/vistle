@@ -181,6 +181,10 @@ UiController::UiController(int argc, char *argv[], QObject *parent): QObject(par
             SLOT(messagesVisibilityChanged(int, bool)));
     connect(this, SIGNAL(visibleModuleMessage(int, int, QString)), m_mainWindow->moduleView(),
             SLOT(appendMessage(int, int, QString)));
+    connect(m_mainWindow->moduleView(), SIGNAL(toggleOutputStreaming(int, bool)), m_scene,
+            SLOT(outputStreamingChanged(int, bool)));
+    connect(m_scene, SIGNAL(toggleOutputStreaming(int, bool)), m_mainWindow->moduleView(),
+            SLOT(setOutputStreaming(int, bool)));
     connect(&m_observer, SIGNAL(itemInfo_s(QString, int, int, QString)), m_scene,
             SLOT(itemInfoChanged(QString, int, int, QString)));
     connect(&m_observer, SIGNAL(newPort_s(int, QString)), m_scene, SLOT(newPort(int, QString)));
@@ -253,6 +257,18 @@ UiController::UiController(int argc, char *argv[], QObject *parent): QObject(par
         auto mod = m_scene->findModule(id);
         if (mod) {
             mod->deleteModule();
+        }
+    });
+    connect(m_mainWindow->moduleView(), &ModuleView::toggleOutputStreaming, [this](int id, bool enable) {
+        auto mod = m_scene->findModule(id);
+        if (mod) {
+            mod->setOutputStreaming(enable);
+        }
+    });
+    connect(m_mainWindow->moduleView(), &ModuleView::replayOutput, [this](int id) {
+        auto mod = m_scene->findModule(id);
+        if (mod) {
+            mod->replayOutput();
         }
     });
 
@@ -525,6 +541,7 @@ void UiController::moduleSelectionChanged()
         m_mainWindow->moduleViewDock()->raise();
         m_mainWindow->moduleView()->setId(id);
         if (Module *m = m_scene->findModule(id)) {
+            m_mainWindow->moduleView()->setOutputStreaming(id, m->isOutputStreaming());
             m_mainWindow->moduleView()->setMessages(m->messages(), m->messagesVisible());
         }
     } else {
