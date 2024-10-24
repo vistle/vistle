@@ -60,6 +60,11 @@ StateTracker::StateTracker(int id, const std::string &name, std::shared_ptr<Port
     runningMap.emplace(Id::Config, config);
 }
 
+void StateTracker::setVerbose(bool verbose)
+{
+    m_verbose = verbose;
+}
+
 StateTracker::mutex &StateTracker::getMutex()
 {
     return m_replyMutex;
@@ -570,7 +575,9 @@ bool StateTracker::handle(const message::Message &msg, const char *payload, size
         // fall through
     default:
         if (m_alreadySeen.find(msg.uuid()) != m_alreadySeen.end()) {
-            CERR << "duplicate message: " << msg << std::endl;
+            if (m_verbose) {
+                CERR << "duplicate message: " << msg << std::endl;
+            }
         }
         m_alreadySeen.insert(msg.uuid());
     }

@@ -63,8 +63,9 @@ public:
     bool sendMessage(socket_ptr sock, const message::Message &msg, const buffer *payload = nullptr);
     unsigned short port() const;
     unsigned short dataPort() const;
-    std::shared_ptr<boost::process::child> launchProcess(const std::string &prog, const std::vector<std::string> &argv);
-    std::shared_ptr<boost::process::child> launchMpiProcess(const std::vector<std::string> &argv);
+    std::shared_ptr<boost::process::child> launchProcess(int type, const std::string &prog,
+                                                         const std::vector<std::string> &argv);
+    std::shared_ptr<boost::process::child> launchMpiProcess(int type, const std::vector<std::string> &argv);
     const std::string &name() const;
 
     bool handleMessage(const message::Message &msg, socket_ptr sock = socket_ptr(), const buffer *payload = nullptr);
@@ -83,6 +84,18 @@ public:
 
     int idToHub(int id) const;
     int id() const;
+
+    enum Verbosity {
+        Quiet,
+        Normal,
+        Modules,
+        Manager,
+        DuplicateMessages,
+        Messages,
+        ManagerMessages,
+        AllMessages,
+    };
+    Verbosity verbosity() const;
 
 private:
     struct Slave;
@@ -135,7 +148,8 @@ private:
     bool m_proxyOnly = false;
     vistle::message::AddHub addHubForSelf() const;
 
-    unsigned short m_basePort = 31093;
+    static const int DefaultPort = 31093;
+    unsigned short m_basePort = DefaultPort;
     unsigned short m_port = 0, m_dataPort = 0, m_masterPort = m_basePort;
     std::string m_exposedHost;
     boost::asio::ip::address m_exposedHostAddr;
@@ -205,6 +219,7 @@ private:
     unsigned long m_localManagerRank0Pid = 0;
     std::string m_name;
     bool m_ready = false;
+    int m_verbose = Verbosity::Normal;
 
     int m_moduleCount;
     message::Type m_traceMessages;
