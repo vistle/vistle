@@ -453,7 +453,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
                 }
             }
 
-            auto types = grid->tl().data();
+            auto tl = grid->tl().data();
             Index num_conn = 0;
             //Check Shape of Cells and fill Type_List
             for (index_t i = 0; i < dim.cells; i++) {
@@ -478,19 +478,19 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
                 const Index num_faces = cellfaces.size();
                 Index num_verts = 0;
                 if (num_faces == 6 && fourVert == 6 && threeVert == 0 && onlySimpleFaces) {
-                    types[i] = UnstructuredGrid::HEXAHEDRON;
+                    tl[i] = UnstructuredGrid::HEXAHEDRON;
                     num_verts = 8;
                 } else if (num_faces == 5 && fourVert == 3 && threeVert == 2 && onlySimpleFaces) {
-                    types[i] = UnstructuredGrid::PRISM;
+                    tl[i] = UnstructuredGrid::PRISM;
                     num_verts = 6;
                 } else if (num_faces == 5 && fourVert == 1 && threeVert == 4 && onlySimpleFaces) {
-                    types[i] = UnstructuredGrid::PYRAMID;
+                    tl[i] = UnstructuredGrid::PYRAMID;
                     num_verts = 5;
                 } else if (num_faces == 4 && fourVert == 0 && threeVert == 4 && onlySimpleFaces) {
-                    types[i] = UnstructuredGrid::TETRAHEDRON;
+                    tl[i] = UnstructuredGrid::TETRAHEDRON;
                     num_verts = 4;
                 } else {
-                    types[i] = UnstructuredGrid::POLYHEDRON;
+                    tl[i] = UnstructuredGrid::POLYHEDRON;
                     for (Index j = 0; j < cellfaces.size(); ++j) {
                         num_verts += faces[cellfaces[j]].size() + 1;
                     }
@@ -507,7 +507,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
                 el[i] = connectivities.size();
                 //connectivity list
                 const auto &cellfaces = cellfacemap[i]; //get all faces of current cell
-                switch (types[i]) {
+                switch (tl[i]) {
                 case UnstructuredGrid::HEXAHEDRON: {
                     index_t ia = cellfaces[0]; //choose the first face as starting face
                     std::vector<index_t> a = faces[ia];
@@ -616,8 +616,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
                 } break;
 
                 default: {
-                    std::cerr << "cell #" << i << " has invalid type 0x" << std::hex << types[i] << std::dec
-                              << std::endl;
+                    std::cerr << "cell #" << i << " has invalid type 0x" << std::hex << tl[i] << std::dec << std::endl;
                     break;
                 }
                 }
