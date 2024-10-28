@@ -1214,6 +1214,7 @@ void ReadFOAM::applyGhostCells(int processor, GhostMode mode)
     auto &x = grid->x();
     auto &y = grid->y();
     auto &z = grid->z();
+    ghost.resize(tl.size(), cell::NORMAL);
     //std::cerr << "applyGhostCells(p=" << processor << ", mode=" << mode << "), #cells=" << el.size() << ", #coords: " << x.size() << std::endl;
 
     for (const auto &b: boundaries.procboundaries) {
@@ -1241,15 +1242,15 @@ void ReadFOAM::applyGhostCells(int processor, GhostMode mode)
         }
 
         if (mode == ALL ||
-            mode == BASE) { //ghost cell topology is unnknown and has to be appended to the current topology
+            mode == BASE) { //ghost cell topology is unknown and has to be appended to the current topology
             for (Index cell = 0; cell < tlIn.size(); ++cell) { //append new topology to old grid
                 Index elementStart = elIn[cell];
                 Index elementEnd = elIn[cell + 1];
                 auto mapIndex = [sharedVerticesMapping, pointsSize](SIndex point) -> SIndex {
                     if (point <
-                        0) { //if point<0 then vertice is already known and can be looked up in sharedVerticesMapping
+                        0) { //if point<0 then vertex is already known and can be looked up in sharedVerticesMapping
                         return sharedVerticesMapping[-point - 1];
-                    } else { //else the vertice is unknown and its coordinates will be appended (in order of first appearance) to the old coord-lists so we point to an index beyond the current size
+                    } else { //else the vertex is unknown and its coordinates will be appended (in order of first appearance) to the old coord-lists so we point to an index beyond the current size
                         return point + pointsSize;
                     }
                 };
@@ -1260,6 +1261,7 @@ void ReadFOAM::applyGhostCells(int processor, GhostMode mode)
                 el.push_back(cl.size());
                 tl.push_back(tlIn[cell]);
                 ghost.push_back(cell::GHOST);
+                assert(tl.size() == ghost.size());
             }
         }
 
