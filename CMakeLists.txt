@@ -97,12 +97,20 @@ if(CMAKE_CONFIGURATION_TYPES)
     if(${CMAKE_GENERATOR} STREQUAL "Ninja Multi-Config")
         set(CMAKE_DEFAULT_BUILD_TYPE "RelWithDebInfo")
     endif()
+    set(CMAKE_CONFIGURATION_TYPES ${CMAKE_CONFIGURATION_TYPES};Sanitize;RelSanitize)
 elseif(CMAKE_BUILD_TYPE STREQUAL "")
     set(CMAKE_BUILD_TYPE
         "RelWithDebInfo"
         CACHE STRING "Choose the type of build, options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Debug Release RelWithDebInfo MinSizeRel." FORCE)
     message("Setting CMAKE_BUILD_TYPE to ${CMAKE_BUILD_TYPE}")
 endif()
+
+set(CMAKE_C_FLAGS_SANITIZE "${CMAKE_C_FLAGS_DEBUG} -fsanitize=address")
+set(CMAKE_C_FLAGS_RELSANITIZE "-O1 -g -fsanitize=address")
+set(CMAKE_CXX_FLAGS_SANITIZE "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address")
+set(CMAKE_CXX_FLAGS_RELSANITIZE "${CMAKE_C_FLAGS_RELSANITIZE}")
+set(CMAKE_ISPC_FLAGS_SANITIZE "${CMAKE_ISPC_FLAGS_DEBUG}")
+set(CMAKE_ISPC_FLAGS_RELSANITIZE "${CMAKE_ISPC_FLAGS_RELSANITIZE} -O1 -g")
 
 # use this instead of FIND_PACKAGE to prefer Package in $PACKAGE_HOME and $EXTERNLIBS/package
 macro(vistle_find_package package)
