@@ -92,6 +92,20 @@ elif [ -f .debug ]; then
     fi
     VISTLE_BUILD_TYPE=Debug
     builddir="${builddir}-debug"
+elif [ -f .buildtype ]; then
+    VISTLE_BUILD_TYPE="$(cat .buildtype)"
+    case "$VISTLE_BUILD_TYPE" in
+    Debug|Sanitize)
+        if [ "${ARCHSUFFIX%opt}" != "${ARCHSUFFIX}" ]; then
+            : ARCHSUFFIX="${ARCHSUFFIX%opt}"
+        fi
+        ;;
+    RelWithDebInfo|Release|MinSizeRel|RelSanitize)
+        if [ -n "${ARCHSUFFIX}" -a "${ARCHSUFFIX%opt}" = "${ARCHSUFFIX}" ]; then
+            ARCHSUFFIX="${ARCHSUFFIX}opt"
+        fi
+        ;;
+    esac
 else
     if [ -n "${ARCHSUFFIX}" -a "${ARCHSUFFIX%opt}" = "${ARCHSUFFIX}" ]; then
         ARCHSUFFIX="${ARCHSUFFIX}opt"
