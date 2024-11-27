@@ -1084,12 +1084,12 @@ bool AddParameter::isGroupExpanded() const
 
 std::shared_ptr<Parameter> AddParameter::getParameter() const
 {
-    std::shared_ptr<Parameter> p = vistle::getParameter(senderId(), getName(), Parameter::Type(getParameterType()),
-                                                        Parameter::Presentation(getPresentation()));
+    std::shared_ptr<Parameter> p = vistle::getParameter(senderId(), getName(), Parameter::Type(getParameterType()));
     if (p) {
         p->setDescription(description());
         p->setGroup(group());
         p->setGroupExpanded(isGroupExpanded());
+        p->setPresentation(Parameter::Presentation(getPresentation()));
     } else {
         std::cerr << "AddParameter::getParameter: " << moduleName() << ":" << getName() << ": type "
                   << getParameterType() << " not handled" << std::endl;
