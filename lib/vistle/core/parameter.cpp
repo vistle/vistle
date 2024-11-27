@@ -135,8 +135,7 @@ void instantiate_parameters()
     mpl::for_each<Parameters>(instantiator());
 }
 
-std::shared_ptr<Parameter> getParameter(int moduleId, const std::string &paramName, Parameter::Type type,
-                                        Parameter::Presentation presentation)
+std::shared_ptr<Parameter> getParameter(int moduleId, const std::string &paramName, Parameter::Type type)
 {
     std::shared_ptr<Parameter> p;
     switch (type) {
@@ -161,10 +160,6 @@ std::shared_ptr<Parameter> getParameter(int moduleId, const std::string &paramNa
     case Parameter::Invalid:
     case Parameter::Unknown:
         break;
-    }
-
-    if (p) {
-        p->setPresentation(presentation);
     }
 
     return p;
