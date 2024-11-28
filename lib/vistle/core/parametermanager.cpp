@@ -293,6 +293,7 @@ void ParameterManager::setParameterChoices(const std::string &name, const std::v
 
 void ParameterManager::setParameterChoices(Parameter *param, const std::vector<std::string> &choices)
 {
+    param->setChoices(choices);
     message::SetParameterChoices sc(param->getName(), choices.size());
     sc.setDestId(message::Id::ForBroadcast);
     message::SetParameterChoices::Payload pl(choices);
