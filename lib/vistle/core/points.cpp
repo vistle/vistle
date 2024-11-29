@@ -5,7 +5,7 @@
 
 namespace vistle {
 
-Points::Points(const size_t numPoints, const Meta &meta): Points::Base(Points::Data::create(numPoints, meta))
+Points::Points(size_t numPoints, const Meta &meta): Points::Base(Points::Data::create(numPoints, meta))
 {
     refreshImpl();
 }
