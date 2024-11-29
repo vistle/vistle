@@ -13,7 +13,7 @@ public:
     typedef Coords Base;
     std::set<Object::const_ptr> referencedObjects() const override;
 
-    Points(const size_t numPoints, const Meta &meta = Meta());
+    Points(size_t numPoints, const Meta &meta = Meta());
 
     Index getNumPoints();
     Index getNumPoints() const;
