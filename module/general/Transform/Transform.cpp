@@ -171,20 +171,26 @@ bool Transform::compute()
     transform *= translateMat;
 
     int repetitions = p_repetitions->getValue();
+    int timestep = split.timestep;
     AnimationMode animation = (AnimationMode)p_animation->getValue();
-    int timestep = 0;
-    if (animation == Deanimate) {
+    switch (animation) {
+    case Animate:
+        break;
+    case Deanimate:
         timestep = -1;
-    } else if (animation == TimestepAsRepetitionCount) {
-        timestep = split.timestep;
+        break;
+    case TimestepAsRepetitionCount:
         repetitions = timestep;
-    } else if (animation == TimestepAsPower) {
-        timestep = split.timestep;
+        break;
+    case TimestepAsPower:
         repetitions = 1;
         if (timestep > 0)
             transform = pow(transform, timestep);
         else
             transform = Matrix4::Identity();
+        break;
+    case Keep:
+        break;
     }
 
     bool keep_original = p_keep_original->getValue();
