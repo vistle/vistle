@@ -170,6 +170,7 @@ bool VectorField::compute()
     }
 
     lines->setMeta(vecs->meta());
+    lines->setTimestep(split.timestep);
     lines->copyAttributes(coords);
     lines->copyAttributes(vecs);
     updateMeta(lines);
