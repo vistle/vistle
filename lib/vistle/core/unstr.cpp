@@ -206,9 +206,11 @@ std::vector<Index> UnstructuredGrid::getNeighborElements(Index elem) const
 Index UnstructuredGrid::cellNumVertices(Index elem) const
 {
     auto t = tl()[elem];
-    if (t == POLYHEDRON) {
-        const Index *el = &this->el()[0];
-        const Index *cl = &this->cl()[0];
+    const Index *el = &this->el()[0];
+    const Index *cl = &this->cl()[0];
+    if (t == POLYLINE || t == POLYGON)
+        return el[elem + 1] - el[elem];
+    else if (t == POLYHEDRON) {
         const Index begin = el[elem], end = el[elem + 1];
         std::vector<Index> verts(&cl[begin], &cl[end]);
         std::sort(verts.begin(), verts.end());
