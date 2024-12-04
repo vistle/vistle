@@ -40,7 +40,7 @@ public:
         0, 1, -1, 2, -1, 3, -1, -1, -1, 4, 4, -1, 8, 6, 5,
     };
     static constexpr int NumFaces[NUM_TYPES] = {
-        0, 0, -1, 0, -1, 1, -1, 1, -1, 1, 4, -1, 6, 5, 5,
+        0, 0, -1, 0, 0, 1, -1, 1, -1, 1, 4, -1, 6, 5, 5,
     };
     static constexpr unsigned FaceSizes[NUM_TYPES][MaxNumFaces] = {
         // none
