@@ -565,6 +565,7 @@ public:
     SetParameter(int module, const std::string &name, const StringParamVector &value);
     SetParameter(int module, const std::string &name, const std::string &value);
 
+    void setName(const std::string &name);
     void setInit();
     bool isInitialization() const;
     void setDelayed();

@@ -1303,6 +1303,11 @@ SetParameter::SetParameter(int module, const std::string &n, const StringParamVe
     //COPY_STRING(v_string, v);
 }
 
+void SetParameter::setName(const std::string &n)
+{
+    COPY_STRING(name, n);
+}
+
 void SetParameter::setInit()
 {
     initialize = true;
