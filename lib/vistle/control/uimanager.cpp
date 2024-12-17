@@ -136,11 +136,13 @@ void UiManager::addClient(std::shared_ptr<boost::asio::ip::tcp::socket> sock)
     } else {
         sendMessage(c, message::SetId(c->id()));
 
-        sendMessage(c, message::LockUi(m_locked));
-
+        sendMessage(c, message::LockUi(true));
         auto state = m_stateTracker.getState();
         for (auto &m: state) {
             sendMessage(c, m.message, m.payload.get());
+        }
+        if (!m_locked) {
+            sendMessage(c, message::LockUi(m_locked));
         }
     }
 }

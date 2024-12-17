@@ -473,7 +473,7 @@ void DataFlowView::zoomAll()
 
 bool DataFlowView::snapshot(const QString &filename)
 {
-    //scene()->itemsBoundingRect() does not return a correct boundig box
+    //scene()->itemsBoundingRect() does not return a correct bounding box
     scene()->setSceneRect(scene()->itemsBoundingRect()); // Re-shrink the scene to it's bounding contents
 
     QImage image(scene()->sceneRect().size().toSize() * 2,
