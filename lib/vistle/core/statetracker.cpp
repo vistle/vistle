@@ -90,6 +90,19 @@ void StateTracker::setId(int id)
     m_id = id;
 }
 
+void StateTracker::setModified(const std::string &reason)
+{
+    bool first = false;
+    for (StateObserver *o: m_observers) {
+        if (o->modificationCount() == 0)
+            first = true;
+        o->incModificationCount();
+    }
+    if (first) {
+        CERR << "modified: " << reason << std::endl;
+    }
+}
+
 int StateTracker::getMasterHub() const
 {
     return Id::MasterHub;
@@ -1047,8 +1060,8 @@ bool StateTracker::handlePriv(const message::Spawn &spawn)
         it->second.mirrors.insert(moduleId);
     }
 
+    setModified("spawn " + std::to_string(moduleId));
     for (StateObserver *o: m_observers) {
-        o->incModificationCount();
         o->newModule(moduleId, spawn.uuid(), mod.name);
     }
 
@@ -1168,8 +1181,8 @@ bool StateTracker::handlePriv(const message::ModuleExit &moduleExit)
     } else {
         portTracker()->removeModule(mod);
 
+        setModified("exit " + std::to_string(mod));
         for (StateObserver *o: m_observers) {
-            o->incModificationCount();
             o->deleteModule(mod);
         }
 
@@ -1397,25 +1410,32 @@ bool StateTracker::handlePriv(const message::SetParameter &setParam)
 
     mutex_locker guard(m_stateMutex);
     const int senderId = setParam.senderId();
-    if (setParam.getModule() == senderId) {
+    const int id = setParam.getModule();
+    const std::string name = setParam.getName();
+    if (id == senderId || (id == Id::Vistle && senderId == Id::MasterHub) ||
+        (id == Id::Config && senderId == Id::MasterHub)) {
         if (runningMap.find(senderId) != runningMap.end()) {
-            auto param = getParameter(setParam.getModule(), setParam.getName());
+            auto param = getParameter(setParam.getModule(), name);
             if (param) {
                 setParam.apply(param);
                 handled = true;
             }
         }
-    } else
+    } else {
+        CERR << "reject based on id: " << setParam << std::endl;
         return true; //this message has to processed by the module first, we do not have to do anything
+    }
 
     if (handled) {
-        for (StateObserver *o: m_observers) {
-            if (!(setParam.isInitialization() || setParam.rangeType() == Parameter::Minimum ||
-                  setParam.rangeType() == Parameter::Maximum)) {
-                o->incModificationCount();
-            }
-            o->parameterValueChanged(setParam.senderId(), setParam.getName());
+        if (!(setParam.isInitialization() || setParam.rangeType() == Parameter::Minimum ||
+              setParam.rangeType() == Parameter::Maximum)) {
+            setModified("parameter " + std::to_string(id) + ":" + name);
         }
+        for (StateObserver *o: m_observers) {
+            o->parameterValueChanged(setParam.senderId(), name);
+        }
+    } else if (!name.empty()) {
+        CERR << "parameter not found: " << setParam << std::endl;
     }
 
     return handled;
