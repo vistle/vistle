@@ -3814,9 +3814,9 @@ void Hub::updateLinkedParameters(const message::SetParameter &setParam)
 {
     // the msg should have a referrer if it is in reaction to a connected parameter change
     if (setParam.referrer()
-            .is_nil()) { //prevents msgs running in circles if e.g.: parameter bounds prevent them from beeing equal
+            .is_nil()) { //prevents msgs running in circles if e.g.: parameter bounds prevent them from being equal
 
-        //depends on wether the ui or the module request the parameter change
+        //depends on whether the ui or the module request the parameter change
         auto moduleID = message::Id::isModule(setParam.destId()) ? setParam.destId() : setParam.senderId();
         const auto port = m_stateTracker.portTracker()->findPort(moduleID, setParam.getName());
         const auto param = m_stateTracker.getParameter(moduleID, setParam.getName());
