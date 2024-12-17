@@ -355,6 +355,8 @@ private:
     bool m_quitting = false;
 
     bool m_verbose = false;
+
+    void setModified(const std::string &reason = {});
 };
 
 } // namespace vistle
