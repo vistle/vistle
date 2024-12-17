@@ -685,6 +685,9 @@ void UiController::screenshot(QString imageFile, bool quit)
 }
 void UiController::lockUi(bool locked)
 {
+    if (!locked) {
+        m_mainWindow->dataFlowView()->zoomAll();
+    }
     m_mainWindow->m_moduleBrowser->setEnabled(!locked);
     m_mainWindow->moduleView()->setEnabled(!locked);
     m_mainWindow->setInteractionEnabled(!locked);
