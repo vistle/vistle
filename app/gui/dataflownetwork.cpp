@@ -17,6 +17,7 @@
 #include "vistleconsole.h"
 #include "dataflowview.h"
 #include "mainwindow.h"
+#include "module.h"
 
 #include <vistle/core/statetracker.h>
 #include <vistle/util/directory.h>
@@ -164,9 +165,11 @@ void DataFlowNetwork::addModule(int moduleId, const boost::uuids::uuid &spawnUui
         return;
 
     //std::cerr << "addModule: name=" << name.toStdString() << ", id=" << moduleId << std::endl;
+    bool move = true;
     Module *mod = findModule(spawnUuid);
     if (mod) {
         mod->sendPosition();
+        move = false;
     } else {
         mod = findModule(moduleId);
     }
@@ -177,6 +180,10 @@ void DataFlowNetwork::addModule(int moduleId, const boost::uuids::uuid &spawnUui
     mod->setId(moduleId);
     mod->setHub(m_state.getHub(moduleId));
     mod->setName(name);
+    if (move) {
+        auto pos = getModulePosition(moduleId);
+        moveModule(moduleId, pos.x(), pos.y());
+    }
 }
 
 void DataFlowNetwork::deleteModule(int moduleId)
@@ -216,6 +223,28 @@ void DataFlowNetwork::moduleStateChanged(int moduleId, int stateBits)
         else
             m->setStatus(Module::SPAWNING);
     }
+}
+
+QPointF DataFlowNetwork::getModulePosition(int id)
+{
+    QPointF pos;
+    auto p = DataFlowNetwork::getParameter<vistle::ParamVector>(vistle::message::Id::Vistle,
+                                                                QString("position[%1]").arg(id));
+    if (!p)
+        return pos;
+    vistle::ParamVector v = p->getValue();
+    pos.setX(v[0]);
+    pos.setY(v[1]);
+    return pos;
+}
+
+int DataFlowNetwork::getModuleLayer(int id)
+{
+    auto p =
+        DataFlowNetwork::getParameter<vistle::ParamVector>(vistle::message::Id::Vistle, QString("layer[%1]").arg(id));
+    if (!p)
+        return 0;
+    return p->getValue();
 }
 
 void DataFlowNetwork::newPort(int moduleId, QString portName)

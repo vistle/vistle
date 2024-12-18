@@ -12,10 +12,11 @@
 #include <QString>
 
 #include <vistle/core/uuid.h>
-
-#include <vistle/userinterface/vistleconnection.h>
+#include <vistle/core/parameter.h>
+#include <vistle/core/messages.h>
 
 #include "port.h"
+#include "dataflownetwork.h"
 
 namespace gui {
 
@@ -191,14 +192,13 @@ private:
 template<class T>
 void Module::setParameter(QString name, const T &value) const
 {
-    vistle::VistleConnection::the().setParameter(id(), name.toStdString(), value);
+    DataFlowNetwork::setParameter<T>(id(), name, value);
 }
 
 template<class T>
 std::shared_ptr<vistle::ParameterBase<T>> Module::getParameter(QString name) const
 {
-    return std::dynamic_pointer_cast<vistle::ParameterBase<T>>(
-        vistle::VistleConnection::the().getParameter(id(), name.toStdString()));
+    return DataFlowNetwork::getParameter<T>(id(), name);
 }
 
 } //namespace gui

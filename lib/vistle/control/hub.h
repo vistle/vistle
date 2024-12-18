@@ -25,9 +25,20 @@ class Access;
 class PythonInterpreter;
 class Directory;
 class Hub;
+
 class HubParameters: public ParameterManager {
 public:
     HubParameters(Hub &hub);
+    void sendParameterMessage(const message::Message &message, const buffer *payload = nullptr) const override;
+
+private:
+    Hub &m_hub;
+};
+
+
+class SessionParameters: public ParameterManager {
+public:
+    SessionParameters(Hub &hub);
     void sendParameterMessage(const message::Message &message, const buffer *payload = nullptr) const override;
 
 private:
@@ -299,8 +310,9 @@ private:
     void startIoThread();
     void stopIoThreads();
 
-    HubParameters params;
+    SessionParameters session;
     ConfigParameters settings;
+    HubParameters params;
 
     std::mutex m_outstandingDataConnectionMutex;
     std::map<vistle::message::AddHub, std::future<bool>> m_outstandingDataConnections;

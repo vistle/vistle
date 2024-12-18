@@ -5,8 +5,9 @@
 #include <vistle/config/array.h>
 
 #include <iostream>
+#include <regex>
 
-#define CERR std::cerr << m_name << "_" << id() << " "
+#define CERR std::cerr << message::Id::name(m_name, m_id) << ": "
 
 namespace vistle {
 
@@ -15,6 +16,24 @@ void ParameterManager::sendParameterMessageWithPayload(message::Message &message
 {
     auto pl = addPayload(message, payload);
     return sendParameterMessage(message, &pl);
+}
+
+int ParameterManager::parameterTargetModule(int id, const std::string &name)
+{
+    if (id != message::Id::Vistle) {
+        return id;
+    }
+
+    auto pat = std::regex("\\[([0-9]+)\\]$");
+    std::sregex_iterator it(name.begin(), name.end(), pat), end;
+    for (; it != end; ++it) {
+        const std::smatch &match = *it;
+        const std::string str = match.str(1);
+        int num = atol(str.c_str());
+        return num;
+    }
+
+    return id;
 }
 
 ParameterManager::ParameterManager(const std::string &name, int id): m_id(id), m_name(name)
@@ -75,7 +94,6 @@ bool ParameterManager::handleMessage(const message::AddParameter &add)
         break;
     case Parameter::Integer:
         param = addParameter<Integer>(name, desc, Integer(), pres);
-        std::cerr << "add int param: " << name << std::endl;
         break;
     case Parameter::Float:
         param = addParameter<Float>(name, desc, Float(), pres);
@@ -237,6 +255,8 @@ bool ParameterManager::removeParameter(const std::string &name)
         message::RemoveParameter remove(*it->second.param, m_name);
         remove.setDestId(message::Id::ForBroadcast);
         sendParameterMessage(remove);
+    } else {
+        CERR << "removeParameter not owner: " << name << std::endl;
     }
 
     it = m_parameters.find(name);

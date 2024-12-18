@@ -23,6 +23,8 @@ public:
     ParameterManager(const std::string &name, int id);
     virtual ~ParameterManager();
 
+    static int parameterTargetModule(int id, const std::string &name);
+
     void setConfig(config::Access *config);
 
     //! set group for all subsequently added parameters, reset with empty group

@@ -250,6 +250,9 @@ ClusterManager::ClusterManager(boost::mpi::communicator comm, const std::vector<
 , m_barrierActive(false)
 {
     m_portManager->setTracker(&m_stateTracker);
+
+    m_runningMap[Id::Vistle];
+    m_runningMap[Id::Config];
 }
 
 ClusterManager::~ClusterManager()
@@ -657,7 +660,8 @@ bool ClusterManager::handle(const message::Buffer &message, const MessagePayload
             return sendHub(message, payload);
         }
     }
-    if (message::Id::isHub(message.destId()) || message.destId() == message::Id::Config) {
+    if (message::Id::isHub(message.destId()) || message.destId() == message::Id::Config ||
+        message.destId() == message::Id::Vistle) {
         if (destHub != hubId() || message.type() == message::EXECUTE || message.type() == message::CANCELEXECUTE ||
             message.type() == message::COVER) {
             return sendHub(message, payload);

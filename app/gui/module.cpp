@@ -664,7 +664,8 @@ void Module::updatePosition(QPointF newPos) const
         // don't update until we have our module id
         const double x = newPos.x();
         const double y = newPos.y();
-        setParameter("_position", vistle::ParamVector(x, y));
+        DataFlowNetwork::setParameter(vistle::message::Id::Vistle, QString("position[%1]").arg(id()),
+                                      vistle::ParamVector(x, y));
     }
 }
 
@@ -854,7 +855,8 @@ void Module::setLayer(int layer)
 {
     if (m_layer != layer) {
         m_layer = layer;
-        setParameter("_layer", vistle::Integer(layer));
+        DataFlowNetwork::setParameter(vistle::message::Id::Vistle, QString("layer[%1]").arg(id()),
+                                      vistle::Integer(layer));
     }
     updateLayer();
 }
@@ -944,12 +946,10 @@ void Module::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
     for (auto *item: items) {
         if (auto *mod = dynamic_cast<Module *>(item)) {
             mod->setPositionValid();
-            auto p = mod->getParameter<vistle::ParamVector>("_position");
-            if (p) {
-                vistle::ParamVector v = p->getValue();
-                if (v[0] != pos().x() || v[1] != pos().y()) {
-                    mod->sendPosition();
-                }
+            auto id = mod->id();
+            auto p = DataFlowNetwork::getModulePosition(id);
+            if (pos().x() != p.x() || pos().y() != p.y()) {
+                mod->sendPosition();
             }
         }
     }

@@ -106,6 +106,8 @@ struct V_COREEXPORT Id {
     static bool isModule(int id);
     static std::string toString(Reserved id);
     static std::string toString(int id);
+
+    static std::string name(const std::string &desc, int id);
 };
 
 class V_COREEXPORT DefaultSender {

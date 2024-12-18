@@ -5,6 +5,8 @@
 #include <iostream>
 #include <algorithm>
 #include <vistle/util/tools.h>
+#include <vistle/core/parametermanager.h>
+
 
 #define CERR std::cerr << "Port@" << (m_stateTracker ? m_stateTracker->m_name : "(null)") << ": "
 
@@ -491,6 +493,26 @@ std::vector<message::Buffer> PortTracker::removeModule(int moduleId)
         assert(modulePorts.empty());
 
         m_ports.erase(modulePortsIt);
+    }
+
+    auto sessionPortsIt = m_ports.find(message::Id::Vistle);
+    if (sessionPortsIt != m_ports.end()) {
+        std::vector<Port *> toRemove;
+        const auto &sessionPorts = *sessionPortsIt->second;
+        toRemove.reserve(sessionPorts.size());
+        for (const auto &port: sessionPorts) {
+            auto name = port.second->getName();
+            if (ParameterManager::parameterTargetModule(message::Id::Vistle, name) == moduleId) {
+                toRemove.push_back(port.second);
+            }
+        }
+
+        for (auto p: toRemove) {
+            auto r = removePort(*p);
+            std::copy(r.begin(), r.end(), std::back_inserter(ret));
+        }
+
+        m_ports.erase(sessionPortsIt);
     }
 
     if (m_ports.find(moduleId) != m_ports.end()) {

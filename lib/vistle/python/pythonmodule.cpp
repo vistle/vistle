@@ -1007,7 +1007,8 @@ static void setCompoundDropPosition(Float x, Float y)
 
 static void setRelativePos(int id, Float x, Float y)
 {
-    setVectorParam2(id, "_position", x + compoundDropPositionX, y + compoundDropPositionY, true);
+    setVectorParam2(message::Id::Vistle, std::string("position[" + std::to_string(id) + "]").c_str(),
+                    x + compoundDropPositionX, y + compoundDropPositionY, true);
 }
 
 void moduleCompoundToFile(const ModuleCompound &comp)
