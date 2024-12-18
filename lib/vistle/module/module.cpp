@@ -275,10 +275,6 @@ Module::Module(const std::string &moduleName, const int moduleId, mpi::communica
     addIntParameter("_prioritize_visible", "prioritize currently visible timestep", m_prioritizeVisible,
                     Parameter::Boolean);
 
-    addVectorParameter("_position", "position in GUI", ParamVector(0., 0.));
-    auto layer = addIntParameter("_layer", "layer in GUI", Integer(0));
-    setParameterMinimum(layer, Integer(-1));
-
     auto validate = addIntParameter("_validate_objects", "validate data objects before sending to port",
                                     m_validateObjects, Parameter::Choice);
     V_ENUM_SET_CHOICES(validate, ObjectValidation);

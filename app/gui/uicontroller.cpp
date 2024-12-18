@@ -37,6 +37,9 @@
 
 namespace gui {
 
+static const QString position = "position[";
+static const QString layer = "layer[";
+
 QStringList fileNameFilters{"Vistle Files (*.vsl)", "Python Files (*.py)"};
 
 UiController::UiController(int argc, char *argv[], QObject *parent): QObject(parent), m_mainWindow(nullptr)
@@ -562,12 +565,17 @@ void UiController::newParameter(int moduleId, QString parameterName)
     m_console->appendDebug(text);
 #endif
 #if 1
-    if (parameterName == "_position") {
-        if (Module *m = m_scene->findModule(moduleId)) {
-            auto p = vistle::VistleConnection::the().getParameter(moduleId, "_position");
-            auto vp = std::dynamic_pointer_cast<vistle::VectorParameter>(p);
-            if (vp && vp->isDefault() && m->isPositionValid()) {
-                m->sendPosition();
+    if (moduleId == vistle::message::Id::Vistle) {
+        if (parameterName.startsWith(position)) {
+            auto idstr = parameterName.mid(position.length());
+            idstr.chop(1);
+            auto id = idstr.toInt();
+            if (Module *m = m_scene->findModule(id)) {
+                auto p = vistle::VistleConnection::the().getParameter(moduleId, parameterName.toStdString());
+                auto vp = std::dynamic_pointer_cast<vistle::VectorParameter>(p);
+                if (vp && vp->isDefault() && m->isPositionValid()) {
+                    m->sendPosition();
+                }
             }
         }
     }
@@ -580,16 +588,28 @@ void UiController::parameterValueChanged(int moduleId, QString parameterName)
    QString text = "Parameter value changed on ID: " + QString::number(moduleId) + ":" + parameterName;
    m_console->appendDebug(text);
 #endif
-    if (parameterName == "_position") {
-        auto p = vistle::VistleConnection::the().getParameter(moduleId, "_position");
+    if (moduleId != vistle::message::Id::Vistle)
+        return;
+    auto idstr = parameterName;
+    if (parameterName.startsWith(position)) {
+        idstr = idstr.mid(position.length());
+    } else if (parameterName.startsWith(layer)) {
+        idstr = idstr.mid(layer.length());
+    } else {
+        return;
+    }
+    idstr.chop(1);
+    auto id = idstr.toInt();
+    if (parameterName.startsWith(position)) {
+        auto p = vistle::VistleConnection::the().getParameter(moduleId, parameterName.toStdString());
         auto vp = std::dynamic_pointer_cast<vistle::VectorParameter>(p);
         if (vp && !vp->isDefault()) {
             vistle::ParamVector pos = vp->getValue();
-            m_scene->moveModule(moduleId, pos[0], pos[1]);
+            m_scene->moveModule(id, pos[0], pos[1]);
         }
     }
-    if (parameterName == "_layer") {
-        auto p = vistle::VistleConnection::the().getParameter(moduleId, "_layer");
+    if (parameterName.startsWith(layer)) {
+        auto p = vistle::VistleConnection::the().getParameter(moduleId, parameterName.toStdString());
         auto l = std::dynamic_pointer_cast<vistle::IntParameter>(p);
         if (l) {
             const int layer = l->getValue();
@@ -597,7 +617,7 @@ void UiController::parameterValueChanged(int moduleId, QString parameterName)
                 DataFlowView::the()->setNumLayers(layer + 1);
             }
             if (!l->isDefault()) {
-                if (Module *m = m_scene->findModule(moduleId)) {
+                if (Module *m = m_scene->findModule(id)) {
                     m->setLayer(layer);
                 }
             }

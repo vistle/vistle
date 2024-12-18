@@ -13,7 +13,7 @@
 #include <vistle/util/vecstreambuf.h>
 #include "archives.h"
 
-#define CERR std::cerr << m_name << ": "
+#define CERR std::cerr << message::Id::name(m_name, m_id) << " state: "
 
 //#define DEBUG
 
@@ -604,7 +604,7 @@ bool StateTracker::handle(const message::Message &msg, const char *payload, size
     if (m_traceId != Id::Invalid && m_traceType != INVALID) {
         if (msg.type() == m_traceType || m_traceType == ANY) {
             if (msg.senderId() == m_traceId || msg.destId() == m_traceId || m_traceId == Id::Broadcast) {
-                std::cout << m_name << ": " << msg << std::endl << std::flush;
+                CERR << msg << std::endl << std::flush;
             }
         }
     }
@@ -1344,7 +1344,6 @@ bool StateTracker::handlePriv(const message::AddParameter &addParam)
     for (StateObserver *o: m_observers) {
         o->newParameter(addParam.senderId(), addParam.getName());
     }
-    const Port *p = nullptr;
     if (portTracker()) {
         if (const Port *p = portTracker()->addPort(addParam.senderId(), addParam.getName(), addParam.description(),
                                                    Port::PARAMETER)) {
@@ -1412,18 +1411,18 @@ bool StateTracker::handlePriv(const message::SetParameter &setParam)
     const int senderId = setParam.senderId();
     const int id = setParam.getModule();
     const std::string name = setParam.getName();
-    if (id == senderId || (id == Id::Vistle && senderId == Id::MasterHub) ||
-        (id == Id::Config && senderId == Id::MasterHub)) {
-        if (runningMap.find(senderId) != runningMap.end()) {
-            auto param = getParameter(setParam.getModule(), name);
+    if (senderId == id || (senderId == Id::MasterHub && (id == Id::Vistle || id == Id::Config))) {
+        if (runningMap.find(id) != runningMap.end()) {
+            auto param = getParameter(id, name);
             if (param) {
                 setParam.apply(param);
                 handled = true;
             }
         }
     } else {
-        CERR << "reject based on id: " << setParam << std::endl;
-        return true; //this message has to processed by the module first, we do not have to do anything
+        //this message has to processed by the module first, we do not have to do anything
+        //CERR << "reject based on id: " << setParam << std::endl;
+        return true;
     }
 
     if (handled) {
@@ -1772,15 +1771,22 @@ std::vector<std::string> StateTracker::getParameters(int id) const
 
 std::shared_ptr<Parameter> StateTracker::getParameter(int id, const std::string &name) const
 {
+    if (name.empty())
+        return std::shared_ptr<Parameter>();
+
     mutex_locker guard(m_stateMutex);
 
     RunningMap::const_iterator rit = runningMap.find(id);
-    if (rit == runningMap.end())
+    if (rit == runningMap.end()) {
+        //CERR << "getParameter: module " << id << " not found for " << name << std::endl;
         return std::shared_ptr<Parameter>();
+    }
 
     ParameterMap::const_iterator pit = rit->second.parameters.find(name);
-    if (pit == rit->second.parameters.end())
+    if (pit == rit->second.parameters.end()) {
+        //CERR << "getParameter: parameter " << name << " not found for " << id << std::endl;
         return std::shared_ptr<Parameter>();
+    }
 
     return pit->second;
 }

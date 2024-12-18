@@ -68,11 +68,39 @@ std::string Id::toString(int id)
     if (isModule(id)) {
         return "Module " + std::to_string(id);
     }
+    if (id >= MasterHub && id < ModuleBase) {
+        return toString(static_cast<Reserved>(id));
+    }
     if (isHub(id) && id != MasterHub) {
         return "Client hub " + std::to_string(MasterHub - id - 1);
     }
 
-    return toString(static_cast<Reserved>(id));
+    return std::to_string(id);
+}
+
+std::string Id::name(const std::string &desc, int id)
+{
+    if (isModule(id)) {
+        return desc + "_" + std::to_string(id);
+    }
+    switch (id) {
+    case Vistle:
+    case Config:
+    case Broadcast:
+    case ForBroadcast:
+    case NextHop:
+    case UI:
+    case LocalManager:
+    case LocalHub:
+    case MasterHub:
+        return toString(static_cast<Reserved>(id));
+    }
+
+    if (isHub(id)) {
+        return desc + " " + std::to_string(MasterHub - id - 1);
+    }
+
+    return desc + "_" + std::to_string(id);
 }
 
 codec_error::codec_error(const std::string &what): vistle::exception(what)

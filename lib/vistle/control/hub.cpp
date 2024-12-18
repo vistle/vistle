@@ -239,17 +239,31 @@ void ConfigParameters::sendParameterMessage(const message::Message &message, con
 {
     message::Buffer buf(message);
     buf.setSenderId(id());
+    buf.setDestId(message::Id::Broadcast);
     m_hub.stateTracker().handle(buf, payload ? payload->data() : nullptr, payload ? payload->size() : 0, true);
     m_hub.sendAll(buf, payload);
 }
 
-HubParameters::HubParameters(Hub &hub): ParameterManager("Vistle", message::Id::Vistle), m_hub(hub)
+SessionParameters::SessionParameters(Hub &hub): ParameterManager("Vistle", message::Id::Vistle), m_hub(hub)
+{}
+
+void SessionParameters::sendParameterMessage(const message::Message &message, const buffer *payload) const
+{
+    message::Buffer buf(message);
+    buf.setSenderId(message::Id::Vistle);
+    buf.setDestId(message::Id::Broadcast);
+    m_hub.stateTracker().handle(buf, payload ? payload->data() : nullptr, payload ? payload->size() : 0, true);
+    m_hub.sendAll(buf, payload);
+}
+
+HubParameters::HubParameters(Hub &hub): ParameterManager("Hub", hub.id()), m_hub(hub)
 {}
 
 void HubParameters::sendParameterMessage(const message::Message &message, const buffer *payload) const
 {
     message::Buffer buf(message);
     buf.setSenderId(id());
+    buf.setDestId(message::Id::Broadcast);
     m_hub.stateTracker().handle(buf, payload ? payload->data() : nullptr, payload ? payload->size() : 0, true);
     m_hub.sendAll(buf, payload);
 }
@@ -274,8 +288,9 @@ Hub::Hub(bool inManager)
 , m_traceMessages(message::INVALID)
 , m_barrierActive(false)
 , m_workGuard(asio::make_work_guard(m_ioContext))
-, params(*this)
+, session(*this)
 , settings(*this)
+, params(*this)
 {
     assert(!hub_instance);
     hub_instance = this;
@@ -328,6 +343,7 @@ Hub::~Hub()
 
     params.quit();
     settings.quit();
+    session.quit();
 
     stopVrb();
 
@@ -684,7 +700,8 @@ bool Hub::init(int argc, char *argv[])
     if (m_isMaster) {
         // this is the master hub
         m_hubId = Id::MasterHub;
-        //params.setId(m_hubId);
+        params.setId(m_hubId);
+        m_stateTracker.setId(m_hubId);
         if (!m_inManager) {
             message::DefaultSender::init(m_hubId, 0);
         }
@@ -1633,54 +1650,54 @@ bool Hub::hubReady()
 
         CompressionSettings cs;
 
-        auto archiveCompression = params.addIntParameter("archive_compression", "compression mode for archives",
-                                                         message::CompressionNone, Parameter::Choice);
-        params.V_ENUM_SET_CHOICES(archiveCompression, message::CompressionMode);
+        auto archiveCompression = session.addIntParameter("archive_compression", "compression mode for archives",
+                                                          message::CompressionNone, Parameter::Choice);
+        session.V_ENUM_SET_CHOICES(archiveCompression, message::CompressionMode);
         auto archiveCompressionSpeed =
-            params.addIntParameter("archive_compression_speed", "speed parameter of compression algorithm", -1);
+            session.addIntParameter("archive_compression_speed", "speed parameter of compression algorithm", -1);
 
-        params.setParameterRange(archiveCompressionSpeed, Integer(-1), Integer(100));
+        session.setParameterRange(archiveCompressionSpeed, Integer(-1), Integer(100));
 
-        auto compressionMode = params.addIntParameter(CompressionSettings::p_mode, "compression mode for data fields",
-                                                      cs.mode, Parameter::Choice);
-        params.V_ENUM_SET_CHOICES(compressionMode, FieldCompressionMode);
+        auto compressionMode = session.addIntParameter(CompressionSettings::p_mode, "compression mode for data fields",
+                                                       cs.mode, Parameter::Choice);
+        session.V_ENUM_SET_CHOICES(compressionMode, FieldCompressionMode);
 
-        params.setCurrentParameterGroup("zfp");
-        auto zfpMode = params.addIntParameter(CompressionSettings::p_zfpMode, "mode for zfp compression", cs.zfpMode,
+        session.setCurrentParameterGroup("zfp");
+        auto zfpMode = session.addIntParameter(CompressionSettings::p_zfpMode, "mode for zfp compression", cs.zfpMode,
+                                               Parameter::Choice);
+        session.V_ENUM_SET_CHOICES(zfpMode, FieldCompressionZfpMode);
+        auto zfpRate = session.addFloatParameter(CompressionSettings::p_zfpRate,
+                                                 "zfp fixed compression rate (bits/value)", cs.zfpRate);
+        session.setParameterRange(zfpRate, Float(1), Float(64));
+        auto zfpPrecision = session.addIntParameter(CompressionSettings::p_zfpPrecision,
+                                                    "zfp fixed precision (no. bit planes)", cs.zfpPrecision);
+        session.setParameterRange(zfpPrecision, Integer(1), Integer(64));
+        auto zfpAccuracy = session.addFloatParameter(CompressionSettings::p_zfpAccuracy, "zfp absolute error tolerance",
+                                                     cs.zfpAccuracy);
+        session.setParameterRange(zfpAccuracy, Float(0.), Float(1e10));
+
+        session.setCurrentParameterGroup("SZ");
+        session.V_ENUM_SET_CHOICES(compressionMode, FieldCompressionMode);
+        auto szAlgo = session.addIntParameter(CompressionSettings::p_szAlgo, "SZ3 compression algorithm", cs.szAlgo,
                                               Parameter::Choice);
-        params.V_ENUM_SET_CHOICES(zfpMode, FieldCompressionZfpMode);
-        auto zfpRate = params.addFloatParameter(CompressionSettings::p_zfpRate,
-                                                "zfp fixed compression rate (bits/value)", cs.zfpRate);
-        params.setParameterRange(zfpRate, Float(1), Float(64));
-        auto zfpPrecision = params.addIntParameter(CompressionSettings::p_zfpPrecision,
-                                                   "zfp fixed precision (no. bit planes)", cs.zfpPrecision);
-        params.setParameterRange(zfpPrecision, Integer(1), Integer(64));
-        auto zfpAccuracy = params.addFloatParameter(CompressionSettings::p_zfpAccuracy, "zfp absolute error tolerance",
-                                                    cs.zfpAccuracy);
-        params.setParameterRange(zfpAccuracy, Float(0.), Float(1e10));
-
-        params.setCurrentParameterGroup("SZ");
-        params.V_ENUM_SET_CHOICES(compressionMode, FieldCompressionMode);
-        auto szAlgo = params.addIntParameter(CompressionSettings::p_szAlgo, "SZ3 compression algorithm", cs.szAlgo,
-                                             Parameter::Choice);
-        params.V_ENUM_SET_CHOICES(szAlgo, FieldCompressionSzAlgo);
-        auto szError = params.addIntParameter(CompressionSettings::p_szError, "SZ3 error control method", cs.szError,
-                                              Parameter::Choice);
-        params.V_ENUM_SET_CHOICES(szError, FieldCompressionSzError);
+        session.V_ENUM_SET_CHOICES(szAlgo, FieldCompressionSzAlgo);
+        auto szError = session.addIntParameter(CompressionSettings::p_szError, "SZ3 error control method", cs.szError,
+                                               Parameter::Choice);
+        session.V_ENUM_SET_CHOICES(szError, FieldCompressionSzError);
         auto szRel =
-            params.addFloatParameter(CompressionSettings::p_szRelError, "SZ3 relative error tolerance", cs.szRelError);
-        params.setParameterRange(szRel, Float(0.), Float(1.));
+            session.addFloatParameter(CompressionSettings::p_szRelError, "SZ3 relative error tolerance", cs.szRelError);
+        session.setParameterRange(szRel, Float(0.), Float(1.));
         auto szAbs =
-            params.addFloatParameter(CompressionSettings::p_szAbsError, "SZ3 absolute error tolerance", cs.szAbsError);
-        params.setParameterMinimum(szAbs, Float(0.));
+            session.addFloatParameter(CompressionSettings::p_szAbsError, "SZ3 absolute error tolerance", cs.szAbsError);
+        session.setParameterMinimum(szAbs, Float(0.));
         auto szPsnr =
-            params.addFloatParameter(CompressionSettings::p_szPsnrError, "SZ3 PSNR tolerance", cs.szPsnrError);
-        params.setParameterMinimum(szPsnr, Float(0.));
+            session.addFloatParameter(CompressionSettings::p_szPsnrError, "SZ3 PSNR tolerance", cs.szPsnrError);
+        session.setParameterMinimum(szPsnr, Float(0.));
         auto szL2 =
-            params.addFloatParameter(CompressionSettings::p_szL2Error, "SZ3 L2 norm error tolerance", cs.szL2Error);
-        params.setParameterMinimum(szL2, Float(0.));
+            session.addFloatParameter(CompressionSettings::p_szL2Error, "SZ3 L2 norm error tolerance", cs.szL2Error);
+        session.setParameterMinimum(szL2, Float(0.));
 
-        params.setCurrentParameterGroup("");
+        session.setCurrentParameterGroup("");
 
         for (auto s: m_slavesToConnect) {
             auto set = make.message<message::SetId>(s->id);
@@ -2166,13 +2183,20 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
         }
 
         case message::REMOVEPARAMETER: {
-            auto removeParam = msg.as<message::RemoveParameter>();
             if (!m_isMaster) {
                 // set up parameter connections on master hub
                 break;
             }
+
+            auto removeParam = msg.as<message::RemoveParameter>();
+            if (removeParam.destId() == session.id()) {
+                session.handleMessage(removeParam);
+            }
             if (removeParam.destId() == settings.id()) {
                 settings.handleMessage(removeParam);
+            }
+            if (removeParam.destId() == params.id()) {
+                params.handleMessage(removeParam);
             }
             break;
         }
@@ -2180,12 +2204,30 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
         case message::SETPARAMETER: {
             auto setParam = msg.as<message::SetParameter>();
 
-            if (setParam.destId() == params.id()) {
-                params.handleMessage(setParam);
+            if (setParam.destId() == session.id()) {
+                session.handleMessage(setParam);
             }
 
             if (setParam.destId() == settings.id()) {
                 settings.handleMessage(setParam);
+            }
+
+            if (setParam.destId() == params.id()) {
+                params.handleMessage(setParam);
+            }
+
+            if (Id::isModule(setParam.destId())) {
+                const std::string name = setParam.getName();
+                if (name == "_position" || name == "_layer") {
+                    // for old workflows
+                    int id = setParam.destId();
+                    std::string suffix = "[" + std::to_string(id) + "]";
+                    std::string nname = name.substr(1) + suffix;
+                    auto nparam = setParam;
+                    nparam.setName(nname);
+                    nparam.setDestId(Id::Vistle);
+                    session.handleMessage(nparam);
+                }
             }
 
             updateLinkedParameters(setParam);
@@ -2390,7 +2432,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
             auto &set = static_cast<const SetId &>(msg);
             m_hubId = set.getId();
             m_stateTracker.setId(m_hubId);
-            //params.setId(m_hubId);
+            params.setId(m_hubId);
             if (!m_inManager) {
                 message::DefaultSender::init(m_hubId, 0);
             }
@@ -2605,6 +2647,14 @@ bool Hub::handlePriv(const message::Spawn &spawnRecv)
             notify.setSpawnId(Id::ModuleBase + m_moduleCount);
             mirroredId = Id::ModuleBase + m_moduleCount;
             ++m_moduleCount;
+            std::string suffix = "[" + std::to_string(mirroredId) + "]";
+
+            session.setCurrentParameterGroup("Workflow", false);
+            session.addIntParameter("layer" + suffix, "layer for module " + std::to_string(mirroredId), Integer(0));
+            session.addVectorParameter("position" + suffix, "position for module " + std::to_string(mirroredId),
+                                       ParamVector(0., 0.));
+            session.setCurrentParameterGroup("", false);
+
             doSpawn = true;
             if (spawn.hubId() == m_hubId) {
                 if (isCover && m_coverIsManager) {
@@ -2919,8 +2969,8 @@ void Hub::cachePortConnections(int oldModuleId, int newModuleId)
         }
     }
 
-    auto params = m_stateTracker.portTracker()->getConnectedParameters(oldModuleId);
-    for (const auto &par: params) {
+    auto session = m_stateTracker.portTracker()->getConnectedParameters(oldModuleId);
+    for (const auto &par: session) {
         for (const auto &to: par->connections()) {
             auto cm = message::Connect(newModuleId, par->getName(), to->getModuleID(), to->getName());
             m_sendAfterSpawn[newModuleId].emplace_back(cm);
@@ -2932,7 +2982,7 @@ void Hub::cacheParamConnections(int oldModuleId, int newModuleId)
 {
     auto paramNames = m_stateTracker.getParameters(oldModuleId);
     for (const auto &pn: paramNames) {
-        if (pn != "_position") {
+        if (pn != "_position" || pn != "_layer") {
             auto cm = message::Connect(oldModuleId, pn, newModuleId, pn);
             m_sendAfterSpawn[newModuleId].emplace_back(cm);
         }
@@ -3890,6 +3940,11 @@ bool Hub::handlePriv(const message::ModuleExit &exit)
         auto removePorts = m_stateTracker.portTracker()->removeModule(exit.senderId());
         for (auto &rm: removePorts)
             handleMessage(rm);
+
+        std::string suffix = "[" + std::to_string(id) + "]";
+        for (auto p: {"position", "layer"}) {
+            session.removeParameter(p + suffix);
+        }
 
         auto it2 = m_sendAfterExit.find(exit.senderId());
         if (it2 != m_sendAfterExit.end()) {

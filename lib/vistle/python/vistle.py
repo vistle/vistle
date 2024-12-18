@@ -1,4 +1,5 @@
 import _vistle
+import re
 
 coGRMsgLoaded = False
 
@@ -178,13 +179,26 @@ def hubVarForModule(id, numSlaves):
    hub = _vistle.getHub(id)
    return hubVar(hub, numSlaves)
 
+def isModuleParameter(name):
+   m = re.search(r'\[([0-9]+)\]$', name)
+   if m == None:
+      return None
+   return int(m.group(1))
+
 def saveParameters(f, mod):
+      ses = _vistle.getVistleSession()
+      params = _vistle.getParameters(ses)
+      for p in params:
+         if isModuleParameter(p) == mod:
+            if not _vistle.isParameterDefault(ses, p):
+               f.write("set"+getParameterType(ses,p)+"Param("+modvar(ses)+", '"+p+"', "+str(getSavableParam(ses,p))+")\n")
       params = _vistle.getParameters(mod)
       paramChanges = False
       for p in params:
-         if not _vistle.isParameterDefault(mod, p):
-            f.write("set"+getParameterType(mod,p)+"Param("+modvar(mod)+", '"+p+"', "+str(getSavableParam(mod,p))+", True)\n")
-            paramChanges = True
+         if mod != ses or isModuleParameter(p) == None:
+            if not _vistle.isParameterDefault(mod, p):
+               f.write("set"+getParameterType(mod,p)+"Param("+modvar(mod)+", '"+p+"', "+str(getSavableParam(mod,p))+", True)\n")
+               paramChanges = True
       if paramChanges:
          f.write("applyParameters("+modvar(mod)+")\n")
       f.write("\n")
