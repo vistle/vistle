@@ -2040,6 +2040,7 @@ std::ostream &operator<<(std::ostream &s, const Message &m)
     }
     case SETPARAMETER: {
         auto &mm = static_cast<const SetParameter &>(m);
+        s << ", mod: " << mm.getModule();
         s << ", name: " << mm.getName();
         s << ", type: " << Parameter::toString(mm.getParameterType());
         if (mm.isInitialization())
