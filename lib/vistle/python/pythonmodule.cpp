@@ -66,6 +66,7 @@ namespace vistle {
 
 static PythonModule *pythonModuleInstance = nullptr;
 static message::Type traceMessages = message::INVALID;
+static int traceId = message::Id::Invalid;
 
 static vistle::PythonStateAccessor &access()
 {
@@ -80,7 +81,9 @@ static vistle::StateTracker &state()
 static bool sendMessage(const vistle::message::Message &m, const vistle::buffer *payload = nullptr)
 {
     if (traceMessages == m.type() || traceMessages == message::ANY) {
-        std::cerr << "Python: send " << m << std::endl;
+        if (traceId == message::Id::Broadcast || traceId == message::Id::UI || traceId == m.destId()) {
+            std::cerr << "Python: send " << m << std::endl;
+        }
     }
     if (!pythonModuleInstance) {
         std::cerr << "cannot send message: no Vistle module instance" << std::endl;
@@ -198,6 +201,7 @@ static void trace(int id = message::Id::Broadcast, message::Type type = message:
         else
             traceMessages = message::INVALID;
     }
+    traceId = id;
 
     message::Trace m(id, type, onoff);
     sendMessage(m);
