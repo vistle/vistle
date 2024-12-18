@@ -1298,13 +1298,13 @@ bool StateTracker::handlePriv(const message::AddParameter &addParam)
         po[maxIdx + 1] = addParam.getName();
     }
 
-    const Port *p = nullptr;
-    if (portTracker()) {
-        p = portTracker()->addPort(addParam.senderId(), addParam.getName(), addParam.description(), Port::PARAMETER);
-    }
     for (StateObserver *o: m_observers) {
         o->newParameter(addParam.senderId(), addParam.getName());
-        if (p) {
+    }
+    const Port *p = nullptr;
+    if (portTracker()) {
+        if (const Port *p = portTracker()->addPort(addParam.senderId(), addParam.getName(), addParam.description(),
+                                                   Port::PARAMETER)) {
             for (StateObserver *o: m_observers) {
                 o->newPort(p->getModuleID(), p->getName());
             }
