@@ -1593,14 +1593,16 @@ bool Module::handleMessage(const vistle::message::Message *message, const Messag
     switch (message->type()) {
     case vistle::message::TRACE: {
         const Trace *trace = static_cast<const Trace *>(message);
-        if (trace->on()) {
-            m_traceMessages = trace->messageType();
-        } else {
-            m_traceMessages = message::INVALID;
-        }
+        if (trace->destId() == id() || trace->destId() == message::Id::Broadcast) {
+            if (trace->on()) {
+                m_traceMessages = trace->messageType();
+            } else {
+                m_traceMessages = message::INVALID;
+            }
 
-        std::cerr << "    module [" << name() << "] [" << id() << "] [" << rank() << "/" << size() << "] trace ["
-                  << trace->on() << "]" << std::endl;
+            std::cerr << "    module [" << name() << "] [" << id() << "] [" << rank() << "/" << size() << "] trace ["
+                      << trace->on() << "]" << std::endl;
+        }
         break;
     }
 
