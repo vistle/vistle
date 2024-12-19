@@ -3817,7 +3817,8 @@ void Hub::updateLinkedParameters(const message::SetParameter &setParam)
             .is_nil()) { //prevents msgs running in circles if e.g.: parameter bounds prevent them from being equal
 
         //depends on whether the ui or the module request the parameter change
-        auto moduleID = message::Id::isModule(setParam.destId()) ? setParam.destId() : setParam.senderId();
+        //auto moduleID = message::Id::isModule(setParam.destId()) ? setParam.destId() : setParam.senderId();
+        auto moduleID = setParam.getModule();
         const auto port = m_stateTracker.portTracker()->findPort(moduleID, setParam.getName());
         const auto param = m_stateTracker.getParameter(moduleID, setParam.getName());
         std::shared_ptr<Parameter> appliedParam;
