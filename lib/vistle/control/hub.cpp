@@ -3530,6 +3530,13 @@ bool Hub::handlePriv(const message::ModuleExit &exit)
         removeSocket(it->second);
     }
 
+    if (m_barrierActive) {
+        auto r = make.message<message::BarrierReached>(m_barrierUuid);
+        r.setSenderId(id);
+        r.setDestId(Id::MasterHub);
+        handleMessage(r);
+    }
+
     if (!crashed) {
         std::vector<message::Disconnect> disconnects;
         auto inputs = m_stateTracker.portTracker()->getConnectedInputPorts(id);
