@@ -78,6 +78,11 @@ ModuleBrowser *DataFlowNetwork::moduleBrowser() const
     return m_mainWindow->moduleBrowser();
 }
 
+const QList<Module *> &DataFlowNetwork::modules() const
+{
+    return m_moduleList;
+}
+
 float abs(const QPointF p)
 {
     return qSqrt(p.x() * p.x() + p.y() * p.y());

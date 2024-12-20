@@ -52,6 +52,8 @@ public:
     void removeConnections(Port *port, bool sendToController = false);
     void setConnectionHighlights(Port *port, bool highlight);
 
+    const QList<Module *> &modules() const;
+
     Module *newModule(QString modName);
     Module *findModule(int id) const;
     Module *findModule(const boost::uuids::uuid &spawnUuid) const;
