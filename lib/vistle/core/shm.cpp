@@ -176,7 +176,7 @@ std::string Shm::shmIdFilename()
     }
     name << szTempFileName;
 #else
-    auto tmp = getenv("TMPDIR");
+    const char *tmp = getenv("TMPDIR");
     if (!tmp) {
         tmp = getenv("XDG_RUNTIME_DIR");
     }
