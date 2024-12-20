@@ -459,6 +459,9 @@ void DataFlowView::zoomAll()
     if (!scene())
         return;
 
+    if (scene()->modules().empty())
+        return;
+
     QRectF bounds = scene()->itemsBoundingRect();
     bounds.adjust(-Port::portSize, -Port::portSize, +Port::portSize, +Port::portSize);
     scene()->setSceneRect(bounds); // Re-shrink the scene to it's bounding contents
@@ -469,6 +472,11 @@ void DataFlowView::zoomAll()
         }
     }
     fitInView(bounds, Qt::KeepAspectRatio);
+    auto t = transform();
+    if (t.m11() > 4 || t.m22() > 4) {
+        t.setMatrix(4., t.m12(), t.m13(), t.m21(), 4., t.m23(), t.m31(), t.m32(), t.m33());
+        setTransform(t);
+    }
 }
 
 bool DataFlowView::snapshot(const QString &filename)
