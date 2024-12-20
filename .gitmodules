@@ -14,9 +14,6 @@
 	path = lib/3rdparty/boost-mpi
 	url = https://github.com/boostorg/mpi.git
 	branch = master
-[submodule "3rdparty/boost-mpi-1.60"]
-	path = lib/3rdparty/boost-mpi-1.60
-	url = https://github.com/boostorg/mpi.git
 [submodule "3rdparty/boost-mpi-1.69"]
 	path = lib/3rdparty/boost-mpi-1.69
 	url = https://github.com/boostorg/mpi.git

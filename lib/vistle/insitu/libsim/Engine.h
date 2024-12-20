@@ -11,7 +11,7 @@
 #include <vistle/insitu/message/addObjectMsq.h>
 #include <vistle/util/enumarray.h>
 
-#include <boost/asio/io_service.hpp>
+#include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <mpi.h>
 

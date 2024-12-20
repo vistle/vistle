@@ -459,7 +459,7 @@ endif()
 
 vistle_find_package(
     Boost
-    1.59
+    1.66
     REQUIRED
     COMPONENTS
     system
@@ -544,10 +544,8 @@ if(NOT CRAY AND NOT VISTLE_GUI_ONLY)
         set(BOOST_MPI_DIR "boost-mpi-1.69")
     elseif(Boost_VERSION VERSION_GREATER 1.73.99)
         set(BOOST_MPI_DIR "boost-mpi")
-    elseif(Boost_VERSION VERSION_GREATER 1.60.99)
-        set(BOOST_MPI_DIR "boost-mpi-1.69")
     else()
-        set(BOOST_MPI_DIR "boost-mpi-1.60")
+        set(BOOST_MPI_DIR "boost-mpi-1.69")
     endif()
 
     if(BOOST_MPI_DIR)

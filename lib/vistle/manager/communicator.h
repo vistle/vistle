@@ -96,9 +96,9 @@ private:
 
     Communicator(const Communicator &other); // not implemented
 
-    boost::asio::io_service m_ioService;
+    boost::asio::io_context m_ioContext;
     boost::asio::ip::tcp::socket m_hubSocket;
-    boost::asio::ip::tcp::resolver::iterator m_dataEndpoint;
+    boost::asio::ip::basic_resolver_results<boost::asio::ip::tcp> m_dataEndpoint;
 
     void setStatus(const std::string &text, int prio);
     void clearStatus();

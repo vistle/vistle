@@ -81,10 +81,8 @@ wrap_array(T *t, bool exact, S nx, S ny = 1, S nz = 1)
 #ifdef USE_BOOST_ARCHIVE
 #include <boost/serialization/nvp.hpp>
 #include <boost/serialization/array.hpp>
-#if BOOST_VERSION >= 106400
 #include <boost/serialization/array_wrapper.hpp>
 #include <boost/serialization/array_optimization.hpp>
-#endif
 
 namespace vistle {
 class boost_oarchive;
@@ -120,13 +118,8 @@ struct archive_helper<boost_tag> {
         return boost::serialization::make_nvp(name, obj);
     }
 
-#if BOOST_VERSION > 105500
     template<class T>
     using ArrayWrapper = const boost::serialization::array_wrapper<T>;
-#else
-    template<class T>
-    using ArrayWrapper = const boost::serialization::array<T>;
-#endif
     template<class T, class S>
     static ArrayWrapper<T> wrap_array(T *t, bool exact, S nx, S ny, S nz)
     {

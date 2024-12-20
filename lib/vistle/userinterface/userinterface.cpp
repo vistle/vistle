@@ -27,7 +27,7 @@ UserInterface::UserInterface(const std::string &host, const unsigned short port,
 , m_isConnected(false)
 , m_observer(observer)
 , m_stateTracker(message::Id::UI, "UI state")
-, m_socket(m_ioService)
+, m_socket(m_ioContext)
 , m_locked(true)
 {
     crypto::initialize();
@@ -73,7 +73,7 @@ void UserInterface::cancel()
             CERR << "exception during socket shutdown: " << ex.what() << std::endl;
         }
     }
-    m_ioService.stop();
+    m_ioContext.stop();
 
     std::lock_guard<std::mutex> lock(m_mutex);
     m_quit = true;
@@ -106,18 +106,16 @@ bool UserInterface::tryConnect()
     if (host == m_hostname)
         host = "localhost";
 
-    asio::ip::tcp::resolver resolver(m_ioService);
-    asio::ip::tcp::resolver::query query(host, std::to_string(m_remotePort),
-                                         asio::ip::tcp::resolver::query::numeric_service);
+    asio::ip::tcp::resolver resolver(m_ioContext);
     boost::system::error_code ec;
-    asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query, ec);
+    auto endpoints = resolver.resolve(host, std::to_string(m_remotePort), asio::ip::tcp::resolver::numeric_service, ec);
     if (ec) {
         CERR << "could not resolve " << host << ":" << m_remotePort << ": " << ec.message() << std::endl;
         m_isConnected = false;
         m_quit = true;
         return false;
     }
-    asio::connect(socket(), endpoint_iterator, ec);
+    asio::connect(socket(), endpoints, ec);
     if (ec) {
         CERR << "could not establish connection to " << host << ":" << m_remotePort << ": " << ec.message()
              << std::endl;

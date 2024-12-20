@@ -9,7 +9,7 @@
 namespace asio = boost::asio;
 using namespace vistle::insitu::libsim;
 
-static asio::io_service m_ioService;
+static asio::io_context s_ioContext;
 
 bool vistle::insitu::libsim::readSim2File(const std::string &path, std::string &hostname, int &port,
                                           std::string &securityKey)
@@ -49,19 +49,17 @@ bool vistle::insitu::libsim::sendInitToSim(const std::vector<std::string> launch
     //
     // Create a socket.
     //
-    asio::io_service ios;
     boost::system::error_code ec;
     std::unique_ptr<boost::asio::ip::tcp::socket> s;
-    asio::ip::tcp::resolver resolver(ios);
-    asio::ip::tcp::resolver::query query(host, std::to_string(port), asio::ip::tcp::resolver::query::numeric_service);
-    s.reset(new boost::asio::ip::tcp::socket(m_ioService));
-    asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query, ec);
+    asio::ip::tcp::resolver resolver(s_ioContext);
+    s.reset(new boost::asio::ip::tcp::socket(s_ioContext));
+    auto endpoints = resolver.resolve(host, std::to_string(port), asio::ip::tcp::resolver::numeric_service, ec);
     if (ec) {
         std::cerr << "SendInitToSim failed to resolve query to host " << host << " on port " << port << ": "
                   << ec.message() << std::endl;
         return false;
     }
-    asio::connect(*s, endpoint_iterator, ec);
+    asio::connect(*s, endpoints, ec);
     if (ec) {
         std::cerr << "SendInitToSim failed to connect socket to host " << host << " on port " << port << ": "
                   << ec.message() << std::endl;

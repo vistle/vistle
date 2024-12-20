@@ -26,7 +26,7 @@ class AddHub;
 class V_NETEXPORT DataProxy {
     typedef boost::asio::ip::tcp::acceptor acceptor;
     typedef boost::asio::ip::address address;
-    typedef boost::asio::io_service io_service;
+    typedef boost::asio::io_context io_context;
 
 public:
     typedef boost::asio::ip::tcp::socket tcp_socket;
@@ -48,17 +48,13 @@ private:
     DEFINE_ENUM_WITH_STRING_CONVERSIONS(EndPointType, (Local)(Remote))
 
     int idToHub(int id) const;
-    io_service &io();
     std::recursive_mutex m_mutex;
     int m_hubId;
     int m_numRanks = 0;
     StateTracker &m_stateTracker;
-    io_service m_io;
-#if BOOST_VERSION >= 106600
+    io_context &io();
+    io_context m_io;
     boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_workGuard;
-#else
-    std::shared_ptr<boost::asio::io_service::work> m_workGuard;
-#endif
     unsigned short m_port;
     acceptor m_acceptorv4, m_acceptorv6;
     std::vector<std::thread> m_threads;

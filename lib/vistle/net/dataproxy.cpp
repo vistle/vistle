@@ -33,11 +33,7 @@ using std::shared_ptr;
 DataProxy::DataProxy(StateTracker &state, unsigned short basePort, bool changePort)
 : m_hubId(message::Id::Invalid)
 , m_stateTracker(state)
-#if BOOST_VERSION >= 106600
 , m_workGuard(asio::make_work_guard(m_io))
-#else
-, m_workGuard(new asio::io_service::work(m_io))
-#endif
 , m_port(basePort)
 , m_acceptorv4(m_io)
 , m_acceptorv6(m_io)
@@ -132,7 +128,7 @@ void DataProxy::setTrace(message::Type type)
     m_traceMessages = type;
 }
 
-asio::io_service &DataProxy::io()
+asio::io_context &DataProxy::io()
 {
     return m_io;
 }
@@ -786,14 +782,14 @@ bool DataProxy::addSocket(const message::Identify &id, std::shared_ptr<DataProxy
     startThread();
     startThread();
 
-    // transfer socket to DataProxy's io service
+    // transfer socket to DataProxy's io context
     auto sock2 = std::make_shared<tcp_socket>(m_io);
     if (sock->local_endpoint().protocol() == boost::asio::ip::tcp::v4()) {
         sock2->assign(boost::asio::ip::tcp::v4(), sock->release());
     } else if (sock->local_endpoint().protocol() == boost::asio::ip::tcp::v6()) {
         sock2->assign(boost::asio::ip::tcp::v6(), sock->release());
     } else {
-        CERR << "could not transfer socket to io service" << std::endl;
+        CERR << "could not transfer socket to io context" << std::endl;
         return false;
     }
 

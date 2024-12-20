@@ -48,12 +48,8 @@ DataManager::DataManager(mpi::communicator &comm)
 : m_comm(comm, mpi::comm_duplicate)
 , m_rank(m_comm.rank())
 , m_size(m_comm.size())
-, m_dataSocket(m_ioService)
-#if BOOST_VERSION >= 106600
-, m_workGuard(asio::make_work_guard(m_ioService))
-#else
-, m_workGuard(new asio::io_service::work(m_ioService))
-#endif
+, m_dataSocket(m_ioContext)
+, m_workGuard(asio::make_work_guard(m_ioContext))
 , m_ioThread([this]() {
     setThreadName("vistle:dmgr_send");
     sendLoop();
@@ -87,11 +83,11 @@ DataManager::~DataManager()
     m_cleanThread.join();
 
     m_workGuard.reset();
-    m_ioService.stop();
+    m_ioContext.stop();
     m_ioThread.join();
 }
 
-bool DataManager::connect(asio::ip::tcp::resolver::iterator &hub)
+bool DataManager::connect(boost::asio::ip::basic_resolver_results<boost::asio::ip::tcp> &hub)
 {
     bool ret = true;
     boost::system::error_code ec;
@@ -636,7 +632,7 @@ void DataManager::recvLoop()
 
 void DataManager::sendLoop()
 {
-    m_ioService.run();
+    m_ioContext.run();
 }
 
 void DataManager::cleanLoop()
