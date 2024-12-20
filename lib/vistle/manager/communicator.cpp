@@ -49,7 +49,7 @@ Communicator::Communicator(int r, const std::vector<std::string> &hosts, boost::
 , m_rank(r)
 , m_size(hosts.size())
 , m_recvSize(0)
-, m_hubSocket(m_ioService)
+, m_hubSocket(m_ioContext)
 {
     crypto::initialize();
 
@@ -123,13 +123,18 @@ bool Communicator::connectHub(std::string host, unsigned short port, unsigned sh
         CERR << "connecting to hub on " << host << ":" << port << "..." << std::flush;
     }
 
-    asio::ip::tcp::resolver resolver(m_ioService);
-    asio::ip::tcp::resolver::query query(host, std::to_string(port), asio::ip::tcp::resolver::query::numeric_service);
-    auto ep = resolver.resolve(query);
-    asio::ip::tcp::resolver::query queryd(host, std::to_string(dataPort),
-                                          asio::ip::tcp::resolver::query::numeric_service);
-    m_dataEndpoint = resolver.resolve(queryd);
+    asio::ip::tcp::resolver resolver(m_ioContext);
     boost::system::error_code ec;
+    auto ep = resolver.resolve(host, std::to_string(port), asio::ip::tcp::resolver::numeric_service, ec);
+    if (ec) {
+        CERR << "could not resolve host " << host << ":" << port << ": " << ec.message() << std::endl;
+        return false;
+    }
+    m_dataEndpoint = resolver.resolve(host, std::to_string(dataPort), asio::ip::tcp::resolver::numeric_service, ec);
+    if (ec) {
+        CERR << "could not resolve host " << host << ":" << dataPort << ": " << ec.message() << std::endl;
+        return false;
+    }
 
     int ret = 1;
     if (getRank() == 0) {
@@ -137,7 +142,7 @@ bool Communicator::connectHub(std::string host, unsigned short port, unsigned sh
         if (ec) {
             std::cerr << std::endl;
             CERR << "could not establish connection to hub at " << host << ":" << port << std::endl;
-            ret = 0;
+            ret = false;
         } else {
             std::cerr << " ok." << std::endl;
         }
@@ -301,7 +306,7 @@ bool Communicator::dispatch(bool *work)
     }
 
     guard.unlock();
-    m_ioService.poll();
+    m_ioContext.poll();
     guard.lock();
 
     if (m_rank == 0) {

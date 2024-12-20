@@ -177,24 +177,20 @@ Hub::Hub(bool inManager)
 , m_port(0)
 , m_masterPort(m_basePort)
 , m_masterHost("localhost")
-, m_acceptorv4(new boost::asio::ip::tcp::acceptor(m_ioService))
-, m_acceptorv6(new boost::asio::ip::tcp::acceptor(m_ioService))
+, m_acceptorv4(new boost::asio::ip::tcp::acceptor(m_ioContext))
+, m_acceptorv6(new boost::asio::ip::tcp::acceptor(m_ioContext))
 , m_stateTracker(message::Id::Invalid, "Hub state")
 , m_uiManager(*this, m_stateTracker)
 , m_managerConnected(false)
 , m_quitting(false)
-, m_signals(m_ioService)
+, m_signals(m_ioContext)
 , m_isMaster(true)
 , m_slaveCount(0)
 , m_hubId(Id::Invalid)
 , m_moduleCount(0)
 , m_traceMessages(message::INVALID)
 , m_barrierActive(false)
-#if BOOST_VERSION >= 106600
-, m_workGuard(asio::make_work_guard(m_ioService))
-#else
-, m_workGuard(new asio::io_service::work(m_ioService))
-#endif
+, m_workGuard(asio::make_work_guard(m_ioContext))
 , params(*this)
 , settings(*this)
 {
@@ -395,17 +391,16 @@ bool Hub::init(int argc, char *argv[])
 
     if (vm.count("exposed") > 0) {
         m_exposedHost = vm["exposed"].as<std::string>();
-        boost::asio::ip::tcp::resolver resolver(m_ioService);
-        boost::asio::ip::tcp::resolver::query query(m_exposedHost, std::to_string(dataPort()),
-                                                    boost::asio::ip::tcp::resolver::query::numeric_service);
+        boost::asio::ip::tcp::resolver resolver(m_ioContext);
         boost::system::error_code ec;
-        boost::asio::ip::tcp::resolver::iterator iter = resolver.resolve(query, ec);
+        auto endpoints = resolver.resolve(m_exposedHost, std::to_string(dataPort()),
+                                          boost::asio::ip::tcp::resolver::numeric_service, ec);
         if (ec) {
             CERR << "could not resolve gateway host " << m_exposedHost << ": " << ec.message() << std::endl;
             return false;
-        } else {
-            auto endpoint = iter->endpoint();
-            m_exposedHostAddr = endpoint.address();
+        } else if (endpoints.begin() != endpoints.end()) {
+            auto endpoint = *endpoints.begin();
+            m_exposedHostAddr = endpoint.endpoint().address();
             CERR << "AddHub: exposed host " << m_exposedHost << " resolved to " << m_exposedHostAddr << std::endl;
         }
     }
@@ -733,7 +728,7 @@ std::shared_ptr<process::child> Hub::launchProcess(const std::string &prog, cons
     }
 
     try {
-        return std::make_shared<process::child>(path, process::args(args), terminate_with_parent(), m_ioService,
+        return std::make_shared<process::child>(path, process::args(args), terminate_with_parent(), m_ioContext,
                                                 process::on_exit(exit_handler));
     } catch (std::exception &ex) {
         std::stringstream info;
@@ -889,7 +884,7 @@ bool Hub::startAccept(std::shared_ptr<acceptor> a)
     if (!a->is_open())
         return false;
 
-    socket_ptr sock(new asio::ip::tcp::socket(m_ioService));
+    socket_ptr sock(new asio::ip::tcp::socket(m_ioContext));
     addSocket(sock);
     a->async_accept(*sock, [this, a, sock](boost::system::error_code ec) { handleAccept(a, sock, ec); });
     return true;
@@ -1071,7 +1066,7 @@ bool Hub::dispatch()
         }
         m_workGuard.reset();
         for (unsigned count = 0; count < 300; ++count) {
-            if (m_ioService.stopped())
+            if (m_ioContext.stopped())
                 break;
             usleep(10000);
         }
@@ -2794,14 +2789,13 @@ bool Hub::connectToMaster(const std::string &host, unsigned short port)
     bool connected = false;
     boost::system::error_code ec;
     while (!connected) {
-        asio::ip::tcp::resolver resolver(m_ioService);
-        asio::ip::tcp::resolver::query query(host, std::to_string(port));
-        m_masterSocket.reset(new boost::asio::ip::tcp::socket(m_ioService));
-        asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query, ec);
+        asio::ip::tcp::resolver resolver(m_ioContext);
+        m_masterSocket.reset(new boost::asio::ip::tcp::socket(m_ioContext));
+        auto endpoints = resolver.resolve(host, std::to_string(port), ec);
         if (ec) {
             break;
         }
-        asio::connect(*m_masterSocket, endpoint_iterator, ec);
+        asio::connect(*m_masterSocket, endpoints, ec);
         if (m_interrupt) {
             break;
         }
@@ -2841,7 +2835,7 @@ bool Hub::startVrb()
     try {
         child = std::make_shared<process::child>(process::search_path("vrb"), process::args({"--tui", "--printport"}),
                                                  terminate_with_parent(), process::std_out > *out,
-                                                 process::std_err > *err, m_ioService, process::on_exit(exit_handler));
+                                                 process::std_err > *err, m_ioContext, process::on_exit(exit_handler));
     } catch (std::exception &ex) {
         CERR << "could not create VRB process: " << ex.what() << std::endl;
         return false;
@@ -2921,8 +2915,8 @@ Hub::socket_ptr Hub::connectToVrb(unsigned short port)
     bool connected = false;
     boost::system::error_code ec;
     while (!connected) {
-        boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string("127.0.0.1"), port);
-        sock = std::make_shared<socket>(m_ioService);
+        boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::make_address_v4("127.0.0.1"), port);
+        sock = std::make_shared<socket>(m_ioContext);
         sock->connect(endpoint, ec);
         if (m_interrupt) {
             sock.reset();
@@ -3747,8 +3741,8 @@ void Hub::emergencyQuit()
     m_emergency = true;
 
     m_workGuard.reset();
-    m_ioService.stop();
-    while (!m_ioService.stopped()) {
+    m_ioContext.stop();
+    while (!m_ioContext.stopped()) {
         usleep(100000);
     }
 
@@ -3851,14 +3845,14 @@ void Hub::startIoThread()
         return;
     m_ioThreads.emplace_back([this, num]() {
         setThreadName("vistle:io:" + std::to_string(num));
-        m_ioService.run();
+        m_ioContext.run();
     });
 }
 
 void Hub::stopIoThreads()
 {
     m_workGuard.reset();
-    m_ioService.stop();
+    m_ioContext.stop();
 
     while (!m_ioThreads.empty()) {
         auto &t = m_ioThreads.back();

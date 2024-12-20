@@ -53,14 +53,7 @@ inline void load(Archive &ar, boost::interprocess::map<Key, Type, Compare, Alloc
                  const unsigned int /* file_version */
 )
 {
-#if BOOST_VERSION >= 105900
     boost::serialization::load_map_collection<Archive, boost::interprocess::map<Key, Type, Compare, Allocator>>(ar, t);
-#else
-    boost::serialization::stl::load_collection<
-        Archive, boost::interprocess::map<Key, Type, Compare, Allocator>,
-        boost::serialization::stl::archive_input_map<Archive, boost::interprocess::map<Key, Type, Compare, Allocator>>,
-        boost::serialization::stl::no_reserve_imp<boost::interprocess::map<Key, Type, Compare, Allocator>>>(ar, t);
-#endif
 }
 
 // split non-intrusive serialization function member into separate

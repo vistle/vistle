@@ -381,9 +381,8 @@ bool RhrServer::makeConnection(const std::string &host, unsigned short port, int
     }
 
     asio::ip::tcp::resolver resolver(m_io);
-    asio::ip::tcp::resolver::query query(host, std::to_string(port), asio::ip::tcp::resolver::query::numeric_service);
     boost::system::error_code ec;
-    asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query, ec);
+    auto endpoints = resolver.resolve(host, std::to_string(port), asio::ip::tcp::resolver::numeric_service, ec);
     if (ec) {
         CERR << "could not resolve " << host << ": " << ec.message() << std::endl;
         return false;
@@ -392,7 +391,7 @@ bool RhrServer::makeConnection(const std::string &host, unsigned short port, int
     std::shared_ptr<asio::ip::tcp::socket> sock(new asio::ip::tcp::socket(m_io));
     int i = 0;
     while (secondsToTry <= 0 || i < secondsToTry * 10) {
-        asio::connect(*sock, endpoint_iterator, ec);
+        asio::connect(*sock, endpoints, ec);
         if (secondsToTry == 0)
             break;
         if (ec != boost::system::errc::connection_refused) {

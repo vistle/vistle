@@ -91,7 +91,7 @@ private:
     std::vector<vistle::matricesMsg> gatherAllMatrices();
 
     //! server connection
-    boost::asio::io_service m_io;
+    boost::asio::io_context m_io;
     bool m_clientsChanged = false;
 
     int m_requestedTimestep, m_visibleTimestep, m_numRemoteTimesteps;

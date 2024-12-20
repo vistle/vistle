@@ -312,13 +312,13 @@ boost::asio::ip::address AddHub::address() const
 boost::asio::ip::address_v6 AddHub::addressV6() const
 {
     assert(m_addrType == IPv6);
-    return boost::asio::ip::address_v6::from_string(m_address.data());
+    return boost::asio::ip::make_address_v6(m_address.data());
 }
 
 boost::asio::ip::address_v4 AddHub::addressV4() const
 {
     assert(m_addrType == IPv4);
-    return boost::asio::ip::address_v4::from_string(m_address.data());
+    return boost::asio::ip::make_address_v4(m_address.data());
 }
 
 void AddHub::setNumRanks(int size)
@@ -1776,13 +1776,13 @@ boost::asio::ip::address RequestTunnel::destAddr() const
 boost::asio::ip::address_v6 RequestTunnel::destAddrV6() const
 {
     assert(m_destType == IPv6);
-    return boost::asio::ip::address_v6::from_string(m_destAddr.data());
+    return boost::asio::ip::make_address_v6(m_destAddr.data());
 }
 
 boost::asio::ip::address_v4 RequestTunnel::destAddrV4() const
 {
     assert(m_destType == IPv4);
-    return boost::asio::ip::address_v4::from_string(m_destAddr.data());
+    return boost::asio::ip::make_address_v4(m_destAddr.data());
 }
 
 std::string RequestTunnel::destHost() const

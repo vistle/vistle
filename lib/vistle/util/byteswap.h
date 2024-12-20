@@ -10,20 +10,7 @@
 #include <boost/type_traits.hpp>
 #include <boost/static_assert.hpp>
 #include <boost/version.hpp>
-#if BOOST_VERSION >= 106500
 #include <boost/predef/other/endian.h>
-#else
-#include <boost/detail/endian.hpp>
-#if defined(BOOST_LITTLE_ENDIAN)
-#define BOOST_ENDIAN_BIG_BYTE 0
-#define BOOST_ENDIAN_LITTLE_BYTE 1
-#elif defined(BOOST_BIG_ENDIAN)
-#define BOOST_ENDIAN_BIG_BYTE 1
-#define BOOST_ENDIAN_LITTLE_BYTE 0
-#else
-#error "unable to determine system endianness"
-#endif
-#endif
 #include <stdexcept>
 
 //#define UNDEFINED_BEHAVIOR // might be faster

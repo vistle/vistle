@@ -240,7 +240,7 @@ public:
                    const std::vector<std::string> &removed);
 
 private:
-    asio::io_service m_io;
+    asio::io_context m_io;
     asio::ip::tcp::acceptor m_acceptorv4, m_acceptorv6;
     bool m_listen = false;
     std::shared_ptr<asio::ip::tcp::socket> m_clientSocket;

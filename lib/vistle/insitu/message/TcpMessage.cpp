@@ -1,10 +1,11 @@
 #include "TcpMessage.h"
 #include <vistle/insitu/core/slowMpi.h>
 #include <boost/asio.hpp>
-#include <boost/asio/io_service.hpp>
+#include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <vistle/util/listenv4v6.h>
 #include <vistle/insitu/core/exception.h>
+
 using namespace vistle::insitu;
 using namespace vistle::insitu::message;
 namespace asio = boost::asio;
@@ -13,8 +14,8 @@ namespace asio = boost::asio;
 InSituTcp::InSituTcp(boost::mpi::communicator comm): InSituTcp(comm, false)
 {
     if (m_comm.rank() == 0) {
-        m_acceptors[0] = std::make_unique<asio::ip::tcp::acceptor>(m_ioService);
-        m_acceptors[1] = std::make_unique<asio::ip::tcp::acceptor>(m_ioService);
+        m_acceptors[0] = std::make_unique<asio::ip::tcp::acceptor>(m_ioContext);
+        m_acceptors[1] = std::make_unique<asio::ip::tcp::acceptor>(m_ioContext);
         if (start_listen()) {
             startAccept();
         }
@@ -23,28 +24,23 @@ InSituTcp::InSituTcp(boost::mpi::communicator comm): InSituTcp(comm, false)
 
 
 InSituTcp::InSituTcp(boost::mpi::communicator comm, bool dummy)
-#if BOOST_VERSION >= 106600
 : m_comm(comm, boost::mpi::comm_create_kind::comm_duplicate)
-, m_workGuard(boost::asio::make_work_guard(m_ioService))
-#else
-, m_workGuard(new boost::asio::io_service::work(m_ioService))
-#endif
-, m_ioThread([this]() { m_ioService.run(); })
+, m_workGuard(boost::asio::make_work_guard(m_ioContext))
+, m_ioThread([this]() { m_ioContext.run(); })
 {}
 
 InSituTcp::InSituTcp(boost::mpi::communicator comm, const std::string &ip, unsigned int port): InSituTcp(comm, false)
 {
     if (m_comm.rank() == 0) {
         boost::system::error_code ec;
-        asio::ip::tcp::resolver resolver(m_ioService);
-        asio::ip::tcp::resolver::query query(ip, std::to_string(port), asio::ip::tcp::resolver::query::numeric_service);
-        m_socket.reset(new socket(m_ioService));
-        asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query, ec);
+        asio::ip::tcp::resolver resolver(m_ioContext);
+        m_socket.reset(new socket(m_ioContext));
+        auto endpoints = resolver.resolve(ip, std::to_string(port), asio::ip::tcp::resolver::numeric_service, ec);
         if (ec) {
             throw insitu::InsituException() << "initializeEngineSocket failed to resolve connect socket";
         }
 
-        asio::connect(*m_socket, endpoint_iterator, ec);
+        asio::connect(*m_socket, endpoints, ec);
 
         if (ec) {
             throw insitu::InsituException() << "initializeEngineSocket failed to connect socket";
@@ -60,7 +56,7 @@ InSituTcp::~InSituTcp()
             a->close();
     if (m_socket)
         m_socket->close();
-    m_ioService.stop();
+    m_ioContext.stop();
     m_ioThread.join();
 }
 
@@ -79,7 +75,7 @@ void InSituTcp::startAccept()
     if (!m_acceptors[0]->is_open() || !m_acceptors[1]->is_open())
         return;
     for (size_t i = 0; i < m_acceptors.size(); i++) {
-        auto sock = new boost::asio::ip::tcp::socket{m_ioService};
+        auto sock = new boost::asio::ip::tcp::socket{m_ioContext};
         m_acceptors[i]->async_accept(*sock, [this, i, sock](boost::system::error_code ec) {
             if (!ec) {
                 std::lock_guard<std::mutex> g{m_mutex};

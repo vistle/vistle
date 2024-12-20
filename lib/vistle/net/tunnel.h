@@ -71,11 +71,11 @@ class V_NETEXPORT TunnelManager {
 public:
     typedef boost::asio::ip::tcp::socket socket;
     typedef boost::asio::ip::tcp::acceptor acceptor;
-    typedef boost::asio::io_service io_service;
+    typedef boost::asio::io_context io_context;
 
     TunnelManager();
     ~TunnelManager();
-    io_service &io();
+    io_context &io();
 
     bool addSocket(const message::Identify &id, std::shared_ptr<socket> sock);
 
@@ -86,13 +86,9 @@ private:
     bool addTunnel(const message::RequestTunnel &msg);
     bool removeTunnel(const message::RequestTunnel &msg);
     void startThread();
-    io_service m_io;
+    io_context m_io;
     std::vector<std::thread> m_threads;
-#if BOOST_VERSION >= 106600
     boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_workGuard;
-#else
-    std::shared_ptr<boost::asio::io_service::work> m_workGuard;
-#endif
     std::map<unsigned short, std::shared_ptr<Tunnel>> m_tunnels;
     struct RendezvousTunnelKey {
         std::string id;

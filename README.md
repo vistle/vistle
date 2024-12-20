@@ -53,7 +53,7 @@ Installation
   Microsoft MPI, Open MPI, MPICH and MVAPICH2 has been used successfully.
 
 - **Boost**:
-  At least 1.59.00 is required.
+  At least 1.66.00 is required.
      Note:
      - in order to switch MPI implementations without requiring a recompilation of Boost, we compile Boost.MPI together with Vistle
 

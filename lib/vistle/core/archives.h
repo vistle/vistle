@@ -29,9 +29,7 @@
 #include <boost/serialization/vector.hpp>
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/version.hpp>
-#if BOOST_VERSION >= 106400
 #include <boost/serialization/array_wrapper.hpp>
-#endif
 #endif
 
 #ifdef USE_YAS

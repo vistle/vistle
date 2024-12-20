@@ -86,7 +86,7 @@ protected:
 
     bool handleMessage(const message::Message *message, const buffer &payload);
 
-    boost::asio::io_service m_ioService;
+    boost::asio::io_context m_ioContext;
     boost::asio::ip::tcp::socket m_socket;
 
     struct RequestedMessage {

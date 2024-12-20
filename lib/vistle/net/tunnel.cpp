@@ -26,23 +26,17 @@ namespace vistle {
 
 using message::RequestTunnel;
 
-TunnelManager::TunnelManager()
-#if BOOST_VERSION >= 106600
-: m_workGuard(asio::make_work_guard(m_io))
-#else
-: m_workGuard(new asio::io_service::work(m_io))
-#endif
+TunnelManager::TunnelManager(): m_workGuard(asio::make_work_guard(m_io))
 {}
 
 TunnelManager::~TunnelManager()
 {
     m_workGuard.reset();
-    m_io.stop();
+    io().stop();
     if (io().stopped()) {
         for (auto &t: m_threads)
             t.join();
         m_threads.clear();
-        io().reset();
     }
 }
 
@@ -79,7 +73,7 @@ void TunnelManager::startThread()
     CERR << "now " << m_threads.size() << " threads in pool" << std::endl;
 }
 
-TunnelManager::io_service &TunnelManager::io()
+TunnelManager::io_context &TunnelManager::io()
 {
     return m_io;
 }
@@ -101,14 +95,14 @@ bool TunnelManager::addSocket(const message::Identify &id, std::shared_ptr<socke
 {
     assert(id.identity() == message::Identify::TUNNEL);
 
-    // transfer socket to DataProxy's io service
+    // transfer socket to DataProxy's io context
     auto sock = std::make_shared<tcp_socket>(m_io);
     if (sock0->local_endpoint().protocol() == boost::asio::ip::tcp::v4()) {
         sock->assign(boost::asio::ip::tcp::v4(), sock0->release());
     } else if (sock0->local_endpoint().protocol() == boost::asio::ip::tcp::v6()) {
         sock->assign(boost::asio::ip::tcp::v6(), sock0->release());
     } else {
-        CERR << "could not transfer socket to io service" << std::endl;
+        CERR << "could not transfer socket to io context" << std::endl;
         return false;
     }
 
@@ -179,9 +173,15 @@ bool TunnelManager::addTunnel(const message::RequestTunnel &msg)
             return false;
         }
         asio::ip::tcp::resolver resolver(io());
-        auto endpoints = resolver.resolve({destHost, std::to_string(destPort)});
-        destAddr = (*endpoints).endpoint().address();
-        std::cerr << destHost << " resolved to " << destAddr << std::endl;
+        boost::system::error_code ec;
+        auto endpoints = resolver.resolve(destHost, std::to_string(destPort), ec);
+        if (ec) {
+            CERR << "could not resolve " << destHost << ":" << destPort << std::endl;
+            return false;
+        } else if (!endpoints.empty()) {
+            destAddr = endpoints.begin()->endpoint().address();
+            std::cerr << destHost << " resolved to " << destAddr << std::endl;
+        }
     }
     auto it = m_tunnels.find(listenPort);
     if (it != m_tunnels.end()) {

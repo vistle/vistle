@@ -52,7 +52,7 @@ protected:
 
     std::set<int> m_dataTypeWarnings; // set of unsupported data types for which a warning has already been printed
 
-    boost::asio::io_service m_ioService;
+    boost::asio::io_context m_ioContext;
     boost::asio::ip::tcp::socket m_socket;
     bool m_connected = false;
 };
