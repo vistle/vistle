@@ -73,6 +73,20 @@ CaseFile::BinType EnFile::guessBinType(ReadEnsight *mod, const std::string &file
     return ret;
 }
 
+bool strCaseEndsWith(const std::string &str, const std::string &suffix)
+{
+    if (str.length() >= suffix.length()) {
+        for (size_t i = 0; i < suffix.size(); i++) {
+            if (std::tolower(str[str.length() - suffix.length() + i]) != std::tolower(suffix[i])) {
+                return false;
+            }
+        }
+        return true;
+    }
+    return false;
+}
+
+
 //////////////////////////// base class ////////////////////////////
 
 // static member to create an EnSight geometry file
@@ -84,7 +98,7 @@ std::unique_ptr<EnFile> EnFile::createGeometryFile(ReadEnsight *mod, const CaseF
     // EnSight version
     int version(c.getVersion());
 
-    if (filename.length() >= 5 && strncasecmp(filename.c_str() + filename.length() - 5, ".mgeo", 5) == 0) {
+    if (strCaseEndsWith(filename, ".mgeo")) {
         // EnSight 6
         if (version == CaseFile::v6) {
             mod->sendError("EnSight v6 is not supported");
