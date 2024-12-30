@@ -1,4 +1,5 @@
 #include "unstr.h"
+#include "unstr_geo.h"
 #include "unstr_impl.h"
 #include "archives.h"
 #include <cassert>
@@ -255,6 +256,44 @@ Index UnstructuredGrid::cellNumVertices(Index elem) const
         return NumVertices[t];
     }
     return 0;
+}
+
+Scalar UnstructuredGrid::cellEdgeLength(Index elem) const
+{
+    Scalar retval = -1;
+    for_<NumSupportedTypes>([&](auto i) {
+        if (SupportedTypes[i.value] == tl()[elem]) {
+            retval = edgeLength<SupportedTypes[i.value]>(cellNumVertices(elem), &cl()[el()[elem]],
+                                                         {&x()[0], &y()[0], &z()[0]});
+        }
+    });
+    return retval;
+}
+
+Scalar UnstructuredGrid::cellSurface(Index elem) const
+{
+    Scalar retval = -1;
+    for_<NumSupportedTypes>([&](auto i) {
+        if (SupportedTypes[i.value] == tl()[elem]) {
+            retval =
+                surface<SupportedTypes[i.value]>(cellNumVertices(elem), &cl()[el()[elem]], {&x()[0], &y()[0], &z()[0]});
+            return;
+        }
+    });
+    return retval;
+}
+
+Scalar UnstructuredGrid::cellVolume(Index elem) const
+{
+    Scalar retval = -1;
+    for_<NumSupportedTypes>([&](auto i) {
+        if (SupportedTypes[i.value] == tl()[elem]) {
+            retval =
+                volume<SupportedTypes[i.value]>(cellNumVertices(elem), &cl()[el()[elem]], {&x()[0], &y()[0], &z()[0]});
+            return;
+        }
+    });
+    return retval;
 }
 
 Index UnstructuredGrid::cellNumFaces(Index elem) const

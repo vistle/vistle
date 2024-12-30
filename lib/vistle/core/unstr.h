@@ -196,6 +196,9 @@ public:
     std::vector<Index> getNeighborElements(Index elem) const override;
     Index cellNumFaces(Index elem) const override;
     Index cellNumVertices(Index elem) const override;
+    Scalar cellEdgeLength(Index elem) const;
+    Scalar cellSurface(Index elem) const;
+    Scalar cellVolume(Index elem) const;
 
 private:
     mutable ShmArrayProxy<Byte> m_tl;
