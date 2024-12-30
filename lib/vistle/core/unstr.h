@@ -30,6 +30,7 @@ public:
         PYRAMID = cell::PYRAMID, // 14
         NUM_TYPES = cell::NUM_TYPES, // 15
     };
+    static const char *toString(Type t, bool abbreviation = false);
 
     static constexpr Index MaxNumVertices = 4;
     static constexpr Index MaxNumFaces = 6;
