@@ -30,6 +30,7 @@ public:
         PYRAMID = cell::PYRAMID, // 14
         NUM_TYPES = cell::NUM_TYPES, // 15
     };
+
     static const char *toString(Type t, bool abbreviation = false);
 
     static constexpr Index MaxNumVertices = 4;
@@ -128,7 +129,7 @@ public:
                 |  3-------|--2
                 | /        | /
                 |/         |/
-                0----------1
+                -0---------1
             */
             { 3, 2, 1, 0 },
             { 4, 5, 6, 7 },
@@ -196,6 +197,9 @@ public:
     std::vector<Index> getNeighborElements(Index elem) const override;
     Index cellNumFaces(Index elem) const override;
     Index cellNumVertices(Index elem) const override;
+    Scalar cellEdgeLength(Index elem) const;
+    Scalar cellSurface(Index elem) const;
+    Scalar cellVolume(Index elem) const;
 
 private:
     mutable ShmArrayProxy<Byte> m_tl;
