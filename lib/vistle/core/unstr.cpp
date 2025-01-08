@@ -27,6 +27,8 @@ void UnstructuredGrid::resetElements()
 
     d()->tl = ShmVector<Byte>();
     d()->tl.construct(0);
+
+    refreshImpl();
 }
 
 bool UnstructuredGrid::isEmpty()

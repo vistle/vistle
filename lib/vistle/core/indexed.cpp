@@ -434,6 +434,7 @@ void Indexed::refreshImpl() const
     }
     m_numEl = (d && d->el.valid()) ? d->el->size() - 1 : 0;
     m_numCl = (d && d->cl.valid()) ? d->cl->size() : 0;
+    m_celltree = nullptr;
 }
 
 void Indexed::Data::initData()
@@ -485,6 +486,8 @@ void Indexed::resetElements()
 
     d()->ghost = ShmVector<Byte>();
     d()->ghost.construct();
+
+    refreshImpl();
 }
 
 Index Indexed::getNumCorners()
@@ -501,6 +504,8 @@ void Indexed::resetCorners()
 {
     d()->cl = ShmVector<Index>();
     d()->cl.construct();
+
+    refreshImpl();
 }
 
 Object::Type Indexed::type()
