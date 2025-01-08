@@ -21,29 +21,41 @@ int main(int argc, char *argv[])
     comp[message::CompressionLz4] = "lz4";
     comp[message::CompressionSnappy] = "snappy - unsupported";
 
-    bool deep = false;
+    bool verbose = false, help = false, check = false;
     int filenum = 1;
 
-    if (argc > 1) {
-        if (argv[1] == std::string("-v")) {
-            deep = true;
+    for (auto arg = 1; arg < argc; ++arg) {
+        if (argv[arg] == std::string("-h") || argv[arg] == std::string("--help")) {
+            help = true;
             ++filenum;
-
-#ifdef NO_SHMEM
-            int id = -1;
-#else
-            int id = 1;
-#endif
-            vistle::Shm::remove("vistle_ls", id, 0, false);
-            vistle::Shm::create("vistle_ls", id, 0, false);
-            vistle::registerTypes();
+        } else if (argv[arg] == std::string("-c")) {
+            check = true;
+            ++filenum;
+        } else if (argv[arg] == std::string("-v")) {
+            verbose = true;
+            ++filenum;
+        } else {
+            break;
         }
     }
 
-    if (filenum >= argc) {
-        std::cerr << "usage: vistle_ls [-v] file ..." << std::endl;
+    if (help || filenum >= argc) {
+        std::cerr << "usage: vistle_ls [-c] [-v] file ..." << std::endl;
+        std::cerr << "\t-c\tcheck objects for consistency" << std::endl;
         std::cerr << "\t-v\tverbose introspection" << std::endl;
-        return 1;
+        return help ? 0 : 1;
+    }
+
+    const bool deep = verbose || check;
+    if (deep) {
+#ifdef NO_SHMEM
+        int id = -1;
+#else
+        int id = 1;
+#endif
+        vistle::Shm::remove("vistle_ls", id, 0, false);
+        vistle::Shm::create("vistle_ls", id, 0, false);
+        vistle::registerTypes();
     }
 
     size_t totalRawSize = 0, totalCompressedSize = 0;
@@ -74,7 +86,7 @@ int main(int argc, char *argv[])
         fetcher->setObjectTranslations(objectTranslations);
         fetcher->setArrayTranslations(arrayTranslations);
 
-        auto restoreObject = [&compression, &size, &objects, &fetcher](const std::string &name0, int port) {
+        auto restoreObject = [&compression, &size, &objects, &fetcher, &check](const std::string &name0, int port) {
             //std::cerr << "output to port " << port << ", " << num << " objects/arrays read" << std::endl;
             //std::cerr << "output to port " << port << ", root " << name0 << " of size " << objects[name0].size() << std::endl;
 
@@ -96,6 +108,13 @@ int main(int argc, char *argv[])
             memar.setFetcher(fetcher);
             //std::cerr << "output to port " << port << ", trying to load " << name0 << std::endl;
             Object::ptr obj(Object::loadObject(memar));
+            if (!obj) {
+                std::cerr << "failed to load object " << name0 << std::endl;
+                return;
+            }
+            if (check) {
+                obj->check(std::cerr, false);
+            }
             //std::cerr << "output to port " << port << ", loaded " << name0 << std::endl;
             std::cout << "\t" << *obj << std::endl;
             fetcher->releaseArrays();
