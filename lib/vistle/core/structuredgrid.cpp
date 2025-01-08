@@ -46,6 +46,8 @@ void StructuredGrid::refreshImpl() const
             m_ghostLayers[c][1] = 0;
         }
     }
+
+    m_celltree = nullptr;
 }
 
 // CHECK IMPL
