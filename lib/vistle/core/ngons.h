@@ -23,6 +23,7 @@ public:
     Index getNumElements() const override;
     Index getNumCorners();
     Index getNumCorners() const;
+    void resetCorners();
 
     shm<Index>::array &cl() { return *d()->cl; }
     const ShmArrayProxy<Index> &cl() const { return m_cl; }
