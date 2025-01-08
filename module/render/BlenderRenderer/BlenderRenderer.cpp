@@ -260,7 +260,7 @@ std::shared_ptr<vistle::RenderObject> BlenderRenderer::addObject(int senderId, c
         }
 
         int num_values = 0; // vert_values
-        float *values_array;
+        float *values_array = nullptr;
         bool is_valid_tex = false;
         if (texture) {
             auto tex1D = vistle::Texture1D::as(texture);
