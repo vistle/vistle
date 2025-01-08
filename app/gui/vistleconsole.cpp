@@ -279,9 +279,7 @@ void VistleConsole::init()
         std::cerr << "error importing rlcompleter" << std::endl;
     }
 #endif
-
-    try {
-        std::string pyCode = "import sys\n"
+    std::string pythonCode = "import sys\n"
 
                              "import _redirector\n"
                              "sys.stdout = _redirector.redirector()\n"
@@ -300,13 +298,14 @@ void VistleConsole::init()
                              //"builtins.quit=_console.quit\n"
                              //"builtins.exit=_console.quit\n"
                              "builtins.input=_console.raw_input\n"
-
-#ifdef USE_RLCOMPLETER
                              "import rlcompleter\n"
-                             "builtins.completer=rlcompleter.Completer()\n"
+                             "builtins.completer=rlcompleter.Completer()\n";
+#ifdef USE_RLCOMPLETER
+    pythonCode += "import rlcompleter\n"
+                  "builtins.completer=rlcompleter.Completer()\n";
+    try {
 #endif
-            ;
-        PyRun_SimpleString(pyCode.c_str());
+        PyRun_SimpleString(pythonCode.c_str());
 
     } catch (...) {
         std::cerr << "error running Python initialisation" << std::endl;
