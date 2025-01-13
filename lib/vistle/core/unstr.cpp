@@ -754,20 +754,6 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
     return Interpolator(weights, indices);
 }
 
-std::pair<Vector3, Vector3> UnstructuredGrid::elementBounds(Index elem) const
-{
-    const auto t = tl()[elem];
-    if (NumVertices[t] >= 0) {
-        return Base::elementBounds(elem);
-    }
-
-    if (t == UnstructuredGrid::POLYHEDRON) {
-        return Base::elementBounds(elem);
-    }
-
-    return Base::elementBounds(elem);
-}
-
 std::vector<Index> UnstructuredGrid::cellVertices(Index elem) const
 {
     const auto t = tl()[elem];

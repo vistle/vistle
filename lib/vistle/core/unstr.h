@@ -189,7 +189,6 @@ public:
 
     Interpolator getInterpolator(Index elem, const Vector3 &point, Mapping mapping = Vertex,
                                  InterpolationMode mode = Linear) const override;
-    std::pair<Vector3, Vector3> elementBounds(Index elem) const override;
     std::vector<Index> cellVertices(Index elem) const override;
     Scalar cellDiameter(Index elem) const override;
     Vector3 cellCenter(Index elem) const override;
