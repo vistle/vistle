@@ -247,7 +247,8 @@ add_library(Eigen3::Eigen ALIAS eigen)
 set(EIGEN_DEFINITIONS "-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=int" "-DEIGEN_DONT_PARALLELIZE") # also disable OpenMP for eigen
 target_compile_definitions(eigen INTERFACE ${EIGEN_DEFINITIONS})
 #set(EIGEN3_INCLUDE_PATH "${PROJECT_SOURCE_DIR}/lib/3rdparty")
-target_include_directories(eigen INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}> $<INSTALL_INTERFACE:${INCLUDE_INSTALL_DIR}>)
+target_include_directories(eigen INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}> $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>/eigen3
+                                           $<INSTALL_INTERFACE:${INCLUDE_INSTALL_DIR}> $<INSTALL_INTERFACE:${INCLUDE_INSTALL_DIR}>/eigen3)
 # Export as title case Eigen
 set_target_properties(eigen PROPERTIES EXPORT_NAME Eigen)
 vistle_export_library(eigen)
