@@ -55,15 +55,9 @@ if(BOOST_MPI_DIR)
     include(boost-mpi.cmake)
 endif()
 
-if(CRAY)
-    set(BUILD_SHARED_LIBS
-        OFF
-        CACHE INTERNAL "")
-else()
-    set(BUILD_SHARED_LIBS
-        ${VISTLE_BUILD_SHARED}
-        CACHE INTERNAL "")
-endif()
+set(BUILD_SHARED_LIBS
+    ${VISTLE_BUILD_SHARED}
+    CACHE INTERNAL "")
 
 if(NOT BUILD_SHARED_LIBS)
     set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)

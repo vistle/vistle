@@ -19,24 +19,6 @@ project(
 
 message("CMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}")
 
-if("${CMAKE_SYSTEM_NAME}" STREQUAL "CrayLinuxEnvironment")
-    message("compiling for Cray")
-    set(CRAY ON)
-
-    # set(Boost_DEBUG ON)
-    set(Boost_NO_BOOST_CMAKE OFF)
-    set(CRAYPE_LINK_TYPE "$ENV{CRAYPE_LINK_TYPE}")
-
-    if(NOT "${CRAYPE_LINK_TYPE}" STREQUAL "dynamic")
-        message("dynamic linking required: set CRAYPE_LINK_TYPE to \"dynamic\"")
-        return()
-    endif()
-
-    # use faster multi-threaded MPI
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -craympich-mt")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -craympich-mt")
-endif()
-
 if(POLICY CMP0042)
     # default to finding shlibs relative to @rpath on MacOS
     cmake_policy(SET CMP0042 NEW)
@@ -508,37 +490,32 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
 
 endif()
 
-if(NOT CRAY)
-    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-        if(APPLE)
-            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++ -Wno-stdlibcxx-not-found")
-        endif()
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    if(APPLE)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++ -Wno-stdlibcxx-not-found")
+    endif()
 
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftemplate-backtrace-limit=0")
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftemplate-backtrace-limit=0")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 
+    if(DEFINED VISTLE_CPU_ARCH AND NOT VISTLE_CPU_ARCH STREQUAL "")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=${VISTLE_CPU_ARCH}")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=${VISTLE_CPU_ARCH}")
+    endif()
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
+
+    if(NOT APPLE)
         if(DEFINED VISTLE_CPU_ARCH AND NOT VISTLE_CPU_ARCH STREQUAL "")
             set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=${VISTLE_CPU_ARCH}")
             set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=${VISTLE_CPU_ARCH}")
         endif()
-    elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
-
-        if(NOT APPLE)
-            if(DEFINED VISTLE_CPU_ARCH AND NOT VISTLE_CPU_ARCH STREQUAL "")
-                set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=${VISTLE_CPU_ARCH}")
-                set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=${VISTLE_CPU_ARCH}")
-            endif()
-        endif()
     endif()
-
-elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
-    # elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 endif()
 
-if(NOT CRAY AND NOT VISTLE_GUI_ONLY)
+if(NOT VISTLE_GUI_ONLY)
     if(VISTLE_USE_MPI)
         set(MPI_SKIP_MPICXX TRUE)
         vistle_find_package(MPI REQUIRED COMPONENTS C CXX)
@@ -672,13 +649,6 @@ macro(vistle_add_library targetname visibility)
         string(REPLACE "vistle_" "" target_suffix ${targetname})
         set_target_properties(${targetname} PROPERTIES EXPORT_NAME ${target_suffix})
         add_library(vistle::${target_suffix} ALIAS ${targetname})
-    endif()
-
-    if(CRAY)
-        set_property(
-            TARGET ${targetname}
-            APPEND_STRING
-            PROPERTY LINK_FLAGS -Wl,-soname=lib${targetname}.so)
     endif()
 
     target_include_directories(
@@ -820,11 +790,7 @@ enable_testing()
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 # configure process model
-if(CRAY)
-    option(VISTLE_MULTI_PROCESS "use multiple processes communicating via shared memory" OFF)
-else()
-    option(VISTLE_MULTI_PROCESS "use multiple processes communicating via shared memory" ON)
-endif()
+option(VISTLE_MULTI_PROCESS "use multiple processes communicating via shared memory" ON)
 
 option(VISTLE_MODULES_SHARED "use shared libraries for modules" ON)
 option(VISTLE_USE_SHARED_MEMORY "use shared memory even within a process" OFF)
