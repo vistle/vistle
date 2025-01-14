@@ -995,9 +995,14 @@ void Module::setStatus(Module::Status status)
         toolTip = "Error";
         m_borderColor = Qt::red;
         break;
+    case CRASHED:
+        toolTip = "Crashed";
+        m_color = Qt::darkGray;
+        m_borderColor = Qt::black;
+        break;
     }
 
-    if (m_errorState) {
+    if (m_errorState && m_Status != CRASHED) {
         m_borderColor = Qt::red;
     }
 
@@ -1014,6 +1019,15 @@ void Module::setStatus(Module::Status status)
     }
 
     update();
+}
+
+void Module::setToolTip(QString text)
+{
+    QString tt = m_name;
+    if (!text.isEmpty()) {
+        tt += "\n" + text;
+    }
+    Base::setToolTip(tt);
 }
 
 void Module::setStatusText(QString text, int prio)

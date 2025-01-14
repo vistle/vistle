@@ -7,6 +7,8 @@
 
 using namespace vistle;
 
+#define CERR std::cerr << "VistleInteractor(" << m_moduleName << "_" << m_moduleId << "): "
+
 VistleInteractor::VistleInteractor(const MessageSender *sender, const std::string &moduleName, int moduleId)
 : m_sender(sender)
 , m_moduleName(moduleName)
@@ -136,6 +138,7 @@ int VistleInteractor::getIntScalarParam(const std::string &paraName, int &value)
     }
     auto iparam = std::dynamic_pointer_cast<IntParameter>(param);
     if (!iparam) {
+        CERR << "getIntScalarParam: " << paraName << " is not an IntParameter" << std::endl;
         value = 0;
         return -1;
     }
@@ -154,6 +157,7 @@ int VistleInteractor::getFloatScalarParam(const std::string &paraName, float &va
     }
     auto fparam = std::dynamic_pointer_cast<FloatParameter>(param);
     if (!fparam) {
+        CERR << "getFloatScalarParam: " << paraName << " is not a FloatParameter" << std::endl;
         value = 0.;
         return -1;
     }
@@ -174,6 +178,7 @@ int VistleInteractor::getIntSliderParam(const std::string &paraName, int &min, i
     }
     auto iparam = std::dynamic_pointer_cast<IntParameter>(param);
     if (!iparam) {
+        CERR << "getIntSliderParam: " << paraName << " is not an IntParameter" << std::endl;
         min = 0;
         val = 0;
         max = 100;
@@ -204,6 +209,7 @@ int VistleInteractor::getFloatSliderParam(const std::string &paraName, float &mi
     }
     auto fparam = std::dynamic_pointer_cast<FloatParameter>(param);
     if (!fparam) {
+        CERR << "getFloatSliderParam: " << paraName << " is not a FloatParameter" << std::endl;
         min = -1.;
         val = 0.;
         max = 1.;
@@ -232,6 +238,7 @@ int VistleInteractor::getIntVectorParam(const std::string &paraName, int &numEle
     }
     auto vparam = std::dynamic_pointer_cast<IntVectorParameter>(param);
     if (!vparam) {
+        CERR << "getIntVectorParam: " << paraName << " is not an IntVectorParameter" << std::endl;
         return -1;
     }
 
@@ -248,11 +255,14 @@ int VistleInteractor::getIntVectorParam(const std::string &paraName, int &numEle
 int VistleInteractor::getFloatVectorParam(const std::string &paraName, int &numElem, float *&val) const
 {
     auto param = findParam(paraName);
-    if (!param)
+    if (!param) {
         return -1;
+    }
     auto vparam = std::dynamic_pointer_cast<VectorParameter>(param);
-    if (!vparam)
+    if (!vparam) {
+        CERR << "getFloatVectorParam: " << paraName << " is not a VectorParameter" << std::endl;
         return -1;
+    }
 
     const ParamVector &v = vparam->getValue();
     numElem = v.dim;
@@ -264,15 +274,18 @@ int VistleInteractor::getFloatVectorParam(const std::string &paraName, int &numE
     return 0;
 }
 
-int VistleInteractor::VistleInteractor::getStringParam(const std::string &paraName, const char *&val) const
+int VistleInteractor::getStringParam(const std::string &paraName, const char *&val) const
 {
     auto param = findParam(paraName);
-    if (!param)
+    if (!param) {
         return -1;
+    }
 
     auto sparam = std::dynamic_pointer_cast<StringParameter>(param);
-    if (!sparam)
+    if (!sparam) {
+        CERR << "getStringParam: " << paraName << " is not a StringParameter" << std::endl;
         return -1;
+    }
 
     val = sparam->getValue().c_str();
 
@@ -285,10 +298,13 @@ int VistleInteractor::getChoiceParam(const std::string &paraName, int &num, char
     static std::vector<const char *> s_labels;
 
     auto param = findParam(paraName);
-    if (!param)
+    if (!param) {
         return -1;
-    if (param->presentation() != Parameter::Choice)
+    }
+    if (param->presentation() != Parameter::Choice) {
+        CERR << "getChoiceParam: " << paraName << " has no Choice presentation" << std::endl;
         return -1;
+    }
 
     if (auto sparam = std::dynamic_pointer_cast<StringParameter>(param)) {
         s_choices = sparam->choices();
@@ -312,6 +328,7 @@ int VistleInteractor::getChoiceParam(const std::string &paraName, int &num, char
         num = s_choices.size();
         active = iparam->getValue();
     } else {
+        CERR << "getChoiceParam: " << paraName << " is neither string nor int" << std::endl;
         return -1;
     }
 
@@ -467,7 +484,7 @@ void VistleInteractor::setChoiceParam(const char *name, int pos)
         return;
 
     if (auto sparam = std::dynamic_pointer_cast<StringParameter>(param)) {
-        std::cerr << "cannot set string choice parameter based on position" << std::endl;
+        CERR << "cannot set string choice parameter based on position" << std::endl;
     } else if (auto iparam = std::dynamic_pointer_cast<IntParameter>(param)) {
         iparam->setValue(pos);
         sendParamMessage(iparam);
@@ -569,7 +586,7 @@ int VistleInteractor::getNumUser() const
 }
 
 // get a User-supplied string
-const char *VistleInteractor::VistleInteractor::getString(unsigned int i) const
+const char *VistleInteractor::getString(unsigned int i) const
 {
     return NULL;
 }

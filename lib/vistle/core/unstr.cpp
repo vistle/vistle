@@ -27,6 +27,8 @@ void UnstructuredGrid::resetElements()
 
     d()->tl = ShmVector<Byte>();
     d()->tl.construct(0);
+
+    refreshImpl();
 }
 
 bool UnstructuredGrid::isEmpty()
@@ -213,7 +215,12 @@ Index UnstructuredGrid::cellNumVertices(Index elem) const
         auto last = std::unique(verts.begin(), verts.end());
         return last - verts.begin();
     } else if (t < NUM_TYPES) {
-        return NumVertices[t] >= 0 ? NumVertices[t] : 0;
+        if (NumVertices[t] < 0) {
+            const Index *el = &this->el()[0];
+            const Index begin = el[elem], end = el[elem + 1];
+            return end - begin;
+        }
+        return NumVertices[t];
     }
     return 0;
 }

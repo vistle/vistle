@@ -38,10 +38,8 @@
 #ifdef USE_BOOST_ARCHIVE
 #include <boost/serialization/nvp.hpp>
 #include <boost/serialization/array.hpp>
-#if BOOST_VERSION >= 106400
 #include <boost/serialization/array_wrapper.hpp>
 #include <boost/serialization/array_optimization.hpp>
-#endif
 #endif
 
 #ifdef USE_YAS

@@ -42,6 +42,7 @@ public:
         Quit = 8,
         Busy = 16,
         Executing = 32,
+        Crashed = 64,
     };
     virtual void moduleStateChanged(int moduleId, int stateBits);
 
@@ -216,6 +217,7 @@ protected:
         bool killed = false;
         bool busy = false;
         bool executing = false;
+        bool crashed = false;
         std::string name;
         ParameterMap parameters;
         ParameterOrder paramOrder;

@@ -67,9 +67,9 @@ using namespace vistle;
 COVER *COVER::s_instance = nullptr;
 
 
-COVER::DelayedObject::DelayedObject(std::shared_ptr<PluginRenderObject> ro, VistleGeometryGenerator generator)
-: ro(ro)
-, name(ro->container ? ro->container->getName() : "(no container)")
+COVER::DelayedObject::DelayedObject(std::shared_ptr<PluginRenderObject> pro, VistleGeometryGenerator generator)
+: pro(pro)
+, name(pro->container ? pro->container->getName() : "(no container)")
 , generator(generator)
 , node_future(std::async(std::launch::async, [this]() {
     setThreadName("COVER:Geom:" + name);
@@ -658,29 +658,29 @@ bool COVER::render()
     //std::cerr << "adding " << numAdd << " delayed objects, " << m_delayedObjects.size() << " waiting" << std::endl;
     for (int i = 0; i < numAdd; ++i) {
         auto &node_future = m_delayedObjects.front().node_future;
-        auto &ro = m_delayedObjects.front().ro;
+        auto &pro = m_delayedObjects.front().pro;
         osg::Geode *geode = node_future.get();
-        if (ro->coverRenderObject && geode) {
-            int creatorId = ro->coverRenderObject->getCreator();
+        if (pro->coverRenderObject && geode) {
+            int creatorId = pro->coverRenderObject->getCreator();
             Creator &creator = getCreator(creatorId);
 
             auto tr = m_delayedObjects.front().transform;
             geode->setNodeMask(~(opencover::Isect::Update | opencover::Isect::Intersection));
-            geode->setName(ro->coverRenderObject->getName());
+            geode->setName(pro->coverRenderObject->getName());
             tr->addChild(geode);
-            ro->coverRenderObject->setNode(tr);
-            const std::string variant = ro->variant;
-            const int t = ro->timestep;
+            pro->coverRenderObject->setNode(tr);
+            const std::string variant = pro->variant;
+            const int t = pro->timestep;
             if (t >= 0) {
                 coVRAnimationManager::instance()->addSequence(creator.animated(variant));
             }
-            osg::ref_ptr<osg::Group> parent = getParent(ro->coverRenderObject.get());
+            osg::ref_ptr<osg::Group> parent = getParent(pro->coverRenderObject.get());
             parent->addChild(tr);
-        } else if (!ro->coverRenderObject) {
+        } else if (!pro->coverRenderObject) {
             std::cerr << rank() << ": discarding delayed object " << m_delayedObjects.front().name
                       << " - already deleted" << std::endl;
         } else if (!geode) {
-            //std::cerr << rank() << ": discarding delayed object " << ro->coverRenderObject->getName() << ": no node created" << std::endl;
+            //std::cerr << rank() << ": discarding delayed object " << pro->coverRenderObject->getName() << ": no node created" << std::endl;
         }
         m_delayedObjects.pop_front();
     }

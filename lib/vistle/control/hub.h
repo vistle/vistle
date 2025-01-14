@@ -142,7 +142,7 @@ private:
     std::string m_masterHost;
     std::string m_conferenceUrl;
     std::string m_sessionUrl;
-    boost::asio::io_service m_ioService;
+    boost::asio::io_context m_ioContext;
     std::shared_ptr<acceptor> m_acceptorv4, m_acceptorv6;
 
     std::mutex m_socketMutex; // protect access to m_sockets and m_clients
@@ -218,6 +218,7 @@ private:
     bool handlePriv(const message::FileQueryResult &result, const buffer *payload);
     bool handlePriv(const message::Cover &cover, const buffer *payload);
     bool handlePriv(const message::ModuleExit &exit);
+    bool handlePriv(const message::Kill &kill);
     bool handlePriv(const message::Spawn &spawn);
     bool handlePriv(const message::LoadWorkflow &load);
     bool handlePriv(const message::SaveWorkflow &save);
@@ -245,11 +246,7 @@ private:
     void updateLinkedParameters(const message::SetParameter &setParam);
     std::map<int, std::vector<message::Buffer>> m_sendAfterExit, m_sendAfterSpawn;
 
-#if BOOST_VERSION >= 106600
     boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_workGuard;
-#else
-    std::shared_ptr<boost::asio::io_service::work> m_workGuard;
-#endif
     std::vector<std::thread> m_ioThreads;
     std::vector<std::thread> m_vrbThreads;
     void startIoThread();

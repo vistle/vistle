@@ -35,7 +35,7 @@ class Module: public QObject, public QGraphicsRectItem {
     static bool s_snapToGrid;
 
 public:
-    enum Status { SPAWNING, INITIALIZED, KILLED, BUSY, EXECUTING, ERROR_STATUS };
+    enum Status { SPAWNING, INITIALIZED, KILLED, BUSY, EXECUTING, ERROR_STATUS, CRASHED };
 
     struct Message {
         int type;
@@ -137,6 +137,7 @@ private:
     void updateText();
     void doLayout();
     void sendSpawn(int hub, const std::string &module, vistle::message::Spawn::ReferenceType type);
+    void setToolTip(QString text);
 
     QMenu *m_moduleMenu = nullptr;
     QAction *m_selectUpstreamAct = nullptr, *m_selectDownstreamAct = nullptr, *m_selectConnectedAct = nullptr;

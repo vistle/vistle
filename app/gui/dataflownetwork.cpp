@@ -78,6 +78,11 @@ ModuleBrowser *DataFlowNetwork::moduleBrowser() const
     return m_mainWindow->moduleBrowser();
 }
 
+const QList<Module *> &DataFlowNetwork::modules() const
+{
+    return m_moduleList;
+}
+
 float abs(const QPointF p)
 {
     return qSqrt(p.x() * p.x() + p.y() * p.y());
@@ -196,7 +201,9 @@ void DataFlowNetwork::deleteModule(int moduleId)
 void DataFlowNetwork::moduleStateChanged(int moduleId, int stateBits)
 {
     if (Module *m = findModule(moduleId)) {
-        if (stateBits & vistle::StateObserver::Killed)
+        if (stateBits & vistle::StateObserver::Crashed)
+            m->setStatus(Module::CRASHED);
+        else if (stateBits & vistle::StateObserver::Killed)
             m->setStatus(Module::KILLED);
         else if (stateBits & vistle::StateObserver::Busy)
             m->setStatus(Module::BUSY);

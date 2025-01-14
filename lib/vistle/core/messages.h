@@ -309,12 +309,14 @@ private:
 //! notify that a module has quit
 class V_COREEXPORT ModuleExit: public MessageBase<ModuleExit, MODULEEXIT> {
 public:
-    ModuleExit();
+    ModuleExit(bool crashed = false);
     void setForwarded();
     bool isForwarded() const;
+    bool isCrashed() const;
 
 private:
-    bool forwarded;
+    bool forwarded = false;
+    bool crashed = false;
 };
 
 //! instruct GUI to store a snapshot of the rendered workflow
@@ -563,6 +565,7 @@ public:
     SetParameter(int module, const std::string &name, const StringParamVector &value);
     SetParameter(int module, const std::string &name, const std::string &value);
 
+    void setName(const std::string &name);
     void setInit();
     bool isInitialization() const;
     void setDelayed();

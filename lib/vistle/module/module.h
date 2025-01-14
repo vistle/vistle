@@ -374,9 +374,6 @@ private:
     IntParameter *m_useResultCache = nullptr;
     std::vector<ResultCacheBase *> m_resultCaches;
 
-    void updateOutputMode();
-    std::streambuf *m_origStreambuf = nullptr, *m_streambuf = nullptr;
-
     int m_traceMessages;
     bool m_benchmark;
     double m_benchmarkStart;

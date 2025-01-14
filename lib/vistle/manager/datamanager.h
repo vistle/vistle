@@ -12,11 +12,9 @@
 #include <vistle/core/object.h>
 #include <vistle/util/buffer.h>
 
-#if BOOST_VERSION >= 106600
 #include <boost/asio/executor_work_guard.hpp>
-#endif
 #include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/io_service.hpp>
+#include <boost/asio/io_context.hpp>
 
 #include <boost/mpi/request.hpp>
 #include <boost/mpi/communicator.hpp>
@@ -42,7 +40,7 @@ public:
     bool prepareTransfer(const message::AddObject &add);
     bool completeTransfer(const message::AddObjectCompleted &complete);
     bool notifyTransferComplete(const message::AddObject &add);
-    bool connect(boost::asio::ip::tcp::resolver::iterator &hub);
+    bool connect(boost::asio::ip::basic_resolver_results<boost::asio::ip::tcp> &hub);
     bool dispatch();
 
     void trace(message::Type type);
@@ -74,7 +72,7 @@ private:
     boost::mpi::request m_req;
     int m_msgSize;
 
-    boost::asio::io_service m_ioService;
+    boost::asio::io_context m_ioContext;
     boost::asio::ip::tcp::socket m_dataSocket;
 
     std::set<message::AddObject>
@@ -101,11 +99,7 @@ private:
     std::mutex m_sendTaskMutex;
     std::deque<std::future<bool>> m_sendTasks;
 
-#if BOOST_VERSION >= 106600
     boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_workGuard;
-#else
-    std::shared_ptr<boost::asio::io_service::work> m_workGuard;
-#endif
     std::thread m_ioThread;
     std::thread m_recvThread;
     std::thread m_cleanThread;

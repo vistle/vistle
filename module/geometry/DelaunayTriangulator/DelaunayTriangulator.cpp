@@ -380,6 +380,18 @@ DelaunayTriangulator::DelaunayTriangulator(const std::string &name, int moduleID
 DelaunayTriangulator::~DelaunayTriangulator()
 {}
 
+bool DelaunayTriangulator::changeParameter(const vistle::Parameter *param)
+{
+#ifndef HAVE_CGAL
+    if (param == m_methodChoice) {
+        if (m_methodChoice->getValue() != Tetrahedra) {
+            sendError("CGAL not available, only Tetrahedra method is supported");
+        }
+    }
+#endif
+    return Module::changeParameter(param);
+}
+
 bool DelaunayTriangulator::compute()
 {
     auto obj = expect<Object>("points_in");

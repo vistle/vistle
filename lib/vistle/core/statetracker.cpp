@@ -38,6 +38,8 @@ int StateTracker::Module::state() const
         s |= StateObserver::Killed;
     if (executing)
         s |= StateObserver::Executing;
+    if (crashed)
+        s |= StateObserver::Crashed;
     return s;
 }
 
@@ -324,6 +326,12 @@ void StateTracker::appendModuleState(VistleState &state, const StateTracker::Mod
         Kill k(m.id);
         appendMessage(state, k);
     }
+
+    if (m.crashed) {
+        ModuleExit crash(true);
+        crash.setSenderId(m.id);
+        appendMessage(state, crash);
+    }
 }
 
 void StateTracker::appendModuleParameter(VistleState &state, const Module &m) const
@@ -421,20 +429,20 @@ StateTracker::VistleState StateTracker::getState() const
 
     appendMessage(state, Trace(m_traceId, m_traceType, m_traceId != Id::Invalid || m_traceType != message::INVALID));
 
-    for (const auto &slave: m_hubs) {
-        AddHub msg(slave.id, slave.name);
-        msg.setLoginName(slave.logName);
-        msg.setRealName(slave.realName);
-        msg.setNumRanks(slave.numRanks);
-        msg.setPort(slave.port);
-        msg.setDataPort(slave.dataPort);
-        if (!slave.address.is_unspecified())
-            msg.setAddress(slave.address);
-        msg.setHasUserInterface(slave.hasUi);
-        msg.setSystemType(slave.systemType);
-        msg.setArch(slave.arch);
-        msg.setInfo(slave.info);
-        msg.setVersion(slave.version);
+    for (const auto &hub: m_hubs) {
+        AddHub msg(hub.id, hub.name);
+        msg.setLoginName(hub.logName);
+        msg.setRealName(hub.realName);
+        msg.setNumRanks(hub.numRanks);
+        msg.setPort(hub.port);
+        msg.setDataPort(hub.dataPort);
+        if (!hub.address.is_unspecified())
+            msg.setAddress(hub.address);
+        msg.setHasUserInterface(hub.hasUi);
+        msg.setSystemType(hub.systemType);
+        msg.setArch(hub.arch);
+        msg.setInfo(hub.info);
+        msg.setVersion(hub.version);
         appendMessage(state, msg);
     }
 
@@ -596,8 +604,8 @@ bool StateTracker::handle(const message::Message &msg, const char *payload, size
         break;
     }
     case ADDHUB: {
-        const auto &slave = msg.as<AddHub>();
-        handled = handlePriv(slave);
+        const auto &hub = msg.as<AddHub>();
+        handled = handlePriv(hub);
         break;
     }
     case REMOVEHUB: {
@@ -904,36 +912,36 @@ bool StateTracker::handlePriv(const message::RemoveHub &rm)
     return true;
 }
 
-bool StateTracker::handlePriv(const message::AddHub &slave)
+bool StateTracker::handlePriv(const message::AddHub &hub)
 {
     std::lock_guard<mutex> locker(m_slaveMutex);
     for (auto &h: m_hubs) {
-        if (h.id == slave.id()) {
+        if (h.id == hub.id()) {
             m_slaveCondition.notify_all();
             return true;
         }
     }
-    m_hubs.emplace_back(slave.id(), slave.name());
-    m_hubs.back().numRanks = slave.numRanks();
-    m_hubs.back().port = slave.port();
-    m_hubs.back().dataPort = slave.dataPort();
-    if (slave.hasAddress())
-        m_hubs.back().address = slave.address();
-    m_hubs.back().logName = slave.loginName();
-    m_hubs.back().realName = slave.realName();
-    m_hubs.back().hasUi = slave.hasUserInterface();
-    m_hubs.back().systemType = slave.systemType();
-    m_hubs.back().arch = slave.arch();
-    m_hubs.back().info = slave.info();
-    m_hubs.back().version = slave.version();
+    m_hubs.emplace_back(hub.id(), hub.name());
+    m_hubs.back().numRanks = hub.numRanks();
+    m_hubs.back().port = hub.port();
+    m_hubs.back().dataPort = hub.dataPort();
+    if (hub.hasAddress())
+        m_hubs.back().address = hub.address();
+    m_hubs.back().logName = hub.loginName();
+    m_hubs.back().realName = hub.realName();
+    m_hubs.back().hasUi = hub.hasUserInterface();
+    m_hubs.back().systemType = hub.systemType();
+    m_hubs.back().arch = hub.arch();
+    m_hubs.back().info = hub.info();
+    m_hubs.back().version = hub.version();
 
     // for per-hub parameters
-    Module hub(slave.id(), slave.id());
-    hub.name = slave.name();
-    runningMap.emplace(slave.id(), hub);
+    Module hubMod(hub.id(), hub.id());
+    hubMod.name = hub.name();
+    runningMap.emplace(hub.id(), hubMod);
 
     for (StateObserver *o: m_observers) {
-        o->newHub(slave.id(), slave);
+        o->newHub(hub.id(), hub);
     }
 
     m_slaveCondition.notify_all();
@@ -1115,17 +1123,26 @@ bool StateTracker::handlePriv(const message::ModuleExit &moduleExit)
 {
     mutex_locker guard(m_stateMutex);
     const int mod = moduleExit.senderId();
+    const bool crashed = moduleExit.isCrashed();
     //CERR << " Module [" << mod << "] quit" << std::endl;
     ++m_graphChangeCount;
 
-    portTracker()->removeModule(mod);
+    if (crashed) {
+        RunningMap::iterator it = runningMap.find(mod);
+        if (it != runningMap.end()) {
+            it->second.crashed = true;
+            for (StateObserver *o: m_observers) {
+                o->moduleStateChanged(mod, it->second.state());
+            }
+        }
+    } else {
+        portTracker()->removeModule(mod);
 
-    for (StateObserver *o: m_observers) {
-        o->incModificationCount();
-        o->deleteModule(mod);
-    }
+        for (StateObserver *o: m_observers) {
+            o->incModificationCount();
+            o->deleteModule(mod);
+        }
 
-    {
         RunningMap::iterator it = runningMap.find(mod);
         if (it != runningMap.end()) {
             int mid = it->second.mirrorOfId;
@@ -1281,13 +1298,13 @@ bool StateTracker::handlePriv(const message::AddParameter &addParam)
         po[maxIdx + 1] = addParam.getName();
     }
 
-    const Port *p = nullptr;
-    if (portTracker()) {
-        p = portTracker()->addPort(addParam.senderId(), addParam.getName(), addParam.description(), Port::PARAMETER);
-    }
     for (StateObserver *o: m_observers) {
         o->newParameter(addParam.senderId(), addParam.getName());
-        if (p) {
+    }
+    const Port *p = nullptr;
+    if (portTracker()) {
+        if (const Port *p = portTracker()->addPort(addParam.senderId(), addParam.getName(), addParam.description(),
+                                                   Port::PARAMETER)) {
             for (StateObserver *o: m_observers) {
                 o->newPort(p->getModuleID(), p->getName());
             }
@@ -1535,7 +1552,6 @@ bool StateTracker::handlePriv(const message::ItemInfo &info, const buffer &paylo
 bool StateTracker::handlePriv(const message::SendText &info, const buffer &payload)
 {
     auto pl = message::getPayload<message::SendText::Payload>(payload);
-    mutex_locker guard(m_stateMutex);
     for (StateObserver *o: m_observers) {
         o->info(pl.text, info.textType(), info.senderId(), info.rank(), info.referenceType(), info.referenceUuid());
     }
@@ -1804,12 +1820,12 @@ std::vector<int> StateTracker::waitForSlaveHubs(const std::vector<std::string> &
         ids.reserve(names.size());
         size_t found = 0;
         for (const auto &name: names) {
-            for (const auto &slave: m_hubs) {
-                if (slave.id == Id::MasterHub)
+            for (const auto &hub: m_hubs) {
+                if (hub.id == Id::MasterHub)
                     continue;
-                if (name == slave.name) {
+                if (name == hub.name) {
                     ++found;
-                    ids.push_back(slave.id);
+                    ids.push_back(hub.id);
                 } else {
                     ids.push_back(Id::Invalid);
                 }

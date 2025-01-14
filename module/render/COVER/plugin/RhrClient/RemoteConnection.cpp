@@ -341,15 +341,13 @@ void RemoteConnection::operator()()
         }
     } else {
         asio::ip::tcp::resolver resolver(plugin->m_io);
-        asio::ip::tcp::resolver::query query(m_host, std::to_string(m_port),
-                                             asio::ip::tcp::resolver::query::numeric_service);
         boost::system::error_code ec;
-        asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query, ec);
+        auto endpoints = resolver.resolve(m_host, std::to_string(m_port), asio::ip::tcp::resolver::numeric_service, ec);
         if (ec) {
             NOTIFY_ERROR << "could not resolve " << m_host << ": " << ec.message() << std::endl;
             END("resolve error");
         }
-        asio::connect(m_sock, endpoint_iterator, ec);
+        asio::connect(m_sock, endpoints, ec);
         if (ec) {
             NOTIFY_ERROR << "could not establish connection to " << m_host << ":" << m_port << ": " << ec.message()
                          << std::endl;

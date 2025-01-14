@@ -10,7 +10,7 @@
 #include <vistle/util/pybind.h>
 
 #include <boost/lexical_cast.hpp>
-#include <boost/asio/io_service.hpp>
+#include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
 
 #include <vistle/core/uuid.h>
@@ -66,6 +66,7 @@ namespace vistle {
 
 static PythonModule *pythonModuleInstance = nullptr;
 static message::Type traceMessages = message::INVALID;
+static int traceId = message::Id::Invalid;
 
 static vistle::PythonStateAccessor &access()
 {
@@ -80,7 +81,9 @@ static vistle::StateTracker &state()
 static bool sendMessage(const vistle::message::Message &m, const vistle::buffer *payload = nullptr)
 {
     if (traceMessages == m.type() || traceMessages == message::ANY) {
-        std::cerr << "Python: send " << m << std::endl;
+        if (traceId == message::Id::Broadcast || traceId == message::Id::UI || traceId == m.destId()) {
+            std::cerr << "Python: send " << m << std::endl;
+        }
     }
     if (!pythonModuleInstance) {
         std::cerr << "cannot send message: no Vistle module instance" << std::endl;
@@ -198,6 +201,7 @@ static void trace(int id = message::Id::Broadcast, message::Type type = message:
         else
             traceMessages = message::INVALID;
     }
+    traceId = id;
 
     message::Trace m(id, type, onoff);
     sendMessage(m);
@@ -818,11 +822,14 @@ static void requestTunnel(unsigned short listenPort, const std::string &destHost
 
     message::RequestTunnel m(listenPort, destHost, destPort);
 
-    asio::io_service io_service;
-    asio::ip::tcp::resolver resolver(io_service);
-    try {
-        auto endpoints = resolver.resolve({destHost, std::to_string(destPort)});
-        auto addr = (*endpoints).endpoint().address();
+    asio::io_context io_context;
+    asio::ip::tcp::resolver resolver(io_context);
+    boost::system::error_code ec;
+    auto endpoints = resolver.resolve(destHost, std::to_string(destPort), ec);
+    if (ec) {
+    } else if (endpoints.empty()) {
+    } else {
+        auto addr = endpoints.begin()->endpoint().address();
         if (addr.is_v6()) {
             m.setDestAddr(addr.to_v6());
             std::cerr << destHost << " resolved to " << addr.to_v6() << std::endl;
@@ -830,7 +837,6 @@ static void requestTunnel(unsigned short listenPort, const std::string &destHost
             m.setDestAddr(addr.to_v4());
             std::cerr << destHost << " resolved to " << addr.to_v4() << std::endl;
         }
-    } catch (...) {
     }
 
     sendMessage(m);

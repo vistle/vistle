@@ -54,7 +54,6 @@
 //#define DEBUG
 //#define REDUCE_DEBUG
 #define DETAILED_PROGRESS
-#define REDIRECT_OUTPUT
 
 #ifdef DEBUG
 #include <vistle/util/hostname.h>
@@ -146,92 +145,6 @@ using message::Id;
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(ObjectValidation, (Disable)(Quick)(Thorough))
 
-#ifdef REDIRECT_OUTPUT
-template<typename CharT, typename TraitsT = std::char_traits<CharT>>
-class msgstreambuf: public std::basic_streambuf<CharT, TraitsT> {
-public:
-    msgstreambuf(Module *mod): m_module(mod), m_console(true), m_gui(false) {}
-
-    ~msgstreambuf()
-    {
-        std::unique_lock<std::recursive_mutex> scoped_lock(m_mutex);
-        flush();
-        for (const auto &s: m_backlog) {
-            std::cout << s << std::endl;
-            if (m_gui)
-                m_module->sendText(message::SendText::Cerr, s);
-        }
-        m_backlog.clear();
-    }
-
-    void flush(ssize_t count = -1)
-    {
-        std::unique_lock<std::recursive_mutex> scoped_lock(m_mutex);
-        size_t size = count < 0 ? m_buf.size() : count;
-        if (size > 0) {
-            std::string msg(m_buf.data(), size);
-            m_backlog.push_back(msg);
-            if (m_backlog.size() > BacklogSize)
-                m_backlog.pop_front();
-            if (m_gui)
-                m_module->sendText(message::SendText::Cerr, msg);
-            if (m_console)
-                std::cout << msg << std::flush;
-        }
-
-        if (size == m_buf.size()) {
-            m_buf.clear();
-        } else {
-            m_buf.erase(m_buf.begin(), m_buf.begin() + size);
-        }
-    }
-
-    int overflow(int ch)
-    {
-        std::unique_lock<std::recursive_mutex> scoped_lock(m_mutex);
-        if (ch != EOF) {
-            m_buf.push_back(ch);
-            if (ch == '\n')
-                flush();
-            return 0;
-        } else {
-            return EOF;
-        }
-    }
-
-    std::streamsize xsputn(const CharT *s, std::streamsize num)
-    {
-        std::unique_lock<std::recursive_mutex> scoped_lock(m_mutex);
-        size_t end = m_buf.size();
-        m_buf.resize(end + num);
-        memcpy(m_buf.data() + end, s, num);
-        auto it = std::find(m_buf.rbegin(), m_buf.rend(), '\n');
-        if (it != m_buf.rend()) {
-            flush(it - m_buf.rend());
-        }
-        return num;
-    }
-
-    void set_console_output(bool enable) { m_console = enable; }
-
-    void set_gui_output(bool enable) { m_gui = enable; }
-
-    void clear_backlog()
-    {
-        std::unique_lock<std::recursive_mutex> scoped_lock(m_mutex);
-        m_backlog.clear();
-    }
-
-private:
-    const size_t BacklogSize = 10;
-    Module *m_module;
-    std::vector<char> m_buf;
-    std::recursive_mutex m_mutex;
-    bool m_console, m_gui;
-    std::deque<std::string> m_backlog;
-};
-#endif
-
 template<typename Retval>
 Retval get(Object::const_ptr obj, Retval (vistle::Object::*func)() const)
 {
@@ -310,8 +223,6 @@ Module::Module(const std::string &moduleName, const int moduleId, mpi::communica
 , m_defaultCacheMode(ObjectCache::CacheByName)
 , m_prioritizeVisible(true)
 , m_syncMessageProcessing(false)
-, m_origStreambuf(nullptr)
-, m_streambuf(nullptr)
 , m_traceMessages(message::INVALID)
 , m_benchmark(false)
 , m_avgComputeTime(0.)
@@ -453,13 +364,6 @@ const HubData &Module::getHub() const
 
 void Module::initDone()
 {
-#ifndef MODULE_THREAD
-#ifdef REDIRECT_OUTPUT
-    m_streambuf = new msgstreambuf<char>(this);
-    m_origStreambuf = std::cerr.rdbuf(m_streambuf);
-#endif
-#endif
-
     message::Started start(name());
     start.setPid(getpid());
     start.setDestId(Id::ForBroadcast);
@@ -941,28 +845,6 @@ void Module::updateCacheMode()
     setCacheMode(ObjectCache::CacheMode(value), false);
 }
 
-void Module::updateOutputMode()
-{
-#ifndef MODULE_THREAD
-#ifdef REDIRECT_OUTPUT
-    const Integer r = getIntParameter("_error_output_rank");
-    const Integer m = getIntParameter("_error_output_mode");
-
-    auto sbuf = dynamic_cast<msgstreambuf<char> *>(m_streambuf);
-    if (!sbuf)
-        return;
-
-    if (r == -1 || r == rank()) {
-        sbuf->set_console_output(m & 1);
-        sbuf->set_gui_output(m & 2);
-    } else {
-        sbuf->set_console_output(false);
-        sbuf->set_gui_output(false);
-    }
-#endif
-#endif
-}
-
 void Module::waitAllTasks()
 {
     while (!m_tasks.empty()) {
@@ -1282,9 +1164,7 @@ bool Module::changeParameter(const Parameter *p)
 {
     std::string name = p->getName();
     if (!name.empty() && name[0] == '_') {
-        if (name == "_error_output_mode" || name == "_error_output_rank") {
-            updateOutputMode();
-        } else if (name == "_cache_mode") {
+        if (name == "_cache_mode") {
             updateCacheMode();
         } else if (name == "_openmp_threads") {
             setOpenmpThreads((int)getIntParameter(name), false);
@@ -1593,14 +1473,16 @@ bool Module::handleMessage(const vistle::message::Message *message, const Messag
     switch (message->type()) {
     case vistle::message::TRACE: {
         const Trace *trace = static_cast<const Trace *>(message);
-        if (trace->on()) {
-            m_traceMessages = trace->messageType();
-        } else {
-            m_traceMessages = message::INVALID;
-        }
+        if (trace->destId() == id() || trace->destId() == message::Id::Broadcast) {
+            if (trace->on()) {
+                m_traceMessages = trace->messageType();
+            } else {
+                m_traceMessages = message::INVALID;
+            }
 
-        std::cerr << "    module [" << name() << "] [" << id() << "] [" << rank() << "/" << size() << "] trace ["
-                  << trace->on() << "]" << std::endl;
+            std::cerr << "    module [" << name() << "] [" << id() << "] [" << rank() << "/" << size() << "] trace ["
+                      << trace->on() << "]" << std::endl;
+        }
         break;
     }
 
@@ -1608,10 +1490,6 @@ bool Module::handleMessage(const vistle::message::Message *message, const Messag
         const message::Quit *quit = static_cast<const message::Quit *>(message);
         //TODO: uuid should be included in corresponding ModuleExit message
         (void)quit;
-#ifdef REDIRECT_OUTPUT
-        if (auto sbuf = dynamic_cast<msgstreambuf<char> *>(m_streambuf))
-            sbuf->clear_backlog();
-#endif
         return false;
         break;
     }
@@ -1620,10 +1498,6 @@ bool Module::handleMessage(const vistle::message::Message *message, const Messag
         const message::Kill *kill = static_cast<const message::Kill *>(message);
         //TODO: uuid should be included in corresponding ModuleExit message
         if (kill->getModule() == id() || kill->getModule() == message::Id::Broadcast) {
-#ifdef REDIRECT_OUTPUT
-            if (auto sbuf = dynamic_cast<msgstreambuf<char> *>(m_streambuf))
-                sbuf->clear_backlog();
-#endif
             return false;
         } else {
             std::cerr << "module [" << name() << "] [" << id() << "] [" << rank() << "/" << size() << "]"
@@ -2449,11 +2323,6 @@ Module::~Module()
     sendMessageQueue = nullptr;
     delete receiveMessageQueue;
     receiveMessageQueue = nullptr;
-
-    if (m_origStreambuf)
-        std::cerr.rdbuf(m_origStreambuf);
-    delete m_streambuf;
-    m_streambuf = nullptr;
 }
 
 void Module::eventLoop()

@@ -9,6 +9,7 @@
 /**********************************************************************************/
 
 #include <QString>
+#include <QRegularExpression>
 
 #include <vistle/userinterface/vistleconnection.h>
 
@@ -165,12 +166,25 @@ void VistleObserver::itemInfo(const std::string &text, vistle::message::ItemInfo
     emit itemInfo_s(QString::fromStdString(text), type, senderId, QString::fromStdString(port));
 }
 
+namespace {
+
+bool isHtml(const QString &text)
+{
+    const QRegularExpression html("<.*>", QRegularExpression::CaseInsensitiveOption);
+    return html.match(text).hasMatch();
+}
+
+} // namespace
+
 void gui::VistleObserver::info(const std::string &text, vistle::message::SendText::TextType textType, int senderId,
                                int senderRank, vistle::message::Type refType, const vistle::message::uuid_t &refUuid)
 {
     QString t = QString::fromStdString(text);
     while (t.endsWith('\n'))
         t.chop(1);
+    if (!isHtml(t)) {
+        t.replace("\n", "<br>");
+    }
     QString sender;
     if (senderId >= vistle::message::Id::ModuleBase) {
         sender = QString("<a href=\"%2\">%1_%2(%3)</a>")
@@ -183,6 +197,7 @@ void gui::VistleObserver::info(const std::string &text, vistle::message::SendTex
     QString msg = QString("%1: %2").arg(sender, t);
     emit info_s(msg, textType);
 
+    t.append("<br>");
     emit message_s(senderId, textType, t);
 }
 
