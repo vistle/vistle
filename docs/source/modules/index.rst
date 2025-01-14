@@ -66,6 +66,7 @@ Modules
    ReadCoviseDirectory.md
    ReadDuisburg.md
    ReadDyna3D.md
+   ReadEnsight.md
    ReadEwMatlabCsvExports.md
    ReadFoam.md
    ReadIagNetcdf.md
