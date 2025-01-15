@@ -983,6 +983,10 @@ if(VISTLE_USE_CUDA)
     endif()
 endif()
 
+if(VISTLE_USE_KOKKOS)
+    vistle_find_package(Kokkos REQUIRED)
+endif()
+
 option(VISTLE_SHM_DEBUG "Shared memory debugging" OFF)
 
 if(VISTLE_SHM_DEBUG)
