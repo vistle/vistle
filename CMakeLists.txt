@@ -991,6 +991,12 @@ endif()
 
 if(VISTLE_USE_KOKKOS)
     vistle_find_package(Kokkos REQUIRED)
+    if(Kokkos_ENABLE_HIP)
+        enable_language(HIP)
+    endif()
+    if(Kokkos_ENABLE_CUDA)
+        enable_language(CUDA)
+    endif()
 endif()
 
 option(VISTLE_SHM_DEBUG "Shared memory debugging" OFF)
