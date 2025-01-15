@@ -903,17 +903,7 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
 
     macro(add_vtkm_module targetname description)
         add_module(${targetname} ${description} ${ARGN})
-
-        # when using Cuda device backend for vtkm, make sure that nvcc
-        # compiler is used, even if file does not end on .cu
-        if(VISTLE_CUDA_ENABLED)
-            # make sure nvcc compiler is used for the .cpp files
-            set_source_files_properties(${ARGN} PROPERTIES LANGUAGE CUDA)
-
-            # device code might be split into multiple header/source code files,
-            # so we need to enable seperate compilation to avoid linking errors
-            set_property(TARGET ${targetname} PROPERTY CUDA_SEPARABLE_COMPILATION ON)
-        endif()
+        vtkm_add_target_information(${targetname} DROP_UNUSED_SYMBOLS MODIFY_CUDA_FLAGS ${ARGN}) # assume that everything is device code
         target_link_libraries(${targetname} vistle_vtkm vtkm::cont vtkm::filter)
     endmacro(add_vtkm_module)
 endif()
