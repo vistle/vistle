@@ -92,19 +92,15 @@ enum Id {
 }
 
 namespace {
-const std::string windows = "windows";
-const std::string unix = "unix";
-const std::string darwin = "darwin";
-const std::string linux = "linux";
 #ifdef _WIN32
-const std::string platform = windows;
+const std::string platform = "windows";
 const std::string platform_fallback;
 #else
-const std::string platform_fallback = unix;
+const std::string platform_fallback = "unix";
 #ifdef __APPLE__
-const std::string platform = darwin;
+const std::string platform = "darwin";
 #else
-const std::string platform = linux;
+const std::string platform = "linux";
 #endif
 #endif
 } // namespace
