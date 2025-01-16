@@ -64,8 +64,6 @@
 [submodule "module/geometry/DelaunayTriangulator/tetgen"]
 	path = module/geometry/DelaunayTriangulator/tetgen
 	url = https://github.com/vistle/tetgen.git
-[submodule "sz3"]
-	url = https://github.com/szcompressor/SZ3.git
 [submodule "lib/3rdparty/vtk-m"]
 	path = lib/3rdparty/vtk-m
 	url = https://gitlab.kitware.com/vtk/vtk-m.git
