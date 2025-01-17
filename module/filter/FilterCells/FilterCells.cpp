@@ -118,24 +118,6 @@ FilterCells::FilterCells(const std::string &name, int moduleID, mpi::communicato
     setParameterChoices("SupportedConstants", m_symbols.getSupportedConstants());
 }
 
-namespace vistle {
-class Buffer: vistle::Indexed {
-public:
-    Buffer(size_t size): m_size(size) { m_buffer = new char[size]; }
-    ~Buffer() { delete[] m_buffer; }
-
-    void add(size_t index, char value)
-    {
-        assert(index < m_size);
-        m_buffer[index] = value;
-    }
-
-private:
-    char *m_buffer;
-    size_t m_size;
-};
-} // namespace vistle
-
 vistle::UnstructuredGrid::ptr clone(const vistle::UnstructuredGrid::const_ptr &grid, FilterMode filterMode)
 {
     auto out = grid->clone();
@@ -164,15 +146,6 @@ bool FilterCells::changeParameter(const Parameter *p)
         std::string error;
         if (!m_symbols.update(m_expression->getValue(), error))
             sendError("failed to compile expression: %s", error.c_str());
-        if (m_expression->getValue() == "test") {
-            std::string str = "Hello, World!";
-            vistle::Buffer buffer(str.size());
-
-            for (size_t i = 0; i < str.size(); i++) {
-                buffer.add(i, str[i]);
-            }
-            std::cerr << "test" << std::endl;
-        }
     }
     return Module::changeParameter(p);
 }

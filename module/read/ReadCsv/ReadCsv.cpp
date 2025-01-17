@@ -51,10 +51,6 @@ ReadCsv::ReadCsv(const std::string &name, int moduleID, mpi::communicator comm):
     }
 
     setParallelizationMode(ParallelizationMode::ParallelizeBlocks);
-
-    // m_mode = addStringParameter("mode", "Mode", "singleFile", Parameter::Choice);
-    // setParameterChoices(m_mode, {"singleFile", "multipleFiles"});
-    // observeParameter(m_mode);
 }
 
 constexpr std::array<char, 3> delimiters = {',', ';', '\t'};
