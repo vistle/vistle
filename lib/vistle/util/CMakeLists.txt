@@ -54,11 +54,6 @@ set(util_HEADERS
     vecstreambuf.h
     version.h)
 
-if(CMAKE_BUILD_TYPE AND NOT CMAKE_BUILD_TYPE STREQUAL "")
-    message("CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}")
-    add_definitions(-DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}")
-endif()
-
 set_property(SOURCE version.cpp PROPERTY COMPILE_DEFINITIONS VISTLE_VERSION_TAG=${VISTLE_VERSION_TAG} VISTLE_VERSION_HASH=${VISTLE_VERSION_HASH})
 
 vistle_add_library(vistle_util EXPORT ${VISTLE_LIB_TYPE} ${util_SOURCES} ${util_HEADERS})
