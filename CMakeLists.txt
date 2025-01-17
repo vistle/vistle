@@ -64,6 +64,7 @@ option(VISTLE_PROFILE_CHROME "Annotate for showing timings in Chrome browser" OF
 
 option(VISTLE_USE_CUDA "Build with CUDA support" OFF)
 option(VISTLE_USE_KOKKOS "Build with Kokkos support" OFF)
+option(VISTLE_USE_OPENMP "Build with OpenMP support" OFF)
 
 option(VISTLE_USE_QT5 "Build GUI with Qt5 instead of Qt6" OFF)
 option(VISTLE_USE_MPI "Build with MPI instead of dummy MPI library" ON)
@@ -336,10 +337,47 @@ message("VISTLE_VERSION: ${VISTLE_VERSION_TAG}-${VISTLE_VERSION_HASH}")
 include(ConfigureLinker)
 
 if(NOT VISTLE_GUI_ONLY)
-    vistle_find_package(OpenMP)
+    set(VISTLE_CUDA_ENABLED FALSE)
+    if(VISTLE_USE_CUDA)
+        include(CheckLanguage)
+        check_language(CUDA)
+        vistle_find_package(CUDAToolkit)
 
-    if(OPENMP_FOUND)
-        find_library(LIBOMP omp)
+        if(CMAKE_CUDA_COMPILER AND CUDAToolkit_FOUND)
+            enable_language(CUDA)
+
+            if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+                set(CMAKE_CUDA_ARCHITECTURES 60) # be compatible with P6000/GP100
+            endif()
+
+            add_definitions(-DVISTLE_USE_CUDA)
+            set(VISTLE_CUDA_ENABLED TRUE)
+            message("Using CUDA")
+        endif()
+    endif()
+
+    if(VISTLE_USE_KOKKOS)
+        vistle_find_package(Kokkos REQUIRED)
+        if(Kokkos_ENABLE_HIP)
+            enable_language(HIP)
+        endif()
+        if(Kokkos_ENABLE_CUDA)
+            enable_language(CUDA)
+        endif()
+        if(Kokkos_ENABLE_OPENMP)
+            if(NOT VISTLE_USE_OPENMP)
+                message("OpenMP support enabled, because required by Kokkos")
+            endif()
+            set(VISTLE_USE_OPENMP TRUE)
+        endif()
+    endif()
+
+    if(VISTLE_USE_OPENMP)
+        vistle_find_package(OpenMP)
+
+        if(OPENMP_FOUND)
+            find_library(LIBOMP omp)
+        endif()
     endif()
 
     if(CMAKE_VERSION VERSION_LESS 3.12)
@@ -808,7 +846,7 @@ if(NOT VISTLE_MULTI_PROCESS)
 endif()
 
 macro(USE_OPENMP)
-    if(OPENMP_FOUND)
+    if(VISTLE_USE_OPENMP AND OPENMP_FOUND)
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_C_FLAGS}")
@@ -969,35 +1007,6 @@ else(WIN32)
 endif(WIN32)
 
 # set(CMAKE_BUILD_TYPE Debug)
-
-set(VISTLE_CUDA_ENABLED FALSE)
-if(VISTLE_USE_CUDA)
-    include(CheckLanguage)
-    check_language(CUDA)
-    vistle_find_package(CUDAToolkit)
-
-    if(CMAKE_CUDA_COMPILER AND CUDAToolkit_FOUND)
-        enable_language(CUDA)
-
-        if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
-            set(CMAKE_CUDA_ARCHITECTURES 60) # be compatible with P6000/GP100
-        endif()
-
-        add_definitions(-DVISTLE_USE_CUDA)
-        set(VISTLE_CUDA_ENABLED TRUE)
-        message("Using CUDA")
-    endif()
-endif()
-
-if(VISTLE_USE_KOKKOS)
-    vistle_find_package(Kokkos REQUIRED)
-    if(Kokkos_ENABLE_HIP)
-        enable_language(HIP)
-    endif()
-    if(Kokkos_ENABLE_CUDA)
-        enable_language(CUDA)
-    endif()
-endif()
 
 option(VISTLE_SHM_DEBUG "Shared memory debugging" OFF)
 
