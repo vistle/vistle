@@ -39,7 +39,7 @@ bool GridElementStatistics::compute()
         return true;
     }
 
-    sendInfo("element index: %d of block %d", elementIndex, grid->getBlock());
+    sendInfo("element index: %lu of block %d", (unsigned long)elementIndex, grid->getBlock());
     sendInfo("element type: %s", UnstructuredGrid::toString(UnstructuredGrid::Type(grid->tl()[elementIndex])));
     sendInfo("element dimensionality: %d", UnstructuredGrid::Dimensionality[grid->tl()[elementIndex]]);
     sendInfo("edge length: %f", grid->cellEdgeLength(elementIndex));

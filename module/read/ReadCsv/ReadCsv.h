@@ -32,7 +32,6 @@ private:
     bool read(Token &token, int timestep = -1, int block = -1) override;
 
     vistle::StringParameter *m_directory = nullptr;
-    vistle::IntParameter *m_mode = nullptr;
     vistle::IntParameter *m_filename = nullptr;
 
     vistle::IntParameter *m_layerMode = nullptr;
