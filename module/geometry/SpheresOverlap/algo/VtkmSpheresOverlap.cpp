@@ -10,6 +10,13 @@
 
 #include "VtkmSpheresOverlap.h"
 
+#ifdef NONSEPARABLE_COMPILATION
+#include "ThicknessDeterminer.cpp"
+#include "worklet/PointLocatorCellLists.cpp"
+#include "worklet/OverlapDetector.cpp"
+#endif
+
+
 using namespace vistle;
 
 struct CountOverlapsWorklet: public vtkm::worklet::WorkletMapField {
