@@ -17,18 +17,22 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@master
-        with:
-          path: Vistle
 
       - name: Add version
         run: bin/_print_version.sh > .vistle_version.txt
-        with:
-          path: Vistle/vistle
+
+      - name: Print cwd 1
+        run: pwd >> "$GITHUB_OUTPUT"
+      - name: Print cwd 2
+        run: pwd
+      - name: Ls 1
+        run: ls -a
+      - name: Ls 2
+        run: ls -a >> "$GITHUB_OUTPUT"
 
       - name: Package source code including submodules
         uses: qmonnet/git-archive-all-action@v1
         with:
-          path: Vistle
           output-files: vistle-${{ github.ref_name }}.tar.gz vistle-${{ github.ref_name }}.zip
           force-submodules: true
           extra-includes: .vistle-version.txt
@@ -36,6 +40,5 @@ jobs:
       - name: Create draft release and add artifacts
         uses: softprops/action-gh-release@v1
         with:
-          path: Vistle
           draft: true
           files: vistle-*
