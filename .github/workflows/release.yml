@@ -18,6 +18,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@master
 
+      - name: Add version
+        run: bin/_print_version.sh > .vistle_version.txt
+
       - name: Package source code including submodules
         uses: qmonnet/git-archive-all-action@v1
         with:
