@@ -32,7 +32,7 @@ std::string string()
 
 std::string copyright()
 {
-    return "2012 - 2024, the Vistle authors";
+    return "2012 - 2025, the Vistle authors";
 }
 
 std::string license()
