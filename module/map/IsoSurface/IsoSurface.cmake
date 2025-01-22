@@ -1,8 +1,5 @@
 use_openmp()
 
-set(PREFER_TBB TRUE)
-set(USE_TBB FALSE)
-
 set(SOURCES
     ${SOURCES}
     ../IsoSurface/IsoSurface.cpp
@@ -12,31 +9,18 @@ set(SOURCES
     ../IsoSurface/Leveller.cpp
     ../IsoSurface/Leveller.h)
 
-if(TBB_FOUND AND PREFER_TBB)
-    add_definitions(-DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_TBB)
-    set(USE_TBB TRUE)
-elseif(OPENMP_FOUND)
+set(USE_TBB FALSE)
+if(OPENMP_FOUND AND VISTLE_USE_OPENMP)
     add_definitions(-DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_OMP)
+    add_definitions(-DUSE_OMP)
+    add_definitions(-DTHRUST_HOST_SYSTEM=THRUST_HOST_SYSTEM_OMP)
 elseif(TBB_FOUND)
     add_definitions(-DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_TBB)
+    add_definitions(-DUSE_TBB)
+    add_definitions(-DTHRUST_HOST_SYSTEM=THRUST_HOST_SYSTEM_TBB)
     set(USE_TBB TRUE)
 else()
     add_definitions(-DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_CPP)
-endif()
-
-if(TBB_FOUND AND PREFER_TBB)
-    add_definitions(-DUSE_TBB)
-    add_definitions(-DTHRUST_HOST_SYSTEM=THRUST_HOST_SYSTEM_TBB)
-    set(USE_TBB TRUE)
-elseif(OPENMP_FOUND)
-    add_definitions(-DUSE_OMP)
-    add_definitions(-DTHRUST_HOST_SYSTEM=THRUST_HOST_SYSTEM_OMP)
-    use_openmp()
-elseif(TBB_FOUND)
-    add_definitions(-DUSE_TBB)
-    add_definitions(-DTHRUST_HOST_SYSTEM=THRUST_HOST_SYSTEM_TBB)
-    set(USE_TBB TRUE)
-else()
     add_definitions(-DTHRUST_HOST_SYSTEM=THRUST_HOST_SYSTEM_CPP)
     add_definitions(-DUSE_CPP)
 endif()
