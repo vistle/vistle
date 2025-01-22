@@ -42,6 +42,7 @@ private:
     vistle::IntParameter *m_numTimesteps = nullptr;
     std::unique_ptr<std::thread> m_simThread;
     std::atomic_bool m_terminateSim{false};
+    std::atomic_bool m_connectionFileDumped{false};
     //params and according vistle parameter
     minisim::Parameter m_param;
     vistle::IntParameter *m_numThreads, *m_numGhost, *m_numParticles, *m_numBlocks;
