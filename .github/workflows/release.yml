@@ -21,14 +21,10 @@ jobs:
       - name: Add version
         run: bin/_print_version.sh > .vistle_version.txt
 
-      - name: Print cwd 1
-        run: pwd >> "$GITHUB_OUTPUT"
-      - name: Print cwd 2
+      - name: Print cwd
         run: pwd
-      - name: Ls 1
+      - name: Ls
         run: ls -a
-      - name: Ls 2
-        run: ls -a >> "$GITHUB_OUTPUT"
 
       - name: Package source code including submodules
         uses: qmonnet/git-archive-all-action@v1
