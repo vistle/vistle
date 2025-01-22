@@ -33,7 +33,10 @@ protected:
     //use m_simulationCommandsComm to synchronize the resutls from reading m_filePath
     virtual std::unique_ptr<insitu::message::MessageHandler> connectToSim() = 0;
 
-    virtual bool changeParameter(const Parameter *p) override;
+    bool changeParameter(const Parameter *p) override;
+    //! notify that a module has added a parameter
+    bool parameterAdded(const int senderId, const std::string &name, const vistle::message::AddParameter &msg,
+                        const std::string &moduleName) override;
     void initializeCommunication();
     const insitu::message::MessageHandler *getMessageHandler() const;
 

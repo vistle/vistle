@@ -1,14 +1,15 @@
 #include "MiniSim.h"
 
-#include <vistle/core/unstr.h>
-#include <vistle/core/uniformgrid.h>
-#include <vistle/util/shmconfig.h>
-#include <vistle/insitu/message/SyncShmIDs.h>
-#include <vistle/insitu/message/addObjectMsq.h>
 #include <vistle/core/structuredgrid.h>
-#include <vistle/util/stopwatch.h>
-#include <vistle/util/directory.h>
+#include <vistle/core/uniformgrid.h>
+#include <vistle/core/unstr.h>
 #include <vistle/insitu/core/exception.h>
+#include <vistle/insitu/message/addObjectMsq.h>
+#include <vistle/insitu/message/SyncShmIDs.h>
+#include <vistle/util/directory.h>
+#include <vistle/util/shmconfig.h>
+#include <vistle/util/stopwatch.h>
+#include <vistle/util/threadname.h>
 
 using namespace vistle;
 namespace sensei = vistle::insitu;
@@ -20,8 +21,6 @@ const char *varName = "oscillation";
 MiniSimModule::MiniSimModule(const std::string &name, int moduleID, mpi::communicator comm)
 : insitu::InSituModuleBase(name, moduleID, comm)
 {
-    // std::this_thread::sleep_for(std::chrono::seconds(10));
-
     m_inputFilePath = addStringParameter("input_params", "path to file with input parameters", "",
                                          vistle::Parameter::ExistingFilename);
     setParameterFilters(m_inputFilePath, "input files (*.osc)");
@@ -34,9 +33,8 @@ MiniSimModule::MiniSimModule(const std::string &name, int moduleID, mpi::communi
                                            "if true timesteps are cached and processed as time series", true,
                                            vistle::Parameter::Boolean));
 
-    m_filePath = addStringParameter("path", "path to the connection file written by the simulation",
-                                    directory::configHome() + "/insitu.vistle", vistle::Parameter::ExistingFilename);
     m_simThread.reset(new std::thread{[this]() {
+        setThreadName("MiniSim");
         constexpr bool pause = true;
         insitu::MetaData metaData;
         insitu::MetaMesh metaMesh(meshName);
@@ -47,7 +45,7 @@ MiniSimModule::MiniSimModule(const std::string &name, int moduleID, mpi::communi
         m_adapter.reset(new insitu::Adapter(pause, this->comm(), std::move(metaData),
                                             insitu::ObjectRetriever{getDataFunc}, VISTLE_ROOT, VISTLE_BUILD_TYPE, ""));
 
-
+        m_connectionFileDumped = true;
         while (!m_terminate) {
             while (!m_terminate && m_adapter->paused()) {
                 m_adapter->execute(0);
@@ -66,6 +64,12 @@ MiniSimModule::MiniSimModule(const std::string &name, int moduleID, mpi::communi
         }
         m_adapter->finalize();
     }});
+
+    while (!m_connectionFileDumped) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+    m_filePath = addStringParameter("path", "path to the connection file written by the simulation",
+                                    directory::configHome() + "/insitu.vistle", vistle::Parameter::ExistingFilename);
 }
 
 insitu::ObjectRetriever::PortAssignedObjectList MiniSimModule::getData(const insitu::MetaData &meta)
