@@ -394,6 +394,26 @@ if(NOT VISTLE_GUI_ONLY)
         endif()
     endif()
 
+    if(NOT OPENMP_FOUND)
+        # prefer a TBBConfig.cmake over FindTBB.cmake
+        vistle_find_package(TBB CONFIG NO_MODULE)
+
+        if(NOT ${TBB_FOUND})
+            vistle_find_package(TBB)
+
+            if(NOT (${CMAKE_GENERATOR} STREQUAL "Visual Studio 17 2022"))
+                if(${TBB_FOUND} AND NOT TARGET TBB::tbb)
+                    add_library(TBB::tbb SHARED IMPORTED)
+                    set_target_properties(
+                        TBB::tbb
+                        PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${TBB_INCLUDE_DIRS}"
+                                   INTERFACE_LINK_LIBRARIES "${TBB_LIBRARIES}"
+                                   IMPORTED_LOCATION "${TBB_LIBRARY}")
+                endif()
+            endif()
+        endif()
+    endif()
+
     if(CMAKE_VERSION VERSION_LESS 3.12)
         message(WARNING "CMake 3.12 or newer is required for compiling Python support")
     else()
@@ -410,23 +430,6 @@ if(NOT VISTLE_GUI_ONLY)
     set(ICET_MPI_LIBS "IceTMPI")
     set(ICET_FOUND TRUE)
 
-    # prefer a TBBConfig.cmake over FindTBB.cmake
-    vistle_find_package(TBB CONFIG NO_MODULE)
-
-    if(NOT ${TBB_FOUND})
-        vistle_find_package(TBB)
-
-        if(NOT (${CMAKE_GENERATOR} STREQUAL "Visual Studio 17 2022"))
-            if(${TBB_FOUND} AND NOT TARGET TBB::tbb)
-                add_library(TBB::tbb SHARED IMPORTED)
-                set_target_properties(
-                    TBB::tbb
-                    PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${TBB_INCLUDE_DIRS}"
-                               INTERFACE_LINK_LIBRARIES "${TBB_LIBRARIES}"
-                               IMPORTED_LOCATION "${TBB_LIBRARY}")
-            endif()
-        endif()
-    endif()
 endif(NOT VISTLE_GUI_ONLY)
 
 set(ASAN_COMPILE_FLAGS "")
