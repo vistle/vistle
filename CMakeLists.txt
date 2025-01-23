@@ -387,7 +387,7 @@ if(NOT VISTLE_GUI_ONLY)
     endif()
 
     if(VISTLE_USE_OPENMP)
-        vistle_find_package(OpenMP)
+        vistle_find_package(OpenMP 3.0 COMPONENTS CXX)
 
         if(OPENMP_FOUND)
             find_library(LIBOMP omp)
