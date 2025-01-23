@@ -11,7 +11,6 @@
 #include <vistle/core/lines.h>
 #include <vistle/core/shm.h>
 #include <thrust/execution_policy.h>
-#include <thrust/device_vector.h>
 #include <thrust/transform.h>
 #include <thrust/for_each.h>
 #include <thrust/scan.h>

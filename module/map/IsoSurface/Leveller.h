@@ -26,8 +26,6 @@
 
 #include "IsoDataFunctor.h"
 
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(ThrustBackend, (Host)(Device))
-
 class Leveller {
     const IsoController &m_isocontrol;
     vistle::Object::const_ptr m_grid;
