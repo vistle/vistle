@@ -654,9 +654,7 @@ macro(vistle_install_library targetname)
     endif()
 endmacro(vistle_install_library)
 
-macro(vistle_export_library targetname)
-    vistle_install_library(${targetname} ${ARGN})
-
+macro(vistle_export_target targetname)
     set(config_in_file ${CMAKE_CURRENT_BINARY_DIR}/cmake/${targetname}Config.cmake.in)
     file(WRITE ${config_in_file} "include(\"\${CMAKE_CURRENT_LIST_DIR}/${targetname}Targets.cmake\")")
 
@@ -687,6 +685,13 @@ macro(vistle_export_library targetname)
         FILES "${buildPackageLocation}/${targetname}Config.cmake" "${buildPackageLocation}/${targetname}ConfigVersion.cmake"
         DESTINATION ${installPackageLocation}
         COMPONENT ${targetname}_Development)
+
+endmacro(vistle_export_target)
+
+macro(vistle_export_library targetname)
+    vistle_install_library(${targetname} ${ARGN})
+    vistle_export_target(${targetname})
+    
 endmacro(vistle_export_library)
 
 macro(vistle_add_library targetname visibility)
@@ -822,9 +827,11 @@ macro(vistle_install_headers directory)
     install(FILES ${ARGN} DESTINATION include/vistle/${directory})
 endmacro(vistle_install_headers)
 
+# some targets need to be ignored for documentation
+set(IGNR_MODS "COVER_plugin")
 # install VistleConfig.cmake
-configure_file(${CMAKE_CURRENT_LIST_DIR}/cmake/VistleConfig.cmake ${PROJECT_BINARY_DIR}/lib/cmake/vistle/VistleConfig.cmake COPYONLY)
-install(FILES ${CMAKE_CURRENT_LIST_DIR}/cmake/VistleConfig.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/vistle)
+configure_file(${CMAKE_CURRENT_LIST_DIR}/cmake/VistleConfig.cmake.in ${PROJECT_BINARY_DIR}/lib/cmake/vistle/VistleConfig.cmake @ONLY)
+install(FILES ${PROJECT_BINARY_DIR}/lib/cmake/vistle/VistleConfig.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/vistle)
 
 if(POLICY CMP0043)
     # configuration (RelWithDebInfo, Debug, ...) dependent COMPILE_DEFINITIONS are not used
@@ -914,7 +921,10 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
         if(${executable})
             add_executable(${targetname} ${ARGN})
             set_target_properties(${targetname} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/libexec/module)
-            install(TARGETS ${targetname} RUNTIME DESTINATION libexec/module)
+            install(TARGETS ${targetname} 
+                    EXPORT ${targetname}Targets
+                    RUNTIME DESTINATION libexec/module
+                    )
         else()
             if(VISTLE_MODULES_SHARED)
                 if(Boost_VERSION VERSION_GREATER 1.69.99)
@@ -928,6 +938,7 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
                 set_target_properties(${targetname} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib/module)
                 install(
                     TARGETS ${targetname}
+                    EXPORT ${targetname}Targets
                     RUNTIME DESTINATION lib/module
                     LIBRARY DESTINATION lib/module)
             else()
@@ -946,6 +957,9 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
             # message("Linking ${targetname} against libomp: ${LIBOMP}")
             target_link_libraries(${targetname} ${LIBOMP})
         endif()
+
+
+        set_target_properties(${targetname} PROPERTIES FOLDER "Modules")
     endmacro(add_module2)
 
     macro(add_module targetname description)
@@ -954,6 +968,7 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
         else()
             add_module2(${targetname} FALSE ${description} ${ARGN})
         endif()
+        vistle_export_target(${targetname})
     endmacro(add_module)
 
     macro(add_vtkm_module targetname description)

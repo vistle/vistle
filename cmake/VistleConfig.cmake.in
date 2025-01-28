@@ -1,0 +1,81 @@
+#Use this to find vistle components
+#e.g. with: find_package(Vistle REQUIRED COMPONENTS insitu_adapter vtk boost_mpi)
+macro(vistle_find_component comp req)
+
+    set(_VISTLE_REQUIRED)
+    if(${req} AND Vistle_FIND_REQUIRED)
+        set(_VISTLE_REQUIRED REQUIRED)
+    endif()
+
+    find_package(vistle_${comp} CONFIG ${_VISTLE_REQUIRED} HINTS ${CMAKE_CURRENT_LIST_DIR})
+
+    set(__vistle_comp_found ${vistle_${comp}_FOUND})
+
+    # FindPackageHandleStandardArgs expects <package>_<component>_FOUND
+    set(Vistle_${comp}_FOUND ${__vistle_comp_found})
+
+    # FindVistle sets Vistle_<COMPONENT>_FOUND
+    string(TOUPPER ${comp} _VISTLE_COMP)
+    set(Vistle_${_VISTLE_COMP}_FOUND ${__vistle_comp_found})
+
+    unset(_VISTLE_REQUIRED)
+    unset(__vistle_comp_found)
+    unset(_VISTLE_COMP)
+
+endmacro()
+
+
+#define modules target
+macro(vistle_find_module comp req)
+    set(ALL_MODULES "@ALL_MODULES@")
+    set(IGNR_MODS "@IGNR_MODS@")
+    foreach(__Vistle_Module IN LISTS ALL_MODULES)
+
+        #some modules like COVER_plugin manually change OUTPUT_NAME which confuses with the export
+        set(SKIP_MODULE FALSE)
+        foreach(elem ${IGNR_MODS})
+            if(${__Vistle_Module} STREQUAL ${elem})
+                set(SKIP_MODULE TRUE)
+            endif()
+        endforeach()    
+        
+        if(NOT SKIP_MODULE)
+            set(_VISTLE_REQUIRED)
+            if(${req} AND Vistle_FIND_REQUIRED)
+                set(_VISTLE_REQUIRED REQUIRED)
+            endif()
+
+            find_package(${__Vistle_Module} CONFIG ${_VISTLE_REQUIRED} HINTS ${CMAKE_CURRENT_LIST_DIR})
+
+            set(__vistle_comp_found ${${__Vistle_Module}_FOUND})
+
+            # FindPackageHandleStandardArgs expects <package>_<component>_FOUND
+            set(${comp}_FOUND ${__vistle_comp_found})
+
+            # FindVistle sets Vistle_<COMPONENT>_FOUND
+            string(TOUPPER ${__Vistle_Module} _VISTLE_COMP)
+            set(${_VISTLE_COMP}_FOUND ${__vistle_comp_found})
+        
+        endif()
+            
+        unset(_VISTLE_REQUIRED)
+        unset(__vistle_comp_found)
+        unset(_VISTLE_COMP)
+
+    endforeach()
+endmacro(vistle_find_module)
+
+set(VISTLE_INSTALL_3RDPARTY @VISTLE_INSTALL_3RDPARTY@)
+
+foreach(__vistle_comp IN LISTS Vistle_FIND_COMPONENTS)
+        
+    if(${__vistle_comp} STREQUAL "modules")
+        vistle_find_module(${__vistle_comp} ${Vistle_FIND_REQUIRED_${__vistle_comp}})
+    else()
+        vistle_find_component(${__vistle_comp} ${Vistle_FIND_REQUIRED_${__vistle_comp}})
+    endif()
+    if(NOT ${VISTLE_INSTALL_3RDPARTY} AND NOT ${__vistle_comp}_FOUND)
+        message(ERROR "Vistle not found, consider building Vistle with VISTLE_INSTALL_3RDPARTY=ON")
+    endif()
+
+endforeach()
