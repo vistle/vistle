@@ -79,15 +79,16 @@ bool ReadEnsight::examine(const vistle::Parameter *param)
         std::string file = m_casefile->getValue();
         filesystem::path path(file);
         {
+            m_case = CaseFile();
             CaseParserDriver parser(file);
             // uncomment this line to see more debug output
             //parser.setVerbose(true);
-            if (!parser.isOpen()) {
-                sendInfo("Cannot parse case file %s: not open", file.c_str());
+            if (!parser.isOpen() || !parser.parse()) {
+                std::string err = parser.lastError();
+                sendWarning("Cannot parse case file %s: %s", file.c_str(), err.c_str());
                 return false;
             }
 
-            parser.parse();
             m_case = parser.getCaseObj();
         }
         m_case.setFullFilename(file);
