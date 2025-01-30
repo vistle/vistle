@@ -25,6 +25,7 @@ public:
     bool isOpen();
     void setVerbose(bool enable);
     bool parse();
+    std::string lastError() const;
 
 private:
     std::ifstream *inputFile_ = nullptr;
@@ -35,6 +36,7 @@ private:
     bool isOpen_ = false;
     bool verbose_ = false;
     int tsStart_ = 0;
+    std::string lastError_;
 
     ensight::location location;
 };
