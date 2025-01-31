@@ -715,7 +715,8 @@ V_ENUM_OUTPUT_OP(TextType, SendText)
 //! provide information on a GUI item, such as a tooltip for an input or output port
 class V_COREEXPORT ItemInfo: public MessageBase<ItemInfo, ITEMINFO> {
 public:
-    DEFINE_ENUM_WITH_STRING_CONVERSIONS(InfoType, (Module)(Port))
+    DEFINE_ENUM_WITH_STRING_CONVERSIONS(
+        InfoType, (Unspecified)(Module)(Port)(PortType)(PortMapped)(PortGeometry)(PortMapping)(PortSpecies))
 
     struct V_COREEXPORT Payload {
         Payload();

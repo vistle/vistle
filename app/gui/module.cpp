@@ -1041,7 +1041,7 @@ void Module::setStatusText(QString text, int prio)
     }
 }
 
-void Module::setInfo(QString text)
+void Module::setInfo(QString text, int type)
 {
     m_info = text;
     updateText();

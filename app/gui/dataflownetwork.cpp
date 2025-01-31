@@ -326,12 +326,12 @@ void DataFlowNetwork::itemInfoChanged(QString text, int type, int id, QString po
 {
     if (Module *m = findModule(id)) {
         if (port.isEmpty()) {
-            m->setInfo(text);
+            m->setInfo(text, type);
         } else {
             std::lock_guard guard(m_state);
             const vistle::Port *p = m_state.portTracker()->findPort(id, port.toStdString());
             if (auto *gp = m->getGuiPort(p)) {
-                gp->setInfo(text);
+                gp->setInfo(text, type);
             }
         }
     }
