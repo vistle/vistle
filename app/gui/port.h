@@ -41,7 +41,7 @@ public:
 
     bool operator<(const Port &other) const;
     bool operator==(const Port &other) const;
-    void setInfo(QString info);
+    void setInfo(QString info, int type);
 
 signals:
     void clicked(Port *port);
@@ -72,6 +72,7 @@ private:
     int m_moduleId = 0;
     QString m_name;
     QString m_info;
+    QString m_type, m_mapped, m_geometry, m_mapping;
     QString m_tooltip;
 };
 

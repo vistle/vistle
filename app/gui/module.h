@@ -58,7 +58,7 @@ public:
     QPointF portPos(const Port *port) const;
     void setStatus(Module::Status status);
     void setStatusText(QString text, int prio);
-    void setInfo(QString text);
+    void setInfo(QString text, int type);
     void clearMessages();
     void moduleMessage(int type, QString message);
     QList<Message> &messages();

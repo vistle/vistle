@@ -892,14 +892,18 @@ void Module::updateMeta(vistle::Object::ptr obj) const
     }
 }
 
-void Module::setItemInfo(const std::string &text, const std::string &port)
+void Module::setItemInfo(const std::string &text, const std::string &port, message::ItemInfo::InfoType type)
 {
+    using message::ItemInfo;
     if (rank() != 0)
         return;
-    auto &old = m_currentItemInfo[port];
+    if (type == ItemInfo::Unspecified) {
+        type = port.empty() ? ItemInfo::Module : ItemInfo::Port;
+    }
+    InfoKey key(port, type);
+    auto &old = m_currentItemInfo[key];
     if (old != text) {
-        using message::ItemInfo;
-        ItemInfo info(port.empty() ? ItemInfo::Module : ItemInfo::Port, port);
+        ItemInfo info(type, port);
         ItemInfo::Payload pl(text);
         sendMessageWithPayload(info, pl);
         old = text;
@@ -959,18 +963,28 @@ bool Module::passThroughObject(Port *port, vistle::Object::const_ptr object)
 
     std::string info;
     std::string species = object->getAttribute("_species");
+    std::string mapped, geometry, mapping;
     if (!species.empty()) {
         info += species + " - ";
     }
     std::string type = Object::toString(object->getType());
     info += type;
     if (auto d = DataBase::as(object)) {
+        mapped = type;
+        mapping = DataBase::toString(d->guessMapping());
         if (auto g = d->grid()) {
             info += " on ";
-            info += Object::toString(g->getType());
+            geometry = Object::toString(g->getType());
+            info += geometry;
         }
     }
-    setItemInfo(info, port->getName());
+    const std::string pname = port->getName();
+    setItemInfo(info, pname, message::ItemInfo::Port);
+    setItemInfo(type, pname, message::ItemInfo::PortType);
+    setItemInfo(species, pname, message::ItemInfo::PortSpecies);
+    setItemInfo(mapped, pname, message::ItemInfo::PortMapped);
+    setItemInfo(geometry, pname, message::ItemInfo::PortGeometry);
+    setItemInfo(mapping, pname, message::ItemInfo::PortMapping);
     return true;
 }
 
