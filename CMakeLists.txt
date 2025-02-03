@@ -19,6 +19,9 @@ project(
 
 message("CMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}")
 
+add_custom_target(vistle_doc)
+add_custom_target(vistle_doc_skip)
+
 if(POLICY CMP0042)
     # default to finding shlibs relative to @rpath on MacOS
     cmake_policy(SET CMP0042 NEW)
