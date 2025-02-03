@@ -1,4 +1,5 @@
 #include "unstr.h"
+#include "unstr_geo.h"
 #include "unstr_impl.h"
 #include "archives.h"
 #include <cassert>
@@ -13,6 +14,36 @@
 namespace vistle {
 
 static const Scalar Epsilon = 1e-7;
+
+template<std::size_t N>
+struct num {
+    static const constexpr auto value = N;
+};
+
+template<class F, std::size_t... Is>
+void for_(F func, std::index_sequence<Is...>)
+{
+    (func(num<Is>{}), ...);
+}
+
+constexpr std::array<const char *, UnstructuredGrid::NUM_TYPES> TypeNames = {
+    "NONE", "POINT",       "",           "BAR",        "POLYLINE", "TRIANGLE", "", "POLYGON", "",
+    "QUAD", "TETRAHEDRON", "POLYHEDRON", "HEXAHEDRON", "PRISM",    "PYRAMID"};
+
+constexpr std::array<const char *, UnstructuredGrid::NUM_TYPES> TypeNameAbbreviations = {
+    "NONE", "PT", "", "BAR", "LINE", "TRI", "", "PLG", "", "QUAD", "TETRA", "PLH", "HEXA", "PRISM", "PYR"};
+
+constexpr int NumSupportedTypes = 11;
+constexpr std::array<UnstructuredGrid::Type, NumSupportedTypes> SupportedTypes = {
+    UnstructuredGrid::POINT,      UnstructuredGrid::BAR,   UnstructuredGrid::POLYLINE,    UnstructuredGrid::TRIANGLE,
+    UnstructuredGrid::POLYGON,    UnstructuredGrid::QUAD,  UnstructuredGrid::TETRAHEDRON, UnstructuredGrid::POLYHEDRON,
+    UnstructuredGrid::HEXAHEDRON, UnstructuredGrid::PRISM, UnstructuredGrid::PYRAMID};
+
+const char *UnstructuredGrid::toString(Type t, bool abbreviation)
+{
+    assert(t > 0 && t < NUM_TYPES);
+    return abbreviation ? TypeNameAbbreviations[t] : TypeNames[t];
+}
 
 UnstructuredGrid::UnstructuredGrid(const size_t numElements, const size_t numCorners, const size_t numVertices,
                                    const Meta &meta)
@@ -223,6 +254,47 @@ Index UnstructuredGrid::cellNumVertices(Index elem) const
         return NumVertices[t];
     }
     return 0;
+}
+
+Scalar UnstructuredGrid::cellEdgeLength(Index elem) const
+{
+    Scalar retval = -1;
+    auto type = tl()[elem];
+    for_<NumSupportedTypes>([&](auto i) {
+        if (SupportedTypes[i.value] == type) {
+            retval = edgeLength<SupportedTypes[i.value]>(cellNumVertices(elem), &cl()[el()[elem]],
+                                                         {&x()[0], &y()[0], &z()[0]});
+        }
+    });
+    return retval;
+}
+
+Scalar UnstructuredGrid::cellSurface(Index elem) const
+{
+    Scalar retval = -1;
+    auto type = tl()[elem];
+    for_<NumSupportedTypes>([&](auto i) {
+        if (SupportedTypes[i.value] == type) {
+            retval =
+                surface<SupportedTypes[i.value]>(cellNumVertices(elem), &cl()[el()[elem]], {&x()[0], &y()[0], &z()[0]});
+            return;
+        }
+    });
+    return retval;
+}
+
+Scalar UnstructuredGrid::cellVolume(Index elem) const
+{
+    Scalar retval = -1;
+    auto type = tl()[elem];
+    for_<NumSupportedTypes>([&](auto i) {
+        if (SupportedTypes[i.value] == type) {
+            retval =
+                volume<SupportedTypes[i.value]>(cellNumVertices(elem), &cl()[el()[elem]], {&x()[0], &y()[0], &z()[0]});
+            return;
+        }
+    });
+    return retval;
 }
 
 Index UnstructuredGrid::cellNumFaces(Index elem) const
@@ -681,20 +753,6 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
     }
 
     return Interpolator(weights, indices);
-}
-
-std::pair<Vector3, Vector3> UnstructuredGrid::elementBounds(Index elem) const
-{
-    const auto t = tl()[elem];
-    if (NumVertices[t] >= 0) {
-        return Base::elementBounds(elem);
-    }
-
-    if (t == UnstructuredGrid::POLYHEDRON) {
-        return Base::elementBounds(elem);
-    }
-
-    return Base::elementBounds(elem);
 }
 
 std::vector<Index> UnstructuredGrid::cellVertices(Index elem) const

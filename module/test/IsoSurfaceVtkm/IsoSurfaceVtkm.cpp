@@ -113,9 +113,9 @@ bool IsoSurfaceVtkm::reduce(int timestep)
     lock.unlock();
     if ((m_pointOrValue->getValue() == PointInFirstStep && !m_performedPointSearch && timestep <= 0) ||
         m_pointOrValue->getValue() == PointPerTimestep) {
-        int found = 0;
         const int numBlocks = blocks.size();
-#pragma omp parallel for
+        int found = 0;
+#pragma omp parallel for firstprivate(value) lastprivate(value) reduction(+ : found)
         for (int i = 0; i < numBlocks; ++i) {
             const auto &b = blocks[i];
             auto gi = b.grid->getInterface<GridInterface>();

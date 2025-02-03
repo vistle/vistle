@@ -5,10 +5,14 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 
 void ensight::parser::error(const ensight::location &location, const std::string &msg)
 {
-    std::cerr << "parse error at " << location << ": " << msg << std::endl;
+    std::stringstream str;
+    str << "parse error at " << location << ": " << msg;
+    driver.lastError_ = str.str();
+    std::cerr << driver.lastError_ << std::endl;
 }
 
 CaseParserDriver::CaseParserDriver(const std::string &sFileName)
@@ -19,17 +23,23 @@ CaseParserDriver::CaseParserDriver(const std::string &sFileName)
 
     inputFile_ = new std::ifstream(sFileName.c_str());
     if (!inputFile_->is_open()) {
-        fprintf(stderr, "could not open %s for reading", sFileName.c_str());
         delete inputFile_;
         inputFile_ = nullptr;
+        std::stringstream str;
+        str << "could not open " << sFileName << " for reading";
+        lastError_ = str.str();
+        std::cerr << lastError_ << std::endl;
         return;
     }
 
     inputFile_->peek(); // try to exclude directories
     if (inputFile_->fail()) {
-        fprintf(stderr, "could not open %s for reading - fail", sFileName.c_str());
         delete inputFile_;
         inputFile_ = nullptr;
+        std::stringstream str;
+        str << "could not open " << sFileName << " for reading - fail";
+        lastError_ = str.str();
+        std::cerr << lastError_ << std::endl;
         return;
     }
 
@@ -47,6 +57,11 @@ CaseParserDriver::~CaseParserDriver()
 
     delete inputFile_;
     inputFile_ = nullptr;
+}
+
+std::string CaseParserDriver::lastError() const
+{
+    return lastError_;
 }
 
 void CaseParserDriver::setVerbose(bool enable)

@@ -281,9 +281,9 @@ bool ReadTsunami::inspectScalars(const NcFilePtr &ncFile)
     };
 
     //delete previous choicelists.
-    m_bathy->setChoices(vector<string>());
+    setParameterChoices(m_bathy, vector<string>());
     for (const auto &scalar: m_scalars)
-        scalar->setChoices(vector<string>());
+        setParameterChoices(scalar, vector<string>());
 
     //read names of scalars
     for (auto &[name, val]: ncFile->getVars()) {

@@ -830,8 +830,8 @@ const OsgColorMap *VistleGeometryGenerator::getColorMap(const std::string &speci
 {
 #ifdef COVER_PLUGIN
     std::lock_guard<std::mutex> lock(s_coverMutex);
-    if (m_colormaps && !m_species.empty()) {
-        auto it = m_colormaps->find(m_species);
+    if (m_colormaps) {
+        auto it = m_colormaps->find(species);
         if (it != m_colormaps->end()) {
             return &it->second;
         }

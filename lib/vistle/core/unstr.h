@@ -31,6 +31,8 @@ public:
         NUM_TYPES = cell::NUM_TYPES, // 15
     };
 
+    static const char *toString(Type t, bool abbreviation = false);
+
     static constexpr Index MaxNumVertices = 4;
     static constexpr Index MaxNumFaces = 6;
     static constexpr int Dimensionality[NUM_TYPES] = {
@@ -127,7 +129,7 @@ public:
                 |  3-------|--2
                 | /        | /
                 |/         |/
-                0----------1
+                -0---------1
             */
             { 3, 2, 1, 0 },
             { 4, 5, 6, 7 },
@@ -188,13 +190,15 @@ public:
 
     Interpolator getInterpolator(Index elem, const Vector3 &point, Mapping mapping = Vertex,
                                  InterpolationMode mode = Linear) const override;
-    std::pair<Vector3, Vector3> elementBounds(Index elem) const override;
     std::vector<Index> cellVertices(Index elem) const override;
     Scalar cellDiameter(Index elem) const override;
     Vector3 cellCenter(Index elem) const override;
     std::vector<Index> getNeighborElements(Index elem) const override;
     Index cellNumFaces(Index elem) const override;
     Index cellNumVertices(Index elem) const override;
+    Scalar cellEdgeLength(Index elem) const;
+    Scalar cellSurface(Index elem) const;
+    Scalar cellVolume(Index elem) const;
 
 private:
     mutable ShmArrayProxy<Byte> m_tl;

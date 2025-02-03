@@ -152,6 +152,7 @@ set(core_HEADERS
     uniformgrid.h
     uniformgrid_impl.h
     unstr.h
+    unstr_geo.h
     unstr_impl.h
     uuid.h
     vec.h

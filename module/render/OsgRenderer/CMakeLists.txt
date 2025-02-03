@@ -20,15 +20,6 @@ if(EGL_FOUND)
     set(EGL_SOURCES EGLWindow.h EGLWindow.cpp)
 endif()
 
-set(USE_TBB FALSE)
-if(OPENMP_FOUND)
-    use_openmp()
-elseif(TBB_FOUND)
-    add_definitions(-DUSE_TBB)
-    include_directories(SYSTEM ${TBB_INCLUDE_DIRS})
-    set(USE_TBB TRUE)
-endif()
-
 add_module(
     OsgRenderer
     "OpenSceneGraph remote renderer"
@@ -65,7 +56,3 @@ target_link_libraries(
     vistle_renderer
     vistle_rhr
     ${ZLIB_LIBRARIES})
-
-if(USE_TBB)
-    target_link_libraries(OsgRenderer ${TBB_LIBRARIES})
-endif()

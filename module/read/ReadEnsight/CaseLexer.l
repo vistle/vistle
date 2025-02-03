@@ -224,6 +224,13 @@ FILE[ \t]* {
     return( CaseParser::token::DOUBLE );
 }
 
+[^\"\n\t #]* {
+    // accept anything except "#
+    strncpy( pToken->token.szValue, yytext, yyleng );
+    pToken->token.szValue[ yyleng ] = '\0';
+    return( CaseParser::token::FILENAME );
+}
+
 
 
 \"[^\"\n]*\" {
