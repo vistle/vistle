@@ -34,7 +34,7 @@ private:
 #endif // MYMODULE_H
 ```
 
-To create a new Vistle module, create a class which inherits from the `vistle::Module` class. The name of that class is the module's name and will also be displayed in the GUI later on.
+To create a new Vistle module, create a class which inherits from the `vistle::Module` class. The name of that class should match the module's name, so that is can be easily discovered. However, the name that is visible in the GUI later on, is determined by the `CMakeLists.txt` scripts(see below).
 The input and output ports as well as the parameters of the module are defined in the class's constructor. The computations done by the module are defined in the `compute` method. This method is called whenever the Vistle pipeline is executed or you double-click on the module.
 
 ### The Main Function
@@ -342,7 +342,8 @@ Choose the category which fits your module best. The categories are explained in
 
 As it does not have any concrete functionality, **MyModule** will be placed into the **Test** category. By convention, all code files for a module are placed inside a folder named after the module. So, for **MyModule** a folder called `MyModule` must be created inside `module/test` and the source and header files we have created earlier must be moved inside.
 
-To tell Vistle to compile our code, we have to create a `CMakeLists.txt` file which calls the `add_module` target. Pass the module's name, a short description as well as all necessary header and source files to the target call. Note that the short description will be shown whenever you hover over the **MyModule** module in the Vistle GUI.
+To tell the system to compile our code, we have to create a `CMakeLists.txt` file which calls the `add_module` target. Pass the module's name, a short description as well as all necessary header and source files to the `add_module` call. Note that the short description will be shown whenever you hover over the **MyModule** module in the Vistle GUI. The first argument is the name of the module as it will be known to Vistle.
+By convention, the main source file is named accordingly.
 
 `module/test/MyModule/CMakeLists.txt`
 ```cmake
@@ -367,4 +368,4 @@ add_subdirectory(ObjectStatistics)
 
 ```
 
-Now, when you compile Vistle, your module will be build and added to the module browser, allowing you to use it. 
+Now, when you compile Vistle, your module will be built. It will be added to the module browser on Vistle's next invocation, allowing you to use it. 
