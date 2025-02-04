@@ -47,7 +47,6 @@ private:
     std::map<std::string, EntryList> m_cache, m_oldCache;
 
     std::map<std::string, Meta> m_meta;
-    ObjectList m_emptyList;
 };
 
 V_ENUM_OUTPUT_OP(CacheMode, ObjectCache)
