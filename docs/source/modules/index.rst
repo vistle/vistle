@@ -41,12 +41,14 @@ Modules
    ExtractGrid.md
    Extrema.md
    FieldToLines.md
+   FilterCells.md
    FilterNode.md
    FlattenTriangles.md
    FlowTopo.md
    GenIsoDat.md
    Gendat.md
    GhostCellGenerator.md
+   GridElementStatistics.md
    InSituModule.md
    IndexManifolds.md
    IsoHeightSurface.md
@@ -64,6 +66,7 @@ Modules
    PrintMetaData.md
    ReadCovise.md
    ReadCoviseDirectory.md
+   ReadCsv.md
    ReadDuisburg.md
    ReadDyna3D.md
    ReadEnsight.md
