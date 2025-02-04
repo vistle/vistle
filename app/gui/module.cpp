@@ -760,6 +760,8 @@ void Module::updateText()
                 m_displayName = "X";
             if (m_name.startsWith("Thicken"))
                 m_displayName = "Th";
+            if (m_name.startsWith("VortexCriteria"))
+                m_displayName = "Vortex";
             m_displayName += ":" + m_info;
             if (m_displayName.length() > 21) {
                 m_displayName = m_displayName.left(20) + "…";
