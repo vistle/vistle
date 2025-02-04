@@ -2004,7 +2004,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec)
                         auto cache = m_cache.getObjects(port.first);
                         if (!cache.second) {
                             // FIXME: should collectively ignore cache
-                            CERR << "failed to retrieve objects from input cache" << std::endl;
+                            CERR << "failed to retrieve objects from input cache on port " << port.first << std::endl;
                             cache.first.clear();
                         }
                         auto objs = cache.first;
