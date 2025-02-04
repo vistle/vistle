@@ -112,7 +112,7 @@ std::pair<ObjectList, bool> ObjectCache::getObjects(const std::string &portname)
 {
     auto it = m_cache.find(portname);
     if (it == m_cache.end()) {
-        return std::make_pair(m_emptyList, false);
+        return std::make_pair(ObjectList{}, false);
     }
     const auto &cache = it->second;
 
@@ -123,7 +123,7 @@ std::pair<ObjectList, bool> ObjectCache::getObjects(const std::string &portname)
         } else if (auto o = Shm::the().getObjectFromName(e.name)) {
             objs.push_back(o);
         } else {
-            return std::make_pair(m_emptyList, false);
+            return std::make_pair(ObjectList{}, false);
         }
     }
     return std::make_pair(objs, true);
