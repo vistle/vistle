@@ -31,14 +31,14 @@ bool CuttingSurfaceVtkm::changeParameter(const Parameter *param)
 {
     bool ok = m_implFuncControl.changeParameter(param);
     return Module::changeParameter(param) && ok;
-}   
+}
 
 bool CuttingSurfaceVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task) const
 {
     auto container = task->accept<Object>(m_mapDataIn);
     auto split = splitContainerObject(container);
-    auto mapdata = split.mapped;
-    if (!mapdata) {
+    auto mapField = split.mapped;
+    if (!mapField) {
         sendError("no mapped data");
         return true;
     }
@@ -48,24 +48,16 @@ bool CuttingSurfaceVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task)
         return true;
     }
 
-    auto obj = work(grid);
-    task->addObject(m_dataOut, obj);
-
-    return true;
-}
-
-vistle::Object::ptr CuttingSurfaceVtkm::work(vistle::Object::const_ptr grid) const
-{
     // transform Vistle to VTK-m dataset
     vtkm::cont::DataSet vtkmDataSet;
     auto status = vtkmSetGrid(vtkmDataSet, grid);
     if (status == VtkmTransformStatus::UNSUPPORTED_GRID_TYPE) {
         sendError("Currently only supporting unstructured grids");
-        return Object::ptr();
+        return true;
     } else if (status == VtkmTransformStatus::UNSUPPORTED_CELL_TYPE) {
         sendError("Can only transform these cells from vistle to vtkm: point, bar, triangle, polygon, quad, tetra, "
                   "hexahedron, pyramid");
-        return Object::ptr();
+        return true;
     }
 
     // apply vtk-m filter
@@ -73,18 +65,53 @@ vistle::Object::ptr CuttingSurfaceVtkm::work(vistle::Object::const_ptr grid) con
     sliceFilter.SetImplicitFunction(m_implFuncControl.func());
     sliceFilter.SetMergeDuplicatePoints(false);
     sliceFilter.SetGenerateNormals(m_computeNormals->getValue() != 0);
+
+    std::string mapSpecies;
+    if (mapField) {
+        mapSpecies = mapField->getAttribute("_species");
+        if (mapSpecies.empty())
+            mapSpecies = "mapdata";
+        status = vtkmAddField(vtkmDataSet, mapField, mapSpecies);
+        if (status == VtkmTransformStatus::UNSUPPORTED_FIELD_TYPE) {
+            sendError("Unsupported mapped field type");
+            return true;
+        }
+        sliceFilter.SetActiveField(mapSpecies);
+    }
+
     auto sliceResult = sliceFilter.Execute(vtkmDataSet);
 
     // transform result back to Vistle
     Object::ptr geoOut = vtkmGetGeometry(sliceResult);
-    if (!geoOut) {
-        return Object::ptr();
+    if (geoOut) {
+        updateMeta(geoOut);
+        geoOut->copyAttributes(grid);
+        geoOut->setTransform(grid->getTransform());
+        if (geoOut->getTimestep() < 0) {
+            geoOut->setTimestep(grid->getTimestep());
+            geoOut->setNumTimesteps(grid->getNumTimesteps());
+        }
+        if (geoOut->getBlock() < 0) {
+            geoOut->setBlock(grid->getBlock());
+            geoOut->setNumBlocks(grid->getNumBlocks());
+        }
     }
 
-    updateMeta(geoOut);
-    geoOut->copyAttributes(grid);
-    geoOut->copyAttributes(grid, false);
-    geoOut->setTransform(grid->getTransform());
+    if (mapField) {
+        if (auto mapped = vtkmGetField(sliceResult, mapSpecies)) {
+            std::cerr << "mapped data: " << *mapped << std::endl;
+            mapped->copyAttributes(mapField);
+            mapped->setGrid(geoOut);
+            updateMeta(mapped);
+            task->addObject(m_dataOut, mapped);
+            return true;
+        } else {
+            sendError("could not handle mapped data");
+            task->addObject(m_dataOut, geoOut);
+        }
+    } else {
+        task->addObject(m_dataOut, geoOut);
+    }
 
-    return geoOut;
+    return true;
 }
