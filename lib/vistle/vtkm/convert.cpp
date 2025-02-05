@@ -323,7 +323,8 @@ struct GetArrayContents {
     {
         auto data = std::make_shared<vistle::Vec<V, Dim>>(array.GetNumberOfValues());
         for (int i = 0; i < Dim; ++i) {
-            data->d()->x[i]->setHandle(array);
+            auto comp = vtkm::cont::make_ArrayHandleExtractComponent(array, i);
+            data->d()->x[i]->setHandle(comp);
         }
         return data;
     }
