@@ -4,6 +4,7 @@
 #include <vtkm/ImplicitFunction.h>
 
 #include <vistle/module/module.h>
+#include <vistle/vtkm/ImplFuncController.h>
 
 class CuttingSurfaceVtkm: public vistle::Module {
 public:
@@ -12,18 +13,14 @@ public:
 
 private:
     bool compute(const std::shared_ptr<vistle::BlockTask> &task) const override;
+    bool changeParameter(const vistle::Parameter *param) override;
     vistle::Object::ptr work(vistle::Object::const_ptr grid) const;
 
     vistle::Port *m_mapDataIn, *m_dataOut;
 
-    vistle::VectorParameter *m_point;
-    vistle::VectorParameter *m_vertex;
-    vistle::FloatParameter *m_scalar;
-    vistle::IntParameter *m_option;
-    vistle::VectorParameter *m_direction;
     vistle::IntParameter *m_computeNormals;
 
-    vtkm::ImplicitFunctionGeneral getImplicitFunction() const;
+    ImplFuncController m_implFuncControl;
 };
 
 #endif // CUTTING_SURFACE_VTKM_H
