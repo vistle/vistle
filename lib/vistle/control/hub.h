@@ -325,6 +325,7 @@ private:
 
     std::mutex m_outstandingDataConnectionMutex;
     std::map<vistle::message::AddHub, std::future<bool>> m_outstandingDataConnections;
+    bool checkOutstandingDataConnections();
 
     std::unique_ptr<PythonInterpreter> m_python;
 

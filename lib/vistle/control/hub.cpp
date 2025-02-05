@@ -1388,6 +1388,26 @@ bool Hub::dispatch()
         m_tunnelManager.cleanUp();
     }
 
+    if (checkOutstandingDataConnections()) {
+        work = true;
+    }
+
+
+    vistle::adaptive_wait(work);
+
+    if (ret == false) {
+        if (m_verbose >= Verbosity::Manager) {
+            CERR << "dispatch: returning false for Quit" << std::endl;
+        }
+    }
+
+    return ret;
+}
+
+bool Hub::checkOutstandingDataConnections()
+{
+    bool changed = false;
+
     std::unique_lock<std::mutex> dataConnGuard(m_outstandingDataConnectionMutex);
     for (auto it = m_outstandingDataConnections.begin(); it != m_outstandingDataConnections.end(); ++it) {
         if (!it->second.valid())
@@ -1395,7 +1415,7 @@ bool Hub::dispatch()
         if (it->second.wait_for(std::chrono::seconds(0)) != std::future_status::ready)
             continue;
 
-        work = true;
+        changed = true;
 
         auto &add = it->first;
         bool ok = it->second.get();
@@ -1420,17 +1440,8 @@ bool Hub::dispatch()
         m_outstandingDataConnections.erase(it);
         break;
     }
-    dataConnGuard.unlock();
 
-    vistle::adaptive_wait(work);
-
-    if (ret == false) {
-        if (m_verbose >= Verbosity::Manager) {
-            CERR << "dispatch: returning false for Quit" << std::endl;
-        }
-    }
-
-    return ret;
+    return changed;
 }
 
 void Hub::handleWrite(Hub::socket_ptr sock, const boost::system::error_code &error)
@@ -4219,6 +4230,12 @@ void Hub::emergencyQuit()
 
     CERR << "forced to quit" << std::endl;
     m_emergency = true;
+
+    for (auto lock = std::unique_lock(m_outstandingDataConnectionMutex); !m_outstandingDataConnections.empty();) {
+        lock.unlock();
+        checkOutstandingDataConnections();
+        lock.lock();
+    }
 
     m_workGuard.reset();
     m_ioContext.stop();
