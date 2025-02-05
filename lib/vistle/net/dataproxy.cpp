@@ -660,7 +660,7 @@ bool DataProxy::connectRemoteData(const message::AddHub &remote)
     timer.expires_from_now(boost::posix_time::seconds(connection_timeout));
     timer.async_wait([this, hubId, connectingSockets](const boost::system::error_code &ec) {
         if (ec == asio::error::operation_aborted) {
-            // timer was cancelled
+            // timer was canceled
             return;
         }
         if (ec) {
