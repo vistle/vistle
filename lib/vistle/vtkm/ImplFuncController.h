@@ -14,11 +14,9 @@ public:
     void init();
     bool changeParameter(const vistle::Parameter *param);
 
-    bool flip() const;
     vtkm::ImplicitFunctionGeneral func() const;
 
 private:
     vistle::Module *m_module = nullptr;
     vistle::IntParameter *m_option = nullptr;
-    vistle::IntParameter *m_flip = nullptr;
 };

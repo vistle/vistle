@@ -13,6 +13,8 @@ public:
 private:
     vistle::Port *m_dataOut = nullptr;
 
+    vistle::IntParameter *m_flip = nullptr;
+
     bool compute(const std::shared_ptr<vistle::BlockTask> &task) const override;
     bool changeParameter(const vistle::Parameter *param) override;
 

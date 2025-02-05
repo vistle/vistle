@@ -21,6 +21,7 @@ ClipVtkm::ClipVtkm(const std::string &name, int moduleID, mpi::communicator comm
     m_dataOut = createOutputPort("grid_out", "surface with mapped data");
 
     m_implFuncControl.init();
+    m_flip = addIntParameter("flip", "flip inside out", false, Parameter::Boolean);
 }
 
 ClipVtkm::~ClipVtkm()
@@ -76,7 +77,7 @@ bool ClipVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task) const
         clipFilter.SetActiveField(mapSpecies);
     }
     clipFilter.SetImplicitFunction(m_implFuncControl.func());
-    clipFilter.SetInvertClip(m_implFuncControl.flip());
+    clipFilter.SetInvertClip(m_flip->getValue() != 0);
     auto clipped = clipFilter.Execute(vtkmDataSet);
 
     // transform result back into vistle format

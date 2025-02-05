@@ -2,7 +2,7 @@
 
 using namespace vistle;
 
-ImplFuncController::ImplFuncController(vistle::Module *module): m_module(module), m_option(nullptr), m_flip(nullptr)
+ImplFuncController::ImplFuncController(vistle::Module *module): m_module(module), m_option(nullptr)
 {}
 
 void ImplFuncController::init()
@@ -13,7 +13,6 @@ void ImplFuncController::init()
     m_option = m_module->addIntParameter("option", "option", Plane, Parameter::Choice);
     m_module->setParameterChoices(m_option, valueList((ImplFuncOption)0));
     m_module->addVectorParameter("direction", "direction for variable Cylinder", ParamVector(0.0, 0.0, 0.0));
-    m_flip = m_module->addIntParameter("flip", "flip inside out", false, Parameter::Boolean);
 }
 
 bool ImplFuncController::changeParameter(const vistle::Parameter *param)
@@ -80,11 +79,6 @@ bool ImplFuncController::changeParameter(const vistle::Parameter *param)
     }
 
     return false;
-}
-
-bool ImplFuncController::flip() const
-{
-    return m_flip->getValue() != 0;
 }
 
 vtkm::ImplicitFunctionGeneral ImplFuncController::func() const
