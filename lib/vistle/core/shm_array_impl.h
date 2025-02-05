@@ -121,6 +121,7 @@ void shm_array<T, allocator>::setHandle(const ArrayHandle &h)
                                                      [](void *) {});
     vtkm::cont::ArrayCopy(h, handle);
     handle.SyncControlArray();
+    invalidate_bounds();
 #endif
 }
 
