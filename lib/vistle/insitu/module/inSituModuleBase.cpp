@@ -136,6 +136,7 @@ const insitu::message::MessageHandler *InSituModuleBase::getMessageHandler() con
 
 bool InSituModuleBase::changeParameter(const Parameter *param)
 {
+    Module::changeParameter(param);
     if (!param) {
         return true;
     }
@@ -153,6 +154,15 @@ bool InSituModuleBase::changeParameter(const Parameter *param)
         if (it != m_intOptions.end()) {
             m_messageHandler->send(message::IntOption{{intParam->getName(), intParam->getValue()}});
         }
+    }
+    return true;
+}
+
+bool InSituModuleBase::parameterAdded(const int senderId, const std::string &name,
+                                      const vistle::message::AddParameter &msg, const std::string &moduleName)
+{
+    if (m_filePath && name == m_filePath->getName()) {
+        initializeCommunication();
     }
     return true;
 }

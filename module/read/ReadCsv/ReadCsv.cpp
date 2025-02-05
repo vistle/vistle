@@ -28,24 +28,25 @@ ReadCsv::ReadCsv(const std::string &name, int moduleID, mpi::communicator comm):
     createOutputPort("points_out", "unordered points");
     m_directory = addStringParameter("directory", "directory with CSV files", "", Parameter::ExistingDirectory);
     setParameterFilters(m_directory, "CSV files (*.csv)");
-    m_filename = addIntParameter("filename", "Name of file", 0, Parameter::Choice);
+    m_filename = addIntParameter("filename", "select all files or a specif one", 0, Parameter::Choice);
     observeParameter(m_directory);
     observeParameter(m_filename);
 
-    m_layerMode = addIntParameter("layerMode", "layer mode", 0, Parameter::Choice);
+    m_layerMode = addIntParameter("layer_mode", "offset the configured axis by layer offset", 0, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_layerMode, LayerMode);
-    m_layerOffset = addFloatParameter("layerOffset", "layer offset", 0);
-    m_layersInOneObject = addIntParameter("layersInOneObject", "layers in one object", false, Parameter::Boolean);
+    m_layerOffset = addFloatParameter("layer_offset", "offset the axis configured in layer mode", 0);
+    m_layersInOneObject = addIntParameter(
+        "single_object", "combine all files to a single points object with optional data", false, Parameter::Boolean);
     observeParameter(m_layersInOneObject);
     static const std::array<std::string, NUM_COORD_FIELDS> coordNames = {"x", "y", "z"};
     for (size_t i = 0; i < NUM_COORD_FIELDS; i++) {
         m_selectionParams[i] =
-            addIntParameter(coordNames[i] + "Name", "Name of " + coordNames[i] + " column", 0, Parameter::Choice);
+            addIntParameter(coordNames[i] + "_name", "Name of " + coordNames[i] + " column", 0, Parameter::Choice);
     }
 
     for (size_t i = 0; i < NUM_DATA_FIELDS; i++) {
         m_selectionParams[i + NUM_COORD_FIELDS] =
-            addIntParameter("dataName" + std::to_string(i),
+            addIntParameter("data_name_" + std::to_string(i),
                             "Name of data column outputted at data_out_" + std::to_string(i), 0, Parameter::Choice);
         createOutputPort("data_out" + std::to_string(i), "data on points from column dataName" + std::to_string(i));
     }
@@ -133,10 +134,21 @@ bool ReadCsv::examine(const Parameter *param)
         m_delimiter = determineDelimiter(line);
         m_choices = std::vector<std::string>{"NONE"};
         splitLine(m_choices, line, m_delimiter);
+        auto lowerChoices = m_choices;
+        std::transform(lowerChoices.begin(), lowerChoices.end(), lowerChoices.begin(), [](std::string s) {
+            std::transform(s.begin(), s.end(), s.begin(), ::tolower);
+            return s;
+        });
 
         for (auto p: m_selectionParams) {
             setParameterChoices(p, m_choices);
-            std::cerr << "choices for " << p->getName() << std::endl;
+            if (param == nullptr || (param != m_filename && param != m_directory))
+                continue;
+            auto subName = p->getName().substr(0, p->getName().find("_"));
+            auto it = std::find(lowerChoices.begin(), lowerChoices.end(), subName);
+            if (it != lowerChoices.end()) {
+                setParameter(p, std::distance(lowerChoices.begin(), it));
+            }
         }
     }
     if (param == m_layersInOneObject) {
@@ -217,6 +229,7 @@ void ReadCsv::readLayer(size_t layer, vistle::Points::ptr &points,
     for (size_t i = 0; i < NUM_FIELDS; i++) {
         colNames[i] = m_choices[m_selectionParams[i]->getValue()].c_str();
     }
+    std::cerr << "Delimiter " << Delimiter << std::endl;
     read_header(in, colNames);
     std::array<float, NUM_FIELDS> csvData;
     csvData.fill(0);
@@ -234,6 +247,9 @@ void ReadCsv::readLayer(size_t layer, vistle::Points::ptr &points,
                 dataFields[i]->x().push_back(csvData[i + NUM_COORD_FIELDS]);
             }
         }
+        std::cerr << "added pint 1 " << csvData[0] << " " << csvData[1] << " " << csvData[2] << std::endl;
+        std::cerr << "added point 2 " << points->x().back() << " " << points->y().back() << " " << points->z().back()
+                  << std::endl;
     }
 }
 
