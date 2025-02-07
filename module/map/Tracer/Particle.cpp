@@ -25,8 +25,8 @@ Particle::Particle(Index id, int rank, Index startId, const Vector3 &pos, bool f
 , m_x(pos)
 , m_xold(pos)
 , m_v(Vector3(std::numeric_limits<Scalar>::max(), 0, 0))
-, // keep large enough so that particle moves initially
-m_p(0)
+// keep large enough so that particle moves initially
+, m_p(0)
 , m_stp(0)
 , m_time(0)
 , m_dist(0)
