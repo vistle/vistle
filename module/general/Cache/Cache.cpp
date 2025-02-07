@@ -136,7 +136,7 @@ bool Cache::compute()
             if (m_toDisk) {
                 assert(m_fd != -1);
 
-                // serialialize object and all not-yet-serialized sub-objects to memory
+                // serialize object and all not-yet-serialized sub-objects to memory
                 vecostreambuf<buffer> memstr;
                 vistle::oarchive memar(memstr);
                 memar.setCompressionSettings(m_compressionSettings);
