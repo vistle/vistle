@@ -159,10 +159,16 @@ public:
         updateFromHandle();
         return m_data[0];
     }
-    bool empty() const { return m_size == 0; }
+    bool empty() const
+    {
+        return m_size == 0;
+    }
     void clear();
 
-    size_t size() const { return m_size; }
+    size_t size() const
+    {
+        return m_size;
+    }
     void resize(const size_t size);
     void resize(const size_t size, const T &value);
 
@@ -172,7 +178,10 @@ public:
     bool exact() const;
     size_t dimensionHint(int d) const;
 
-    size_t capacity() const { return m_capacity; }
+    size_t capacity() const
+    {
+        return m_capacity;
+    }
     void reserve(const size_t new_capacity);
     void reserve_or_shrink(const size_t capacity);
     void shrink_to_fit();
