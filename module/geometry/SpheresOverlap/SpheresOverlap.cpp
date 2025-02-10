@@ -66,12 +66,9 @@ bool SpheresOverlap::compute(const std::shared_ptr<BlockTask> &task) const
         // create vtk-m dataset from vistle data
         vtkm::cont::DataSet vtkmSpheres;
         auto status = vtkmSetGrid(vtkmSpheres, spheres);
-        if (status == VtkmTransformStatus::UNSUPPORTED_GRID_TYPE) {
-            sendError("Currently only supporting unstructured grids");
-            return true;
-        } else if (status == VtkmTransformStatus::UNSUPPORTED_CELL_TYPE) {
-            sendError("Can only transform these cells from vistle to vtkm: point, bar, triangle, polygon, quad, tetra, "
-                      "hexahedron, pyramid");
+
+        if (!status->isSuccessful()) {
+            sendError(status->errorMessage());
             return true;
         }
 

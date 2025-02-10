@@ -10,11 +10,12 @@
 
 #include "export.h"
 #include "convert.h"
+#include "convert_status.h"
 
 namespace vistle {
 
 Object::ptr vtkmGetTopology(const vtkm::cont::DataSet &dataset);
-VtkmTransformStatus vtkmSetTopology(vtkm::cont::DataSet &vtkmDataset, vistle::Object::const_ptr grid);
+std::unique_ptr<ConvertStatus> vtkmSetTopology(vtkm::cont::DataSet &vtkmDataset, vistle::Object::const_ptr grid);
 } // namespace vistle
 
 #endif

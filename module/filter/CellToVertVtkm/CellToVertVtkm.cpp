@@ -114,13 +114,8 @@ bool CellToVertVtkm::compute(const std::shared_ptr<BlockTask> &task) const
             // transform vistle dataset to vtkm dataset
             vtkm::cont::DataSet vtkmDataSet;
             auto status = vtkmSetGrid(vtkmDataSet, grid);
-            if (status == VtkmTransformStatus::UNSUPPORTED_GRID_TYPE) {
-                sendError("Currently only supporting unstructured grids");
-                return true;
-            } else if (status == VtkmTransformStatus::UNSUPPORTED_CELL_TYPE) {
-                sendError(
-                    "Can only transform these cells from vistle to vtkm: point, bar, triangle, polygon, quad, tetra, "
-                    "hexahedron, pyramid");
+            if (!status->isSuccessful()) {
+                sendError(status->errorMessage());
                 return true;
             }
 
@@ -135,8 +130,8 @@ bool CellToVertVtkm::compute(const std::shared_ptr<BlockTask> &task) const
             if (mapSpecies.empty())
                 mapSpecies = "mapdata";
             status = vtkmAddField(vtkmDataSet, data, mapSpecies);
-            if (status == VtkmTransformStatus::UNSUPPORTED_FIELD_TYPE) {
-                sendError("Unsupported mapped field type");
+            if (!status->isSuccessful()) {
+                sendError(status->errorMessage());
                 return true;
             }
             filter.SetActiveField(mapSpecies);
