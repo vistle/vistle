@@ -85,6 +85,12 @@ bool operator>=(const CelltreeNode<IndexSize, NumDimensions> &n0, const Celltree
 }
 
 template<size_t IndexSize, int NumDimensions>
+bool operator!=(const CelltreeNode<IndexSize, NumDimensions> &n0, const CelltreeNode<IndexSize, NumDimensions> &n1)
+{
+    return n0.start != n1.start;
+}
+
+template<size_t IndexSize, int NumDimensions>
 std::ostream &operator<<(std::ostream &os, const CelltreeNode<IndexSize, NumDimensions> &n)
 {
     os << "(" << n.start << "+" << n.size << "/" << n.dim << " -> " << n.child << ")";

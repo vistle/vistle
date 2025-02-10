@@ -159,16 +159,10 @@ public:
         updateFromHandle();
         return m_data[0];
     }
-    bool empty() const
-    {
-        return m_size == 0;
-    }
+    bool empty() const { return m_size == 0; }
     void clear();
 
-    size_t size() const
-    {
-        return m_size;
-    }
+    size_t size() const { return m_size; }
     void resize(const size_t size);
     void resize(const size_t size, const T &value);
 
@@ -178,17 +172,16 @@ public:
     bool exact() const;
     size_t dimensionHint(int d) const;
 
-    size_t capacity() const
-    {
-        return m_capacity;
-    }
+    size_t capacity() const { return m_capacity; }
     void reserve(const size_t new_capacity);
     void reserve_or_shrink(const size_t capacity);
     void shrink_to_fit();
 
     bool bounds_valid() const
     {
-        return m_max >= m_min;
+        // this behaves wrong if either is set to NaN
+        // return m_max >= m_min;
+        return m_min != std::numeric_limits<value_type>::max() && m_max != std::numeric_limits<value_type>::lowest();
     }
     void invalidate_bounds();
     void update_bounds();
