@@ -279,21 +279,9 @@ Module::Module(const std::string &moduleName, const int moduleId, mpi::communica
     auto layer = addIntParameter("_layer", "layer in GUI", Integer(0));
     setParameterMinimum(layer, Integer(-1));
 
-    auto em = addIntParameter("_error_output_mode", "where stderr is shown", size() == 1 ? 1 : 1, Parameter::Choice);
-    std::vector<std::string> errmodes;
-    errmodes.push_back("No output");
-    errmodes.push_back("Console only");
-    errmodes.push_back("GUI");
-    errmodes.push_back("Console & GUI");
-    setParameterChoices(em, errmodes);
-
     auto validate = addIntParameter("_validate_objects", "validate data objects before sending to port",
                                     m_validateObjects, Parameter::Choice);
     V_ENUM_SET_CHOICES(validate, ObjectValidation);
-
-
-    auto outrank = addIntParameter("_error_output_rank", "rank from which to show stderr (-1: all ranks)", -1);
-    setParameterRange<Integer>(outrank, -1, size() - 1);
 
     auto openmp_threads = addIntParameter("_openmp_threads", "number of OpenMP threads (0: system default)", 0);
     setParameterRange<Integer>(openmp_threads, 0, 4096);
