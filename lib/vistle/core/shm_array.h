@@ -186,8 +186,13 @@ public:
     void reserve_or_shrink(const size_t capacity);
     void shrink_to_fit();
 
+    // checks if the bounds have already been set
     bool bounds_valid() const
     {
+        // The bounds have been set, if either the min or the max value is NaN.
+        if ((m_min != m_min) || (m_max != m_max))
+            return true;
+
         return m_max >= m_min;
     }
     void invalidate_bounds();
