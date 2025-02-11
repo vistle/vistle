@@ -2330,7 +2330,6 @@ Module::~Module()
     }
 
     vistle::message::ModuleExit m;
-    m.setDestId(Id::ForBroadcast);
     sendMessage(m);
 
     delete sendMessageQueue;
