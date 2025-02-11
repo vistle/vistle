@@ -66,8 +66,6 @@ bool Renderer::needsSync(const message::Message &m) const
     case REPLAYFINISHED:
     case COVER:
         return true;
-    case ADDOBJECT:
-        return objectReceivePolicy() != ObjectReceivePolicy::Local;
     default:
         return false;
     }
