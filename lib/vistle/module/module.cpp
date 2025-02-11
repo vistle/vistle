@@ -673,25 +673,27 @@ bool Module::broadcastObject(const mpi::communicator &comm, Object::const_ptr &o
 
     if (comm.rank() == root) {
         assert(obj->check(std::cerr));
-        vecostreambuf<buffer> memstr;
-        vistle::oarchive memar(memstr);
+        vecostreambuf<buffer> objstr;
+        vistle::oarchive objar(objstr);
         auto saver = std::make_shared<DeepArchiveSaver>();
-        memar.setSaver(saver);
-        obj->saveObject(memar);
-        const buffer &mem = memstr.get_vector();
-        mpi::broadcast(comm, const_cast<buffer &>(mem), root);
+        objar.setSaver(saver);
+        obj->saveObject(objar);
+        const buffer &objbuf = objstr.get_vector();
+        mpi::broadcast(comm, const_cast<buffer &>(objbuf), root);
+
         auto dir = saver->getDirectory();
         mpi::broadcast(comm, dir, root);
         for (auto &ent: dir) {
             bigmpi::broadcast(comm, ent.data, ent.size, root);
         }
     } else {
-        buffer mem;
-        mpi::broadcast(comm, mem, root);
+        buffer objbuf;
+        mpi::broadcast(comm, objbuf, root);
         vistle::SubArchiveDirectory dir;
         std::map<std::string, buffer> objects, arrays;
         std::map<std::string, message::CompressionMode> comp;
         std::map<std::string, size_t> rawsizes;
+
         mpi::broadcast(comm, dir, root);
         for (auto &ent: dir) {
             if (ent.is_array) {
@@ -703,12 +705,13 @@ bool Module::broadcastObject(const mpi::communicator &comm, Object::const_ptr &o
             }
             bigmpi::broadcast(comm, ent.data, ent.size, root);
         }
-        vecistreambuf<buffer> membuf(mem);
-        vistle::iarchive memar(membuf);
+
+        vecistreambuf<buffer> objstr(objbuf);
+        vistle::iarchive objar(objstr);
         auto fetcher = std::make_shared<DeepArchiveFetcher>(objects, arrays, comp, rawsizes);
-        memar.setFetcher(fetcher);
+        objar.setFetcher(fetcher);
         //std::cerr << "DeepArchiveFetcher: " << *fetcher << std::endl;
-        obj.reset(Object::loadObject(memar));
+        obj.reset(Object::loadObject(objar));
         obj->refresh();
         //std::cerr << "broadcastObject recv " << obj->getName() << ": refcount=" << obj->refcount() << std::endl;
         assert(obj->check(std::cerr));
