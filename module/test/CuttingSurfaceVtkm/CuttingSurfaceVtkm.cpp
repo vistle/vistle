@@ -35,6 +35,8 @@ bool CuttingSurfaceVtkm::changeParameter(const Parameter *param)
 
 bool CuttingSurfaceVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task) const
 {
+    // --------------------- PREPARE INPUT DATA ---------------------
+    // check input grid and input field
     auto container = task->accept<Object>(m_mapDataIn);
     auto split = splitContainerObject(container);
     auto mapField = split.mapped;
@@ -57,12 +59,6 @@ bool CuttingSurfaceVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task)
         return true;
     }
 
-    // apply vtk-m filter
-    vtkm::filter::contour::Slice sliceFilter;
-    sliceFilter.SetImplicitFunction(m_implFuncControl.func());
-    sliceFilter.SetMergeDuplicatePoints(false);
-    sliceFilter.SetGenerateNormals(m_computeNormals->getValue() != 0);
-
     std::string mapSpecies;
     if (mapField) {
         mapSpecies = mapField->getAttribute("_species");
@@ -73,11 +69,25 @@ bool CuttingSurfaceVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task)
             sendError(status->errorMessage());
             return true;
         }
+    }
+    // --------------------- PREPARE INPUT DATA ---------------------
+
+    // --------------------- APPLY VTK-M FILTER ---------------------
+    // apply vtk-m filter
+    vtkm::filter::contour::Slice sliceFilter;
+    sliceFilter.SetImplicitFunction(m_implFuncControl.func());
+    sliceFilter.SetMergeDuplicatePoints(false);
+    sliceFilter.SetGenerateNormals(m_computeNormals->getValue() != 0);
+
+    if (mapField) {
         sliceFilter.SetActiveField(mapSpecies);
     }
 
     auto sliceResult = sliceFilter.Execute(vtkmDataSet);
 
+    // --------------------- APPLY VTK-M FILTER ---------------------
+
+    // --------------------- PREPARE OUTPUT DATA ---------------------
     // transform result back to Vistle
     Object::ptr geoOut = vtkmGetGeometry(sliceResult);
     if (geoOut) {
@@ -109,6 +119,7 @@ bool CuttingSurfaceVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task)
     } else {
         task->addObject(m_dataOut, geoOut);
     }
+    // --------------------- PREPARE OUTPUT DATA ---------------------
 
     return true;
 }
