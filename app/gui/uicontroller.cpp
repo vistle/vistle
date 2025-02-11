@@ -281,11 +281,29 @@ bool UiController::init()
     // restore default handler for Ctrl-C
     signal(SIGINT, SIG_DFL);
 
+    m_mainWindow->dataFlowView()->setFocusProxy(m_mainWindow->moduleBrowser());
+    m_mainWindow->moduleBrowser()->setFocus();
+
+    m_mainWindow->installEventFilter(this);
+
     return true;
 }
 
 UiController::~UiController()
 {}
+
+bool UiController::eventFilter(QObject *object, QEvent *event)
+{
+    if (object == m_mainWindow && event->type() == QEvent::KeyPress) {
+        QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
+        if (keyEvent->key() == Qt::Key_Escape) {
+            m_mainWindow->dataFlowView()->setFocus();
+            return true;
+        } else
+            return false;
+    }
+    return false;
+}
 
 void UiController::finish()
 {
