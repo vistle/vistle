@@ -66,14 +66,13 @@ std::unique_ptr<ConvertStatus> vtkmGetGhosts(const vtkm::cont::DataSet &dataset,
                 return Success();
             }
 
-            std::cerr << "cannot apply ghosts" << std::endl;
-            return UnsupportedCellType();
+            return Error("Cannot apply VTKm ghost field to Vistle grid: only supported for Indexed, Triangles, and "
+                         "Quads grids.");
         }
-        std::cerr << "cannot convert ghosts" << std::endl;
-        return UnsupportedFieldType();
+        return Error("The converted ghost field is not of type Byte.");
     }
-    std::cerr << "did not find ghosts" << std::endl;
-    return OtherError();
+    return Error(
+        "An error occurred while converting VTKm ghost field to Vistle grid. Check logfile for more information.");
 }
 
 std::unique_ptr<ConvertStatus> vtkmApplyRadius(vtkm::cont::DataSet &vtkmDataset, Object::const_ptr &grid)
@@ -98,8 +97,7 @@ std::unique_ptr<ConvertStatus> vtkmGetRadius(const vtkm::cont::DataSet &dataset,
     }
     auto rvec = vistle::Vec<vistle::Scalar>::as(radius);
     if (!rvec) {
-        std::cerr << "unsupported field type for radius" << std::endl;
-        return UnsupportedFieldType();
+        return Error("Radius must be a scalar field.");
     }
 
     auto r = std::make_shared<vistle::Vec<Scalar>>(0);
@@ -113,8 +111,7 @@ std::unique_ptr<ConvertStatus> vtkmGetRadius(const vtkm::cont::DataSet &dataset,
         return Success();
     }
 
-    std::cerr << "cannot apply radius to anything but Points and Lines" << std::endl;
-    return UnsupportedFieldType();
+    return Error("Radius can only be applied to Points and Lines.");
 }
 
 std::unique_ptr<ConvertStatus> vtkmApplyNormals(vtkm::cont::DataSet &vtkmDataset, Object::const_ptr &grid)
@@ -141,12 +138,11 @@ std::unique_ptr<ConvertStatus> vtkmGetNormals(const vtkm::cont::DataSet &dataset
     }
     auto nvec = vistle::Vec<vistle::Scalar, 3>::as(normals);
     if (!nvec) {
-        std::cerr << "cannot convert normals" << std::endl;
-        return UnsupportedFieldType();
+        return Error("Normals must be a 3D vector field.");
     }
     auto coords = Coords::as(result);
     if (!coords) {
-        return UnsupportedFieldType();
+        return Error("Normals can only be applied to grids with coordinates.");
     }
 
     auto n = std::make_shared<vistle::Normals>(0);
@@ -190,7 +186,7 @@ std::unique_ptr<ConvertStatus> vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vis
         auto coordinateSystem = vtkm::cont::CoordinateSystem("rectilinear", rectilinearCoordinates);
         vtkmDataset.AddCoordinateSystem(coordinateSystem);
     } else {
-        return UnsupportedFieldType();
+        return Error("Found unsupported grid type while attempting to convert Vistle grid to VTK-m dataset.");
     }
 
     auto stat = vtkmSetTopology(vtkmDataset, grid);
@@ -254,7 +250,7 @@ std::unique_ptr<ConvertStatus> vtkmAddField(vtkm::cont::DataSet &vtkmDataSet, co
     if (handled)
         return Success();
 
-    return UnsupportedFieldType();
+    return Error("Encountered an unsupported field type while attempting to convert Vistle field to VTK-m field.");
 }
 
 

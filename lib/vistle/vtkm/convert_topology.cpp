@@ -180,8 +180,7 @@ std::unique_ptr<ConvertStatus> fromIndexed(vtkm::cont::DataSet &vtkmDataset, typ
     shapesu.CopyShallowIfPossible(shapescu);
     vtkm::cont::ArrayHandleBasic<vtkm::UInt8> shapes;
     if (!shapesu.CanConvert<vtkm::cont::ArrayHandleBasic<vtkm::UInt8>>()) {
-        std::cerr << "cannot convert to basic array handle" << std::endl;
-        return UnsupportedFieldType();
+        return Error("Cannot convert shapes array to basic array handle.");
     }
     shapes = shapesu.AsArrayHandle<vtkm::cont::ArrayHandleBasic<vtkm::UInt8>>();
     vtkm::cont::CellSetExplicit<> cellSet;
@@ -240,7 +239,7 @@ std::unique_ptr<ConvertStatus> vtkmSetTopology(vtkm::cont::DataSet &vtkmDataset,
         cellSet.Fill(numPoints, vtkm::CELL_SHAPE_VERTEX, 1, conn);
         vtkmDataset.SetCellSet(cellSet);
     } else {
-        return UnsupportedGridType();
+        return Error("Encountered unsupported grid type while attempting to convert Vistle grid to VTK-m dataset.");
     }
 
     return Success();
