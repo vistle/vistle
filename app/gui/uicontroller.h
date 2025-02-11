@@ -29,6 +29,8 @@ public:
     bool init();
     void finish();
 
+    bool eventFilter(QObject *object, QEvent *event) override;
+
 signals:
     void visibleModuleMessage(int id, int type, QString message);
 
