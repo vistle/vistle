@@ -140,7 +140,8 @@ bool ReadCsv::examine(const Parameter *param)
             auto subName = p->getName().substr(0, p->getName().find("_"));
             auto it = std::find(lowerChoices.begin(), lowerChoices.end(), subName);
             if (it != lowerChoices.end()) {
-                setParameter(p, std::distance(lowerChoices.begin(), it));
+                Integer num(std::distance(lowerChoices.begin(), it));
+                setParameter(p, num);
             }
         }
     }
