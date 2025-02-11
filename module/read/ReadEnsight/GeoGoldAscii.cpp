@@ -393,8 +393,6 @@ bool GeoGoldAscii::readPartConn(FILE *in, EnPart &actPart)
     unsigned cornIn[20], cornOut[20];
 
     size_t numElements;
-    size_t nc;
-    int covType;
 
     int statistic[30];
     int rstatistic[30][30];
@@ -445,8 +443,9 @@ bool GeoGoldAscii::readPartConn(FILE *in, EnPart &actPart)
             ++lineCnt_;
             numElements = atol(buf);
             //CERR << elementType << "  " <<  numElements <<  std::endl;
-            nc = elem.getNumberOfCorners();
-            covType = elem.getCovType();
+            size_t nc = elem.getNumberOfCorners();
+            size_t ncc = elem.getNumberOfVistleCorners();
+            int covType = elem.getCovType();
 
             // read elements id's
             switch (elementId_) {
@@ -487,16 +486,16 @@ bool GeoGoldAscii::readPartConn(FILE *in, EnPart &actPart)
                     elem.remap(cornIn, cornOut);
                     // assign element list
                     if (elem.getDim() == EnElement::D2) {
-                        for (size_t j = 0; j < nc; ++j)
+                        for (size_t j = 0; j < ncc; ++j)
                             cornLst2d.push_back(cornOut[j]);
                         typeLst2d.push_back(covType);
-                        currElePtr2d += nc;
+                        currElePtr2d += ncc;
                         eleLst2d.push_back(currElePtr2d);
                     } else if (elem.getDim() == EnElement::D3) {
-                        for (size_t j = 0; j < nc; ++j)
+                        for (size_t j = 0; j < ncc; ++j)
                             cornLst3d.push_back(cornOut[j]);
                         typeLst3d.push_back(covType);
-                        currElePtr3d += nc;
+                        currElePtr3d += ncc;
                         eleLst3d.push_back(currElePtr3d);
                     }
                 }

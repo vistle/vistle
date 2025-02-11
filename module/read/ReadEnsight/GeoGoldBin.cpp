@@ -400,6 +400,7 @@ bool GeoGoldBin::readPartConn(FILE *in, EnPart &actPart)
                 // ---------------- DEFAULT ELEMENT-----------------
                 else {
                     size_t nc = elem.getNumberOfCorners();
+                    size_t ncc = elem.getNumberOfVistleCorners();
                     int covType = elem.getCovType();
                     std::vector<unsigned> locArr(numElements * nc);
                     getUIntArr(in, numElements * nc, locArr.data());
@@ -424,16 +425,16 @@ bool GeoGoldBin::readPartConn(FILE *in, EnPart &actPart)
                             // do the remapping
                             elem.remap(cornIn, cornOut);
                             if (elem.getDim() == EnElement::D2) {
-                                for (size_t j = 0; j < nc; ++j)
+                                for (size_t j = 0; j < ncc; ++j)
                                     cornLst2d.push_back(cornOut[j]);
                                 typeLst2d.push_back(covType);
-                                currElePtr2d += nc;
+                                currElePtr2d += ncc;
                                 eleLst2d.push_back(currElePtr2d);
                             } else if (elem.getDim() == EnElement::D3) {
-                                for (size_t j = 0; j < nc; ++j)
+                                for (size_t j = 0; j < ncc; ++j)
                                     cornLst3d.push_back(cornOut[j]);
                                 typeLst3d.push_back(covType);
-                                currElePtr3d += nc;
+                                currElePtr3d += ncc;
                                 eleLst3d.push_back(currElePtr3d);
                             }
                         }
