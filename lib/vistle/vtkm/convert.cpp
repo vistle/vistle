@@ -194,7 +194,7 @@ std::unique_ptr<ConvertStatus> vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vis
     }
 
     auto stat = vtkmSetTopology(vtkmDataset, grid);
-    if (stat != Success()) {
+    if (!stat->isSuccessful()) {
         return stat;
     }
     return vtkmApplyGhost(vtkmDataset, grid);
