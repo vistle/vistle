@@ -1,10 +1,3 @@
-/* This file is part of COVISE.
-
-   You can use it under the terms of the GNU Lesser General Public License
-   version 2.1 or later, see LICENSE.txt.
-
- * License: LGPL 2+ */
-
 #include "ReadCsv.h"
 
 #include <vistle/core/unstr.h>
