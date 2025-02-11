@@ -95,6 +95,7 @@ private:
     vistle::IntParameter *m_useCelltree;
     vistle::IntParameter *m_particlePlacement = nullptr;
     vistle::FloatParameter *m_simplificationError = nullptr;
+    vistle::IntParameter *m_verbose = nullptr;
     bool m_havePressure;
 
     bool m_haveTimeSteps = false;

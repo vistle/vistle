@@ -90,6 +90,8 @@ Tracer::Tracer(const std::string &name, int moduleID, mpi::communicator comm): M
     const char *TracerInteraction::P_FREE_STARTPOINTS = "FreeStartPoints";
 #endif
 
+    m_verbose = addIntParameter("verbose", "verbose output", false, Parameter::Boolean);
+
     m_taskType = addIntParameter("taskType", "task type", Streamlines, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_taskType, TraceType);
     addVectorParameter("startpoint1", "1st initial point", ParamVector(0, 0.2, 0));
@@ -935,8 +937,12 @@ bool Tracer::reduce(int timestep)
         for (size_t i = 0; i < stopReasonCount.size(); ++i) {
             str << " " << Particle::toString((Particle::StopReason)i) << ":" << stopReasonCount[i];
         }
-        std::string s = str.str();
-        sendInfo("%s", s.c_str());
+        if (m_verbose->getValue() == false) {
+            std::cerr << str.str() << std::endl;
+        } else {
+            std::string s = str.str();
+            sendInfo("%s", s.c_str());
+        }
     }
 
     return true;
