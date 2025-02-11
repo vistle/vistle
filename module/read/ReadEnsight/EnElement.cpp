@@ -22,6 +22,7 @@
 using boost::algorithm::trim_copy;
 
 #include <vistle/core/celltypes.h>
+#include <vistle/core/unstr.h>
 
 namespace cell = vistle::cell;
 
@@ -54,11 +55,11 @@ EnElement::EnElement(const std::string &name)
         vistleType_ = cell::BAR;
         enType_ = bar2;
     } else if (enTypeStr_ == "bar3") {
-        valid_ = false;
+        valid_ = true;
         CERR << "bar3 found" << std::endl;
         numCorn_ = 3;
         dim_ = D1;
-        vistleType_ = cell::POINT;
+        vistleType_ = cell::BAR;
         enType_ = bar3;
     } else if (enTypeStr_ == "tria3") {
         valid_ = true;
@@ -68,10 +69,11 @@ EnElement::EnElement(const std::string &name)
         vistleType_ = cell::TRIANGLE;
         enType_ = tria3;
     } else if (enTypeStr_ == "tria6") {
-        valid_ = false;
+        valid_ = true;
         CERR << "tria6 found" << std::endl;
         numCorn_ = 6;
         dim_ = D2;
+        vistleType_ = cell::TRIANGLE;
         enType_ = tria6;
     } else if (enTypeStr_ == "quad4") {
         valid_ = true;
@@ -81,11 +83,11 @@ EnElement::EnElement(const std::string &name)
         vistleType_ = cell::QUAD;
         enType_ = quad4;
     } else if (enTypeStr_ == "quad8") {
-        valid_ = false;
+        valid_ = true;
         CERR << "quad8 found" << std::endl;
         numCorn_ = 8;
         dim_ = D2;
-        vistleType_ = cell::POINT;
+        vistleType_ = cell::QUAD;
         enType_ = quad8;
     } else if (enTypeStr_ == "tetra4") {
         valid_ = true;
@@ -95,24 +97,25 @@ EnElement::EnElement(const std::string &name)
         vistleType_ = cell::TETRAHEDRON;
         enType_ = tetra4;
     } else if (enTypeStr_ == "tetra10") {
-        valid_ = false;
+        valid_ = true;
         CERR << "tetra10 found" << std::endl;
         numCorn_ = 10;
         dim_ = D3;
+        vistleType_ = cell::TETRAHEDRON;
         enType_ = tetra10;
     } else if (enTypeStr_ == "pyramid5") {
         valid_ = true;
         //CERR << "pyramid5 found" << std::endl;
         numCorn_ = 5;
         dim_ = D3;
-        enType_ = pyramid5;
         vistleType_ = cell::PYRAMID;
+        enType_ = pyramid5;
     } else if (enTypeStr_ == "pyramid13") {
-        valid_ = false;
+        valid_ = true;
         CERR << "pyramid13 found" << std::endl;
         numCorn_ = 13;
         dim_ = D3;
-        vistleType_ = cell::POINT;
+        vistleType_ = cell::PYRAMID;
         enType_ = pyramid13;
     } else if (enTypeStr_ == "hexa8") {
         valid_ = true;
@@ -122,11 +125,11 @@ EnElement::EnElement(const std::string &name)
         vistleType_ = cell::HEXAHEDRON;
         enType_ = hexa8;
     } else if (enTypeStr_ == "hexa20") {
-        valid_ = false;
+        valid_ = true;
         CERR << "hexa20 found" << std::endl;
         numCorn_ = 20;
         dim_ = D3;
-        vistleType_ = cell::POINT;
+        vistleType_ = cell::HEXAHEDRON;
         enType_ = hexa20;
     } else if (enTypeStr_ == "penta6") {
         valid_ = true;
@@ -136,11 +139,11 @@ EnElement::EnElement(const std::string &name)
         vistleType_ = cell::PRISM;
         enType_ = penta6;
     } else if (enTypeStr_ == "penta15") {
-        valid_ = false;
+        valid_ = true;
         CERR << "pyramid15 found" << std::endl;
         numCorn_ = 15;
         dim_ = D3;
-        vistleType_ = cell::POINT;
+        vistleType_ = cell::PRISM;
         enType_ = penta15;
     } else if (enTypeStr_ == "nsided") {
         valid_ = true;
@@ -203,18 +206,20 @@ size_t EnElement::remap(unsigned *cornIn, unsigned *cornOut)
     if (cornOut != nullptr) {
         switch (enType_) {
         case tria3:
+        case tria6:
             cornOut[0] = cornIn[0];
             cornOut[1] = cornIn[2];
             cornOut[2] = cornIn[1];
             break;
         case quad4:
+        case quad8:
             cornOut[0] = cornIn[0];
             cornOut[1] = cornIn[3];
             cornOut[2] = cornIn[2];
             cornOut[3] = cornIn[1];
             break;
         default:
-            memcpy(cornOut, cornIn, numCorn_ * sizeof(unsigned));
+            memcpy(cornOut, cornIn, getNumberOfVistleCorners() * sizeof(unsigned));
             break;
         }
     }
@@ -235,6 +240,13 @@ size_t EnElement::getNumberOfCorners() const
 {
     assert(valid_);
     return numCorn_;
+}
+
+size_t EnElement::getNumberOfVistleCorners() const
+{
+    assert(valid_);
+    assert(vistleType_ < vistle::cell::NUM_TYPES);
+    return vistle::UnstructuredGrid::NumVertices[vistleType_];
 }
 
 EnElement::Dimensionality EnElement::getDim() const

@@ -83,6 +83,7 @@ public:
 
     // return the number of corners
     size_t getNumberOfCorners() const;
+    size_t getNumberOfVistleCorners() const;
 
     // return Vistle type
     vistle::cell::CellType getCovType() const;
