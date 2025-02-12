@@ -5,17 +5,16 @@
 
 #include <vistle/module/module.h>
 #include <vistle/vtkm/ImplFuncController.h>
+#include <vistle/vtkm/VtkmModule.h>
 
-class CuttingSurfaceVtkm: public vistle::Module {
+class CuttingSurfaceVtkm: public VtkmModule {
 public:
     CuttingSurfaceVtkm(const std::string &name, int moduleID, mpi::communicator comm);
     ~CuttingSurfaceVtkm();
 
 private:
-    bool compute(const std::shared_ptr<vistle::BlockTask> &task) const override;
+    void runFilter(vtkm::cont::DataSet &inputData, vtkm::cont::DataSet &outputData) const override;
     bool changeParameter(const vistle::Parameter *param) override;
-
-    vistle::Port *m_mapDataIn, *m_dataOut;
 
     vistle::IntParameter *m_computeNormals;
 
