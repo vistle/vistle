@@ -240,8 +240,8 @@ void ReadSeisSol::releaseXdmfObjects()
   */
 void ReadSeisSol::clearChoice()
 {
-    for (const auto &att: m_attributes)
-        att->setChoices(std::vector<std::string>());
+    for (auto &att: m_attributes)
+        setParameterChoices(att, std::vector<std::string>());
 
     m_attChoiceStr.clear();
 }
