@@ -1,5 +1,5 @@
-#ifndef VISTLE_MANAGER_LIB_H
-#define VISTLE_MANAGER_LIB_H
+#ifndef VISTLE_MANAGER_MANAGER_H
+#define VISTLE_MANAGER_MANAGER_H
 
 #include "export.h"
 #include <string>
@@ -33,4 +33,4 @@ private:
 } // namespace vistle
 
 
-#endif // !VISTLE_MANAGER_LIB_H
+#endif

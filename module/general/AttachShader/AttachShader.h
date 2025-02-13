@@ -1,5 +1,5 @@
-#ifndef ATTACHSHADER_H
-#define ATTACHSHADER_H
+#ifndef VISTLE_ATTACHSHADER_ATTACHSHADER_H
+#define VISTLE_ATTACHSHADER_ATTACHSHADER_H
 
 #include <vistle/module/module.h>
 

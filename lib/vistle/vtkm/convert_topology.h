@@ -1,5 +1,5 @@
-#ifndef VISTLE_VTKM_CONVERT_CELLSET_H
-#define VISTLE_VTKM_CONVERT_CELLSET_H
+#ifndef VISTLE_VTKM_CONVERT_TOPOLOGY_H
+#define VISTLE_VTKM_CONVERT_TOPOLOGY_H
 
 #include <vistle/core/object.h>
 #include <vistle/core/scalar.h>

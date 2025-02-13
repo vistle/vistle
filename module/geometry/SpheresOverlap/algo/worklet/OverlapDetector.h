@@ -1,5 +1,5 @@
-#ifndef OVERLAP_DETECTOR_H
-#define OVERLAP_DETECTOR_H
+#ifndef VISTLE_SPHERESOVERLAP_ALGO_WORKLET_OVERLAPDETECTOR_H
+#define VISTLE_SPHERESOVERLAP_ALGO_WORKLET_OVERLAPDETECTOR_H
 
 #include <vtkm/cont/ArrayHandle.h>
 #include <vtkm/cont/CoordinateSystem.h>
@@ -58,4 +58,4 @@ private:
     vtkm::cont::ArrayHandle<vtkm::Int8>::ReadPortalType OffsetsToNeighbors;
 };
 
-#endif // OVERLAP_DETECTOR_H
+#endif

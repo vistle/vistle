@@ -1,5 +1,5 @@
-#ifndef VISTLE_INSITU_MESSAGE_HANDLER_H
-#define VISTLE_INSITU_MESSAGE_HANDLER_H
+#ifndef VISTLE_INSITU_MESSAGE_MESSAGEHANDLER_H
+#define VISTLE_INSITU_MESSAGE_MESSAGEHANDLER_H
 
 #include "InSituMessage.h"
 
@@ -38,4 +38,4 @@ protected:
 } // namespace vistle
 
 
-#endif // VISTLE_INSITU_MESSAGE_HANDLER_H
+#endif

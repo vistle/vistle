@@ -1,3 +1,6 @@
+#ifndef VISTLE_READENSIGHT_ENFILE_H
+#define VISTLE_READENSIGHT_ENFILE_H
+
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // CLASS  EnFile
 //
@@ -11,9 +14,6 @@
 //
 // Changes:
 //
-
-#ifndef READENSIGHT_ENFILE_H
-#define READENSIGHT_ENFILE_H
 
 #include "EnElement.h"
 #include "EnPart.h"

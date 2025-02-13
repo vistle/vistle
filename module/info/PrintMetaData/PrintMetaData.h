@@ -1,12 +1,11 @@
+#ifndef VISTLE_PRINTMETADATA_PRINTMETADATA_H
+#define VISTLE_PRINTMETADATA_PRINTMETADATA_H
+
 //-------------------------------------------------------------------------
-// PRINT METADATA H
 // * Prints Meta-Data  about the input object to the Vistle console
 // *
 // * Sever Topan, 2016
 //-------------------------------------------------------------------------
-
-#ifndef PRINTMETADATA_H
-#define PRINTMETADATA_H
 
 #include <vector>
 
@@ -215,4 +214,4 @@ PrintMetaData::ObjectProfile operator+(const PrintMetaData::ObjectProfile &lhs, 
 }
 
 
-#endif /* PRINTMETADATA_H */
+#endif

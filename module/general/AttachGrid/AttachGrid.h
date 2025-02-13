@@ -1,5 +1,5 @@
-#ifndef ATTACHGRID_H
-#define ATTACHGRID_H
+#ifndef VISTLE_ATTACHGRID_ATTACHGRID_H
+#define VISTLE_ATTACHGRID_ATTACHGRID_H
 
 #include <vistle/core/vector.h>
 #include <vistle/module/module.h>

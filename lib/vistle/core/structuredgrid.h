@@ -1,10 +1,9 @@
+#ifndef VISTLE_CORE_STRUCTUREDGRID_H
+#define VISTLE_CORE_STRUCTUREDGRID_H
+
 //-------------------------------------------------------------------------
-// STRUCTURED GRID CLASS H
-// *
 // * Structured Grid Container Object
 //-------------------------------------------------------------------------
-#ifndef STRUCTURED_GRID_H
-#define STRUCTURED_GRID_H
 
 #include "scalar.h"
 #include "shm.h"
@@ -89,4 +88,4 @@ private:
 };
 
 } // namespace vistle
-#endif /* STRUCTURED_GRID_H */
+#endif

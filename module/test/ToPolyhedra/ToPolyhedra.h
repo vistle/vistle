@@ -1,5 +1,5 @@
-#ifndef TOPOLYHEDRA_H
-#define TOPOLYHEDRA_H
+#ifndef VISTLE_TOPOLYHEDRA_TOPOLYHEDRA_H
+#define VISTLE_TOPOLYHEDRA_TOPOLYHEDRA_H
 
 #include <vistle/module/module.h>
 

@@ -1,5 +1,5 @@
-#ifndef SHM_REFERENCE_IMPL_H
-#define SHM_REFERENCE_IMPL_H
+#ifndef VISTLE_CORE_SHM_REFERENCE_IMPL_H
+#define VISTLE_CORE_SHM_REFERENCE_IMPL_H
 
 #include "archives_config.h"
 #include "object.h"

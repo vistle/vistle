@@ -1,5 +1,6 @@
-#ifndef VISTLE_MINI_SIM_H
-#define VISTLE_MINI_SIM_H
+#ifndef VISTLE_MINISIM_MINISIM_H
+#define VISTLE_MINISIM_MINISIM_H
+
 #include "minisim/minisim.h"
 #include <vistle/insitu/module/inSituModuleBase.h>
 #include <vistle/insitu/message/ShmMessage.h>
@@ -66,4 +67,4 @@ private:
 };
 
 
-#endif // !VISTLE_MINI_SIM_H
+#endif

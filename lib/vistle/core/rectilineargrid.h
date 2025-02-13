@@ -1,10 +1,9 @@
+#ifndef VISTLE_CORE_RECTILINEARGRID_H
+#define VISTLE_CORE_RECTILINEARGRID_H
+
 //-------------------------------------------------------------------------
-// RECTILINEAR GRID CLASS H
-// *
 // * Rectilinear Grid Container Object
 //-------------------------------------------------------------------------
-#ifndef RECTILINEAR_GRID_H
-#define RECTILINEAR_GRID_H
 
 #include "scalar.h"
 #include "shm.h"
@@ -85,4 +84,4 @@ private:
 };
 
 } // namespace vistle
-#endif /* RECTILINEAR_GRID_H */
+#endif

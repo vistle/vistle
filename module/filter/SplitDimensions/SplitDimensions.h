@@ -1,5 +1,5 @@
-#ifndef SPLITDIMENSIONS_H
-#define SPLITDIMENSIONS_H
+#ifndef VISTLE_SPLITDIMENSIONS_SPLITDIMENSIONS_H
+#define VISTLE_SPLITDIMENSIONS_SPLITDIMENSIONS_H
 
 #include <vistle/module/module.h>
 #include <vistle/core/unstr.h>

@@ -1,5 +1,5 @@
-#ifndef EMPTY_H
-#define EMPTY_H
+#ifndef VISTLE_CORE_EMPTY_H
+#define VISTLE_CORE_EMPTY_H
 
 #include "shmname.h"
 #include "object.h"

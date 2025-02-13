@@ -1,5 +1,5 @@
-#ifndef SHOWUSG_H
-#define SHOWUSG_H
+#ifndef VISTLE_SHOWGRID_SHOWGRID_H
+#define VISTLE_SHOWGRID_SHOWGRID_H
 
 #include <vistle/module/module.h>
 #include <vistle/core/lines.h>

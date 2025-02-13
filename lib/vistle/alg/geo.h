@@ -1,5 +1,5 @@
-#ifndef GEO_H
-#define GEO_H
+#ifndef VISTLE_ALG_GEO_H
+#define VISTLE_ALG_GEO_H
 
 #include <array>
 #include <numeric>

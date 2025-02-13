@@ -1,5 +1,5 @@
-#ifndef VISTLE_NCWRAP_H
-#define VISTLE_NCWRAP_H
+#ifndef VISTLE_NETCDF_NCWRAP_H
+#define VISTLE_NETCDF_NCWRAP_H
 
 #ifdef USE_NETCDF
 #include <netcdf.h>

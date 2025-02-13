@@ -1,5 +1,5 @@
-#ifndef RAY_RENDEROBJECT_H
-#define RAY_RENDEROBJECT_H
+#ifndef VISTLE_DISCOVERAY_RAYRENDEROBJECT_H
+#define VISTLE_DISCOVERAY_RAYRENDEROBJECT_H
 
 #include <vector>
 #include <memory>

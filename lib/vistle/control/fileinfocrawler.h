@@ -1,5 +1,5 @@
-#ifndef VISTLE_FILEINFO_CRAWLER_H
-#define VISTLE_FILEINFO_CRAWLER_H
+#ifndef VISTLE_CONTROL_FILEINFOCRAWLER_H
+#define VISTLE_CONTROL_FILEINFOCRAWLER_H
 
 #include <vistle/core/filequery.h>
 #include <vistle/core/messages.h>

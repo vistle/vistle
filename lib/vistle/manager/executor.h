@@ -1,5 +1,5 @@
-#ifndef EXECUTOR_H
-#define EXECUTOR_H
+#ifndef VISTLE_MANAGER_EXECUTOR_H
+#define VISTLE_MANAGER_EXECUTOR_H
 
 #include <string>
 

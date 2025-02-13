@@ -1,5 +1,5 @@
-#ifndef OBJECTMETA_IMPL_H
-#define OBJECTMETA_IMPL_H
+#ifndef VISTLE_CORE_OBJECTMETA_IMPL_H
+#define VISTLE_CORE_OBJECTMETA_IMPL_H
 
 #include <cassert>
 #include "serialize.h"

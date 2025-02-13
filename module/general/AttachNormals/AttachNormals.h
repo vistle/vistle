@@ -1,5 +1,5 @@
-#ifndef ATTACHNORMALS_H
-#define ATTACHNORMALS_H
+#ifndef VISTLE_ATTACHNORMALS_ATTACHNORMALS_H
+#define VISTLE_ATTACHNORMALS_ATTACHNORMALS_H
 
 #include <vistle/module/module.h>
 #include <vistle/core/vector.h>

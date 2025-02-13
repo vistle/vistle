@@ -1,5 +1,5 @@
-#ifndef VISTLE_NGONS_IMPL_H
-#define VISTLE_NGONS_IMPL_H
+#ifndef VISTLE_CORE_NGONS_IMPL_H
+#define VISTLE_CORE_NGONS_IMPL_H
 
 namespace vistle {
 

@@ -1,5 +1,5 @@
-#ifndef PYTHON_STATEACCESSOR_H
-#define PYTHON_STATEACCESSOR_H
+#ifndef VISTLE_PYTHON_PYTHONSTATEACCESSOR_H
+#define VISTLE_PYTHON_PYTHONSTATEACCESSOR_H
 
 #include "export.h"
 #include <vistle/util/buffer.h>

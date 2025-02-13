@@ -1,3 +1,6 @@
+#ifndef VISTLE_READENSIGHT_GEOGOLDBIN_H
+#define VISTLE_READENSIGHT_GEOGOLDBIN_H
+
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // CLASS    GeoGoldBin
 //
@@ -11,9 +14,6 @@
 //
 //  Changes:
 //
-
-#ifndef READENSIGHT_GEOGOLDBIN_H
-#define READENSIGHT_GEOGOLDBIN_H
 
 #include "EnFile.h"
 

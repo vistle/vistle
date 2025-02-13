@@ -1,8 +1,9 @@
+#ifndef VISTLE_CORE_LAYERGRID_H
+#define VISTLE_CORE_LAYERGRID_H
+
 //-------------------------------------------------------------------------
 // LayerGrid: structured grid that stacks layers of varying height (z), but is uniform in x- and y-dimensions
 //-------------------------------------------------------------------------
-#ifndef VISTLE_LAYER_GRID_H
-#define VISTLE_LAYER_GRID_H
 
 #include "scalar.h"
 #include "vectortypes.h"

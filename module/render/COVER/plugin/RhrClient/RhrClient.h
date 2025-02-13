@@ -1,14 +1,12 @@
+#ifndef VISTLE_COVER_PLUGIN_RHRCLIENT_RHRCLIENT_H
+#define VISTLE_COVER_PLUGIN_RHRCLIENT_RHRCLIENT_H
+
 /**\file
  * \brief RhrClient plugin class
  * 
  * \author Martin Aumüller <aumueller@hlrs.de>
  * \author (c) 2013, 2014 HLRS
- *
- * \copyright GPL2+
  */
-
-#ifndef RHR_CLIENT_H
-#define RHR_CLIENT_H
 
 #include <string>
 #include <memory>

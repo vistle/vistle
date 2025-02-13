@@ -1,5 +1,5 @@
-#ifndef TRACER_BLOCKDATA_H
-#define TRACER_BLOCKDATA_H
+#ifndef VISTLE_TRACER_BLOCKDATA_H
+#define VISTLE_TRACER_BLOCKDATA_H
 
 #include <mutex>
 #include <vector>

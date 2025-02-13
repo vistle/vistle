@@ -1,5 +1,5 @@
-#ifndef VISLTLE_LIBSIM_VARIABLE_DATA_H
-#define VISLTLE_LIBSIM_VARIABLE_DATA_H
+#ifndef VISTLE_INSITU_LIBSIM_VARIABLEDATA_H
+#define VISTLE_INSITU_LIBSIM_VARIABLEDATA_H
 
 #include "VariableInfo.h"
 #include <vistle/core/object.h>

@@ -1,3 +1,6 @@
+#ifndef VISTLE_READENSIGHT_DATAGOLDBIN_H
+#define VISTLE_READENSIGHT_DATAGOLDBIN_H
+
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // CLASS    DataFileGold
 //
@@ -11,9 +14,6 @@
 //
 //  Changes:
 //
-
-#ifndef READENSIGHT_DATAGOLDBIN_H
-#define READENSIGHT_DATAGOLDBIN_H
 
 #include "EnFile.h"
 

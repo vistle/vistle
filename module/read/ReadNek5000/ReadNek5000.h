@@ -1,12 +1,5 @@
-/* This file is part of Vistle.
-
-   You can use it under the terms of the GNU Lesser General Public License
-   version 2.1 or later, see LICENSE.txt.
-
- * License: LGPL 2+ */
-
-#ifndef _READNEK5000_H
-#define _READNEK5000_H
+#ifndef VISTLE_READNEK5000_READNEK5000_H
+#define VISTLE_READNEK5000_READNEK5000_H
 
 #include "PartitionReader.h"
 
@@ -71,4 +64,4 @@ public:
     ReadNek(const std::string &name, int moduleID, mpi::communicator comm);
 };
 
-#endif // _READNEK5000_H
+#endif

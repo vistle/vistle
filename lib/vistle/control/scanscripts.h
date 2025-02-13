@@ -1,5 +1,6 @@
-#ifndef VISTLE_SCAN_SCRIPTS_H
-#define VISTLE_SCAN_SCRIPTS_H
+#ifndef VISTLE_CONTROL_SCANSCRIPTS_H
+#define VISTLE_CONTROL_SCANSCRIPTS_H
+
 #include <vector>
 #include <string>
 namespace vistle {
@@ -8,4 +9,4 @@ std::vector<std::string> scanStartupScripts();
 } // namespace vistle
 
 
-#endif // VISTLE_SCAN_SCRIPTS_H
+#endif

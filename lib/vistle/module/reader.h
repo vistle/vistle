@@ -1,5 +1,5 @@
-#ifndef VISTLE_READER_H
-#define VISTLE_READER_H
+#ifndef VISTLE_MODULE_READER_H
+#define VISTLE_MODULE_READER_H
 
 #include "module.h"
 #include <set>

@@ -1,5 +1,5 @@
-#ifndef CELL_LISTS_ALGORITHM_H
-#define CELL_LISTS_ALGORITHM_H
+#ifndef VISTLE_SPHERESOVERLAP_ALGO_CELLLISTSALGORITHM_H
+#define VISTLE_SPHERESOVERLAP_ALGO_CELLLISTSALGORITHM_H
 
 #include <vistle/core/lines.h>
 #include <vistle/core/points.h>
@@ -48,4 +48,4 @@ std::vector<OverlapLineInfo> CellListsAlgorithm(vistle::Points::const_ptr sphere
 std::pair<vistle::Lines::ptr, vistle::Vec<vistle::Scalar, 1>::ptr>
 CreateConnectionLines(std::vector<OverlapLineInfo> overlaps, vistle::Points::const_ptr spheres);
 
-#endif // CELL_LISTS_ALGORITHM_H
+#endif

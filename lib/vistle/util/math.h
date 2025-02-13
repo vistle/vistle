@@ -1,5 +1,5 @@
-#ifndef VISTLE_MATH_H
-#define VISTLE_MATH_H
+#ifndef VISTLE_UTIL_MATH_H
+#define VISTLE_UTIL_MATH_H
 
 #include <algorithm>
 #include <cmath>

@@ -1,5 +1,5 @@
-#ifndef FILTERNODE_H
-#define FILTERNODE_H
+#ifndef VISTLE_FILTERNODE_FILTERNODE_H
+#define VISTLE_FILTERNODE_FILTERNODE_H
 
 #include <vistle/module/module.h>
 #include <vistle/core/vector.h>

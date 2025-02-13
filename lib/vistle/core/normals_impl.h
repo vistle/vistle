@@ -1,5 +1,5 @@
-#ifndef NORMALS_IMPL_H
-#define NORMALS_IMPL_H
+#ifndef VISTLE_CORE_NORMALS_IMPL_H
+#define VISTLE_CORE_NORMALS_IMPL_H
 
 namespace vistle {
 

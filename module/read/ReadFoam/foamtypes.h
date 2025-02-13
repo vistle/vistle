@@ -1,4 +1,5 @@
-#ifndef FOAMTYPES_H
+#ifndef VISTLE_READFOAM_FOAMTYPES_H
+#define VISTLE_READFOAM_FOAMTYPES_H
 
 #include <vistle/core/index.h>
 #include <vistle/core/scalar.h>

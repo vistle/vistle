@@ -1,5 +1,6 @@
-#ifndef INSITU_SYNC_SHM_IDS_H
-#define INSITU_SYNC_SHM_IDS_H
+#ifndef VISTLE_INSITU_MESSAGE_SYNCSHMIDS_H
+#define VISTLE_INSITU_MESSAGE_SYNCSHMIDS_H
+
 #include "InSituMessage.h"
 #include "export.h"
 
@@ -78,4 +79,4 @@ private:
 } // namespace insitu
 } // namespace vistle
 
-#endif // !INSITU_SYNC_SHM_IDS_H
+#endif

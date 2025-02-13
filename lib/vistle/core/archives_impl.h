@@ -1,5 +1,5 @@
-#ifndef VISTLE_ARCHIVES_IMPL_H
-#define VISTLE_ARCHIVES_IMPL_H
+#ifndef VISTLE_CORE_ARCHIVES_IMPL_H
+#define VISTLE_CORE_ARCHIVES_IMPL_H
 
 #include "archives_config.h"
 #include "archives_compress_sz3.h"

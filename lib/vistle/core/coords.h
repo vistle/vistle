@@ -1,5 +1,5 @@
-#ifndef COORDS_H
-#define COORDS_H
+#ifndef VISTLE_CORE_COORDS_H
+#define VISTLE_CORE_COORDS_H
 
 #include "scalar.h"
 #include "shm.h"

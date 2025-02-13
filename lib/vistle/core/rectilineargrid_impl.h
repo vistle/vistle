@@ -1,10 +1,9 @@
+#ifndef VISTLE_CORE_RECTILINEARGRID_IMPL_H
+#define VISTLE_CORE_RECTILINEARGRID_IMPL_H
+
 //-------------------------------------------------------------------------
-// RECTILINEAR GRID CLASS IMPL H
-// *
 // * Rectilinear Grid Container Object
 //-------------------------------------------------------------------------
-#ifndef RECTILINEAR_GRID_IMPL_H
-#define RECTILINEAR_GRID_IMPL_H
 
 namespace vistle {
 
@@ -24,4 +23,4 @@ void RectilinearGrid::Data::serialize(Archive &ar)
 
 } // namespace vistle
 
-#endif /* RECTILINEAR_GRID_IMPL_H */
+#endif

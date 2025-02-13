@@ -1,5 +1,5 @@
-#ifndef ENUM_H
-#define ENUM_H
+#ifndef VISTLE_UTIL_ENUM_H
+#define VISTLE_UTIL_ENUM_H
 
 // cf. http://stackoverflow.com/questions/5093460/how-to-convert-an-enum-type-variable-to-a-string
 // define an enum like this:

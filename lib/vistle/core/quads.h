@@ -1,5 +1,5 @@
-#ifndef VISTLE_QUADS_H
-#define VISTLE_QUADS_H
+#ifndef VISTLE_CORE_QUADS_H
+#define VISTLE_CORE_QUADS_H
 
 #include "ngons.h"
 

@@ -1,5 +1,5 @@
-#ifndef VISTLE_ARCHIVES_H
-#define VISTLE_ARCHIVES_H
+#ifndef VISTLE_CORE_ARCHIVES_H
+#define VISTLE_CORE_ARCHIVES_H
 
 #include "export.h"
 #include "archives_config.h"
@@ -403,4 +403,4 @@ BOOST_SERIALIZATION_REGISTER_ARCHIVE(vistle::boost_iarchive)
 BOOST_SERIALIZATION_USE_ARRAY_OPTIMIZATION(vistle::boost_iarchive)
 #endif
 
-#endif // ARCHIVES_IMPL_H
+#endif

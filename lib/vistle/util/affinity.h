@@ -1,5 +1,5 @@
-#ifndef VISTLE_AFFINITY_H
-#define VISTLE_AFFINITY_H
+#ifndef VISTLE_UTIL_AFFINITY_H
+#define VISTLE_UTIL_AFFINITY_H
 
 #include "export.h"
 

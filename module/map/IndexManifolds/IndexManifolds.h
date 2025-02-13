@@ -1,5 +1,5 @@
-#ifndef INDEXMANIFOLDS_H
-#define INDEXMANIFOLDS_H
+#ifndef VISTLE_INDEXMANIFOLDS_INDEXMANIFOLDS_H
+#define VISTLE_INDEXMANIFOLDS_INDEXMANIFOLDS_H
 
 #include <vistle/module/module.h>
 #include <vistle/module/resultcache.h>

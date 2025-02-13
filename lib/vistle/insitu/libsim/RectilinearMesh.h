@@ -1,5 +1,5 @@
-#ifndef VISTLE_LIBSIM_RECTILINEAR_MESH_H
-#define VISTLE_LIBSIM_RECTILINEAR_MESH_H
+#ifndef VISTLE_INSITU_LIBSIM_RECTILINEARMESH_H
+#define VISTLE_INSITU_LIBSIM_RECTILINEARMESH_H
 
 #include "ArrayStruct.h"
 
@@ -39,4 +39,4 @@ getMeshFromSim(const visit_smart_handle<HandleType::RectilinearMesh> &meshHandle
 } // namespace vistle
 
 
-#endif // !VISTLE_LIBSIM_RECTILINEAR_MESH_H
+#endif

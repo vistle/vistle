@@ -1,5 +1,5 @@
-#ifndef VISTLE_NGONS_H
-#define VISTLE_NGONS_H
+#ifndef VISTLE_CORE_NGONS_H
+#define VISTLE_CORE_NGONS_H
 
 #include "shm.h"
 #include "coords.h"

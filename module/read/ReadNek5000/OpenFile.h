@@ -1,5 +1,5 @@
-#ifndef NEK_OPENFILE
-#define NEK_OPENFILE
+#ifndef VISTLE_READNEK5000_OPENFILE_H
+#define VISTLE_READNEK5000_OPENFILE_H
 
 #include <iostream>
 #include <string>

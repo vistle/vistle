@@ -1,5 +1,5 @@
-#ifndef DATAFLOWVIEW_H
-#define DATAFLOWVIEW_H
+#ifndef VISTLE_GUI_DATAFLOWVIEW_H
+#define VISTLE_GUI_DATAFLOWVIEW_H
 
 #include <QGraphicsView>
 
@@ -91,4 +91,4 @@ private:
 };
 
 } // namespace gui
-#endif // DATAFLOWVIEW_H
+#endif

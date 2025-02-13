@@ -1,5 +1,6 @@
-#ifndef COVISE_RESTRAINT_H
-#define COVISE_RESTRAINT_H
+#ifndef VISTLE_UTIL_CORESTRAINT_H
+#define VISTLE_UTIL_CORESTRAINT_H
+
 /**************************************************************************\
  **                                                                        **
  **                                                                        **
@@ -54,4 +55,4 @@ public:
 };
 
 } // namespace vistle
-#endif // COVISE_RESTRAINT_H
+#endif

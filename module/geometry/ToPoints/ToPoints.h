@@ -1,5 +1,5 @@
-#ifndef TOPOINTS_H
-#define TOPOINTS_H
+#ifndef VISTLE_TOPOINTS_TOPOINTS_H
+#define VISTLE_TOPOINTS_TOPOINTS_H
 
 #include <vistle/module/module.h>
 #include <vistle/module/resultcache.h>

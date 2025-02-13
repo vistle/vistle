@@ -1,5 +1,5 @@
-#ifndef READCSV_H
-#define READCSV_H
+#ifndef VISTLE_READIEWMATLABCSVEXPORTS_READIEWMATLABCSVEXPORTS_H
+#define VISTLE_READIEWMATLABCSVEXPORTS_READIEWMATLABCSVEXPORTS_H
 
 #include <vistle/module/reader.h>
 #include <vistle/core/structuredgrid.h>

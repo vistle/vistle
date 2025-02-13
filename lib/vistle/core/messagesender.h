@@ -1,5 +1,5 @@
-#ifndef VISTLE_MESSAGESENDER_H
-#define VISTLE_MESSAGESENDER_H
+#ifndef VISTLE_CORE_MESSAGESENDER_H
+#define VISTLE_CORE_MESSAGESENDER_H
 
 #include "export.h"
 #include "message.h"

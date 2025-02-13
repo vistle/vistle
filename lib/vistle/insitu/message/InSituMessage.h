@@ -1,5 +1,5 @@
-#ifndef INSITU_MESSAGE_H
-#define INSITU_MESSAGE_H
+#ifndef VISTLE_INSITU_MESSAGE_INSITUMESSAGE_H
+#define VISTLE_INSITU_MESSAGE_INSITUMESSAGE_H
 
 #include "export.h"
 #include "moduleInfo.h"
@@ -159,4 +159,4 @@ private:
 } // namespace insitu
 } // namespace vistle
 
-#endif // !ENGINE_MESSAGE_H
+#endif

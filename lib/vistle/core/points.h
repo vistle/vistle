@@ -1,5 +1,5 @@
-#ifndef POINTS_H
-#define POINTS_H
+#ifndef VISTLE_CORE_POINTS_H
+#define VISTLE_CORE_POINTS_H
 
 
 #include "coords.h"

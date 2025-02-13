@@ -1,5 +1,5 @@
-#ifndef VISTLE_VERSION_H
-#define VISTLE_VERSION_H
+#ifndef VISTLE_UTIL_VERSION_H
+#define VISTLE_UTIL_VERSION_H
 
 #include "export.h"
 

@@ -1,5 +1,5 @@
-#ifndef MODIFIEDDIALOG_H
-#define MODIFIEDDIALOG_H
+#ifndef VISTLE_GUI_MODIFIEDDIALOG_H
+#define VISTLE_GUI_MODIFIEDDIALOG_H
 
 #include <QMessageBox>
 

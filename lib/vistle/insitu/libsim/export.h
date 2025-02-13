@@ -1,5 +1,5 @@
-#ifndef VISIT_RUNTIME_EXPORT_H
-#define VISIT_RUNTIME_EXPORT_H
+#ifndef VISTLE_INSITU_LIBSIM_EXPORT_H
+#define VISTLE_INSITU_LIBSIM_EXPORT_H
 
 #include <vistle/util/export.h>
 

@@ -1,5 +1,5 @@
-#ifndef MESSAGEQUEUE_H
-#define MESSAGEQUEUE_H
+#ifndef VISTLE_CORE_MESSAGEQUEUE_H
+#define VISTLE_CORE_MESSAGEQUEUE_H
 
 #include <deque>
 #include <map>

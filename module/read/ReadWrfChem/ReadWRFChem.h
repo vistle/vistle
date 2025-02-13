@@ -1,5 +1,6 @@
-#ifndef _READWRFCHEM_H
-#define _READWRFCHEM_H
+#ifndef VISTLE_READWRFCHEM_READWRFCHEM_H
+#define VISTLE_READWRFCHEM_READWRFCHEM_H
+
 /**************************************************************************\
  **                                                                        **
  **                                                                        **

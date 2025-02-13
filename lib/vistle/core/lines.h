@@ -1,5 +1,5 @@
-#ifndef LINES_H
-#define LINES_H
+#ifndef VISTLE_CORE_LINES_H
+#define VISTLE_CORE_LINES_H
 
 #include "scalar.h"
 #include "shm.h"

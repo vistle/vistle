@@ -1,10 +1,9 @@
+#ifndef VISTLE_CORE_UNIFORMGRID_IMPL_H
+#define VISTLE_CORE_UNIFORMGRID_IMPL_H
+
 //-------------------------------------------------------------------------
-// UNIFORM GRID CLASS IMPL H
-// *
 // * Uniform Grid Container Object
 //-------------------------------------------------------------------------
-#ifndef UNIFORM_GRID_IMPL_H
-#define UNIFORM_GRID_IMPL_H
 
 namespace vistle {
 
@@ -24,4 +23,4 @@ void UniformGrid::Data::serialize(Archive &ar)
 
 } // namespace vistle
 
-#endif /* UNIFORM_GRID_IMPL_H */
+#endif

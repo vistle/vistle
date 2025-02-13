@@ -1,15 +1,12 @@
+#ifndef VISTLE_RHR_RFBEXT_H
+#define VISTLE_RHR_RFBEXT_H
+
 /**\file
  * \brief RFB protocol extensions for remote hybrid rendering (RHR)
  * 
  * \author Martin Aumüller <aumueller@hlrs.de>
  * \author (c) 2013 HLRS
- *
- * \copyright GPL2+
  */
-
-
-#ifndef PROTOCOL_EXTENSIONS_H
-#define PROTOCOL_EXTENSIONS_H
 
 #include <cstring> // memset
 #include "depthquant.h"

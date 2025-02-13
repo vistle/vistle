@@ -1,5 +1,5 @@
-#ifndef UICLIENT_H
-#define UICLIENT_H
+#ifndef VISTLE_CONTROL_UICLIENT_H
+#define VISTLE_CONTROL_UICLIENT_H
 
 #include <boost/asio.hpp>
 #include <memory>

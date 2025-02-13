@@ -1,5 +1,5 @@
-#ifndef OBJECTCACHE_H
-#define OBJECTCACHE_H
+#ifndef VISTLE_MODULE_OBJECTCACHE_H
+#define VISTLE_MODULE_OBJECTCACHE_H
 
 #include <string>
 #include <map>

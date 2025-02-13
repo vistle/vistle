@@ -1,5 +1,5 @@
-#ifndef VISTLE_THREADNAME_H
-#define VISTLE_THREADNAME_H
+#ifndef VISTLE_UTIL_THREADNAME_H
+#define VISTLE_UTIL_THREADNAME_H
 
 #include "export.h"
 #include <string>

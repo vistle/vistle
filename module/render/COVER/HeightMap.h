@@ -1,5 +1,5 @@
-#ifndef HEIGHTMAP_H
-#define HEIGHTMAP_H
+#ifndef VISTLE_COVER_HEIGHTMAP_H
+#define VISTLE_COVER_HEIGHTMAP_H
 
 #include <osg/Matrix>
 #include <osg/Array>

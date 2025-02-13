@@ -1,5 +1,5 @@
-#ifndef TOOLS_H
-#define TOOLS_H
+#ifndef VISTLE_UTIL_TOOLS_H
+#define VISTLE_UTIL_TOOLS_H
 
 #include <string>
 

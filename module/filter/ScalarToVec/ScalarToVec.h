@@ -1,5 +1,5 @@
-#ifndef SCALARTOVEC_H
-#define SCALARTOVEC_H
+#ifndef VISTLE_SCALARTOVEC_SCALARTOVEC_H
+#define VISTLE_SCALARTOVEC_SCALARTOVEC_H
 
 #include <vistle/module/module.h>
 #include <vistle/core/vector.h>

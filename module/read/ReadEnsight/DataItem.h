@@ -1,3 +1,6 @@
+#ifndef VISTLE_READENSIGHT_DATAITEM_H
+#define VISTLE_READENSIGHT_DATAITEM_H
+
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // CLASS    DataItem
 //
@@ -12,9 +15,6 @@
 //
 // Changes:
 //
-
-#ifndef READENSIGHT_DATAITEM_H
-#define READENSIGHT_DATAITEM_H
 
 #include <string>
 

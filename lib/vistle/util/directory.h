@@ -1,5 +1,5 @@
-#ifndef VISTLE_DIRECTORY_H
-#define VISTLE_DIRECTORY_H
+#ifndef VISTLE_UTIL_DIRECTORY_H
+#define VISTLE_UTIL_DIRECTORY_H
 
 #include <string>
 #include <map>

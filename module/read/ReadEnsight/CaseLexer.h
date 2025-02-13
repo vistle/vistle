@@ -1,3 +1,6 @@
+#ifndef VISTLE_READENSIGHT_CASELEXER_H
+#define VISTLE_READENSIGHT_CASELEXER_H
+
 /*
 //============================================================
 // VirCinity IT Consulting (C)
@@ -9,9 +12,6 @@
 // Creation date: 20.05.02
 //============================================================
 */
-
-#ifndef READENSIGHT_CASELEXER_H
-#define READENSIGHT_CASELEXER_H
 
 // include standard Flex header file, but use First as prefix, not yy.
 #ifndef yyFlexLexer

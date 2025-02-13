@@ -1,5 +1,5 @@
-#ifndef MAPHEIGHT_H
-#define MAPHEIGHT_H
+#ifndef VISTLE_ISOHEIGHTSURFACE_MAPHEIGHT_H
+#define VISTLE_ISOHEIGHTSURFACE_MAPHEIGHT_H
 
 #include <gdal_priv.h>
 

@@ -1,5 +1,5 @@
-#ifndef RESULT_CACHE_H
-#define RESULT_CACHE_H
+#ifndef VISTLE_MODULE_RESULTCACHE_H
+#define VISTLE_MODULE_RESULTCACHE_H
 
 #include "export.h"
 

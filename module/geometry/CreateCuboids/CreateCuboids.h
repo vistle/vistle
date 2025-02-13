@@ -1,5 +1,5 @@
-#ifndef CREATECUBOID_H
-#define CREATECUBOID_H
+#ifndef VISTLE_CREATECUBOIDS_CREATECUBOIDS_H
+#define VISTLE_CREATECUBOIDS_CREATECUBOIDS_H
 
 #include <vistle/module/module.h>
 
@@ -17,4 +17,4 @@ private:
     bool compute(const std::shared_ptr<vistle::BlockTask> &task) const override;
 };
 
-#endif // CREATECUBOID_H
+#endif

@@ -1,5 +1,5 @@
-#ifndef FOAM_BYTESWAP_H
-#define FOAM_BYTESWAP_H
+#ifndef VISTLE_READFOAM_BYTESWAP_H
+#define VISTLE_READFOAM_BYTESWAP_H
 
 #include <vistle/util/byteswap.h>
 

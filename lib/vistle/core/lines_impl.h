@@ -1,5 +1,5 @@
-#ifndef LINES_IMPL_H
-#define LINES_IMPL_H
+#ifndef VISTLE_CORE_LINES_IMPL_H
+#define VISTLE_CORE_LINES_IMPL_H
 
 namespace vistle {
 

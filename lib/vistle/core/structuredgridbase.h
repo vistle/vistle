@@ -1,10 +1,9 @@
+#ifndef VISTLE_CORE_STRUCTUREDGRIDBASE_H
+#define VISTLE_CORE_STRUCTUREDGRIDBASE_H
+
 //-------------------------------------------------------------------------
-// STRUCTURED GRID OBJECT BASE CLASS H
-// *
 // * Base class for Structured Grid Objects
 //-------------------------------------------------------------------------
-#ifndef STRUCTURED_GRID_BASE_H
-#define STRUCTURED_GRID_BASE_H
 
 #include "scalar.h"
 #include "shm.h"
@@ -156,4 +155,4 @@ public:
 ARCHIVE_ASSUME_ABSTRACT(StructuredGridBase)
 
 } // namespace vistle
-#endif /* STRUCTURED_GRID_BASE_H */
+#endif

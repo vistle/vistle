@@ -1,5 +1,5 @@
-#ifndef VISTLE_INTERACTOR_H
-#define VISTLE_INTERACTOR_H
+#ifndef VISTLE_COVER_VISTLEPLUGINUTIL_VISTLEINTERACTOR_H
+#define VISTLE_COVER_VISTLEPLUGINUTIL_VISTLEINTERACTOR_H
 
 #include <cover/coInteractor.h>
 #include <vistle/core/message.h>

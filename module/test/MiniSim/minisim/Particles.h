@@ -1,5 +1,5 @@
-#ifndef particles_h
-#define particles_h
+#ifndef VISTLE_MINISIM_MINISIM_PARTICLES_H
+#define VISTLE_MINISIM_MINISIM_PARTICLES_H
 
 #include <diy/types.hpp>
 #include <diy/point.hpp>

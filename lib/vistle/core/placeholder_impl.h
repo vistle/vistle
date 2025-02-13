@@ -1,5 +1,5 @@
-#ifndef PLACEHOLDER_IMPL_H
-#define PLACEHOLDER_IMPL_H
+#ifndef VISTLE_CORE_PLACEHOLDER_IMPL_H
+#define VISTLE_CORE_PLACEHOLDER_IMPL_H
 
 #include "archives_config.h"
 

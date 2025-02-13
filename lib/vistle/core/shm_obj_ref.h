@@ -1,5 +1,5 @@
-#ifndef SHM_OBJ_REF_H
-#define SHM_OBJ_REF_H
+#ifndef VISTLE_CORE_SHM_OBJ_REF_H
+#define VISTLE_CORE_SHM_OBJ_REF_H
 
 #include <string>
 #include "shmname.h"
@@ -59,6 +59,7 @@ private:
     void load(Archive &ar);
 };
 } // namespace vistle
-#endif
 
 #include "shm_obj_ref_impl.h"
+
+#endif

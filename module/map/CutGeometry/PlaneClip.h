@@ -1,5 +1,5 @@
-#ifndef PLANECLIP_H
-#define PLANECLIP_H
+#ifndef VISTLE_CUTGEOMETRY_PLANECLIP_H
+#define VISTLE_CUTGEOMETRY_PLANECLIP_H
 
 #include <functional>
 #include <tuple>

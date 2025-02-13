@@ -1,5 +1,5 @@
-#ifndef VISTLE_INSITU_MESSAGE_SHARED_PARAM_H
-#define VISTLE_INSITU_MESSAGE_SHARED_PARAM_H
+#ifndef VISTLE_INSITU_MESSAGE_SHAREDPARAM_H
+#define VISTLE_INSITU_MESSAGE_SHAREDPARAM_H
 
 #include "export.h"
 #include <vistle/core/scalar.h>
@@ -33,4 +33,4 @@ void V_INSITUMESSAGEEXPORT updateIntParam(std::vector<IntParam> &c, const IntPar
 } // namespace vistle
 
 
-#endif // VISTLE_INSITU_MESSAGE_SHARED_PARAM_H
+#endif

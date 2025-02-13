@@ -14,6 +14,15 @@ repos:
     -   id: check-byte-order-marker
     -   id: check-case-conflict
     -   id: check-merge-conflict
+-   repo: local
+    hooks:
+    -   id: fix-include-guards
+        name: fix include guards
+        description: Create unique and consistent include guards
+        entry: .pre-commit/check_include_guards.py
+        language: python
+        types: [text]
+        #files: '*.h'
 -   repo: https://github.com/cheshirekow/cmake-format-precommit
     rev: v0.6.13
     hooks:

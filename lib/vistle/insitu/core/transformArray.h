@@ -1,5 +1,5 @@
-#ifndef TRANSFORM_ARRAY_H
-#define TRANSFORM_ARRAY_H
+#ifndef VISTLE_INSITU_CORE_TRANSFORMARRAY_H
+#define VISTLE_INSITU_CORE_TRANSFORMARRAY_H
 
 #include "callFunctionWithVoidToTypeCast.h"
 #include "exception.h"
@@ -239,4 +239,4 @@ inline void printArray(const void *source, DataType dataType, int size, const st
 } // namespace insitu
 } // namespace vistle
 
-#endif // !TRANSFORM_ARRAY_H
+#endif

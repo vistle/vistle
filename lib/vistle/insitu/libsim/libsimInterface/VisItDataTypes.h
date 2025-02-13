@@ -1,5 +1,5 @@
-#ifndef VISIT_DATA_TYPES_H
-#define VISIT_DATA_TYPES_H
+#ifndef VISTLE_INSITU_LIBSIM_LIBSIMINTERFACE_VISITDATATYPES_H
+#define VISTLE_INSITU_LIBSIM_LIBSIMINTERFACE_VISITDATATYPES_H
 
 #if __cplusplus >= 202002L
 #include <compare>
@@ -194,4 +194,4 @@ constexpr auto VISIT_MESSAGEMETADATA = 110;
 constexpr auto VISIT_VIEW3D = 150;
 constexpr auto VISIT_VIEW2D = 151;
 
-#endif //VISIT_DATA_TYPES_H
+#endif

@@ -1,5 +1,5 @@
-#ifndef MODULEVIEW_H
-#define MODULEVIEW_H
+#ifndef VISTLE_GUI_MODULEVIEW_H
+#define VISTLE_GUI_MODULEVIEW_H
 
 #include <QWidget>
 #include "module.h"

@@ -1,5 +1,5 @@
-#ifndef _ReadDuisburg_H
-#define _ReadDuisburg_H
+#ifndef VISTLE_READDUISBURG_READDUISBURG_H
+#define VISTLE_READDUISBURG_READDUISBURG_H
 
 #include <cstddef>
 #include <vistle/module/reader.h>

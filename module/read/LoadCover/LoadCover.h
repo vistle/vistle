@@ -1,5 +1,5 @@
-#ifndef LOADCOVER_H
-#define LOADCOVER_H
+#ifndef VISTLE_LOADCOVER_LOADCOVER_H
+#define VISTLE_LOADCOVER_LOADCOVER_H
 
 #include <vistle/module/module.h>
 

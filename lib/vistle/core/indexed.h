@@ -1,5 +1,5 @@
-#ifndef INDEXED_H
-#define INDEXED_H
+#ifndef VISTLE_CORE_INDEXED_H
+#define VISTLE_CORE_INDEXED_H
 
 
 #include "scalar.h"

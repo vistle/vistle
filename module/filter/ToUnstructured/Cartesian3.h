@@ -1,5 +1,7 @@
+#ifndef VISTLE_TOUNSTRUCTURED_CARTESIAN3_H
+#define VISTLE_TOUNSTRUCTURED_CARTESIAN3_H
+
 //-------------------------------------------------------------------------
-// CARTESIAN 3 H
 // * container for storing a (cartesian) triple of any type
 // *
 // * Sever Topan, 2016
@@ -31,3 +33,4 @@ struct Cartesian3 {
         }
     }
 };
+#endif

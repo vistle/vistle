@@ -1,21 +1,14 @@
+#ifndef VISTLE_READSEISSOL_READSEISSOL_H
+#define VISTLE_READSEISSOL_READSEISSOL_H
+
 /**************************************************************************\
- **                                                                      **
  **                                                                      **
  ** Description: Read module for ChEESE Seismic HDF5/XDMF-files  	     **
  **                                                                      **
- **                                                                      **
- **                                                                      **
- **                                                                      **
- **                                                                      **
  ** Author:    Marko Djuric                                              **
- **                                                                      **
- **                                                                      **
  **                                                                      **
  ** Date:  04.03.2021                                                    **
 \**************************************************************************/
-
-#ifndef _READSEISSOL_H
-#define _READSEISSOL_H
 
 #include "vistle/core/parameter.h"
 #include <array>

@@ -1,5 +1,5 @@
-#ifndef UIMANAGER_H
-#define UIMANAGER_H
+#ifndef VISTLE_CONTROL_UIMANAGER_H
+#define VISTLE_CONTROL_UIMANAGER_H
 
 #include <map>
 

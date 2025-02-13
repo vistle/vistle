@@ -1,5 +1,5 @@
-#ifndef MESSAGEROUTER_H
-#define MESSAGEROUTER_H
+#ifndef VISTLE_CORE_MESSAGEROUTER_H
+#define VISTLE_CORE_MESSAGEROUTER_H
 
 #include "messages.h"
 #include "export.h"

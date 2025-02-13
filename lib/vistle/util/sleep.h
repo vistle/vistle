@@ -1,5 +1,5 @@
-#ifndef VISTLE_SLEEP_H
-#define VISTLE_SLEEP_H
+#ifndef VISTLE_UTIL_SLEEP_H
+#define VISTLE_UTIL_SLEEP_H
 
 #include "export.h"
 

@@ -1,5 +1,5 @@
-#ifndef VISTLE_PARRENDMGR_H
-#define VISTLE_PARRENDMGR_H
+#ifndef VISTLE_RENDERER_PARRENDMGR_H
+#define VISTLE_RENDERER_PARRENDMGR_H
 
 #include "rhrcontroller.h"
 #include "renderobject.h"

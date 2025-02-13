@@ -1,5 +1,5 @@
-#ifndef ISOSURFACE_H
-#define ISOSURFACE_H
+#ifndef VISTLE_ISOSURFACE_ISOSURFACE_H
+#define VISTLE_ISOSURFACE_ISOSURFACE_H
 
 #include <vistle/module/module.h>
 #include <vistle/core/vec.h>

@@ -1,5 +1,5 @@
-#ifndef PORTTRACKER_H
-#define PORTTRACKER_H
+#ifndef VISTLE_CORE_PORTTRACKER_H
+#define VISTLE_CORE_PORTTRACKER_H
 
 #include <string>
 #include <map>

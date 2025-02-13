@@ -1,5 +1,5 @@
-#ifndef V_INSITUMESSAGEEXPORT_H
-#define V_INSITUMESSAGEEXPORT_H
+#ifndef VISTLE_INSITU_MESSAGE_EXPORT_H
+#define VISTLE_INSITU_MESSAGE_EXPORT_H
 
 #include <vistle/util/export.h>
 

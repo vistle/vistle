@@ -1,5 +1,5 @@
-#ifndef INSITU_CONTROL_MODULE_H
-#define INSITU_CONTROL_MODULE_H
+#ifndef VISTLE_INSITU_INSITUMODULE_H
+#define VISTLE_INSITU_INSITUMODULE_H
 
 
 #include <vistle/core/message.h>
@@ -30,4 +30,4 @@ private:
 } // namespace insitu
 } // namespace vistle
 
-#endif // !INSITU_CONTROL_MODULE_H
+#endif

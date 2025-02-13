@@ -1,5 +1,5 @@
-#ifndef SHMVECTOR_H
-#define SHMVECTOR_H
+#ifndef VISTLE_CORE_SHMVECTOR_H
+#define VISTLE_CORE_SHMVECTOR_H
 
 //#include "shm_array.h"
 #include "shm.h"

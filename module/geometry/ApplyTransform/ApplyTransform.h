@@ -1,5 +1,5 @@
-#ifndef APPLYTRANSFORM_H
-#define APPLYTRANSFORM_H
+#ifndef VISTLE_APPLYTRANSFORM_APPLYTRANSFORM_H
+#define VISTLE_APPLYTRANSFORM_APPLYTRANSFORM_H
 
 #include <vistle/module/module.h>
 #include <vistle/module/resultcache.h>

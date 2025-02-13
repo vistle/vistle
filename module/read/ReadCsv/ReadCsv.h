@@ -1,5 +1,5 @@
-#ifndef READCSV_H
-#define READCSV_H
+#ifndef VISTLE_READCSV_READCSV_H
+#define VISTLE_READCSV_READCSV_H
 
 #include <vistle/module/reader.h>
 #include <array>
@@ -40,4 +40,4 @@ private:
     vistle::Integer getDataSelection(size_t i);
 };
 
-#endif // READCSV_H
+#endif

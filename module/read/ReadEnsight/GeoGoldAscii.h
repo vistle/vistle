@@ -1,3 +1,6 @@
+#ifndef VISTLE_READENSIGHT_GEOGOLDASCII_H
+#define VISTLE_READENSIGHT_GEOGOLDASCII_H
+
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // CLASS    EnGoldgeoAsc
 //
@@ -11,9 +14,6 @@
 //
 //  Changes:
 //
-
-#ifndef READENSIGHT_GEOGOLDASCII_H
-#define READENSIGHT_GEOGOLDASCII_H
 
 #include "EnFile.h"
 

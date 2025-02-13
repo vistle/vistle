@@ -1,5 +1,5 @@
-#ifndef FINDSELF_H
-#define FINDSELF_H
+#ifndef VISTLE_UTIL_FINDSELF_H
+#define VISTLE_UTIL_FINDSELF_H
 
 #include <string>
 #include "export.h"

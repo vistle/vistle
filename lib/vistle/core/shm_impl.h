@@ -1,5 +1,5 @@
-#ifndef SHM_IMPL_H
-#define SHM_IMPL_H
+#ifndef VISTLE_CORE_SHM_IMPL_H
+#define VISTLE_CORE_SHM_IMPL_H
 
 #include <boost/type_traits.hpp>
 #include <boost/mpl/find.hpp>

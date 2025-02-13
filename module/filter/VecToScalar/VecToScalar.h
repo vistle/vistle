@@ -1,5 +1,5 @@
-#ifndef VECTOSCALAR_H
-#define VECTOSCALAR_H
+#ifndef VISTLE_VECTOSCALAR_VECTOSCALAR_H
+#define VISTLE_VECTOSCALAR_VECTOSCALAR_H
 
 #include <vistle/module/module.h>
 #include <vistle/core/vector.h>

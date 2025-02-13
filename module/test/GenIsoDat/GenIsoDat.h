@@ -1,5 +1,5 @@
-#ifndef GENISODAT_H
-#define GENISODAT_H
+#ifndef VISTLE_GENISODAT_GENISODAT_H
+#define VISTLE_GENISODAT_GENISODAT_H
 
 #include <vistle/module/module.h>
 

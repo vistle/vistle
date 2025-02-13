@@ -1,5 +1,5 @@
-#ifndef TABLES_H
-#define TABLES_H
+#ifndef VISTLE_ISOSURFACE_TABLES_H
+#define VISTLE_ISOSURFACE_TABLES_H
 
 #ifdef __CUDACC__
 #define CONSTANT __constant__

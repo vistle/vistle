@@ -1,5 +1,6 @@
-#ifndef INSITU_DATA_TYPE_H
-#define INSITU_DATA_TYPE_H
+#ifndef VISTLE_INSITU_CORE_DATATYPE_H
+#define VISTLE_INSITU_CORE_DATATYPE_H
+
 #include "export.h"
 
 #include <vistle/core/index.h>

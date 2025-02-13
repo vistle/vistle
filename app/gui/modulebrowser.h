@@ -1,5 +1,5 @@
-#ifndef MODULEBROWSER_H
-#define MODULEBROWSER_H
+#ifndef VISTLE_GUI_MODULEBROWSER_H
+#define VISTLE_GUI_MODULEBROWSER_H
 
 #include <QDockWidget>
 #include <QStringList>

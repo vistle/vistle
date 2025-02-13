@@ -1,5 +1,5 @@
-#ifndef OSGRENDERER_H
-#define OSGRENDERER_H
+#ifndef VISTLE_OSGRENDERER_OSGRENDERER_H
+#define VISTLE_OSGRENDERER_OSGRENDERER_H
 
 #include <osgViewer/Viewer>
 #include <osg/Sequence>

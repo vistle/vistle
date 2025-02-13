@@ -1,15 +1,13 @@
+#ifndef VISTLE_RHR_READBACKCUDA_H
+#define VISTLE_RHR_READBACKCUDA_H
+
 /**\file
  * \brief class ReadBackCuda
  * 
  * \author Martin Aumüller <aumueller@hlrs.de>
  * \author Martin Aumüller <aumueller@uni-koeln.de>
  * \author (c) 2011 RRZK, 2013 HLRS
- *
- * \copyright GPL2+
  */
-
-#ifndef READBACKCUDA_H
-#define READBACKCUDA_H
 
 #ifdef __APPLE__
 #include <OpenGL/gl.h>

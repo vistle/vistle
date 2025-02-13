@@ -1,5 +1,5 @@
-#ifndef REPLICATE_H
-#define REPLICATE_H
+#ifndef VISTLE_REPLICATE_REPLICATE_H
+#define VISTLE_REPLICATE_REPLICATE_H
 
 #include <vistle/module/module.h>
 #include <vistle/core/vector.h>

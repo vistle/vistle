@@ -1,5 +1,5 @@
-#ifndef EGLWINDOW_H
-#define EGLWINDOW_H
+#ifndef VISTLE_OSGRENDERER_EGLWINDOW_H
+#define VISTLE_OSGRENDERER_EGLWINDOW_H
 
 
 #include <osgViewer/GraphicsWindow>

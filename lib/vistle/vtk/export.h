@@ -1,5 +1,5 @@
-#ifndef VISTLE_VTK_TO_VISTLE_EXPORT_H
-#define VISTLE_VTK_TO_VISTLE_EXPORT_H
+#ifndef VISTLE_VTK_EXPORT_H
+#define VISTLE_VTK_EXPORT_H
 
 #include <vistle/util/export.h>
 
@@ -8,4 +8,4 @@
 #else
 #define V_VTK_EXPORT V_IMPORT
 #endif
-#endif // VISTLE_VTK_TO_VISTLE_EXPORT_H
+#endif

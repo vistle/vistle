@@ -1,5 +1,5 @@
-#ifndef UUID_H
-#define UUID_H
+#ifndef VISTLE_CORE_UUID_H
+#define VISTLE_CORE_UUID_H
 
 #ifdef __clang__
 #pragma clang diagnostic push

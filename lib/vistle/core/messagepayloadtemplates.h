@@ -1,5 +1,6 @@
-#ifndef VISTLE_MESSAGE_PAYLOAD_TEMPLATES_H
-#define VISTLE_MESSAGE_PAYLOAD_TEMPLATES_H
+#ifndef VISTLE_CORE_MESSAGEPAYLOADTEMPLATES_H
+#define VISTLE_CORE_MESSAGEPAYLOADTEMPLATES_H
+
 #include <vistle/util/tools.h>
 #include "archives.h"
 namespace vistle {
@@ -48,4 +49,4 @@ Payload getPayload(const buffer &data)
 } // namespace vistle
 
 
-#endif // VISTLE_MESSAGE_PAYLOAD_TEMPLATES_H
+#endif

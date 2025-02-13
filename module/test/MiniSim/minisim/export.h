@@ -1,5 +1,5 @@
-#ifndef VISTLE_INSITU_MINISIM_EXPORT_H
-#define VISTLE_INSITU_MINISIM_EXPORT_H
+#ifndef VISTLE_MINISIM_MINISIM_EXPORT_H
+#define VISTLE_MINISIM_MINISIM_EXPORT_H
 
 #include <vistle/util/export.h>
 
@@ -9,4 +9,4 @@
 #define MINI_SIM_EXPORT V_IMPORT
 #endif
 
-#endif // !VISTLE_INSITU_MINISIM_EXPORT_H
+#endif

@@ -1,5 +1,5 @@
-#ifndef VISTLE_USERINFO_H
-#define VISTLE_USERINFO_H
+#ifndef VISTLE_UTIL_USERINFO_H
+#define VISTLE_UTIL_USERINFO_H
 
 #include "export.h"
 #include <string>

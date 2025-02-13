@@ -1,5 +1,5 @@
-#ifndef LIBSIM_CONTROL_MODULE_H
-#define LIBSIM_CONTROL_MODULE_H
+#ifndef VISTLE_LIBSIM_LIBSIMMODULE_H
+#define VISTLE_LIBSIM_LIBSIMMODULE_H
 
 #include <vistle/core/message.h>
 #include <vistle/core/messagequeue.h>
@@ -27,4 +27,4 @@ private:
 #endif
 };
 
-#endif // !LIBSIM_CONTROL_MODULE_H
+#endif

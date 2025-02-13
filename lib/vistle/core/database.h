@@ -1,5 +1,5 @@
-#ifndef VISTLE_DATABASE_H
-#define VISTLE_DATABASE_H
+#ifndef VISTLE_CORE_DATABASE_H
+#define VISTLE_CORE_DATABASE_H
 
 #include "index.h"
 #include "dimensions.h"

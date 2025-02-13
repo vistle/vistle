@@ -1,5 +1,5 @@
-#ifndef USERINTERFACE_H
-#define USERINTERFACE_H
+#ifndef VISTLE_USERINTERFACE_USERINTERFACE_H
+#define VISTLE_USERINTERFACE_USERINTERFACE_H
 
 #include <condition_variable>
 #include <exception>

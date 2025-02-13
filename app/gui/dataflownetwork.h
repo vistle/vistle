@@ -1,5 +1,5 @@
-#ifndef VSCENE_H
-#define VSCENE_H
+#ifndef VISTLE_GUI_DATAFLOWNETWORK_H
+#define VISTLE_GUI_DATAFLOWNETWORK_H
 
 #include <QList>
 #include <QString>
@@ -169,4 +169,4 @@ std::shared_ptr<vistle::ParameterBase<T>> DataFlowNetwork::getParameter(int id, 
 // required for compiling generated moc for emphasizeConnections with GCC and MSVC,
 // but cannot be included at top as this prevents template instantiation for Clang in module.h
 #include "module.h"
-#endif // VSCENE_H
+#endif

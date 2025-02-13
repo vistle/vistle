@@ -1,5 +1,6 @@
-#ifndef VEC_H
-#define VEC_H
+#ifndef VISTLE_CORE_VEC_H
+#define VISTLE_CORE_VEC_H
+
 #include "index.h"
 #include "dimensions.h"
 #include "object.h"

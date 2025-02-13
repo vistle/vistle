@@ -1,5 +1,5 @@
-#ifndef PORT_H
-#define PORT_H
+#ifndef VISTLE_CORE_PORT_H
+#define VISTLE_CORE_PORT_H
 
 #include <string>
 #include <vector>

@@ -1,5 +1,5 @@
-#ifndef READMODEL_H
-#define READMODEL_H
+#ifndef VISTLE_READMODEL_READMODEL_H
+#define VISTLE_READMODEL_READMODEL_H
 
 #include <string>
 #include <utility> // std::pair

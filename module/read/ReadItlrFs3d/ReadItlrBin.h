@@ -1,5 +1,5 @@
-#ifndef READITLRBIN_H
-#define READITLRBIN_H
+#ifndef VISTLE_READITLRFS3D_READITLRBIN_H
+#define VISTLE_READITLRFS3D_READITLRBIN_H
 
 #include <vistle/core/rectilineargrid.h>
 #include <vistle/core/vec.h>

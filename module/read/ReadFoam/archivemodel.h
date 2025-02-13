@@ -1,5 +1,5 @@
-#ifndef ARCHIVE_MODEL_H
-#define ARCHIVE_MODEL_H
+#ifndef VISTLE_READFOAM_ARCHIVEMODEL_H
+#define VISTLE_READFOAM_ARCHIVEMODEL_H
 
 #include <map>
 #include <string>

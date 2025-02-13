@@ -1,5 +1,6 @@
-#ifndef TRACERTIMES_H
-#define TRACERTIMES_H
+#ifndef VISTLE_TRACER_TRACERTIMES_H
+#define VISTLE_TRACER_TRACERTIMES_H
+
 #include <chrono>
 
 namespace times {

@@ -1,5 +1,5 @@
-#ifndef VISTLE_VTKM_CLIP_H
-#define VISTLE_VTKM_CLIP_H
+#ifndef VISTLE_CLIPVTKM_CLIPVTKM_H
+#define VISTLE_CLIPVTKM_CLIPVTKM_H
 
 #include <vistle/module/module.h>
 #include <vtkm/ImplicitFunction.h>
@@ -36,4 +36,4 @@ private:
     ImplFuncController m_implFuncControl;
 };
 
-#endif // VISTLE_VTKM_ISOSURFACE_H
+#endif

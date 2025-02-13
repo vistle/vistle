@@ -1,5 +1,6 @@
-#ifndef VISTLE_LIBSIM_INT_OPTION_H
-#define VISTLE_LIBSIM_INT_OPTION_H
+#ifndef VISTLE_INSITU_LIBSIM_INTOPTION_H
+#define VISTLE_INSITU_LIBSIM_INTOPTION_H
+
 #include <vistle/insitu/message/sharedOption.h>
 #include <vistle/insitu/message/InSituMessage.h>
 

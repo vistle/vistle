@@ -1,5 +1,5 @@
-#ifndef PYTHON_MODULE_H
-#define PYTHON_MODULE_H
+#ifndef VISTLE_PYTHON_PYTHONMODULE_H
+#define VISTLE_PYTHON_PYTHONMODULE_H
 
 #include <string>
 #include "module_export.h"

@@ -1,5 +1,5 @@
-#ifndef VISTLE_MACOS_UTILS_H
-#define VISTLE_MACOS_UTILS_H
+#ifndef VISTLE_GUI_MACOSUTILS_H
+#define VISTLE_GUI_MACOSUTILS_H
 
 #ifdef __cplusplus
 extern "C"

@@ -1,5 +1,5 @@
-#ifndef COLOR_H
-#define COLOR_H
+#ifndef VISTLE_COLOR_COLOR_H
+#define VISTLE_COLOR_COLOR_H
 
 #include <vistle/module/module.h>
 #include <vistle/core/vector.h>

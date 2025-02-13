@@ -1,5 +1,5 @@
-#ifndef VISTLE_INFO_H
-#define VISTLE_INFO_H
+#ifndef VISTLE_COVER_VISTLEPLUGINUTIL_VISTLEINFO_H
+#define VISTLE_COVER_VISTLEPLUGINUTIL_VISTLEINFO_H
 
 #include "export.h"
 #include <vistle/module/module.h>

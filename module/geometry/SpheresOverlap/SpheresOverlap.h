@@ -1,5 +1,5 @@
-#ifndef SPHERES_OVERLAP_H
-#define SPHERES_OVERLAP_H
+#ifndef VISTLE_SPHERESOVERLAP_SPHERESOVERLAP_H
+#define VISTLE_SPHERESOVERLAP_SPHERESOVERLAP_H
 
 #include <string>
 
@@ -24,4 +24,4 @@ private:
     bool compute(const std::shared_ptr<vistle::BlockTask> &task) const override;
 };
 
-#endif // SPHERES_OVERLAP_H
+#endif

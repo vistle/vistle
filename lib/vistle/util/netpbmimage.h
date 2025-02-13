@@ -1,5 +1,5 @@
-#ifndef VISTLE_PPMIMAGE_H
-#define VISTLE_PPMIMAGE_H
+#ifndef VISTLE_UTIL_NETPBMIMAGE_H
+#define VISTLE_UTIL_NETPBMIMAGE_H
 
 #include "export.h"
 

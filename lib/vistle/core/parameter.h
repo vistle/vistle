@@ -1,5 +1,5 @@
-#ifndef PARAMETER_H
-#define PARAMETER_H
+#ifndef VISTLE_CORE_PARAMETER_H
+#define VISTLE_CORE_PARAMETER_H
 
 #include <string>
 #include <sstream>

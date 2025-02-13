@@ -1,5 +1,5 @@
-#ifndef VISTLE_COVER_MESSAGE_H
-#define VISTLE_COVER_MESSAGE_H
+#ifndef VISTLE_COVER_VISTLEPLUGINUTIL_VISTLEMESSAGE_H
+#define VISTLE_COVER_VISTLEPLUGINUTIL_VISTLEMESSAGE_H
 
 #include <vistle/core/messagepayload.h>
 #include <vistle/core/message.h>

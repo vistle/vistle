@@ -1,5 +1,5 @@
-#ifndef SYSDEP_H
-#define SYSDEP_H
+#ifndef VISTLE_UTIL_SYSDEP_H
+#define VISTLE_UTIL_SYSDEP_H
 
 #include "export.h"
 #ifdef _WIN32

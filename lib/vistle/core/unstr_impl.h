@@ -1,5 +1,5 @@
-#ifndef UNSTR_IMPL_H
-#define UNSTR_IMPL_H
+#ifndef VISTLE_CORE_UNSTR_IMPL_H
+#define VISTLE_CORE_UNSTR_IMPL_H
 
 namespace vistle {
 

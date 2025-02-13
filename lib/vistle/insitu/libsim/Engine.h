@@ -1,5 +1,5 @@
-#ifndef VISIT_VISTLE_ENGINE_H
-#define VISIT_VISTLE_ENGINE_H
+#ifndef VISTLE_INSITU_LIBSIM_ENGINE_H
+#define VISTLE_INSITU_LIBSIM_ENGINE_H
 
 #include "DataTransmitter.h"
 #include "MeshInfo.h"
@@ -120,4 +120,4 @@ private:
 } // namespace insitu
 } // namespace vistle
 
-#endif // !VISIT_VISTLE_ENGINE_H
+#endif

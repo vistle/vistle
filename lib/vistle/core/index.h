@@ -1,5 +1,5 @@
-#ifndef INDEX_H
-#define INDEX_H
+#ifndef VISTLE_CORE_INDEX_H
+#define VISTLE_CORE_INDEX_H
 
 #include <cstdlib>
 #include <cinttypes>

@@ -1,5 +1,5 @@
-#ifndef VISTLE_OPENER_H
-#define VISTLE_OPENER_H
+#ifndef VISTLE_OPENER_VISTLE_OPENER_H
+#define VISTLE_OPENER_VISTLE_OPENER_H
 
 #include <QObject>
 

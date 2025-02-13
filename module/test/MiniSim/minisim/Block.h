@@ -1,5 +1,5 @@
-#ifndef BlockData_h
-#define BlockData_h
+#ifndef VISTLE_MINISIM_MINISIM_BLOCK_H
+#define VISTLE_MINISIM_MINISIM_BLOCK_H
 
 #include <diy/master.hpp>
 #include <diy/decomposition.hpp>

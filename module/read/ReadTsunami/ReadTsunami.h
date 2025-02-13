@@ -1,15 +1,11 @@
+#ifndef VISTLE_READTSUNAMI_READTSUNAMI_H
+#define VISTLE_READTSUNAMI_READTSUNAMI_H
+
 /**************************************************************************\
- **                                                                        **
  **                                                                        **
  ** Description: Read module for ChEESE tsunami nc-files         	       **
  **                                                                        **
- **                                                                        **
- **                                                                        **
- **                                                                        **
- **                                                                        **
  ** Author:    Marko Djuric <hpcmdjur@hlrs.de>                             **
- **                                                                        **
- **                                                                        **
  **                                                                        **
  ** Date:  25.01.2021 Version 1 with netCDF                                **
  ** Date:  29.10.2021 Version 2 with PnetCDF                               **
@@ -17,11 +13,7 @@
  ** Date:  25.01.2022 Version 2.2 optimize creation of surfaces            **
 \**************************************************************************/
 
-#ifndef _READTSUNAMI_H
-#define _READTSUNAMI_H
-
 #include "vistle/core/index.h"
-/* #include "vistle/core/polygons.h" */
 #include "vistle/core/points.h"
 #include <atomic>
 #include <memory>

@@ -1,5 +1,5 @@
-#ifndef VISTLE_HUB_H
-#define VISTLE_HUB_H
+#ifndef VISTLE_CONTROL_HUB_H
+#define VISTLE_CONTROL_HUB_H
 
 #include <memory>
 #include <atomic>

@@ -1,5 +1,6 @@
-#ifndef VISLTE_LIBSIM_ARRAY_STRUCT_H
-#define VISLTE_LIBSIM_ARRAY_STRUCT_H
+#ifndef VISTLE_INSITU_LIBSIM_ARRAYSTRUCT_H
+#define VISTLE_INSITU_LIBSIM_ARRAYSTRUCT_H
+
 #include "Exception.h"
 #include "SmartHandle.h"
 #include "SmartHandle.h"

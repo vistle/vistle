@@ -1,5 +1,5 @@
-#ifndef OBJECT_H
-#define OBJECT_H
+#ifndef VISTLE_CORE_OBJECT_H
+#define VISTLE_CORE_OBJECT_H
 
 #include <vector>
 #include <memory>

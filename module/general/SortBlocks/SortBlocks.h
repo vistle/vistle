@@ -1,5 +1,5 @@
-#ifndef SORTBLOCKS_H
-#define SORTBLOCKS_H
+#ifndef VISTLE_SORTBLOCKS_SORTBLOCKS_H
+#define VISTLE_SORTBLOCKS_SORTBLOCKS_H
 
 #include <vistle/module/module.h>
 #include <vistle/core/vector.h>

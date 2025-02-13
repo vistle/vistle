@@ -1,5 +1,5 @@
-#ifndef THICKEN_H
-#define THICKEN_H
+#ifndef VISTLE_THICKEN_THICKEN_H
+#define VISTLE_THICKEN_THICKEN_H
 
 #include <vistle/module/module.h>
 

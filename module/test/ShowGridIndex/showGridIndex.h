@@ -1,5 +1,5 @@
-#ifndef SHOW_GRID_INDEX_H
-#define SHOW_GRID_INDEX_H
+#ifndef VISTLE_SHOWGRIDINDEX_SHOWGRIDINDEX_H
+#define VISTLE_SHOWGRIDINDEX_SHOWGRIDINDEX_H
 
 #include <vistle/module/module.h>
 #include <vistle/core/vec.h>
@@ -17,4 +17,4 @@ private:
     vistle::ResultCache<vistle::Vec<vistle::Index>::ptr> m_cache;
 };
 
-#endif // !SHOW_GRID_INDEX_H
+#endif

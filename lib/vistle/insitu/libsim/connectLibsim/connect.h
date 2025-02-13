@@ -1,5 +1,5 @@
-#ifndef ESTABLISH_CONNECTION_H
-#define ESTABLISH_CONNECTION_H
+#ifndef VISTLE_INSITU_LIBSIM_CONNECTLIBSIM_CONNECT_H
+#define VISTLE_INSITU_LIBSIM_CONNECTLIBSIM_CONNECT_H
 
 #include "export.h"
 
@@ -21,4 +21,4 @@ bool V_LIBSIMCONNECTEXPORT attemptLibSimConnection(const std::string &path, cons
 } // namespace insitu
 } // namespace vistle
 
-#endif // !ESTABLISH_CONNECTION_H
+#endif

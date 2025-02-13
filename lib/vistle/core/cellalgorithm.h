@@ -1,5 +1,5 @@
-#ifndef VISTLE_CELLINTERPOLATION_H
-#define VISTLE_CELLINTERPOLATION_H
+#ifndef VISTLE_CORE_CELLALGORITHM_H
+#define VISTLE_CORE_CELLALGORITHM_H
 
 #include "export.h"
 #include "vectortypes.h"
