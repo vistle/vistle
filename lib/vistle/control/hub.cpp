@@ -790,12 +790,10 @@ bool Hub::init(int argc, char *argv[])
             } else {
 #endif // MODULE_THREAD
                 auto child = launchMpiProcess(Process::Manager, args);
-                if (!child || !child->valid()) {
+                if (!child) {
                     CERR << "failed to spawn Vistle manager " << std::endl;
                     exit(1);
                 }
-                std::lock_guard<std::mutex> guard(m_processMutex);
-                m_processMap[child] = Process::Manager;
 #ifdef MODULE_THREAD
             }
 #endif // MODULE_THREAD
@@ -852,8 +850,9 @@ unsigned short Hub::dataPort() const
     return m_dataProxy->port();
 }
 
-std::shared_ptr<process::child> Hub::launchProcess(int type, const std::string &prog,
-                                                   const std::vector<std::string> &args, std::string name)
+std::shared_ptr<process::child>
+Hub::launchProcess(int type, const std::string &prog, const std::vector<std::string> &args, std::string name,
+                   std::function<bool(std::shared_ptr<process::child>, std::shared_ptr<process::ipstream>)> parseOutput)
 {
     if (name.empty()) {
         name = prog;
@@ -896,6 +895,12 @@ std::shared_ptr<process::child> Hub::launchProcess(int type, const std::string &
         info << "Failed to launch: " << path << ": " << ex.what();
         sendError(info.str());
         return nullptr;
+    }
+
+    if (parseOutput) {
+        if (!parseOutput(child, out)) {
+            return nullptr;
+        }
     }
 
     auto consumeStream = [this, type, child](process::ipstream &str, message::SendText::TextType stream,
@@ -971,6 +976,12 @@ std::shared_ptr<process::child> Hub::launchProcess(int type, const std::string &
         consumeStream(*err, message::SendText::Cerr, obs, obs.buffer, obs.numDiscarded, obs.mutex);
     });
 
+    if (!child || !child->valid()) {
+        return nullptr;
+    }
+
+    std::lock_guard<std::mutex> guard(m_processMutex);
+    m_processMap[child] = type;
     return child;
 }
 
@@ -986,13 +997,14 @@ std::shared_ptr<process::child> Hub::launchMpiProcess(int type, const std::vecto
         spawn = *m_config->value<std::string>("system", "mpirun", platform_fallback, spawn_cmd);
     }
     if (m_verbose >= Verbosity::Modules) {
-        CERR << "SPAWN: " << spawn << std::endl;
+        CERR << "launchMpiProcess: " << spawn << " for " << prog << std::endl;
     }
 
     auto child = launchProcess(type, spawn, args, prog);
 #ifndef _WIN32
-    if ((!child || !child->valid()) && spawn != "mpirun") {
-        CERR << "failed to execute " << args[0] << " via " << spawn << ", retrying with mpirun" << std::endl;
+    if (!child && spawn != "mpirun") {
+        CERR << "launchMpiProcess: failed to execute " << args[0] << " via " << spawn << ", retrying with mpirun"
+             << std::endl;
         auto child = launchProcess(type, spawn, args, prog);
     }
 #endif
@@ -2384,12 +2396,10 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                 auto cmd = cmd_args[0];
                 auto args = std::vector<std::string>(cmd_args.begin() + 1, cmd_args.end());
                 auto child = launchProcess(Process::Debugger, cmd, args);
-                if (child && child->valid()) {
+                if (child) {
                     std::stringstream info;
                     info << "Debugging " << debug.getModule() << " with " << cmd << " as PID " << child->id();
                     sendInfo(info.str());
-                    std::lock_guard<std::mutex> guard(m_processMutex);
-                    m_processMap[child] = Process::Debugger;
                 }
 #else
                 std::stringstream info;
@@ -2930,12 +2940,10 @@ bool Hub::startCleaner()
     std::string shmname = Shm::instanceName(hostname(), m_port);
     args.push_back(shmname);
     auto child = launchMpiProcess(Process::Cleaner, args);
-    if (!child || !child->valid()) {
+    if (!child) {
         CERR << "failed to spawn clean_vistle" << std::endl;
         return false;
     }
-    std::lock_guard<std::mutex> guard(m_processMutex);
-    m_processMap[child] = Process::Cleaner;
     return true;
 }
 
@@ -3199,56 +3207,27 @@ bool Hub::startVrb()
 {
     m_vrbPort = 0;
 
-    std::shared_ptr<process::child> child;
-    auto out = std::make_shared<process::ipstream>();
-    auto err = std::make_shared<process::ipstream>();
-    try {
-        child = std::make_shared<process::child>(process::search_path("vrb"), process::args({"--tui", "--printport"}),
-                                                 terminate_with_parent(), process::std_out > *out,
-                                                 process::std_err > *err, m_ioContext, process::on_exit(exit_handler));
-    } catch (std::exception &ex) {
-        CERR << "could not create VRB process: " << ex.what() << std::endl;
-        return false;
-    }
-    if (!child || !child->valid()) {
-        CERR << "could not create VRB process" << std::endl;
-        return false;
-    }
-
-    std::string line;
-    while (child->running() && std::getline(*out, line) && !line.empty() && m_vrbPort == 0) {
-        m_vrbPort = std::atol(line.c_str());
-    }
-    if (m_vrbPort == 0) {
-        CERR << "started VRB process, but could not parse VRB port \"" << line << "\"" << std::endl;
-        child->terminate();
-        return false;
-    }
-    if (m_verbose >= Verbosity::Manager) {
-        CERR << "VRB process running on port " << m_vrbPort << ", running=" << child->running() << std::endl;
-    }
-
-    auto consumeStream = [this, child](process::ipstream &str) mutable {
+    auto parseOutput = [this](std::shared_ptr<process::child> child, std::shared_ptr<process::ipstream> stream) {
         std::string line;
-        while (child->running() && std::getline(str, line)) {
-            if (m_verbose >= Verbosity::Manager) {
-                std::cerr << "VRB: " << line << std::endl;
-            }
+        while (child->running() && std::getline(*stream, line) && !line.empty() && m_vrbPort == 0) {
+            m_vrbPort = std::atol(line.c_str());
         }
+        if (m_vrbPort == 0) {
+            CERR << "started VRB process, but could not parse VRB port \"" << line << "\"" << std::endl;
+            child->terminate();
+            return false;
+        }
+        if (m_verbose >= Verbosity::Manager && child->running()) {
+            CERR << "VRB process running on port " << m_vrbPort << std::endl;
+        }
+        return child->running();
     };
 
-    m_vrb = child;
-    m_vrbThreads.emplace_back([consumeStream, out]() mutable {
-        setThreadName("vistle:vrb_cout");
-        consumeStream(*out);
-    });
-    m_vrbThreads.emplace_back([consumeStream, err]() mutable {
-        setThreadName("vistle:vrb_cerr");
-        consumeStream(*err);
-    });
+    m_vrb = launchProcess(Process::VRB, "vrb", {"--tui", "--printport"}, "vrb", parseOutput);
+    if (!m_vrb) {
+        return false;
+    }
 
-    std::lock_guard<std::mutex> guard(m_processMutex);
-    m_processMap[child] = Process::VRB;
     return true;
 }
 
@@ -3263,13 +3242,6 @@ void Hub::stopVrb()
 
     while (!m_vrbSockets.empty()) {
         removeSocket(m_vrbSockets.begin()->second);
-    }
-
-    while (!m_vrbThreads.empty()) {
-        auto &t = m_vrbThreads.back();
-        if (t.joinable())
-            t.join();
-        m_vrbThreads.pop_back();
     }
 }
 
@@ -3423,13 +3395,10 @@ bool Hub::startUi(const std::string &uipath, bool replace)
     }
 
     auto child = launchProcess(Process::GUI, uipath, args);
-    if (!child || !child->valid()) {
+    if (!child) {
         CERR << "failed to spawn UI " << uipath << std::endl;
         return false;
     }
-
-    std::lock_guard<std::mutex> guard(m_processMutex);
-    m_processMap[child] = Process::GUI;
 
     return true;
 }
@@ -3451,9 +3420,7 @@ bool Hub::startPythonUi()
     std::shared_ptr<process::child> child;
     for (const auto &shell: python_shells) {
         auto child = launchProcess(Process::GUI, shell, args);
-        if (child && child->valid()) {
-            std::lock_guard<std::mutex> guard(m_processMutex);
-            m_processMap[child] = Process::GUI;
+        if (child) {
             return true;
         }
     }
@@ -4113,15 +4080,19 @@ bool Hub::checkChildProcesses(bool emergency, bool onMainThread)
             break;
         }
 
+        bool exitOk = false;
         if (id == Process::VRB) {
             if (onMainThread) {
                 stopVrb();
             } else {
                 if (m_verbose >= Verbosity::Manager) {
-                    CERR << "VRB on port " << m_vrbPort << " has exited" << std::endl;
+                    if (m_vrbPort == 0) {
+                        exitOk = true;
+                    } else {
+                        CERR << "VRB on port " << m_vrbPort << " has exited" << std::endl;
+                    }
                 }
                 m_vrbPort = 0;
-                //continue; // FIXME
             }
         } else if (!emergency) {
             if (id == Process::Manager) {
@@ -4138,6 +4109,7 @@ bool Hub::checkChildProcesses(bool emergency, bool onMainThread)
                 sendManager(m); // will be returned and forwarded to master hub
             }
         }
+
         std::string pname;
         const ObservedChild *obs = nullptr;
         auto obsit = m_observedChildren.find(it->first->id());
@@ -4147,7 +4119,7 @@ bool Hub::checkChildProcesses(bool emergency, bool onMainThread)
         } else {
             pname = "with id " + idstring + " (PID " + std::to_string(it->first->id()) + ")";
         }
-        if (it->first->exit_code() != 0) {
+        if (!exitOk && it->first->exit_code() != 0) {
             std::stringstream str;
             str << "process " << pname << " exited with code " << it->first->exit_code();
             sendError(str.str(), id);
@@ -4233,11 +4205,7 @@ void Hub::spawnModule(const std::string &path, const std::string &name, int spaw
         CERR << "starting module " << name << std::endl;
     }
     auto child = launchMpiProcess(message::Id::isModule(spawnId) ? spawnId : Process::Module, argv);
-    if (child && child->valid()) {
-        //CERR << "started " << mod->path() << " with PID " << pid << std::endl;
-        std::lock_guard<std::mutex> guard(m_processMutex);
-        m_processMap[child] = spawnId;
-    } else {
+    if (!child) {
         std::stringstream str;
         str << "program " << argv[0] << " failed to start";
         sendError(str.str());

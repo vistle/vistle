@@ -75,9 +75,11 @@ public:
     bool isPrincipal() const;
     unsigned short port() const;
     unsigned short dataPort() const;
-    std::shared_ptr<boost::process::child> launchProcess(int type, const std::string &prog,
-                                                         const std::vector<std::string> &argv,
-                                                         std::string name = std::string());
+    std::shared_ptr<boost::process::child>
+    launchProcess(int type, const std::string &prog, const std::vector<std::string> &argv,
+                  std::string name = std::string(),
+                  std::function<bool(std::shared_ptr<boost::process::child>, std::shared_ptr<boost::process::ipstream>)>
+                      parseOutput = nullptr);
     std::shared_ptr<boost::process::child> launchMpiProcess(int type, const std::vector<std::string> &argv);
     const std::string &name() const;
 
@@ -308,7 +310,6 @@ private:
 
     boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_workGuard;
     std::vector<std::thread> m_ioThreads;
-    std::vector<std::thread> m_vrbThreads;
     void startIoThread();
     void stopIoThreads();
 
