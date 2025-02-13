@@ -1,5 +1,5 @@
-#ifndef DATAMANAGER_H
-#define DATAMANAGER_H
+#ifndef VISTLE_MANAGER_DATAMANAGER_H
+#define VISTLE_MANAGER_DATAMANAGER_H
 
 #include <deque>
 #include <functional>

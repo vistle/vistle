@@ -1,5 +1,5 @@
-#ifndef CUTGEOMETRY_H
-#define CUTGEOMETRY_H
+#ifndef VISTLE_CUTGEOMETRYOLD_CUTGEOMETRY_H
+#define VISTLE_CUTGEOMETRYOLD_CUTGEOMETRY_H
 
 #include <vistle/module/module.h>
 #include <vistle/core/vector.h>

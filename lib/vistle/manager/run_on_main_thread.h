@@ -1,5 +1,5 @@
-#ifndef VISTLE_RUN_ON_MAIN_THREAD_H
-#define VISTLE_RUN_ON_MAIN_THREAD_H
+#ifndef VISTLE_MANAGER_RUN_ON_MAIN_THREAD_H
+#define VISTLE_MANAGER_RUN_ON_MAIN_THREAD_H
 
 #include "export.h"
 #include <functional>

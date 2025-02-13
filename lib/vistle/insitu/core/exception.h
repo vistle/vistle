@@ -1,5 +1,5 @@
-#ifndef INSITU_EXCEPTION
-#define INSITU_EXCEPTION
+#ifndef VISTLE_INSITU_CORE_EXCEPTION_H
+#define VISTLE_INSITU_CORE_EXCEPTION_H
 
 #include "export.h"
 
@@ -26,4 +26,4 @@ protected:
 } // namespace insitu
 } // namespace vistle
 
-#endif // !SIMV2_EXCEPTION
+#endif

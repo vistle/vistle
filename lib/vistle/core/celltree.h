@@ -1,5 +1,5 @@
-#ifndef CELLTREE_H
-#define CELLTREE_H
+#ifndef VISTLE_CORE_CELLTREE_H
+#define VISTLE_CORE_CELLTREE_H
 
 #include "export.h"
 #include "scalar.h"
@@ -184,7 +184,8 @@ public:
 };
 
 } // namespace vistle
-#endif
 
 // include only where actually required
 //#include "celltree_impl.h"
+
+#endif

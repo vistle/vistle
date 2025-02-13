@@ -1,5 +1,5 @@
-#ifndef VERTEXOWNERLIST_H
-#define VERTEXOWNERLIST_H
+#ifndef VISTLE_CORE_VERTEXOWNERLIST_H
+#define VISTLE_CORE_VERTEXOWNERLIST_H
 
 #include "export.h"
 #include "index.h"

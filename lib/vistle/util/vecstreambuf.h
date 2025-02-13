@@ -1,5 +1,5 @@
-#ifndef VECSTREAMBUF_H
-#define VECSTREAMBUF_H
+#ifndef VISTLE_UTIL_VECSTREAMBUF_H
+#define VISTLE_UTIL_VECSTREAMBUF_H
 
 #include <streambuf>
 #include <vector>

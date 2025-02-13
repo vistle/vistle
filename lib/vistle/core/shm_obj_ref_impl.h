@@ -1,5 +1,5 @@
-#ifndef VISTLE_SHM_OBJ_REF_IMPL_H
-#define VISTLE_SHM_OBJ_REF_IMPL_H
+#ifndef VISTLE_CORE_SHM_OBJ_REF_IMPL_H
+#define VISTLE_CORE_SHM_OBJ_REF_IMPL_H
 
 #include "object.h"
 #include "shm.h"

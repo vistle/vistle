@@ -1,5 +1,5 @@
-#ifndef QUADSTOCIRCLES_H
-#define QUADSTOCIRCLES_H
+#ifndef VISTLE_CHAINMAIL_CHAINMAIL_H
+#define VISTLE_CHAINMAIL_CHAINMAIL_H
 
 #include <vistle/module/module.h>
 #include <array>
@@ -35,4 +35,4 @@ private:
     float m_radiusValue = 1.0;
 };
 
-#endif // QUADSTOCIRCLES_H
+#endif

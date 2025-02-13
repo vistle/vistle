@@ -1,5 +1,5 @@
-#ifndef PARAMETERS_H
-#define PARAMETERS_H
+#ifndef VISTLE_GUI_PARAMETERS_H
+#define VISTLE_GUI_PARAMETERS_H
 
 #include <map>
 

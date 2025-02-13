@@ -1,5 +1,5 @@
-#ifndef MODULE_IMPL_H
-#define MODULE_IMPL_H
+#ifndef VISTLE_MODULE_MODULE_IMPL_H
+#define VISTLE_MODULE_MODULE_IMPL_H
 
 #include <vistle/core/message.h>
 #include <vistle/core/messages.h>

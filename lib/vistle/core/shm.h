@@ -1,5 +1,5 @@
-#ifndef SHM_H
-#define SHM_H
+#ifndef VISTLE_CORE_SHM_H
+#define VISTLE_CORE_SHM_H
 
 #include <memory>
 #include <array>
@@ -387,14 +387,12 @@ T *shm<T>::Constructor::operator()(Args &&...args)
 
 } // namespace vistle
 
-#endif
-
 #include "shm_reference.h"
 
 namespace vistle {
 //using ShmVector = shm_array_ref<shm_array<T, typename shm<T>::allocator>>;
-
-
 }
 
 #include "shm_impl.h"
+
+#endif

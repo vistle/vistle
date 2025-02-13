@@ -1,5 +1,5 @@
-#ifndef VISTLEGEOMETRYGENERATOR_H
-#define VISTLEGEOMETRYGENERATOR_H
+#ifndef VISTLE_COVER_VISTLEGEOMETRYGENERATOR_H
+#define VISTLE_COVER_VISTLEGEOMETRYGENERATOR_H
 
 #include <vistle/core/object.h>
 #include <vistle/renderer/renderobject.h>

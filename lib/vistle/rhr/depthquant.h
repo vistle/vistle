@@ -1,14 +1,12 @@
+#ifndef VISTLE_RHR_DEPTHQUANT_H
+#define VISTLE_RHR_DEPTHQUANT_H
+
 /**\file
  * \brief Depth quantization for remote hybrid rendering
  * 
  * \author Martin Aumüller <aumueller@hlrs.de>
  * \author (c) 2013 HLRS
- *
- * \copyright GPL2+
  */
-
-#ifndef DEPTH_QUANT_H
-#define DEPTH_QUANT_H
 
 #include "export.h"
 

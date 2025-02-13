@@ -1,5 +1,5 @@
-#ifndef GENDATCHECKER_H
-#define GENDATCHECKER_H
+#ifndef VISTLE_GENDAT_GENDATCHECKER_H
+#define VISTLE_GENDAT_GENDATCHECKER_H
 
 #include <vistle/module/module.h>
 

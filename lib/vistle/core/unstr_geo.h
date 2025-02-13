@@ -1,3 +1,5 @@
+#ifndef VISTLE_CORE_UNSTR_GEO_H
+#define VISTLE_CORE_UNSTR_GEO_H
 
 #include "unstr.h"
 
@@ -264,3 +266,4 @@ Scalar volume<UnstructuredGrid::PYRAMID>(Index numVerts, const Index *cl, const 
 }
 
 } // namespace vistle
+#endif

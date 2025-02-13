@@ -1,5 +1,6 @@
-#ifndef INSITU_SHM_MESSAGE_H
-#define INSITU_SHM_MESSAGE_H
+#ifndef VISTLE_INSITU_MESSAGE_SHMMESSAGE_H
+#define VISTLE_INSITU_MESSAGE_SHMMESSAGE_H
+
 #include "InSituMessage.h"
 #include "MessageHandler.h"
 #include "export.h"
@@ -48,4 +49,4 @@ private:
 } // namespace insitu
 } // namespace vistle
 
-#endif // !INSITU_SHM_MESSAGE_H
+#endif

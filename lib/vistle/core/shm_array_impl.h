@@ -1,5 +1,5 @@
-#ifndef SHM_ARRAY_IMPL_H
-#define SHM_ARRAY_IMPL_H
+#ifndef VISTLE_CORE_SHM_ARRAY_IMPL_H
+#define VISTLE_CORE_SHM_ARRAY_IMPL_H
 
 #include <cassert>
 #include <atomic>

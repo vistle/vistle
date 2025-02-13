@@ -1,5 +1,5 @@
-#ifndef CELLTREENODE_DECL_H
-#define CELLTREENODE_DECL_H
+#ifndef VISTLE_CORE_CELLTREENODE_DECL_H
+#define VISTLE_CORE_CELLTREENODE_DECL_H
 
 #include <cstdlib>
 #include "index.h"

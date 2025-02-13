@@ -1,5 +1,5 @@
-#ifndef VISTLE_FILEQUERY_H
-#define VISTLE_FILEQUERY_H
+#ifndef VISTLE_CORE_FILEQUERY_H
+#define VISTLE_CORE_FILEQUERY_H
 
 #include <cstdint>
 #include <string>

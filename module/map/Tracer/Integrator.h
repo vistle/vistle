@@ -1,5 +1,5 @@
-#ifndef TRACER_INTEGRATOR_H
-#define TRACER_INTEGRATOR_H
+#ifndef VISTLE_TRACER_INTEGRATOR_H
+#define VISTLE_TRACER_INTEGRATOR_H
 
 #include <vistle/core/vec.h>
 #include <vistle/core/vector.h>

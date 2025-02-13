@@ -1,5 +1,5 @@
-#ifndef LIBSIM_ENGINE_INTERFACE_H
-#define LIBSIM_ENGINE_INTERFACE_H
+#ifndef VISTLE_INSITU_LIBSIM_ENGINEINTERFACE_ENGINEINTERFACE_H
+#define VISTLE_INSITU_LIBSIM_ENGINEINTERFACE_ENGINEINTERFACE_H
 
 #include <vistle/util/export.h>
 
@@ -29,4 +29,4 @@ private:
 } // namespace vistle
 
 
-#endif // !MODULEINTERFACE_H
+#endif

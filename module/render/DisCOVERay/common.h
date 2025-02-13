@@ -1,5 +1,5 @@
-#ifndef RAY_COMMON_H
-#define RAY_COMMON_H
+#ifndef VISTLE_DISCOVERAY_COMMON_H
+#define VISTLE_DISCOVERAY_COMMON_H
 
 // clang-format off
 #define IDENT(x) x

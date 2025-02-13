@@ -1,5 +1,5 @@
-#ifndef POLYGONS_IMPL_H
-#define POLYGONS_IMPL_H
+#ifndef VISTLE_CORE_POLYGONS_IMPL_H
+#define VISTLE_CORE_POLYGONS_IMPL_H
 
 namespace vistle {
 

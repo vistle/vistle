@@ -1,5 +1,5 @@
-#ifndef RENDERER_H
-#define RENDERER_H
+#ifndef VISTLE_RENDERER_RENDERER_H
+#define VISTLE_RENDERER_RENDERER_H
 
 #include <vistle/module/module.h>
 #include <vistle/util/enum.h>

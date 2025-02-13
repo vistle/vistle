@@ -1,5 +1,6 @@
-#ifndef INSITU_TCP_MESSAGE_H
-#define INSITU_TCP_MESSAGE_H
+#ifndef VISTLE_INSITU_MESSAGE_TCPMESSAGE_H
+#define VISTLE_INSITU_MESSAGE_TCPMESSAGE_H
+
 #include "InSituMessage.h"
 #include "MessageHandler.h"
 #include "export.h"
@@ -64,4 +65,4 @@ private:
 } // namespace insitu
 } // namespace vistle
 
-#endif // !INSITU_TCP_MESSAGE_H
+#endif

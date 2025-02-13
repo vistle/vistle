@@ -1,5 +1,5 @@
-#ifndef VISTLE_DATAPROXY_H
-#define VISTLE_DATAPROXY_H
+#ifndef VISTLE_NET_DATAPROXY_H
+#define VISTLE_NET_DATAPROXY_H
 
 #include <memory>
 #include <boost/asio.hpp>

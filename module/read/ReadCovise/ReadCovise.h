@@ -1,5 +1,5 @@
-#ifndef READCOVISE_H
-#define READCOVISE_H
+#ifndef VISTLE_READCOVISE_READCOVISE_H
+#define VISTLE_READCOVISE_READCOVISE_H
 
 #include <string>
 #include <vector>

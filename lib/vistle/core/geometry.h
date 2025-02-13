@@ -1,5 +1,5 @@
-#ifndef VISTLE_GEOMETRY_H
-#define VISTLE_GEOMETRY_H
+#ifndef VISTLE_CORE_GEOMETRY_H
+#define VISTLE_CORE_GEOMETRY_H
 
 #include "export.h"
 #include "object.h"

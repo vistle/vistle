@@ -1,5 +1,5 @@
-#ifndef VISTLE_URL_H
-#define VISTLE_URL_H
+#ifndef VISTLE_CONTROL_VISTLEURL_H
+#define VISTLE_CONTROL_VISTLEURL_H
 
 #include "export.h"
 #include <string>
@@ -25,4 +25,4 @@ public:
 };
 
 } // namespace vistle
-#endif //VISTLE_URL_H
+#endif

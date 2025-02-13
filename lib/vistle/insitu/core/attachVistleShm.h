@@ -1,5 +1,5 @@
-#ifndef VISTLE_CORE_ATTACH_VISTLE_SHM_H
-#define VISTLE_CORE_ATTACH_VISTLE_SHM_H
+#ifndef VISTLE_INSITU_CORE_ATTACHVISTLESHM_H
+#define VISTLE_INSITU_CORE_ATTACHVISTLESHM_H
 
 #include "export.h"
 #include <string>
@@ -10,4 +10,4 @@ void V_INSITUCOREEXPORT detachShm();
 } // namespace insitu
 } // namespace vistle
 
-#endif // VISTLE_CORE_ATTACH_VISTLE_SHM_H
+#endif

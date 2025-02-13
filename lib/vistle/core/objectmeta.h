@@ -1,5 +1,5 @@
-#ifndef OBJECTMETA_H
-#define OBJECTMETA_H
+#ifndef VISTLE_CORE_OBJECTMETA_H
+#define VISTLE_CORE_OBJECTMETA_H
 
 #include <array>
 #include <vector>

@@ -1,5 +1,5 @@
-#ifndef SCALARS_H
-#define SCALARS_H
+#ifndef VISTLE_CORE_SCALARS_H
+#define VISTLE_CORE_SCALARS_H
 
 #include <cstdint>
 #include <vistle/util/ssize_t.h>

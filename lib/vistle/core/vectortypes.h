@@ -1,5 +1,5 @@
-#ifndef VISTLE_VECTORTYPES_H
-#define VISTLE_VECTORTYPES_H
+#ifndef VISTLE_CORE_VECTORTYPES_H
+#define VISTLE_CORE_VECTORTYPES_H
 
 #include "scalar.h"
 #include <array>

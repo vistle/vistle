@@ -1,5 +1,5 @@
-#ifndef VISTLE_VTKM_ISOSURFACE_H
-#define VISTLE_VTKM_ISOSURFACE_H
+#ifndef VISTLE_ISOSURFACEVTKM_ISOSURFACEVTKM_H
+#define VISTLE_ISOSURFACEVTKM_ISOSURFACEVTKM_H
 
 #include <vistle/module/module.h>
 
@@ -56,4 +56,4 @@ private:
     std::string m_species;
 };
 
-#endif // VISTLE_VTKM_ISOSURFACE_H
+#endif

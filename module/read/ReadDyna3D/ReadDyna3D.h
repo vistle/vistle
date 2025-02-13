@@ -1,12 +1,6 @@
-/* This file is part of COVISE.
+#ifndef VISTLE_READDYNA3D_READDYNA3D_H
+#define VISTLE_READDYNA3D_READDYNA3D_H
 
-   You can use it under the terms of the GNU Lesser General Public License
-   version 2.1 or later, see LICENSE.txt.
-
- * License: LGPL 2+ */
-
-#ifndef _READDYNA3D_H
-#define _READDYNA3D_H
 /**************************************************************************\ 
  **                                                           (C)1995 RUS  **
  **                                                                        **
@@ -99,4 +93,4 @@ public:
 
     std::unique_ptr<Dyna3DReaderBase> dyna3dReader;
 };
-#endif // _READDYNA3D_H
+#endif

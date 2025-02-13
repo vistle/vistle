@@ -1,5 +1,5 @@
-#ifndef VISTLE_LIBSIM_UNSTRUCTURED_MESH_H
-#define VISTLE_LIBSIM_UNSTRUCTURED_MESH_H
+#ifndef VISTLE_INSITU_LIBSIM_UNSTRUCTUREDMESH_H
+#define VISTLE_INSITU_LIBSIM_UNSTRUCTUREDMESH_H
 
 #include "ArrayStruct.h"
 
@@ -67,4 +67,4 @@ void fillStructuredGridConnectivityList(const int *dims, vistle::Index *connecti
 } // namespace insitu
 } // namespace vistle
 
-#endif // !VISTLE_LIBSIM_UNSTRUCTURED_MESH_H
+#endif

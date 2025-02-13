@@ -1,5 +1,5 @@
-#ifndef INDEXED_IMPL_H
-#define INDEXED_IMPL_H
+#ifndef VISTLE_CORE_INDEXED_IMPL_H
+#define VISTLE_CORE_INDEXED_IMPL_H
 
 namespace vistle {
 

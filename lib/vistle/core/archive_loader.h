@@ -1,5 +1,5 @@
-#ifndef VISTLE_ARCHIVE_LOADER_H
-#define VISTLE_ARCHIVE_LOADER_H
+#ifndef VISTLE_CORE_ARCHIVE_LOADER_H
+#define VISTLE_CORE_ARCHIVE_LOADER_H
 
 #include "export.h"
 #include "archives.h"

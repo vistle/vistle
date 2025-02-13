@@ -1,5 +1,5 @@
-#ifndef TCPMESSAGE_H
-#define TCPMESSAGE_H
+#ifndef VISTLE_CORE_TCPMESSAGE_H
+#define VISTLE_CORE_TCPMESSAGE_H
 
 #include <boost/asio/ip/tcp.hpp>
 

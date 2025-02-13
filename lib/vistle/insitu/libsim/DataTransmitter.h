@@ -1,5 +1,5 @@
-#ifndef VISTLE_LIBSIM_DATA_TRANSMITTER_H
-#define VISTLE_LIBSIM_DATA_TRANSMITTER_H
+#ifndef VISTLE_INSITU_LIBSIM_DATATRANSMITTER_H
+#define VISTLE_INSITU_LIBSIM_DATATRANSMITTER_H
 
 #include "MeshInfo.h"
 #include "MetaData.h"
@@ -80,4 +80,4 @@ private:
 } // namespace insitu
 } // namespace vistle
 
-#endif // !VISTLE_LIBSIM_DATA_PROCESSOR_H
+#endif

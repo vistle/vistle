@@ -1,5 +1,5 @@
-#ifndef VISTLE_VALIDATE_H
-#define VISTLE_VALIDATE_H
+#ifndef VISTLE_CORE_VALIDATE_H
+#define VISTLE_CORE_VALIDATE_H
 
 
 #include <vtkm/Types.h>

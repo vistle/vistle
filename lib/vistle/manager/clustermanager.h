@@ -1,5 +1,5 @@
-#ifndef CLUSTERMANAGER_H
-#define CLUSTERMANAGER_H
+#ifndef VISTLE_MANAGER_CLUSTERMANAGER_H
+#define VISTLE_MANAGER_CLUSTERMANAGER_H
 
 #include <mutex>
 #include <queue>

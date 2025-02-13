@@ -1,5 +1,5 @@
-#ifndef MESSAGES_H
-#define MESSAGES_H
+#ifndef VISTLE_CORE_MESSAGES_H
+#define VISTLE_CORE_MESSAGES_H
 
 #include <string>
 #include <array>

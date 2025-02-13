@@ -1,5 +1,5 @@
-#ifndef RENDERER_COVER_H
-#define RENDERER_COVER_H
+#ifndef VISTLE_COVER_COVER_H
+#define VISTLE_COVER_COVER_H
 
 #include <future>
 #include <string>

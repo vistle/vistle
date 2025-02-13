@@ -1,5 +1,5 @@
-#ifndef VECTOR_IMPL_H
-#define VECTOR_IMPL_H
+#ifndef VISTLE_CORE_PARAMVECTOR_IMPL_H
+#define VISTLE_CORE_PARAMVECTOR_IMPL_H
 
 #include <cassert>
 #include <cstring>

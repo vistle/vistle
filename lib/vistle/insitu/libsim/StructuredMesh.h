@@ -1,5 +1,5 @@
-#ifndef VISTLE_LIBSIM_STRUCTURED_MESH_H
-#define VISTLE_LIBSIM_STRUCTURED_MESH_H
+#ifndef VISTLE_INSITU_LIBSIM_STRUCTUREDMESH_H
+#define VISTLE_INSITU_LIBSIM_STRUCTUREDMESH_H
 
 #include <vistle/core/object.h>
 #include "SmartHandle.h"
@@ -38,4 +38,4 @@ void addGhost(const visit_handle &meshHandle, std::shared_ptr<vistle::Structured
 } // namespace insitu
 } // namespace vistle
 
-#endif // !VISTLE_LIBSIM_STRUCTURED_MESH_H
+#endif

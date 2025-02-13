@@ -1,5 +1,5 @@
-#ifndef VISTLE_READENSIGHT_H
-#define VISTLE_READENSIGHT_H
+#ifndef VISTLE_READENSIGHT_READENSIGHT_H
+#define VISTLE_READENSIGHT_READENSIGHT_H
 
 #include <vistle/module/reader.h>
 #include <vistle/util/coRestraint.h>

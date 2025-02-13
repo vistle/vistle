@@ -1,5 +1,5 @@
-#ifndef VISTLE_RHRCONTROLLER_H
-#define VISTLE_RHRCONTROLLER_H
+#ifndef VISTLE_RENDERER_RHRCONTROLLER_H
+#define VISTLE_RENDERER_RHRCONTROLLER_H
 
 #include "renderer.h"
 #include <vistle/rhr/rhrserver.h>

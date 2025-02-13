@@ -1,5 +1,5 @@
-#ifndef VARROW_H
-#define VARROW_H
+#ifndef VISTLE_GUI_CONNECTION_H
+#define VISTLE_GUI_CONNECTION_H
 
 #include <QPainterPath>
 #include <QColor>
@@ -65,4 +65,4 @@ private:
 };
 
 } //namespace gui
-#endif // VARROW_H
+#endif

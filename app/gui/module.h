@@ -1,5 +1,5 @@
-#ifndef GUI_MODULE_H
-#define GUI_MODULE_H
+#ifndef VISTLE_GUI_MODULE_H
+#define VISTLE_GUI_MODULE_H
 
 #include <QAction>
 #include <QFileDialog>
@@ -203,4 +203,4 @@ std::shared_ptr<vistle::ParameterBase<T>> Module::getParameter(QString name) con
 
 } //namespace gui
 
-#endif // VMODULE_H
+#endif

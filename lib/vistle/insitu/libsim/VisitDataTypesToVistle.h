@@ -1,5 +1,5 @@
-#ifndef VISITDATATYPESTOVISTLE_H
-#define VISITDATATYPESTOVISTLE_H
+#ifndef VISTLE_INSITU_LIBSIM_VISITDATATYPESTOVISTLE_H
+#define VISTLE_INSITU_LIBSIM_VISITDATATYPESTOVISTLE_H
 
 #include "Exception.h"
 #include <vistle/core/database.h>
@@ -74,4 +74,4 @@ constexpr vistle::Object::Type objTypeToVistle(int objType)
 } // namespace insitu
 } // namespace vistle
 
-#endif // !VISITDATATYPESTOVISTLE_H
+#endif

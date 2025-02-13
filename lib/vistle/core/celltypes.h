@@ -1,5 +1,5 @@
-#ifndef VISTLE_CELLTYPES_H
-#define VISTLE_CELLTYPES_H
+#ifndef VISTLE_CORE_CELLTYPES_H
+#define VISTLE_CORE_CELLTYPES_H
 
 #include <vtkm/CellShape.h>
 #include <vtkm/CellClassification.h>

@@ -1,5 +1,5 @@
-#ifndef READCFX_H
-#define READCFX_H
+#ifndef VISTLE_READCFX_READCFX_H
+#define VISTLE_READCFX_READCFX_H
 
 #include <string>
 #include <vector>

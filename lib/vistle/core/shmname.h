@@ -1,5 +1,5 @@
-#ifndef SHMNAME_H
-#define SHMNAME_H
+#ifndef VISTLE_CORE_SHMNAME_H
+#define VISTLE_CORE_SHMNAME_H
 
 #include "export.h"
 #include <array>

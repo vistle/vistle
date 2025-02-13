@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VISTLE_MINISIM_MINISIM_ANALYSIS_H
+#define VISTLE_MINISIM_MINISIM_ANALYSIS_H
 
 #include <mpi.h>
 
@@ -11,3 +12,5 @@ void analyze(int gid, float *data);
 void analysis_round();
 
 void analysis_final(size_t k_max, size_t nblocks);
+
+#endif

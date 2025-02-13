@@ -1,5 +1,5 @@
-#ifndef VISTLE_VTKM_UTILS_H
-#define VISTLE_VTKM_UTILS_H
+#ifndef VISTLE_VTKM_CONVERT_H
+#define VISTLE_VTKM_CONVERT_H
 
 // transform a vistle dataset (grid and scalar data field) into a vtkm dataset
 // so vtkm filters can be applied to it
@@ -37,4 +37,4 @@ vistle::DataBase::ptr V_VTKM_EXPORT vtkmGetField(const vtkm::cont::DataSet &vtkm
 
 } // namespace vistle
 
-#endif // VISTLE_VTKM_UTILS_H
+#endif

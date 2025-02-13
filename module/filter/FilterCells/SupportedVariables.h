@@ -1,5 +1,5 @@
-#ifndef VISTLE_FILTER_CELLS_SUPPORTED_VARIABLES_H
-#define VISTLE_FILTER_CELLS_SUPPORTED_VARIABLES_H
+#ifndef VISTLE_FILTERCELLS_SUPPORTEDVARIABLES_H
+#define VISTLE_FILTERCELLS_SUPPORTEDVARIABLES_H
 
 #include <vistle/core/vector.h>
 #include <vistle/core/vec.h>
@@ -121,4 +121,4 @@ constexpr std::array<Variable, 19> SUPPORTED_VARIABLES = {
                  return static_cast<double>(args.grid->cellBounds(args.elementIndex).first.z());
              }}};
 
-#endif // VISTLE_FILTER_CELLS_SUPPORTED_VARIABLES_H
+#endif

@@ -1,5 +1,5 @@
-#ifndef COORDS_IMPL_H
-#define COORDS_IMPL_H
+#ifndef VISTLE_CORE_COORDS_IMPL_H
+#define VISTLE_CORE_COORDS_IMPL_H
 
 namespace vistle {
 

@@ -1,5 +1,5 @@
-#ifndef VISTLE_ARCHIVE_SAVER_H
-#define VISTLE_ARCHIVE_SAVER_H
+#ifndef VISTLE_CORE_ARCHIVE_SAVER_H
+#define VISTLE_CORE_ARCHIVE_SAVER_H
 
 #include "archives.h"
 #include "shmvector.h"

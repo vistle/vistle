@@ -1,5 +1,5 @@
-#ifndef POINTS_IMPL_H
-#define POINTS_IMPL_H
+#ifndef VISTLE_CORE_POINTS_IMPL_H
+#define VISTLE_CORE_POINTS_IMPL_H
 
 namespace vistle {
 

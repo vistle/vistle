@@ -1,5 +1,5 @@
-#ifndef EXTRACTGRID_H
-#define EXTRACTGRID_H
+#ifndef VISTLE_EXTRACTGRID_EXTRACTGRID_H
+#define VISTLE_EXTRACTGRID_EXTRACTGRID_H
 
 #include <vistle/module/module.h>
 #include <vistle/core/vector.h>

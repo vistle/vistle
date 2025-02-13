@@ -1,5 +1,5 @@
-#ifndef CELLTOVERTVTKM_H
-#define CELLTOVERTVTKM_H
+#ifndef VISTLE_CELLTOVERTVTKM_CELLTOVERTVTKM_H
+#define VISTLE_CELLTOVERTVTKM_CELLTOVERTVTKM_H
 
 #include <vistle/module/module.h>
 #include <vistle/core/vector.h>

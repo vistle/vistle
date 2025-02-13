@@ -1,5 +1,5 @@
-#ifndef VTKM_SPHERES_OVERLAP_H
-#define VTKM_SPHERES_OVERLAP_H
+#ifndef VISTLE_SPHERESOVERLAP_ALGO_VTKMSPHERESOVERLAP_H
+#define VISTLE_SPHERESOVERLAP_ALGO_VTKMSPHERESOVERLAP_H
 
 #include <vtkm/filter/Filter.h>
 
@@ -42,4 +42,4 @@ private:
     VTKM_CONT vtkm::cont::DataSet DoExecute(const vtkm::cont::DataSet &input) override;
 };
 
-#endif //VTKM_SPHERES_OVERLAP_H
+#endif

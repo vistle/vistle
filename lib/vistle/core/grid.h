@@ -1,5 +1,5 @@
-#ifndef VISTLE_GRID_H
-#define VISTLE_GRID_H
+#ifndef VISTLE_CORE_GRID_H
+#define VISTLE_CORE_GRID_H
 
 #include "object.h"
 #include "vector.h"

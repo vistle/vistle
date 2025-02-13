@@ -1,5 +1,5 @@
-#ifndef ISODATAFUNCTOR_H
-#define ISODATAFUNCTOR_H
+#ifndef VISTLE_ISOSURFACE_ISODATAFUNCTOR_H
+#define VISTLE_ISOSURFACE_ISODATAFUNCTOR_H
 
 #include <algorithm>
 #include <vistle/util/enum.h>

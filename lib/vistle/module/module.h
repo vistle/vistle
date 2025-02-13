@@ -1,5 +1,5 @@
-#ifndef MODULE_H
-#define MODULE_H
+#ifndef VISTLE_MODULE_MODULE_H
+#define VISTLE_MODULE_MODULE_H
 
 /**
  \class Module

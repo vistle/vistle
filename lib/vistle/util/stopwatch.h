@@ -1,5 +1,5 @@
-#ifndef STOPWATCH_H
-#define STOPWATCH_H
+#ifndef VISTLE_UTIL_STOPWATCH_H
+#define VISTLE_UTIL_STOPWATCH_H
 
 #include "export.h"
 

@@ -1,5 +1,5 @@
-#ifndef INSITU_MODULE_H
-#define INSITU_MODULE_H
+#ifndef VISTLE_INSITU_MODULE_INSITUMODULEBASE_H
+#define VISTLE_INSITU_MODULE_INSITUMODULEBASE_H
 
 #include "export.h"
 #include <vistle/core/messagequeue.h>
@@ -96,4 +96,4 @@ private:
 } // namespace insitu
 } // namespace vistle
 
-#endif // INSITU_MODULE_H
+#endif

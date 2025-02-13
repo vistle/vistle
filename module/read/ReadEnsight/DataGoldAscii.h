@@ -1,3 +1,6 @@
+#ifndef VISTLE_READENSIGHT_DATAGOLDASCII_H
+#define VISTLE_READENSIGHT_DATAGOLDASCII_H
+
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // CLASS    DataGoldAscii
 //
@@ -11,9 +14,6 @@
 //
 //  Changes:
 //
-
-#ifndef READENSIGHT_DATAGOLDASCII_H
-#define READENSIGHT_DATAGOLDASCII_H
 
 #include "EnFile.h"
 

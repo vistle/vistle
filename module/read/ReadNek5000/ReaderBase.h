@@ -1,5 +1,5 @@
-#ifndef NEK_READER_BASE_H
-#define NEK_READER_BASE_H
+#ifndef VISTLE_READNEK5000_READERBASE_H
+#define VISTLE_READNEK5000_READERBASE_H
 
 #include <vector>
 #include <map>
@@ -134,4 +134,4 @@ private:
 };
 } // namespace nek5000
 
-#endif //NEK_READER_BASE_H
+#endif

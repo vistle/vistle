@@ -1,21 +1,14 @@
+#ifndef VISTLE_READSOUNDPLAN_READSOUNDPLAN_H
+#define VISTLE_READSOUNDPLAN_READSOUNDPLAN_H
+
 /**************************************************************************\
- **                                                                        **
  **                                                                        **
  ** Description: Read module for SoundPLAN data format (Port from COVISE)  **
  **                                                                        **
- **                                                                        **
- **                                                                        **
- **                                                                        **
- **                                                                        **
  ** Author:    Marko Djuric <hpcmdjur@hlrs.de>                             **
- **                                                                        **
- **                                                                        **
  **                                                                        **
  ** Date:  20.03.2023 Version 1                                            **
 \**************************************************************************/
-
-#ifndef _READSOUNDPLAN_H
-#define _READSOUNDPLAN_H
 
 #include <vistle/module/reader.h>
 #include "vistle/core/parameter.h"

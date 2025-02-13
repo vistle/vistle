@@ -1,5 +1,5 @@
-#ifndef VISIT_INSITU_UTIL_EXPORT_H
-#define VISIT_INSITU_UTIL_EXPORT_H
+#ifndef VISTLE_INSITU_CORE_EXPORT_H
+#define VISTLE_INSITU_CORE_EXPORT_H
 
 #include <vistle/util/export.h>
 

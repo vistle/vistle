@@ -1,12 +1,5 @@
-/* This file is part of Vistle.
-
-   You can use it under the terms of the GNU Lesser General Public License
-   version 2.1 or later, see LICENSE.txt.
-
- * License: LGPL 2+ */
-
-#ifndef VTK2VISTLE_H
-#define VTK2VISTLE_H
+#ifndef VISTLE_VTK_VTKTOVISTLE_H
+#define VISTLE_VTK_VTKTOVISTLE_H
 
 class vtkDataSet;
 class vtkDataSetAttributes;

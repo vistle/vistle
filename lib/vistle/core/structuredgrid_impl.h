@@ -1,10 +1,9 @@
+#ifndef VISTLE_CORE_STRUCTUREDGRID_IMPL_H
+#define VISTLE_CORE_STRUCTUREDGRID_IMPL_H
+
 //-------------------------------------------------------------------------
-// STRUCTURED GRID CLASS IMPL H
-// *
 // * Structured Grid Container Object
 //-------------------------------------------------------------------------
-#ifndef STRUCTURED_GRID_IMPL_H
-#define STRUCTURED_GRID_IMPL_H
 
 namespace vistle {
 
@@ -22,4 +21,4 @@ void StructuredGrid::Data::serialize(Archive &ar)
 
 } // namespace vistle
 
-#endif /* STRUCTURED_GRID_IMPL_H */
+#endif

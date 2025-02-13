@@ -1,12 +1,11 @@
+#ifndef VISTLE_TOUNSTRUCTURED_TOUNSTRUCTURED_H
+#define VISTLE_TOUNSTRUCTURED_TOUNSTRUCTURED_H
+
 //-------------------------------------------------------------------------
-// TO UNSTRUCTURED H
 // * converts a grid to an unstructured grid
 // *
 // * Sever Topan, 2016
 //-------------------------------------------------------------------------
-
-#ifndef TO_UNSTRUCTURED_H
-#define TO_UNSTRUCTURED_H
 
 #include <vistle/core/object.h>
 #include <vistle/core/rectilineargrid.h>
@@ -44,4 +43,4 @@ private:
 };
 
 
-#endif /* TO_UNSTRUCTURED_H */
+#endif

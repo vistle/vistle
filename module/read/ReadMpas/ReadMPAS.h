@@ -1,5 +1,5 @@
-#ifndef _ReadMPAS_H
-#define _ReadMPAS_H
+#ifndef VISTLE_READMPAS_READMPAS_H
+#define VISTLE_READMPAS_READMPAS_H
 
 #include <cstddef>
 #include <vistle/module/reader.h>

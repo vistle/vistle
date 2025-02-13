@@ -1,5 +1,5 @@
-#ifndef VISTLE_FILE_H
-#define VISTLE_FILE_H
+#ifndef VISTLE_CACHE_VISTLE_FILE_H
+#define VISTLE_CACHE_VISTLE_FILE_H
 
 #include <vistle/util/enum.h>
 #include <vistle/core/shmname.h>

@@ -1,5 +1,5 @@
-#ifndef UICONTROLLER_H
-#define UICONTROLLER_H
+#ifndef VISTLE_GUI_UICONTROLLER_H
+#define VISTLE_GUI_UICONTROLLER_H
 
 #include <QObject>
 
@@ -95,4 +95,4 @@ private:
 };
 
 } // namespace gui
-#endif // UICONTROLLER_H
+#endif

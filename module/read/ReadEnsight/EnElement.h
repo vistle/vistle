@@ -1,3 +1,6 @@
+#ifndef VISTLE_READENSIGHT_ENELEMENT_H
+#define VISTLE_READENSIGHT_ENELEMENT_H
+
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // CLASS    EnElement
 //
@@ -16,8 +19,6 @@
 //
 // Changes:
 //
-#ifndef READENSIGHT_ENELEMENT_H
-#define READENSIGHT_ENELEMENT_H
 
 #include <vector>
 #include <string>

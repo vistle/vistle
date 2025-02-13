@@ -1,5 +1,5 @@
-#ifndef POLYGONS_H
-#define POLYGONS_H
+#ifndef VISTLE_CORE_POLYGONS_H
+#define VISTLE_CORE_POLYGONS_H
 
 #include "scalar.h"
 #include "shm.h"

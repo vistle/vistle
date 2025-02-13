@@ -1,5 +1,5 @@
-#ifndef UNSTRUCTUREDGRID_H
-#define UNSTRUCTUREDGRID_H
+#ifndef VISTLE_CORE_UNSTR_H
+#define VISTLE_CORE_UNSTR_H
 
 
 #include "shm.h"

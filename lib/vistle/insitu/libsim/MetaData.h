@@ -1,5 +1,5 @@
-#ifndef SIMULATION_META_DATA_H
-#define SIMULATION_META_DATA_H
+#ifndef VISTLE_INSITU_LIBSIM_METADATA_H
+#define VISTLE_INSITU_LIBSIM_METADATA_H
 
 #include <vistle/insitu/libsim/libsimInterface/VisItDataTypes.h>
 #include "SmartHandle.h"
@@ -53,4 +53,4 @@ private:
 } // namespace insitu
 } // namespace vistle
 
-#endif // !SIMULATION_META_DATA_H
+#endif

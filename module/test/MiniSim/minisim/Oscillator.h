@@ -1,5 +1,5 @@
-#ifndef Oscillator_h
-#define Oscillator_h
+#ifndef VISTLE_MINISIM_MINISIM_OSCILLATOR_H
+#define VISTLE_MINISIM_MINISIM_OSCILLATOR_H
 
 #include <string>
 #include <cmath>

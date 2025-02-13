@@ -1,5 +1,6 @@
-#ifndef CALL_FUNCTION_WITH_VOID_TO_TYPE_CAST_H
-#define CALL_FUNCTION_WITH_VOID_TO_TYPE_CAST_H
+#ifndef VISTLE_INSITU_CORE_CALLFUNCTIONWITHVOIDTOTYPECAST_H
+#define VISTLE_INSITU_CORE_CALLFUNCTIONWITHVOIDTOTYPECAST_H
+
 #include "dataType.h"
 #include "exception.h"
 
@@ -58,4 +59,4 @@ RetVal callFunctionWithVoidToTypeCast(const void *source, DataType dataType, siz
 } // namespace insitu
 } // namespace vistle
 
-#endif // !CALL_FUNCTION_WITH_VOID_TO_TYPE_CAST_H
+#endif

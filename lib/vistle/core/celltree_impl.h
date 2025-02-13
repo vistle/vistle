@@ -1,5 +1,5 @@
-#ifndef CELLTREE_IMPL_H
-#define CELLTREE_IMPL_H
+#ifndef VISTLE_CORE_CELLTREE_IMPL_H
+#define VISTLE_CORE_CELLTREE_IMPL_H
 
 #include "shm_array_impl.h"
 #include "vector.h"

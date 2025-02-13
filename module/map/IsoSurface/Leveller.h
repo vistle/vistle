@@ -1,5 +1,5 @@
-#ifndef LEVELLER_H
-#define LEVELLER_H
+#ifndef VISTLE_ISOSURFACE_LEVELLER_H
+#define VISTLE_ISOSURFACE_LEVELLER_H
 
 #include <vector>
 #include <vistle/core/index.h>

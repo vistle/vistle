@@ -1,5 +1,5 @@
-#ifndef PLACEHOLDER_H
-#define PLACEHOLDER_H
+#ifndef VISTLE_CORE_PLACEHOLDER_H
+#define VISTLE_CORE_PLACEHOLDER_H
 
 #include "shmname.h"
 #include "object.h"

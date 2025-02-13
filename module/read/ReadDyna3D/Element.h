@@ -1,12 +1,6 @@
-/* This file is part of COVISE.
+#ifndef VISTLE_READDYNA3D_ELEMENT_H
+#define VISTLE_READDYNA3D_ELEMENT_H
 
-   You can use it under the terms of the GNU Lesser General Public License
-   version 2.1 or later, see LICENSE.txt.
-
- * License: LGPL 2+ */
-
-#ifndef _ELEMENT_H_
-#define _ELEMENT_H_
 /**************************************************************************\ 
  **                                                           (C)1999 RUS  **
  **                                                                        **
@@ -37,4 +31,4 @@ struct Element {
     //int node[8];        // node numbers (of LS-DYNA plot file) determining the element
     bool visible = true; // element visible?
 };
-#endif // _ELEMENT_H_
+#endif

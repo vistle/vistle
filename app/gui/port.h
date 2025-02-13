@@ -1,5 +1,5 @@
-#ifndef GUI_PORT_H
-#define GUI_PORT_H
+#ifndef VISTLE_GUI_PORT_H
+#define VISTLE_GUI_PORT_H
 
 #include <QGraphicsItem>
 #include <QAction>
@@ -79,4 +79,4 @@ private:
 } //namespace gui
 
 Q_DECLARE_METATYPE(gui::Port::Type)
-#endif // VSLOT_H
+#endif

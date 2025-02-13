@@ -1,5 +1,5 @@
-#ifndef VISTLE_SHM_CONFIG_H
-#define VISTLE_SHM_CONFIG_H
+#ifndef VISTLE_CORE_SHM_CONFIG_H
+#define VISTLE_CORE_SHM_CONFIG_H
 
 #ifdef NO_SHMEM
 #include "shmdata.h"

@@ -1,5 +1,5 @@
-#ifndef VEC_IMPL_H
-#define VEC_IMPL_H
+#ifndef VISTLE_CORE_VEC_IMPL_H
+#define VISTLE_CORE_VEC_IMPL_H
 
 namespace vistle {
 

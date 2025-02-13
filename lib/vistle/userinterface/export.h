@@ -1,5 +1,5 @@
-#ifndef USERINTERFACE_EXPORT_H
-#define USERINTERFACE_EXPORT_H
+#ifndef VISTLE_USERINTERFACE_EXPORT_H
+#define VISTLE_USERINTERFACE_EXPORT_H
 
 #include <vistle/util/export.h>
 

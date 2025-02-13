@@ -1,5 +1,5 @@
-#ifndef SAMPLE_H
-#define SAMPLE_H
+#ifndef VISTLE_SAMPLE_SAMPLE_H
+#define VISTLE_SAMPLE_SAMPLE_H
 
 #include <vistle/module/module.h>
 #include <vistle/core/object.h>

@@ -1,5 +1,6 @@
-#ifndef ADD_OBJECT_MSQ_H
-#define ADD_OBJECT_MSQ_H
+#ifndef VISTLE_INSITU_MESSAGE_ADDOBJECTMSQ_H
+#define VISTLE_INSITU_MESSAGE_ADDOBJECTMSQ_H
+
 #include "export.h"
 #include "moduleInfo.h"
 #include <vistle/core/object.h>
@@ -31,4 +32,4 @@ private:
 } // namespace message
 } // namespace insitu
 } // namespace vistle
-#endif // !ADD_OBJECT_MSQ_H
+#endif

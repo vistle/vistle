@@ -1,5 +1,5 @@
-#ifndef PYTHON_INTERFACE_H
-#define PYTHON_INTERFACE_H
+#ifndef VISTLE_PYTHON_PYTHONINTERFACE_H
+#define VISTLE_PYTHON_PYTHONINTERFACE_H
 
 // include this before any Qt headers
 

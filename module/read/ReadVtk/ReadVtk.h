@@ -1,5 +1,5 @@
-#ifndef READVTK_H
-#define READVTK_H
+#ifndef VISTLE_READVTK_READVTK_H
+#define VISTLE_READVTK_READVTK_H
 
 #include <vistle/module/reader.h>
 

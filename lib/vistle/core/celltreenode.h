@@ -1,5 +1,5 @@
-#ifndef CELLTREENODE_H
-#define CELLTREENODE_H
+#ifndef VISTLE_CORE_CELLTREENODE_H
+#define VISTLE_CORE_CELLTREENODE_H
 
 #include "export.h"
 #include "scalar.h"

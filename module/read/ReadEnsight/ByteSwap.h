@@ -1,5 +1,5 @@
-#ifndef READENSIGHT_BYTESWAP_H
-#define READENSIGHT_BYTESWAP_H
+#ifndef VISTLE_READENSIGHT_BYTESWAP_H
+#define VISTLE_READENSIGHT_BYTESWAP_H
 
 #include <vistle/util/byteswap.h>
 

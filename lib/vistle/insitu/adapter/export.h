@@ -1,5 +1,5 @@
-#ifndef VISTLE_ADAPTER_EXPORT_H
-#define VISTLE_ADAPTER_EXPORT_H
+#ifndef VISTLE_INSITU_ADAPTER_EXPORT_H
+#define VISTLE_INSITU_ADAPTER_EXPORT_H
 
 #include <vistle/util/export.h>
 

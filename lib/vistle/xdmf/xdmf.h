@@ -1,5 +1,5 @@
-#ifndef XDMF_H
-#define XDMF_H
+#ifndef VISTLE_XDMF_XDMF_H
+#define VISTLE_XDMF_XDMF_H
 
 //xdmf
 #include <XdmfArray.hpp>

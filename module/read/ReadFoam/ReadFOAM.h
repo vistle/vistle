@@ -1,7 +1,6 @@
+#ifndef VISTLE_READFOAM_READFOAM_H
+#define VISTLE_READFOAM_READFOAM_H
 
-
-#ifndef READFOAM_H
-#define READFOAM_H
 /**************************************************************************\
  **                                                           (C)2013 RUS  **
  **                                                                        **
@@ -171,4 +170,4 @@ private:
     std::vector<boost::mpi::request> m_requests;
     std::map<int, std::map<int, std::map<vistle::Index, vistle::SIndex>>> m_verticesMappings;
 };
-#endif // READFOAM_H
+#endif

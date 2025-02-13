@@ -1,5 +1,5 @@
-#ifndef SIMV2_EXCEPTION
-#define SIMV2_EXCEPTION
+#ifndef VISTLE_INSITU_LIBSIM_EXCEPTION_H
+#define VISTLE_INSITU_LIBSIM_EXCEPTION_H
 
 #include <string>
 
@@ -93,4 +93,4 @@ inline visit_handle v2check(visit_handle(fnct)())
 }
 } // namespace insitu
 } // namespace vistle
-#endif // !SIMV2_EXCEPTION
+#endif

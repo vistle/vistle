@@ -1,5 +1,5 @@
-#ifndef VALIDATE_H
-#define VALIDATE_H
+#ifndef VISTLE_VALIDATE_VALIDATE_H
+#define VISTLE_VALIDATE_VALIDATE_H
 
 #include <vistle/module/module.h>
 

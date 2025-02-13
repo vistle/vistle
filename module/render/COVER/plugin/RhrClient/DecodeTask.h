@@ -1,5 +1,5 @@
-#ifndef RHR_DECODETASK_H
-#define RHR_DECODETASK_H
+#ifndef VISTLE_COVER_PLUGIN_RHRCLIENT_DECODETASK_H
+#define VISTLE_COVER_PLUGIN_RHRCLIENT_DECODETASK_H
 
 #include <future>
 #include <memory>

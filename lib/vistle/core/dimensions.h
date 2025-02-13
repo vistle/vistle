@@ -1,5 +1,5 @@
-#ifndef DIMENSIONS_H
-#define DIMENSIONS_H
+#ifndef VISTLE_CORE_DIMENSIONS_H
+#define VISTLE_CORE_DIMENSIONS_H
 
 #include <boost/mpl/vector.hpp>
 #include <boost/mpl/vector_c.hpp>

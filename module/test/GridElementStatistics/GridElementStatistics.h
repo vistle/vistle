@@ -1,3 +1,6 @@
+#ifndef VISTLE_GRIDELEMENTSTATISTICS_GRIDELEMENTSTATISTICS_H
+#define VISTLE_GRIDELEMENTSTATISTICS_GRIDELEMENTSTATISTICS_H
+
 #include <vistle/module/module.h>
 
 class GridElementStatistics: public vistle::Module {
@@ -8,3 +11,4 @@ public:
 private:
     vistle::IntParameter *m_elementIndex;
 };
+#endif

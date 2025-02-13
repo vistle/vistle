@@ -1,5 +1,5 @@
-#ifndef VISTLE_TRIANGLES_H
-#define VISTLE_TRIANGLES_H
+#ifndef VISTLE_CORE_TRIANGLES_H
+#define VISTLE_CORE_TRIANGLES_H
 
 #include "ngons.h"
 

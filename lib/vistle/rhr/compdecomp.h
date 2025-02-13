@@ -1,5 +1,5 @@
-#ifndef RHR_COMPDECOMP_H
-#define RHR_COMPDECOMP_H
+#ifndef VISTLE_RHR_COMPDECOMP_H
+#define VISTLE_RHR_COMPDECOMP_H
 
 #include <vistle/core/message.h>
 #include <vistle/util/enum.h>

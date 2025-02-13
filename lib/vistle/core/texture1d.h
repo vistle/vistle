@@ -1,5 +1,5 @@
-#ifndef TEXTURE1D_H
-#define TEXTURE1D_H
+#ifndef VISTLE_CORE_TEXTURE1D_H
+#define VISTLE_CORE_TEXTURE1D_H
 
 
 #include "scalar.h"

@@ -1,3 +1,6 @@
+#ifndef VISTLE_COVER_COVERCONFIGBRIDGE_H
+#define VISTLE_COVER_COVERCONFIGBRIDGE_H
+
 #include <OpenConfig/access.h>
 #include "COVER.h"
 #include <vistle/core/parameter.h>
@@ -33,3 +36,4 @@ private:
     std::map<Key, vistle::Parameter *> m_params;
     std::map<std::string, Key> m_values;
 };
+#endif

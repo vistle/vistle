@@ -1,5 +1,5 @@
-#ifndef OBJECT_IMPL_H
-#define OBJECT_IMPL_H
+#ifndef VISTLE_CORE_OBJECT_IMPL_H
+#define VISTLE_CORE_OBJECT_IMPL_H
 
 #include "serialize.h"
 #include "archives_config.h"

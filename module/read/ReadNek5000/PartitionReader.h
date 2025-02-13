@@ -1,7 +1,5 @@
-
-#ifndef NEK_READEROBJECKT
-#define NEK_READEROBJECKT
-
+#ifndef VISTLE_READNEK5000_PARTITIONREADER_H
+#define VISTLE_READNEK5000_PARTITIONREADER_H
 
 #include "OpenFile.h"
 #include "ReaderBase.h"
@@ -113,4 +111,4 @@ private:
 
 } // namespace nek5000
 
-#endif //NEK_READEROBJECKT
+#endif

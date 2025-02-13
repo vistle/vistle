@@ -1,5 +1,5 @@
-#ifndef SHOWCELLTREE_H
-#define SHOWCELLTREE_H
+#ifndef VISTLE_SHOWCELLTREE_SHOWCELLTREE_H
+#define VISTLE_SHOWCELLTREE_SHOWCELLTREE_H
 
 #include <vistle/module/module.h>
 

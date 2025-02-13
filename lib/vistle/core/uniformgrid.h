@@ -1,10 +1,9 @@
+#ifndef VISTLE_CORE_UNIFORMGRID_H
+#define VISTLE_CORE_UNIFORMGRID_H
+
 //-------------------------------------------------------------------------
-// UNIFORM GRID CLASS H
-// *
 // * Uniform Grid Container Object
 //-------------------------------------------------------------------------
-#ifndef UNIFORM_GRID_H
-#define UNIFORM_GRID_H
 
 #include "scalar.h"
 #include "shm.h"
@@ -93,4 +92,4 @@ private:
 };
 
 } // namespace vistle
-#endif /* UNIFORM_GRID_H */
+#endif

@@ -1,5 +1,5 @@
-#ifndef TRACER_PARTICLE_H
-#define TRACER_PARTICLE_H
+#ifndef VISTLE_TRACER_PARTICLE_H
+#define VISTLE_TRACER_PARTICLE_H
 
 #include <vector>
 #include <future>

@@ -1,5 +1,5 @@
-#ifndef VISTLE_TUNNEL_H
-#define VISTLE_TUNNEL_H
+#ifndef VISTLE_NET_TUNNEL_H
+#define VISTLE_NET_TUNNEL_H
 
 #include <memory>
 #include <boost/asio.hpp>

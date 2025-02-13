@@ -1,5 +1,5 @@
-#ifndef VISTLE_PYBIND_H
-#define VISTLE_PYBIND_H
+#ifndef VISTLE_UTIL_PYBIND_H
+#define VISTLE_UTIL_PYBIND_H
 
 #include <pybind11/pybind11.h>
 #endif

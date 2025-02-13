@@ -1,5 +1,5 @@
-#ifndef DOMAINSURFACE_H
-#define DOMAINSURFACE_H
+#ifndef VISTLE_DOMAINSURFACE_DOMAINSURFACE_H
+#define VISTLE_DOMAINSURFACE_DOMAINSURFACE_H
 
 #include <vistle/module/module.h>
 #include <vistle/core/unstr.h>

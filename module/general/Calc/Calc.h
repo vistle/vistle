@@ -1,5 +1,5 @@
-#ifndef CALC_H
-#define CALC_H
+#ifndef VISTLE_CALC_CALC_H
+#define VISTLE_CALC_CALC_H
 
 #include <vistle/module/module.h>
 #include <vistle/core/vector.h>

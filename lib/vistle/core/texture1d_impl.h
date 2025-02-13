@@ -1,5 +1,5 @@
-#ifndef TEXTURE_IMPL_H
-#define TEXTURE_IMPL_H
+#ifndef VISTLE_CORE_TEXTURE1D_IMPL_H
+#define VISTLE_CORE_TEXTURE1D_IMPL_H
 
 namespace vistle {
 

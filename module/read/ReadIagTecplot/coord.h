@@ -1,5 +1,5 @@
-#ifndef COORD_H
-#define COORD_H
+#ifndef VISTLE_READIAGTECPLOT_COORD_H
+#define VISTLE_READIAGTECPLOT_COORD_H
 
 #include <cmath>
 #include <ostream>

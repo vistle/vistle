@@ -1,5 +1,5 @@
-#ifndef EMPTY_IMPL_H
-#define EMPTY_IMPL_H
+#ifndef VISTLE_CORE_EMPTY_IMPL_H
+#define VISTLE_CORE_EMPTY_IMPL_H
 
 #include "archives_config.h"
 

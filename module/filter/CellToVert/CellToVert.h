@@ -1,5 +1,5 @@
-#ifndef CELLTOVERT_H
-#define CELLTOVERT_H
+#ifndef VISTLE_CELLTOVERT_CELLTOVERT_H
+#define VISTLE_CELLTOVERT_CELLTOVERT_H
 
 #include <vistle/module/module.h>
 #include <vistle/core/vector.h>

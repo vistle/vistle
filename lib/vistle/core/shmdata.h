@@ -1,5 +1,5 @@
-#ifndef VISTLE_SHMDATA_H
-#define VISTLE_SHMDATA_H
+#ifndef VISTLE_CORE_SHMDATA_H
+#define VISTLE_CORE_SHMDATA_H
 
 #include <atomic>
 #include <string>

@@ -1,5 +1,5 @@
-#ifndef THRESHOLD_H
-#define THRESHOLD_H
+#ifndef VISTLE_THRESHOLD_THRESHOLD_H
+#define VISTLE_THRESHOLD_THRESHOLD_H
 
 #include <vistle/module/module.h>
 #include <vistle/core/unstr.h>

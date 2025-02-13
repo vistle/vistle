@@ -1,5 +1,5 @@
-#ifndef VISTLE_FILE_IO_H
-#define VISTLE_FILE_IO_H
+#ifndef VISTLE_UTIL_FILEIO_H
+#define VISTLE_UTIL_FILEIO_H
 
 #ifdef _WIN32
 #include <io.h>

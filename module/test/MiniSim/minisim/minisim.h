@@ -1,5 +1,6 @@
-#ifndef VISTLE_INSITU_MINISIM_H
-#define VISTLE_INSITU_MINISIM_H
+#ifndef VISTLE_MINISIM_MINISIM_MINISIM_H
+#define VISTLE_MINISIM_MINISIM_MINISIM_H
+
 #include <cstddef>
 #include <string>
 #include <boost/mpi/communicator.hpp>
@@ -33,4 +34,4 @@ private:
 };
 } // namespace minisim
 
-#endif //!VISTLE_INSITU_MINISIM_H
+#endif

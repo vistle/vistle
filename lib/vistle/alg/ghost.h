@@ -1,5 +1,5 @@
-#ifndef GHOST_H
-#define GHOST_H
+#ifndef VISTLE_ALG_GHOST_H
+#define VISTLE_ALG_GHOST_H
 
 #include <algorithm>
 #include <iterator>

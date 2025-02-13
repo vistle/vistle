@@ -1,5 +1,5 @@
-#ifndef MAINWINDOW_H
-#define MAINWINDOW_H
+#ifndef VISTLE_GUI_MAINWINDOW_H
+#define VISTLE_GUI_MAINWINDOW_H
 
 #include <QObject>
 #include <QList>
@@ -97,4 +97,4 @@ private:
 };
 
 } //namespace gui
-#endif // MAINWINDOW_H
+#endif

@@ -1,5 +1,5 @@
-#ifndef EXCEPTION_H
-#define EXCEPTION_H
+#ifndef VISTLE_UTIL_EXCEPTION_H
+#define VISTLE_UTIL_EXCEPTION_H
 
 #include <exception>
 #include <string>

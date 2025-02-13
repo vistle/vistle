@@ -1,5 +1,5 @@
-#ifndef NORMALS_H
-#define NORMALS_H
+#ifndef VISTLE_CORE_NORMALS_H
+#define VISTLE_CORE_NORMALS_H
 
 
 #include "vec.h"

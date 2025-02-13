@@ -1,10 +1,9 @@
+#ifndef VISTLE_CORE_LAYERGRID_IMPL_H
+#define VISTLE_CORE_LAYERGRID_IMPL_H
+
 //-------------------------------------------------------------------------
-// STRUCTURED GRID CLASS IMPL H
-// *
 // * Structured Grid Container Object
 //-------------------------------------------------------------------------
-#ifndef VISTLE_LAYER_GRID_IMPL_H
-#define VISTLE_LAYER_GRID_IMPL_H
 
 namespace vistle {
 
@@ -24,4 +23,4 @@ void LayerGrid::Data::serialize(Archive &ar)
 
 } // namespace vistle
 
-#endif /* STRUCTURED_GRID_IMPL_H */
+#endif

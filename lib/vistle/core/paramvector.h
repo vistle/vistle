@@ -1,5 +1,5 @@
-#ifndef PARAMVECTOR_H
-#define PARAMVECTOR_H
+#ifndef VISTLE_CORE_PARAMVECTOR_H
+#define VISTLE_CORE_PARAMVECTOR_H
 
 #include <vistle/util/sysdep.h>
 #include <vistle/util/exception.h>
@@ -204,4 +204,4 @@ typedef ParameterVector<std::string> StringParamVector;
 
 } // namespace vistle
 
-#endif // PARAMVECTOR_H
+#endif

@@ -1,5 +1,5 @@
-#ifndef COLOR_GOOGLE_TURBO_H
-#define COLOR_GOOGLE_TURBO_H
+#ifndef VISTLE_COLOR_TURBO_COLORMAP_H
+#define VISTLE_COLOR_TURBO_COLORMAP_H
 
 #ifdef __cplusplus
 extern "C"

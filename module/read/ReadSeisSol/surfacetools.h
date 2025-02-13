@@ -1,5 +1,5 @@
-#ifndef VISTLE_MODULE_UTIL_SURFACETOOLS_H
-#define VISTLE_MODULE_UTIL_SURFACETOOLS_H
+#ifndef VISTLE_READSEISSOL_SURFACETOOLS_H
+#define VISTLE_READSEISSOL_SURFACETOOLS_H
 
 #include <vistle/core/celltypes.h>
 #include <vistle/core/indexed.h>

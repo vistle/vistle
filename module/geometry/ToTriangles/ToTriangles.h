@@ -1,5 +1,5 @@
-#ifndef TOTRIANGLES_H
-#define TOTRIANGLES_H
+#ifndef VISTLE_TOTRIANGLES_TOTRIANGLES_H
+#define VISTLE_TOTRIANGLES_TOTRIANGLES_H
 
 #include <vistle/module/module.h>
 #include <vistle/module/resultcache.h>

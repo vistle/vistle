@@ -1,5 +1,5 @@
-#ifndef VISTLE_INSITU_ADAPTER_H
-#define VISTLE_INSITU_ADAPTER_H
+#ifndef VISTLE_INSITU_ADAPTER_ADAPTER_H
+#define VISTLE_INSITU_ADAPTER_ADAPTER_H
 
 #include "export.h"
 #include "metaData.h"
@@ -86,4 +86,4 @@ private:
 } // namespace insitu
 } // namespace vistle
 
-#endif // !VISTLE_INSITU_ADAPTER_H
+#endif

@@ -1,5 +1,5 @@
-#ifndef VISTLE_HUB_EXPORT_H
-#define VISTLE_HUB_EXPORT_H
+#ifndef VISTLE_CONTROL_EXPORT_H
+#define VISTLE_CONTROL_EXPORT_H
 
 #include <vistle/util/export.h>
 

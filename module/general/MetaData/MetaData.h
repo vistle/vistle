@@ -1,5 +1,5 @@
-#ifndef METADATA_H
-#define METADATA_H
+#ifndef VISTLE_METADATA_METADATA_H
+#define VISTLE_METADATA_METADATA_H
 
 #include <vistle/module/module.h>
 #include <vistle/core/vector.h>

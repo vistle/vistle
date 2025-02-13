@@ -1,5 +1,5 @@
-#ifndef UTIL_EXPORT_H
-#define UTIL_EXPORT_H
+#ifndef VISTLE_UTIL_EXPORT_H
+#define VISTLE_UTIL_EXPORT_H
 
 #if defined(_WIN32) && !defined(NODLL)
 #define V_IMPORT __declspec(dllimport)

@@ -1,5 +1,5 @@
-#ifndef _READDFG_H
-#define _READDFG_H
+#ifndef VISTLE_READIAGNETCDF_READIAGNETCDF_H
+#define VISTLE_READIAGNETCDF_READIAGNETCDF_H
 
 #include <cstddef>
 #include <vistle/core/unstr.h>

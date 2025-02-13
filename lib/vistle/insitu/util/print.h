@@ -1,5 +1,6 @@
-#ifndef VISTLE_UTIL_PRINT_H
-#define VISTLE_UTIL_PRINT_H
+#ifndef VISTLE_INSITU_UTIL_PRINT_H
+#define VISTLE_INSITU_UTIL_PRINT_H
+
 #include <iostream>
 namespace vistle {
 /*use this to easily switch off prints e.g the following code will do nothing:
@@ -57,4 +58,4 @@ private:
 
 } // namespace vistle
 
-#endif // !DO_NOT_PRINT_H
+#endif

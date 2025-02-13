@@ -1,5 +1,6 @@
-#ifndef VISTLE_LIBSIM_SMART_HANDLE_H
-#define VISTLE_LIBSIM_SMART_HANDLE_H
+#ifndef VISTLE_INSITU_LIBSIM_SMARTHANDLE_H
+#define VISTLE_INSITU_LIBSIM_SMARTHANDLE_H
+
 #include "Exception.h"
 #include "libsimInterface/VisItDataTypes.h"
 #include "libsimInterface/UnstructuredMesh.h"
@@ -96,4 +97,4 @@ private:
 } // namespace insitu
 } // namespace vistle
 
-#endif // !VISTLE_LIBSIM_SMART_HANDLE_H
+#endif

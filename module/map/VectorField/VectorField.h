@@ -1,5 +1,5 @@
-#ifndef VECTORFIELD_H
-#define VECTORFIELD_H
+#ifndef VISTLE_VECTORFIELD_VECTORFIELD_H
+#define VISTLE_VECTORFIELD_VECTORFIELD_H
 
 #include <vistle/module/module.h>
 

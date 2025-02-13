@@ -1,5 +1,5 @@
-#ifndef FilterCells_H
-#define FilterCells_H
+#ifndef VISTLE_FILTERCELLS_FILTERCELLS_H
+#define VISTLE_FILTERCELLS_FILTERCELLS_H
 
 #include "SupportedVariables.h"
 #include <vistle/module/module.h>

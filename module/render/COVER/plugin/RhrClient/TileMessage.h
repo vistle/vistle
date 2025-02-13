@@ -1,5 +1,5 @@
-#ifndef TILEMESSAGE_H
-#define TILEMESSAGE_H
+#ifndef VISTLE_COVER_PLUGIN_RHRCLIENT_TILEMESSAGE_H
+#define VISTLE_COVER_PLUGIN_RHRCLIENT_TILEMESSAGE_H
 
 #include <memory>
 #include <vector>

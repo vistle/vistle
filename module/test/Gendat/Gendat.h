@@ -1,5 +1,5 @@
-#ifndef GENDAT_H
-#define GENDAT_H
+#ifndef VISTLE_GENDAT_GENDAT_H
+#define VISTLE_GENDAT_GENDAT_H
 
 #include <vistle/module/reader.h>
 

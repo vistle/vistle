@@ -1,5 +1,5 @@
-#ifndef VISTLE_SCANMODULES_H
-#define VISTLE_SCANMODULES_H
+#ifndef VISTLE_CONTROL_SCANMODULES_H
+#define VISTLE_CONTROL_SCANMODULES_H
 
 #include <vistle/core/availablemodule.h>
 

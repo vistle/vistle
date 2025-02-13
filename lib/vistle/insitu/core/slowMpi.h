@@ -1,5 +1,5 @@
-#ifndef VISTLE_INSITU_SLOW_MPI_H
-#define VISTLE_INSITU_SLOW_MPI_H
+#ifndef VISTLE_INSITU_CORE_SLOWMPI_H
+#define VISTLE_INSITU_CORE_SLOWMPI_H
 
 #include "export.h"
 #include <atomic>
@@ -23,4 +23,4 @@ void V_INSITUCOREEXPORT barrier(const boost::mpi::communicator &c, const std::at
 } // namespace insitu
 } // namespace vistle
 
-#endif //VISTLE_INSITU_SLOW_MPI_H
+#endif

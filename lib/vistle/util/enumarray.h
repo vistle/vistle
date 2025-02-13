@@ -1,5 +1,6 @@
-#ifndef VISTLE_ENUM_ARRAY_H
-#define VISTLE_ENUM_ARRAY_H
+#ifndef VISTLE_UTIL_ENUMARRAY_H
+#define VISTLE_UTIL_ENUMARRAY_H
+
 #include <array>
 #include <initializer_list>
 
@@ -25,4 +26,4 @@ public:
 };
 } // namespace vistle
 
-#endif //VISTLE_ENUM_ARRAY_H
+#endif

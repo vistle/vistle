@@ -1,5 +1,5 @@
-#ifndef VISTLE_ARCHIVES_COMPRESS_SZ3_H
-#define VISTLE_ARCHIVES_COMPRESS_SZ3_H
+#ifndef VISTLE_CORE_ARCHIVES_COMPRESS_SZ3_H
+#define VISTLE_CORE_ARCHIVES_COMPRESS_SZ3_H
 
 #include <vistle/util/buffer.h>
 #include "index.h"

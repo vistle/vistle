@@ -1,5 +1,5 @@
-#ifndef TRANSFORMGRID_H
-#define TRANSFORMGRID_H
+#ifndef VISTLE_TRANSFORMGRID_TRANSFORMGRID_H
+#define VISTLE_TRANSFORMGRID_TRANSFORMGRID_H
 
 #include <vistle/module/module.h>
 
@@ -35,4 +35,4 @@ private:
 };
 
 
-#endif // !TRANSFORMGRID_H
+#endif

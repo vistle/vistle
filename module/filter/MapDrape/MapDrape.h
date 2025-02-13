@@ -1,5 +1,5 @@
-#ifndef MAPDRAPE_H
-#define MAPDRAPE_H
+#ifndef VISTLE_MAPDRAPE_MAPDRAPE_H
+#define VISTLE_MAPDRAPE_MAPDRAPE_H
 
 #include <vistle/module/module.h>
 #include <vistle/core/vector.h>

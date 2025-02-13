@@ -1,5 +1,5 @@
-#ifndef STATETRACKER_H
-#define STATETRACKER_H
+#ifndef VISTLE_CORE_STATETRACKER_H
+#define VISTLE_CORE_STATETRACKER_H
 
 #include <vector>
 #include <map>

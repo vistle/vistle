@@ -1,5 +1,6 @@
-#ifndef VERTEX_TYPES_TO_VISTLE_H
-#define VERTEX_TYPES_TO_VISTLE_H
+#ifndef VISTLE_INSITU_LIBSIM_VERTEXTYPESTOVISTLE_H
+#define VISTLE_INSITU_LIBSIM_VERTEXTYPESTOVISTLE_H
+
 #include <vistle/core/unstr.h>
 #include <vistle/insitu/libsim/libsimInterface/VisItDataTypes.h>
 namespace vistle {

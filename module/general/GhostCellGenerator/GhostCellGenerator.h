@@ -1,5 +1,5 @@
-#ifndef GHOSTCELLGENERATOR_H
-#define GHOSTCELLGENERATOR_H
+#ifndef VISTLE_GHOSTCELLGENERATOR_GHOSTCELLGENERATOR_H
+#define VISTLE_GHOSTCELLGENERATOR_GHOSTCELLGENERATOR_H
 
 #include <vistle/module/module.h>
 #include <vistle/core/unstr.h>

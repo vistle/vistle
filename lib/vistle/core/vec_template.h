@@ -1,5 +1,5 @@
-#ifndef VEC_TEMPLATE_H
-#define VEC_TEMPLATE_H
+#ifndef VISTLE_CORE_VEC_TEMPLATE_H
+#define VISTLE_CORE_VEC_TEMPLATE_H
 
 #include "scalars.h"
 #include "structuredgridbase.h"

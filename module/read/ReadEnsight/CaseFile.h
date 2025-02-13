@@ -1,3 +1,6 @@
+#ifndef VISTLE_READENSIGHT_CASEFILE_H
+#define VISTLE_READENSIGHT_CASEFILE_H
+
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // CLASS    CaseFile
 //
@@ -11,9 +14,6 @@
 //
 // Changes:
 //
-
-#ifndef READENSIGHT_CASEFILE_H
-#define READENSIGHT_CASEFILE_H
 
 #include "DataItem.h"
 

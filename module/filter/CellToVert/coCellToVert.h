@@ -1,5 +1,5 @@
-#ifndef CO_CELLTOVERT_H
-#define CO_CELLTOVERT_H
+#ifndef VISTLE_CELLTOVERT_COCELLTOVERT_H
+#define VISTLE_CELLTOVERT_COCELLTOVERT_H
 
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // ++                                                     (C)2005 Visenso ++
