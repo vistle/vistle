@@ -575,3 +575,18 @@ void EnFile::sendPartsToInfo()
     info += EnPart::partInfoFooter();
     ens->sendInfo(info);
 }
+
+bool EnFile::hasPartWithDim(int dim) const
+{
+    if (partList_ == nullptr) {
+        return false;
+    }
+
+    for (const auto &part: *partList_) {
+        if (part.hasDim(dim)) {
+            return true;
+        }
+    }
+
+    return false;
+}

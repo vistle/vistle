@@ -130,15 +130,19 @@ bool ReadEnsight::examine(const vistle::Parameter *param)
 
         for (int i = 0; i < NumVolVert; ++i) {
             setParameterChoices(m_vol_vert_choice[i], vert_choices);
+            setParameterReadOnly(m_vol_vert_choice[i], false);
         }
         for (int i = 0; i < NumVolElem; ++i) {
             setParameterChoices(m_vol_elem_choice[i], elem_choices);
+            setParameterReadOnly(m_vol_elem_choice[i], false);
         }
         for (int i = 0; i < NumSurfVert; ++i) {
             setParameterChoices(m_surf_vert_choice[i], vert_choices);
+            setParameterReadOnly(m_surf_vert_choice[i], false);
         }
         for (int i = 0; i < NumSurfElem; ++i) {
             setParameterChoices(m_surf_elem_choice[i], elem_choices);
+            setParameterReadOnly(m_surf_elem_choice[i], false);
         }
 
         auto times = m_case.getAllRealTimes();
@@ -152,6 +156,23 @@ bool ReadEnsight::examine(const vistle::Parameter *param)
             globalParts_.resize(ntimes);
             if (!createPartlists(-1, true)) {
                 return false;
+            }
+
+            if (!hasPartWithDim(3)) {
+                for (int i = 0; i < NumVolVert; ++i) {
+                    setParameterReadOnly(m_vol_vert_choice[i], true);
+                }
+                for (int i = 0; i < NumVolElem; ++i) {
+                    setParameterReadOnly(m_vol_elem_choice[i], true);
+                }
+            }
+            if (!hasPartWithDim(2)) {
+                for (int i = 0; i < NumSurfVert; ++i) {
+                    setParameterReadOnly(m_surf_vert_choice[i], true);
+                }
+                for (int i = 0; i < NumSurfElem; ++i) {
+                    setParameterReadOnly(m_surf_elem_choice[i], true);
+                }
             }
         }
     }
@@ -504,6 +525,17 @@ bool ReadEnsight::createPartlists(int timestep, bool quick)
     }
 
     return true;
+}
+
+bool ReadEnsight::hasPartWithDim(int dim) const
+{
+    for (const auto &pl: globalParts_) {
+        if (::hasPartWithDim(pl, dim)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 bool ReadEnsight::byteSwap() const

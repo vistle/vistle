@@ -46,7 +46,7 @@ public:
 
     const EnPart &operator=(const EnPart &p);
 
-    // add elemnt and number of elements to part data
+    // add element and number of elements to part data
     void addElement(const EnElement &ele, size_t anz, bool complete = true);
 
     // remove all elements from part
@@ -70,6 +70,7 @@ public:
     // a part object is empty is it got not filled yet
     bool isEmpty() const;
     unsigned getDim() const;
+    bool hasDim(int dim) const;
 
     // find Element by name
     // we assume that each element occurs only once
@@ -164,6 +165,7 @@ private:
 
 typedef std::vector<EnPart> PartList;
 
+bool hasPartWithDim(const PartList &pl, int dim);
 EnPart *findPart(const PartList &pl, int partNum);
 
 std::ostream &operator<<(std::ostream &os, const EnPart &p);

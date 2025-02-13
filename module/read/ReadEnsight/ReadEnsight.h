@@ -29,6 +29,7 @@ public:
     bool finishRead() override;
 
     std::vector<PartList> globalParts_;
+    bool hasPartWithDim(int dim) const;
 
     bool byteSwap() const;
 
