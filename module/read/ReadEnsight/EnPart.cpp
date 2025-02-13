@@ -131,6 +131,19 @@ unsigned EnPart::getDim() const
     return 0;
 }
 
+bool EnPart::hasDim(int dim) const
+{
+    if (dim == 3 && !numList3d_.empty()) {
+        return true;
+    }
+
+    if (dim == 2 && !numList2d_.empty()) {
+        return true;
+    }
+
+    return false;
+}
+
 void EnPart::setComment(const std::string &c)
 {
     comment_ = c;
@@ -474,4 +487,15 @@ std::ostream &operator<<(std::ostream &os, const EnPart &p)
 {
     p.print(os);
     return os;
+}
+
+bool hasPartWithDim(const PartList &pl, int dim)
+{
+    for (const auto &p: pl) {
+        if (p.hasDim(dim)) {
+            return true;
+        }
+    }
+
+    return false;
 }

@@ -72,9 +72,11 @@ public:
 
     void sendPartsToInfo();
 
+    bool hasPartWithDim(int dim) const;
+
     static CaseFile::BinType guessBinType(ReadEnsight *mod, const std::string &filename);
     // use this function to create a geometry EnSight file representation
-    // each EnSight geometry file has a own fctory to create associated
+    // each EnSight geometry file has its factory to create associated
     // data files
     // you will have to change this method each time you enter a new type of
     // EnSight Geometry
