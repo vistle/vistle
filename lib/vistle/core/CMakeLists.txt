@@ -11,7 +11,6 @@ set(core_SOURCES
     archives_compress_sz3.cpp
     cellalgorithm.cpp
     filequery.cpp
-    findobjectreferenceoarchive.cpp
     geometry.cpp
     message.cpp
     messagepayload.cpp
@@ -84,7 +83,6 @@ set(core_HEADERS
     empty_impl.h
     export.h
     filequery.h
-    findobjectreferenceoarchive.h
     geometry.h
     grid.h
     index.h
