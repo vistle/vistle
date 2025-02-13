@@ -23,7 +23,6 @@
 #include "layergrid.h"
 #include "rectilineargrid.h"
 #include "structuredgrid.h"
-#include "findobjectreferenceoarchive.h"
 
 namespace vistle {
 
