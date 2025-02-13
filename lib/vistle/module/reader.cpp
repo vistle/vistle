@@ -33,7 +33,6 @@ Parameter *Reader::addParameterGeneric(const std::string &name, std::shared_ptr<
     if (!m_firstFileBrowser && param) {
         auto pres = param->presentation();
         if (pres == Parameter::ExistingFilename || pres == Parameter::ExistingDirectory) {
-            std::cerr << "add browser param: " << name << std::endl;
             m_firstFileBrowser = param;
         }
     }
