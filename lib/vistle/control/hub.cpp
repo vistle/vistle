@@ -1327,9 +1327,22 @@ bool Hub::dispatch()
         } else {
             if (m_verbose >= Verbosity::Manager) {
                 std::lock_guard<std::mutex> guard(m_processMutex);
-                CERR << "still " << m_processMap.size() << " processes running" << std::endl;
-                for (const auto &process: m_processMap) {
-                    std::cerr << "   id: " << process.second << ", pid: " << process.first->id() << std::endl;
+                if (m_prevNumRunning != m_processMap.size()) {
+                    m_prevNumRunning = m_processMap.size();
+                    CERR << "still " << m_processMap.size() << " processes running" << std::endl;
+                    for (const auto &process: m_processMap) {
+                        auto pid = process.first->id();
+                        std::cerr << "   id: " << process.second << ", pid: " << pid;
+                        auto it = m_observedChildren.find(pid);
+                        if (it != m_observedChildren.end()) {
+                            std::cerr << ", " << it->second.name;
+                        }
+                        std::cerr << std::endl;
+                    }
+                    m_lastProcessCheck = std::chrono::steady_clock::now();
+                } else if (std::chrono::steady_clock::now() - m_lastProcessCheck > std::chrono::seconds(1)) {
+                    std::cerr << "." << std::flush;
+                    m_lastProcessCheck = std::chrono::steady_clock::now();
                 }
             }
         }
