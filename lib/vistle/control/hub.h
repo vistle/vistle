@@ -230,6 +230,8 @@ private:
     int m_numRunningModules = 0;
     std::function<bool(void)> m_lastModuleQuitAction;
     static volatile std::atomic<bool> m_interrupt;
+    size_t m_prevNumRunning = 0;
+    std::chrono::steady_clock::time_point m_lastProcessCheck;
     boost::asio::signal_set m_signals;
     static void signalHandler(const boost::system::error_code &error, int signal_number);
 
