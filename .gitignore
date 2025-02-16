@@ -1,6 +1,7 @@
 /.envrc
 /.release
 /.debug
+/.buildtype
 /.spack
 /.flavor
 /scratch
