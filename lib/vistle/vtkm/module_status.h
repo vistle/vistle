@@ -6,7 +6,7 @@
 
 #include <vistle/core/messages.h>
 
-//TODO: should  best be moved to lib/vistle/module
+//TODO: should this be moved to lib/vistle/module?
 
 /**
  * @class ModuleStatus
@@ -37,7 +37,6 @@ public:
 
 typedef std::unique_ptr<ModuleStatus> ModuleStatusPtr;
 
-// Represents a successful execution of a module which does not print any message.
 class SuccessStatus: public ModuleStatus {
 public:
     SuccessStatus();
@@ -46,7 +45,6 @@ public:
     const vistle::message::SendText::TextType messageType() const override;
 };
 
-// Represents a failed execution of a module sending an error message.
 class ErrorStatus: public ModuleStatus {
 public:
     ErrorStatus(const char *_message);
@@ -55,7 +53,6 @@ public:
     const vistle::message::SendText::TextType messageType() const override;
 };
 
-// Represents a successful execution of a module, but prints a warning message.
 class WarningStatus: public ModuleStatus {
 public:
     WarningStatus(const char *_message);
@@ -64,7 +61,6 @@ public:
     const vistle::message::SendText::TextType messageType() const override;
 };
 
-// Represents a successful execution of a module, but prints an informational message.
 class InfoStatus: public ModuleStatus {
 public:
     InfoStatus(const char *_message);
@@ -74,7 +70,7 @@ public:
 };
 
 /*
-    @return A unique pointer to aI ModuleStatus object representing a successful execution.
+    @return A unique pointer to a ModuleStatus object representing a successful execution.
 */
 ModuleStatusPtr Success();
 
