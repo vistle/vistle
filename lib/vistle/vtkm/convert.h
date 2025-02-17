@@ -9,20 +9,18 @@
 
 #include <vtkm/cont/DataSet.h>
 
-#include "convert_status.h"
+#include "module_status.h"
 #include "export.h"
 
 namespace vistle {
 
 // transform a vistle grid object and transfer it a vtkm dataset
-std::unique_ptr<ConvertStatus> V_VTKM_EXPORT vtkmSetGrid(vtkm::cont::DataSet &vtkmDataSet,
-                                                         vistle::Object::const_ptr grid);
+ModuleStatusPtr V_VTKM_EXPORT vtkmSetGrid(vtkm::cont::DataSet &vtkmDataSet, vistle::Object::const_ptr grid);
 
 // transform a vistle field object and add it to a vtkm dataset as 'name'
-std::unique_ptr<ConvertStatus>
-    V_VTKM_EXPORT vtkmAddField(vtkm::cont::DataSet &vtkmDataSet, const vistle::DataBase::const_ptr &field,
-                               const std::string &name,
-                               vistle::DataBase::Mapping mapping = vistle::DataBase::Unspecified);
+ModuleStatusPtr V_VTKM_EXPORT vtkmAddField(vtkm::cont::DataSet &vtkmDataSet, const vistle::DataBase::const_ptr &field,
+                                           const std::string &name,
+                                           vistle::DataBase::Mapping mapping = vistle::DataBase::Unspecified);
 
 // retrieve the geometry from a vtkm dataset as a vistle object
 vistle::Object::ptr V_VTKM_EXPORT vtkmGetGeometry(const vtkm::cont::DataSet &dataset);

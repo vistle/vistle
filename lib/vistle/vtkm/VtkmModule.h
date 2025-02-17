@@ -18,15 +18,13 @@ protected:
 
     bool compute(const std::shared_ptr<vistle::BlockTask> &task) const override;
 
-    std::unique_ptr<ConvertStatus> inputToVtkm(const std::shared_ptr<vistle::BlockTask> &task,
-                                               vistle::Object::const_ptr &inputGrid,
-                                               vistle::DataBase::const_ptr &inputField,
-                                               vtkm::cont::DataSet &filterInputData) const;
+    ModuleStatusPtr inputToVtkm(const std::shared_ptr<vistle::BlockTask> &task, vistle::Object::const_ptr &inputGrid,
+                                vistle::DataBase::const_ptr &inputField, vtkm::cont::DataSet &filterInputData) const;
     bool outputToVistle(const std::shared_ptr<vistle::BlockTask> &task, vtkm::cont::DataSet &filterOutputData,
                         vistle::Object::const_ptr &inputGrid, vistle::DataBase::const_ptr &inputField) const;
     virtual void runFilter(vtkm::cont::DataSet &filterInputData, vtkm::cont::DataSet &filterOutputData) const = 0;
 
-    bool checkStatus(const std::unique_ptr<ConvertStatus> &status) const;
+    bool canContinueExecution(const ModuleStatusPtr &status) const;
 };
 
 #endif // VISTLE_VTKM_VTKMMODULE_H

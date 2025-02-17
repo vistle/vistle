@@ -142,7 +142,7 @@ struct ToShapeId<Polygons> {
 };
 
 template<class Ngons>
-std::unique_ptr<ConvertStatus> fromNgons(vtkm::cont::DataSet &vtkmDataset, typename Ngons::const_ptr &ngon)
+ModuleStatusPtr fromNgons(vtkm::cont::DataSet &vtkmDataset, typename Ngons::const_ptr &ngon)
 {
     auto numPoints = ngon->getNumCoords();
     auto numConn = ngon->getNumCorners();
@@ -164,7 +164,7 @@ std::unique_ptr<ConvertStatus> fromNgons(vtkm::cont::DataSet &vtkmDataset, typen
 };
 
 template<class Idx>
-std::unique_ptr<ConvertStatus> fromIndexed(vtkm::cont::DataSet &vtkmDataset, typename Idx::const_ptr &idx)
+ModuleStatusPtr fromIndexed(vtkm::cont::DataSet &vtkmDataset, typename Idx::const_ptr &idx)
 {
     auto numPoints = idx->getNumCoords();
     auto numCells = idx->getNumElements();
@@ -193,7 +193,7 @@ std::unique_ptr<ConvertStatus> fromIndexed(vtkm::cont::DataSet &vtkmDataset, typ
 
 } // namespace
 
-std::unique_ptr<ConvertStatus> vtkmSetTopology(vtkm::cont::DataSet &vtkmDataset, vistle::Object::const_ptr grid)
+ModuleStatusPtr vtkmSetTopology(vtkm::cont::DataSet &vtkmDataset, vistle::Object::const_ptr grid)
 {
     if (auto str = grid->getInterface<StructuredGridBase>()) {
         vtkm::Id nx = str->getNumDivisions(0);

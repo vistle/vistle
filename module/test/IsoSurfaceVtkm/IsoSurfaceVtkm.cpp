@@ -200,8 +200,8 @@ Object::ptr IsoSurfaceVtkm::work(vistle::Object::const_ptr grid, vistle::DataBas
     // transform vistle dataset to vtkm dataset
     vtkm::cont::DataSet vtkmDataSet;
     auto status = vtkmSetGrid(vtkmDataSet, grid);
-    if (!status->isSuccessful()) {
-        sendError(status->errorMessage());
+    if (!status->continueExecution()) {
+        sendText(status->messageType(), status->message());
         return Object::ptr();
     }
 
@@ -209,8 +209,8 @@ Object::ptr IsoSurfaceVtkm::work(vistle::Object::const_ptr grid, vistle::DataBas
     if (isospecies.empty())
         isospecies = "isodata";
     status = vtkmAddField(vtkmDataSet, isoField, isospecies);
-    if (!status->isSuccessful()) {
-        sendError(status->errorMessage());
+    if (!status->continueExecution()) {
+        sendText(status->messageType(), status->message());
         return Object::ptr();
     }
 
@@ -220,8 +220,8 @@ Object::ptr IsoSurfaceVtkm::work(vistle::Object::const_ptr grid, vistle::DataBas
         if (mapspecies.empty())
             mapspecies = "mapped";
         status = vtkmAddField(vtkmDataSet, mapField, mapspecies);
-        if (!status->isSuccessful()) {
-            sendError(status->errorMessage());
+        if (!status->continueExecution()) {
+            sendText(status->messageType(), status->message());
             return Object::ptr();
         }
     }

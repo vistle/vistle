@@ -21,7 +21,7 @@ namespace vistle {
 
 namespace {
 
-std::unique_ptr<ConvertStatus> vtkmApplyGhost(vtkm::cont::DataSet &vtkmDataset, Object::const_ptr &grid)
+ModuleStatusPtr vtkmApplyGhost(vtkm::cont::DataSet &vtkmDataset, Object::const_ptr &grid)
 {
     const std::string &ghostname = "ghost";
     vtkmDataset.SetGhostCellFieldName(ghostname);
@@ -45,7 +45,7 @@ std::unique_ptr<ConvertStatus> vtkmApplyGhost(vtkm::cont::DataSet &vtkmDataset, 
     return Success();
 }
 
-std::unique_ptr<ConvertStatus> vtkmGetGhosts(const vtkm::cont::DataSet &dataset, Object::ptr &result)
+ModuleStatusPtr vtkmGetGhosts(const vtkm::cont::DataSet &dataset, Object::ptr &result)
 {
     if (!dataset.HasGhostCellField())
         return Success();
@@ -75,7 +75,7 @@ std::unique_ptr<ConvertStatus> vtkmGetGhosts(const vtkm::cont::DataSet &dataset,
         "An error occurred while converting VTKm ghost field to Vistle grid. Check logfile for more information.");
 }
 
-std::unique_ptr<ConvertStatus> vtkmApplyRadius(vtkm::cont::DataSet &vtkmDataset, Object::const_ptr &grid)
+ModuleStatusPtr vtkmApplyRadius(vtkm::cont::DataSet &vtkmDataset, Object::const_ptr &grid)
 {
     vistle::Vec<Scalar>::const_ptr radius;
     if (auto lines = Lines::as(grid)) {
@@ -89,7 +89,7 @@ std::unique_ptr<ConvertStatus> vtkmApplyRadius(vtkm::cont::DataSet &vtkmDataset,
     return Success();
 }
 
-std::unique_ptr<ConvertStatus> vtkmGetRadius(const vtkm::cont::DataSet &dataset, Object::ptr &result)
+ModuleStatusPtr vtkmGetRadius(const vtkm::cont::DataSet &dataset, Object::ptr &result)
 {
     auto radius = vtkmGetField(dataset, "_radius");
     if (!radius) {
@@ -114,7 +114,7 @@ std::unique_ptr<ConvertStatus> vtkmGetRadius(const vtkm::cont::DataSet &dataset,
     return Error("Radius can only be applied to Points and Lines.");
 }
 
-std::unique_ptr<ConvertStatus> vtkmApplyNormals(vtkm::cont::DataSet &vtkmDataset, Object::const_ptr &grid)
+ModuleStatusPtr vtkmApplyNormals(vtkm::cont::DataSet &vtkmDataset, Object::const_ptr &grid)
 {
     auto coords = Coords::as(grid);
     if (!coords) {
@@ -130,7 +130,7 @@ std::unique_ptr<ConvertStatus> vtkmApplyNormals(vtkm::cont::DataSet &vtkmDataset
     return vtkmAddField(vtkmDataset, normals, "normals", mapping);
 }
 
-std::unique_ptr<ConvertStatus> vtkmGetNormals(const vtkm::cont::DataSet &dataset, Object::ptr &result)
+ModuleStatusPtr vtkmGetNormals(const vtkm::cont::DataSet &dataset, Object::ptr &result)
 {
     auto normals = vtkmGetField(dataset, "normals");
     if (!normals) {
@@ -157,7 +157,7 @@ std::unique_ptr<ConvertStatus> vtkmGetNormals(const vtkm::cont::DataSet &dataset
 
 } // namespace
 
-std::unique_ptr<ConvertStatus> vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object::const_ptr grid)
+ModuleStatusPtr vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vistle::Object::const_ptr grid)
 {
     if (auto coords = Coords::as(grid)) {
         auto coordinateSystem = vtkm::cont::CoordinateSystem(
@@ -190,7 +190,7 @@ std::unique_ptr<ConvertStatus> vtkmSetGrid(vtkm::cont::DataSet &vtkmDataset, vis
     }
 
     auto stat = vtkmSetTopology(vtkmDataset, grid);
-    if (!stat->isSuccessful()) {
+    if (!stat->continueExecution()) {
         return stat;
     }
     return vtkmApplyGhost(vtkmDataset, grid);
@@ -242,8 +242,8 @@ struct AddField {
 };
 } // namespace
 
-std::unique_ptr<ConvertStatus> vtkmAddField(vtkm::cont::DataSet &vtkmDataSet, const vistle::DataBase::const_ptr &field,
-                                            const std::string &name, vistle::DataBase::Mapping mapping)
+ModuleStatusPtr vtkmAddField(vtkm::cont::DataSet &vtkmDataSet, const vistle::DataBase::const_ptr &field,
+                             const std::string &name, vistle::DataBase::Mapping mapping)
 {
     bool handled = false;
     boost::mpl::for_each<Scalars>(AddField(vtkmDataSet, field, name, mapping, handled));

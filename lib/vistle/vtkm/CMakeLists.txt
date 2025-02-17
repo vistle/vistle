@@ -1,11 +1,11 @@
-set(SOURCES convert.cpp convert_topology.cpp convert_worklets.cpp ImplFuncController.cpp VtkmModule.h)
+set(SOURCES convert.cpp convert_topology.cpp convert_worklets.cpp module_status.cpp ImplFuncController.cpp VtkmModule.h)
 
 set(HEADERS
     export.h
     convert.h
     convert_topology.h
     convert_worklets.h
-    convert_status.h
+    module_status.h
     ImplFuncController.h
     VtkmModule.cpp)
 

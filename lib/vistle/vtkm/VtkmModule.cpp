@@ -1,12 +1,17 @@
+#include <cstring>
 
 #include <vistle/alg/objalg.h>
 
 #include "convert.h"
-#include "convert_status.h"
+#include "module_status.h"
 
 #include "VtkmModule.h"
 
 using namespace vistle;
+
+
+//TODO: make all VTKm modules inherit from this class
+//TODO: canContinueExecution() could be moved to the Module class as it is not specific to VTKm
 
 VtkmModule::VtkmModule(const std::string &name, int moduleID, mpi::communicator comm, bool requireMappedData)
 : Module(name, moduleID, comm), m_requireMappedData(requireMappedData)
@@ -18,13 +23,13 @@ VtkmModule::VtkmModule(const std::string &name, int moduleID, mpi::communicator 
 VtkmModule::~VtkmModule()
 {}
 
-bool VtkmModule::checkStatus(const std::unique_ptr<ConvertStatus> &status) const
+bool VtkmModule::canContinueExecution(const ModuleStatusPtr &status) const
 {
-    if (!status->isSuccessful()) {
-        sendError(status->errorMessage());
-        return false;
+    if (strcmp(status->message(), "")) {
+        sendText(status->messageType(), status->message());
     }
-    return true;
+
+    return status->continueExecution();
 }
 
 bool VtkmModule::compute(const std::shared_ptr<vistle::BlockTask> &task) const
@@ -36,7 +41,7 @@ bool VtkmModule::compute(const std::shared_ptr<vistle::BlockTask> &task) const
     DataBase::const_ptr inputField;
 
     auto status = inputToVtkm(task, inputGrid, inputField, filterInputData);
-    if (!checkStatus(status))
+    if (!canContinueExecution(status))
         return true;
 
     runFilter(filterInputData, filterOutputData);
@@ -46,10 +51,9 @@ bool VtkmModule::compute(const std::shared_ptr<vistle::BlockTask> &task) const
     return true;
 }
 
-std::unique_ptr<ConvertStatus> VtkmModule::inputToVtkm(const std::shared_ptr<vistle::BlockTask> &task,
-                                                       vistle::Object::const_ptr &inputGrid,
-                                                       vistle::DataBase::const_ptr &inputField,
-                                                       vtkm::cont::DataSet &filterInputData) const
+ModuleStatusPtr VtkmModule::inputToVtkm(const std::shared_ptr<vistle::BlockTask> &task,
+                                        vistle::Object::const_ptr &inputGrid, vistle::DataBase::const_ptr &inputField,
+                                        vtkm::cont::DataSet &filterInputData) const
 { // check input grid and input field
     auto container = task->accept<Object>(m_dataIn);
     auto split = splitContainerObject(container);
@@ -63,7 +67,7 @@ std::unique_ptr<ConvertStatus> VtkmModule::inputToVtkm(const std::shared_ptr<vis
 
     // transform Vistle grid to VTK-m dataset
     auto status = vtkmSetGrid(filterInputData, inputGrid);
-    if (!checkStatus(status))
+    if (!canContinueExecution(status))
         return status;
 
     if (m_requireMappedData) {
@@ -71,7 +75,7 @@ std::unique_ptr<ConvertStatus> VtkmModule::inputToVtkm(const std::shared_ptr<vis
         if (m_mappedDataName.empty())
             m_mappedDataName = "mapdata";
         status = vtkmAddField(filterInputData, inputField, m_mappedDataName);
-        if (!checkStatus(status))
+        if (!canContinueExecution(status))
             return status;
     }
 

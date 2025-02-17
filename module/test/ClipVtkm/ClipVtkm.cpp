@@ -52,8 +52,8 @@ bool ClipVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task) const
     // transform vistle dataset to vtkm dataset
     vtkm::cont::DataSet vtkmDataSet;
     auto status = vtkmSetGrid(vtkmDataSet, grid);
-    if (!status->isSuccessful()) {
-        sendError(status->errorMessage());
+    if (!status->continueExecution()) {
+        sendText(status->messageType(), status->message());
         return true;
     }
 
@@ -66,8 +66,8 @@ bool ClipVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task) const
         if (mapSpecies.empty())
             mapSpecies = "mapdata";
         status = vtkmAddField(vtkmDataSet, mapField, mapSpecies);
-        if (!status->isSuccessful()) {
-            sendError(status->errorMessage());
+        if (!status->continueExecution()) {
+            sendText(status->messageType(), status->message());
             return true;
         }
         clipFilter.SetActiveField(mapSpecies);

@@ -114,8 +114,8 @@ bool CellToVertVtkm::compute(const std::shared_ptr<BlockTask> &task) const
             // transform vistle dataset to vtkm dataset
             vtkm::cont::DataSet vtkmDataSet;
             auto status = vtkmSetGrid(vtkmDataSet, grid);
-            if (!status->isSuccessful()) {
-                sendError(status->errorMessage());
+            if (!status->continueExecution()) {
+                sendText(status->messageType(), status->message());
                 return true;
             }
 
@@ -130,10 +130,11 @@ bool CellToVertVtkm::compute(const std::shared_ptr<BlockTask> &task) const
             if (mapSpecies.empty())
                 mapSpecies = "mapdata";
             status = vtkmAddField(vtkmDataSet, data, mapSpecies);
-            if (!status->isSuccessful()) {
-                sendError(status->errorMessage());
+            if (!status->continueExecution()) {
+                sendText(status->messageType(), status->message());
                 return true;
             }
+
             filter.SetActiveField(mapSpecies);
             auto avg = filter.Execute(vtkmDataSet);
 

@@ -67,10 +67,11 @@ bool SpheresOverlap::compute(const std::shared_ptr<BlockTask> &task) const
         vtkm::cont::DataSet vtkmSpheres;
         auto status = vtkmSetGrid(vtkmSpheres, spheres);
 
-        if (!status->isSuccessful()) {
-            sendError(status->errorMessage());
+        if (!status->continueExecution()) {
+            sendText(status->messageType(), status->message());
             return true;
         }
+
 
         vtkmSpheres.AddPointField("radius", radii.handle());
 
