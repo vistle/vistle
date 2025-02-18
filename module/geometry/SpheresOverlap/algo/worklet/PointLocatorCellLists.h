@@ -1,15 +1,15 @@
 #ifndef POINT_LOCATOR_CELL_LISTS_H
 #define POINT_LOCATOR_CELL_LISTS_H
 
-#include <vtkm/cont/internal/PointLocatorBase.h>
+#include <vtkm/cont/PointLocatorBase.h>
 
 #include <vistle/core/scalar.h>
 
 #include "OverlapDetector.h"
 #include "../ThicknessDeterminer.h"
 
-class PointLocatorCellLists: public vtkm::cont::internal::PointLocatorBase<PointLocatorCellLists> {
-    using Superclass = vtkm::cont::internal::PointLocatorBase<PointLocatorCellLists>;
+class PointLocatorCellLists: public vtkm::cont::PointLocatorBase {
+    using Superclass = vtkm::cont::PointLocatorBase;
 
 public:
     void SetRadii(const vtkm::cont::UnknownArrayHandle &radii)
