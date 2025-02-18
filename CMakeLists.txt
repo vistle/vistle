@@ -410,14 +410,9 @@ if(NOT VISTLE_GUI_ONLY)
         endif()
     endif()
 
-    if(CMAKE_VERSION VERSION_LESS 3.12)
-        message(WARNING "CMake 3.12 or newer is required for compiling Python support")
-    else()
-        vistle_find_package(Python COMPONENTS Interpreter Development REQUIRED)
-
-        if(Python_FOUND)
-            message("Found Python version ${Python_VERSION}")
-        endif()
+    vistle_find_package(Python COMPONENTS Interpreter Development REQUIRED)
+    if(Python_FOUND)
+        message("Found Python version ${Python_VERSION}")
     endif()
 
     # vistle_find_package(IceT REQUIRED)
@@ -595,15 +590,14 @@ endif()
 
 add_definitions(-DBOOST_LIB_DIAGNOSTIC=1)
 
-get_property(LIB64 GLOBAL PROPERTY FIND_LIBRARY_USE_LIB64_PATHS)
-
-if(LIB64)
-    set(LIBSUFFIX 64)
-else()
-    set(LIBSUFFIX "")
-endif()
-
 if(NOT WIN32 AND NOT APPLE)
+    get_property(LIB64 GLOBAL PROPERTY FIND_LIBRARY_USE_LIB64_PATHS)
+    if(LIB64)
+        set(LIBSUFFIX 64)
+    else()
+        set(LIBSUFFIX "")
+    endif()
+
     set(INSTALL_LIB_DIR
         lib${LIBSUFFIX}
         CACHE PATH "Installation directory for libraries")
@@ -613,27 +607,16 @@ endif()
 include(GNUInstallDirs)
 
 macro(vistle_install_library targetname)
-    if(${CMAKE_VERSION} VERSION_LESS "3.12.4")
-        install(
-            TARGETS ${targetname}
-            EXPORT ${targetname}Targets
-            INCLUDES
-            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT ${targetname}_Runtime
-            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT ${targetname}_Runtime
-            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT ${targetname}_Development)
-    else()
-        install(
-            TARGETS ${targetname}
-            EXPORT ${targetname}Targets
-            INCLUDES
-            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT ${targetname}_Runtime
-            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-                    COMPONENT ${targetname}_Runtime
-                    NAMELINK_COMPONENT ${targetname}_Development
-            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT ${targetname}_Development)
-    endif()
+    install(
+        TARGETS ${targetname}
+        EXPORT ${targetname}Targets
+        INCLUDES
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT ${targetname}_Runtime
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+                COMPONENT ${targetname}_Runtime
+                NAMELINK_COMPONENT ${targetname}_Development
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT ${targetname}_Development)
 
     if("${vistle_install_include_directory}" STREQUAL "")
         string(REPLACE ${PROJECT_BINARY_DIR}/lib/vistle "" vistle_install_include_directory ${CMAKE_CURRENT_BINARY_DIR})
