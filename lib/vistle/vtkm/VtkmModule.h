@@ -28,7 +28,7 @@ protected:
     vistle::Port *m_dataIn, *m_dataOut;
 
     bool m_requireMappedData;
-    mutable std::string m_mappedDataName;
+    mutable std::string m_mappedDataName = "mappedData";
 
     /*
         Calls the `prepareInput`, `runFilter`, and `prepareOutput` methods in this order every time
@@ -36,6 +36,8 @@ protected:
     */
     bool compute(const std::shared_ptr<vistle::BlockTask> &task) const override;
 
+    ModuleStatusPtr inputToVtkm(vistle::Object::const_ptr &grid, vistle::DataBase::const_ptr &field,
+                                vtkm::cont::DataSet &result) const;
 
     // Checks if the data on the input port is valid and transforms it into a VTK-m dataset.
     ModuleStatusPtr prepareInput(const std::shared_ptr<vistle::BlockTask> &task, vistle::Object::const_ptr &inputGrid,

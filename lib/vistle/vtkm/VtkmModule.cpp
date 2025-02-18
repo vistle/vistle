@@ -46,32 +46,55 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
     return true;
 }
 
-ModuleStatusPtr VtkmModule::prepareInput(const std::shared_ptr<BlockTask> &task, Object::const_ptr &inputGrid,
-                                         DataBase::const_ptr &inputField, vtkm::cont::DataSet &filterInputData) const
-{ // check input grid and input field
-    auto container = task->accept<Object>(m_dataIn);
+ModuleStatusPtr getGridFromPort(const Port *port, const std::shared_ptr<BlockTask> &task, Object::const_ptr &resultGrid,
+                                bool readField, DataBase::const_ptr &resultField, std::string &resultFieldName)
+{
+    auto container = task->accept<Object>(port);
     auto split = splitContainerObject(container);
-    inputField = split.mapped;
-    if (m_requireMappedData && !inputField)
-        return Error("No mapped data on input grid!");
 
-    inputGrid = split.geometry;
-    if (!inputGrid)
+    resultGrid = split.geometry;
+    if (!resultGrid)
         return Error("Input grid is missing!");
 
-    // transform Vistle grid to VTK-m dataset
-    auto status = vtkmSetGrid(filterInputData, inputGrid);
+    if (readField) {
+        resultField = split.mapped;
+        if (!resultField)
+            return Error("No mapped data on input grid!");
+
+        // if the mapped data on the input port already has a name, keep it
+        if (auto name = resultField->getAttribute("_species"); !name.empty())
+            resultFieldName = name;
+    }
+
+    return Success();
+}
+
+ModuleStatusPtr VtkmModule::inputToVtkm(Object::const_ptr &grid, DataBase::const_ptr &field,
+                                        vtkm::cont::DataSet &result) const
+{
+    auto status = vtkmSetGrid(result, grid);
     if (!isValid(status))
         return status;
 
     if (m_requireMappedData) {
-        m_mappedDataName = inputField->getAttribute("_species");
-        if (m_mappedDataName.empty())
-            m_mappedDataName = "mapdata";
-        status = vtkmAddField(filterInputData, inputField, m_mappedDataName);
+        status = vtkmAddField(result, field, m_mappedDataName);
         if (!isValid(status))
             return status;
     }
+
+    return Success();
+}
+
+ModuleStatusPtr VtkmModule::prepareInput(const std::shared_ptr<BlockTask> &task, Object::const_ptr &inputGrid,
+                                         DataBase::const_ptr &inputField, vtkm::cont::DataSet &filterInputData) const
+{
+    auto status = getGridFromPort(m_dataIn, task, inputGrid, m_requireMappedData, inputField, m_mappedDataName);
+    if (!isValid(status))
+        return status;
+
+    status = inputToVtkm(inputGrid, inputField, filterInputData);
+    if (!isValid(status))
+        return status;
 
     return Success();
 }
