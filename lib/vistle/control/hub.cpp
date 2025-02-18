@@ -406,7 +406,7 @@ bool Hub::init(int argc, char *argv[])
         if (vm.count("buildtype"))
             buildtype = vm["buildtype"].as<std::string>();
         m_dir = std::make_unique<Directory>(vm["root"].as<std::string>(), buildtype);
-        std::cerr << "set prefix to " << m_dir->prefix() << std::endl;
+        CERR << "set prefix to " << m_dir->prefix() << std::endl;
     }
 
     std::string uiCmd = "vistle_gui";
