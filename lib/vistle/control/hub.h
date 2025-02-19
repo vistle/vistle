@@ -178,6 +178,12 @@ private:
     std::map<socket_ptr, message::Identify::Identity> m_sockets;
     std::set<socket_ptr> m_clients;
 
+    enum VrbMode {
+        VrbNo,
+        VrbTui,
+        VrbGui,
+    };
+    VrbMode m_vrbMode = VrbMode::VrbTui;
     unsigned short m_vrbPort = 0;
     std::map<int, socket_ptr> m_vrbSockets;
     std::shared_ptr<boost::process::child> m_vrb;
