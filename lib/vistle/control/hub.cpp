@@ -4138,29 +4138,26 @@ bool Hub::checkChildProcesses(bool emergency, bool onMainThread)
                 sendManager(m); // will be returned and forwarded to master hub
             }
         }
-
+        std::string pname;
         const ObservedChild *obs = nullptr;
         auto obsit = m_observedChildren.find(it->first->id());
         if (obsit != m_observedChildren.end()) {
             obs = &obsit->second;
+            pname = obs->name + "_" + std::to_string(id) + " (PID " + std::to_string(it->first->id()) + ")";
+        } else {
+            pname = "with id " + idstring + " (PID " + std::to_string(it->first->id()) + ")";
         }
         if (it->first->exit_code() != 0) {
             std::stringstream str;
+            str << "process " << pname << " exited with code " << it->first->exit_code();
+            sendError(str.str(), id);
             if (obs) {
-                str << "process " << obs->name << "_" << id << " (PID " << it->first->id() << ") exited with code "
-                    << it->first->exit_code();
-                sendError(str.str(), id);
                 str << std::endl;
                 obs->sendOutputToUi();
-            } else {
-                str << "process with id " << idstring << " (PID " << it->first->id() << ") exited with code "
-                    << it->first->exit_code();
-                sendError(str.str(), id);
             }
-            str.str().clear();
         } else {
             if (m_verbose >= Verbosity::Manager) {
-                CERR << "process with id " << idstring << " (PID " << it->first->id() << ") exited" << std::endl;
+                CERR << "process " << pname << " exited" << std::endl;
             }
         }
         if (obsit != m_observedChildren.end()) {
