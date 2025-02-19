@@ -449,6 +449,7 @@ boost::program_options::options_description &Hub::options()
         ("snapshot", po::value<std::string>(), "store screenshot of workflow to this location")
         ("libsim,l", po::value<std::string>(), "connect to a LibSim instrumented simulation by entering the path to the .sim2 file")
         ("cover", "use OpenCOVER.mpi to manage Vistle session on cluster")
+        ("vrb", po::value<std::string>(), "how to launch VRB on principal hub (tui/gui/no)")
         ("exposed,gateway-host,gateway,gw", po::value<std::string>(), "ports are exposed externally on this host")
         ("root", po::value<std::string>(), "path to Vistle build directory")
         ("buildtype", po::value<std::string>(), "build type suffix to binary in Vistle build directory")
@@ -566,6 +567,19 @@ bool Hub::init(int argc, char *argv[])
     }
     if (vm.count("hub") > 0) {
         uiCmd.clear();
+    }
+    if (vm.count("vrb")) {
+        if (vm["vrb"].as<std::string>() == "tui") {
+            m_vrbMode = VrbMode::VrbTui;
+        } else if (vm["vrb"].as<std::string>() == "gui") {
+            m_vrbMode = VrbMode::VrbGui;
+        } else if (vm["vrb"].as<std::string>() == "no") {
+            m_vrbMode = VrbMode::VrbNo;
+        } else {
+            CERR << "invalid VRB mode: " << vm["vrb"].as<std::string>() << ", valid modes are: tui, gui, no"
+                 << std::endl;
+            return false;
+        }
     }
     bool pythonUi = false;
     if (vm.count("shell")) {
@@ -3223,7 +3237,12 @@ bool Hub::startVrb()
         return child->running();
     };
 
-    m_vrb = launchProcess(Process::VRB, "vrb", {"--tui", "--printport"}, "vrb", parseOutput);
+    if (m_vrbMode == VrbMode::VrbTui) {
+        m_vrb = launchProcess(Process::VRB, "vrb", {"--tui", "--printport"}, "vrb", parseOutput);
+    } else if (m_vrbMode == VrbMode::VrbGui) {
+        m_vrb = launchProcess(Process::VRB, "vrb", {"--printport"}, "vrb", parseOutput);
+    }
+
     if (!m_vrb) {
         return false;
     }
