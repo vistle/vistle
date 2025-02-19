@@ -346,6 +346,14 @@ Hub::~Hub()
     session.quit();
 
     stopVrb();
+    while (!m_vrbSockets.empty()) {
+        auto it = m_vrbSockets.begin();
+        auto sock = it->second;
+        if (sock) {
+            removeSocket(sock);
+        }
+        m_vrbSockets.erase(it);
+    }
 
     if (!m_isMaster) {
         sendMaster(message::RemoveHub(m_hubId));
@@ -1180,6 +1188,10 @@ void Hub::addSocket(Hub::socket_ptr sock, message::Identify::Identity ident)
 
 bool Hub::removeSocket(Hub::socket_ptr sock, bool close)
 {
+    if (!sock) {
+        return false;
+    }
+
     if (close) {
         bool open = sock->is_open();
         try {
@@ -1207,7 +1219,7 @@ bool Hub::removeSocket(Hub::socket_ptr sock, bool close)
                 if (m_verbose >= Verbosity::Manager) {
                     CERR << "lost connection to VRB for module " << s.first << std::endl;
                 }
-                m_vrbSockets.erase(s.first);
+                s.second.reset();
                 break;
             }
         }
@@ -3219,7 +3231,9 @@ bool Hub::connectToMaster(const std::string &host, unsigned short port)
 
 bool Hub::startVrb()
 {
-    m_vrbPort = 0;
+    if (m_vrb || m_vrbPort) {
+        stopVrb();
+    }
 
     auto parseOutput = [this](std::shared_ptr<process::child> child, std::shared_ptr<process::ipstream> stream) {
         std::string line;
@@ -3259,8 +3273,8 @@ void Hub::stopVrb()
 
     m_vrbPort = 0;
 
-    while (!m_vrbSockets.empty()) {
-        removeSocket(m_vrbSockets.begin()->second);
+    for (auto &s: m_vrbSockets) {
+        removeSocket(s.second);
     }
 }
 
@@ -3309,6 +3323,7 @@ Hub::socket_ptr Hub::connectToVrb(unsigned short port)
         std::cerr << ": done." << std::endl;
     }
 
+    // we pose as a covise::ClientConnection - cf. covise/src/kernel/net/covise_connect.cpp: ClientConnection::ClientConnection
     const char DF_IEEE = 1;
     char df = 0;
     asio::write(*sock, asio::const_buffer(&DF_IEEE, 1), ec);
@@ -3322,6 +3337,7 @@ Hub::socket_ptr Hub::connectToVrb(unsigned short port)
     }
     asio::read(*sock, asio::mutable_buffer(&df, 1), ec);
     if (ec) {
+        std::cerr << std::endl;
         CERR << "failed to read data format, resetting socket" << std::endl;
         sock.reset();
         return sock;
@@ -3906,6 +3922,7 @@ bool Hub::handlePriv(const message::ModuleExit &exit)
     auto it = m_vrbSockets.find(id);
     if (it != m_vrbSockets.end()) {
         removeSocket(it->second);
+        m_vrbSockets.erase(it);
     }
 
     if (m_barrierActive) {
@@ -3994,6 +4011,15 @@ bool Hub::handlePriv(const message::Cover &cover, const buffer *payload)
         return sendMaster(cover, payload);
     }
 
+    if (m_vrbPort == 0) {
+        CERR << "restarting VRB on behalf of " << cover.senderId() << "..." << std::endl;
+        if (!startVrb()) {
+            CERR << "failed to restart VRB on behalf of " << cover.senderId() << std::endl;
+            return false;
+        }
+        assert(m_vrbPort != 0);
+    }
+
     //CERR << "handling: " << cover << std::endl;
 
     auto mid = cover.mirrorId();
@@ -4001,22 +4027,42 @@ bool Hub::handlePriv(const message::Cover &cover, const buffer *payload)
     socket_ptr sock;
     auto it = m_vrbSockets.find(cover.senderId());
     if (it == m_vrbSockets.end()) {
-        if (m_vrbPort == 0) {
-            CERR << "cannot connect to VRB on unknown port on behalf of " << cover.senderId() << std::endl;
-            return false;
-        }
         if (m_verbose >= Verbosity::Manager) {
             CERR << "connecting to VRB on port " << m_vrbPort << " on behalf of " << cover.senderId() << std::endl;
         }
-
         sock = connectToVrb(m_vrbPort);
         if (sock) {
-            m_vrbSockets.emplace(cover.senderId(), sock);
+            it = m_vrbSockets.emplace(cover.senderId(), sock).first;
+        } else {
+            CERR << "failed to connect to VRB on port " << m_vrbPort << " on behalf of " << cover.senderId()
+                 << std::endl;
         }
     } else {
         sock = it->second;
+        if (!sock) {
+            if (m_verbose >= Verbosity::Manager) {
+                CERR << "connecting to VRB on port " << m_vrbPort << " on behalf of " << cover.senderId() << std::endl;
+            }
+            sock = connectToVrb(m_vrbPort);
+            if (sock) {
+                it->second = sock;
+                int destMod = it->first;
+
+                if (m_verbose >= Verbosity::Manager) {
+                    CERR << "triggering VRB reconnection for " << destMod << std::endl;
+                }
+                enum { COVISE_MESSAGE_SOCKET_CLOSED = 84 };
+                message::Cover cover(COVISE_MESSAGE_SOCKET_CLOSED);
+                cover.setDestId(destMod);
+                sendModule(cover, destMod);
+            } else {
+                CERR << "failed to connect to VRB on port " << m_vrbPort << " on behalf of " << cover.senderId()
+                     << std::endl;
+            }
+        }
     }
     if (sock) {
+        assert(it != m_vrbSockets.end());
         std::array<uint32_t, 4> header; // sender id, sender type, msg type, msg length
         header[0] = cover.sender();
         header[1] = cover.senderType();
@@ -4109,10 +4155,11 @@ bool Hub::checkChildProcesses(bool emergency, bool onMainThread)
                         exitOk = true;
                     } else {
                         CERR << "VRB on port " << m_vrbPort << " has exited" << std::endl;
+                        stopVrb();
                     }
                 }
-                m_vrbPort = 0;
             }
+            assert(m_vrbPort == 0);
         } else if (!emergency) {
             if (id == Process::Manager) {
                 if (!m_quitting) {
