@@ -19,7 +19,7 @@
  * 
  * The transformation from Vistle objects to VTK-m datasets and vice versa is handled automatically in the
  * `prepareInput` and `prepareOutput` methods. Child classes can add more ports in their constructors if
- * necessary. In this case, the base `prepareInput` and `prepareOutput` methods should be extended in the
+ * necessary. In this case, the base `prepareInput` and `prepareOutput` methods should be overriden in the
  * child class to handle the additional ports.
  */
 class V_VTKM_EXPORT VtkmModule: public vistle::Module {
@@ -43,8 +43,9 @@ protected:
                                 vtkm::cont::DataSet &result) const;
 
     // Checks if the data on the input port is valid and transforms it into a VTK-m dataset.
-    ModuleStatusPtr prepareInput(const std::shared_ptr<vistle::BlockTask> &task, vistle::Object::const_ptr &inputGrid,
-                                 vistle::DataBase::const_ptr &inputField, vtkm::cont::DataSet &filterInputData) const;
+    virtual ModuleStatusPtr prepareInput(const std::shared_ptr<vistle::BlockTask> &task,
+                                         vistle::Object::const_ptr &inputGrid, vistle::DataBase::const_ptr &inputField,
+                                         vtkm::cont::DataSet &filterInputData) const;
     /*
         Runs a VTK-m filter on `filterInput` and stores the result in `filterOutput`. 
         This method must be overriden by modules inheriting from VtkmModule.
@@ -52,8 +53,8 @@ protected:
     virtual void runFilter(vtkm::cont::DataSet &filterInput, vtkm::cont::DataSet &filterOutput) const = 0;
 
     // Transforms VTK-m filter output into Vistle objects and adds them to the output port.
-    bool prepareOutput(const std::shared_ptr<vistle::BlockTask> &task, vtkm::cont::DataSet &filterOutputData,
-                       vistle::Object::const_ptr &inputGrid, vistle::DataBase::const_ptr &inputField) const;
+    virtual bool prepareOutput(const std::shared_ptr<vistle::BlockTask> &task, vtkm::cont::DataSet &filterOutputData,
+                               vistle::Object::const_ptr &inputGrid, vistle::DataBase::const_ptr &inputField) const;
 
 
     // Checks if module can continue its execution and (optionally) prints a message to the GUI.

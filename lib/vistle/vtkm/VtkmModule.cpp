@@ -32,15 +32,15 @@ bool VtkmModule::isValid(const ModuleStatusPtr &status) const
 
 bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
 {
-    vtkm::cont::DataSet filterInputData, filterOutputData;
+    vtkm::cont::DataSet filterInput, filterOutput;
     Object::const_ptr inputGrid;
     DataBase::const_ptr inputField;
 
-    auto status = prepareInput(task, inputGrid, inputField, filterInputData);
+    auto status = prepareInput(task, inputGrid, inputField, filterInput);
     if (!isValid(status))
         return true;
-    runFilter(filterInputData, filterOutputData);
-    prepareOutput(task, filterOutputData, inputGrid, inputField);
+    runFilter(filterInput, filterOutput);
+    prepareOutput(task, filterOutput, inputGrid, inputField);
 
     return true;
 }
