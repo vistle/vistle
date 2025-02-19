@@ -3,7 +3,6 @@
 #include <vistle/alg/objalg.h>
 
 #include "convert.h"
-#include "module_status.h"
 
 #include "VtkmModule.h"
 
@@ -77,7 +76,7 @@ ModuleStatusPtr VtkmModule::inputToVtkm(Object::const_ptr &grid, DataBase::const
         return status;
 
     if (m_requireMappedData) {
-        status = vtkmAddField(result, field, m_mappedDataName);
+        status = vtkmAddField(result, field, m_fieldName);
         if (!isValid(status))
             return status;
     }
@@ -88,7 +87,7 @@ ModuleStatusPtr VtkmModule::inputToVtkm(Object::const_ptr &grid, DataBase::const
 ModuleStatusPtr VtkmModule::prepareInput(const std::shared_ptr<BlockTask> &task, Object::const_ptr &inputGrid,
                                          DataBase::const_ptr &inputField, vtkm::cont::DataSet &filterInputData) const
 {
-    auto status = getGridFromPort(m_dataIn, task, inputGrid, m_requireMappedData, inputField, m_mappedDataName);
+    auto status = getGridFromPort(m_dataIn, task, inputGrid, m_requireMappedData, inputField, m_fieldName);
     if (!isValid(status))
         return status;
 
@@ -125,7 +124,7 @@ bool VtkmModule::prepareOutput(const std::shared_ptr<BlockTask> &task, vtkm::con
     copyGridMetaData(inputGrid, geoOut);
 
     if (m_requireMappedData) {
-        if (auto mapped = vtkmGetField(filterOutputData, m_mappedDataName)) {
+        if (auto mapped = vtkmGetField(filterOutputData, m_fieldName)) {
             std::cerr << "mapped data: " << *mapped << std::endl;
 
             mapped->copyAttributes(inputField);

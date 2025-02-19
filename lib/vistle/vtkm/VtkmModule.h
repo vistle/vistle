@@ -3,7 +3,10 @@
 
 #include <vtkm/cont/DataSet.h>
 
-#include <vistle/module/module.h>
+#include "vistle/module/module.h"
+
+#include "export.h"
+#include "module_status.h"
 
 /**
  * @class VtkmModule
@@ -28,7 +31,7 @@ protected:
     vistle::Port *m_dataIn, *m_dataOut;
 
     bool m_requireMappedData;
-    mutable std::string m_mappedDataName = "mappedData";
+    mutable std::string m_fieldName = "mappedData";
 
     /*
         Calls the `prepareInput`, `runFilter`, and `prepareOutput` methods in this order every time
@@ -43,10 +46,10 @@ protected:
     ModuleStatusPtr prepareInput(const std::shared_ptr<vistle::BlockTask> &task, vistle::Object::const_ptr &inputGrid,
                                  vistle::DataBase::const_ptr &inputField, vtkm::cont::DataSet &filterInputData) const;
     /*
-        Runs a VTK-m filter on `filterInputData` and stores the result in `filterOutputData`. 
+        Runs a VTK-m filter on `filterInput` and stores the result in `filterOutput`. 
         This method must be overriden by modules inheriting from VtkmModule.
     */
-    virtual void runFilter(vtkm::cont::DataSet &filterInputData, vtkm::cont::DataSet &filterOutputData) const = 0;
+    virtual void runFilter(vtkm::cont::DataSet &filterInput, vtkm::cont::DataSet &filterOutput) const = 0;
 
     // Transforms VTK-m filter output into Vistle objects and adds them to the output port.
     bool prepareOutput(const std::shared_ptr<vistle::BlockTask> &task, vtkm::cont::DataSet &filterOutputData,

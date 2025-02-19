@@ -1,9 +1,4 @@
-#include <vtkm/cont/DataSet.h>
-
 #include <vtkm/filter/contour/Slice.h>
-
-#include <vistle/alg/objalg.h>
-#include <vistle/vtkm/convert.h>
 
 #include "CuttingSurfaceVtkm.h"
 
@@ -28,13 +23,13 @@ bool CuttingSurfaceVtkm::changeParameter(const Parameter *param)
     return Module::changeParameter(param) && ok;
 }
 
-void CuttingSurfaceVtkm::runFilter(vtkm::cont::DataSet &filterInputData, vtkm::cont::DataSet &filterOutputData) const
+void CuttingSurfaceVtkm::runFilter(vtkm::cont::DataSet &filterInput, vtkm::cont::DataSet &filterOutput) const
 {
     vtkm::filter::contour::Slice sliceFilter;
     sliceFilter.SetImplicitFunction(m_implFuncControl.func());
     sliceFilter.SetMergeDuplicatePoints(false);
     sliceFilter.SetGenerateNormals(m_computeNormals->getValue() != 0);
-    sliceFilter.SetActiveField(m_mappedDataName);
+    sliceFilter.SetActiveField(m_fieldName);
 
-    filterOutputData = sliceFilter.Execute(filterInputData);
+    filterOutput = sliceFilter.Execute(filterInput);
 }

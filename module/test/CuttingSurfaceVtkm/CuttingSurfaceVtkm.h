@@ -1,9 +1,6 @@
 #ifndef CUTTING_SURFACE_VTKM_H
 #define CUTTING_SURFACE_VTKM_H
 
-#include <vtkm/ImplicitFunction.h>
-
-#include <vistle/module/module.h>
 #include <vistle/vtkm/ImplFuncController.h>
 #include <vistle/vtkm/VtkmModule.h>
 
@@ -13,7 +10,7 @@ public:
     ~CuttingSurfaceVtkm();
 
 private:
-    void runFilter(vtkm::cont::DataSet &filterInputData, vtkm::cont::DataSet &filterOutputData) const override;
+    void runFilter(vtkm::cont::DataSet &filterInput, vtkm::cont::DataSet &filterOutput) const override;
     bool changeParameter(const vistle::Parameter *param) override;
 
     vistle::IntParameter *m_computeNormals;
