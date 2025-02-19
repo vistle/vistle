@@ -53,7 +53,7 @@ protected:
                        vistle::Object::const_ptr &inputGrid, vistle::DataBase::const_ptr &inputField) const;
 
 
-    // Checks if module can continue its execution and (optionally) prints a debug message to the GUI.
+    // Checks if module can continue its execution and (optionally) prints a message to the GUI.
     bool isValid(const ModuleStatusPtr &status) const;
 };
 

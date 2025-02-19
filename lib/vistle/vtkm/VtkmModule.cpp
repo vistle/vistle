@@ -99,41 +99,48 @@ ModuleStatusPtr VtkmModule::prepareInput(const std::shared_ptr<BlockTask> &task,
     return Success();
 }
 
+void copyGridMetaData(const Object::const_ptr &copyFrom, Object::ptr &copyTo)
+{
+    copyTo->copyAttributes(copyFrom);
+    copyTo->setTransform(copyFrom->getTransform());
+    if (copyTo->getTimestep() < 0) {
+        copyTo->setTimestep(copyFrom->getTimestep());
+        copyTo->setNumTimesteps(copyFrom->getNumTimesteps());
+    }
+    if (copyTo->getBlock() < 0) {
+        copyTo->setBlock(copyFrom->getBlock());
+        copyTo->setNumBlocks(copyFrom->getNumBlocks());
+    }
+}
 bool VtkmModule::prepareOutput(const std::shared_ptr<BlockTask> &task, vtkm::cont::DataSet &filterOutputData,
                                Object::const_ptr &inputGrid, DataBase::const_ptr &inputField) const
 {
-    // transform result back to Vistle
     Object::ptr geoOut = vtkmGetGeometry(filterOutputData);
-
-    // add result to output
-    if (geoOut) {
-        updateMeta(geoOut);
-        geoOut->copyAttributes(inputGrid);
-        geoOut->setTransform(inputGrid->getTransform());
-        if (geoOut->getTimestep() < 0) {
-            geoOut->setTimestep(inputGrid->getTimestep());
-            geoOut->setNumTimesteps(inputGrid->getNumTimesteps());
-        }
-        if (geoOut->getBlock() < 0) {
-            geoOut->setBlock(inputGrid->getBlock());
-            geoOut->setNumBlocks(inputGrid->getNumBlocks());
-        }
+    if (!geoOut) {
+        sendError("An error occurred while transforming the filter output grid to a Vistle object.");
+        return true;
     }
+
+    updateMeta(geoOut);
+    copyGridMetaData(inputGrid, geoOut);
 
     if (m_requireMappedData) {
         if (auto mapped = vtkmGetField(filterOutputData, m_mappedDataName)) {
             std::cerr << "mapped data: " << *mapped << std::endl;
+
             mapped->copyAttributes(inputField);
             mapped->setGrid(geoOut);
             updateMeta(mapped);
+
+            // add output grid + mapped data to output port
             task->addObject(m_dataOut, mapped);
             return true;
         } else {
-            sendError("could not handle mapped data");
-            task->addObject(m_dataOut, geoOut);
+            sendError("An error occurred while transforming the filter output field to a Vistle object.");
         }
-    } else {
-        task->addObject(m_dataOut, geoOut);
     }
+
+    // if there is no mapped data, add output grid to output port
+    task->addObject(m_dataOut, geoOut);
     return true;
 }
