@@ -32,9 +32,10 @@ bool VtkmModule::isValid(const ModuleStatusPtr &status) const
 
 bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
 {
-    vtkm::cont::DataSet filterInput, filterOutput;
     Object::const_ptr inputGrid;
     DataBase::const_ptr inputField;
+
+    vtkm::cont::DataSet filterInput, filterOutput;
 
     auto status = prepareInput(task, inputGrid, inputField, filterInput);
     if (!isValid(status))
@@ -45,101 +46,110 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
     return true;
 }
 
-ModuleStatusPtr getGridFromPort(const Port *port, const std::shared_ptr<BlockTask> &task, Object::const_ptr &resultGrid,
-                                bool readField, DataBase::const_ptr &resultField, std::string &resultFieldName)
+ModuleStatusPtr VtkmModule::prepareInputGrid(const DataComponents &split, Object::const_ptr &grid,
+                                             vtkm::cont::DataSet &dataset) const
 {
-    auto container = task->accept<Object>(port);
-    auto split = splitContainerObject(container);
-
-    resultGrid = split.geometry;
-    if (!resultGrid)
+    // read in grid
+    grid = split.geometry;
+    if (!grid)
         return Error("Input grid is missing!");
 
-    if (readField) {
-        resultField = split.mapped;
-        if (!resultField)
-            return Error("No mapped data on input grid!");
-
-        // if the mapped data on the input port already has a name, keep it
-        if (auto name = resultField->getAttribute("_species"); !name.empty())
-            resultFieldName = name;
-    }
-
-    return Success();
+    // transform to VTK-m
+    return vtkmSetGrid(dataset, grid);
 }
 
-ModuleStatusPtr VtkmModule::inputToVtkm(Object::const_ptr &grid, DataBase::const_ptr &field,
-                                        vtkm::cont::DataSet &result) const
+ModuleStatusPtr VtkmModule::prepareInputField(const DataComponents &split, DataBase::const_ptr &field,
+                                              std::string &fieldName, vtkm::cont::DataSet &dataset) const
 {
-    auto status = vtkmSetGrid(result, grid);
+    // read in field
+    field = split.mapped;
+    if (!field)
+        return Error("No mapped data on input grid!");
+
+    // if the mapped data on the input port already has a name, keep it
+    if (auto name = field->getAttribute("_species"); !name.empty())
+        fieldName = name;
+
+    // transform to VTK-m
+    return vtkmAddField(dataset, field, fieldName);
+}
+
+ModuleStatusPtr VtkmModule::prepareInput(const std::shared_ptr<BlockTask> &task, Object::const_ptr &grid,
+                                         DataBase::const_ptr &field, vtkm::cont::DataSet &dataset) const
+{
+    auto container = task->accept<Object>(m_dataIn);
+    auto split = splitContainerObject(container);
+
+    auto status = prepareInputGrid(split, grid, dataset);
     if (!isValid(status))
         return status;
 
-    if (m_requireMappedData) {
-        status = vtkmAddField(result, field, m_fieldName);
-        if (!isValid(status))
-            return status;
-    }
-
-    return Success();
-}
-
-ModuleStatusPtr VtkmModule::prepareInput(const std::shared_ptr<BlockTask> &task, Object::const_ptr &inputGrid,
-                                         DataBase::const_ptr &inputField, vtkm::cont::DataSet &filterInputData) const
-{
-    auto status = getGridFromPort(m_dataIn, task, inputGrid, m_requireMappedData, inputField, m_fieldName);
-    if (!isValid(status))
-        return status;
-
-    status = inputToVtkm(inputGrid, inputField, filterInputData);
+    status = prepareInputField(split, field, m_fieldName, dataset);
     if (!isValid(status))
         return status;
 
     return Success();
 }
 
-void copyGridMetaData(const Object::const_ptr &copyFrom, Object::ptr &copyTo)
+Object::ptr VtkmModule::prepareOutputGrid(vtkm::cont::DataSet &dataset) const
 {
-    copyTo->copyAttributes(copyFrom);
-    copyTo->setTransform(copyFrom->getTransform());
-    if (copyTo->getTimestep() < 0) {
-        copyTo->setTimestep(copyFrom->getTimestep());
-        copyTo->setNumTimesteps(copyFrom->getNumTimesteps());
-    }
-    if (copyTo->getBlock() < 0) {
-        copyTo->setBlock(copyFrom->getBlock());
-        copyTo->setNumBlocks(copyFrom->getNumBlocks());
-    }
-}
-bool VtkmModule::prepareOutput(const std::shared_ptr<BlockTask> &task, vtkm::cont::DataSet &filterOutputData,
-                               Object::const_ptr &inputGrid, DataBase::const_ptr &inputField) const
-{
-    Object::ptr geoOut = vtkmGetGeometry(filterOutputData);
+    Object::ptr geoOut = vtkmGetGeometry(dataset);
     if (!geoOut) {
         sendError("An error occurred while transforming the filter output grid to a Vistle object.");
-        return true;
+        return nullptr;
     }
 
     updateMeta(geoOut);
-    copyGridMetaData(inputGrid, geoOut);
+    return geoOut;
+}
+
+DataBase::ptr VtkmModule::prepareOutputField(vtkm::cont::DataSet &dataset) const
+{
+    if (auto mapped = vtkmGetField(dataset, m_fieldName)) {
+        std::cerr << "mapped data: " << *mapped << std::endl;
+        updateMeta(mapped);
+        return mapped;
+    } else {
+        sendError("An error occurred while transforming the filter output field to a Vistle object.");
+        return nullptr;
+    }
+}
+
+// Copies metadata attributes from the grid `from` to the grid `to`.
+void copyMetadata(const Object::const_ptr &from, Object::ptr &to)
+{
+    to->copyAttributes(from);
+    to->setTransform(from->getTransform());
+    if (to->getTimestep() < 0) {
+        to->setTimestep(from->getTimestep());
+        to->setNumTimesteps(from->getNumTimesteps());
+    }
+    if (to->getBlock() < 0) {
+        to->setBlock(from->getBlock());
+        to->setNumBlocks(from->getNumBlocks());
+    }
+}
+
+bool VtkmModule::prepareOutput(const std::shared_ptr<BlockTask> &task, vtkm::cont::DataSet &dataset,
+                               Object::const_ptr &inputGrid, DataBase::const_ptr &inputField) const
+{
+    auto outputGrid = prepareOutputGrid(dataset);
+    if (!outputGrid)
+        return true;
+
+    copyMetadata(inputGrid, outputGrid);
 
     if (m_requireMappedData) {
-        if (auto mapped = vtkmGetField(filterOutputData, m_fieldName)) {
-            std::cerr << "mapped data: " << *mapped << std::endl;
-
+        auto mapped = prepareOutputField(dataset);
+        if (mapped) {
             mapped->copyAttributes(inputField);
-            mapped->setGrid(geoOut);
-            updateMeta(mapped);
-
-            // add output grid + mapped data to output port
+            mapped->setGrid(outputGrid);
             task->addObject(m_dataOut, mapped);
             return true;
-        } else {
-            sendError("An error occurred while transforming the filter output field to a Vistle object.");
         }
     }
 
     // if there is no mapped data, add output grid to output port
-    task->addObject(m_dataOut, geoOut);
+    task->addObject(m_dataOut, outputGrid);
     return true;
 }
