@@ -13,15 +13,12 @@
  * @class VtkmModule
  * @brief Base class for VTK-m modules which allows the execution of algorithms on the GPU.
  *
- * In its base form, a VTK-m module consists of one input port containing the input grid for the VTK-m
- * filter and one output port with the filter's output. If the VTK-m filter expects data fields to be 
- * present on the input grid, `m_requireMappedData` should be set to true in the constructor. Child 
- * classes must override the `runFilter` method.
+ * A VTK-m module consists of one input port containing the input grid for the VTK-m filter and one output
+ * port with the filter's output. If the VTK-m filter expects data fields to be present on the input grid,
+ * `m_requireMappedData` should be set to true in the constructor. The transformation from Vistle objects
+ * to VTK-m datasets and vice versa is handled automatically in the `prepareInput` and `prepareOutput` methods.
+ * Child classes must override the `runFilter` method.
  * 
- * The transformation from Vistle objects to VTK-m datasets and vice versa is handled automatically in the
- * `prepareInput` and `prepareOutput` methods. Child classes can add more ports in their constructors if
- * necessary. In this case, the base `prepareInput` and `prepareOutput` methods should be overriden in the
- * child class to handle the additional ports.
  */
 class V_VTKM_EXPORT VtkmModule: public vistle::Module {
 public:
@@ -59,9 +56,8 @@ protected:
         Reads the grid (and mapped data, if `m_requireMappedData` is true) from the input port `m_dataIn`, 
         stores them in `grid` (and `field`), and transforms them into the VTK-m dataset `dataset`.
     */
-    virtual ModuleStatusPtr prepareInput(const std::shared_ptr<vistle::BlockTask> &task,
-                                         vistle::Object::const_ptr &grid, vistle::DataBase::const_ptr &field,
-                                         vtkm::cont::DataSet &dataset) const;
+    ModuleStatusPtr prepareInput(const std::shared_ptr<vistle::BlockTask> &task, vistle::Object::const_ptr &grid,
+                                 vistle::DataBase::const_ptr &field, vtkm::cont::DataSet &dataset) const;
     /*
         Runs a VTK-m filter on `filterInput` and stores the result in `filterOutput`. 
         This method must be overriden by modules inheriting from VtkmModule.
@@ -83,8 +79,8 @@ protected:
         is true, updates the metadata (copying the metadata from the input port) and adds it to the
         output port `m_dataOut`.
     */
-    virtual bool prepareOutput(const std::shared_ptr<vistle::BlockTask> &task, vtkm::cont::DataSet &dataset,
-                               vistle::Object::const_ptr &inputGrid, vistle::DataBase::const_ptr &inputField) const;
+    bool prepareOutput(const std::shared_ptr<vistle::BlockTask> &task, vtkm::cont::DataSet &dataset,
+                       vistle::Object::const_ptr &inputGrid, vistle::DataBase::const_ptr &inputField) const;
 
     /*
         Checks if module can continue its execution and (optionally) prints a message to the GUI.
