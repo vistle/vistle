@@ -84,9 +84,11 @@ ModuleStatusPtr VtkmModule::prepareInput(const std::shared_ptr<BlockTask> &task,
     if (!isValid(status))
         return status;
 
-    status = prepareInputField(split, field, m_fieldName, dataset);
-    if (!isValid(status))
-        return status;
+    if (m_requireMappedData) {
+        status = prepareInputField(split, field, m_fieldName, dataset);
+        if (!isValid(status))
+            return status;
+    }
 
     return Success();
 }
