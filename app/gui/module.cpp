@@ -963,7 +963,10 @@ void Module::setStatus(Module::Status status)
         break;
     case INITIALIZED:
         toolTip = "Initialized";
-        m_borderColor = scene()->highlightColor();
+        m_borderColor = Qt::gray;
+        if (scene()) {
+            m_borderColor = scene()->highlightColor();
+        }
         if (scene() && scene()->moduleBrowser()) {
             auto *mb = scene()->moduleBrowser();
             auto hub = mb->getHubItem(m_hub);
