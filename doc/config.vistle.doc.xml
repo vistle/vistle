@@ -1,0 +1,48 @@
+<?xml version="1.0"?>
+
+<COCONFIG version="1" >
+  <GLOBAL>
+    <COVER>
+      <UI>
+        <VRUI visible="false" toolbar="false" />
+      </UI>
+
+      <Input>
+        <MouseNav value="ON" />
+        <!--Keyboard terminal="on" evdev="/dev/input/coverkeys" /-->
+      </Input>
+
+
+
+      <Menu>
+        <Position x="800" y="0" z="500" />
+      </Menu>
+
+      <ViewerPosition x="0" y="-1500" z="0" />
+      <SceneSize value="1000" />
+      <DebugLevel value="1" />
+      <FPS value="true" />
+      
+      <Plugin>
+        <PBufferSnapShot menu="true" />
+        <ViewPoint value="true" />
+      </Plugin>
+      <PipeConfig>
+          <Pipe name="0" useDISPLAY="true" />
+      </PipeConfig>
+
+      <WindowConfig>
+        <Window type="Qt" width="1080" comment="FRONT" window="0" pipeIndex="0" height="1080" left="100" top="100" name="0" embedded="false" decoration="true" />
+      </WindowConfig>
+
+      <ScreenConfig>
+      <Screen width="1080" comment="FRONT" h="0.0" originX="0" originY="0" originZ="0" height="1080" p="0.0" r="0.0" name="0" screen="0" />
+      </ScreenConfig>
+
+
+      <ViewportConfig>
+        <Viewport width="1" height="1" left="0" bottom="0" windowIndex="0" channelIndex="0" name="0"  />
+      </ViewportConfig>
+    </COVER>
+  </GLOBAL>
+</COCONFIG>
