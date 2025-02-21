@@ -194,7 +194,7 @@ private:
         ObservedChild();
         ~ObservedChild();
         void sendTextToUi(message::SendText::TextType type, size_t num, const std::string &line, int moduleId) const;
-        void sendOutputToUi() const;
+        void sendOutputToUi(bool console = false) const;
         void setOutputStreaming(bool enable);
         bool isOutputStreaming() const;
 
