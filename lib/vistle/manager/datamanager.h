@@ -27,8 +27,9 @@ class Object;
 
 class DataManager {
 public:
-    DataManager(boost::mpi::communicator &comm);
+    DataManager(boost::mpi::communicator &comm, unsigned short baseport);
     ~DataManager();
+    unsigned short port() const;
     bool handle(const message::Message &msg, buffer *payload);
     //! request a remote object for servicing an AddObject request
     bool requestObject(const message::AddObject &add, const std::string &objId, const ObjectCompletionHandler &handler);
@@ -53,6 +54,9 @@ public:
         buffer payload;
     };
 
+    bool addHub(const message::AddHub &hub, const message::AddHub::Payload &payload);
+    void removeHub(const message::RemoveHub &hub);
+
 private:
     bool handlePriv(const message::RequestObject &req);
     bool handlePriv(const message::SendObject &snd, buffer *payload);
@@ -65,6 +69,7 @@ private:
 
     void recvLoop();
     void sendLoop();
+    void listenLoop();
     void cleanLoop();
 
     boost::mpi::communicator m_comm;
@@ -73,6 +78,8 @@ private:
     int m_msgSize;
 
     boost::asio::io_context m_ioContext;
+    boost::asio::ip::tcp::acceptor m_acceptor_v4;
+    boost::asio::ip::tcp::acceptor m_acceptor_v6;
     boost::asio::ip::tcp::socket m_dataSocket;
 
     std::set<message::AddObject>
@@ -106,6 +113,7 @@ private:
 
     boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_workGuard;
     std::thread m_ioThread;
+    std::thread m_listenThread;
     std::thread m_recvThread;
     std::thread m_cleanThread;
     message::Type m_traceMessages = message::INVALID;

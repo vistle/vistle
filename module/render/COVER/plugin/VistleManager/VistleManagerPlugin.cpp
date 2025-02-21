@@ -162,16 +162,18 @@ bool VistleManagerPlugin::init()
     }
 
     std::string hostname;
-    unsigned short port = 0, dataport = 0;
+    unsigned short port = 0, dataport = 0, datamgrport;
     std::stringstream str(conn);
-    str >> hostname >> port >> dataport;
-    std::cerr << "connecting to hub " << hostname << ":" << port << ", data port: " << dataport << std::endl;
+    str >> hostname >> port >> dataport >> datamgrport;
+    std::cerr << "connecting to hub " << hostname << ":" << port << ", data port: " << dataport
+              << ", data manager port: " << datamgrport << std::endl;
 
     std::vector<std::string> args;
     args.push_back("COVER");
     args.push_back(hostname);
     args.push_back(std::to_string(port));
     args.push_back(std::to_string(dataport));
+    args.push_back(std::to_string(datamgrport));
 
     m_thread = std::thread([args, this]() {
         setThreadName("vistle:manager");

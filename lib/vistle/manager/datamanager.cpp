@@ -8,6 +8,7 @@
 #include <vistle/util/vecstreambuf.h>
 #include <vistle/util/sleep.h>
 #include <vistle/util/threadname.h>
+#include <vistle/util/listenv4v6.h>
 #include <vistle/core/archives.h>
 #include <vistle/core/archive_loader.h>
 #include <vistle/core/archive_saver.h>
@@ -44,10 +45,12 @@ bool isLocal(int id)
 
 } // namespace
 
-DataManager::DataManager(mpi::communicator &comm)
+DataManager::DataManager(mpi::communicator &comm, unsigned short baseport)
 : m_comm(comm, mpi::comm_duplicate)
 , m_rank(m_comm.rank())
 , m_size(m_comm.size())
+, m_acceptor_v4(m_ioContext)
+, m_acceptor_v6(m_ioContext)
 , m_dataSocket(m_ioContext)
 , m_workGuard(asio::make_work_guard(m_ioContext))
 , m_ioThread([this]() {
@@ -63,6 +66,37 @@ DataManager::DataManager(mpi::communicator &comm)
     cleanLoop();
 })
 {
+    int status = 0;
+    boost::system::error_code ec;
+    start_listen(baseport, m_acceptor_v4, m_acceptor_v6, ec);
+    if (ec == boost::asio::error::address_in_use) {
+        status = 1;
+    } else if (ec) {
+        status = 2;
+    }
+    status = boost::mpi::all_reduce(m_comm, status, mpi::maximum<int>());
+    while (status == 1) {
+        baseport++;
+        status = 0;
+        start_listen(baseport, m_acceptor_v4, m_acceptor_v6, ec);
+        if (ec == boost::asio::error::address_in_use) {
+            status = 1;
+        } else if (ec) {
+            CERR << "failed to start listening on port " << baseport << ": " << ec.message() << std::endl;
+            status = 2;
+        }
+        status = boost::mpi::all_reduce(m_comm, status, mpi::maximum<int>());
+    }
+    if (status == 0) {
+        if (m_rank == 0) {
+            CERR << "data manager listening on port " << baseport << std::endl;
+        }
+        m_listenThread = std::thread([this]() {
+            setThreadName("vistle:dmgr_listen");
+            listenLoop();
+        });
+    }
+
     if (m_size > 1)
         m_req = m_comm.irecv(boost::mpi::any_source, Communicator::TagData, &m_msgSize, 1);
 }
@@ -79,12 +113,18 @@ DataManager::~DataManager()
     m_req.wait();
 
     m_recvThread.join();
-
+    if (m_listenThread.joinable())
+        m_listenThread.join();
     m_cleanThread.join();
 
     m_workGuard.reset();
     m_ioContext.stop();
     m_ioThread.join();
+}
+
+unsigned short DataManager::port() const
+{
+    return 0;
 }
 
 bool DataManager::connect(boost::asio::ip::basic_resolver_results<boost::asio::ip::tcp> &hub)
@@ -105,6 +145,14 @@ bool DataManager::connect(boost::asio::ip::basic_resolver_results<boost::asio::i
 
     return ret;
 }
+
+bool DataManager::addHub(const message::AddHub &hub, const message::AddHub::Payload &payload)
+{
+    return true;
+}
+
+void DataManager::removeHub(const message::RemoveHub &hub)
+{}
 
 bool DataManager::dispatch()
 {
@@ -611,6 +659,16 @@ bool DataManager::handlePriv(const message::AddObjectCompleted &complete)
     return completeTransfer(complete);
 }
 
+void DataManager::listenLoop()
+{
+    for (;;) {
+        vistle::adaptive_wait(false, this + 1);
+        std::lock_guard<std::mutex> guard(m_recvMutex);
+        if (m_quit)
+            break;
+    }
+}
+
 void DataManager::recvLoop()
 {
     for (;;) {
@@ -633,7 +691,7 @@ void DataManager::recvLoop()
                 break;
         }
 
-        vistle::adaptive_wait(gotMsg, this);
+        vistle::adaptive_wait(gotMsg, this + 2);
 
         std::lock_guard<std::mutex> guard(m_recvMutex);
         if (m_quit)
@@ -681,7 +739,7 @@ void DataManager::cleanLoop()
                 break;
         }
 
-        vistle::adaptive_wait(work, this);
+        vistle::adaptive_wait(work, this + 3);
         std::lock_guard<std::mutex> guard(m_recvMutex);
         if (m_quit)
             break;
