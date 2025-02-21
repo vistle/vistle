@@ -75,6 +75,7 @@ public:
     bool isPrincipal() const;
     unsigned short port() const;
     unsigned short dataPort() const;
+    unsigned short dataManagerBase() const;
     std::shared_ptr<process::child> launchProcess(
         int type, const std::string &prog, const std::vector<std::string> &argv, std::string name = std::string(),
         std::function<bool(std::shared_ptr<process::child>, std::shared_ptr<process::ipstream>)> parseOutput = nullptr);
@@ -128,6 +129,7 @@ private:
     bool startUi(const std::string &uipath, bool replace = false);
     bool startPythonUi();
     bool startServer();
+    bool startManager(bool inCover, const std::string &libsimArg);
     bool startAccept(std::shared_ptr<acceptor> a);
     void handleWrite(socket_ptr sock, const boost::system::error_code &error);
     void handleAccept(std::shared_ptr<acceptor> a, socket_ptr sock, const boost::system::error_code &error);
@@ -177,6 +179,7 @@ private:
     std::string m_sessionUrl;
     boost::asio::io_context m_ioContext;
     std::shared_ptr<acceptor> m_acceptorv4, m_acceptorv6;
+    message::AddHub::Payload m_addHubPayload;
 
     std::mutex m_socketMutex; // protect access to m_sockets and m_clients
     std::map<socket_ptr, message::Identify::Identity> m_sockets;
@@ -339,7 +342,11 @@ private:
     HubParameters params;
 
     std::mutex m_outstandingDataConnectionMutex;
-    std::map<vistle::message::AddHub, std::future<bool>> m_outstandingDataConnections;
+    struct OutstandingDataConnection {
+        std::future<bool> fut;
+        std::shared_ptr<buffer> payload;
+    };
+    std::map<vistle::message::AddHub, OutstandingDataConnection> m_outstandingDataConnections;
     bool checkOutstandingDataConnections();
 
     std::unique_ptr<PythonInterpreter> m_python;

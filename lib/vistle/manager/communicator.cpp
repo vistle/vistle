@@ -5,6 +5,8 @@
  */
 #include <boost/asio.hpp>
 #include <boost/mpi.hpp>
+#include <boost/serialization/string.hpp>
+#include <boost/serialization/vector.hpp>
 
 #include <mpi.h>
 
@@ -20,6 +22,7 @@
 #include <vistle/util/sleep.h>
 #include <vistle/util/tools.h>
 #include <vistle/util/hostname.h>
+#include <vistle/util/ipaddress.h>
 #include <vistle/util/crypto.h>
 
 #include "communicator.h"
@@ -41,10 +44,11 @@ using message::Id;
 
 Communicator *Communicator::s_singleton = NULL;
 
-Communicator::Communicator(int r, const std::vector<std::string> &hosts, boost::mpi::communicator comm)
+Communicator::Communicator(int r, const std::vector<std::string> &hosts, boost::mpi::communicator comm,
+                           unsigned short dataMgrBase)
 : m_comm(comm)
 , m_clusterManager(new ClusterManager(m_comm, hosts))
-, m_dataManager(new DataManager(m_comm))
+, m_dataManager(new DataManager(m_comm, dataMgrBase))
 , m_hubId(message::Id::Invalid)
 , m_rank(r)
 , m_size(hosts.size())
@@ -115,6 +119,19 @@ int Communicator::getSize() const
 
 bool Communicator::connectHub(std::string host, unsigned short port, unsigned short dataPort)
 {
+    boost::mpi::gather(m_comm, host, m_rankNames, 0);
+
+    std::vector<std::string> localAddresses;
+    {
+        auto addresses = getLocalAddresses();
+        for (auto &address: addresses) {
+            localAddresses.push_back(address.to_string());
+        }
+    }
+    boost::mpi::gather(m_comm, localAddresses, m_rankAddresses, 0);
+    unsigned short localDataPort = dataManager().port();
+    boost::mpi::gather(m_comm, localDataPort, m_rankDataPorts, 0);
+
     if (dataPort == 0)
         dataPort = port;
     if (host == hostname())
