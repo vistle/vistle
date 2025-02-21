@@ -10,6 +10,7 @@ set(util_SOURCES
     fileio.cpp
     findself.cpp
     hostname.cpp
+    ipaddress.cpp
     listenv4v6.cpp
     netpbmimage.cpp
     sleep.cpp
@@ -38,6 +39,7 @@ set(util_HEADERS
     filesystem.h
     findself.h
     hostname.h
+    ipaddress.h
     listenv4v6.h
     math.h
     netpbmimage.h
