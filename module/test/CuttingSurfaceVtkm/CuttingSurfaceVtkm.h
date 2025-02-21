@@ -10,7 +10,7 @@ public:
     ~CuttingSurfaceVtkm();
 
 private:
-    void runFilter(vtkm::cont::DataSet &filterInput, vtkm::cont::DataSet &filterOutput) const override;
+    void runFilter(vtkm::cont::DataSet &input, vtkm::cont::DataSet &output) const override;
     bool changeParameter(const vistle::Parameter *param) override;
 
     vistle::IntParameter *m_computeNormals;

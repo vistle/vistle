@@ -1,20 +1,18 @@
 #ifndef VISTLE_CLIPVTKM_CLIPVTKM_H
 #define VISTLE_CLIPVTKM_CLIPVTKM_H
 
-#include <vistle/module/module.h>
 #include <vistle/vtkm/ImplicitFunctionController.h>
+#include <vistle/vtkm/VtkmModule.h>
 
-class ClipVtkm: public vistle::Module {
+class ClipVtkm: public VtkmModule {
 public:
     ClipVtkm(const std::string &name, int moduleID, mpi::communicator comm);
     ~ClipVtkm();
 
 private:
-    vistle::Port *m_dataOut = nullptr;
-
     vistle::IntParameter *m_flip = nullptr;
 
-    bool compute(const std::shared_ptr<vistle::BlockTask> &task) const override;
+    void runFilter(vtkm::cont::DataSet &input, vtkm::cont::DataSet &output) const override;
     bool changeParameter(const vistle::Parameter *param) override;
 
     ImplicitFunctionController m_implFuncControl;

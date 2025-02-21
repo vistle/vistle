@@ -23,7 +23,7 @@ bool CuttingSurfaceVtkm::changeParameter(const Parameter *param)
     return Module::changeParameter(param) && ok;
 }
 
-void CuttingSurfaceVtkm::runFilter(vtkm::cont::DataSet &filterInput, vtkm::cont::DataSet &filterOutput) const
+void CuttingSurfaceVtkm::runFilter(vtkm::cont::DataSet &input, vtkm::cont::DataSet &output) const
 {
     vtkm::filter::contour::Slice sliceFilter;
     sliceFilter.SetImplicitFunction(m_implFuncControl.function());
@@ -31,5 +31,5 @@ void CuttingSurfaceVtkm::runFilter(vtkm::cont::DataSet &filterInput, vtkm::cont:
     sliceFilter.SetGenerateNormals(m_computeNormals->getValue() != 0);
     sliceFilter.SetActiveField(m_fieldName);
 
-    filterOutput = sliceFilter.Execute(filterInput);
+    output = sliceFilter.Execute(input);
 }
