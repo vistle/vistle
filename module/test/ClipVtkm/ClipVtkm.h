@@ -2,7 +2,7 @@
 #define VISTLE_CLIPVTKM_CLIPVTKM_H
 
 #include <vistle/module/module.h>
-#include <vistle/vtkm/ImplFuncController.h>
+#include <vistle/vtkm/ImplicitFunctionController.h>
 
 class ClipVtkm: public vistle::Module {
 public:
@@ -17,7 +17,7 @@ private:
     bool compute(const std::shared_ptr<vistle::BlockTask> &task) const override;
     bool changeParameter(const vistle::Parameter *param) override;
 
-    ImplFuncController m_implFuncControl;
+    ImplicitFunctionController m_implFuncControl;
 };
 
 #endif

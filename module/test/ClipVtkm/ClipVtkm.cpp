@@ -72,7 +72,7 @@ bool ClipVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task) const
         }
         clipFilter.SetActiveField(mapSpecies);
     }
-    clipFilter.SetImplicitFunction(m_implFuncControl.func());
+    clipFilter.SetImplicitFunction(m_implFuncControl.function());
     clipFilter.SetInvertClip(m_flip->getValue() != 0);
     auto clipped = clipFilter.Execute(vtkmDataSet);
 

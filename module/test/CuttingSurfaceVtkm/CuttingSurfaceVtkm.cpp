@@ -26,7 +26,7 @@ bool CuttingSurfaceVtkm::changeParameter(const Parameter *param)
 void CuttingSurfaceVtkm::runFilter(vtkm::cont::DataSet &filterInput, vtkm::cont::DataSet &filterOutput) const
 {
     vtkm::filter::contour::Slice sliceFilter;
-    sliceFilter.SetImplicitFunction(m_implFuncControl.func());
+    sliceFilter.SetImplicitFunction(m_implFuncControl.function());
     sliceFilter.SetMergeDuplicatePoints(false);
     sliceFilter.SetGenerateNormals(m_computeNormals->getValue() != 0);
     sliceFilter.SetActiveField(m_fieldName);

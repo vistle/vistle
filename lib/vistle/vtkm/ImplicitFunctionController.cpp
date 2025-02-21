@@ -1,11 +1,11 @@
-#include "ImplFuncController.h"
+#include "ImplicitFunctionController.h"
 
 using namespace vistle;
 
-ImplFuncController::ImplFuncController(vistle::Module *module): m_module(module), m_option(nullptr)
+ImplicitFunctionController::ImplicitFunctionController(vistle::Module *module): m_module(module), m_option(nullptr)
 {}
 
-void ImplFuncController::init()
+void ImplicitFunctionController::init()
 {
     m_module->addVectorParameter("point", "point on plane", ParamVector(0.0, 0.0, 0.0));
     m_module->addVectorParameter("vertex", "normal on plane", ParamVector(0.0, 1.0, 0.0));
@@ -15,7 +15,7 @@ void ImplFuncController::init()
     m_module->addVectorParameter("direction", "direction for variable Cylinder", ParamVector(0.0, 0.0, 0.0));
 }
 
-bool ImplFuncController::changeParameter(const vistle::Parameter *param)
+bool ImplicitFunctionController::changeParameter(const vistle::Parameter *param)
 {
     switch (m_option->getValue()) {
     case Plane: {
@@ -81,7 +81,7 @@ bool ImplFuncController::changeParameter(const vistle::Parameter *param)
     return false;
 }
 
-vtkm::ImplicitFunctionGeneral ImplFuncController::func() const
+vtkm::ImplicitFunctionGeneral ImplicitFunctionController::function() const
 {
     Vector3 pvertex = m_module->getVectorParameter("vertex");
     Vector3 ppoint = m_module->getVectorParameter("point");

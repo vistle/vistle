@@ -1,7 +1,7 @@
 #ifndef CUTTING_SURFACE_VTKM_H
 #define CUTTING_SURFACE_VTKM_H
 
-#include <vistle/vtkm/ImplFuncController.h>
+#include <vistle/vtkm/ImplicitFunctionController.h>
 #include <vistle/vtkm/VtkmModule.h>
 
 class CuttingSurfaceVtkm: public VtkmModule {
@@ -15,7 +15,7 @@ private:
 
     vistle::IntParameter *m_computeNormals;
 
-    ImplFuncController m_implFuncControl;
+    ImplicitFunctionController m_implFuncControl;
 };
 
 #endif // CUTTING_SURFACE_VTKM_H
