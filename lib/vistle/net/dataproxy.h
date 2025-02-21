@@ -11,6 +11,7 @@
 #include <functional>
 
 #include <vistle/core/message.h>
+#include <vistle/core/messages.h>
 #include <vistle/util/enum.h>
 
 #include "export.h"
@@ -18,11 +19,6 @@
 namespace vistle {
 
 class StateTracker;
-
-namespace message {
-class Identify;
-class AddHub;
-} // namespace message
 
 class V_NETEXPORT DataProxy {
     typedef boost::asio::ip::tcp::acceptor acceptor;
@@ -43,7 +39,7 @@ public:
     unsigned short port() const;
     void setTrace(message::Type type);
 
-    bool connectRemoteData(const message::AddHub &add);
+    bool connectRemoteData(const message::AddHub &add, const message::AddHub::Payload &payload);
     bool addSocket(const message::Identify &id, std::shared_ptr<tcp_socket> sock);
 
 private:

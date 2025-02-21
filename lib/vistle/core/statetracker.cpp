@@ -560,7 +560,9 @@ StateTracker::VistleState StateTracker::getState() const
         msg.setArch(hub.arch);
         msg.setInfo(hub.info);
         msg.setVersion(hub.version);
-        appendMessage(state, msg);
+        auto pl = message::addPayload(msg, hub.addHubPayload);
+        auto shpl = std::make_shared<buffer>(pl);
+        appendMessage(state, msg, shpl);
     }
 
     // available modules
@@ -739,7 +741,7 @@ bool StateTracker::handle(const message::Message &msg, const char *payload, size
     }
     case ADDHUB: {
         const auto &hub = msg.as<AddHub>();
-        handled = handlePriv(hub);
+        handled = handlePriv(hub, pl);
         break;
     }
     case REMOVEHUB: {
@@ -1061,7 +1063,7 @@ bool StateTracker::handlePriv(const message::RemoveHub &rm)
     return true;
 }
 
-bool StateTracker::handlePriv(const message::AddHub &hub)
+bool StateTracker::handlePriv(const message::AddHub &hub, const buffer &payload)
 {
     std::lock_guard<mutex> locker(m_slaveMutex);
     for (auto &h: m_hubs) {
@@ -1071,18 +1073,20 @@ bool StateTracker::handlePriv(const message::AddHub &hub)
         }
     }
     m_hubs.emplace_back(hub.id(), hub.name());
-    m_hubs.back().numRanks = hub.numRanks();
-    m_hubs.back().port = hub.port();
-    m_hubs.back().dataPort = hub.dataPort();
+    auto &h = m_hubs.back();
+    h.numRanks = hub.numRanks();
+    h.port = hub.port();
+    h.dataPort = hub.dataPort();
     if (hub.hasAddress())
-        m_hubs.back().address = hub.address();
-    m_hubs.back().logName = hub.loginName();
-    m_hubs.back().realName = hub.realName();
-    m_hubs.back().hasUi = hub.hasUserInterface();
-    m_hubs.back().systemType = hub.systemType();
-    m_hubs.back().arch = hub.arch();
-    m_hubs.back().info = hub.info();
-    m_hubs.back().version = hub.version();
+        h.address = hub.address();
+    h.logName = hub.loginName();
+    h.realName = hub.realName();
+    h.hasUi = hub.hasUserInterface();
+    h.systemType = hub.systemType();
+    h.arch = hub.arch();
+    h.info = hub.info();
+    h.version = hub.version();
+    h.addHubPayload = message::getPayload<message::AddHub::Payload>(payload);
 
     // for per-hub parameters
     Module hubMod(hub.id(), hub.id());

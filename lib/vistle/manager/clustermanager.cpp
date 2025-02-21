@@ -690,16 +690,28 @@ bool ClusterManager::handle(const message::Buffer &message, const MessagePayload
             ident.setNumRanks(m_size);
             ident.setPid(getpid());
             ident.computeMac();
-            sendHub(ident);
+
+            AddHub::Payload payload;
+            payload.rankNames = Communicator::the().m_rankNames;
+            payload.rankAddresses = Communicator::the().m_rankAddresses;
+            payload.rankDataPorts = Communicator::the().m_rankDataPorts;
+            MessagePayload pl(message::addPayload(ident, payload));
+            sendHub(ident, pl);
         }
         break;
     }
 
     case message::ADDHUB: {
         const auto &addhub = message.as<message::AddHub>();
+        buffer data(payload->begin(), payload->end());
+        auto apl = getPayload<AddHub::Payload>(data);
         if (addhub.id() == hubId()) {
             scanModules(Communicator::the().m_vistleRoot, Communicator::the().m_buildType);
+        } else {
+            // establish direct connection between data managers
+            Communicator::the().dataManager().addHub(addhub, apl);
         }
+        Communicator::the().dataManager().addHub(addhub, apl);
         break;
     }
 

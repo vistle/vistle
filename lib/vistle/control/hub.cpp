@@ -769,7 +769,7 @@ bool Hub::init(int argc, char *argv[])
 
     {
         std::stringstream s;
-        s << hostname() << " " << port() << " " << dataPort();
+        s << hostname() << " " << port() << " " << dataPort() << " " << dataManagerBase();
         std::string conn = s.str();
         setenv("VISTLE_CONNECTION", conn.c_str(), 1);
     }
@@ -824,56 +824,15 @@ bool Hub::init(int argc, char *argv[])
             startPythonUi();
         }
 
-        std::string port = std::to_string(this->port());
-        std::string dataport = std::to_string(dataPort());
-
         if (!m_proxyOnly) {
-            // start manager on cluster
-            std::string cmd = m_dir->bin() + "vistle_manager";
-            if (vm.count("cover") > 0) {
-                vistle::Directory dir(argc, argv);
-                vistle::directory::setVistleRoot(dir.prefix(), dir.buildType());
-#ifdef VISTLE_USE_MPI
-                cmd = "OpenCOVER.mpi";
-#else
-                cmd = "opencover";
-#endif
-                setenv("VISTLE_PLUGIN", "VistleManager", 1);
-
-                m_coverIsManager = true;
+            std::string libsimArg = vm.count("libsim") > 0 ? vm["libsim"].as<std::string>() : "";
+            if (!startManager(vm.count("cover") > 0, libsimArg)) {
+                CERR << "FATAL: could not launch cluster manager" << std::endl;
+                exit(1);
             }
-            std::vector<std::string> args;
-            args.push_back(cmd);
-            if (!m_coverIsManager) {
-                args.push_back("--from-vistle");
-                args.push_back(hostname());
-                args.push_back(port);
-                args.push_back(dataport);
-            }
-#ifdef MODULE_THREAD
-            if (vm.count("libsim") > 0) {
-                auto sim2FilePath = vm["libsim"].as<std::string>();
-
-                CERR << "starting manager in simulation" << std::endl;
-                if (vistle::insitu::libsim::attemptLibSimConnection(sim2FilePath, args)) {
-                    sendInfo("Successfully connected to simulation");
-                } else {
-                    CERR << "failed to spawn Vistle manager in the simulation" << std::endl;
-                    exit(1);
-                }
-
-            } else {
-#endif // MODULE_THREAD
-                auto child = launchMpiProcess(Process::Manager, args);
-                if (!child) {
-                    CERR << "failed to spawn Vistle manager " << std::endl;
-                    exit(1);
-                }
-#ifdef MODULE_THREAD
-            }
-#endif // MODULE_THREAD
         }
     }
+
     if (!m_interrupt && !m_quitting) {
 #ifdef HAVE_PYTHON
         m_python.reset(new PythonInterpreter(m_dir->share()));
@@ -923,6 +882,14 @@ unsigned short Hub::dataPort() const
         return 0;
 
     return m_dataProxy->port();
+}
+
+unsigned short Hub::dataManagerBase() const
+{
+    auto p = dataPort();
+    if (p == 0)
+        p = port();
+    return p + 1;
 }
 
 std::shared_ptr<process::child>
@@ -1527,18 +1494,18 @@ bool Hub::checkOutstandingDataConnections()
 
     std::unique_lock<std::mutex> dataConnGuard(m_outstandingDataConnectionMutex);
     for (auto it = m_outstandingDataConnections.begin(); it != m_outstandingDataConnections.end(); ++it) {
-        if (!it->second.valid())
+        if (!it->second.fut.valid())
             continue;
-        if (it->second.wait_for(std::chrono::seconds(0)) != std::future_status::ready)
+        if (it->second.fut.wait_for(std::chrono::seconds(0)) != std::future_status::ready)
             continue;
 
         changed = true;
 
         auto &add = it->first;
-        bool ok = it->second.get();
+        bool ok = it->second.fut.get();
         if (ok) {
-            m_stateTracker.handle(add, nullptr, true);
-            sendUi(add);
+            m_stateTracker.handle(add, it->second.payload.get(), true);
+            sendUi(add, message::Id::Broadcast, it->second.payload.get());
         } else {
             CERR << "could not establish data connection to hub " << add.id() << " at " << add.address() << ":"
                  << add.port() << std::endl;
@@ -1800,9 +1767,14 @@ message::AddHub Hub::addHubForSelf() const
 {
     auto hub = make.message<message::AddHub>(m_hubId, m_name);
     hub.setNumRanks(m_localRanks);
-    hub.setDestId(Id::ForBroadcast);
+    //hub.setDestId(Id::ForBroadcast);
     hub.setPort(m_port);
     hub.setDataPort(m_dataProxy->port());
+    if (m_dataProxy->port() > 0) {
+        hub.setDataManagerPort(m_dataProxy->port() + 1);
+    } else {
+        hub.setDataManagerPort(m_port + 1);
+    }
     hub.setLoginName(vistle::getLoginName());
     hub.setRealName(vistle::getRealName());
     hub.setHasUserInterface(m_hasUi);
@@ -1936,9 +1908,10 @@ bool Hub::hubReady()
         }
         lock.unlock();
 
-        m_stateTracker.handle(hub, nullptr, true);
+        auto pl = message::addPayload(hub, m_addHubPayload);
+        m_stateTracker.handle(hub, &pl, true);
 
-        if (!sendMaster(hub)) {
+        if (!sendMaster(hub, &pl)) {
             return false;
         }
         m_ready = true;
@@ -2057,6 +2030,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
             m_dataProxy->setBoostArchiveVersion(id.boost_archive_version());
             m_dataProxy->setIndexSize(id.indexSize());
             m_dataProxy->setScalarSize(id.scalarSize());
+            m_addHubPayload = getPayload<AddHub::Payload>(*payload);
             if (m_verbose >= Verbosity::Normal) {
                 CERR << "manager connected with " << m_localRanks << " ranks" << std::endl;
             }
@@ -2071,8 +2045,9 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                 if (m_verbose >= Verbosity::Manager) {
                     CERR << "principal hub: " << master << std::endl;
                 }
-                m_stateTracker.handle(master, nullptr);
-                sendUi(master);
+                auto pl = message::addPayload(master, m_addHubPayload);
+                m_stateTracker.handle(master, &pl);
+                sendUi(master, message::Id::Broadcast, &pl);
             }
 
             if (m_hubId != Id::Invalid) {
@@ -2142,6 +2117,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
     }
     case message::ADDHUB: {
         auto &mm = static_cast<const AddHub &>(msg);
+        auto addPl = getPayload<AddHub::Payload>(*payload);
         auto add = mm;
         CERR << "received AddHub: " << add << std::endl;
         if (m_isMaster) {
@@ -2166,18 +2142,22 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
         std::unique_lock<std::mutex> guard(m_outstandingDataConnectionMutex);
         auto it = m_outstandingDataConnections.find(add);
         if (it == m_outstandingDataConnections.end()) {
-            m_outstandingDataConnections[add] =
-                std::async(std::launch::async, [this, add]() { return m_dataProxy->connectRemoteData(add); });
+            m_outstandingDataConnections[add].fut = std::async(
+                std::launch::async, [this, add, addPl]() { return m_dataProxy->connectRemoteData(add, addPl); });
+            if (payload) {
+                m_outstandingDataConnections[add].payload = std::make_shared<buffer>(*payload);
+            }
         } else {
             CERR << "already connecting to hub " << add.id() << ":" << add << std::endl;
         }
         guard.unlock();
 
-        m_stateTracker.handle(add, nullptr, true);
-        sendManager(add, Id::LocalHub);
-        sendUi(add);
+        auto pl = addPayload<AddHub::Payload>(add, addPl);
+        m_stateTracker.handle(add, &pl, true);
+        sendManager(add, Id::LocalHub, &pl);
+        sendUi(add, message::Id::Broadcast, &pl);
         if (m_isMaster) {
-            sendSlaves(add);
+            sendSlaves(add, true, &pl);
         }
         break;
     }
@@ -3619,6 +3599,58 @@ bool Hub::handleVrb(Hub::socket_ptr sock)
     }
 
     return false;
+}
+
+bool Hub::startManager(bool inCover, const std::string &libsimPath)
+{
+    // start manager on cluster
+    std::string cmd = m_dir->bin() + "vistle_manager";
+    if (inCover) {
+#ifdef VISTLE_USE_MPI
+        cmd = "OpenCOVER.mpi";
+#else
+        cmd = "opencover";
+#endif
+        setenv("VISTLE_PLUGIN", "VistleManager", 1);
+
+        m_coverIsManager = true;
+    }
+
+    std::vector<std::string> args;
+    args.push_back(cmd);
+    if (!m_coverIsManager) {
+        std::string port = std::to_string(this->port());
+        std::string dataport = std::to_string(dataPort());
+        std::string datamgrbase = std::to_string(dataManagerBase());
+
+        args.push_back("--from-vistle");
+        args.push_back(hostname());
+        args.push_back(port);
+        args.push_back(dataport);
+        args.push_back(datamgrbase);
+    }
+
+#ifdef MODULE_THREAD
+    if (!libsimPath.empty()) {
+        CERR << "starting manager in simulation" << std::endl;
+        if (vistle::insitu::libsim::attemptLibSimConnection(libsimPath, args)) {
+            sendInfo("Successfully connected to simulation");
+        } else {
+            CERR << "failed to spawn Vistle manager in the simulation" << std::endl;
+            return false;
+        }
+
+    } else {
+#endif // MODULE_THREAD
+        auto child = launchMpiProcess(Process::Manager, args);
+        if (!child) {
+            CERR << "failed to spawn Vistle manager " << std::endl;
+            return false;
+        }
+#ifdef MODULE_THREAD
+    }
+#endif // MODULE_THREAD
+    return true;
 }
 
 bool Hub::startUi(const std::string &uipath, bool replace)
