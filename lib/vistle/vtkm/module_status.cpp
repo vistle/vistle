@@ -7,7 +7,7 @@ ModuleStatus::ModuleStatus(const char *_message): msg(_message)
 
 const char *ModuleStatus::message() const
 {
-    return msg;
+    return msg.c_str();
 }
 
 SuccessStatus::SuccessStatus(): ModuleStatus("")

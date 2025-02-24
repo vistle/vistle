@@ -42,7 +42,7 @@ protected:
         and transforms it into the VTK-m dataset `dataset`.
     */
     ModuleStatusPtr prepareInputGrid(const vistle::DataComponents &split, vistle::Object::const_ptr &grid,
-                                     vtkm::cont::DataSet &dataset) const;
+                                     vtkm::cont::DataSet &dataset, const std::string &portName = "") const;
 
     /* 
         Reads the field stored in `split`, i.e., the data object provided by an input port, into `field`
@@ -50,7 +50,8 @@ protected:
         will overwrite `fieldName` with it.
     */
     ModuleStatusPtr prepareInputField(const vistle::DataComponents &split, vistle::DataBase::const_ptr &field,
-                                      std::string &fieldName, vtkm::cont::DataSet &dataset) const;
+                                      std::string &fieldName, vtkm::cont::DataSet &dataset,
+                                      const std::string &portName = "") const;
 
     /*
         Reads the grid (and mapped data, if `m_requireMappedData` is true) from the input port `m_dataIn`, 

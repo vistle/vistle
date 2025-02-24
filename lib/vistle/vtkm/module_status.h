@@ -19,7 +19,7 @@
  */
 class ModuleStatus {
 protected:
-    const char *msg;
+    std::string msg;
 
 public:
     ModuleStatus(const char *_message);

@@ -1,4 +1,5 @@
 #include <cstring>
+#include <sstream>
 
 #include <vistle/alg/objalg.h>
 
@@ -48,24 +49,31 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
 }
 
 ModuleStatusPtr VtkmModule::prepareInputGrid(const DataComponents &split, Object::const_ptr &grid,
-                                             vtkm::cont::DataSet &dataset) const
+                                             vtkm::cont::DataSet &dataset, const std::string &portName) const
 {
     // read in grid
     grid = split.geometry;
-    if (!grid)
-        return Error("Input grid is missing!");
+    if (!grid) {
+        std::ostringstream msg;
+        msg << "No grid on input port " << (portName.empty() ? m_dataIn->getName() : portName) << "!";
+        return Error(msg.str().c_str());
+    }
 
     // transform to VTK-m
     return vtkmSetGrid(dataset, grid);
 }
 
 ModuleStatusPtr VtkmModule::prepareInputField(const DataComponents &split, DataBase::const_ptr &field,
-                                              std::string &fieldName, vtkm::cont::DataSet &dataset) const
+                                              std::string &fieldName, vtkm::cont::DataSet &dataset,
+                                              const std::string &portName) const
 {
     // read in field
     field = split.mapped;
-    if (!field)
-        return Error("No mapped data on input grid!");
+    if (!field) {
+        std::stringstream msg;
+        msg << "No mapped data on input port " << (portName.empty() ? m_dataIn->getName() : portName) << "!";
+        return Error(msg.str().c_str());
+    }
 
     // if the mapped data on the input port already has a name, keep it
     if (auto name = field->getAttribute("_species"); !name.empty())
@@ -113,7 +121,8 @@ DataBase::ptr VtkmModule::prepareOutputField(vtkm::cont::DataSet &dataset, const
         updateMeta(mapped);
         return mapped;
     } else {
-        sendError("An error occurred while transforming the filter output field to a Vistle object.");
+        sendError("An error occurred while transforming the filter output field %s to a Vistle object.",
+                  fieldName.c_str());
         return nullptr;
     }
 }
