@@ -81,6 +81,20 @@ static bool setvar(const std::string &var, const std::string &val)
     return setvar(vv);
 }
 
+static bool addpath(const char *var, const std::string &add)
+{
+    auto p = getenv(var);
+    if (!p) {
+        return setvar(var, add);
+    }
+
+#ifdef _WIN32
+    return setvar(var, add + ";" + p);
+#else
+    return setvar(var, add + ":" + p);
+#endif
+}
+
 bool setVistleRoot(const std::string &vistleRootDir, const std::string &buildtype)
 {
     return setvar("VISTLE_ROOT", vistleRootDir) && setvar("VISTLE_BUILDTYPE", buildtype);
@@ -96,12 +110,7 @@ bool setEnvironment(const std::string &prefix)
     auto pathadd = bin(prefix);
 #endif
     setvar(libpath, prefix + "/lib");
-
-    if (auto p = getenv("PATH")) {
-        setvar("PATH", pathadd + ":" + p);
-    } else {
-        setvar("PATH", pathadd);
-    }
+    addpath("PATH", pathadd);
 
     auto envfile = std::ifstream(prefix + "/vistle-env.txt");
     while (envfile.good()) {
