@@ -56,8 +56,9 @@ protected:
         Reads the grid (and mapped data, if `m_requireMappedData` is true) from the input port `m_dataIn`, 
         stores them in `grid` (and `field`), and transforms them into the VTK-m dataset `dataset`.
     */
-    ModuleStatusPtr prepareInput(const std::shared_ptr<vistle::BlockTask> &task, vistle::Object::const_ptr &grid,
-                                 vistle::DataBase::const_ptr &field, vtkm::cont::DataSet &dataset) const;
+    virtual ModuleStatusPtr prepareInput(const std::shared_ptr<vistle::BlockTask> &task,
+                                         vistle::Object::const_ptr &grid, vistle::DataBase::const_ptr &field,
+                                         vtkm::cont::DataSet &dataset) const;
     /*
         Runs a VTK-m filter on `filterInput` and stores the result in `filterOutput`. 
         This method must be overriden by modules inheriting from VtkmModule.
@@ -72,15 +73,16 @@ protected:
     /*
         Transform the field in `dataset` into a Vistle object, updates its metadata and returns it.
     */
-    vistle::DataBase::ptr prepareOutputField(vtkm::cont::DataSet &dataset) const;
+    vistle::DataBase::ptr prepareOutputField(vtkm::cont::DataSet &dataset, const std::string &fieldName) const;
 
     /*
         Transforms the VTK-m dataset `dataset` into a Vistle grid (and field, if `m_requireMappedData` 
         is true, updates the metadata (copying the metadata from the input port) and adds it to the
         output port `m_dataOut`.
     */
-    bool prepareOutput(const std::shared_ptr<vistle::BlockTask> &task, vtkm::cont::DataSet &dataset,
-                       vistle::Object::const_ptr &inputGrid, vistle::DataBase::const_ptr &inputField) const;
+    virtual bool prepareOutput(const std::shared_ptr<vistle::BlockTask> &task, vtkm::cont::DataSet &dataset,
+                               vistle::Object::ptr &outputGrid, vistle::Object::const_ptr &inputGrid,
+                               vistle::DataBase::const_ptr &inputField) const;
 
     /*
         Checks if module can continue its execution and (optionally) prints a message to the GUI.

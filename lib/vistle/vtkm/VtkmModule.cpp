@@ -33,6 +33,7 @@ bool VtkmModule::isValid(const ModuleStatusPtr &status) const
 bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
 {
     Object::const_ptr inputGrid;
+    Object::ptr outputGrid;
     DataBase::const_ptr inputField;
 
     vtkm::cont::DataSet filterInput, filterOutput;
@@ -41,7 +42,7 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
     if (!isValid(status))
         return true;
     runFilter(filterInput, filterOutput);
-    prepareOutput(task, filterOutput, inputGrid, inputField);
+    prepareOutput(task, filterOutput, outputGrid, inputGrid, inputField);
 
     return true;
 }
@@ -105,9 +106,9 @@ Object::ptr VtkmModule::prepareOutputGrid(vtkm::cont::DataSet &dataset) const
     return geoOut;
 }
 
-DataBase::ptr VtkmModule::prepareOutputField(vtkm::cont::DataSet &dataset) const
+DataBase::ptr VtkmModule::prepareOutputField(vtkm::cont::DataSet &dataset, const std::string &fieldName) const
 {
-    if (auto mapped = vtkmGetField(dataset, m_fieldName)) {
+    if (auto mapped = vtkmGetField(dataset, fieldName)) {
         std::cerr << "mapped data: " << *mapped << std::endl;
         updateMeta(mapped);
         return mapped;
@@ -133,16 +134,17 @@ void copyMetadata(const Object::const_ptr &from, Object::ptr &to)
 }
 
 bool VtkmModule::prepareOutput(const std::shared_ptr<BlockTask> &task, vtkm::cont::DataSet &dataset,
-                               Object::const_ptr &inputGrid, DataBase::const_ptr &inputField) const
+                               Object::ptr &outputGrid, Object::const_ptr &inputGrid,
+                               DataBase::const_ptr &inputField) const
 {
-    auto outputGrid = prepareOutputGrid(dataset);
+    outputGrid = prepareOutputGrid(dataset);
     if (!outputGrid)
         return true;
 
     copyMetadata(inputGrid, outputGrid);
 
     if (m_requireMappedData) {
-        auto mapped = prepareOutputField(dataset);
+        auto mapped = prepareOutputField(dataset, m_fieldName);
         if (mapped) {
             mapped->copyAttributes(inputField);
             mapped->setGrid(outputGrid);
