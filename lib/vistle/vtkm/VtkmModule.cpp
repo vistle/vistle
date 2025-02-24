@@ -23,29 +23,23 @@ VtkmModule::VtkmModule(const std::string &name, int moduleID, mpi::communicator 
 VtkmModule::~VtkmModule()
 {}
 
-bool VtkmModule::isValid(const ModuleStatusPtr &status) const
+ModuleStatusPtr VtkmModule::prepareInput(const std::shared_ptr<BlockTask> &task, Object::const_ptr &grid,
+                                         DataBase::const_ptr &field, vtkm::cont::DataSet &dataset) const
 {
-    if (strcmp(status->message(), ""))
-        sendText(status->messageType(), status->message());
+    auto container = task->accept<Object>(m_dataIn);
+    auto split = splitContainerObject(container);
 
-    return status->continueExecution();
-}
-
-bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
-{
-    Object::const_ptr inputGrid;
-    Object::ptr outputGrid;
-    DataBase::const_ptr inputField;
-
-    vtkm::cont::DataSet filterInput, filterOutput;
-
-    auto status = prepareInput(task, inputGrid, inputField, filterInput);
+    auto status = prepareInputGrid(split, grid, dataset);
     if (!isValid(status))
-        return true;
-    runFilter(filterInput, filterOutput);
-    prepareOutput(task, filterOutput, outputGrid, inputGrid, inputField);
+        return status;
 
-    return true;
+    if (m_requireMappedData) {
+        status = prepareInputField(split, field, m_fieldName, dataset);
+        if (!isValid(status))
+            return status;
+    }
+
+    return Success();
 }
 
 ModuleStatusPtr VtkmModule::prepareInputGrid(const DataComponents &split, Object::const_ptr &grid,
@@ -81,50 +75,6 @@ ModuleStatusPtr VtkmModule::prepareInputField(const DataComponents &split, DataB
 
     // transform to VTK-m
     return vtkmAddField(dataset, field, fieldName);
-}
-
-ModuleStatusPtr VtkmModule::prepareInput(const std::shared_ptr<BlockTask> &task, Object::const_ptr &grid,
-                                         DataBase::const_ptr &field, vtkm::cont::DataSet &dataset) const
-{
-    auto container = task->accept<Object>(m_dataIn);
-    auto split = splitContainerObject(container);
-
-    auto status = prepareInputGrid(split, grid, dataset);
-    if (!isValid(status))
-        return status;
-
-    if (m_requireMappedData) {
-        status = prepareInputField(split, field, m_fieldName, dataset);
-        if (!isValid(status))
-            return status;
-    }
-
-    return Success();
-}
-
-Object::ptr VtkmModule::prepareOutputGrid(vtkm::cont::DataSet &dataset) const
-{
-    Object::ptr geoOut = vtkmGetGeometry(dataset);
-    if (!geoOut) {
-        sendError("An error occurred while transforming the filter output grid to a Vistle object.");
-        return nullptr;
-    }
-
-    updateMeta(geoOut);
-    return geoOut;
-}
-
-DataBase::ptr VtkmModule::prepareOutputField(vtkm::cont::DataSet &dataset, const std::string &fieldName) const
-{
-    if (auto mapped = vtkmGetField(dataset, fieldName)) {
-        std::cerr << "mapped data: " << *mapped << std::endl;
-        updateMeta(mapped);
-        return mapped;
-    } else {
-        sendError("An error occurred while transforming the filter output field %s to a Vistle object.",
-                  fieldName.c_str());
-        return nullptr;
-    }
 }
 
 // Copies metadata attributes from the grid `from` to the grid `to`.
@@ -164,5 +114,55 @@ bool VtkmModule::prepareOutput(const std::shared_ptr<BlockTask> &task, vtkm::con
 
     // if there is no mapped data, add output grid to output port
     task->addObject(m_dataOut, outputGrid);
+    return true;
+}
+
+Object::ptr VtkmModule::prepareOutputGrid(vtkm::cont::DataSet &dataset) const
+{
+    Object::ptr geoOut = vtkmGetGeometry(dataset);
+    if (!geoOut) {
+        sendError("An error occurred while transforming the filter output grid to a Vistle object.");
+        return nullptr;
+    }
+
+    updateMeta(geoOut);
+    return geoOut;
+}
+
+DataBase::ptr VtkmModule::prepareOutputField(vtkm::cont::DataSet &dataset, const std::string &fieldName) const
+{
+    if (auto mapped = vtkmGetField(dataset, fieldName)) {
+        std::cerr << "mapped data: " << *mapped << std::endl;
+        updateMeta(mapped);
+        return mapped;
+    } else {
+        sendError("An error occurred while transforming the filter output field %s to a Vistle object.",
+                  fieldName.c_str());
+        return nullptr;
+    }
+}
+
+bool VtkmModule::isValid(const ModuleStatusPtr &status) const
+{
+    if (strcmp(status->message(), ""))
+        sendText(status->messageType(), status->message());
+
+    return status->continueExecution();
+}
+
+bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
+{
+    Object::const_ptr inputGrid;
+    Object::ptr outputGrid;
+    DataBase::const_ptr inputField;
+
+    vtkm::cont::DataSet filterInput, filterOutput;
+
+    auto status = prepareInput(task, inputGrid, inputField, filterInput);
+    if (!isValid(status))
+        return true;
+    runFilter(filterInput, filterOutput);
+    prepareOutput(task, filterOutput, outputGrid, inputGrid, inputField);
+
     return true;
 }
