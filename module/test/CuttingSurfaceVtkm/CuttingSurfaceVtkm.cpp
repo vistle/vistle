@@ -12,6 +12,9 @@ CuttingSurfaceVtkm::CuttingSurfaceVtkm(const std::string &name, int moduleID, mp
     m_implFuncControl.init();
     m_computeNormals =
         addIntParameter("compute_normals", "compute normals (structured grids only)", 0, Parameter::Boolean);
+
+    // this makes sure module is executed as soon as pick interactor pose is changed in the GUI
+    setCacheMode(ObjectCache::CacheDeleteEarly);
 }
 
 CuttingSurfaceVtkm::~CuttingSurfaceVtkm()
