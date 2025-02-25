@@ -4023,11 +4023,21 @@ bool Hub::handlePriv(const message::Cover &cover, const buffer *payload)
     }
 
     if (m_vrbPort == 0) {
-        CERR << "restarting VRB on behalf of " << cover.senderId() << "..." << std::endl;
-        if (!startVrb()) {
-            CERR << "failed to restart VRB on behalf of " << cover.senderId() << std::endl;
+        if (std::chrono::steady_clock::now() - m_lastVrbStart < std::chrono::seconds(m_vrbStartWait)) {
             return false;
         }
+
+        CERR << "restarting VRB on behalf of " << cover.senderId() << "..." << std::endl;
+        m_lastVrbStart = std::chrono::steady_clock::now();
+        if (!startVrb()) {
+            CERR << "failed to restart VRB on behalf of " << cover.senderId() << std::endl;
+            m_vrbStartWait *= 2;
+            if (m_vrbStartWait > 60) {
+                m_vrbStartWait = 60;
+            }
+            return false;
+        }
+        m_vrbStartWait = 1;
         assert(m_vrbPort != 0);
     }
 

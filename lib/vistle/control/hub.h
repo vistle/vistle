@@ -187,6 +187,8 @@ private:
     unsigned short m_vrbPort = 0;
     std::map<int, socket_ptr> m_vrbSockets;
     std::shared_ptr<boost::process::child> m_vrb;
+    std::chrono::steady_clock::time_point m_lastVrbStart;
+    int m_vrbStartWait = 1;
 
     struct ObservedChild {
         ObservedChild();
