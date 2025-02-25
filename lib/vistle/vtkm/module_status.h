@@ -6,6 +6,9 @@
 
 #include <vistle/core/messages.h>
 
+#include "export.h"
+
+
 //TODO: should this be moved to lib/vistle/module?
 
 /**
@@ -17,7 +20,7 @@
  * ModuleStatus objects can be passed to Vistle modules which then handle the status
  * further, e.g., by sending messages to the GUI or stopping their execution.
  */
-class ModuleStatus {
+class V_VTKM_EXPORT ModuleStatus {
 protected:
     std::string msg;
 
@@ -37,7 +40,7 @@ public:
 
 typedef std::unique_ptr<ModuleStatus> ModuleStatusPtr;
 
-class SuccessStatus: public ModuleStatus {
+class V_VTKM_EXPORT SuccessStatus: public ModuleStatus {
 public:
     SuccessStatus();
 
@@ -45,7 +48,7 @@ public:
     const vistle::message::SendText::TextType messageType() const override;
 };
 
-class ErrorStatus: public ModuleStatus {
+class V_VTKM_EXPORT ErrorStatus: public ModuleStatus {
 public:
     ErrorStatus(const char *_message);
 
@@ -53,7 +56,7 @@ public:
     const vistle::message::SendText::TextType messageType() const override;
 };
 
-class WarningStatus: public ModuleStatus {
+class V_VTKM_EXPORT WarningStatus: public ModuleStatus {
 public:
     WarningStatus(const char *_message);
 
@@ -61,7 +64,7 @@ public:
     const vistle::message::SendText::TextType messageType() const override;
 };
 
-class InfoStatus: public ModuleStatus {
+class V_VTKM_EXPORT InfoStatus: public ModuleStatus {
 public:
     InfoStatus(const char *_message);
 
@@ -72,27 +75,27 @@ public:
 /*
     @return A unique pointer to a ModuleStatus object representing a successful execution.
 */
-ModuleStatusPtr Success();
+ModuleStatusPtr V_VTKM_EXPORT Success();
 
 /*
     @param message A C-string containing the error message.
     @return A unique pointer to a ModuleStatus object representing a failed execution.
 
 */
-ModuleStatusPtr Error(const char *message);
+ModuleStatusPtr V_VTKM_EXPORT Error(const char *message);
 
 /*
     @param message A C-string containing the warning message.
     @return A unique pointer to a ModuleStatus object representing a module that can continue its execution,
     but prints a warning message.
 */
-ModuleStatusPtr Warning(const char *message);
+ModuleStatusPtr V_VTKM_EXPORT Warning(const char *message);
 
 /*
     @param message A C-string containing the informational message.
     @return A unique pointer to a ModuleStatus object representing a successful module that prints some 
     informational message.
 */
-ModuleStatusPtr Info(const char *message);
+ModuleStatusPtr V_VTKM_EXPORT Info(const char *message);
 
 #endif // MODULE_STATUS_H
