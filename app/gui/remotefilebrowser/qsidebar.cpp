@@ -46,7 +46,6 @@
 #endif
 #include <qmimedata.h>
 #include <qevent.h>
-#include <qdebug.h>
 #include "remotefileiconprovider.h"
 #include "remotefiledialog.h"
 #include "abstractfilesystemmodel.h"

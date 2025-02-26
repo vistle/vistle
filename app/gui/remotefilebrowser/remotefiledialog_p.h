@@ -75,7 +75,6 @@
 #include <qcompleter.h>
 #endif
 #include <qpointer.h>
-#include <qdebug.h>
 #include "qsidebar_p.h"
 #include "remotefscompleter_p.h"
 

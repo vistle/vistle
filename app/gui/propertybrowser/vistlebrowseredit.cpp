@@ -4,7 +4,6 @@
 #include <QLineEdit>
 #include <QToolButton>
 #include <QAction>
-#include <QDebug>
 #include <QIcon>
 #include <QApplication>
 #include <QStyle>

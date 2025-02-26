@@ -8,7 +8,6 @@
 
 #include <cassert>
 
-#include <QDebug>
 #include <QGraphicsItem>
 #include <QGraphicsScene>
 #include <QGraphicsSceneContextMenuEvent>

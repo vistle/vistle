@@ -29,7 +29,6 @@
 #include "qconsole.h"
 #include <QFile>
 #include <QTextStream>
-#include <QDebug>
 #include <QVBoxLayout>
 #include <QApplication>
 #include <QScrollBar>

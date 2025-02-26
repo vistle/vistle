@@ -4,7 +4,6 @@
 
 #include <vistle/core/message.h>
 
-#include <QDebug>
 #include <QKeyEvent>
 #include <QMimeData>
 #include <QMenu>
