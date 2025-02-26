@@ -877,24 +877,19 @@ int COVER::runMain(int argc, char *argv[])
     for (const auto &libdir: libpath) {
         std::string abslib = libdir + "/" + libcover;
         const char mainname[] = "mpi_main";
-#ifdef WIN32
-        handle = LoadLibraryA(abslib.c_str());
-#else
-        handle = dlopen(abslib.c_str(), RTLD_LAZY);
-#endif
-
-        if (!handle) {
 #ifdef _WIN32
+        handle = LoadLibraryA(abslib.c_str());
+        if (!handle) {
             std::cerr << "failed to dlopen " << abslib << std::endl;
-#else
-            std::cerr << "failed to dlopen " << abslib << ": " << dlerror() << std::endl;
-#endif
             continue;
         }
-
-#ifdef _WIN32
         mpi_main = (mpi_main_t *)GetProcAddress((HINSTANCE)handle, mainname);
 #else
+        handle = dlopen(abslib.c_str(), RTLD_LAZY);
+        if (!handle) {
+            std::cerr << "failed to dlopen " << abslib << ": " << dlerror() << std::endl;
+            continue;
+        }
         mpi_main = (mpi_main_t *)dlsym(handle, mainname);
 #endif
         if (mpi_main) {
