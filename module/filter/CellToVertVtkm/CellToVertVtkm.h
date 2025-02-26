@@ -1,14 +1,14 @@
 #ifndef VISTLE_CELLTOVERTVTKM_CELLTOVERTVTKM_H
 #define VISTLE_CELLTOVERTVTKM_CELLTOVERTVTKM_H
 
-#include <vistle/module/module.h>
+#include <vistle/vtkm/VtkmModule.h>
 #include <vistle/core/vector.h>
 
 #ifdef VERTTOCELL
 #define CellToVertVtkm VertToCellVtkm
 #endif
 
-class CellToVertVtkm: public vistle::Module {
+class CellToVertVtkm: public VtkmModule {
 public:
     CellToVertVtkm(const std::string &name, int moduleID, mpi::communicator comm);
     ~CellToVertVtkm();
@@ -16,9 +16,21 @@ public:
 private:
     static const int NumPorts = 3;
 
-    std::vector<vistle::Port *> m_data_in, m_data_out;
+    std::vector<vistle::Port *> m_inputPorts, m_outputPorts;
 
-    bool compute(const std::shared_ptr<vistle::BlockTask> &task) const override;
+    mutable std::array<vistle::DataComponents, NumPorts> m_splits;
+    mutable std::array<std::string, NumPorts> m_fieldNames;
+
+    mutable std::vector<int> m_transformIndices;
+
+    ModuleStatusPtr prepareInput(const std::shared_ptr<vistle::BlockTask> &task, vistle::Object::const_ptr &grid,
+                                 vistle::DataBase::const_ptr &field, vtkm::cont::DataSet &dataset) const override;
+
+    bool prepareOutput(const std::shared_ptr<vistle::BlockTask> &task, vtkm::cont::DataSet &dataset,
+                       vistle::Object::ptr &outputGrid, vistle::Object::const_ptr &inputGrid,
+                       vistle::DataBase::const_ptr &inputField) const override;
+
+    void runFilter(vtkm::cont::DataSet &input, vtkm::cont::DataSet &output) const override;
 };
 
 #endif
