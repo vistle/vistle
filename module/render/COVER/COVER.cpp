@@ -1,6 +1,7 @@
 #include <future>
 #include <boost/algorithm/string/predicate.hpp>
-
+#include <boost/mpi.hpp>
+#include <boost/serialization/map.hpp>
 // cover
 #include <net/message.h>
 #include <cover/coVRPluginSupport.h>
@@ -849,43 +850,9 @@ std::map<std::string, std::string> COVER::setupEnv(const std::string &bindir)
     std::string vistleplugin = "Vistle";
     env["VISTLE_PLUGIN"] = vistleplugin;
 
-    std::string ldpath, dyldpath, dyldfwpath, covisepath;
-
-    int numvars = env.size();
-    MPI_Bcast(&numvars, 1, MPI_INT, 0, (MPI_Comm)comm());
-    auto it = env.begin();
-    for (int i = 0; i < numvars; ++i) {
-        std::string name;
-        std::string value;
-        if (rank == 0) {
-            name = it->first;
-            value = it->second;
-        }
-
-        auto sync_string = [this, rank](std::string &s) {
-            std::vector<char> buf;
-            int len = -1;
-            if (rank == 0)
-                len = s.length() + 1;
-            MPI_Bcast(&len, 1, MPI_INT, 0, (MPI_Comm)comm());
-            buf.resize(len);
-            if (rank == 0)
-                strcpy(buf.data(), s.c_str());
-            MPI_Bcast(buf.data(), buf.size(), MPI_BYTE, 0, (MPI_Comm)comm());
-            s = buf.data();
-        };
-        sync_string(name);
-        sync_string(value);
-
-        setenv(name.c_str(), value.c_str(), 1 /* overwrite */);
-
-        if (rank == 0)
-            ++it;
-        else
-            env[name] = value;
-
-        //std::cerr << name << " -> " << value << std::endl;
-    }
+    mpi::broadcast(comm(), env, 0);
+    for (const auto v: env)
+        setenv(v.first.c_str(), v.second.c_str(), 1 /* overwrite */);
 
     return env;
 }
