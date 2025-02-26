@@ -3,7 +3,6 @@
 
 #include <vistle/core/message.h>
 
-#include <QDebug>
 // VistleBrowserPropertyManager
 
 class VistleBrowserPropertyManagerPrivate {

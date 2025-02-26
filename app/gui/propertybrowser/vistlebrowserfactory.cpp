@@ -5,7 +5,6 @@
 #include "propertyeditorfactory_p.h"
 
 #include <QLineEdit>
-#include <QDebug>
 
 #include "vistlebrowseredit.h"
 #include <vistle/userinterface/userinterface.h>
