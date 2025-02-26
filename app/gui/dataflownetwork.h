@@ -6,6 +6,7 @@
 #include <QGraphicsScene>
 
 #include "port.h"
+#include "module.h"
 #include <vistle/core/uuid.h>
 #include <vistle/userinterface/vistleconnection.h>
 
@@ -21,7 +22,6 @@ namespace gui {
 class Connection;
 class MainWindow;
 class ModuleBrowser;
-class Module;
 
 enum SelectionDirection {
     SelectConnected,
