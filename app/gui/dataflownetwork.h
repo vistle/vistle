@@ -5,6 +5,10 @@
 #include <QString>
 #include <QGraphicsScene>
 
+#ifdef Q_MOC_RUN
+// required for compiling generated moc for emphasizeConnections with GCC and MSVC
+#include "module.h"
+#endif
 #include "port.h"
 #include <vistle/core/uuid.h>
 #include <vistle/userinterface/vistleconnection.h>
