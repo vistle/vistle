@@ -17,10 +17,11 @@ jobs:
 
     strategy:
       matrix:
-        os: ['ubuntu-latest', 'macos-latest']
+        os: ['ubuntu-latest']
         variant: [All]
         build_type: [Release]
         static_link: [OFF]
+        use_mpi: [ON]
         modules_shared: [ON]
         multi_process: [ON]
         double_precision: [OFF]
@@ -30,9 +31,19 @@ jobs:
             variant: All
             build_type: Debug
             static_link: ON
+            use_mpi: ON
             modules_shared: OFF
             multi_process: OFF
             double_precision: ON
+            large_index: ON
+          - os: 'macos-latest'
+            variant: All
+            build_type: Release
+            static_link: OFF
+            use_mpi: OFF
+            modules_shared: ON
+            multi_process: ON
+            double_precision: OFF
             large_index: ON
 
     steps:
@@ -107,7 +118,8 @@ jobs:
         brew update
         # workaround for https://github.com/actions/setup-python/issues/577
         #brew list -1 | grep python | while read formula; do brew unlink $formula; brew link --overwrite $formula; done
-        brew install ninja botan boost assimp ispc embree coreutils jpeg-turbo open-mpi zstd lz4 qt tbb glew open-scene-graph libzip libarchive vtk tinyxml2 python hdf5 netcdf pnetcdf cgal proj cgal
+        HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 \
+        brew install ninja botan boost assimp ispc embree coreutils jpeg-turbo zstd lz4 qt tbb glew open-scene-graph libzip libarchive vtk tinyxml2 python hdf5 netcdf pnetcdf cgal proj cgal
 
     - name: Free disk space
       if: runner.os == 'Linux'
@@ -157,6 +169,7 @@ jobs:
         -DVISTLE_64BIT_INDICES=${{matrix.large_index}}
         -DVISTLE_DOUBLE_PRECISION=${{matrix.double_precision}}
         -DVISTLE_MULTI_PROCESS=${{matrix.multi_process}}
+        -DVISTLE_USE_MPI=${{matrix.use_mpi}}
 
     - name: Build
       working-directory: ${{runner.workspace}}/build
