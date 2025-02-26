@@ -295,6 +295,10 @@ private:
 
     template<typename ConnMsg>
     bool handleConnectOrDisconnect(const ConnMsg &mm);
+    template<typename ConnMsg>
+    void handleMirrorConnect(const ConnMsg &conn, std::function<bool(const message::Message &)> sendFunc);
+    template<typename ConnMsg>
+    bool handlePrivConnMsg(const ConnMsg &conn, message::MessageFactory &make);
 
     bool checkChildProcesses(bool emergency = false, bool onMainThread = true);
     bool hasChildProcesses(bool ignoreGui = false);
