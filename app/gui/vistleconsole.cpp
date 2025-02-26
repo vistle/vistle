@@ -43,7 +43,6 @@
 #include <vistle/core/messages.h>
 
 #include <QApplication>
-#include <QDebug>
 
 #ifdef HAVE_PYTHON
 namespace py = pybind11;

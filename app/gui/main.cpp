@@ -10,7 +10,6 @@
 #include <vistle/core/uuid.h>
 #include <QApplication>
 #include <QIcon>
-#include <QDebug>
 
 #include <iostream>
 

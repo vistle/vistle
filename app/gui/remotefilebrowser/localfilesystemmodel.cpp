@@ -1,6 +1,5 @@
 #include "localfilesystemmodel.h"
 #include <QDateTime>
-#include <QDebug>
 #include <QApplication>
 #include <QStyle>
 

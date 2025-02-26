@@ -38,7 +38,6 @@
 ****************************************************************************/
 
 #include "abstractfileinfogatherer.h"
-#include <qdebug.h>
 #include <qdiriterator.h>
 #ifndef Q_OS_WIN
 #include <unistd.h>
