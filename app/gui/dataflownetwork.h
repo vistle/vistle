@@ -5,10 +5,6 @@
 #include <QString>
 #include <QGraphicsScene>
 
-#ifdef Q_MOC_RUN
-// required for compiling generated moc for emphasizeConnections with GCC and MSVC
-#include "module.h"
-#endif
 #include "port.h"
 #include <vistle/core/uuid.h>
 #include <vistle/userinterface/vistleconnection.h>
@@ -170,4 +166,7 @@ std::shared_ptr<vistle::ParameterBase<T>> DataFlowNetwork::getParameter(int id, 
 
 } //namespace gui
 
+// required for compiling generated moc for emphasizeConnections with GCC and MSVC,
+// but cannot be included at top as this prevents template instantiation for Clang in module.h
+#include "module.h"
 #endif // VSCENE_H
