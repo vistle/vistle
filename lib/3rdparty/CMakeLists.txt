@@ -222,8 +222,9 @@ if(NOT VISTLE_GUI_ONLY)
     #
     # pybind11
     #
-    set(PythonLibsNew_FIND_REQUIRED FALSE)
-    set(PythonLibsNew_FOUND TRUE)
+    set(PYBIND11_FINDPYTHON
+        TRUE
+        CACHE BOOL "")
     add_subdirectory(pybind11)
 endif()
 
