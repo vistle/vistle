@@ -128,14 +128,6 @@ macro(vistle_find_package package)
     endif()
 
     if("$ENV{SPACK_ENV}" STREQUAL "")
-        if(pack STREQUAL "PythonLibs")
-            set(pack "Python")
-        endif()
-
-        if(pack STREQUAL "PythonInterp")
-            set(pack "Python")
-        endif()
-
         if(pack MATCHES "^Qt5")
             set(pack "Qt5")
             set(hbpack "qt@5")
