@@ -418,6 +418,7 @@ if(NOT VISTLE_GUI_ONLY)
         endif()
     endif()
 
+    set(Python_FIND_FRAMEWORK LAST)
     vistle_find_package(Python COMPONENTS Interpreter Development REQUIRED)
     if(Python_FOUND)
         message("Found Python version ${Python_VERSION}")
