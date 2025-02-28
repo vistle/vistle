@@ -33,7 +33,7 @@ if(NOT PROJ_INCLUDE_DIR)
 endif()
 
 set(PROJ_NAMES Proj4 proj proj_4_9)
-set(PROJ_DBG_NAMES Proj4D projD proj_4_9_D)
+set(PROJ_DBG_NAMES Proj4D projD proj_d proj_4_9_D)
 
 find_library(
     PROJ_LIBRARY
