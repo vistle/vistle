@@ -851,7 +851,7 @@ std::map<std::string, std::string> COVER::setupEnv(const std::string &bindir)
     env["VISTLE_PLUGIN"] = vistleplugin;
 
     mpi::broadcast(comm(), env, 0);
-    for (const auto v: env)
+    for (const auto &v: env)
         setenv(v.first.c_str(), v.second.c_str(), 1 /* overwrite */);
 
     return env;
