@@ -45,7 +45,7 @@ ModuleStatusPtr CellToVertVtkm::prepareInput(const std::shared_ptr<vistle::Block
                                              vistle::Object::const_ptr &grid, vistle::DataBase::const_ptr &field,
                                              vtkm::cont::DataSet &dataset) const
 {
-    // iterate through all input ports!
+    // get grid and make sure all mapped data fields are defined on the same grid
     for (int i = 0; i < NumPorts; ++i) {
         auto container = task->accept<Object>(m_inputPorts[i]);
         auto split = splitContainerObject(container);
@@ -91,6 +91,7 @@ ModuleStatusPtr CellToVertVtkm::prepareInput(const std::shared_ptr<vistle::Block
             continue;
 
         auto data = m_splits[i].mapped;
+        assert(data);
         auto mapping = data->guessMapping(grid);
         // ... make sure the mapping is either vertex or element
         if (mapping != DataBase::Element && mapping != DataBase::Vertex) {
@@ -101,26 +102,15 @@ ModuleStatusPtr CellToVertVtkm::prepareInput(const std::shared_ptr<vistle::Block
         }
 // ... and check if we actually need to apply the filter for the current port
 #ifdef VERTTOCELL
-        if (mapping == DataBase::Element) {
-#else
         if (mapping == DataBase::Vertex) {
+#else
+        if (mapping == DataBase::Element) {
 #endif
-            // if not, just forward the data
-            auto ndata = m_splits[i].mapped->clone();
-            // TODO: Why?
-            ndata->setMapping(DataBase::Vertex);
-            ndata->setGrid(grid);
-            updateMeta(ndata);
-            task->addObject(m_outputPorts[i], ndata);
-
-        } else {
-            //     transform to VTK-m + add to dataset
-
-            //BUG: this shouldn't be field all the time...
-            auto status = prepareInputField(m_splits[i], field, m_fieldNames[i], dataset);
+            // transform to VTK-m + add to dataset
+            auto status = prepareInputField(m_splits[i], data, m_fieldNames[i], dataset);
             if (!isValid(status))
                 return status;
-            m_transformIndices.push_back(i);
+            m_fieldName = m_fieldNames[i];
         }
     }
     return Success();
@@ -130,169 +120,56 @@ bool CellToVertVtkm::prepareOutput(const std::shared_ptr<vistle::BlockTask> &tas
                                    vistle::Object::ptr &outputGrid, vistle::Object::const_ptr &inputGrid,
                                    vistle::DataBase::const_ptr &inputField) const
 {
-    if (m_transformIndices.empty())
-        return true;
-
     outputGrid = prepareOutputGrid(dataset);
 
-    // iterate through all input ports
-    for (const auto &i: m_transformIndices) {
-        auto outputField = prepareOutputField(dataset, m_fieldNames[i]);
-        outputField->copyAttributes(m_splits[i].mapped);
+    for (int i = 0; i < NumPorts; ++i) {
+        // if the corresponding output port is connected...
+        if (!m_outputPorts[i]->isConnected())
+            continue;
+
+        auto data = m_splits[i].mapped;
+        auto mapping = data->guessMapping(inputGrid);
+
+// ... and check if we actually need to apply the filter for the current port
 #ifdef VERTTOCELL
-        outputField->setMapping(DataBase::Element);
+        if (mapping == DataBase::Vertex) {
 #else
-        outputField->setMapping(DataBase::Vertex);
+        if (mapping == DataBase::Element) {
 #endif
-        outputField->setGrid(outputGrid);
-        task->addObject(m_outputPorts[i], outputField);
+            auto outputField = prepareOutputField(dataset, m_fieldNames[i]);
+
+            outputField->copyAttributes(m_splits[i].mapped);
+#ifdef VERTTOCELL
+            outputField->setMapping(DataBase::Element);
+#else
+            outputField->setMapping(DataBase::Vertex);
+#endif
+            outputField->setGrid(inputGrid);
+            task->addObject(m_outputPorts[i], outputField);
+
+        } else {
+            sendInfo("No filter applied for " + m_outputPorts[i]->getName());
+            auto ndata = data->clone();
+            ndata->setMapping(DataBase::Vertex);
+            ndata->setGrid(outputGrid);
+            updateMeta(ndata);
+            task->addObject(m_outputPorts[i], ndata);
+        }
     }
     return true;
 }
 
 void CellToVertVtkm::runFilter(vtkm::cont::DataSet &input, vtkm::cont::DataSet &output) const
 {
-    if (m_transformIndices.empty())
-        return;
+    if (input.GetNumberOfFields() <= 2) {
+        output = input;
+    } else {
 #ifdef VERTTOCELL
-    auto filter = vtkm::filter::field_conversion::CellAverage();
+        auto filter = vtkm::filter::field_conversion::CellAverage();
 #else
-    auto filter = vtkm::filter::field_conversion::PointAverage();
+        auto filter = vtkm::filter::field_conversion::PointAverage();
 #endif
-    filter.SetActiveField(m_fieldNames[m_transformIndices[0]]);
-    output = filter.Execute(input);
+        filter.SetActiveField(m_fieldName);
+        output = filter.Execute(input);
+    }
 }
-
-
-/*bool CellToVertVtkm::compute(const std::shared_ptr<BlockTask> &task) const
-{
-    Object::const_ptr grid;
-    std::vector<DataBase::const_ptr> data_vec;
-
-    for (int i = 0; i < NumAddPorts; ++i) {
-        auto &data_in = m_inputPorts[i];
-        auto container = task->accept<Object>(data_in);
-        auto split = splitContainerObject(container);
-        auto data = split.mapped;
-        // check which input ports are connected
-        if (!data && m_outputPorts[i]->isConnected()) {
-            sendError("no valid input data on %s", data_in->getName().c_str());
-            return true;
-        }
-
-        // and add them to the vector
-        data_vec.emplace_back(data);
-        if (!data)
-            continue;
-
-        if (grid) {
-            // make sure all data fields are defined on the same grid!
-            if (split.geometry && split.geometry->getHandle() != grid->getHandle()) {
-                sendError("grids have to match on all input objects");
-                return true;
-            }
-        } else {
-            grid = split.geometry;
-        }
-    }
-
-    assert(m_outputPorts.size() == data_vec.size());
-
-    if (!grid) {
-        sendError("grid is required on at least one input object");
-        return true;
-    }
-
-    for (int i = 0; i < NumAddPorts; ++i) {
-        // only do something if the output port is connected
-        auto &data_out = m_outputPorts[i];
-        if (!data_out->isConnected())
-            continue;
-
-        auto &data = data_vec[i];
-        assert(data);
-        auto mapping = data->guessMapping(grid);
-        // make sure mapping is either vertex or element
-        if (mapping != DataBase::Element && mapping != DataBase::Vertex) {
-            std::stringstream str;
-            str << "unsupported data mapping " << data->mapping() << ", guessed=" << mapping << " on "
-                << data->getName();
-            std::string s = str.str();
-            sendError("%s", s.c_str());
-            return true;
-        }
-    }
-
-    for (int i = 0; i < NumAddPorts; ++i) {
-        auto &data_out = m_outputPorts[i];
-        // do nothing if the output port is not connected
-        if (!data_out->isConnected())
-            continue;
-
-        auto &data = data_vec[i];
-        assert(data);
-        // get the mapping of the input grid
-        auto mapping = data->guessMapping(grid);
-        // only apply filter if it makes sense, otherwise just forward the data
-#ifdef VERTTOCELL
-        if (mapping == DataBase::Element) {
-#else
-        if (mapping == DataBase::Vertex) {
-#endif
-            auto ndata = data->clone();
-            ndata->setMapping(DataBase::Vertex);
-            ndata->setGrid(grid);
-            updateMeta(ndata);
-            task->addObject(data_out, ndata);
-        } else {
-            // transform vistle dataset to vtkm dataset
-            vtkm::cont::DataSet vtkmDataSet;
-            auto status = vtkmSetGrid(vtkmDataSet, grid);
-            if (!status->continueExecution()) {
-                sendText(status->messageType(), status->message());
-                return true;
-            }
-
-            // apply vtkm clip filter
-#ifdef VERTTOCELL
-            auto filter = vtkm::filter::field_conversion::CellAverage();
-#else
-            auto filter = vtkm::filter::field_conversion::PointAverage();
-#endif
-            std::string mapSpecies;
-            mapSpecies = data->getAttribute("_species");
-            if (mapSpecies.empty())
-                mapSpecies = "mapdata";
-            status = vtkmAddField(vtkmDataSet, data, mapSpecies);
-            if (!status->continueExecution()) {
-                sendText(status->messageType(), status->message());
-                return true;
-            }
-
-            filter.SetActiveField(mapSpecies);
-            auto avg = filter.Execute(vtkmDataSet);
-
-            // transform result back into vistle format
-            if (auto mapped = vtkmGetField(avg, mapSpecies)) {
-                std::cerr << "mapped data: " << *mapped << std::endl;
-                mapped->copyAttributes(data);
-                // set correct mapping
-#ifdef VERTTOCELL
-                mapped->setMapping(DataBase::Element);
-#else
-                mapped->setMapping(DataBase::Vertex);
-#endif
-                mapped->setGrid(grid);
-                updateMeta(mapped);
-                // and add to output port
-                task->addObject(data_out, mapped);
-                return true;
-            } else {
-                sendError("could not handle mapped data");
-                return true;
-            }
-        }
-    }
-
-    return true;
-}*/

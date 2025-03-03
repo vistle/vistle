@@ -21,8 +21,6 @@ private:
     mutable std::array<vistle::DataComponents, NumPorts> m_splits;
     mutable std::array<std::string, NumPorts> m_fieldNames;
 
-    mutable std::vector<int> m_transformIndices;
-
     ModuleStatusPtr prepareInput(const std::shared_ptr<vistle::BlockTask> &task, vistle::Object::const_ptr &grid,
                                  vistle::DataBase::const_ptr &field, vtkm::cont::DataSet &dataset) const override;
 
