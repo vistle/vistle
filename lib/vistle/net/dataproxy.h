@@ -68,8 +68,6 @@ private:
     int m_indexSize = 0, m_scalarSize = 0;
     void startAccept(acceptor &a);
     void handleAccept(acceptor &a, const boost::system::error_code &error, std::shared_ptr<tcp_socket> sock);
-    void handleConnect(std::shared_ptr<tcp_socket> sock0, std::shared_ptr<tcp_socket> sock1,
-                       const boost::system::error_code &error);
     bool serveSocket(const message::Identify &id, std::shared_ptr<tcp_socket> sock);
     void startThread();
     void cleanUp();
