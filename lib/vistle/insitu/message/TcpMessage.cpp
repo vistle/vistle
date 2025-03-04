@@ -72,15 +72,17 @@ void InSituTcp::setOnConnectedCb(const std::function<void(void)> &cb)
 
 void InSituTcp::startAccept()
 {
-    if (!m_acceptors[0]->is_open() || !m_acceptors[1]->is_open())
-        return;
     for (size_t i = 0; i < m_acceptors.size(); i++) {
+        if (!m_acceptors[i]->is_open())
+            continue;
         auto sock = new boost::asio::ip::tcp::socket{m_ioContext};
         m_acceptors[i]->async_accept(*sock, [this, i, sock](boost::system::error_code ec) {
             if (!ec) {
                 std::lock_guard<std::mutex> g{m_mutex};
                 m_socket.reset(sock);
-                m_acceptors[!i]->close(); //close the other one
+                int other = !i;
+                if (m_acceptors[other]->is_open())
+                    m_acceptors[other]->close(); //close the other one
                 if (m_onConnectedCb)
                     m_onConnectedCb();
                 for (const auto &msg: m_cachedMsgs)
