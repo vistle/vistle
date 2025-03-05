@@ -1,3 +1,7 @@
+if(NOT VISTLE_INTERNAL_VTKM)
+    add_definitions(-DVISTLE_EXTERNAL_VTKM)
+endif()
+
 set(HEADERS SpheresOverlap.h algo/CellListsAlgorithm.h algo/ThicknessDeterminer.h algo/VtkmSpheresOverlap.h algo/worklet/PointLocatorCellLists.h
             algo/worklet/OverlapDetector.h)
 
