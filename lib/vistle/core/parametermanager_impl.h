@@ -33,6 +33,9 @@ bool ParameterManager::setParameter(ParameterBase<T> *param, const T &value, con
         parameterChangedWrapper(param);
     else
         m_delayedChanges.emplace(param->getName(), param);
+    if (param->getValue() == value) {
+        return true;
+    }
     return updateParameter(param->getName(), param, inResponseTo);
 }
 

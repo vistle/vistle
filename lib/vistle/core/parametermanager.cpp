@@ -292,11 +292,11 @@ bool ParameterManager::updateParameter(const std::string &name, const Parameter 
 
     message::SetParameter set(m_id, name, i->second.param, rt);
     if (inResponseTo) {
+        if (!i->second.owner)
+            return true;
         set.setReferrer(inResponseTo->uuid());
         if (inResponseTo->isDelayed())
             set.setDelayed();
-        if (!i->second.owner)
-            return true;
     }
     set.setDestId(message::Id::ForBroadcast);
     sendParameterMessage(set);
