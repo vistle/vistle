@@ -1,15 +1,33 @@
 #ifndef POINT_LOCATOR_CELL_LISTS_H
 #define POINT_LOCATOR_CELL_LISTS_H
 
+#include <vtkm/Version.h>
+
+// Note that the version macros are only defined if find_package is called, which is
+// not the the case if Vistle builds VTK-m, i.e., VISTLE_INTERNAL_VTKM is defined.
+#if defined(VISTLE_EXTERNAL_VTKM) && (VTKM_VERSION_MAJOR < 2 || (VTKM_VERSION_MAJOR == 2 && VTKM_VERSION_MINOR < 2) || \
+                                      (VTKM_VERSION_MAJOR == 2 && VTKM_VERSION_MINOR == 2 && VTKM_VERSION_PATCH < 90))
+#define VTKM_INTERNAL_POINTLOCATORBASE
+#endif
+
+#ifdef VTKM_INTERNAL_POINTLOCATORBASE
+#include <vtkm/cont/internal/PointLocatorBase.h>
+#else
 #include <vtkm/cont/PointLocatorBase.h>
+#endif
 
 #include <vistle/core/scalar.h>
 
 #include "OverlapDetector.h"
 #include "../ThicknessDeterminer.h"
 
+#ifdef VTKM_INTERNAL_POINTLOCATORBASE
+class PointLocatorCellLists: public vtkm::cont::internal::PointLocatorBase<PointLocatorCellLists> {
+    using Superclass = vtkm::cont::internal::PointLocatorBase<PointLocatorCellLists>;
+#else
 class PointLocatorCellLists: public vtkm::cont::PointLocatorBase {
     using Superclass = vtkm::cont::PointLocatorBase;
+#endif
 
 public:
     void SetRadii(const vtkm::cont::UnknownArrayHandle &radii)
@@ -27,12 +45,27 @@ public:
         }
     }
 
-    void SetThicknessDeterminer(ThicknessDeterminer determiner) { this->Determiner = determiner; }
+    void SetThicknessDeterminer(ThicknessDeterminer determiner)
+    {
+        this->Determiner = determiner;
+    }
 
-    const vtkm::Vec3f &GetMinPoint() const { return this->Min; }
-    const vtkm::Vec3f &GetMaxPoint() const { return this->Max; }
-    const vtkm::Id3 &GetNumberOfBins() const { return this->Dims; }
-    const vtkm::FloatDefault &GetSearchRadius() const { return this->SearchRadius; }
+    const vtkm::Vec3f &GetMinPoint() const
+    {
+        return this->Min;
+    }
+    const vtkm::Vec3f &GetMaxPoint() const
+    {
+        return this->Max;
+    }
+    const vtkm::Id3 &GetNumberOfBins() const
+    {
+        return this->Dims;
+    }
+    const vtkm::FloatDefault &GetSearchRadius() const
+    {
+        return this->SearchRadius;
+    }
 
     VTKM_CONT
     OverlapDetector PrepareForExecution(vtkm::cont::DeviceAdapterId device, vtkm::cont::Token &token) const;
