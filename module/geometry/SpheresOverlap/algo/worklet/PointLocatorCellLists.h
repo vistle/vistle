@@ -5,15 +5,15 @@
 
 // Note that the version macros are only defined if find_package is called, which is
 // not the the case if Vistle builds VTK-m, i.e., VISTLE_INTERNAL_VTKM is defined.
-#define VTKM_CONTAINS_CLANG_COMPILER_PATCH \
-    ((defined(VISTLE_INTERNAL_VTKM_ON)) || (VTKM_VERSION_MAJOR > 2) || \
-     (VTKM_VERSION_MAJOR == 2 && VTKM_VERSION_MINOR > 2) || \
-     (VTKM_VERSION_MAJOR == 2 && VTKM_VERSION_MINOR == 2 && VTKM_VERSION_PATCH > 0))
+#if defined(VISTLE_EXTERNAL_VTKM) && (VTKM_VERSION_MAJOR < 2 || (VTKM_VERSION_MAJOR == 2 && VTKM_VERSION_MINOR < 2) || \
+                                      (VTKM_VERSION_MAJOR == 2 && VTKM_VERSION_MINOR == 2 && VTKM_VERSION_PATCH < 90))
+#define VTKM_INTERNAL_POINTLOCATORBASE
+#endif
 
-#if VTKM_CONTAINS_CLANG_COMPILER_PATCH
-#include <vtkm/cont/PointLocatorBase.h>
-#else
+#ifdef VTKM_INTERNAL_POINTLOCATORBASE
 #include <vtkm/cont/internal/PointLocatorBase.h>
+#else
+#include <vtkm/cont/PointLocatorBase.h>
 #endif
 
 #include <vistle/core/scalar.h>
@@ -21,12 +21,12 @@
 #include "OverlapDetector.h"
 #include "../ThicknessDeterminer.h"
 
-#if VTKM_CONTAINS_CLANG_COMPILER_PATCH
-class PointLocatorCellLists: public vtkm::cont::PointLocatorBase {
-    using Superclass = vtkm::cont::PointLocatorBase;
-#else
+#ifdef VTKM_INTERNAL_POINTLOCATORBASE
 class PointLocatorCellLists: public vtkm::cont::internal::PointLocatorBase<PointLocatorCellLists> {
     using Superclass = vtkm::cont::internal::PointLocatorBase<PointLocatorCellLists>;
+#else
+class PointLocatorCellLists: public vtkm::cont::PointLocatorBase {
+    using Superclass = vtkm::cont::PointLocatorBase;
 #endif
 
 public:
