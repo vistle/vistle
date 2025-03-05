@@ -10,7 +10,7 @@
      (VTKM_VERSION_MAJOR == 2 && VTKM_VERSION_MINOR > 2) || \
      (VTKM_VERSION_MAJOR == 2 && VTKM_VERSION_MINOR == 2 && VTKM_VERSION_PATCH > 0))
 
-#if VISTLE_INTERNAL_VTKM_ON
+#if VTKM_CONTAINS_CLANG_COMPILER_PATCH
 #include <vtkm/cont/PointLocatorBase.h>
 #else
 #include <vtkm/cont/internal/PointLocatorBase.h>
@@ -21,7 +21,7 @@
 #include "OverlapDetector.h"
 #include "../ThicknessDeterminer.h"
 
-#if VISTLE_INTERNAL_VTKM_ON
+#if VTKM_CONTAINS_CLANG_COMPILER_PATCH
 class PointLocatorCellLists: public vtkm::cont::PointLocatorBase {
     using Superclass = vtkm::cont::PointLocatorBase;
 #else
