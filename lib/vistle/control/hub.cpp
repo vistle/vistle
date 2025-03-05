@@ -167,7 +167,7 @@ void Hub::ObservedChild::sendTextToUi(message::SendText::TextType stream, size_t
         hub->sendMaster(t, &payload);
     }
 }
-void Hub::ObservedChild::sendOutputToUi() const
+void Hub::ObservedChild::sendOutputToUi(bool console) const
 {
     using message::SendText;
     auto lock = std::unique_lock(mutex);
@@ -193,6 +193,9 @@ void Hub::ObservedChild::sendOutputToUi() const
         ++count;
     }
     lock.unlock();
+    if (console) {
+        std::cerr << text;
+    }
     sendTextToUi(type, startLine, text, moduleId);
 }
 bool Hub::ObservedChild::isOutputStreaming() const
@@ -4217,7 +4220,7 @@ bool Hub::checkChildProcesses(bool emergency, bool onMainThread)
             sendError(str.str(), id);
             if (obs) {
                 str << std::endl;
-                obs->sendOutputToUi();
+                obs->sendOutputToUi(!message::Id::isModule(id));
             }
         } else {
             if (m_verbose >= Verbosity::Manager) {
