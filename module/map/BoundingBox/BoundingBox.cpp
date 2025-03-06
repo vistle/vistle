@@ -120,7 +120,7 @@ Extrema::Extrema(const std::string &name, int moduleID, mpi::communicator comm):
     Port *gout = createOutputPort("grid_out", "bounding box", Port::MULTI);
     gin->link(gout);
 
-    addIntParameter("per_block", "create bounding box for each block", false, Parameter::Boolean);
+    addIntParameter("per_block", "create bounding box for each block individually", false, Parameter::Boolean);
 #else
     Port *din = createInputPort("data_in", "input data", Port::MULTI);
     Port *dout = createOutputPort("data_out", "output data", Port::MULTI);
@@ -135,12 +135,14 @@ Extrema::Extrema(const std::string &name, int moduleID, mpi::communicator comm):
                        ParamVector(-std::numeric_limits<ParamVector::Scalar>::max(),
                                    -std::numeric_limits<ParamVector::Scalar>::max(),
                                    -std::numeric_limits<ParamVector::Scalar>::max()));
-    addIntVectorParameter("min_block", "output parameter: block numbers containing minimum",
+    addIntVectorParameter("min_block", "output parameter: block numbers containing minimum (per component)",
                           IntParamVector(-1, -1, -1));
-    addIntVectorParameter("max_block", "output parameter: block numbers containing maximum",
+    addIntVectorParameter("max_block", "output parameter: block numbers containing maximum (per component)",
                           IntParamVector(-1, -1, -1));
-    addIntVectorParameter("min_index", "output parameter: indices of minimum", IntParamVector(-1, -1, -1));
-    addIntVectorParameter("max_index", "output parameter: indices of maximum", IntParamVector(-1, -1, -1));
+    addIntVectorParameter("min_index", "output parameter: indices of minimum (per component)",
+                          IntParamVector(-1, -1, -1));
+    addIntVectorParameter("max_index", "output parameter: indices of maximum (per component)",
+                          IntParamVector(-1, -1, -1));
 
     for (const auto &p: {"min", "max", "min_block", "max_block", "min_index", "max_index"}) {
         setParameterReadOnly(p, true);
