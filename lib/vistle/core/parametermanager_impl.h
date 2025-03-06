@@ -28,6 +28,9 @@ bool ParameterManager::setParameter(ParameterBase<T> *param, const T &value, con
     bool delayed = false;
     if (inResponseTo && inResponseTo->isDelayed())
         delayed = true;
+    if (param->getValue() == value) {
+        return true;
+    }
     param->setValue(value, false, delayed);
     if (!inResponseTo || !inResponseTo->isDelayed())
         parameterChangedWrapper(param);

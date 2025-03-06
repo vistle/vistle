@@ -877,6 +877,8 @@ set(ALL_MODULES
     CACHE INTERNAL "")
 set(MODULE_DESCRIPTION_FILE ${PROJECT_BINARY_DIR}/share/vistle/moduledescriptions.txt)
 
+include(cmake/Documentation.cmake)
+
 if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
     file(REMOVE ${MODULE_DESCRIPTION_FILE})
     install(FILES ${MODULE_DESCRIPTION_FILE} DESTINATION ${CMAKE_INSTALL_PREFIX}/share/vistle/)
@@ -926,6 +928,17 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
             # message("Linking ${targetname} against libomp: ${LIBOMP}")
             target_link_libraries(${targetname} ${LIBOMP})
         endif()
+
+        # some targets need to be ignored for documentation for now because the build an executale that is not name targetname
+        if(VISTLE_BUILD_DOC)
+            set(IGNR_MODS "COVER_plugin")
+            foreach(elem ${IGNR_MODS})
+                if(NOT ${targetname} STREQUAL ${elem})
+                    add_module_doc_target(${targetname})
+                endif()
+            endforeach()
+        endif()
+
     endmacro(add_module2)
 
     macro(add_module targetname description)
@@ -1154,3 +1167,6 @@ add_subdirectory(bin)
 
 include(FeatureSummary)
 feature_summary(WHAT ALL)
+if(VISTLE_BUILD_DOC)
+    configure_documentation()
+endif()
