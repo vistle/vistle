@@ -1,14 +1,4 @@
 #include <sstream>
-#include <iomanip>
-
-#include <vistle/core/object.h>
-#include <vistle/core/triangles.h>
-#include <vistle/core/unstr.h>
-#include <vistle/core/vec.h>
-#include <vistle/alg/objalg.h>
-#include <vistle/vtkm/convert.h>
-
-#include "CellToVertVtkm.h"
 
 #ifdef VERTTOCELL
 #include <vtkm/filter/field_conversion/CellAverage.h>
@@ -16,9 +6,13 @@
 #include <vtkm/filter/field_conversion/PointAverage.h>
 #endif
 
-using namespace vistle;
+#include <vistle/vtkm/convert.h>
+
+#include "CellToVertVtkm.h"
 
 MODULE_MAIN(CellToVertVtkm)
+
+using namespace vistle;
 
 CellToVertVtkm::CellToVertVtkm(const std::string &name, int moduleID, mpi::communicator comm)
 : VtkmModule(name, moduleID, comm)
@@ -42,8 +36,9 @@ CellToVertVtkm::~CellToVertVtkm()
 {}
 
 ModuleStatusPtr CellToVertVtkm::prepareInput(const std::shared_ptr<vistle::BlockTask> &task,
-                                             vistle::Object::const_ptr &grid, vistle::DataBase::const_ptr &field,
-                                             vtkm::cont::DataSet &dataset) const
+                                             vistle::Object::const_ptr &inputGrid,
+                                             vistle::DataBase::const_ptr &inputField, vtkm::cont::DataSet &input,
+                                             std::array<vistle::DataComponents, NumPorts> &m_splits) const
 {
     // get grid and make sure all mapped data fields are defined on the same grid
     for (int i = 0; i < NumPorts; ++i) {
@@ -65,23 +60,23 @@ ModuleStatusPtr CellToVertVtkm::prepareInput(const std::shared_ptr<vistle::Block
             continue;
 
         // ... make sure all data fields are defined on the same grid
-        if (grid) {
-            if (split.geometry && split.geometry->getHandle() != grid->getHandle()) {
+        if (inputGrid) {
+            if (split.geometry && split.geometry->getHandle() != inputGrid->getHandle()) {
                 std::stringstream msg;
                 msg << "The grid on " << m_inputPorts[i]->getName()
                     << " does not match the grid on the other input ports!";
                 return Error(msg.str().c_str());
             }
         } else {
-            grid = split.geometry;
+            inputGrid = split.geometry;
         }
     }
 
-    if (!grid)
+    if (!inputGrid)
         return Error("Grid is required on at least one input object!");
 
     // transform grid
-    auto status = vtkmSetGrid(dataset, grid);
+    auto status = vtkmSetGrid(input, inputGrid);
     if (!isValid(status))
         return status;
 
@@ -92,7 +87,7 @@ ModuleStatusPtr CellToVertVtkm::prepareInput(const std::shared_ptr<vistle::Block
 
         auto data = m_splits[i].mapped;
         assert(data);
-        auto mapping = data->guessMapping(grid);
+        auto mapping = data->guessMapping(inputGrid);
         // ... make sure the mapping is either vertex or element
         if (mapping != DataBase::Element && mapping != DataBase::Vertex) {
             std::stringstream msg;
@@ -107,7 +102,7 @@ ModuleStatusPtr CellToVertVtkm::prepareInput(const std::shared_ptr<vistle::Block
         if (mapping == DataBase::Element) {
 #endif
             // transform to VTK-m + add to dataset
-            auto status = prepareInputField(m_splits[i], data, m_fieldNames[i], dataset);
+            auto status = prepareInputField(m_splits[i], data, m_fieldNames[i], input);
             if (!isValid(status))
                 return status;
             m_fieldName = m_fieldNames[i];
@@ -116,9 +111,26 @@ ModuleStatusPtr CellToVertVtkm::prepareInput(const std::shared_ptr<vistle::Block
     return Success();
 }
 
+
+void CellToVertVtkm::runFilter(vtkm::cont::DataSet &input, vtkm::cont::DataSet &output) const
+{
+    if (input.GetNumberOfFields() <= 2) {
+        output = input;
+    } else {
+#ifdef VERTTOCELL
+        auto filter = vtkm::filter::field_conversion::CellAverage();
+#else
+        auto filter = vtkm::filter::field_conversion::PointAverage();
+#endif
+        filter.SetActiveField(m_fieldNames[0]);
+        output = filter.Execute(input);
+    }
+}
+
 bool CellToVertVtkm::prepareOutput(const std::shared_ptr<vistle::BlockTask> &task, vtkm::cont::DataSet &dataset,
                                    vistle::Object::ptr &outputGrid, vistle::Object::const_ptr &inputGrid,
-                                   vistle::DataBase::const_ptr &inputField) const
+                                   vistle::DataBase::const_ptr &inputField,
+                                   std::array<vistle::DataComponents, NumPorts> &m_splits) const
 {
     outputGrid = prepareOutputGrid(dataset);
 
@@ -150,7 +162,7 @@ bool CellToVertVtkm::prepareOutput(const std::shared_ptr<vistle::BlockTask> &tas
         } else {
             sendInfo("No filter applied for " + m_outputPorts[i]->getName());
             auto ndata = data->clone();
-            ndata->setMapping(DataBase::Vertex);
+            ndata->setMapping(mapping);
             ndata->setGrid(outputGrid);
             updateMeta(ndata);
             task->addObject(m_outputPorts[i], ndata);
@@ -159,17 +171,21 @@ bool CellToVertVtkm::prepareOutput(const std::shared_ptr<vistle::BlockTask> &tas
     return true;
 }
 
-void CellToVertVtkm::runFilter(vtkm::cont::DataSet &input, vtkm::cont::DataSet &output) const
+bool CellToVertVtkm::compute(const std::shared_ptr<BlockTask> &task) const
 {
-    if (input.GetNumberOfFields() <= 2) {
-        output = input;
-    } else {
-#ifdef VERTTOCELL
-        auto filter = vtkm::filter::field_conversion::CellAverage();
-#else
-        auto filter = vtkm::filter::field_conversion::PointAverage();
-#endif
-        filter.SetActiveField(m_fieldName);
-        output = filter.Execute(input);
-    }
+    Object::const_ptr inputGrid;
+    Object::ptr outputGrid;
+    DataBase::const_ptr inputField;
+
+    vtkm::cont::DataSet input, output;
+
+    std::array<vistle::DataComponents, NumPorts> m_splits;
+
+    prepareInput(task, inputGrid, inputField, input, m_splits);
+
+    runFilter(input, output);
+
+    prepareOutput(task, output, outputGrid, inputGrid, inputField, m_splits);
+
+    return true;
 }
