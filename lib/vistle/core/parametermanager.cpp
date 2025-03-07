@@ -7,6 +7,8 @@
 #include <iostream>
 #include <regex>
 
+#include "parametermanager_impl.h"
+
 #define CERR std::cerr << message::Id::name(m_name, m_id) << ": "
 
 namespace vistle {
