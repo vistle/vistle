@@ -14,8 +14,7 @@ GridElementStatistics::GridElementStatistics(const std::string &name, int module
 {
     createInputPort("grid_in", "unstructured grid with or without data");
     createOutputPort("data_out", "unstructured grid with highlighted element");
-    m_elementIndex = addIntParameter("elementIndex", "index of the element to inspect", 0);
-    setCacheMode(ObjectCache::CacheDeleteEarly);
+    m_elementIndex = addIntParameter("element_index", "index of the element to inspect", 0);
 }
 
 bool GridElementStatistics::compute()
@@ -34,8 +33,13 @@ bool GridElementStatistics::compute()
     }
 
     Index elementIndex = m_elementIndex->getValue();
-    if (elementIndex < 0 || elementIndex >= grid->getNumElements()) {
-        sendError("invalid element index");
+    if (elementIndex < 0) {
+        sendError("invalid element index (negative)");
+        return true;
+    }
+    if (elementIndex >= grid->getNumElements()) {
+        sendError("invalid element index: %lu >= %lu", (unsigned long)elementIndex,
+                  (unsigned long)grid->getNumElements());
         return true;
     }
 
@@ -47,21 +51,14 @@ bool GridElementStatistics::compute()
     sendInfo("volume: %f", grid->cellVolume(elementIndex));
     sendInfo("");
 
-    auto out = grid->clone();
-    out->setMapping(DataBase::Vertex);
-    auto highlight = make_ptr<Vec<Scalar, 1>>(grid->getNumVertices());
+    auto highlight = std::make_shared<Vec<Scalar, 1>>(grid->getNumElements());
     std::fill(highlight->x().begin(), highlight->x().end(), 0);
+    highlight->x()[elementIndex] = 1;
+    highlight->setGrid(grid);
 
-    highlight->setGrid(out);
-    for (size_t i = grid->el()[elementIndex]; i < grid->el()[elementIndex + 1]; i++) {
-        highlight->x()[grid->cl()[i]] = 1;
-    }
-
-
-    highlight->setMapping(DataBase::Vertex);
+    highlight->setMapping(DataBase::Element);
     highlight->addAttribute("_species", "highlight");
     updateMeta(highlight);
-    updateMeta(out);
     addObject("data_out", highlight);
 
     return true;
