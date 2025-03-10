@@ -74,8 +74,6 @@ bool FilterNode::compute()
         addObject("data_out", ndata);
     } else {
         Object::ptr obj = data->cloneType();
-        obj->setMeta(data->meta());
-        obj->copyAttributes(data);
         updateMeta(obj);
         addObject("data_out", obj);
     }

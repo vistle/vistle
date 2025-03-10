@@ -420,7 +420,9 @@ public: \
     } \
     Object::ptr cloneTypeInternal() const override \
     { \
-        return Object::ptr(new ObjType(Object::Initialized)); \
+        auto clone = std::make_shared<ObjType>(Object::Initialized); \
+        clone->d()->copyAttributes(this->d(), true); \
+        return clone; \
     } \
     static Object *createEmpty(const std::string &name) \
     { \
