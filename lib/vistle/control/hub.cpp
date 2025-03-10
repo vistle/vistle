@@ -4179,13 +4179,13 @@ bool Hub::checkChildProcesses(bool emergency, bool onMainThread)
             if (onMainThread) {
                 stopVrb();
             } else {
-                if (m_verbose >= Verbosity::Manager) {
-                    if (m_vrbPort == 0) {
-                        exitOk = true;
-                    } else {
+                if (m_vrbPort == 0) {
+                    exitOk = true;
+                } else {
+                    if (m_verbose >= Verbosity::Manager) {
                         CERR << "VRB on port " << m_vrbPort << " has exited" << std::endl;
-                        stopVrb();
                     }
+                    stopVrb();
                 }
             }
             assert(m_vrbPort == 0);
