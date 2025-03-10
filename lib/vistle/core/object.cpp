@@ -585,20 +585,6 @@ void Object::copyAttributes(Object::const_ptr src, bool replace)
     if (!src)
         return;
 
-    if (replace) {
-        auto &m = d()->meta;
-        auto &sm = src->meta();
-        m.setBlock(sm.block());
-        m.setNumBlocks(sm.numBlocks());
-        m.setTimeStep(sm.timeStep());
-        m.setNumTimesteps(sm.numTimesteps());
-        m.setRealTime(sm.realTime());
-        m.setAnimationStep(sm.animationStep());
-        m.setNumAnimationSteps(sm.numAnimationSteps());
-        m.setIteration(sm.iteration());
-        m.setTransform(sm.transform());
-    }
-
     d()->copyAttributes(src->d(), replace);
 }
 
@@ -648,6 +634,18 @@ void Object::Data::copyAttributes(const ObjectData *src, bool replace)
 {
     if (replace) {
         attributes = src->attributes;
+
+        auto &m = meta;
+        auto &sm = src->meta;
+        m.setBlock(sm.block());
+        m.setNumBlocks(sm.numBlocks());
+        m.setTimeStep(sm.timeStep());
+        m.setNumTimesteps(sm.numTimesteps());
+        m.setRealTime(sm.realTime());
+        m.setAnimationStep(sm.animationStep());
+        m.setNumAnimationSteps(sm.numAnimationSteps());
+        m.setIteration(sm.iteration());
+        m.setTransform(sm.transform());
     } else {
         const AttributeMap &a = src->attributes;
 
