@@ -213,6 +213,8 @@ Vector3 UnstructuredGrid::cellCenter(Index elem) const
     const Scalar *z = &this->z()[0];
     auto verts = cellVertices(elem);
     Vector3 center(0, 0, 0);
+    if (verts.empty())
+        return center;
     for (auto v: verts) {
         Vector3 p(x[v], y[v], z[v]);
         center += p;
