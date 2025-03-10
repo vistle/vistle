@@ -334,9 +334,7 @@ bool Threshold::compute(const std::shared_ptr<BlockTask> &task) const
         *el = cidx;
 
         renumberVertices(grid_in, outgrid, vm);
-        outgrid->setMeta(grid_in->meta());
         updateMeta(outgrid);
-        outgrid->copyAttributes(grid_in);
 
         cachedResult.grid = outgrid;
         m_gridCache.storeAndUnlock(cacheEntry, cachedResult);

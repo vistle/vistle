@@ -472,7 +472,6 @@ bool SplitPolyhedra::compute()
                 for (Index e = 0; e < elementMapping.size(); ++e) {
                     ndata->copyEntry(e, data[i], elementMapping[e]);
                 }
-                ndata->copyAttributes(data[i]);
             } else {
                 ndata = data[i]->clone();
             }

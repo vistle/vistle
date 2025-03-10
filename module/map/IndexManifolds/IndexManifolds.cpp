@@ -158,7 +158,6 @@ bool IndexManifolds::compute(const std::shared_ptr<BlockTask> &task) const
             task->addObject(p_surface_out, surface);
         } else {
             DataBase::ptr outdata = data->cloneType();
-            outdata->copyAttributes(data);
             outdata->setMapping(elementData ? DataBase::Element : DataBase::Vertex);
             outdata->setGrid(surface);
             outdata->setSize(elementData ? nquad : nvert);
@@ -210,7 +209,6 @@ bool IndexManifolds::compute(const std::shared_ptr<BlockTask> &task) const
             outdata = data->cloneType();
             outdata->setSize(elementData ? nvert - 1 : nvert);
             outdata->setGrid(line);
-            outdata->copyAttributes(data);
         }
 
         Index cell = 0;
@@ -262,7 +260,6 @@ bool IndexManifolds::compute(const std::shared_ptr<BlockTask> &task) const
             outdata = data->cloneType();
             outdata->setSize(1);
             outdata->setGrid(point);
-            outdata->copyAttributes(data);
         }
         for (int d = 0; d < 3; ++d)
             point->x(d)[0] = p[d];

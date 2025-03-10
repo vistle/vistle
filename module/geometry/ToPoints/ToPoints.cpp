@@ -101,7 +101,6 @@ bool ToPoints::compute()
                     const Index *cl = verts.data();
                     size_t nconn = verts.size();
                     auto odata = split.mapped->cloneType();
-                    odata->copyAttributes(split.mapped);
                     data = odata;
                     odata->setSize(nconn);
                     for (Index i = 0; i < nconn; ++i) {

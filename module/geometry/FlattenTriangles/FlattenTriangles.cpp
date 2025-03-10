@@ -107,8 +107,6 @@ bool FlattenTriangles::compute()
             Triangles::ptr tri = intri->cloneType();
             tri->setSize(intri->getNumCorners());
             flatten(intri, intri, tri);
-            tri->setMeta(intri->meta());
-            tri->copyAttributes(intri);
             outgrid = tri;
         }
     } else if (inquad) {
@@ -119,8 +117,6 @@ bool FlattenTriangles::compute()
             Quads::ptr q = inquad->cloneType();
             q->setSize(inquad->getNumCorners());
             flatten(inquad, inquad, q);
-            q->setMeta(inquad->meta());
-            q->copyAttributes(inquad);
             outgrid = q;
         }
     }
