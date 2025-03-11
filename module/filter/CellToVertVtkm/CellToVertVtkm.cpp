@@ -37,7 +37,7 @@ CellToVertVtkm::~CellToVertVtkm()
 
 ModuleStatusPtr CellToVertVtkm::GetCommonGrid(const std::shared_ptr<vistle::BlockTask> &task,
                                               vistle::Object::const_ptr &inputGrid,
-                                              std::array<vistle::DataComponents, NumPorts> &m_splits) const
+                                              std::array<vistle::DataBase::const_ptr, NumPorts> &fields) const
 { // get grid and make sure all mapped data fields are defined on the same grid
     for (int i = 0; i < NumPorts; ++i) {
         auto container = task->accept<Object>(m_inputPorts[i]);
@@ -52,7 +52,7 @@ ModuleStatusPtr CellToVertVtkm::GetCommonGrid(const std::shared_ptr<vistle::Bloc
         }
 
         // .. and add them to the vector
-        m_splits[i] = split;
+        fields[i] = data;
 
         if (!data)
             continue;
@@ -75,17 +75,35 @@ ModuleStatusPtr CellToVertVtkm::GetCommonGrid(const std::shared_ptr<vistle::Bloc
     return Success();
 }
 
+ModuleStatusPtr CellToVertVtkm::prepareInputField(DataBase::const_ptr &field, std::string &fieldName,
+                                                  vtkm::cont::DataSet &dataset, const std::string &portName) const
+{
+    // read in field
+    if (!field) {
+        std::stringstream msg;
+        msg << "No mapped data on input port " << (portName.empty() ? m_dataIn->getName() : portName) << "!";
+        return Error(msg.str().c_str());
+    }
+
+    // if the mapped data on the input port already has a name, keep it
+    if (auto name = field->getAttribute("_species"); !name.empty())
+        fieldName = name;
+
+    // transform to VTK-m
+    return vtkmAddField(dataset, field, fieldName);
+}
+
 ModuleStatusPtr CellToVertVtkm::prepareInput(vistle::Object::const_ptr &inputGrid,
                                              vistle::DataBase::const_ptr &inputField, vtkm::cont::DataSet &input,
-                                             vistle::DataComponents &split, std::string &fieldName) const
+                                             std::string &fieldName) const
 {
-    auto data = split.mapped;
-    assert(data);
-    auto mapping = data->guessMapping(inputGrid);
+    assert(inputField);
+    auto mapping = inputField->guessMapping(inputGrid);
     // ... make sure the mapping is either vertex or element
     if (mapping != DataBase::Element && mapping != DataBase::Vertex) {
         std::stringstream msg;
-        msg << "Unsupported data mapping " << data->mapping() << ", guessed=" << mapping << " on " << data->getName();
+        msg << "Unsupported data mapping " << inputField->mapping() << ", guessed=" << mapping << " on "
+            << inputField->getName();
         return Error(msg.str().c_str());
     }
 // ... and check if we actually need to apply the filter for the current port
@@ -95,7 +113,7 @@ ModuleStatusPtr CellToVertVtkm::prepareInput(vistle::Object::const_ptr &inputGri
     if (mapping == DataBase::Element) {
 #endif
         // transform to VTK-m + add to dataset
-        auto status = prepareInputField(split, data, fieldName, input);
+        auto status = prepareInputField(inputField, fieldName, input);
         if (!isValid(status))
             return status;
     }
@@ -120,13 +138,11 @@ void CellToVertVtkm::runFilter(vtkm::cont::DataSet &input, vtkm::cont::DataSet &
 
 bool CellToVertVtkm::prepareOutput(vtkm::cont::DataSet &dataset, vistle::Object::ptr &outputGrid,
                                    vistle::DataBase::ptr &outputField, vistle::Object::const_ptr &inputGrid,
-                                   vistle::DataBase::const_ptr &inputField, vistle::DataComponents &split,
-                                   std::string &fieldName) const
+                                   vistle::DataBase::const_ptr &inputField, std::string &fieldName) const
 {
     outputGrid = prepareOutputGrid(dataset);
 
-    auto data = split.mapped;
-    auto mapping = data->guessMapping(inputGrid);
+    auto mapping = inputField->guessMapping(outputGrid);
 
 // ... and check if we actually need to apply the filter for the current port
 #ifdef VERTTOCELL
@@ -136,13 +152,13 @@ bool CellToVertVtkm::prepareOutput(vtkm::cont::DataSet &dataset, vistle::Object:
 #endif
         outputField = prepareOutputField(dataset, fieldName);
         if (outputField) {
-            outputField->copyAttributes(data);
+            outputField->copyAttributes(inputField);
 #ifdef VERTTOCELL
             outputField->setMapping(DataBase::Element);
 #else
             outputField->setMapping(DataBase::Vertex);
 #endif
-            outputField->setGrid(inputGrid);
+            outputField->setGrid(outputGrid);
         }
     }
 
@@ -153,15 +169,15 @@ bool CellToVertVtkm::compute(const std::shared_ptr<BlockTask> &task) const
 {
     Object::const_ptr inputGrid;
     Object::ptr outputGrid;
-    DataBase::const_ptr inputField;
     DataBase::ptr outputField;
 
     vtkm::cont::DataSet input, output;
 
-    std::array<vistle::DataComponents, NumPorts> m_splits;
+    std::array<DataBase::const_ptr, NumPorts> fields;
+    std::array<std::string, NumPorts> m_fieldNames;
 
     // prepare grid
-    auto status = GetCommonGrid(task, inputGrid, m_splits);
+    auto status = GetCommonGrid(task, inputGrid, fields);
     if (!isValid(status))
         return true;
 
@@ -175,19 +191,19 @@ bool CellToVertVtkm::compute(const std::shared_ptr<BlockTask> &task) const
         // if the corresponding output port is connected...
         if (!m_outputPorts[i]->isConnected())
             continue;
-        std::string fieldNameI;
-        status = prepareInput(inputGrid, inputField, input, m_splits[i], fieldNameI);
+        status = prepareInput(inputGrid, fields[i], input, m_fieldNames[i]);
         if (!isValid(status))
             return true;
 
-        if (input.HasField(fieldNameI)) {
-            runFilter(input, output, fieldNameI);
+        auto fieldName = m_fieldNames[i];
+        if (input.HasField(fieldName)) {
+            runFilter(input, output, fieldName);
 
-            prepareOutput(output, outputGrid, outputField, inputGrid, inputField, m_splits[i], fieldNameI);
+            prepareOutput(output, outputGrid, outputField, inputGrid, fields[i], fieldName);
             task->addObject(m_outputPorts[i], outputField);
         } else {
             sendInfo("No filter applied for " + m_outputPorts[i]->getName());
-            auto ndata = m_splits[i].mapped->clone();
+            auto ndata = fields[i]->clone();
             ndata->setGrid(outputGrid);
             updateMeta(ndata);
             task->addObject(m_outputPorts[i], ndata);
