@@ -204,7 +204,7 @@ bool CellToVertVtkm::compute(const std::shared_ptr<BlockTask> &task) const
         } else {
             sendInfo("No filter applied for " + m_outputPorts[i]->getName());
             auto ndata = fields[i]->clone();
-            ndata->setGrid(outputGrid);
+            ndata->setGrid(inputGrid);
             updateMeta(ndata);
             task->addObject(m_outputPorts[i], ndata);
         }
