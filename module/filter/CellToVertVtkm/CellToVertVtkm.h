@@ -20,14 +20,18 @@ private:
     //mutable std::array<vistle::DataComponents, NumPorts> m_splits;
     mutable std::array<std::string, NumPorts> m_fieldNames;
 
-    ModuleStatusPtr prepareInput(const std::shared_ptr<vistle::BlockTask> &task, vistle::Object::const_ptr &grid,
-                                 vistle::DataBase::const_ptr &field, vtkm::cont::DataSet &dataset,
-                                 std::array<vistle::DataComponents, NumPorts> &m_splits) const;
+    ModuleStatusPtr GetCommonGrid(const std::shared_ptr<vistle::BlockTask> &task, vistle::Object::const_ptr &inputGrid,
+                                  std::array<vistle::DataComponents, NumPorts> &m_splits) const;
+    ModuleStatusPtr prepareInput(vistle::Object::const_ptr &grid, vistle::DataBase::const_ptr &field,
+                                 vtkm::cont::DataSet &dataset, vistle::DataComponents &split,
+                                 std::string &fieldName) const;
     void runFilter(vtkm::cont::DataSet &input, vtkm::cont::DataSet &output) const override;
-    bool prepareOutput(const std::shared_ptr<vistle::BlockTask> &task, vtkm::cont::DataSet &dataset,
-                       vistle::Object::ptr &outputGrid, vistle::Object::const_ptr &inputGrid,
-                       vistle::DataBase::const_ptr &inputField,
-                       std::array<vistle::DataComponents, NumPorts> &m_splits) const;
+    void runFilter(vtkm::cont::DataSet &input, vtkm::cont::DataSet &output, std::string &fieldName) const;
+
+    bool prepareOutput(vtkm::cont::DataSet &dataset, vistle::Object::ptr &outputGrid,
+                       vistle::DataBase::ptr &outputField, vistle::Object::const_ptr &inputGrid,
+                       vistle::DataBase::const_ptr &inputField, vistle::DataComponents &split,
+                       std::string &fieldName) const;
     bool compute(const std::shared_ptr<vistle::BlockTask> &task) const override;
 };
 

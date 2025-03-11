@@ -34,6 +34,7 @@ protected:
     vistle::Port *m_dataIn, *m_dataOut;
 
     bool m_requireMappedData;
+    //TODO: do not do this with a class attribute, should be runFilter argument
     mutable std::string m_fieldName = "mappedData";
 
     /*
