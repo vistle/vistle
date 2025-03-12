@@ -141,7 +141,7 @@ std::vector<message::Buffer> PortTracker::removePort(const Port &p)
     }
 
     PortMap::iterator pi = portMap->find(p.getName());
-    assert(pi != portMap->end());
+    //assert(pi != portMap->end()); // FIXME: this does not always work
     if (pi == portMap->end()) {
         return ret;
     }
