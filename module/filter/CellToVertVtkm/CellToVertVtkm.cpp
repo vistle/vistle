@@ -133,6 +133,40 @@ void CellToVertVtkm::runFilter(vtkm::cont::DataSet &input, std::string &fieldNam
     output = filter.Execute(input);
 }
 
+/*ModuleStatusPtr CheckField(const Object::const_ptr &grid, const DataBase::const_ptr &field, std::string& portName)
+{
+    auto status = VtkmModule2::CheckField(grid, field);
+    if (!isValid(status)) {
+        return status;
+    }
+
+    auto mapping = field->guessMapping(grid);
+    // ... make sure the mapping is either vertex or element
+    if (mapping != DataBase::Element && mapping != DataBase::Vertex) {
+        std::stringstream msg;
+        msg << "Unsupported data mapping " << field->mapping() << ", guessed=" << mapping << " on " << field->getName();
+        return Error(msg.str().c_str());
+    }
+    return Success();
+}*/
+
+/*ModuleStatusPtr TransformField(const Object::const_ptr &grid, const DataBase::const_ptr &field, std::string &fieldName,
+                               vtkm::cont::DataSet &dataset)
+{
+    auto mapping = field->guessMapping(grid);
+    // ... and check if we actually need to apply the filter for the current port
+#ifdef VERTTOCELL
+    if (mapping == DataBase::Vertex) {
+#else
+    if (mapping == DataBase::Element) {
+#endif
+        // transform to VTK-m + add to dataset
+        return VtkmModule2::TransformField(grid, field, fieldName, dataset);
+    }
+
+    return Success();
+}*/
+
 bool CellToVertVtkm::prepareOutput(vtkm::cont::DataSet &dataset, std::string &fieldName, Object::const_ptr &inputGrid,
                                    DataBase::const_ptr &inputField, Object::ptr &outputGrid,
                                    DataBase::ptr &outputField) const
