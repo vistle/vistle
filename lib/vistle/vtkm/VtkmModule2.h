@@ -20,6 +20,7 @@ public:
 
 private:
     const int m_numPorts;
+    const bool m_requireMappedData;
 
     std::vector<vistle::Port *> m_inputPorts, m_outputPorts;
 

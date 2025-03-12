@@ -119,6 +119,56 @@ ModuleStatusPtr CellToVertVtkm::prepareInputField(const Object::const_ptr &grid,
     return TransformField(field, fieldName, dataset);
 }
 
+bool VtkmModule::prepareOutput(const std::shared_ptr<BlockTask> &task, Port *port, vtkm::cont::DataSet &dataset,
+                               Object::ptr &outputGrid, Object::const_ptr &inputGrid, DataBase::const_ptr &inputField,
+                               std::string &fieldName) const
+{
+    outputGrid = prepareOutputGrid(dataset, inputGrid, outputGrid);
+    if (!outputGrid)
+        return true;
+
+    outputField = prepareOutputField(dataset, fieldName);
+
+    if (outputField) {
+        task->addObject(port, outputField);
+    } else {
+        task->addObject(port, outputGrid);
+    }
+
+    return true;
+}
+
+Object::ptr prepareOutputGrid(vtkm::cont::DataSet &dataset, Object::const_ptr &inputGrid, Object::ptr &outputGrid)
+{
+    auto outputGrid = vtkmGetGeometry(dataset);
+    if (!outputGrid) {
+        sendError("An error occurred while transforming the filter output grid to a Vistle object.");
+        return nullptr;
+    }
+
+    updateMeta(outputGrid);
+    copyMetadata(inputGrid, outputGrid);
+    return outputGrid;
+}
+
+DataBase::ptr prepareOutputField(vtkm::cont::DataSet &dataset, DataBase::const_ptr &inputField, std::string &fieldName,
+                                 Object::const_ptr &inputGrid, Object::ptr &outputGrid) const
+{
+    if (m_requireMappedData) {
+        if (auto mapped = vtkmGetField(dataset, fieldName);) {
+            std::cerr << "mapped data: " << *mapped << std::endl;
+            updateMeta(mapped);
+            mapped->copyAttributes(inputField);
+            mapped->setGrid(outputGrid);
+            return mapped;
+        } else {
+            sendError("An error occurred while transforming the filter output field %s to a Vistle object.",
+                      fieldName.c_str());
+            return nullptr;
+        }
+    }
+}
+
 bool VtkmModule2::compute(const std::shared_ptr<BlockTask> &task) const
 {
     Object::const_ptr inputGrid;
@@ -129,6 +179,8 @@ bool VtkmModule2::compute(const std::shared_ptr<BlockTask> &task) const
     auto status = ReadInPorts(task, inputGrid, inputFields);
     if (!isValid(status))
         return true;
+    // TODO: make this status
+    assert(m_outputPorts.size() == inputFields.size());
 
     status = prepareInputGrid(inputGrid, inputDataset);
     if (!isValid(status))
@@ -148,21 +200,11 @@ bool VtkmModule2::compute(const std::shared_ptr<BlockTask> &task) const
         if (!isValid(status))
             return true;
 
-        if (inputDataset.HasField(fieldName)) {
-            // ... run filter for each field ...
-            runFilter(inputDataset, fieldName, outputDataset);
+        // ... run filter for each field ...
+        runFilter(inputDataset, fieldName, outputDataset);
 
-            // ... and transform filter output, i.e., grid and dataset, to Vistle objects
-            prepareOutput(outputDataset, fieldName, inputGrid, inputFields[i], outputGrid, outputField);
-            task->addObject(m_outputPorts[i], outputField);
-        } else {
-            // ... this is specific to the CellToVertVtkm module
-            sendInfo("No filter applied for " + m_outputPorts[i]->getName());
-            auto ndata = inputFields[i]->clone();
-            ndata->setGrid(inputGrid);
-            updateMeta(ndata);
-            task->addObject(m_outputPorts[i], ndata);
-        }
+        // ... and transform filter output, i.e., grid and dataset, to Vistle objects
+        prepareOutput(outputDataset, m_outputPorts[i], fieldName, inputGrid, inputFields[i], outputGrid, outputField);
     }
 
 
