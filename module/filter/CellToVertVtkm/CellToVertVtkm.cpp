@@ -23,20 +23,19 @@ CellToVertVtkm::~CellToVertVtkm()
 
 void CellToVertVtkm::runFilter(vtkm::cont::DataSet &input, std::string &fieldName, vtkm::cont::DataSet &output) const
 {
-    if (!input.HasField(fieldName))
-        return;
-
+    if (input.HasField(fieldName)) {
 #ifdef VERTTOCELL
-    auto filter = vtkm::filter::field_conversion::CellAverage();
+        auto filter = vtkm::filter::field_conversion::CellAverage();
 #else
-    auto filter = vtkm::filter::field_conversion::PointAverage();
+        auto filter = vtkm::filter::field_conversion::PointAverage();
 #endif
-    filter.SetActiveField(fieldName);
-    output = filter.Execute(input);
+        filter.SetActiveField(fieldName);
+        output = filter.Execute(input);
+    }
 }
 
 ModuleStatusPtr CellToVertVtkm::CheckField(const Object::const_ptr &grid, const DataBase::const_ptr &field,
-                                           std::string &portName) const
+                                           const std::string &portName) const
 {
     auto status = VtkmModule2::CheckField(grid, field, portName);
     if (!isValid(status)) {
@@ -77,6 +76,16 @@ bool CellToVertVtkm::prepareOutput(const std::shared_ptr<BlockTask> &task, Port 
 {
     if (dataset.HasField(fieldName)) {
         VtkmModule2::prepareOutput(task, port, dataset, outputGrid, inputGrid, inputField, fieldName, outputField);
+
+        if (outputField) {
+            outputGrid = prepareOutputGrid(dataset, inputGrid, outputGrid);
+
+#ifdef VERTTOCELL
+            outputField->setMapping(DataBase::Element);
+#else
+            outputField->setMapping(DataBase::Vertex);
+#endif
+        }
     } else {
         sendInfo("No filter applied for " + port->getName());
         auto ndata = inputField->clone();

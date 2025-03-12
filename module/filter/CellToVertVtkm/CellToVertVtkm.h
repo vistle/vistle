@@ -16,16 +16,16 @@ public:
 
 private:
     ModuleStatusPtr CheckField(const vistle::Object::const_ptr &grid, const vistle::DataBase::const_ptr &field,
-                               std::string &portName) const;
+                               const std::string &portName) const override;
     ModuleStatusPtr TransformField(const vistle::Object::const_ptr &grid, const vistle::DataBase::const_ptr &field,
-                                   std::string &fieldName, vtkm::cont::DataSet &dataset) const;
+                                   std::string &fieldName, vtkm::cont::DataSet &dataset) const override;
 
-    void runFilter(vtkm::cont::DataSet &input, std::string &fieldName, vtkm::cont::DataSet &output) const;
+    void runFilter(vtkm::cont::DataSet &input, std::string &fieldName, vtkm::cont::DataSet &output) const override;
 
     bool prepareOutput(const std::shared_ptr<vistle::BlockTask> &task, vistle::Port *port, vtkm::cont::DataSet &dataset,
                        vistle::Object::ptr &outputGrid, vistle::Object::const_ptr &inputGrid,
                        vistle::DataBase::const_ptr &inputField, std::string &fieldName,
-                       vistle::DataBase::ptr &outputField) const;
+                       vistle::DataBase::ptr &outputField) const override;
 };
 
 #endif // CELLTOVERTVTKM_H
