@@ -24,20 +24,19 @@ protected:
 
     std::vector<vistle::Port *> m_inputPorts, m_outputPorts;
 
-    virtual ModuleStatusPtr CheckGrid(const vistle::Object::const_ptr &grid) const;
-    virtual ModuleStatusPtr TransformGrid(const vistle::Object::const_ptr &grid, vtkm::cont::DataSet &dataset) const;
-    virtual ModuleStatusPtr prepareInputGrid(const vistle::Object::const_ptr &grid, vtkm::cont::DataSet &dataset) const;
-
-    virtual ModuleStatusPtr CheckField(const vistle::Object::const_ptr &grid, const vistle::DataBase::const_ptr &field,
-                                       const std::string &portName) const;
-    virtual ModuleStatusPtr TransformField(const vistle::Object::const_ptr &grid,
-                                           const vistle::DataBase::const_ptr &field, std::string &fieldName,
-                                           vtkm::cont::DataSet &dataset) const;
-    virtual ModuleStatusPtr prepareInputField(const vistle::Object::const_ptr &grid,
-                                              const vistle::DataBase::const_ptr &field, std::string &fieldName,
-                                              vtkm::cont::DataSet &dataset, const std::string &portName) const;
-    virtual ModuleStatusPtr ReadInPorts(const std::shared_ptr<vistle::BlockTask> &task, vistle::Object::const_ptr &grid,
+    virtual ModuleStatusPtr readInPorts(const std::shared_ptr<vistle::BlockTask> &task, vistle::Object::const_ptr &grid,
                                         std::vector<vistle::DataBase::const_ptr> &fields) const;
+
+    virtual ModuleStatusPtr checkInputGrid(const vistle::Object::const_ptr &grid) const;
+    virtual ModuleStatusPtr transformInputGrid(const vistle::Object::const_ptr &grid,
+                                               vtkm::cont::DataSet &dataset) const;
+
+    virtual ModuleStatusPtr checkInputField(const vistle::Object::const_ptr &grid,
+                                            const vistle::DataBase::const_ptr &field,
+                                            const std::string &portName) const;
+    virtual ModuleStatusPtr transformInputField(const vistle::Object::const_ptr &grid,
+                                                const vistle::DataBase::const_ptr &field, std::string &fieldName,
+                                                vtkm::cont::DataSet &dataset) const;
 
     virtual void runFilter(vtkm::cont::DataSet &input, std::string &fieldName, vtkm::cont::DataSet &output) const = 0;
 
@@ -53,7 +52,6 @@ protected:
                                                      const vistle::DataBase::const_ptr &inputField,
                                                      std::string &fieldName, const vistle::Object::const_ptr &inputGrid,
                                                      vistle::Object::ptr &outputGrid) const;
-
 
     bool isValid(const ModuleStatusPtr &status) const;
 

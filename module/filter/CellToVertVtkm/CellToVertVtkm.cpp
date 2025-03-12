@@ -34,10 +34,10 @@ void CellToVertVtkm::runFilter(vtkm::cont::DataSet &input, std::string &fieldNam
     }
 }
 
-ModuleStatusPtr CellToVertVtkm::CheckField(const Object::const_ptr &grid, const DataBase::const_ptr &field,
+ModuleStatusPtr CellToVertVtkm::checkInputField(const Object::const_ptr &grid, const DataBase::const_ptr &field,
                                            const std::string &portName) const
 {
-    auto status = VtkmModule2::CheckField(grid, field, portName);
+    auto status = VtkmModule2::checkInputField(grid, field, portName);
     if (!isValid(status)) {
         return status;
     }
@@ -52,7 +52,7 @@ ModuleStatusPtr CellToVertVtkm::CheckField(const Object::const_ptr &grid, const 
     return Success();
 }
 
-ModuleStatusPtr CellToVertVtkm::TransformField(const Object::const_ptr &grid, const DataBase::const_ptr &field,
+ModuleStatusPtr CellToVertVtkm::transformInputField(const Object::const_ptr &grid, const DataBase::const_ptr &field,
                                                std::string &fieldName, vtkm::cont::DataSet &dataset) const
 {
     auto mapping = field->guessMapping(grid);
@@ -63,7 +63,7 @@ ModuleStatusPtr CellToVertVtkm::TransformField(const Object::const_ptr &grid, co
     if (mapping == DataBase::Element) {
 #endif
         // transform to VTK-m + add to dataset
-        return VtkmModule2::TransformField(grid, field, fieldName, dataset);
+        return VtkmModule2::transformInputField(grid, field, fieldName, dataset);
     }
 
     return Success();

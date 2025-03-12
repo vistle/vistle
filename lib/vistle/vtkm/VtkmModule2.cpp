@@ -43,7 +43,7 @@ void copyMetadata2(const Object::const_ptr &from, Object::ptr &to)
     }
 }
 
-ModuleStatusPtr VtkmModule2::CheckGrid(const Object::const_ptr &grid) const
+ModuleStatusPtr VtkmModule2::checkInputGrid(const Object::const_ptr &grid) const
 {
     if (!grid) {
         std::ostringstream msg;
@@ -53,21 +53,12 @@ ModuleStatusPtr VtkmModule2::CheckGrid(const Object::const_ptr &grid) const
     return Success();
 }
 
-ModuleStatusPtr VtkmModule2::TransformGrid(const Object::const_ptr &grid, vtkm::cont::DataSet &dataset) const
+ModuleStatusPtr VtkmModule2::transformInputGrid(const Object::const_ptr &grid, vtkm::cont::DataSet &dataset) const
 {
     return vtkmSetGrid(dataset, grid);
 }
 
-ModuleStatusPtr VtkmModule2::prepareInputGrid(const Object::const_ptr &grid, vtkm::cont::DataSet &dataset) const
-{
-    auto status = CheckGrid(grid);
-    if (!isValid(status))
-        return status;
-
-    return TransformGrid(grid, dataset);
-}
-
-ModuleStatusPtr VtkmModule2::ReadInPorts(const std::shared_ptr<BlockTask> &task, Object::const_ptr &grid,
+ModuleStatusPtr VtkmModule2::readInPorts(const std::shared_ptr<BlockTask> &task, Object::const_ptr &grid,
                                          std::vector<DataBase::const_ptr> &fields) const
 { // get grid and make sure all mapped data fields are defined on the same grid
     for (int i = 0; i < m_numPorts; ++i) {
@@ -104,8 +95,8 @@ ModuleStatusPtr VtkmModule2::ReadInPorts(const std::shared_ptr<BlockTask> &task,
     return Success();
 }
 
-ModuleStatusPtr VtkmModule2::CheckField(const Object::const_ptr &grid, const DataBase::const_ptr &field,
-                                        const std::string &portName) const
+ModuleStatusPtr VtkmModule2::checkInputField(const Object::const_ptr &grid, const DataBase::const_ptr &field,
+                                             const std::string &portName) const
 {
     if (!field) {
         std::stringstream msg;
@@ -115,24 +106,13 @@ ModuleStatusPtr VtkmModule2::CheckField(const Object::const_ptr &grid, const Dat
     return Success();
 }
 
-ModuleStatusPtr VtkmModule2::TransformField(const Object::const_ptr &grid, const DataBase::const_ptr &field,
-                                            std::string &fieldName, vtkm::cont::DataSet &dataset) const
+ModuleStatusPtr VtkmModule2::transformInputField(const Object::const_ptr &grid, const DataBase::const_ptr &field,
+                                                 std::string &fieldName, vtkm::cont::DataSet &dataset) const
 {
     if (auto name = field->getAttribute("_species"); !name.empty())
         fieldName = name;
 
     return vtkmAddField(dataset, field, fieldName);
-}
-
-ModuleStatusPtr VtkmModule2::prepareInputField(const Object::const_ptr &grid, const DataBase::const_ptr &field,
-                                               std::string &fieldName, vtkm::cont::DataSet &dataset,
-                                               const std::string &portName) const
-{
-    auto status = CheckField(grid, field, portName);
-    if (!isValid(status))
-        return status;
-
-    return TransformField(grid, field, fieldName, dataset);
 }
 
 bool VtkmModule2::prepareOutput(const std::shared_ptr<vistle::BlockTask> &task, vistle::Port *port,
@@ -146,6 +126,7 @@ bool VtkmModule2::prepareOutput(const std::shared_ptr<vistle::BlockTask> &task, 
 
     outputField = prepareOutputField(dataset, inputField, fieldName, inputGrid, outputGrid);
 
+    //TODO: make this its own function
     if (outputField) {
         task->addObject(port, outputField);
     } else {
@@ -195,13 +176,17 @@ bool VtkmModule2::compute(const std::shared_ptr<BlockTask> &task) const
 
     vtkm::cont::DataSet inputDataset, outputDataset;
 
-    auto status = ReadInPorts(task, inputGrid, inputFields);
+    auto status = readInPorts(task, inputGrid, inputFields);
     if (!isValid(status))
         return true;
     // TODO: make this status
     assert(m_outputPorts.size() == inputFields.size());
 
-    status = prepareInputGrid(inputGrid, inputDataset);
+    status = checkInputGrid(inputGrid);
+    if (!isValid(status))
+        return true;
+
+    status = transformInputGrid(inputGrid, inputDataset);
     if (!isValid(status))
         return true;
 
@@ -215,7 +200,11 @@ bool VtkmModule2::compute(const std::shared_ptr<BlockTask> &task) const
             continue;
 
         // ... check input field and transform it to VTK-m
-        status = prepareInputField(inputGrid, inputFields[i], fieldName, inputDataset, m_inputPorts[i]->getName());
+        status = checkInputField(inputGrid, inputFields[i], m_inputPorts[i]->getName());
+        if (!isValid(status))
+            return true;
+
+        status = transformInputField(inputGrid, inputFields[i], fieldName, inputDataset);
         if (!isValid(status))
             return true;
 

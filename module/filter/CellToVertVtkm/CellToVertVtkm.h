@@ -15,9 +15,9 @@ public:
     ~CellToVertVtkm();
 
 private:
-    ModuleStatusPtr CheckField(const vistle::Object::const_ptr &grid, const vistle::DataBase::const_ptr &field,
+    ModuleStatusPtr checkInputField(const vistle::Object::const_ptr &grid, const vistle::DataBase::const_ptr &field,
                                const std::string &portName) const override;
-    ModuleStatusPtr TransformField(const vistle::Object::const_ptr &grid, const vistle::DataBase::const_ptr &field,
+    ModuleStatusPtr transformInputField(const vistle::Object::const_ptr &grid, const vistle::DataBase::const_ptr &field,
                                    std::string &fieldName, vtkm::cont::DataSet &dataset) const override;
 
     void runFilter(vtkm::cont::DataSet &input, std::string &fieldName, vtkm::cont::DataSet &output) const override;
