@@ -41,6 +41,7 @@ public:
     Index cellNumFaces(Index elem) const override { return 1; }
     Index cellNumVertices(Index elem) const override { return N; }
     std::vector<Index> cellVertices(Index elem) const override;
+    Vector3 cellCenter(Index elem) const override;
 
 private:
     void createCelltree(Index nelem, const Index *cl) const;

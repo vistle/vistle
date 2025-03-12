@@ -124,6 +124,24 @@ std::vector<Index> Ngons<N>::cellVertices(Index elem) const
 }
 
 template<int N>
+Vector3 Ngons<N>::cellCenter(Index elem) const
+{
+    const Scalar *x = &this->x()[0];
+    const Scalar *y = &this->y()[0];
+    const Scalar *z = &this->z()[0];
+    auto verts = cellVertices(elem);
+    Vector3 center(0, 0, 0);
+    if (verts.empty())
+        return center;
+    for (auto v: verts) {
+        Vector3 p(x[v], y[v], z[v]);
+        center += p;
+    }
+    center *= 1.0f / verts.size();
+    return center;
+}
+
+template<int N>
 bool Ngons<N>::hasCelltree() const
 {
     if (m_celltree)

@@ -24,7 +24,6 @@ public:
     virtual Index findCell(const Vector3 &point, Index hint = InvalidIndex, int flags = NoFlags) const = 0;
     virtual bool inside(Index elem, const Vector3 &point) const = 0;
     virtual std::pair<Vector3, Vector3> cellBounds(Index elem) const = 0;
-    virtual Vector3 cellCenter(Index elem) const = 0; //< a point inside the convex hull of the cell
     virtual Scalar cellDiameter(Index elem) const = 0; //< approximate diameter of cell
     virtual Scalar exitDistance(Index elem, const Vector3 &point, const Vector3 &dir) const = 0;
     virtual std::vector<Index> getNeighborElements(Index elem)

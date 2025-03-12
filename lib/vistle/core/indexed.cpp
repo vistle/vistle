@@ -420,6 +420,23 @@ Index Indexed::cellNumFaces(Index elem) const
     return InvalidIndex;
 }
 
+Vector3 Indexed::cellCenter(Index elem) const
+{
+    const Scalar *x = &this->x()[0];
+    const Scalar *y = &this->y()[0];
+    const Scalar *z = &this->z()[0];
+    auto verts = cellVertices(elem);
+    Vector3 center(0, 0, 0);
+    if (verts.empty())
+        return center;
+    for (auto v: verts) {
+        Vector3 p(x[v], y[v], z[v]);
+        center += p;
+    }
+    center *= 1.0f / verts.size();
+    return center;
+}
+
 void Indexed::refreshImpl() const
 {
     const Data *d = static_cast<Data *>(m_data);

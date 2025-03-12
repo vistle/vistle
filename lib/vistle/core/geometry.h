@@ -27,6 +27,7 @@ public:
     virtual Index cellNumFaces(Index elem) const = 0;
     virtual Index cellNumVertices(Index elem) const = 0;
     virtual std::vector<Index> cellVertices(Index elem) const = 0;
+    virtual Vector3 cellCenter(Index elem) const = 0; //< a point inside the convex hull of the cell
 };
 
 } // namespace vistle
