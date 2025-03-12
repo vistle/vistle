@@ -69,6 +69,7 @@ public:
     std::vector<Index> cellVertices(Index elem) const override;
     Index cellNumFaces(Index elem) const override;
     Index cellNumVertices(Index elem) const override;
+    Vector3 cellCenter(Index elem) const override;
 
 private:
     mutable Index m_numEl = InvalidIndex, m_numCl = InvalidIndex;
