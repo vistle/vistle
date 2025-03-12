@@ -39,7 +39,7 @@ vistle::Object::ptr get(const visit_smart_handle<HandleType::CurvilinearMesh> &m
             throw EngineException("makeStructuredMesh: simv2_CurvilinearMesh_getCoords failed");
         }
         assert(dims[0] * dims[1] * dims[2] >= 0);
-        auto mesh = make_ptr<vistle::StructuredGrid>((Index)dims[0], (Index)dims[1], (Index)dims[2]);
+        auto mesh = std::make_shared<vistle::StructuredGrid>((Index)dims[0], (Index)dims[1], (Index)dims[2]);
         if (ndims == 2) {
             std::fill(mesh->z().begin(), mesh->z().end(), 0);
         }
@@ -58,7 +58,7 @@ vistle::Object::ptr getCombinedUnstructured(const MeshInfo &meshInfo, bool vtkFo
 
     size_t totalNumElements = 0, totalNumVerts = 0;
     const int numCorners = meshInfo.dim == 2 ? 4 : 8;
-    auto mesh = make_ptr<vistle::UnstructuredGrid>(Index{0}, Index{0}, Index{0});
+    auto mesh = std::make_shared<vistle::UnstructuredGrid>(Index{0}, Index{0}, Index{0});
     std::array<vistle::Scalar *, 3> gridCoords{mesh->x().data(), mesh->y().data(), mesh->z().data()};
 
     for (size_t iteration = 0; iteration < meshInfo.domains.size; iteration++) {

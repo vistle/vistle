@@ -186,7 +186,7 @@ bool Chainmail::compute()
     }
 
     Index numCoords = numTori * vertsPerTorus;
-    auto toriOut = make_ptr<Quads>(numCoords * Index(4), numCoords, unstrIn->meta());
+    auto toriOut = std::make_shared<Quads>(numCoords * Index(4), numCoords, unstrIn->meta());
     toriOut->copyAttributes(unstrIn);
     Index currentQuadIndex = 0;
     for (Index elementIndex = 0; elementIndex < unstrIn->getNumElements(); elementIndex++) {
@@ -227,7 +227,7 @@ bool Chainmail::compute()
             }
         }
     }
-    auto normals = make_ptr<Normals>(numCoords);
+    auto normals = std::make_shared<Normals>(numCoords);
     for (Index i = 0; i < numCoords; i++) {
         std::array<Index, 4> indices{
             Index((i / vertsPerCircle) * vertsPerCircle + (i + 1) % vertsPerCircle),

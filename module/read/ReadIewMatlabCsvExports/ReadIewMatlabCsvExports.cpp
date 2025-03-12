@@ -110,7 +110,7 @@ bool Transversalflussmaschine::read(Token &token, int timestep, int block)
         size_t numVertices = dataVertices[0].size();
         std::array<Scalar *, 3> vertices;
         if (!m_connectivity) {
-            auto points = make_ptr<Points>(numVertices);
+            auto points = std::make_shared<Points>(numVertices);
             vertices = {points->x().begin(), points->y().begin(), points->z().begin()};
             m_grid = points;
         } else {
@@ -122,7 +122,7 @@ bool Transversalflussmaschine::read(Token &token, int timestep, int block)
 
             size_t numElements = connectivity[0].size();
             size_t numCorners = cornersPerElement * numElements;
-            UnstructuredGrid::ptr grid = make_ptr<UnstructuredGrid>(numElements, numCorners, numVertices);
+            UnstructuredGrid::ptr grid = std::make_shared<UnstructuredGrid>(numElements, numCorners, numVertices);
             vertices = {grid->x().begin(), grid->y().begin(), grid->z().begin()};
             m_grid = grid;
             auto tl = grid->tl().data();
@@ -156,7 +156,7 @@ bool Transversalflussmaschine::read(Token &token, int timestep, int block)
         switch (m_format->getValue()) {
         case ScalarFile: {
             auto data = m_data[0]->GetColumn<float>(timestep + numCoords);
-            auto scal = make_ptr<Vec<Scalar>>(data.size());
+            auto scal = std::make_shared<Vec<Scalar>>(data.size());
             std::copy(data.begin(), data.end(), scal->x().begin());
             obj = scal;
 
@@ -164,7 +164,7 @@ bool Transversalflussmaschine::read(Token &token, int timestep, int block)
         }
         case VectorFiles: {
             auto size = m_data[0]->GetColumn<float>(timestep + numCoords).size();
-            auto vec = make_ptr<Vec<Scalar, 3>>(size, 0);
+            auto vec = std::make_shared<Vec<Scalar, 3>>(size, 0);
             for (size_t i = 0; i < 3; i++) {
                 if (m_data[i]) {
                     auto data = m_data[i]->GetColumn<float>(timestep + numCoords);

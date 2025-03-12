@@ -141,7 +141,7 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, std::string &diagnostic
     Index ncoordVtk = vugrid->GetNumberOfPoints();
     Index nelemVtk = vugrid->GetNumberOfCells();
 
-    UnstructuredGrid::ptr cugrid = make_ptr<UnstructuredGrid>(sizes.numElements, (Index)0, ncoordVtk);
+    UnstructuredGrid::ptr cugrid = std::make_shared<UnstructuredGrid>(sizes.numElements, (Index)0, ncoordVtk);
 
     Scalar *xc = cugrid->x().data();
     Scalar *yc = cugrid->y().data();
@@ -333,7 +333,7 @@ Object::ptr vtkPoly2Vistle(vtkPolyData *vpolydata, std::string &diag)
 
         vtkCellArray *polys = vpolydata->GetPolys();
         Index ncorner = polys->GetNumberOfConnectivityEntries() - npolys + 3 * nstriptris;
-        Polygons::ptr cpoly = make_ptr<Polygons>(nstriptris + npolys, ncorner, ncoord);
+        Polygons::ptr cpoly = std::make_shared<Polygons>(nstriptris + npolys, ncorner, ncoord);
         coords = cpoly;
 
         Index *cornerlist = cpoly->cl().data();
@@ -383,7 +383,7 @@ Object::ptr vtkPoly2Vistle(vtkPolyData *vpolydata, std::string &diag)
     } else if (nlines > 0) {
         vtkCellArray *lines = vpolydata->GetLines();
         Index ncorner = lines->GetConnectivityArray()->GetSize();
-        Lines::ptr clines = make_ptr<Lines>(nlines, ncorner, ncoord);
+        Lines::ptr clines = std::make_shared<Lines>(nlines, ncorner, ncoord);
         coords = clines;
 
         Index *cornerlist = clines->cl().data();
@@ -411,7 +411,7 @@ Object::ptr vtkPoly2Vistle(vtkPolyData *vpolydata, std::string &diag)
     } else if (nverts > 0) {
         if (nverts != ncoord)
             return coords;
-        Points::ptr cpoints = make_ptr<Points>(ncoord);
+        Points::ptr cpoints = std::make_shared<Points>(ncoord);
         coords = cpoints;
     }
 
@@ -435,7 +435,7 @@ Object::ptr vtkSGrid2Vistle(vtkStructuredGrid *vsgrid)
     int dim[3];
     vsgrid->GetDimensions(dim);
 
-    StructuredGrid::ptr csgrid = make_ptr<StructuredGrid>((Index)dim[0], (Index)dim[1], (Index)dim[2]);
+    StructuredGrid::ptr csgrid = std::make_shared<StructuredGrid>((Index)dim[0], (Index)dim[1], (Index)dim[2]);
     Scalar *xc = csgrid->x().data();
     Scalar *yc = csgrid->y().data();
     Scalar *zc = csgrid->z().data();
@@ -466,7 +466,7 @@ Object::ptr vtkImage2Vistle(vtkImageData *vimage)
     vimage->GetOrigin(origin);
     double spacing[3] = {1., 1., 1.};
     vimage->GetSpacing(spacing);
-    UniformGrid::ptr ug = make_ptr<UniformGrid>((Index)n[0], (Index)n[1], (Index)n[2]);
+    UniformGrid::ptr ug = std::make_shared<UniformGrid>((Index)n[0], (Index)n[1], (Index)n[2]);
     for (int c = 0; c < 3; ++c) {
         ug->min()[c] = origin[c] + e[2 * c] * spacing[c];
         ug->max()[c] = origin[c] + (e[2 * c + 1]) * spacing[c];
@@ -486,7 +486,7 @@ Object::ptr vtkRGrid2Vistle(vtkRectilinearGrid *vrgrid)
     int n[3];
     vrgrid->GetDimensions(n);
 
-    RectilinearGrid::ptr rgrid = make_ptr<RectilinearGrid>((Index)n[0], (Index)n[1], (Index)n[2]);
+    RectilinearGrid::ptr rgrid = std::make_shared<RectilinearGrid>((Index)n[0], (Index)n[1], (Index)n[2]);
     Scalar *c[3];
     for (int i = 0; i < 3; ++i) {
         c[i] = rgrid->coords(i).data();
@@ -528,7 +528,7 @@ DataBase::ptr vtkArray2Vistle(vtkType *vd, Object::const_ptr grid)
     }
     switch (vd->GetNumberOfComponents()) {
     case 1: {
-        typename Vec<S, 1>::ptr cf = make_ptr<Vec<S, 1>>(n);
+        typename Vec<S, 1>::ptr cf = std::make_shared<Vec<S, 1>>(n);
         S *x = cf->x().data();
         Index l = 0;
         for (Index k = 0; k < dataDim[2]; ++k) {
@@ -545,7 +545,7 @@ DataBase::ptr vtkArray2Vistle(vtkType *vd, Object::const_ptr grid)
         return cf;
     } break;
     case 2: {
-        typename Vec<S, 2>::ptr cv = make_ptr<Vec<S, 2>>(n);
+        typename Vec<S, 2>::ptr cv = std::make_shared<Vec<S, 2>>(n);
         S *x = cv->x().data();
         S *y = cv->y().data();
         Index l = 0;
@@ -571,7 +571,7 @@ DataBase::ptr vtkArray2Vistle(vtkType *vd, Object::const_ptr grid)
         return cv;
     }
     case 3: {
-        typename Vec<S, 3>::ptr cv = make_ptr<Vec<S, 3>>(n);
+        typename Vec<S, 3>::ptr cv = std::make_shared<Vec<S, 3>>(n);
         S *x = cv->x().data();
         S *y = cv->y().data();
         S *z = cv->z().data();

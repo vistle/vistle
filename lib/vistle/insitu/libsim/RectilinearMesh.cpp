@@ -42,7 +42,7 @@ Object::ptr getCombinedUnstructured(const MeshInfo &meshInfo, bool vtkFormat)
     using namespace UnstructuredMesh;
     size_t totalNumElements = 0, totalNumVerts = 0;
     const int numCorners = meshInfo.dim == 2 ? 4 : 8;
-    auto mesh = make_ptr<UnstructuredGrid>(Index{0}, Index{0}, Index{0});
+    auto mesh = std::make_shared<UnstructuredGrid>(Index{0}, Index{0}, Index{0});
     std::array<Scalar *, 3> gridCoords{mesh->x().data(), mesh->y().data(), mesh->z().data()};
 
     for (size_t iteration = 0; iteration < meshInfo.domains.size; iteration++) {
@@ -90,9 +90,9 @@ namespace detail {
 
 RectilinearGrid::ptr makeVistleMesh(const std::array<Array<HandleType::Coords>, 3> &meshData)
 {
-    auto mesh = make_ptr<RectilinearGrid>(std::max(Index(1), Index(meshData[0].size)),
-                                          std::max(Index(1), Index(meshData[1].size)),
-                                          std::max(Index(1), Index(meshData[2].size)));
+    auto mesh = std::make_shared<RectilinearGrid>(std::max(Index(1), Index(meshData[0].size)),
+                                                  std::max(Index(1), Index(meshData[1].size)),
+                                                  std::max(Index(1), Index(meshData[2].size)));
 
     for (size_t i = 0; i < 3; ++i) {
         if (meshData[i].data) {

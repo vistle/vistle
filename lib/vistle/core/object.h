@@ -635,11 +635,5 @@ void V_COREEXPORT registerTypes();
 
 V_ENUM_OUTPUT_OP(Type, Object)
 
-template<typename O, typename... Args>
-typename O::ptr make_ptr(Args &&...args)
-{
-    return typename O::ptr(new O{std::forward<Args>(args)...});
-}
-
 } // namespace vistle
 #endif
