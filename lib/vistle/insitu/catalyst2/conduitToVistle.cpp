@@ -46,7 +46,7 @@ void getCoords(const conduit_cpp::Node &coords, Scalar *xOut, Scalar *yOut, Scal
 StructuredGrid::ptr toStructured(const conduit_cpp::Node &coords, const conduit_cpp::Node &dims)
 {
     auto d = getDims(dims);
-    StructuredGrid::ptr grid = make_ptr<StructuredGrid>(d[0], d[1], d[2]);
+    StructuredGrid::ptr grid = std::make_shared<StructuredGrid>(d[0], d[1], d[2]);
     auto x = grid->x().data();
     auto y = grid->y().data();
     auto z = grid->z().data();
@@ -117,7 +117,7 @@ UnstructuredGrid::ptr toUnstructured(const conduit_cpp::Node &coords, const cond
     }
 
     const size_t numVertices = coords["values/x"].number_of_elements(); //assume x/y/z have the same number of elements
-    auto grid = make_ptr<UnstructuredGrid>(numElements, numCorners, numVertices);
+    auto grid = std::make_shared<UnstructuredGrid>(numElements, numCorners, numVertices);
     auto cl = grid->cl().data();
     auto tl = grid->tl().data();
     auto el = grid->el().data();
@@ -209,7 +209,8 @@ vistle::DataBase::ptr conduitDataToVistle(const conduit_cpp::Node &field)
     }
     if (values.has_child("y")) {
         if (values.has_child("z")) {
-            auto vec = make_ptr<vistle::Vec<vistle::Scalar, 3>>((size_t)values["x"].dtype().number_of_elements());
+            auto vec =
+                std::make_shared<vistle::Vec<vistle::Scalar, 3>>((size_t)values["x"].dtype().number_of_elements());
             getCoords(field, vec->x().data(), vec->y().data(), vec->z().data());
             vec->setMapping(mapping);
             vec->addAttribute("_species", field.name());
@@ -219,7 +220,7 @@ vistle::DataBase::ptr conduitDataToVistle(const conduit_cpp::Node &field)
             return nullptr;
         }
     } else {
-        auto vec = make_ptr<vistle::Vec<vistle::Scalar, 1>>((size_t)values["x"].dtype().number_of_elements());
+        auto vec = std::make_shared<vistle::Vec<vistle::Scalar, 1>>((size_t)values["x"].dtype().number_of_elements());
         getCoord(values, vec->x().data());
         vec->setMapping(mapping);
         vec->addAttribute("_species", field.name());

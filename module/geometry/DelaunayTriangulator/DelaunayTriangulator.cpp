@@ -70,7 +70,7 @@ auto convertFromTetGen(const tetgenio &out)
     size_t numElements = out.numberoftetrahedra;
     size_t numCorners = numElements * out.numberofcorners;
     size_t numVertices = out.numberofpoints;
-    auto &grid = retval.first = make_ptr<UnstructuredGrid>(numElements, numCorners, numVertices);
+    auto &grid = retval.first = std::make_shared<UnstructuredGrid>(numElements, numCorners, numVertices);
     for (size_t i = 0; i < numVertices; ++i) {
         grid->x().data()[i] = out.pointlist[i * 3];
         grid->y().data()[i] = out.pointlist[i * 3 + 1];
@@ -86,7 +86,7 @@ auto convertFromTetGen(const tetgenio &out)
     }
     grid->el().data()[numElements] = numElements * out.numberofcorners;
     if (out.numberofpointattributes == Dim) {
-        auto &retScalar = retval.second = make_ptr<Vec<Scalar, Dim>>(numVertices);
+        auto &retScalar = retval.second = std::make_shared<Vec<Scalar, Dim>>(numVertices);
         for (size_t i = 0; i < numVertices; ++i) {
             retScalar->x()[i * Dim] = out.pointattributelist[i];
             if (Dim > 1)

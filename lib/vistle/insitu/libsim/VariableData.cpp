@@ -18,7 +18,7 @@ vistle::insitu::libsim::VariableData::allocVarForCombinedMesh(const VariableInfo
     }
     vistle::Index size =
         varInfo.mapping == vistle::DataBase::Mapping::Vertex ? unstr->getNumVertices() : unstr->getNumElements();
-    auto var = make_ptr<vistle::Vec<vistle::Scalar, 1>>(size);
+    auto var = std::make_shared<vistle::Vec<vistle::Scalar, 1>>(size);
     var->setMapping(varInfo.mapping);
     var->setGrid(unstr);
 

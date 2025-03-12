@@ -28,7 +28,7 @@ namespace UnstructuredMesh {
 Object::ptr get(const visit_smart_handle<HandleType::UnstructuredMesh> &meshHandle)
 {
     if (simv2_UnstructuredMesh_check(meshHandle) == VISIT_OKAY) {
-        auto mesh = make_ptr<UnstructuredGrid>(Index{0}, Index{0}, Index{0});
+        auto mesh = std::make_shared<UnstructuredGrid>(Index{0}, Index{0}, Index{0});
         detail::fillTypeConnAndElemLists(meshHandle, mesh);
 
 

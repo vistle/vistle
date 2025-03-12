@@ -254,12 +254,12 @@ bool ReadCsv::readFile(Token &token, int timestep, int block)
         return true;
     }
     sendInfo("Reading block %d, %s", block, getFilename(m_directory->getValue(), block).c_str());
-    vistle::Points::ptr points = make_ptr<vistle::Points>((size_t)0);
+    vistle::Points::ptr points = std::make_shared<vistle::Points>((size_t)0);
 
     std::array<vistle::Vec<Scalar>::ptr, NUM_DATA_FIELDS> dataObjects;
     for (size_t i = 0; i < NUM_DATA_FIELDS; i++) {
         if (getDataSelection(i) != 0) {
-            dataObjects[i] = make_ptr<vistle::Vec<Scalar>>((size_t)0);
+            dataObjects[i] = std::make_shared<vistle::Vec<Scalar>>((size_t)0);
         }
     }
     if (m_layersInOneObject->getValue()) {
