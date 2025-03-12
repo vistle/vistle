@@ -3009,6 +3009,20 @@ void Hub::cacheParameters(int oldModuleId, int newModuleId)
             m_sendAfterSpawn[newModuleId].emplace_back(pm);
         }
     }
+
+    std::string suffix = "[" + std::to_string(oldModuleId) + "]";
+    std::string nsuffix = "[" + std::to_string(newModuleId) + "]";
+    for (auto pnbase: {"position", "layer"}) {
+        auto po = std::string(pnbase) + suffix;
+        auto pn = std::string(pnbase) + nsuffix;
+        auto p = session.findParameter(po);
+        if (p && !p->isDefault()) {
+            auto pm = message::SetParameter(newModuleId, pn, p);
+            pm.setDelayed();
+            pm.setDestId(session.id());
+            m_sendAfterSpawn[newModuleId].emplace_back(pm);
+        }
+    }
 }
 
 void Hub::cachePortConnections(int oldModuleId, int newModuleId)
