@@ -170,7 +170,7 @@ macro(vistle_find_package package)
             endif()
 
             if(hbpack STREQUAL "")
-                set(hbpack "${pack}")
+                string(TOLOWER ${pack} hbpack)
             endif()
 
             set(CMAKE_PREFIX_PATH /usr/local/opt/${hbpack} ${CMAKE_PREFIX_PATH})
