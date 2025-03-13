@@ -10,8 +10,6 @@
 #include "export.h"
 #include "module_status.h"
 
-//TODO: requireMappedData!
-
 class V_VTKM_EXPORT VtkmModule2: public vistle::Module {
 public:
     VtkmModule2(const std::string &name, int moduleID, mpi::communicator comm, int numPorts = 1,

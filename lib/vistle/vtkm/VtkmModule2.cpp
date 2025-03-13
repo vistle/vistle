@@ -144,7 +144,7 @@ DataBase::ptr VtkmModule2::prepareOutputField(vtkm::cont::DataSet &dataset, cons
                                               std::string &fieldName, const Object::const_ptr &inputGrid,
                                               Object::ptr &outputGrid) const
 {
-    if (m_requireMappedData && outputGrid) {
+    if (outputGrid) {
         if (auto mapped = vtkmGetField(dataset, fieldName)) {
             std::cerr << "mapped data: " << *mapped << std::endl;
             updateMeta(mapped);
@@ -190,13 +190,15 @@ bool VtkmModule2::compute(const std::shared_ptr<BlockTask> &task) const
             continue;
 
         // ... check input field and transform it to VTK-m
-        status = checkInputField(inputGrid, inputFields[i], m_inputPorts[i]->getName());
-        if (!isValid(status))
-            return true;
+        if (m_requireMappedData) {
+            status = checkInputField(inputGrid, inputFields[i], m_inputPorts[i]->getName());
+            if (!isValid(status))
+                return true;
 
-        status = transformInputField(inputGrid, inputFields[i], fieldName, inputDataset);
-        if (!isValid(status))
-            return true;
+            status = transformInputField(inputGrid, inputFields[i], fieldName, inputDataset);
+            if (!isValid(status))
+                return true;
+        }
 
         // ... run filter for each field ...
         runFilter(inputDataset, fieldName, outputDataset);
@@ -204,7 +206,8 @@ bool VtkmModule2::compute(const std::shared_ptr<BlockTask> &task) const
         // ... and transform filter output, i.e., grid and dataset, to Vistle objects
         outputGrid = prepareOutputGrid(outputDataset, inputGrid, outputGrid);
 
-        outputField = prepareOutputField(outputDataset, inputFields[i], fieldName, inputGrid, outputGrid);
+        if (m_requireMappedData)
+            outputField = prepareOutputField(outputDataset, inputFields[i], fieldName, inputGrid, outputGrid);
 
         addResultToPort(task, m_outputPorts[i], outputGrid, outputField, inputGrid, inputFields[i]);
     }
