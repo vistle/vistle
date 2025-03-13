@@ -28,36 +28,6 @@ VtkmModule::VtkmModule(const std::string &name, int moduleID, mpi::communicator 
 VtkmModule::~VtkmModule()
 {}
 
-// Copies metadata attributes from the grid `from` to the grid `to`.
-void copyMetadata(const Object::const_ptr &from, Object::ptr &to)
-{
-    to->copyAttributes(from);
-    to->setTransform(from->getTransform());
-    if (to->getTimestep() < 0) {
-        to->setTimestep(from->getTimestep());
-        to->setNumTimesteps(from->getNumTimesteps());
-    }
-    if (to->getBlock() < 0) {
-        to->setBlock(from->getBlock());
-        to->setNumBlocks(from->getNumBlocks());
-    }
-}
-
-ModuleStatusPtr VtkmModule::checkInputGrid(const Object::const_ptr &grid) const
-{
-    if (!grid) {
-        std::ostringstream msg;
-        msg << "Could not find a valid input grid!";
-        return Error(msg.str().c_str());
-    }
-    return Success();
-}
-
-ModuleStatusPtr VtkmModule::transformInputGrid(const Object::const_ptr &grid, vtkm::cont::DataSet &dataset) const
-{
-    return vtkmSetGrid(dataset, grid);
-}
-
 ModuleStatusPtr VtkmModule::readInPorts(const std::shared_ptr<BlockTask> &task, Object::const_ptr &grid,
                                         std::vector<DataBase::const_ptr> &fields) const
 { // get grid and make sure all mapped data fields are defined on the same grid
@@ -95,6 +65,21 @@ ModuleStatusPtr VtkmModule::readInPorts(const std::shared_ptr<BlockTask> &task, 
     return Success();
 }
 
+ModuleStatusPtr VtkmModule::checkInputGrid(const Object::const_ptr &grid) const
+{
+    if (!grid) {
+        std::ostringstream msg;
+        msg << "Could not find a valid input grid!";
+        return Error(msg.str().c_str());
+    }
+    return Success();
+}
+
+ModuleStatusPtr VtkmModule::transformInputGrid(const Object::const_ptr &grid, vtkm::cont::DataSet &dataset) const
+{
+    return vtkmSetGrid(dataset, grid);
+}
+
 ModuleStatusPtr VtkmModule::checkInputField(const Object::const_ptr &grid, const DataBase::const_ptr &field,
                                             const std::string &portName) const
 {
@@ -115,14 +100,18 @@ ModuleStatusPtr VtkmModule::transformInputField(const Object::const_ptr &grid, c
     return vtkmAddField(dataset, field, fieldName);
 }
 
-void VtkmModule::writeResultToPort(const std::shared_ptr<BlockTask> &task, const Object::const_ptr &inputGrid,
-                                   const DataBase::const_ptr &inputField, Port *port, Object::ptr &outputGrid,
-                                   DataBase::ptr &outputField) const
+// Copies metadata attributes from the grid `from` to the grid `to`.
+void copyMetadata(const Object::const_ptr &from, Object::ptr &to)
 {
-    if (outputField) {
-        task->addObject(port, outputField);
-    } else {
-        task->addObject(port, outputGrid);
+    to->copyAttributes(from);
+    to->setTransform(from->getTransform());
+    if (to->getTimestep() < 0) {
+        to->setTimestep(from->getTimestep());
+        to->setNumTimesteps(from->getNumTimesteps());
+    }
+    if (to->getBlock() < 0) {
+        to->setBlock(from->getBlock());
+        to->setNumBlocks(from->getNumBlocks());
     }
 }
 
@@ -159,6 +148,17 @@ DataBase::ptr VtkmModule::prepareOutputField(const vtkm::cont::DataSet &dataset,
     return nullptr;
 }
 
+void VtkmModule::writeResultToPort(const std::shared_ptr<BlockTask> &task, const Object::const_ptr &inputGrid,
+                                   const DataBase::const_ptr &inputField, Port *port, Object::ptr &outputGrid,
+                                   DataBase::ptr &outputField) const
+{
+    if (outputField) {
+        task->addObject(port, outputField);
+    } else {
+        task->addObject(port, outputGrid);
+    }
+}
+
 bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
 {
     Object::const_ptr inputGrid;
@@ -169,7 +169,7 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
     auto status = readInPorts(task, inputGrid, inputFields);
     if (!isValid(status))
         return true;
-    // TODO: make this status
+
     assert(m_outputPorts.size() == inputFields.size());
 
     status = checkInputGrid(inputGrid);

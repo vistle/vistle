@@ -17,6 +17,7 @@ public:
 private:
     ModuleStatusPtr checkInputField(const vistle::Object::const_ptr &grid, const vistle::DataBase::const_ptr &field,
                                     const std::string &portName) const override;
+
     ModuleStatusPtr transformInputField(const vistle::Object::const_ptr &grid, const vistle::DataBase::const_ptr &field,
                                         std::string &fieldName, vtkm::cont::DataSet &dataset) const override;
 
@@ -26,11 +27,13 @@ private:
     vistle::Object::ptr prepareOutputGrid(const vtkm::cont::DataSet &dataset,
                                           const vistle::Object::const_ptr &inputGrid,
                                           vistle::Object::ptr &outputGrid) const override;
+
     vistle::DataBase::ptr prepareOutputField(const vtkm::cont::DataSet &dataset,
                                              const vistle::Object::const_ptr &inputGrid,
                                              const vistle::DataBase::const_ptr &inputField,
                                              const std::string &fieldName,
                                              vistle::Object::ptr &outputGrid) const override;
+
     void writeResultToPort(const std::shared_ptr<vistle::BlockTask> &task, const vistle::Object::const_ptr &inputGrid,
                            const vistle::DataBase::const_ptr &inputField, vistle::Port *port,
                            vistle::Object::ptr &outputGrid, vistle::DataBase::ptr &outputField) const override;
