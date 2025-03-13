@@ -40,11 +40,6 @@ protected:
 
     virtual void runFilter(vtkm::cont::DataSet &input, std::string &fieldName, vtkm::cont::DataSet &output) const = 0;
 
-    virtual bool prepareOutput(const std::shared_ptr<vistle::BlockTask> &task, vistle::Port *port,
-                               vtkm::cont::DataSet &dataset, vistle::Object::ptr &outputGrid,
-                               vistle::Object::const_ptr &inputGrid, vistle::DataBase::const_ptr &inputField,
-                               std::string &fieldName, vistle::DataBase::ptr &outputField) const;
-
     virtual vistle::Object::ptr prepareOutputGrid(vtkm::cont::DataSet &dataset,
                                                   const vistle::Object::const_ptr &inputGrid,
                                                   vistle::Object::ptr &outputGrid) const;
@@ -52,6 +47,9 @@ protected:
                                                      const vistle::DataBase::const_ptr &inputField,
                                                      std::string &fieldName, const vistle::Object::const_ptr &inputGrid,
                                                      vistle::Object::ptr &outputGrid) const;
+    virtual void addResultToPort(const std::shared_ptr<vistle::BlockTask> &task, vistle::Port *port,
+                                 vistle::Object::ptr &outputGrid, vistle::DataBase::ptr &outputField,
+                                 vistle::Object::const_ptr &inputGrid, vistle::DataBase::const_ptr &inputField) const;
 
     bool isValid(const ModuleStatusPtr &status) const;
 

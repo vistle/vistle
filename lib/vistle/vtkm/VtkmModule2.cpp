@@ -115,25 +115,15 @@ ModuleStatusPtr VtkmModule2::transformInputField(const Object::const_ptr &grid, 
     return vtkmAddField(dataset, field, fieldName);
 }
 
-bool VtkmModule2::prepareOutput(const std::shared_ptr<vistle::BlockTask> &task, vistle::Port *port,
-                                vtkm::cont::DataSet &dataset, vistle::Object::ptr &outputGrid,
-                                vistle::Object::const_ptr &inputGrid, vistle::DataBase::const_ptr &inputField,
-                                std::string &fieldName, DataBase::ptr &outputField) const
+void VtkmModule2::addResultToPort(const std::shared_ptr<BlockTask> &task, Port *port, Object::ptr &outputGrid,
+                                  DataBase::ptr &outputField, Object::const_ptr &inputGrid,
+                                  DataBase::const_ptr &inputField) const
 {
-    outputGrid = prepareOutputGrid(dataset, inputGrid, outputGrid);
-    if (!outputGrid)
-        return true;
-
-    outputField = prepareOutputField(dataset, inputField, fieldName, inputGrid, outputGrid);
-
-    //TODO: make this its own function
     if (outputField) {
         task->addObject(port, outputField);
     } else {
         task->addObject(port, outputGrid);
     }
-
-    return true;
 }
 
 Object::ptr VtkmModule2::prepareOutputGrid(vtkm::cont::DataSet &dataset, const Object::const_ptr &inputGrid,
@@ -154,7 +144,7 @@ DataBase::ptr VtkmModule2::prepareOutputField(vtkm::cont::DataSet &dataset, cons
                                               std::string &fieldName, const Object::const_ptr &inputGrid,
                                               Object::ptr &outputGrid) const
 {
-    if (m_requireMappedData) {
+    if (m_requireMappedData && outputGrid) {
         if (auto mapped = vtkmGetField(dataset, fieldName)) {
             std::cerr << "mapped data: " << *mapped << std::endl;
             updateMeta(mapped);
@@ -212,8 +202,11 @@ bool VtkmModule2::compute(const std::shared_ptr<BlockTask> &task) const
         runFilter(inputDataset, fieldName, outputDataset);
 
         // ... and transform filter output, i.e., grid and dataset, to Vistle objects
-        prepareOutput(task, m_outputPorts[i], outputDataset, outputGrid, inputGrid, inputFields[i], fieldName,
-                      outputField);
+        outputGrid = prepareOutputGrid(outputDataset, inputGrid, outputGrid);
+
+        outputField = prepareOutputField(outputDataset, inputFields[i], fieldName, inputGrid, outputGrid);
+
+        addResultToPort(task, m_outputPorts[i], outputGrid, outputField, inputGrid, inputFields[i]);
     }
 
 

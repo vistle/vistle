@@ -35,7 +35,7 @@ void CellToVertVtkm::runFilter(vtkm::cont::DataSet &input, std::string &fieldNam
 }
 
 ModuleStatusPtr CellToVertVtkm::checkInputField(const Object::const_ptr &grid, const DataBase::const_ptr &field,
-                                           const std::string &portName) const
+                                                const std::string &portName) const
 {
     auto status = VtkmModule2::checkInputField(grid, field, portName);
     if (!isValid(status)) {
@@ -53,7 +53,7 @@ ModuleStatusPtr CellToVertVtkm::checkInputField(const Object::const_ptr &grid, c
 }
 
 ModuleStatusPtr CellToVertVtkm::transformInputField(const Object::const_ptr &grid, const DataBase::const_ptr &field,
-                                               std::string &fieldName, vtkm::cont::DataSet &dataset) const
+                                                    std::string &fieldName, vtkm::cont::DataSet &dataset) const
 {
     auto mapping = field->guessMapping(grid);
     // ... and check if we actually need to apply the filter for the current port
@@ -69,23 +69,41 @@ ModuleStatusPtr CellToVertVtkm::transformInputField(const Object::const_ptr &gri
     return Success();
 }
 
-bool CellToVertVtkm::prepareOutput(const std::shared_ptr<BlockTask> &task, Port *port, vtkm::cont::DataSet &dataset,
-                                   Object::ptr &outputGrid, Object::const_ptr &inputGrid,
-                                   DataBase::const_ptr &inputField, std::string &fieldName,
-                                   DataBase::ptr &outputField) const
+bool IsDataSetEmpty(const vtkm::cont::DataSet &dataset)
+{
+    return dataset.GetNumberOfCoordinateSystems() == 0 && dataset.GetNumberOfFields() == 0 &&
+           dataset.GetNumberOfCells() == 0;
+}
+Object::ptr CellToVertVtkm::prepareOutputGrid(vtkm::cont::DataSet &dataset, const Object::const_ptr &inputGrid,
+                                              Object::ptr &outputGrid) const
+{
+    if (!IsDataSetEmpty(dataset))
+        return VtkmModule2::prepareOutputGrid(dataset, inputGrid, outputGrid);
+    return nullptr;
+}
+
+DataBase::ptr CellToVertVtkm::prepareOutputField(vtkm::cont::DataSet &dataset, const DataBase::const_ptr &inputField,
+                                                 std::string &fieldName, const Object::const_ptr &inputGrid,
+                                                 Object::ptr &outputGrid) const
 {
     if (dataset.HasField(fieldName)) {
-        VtkmModule2::prepareOutput(task, port, dataset, outputGrid, inputGrid, inputField, fieldName, outputField);
-
-        if (outputField) {
-            outputGrid = prepareOutputGrid(dataset, inputGrid, outputGrid);
-
+        auto outputField = VtkmModule2::prepareOutputField(dataset, inputField, fieldName, inputGrid, outputGrid);
 #ifdef VERTTOCELL
-            outputField->setMapping(DataBase::Element);
+        outputField->setMapping(DataBase::Element);
 #else
-            outputField->setMapping(DataBase::Vertex);
+        outputField->setMapping(DataBase::Vertex);
 #endif
-        }
+        return outputField;
+    }
+    return nullptr;
+}
+
+void CellToVertVtkm::addResultToPort(const std::shared_ptr<BlockTask> &task, Port *port, Object::ptr &outputGrid,
+                                     DataBase::ptr &outputField, Object::const_ptr &inputGrid,
+                                     DataBase::const_ptr &inputField) const
+{
+    if (outputField) {
+        task->addObject(port, outputField);
     } else {
         sendInfo("No filter applied for " + port->getName());
         auto ndata = inputField->clone();
@@ -93,5 +111,4 @@ bool CellToVertVtkm::prepareOutput(const std::shared_ptr<BlockTask> &task, Port 
         updateMeta(ndata);
         task->addObject(port, ndata);
     }
-    return true;
 }
