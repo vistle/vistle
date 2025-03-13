@@ -788,12 +788,15 @@ macro(vistle_target_link_libraries targetname)
     endif()
 endmacro()
 
+include(cmake/Documentation.cmake)
+
 macro(vistle_install_docs)
     string(REPLACE ${PROJECT_BINARY_DIR} "" directory ${CMAKE_CURRENT_BINARY_DIR})
     install(
         FILES "${ARGN}"
         DESTINATION doc/${directory}
         COMPONENT Devel)
+    add_documentation_source(${ARGN})
 endmacro(vistle_install_docs)
 
 vistle_install_docs(README.md)
@@ -926,6 +929,17 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
             # message("Linking ${targetname} against libomp: ${LIBOMP}")
             target_link_libraries(${targetname} ${LIBOMP})
         endif()
+
+        # some targets need to be ignored for documentation for now because the build an executale that is not name targetname
+        if(VISTLE_BUILD_DOC)
+            foreach(elem ${IGNR_MODS})
+                append_module_category(${targetname})
+                if(NOT ${targetname} STREQUAL ${elem})
+                    add_module_doc_target(${targetname})
+                endif()
+            endforeach()
+        endif()
+
     endmacro(add_module2)
 
     macro(add_module targetname description)
@@ -1154,3 +1168,6 @@ add_subdirectory(bin)
 
 include(FeatureSummary)
 feature_summary(WHAT ALL)
+if(VISTLE_BUILD_DOC)
+    configure_documentation()
+endif()
