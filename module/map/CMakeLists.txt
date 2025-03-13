@@ -1,4 +1,4 @@
-vistle_category("Map" "map abstract data to geometric shapes suitable for rendering")
+vistle_category("Map" "transform abstract data into geometry")
 
 add_subdirectory(BoundingBox)
 add_subdirectory(Color)

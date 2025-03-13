@@ -788,6 +788,8 @@ macro(vistle_target_link_libraries targetname)
     endif()
 endmacro()
 
+include(cmake/Documentation.cmake)
+
 macro(vistle_install_docs)
     string(REPLACE ${PROJECT_BINARY_DIR} "" directory ${CMAKE_CURRENT_BINARY_DIR})
     install(
@@ -872,6 +874,13 @@ macro(vistle_add_executable targetname)
         BUNDLE DESTINATION bin)
 endmacro(vistle_add_executable)
 
+set(ALL_CATEGORIES
+    ""
+    CACHE INTERNAL "")
+set(ALL_CATEGORIES_ORDERED
+    # the same order as in GUI
+    Read;Simulation;Filter;Map;Geometry;Render;General;Information;UniViz;Develop
+    CACHE INTERNAL "")
 set(ALL_MODULES
     ""
     CACHE INTERNAL "")
@@ -879,23 +888,65 @@ set(CATEGORY_DESCRIPTION_FILE ${PROJECT_BINARY_DIR}/share/vistle/categorydescrip
 set(MODULE_DESCRIPTION_FILE ${PROJECT_BINARY_DIR}/share/vistle/moduledescriptions.txt)
 
 if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
-    file(REMOVE ${CATEGORY_DESCRIPTION_FILE})
     file(REMOVE ${MODULE_DESCRIPTION_FILE})
     install(FILES ${CATEGORY_DESCRIPTION_FILE} ${MODULE_DESCRIPTION_FILE} DESTINATION ${CMAKE_INSTALL_PREFIX}/share/vistle/)
 
     macro(vistle_category name description)
         set(VISTLE_MODULE_CATEGORY ${name})
-        file(APPEND ${CATEGORY_DESCRIPTION_FILE} "${name} ${description}\n")
+
+        set(VISTLE_CATEGORY_${name}_DESCRIPTION
+            ${description}
+            CACHE INTERNAL "")
+        cmake_path(GET CMAKE_CURRENT_LIST_DIR FILENAME dir)
+        string(TOLOWER ${dir} lower)
+        string(TOLOWER ${name} lower)
+        set(VISTLE_CATEGORY_${name}_FILE
+            ${CMAKE_CURRENT_LIST_DIR}/${lower}.md
+            CACHE INTERNAL "")
+
+        set(listname VISTLE_CATEGORY_${VISTLE_MODULE_CATEGORY}_MODULES)
+        list(FIND ALL_CATEGORIES ${name} idx)
+        if(idx EQUAL -1)
+            # remove modules from previous CMake runs from category
+            set(${listname}
+                ""
+                CACHE INTERNAL "")
+        endif()
+
+        list(FIND ALL_CATEGORIES_ORDERED ${name} idx)
+        if(idx EQUAL -1)
+            set(ALL_CATEGORIES_ORDERED
+                ${ALL_CATEGORIES_ORDERED} ${name}
+                CACHE INTERNAL "")
+        endif()
+        set(ALL_CATEGORIES
+            ${ALL_CATEGORIES} ${name}
+            CACHE INTERNAL "")
     endmacro(vistle_category)
+
+    macro(write_category_descriptions DESCS)
+        file(REMOVE ${DESCS})
+        foreach(name IN LISTS ALL_CATEGORIES_ORDERED)
+            set(description ${VISTLE_CATEGORY_${name}_DESCRIPTION})
+            file(APPEND ${DESCS} "${name} ${description}\n")
+        endforeach()
+    endmacro()
 
     macro(add_module2 targetname executable description)
         if(NOT VISTLE_MODULE_CATEGORY)
             set(VISTLE_MODULE_CATEGORY "Unspecified")
         endif()
-
+        set(VISTLE_MODULE_${targetname}_CATEGORY
+            "${VISTLE_MODULE_CATEGORY}"
+            CACHE INTERNAL "")
+        set(listname VISTLE_CATEGORY_${VISTLE_MODULE_CATEGORY}_MODULES)
+        list(APPEND VISTLE_CATEGORY_${VISTLE_MODULE_CATEGORY}_MODULES ${targetname})
+        set(${listname}
+            ${${listname}}
+            CACHE INTERNAL "")
         file(APPEND ${MODULE_DESCRIPTION_FILE} "${targetname} ${VISTLE_MODULE_CATEGORY} ${description}\n")
-        set(ALL_MODULES
-            ${ALL_MODULES} ${targetname}
+        set(VISTLE_MODULE_${targetname}_DESCRIPTION
+            ${description}
             CACHE INTERNAL "")
 
         if(${executable})
@@ -935,6 +986,11 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
         else()
             add_module2(${targetname} FALSE ${description} ${ARGN})
         endif()
+
+        set(ALL_MODULES
+            ${ALL_MODULES} ${targetname}
+            CACHE INTERNAL "")
+        add_module_doc_target(${targetname} ${VISTLE_MODULE_CATEGORY})
     endmacro(add_module)
 
     macro(add_vtkm_module targetname description)
@@ -1152,6 +1208,9 @@ add_subdirectory(module)
 add_subdirectory(app) # has to come after module subdirectory for static module registration
 add_subdirectory(test)
 add_subdirectory(bin)
+
+write_category_descriptions(${CATEGORY_DESCRIPTION_FILE})
+configure_documentation()
 
 include(FeatureSummary)
 feature_summary(WHAT ALL)

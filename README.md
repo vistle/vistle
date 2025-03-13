@@ -144,6 +144,9 @@ You can connect a user interface to a running Vistle session later on, e.g.:
 Source Code Organization
 ------------------------
 
+- `doc`:
+  documentation and tooling for building documentation
+
 - `cmake`:
   CMake modules
 

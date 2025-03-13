@@ -13,7 +13,20 @@ CMRC_DECLARE(moduledescriptions);
 namespace vistle {
 
 namespace {
-std::map<std::string, std::string> readModuleCategories(std::istream &str)
+std::vector<std::string> readModuleCategories(std::istream &str)
+{
+    std::vector<std::string> categories;
+
+    std::string line;
+    while (std::getline(str, line)) {
+        auto sep = line.find(' ');
+        auto cat = line.substr(0, sep);
+        categories.push_back(cat);
+    }
+    return categories;
+}
+
+std::map<std::string, std::string> readCategoryDescriptions(std::istream &str)
 {
     std::map<std::string, std::string> categories;
 
@@ -28,10 +41,10 @@ std::map<std::string, std::string> readModuleCategories(std::istream &str)
 }
 } // namespace
 
-std::map<std::string, std::string> getModuleCategories(const std::string &share_prefix)
+std::vector<std::string> getModuleCategories(const std::string &share_prefix)
 {
     static const std::string filename = CATFILE;
-    std::map<std::string, std::string> categories;
+    std::vector<std::string> categories;
     try {
         auto fs = cmrc::moduledescriptions::get_filesystem();
         auto data = fs.open(filename);
@@ -40,6 +53,22 @@ std::map<std::string, std::string> getModuleCategories(const std::string &share_
         categories = readModuleCategories(str);
     } catch (std::exception &ex) {
         std::cerr << "getModuleCategories: exception: " << ex.what() << std::endl;
+    }
+    return categories;
+}
+
+std::map<std::string, std::string> getCategoryDescriptions(const std::string &share_prefix)
+{
+    static const std::string filename = CATFILE;
+    std::map<std::string, std::string> categories;
+    try {
+        auto fs = cmrc::moduledescriptions::get_filesystem();
+        auto data = fs.open(filename);
+        std::string desc(data.begin(), data.end());
+        std::stringstream str(desc);
+        categories = readCategoryDescriptions(str);
+    } catch (std::exception &ex) {
+        std::cerr << "getCategoryDescriptions: exception: " << ex.what() << std::endl;
     }
     return categories;
 }

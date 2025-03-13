@@ -1,0 +1,60 @@
+# /usr/bin/env vistle
+# this is a Python workflow from Vistle 2025.1-6ee1b196+
+
+MasterHub=getMasterHub()
+VistleSession=getVistleSession()
+WorkflowConfig=getWorkflowConfig()
+uuids = {}
+
+
+
+# spawn all local modules
+umGendat1 = spawnAsync(MasterHub, 'Gendat')
+umGridElementStatistics2 = spawnAsync(MasterHub, 'GridElementStatistics')
+umCOVER3 = spawnAsync(MasterHub, 'COVER')
+umShowGrid4 = spawnAsync(MasterHub, 'ShowGrid')
+umColor5 = spawnAsync(MasterHub, 'Color')
+
+mGendat1 = waitForSpawn(umGendat1)
+setVectorParam(VistleSession, 'position[1]', 22.0, -88.0)
+setIntParam(mGendat1, 'size_x', 3, True)
+setIntParam(mGendat1, 'size_y', 3, True)
+setIntParam(mGendat1, 'size_z', 3, True)
+setIntParam(mGendat1, 'blocks_x', 1, True)
+setIntParam(mGendat1, 'blocks_y', 1, True)
+setIntParam(mGendat1, 'blocks_z', 1, True)
+applyParameters(mGendat1)
+
+mGridElementStatistics2 = waitForSpawn(umGridElementStatistics2)
+setVectorParam(VistleSession, 'position[2]', 22.0, 4.0)
+setIntParam(mGridElementStatistics2, '_cache_mode', 1, True)
+setIntParam(mGridElementStatistics2, 'elementIndex', 5, True)
+applyParameters(mGridElementStatistics2)
+
+mCOVER3 = waitForSpawn(umCOVER3)
+setVectorParam(VistleSession, 'position[3]', 22.0, 165.0)
+setIntParam(mCOVER3, 'render_mode', 4, True)
+setVectorParam(mCOVER3, '_config:plugin/ViewPoint:dynamic:InitialViewPosition', -1.8986904621124268, -122.54523468017578, 19.608436584472656, True)
+setVectorParam(mCOVER3, '_config:plugin/ViewPoint:dynamic:InitialViewHpr', 92.23554229736328, -18.80611228942871, 99.60858154296875, True)
+setFloatParam(mCOVER3, '_config:plugin/ViewPoint:dynamic:InitialViewScale', 430.5526428222656, True)
+applyParameters(mCOVER3)
+
+mShowGrid4 = waitForSpawn(umShowGrid4)
+setVectorParam(VistleSession, 'position[4]', 22.0, 88.0)
+
+mColor5 = waitForSpawn(umColor5)
+setVectorParam(VistleSession, 'position[5]', 120.0, 87.0)
+setStringParam(mColor5, 'species', 'highlight', True)
+setFloatParam(mColor5, 'max', 1.0, True)
+applyParameters(mColor5)
+
+# all local connections
+connect(mGendat1,'grid_out', mGridElementStatistics2,'grid_in')
+connect(mGridElementStatistics2,'data_out', mShowGrid4,'grid_in')
+connect(mGridElementStatistics2,'data_out', mColor5,'data_in')
+connect(mShowGrid4,'grid_out', mCOVER3,'data_in')
+connect(mColor5,'color_out', mCOVER3,'data_in')
+
+# spawn all remote modules
+
+# connections between local and remote
