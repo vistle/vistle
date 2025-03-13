@@ -47,11 +47,10 @@ set(gui_HEADERS
 
 set(gui_FORMS mainwindow.ui about.ui modulebrowser.ui moduleview.ui modifieddialog.ui)
 
-set(gui_name vistle_gui)
 if(APPLE)
     add_custom_target(
-        gui_wrapper ALL
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/gui_wrapper.sh ${EXECUTABLE_OUTPUT_PATH}/$<CONFIG>/${gui_name}
+        gui_wrapper
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/gui_wrapper.sh ${EXECUTABLE_OUTPUT_PATH}/$<CONFIG>/vistle_gui
         DEPENDS gui_wrapper.sh
         SOURCES gui_wrapper.sh)
     install(
@@ -61,31 +60,31 @@ if(APPLE)
     set(MACOSX_BUNDLE_ICON_FILE vistle.icns)
     set(gui_SOURCES ${gui_SOURCES} ${MACOSX_BUNDLE_ICON_FILE})
     set_source_files_properties(${MACOSX_BUNDLE_ICON_FILE} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
-    set(gui_name Vistle)
     set(gui_SOURCES ${gui_SOURCES} macosutils.m)
     set(gui_HEADERS ${gui_SOURCES} macosutils.h)
 endif(APPLE)
 
-vistle_add_executable(${gui_name} MACOSX_BUNDLE ${gui_SOURCES})
+vistle_add_executable(vistle_gui MACOSX_BUNDLE ${gui_SOURCES})
 set_target_properties(
-    ${gui_name}
-    PROPERTIES MACOSX_BUNDLE_BUNDLE_NAME Vistle
+    vistle_gui
+    PROPERTIES OUTPUT_NAME Vistle
+               MACOSX_BUNDLE_BUNDLE_NAME Vistle
                MACOSX_BUNDLE_GUI_IDENTIFIER io.vistle.Vistle
                MACOSX_BUNDLE_ICON_FILE vistle.icns)
 if(VISTLE_USE_QT5)
     qt5_wrap_ui(GUI_UI_SRCS ${gui_FORMS})
     qt5_add_resources(GUI_QRC_SOURCES gui.qrc about.qrc)
-    target_link_libraries(${gui_name} PRIVATE Qt5::Widgets)
+    target_link_libraries(vistle_gui PRIVATE Qt5::Widgets)
 else()
     qt6_wrap_ui(GUI_UI_SRCS ${gui_FORMS})
     qt6_add_resources(GUI_QRC_SOURCES gui.qrc about.qrc)
-    target_link_libraries(${gui_name} PRIVATE Qt6::Widgets)
-    qt_disable_unicode_defines(${gui_name})
+    target_link_libraries(vistle_gui PRIVATE Qt6::Widgets)
+    qt_disable_unicode_defines(vistle_gui)
 endif()
-target_sources(${gui_name} PRIVATE ${GUI_UI_SRCS} ${GUI_QRC_SOURCES})
-target_link_libraries(${gui_name} PRIVATE Threads::Threads)
+target_sources(vistle_gui PRIVATE ${GUI_UI_SRCS} ${GUI_QRC_SOURCES})
+target_link_libraries(vistle_gui PRIVATE Threads::Threads)
 target_link_libraries(
-    ${gui_name}
+    vistle_gui
     PRIVATE Boost::boost
             Boost::program_options
             vistle_util
@@ -98,10 +97,11 @@ target_link_libraries(
             vistle_remotefiledialog)
 
 if(Python_FOUND)
-    target_compile_definitions(${gui_name} PRIVATE -DHAVE_PYTHON)
-    target_link_libraries(${gui_name} PRIVATE Python::Python vistle_python)
+    target_compile_definitions(vistle_gui PRIVATE -DHAVE_PYTHON)
+    target_link_libraries(vistle_gui PRIVATE Python::Python vistle_python)
 endif()
 
 if(APPLE)
-    target_link_libraries(${gui_name} PRIVATE "-framework AppKit")
+    target_link_libraries(vistle_gui PRIVATE "-framework AppKit")
+    add_dependencies(vistle_gui gui_wrapper)
 endif()
