@@ -1,11 +1,4 @@
-set(SOURCES
-    convert.cpp
-    convert_topology.cpp
-    convert_worklets.cpp
-    module_status.cpp
-    ImplicitFunctionController.cpp
-    VtkmModule.cpp
-    VtkmModule2.cpp)
+set(SOURCES convert.cpp convert_topology.cpp convert_worklets.cpp module_status.cpp ImplicitFunctionController.cpp VtkmModule.cpp)
 
 set(HEADERS
     export.h
@@ -14,8 +7,7 @@ set(HEADERS
     convert_worklets.h
     module_status.h
     ImplicitFunctionController.h
-    VtkmModule.h
-    VtkmModule2.h)
+    VtkmModule.h)
 
 vistle_add_library(vistle_vtkm EXPORT ${SOURCES} ${HEADERS})
 target_include_directories(vistle_vtkm SYSTEM PUBLIC ${VTKM_INCLUDE_DIRS})

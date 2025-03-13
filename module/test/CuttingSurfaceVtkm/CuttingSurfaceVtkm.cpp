@@ -26,13 +26,14 @@ bool CuttingSurfaceVtkm::changeParameter(const Parameter *param)
     return Module::changeParameter(param) && ok;
 }
 
-void CuttingSurfaceVtkm::runFilter(vtkm::cont::DataSet &input, vtkm::cont::DataSet &output) const
+void CuttingSurfaceVtkm::runFilter(const vtkm::cont::DataSet &input, const std::string &fieldName,
+                                   vtkm::cont::DataSet &output) const
 {
     vtkm::filter::contour::Slice sliceFilter;
     sliceFilter.SetImplicitFunction(m_implFuncControl.function());
     sliceFilter.SetMergeDuplicatePoints(false);
     sliceFilter.SetGenerateNormals(m_computeNormals->getValue() != 0);
-    sliceFilter.SetActiveField(m_fieldName);
+    sliceFilter.SetActiveField(fieldName);
 
     output = sliceFilter.Execute(input);
 }

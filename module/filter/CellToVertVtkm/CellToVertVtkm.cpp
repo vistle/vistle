@@ -15,7 +15,7 @@ MODULE_MAIN(CellToVertVtkm)
 using namespace vistle;
 
 CellToVertVtkm::CellToVertVtkm(const std::string &name, int moduleID, mpi::communicator comm)
-: VtkmModule2(name, moduleID, comm, 3)
+: VtkmModule(name, moduleID, comm, 3)
 {}
 
 CellToVertVtkm::~CellToVertVtkm()
@@ -38,7 +38,7 @@ void CellToVertVtkm::runFilter(const vtkm::cont::DataSet &input, const std::stri
 ModuleStatusPtr CellToVertVtkm::checkInputField(const Object::const_ptr &grid, const DataBase::const_ptr &field,
                                                 const std::string &portName) const
 {
-    auto status = VtkmModule2::checkInputField(grid, field, portName);
+    auto status = VtkmModule::checkInputField(grid, field, portName);
     if (!isValid(status)) {
         return status;
     }
@@ -64,7 +64,7 @@ ModuleStatusPtr CellToVertVtkm::transformInputField(const Object::const_ptr &gri
     if (mapping == DataBase::Element) {
 #endif
         // transform to VTK-m + add to dataset
-        return VtkmModule2::transformInputField(grid, field, fieldName, dataset);
+        return VtkmModule::transformInputField(grid, field, fieldName, dataset);
     }
 
     return Success();
@@ -79,7 +79,7 @@ Object::ptr CellToVertVtkm::prepareOutputGrid(const vtkm::cont::DataSet &dataset
                                               Object::ptr &outputGrid) const
 {
     if (!IsDataSetEmpty(dataset))
-        return VtkmModule2::prepareOutputGrid(dataset, inputGrid, outputGrid);
+        return VtkmModule::prepareOutputGrid(dataset, inputGrid, outputGrid);
     return nullptr;
 }
 
@@ -88,7 +88,7 @@ DataBase::ptr CellToVertVtkm::prepareOutputField(const vtkm::cont::DataSet &data
                                                  Object::ptr &outputGrid) const
 {
     if (dataset.HasField(fieldName)) {
-        auto outputField = VtkmModule2::prepareOutputField(dataset, inputGrid, inputField, fieldName, outputGrid);
+        auto outputField = VtkmModule::prepareOutputField(dataset, inputGrid, inputField, fieldName, outputGrid);
 #ifdef VERTTOCELL
         outputField->setMapping(DataBase::Element);
 #else

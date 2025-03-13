@@ -30,12 +30,13 @@ bool ClipVtkm::changeParameter(const Parameter *param)
     return Module::changeParameter(param) && ok;
 }
 
-void ClipVtkm::runFilter(vtkm::cont::DataSet &input, vtkm::cont::DataSet &output) const
+void ClipVtkm::runFilter(const vtkm::cont::DataSet &input, const std::string &fieldName,
+                         vtkm::cont::DataSet &output) const
 {
     vtkm::filter::contour::ClipWithImplicitFunction clipFilter;
     clipFilter.SetImplicitFunction(m_implFuncControl.function());
     clipFilter.SetInvertClip(m_flip->getValue() != 0);
-    clipFilter.SetActiveField(m_fieldName);
+    clipFilter.SetActiveField(fieldName);
 
     output = clipFilter.Execute(input);
 }

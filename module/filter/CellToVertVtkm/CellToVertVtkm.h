@@ -2,14 +2,14 @@
 #define VISTLE_CELLTOVERTVTKM_CELLTOVERTVTKM_H
 
 #include <array>
-#include <vistle/vtkm/VtkmModule2.h>
+#include <vistle/vtkm/VtkmModule.h>
 
 //TODO: add TestVertToCellVtkm to CMakeLists.txt!
 #ifdef VERTTOCELL
 #define CellToVertVtkm TestVertToCellVtkm
 #endif
 
-class CellToVertVtkm: public VtkmModule2 {
+class CellToVertVtkm: public VtkmModule {
 public:
     CellToVertVtkm(const std::string &name, int moduleID, mpi::communicator comm);
     ~CellToVertVtkm();
