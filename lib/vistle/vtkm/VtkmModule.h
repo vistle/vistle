@@ -10,6 +10,32 @@
 #include "export.h"
 #include "module_status.h"
 
+/**
+ * @class VtkmModule
+ * @brief Base class for VTK-m modules which allow the execution of algorithms on different device backends,
+ *        including GPUs.
+ *
+ * By default, a VTK-m module consists of one input port and one output port. If additional ports are needed, 
+ * the parent constructor can be called with the desired number (`numPorts`). Note that all data on the ports 
+ * must be defined on the same grid.
+ * 
+ * The base behavior of a VTK-m module is as follows (see `compute()`):
+ * The VTK-m module reads in the data on the input port(s), validates it and transforms it into a VTK-m dataset.
+ * A VTK-m filter is then applied to the dataset, the result is transformed back to Vistle objects and finally 
+ * written to the output port(s).
+ * 
+ * Child classes must implement the `runFilter` method, which defines the desired VTK-m filter. If the filter
+ * only operates on the input grid, `m_requireMappedData` can be set to `false` when calling the parent constructor. 
+ * Additional module parameters can be added in the child's constructor. 
+ * 
+ * Optionally, the child classes can override the `checkInputField` and `checkInputGrid` methods to add additional
+ * checks on the input data. Moreover, `writeResultToPort` can be overridden in case data other than the output grid
+ * (and field, if `m_requireMappedData` is `true`) should be written to the output port.
+ * 
+ * If desired, the child classes can also override the methods for transforming the input data into VTK-m datasets
+ * (`transformInputGrid` and `transformInputField`) or for converting the VTK-m output back into Vistle objects
+ * (`prepareOutputGrid` and `prepareOutputField`).
+ */
 class V_VTKM_EXPORT VtkmModule: public vistle::Module {
 public:
     VtkmModule(const std::string &name, int moduleID, mpi::communicator comm, int numPorts = 1,
@@ -56,7 +82,7 @@ protected:
 
     /*
         Runs a VTK-m filter on `input` and stores the result in `output`. This method must be overriden by modules
-        inheriting from VtkmModule.
+        inheriting from VtkmModule. `fieldName` is the name of the field on which the filter will be applied to.
     */
     virtual void runFilter(const vtkm::cont::DataSet &input, const std::string &fieldName,
                            vtkm::cont::DataSet &output) const = 0;
