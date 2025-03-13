@@ -24,7 +24,7 @@ protected:
 
     /*
         Reads in the grid and its data field(s) fields from the input port(s) and stores them in `grid` and `fields`.
-        Also makes sure that all data fields are defined on the same grid.
+        Also makes sure that (if there are multiple ports) all data fields are defined on the same grid.
     */
     virtual ModuleStatusPtr readInPorts(const std::shared_ptr<vistle::BlockTask> &task, vistle::Object::const_ptr &grid,
                                         std::vector<vistle::DataBase::const_ptr> &fields) const;

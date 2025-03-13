@@ -30,20 +30,23 @@ VtkmModule::~VtkmModule()
 
 ModuleStatusPtr VtkmModule::readInPorts(const std::shared_ptr<BlockTask> &task, Object::const_ptr &grid,
                                         std::vector<DataBase::const_ptr> &fields) const
-{ // get grid and make sure all mapped data fields are defined on the same grid
+{
     for (int i = 0; i < m_numPorts; ++i) {
         auto container = task->accept<Object>(m_inputPorts[i]);
         auto split = splitContainerObject(container);
+
+        auto geometry = split.geometry;
         auto data = split.mapped;
 
         // ... make sure there is data on the input port if the corresponding output port is connected
-        if (!data && m_outputPorts[i]->isConnected()) {
+        if (!geometry && !data && m_outputPorts[i]->isConnected()) {
             std::stringstream msg;
-            msg << "No mapped data on input port " << m_inputPorts[i]->getName() << "!";
+            msg << "No data on input port " << m_inputPorts[i]->getName() << ", even though "
+                << m_outputPorts[i]->getName() << "is connected!";
             return Error(msg.str().c_str());
         }
 
-        // .. and add them to the vector
+        // .. and add it to the vector
         fields.push_back(data);
 
         if (!data)
@@ -51,14 +54,14 @@ ModuleStatusPtr VtkmModule::readInPorts(const std::shared_ptr<BlockTask> &task, 
 
         // ... make sure all data fields are defined on the same grid
         if (grid) {
-            if (split.geometry && split.geometry->getHandle() != grid->getHandle()) {
+            if (geometry && geometry->getHandle() != grid->getHandle()) {
                 std::stringstream msg;
                 msg << "The grid on " << m_inputPorts[i]->getName()
                     << " does not match the grid on the other input ports!";
                 return Error(msg.str().c_str());
             }
         } else {
-            grid = split.geometry;
+            grid = geometry;
         }
     }
 
