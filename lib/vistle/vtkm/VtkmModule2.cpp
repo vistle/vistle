@@ -115,9 +115,9 @@ ModuleStatusPtr VtkmModule2::transformInputField(const Object::const_ptr &grid, 
     return vtkmAddField(dataset, field, fieldName);
 }
 
-void VtkmModule2::addResultToPort(const std::shared_ptr<BlockTask> &task, Port *port, Object::ptr &outputGrid,
-                                  DataBase::ptr &outputField, Object::const_ptr &inputGrid,
-                                  DataBase::const_ptr &inputField) const
+void VtkmModule2::writeResultToPort(const std::shared_ptr<BlockTask> &task, const Object::const_ptr &inputGrid,
+                                    const DataBase::const_ptr &inputField, Port *port, Object::ptr &outputGrid,
+                                    DataBase::ptr &outputField) const
 {
     if (outputField) {
         task->addObject(port, outputField);
@@ -126,7 +126,7 @@ void VtkmModule2::addResultToPort(const std::shared_ptr<BlockTask> &task, Port *
     }
 }
 
-Object::ptr VtkmModule2::prepareOutputGrid(vtkm::cont::DataSet &dataset, const Object::const_ptr &inputGrid,
+Object::ptr VtkmModule2::prepareOutputGrid(const vtkm::cont::DataSet &dataset, const Object::const_ptr &inputGrid,
                                            Object::ptr &outputGrid) const
 {
     outputGrid = vtkmGetGeometry(dataset);
@@ -140,8 +140,8 @@ Object::ptr VtkmModule2::prepareOutputGrid(vtkm::cont::DataSet &dataset, const O
     return outputGrid;
 }
 
-DataBase::ptr VtkmModule2::prepareOutputField(vtkm::cont::DataSet &dataset, const DataBase::const_ptr &inputField,
-                                              std::string &fieldName, const Object::const_ptr &inputGrid,
+DataBase::ptr VtkmModule2::prepareOutputField(const vtkm::cont::DataSet &dataset, const Object::const_ptr &inputGrid,
+                                              const DataBase::const_ptr &inputField, const std::string &fieldName,
                                               Object::ptr &outputGrid) const
 {
     if (outputGrid) {
@@ -207,11 +207,10 @@ bool VtkmModule2::compute(const std::shared_ptr<BlockTask> &task) const
         outputGrid = prepareOutputGrid(outputDataset, inputGrid, outputGrid);
 
         if (m_requireMappedData)
-            outputField = prepareOutputField(outputDataset, inputFields[i], fieldName, inputGrid, outputGrid);
+            outputField = prepareOutputField(outputDataset, inputGrid, inputFields[i], fieldName, outputGrid);
 
-        addResultToPort(task, m_outputPorts[i], outputGrid, outputField, inputGrid, inputFields[i]);
+        writeResultToPort(task, inputGrid, inputFields[i], m_outputPorts[i], outputGrid, outputField);
     }
-
 
     return true;
 }

@@ -36,18 +36,21 @@ protected:
                                                 const vistle::DataBase::const_ptr &field, std::string &fieldName,
                                                 vtkm::cont::DataSet &dataset) const;
 
-    virtual void runFilter(vtkm::cont::DataSet &input, std::string &fieldName, vtkm::cont::DataSet &output) const = 0;
+    virtual void runFilter(const vtkm::cont::DataSet &input, const std::string &fieldName,
+                           vtkm::cont::DataSet &output) const = 0;
 
-    virtual vistle::Object::ptr prepareOutputGrid(vtkm::cont::DataSet &dataset,
+    virtual vistle::Object::ptr prepareOutputGrid(const vtkm::cont::DataSet &dataset,
                                                   const vistle::Object::const_ptr &inputGrid,
                                                   vistle::Object::ptr &outputGrid) const;
-    virtual vistle::DataBase::ptr prepareOutputField(vtkm::cont::DataSet &dataset,
+    virtual vistle::DataBase::ptr prepareOutputField(const vtkm::cont::DataSet &dataset,
+                                                     const vistle::Object::const_ptr &inputGrid,
                                                      const vistle::DataBase::const_ptr &inputField,
-                                                     std::string &fieldName, const vistle::Object::const_ptr &inputGrid,
+                                                     const std::string &fieldName,
                                                      vistle::Object::ptr &outputGrid) const;
-    virtual void addResultToPort(const std::shared_ptr<vistle::BlockTask> &task, vistle::Port *port,
-                                 vistle::Object::ptr &outputGrid, vistle::DataBase::ptr &outputField,
-                                 vistle::Object::const_ptr &inputGrid, vistle::DataBase::const_ptr &inputField) const;
+    virtual void writeResultToPort(const std::shared_ptr<vistle::BlockTask> &task,
+                                   const vistle::Object::const_ptr &inputGrid,
+                                   const vistle::DataBase::const_ptr &inputField, vistle::Port *port,
+                                   vistle::Object::ptr &outputGrid, vistle::DataBase::ptr &outputField) const;
 
     bool isValid(const ModuleStatusPtr &status) const;
 

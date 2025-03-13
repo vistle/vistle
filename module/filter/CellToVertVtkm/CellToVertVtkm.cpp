@@ -21,7 +21,8 @@ CellToVertVtkm::CellToVertVtkm(const std::string &name, int moduleID, mpi::commu
 CellToVertVtkm::~CellToVertVtkm()
 {}
 
-void CellToVertVtkm::runFilter(vtkm::cont::DataSet &input, std::string &fieldName, vtkm::cont::DataSet &output) const
+void CellToVertVtkm::runFilter(const vtkm::cont::DataSet &input, const std::string &fieldName,
+                               vtkm::cont::DataSet &output) const
 {
     if (input.HasField(fieldName)) {
 #ifdef VERTTOCELL
@@ -74,7 +75,7 @@ bool IsDataSetEmpty(const vtkm::cont::DataSet &dataset)
     return dataset.GetNumberOfCoordinateSystems() == 0 && dataset.GetNumberOfFields() == 0 &&
            dataset.GetNumberOfCells() == 0;
 }
-Object::ptr CellToVertVtkm::prepareOutputGrid(vtkm::cont::DataSet &dataset, const Object::const_ptr &inputGrid,
+Object::ptr CellToVertVtkm::prepareOutputGrid(const vtkm::cont::DataSet &dataset, const Object::const_ptr &inputGrid,
                                               Object::ptr &outputGrid) const
 {
     if (!IsDataSetEmpty(dataset))
@@ -82,12 +83,12 @@ Object::ptr CellToVertVtkm::prepareOutputGrid(vtkm::cont::DataSet &dataset, cons
     return nullptr;
 }
 
-DataBase::ptr CellToVertVtkm::prepareOutputField(vtkm::cont::DataSet &dataset, const DataBase::const_ptr &inputField,
-                                                 std::string &fieldName, const Object::const_ptr &inputGrid,
+DataBase::ptr CellToVertVtkm::prepareOutputField(const vtkm::cont::DataSet &dataset, const Object::const_ptr &inputGrid,
+                                                 const DataBase::const_ptr &inputField, const std::string &fieldName,
                                                  Object::ptr &outputGrid) const
 {
     if (dataset.HasField(fieldName)) {
-        auto outputField = VtkmModule2::prepareOutputField(dataset, inputField, fieldName, inputGrid, outputGrid);
+        auto outputField = VtkmModule2::prepareOutputField(dataset, inputGrid, inputField, fieldName, outputGrid);
 #ifdef VERTTOCELL
         outputField->setMapping(DataBase::Element);
 #else
@@ -98,9 +99,9 @@ DataBase::ptr CellToVertVtkm::prepareOutputField(vtkm::cont::DataSet &dataset, c
     return nullptr;
 }
 
-void CellToVertVtkm::addResultToPort(const std::shared_ptr<BlockTask> &task, Port *port, Object::ptr &outputGrid,
-                                     DataBase::ptr &outputField, Object::const_ptr &inputGrid,
-                                     DataBase::const_ptr &inputField) const
+void CellToVertVtkm::writeResultToPort(const std::shared_ptr<BlockTask> &task, const Object::const_ptr &inputGrid,
+                                       const DataBase::const_ptr &inputField, Port *port, Object::ptr &outputGrid,
+                                       DataBase::ptr &outputField) const
 {
     if (outputField) {
         task->addObject(port, outputField);
