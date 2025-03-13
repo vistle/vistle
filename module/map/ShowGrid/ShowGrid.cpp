@@ -302,9 +302,6 @@ bool ShowGrid::compute()
                     auto vert = [icl](Index idx) {
                         return icl ? icl[idx] : idx;
                     };
-                    auto emitVertex = [vert, &ocl](Index idx) {
-                        ocl.push_back(vert(idx));
-                    };
                     for (Index i = 0; i < nelem; ++i) {
                         const bool ghost = quad->isGhost(i);
                         const bool show = ((showgho && ghost) || (shownor && !ghost));
@@ -331,10 +328,9 @@ bool ShowGrid::compute()
                             oz.push_back(p[2]);
                         }
 
-                        auto emitVertex = [vert, &ocl, i, baseidx](Index idx) {
+                        auto emitVertex = [&ocl, baseidx](Index idx) {
                             ocl.push_back(baseidx + idx);
                         };
-
                         for (int j = 0; j < 4; ++j) {
                             emitVertex(j);
                         }
@@ -373,9 +369,6 @@ bool ShowGrid::compute()
                         }
                         center *= 1.0f / verts.size();
                         auto baseidx = ox.size();
-                        auto emitVertex = [vert, &ocl, i, baseidx](Index idx) {
-                            ocl.push_back(baseidx + idx);
-                        };
                         for (auto v: verts) {
                             if (!perElement)
                                 remap.push_back(v);
@@ -384,6 +377,10 @@ bool ShowGrid::compute()
                             oy.push_back(p[1]);
                             oz.push_back(p[2]);
                         }
+
+                        auto emitVertex = [&ocl, baseidx](Index idx) {
+                            ocl.push_back(baseidx + idx);
+                        };
                         for (int j = 0; j < 3; ++j) {
                             emitVertex(j);
                         }
