@@ -25,14 +25,13 @@ private:
                    vtkm::cont::DataSet &output) const override;
 
     vistle::Object::ptr prepareOutputGrid(const vtkm::cont::DataSet &dataset,
-                                          const vistle::Object::const_ptr &inputGrid,
-                                          vistle::Object::ptr &outputGrid) const override;
+                                          const vistle::Object::const_ptr &inputGrid) const override;
 
     vistle::DataBase::ptr prepareOutputField(const vtkm::cont::DataSet &dataset,
                                              const vistle::Object::const_ptr &inputGrid,
                                              const vistle::DataBase::const_ptr &inputField,
                                              const std::string &fieldName,
-                                             vistle::Object::ptr &outputGrid) const override;
+                                             const vistle::Object::ptr &outputGrid) const override;
 
     void writeResultToPort(const std::shared_ptr<vistle::BlockTask> &task, const vistle::Object::const_ptr &inputGrid,
                            const vistle::DataBase::const_ptr &inputField, vistle::Port *port,

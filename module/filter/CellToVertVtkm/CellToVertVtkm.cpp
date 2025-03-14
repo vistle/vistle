@@ -75,17 +75,17 @@ bool IsDataSetEmpty(const vtkm::cont::DataSet &dataset)
     return dataset.GetNumberOfCoordinateSystems() == 0 && dataset.GetNumberOfFields() == 0 &&
            dataset.GetNumberOfCells() == 0;
 }
-Object::ptr CellToVertVtkm::prepareOutputGrid(const vtkm::cont::DataSet &dataset, const Object::const_ptr &inputGrid,
-                                              Object::ptr &outputGrid) const
+Object::ptr CellToVertVtkm::prepareOutputGrid(const vtkm::cont::DataSet &dataset,
+                                              const Object::const_ptr &inputGrid) const
 {
     if (!IsDataSetEmpty(dataset))
-        return VtkmModule::prepareOutputGrid(dataset, inputGrid, outputGrid);
+        return VtkmModule::prepareOutputGrid(dataset, inputGrid);
     return nullptr;
 }
 
 DataBase::ptr CellToVertVtkm::prepareOutputField(const vtkm::cont::DataSet &dataset, const Object::const_ptr &inputGrid,
                                                  const DataBase::const_ptr &inputField, const std::string &fieldName,
-                                                 Object::ptr &outputGrid) const
+                                                 const Object::ptr &outputGrid) const
 {
     if (dataset.HasField(fieldName)) {
         auto outputField = VtkmModule::prepareOutputField(dataset, inputGrid, inputField, fieldName, outputGrid);

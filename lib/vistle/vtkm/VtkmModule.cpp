@@ -118,10 +118,9 @@ void copyMetadata(const Object::const_ptr &from, Object::ptr &to)
     }
 }
 
-Object::ptr VtkmModule::prepareOutputGrid(const vtkm::cont::DataSet &dataset, const Object::const_ptr &inputGrid,
-                                          Object::ptr &outputGrid) const
+Object::ptr VtkmModule::prepareOutputGrid(const vtkm::cont::DataSet &dataset, const Object::const_ptr &inputGrid) const
 {
-    outputGrid = vtkmGetGeometry(dataset);
+    auto outputGrid = vtkmGetGeometry(dataset);
     if (!outputGrid) {
         sendError("An error occurred while transforming the filter output grid to a Vistle object.");
         return nullptr;
@@ -134,7 +133,7 @@ Object::ptr VtkmModule::prepareOutputGrid(const vtkm::cont::DataSet &dataset, co
 
 DataBase::ptr VtkmModule::prepareOutputField(const vtkm::cont::DataSet &dataset, const Object::const_ptr &inputGrid,
                                              const DataBase::const_ptr &inputField, const std::string &fieldName,
-                                             Object::ptr &outputGrid) const
+                                             const Object::ptr &outputGrid) const
 {
     if (outputGrid) {
         if (auto mapped = vtkmGetField(dataset, fieldName)) {
@@ -207,7 +206,7 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
         runFilter(inputDataset, fieldName, outputDataset);
 
         // ... and transform filter output, i.e., grid and dataset, to Vistle objects
-        outputGrid = prepareOutputGrid(outputDataset, inputGrid, outputGrid);
+        outputGrid = prepareOutputGrid(outputDataset, inputGrid);
 
         if (m_requireMappedData)
             outputField = prepareOutputField(outputDataset, inputGrid, inputFields[i], fieldName, outputGrid);

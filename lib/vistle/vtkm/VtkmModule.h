@@ -92,8 +92,7 @@ protected:
         attributes from `inputGrid`.
     */
     virtual vistle::Object::ptr prepareOutputGrid(const vtkm::cont::DataSet &dataset,
-                                                  const vistle::Object::const_ptr &inputGrid,
-                                                  vistle::Object::ptr &outputGrid) const;
+                                                  const vistle::Object::const_ptr &inputGrid) const;
     /*
         Transform the field named `fieldName` in `dataset` to a Vistle data object and updates its metadata by
         copying the attributes from `ìnputField` and setting its grid to `outputGrid`.
@@ -102,7 +101,7 @@ protected:
                                                      const vistle::Object::const_ptr &inputGrid,
                                                      const vistle::DataBase::const_ptr &inputField,
                                                      const std::string &fieldName,
-                                                     vistle::Object::ptr &outputGrid) const;
+                                                     const vistle::Object::ptr &outputGrid) const;
     /*
         Adds `outputField` to `port` if it is not a null pointer, otherwise adds `outputGrid`.
     */
