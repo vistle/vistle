@@ -126,9 +126,7 @@ if(SPHINX_EXECUTABLE)
         COMMAND ${CMAKE_COMMAND} -E copy ${READTHEDOCS_SOURCE_DIR}/requirements.txt ${VISTLE_DOCUMENTATION_DIR}/docs
         COMMAND ${CMAKE_COMMAND} -E copy ${READTHEDOCS_SOURCE_DIR}/.readthedocs.yaml ${VISTLE_DOCUMENTATION_DIR})
 
-    add_custom_command(
-        TARGET vistle_doc
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${VISTLE_DOCUMENTATION_DIR}/docs/build)
+    add_custom_command(TARGET vistle_doc COMMAND ${CMAKE_COMMAND} -E make_directory ${VISTLE_DOCUMENTATION_DIR}/docs/build)
     add_custom_command(
         TARGET vistle_doc
         COMMAND ${SPHINX_EXECUTABLE} -M html source build
