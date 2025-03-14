@@ -16,14 +16,6 @@ More infos about Architecture: https://vistle.io/architecture/
    * :ref:`user-docs`
    * :ref:`dev-docs`
 
-.. _build-docs:
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Build Documentation
-    
-   Build Instructions <build/index.rst> 
-
 .. _user-docs:
 
 .. toctree::
@@ -33,7 +25,14 @@ More infos about Architecture: https://vistle.io/architecture/
    Quickstart <quickstart/quickstart.md>
    Introduction <intro/index.rst>
    Module Guide <module/index.rst>
-   Library Documentation <lib/index.rst>
+
+.. _build-docs:
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Build Documentation
+    
+   Build Instructions <build/index.rst> 
 
 .. _dev-docs:
 
@@ -43,3 +42,4 @@ More infos about Architecture: https://vistle.io/architecture/
 
    Coding <dev/index.rst>
    Documentation <dev/documentation.rst>
+   Library Documentation <lib/index.rst>
