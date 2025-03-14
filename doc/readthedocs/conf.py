@@ -17,11 +17,15 @@ sys.path.insert(0, os.path.abspath('.'))
 from mdlink import run
 from clear import deleteDir
 
+from datetime import datetime
+current_year = datetime.now().year
+
 
 # -- Project information -----------------------------------------------------
 project = 'Vistle'
-copyright = '2024, Martin Aumueller, Dennis Grieger, Leyla Kern, Marko Djuric, Uwe Wössner'
-author = 'Martin Aumueller, Dennis Grieger, Leyla Kern, Marko Djuric, Uwe Wössner'
+author = 'Martin Aumüller, Marko Djuric, Dennis Grieger, Leyla Kern, Susanne Malheiros, Uwe Wössner'
+author = 'Vistle Team'
+copyright = f'2012 - {current_year} {author}'
 
 # -- General configuration ---------------------------------------------------
 
