@@ -24,8 +24,8 @@ current_year = datetime.now().year
 # -- Project information -----------------------------------------------------
 project = 'Vistle'
 author = 'Martin Aumüller, Marko Djuric, Dennis Grieger, Leyla Kern, Susanne Malheiros, Uwe Wössner'
-author = 'Vistle Team'
-copyright = f'2012 - {current_year} {author}'
+author = 'the Vistle team'
+copyright = f'2012 - {current_year}, {author}'
 
 # -- General configuration ---------------------------------------------------
 
