@@ -25,3 +25,5 @@ catalyst_implementation(
 target_link_libraries(catalyst-vistle PRIVATE vistle_insitu_adapter)
 target_link_libraries(catalyst-vistle PRIVATE conduit::conduit)
 target_compile_definitions(catalyst-vistle PRIVATE VISTLE_ROOT="${CMAKE_BINARY_DIR}" VISTLE_BUILD_TYPE="")
+
+vistle_install_docs(README.md)

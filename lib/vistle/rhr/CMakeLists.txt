@@ -70,3 +70,5 @@ target_link_libraries(depthtest PRIVATE vistle_rhr)
 
 add_executable(depthbench depthbench.cpp depthcompare.cpp)
 target_link_libraries(depthbench PRIVATE vistle_rhr)
+
+vistle_install_docs(rhr.md)

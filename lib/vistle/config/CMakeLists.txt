@@ -29,3 +29,5 @@ target_compile_definitions(vistle_config PRIVATE CONFIG_NAMESPACE=vistle CONFIG_
 target_include_directories(vistle_config PRIVATE ${COVCONFIG_PRIVATE_INCLUDES})
 target_link_libraries(vistle_config PRIVATE ${COVCONFIG_PRIVATE_LIBRARIES})
 target_link_libraries(vistle_config PRIVATE vistle_config_defaults)
+
+vistle_install_docs(covconfig/README.md)
