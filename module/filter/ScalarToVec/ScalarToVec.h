@@ -16,7 +16,8 @@ private:
     virtual bool compute();
 
     vistle::Port *m_scalarIn[NumScalars];
-    vistle::Port *m_vecOut;
+    vistle::Port *m_vecOut = nullptr;
+    vistle::StringParameter *m_species = nullptr;
 };
 
 #endif
