@@ -165,6 +165,7 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
 {
     Object::const_ptr inputGrid;
     std::vector<DataBase::const_ptr> inputFields;
+    std::vector<std::string> fieldNames;
 
     vtkm::cont::DataSet inputDataset, outputDataset;
 
@@ -182,10 +183,9 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
     if (!isValid(status))
         return true;
 
+    std::string activeField;
     for (std::size_t i = 0; i < inputFields.size(); ++i) {
-        Object::ptr outputGrid;
-        DataBase::ptr outputField;
-        std::string fieldName = "";
+        fieldNames.push_back("");
 
         // if the corresponding output port is connected...
         if (!m_outputPorts[i]->isConnected())
@@ -197,22 +197,30 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
             if (!isValid(status))
                 return true;
 
-            status = transformInputField(inputGrid, inputFields[i], fieldName, inputDataset);
+            status = transformInputField(inputGrid, inputFields[i], fieldNames[i], inputDataset);
             if (!isValid(status))
                 return true;
         }
+        if (activeField.empty())
+            activeField = fieldNames[i];
+    }
 
-        // ... run filter for each field ...
-        runFilter(inputDataset, fieldName, outputDataset);
+    // ... run filter for each field ...
+    runFilter(inputDataset, activeField, outputDataset);
 
-        // ... and transform filter output, i.e., grid and dataset, to Vistle objects
-        outputGrid = prepareOutputGrid(outputDataset, inputGrid);
+    // ... and transform filter output, i.e., grid and dataset, to Vistle objects
+    auto outputGrid = prepareOutputGrid(outputDataset, inputGrid);
+    for (std::size_t i = 0; i < inputFields.size(); ++i) {
+        DataBase::ptr outputField;
+        if (!m_outputPorts[i]->isConnected())
+            continue;
 
         if (m_requireMappedData)
-            outputField = prepareOutputField(outputDataset, inputGrid, inputFields[i], fieldName, outputGrid);
+            outputField = prepareOutputField(outputDataset, inputGrid, inputFields[i], fieldNames[i], outputGrid);
 
         writeResultToPort(task, inputGrid, inputFields[i], m_outputPorts[i], outputGrid, outputField);
     }
+
 
     return true;
 }
