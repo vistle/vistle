@@ -46,8 +46,8 @@ function(configure_documentation)
     # List to hold all the output files
     set(CONFIGURED_FILES "")
     # Configure each file and add to the list of output files
-    set(CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env ALL_VISTLE_MODULES="${ALL_MODULES}" ALL_VISTLE_MODULES_CATEGORY="${ALL_VISTLE_MODULES_CATEGORY}" python
-                          ${CMAKE_SOURCE_DIR}/doc/tools/insertModuleLinks.py ${PROJECT_SOURCE_DIR} ${VISTLE_DOCUMENTATION_SOURCE_DIR})
+    set(CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env ALL_VISTLE_MODULES="${ALL_MODULES}" ALL_VISTLE_MODULES_CATEGORY="${ALL_VISTLE_MODULES_CATEGORY}"
+                          ${Python_EXECUTABLE} ${CMAKE_SOURCE_DIR}/doc/tools/insertModuleLinks.py ${PROJECT_SOURCE_DIR} ${VISTLE_DOCUMENTATION_SOURCE_DIR})
     foreach(DOCUMENTATION_FILE ${DOCUMENTATION_FILES})
         set(INPUT_FILE ${SOURCE_DIR}/${DOCUMENTATION_FILE})
         set(OUTPUT_FILE ${VISTLE_DOCUMENTATION_SOURCE_DIR}/${DOCUMENTATION_FILE})
