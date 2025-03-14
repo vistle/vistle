@@ -21,13 +21,13 @@ macro(configure_documentation_detail INPUT_FILE OUTPUT_FILE TARGET)
     if(${DOCUMENTATION_FILE} MATCHES ".*\\.md")
 
         add_custom_command(
-            OUTPUT ${OUTPUT_FILE} POST_BUILD
+            OUTPUT ${OUTPUT_FILE}
             COMMAND ${CONFIGURE_COMMAND} ${INPUT_FILE} ${OUTPUT_FILE}
             DEPENDS ${INPUT_FILE} vistle_module_doc ${CMAKE_SOURCE_DIR}/doc/tools/insertModuleLinks.py
             COMMENT "Configuring file: ${OUTPUT_FILE}")
     else()
         add_custom_command(
-            OUTPUT ${OUTPUT_FILE} POST_BUILD
+            OUTPUT ${OUTPUT_FILE}
             COMMAND ${CMAKE_COMMAND} -E copy ${INPUT_FILE} ${OUTPUT_FILE}
             DEPENDS ${INPUT_FILE}
             COMMENT "Copying file: ${OUTPUT_FILE}")
@@ -83,7 +83,7 @@ function(configure_documentation)
         set(OUTPUT_FILE ${VISTLE_DOCUMENTATION_SOURCE_DIR}/module/${CATEGORY}/${MODULE}/${MODULE}.md)
         list(APPEND CONFIGURED_MODULE_FILES ${OUTPUT_FILE})
         add_custom_command(
-            OUTPUT ${OUTPUT_FILE} POST_BUILD
+            OUTPUT ${OUTPUT_FILE}
             COMMAND ${CONFIGURE_COMMAND} ${INPUT_FILE} ${OUTPUT_FILE}
             DEPENDS ${INPUT_FILE} vistle_module_doc ${CMAKE_SOURCE_DIR}/doc/tools/insertModuleLinks.py
             COMMENT "Configuring module file: ${OUTPUT_FILE}")
@@ -120,7 +120,6 @@ if(SPHINX_EXECUTABLE)
     #copy the readthedocs configuration scripts
     add_custom_command(
         TARGET vistle_doc
-        POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy ${READTHEDOCS_SOURCE_DIR}/clear.py ${VISTLE_DOCUMENTATION_SOURCE_DIR}
         COMMAND ${CMAKE_COMMAND} -E copy ${READTHEDOCS_SOURCE_DIR}/conf.py ${VISTLE_DOCUMENTATION_SOURCE_DIR}
         COMMAND ${CMAKE_COMMAND} -E copy ${READTHEDOCS_SOURCE_DIR}/mdlink.py ${VISTLE_DOCUMENTATION_SOURCE_DIR}
@@ -129,7 +128,6 @@ if(SPHINX_EXECUTABLE)
 
     add_custom_command(
         TARGET vistle_doc
-        POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory ${VISTLE_DOCUMENTATION_DIR}/docs/build)
     add_custom_command(
         TARGET vistle_doc
@@ -177,7 +175,7 @@ macro(add_module_doc_target targetname)
                 ${targetname} #the module's source code
                 ${VISTLE_DOCUMENTATION_WORKFLOW} #the file that gets loaded by vistle to generate the documentation
                 ${DOCUMENTATION_DEPENDENCIES} #custom dependencies set by the calling module
-        COMMENT "Generating documentation for " ${targetname})
+        COMMENT "Generating documentation for ${targetname}")
     add_custom_target(${targetname}_doc DEPENDS ${OUTPUT_FILE})
 
     add_dependencies(vistle_module_doc ${targetname}_doc)
@@ -230,7 +228,7 @@ macro(generate_snapshot_base targetname network_file output_dir workflow result)
                 ${PROJECT_SOURCE_DIR}/doc/tools/snapShot.py
             DEPENDS ${CMAKE_CURRENT_LIST_DIR}/${network_file}.vsl ${CMAKE_CURRENT_LIST_DIR}/${network_file}.vwp ${targetname}
                     ${PROJECT_SOURCE_DIR}/doc/tools/snapShot.py
-            COMMENT "Generating network and result snapshot for " ${network_file}.vsl)
+            COMMENT "Generating network and result snapshot for ${network_file}.vsl")
         add_custom_target(${custom_target} DEPENDS ${output_file})
         add_dependencies(${targetname}_doc ${custom_target})
     else()
@@ -265,7 +263,7 @@ macro(generate_network_snapshot targetname network_file output_dir)
         OUTPUT ${output_dir}/${network_file}_workflow.png
         COMMAND vistle --snapshot ${output_dir}/${network_file}_workflow.png ${CMAKE_CURRENT_LIST_DIR}/${network_file}.vsl
         DEPENDS ${CMAKE_CURRENT_LIST_DIR}/${network_file}.vsl ${targetname}
-        COMMENT "Generating network snapshot for " ${network_file}.vsl)
+        COMMENT "Generating network snapshot for ${network_file}.vsl")
 
     add_custom_target(${targetname}_${network_file}_workflow DEPENDS ${output_dir}/${network_file}_workflow.png)
     add_dependencies(${targetname}_doc ${targetname}_${network_file}_workflow)
