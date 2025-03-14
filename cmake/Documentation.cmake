@@ -105,8 +105,8 @@ function(configure_documentation)
 endfunction()
 
 set(VISTLE_DOCUMENTATION_DIR
-    "${PROJECT_SOURCE_DIR}_documentation"
-    CACHE PATH "Path where the documentation will be build")
+    "${PROJECT_BINARY_DIR}/documentation"
+    CACHE PATH "Path where the documentation will be built")
 vistle_find_package(Sphinx)
 if(SPHINX_EXECUTABLE)
 
