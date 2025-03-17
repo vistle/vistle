@@ -183,21 +183,21 @@ bool ReadIagNetcdf::validateFile(std::string fullFileName, std::string &redFileN
         }
 
         if (type == GridFile) {
-            if (!hasDimension(ncid, DimNPoints)) {
+            if (!hasDimension(*ncid, DimNPoints)) {
                 if (rank() == 0)
                     sendWarning("file %s does not have dimension %s, no suitable file", redFileName.c_str(),
                                 DimNPoints);
                 return false;
             }
             int dimid = -1;
-            int err = nc_inq_dimid(ncid, DimNPoints, &dimid);
+            int err = nc_inq_dimid(*ncid, DimNPoints, &dimid);
             if (err != NC_NOERR) {
                 if (rank() == 0)
                     sendInfo("file %s does not provide dimid for %s", redFileName.c_str(), DimNPoints);
                 return false;
             }
             size_t dimVerts = 0;
-            err = nc_inq_dimlen(ncid, dimid, &dimVerts);
+            err = nc_inq_dimlen(*ncid, dimid, &dimVerts);
             if (err != NC_NOERR) {
                 if (rank() == 0)
                     sendInfo("file %s does not provide dimlen for %s", redFileName.c_str(), DimNPoints);
@@ -206,7 +206,7 @@ bool ReadIagNetcdf::validateFile(std::string fullFileName, std::string &redFileN
             m_numVertices = dimVerts;
             //sendInfo("COUNTED:  %d points found", m_numVertices);
         }
-        setVariableList(type, ncid);
+        setVariableList(type, *ncid);
         if (rank() == 0) {
             //sendInfo("file to load: %s", redFileName.c_str());
         }
@@ -259,16 +259,16 @@ bool ReadIagNetcdf::examine(const vistle::Parameter *param)
             if (it2->path().filename().string().find(common) == 0) {
                 auto fn = it2->path().string();
                 auto ncid = NcFile::open(fn, comm());
-                if (!ncid) {
+                if (!ncid || !*ncid) {
                     std::cerr << "ignoring " << fn << ", could not open" << std::endl;
                     continue;
                 }
-                if (!hasDimension(ncid, DimNPoints)) {
+                if (!hasDimension(*ncid, DimNPoints)) {
                     std::cerr << "ignoring " << fn << ", no " << DimNPoints << " dimension" << std::endl;
                     ++nIgnored;
                     continue;
                 }
-                size_t dimPoints = getDimension(ncid, DimNPoints);
+                size_t dimPoints = getDimension(*ncid, DimNPoints);
                 if (dimPoints != m_numVertices) {
                     std::cerr << "ignoring " << fn << ", expected nVertices=" << m_numVertices << ", but got "
                               << dimPoints << std::endl;
@@ -344,18 +344,18 @@ bool ReadIagNetcdf::read(Token &token, int timestep, int block)
         assert(token.comm());
         if (token.comm()->rank() == 0) {
             LOCK_NETCDF(comm());
-            NcFile ncGridId = NcFile::open(m_gridFileName);
-            if (!ncGridId) {
+            auto ncGridId = NcFile::open(m_gridFileName);
+            if (!ncGridId || !*ncGridId) {
                 return false;
             }
-            if (!hasDimension(ncGridId, DimNPoints) || !hasDimension(ncGridId, DimNElements)) {
+            if (!hasDimension(*ncGridId, DimNPoints) || !hasDimension(*ncGridId, DimNElements)) {
                 sendError("dimension info missing: no %s or %s", DimNPoints, DimNElements);
                 return false;
             }
-            m_numVertices = getDimension(ncGridId, DimNPoints);
-            size_t numElem = getDimension(ncGridId, DimNElements);
+            m_numVertices = getDimension(*ncGridId, DimNPoints);
+            size_t numElem = getDimension(*ncGridId, DimNElements);
 
-            //sendInfo("COUNTED: %d points and %zu elementes in total", m_numVertices, numElem);
+            //sendInfo("COUNTED: %d points and %zu elements in total", m_numVertices, numElem);
             //COORDS
 
             size_t numCorners = 0;
@@ -363,7 +363,7 @@ bool ReadIagNetcdf::read(Token &token, int timestep, int block)
             //MESH
             //GET NUMBER OF ELEMENTS
             for (auto elem: elemTypes) {
-                countElements(elem, ncGridId, numElem, numCorners);
+                countElements(elem, *ncGridId, numElem, numCorners);
             }
             auto grid = std::make_shared<UnstructuredGrid>(numElem, numCorners, m_numVertices);
             m_grid = grid;
@@ -375,7 +375,7 @@ bool ReadIagNetcdf::read(Token &token, int timestep, int block)
             Index idx_cl = 0, idx_el = 0, typeIdx = 0;
             for (auto elem: elemTypes) {
                 auto type = typeList[typeIdx];
-                readElemType(cl, el, elem, idx_cl, idx_el, ncGridId, tl, type);
+                readElemType(cl, el, elem, idx_cl, idx_el, *ncGridId, tl, type);
                 std::cerr << "read " << elem << ": #el=" << idx_el << ", #cl=" << idx_cl << std::endl;
                 ++typeIdx;
             }
@@ -389,15 +389,15 @@ bool ReadIagNetcdf::read(Token &token, int timestep, int block)
             auto *x = grid->x().data();
             auto *y = grid->y().data();
             auto *z = grid->z().data();
-            if (!getVariable<Scalar>(ncGridId, "points_xc", x, {0}, {m_numVertices})) {
+            if (!getVariable<Scalar>(*ncGridId, "points_xc", x, {0}, {m_numVertices})) {
                 sendError("could not read x coordinates: points_xc");
                 return false;
             }
-            if (!getVariable<Scalar>(ncGridId, "points_yc", y, {0}, {m_numVertices})) {
+            if (!getVariable<Scalar>(*ncGridId, "points_yc", y, {0}, {m_numVertices})) {
                 sendError("could not read y coordinates: points_yc");
                 return false;
             }
-            if (!getVariable<Scalar>(ncGridId, "points_zc", z, {0}, {m_numVertices})) {
+            if (!getVariable<Scalar>(*ncGridId, "points_zc", z, {0}, {m_numVertices})) {
                 sendError("could not read z coordinates: points_zc");
                 return false;
             }
@@ -425,14 +425,14 @@ bool ReadIagNetcdf::read(Token &token, int timestep, int block)
             }
             if (needBoundary) {
                 LOCK_NETCDF(comm());
-                size_t numElem = getDimension(ncGridId, DimNSurface);
+                size_t numElem = getDimension(*ncGridId, DimNSurface);
 
                 size_t numCorners = 0;
                 numElem = 0;
                 //MESH
                 //GET NUMBER OF ELEMENTS
                 for (auto elem: elemTypes2d) {
-                    countElements(elem, ncGridId, numElem, numCorners);
+                    countElements(elem, *ncGridId, numElem, numCorners);
                 }
                 auto boundary = std::make_shared<Polygons>(numElem, numCorners, 0);
                 m_boundary = boundary;
@@ -443,7 +443,7 @@ bool ReadIagNetcdf::read(Token &token, int timestep, int block)
                 boundary->d()->x[2] = m_grid->d()->x[2];
                 Index idx_cl = 0, idx_el = 0;
                 for (auto elem: elemTypes2d) {
-                    readElemType(cl, el, elem, idx_cl, idx_el, ncGridId, nullptr, 0);
+                    readElemType(cl, el, elem, idx_cl, idx_el, *ncGridId, nullptr, 0);
                     std::cerr << "read " << elem << ": #el=" << idx_el << ", #cl=" << idx_cl << std::endl;
                 }
                 UNLOCK_NETCDF(comm());
@@ -468,7 +468,7 @@ bool ReadIagNetcdf::read(Token &token, int timestep, int block)
                     auto markerData = std::make_shared<Vec<Index>>(numElem);
                     m_markerData = markerData;
                     LOCK_NETCDF(comm());
-                    if (!getVariable<Index>(ncGridId, "boundarymarker_of_surfaces", markerData->x().data(), {0},
+                    if (!getVariable<Index>(*ncGridId, "boundarymarker_of_surfaces", markerData->x().data(), {0},
                                             {numElem})) {
                         sendWarning("could not read surface markers");
                     }
@@ -531,8 +531,8 @@ bool ReadIagNetcdf::read(Token &token, int timestep, int block)
 
     LOCK_NETCDF(comm());
     assert(m_dataFiles.size() > size_t(timestep));
-    NcFile ncDataId = NcFile::open(m_dataFiles[timestep]);
-    if (!ncDataId) {
+    auto ncDataId = NcFile::open(m_dataFiles[timestep]);
+    if (!ncDataId || !*ncDataId) {
         sendWarning("could not open data file %s", m_dataFiles[timestep].c_str());
         return false;
     }
@@ -544,7 +544,7 @@ bool ReadIagNetcdf::read(Token &token, int timestep, int block)
             Vec<Scalar, 3>::ptr vecObj(new Vec<Scalar, 3>(m_numVertices));
             for (int c = 0; c < 3; ++c) {
                 Scalar *x = vecObj->x(c).data();
-                if (!getVariable<Scalar>(ncDataId, comp->at(c), x, {0}, {m_numVertices})) {
+                if (!getVariable<Scalar>(*ncDataId, comp->at(c), x, {0}, {m_numVertices})) {
                     sendError("failed to read %s for t=%d", varName.c_str(), timestep);
                     return dataObj;
                 }
@@ -553,7 +553,7 @@ bool ReadIagNetcdf::read(Token &token, int timestep, int block)
         } else {
             Vec<Scalar>::ptr scalObj(new Vec<Scalar>(m_numVertices));
             Scalar *s = scalObj->x().data();
-            if (!getVariable<Scalar>(ncDataId, varName, s, {0}, {m_numVertices})) {
+            if (!getVariable<Scalar>(*ncDataId, varName, s, {0}, {m_numVertices})) {
                 sendError("failed to read %s for t=%d", varName.c_str(), timestep);
                 return dataObj;
             }
