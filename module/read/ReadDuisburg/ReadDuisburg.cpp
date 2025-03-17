@@ -4,28 +4,40 @@
 #include "ReadDuisburg.h"
 #include <boost/algorithm/string.hpp>
 #include <vistle/util/filesystem.h>
+#include <vistle/core/structuredgrid.h>
+#include <vistle/core/layergrid.h>
 #include <fstream>
 
 using namespace vistle;
 namespace bf = vistle::filesystem;
 
-using namespace PnetCDF;
-
-#if defined(MODULE_THREAD) && PNETCDF_THREAD_SAFE == 0
-static std::mutex pnetcdf_mutex; // avoid simultaneous access to PnetCDF library, if not thread-safe
+#include <vistle/netcdf/ncwrap.h>
+#if defined(MODULE_THREAD)
+static std::mutex netcdf_mutex; // avoid simultaneous access to NetCDF library
 #define LOCK_NETCDF(comm) \
-    std::unique_lock<std::mutex> pnetcdf_guard(pnetcdf_mutex, std::defer_lock); \
+    std::unique_lock<std::mutex> netcdf_guard(netcdf_mutex, std::defer_lock); \
     if ((comm).rank() == 0) \
-        pnetcdf_guard.lock(); \
+        netcdf_guard.lock(); \
     (comm).barrier();
 #define UNLOCK_NETCDF(comm) \
     (comm).barrier(); \
-    if (pnetcdf_guard) \
-        pnetcdf_guard.unlock();
+    if (netcdf_guard) \
+        netcdf_guard.unlock();
 #else
 #define LOCK_NETCDF(comm)
 #define UNLOCK_NETCDF(comm)
 #endif
+
+namespace {
+struct Field {
+    std::string name;
+    std::string description;
+    std::string species;
+};
+const std::array<Field, 3> fields = {Field{"h", "amount of water", "water"},
+                                     Field{"u", "velocity - u component", "velocity_u"},
+                                     Field{"v", "velocity - v component", "velocity_v"}};
+} // namespace
 
 ReadDuisburg::ReadDuisburg(const std::string &name, int moduleID, mpi::communicator comm): Reader(name, moduleID, comm)
 {
@@ -35,8 +47,11 @@ ReadDuisburg::ReadDuisburg(const std::string &name, int moduleID, mpi::communica
     setParameterFilters(m_gridFile, "NetCDF Grid Files (*.grid.nc)/NetCDF Files (*.nc)");
 
     m_gridOut = createOutputPort("grid_out", "grid");
+    for (auto &field: fields) {
+        createOutputPort(field.name, field.description);
+    }
 
-    //set other inital options
+    //set other initial options
     setParallelizationMode(Serial);
     setAllowTimestepDistribution(true);
     // setHandlePartitions(Reader::PartitionTimesteps);
@@ -49,24 +64,42 @@ ReadDuisburg::ReadDuisburg(const std::string &name, int moduleID, mpi::communica
 ReadDuisburg::~ReadDuisburg()
 {}
 
-bool ReadDuisburg::prepareRead()
-{
-    return true;
-}
-
 bool ReadDuisburg::examine(const vistle::Parameter *param)
 {
     if (!param || param == m_gridFile) {
         LOCK_NETCDF(comm());
-        //extract number of timesteps from file
-        size_t nTimes = 0;
-        try {
-            NcmpiFile ncFile(comm(), m_gridFile->getValue().c_str(), NcmpiFile::read);
-            const NcmpiDim timesDim = ncFile.getDim("t");
-            nTimes = timesDim.getSize();
-        } catch (std::exception &ex) {
-            sendError("Error opening file: " + std::string(ex.what()));
+        auto file = m_gridFile->getValue();
+        auto ncid = NcFile::open(file, comm());
+        if (!ncid || !*ncid) {
+            if (rank() == 0)
+                sendError("Could not open %s", file.c_str());
+            return false;
         }
+        for (auto dim: {"x", "y", "t"}) {
+            if (!hasDimension(*ncid, dim)) {
+                if (rank() == 0)
+                    sendError("File %s does not have dimension %s, not expected format", file.c_str(), dim);
+                return false;
+            }
+        }
+        auto nTimes = getDimension(*ncid, "t");
+
+        for (auto var: {"x", "y", "z", "t"}) {
+            if (!hasVariable(*ncid, var)) {
+                if (rank() == 0)
+                    sendError("File %s does not have variable %s, not expected format", file.c_str(), var);
+                return false;
+            }
+        }
+        for (auto field: fields) {
+            if (!hasVariable(*ncid, field.name)) {
+                if (rank() == 0)
+                    sendError("File %s does not have variable %s, not expected format", file.c_str(),
+                              field.name.c_str());
+                return false;
+            }
+        }
+
         UNLOCK_NETCDF(comm());
 
         setTimesteps(nTimes);
@@ -74,6 +107,63 @@ bool ReadDuisburg::examine(const vistle::Parameter *param)
     }
     return true;
 }
+
+bool ReadDuisburg::prepareRead()
+{
+    LOCK_NETCDF(comm());
+    auto file = m_gridFile->getValue();
+    m_ncFile = NcFile::open(file, comm());
+    if (!m_ncFile || !*m_ncFile) {
+        if (rank() == 0)
+            sendError("Could not open %s", file.c_str());
+        return false;
+    }
+    for (auto dim: {"x", "y", "t"}) {
+        if (!hasDimension(*m_ncFile, dim)) {
+            if (rank() == 0)
+                sendError("File %s does not have dimension %s, not expected format", file.c_str(), dim);
+            return false;
+        }
+    }
+
+    auto x = getVariable<vistle::Scalar>(*m_ncFile, "x");
+    auto nx = x.size();
+    m_dim[0] = nx;
+    auto y = getVariable<vistle::Scalar>(*m_ncFile, "y");
+    auto ny = y.size();
+    m_dim[1] = ny;
+
+    auto isUniform = []<typename T>(const std::vector<T> &v) {
+        auto N = v.size();
+        if (N < 2)
+            return true;
+        auto step = (v.back() - v.front()) / (N - 1);
+        for (size_t i = 1; i < N; ++i) {
+            if (v[i] - v[i - 1] != step)
+                return false;
+        }
+        return true;
+    };
+
+    if (isUniform(x) && isUniform(y)) {
+        auto lg = std::make_shared<LayerGrid>(nx, ny, 1);
+        lg->min()[0] = x.front();
+        lg->min()[1] = y.front();
+        lg->max()[0] = x.back();
+        lg->max()[1] = y.back();
+        getVariable(*m_ncFile, "z", lg->z().data(), {0, 0}, {nx, ny});
+        m_grid = lg;
+    } else {
+        auto sg = std::make_shared<StructuredGrid>(nx, ny, 1);
+        getVariable(*m_ncFile, "z", sg->z().data(), {0, 0}, {nx, ny});
+        m_grid = sg;
+    }
+
+    UNLOCK_NETCDF(comm());
+
+    return true;
+}
+
 
 //cellIsWater: checks if vertex and neighbor vertices are also water e.g. if z-coord is varying
 bool ReadDuisburg::cellIsWater(const std::vector<double> &h, int i, int j, int dimX, int dimY) const
@@ -85,267 +175,29 @@ bool ReadDuisburg::cellIsWater(const std::vector<double> &h, int i, int j, int d
     return false;
 }
 
-bool ReadDuisburg::getDimensions(const NcmpiFile &ncFile, int &dimX, int &dimY) const
-{
-    const NcmpiDim &dimXname = ncFile.getDim("x");
-    if (dimXname.isNull()) {
-        sendError("Dimension not found in file");
-        return false;
-    }
-    dimX = 7000; //dimXname.getSize();
-    const NcmpiDim &dimYname = ncFile.getDim("y");
-    dimY = 7000; //dimYname.getSize();
-    return true;
-}
-
-Object::ptr ReadDuisburg::generateTriangleGrid(const NcmpiFile &ncFile, int timestep, int block) const
-{
-    int dimX, dimY;
-    if (!getDimensions(ncFile, dimX, dimY))
-        return Object::ptr();
-
-    std::vector<MPI_Offset> start = {0};
-    std::vector<MPI_Offset> stopX{dimX};
-    std::vector<MPI_Offset> stopY{dimY};
-    std::vector<MPI_Offset> startHZ{std::max(timestep, 0), 0, 0};
-    std::vector<MPI_Offset> stopHZ{1, dimY, dimX};
-
-    std::vector<double> x_coord(dimX);
-    std::vector<double> y_coord(dimY);
-    std::vector<double> z_coord(dimY * dimX), h(dimY * dimX);
-
-    const NcmpiVar xVar = ncFile.getVar("x");
-    if (xVar.isNull()) {
-        sendError("Error with dimension: X not found");
-        return nullptr;
-    }
-    const NcmpiVar yVar = ncFile.getVar("y");
-    const NcmpiVar zVar = ncFile.getVar("h+z");
-    const NcmpiVar hVar = ncFile.getVar("h");
-
-    xVar.getVar_all(start, stopX, x_coord.data());
-    yVar.getVar_all(start, stopY, y_coord.data());
-    zVar.getVar_all(startHZ, stopHZ, z_coord.data());
-    hVar.getVar_all(startHZ, stopHZ, h.data());
-
-    // size_t nVertices = dimX * dimY;
-    // size_t nFaces = (dimX-1)*(dimY-1);
-    // size_t nCorners = nFaces*4;
-    // size_t nFaces = (dimX - 1) * (dimY - 1) * 2;
-    // size_t nCorners = nFaces * 6;
-
-    int nonZero = 0;
-    int nonZeroVertices = 0;
-    std::vector<int> nonZeroVerticesVec(dimX * dimY, -1);
-    for (int j = 0; j < (dimY - 1); ++j) {
-        for (int i = 0; i < (dimX - 1); ++i) {
-            if (cellIsWater(h, i, j, dimX, dimY)) {
-                ++nonZero;
-                for (int i: {j * dimX + i, (j + 1) * dimX + i, j * dimX + i + 1, (j + 1) * dimX + i + 1}) {
-                    if (nonZeroVerticesVec[i] == -1) {
-                        nonZeroVerticesVec[i] = nonZeroVertices;
-                        ++nonZeroVertices;
-                    }
-                }
-            }
-        }
-    }
-
-    //int nonZero = std::count_if(h.begin(),h.end(),[](double i) { return i > 0.; });
-    /* int nonZeroVertices = nonZero; */
-    int nonZeroCorners = nonZero * 6;
-
-    // Polygons::ptr polygons(new Polygons(nFaces,nCorners,nVertices));
-    Triangles::ptr polygons(new Triangles(nonZeroCorners, nonZeroVertices));
-    // Triangles::ptr polygons(new Triangles(nCorners,nVertices));
-    auto ptrOnXcoords = polygons->x().data();
-    auto ptrOnYcoords = polygons->y().data();
-    auto ptrOnZcoords = polygons->z().data();
-
-    // auto ptrOnEl = polygons->el().data();
-    auto ptrOnCl = polygons->cl().data();
-
-    // Vec<Scalar>::ptr dataObj(new Vec<Scalar>(nVertices));
-    // dataObj->setMapping(DataBase::Vertex);
-    // Scalar *ptrOnScalarData = dataObj->x().data();
-    // dataObj->setGrid(polygons);
-    // dataObj->setBlock(block);
-    // dataObj->addAttribute("_species", "level");
-    // dataObj->setTimestep(timestep);
-    // dataObj->setNumTimesteps(numTimesteps());
-
-    polygons->setTimestep(timestep);
-    polygons->setBlock(block);
-    polygons->setNumTimesteps(numTimesteps());
-
-    std::vector<int> localIdx(dimX * dimY);
-    std::fill(localIdx.begin(), localIdx.end(), 0);
-
-    //fill coordinates, but only for vertices with water
-    for (Index i = 0; i < nonZeroVerticesVec.size(); ++i) {
-        int idx = nonZeroVerticesVec[i];
-        if (idx >= 0) {
-            auto x = i % dimX;
-            auto y = i / dimX;
-
-            ptrOnXcoords[idx] = x_coord[x];
-            ptrOnYcoords[idx] = y_coord[y];
-            ptrOnZcoords[idx] = z_coord[i];
-        }
-    }
-
-    /* int idxAll = 0, count = 0; */
-    /* float h_idx = 0; */
-    /* for (int j = 0; j < dimY; ++j) { */
-    /*     for (int i = 0; i < dimX; ++i) { */
-    /*         idxAll = j*dimX + i; */
-    /*         h_idx = z_coord[idxAll]; */
-    /*         if (h[idxAll]>0) { */
-    /*             ptrOnXcoords[count] = x_coord[i]; */
-    /*             ptrOnYcoords[count] = y_coord[j]; */
-    /*             ptrOnZcoords[count] = h_idx; */
-    /*             localIdx[idxAll] = count ; */
-    /*             count++; */
-    /*         //ptrOnScalarData[idxAll] = h_idx ; */
-    /*         // if (h > 0) { */
-    /*         //     ptrOnXcoords[count] = x_coord[i]; */
-    /*         //     ptrOnYcoords[count] = y_coord[j]; */
-    /*         //     ptrOnZcoords[count] = h_idx; */
-    /*         //     ptrOnScalarData[count] = h_idx ; */
-    /*         //     count++; */
-    /*         // } */
-    /*         } */
-    /*     } */
-    /* } */
-
-    //create triangle faces for water cells
-    // Index currentFace = 0;
-    int currentConnection = 0;
-    /* int currentElem = 0; */
-    for (int j = 0; j < (dimY - 1); ++j) {
-        for (int i = 0; i < (dimX - 1); ++i) {
-            if (cellIsWater(h, i, j, dimX, dimY)) {
-                ptrOnCl[currentConnection++] = nonZeroVerticesVec[i + (dimX * j)];
-                ptrOnCl[currentConnection++] = nonZeroVerticesVec[(i + 1) + (dimX * j)];
-                ptrOnCl[currentConnection++] = nonZeroVerticesVec[(i + 1) + ((j + 1) * dimX)];
-
-                ptrOnCl[currentConnection++] = nonZeroVerticesVec[i + (dimX * j)];
-                ptrOnCl[currentConnection++] = nonZeroVerticesVec[(i + 1) + (((j + 1) * dimX))];
-                ptrOnCl[currentConnection++] = nonZeroVerticesVec[i + ((j + 1) * dimX)];
-
-                /* // ptrOnEl[currentFace++] = currentConnection; */
-                /* ptrOnCl[currentConnection++] = localIdx[i+(dimX*j)]; */
-                /* ptrOnCl[currentConnection++] = localIdx[(i+1)+(dimX*j)]; */
-                /* ptrOnCl[currentConnection++] = localIdx[(i+1)+((j+1)*dimX)]; */
-                /* // ptrOnScalarData[currentElem++] = z_coord[j*dimX + i]; */
-
-                /* // ptrOnEl[currentFace++] = currentConnection; */
-                /* ptrOnCl[currentConnection++] = localIdx[i+(dimX*j)]; */
-                /* ptrOnCl[currentConnection++] = localIdx[(i+1)+(((j+1)*dimX))]; */
-                /* ptrOnCl[currentConnection++] = localIdx[i+((j+1)*dimX)]; */
-                /* // ptrOnScalarData[currentElem++] = z_coord[j*dimX + i]; */
-            }
-        }
-    }
-    //ptrOnEl[currentFace] = currentConnection;
-
-    return polygons;
-}
-
-
-// Object::ptr ReadDuisburg::generateLayerGrid(const NcmpiFile &ncFile, int timestep, int block) const {
-
-//     //initialize and get dimensions
-// int dimX, dimY;
-// if (!getDimensions(ncFile,dimX,dimY))
-//     return Object::ptr();
-
-//     std::vector<MPI_Offset> start = {0};
-//     std::vector<MPI_Offset> stopX{dimX};
-//     std::vector<MPI_Offset> stopY{dimY};
-//     std::vector<MPI_Offset> startHZ{std::max(timestep,0),0,0};
-//     std::vector<MPI_Offset> stopHZ{1,dimY, dimX};
-
-//     std::vector<double> x_coord(dimX);
-//     std::vector<double> y_coord(dimY);
-//     std::vector<double> z_coord(dimY*dimX);
-
-//     const NcmpiVar xVar = ncFile.getVar("x");
-//     if (xVar.isNull()) {
-//         sendError("Error with dimension: X not found");
-//         return nullptr;
-//     }
-//     const NcmpiVar yVar = ncFile.getVar("y");
-//     const NcmpiVar zVar = ncFile.getVar("h+z");
-
-//     xVar.getVar_all(start,stopX,x_coord.data());
-//     yVar.getVar_all(start,stopY,y_coord.data());
-//     zVar.getVar_all(startHZ,stopHZ,z_coord.data());
-
-//     size_t nVertices = dimX*dimY;
-
-//     //create grid object
-//     LayerGrid::ptr grid(new LayerGrid(dimX,dimY,1));
-//     grid->min()[0] = *x_coord.begin();
-//     grid->min()[1] = *y_coord.begin();
-//     auto z = grid->z().begin();
-//     grid->max()[0] = *(x_coord.end()-1);
-//     grid->max()[1] = *(y_coord.end()-1);
-
-//     //create scalar data object
-//    // Vec<Scalar>::ptr dataObj(new Vec<Scalar>(nVertices));
-//     //dataObj->setMapping(DataBase::Vertex);
-//     //Scalar *ptrOnScalarData = dataObj->x().data();
-
-//     //set meta data
-//    // dataObj->setGrid(grid);
-//     //dataObj->setBlock(block);
-//    // dataObj->addAttribute("_species", "level");
-//     //dataObj->setTimestep(timestep);
-//     //dataObj->setNumTimesteps(numTimesteps());
-
-//     grid->setTimestep(timestep);
-//     grid->setBlock(block);
-//     grid->setNumTimesteps(numTimesteps());
-
-//     //fill timevarying values (h)
-//     //TODO: replace this copy operation
-//     Index idx = 0;
-//     for (Index j = 0; j < dimY; ++j) {
-//      for (Index i = 0; i < dimX; ++i) {
-//         idx = j*dimX + i;
-//         //ptrOnScalarData[idx] = z_coord[idx];
-//         z[idx] = z_coord[idx];
-//      }
-//     }
-
-//     return grid;
-// }
-
 bool ReadDuisburg::read(Reader::Token &token, int timestep, int block)
 {
-    Object::ptr grid;
-    if (timestep < 0)
+    assert(m_grid);
+    if (timestep < 0) {
+        token.applyMeta(Object::as(m_grid));
+        token.addObject("grid_out", m_grid);
         return true;
-    try {
-        LOCK_NETCDF(*token.comm());
-        printf("I am rank %i  at block %i at time %i", rank(), block, timestep);
-
-        NcmpiFile ncGridFile(*token.comm(), m_gridFile->getValue().c_str(), NcmpiFile::read);
-
-        //grid = generateLayerGrid(ncGridFile,timestep,block);
-        grid = generateTriangleGrid(ncGridFile, timestep, block);
-
-        if (grid) {
-            token.applyMeta(grid);
-            token.addObject("grid_out", grid);
-        }
-
-        UNLOCK_NETCDF(*token.comm());
-
-    } catch (std::exception &ex) {
-        std::cerr << "ReadDuisburg exception: " << ex.what() << std::endl;
     }
+
+    auto size = m_dim[0] * m_dim[1];
+
+    LOCK_NETCDF(*token.comm());
+    for (auto &field: fields) {
+        if (!isConnected(field.name))
+            continue;
+        auto data = std::make_shared<Vec<Scalar>>(size);
+        getVariable(*m_ncFile, field.name, data->x().data(), {(Index)timestep, 0, 0}, {1, m_dim[1], m_dim[0]});
+        data->addAttribute("_species", field.species);
+        data->setGrid(m_grid);
+        token.applyMeta(data);
+        token.addObject(field.name, data);
+    }
+    UNLOCK_NETCDF(*token.comm());
 
     return true;
 }
