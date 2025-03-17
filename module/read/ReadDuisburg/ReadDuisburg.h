@@ -3,13 +3,8 @@
 
 #include <cstddef>
 #include <vistle/module/reader.h>
-
-#include <pnetcdf>
-#include <mpi.h>
-
-//#include <vistle/core/polygons.h>
 #include <vistle/core/triangles.h>
-#include "vistle/core/layergrid.h"
+#include <vistle/netcdf/ncwrap.h>
 
 
 using namespace vistle;
@@ -26,11 +21,10 @@ private:
     bool finishRead() override;
 
     bool cellIsWater(const std::vector<double> &h, int i, int j, int dimX, int dimY) const;
-    bool getDimensions(const PnetCDF::NcmpiFile &ncFile, int &dimX, int &dimY) const;
+    std::unique_ptr<vistle::NcFile> m_ncFile;
 
-    Object::ptr generateTriangleGrid(const PnetCDF::NcmpiFile &ncFile, int timestep, int block) const;
-    // Object::ptr generateLayerGrid(const PnetCDF::NcmpiFile &ncFile, int timestep, int block) const;
-
+    Object::ptr m_grid;
+    vistle::Index m_dim[2] = {0, 0};
     Port *m_gridOut = nullptr;
     StringParameter *m_gridFile;
 };
