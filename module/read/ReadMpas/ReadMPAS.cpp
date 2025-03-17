@@ -256,16 +256,16 @@ bool ReadMPAS::prepareRead()
                     auto fn = it2->path().string();
 #ifdef USE_NETCDF
                     auto ncid = NcFile::open(fn, comm());
-                    if (!ncid) {
+                    if (!ncid || !*ncid) {
                         std::cerr << "ReadMpas: ignoring " << fn << ", could not open" << std::endl;
                         continue;
                     }
-                    if (!hasDimension(ncid, DimNCells)) {
+                    if (!hasDimension(*ncid, DimNCells)) {
                         std::cerr << "ReadMpas: ignoring " << fn << ", no nCells dimension" << std::endl;
                         ++nIgnored;
                         continue;
                     }
-                    size_t dimCells = getDimension(ncid, DimNCells);
+                    size_t dimCells = getDimension(*ncid, DimNCells);
                     if (dimCells != numGridCells) {
                         std::cerr << "ReadMpas: ignoring " << fn << ", expected nCells=" << numGridCells << ", but got "
                                   << dimCells << std::endl;
@@ -421,28 +421,28 @@ bool ReadMPAS::validateFile(std::string fullFileName, std::string &redFileName, 
                     redFileName = dPath.string();
 #ifdef USE_NETCDF
                     auto ncid = NcFile::open(redFileName, comm());
-                    if (!ncid) {
+                    if (!ncid || !*ncid) {
                         if (rank() == 0)
                             sendError("Could not open %s", redFileName.c_str());
                         return false;
                     }
-                    if (!hasDimension(ncid, DimNCells)) {
+                    if (!hasDimension(*ncid, DimNCells)) {
                         if (rank() == 0)
                             sendError("File %s does not have dimension nCells, no MPAS file", redFileName.c_str());
                         return false;
                     }
                     int dimid = -1;
-                    int err = nc_inq_dimid(ncid, DimNCells, &dimid);
+                    int err = nc_inq_dimid(*ncid, DimNCells, &dimid);
                     if (err != NC_NOERR) {
                         return false;
                     }
                     size_t dimCells = 0;
-                    err = nc_inq_dimlen(ncid, dimid, &dimCells);
+                    err = nc_inq_dimlen(*ncid, dimid, &dimCells);
                     if (err != NC_NOERR) {
                         return false;
                     }
                     numGridCells = dimCells;
-                    setVariableList(ncid, type, type == grid_type);
+                    setVariableList(*ncid, type, type == grid_type);
 #else
                     try {
                         NcmpiFile newFile(comm(), redFileName, NcmpiFile::read);
@@ -487,8 +487,8 @@ bool ReadMPAS::validateFile(std::string fullFileName, std::string &redFileName, 
     if (type == data_type) {
 #ifdef USE_NETCDF
         auto ncid = NcFile::open(firstFileName, comm());
-        if (ncid) {
-            setVariableList(ncid, grid_type, true);
+        if (ncid && *ncid) {
+            setVariableList(*ncid, grid_type, true);
         }
 #else
         NcmpiFile newFile(comm(), firstFileName, NcmpiFile::read);
@@ -774,7 +774,7 @@ bool ReadMPAS::readVariable(Reader::Token &token, int timestep, int block, Index
         if (!ncid) {
             return true;
         }
-        *dataValues = getData(ncid, startLevel, nLevels, dataIdx, velocity);
+        *dataValues = getData(*ncid, startLevel, nLevels, dataIdx, velocity);
 #else
         NcmpiFile ncDataFile(*token.comm(), dataFileList.at(timestep).c_str(), NcmpiFile::read);
         getData(ncDataFile, dataValues, startLevel, nLevels, dataIdx, velocity);
@@ -787,10 +787,10 @@ bool ReadMPAS::readVariable(Reader::Token &token, int timestep, int block, Index
         LOCK_NETCDF(*token.comm());
 #ifdef USE_NETCDF
         auto nczid = NcFile::open(zGridFileName, *token.comm());
-        if (!nczid) {
+        if (!nczid || !*nczid) {
             return true;
         }
-        *dataValues = getData(nczid, startLevel, nLevels, dataIdx, velocity);
+        *dataValues = getData(*nczid, startLevel, nLevels, dataIdx, velocity);
 #else
         NcmpiFile ncFirstFile2(*token.comm(), zGridFileName, NcmpiFile::read);
         getData(ncFirstFile2, dataValues, startLevel, nLevels, dataIdx, velocity);
@@ -803,10 +803,10 @@ bool ReadMPAS::readVariable(Reader::Token &token, int timestep, int block, Index
         LOCK_NETCDF(*token.comm());
 #ifdef USE_NETCDF
         auto ncid = NcFile::open(firstFileName, *token.comm());
-        if (!ncid) {
+        if (!ncid || !*ncid) {
             return true;
         }
-        *dataValues = getData(ncid, startLevel, nLevels, dataIdx, velocity);
+        *dataValues = getData(*ncid, startLevel, nLevels, dataIdx, velocity);
 #else
         NcmpiFile ncFirstFile2(*token.comm(), firstFileName, NcmpiFile::read);
         getData(ncFirstFile2, dataValues, startLevel, nLevels, dataIdx, velocity);
@@ -842,43 +842,44 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
         size_t numMaxLevels = 1;
 
 #ifdef USE_NETCDF
-        NcFile ncid = NcFile::open(firstFileName, *token.comm());
-        if (!ncid) {
+        auto ncid = NcFile::open(firstFileName, *token.comm());
+        if (!ncid || !*ncid) {
             return false;
         }
-        if (!hasDimension(ncid, DimNCells) || !hasDimension(ncid, DimNVertices) || !hasDimension(ncid, DimMaxEdges)) {
+        if (!hasDimension(*ncid, DimNCells) || !hasDimension(*ncid, DimNVertices) ||
+            !hasDimension(*ncid, DimMaxEdges)) {
             sendError("Missing dimension info -> quit");
             return false;
         }
-        if (!hasVariable(ncid, "xVertex") || !hasVariable(ncid, VarVerticesOnCell) ||
-            !hasVariable(ncid, VarNEdgesOnCell)) {
+        if (!hasVariable(*ncid, "xVertex") || !hasVariable(*ncid, VarVerticesOnCell) ||
+            !hasVariable(*ncid, VarNEdgesOnCell)) {
             sendError("Missing variable info -> quit");
             return false;
         }
 
-        numCells = getDimension(ncid, DimNCells);
-        auto vPerC = getDimension(ncid, DimMaxEdges);
+        numCells = getDimension(*ncid, DimNCells);
+        auto vPerC = getDimension(*ncid, DimMaxEdges);
 
         if (eoc.empty()) {
-            eoc = getVariable<unsigned char>(ncid, VarNEdgesOnCell);
+            eoc = getVariable<unsigned char>(*ncid, VarNEdgesOnCell);
         }
         if (m_voronoiCells && voc.empty()) {
-            voc = getVariable<unsigned>(ncid, VarVerticesOnCell);
+            voc = getVariable<unsigned>(*ncid, VarVerticesOnCell);
         }
         if (xCoords.empty()) {
-            xCoords = getVariable<float>(ncid, m_voronoiCells ? "xVertex" : "xCell");
-            yCoords = getVariable<float>(ncid, m_voronoiCells ? "yVertex" : "yCell");
-            zCoords = getVariable<float>(ncid, m_voronoiCells ? "zVertex" : "zCell");
+            xCoords = getVariable<float>(*ncid, m_voronoiCells ? "xVertex" : "xCell");
+            yCoords = getVariable<float>(*ncid, m_voronoiCells ? "yVertex" : "yCell");
+            zCoords = getVariable<float>(*ncid, m_voronoiCells ? "zVertex" : "zCell");
         }
 
         //verify that dimensions in grid file and data file are matching
         if (hasDataFile) {
             auto ncdataid = NcFile::open(dataFileList.at(0), *token.comm());
-            if (!ncdataid) {
+            if (!ncdataid || !*ncdataid) {
                 return false;
             }
-            if (hasDimension(ncdataid, DimNVertLevels)) {
-                numMaxLevels = getDimension(ncdataid, DimNVertLevels);
+            if (hasDimension(*ncdataid, DimNVertLevels)) {
+                numMaxLevels = getDimension(*ncdataid, DimNVertLevels);
             } else {
                 hasDataFile = false;
                 if (block == 0)
@@ -1006,7 +1007,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
 #ifdef USE_NETCDF
         // set coc (index of neighboring cells on each cell) to determine ghost cells
         if ((numLevels > 1 || (!m_voronoiCells && numLevels == 1)) && coc.empty()) {
-            coc = getVariable<unsigned>(ncid, VarCellsOnCell);
+            coc = getVariable<unsigned>(*ncid, VarCellsOnCell);
             ghosts = (numLevels > 1);
         }
 #else
@@ -1220,20 +1221,20 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
             std::vector<size_t> startZ{0, (bottomLevel)};
             std::vector<size_t> stopZ{numCells, numZLevels};
             auto nczid = NcFile::open(zGridFileName, *token.comm());
-            if (!nczid) {
+            if (!nczid || !*nczid) {
                 return false;
             }
-            if (!hasDimension(nczid, DimNCells)) {
+            if (!hasDimension(*nczid, DimNCells)) {
                 sendError("no nCells dimension in zGrid file %s", zGridFileName.c_str());
                 return true;
             }
-            if (getDimension(nczid, DimNCells) != numGridCells) {
+            if (getDimension(*nczid, DimNCells) != numGridCells) {
                 sendError("nCells %lu in zGrid file %s does not match grid's (%lu)",
-                          (unsigned long)getDimension(nczid, DimNCells), zGridFileName.c_str(),
+                          (unsigned long)getDimension(*nczid, DimNCells), zGridFileName.c_str(),
                           (unsigned long)numGridCells);
                 return true;
             }
-            zGrid = getVariable<float>(nczid, VarZgrid, startZ, stopZ);
+            zGrid = getVariable<float>(*nczid, VarZgrid, startZ, stopZ);
 #else
             zGrid.resize(numCells * numZLevels);
 
@@ -1297,7 +1298,7 @@ bool ReadMPAS::read(Reader::Token &token, int timestep, int block)
             // o.w. use constant offsets between levels
 #ifdef USE_NETCDF
             if (m_voronoiCells) {
-                cov = getVariable<unsigned>(ncid, VarCellsOnVertex);
+                cov = getVariable<unsigned>(*ncid, VarCellsOnVertex);
             }
 #else
             if (m_voronoiCells) {

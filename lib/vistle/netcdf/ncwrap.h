@@ -10,6 +10,7 @@
 #include <boost/mpi.hpp>
 
 #include <string>
+#include <memory>
 
 namespace vistle {
 
@@ -29,8 +30,8 @@ struct NcFile {
     operator bool() const;
     operator int() const;
 
-    static NcFile open(const std::string &name);
-    static NcFile open(const std::string &name, const MPI_Comm &comm);
+    static std::unique_ptr<NcFile> open(const std::string &name);
+    static std::unique_ptr<NcFile> open(const std::string &name, const MPI_Comm &comm);
 };
 
 //DIMENSION EXISTS

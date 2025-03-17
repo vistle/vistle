@@ -24,27 +24,27 @@ NcFile::operator int() const
     return id;
 }
 
-NcFile NcFile::open(const std::string &name)
+std::unique_ptr<NcFile> NcFile::open(const std::string &name)
 {
     int ncid = -1;
     int err = nc_open(name.c_str(), NC_NOWRITE, &ncid);
     if (err != NC_NOERR) {
         std::cerr << "error opening NetCDF file " << name << ": " << nc_strerror(err) << std::endl;
-        return NcFile(name, err);
+        return std::make_unique<NcFile>(name, err);
     }
-    return NcFile(ncid, name, false);
+    return std::make_unique<NcFile>(ncid, name, false);
 }
 
-NcFile NcFile::open(const std::string &name, const MPI_Comm &comm)
+std::unique_ptr<NcFile> NcFile::open(const std::string &name, const MPI_Comm &comm)
 {
 #ifdef NETCDF_PARALLEL
     int ncid = -1;
     int err = nc_open_par(name.c_str(), NC_NOWRITE, comm, MPI_INFO_NULL, &ncid);
     if (err != NC_NOERR) {
         std::cerr << "error opening NetCDF file " << name << ": " << nc_strerror(err) << std::endl;
-        return NcFile(name, err);
+        return std::make_unique<NcFile>(name, err);
     }
-    return NcFile(ncid, name, true);
+    return std::make_unique<NcFile>(ncid, name, true);
 #else
     return open(name);
 #endif
