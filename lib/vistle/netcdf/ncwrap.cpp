@@ -228,21 +228,6 @@ std::vector<T> getVariable(int ncid, std::string name)
     return data;
 }
 
-template std::vector<unsigned char> getVariable(int ncid, std::string name, std::vector<size_t> start,
-                                                std::vector<size_t> count);
-template std::vector<uint32_t> getVariable(int ncid, std::string name, std::vector<size_t> start,
-                                           std::vector<size_t> count);
-template std::vector<uint64_t> getVariable(int ncid, std::string name, std::vector<size_t> start,
-                                           std::vector<size_t> count);
-template std::vector<float> getVariable(int ncid, std::string name, std::vector<size_t> start,
-                                        std::vector<size_t> count);
-template std::vector<double> getVariable(int ncid, std::string name, std::vector<size_t> start,
-                                         std::vector<size_t> count);
-
-template std::vector<unsigned char> getVariable(int ncid, std::string name);
-template std::vector<uint32_t> getVariable(int ncid, std::string name);
-template std::vector<uint64_t> getVariable(int ncid, std::string name);
-template std::vector<float> getVariable(int ncid, std::string name);
-template std::vector<double> getVariable(int ncid, std::string name);
+NCWRAP_GETVAR_ALL(, )
 
 } // namespace vistle
