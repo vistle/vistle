@@ -76,6 +76,9 @@ exclude_patterns = []
 #
 html_theme = 'sphinx_rtd_theme'
 
+# do not link to document source
+html_show_sourcelink = False
+
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
@@ -83,13 +86,13 @@ html_theme = 'sphinx_rtd_theme'
 
 autosectionlabel_prefix_document = True
 deleteDir("../build")
-# run("../..", ["docs/source/module"], "module", link_rst_only=True)
+# run("../..", ["docs/module"], "module", link_rst_only=True)
 
 moduleDirectory = os.path.dirname(os.path.realpath(__file__)) + "/module"
 for file_path in glob.glob(os.path.join(moduleDirectory, '*')):
     if os.path.isdir(file_path):
         category = os.path.basename(file_path)
-        run("../..", ["docs/source/module/" + category], "module/" + category, True)        
+        run("../..", ["docs/module/" + category], "module/" + category, True)        
 
 # run("../..", ["lib/vistle"], "lib", exclude_dirs=["toml"])
 # run("../..", ["app"], "app")

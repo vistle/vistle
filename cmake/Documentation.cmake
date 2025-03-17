@@ -38,11 +38,17 @@ function(configure_documentation)
 
     # Find all files in the ToInstall directory recursively
     message("CMAKE_COMMAND: " ${CMAKE_COMMAND})
-    set(SOURCE_DIR ${CMAKE_SOURCE_DIR}/doc/source)
-    file(
-        GLOB_RECURSE DOCUMENTATION_FILES
-        RELATIVE ${SOURCE_DIR}
-        "${SOURCE_DIR}/*")
+    set(SOURCE_DIR ${CMAKE_SOURCE_DIR}/doc)
+    set(DOCUMENTATION_FILES index.rst)
+    foreach(DIR module intro quickstart source)
+        file(
+            GLOB_RECURSE DIRFILES
+            RELATIVE ${SOURCE_DIR}
+            "${SOURCE_DIR}/${DIR}/*")
+        list(APPEND DOCUMENTATION_FILES ${DIRFILES})
+    endforeach()
+    message("DOCUMENTATION_FILES: ${DOCUMENTATION_FILES}")
+
     # List to hold all the output files
     set(CONFIGURED_FILES "")
     # Configure each file and add to the list of output files
@@ -57,11 +63,11 @@ function(configure_documentation)
     add_dependencies(vistle_doc configure_documentation_files)
     #configure links to other modules in the module generated markdowns
     set(CONFIGURED_MODULE_FILES)
-    #get all directories under ${CMAKE_BINARY_DIR}/docs/source/module/
+    #get all directories under ${CMAKE_BINARY_DIR}/docs/module/
     file(
         GLOB ALL_VISTLE_MODULES_CATEGORIES
-        RELATIVE ${CMAKE_BINARY_DIR}/docs/source/module
-        ${CMAKE_BINARY_DIR}/docs/source/module/*)
+        RELATIVE ${CMAKE_BINARY_DIR}/docs/module
+        ${CMAKE_BINARY_DIR}/docs/module/*)
 
     foreach(MODULE ${ALL_MODULES})
         #ignore modules in the IGNR_MODS list
@@ -79,7 +85,7 @@ function(configure_documentation)
         list(FIND ALL_MODULES ${MODULE} CATEGORY_INDEX)
         list(GET ALL_VISTLE_MODULES_CATEGORY ${CATEGORY_INDEX} CATEGORY)
         #relink and install the module markdowns
-        set(INPUT_FILE ${CMAKE_BINARY_DIR}/docs/source/module/${CATEGORY}/${MODULE}.md)
+        set(INPUT_FILE ${CMAKE_BINARY_DIR}/docs/module/${CATEGORY}/${MODULE}.md)
         set(OUTPUT_FILE ${VISTLE_DOCUMENTATION_SOURCE_DIR}/module/${CATEGORY}/${MODULE}/${MODULE}.md)
         list(APPEND CONFIGURED_MODULE_FILES ${OUTPUT_FILE})
         add_custom_command(
@@ -118,7 +124,7 @@ if(SPHINX_EXECUTABLE)
     add_dependencies(docs vistle_doc)
 
     set(READTHEDOCS_SOURCE_DIR ${CMAKE_SOURCE_DIR}/doc/readthedocs)
-    set(VISTLE_DOCUMENTATION_SOURCE_DIR ${VISTLE_DOCUMENTATION_DIR}/docs/source)
+    set(VISTLE_DOCUMENTATION_SOURCE_DIR ${VISTLE_DOCUMENTATION_DIR}/docs)
 
     #copy the readthedocs configuration scripts
     add_custom_command(
@@ -133,9 +139,9 @@ if(SPHINX_EXECUTABLE)
     add_custom_command(TARGET vistle_doc COMMAND ${CMAKE_COMMAND} -E make_directory ${VISTLE_DOCUMENTATION_DIR}/docs/build)
     add_custom_command(
         TARGET vistle_doc
-        COMMAND ${SPHINX_EXECUTABLE} -M html source build
+        COMMAND ${SPHINX_EXECUTABLE} -M html . build
         WORKING_DIRECTORY ${VISTLE_DOCUMENTATION_DIR}/docs
-        COMMENT "Building readTheDocs documentation" DEPENDS vistle_module_doc)
+        COMMENT "Building Read the Docs documentation" DEPENDS vistle_module_doc)
 
     set(VISTLE_BUILD_DOC TRUE)
 else(SPHINX_EXECUTABLE)
@@ -163,7 +169,7 @@ macro(add_module_doc_target targetname)
         VISTLE_MODULE_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR} VISTLE_DOCUMENTATION_CATEGORY=${CATEGORY}
         VISTLE_DOCUMENTATION_SOURCE_DIR=${VISTLE_DOCUMENTATION_SOURCE_DIR} vistle --batch ${VISTLE_DOCUMENTATION_WORKFLOW})
 
-    set(OUTPUT_FILE ${CMAKE_BINARY_DIR}/docs/source/module/${CATEGORY}/${targetname}.md)
+    set(OUTPUT_FILE ${CMAKE_BINARY_DIR}/docs/module/${CATEGORY}/${targetname}.md)
     set(INPUT_FILE ${CMAKE_CURRENT_SOURCE_DIR}/${targetname}.md)
     if(NOT EXISTS ${INPUT_FILE})
         set(INPUT_FILE)
@@ -189,7 +195,7 @@ macro(add_module_doc_target targetname)
         get_filename_component(workflow ${file} NAME_WLE)
         message("Workflow: ${targetname} ${workflow} ${file}")
 
-        set(output_dir ${VISTLE_DOCUMENTATION_DIR}/docs/source/module/${CATEGORY}/${targetname})
+        set(output_dir ${VISTLE_DOCUMENTATION_DIR}/docs/module/${CATEGORY}/${targetname})
         #generating the result and workflow snapshots from different vistle instances
         #prevents vistle from asking to save the workflow
         generate_result_snapshot(${targetname} ${workflow} ${output_dir})
