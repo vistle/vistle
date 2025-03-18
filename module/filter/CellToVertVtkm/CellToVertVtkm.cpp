@@ -78,9 +78,7 @@ bool IsDataSetEmpty(const vtkm::cont::DataSet &dataset)
 Object::ptr CellToVertVtkm::prepareOutputGrid(const vtkm::cont::DataSet &dataset,
                                               const Object::const_ptr &inputGrid) const
 {
-    if (!IsDataSetEmpty(dataset))
-        return VtkmModule::prepareOutputGrid(dataset, inputGrid);
-    return nullptr;
+    return inputGrid->clone();
 }
 
 DataBase::ptr CellToVertVtkm::prepareOutputField(const vtkm::cont::DataSet &dataset, const Object::const_ptr &inputGrid,
