@@ -27,6 +27,9 @@ private:
     bool prepare() override;
 
     void renumberVertices(vistle::Coords::const_ptr coords, vistle::Indexed::ptr poly, VerticesMapping &vm) const;
+    template<class Geometry>
+    void renumberVertices(vistle::StructuredGridBase::const_ptr sgrid, typename Geometry::ptr poly,
+                          VerticesMapping &vm) const;
 
     vistle::IntParameter *p_reuse = nullptr;
     bool m_invert = false;
@@ -44,7 +47,7 @@ private:
     struct CachedResult {
         VerticesMapping vm;
         ElementsMapping em;
-        vistle::Indexed::ptr grid;
+        vistle::Object::ptr grid;
     };
     mutable vistle::ResultCache<CachedResult> m_gridCache;
 };
