@@ -36,6 +36,7 @@ extensions = [
     'myst_parser',
     'sphinxcontrib.mermaid',
     'sphinx.ext.autosectionlabel',
+    'html_image_processor',
 ]
 
 # Tell sphinx what the primary language being documented is.
@@ -84,8 +85,8 @@ autosectionlabel_prefix_document = True
 deleteDir("../build")
 # run("../..", ["docs/source/module"], "module", link_rst_only=True)
 
-moduleDorectory = os.path.dirname(os.path.realpath(__file__)) + "/module"
-for file_path in glob.glob(os.path.join(moduleDorectory, '*')):
+moduleDirectory = os.path.dirname(os.path.realpath(__file__)) + "/module"
+for file_path in glob.glob(os.path.join(moduleDirectory, '*')):
     if os.path.isdir(file_path):
         category = os.path.basename(file_path)
         run("../..", ["docs/source/module/" + category], "module/" + category, True)        

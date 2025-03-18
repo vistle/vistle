@@ -8,7 +8,8 @@ import os
 import sys
 from collections import namedtuple
 from clear import deleteFilesInDir
-
+import re
+import shutil
 
 if sys.platform == 'win32':
     BASE_DIR = os.path.dirname(os.path.realpath(__file__)).replace('\\', '/')
@@ -72,10 +73,7 @@ def createLinks(markdown_list, root_link_output_path):
 
 
 def addLinkToRSTFile(rst_path, md_link_filename):
-    print("rst_path: ", rst_path)
-    print("md_link_filename: ", md_link_filename)
     with open(rst_path, "a+") as arf:
-        print("opening rst file " + rst_path)
         basename = md_link_filename.split(".")[0] #fail to remove extention if filename contains more .
         linkStr = basename + " <" + basename + "/" + md_link_filename + ">"
         if not strInFile(arf, linkStr):
@@ -171,7 +169,6 @@ def run(
         addLinkToRSTFile(file_link_output_path, link)
         for link in sorted(index_link_list)
     ]
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
