@@ -21,20 +21,6 @@ CellToVertVtkm::CellToVertVtkm(const std::string &name, int moduleID, mpi::commu
 CellToVertVtkm::~CellToVertVtkm()
 {}
 
-void CellToVertVtkm::runFilter(const vtkm::cont::DataSet &input, const std::string &fieldName,
-                               vtkm::cont::DataSet &output) const
-{
-    if (input.HasField(fieldName)) {
-#ifdef VERTTOCELL
-        auto filter = vtkm::filter::field_conversion::CellAverage();
-#else
-        auto filter = vtkm::filter::field_conversion::PointAverage();
-#endif
-        filter.SetActiveField(fieldName);
-        output = filter.Execute(input);
-    }
-}
-
 ModuleStatusPtr CellToVertVtkm::checkInputField(const Object::const_ptr &grid, const DataBase::const_ptr &field,
                                                 const std::string &portName) const
 {
@@ -70,11 +56,20 @@ ModuleStatusPtr CellToVertVtkm::transformInputField(const Object::const_ptr &gri
     return Success();
 }
 
-bool IsDataSetEmpty(const vtkm::cont::DataSet &dataset)
+void CellToVertVtkm::runFilter(const vtkm::cont::DataSet &input, const std::string &fieldName,
+                               vtkm::cont::DataSet &output) const
 {
-    return dataset.GetNumberOfCoordinateSystems() == 0 && dataset.GetNumberOfFields() == 0 &&
-           dataset.GetNumberOfCells() == 0;
+    if (input.HasField(fieldName)) {
+#ifdef VERTTOCELL
+        auto filter = vtkm::filter::field_conversion::CellAverage();
+#else
+        auto filter = vtkm::filter::field_conversion::PointAverage();
+#endif
+        filter.SetActiveField(fieldName);
+        output = filter.Execute(input);
+    }
 }
+
 Object::ptr CellToVertVtkm::prepareOutputGrid(const vtkm::cont::DataSet &dataset,
                                               const Object::const_ptr &inputGrid) const
 {

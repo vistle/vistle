@@ -4,7 +4,6 @@
 #include <array>
 #include <vistle/vtkm/VtkmModule.h>
 
-//TODO: add TestVertToCellVtkm to CMakeLists.txt!
 #ifdef VERTTOCELL
 #define CellToVertVtkm TestVertToCellVtkm
 #endif
