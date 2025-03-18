@@ -191,7 +191,7 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
         if (!m_outputPorts[i]->isConnected())
             continue;
 
-        // ... check input field and transform it to VTK-m
+        // ... check input field and transform it to VTK-m ...
         if (m_requireMappedData) {
             status = checkInputField(inputGrid, inputFields[i], m_inputPorts[i]->getName());
             if (!isValid(status))
@@ -205,10 +205,10 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
             activeField = fieldNames[i];
     }
 
-    // ... run filter for each field ...
+    // ... run filter on the active field ...
     runFilter(inputDataset, activeField, outputDataset);
 
-    // ... and transform filter output, i.e., grid and dataset, to Vistle objects
+    // ... transform filter output, i.e., grid and data fields, to Vistle objects
     auto outputGrid = prepareOutputGrid(outputDataset, inputGrid);
     for (std::size_t i = 0; i < inputFields.size(); ++i) {
         DataBase::ptr outputField;
@@ -218,6 +218,7 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
         if (m_requireMappedData)
             outputField = prepareOutputField(outputDataset, inputGrid, inputFields[i], fieldNames[i], outputGrid);
 
+        // ... and write the result to the output ports
         writeResultToPort(task, inputGrid, inputFields[i], m_outputPorts[i], outputGrid, outputField);
     }
 

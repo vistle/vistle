@@ -15,7 +15,7 @@ MODULE_MAIN(CellToVertVtkm)
 using namespace vistle;
 
 CellToVertVtkm::CellToVertVtkm(const std::string &name, int moduleID, mpi::communicator comm)
-: VtkmModule(name, moduleID, comm, 3)
+: VtkmModule(name, moduleID, comm, 1)
 {}
 
 CellToVertVtkm::~CellToVertVtkm()
@@ -66,6 +66,14 @@ void CellToVertVtkm::runFilter(const vtkm::cont::DataSet &input, const std::stri
         auto filter = vtkm::filter::field_conversion::PointAverage();
 #endif
         filter.SetActiveField(fieldName);
+        /*
+            By default, VTK-m names output fields the same as input fields which causes problems
+            if the input mapping is different from the output mapping, i.e., when converting 
+            a point field to a cell field or vice versa. To avoid having a point and a 
+            cell field of the same name in the resulting dataset, which leads to conflicts, e.g., 
+            when calling VTK-m's GetField() method, we rename the output field here.
+        */
+        filter.SetOutputFieldName("output_" + fieldName);
         output = filter.Execute(input);
     }
 }
@@ -80,8 +88,9 @@ DataBase::ptr CellToVertVtkm::prepareOutputField(const vtkm::cont::DataSet &data
                                                  const DataBase::const_ptr &inputField, const std::string &fieldName,
                                                  const Object::ptr &outputGrid) const
 {
-    if (dataset.HasField(fieldName)) {
-        auto outputField = VtkmModule::prepareOutputField(dataset, inputGrid, inputField, fieldName, outputGrid);
+    std::string outputFieldName = "output_" + fieldName;
+    if (dataset.HasField(outputFieldName)) {
+        auto outputField = VtkmModule::prepareOutputField(dataset, inputGrid, inputField, outputFieldName, outputGrid);
 #ifdef VERTTOCELL
         outputField->setMapping(DataBase::Element);
 #else
