@@ -55,7 +55,7 @@ bool LayerGrid::checkImpl(std::ostream &os, bool quick) const
     }
 
     for (int c = 0; c < 2; c++) {
-        VALIDATE(d()->min[c] <= d()->max[c]);
+        VALIDATE(d()->min[c] != d()->max[c] || getNumDivisions(c) <= 1);
     }
 
     VALIDATE_SUB(normals());
@@ -284,7 +284,13 @@ std::pair<Vector3, Vector3> LayerGrid::getBounds() const
     }
 
     auto mm = Base::getMinMax();
-    return std::make_pair(Vector3(m_min[0], m_min[1], mm.first[0]), Vector3(m_max[0], m_max[1], mm.second[0]));
+    Vector3 min(m_min[0], m_min[1], mm.first[0]);
+    Vector3 max(m_max[0], m_max[1], mm.second[0]);
+    for (int c = 0; c < 3; ++c) {
+        if (min[c] > max[c])
+            std::swap(min[c], max[c]);
+    }
+    return std::make_pair(min, max);
 }
 
 Normals::const_ptr LayerGrid::normals() const
