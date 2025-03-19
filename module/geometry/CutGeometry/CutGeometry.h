@@ -3,7 +3,7 @@
 
 #include <vistle/module/module.h>
 #include <vistle/core/vector.h>
-#include "../IsoSurface/IsoDataFunctor.h"
+#include "../../map/IsoSurface/IsoDataFunctor.h"
 
 class CutGeometry: public vistle::Module {
 public:
