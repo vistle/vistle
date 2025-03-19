@@ -145,7 +145,8 @@ public:
     std::vector<std::string> getParameters(int id) const;
     std::shared_ptr<Parameter> getParameter(int id, const std::string &name) const;
 
-    ParameterSet getConnectedParameters(const Parameter &param) const;
+    ParameterSet getConnectedParameters(const Parameter &param, bool onlyDirect = false) const;
+    ParameterSet getDirectlyConnectedParameters(const Parameter &param) const;
 
     bool handle(const message::Message &msg, const buffer *payload, bool track = true);
     bool handle(const message::Message &msg, const char *payload, size_t payloadSize, bool track = true);

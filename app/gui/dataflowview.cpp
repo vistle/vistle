@@ -2,6 +2,7 @@
 #include "modulebrowser.h"
 #include "dataflownetwork.h"
 #include "module.h"
+#include "parameters.h"
 
 #include <QApplication>
 #include <QMenu>
@@ -136,6 +137,9 @@ void DataFlowView::dragEnterEvent(QDragEnterEvent *e)
     if (mimeFormats.contains(ModuleBrowser::mimeFormat())) {
         e->acceptProposedAction();
     }
+    if (mimeFormats.contains(Parameters::mimeFormat())) {
+        e->acceptProposedAction();
+    }
 }
 
 void DataFlowView::dragMoveEvent(QDragMoveEvent *event)
@@ -167,6 +171,21 @@ void DataFlowView::dropEvent(QDropEvent *event)
             QString moduleName;
             stream >> moduleName;
             scene()->addModule(hubId, moduleName, newPos);
+        }
+    }
+    if (event->mimeData()->formats().contains(Parameters::mimeFormat())) {
+        auto module = scene()->findModule(mapToScene(event->pos()));
+        if (module) {
+            QByteArray encoded = event->mimeData()->data(Parameters::mimeFormat());
+            QDataStream stream(&encoded, QIODevice::ReadOnly);
+
+            while (!stream.atEnd()) {
+                int moduleId;
+                stream >> moduleId;
+                QString parameterName;
+                stream >> parameterName;
+                module->showParameters({moduleId, parameterName, mapToGlobal(event->pos())});
+            }
         }
     }
 }
