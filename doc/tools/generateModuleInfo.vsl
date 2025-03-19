@@ -62,7 +62,7 @@ def createModuleImage(name, inPorts, outPorts):
     portStartPos = portDistance
     for port, tooltip in outPorts:
         image += getRect(portStartPos, spiderLegOffsetTop + height -
-                         size, size, size, color="#c8c81eff", tooltip=port) + "\n"
+                         size, size, size, color="#c81e1eff", tooltip=port) + "\n"
         text = tooltip + "<tspan> (" + port + ")</tspan>"
         image += getPortDescriptionSpider(size, portStartPos +
                                           size/2, spiderLegOffsetTop + height, num, text) + "\n"
