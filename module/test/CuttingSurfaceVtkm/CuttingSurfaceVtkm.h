@@ -1,5 +1,5 @@
-#ifndef CUTTING_SURFACE_VTKM_H
-#define CUTTING_SURFACE_VTKM_H
+#ifndef VISTLE_CUTTINGSURFACEVTKM_CUTTINGSURFACEVTKM_H
+#define VISTLE_CUTTINGSURFACEVTKM_CUTTINGSURFACEVTKM_H
 
 #include <vistle/vtkm/ImplicitFunctionController.h>
 #include <vistle/vtkm/VtkmModule.h>
@@ -19,4 +19,4 @@ private:
     ImplicitFunctionController m_implFuncControl;
 };
 
-#endif // CUTTING_SURFACE_VTKM_H
+#endif

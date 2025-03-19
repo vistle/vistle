@@ -1,5 +1,5 @@
-#ifndef VTKM_MODULE_H
-#define VTKM_MODULE_H
+#ifndef VISTLE_VTKM_VTKMMODULE_H
+#define VISTLE_VTKM_VTKMMODULE_H
 
 #include <vector>
 #include <vtkm/cont/DataSet.h>
@@ -57,4 +57,4 @@ protected:
     bool compute(const std::shared_ptr<vistle::BlockTask> &task) const override;
 };
 
-#endif // VTKM_MODULE_H
+#endif

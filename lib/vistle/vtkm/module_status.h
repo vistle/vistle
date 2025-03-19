@@ -1,5 +1,5 @@
-#ifndef MODULE_STATUS_H
-#define MODULE_STATUS_H
+#ifndef VISTLE_VTKM_MODULE_STATUS_H
+#define VISTLE_VTKM_MODULE_STATUS_H
 
 #include <string>
 #include <memory>
@@ -98,4 +98,4 @@ ModuleStatusPtr V_VTKM_EXPORT Warning(const char *message);
 */
 ModuleStatusPtr V_VTKM_EXPORT Info(const char *message);
 
-#endif // MODULE_STATUS_H
+#endif
