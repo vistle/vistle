@@ -1,7 +1,7 @@
 # Module Categories
 
 The modules in Vistle are categorized according to the role they can take in a visualization workflow.
-The linear succession proposed by the visualizatino pipeline is an idealized view, so that more categories have been created than just the pipeline steps presented above.
+The linear succession proposed by the visualization pipeline is an idealized view, so that more categories have been created than just the pipeline steps presented above.
 
 ### Read
 
