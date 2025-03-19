@@ -25,7 +25,8 @@ MYST_INCLUDE = """```{include} %s
 :relative-images:
 ```
 """  # other python format would replace {include}
-RST_INDEX_HEADER = "{name}\n{underline}\n\n.. toctree::\n   :maxdepth: 1\n\n"
+RST_INDEX_HEADER = "{name}\n{underline}\n\n.. include:: {dirname}.md\n   :parser: myst\n\n.. toctree::\n   :maxdepth: 1\n\n"
+RST_INDEX_HEADER = ".. include:: {dirname}.md\n   :parser: myst\n\n.. toctree::\n   :maxdepth: 1\n\n"
 
 
 def strInFile(openReadOnlyFile, val) -> bool:
@@ -87,7 +88,7 @@ def createRSTHeaderNameFromRootPath(path, file_path=False):
         md_name = path.split("/")[-2]
     name_len = "{:=^" + str(len(md_name)) + "}"
     underline = name_len.format("")
-    return RST_INDEX_HEADER.format(name=md_name.capitalize(), underline=underline)
+    return RST_INDEX_HEADER.format(name=md_name.capitalize(), dirname=md_name, underline=underline)
 
 
 def createValidLinkFilePath(md_linkdir, md_root) -> str:
