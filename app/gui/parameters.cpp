@@ -14,6 +14,8 @@
 
 #include "parameters.h"
 #include "vistleobserver.h"
+#include "parameterconnectionwidgets.h"
+
 #include <vistle/core/message.h>
 
 #include <QtGroupPropertyManager>
@@ -38,11 +40,6 @@ namespace gui {
 
 const int NumDec = 15;
 
-static QString displayName(QString parameterName)
-{
-    return parameterName.replace("_", " ").trimmed();
-}
-
 template<class M>
 static M *addPropertyManager(Parameters *p)
 {
@@ -53,7 +50,6 @@ static M *addPropertyManager(Parameters *p)
 
 Parameters::Parameters(QWidget *parent, Qt::WindowFlags f)
 : Parameters::PropertyBrowser(parent)
-, m_moduleId(0)
 , m_vistle(nullptr)
 , m_groupManager(nullptr)
 , m_boolManager(nullptr)
@@ -136,6 +132,8 @@ void Parameters::setVistleObserver(VistleObserver *observer)
     connect(observer, SIGNAL(parameterValueChanged_s(int, QString)), this, SLOT(parameterValueChanged(int, QString)));
     connect(observer, SIGNAL(parameterChoicesChanged_s(int, QString)), this,
             SLOT(parameterChoicesChanged(int, QString)));
+    connect(observer, &VistleObserver::newConnection_s, this, &Parameters::setConnectedParameters);
+    connect(observer, &VistleObserver::deleteConnection_s, this, &Parameters::setConnectedParameters);
 }
 
 void Parameters::setVistleConnection(vistle::VistleConnection *conn)
@@ -154,13 +152,36 @@ void Parameters::setModule(int id)
     m_propToGroup.clear();
 
     m_moduleId = id;
-
-    //std::cerr << "Parameters: showing for " << id << std::endl;
     if (m_vistle) {
         auto params = m_vistle->getParameters(id);
         for (auto &p: params)
             newParameter(id, QString::fromStdString(p));
     }
+    setConnectedParameters();
+}
+
+void Parameters::setConnectedParameters()
+{
+    //std::cerr << "Parameters: showing for " << id << std::endl;
+    if (!m_vistle || m_moduleId == -1)
+        return;
+    auto params = m_vistle->getParameters(m_moduleId);
+    std::vector<Connection> connections;
+    for (auto &p: params) {
+        auto vistleParam = m_vistle->getParameter(m_moduleId, p);
+        auto connectedParams = m_vistle->ui().state().getConnectedParameters(*vistleParam);
+        auto directlyConnectedParams = m_vistle->ui().state().getDirectlyConnectedParameters(*vistleParam);
+        for (const auto &c: directlyConnectedParams) {
+            connectedParams.erase(c);
+            connections.push_back({m_moduleId, displayName(QString::fromStdString(p)), c->module(),
+                                   displayName(QString::fromStdString(c->getName())), true});
+        }
+        for (const auto &c: connectedParams) {
+            connections.push_back({m_moduleId, displayName(QString::fromStdString(p)), c->module(),
+                                   displayName(QString::fromStdString(c->getName())), false});
+        }
+    }
+    parametersConnected(connections);
 }
 
 QString Parameters::propertyToName(QtProperty *prop) const
@@ -211,6 +232,11 @@ void Parameters::addItemWithProperty(QtBrowserItem *item, QtProperty *prop)
     bool expanded = false;
     if (getExpandedState(propertyToName(prop), expanded))
         setExpanded(item, expanded);
+}
+
+const char *Parameters::mimeFormat()
+{
+    return "application/x-parameterbrowser";
 }
 
 void Parameters::newParameter(int moduleId, QString parameterName)

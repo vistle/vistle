@@ -18,6 +18,7 @@ set(gui_SOURCES
     port.cpp
     vistleobserver.cpp
     parameters.cpp
+    parameterconnectionwidgets.cpp
     modulebrowser.cpp
     moduleview.cpp
     dataflowview.cpp
@@ -37,6 +38,7 @@ set(gui_HEADERS
     modulebrowser.h
     moduleview.h
     parameters.h
+    parameterconnectionwidgets.h
     port.h
     uicontroller.h
     vistleconsole.h

@@ -3,7 +3,7 @@
 
 #include <map>
 
-#include <QtButtonPropertyBrowser>
+#include "propertybrowser/vistlebuttonpropertybrowser.h"
 
 class QtProperty;
 
@@ -27,16 +27,18 @@ namespace gui {
 
 class VistleObserver;
 
-class Parameters: public QtButtonPropertyBrowser {
+class Parameters: public VistleButtonPropertyBrowser {
     Q_OBJECT
 
 public:
-    typedef QtButtonPropertyBrowser PropertyBrowser;
+    typedef VistleButtonPropertyBrowser PropertyBrowser;
 
     Parameters(QWidget *parent = 0, Qt::WindowFlags f = Qt::WindowFlags());
     void setVistleObserver(VistleObserver *observer);
     void setVistleConnection(vistle::VistleConnection *conn);
     void setModule(int id);
+    void setConnectedParameters();
+    static const char *mimeFormat();
 
 private slots:
     void newParameter(int moduleId, QString parameterName);
@@ -51,7 +53,6 @@ private:
     bool getExpandedState(QString name, bool &state);
     void addItemWithProperty(QtBrowserItem *item, QtProperty *prop);
 
-    int m_moduleId;
     vistle::VistleConnection *m_vistle;
 
     std::map<QString, QtProperty *> m_groups;
