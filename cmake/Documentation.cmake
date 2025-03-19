@@ -107,12 +107,15 @@ endfunction()
 set(VISTLE_DOCUMENTATION_DIR
     "${PROJECT_BINARY_DIR}/documentation"
     CACHE PATH "Path where the documentation will be built")
+
 vistle_find_package(Sphinx)
 if(SPHINX_EXECUTABLE)
-
     add_custom_target(vistle_module_doc)
     add_custom_target(vistle_doc)
     add_dependencies(vistle_doc vistle_module_doc)
+
+    add_custom_target(docs) # add a short alias
+    add_dependencies(docs vistle_doc)
 
     set(READTHEDOCS_SOURCE_DIR ${CMAKE_SOURCE_DIR}/doc/readthedocs)
     set(VISTLE_DOCUMENTATION_SOURCE_DIR ${VISTLE_DOCUMENTATION_DIR}/docs/source)
