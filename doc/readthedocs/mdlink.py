@@ -25,8 +25,9 @@ MYST_INCLUDE = """```{include} %s
 :relative-images:
 ```
 """  # other python format would replace {include}
-RST_INDEX_HEADER = "{name}\n{underline}\n\n.. include:: {dirname}.md\n   :parser: myst\n\n.. toctree::\n   :maxdepth: 1\n\n"
-RST_INDEX_HEADER = ".. include:: {dirname}.md\n   :parser: myst\n\n.. toctree::\n   :maxdepth: 1\n\n"
+RST_INDEX_HEADER = "{name}\n{underline}\n\n.. include:: {dirname}.md\n   :parser: myst\n\nModules\n--------\n\n.. toctree::\n   :maxdepth: 1\n\n"
+RST_INDEX_HEADER = "{name}\n{underline}\n\n.. toctree::\n   :maxdepth: 1\n\n..include:: {dirname}.md\n   :parser: myst"
+#RST_INDEX_HEADER = ".. include:: {dirname}.md\n   :parser: myst\n\n.. toctree::\n   :maxdepth: 1\n\n"
 
 
 def strInFile(openReadOnlyFile, val) -> bool:
@@ -90,6 +91,20 @@ def createRSTHeaderNameFromRootPath(path, file_path=False):
     underline = name_len.format("")
     return RST_INDEX_HEADER.format(name=md_name.capitalize(), dirname=md_name, underline=underline)
 
+def appendIndexFooter(rst_path, md_link_filename):
+    md_name = os.path.basename(path)
+    if file_path:
+        md_name = path.split("/")[-2]
+    name_len = "{:=^" + str(len(md_name)) + "}"
+    underline = name_len.format("")
+    return RST_INDEX_HEADER.format(name=md_name.capitalize(), dirname=md_name, underline=underline)
+    with open(rst_path, "a+") as arf:
+        basename = md_link_filename.split(".")[0] #fail to remove extention if filename contains more .
+        linkStr = basename + " <" + basename + "/" + md_link_filename + ">"
+        if not strInFile(arf, linkStr):
+            print("adding link: " + linkStr)
+            arf.write(INDENT.format(linkStr))
+
 
 def createValidLinkFilePath(md_linkdir, md_root) -> str:
     prevname = new_link = ""
@@ -133,6 +148,10 @@ def createIndexFile(name):
     with open(name, "w") as wf:
         wf.write(createRSTHeaderNameFromRootPath(name, True))
 
+def createIndexFile(name):
+    with open(name, "w") as wf:
+        wf.write(createRSTHeaderNameFromRootPath(name, True))
+
 
 def createIndexFileIfNotExisting(link_path) -> str:
     if pathExists(link_path):
@@ -162,14 +181,14 @@ def run(
             addLinkToRSTFile(file_link_output_path, md.filename)
             for md in sorted(markdown_files)
         ]
-        return
-    
-    # deleteFilesInDir(root_link_output_path, pattern="*.md")
-    index_link_list = createLinks(markdown_files, root_link_output_path)
-    _ = [
-        addLinkToRSTFile(file_link_output_path, link)
-        for link in sorted(index_link_list)
-    ]
+    else:
+        # deleteFilesInDir(root_link_output_path, pattern="*.md")
+        index_link_list = createLinks(markdown_files, root_link_output_path)
+        _ = [
+            addLinkToRSTFile(file_link_output_path, link)
+            for link in sorted(index_link_list)
+        ]
+    appendIndexFooter(file_link_output_path)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

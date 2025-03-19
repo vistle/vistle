@@ -59,8 +59,22 @@ function(configure_documentation)
         set(OUTPUT_FILE ${VISTLE_DOCUMENTATION_SOURCE_DIR}/${DOCUMENTATION_FILE})
         configure_documentation_detail(${INPUT_FILE} ${OUTPUT_FILE} CONFIGURED_FILES)
     endforeach()
+
+    file(
+        GLOB CATEGORY_FILES
+        RELATIVE ${PROJECT_SOURCE_DIR}/module
+        "${PROJECT_SOURCE_DIR}/module/*/*.md")
+    message("*************************** CATEGORIES  *******************: ${CATEGORY_FILES}")
+    message("*************************** proj src  *******************: ${PROJECT_SOURCE_DIR}")
+    list(APPEND DOCUMENTATION_FILES ${CATEGORY_FILES})
+    foreach(FILE ${CATEGORY_FILES})
+        set(INPUT_FILE ${PROJECT_SOURCE_DIR}/module/${FILE})
+        set(OUTPUT_FILE ${VISTLE_DOCUMENTATION_SOURCE_DIR}/module/${FILE})
+        configure_documentation_detail(${INPUT_FILE} ${OUTPUT_FILE} CONFIGURED_FILES)
+    endforeach()
     add_custom_target(configure_documentation_files DEPENDS ${CONFIGURED_FILES})
     add_dependencies(vistle_doc configure_documentation_files)
+
     #configure links to other modules in the module generated markdowns
     set(CONFIGURED_MODULE_FILES)
     #get all directories under ${CMAKE_BINARY_DIR}/docs/module/
