@@ -8,7 +8,7 @@
 
 #include "CutGeometry.h"
 #include "PlaneClip.h"
-#include "../IsoSurface/IsoDataFunctor.h"
+#include "../../map/IsoSurface/IsoDataFunctor.h"
 
 MODULE_MAIN(CutGeometry)
 
