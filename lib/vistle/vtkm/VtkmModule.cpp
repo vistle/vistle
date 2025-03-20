@@ -68,34 +68,20 @@ ModuleStatusPtr VtkmModule::readInPorts(const std::shared_ptr<BlockTask> &task, 
     return Success();
 }
 
-ModuleStatusPtr VtkmModule::checkInputGrid(const Object::const_ptr &grid) const
+ModuleStatusPtr VtkmModule::transformInputGrid(const Object::const_ptr &grid, vtkm::cont::DataSet &dataset) const
 {
     if (!grid) {
         std::ostringstream msg;
         msg << "Could not find a valid input grid!";
         return Error(msg.str());
     }
-    return Success();
-}
 
-ModuleStatusPtr VtkmModule::transformInputGrid(const Object::const_ptr &grid, vtkm::cont::DataSet &dataset) const
-{
     return vtkmSetGrid(dataset, grid);
 }
 
-ModuleStatusPtr VtkmModule::checkInputField(const Object::const_ptr &grid, const DataBase::const_ptr &field,
-                                            const std::string &portName) const
-{
-    if (!field) {
-        std::stringstream msg;
-        msg << "No mapped data on input port " << portName << "!";
-        return Error(msg.str());
-    }
-    return Success();
-}
-
-ModuleStatusPtr VtkmModule::transformInputField(const Object::const_ptr &grid, const DataBase::const_ptr &field,
-                                                std::string &fieldName, vtkm::cont::DataSet &dataset) const
+ModuleStatusPtr VtkmModule::transformInputField(const Port *port, const Object::const_ptr &grid,
+                                                const DataBase::const_ptr &field, std::string &fieldName,
+                                                vtkm::cont::DataSet &dataset) const
 {
     if (auto name = field->getAttribute("_species"); !name.empty())
         fieldName = name;
@@ -155,10 +141,6 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
 
     assert(m_outputPorts.size() == inputFields.size());
 
-    status = checkInputGrid(inputGrid);
-    if (!isValid(status))
-        return true;
-
     status = transformInputGrid(inputGrid, inputDataset);
     if (!isValid(status))
         return true;
@@ -173,11 +155,16 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
 
         // ... check input field and transform it to VTK-m ...
         if (m_requireMappedData) {
-            status = checkInputField(inputGrid, inputFields[i], m_inputPorts[i]->getName());
-            if (!isValid(status))
-                return true;
-
-            status = transformInputField(inputGrid, inputFields[i], fieldNames[i], inputDataset);
+            if (!inputFields[i]) {
+                std::stringstream msg;
+                msg << "No mapped data on input port " << m_inputPorts[i]->getName();
+                status = Error(msg.str());
+                if (!isValid(status))
+                    return true;
+            }
+        }
+        if (inputFields[i]) {
+            status = transformInputField(m_inputPorts[i], inputGrid, inputFields[i], fieldNames[i], inputDataset);
             if (!isValid(status))
                 return true;
         }

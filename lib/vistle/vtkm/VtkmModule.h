@@ -57,27 +57,16 @@ protected:
                                         std::vector<vistle::DataBase::const_ptr> &fields) const;
 
     /*
-        Checks if `grid` is a null pointer.
-    */
-    virtual ModuleStatusPtr checkInputGrid(const vistle::Object::const_ptr &grid) const;
-
-    /*
         Turns `grid` into a VTK-m grid and adds it to `dataset`.
     */
     virtual ModuleStatusPtr transformInputGrid(const vistle::Object::const_ptr &grid,
                                                vtkm::cont::DataSet &dataset) const;
 
     /*
-        Returns an error if `field` is a null pointer.
-    */
-    virtual ModuleStatusPtr checkInputField(const vistle::Object::const_ptr &grid,
-                                            const vistle::DataBase::const_ptr &field,
-                                            const std::string &portName) const;
-    /*
         Transforms `field` to a VTK-m data set and adds it to `dataset`. The name of the field is also written to
         `fieldName`.
     */
-    virtual ModuleStatusPtr transformInputField(const vistle::Object::const_ptr &grid,
+    virtual ModuleStatusPtr transformInputField(const vistle::Port *port, const vistle::Object::const_ptr &grid,
                                                 const vistle::DataBase::const_ptr &field, std::string &fieldName,
                                                 vtkm::cont::DataSet &dataset) const;
 

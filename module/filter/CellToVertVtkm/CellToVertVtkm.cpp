@@ -21,28 +21,19 @@ CellToVertVtkm::CellToVertVtkm(const std::string &name, int moduleID, mpi::commu
 CellToVertVtkm::~CellToVertVtkm()
 {}
 
-ModuleStatusPtr CellToVertVtkm::checkInputField(const Object::const_ptr &grid, const DataBase::const_ptr &field,
-                                                const std::string &portName) const
+ModuleStatusPtr CellToVertVtkm::transformInputField(const Port *port, const Object::const_ptr &grid,
+                                                    const DataBase::const_ptr &field, std::string &fieldName,
+                                                    vtkm::cont::DataSet &dataset) const
 {
-    auto status = VtkmModule::checkInputField(grid, field, portName);
-    if (!isValid(status)) {
-        return status;
-    }
-
     auto mapping = field->guessMapping(grid);
     // ... make sure the mapping is either vertex or element
     if (mapping != DataBase::Element && mapping != DataBase::Vertex) {
         std::stringstream msg;
-        msg << "Unsupported data mapping " << field->mapping() << ", guessed=" << mapping << " on " << field->getName();
+        msg << "Unsupported data mapping " << field->mapping() << ", guessed=" << mapping << " on " << field->getName()
+            << " at port " << port->getName();
         return Error(msg.str());
     }
-    return Success();
-}
 
-ModuleStatusPtr CellToVertVtkm::transformInputField(const Object::const_ptr &grid, const DataBase::const_ptr &field,
-                                                    std::string &fieldName, vtkm::cont::DataSet &dataset) const
-{
-    auto mapping = field->guessMapping(grid);
     // ... and check if we actually need to apply the filter for the current port
 #ifdef VERTTOCELL
     if (mapping == DataBase::Vertex) {
@@ -50,22 +41,22 @@ ModuleStatusPtr CellToVertVtkm::transformInputField(const Object::const_ptr &gri
     if (mapping == DataBase::Element) {
 #endif
         // transform to VTK-m + add to dataset
-        return VtkmModule::transformInputField(grid, field, fieldName, dataset);
+        return VtkmModule::transformInputField(port, grid, field, fieldName, dataset);
     }
 
     return Success();
 }
 
-void CellToVertVtkm::runFilter(const vtkm::cont::DataSet &input, const std::string &fieldName,
+void CellToVertVtkm::runFilter(const vtkm::cont::DataSet &input, const std::string &activeFieldName,
                                vtkm::cont::DataSet &output) const
 {
-    if (input.HasField(fieldName)) {
+    if (input.HasField(activeFieldName)) {
 #ifdef VERTTOCELL
         auto filter = vtkm::filter::field_conversion::CellAverage();
 #else
         auto filter = vtkm::filter::field_conversion::PointAverage();
 #endif
-        filter.SetActiveField(fieldName);
+        filter.SetActiveField(activeFieldName);
         /*
             By default, VTK-m names output fields the same as input fields which causes problems
             if the input mapping is different from the output mapping, i.e., when converting 
@@ -73,7 +64,7 @@ void CellToVertVtkm::runFilter(const vtkm::cont::DataSet &input, const std::stri
             cell field of the same name in the resulting dataset, which leads to conflicts, e.g., 
             when calling VTK-m's GetField() method, we rename the output field here.
         */
-        filter.SetOutputFieldName("output_" + fieldName);
+        filter.SetOutputFieldName("output_" + activeFieldName);
         output = filter.Execute(input);
     }
 }
@@ -94,12 +85,12 @@ DataBase::ptr CellToVertVtkm::prepareOutputField(const vtkm::cont::DataSet &data
 
         // we want the output grid to be the same as the input grid, this way the output fields too will all
         // be mapped to the same grid
-        outputField->setGrid(inputGrid);
 #ifdef VERTTOCELL
         outputField->setMapping(DataBase::Element);
 #else
         outputField->setMapping(DataBase::Vertex);
 #endif
+        outputField->setGrid(inputGrid);
         return outputField;
     } else {
         sendInfo("No filter applied for " + fieldName);
