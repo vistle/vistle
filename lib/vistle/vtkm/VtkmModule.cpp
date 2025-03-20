@@ -135,30 +135,19 @@ DataBase::ptr VtkmModule::prepareOutputField(const vtkm::cont::DataSet &dataset,
                                              const DataBase::const_ptr &inputField, const std::string &fieldName,
                                              const Object::ptr &outputGrid) const
 {
-    if (outputGrid) {
-        if (auto mapped = vtkmGetField(dataset, fieldName)) {
-            std::cerr << "mapped data: " << *mapped << std::endl;
-            updateMeta(mapped);
-            mapped->copyAttributes(inputField);
+    if (auto mapped = vtkmGetField(dataset, fieldName)) {
+        std::cerr << "mapped data: " << *mapped << std::endl;
+        updateMeta(mapped);
+        mapped->copyAttributes(inputField);
+        if (outputGrid)
             mapped->setGrid(outputGrid);
-            return mapped;
-        } else {
-            sendError("An error occurred while transforming the filter output field %s to a Vistle object.",
-                      fieldName.c_str());
-        }
-    }
-    return nullptr;
-}
-
-void VtkmModule::writeResultToPort(const std::shared_ptr<BlockTask> &task, const Object::const_ptr &inputGrid,
-                                   const DataBase::const_ptr &inputField, Port *port, Object::ptr &outputGrid,
-                                   DataBase::ptr &outputField) const
-{
-    if (outputField) {
-        task->addObject(port, outputField);
+        return mapped;
     } else {
-        task->addObject(port, outputGrid);
+        sendError("An error occurred while transforming the filter output field %s to a Vistle object.",
+                  fieldName.c_str());
     }
+
+    return nullptr;
 }
 
 bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
@@ -185,7 +174,7 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
 
     std::string activeField;
     for (std::size_t i = 0; i < inputFields.size(); ++i) {
-        fieldNames.push_back("vistle_field" + std::to_string(i));
+        fieldNames.push_back("data_at_port_" + std::to_string(i));
 
         // if the corresponding output port is connected...
         if (!m_outputPorts[i]->isConnected())
@@ -219,7 +208,11 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
             outputField = prepareOutputField(outputDataset, inputGrid, inputFields[i], fieldNames[i], outputGrid);
 
         // ... and write the result to the output ports
-        writeResultToPort(task, inputGrid, inputFields[i], m_outputPorts[i], outputGrid, outputField);
+        if (outputField) {
+            task->addObject(m_outputPorts[i], outputField);
+        } else {
+            task->addObject(m_outputPorts[i], outputGrid);
+        }
     }
 
 

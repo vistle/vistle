@@ -15,7 +15,7 @@ MODULE_MAIN(CellToVertVtkm)
 using namespace vistle;
 
 CellToVertVtkm::CellToVertVtkm(const std::string &name, int moduleID, mpi::communicator comm)
-: VtkmModule(name, moduleID, comm, 1)
+: VtkmModule(name, moduleID, comm)
 {}
 
 CellToVertVtkm::~CellToVertVtkm()
@@ -81,7 +81,7 @@ void CellToVertVtkm::runFilter(const vtkm::cont::DataSet &input, const std::stri
 Object::ptr CellToVertVtkm::prepareOutputGrid(const vtkm::cont::DataSet &dataset,
                                               const Object::const_ptr &inputGrid) const
 {
-    return inputGrid->clone();
+    return nullptr;
 }
 
 DataBase::ptr CellToVertVtkm::prepareOutputField(const vtkm::cont::DataSet &dataset, const Object::const_ptr &inputGrid,
@@ -91,27 +91,21 @@ DataBase::ptr CellToVertVtkm::prepareOutputField(const vtkm::cont::DataSet &data
     std::string outputFieldName = "output_" + fieldName;
     if (dataset.HasField(outputFieldName)) {
         auto outputField = VtkmModule::prepareOutputField(dataset, inputGrid, inputField, outputFieldName, outputGrid);
+
+        // we want the output grid to be the same as the input grid, this way the output fields too will all
+        // be mapped to the same grid
+        outputField->setGrid(inputGrid);
 #ifdef VERTTOCELL
         outputField->setMapping(DataBase::Element);
 #else
         outputField->setMapping(DataBase::Vertex);
 #endif
         return outputField;
-    }
-    return nullptr;
-}
-
-void CellToVertVtkm::writeResultToPort(const std::shared_ptr<BlockTask> &task, const Object::const_ptr &inputGrid,
-                                       const DataBase::const_ptr &inputField, Port *port, Object::ptr &outputGrid,
-                                       DataBase::ptr &outputField) const
-{
-    if (outputField) {
-        task->addObject(port, outputField);
     } else {
-        sendInfo("No filter applied for " + port->getName());
+        sendInfo("No filter applied for " + fieldName);
         auto ndata = inputField->clone();
         ndata->setGrid(inputGrid);
         updateMeta(ndata);
-        task->addObject(port, ndata);
+        return ndata;
     }
 }

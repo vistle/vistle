@@ -10,6 +10,7 @@
 #include "export.h"
 #include "module_status.h"
 
+//TODO: adjust class doc string
 /**
  * @class VtkmModule
  * @brief Base class for VTK-m modules which allow the execution of algorithms on different device backends,
@@ -102,13 +103,6 @@ protected:
                                                      const vistle::DataBase::const_ptr &inputField,
                                                      const std::string &fieldName,
                                                      const vistle::Object::ptr &outputGrid) const;
-    /*
-        Adds `outputField` to `port` if it is not a null pointer, otherwise adds `outputGrid`.
-    */
-    virtual void writeResultToPort(const std::shared_ptr<vistle::BlockTask> &task,
-                                   const vistle::Object::const_ptr &inputGrid,
-                                   const vistle::DataBase::const_ptr &inputField, vistle::Port *port,
-                                   vistle::Object::ptr &outputGrid, vistle::DataBase::ptr &outputField) const;
 
     /*
         Reads in the grid and its data field(s) fields from the input port(s), makes sure they are valid, transforms them

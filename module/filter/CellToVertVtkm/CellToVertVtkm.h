@@ -31,10 +31,6 @@ private:
                                              const vistle::DataBase::const_ptr &inputField,
                                              const std::string &fieldName,
                                              const vistle::Object::ptr &outputGrid) const override;
-
-    void writeResultToPort(const std::shared_ptr<vistle::BlockTask> &task, const vistle::Object::const_ptr &inputGrid,
-                           const vistle::DataBase::const_ptr &inputField, vistle::Port *port,
-                           vistle::Object::ptr &outputGrid, vistle::DataBase::ptr &outputField) const override;
 };
 
 #endif // CELLTOVERTVTKM_H
