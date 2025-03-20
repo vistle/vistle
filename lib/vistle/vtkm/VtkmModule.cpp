@@ -185,7 +185,7 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
 
     std::string activeField;
     for (std::size_t i = 0; i < inputFields.size(); ++i) {
-        fieldNames.push_back("");
+        fieldNames.push_back("vistle_field" + std::to_string(i));
 
         // if the corresponding output port is connected...
         if (!m_outputPorts[i]->isConnected())
