@@ -82,10 +82,10 @@ protected:
                                                 vtkm::cont::DataSet &dataset) const;
 
     /*
-        Runs a VTK-m filter on `input` and stores the result in `output`. This method must be overriden by modules
+        Runs a VTK-m filter on `input` and stores the result in `output`. This method must be overridden by modules
         inheriting from VtkmModule. `fieldName` is the name of the field on which the filter will be applied to.
     */
-    virtual void runFilter(const vtkm::cont::DataSet &input, const std::string &fieldName,
+    virtual void runFilter(const vtkm::cont::DataSet &input, const std::string &activeFieldName,
                            vtkm::cont::DataSet &output) const = 0;
 
     /*
