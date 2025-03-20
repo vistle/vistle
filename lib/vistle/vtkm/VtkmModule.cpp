@@ -32,14 +32,17 @@ ModuleStatusPtr VtkmModule::readInPorts(const std::shared_ptr<BlockTask> &task, 
                                         std::vector<DataBase::const_ptr> &fields) const
 {
     for (int i = 0; i < m_numPorts; ++i) {
+        if (!m_outputPorts[i]->isConnected()) {
+            continue;
+        }
+
         auto container = task->accept<Object>(m_inputPorts[i]);
         auto split = splitContainerObject(container);
-
         auto geometry = split.geometry;
         auto data = split.mapped;
 
         // ... make sure there is data on the input port if the corresponding output port is connected
-        if (!geometry && !data && m_outputPorts[i]->isConnected()) {
+        if (!geometry && !data) {
             std::stringstream msg;
             msg << "No data on input port " << m_inputPorts[i]->getName() << ", even though "
                 << m_outputPorts[i]->getName() << "is connected!";
@@ -48,9 +51,6 @@ ModuleStatusPtr VtkmModule::readInPorts(const std::shared_ptr<BlockTask> &task, 
 
         // .. and add it to the vector
         fields.push_back(data);
-
-        if (!data)
-            continue;
 
         // ... make sure all data fields are defined on the same grid
         if (grid) {
