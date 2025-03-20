@@ -28,6 +28,28 @@ VtkmModule::VtkmModule(const std::string &name, int moduleID, mpi::communicator 
 VtkmModule::~VtkmModule()
 {}
 
+bool VtkmModule::prepare()
+{
+    if (!m_inputPorts[0]->isConnected()) {
+        if (rank() == 0)
+            sendError("No input connected to %s", m_inputPorts[0]->getName().c_str());
+        return false;
+    }
+
+    for (int i = 0; i < m_numPorts; ++i) {
+        if (!m_inputPorts[i]->isConnected() && m_outputPorts[i]->isConnected()) {
+            std::stringstream msg;
+            msg << "Output port " << m_outputPorts[i]->getName() << " is connected, but corresponding input port "
+                << m_inputPorts[i]->getName() << " is not";
+            if (rank() == 0)
+                sendError(msg.str());
+            return false;
+        }
+    }
+
+    return Module::prepare();
+}
+
 ModuleStatusPtr VtkmModule::readInPorts(const std::shared_ptr<BlockTask> &task, Object::const_ptr &grid,
                                         std::vector<DataBase::const_ptr> &fields) const
 {

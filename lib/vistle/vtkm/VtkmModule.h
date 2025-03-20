@@ -93,6 +93,9 @@ protected:
                                                      const std::string &fieldName,
                                                      const vistle::Object::ptr &outputGrid) const;
 
+    /* override for simple initial checks */
+    bool prepare() override;
+
     /*
         Reads in the grid and its data field(s) fields from the input port(s), makes sure they are valid, transforms them
         into a VTK-m dataset. It then goes on to apply the VTK-m filter called in `runFilter` to the data on each port. 
