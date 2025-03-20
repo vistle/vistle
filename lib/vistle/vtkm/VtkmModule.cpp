@@ -107,9 +107,6 @@ ModuleStatusPtr VtkmModule::transformInputField(const Port *port, const Object::
                                                 const DataBase::const_ptr &field, std::string &fieldName,
                                                 vtkm::cont::DataSet &dataset) const
 {
-    if (auto name = field->getAttribute("_species"); !name.empty())
-        fieldName = name;
-
     return vtkmAddField(dataset, field, fieldName);
 }
 
@@ -188,6 +185,9 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
             }
         }
         if (inputFields[i]) {
+            if (auto name = inputFields[i]->getAttribute("_species"); !name.empty())
+                fieldNames[i] = name;
+
             status = transformInputField(m_inputPorts[i], inputGrid, inputFields[i], fieldNames[i], inputDataset);
             if (!isValid(status))
                 return true;
