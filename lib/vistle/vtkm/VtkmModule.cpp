@@ -12,6 +12,8 @@ VtkmModule::VtkmModule(const std::string &name, int moduleID, mpi::communicator 
                        bool requireMappedData)
 : Module(name, moduleID, comm), m_numPorts(numPorts), m_requireMappedData(requireMappedData)
 {
+    assert(m_numPorts > 0);
+
     for (int i = 0; i < m_numPorts; ++i) {
         std::string in("data_in");
         std::string out("data_out");
@@ -54,7 +56,8 @@ ModuleStatusPtr VtkmModule::readInPorts(const std::shared_ptr<BlockTask> &task, 
                                         std::vector<DataBase::const_ptr> &fields) const
 {
     for (int i = 0; i < m_numPorts; ++i) {
-        if (!m_outputPorts[i]->isConnected()) {
+        if (!m_inputPorts[i]->isConnected()) {
+            fields.push_back(nullptr);
             continue;
         }
 
@@ -66,8 +69,7 @@ ModuleStatusPtr VtkmModule::readInPorts(const std::shared_ptr<BlockTask> &task, 
         // ... make sure there is data on the input port if the corresponding output port is connected
         if (!geometry && !data) {
             std::stringstream msg;
-            msg << "No data on input port " << m_inputPorts[i]->getName() << ", even though "
-                << m_outputPorts[i]->getName() << "is connected!";
+            msg << "No data on input port " << m_inputPorts[i]->getName() << ", even though it is connected";
             return Error(msg.str());
         }
 
@@ -87,17 +89,17 @@ ModuleStatusPtr VtkmModule::readInPorts(const std::shared_ptr<BlockTask> &task, 
         }
     }
 
+    if (!grid) {
+        std::ostringstream msg;
+        msg << "Could not find a valid input grid on any input port";
+        return Error(msg.str());
+    }
+
     return Success();
 }
 
 ModuleStatusPtr VtkmModule::transformInputGrid(const Object::const_ptr &grid, vtkm::cont::DataSet &dataset) const
 {
-    if (!grid) {
-        std::ostringstream msg;
-        msg << "Could not find a valid input grid!";
-        return Error(msg.str());
-    }
-
     return vtkmSetGrid(dataset, grid);
 }
 
@@ -172,7 +174,7 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
         fieldNames.push_back("data_at_port_" + std::to_string(i));
 
         // if the corresponding output port is connected...
-        if (!m_outputPorts[i]->isConnected())
+        if (i > 0 && !m_outputPorts[i]->isConnected())
             continue;
 
         // ... check input field and transform it to VTK-m ...
@@ -204,7 +206,7 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
         if (!m_outputPorts[i]->isConnected())
             continue;
 
-        if (m_requireMappedData)
+        if (inputFields[i])
             outputField = prepareOutputField(outputDataset, inputGrid, inputFields[i], fieldNames[i], outputGrid);
 
         // ... and write the result to the output ports
