@@ -34,7 +34,7 @@ ModuleStatusPtr CellToVertVtkm::checkInputField(const Object::const_ptr &grid, c
     if (mapping != DataBase::Element && mapping != DataBase::Vertex) {
         std::stringstream msg;
         msg << "Unsupported data mapping " << field->mapping() << ", guessed=" << mapping << " on " << field->getName();
-        return Error(msg.str().c_str());
+        return Error(msg.str());
     }
     return Success();
 }

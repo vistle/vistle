@@ -25,8 +25,8 @@ protected:
     std::string msg;
 
 public:
-    ModuleStatus(const char *_message);
-    virtual ~ModuleStatus() = default;
+    ModuleStatus(const std::string &message);
+    virtual ~ModuleStatus();
 
     // @return True if the module can continue its execution, false otherwise.
     virtual bool continueExecution() const = 0;
@@ -50,7 +50,7 @@ public:
 
 class V_VTKM_EXPORT ErrorStatus: public ModuleStatus {
 public:
-    ErrorStatus(const char *_message);
+    ErrorStatus(const std::string &message);
 
     bool continueExecution() const override;
     const vistle::message::SendText::TextType messageType() const override;
@@ -58,7 +58,7 @@ public:
 
 class V_VTKM_EXPORT WarningStatus: public ModuleStatus {
 public:
-    WarningStatus(const char *_message);
+    WarningStatus(const std::string &message);
 
     bool continueExecution() const override;
     const vistle::message::SendText::TextType messageType() const override;
@@ -66,7 +66,7 @@ public:
 
 class V_VTKM_EXPORT InfoStatus: public ModuleStatus {
 public:
-    InfoStatus(const char *_message);
+    InfoStatus(const std::string &message);
 
     bool continueExecution() const override;
     const vistle::message::SendText::TextType messageType() const override;
@@ -82,20 +82,20 @@ ModuleStatusPtr V_VTKM_EXPORT Success();
     @return A unique pointer to a ModuleStatus object representing a failed execution.
 
 */
-ModuleStatusPtr V_VTKM_EXPORT Error(const char *message);
+ModuleStatusPtr V_VTKM_EXPORT Error(const std::string &message);
 
 /*
     @param message A C-string containing the warning message.
     @return A unique pointer to a ModuleStatus object representing a module that can continue its execution,
     but prints a warning message.
 */
-ModuleStatusPtr V_VTKM_EXPORT Warning(const char *message);
+ModuleStatusPtr V_VTKM_EXPORT Warning(const std::string &message);
 
 /*
     @param message A C-string containing the informational message.
     @return A unique pointer to a ModuleStatus object representing a successful module that prints some 
     informational message.
 */
-ModuleStatusPtr V_VTKM_EXPORT Info(const char *message);
+ModuleStatusPtr V_VTKM_EXPORT Info(const std::string &message);
 
 #endif

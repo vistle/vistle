@@ -46,7 +46,7 @@ ModuleStatusPtr VtkmModule::readInPorts(const std::shared_ptr<BlockTask> &task, 
             std::stringstream msg;
             msg << "No data on input port " << m_inputPorts[i]->getName() << ", even though "
                 << m_outputPorts[i]->getName() << "is connected!";
-            return Error(msg.str().c_str());
+            return Error(msg.str());
         }
 
         // .. and add it to the vector
@@ -58,7 +58,7 @@ ModuleStatusPtr VtkmModule::readInPorts(const std::shared_ptr<BlockTask> &task, 
                 std::stringstream msg;
                 msg << "The grid on " << m_inputPorts[i]->getName()
                     << " does not match the grid on the other input ports!";
-                return Error(msg.str().c_str());
+                return Error(msg.str());
             }
         } else {
             grid = geometry;
@@ -73,7 +73,7 @@ ModuleStatusPtr VtkmModule::checkInputGrid(const Object::const_ptr &grid) const
     if (!grid) {
         std::ostringstream msg;
         msg << "Could not find a valid input grid!";
-        return Error(msg.str().c_str());
+        return Error(msg.str());
     }
     return Success();
 }
@@ -89,7 +89,7 @@ ModuleStatusPtr VtkmModule::checkInputField(const Object::const_ptr &grid, const
     if (!field) {
         std::stringstream msg;
         msg << "No mapped data on input port " << portName << "!";
-        return Error(msg.str().c_str());
+        return Error(msg.str());
     }
     return Success();
 }

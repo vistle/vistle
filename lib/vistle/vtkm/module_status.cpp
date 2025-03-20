@@ -1,9 +1,10 @@
 #include "module_status.h"
 
 
-ModuleStatus::ModuleStatus(const char *_message): msg(_message)
+ModuleStatus::ModuleStatus(const std::string &message): msg(message)
 {}
 
+ModuleStatus::~ModuleStatus() = default;
 
 const char *ModuleStatus::message() const
 {
@@ -24,20 +25,21 @@ const vistle::message::SendText::TextType SuccessStatus::messageType() const
 }
 
 
-ErrorStatus::ErrorStatus(const char *_message): ModuleStatus(_message)
+ErrorStatus::ErrorStatus(const std::string &message): ModuleStatus(message)
 {}
 
 bool ErrorStatus::continueExecution() const
 {
     return false;
 }
+
 const vistle::message::SendText::TextType ErrorStatus::messageType() const
 {
     return vistle::message::SendText::Error;
 }
 
 
-WarningStatus::WarningStatus(const char *_message): ModuleStatus(_message)
+WarningStatus::WarningStatus(const std::string &message): ModuleStatus(message)
 {}
 
 bool WarningStatus::continueExecution() const
@@ -50,7 +52,7 @@ const vistle::message::SendText::TextType WarningStatus::messageType() const
 }
 
 
-InfoStatus::InfoStatus(const char *_message): ModuleStatus(_message)
+InfoStatus::InfoStatus(const std::string &message): ModuleStatus(message)
 {}
 
 bool InfoStatus::continueExecution() const
@@ -68,17 +70,17 @@ ModuleStatusPtr Success()
     return std::make_unique<SuccessStatus>();
 }
 
-ModuleStatusPtr Error(const char *message)
+ModuleStatusPtr Error(const std::string &message)
 {
     return std::make_unique<ErrorStatus>(message);
 }
 
-ModuleStatusPtr Warning(const char *message)
+ModuleStatusPtr Warning(const std::string &message)
 {
     return std::make_unique<WarningStatus>(message);
 }
 
-ModuleStatusPtr Info(const char *message)
+ModuleStatusPtr Info(const std::string &message)
 {
     return std::make_unique<InfoStatus>(message);
 }
