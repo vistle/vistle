@@ -107,15 +107,6 @@ ModuleStatusPtr VtkmModule::transformInputField(const Object::const_ptr &grid, c
 void copyMetadata(const Object::const_ptr &from, Object::ptr &to)
 {
     to->copyAttributes(from);
-    to->setTransform(from->getTransform());
-    if (to->getTimestep() < 0) {
-        to->setTimestep(from->getTimestep());
-        to->setNumTimesteps(from->getNumTimesteps());
-    }
-    if (to->getBlock() < 0) {
-        to->setBlock(from->getBlock());
-        to->setNumBlocks(from->getNumBlocks());
-    }
 }
 
 Object::ptr VtkmModule::prepareOutputGrid(const vtkm::cont::DataSet &dataset, const Object::const_ptr &inputGrid) const
