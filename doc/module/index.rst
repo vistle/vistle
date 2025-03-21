@@ -1,8 +1,19 @@
-Module Reference Guide
-======================
+Module Reference
+================
+
+* :doc:`Read - get data from files <read/index>`
+* :doc:`In-situ - get data from simulations <insitu/index>`
+* :doc:`Filter - manipulate data <filter/index>`
+* :doc:`Map - generate geometric shapes <map/index>`
+* :doc:`Geometry - modify geometric objects <geometry/index>`
+* :doc:`General - manipulate data at any pipeline stage <general/index>`
+* :doc:`Info - meta data <info/index>`
+* :doc:`Univiz - vector fields <univiz/index>`
+* :doc:`Develop - tools for developers <test/index>`
 
 .. toctree::
    :maxdepth: 1
+   :hidden:
 
     Read <read/index.rst>
     In-Situ <insitu/index.rst>
