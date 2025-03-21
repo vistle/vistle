@@ -50,11 +50,6 @@ VtkmModule::~VtkmModule()
 
 bool VtkmModule::prepare()
 {
-    m_filter = setUpFilter();
-    assert(m_filter);
-    m_filter->SetActiveField(fieldName(0, false));
-    m_filter->SetOutputFieldName(fieldName(0, true));
-
     if (!m_inputPorts[0]->isConnected()) {
         if (rank() == 0)
             sendError("No input connected to %s", m_inputPorts[0]->getName().c_str());
@@ -73,14 +68,6 @@ bool VtkmModule::prepare()
     }
 
     return Module::prepare();
-}
-
-bool VtkmModule::reduce(int timestep)
-{
-    if (timestep != -1) {
-        m_filter.reset();
-    }
-    return Module::reduce(timestep);
 }
 
 ModuleStatusPtr VtkmModule::readInPorts(const std::shared_ptr<BlockTask> &task, Object::const_ptr &grid,
@@ -173,13 +160,6 @@ DataBase::ptr VtkmModule::prepareOutputField(const vtkm::cont::DataSet &dataset,
     return nullptr;
 }
 
-void VtkmModule::runFilter(const vtkm::cont::DataSet &input, vtkm::cont::DataSet &output) const
-{
-    if (!m_requireMappedData || input.HasField(m_filter->GetActiveFieldName())) {
-        output = m_filter->Execute(input);
-    }
-}
-
 bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
 {
     Object::const_ptr inputGrid;
@@ -223,7 +203,14 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
     }
 
     // ... run filter on the active field ...
-    runFilter(inputDataset, outputDataset);
+    if (!m_requireMappedData || inputDataset.HasField(fieldNames[0])) {
+        auto f = setUpFilter();
+        if (inputDataset.HasField(fieldNames[0])) {
+            f->SetActiveField(fieldNames[0]);
+            f->SetOutputFieldName(fieldName(0, true));
+        }
+        outputDataset = f->Execute(inputDataset);
+    }
 
     // ... transform filter output, i.e., grid and data fields, to Vistle objects
     auto outputGrid = prepareOutputGrid(outputDataset, inputGrid);
@@ -244,7 +231,7 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
         // ... and write the result to the output ports
         if (outputField) {
             task->addObject(m_outputPorts[i], outputField);
-        } else {
+        } else if (outputGrid) {
             task->addObject(m_outputPorts[i], outputGrid);
         }
     }

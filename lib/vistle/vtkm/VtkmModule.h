@@ -26,7 +26,7 @@
  * A VTK-m filter is then applied to the dataset, the result is transformed back to Vistle objects and finally 
  * written to the output port(s).
  * 
- * Child classes must implement the `runFilter` method, which defines the desired VTK-m filter. If the filter
+ * Child classes must implement the `setUpFilter` method, which defines the desired VTK-m filter. If the filter
  * only operates on the input grid, `m_requireMappedData` can be set to `false` when calling the parent constructor. 
  * Additional module parameters can be added in the child's constructor. 
  * 
@@ -50,8 +50,9 @@ protected:
 
     std::vector<vistle::Port *> m_inputPorts, m_outputPorts;
 
-    std::unique_ptr<vtkm::filter::Filter> m_filter;
-
+    /*
+        Implement to create and parameterize the VTK-m filter to be executed.
+    */
     virtual std::unique_ptr<vtkm::filter::Filter> setUpFilter() const = 0;
 
     /*
@@ -76,11 +77,6 @@ protected:
                                                 vtkm::cont::DataSet &dataset) const;
 
     /*
-        Runs a VTK-m filter on `input` and stores the result in `output`
-    */
-    virtual void runFilter(const vtkm::cont::DataSet &input, vtkm::cont::DataSet &output) const;
-
-    /*
         Transforms the grid in `dataset` to a Vistle data object and updates its metadata by copying the
         attributes from `inputGrid`.
     */
@@ -96,18 +92,15 @@ protected:
                                                      const std::string &fieldName,
                                                      const vistle::Object::ptr &outputGrid) const;
 
-    /* perform simple initial checks and for set up filter */
+    /* perform simple initial checks */
     bool prepare() override;
 
     /*
         Reads in the grid and its data field(s) fields from the input port(s), makes sure they are valid, transforms them
-        into a VTK-m dataset. It then goes on to apply the VTK-m filter called in `runFilter` to the data on each port. 
+        into a VTK-m dataset. It then goes on to apply the VTK-m filter created by `setUpFilter` to the data on each port. 
         The result is transformed back to Vistle objects and finally written to the output port(s).
     */
     bool compute(const std::shared_ptr<vistle::BlockTask> &task) const override;
-
-    /* clean up */
-    bool reduce(int timestep) override;
 
     /*
         Checks if `status` allows module to continue execution and (if available) prints a message to the GUI.
