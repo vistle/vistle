@@ -1,14 +1,6 @@
-#include <vistle/alg/objalg.h>
-#include <vistle/core/triangles.h>
-#include <vistle/core/unstr.h>
-#include <vistle/core/structuredgridbase.h>
-#include <vistle/util/stopwatch.h>
-
-#include <vtkm/cont/DataSetBuilderExplicit.h>
 #include <vtkm/filter/contour/ClipWithImplicitFunction.h>
 
 #include "ClipVtkm.h"
-#include <vistle/vtkm/convert.h>
 
 using namespace vistle;
 
