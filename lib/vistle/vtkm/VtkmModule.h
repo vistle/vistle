@@ -52,13 +52,6 @@ protected:
     virtual std::unique_ptr<vtkm::filter::Filter> setUpFilter() const = 0;
 
     /*
-        Reads in the grid and its data field(s) fields from the input port(s) and stores them in `grid` and `fields`.
-        Also makes sure all data fields are defined on the same grid.
-    */
-    virtual ModuleStatusPtr readInPorts(const std::shared_ptr<vistle::BlockTask> &task, vistle::Object::const_ptr &grid,
-                                        std::vector<vistle::DataBase::const_ptr> &fields) const;
-
-    /*
         Turns `grid` into a VTK-m grid and adds it to `dataset`.
     */
     virtual ModuleStatusPtr prepareInputGrid(const vistle::Object::const_ptr &grid, vtkm::cont::DataSet &dataset) const;
@@ -92,6 +85,13 @@ protected:
         Initial sanity check for the connected input and output ports.
      */
     bool prepare() override;
+
+    /*
+        Reads in the grid and its data field(s) fields from the input port(s) and stores them in `grid` and `fields`.
+        Also makes sure all data fields are defined on the same grid.
+    */
+    ModuleStatusPtr readInPorts(const std::shared_ptr<vistle::BlockTask> &task, vistle::Object::const_ptr &grid,
+                                std::vector<vistle::DataBase::const_ptr> &fields) const;
 
     /*
         Reads in the grid and its data field(s) fields from the input port(s), makes sure they are valid and transforms
