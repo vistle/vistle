@@ -6,7 +6,7 @@
 #include <utility>
 #include <vistle/core/triangles.h>
 #include <vistle/core/polygons.h>
-#include "../IsoSurface/IsoDataFunctor.h"
+#include "../../map/IsoSurface/IsoDataFunctor.h"
 #include "vistle/core/index.h"
 #include "vistle/core/vector.h"
 
