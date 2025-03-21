@@ -11,7 +11,6 @@
 #include "export.h"
 #include "module_status.h"
 
-//TODO: adjust class doc string
 /**
  * @class VtkmModule
  * @brief Base class for VTK-m modules which allow the execution of algorithms on different device backends,
@@ -22,21 +21,18 @@
  * must be defined on the same grid.
  * 
  * The base behavior of a VTK-m module is as follows (see `compute()`):
- * The VTK-m module reads in the data on the input port(s), validates it and transforms it into a VTK-m dataset.
- * A VTK-m filter is then applied to the dataset, the result is transformed back to Vistle objects and finally 
- * written to the output port(s).
+ * The VTK-m module reads in the data on the input port(s) and transforms it into a VTK-m dataset. A VTK-m filter,
+ * which uses the data on the first port as active field, is then applied to the dataset. The result is transformed
+ * back to Vistle objects and finally written to the output port(s).
  * 
  * Child classes must implement the `setUpFilter` method, which defines the desired VTK-m filter. If the filter
  * only operates on the input grid, `m_requireMappedData` can be set to `false` when calling the parent constructor. 
  * Additional module parameters can be added in the child's constructor. 
  * 
- * Optionally, the child classes can override the `checkInputField` and `checkInputGrid` methods to add additional
- * checks on the input data. Moreover, `writeResultToPort` can be overridden in case data other than the output grid
- * (and field, if `m_requireMappedData` is `true`) should be written to the output port.
- * 
- * If desired, the child classes can also override the methods for transforming the input data into VTK-m datasets
- * (`transformInputGrid` and `transformInputField`) or for converting the VTK-m output back into Vistle objects
- * (`prepareOutputGrid` and `prepareOutputField`).
+ * Optionally, the child classes can override the `prepareInputGrid` and `prepareInputField` methods to add checks 
+ * on the input data, before transforming it into the VTK-m format. `prepareOutputGrid` and `prepareOutputField`
+ * can be overridden, if desired, to change the output grid or field(s) that will be added to the output
+ * port(s).
  */
 class V_VTKM_EXPORT VtkmModule: public vistle::Module {
 public:
@@ -57,7 +53,7 @@ protected:
 
     /*
         Reads in the grid and its data field(s) fields from the input port(s) and stores them in `grid` and `fields`.
-        Also makes sure that (if there are multiple ports) all data fields are defined on the same grid.
+        Also makes sure all data fields are defined on the same grid.
     */
     virtual ModuleStatusPtr readInPorts(const std::shared_ptr<vistle::BlockTask> &task, vistle::Object::const_ptr &grid,
                                         std::vector<vistle::DataBase::const_ptr> &fields) const;
@@ -68,8 +64,7 @@ protected:
     virtual ModuleStatusPtr prepareInputGrid(const vistle::Object::const_ptr &grid, vtkm::cont::DataSet &dataset) const;
 
     /*
-        Transforms `field` to a VTK-m data set and adds it to `dataset`. The name of the field is also written to
-        `fieldName`.
+        Transforms `field` to a VTK-m field with the name `fieldName` and adds it to `dataset`.
     */
     virtual ModuleStatusPtr prepareInputField(const vistle::Port *port, const vistle::Object::const_ptr &grid,
                                               const vistle::DataBase::const_ptr &field, std::string &fieldName,
@@ -77,13 +72,15 @@ protected:
 
     /*
         Transforms the grid in `dataset` to a Vistle data object and updates its metadata by copying the
-        attributes from `inputGrid`.
+        attributes from `inputGrid`. The returned grid will be added to the output port in `compute` if
+        no output field is defined.
     */
     virtual vistle::Object::ptr prepareOutputGrid(const vtkm::cont::DataSet &dataset,
                                                   const vistle::Object::const_ptr &inputGrid) const;
     /*
         Transform the field named `fieldName` in `dataset` to a Vistle data object and updates its metadata by
-        copying the attributes from `ìnputField` and setting its grid to `outputGrid`.
+        copying the attributes from `ìnputField` and, if defined, setting its grid to `outputGrid`. The returned
+        field will be added to the output port in `compute` if it is not null.
     */
     virtual vistle::DataBase::ptr prepareOutputField(const vtkm::cont::DataSet &dataset,
                                                      const vistle::Object::const_ptr &inputGrid,
@@ -91,13 +88,15 @@ protected:
                                                      const std::string &fieldName,
                                                      const vistle::Object::ptr &outputGrid) const;
 
-    /* perform simple initial checks */
+    /* 
+        Initial sanity check for the connected input and output ports.
+     */
     bool prepare() override;
 
     /*
-        Reads in the grid and its data field(s) fields from the input port(s), makes sure they are valid, transforms them
-        into a VTK-m dataset. It then goes on to apply the VTK-m filter created by `setUpFilter` to the data on each port. 
-        The result is transformed back to Vistle objects and finally written to the output port(s).
+        Reads in the grid and its data field(s) fields from the input port(s), makes sure they are valid and transforms
+        them into a VTK-m dataset. It then goes on to apply the VTK-m filter created by `setUpFilter` to the data on each
+        port. The result is transformed back to Vistle objects and finally written to the output port(s).
     */
     bool compute(const std::shared_ptr<vistle::BlockTask> &task) const override;
 

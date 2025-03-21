@@ -11,13 +11,6 @@ using namespace vistle;
 namespace {
 std::string getFieldName(int i, bool output = false)
 {
-    /*
-    By default, VTK-m names output fields the same as input fields which causes problems
-    if the input mapping is different from the output mapping, i.e., when converting 
-    a point field to a cell field or vice versa. To avoid having a point and a 
-    cell field of the same name in the resulting dataset, which leads to conflicts, e.g., 
-    when calling VTK-m's GetField() method, we rename the output field here.
-    */
     std::string name = "data_at_port_" + std::to_string(i);
     if (i == 0 && output)
         name += "_out";
@@ -84,17 +77,16 @@ ModuleStatusPtr VtkmModule::readInPorts(const std::shared_ptr<BlockTask> &task, 
         auto geometry = split.geometry;
         auto data = split.mapped;
 
-        // ... make sure there is data on the input port if the corresponding output port is connected
+        // make sure there is data on the input port if the corresponding output port is connected
         if (!geometry && !data) {
             std::stringstream msg;
             msg << "No data on input port " << m_inputPorts[i]->getName() << ", even though it is connected";
             return Error(msg.str());
         }
 
-        // .. and add it to the vector
         fields.push_back(data);
 
-        // ... make sure all data fields are defined on the same grid
+        // make sure all data fields are defined on the same grid
         if (grid) {
             if (geometry && geometry->getHandle() != grid->getHandle()) {
                 std::stringstream msg;
@@ -168,12 +160,14 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
 
     vtkm::cont::DataSet inputDataset, outputDataset;
 
+    // read in data from the input ports...
     auto status = readInPorts(task, inputGrid, inputFields);
     if (!isValid(status))
         return true;
 
     assert(m_outputPorts.size() == inputFields.size());
 
+    // ... transform the input grid (and fields) into a VTK-m dataset ...
     status = prepareInputGrid(inputGrid, inputDataset);
     if (!isValid(status))
         return true;
@@ -181,11 +175,9 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
     for (std::size_t i = 0; i < inputFields.size(); ++i) {
         fieldNames.push_back(getFieldName(i));
 
-        // if the corresponding output port is connected...
         if (i > 0 && !m_outputPorts[i]->isConnected())
             continue;
 
-        // ... check input field and transform it to VTK-m ...
         if (m_requireMappedData) {
             if (!inputFields[i]) {
                 std::stringstream msg;
@@ -208,12 +200,19 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
         auto filter = setUpFilter();
         if (inputDataset.HasField(activeField)) {
             filter->SetActiveField(activeField);
+            /*
+                By default, VTK-m names output fields the same as input fields which causes problems
+                if the input mapping is different from the output mapping, i.e., when converting 
+                a point field to a cell field or vice versa. To avoid having a point and a 
+                cell field of the same name in the resulting dataset, which leads to conflicts, e.g., 
+                when calling VTK-m's GetField() method, we rename the output field here.
+            */
             filter->SetOutputFieldName(getFieldName(0, true));
         }
         outputDataset = filter->Execute(inputDataset);
     }
 
-    // ... transform filter output, i.e., grid and data fields, to Vistle objects
+    // ... transform filter output, i.e., grid and data fields, to Vistle objects ...
     auto outputGrid = prepareOutputGrid(outputDataset, inputGrid);
     for (std::size_t i = 0; i < inputFields.size(); ++i) {
         DataBase::ptr outputField;
