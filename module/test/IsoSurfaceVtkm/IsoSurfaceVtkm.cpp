@@ -200,12 +200,8 @@ Object::ptr IsoSurfaceVtkm::work(vistle::Object::const_ptr grid, vistle::DataBas
     // transform vistle dataset to vtkm dataset
     vtkm::cont::DataSet vtkmDataSet;
     auto status = vtkmSetGrid(vtkmDataSet, grid);
-    if (status == VtkmTransformStatus::UNSUPPORTED_GRID_TYPE) {
-        sendError("Currently only supporting unstructured grids");
-        return Object::ptr();
-    } else if (status == VtkmTransformStatus::UNSUPPORTED_CELL_TYPE) {
-        sendError("Can only transform these cells from vistle to vtkm: point, bar, triangle, polygon, quad, tetra, "
-                  "hexahedron, pyramid");
+    if (!status->continueExecution()) {
+        sendText(status->messageType(), status->message());
         return Object::ptr();
     }
 
@@ -213,8 +209,8 @@ Object::ptr IsoSurfaceVtkm::work(vistle::Object::const_ptr grid, vistle::DataBas
     if (isospecies.empty())
         isospecies = "isodata";
     status = vtkmAddField(vtkmDataSet, isoField, isospecies);
-    if (status == VtkmTransformStatus::UNSUPPORTED_FIELD_TYPE) {
-        sendError("Unsupported iso field type");
+    if (!status->continueExecution()) {
+        sendText(status->messageType(), status->message());
         return Object::ptr();
     }
 
@@ -224,8 +220,8 @@ Object::ptr IsoSurfaceVtkm::work(vistle::Object::const_ptr grid, vistle::DataBas
         if (mapspecies.empty())
             mapspecies = "mapped";
         status = vtkmAddField(vtkmDataSet, mapField, mapspecies);
-        if (status == VtkmTransformStatus::UNSUPPORTED_FIELD_TYPE) {
-            sendError("Unsupported mapped field type");
+        if (!status->continueExecution()) {
+            sendText(status->messageType(), status->message());
             return Object::ptr();
         }
     }

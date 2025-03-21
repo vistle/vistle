@@ -1,24 +1,11 @@
-#include <vistle/alg/objalg.h>
-#include <vistle/core/triangles.h>
-#include <vistle/core/unstr.h>
-#include <vistle/core/structuredgridbase.h>
-#include <vistle/util/stopwatch.h>
-
-#include <vtkm/cont/DataSetBuilderExplicit.h>
-#include <vtkm/filter/contour/ClipWithImplicitFunction.h>
-
-#include "ClipVtkm.h"
-#include <vistle/vtkm/convert.h>
+#include "implicit_function_controller.h"
 
 using namespace vistle;
 
-MODULE_MAIN(ClipVtkm)
-
-
-ImplFuncController::ImplFuncController(vistle::Module *module): m_module(module), m_option(nullptr), m_flip(nullptr)
+ImplicitFunctionController::ImplicitFunctionController(vistle::Module *module): m_module(module), m_option(nullptr)
 {}
 
-void ImplFuncController::init()
+void ImplicitFunctionController::init()
 {
     m_module->addVectorParameter("point", "point on plane", ParamVector(0.0, 0.0, 0.0));
     m_module->addVectorParameter("vertex", "normal on plane", ParamVector(0.0, 1.0, 0.0));
@@ -26,10 +13,9 @@ void ImplFuncController::init()
     m_option = m_module->addIntParameter("option", "option", Plane, Parameter::Choice);
     m_module->setParameterChoices(m_option, valueList((ImplFuncOption)0));
     m_module->addVectorParameter("direction", "direction for variable Cylinder", ParamVector(0.0, 0.0, 0.0));
-    m_flip = m_module->addIntParameter("flip", "flip inside out", false, Parameter::Boolean);
 }
 
-bool ImplFuncController::changeParameter(const vistle::Parameter *param)
+bool ImplicitFunctionController::changeParameter(const vistle::Parameter *param)
 {
     switch (m_option->getValue()) {
     case Plane: {
@@ -95,12 +81,7 @@ bool ImplFuncController::changeParameter(const vistle::Parameter *param)
     return false;
 }
 
-bool ImplFuncController::flip() const
-{
-    return m_flip->getValue() != 0;
-}
-
-vtkm::ImplicitFunctionGeneral ImplFuncController::func() const
+vtkm::ImplicitFunctionGeneral ImplicitFunctionController::function() const
 {
     Vector3 pvertex = m_module->getVectorParameter("vertex");
     Vector3 ppoint = m_module->getVectorParameter("point");
@@ -132,105 +113,4 @@ vtkm::ImplicitFunctionGeneral ImplFuncController::func() const
 
     m_module->sendError("unsupported option");
     return vtkm::Plane(vtkm::make_Vec(0, 0, 0), vtkm::make_Vec(0, 0, 1));
-}
-
-
-ClipVtkm::ClipVtkm(const std::string &name, int moduleID, mpi::communicator comm)
-: Module(name, moduleID, comm), m_implFuncControl(this)
-{
-    createInputPort("grid_in", "input grid or geometry with optional data");
-    m_dataOut = createOutputPort("grid_out", "surface with mapped data");
-
-    m_implFuncControl.init();
-}
-
-ClipVtkm::~ClipVtkm()
-{}
-
-bool ClipVtkm::changeParameter(const Parameter *param)
-{
-    bool ok = m_implFuncControl.changeParameter(param);
-    return Module::changeParameter(param) && ok;
-}
-
-
-bool ClipVtkm::compute(const std::shared_ptr<vistle::BlockTask> &task) const
-{
-    // make sure input data is supported
-    auto inObj = task->expect<Object>("grid_in");
-    if (!inObj) {
-        sendError("need geometry on grid_in");
-        return true;
-    }
-    auto inSplit = splitContainerObject(inObj);
-    auto grid = inSplit.geometry;
-    if (!grid) {
-        sendError("no grid on scalar input data");
-        return true;
-    }
-
-    // transform vistle dataset to vtkm dataset
-    vtkm::cont::DataSet vtkmDataSet;
-    auto status = vtkmSetGrid(vtkmDataSet, grid);
-    if (status == VtkmTransformStatus::UNSUPPORTED_GRID_TYPE) {
-        sendError("Currently only supporting unstructured grids");
-        return true;
-    } else if (status == VtkmTransformStatus::UNSUPPORTED_CELL_TYPE) {
-        sendError("Can only transform these cells from vistle to vtkm: point, bar, triangle, polygon, quad, tetra, "
-                  "hexahedron, pyramid");
-        return true;
-    }
-
-    // apply vtkm clip filter
-    std::string mapSpecies;
-    vtkm::filter::contour::ClipWithImplicitFunction clipFilter;
-    auto mapField = inSplit.mapped;
-    if (mapField) {
-        mapSpecies = mapField->getAttribute("_species");
-        if (mapSpecies.empty())
-            mapSpecies = "mapdata";
-        status = vtkmAddField(vtkmDataSet, mapField, mapSpecies);
-        if (status == VtkmTransformStatus::UNSUPPORTED_FIELD_TYPE) {
-            sendError("Unsupported mapped field type");
-            return true;
-        }
-        clipFilter.SetActiveField(mapSpecies);
-    }
-    clipFilter.SetImplicitFunction(m_implFuncControl.func());
-    clipFilter.SetInvertClip(m_implFuncControl.flip());
-    auto clipped = clipFilter.Execute(vtkmDataSet);
-
-    // transform result back into vistle format
-    Object::ptr geoOut = vtkmGetGeometry(clipped);
-    if (geoOut) {
-        updateMeta(geoOut);
-        geoOut->copyAttributes(grid);
-        geoOut->setTransform(grid->getTransform());
-        if (geoOut->getTimestep() < 0) {
-            geoOut->setTimestep(grid->getTimestep());
-            geoOut->setNumTimesteps(grid->getNumTimesteps());
-        }
-        if (geoOut->getBlock() < 0) {
-            geoOut->setBlock(grid->getBlock());
-            geoOut->setNumBlocks(grid->getNumBlocks());
-        }
-    }
-
-    if (mapField) {
-        if (auto mapped = vtkmGetField(clipped, mapSpecies)) {
-            std::cerr << "mapped data: " << *mapped << std::endl;
-            mapped->copyAttributes(mapField);
-            mapped->setGrid(geoOut);
-            updateMeta(mapped);
-            task->addObject(m_dataOut, mapped);
-            return true;
-        } else {
-            sendError("could not handle mapped data");
-            task->addObject(m_dataOut, geoOut);
-        }
-    } else {
-        task->addObject(m_dataOut, geoOut);
-    }
-
-    return true;
 }

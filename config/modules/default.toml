@@ -20,6 +20,9 @@ _cache_mode=1
 [CuttingSurface]
 _cache_mode=1
 
+[CuttingSurfaceVtkm]
+_cache_mode=1
+
 [GridElementStatistics]
 _cache_mode=1
 

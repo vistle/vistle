@@ -142,7 +142,7 @@ struct ToShapeId<Polygons> {
 };
 
 template<class Ngons>
-VtkmTransformStatus fromNgons(vtkm::cont::DataSet &vtkmDataset, typename Ngons::const_ptr &ngon)
+ModuleStatusPtr fromNgons(vtkm::cont::DataSet &vtkmDataset, typename Ngons::const_ptr &ngon)
 {
     auto numPoints = ngon->getNumCoords();
     auto numConn = ngon->getNumCorners();
@@ -160,11 +160,11 @@ VtkmTransformStatus fromNgons(vtkm::cont::DataSet &vtkmDataset, typename Ngons::
         vtkmDataset.SetCellSet(cellSet);
     }
 
-    return VtkmTransformStatus::SUCCESS;
+    return Success();
 };
 
 template<class Idx>
-VtkmTransformStatus fromIndexed(vtkm::cont::DataSet &vtkmDataset, typename Idx::const_ptr &idx)
+ModuleStatusPtr fromIndexed(vtkm::cont::DataSet &vtkmDataset, typename Idx::const_ptr &idx)
 {
     auto numPoints = idx->getNumCoords();
     auto numCells = idx->getNumElements();
@@ -180,8 +180,7 @@ VtkmTransformStatus fromIndexed(vtkm::cont::DataSet &vtkmDataset, typename Idx::
     shapesu.CopyShallowIfPossible(shapescu);
     vtkm::cont::ArrayHandleBasic<vtkm::UInt8> shapes;
     if (!shapesu.CanConvert<vtkm::cont::ArrayHandleBasic<vtkm::UInt8>>()) {
-        std::cerr << "cannot convert to basic array handle" << std::endl;
-        return VtkmTransformStatus::UNSUPPORTED_FIELD_TYPE;
+        return Error("Cannot convert shapes array to basic array handle.");
     }
     shapes = shapesu.AsArrayHandle<vtkm::cont::ArrayHandleBasic<vtkm::UInt8>>();
     vtkm::cont::CellSetExplicit<> cellSet;
@@ -189,12 +188,12 @@ VtkmTransformStatus fromIndexed(vtkm::cont::DataSet &vtkmDataset, typename Idx::
     cellSet.Fill(numPoints, shapes, conn, offs);
     vtkmDataset.SetCellSet(cellSet);
 
-    return VtkmTransformStatus::SUCCESS;
+    return Success();
 }
 
 } // namespace
 
-VtkmTransformStatus vtkmSetTopology(vtkm::cont::DataSet &vtkmDataset, vistle::Object::const_ptr grid)
+ModuleStatusPtr vtkmSetTopology(vtkm::cont::DataSet &vtkmDataset, vistle::Object::const_ptr grid)
 {
     if (auto str = grid->getInterface<StructuredGridBase>()) {
         vtkm::Id nx = str->getNumDivisions(0);
@@ -240,10 +239,10 @@ VtkmTransformStatus vtkmSetTopology(vtkm::cont::DataSet &vtkmDataset, vistle::Ob
         cellSet.Fill(numPoints, vtkm::CELL_SHAPE_VERTEX, 1, conn);
         vtkmDataset.SetCellSet(cellSet);
     } else {
-        return VtkmTransformStatus::UNSUPPORTED_GRID_TYPE;
+        return Error("Encountered unsupported grid type while attempting to convert Vistle grid to VTK-m dataset.");
     }
 
-    return VtkmTransformStatus::SUCCESS;
+    return Success();
 }
 
 } // namespace vistle
