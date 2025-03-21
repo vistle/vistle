@@ -20,4 +20,5 @@ vistle_target_link_libraries(
     PRIVATE
     vistle_core
     vistle_module
-    vtkm::cont)
+    vtkm::cont
+    vtkm::filter)

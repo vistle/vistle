@@ -12,8 +12,8 @@ public:
 private:
     vistle::IntParameter *m_flip = nullptr;
 
-    void runFilter(const vtkm::cont::DataSet &input, const std::string &fieldName,
-                   vtkm::cont::DataSet &output) const override;
+    std::unique_ptr<vtkm::filter::Filter> setUpFilter() const override;
+
     bool changeParameter(const vistle::Parameter *param) override;
 
     ImplicitFunctionController m_implFuncControl;

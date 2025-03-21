@@ -47,26 +47,14 @@ ModuleStatusPtr CellToVertVtkm::transformInputField(const Port *port, const Obje
     return Success();
 }
 
-void CellToVertVtkm::runFilter(const vtkm::cont::DataSet &input, const std::string &activeFieldName,
-                               vtkm::cont::DataSet &output) const
+std::unique_ptr<vtkm::filter::Filter> CellToVertVtkm::setUpFilter() const
 {
-    if (input.HasField(activeFieldName)) {
 #ifdef VERTTOCELL
-        auto filter = vtkm::filter::field_conversion::CellAverage();
+    auto filter = std::make_unique<vtkm::filter::field_conversion::CellAverage>();
 #else
-        auto filter = vtkm::filter::field_conversion::PointAverage();
+    auto filter = std::make_unique<vtkm::filter::field_conversion::PointAverage>();
 #endif
-        filter.SetActiveField(activeFieldName);
-        /*
-            By default, VTK-m names output fields the same as input fields which causes problems
-            if the input mapping is different from the output mapping, i.e., when converting 
-            a point field to a cell field or vice versa. To avoid having a point and a 
-            cell field of the same name in the resulting dataset, which leads to conflicts, e.g., 
-            when calling VTK-m's GetField() method, we rename the output field here.
-        */
-        filter.SetOutputFieldName("output_" + activeFieldName);
-        output = filter.Execute(input);
-    }
+    return filter;
 }
 
 Object::ptr CellToVertVtkm::prepareOutputGrid(const vtkm::cont::DataSet &dataset,
@@ -79,9 +67,8 @@ DataBase::ptr CellToVertVtkm::prepareOutputField(const vtkm::cont::DataSet &data
                                                  const DataBase::const_ptr &inputField, const std::string &fieldName,
                                                  const Object::ptr &outputGrid) const
 {
-    std::string outputFieldName = "output_" + fieldName;
-    if (dataset.HasField(outputFieldName)) {
-        auto outputField = VtkmModule::prepareOutputField(dataset, inputGrid, inputField, outputFieldName, outputGrid);
+    if (dataset.HasField(fieldName)) {
+        auto outputField = VtkmModule::prepareOutputField(dataset, inputGrid, inputField, fieldName, outputGrid);
 
         // we want the output grid to be the same as the input grid, this way the output fields too will all
         // be mapped to the same grid

@@ -18,8 +18,7 @@ private:
                                         const vistle::DataBase::const_ptr &field, std::string &fieldName,
                                         vtkm::cont::DataSet &dataset) const override;
 
-    void runFilter(const vtkm::cont::DataSet &input, const std::string &fieldName,
-                   vtkm::cont::DataSet &output) const override;
+    std::unique_ptr<vtkm::filter::Filter> setUpFilter() const override;
 
     vistle::Object::ptr prepareOutputGrid(const vtkm::cont::DataSet &dataset,
                                           const vistle::Object::const_ptr &inputGrid) const override;

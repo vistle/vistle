@@ -24,19 +24,16 @@ ClipVtkm::ClipVtkm(const std::string &name, int moduleID, mpi::communicator comm
 ClipVtkm::~ClipVtkm()
 {}
 
+std::unique_ptr<vtkm::filter::Filter> ClipVtkm::setUpFilter() const
+{
+    auto filt = std::make_unique<vtkm::filter::contour::ClipWithImplicitFunction>();
+    filt->SetImplicitFunction(m_implFuncControl.function());
+    filt->SetInvertClip(m_flip->getValue() != 0);
+    return filt;
+}
+
 bool ClipVtkm::changeParameter(const Parameter *param)
 {
     bool ok = m_implFuncControl.changeParameter(param);
     return Module::changeParameter(param) && ok;
-}
-
-void ClipVtkm::runFilter(const vtkm::cont::DataSet &input, const std::string &fieldName,
-                         vtkm::cont::DataSet &output) const
-{
-    vtkm::filter::contour::ClipWithImplicitFunction clipFilter;
-    clipFilter.SetImplicitFunction(m_implFuncControl.function());
-    clipFilter.SetInvertClip(m_flip->getValue() != 0);
-    clipFilter.SetActiveField(fieldName);
-
-    output = clipFilter.Execute(input);
 }

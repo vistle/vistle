@@ -8,6 +8,24 @@
 
 using namespace vistle;
 
+namespace {
+std::string fieldName(int i, bool output = false)
+{
+    /*
+    By default, VTK-m names output fields the same as input fields which causes problems
+    if the input mapping is different from the output mapping, i.e., when converting 
+    a point field to a cell field or vice versa. To avoid having a point and a 
+    cell field of the same name in the resulting dataset, which leads to conflicts, e.g., 
+    when calling VTK-m's GetField() method, we rename the output field here.
+    */
+    std::string name = "data_at_port_" + std::to_string(i);
+    if (i == 0 && output)
+        name += "_out";
+    return name;
+}
+} // namespace
+
+
 VtkmModule::VtkmModule(const std::string &name, int moduleID, mpi::communicator comm, int numPorts,
                        bool requireMappedData)
 : Module(name, moduleID, comm), m_numPorts(numPorts), m_requireMappedData(requireMappedData)
@@ -32,6 +50,11 @@ VtkmModule::~VtkmModule()
 
 bool VtkmModule::prepare()
 {
+    m_filter = setUpFilter();
+    assert(m_filter);
+    m_filter->SetActiveField(fieldName(0, false));
+    m_filter->SetOutputFieldName(fieldName(0, true));
+
     if (!m_inputPorts[0]->isConnected()) {
         if (rank() == 0)
             sendError("No input connected to %s", m_inputPorts[0]->getName().c_str());
@@ -50,6 +73,14 @@ bool VtkmModule::prepare()
     }
 
     return Module::prepare();
+}
+
+bool VtkmModule::reduce(int timestep)
+{
+    if (timestep != -1) {
+        m_filter.reset();
+    }
+    return Module::reduce(timestep);
 }
 
 ModuleStatusPtr VtkmModule::readInPorts(const std::shared_ptr<BlockTask> &task, Object::const_ptr &grid,
@@ -148,6 +179,12 @@ DataBase::ptr VtkmModule::prepareOutputField(const vtkm::cont::DataSet &dataset,
     return nullptr;
 }
 
+void VtkmModule::runFilter(const vtkm::cont::DataSet &input, const std::string &activeFieldName,
+                           vtkm::cont::DataSet &output) const
+{
+    output = m_filter->Execute(input);
+}
+
 bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
 {
     Object::const_ptr inputGrid;
@@ -168,7 +205,7 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
 
     std::string activeField;
     for (std::size_t i = 0; i < inputFields.size(); ++i) {
-        fieldNames.push_back("data_at_port_" + std::to_string(i));
+        fieldNames.push_back(fieldName(i));
 
         // if the corresponding output port is connected...
         if (i > 0 && !m_outputPorts[i]->isConnected())
@@ -185,9 +222,6 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
             }
         }
         if (inputFields[i]) {
-            if (auto name = inputFields[i]->getAttribute("_species"); !name.empty())
-                fieldNames[i] = name;
-
             status = transformInputField(m_inputPorts[i], inputGrid, inputFields[i], fieldNames[i], inputDataset);
             if (!isValid(status))
                 return true;
@@ -206,8 +240,14 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
         if (!m_outputPorts[i]->isConnected())
             continue;
 
-        if (inputFields[i])
-            outputField = prepareOutputField(outputDataset, inputGrid, inputFields[i], fieldNames[i], outputGrid);
+        if (inputFields[i]) {
+            std::string name = fieldNames[i];
+            if (i == 0 && outputDataset.HasField(fieldName(i, true))) {
+                // if filter has created a dedicated output field, use it
+                name = fieldName(i, true);
+            }
+            outputField = prepareOutputField(outputDataset, inputGrid, inputFields[i], name, outputGrid);
+        }
 
         // ... and write the result to the output ports
         if (outputField) {

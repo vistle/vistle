@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <vtkm/cont/DataSet.h>
+#include <vtkm/filter/Filter.h>
 
 #include <vistle/alg/objalg.h>
 #include "vistle/module/module.h"
@@ -49,6 +50,10 @@ protected:
 
     std::vector<vistle::Port *> m_inputPorts, m_outputPorts;
 
+    std::unique_ptr<vtkm::filter::Filter> m_filter;
+
+    virtual std::unique_ptr<vtkm::filter::Filter> setUpFilter() const = 0;
+
     /*
         Reads in the grid and its data field(s) fields from the input port(s) and stores them in `grid` and `fields`.
         Also makes sure that (if there are multiple ports) all data fields are defined on the same grid.
@@ -75,7 +80,7 @@ protected:
         inheriting from VtkmModule. `fieldName` is the name of the field on which the filter will be applied to.
     */
     virtual void runFilter(const vtkm::cont::DataSet &input, const std::string &activeFieldName,
-                           vtkm::cont::DataSet &output) const = 0;
+                           vtkm::cont::DataSet &output) const;
 
     /*
         Transforms the grid in `dataset` to a Vistle data object and updates its metadata by copying the
@@ -93,7 +98,7 @@ protected:
                                                      const std::string &fieldName,
                                                      const vistle::Object::ptr &outputGrid) const;
 
-    /* override for simple initial checks */
+    /* perform simple initial checks and for set up filter */
     bool prepare() override;
 
     /*
@@ -102,6 +107,9 @@ protected:
         The result is transformed back to Vistle objects and finally written to the output port(s).
     */
     bool compute(const std::shared_ptr<vistle::BlockTask> &task) const override;
+
+    /* clean up */
+    bool reduce(int timestep) override;
 
     /*
         Checks if `status` allows module to continue execution and (if available) prints a message to the GUI.
