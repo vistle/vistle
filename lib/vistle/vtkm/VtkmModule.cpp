@@ -9,7 +9,7 @@
 using namespace vistle;
 
 namespace {
-std::string fieldName(int i, bool output = false)
+std::string getFieldName(int i, bool output = false)
 {
     /*
     By default, VTK-m names output fields the same as input fields which causes problems
@@ -116,14 +116,14 @@ ModuleStatusPtr VtkmModule::readInPorts(const std::shared_ptr<BlockTask> &task, 
     return Success();
 }
 
-ModuleStatusPtr VtkmModule::transformInputGrid(const Object::const_ptr &grid, vtkm::cont::DataSet &dataset) const
+ModuleStatusPtr VtkmModule::prepareInputGrid(const Object::const_ptr &grid, vtkm::cont::DataSet &dataset) const
 {
     return vtkmSetGrid(dataset, grid);
 }
 
-ModuleStatusPtr VtkmModule::transformInputField(const Port *port, const Object::const_ptr &grid,
-                                                const DataBase::const_ptr &field, std::string &fieldName,
-                                                vtkm::cont::DataSet &dataset) const
+ModuleStatusPtr VtkmModule::prepareInputField(const Port *port, const Object::const_ptr &grid,
+                                              const DataBase::const_ptr &field, std::string &fieldName,
+                                              vtkm::cont::DataSet &dataset) const
 {
     return vtkmAddField(dataset, field, fieldName);
 }
@@ -174,12 +174,12 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
 
     assert(m_outputPorts.size() == inputFields.size());
 
-    status = transformInputGrid(inputGrid, inputDataset);
+    status = prepareInputGrid(inputGrid, inputDataset);
     if (!isValid(status))
         return true;
 
     for (std::size_t i = 0; i < inputFields.size(); ++i) {
-        fieldNames.push_back(fieldName(i));
+        fieldNames.push_back(getFieldName(i));
 
         // if the corresponding output port is connected...
         if (i > 0 && !m_outputPorts[i]->isConnected())
@@ -196,20 +196,21 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
             }
         }
         if (inputFields[i]) {
-            status = transformInputField(m_inputPorts[i], inputGrid, inputFields[i], fieldNames[i], inputDataset);
+            status = prepareInputField(m_inputPorts[i], inputGrid, inputFields[i], fieldNames[i], inputDataset);
             if (!isValid(status))
                 return true;
         }
     }
 
     // ... run filter on the active field ...
-    if (!m_requireMappedData || inputDataset.HasField(fieldNames[0])) {
-        auto f = setUpFilter();
-        if (inputDataset.HasField(fieldNames[0])) {
-            f->SetActiveField(fieldNames[0]);
-            f->SetOutputFieldName(fieldName(0, true));
+    auto activeField = fieldNames[0];
+    if (!m_requireMappedData || inputDataset.HasField(activeField)) {
+        auto filter = setUpFilter();
+        if (inputDataset.HasField(activeField)) {
+            filter->SetActiveField(activeField);
+            filter->SetOutputFieldName(getFieldName(0, true));
         }
-        outputDataset = f->Execute(inputDataset);
+        outputDataset = filter->Execute(inputDataset);
     }
 
     // ... transform filter output, i.e., grid and data fields, to Vistle objects
@@ -221,9 +222,9 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
 
         if (inputFields[i]) {
             std::string name = fieldNames[i];
-            if (i == 0 && outputDataset.HasField(fieldName(i, true))) {
+            if (i == 0 && outputDataset.HasField(getFieldName(i, true))) {
                 // if filter has created a dedicated output field, use it
-                name = fieldName(i, true);
+                name = getFieldName(i, true);
             }
             outputField = prepareOutputField(outputDataset, inputGrid, inputFields[i], name, outputGrid);
         }

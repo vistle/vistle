@@ -21,9 +21,9 @@ CellToVertVtkm::CellToVertVtkm(const std::string &name, int moduleID, mpi::commu
 CellToVertVtkm::~CellToVertVtkm()
 {}
 
-ModuleStatusPtr CellToVertVtkm::transformInputField(const Port *port, const Object::const_ptr &grid,
-                                                    const DataBase::const_ptr &field, std::string &fieldName,
-                                                    vtkm::cont::DataSet &dataset) const
+ModuleStatusPtr CellToVertVtkm::prepareInputField(const Port *port, const Object::const_ptr &grid,
+                                                  const DataBase::const_ptr &field, std::string &fieldName,
+                                                  vtkm::cont::DataSet &dataset) const
 {
     auto mapping = field->guessMapping(grid);
     // ... make sure the mapping is either vertex or element
@@ -41,7 +41,7 @@ ModuleStatusPtr CellToVertVtkm::transformInputField(const Port *port, const Obje
     if (mapping == DataBase::Element) {
 #endif
         // transform to VTK-m + add to dataset
-        return VtkmModule::transformInputField(port, grid, field, fieldName, dataset);
+        return VtkmModule::prepareInputField(port, grid, field, fieldName, dataset);
     }
 
     return Success();

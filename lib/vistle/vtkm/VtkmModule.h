@@ -65,16 +65,15 @@ protected:
     /*
         Turns `grid` into a VTK-m grid and adds it to `dataset`.
     */
-    virtual ModuleStatusPtr transformInputGrid(const vistle::Object::const_ptr &grid,
-                                               vtkm::cont::DataSet &dataset) const;
+    virtual ModuleStatusPtr prepareInputGrid(const vistle::Object::const_ptr &grid, vtkm::cont::DataSet &dataset) const;
 
     /*
         Transforms `field` to a VTK-m data set and adds it to `dataset`. The name of the field is also written to
         `fieldName`.
     */
-    virtual ModuleStatusPtr transformInputField(const vistle::Port *port, const vistle::Object::const_ptr &grid,
-                                                const vistle::DataBase::const_ptr &field, std::string &fieldName,
-                                                vtkm::cont::DataSet &dataset) const;
+    virtual ModuleStatusPtr prepareInputField(const vistle::Port *port, const vistle::Object::const_ptr &grid,
+                                              const vistle::DataBase::const_ptr &field, std::string &fieldName,
+                                              vtkm::cont::DataSet &dataset) const;
 
     /*
         Transforms the grid in `dataset` to a Vistle data object and updates its metadata by copying the

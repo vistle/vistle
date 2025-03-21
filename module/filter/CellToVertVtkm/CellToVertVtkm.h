@@ -14,9 +14,9 @@ public:
     ~CellToVertVtkm();
 
 private:
-    ModuleStatusPtr transformInputField(const vistle::Port *port, const vistle::Object::const_ptr &grid,
-                                        const vistle::DataBase::const_ptr &field, std::string &fieldName,
-                                        vtkm::cont::DataSet &dataset) const override;
+    ModuleStatusPtr prepareInputField(const vistle::Port *port, const vistle::Object::const_ptr &grid,
+                                      const vistle::DataBase::const_ptr &field, std::string &fieldName,
+                                      vtkm::cont::DataSet &dataset) const override;
 
     std::unique_ptr<vtkm::filter::Filter> setUpFilter() const override;
 
