@@ -1,8 +1,8 @@
 #ifndef VISTLE_CUTTINGSURFACEVTKM_CUTTINGSURFACEVTKM_H
 #define VISTLE_CUTTINGSURFACEVTKM_CUTTINGSURFACEVTKM_H
 
-#include <vistle/vtkm/ImplicitFunctionController.h>
-#include <vistle/vtkm/VtkmModule.h>
+#include <vistle/vtkm/implicit_function_controller.h>
+#include <vistle/vtkm/vtkm_module.h>
 
 class CuttingSurfaceVtkm: public VtkmModule {
 public:

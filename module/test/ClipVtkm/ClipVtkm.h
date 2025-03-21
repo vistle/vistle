@@ -1,8 +1,8 @@
 #ifndef VISTLE_CLIPVTKM_CLIPVTKM_H
 #define VISTLE_CLIPVTKM_CLIPVTKM_H
 
-#include <vistle/vtkm/ImplicitFunctionController.h>
-#include <vistle/vtkm/VtkmModule.h>
+#include <vistle/vtkm/implicit_function_controller.h>
+#include <vistle/vtkm/vtkm_module.h>
 
 class ClipVtkm: public VtkmModule {
 public:

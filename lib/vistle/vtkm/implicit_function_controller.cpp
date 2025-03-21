@@ -1,4 +1,4 @@
-#include "ImplicitFunctionController.h"
+#include "implicit_function_controller.h"
 
 using namespace vistle;
 

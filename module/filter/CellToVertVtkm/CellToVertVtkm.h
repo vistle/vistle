@@ -2,7 +2,7 @@
 #define VISTLE_CELLTOVERTVTKM_CELLTOVERTVTKM_H
 
 #include <array>
-#include <vistle/vtkm/VtkmModule.h>
+#include <vistle/vtkm/vtkm_module.h>
 
 #ifdef VERTTOCELL
 #define CellToVertVtkm TestVertToCellVtkm

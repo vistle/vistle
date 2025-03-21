@@ -1,10 +1,6 @@
-#include <sstream>
-
-#include <vistle/vtkm/convert.h>
-
+#include "vtkm_module.h"
 #include "convert.h"
-
-#include "VtkmModule.h"
+#include <sstream>
 
 using namespace vistle;
 

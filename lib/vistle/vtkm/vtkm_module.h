@@ -1,5 +1,5 @@
-#ifndef VISTLE_VTKM_VTKMMODULE_H
-#define VISTLE_VTKM_VTKMMODULE_H
+#ifndef VISTLE_VTKM_VTKM_MODULE_H
+#define VISTLE_VTKM_VTKM_MODULE_H
 
 #include <vector>
 #include <vtkm/cont/DataSet.h>
