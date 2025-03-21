@@ -20,18 +20,18 @@ enum ItemTypes {
 
 static std::array<ModuleBrowser::WidgetIndex, 2> ModuleLists{ModuleBrowser::Main, ModuleBrowser::Filtered};
 static std::array<const char *, 10> Categories{"Simulation", "Read",        "Filter",  "Map",    "Geometry",
-                                               "Render",     "Information", "General", "UniViz", "Test"};
+                                               "Render",     "Information", "General", "UniViz", "Develop"};
 static std::map<std::string, std::string> CategoryDescriptions{
     {"Simulation", "acquire data from running simulations for in situ processing"},
     {"Read", "read data from files"},
     {"Filter", "transform abstract data into abstract data"},
     {"Map", "map abstract data to geometric shapes"},
     {"Geometry", "process geometric shapes"},
-    {"Render", "render images from geometric shapes"},
+    {"Render", "render pixel images from geometric shapes"},
     {"General", "process data at any stage in the pipeline"},
     {"Information", "provide information on input"},
     {"UniViz", "flow visualization modules by Filip Sadlo"},
-    {"Test", "support testing and development of Vistle and modules"},
+    {"Develop", "support testing and development of Vistle and modules"},
 };
 
 class CategoryItem: public QTreeWidgetItem {
