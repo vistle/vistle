@@ -25,11 +25,12 @@ MYST_INCLUDE = """```{include} %s
 :relative-images:
 ```
 """  # other python format would replace {include}
-RST_INDEX_HEADER = "{name}\n{underline}\n\n.. include:: {dirname}.md\n   :parser: myst\n\nModules\n--------\n\n.. toctree::\n   :maxdepth: 1\n\n"
-RST_INDEX_HEADER = "{name}\n{underline}\n\n.. toctree::\n   :maxdepth: 1\n\n..include:: {dirname}.md\n   :parser: myst"
-RST_INDEX_HEADER = "{name}\n{underline}\n\n.. toctree::\n   :maxdepth: 1\n\n"
+RST_INDEX_HEADER = ".. _category_{name}:\n\n{name}\n{underline}\n\n.. toctree::\n   :maxdepth: 1\n\n"
+RST_INDEX_HEADER = "{name}\n{underline}\n\n.. toctree::\n   :maxdepth: 1\n\n.. include:: {dirname}.md\n   :parser: myst"
+RST_INDEX_HEADER = ".. _catagory-{dirname}:\n\n{name}\n{underline}\n\n.. include:: {dirname}.md\n   :parser: myst\n\n.. toctree::\n   :maxdepth: 1\n\n"
 
-RST_INDEX_FOOTER = ".. include:: {dirname}.md\n   :parser: myst"
+RST_INDEX_FOOTER = ".. include:: {dirname}.md\n   :parser: myst\n"
+RST_INDEX_FOOTER = ""
 
 
 def strInFile(openReadOnlyFile, val) -> bool:

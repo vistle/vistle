@@ -1,4 +1,4 @@
-# Read - Input Data from Files
+**Input Data from Files**
 
 Read modules read in data from files.
 They are the most common modules to start a pipeline strand in a workflow.
