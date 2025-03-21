@@ -141,12 +141,6 @@ ModuleStatusPtr VtkmModule::transformInputField(const Port *port, const Object::
     return vtkmAddField(dataset, field, fieldName);
 }
 
-// Copies metadata attributes from the grid `from` to the grid `to`.
-void copyMetadata(const Object::const_ptr &from, Object::ptr &to)
-{
-    to->copyAttributes(from);
-}
-
 Object::ptr VtkmModule::prepareOutputGrid(const vtkm::cont::DataSet &dataset, const Object::const_ptr &inputGrid) const
 {
     auto outputGrid = vtkmGetGeometry(dataset);
@@ -156,7 +150,7 @@ Object::ptr VtkmModule::prepareOutputGrid(const vtkm::cont::DataSet &dataset, co
     }
 
     updateMeta(outputGrid);
-    copyMetadata(inputGrid, outputGrid);
+    outputGrid->copyAttributes(inputGrid);
     return outputGrid;
 }
 
