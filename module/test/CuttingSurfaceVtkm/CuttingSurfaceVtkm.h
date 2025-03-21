@@ -12,6 +12,7 @@ public:
 private:
     std::unique_ptr<vtkm::filter::Filter> setUpFilter() const override;
     bool changeParameter(const vistle::Parameter *param) override;
+    void setInputSpecies(const std::string &species) override;
 
     vistle::IntParameter *m_computeNormals;
 

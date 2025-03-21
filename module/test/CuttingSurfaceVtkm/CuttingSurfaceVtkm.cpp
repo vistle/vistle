@@ -23,6 +23,11 @@ bool CuttingSurfaceVtkm::changeParameter(const Parameter *param)
     return Module::changeParameter(param) && ok;
 }
 
+void CuttingSurfaceVtkm::setInputSpecies(const std::string &species)
+{
+    setItemInfo(species);
+}
+
 std::unique_ptr<vtkm::filter::Filter> CuttingSurfaceVtkm::setUpFilter() const
 {
     auto filt = std::make_unique<vtkm::filter::contour::Slice>();
