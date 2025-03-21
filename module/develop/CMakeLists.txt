@@ -1,5 +1,5 @@
 # modules mainly suitable for testing and developing
-set(VISTLE_MODULE_CATEGORY "Test")
+set(VISTLE_MODULE_CATEGORY "Develop")
 
 add_subdirectory(CreateCelltree)
 add_subdirectory(CreateVertexOwnerList)
