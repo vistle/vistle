@@ -27,7 +27,9 @@ MYST_INCLUDE = """```{include} %s
 """  # other python format would replace {include}
 RST_INDEX_HEADER = "{name}\n{underline}\n\n.. include:: {dirname}.md\n   :parser: myst\n\nModules\n--------\n\n.. toctree::\n   :maxdepth: 1\n\n"
 RST_INDEX_HEADER = "{name}\n{underline}\n\n.. toctree::\n   :maxdepth: 1\n\n..include:: {dirname}.md\n   :parser: myst"
-#RST_INDEX_HEADER = ".. include:: {dirname}.md\n   :parser: myst\n\n.. toctree::\n   :maxdepth: 1\n\n"
+RST_INDEX_HEADER = "{name}\n{underline}\n\n.. toctree::\n   :maxdepth: 1\n\n"
+
+RST_INDEX_FOOTER = ".. include:: {dirname}.md\n   :parser: myst"
 
 
 def strInFile(openReadOnlyFile, val) -> bool:
@@ -91,19 +93,15 @@ def createRSTHeaderNameFromRootPath(path, file_path=False):
     underline = name_len.format("")
     return RST_INDEX_HEADER.format(name=md_name.capitalize(), dirname=md_name, underline=underline)
 
-def appendIndexFooter(rst_path, md_link_filename):
-    md_name = os.path.basename(path)
-    if file_path:
-        md_name = path.split("/")[-2]
-    name_len = "{:=^" + str(len(md_name)) + "}"
-    underline = name_len.format("")
-    return RST_INDEX_HEADER.format(name=md_name.capitalize(), dirname=md_name, underline=underline)
+def appendIndexFooter(rst_path):
     with open(rst_path, "a+") as arf:
-        basename = md_link_filename.split(".")[0] #fail to remove extention if filename contains more .
-        linkStr = basename + " <" + basename + "/" + md_link_filename + ">"
-        if not strInFile(arf, linkStr):
-            print("adding link: " + linkStr)
-            arf.write(INDENT.format(linkStr))
+        md_name = os.path.basename(rst_path)
+        if rst_path:
+            md_name = rst_path.split("/")[-2]
+        name_len = "{:=^" + str(len(md_name)) + "}"
+        underline = name_len.format("")
+        arf.write("\n\n")
+        arf.write(RST_INDEX_FOOTER.format(name=md_name.capitalize(), dirname=md_name, underline=underline))
 
 
 def createValidLinkFilePath(md_linkdir, md_root) -> str:
@@ -143,10 +141,6 @@ def searchFilesInDirs(root_path, dir_list, predicate_func, exclude=[]):
                 if predicate_func(file):
                     yield Markdown(root=root, filename=file)
 
-
-def createIndexFile(name):
-    with open(name, "w") as wf:
-        wf.write(createRSTHeaderNameFromRootPath(name, True))
 
 def createIndexFile(name):
     with open(name, "w") as wf:

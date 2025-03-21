@@ -77,7 +77,7 @@ exclude_patterns = []
 html_theme = 'sphinx_rtd_theme'
 
 # do not link to document source
-html_show_sourcelink = False
+# html_show_sourcelink = False
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
