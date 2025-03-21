@@ -173,8 +173,7 @@ DataBase::ptr VtkmModule::prepareOutputField(const vtkm::cont::DataSet &dataset,
     return nullptr;
 }
 
-void VtkmModule::runFilter(const vtkm::cont::DataSet &input, const std::string &activeFieldName,
-                           vtkm::cont::DataSet &output) const
+void VtkmModule::runFilter(const vtkm::cont::DataSet &input, vtkm::cont::DataSet &output) const
 {
     if (!m_requireMappedData || input.HasField(m_filter->GetActiveFieldName())) {
         output = m_filter->Execute(input);
@@ -199,7 +198,6 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
     if (!isValid(status))
         return true;
 
-    std::string activeField;
     for (std::size_t i = 0; i < inputFields.size(); ++i) {
         fieldNames.push_back(fieldName(i));
 
@@ -222,12 +220,10 @@ bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
             if (!isValid(status))
                 return true;
         }
-        if (activeField.empty())
-            activeField = fieldNames[i];
     }
 
     // ... run filter on the active field ...
-    runFilter(inputDataset, activeField, outputDataset);
+    runFilter(inputDataset, outputDataset);
 
     // ... transform filter output, i.e., grid and data fields, to Vistle objects
     auto outputGrid = prepareOutputGrid(outputDataset, inputGrid);

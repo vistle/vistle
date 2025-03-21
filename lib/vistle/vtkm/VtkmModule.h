@@ -76,11 +76,9 @@ protected:
                                                 vtkm::cont::DataSet &dataset) const;
 
     /*
-        Runs a VTK-m filter on `input` and stores the result in `output`. This method must be overridden by modules
-        inheriting from VtkmModule. `fieldName` is the name of the field on which the filter will be applied to.
+        Runs a VTK-m filter on `input` and stores the result in `output`
     */
-    virtual void runFilter(const vtkm::cont::DataSet &input, const std::string &activeFieldName,
-                           vtkm::cont::DataSet &output) const;
+    virtual void runFilter(const vtkm::cont::DataSet &input, vtkm::cont::DataSet &output) const;
 
     /*
         Transforms the grid in `dataset` to a Vistle data object and updates its metadata by copying the
