@@ -182,7 +182,9 @@ DataBase::ptr VtkmModule::prepareOutputField(const vtkm::cont::DataSet &dataset,
 void VtkmModule::runFilter(const vtkm::cont::DataSet &input, const std::string &activeFieldName,
                            vtkm::cont::DataSet &output) const
 {
-    output = m_filter->Execute(input);
+    if (!m_requireMappedData || input.HasField(m_filter->GetActiveFieldName())) {
+        output = m_filter->Execute(input);
+    }
 }
 
 bool VtkmModule::compute(const std::shared_ptr<BlockTask> &task) const
