@@ -1,5 +1,4 @@
-# modules producing images from geometry
-set(VISTLE_MODULE_CATEGORY "Render")
+vistle_category("Render" "rendere pixel images from geometry data")
 
 vistle_find_package(
     OpenSceneGraph

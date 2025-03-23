@@ -875,11 +875,18 @@ endmacro(vistle_add_executable)
 set(ALL_MODULES
     ""
     CACHE INTERNAL "")
+set(CATEGORY_DESCRIPTION_FILE ${PROJECT_BINARY_DIR}/share/vistle/categorydescriptions.txt)
 set(MODULE_DESCRIPTION_FILE ${PROJECT_BINARY_DIR}/share/vistle/moduledescriptions.txt)
 
 if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
+    file(REMOVE ${CATEGORY_DESCRIPTION_FILE})
     file(REMOVE ${MODULE_DESCRIPTION_FILE})
-    install(FILES ${MODULE_DESCRIPTION_FILE} DESTINATION ${CMAKE_INSTALL_PREFIX}/share/vistle/)
+    install(FILES ${CATEGORY_DESCRIPTION_FILE} ${MODULE_DESCRIPTION_FILE} DESTINATION ${CMAKE_INSTALL_PREFIX}/share/vistle/)
+
+    macro(vistle_category name description)
+        set(VISTLE_MODULE_CATEGORY ${name})
+        file(APPEND ${CATEGORY_DESCRIPTION_FILE} "${name} ${description}\n")
+    endmacro(vistle_category)
 
     macro(add_module2 targetname executable description)
         if(NOT VISTLE_MODULE_CATEGORY)

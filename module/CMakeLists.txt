@@ -1,5 +1,7 @@
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+vistle_category("Unspecified" "no category provided - please fix")
+
 add_subdirectory(read)
 add_subdirectory(insitu)
 add_subdirectory(filter)

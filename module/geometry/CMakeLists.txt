@@ -1,5 +1,4 @@
-# geometry modules operate on geometric data and produce geometric data
-set(VISTLE_MODULE_CATEGORY "Geometry")
+vistle_category("Geometry" "operate on geometric shapes and produce geometric data")
 
 add_subdirectory(ApplyTransform)
 add_subdirectory(Chainmail)
