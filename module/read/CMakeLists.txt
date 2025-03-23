@@ -1,5 +1,4 @@
-# modules for reading data from files
-set(VISTLE_MODULE_CATEGORY "Read")
+vistle_category("Read" "read data from files")
 
 #add_subdirectory(ReadHDF5)
 #add_subdirectory(ReadVistle)

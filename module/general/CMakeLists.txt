@@ -1,5 +1,4 @@
-# general modules can operate at any stage in the pipeline
-set(VISTLE_MODULE_CATEGORY "General")
+vistle_category("General" "process data at any stage in the pipeline")
 
 add_subdirectory(AddAttribute)
 add_subdirectory(Assemble)

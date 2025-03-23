@@ -1,5 +1,4 @@
-# filters operate on abstract (non-geometric) data and produce abstract data as output
-set(VISTLE_MODULE_CATEGORY "Filter")
+vistle_category("Filter" "operate on abstract (non-geometric) data and produce abstract data")
 
 add_subdirectory(CellSelect)
 add_subdirectory(CellToVert)

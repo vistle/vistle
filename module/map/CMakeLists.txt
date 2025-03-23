@@ -1,5 +1,4 @@
-# mappers operate on abstract data and produce geometric data suitable for rendering as output
-set(VISTLE_MODULE_CATEGORY "Map")
+vistle_category("Map" "map abstract data to geometric shapes suitable for rendering")
 
 add_subdirectory(BoundingBox)
 add_subdirectory(Color)

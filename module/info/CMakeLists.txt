@@ -1,5 +1,4 @@
-# information modules provide textual information about the data
-set(VISTLE_MODULE_CATEGORY "Information")
+vistle_category("Information" "provide textual information about the data")
 
 add_subdirectory(Extrema)
 add_subdirectory(PrintMetaData)
