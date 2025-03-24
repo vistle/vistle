@@ -24,7 +24,8 @@ block individually instead of for all blocks globally.
 
 ## Usage Examples
 
-[example]:<tiny-covise-net>
+[example]:<tiny-covise>
+
 
 ## Related Modules
 
