@@ -4,7 +4,7 @@ try_run(
     COMPILE_REPORT
     "${CMAKE_BINARY_DIR}/tmp"
     SOURCES
-    "checkIntCompatibility.cpp"
+    "${CMAKE_CURRENT_LIST_DIR}/checkIntCompatibility.cpp"
     LINK_LIBRARIES
     vtkm::cont
     ARGS "${VISTLE_64BIT_INDICES}")
@@ -33,7 +33,7 @@ try_run(
     COMPILE_REPORT
     "${CMAKE_BINARY_DIR}/tmp"
     SOURCES
-    "checkFloatCompatibility.cpp"
+    "${CMAKE_CURRENT_LIST_DIR}/checkFloatCompatibility.cpp"
     LINK_LIBRARIES
     vtkm::cont
     ARGS "${VISTLE_DOUBLE_PRECISION}")
