@@ -9,6 +9,7 @@
 #include <QMenu>
 #include <QSettings>
 #include <fstream>
+#include <vistle/module_descriptions/descriptions.h>
 
 namespace gui {
 
@@ -19,21 +20,9 @@ enum ItemTypes {
 };
 
 static std::array<ModuleBrowser::WidgetIndex, 2> ModuleLists{ModuleBrowser::Main, ModuleBrowser::Filtered};
+// provide sort order for module categories
 static std::array<const char *, 10> Categories{"Simulation", "Read",        "Filter",  "Map",    "Geometry",
                                                "Render",     "Information", "General", "UniViz", "Develop"};
-static std::map<std::string, std::string> CategoryDescriptions{
-    {"Simulation", "acquire data from running simulations for in situ processing"},
-    {"Read", "read data from files"},
-    {"Filter", "transform abstract data into abstract data"},
-    {"Map", "map abstract data to geometric shapes"},
-    {"Geometry", "process geometric shapes"},
-    {"Render", "render pixel images from geometric shapes"},
-    {"General", "process data at any stage in the pipeline"},
-    {"Information", "provide information on input"},
-    {"UniViz", "flow visualization modules by Filip Sadlo"},
-    {"Develop", "support testing and development of Vistle and modules"},
-};
-
 class CategoryItem: public QTreeWidgetItem {
     using QTreeWidgetItem::QTreeWidgetItem;
     bool operator<(const QTreeWidgetItem &other) const override
@@ -396,6 +385,8 @@ QTreeWidgetItem *ModuleBrowser::addCategory(int hub, QString category, QString d
 
 void ModuleBrowser::addModule(int hub, QString module, QString path, QString category, QString description)
 {
+    static auto CategoryDescriptions = vistle::getModuleCategories("");
+
     if (m_primaryHub == vistle::message::Id::Invalid || m_primaryHub < hub) {
         m_primaryHub = hub;
     }

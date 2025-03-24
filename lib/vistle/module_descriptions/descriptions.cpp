@@ -1,55 +1,50 @@
 #include "descriptions.h"
-#include <vistle/util/filesystem.h>
 #include <iostream>
-
-#ifdef MODULE_STATIC
-#include <cmrc/cmrc.hpp>
 #include <sstream>
-#else
+#include <cmrc/cmrc.hpp>
+
+#ifndef MODULE_STATIC
 #include <fstream>
+#include <vistle/util/filesystem.h>
 #endif
+
+CMRC_DECLARE(moduledescriptions);
 
 namespace vistle {
 
-#ifdef MODULE_STATIC
-CMRC_DECLARE(moduledescriptions);
-#endif
-
-std::map<std::string, ModuleDescription> getModuleDescriptions(const std::string &share_prefix)
+namespace {
+std::map<std::string, std::string> readModuleCategories(std::istream &str)
 {
-    std::map<std::string, ModuleDescription> moduleDescriptions;
-#ifdef MODULE_STATIC
+    std::map<std::string, std::string> categories;
+
+    std::string line;
+    while (std::getline(str, line)) {
+        auto sep = line.find(' ');
+        auto cat = line.substr(0, sep);
+        line = line.substr(sep + 1);
+        categories[cat] = line;
+    }
+    return categories;
+}
+} // namespace
+
+std::map<std::string, std::string> getModuleCategories(const std::string &share_prefix)
+{
+    static const std::string filename = CATFILE;
+    std::map<std::string, std::string> categories;
     try {
         auto fs = cmrc::moduledescriptions::get_filesystem();
-        auto data = fs.open("moduledescriptions.txt");
+        auto data = fs.open(filename);
         std::string desc(data.begin(), data.end());
         std::stringstream str(desc);
-        moduleDescriptions = readModuleDescriptions(str);
+        categories = readModuleCategories(str);
     } catch (std::exception &ex) {
-        std::cerr << "getModuleDescriptions: exception: " << ex.what() << std::endl;
+        std::cerr << "getModuleCategories: exception: " << ex.what() << std::endl;
     }
-#else
-    filesystem::path pshare(share_prefix);
-    try {
-        if (!filesystem::is_directory(pshare)) {
-            std::cerr << "scanModules: " << share_prefix << " is not a directory" << std::endl;
-        } else {
-        }
-    } catch (const filesystem::filesystem_error &e) {
-        std::cerr << "scanModules: error in" << share_prefix << ": " << e.what() << std::endl;
-    }
-    std::string file = share_prefix + "moduledescriptions.txt";
-    std::fstream str(file, std::ios_base::in);
-    if (str.is_open()) {
-        moduleDescriptions = readModuleDescriptions(str);
-    } else {
-        std::cerr << "getModuleDescriptions: failed to open module description file " << file << std::endl;
-    }
-#endif
-    return moduleDescriptions;
+    return categories;
 }
 
-
+namespace {
 std::map<std::string, ModuleDescription> readModuleDescriptions(std::istream &str)
 {
     std::map<std::string, ModuleDescription> moduleDescriptions;
@@ -68,5 +63,42 @@ std::map<std::string, ModuleDescription> readModuleDescriptions(std::istream &st
     }
     return moduleDescriptions;
 }
+} // namespace
+
+std::map<std::string, ModuleDescription> getModuleDescriptions(const std::string &share_prefix)
+{
+    static const std::string filename = MODFILE;
+    std::map<std::string, ModuleDescription> moduleDescriptions;
+#ifdef MODULE_STATIC
+    try {
+        auto fs = cmrc::moduledescriptions::get_filesystem();
+        auto data = fs.open(filename);
+        std::string desc(data.begin(), data.end());
+        std::stringstream str(desc);
+        moduleDescriptions = readModuleDescriptions(str);
+    } catch (std::exception &ex) {
+        std::cerr << "getModuleDescriptions: exception: " << ex.what() << std::endl;
+    }
+#else
+    filesystem::path pshare(share_prefix);
+    try {
+        if (!filesystem::is_directory(pshare)) {
+            std::cerr << "getModuleDescriptions: " << share_prefix << " is not a directory" << std::endl;
+        } else {
+        }
+    } catch (const filesystem::filesystem_error &e) {
+        std::cerr << "getModuleDescriptions: error in" << share_prefix << ": " << e.what() << std::endl;
+    }
+    std::string file = share_prefix + filename;
+    std::fstream str(file, std::ios_base::in);
+    if (str.is_open()) {
+        moduleDescriptions = readModuleDescriptions(str);
+    } else {
+        std::cerr << "getModuleDescriptions: failed to open module description file " << file << std::endl;
+    }
+#endif
+    return moduleDescriptions;
+}
+
 
 } // namespace vistle

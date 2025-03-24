@@ -3,10 +3,7 @@
 #include <vistle/module_descriptions/descriptions.h>
 
 #include <vistle/control/scanmodules.h>
-#include <cmrc/cmrc.hpp>
 #include <sstream>
-
-CMRC_DECLARE(moduledescriptions);
 
 namespace vistle {
 
@@ -58,7 +55,7 @@ std::shared_ptr<Module> ModuleRegistry::newInstance(const std::string &name, int
 
 bool ModuleRegistry::availableModules(AvailableMap &available, int hub)
 {
-    std::map<std::string, ModuleDescription> moduleDescriptions = getModuleDescriptions();
+    std::map<std::string, ModuleDescription> moduleDescriptions = getModuleDescriptions("");
 
     for (const auto &m: m_modules) {
         std::string description;
