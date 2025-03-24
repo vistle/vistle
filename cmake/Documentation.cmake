@@ -16,10 +16,8 @@ endmacro()
 set(IGNR_MODS "COVER_plugin")
 
 macro(configure_documentation_detail INPUT_FILE OUTPUT_FILE TARGET)
-
     list(APPEND ${TARGET} ${OUTPUT_FILE})
-    if(${DOCUMENTATION_FILE} MATCHES ".*\\.md")
-
+    if(${INPUT_FILE} MATCHES ".*\\.md")
         add_custom_command(
             OUTPUT ${OUTPUT_FILE}
             COMMAND ${CONFIGURE_COMMAND} ${INPUT_FILE} ${OUTPUT_FILE}
@@ -32,6 +30,15 @@ macro(configure_documentation_detail INPUT_FILE OUTPUT_FILE TARGET)
             DEPENDS ${INPUT_FILE}
             COMMENT "Copying file: ${OUTPUT_FILE}")
     endif()
+endmacro()
+
+macro(configure_category_documentation INPUT_FILE OUTPUT_FILE TARGET)
+    list(APPEND ${TARGET} ${OUTPUT_FILE})
+    add_custom_command(
+        OUTPUT ${OUTPUT_FILE}
+        COMMAND ${CONFIGURE_COMMAND} ${INPUT_FILE} ${OUTPUT_FILE}
+        DEPENDS ${INPUT_FILE} vistle_module_doc ${CMAKE_SOURCE_DIR}/doc/tools/insertModuleLinks.py
+        COMMENT "Configuring file: ${OUTPUT_FILE}")
 endmacro()
 
 function(configure_documentation)
@@ -70,7 +77,7 @@ function(configure_documentation)
     foreach(FILE ${CATEGORY_FILES})
         set(INPUT_FILE ${PROJECT_SOURCE_DIR}/module/${FILE})
         set(OUTPUT_FILE ${VISTLE_DOCUMENTATION_SOURCE_DIR}/module/${FILE})
-        configure_documentation_detail(${INPUT_FILE} ${OUTPUT_FILE} CONFIGURED_FILES)
+        configure_category_documentation(${INPUT_FILE} ${OUTPUT_FILE} CONFIGURED_FILES)
     endforeach()
     add_custom_target(configure_documentation_files DEPENDS ${CONFIGURED_FILES})
     add_dependencies(vistle_doc configure_documentation_files)
