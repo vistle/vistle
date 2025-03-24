@@ -139,10 +139,9 @@ if(SPHINX_EXECUTABLE)
 
     set(VISTLE_BUILD_DOC TRUE)
 else(SPHINX_EXECUTABLE)
-    message("Sphinx not found, documentation can not be built")
+    message("Sphinx (sphinx-build) not found, documentation cannot be built")
     set(VISTLE_BUILD_DOC FALSE)
     return()
-
 endif(SPHINX_EXECUTABLE)
 
 macro(append_module_category targetname)
