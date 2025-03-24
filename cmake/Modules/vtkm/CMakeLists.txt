@@ -4,7 +4,7 @@ try_run(
     COMPILE_REPORT
     "${CMAKE_BINARY_DIR}/tmp"
     SOURCES
-    "${CMAKE_SOURCE_DIR}/module/test/IsoSurfaceVtkm/compatibility/checkIntCompatibility.cpp"
+    "checkIntCompatibility.cpp"
     LINK_LIBRARIES
     vtkm::cont
     ARGS "${VISTLE_64BIT_INDICES}")
@@ -33,7 +33,7 @@ try_run(
     COMPILE_REPORT
     "${CMAKE_BINARY_DIR}/tmp"
     SOURCES
-    "${CMAKE_SOURCE_DIR}/module/test/IsoSurfaceVtkm/compatibility/checkFloatCompatibility.cpp"
+    "checkFloatCompatibility.cpp"
     LINK_LIBRARIES
     vtkm::cont
     ARGS "${VISTLE_DOUBLE_PRECISION}")
