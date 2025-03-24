@@ -85,7 +85,6 @@ html_theme = 'sphinx_rtd_theme'
 # html_static_path = ['_static']
 
 autosectionlabel_prefix_document = True
-deleteDir("../build")
 # make_module_markdown_links("../..", ["docs/module"], "module", link_rst_only=True)
 
 moduleDirectory = os.path.dirname(os.path.realpath(__file__)) + "/module"
