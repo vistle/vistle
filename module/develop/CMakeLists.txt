@@ -2,7 +2,6 @@ vistle_category("Develop" "support testing and develepment of Vistle and modules
 
 add_subdirectory(CreateCelltree)
 add_subdirectory(CreateVertexOwnerList)
-add_subdirectory(CutGeometryOld)
 add_subdirectory(Dropbear)
 add_subdirectory(FilterNode)
 add_subdirectory(Gendat)
