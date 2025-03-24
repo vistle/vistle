@@ -9,7 +9,8 @@ Module Reference
 * :doc:`Render - make pixel images from geometry <render/index>`
 * :doc:`General - manipulate data at any pipeline stage <general/index>`
 * :doc:`Information - meta data <info/index>`
-* :doc:`Univiz - vector fields <univiz/index>`
+* :doc:`UniViz - vector fields <univiz/index>`
+* :doc:`Univiz - vector fields <vistle/index>`
 * :doc:`Develop - tools for developers <develop/index>`
 
 .. toctree::
@@ -24,5 +25,6 @@ Module Reference
     Render <render/index.rst>
     General <general/index.rst>
     Information <info/index.rst>
-    Univiz <univiz/index.rst>
+    UniViz <univiz/index.rst>
+    Univiz <vistle/index.rst>
     Develop <develop/index.rst>
