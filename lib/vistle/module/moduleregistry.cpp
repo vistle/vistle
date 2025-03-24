@@ -1,5 +1,6 @@
 #include "moduleregistry.h"
 #include "module.h"
+#include <vistle/module_descriptions/descriptions.h>
 
 #include <vistle/control/scanmodules.h>
 #include <cmrc/cmrc.hpp>
@@ -57,16 +58,7 @@ std::shared_ptr<Module> ModuleRegistry::newInstance(const std::string &name, int
 
 bool ModuleRegistry::availableModules(AvailableMap &available, int hub)
 {
-    std::map<std::string, ModuleDescription> moduleDescriptions;
-    try {
-        auto fs = cmrc::moduledescriptions::get_filesystem();
-        auto data = fs.open("moduledescriptions.txt");
-        std::string desc(data.begin(), data.end());
-        std::stringstream str(desc);
-        moduleDescriptions = readModuleDescriptions(str);
-    } catch (std::exception &ex) {
-        std::cerr << "ModuleRegistry::availableModules: exception: " << ex.what() << std::endl;
-    }
+    std::map<std::string, ModuleDescription> moduleDescriptions = getModuleDescriptions();
 
     for (const auto &m: m_modules) {
         std::string description;

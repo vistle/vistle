@@ -1,5 +1,22 @@
-cmrc_add_resource_library(
-    vistle_module_descriptions NAMESPACE moduledescriptions WHENCE ${PROJECT_BINARY_DIR}/share/vistle
-    #${PROJECT_BINARY_DIR}/share/vistle/moduledescriptions.txt
-    ${MODULE_DESCRIPTION_FILE})
-vistle_export_library(vistle_module_descriptions)
+set(HEADERS descriptions.h export.h)
+set(SOURCES descriptions.cpp)
+vistle_add_library(vistle_module_descriptions EXPORT ${VISTLE_LIB_TYPE} ${HEADERS} ${SOURCES})
+
+if(VISTLE_MODULES_SHARED)
+    target_compile_definitions(vistle_module_descriptions PRIVATE -DVISTLE_MODULES_SHARED)
+    target_link_libraries(vistle_module_descriptions PRIVATE vistle_util)
+else()
+    cmrc_add_resource_library(
+        vistle_module_descriptions_resource
+        STATIC
+        NAMESPACE
+        moduledescriptions
+        WHENCE
+        ${PROJECT_BINARY_DIR}/share/vistle
+        ${MODULE_DESCRIPTION_FILE})
+    if(APPLE)
+        target_link_libraries(vistle_module_descriptions PRIVATE -Wl,-force_load vistle_module_descriptions_resource)
+    else()
+        target_link_libraries(vistle_module_descriptions PRIVATE -Wl,--whole-archive vistle_module_descriptions_resource -Wl,--no-whole-archive)
+    endif()
+endif()
