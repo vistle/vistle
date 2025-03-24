@@ -1,0 +1,22 @@
+#ifndef VISTLE_MODULE_DESCRIPTIONS_DESCRIPTIONS_H
+#define VISTLE_MODULE_DESCRIPTIONS_DESCRIPTIONS_H
+
+#include "export.h"
+
+#include <map>
+#include <string>
+#include <istream>
+
+namespace vistle {
+
+struct ModuleDescription {
+    std::string category;
+    std::string description;
+};
+
+V_MODULEDESCRIPTIONSEXPORT std::map<std::string, ModuleDescription> readModuleDescriptions(std::istream &str);
+V_MODULEDESCRIPTIONSEXPORT std::map<std::string, ModuleDescription>
+getModuleDescriptions(const std::string &share_prefix);
+
+} // namespace vistle
+#endif

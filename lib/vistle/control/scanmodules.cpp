@@ -1,58 +1,21 @@
+#include "scanmodules.h"
 #include <iostream>
 #include <map>
 #include <string>
 #include <fstream>
 #include <vistle/util/filesystem.h>
 #include <vistle/util/directory.h>
-#include "scanmodules.h"
+#include <vistle/module_descriptions/descriptions.h>
 
 namespace vistle {
-
-std::map<std::string, ModuleDescription> readModuleDescriptions(std::istream &str)
-{
-    std::map<std::string, ModuleDescription> moduleDescriptions;
-
-    std::string line;
-    while (std::getline(str, line)) {
-        auto sep = line.find(' ');
-        auto mod = line.substr(0, sep);
-        line = line.substr(sep + 1);
-        sep = line.find(' ');
-        auto cat = line.substr(0, sep);
-        auto desc = line.substr(sep + 1);
-        moduleDescriptions[mod].category = cat;
-        moduleDescriptions[mod].description = desc;
-        //std::cerr << "module: " << mod << " -> " << cat << ", description: " << cat << std::endl;
-    }
-    return moduleDescriptions;
-}
-
 
 bool scanModules(const std::string &prefix, const std::string &buildtype, int hub, AvailableMap &available)
 {
     namespace bf = vistle::filesystem;
     auto dir = Directory(prefix, buildtype);
-
-    std::map<std::string, ModuleDescription> moduleDescriptions;
-
     auto share = dir.share();
-    bf::path pshare(share);
-    try {
-        if (!bf::is_directory(pshare)) {
-            std::cerr << "scanModules: " << share << " is not a directory" << std::endl;
-        } else {
-            std::string file = share + "moduledescriptions.txt";
-            std::fstream f(file, std::ios_base::in);
 
-            if (f.is_open()) {
-                moduleDescriptions = readModuleDescriptions(f);
-            } else {
-                std::cerr << "failed to open module description file " << file << std::endl;
-            }
-        }
-    } catch (const bf::filesystem_error &e) {
-        std::cerr << "scanModules: error in" << share << ": " << e.what() << std::endl;
-    }
+    std::map<std::string, ModuleDescription> moduleDescriptions = getModuleDescriptions(share);
 
     auto moddir = dir.module();
     bf::path p(moddir);

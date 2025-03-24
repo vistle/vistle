@@ -31,6 +31,7 @@ target_link_libraries(
     PRIVATE vistle_core
     PRIVATE vistle_net
     PRIVATE vistle_libsim_connect
+    PRIVATE vistle_module_descriptions
     PRIVATE Threads::Threads)
 if(UNIX)
     target_link_libraries(vistle_control PRIVATE ${CMAKE_DL_LIBS})
