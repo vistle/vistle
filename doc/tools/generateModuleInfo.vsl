@@ -16,7 +16,7 @@ DESTDIR = os.environ['VISTLE_BINARY_DIR'] + "/docs/source/module/" + MODULE_CATE
 VISTLE_DOCUMENTATION_SOURCE_DIR = os.environ['VISTLE_DOCUMENTATION_SOURCE_DIR']
 
 REG_IMAGE = re.compile(r"(?:\w+(?:-\w+)+|\w*)\.(?:jpg|gif|png|bmp)")
-REG_TAGS_TMPL = r"\[{tag}\]:<(\w*)>"
+REG_TAGS_TMPL = r"\[{tag}\]:<([\w-]*)>"
 REG_HTML_IMG = r"<img[^\>]+/>"
 
 HEADLINE_TAG = "headline"
@@ -273,7 +273,7 @@ def generateModuleDescriptions() -> None:
     
     filename = MODULE_SOURCE_DIR + "/" + MODULE_NAME + ".md"
     # tags with the format [tag]:<value> can be replace by asignig a replacement function to the tag:
-    essential_tags = {  # these can only apear once and if not found these will be added at the end
+    essential_tags = {  # these can only appear once and if not found these will be added at the end
         HEADLINE_TAG: getModuleHeadLine,
         HTML_TAG: getModuleHtml,
         PARAM_TAG: getParametersString
