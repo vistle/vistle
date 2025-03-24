@@ -10,7 +10,7 @@ Module Reference
 * :doc:`General - manipulate data at any pipeline stage <general/index>`
 * :doc:`Information - meta data <info/index>`
 * :doc:`Univiz - vector fields <univiz/index>`
-* :doc:`Develop - tools for developers <test/index>`
+* :doc:`Develop - tools for developers <develop/index>`
 
 .. toctree::
    :maxdepth: 1
