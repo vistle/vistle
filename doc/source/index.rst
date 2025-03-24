@@ -24,7 +24,7 @@ More infos about Architecture: https://vistle.io/architecture/
 
    Quickstart <quickstart/quickstart.md>
    Introduction <intro/index.rst>
-   Module Guide <module/index.rst>
+   Module Reference <module/index.rst>
 
 .. _build-docs:
 
