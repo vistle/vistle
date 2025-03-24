@@ -43,3 +43,4 @@ More infos about Architecture: https://vistle.io/architecture/
    Coding <dev/index.rst>
    Documentation <dev/documentation.rst>
    Library Documentation <lib/index.rst>
+   Creating Modules <develop/module/index.rst>
