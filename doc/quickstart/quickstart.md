@@ -12,7 +12,7 @@ Modules represent processing steps and are used to set up a workflow. To add a n
 ![](quickstart_browser.jpeg)
 
 ### Commonly Used Modules
-Some commonly employed modules are listed in the following. A complete list of modules can be found in the [Module Guide](../module/index.rst). 
+Some commonly employed modules are listed in the following. A complete list of modules can be found in the [Module Reference](../module/index.rst). 
 
 * I/O: all modules starting with *Read*...
 * Processing *scalar* data:
