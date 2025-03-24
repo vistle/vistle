@@ -1137,7 +1137,7 @@ if(NOT VISTLE_INTERNAL_VTKM)
     endif()
 
     # make sure vtk-m and vistle data types are compatible (if not, overwrite user flags, accordingly)
-    add_subdirectory(module/test/IsoSurfaceVtkm/compatibility)
+    add_subdirectory(cmake/Module/vtkm)
 endif()
 
 # configure data-type sizes
