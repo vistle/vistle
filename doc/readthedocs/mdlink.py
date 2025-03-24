@@ -161,7 +161,7 @@ def createIndexFileIfNotExisting(link_path) -> str:
     return link_path
 
 
-def run(
+def make_module_markdown_links(
     root_path: str,
     search_dir_list: list,
     link_docs_output_relpath: str,
@@ -224,4 +224,4 @@ if __name__ == "__main__":
     else:
         print("No search dirs specified!")
 
-    run(root, dirs, link)
+    make_module_markdown_links(root, dirs, link)
