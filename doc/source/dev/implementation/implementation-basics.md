@@ -201,7 +201,7 @@ For your convenience, the complete header and source file for **MyModule** are p
 <details>
 <summary> Click on the arrow on the left to view the complete MyModule header file. </summary>
 
-`module/test/MyModule/MyModule.h`:
+`module/develop/MyModule/MyModule.h`:
 
 ```cpp
 #ifndef MYMODULE_H
@@ -232,7 +232,7 @@ private:
 <details>
 <summary> Click on the arrow on the left to view the complete MyModule source file.</summary>
 
-`module/test/MyModule/MyModule.cpp`
+`module/develop/MyModule/MyModule.cpp`
 
 ```cpp
 #include <vistle/alg/objalg.h>
@@ -340,12 +340,12 @@ The code for all Vistle modules can be found in the `module` folder in Vistle's 
 
 Choose the category which fits your module best. The categories are explained in the [Workflow](../../intro/workflow/workflow.md) article.
 
-As it does not have any concrete functionality, **MyModule** will be placed into the **Test** category. By convention, all code files for a module are placed inside a folder named after the module. So, for **MyModule** a folder called `MyModule` must be created inside `module/test` and the source and header files we have created earlier must be moved inside.
+As it does not have any concrete functionality, **MyModule** will be placed into the [Develop]() category. By convention, all code files for a module are placed inside a folder named after the module. So, for **MyModule** a folder called `MyModule` must be created inside `module/develop` and the source and header files we have created earlier must be moved inside.
 
 To tell the system to compile our code, we have to create a `CMakeLists.txt` file which calls the `add_module` target. Pass the module's name, a short description as well as all necessary header and source files to the `add_module` call. Note that the short description will be shown whenever you hover over the **MyModule** module in the Vistle GUI. The first argument is the name of the module as it will be known to Vistle.
 By convention, the main source file is named accordingly.
 
-`module/test/MyModule/CMakeLists.txt`
+`module/develop/MyModule/CMakeLists.txt`
 ```cmake
 add_module(MyModule "Test module" MyModule.h MyModule.cpp)
 ```
@@ -353,11 +353,11 @@ add_module(MyModule "Test module" MyModule.h MyModule.cpp)
 As a last step, add the subdirectory you just created to the category's `CMakeLists.txt` file which is located in the parent directory of your module's `CMakeLists.txt` file:
 
 
-`module/test/CMakeLists.txt`
+`module/develop/CMakeLists.txt`
 
 ```cmake
 # modules mainly suitable for testing and developing
-set(VISTLE_MODULE_CATEGORY "Test")
+set(VISTLE_MODULE_CATEGORY "Develop")
 
 add_subdirectory(ClipVtkm)
 # ...
