@@ -5,6 +5,6 @@ Module Programming
 
 .. toctree::
    :maxdepth: 1
-   :caption: Module Programming
+   :caption: Creating Modules
 
    Basics <implementation-basics.md>

@@ -47,7 +47,7 @@ function(configure_documentation)
     message("CMAKE_COMMAND: " ${CMAKE_COMMAND})
     set(SOURCE_DIR ${CMAKE_SOURCE_DIR}/doc)
     set(DOCUMENTATION_FILES index.rst)
-    foreach(DIR module intro quickstart source)
+    foreach(DIR module intro quickstart develop)
         file(
             GLOB_RECURSE DIRFILES
             RELATIVE ${SOURCE_DIR}
