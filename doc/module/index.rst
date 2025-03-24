@@ -1,13 +1,14 @@
 Module Reference
 ================
 
+* :doc:`Simulation - get data from simulations <insitu/index>`
 * :doc:`Read - get data from files <read/index>`
-* :doc:`In-situ - get data from simulations <insitu/index>`
 * :doc:`Filter - manipulate data <filter/index>`
 * :doc:`Map - generate geometric shapes <map/index>`
 * :doc:`Geometry - modify geometric objects <geometry/index>`
 * :doc:`General - manipulate data at any pipeline stage <general/index>`
-* :doc:`Info - meta data <info/index>`
+* :doc:`Render - generate pixel images <render/index>`
+* :doc:`Information - meta data <info/index>`
 * :doc:`Univiz - vector fields <univiz/index>`
 * :doc:`Develop - tools for developers <test/index>`
 
@@ -15,15 +16,16 @@ Module Reference
    :maxdepth: 1
    :hidden:
 
+    Simulation <insitu/index.rst>
     Read <read/index.rst>
-    In-Situ <insitu/index.rst>
     Filter <filter/index.rst>
     Map <map/index.rst>
     Geometry <geometry/index.rst>
-    Render <geometry/index.rst>
+    Render <render/index.rst>
     General <general/index.rst>
+    Information <info/index.rst>
     Univiz <univiz/index.rst>
-    Develop <test/index.rst>
+    Develop <develop/index.rst>
 
 
 Module Categories
