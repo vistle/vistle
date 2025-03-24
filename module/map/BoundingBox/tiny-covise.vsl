@@ -1,6 +1,10 @@
 # /usr/bin/env vistle
 # this is a Python workflow from Vistle 2025.1-255a6580+
 
+import os
+
+covisedir = os.getenv("COVISEDIR")
+
 MasterHub=getMasterHub()
 VistleSession=getVistleSession()
 WorkflowConfig=getWorkflowConfig()
@@ -27,7 +31,7 @@ umToTriangles13 = spawnAsync(MasterHub, 'ToTriangles')
 
 mReadCoviseDirectory1 = waitForSpawn(umReadCoviseDirectory1)
 setVectorParam(VistleSession, 'position[1]', -357.0, -325.0)
-setStringParam(mReadCoviseDirectory1, 'directory', 'c:/Users/Dennis/Apps/covise/share/covise/example-data/tutorial', True)
+setStringParam(mReadCoviseDirectory1, 'directory', covisedir + '/share/covise/example-data/tutorial', True)
 setStringParam(mReadCoviseDirectory1, 'grid', 'tiny_geo', True)
 setStringParam(mReadCoviseDirectory1, 'field0', 'tiny_p', True)
 setStringParam(mReadCoviseDirectory1, 'field1', 'tiny_velocity', True)
