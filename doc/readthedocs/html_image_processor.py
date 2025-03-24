@@ -41,7 +41,7 @@ class HtmlImageProcessor(SphinxPostTransform):
         src_path = os.path.join(src_dir, image_name)
         os.makedirs(dest_dir, exist_ok=True)
         dest_path = os.path.join(dest_dir, image_name)
-        print(f'Copying image {src_path}, to {dest_path}')
+        print(f'Copying image {src_path} to {dest_path}')
         if os.path.exists(src_path):
             shutil.copy(src_path, dest_path)
         else:
