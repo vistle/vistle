@@ -18,7 +18,7 @@ umPrintMetaData9 = spawnAsync(MasterHub, 'PrintMetaData')
 
 mMiniSim1 = waitForSpawn(umMiniSim1)
 setVectorParam(mMiniSim1, '_position', 368.0, -177.0, True)
-setStringParam(mMiniSim1, 'input_params', 'module/test/MiniSim/minisim/inputs/sample.osc', True)
+setStringParam(mMiniSim1, 'input_params', 'module/develop/MiniSim/minisim/inputs/sample.osc', True)
 setIntParam(mMiniSim1, 'numBlocks', 1, True)
 setIntParam(mMiniSim1, 'frequency', 10, True)
 setIntParam(mMiniSim1, 'keep_timesteps', 0, True)
