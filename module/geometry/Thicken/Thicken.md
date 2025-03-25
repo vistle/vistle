@@ -38,7 +38,4 @@ Moreover, three-dimensional input data is transformed into a vector field throug
 
 ### Often Used With
 
-- [Tracer]()
-- [ToTriangles]()
-- [ToPoints]()
-- [VectorField]()
+[Tracer](), [ToTriangles](), [ToPoints](), [VectorField]()
