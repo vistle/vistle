@@ -27,7 +27,7 @@ MYST_INCLUDE = """```{include} %s
 """  # other python format would replace {include}
 RST_INDEX_HEADER = ".. _category_{name}:\n\n{name}\n{underline}\n\n.. toctree::\n   :maxdepth: 1\n\n"
 RST_INDEX_HEADER = "{name}\n{underline}\n\n.. toctree::\n   :maxdepth: 1\n\n.. include:: {dirname}.md\n   :parser: myst"
-RST_INDEX_HEADER = ".. _catagory-{dirname}:\n\n{name}\n{underline}\n\n.. include:: {dirname}.md\n   :parser: myst\n\n.. toctree::\n   :maxdepth: 1\n\n"
+RST_INDEX_HEADER = ".. _category-{namelower}:\n\n{name}\n{underline}\n\n.. include:: ../{namelower}.md\n   :parser: myst\n\n.. toctree::\n   :maxdepth: 1\n\n"
 
 RST_INDEX_FOOTER = ".. include:: {dirname}.md\n   :parser: myst\n"
 RST_INDEX_FOOTER = ""
@@ -92,7 +92,7 @@ def createRSTHeaderNameFromRootPath(path, file_path=False):
         md_name = path.split("/")[-2]
     name_len = "{:=^" + str(len(md_name)) + "}"
     underline = name_len.format("")
-    return RST_INDEX_HEADER.format(name=md_name.capitalize(), dirname=md_name, underline=underline)
+    return RST_INDEX_HEADER.format(name=md_name.capitalize(), namelower=md_name.lower(), dirname=md_name, underline=underline)
 
 def appendIndexFooter(rst_path):
     with open(rst_path, "a+") as arf:

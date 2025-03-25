@@ -91,7 +91,7 @@ moduleDirectory = os.path.dirname(os.path.realpath(__file__)) + "/module"
 for file_path in glob.glob(os.path.join(moduleDirectory, '*')):
     if os.path.isdir(file_path):
         category = os.path.basename(file_path)
-        make_module_markdown_links("../..", ["docs/module/" + category], "module/" + category, True)        
+        #make_module_markdown_links("../..", ["docs/module/" + category], "module/" + category, True)        
 
 # make_module_markdown_links("../..", ["lib/vistle"], "lib", exclude_dirs=["toml"])
 # make_module_markdown_links("../..", ["app"], "app")
