@@ -875,6 +875,13 @@ macro(vistle_add_executable targetname)
         BUNDLE DESTINATION bin)
 endmacro(vistle_add_executable)
 
+set(ALL_CATEGORIES
+    ""
+    CACHE INTERNAL "")
+set(ALL_CATEGORIES_ORDERED
+    # the same order as in GUI
+    Simulation;Read;Filter;Map;Geometry;Render;General;Information;UniViz;Develop
+    CACHE INTERNAL "")
 set(ALL_MODULES
     ""
     CACHE INTERNAL "")
@@ -888,6 +895,39 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
 
     macro(vistle_category name description)
         set(VISTLE_MODULE_CATEGORY ${name})
+
+        set(VISTLE_CATEGORY_${name}_DESCRIPTION
+            ${description}
+            CACHE INTERNAL "")
+        cmake_path(GET CMAKE_CURRENT_LIST_DIR FILENAME dir)
+        string(TOLOWER ${dir} lower)
+        string(TOLOWER ${name} lower)
+        set(VISTLE_CATEGORY_${name}_FILE
+            ${CMAKE_CURRENT_LIST_DIR}/${lower}.md
+            CACHE INTERNAL "")
+        set(VISTLE_CATEGORY_${name}_FILE
+            ${CMAKE_CURRENT_LIST_DIR}/${lower}.md
+            CACHE INTERNAL "")
+
+        set(listname VISTLE_CATEGORY_${VISTLE_MODULE_CATEGORY}_MODULES)
+        list(FIND ${listname} ${name} idx)
+        if(idx EQUAL -1)
+            # remove modules from previous CMake runs from category
+            set(${listname}
+                ""
+                CACHE INTERNAL "")
+        endif()
+
+        list(FIND ALL_CATEGORIES_ORDERED ${name} idx)
+        if(idx EQUAL -1)
+            set(ALL_CATEGORIES_ORDERED
+                ${ALL_CATEGORIES_ORDERED} ${name}
+                CACHE INTERNAL "")
+        endif()
+        set(ALL_CATEGORIES
+            ${ALL_CATEGORIES} ${name}
+            CACHE INTERNAL "")
+
         file(APPEND ${CATEGORY_DESCRIPTION_FILE} "${name} ${description}\n")
     endmacro(vistle_category)
 
@@ -895,7 +935,11 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
         if(NOT VISTLE_MODULE_CATEGORY)
             set(VISTLE_MODULE_CATEGORY "Unspecified")
         endif()
-
+        set(listname VISTLE_CATEGORY_${VISTLE_MODULE_CATEGORY}_MODULES)
+        list(APPEND VISTLE_CATEGORY_${VISTLE_MODULE_CATEGORY}_MODULES ${targetname})
+        set(${listname}
+            ${${listname}}
+            CACHE INTERNAL "")
         file(APPEND ${MODULE_DESCRIPTION_FILE} "${targetname} ${VISTLE_MODULE_CATEGORY} ${description}\n")
         set(ALL_MODULES
             ${ALL_MODULES} ${targetname}
@@ -1172,3 +1216,13 @@ feature_summary(WHAT ALL)
 if(VISTLE_BUILD_DOC)
     configure_documentation()
 endif()
+
+message("Modules")
+foreach(cat IN LISTS ALL_CATEGORIES_ORDERED)
+    message("Category: ${cat} - ${VISTLE_CATEGORY_${cat}_DESCRIPTION}")
+    message("Category: ${VISTLE_CATEGORY_${cat}_FILE}")
+    set(listname VISTLE_CATEGORY_${cat}_MODULES)
+    foreach(mod IN LISTS ${listname})
+        message("    ${mod}")
+    endforeach()
+endforeach()
