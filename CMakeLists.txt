@@ -904,12 +904,6 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
             install(TARGETS ${targetname} RUNTIME DESTINATION libexec/module)
         else()
             if(VISTLE_MODULES_SHARED)
-                if(Boost_VERSION VERSION_GREATER 1.69.99)
-
-                elseif(Boost_VERSION VERSION_LESS 106400)
-                    message(FATAL_ERROR "At least Boost 1.64 is required for Boost.DLL")
-                endif()
-
                 add_library(${targetname} MODULE ${ARGN})
                 set_target_properties(${targetname} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib/module)
                 set_target_properties(${targetname} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib/module)
