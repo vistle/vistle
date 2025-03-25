@@ -59,6 +59,7 @@ for line in input_file:
 
         if module_key in line:
             category = categories[modules.index(module)]
+            category = category.lower()
             link = f"{relative_module_path}/module/{category}/{module}/{module}.md"
             replacement = f"[{module}]({link})"
             line = line.replace(module_key, replacement)
