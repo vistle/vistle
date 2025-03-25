@@ -1,0 +1,14 @@
+.. _category-@CATEGORYNAME@:
+
+@CATEGORYTITLE@
+===============
+
+**@CATEGORYDESC@**
+
+.. toctree::
+   :maxdepth: 1
+
+@CATEGORYMODULES@
+
+.. include:: ../@CATEGORYNAME@.md
+   :parser: myst
