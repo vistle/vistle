@@ -1,0 +1,10 @@
+Module Reference
+================
+
+@CATEGORIESLONG@
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+
+@CATEGORIESSHORT@
