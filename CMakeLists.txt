@@ -904,9 +904,6 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
         set(VISTLE_CATEGORY_${name}_FILE
             ${CMAKE_CURRENT_LIST_DIR}/${lower}.md
             CACHE INTERNAL "")
-        set(VISTLE_CATEGORY_${name}_FILE
-            ${CMAKE_CURRENT_LIST_DIR}/${lower}.md
-            CACHE INTERNAL "")
 
         set(listname VISTLE_CATEGORY_${VISTLE_MODULE_CATEGORY}_MODULES)
         list(FIND ALL_CATEGORIES ${name} idx)
