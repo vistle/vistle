@@ -28,7 +28,7 @@ set(TOOLDIR "${PROJECT_SOURCE_DIR}/doc/build/tools")
 
 function(titlecase INPUT OUTPUT_VAR)
     execute_process(
-        COMMAND "${Python_EXECUTABLE}" "${TOOLDIR}/titlecase.py" "${INPUT}" ECHO_OUTPUT_VARIABLE
+        COMMAND "${Python_EXECUTABLE}" "${TOOLDIR}/titlecase.py" "${INPUT}"
         OUTPUT_VARIABLE TITLE
         OUTPUT_STRIP_TRAILING_WHITESPACE)
     set(${OUTPUT_VAR}
@@ -188,22 +188,20 @@ function(configure_documentation)
         configure_documentation_detail(${INPUT_FILE} ${OUTPUT_FILE} CONFIGURED_FILES)
     endforeach()
 
-    set(CATEGORY_FILES)
     foreach(cat IN LISTS ALL_CATEGORIES_ORDERED)
-        list(APPEND CATEGORY_FILES ${VISTLE_CATEGORY_${cat}_FILE})
         configure_category_index(${cat} CONFIGURED_FILES)
+
+        set(INPUT_FILE ${VISTLE_CATEGORY_${cat}_FILE})
+        list(APPEND DOCUMENTATION_FILES ${INPUT_FILE})
+        cmake_path(GET INPUT_FILE FILENAME FILE)
+        string(TOLOWER ${cat} lower)
+        set(OUTPUT_FILE ${VISTLE_DOCUMENTATION_SOURCE_DIR}/module/${lower}/${FILE})
+        configure_category_documentation(${INPUT_FILE} ${OUTPUT_FILE} CONFIGURED_FILES)
     endforeach()
     configure_all_modules(CONFIGURED_FILES)
     configure_modules_index(CONFIGURED_FILES)
     configure_categories_overview(CONFIGURED_FILES)
 
-    list(APPEND DOCUMENTATION_FILES ${CATEGORY_FILES})
-    foreach(INPUT_FILE ${CATEGORY_FILES})
-        #set(INPUT_FILE ${PROJECT_SOURCE_DIR}/module/${FILE})
-        cmake_path(GET INPUT_FILE FILENAME FILE)
-        set(OUTPUT_FILE ${VISTLE_DOCUMENTATION_SOURCE_DIR}/module/${FILE})
-        configure_category_documentation(${INPUT_FILE} ${OUTPUT_FILE} CONFIGURED_FILES)
-    endforeach()
     add_custom_target(configure_documentation_files DEPENDS ${CONFIGURED_FILES})
     add_dependencies(vistle_doc configure_documentation_files)
 

@@ -5,7 +5,7 @@
 
 **@CATEGORYDESC@**
 
-.. include:: ../@CATEGORYNAME@.md
+.. include:: @CATEGORYNAME@.md
    :parser: myst
 
 
