@@ -5,10 +5,13 @@
 
 **@CATEGORYDESC@**
 
+@CATEGORYMODULES@
+
 .. toctree::
    :maxdepth: 1
+   :hidden:
 
-@CATEGORYMODULES@
+@CATEGORYMODULESTOC@
 
 .. include:: ../@CATEGORYNAME@.md
    :parser: myst

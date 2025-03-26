@@ -910,7 +910,7 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
             CACHE INTERNAL "")
 
         set(listname VISTLE_CATEGORY_${VISTLE_MODULE_CATEGORY}_MODULES)
-        list(FIND ${listname} ${name} idx)
+        list(FIND ALL_CATEGORIES ${name} idx)
         if(idx EQUAL -1)
             # remove modules from previous CMake runs from category
             set(${listname}
@@ -935,12 +935,18 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
         if(NOT VISTLE_MODULE_CATEGORY)
             set(VISTLE_MODULE_CATEGORY "Unspecified")
         endif()
+        set(VISTLE_MODULE_${targetname}_CATEGORY
+            "${VISTLE_MODULE_CATEGORY}"
+            CACHE INTERNAL "")
         set(listname VISTLE_CATEGORY_${VISTLE_MODULE_CATEGORY}_MODULES)
         list(APPEND VISTLE_CATEGORY_${VISTLE_MODULE_CATEGORY}_MODULES ${targetname})
         set(${listname}
             ${${listname}}
             CACHE INTERNAL "")
         file(APPEND ${MODULE_DESCRIPTION_FILE} "${targetname} ${VISTLE_MODULE_CATEGORY} ${description}\n")
+        set(VISTLE_MODULE_${targetname}_DESCRIPTION
+            ${description}
+            CACHE INTERNAL "")
         set(ALL_MODULES
             ${ALL_MODULES} ${targetname}
             CACHE INTERNAL "")
@@ -979,7 +985,6 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
         if(VISTLE_BUILD_DOC)
             list(FIND IGNR_MODS ${targetname} idx)
             if(idx EQUAL -1)
-                message("doc target: ${targetname} cat=${VISTLE_MODULE_CATEGORY}")
                 append_module_category(${targetname} ${VISTLE_MODULE_CATEGORY})
                 add_module_doc_target(${targetname} ${VISTLE_MODULE_CATEGORY})
             endif()

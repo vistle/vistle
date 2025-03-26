@@ -26,11 +26,11 @@ More infos about Architecture: https://vistle.io/architecture/
    Introduction <intro/index.rst>
    Module Reference <module/index.rst>
 
-.. _build-docs:
+.. _install-docs:
 
 .. toctree::
    :maxdepth: 1
-   :caption: Build Documentation
+   :caption: Installation Instructions
     
    Build Instructions <build/index.rst> 
 
@@ -40,7 +40,7 @@ More infos about Architecture: https://vistle.io/architecture/
    :maxdepth: 1
    :caption: Developer Documentation
 
-   Coding <dev/index.rst>
-   Documentation <dev/documentation.rst>
-   Library Documentation <lib/index.rst>
    Creating Modules <develop/module/index.rst>
+   API Overview <develop/api/index.rst>
+   Write & Build Documentation <develop/documentation/index.rst>
+   Coding <dev/index.rst>
