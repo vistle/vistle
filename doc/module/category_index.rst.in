@@ -5,6 +5,10 @@
 
 **@CATEGORYDESC@**
 
+.. include:: ../@CATEGORYNAME@.md
+   :parser: myst
+
+
 @CATEGORYMODULES@
 
 .. toctree::
@@ -12,6 +16,3 @@
    :hidden:
 
 @CATEGORYMODULESTOC@
-
-.. include:: ../@CATEGORYNAME@.md
-   :parser: myst

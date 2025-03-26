@@ -1,3 +1,7 @@
+set(VISTLE_DOCUMENTATION_DIR
+    "${PROJECT_BINARY_DIR}/documentation"
+    CACHE PATH "Path where the documentation will be built")
+
 set(ALL_VISTLE_MODULES_CATEGORY
     ""
     CACHE INTERNAL "")
@@ -17,6 +21,7 @@ macro(add_documentation_source)
     endforeach()
 endmacro()
 
+# these modules should not get documentation
 set(IGNR_MODS "COVER_plugin")
 
 macro(configure_documentation_detail INPUT_FILE OUTPUT_FILE TARGET)
@@ -204,46 +209,6 @@ function(configure_documentation)
     add_dependencies(vistle_doc configure_module_documentation_files)
 endfunction()
 
-set(VISTLE_DOCUMENTATION_DIR
-    "${PROJECT_BINARY_DIR}/documentation"
-    CACHE PATH "Path where the documentation will be built")
-
-vistle_find_package(Sphinx)
-if(SPHINX_EXECUTABLE)
-    add_custom_target(vistle_module_doc)
-    add_custom_target(vistle_doc)
-    add_dependencies(vistle_doc vistle_module_doc)
-
-    add_custom_target(docs) # add a short alias
-    add_dependencies(docs vistle_doc)
-
-    set(READTHEDOCS_SOURCE_DIR ${CMAKE_SOURCE_DIR}/doc/readthedocs)
-    set(VISTLE_DOCUMENTATION_SOURCE_DIR ${VISTLE_DOCUMENTATION_DIR}/docs)
-
-    #copy the readthedocs configuration scripts
-    add_custom_command(
-        TARGET vistle_doc
-        COMMAND ${CMAKE_COMMAND} -E copy ${READTHEDOCS_SOURCE_DIR}/clear.py ${VISTLE_DOCUMENTATION_SOURCE_DIR}
-        COMMAND ${CMAKE_COMMAND} -E copy ${READTHEDOCS_SOURCE_DIR}/conf.py ${VISTLE_DOCUMENTATION_SOURCE_DIR}
-        COMMAND ${CMAKE_COMMAND} -E copy ${READTHEDOCS_SOURCE_DIR}/mdlink.py ${VISTLE_DOCUMENTATION_SOURCE_DIR}
-        COMMAND ${CMAKE_COMMAND} -E copy ${READTHEDOCS_SOURCE_DIR}/html_image_processor.py ${VISTLE_DOCUMENTATION_SOURCE_DIR}
-        COMMAND ${CMAKE_COMMAND} -E copy ${READTHEDOCS_SOURCE_DIR}/requirements.txt ${VISTLE_DOCUMENTATION_DIR}/docs
-        COMMAND ${CMAKE_COMMAND} -E copy ${READTHEDOCS_SOURCE_DIR}/.readthedocs.yaml ${VISTLE_DOCUMENTATION_DIR})
-
-    add_custom_command(TARGET vistle_doc COMMAND ${CMAKE_COMMAND} -E make_directory ${VISTLE_DOCUMENTATION_DIR}/docs/build)
-    add_custom_command(
-        TARGET vistle_doc
-        COMMAND ${SPHINX_EXECUTABLE} -M html . build
-        WORKING_DIRECTORY ${VISTLE_DOCUMENTATION_DIR}/docs
-        COMMENT "Building Read the Docs documentation" DEPENDS vistle_module_doc)
-
-    set(VISTLE_BUILD_DOC TRUE)
-else(SPHINX_EXECUTABLE)
-    message("Sphinx (sphinx-build) not found, documentation cannot be built")
-    set(VISTLE_BUILD_DOC FALSE)
-    return()
-endif(SPHINX_EXECUTABLE)
-
 macro(append_module_category targetname category)
 
     get_filename_component(PARENT_DIR ${CMAKE_CURRENT_LIST_DIR} DIRECTORY)
@@ -377,3 +342,39 @@ macro(generate_network_snapshot targetname network_file output_dir)
     add_custom_target(${targetname}_${network_file}_workflow DEPENDS ${output_dir}/${network_file}_workflow.png)
     add_dependencies(${targetname}_doc ${targetname}_${network_file}_workflow)
 endmacro()
+
+vistle_find_package(Sphinx)
+if(SPHINX_EXECUTABLE)
+    add_custom_target(vistle_module_doc)
+    add_custom_target(vistle_doc)
+    add_dependencies(vistle_doc vistle_module_doc)
+
+    add_custom_target(docs) # add a short alias
+    add_dependencies(docs vistle_doc)
+
+    set(READTHEDOCS_SOURCE_DIR ${CMAKE_SOURCE_DIR}/doc/readthedocs)
+    set(VISTLE_DOCUMENTATION_SOURCE_DIR ${VISTLE_DOCUMENTATION_DIR}/docs)
+
+    #copy the readthedocs configuration scripts
+    add_custom_command(
+        TARGET vistle_doc
+        COMMAND ${CMAKE_COMMAND} -E copy ${READTHEDOCS_SOURCE_DIR}/clear.py ${VISTLE_DOCUMENTATION_SOURCE_DIR}
+        COMMAND ${CMAKE_COMMAND} -E copy ${READTHEDOCS_SOURCE_DIR}/conf.py ${VISTLE_DOCUMENTATION_SOURCE_DIR}
+        COMMAND ${CMAKE_COMMAND} -E copy ${READTHEDOCS_SOURCE_DIR}/mdlink.py ${VISTLE_DOCUMENTATION_SOURCE_DIR}
+        COMMAND ${CMAKE_COMMAND} -E copy ${READTHEDOCS_SOURCE_DIR}/html_image_processor.py ${VISTLE_DOCUMENTATION_SOURCE_DIR}
+        COMMAND ${CMAKE_COMMAND} -E copy ${READTHEDOCS_SOURCE_DIR}/requirements.txt ${VISTLE_DOCUMENTATION_DIR}/docs
+        COMMAND ${CMAKE_COMMAND} -E copy ${READTHEDOCS_SOURCE_DIR}/.readthedocs.yaml ${VISTLE_DOCUMENTATION_DIR})
+
+    add_custom_command(TARGET vistle_doc COMMAND ${CMAKE_COMMAND} -E make_directory ${VISTLE_DOCUMENTATION_DIR}/docs/build)
+    add_custom_command(
+        TARGET vistle_doc
+        COMMAND ${SPHINX_EXECUTABLE} -M html . build
+        WORKING_DIRECTORY ${VISTLE_DOCUMENTATION_DIR}/docs
+        COMMENT "Building Read the Docs documentation" DEPENDS vistle_module_doc)
+
+    set(VISTLE_BUILD_DOC TRUE)
+else(SPHINX_EXECUTABLE)
+    message("Sphinx (sphinx-build) not found, documentation cannot be built")
+    set(VISTLE_BUILD_DOC FALSE)
+    return()
+endif(SPHINX_EXECUTABLE)
