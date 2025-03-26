@@ -2,9 +2,12 @@ Module Reference
 ================
 
 @CATEGORIESLONG@
+* :doc:`All Modules - alphabetic list <all>`
+
 
 .. toctree::
    :maxdepth: 1
    :hidden:
 
 @CATEGORIESSHORT@
+   All Modules <all>
