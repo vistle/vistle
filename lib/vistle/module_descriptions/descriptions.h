@@ -17,8 +17,9 @@ struct ModuleDescription {
 V_MODULEDESCRIPTIONSEXPORT std::map<std::string, ModuleDescription>
 getModuleDescriptions(const std::string &share_prefix);
 
+V_MODULEDESCRIPTIONSEXPORT std::vector<std::string> getModuleCategories(const std::string &share_prefix);
 V_MODULEDESCRIPTIONSEXPORT
-std::map<std::string, std::string> getModuleCategories(const std::string &share_prefix);
+std::map<std::string, std::string> getCategoryDescriptions(const std::string &share_prefix);
 
 } // namespace vistle
 #endif
