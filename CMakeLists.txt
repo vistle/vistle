@@ -880,7 +880,7 @@ set(ALL_CATEGORIES
     CACHE INTERNAL "")
 set(ALL_CATEGORIES_ORDERED
     # the same order as in GUI
-    Simulation;Read;Filter;Map;Geometry;Render;General;Information;UniViz;Develop
+    Read;Simulation;Filter;Map;Geometry;Render;General;Information;UniViz;Develop
     CACHE INTERNAL "")
 set(ALL_MODULES
     ""
@@ -889,7 +889,6 @@ set(CATEGORY_DESCRIPTION_FILE ${PROJECT_BINARY_DIR}/share/vistle/categorydescrip
 set(MODULE_DESCRIPTION_FILE ${PROJECT_BINARY_DIR}/share/vistle/moduledescriptions.txt)
 
 if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
-    file(REMOVE ${CATEGORY_DESCRIPTION_FILE})
     file(REMOVE ${MODULE_DESCRIPTION_FILE})
     install(FILES ${CATEGORY_DESCRIPTION_FILE} ${MODULE_DESCRIPTION_FILE} DESTINATION ${CMAKE_INSTALL_PREFIX}/share/vistle/)
 
@@ -927,9 +926,15 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
         set(ALL_CATEGORIES
             ${ALL_CATEGORIES} ${name}
             CACHE INTERNAL "")
-
-        file(APPEND ${CATEGORY_DESCRIPTION_FILE} "${name} ${description}\n")
     endmacro(vistle_category)
+
+    macro(write_category_descriptions DESCS)
+        file(REMOVE ${DESCS})
+        foreach(name IN LISTS ALL_CATEGORIES_ORDERED)
+            set(description ${VISTLE_CATEGORY_${name}_DESCRIPTION})
+            file(APPEND ${DESCS} "${name} ${description}\n")
+        endforeach()
+    endmacro()
 
     macro(add_module2 targetname executable description)
         if(NOT VISTLE_MODULE_CATEGORY)
@@ -1216,6 +1221,7 @@ add_subdirectory(app) # has to come after module subdirectory for static module 
 add_subdirectory(test)
 add_subdirectory(bin)
 
+write_category_descriptions(${CATEGORY_DESCRIPTION_FILE})
 if(VISTLE_BUILD_DOC)
     configure_documentation()
 endif()
