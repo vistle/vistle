@@ -1,3 +1,1 @@
-**Print Metadata**
-
-Information modules provide textual information about visualization objects.
+Information modules are sink modules that provide textual information about visualization objects.
