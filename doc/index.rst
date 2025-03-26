@@ -32,7 +32,7 @@ More infos about Architecture: https://vistle.io/architecture/
    :maxdepth: 1
    :caption: Installation Instructions
     
-   Build Instructions <build/index.rst> 
+   Build & Installation Instructions <install/index.rst> 
 
 .. _dev-docs:
 
@@ -40,7 +40,6 @@ More infos about Architecture: https://vistle.io/architecture/
    :maxdepth: 1
    :caption: Developer Documentation
 
-   Creating Modules <develop/module/index.rst>
    API Overview <develop/api/index.rst>
+   Creating Modules <develop/module/index.rst>
    Write & Build Documentation <develop/documentation/index.rst>
-   Coding <dev/index.rst>

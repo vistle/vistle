@@ -24,13 +24,25 @@ endmacro()
 # these modules should not get documentation
 set(IGNR_MODS "COVER_plugin")
 
+set(TOOLDIR "${PROJECT_SOURCE_DIR}/doc/build/tools")
+
+function(titlecase INPUT OUTPUT_VAR)
+    execute_process(
+        COMMAND "${Python_EXECUTABLE}" "${TOOLDIR}/titlecase.py" "${INPUT}" ECHO_OUTPUT_VARIABLE
+        OUTPUT_VARIABLE TITLE
+        OUTPUT_STRIP_TRAILING_WHITESPACE)
+    set(${OUTPUT_VAR}
+        ${TITLE}
+        PARENT_SCOPE)
+endfunction()
+
 macro(configure_documentation_detail INPUT_FILE OUTPUT_FILE TARGET)
     list(APPEND ${TARGET} ${OUTPUT_FILE})
     if(${INPUT_FILE} MATCHES ".*\\.md")
         add_custom_command(
             OUTPUT ${OUTPUT_FILE}
             COMMAND ${CONFIGURE_COMMAND} ${INPUT_FILE} ${OUTPUT_FILE}
-            DEPENDS ${INPUT_FILE} vistle_module_doc ${CMAKE_SOURCE_DIR}/doc/tools/insertModuleLinks.py
+            DEPENDS ${INPUT_FILE} vistle_module_doc ${TOOLDIR}/insertModuleLinks.py
             COMMENT "Configuring file: ${OUTPUT_FILE}")
     else()
         add_custom_command(
@@ -46,7 +58,7 @@ macro(configure_category_documentation INPUT_FILE OUTPUT_FILE TARGET)
     add_custom_command(
         OUTPUT ${OUTPUT_FILE}
         COMMAND ${CONFIGURE_COMMAND} ${INPUT_FILE} ${OUTPUT_FILE}
-        DEPENDS ${INPUT_FILE} vistle_module_doc ${CMAKE_SOURCE_DIR}/doc/tools/insertModuleLinks.py
+        DEPENDS ${INPUT_FILE} vistle_module_doc ${TOOLDIR}/insertModuleLinks.py
         COMMENT "Configuring file: ${OUTPUT_FILE}")
 endmacro()
 
@@ -55,7 +67,8 @@ macro(configure_category_index name TARGET)
     set(OUTPUT_FILE ${VISTLE_DOCUMENTATION_SOURCE_DIR}/module/${lower}/index.rst)
     set(CATEGORYNAME ${lower})
     set(CATEGORYTITLE ${name})
-    set(CATEGORYDESC ${VISTLE_CATEGORY_${name}_DESCRIPTION})
+    #set(CATEGORYDESC ${VISTLE_CATEGORY_${name}_DESCRIPTION})
+    titlecase("${VISTLE_CATEGORY_${name}_DESCRIPTION}" CATEGORYDESC)
     set(CATEGORYMODULES)
     set(CATEGORYMODULESTOC)
     set(FIRSTLETTER)
@@ -70,12 +83,8 @@ macro(configure_category_index name TARGET)
         string(SUBSTRING ${mod} 0 1 F)
         if(NOT "${F}" STREQUAL "${FIRSTLETTER}")
             set(FIRSTLETTER ${F})
-            #string(APPEND CATEGORYMODULES "\n\n**${FIRSTLETTER}** ")
-            #string(APPEND CATEGORYMODULES "\n\n:**${FIRSTLETTER}**:\n\n")
             string(APPEND CATEGORYMODULES "\n**${FIRSTLETTER}**\n")
         endif()
-        #string(APPEND CATEGORYMODULES ":doc:`${mod} <${mod}/${mod}>`\n")
-        #string(APPEND CATEGORYMODULES "   :doc:`${mod} <${mod}/${mod}>` ${desc}\n\n")
         string(APPEND CATEGORYMODULES "   :doc:`${mod} <${mod}/${mod}>` *${desc}*\n\n")
     endforeach()
     configure_file(${PROJECT_SOURCE_DIR}/doc/module/category_index.rst.in ${OUTPUT_FILE} @ONLY)
@@ -101,20 +110,15 @@ macro(configure_all_modules TARGET)
         endif()
 
         set(desc ${VISTLE_MODULE_${mod}_DESCRIPTION})
-        set(cat ${VISTLE_MODULE_${mod}_CATEGORY})
-        string(TOLOWER ${cat} cat)
-        #string(APPEND CATEGORYMODULESTOC "   ${mod} <${cat}/${mod}/${mod}.md>\n")
+        set(CAT ${VISTLE_MODULE_${mod}_CATEGORY})
+        string(TOLOWER ${CAT} cat)
 
         string(SUBSTRING ${mod} 0 1 F)
         if(NOT "${F}" STREQUAL "${FIRSTLETTER}")
             set(FIRSTLETTER ${F})
-            #string(APPEND CATEGORYMODULES "\n\n**${FIRSTLETTER}** ")
-            #string(APPEND CATEGORYMODULES "\n\n:**${FIRSTLETTER}**:\n\n")
             string(APPEND CATEGORYMODULES "\n**${FIRSTLETTER}**\n")
         endif()
-        #string(APPEND CATEGORYMODULES ":doc:`${mod} <${mod}/${mod}>`\n")
-        #string(APPEND CATEGORYMODULES "   :doc:`${mod} <${mod}/${mod}>` ${desc}\n\n")
-        string(APPEND CATEGORYMODULES "   :doc:`${mod} <${cat}/${mod}/${mod}>` *${desc}*\n\n")
+        string(APPEND CATEGORYMODULES "   :doc:`${mod} <${cat}/${mod}/${mod}>` (:doc:`${CAT} <${cat}/index>`) *${desc}*\n\n")
     endforeach()
     configure_file(${PROJECT_SOURCE_DIR}/doc/module/category_index.rst.in ${OUTPUT_FILE} @ONLY)
     list(APPEND ${TARGET} ${OUTPUT_FILE})
@@ -157,7 +161,7 @@ function(configure_documentation)
     set(CONFIGURED_FILES "")
     # Configure each file and add to the list of output files
     set(CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env ALL_VISTLE_MODULES="${ALL_MODULES}" ALL_VISTLE_MODULES_CATEGORY="${ALL_VISTLE_MODULES_CATEGORY}"
-                          ${Python_EXECUTABLE} ${CMAKE_SOURCE_DIR}/doc/tools/insertModuleLinks.py ${PROJECT_SOURCE_DIR} ${VISTLE_DOCUMENTATION_SOURCE_DIR})
+                          ${Python_EXECUTABLE} ${TOOLDIR}/insertModuleLinks.py ${PROJECT_SOURCE_DIR} ${VISTLE_DOCUMENTATION_SOURCE_DIR})
     foreach(DOCUMENTATION_FILE ${DOCUMENTATION_FILES})
         set(INPUT_FILE ${SOURCE_DIR}/${DOCUMENTATION_FILE})
         set(OUTPUT_FILE ${VISTLE_DOCUMENTATION_SOURCE_DIR}/${DOCUMENTATION_FILE})
@@ -196,12 +200,12 @@ function(configure_documentation)
         set(INPUT_FILE ${CMAKE_BINARY_DIR}/docs/${MOD})
         set(OUTPUT_FILE ${VISTLE_DOCUMENTATION_SOURCE_DIR}/${MOD})
         set(CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env ALL_VISTLE_MODULES="${ALL_MODULES}" ALL_VISTLE_MODULES_CATEGORY="${ALL_VISTLE_MODULES_CATEGORY}"
-                              ${Python_EXECUTABLE} ${CMAKE_SOURCE_DIR}/doc/tools/insertModuleLinks.py ${PROJECT_SOURCE_DIR} ${VISTLE_DOCUMENTATION_SOURCE_DIR})
+                              ${Python_EXECUTABLE} ${TOOLDIR}/insertModuleLinks.py ${PROJECT_SOURCE_DIR} ${VISTLE_DOCUMENTATION_SOURCE_DIR})
         list(APPEND CONFIGURED_MODULE_FILES ${OUTPUT_FILE})
         add_custom_command(
             OUTPUT ${OUTPUT_FILE}
             COMMAND ${CONFIGURE_COMMAND} ${INPUT_FILE} ${OUTPUT_FILE}
-            DEPENDS ${INPUT_FILE} vistle_module_doc ${CMAKE_SOURCE_DIR}/doc/tools/insertModuleLinks.py
+            DEPENDS ${INPUT_FILE} vistle_module_doc ${TOOLDIR}/insertModuleLinks.py
             COMMENT "Configuring module file: ${OUTPUT_FILE}")
     endforeach()
     message("CONFIGURED_MODULE_FILES: ${CONFIGURED_MODULE_FILES}")
@@ -228,7 +232,7 @@ macro(add_module_doc_target targetname CATEGORY)
         ${MODULE_DOC_FILES}
         CACHE INTERNAL "")
 
-    set(VISTLE_DOCUMENTATION_WORKFLOW ${PROJECT_SOURCE_DIR}/doc/tools/generateModuleInfo.vsl)
+    set(VISTLE_DOCUMENTATION_WORKFLOW ${TOOLDIR}/generateModuleInfo.vsl)
     #insert module paramerts in markdown files
     set(OUTPUT_FILE ${CMAKE_BINARY_DIR}/docs/${RELNAME})
     set(INPUT_FILE ${CMAKE_CURRENT_SOURCE_DIR}/${targetname}.md)
@@ -299,9 +303,8 @@ macro(generate_snapshot_base targetname network_file output_dir workflow result)
             COMMAND
                 ${CMAKE_COMMAND} -E env COCONFIG=${PROJECT_SOURCE_DIR}/doc/config.vistle.doc.xml VISTLE_DOC_IMAGE_NAME=${network_file}
                 VISTLE_DOC_SOURCE_DIR=${CMAKE_CURRENT_LIST_DIR} VISTLE_DOC_TARGET_DIR=${output_dir} VISTLE_DOC_ARGS=${VISTLE_DOC_ARGS} vistle -vvvv ${batch}
-                ${PROJECT_SOURCE_DIR}/doc/tools/snapShot.py
-            DEPENDS ${CMAKE_CURRENT_LIST_DIR}/${network_file}.vsl ${CMAKE_CURRENT_LIST_DIR}/${network_file}.vwp ${targetname}
-                    ${PROJECT_SOURCE_DIR}/doc/tools/snapShot.py
+                ${TOOLDIR}/snapShot.py
+            DEPENDS ${CMAKE_CURRENT_LIST_DIR}/${network_file}.vsl ${CMAKE_CURRENT_LIST_DIR}/${network_file}.vwp ${targetname} ${TOOLDIR}/snapShot.py
             COMMENT "Generating network and result snapshot for ${network_file}.vsl")
         add_custom_target(${custom_target} DEPENDS ${output_file})
         add_dependencies(${targetname}_doc ${custom_target})
@@ -352,7 +355,7 @@ if(SPHINX_EXECUTABLE)
     add_custom_target(docs) # add a short alias
     add_dependencies(docs vistle_doc)
 
-    set(READTHEDOCS_SOURCE_DIR ${CMAKE_SOURCE_DIR}/doc/readthedocs)
+    set(READTHEDOCS_SOURCE_DIR ${CMAKE_SOURCE_DIR}/doc/build/readthedocs)
     set(VISTLE_DOCUMENTATION_SOURCE_DIR ${VISTLE_DOCUMENTATION_DIR}/docs)
 
     #copy the readthedocs configuration scripts
