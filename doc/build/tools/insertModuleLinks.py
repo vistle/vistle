@@ -10,6 +10,7 @@ output_file_path = sys.argv[4]
 #and the environment variables ALL_VISTLE_MODULES and ALL_VISTLE_MODULES_CATEGORY
 modules = os.environ.get('ALL_VISTLE_MODULES', '').split(" ")
 categories = os.environ.get('ALL_VISTLE_MODULES_CATEGORY', '').split(" ")
+unique_categories = list(set(categories))
 
 # Only handle .md files
 if not input_file_path.endswith(".md"):
@@ -64,6 +65,18 @@ for line in input_file:
             replacement = f"[{module}]({link})"
             line = line.replace(module_key, replacement)
     
+    for category in unique_categories:
+        category_key = "[" + category + "]()"
+        warnRegex = r"\[\W+" + re.escape(category) + r"\W+\]\(\)"
+        #regex search in line
+        if re.search(warnRegex, line):
+            assert False, f"Error: {category} in {input_file_path} line {linenumber} uses illegal modifier" 
+
+        if category_key in line:
+            link = f"{relative_module_path}/module/{category.lower()}/index"
+            replacement = f"[{category}]({link})"
+            line = line.replace(category_key, replacement)
+
     output_file.write(line)
 
 # Close the files
