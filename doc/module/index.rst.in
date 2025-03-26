@@ -1,8 +1,17 @@
 Module Reference
 ================
 
+**Modules by Category**
+
 @CATEGORIESLONG@
-* :doc:`All Modules - alphabetic list <all>`
+
+**All Modules**
+
+* :doc:`Alphabetic list <all>`
+
+**Module categories**
+
+* :doc:`Category Descriptions <categories>`
 
 
 .. toctree::
@@ -11,3 +20,4 @@ Module Reference
 
 @CATEGORIESSHORT@
    All Modules <all>
+   Module Categories <categories>

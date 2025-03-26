@@ -38,18 +38,18 @@ endfunction()
 
 macro(configure_documentation_detail INPUT_FILE OUTPUT_FILE TARGET)
     list(APPEND ${TARGET} ${OUTPUT_FILE})
-    if(${INPUT_FILE} MATCHES ".*\\.md")
+    if(${INPUT_FILE} MATCHES ".*\\.md$")
         add_custom_command(
             OUTPUT ${OUTPUT_FILE}
             COMMAND ${CONFIGURE_COMMAND} ${INPUT_FILE} ${OUTPUT_FILE}
             DEPENDS ${INPUT_FILE} vistle_module_doc ${TOOLDIR}/insertModuleLinks.py
-            COMMENT "Configuring file: ${OUTPUT_FILE}")
+            COMMENT "Documentation - configuring: ${OUTPUT_FILE}")
     else()
         add_custom_command(
             OUTPUT ${OUTPUT_FILE}
             COMMAND ${CMAKE_COMMAND} -E copy ${INPUT_FILE} ${OUTPUT_FILE}
             DEPENDS ${INPUT_FILE}
-            COMMENT "Copying file: ${OUTPUT_FILE}")
+            COMMENT "Documentation - copying: ${OUTPUT_FILE}")
     endif()
 endmacro()
 
@@ -59,7 +59,7 @@ macro(configure_category_documentation INPUT_FILE OUTPUT_FILE TARGET)
         OUTPUT ${OUTPUT_FILE}
         COMMAND ${CONFIGURE_COMMAND} ${INPUT_FILE} ${OUTPUT_FILE}
         DEPENDS ${INPUT_FILE} vistle_module_doc ${TOOLDIR}/insertModuleLinks.py
-        COMMENT "Configuring file: ${OUTPUT_FILE}")
+        COMMENT "Documentation - configuring: ${OUTPUT_FILE}")
 endmacro()
 
 macro(configure_category_index name TARGET)
@@ -144,6 +144,26 @@ macro(configure_modules_index TARGET)
     #add_custom_command( OUTPUT ${OUTPUT_FILE} COMMAND ${CONFIGURE_COMMAND} ${INPUT_FILE} ${OUTPUT_FILE} DEPENDS ${INPUT_FILE} vistle_module_doc COMMENT "Configuring file: ${OUTPUT_FILE}")
 endmacro()
 
+macro(configure_categories_overview TARGET)
+    set(OUTPUT_FILE ${VISTLE_DOCUMENTATION_SOURCE_DIR}/module/categories.md)
+    set(CATEGORIES)
+    foreach(cat IN LISTS ALL_CATEGORIES_ORDERED)
+        if(NOT VISTLE_CATEGORY_${cat}_MODULES)
+            continue()
+        endif()
+        string(TOLOWER ${cat} lower)
+        set(desc ${VISTLE_CATEGORY_${cat}_DESCRIPTION})
+        set(file ${VISTLE_CATEGORY_${cat}_FILE})
+        string(APPEND CATEGORIES "\n")
+        string(APPEND CATEGORIES "## ${cat}\n")
+        file(READ ${file} TEXT)
+        string(APPEND CATEGORIES "\n${TEXT}\n\n")
+    endforeach()
+    configure_file(${PROJECT_SOURCE_DIR}/doc/module/categories.md.in ${OUTPUT_FILE} @ONLY)
+    list(APPEND ${TARGET} ${OUTPUT_FILE})
+    #add_custom_command( OUTPUT ${OUTPUT_FILE} COMMAND ${CONFIGURE_COMMAND} ${INPUT_FILE} ${OUTPUT_FILE} DEPENDS ${INPUT_FILE} vistle_module_doc COMMENT "Configuring file: ${OUTPUT_FILE}")
+endmacro()
+
 function(configure_documentation)
 
     # Find all files in the ToInstall directory recursively
@@ -175,6 +195,7 @@ function(configure_documentation)
     endforeach()
     configure_all_modules(CONFIGURED_FILES)
     configure_modules_index(CONFIGURED_FILES)
+    configure_categories_overview(CONFIGURED_FILES)
 
     list(APPEND DOCUMENTATION_FILES ${CATEGORY_FILES})
     foreach(INPUT_FILE ${CATEGORY_FILES})
@@ -206,7 +227,7 @@ function(configure_documentation)
             OUTPUT ${OUTPUT_FILE}
             COMMAND ${CONFIGURE_COMMAND} ${INPUT_FILE} ${OUTPUT_FILE}
             DEPENDS ${INPUT_FILE} vistle_module_doc ${TOOLDIR}/insertModuleLinks.py
-            COMMENT "Configuring module file: ${OUTPUT_FILE}")
+            COMMENT "Documentation - configuring: ${OUTPUT_FILE}")
     endforeach()
     message("CONFIGURED_MODULE_FILES: ${CONFIGURED_MODULE_FILES}")
     add_custom_target(configure_module_documentation_files DEPENDS ${CONFIGURED_MODULE_FILES})
@@ -253,7 +274,7 @@ macro(add_module_doc_target targetname CATEGORY)
                 ${targetname} #the module's source code
                 ${VISTLE_DOCUMENTATION_WORKFLOW} #the file that gets loaded by vistle to generate the documentation
                 ${DOCUMENTATION_DEPENDENCIES} #custom dependencies set by the calling module
-        COMMENT "Generating documentation for ${targetname}")
+        COMMENT "Documentation - generating for ${targetname}")
     add_custom_target(${targetname}_doc DEPENDS ${OUTPUT_FILE})
 
     add_dependencies(vistle_module_doc ${targetname}_doc)
@@ -296,8 +317,6 @@ macro(generate_snapshot_base targetname network_file output_dir workflow result)
             set(output_file ${output_file} ${output_dir}/${network_file}_workflow.png)
             set(custom_target ${custom_target}_workflow)
         endif()
-        message("add_custom_command snapshot for " ${network_file} " " ${custom_target})
-        message("output_file: " ${output_file})
         add_custom_command(
             OUTPUT ${output_file}
             COMMAND
@@ -310,13 +329,9 @@ macro(generate_snapshot_base targetname network_file output_dir workflow result)
         add_dependencies(${targetname}_doc ${custom_target})
     else()
         message(
-            WARNING "can not generate snapshots for "
-                    ${targetname}
-                    " "
-                    ${network_file}
-                    ": missing viewpoint file, make sure a viewpoint file named \""
-                    ${network_file}
-                    ".vwp\" exists!")
+            WARNING
+                "Cannot generate snapshots for ${targetname} - ${network_file}: missing viewpoint file, make sure a viewpoint file named \"${network_file}.vwp\" exists"
+        )
     endif()
 endmacro()
 
