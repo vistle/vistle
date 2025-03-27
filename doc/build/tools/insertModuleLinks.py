@@ -36,7 +36,7 @@ except IOError as e:
     sys.exit(1)
 
 
-# pictures_source_dir = os.path.join(source_dir, "doc/source/pictures/")
+# pictures_source_dir = os.path.join(source_dir, "doc/pictures/")
 # picture_dest_dir = os.path.join(doc_source_dir, "pictures/")
 # pictures = os.listdir(pictures_source_dir)
 # Get the relative path from input file to vistle/module directory

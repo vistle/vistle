@@ -44,15 +44,15 @@ Additional data or pictures that are referenced in yourmodule.md via
 are automatically copied into the documentation build.
 
 
-How to build Documentation for Read the Docs
+How to Build Documentation for Read the Docs
 ============================================
 
-Install Sphinx by navigating to /path/to/vistle/doc/readthedocs and type in
+Install Sphinx by navigating to `.../vistle/doc/build/readthedocs` and type in
 
 
     $ pip install -r requirements.txt
 
-You need to compile Vistle first to be able to build the documentation. Follow the instructions in :ref:`build-docs` for the compilation.
+You need to compile Vistle first to be able to build the documentation. Follow the instructions in the top level [README.md](https://github.com/vistle/vistle?tab=readme-ov-file#installation) for the compilation.
 
 After compiling Vistle type in the following commands:
 

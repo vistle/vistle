@@ -6,7 +6,7 @@ import vistle
 
 #-------------Constants-------------#
 # these have to be set to chose the module to create documentation for
-# the directory containing the readTheDocs module files
+# the directory containing the readthedocs module files
 
 
 MODULE_SOURCE_DIR = os.environ['VISTLE_MODULE_SOURCE_DIR']
@@ -15,7 +15,7 @@ MODULE_CATEGORY = os.environ['VISTLE_DOCUMENTATION_CATEGORY']
 DESTDIR = os.environ['VISTLE_BINARY_DIR'] + "/docs/module/" + MODULE_CATEGORY.lower() + "/" + MODULE_NAME + "/"
 VISTLE_DOCUMENTATION_SOURCE_DIR = os.environ['VISTLE_DOCUMENTATION_SOURCE_DIR']
 
-REG_IMAGE = re.compile(r"(?:\w+(?:-\w+)+|\w*)\.(?:jpg|gif|png|bmp)")
+REG_IMAGE = re.compile(r"(?:\w+(?:-\w+)+|\w*)\.(?:jpg|jpeg|gif|png|bmp)")
 REG_TAGS_TMPL = r"\[{tag}\]:<([\w-]*)>"
 REG_HTML_IMG = r"<img[^\>]+/>"
 

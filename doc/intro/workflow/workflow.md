@@ -16,4 +16,4 @@ Mapping modules allow to visualize data values. This is achieved by mapping data
 
 ### Render & Display
 Often, the two steps of rendering pixel images and presenting them on screen are mashed together in a single program.
-Only for workflows involving remote rendering, these steps are split up into two modules, e.g. DisCOVERay and COVER.
+Only for workflows involving remote rendering, these steps are split up into two modules, e.g. [DisCOVERay]() and [COVER]().

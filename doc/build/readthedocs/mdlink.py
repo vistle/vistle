@@ -187,7 +187,7 @@ def make_module_markdown_links(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Search for Markdown files in your project and link them in readthedocs. Place this script in your docs folder and execute it. Default place for executing is <path_to_project>/docs/source."
+        description="Search for Markdown files in your project and link them in readthedocs. Place this script in your docs folder and execute it. Default place for executing is <path_to_project>/doc."
     )
     parser.add_argument(
         "-l",
