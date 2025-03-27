@@ -146,6 +146,8 @@ int DataProxy::idToHub(int id) const
 
 void DataProxy::cleanUp()
 {
+    m_shuttingDown = true;
+
     if (io().stopped()) {
         if (m_acceptorv4.is_open()) {
             m_acceptorv4.cancel();
@@ -428,7 +430,9 @@ void DataProxy::msgForward(std::shared_ptr<tcp_socket> sock, EndPointType type)
     if (store_and_forward) {
         async_recv(*sock, *msg, [this, sock, msg, type](error_code ec, std::shared_ptr<buffer> payload) {
             if (ec) {
-                CERR << "msgForward, dest=" << toString(type) << ": error " << ec.message() << std::endl;
+                if (!m_shuttingDown || ec != boost::asio::error::eof) {
+                    CERR << "msgForward, dest=" << toString(type) << ": error " << ec.message() << std::endl;
+                }
                 return;
             }
 
@@ -521,7 +525,9 @@ void DataProxy::msgForward(std::shared_ptr<tcp_socket> sock, EndPointType type)
     } else {
         async_recv_header(*sock, *msg, [this, sock, msg, type](error_code ec) {
             if (ec) {
-                CERR << "msgForward, dest=" << toString(type) << ": error " << ec.message() << std::endl;
+                if (!m_shuttingDown || ec != boost::asio::error::eof) {
+                    CERR << "msgForward, dest=" << toString(type) << ": error " << ec.message() << std::endl;
+                }
                 return;
             }
 

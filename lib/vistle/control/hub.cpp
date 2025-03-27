@@ -1388,6 +1388,7 @@ bool Hub::dispatch()
             }
         }
 
+        m_dataProxy->cleanUp();
         m_tunnelManager.cleanUp();
     }
 
@@ -4260,6 +4261,8 @@ void Hub::emergencyQuit()
         checkOutstandingDataConnections();
         lock.lock();
     }
+
+    m_dataProxy->cleanUp();
 
     m_workGuard.reset();
     m_ioContext.stop();

@@ -6,6 +6,7 @@
 #include <mutex>
 #include <thread>
 #include <map>
+#include <atomic>
 #include <set>
 #include <functional>
 
@@ -33,6 +34,7 @@ public:
 
     DataProxy(StateTracker &state, unsigned short basePort, bool changePort = true);
     ~DataProxy();
+    void cleanUp();
     void setHubId(int id);
     void setNumRanks(int size);
     void setBoostArchiveVersion(int ver);
@@ -66,11 +68,11 @@ private:
     std::map<int, ConnectionData> m_remoteDataSocket; // hub id -> socket
     int m_boost_archive_version = 0;
     int m_indexSize = 0, m_scalarSize = 0;
+    std::atomic<bool> m_shuttingDown{false};
     void startAccept(acceptor &a);
     void handleAccept(acceptor &a, const boost::system::error_code &error, std::shared_ptr<tcp_socket> sock);
     bool serveSocket(const message::Identify &id, std::shared_ptr<tcp_socket> sock);
     void startThread();
-    void cleanUp();
 
     bool answerIdentify(EndPointType type, std::shared_ptr<tcp_socket> sock, const vistle::message::Identify &id);
     bool answerLocalIdentify(std::shared_ptr<tcp_socket> sock, const vistle::message::Identify &id);
