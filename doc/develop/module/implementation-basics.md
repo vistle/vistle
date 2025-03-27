@@ -369,3 +369,7 @@ add_subdirectory(ObjectStatistics)
 ```
 
 Now, when you compile Vistle, your module will be built. It will be added to the module browser on Vistle's next invocation, allowing you to use it. 
+
+## Document the Module
+
+Also do not forget about adding documentation for your new module. You can start by copying [module-doc-template.md](path:../documentation/module-doc-template.md) as `MyModule.md`  to your source code directory. Please refer to [How to Write Documentation](../documentation/documentation.md) for more information.
