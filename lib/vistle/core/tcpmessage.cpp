@@ -354,7 +354,9 @@ bool recv_message(socket_t &sock, message::Buffer &msg, error_code &ec, bool blo
             return false;
         }
 #endif
-        std::cerr << "message::recv: size error " << ec.message() << ", read " << n << " bytes" << std::endl;
+        if (n != 0 || ec != boost::asio::error::eof) {
+            std::cerr << "message::recv: size error " << ec.message() << ", read " << n << " bytes" << std::endl;
+        }
         return false;
     }
 
