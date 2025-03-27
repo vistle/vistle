@@ -4,7 +4,6 @@ Libraries and APIs
 .. toctree::
    :maxdepth: 1
 
-   Hybrid Remote Rendering <rhr_link.md>
    Configuration <covconfig_link.md>
    Catalyst II <catalyst2_link.md>
    LibSim <libsim_link.md>
