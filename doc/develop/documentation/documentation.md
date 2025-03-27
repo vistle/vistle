@@ -1,7 +1,7 @@
-How to write Documentation
+How to Write Documentation
 ==========================
 The documentation is written in markdown (.md) files. The root directory is 
-vistle/doc/source. Use the index.rst files in each directory to include your markdown files.
+`vistle/doc`. Use the `index.rst` files in each directory to include your markdown files.
 Links to other markdown files can be set with relative paths: 
 ```
 [name](../pathToName.md)
