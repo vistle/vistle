@@ -3171,8 +3171,10 @@ void Hub::setLoadedFile(const std::string &file)
 void Hub::setSessionUrl(const std::string &url)
 {
     m_sessionUrl = url;
-    std::cerr << "Share this: " << url << std::endl;
-    std::cerr << std::endl;
+    if (verbosity() >= Verbosity::Normal) {
+        std::cerr << "Share this: " << url << std::endl;
+        std::cerr << std::endl;
+    }
     auto t = make.message<message::UpdateStatus>(message::UpdateStatus::SessionUrl, url);
     m_stateTracker.handle(t, nullptr);
     sendUi(t);
