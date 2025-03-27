@@ -33,9 +33,10 @@ Additionally there should be at least one example presented that shows how the m
 where example_net is a checked in .vsl int the module source directory.
 Precede this tag with a custom description of the example.
 
-As orientation you can work with a template:
+As orientation you can work with a [template](path:module-doc-template.md):
 
-    $<vistle/modules/category/yourmodule> cp .../vistle/doc/module-template.md yourmodule.md
+
+    $<vistle/modules/category/yourmodule> cp .../vistle/doc/develop/documentation/module-doc-template.md yourmodule.md
 
 Additional data or pictures that are referenced in yourmodule.md via
 

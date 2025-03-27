@@ -45,6 +45,7 @@ Refer to the top level `README.md <https://github.com/vistle/vistle?tab=readme-o
    :maxdepth: 1
    :caption: Developer Documentation
 
+   Conventions & Guidelines <develop/coding-style.md>
    API Overview <develop/api/index.rst>
    Creating Modules <develop/module/index.rst>
    Write & Build Documentation <develop/documentation/index.rst>
