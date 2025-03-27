@@ -8,3 +8,4 @@ Module Programming
    :caption: Creating Modules
 
    Basics <implementation-basics.md>
+   Reader Modules <implementation-reader.md>
