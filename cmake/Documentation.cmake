@@ -266,7 +266,7 @@ macro(add_module_doc_target targetname CATEGORY)
     set(DOC_COMMAND
         ${CMAKE_COMMAND} -E env VISTLE_DOCUMENTATION_TARGET=${targetname} VISTLE_BINARY_DIR=${CMAKE_BINARY_DIR}
         VISTLE_MODULE_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR} VISTLE_DOCUMENTATION_CATEGORY=${category}
-        VISTLE_DOCUMENTATION_SOURCE_DIR=${VISTLE_DOCUMENTATION_SOURCE_DIR} vistle --batch ${VISTLE_DOCUMENTATION_WORKFLOW})
+        VISTLE_DOCUMENTATION_SOURCE_DIR=${VISTLE_DOCUMENTATION_SOURCE_DIR} vistle -q --vrb=no --batch ${VISTLE_DOCUMENTATION_WORKFLOW})
 
     add_custom_command(
         OUTPUT ${OUTPUT_FILE}
@@ -323,8 +323,8 @@ macro(generate_snapshot_base targetname network_file output_dir workflow result)
             OUTPUT ${output_file}
             COMMAND
                 ${CMAKE_COMMAND} -E env COCONFIG=${PROJECT_SOURCE_DIR}/doc/config.vistle.doc.xml VISTLE_DOC_IMAGE_NAME=${network_file}
-                VISTLE_DOC_SOURCE_DIR=${CMAKE_CURRENT_LIST_DIR} VISTLE_DOC_TARGET_DIR=${output_dir} VISTLE_DOC_ARGS=${VISTLE_DOC_ARGS} vistle -vvvv ${batch}
-                ${TOOLDIR}/snapShot.py
+                VISTLE_DOC_SOURCE_DIR=${CMAKE_CURRENT_LIST_DIR} VISTLE_DOC_TARGET_DIR=${output_dir} VISTLE_DOC_ARGS=${VISTLE_DOC_ARGS} vistle -q --vrb=no
+                ${batch} ${TOOLDIR}/snapShot.py
             DEPENDS ${CMAKE_CURRENT_LIST_DIR}/${network_file}.vsl ${CMAKE_CURRENT_LIST_DIR}/${network_file}.vwp ${targetname} ${TOOLDIR}/snapShot.py
             COMMENT "Generating network and result snapshot for ${network_file}.vsl")
         add_custom_target(${custom_target} DEPENDS ${output_file})
@@ -355,7 +355,7 @@ macro(generate_network_snapshot targetname network_file output_dir)
     add_custom_command(
         #create a snapshot of the pipeline
         OUTPUT ${output_dir}/${network_file}_workflow.png
-        COMMAND vistle --snapshot ${output_dir}/${network_file}_workflow.png ${CMAKE_CURRENT_LIST_DIR}/${network_file}.vsl
+        COMMAND vistle -q --vrb=no --snapshot ${output_dir}/${network_file}_workflow.png ${CMAKE_CURRENT_LIST_DIR}/${network_file}.vsl
         DEPENDS ${CMAKE_CURRENT_LIST_DIR}/${network_file}.vsl ${targetname}
         COMMENT "Generating network snapshot for ${network_file}.vsl")
 
