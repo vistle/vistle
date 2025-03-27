@@ -1,3 +1,3 @@
-```{include} ..\..\..\lib\vistle\config\covconfig/README.md
+```{include} ../../../lib/vistle/config/covconfig/README.md
 :relative-images:
 ```
