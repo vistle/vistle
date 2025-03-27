@@ -1,6 +1,8 @@
 set(VISTLE_DOCUMENTATION_DIR
-    "${PROJECT_BINARY_DIR}/documentation"
+    "${PROJECT_BINARY_DIR}"
     CACHE PATH "Path where the documentation will be built")
+
+set(GENDOC "${PROJECT_BINARY_DIR}/gendoc")
 
 set(ALL_VISTLE_MODULES_CATEGORY
     ""
@@ -136,7 +138,7 @@ macro(configure_modules_index TARGET)
 endmacro()
 
 macro(configure_categories_overview TARGET)
-    set(TEMP_FILE ${CMAKE_BINARY_DIR}/docs/module/categories.md)
+    set(TEMP_FILE ${GENDOC}/module/categories.md)
     set(OUTPUT_FILE ${VISTLE_DOCUMENTATION_SOURCE_DIR}/module/categories.md)
     set(CATEGORIES)
     foreach(cat IN LISTS ALL_CATEGORIES_ORDERED)
@@ -212,7 +214,8 @@ function(configure_documentation)
     set(CONFIGURED_FILES_FROM_SOURCE_TREE "")
     foreach(README_FILE ${ADDITIONAL_DOCUMENTATION_SOURCES})
         file(RELATIVE_PATH RELATIVE_PATH ${CMAKE_CURRENT_LIST_DIR} ${README_FILE})
-        set(OUTPUT_FILE ${VISTLE_DOCUMENTATION_DIR}/docs/readme/${RELATIVE_PATH})
+        message("ADD doc: ${README_FILE} ${RELATIVE_PATH}")
+        set(OUTPUT_FILE ${VISTLE_DOCUMENTATION_SOURCE_DIR}/readme/${RELATIVE_PATH})
         configure_documentation_detail(${README_FILE} ${OUTPUT_FILE} CONFIGURED_FILES_FROM_SOURCE_TREE)
     endforeach()
     add_custom_target(copy_readme_files DEPENDS ${CONFIGURED_FILES_FROM_SOURCE_TREE})
@@ -220,7 +223,7 @@ function(configure_documentation)
 
     list(APPEND MODULE_DOC_FILES)
     foreach(MOD IN LISTS MODULE_DOC_FILES)
-        set(INPUT_FILE ${CMAKE_BINARY_DIR}/docs/${MOD})
+        set(INPUT_FILE ${GENDOC}/${MOD})
         set(OUTPUT_FILE ${VISTLE_DOCUMENTATION_SOURCE_DIR}/${MOD})
         list(APPEND CONFIGURED_MODULE_FILES ${OUTPUT_FILE})
         add_custom_command(
@@ -254,7 +257,7 @@ macro(add_module_doc_target targetname CATEGORY)
 
     set(VISTLE_DOCUMENTATION_WORKFLOW ${TOOLDIR}/generateModuleInfo.vsl)
     #insert module paramerts in markdown files
-    set(OUTPUT_FILE ${CMAKE_BINARY_DIR}/docs/${RELNAME})
+    set(OUTPUT_FILE ${GENDOC}/${RELNAME})
     set(INPUT_FILE ${CMAKE_CURRENT_SOURCE_DIR}/${targetname}.md)
     if(NOT EXISTS ${INPUT_FILE})
         set(INPUT_FILE)
@@ -286,7 +289,7 @@ macro(add_module_doc_target targetname CATEGORY)
         get_filename_component(workflow ${file} NAME_WLE)
         message("Workflow: ${targetname} ${workflow} ${file}")
 
-        set(output_dir ${VISTLE_DOCUMENTATION_DIR}/docs/module/${category}/${targetname})
+        set(output_dir ${VISTLE_DOCUMENTATION_SOURCE_DIR}/module/${category}/${targetname})
         #generating the result and workflow snapshots from different vistle instances
         #prevents vistle from asking to save the workflow
         generate_result_snapshot(${targetname} ${workflow} ${output_dir})
@@ -379,14 +382,14 @@ if(SPHINX_EXECUTABLE)
         COMMAND ${CMAKE_COMMAND} -E copy ${READTHEDOCS_SOURCE_DIR}/conf.py ${VISTLE_DOCUMENTATION_SOURCE_DIR}
         COMMAND ${CMAKE_COMMAND} -E copy ${READTHEDOCS_SOURCE_DIR}/mdlink.py ${VISTLE_DOCUMENTATION_SOURCE_DIR}
         COMMAND ${CMAKE_COMMAND} -E copy ${READTHEDOCS_SOURCE_DIR}/html_image_processor.py ${VISTLE_DOCUMENTATION_SOURCE_DIR}
-        COMMAND ${CMAKE_COMMAND} -E copy ${READTHEDOCS_SOURCE_DIR}/requirements.txt ${VISTLE_DOCUMENTATION_DIR}/docs
-        COMMAND ${CMAKE_COMMAND} -E copy ${READTHEDOCS_SOURCE_DIR}/.readthedocs.yaml ${VISTLE_DOCUMENTATION_DIR})
+        COMMAND ${CMAKE_COMMAND} -E copy ${READTHEDOCS_SOURCE_DIR}/requirements.txt ${VISTLE_DOCUMENTATION_SOURCE_DIR}
+        COMMAND ${CMAKE_COMMAND} -E copy ${READTHEDOCS_SOURCE_DIR}/.readthedocs.yaml ${VISTLE_DOCUMENTATION_SOURCE_DIR})
 
-    add_custom_command(TARGET vistle_doc COMMAND ${CMAKE_COMMAND} -E make_directory ${VISTLE_DOCUMENTATION_DIR}/docs/build)
+    add_custom_command(TARGET vistle_doc COMMAND ${CMAKE_COMMAND} -E make_directory ${VISTLE_DOCUMENTATION_SOURCE_DIR}/build)
     add_custom_command(
         TARGET vistle_doc
         COMMAND ${SPHINX_EXECUTABLE} -M html . build
-        WORKING_DIRECTORY ${VISTLE_DOCUMENTATION_DIR}/docs
+        WORKING_DIRECTORY ${VISTLE_DOCUMENTATION_SOURCE_DIR}
         COMMENT "Building Read the Docs documentation" DEPENDS vistle_module_doc)
 
     set(VISTLE_BUILD_DOC TRUE)
