@@ -4030,6 +4030,10 @@ bool Hub::handlePriv(const message::Cover &cover, const buffer *payload)
         return sendMaster(cover, payload);
     }
 
+    if (m_vrbMode == VrbMode::VrbNo) {
+        return false;
+    }
+
     if (m_vrbPort == 0) {
         if (std::chrono::steady_clock::now() - m_lastVrbStart < std::chrono::seconds(m_vrbStartWait)) {
             return false;
