@@ -322,7 +322,7 @@ macro(generate_snapshot_base targetname network_file output_dir workflow result)
         add_custom_command(
             OUTPUT ${output_file}
             COMMAND
-                ${CMAKE_COMMAND} -E env COCONFIG=${PROJECT_SOURCE_DIR}/doc/config.vistle.doc.xml VISTLE_DOC_IMAGE_NAME=${network_file}
+                ${CMAKE_COMMAND} -E env COCONFIG=${PROJECT_SOURCE_DIR}/doc/build/config.vistle.doc.xml VISTLE_DOC_IMAGE_NAME=${network_file}
                 VISTLE_DOC_SOURCE_DIR=${CMAKE_CURRENT_LIST_DIR} VISTLE_DOC_TARGET_DIR=${output_dir} VISTLE_DOC_ARGS=${VISTLE_DOC_ARGS} vistle -q --vrb=no
                 ${batch} ${TOOLDIR}/snapShot.py
             DEPENDS ${CMAKE_CURRENT_LIST_DIR}/${network_file}.vsl ${CMAKE_CURRENT_LIST_DIR}/${network_file}.vwp ${targetname} ${TOOLDIR}/snapShot.py
