@@ -41,7 +41,7 @@ macro(configure_documentation_detail INPUT_FILE OUTPUT_FILE TARGET)
     if(${INPUT_FILE} MATCHES ".*\\.md$")
         add_custom_command(
             OUTPUT ${OUTPUT_FILE}
-            COMMAND ${CONFIGURE_COMMAND} ${INPUT_FILE} ${OUTPUT_FILE}
+            COMMAND ${INSERT_LINKS} ${INPUT_FILE} ${OUTPUT_FILE}
             DEPENDS ${INPUT_FILE} vistle_module_doc ${TOOLDIR}/insertModuleLinks.py
             COMMENT "Documentation - configuring: ${OUTPUT_FILE}")
     else()
@@ -51,15 +51,6 @@ macro(configure_documentation_detail INPUT_FILE OUTPUT_FILE TARGET)
             DEPENDS ${INPUT_FILE}
             COMMENT "Documentation - copying: ${OUTPUT_FILE}")
     endif()
-endmacro()
-
-macro(configure_category_documentation INPUT_FILE OUTPUT_FILE TARGET)
-    list(APPEND ${TARGET} ${OUTPUT_FILE})
-    add_custom_command(
-        OUTPUT ${OUTPUT_FILE}
-        COMMAND ${CONFIGURE_COMMAND} ${INPUT_FILE} ${OUTPUT_FILE}
-        DEPENDS ${INPUT_FILE} vistle_module_doc ${TOOLDIR}/insertModuleLinks.py
-        COMMENT "Documentation - configuring: ${OUTPUT_FILE}")
 endmacro()
 
 macro(configure_category_index name TARGET)
@@ -89,7 +80,7 @@ macro(configure_category_index name TARGET)
     endforeach()
     configure_file(${PROJECT_SOURCE_DIR}/doc/module/category_index.rst.in ${OUTPUT_FILE} @ONLY)
     list(APPEND ${TARGET} ${OUTPUT_FILE})
-    #add_custom_command( OUTPUT ${OUTPUT_FILE} COMMAND ${CONFIGURE_COMMAND} ${INPUT_FILE} ${OUTPUT_FILE} DEPENDS ${INPUT_FILE} vistle_module_doc COMMENT "Configuring file: ${OUTPUT_FILE}")
+    #add_custom_command( OUTPUT ${OUTPUT_FILE} COMMAND ${INSERT_LINKS} ${INPUT_FILE} ${OUTPUT_FILE} DEPENDS ${INPUT_FILE} vistle_module_doc COMMENT "Configuring file: ${OUTPUT_FILE}")
 endmacro()
 
 macro(configure_all_modules TARGET)
@@ -122,7 +113,7 @@ macro(configure_all_modules TARGET)
     endforeach()
     configure_file(${PROJECT_SOURCE_DIR}/doc/module/category_index.rst.in ${OUTPUT_FILE} @ONLY)
     list(APPEND ${TARGET} ${OUTPUT_FILE})
-    #add_custom_command( OUTPUT ${OUTPUT_FILE} COMMAND ${CONFIGURE_COMMAND} ${INPUT_FILE} ${OUTPUT_FILE} DEPENDS ${INPUT_FILE} vistle_module_doc COMMENT "Configuring file: ${OUTPUT_FILE}")
+    #add_custom_command( OUTPUT ${OUTPUT_FILE} COMMAND ${INSERT_LINKS} ${INPUT_FILE} ${OUTPUT_FILE} DEPENDS ${INPUT_FILE} vistle_module_doc COMMENT "Configuring file: ${OUTPUT_FILE}")
 endmacro()
 
 macro(configure_modules_index TARGET)
@@ -141,10 +132,11 @@ macro(configure_modules_index TARGET)
     endforeach()
     configure_file(${PROJECT_SOURCE_DIR}/doc/module/index.rst.in ${OUTPUT_FILE} @ONLY)
     list(APPEND ${TARGET} ${OUTPUT_FILE})
-    #add_custom_command( OUTPUT ${OUTPUT_FILE} COMMAND ${CONFIGURE_COMMAND} ${INPUT_FILE} ${OUTPUT_FILE} DEPENDS ${INPUT_FILE} vistle_module_doc COMMENT "Configuring file: ${OUTPUT_FILE}")
+    #add_custom_command( OUTPUT ${OUTPUT_FILE} COMMAND ${INSERT_LINKS} ${INPUT_FILE} ${OUTPUT_FILE} DEPENDS ${INPUT_FILE} vistle_module_doc COMMENT "Configuring file: ${OUTPUT_FILE}")
 endmacro()
 
 macro(configure_categories_overview TARGET)
+    set(TEMP_FILE ${CMAKE_BINARY_DIR}/docs/module/categories.md)
     set(OUTPUT_FILE ${VISTLE_DOCUMENTATION_SOURCE_DIR}/module/categories.md)
     set(CATEGORIES)
     foreach(cat IN LISTS ALL_CATEGORIES_ORDERED)
@@ -159,13 +151,27 @@ macro(configure_categories_overview TARGET)
         file(READ ${file} TEXT)
         string(APPEND CATEGORIES "\n${TEXT}\n\n")
     endforeach()
-    configure_file(${PROJECT_SOURCE_DIR}/doc/module/categories.md.in ${OUTPUT_FILE} @ONLY)
-    list(APPEND ${TARGET} ${OUTPUT_FILE})
-    #add_custom_command( OUTPUT ${OUTPUT_FILE} COMMAND ${CONFIGURE_COMMAND} ${INPUT_FILE} ${OUTPUT_FILE} DEPENDS ${INPUT_FILE} vistle_module_doc COMMENT "Configuring file: ${OUTPUT_FILE}")
+    configure_file(${PROJECT_SOURCE_DIR}/doc/module/categories.md.in ${TEMP_FILE} @ONLY)
+    configure_documentation_detail(${TEMP_FILE} ${OUTPUT_FILE} ${TARGET})
+    #list(APPEND ${TARGET} ${OUTPUT_FILE})
+    #add_custom_command( OUTPUT ${OUTPUT_FILE} COMMAND ${INSERT_LINKS} ${INPUT_FILE} ${OUTPUT_FILE} DEPENDS ${INPUT_FILE} vistle_module_doc COMMENT "Configuring file: ${OUTPUT_FILE}")
 endmacro()
 
 function(configure_documentation)
+    set(INSERT_LINKS
+        ${CMAKE_COMMAND}
+        -E
+        env
+        ALL_VISTLE_MODULES="${ALL_MODULES}"
+        ALL_VISTLE_MODULES_CATEGORY="${ALL_VISTLE_MODULES_CATEGORY}"
+        ${Python_EXECUTABLE}
+        ${TOOLDIR}/insertModuleLinks.py
+        ${PROJECT_SOURCE_DIR}
+        ${VISTLE_DOCUMENTATION_SOURCE_DIR})
 
+    # List to hold all the output files
+    set(CONFIGURED_MODULE_FILES)
+    set(CONFIGURED_FILES)
     # Find all files in the ToInstall directory recursively
     set(SOURCE_DIR ${CMAKE_SOURCE_DIR}/doc)
     set(DOCUMENTATION_FILES index.rst)
@@ -173,20 +179,17 @@ function(configure_documentation)
         file(
             GLOB_RECURSE DIRFILES
             RELATIVE ${SOURCE_DIR}
-            "${SOURCE_DIR}/${DIR}/*")
+            "${SOURCE_DIR}/${DIR}/*.md" "${SOURCE_DIR}/${DIR}/*.rst" "${SOURCE_DIR}/${DIR}/*.png" "${SOURCE_DIR}/${DIR}/*.jpeg")
         list(APPEND DOCUMENTATION_FILES ${DIRFILES})
     endforeach()
 
-    # List to hold all the output files
-    set(CONFIGURED_FILES "")
-    # Configure each file and add to the list of output files
-    set(CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env ALL_VISTLE_MODULES="${ALL_MODULES}" ALL_VISTLE_MODULES_CATEGORY="${ALL_VISTLE_MODULES_CATEGORY}"
-                          ${Python_EXECUTABLE} ${TOOLDIR}/insertModuleLinks.py ${PROJECT_SOURCE_DIR} ${VISTLE_DOCUMENTATION_SOURCE_DIR})
     foreach(DOCUMENTATION_FILE ${DOCUMENTATION_FILES})
         set(INPUT_FILE ${SOURCE_DIR}/${DOCUMENTATION_FILE})
         set(OUTPUT_FILE ${VISTLE_DOCUMENTATION_SOURCE_DIR}/${DOCUMENTATION_FILE})
         configure_documentation_detail(${INPUT_FILE} ${OUTPUT_FILE} CONFIGURED_FILES)
     endforeach()
+
+    # Configure each file and add to the list of output files
 
     foreach(cat IN LISTS ALL_CATEGORIES_ORDERED)
         configure_category_index(${cat} CONFIGURED_FILES)
@@ -196,7 +199,7 @@ function(configure_documentation)
         cmake_path(GET INPUT_FILE FILENAME FILE)
         string(TOLOWER ${cat} lower)
         set(OUTPUT_FILE ${VISTLE_DOCUMENTATION_SOURCE_DIR}/module/${lower}/${FILE})
-        configure_category_documentation(${INPUT_FILE} ${OUTPUT_FILE} CONFIGURED_FILES)
+        configure_documentation_detail(${INPUT_FILE} ${OUTPUT_FILE} CONFIGURED_FILES)
     endforeach()
     configure_all_modules(CONFIGURED_FILES)
     configure_modules_index(CONFIGURED_FILES)
@@ -215,19 +218,17 @@ function(configure_documentation)
     add_custom_target(copy_readme_files DEPENDS ${CONFIGURED_FILES_FROM_SOURCE_TREE})
     add_dependencies(vistle_doc copy_readme_files)
 
+    list(APPEND MODULE_DOC_FILES)
     foreach(MOD IN LISTS MODULE_DOC_FILES)
         set(INPUT_FILE ${CMAKE_BINARY_DIR}/docs/${MOD})
         set(OUTPUT_FILE ${VISTLE_DOCUMENTATION_SOURCE_DIR}/${MOD})
-        set(CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env ALL_VISTLE_MODULES="${ALL_MODULES}" ALL_VISTLE_MODULES_CATEGORY="${ALL_VISTLE_MODULES_CATEGORY}"
-                              ${Python_EXECUTABLE} ${TOOLDIR}/insertModuleLinks.py ${PROJECT_SOURCE_DIR} ${VISTLE_DOCUMENTATION_SOURCE_DIR})
         list(APPEND CONFIGURED_MODULE_FILES ${OUTPUT_FILE})
         add_custom_command(
             OUTPUT ${OUTPUT_FILE}
-            COMMAND ${CONFIGURE_COMMAND} ${INPUT_FILE} ${OUTPUT_FILE}
+            COMMAND ${INSERT_LINKS} ${INPUT_FILE} ${OUTPUT_FILE}
             DEPENDS ${INPUT_FILE} vistle_module_doc ${TOOLDIR}/insertModuleLinks.py
             COMMENT "Documentation - configuring: ${OUTPUT_FILE}")
     endforeach()
-    message("CONFIGURED_MODULE_FILES: ${CONFIGURED_MODULE_FILES}")
     add_custom_target(configure_module_documentation_files DEPENDS ${CONFIGURED_MODULE_FILES})
     add_dependencies(vistle_doc configure_module_documentation_files)
 endfunction()
