@@ -10,6 +10,12 @@ class HtmlImageProcessor(SphinxPostTransform):
 
     def run(self, **kwargs):
         for node in self.document.traverse(nodes.raw):
+            dirname = os.path.dirname(node.source)
+            dirs = dirname.split(os.sep)
+            kind = dirs[-3]
+            if kind != 'module':
+                continue
+
             if 'html' in node.get('format', ''):
                 # Extract <img> tags from raw HTML
                 new_html = node.astext()
