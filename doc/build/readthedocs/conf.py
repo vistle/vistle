@@ -75,6 +75,7 @@ exclude_patterns = []
 # a list of builtin themes.
 #
 html_theme = 'sphinx_rtd_theme'
+html_logo = 'readme/install/hlrs-vistle.svg'
 
 # do not link to document source
 # html_show_sourcelink = False
