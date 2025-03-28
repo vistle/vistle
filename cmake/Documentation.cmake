@@ -181,7 +181,7 @@ function(configure_documentation)
         file(
             GLOB_RECURSE DIRFILES
             RELATIVE ${SOURCE_DIR}
-            "${SOURCE_DIR}/${DIR}/*.md" "${SOURCE_DIR}/${DIR}/*.rst" "${SOURCE_DIR}/${DIR}/*.png" "${SOURCE_DIR}/${DIR}/*.jpeg")
+            "${SOURCE_DIR}/${DIR}/*.md" "${SOURCE_DIR}/${DIR}/*.rst" "${SOURCE_DIR}/${DIR}/*.png" "${SOURCE_DIR}/${DIR}/*.jpeg" "${SOURCE_DIR}/${DIR}/*.jpg")
         list(APPEND DOCUMENTATION_FILES ${DIRFILES})
     endforeach()
 
