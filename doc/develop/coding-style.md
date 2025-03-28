@@ -8,7 +8,7 @@ Compiler Compatibility
 
 We use C++ 17, but we want to be able to compile Vistle with
 
-* Visual Studio 2019
+* Visual Studio 2022
 * GCC 8.5 or newer
 * Clang 14.0 and newer (Xcode 14 and newer).
 

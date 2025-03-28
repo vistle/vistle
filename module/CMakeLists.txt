@@ -11,9 +11,13 @@ add_subdirectory(general)
 add_subdirectory(info)
 add_subdirectory(develop)
 
-if(IS_DIRECTORY "${PROJECT_SOURCE_DIR}/module/univiz" AND EXISTS ${PROJECT_SOURCE_DIR}/module/univiz/CMakeLists.txt)
+set(UNIVIZ_DIR "${CMAKE_CURRENT_LIST_DIR}/univiz/modules/vistle")
+if(IS_DIRECTORY "${UNIVIZ_DIR}" AND EXISTS "${UNIVIZ_DIR}/CMakeLists.txt")
     set(UNIVIZ_VISTLE TRUE)
-    add_subdirectory(univiz)
+    add_definitions(-DVISTLE)
+
+    add_subdirectory(univiz/libs/vistle_ext)
+    add_subdirectory(${UNIVIZ_DIR})
 endif()
 
 # has to come last for static module registration in VistleManager plugin
