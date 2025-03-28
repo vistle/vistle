@@ -5,7 +5,7 @@
 
 #include <map>
 #include <string>
-#include <istream>
+#include <vector>
 
 namespace vistle {
 
