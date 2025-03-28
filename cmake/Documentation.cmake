@@ -177,7 +177,7 @@ function(configure_documentation)
     # Find all files in the ToInstall directory recursively
     set(SOURCE_DIR ${CMAKE_SOURCE_DIR}/doc)
     set(DOCUMENTATION_FILES index.rst)
-    foreach(DIR module intro quickstart develop)
+    foreach(DIR module intro quickstart develop architecture publications gallery)
         file(
             GLOB_RECURSE DIRFILES
             RELATIVE ${SOURCE_DIR}

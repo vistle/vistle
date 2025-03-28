@@ -28,6 +28,9 @@ Refer to the top level `README.md <https://github.com/vistle/vistle?tab=readme-o
    :hidden:
 
    Installation <self>
+   Architecture <architecture/index.md>
+   Publications <publications/index.md>
+   Gallery <gallery/index.rst>
 
 .. _user-docs:
 
