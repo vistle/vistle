@@ -799,7 +799,7 @@ macro(vistle_install_docs)
     add_documentation_source(${ARGN})
 endmacro(vistle_install_docs)
 
-vistle_install_docs(README.md)
+vistle_install_docs(README.md install/hlrs-vistle.svg)
 
 macro(vistle_install_headers directory)
     install(FILES ${ARGN} DESTINATION include/vistle/${directory})
