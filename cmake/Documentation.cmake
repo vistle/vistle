@@ -363,8 +363,6 @@ macro(generate_network_snapshot targetname network_file output_dir)
     add_dependencies(${targetname}_doc ${targetname}_${network_file}_workflow)
 endmacro()
 
-vistle_find_package(Sphinx)
-if(SPHINX_EXECUTABLE)
     add_custom_target(vistle_module_doc)
     add_custom_target(vistle_doc)
     add_dependencies(vistle_doc vistle_module_doc)
@@ -385,16 +383,14 @@ if(SPHINX_EXECUTABLE)
         COMMAND ${CMAKE_COMMAND} -E copy ${READTHEDOCS_SOURCE_DIR}/requirements.txt ${VISTLE_DOCUMENTATION_SOURCE_DIR}
         COMMAND ${CMAKE_COMMAND} -E copy ${READTHEDOCS_SOURCE_DIR}/.readthedocs.yaml ${VISTLE_DOCUMENTATION_SOURCE_DIR})
 
+vistle_find_package(Sphinx)
+if(SPHINX_EXECUTABLE)
     add_custom_command(TARGET vistle_doc COMMAND ${CMAKE_COMMAND} -E make_directory ${VISTLE_DOCUMENTATION_SOURCE_DIR}/build)
     add_custom_command(
         TARGET vistle_doc
         COMMAND ${SPHINX_EXECUTABLE} -M html . build
         WORKING_DIRECTORY ${VISTLE_DOCUMENTATION_SOURCE_DIR}
         COMMENT "Building Read the Docs documentation" DEPENDS vistle_module_doc)
-
-    set(VISTLE_BUILD_DOC TRUE)
 else(SPHINX_EXECUTABLE)
     message("Sphinx (sphinx-build) not found, documentation cannot be built")
-    set(VISTLE_BUILD_DOC FALSE)
-    return()
 endif(SPHINX_EXECUTABLE)

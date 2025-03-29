@@ -984,13 +984,11 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
         endif()
 
         # some targets need to be ignored for documentation for now because the build an executale that is not name targetname
-        if(VISTLE_BUILD_DOC)
             list(FIND IGNR_MODS ${targetname} idx)
             if(idx EQUAL -1)
                 append_module_category(${targetname} ${VISTLE_MODULE_CATEGORY})
                 add_module_doc_target(${targetname} ${VISTLE_MODULE_CATEGORY})
             endif()
-        endif()
 
     endmacro(add_module2)
 
@@ -1219,9 +1217,7 @@ add_subdirectory(test)
 add_subdirectory(bin)
 
 write_category_descriptions(${CATEGORY_DESCRIPTION_FILE})
-if(VISTLE_BUILD_DOC)
-    configure_documentation()
-endif()
+configure_documentation()
 
 include(FeatureSummary)
 feature_summary(WHAT ALL)
