@@ -328,6 +328,7 @@ def generateModuleDescriptions() -> None:
     os.makedirs(os.path.dirname(DESTDIR), exist_ok=True)
 
     with open(DESTDIR + MODULE_NAME + ".md", "w") as f:
+        f.write(f"(mod-{MODULE_NAME})=\n")
         unused_essential_tags = essential_tags.keys() - used_tags
         if HEADLINE_TAG in unused_essential_tags:
             f.write(essential_tags[HEADLINE_TAG](mod))
