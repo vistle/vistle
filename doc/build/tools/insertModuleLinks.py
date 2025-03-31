@@ -63,6 +63,8 @@ for line in input_file:
             category = category.lower()
             link = f"{relative_module_path}/module/{category}/{module}/{module}.md"
             replacement = f"[{module}]({link})"
+            link = f"project:#mod-{module}"
+            replacement = f"[]({link})"
             line = line.replace(module_key, replacement)
     
     for category in unique_categories:
@@ -74,7 +76,9 @@ for line in input_file:
 
         if category_key in line:
             link = f"{relative_module_path}/module/{category.lower()}/index"
+            link = f"project:#cat-{category}"
             replacement = f"[{category}]({link})"
+            replacement = f"[]({link})"
             line = line.replace(category_key, replacement)
 
     output_file.write(line)
