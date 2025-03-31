@@ -9,10 +9,20 @@ A Vistle work flow consists of several processing modules, each of which is a pa
 
 The Vistle system is modular and can be extended with additional visualization algorithms. Source code is available on `GitHub <https://github.com/vistle/vistle>`__ and licensed under the `LPGL (version 2 or newer) <https://spdx.org/licenses/LGPL-2.0-or-later.html>`__.
 
+
+|video| |ihs| |sc14| |itlr|
+
+
 ..
    * :ref:`install-docs`
    * :ref:`user-docs`
    * :ref:`dev-docs`
+
+
+Publications
+------------
+
+Our :doc:`publications <publications/index>` describe the :doc:`architecture <architecture/index>` and other characteristics of the Vistle system.
 
 
 Installation
@@ -27,10 +37,9 @@ Refer to the top level `README.md <https://github.com/vistle/vistle?tab=readme-o
    :caption: Overview
    :hidden:
 
-   Installation <self>
-   Architecture <architecture/index.md>
-   Publications <publications/index.md>
    Gallery <gallery/index.rst>
+   Publications <publications/index.md>
+   Installation <self>
 
 .. _user-docs:
 
@@ -40,6 +49,7 @@ Refer to the top level `README.md <https://github.com/vistle/vistle?tab=readme-o
 
    Quickstart <quickstart/quickstart.md>
    Introduction <intro/index.rst>
+   Architecture <architecture/index.md>
    Module Reference <module/index.rst>
 
 .. _dev-docs:
@@ -52,3 +62,18 @@ Refer to the top level `README.md <https://github.com/vistle/vistle?tab=readme-o
    API Overview <develop/api/index.rst>
    Creating Modules <develop/module/index.rst>
    Write & Build Documentation <develop/documentation/index.rst>
+
+
+
+
+.. |video| image:: gallery/vistle-in-a-minute.png
+   :target: gallery/index.html
+
+.. |ihs| image:: gallery/vistle-ihs-small.jpg
+   :target: gallery/index.html
+
+.. |sc14| image:: gallery/vistle-remote-small.jpg
+   :target: gallery/index.html
+
+.. |itlr| image:: gallery/vistle-itlr-small.jpg
+   :target: `install-docs`_
