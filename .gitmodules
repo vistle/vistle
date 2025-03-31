@@ -1,6 +1,6 @@
 [submodule "3rdparty/IceT"]
 	path = lib/3rdparty/IceT
-	url = https://gitlab.kitware.com/icet/icet.git
+	url = https://github.com/vistle/IceT.git
 	branch = master
 [submodule "3rdparty/qt-solutions"]
 	path = lib/3rdparty/qt-solutions

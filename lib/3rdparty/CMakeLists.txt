@@ -174,6 +174,7 @@ if(NOT VISTLE_GUI_ONLY)
     endif()
 
     if(VISTLE_USE_MPI)
+        set(ICET_SUBMODULE TRUE)
         #
         # IceT
         #
