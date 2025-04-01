@@ -1,9 +1,9 @@
 Vistle
 ******
 
-`Vistle <https://vistle.io>`__ is an extensible software environment that integrates simulations on supercomputers, post-processing and parallel interactive visualization in immersive virtual environments.
+`Vistle <https://github.com/vistle/vistle>`__ is an extensible software environment that integrates simulations on supercomputers, post-processing and parallel interactive visualization in immersive virtual environments.
 
-It is under active development at `HLRS <https://hlrs.de>`__ since 2012. The objective is to provide a highly scalable visualization tool, exploiting data, task and pipeline parallelism in hybrid shared and distributed memory environments with acceleration hardware. Domain decompositions used during simulation can be reused for visualization.
+It is under active development at `HLRS <https://www.hlrs.de>`__ since 2012. The objective is to provide a highly scalable visualization tool, exploiting data, task and pipeline parallelism in hybrid shared and distributed memory environments with acceleration hardware. Domain decompositions used during simulation can be reused for visualization.
 
 A Vistle work flow consists of several processing modules, each of which is a parallel MPI program that uses OpenMP within nodes. These can be configured graphically or from Python. Shared memory is used for transfering data between modules on a single node. Work flows can be distributed across several clusters.
 
@@ -40,6 +40,14 @@ Refer to the top level `README.md <https://github.com/vistle/vistle?tab=readme-o
    Gallery <gallery/index.rst>
    Publications <publications/index.md>
    Installation <self>
+   
+.. toctree::
+   :maxdepth: 2
+   :caption: Links
+
+   Source Code (github.com/vistle/vistle) <https://github.com/vistle/vistle>
+   OpenCOVER (hlrs.de/covise) <https://www.hlrs.de/solutions/types-of-computing/visualization/covise#:~:text=OpenCOVER>
+   HLRS (hlrs.de) <https://www.hlrs.de>
 
 .. _user-docs:
 
@@ -67,13 +75,13 @@ Refer to the top level `README.md <https://github.com/vistle/vistle?tab=readme-o
 
 
 .. |video| image:: gallery/vistle-in-a-minute.png
-   :target: gallery/index.html
+   :target: gallery/video.html
 
 .. |ihs| image:: gallery/vistle-ihs-small.jpg
-   :target: gallery/index.html
+   :target: gallery/ihs.html
 
 .. |sc14| image:: gallery/vistle-remote-small.jpg
-   :target: gallery/index.html
+   :target: gallery/sc14.html
 
 .. |itlr| image:: gallery/vistle-itlr-small.jpg
-   :target: `install-docs`_
+   :target: gallery/itlr.html
