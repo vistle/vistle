@@ -7,8 +7,9 @@ It is under active development at `HLRS <https://www.hlrs.de>`__ since 2012. The
 
 A Vistle work flow consists of several processing modules, each of which is a parallel MPI program that uses OpenMP within nodes. These can be configured graphically or from Python. Shared memory is used for transfering data between modules on a single node. Work flows can be distributed across several clusters.
 
-The Vistle system is modular and can be extended with additional visualization algorithms. Source code is available on `GitHub <https://github.com/vistle/vistle>`__ and licensed under the `LPGL (version 2 or newer) <https://spdx.org/licenses/LGPL-2.0-or-later.html>`__.
+For rendering on desktop and in immersive projection systems, Vistle uses `OpenCOVER <https://www.hlrs.de/opencover>`__. Visualization parameters can be manipulated from within the virtual environment. Large data sets can be displayed with OpenGL sort-last parallel rendering and depth compositing. For scaling with the simulation on remote HPC resources, a CPU based hybrid sort-last/sort first parallel ray casting renderer is available. “Remote hybrid rendering” allows to combine its output with local rendering, while ensuring smooth interactivity by decoupling it from remote rendering.
 
+The Vistle system is modular and can be extended with additional visualization algorithms. Source code is available on `GitHub <https://github.com/vistle/vistle>`__ and licensed under the `LPGL (version 2 or newer) <https://spdx.org/licenses/LGPL-2.0-or-later.html>`__.
 
 |video| |ihs| |sc14| |itlr|
 
