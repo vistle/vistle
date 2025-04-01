@@ -15,15 +15,12 @@ import glob
 import sys
 sys.path.insert(0, os.path.abspath('.'))
 
-from datetime import datetime
-current_year = datetime.now().year
-
 
 # -- Project information -----------------------------------------------------
 project = 'Vistle'
 author = 'Martin Aumüller, Marko Djuric, Dennis Grieger, Leyla Kern, Susanne Malheiros, Uwe Wössner'
 author = 'the Vistle team'
-copyright = f'2012 - {current_year}, {author}'
+project_copyright = f'2012 - %Y, {author}'
 
 # -- General configuration ---------------------------------------------------
 
