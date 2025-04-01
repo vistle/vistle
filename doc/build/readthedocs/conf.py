@@ -14,7 +14,6 @@ import os
 import glob
 import sys
 sys.path.insert(0, os.path.abspath('.'))
-from clear import deleteDir
 
 from datetime import datetime
 current_year = datetime.now().year
