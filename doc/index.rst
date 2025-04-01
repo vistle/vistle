@@ -11,8 +11,15 @@ For rendering on desktop and in immersive projection systems, Vistle uses `OpenC
 
 The Vistle system is modular and can be extended with additional visualization algorithms. Source code is available on `GitHub <https://github.com/vistle/vistle>`__ and licensed under the `LPGL (version 2 or newer) <https://spdx.org/licenses/LGPL-2.0-or-later.html>`__.
 
-|video| |ihs| |sc14| |itlr|
+.. _install-docs:
 
+Installation
+------------
+
+Refer to the top level `README.md <https://github.com/vistle/vistle?tab=readme-ov-file#installation>`__ for basic installation instructions.
+
+
+|video| |ihs| |sc14| |itlr|
 
 ..
    * :ref:`install-docs`
@@ -26,30 +33,15 @@ Publications
 Our :doc:`publications <publications/index>` describe the :doc:`architecture <architecture/index>` and other characteristics of the Vistle system.
 
 
-Installation
-------------
-
-Refer to the top level `README.md <https://github.com/vistle/vistle?tab=readme-ov-file#installation>`__ for basic installation instructions.
-
-.. _install-docs:
-
 .. toctree::
    :maxdepth: 1
    :caption: Overview
    :hidden:
 
+   Installation <self>
    Gallery <gallery/index.rst>
    Publications <publications/index.md>
-   Installation <self>
    
-.. toctree::
-   :maxdepth: 2
-   :caption: Links
-
-   Source Code (github.com/vistle/vistle) <https://github.com/vistle/vistle>
-   OpenCOVER (hlrs.de/covise) <https://www.hlrs.de/solutions/types-of-computing/visualization/covise#:~:text=OpenCOVER>
-   HLRS (hlrs.de) <https://www.hlrs.de>
-
 .. _user-docs:
 
 .. toctree::
@@ -72,7 +64,15 @@ Refer to the top level `README.md <https://github.com/vistle/vistle?tab=readme-o
    Creating Modules <develop/module/index.rst>
    Write & Build Documentation <develop/documentation/index.rst>
 
+.. toctree::
+   :maxdepth: 2
+   :caption: Links
 
+   HLRS (hlrs.de) <https://www.hlrs.de>
+   OpenCOVER (hlrs.de/covise) <https://www.hlrs.de/solutions/types-of-computing/visualization/covise#:~:text=OpenCOVER>
+   Source Code (github.com/vistle/vistle) <https://github.com/vistle/vistle>
+
+:doc:`Imprint <copyright>`
 
 
 .. |video| image:: gallery/vistle-in-a-minute.png

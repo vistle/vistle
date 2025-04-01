@@ -176,7 +176,7 @@ function(configure_documentation)
     set(CONFIGURED_FILES)
     # Find all files in the ToInstall directory recursively
     set(SOURCE_DIR ${CMAKE_SOURCE_DIR}/doc)
-    set(DOCUMENTATION_FILES index.rst)
+    set(DOCUMENTATION_FILES index.rst copyright.rst)
     foreach(
         DIR
         module
