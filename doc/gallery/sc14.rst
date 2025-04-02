@@ -1,9 +1,0 @@
-.. _gallery-sc14:
-
-Hybrid Remote Rendering
-======
-
-.. |sc14| image:: vistle-remote.jpg
-   :target: ../_images/vistle-remote.jpg
-
-|sc14|  Hybrid remote rendering at `SC '14 <http://sc14.supercomputing.org/>`__ in New Orleans on HLRS `visualization cluster <http://hlrs.de/cave/>`__ in Stuttgart
