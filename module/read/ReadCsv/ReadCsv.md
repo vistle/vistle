@@ -27,7 +27,4 @@ Supported delimiters are comma, semicolon and tab. Decimal separators can be poi
 
 ### Often Used With
 
-- [Color]()
-- [MapDrape]()
-- [IndexManifolds]()
-- [Variant]()
+[Color](), [MapDrape](), [IndexManifolds](), [Variant]()
