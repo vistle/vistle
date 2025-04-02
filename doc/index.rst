@@ -5,7 +5,7 @@ Vistle
 
 It is under active development at `HLRS <https://www.hlrs.de>`__ since 2012. The objective is to provide a highly scalable visualization tool, exploiting data, task and pipeline parallelism in hybrid shared and distributed memory environments with acceleration hardware. Domain decompositions used during simulation can be reused for visualization.
 
-A Vistle work flow consists of several processing modules, each of which is a parallel MPI program that uses OpenMP within nodes. These can be configured graphically or from Python. Shared memory is used for transfering data between modules on a single node. Work flows can be distributed across several clusters.
+A Vistle work flow consists of several processing modules, each of which is a parallel MPI program that uses OpenMP within nodes. These can be configured graphically or from Python. Shared memory is used for transferring data between modules on a single node. Work flows can be distributed across several clusters.
 
 For rendering on desktop and in immersive projection systems, Vistle uses `OpenCOVER <https://www.hlrs.de/opencover>`__. Visualization parameters can be manipulated from within the virtual environment. Large data sets can be displayed with OpenGL sort-last parallel rendering and depth compositing. For scaling with the simulation on remote HPC resources, a CPU based hybrid sort-last/sort first parallel ray casting renderer is available. “Remote hybrid rendering” allows to combine its output with local rendering, while ensuring smooth interactivity by decoupling it from remote rendering.
 
