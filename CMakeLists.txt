@@ -799,8 +799,6 @@ macro(vistle_install_docs)
     add_documentation_source(${ARGN})
 endmacro(vistle_install_docs)
 
-vistle_install_docs(README.md install/hlrs-vistle.svg)
-
 macro(vistle_install_headers directory)
     install(FILES ${ARGN} DESTINATION include/vistle/${directory})
 endmacro(vistle_install_headers)
@@ -984,11 +982,11 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
         endif()
 
         # some targets need to be ignored for documentation for now because the build an executale that is not name targetname
-            list(FIND IGNR_MODS ${targetname} idx)
-            if(idx EQUAL -1)
-                append_module_category(${targetname} ${VISTLE_MODULE_CATEGORY})
-                add_module_doc_target(${targetname} ${VISTLE_MODULE_CATEGORY})
-            endif()
+        list(FIND IGNR_MODS ${targetname} idx)
+        if(idx EQUAL -1)
+            append_module_category(${targetname} ${VISTLE_MODULE_CATEGORY})
+            add_module_doc_target(${targetname} ${VISTLE_MODULE_CATEGORY})
+        endif()
 
     endmacro(add_module2)
 
