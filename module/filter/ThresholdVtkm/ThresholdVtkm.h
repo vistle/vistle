@@ -12,6 +12,8 @@ private:
     std::unique_ptr<vtkm::filter::Filter> setUpFilter() const override;
 
     vistle::IntParameter *m_invert = nullptr;
+    vistle::IntParameter *m_operation = nullptr;
+    vistle::FloatParameter *m_threshold = nullptr;
 };
 
 #endif
