@@ -6,7 +6,7 @@ MODULE_MAIN(ThresholdVtkm)
 
 using namespace vistle;
 
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(Operation, (AnyLess)(AllLess)(Contains)(AnyGreater)(AllGreater))
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(Operation, (AnyLess)(AllLess)(AnyGreater)(AllGreater))
 
 ThresholdVtkm::ThresholdVtkm(const std::string &name, int moduleID, mpi::communicator comm)
 : VtkmModule(name, moduleID, comm, 3)
@@ -34,11 +34,6 @@ std::unique_ptr<vtkm::filter::Filter> ThresholdVtkm::setUpFilter() const
     case AllLess:
         filter->SetComponentToTestToAll();
         filter->SetThresholdBelow(threshold);
-        break;
-    case Contains:
-        //TODO: not sure how this is in the CPU version
-        filter->SetComponentToTestToAny();
-        filter->SetThresholdBetween(threshold, threshold);
         break;
     case AnyGreater:
         filter->SetComponentToTestToAny();
