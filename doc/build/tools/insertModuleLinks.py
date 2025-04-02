@@ -66,6 +66,7 @@ for line in input_file:
             link = f"project:#mod-{module}"
             replacement = f"[]({link})"
             line = line.replace(module_key, replacement)
+            print(f"insertModuleLinks.py: module {module} in {input_file_path}")
     
     for category in unique_categories:
         category_key = "[" + category + "]()"
@@ -80,6 +81,7 @@ for line in input_file:
             replacement = f"[{category}]({link})"
             replacement = f"[]({link})"
             line = line.replace(category_key, replacement)
+            print(f"insertModuleLinks.py: category {category} in {input_file_path}")
 
     output_file.write(line)
 
