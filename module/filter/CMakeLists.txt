@@ -1,4 +1,4 @@
-vistle_category("Filter" "operate on abstract (non-geometric) data and produce abstract data")
+vistle_category("Filter" "manipulate abstract data")
 
 add_subdirectory(CellSelect)
 add_subdirectory(CellToVert)

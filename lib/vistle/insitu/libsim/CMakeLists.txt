@@ -1,3 +1,5 @@
+vistle_install_docs(README.md)
+
 option(LIBSIM_DEBUG "print debug messages" OFF)
 
 add_subdirectory(engineInterface)
@@ -100,5 +102,3 @@ endif()
 #so that libsim can locate them
 createsimv2lib(${LIBPREFIX}simV2runtime_par)
 createsimv2lib(${LIBPREFIX}simV2runtime_ser)
-
-vistle_install_docs(README.md)

@@ -20,13 +20,12 @@ enum ItemTypes {
 };
 
 static std::array<ModuleBrowser::WidgetIndex, 2> ModuleLists{ModuleBrowser::Main, ModuleBrowser::Filtered};
-// provide sort order for module categories
-static std::array<const char *, 10> Categories{"Simulation", "Read",        "Filter",  "Map",    "Geometry",
-                                               "Render",     "Information", "General", "UniViz", "Develop"};
 class CategoryItem: public QTreeWidgetItem {
     using QTreeWidgetItem::QTreeWidgetItem;
     bool operator<(const QTreeWidgetItem &other) const override
     {
+        static auto Categories = vistle::getModuleCategories("");
+
         if (other.type() != Category)
             return *static_cast<const QTreeWidgetItem *>(this) < other;
         std::string mytext = text(0).toStdString();
@@ -385,7 +384,7 @@ QTreeWidgetItem *ModuleBrowser::addCategory(int hub, QString category, QString d
 
 void ModuleBrowser::addModule(int hub, QString module, QString path, QString category, QString description)
 {
-    static auto CategoryDescriptions = vistle::getModuleCategories("");
+    static auto CategoryDescriptions = vistle::getCategoryDescriptions("");
 
     if (m_primaryHub == vistle::message::Id::Invalid || m_primaryHub < hub) {
         m_primaryHub = hub;

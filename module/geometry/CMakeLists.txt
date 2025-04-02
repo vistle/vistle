@@ -1,4 +1,4 @@
-vistle_category("Geometry" "operate on geometric shapes and produce geometric data")
+vistle_category("Geometry" "manipulate geometric data")
 
 add_subdirectory(ApplyTransform)
 add_subdirectory(Chainmail)
