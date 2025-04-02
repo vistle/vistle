@@ -1,5 +1,0 @@
-Sphinx
-sphinx-rtd-theme
-sphinxcontrib-mermaid
-myst-parser
-attrs

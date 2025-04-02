@@ -1,6 +1,6 @@
 set(VISTLE_DOCUMENTATION_DIR
     "${PROJECT_BINARY_DIR}"
-    CACHE PATH "Path where the documentation will be built")
+    CACHE PATH "Path where the documentation will be built (i.e. working copy of github.com/vistle/vistle.github.io)")
 
 set(GENDOC "${PROJECT_BINARY_DIR}/gendoc")
 
@@ -176,16 +176,8 @@ function(configure_documentation)
     set(CONFIGURED_FILES)
     # Find all files in the ToInstall directory recursively
     set(SOURCE_DIR ${CMAKE_SOURCE_DIR}/doc)
-    set(DOCUMENTATION_FILES index.rst copyright.rst)
-    foreach(
-        DIR
-        module
-        intro
-        quickstart
-        develop
-        architecture
-        publications
-        gallery)
+    set(DOCUMENTATION_FILES)
+    foreach(DIR module)
         file(
             GLOB_RECURSE DIRFILES
             RELATIVE ${SOURCE_DIR}
@@ -382,26 +374,4 @@ add_dependencies(vistle_doc vistle_module_doc)
 add_custom_target(docs) # add a short alias
 add_dependencies(docs vistle_doc)
 
-set(READTHEDOCS_SOURCE_DIR ${CMAKE_SOURCE_DIR}/doc/build/readthedocs)
 set(VISTLE_DOCUMENTATION_SOURCE_DIR ${VISTLE_DOCUMENTATION_DIR}/docs)
-
-#copy the readthedocs configuration scripts
-add_custom_command(
-    TARGET vistle_doc
-    COMMAND ${CMAKE_COMMAND} -E copy ${READTHEDOCS_SOURCE_DIR}/conf.py ${VISTLE_DOCUMENTATION_SOURCE_DIR}
-    COMMAND ${CMAKE_COMMAND} -E copy ${READTHEDOCS_SOURCE_DIR}/mdlink.py ${VISTLE_DOCUMENTATION_SOURCE_DIR}
-    COMMAND ${CMAKE_COMMAND} -E copy ${READTHEDOCS_SOURCE_DIR}/html_image_processor.py ${VISTLE_DOCUMENTATION_SOURCE_DIR}
-    COMMAND ${CMAKE_COMMAND} -E copy ${READTHEDOCS_SOURCE_DIR}/requirements.txt ${VISTLE_DOCUMENTATION_SOURCE_DIR}
-    COMMAND ${CMAKE_COMMAND} -E copy ${READTHEDOCS_SOURCE_DIR}/.readthedocs.yaml ${VISTLE_DOCUMENTATION_SOURCE_DIR})
-
-vistle_find_package(Sphinx)
-if(SPHINX_EXECUTABLE)
-    add_custom_command(TARGET vistle_doc COMMAND ${CMAKE_COMMAND} -E make_directory ${VISTLE_DOCUMENTATION_SOURCE_DIR}/build)
-    add_custom_command(
-        TARGET vistle_doc
-        COMMAND ${SPHINX_EXECUTABLE} -M html . build
-        WORKING_DIRECTORY ${VISTLE_DOCUMENTATION_SOURCE_DIR}
-        COMMENT "Building Read the Docs documentation" DEPENDS vistle_module_doc)
-else(SPHINX_EXECUTABLE)
-    message("Sphinx (sphinx-build) not found, documentation cannot be built")
-endif(SPHINX_EXECUTABLE)
