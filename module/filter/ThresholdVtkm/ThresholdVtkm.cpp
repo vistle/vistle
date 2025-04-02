@@ -1,5 +1,7 @@
 #include <vtkm/filter/entity_extraction/Threshold.h>
 
+#include <vistle/vtkm/convert.h>
+
 #include "ThresholdVtkm.h"
 
 MODULE_MAIN(ThresholdVtkm)
@@ -50,4 +52,28 @@ std::unique_ptr<vtkm::filter::Filter> ThresholdVtkm::setUpFilter() const
 
     filter->SetInvert(m_invert->getValue() != 0);
     return filter;
+}
+
+Object::ptr ThresholdVtkm::prepareOutputGrid(const vtkm::cont::DataSet &dataset,
+                                             const Object::const_ptr &inputGrid) const
+{
+    // overriding this method because it should not be treated as error if the output grid is empty
+    auto outputGrid = vtkmGetGeometry(dataset);
+    if (!outputGrid)
+        return nullptr;
+    updateMeta(outputGrid);
+    outputGrid->copyAttributes(inputGrid);
+    return outputGrid;
+}
+
+DataBase::ptr ThresholdVtkm::prepareOutputField(const vtkm::cont::DataSet &dataset, const Object::const_ptr &inputGrid,
+                                                const DataBase::const_ptr &inputField, const std::string &fieldName,
+                                                const Object::ptr &outputGrid) const
+{
+    // only prepare the output field if the output grid exists
+    if (outputGrid) {
+        return VtkmModule::prepareOutputField(dataset, inputGrid, inputField, fieldName, outputGrid);
+    } else {
+        return nullptr;
+    }
 }
