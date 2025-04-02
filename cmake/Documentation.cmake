@@ -87,7 +87,7 @@ endmacro()
 
 macro(configure_all_modules TARGET)
     set(OUTPUT_FILE ${VISTLE_DOCUMENTATION_SOURCE_DIR}/module/all.rst)
-    set(CATEGORYNAME ${all})
+    set(CATEGORYNAME All)
     set(CATEGORYTITLE "All Modules")
     set(CATEGORYDESC "All Modules")
     set(CATEGORYDESC)
