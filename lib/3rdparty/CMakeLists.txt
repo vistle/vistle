@@ -73,6 +73,12 @@ if(USE_SZ3)
     add_subdirectory(sz3)
 endif()
 
+if(USE_BIGWHOOP)
+    include_directories(${BIGWHOOP_INCLUDE_DIRS})
+    add_subdirectory(BigWhoop)
+    target_compile_definitions(bwclib PRIVATE _POSIX_C_SOURCE=200809L)
+endif()
+
 if(VISTLE_INTERNAL_ZFP)
     set(BUILD_TESTING
         OFF

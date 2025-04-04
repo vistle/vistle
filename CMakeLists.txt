@@ -1073,6 +1073,12 @@ else()
     set(USE_SZ3 TRUE)
 endif()
 
+set(USE_BIGWHOOP TRUE)
+set(BIGWHOOP_FOUND TRUE)
+set(BIGWHOOP_INCLUDE_DIRS
+    "${PROJECT_SOURCE_DIR}/lib/3rdparty/BigWhoop/include/library/private;${PROJECT_BINARY_DIR}/lib/3rdparty/BigWhoop/include/library/private;${PROJECT_SOURCE_DIR}/lib/3rdparty/BigWhoop/include/library/public;${PROJECT_BINARY_DIR}/lib/3rdparty/BigWhoop/include/library/public;"
+)
+
 set(OpenGL_GL_PREFERENCE LEGACY)
 vistle_find_package(OpenGL)
 if(APPLE)
