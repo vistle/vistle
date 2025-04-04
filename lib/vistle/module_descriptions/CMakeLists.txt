@@ -22,7 +22,7 @@ cmrc_add_resource_library(
     ${CATEGORY_DESCRIPTION_FILE}
     ${MODDESCS})
 vistle_export_library(vistle_module_descriptions_resource)
-
+set_target_properties(vistle_module_descriptions_resource PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 if(APPLE)
     target_link_libraries(vistle_module_descriptions PRIVATE -Wl,-force_load vistle_module_descriptions_resource)
 else()
