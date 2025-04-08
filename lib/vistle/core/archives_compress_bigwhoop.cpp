@@ -1,15 +1,19 @@
+#include <iostream>
+
 #include <bwc.h>
 
 #include "index.h"
 #include "archives_compress_bigwhoop.h"
 
+// TODO: find out if BigWhoop also works with int data
+
 namespace vistle {
 namespace detail {
 
-// BigWhoop seems to only support floating point compression
 template<typename T>
 size_t compressBigWhoop(T *toCompress, const Index dim[3], T *compressed, const BigWhoopParameters &parameters)
 {
+    std::cerr << "BigWhoop only supports floating point compression" << std::endl;
     return 0;
 }
 
@@ -41,5 +45,23 @@ size_t compressBigWhoop(double *toCompress, const Index dim[3], double *compress
 
     return compressed_size;
 }
+
+template<typename T>
+void decompressBigWhoop(T *toDecompress, const Index dim[3], T *decompressed, uint8_t layer)
+{
+    std::cerr << "BigWhoop only supports floating point decompression" << std::endl;
+}
+
+template<typename T, typename std::enable_if<std::is_floating_point<T>::value, int>::type>
+void decompressBigWhoop(T *toDecompress, const Index dim[3], T *decompressed, uint8_t layer)
+{
+    bwc_codec *decoder = bwc_alloc_decoder();
+    bwc_stream *stream = bwc_init_stream(toDecompress, decompressed, decomp);
+
+    bwc_create_decompression(decoder, stream, layer);
+    bwc_decompress(decoder, stream);
+    bwc_free_codec(decoder);
+}
+
 } // namespace detail
 } // namespace vistle
