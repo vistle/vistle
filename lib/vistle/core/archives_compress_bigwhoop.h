@@ -3,23 +3,19 @@
 
 #include <type_traits>
 
+#include "archives_compression_settings.h"
+
 namespace vistle {
 namespace detail {
 
-struct BigWhoopParameters {
-    uint8_t nPar;
-    char *rate;
-};
-
 template<typename T>
-size_t compressBigWhoop(T *toCompress, const Index dim[3], T *compressed, const BigWhoopParameters &parameters);
+size_t compressBigWhoop(T *toCompress, const Index dim[3], T *compressed, const CompressionSettings &config);
 
 template<>
-size_t compressBigWhoop(float *toCompress, const Index dim[3], float *compressed, const BigWhoopParameters &parameters);
+size_t compressBigWhoop(float *toCompress, const Index dim[3], float *compressed, const CompressionSettings &config);
 
 template<>
-size_t compressBigWhoop(double *toCompress, const Index dim[3], double *compressed,
-                        const BigWhoopParameters &parameters);
+size_t compressBigWhoop(double *toCompress, const Index dim[3], double *compressed, const CompressionSettings &config);
 
 template<typename T>
 void decompressBigWhoop(T *toDecompress, const Index dim[3], T *decompressed, uint8_t layer);

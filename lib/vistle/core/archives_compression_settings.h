@@ -7,7 +7,7 @@
 
 namespace vistle {
 
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(FieldCompressionMode, (Uncompressed)(Predict)(Zfp)(SZ))
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(FieldCompressionMode, (Uncompressed)(Predict)(Zfp)(SZ)(BigWhoop))
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(FieldCompressionZfpMode, (ZfpFixedRate)(ZfpPrecision)(ZfpAccuracy))
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(FieldCompressionSzAlgo, (SzInterpLorenzo)(SzInterp)(SzLorenzoReg))
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(FieldCompressionSzError, (SzRel)(SzAbs)(SzAbsAndRel)(SzAbsOrRel)(SzPsnr)(SzL2))
@@ -37,6 +37,9 @@ struct CompressionSettings {
     double szPsnrError = 80;
     static constexpr const char *p_szL2Error = "sz_l2_error";
     double szL2Error = 1e-1;
+
+    uint8_t p_bigWhoop_nPar = 1;
+    const char *p_bigWhoop_rate = "32";
 };
 
 } // namespace vistle
