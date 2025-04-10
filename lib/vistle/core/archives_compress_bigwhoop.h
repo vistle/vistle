@@ -7,6 +7,7 @@
 
 #include "archives_compression_settings.h"
 
+//TODO: make function parameter order match the other compression methods
 namespace vistle {
 namespace detail {
 

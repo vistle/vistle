@@ -2,6 +2,7 @@
 #define VISTLE_CORE_ARCHIVES_IMPL_H
 
 #include "archives_config.h"
+#include "archives_compress_bigwhoop.h"
 #include "archives_compress_sz3.h"
 #include "archives_compress.h"
 
@@ -338,7 +339,8 @@ void archive_helper<yas_tag>::ArrayWrapper<T>::save(Archive &ar) const
     bool compPredict = PredictTransform<T>::use && (cs.mode == Predict || (m_exact && cs.mode != Uncompressed));
     bool compSz3 = !m_exact && !compPredict && cs.mode == SZ;
     bool compZfp = !m_exact && !compPredict && cs.mode == Zfp;
-    bool compress = compPredict || compZfp || compSz3;
+    bool compBigWhoop = !m_exact && !compPredict && cs.mode == BigWhoop;
+    bool compress = compPredict || compZfp || compSz3 || compBigWhoop;
     //std::cerr << "ar.compressed()=" << compress << std::endl;
     if (compPredict) {
         ar &compress;
@@ -350,6 +352,7 @@ void archive_helper<yas_tag>::ArrayWrapper<T>::save(Archive &ar) const
     } else if (compZfp) {
         assert(!compPredict);
         assert(!compSz3);
+        assert(!compBigWhoop);
 #ifdef HAVE_ZFP
         ZfpParameters param;
         param.mode = cs.zfpMode;
@@ -381,6 +384,7 @@ void archive_helper<yas_tag>::ArrayWrapper<T>::save(Archive &ar) const
     } else if (compSz3) {
         assert(!compPredict);
         assert(!compZfp);
+        assert(!compBigWhoop);
         size_t outSize = 0;
         std::vector<T> input(m_begin, m_end);
         if (char *compressedData = compressSz3<typename lossy_type_map<T>::sz3type>(outSize, input.data(), m_dim, cs)) {
@@ -393,6 +397,24 @@ void archive_helper<yas_tag>::ArrayWrapper<T>::save(Archive &ar) const
             ar &compressed;
         } else {
             compSz3 = false;
+            compress = false;
+        }
+    } else if (compBigWhoop) {
+        assert(!compPredict);
+        assert(!compZfp);
+        assert(!compSz3);
+
+        std::vector<T> input(m_begin, m_end);
+        std::vector<T, allocator<T>> compressed;
+        if (size_t outSize = compressBigWhoop<T>(input.data(), m_dim, compressed.data(), cs)) {
+            compressed.resize(outSize);
+            ar &compress;
+            ar &compPredict;
+            ar &compZfp;
+            ar &m_dim[0] & m_dim[1] & m_dim[2];
+            ar &compressed;
+        } else {
+            compBigWhoop = false;
             compress = false;
         }
     }
@@ -411,6 +433,9 @@ using detail::decompressZfp;
 
 using detail::compressSz3;
 using detail::decompressSz3;
+
+using detail::compressBigWhoop;
+using detail::decompressBigWhoop;
 } // namespace vistle
 #endif
 
