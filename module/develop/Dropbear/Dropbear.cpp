@@ -3,15 +3,15 @@
 #include <algorithm>
 #include <cstdlib>
 
-#include <boost/process.hpp>
 #include <boost/algorithm/string.hpp>
 
 #include <vistle/module/module.h>
 #include <vistle/util/hostname.h>
 #include <vistle/util/sleep.h>
+#include <vistle/util/process.h>
 
 using namespace vistle;
-namespace process = boost::process;
+
 
 namespace {
 std::vector<std::string> keytypes{"rsa", "dss", "ecdsa"};

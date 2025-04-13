@@ -47,8 +47,6 @@
 #include <boost/asio.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/program_options.hpp>
-#include <boost/process.hpp>
-#include <boost/process/extend.hpp>
 #ifdef __linux__
 #include <sys/prctl.h>
 #endif
@@ -65,7 +63,6 @@
 //#define DEBUG_DISTRIBUTED
 
 namespace asio = boost::asio;
-namespace process = boost::process;
 using std::shared_ptr;
 namespace dir = vistle::directory;
 
@@ -3441,7 +3438,7 @@ bool Hub::startUi(const std::string &uipath, bool replace)
     args.push_back(m_masterHost);
     args.push_back(port);
     if (replace) {
-        boost::process::system(uipath, process::args(args));
+        process::system(uipath, process::args(args));
         exit(0);
         return false;
     }

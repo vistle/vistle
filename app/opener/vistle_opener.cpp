@@ -1,4 +1,3 @@
-#include <boost/process.hpp>
 
 #include <QObject>
 #include <QDesktopServices>
@@ -11,9 +10,8 @@
 #include "vistle_opener.h"
 
 #include <vistle/util/directory.h>
+#include <vistle/util/process.h>
 
-
-namespace process = boost::process;
 
 static std::string path_to_vistle;
 
