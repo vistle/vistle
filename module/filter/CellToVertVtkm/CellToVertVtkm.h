@@ -1,14 +1,13 @@
 #ifndef VISTLE_CELLTOVERTVTKM_CELLTOVERTVTKM_H
 #define VISTLE_CELLTOVERTVTKM_CELLTOVERTVTKM_H
 
-#include <array>
 #include <vistle/vtkm/vtkm_module.h>
 
 #ifdef VERTTOCELL
-#define CellToVertVtkm TestVertToCellVtkm
+#define CellToVertVtkm VertToCellVtkm
 #endif
 
-class CellToVertVtkm: public VtkmModule {
+class CellToVertVtkm: public vistle::VtkmModule {
 public:
     CellToVertVtkm(const std::string &name, int moduleID, mpi::communicator comm);
     ~CellToVertVtkm();
