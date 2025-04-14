@@ -1,6 +1,6 @@
 #include "implicit_function_controller.h"
 
-using namespace vistle;
+namespace vistle {
 
 ImplicitFunctionController::ImplicitFunctionController(vistle::Module *module): m_module(module), m_option(nullptr)
 {}
@@ -114,3 +114,5 @@ vtkm::ImplicitFunctionGeneral ImplicitFunctionController::function() const
     m_module->sendError("unsupported option");
     return vtkm::Plane(vtkm::make_Vec(0, 0, 0), vtkm::make_Vec(0, 0, 1));
 }
+
+} // namespace vistle

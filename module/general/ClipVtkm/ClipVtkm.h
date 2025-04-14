@@ -4,7 +4,7 @@
 #include <vistle/vtkm/implicit_function_controller.h>
 #include <vistle/vtkm/vtkm_module.h>
 
-class ClipVtkm: public VtkmModule {
+class ClipVtkm: public vistle::VtkmModule {
 public:
     ClipVtkm(const std::string &name, int moduleID, mpi::communicator comm);
     ~ClipVtkm();
@@ -16,7 +16,7 @@ private:
 
     bool changeParameter(const vistle::Parameter *param) override;
 
-    ImplicitFunctionController m_implFuncControl;
+    vistle::ImplicitFunctionController m_implFuncControl;
 };
 
 #endif

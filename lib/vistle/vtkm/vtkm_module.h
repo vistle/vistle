@@ -11,6 +11,8 @@
 #include "export.h"
 #include "module_status.h"
 
+namespace vistle {
+
 /**
  * @class VtkmModule
  * @brief Base class for VTK-m modules which allow the execution of algorithms on different device backends,
@@ -34,7 +36,7 @@
  * can be overridden, if desired, to change the output grid or field(s) that will be added to the output
  * port(s).
  */
-class V_VTKM_EXPORT VtkmModule: public vistle::Module {
+class V_VTKM_EXPORT VtkmModule: public Module {
 public:
     VtkmModule(const std::string &name, int moduleID, mpi::communicator comm, int numPorts = 1,
                bool requireMappedData = true);
@@ -105,5 +107,5 @@ protected:
     */
     bool isValid(const ModuleStatusPtr &status) const;
 };
-
+} // namespace vistle
 #endif
