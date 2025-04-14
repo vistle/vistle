@@ -8,6 +8,8 @@
 #include <QMimeData>
 #include <QMenu>
 #include <QSettings>
+#include <QDesktopServices>
+#include <QUrl>
 #include <fstream>
 #include <vistle/module_descriptions/descriptions.h>
 
@@ -226,6 +228,10 @@ void ModuleBrowser::prepareMenu(const QPoint &pos)
 {
     auto *widget = m_moduleListWidget[visibleWidgetIndex()];
     QTreeWidgetItem *item = widget->itemAt(pos);
+    if (!item) {
+        return;
+    }
+
     for (auto hub: m_hubItems[visibleWidgetIndex()]) {
         int id = hub.first;
         if (hub.second == item) {
@@ -240,8 +246,33 @@ void ModuleBrowser::prepareMenu(const QPoint &pos)
             menu.addAction(dbgAct);
 
             menu.exec(widget->mapToGlobal(pos));
-            break;
+            return;
         }
+    }
+
+    if (item->type() == Module) {
+        QMenu menu(this);
+        auto *helpAct = new QAction(tr("Get Help"), this);
+        connect(helpAct, &QAction::triggered, [item]() {
+            auto cat = item->data(0, categoryRole()).toString().toLower();
+            auto mod = item->data(0, nameRole()).toString();
+            QDesktopServices::openUrl(QUrl(QString("https://vistle.io/module/%0/%1/%1.html").arg(cat, mod)));
+        });
+        menu.addAction(helpAct);
+        menu.exec(widget->mapToGlobal(pos));
+        return;
+    }
+
+    if (item->type() == Category) {
+        QMenu menu(this);
+        auto *helpAct = new QAction(tr("Get Help"), this);
+        connect(helpAct, &QAction::triggered, [item]() {
+            auto cat = item->data(0, categoryRole()).toString().toLower();
+            QDesktopServices::openUrl(QUrl(QString("https://vistle.io/module/%0/index.html").arg(cat)));
+        });
+        menu.addAction(helpAct);
+        menu.exec(widget->mapToGlobal(pos));
+        return;
     }
 }
 
