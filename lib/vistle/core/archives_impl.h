@@ -294,12 +294,20 @@ void archive_helper<yas_tag>::ArrayWrapper<T>::load(Archive &ar)
     bool compPredict = false;
     bool compZfp = false;
     bool compSz3 = false;
+    bool compBigWhoop = false;
     bool compress = false;
     ar &compress;
+
     if (compress) {
         ar &compPredict;
         if (!compPredict) {
             ar &compZfp;
+            if (!compZfp) {
+                ar &compSz3;
+                if (!compSz3) {
+                    ar &compBigWhoop;
+                }
+            }
             compSz3 = !compZfp;
         }
     }
@@ -326,6 +334,16 @@ void archive_helper<yas_tag>::ArrayWrapper<T>::load(Archive &ar)
         if (!decompressSz3<typename lossy_type_map<T>::sz3type>(m_begin, compressed, dim)) {
             std::cerr << "sz3 decompression failed" << std::endl;
         }
+    } else if (compBigWhoop) {
+        ar &m_dim[0] & m_dim[1] & m_dim[2];
+        std::vector<T, allocator<T>> compressed;
+        ar &compressed;
+        Index dim[3];
+        for (int c = 0; c < 3; ++c)
+            dim[c] = m_dim[c] == 1 ? 0 : m_dim[c];
+        // TODO: find better default value
+        uint8_t layer = 0;
+        decompressBigWhoop<T>(compressed.data(), dim, m_begin, layer);
     } else {
         yas::detail::concepts::array::load<yas_flags>(ar, *this);
     }
@@ -341,7 +359,7 @@ void archive_helper<yas_tag>::ArrayWrapper<T>::save(Archive &ar) const
     bool compZfp = !m_exact && !compPredict && cs.mode == Zfp;
     bool compBigWhoop = !m_exact && !compPredict && cs.mode == BigWhoop;
     bool compress = compPredict || compZfp || compSz3 || compBigWhoop;
-    //std::cerr << "ar.compressed()=" << compress << std::endl;
+    //std::cerr << "ar.compressed()=" << compress << std::endl;COMP_DEBUG
     if (compPredict) {
         ar &compress;
         ar &compPredict;
