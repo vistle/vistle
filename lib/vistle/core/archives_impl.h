@@ -308,7 +308,6 @@ void archive_helper<yas_tag>::ArrayWrapper<T>::load(Archive &ar)
                     ar &compBigWhoop;
                 }
             }
-            compSz3 = !compZfp;
         }
     }
     if (compPredict) {
@@ -424,11 +423,14 @@ void archive_helper<yas_tag>::ArrayWrapper<T>::save(Archive &ar) const
 
         std::vector<T> input(m_begin, m_end);
         std::vector<T, allocator<T>> compressed;
+        compressed.resize(input.size());
         if (size_t outSize = compressBigWhoop<T>(input.data(), m_dim, compressed.data(), cs)) {
             compressed.resize(outSize);
             ar &compress;
             ar &compPredict;
             ar &compZfp;
+            ar &compSz3;
+            ar &compBigWhoop;
             ar &m_dim[0] & m_dim[1] & m_dim[2];
             ar &compressed;
         } else {
