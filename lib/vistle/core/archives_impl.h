@@ -337,12 +337,9 @@ void archive_helper<yas_tag>::ArrayWrapper<T>::load(Archive &ar)
         ar &m_dim[0] & m_dim[1] & m_dim[2];
         std::vector<T, allocator<T>> compressed;
         ar &compressed;
-        Index dim[3];
-        for (int c = 0; c < 3; ++c)
-            dim[c] = m_dim[c] == 1 ? 0 : m_dim[c];
         // TODO: find better default value
         uint8_t layer = 0;
-        decompressBigWhoop<T>(compressed.data(), dim, m_begin, layer);
+        decompressBigWhoop<T>(compressed.data(), m_begin, layer);
     } else {
         yas::detail::concepts::array::load<yas_flags>(ar, *this);
     }

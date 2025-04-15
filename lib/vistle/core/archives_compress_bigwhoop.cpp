@@ -39,7 +39,7 @@ size_t compressBigWhoop<double>(double *toCompress, const Index dim[3], double *
 }
 
 template<>
-void decompressBigWhoop<float>(float *toDecompress, const Index dim[3], float *decompressed, uint8_t layer)
+void decompressBigWhoop<float>(float *toDecompress, float *decompressed, uint8_t layer)
 {
     bwc_codec *decoder = bwc_alloc_decoder();
     bwc_stream *stream = bwc_init_stream(toDecompress, decompressed, decomp);
@@ -50,7 +50,7 @@ void decompressBigWhoop<float>(float *toDecompress, const Index dim[3], float *d
 }
 
 template<>
-void decompressBigWhoop<double>(double *toDecompress, const Index dim[3], double *decompressed, uint8_t layer)
+void decompressBigWhoop<double>(double *toDecompress, double *decompressed, uint8_t layer)
 {
     bwc_codec *decoder = bwc_alloc_decoder();
     bwc_stream *stream = bwc_init_stream(toDecompress, decompressed, decomp);

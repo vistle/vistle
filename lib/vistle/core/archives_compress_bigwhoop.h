@@ -27,18 +27,16 @@ size_t V_COREEXPORT compressBigWhoop<double>(double *toCompress, const Index dim
 
 
 template<typename T>
-void decompressBigWhoop(T *toDecompress, const Index dim[3], T *decompressed, uint8_t layer)
+void decompressBigWhoop(T *toDecompress, T *decompressed, uint8_t layer)
 {
     std::cerr << "Big Whoop only supports floating point decompression!" << std::endl;
 }
 
 template<>
-void V_COREEXPORT decompressBigWhoop<float>(float *toDecompress, const Index dim[3], float *decompressed,
-                                            uint8_t layer);
+void V_COREEXPORT decompressBigWhoop<float>(float *toDecompress, float *decompressed, uint8_t layer);
 
 template<>
-void V_COREEXPORT decompressBigWhoop<double>(double *toDecompress, const Index dim[3], double *decompressed,
-                                             uint8_t layer);
+void V_COREEXPORT decompressBigWhoop<double>(double *toDecompress, double *decompressed, uint8_t layer);
 
 } // namespace detail
 } // namespace vistle
