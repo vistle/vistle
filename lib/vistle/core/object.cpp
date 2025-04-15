@@ -255,6 +255,10 @@ bool Object::Data::isComplete() const
     // a reference is only established upon return from Object::load
     //assert(unresolvedReferences==0 || refcount==0);
     //return refcount>0 && unresolvedReferences==0;
+    //TODO: delete (only for debugging)
+    if (unresolvedReferences != 0) {
+        auto test = 2;
+    }
     return unresolvedReferences == 0;
 }
 
