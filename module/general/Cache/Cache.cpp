@@ -195,9 +195,12 @@ bool Cache::prepare()
         }
     }
 
-    file += ".";
-    file += std::to_string(rank());
-    file += ".vsld";
+    if (p_mode->getValue() == To_Disk) {
+        file += ".";
+        file += std::to_string(rank());
+        file += ".vsld";
+    }
+
     m_file = file;
 
     if (m_toDisk) {
