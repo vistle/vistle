@@ -84,13 +84,6 @@ endif()
 
 option(VISTLE_INTERNAL_BOOST_MPI "Use internal copy of Boost.MPI" ON)
 
-# allow for optimizations in Boost.MPI
-if(VISTLE_INTERNAL_BOOST_MPI)
-    if(NOT WIN32)
-        add_definitions(-DBOOST_MPI_HOMOGENEOUS)
-    endif()
-endif()
-
 enable_testing()
 
 if(CMAKE_CONFIGURATION_TYPES)
@@ -565,7 +558,23 @@ endif()
 if(NOT VISTLE_GUI_ONLY)
     if(VISTLE_USE_MPI)
         set(MPI_SKIP_MPICXX TRUE)
-        vistle_find_package(MPI REQUIRED COMPONENTS C CXX)
+        # at least MPI 3.0 is required for MPI_CXX_BOOL
+        vistle_find_package(MPI 3.0 COMPONENTS C CXX)
+        if(NOT MPI_FOUND)
+            message(WARNING "No suitable MPI implementation found, building without MPI support - also make sure that OpenCOVER is built without MPI")
+            set(VISTLE_USE_MPI FALSE)
+        endif()
+    endif()
+
+    if(NOT VISTLE_USE_MPI)
+        if(NOT VISTLE_INTERNAL_BOOST_MPI)
+            message(WARNING "Not using MPI, thus building internal dummy Boost.MPI")
+            set(VISTLE_INTERNAL_BOOST_MPI TRUE)
+        endif()
+        if(NOT VISTLE_MULTI_PROCESS)
+            message(WARNING "Using dummy MPI implementation that is not thread-safe, thus resorting to multi-process configuration")
+            set(VISTLE_MULTI_PROCESS TRUE)
+        endif()
     endif()
 
     # for CMake config file version of boost this needs to be changed to version numbers such as 1.60.99 instead of 106099
@@ -587,6 +596,26 @@ if(NOT VISTLE_GUI_ONLY)
     else()
         set(BOOST_MPI Boost::mpi)
     endif()
+
+    # allow for optimizations in Boost.MPI
+    if(VISTLE_INTERNAL_BOOST_MPI)
+        if(NOT WIN32)
+            add_definitions(-DBOOST_MPI_HOMOGENEOUS)
+        endif()
+    endif()
+
+    if(NOT VISTLE_MULTI_PROCESS)
+        add_definitions(-DMODULE_THREAD)
+
+        if(NOT VISTLE_MODULES_SHARED)
+            add_definitions(-DMODULE_STATIC)
+        endif()
+
+        if(NOT VISTLE_USE_SHARED_MEMORY)
+            add_definitions(-DNO_SHMEM)
+        endif()
+    endif()
+
 endif()
 
 add_definitions(-DBOOST_LIB_DIAGNOSTIC=1)
@@ -831,18 +860,6 @@ option(VISTLE_MULTI_PROCESS "use multiple processes communicating via shared mem
 
 option(VISTLE_MODULES_SHARED "use shared libraries for modules" ON)
 option(VISTLE_USE_SHARED_MEMORY "use shared memory even within a process" OFF)
-
-if(NOT VISTLE_MULTI_PROCESS)
-    add_definitions(-DMODULE_THREAD)
-
-    if(NOT VISTLE_MODULES_SHARED)
-        add_definitions(-DMODULE_STATIC)
-    endif()
-
-    if(NOT VISTLE_USE_SHARED_MEMORY)
-        add_definitions(-DNO_SHMEM)
-    endif()
-endif()
 
 macro(USE_OPENMP)
     if(VISTLE_USE_OPENMP AND OPENMP_FOUND)
