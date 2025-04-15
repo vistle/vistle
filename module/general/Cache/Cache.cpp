@@ -200,11 +200,28 @@ bool Cache::prepare()
     file += ".vsld";
     m_file = file;
 
+    auto checkFd = [&]() {
+        int errorfd = mpi::all_reduce(comm(), m_fd, mpi::minimum<int>());
+        if (errorfd == -1) {
+            if (m_fd >= 0)
+                close(m_fd);
+            m_fd = -1;
+            return false;
+        }
+        return true;
+    };
+
     if (m_toDisk) {
         m_saver.reset(new DeepArchiveSaver);
         m_saver->setCompressionSettings(m_compressionSettings);
         m_fd = open(m_file.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_BINARY,
                     S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+        if (m_fd == -1) {
+            sendError("Could not open %s for writing: %s", m_file.c_str(), strerror(errno));
+        }
+        if (!checkFd()) {
+            m_toDisk = false;
+        }
         return true;
     }
 
@@ -220,14 +237,10 @@ bool Cache::prepare()
 
     m_fd = open(m_file.c_str(), O_RDONLY | O_BINARY);
     if (m_fd == -1) {
-        sendError("Could not open %s: %s", m_file.c_str(), strerror(errno));
+        sendError("Could not open %s for reading: %s", m_file.c_str(), strerror(errno));
     }
-    int errorfd = mpi::all_reduce(comm(), m_fd, mpi::minimum<int>());
-    if (errorfd == -1) {
-        m_toDisk = false;
-        if (m_fd >= 0)
-            close(m_fd);
-        m_fd = -1;
+    if (!checkFd()) {
+        m_fromDisk = false;
         return true;
     }
 
