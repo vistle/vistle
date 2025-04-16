@@ -1,5 +1,9 @@
 Vistle Documentation
 ********************
+.. important::
+   The Vistle documentation has been moved to https://vistle.io/. 
+   Please note that the ReadTheDocs documentation here will no longer be updated.
+
 
 Vistle is an extensible software environment that integrates simulations on supercomputers, post-processing and parallel interactive visualization in immersive virtual environments.
 

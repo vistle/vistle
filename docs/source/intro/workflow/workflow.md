@@ -71,7 +71,7 @@ These are the most common sinks in the data flow graph.
 General modules are able to process data at any stage in the pipeline.
 Generally, they provide output for the same pipeline stage.
 
-*Examples*: [AddAttribute](../../modules/AddAttribute.md), [MetaData](../../modules/MetaData.md), [Variant](../../Variant.md),  [Transform](../../modules/Transform.md) (affine transformation for geometries)
+*Examples*: [AddAttribute](../../modules/AddAttribute.md), [MetaData](../../modules/MetaData.md), [Variant](../../modules/Variant.md),  [Transform](../../modules/Transform.md) (affine transformation for geometries)
 
 ### Information
 Information modules provide information about their input.
