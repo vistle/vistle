@@ -76,6 +76,15 @@ endif()
 if(USE_BIGWHOOP)
     include_directories(${BIGWHOOP_INCLUDE_DIRS})
     add_subdirectory(BigWhoop)
+
+    # we must call this command (taken from BigWhoop/src/library/CMakeLists.txt)
+    # to generate the public header file for BigWhoop
+    execute_process(
+        COMMAND python3 public_header.py ${PYTHON_ARGUMENT}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/BigWhoop
+        RESULT_VARIABLE result
+        ERROR_VARIABLE error_output)
+    # enable POSIX features required by BigWhoop
     target_compile_definitions(bwclib PRIVATE _POSIX_C_SOURCE=200809L)
 endif()
 
