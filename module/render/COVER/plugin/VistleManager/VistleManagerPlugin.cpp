@@ -138,7 +138,7 @@ bool VistleManagerPlugin::init()
 #ifdef VISTLE_USE_MPI
     m_comm = boost::mpi::communicator(coVRMSController::instance()->getAppCommunicator(), boost::mpi::comm_duplicate);
 #else
-    m_comm = boost::mpi::communicator();
+    m_comm = boost::mpi::communicator(boost::mpi::communicator(), boost::mpi::comm_duplicate);
 #endif
     auto conn = getenv("VISTLE_CONNECTION");
     if (!conn) {
