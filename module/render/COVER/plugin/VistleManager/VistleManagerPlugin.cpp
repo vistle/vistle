@@ -135,8 +135,11 @@ VistleManagerPlugin::~VistleManagerPlugin()
 bool VistleManagerPlugin::init()
 {
     set_manager_in_cover_plugin();
+#ifdef VISTLE_USE_MPI
     m_comm = boost::mpi::communicator(coVRMSController::instance()->getAppCommunicator(), boost::mpi::comm_duplicate);
-
+#else
+    m_comm = boost::mpi::communicator();
+#endif
     auto conn = getenv("VISTLE_CONNECTION");
     if (!conn) {
         std::cerr << "did not find VISTLE_CONNECTION environment variable" << std::endl;
