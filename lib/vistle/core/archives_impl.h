@@ -57,6 +57,24 @@ class yas_iarchive;
 
 namespace detail {
 
+inline CompressionSettings getCompressionSettings(const CompressionSettings &cs, bool requireExact)
+{
+    CompressionSettings settings = cs;
+    if (requireExact) {
+        switch (cs.mode) {
+        case Uncompressed:
+            break;
+        case Predict:
+            break;
+        default:
+            settings.mode = Uncompressed;
+            break;
+        }
+    }
+    return settings;
+}
+
+
 template<typename T>
 struct lossy_type_map {
 #ifdef HAVE_ZFP
@@ -291,25 +309,13 @@ template<class T>
 template<class Archive>
 void archive_helper<yas_tag>::ArrayWrapper<T>::load(Archive &ar)
 {
-    bool compPredict = false;
-    bool compZfp = false;
-    bool compSz3 = false;
-    bool compBigWhoop = false;
-    bool compress = false;
-    ar &compress;
+    uint8_t compressMode = Uncompressed;
+    ar &compressMode;
+    bool compPredict = compressMode == Predict;
+    bool compZfp = compressMode == Zfp;
+    bool compSz3 = compressMode == SZ;
+    bool compBigWhoop = compressMode == BigWhoop;
 
-    if (compress) {
-        ar &compPredict;
-        if (!compPredict) {
-            ar &compZfp;
-            if (!compZfp) {
-                ar &compSz3;
-                if (!compSz3) {
-                    ar &compBigWhoop;
-                }
-            }
-        }
-    }
     if (compPredict) {
         yas::detail::concepts::array::load<yas_flags>(ar, *this);
         std::transform(m_begin, m_end, m_begin, DecompressStream<T>());
@@ -341,6 +347,7 @@ void archive_helper<yas_tag>::ArrayWrapper<T>::load(Archive &ar)
         uint8_t layer = 0;
         decompressBigWhoop<T>(compressed.data(), m_begin, layer);
     } else {
+        assert(compressMode == Uncompressed);
         yas::detail::concepts::array::load<yas_flags>(ar, *this);
     }
 }
@@ -349,16 +356,16 @@ template<class T>
 template<class Archive>
 void archive_helper<yas_tag>::ArrayWrapper<T>::save(Archive &ar) const
 {
-    auto cs = ar.compressionSettings();
-    bool compPredict = PredictTransform<T>::use && (cs.mode == Predict || (m_exact && cs.mode != Uncompressed));
-    bool compSz3 = !m_exact && !compPredict && cs.mode == SZ;
-    bool compZfp = !m_exact && !compPredict && cs.mode == Zfp;
-    bool compBigWhoop = !m_exact && !compPredict && cs.mode == BigWhoop;
+    auto cs = getCompressionSettings(ar.compressionSettings(), m_exact);
+    bool compPredict = PredictTransform<T>::use && (cs.mode == Predict);
+    bool compSz3 = cs.mode == SZ;
+    bool compZfp = cs.mode == Zfp;
+    bool compBigWhoop = cs.mode == BigWhoop;
     bool compress = compPredict || compZfp || compSz3 || compBigWhoop;
+    uint8_t compressMode(cs.mode);
     //std::cerr << "ar.compressed()=" << compress << std::endl;COMP_DEBUG
     if (compPredict) {
-        ar &compress;
-        ar &compPredict;
+        ar &compressMode;
         std::vector<T> diff;
         diff.reserve(size());
         std::transform(m_begin, m_end, std::back_inserter(diff), CompressStream<T>());
@@ -381,19 +388,19 @@ void archive_helper<yas_tag>::ArrayWrapper<T>::save(Archive &ar) const
             dim[c] = m_dim[c] == 1 ? 0 : m_dim[c];
         if (compressZfp<lossy_type_map<T>::zfptypeid>(compressed, static_cast<const void *>(m_begin), dim,
                                                       sizeof(*m_begin), param)) {
-            ar &compress;
-            ar &compPredict;
-            ar &compZfp;
+            ar &compressMode;
             ar &m_dim[0] & m_dim[1] & m_dim[2];
             ar &compressed;
         } else {
             std::cerr << "zfp compression for type id " << lossy_type_map<T>::zfptypeid << " failed" << std::endl;
             compZfp = false;
             compress = false;
+            compressMode = Uncompressed;
         }
 #else
         compZfp = false;
         compress = false;
+        compressMode = Uncompressed;
 #endif
     } else if (compSz3) {
         assert(!compPredict);
@@ -404,14 +411,13 @@ void archive_helper<yas_tag>::ArrayWrapper<T>::save(Archive &ar) const
         if (char *compressedData = compressSz3<typename lossy_type_map<T>::sz3type>(outSize, input.data(), m_dim, cs)) {
             buffer compressed(compressedData, compressedData + outSize);
             delete[] compressedData;
-            ar &compress;
-            ar &compPredict;
-            ar &compZfp;
+            ar &compressMode;
             ar &m_dim[0] & m_dim[1] & m_dim[2];
             ar &compressed;
         } else {
             compSz3 = false;
             compress = false;
+            compressMode = Uncompressed;
         }
     } else if (compBigWhoop) {
         assert(!compPredict);
@@ -423,20 +429,17 @@ void archive_helper<yas_tag>::ArrayWrapper<T>::save(Archive &ar) const
         compressed.resize(input.size());
         if (size_t outSize = compressBigWhoop<T>(input.data(), m_dim, compressed.data(), cs)) {
             compressed.resize(outSize);
-            ar &compress;
-            ar &compPredict;
-            ar &compZfp;
-            ar &compSz3;
-            ar &compBigWhoop;
+            ar &compressMode;
             ar &m_dim[0] & m_dim[1] & m_dim[2];
             ar &compressed;
         } else {
             compBigWhoop = false;
             compress = false;
+            compressMode = Uncompressed;
         }
     }
     if (!compress) {
-        ar &compress;
+        ar &compressMode;
         yas::detail::concepts::array::save<yas_flags>(ar, *this);
     }
 }
