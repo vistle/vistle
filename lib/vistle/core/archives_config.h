@@ -1,16 +1,9 @@
 #ifndef VISTLE_CORE_ARCHIVES_CONFIG_H
 #define VISTLE_CORE_ARCHIVES_CONFIG_H
 
-//#define USE_INTROSPECTION_ARCHIVE
 //#define USE_BOOST_ARCHIVE
 #define USE_BOOST_ARCHIVE_MPI
 #define USE_YAS
-
-#ifdef USE_INTROSPECTION_ARCHIVE
-#ifndef USE_BOOST_ARCHIVE
-#define USE_BOOST_ARCHIVE
-#endif
-#endif
 
 #ifdef USE_BOOST_ARCHIVE
 #ifndef USE_BOOST_ARCHIVE_MPI
@@ -239,10 +232,6 @@ struct archive_helper<yas_tag> {
 #endif
 
 namespace vistle {
-#ifdef USE_INTROSPECTION_ARCHIVE
-class FindObjectReferenceOArchive;
-#endif
-
 #if defined(USE_YAS)
 typedef yas_oarchive oarchive;
 typedef yas_iarchive iarchive;
@@ -417,19 +406,8 @@ public: \
 #define ARCHIVE_REGISTRATION_YAS_INLINE
 #define ARCHIVE_REGISTRATION_YAS_IMPL(ObjType, prefix)
 #endif
-#ifdef USE_INTROSPECTION_ARCHIVE
-#define ARCHIVE_REGISTRATION_INTROSPECT \
-    void save(FindObjectReferenceOArchive &ar) const override \
-    { \
-        const_cast<ObjType *>(this)->serialize(ar, 0); \
-    }
-#else
-#define ARCHIVE_REGISTRATION_INTROSPECT
-#endif
-#define ARCHIVE_REGISTRATION(override) \
-    ARCHIVE_REGISTRATION_BOOST(override) ARCHIVE_REGISTRATION_YAS(override) ARCHIVE_REGISTRATION_INTROSPECT
-#define ARCHIVE_REGISTRATION_INLINE \
-    ARCHIVE_REGISTRATION_BOOST_INLINE ARCHIVE_REGISTRATION_YAS_INLINE ARCHIVE_REGISTRATION_INTROSPECT
+#define ARCHIVE_REGISTRATION(override) ARCHIVE_REGISTRATION_BOOST(override) ARCHIVE_REGISTRATION_YAS(override)
+#define ARCHIVE_REGISTRATION_INLINE ARCHIVE_REGISTRATION_BOOST_INLINE ARCHIVE_REGISTRATION_YAS_INLINE
 #define ARCHIVE_REGISTRATION_IMPL(ObjType, prefix) \
     ARCHIVE_REGISTRATION_BOOST_IMPL(ObjType, prefix) ARCHIVE_REGISTRATION_YAS_IMPL(ObjType, prefix)
 
