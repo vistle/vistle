@@ -345,7 +345,8 @@ void archive_helper<yas_tag>::ArrayWrapper<T>::load(Archive &ar)
         ar &compressed;
         // TODO: find better default value
         uint8_t layer = 0;
-        decompressBigWhoop<T>(compressed.data(), m_begin, layer);
+        if (!decompressBigWhoop<T>(m_begin, compressed.data(), layer))
+            std::cerr << "BigWhoop decompression failed" << std::endl;
     } else {
         assert(compressMode == Uncompressed);
         yas::detail::concepts::array::load<yas_flags>(ar, *this);

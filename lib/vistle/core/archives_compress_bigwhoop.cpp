@@ -9,11 +9,10 @@ namespace vistle {
 namespace detail {
 
 template<>
-size_t compressBigWhoop<float>(float *toCompress, const Index dim[3], float *compressed,
-                               const CompressionSettings &config)
+size_t compressBigWhoop<float>(float *src, const Index dim[3], float *compressed, const CompressionSettings &config)
 {
     bwc_codec *coder = bwc_alloc_coder(dim[0], dim[1], dim[2], 1, config.p_bigWhoop_nPar, bwc_precision_single);
-    bwc_stream *stream = bwc_init_stream(toCompress, compressed, comp);
+    bwc_stream *stream = bwc_init_stream(src, compressed, comp);
 
     bwc_create_compression(coder, stream, const_cast<char *>(config.p_bigWhoop_rate));
     size_t compressed_size = bwc_compress(coder, stream);
@@ -24,11 +23,10 @@ size_t compressBigWhoop<float>(float *toCompress, const Index dim[3], float *com
 }
 
 template<>
-size_t compressBigWhoop<double>(double *toCompress, const Index dim[3], double *compressed,
-                                const CompressionSettings &config)
+size_t compressBigWhoop<double>(double *src, const Index dim[3], double *compressed, const CompressionSettings &config)
 {
     bwc_codec *coder = bwc_alloc_coder(dim[0], dim[1], dim[2], 1, config.p_bigWhoop_nPar, bwc_precision_double);
-    bwc_stream *stream = bwc_init_stream(toCompress, compressed, comp);
+    bwc_stream *stream = bwc_init_stream(src, compressed, comp);
 
     bwc_create_compression(coder, stream, const_cast<char *>(config.p_bigWhoop_rate));
     size_t compressed_size = bwc_compress(coder, stream);
@@ -39,25 +37,29 @@ size_t compressBigWhoop<double>(double *toCompress, const Index dim[3], double *
 }
 
 template<>
-void decompressBigWhoop<float>(float *toDecompress, float *decompressed, uint8_t layer)
+bool decompressBigWhoop<float>(float *dest, float *compressed, uint8_t layer)
 {
     bwc_codec *decoder = bwc_alloc_decoder();
-    bwc_stream *stream = bwc_init_stream(toDecompress, decompressed, decomp);
+    bwc_stream *stream = bwc_init_stream(compressed, dest, decomp);
 
     bwc_create_decompression(decoder, stream, layer);
     bwc_decompress(decoder, stream);
     bwc_free_codec(decoder);
+
+    return true;
 }
 
 template<>
-void decompressBigWhoop<double>(double *toDecompress, double *decompressed, uint8_t layer)
+bool decompressBigWhoop<double>(double *dest, double *compressed, uint8_t layer)
 {
     bwc_codec *decoder = bwc_alloc_decoder();
-    bwc_stream *stream = bwc_init_stream(toDecompress, decompressed, decomp);
+    bwc_stream *stream = bwc_init_stream(compressed, dest, decomp);
 
     bwc_create_decompression(decoder, stream, layer);
     bwc_decompress(decoder, stream);
     bwc_free_codec(decoder);
+
+    return true;
 }
 
 } // namespace detail
