@@ -341,7 +341,7 @@ void archive_helper<yas_tag>::ArrayWrapper<T>::load(Archive &ar)
         }
     } else if (compBigWhoop) {
         ar &m_dim[0] & m_dim[1] & m_dim[2];
-        std::vector<T, allocator<T>> compressed;
+        buffer compressed;
         ar &compressed;
         // TODO: find better default value
         uint8_t layer = 0;
@@ -426,8 +426,8 @@ void archive_helper<yas_tag>::ArrayWrapper<T>::save(Archive &ar) const
         assert(!compSz3);
 
         std::vector<T> input(m_begin, m_end);
-        std::vector<T, allocator<T>> compressed;
-        compressed.resize(input.size());
+        buffer compressed;
+        compressed.resize(input.size() * sizeof(T));
         if (size_t outSize = compressBigWhoop<T>(input.data(), m_dim, compressed.data(), cs)) {
             compressed.resize(outSize);
             ar &compressMode;
