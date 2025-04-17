@@ -8,6 +8,7 @@ add_subdirectory(filter)
 add_subdirectory(map)
 add_subdirectory(geometry)
 add_subdirectory(general)
+add_subdirectory(write)
 add_subdirectory(info)
 add_subdirectory(develop)
 
