@@ -894,7 +894,7 @@ set(ALL_CATEGORIES
     CACHE INTERNAL "")
 set(ALL_CATEGORIES_ORDERED
     # the same order as in GUI
-    Read;Simulation;Filter;Map;Geometry;Render;General;Information;UniViz;Develop
+    Read;Simulation;Filter;Map;Geometry;Render;General;Write;Information;UniViz;Develop
     CACHE INTERNAL "")
 set(ALL_MODULES
     ""
