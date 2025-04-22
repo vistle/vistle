@@ -25,8 +25,8 @@ SelectVertices::SelectVertices(const std::string &name, int moduleID, mpi::commu
     }
 
     p_invert = addIntParameter("invert_selection", "invert vertex selection", false, Parameter::Boolean);
-    p_restraint = addStringParameter("selection", "vertices to select", "");
-    p_blockRestraint = addStringParameter("block_selection", "blocks to select", "all");
+    p_restraint = addStringParameter("selection", "vertices to select", "", Parameter::Restraint);
+    p_blockRestraint = addStringParameter("block_selection", "blocks to select", "all", Parameter::Restraint);
 
     addResultCache(m_gridCache);
 }

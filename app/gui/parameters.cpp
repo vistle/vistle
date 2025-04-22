@@ -460,6 +460,13 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
                                QString::number(fp->minimum()), QString::number(fp->maximum()));
         prop->setStatusTip(tip);
     } else if (auto sp = std::dynamic_pointer_cast<vistle::StringParameter>(p)) {
+        QString def = QString::fromStdString(sp->getDefaultValue());
+        if (def.isEmpty()) {
+            def = "empty default";
+        } else {
+            def = QString("default: %1").arg(def);
+        }
+        QString tip = QString("%1 (%2)").arg(QString::fromStdString(p->description()), def);
         if (sp->presentation() == vistle::Parameter::Choice) {
             QStringList choices = m_stringChoiceManager->enumNames(prop);
             QString val = QString::fromStdString(sp->getValue());
@@ -473,9 +480,14 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
                    sp->presentation() == vistle::Parameter::ExistingFilename) {
             m_browserManager->setValue(prop, QString::fromStdString(sp->getValue()));
             m_browserManager->setFilters(prop, QString::fromStdString(sp->minimum()));
+        } else if (sp->presentation() == vistle::Parameter::Restraint) {
+            m_stringManager->setValue(prop, QString::fromStdString(sp->getValue()));
+            tip = QString("%1 (e.g. 0-3,4-5,6 or all or 0,2,4 or 0-4/2) (%2)")
+                      .arg(QString::fromStdString(p->description()), def);
         } else {
             m_stringManager->setValue(prop, QString::fromStdString(sp->getValue()));
         }
+        prop->setStatusTip(tip);
     } else if (auto vp = std::dynamic_pointer_cast<vistle::VectorParameter>(p)) {
         vistle::ParamVector value = vp->getValue();
         if (!prop) {
