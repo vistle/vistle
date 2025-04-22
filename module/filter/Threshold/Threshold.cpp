@@ -150,8 +150,13 @@ private:
 
 Threshold::Threshold(const std::string &name, int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
 {
+#ifdef CELLSELECT
+    p_in[0] = createInputPort("data_in", "input data");
+    p_out[0] = createOutputPort("data_out", "output data");
+#else
     p_in[0] = createInputPort("threshold_in", "scalar data deciding over elements rejection");
     p_out[0] = createOutputPort("threshold_out", "threshold input filtered to remaining elements");
+#endif
     for (unsigned i = 1; i < NUMPORTS; ++i) {
         p_in[i] = createInputPort("data_in" + std::to_string(i), "additional input data");
         p_out[i] = createOutputPort("data_out" + std::to_string(i), "additional output data");
