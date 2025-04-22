@@ -3,8 +3,6 @@
 
 #include "PartitionReader.h"
 
-#include <vistle/util/coRestraint.h>
-
 #include <vistle/core/vec.h>
 #include <vistle/core/unstr.h>
 #include <vistle/core/index.h>

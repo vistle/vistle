@@ -84,7 +84,7 @@ ReadFOAM::ReadFOAM(const std::string &name, int moduleId, mpi::communicator comm
     m_readBoundary = addIntParameter("read_boundary", "load the boundary?", 1, Parameter::Boolean);
     m_boundaryPatchesAsVariants = addIntParameter(
         "patches_as_variants", "create sub-objects with variant attribute for boundary patches", 1, Parameter::Boolean);
-    m_patchSelection = addStringParameter("patches", "select patches", "all");
+    m_patchSelection = addStringParameter("patches", "select patches", "all", Parameter::Restraint);
     for (int i = 0; i < NumBoundaryPorts; ++i) {
         { // 2d Data Ports
             std::stringstream s;
