@@ -8,6 +8,7 @@
 #include <vistle/core/structuredgrid.h>
 #include <vistle/core/lines.h>
 #include <vistle/core/points.h>
+#include <vistle/alg/fields.h>
 
 #include "SplitDimensions.h"
 
@@ -28,29 +29,6 @@ SplitDimensions::SplitDimensions(const std::string &name, int moduleID, mpi::com
 
 SplitDimensions::~SplitDimensions()
 {}
-
-template<class T, int Dim>
-typename Vec<T, Dim>::ptr remapData(typename Vec<T, Dim>::const_ptr in, const SplitDimensions::VerticesMapping &vm)
-{
-    typename Vec<T, Dim>::ptr out(new Vec<T, Dim>(vm.size()));
-
-    const T *data_in[Dim];
-    T *data_out[Dim];
-    for (int d = 0; d < Dim; ++d) {
-        data_in[d] = &in->x(d)[0];
-        data_out[d] = out->x(d).data();
-    }
-
-    for (const auto &v: vm) {
-        Index f = v.first;
-        Index s = v.second;
-        for (int d = 0; d < Dim; ++d) {
-            data_out[d][s] = data_in[d][f];
-        }
-    }
-
-    return out;
-}
 
 bool SplitDimensions::compute(const std::shared_ptr<BlockTask> &task) const
 {
@@ -212,20 +190,7 @@ bool SplitDimensions::compute(const std::shared_ptr<BlockTask> &task) const
             updateMeta(dout);
             task->addObject(p_out[d], dout);
         } else {
-            DataBase::ptr data_obj_out;
-            if (auto data_in = Vec<Scalar, 3>::as(data)) {
-                data_obj_out = remapData<Scalar, 3>(data_in, vm[d]);
-            } else if (auto data_in = Vec<Scalar, 1>::as(data)) {
-                data_obj_out = remapData<Scalar, 1>(data_in, vm[d]);
-            } else if (auto data_in = Vec<Index, 3>::as(data)) {
-                data_obj_out = remapData<Index, 3>(data_in, vm[d]);
-            } else if (auto data_in = Vec<Index, 1>::as(data)) {
-                data_obj_out = remapData<Index, 1>(data_in, vm[d]);
-            } else if (auto data_in = Vec<Byte, 1>::as(data)) {
-                data_obj_out = remapData<Byte, 1>(data_in, vm[d]);
-            } else {
-                std::cerr << "WARNING: No valid 1D or 3D data on input Port" << std::endl;
-            }
+            DataBase::ptr data_obj_out = remapData(data, vm[d]);
 
             if (data_obj_out) {
                 data_obj_out->setGrid(out[d]);

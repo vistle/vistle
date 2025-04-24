@@ -10,6 +10,7 @@
 #include <vistle/util/coRestraint.h>
 #include <vistle/util/enum.h>
 #include <vistle/alg/objalg.h>
+#include <vistle/alg/fields.h>
 #include <vistle/core/geometry.h>
 #include <vistle/core/structuredgridbase.h>
 
@@ -201,52 +202,6 @@ bool Threshold::prepare()
     return true;
 }
 
-template<class T, int Dim>
-typename Vec<T, Dim>::ptr remapData(typename Vec<T, Dim>::const_ptr in, const Threshold::ElementsMapping &em,
-                                    const Threshold::VerticesMapping &vm)
-{
-    if (in->guessMapping() == DataBase::Vertex) {
-        typename Vec<T, Dim>::ptr out(new Vec<T, Dim>(vm.size()));
-
-        const T *data_in[Dim];
-        T *data_out[Dim];
-        for (int d = 0; d < Dim; ++d) {
-            data_in[d] = &in->x(d)[0];
-            data_out[d] = out->x(d).data();
-        }
-
-        for (const auto &v: vm) {
-            Index f = v.first;
-            Index s = v.second;
-            for (int d = 0; d < Dim; ++d) {
-                data_out[d][s] = data_in[d][f];
-            }
-        }
-        return out;
-    } else if (in->guessMapping() == DataBase::Element) {
-        typename Vec<T, Dim>::ptr out(new Vec<T, Dim>(em.size()));
-
-        const T *data_in[Dim];
-        T *data_out[Dim];
-        for (int d = 0; d < Dim; ++d) {
-            data_in[d] = &in->x(d)[0];
-            data_out[d] = out->x(d).data();
-        }
-
-        Index s = 0;
-        for (const auto &e: em) {
-            Index f = e;
-            for (int d = 0; d < Dim; ++d) {
-                data_out[d][s] = data_in[d][f];
-            }
-            ++s;
-        }
-        return out;
-    }
-
-    return nullptr;
-}
-
 bool Threshold::compute(const std::shared_ptr<BlockTask> &task) const
 {
     auto obj = task->expect<Object>(p_in[0]);
@@ -429,20 +384,10 @@ bool Threshold::compute(const std::shared_ptr<BlockTask> &task) const
             task->addObject(p_out[i], dout);
         } else {
             DataBase::ptr data_obj_out;
-            if (auto data_in = Vec<Scalar, 3>::as(data)) {
-                data_obj_out = remapData<Scalar, 3>(data_in, em, vm);
-            } else if (auto data_in = Vec<Scalar, 1>::as(data)) {
-                data_obj_out = remapData<Scalar, 1>(data_in, em, vm);
-            } else if (auto data_in = Vec<Index, 3>::as(data)) {
-                data_obj_out = remapData<Index, 3>(data_in, em, vm);
-            } else if (auto data_in = Vec<Index, 1>::as(data)) {
-                data_obj_out = remapData<Index, 1>(data_in, em, vm);
-            } else if (auto data_in = Vec<Byte, 3>::as(data)) {
-                data_obj_out = remapData<Byte, 3>(data_in, em, vm);
-            } else if (auto data_in = Vec<Byte, 1>::as(data)) {
-                data_obj_out = remapData<Byte, 1>(data_in, em, vm);
+            if (data->guessMapping(grid) == DataBase::Vertex) {
+                data_obj_out = remapData(data, vm);
             } else {
-                std::cerr << "WARNING: No valid 1D or 3D data on input port" << std::endl;
+                data_obj_out = remapData(data, em, true);
             }
 
             if (data_obj_out) {
