@@ -2,9 +2,10 @@
 #define VISTLE_SELECTVERTICES_SELECTVERTICES_H
 
 #include <vistle/module/module.h>
+#include <vistle/module/resultcache.h>
+#include <vistle/core/points.h>
 #include <vistle/util/coRestraint.h>
 #include <memory>
-#include <vistle/module/resultcache.h>
 
 class SelectVertices: public vistle::Module {
 public:

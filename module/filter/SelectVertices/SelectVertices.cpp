@@ -1,3 +1,5 @@
+#include "SelectVertices.h"
+
 #include <sstream>
 #include <iomanip>
 
@@ -9,8 +11,8 @@
 #include <vistle/util/enum.h>
 #include <vistle/alg/objalg.h>
 #include <vistle/core/geometry.h>
+#include <vistle/alg/fields.h>
 
-#include "SelectVertices.h"
 
 using namespace vistle;
 
@@ -45,36 +47,6 @@ bool SelectVertices::prepare()
     m_blockRestraint.add(p_blockRestraint->getValue());
 
     return true;
-}
-
-template<class T, int Dim>
-typename Vec<T, Dim>::ptr remapData(typename Vec<T, Dim>::const_ptr in, const SelectVertices::VerticesMapping &vm)
-{
-    if (in->guessMapping() == DataBase::Vertex) {
-        typename Vec<T, Dim>::ptr out(new Vec<T, Dim>(vm.size()));
-
-        const T *data_in[Dim];
-        T *data_out[Dim];
-        for (int d = 0; d < Dim; ++d) {
-            data_in[d] = &in->x(d)[0];
-            data_out[d] = out->x(d).data();
-        }
-
-        for (const auto &v: vm) {
-            Index f = v.first;
-            Index s = v.second;
-            assert(f < in->getSize());
-            assert(s < out->getSize());
-            for (int d = 0; d < Dim; ++d) {
-                data_out[d][s] = data_in[d][f];
-            }
-        }
-
-        out->copyAttributes(in);
-        return out;
-    }
-
-    return nullptr;
 }
 
 bool SelectVertices::compute(const std::shared_ptr<BlockTask> &task) const
@@ -161,22 +133,7 @@ bool SelectVertices::compute(const std::shared_ptr<BlockTask> &task) const
             continue;
 
         auto &data = d_in[i];
-        DataBase::ptr data_obj_out;
-        if (auto data_in = Vec<Scalar, 3>::as(data)) {
-            data_obj_out = remapData<Scalar, 3>(data_in, vm);
-        } else if (auto data_in = Vec<Scalar, 1>::as(data)) {
-            data_obj_out = remapData<Scalar, 1>(data_in, vm);
-        } else if (auto data_in = Vec<Index, 3>::as(data)) {
-            data_obj_out = remapData<Index, 3>(data_in, vm);
-        } else if (auto data_in = Vec<Index, 1>::as(data)) {
-            data_obj_out = remapData<Index, 1>(data_in, vm);
-        } else if (auto data_in = Vec<Byte, 3>::as(data)) {
-            data_obj_out = remapData<Byte, 3>(data_in, vm);
-        } else if (auto data_in = Vec<Byte, 1>::as(data)) {
-            data_obj_out = remapData<Byte, 1>(data_in, vm);
-        } else {
-            std::cerr << "WARNING: No valid 1D or 3D data on input port" << std::endl;
-        }
+        DataBase::ptr data_obj_out = remapData(data, vm);
 
         if (data_obj_out) {
             assert(points->getSize() == data_obj_out->getSize());
