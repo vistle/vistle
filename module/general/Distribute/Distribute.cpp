@@ -38,12 +38,9 @@ bool Distribute::compute()
                 auto nobj = obj->clone();
                 xmit = nobj;
                 updateMeta(nobj);
-                broadcastObject(xmit, r);
-                addObject("data_out", nobj);
-            } else {
-                broadcastObject(xmit, r);
-                passThroughObject("data_out", xmit);
             }
+            broadcastObject(xmit, r);
+            addObject("data_out", xmit);
         }
     }
 
