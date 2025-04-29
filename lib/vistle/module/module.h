@@ -95,8 +95,8 @@ public:
     template<class Type>
     typename Type::const_ptr expect(const std::string &port);
 
-    void addObject(Port *port, Object::ptr obj);
-    void addObject(const std::string &port, Object::ptr obj);
+    void addObject(Port *port, Object::const_ptr obj);
+    void addObject(const std::string &port, Object::const_ptr obj);
 
 protected:
     void addDependency(std::shared_ptr<BlockTask> dep);
@@ -111,7 +111,7 @@ protected:
     std::set<Port *> m_ports;
     std::map<std::string, Port *> m_portsByString;
     std::set<std::shared_ptr<BlockTask>> m_dependencies;
-    std::map<Port *, std::deque<Object::ptr>> m_objects;
+    std::map<Port *, std::deque<Object::const_ptr>> m_objects;
 
     std::mutex m_mutex;
     std::shared_future<bool> m_future;
@@ -171,8 +171,8 @@ public:
     bool broadcastObjectViaShm(const mpi::communicator &comm, vistle::Object::const_ptr &object,
                                const std::string &objName, int root) const;
 
-    bool addObject(Port *port, vistle::Object::ptr object);
-    bool addObject(const std::string &portName, vistle::Object::ptr object);
+    bool addObject(Port *port, vistle::Object::const_ptr object);
+    bool addObject(const std::string &portName, vistle::Object::const_ptr object);
 
     ObjectList getObjects(const std::string &portName);
     bool hasObject(const Port *port) const;
@@ -273,9 +273,6 @@ public:
     void updateMeta(vistle::Object::ptr object) const;
 
 protected:
-    bool passThroughObject(Port *port, vistle::Object::const_ptr object);
-    bool passThroughObject(const std::string &portName, vistle::Object::const_ptr object);
-
     virtual void setInputSpecies(const std::string &species); //< _species attribute on input has changed
 
     void setObjectReceivePolicy(int pol);

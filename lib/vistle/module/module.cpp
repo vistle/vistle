@@ -897,7 +897,7 @@ void Module::setItemInfo(const std::string &text, const std::string &port, messa
     }
 }
 
-bool Module::addObject(const std::string &portName, vistle::Object::ptr object)
+bool Module::addObject(const std::string &portName, vistle::Object::const_ptr object)
 {
     auto *p = findOutputPort(portName);
     if (!p) {
@@ -907,26 +907,10 @@ bool Module::addObject(const std::string &portName, vistle::Object::ptr object)
     return addObject(p, object);
 }
 
-bool Module::addObject(Port *port, vistle::Object::ptr object)
+bool Module::addObject(Port *port, vistle::Object::const_ptr object)
 {
     assert(!object || object->getCreator() == id());
 
-    vistle::Object::const_ptr cobj = object;
-    return passThroughObject(port, cobj);
-}
-
-bool Module::passThroughObject(const std::string &portName, vistle::Object::const_ptr object)
-{
-    auto *p = findOutputPort(portName);
-    if (!p) {
-        CERR << "Module::passThroughObject: output port " << portName << " not found" << std::endl;
-    }
-    assert(p);
-    return passThroughObject(p, object);
-}
-
-bool Module::passThroughObject(Port *port, vistle::Object::const_ptr object)
-{
     if (!object)
         return false;
 
@@ -2832,13 +2816,13 @@ void BlockTask::addDependency(std::shared_ptr<BlockTask> dep)
     m_dependencies.insert(dep);
 }
 
-void BlockTask::addObject(Port *port, Object::ptr obj)
+void BlockTask::addObject(Port *port, Object::const_ptr obj)
 {
     assert(m_ports.find(port) != m_ports.end());
     m_objects[port].emplace_back(obj);
 }
 
-void BlockTask::addObject(const std::string &port, Object::ptr obj)
+void BlockTask::addObject(const std::string &port, Object::const_ptr obj)
 {
     auto it = m_portsByString.find(port);
     assert(it != m_portsByString.end());
