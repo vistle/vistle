@@ -48,6 +48,7 @@ struct V_COREEXPORT ArrayLoader {
             if (arr) {
                 std::cerr << "ArrayLoader: already have data array with name " << m_name << std::endl;
                 m_unreffer.reset(new Unreffer<T>(arr));
+                m_ok = true;
                 return;
             }
             auto &ar = const_cast<vistle::iarchive &>(m_ar);
