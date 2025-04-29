@@ -3042,10 +3042,8 @@ void Hub::cacheParamConnections(int oldModuleId, int newModuleId)
 {
     auto paramNames = m_stateTracker.getParameters(oldModuleId);
     for (const auto &pn: paramNames) {
-        if (pn != "_position" || pn != "_layer") {
-            auto cm = message::Connect(oldModuleId, pn, newModuleId, pn);
-            m_sendAfterSpawn[newModuleId].emplace_back(cm);
-        }
+        auto cm = message::Connect(oldModuleId, pn, newModuleId, pn);
+        m_sendAfterSpawn[newModuleId].emplace_back(cm);
     }
 }
 
