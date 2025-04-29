@@ -162,6 +162,7 @@ private:
     bool m_proxyOnly = false;
     vistle::message::AddHub addHubForSelf() const;
 
+    double m_gridSpacingX, m_gridSpacingY;
     static const int DefaultPort = 31093;
     unsigned short m_basePort = DefaultPort;
     unsigned short m_port = 0, m_dataPort = 0, m_masterPort = m_basePort;

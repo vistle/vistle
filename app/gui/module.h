@@ -31,11 +31,12 @@ class Module: public QObject, public QGraphicsRectItem {
 
     typedef QGraphicsRectItem Base;
 
-    static const double portDistance;
-    static const double borderWidth;
-    static bool s_snapToGrid;
+    static double portDistance;
+    static double borderWidth;
 
 public:
+    static void configure();
+
     enum Status { SPAWNING, INITIALIZED, KILLED, BUSY, EXECUTING, ERROR_STATUS, CRASHED };
 
     struct Message {

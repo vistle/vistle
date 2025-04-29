@@ -31,13 +31,20 @@
 
 #include <vistle/config/file.h>
 #include <vistle/config/array.h>
+#include <vistle/config/value.h>
 
 namespace gui {
 
-const double Module::portDistance = 3.;
 boost::uuids::nil_generator nil_uuid;
-bool Module::s_snapToGrid = true;
-const double Module::borderWidth = 4.;
+double Module::portDistance = 3.;
+double Module::borderWidth = 4.;
+
+void Module::configure()
+{
+    vistle::config::File config("gui");
+    portDistance = *config.value<double>("module", "port_spacing", 3.);
+    borderWidth = *config.value<double>("module", "border_width", 4.);
+}
 
 /*!
  * \brief Module::Module

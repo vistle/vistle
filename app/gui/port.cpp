@@ -17,13 +17,22 @@
 #include <QPainter>
 #include <QGraphicsSceneMouseEvent>
 
+#include <vistle/config/file.h>
+#include <vistle/config/value.h>
+
 namespace gui {
 
-const double Port::portSize = 14.;
+double Port::portSize = 14.;
 
 static QColor InColor(200, 30, 30);
 static QColor OutColor(200, 30, 30);
 static QColor ParamColor(30, 30, 200);
+
+void Port::configure()
+{
+    vistle::config::File config("gui");
+    portSize = *config.value<double>("module", "port_size", 14.);
+}
 
 Port::Port(const vistle::Port *port, Module *parent)
 : Base(parent)
