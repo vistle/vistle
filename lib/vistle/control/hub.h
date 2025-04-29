@@ -146,8 +146,9 @@ private:
     bool cacheModuleValues(int oldModuleId, int newModuleId);
     bool editDelayedConnects(int oldModuleId, int newModuleId);
     void applyAllDelayedParameters(int oldModuleId, int newModuleId);
-    bool copyModuleParams(int oldModuleId, int newModuleId);
-    void cacheParameters(int oldModuleId, int newModuleId);
+    bool copyModuleParams(int oldModuleId, int newModuleId, bool clone = false);
+    void cacheParameters(int oldModuleId, int newModuleId, bool clone = false);
+    void restoreModulePosition(int oldModuleId, int newModuleId, bool clone = false);
     bool linkModuleParams(int oldModuleId, int newModuleId);
 
     bool handlePlainSpawn(message::Spawn &notify, bool doSpawn, bool error);
