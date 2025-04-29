@@ -48,6 +48,7 @@ UiController::UiController(int argc, char *argv[], QObject *parent): QObject(par
     m_config = std::make_unique<vistle::config::Access>(hostname, hostname);
     vistle::Directory dir(argc, argv);
     m_config->setPrefix(dir.prefix());
+    configure();
 
     std::string host = "localhost";
     unsigned short port = *m_config->value<int64_t>("system", "net", "controlport", 31093);
@@ -284,6 +285,12 @@ UiController::UiController(int argc, char *argv[], QObject *parent): QObject(par
     m_mainWindow->show();
 
     m_initialized = true;
+}
+
+void UiController::configure()
+{
+    Port::configure();
+    Module::configure();
 }
 
 bool UiController::init()

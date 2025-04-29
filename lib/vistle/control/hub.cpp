@@ -493,6 +493,11 @@ bool Hub::init(int argc, char *argv[])
 
     m_messageBacklog = *m_config->value<int64_t>("system", "hub", "messagebacklog", m_messageBacklog);
 
+    double portDistance = *m_config->value<double>("gui", "module", "port_spacing", 0.);
+    double portSize = *m_config->value<double>("gui", "module", "port_size", 0.);
+    m_gridSpacingX = portDistance + portSize;
+    m_gridSpacingY = m_gridSpacingX;
+
     namespace po = boost::program_options;
     auto desc = options();
     desc.add_options()("quiet,q", "run quietly")("verbose,v", new CountValue(&m_verbose),
@@ -3026,8 +3031,8 @@ void Hub::restoreModulePosition(int oldModuleId, int newModuleId, bool clone)
             if (auto vp = std::dynamic_pointer_cast<VectorParameter>(p)) {
                 if (clone) {
                     auto pos = vp->getValue();
-                    pos[0] -= 17;
-                    pos[1] += 17;
+                    pos[0] -= m_gridSpacingX;
+                    pos[1] += m_gridSpacingY;
                     pm = message::SetParameter(newModuleId, pn, pos);
                 }
             }
