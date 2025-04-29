@@ -119,7 +119,9 @@ bool Cache::compute()
 {
     if (m_fromDisk) {
         for (int i = 0; i < NumPorts; ++i) {
-            accept<Object>(m_inPort[i]);
+            if (!isConnected(*m_inPort[i]))
+                continue;
+            expect<Object>(m_inPort[i]);
         }
         return true;
     }
@@ -250,11 +252,8 @@ bool Cache::prepare()
     std::map<std::string, buffer> objects, arrays;
     std::map<std::string, message::CompressionMode> compression;
     std::map<std::string, size_t> size;
-    std::map<std::string, std::string> objectTranslations, arrayTranslations;
     auto fetcher = std::make_shared<DeepArchiveFetcher>(objects, arrays, compression, size);
     fetcher->setRenameObjects(true);
-    fetcher->setObjectTranslations(objectTranslations);
-    fetcher->setArrayTranslations(arrayTranslations);
     bool ok = true;
     int numObjects = 0;
     int numTime = 0;
@@ -303,17 +302,23 @@ bool Cache::prepare()
         const auto &buf = comp == message::CompressionNone ? objbuf : raw;
         vecistreambuf<buffer> membuf(buf);
         vistle::iarchive memar(membuf);
-        memar.setFetcher(fetcher);
-        //std::cerr << "output to port " << port << ", trying to load " << name0 << std::endl;
-        Object::ptr obj(Object::loadObject(memar));
-        updateMeta(obj);
-        renumberObject(obj);
-        for (auto &o: obj->referencedObjects()) {
-            renumberObject(std::const_pointer_cast<Object>(o));
+        try {
+            memar.setFetcher(fetcher);
+            //std::cerr << "output to port " << port << ", trying to load " << name0 << std::endl;
+            Object::ptr obj(Object::loadObject(memar));
+            updateMeta(obj);
+            renumberObject(obj);
+            for (auto &o: obj->referencedObjects()) {
+                renumberObject(std::const_pointer_cast<Object>(o));
+            }
+            //std::cerr << "restored object on port " << port << ": " << *obj << std::endl;
+            addObject(m_outPort[port], obj);
+            fetcher->releaseArrays();
+        } catch (const std::exception &ex) {
+            std::cerr << "failed to load object " << name0 << ": " << ex.what() << std::endl;
+            throw ex;
+            return;
         }
-        //std::cerr << "restored object on port " << port << ": " << *obj << std::endl;
-        passThroughObject(m_outPort[port], obj);
-        fetcher->releaseArrays();
     };
 
     std::string objectToRestore;
@@ -437,8 +442,6 @@ bool Cache::prepare()
     }
 
     sendInfo("restored %d objects", numObjects);
-    objectTranslations = fetcher->objectTranslations();
-    arrayTranslations = fetcher->arrayTranslations();
 
     close(m_fd);
     m_fd = -1;
