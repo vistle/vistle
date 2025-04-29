@@ -2316,7 +2316,7 @@ Module::~Module()
         CERR << "Emergency quit" << std::endl;
     }
 
-    vistle::message::ModuleExit m;
+    vistle::message::ModuleExit m(!m_readyForQuit);
     sendMessage(m);
 
     delete sendMessageQueue;
