@@ -2755,7 +2755,7 @@ bool Hub::handlePriv(const message::Spawn &spawnRecv)
                 return true;
             } else if (clone) {
                 if (doSpawn) {
-                    if (!copyModuleParams(spawn.getReference(), notify.spawnId())) {
+                    if (!copyModuleParams(spawn.getReference(), notify.spawnId(), true)) {
                         sendError("cannot clone module with id " + std::to_string(spawn.getReference()));
                         return handlePlainSpawn(notify, doSpawn, true);
                     }
@@ -2997,7 +2997,7 @@ bool Hub::isCachable(int oldModuleId, int newModuleId)
     return true;
 }
 
-void Hub::cacheParameters(int oldModuleId, int newModuleId)
+void Hub::cacheParameters(int oldModuleId, int newModuleId, bool clone)
 {
     auto paramNames = m_stateTracker.getParameters(oldModuleId);
     for (const auto &pn: paramNames) {
@@ -3010,14 +3010,28 @@ void Hub::cacheParameters(int oldModuleId, int newModuleId)
         }
     }
 
+    restoreModulePosition(oldModuleId, newModuleId, clone);
+}
+
+void Hub::restoreModulePosition(int oldModuleId, int newModuleId, bool clone)
+{
     std::string suffix = "[" + std::to_string(oldModuleId) + "]";
     std::string nsuffix = "[" + std::to_string(newModuleId) + "]";
     for (auto pnbase: {"position", "layer"}) {
         auto po = std::string(pnbase) + suffix;
         auto pn = std::string(pnbase) + nsuffix;
         auto p = session.findParameter(po);
-        if (p && !p->isDefault()) {
+        if (p && (!p->isDefault() || (clone && pnbase == std::string("position")))) {
             auto pm = message::SetParameter(newModuleId, pn, p);
+            if (auto vp = std::dynamic_pointer_cast<VectorParameter>(p)) {
+                if (clone) {
+                    auto pos = vp->getValue();
+                    pos[0] -= 17;
+                    pos[1] += 17;
+                    pm = message::SetParameter(newModuleId, pn, pos);
+                }
+            }
+
             pm.setDelayed();
             pm.setDestId(session.id());
             m_sendAfterSpawn[newModuleId].emplace_back(pm);
@@ -3092,18 +3106,18 @@ bool Hub::cacheModuleValues(int oldModuleId, int newModuleId)
     return true;
 }
 
-bool Hub::copyModuleParams(int oldModuleId, int newModuleId)
+bool Hub::copyModuleParams(int oldModuleId, int newModuleId, bool clone)
 {
     if (!Id::isModule(oldModuleId))
         return false;
-    cacheParameters(oldModuleId, newModuleId);
+    cacheParameters(oldModuleId, newModuleId, clone);
     applyAllDelayedParameters(oldModuleId, newModuleId);
     return true;
 }
 
 bool Hub::linkModuleParams(int oldModuleId, int newModuleId)
 {
-    if (!copyModuleParams(oldModuleId, newModuleId))
+    if (!copyModuleParams(oldModuleId, newModuleId, true))
         return false;
     cacheParamConnections(oldModuleId, newModuleId);
     return true;
