@@ -2378,6 +2378,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                     modId = 0;
 #endif
                     long mpipid = 0;
+#ifdef VISTLE_USE_MPI
                     bool found = false;
                     std::unique_lock<std::mutex> guard(m_processMutex);
                     for (auto &p: m_processMap) {
@@ -2397,6 +2398,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                         sendError(str.str());
                         break;
                     }
+#endif
                     nargs.push_back(fmt::arg("mpipid", mpipid));
                 }
                 if (auto home = getenv("HOME")) {
