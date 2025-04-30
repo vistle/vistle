@@ -185,19 +185,18 @@ void shm_obj_ref<T>::load(Archive &ar)
     ar &V_NAME(ar, "obj_name", shmname);
     std::string arname = shmname;
 
-    std::string name = ar.translateObjectName(arname);
-    //std::cerr << "shm_obj_ref: loading " << arname << ", translates to " << name << std::endl;
-    m_name = name;
+    m_name = ar.translateObjectName(arname);
+    //std::cerr << "shm_obj_ref: loading " << arname << ", translates to " << m_name << std::endl;
 
     unref();
     m_d = nullptr;
 
-    if (arname.empty() && m_name.empty())
+    if (arname.empty() && m_name.empty()) {
+        // null reference
         return;
+    }
 
-    auto obj = ar.currentObject();
-    auto handler = ar.objectCompletionHandler();
-    auto ref0 = Shm::the().getObjectFromName(name);
+    auto ref0 = Shm::the().getObjectFromName(m_name);
     auto ref1 = T::as(ref0);
     assert(ref0 || !ref1);
     if (ref1) {
@@ -205,11 +204,13 @@ void shm_obj_ref<T>::load(Archive &ar)
         return;
     }
 
+    auto obj = ar.currentObject();
     if (obj)
         obj->unresolvedReference();
+    auto handler = ar.objectCompletionHandler();
     auto fetcher = ar.fetcher();
-    ref0 = ar.getObject(arname, [this, fetcher, arname, name, obj, handler](Object::const_ptr newobj) -> void {
-        //std::cerr << "object completion handler: " << name << std::endl;
+    ref0 = ar.getObject(arname, [this, fetcher, arname, obj, handler](Object::const_ptr newobj) -> void {
+        //std::cerr << "object completion handler: " << m_name << std::endl;
         assert(newobj);
         auto ref2 = T::as(newobj);
         assert(ref2);
@@ -222,11 +223,8 @@ void shm_obj_ref<T>::load(Archive &ar)
         }
     });
     ref1 = T::as(ref0);
-    assert(ref0 || !ref1);
     if (ref1) {
-        m_name = ref1->getName();
-        ar.registerObjectNameTranslation(arname, m_name);
-        // object already present: don't mess with count of outstanding references
+        // loaded, and types do match
         *this = ref1;
     }
 }
