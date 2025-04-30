@@ -7,6 +7,7 @@
 #include <string>
 
 #include <mutex>
+#include <atomic>
 #include <condition_variable>
 
 #include <vistle/util/buffer.h>
@@ -113,6 +114,8 @@ public:
     StateTracker(int id, const std::string &name,
                  std::shared_ptr<PortTracker> portTracker = std::shared_ptr<PortTracker>());
     ~StateTracker();
+
+    void cancel(); // try to cancel any on-going operations
 
     typedef std::recursive_mutex mutex;
     typedef std::unique_lock<mutex> mutex_locker;
@@ -354,6 +357,7 @@ private:
 
     std::map<message::uuid_t, std::string> m_barriers;
     bool m_quitting = false;
+    std::atomic<bool> m_cancelling{false};
 
     bool m_verbose = false;
 
