@@ -84,13 +84,6 @@ endif()
 
 option(VISTLE_INTERNAL_BOOST_MPI "Use internal copy of Boost.MPI" ON)
 
-# allow for optimizations in Boost.MPI
-if(VISTLE_INTERNAL_BOOST_MPI)
-    if(NOT WIN32)
-        add_definitions(-DBOOST_MPI_HOMOGENEOUS)
-    endif()
-endif()
-
 enable_testing()
 
 if(CMAKE_CONFIGURATION_TYPES)
@@ -565,7 +558,23 @@ endif()
 if(NOT VISTLE_GUI_ONLY)
     if(VISTLE_USE_MPI)
         set(MPI_SKIP_MPICXX TRUE)
-        vistle_find_package(MPI REQUIRED COMPONENTS C CXX)
+        # at least MPI 3.0 is required for MPI_CXX_BOOL
+        vistle_find_package(MPI 3.0 COMPONENTS C CXX)
+        if(NOT MPI_FOUND)
+            message(WARNING "No suitable MPI implementation found, building without MPI support - also make sure that OpenCOVER is built without MPI")
+            set(VISTLE_USE_MPI FALSE)
+        endif()
+    endif()
+
+    if(NOT VISTLE_USE_MPI)
+        if(NOT VISTLE_INTERNAL_BOOST_MPI)
+            message(WARNING "Not using MPI, thus building internal dummy Boost.MPI")
+            set(VISTLE_INTERNAL_BOOST_MPI TRUE)
+        endif()
+        if(NOT VISTLE_MULTI_PROCESS)
+            message(WARNING "Using dummy MPI implementation that is not thread-safe, thus resorting to multi-process configuration")
+            set(VISTLE_MULTI_PROCESS TRUE)
+        endif()
     endif()
 
     # for CMake config file version of boost this needs to be changed to version numbers such as 1.60.99 instead of 106099
@@ -587,6 +596,24 @@ if(NOT VISTLE_GUI_ONLY)
     else()
         set(BOOST_MPI Boost::mpi)
     endif()
+
+    # allow for optimizations in Boost.MPI
+    if(VISTLE_INTERNAL_BOOST_MPI AND NOT WIN32)
+        add_definitions(-DBOOST_MPI_HOMOGENEOUS)
+    endif()
+
+    if(NOT VISTLE_MULTI_PROCESS)
+        add_definitions(-DMODULE_THREAD)
+
+        if(NOT VISTLE_MODULES_SHARED)
+            add_definitions(-DMODULE_STATIC)
+        endif()
+
+        if(NOT VISTLE_USE_SHARED_MEMORY)
+            add_definitions(-DNO_SHMEM)
+        endif()
+    endif()
+
 endif()
 
 add_definitions(-DBOOST_LIB_DIAGNOSTIC=1)
@@ -788,6 +815,8 @@ macro(vistle_target_link_libraries targetname)
     endif()
 endmacro()
 
+include(cmake/Documentation.cmake)
+
 macro(vistle_install_docs)
     string(REPLACE ${PROJECT_BINARY_DIR} "" directory ${CMAKE_CURRENT_BINARY_DIR})
     install(
@@ -830,18 +859,6 @@ option(VISTLE_MULTI_PROCESS "use multiple processes communicating via shared mem
 option(VISTLE_MODULES_SHARED "use shared libraries for modules" ON)
 option(VISTLE_USE_SHARED_MEMORY "use shared memory even within a process" OFF)
 
-if(NOT VISTLE_MULTI_PROCESS)
-    add_definitions(-DMODULE_THREAD)
-
-    if(NOT VISTLE_MODULES_SHARED)
-        add_definitions(-DMODULE_STATIC)
-    endif()
-
-    if(NOT VISTLE_USE_SHARED_MEMORY)
-        add_definitions(-DNO_SHMEM)
-    endif()
-endif()
-
 macro(USE_OPENMP)
     if(VISTLE_USE_OPENMP AND OPENMP_FOUND)
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
@@ -872,6 +889,13 @@ macro(vistle_add_executable targetname)
         BUNDLE DESTINATION bin)
 endmacro(vistle_add_executable)
 
+set(ALL_CATEGORIES
+    ""
+    CACHE INTERNAL "")
+set(ALL_CATEGORIES_ORDERED
+    # the same order as in GUI
+    Read;Simulation;Filter;Map;Geometry;Render;General;Write;Information;UniViz;Develop
+    CACHE INTERNAL "")
 set(ALL_MODULES
     ""
     CACHE INTERNAL "")
@@ -879,23 +903,65 @@ set(CATEGORY_DESCRIPTION_FILE ${PROJECT_BINARY_DIR}/share/vistle/categorydescrip
 set(MODULE_DESCRIPTION_FILE ${PROJECT_BINARY_DIR}/share/vistle/moduledescriptions.txt)
 
 if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
-    file(REMOVE ${CATEGORY_DESCRIPTION_FILE})
     file(REMOVE ${MODULE_DESCRIPTION_FILE})
     install(FILES ${CATEGORY_DESCRIPTION_FILE} ${MODULE_DESCRIPTION_FILE} DESTINATION ${CMAKE_INSTALL_PREFIX}/share/vistle/)
 
     macro(vistle_category name description)
         set(VISTLE_MODULE_CATEGORY ${name})
-        file(APPEND ${CATEGORY_DESCRIPTION_FILE} "${name} ${description}\n")
+
+        set(VISTLE_CATEGORY_${name}_DESCRIPTION
+            ${description}
+            CACHE INTERNAL "")
+        cmake_path(GET CMAKE_CURRENT_LIST_DIR FILENAME dir)
+        string(TOLOWER ${dir} lower)
+        string(TOLOWER ${name} lower)
+        set(VISTLE_CATEGORY_${name}_FILE
+            ${CMAKE_CURRENT_LIST_DIR}/${lower}.md
+            CACHE INTERNAL "")
+
+        set(listname VISTLE_CATEGORY_${VISTLE_MODULE_CATEGORY}_MODULES)
+        list(FIND ALL_CATEGORIES ${name} idx)
+        if(idx EQUAL -1)
+            # remove modules from previous CMake runs from category
+            set(${listname}
+                ""
+                CACHE INTERNAL "")
+        endif()
+
+        list(FIND ALL_CATEGORIES_ORDERED ${name} idx)
+        if(idx EQUAL -1)
+            set(ALL_CATEGORIES_ORDERED
+                ${ALL_CATEGORIES_ORDERED} ${name}
+                CACHE INTERNAL "")
+        endif()
+        set(ALL_CATEGORIES
+            ${ALL_CATEGORIES} ${name}
+            CACHE INTERNAL "")
     endmacro(vistle_category)
+
+    macro(write_category_descriptions DESCS)
+        file(REMOVE ${DESCS})
+        foreach(name IN LISTS ALL_CATEGORIES_ORDERED)
+            set(description ${VISTLE_CATEGORY_${name}_DESCRIPTION})
+            file(APPEND ${DESCS} "${name} ${description}\n")
+        endforeach()
+    endmacro()
 
     macro(add_module2 targetname executable description)
         if(NOT VISTLE_MODULE_CATEGORY)
             set(VISTLE_MODULE_CATEGORY "Unspecified")
         endif()
-
+        set(VISTLE_MODULE_${targetname}_CATEGORY
+            "${VISTLE_MODULE_CATEGORY}"
+            CACHE INTERNAL "")
+        set(listname VISTLE_CATEGORY_${VISTLE_MODULE_CATEGORY}_MODULES)
+        list(APPEND VISTLE_CATEGORY_${VISTLE_MODULE_CATEGORY}_MODULES ${targetname})
+        set(${listname}
+            ${${listname}}
+            CACHE INTERNAL "")
         file(APPEND ${MODULE_DESCRIPTION_FILE} "${targetname} ${VISTLE_MODULE_CATEGORY} ${description}\n")
-        set(ALL_MODULES
-            ${ALL_MODULES} ${targetname}
+        set(VISTLE_MODULE_${targetname}_DESCRIPTION
+            ${description}
             CACHE INTERNAL "")
 
         if(${executable})
@@ -935,6 +1001,11 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
         else()
             add_module2(${targetname} FALSE ${description} ${ARGN})
         endif()
+
+        set(ALL_MODULES
+            ${ALL_MODULES} ${targetname}
+            CACHE INTERNAL "")
+        add_module_doc_target(${targetname} ${VISTLE_MODULE_CATEGORY})
     endmacro(add_module)
 
     macro(add_vtkm_module targetname description)
@@ -1157,6 +1228,9 @@ add_subdirectory(module)
 add_subdirectory(app) # has to come after module subdirectory for static module registration
 add_subdirectory(test)
 add_subdirectory(bin)
+
+write_category_descriptions(${CATEGORY_DESCRIPTION_FILE})
+configure_documentation()
 
 include(FeatureSummary)
 feature_summary(WHAT ALL)

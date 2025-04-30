@@ -1,4 +1,4 @@
-vistle_category("Read" "read data from files")
+vistle_category("Read" "input data from files")
 
 #add_subdirectory(ReadHDF5)
 #add_subdirectory(ReadVistle)

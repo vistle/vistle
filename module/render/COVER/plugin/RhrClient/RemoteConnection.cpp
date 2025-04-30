@@ -141,8 +141,12 @@ void RemoteConnection::init()
 #endif
 
     if (coVRMSController::instance()->isCluster() && useMpi) {
+#ifdef VISTLE_USE_MPI
         m_comm.reset(new boost::mpi::communicator(coVRMSController::instance()->getAppCommunicator(),
                                                   boost::mpi::comm_duplicate));
+#else
+        m_comm.reset(new boost::mpi::communicator(boost::mpi::communicator(), boost::mpi::comm_duplicate));
+#endif
     }
     if (m_comm) {
         if (m_handleTilesAsync) {

@@ -1931,7 +1931,7 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam)
                 mod->send(setParam);
             }
         } else {
-            return Communicator::the().broadcastAndHandleMessage(setParam);
+            return sendHub(setParam, MessagePayload(), dest);
         }
     } else if (message::Id::isModule(sender) &&
                (sender == setParam.getModule() || setParam.getModule() == message::Id::Config)) {

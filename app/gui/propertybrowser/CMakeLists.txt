@@ -12,6 +12,7 @@ set(SOURCES
     qlongspinbox.cpp
     qtlongpropertymanager.cpp
     qtlongeditorfactory.cpp
+    vistlebuttonpropertybrowser.cpp
     vistledoubleeditorfactory.cpp
     vistlelineeditfactory.cpp
     vistlebrowserfactory.cpp
@@ -33,6 +34,7 @@ set(HEADERS
     qlongspinbox.h
     qtlongpropertymanager.h
     qtlongeditorfactory.h
+    vistlebuttonpropertybrowser.h
     vistledoubleeditorfactory.h
     vistlelineeditfactory.h
     vistlebrowserfactory.h

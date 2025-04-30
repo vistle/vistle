@@ -21,8 +21,10 @@
 
 #include <vector>
 #include <string>
+#include <cstdlib>
 
 #include "export.h"
+
 #include "ssize_t.h"
 
 namespace vistle {
@@ -30,7 +32,8 @@ namespace vistle {
 class V_UTILEXPORT coRestraint {
 private:
     bool all;
-    mutable std::vector<ssize_t> values, min, max;
+    int globalStep = 1;
+    mutable std::vector<ssize_t> values, min, max, step;
     mutable bool changed, stringCurrent;
     mutable std::string restraintString;
 
@@ -38,11 +41,12 @@ public:
     coRestraint();
     ~coRestraint();
 
-    void add(ssize_t mi, ssize_t ma);
+    void add(ssize_t mi, ssize_t ma, ssize_t step = 1);
     void add(ssize_t val);
     void add(const std::string &selection);
+    void cut();
     bool get(ssize_t val, ssize_t &group) const;
-    size_t getNumGroups() const { return min.size(); };
+    size_t getNumGroups() const;
     void clear();
     const std::vector<ssize_t> &getValues() const;
     ssize_t lower() const;

@@ -37,7 +37,7 @@ Scalar edgeLength<UnstructuredGrid::POLYLINE>(Index numVerts, const Index *cl, c
     if (numVerts < 1)
         return 0;
     Scalar len = 0;
-    for (int i = 0; i < numVerts - 1; ++i) {
+    for (Index i = 0; i < numVerts - 1; ++i) {
         len += edgeLength<UnstructuredGrid::BAR>(2, cl + i, XYZArray);
     }
     return len;

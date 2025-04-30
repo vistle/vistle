@@ -212,16 +212,19 @@ const std::function<void()> &yas_iarchive::objectCompletionHandler() const
 obj_const_ptr yas_iarchive::getObject(const std::string &arname, const ObjectCompletionHandler &completeCallback) const
 {
     std::string name = translateObjectName(arname);
-    if (name.empty())
-        name = arname;
-    //std::cerr << "yas_iarchive::getObject(arname=" << arname << ", name=" << name << ")" << std::endl;
-    auto obj = Shm::the().getObjectFromName(name);
-    if (!obj) {
-        assert(m_fetcher);
-        m_fetcher->requestObject(arname, completeCallback);
-        obj = Shm::the().getObjectFromName(name);
+    if (!name.empty()) {
+        auto obj = Shm::the().getObjectFromName(name);
+        if (obj) {
+            return obj;
+        }
     }
-    return obj;
+    assert(m_fetcher);
+    m_fetcher->requestObject(arname, completeCallback);
+    name = translateObjectName(arname);
+    if (!name.empty()) {
+        return Shm::the().getObjectFromName(name);
+    }
+    return obj_const_ptr();
 }
 #endif
 

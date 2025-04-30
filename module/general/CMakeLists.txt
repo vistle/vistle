@@ -1,4 +1,4 @@
-vistle_category("General" "process data at any stage in the pipeline")
+vistle_category("General" "manipulate data at any pipeline stage")
 
 add_subdirectory(AddAttribute)
 add_subdirectory(Assemble)

@@ -58,7 +58,7 @@ ReadDyna3D::ReadDyna3D(const std::string &name, int moduleID, mpi::communicator 
     V_ENUM_SET_CHOICES(p_elementDataType, ElementDataType);
     p_component = addIntParameter("component", "stress tensor component", Von_Mises, Parameter::Choice);
     V_ENUM_SET_CHOICES(p_component, Component);
-    p_Selection = addStringParameter("Selection", "Number selection for parts", "all");
+    p_Selection = addStringParameter("Selection", "Number selection for parts", "all", Parameter::Restraint);
     // p_State = addIntSliderParam("State","Timestep");
     p_format = addIntParameter("format", "Format of LS-DYNA3D ptf-File", Guess, Parameter::Choice);
     V_ENUM_SET_CHOICES(p_format, Format);

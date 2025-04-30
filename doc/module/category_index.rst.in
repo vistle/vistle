@@ -1,0 +1,20 @@
+.. _category-@CATEGORYNAME@:
+
+.. _cat-@CATEGORYNAME@:
+
+@CATEGORYTITLE@
+===============
+
+**@CATEGORYDESC@**
+
+.. include:: @CATEGORYNAME@.md
+   :parser: myst
+
+
+@CATEGORYMODULES@
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+
+@CATEGORYMODULESTOC@

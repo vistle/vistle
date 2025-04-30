@@ -6,16 +6,9 @@
 #include "archives_compress_sz3.h"
 #include "archives_compress.h"
 
-//#define USE_INTROSPECTION_ARCHIVE
 //#define USE_BOOST_ARCHIVE
 #define USE_BOOST_ARCHIVE_MPI
 #define USE_YAS
-
-#ifdef USE_INTROSPECTION_ARCHIVE
-#ifndef USE_BOOST_ARCHIVE
-#define USE_BOOST_ARCHIVE
-#endif
-#endif
 
 #ifdef USE_BOOST_ARCHIVE
 #ifndef USE_BOOST_ARCHIVE_MPI

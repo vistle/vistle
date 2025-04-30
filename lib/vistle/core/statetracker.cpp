@@ -1910,19 +1910,22 @@ void StateTracker::unregisterObserver(StateObserver *observer) const
     m_observers.erase(observer);
 }
 
-ParameterSet StateTracker::getConnectedParameters(const Parameter &param) const
+ParameterSet StateTracker::getConnectedParameters(const Parameter &param, bool onlyDirect) const
 {
     mutex_locker guard(m_stateMutex);
 
     std::function<ParameterSet(const Port *, ParameterSet)> findAllConnectedPorts;
-    findAllConnectedPorts = [this, &findAllConnectedPorts](const Port *port, ParameterSet conn) -> ParameterSet {
+    findAllConnectedPorts = [this, &findAllConnectedPorts, onlyDirect](const Port *port,
+                                                                       ParameterSet conn) -> ParameterSet {
         if (const Port::ConstPortSet *list = portTracker()->getConnectionList(port)) {
             for (auto port: *list) {
                 auto param = getParameter(port->getModuleID(), port->getName());
                 if (param && conn.find(param) == conn.end()) {
                     conn.insert(param);
-                    const Port *port = portTracker()->getPort(param->module(), param->getName());
-                    conn = findAllConnectedPorts(port, conn);
+                    if (!onlyDirect) {
+                        const Port *port = portTracker()->getPort(param->module(), param->getName());
+                        conn = findAllConnectedPorts(port, conn);
+                    }
                 }
             }
         }
@@ -1937,6 +1940,11 @@ ParameterSet StateTracker::getConnectedParameters(const Parameter &param) const
     if (port->getType() != Port::PARAMETER)
         return ParameterSet();
     return findAllConnectedPorts(port, ParameterSet());
+}
+
+ParameterSet StateTracker::getDirectlyConnectedParameters(const Parameter &param) const
+{
+    return getConnectedParameters(param, true);
 }
 
 void StateTracker::computeHeights()

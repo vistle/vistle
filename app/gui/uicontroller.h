@@ -30,6 +30,7 @@ public:
     void finish();
 
     bool eventFilter(QObject *object, QEvent *event) override;
+    void configure();
 
 signals:
     void visibleModuleMessage(int id, int type, QString message);

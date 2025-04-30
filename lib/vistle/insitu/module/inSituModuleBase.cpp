@@ -183,7 +183,7 @@ bool InSituModuleBase::prepare()
         if (obj.type() == vistle::message::ADDOBJECT) {
             auto &addObj = obj.as<vistle::message::AddObject>();
             updateMeta(obj);
-            passThroughObject(addObj.getSenderPort(), addObj.takeObject());
+            addObject(addObj.getSenderPort(), addObj.takeObject());
             CERR << "passed through object: timestep = " << addObj.meta().timeStep()
                  << " iteration = " << addObj.meta().iteration() << " generation = " << addObj.meta().generation()
                  << std::endl;

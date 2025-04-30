@@ -23,7 +23,7 @@ ReadEnsight::ReadEnsight(const std::string &name, int moduleID, mpi::communicato
     m_casefile = addStringParameter("casefile", "EnSight case file", "", Parameter::ExistingFilename);
     setParameterFilters(m_casefile, "Case Files (*.case *.CASE *.encas)");
 
-    m_partSelection = addStringParameter("parts", "select parts", "all");
+    m_partSelection = addStringParameter("parts", "select parts", "all", Parameter::Restraint);
 
     m_grid = createOutputPort("grid_out", "geometry");
     for (int port = 0; port < NumVolVert; ++port) {

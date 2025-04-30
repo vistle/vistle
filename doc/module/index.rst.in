@@ -1,0 +1,23 @@
+Module Reference
+================
+
+**Modules by Category**
+
+@CATEGORIESLONG@
+
+**All Modules**
+
+* :doc:`Alphabetic list <all>`
+
+**Module categories**
+
+* :doc:`Category Descriptions <categories>`
+
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+
+@CATEGORIESSHORT@
+   All Modules <all>
+   Module Categories <categories>

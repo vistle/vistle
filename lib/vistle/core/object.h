@@ -200,19 +200,12 @@ public:
 
     ARCHIVE_REGISTRATION(= 0)
 
-#ifdef USE_INTROSPECTION_ARCHIVE
-    virtual void save(FindObjectReferenceOArchive &ar) const = 0;
-#endif
-
 public:
 protected:
     Data *m_data;
 
 public:
-    Data *d() const
-    {
-        return m_data;
-    }
+    Data *d() const { return m_data; }
 
 protected:
     Object(Data *data);

@@ -50,7 +50,7 @@ bool Replicate::compute()
                 std::cerr << "did not find grid for block " << data->getBlock() << std::endl;
             } else {
                 Object::const_ptr grid = m_objs[data->getBlock()];
-                passThroughObject("grid_out", grid);
+                addObject("grid_out", grid);
             }
         }
     }
