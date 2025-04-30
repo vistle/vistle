@@ -20,7 +20,6 @@ public:
     shm_obj_ref();
     shm_obj_ref(const std::string &name, ObjType *p);
     shm_obj_ref(const shm_obj_ref &other);
-    shm_obj_ref(const shm_name_t name);
     ~shm_obj_ref();
 
     template<typename... Args>
