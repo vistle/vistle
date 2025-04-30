@@ -4293,6 +4293,8 @@ void Hub::emergencyQuit()
         lock.lock();
     }
 
+    m_stateTracker.cancel();
+
     if (m_dataProxy)
         m_dataProxy->cleanUp();
 
