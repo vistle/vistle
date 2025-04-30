@@ -21,6 +21,8 @@
 
 namespace mpl = boost::mpl;
 
+//#define REFERENCE_DEBUG
+
 #ifdef USE_BOOST_ARCHIVE
 namespace boost {
 namespace serialization {
@@ -223,6 +225,8 @@ ObjectData::ObjectData(const Object::Type type, const std::string &n, const Meta
 : ShmData(ShmData::OBJECT, n)
 , type(type)
 , unresolvedReferences(0)
+, unresolvedArrayReferences(0)
+, unresolvedObjectReferences(0)
 , meta(m)
 , attributes(std::less<Key>(), Shm::the().allocator())
 , attachments(std::less<Key>(), Shm::the().allocator())
@@ -232,6 +236,8 @@ ObjectData::ObjectData(const Object::Data &o, const std::string &name, Object::T
 : ShmData(ShmData::OBJECT, name)
 , type(id == Object::UNKNOWN ? o.type : id)
 , unresolvedReferences(0)
+, unresolvedArrayReferences(0)
+, unresolvedObjectReferences(0)
 , meta(o.meta)
 , attributes(std::less<Key>(), Shm::the().allocator())
 , attachments(std::less<Key>(), Shm::the().allocator())
@@ -257,15 +263,56 @@ bool Object::Data::isComplete() const
     // a reference is only established upon return from Object::load
     //assert(unresolvedReferences==0 || refcount==0);
     //return refcount>0 && unresolvedReferences==0;
+#ifdef REFERENCE_DEBUG
+    std::cerr << "CHKREF"
+              << " in " << this->name << " (" << unresolvedReferences << "=" << unresolvedArrayReferences << "a+"
+              << unresolvedObjectReferences << "o)" << std::endl;
+#endif
     return unresolvedReferences == 0;
 }
 
-void ObjectData::referenceResolved(const std::function<void()> &completeCallback)
+void ObjectData::unresolvedReference(bool isArray, const std::string &arname, const std::string &shmname)
 {
-    //std::cerr << "reference (from " << unresolvedReferences << ") resolved in " << name << std::endl;
+    if (isArray) {
+        ++unresolvedArrayReferences;
+    } else {
+        ++unresolvedObjectReferences;
+    }
+    ++unresolvedReferences;
+#ifdef REFERENCE_DEBUG
+    std::cerr << (isArray ? "ARRREF" : "OBJREF") << "++ in " << this->name << " (now " << unresolvedReferences << "="
+              << unresolvedArrayReferences << "a+" << unresolvedObjectReferences << "o) to " << arname << "->"
+              << shmname << std::endl;
+#endif
+}
+
+void ObjectData::referenceResolved(const std::function<void()> &completeCallback, bool isArray,
+                                   const std::string &arname, const std::string &shmname)
+{
+#ifdef REFERENCE_DEBUG
+    std::cerr << (isArray ? "ARRREF" : "OBJREF") << "-- in " << this->name << " (from " << unresolvedReferences << "="
+              << unresolvedArrayReferences << "a+" << unresolvedObjectReferences << "o) resolved by " << arname << "->"
+              << shmname << std::endl;
+#endif
+    if (isArray) {
+        assert(unresolvedArrayReferences > 0);
+        --unresolvedArrayReferences;
+    } else {
+        assert(unresolvedObjectReferences > 0);
+        --unresolvedObjectReferences;
+    }
     assert(unresolvedReferences > 0);
-    if (unresolvedReferences.fetch_sub(1) == 1 && completeCallback) {
-        completeCallback();
+    if (unresolvedReferences.fetch_sub(1) == 1) {
+        if (completeCallback) {
+#ifdef REFERENCE_DEBUG
+            std::cerr << "COMPLETED " << this->name << " with handler by " << name << std::endl;
+#endif
+            completeCallback();
+        } else {
+#ifdef REFERENCE_DEBUG
+            std::cerr << "COMPLETED " << this->name << " WITHOUT handler by " << name << std::endl;
+#endif
+        }
     }
 }
 
@@ -819,11 +866,6 @@ bool Object::Data::removeAttachment(const std::string &key)
     attachments.erase(it);
 
     return true;
-}
-
-void ObjectData::unresolvedReference()
-{
-    ++unresolvedReferences;
 }
 
 const struct ObjectTypeRegistry::FunctionTable &ObjectTypeRegistry::getType(int id)

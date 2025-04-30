@@ -200,13 +200,15 @@ void shm_obj_ref<T>::load(Archive &ar)
     auto ref1 = T::as(ref0);
     assert(ref0 || !ref1);
     if (ref1) {
+        // found, and types do match
         *this = ref1;
         return;
     }
 
+    //
     auto obj = ar.currentObject();
     if (obj)
-        obj->unresolvedReference();
+        obj->unresolvedReference(false, arname, m_name.str());
     auto handler = ar.objectCompletionHandler();
     auto fetcher = ar.fetcher();
     ref0 = ar.getObject(arname, [this, fetcher, arname, obj, handler](Object::const_ptr newobj) -> void {
@@ -219,7 +221,7 @@ void shm_obj_ref<T>::load(Archive &ar)
         if (fetcher)
             fetcher->registerObjectNameTranslation(arname, m_name);
         if (obj) {
-            obj->referenceResolved(handler);
+            obj->referenceResolved(handler, false, arname, m_name.str());
         }
     });
     ref1 = T::as(ref0);
