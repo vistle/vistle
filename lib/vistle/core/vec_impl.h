@@ -1,6 +1,8 @@
 #ifndef VISTLE_CORE_VEC_IMPL_H
 #define VISTLE_CORE_VEC_IMPL_H
 
+#include "shm_obj_ref_impl.h"
+
 namespace vistle {
 
 #define V_IMPL_COMMA ,

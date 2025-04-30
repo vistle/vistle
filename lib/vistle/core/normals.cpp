@@ -2,6 +2,7 @@
 #include "normals_impl.h"
 #include "archives.h"
 #include "validate.h"
+#include "shm_obj_ref_impl.h"
 
 namespace vistle {
 
@@ -69,5 +70,6 @@ Normals::Data *Normals::Data::create(const size_t numNormals, const Meta &meta)
 V_OBJECT_TYPE(Normals, Object::NORMALS)
 V_OBJECT_CTOR(Normals)
 V_OBJECT_IMPL(Normals)
+V_OBJECT_INST(Normals)
 
 } // namespace vistle

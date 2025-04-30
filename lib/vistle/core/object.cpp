@@ -1,4 +1,6 @@
 #include "object.h"
+#include "shm_obj_ref.h"
+#include "shm_obj_ref_impl.h"
 #include "object_impl.h"
 
 #include "shm.h"

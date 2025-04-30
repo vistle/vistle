@@ -7,6 +7,7 @@
 #include "layergrid_impl.h"
 #include "celltree_impl.h"
 #include "validate.h"
+#include "shm_obj_ref_impl.h"
 
 //#define INTERPOL_DEBUG
 
