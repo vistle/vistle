@@ -26,12 +26,6 @@ shm_obj_ref<T>::shm_obj_ref(const shm_obj_ref<T> &other): m_name(other.m_name), 
 }
 
 template<class T>
-shm_obj_ref<T>::shm_obj_ref(const shm_name_t name): m_name(name), m_d(shm<T>::find(name))
-{
-    ref();
-}
-
-template<class T>
 shm_obj_ref<T>::~shm_obj_ref()
 {
     unref();
