@@ -134,8 +134,9 @@ Object *Object::loadObject(Archive &ar)
         throw;
     }
     if (obj) {
+        assert(objData == obj->d());
         assert(obj->isComplete() || ar.currentObject() == obj->d());
-        if (obj->d()->unresolvedReferences == 0) {
+        if (obj->isComplete()) {
             obj->refresh();
             assert(obj->check(std::cerr));
             if (ar.objectCompletionHandler())
