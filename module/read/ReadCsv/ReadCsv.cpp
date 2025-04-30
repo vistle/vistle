@@ -111,7 +111,9 @@ bool ReadCsv::examine(const Parameter *param)
         setParameterChoices(m_filename, files);
     }
     if (param == m_filename || param == nullptr) {
-        if (!m_layersInOneObject->getValue())
+        if (m_layersInOneObject->getValue() || m_filename->getValue() != 0) // 0 is all files
+            setPartitions(1);
+        else
             setPartitions(std::max(m_filename->choices().size() - 1, size_t(1)));
         std::fstream f(getFilename(m_directory->getValue(), std::max(vistle::Integer(0), m_filename->getValue() - 1)));
         if (!f.is_open()) {
@@ -146,7 +148,7 @@ bool ReadCsv::examine(const Parameter *param)
         }
     }
     if (param == m_layersInOneObject) {
-        if (m_layersInOneObject->getValue()) {
+        if (m_layersInOneObject->getValue() || m_filename->getValue() != 0) { // 0 is all files
             setPartitions(1);
         } else {
             setPartitions(std::max(m_filename->choices().size() - 1, size_t(1)));
@@ -253,7 +255,8 @@ bool ReadCsv::readFile(Token &token, int timestep, int block)
     if (block < 0 && !m_layersInOneObject->getValue()) {
         return true;
     }
-    sendInfo("Reading block %d, %s", block, getFilename(m_directory->getValue(), block).c_str());
+    auto layer = m_filename->getValue() > 0 ? m_filename->getValue() - 1 : block;
+    sendInfo("Reading block %d, %s", block, getFilename(m_directory->getValue(), layer).c_str());
     vistle::Points::ptr points = std::make_shared<vistle::Points>((size_t)0);
 
     std::array<vistle::Vec<Scalar>::ptr, NUM_DATA_FIELDS> dataObjects;
@@ -267,7 +270,7 @@ bool ReadCsv::readFile(Token &token, int timestep, int block)
             readLayer<Delimiter>(i, points, dataObjects);
         }
     } else {
-        readLayer<Delimiter>(block, points, dataObjects);
+        readLayer<Delimiter>(layer, points, dataObjects);
     }
     points->setBlock(block);
     points->setTimestep(timestep);
