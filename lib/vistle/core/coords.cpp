@@ -4,6 +4,7 @@
 
 #include "coords_impl.h"
 #include "validate.h"
+#include "shm_obj_ref_impl.h"
 
 namespace vistle {
 

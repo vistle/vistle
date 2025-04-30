@@ -6,6 +6,7 @@
 #include "coords.h"
 #include "archives.h"
 #include "validate.h"
+#include "shm_obj_ref_impl.h"
 
 #include <boost/mpl/vector.hpp>
 #include <boost/mpl/vector_c.hpp>

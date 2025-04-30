@@ -13,6 +13,7 @@
 #include <vistle/core/indexed.h>
 
 #include <vistle/core/shm_array_impl.h>
+#include <vistle/core/shm_obj_ref_impl.h>
 
 #include <boost/mpl/for_each.hpp>
 

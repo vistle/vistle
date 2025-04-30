@@ -12,6 +12,7 @@
 #include <cassert>
 #include "cellalgorithm.h"
 #include "validate.h"
+#include "shm_obj_ref_impl.h"
 
 //#define INTERPOL_DEBUG
 
