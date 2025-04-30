@@ -238,6 +238,8 @@ struct ObjectData: public ShmData {
     Object::Type type;
 
     std::atomic<int> unresolvedReferences; //!< no. of not-yet-available arrays and referenced objects
+    std::atomic<int> unresolvedArrayReferences; //!< no. of not-yet-available arrays
+    std::atomic<int> unresolvedObjectReferences; //!< no. of not-yet-available referenced objects
 
     Meta meta;
 
@@ -298,8 +300,9 @@ struct ObjectData: public ShmData {
     V_COREEXPORT int unref() const;
     static ObjectData *create(Object::Type id, const std::string &name, const Meta &m);
     V_COREEXPORT bool isComplete() const; //! check whether all references have been resolved
-    V_COREEXPORT void unresolvedReference();
-    V_COREEXPORT void referenceResolved(const std::function<void()> &completeCallback);
+    V_COREEXPORT void unresolvedReference(bool isArray, const std::string &arname, const std::string &shmname);
+    V_COREEXPORT void referenceResolved(const std::function<void()> &completeCallback, bool isArray,
+                                        const std::string &arname, const std::string &shmname);
 
     ARCHIVE_ACCESS_SPLIT
     template<class Archive>

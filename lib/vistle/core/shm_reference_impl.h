@@ -63,25 +63,27 @@ void shm_array_ref<T>::load(Archive &ar)
     ObjectData *obj = ar.currentObject();
     if (obj) {
         //std::cerr << "obj " << obj->name << ": unresolved: " << name << std::endl;
-        obj->unresolvedReference();
+        obj->unresolvedReference(true, arname, name);
     }
 
     auto handler = ar.objectCompletionHandler();
-    ar.template fetchArray<typename T::value_type>(arname, [this, obj, handler](const std::string &name) -> void {
-        auto ref = Shm::the().getArrayFromName<typename T::value_type>(name);
-        //std::cerr << "shm_array: array completion handler: " << arname << " -> " << name << "/" << m_name << ", ref=" << ref << std::endl;
-        if (!ref) {
-            std::cerr << "shm_array: NOT COMPLETE: array completion handler: " << name << ", ref=" << ref << std::endl;
-        }
-        assert(ref);
-        *this = ref;
-        if (obj) {
-            //std::cerr << "obj " << obj->name << ": RESOLVED: " << name << std::endl;
-            obj->referenceResolved(handler);
-        } else {
-            std::cerr << "shm_array RESOLVED: " << name << ", but no handler" << std::endl;
-        }
-    });
+    ar.template fetchArray<typename T::value_type>(
+        arname, [this, obj, handler, arname](const std::string &name) -> void {
+            auto ref = Shm::the().getArrayFromName<typename T::value_type>(name);
+            //std::cerr << "shm_array: array completion handler: " << arname << " -> " << name << "/" << m_name << ", ref=" << ref << std::endl;
+            if (!ref) {
+                std::cerr << "shm_array: NOT COMPLETE: array completion handler: " << name << ", ref=" << ref
+                          << std::endl;
+            }
+            assert(ref);
+            *this = ref;
+            if (obj) {
+                //std::cerr << "obj " << obj->name << ": RESOLVED: " << name << std::endl;
+                obj->referenceResolved(handler, true, arname, name);
+            } else {
+                std::cerr << "shm_array RESOLVED: " << name << ", but no handler" << std::endl;
+            }
+        });
     //std::cerr << "shm_array: first try: this=" << *this << ", ref=" << ref << std::endl;
 }
 
