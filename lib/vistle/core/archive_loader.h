@@ -21,12 +21,6 @@ struct V_COREEXPORT ArrayLoader {
         virtual ~ArrayOwner() {}
     };
 
-    template<typename T>
-    struct Unreffer: public ArrayOwner {
-        explicit Unreffer(ShmVector<T> &ref): m_ref(ref) {}
-        ShmVector<T> m_ref;
-    };
-
     ArrayLoader(const std::string &name, int type, const vistle::iarchive &ar);
     ArrayLoader() = delete;
     ArrayLoader(const ArrayLoader &other) = delete;

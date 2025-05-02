@@ -7,6 +7,43 @@
 
 namespace vistle {
 
+template<typename T>
+void ArraySaver::operator()(T)
+{
+    if (shm_array<T, typename shm<T>::allocator>::typeId() != m_type) {
+        //std::cerr << "ArraySaver: type mismatch - looking for " << m_type << ", is " << shm_array<T, typename shm<T>::allocator>::typeId() << std::endl;
+        return;
+    }
+
+    if (m_ok) {
+        m_ok = false;
+        std::cerr << "ArraySaver: multiple type matches for data array " << m_name << std::endl;
+        return;
+    }
+    ShmVector<T> arr;
+    if (m_array) {
+        arr = *reinterpret_cast<const ShmVector<T> *>(m_array);
+    } else {
+        arr = Shm::the().getArrayFromName<T>(m_name);
+    }
+    if (!arr) {
+        std::cerr << "ArraySaver: did not find data array " << m_name << std::endl;
+        return;
+    }
+    m_ar &m_name;
+    m_ar &*arr;
+    m_ok = true;
+}
+
+bool ArraySaver::save()
+{
+    boost::mpl::for_each<VectorTypes>(boost::reference_wrapper<ArraySaver>(*this));
+    if (!m_ok) {
+        std::cerr << "ArraySaver: failed to save array " << m_name << " to archive" << std::endl;
+    }
+    return m_ok;
+}
+
 void DeepArchiveSaver::saveArray(const std::string &name, int type, const void *array)
 {
     if (isArraySaved(name))

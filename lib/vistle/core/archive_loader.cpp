@@ -202,6 +202,11 @@ std::ostream &operator<<(std::ostream &s, const DeepArchiveFetcher &daf)
     }
     return s;
 }
+template<typename T>
+struct Unreffer: public ArrayLoader::ArrayOwner {
+    explicit Unreffer(ShmVector<T> &ref): m_ref(ref) {}
+    ShmVector<T> m_ref;
+};
 
 ArrayLoader::ArrayLoader(const std::string &name, int type, const iarchive &ar)
 : m_ok(false), m_arname(name), m_type(type), m_ar(ar)
