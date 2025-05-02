@@ -258,7 +258,7 @@ bool DataManager::requestObject(const std::string &referrer, const std::string &
     Object::const_ptr obj = Shm::the().getObjectFromName(objId);
     if (obj) {
 #ifdef DEBUG
-        std::lock_guard<std::mutex> lock(m_requestObjectMutex);
+        std::unique_lock<std::mutex> lock(m_requestObjectMutex);
         CERR << m_outstandingAdds[objId].size() << " outstanding adds for subobj " << objId << ", already have!"
              << std::endl;
         lock.unlock();
@@ -268,7 +268,7 @@ bool DataManager::requestObject(const std::string &referrer, const std::string &
     }
 
     {
-        std::lock_guard<std::mutex> lock(m_requestObjectMutex);
+        std::unique_lock<std::mutex> lock(m_requestObjectMutex);
         auto it = m_requestedObjects.find(objId);
         if (it != m_requestedObjects.end()) {
             it->second.completionHandlers.push_back(handler);
@@ -346,14 +346,17 @@ void DataManager::updateStatus()
 
 bool DataManager::notifyTransferComplete(const message::AddObject &addObj)
 {
-    std::unique_lock<Communicator> guard(Communicator::the());
+    //std::unique_lock<Communicator> guard(Communicator::the());
 
     //CERR << "sending completion notification for " << objName << std::endl;
     message::AddObjectCompleted complete(addObj);
     complete.setSenderId(Communicator::the().hubId());
     complete.setRank(m_rank);
     int hub = Communicator::the().clusterManager().idToHub(addObj.senderId());
-    return Communicator::the().clusterManager().sendMessage(hub, complete, addObj.rank());
+    complete.setDestId(hub);
+    complete.setDestRank(addObj.rank());
+    //return Communicator::the().clusterManager().sendMessage(hub, complete, addObj.rank());
+    return Communicator::the().sendHub(complete);
     //return send(complete);
 }
 
@@ -520,7 +523,7 @@ bool DataManager::handlePriv(const message::SendObject &snd, buffer *payload)
                 lock.unlock();
                 for (const auto &completionHandler: handlers)
                     completionHandler(snd.objectId());
-                lock.lock();
+                //lock.lock();
             }
 
             return true;
@@ -540,17 +543,13 @@ bool DataManager::handlePriv(const message::SendObject &snd, buffer *payload)
         auto completionHandler = [this, objName]() mutable -> void {
             std::unique_lock<std::mutex> lock(m_requestObjectMutex);
             auto addIt = m_outstandingAdds.find(objName);
+            std::set<message::AddObject> notify;
             if (addIt == m_outstandingAdds.end()) {
                 // that's normal if a sub-object was loaded
                 //CERR << "no outstanding add for " << objName << std::endl;
             } else {
-                auto notify = std::move(addIt->second);
+                notify = std::move(addIt->second);
                 m_outstandingAdds.erase(addIt);
-                lock.unlock();
-                for (const auto &add: notify) {
-                    notifyTransferComplete(add);
-                }
-                lock.lock();
             }
 
             auto objIt = m_requestedObjects.find(objName);
@@ -559,6 +558,10 @@ bool DataManager::handlePriv(const message::SendObject &snd, buffer *payload)
                 auto objref = objIt->second.obj;
                 m_requestedObjects.erase(objIt);
                 lock.unlock();
+                if (!objref) {
+                    objref = Shm::the().getObjectFromName(objName);
+                }
+#if 0
                 auto obj = Shm::the().getObjectFromName(objName);
                 if (!obj) {
                     if (auto incomplete = Shm::the().getObjectFromName(objName, false)) {
@@ -567,13 +570,21 @@ bool DataManager::handlePriv(const message::SendObject &snd, buffer *payload)
                         CERR << "could not retrieve " << objName << " from shmem" << std::endl;
                     }
                 }
+#else
+                auto &obj = objref;
+#endif
                 assert(obj);
                 for (const auto &handler: handlers) {
                     handler(obj);
                 }
-                lock.lock();
+                //obj.reset();
+                //lock.lock();
             } else {
                 CERR << "no outstanding object for " << objName << std::endl;
+            }
+
+            for (const auto &add: notify) {
+                notifyTransferComplete(add);
             }
         };
 
