@@ -1878,7 +1878,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
     }
     case message::CLOSECONNECTION: {
         auto &mm = msg.as<CloseConnection>();
-        CERR << "remote closes socket: " << mm.reason() << std::endl;
+        CERR << "remote closes socket - reason: " << mm.reason() << std::endl;
         removeSocket(sock);
         if (senderType == Identify::HUB || senderType == Identify::MANAGER) {
             CERR << "terminating." << std::endl;
