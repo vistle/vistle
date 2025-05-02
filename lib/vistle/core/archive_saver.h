@@ -23,41 +23,9 @@ struct V_COREEXPORT ArraySaver {
     ArraySaver(const ArraySaver &other) = delete;
 
     template<typename T>
-    void operator()(T)
-    {
-        if (shm_array<T, typename shm<T>::allocator>::typeId() != m_type) {
-            //std::cerr << "ArraySaver: type mismatch - looking for " << m_type << ", is " << shm_array<T, typename shm<T>::allocator>::typeId() << std::endl;
-            return;
-        }
+    void operator()(T);
 
-        if (m_ok) {
-            m_ok = false;
-            std::cerr << "ArraySaver: multiple type matches for data array " << m_name << std::endl;
-            return;
-        }
-        ShmVector<T> arr;
-        if (m_array) {
-            arr = *reinterpret_cast<const ShmVector<T> *>(m_array);
-        } else {
-            arr = Shm::the().getArrayFromName<T>(m_name);
-        }
-        if (!arr) {
-            std::cerr << "ArraySaver: did not find data array " << m_name << std::endl;
-            return;
-        }
-        m_ar &m_name;
-        m_ar &*arr;
-        m_ok = true;
-    }
-
-    bool save()
-    {
-        boost::mpl::for_each<VectorTypes>(boost::reference_wrapper<ArraySaver>(*this));
-        if (!m_ok) {
-            std::cerr << "ArraySaver: failed to save array " << m_name << " to archive" << std::endl;
-        }
-        return m_ok;
-    }
+    bool save();
 
     bool m_ok;
     std::string m_name;
