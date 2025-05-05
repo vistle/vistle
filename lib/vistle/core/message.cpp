@@ -5,9 +5,9 @@
 #include "port.h"
 #include <cassert>
 
-#include <boost/uuid/random_generator.hpp>
 #include <boost/uuid/nil_generator.hpp>
 #include <boost/uuid/uuid_io.hpp>
+#include "uuid.h"
 
 #include <algorithm>
 
@@ -152,8 +152,6 @@ const DefaultSender &DefaultSender::instance()
     return s_instance;
 }
 
-static boost::uuids::random_generator s_uuidGenerator;
-
 Message::Message(const Type t, const unsigned int s)
 : m_type(t)
 , m_size(s)
@@ -161,7 +159,7 @@ Message::Message(const Type t, const unsigned int s)
 , m_rank(DefaultSender::rank())
 , m_destId(Id::NextHop)
 , m_destRank(-1)
-, m_uuid(t == ANY ? boost::uuids::nil_generator()() : s_uuidGenerator())
+, m_uuid(t == ANY ? boost::uuids::nil_generator()() : Uuid::generate())
 , m_referrer(boost::uuids::nil_generator()())
 , m_payloadSize(0)
 , m_payloadRawSize(0)
