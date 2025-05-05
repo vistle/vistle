@@ -88,11 +88,11 @@ Object *Object::loadObject(Archive &ar)
         ar &V_NAME(ar, "object_type", type);
         if (!name.empty())
             objData = Shm::the().getObjectDataFromName(name);
+        if (!ar.currentObject())
+            ar.setCurrentObject(objData);
         if (objData && objData->isComplete()) {
             objData->ref();
             obj = Object::create(objData);
-            if (!ar.currentObject())
-                ar.setCurrentObject(objData);
             objData->unref();
             assert(obj->refcount() >= 1);
         } else {
@@ -104,6 +104,8 @@ Object *Object::loadObject(Archive &ar)
                 auto funcs = ObjectTypeRegistry::getType(type);
                 obj = funcs.createEmpty(name);
                 objData = obj->d();
+                if (!ar.currentObject())
+                    ar.setCurrentObject(objData);
             }
             assert(objData);
             name = obj->getName();
