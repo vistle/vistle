@@ -505,7 +505,7 @@ int ObjectData::unref() const
     int ref = 0;
     auto lambda = [this, &ref]() {
         ref = ShmData::unref();
-        if (ref == 0) {
+        if (ref == 0 && isComplete()) {
             ObjectTypeRegistry::getDestroyer(type)(name);
         }
     };
