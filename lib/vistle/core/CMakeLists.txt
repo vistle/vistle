@@ -56,6 +56,7 @@ set(core_SOURCES
     texture1d.cpp
     uniformgrid.cpp
     unstr.cpp
+    uuid.cpp
     vec.cpp
     vertexownerlist.cpp)
 
