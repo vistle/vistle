@@ -425,6 +425,7 @@ bool DataManager::handlePriv(const message::RequestObject &req)
 #endif
 
     auto fut = std::async(std::launch::async, [this, req]() {
+        setThreadName("dmgr:req:" + std::string(req.objectId()));
         std::shared_ptr<message::SendObject> snd;
         vecostreambuf<buffer> buf;
         buffer &mem = buf.get_vector();
@@ -483,6 +484,7 @@ bool DataManager::handlePriv(const message::SendObject &snd, buffer *payload)
 
     auto payload2 = std::make_shared<buffer>(std::move(*payload));
     auto fut = std::async(std::launch::async, [this, snd, payload2]() {
+        setThreadName("dmgr:recv:" + std::string(snd.objectId()));
         buffer uncompressed = decompressPayload(snd, *payload2.get());
         vecistreambuf<buffer> membuf(uncompressed);
 
