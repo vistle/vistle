@@ -218,7 +218,7 @@ bool DataManager::requestObject(const message::AddObject &add, const std::string
     Object::const_ptr obj = Shm::the().getObjectFromName(objId);
     if (obj) {
 #ifdef DEBUG
-        std::lock_guard<std::mutex> lock(m_requestObjectMutex);
+        std::unique_lock<std::mutex> lock(m_requestObjectMutex);
         CERR << m_outstandingAdds[objId].size() << " outstanding adds for " << objId << ", already have!" << std::endl;
         lock.unlock();
 #endif
@@ -310,6 +310,10 @@ bool DataManager::prepareTransfer(const message::AddObject &add)
 
 bool DataManager::completeTransfer(const message::AddObjectCompleted &complete)
 {
+#ifdef DEBUG
+    CERR << "completeTransfer: releasing " << complete.objectName() << std::endl;
+#endif
+
     message::AddObject key(complete);
     auto it = m_inTransitObjects.find(key);
     if (it == m_inTransitObjects.end()) {
@@ -418,7 +422,8 @@ bool DataManager::handlePriv(const message::RequestObject &req)
 {
 #ifdef DEBUG
     if (req.isArray()) {
-        CERR << "request for array " << req.objectId() << std::endl;
+        CERR << "request for array " << req.objectId() << ", type=" << req.arrayType()
+             << " (= " << scalarTypeName(req.arrayType()) << ")" << std::endl;
     } else {
         CERR << "request for object " << req.objectId() << std::endl;
     }
