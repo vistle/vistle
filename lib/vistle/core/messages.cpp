@@ -1910,9 +1910,15 @@ const Meta &SendObject::meta() const
 
 Object::Type SendObject::objectType() const
 {
+    assert(!isArray());
     return static_cast<Object::Type>(m_objectType);
 }
 
+int SendObject::arrayType() const
+{
+    assert(isArray());
+    return m_objectType;
+}
 
 Meta SendObject::objectMeta() const
 {

@@ -181,15 +181,16 @@ bool DataManager::send(const message::Message &message, std::shared_ptr<buffer> 
     }
 }
 
-bool DataManager::requestArray(const std::string &referrer, const std::string &arrayId, int type, int hub, int rank,
-                               const ArrayCompletionHandler &handler)
+bool DataManager::requestArray(const std::string &referrer, const std::string &arrayId, int localType, int remoteType,
+                               int hub, int rank, const ArrayCompletionHandler &handler)
 {
     //CERR << "requesting array: " << arrayId << " for " << referrer << std::endl;
     {
         std::lock_guard<std::mutex> lock(m_requestArrayMutex);
         auto it = m_requestedArrays.find(arrayId);
         if (it != m_requestedArrays.end()) {
-            it->second.push_back(handler);
+            assert(it->second.type == localType);
+            it->second.handlers.push_back(handler);
 #ifdef DEBUG
             CERR << "requesting array: " << arrayId << " for " << referrer << ", piggybacking..." << std::endl;
 #endif
@@ -198,10 +199,11 @@ bool DataManager::requestArray(const std::string &referrer, const std::string &a
 #ifdef DEBUG
         CERR << "requesting array: " << arrayId << " for " << referrer << ", requesting..." << std::endl;
 #endif
-        m_requestedArrays[arrayId].push_back(handler);
+        it = m_requestedArrays.emplace(arrayId, localType).first;
+        it->second.handlers.push_back(handler);
     }
 
-    message::RequestObject req(hub, rank, arrayId, type, referrer);
+    message::RequestObject req(hub, rank, arrayId, remoteType, referrer);
     req.setSenderId(Communicator::the().hubId());
     req.setRank(m_rank);
     send(req);
@@ -398,10 +400,11 @@ public:
     : m_dmgr(dmgr), m_add(nullptr), m_referrer(referrer), m_hub(hub), m_rank(rank)
     {}
 
-    void requestArray(const std::string &name, int type, const ArrayCompletionHandler &completeCallback) override
+    void requestArray(const std::string &name, int localType, int remoteType,
+                      const ArrayCompletionHandler &completeCallback) override
     {
         assert(!m_add);
-        m_dmgr->requestArray(m_referrer, name, type, m_hub, m_rank, completeCallback);
+        m_dmgr->requestArray(m_referrer, name, localType, remoteType, m_hub, m_rank, completeCallback);
     }
 
     void requestObject(const std::string &name, const ObjectCompletionHandler &completeCallback) override
@@ -491,31 +494,40 @@ bool DataManager::handlePriv(const message::SendObject &snd, buffer *payload)
         vecistreambuf<buffer> membuf(uncompressed);
 
         if (snd.isArray()) {
+            std::unique_lock<std::mutex> lock(m_requestArrayMutex);
+            auto it = m_requestedArrays.find(snd.objectId());
+            lock.unlock();
+            if (it == m_requestedArrays.end()) {
+                CERR << "received array " << snd.objectId() << " for " << snd.referrer() << ", but did not find request"
+                     << std::endl;
+                return false;
+            }
+
             // an array was received
             vistle::iarchive memar(membuf);
-            ArrayLoader loader(snd.objectId(), snd.objectType(), memar);
+            ArrayLoader loader(snd.objectId(), it->second.type, memar);
             if (!loader.load()) {
                 CERR << "failed to restore array " << snd.objectId() << std::endl;
                 return false;
             }
 
-            std::unique_lock<std::mutex> lock(m_requestArrayMutex);
+            lock.lock();
             //CERR << "restored array " << snd.objectId() << ", dangling in memory" << std::endl;
-            auto it = m_requestedArrays.find(snd.objectId());
+            it = m_requestedArrays.find(snd.objectId());
             if (it == m_requestedArrays.end()) {
                 CERR << "restored array " << snd.objectId() << " for " << snd.referrer() << ", but did not find request"
                      << std::endl;
             }
             assert(it != m_requestedArrays.end());
             if (it != m_requestedArrays.end()) {
-                auto handlers = std::move(it->second);
+                auto reqArr = std::move(it->second);
 #ifdef DEBUG
-                CERR << "restored array " << snd.objectId() << ", " << handlers.size() << " completion handler"
+                CERR << "restored array " << snd.objectId() << ", " << reqArr.handlers.size() << " completion handler"
                      << std::endl;
 #endif
                 m_requestedArrays.erase(it);
                 lock.unlock();
-                for (const auto &completionHandler: handlers)
+                for (const auto &completionHandler: reqArr.handlers)
                     completionHandler(snd.objectId());
                 //lock.lock();
             }
