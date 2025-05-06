@@ -577,7 +577,7 @@ Object::const_ptr Shm::getObjectFromName(const std::string &name, bool onlyCompl
     Object::const_ptr ret;
     auto lambda = [this, &ret, onlyComplete, &name]() {
         if (auto od = getObjectDataFromName(name)) {
-            if (od->isComplete() || !onlyComplete) {
+            if (!onlyComplete || od->isComplete()) {
                 //std::cerr << "Shm::getObjectFromName: " << name << " is complete, refcount=" << od->refcount() << std::endl;
                 ret.reset(Object::create(od));
                 assert(ret->refcount() > 0);
