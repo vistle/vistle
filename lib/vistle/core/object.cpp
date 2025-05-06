@@ -104,9 +104,6 @@ const char *Object::toString(Type v)
         V_OBJECT_CASE(LAYERGRID, LayerGrid)
 
         V_OBJECT_CASE(VERTEXOWNERLIST, VertexOwnerList)
-        V_OBJECT_CASE(CELLTREE1, Celltree1)
-        V_OBJECT_CASE(CELLTREE2, Celltree2)
-        V_OBJECT_CASE(CELLTREE3, Celltree3)
         V_OBJECT_CASE(NORMALS, Normals)
 
     default:
@@ -148,6 +145,11 @@ const char *Object::toString(Type v)
         if (std::string("uint8_t") == scalstr)
             scalstr = "Byte";
         snprintf(buf, sizeof(buf), "%s%d", scalstr, dim);
+        return buf;
+    }
+
+    if (v >= Object::CELLTREE) {
+        snprintf(buf, sizeof(buf), "Celltree");
     }
 
     return buf;
@@ -417,11 +419,10 @@ bool isAttachment(Object::Type type)
 {
     switch (type) {
     case Object::VERTEXOWNERLIST:
-    case Object::CELLTREE1:
-    case Object::CELLTREE2:
-    case Object::CELLTREE3:
         return true;
     default:
+        if (type >= Object::CELLTREE && type < Object::VERTEXOWNERLIST)
+            return true;
         return false;
     }
 }

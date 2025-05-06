@@ -38,6 +38,7 @@ set(core_SOURCES
 set(core_SOURCES
     ${core_SOURCES}
     celltree.cpp
+    celltreenode.cpp
     coords.cpp
     database.cpp
     empty.cpp
