@@ -3,7 +3,7 @@
 
 #include <vistle/vtkm/vtkm_module.h>
 
-class ThresholdVtkm: public VtkmModule {
+class ThresholdVtkm: public vistle::VtkmModule {
 public:
     ThresholdVtkm(const std::string &name, int moduleID, mpi::communicator comm);
     ~ThresholdVtkm();
