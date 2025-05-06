@@ -27,16 +27,24 @@
 #include "uicontroller.h"
 #include "dataflowview.h"
 #include "modulebrowser.h"
+#include "parameterconnectionwidgets.h"
 
 #include <vistle/config/file.h>
 #include <vistle/config/array.h>
+#include <vistle/config/value.h>
 
 namespace gui {
 
-const double Module::portDistance = 3.;
 boost::uuids::nil_generator nil_uuid;
-bool Module::s_snapToGrid = true;
-const double Module::borderWidth = 4.;
+double Module::portDistance = 3.;
+double Module::borderWidth = 4.;
+
+void Module::configure()
+{
+    vistle::config::File config("gui");
+    portDistance = *config.value<double>("module", "port_spacing", 3.);
+    borderWidth = *config.value<double>("module", "border_width", 4.);
+}
 
 /*!
  * \brief Module::Module
@@ -62,7 +70,7 @@ Module::Module(QGraphicsItem *parent, QString name)
     setFlag(QGraphicsItem::ItemSendsGeometryChanges);
     setAcceptHoverEvents(true);
     setCursor(Qt::OpenHandCursor);
-
+    createParameterPopup();
     createActions();
     createMenus();
     createGeometry();
@@ -86,6 +94,7 @@ Module::~Module()
     delete m_selectUpstreamAct;
     delete m_selectDownstreamAct;
     delete m_createModuleGroup;
+    delete m_parameterPopup;
 }
 
 float Module::gridSpacingX()
@@ -216,6 +225,15 @@ void Module::showError()
     doLayout();
 }
 
+void Module::highlightModule(int moduleId)
+{
+    if (moduleId == m_id) {
+        m_highlighted = true;
+    } else if (moduleId == -1) {
+        m_highlighted = false;
+    }
+    update();
+}
 
 void Module::attachDebugger()
 {
@@ -434,7 +452,13 @@ void Module::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QW
     painter->setBrush(brush);
 
     QPen highlightPen(m_borderColor, borderWidth, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
-    if (isSelected() && m_Status != BUSY) {
+    if (m_highlighted) {
+        highlightPen.setColor(Qt::yellow);
+        QPalette p;
+        QPen pen(p.color(QPalette::Active, QPalette::Highlight), borderWidth, Qt::SolidLine, Qt::RoundCap,
+                 Qt::RoundJoin);
+        painter->setPen(pen);
+    } else if (isSelected() && m_Status != BUSY) {
         QPen pen(scene()->highlightColor(), borderWidth, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
         painter->setPen(pen);
     } else {
@@ -929,6 +953,29 @@ QColor Module::hubColor(int hub)
     return QColor(100 + r * 100, 100 + g * 100, 100 + b * 100);
 }
 
+void Module::createParameterPopup()
+{
+    m_parameterPopup = new ParameterPopup(QStringList{});
+    connect(m_parameterPopup, &ParameterPopup::parameterSelected, this, [this](const QString &param) {
+        // Handle parameter button click
+        vistle::Port from(m_parameterConnectionRequest.moduleId, m_parameterConnectionRequest.paramName.toStdString(),
+                          vistle::Port::Type::PARAMETER);
+        vistle::Port to(m_id, param.toStdString(), vistle::Port::Type::PARAMETER);
+        vistle::VistleConnection::the().connect(&from, &to);
+        m_parameterPopup->close();
+    });
+}
+
+void Module::showParameters(const ParameterConnectionRequest &request)
+{
+    auto params = scene()->getModuleParameters(m_id);
+    m_parameterPopup->setParameters(params);
+    m_parameterPopup->setSearchText(request.paramName);
+    m_parameterConnectionRequest = request;
+    m_parameterPopup->move(request.pos);
+    m_parameterPopup->show();
+}
+
 void Module::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
     Base::mousePressEvent(event);
@@ -992,7 +1039,6 @@ QPointF Module::portPos(const Port *port) const
 void Module::setStatus(Module::Status status)
 {
     m_Status = status;
-
     QString toolTip = "Unknown";
 
     switch (m_Status) {
@@ -1045,7 +1091,6 @@ void Module::setStatus(Module::Status status)
         m_borderColor = Qt::black;
         break;
     }
-
     if (m_errorState && m_Status != CRASHED) {
         m_borderColor = Qt::red;
     }

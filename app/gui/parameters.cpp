@@ -14,6 +14,8 @@
 
 #include "parameters.h"
 #include "vistleobserver.h"
+#include "parameterconnectionwidgets.h"
+
 #include <vistle/core/message.h>
 
 #include <QtGroupPropertyManager>
@@ -38,11 +40,6 @@ namespace gui {
 
 const int NumDec = 15;
 
-static QString displayName(QString parameterName)
-{
-    return parameterName.replace("_", " ").trimmed();
-}
-
 template<class M>
 static M *addPropertyManager(Parameters *p)
 {
@@ -53,7 +50,6 @@ static M *addPropertyManager(Parameters *p)
 
 Parameters::Parameters(QWidget *parent, Qt::WindowFlags f)
 : Parameters::PropertyBrowser(parent)
-, m_moduleId(0)
 , m_vistle(nullptr)
 , m_groupManager(nullptr)
 , m_boolManager(nullptr)
@@ -136,6 +132,8 @@ void Parameters::setVistleObserver(VistleObserver *observer)
     connect(observer, SIGNAL(parameterValueChanged_s(int, QString)), this, SLOT(parameterValueChanged(int, QString)));
     connect(observer, SIGNAL(parameterChoicesChanged_s(int, QString)), this,
             SLOT(parameterChoicesChanged(int, QString)));
+    connect(observer, &VistleObserver::newConnection_s, this, &Parameters::setConnectedParameters);
+    connect(observer, &VistleObserver::deleteConnection_s, this, &Parameters::setConnectedParameters);
 }
 
 void Parameters::setVistleConnection(vistle::VistleConnection *conn)
@@ -154,13 +152,36 @@ void Parameters::setModule(int id)
     m_propToGroup.clear();
 
     m_moduleId = id;
-
-    //std::cerr << "Parameters: showing for " << id << std::endl;
     if (m_vistle) {
         auto params = m_vistle->getParameters(id);
         for (auto &p: params)
             newParameter(id, QString::fromStdString(p));
     }
+    setConnectedParameters();
+}
+
+void Parameters::setConnectedParameters()
+{
+    //std::cerr << "Parameters: showing for " << id << std::endl;
+    if (!m_vistle || m_moduleId == -1)
+        return;
+    auto params = m_vistle->getParameters(m_moduleId);
+    std::vector<Connection> connections;
+    for (auto &p: params) {
+        auto vistleParam = m_vistle->getParameter(m_moduleId, p);
+        auto connectedParams = m_vistle->ui().state().getConnectedParameters(*vistleParam);
+        auto directlyConnectedParams = m_vistle->ui().state().getDirectlyConnectedParameters(*vistleParam);
+        for (const auto &c: directlyConnectedParams) {
+            connectedParams.erase(c);
+            connections.push_back({m_moduleId, displayName(QString::fromStdString(p)), c->module(),
+                                   displayName(QString::fromStdString(c->getName())), true});
+        }
+        for (const auto &c: connectedParams) {
+            connections.push_back({m_moduleId, displayName(QString::fromStdString(p)), c->module(),
+                                   displayName(QString::fromStdString(c->getName())), false});
+        }
+    }
+    parametersConnected(connections);
 }
 
 QString Parameters::propertyToName(QtProperty *prop) const
@@ -211,6 +232,11 @@ void Parameters::addItemWithProperty(QtBrowserItem *item, QtProperty *prop)
     bool expanded = false;
     if (getExpandedState(propertyToName(prop), expanded))
         setExpanded(item, expanded);
+}
+
+const char *Parameters::mimeFormat()
+{
+    return "application/x-parameterbrowser";
 }
 
 void Parameters::newParameter(int moduleId, QString parameterName)
@@ -383,13 +409,38 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
 
     setParameterEnabled(prop, !p->isReadOnly());
 
+    auto vectorToolTip = [](auto &vp) -> QString {
+        auto value = vp->getValue();
+        QString tip;
+        switch (value.dim) {
+        case 1:
+            tip = QString("%1 (%2)").arg(QString::fromStdString(vp->description()), QString::number(value[0]));
+            break;
+        case 2:
+            tip = QString("%1 (%2, %3)")
+                      .arg(QString::fromStdString(vp->description()), QString::number(value[0]),
+                           QString::number(value[1]));
+            break;
+        case 3:
+            tip = QString("%1 (%2, %3, %4)")
+                      .arg(QString::fromStdString(vp->description()), QString::number(value[0]),
+                           QString::number(value[1]), QString::number(value[2]));
+            break;
+        case 4:
+            tip = QString("%1 (%2, %3, %4, %5)")
+                      .arg(QString::fromStdString(vp->description()), QString::number(value[0]),
+                           QString::number(value[1]), QString::number(value[2]), QString::number(value[3]));
+            break;
+        }
+        return tip;
+    };
+
+    QString tip;
     if (auto ip = std::dynamic_pointer_cast<vistle::IntParameter>(p)) {
         if (ip->presentation() == vistle::Parameter::Boolean) {
             m_boolManager->setValue(prop, ip->getValue() != 0);
-            QString tip =
-                QString("%1 (default: %2)")
-                    .arg(QString::fromStdString(p->description()), (ip->getDefaultValue() ? "True" : "False"));
-            prop->setStatusTip(tip);
+            tip = QString("%1 (default: %2)")
+                      .arg(QString::fromStdString(p->description()), (ip->getDefaultValue() ? "True" : "False"));
         } else if (ip->presentation() == vistle::Parameter::Choice) {
             m_intChoiceManager->setValue(prop, ip->getValue());
             auto defInt = ip->getDefaultValue();
@@ -397,16 +448,14 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
             QString defString;
             if (defInt >= 0 && strings.size() > defInt)
                 defString = strings[defInt];
-            QString tip = QString("%1 (default: %2)").arg(QString::fromStdString(p->description()), defString);
-            prop->setStatusTip(tip);
+            tip = QString("%1 (default: %2)").arg(QString::fromStdString(p->description()), defString);
         } else {
             m_intManager->setRange(prop, ip->minimum(), ip->maximum());
             m_intManager->setValue(prop, ip->getValue());
 
-            QString tip = QString("%1 (default: %2, %3 – %4)")
-                              .arg(QString::fromStdString(p->description()), QString::number(ip->getDefaultValue()),
-                                   QString::number(ip->minimum()), QString::number(ip->maximum()));
-            prop->setStatusTip(tip);
+            tip = QString("%1 (default: %2, %3 – %4)")
+                      .arg(QString::fromStdString(p->description()), QString::number(ip->getDefaultValue()),
+                           QString::number(ip->minimum()), QString::number(ip->maximum()));
         }
     } else if (auto fp = std::dynamic_pointer_cast<vistle::FloatParameter>(p)) {
         m_floatManager->setRange(prop, fp->minimum(), fp->maximum());
@@ -429,11 +478,17 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
             m_floatManager->setSingleStep(prop, 1.);
         }
 
-        QString tip = QString("%1 (default: %2, %3 – %4)")
-                          .arg(QString::fromStdString(p->description()), QString::number(fp->getDefaultValue()),
-                               QString::number(fp->minimum()), QString::number(fp->maximum()));
-        prop->setStatusTip(tip);
+        tip = QString("%1 (default: %2, %3 – %4)")
+                  .arg(QString::fromStdString(p->description()), QString::number(fp->getDefaultValue()),
+                       QString::number(fp->minimum()), QString::number(fp->maximum()));
     } else if (auto sp = std::dynamic_pointer_cast<vistle::StringParameter>(p)) {
+        QString def = QString::fromStdString(sp->getDefaultValue());
+        if (def.isEmpty()) {
+            def = "empty default";
+        } else {
+            def = QString("default: %1").arg(def);
+        }
+        tip = QString("%1 (%2)").arg(QString::fromStdString(p->description()), def);
         if (sp->presentation() == vistle::Parameter::Choice) {
             QStringList choices = m_stringChoiceManager->enumNames(prop);
             QString val = QString::fromStdString(sp->getValue());
@@ -447,6 +502,10 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
                    sp->presentation() == vistle::Parameter::ExistingFilename) {
             m_browserManager->setValue(prop, QString::fromStdString(sp->getValue()));
             m_browserManager->setFilters(prop, QString::fromStdString(sp->minimum()));
+        } else if (sp->presentation() == vistle::Parameter::Restraint) {
+            m_stringManager->setValue(prop, QString::fromStdString(sp->getValue()));
+            tip = QString("%1 (e.g. 0-3,4-5,6 or all or 0,2,4 or 0-4/2) (%2)")
+                      .arg(QString::fromStdString(p->description()), def);
         } else {
             m_stringManager->setValue(prop, QString::fromStdString(sp->getValue()));
         }
@@ -459,28 +518,7 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
         }
         m_vectorManager->setRange(prop, vp->minimum(), vp->maximum());
         m_vectorManager->setValue(prop, value);
-        QString tip;
-        switch (value.dim) {
-        case 1:
-            tip = QString("%1 (%2)").arg(QString::fromStdString(p->description()), QString::number(value[0]));
-            break;
-        case 2:
-            tip = QString("%1 (%2, %3)")
-                      .arg(QString::fromStdString(p->description()), QString::number(value[0]),
-                           QString::number(value[1]));
-            break;
-        case 3:
-            tip = QString("%1 (%2, %3, %4)")
-                      .arg(QString::fromStdString(p->description()), QString::number(value[0]),
-                           QString::number(value[1]), QString::number(value[2]));
-            break;
-        case 4:
-            tip = QString("%1 (%2, %3, %4, %5)")
-                      .arg(QString::fromStdString(p->description()), QString::number(value[0]),
-                           QString::number(value[1]), QString::number(value[2]), QString::number(value[3]));
-            break;
-        }
-        prop->setStatusTip(tip);
+        tip = vectorToolTip(vp);
     } else if (auto vp = std::dynamic_pointer_cast<vistle::IntVectorParameter>(p)) {
         vistle::IntParamVector value = vp->getValue();
         if (!prop) {
@@ -489,9 +527,12 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
         }
         m_intVectorManager->setRange(prop, vp->minimum(), vp->maximum());
         m_intVectorManager->setValue(prop, value);
+        tip = vectorToolTip(vp);
     } else {
         std::cerr << "parameter type not handled in Parameters::parameterValueChanged" << std::endl;
     }
+    if (!tip.isEmpty())
+        prop->setStatusTip(tip);
 }
 
 void Parameters::parameterChoicesChanged(int moduleId, QString parameterName)

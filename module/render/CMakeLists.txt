@@ -1,4 +1,4 @@
-vistle_category("Render" "rendere pixel images from geometry data")
+vistle_category("Render" "generate pixel images from geometry data")
 
 vistle_find_package(
     OpenSceneGraph

@@ -436,7 +436,7 @@ bool MapDrape::compute()
             updateMeta(dataOut);
             addObject(data_out[port], dataOut);
         } else {
-            passThroughObject(data_out[port], outGeo);
+            addObject(data_out[port], outGeo);
         }
     }
 

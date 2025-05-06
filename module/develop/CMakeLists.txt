@@ -1,4 +1,4 @@
-vistle_category("Develop" "support testing and develepment of Vistle and modules")
+vistle_category("Develop" "tools for developers")
 
 add_subdirectory(CreateCelltree)
 add_subdirectory(CreateVertexOwnerList)

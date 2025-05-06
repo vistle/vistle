@@ -4,7 +4,7 @@
 #include <vistle/vtkm/implicit_function_controller.h>
 #include <vistle/vtkm/vtkm_module.h>
 
-class CuttingSurfaceVtkm: public VtkmModule {
+class CuttingSurfaceVtkm: public vistle::VtkmModule {
 public:
     CuttingSurfaceVtkm(const std::string &name, int moduleID, mpi::communicator comm);
     ~CuttingSurfaceVtkm();
@@ -16,7 +16,7 @@ private:
 
     vistle::IntParameter *m_computeNormals;
 
-    ImplicitFunctionController m_implFuncControl;
+    vistle::ImplicitFunctionController m_implFuncControl;
 };
 
 #endif

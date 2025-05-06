@@ -47,8 +47,6 @@
 #include <boost/asio.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/program_options.hpp>
-#include <boost/process.hpp>
-#include <boost/process/extend.hpp>
 #ifdef __linux__
 #include <sys/prctl.h>
 #endif
@@ -65,7 +63,6 @@
 //#define DEBUG_DISTRIBUTED
 
 namespace asio = boost::asio;
-namespace process = boost::process;
 using std::shared_ptr;
 namespace dir = vistle::directory;
 
@@ -495,6 +492,11 @@ bool Hub::init(int argc, char *argv[])
     m_basePort = *m_config->value<int64_t>("system", "net", "controlport", m_basePort);
 
     m_messageBacklog = *m_config->value<int64_t>("system", "hub", "messagebacklog", m_messageBacklog);
+
+    double portDistance = *m_config->value<double>("gui", "module", "port_spacing", 0.);
+    double portSize = *m_config->value<double>("gui", "module", "port_size", 0.);
+    m_gridSpacingX = portDistance + portSize;
+    m_gridSpacingY = m_gridSpacingX;
 
     namespace po = boost::program_options;
     auto desc = options();
@@ -1388,6 +1390,8 @@ bool Hub::dispatch()
             }
         }
 
+        if (m_dataProxy)
+            m_dataProxy->cleanUp();
         m_tunnelManager.cleanUp();
     }
 
@@ -2374,6 +2378,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                     modId = 0;
 #endif
                     long mpipid = 0;
+#ifdef VISTLE_USE_MPI
                     bool found = false;
                     std::unique_lock<std::mutex> guard(m_processMutex);
                     for (auto &p: m_processMap) {
@@ -2393,6 +2398,7 @@ bool Hub::handleMessage(const message::Message &recv, Hub::socket_ptr sock, cons
                         sendError(str.str());
                         break;
                     }
+#endif
                     nargs.push_back(fmt::arg("mpipid", mpipid));
                 }
                 if (auto home = getenv("HOME")) {
@@ -2756,7 +2762,7 @@ bool Hub::handlePriv(const message::Spawn &spawnRecv)
                 return true;
             } else if (clone) {
                 if (doSpawn) {
-                    if (!copyModuleParams(spawn.getReference(), notify.spawnId())) {
+                    if (!copyModuleParams(spawn.getReference(), notify.spawnId(), true)) {
                         sendError("cannot clone module with id " + std::to_string(spawn.getReference()));
                         return handlePlainSpawn(notify, doSpawn, true);
                     }
@@ -2998,7 +3004,7 @@ bool Hub::isCachable(int oldModuleId, int newModuleId)
     return true;
 }
 
-void Hub::cacheParameters(int oldModuleId, int newModuleId)
+void Hub::cacheParameters(int oldModuleId, int newModuleId, bool clone)
 {
     auto paramNames = m_stateTracker.getParameters(oldModuleId);
     for (const auto &pn: paramNames) {
@@ -3007,6 +3013,34 @@ void Hub::cacheParameters(int oldModuleId, int newModuleId)
             auto pm = message::SetParameter(newModuleId, p->getName(), p);
             pm.setDelayed();
             pm.setDestId(newModuleId);
+            m_sendAfterSpawn[newModuleId].emplace_back(pm);
+        }
+    }
+
+    restoreModulePosition(oldModuleId, newModuleId, clone);
+}
+
+void Hub::restoreModulePosition(int oldModuleId, int newModuleId, bool clone)
+{
+    std::string suffix = "[" + std::to_string(oldModuleId) + "]";
+    std::string nsuffix = "[" + std::to_string(newModuleId) + "]";
+    for (auto pnbase: {"position", "layer"}) {
+        auto po = std::string(pnbase) + suffix;
+        auto pn = std::string(pnbase) + nsuffix;
+        auto p = session.findParameter(po);
+        if (p && (!p->isDefault() || (clone && pnbase == std::string("position")))) {
+            auto pm = message::SetParameter(newModuleId, pn, p);
+            if (auto vp = std::dynamic_pointer_cast<VectorParameter>(p)) {
+                if (clone) {
+                    auto pos = vp->getValue();
+                    pos[0] -= m_gridSpacingX;
+                    pos[1] += m_gridSpacingY;
+                    pm = message::SetParameter(newModuleId, pn, pos);
+                }
+            }
+
+            pm.setDelayed();
+            pm.setDestId(session.id());
             m_sendAfterSpawn[newModuleId].emplace_back(pm);
         }
     }
@@ -3043,10 +3077,8 @@ void Hub::cacheParamConnections(int oldModuleId, int newModuleId)
 {
     auto paramNames = m_stateTracker.getParameters(oldModuleId);
     for (const auto &pn: paramNames) {
-        if (pn != "_position" || pn != "_layer") {
-            auto cm = message::Connect(oldModuleId, pn, newModuleId, pn);
-            m_sendAfterSpawn[newModuleId].emplace_back(cm);
-        }
+        auto cm = message::Connect(oldModuleId, pn, newModuleId, pn);
+        m_sendAfterSpawn[newModuleId].emplace_back(cm);
     }
 }
 
@@ -3081,18 +3113,18 @@ bool Hub::cacheModuleValues(int oldModuleId, int newModuleId)
     return true;
 }
 
-bool Hub::copyModuleParams(int oldModuleId, int newModuleId)
+bool Hub::copyModuleParams(int oldModuleId, int newModuleId, bool clone)
 {
     if (!Id::isModule(oldModuleId))
         return false;
-    cacheParameters(oldModuleId, newModuleId);
+    cacheParameters(oldModuleId, newModuleId, clone);
     applyAllDelayedParameters(oldModuleId, newModuleId);
     return true;
 }
 
 bool Hub::linkModuleParams(int oldModuleId, int newModuleId)
 {
-    if (!copyModuleParams(oldModuleId, newModuleId))
+    if (!copyModuleParams(oldModuleId, newModuleId, true))
         return false;
     cacheParamConnections(oldModuleId, newModuleId);
     return true;
@@ -3171,8 +3203,10 @@ void Hub::setLoadedFile(const std::string &file)
 void Hub::setSessionUrl(const std::string &url)
 {
     m_sessionUrl = url;
-    std::cerr << "Share this: " << url << std::endl;
-    std::cerr << std::endl;
+    if (verbosity() >= Verbosity::Normal) {
+        std::cerr << "Share this: " << url << std::endl;
+        std::cerr << std::endl;
+    }
     auto t = make.message<message::UpdateStatus>(message::UpdateStatus::SessionUrl, url);
     m_stateTracker.handle(t, nullptr);
     sendUi(t);
@@ -3438,7 +3472,7 @@ bool Hub::startUi(const std::string &uipath, bool replace)
     args.push_back(m_masterHost);
     args.push_back(port);
     if (replace) {
-        boost::process::system(uipath, process::args(args));
+        process::system(uipath, process::args(args));
         exit(0);
         return false;
     }
@@ -4030,6 +4064,10 @@ bool Hub::handlePriv(const message::Cover &cover, const buffer *payload)
         return sendMaster(cover, payload);
     }
 
+    if (m_vrbMode == VrbMode::VrbNo) {
+        return false;
+    }
+
     if (m_vrbPort == 0) {
         if (std::chrono::steady_clock::now() - m_lastVrbStart < std::chrono::seconds(m_vrbStartWait)) {
             return false;
@@ -4254,6 +4292,9 @@ void Hub::emergencyQuit()
         checkOutstandingDataConnections();
         lock.lock();
     }
+
+    if (m_dataProxy)
+        m_dataProxy->cleanUp();
 
     m_workGuard.reset();
     m_ioContext.stop();

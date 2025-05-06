@@ -6,12 +6,11 @@ Please follow the following guidelines.
 Compiler Compatibility
 ----------------------
 
-We use C++ 14, but we want to be able to compile Vistle with
+We use C++ 17, but we want to be able to compile Vistle with
 
-* Visual Studio 2017
-* GCC 5.3 and newer,
-* Clang 3.0 and newer (Xcode 6 and newer).
-* Intel ICC 10 and newer
+* Visual Studio 2022
+* GCC 8.5 or newer
+* Clang 14.0 and newer (Xcode 14 and newer).
 
 
 Source Code Formatting
@@ -22,7 +21,7 @@ Source Code Formatting
 * no tabs
 * avoid trailing spaces
 * files have to end with a new-line
-* only ASCII characters (no latin1 or unicode - their behaviour depends on character sets)
+* only ASCII or UTF-8 characters
 * indent by 4 spaces
 * follow commas with a space, e.g.:
 
@@ -51,6 +50,7 @@ Source Code Formatting
 * use `UPPER_CASE` for preprocessor `#define`s
 * use `lowerCamelCase` for variables, functions, and methods
 * use `CamelCase` for `class` names, `enum`s
+* prefix class attributes with `m_`
 * for easy reordering of initializers, format initializer lists like this:
 
         class SomeClass: public BaseClass {
@@ -77,6 +77,7 @@ Coding Style
         #define MY_PRETTY_HEADER_H
         ...
         #endif
+  guard names will be enforced by a `pre-commit` hook
 
 * `#include` all necessary headers at the beginning of the file
 * in order to reduce compile times (and recompilation) you should avoid
@@ -121,5 +122,3 @@ Coding Style
           } else {
               // use important_flag for a different purpose
           }                                                                                                                                                                                                                                                                                           
-
-* prefix class attributes with `m_`

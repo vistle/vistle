@@ -21,13 +21,14 @@
 #include <sstream>
 #include <cstdio>
 #include <cctype>
+#include <cassert>
 
-using namespace vistle;
+namespace vistle {
 
 //==========================================================================
 //
 //==========================================================================
-coRestraint::coRestraint(): all(false), changed(true), stringCurrent(false)
+coRestraint::coRestraint(): all(false), globalStep(1), changed(true), stringCurrent(false)
 {}
 
 //==========================================================================
@@ -36,16 +37,24 @@ coRestraint::coRestraint(): all(false), changed(true), stringCurrent(false)
 coRestraint::~coRestraint()
 {}
 
+size_t coRestraint::getNumGroups() const
+{
+    assert(min.size() == max.size());
+    assert(min.size() == step.size());
+    return min.size();
+}
+
 //==========================================================================
 //
 //==========================================================================
-void coRestraint::add(ssize_t mi, ssize_t ma)
+void coRestraint::add(ssize_t mi, ssize_t ma, ssize_t st)
 {
     stringCurrent = false;
     changed = true;
     all = false;
     min.push_back(mi);
     max.push_back(ma);
+    step.push_back(st);
 }
 
 
@@ -59,6 +68,7 @@ void coRestraint::add(ssize_t val)
     all = false;
     min.push_back(val);
     max.push_back(val);
+    step.push_back(1);
 }
 
 
@@ -70,34 +80,48 @@ void coRestraint::add(const std::string &selection)
     stringCurrent = false;
     changed = true;
 
-    if (selection == "all") {
+    const char *c = selection.c_str();
+
+    if (selection.substr(0, 3) == "all") {
         min.clear();
         max.clear();
+        step.clear();
+        globalStep = 1;
         all = true;
+        ssize_t dumStep = 1;
+        ssize_t numNumbers = sscanf(c, "all/%zd", &dumStep);
+        if (numNumbers == 1)
+            globalStep = (int)dumStep;
+        if (globalStep <= 0)
+            globalStep = 1;
         return;
     }
 
     all = false;
 
-    const char *c = selection.c_str();
     while (*c && !isdigit(*c))
         ++c;
-
     while (*c) {
         int inc = 0;
-        ssize_t dumMax, dumMin;
-        ssize_t numNumbers = sscanf(c, "%zd-%zd%n", &dumMin, &dumMax, &inc);
+        ssize_t dumMax, dumMin, dumStep = 1;
+        ssize_t numNumbers = sscanf(c, "%zd-%zd/%zd%n", &dumMin, &dumMax, &dumStep, &inc);
         if (numNumbers > 0) {
             if (numNumbers == 1) {
                 dumMax = dumMin;
-                if (inc == 0) {
-                    // inc is 0 at least on windows if only one number is read
-                    while (*c && isdigit(*c))
-                        ++c;
-                }
             }
+            if (inc == 0) {
+                // inc is 0 at least on windows if only one number is read
+                while (*c && (isdigit(*c) || *c == '-' || *c == '/'))
+                    ++c;
+            }
+            if (numNumbers < 3)
+                dumStep = 1;
             min.push_back(dumMin);
             max.push_back(dumMax);
+            step.push_back(dumStep);
+        } else {
+            fprintf(stderr, "error parsing string: %s in coRestraint::add", selection.c_str());
+            inc = 1;
         }
         c += inc;
         while (*c && !isdigit(*c))
@@ -114,10 +138,26 @@ void coRestraint::clear()
     stringCurrent = false;
     changed = true;
     all = false;
+    globalStep = 1;
     min.clear();
     max.clear();
+    step.clear();
 }
 
+//==========================================================================
+//
+//==========================================================================
+void coRestraint::cut()
+{
+    stringCurrent = false;
+    changed = true;
+    all = false;
+    if (!min.empty()) {
+        min.pop_back();
+        max.pop_back();
+        step.pop_back();
+    }
+}
 
 //==========================================================================
 //
@@ -166,16 +206,8 @@ ssize_t coRestraint::upper() const
 //==========================================================================
 bool coRestraint::operator()(ssize_t val) const
 {
-    if (all)
-        return true;
-
-    size_t i = 0;
-    while (i < min.size()) {
-        if ((val >= min[i]) && (val <= max[i]))
-            return true;
-        i++;
-    }
-    return false;
+    ssize_t group = -1;
+    return get(val, group);
 }
 
 
@@ -186,14 +218,13 @@ bool coRestraint::get(ssize_t val, ssize_t &group) const
 {
     if (all) {
         group = -1;
-        return true;
+        return (val % globalStep) == 0;
     }
 
-    group = 0;
-    while (group < ssize_t(min.size())) {
-        if ((val >= min[group]) && (val <= max[group]))
-            return true;
-        group++;
+    for (group = 0; size_t(group) < min.size(); ++group) {
+        if ((val >= min[group]) && (val <= max[group])) {
+            return (val - (min[group] - 1)) % step[group] == 0;
+        }
     }
     return false;
 }
@@ -213,37 +244,29 @@ const std::string &coRestraint::getRestraintString() const
 
 const std::string coRestraint::getRestraintString(std::vector<ssize_t> sortedValues) const
 {
-    if (all)
-        return "all";
-
-    const ssize_t size = sortedValues.size();
+    const size_t size = sortedValues.size();
     if (size == 0)
         return "";
 
     std::ostringstream restraintStream;
-    ssize_t old = -1;
-    bool started = false, firsttime = true;
-    for (ssize_t i = 0; i < size; ++i) {
-        ssize_t actual = sortedValues[i];
-        if (firsttime) {
-            firsttime = false;
-            restraintStream << actual;
-            old = actual;
-            continue;
-        } else if (actual == old + 1 && i < size - 1) {
-            if (!started) {
-                restraintStream << "-";
-                started = true;
+    ssize_t old = sortedValues[0];
+    restraintStream << old;
+
+    bool inSequence = false;
+    for (size_t i = 1; i < size; ++i) {
+        const ssize_t cur = sortedValues[i];
+        if (cur == old + 1) {
+            if (i == size - 1) {
+                restraintStream << "-" << cur;
             }
-            old = actual;
-            continue;
-        } else if (started) {
-            started = false;
-            restraintStream << old << ", " << actual;
+            inSequence = true;
         } else {
-            restraintStream << ", " << actual;
+            if (inSequence)
+                restraintStream << "-" << old;
+            restraintStream << ", " << cur;
+            inSequence = false;
         }
-        old = actual;
+        old = cur;
     }
     return restraintStream.str();
 }
@@ -279,3 +302,5 @@ const std::vector<ssize_t> &coRestraint::getValues() const
 
     return values;
 }
+
+} // namespace vistle

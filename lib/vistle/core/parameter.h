@@ -51,7 +51,7 @@ public:
                                         (ExistingFilename) // String
                                         (Directory) // String
                                         (ExistingDirectory) // String
-                                        (NewPathname) // String
+                                        (Restraint) // String
                                         (Boolean) // Integer
                                         (Choice) // Integer (fixed choice) and String (dynamic choice)
                                         (Slider) // Integer, Float

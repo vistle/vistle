@@ -8,6 +8,8 @@
 #include <QMimeData>
 #include <QMenu>
 #include <QSettings>
+#include <QDesktopServices>
+#include <QUrl>
 #include <fstream>
 #include <vistle/module_descriptions/descriptions.h>
 
@@ -20,13 +22,12 @@ enum ItemTypes {
 };
 
 static std::array<ModuleBrowser::WidgetIndex, 2> ModuleLists{ModuleBrowser::Main, ModuleBrowser::Filtered};
-// provide sort order for module categories
-static std::array<const char *, 10> Categories{"Simulation", "Read",        "Filter",  "Map",    "Geometry",
-                                               "Render",     "Information", "General", "UniViz", "Develop"};
 class CategoryItem: public QTreeWidgetItem {
     using QTreeWidgetItem::QTreeWidgetItem;
     bool operator<(const QTreeWidgetItem &other) const override
     {
+        static auto Categories = vistle::getModuleCategories("");
+
         if (other.type() != Category)
             return *static_cast<const QTreeWidgetItem *>(this) < other;
         std::string mytext = text(0).toStdString();
@@ -227,6 +228,10 @@ void ModuleBrowser::prepareMenu(const QPoint &pos)
 {
     auto *widget = m_moduleListWidget[visibleWidgetIndex()];
     QTreeWidgetItem *item = widget->itemAt(pos);
+    if (!item) {
+        return;
+    }
+
     for (auto hub: m_hubItems[visibleWidgetIndex()]) {
         int id = hub.first;
         if (hub.second == item) {
@@ -241,8 +246,33 @@ void ModuleBrowser::prepareMenu(const QPoint &pos)
             menu.addAction(dbgAct);
 
             menu.exec(widget->mapToGlobal(pos));
-            break;
+            return;
         }
+    }
+
+    if (item->type() == Module) {
+        QMenu menu(this);
+        auto *helpAct = new QAction(tr("Get Help"), this);
+        connect(helpAct, &QAction::triggered, [item]() {
+            auto cat = item->data(0, categoryRole()).toString().toLower();
+            auto mod = item->data(0, nameRole()).toString();
+            QDesktopServices::openUrl(QUrl(QString("https://vistle.io/module/%0/%1/%1.html").arg(cat, mod)));
+        });
+        menu.addAction(helpAct);
+        menu.exec(widget->mapToGlobal(pos));
+        return;
+    }
+
+    if (item->type() == Category) {
+        QMenu menu(this);
+        auto *helpAct = new QAction(tr("Get Help"), this);
+        connect(helpAct, &QAction::triggered, [item]() {
+            auto cat = item->data(0, categoryRole()).toString().toLower();
+            QDesktopServices::openUrl(QUrl(QString("https://vistle.io/module/%0/index.html").arg(cat)));
+        });
+        menu.addAction(helpAct);
+        menu.exec(widget->mapToGlobal(pos));
+        return;
     }
 }
 
@@ -385,7 +415,7 @@ QTreeWidgetItem *ModuleBrowser::addCategory(int hub, QString category, QString d
 
 void ModuleBrowser::addModule(int hub, QString module, QString path, QString category, QString description)
 {
-    static auto CategoryDescriptions = vistle::getModuleCategories("");
+    static auto CategoryDescriptions = vistle::getCategoryDescriptions("");
 
     if (m_primaryHub == vistle::message::Id::Invalid || m_primaryHub < hub) {
         m_primaryHub = hub;

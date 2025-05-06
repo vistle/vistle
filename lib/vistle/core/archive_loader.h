@@ -34,39 +34,7 @@ struct V_COREEXPORT ArrayLoader {
     std::shared_ptr<ArrayOwner> m_unreffer;
 
     template<typename T>
-    void operator()(T)
-    {
-        if (shm_array<T, typename shm<T>::allocator>::typeId() == m_type) {
-            if (m_ok) {
-                m_ok = false;
-                std::cerr << "ArrayLoader: multiple type matches for data array " << m_name << std::endl;
-                return;
-            }
-            ShmVector<T> arr;
-            if (!m_name.empty())
-                arr = Shm::the().getArrayFromName<T>(m_name);
-            if (arr) {
-                std::cerr << "ArrayLoader: already have data array with name " << m_name << std::endl;
-                m_unreffer.reset(new Unreffer<T>(arr));
-                return;
-            }
-            auto &ar = const_cast<vistle::iarchive &>(m_ar);
-            std::string arname;
-            ar &arname;
-            assert(arname == m_arname);
-            m_name = ar.translateArrayName(arname);
-            arr = ShmVector<T>((shm_name_t)m_name);
-            if (!arr.valid())
-                arr.construct();
-            //std::cerr << "ArrayLoader: loading " << arname << " as " << m_name << ": arr=" << arr << std::endl;
-            m_name = arr.name().str();
-            ar.registerArrayNameTranslation(arname, arr.name());
-            //std::cerr << "ArrayLoader: constructed " << arname << " as " << arr.name() << std::endl;
-            ar &*arr;
-            m_unreffer.reset(new Unreffer<T>(arr));
-            m_ok = true;
-        }
-    }
+    void operator()(T);
 
     bool load();
     const std::string &name() const;

@@ -185,13 +185,18 @@ def isModuleParameter(name):
       return None
    return int(m.group(1))
 
+def adaptModuleParameter(name, oldIdx, newIdx):
+   m = re.search(r'\[([0-9]+)\]$', name)
+   return re.sub(f'\\[{oldIdx}\\]$', f'[{newIdx}]', name)
+
 def saveParameters(f, mod):
       ses = _vistle.getVistleSession()
       params = _vistle.getParameters(ses)
       for p in params:
          if isModuleParameter(p) == mod:
             if not _vistle.isParameterDefault(ses, p):
-               f.write("set"+getParameterType(ses,p)+"Param("+modvar(ses)+", '"+p+"', "+str(getSavableParam(ses,p))+")\n")
+               np = adaptModuleParameter(p, mod, "{"+modvar(mod)+"}")
+               f.write("set"+getParameterType(ses,p)+"Param("+modvar(ses)+", f'"+np+"', "+str(getSavableParam(ses,p))+")\n")
       params = _vistle.getParameters(mod)
       paramChanges = False
       for p in params:

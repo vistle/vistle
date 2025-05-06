@@ -1,9 +1,14 @@
+#ifndef VISTLE_VTKM_IMPLICIT_FUNCTION_CONTROLLER_H
+#define VISTLE_VTKM_IMPLICIT_FUNCTION_CONTROLLER_H
+
 #include <vtkm/ImplicitFunction.h>
 
 #include <vistle/module/module.h>
 #include <vistle/util/enum.h>
 
 #include "export.h"
+
+namespace vistle {
 
 // order has to match OpenCOVER's CuttingSurfaceInteraction
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(ImplFuncOption, (Plane)(Sphere)(CylinderX)(CylinderY)(CylinderZ)(Box))
@@ -35,3 +40,6 @@ private:
     vistle::Module *m_module = nullptr;
     vistle::IntParameter *m_option = nullptr;
 };
+
+} // namespace vistle
+#endif

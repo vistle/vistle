@@ -19,7 +19,8 @@ class Port: public QObject, public QGraphicsRectItem {
     typedef QGraphicsRectItem Base;
 
 public:
-    static const double portSize;
+    static double portSize;
+    static void configure();
 
     enum Type {
         Parameter,
