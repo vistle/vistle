@@ -17,7 +17,7 @@ DeepArchiveFetcher::DeepArchiveFetcher(const std::map<std::string, buffer> &obje
 : m_objects(objects), m_arrays(arrays), m_compression(compressions), m_rawSize(sizes)
 {}
 
-void DeepArchiveFetcher::requestArray(const std::string &arname, int type,
+void DeepArchiveFetcher::requestArray(const std::string &arname, int localType, int remoteType,
                                       const ArrayCompletionHandler &completeCallback)
 {
     //std::cerr << "DeepArchiveFetcher: trying array " << arname << std::endl;
@@ -49,17 +49,18 @@ void DeepArchiveFetcher::requestArray(const std::string &arname, int type,
     try {
         iarchive ar(vb);
         ar.setFetcher(shared_from_this());
-        ArrayLoader loader(arname, type, ar);
+        ArrayLoader loader(arname, localType, ar);
         if (loader.load()) {
             //std::cerr << "DeepArchiveFetcher: success array " << arname << std::endl;
             m_ownedArrays.emplace(loader.owner());
             completeCallback(ar.translateArrayName(arname));
         } else {
-            std::cerr << "DeepArchiveFetcher: failed to load array " << arname << " of type " << type << std::endl;
+            std::cerr << "DeepArchiveFetcher: failed to load array " << arname << " of type " << localType
+                      << " (originally " << remoteType << ")" << std::endl;
         }
     } catch (std::exception &ex) {
         std::cerr << "DeepArchiveFetcher: exception " << ex.what() << " while loading array " << arname << " of type "
-                  << type << std::endl;
+                  << localType << " (originally " << remoteType << ")" << std::endl;
         throw ex;
     }
 }

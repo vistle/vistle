@@ -53,7 +53,8 @@ public:
                        const std::map<std::string, message::CompressionMode> &compressions,
                        const std::map<std::string, size_t> &sizes);
 
-    void requestArray(const std::string &name, int type, const ArrayCompletionHandler &completeCallback) override;
+    void requestArray(const std::string &name, int localType, int remoteType,
+                      const ArrayCompletionHandler &completeCallback) override;
     void requestObject(const std::string &name, const ObjectCompletionHandler &completeCallback) override;
 
     bool renameObjects() const override;

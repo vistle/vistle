@@ -982,6 +982,7 @@ public:
     const char *referrer() const;
     const Meta &meta() const;
     Object::Type objectType() const;
+    int arrayType() const;
     Meta objectMeta() const;
     bool isArray() const;
 
