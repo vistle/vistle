@@ -105,10 +105,9 @@ public:
         QUADS = 28,
         LAYERGRID = 29,
 
+        CELLTREE = 80, // base type id for all Celltree types
+
         VERTEXOWNERLIST = 95,
-        CELLTREE1 = 96,
-        CELLTREE2 = 97,
-        CELLTREE3 = 98,
         NORMALS = 99,
 
         VEC = 100, // base type id for all Vec types

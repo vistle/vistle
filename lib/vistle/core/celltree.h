@@ -18,10 +18,6 @@ namespace vistle {
 // “Fast, memory-efficient cell location in unstructured grids for visualization”,
 // IEEE Transactions on Visualization and Computer Graphics, vol. 16, no. 6, pp. 1541–1550, 2010.
 
-V_DECLARE_SHMREF(CelltreeNode1)
-V_DECLARE_SHMREF(CelltreeNode2)
-V_DECLARE_SHMREF(CelltreeNode3)
-
 template<typename Scalar, typename Index, int NumDimensions = 3>
 class V_COREEXPORT Celltree: public Object {
     V_OBJECT(Celltree);
@@ -29,8 +25,8 @@ class V_COREEXPORT Celltree: public Object {
 public:
     typedef Object Base;
 
-    typedef ScalarVector<NumDimensions> CTVector;
-    typedef CelltreeNode<sizeof(Index), NumDimensions> Node;
+    typedef VistleVector<Scalar, NumDimensions> CTVector;
+    typedef CelltreeNode<Scalar, sizeof(Index), NumDimensions> Node;
 
     struct AABB {
         Scalar mmin[NumDimensions];
@@ -159,14 +155,47 @@ private:
     V_DATA_END(Celltree);
 };
 
+#define TD_CT(ST, SN, IS) \
+    typedef Celltree<ST, Index##IS, 1> Celltree##IS##SN##1; \
+    typedef Celltree<ST, Index##IS, 2> Celltree##IS##SN##2; \
+    typedef Celltree<ST, Index##IS, 3> Celltree##IS##SN##3;
+
+TD_CT(float, F, 32)
+TD_CT(float, F, 64)
+TD_CT(double, D, 32)
+TD_CT(double, D, 64)
+
+#define V_CELLTREE_SI(S, I, EXT, EXP) \
+    EXT template class EXP Celltree<S, I, 1>; \
+    EXT template class EXP Celltree<S, I, 2>; \
+    EXT template class EXP Celltree<S, I, 3>;
+
+#define V_CELLTREE_I(I, EXT, EXP) V_CELLTREE_SI(float, I, EXT, EXP) V_CELLTREE_SI(double, I, EXT, EXP)
+#define V_CELLTREE_DECL_I(I) V_CELLTREE_I(I, extern, V_COREEXPORT)
+
+FOR_ALL_INDEX(V_CELLTREE_DECL_I)
+
+#define FOR_ALL_CELLTREE_TYPES(MACRO) \
+    MACRO(Celltree32F1) \
+    MACRO(Celltree32F2) \
+    MACRO(Celltree32F3) \
+    MACRO(Celltree32D1) \
+    MACRO(Celltree32D2) \
+    MACRO(Celltree32D3) \
+    MACRO(Celltree64F1) \
+    MACRO(Celltree64F2) \
+    MACRO(Celltree64F3) \
+    MACRO(Celltree64D1) \
+    MACRO(Celltree64D2) \
+    MACRO(Celltree64D3)
+
+#define V_DECLARE_CT(T) V_DECLARE_SHMREF(T::Node)
+
+FOR_ALL_CELLTREE_TYPES(V_DECLARE_CT)
+
 typedef Celltree<Scalar, Index, 1> Celltree1;
-extern template class V_COREEXPORT Celltree<Scalar, Index, 1>;
-
 typedef Celltree<Scalar, Index, 2> Celltree2;
-extern template class V_COREEXPORT Celltree<Scalar, Index, 2>;
-
 typedef Celltree<Scalar, Index, 3> Celltree3;
-extern template class V_COREEXPORT Celltree<Scalar, Index, 3>;
 
 } // namespace vistle
 

@@ -15,6 +15,7 @@
 #endif
 
 #include "validate.h"
+#include <boost/mpl/find.hpp>
 
 namespace vistle {
 
@@ -46,10 +47,20 @@ struct Celltree<Scalar, Index, NumDimensions>::GlobalData {
     std::deque<NodeData> nodesToSplit;
 };
 
+namespace {
+template<typename T>
+unsigned celltreeTypeId()
+{
+    const size_t pos = boost::mpl::find<CelltreeNodeTypes, T>::type::pos::value;
+    static_assert(pos < boost::mpl::size<CelltreeNodeTypes>::value, "CelltreeNode type not found");
+    return pos;
+}
+} // namespace
+
 template<typename Scalar, typename Index, int NumDimensions>
 Object::Type Celltree<Scalar, Index, NumDimensions>::type()
 {
-    return (Object::Type)(Object::CELLTREE1 + NumDimensions - 1);
+    return (Object::Type)(Object::CELLTREE + celltreeTypeId<Node>());
 }
 
 template<typename Scalar, typename Index, int NumDimensions>
@@ -493,7 +504,7 @@ Celltree<Scalar, Index, NumDimensions>::Data::Data(const Data &o, const std::str
 
 template<typename Scalar, typename Index, int NumDimensions>
 Celltree<Scalar, Index, NumDimensions>::Data::Data(const std::string &name, const size_t numCells, const Meta &meta)
-: Base::Data(Object::Type(Object::CELLTREE1 - 1 + NumDimensions), name, meta)
+: Base::Data(Object::Type(Object::CELLTREE + celltreeTypeId<Node>()), name, meta)
 {
     initData();
 

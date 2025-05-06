@@ -26,6 +26,9 @@ typedef SIndex32 SIndex;
 const Index InvalidIndex = InvalidIndex32;
 #endif
 
+#define FOR_ALL_INDEX(MACRO) \
+    MACRO(Index32) \
+    MACRO(Index64)
 
 } // namespace vistle
 
