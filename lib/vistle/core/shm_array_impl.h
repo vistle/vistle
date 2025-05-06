@@ -473,7 +473,7 @@ template<typename T, class allocator>
 void shm_array<T, allocator>::print(std::ostream &os, bool verbose) const
 {
     //os << name << " ";
-    os << ScalarTypeNames[typeId()] << "[" << size();
+    os << scalarTypeName(typeId()) << "[" << size();
     if (verbose) {
         os << ":";
         for (size_t i = 0; i < size(); ++i) {

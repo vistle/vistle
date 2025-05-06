@@ -51,6 +51,7 @@ set(core_SOURCES
     points.cpp
     polygons.cpp
     rectilineargrid.cpp
+    scalars.cpp
     structuredgrid.cpp
     structuredgridbase.cpp
     texture1d.cpp
