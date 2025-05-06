@@ -223,7 +223,7 @@ bool WritePointsCsv::compute()
         }
         for (int j = 0; j < NumPorts; ++j) {
             if (data[j]) {
-                for (int k = 0; k < data[j]->dimension(); ++k) {
+                for (unsigned k = 0; k < data[j]->dimension(); ++k) {
                     auto val = data[j]->value(i, k);
                     csv << val;
                 }

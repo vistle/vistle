@@ -115,7 +115,9 @@ bool IsoSurfaceVtkm::reduce(int timestep)
         m_pointOrValue->getValue() == PointPerTimestep) {
         const int numBlocks = blocks.size();
         int found = 0;
+#ifdef _OPENMP
 #pragma omp parallel for firstprivate(value) lastprivate(value) reduction(+ : found)
+#endif
         for (int i = 0; i < numBlocks; ++i) {
             const auto &b = blocks[i];
             auto gi = b.grid->getInterface<GridInterface>();
