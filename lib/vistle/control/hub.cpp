@@ -980,7 +980,7 @@ Hub::launchProcess(int type, const std::string &prog, const std::vector<std::str
                 obs.sendTextToUi(stream, discardCount + buf.size(), line, obs.moduleId);
             }
             buf.emplace_back(stream, line);
-            while (buf.size() > m_messageBacklog) {
+            while (m_messageBacklog >= 0 && buf.size() > size_t(m_messageBacklog)) {
                 ++discardCount;
                 buf.pop_front();
             }
