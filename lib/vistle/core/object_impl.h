@@ -113,7 +113,9 @@ Object *Object::loadObject(Archive &ar)
         // lock so that only one thread restores object from archive
         ObjectData::mutex_lock_type guard(obj->d()->object_mutex);
         if (!objData->isComplete() || objData->meta.creator() == -1) {
+            objData->meta.setRestoring(true);
             obj->loadFromArchive(ar);
+            objData->meta.setRestoring(false);
         }
 #ifdef USE_BOOST_ARCHIVE
     } catch (const boost::archive::archive_exception &ex) {

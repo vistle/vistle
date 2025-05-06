@@ -268,7 +268,7 @@ bool Object::Data::isComplete() const
               << " in " << this->name << " (" << unresolvedReferences << "=" << unresolvedArrayReferences << "a+"
               << unresolvedObjectReferences << "o)" << std::endl;
 #endif
-    return unresolvedReferences == 0;
+    return unresolvedReferences == 0 && !meta.isRestoring();
 }
 
 void ObjectData::unresolvedReference(bool isArray, const std::string &arname, const std::string &shmname)
@@ -304,7 +304,11 @@ void ObjectData::referenceResolved(const std::function<void()> &completeCallback
     assert(unresolvedReferences > 0);
     //mutex_lock_type guard(object_mutex);
     if (unresolvedReferences.fetch_sub(1) == 1) {
-        if (completeCallback) {
+        if (meta.isRestoring()) {
+#ifdef REFERENCE_DEBUG
+            std::cerr << "COMPLETED " << this->name << " by " << name << ", but still restoring" << std::endl;
+#endif
+        } else if (completeCallback) {
 #ifdef REFERENCE_DEBUG
             std::cerr << "COMPLETED " << this->name << " with handler by " << name << std::endl;
 #endif
@@ -457,6 +461,7 @@ bool Object::check(std::ostream &os, bool quick) const
         VALIDATE(d()->meta.numBlocks() == -1 || (d()->meta.block() >= 0 && d()->meta.block() < d()->meta.numBlocks()));
 
         VALIDATE(d()->meta.generation() >= -1);
+        VALIDATE(!d()->meta.isRestoring());
     }
 
     if (quick)
