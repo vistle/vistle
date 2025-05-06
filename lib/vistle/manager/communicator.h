@@ -56,12 +56,12 @@ public:
     bool connectHub(std::string host, unsigned short port, unsigned short dataPort);
     boost::mpi::communicator comm() const;
 
-    void lock();
-    void unlock();
 
 private:
     bool connectData();
 
+    void lock();
+    void unlock();
 
     boost::mpi::communicator m_comm;
     ClusterManager *m_clusterManager;
