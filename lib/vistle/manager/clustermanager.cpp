@@ -1340,14 +1340,18 @@ bool ClusterManager::addObjectSource(const message::AddObject &addObj)
         auto iter = addObj.meta().iteration();
         auto &cache = m_outputObjects[key];
         if (cache.generation != gen || cache.iteration != iter) {
+#ifdef DEBUG
             CERR << "clearing cache for " << addObj.senderId() << ":" << addObj.getSenderPort() << std::endl;
+#endif
             cache.objects.clear();
         }
         cache.objects.emplace_back(addObj.objectName());
         cache.generation = gen;
         cache.iteration = iter;
+#ifdef DEBUG
         CERR << "caching " << addObj.objectName() << " for " << addObj.senderId() << ":" << addObj.getSenderPort()
              << ", port=" << port << std::endl;
+#endif
     }
 
     const Port::ConstPortSet *list = portManager().getConnectionList(port);

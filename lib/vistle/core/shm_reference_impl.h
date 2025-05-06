@@ -58,8 +58,7 @@ void shm_array_ref<T>::load(Archive &ar)
 
     std::string arname = shmname.str();
     std::string name = ar.translateArrayName(arname);
-    std::cerr << "shm_array_ref: loading " << shmname << " for " << m_name << "/" << name << ", valid=" << valid()
-              << ", origType=" << origType << std::endl;
+    //std::cerr << "shm_array_ref: loading " << shmname << " for " << m_name << "/" << name << ", valid=" << valid() << ", origType=" << origType << std::endl;
     if (name.empty() || m_name.str() != name) {
         unref();
         m_name.clear();
