@@ -74,7 +74,7 @@ const shm_obj_ref<T> &shm_obj_ref<T>::operator=(const shm_obj_ref<T> &rhs)
 }
 
 template<class T>
-const shm_obj_ref<T> &shm_obj_ref<T>::operator=(typename shm_obj_ref<T>::ObjType::const_ptr rhs)
+const shm_obj_ref<T> &shm_obj_ref<T>::operator=(const typename shm_obj_ref<T>::ObjType::const_ptr &rhs)
 {
     unref();
     if (rhs) {
@@ -89,9 +89,9 @@ const shm_obj_ref<T> &shm_obj_ref<T>::operator=(typename shm_obj_ref<T>::ObjType
 }
 
 template<class T>
-const shm_obj_ref<T> &shm_obj_ref<T>::operator=(typename shm_obj_ref<T>::ObjType::ptr rhs)
+const shm_obj_ref<T> &shm_obj_ref<T>::operator=(const typename shm_obj_ref<T>::ObjType::ptr &rhs)
 {
-    // reuse operator fo ObjType::const_ptr
+    // reuse operator for ObjType::const_ptr
     *this = std::const_pointer_cast<const ObjType>(rhs);
     return *this;
 }
