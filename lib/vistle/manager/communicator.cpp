@@ -218,7 +218,7 @@ bool Communicator::dispatch(bool *work)
 
     bool received = false;
 
-    std::unique_lock<Communicator> guard(*this);
+    std::unique_lock guard(m_mutex);
 
     // check for new UIs and other network clients
     // handle or broadcast messages received from slaves (rank > 0)
@@ -308,7 +308,7 @@ bool Communicator::dispatch(bool *work)
 
     guard.unlock();
     m_ioContext.poll();
-    guard.lock();
+    //guard.lock();
 
     if (m_rank == 0) {
         message::Buffer buf;
@@ -337,7 +337,7 @@ bool Communicator::dispatch(bool *work)
         }
     }
 
-    guard.unlock();
+    //guard.unlock();
     if (m_dataManager->dispatch())
         received = true;
     guard.lock();
@@ -387,6 +387,7 @@ void Communicator::terminate()
 
 bool Communicator::startSend(int destRank, const message::Message &message, const MessagePayload &payload)
 {
+    std::lock_guard guard(m_mutex);
     auto p = m_ongoingSends.emplace(new SendRequest(message));
     auto it = p.first;
     auto &sr = **it;
@@ -470,7 +471,7 @@ bool Communicator::broadcastAndHandleMessage(const message::Message &message, co
 
     MessagePayload pl = payload;
     if (m_size > 0) {
-        std::lock_guard<Communicator> guard(*this);
+        std::lock_guard guard(m_mutex);
         std::vector<MPI_Request> s(m_size);
         unsigned int size = buf.size();
         for (int index = 0; index < m_size; ++index) {
@@ -505,7 +506,7 @@ bool Communicator::handleMessage(const message::Buffer &message, const MessagePa
         assert(payload->size() == message.payloadSize());
     }
 
-    std::lock_guard<Communicator> guard(*this);
+    std::lock_guard guard(m_mutex);
 
     if (message.type() == message::SETID) {
         const auto &set = message.as<message::SetId>();

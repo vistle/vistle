@@ -132,7 +132,6 @@ bool DataManager::dispatch()
         if (m_size <= 1) {
             continue;
         }
-        std::unique_lock<Communicator> guard(Communicator::the());
         auto status = m_req.test();
         if (status && !status->cancelled()) {
             assert(status->tag() == Communicator::TagData);
@@ -141,11 +140,9 @@ bool DataManager::dispatch()
                 payload.resize(buf.payloadSize());
                 m_comm.recv(status->source(), Communicator::TagData, payload.data(), buf.payloadSize());
             }
-            guard.unlock();
             work = true;
             gotMsg = true;
             handle(buf, &payload);
-            guard.lock();
             m_req = m_comm.irecv(mpi::any_source, Communicator::TagData, &m_msgSize, 1);
         }
     }
@@ -161,7 +158,6 @@ void DataManager::trace(message::Type type)
 bool DataManager::send(const message::Message &message, std::shared_ptr<buffer> payload)
 {
     if (isLocal(message.destId())) {
-        std::unique_lock<Communicator> guard(Communicator::the());
         const int sz = message.size();
         m_comm.send(message.destRank(), Communicator::TagData, sz);
         m_comm.send(message.destRank(), Communicator::TagData, (const char *)&message, sz);
@@ -332,8 +328,6 @@ bool DataManager::completeTransfer(const message::AddObjectCompleted &complete)
 
 void DataManager::updateStatus()
 {
-    std::unique_lock<Communicator> guard(Communicator::the());
-
     message::DataTransferState m(m_inTransitObjects.size());
     m.setSenderId(Communicator::the().hubId());
     m.setRank(m_rank);

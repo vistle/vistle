@@ -1464,7 +1464,6 @@ bool ClusterManager::addObjectDestination(const message::AddObject &addObj, Obje
                         // unblock receiving module
                         addObj2.setUnblocking();
 
-                        std::unique_lock<Communicator> guard(Communicator::the());
                         if (broadcast) {
                             Communicator::the().broadcastAndHandleMessage(addObj2);
                         } else {
