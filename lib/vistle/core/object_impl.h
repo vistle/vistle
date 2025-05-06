@@ -91,27 +91,22 @@ Object *Object::loadObject(Archive &ar)
         if (!ar.currentObject())
             ar.setCurrentObject(objData);
         if (objData && objData->isComplete()) {
-            objData->ref();
             obj = Object::create(objData);
-            objData->unref();
-            assert(obj->refcount() >= 1);
+        } else if (objData) {
+            std::cerr << "Object::loadObject: have " << name << ", but incomplete, refcount=" << objData->refcount()
+                      << std::endl;
+            obj = Object::create(objData);
         } else {
-            if (objData) {
-                std::cerr << "Object::loadObject: have " << name << ", but incomplete, refcount=" << objData->refcount()
-                          << std::endl;
-                obj = Object::create(objData);
-            } else {
-                auto funcs = ObjectTypeRegistry::getType(type);
-                obj = funcs.createEmpty(name);
-                objData = obj->d();
-                if (!ar.currentObject())
-                    ar.setCurrentObject(objData);
-            }
+            auto funcs = ObjectTypeRegistry::getType(type);
+            obj = funcs.createEmpty(name);
+            objData = obj->d();
             assert(objData);
+            if (!ar.currentObject())
+                ar.setCurrentObject(objData);
             name = obj->getName();
             ar.registerObjectNameTranslation(arname, name);
-            assert(obj->refcount() >= 1);
         }
+        assert(obj->refcount() >= 1);
     };
     try {
         Shm::the().atomicFunc(lambda);
