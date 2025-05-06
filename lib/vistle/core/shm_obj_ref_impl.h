@@ -212,12 +212,12 @@ void shm_obj_ref<T>::load(Archive &ar)
     auto handler = ar.objectCompletionHandler();
     auto fetcher = ar.fetcher();
     ref0 = ar.getObject(arname, [this, fetcher, arname, obj, handler](Object::const_ptr newobj) -> void {
-        //std::cerr << "object completion handler: " << m_name << std::endl;
         assert(newobj);
         auto ref2 = T::as(newobj);
         assert(ref2);
         *this = ref2;
         m_name = newobj->getName();
+        //std::cerr << "object completion handler: " << m_name << " (in archive as " << arname << ")" << std::endl;
         if (fetcher)
             fetcher->registerObjectNameTranslation(arname, m_name);
         if (obj) {
