@@ -40,7 +40,7 @@ struct CompressionSettings {
 
     // TODO: find better default values
     uint8_t p_bigWhoop_nPar = 1;
-    const char *p_bigWhoop_rate = "32";
+    const char *p_bigWhoop_rate = "1";
 };
 
 } // namespace vistle
