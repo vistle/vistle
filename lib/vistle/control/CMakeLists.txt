@@ -49,7 +49,7 @@ if(VISTLE_USE_MPI)
     target_compile_definitions(vistle_control PRIVATE VISTLE_USE_MPI)
 endif()
 
-vistle_find_package(fmt)
+vistle_find_package(fmt 7.1.3)
 if(TARGET fmt::fmt)
     target_compile_definitions(vistle_control PRIVATE VISTLE_USE_FMT)
     target_link_libraries(vistle_control PRIVATE fmt::fmt)
