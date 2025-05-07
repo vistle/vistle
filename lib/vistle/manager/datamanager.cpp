@@ -521,15 +521,14 @@ bool DataManager::handlePriv(const message::SendObject &snd, buffer *payload)
             assert(it != m_requestedArrays.end());
             if (it != m_requestedArrays.end()) {
                 auto reqArr = std::move(it->second);
+                m_requestedArrays.erase(it);
+                lock.unlock();
 #ifdef DEBUG
                 CERR << "restored array " << snd.objectId() << ", " << reqArr.handlers.size() << " completion handler"
                      << std::endl;
 #endif
-                m_requestedArrays.erase(it);
-                lock.unlock();
                 for (const auto &completionHandler: reqArr.handlers)
                     completionHandler(snd.objectId());
-                //lock.lock();
             }
 
             return true;
@@ -537,15 +536,6 @@ bool DataManager::handlePriv(const message::SendObject &snd, buffer *payload)
 
         // an object was received
         std::string objName = snd.objectId();
-        {
-            std::lock_guard<std::mutex> lock(m_requestObjectMutex);
-            auto objIt = m_requestedObjects.find(objName);
-            if (objIt == m_requestedObjects.end()) {
-                CERR << "object " << objName << " unexpected" << std::endl;
-                return false;
-            }
-        }
-
         auto completionHandler = [this, objName]() mutable -> void {
             std::unique_lock<std::mutex> lock(m_requestObjectMutex);
             auto addIt = m_outstandingAdds.find(objName);
@@ -561,30 +551,16 @@ bool DataManager::handlePriv(const message::SendObject &snd, buffer *payload)
             auto objIt = m_requestedObjects.find(objName);
             if (objIt != m_requestedObjects.end()) {
                 auto handlers = std::move(objIt->second.completionHandlers);
-                auto objref = objIt->second.obj;
+                auto obj = objIt->second.obj;
                 m_requestedObjects.erase(objIt);
                 lock.unlock();
-                if (!objref) {
-                    objref = Shm::the().getObjectFromName(objName);
-                }
-#if 0
-                auto obj = Shm::the().getObjectFromName(objName);
                 if (!obj) {
-                    if (auto incomplete = Shm::the().getObjectFromName(objName, false)) {
-                        CERR << objName << " is INCOMPLETE" << std::endl;
-                    } else {
-                        CERR << "could not retrieve " << objName << " from shmem" << std::endl;
-                    }
+                    obj = Shm::the().getObjectFromName(objName);
+                    assert(obj);
                 }
-#else
-                auto &obj = objref;
-#endif
-                assert(obj);
                 for (const auto &handler: handlers) {
                     handler(obj);
                 }
-                //obj.reset();
-                //lock.lock();
             } else {
                 CERR << "no outstanding object for " << objName << std::endl;
             }
@@ -604,9 +580,20 @@ bool DataManager::handlePriv(const message::SendObject &snd, buffer *payload)
         }
         assert(obj);
 
+        {
+            std::lock_guard<std::mutex> lock(m_requestObjectMutex);
+            auto objIt = m_requestedObjects.find(objName);
+            if (objIt == m_requestedObjects.end()) {
+                CERR << "object " << objName << " unexpected" << std::endl;
+                return false;
+            }
+        }
+
         std::lock_guard<std::mutex> lock(m_requestObjectMutex);
         auto objIt = m_requestedObjects.find(objName);
-        if (objIt != m_requestedObjects.end()) {
+        if (objIt == m_requestedObjects.end()) {
+            CERR << "object " << objName << " unexpected" << std::endl;
+        } else {
             objIt->second.obj = obj;
         }
 
