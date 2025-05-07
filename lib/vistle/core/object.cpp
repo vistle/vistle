@@ -317,6 +317,14 @@ void ObjectData::referenceResolved(const std::function<void()> &completeCallback
     }
 }
 
+void ObjectData::printCompletionStatus(std::ostream &os) const
+{
+    bool complete = isComplete();
+    os << (complete ? "" : "NOT ") << "COMPLETE: " << this->name << " (unresolved=" << unresolvedReferences << "="
+       << unresolvedArrayReferences << "a+" << unresolvedObjectReferences << "o) "
+       << ", #ref=" << m_refcount << (meta.isRestoring() ? " (restoring)" : "") << std::endl;
+}
+
 #ifndef NO_SHMEM
 void *Object::Data::operator new(size_t size)
 {

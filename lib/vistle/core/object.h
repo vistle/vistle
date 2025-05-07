@@ -305,6 +305,7 @@ struct ObjectData: public ShmData {
     V_COREEXPORT void unresolvedReference(bool isArray, const std::string &arname, const std::string &shmname);
     V_COREEXPORT void referenceResolved(const std::function<void()> &completeCallback, bool isArray,
                                         const std::string &arname, const std::string &shmname);
+    V_COREEXPORT void printCompletionStatus(std::ostream &os) const;
 
     ARCHIVE_ACCESS_SPLIT
     template<class Archive>

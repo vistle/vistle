@@ -584,6 +584,7 @@ Object::const_ptr Shm::getObjectFromName(const std::string &name, bool onlyCompl
                 return;
             }
             std::cerr << "Shm::getObjectFromName: " << name << " not complete" << std::endl;
+            od->printCompletionStatus(std::cerr);
         }
     };
     Shm::the().atomicFunc(lambda);
