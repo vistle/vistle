@@ -4,6 +4,7 @@
 #include <map>
 
 #include <memory>
+#include <mutex>
 #include <boost/asio.hpp>
 
 #include <vistle/core/message.h>
@@ -37,6 +38,7 @@ private:
     Hub &m_hub;
     StateTracker &m_stateTracker;
 
+    mutable std::recursive_mutex m_mutex;
     bool m_locked;
     bool m_requestQuit;
 
