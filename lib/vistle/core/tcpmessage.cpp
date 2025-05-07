@@ -25,6 +25,16 @@ namespace message {
 
 typedef uint32_t SizeType;
 
+#ifdef DEBUG
+const SizeType MessageStart = 0x87654321;
+const SizeType PayloadStart = 0x10ad70ad;
+
+#ifdef DEBUG
+static std::map<socket_t *, message::Buffer> lastMessages;
+#endif
+
+#endif
+
 static const size_t buffersize = 16384;
 
 static bool silentErrors = false;
@@ -41,17 +51,29 @@ bool check(const Message &msg, const char *payload, size_t size)
 {
     if (msg.type() <= ANY || msg.type() >= NumMessageTypes) {
         std::cerr << "check message: invalid type " << msg.type() << std::endl;
+        std::cerr << msg << std::endl;
         return false;
     }
 
     if (msg.size() < sizeof(Message) || msg.size() > Message::MESSAGE_SIZE) {
         std::cerr << "check message: invalid size " << msg.size() << std::endl;
+        std::cerr << msg << std::endl;
         return false;
     }
 
-    if (payload && msg.payloadSize() > 0 && size != msg.payloadSize()) {
-        std::cerr << "check message: payload and size do not match" << std::endl;
+    if (size != msg.payloadSize()) {
+        std::cerr << "check message: expected payload size=" << msg.payloadSize() << " and actual size=" << size
+                  << " do not match" << std::endl;
+        std::cerr << msg << std::endl;
         return false;
+    }
+
+    if (msg.payloadSize() != 0) {
+        if (!payload) {
+            std::cerr << "check message: payload is null, but " << msg.payloadSize() << " is expected" << std::endl;
+            std::cerr << msg << std::endl;
+            return false;
+        }
     }
 
     return true;
@@ -167,6 +189,12 @@ struct SendRequest {
         if (payloadShm && *payloadShm) {
             sent = send(sock, msg, ec, &(*payloadShm)->at(0), (*payloadShm)->size());
         } else {
+#ifdef DEBUG
+            // ensure that payload debug header is inserted
+            if (n > 0 && !payload) {
+                payload = get_buffer(0);
+            }
+#endif
             sent = send(sock, msg, ec, payload.get());
         }
 
@@ -227,6 +255,29 @@ void submitSendRequest(std::shared_ptr<SendRequest> req)
 bool recv_payload(socket_t &sock, message::Buffer &msg, error_code &ec, buffer *payload)
 {
     if (msg.payloadSize() > 0) {
+#ifdef DEBUG
+        SizeType pltag;
+        auto tagbuf = asio::buffer(&pltag, sizeof(pltag));
+        size_t tagsz = asio::read(sock, tagbuf, ec);
+        if (ec) {
+            std::cerr << "message::recv: payload tag error " << ec.message() << std::endl;
+            std::cerr << "last message: " << lastMessages[&sock] << std::endl;
+            std::cerr << backtrace() << std::endl;
+            return false;
+        } else if (tagsz != sizeof(pltag)) {
+            std::cerr << "message::recv: short payload tag read: received " << tagsz << " instead of " << sizeof(pltag)
+                      << std::endl;
+            std::cerr << "last message: " << lastMessages[&sock] << std::endl;
+            std::cerr << backtrace() << std::endl;
+            return false;
+        } else if (pltag != PayloadStart) {
+            std::cerr << "message::recv: payload tag mismatch: expected 0x" << std::hex << PayloadStart
+                      << ", received 0x" << std::hex << pltag << "=" << std::dec << pltag << std::endl;
+            std::cerr << "last message: " << lastMessages[&sock] << std::endl;
+            std::cerr << backtrace() << std::endl;
+            return false;
+        }
+#endif
         buffer pl;
         if (!payload) {
             std::cerr << "message::recv: ignoring payload: " << msg << std::endl;
@@ -327,6 +378,26 @@ bool recv_message(socket_t &sock, message::Buffer &msg, error_code &ec, bool blo
         return false;
     }
 
+#ifdef DEBUG
+#define PRINT_MESSAGE_TYPE \
+    std::cerr << "message type: " << msgType << std::endl; \
+    std::cerr << "last message: " << lastMessages[&sock] << std::endl; \
+    std::cerr << backtrace() << std::endl;
+    SizeType msgStart;
+    auto startbuf = boost::asio::buffer(&msgStart, sizeof(msgStart));
+    asio::read(sock, startbuf, ec);
+    if (ec) {
+        std::cerr << "message::recv: start error " << ec.message() << std::endl;
+        return false;
+    } else if (msgStart != MessageStart) {
+        std::cerr << "message::recv: start mismatch: expected 0x" << std::hex << MessageStart << ", received 0x"
+                  << std::hex << msgStart << "=" << std::dec << msgStart << std::endl;
+        return false;
+    }
+#else
+#define PRINT_MESSAGE_TYPE
+#endif
+
     SizeType sz = 0;
 
 #ifdef BLOCKING
@@ -383,9 +454,6 @@ bool recv_message(socket_t &sock, message::Buffer &msg, error_code &ec, bool blo
     message::Type msgType;
     auto typeBuf = boost::asio::buffer(&msgType, sizeof(msgType));
     asio::read(sock, typeBuf, ec);
-#define PRINT_MESSAGE_TYPE std::cerr << "message type: " << msgType << std::endl;
-#else
-#define PRINT_MESSAGE_TYPE
 #endif
 
     sz = ntohl(sz);
@@ -407,6 +475,23 @@ bool recv_message(socket_t &sock, message::Buffer &msg, error_code &ec, bool blo
         PRINT_MESSAGE_TYPE;
         return false;
     }
+
+#ifdef DEBUG
+    lastMessages[&sock] = msg;
+    message::Type msgTypeEnd;
+    auto typeBufEnd = boost::asio::buffer(&msgTypeEnd, sizeof(msgTypeEnd));
+    asio::read(sock, typeBufEnd, ec);
+    if (ec) {
+        std::cerr << "message::recv: msg error " << ec.message() << std::endl;
+        PRINT_MESSAGE_TYPE;
+        return false;
+    }
+    if (msgType != msgTypeEnd) {
+        std::cerr << "message::recv: type mismatch: " << msgType << " != " << msgTypeEnd << std::endl;
+        PRINT_MESSAGE_TYPE;
+        return false;
+    }
+#endif
 
     return true;
 }
@@ -459,19 +544,27 @@ void async_recv_header(socket_t &sock, message::Buffer &msg, std::function<void(
 
 bool send(socket_t &sock, const message::Message &msg, error_code &ec, const char *payload, size_t size)
 {
-    const SizeType sz = htonl(msg.size());
+    assert(check(msg, payload, size));
     std::vector<boost::asio::const_buffer> buffers;
     buffers.reserve(payload && size > 0 ? 3 : 2);
-    //buffers.push_back(boost::asio::buffer(&InitialMark, sizeof(InitialMark)));
+#ifdef DEBUG
+    buffers.push_back(boost::asio::buffer(&MessageStart, sizeof(MessageStart)));
+#endif
+    const SizeType sz = htonl(msg.size());
     buffers.push_back(boost::asio::buffer(&sz, sizeof(sz)));
 #ifdef DEBUG
     message::Type t = msg.type();
     buffers.push_back(boost::asio::buffer(&t, sizeof(t)));
 #endif
     buffers.push_back(boost::asio::buffer(&msg, msg.size()));
+#ifdef DEBUG
+    buffers.push_back(boost::asio::buffer(&t, sizeof(t)));
+#endif
     if (payload && size > 0) {
+#ifdef DEBUG
+        buffers.push_back(boost::asio::buffer(&PayloadStart, sizeof(PayloadStart)));
+#endif
         buffers.push_back(boost::asio::buffer(payload, size));
-        //buffers.push_back(boost::asio::buffer(&EndPayloadMark, sizeof(EndPayloadMark)));
     }
 
     asio::write(sock, buffers, ec);
@@ -522,7 +615,14 @@ void async_send(socket_t &sock, const message::Message &msg, std::shared_ptr<buf
 void async_send(socket_t &sock, const message::Message &msg, const MessagePayload &payload,
                 const std::function<void(error_code ec)> handler)
 {
-    //assert(check(msg, payload.get()));
+#ifndef NDEBUG
+    if (payload) {
+        assert(check(msg, payload->data(), payload->size()));
+
+    } else {
+        assert(check(msg, nullptr, 0));
+    }
+#endif
     auto req = std::make_shared<SendRequest>(sock, msg, payload, handler);
 
     std::lock_guard<std::mutex> locker(sendQueueMutex);
