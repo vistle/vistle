@@ -114,8 +114,9 @@ void ClusterManager::Module::unblock(const message::Message &msg) const
         std::cerr << "UNBLOCK: found as frontmost of " << blockers.size() << " blockers: " << msg << std::endl;
 #endif
         blockers.pop_front();
-        assert(blockedMessages.front().buf.uuid() == msg.uuid() && blockedMessages.front().buf.type() == msg.type());
         message::Buffer buf(msg);
+        assert(blockedMessages.front().buf.type() == msg.type());
+        assert(blockedMessages.front().buf.uuid() == msg.uuid());
         blockedMessages.front().payload.ref();
         if (blockedMessages.front().payload)
             buf.setPayloadName(blockedMessages.front().payload.name());
