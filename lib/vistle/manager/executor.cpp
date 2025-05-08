@@ -117,12 +117,14 @@ bool Executor::config(int argc, char *argv[])
     return true;
 }
 
-void Executor::run()
+bool Executor::run()
 {
-    if (!config(m_argc, m_argv))
-        return;
+    if (!config(m_argc, m_argv)) {
+        std::cerr << "Executor::config failed" << std::endl;
+        return false;
+    }
 
-    m_comm->run();
+    return m_comm->run();
 }
 
 } // namespace vistle

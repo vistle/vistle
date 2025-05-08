@@ -37,7 +37,7 @@ public:
     static Communicator &the();
 
     void setVistleRoot(const std::string &dir, const std::string &buildtype);
-    void run();
+    bool run();
     bool dispatch(bool *work);
     void terminate();
     bool handleMessage(const message::Buffer &message, const MessagePayload &payload = MessagePayload());

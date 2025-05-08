@@ -199,7 +199,7 @@ bool Communicator::sendHub(const message::Message &message, const MessagePayload
     return forwardToMaster(message, payload);
 }
 
-void Communicator::run()
+bool Communicator::run()
 {
     bool work = false;
     while (dispatch(&work) && !m_terminate) {
@@ -209,6 +209,7 @@ void Communicator::run()
         vistle::adaptive_wait(work, this);
     }
     CERR << "Comm: run done" << std::endl;
+    return true;
 }
 
 bool Communicator::dispatch(bool *work)
