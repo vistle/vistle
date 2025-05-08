@@ -1,0 +1,30 @@
+#ifndef VISKORES_DEFAULT_TYPES_VISTLE_H
+#define VISKORES_DEFAULT_TYPES_VISTLE_H
+
+#include <viskores/TypeList.h>
+#include <viskores/Types.h>
+#include <viskores/cont/ArrayHandleConstant.h>
+#include <viskores/cont/CellSetList.h>
+
+#define VISTLE_VISKORES_TYPES
+
+
+namespace viskores
+{
+namespace cont
+{
+
+using VistleCellSetListUnstructured = viskores::List<
+    viskores::cont::CellSetExplicit<>,
+    viskores::cont::CellSetExplicit<typename viskores::cont::ArrayHandleConstant<viskores::UInt8>::StorageTag>,
+    viskores::cont::CellSetSingleType<>,
+    viskores::cont::CellSetSingleType<typename viskores::cont::ArrayHandleConstant<viskores::UInt8>::StorageTag>,
+    viskores::cont::CellSetSingleType<typename viskores::cont::ArrayHandleCounting<viskores::Id>::StorageTag>
+        >;
+
+}
+}
+
+#define VISKORES_DEFAULT_CELL_SET_LIST_UNSTRUCTURED ::viskores::cont::VistleCellSetListUnstructured
+
+#endif

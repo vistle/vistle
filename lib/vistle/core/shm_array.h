@@ -15,11 +15,11 @@
 #include "scalars.h"
 #include "celltreenode_decl.h"
 
-#include <vtkm/cont/ArrayHandle.h>
-#include <vtkm/cont/ArrayHandleBasic.h>
-#include <vtkm/cont/UnknownArrayHandle.h>
-#include <vtkm/cont/ArrayPortalToIterators.h>
-#include <vtkm/cont/ArrayCopy.h>
+#include <viskores/cont/ArrayHandle.h>
+#include <viskores/cont/ArrayHandleBasic.h>
+#include <viskores/cont/UnknownArrayHandle.h>
+#include <viskores/cont/ArrayPortalToIterators.h>
+#include <viskores/cont/ArrayCopy.h>
 
 #include <vistle/util/profile.h>
 
@@ -33,11 +33,11 @@ struct ArrayHandleTypeMap {
     typedef T type;
 };
 
-// map from unsigned Index types to signed vtkm::Id's
+// map from unsigned Index types to signed viskores::Id's
 template<>
 struct ArrayHandleTypeMap<Index> {
-    typedef vtkm::Id type;
-    static_assert(sizeof(Index) == sizeof(vtkm::Id));
+    typedef viskores::Id type;
+    static_assert(sizeof(Index) == sizeof(viskores::Id));
 };
 
 template<typename T, class allocator>
@@ -68,9 +68,9 @@ public:
     void setHandle(const ArrayHandle &handle);
 
 #ifdef NO_SHMEM
-    const vtkm::cont::ArrayHandle<handle_type> &handle() const;
+    const viskores::cont::ArrayHandle<handle_type> &handle() const;
 #else
-    const vtkm::cont::ArrayHandle<handle_type> handle() const;
+    const viskores::cont::ArrayHandle<handle_type> handle() const;
 #endif
     void updateFromHandle(bool invalidate = false);
     void updateFromHandle(bool invalidate = false) const;
@@ -229,8 +229,9 @@ private:
     mutable pointer m_data = nullptr;
     mutable std::atomic<bool> m_memoryValid = true;
     mutable std::mutex m_mutex;
-    vtkm::cont::UnknownArrayHandle m_unknown;
-    mutable vtkm::cont::ArrayHandleBasic<handle_type> m_handle; // VTK-m ArrayHandle that is always kept up to date
+    viskores::cont::UnknownArrayHandle m_unknown;
+    mutable viskores::cont::ArrayHandleBasic<handle_type>
+        m_handle; // Viskores ArrayHandle that is always kept up to date
 #else
     pointer m_data = nullptr;
     allocator m_allocator;
@@ -265,7 +266,7 @@ void shm_array<T, allocator>::updateFromHandle(bool invalidate)
         }
     }
     if (invalidate) {
-        m_unknown = vtkm::cont::UnknownArrayHandle();
+        m_unknown = viskores::cont::UnknownArrayHandle();
     }
 #endif
 }

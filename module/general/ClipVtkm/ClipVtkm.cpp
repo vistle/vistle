@@ -1,4 +1,4 @@
-#include <vtkm/filter/contour/ClipWithImplicitFunction.h>
+#include <viskores/filter/contour/ClipWithImplicitFunction.h>
 
 #include "ClipVtkm.h"
 
@@ -16,9 +16,9 @@ ClipVtkm::ClipVtkm(const std::string &name, int moduleID, mpi::communicator comm
 ClipVtkm::~ClipVtkm()
 {}
 
-std::unique_ptr<vtkm::filter::Filter> ClipVtkm::setUpFilter() const
+std::unique_ptr<viskores::filter::Filter> ClipVtkm::setUpFilter() const
 {
-    auto filt = std::make_unique<vtkm::filter::contour::ClipWithImplicitFunction>();
+    auto filt = std::make_unique<viskores::filter::contour::ClipWithImplicitFunction>();
     filt->SetImplicitFunction(m_implFuncControl.function());
     filt->SetInvertClip(m_flip->getValue() != 0);
     return filt;

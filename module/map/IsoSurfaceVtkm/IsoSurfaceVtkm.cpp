@@ -5,8 +5,8 @@
 #include <vistle/util/stopwatch.h>
 #include <vistle/vtkm/convert.h>
 
-#include <vtkm/cont/DataSetBuilderExplicit.h>
-#include <vtkm/filter/contour/Contour.h>
+#include <viskores/cont/DataSetBuilderExplicit.h>
+#include <viskores/filter/contour/Contour.h>
 
 #include <iomanip>
 
@@ -200,7 +200,7 @@ Object::ptr IsoSurfaceVtkm::work(vistle::Object::const_ptr grid, vistle::DataBas
     }
 
     // transform vistle dataset to vtkm dataset
-    vtkm::cont::DataSet vtkmDataSet;
+    viskores::cont::DataSet vtkmDataSet;
     auto status = vtkmSetGrid(vtkmDataSet, grid);
     if (!status->continueExecution()) {
         sendText(status->messageType(), status->message());
@@ -229,7 +229,7 @@ Object::ptr IsoSurfaceVtkm::work(vistle::Object::const_ptr grid, vistle::DataBas
     }
 
     // apply vtkm isosurface filter
-    vtkm::filter::contour::Contour isosurfaceFilter;
+    viskores::filter::contour::Contour isosurfaceFilter;
     isosurfaceFilter.SetActiveField(isospecies);
     isosurfaceFilter.SetIsoValue(isoValue);
     isosurfaceFilter.SetMergeDuplicatePoints(false);

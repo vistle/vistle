@@ -64,9 +64,9 @@
 [submodule "module/geometry/DelaunayTriangulator/tetgen"]
 	path = module/geometry/DelaunayTriangulator/tetgen
 	url = https://github.com/vistle/tetgen.git
-[submodule "lib/3rdparty/vtk-m"]
-	path = lib/3rdparty/vtk-m
-	url = https://gitlab.kitware.com/vtk/vtk-m.git
+[submodule "lib/3rdparty/viskores"]
+	path = lib/3rdparty/viskores
+	url = https://github.com/Viskores/viskores.git
 [submodule "lib/3rdparty/mpi-serial"]
 	path = lib/3rdparty/mpi-serial
 	url = https://github.com/vistle/mpi-serial.git

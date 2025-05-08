@@ -1,4 +1,4 @@
-#include <vtkm/filter/contour/Slice.h>
+#include <viskores/filter/contour/Slice.h>
 
 #include "CuttingSurfaceVtkm.h"
 
@@ -28,9 +28,9 @@ void CuttingSurfaceVtkm::setInputSpecies(const std::string &species)
     setItemInfo(species);
 }
 
-std::unique_ptr<vtkm::filter::Filter> CuttingSurfaceVtkm::setUpFilter() const
+std::unique_ptr<viskores::filter::Filter> CuttingSurfaceVtkm::setUpFilter() const
 {
-    auto filt = std::make_unique<vtkm::filter::contour::Slice>();
+    auto filt = std::make_unique<viskores::filter::contour::Slice>();
     filt->SetImplicitFunction(m_implFuncControl.function());
     filt->SetMergeDuplicatePoints(false);
     filt->SetGenerateNormals(m_computeNormals->getValue() != 0);

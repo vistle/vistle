@@ -1,4 +1,4 @@
-#include <vtkm/filter/entity_extraction/Threshold.h>
+#include <viskores/filter/entity_extraction/Threshold.h>
 
 #include <vistle/vtkm/convert.h>
 
@@ -24,9 +24,9 @@ ThresholdVtkm::ThresholdVtkm(const std::string &name, int moduleID, mpi::communi
 ThresholdVtkm::~ThresholdVtkm()
 {}
 
-std::unique_ptr<vtkm::filter::Filter> ThresholdVtkm::setUpFilter() const
+std::unique_ptr<viskores::filter::Filter> ThresholdVtkm::setUpFilter() const
 {
-    auto filter = std::make_unique<vtkm::filter::entity_extraction::Threshold>();
+    auto filter = std::make_unique<viskores::filter::entity_extraction::Threshold>();
     auto threshold = m_threshold->getValue();
     switch (m_operation->getValue()) {
     case AnyLess:
@@ -54,7 +54,7 @@ std::unique_ptr<vtkm::filter::Filter> ThresholdVtkm::setUpFilter() const
     return filter;
 }
 
-Object::ptr ThresholdVtkm::prepareOutputGrid(const vtkm::cont::DataSet &dataset,
+Object::ptr ThresholdVtkm::prepareOutputGrid(const viskores::cont::DataSet &dataset,
                                              const Object::const_ptr &inputGrid) const
 {
     // overriding this method because it should not be treated as error if the output grid is empty
@@ -66,7 +66,8 @@ Object::ptr ThresholdVtkm::prepareOutputGrid(const vtkm::cont::DataSet &dataset,
     return outputGrid;
 }
 
-DataBase::ptr ThresholdVtkm::prepareOutputField(const vtkm::cont::DataSet &dataset, const Object::const_ptr &inputGrid,
+DataBase::ptr ThresholdVtkm::prepareOutputField(const viskores::cont::DataSet &dataset,
+                                                const Object::const_ptr &inputGrid,
                                                 const DataBase::const_ptr &inputField, const std::string &fieldName,
                                                 const Object::ptr &outputGrid) const
 {

@@ -63,8 +63,8 @@ bool SpheresOverlap::compute(const std::shared_ptr<BlockTask> &task) const
     Vec<Scalar, 1>::ptr lineThicknesses;
 
     if (m_useVtkm->getValue()) {
-        // create vtk-m dataset from vistle data
-        vtkm::cont::DataSet vtkmSpheres;
+        // create Viskores dataset from vistle data
+        viskores::cont::DataSet vtkmSpheres;
         auto status = vtkmSetGrid(vtkmSpheres, spheres);
 
         if (!status->continueExecution()) {
