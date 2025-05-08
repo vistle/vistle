@@ -9,10 +9,10 @@ namespace detail {
 template<>
 size_t compressBigWhoop<float>(float *src, const Index dim[3], char *compressed, const CompressionSettings &config)
 {
-    bwc_codec *coder = bwc_alloc_coder(dim[0], dim[1], dim[2], 1, config.p_bigWhoopNPar, bwc_precision_single);
+    bwc_codec *coder = bwc_alloc_coder(dim[0], dim[1], dim[2], 1, config.bigWhoopNPar, bwc_precision_single);
     bwc_stream *stream = bwc_init_stream(src, compressed, comp);
 
-    bwc_create_compression(coder, stream, const_cast<char *>(config.p_bigWhoopRate));
+    bwc_create_compression(coder, stream, const_cast<char *>(config.bigWhoopRate));
     size_t compressed_size = bwc_compress(coder, stream);
 
     bwc_free_codec(coder);
@@ -23,10 +23,10 @@ size_t compressBigWhoop<float>(float *src, const Index dim[3], char *compressed,
 template<>
 size_t compressBigWhoop<double>(double *src, const Index dim[3], char *compressed, const CompressionSettings &config)
 {
-    bwc_codec *coder = bwc_alloc_coder(dim[0], dim[1], dim[2], 1, config.p_bigWhoopNPar, bwc_precision_double);
+    bwc_codec *coder = bwc_alloc_coder(dim[0], dim[1], dim[2], 1, config.bigWhoopNPar, bwc_precision_double);
     bwc_stream *stream = bwc_init_stream(src, compressed, comp);
 
-    bwc_create_compression(coder, stream, const_cast<char *>(config.p_bigWhoopRate));
+    bwc_create_compression(coder, stream, const_cast<char *>(config.bigWhoopRate));
     size_t compressed_size = bwc_compress(coder, stream);
 
     bwc_free_codec(coder);

@@ -38,8 +38,10 @@ struct CompressionSettings {
     static constexpr const char *p_szL2Error = "sz_l2_error";
     double szL2Error = 1e-1;
 
-    uint8_t p_bigWhoopNPar = 1;
-    const char *p_bigWhoopRate = "32";
+    static constexpr const char *p_bigWhoopNPar = "bigwhoop_npar";
+    uint8_t bigWhoopNPar = 1;
+    static constexpr const char *p_bigWhoopRate = "bigwhoop_rate";
+    const char *bigWhoopRate = "1";
 };
 
 } // namespace vistle

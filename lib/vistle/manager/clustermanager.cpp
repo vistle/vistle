@@ -15,6 +15,7 @@
 #include <numeric>
 #include <queue>
 #include <sstream>
+#include <string>
 
 #include <vistle/core/message.h>
 #include <vistle/core/messagepayload.h>
@@ -320,6 +321,10 @@ const CompressionSettings &ClusterManager::compressionSettings()
         cs.szRelError = getSessionParameter<Float>(state(), CompressionSettings::p_szRelError);
         cs.szPsnrError = getSessionParameter<Float>(state(), CompressionSettings::p_szPsnrError);
         cs.szL2Error = getSessionParameter<Float>(state(), CompressionSettings::p_szL2Error);
+
+        cs.bigWhoopNPar = getSessionParameter<Integer>(state(), CompressionSettings::p_bigWhoopNPar);
+        cs.bigWhoopRate =
+            std::to_string(getSessionParameter<Float>(state(), CompressionSettings::p_bigWhoopRate)).c_str();
     }
     return m_compressionSettings;
 }

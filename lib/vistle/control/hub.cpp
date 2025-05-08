@@ -11,6 +11,8 @@
 #include <future>
 #include <condition_variable>
 #include <signal.h>
+#include <string>
+#include <limits>
 #ifdef VISTLE_USE_FMT
 #include <fmt/format.h>
 #include <fmt/args.h>
@@ -1765,6 +1767,16 @@ bool Hub::hubReady()
         auto szL2 =
             session.addFloatParameter(CompressionSettings::p_szL2Error, "SZ3 L2 norm error tolerance", cs.szL2Error);
         session.setParameterMinimum(szL2, Float(0.));
+
+        session.setCurrentParameterGroup("BigWhoop");
+        auto bwNPar = session.addIntParameter(CompressionSettings::p_bigWhoopNPar,
+                                              "BigWhoop number of independent parameters", cs.bigWhoopNPar);
+        session.setParameterRange(bwNPar, Integer(1), Integer(std::numeric_limits<uint8_t>::max()));
+
+        auto bwRate =
+            session.addFloatParameter(CompressionSettings::p_bigWhoopRate,
+                                      "BigWhoop fixed compression rate (bits/value)", std::stof(cs.bigWhoopRate));
+        session.setParameterMinimum(bwRate, Float(0.));
 
         session.setCurrentParameterGroup("");
 
