@@ -262,7 +262,7 @@ bool VistleManager::run(int argc, char *argv[])
         }
     }
 #endif
-    auto t = std::thread([args, this]() {
+    auto mainthread = std::thread([args, this]() {
         setThreadName("vistle:main2");
 #endif
         try {
@@ -309,8 +309,8 @@ bool VistleManager::run(int argc, char *argv[])
 #endif
 
 #ifdef MODULE_THREAD
-    if (t.joinable()) {
-        t.join();
+    if (mainthread.joinable()) {
+        mainthread.join();
     }
 
     if (hubthread && hubthread->joinable()) {
