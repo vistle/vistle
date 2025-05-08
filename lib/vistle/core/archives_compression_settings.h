@@ -1,6 +1,7 @@
 #ifndef VISTLE_CORE_ARCHIVES_COMPRESSION_SETTINGS_H
 #define VISTLE_CORE_ARCHIVES_COMPRESSION_SETTINGS_H
 
+#include <string>
 #include <vistle/util/enum.h>
 
 #include "export.h"
@@ -41,7 +42,7 @@ struct CompressionSettings {
     static constexpr const char *p_bigWhoopNPar = "bigwhoop_npar";
     uint8_t bigWhoopNPar = 1;
     static constexpr const char *p_bigWhoopRate = "bigwhoop_rate";
-    const char *bigWhoopRate = "1";
+    std::string bigWhoopRate = "1";
 };
 
 } // namespace vistle

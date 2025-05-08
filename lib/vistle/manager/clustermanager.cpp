@@ -322,9 +322,9 @@ const CompressionSettings &ClusterManager::compressionSettings()
         cs.szPsnrError = getSessionParameter<Float>(state(), CompressionSettings::p_szPsnrError);
         cs.szL2Error = getSessionParameter<Float>(state(), CompressionSettings::p_szL2Error);
 
+        //TODO: find out why values don't change when setting them in the GUI?
         cs.bigWhoopNPar = getSessionParameter<Integer>(state(), CompressionSettings::p_bigWhoopNPar);
-        cs.bigWhoopRate =
-            std::to_string(getSessionParameter<Float>(state(), CompressionSettings::p_bigWhoopRate)).c_str();
+        cs.bigWhoopRate = std::to_string(getSessionParameter<Float>(state(), CompressionSettings::p_bigWhoopRate));
     }
     return m_compressionSettings;
 }

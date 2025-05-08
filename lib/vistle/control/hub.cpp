@@ -1773,9 +1773,8 @@ bool Hub::hubReady()
                                               "BigWhoop number of independent parameters", cs.bigWhoopNPar);
         session.setParameterRange(bwNPar, Integer(1), Integer(std::numeric_limits<uint8_t>::max()));
 
-        auto bwRate =
-            session.addFloatParameter(CompressionSettings::p_bigWhoopRate,
-                                      "BigWhoop fixed compression rate (bits/value)", std::stof(cs.bigWhoopRate));
+        auto bwRate = session.addFloatParameter(CompressionSettings::p_bigWhoopRate, "BigWhoop compression rate",
+                                                std::stof(cs.bigWhoopRate));
         session.setParameterMinimum(bwRate, Float(0.));
 
         session.setCurrentParameterGroup("");
