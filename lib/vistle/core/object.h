@@ -225,9 +225,9 @@ private:
     Object &operator=(const Object &) = delete;
 
 #ifdef NO_SHMEM
-    std::recursive_mutex &attachmentMutex() const;
+    std::recursive_mutex &objectMutex() const;
 #else
-    boost::interprocess::interprocess_recursive_mutex &attachmentMutex() const;
+    boost::interprocess::interprocess_recursive_mutex &objectMutex() const;
 #endif
 };
 V_COREEXPORT std::ostream &operator<<(std::ostream &os, const Object &);
@@ -264,10 +264,12 @@ struct ObjectData: public ShmData {
     V_COREEXPORT std::vector<std::string> getAttributeList() const;
 
 #ifdef NO_SHMEM
+    mutable std::recursive_mutex object_mutex;
     mutable std::recursive_mutex attachment_mutex;
     typedef std::lock_guard<std::recursive_mutex> mutex_lock_type;
     typedef const ObjectData *Attachment;
 #else
+    mutable boost::interprocess::interprocess_recursive_mutex object_mutex;
     mutable boost::interprocess::interprocess_recursive_mutex attachment_mutex; //< protects attachments
     typedef boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> mutex_lock_type;
     typedef interprocess::offset_ptr<const ObjectData> Attachment;

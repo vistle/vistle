@@ -114,7 +114,7 @@ Object *Object::loadObject(Archive &ar)
     try {
         Shm::the().atomicFunc(lambda);
         // lock so that only one thread restores object from archive
-        ObjectData::mutex_lock_type guard(obj->d()->attachment_mutex);
+        ObjectData::mutex_lock_type guard(obj->d()->object_mutex);
         if (!objData->isComplete() || objData->meta.creator() == -1) {
             obj->loadFromArchive(ar);
         }
