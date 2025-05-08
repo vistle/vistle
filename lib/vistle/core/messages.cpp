@@ -2185,6 +2185,11 @@ std::ostream &operator<<(std::ostream &s, const Message &m)
           << ", subtype: " << mm.subType();
         break;
     }
+    case LOCKUI: {
+        auto &mm = static_cast<const LockUi &>(m);
+        s << ", locked: " << mm.locked();
+        break;
+    }
     default:
         break;
     }
