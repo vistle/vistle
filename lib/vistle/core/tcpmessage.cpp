@@ -378,12 +378,27 @@ bool recv_message(socket_t &sock, message::Buffer &msg, error_code &ec, bool blo
         return false;
     }
 
+#ifdef BLOCKING
+    boost::asio::socket_base::bytes_readable command(true);
+    sock.io_control(command);
+    std::size_t bytes_readable = command.get();
+#else
+    if (!block)
+        sock.non_blocking(true);
+#endif
+
 #ifdef DEBUG
 #define PRINT_MESSAGE_TYPE \
     std::cerr << "message type: " << msgType << std::endl; \
     std::cerr << "last message: " << lastMessages[&sock] << std::endl; \
     std::cerr << backtrace() << std::endl;
+
     SizeType msgStart;
+#ifdef BLOCKING
+    if (bytes_readable < sizeof(msgStart) && !block) {
+        return false;
+    }
+#endif
     auto startbuf = boost::asio::buffer(&msgStart, sizeof(msgStart));
     asio::read(sock, startbuf, ec);
     if (ec) {
@@ -399,19 +414,11 @@ bool recv_message(socket_t &sock, message::Buffer &msg, error_code &ec, bool blo
 #endif
 
     SizeType sz = 0;
-
 #ifdef BLOCKING
-    boost::asio::socket_base::bytes_readable command(true);
-    sock.io_control(command);
-    std::size_t bytes_readable = command.get();
     if (bytes_readable < sizeof(sz) && !block) {
         return false;
     }
-#else
-    if (!block)
-        sock.non_blocking(true);
 #endif
-
     auto szbuf = boost::asio::buffer(&sz, sizeof(sz));
     size_t n = asio::read(sock, szbuf, ec);
 #ifndef BLOCKING
