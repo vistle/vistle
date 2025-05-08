@@ -336,9 +336,7 @@ void archive_helper<yas_tag>::ArrayWrapper<T>::load(Archive &ar)
         ar &m_dim[0] & m_dim[1] & m_dim[2];
         buffer compressed;
         ar &compressed;
-        // TODO: find better default value
-        uint8_t layer = 0;
-        if (!decompressBigWhoop<T>(m_begin, compressed.data(), layer))
+        if (!decompressBigWhoop<T>(m_begin, compressed.data(), 0))
             std::cerr << "BigWhoop decompression failed" << std::endl;
     } else {
         assert(compressMode == Uncompressed);
