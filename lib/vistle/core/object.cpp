@@ -302,6 +302,7 @@ void ObjectData::referenceResolved(const std::function<void()> &completeCallback
         --unresolvedObjectReferences;
     }
     assert(unresolvedReferences > 0);
+    //mutex_lock_type guard(object_mutex);
     if (unresolvedReferences.fetch_sub(1) == 1) {
         if (completeCallback) {
 #ifdef REFERENCE_DEBUG
@@ -762,12 +763,12 @@ std::vector<std::string> Object::Data::getAttributeList() const
 }
 
 #ifdef NO_SHMEM
-std::recursive_mutex &Object::attachmentMutex() const
+std::recursive_mutex &Object::objectMutex() const
 #else
-boost::interprocess::interprocess_recursive_mutex &Object::attachmentMutex() const
+boost::interprocess::interprocess_recursive_mutex &Object::objectMutex() const
 #endif
 {
-    return d()->attachment_mutex;
+    return d()->object_mutex;
 }
 
 bool Object::addAttachment(const std::string &key, Object::const_ptr obj) const
