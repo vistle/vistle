@@ -378,7 +378,6 @@ bool ClusterManager::dispatch(bool &received)
             pq.emplace(mod);
         }
 
-        m_modulePriorityChange.reserve(pq.size());
         while (!pq.empty()) {
             m_modulePriority.emplace_back(pq.top());
             pq.pop();
