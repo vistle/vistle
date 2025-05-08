@@ -1,9 +1,9 @@
 #include <sstream>
 
 #ifdef VERTTOCELL
-#include <vtkm/filter/field_conversion/CellAverage.h>
+#include <viskores/filter/field_conversion/CellAverage.h>
 #else
-#include <vtkm/filter/field_conversion/PointAverage.h>
+#include <viskores/filter/field_conversion/PointAverage.h>
 #endif
 
 #include <vistle/vtkm/convert.h>
@@ -23,7 +23,7 @@ CellToVertVtkm::~CellToVertVtkm()
 
 ModuleStatusPtr CellToVertVtkm::prepareInputField(const Port *port, const Object::const_ptr &grid,
                                                   const DataBase::const_ptr &field, std::string &fieldName,
-                                                  vtkm::cont::DataSet &dataset) const
+                                                  viskores::cont::DataSet &dataset) const
 {
     auto mapping = field->guessMapping(grid);
     // ... make sure the mapping is either vertex or element
@@ -40,30 +40,31 @@ ModuleStatusPtr CellToVertVtkm::prepareInputField(const Port *port, const Object
 #else
     if (mapping == DataBase::Element) {
 #endif
-        // transform to VTK-m + add to dataset
+        // transform to Viskores + add to dataset
         return VtkmModule::prepareInputField(port, grid, field, fieldName, dataset);
     }
 
     return Success();
 }
 
-std::unique_ptr<vtkm::filter::Filter> CellToVertVtkm::setUpFilter() const
+std::unique_ptr<viskores::filter::Filter> CellToVertVtkm::setUpFilter() const
 {
 #ifdef VERTTOCELL
-    auto filter = std::make_unique<vtkm::filter::field_conversion::CellAverage>();
+    auto filter = std::make_unique<viskores::filter::field_conversion::CellAverage>();
 #else
-    auto filter = std::make_unique<vtkm::filter::field_conversion::PointAverage>();
+    auto filter = std::make_unique<viskores::filter::field_conversion::PointAverage>();
 #endif
     return filter;
 }
 
-Object::ptr CellToVertVtkm::prepareOutputGrid(const vtkm::cont::DataSet &dataset,
+Object::ptr CellToVertVtkm::prepareOutputGrid(const viskores::cont::DataSet &dataset,
                                               const Object::const_ptr &inputGrid) const
 {
     return nullptr;
 }
 
-DataBase::ptr CellToVertVtkm::prepareOutputField(const vtkm::cont::DataSet &dataset, const Object::const_ptr &inputGrid,
+DataBase::ptr CellToVertVtkm::prepareOutputField(const viskores::cont::DataSet &dataset,
+                                                 const Object::const_ptr &inputGrid,
                                                  const DataBase::const_ptr &inputField, const std::string &fieldName,
                                                  const Object::ptr &outputGrid) const
 {

@@ -48,7 +48,7 @@ set(VISTLE_CPU_ARCH
     ""
     CACHE STRING "CPU architecture to optimize for (native, corei7-avx, core-avx2, atom, ...)")
 
-option(VISTLE_PEDANTIC_ERRORS "Be pedantic about C++ standard and emit errors" OFF) # for diy, also included in vtk-m
+option(VISTLE_PEDANTIC_ERRORS "Be pedantic about C++ standard and emit errors" OFF) # for diy, also included in Viskores
 
 option(VISTLE_SANITIZE_UNDEFINED "Build with -fsanitize=undefined" OFF)
 option(VISTLE_SANITIZE_ADDRESS "Build with -fsanitize=address" OFF)
@@ -523,7 +523,7 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     endif()
 
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64" AND CMAKE_CXX_COMPILER_VERSION MATCHES "^11")
-        # silence "note: parameter passing for argument of type ‘vtkm::Vec<double, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1"
+        # silence "note: parameter passing for argument of type ‘viskores::Vec<double, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1"
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-psabi")
     endif()
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
@@ -786,8 +786,8 @@ macro(vistle_target_link_libraries targetname)
         endif()
     endforeach()
 
-    set(DependencyList Boost vtkm) # Name when linking the package
-    set(DependencyListNames Boost VTKm) # Name when finding the package
+    set(DependencyList Boost viskores) # Name when linking the package
+    set(DependencyListNames Boost Viskores) # Name when finding the package
     set(CurrentDependencyList 0)
 
     foreach(Dependency IN ITEMS ${DependencyList})
@@ -1015,9 +1015,9 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
         add_module(${targetname} ${description} ${SOURCES})
         if(IDX GREATER_EQUAL 0)
             list(SUBLIST SOURCES ${IDX} -1 DEVSOURCES)
-            vtkm_add_target_information(${targetname} MODIFY_CUDA_FLAGS DEVICE_SOURCES ${DEVSOURCES})
+            viskores_add_target_information(${targetname} MODIFY_CUDA_FLAGS DEVICE_SOURCES ${DEVSOURCES})
         endif()
-        target_link_libraries(${targetname} vistle_vtkm vtkm::cont vtkm::filter)
+        target_link_libraries(${targetname} vistle_viskores viskores::cont viskores::filter)
         if(VISTLE_USE_CUDA AND VISTLE_USE_SEPARABLE_COMPILATION)
             set_target_properties(${targetname} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
         endif()
@@ -1182,27 +1182,27 @@ vistle_find_package(
 option(VISTLE_64BIT_INDICES "use 64-bit integers for array indices" OFF)
 option(VISTLE_DOUBLE_PRECISION "use double instead of float for coordinates and data arrays" OFF)
 
-option(VISTLE_INTERNAL_VTKM "Use internal copy of VTK-m" ON)
+option(VISTLE_INTERNAL_VISKORES "Use internal copy of Viskores" ON)
 
-if(VTK_FOUND AND VTK_HAS_VTKm)
-    message("Using VTK-m provided by VTK ${VTK_VERSION}")
+if(VTK_FOUND AND VTK_HAS_Viskores)
+    message("Using Viskores provided by VTK ${VTK_VERSION}")
 
-    if(VISTLE_INTERNAL_VTKM)
-        message(WARNING "Provided VTK already contains VTK-m, cannot build internal copy of VTK-m. Disabling VISTLE_INTERNAL_VTKM...")
-        set(VISTLE_INTERNAL_VTKM OFF)
+    if(VISTLE_INTERNAL_VISKORES)
+        message(WARNING "Provided VTK already contains Viskores, cannot build internal copy of Viskores. Disabling VISTLE_INTERNAL_VISKORES...")
+        set(VISTLE_INTERNAL_VISKORES OFF)
     endif()
 endif()
 
-if(NOT VISTLE_INTERNAL_VTKM)
+if(NOT VISTLE_INTERNAL_VISKORES)
     # search without version argument, as it is not possible to search for all compatible versions (2.0 & 2.1) in one go
-    vistle_find_package(VTKm REQUIRED)
+    vistle_find_package(Viskores REQUIRED)
 
-    if(NOT ("${VTKm_VERSION_MAJOR}" EQUAL 2))
-        message(FATAL_ERROR "Vtk-m version must be >= 2.0 and < 3.0 (but is ${VTKm_VERSION}).")
+    if(NOT ("${Viskores_VERSION_MAJOR}" EQUAL 1))
+        message(FATAL_ERROR "Viskores version must be >= 1.0 and < 2.0 (but is ${Viskores_VERSION}).")
     endif()
 
-    # make sure vtk-m and vistle data types are compatible (if not, overwrite user flags, accordingly)
-    add_subdirectory(cmake/Modules/vtkm)
+    # make sure viskores and vistle data types are compatible (if not, overwrite user flags, accordingly)
+    add_subdirectory(cmake/Modules/viskores)
 endif()
 
 # configure data-type sizes

@@ -1,5 +1,5 @@
-if(NOT VISTLE_INTERNAL_VTKM)
-    add_definitions(-DVISTLE_EXTERNAL_VTKM)
+if(NOT VISTLE_INTERNAL_VISKORES)
+    add_definitions(-DVISTLE_EXTERNAL_VISKORES)
 endif()
 
 set(HEADERS SpheresOverlap.h algo/CellListsAlgorithm.h algo/ThicknessDeterminer.h algo/VtkmSpheresOverlap.h algo/worklet/PointLocatorCellLists.h
@@ -12,7 +12,7 @@ if(VISTLE_USE_SEPARABLE_COMPILATION)
 endif()
 
 add_vtkm_module(SpheresOverlap "create lines between overlapping spheres" ${HEADER} ${SOURCES})
-target_link_libraries(SpheresOverlap vtkm::worklet)
+target_link_libraries(SpheresOverlap viskores::worklet)
 
 if(NOT VISTLE_USE_SEPARABLE_COMPILATION)
     target_compile_definitions(SpheresOverlap PRIVATE "NONSEPARABLE_COMPILATION")

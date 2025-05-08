@@ -193,7 +193,7 @@ vistle_target_link_libraries(
     PUBLIC
     Boost::system
     PUBLIC
-    vtkm::cont)
+    viskores::cont)
 target_link_libraries(vistle_core PRIVATE vistle_config)
 target_link_libraries(vistle_core PUBLIC Eigen3::Eigen)
 

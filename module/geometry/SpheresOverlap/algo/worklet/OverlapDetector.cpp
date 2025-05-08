@@ -1,23 +1,23 @@
-#include <vtkm/VectorAnalysis.h>
+#include <viskores/VectorAnalysis.h>
 
 #include "OverlapDetector.h"
 
-VTKM_EXEC vtkm::Id3 OverlapDetector::DetermineCellId(const vtkm::Vec3f &point) const
+VISKORES_EXEC viskores::Id3 OverlapDetector::DetermineCellId(const viskores::Vec3f &point) const
 {
-    vtkm::Id3 ijk = (point - this->Min) / this->Dxdydz;
-    ijk = vtkm::Max(ijk, vtkm::Id3(0));
-    ijk = vtkm::Min(ijk, this->Dims - vtkm::Id3(1));
+    viskores::Id3 ijk = (point - this->Min) / this->Dxdydz;
+    ijk = viskores::Max(ijk, viskores::Id3(0));
+    ijk = viskores::Min(ijk, this->Dims - viskores::Id3(1));
 
     return ijk;
 }
 
-VTKM_EXEC bool OverlapDetector::CellExists(const vtkm::Id3 &id) const
+VISKORES_EXEC bool OverlapDetector::CellExists(const viskores::Id3 &id) const
 {
     return id[0] >= 0 && id[0] < this->Dims[0] && id[1] >= 0 && id[1] < this->Dims[1] && id[2] >= 0 &&
            id[2] < this->Dims[2];
 }
 
-VTKM_EXEC vtkm::Id OverlapDetector::FlattenCellId(const vtkm::Id3 &id) const
+VISKORES_EXEC viskores::Id OverlapDetector::FlattenCellId(const viskores::Id3 &id) const
 {
     if (!CellExists(id))
         return -1;
@@ -27,8 +27,8 @@ VTKM_EXEC vtkm::Id OverlapDetector::FlattenCellId(const vtkm::Id3 &id) const
 /*
     Returns the number of points in the dataset that overlap with the point `point` at the index `pointId`.
 */
-VTKM_EXEC void OverlapDetector::CountOverlaps(const vtkm::Id pointId, const vtkm::Vec3f &point,
-                                              vtkm::Id &nrOverlaps) const
+VISKORES_EXEC void OverlapDetector::CountOverlaps(const viskores::Id pointId, const viskores::Vec3f &point,
+                                                  viskores::Id &nrOverlaps) const
 {
     auto cellId3 = this->DetermineCellId(point);
     auto cellId = FlattenCellId(cellId3);
@@ -53,8 +53,8 @@ VTKM_EXEC void OverlapDetector::CountOverlaps(const vtkm::Id pointId, const vtkm
                     auto pointToCheck = this->Coords.Get(idToCheck);
 
                     // check if spheres overlap (here it's enough to calculate the squared distance)
-                    if (auto distance = vtkm::MagnitudeSquared(point - pointToCheck);
-                        (distance <= vtkm::Pow(this->Radii.Get(pointId) + this->Radii.Get(idToCheck), 2))) {
+                    if (auto distance = viskores::MagnitudeSquared(point - pointToCheck);
+                        (distance <= viskores::Pow(this->Radii.Get(pointId) + this->Radii.Get(idToCheck), 2))) {
                         nrOverlaps++;
                     }
                 }
@@ -67,14 +67,15 @@ VTKM_EXEC void OverlapDetector::CountOverlaps(const vtkm::Id pointId, const vtkm
     Determines which points overlap with the point `point` at the index `pointId` and for each overlap
     saves the indices of the two points into `connectivity`. and a scalar value into `thickness`. 
 */
-VTKM_EXEC void OverlapDetector::CreateConnectionLines(const vtkm::Id pointId, const vtkm::Vec3f &point,
-                                                      const vtkm::IdComponent visitId, vtkm::Id2 &connectivity,
-                                                      vtkm::FloatDefault &thickness) const
+VISKORES_EXEC void OverlapDetector::CreateConnectionLines(const viskores::Id pointId, const viskores::Vec3f &point,
+                                                          const viskores::IdComponent visitId,
+                                                          viskores::Id2 &connectivity,
+                                                          viskores::FloatDefault &thickness) const
 {
     auto cellId3 = this->DetermineCellId(point);
     auto cellId = FlattenCellId(cellId3);
 
-    vtkm::Id nrOverlaps = 0;
+    viskores::Id nrOverlaps = 0;
 
     bool foundOverlap = false;
     int i = 0;
@@ -97,7 +98,7 @@ VTKM_EXEC void OverlapDetector::CreateConnectionLines(const vtkm::Id pointId, co
                     // check if spheres overlap
                     auto radius1 = this->Radii.Get(pointId);
                     auto radius2 = this->Radii.Get(idToCheck);
-                    if (auto distance = vtkm::Magnitude(point - pointToCheck); (distance <= radius1 + radius2)) {
+                    if (auto distance = viskores::Magnitude(point - pointToCheck); (distance <= radius1 + radius2)) {
                         if (nrOverlaps == visitId) {
                             connectivity[0] = pointId;
                             connectivity[1] = idToCheck;

@@ -1,8 +1,8 @@
 #ifndef VISTLE_CORE_CELLTYPES_H
 #define VISTLE_CORE_CELLTYPES_H
 
-#include <vtkm/CellShape.h>
-#include <vtkm/CellClassification.h>
+#include <viskores/CellShape.h>
+#include <viskores/CellClassification.h>
 
 #include "scalar.h"
 #include "index.h"
@@ -13,25 +13,25 @@ namespace cell {
 
 enum CellType {
     // make sure that these types match those from COVISE: src/kernel/do/coDoUnstructuredGrid.h
-    NONE = vtkm::CELL_SHAPE_EMPTY,
-    POINT = vtkm::CELL_SHAPE_VERTEX,
+    NONE = viskores::CELL_SHAPE_EMPTY,
+    POINT = viskores::CELL_SHAPE_VERTEX,
     //POLY_VERTEX = 2,
-    BAR = vtkm::CELL_SHAPE_LINE,
-    POLYLINE = vtkm::CELL_SHAPE_POLY_LINE,
-    TRIANGLE = vtkm::CELL_SHAPE_TRIANGLE,
+    BAR = viskores::CELL_SHAPE_LINE,
+    POLYLINE = viskores::CELL_SHAPE_POLY_LINE,
+    TRIANGLE = viskores::CELL_SHAPE_TRIANGLE,
     //TRIANGLE_STRIP = 6,
-    POLYGON = vtkm::CELL_SHAPE_POLYGON,
+    POLYGON = viskores::CELL_SHAPE_POLYGON,
     //PIXEL = 8,
-    QUAD = vtkm::CELL_SHAPE_QUAD,
-    TETRAHEDRON = vtkm::CELL_SHAPE_TETRA,
-    POLYHEDRON = 11, // in COVISE, reserved for VOXEL in vtk-m
-    HEXAHEDRON = vtkm::CELL_SHAPE_HEXAHEDRON,
-    PRISM = vtkm::CELL_SHAPE_WEDGE,
-    PYRAMID = vtkm::CELL_SHAPE_PYRAMID,
-    NUM_TYPES = vtkm::NUMBER_OF_CELL_SHAPES, // keep last
+    QUAD = viskores::CELL_SHAPE_QUAD,
+    TETRAHEDRON = viskores::CELL_SHAPE_TETRA,
+    POLYHEDRON = 11, // in COVISE, reserved for VOXEL in Viskores
+    HEXAHEDRON = viskores::CELL_SHAPE_HEXAHEDRON,
+    PRISM = viskores::CELL_SHAPE_WEDGE,
+    PYRAMID = viskores::CELL_SHAPE_PYRAMID,
+    NUM_TYPES = viskores::NUMBER_OF_CELL_SHAPES, // keep last
 };
 
-enum CellClassification { NORMAL = vtkm::CellClassification::Normal, GHOST = vtkm::CellClassification::Ghost };
+enum CellClassification { NORMAL = viskores::CellClassification::Normal, GHOST = viskores::CellClassification::Ghost };
 
 template<int type>
 struct TypeData;

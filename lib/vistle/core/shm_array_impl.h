@@ -13,7 +13,7 @@
 #include "index.h"
 #include "archives_config.h"
 #include "shmdata.h"
-#include <vtkm/cont/ArrayRangeCompute.h>
+#include <viskores/cont/ArrayRangeCompute.h>
 #include <boost/mpl/for_each.hpp>
 
 namespace vistle {
@@ -95,31 +95,31 @@ template<typename T, class allocator>
 template<class ArrayHandle>
 void shm_array<T, allocator>::setHandle(const ArrayHandle &h)
 {
-    //assert(h.GetValueTypeName() == vtkm::cont::TypeToString(handle_type()));
+    //assert(h.GetValueTypeName() == viskores::cont::TypeToString(handle_type()));
 #ifdef NO_SHMEM
     PROF_SCOPE("shm_array::setHandle()");
     m_unknown = h;
     m_memoryValid = false;
     m_size = h.GetNumberOfValues();
-    if (m_unknown.CanConvert<vtkm::cont::ArrayHandleBasic<handle_type>>()) {
-        m_handle = m_unknown.AsArrayHandle<vtkm::cont::ArrayHandleBasic<handle_type>>();
+    if (m_unknown.CanConvert<viskores::cont::ArrayHandleBasic<handle_type>>()) {
+        m_handle = m_unknown.AsArrayHandle<viskores::cont::ArrayHandleBasic<handle_type>>();
     } else {
-        vtkm::cont::ArrayCopy(m_unknown, m_handle);
+        viskores::cont::ArrayCopy(m_unknown, m_handle);
     }
     m_capacity = m_size;
 
-    vtkm::cont::ArrayHandle<vtkm::Range> rangeArray = vtkm::cont::ArrayRangeCompute(h);
+    viskores::cont::ArrayHandle<viskores::Range> rangeArray = viskores::cont::ArrayRangeCompute(h);
     auto rangePortal = rangeArray.ReadPortal();
     assert(rangePortal.GetNumberOfValues() == 1); // 1 component
-    vtkm::Range componentRange = rangePortal.Get(0);
+    viskores::Range componentRange = rangePortal.Get(0);
     m_min = componentRange.Min;
     m_max = componentRange.Max;
     assert(m_size == 0 || bounds_valid());
 #else
     resize(h.GetNumberOfValues());
-    vtkm::cont::ArrayHandleBasic<handle_type> handle(reinterpret_cast<handle_type *>(m_data.get()), m_size,
-                                                     [](void *) {});
-    vtkm::cont::ArrayCopy(h, handle);
+    viskores::cont::ArrayHandleBasic<handle_type> handle(reinterpret_cast<handle_type *>(m_data.get()), m_size,
+                                                         [](void *) {});
+    viskores::cont::ArrayCopy(h, handle);
     handle.SyncControlArray();
     invalidate_bounds();
 #endif
@@ -216,11 +216,12 @@ void shm_array<T, allocator>::resize(const size_t size, const T &value)
 
 #ifdef NO_SHMEM
 template<typename T, class allocator>
-const vtkm::cont::ArrayHandle<typename shm_array<T, allocator>::handle_type> &shm_array<T, allocator>::handle() const
+const viskores::cont::ArrayHandle<typename shm_array<T, allocator>::handle_type> &
+shm_array<T, allocator>::handle() const
 {
     if (m_size != m_capacity) {
-        // many vtk-m algorithms check that array sizes are exact
-        m_handle.Allocate(m_size, vtkm::CopyFlag::On);
+        // many Viskores algorithms check that array sizes are exact
+        m_handle.Allocate(m_size, viskores::CopyFlag::On);
         m_capacity = m_size;
         if (m_memoryValid)
             m_data = reinterpret_cast<T *>(m_handle.GetWritePointer());
@@ -232,10 +233,10 @@ const vtkm::cont::ArrayHandle<typename shm_array<T, allocator>::handle_type> &sh
 }
 #else
 template<typename T, class allocator>
-const vtkm::cont::ArrayHandle<typename shm_array<T, allocator>::handle_type> shm_array<T, allocator>::handle() const
+const viskores::cont::ArrayHandle<typename shm_array<T, allocator>::handle_type> shm_array<T, allocator>::handle() const
 {
-    return vtkm::cont::make_ArrayHandle(reinterpret_cast<const handle_type *>(m_data.get()), m_size,
-                                        vtkm::CopyFlag::Off);
+    return viskores::cont::make_ArrayHandle(reinterpret_cast<const handle_type *>(m_data.get()), m_size,
+                                            viskores::CopyFlag::Off);
 }
 #endif
 
@@ -285,8 +286,8 @@ void shm_array<T, allocator>::reserve(const size_t new_capacity)
                                              " >= " + std::to_string(std::numeric_limits<Index>::max()));
     }
 
-    if (new_capacity >= std::numeric_limits<vtkm::Id>::max()) {
-        std::cerr << "shm_array: size " << new_capacity << " exceeds vtkm::Id's range" << std::endl;
+    if (new_capacity >= std::numeric_limits<viskores::Id>::max()) {
+        std::cerr << "shm_array: size " << new_capacity << " exceeds viskores::Id's range" << std::endl;
         std::cerr << "           recompile with -DVISTLE_INDEX_64BIT" << std::endl;
     }
 
@@ -305,10 +306,10 @@ void shm_array<T, allocator>::reserve_or_shrink(const size_t capacity)
     m_capacity = capacity;
     updateFromHandle(true);
     if (capacity > 0) {
-        m_handle.Allocate(capacity, vtkm::CopyFlag::On);
+        m_handle.Allocate(capacity, viskores::CopyFlag::On);
         m_data = reinterpret_cast<T *>(m_handle.GetWritePointer());
     } else {
-        m_handle = vtkm::cont::make_ArrayHandle(static_cast<handle_type *>(nullptr), 0, vtkm::CopyFlag::Off);
+        m_handle = viskores::cont::make_ArrayHandle(static_cast<handle_type *>(nullptr), 0, viskores::CopyFlag::Off);
         m_data = nullptr;
     }
 #else
