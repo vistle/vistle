@@ -104,8 +104,8 @@ public:
         Manager,
         Modules,
         DuplicateMessages,
-        Messages,
         ManagerMessages,
+        Messages,
         AllMessages,
     };
     Verbosity verbosity() const;
