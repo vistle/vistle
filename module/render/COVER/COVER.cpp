@@ -822,13 +822,21 @@ std::map<std::string, std::string> COVER::setupEnv(const std::string &bindir)
         std::string covisedir = env["COVISEDIR"];
         std::string archsuffix = env["ARCHSUFFIX"];
 
-        if (covisedir.empty()) {
-            std::string print_covise_env = "print_covise_env";
+        std::string print_covise_env = "print_covise_env";
 #ifdef _WIN32
-            print_covise_env += ".bat";
+        print_covise_env += ".bat";
 #endif
-            if (FILE *fp = popen(print_covise_env.c_str(), "r")) {
-                std::vector<char> buf(10000);
+        std::vector<std::string> cmds;
+        if (covisedir.empty()) {
+            cmds.push_back(print_covise_env);
+        }
+        if (archsuffix.empty()) {
+            cmds.push_back(covisedir + "/bin/" + print_covise_env);
+        }
+
+        for (auto &cmd: cmds) {
+            if (FILE *fp = popen(cmd.c_str(), "r")) {
+                std::vector<char> buf(100000);
                 while (fgets(buf.data(), buf.size(), fp)) {
                     auto sep = std::find(buf.begin(), buf.end(), '=');
                     if (sep != buf.end()) {
@@ -838,11 +846,19 @@ std::map<std::string, std::string> COVER::setupEnv(const std::string &bindir)
                         std::string val = std::string(sep, end);
                         //std::cerr << name << "=" << val << std::endl;
                         env[name] = val;
+                        if (name == "COVISEDIR") {
+                            covisedir = val;
+                        } else if (name == "ARCHSUFFIX") {
+                            archsuffix = val;
+                        }
                     }
                     //ld_library_path = buf.data();
                     //std::cerr << "read ld_lib: " << ld_library_path << std::endl;
                 }
                 pclose(fp);
+                if (!covisedir.empty() && !archsuffix.empty()) {
+                    break;
+                }
             }
         }
     }
