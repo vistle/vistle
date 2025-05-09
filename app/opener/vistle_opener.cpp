@@ -122,7 +122,8 @@ int main(int argc, char *argv[])
 
     auto dir = vistle::Directory(argc, argv);
     *dbg << "dir: prefix=" << dir.prefix() << ", bin=" << dir.bin() << ", module=" << dir.module()
-         << ", moduleplugin=" << dir.moduleplugin() << ", share=" << dir.share() << std::endl;
+         << ", moduleplugin=" << dir.moduleplugin() << ", share=" << dir.share() << ", covisedir=" << dir.covisedir()
+         << std::endl;
     if (!dir.prefix().empty()) {
         *dbg << "prefix: " << dir.prefix() << std::endl;
         path_to_vistle = dir.bin() + "vistle";

@@ -19,6 +19,8 @@ public:
     std::string share() const;
     std::string buildType() const;
 
+    std::string covisedir() const;
+
 private:
     std::string m_prefix;
     std::string m_buildType;
