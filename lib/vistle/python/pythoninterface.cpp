@@ -96,16 +96,16 @@ bool PythonInterface::exec(const std::string &python)
         }
         ok = true;
     } catch (py::error_already_set &ex) {
-        std::cerr << "PythonInterface::exec: Error: " << ex.what() << std::endl;
+        std::cerr << "PythonInterface::exec(" << python << "): Error: " << ex.what() << std::endl;
         //std::cerr << "Python exec error" << std::endl;
         PyErr_Print();
         PyErr_Clear();
         ok = false;
     } catch (std::exception &ex) {
-        std::cerr << "PythonInterface::exec: Unknown error: " << ex.what() << std::endl;
+        std::cerr << "PythonInterface::exec(" << python << "): Unknown error: " << ex.what() << std::endl;
         ok = false;
     } catch (...) {
-        std::cerr << "PythonInterface::exec: Unknown error" << std::endl;
+        std::cerr << "PythonInterface::exec(" << python << "): Unknown error" << std::endl;
         ok = false;
     }
     return ok;
@@ -122,16 +122,16 @@ bool PythonInterface::exec_file(const std::string &filename)
         }
         ok = true;
     } catch (py::error_already_set &ex) {
-        std::cerr << "PythonInterface::exec_file: Error: " << ex.what() << std::endl;
+        std::cerr << "PythonInterface::exec_file(" << filename << "): Error: " << ex.what() << std::endl;
         //std::cerr << "Python exec error" << std::endl;
         PyErr_Print();
         PyErr_Clear();
         ok = false;
     } catch (std::exception &ex) {
-        std::cerr << "PythonInterface::exec_file: Unknown error: " << ex.what() << std::endl;
+        std::cerr << "PythonInterface::exec_file(" << filename << "): Unknown error: " << ex.what() << std::endl;
         ok = false;
     } catch (...) {
-        std::cerr << "PythonInterface::exec_file: Unknown error" << std::endl;
+        std::cerr << "PythonInterface::exec_file(" << filename << "): Unknown error" << std::endl;
         ok = false;
     }
 
