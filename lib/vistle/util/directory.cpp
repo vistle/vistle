@@ -40,6 +40,28 @@ std::string bin(const std::string &prefix)
     return prefix + "/bin/" + build_type();
 }
 
+std::string covisedir(const std::string &prefix)
+{
+    if (auto cd = getenv("COVISEDIR")) {
+        return cd;
+    }
+
+    namespace bf = vistle::filesystem;
+
+    auto dir = bf::path(prefix);
+    for (;;) {
+        auto covisedir = dir / "covise";
+        if (bf::exists(covisedir)) {
+            return covisedir.string();
+        }
+        if (!dir.has_parent_path()) {
+            break;
+        }
+        dir = dir.parent_path();
+    }
+    return "";
+}
+
 } // namespace
 
 std::string share(const std::string &prefix)
@@ -112,6 +134,9 @@ bool setEnvironment(const std::string &prefix)
     setvar(libpath, prefix + "/lib");
     addpath("PATH", pathadd);
 
+    setvar("COVISEDIR", covisedir(prefix)); // for finding COVER and example data
+    addpath("COVISE_PATH", prefix); // for finding Vistle COVER plugin
+
     auto envfile = std::ifstream(prefix + "/vistle-env.txt");
     while (envfile.good()) {
         std::string line;
@@ -183,6 +208,11 @@ std::string Directory::moduleplugin() const
 std::string Directory::share() const
 {
     return m_prefix + "share/vistle/";
+}
+
+std::string Directory::covisedir() const
+{
+    return directory::covisedir(prefix());
 }
 
 } // namespace vistle
