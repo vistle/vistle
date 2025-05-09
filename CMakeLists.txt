@@ -559,7 +559,7 @@ if(NOT VISTLE_GUI_ONLY)
     if(VISTLE_USE_MPI)
         set(MPI_SKIP_MPICXX TRUE)
         # at least MPI 3.0 is required for MPI_CXX_BOOL
-        vistle_find_package(MPI 3.0 COMPONENTS C CXX)
+        vistle_find_package(MPI 2.0 COMPONENTS C CXX)
         if(NOT MPI_FOUND)
             message(WARNING "No suitable MPI implementation found, building without MPI support - also make sure that OpenCOVER is built without MPI")
             set(VISTLE_USE_MPI FALSE)
