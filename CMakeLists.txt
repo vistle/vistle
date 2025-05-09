@@ -1088,9 +1088,6 @@ endif()
 
 set(ENABLE_INSTALLER TRUE)
 
-# vistle_find_package(Thrust REQUIRED)
-set(THRUST_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/lib/3rdparty/thrust")
-
 # new submodule for block distribution
 set(DIY_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/lib/3rdparty/diy/include")
 
