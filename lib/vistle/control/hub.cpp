@@ -3499,7 +3499,7 @@ bool Hub::startUi(const std::string &uipath, bool replace)
 
 bool Hub::startPythonUi()
 {
-    std::vector<std::string> python_shells{"ipython", "ipython3", "python", "python3"};
+    std::vector<std::string> python_shells{"ipython", "ipython3", "python", "${Python_EXECUTABLE}"};
     std::string port = std::to_string(this->m_masterPort);
 
     std::string ipython = "ipython";
