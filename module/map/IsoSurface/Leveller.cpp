@@ -2,6 +2,13 @@
 //This code is used for both IsoCut and IsoSurface!
 //
 
+#ifdef __APPLE__
+// works around ambiguous __do_deallocate_handle_size in <new>
+#define __do_deallocate_handle_size hide__do_deallocate_handle_size
+#include <new>
+#undef __do_deallocate_handle_size
+#endif
+#include <thrust/execution_policy.h>
 #include <sstream>
 #include <iomanip>
 #include <vistle/core/index.h>
@@ -10,7 +17,6 @@
 #include <vistle/core/triangles.h>
 #include <vistle/core/lines.h>
 #include <vistle/core/shm.h>
-#include <thrust/execution_policy.h>
 #include <thrust/transform.h>
 #include <thrust/for_each.h>
 #include <thrust/scan.h>
@@ -651,8 +657,9 @@ struct SelectCells {
     {
         int havelower = 0;
         int havehigher = 0;
-        Index Cell = iCell.get<0>();
-        Index nextCell = iCell.get<1>();
+        Index Cell = thrust::get<0>(iCell);
+        Index nextCell = thrust::get<1>(iCell);
+
         // also for POLYHEDRON
         for (Index i = Cell; i < nextCell; i++) {
             Scalar val = m_data.m_isoFunc(m_data.m_cl[i]);
@@ -701,8 +708,8 @@ struct SelectCells2D {
     {
         int havelower = 0;
         int havehigher = 0;
-        Index Cell = iCell.get<0>();
-        Index nextCell = iCell.get<1>();
+        Index Cell = thrust::get<0>(iCell);
+        Index nextCell = thrust::get<1>(iCell);
         for (Index i = Cell; i < nextCell; i++) {
             Scalar val = m_data.m_isoFunc(m_data.m_cl[i]);
             if (val > m_data.m_isovalue) {
@@ -765,7 +772,7 @@ struct ComputeOutputSizes {
     thrust::tuple<Index, Index> operator()(Index CellNr)
     {
         int tableIndex = 0;
-        unsigned numVerts = 0;
+        int numVerts = 0;
         if (m_data.m_isUnstructured) {
             const auto &cl = m_data.m_cl;
 
