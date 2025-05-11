@@ -37,7 +37,8 @@ V_DEFINE_SHMREF(Celltree1::Node) V_DEFINE_SHMREF(Celltree2::Node) V_DEFINE_SHMRE
 
 #define V_DEFINE_CT(T) V_DEFINE_SHMREF(T::Node)
 
-    FOR_ALL_CELLTREE_TYPES(V_DEFINE_CT)
+    //FOR_ALL_CELLTREE_TYPES(V_DEFINE_CT)
+    FOR_ALL_CELLTREE_NODES(V_DEFINE_SHMREF)
 
 
         static_assert(sizeof(Celltree<Scalar, Index>::Node) % 8 == 0, "bad padding");

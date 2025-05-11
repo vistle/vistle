@@ -12,8 +12,6 @@ namespace vistle {
 
 
 FOR_ALL_SCALARS(SHMARR)
-SHMARR(CelltreeNode1)
-SHMARR(CelltreeNode2)
-SHMARR(CelltreeNode3)
+FOR_ALL_CELLTREE_NODES(SHMARR)
 
 } // namespace vistle

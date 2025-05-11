@@ -14,6 +14,8 @@
 
 namespace vistle {
 
+FOR_ALL_CELLTREE_NODES(V_DECLARE_SHMREF)
+
 // a bounding volume hierarchy, cf. C. Garth and K. I. Joy:
 // “Fast, memory-efficient cell location in unstructured grids for visualization”,
 // IEEE Transactions on Visualization and Computer Graphics, vol. 16, no. 6, pp. 1541–1550, 2010.
@@ -189,17 +191,11 @@ FOR_ALL_INDEX(V_CELLTREE_DECL_I)
     MACRO(Celltree64D2) \
     MACRO(Celltree64D3)
 
-#define V_DECLARE_CT(T) V_DECLARE_SHMREF(T::Node)
-
-FOR_ALL_CELLTREE_TYPES(V_DECLARE_CT)
-
 typedef Celltree<Scalar, Index, 1> Celltree1;
 typedef Celltree<Scalar, Index, 2> Celltree2;
 typedef Celltree<Scalar, Index, 3> Celltree3;
 
 } // namespace vistle
-
-#include "celltreenode.h"
 
 namespace vistle {
 
