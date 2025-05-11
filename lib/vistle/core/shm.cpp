@@ -657,14 +657,7 @@ void Shm::deleteBarrier(const std::string &name)
 }
 #endif
 
-V_DEFINE_SHMREF(char)
-V_DEFINE_SHMREF(signed char)
-V_DEFINE_SHMREF(unsigned char)
-V_DEFINE_SHMREF(int32_t)
-V_DEFINE_SHMREF(uint32_t)
-V_DEFINE_SHMREF(int64_t)
-V_DEFINE_SHMREF(uint64_t)
-V_DEFINE_SHMREF(float)
-V_DEFINE_SHMREF(double)
+FOR_ALL_SCALARS(V_DEFINE_SHMREF)
+FOR_ALL_CELLTREE_NODES(V_DEFINE_SHMREF)
 
 } // namespace vistle

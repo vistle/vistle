@@ -1,10 +1,9 @@
 #ifndef VISTLE_CORE_CELLTREENODE_DECL_H
 #define VISTLE_CORE_CELLTREENODE_DECL_H
 
-#include <cstdlib>
-#include "index.h"
-#include "scalar.h"
 #include "export.h"
+#include "scalar.h"
+#include "index.h"
 #include <boost/mpl/back_inserter.hpp>
 #include <boost/mpl/copy.hpp>
 

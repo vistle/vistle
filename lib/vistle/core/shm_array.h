@@ -303,9 +303,7 @@ FOR_ALL_SCALARS(SHMARR_EXPORT)
 
 #include "celltreenode.h"
 namespace vistle {
-SHMARR_EXPORT(CelltreeNode1)
-SHMARR_EXPORT(CelltreeNode2)
-SHMARR_EXPORT(CelltreeNode3)
+FOR_ALL_CELLTREE_NODES(SHMARR_EXPORT)
 #undef SHMARR_EXPORT
 
 } // namespace vistle
